@@ -38,3 +38,9 @@
 ! !!! PLEASE pay attention to units for specific humidity in models.
 
 
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

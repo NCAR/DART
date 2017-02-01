@@ -1,8 +1,8 @@
-! DART software - Copyright 2004 - 2013 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id: dart_cice_mod.f90
+! $Id$
 
 module dart_cice_mod
 
@@ -709,5 +709,6 @@ end module dart_cice_mod
 
 ! <next few lines under version control, do not edit>
 ! $URL$
-! $Id: dart_cice_mod.f90
-
+! $Id$
+! $Revision$
+! $Date$

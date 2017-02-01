@@ -1,5 +1,5 @@
-! DART software - Copyright � 2004 - 2010 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
 ! Forward operator to compute total cloud water in a column,
@@ -7,11 +7,13 @@
 ! forward operator that loops over either fixed pressure levels or
 ! over model levels.
 
+!>@todo FIXME remove all the TAB characters - technically not supported, can issue warnings
+
 ! BEGIN DART PREPROCESS KIND LIST
-! GOES_CWP_PATH,					 KIND_CWP_PATH
-! GOES_LWP_PATH,					 KIND_CWP_PATH
-! GOES_IWP_PATH,					 KIND_CWP_PATH
-! GOES_CWP_ZERO,					 KIND_CWP_PATH_ZERO
+! GOES_CWP_PATH,      KIND_CWP_PATH
+! GOES_LWP_PATH,      KIND_CWP_PATH
+! GOES_IWP_PATH,      KIND_CWP_PATH
+! GOES_CWP_ZERO,      KIND_CWP_PATH_ZERO
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -31,24 +33,24 @@
 
 ! BEGIN DART PREPROCESS WRITE_OBS_DEF
 !         case(GOES_CWP_PATH)
-!			 call write_cwp(obs_def%key, ifile, fform)
+!            call write_cwp(obs_def%key, ifile, fform)
 !         case(GOES_LWP_PATH)
-!			 call write_cwp(obs_def%key, ifile, fform)
+!            call write_cwp(obs_def%key, ifile, fform)
 !         case(GOES_IWP_PATH)
-!			 call write_cwp(obs_def%key, ifile, fform)
+!            call write_cwp(obs_def%key, ifile, fform)
 !         case(GOES_CWP_ZERO)
-!			 call write_cwp(obs_def%key, ifile, fform)
+!            call write_cwp(obs_def%key, ifile, fform)
 ! END DART PREPROCESS WRITE_OBS_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
 !         case(GOES_CWP_PATH)
-!			 call read_cwp(obs_def%key, ifile, fform)
+!            call read_cwp(obs_def%key, ifile, fform)
 !         case(GOES_LWP_PATH)
-!			 call read_cwp(obs_def%key, ifile, fform)
+!            call read_cwp(obs_def%key, ifile, fform)
 !         case(GOES_IWP_PATH)
-!			 call read_cwp(obs_def%key, ifile, fform)
+!            call read_cwp(obs_def%key, ifile, fform)
 !         case(GOES_CWP_ZERO)
-!			 call read_cwp(obs_def%key, ifile, fform)
+!            call read_cwp(obs_def%key, ifile, fform)
 ! END DART PREPROCESS READ_OBS_DEF
 
 ! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
@@ -75,7 +77,7 @@ module obs_def_cwp_mod
 use        types_mod, only : r8, missing_r8, RAD2DEG, DEG2RAD, PI
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              file_exist, open_file, close_file, nmlfileunit, ascii_file_format, &
-							 find_namelist_in_file, check_namelist_read
+                             find_namelist_in_file, check_namelist_read
 use     location_mod, only : location_type, set_location, get_location, &
                              write_location, read_location, &
                              VERTISHEIGHT, VERTISPRESSURE, VERTISSURFACE, VERTISUNDEF, VERTISLEVEL
@@ -83,9 +85,9 @@ use time_manager_mod, only : time_type, read_time, write_time, &
                              set_time, set_time_missing
 use  assim_model_mod, only : interpolate
 use     obs_kind_mod, only : KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE, KIND_PRESSURE, KIND_SURFACE_PRESSURE, &
-			     KIND_GRAUPEL_MIXING_RATIO, KIND_RAINWATER_MIXING_RATIO, KIND_SNOW_MIXING_RATIO, &
-				 KIND_HAIL_MIXING_RATIO, KIND_CWP_PATH, KIND_CWP_PATH_ZERO, &
-				 GOES_CWP_PATH, GOES_LWP_PATH, GOES_IWP_PATH,	GOES_CWP_ZERO					
+                             KIND_GRAUPEL_MIXING_RATIO, KIND_RAINWATER_MIXING_RATIO, KIND_SNOW_MIXING_RATIO, &
+                             KIND_HAIL_MIXING_RATIO, KIND_CWP_PATH, KIND_CWP_PATH_ZERO, &
+                             GOES_CWP_PATH, GOES_LWP_PATH, GOES_IWP_PATH, GOES_CWP_ZERO
 use  ensemble_manager_mod, only : ensemble_type
 use obs_def_utilities_mod, only : track_status
 
@@ -108,8 +110,8 @@ character(len=129) :: msgstring
 ! Define global variables
 real(r8), parameter :: gravity = 9.81_r8     ! gravitational acceleration (m s^-2)
 real(r8), parameter :: density = 1000.0_r8   ! water density in kg/m^3
-integer :: max_plevels = 1000				! max number of pressure levels (large when using model level option)
-integer :: physics = 8 						! WRF cloud microphysics option
+integer :: max_plevels = 1000                ! max number of pressure levels (large when using model level option)
+integer :: physics = 8                       ! WRF cloud microphysics option
 
 ! default samples the atmosphere between the surface and 200 hPa 
 ! at the model level numbers.  if model_levels is set false,
@@ -122,9 +124,9 @@ logical  :: separate_surface_level = .true.  ! false: level 1 of 3d grid is sfc
 integer  :: num_plevels = 40  ! number of intervals if model_levels is F
 
 ! Storage for the satellite cloud height information required for observations of this type
-integer							 :: num_cwp_obs = 0
-integer,		     parameter	 :: max_cwp_obs = 2000000
-real(r8),			 allocatable :: cbp_array(:), ctp_array(:)
+integer :: num_cwp_obs = 0
+integer, parameter :: max_cwp_obs = 2000000
+real(r8), allocatable :: cbp_array(:), ctp_array(:)
 
 namelist /obs_def_cwp_nml/ pressure_top,  physics
 
@@ -267,8 +269,8 @@ end subroutine interactive_cwp
 
 
 subroutine set_cbp_ctp(icwpkey, cbp_value, ctp_value)
- integer,			  intent(out) :: icwpkey
- real(r8),            intent(in) :: cbp_value, ctp_value
+ integer,  intent(out) :: icwpkey
+ real(r8), intent(in)  :: cbp_value, ctp_value
  
  if ( .not. module_initialized ) call initialize_module
  
@@ -778,3 +780,9 @@ end subroutine
 end module obs_def_cwp_mod
 
 ! END DART PREPROCESS MODULE CODE
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

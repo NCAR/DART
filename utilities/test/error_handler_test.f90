@@ -1,8 +1,8 @@
-! DART software - Copyright 2004 - 2013 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id: error_handler_test.f90 6256 2013-06-12 16:19:10Z thoar $
+! $Id$
 
 program error_handler_test
 
@@ -17,9 +17,9 @@ implicit none
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
-   "$URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_par_msg/utilities/error_handler_test.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 6256 $"
-character(len=128), parameter :: revdate  = "$Date: 2013-06-12 10:19:10 -0600 (Wed, 12 Jun 2013) $"
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
 
@@ -83,7 +83,7 @@ end subroutine initialize_module
 end program
 
 ! <next few lines under version control, do not edit>
-! $URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_par_msg/utilities/error_handler_test.f90 $
-! $Id: error_handler_test.f90 6256 2013-06-12 16:19:10Z thoar $
-! $Revision: 6256 $
-! $Date: 2013-06-12 10:19:10 -0600 (Wed, 12 Jun 2013) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

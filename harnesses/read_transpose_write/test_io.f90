@@ -1,8 +1,8 @@
-! DART software - Copyright 2004 - 2013 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id: dart_time_io_mod.f90 9779 2016-02-17 16:54:11Z hendric $
+! $Id$
 
 !> Test harness for a limited transpose code
 program test_io_read_transpose
@@ -106,7 +106,7 @@ call finalize_mpi_utilities(async=0)
 end program test_io_read_transpose
 
 ! <next few lines under version control, do not edit>
-! $URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_state_structure_unit_test/filter/filter.f90 $
-! $Id: filter.f90 7492 2015-01-27 22:36:58Z hkershaw $
-! $Revision: 7492 $
-! $Date: 2015-01-27 15:36:58 -0700 (Tue, 27 Jan 2015) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

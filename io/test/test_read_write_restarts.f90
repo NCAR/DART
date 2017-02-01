@@ -1,8 +1,8 @@
-! DART software - Copyright 2004 - 2013 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id: test_read_write_restarts.f90 9553 2016-01-20 17:26:41Z hendric $
+! $Id$
 
 program test_read_write_restarts
 
@@ -25,9 +25,9 @@ implicit none
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
-   "$URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_test_read_write_restarts_dir/io/test/test_read_write_restarts.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 9553 $"
-character(len=128), parameter :: revdate  = "$Date: 2016-01-20 10:26:41 -0700 (Wed, 20 Jan 2016) $"
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
 
@@ -120,7 +120,7 @@ end subroutine initialize_module
 end program
 
 ! <next few lines under version control, do not edit>
-! $URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_test_read_write_restarts_dir/io/test/test_read_write_restarts.f90 $
-! $Id: test_read_write_restarts.f90 9553 2016-01-20 17:26:41Z hendric $
-! $Revision: 9553 $
-! $Date: 2016-01-20 10:26:41 -0700 (Wed, 20 Jan 2016) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

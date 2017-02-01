@@ -1,3 +1,9 @@
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
+
 module pnetcdf_state_vector_io_mod
 ! Aim to read a netcdf restart file. 
 ! the local directory. This is because you don't want to allocate
@@ -237,3 +243,9 @@ logical :: debug_print = .false.
 end subroutine single_read_transpose
 
 end module pnetcdf_state_vector_io_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

@@ -1,5 +1,5 @@
-! DART software - Copyright 2004 - 2013 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
 ! $Id$
@@ -81,10 +81,10 @@ integer                          :: num_mopitt_co_obs = 0
 ! KDR replace 10 with mopitt_dim?
 ! real(r8), dimension(max_mopitt_co_obs,10) :: avg_kernel
 real(r8), dimension(max_mopitt_co_obs,mopitt_dim) :: avg_kernel
-real(r8), dimension(max_mopitt_co_obs)	          :: mopitt_prior
+real(r8), dimension(max_mopitt_co_obs)            :: mopitt_prior
 real(r8)   :: mopitt_pressure(mopitt_dim) =(/ &
                               95000.,90000.,80000.,70000.,60000.,50000.,40000.,30000.,20000.,10000. /)
-real(r8), dimension(max_mopitt_co_obs)	 :: mopitt_psurf	
+real(r8), dimension(max_mopitt_co_obs)   :: mopitt_psurf
 integer,  dimension(max_mopitt_co_obs)   :: mopitt_nlevels
 
 ! For now, read in all info on first read call, write all info on first write call
@@ -810,4 +810,3 @@ end module obs_def_mopitt_mod
 ! $Id$
 ! $Revision$
 ! $Date$
-

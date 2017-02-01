@@ -1,3 +1,9 @@
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
+
 module pio_transpose_mod
 ! Aim to read a netcdf restart file. 
 ! the local directory. This is because you don't want to allocate
@@ -389,3 +395,9 @@ enddo
 end subroutine pio_transpose_write
 
 end module pio_transpose_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

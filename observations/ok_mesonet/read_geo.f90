@@ -1,10 +1,11 @@
-! DART software - Copyright 2004 - 2013 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
 ! $Id$
 
 program read_geo
+
 implicit none
 
 ! Given a station id, find the lat, lon and elevation from the geo file
@@ -96,8 +97,8 @@ n10 = n9 + index(line(n9+1:nend), ',')
 
 end program read_geo
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
-
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

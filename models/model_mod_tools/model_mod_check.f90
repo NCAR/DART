@@ -1,8 +1,8 @@
-! DART software - Copyright 2004 - 2013 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id: model_mod_check.f90 6739 2014-01-15 20:44:54Z hkershaw $
+! $Id$
 
 !----------------------------------------------------------------------
 !> purpose: test model_mod routines.  this version works for models
@@ -65,9 +65,9 @@ implicit none
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
-   "$URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_model_mod_check/models/template/model_mod_check.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 6739 $"
-character(len=128), parameter :: revdate  = "$Date: 2014-01-15 13:44:54 -0700 (Wed, 15 Jan 2014) $"
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 !------------------------------------------------------------------
 ! The namelist variables
@@ -377,7 +377,7 @@ end subroutine print_test_message
 end program model_mod_check
 
 ! <next few lines under version control, do not edit>
-! $URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/CM1/models/cm1/model_mod_check.f90 $
-! $Id: model_mod_check.f90 8729 2015-10-01 22:31:54Z hendric $
-! $Revision: 8729 $
-! $Date: 2015-10-01 16:31:54 -0600 (Thu, 01 Oct 2015) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

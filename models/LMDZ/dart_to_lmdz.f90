@@ -1,6 +1,8 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program dart_to_lmdz
 
@@ -11,7 +13,6 @@ program dart_to_lmdz
 !         Reform state vector back into LMDZ fields.
 !         Replace those fields on the LMDZ initial file with the new values,
 !         preserving all other information on the file.
-!
 !----------------------------------------------------------------------
 
 use       types_mod, only : r8
@@ -108,4 +109,3 @@ end program dart_to_lmdz
 ! $Id$
 ! $Revision$
 ! $Date$
-

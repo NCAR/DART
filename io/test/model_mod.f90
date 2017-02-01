@@ -1,8 +1,8 @@
-! DART software - Copyright 2004 - 2013 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id: model_mod.f90 9198 2015-12-09 16:23:52Z nancy $
+! $Id$
 
 module model_mod
 
@@ -68,9 +68,9 @@ public :: model_file_to_dart_vector, &
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
-   "$URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_cf_conventions/models/template/model_mod.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 9198 $"
-character(len=128), parameter :: revdate  = "$Date: 2015-12-09 09:23:52 -0700 (Wed, 09 Dec 2015) $"
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! global variables
 character(len=512) :: string1, string2, string3
@@ -861,7 +861,7 @@ end subroutine parse_variable_table
 end module model_mod
 
 ! <next few lines under version control, do not edit>
-! $URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_cf_conventions/models/template/model_mod.f90 $
-! $Id: model_mod.f90 9198 2015-12-09 16:23:52Z nancy $
-! $Revision: 9198 $
-! $Date: 2015-12-09 09:23:52 -0700 (Wed, 09 Dec 2015) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

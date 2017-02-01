@@ -1,15 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program lmdz_to_dart
-
-!----------------------------------------------------------------------
-! <next few lines under version control, do not edit>
-! $URL:https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/models/LMDZ/lmdz_to_dart.f90  $
-! $Id$
-! $Revision$
-! $Date$
 
 !----------------------------------------------------------------------
 ! purpose: interface between LMDZ and DART
@@ -18,7 +13,6 @@ program lmdz_to_dart
 !         Reform fields into a DART state vector.
 !         Write out state vector in "proprietary" format for DART
 !----------------------------------------------------------------------
-
 
 use        types_mod, only : r8
 use    utilities_mod, only : initialize_utilities, finalize_utilities, do_output,     &
@@ -37,7 +31,6 @@ character(len=128), parameter :: &
    source   = "$URL$", &
    revision = "$Revision$", &
    revdate  = "$Date$"
-
 
 !-----------------------------------------------------------------------
 ! namelist parameters with default values.
@@ -99,3 +92,9 @@ call close_restart(iunit)
 call finalize_utilities()
 
 end program lmdz_to_dart
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

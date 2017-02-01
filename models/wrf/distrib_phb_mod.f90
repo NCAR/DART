@@ -1,3 +1,9 @@
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
+
 !> Aim: to replace the array phb, with a distributed version
 !> Current thinking: Only distribute the array as much as necessary.
 !> Ideally, if memory was unliimited, every task would have the whole array.
@@ -280,3 +286,9 @@ target_disp = (j - 1)*bts_length*owner_num_we + (local_we- 1)*bts_length + k -1 
 end subroutine who_has_grid_info
 
 end module distrib_phb_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

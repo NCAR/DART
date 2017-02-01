@@ -1,3 +1,9 @@
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
+
 module null_vert_convert_mod
 
 use ensemble_manager_mod, only : ensemble_type
@@ -64,3 +70,9 @@ end subroutine get_close_obs_distrib
 !--------------------------------------------------------------------
 
 end module null_vert_convert_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
