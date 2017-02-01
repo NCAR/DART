@@ -87,12 +87,40 @@ whatever grid the variable is on. <code>get_dim_name</code> can be used to
 get the dimension name from i,j,k if needed.
 
 <h4> Unlimited Dimensions: IO vs model_mod routines.</h4>
-Some model restart files have an unlimited dimension. For IO purposes, e.g. 
+<P>Some model restart files have an unlimited dimension. For IO purposes, e.g. 
 creating netcdf files, the unlimited dimension is used.  For state structure 
 accessor functions called be the model_mod the unlimited dimension is ignored.
 So if you have a variable TEMPARATURE in your netcdf file, with dimensions 
 (lon, lat, level, time) the IO routines will see a 4D variable, but 
 <code>get_num_dims</code> used in model_mod will return 3D.
+</P>
+
+<P><!-- make sure the 'top' is aligned correctly --></P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright UCAR. This open source software is provided
+by UCAR, "as is", without charge, subject to all terms of use at
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
 
 </BODY>
 </HTML>
