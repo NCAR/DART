@@ -4,7 +4,7 @@
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: mkmf.template.intel.linux 6674 2013-12-12 22:11:24Z nancy $
+# DART $Id$
 
 # typical use with mkmf
 # mkmf -t mkmf.template.xxxx ...
@@ -154,7 +154,7 @@ LDFLAGS = $(FFLAGS) $(LIBS)
 # try adding: -limf -lm to your LIBS line.
 
 # <next few lines under version control, do not edit>
-# $URL: https://proxy.subversion.ucar.edu/DAReS/DART/trunk/mkmf/mkmf.template.intel.linux $
-# $Revision: 6674 $
-# $Date: 2013-12-12 15:11:24 -0700 (Thu, 12 Dec 2013) $
+# $URL$
+# $Revision$
+# $Date$
 
