@@ -25,8 +25,8 @@ function hop_test_check(file0, file1, file2, varname)
 % file5 = '/glade/scratch/thoar/archive/hop_12/rest/2008-11-01-00000/hop_12.clm2_0001.r.2008-11-01-00000.nc';
 % hop_test_check(file3, file4, file5)
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -284,4 +284,3 @@ x = minmax(1) + [1:nedges]*(minmax(2)-minmax(1))/(nedges-1);
 % $URL$
 % $Revision$
 % $Date$
-

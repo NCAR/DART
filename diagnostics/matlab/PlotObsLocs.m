@@ -103,8 +103,8 @@ function phandle = PlotObsLocs(in_dartqc, in_box, in_typelist, in_epochlist, ...
 % WARNING: and then use 'plot_obs_netcdf.m'
 %
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -618,4 +618,3 @@ end % function list = pickme(R, N)
 % $URL$
 % $Revision$
 % $Date$
-

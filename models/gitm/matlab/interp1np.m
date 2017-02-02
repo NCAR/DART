@@ -3,6 +3,7 @@ function ln = interp1np(t,l,tn)
 % FOR PROGRADE ORBITS ONLY!! (like can't use this for subsolar point, since it moves in decreasing longitude direction as viewed in Earth-fixed frame!)
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 %test with 
 % LonCD=interp1([1 4],[340 10],2)
@@ -39,4 +40,8 @@ for i=1:length(tn)
     end
         
 end
-   
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

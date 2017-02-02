@@ -11,11 +11,11 @@ function value = nc_read_att(fname,varid,attname)
 % uhoh  = nc_read_att('example.nc','temperature','something_that_does_not_exit');
 % if isempty(uhoh), fprintf('no such attribute but life goes on.\n'); end
 
-% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% DART $Id: %
+% DART $Id$
 
 value = [];
 
@@ -41,4 +41,3 @@ end
 % $URL$
 % $Revision$
 % $Date$
-

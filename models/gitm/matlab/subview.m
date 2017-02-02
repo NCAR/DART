@@ -11,6 +11,7 @@ function h2=subview(i,x2,y2,p2)
 %p2=[.7 .7 .3 .3]; %where and how big to make the subview in h1-relative coordinates
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 if isnan(p2)
     p2=[.7 .7 .3 .3];
@@ -65,3 +66,8 @@ else % NW and SE position
     annotation('line',[p4(1) p3(1)],[p4(2) p3(2)]); %line from h1 plot to h2 box
     annotation('line',[p4(1)+p4(3) p3(1)+p3(3)],[p4(2)+p4(4) p3(2)+p3(4)]); %line from h1 plot to h2 box
 end
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

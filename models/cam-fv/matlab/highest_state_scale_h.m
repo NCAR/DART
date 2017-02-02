@@ -41,8 +41,8 @@ function highest_state_scale_h(fname, div24del2flag, cutoff, vert_norm, varargin
 % vert_norm     = 2.5;    % DART input.nml vert_normalization_scale_height
 % highest_state_scale_h(fname, div24del2flag, cutoff, vert_norm,'nu_top',0.00005)
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -278,4 +278,3 @@ end
 % $URL$
 % $Revision$
 % $Date$
-

@@ -1,5 +1,6 @@
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 clear
 clc
@@ -48,3 +49,8 @@ fwrite(i,[p 10*ones(n+2,1)]');
   fclose(i);
 
 exit
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

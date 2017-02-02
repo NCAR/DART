@@ -6,8 +6,8 @@ function [dart modl] = Check_ncommas_to_dart(modlfile, dartfile )
 %
 % [dart modl] = Check_ncommas_to_dart(modlfile, dartfile );
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -64,4 +64,3 @@ QSdiffs = modl.QS(:,:,:,2) - dart.QS; [min(QSdiffs(:)) max(QSdiffs(:))]
 % $URL$
 % $Revision$
 % $Date$
-

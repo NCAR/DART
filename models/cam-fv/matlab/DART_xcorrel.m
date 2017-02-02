@@ -10,8 +10,8 @@ function DART_xcorrel(datadir,fname,varname1,location,varname2,level2)
 %
 % DART_xcorrel(datadir,fname,varname1,location,varname2,level2)
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -159,4 +159,3 @@ timestring = datestr(t + timeorigin);
 % $URL$
 % $Revision$
 % $Date$
-

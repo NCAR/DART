@@ -1,6 +1,7 @@
 %% CHAMP ascii files reader, text.txt writer, and GITM champ_*.dat files writer
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 tc=[];
 LongitudeChamp2s=[];
@@ -148,3 +149,8 @@ LatitudeChamp2 =LatitudeChamp2s;
 AltitudeChamp2 =AltitudeChamp2s;
 RhoChamp2 =RhoChamp2s;
 v2 =v2s;
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

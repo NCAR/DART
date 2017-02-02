@@ -1,6 +1,7 @@
 function oba=om(i,th)
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 if i==1
       oba=[1 0 0
@@ -15,3 +16,8 @@ elseif i==3
         -sin(th) cos(th) 0
         0 0 1];
 end
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

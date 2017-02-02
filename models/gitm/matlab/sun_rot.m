@@ -2,6 +2,7 @@
 % this file cane make movies or stills, as in figure 1a in gitm/GITM2/srcDoc/thermo.pdf
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 %% setup
 clc
@@ -456,3 +457,7 @@ end
 %  
 % set(gcf,'renderer','painters')
 
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

@@ -16,7 +16,7 @@ function [f,d,fa]=f107_p(p,y,m,d1,nd,pl)
 % hold off
 
 % DART $Id$
-
+% CREDIT: Alexey Morozov
 
 %% READING DATA PART
 po=pwd;
@@ -79,3 +79,8 @@ if pl
     box on
     legend('Daily F10.7','81-day central average of f107, called f107a','The value used in GITM, ie (f107+f107a)/2')
 end
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

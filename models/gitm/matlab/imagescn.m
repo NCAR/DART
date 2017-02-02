@@ -11,6 +11,7 @@ function h=imagescn(x,y,c)
 %   Feel free to use as a draft for your own functions.
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 x=x(:); %collapse any matrices or row vectors into column vectors
 y=y(:); %collapse any matrices or row vectors into column vectors
@@ -45,3 +46,8 @@ h=pcolor(xn,yn,c);
 %     end
 % end
 % hold off
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

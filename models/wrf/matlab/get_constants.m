@@ -3,8 +3,8 @@ function [ Cp, Rd, gamma, Rv, L_c, g, T0, p0] = get_constants()
 % read required constants from file.  At present, just a
 % repository for hardwired constants.
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -24,4 +24,3 @@ p0    = 1000.e2;
 % $URL$
 % $Revision$
 % $Date$
-

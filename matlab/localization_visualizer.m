@@ -8,8 +8,8 @@ function localization_visualizer
 % m_map is freely available from http://www.eos.ubc.ca/~rich/map.html
 % The script will throw an error if m_map is not found in your Matlab path.
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$

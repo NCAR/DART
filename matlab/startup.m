@@ -5,8 +5,8 @@
 % The beauty of addpath is that if the desired directory is already
 % in your path, nothing happens, so there is no harm trying.
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -95,4 +95,3 @@ disp('To change your defaults, set ''truth_file'' and/or ''diagn_file'' accordin
 % $URL$
 % $Revision$
 % $Date$
-

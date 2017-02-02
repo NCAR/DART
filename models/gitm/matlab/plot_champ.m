@@ -46,7 +46,7 @@ function plot_champ(dart_install_dir, truth_run_dir, pbs_file_t, middle_run_dir,
 % Alexey Morozov alexeymor at google mail 08/15/2012
 
 % DART $Id$
-
+% CREDIT: Alexey Morozov
 
 
 %%% Variable-names convention (examples of time, coordinate, and density)
@@ -831,4 +831,7 @@ a=findall(gcf,'type','axes');
 set(a(end),'YScale','log');
 print(gcf,'-dpng','obs_diag')
 
-
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

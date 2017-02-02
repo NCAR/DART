@@ -27,8 +27,8 @@ function compare_hop_tests_SE(name1, file1, name2, file2, dycore, varname)
 % compare_hop_tests_SE(name1, file1, name2, file2, dycore, {'PS','T','U','V','Q','CLDICE','CLDLIQ'})
 
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -362,4 +362,3 @@ x = minmax(1) + [1:nedges]*(minmax(2)-minmax(1))/(nedges-1);
 % $URL$
 % $Revision$
 % $Date$
-

@@ -65,6 +65,7 @@ function time_plot(ttr,truth,latr, ...
 %to 10^12, default is 1
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 %% truth
 %no preprocessing to be done here
@@ -193,3 +194,8 @@ if ~isnan(leloc)
     le=legend(h,la,'location',leloc);
     set(le,'interpreter',leint)
 end
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

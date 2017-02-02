@@ -1,6 +1,11 @@
 function quadratic_eq_coeffs
-
 % See also ../doc/{roots_of_m_equation.pptx,cubed_sphere_algorithm.pptx}
+
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
+%
+% DART $Id$
 
 logfid = fopen('bb','wt');
 
@@ -351,3 +356,8 @@ Corner(x y)      candidate point
 7 5   9 7   3 7  (ox,oy)=(9 7)  bb=-4   cc=-4 
 7 5   9 7   3 9  (ox,oy)=(9 7)  bb=-8   cc=-4 
 7 5   9 7   5 9  (ox,oy)=(9 7)  bb=-4   cc=-4 
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

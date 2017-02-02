@@ -6,6 +6,7 @@ function Rho=mat2dat(y2, d1, t, dat_file, Lon, Lat, Alt, Rho, RhoU)
 %which case it is just made into array (RhoU*ones(length(1),1))
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 sp=ones(length(t),1);
 
@@ -45,3 +46,8 @@ disp(['just so you know, here is what the end of the ' dat_file ' file looks lik
 unix(['tail ' dat_file]);
 disp('and that''s how many lines it has')
 unix(['wc -l < ' dat_file]);
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

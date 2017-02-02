@@ -6,6 +6,7 @@ function mat2dart(y2, d1, t, converter_dir, obs_file, Lon, Lat, Alt, Rho, RhoU, 
 %REQUIRES the DART/observations/text_GITM converter to be compiled!!!
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 sp=ones(length(t),1);
 
@@ -61,4 +62,7 @@ unix(['mv obs_seq.out ' obs_file]); %rename and possibly move (if obs_file has a
 
 cd(p)
 
-
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

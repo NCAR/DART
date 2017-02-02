@@ -5,8 +5,8 @@ function bob = CheckStorageOrder(fname,varname)
 % varname = 'H2OSOI_LIQ';
 % x = CheckStorageOrder(fname,varname);
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -30,4 +30,3 @@ end
 % $URL$
 % $Revision$
 % $Date$
-

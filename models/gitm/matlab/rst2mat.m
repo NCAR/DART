@@ -28,6 +28,7 @@
 %   Alexey Morozov 09/01/2011 morozova aatt umich ddott edu
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 clear %harsh <-
 %milder version:
@@ -471,4 +472,7 @@ for b=1:nBlocksLon*nBlocksLat %iterate over block files - start in SW and go E f
     fclose(id); %close the current block restart file
 end
 
-
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

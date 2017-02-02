@@ -45,8 +45,8 @@ function plotdat = plot_rank_histogram(fname, timeindex, varargin)
 % timeindex = -1;                   % use ALL available timesteps
 % plotdat   = plot_rank_histogram(fname, timeindex, 'RADIOSONDE_TEMPERATURE');
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -483,4 +483,3 @@ end
 % $URL$
 % $Revision$
 % $Date$
-

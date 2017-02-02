@@ -12,8 +12,8 @@ function plot_global_grid(ugrid_file, tgrid_file)
 % plot_global_grid(2); % to plot dipole x3 grid output
 % plot_global_grid(3); % to plot regular grid with same grid as x3 in SH
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -57,4 +57,3 @@ ylabel(sprintf('%d latitudes',chunk.ny))
 % $URL$
 % $Revision$
 % $Date$
-

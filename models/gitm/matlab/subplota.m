@@ -14,6 +14,7 @@ function ax = subplota(r,c,ri,ci,d,o)
 % for i=1:6; subplota(2,3,i,nan,.01,.1); plot(1:i,sin(1:i)); end
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 if isnan(ci)
     i=ri;
@@ -31,3 +32,8 @@ p=[sc sr w h];
 ax = axes('Position', p );
 
 end
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

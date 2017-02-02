@@ -3,6 +3,7 @@ function ln = interp1nr(t,l,tn)
 % FOR RETROGRADE ORBITS ONLY!! (like for subsolar point, since it moves in decreasing longitude direction as viewed in Earth-fixed frame!)
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 %test with 
 % LonCD=interp1([1 4],[10 340],3)
@@ -40,3 +41,7 @@ for i=1:length(tn)
         
 end
    
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

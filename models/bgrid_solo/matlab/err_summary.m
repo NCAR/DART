@@ -1,7 +1,7 @@
 %% err_summary
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -143,4 +143,3 @@ v_sd = num2str(mean(sd_final(bint:tint, 4, :), 1))
 % $URL$
 % $Revision$
 % $Date$
-

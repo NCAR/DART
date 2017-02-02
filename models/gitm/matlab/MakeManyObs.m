@@ -1,7 +1,8 @@
 function MakeManyObs
-%
+
 % DART $Id$
-%
+% CREDIT: Alexey Morozov
+
 
 obcount = 1;
 
@@ -69,3 +70,7 @@ fprintf(fid,'   27.0400000000000\n');
 fclose(fid);
 obcount = iobs + 1
 
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

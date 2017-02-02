@@ -2,6 +2,7 @@ function VTecTS=calc_vtec(tt, LonT, LatT, AltT, RhoT, ...
     LonTS, LatTS)
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 nAlts=length(AltT);
 
@@ -30,3 +31,8 @@ for i=1:length(VTecTS)
         %     end
     end
 end
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

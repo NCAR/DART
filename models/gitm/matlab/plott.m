@@ -9,6 +9,7 @@ function p = plott(x,y,xl,yl,p,m,n,s)
 %p is nxm matrix, element (1,1) is displayed in the bottom-left corner
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 if isnan(xl)
   xl=[min(x) max(x)]
@@ -41,3 +42,7 @@ p(ind)=s; %48+d;
 %p=['|'*ones(n,1) flipud(p); '*' '-'*ones(1,m)];
 %disp(char(p))
 
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

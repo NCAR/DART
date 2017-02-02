@@ -10,8 +10,8 @@ function bob = Get_Point(filename,basevar,timeind,lat,lon,level,enssize)
 % enssize = 20;
 % x = Get_Point(filename,basevar,timeind,lat,lon,level,enssize);
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -36,4 +36,3 @@ bob = getnc(filename, basevar, bl_corner, ur_corner, -1,-1,-1,-1, squeeze_it);
 % $URL$
 % $Revision$
 % $Date$
-

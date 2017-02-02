@@ -65,8 +65,8 @@ function plotdat = plot_evolution(fname, copy, varargin)
 % plotdat    = plot_evolution(fname, copy, 'obsname', 'RADIOSONDE_TEMPERATURE', ...
 %                             'level', 4, 'range', [0 10]);
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -643,4 +643,3 @@ end
 % $URL$
 % $Revision$
 % $Date$
-

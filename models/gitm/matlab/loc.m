@@ -14,6 +14,7 @@ function [tts,rs,gs]=loc(tL, LonL, LatL, AltL, ...
 % gs)
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 dn=abs(LonL-LonV);
 dn(dn>180)=360-dn(dn>180); 
@@ -43,5 +44,7 @@ gs=gci(jj);
 tts=tci(jj);
 rs=rci(jj); 
 
-
-
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

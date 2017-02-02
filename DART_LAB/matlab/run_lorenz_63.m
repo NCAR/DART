@@ -33,8 +33,8 @@ function run_lorenz_63
 % See also: gaussian_product, oned_model, oned_ensemble, twod_ensemble,
 %           run_lorenz_96
 
-%% DART software - Copyright 2004 - 2016 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -722,4 +722,3 @@ end
 % $URL$
 % $Revision$
 % $Date$
-

@@ -10,8 +10,8 @@ function CAM_DART_correl(datadir,DARTfile,DARTvarname,DARTlevel,CAMvarname,CAMlo
 %
 % CAM_DART_correl(datadir,DARTfile,DARTvarname,DARTlevel,CAMvarname,CAMlocation)
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -171,4 +171,3 @@ timestring = datestr(t + timeorigin);
 % $URL$
 % $Revision$
 % $Date$
-

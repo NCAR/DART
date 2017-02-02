@@ -14,8 +14,8 @@ function output = get_var_grid(fname, varname)
 % mygrid = get_var_grid(fname, varname);
 
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -179,4 +179,3 @@ function zinfo = get_z_info(fname, varname, chunk);
 % $URL$
 % $Revision$
 % $Date$
-

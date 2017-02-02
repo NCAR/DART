@@ -1,7 +1,11 @@
-
 function get_info_index = get_info_index(info,kind,field)
-
 % field is a cell array (size 1) of character(s).
+
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
+%
+% DART $Id$
 
 get_info_index = -999;
 
@@ -34,4 +38,7 @@ for i = 1:num
     end
 end
 
-%------------------------------------------------------
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

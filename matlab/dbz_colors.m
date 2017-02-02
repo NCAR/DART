@@ -1,7 +1,7 @@
 %% dbz_colors.m  Color scale from CIDD http://www.rap.ucar.edu/colorscales/dbz_40.colors
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -91,4 +91,3 @@ caxis([-18, 81]);
 % $URL$
 % $Revision$
 % $Date$
-

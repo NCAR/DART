@@ -74,4 +74,3 @@ st=fclose(fid);
 % $URL$
 % $Revision$
 % $Date$
-

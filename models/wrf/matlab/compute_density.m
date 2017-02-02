@@ -11,8 +11,8 @@ function rho = compute_density( mu, dnw, phi )
 %
 % See wrf subroutine calc_p_rho_phi.
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -25,4 +25,3 @@ rho = -repmat( reshape( mu, [1 size(mu)] ), [ length(dnw) 1 1 ] ) ./ phi_eta ;
 % $URL$
 % $Revision$
 % $Date$
-

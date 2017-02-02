@@ -2,6 +2,8 @@ function [LongitudeT,LatitudeT,AltitudeT,RhoT]=data2mat3d_m(y2, d1, tg, director
 % GITM files (3DALL_*.b000*) reader
 
 % DART $Id$
+% CREDIT: Alexey Morozov
+
 
 p=pwd; %save current path
 cd(directory) %go to where the pbs_file for this run is
@@ -132,4 +134,7 @@ end
 
 cd(p) %come back to where we were before calling this function
 
-
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

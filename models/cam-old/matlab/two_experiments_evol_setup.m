@@ -1,5 +1,11 @@
 % This is the one
 
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
+%
+% DART $Id$
+
 SE_itwin = 'SE_RUD_itwin1_obs_diag.nc';
 FV_itwin = 'FV_RUD_itwin2_obs_diag.nc';
 % FV_ftwin = 'FV_RUD_ftwin1_obs_diag.nc';
@@ -44,4 +50,7 @@ two_experiments_evolution(files, titles, varnames, qtty, prpo, levelind)
 % print -f3 -dpdf SE_FV_rmse_TR_500hPa.pdf
 % print -f4 -dpdf SE_FV_rmse_NA_500hPa.pdf
 
-
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

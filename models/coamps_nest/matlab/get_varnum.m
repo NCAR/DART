@@ -3,8 +3,8 @@ function varnum=get_varnum(restart_info_file,varname,level)
 % the restart.vars file used for the ensemble run, generates the
 % variable number in the long state vector.
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -41,4 +41,3 @@ function varnum=get_varnum(restart_info_file,varname,level)
 % $URL$
 % $Revision$
 % $Date$
-

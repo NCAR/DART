@@ -2,6 +2,7 @@
 %matlab -nodisplay -nodesktop -nosplash 
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 clear
 clc
@@ -48,3 +49,8 @@ set(gcf,'papertype','usletter')
 disp(['umich.edu/~morozova/um/' type '_' ispost '.pdf']  )
 
 cd ~/gitm11/matlab
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

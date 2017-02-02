@@ -5,8 +5,8 @@ function plot_grid(fname)
 % plot_grid(fname)
 %
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -109,4 +109,3 @@ function myplot(i1,iN,j1,jN,ulon,ulat,tlon,tlat)
 % $URL$
 % $Revision$
 % $Date$
-

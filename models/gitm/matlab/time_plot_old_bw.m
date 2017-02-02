@@ -44,6 +44,7 @@ function time_plot( ...
 %leord - LEgend ORDer: standard is 'meas truth mean spr meac dist', which is equivalent to leord=[1 2 3 4 5 6], which is defaulted to if leord = []. More reasonable might be [2 1 3 4 5 6] etc (if you enabled all of them, if not, you have to exclude some and keep track of the order).
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 %% truth
 %no preprocessing to be done here
@@ -134,3 +135,8 @@ if ~isnan(leloc)
 end
 
 end
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

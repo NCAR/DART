@@ -1,6 +1,7 @@
 %% common plot parameters CR
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 
 al=0.5; %transparency
@@ -321,3 +322,8 @@ xlabel('Hours since 00UT 12/1/2002')
 % xlabel('Days since 2002-12-01')
 
 if pri; set(gcf,'PaperType', 'A5');  set(gcf,'PaperSize',fliplr(get(gcf,'PaperSize'))); set(gcf,'PaperPosition',[.125 .125 8.1 5.7]);  print(gcf,'-dpdf',['c' ex '_f']); end
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

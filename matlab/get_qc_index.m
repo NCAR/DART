@@ -8,8 +8,8 @@ function copy_index = get_qc_index(fname, copystring)
 % copystring = 'ensemble member 5';
 % copy_index = get_qc_index(fname, copystring);
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -65,4 +65,3 @@ str2 = str1(i);
 % $URL$
 % $Revision$
 % $Date$
-

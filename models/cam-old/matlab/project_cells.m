@@ -8,7 +8,12 @@ function project_cells(file_in,ob_selection)
 %     12292 9.300000000000E+01 -8.280434032478E-01
 %     12295 9.300000000000E+01 -4.367269282491E-15
 
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
 %
+% DART $Id$
+
 % ob_selection requests a subset of the obs available in file_in.
 %   Note that the ob numbers in file_in are monotonic, but may not be sequential,
 %   especially if redundant obs locations (horizontal) have been weeded out.
@@ -231,3 +236,8 @@ if ((ob_count <= obs_todo) && (o_name == ob_selection(ob_count)) )
    ob_count = ob_count + 1;
 end
 end
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

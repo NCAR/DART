@@ -1,6 +1,7 @@
 %% CHAMP-flown-through-GITM data reader (from GITM binary)
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 %run champ2txt.m first
 
@@ -250,3 +251,8 @@ RhoAA=interpolateN( RhoT(:,:,:,:), ... %doesn't work too well if you're interpol
 
 %%
 fclose(idt);
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

@@ -50,6 +50,7 @@ function [ts, LonSatS, LatSatS, AltSatS, RhoSatS, RhoSatUS ...
  %ASSUMES PROGRADE ORBIT!!!!! see line 203
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 p=pwd; %save current path
 cd(directory) %go to where the pbs_file for this run is
@@ -210,3 +211,7 @@ RhoSatUG=interp1(ts,RhoSatUS,tg);
 
 cd(p) %come back to where we were before calling this function
 
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

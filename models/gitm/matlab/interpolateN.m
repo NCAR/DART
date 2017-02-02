@@ -54,6 +54,7 @@ function y_new = interpolateN(y_old,x_old,x_new)
 % x_new{3,1}=[1   3.5];
 
 % DART $Id$
+% CREDIT: Alexey Morozov
 
 N=length(size(y_old)); %number of dims
 ni=length(x_new{1}); %number of locations to be interpolated to
@@ -125,3 +126,8 @@ if fl>0
     disp(['In particular, the troublesome x_new indecies are ' num2str(xodd)]) 
     disp('(the above entries can be duplicated multiple times if the troublesome x_new location extends past domain on multiple dimensions)')
 end
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

@@ -8,7 +8,7 @@ function obs = PlotVerticalObs
 
 %
 % DART $Id$
-%
+% CREDIT: Alexey Morozov
 
 fname         = '../work/obs_epoch_001.nc';
 region        = [0 360 -90 90 -Inf Inf];
@@ -53,3 +53,8 @@ end
 % integer, parameter :: VERTISPRESSURE    =  2
 % integer, parameter :: VERTISHEIGHT      =  3
 % integer, parameter :: VERTISSCALEHEIGHT =  4
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$
