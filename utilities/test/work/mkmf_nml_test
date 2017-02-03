@@ -9,8 +9,6 @@
 ../../../mkmf/mkmf -p nml_test -t ../../../mkmf/mkmf.template   \
  -a "../../.." path_names_nml_test
 
-exit $status
-
 # <next few lines under version control, do not edit>
 # $URL$
 # $Revision$

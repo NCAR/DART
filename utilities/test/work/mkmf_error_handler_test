@@ -4,8 +4,9 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
+# $Id$
 
+#
 # usage: mkmf_error_handler_test [ -mpi | -nompi ]
 #
 # without any args, builds error_handler_test without mpi libraries, and it will run

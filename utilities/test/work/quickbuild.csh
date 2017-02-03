@@ -5,7 +5,7 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
-#
+
 # This script compiles all executables in this directory.
 
 #----------------------------------------------------------------------
@@ -16,22 +16,22 @@
 #----------------------------------------------------------------------
 
 \rm -f preprocess *.o *.mod
-#\rm -f ../../obs_def/obs_def_mod.f90
-#\rm -f ../../obs_kind/obs_kind_mod.f90
+\rm -f ../../obs_def/obs_def_mod.f90
+\rm -f ../../obs_kind/obs_kind_mod.f90
 
 set MODEL = "utilities test"
 
 @ n = 1
 
-#echo
-#echo
-#echo "---------------------------------------------------------------"
-#echo "${MODEL} build number ${n} is preprocess"
-#
-#csh  mkmf_preprocess
-#make || exit $n
-#
-#./preprocess || exit 99
+echo
+echo
+echo "---------------------------------------------------------------"
+echo "${MODEL} build number ${n} is preprocess"
+
+csh  mkmf_preprocess
+make || exit $n
+
+./preprocess || exit 99
 
 #----------------------------------------------------------------------
 # Build all the single-threaded targets
@@ -82,38 +82,27 @@ endif
 # Build the MPI-enabled target(s) 
 #----------------------------------------------------------------------
 
-\rm -f filter wakeup_filter
+foreach TARGET ( mkmf_* )
 
-@ n = $n + 1
-echo
-echo "---------------------------------------------------"
-echo "build number $n is mkmf_filter"
-csh   mkmf_filter -mpi
-make
+   set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
 
-if ($status != 0) then
-   echo
-   echo "If this died in mpi_utilities_mod, see code comment"
-   echo "in mpi_utilities_mod.f90 starting with 'BUILD TIP' "
-   echo
-   exit $n
-endif
+   switch ( $TARGET )
+   case error_handler_test:
+      @ n = $n + 1
+      echo
+      echo "---------------------------------------------------"
+      echo "${MODEL} build number ${n} is ${PROG}" 
+      \rm -f ${PROG}
+      csh $TARGET || exit $n
+      make        || exit $n
+      breaksw
+   default:
+      breaksw
+   endsw
+end
 
-@ n = $n + 1
-echo
-echo "---------------------------------------------------"
-echo "build number $n is mkmf_wakeup_filter"
-csh  mkmf_wakeup_filter -mpi
-make || exit $n
-
-#\rm -f *.o *.mod 
+\rm -f *.o *.mod 
 \rm -f input.nml*_default
-
-echo
-echo 'time to run filter here:'
-echo ' for lsf run "bsub < runme_filter"'
-echo ' for pbs run "qsub runme_filter"'
-echo ' for lam-mpi run "lamboot" once, then "runme_filter"'
 
 exit 0
 

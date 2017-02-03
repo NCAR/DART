@@ -4,10 +4,10 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
+# $Id$
 
-../../../mkmf/mkmf -p PrecisionCheck -t ../../../mkmf/mkmf.template   \
- -a "../../.." path_names_PrecisionCheck
+../../../mkmf/mkmf -p obs_impact_tool -t ../../../mkmf/mkmf.template   \
+        -a "../../.."  path_names_obs_impact_tool
 
 # <next few lines under version control, do not edit>
 # $URL$
