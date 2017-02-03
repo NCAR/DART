@@ -29,6 +29,18 @@ END GROUP
 # ALLTYPES EXCEPT KIND_TEMPERATURE
 #END GROUP
 
+# actual table to define factors for impacts.
+# 
+# the first column can contain either types or kinds because
+# it applies to the current obs being assimilated.
+# 
+# the second column has to be kinds because it applies
+# to the state (also unassimilated obs, but states only 
+# have kinds so that's the most restrictive).
+#
+# either column can have a group name, but any group used
+# in column 2 can contain only kinds.
+
 IMPACT
  KIND_U_WIND_COMPONENT  KIND_TEMPERATURE       0.5
  KIND_V_WIND_COMPONENT  KIND_TEMPERATURE       0.5
