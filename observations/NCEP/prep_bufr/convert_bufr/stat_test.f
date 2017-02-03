@@ -1,8 +1,8 @@
-C DART software - Copyright 2004 - 2013 UCAR. This open source software is
-C provided by UCAR, "as is", without charge, subject to all terms of use at
+C DART software - Copyright UCAR. This open source software is provided
+C by UCAR, "as is", without charge, subject to all terms of use at
 C http://www.image.ucar.edu/DAReS/DART/DART_download
 C
-C $Id$
+C DART $Id$
 
       program stat_test
 
@@ -110,6 +110,5 @@ c        it matches the value of INDEXVAL in grabbufr.f
 
 c <next few lines under version control, do not edit>
 c $URL$
-c $Id$
 c $Revision$
 c $Date$

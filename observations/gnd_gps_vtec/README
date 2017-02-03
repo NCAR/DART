@@ -1,3 +1,9 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 This is a modification of a standard "text" converter that comes with DART. 
 
 It reads VTEC text files (which I get from OpenMadrigal at http://madrigal.haystack.mit.edu/)
@@ -9,3 +15,8 @@ The provided file work/gps021201g.002.txt is only for example
 (only 2 datapoints are shown) and not for real estimation.
 
 Alexey Morozov alexeymor at google mail 5/22/13
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

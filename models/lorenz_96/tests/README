@@ -1,8 +1,8 @@
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id$
+# DART $Id$
 
 The test_merge.ksh script is a self-contained script
 that constructs input.nml files and runs obs_sequence_tool.
@@ -29,3 +29,8 @@ update the namelist names and executable names in the script.
 
 nancy
 28.aug.2014
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

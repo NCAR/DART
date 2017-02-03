@@ -1,3 +1,9 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 Possible bug found in model_mod.f90 for pop where set_date is sent sec this day the routine wants sec this min
 
 use     dart_cice_mod, only: set_model_time_step,               &
@@ -86,3 +92,7 @@ public :: get_model_size,                &
           write_model_time
 
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

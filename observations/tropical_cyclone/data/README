@@ -1,3 +1,9 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 The example data file TC48_2012.atcf in this directory is one of the 
 'b-deck' datasets for tropical cyclone #48 from 2012.  The converter 
 code is set up to read this file.  
@@ -19,3 +25,8 @@ defined which matched these fields.  See tc_to_obs.f90 and
 look for the 'select case' section where you can add new
 sections to read in the data of interest.
 
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

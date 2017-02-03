@@ -1,3 +1,7 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
 # DART $Id$
 
 This externals directory is created to handle DART now being
@@ -9,3 +13,8 @@ external directory structure: location module, observation
 definitions, etc.  These can either be copied/linked in the proper
 directories, or mkmf can be modified to point to their current
 location.
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

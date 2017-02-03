@@ -1,9 +1,8 @@
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
-
 
 The core algorithms of DART work with many different models
 which have a variety of coordinate systems.  This directory
@@ -55,3 +54,7 @@ module directories and build and run a simple testcase to
 verify the distance calculations and the read/write options
 are working.  
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

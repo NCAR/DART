@@ -1,5 +1,5 @@
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
@@ -9,11 +9,15 @@ that code changes do not break existing functions, as well as testing
 a wrf/dart initial setup.
 
 This is a regional model, using surface radar observations.
-   
+
 The smaller files are here in this directory.
-   
+
 The large data files (observations, initial conditions and WRF executable
 for a Mac Intel platform) are on the DART web server, at this http address: 
-   
+
 http://www.image.ucar.edu/pub/DART/WRF/regression/Radar
-   
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

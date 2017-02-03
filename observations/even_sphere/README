@@ -1,12 +1,8 @@
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL$
-# $Id$
-# $Revision$
-# $Date$
+# DART $Id$
 
 Generate a series of synthetic observations located at roughly
 evenly distributed locations on a sphere.  At each location
@@ -79,6 +75,7 @@ for k := 0 .. N-1
 (there's example code, in the 'My Golden Section Spiral' paragraph, 
 in Python, here: http://www.xsi-blog.com/archives/115 )
 
-
-
-
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

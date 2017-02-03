@@ -1,3 +1,9 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 The files in this directory are deprecated.
 
 Thu Apr 17 15:16:29 MDT 2014
@@ -58,3 +64,7 @@ copy the source files into DART/models/cam, copy the mkmf_*
 and path_names_* files into ../work, and run ./quickbuild.csh
 from the work directory.
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

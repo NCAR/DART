@@ -1,9 +1,8 @@
-
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id$
+# DART $Id$
 
 Here are instructions to help visualize the Prior/Posterior/True_State netCDF files.
 
@@ -104,5 +103,7 @@ even though 90+% of the columns are not lakes! At present, the values in those c
 there is an index array that specifies the portion of the columns with valid values. I don't want
 to get into it at that kind of detail ... too many decisions to track, too many variables to support.
 
-
-
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

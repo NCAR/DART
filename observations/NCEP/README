@@ -1,9 +1,8 @@
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
-
 
 This directory contains the source for two programs that together convert 
 NCEP PREPBUFR files, which contain observational data, into the standard
@@ -24,4 +23,7 @@ subdirectory and run the 'quickbuild.csh' script.  It also contains
 some example scripts for running the code.  See create_real_obs.html
 for more documentation.
 
-
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

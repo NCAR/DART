@@ -1,3 +1,8 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
 
 processed snow cover file.
 
@@ -5,4 +10,7 @@ this is a text file, 90 lines, one for each latitude
 in the northern hemisphere.  360 values per line, one
 for each longitude.  -20 is missing value.
 
-
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

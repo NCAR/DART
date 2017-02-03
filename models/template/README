@@ -1,3 +1,8 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
 
 Hints for porting a new model to DART:
 
@@ -229,3 +234,8 @@ code.  if it doesn't have a reasonable value, look at your model_interpolate() c
 there's lots more to say about this, but this is a quick pointer to
 how to get started.
 
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

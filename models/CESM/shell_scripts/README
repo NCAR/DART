@@ -1,4 +1,8 @@
-
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
 
 This document has been replaced by:
 
@@ -6,3 +10,7 @@ https://wiki.ucar.edu/display/DARTdev/CESM+fully+active+B+compset+cycling+test
 
 TJH Thu Apr  4 12:42:23 MDT 2013
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

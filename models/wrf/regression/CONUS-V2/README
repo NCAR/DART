@@ -1,5 +1,5 @@
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
@@ -80,3 +80,8 @@ restart_file_tool -
 You will need to run this once to set the timestamps on the dart restart files
 to match the observation files in this directory.  The input.nml namelist file 
 already has the correct settings, just run ./restart_file_tool to do the update.
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

@@ -1,4 +1,5 @@
-/* This code is not protected by the DART copyright agreement.
+/* 
+ * This code is not protected by the DART copyright agreement.
  * DART $Id$
  */
 

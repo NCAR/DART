@@ -1,3 +1,8 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
 
 There are several DART users who have working DART interface code
 to the ECHAM atmospheric general circulation model.  This model
@@ -20,3 +25,8 @@ The DART Group
 17 Sept 2014
 
 
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

@@ -1,3 +1,9 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 Various observation sequences for testing the b-grid.
 
 obs_seq.1T_vl - Single RADIOSONDE_TEMPERATURE with vertical level location
@@ -15,3 +21,8 @@ obs_seq.4T_vp - 4 RADIOSONDE_TEMPERATURE with vertical pressure location
 obs_seq.identity - assorted t,u,v,p identity observations
 
 obs_seq.many - medium sized obs sequence file with vertical level locations
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

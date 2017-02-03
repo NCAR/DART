@@ -1,10 +1,9 @@
 #!/usr/bin/perl 
 #
-# DART software - Copyright 2004 - 2013 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
-# http://www.image.ucar.edu/DAReS/DART/DART_download
+# This code may (or may not) be part of the FMS distribution,
+# So it is not protected by the DART copyright agreement.
 #
-# $Id$
+# DART $Id$
 
 eval 'exec /usr/local/bin/perl -w -S $0 ${1+"$@"}'
     if 0; # not running under some shell
@@ -1682,4 +1681,3 @@ M.J. Harrison (mjh@gfdl.gov)
 # $URL$
 # $Revision$
 # $Date$
-

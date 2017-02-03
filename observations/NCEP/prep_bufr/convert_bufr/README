@@ -1,4 +1,7 @@
-
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
 # DART $Id$
 
 The programs in this directory are used to convert binary BUFR files
@@ -16,6 +19,7 @@ the ../lib/bufrlib.a file.
 
 The test programs are self-contained and require no additional libs.
 
-
-
-
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

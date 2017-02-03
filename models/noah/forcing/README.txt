@@ -1,3 +1,9 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 Download the support files to test an installation from:
 http://www.image.ucar.edu/pub/DART/NOAH/NOAH_DART_files.tar.gz
 
@@ -96,3 +102,8 @@ DART/models/noah/templates
              templates/RESTART.YYYYMMDDHH_DOMAIN1.template.ascii
              templates/wrfinput.template
              templates/wrfinput.template.ascii
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

@@ -1,3 +1,7 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
 # DART $Id$
 
 Upgrading the COAMPS Implemention of DART from Iceland to Jamaica
@@ -87,3 +91,8 @@ references.  There are several new items in the paths.config file:
  - FILTER_PROCS     [added: number of processes for MPI filter]
 New templates have been added for this config and input.nml to reflect
 the upgrade.
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

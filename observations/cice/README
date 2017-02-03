@@ -1,3 +1,8 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
 
 The converter 'cice_to_obs' will loop over multiple days
 converting each into a separate obs_seq file in a single step.
@@ -8,3 +13,8 @@ format as a second step.
 
 nancy
 30 jun 2016
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

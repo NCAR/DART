@@ -1,8 +1,8 @@
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id$
+# DART $Id$
 
 The coupler history files produced by the CAM assimilation are 
 HPSS:/RAEDER/DAI/POP_force/POP15/obs_####/H_cplr.ha2x1d.gz.tar 
@@ -49,3 +49,7 @@ GetCPLHISTdata.lsf      ... acquires and unpacks the data from the HPSS
 Process6hrlyCPLHIST.csh ... corrects the time array data/metadata and packages into a month
 AppendMonths.csh        ... packs all the days for a month into one annual file
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

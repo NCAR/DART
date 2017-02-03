@@ -1,3 +1,9 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 This directory contains a very simple text input file
 to use as an example of reading in text data.  The observations
 are one per line, and the items on each line are space separated; 
@@ -29,3 +35,7 @@ problem), the converter can supply a reasonable fixed value.
  1 -45 270   10 2008 1 30 12  0 0  273 2
  2  30 300  998 2008 1 31  6 30 0  10 355 4
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

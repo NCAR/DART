@@ -1,5 +1,5 @@
-# DART software - Copyright 2004 - 2013 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
@@ -144,3 +144,7 @@ ADDITIONAL NOTES :
 * some programs such as model_mod_check have not been fully tested and need
   to be exercised with the new naming conventions.
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

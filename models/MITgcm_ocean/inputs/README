@@ -1,5 +1,5 @@
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
@@ -70,3 +70,8 @@ coordinated.
      Rs_UobcsN_52_01_nPy1.bin
      Rs_VobcsE_52_01_nPx1.bin
      Rs_VobcsN_52_01_nPy1_c1.bin
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

@@ -1,3 +1,9 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 NOAH land surface model: Supporting files
 Rafael Rosolem (08/21/2012)
 rosolem@email.arizona.edu
@@ -174,3 +180,8 @@ DART/models/noah/templates
              templates/RESTART.YYYYMMDDHH_DOMAIN1.template.ascii
              templates/wrfinput.template
              templates/wrfinput.template.ascii
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

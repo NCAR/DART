@@ -1,3 +1,9 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 This directory contains a short example of the format that
 the converter is expecting as input.
 
@@ -15,4 +21,7 @@ The last 3 values are the actual 2 wind observation values,
 U and V,  and an error estimate. The wind speeds and errors 
 are in m/s.
 
-
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
