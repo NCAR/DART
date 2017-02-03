@@ -115,7 +115,7 @@ real(r8), allocatable :: table(:,:)
 ! initialization and setup
 
 call initialize_utilities('obs_impact_tool')
-call register_module(id)
+call register_module(source,revision,revdate)
 
 ! build and output impact_table
 call create_impact_table()

@@ -1743,7 +1743,7 @@ nkinds = ubound(table, 2)
 do j=0, nkinds
    do i=1, ntypes
       if (table(i, j) /= 1.0_r8) then
-print *, i, j, table(i, j)
+!print *, i, j, table(i, j)
          write(funit, '(A34,A34,F18.6)') &
                         trim(get_name_by_value(i, ENTRY_DARTTYPE, toc)), &
                         trim(get_name_by_value(j, ENTRY_DARTKIND, toc)), &
