@@ -179,3 +179,8 @@ def time_plot_alt(timeT,VarTa,AltT,lT, timeEr,VarEra,VarEoa,VarsdEra,VarsdEoa,lE
 
 # DART $Id$
 # from Alexey Morozov
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

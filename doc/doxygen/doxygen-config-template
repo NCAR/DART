@@ -2320,3 +2320,8 @@ GENERATE_LEGEND        = YES
 # This tag requires that the tag HAVE_DOT is set to YES.
 
 DOT_CLEANUP            = YES
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

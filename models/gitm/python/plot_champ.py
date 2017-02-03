@@ -256,3 +256,8 @@ plot_tec_lib.time_plot(obs_time[ind], obs_vtruth_r[ind],'VT', obs_time[ind], obs
 
 # DART $Id$
 # from Alexey Morozov
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

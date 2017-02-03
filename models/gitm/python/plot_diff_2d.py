@@ -48,3 +48,8 @@ print subprocess.check_output('convert diff*.png diff00.gif', shell=True) #conve
 
 # DART $Id$
 # from Alexey Morozov
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

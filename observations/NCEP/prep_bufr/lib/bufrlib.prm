@@ -76,3 +76,8 @@ C	messages within internal memory.
 
 	PARAMETER ( MXIMB = 50000 )
 C-----------------------------------------------------------------------
+C
+C <next few lines under version control, do not edit>
+C $URL$
+C $Revision$
+C $Date$

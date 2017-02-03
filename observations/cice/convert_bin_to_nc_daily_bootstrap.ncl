@@ -1,3 +1,9 @@
+; DART software - Copyright UCAR. This open source software is provided
+; by UCAR, "as is", without charge, subject to all terms of use at
+; http://www.image.ucar.edu/DAReS/DART/DART_download
+;
+; DART $Id$
+
 ; this script reads in the daily fields of the bootstrap data one year at a time and 
 ; archive as netcdf files with metadata
 
@@ -147,3 +153,8 @@ do iyear = 0, nyear -1
      end do   ; end of the month loop
 
  end do     ; end of the year loop
+
+; <next few lines under version control, do not edit>
+; $URL$
+; $Revision$
+; $Date$

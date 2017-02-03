@@ -1,3 +1,8 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
 
 I just compared the fields in the restart file with the (variations of the)
 names in the atm log file.  I identified most variables to varying degrees.
@@ -492,4 +497,7 @@ and
 ./atm/cam/src/physics/cam/constituents.F90:          
     write(iulog,'(i4,2x,a8,2x,a128,2x,a3)') i, cnst_name(i), cnst_longname(i), cnst_type(i)
 
-
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

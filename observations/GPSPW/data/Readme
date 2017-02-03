@@ -1,3 +1,9 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 Ground GPS precipitable water (PW) observations
 
 Data resource:
@@ -14,3 +20,8 @@ And the global data for the same day is available as GsuPWVd_2012.146.00.00.1440
 converted w/ global_data = .true. at the specified time interval ("obs_window_hr" in 
 &convert_gpspw_nml).
 An input file to the converter program should be renamed as "gpspw_input.nc".
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

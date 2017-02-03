@@ -196,10 +196,7 @@ if ( clean ):
 if (verbose): print 'all done ...'
 sys.exit(0)
 
-#############################################################
 # <next few lines under version control, do not edit>
 # $URL$
 # $Revision$
 # $Date$
-#############################################################
-

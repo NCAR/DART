@@ -70,3 +70,8 @@ def read(time, prefix):
 
 # DART $Id$
 # from Alexey Morozov
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

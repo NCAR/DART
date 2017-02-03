@@ -7,3 +7,8 @@ C = plt.contour(np.linspace(0,359,360), np.linspace(-90,89,180), elev, 0, colors
 
 # DART $Id$
 # from Alexey Morozov
+#
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

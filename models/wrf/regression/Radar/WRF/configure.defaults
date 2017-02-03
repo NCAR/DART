@@ -10883,3 +10883,8 @@ module_initialize_real.o module_dm.o start_domain.o :
 
 ##################################################################
 #ARCH  NULL
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

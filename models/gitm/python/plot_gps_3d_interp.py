@@ -53,3 +53,8 @@ print subprocess.check_output('convert interp*.png interp00.gif', shell=True) #c
 
 # DART $Id$
 # from Alexey Morozov
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

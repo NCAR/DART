@@ -1,3 +1,9 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 Alicia developed these scripts to avoid having to reenter the queue after every assimilation,
 and to remove the st_archive.sh from the batch runs, run it single threaded instead, and 
 eliminate/reduce the copies that slow it down so much.
@@ -33,3 +39,8 @@ future; make a DART script update pre_run.csh and post_run.csh to have the corre
       -> archive_select_restarts.csh
       -> archive_history_files.csh
       -> lt_archive.sh -m copy_dirs_hsi
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

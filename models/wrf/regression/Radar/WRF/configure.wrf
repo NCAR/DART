@@ -268,3 +268,7 @@ wrf_ioapi_includes :
 	$(RM) $@
 	$(CC) -c $(CFLAGS) $*.c
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

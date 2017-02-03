@@ -1,5 +1,10 @@
-
-/* $Id$ */
+/*
+ * DART software - Copyright UCAR. This open source software is provided
+ * by UCAR, "as is", without charge, subject to all terms of use at
+ * http://www.image.ucar.edu/DAReS/DART/DART_download
+ *
+ * DART $Id$
+ */
 
 body{background:white;
       margin-left :5%;
@@ -272,3 +277,8 @@ em{
 }
 
 /* # RGB(204,204,204) == "#CCCCCC" */
+
+/* <next few lines under version control, do not edit> */
+/* $URL$ */
+/* $Revision$ */
+/* $Date$ */

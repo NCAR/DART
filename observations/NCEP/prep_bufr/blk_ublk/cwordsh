@@ -1,5 +1,6 @@
-#! This code is not protected by the DART copyright agreement.
-#  DART $Id$ 
+# This code is not protected by the DART copyright agreement.
+# DART $Id$ 
+#
 #  ------------------------------------------------------------------------
 #  This script will FORTRAN block or unblock BUFR files on a number of
 #  standard computing platforms. Stictly speaking, real BUFR files are
@@ -35,3 +36,8 @@ $1
 $2
 $3
 eof
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

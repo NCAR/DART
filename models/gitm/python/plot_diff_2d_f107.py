@@ -65,3 +65,8 @@ print subprocess.check_output('convert *_diff_f.png vtec00_diff_f.gif', shell=Tr
 
 # DART $Id$
 # from Alexey Morozov
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

@@ -77,3 +77,8 @@ print string
 f = open('w.json', 'w')
 f.write(string)
 f.close
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

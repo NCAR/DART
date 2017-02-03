@@ -1,4 +1,11 @@
 #!/bin/sh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 
 # create input to make one obs of each type in an input file
 
@@ -19,5 +26,10 @@ echo $ntypes > $outfile
 awk -f make_COS_input.awk $typelist >> $outfile
 
 echo ready to run "create_obs_sequence < $outfile"
+
 exit 0
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

@@ -1,7 +1,13 @@
 #!/bin/sh
 
-# create the &obs_kind_nml list for "assimilate_these_obs_types"
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
 
+# create the &obs_kind_nml list for "assimilate_these_obs_types"
+#
 # usage: $0 list_of_obs_types_one_per_line
 
 if [[ $# -lt 1 ]]; then
@@ -19,3 +25,7 @@ echo created "$outfile"
 echo add this section to your \&obs_kind_nml in input.nml
 exit 0
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
