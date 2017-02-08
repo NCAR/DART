@@ -43,6 +43,8 @@ global FORCING;
 global MODEL_SIZE;
 global DELTA_T;
 
+first_call_to_reset = true;
+
 atts = stylesheet; % get the default fonts and colors
 
 figWidth = 900;   % in pixels
@@ -228,7 +230,7 @@ handles.ui_edit_localization = uicontrol(handles.RedPanel, ...
     'Style', 'edit', ...
     'Units', 'Normalized', ...
     'Position', [0.663 0.686 0.300 0.250], ...
-    'String', '6.2832', ...
+    'String', '100000', ...
     'BackgroundColor', 'White', ...
     'FontName', atts.fontname, ...
     'FontUnits', 'normalized', ...
@@ -378,7 +380,11 @@ x     = 14.9;
 y_2   = [0, 2*pi];
 h_obs = plot_polar(y_2, x, handles.mean_dist, 'r*', 1);
 hold on
+
+% Plot the localization width
+h_loc = plot_localization();
 set(h_obs, 'Visible', 'Off');
+
 
 %% ----------------------------------------------------------------------
 %  All function below can use the variables defined above.
@@ -512,6 +518,10 @@ set(h_obs, 'Visible', 'Off');
         % Enable all controls
         turn_on_controls();
         set(handles.ui_edit_localization, 'BackgroundColor', 'White','FontWeight','Normal');
+
+        % Update the localization plot
+        cla(handles.polar_plot);
+        h_loc = plot_localization();
     end
 
 %% ----------------------------------------------------------------------
@@ -597,7 +607,7 @@ set(h_obs, 'Visible', 'Off');
         
         % Set the edit fields
         
-        set(handles.ui_edit_localization, 'String', '6.2832');
+        set(handles.ui_edit_localization, 'String', '100000');
         set(handles.ui_edit_inflation   , 'String', '1.0');
         set(handles.ui_edit_ens_size    , 'String', '20');
         set(handles.ui_button_group_assimilation,'SelectedObject',handles.ui_radio_noAssimilation);
@@ -657,7 +667,14 @@ set(h_obs, 'Visible', 'Off');
         cla(handles.timeseries)
         cla(handles.prior_rank_histogram)
         cla(handles.post_rank_histogram)
-        
+
+        % Put back the localization if this is not the initial setup of the graphics
+        if(first_call_to_reset)
+           first_call_to_reset = false;
+        else
+           h_loc = plot_localization();
+        end
+
     end
 
 %% ----------------------------------------------------------------------
@@ -695,7 +712,13 @@ set(h_obs, 'Visible', 'Off');
             
             % Code for advancing model comes next
             time = handles.time;
+            % Truth should always use forcing of 8
+            % FORCING is global that controls model but is also used to store current assimilating model value
+            % Temporarily set FORCING to 8 for truth, then revert
+            temp_forcing = FORCING;
+            FORCING = 8;
             [new_truth, new_time] = lorenz_96_adv_1step(handles.true_state(time, :), time);
+            FORCING = temp_forcing;
             handles.time = new_time;
             handles.true_state(new_time, :) = new_truth;
             
@@ -735,10 +758,18 @@ set(h_obs, 'Visible', 'Off');
                 set(handles.h_ens,'Color',atts.green)
             end
             handles.h_truth = plot_polar(polar_y, new_truth, handles.mean_dist, 'k', MODEL_SIZE);
-            
+            % Make truth wider so it is easier to distinguish
+            set(handles.h_truth, 'linewidth', 3);
+
+            % Plot a graphical indication of the localization halfwidth; Is expense of this a problem.
+            h_loc = plot_localization();
+
             % Get a legend shifted outside the plot
             h_leg = legend([handles.h_truth handles.h_ens, h_obs], ...
                 'True State', 'Ensemble', 'Observations', 'Location', 'NorthEast');
+            % Following replacement pair of lines puts localization into legend.
+            %h_leg = legend([handles.h_truth handles.h_ens, h_obs, h_loc], ...
+                %'True State', 'Ensemble', 'Observations', 'Localization', 'Location', 'NorthEast');
             pos = get(h_leg, 'Position')+ [0.046 -0.002 0.021 0.012];
             set(h_leg, 'Position', pos, ...
                 'FontSize', atts.fontsize, ...
@@ -1017,6 +1048,38 @@ set(h_obs, 'Visible', 'Off');
             return;
         end
     end
+
+%% -----------------------------------------------------------------------
+
+   function h_loc = plot_localization()
+      % Plot a graphical indication of the localization halfwidth
+      subplot(handles.polar_plot);
+
+      % Localization is in halfwidth, fraction of domain (NOT RADIANS AS IN 3D MODELS).
+      % Convert to halfwidth in radians for plotting
+      half_radians = handles.localization * 2 * pi;
+
+      % Plot 4 ranges
+      for ipl = 1:4
+         ymax = min([half_radians * (5.-ipl) / 2., pi]);
+         ymin = -ymax;
+         % Use 40 points for each range
+         y = [ymin:ymax/20:ymax];
+         my_h_loc(ipl) = polar(y, 15*ones(size(y)), 'b');
+         hold on
+         % Lines get wider for larger localization
+         set(my_h_loc(ipl), 'linewidth', 2*ipl);
+      end
+      h_loc = my_h_loc(1);
+
+      % Plot a label for the localization graphic
+      h_loc_text = text(-13, 0, 'Localization');
+      set(h_loc_text, 'color', 'b', 'fontsize', 15, 'fontweight', 'bold');
+     
+      % Plot an observation asterisk 
+      h_loc_text = text(15, 0, '*');
+      set(h_loc_text, 'color', 'r', 'fontsize', 24);
+   end
 
 end
 

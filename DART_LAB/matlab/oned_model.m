@@ -316,7 +316,7 @@ handles.ui_text_model_bias_err_print = uicontrol('Style', 'text', ...
 handles.ui_text_nonlin_err_print = uicontrol('Style', 'text', ...
     'Units', 'Normalized', ...
     'Position', [0.0600 0.6000 0.3000 0.0800], ...
-    'String', 'ERROR: Nonlin a must be under or equal to 0.', ...
+    'String', 'ERROR: Nonlin a must be non-negative.', ...
     'BackgroundColor', 'White', ...
     'ForegroundColor', atts.red, ...
     'FontName', atts.fontname, ...
@@ -477,7 +477,7 @@ reset_button_Callback()
         
         nonlin_value = str2double(get(handles.ui_edit_nonlin_a, 'String'));
         
-        if(isfinite(nonlin_value) && (nonlin_value <= 0))
+        if(isfinite(nonlin_value) && (nonlin_value >= 0))
             
             handles.alpha = nonlin_value;
             turn_on_controls;
@@ -490,8 +490,8 @@ reset_button_Callback()
             % After this, only this edit box will work
             turn_off_controls;
             
-            fprintf('ERROR: Nonlin a must be under or equal to 0.\n')
-            fprintf('ERROR: Nonlin a must be under or equal to 0.\n')
+            fprintf('ERROR: Nonlin a must be non-negative.\n')
+            fprintf('ERROR: Nonlin a must be non-negative.\n')
             
             set(handles.ui_edit_nonlin_a, 'Enable', 'On', ...
                                           'String', '?', ...
@@ -713,8 +713,15 @@ reset_button_Callback()
             % Find the limits of the plot
             % The height of the obs likelihood controls the vertical axis
             y_max = 1 / (sqrt(2 * pi) * handles.obs_error_sd);
-            xmin = -10;
-            xmax =  10;
+
+            % Want axes to encompass likely values for plotted obs_likelihood
+            % The observed value will be between -4 and 4 with very high probability, then +/-3 more for likelihood
+            xmin = -7;
+            xmax =  7;
+            % Horizontal also needs to include all prior ensemble members (posteriors not yet known)
+            % Want some slack if ensemble members are defining limits, too
+            xmin = min([xmin, min(ens_new)*1.02]);
+            xmax = max([xmax, max(ens_new)*1.02]);
             
             % Put on a black axis line using data limits
 
@@ -914,8 +921,15 @@ reset_button_Callback()
             set(hg_like, 'Color', 'r', 'LineWidth', 2, 'LineStyle', '--');
             hold on;
             
-            xmin = -10;
-            xmax =  10;
+            % Want axes to encompass likely values for plotted obs_likelihood
+            % The observed value will be between -4 and 4 with very high probability, then +/-3 more for likelihood
+            xmin = -7;
+            xmax =  7;
+            % Horizontal also needs to include all prior ensemble members (posteriors not yet known)
+            % Want some slack if ensemble members are defining limits, too
+            xmin = min([xmin, min(ens)*1.02, min(new_ens)*1.02]);
+            xmax = max([xmax, max(ens)*1.02, max(new_ens)*1.02]);
+            
             ens_axis = [xmin xmax -0.2 ylims(2)+0.02];
             axis(ens_axis);
             
@@ -1067,7 +1081,8 @@ reset_button_Callback()
         legend boxon
         
         hold on;
-        axis([-10 10 -Inf Inf])
+        % Set original horizontal axes
+        axis([-7 7 -Inf Inf])
 
     end
 
