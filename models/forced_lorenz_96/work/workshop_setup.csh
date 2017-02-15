@@ -56,9 +56,6 @@ endif
 if ( ! -e perfect_input.nc ) ncgen -o perfect_input.nc perfect_input.cdl
 if ( ! -e  filter_input.nc ) ncgen -o  filter_input.nc  filter_input.cdl
 
-echo 'copying the workshop version of the input.nml into place'
-cp -f input.workshop.nml input.nml
-
 #----------------------------------------------------------------------
 # 'preprocess' is a program that culls the appropriate sections of the
 # observation module for the observations types in 'input.nml'; the
