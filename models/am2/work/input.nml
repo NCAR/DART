@@ -104,11 +104,6 @@
    write_binary_obs_sequence = .false.
    /
 
-&assim_model_nml
-   write_binary_restart_files = .true.,
-   netCDF_large_file_support  = .true.
-   /
-
 &model_nml
    model_config_file  = 'fv_rst.res.nc', 
    model_restart_file = 'fv_rst.res.nc',

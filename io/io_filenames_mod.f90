@@ -39,10 +39,11 @@ module io_filenames_mod
 !> Diagnostic files could have different netcdf variable ids
 !> @{
 
-use types_mod,            only : r4, r8, MISSING_R8, MAX_NUM_DOMS
-use utilities_mod,        only : file_exist, E_ERR, E_MSG, error_handler, &
+use types_mod,            only : r4, r8, MISSING_R8, MAX_NUM_DOMS, digits12
+use utilities_mod,        only : file_exist, E_ERR, E_MSG, E_WARN, error_handler,&
                                  nc_check, open_file, close_file, find_textfile_dims, &
                                  do_output
+use time_manager_mod,     only : time_type
 use mpi_utilities_mod,    only : my_task_id
 use state_structure_mod,  only : get_num_domains, get_dim_length, get_dim_name, &
                                  get_io_num_dims, get_num_variables, get_variable_name, &
@@ -71,6 +72,7 @@ private
 public :: io_filenames_init, &
           io_filenames_finalize, &
           file_info_type, &
+          netcdf_file_type, &
           stage_metadata_type, &
           set_file_metadata, &
           set_member_file_metadata, &
@@ -84,10 +86,14 @@ public :: io_filenames_init, &
 ! Accessor functions:
 public :: get_restart_filename, &
           get_single_file, &
+          get_cycling, &
           get_file_description, &
+          get_copy_name, &
           get_stage_metadata, &
+          single_file_initialized, &
           copy_has_units, &
-          copy_is_clamped
+          copy_is_clamped, &
+          noutput_state_variables
 
 ! Query functions:
 public :: query_read_copy, &
@@ -116,20 +122,46 @@ integer, parameter :: READ_WRITE_COPY  =  3
 ! Used to test if a copy is not in use, e.g. the spare copies may not be in use.
 integer, parameter :: COPY_NOT_PRESENT = -1
 
+!>@todo FIXME need to make these derived types components private again, and
+!>            These types should be moved into a separate NetCDF module.
+
+!-------------------------------------------------------------------------------
+!> output (netcdf) file descriptor (diagnostic file handle)
+!> basically, we want to keep a local mirror of the unlimited dimension
+!> coordinate variable (i.e. time) because dynamically querying it
+!> causes unacceptable performance degradation over "long" integrations.
+!> The logical model_mod_will_write_state_variables determines whether the model is going
+!> to define and write the state variables in the diagnostic files. If .false. dart will
+!> define and write the state variables.
+type netcdf_file_type
+   !private
+   integer :: ncid                       ! the "unit" -- sorta
+   integer :: Ntimes                     ! the current working length
+   integer :: NtimesMAX                  ! the allocated length.
+   real(digits12),  pointer :: rtimes(:) ! times -- as a 64bit (at least) real
+   type(time_type), pointer :: times(:)  ! times -- as the models use
+   character(len=80)        :: fname     ! filename ...
+   ! The following only applies to single file
+   logical :: model_mod_will_write_state_variables = .false.
+   integer :: diag_id = -1  ! to access state_structure
+end type netcdf_file_type
 
 ! Holds an array of restart file names to be used with an ensemble handle
 !>@todo FIXME 'file_description' -> 'copy_description' -> 'file metadata'?
 type stage_metadata_type
-   private
+   !private
    logical                         :: initialized       = .false.
-   logical,            allocatable :: clamp_vars(:)    ! num_copies
+   integer                         :: noutput_ens = 0   ! num_output_state_members
+   integer                         :: num_copies = 0
+   logical,            allocatable :: clamp_vars(:)     ! num_copies
    logical,            allocatable :: has_units(:)      ! num_copies
    integer,            allocatable :: io_flag(:)        ! read = 1, write = 2, read/write = 3
    integer,            allocatable :: my_copy_number(:) ! num_copies
-   character(len=32 ), allocatable :: copy_name(:)      ! num_copies
+   character(len=256), allocatable :: copy_name(:)      ! num_copies
    character(len=256), allocatable :: long_name(:)      ! num_copies
    character(len=256), allocatable :: filenames(:,:)    ! num_copies x num_domains
    character(len=512), allocatable :: file_description(:,:)  !  information about file
+   type(netcdf_file_type)          :: ncFileID
 end type
 
 ! Fileinfo type
@@ -140,9 +172,11 @@ end type
 ! using, for example, file_info_type%restart_files_out_prior
 
 type file_info_type
-   private
+   !private
    logical            :: initialized                = .false.
+   logical            :: singlefile_initialized     = .false.
    logical            :: check_output_compatibility = .false.
+   logical            :: cycling                    = .false. ! model will cycle
    logical            :: single_file                = .false. ! all copies read from 1 file
    character(len=32)  :: root_name                  = 'null'
    character(len=512) :: restart_list(MAX_NUM_DOMS) = 'null' ! list of output restarts 1 file per domain
@@ -200,6 +234,20 @@ end subroutine assert_restart_names_initialized
 !> Accessor function for file_info_type
 
 
+function get_cycling(file_info)
+
+type(file_info_type), intent(in) :: file_info
+logical :: get_cycling
+
+get_cycling = file_info%single_file
+
+end function get_cycling
+
+
+!-------------------------------------------------------------------------------
+!> Accessor function for file_info_type
+
+
 function get_single_file(file_info)
 
 type(file_info_type), intent(in) :: file_info
@@ -214,19 +262,21 @@ end function get_single_file
 !> Initialize file_info type
 
 
-function io_filenames_init(num_copies, single_file, restart_list, root_name, check_output_compatibility) result(file_info)
+subroutine io_filenames_init(file_info, num_copies, cycling, single_file, restart_list, root_name, &
+                           check_output_compatibility)
 
-integer,                    intent(in) :: num_copies       !< handle to the DART ensemble
+type(file_info_type),       intent(out):: file_info  !< structure with expanded list of filenames
+integer,                    intent(in) :: num_copies       !< number of ensemble copies
+logical,                    intent(in) :: cycling          !< model will cycle
 logical,                    intent(in) :: single_file      !< all copies read from one file
 character(len=*), optional, intent(in) :: restart_list(:)  !< list of restarts one for each domain
 character(len=*), optional, intent(in) :: root_name        !< base if restart_list not given
 logical,          optional, intent(in) :: check_output_compatibility !< ensure netCDF variables exist in output BEFORE spending a ton of core hours
 
-type(file_info_type) :: file_info  !< structure with expanded list of filenames
-
 integer :: num_domains
 
 file_info%single_file = single_file
+file_info%cycling     = cycling
 
 !>@todo FIXME JPH : Should these be required interfaces?
 if(present(restart_list)) file_info%restart_list = restart_list
@@ -248,14 +298,16 @@ file_info%stage_metadata%clamp_vars       = .false.
 file_info%stage_metadata%has_units        = .true. 
 file_info%stage_metadata%io_flag          = NO_IO
 file_info%stage_metadata%my_copy_number   = -1
-file_info%stage_metadata%copy_name        = 'copy name not set'
-file_info%stage_metadata%long_name        = 'long name not set'
+file_info%stage_metadata%noutput_ens      = 0
+file_info%stage_metadata%num_copies       = num_copies
+file_info%stage_metadata%copy_name        = 'copy_name_not_set'
+file_info%stage_metadata%long_name        = 'long_name_not_set'
 file_info%stage_metadata%filenames        = 'null'
 file_info%stage_metadata%file_description = 'null'
 
 file_info%initialized = .true.
 
-end function io_filenames_init
+end subroutine io_filenames_init
 
 
 !-------------------------------------------------------------------------------
@@ -299,13 +351,13 @@ integer,              intent(in)    :: ens_size
 integer,              intent(in)    :: my_copy_start 
 
 character(len=256) :: fname, desc
-character(len=128) :: stage_name, base_name
+character(len=128) :: stage_name, basename
 integer :: nlines, icopy, iunit, ios, idom
 integer :: offset
 
-if (my_copy_start <= 0) return
-
 offset = my_copy_start - 1
+
+if (my_copy_start <= 0)    return
 
 ! Is it sufficient to check if the first file exists? JPH
 if (file_info%restart_list(1) == 'null' .or. &
@@ -313,24 +365,33 @@ if (file_info%restart_list(1) == 'null' .or. &
 
   if (file_info%root_name == 'null') then
      write(msgstring,*) 'Unable to construct file names.', &
-                        ' No root_name or restart_file_list'
+                        ' No root_name or input_state_file_list'
      call error_handler(E_ERR,'set_member_file_metadata', &
                  msgstring, source, revision, revdate)
   endif
 
   ! Construct file names
-  write(msgstring,*) 'NO restart_file_list for root "'//trim(file_info%root_name), &
-                     '" provided using default names'
+  write(msgstring,*) 'no input_state_file_list for root "'//trim(file_info%root_name)//'"'
   call error_handler(E_MSG,'set_member_file_metadata', &
-                     msgstring, source, revision, revdate)
-
-  do icopy = 1, ens_size
-     stage_name = file_info%root_name
-     write(base_name,'(A,I4.4)')  'member_', icopy
-     write(desc,'(A,I4)') 'ensemble member ', icopy
-     call set_file_metadata(file_info, icopy, stage_name, base_name, desc, offset)
-  enddo
-
+                     msgstring, source, revision, revdate, text2='using default names')
+  
+  stage_name = file_info%root_name
+  if (file_info%single_file) then
+     if (get_num_domains() > 1) then
+        write(msgstring,*) 'single file input is currently only supported for 1 domain models'
+        call error_handler(E_ERR,'set_member_file_metadata', &
+                           msgstring, source, revision, revdate)
+     endif
+     write(fname,'(2A)') trim(stage_name),'.nc' 
+     write(desc, '(A)') 'ensemble member single file'
+     call set_explicit_file_metadata(file_info, 1, (/fname/), stage_name, desc)
+  else
+     do icopy = 1, ens_size
+        write(basename,'(A,I4.4)')  'member_', icopy
+        write(desc,'(A,I4)') 'ensemble member ', icopy
+        call set_file_metadata(file_info, icopy, stage_name, basename, desc, offset)
+     enddo
+  endif
 else
 
    do idom = 1, get_num_domains()
@@ -349,22 +410,40 @@ else
       
       ! Check the dimensions of the pointer file
       call find_textfile_dims(trim(fname), nlines)
-      if( nlines < ens_size) then
-         write(msgstring,*) 'io_filenames_mod: expecting ',ens_size, &
-                            'files in "', trim(fname), &
-                            '" and only found ', nlines
-         call error_handler(E_ERR,'set_member_file_metadata', msgstring, &
-                            source, revision, revdate)
-      endif 
+      if( file_info%single_file ) then
+         if( nlines < 1 ) then
+            write(msgstring,*) 'io_filenames_mod: expecting 1 ', &
+                               'files in "', trim(fname), &
+                               '" and found ', nlines
+            call error_handler(E_ERR,'set_member_file_metadata', msgstring, &
+                               source, revision, revdate)
+         endif 
+       else
+         if( nlines < ens_size) then
+            write(msgstring,*) 'io_filenames_mod: expecting ',ens_size, &
+                               'files in "', trim(fname), &
+                               '" and only found ', nlines
+            call error_handler(E_ERR,'set_member_file_metadata', msgstring, &
+                               source, revision, revdate)
+         endif 
+      endif
       
       ! Read filenames in
       iunit = open_file(trim(fname),action = 'read')
         
       do icopy = 1, ens_size
-         read(iunit,'(A)',iostat=ios) file_info%stage_metadata%filenames(offset+icopy, idom)
+         if ( file_info%single_file ) then 
+            if ( icopy == 1 ) then
+               read(iunit,'(A)',iostat=ios) file_info%stage_metadata%filenames(offset+icopy, idom)
+            endif
+         else
+            read(iunit,'(A)',iostat=ios) file_info%stage_metadata%filenames(offset+icopy, idom)
+         endif
+
          write(desc,'(2A,I4)') trim(file_info%root_name), ' ensemble member ', icopy
          file_info%stage_metadata%file_description(offset+icopy,idom) = trim(desc)
          file_info%stage_metadata%my_copy_number(  offset+icopy) = offset + icopy
+         file_info%stage_metadata%copy_name(       offset+icopy) = trim(desc)
 
          if ( ios /= 0 ) then
             write(msgstring,*)'Unable to read filename # ',icopy, & 
@@ -386,29 +465,31 @@ end subroutine set_member_file_metadata
 !-------------------------------------------------------
 !> Explicitly construct a file name from a list of files
 
-subroutine set_explicit_file_metadata(file_info, cnum, fnames, desc)
+subroutine set_explicit_file_metadata(file_info, cnum, fnames, basename, desc)
 
 type(file_info_type), intent(inout) :: file_info
 integer,              intent(in)    :: cnum
 character(len=*),     intent(in)    :: fnames(:)
+character(len=*),     intent(in)    :: basename
 character(len=*),     intent(in)    :: desc
    
 character(len=256) :: string1
-character(len=32)  :: stage_name
-character(len=32)  :: dom_str
-integer :: idom, my_copy
+integer :: idom
 
 if (cnum <= 0) return
 
+! Array of files (possibly multiple domains)
+file_info%stage_metadata%my_copy_number(cnum) = cnum
+file_info%stage_metadata%copy_name(     cnum) = trim(basename)
+
+! check that the number of domains matches the size of file names provided
 if (get_num_domains() /= size(fnames(:),1)) then
-   write(msgstring,*) 'num domains ', get_num_domains(), &
-                      ' /= size(fnames) : ', size(fnames(:),1)
+   write(msgstring,'(A,I2,A,I2)') 'num domains ', get_num_domains(), &
+                                  ' /= size(fnames) : ', size(fnames(:),1)
    call error_handler(E_ERR, 'set_explicit_file_metadata', msgstring, &
                       source, revision, revdate)
 endif
 
-! Array of files (possibly multiple domains)
-file_info%stage_metadata%my_copy_number(cnum) = cnum
 do idom = 1, get_num_domains()
     if (get_num_domains() > 1) then
         write(string1,'(2A,I4)') trim(desc), 'for domain ', idom
@@ -427,18 +508,18 @@ end subroutine set_explicit_file_metadata
 !-------------------------------------------------------
 !> Write file name and description
 
-subroutine set_stage_file_metadata(file_info, copy_number, stage, base_name, desc, offset)
+subroutine set_stage_file_metadata(file_info, cnum, stage, basename, desc, offset)
 
 ! EXAMPLE: to construct a file name of 'input_mean_d01.nc'
-!   copy_number is ensemble copy number and is not used in the file name
+!   cnum is ensemble copy number and is not used in the file name
 !   stage_name is 'input'
-!   base_name is 'mean'
+!   basename is 'mean'
 !   desc is 'prior ensemble mean'
 
 type(file_info_type), intent(inout) :: file_info
-integer,              intent(in)    :: copy_number
+integer,              intent(in)    :: cnum
 character(len=*),     intent(in)    :: stage
-character(len=*),     intent(in)    :: base_name
+character(len=*),     intent(in)    :: basename
 character(len=*),     intent(in)    :: desc
 integer,              intent(in), optional :: offset
    
@@ -447,12 +528,12 @@ character(len=32)  :: stage_name
 character(len=32)  :: dom_str
 integer :: idom, my_copy
 
-if (copy_number <= 0) return
+if (cnum <= 0) return
 
 if (present(offset)) then
-   my_copy = copy_number + offset
+   my_copy = cnum + offset
 else
-   my_copy = copy_number
+   my_copy = cnum
 endif
 
 if (trim(file_info%root_name) == 'null') then
@@ -464,18 +545,19 @@ endif
 if (my_copy <= 0) return
 
 file_info%stage_metadata%my_copy_number(my_copy) = my_copy
+file_info%stage_metadata%copy_name(     my_copy) = trim(basename)
 
 if (get_num_domains() > 1) then
    do idom = 1, get_num_domains()
      write(dom_str, '(A, i2.2)') '_d', idom
-     write(string1,'(2A,''.nc'')') trim(stage_name)//'_'//trim(base_name), trim(dom_str)
+     write(string1,'(2A,''.nc'')') trim(stage_name)//'_'//trim(basename), trim(dom_str)
      file_info%stage_metadata%filenames(my_copy,idom) = trim(string1)
 
      write(string1,'(A,1x,A,'' for domain '',i4)') trim(stage_name), trim(desc), idom
      file_info%stage_metadata%file_description(my_copy,idom) = trim(string1)
   enddo
 else
-  write(string1,'(A,''.nc'')') trim(stage_name)//'_'//trim(base_name)
+  write(string1,'(A,''.nc'')') trim(stage_name)//'_'//trim(basename)
   file_info%stage_metadata%filenames(my_copy,1) = trim(string1)
 
   write(string1,'(A,1x,A)') trim(stage_name), trim(desc)
@@ -887,10 +969,11 @@ num_domains = get_num_domains()
 
 num_files = size(file_info(1)%stage_metadata%filenames(:,:),1)
 
-file_info_out = io_filenames_init(num_files, .false.)
+call io_filenames_init(file_info_out, num_files, .false., .false.)
 
 do i = 1, size(file_info(:),1)
    do j = 1, num_files
+
       do k = 1, num_domains
          if (trim(file_info(i)%stage_metadata%filenames(j, k)) /= trim('null'))then
             file_info_out%stage_metadata%filenames(                   j, k) = &
@@ -912,7 +995,7 @@ file_info_out%initialized = .true.
 end function combine_file_info
 
 !-------------------------------------------------------
-!> Set weather a copy should be read/written for a range
+!> Set whether a copy should be read/written for a range
 !> of copies c1->c2.  Optional argument to set if the
 !> copy could have units and if the variables should be
 !> clamped.  If this information is available it grabs
@@ -920,13 +1003,16 @@ end function combine_file_info
 !> created from scratch.
 
 
-subroutine set_io_copy_flag_range(file_info, c1, c2, io_flag, has_units, clamp_vars)
+subroutine set_io_copy_flag_range(file_info, c1, c2, io_flag, num_output_ens, &
+                                  has_units, clamp_vars)
+
 type(file_info_type),      intent(inout) :: file_info   !< stage name handle
 integer,                   intent(in)    :: c1          !< start copy to read
 integer,                   intent(in)    :: c2          !< end copy to read
 integer,                   intent(in)    :: io_flag     !< read = 1, write = 2, read/write = 3
-logical, optional,         intent(in)    :: has_units   !< if the copy has units
-logical, optional,         intent(in)    :: clamp_vars  !< if the copy has units
+integer, optional,         intent(in)    :: num_output_ens
+logical, optional,         intent(in)    :: has_units
+logical, optional,         intent(in)    :: clamp_vars
 
 integer :: i
 
@@ -934,14 +1020,15 @@ if (c1 <=0 .or. c2 <=0) return
 
 do i = c1, c2
   file_info%stage_metadata%io_flag(i) = io_flag 
-  if(present(has_units))  file_info%stage_metadata%has_units(i)  = has_units 
-  if(present(clamp_vars)) file_info%stage_metadata%clamp_vars(i) = clamp_vars
+  if(present(has_units)  )    file_info%stage_metadata%has_units( i) = has_units 
+  if(present(clamp_vars) )    file_info%stage_metadata%clamp_vars(i) = clamp_vars
+  if(present(num_output_ens)) file_info%stage_metadata%noutput_ens   = num_output_ens
 enddo
 
 end subroutine set_io_copy_flag_range
 
 !-------------------------------------------------------
-!> Set weather a copy should be read/written for a single
+!> Set whether a copy should be read/written for a single
 !> copy c.  Optional argument to set if the
 !> copy could have units and if the variables should be
 !> clamped.  If this information is available it grabs
@@ -950,27 +1037,33 @@ end subroutine set_io_copy_flag_range
 
 
 subroutine set_io_copy_flag_single(file_info, c, io_flag, has_units, clamp_vars)
+
 type(file_info_type),      intent(inout) :: file_info   !< stage name handle
 integer,                   intent(in)    :: c           !< start copy to read
 integer,                   intent(in)    :: io_flag     !< read = 1, write = 2, read/write = 3
 logical, optional,         intent(in)    :: has_units   !<  if the copy has units
-logical, optional,         intent(in)    :: clamp_vars  !<  if the copy has units
+logical, optional,         intent(in)    :: clamp_vars
 
 if (c <=0) return
 
 file_info%stage_metadata%io_flag(c)   = io_flag 
-if(present(has_units))  file_info%stage_metadata%has_units(c)  = has_units 
-if(present(clamp_vars)) file_info%stage_metadata%clamp_vars(c) = clamp_vars
+
+if(present(has_units)  )    file_info%stage_metadata%has_units( c) = has_units 
+if(present(clamp_vars) )    file_info%stage_metadata%clamp_vars(c) = clamp_vars
+
+!#! jph needs set somewhere else file_info%stage_metadata%noutput_ens = 1
 
 end subroutine set_io_copy_flag_single
 
+
 !----------------------------------
-!> Combine multiple file_info_type into a single file_info
+!> Determine whether a copy could potentially have units.
+!> Copies such as Spread and Inflation never have units.
 
 
 function copy_has_units(name_handle, copy)
 type(stage_metadata_type), intent(in) :: name_handle
-integer,                   intent(in)  :: copy
+integer,                   intent(in) :: copy
 logical :: copy_has_units
 
 if (copy <= 0) return
@@ -1010,7 +1103,8 @@ query_read_copy = .false.
 
 if (.not. assert_valid_copy(name_handle, c)) return
 
-if (name_handle%io_flag(c) == READ_COPY .or. name_handle%io_flag(c) == READ_WRITE_COPY) then
+if (name_handle%io_flag(c) == READ_COPY .or. &
+    name_handle%io_flag(c) == READ_WRITE_COPY) then
    query_read_copy = .true.
 endif
 
@@ -1031,7 +1125,8 @@ query_write_copy = .false.
 
 if (.not. assert_valid_copy(name_handle, c)) return
 
-if (name_handle%io_flag(c) == WRITE_COPY .or. name_handle%io_flag(c) == READ_WRITE_COPY) then
+if (name_handle%io_flag(c) == WRITE_COPY .or. &
+    name_handle%io_flag(c) == READ_WRITE_COPY) then
    query_write_copy = .true.
 endif
 
@@ -1057,8 +1152,150 @@ end function
 
 
 !------------------------------------------------------------------
-!> Assert if a copy is in a valid range
+!> set netcdf file type
 
+
+function get_copy_name(file_handle, cnum)
+
+type(file_info_type), intent(in) :: file_handle
+integer,              intent(in) :: cnum
+character(len=256) :: get_copy_name
+
+get_copy_name = file_handle%stage_metadata%copy_name(cnum)
+
+end function get_copy_name
+
+
+!#! !------------------------------------------------------------------
+!#! !> set netcdf file type
+!#! 
+!#! 
+!#! subroutine nc_set_netcdf_info(file_handle, ncFileInfo)
+!#! 
+!#! type(file_info_type),   intent(inout) :: file_handle
+!#! type(netcdf_file_type), intent(in)    :: ncFileInfo
+!#! 
+!#! file_handle%stage_metadata%ncFileID = ncFileInfo
+!#! 
+!#! end subroutine nc_set_netcdf_info
+!#! 
+!#! 
+!#! 
+!#! 
+!#! !------------------------------------------------------------------
+!#! !> get diagnostic id
+!#! 
+!#! 
+!#! subroutine nc_set_diag_id(ncFileInfo, diagnostic_id)
+!#! 
+!#! type(netcdf_file_type), intent(inout) :: ncFileInfo
+!#! integer,                intent(in)    :: diagnostic_id
+!#! 
+!#! ncFileInfo%diag_id = diagnostic_id
+!#! 
+!#! end subroutine nc_set_diag_id
+!#! 
+!#! 
+!#! !------------------------------------------------------------------
+!#! !> get diagnostic id
+!#! 
+!#! 
+!#! function nc_get_diag_id(ncFileInfo)
+!#! 
+!#! type(netcdf_file_type), intent(in)    :: ncFileInfo
+!#! integer :: nc_get_diag_id
+!#! 
+!#! nc_get_diag_id = ncFileInfo%diag_id
+!#! 
+!#! end function nc_get_diag_id
+!#! 
+!#! 
+!#! !------------------------------------------------------------------
+!#! !> set netcdf file name
+!#! 
+!#! 
+!#! subroutine nc_set_fname(ncFileInfo, filename)
+!#! 
+!#! type(netcdf_file_type), intent(inout) :: ncFileInfo
+!#! character(len=*) :: filename
+!#! 
+!#! ncFileInfo%fname = filename
+!#! 
+!#! end subroutine nc_set_fname
+!#! 
+!#! 
+!#! !------------------------------------------------------------------
+!#! !> get netcdf file name
+!#! 
+!#! 
+!#! function nc_get_fname(ncFileInfo)
+!#! 
+!#! type(netcdf_file_type), intent(in)    :: ncFileInfo
+!#! character(len=80) :: nc_get_fname
+!#! 
+!#! nc_get_fname = ncFileInfo%fname
+!#! 
+!#! end function nc_get_fname
+!#! 
+!#! 
+!#! !------------------------------------------------------------------
+!#! !> get netcdf file id
+!#! 
+!#! 
+!#! subroutine nc_set_ncid(ncFileInfo, my_ncid)
+!#! 
+!#! type(netcdf_file_type), intent(inout) :: ncFileInfo
+!#! integer,                intent(in)    :: my_ncid
+!#! 
+!#! ncFileInfo%ncid = my_ncid
+!#! 
+!#! end subroutine nc_set_ncid
+!#! 
+!#! 
+!#! !------------------------------------------------------------------
+!#! !> get netcdf file id
+!#! 
+!#! 
+!#! function nc_get_ncid(ncFileInfo)
+!#! 
+!#! type(netcdf_file_type), intent(in)    :: ncFileInfo
+!#! integer :: nc_get_ncid
+!#! 
+!#! nc_get_ncid = ncFileInfo%ncid
+!#! 
+!#! end function nc_get_ncid
+
+
+!------------------------------------------------------------------
+!> return whether the init routines have been called?
+!> or whether it's been marked as using a single file? 
+!>@todo fixme: document what this routine does.
+
+function single_file_initialized(file_handle) result(is_initialized)
+
+type(file_info_type), intent(inout) :: file_handle
+logical :: is_initialized
+
+is_initialized = file_handle%singlefile_initialized
+
+end function single_file_initialized
+
+
+!----------------------------------
+!> Number of output ensemble members
+!>@todo need to change the name to represent that this relates to the number of
+!>      copies to write.
+function noutput_state_variables(file_handle)
+type(file_info_type), intent(in) :: file_handle !< file information handle
+integer :: noutput_state_variables
+
+noutput_state_variables = file_handle%stage_metadata%noutput_ens
+
+end function noutput_state_variables
+
+
+!------------------------------------------------------------------
+!> Assert if a copy is in a valid range
 
 function assert_valid_copy(name_handle, copy) result(valid_copy)
 type(stage_metadata_type), intent(in) :: name_handle !< stage name handle

@@ -112,7 +112,8 @@ integer :: iunit, io
 integer, allocatable :: ios_out(:)
 type(file_info_type) :: file_info_input, file_info_output
 type(stage_metadata_type) :: input_restart_files, output_restart_files
-logical              :: read_time_from_file = .true.
+logical :: read_time_from_file = .true.
+logical :: single_file = .true.
 
 ! model state variables
 type(ensemble_type) :: ens_handle
@@ -187,13 +188,13 @@ model_time  = set_time(21600, 149446)   ! 06Z 4 March 2010
 call init_ensemble_manager(ens_handle, num_ens, model_size)
 
 ! Reading/writing netcdf restart files:
-file_info_input  = io_filenames_init(num_ens, single_file = .false., &
-                                     restart_list = input_restart_list)
+call io_filenames_init(file_info_input, num_ens, cycling=.false., single_file=.true., &
+                       restart_list = input_restart_list)
 call set_member_file_metadata(file_info_input, num_ens, my_copy_start=1)  
 call set_io_copy_flag(file_info_input, 1, num_ens, READ_COPY)
 
-file_info_output = io_filenames_init(num_ens, single_file = .false., &
-                                     restart_list = output_restart_list)
+call io_filenames_init(file_info_output, num_ens, cycling=.false., single_file=.true., &
+                       restart_list = output_restart_list)
 call set_member_file_metadata(file_info_output, num_ens, my_copy_start=1)  
 call set_io_copy_flag(file_info_output, 1, num_ens, WRITE_COPY)
 

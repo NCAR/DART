@@ -133,8 +133,8 @@ call prepare_to_write_to_vars(ens_handle)
 
    !------------------- Read restart from file ----------------------
    
-   input_file_info = io_filenames_init(1, single_file=.false.)
-   call set_file_metadata(input_file_info, 1, 'temp', 'ic', 'initial condition')
+   call io_filenames_init(input_file_info, 1, cycling=.true., single_file=.true.)
+   call set_file_metadata(input_file_info, 1, (/ic_file_name/), 'temp_ic', 'initial condition')
    call set_io_copy_flag( input_file_info, 1, READ_COPY) 
    
    ic_file_name = get_restart_filename(get_stage_metadata(input_file_info),1,1)
@@ -151,8 +151,8 @@ call prepare_to_write_to_vars(ens_handle)
    ! If the model time is past the obs set time, just need to skip
    if (trace_execution) write(*,*) 'calling advance_state if needed'
 
-   output_file_info = io_filenames_init(1, single_file=.false.)
-   call set_file_metadata(output_file_info, 1, 'temp', 'ud', 'advanced member')
+   call io_filenames_init(output_file_info, 1, cycling=.true., single_file=.true.)
+   call set_file_metadata(output_file_info, 1, (/ud_file_name/), 'temp_ud', 'advanced member')
    call set_io_copy_flag( output_file_info, 1, WRITE_COPY) 
 
    if(ens_handle%time(1) < target_time) &

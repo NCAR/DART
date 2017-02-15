@@ -51,8 +51,6 @@ use state_structure_mod,   only : add_domain, get_model_variable_indices, &
 
 use ensemble_manager_mod, only : ensemble_type, copies_in_window
 
-use dart_time_io_mod, only : write_model_time
-
 use typesizes
 use netcdf 
 
@@ -835,7 +833,7 @@ integer,                intent(in) :: timeindex
 integer                            :: ierr          ! return value of function
 
 integer :: VarID
-integer :: TimeDimID, CopyDimID
+integer :: TimeDimID, MemberDimID
 
 character(len=128) :: filename
 
@@ -853,8 +851,7 @@ write(filename,*) 'ncFileID', ncFileID
 
 ! make sure ncFileID refers to an open netCDF file, 
 
-
-call nc_check(nf90_inq_dimid(ncFileID, 'copy', dimid=CopyDimID), &
+call nc_check(nf90_inq_dimid(ncFileID, 'member', dimid=MemberDimID), &
             'nc_write_model_vars', 'inq_dimid copy '//trim(filename))
 
 call nc_check(nf90_inq_dimid(ncFileID, 'time', dimid=TimeDimID), &
@@ -1015,20 +1012,48 @@ obs_kind = obs_type
 
 if (debug > 0) then
    call write_location(0,location,charstring=string1)
-   write(string1, *) my_task_id(), 'kind, loc ', obs_kind, trim(string1)
+   write(string1, *) 'task ', my_task_id(), ' kind, loc ', obs_kind, ' ', trim(string1)
    call say(string1)
 endif
 
 obs_loc_array = get_location(location)
 
 varid = get_varid_from_kind(domid, obs_kind)
+if (varid < 0) then
+   if (debug > 0) then
+      call write_location(0,location,charstring=string1)
+      write(string1, *) 'obs kind not found in state.  kind ', obs_kind, ' (', &
+                                 trim(get_raw_obs_kind_name(obs_kind)), ')  loc: ', trim(string1)
+
+      call say(string1)
+   endif
+   istatus(:) = 11
+   return ! this kind isn't found in the state vector
+endif
+
 nlevs = get_z_axis_length(varid)
 ndims = get_num_dims(domid, varid)
+if (debug > 0) then
+   write(string1, *) 'varid, nlevs, ndims = ', varid, nlevs, ndims
+   call say(string1)
+endif
 ! 2d vs. 3d variable test
 if (ndims == 3) then
    nlevs = 2
-else ! 2D, surface obs
+else if (ndims == 2) then ! 2D, surface obs
    nlevs = 1
+else
+   ! should this be an error?
+   write(string1, *) 'ndims not 3 or 2, unexpected? is ', ndims
+   call say(string1)
+   nlevs = 1  !? just a guess
+   call write_location(0,location,charstring=string1)
+   write(string1, *) 'task ', my_task_id(), ' kind ', obs_kind, ' (', &
+                             trim(get_raw_obs_kind_name(obs_kind)), ')  loc: ', trim(string1)
+
+   call say(string1)
+   write(string1, *) 'varid, nlevs, ndims = ', varid, nlevs, ndims
+   call say(string1)
 endif
 
 
@@ -1038,7 +1063,10 @@ if( .not. observation_on_grid(obs_loc_array, ndims) ) then
    return ! exit early
 endif
 
-if (debug > 0) print*, 'nlevs', nlevs
+if (debug > 0) then
+   write(string1, *) 'nlevs', nlevs
+   call say(string1)
+endif
 
 ! Interpolate the height field (z) to get the height at each level at 
 ! the observation location. This allows us to find which level an observation 
@@ -1879,6 +1907,19 @@ if ((debug > 99) .and. do_output()) then
 endif
 
 end function read_model_time
+
+!-----------------------------------------------------------------------
+!>@todo this routine should print the model time when 
+!>      creating files from scratch
+subroutine write_model_time(ncid, dart_time)
+
+integer,             intent(in) :: ncid !< netcdf file handle
+type(time_type),     intent(in) :: dart_time
+
+call error_handler(E_MSG, 'write_model_time', 'no routine for cm1 to write model time')
+
+end subroutine write_model_time
+
 
 !==================================================================
 ! FIXME!!!  some things below here are needed; others are NOT.

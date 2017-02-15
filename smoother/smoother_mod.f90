@@ -19,13 +19,12 @@ use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, all_vars_
                                  all_copies_to_all_vars, get_copy, map_task_to_pe
 use time_manager_mod,     only : time_type, operator(==), print_time
 
-use state_space_diag_mod, only : netcdf_file_type
 
 use assim_tools_mod,      only : filter_assim, get_missing_ok_status
 use obs_sequence_mod,     only : obs_sequence_type
 use adaptive_inflate_mod, only : adaptive_inflate_type, adaptive_inflate_init, &
                                  do_varying_ss_inflate, do_single_ss_inflate
-use io_filenames_mod,     only : file_info_type
+use io_filenames_mod,     only : file_info_type, netcdf_file_type
 
 implicit none
 private

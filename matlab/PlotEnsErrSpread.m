@@ -16,32 +16,32 @@ function PlotEnsErrSpread( pinfo )
 %
 % Example 0   (9var  model)
 %%--------------------------------------------------------
-% pinfo.truth_file = 'True_State.nc';
-% pinfo.diagn_file = 'Prior_Diag.nc';
+% pinfo.truth_file = 'perfect_output.nc';
+% pinfo.diagn_file = 'preassim.nc';
 % pinfo.var        = 'state';
 % pinfo.var_inds   = [ 1 2 3 4 5 6 7 8 9 ];
 % PlotEnsErrSpread(pinfo)
 %
 % Example 1   (Lorenz_96  model)
 %%--------------------------------------------------------
-% pinfo.truth_file = 'True_State.nc';
-% pinfo.diagn_file = 'Prior_Diag.nc';
+% pinfo.truth_file = 'perfect_output.nc';
+% pinfo.diagn_file = 'preassim.nc';
 % pinfo.var        = 'state';
 % pinfo.var_inds   = [ 3 4 36 39 22 ];
 % PlotEnsErrSpread(pinfo)
 %
 % Example 2   (Lorenz_96_2scale  model)
 %%--------------------------------------------------------
-% pinfo.truth_file = 'True_State.nc';
-% pinfo.diagn_file = 'Prior_Diag.nc';
+% pinfo.truth_file = 'perfect_output.nc';
+% pinfo.diagn_file = 'preassim.nc';
 % pinfo.var        = 'X';
 % pinfo.var_inds   = [ 3 18 27 ];
 % PlotEnsErrSpread(pinfo)
 %
 % Example 3 (FMS BGrid model)
 %%--------------------------------------------------------
-% pinfo.truth_file = 'True_State.nc';
-% pinfo.diagn_file = 'Prior_Diag.nc';
+% pinfo.truth_file = 'perfect_output.nc';
+% pinfo.diagn_file = 'preassim.nc';
 % pinfo.var        = 'u';
 % pinfo.level      = 3;
 % pinfo.latitude   = 23.5;
@@ -56,24 +56,24 @@ function PlotEnsErrSpread( pinfo )
 
 % Get the indices for the true state, ensemble mean and spread
 % The metadata is queried to determine which "copy" is appropriate.
-truth_index      = get_copy_index(pinfo.truth_file, 'true state' );
-ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
-ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
+% truth_index      = get_copy_index(pinfo.truth_file, 'true state' );
+% ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
+% ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
 
 switch lower(pinfo.model)
 
    case '9var'
 
       truth      = get_hyperslab('fname',pinfo.truth_file, ...
-                       'varname',pinfo.var, 'copyindex',truth_index, ...
+                       'varname','state','permute','true','squeeze','true',  ...
                        'tindex1',pinfo.truth_time(1), 'tcount',pinfo.truth_time(2)) ;
 
       ens_mean   = get_hyperslab('fname',pinfo.diagn_file, ...
-                       'varname',pinfo.var, 'copyindex',ens_mean_index, ...
+                       'varname','state_mean','permute','true', ...
                        'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2)) ;
 
       ens_spread = get_hyperslab('fname',pinfo.diagn_file, ...
-                       'varname',pinfo.var, 'copyindex',ens_spread_index, ...
+                       'varname','state_sd','permute','true', ...
                        'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2)) ;
 
       % Use three different figures with three subplots each
@@ -103,19 +103,22 @@ switch lower(pinfo.model)
          end
       end
 
-   case {'lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
-	 'lorenz_04','forced_lorenz_96','ikeda','simple_advection'}
+   case {'lorenz_96_2scale', 'simple_advection'}
+      % The variable names are not simply 'state', 'state_mean', 'state_sd'
+      error('not supported yet')
+
+   case {'lorenz_63','lorenz_84','lorenz_96','lorenz_04','forced_lorenz_96','ikeda'}
 
       truth      = get_hyperslab('fname',pinfo.truth_file, ...
-                       'varname',pinfo.var, 'copyindex',truth_index, ...
+                       'varname','state','permute','true','squeeze','true', ...
                        'tindex1',pinfo.truth_time(1), 'tcount',pinfo.truth_time(2)) ;
 
       ens_mean   = get_hyperslab('fname',pinfo.diagn_file, ...
-                       'varname',pinfo.var, 'copyindex',ens_mean_index, ...
+                       'varname','state_mean','permute','true', ...
                        'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2)) ;
 
       ens_spread = get_hyperslab('fname',pinfo.diagn_file, ...
-                       'varname',pinfo.var, 'copyindex',ens_spread_index, ...
+                       'varname','state_sd','permute','true', ...
                        'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2)) ;
 
       clf; iplot = 0;
@@ -129,7 +132,7 @@ switch lower(pinfo.model)
 
             subplot(length(pinfo.var_inds), 1, iplot);
                plot(pinfo.time,err, 'b', ...
-                    pinfo.time,ens_spread(:, ivar), 'r');
+                    pinfo.time,ens_spread(:,ivar), 'r');
                s1 = sprintf('%s model Var %d Ensemble Error Spread', pinfo.model, ivar);
                title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
                legend(string1,string2,0)
@@ -139,7 +142,7 @@ switch lower(pinfo.model)
       end
 
    case {'fms_bgrid','pe2lyr','mitgcm_ocean','cam','wrf','sqg','pop'}
-
+      error('not supported yet')
       clf;
 
       truth      = get_hyperslab('fname',pinfo.truth_file, 'varname', pinfo.var, ...
@@ -180,7 +183,7 @@ switch lower(pinfo.model)
          ylabel('distance');
 
    case {'mpas_atm'}
-
+      error('not supported yet')
       clf;
 
       truth      = get_hyperslab('fname',pinfo.truth_file, 'varname', pinfo.var, ...

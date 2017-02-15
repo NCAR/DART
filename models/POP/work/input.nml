@@ -145,10 +145,6 @@
    input_files              = '../../../obs_def/obs_def_ocean_mod.f90'
   /
 
-&assim_model_nml
-   netCDF_large_file_support  = .true.
-  /
-
 &model_nml
    assimilation_period_days     = -1
    assimilation_period_seconds  = -1

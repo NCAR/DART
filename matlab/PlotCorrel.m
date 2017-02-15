@@ -34,8 +34,11 @@ contourlevels = [-1:0.2:-0.2 0.2:0.2:1.0];  % no contour at zero, please
 
 switch(lower(pinfo.model))
 
-    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
-            'lorenz_04','forced_lorenz_96','ikeda','simple_advection'}
+    case {'lorenz_96_2scale','simple_advection'}
+
+        error('%s not supported yet',pinfo.model)
+
+    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04','forced_lorenz_96','ikeda'}
 
         % The Base Variable Index must be a valid state variable
         if ( pinfo.base_var_index > pinfo.num_state_vars )
@@ -51,20 +54,18 @@ switch(lower(pinfo.model))
 
         % Get 'standard' ensemble series
         base = get_hyperslab('fname',pinfo.fname, 'varname',pinfo.base_var, ...
-            'copy1',pinfo.ensemble_indices(1),'copycount',pinfo.num_ens_members, ...
-            'stateindex',pinfo.base_var_index);
+            'stateindex',pinfo.base_var_index,'squeeze','true','permute','true');
 
         % Get (potentially large) state.
         state_var = get_hyperslab('fname',pinfo.fname, 'varname',pinfo.base_var, ...
-            'copy1',pinfo.ensemble_indices(1),'copycount',pinfo.num_ens_members, ...
-            'state1',pinfo.min_state_var,'statecount',pinfo.num_state_vars);
+            'state1',pinfo.min_state_var,'statecount',pinfo.num_state_vars,'permute','true');
 
         % It is efficient to preallocate correl storage ...
         correl = zeros(pinfo.num_state_vars,pinfo.time_series_length);
 
         % Need to loop through all variables in the ensemble
         for i = 1:pinfo.num_state_vars,
-            correl(i, :) = ens_correl(base, pinfo.base_time, state_var(:,:,i));
+            correl(i,:) = ens_correl(base, pinfo.base_time, state_var(:,:,i));
         end
 
         % Now for the plotting part ...

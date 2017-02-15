@@ -74,12 +74,12 @@ use state_structure_mod,  only : get_num_variables, get_sum_variables,  &
                                  get_io_num_dims, get_io_dim_lengths,            &
                                  get_variable_size, get_io_num_unique_dims,   &
                                  get_io_unique_dim_name, get_dim_name,        &
-                                 get_io_unique_dim_length, get_num_variables, &
+                                 get_io_unique_dim_length, &
                                  set_var_id, get_domain_size, do_io_update, &
                                  get_units, get_long_name, get_short_name, &
                                  get_has_missing_value, get_FillValue, &
                                  get_missing_value, get_add_offset, &
-                                 get_scale_factor, get_xtype, get_num_domains
+                                 get_scale_factor, get_xtype
 
 use io_filenames_mod,     only : get_restart_filename, copy_has_units, &
                                  stage_metadata_type, get_file_description, &
@@ -176,11 +176,11 @@ integer :: ncfile !< netcdf input file identifier
 character(len=256) :: netcdf_filename
 
 integer :: block_size
-integer :: starting_point, ending_point
+integer :: istart, iend
 integer :: copy
 integer :: start_var
 
-starting_point = dart_index ! position in state_ens_handle%vars
+istart = dart_index ! position in state_ens_handle%vars
 block_size = 0
 
 ! need to read into a tempory array, then fill up copies
@@ -199,23 +199,23 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
 
    block_size = get_domain_size(domain)
 
-   ending_point = starting_point + block_size -1
+   iend = istart + block_size -1
 
    if (query_read_copy(name_handle, copy)) then
       call read_variables(ncfile, vector, 1, get_num_variables(domain), domain)
       ! close netcdf file
       ret = nf90_close(ncfile)
       call nc_check(ret, 'read_transpose_single_task: closing', netcdf_filename)
-      state_ens_handle%copies(copy, starting_point:ending_point) = vector
+      state_ens_handle%copies(copy, istart:iend) = vector
 
    endif
 
 enddo COPIES
 
 ! update starting point
-starting_point = starting_point + block_size
+istart = istart + block_size
 
-dart_index = starting_point
+dart_index = istart
 
 deallocate(vector)
 
@@ -242,7 +242,7 @@ character(len=256) :: netcdf_filename_out
 real(r8), allocatable :: vector(:)
 
 integer :: block_size
-integer :: starting_point, ending_point
+integer :: istart, iend
 integer :: copy
 integer :: start_var, end_var
 
@@ -254,7 +254,7 @@ logical :: clamp_vars
 ! need to read into a tempory array to fill with one copies
 allocate(vector(get_domain_size(domain)))
 
-starting_point = dart_index ! position in state_ens_handle%vars
+istart = dart_index ! position in state_ens_handle%vars
 block_size = 0
 
 ! need to read into a tempory array, then fill up copies
@@ -285,11 +285,11 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
 
    block_size = get_domain_size(domain)
 
-   ending_point = starting_point + block_size -1
+   iend = istart + block_size -1
 
    if (query_write_copy(name_handle, copy)) then
 
-      vector = state_ens_handle%copies(copy, starting_point:ending_point)
+      vector = state_ens_handle%copies(copy, istart:iend)
 
       ! for a single task the end var will always be the last element.
       ! do not need to limit memory since the entire state is all on 
@@ -309,9 +309,9 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
 enddo COPIES
 
 ! update starting point
-starting_point = starting_point + block_size
+istart = istart + block_size
 
-dart_index = starting_point
+dart_index = istart
 
 deallocate(vector)
 
@@ -343,8 +343,8 @@ integer :: recv_pe, sending_pe
 real(r8), allocatable :: var_block(:) !< for reading in variables
 integer :: block_size !< number of state elements in a block
 integer :: elm_count !< number of elements to send
-integer :: starting_point!< position in state_ens_handle%copies
-integer :: ending_point
+integer :: istart!< position in state_ens_handle%copies
+integer :: iend
 integer :: ens_size !< ensemble size
 integer :: start_rank
 integer :: recv_start, recv_end
@@ -381,7 +381,7 @@ COPIES: do c = 1, ens_size
 
    ! what to do if a variable is larger than the memory limit?
    start_var = 1 ! read first variable first
-   starting_point = dart_index ! position in state_ens_handle%copies
+   istart = dart_index ! position in state_ens_handle%copies
 
    my_copy = copies_read + my_pe + 1
 
@@ -422,7 +422,7 @@ COPIES: do c = 1, ens_size
 
          ! work out elm_count on the receiving pe
          elm_count = num_elements_on_pe(recv_pe, start_rank, block_size)
-         ending_point = starting_point + elm_count -1
+         iend = istart + elm_count -1
 
          ! work out the start in var_block corresponding to the receiving pe
          i = find_start_point(recv_pe, start_rank)
@@ -436,10 +436,10 @@ COPIES: do c = 1, ens_size
                if (query_read_copy(name_handle, sending_pe + copies_read + 1)) then
 
                   if(sending_pe == recv_pe) then ! just copy
-                     state_ens_handle%copies(ensemble_member, starting_point:ending_point ) = &
+                     state_ens_handle%copies(ensemble_member, istart:iend ) = &
                      var_block(i:elm_count*task_count():task_count())
                   else ! post receive
-                     call recv_variables_from_read(state_ens_handle, sending_pe, ensemble_member, starting_point, ending_point)
+                     call recv_variables_from_read(state_ens_handle, sending_pe, ensemble_member, istart, iend)
                   endif
 
                endif
@@ -450,7 +450,7 @@ COPIES: do c = 1, ens_size
 
             ! update starting point
 
-            starting_point = starting_point + elm_count
+            istart = istart + elm_count
 
          elseif (is_reader) then ! sending
 
@@ -485,7 +485,7 @@ COPIES: do c = 1, ens_size
 
 enddo COPIES
 
-dart_index = starting_point
+dart_index = istart
 
 end subroutine read_transpose_multi_task
 
@@ -515,8 +515,8 @@ integer :: recv_pe, sending_pe
 real(r8), allocatable :: var_block(:) !< for reading in variables
 integer :: block_size !< number of variables in a block
 integer :: elm_count !< number of elements to send
-integer :: starting_point!< position in state_ens_handle%copies
-integer :: ending_point
+integer :: istart!< position in state_ens_handle%copies
+integer :: iend
 integer :: ens_size !< ensemble size
 integer :: start_rank
 integer :: recv_start, recv_end
@@ -557,7 +557,7 @@ COPIES : do c = 1, ens_size
    if (copies_written >= ens_size) exit
 
    start_var = 1 ! collect first variable first
-   starting_point = dart_index ! position in state_ens_handle%copies
+   istart = dart_index ! position in state_ens_handle%copies
 
    my_copy = copies_written + my_pe + 1
 
@@ -603,7 +603,7 @@ COPIES : do c = 1, ens_size
 
          ! work out elm_count on the sending pe
          elm_count = num_elements_on_pe(sending_pe, start_rank, block_size)
-         ending_point = starting_point + elm_count -1
+         iend = istart + elm_count -1
 
          ! work out the start in var_block corresponding to the sending_pe
          i = find_start_point(sending_pe, start_rank)
@@ -623,9 +623,9 @@ COPIES : do c = 1, ens_size
                if (query_write_copy(name_handle, recv_pe + copies_written + 1)) then
 
                   if ( recv_pe /= my_pe ) then
-                     call send_variables_to_write(state_ens_handle, recv_pe, ensemble_member, starting_point, ending_point)
+                     call send_variables_to_write(state_ens_handle, recv_pe, ensemble_member, istart, iend)
                   else ! if sender = receiver just copy
-                     var_block(i:elm_count*task_count():task_count()) = state_ens_handle%copies(ensemble_member, starting_point:ending_point)
+                     var_block(i:elm_count*task_count():task_count()) = state_ens_handle%copies(ensemble_member, istart:iend)
                   endif
 
                endif
@@ -635,7 +635,7 @@ COPIES : do c = 1, ens_size
             enddo
 
             ! update starting point
-            starting_point = starting_point + elm_count
+            istart = istart + elm_count
 
          endif
 
@@ -667,7 +667,7 @@ COPIES : do c = 1, ens_size
 
 enddo COPIES
 
-dart_index = starting_point
+dart_index = istart
 
 end subroutine transpose_write_multi_task
 
@@ -699,7 +699,7 @@ if ( minclamp /= missing_r8 ) then
       
       varname = get_variable_name(dom_id, var_index) 
       write(msgstring, *) 'min val = ', minval(variable), &
-                          'min bounds = ', minclamp
+                         ' min bounds = ', minclamp
       !@>todo FIXME : do we want to reduce and print out the absolute max/min
       call error_handler(E_ALLMSG, 'clamp_variable', &
                   'Clamping '//trim(varname)//', values out of bounds.', &
@@ -745,17 +745,17 @@ integer,  intent(in)    :: end_var
 integer,  intent(in)    :: domain
 
 integer :: i
-integer :: start_in_var_block, end_in_var_block
+integer :: istart, iend
 integer :: var_size
 integer, allocatable :: dims(:)
 integer :: ret, var_id
 
-start_in_var_block = 1
+istart = 1
 
 do i = start_var, end_var
 
    var_size = get_variable_size(domain, i)
-   end_in_var_block = start_in_var_block + var_size - 1
+   iend = istart + var_size - 1
 
    ! number of dimensions and length of each
    allocate(dims(get_io_num_dims(domain, i)))
@@ -765,10 +765,10 @@ do i = start_var, end_var
    ret = nf90_inq_varid(ncfile_in, get_variable_name(domain, i), var_id)
    call nc_check(ret, 'read_variables: nf90_inq_varid',trim(get_variable_name(domain,i)) )
 
-   ret = nf90_get_var(ncfile_in, var_id, var_block(start_in_var_block:end_in_var_block), count=dims)
+   ret = nf90_get_var(ncfile_in, var_id, var_block(istart:iend), count=dims)
    call nc_check(ret, 'read_variables: nf90_get_var',trim(get_variable_name(domain,i)) )
 
-   start_in_var_block = start_in_var_block + var_size
+   istart = istart + var_size
 
    deallocate(dims)
 
@@ -790,16 +790,15 @@ integer,  intent(in)    :: end_var
 integer,  intent(in)    :: domain 
 logical,  intent(in)    :: do_file_clamping 
 
-integer :: start_in_var_block, end_in_var_block
+integer :: istart, iend
 integer, allocatable :: dims(:)
 integer :: i, ret, var_id, var_size
-logical :: clamped
 
-start_in_var_block = 1
+istart = 1
 do i = start_var, end_var
 
    var_size = get_variable_size(domain, i)
-   end_in_var_block = start_in_var_block + var_size - 1
+   iend = istart + var_size - 1
    
    ! Some diagnostic variables do not need to be  updated.  
    ! This information is stored in the state structure and 
@@ -807,7 +806,7 @@ do i = start_var, end_var
    if ( do_io_update(domain, i) ) then
       ! diagnostic files do not get clamped but restart may be clamped
       if ( do_io_clamping(domain, i) .and. do_file_clamping) then
-         call clamp_variable(domain, i, var_block(start_in_var_block:end_in_var_block))
+         call clamp_variable(domain, i, var_block(istart:iend))
       endif
 
       ! number of dimensions and length of each
@@ -818,13 +817,13 @@ do i = start_var, end_var
       ret = nf90_inq_varid(ncfile_out, get_variable_name(domain, i), var_id)
       call nc_check(ret, 'write_variables', 'getting variable id')
 
-      ret = nf90_put_var(ncfile_out, var_id, var_block(start_in_var_block:end_in_var_block), count=dims)
+      ret = nf90_put_var(ncfile_out, var_id, var_block(istart:iend), count=dims)
       call nc_check(ret, 'write_variables', 'writing')
 
       deallocate(dims)
    endif
 
-   start_in_var_block = start_in_var_block + var_size
+   istart = istart + var_size
 
 enddo
 

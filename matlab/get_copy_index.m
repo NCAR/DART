@@ -16,20 +16,20 @@ function copy_index = get_copy_index(fname, copystring)
 
 if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
-copy_meta_data = nc_varget(fname,'CopyMetaData');
-atts           = nc_getdiminfo(fname,'copy');
-num_copies     = atts.Length;
+% Matlab seems to always need to transpose character variables.
+copy_meta_data = ncread(fname,'MemberMetadata')';
+[ens_size, ~]  = nc_dim_info(fname,'member');
+[metalen, ~]   = nc_dim_info(fname,'metadatalength');
 
-% For a single copy, the size is nx1, for more k copies, it's kxn
-if size(copy_meta_data, 2) == 1
-   copy_meta_data = transpose(copy_meta_data);
+if( size(copy_meta_data,1) ~= ens_size || size(copy_meta_data,2) ~= metalen)
+    error('%s from %s does not have the shape expected',copystring,fname)
 end
 
 nowhitecs = dewhite(copystring);
 
 % Figure out which copy is the matching one
 copy_index = -1;
-for i = 1:num_copies,
+for i = 1:ens_size,
 
    % for matching -- we want to ignore whitespace -- find it & remove it
    nowhitemd = dewhite(copy_meta_data(i,:));
@@ -43,12 +43,13 @@ end
 % Provide modest error support
 
 if (copy_index < 0)
-   fprintf('WARNING: %s is not a valid metadata string for file %s\n', ...
+   fprintf('ERROR: %s is not a valid metadata string for file %s\n', ...
                 strtrim(copystring), fname)
    disp('valid metadata strings are: ')
-   for i = 1:num_copies,
+   for i = 1:ens_size,
       fprintf('%s\n',deblank(copy_meta_data(i,:)))
    end
+   error('Thats all. Start over')
 end
 
 

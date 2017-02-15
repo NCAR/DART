@@ -171,10 +171,6 @@
    write_binary_obs_sequence = .true.
    /
 
-&assim_model_nml
-   netCDF_large_file_support  = .true.
-   /
-
 &quality_control_nml
    input_qc_threshold          =  3.0
    outlier_threshold           =  3.0

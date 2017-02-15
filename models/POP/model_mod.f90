@@ -47,8 +47,6 @@ use state_structure_mod,   only : add_domain, get_model_variable_indices, &
                                   get_num_variables, get_index_start, &
                                   get_num_dims, get_domain_size
 
-use dart_time_io_mod,      only : write_model_time   !>@todo FIXME ... this routine uses no calendar, POP uses the gregorian calendar, the variable attributes are wrong ... 
-
 use typesizes
 use netcdf 
 
@@ -3702,6 +3700,45 @@ endif
 read_model_time = set_date(iyear, imonth, iday, ihour, iminute, isecond)
 
 end function read_model_time
+
+
+!--------------------------------------------------------------------
+!> write time to the output file
+!> this is only called when creating a file from scratch
+
+
+subroutine write_model_time(ncid, dart_time)
+
+integer,         intent(in) :: ncid
+type(time_type), intent(in) :: dart_time
+
+integer :: iyear, imonth, iday, ihour, iminute, isecond
+
+if ( .not. module_initialized ) call static_init_model
+
+call get_date(dart_time, iyear, imonth, iday, ihour, iminute, isecond)
+
+! begin define mode
+call nc_check(nf90_Redef(ncid),"redef")
+
+call nc_check( nf90_put_att(ncid, NF90_GLOBAL, 'iyear'  , iyear), &
+                       'write_model_time', 'put_att iyear')
+call nc_check( nf90_put_att(ncid, NF90_GLOBAL, 'imonth' , imonth), &
+                       'write_model_time', 'put_att imonth')
+call nc_check( nf90_put_att(ncid, NF90_GLOBAL, 'iday'   , iday), &
+                       'write_model_time', 'put_att iday')
+call nc_check( nf90_put_att(ncid, NF90_GLOBAL, 'ihour'  , ihour), &
+                       'write_model_time', 'put_att ihour')
+call nc_check( nf90_put_att(ncid, NF90_GLOBAL, 'iminute', iminute), &
+                       'write_model_time', 'put_att iminute')
+call nc_check( nf90_put_att(ncid, NF90_GLOBAL, 'isecond', isecond), &
+                       'write_model_time', 'put_att isecond')
+call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'calendar', 'Gregorian'), &
+                       'write_model_time', 'put_att calendar')
+
+call nc_check( nf90_Enddef(ncid),"write_model_time", "Enddef" )
+
+end subroutine write_model_time
 
 
 !--------------------------------------------------------------------

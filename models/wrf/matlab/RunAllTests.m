@@ -1,5 +1,5 @@
 function RunAllTests(dummy)
-%% RunAllTests.m
+%% RunAllTests.m wrf
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -12,6 +12,8 @@ if (nargin() > 0)
 else
    interactive = 0;
 end
+
+%%
 
 figure(1)
 if (interactive)
@@ -38,8 +40,8 @@ end
  vars1 = rmfield(vars1,{'time','time_series_length','fname'});
  vars2 = CheckModelCompatibility(truth_file,diagn_file);
  pinfo = CombineStructs(vars1,vars2);
- pinfo.lonmat     = nc_varget(pinfo.truth_file, 'XLONG_d01');
- pinfo.latmat     = nc_varget(pinfo.truth_file, 'XLAT_d01');
+ pinfo.lonmat     = ncread(pinfo.truth_file, 'XLONG_d01');
+ pinfo.latmat     = ncread(pinfo.truth_file, 'XLAT_d01');
  [nlats, nlons]   = size(pinfo.lonmat);
  pinfo.var        = 'T_d01';
  pinfo.levelindex = 1;
@@ -79,10 +81,10 @@ end
  clear pinfo; clf
 
  pinfo                    = CheckModel('Prior_Diag.nc');
- pinfo.time               = nc_varget(pinfo.fname,'time');
+ pinfo.time               = ncread(pinfo.fname,'time');
  pinfo.time_series_length = length(pinfo.time);
- pinfo.lonmat             = nc_varget(pinfo.fname, 'XLONG_d01');
- pinfo.latmat             = nc_varget(pinfo.fname, 'XLAT_d01');
+ pinfo.lonmat             = ncread(pinfo.fname, 'XLONG_d01');
+ pinfo.latmat             = ncread(pinfo.fname, 'XLAT_d01');
  [nlats, nlons]           = size(pinfo.lonmat);
  pinfo.base_var           = 'T_d01';
  pinfo.comp_var           = 'T_d01';
@@ -118,8 +120,8 @@ end
  pinfo.var1name     = 'T_d01';
  pinfo.var2name     = 'PH_d01';
  pinfo.var3name     = 'W_d01';
- pinfo.lonmat       = nc_varget(pinfo.fname, 'XLONG_d01');
- pinfo.latmat       = nc_varget(pinfo.fname, 'XLAT_d01');
+ pinfo.lonmat       = ncread(pinfo.fname, 'XLONG_d01');
+ pinfo.latmat       = ncread(pinfo.fname, 'XLAT_d01');
  [nlats, nlons]     = size(pinfo.lonmat);
  pinfo.var1_lvlind  = 1;
  pinfo.var2_lvlind  = 1;
@@ -174,8 +176,8 @@ end
  pinfo = rmfield(pinfo,{'diagn_file','truth_time','diagn_time'});
 [pinfo.num_ens_members, pinfo.ensemble_indices] = get_ensemble_indices(prior_file);
  pinfo.var_names      = 'U_d01';
- pinfo.latmat         = nc_varget(pinfo.prior_file, 'XLAT_U_d01');
- pinfo.lonmat         = nc_varget(pinfo.prior_file, 'XLONG_U_d01');
+ pinfo.latmat         = ncread(pinfo.prior_file, 'XLAT_U_d01');
+ pinfo.lonmat         = ncread(pinfo.prior_file, 'XLONG_U_d01');
 [nlats, nlons]        = size(pinfo.lonmat);
  pinfo.levelindex     = 1;
  pinfo.latindex       = round(nlats/2);
@@ -236,8 +238,8 @@ end
  pinfo.comp_var     = 'PH_d01';
  pinfo.base_tmeind  = 3;
  pinfo.base_time    = pinfo.time(pinfo.base_tmeind);
- pinfo.lonmat       = nc_varget(pinfo.fname, 'XLONG_d01');
- pinfo.latmat       = nc_varget(pinfo.fname, 'XLAT_d01');
+ pinfo.lonmat       = ncread(pinfo.fname, 'XLONG_d01');
+ pinfo.latmat       = ncread(pinfo.fname, 'XLAT_d01');
  [nlats, nlons]     = size(pinfo.lonmat);
  pinfo.base_lvlind  = 1;
  pinfo.base_lvl     = 1;

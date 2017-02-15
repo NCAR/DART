@@ -1,0 +1,157 @@
+netcdf filter_input {
+dimensions:
+	member = 20 ;
+	metadatalength = 32 ;
+	location = 3 ;
+	time = UNLIMITED ; // (1 currently)
+variables:
+
+	char MemberMetadata(member, metadatalength) ;
+		MemberMetadata:long_name = "description of each member" ;
+
+	double location(location) ;
+		location:short_name = "loc1d" ;
+		location:long_name = "location on a unit circle" ;
+		location:dimension = 1 ;
+		location:valid_range = 0., 1. ;
+
+	double state(time, member, location) ;
+		state:long_name = "the ensemble of model states" ;
+
+	double state_priorinf_mean(time, location) ;
+		state_priorinf_mean:long_name = "prior inflation value" ;
+
+	double state_priorinf_sd(time, location) ;
+		state_priorinf_sd:long_name = "prior inflation standard deviation" ;
+
+	double state_postinf_mean(time, location) ;
+		state_postinf_mean:long_name = "posterior inflation value" ;
+
+	double state_postinf_sd(time, location) ;
+		state_postinf_sd:long_name = "posterior inflation standard deviation" ;
+
+	double time(time) ;
+		time:long_name = "valid time of the model state" ;
+		time:axis = "T" ;
+		time:cartesian_axis = "T" ;
+		time:calendar = "no calendar" ;
+                time:month_lengths = 31,28,31,30,31,30,31,31,30,31,30,31 ;
+		time:units = "days since 0000-01-01 00:00:00" ;
+
+	double advance_to_time ;
+		advance_to_time:long_name = "desired time at end of the next model advance" ;
+		advance_to_time:axis = "T" ;
+		advance_to_time:cartesian_axis = "T" ;
+		advance_to_time:calendar = "no calendar" ;
+                advance_to_time:month_lengths = 31,28,31,30,31,30,31,31,30,31,30,31 ;
+		advance_to_time:units = "days since 0000-01-01 00:00:00" ;
+
+// global attributes:
+		:title = "an ensemble of spun-up model states" ;
+                :version = "$Id$" ;
+		:model = "Lorenz_84" ;
+		:history = "identical to filter_ics r1293 (circa June 2005)" ;
+data:
+
+ MemberMetadata =
+  "ensemble member      1",
+  "ensemble member      2",
+  "ensemble member      3",
+  "ensemble member      4",
+  "ensemble member      5",
+  "ensemble member      6",
+  "ensemble member      7",
+  "ensemble member      8",
+  "ensemble member      9",
+  "ensemble member     10",
+  "ensemble member     11",
+  "ensemble member     12",
+  "ensemble member     13",
+  "ensemble member     14",
+  "ensemble member     15",
+  "ensemble member     16",
+  "ensemble member     17",
+  "ensemble member     18",
+  "ensemble member     19",
+  "ensemble member     20" ;
+
+ location = 0, 0.333333333333333, 0.666666666666667 ;
+
+ state =
+   1.26856924822524,
+  0.530191839908194,
+  -1.02555915191074,
+  0.565621118689334,
+  0.123864238065032,
+   1.14388158176103,
+   1.72420832353387,
+  0.673214560136602,
+ -0.137128198680642,
+   1.18580551282257,
+  0.613782851169791,
+  -1.02627460620384,
+   1.24884960150982,
+ -0.757087648273662,
+   2.01095230099908,
+   1.03093273206684,
+  0.574240707274079,
+ -0.543470212557696,
+   1.21765761754111,
+   1.51198147315241,
+  0.425818221794271,
+  0.800639509687839,
+ -0.564197549024768,
+  0.212010805540135,
+   1.33910936191487,
+   1.37991144442228,
+ -0.444444368850543,
+ -1.794525837891192E-003,
+   2.00599741614839,
+ -0.224418780762503,
+  0.882165026585318,
+  0.905337303390957,
+ -0.687039697750419,
+ -0.236913569630400,
+  0.411225660097987,
+ -0.866701699860937,
+  0.483035967590293,
+ -0.758772125263584,
+  0.737416534433490,
+  0.186665012477644,
+   1.19428014330964,
+  0.700652701454568,
+  0.144796547800832,
+   1.29542795176930,
+  0.379120536097302,
+ -0.250463345720366,
+   1.97394150126702,
+ -0.125596194360882,
+  0.765171323427684,
+ -0.389191602775037,
+   1.19069166233230,
+   1.52382868732116,
+  0.938953018085313,
+  -1.03922606440580,
+   1.23263389594984,
+  0.914429590769518,
+ -0.123448541263766,
+   2.02350656974177,
+ -0.862956970557997,
+ -0.547468553546601 ;
+
+ state_priorinf_mean =
+  1.0, 1.0, 1.0 ;
+
+ state_priorinf_sd =
+  0.6, 0.6, 0.6 ;
+
+ state_postinf_mean =
+  1.0, 1.0, 1.0 ;
+
+ state_postinf_sd =
+  0.6, 0.6, 0.6 ;
+
+ time = 41.625 ;
+
+ advance_to_time = 41.625 ;
+}

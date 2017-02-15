@@ -18,8 +18,8 @@ function PlotTotalErr( pinfo )
 %
 % Example 1   (Lorenz_63, Lorenz_96, 9var ...)
 %%--------------------------------------------------------
-% pinfo.truth_file = 'True_State.nc';
-% pinfo.diagn_file = 'Posterior_Diag.nc';
+% pinfo.truth_file = 'perfect_output.nc';
+% pinfo.diagn_file = 'postassim.nc';
 % PlotTotalErr( pinfo )
 
 %% DART software - Copyright UCAR. This open source software is provided
@@ -30,26 +30,27 @@ function PlotTotalErr( pinfo )
 
 % Get the netcdf variable indices for desired "copies"
 % The metadata is queried to determine which "copy" is appropriate.
-truth_index      = get_copy_index(pinfo.truth_file, 'true state' );
-ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
-ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
+% truth_index      = get_copy_index(pinfo.truth_file, 'true state' );
+% ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
+% ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
 
 switch lower(pinfo.model)
 
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04','ikeda'}
 
       %% Get the appropriate netcdf variables
-      truth  = get_hyperslab('fname',pinfo.truth_file, ...
-                   'varname','state', 'copyindex',truth_index, ...
+
+      truth  = get_hyperslab('fname', pinfo.truth_file, ...
+                   'varname', 'state', 'permute', 'T', 'squeeze', 'T', ...
                    'tindex1',pinfo.truth_time(1), 'tcount',pinfo.truth_time(2));
       ens    = get_hyperslab('fname',pinfo.diagn_file, ...
-                   'varname','state', 'copyindex',ens_mean_index, ...
+                   'varname','state_mean', 'permute', 'T', ...
                    'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2));
       spread = get_hyperslab('fname',pinfo.diagn_file, ...
-                   'varname','state', 'copyindex',ens_spread_index, ...
+                   'varname','state_sd', 'permute', 'T', ...
                    'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2));
 
-      num_vars = size(spread,2);
+      num_vars = size(spread,1);
 
       % Also need to compute the spread; zero truth for this and
       % compute distance from 0
@@ -70,6 +71,7 @@ switch lower(pinfo.model)
       ylabel('Total Error')
 
    case 'lorenz_96_2scale'
+      error('not supported yet')
 
       %% Simply going to append X,Y together and treat as above.
 
@@ -101,7 +103,7 @@ switch lower(pinfo.model)
                    'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2));
 
       spread = [tim tom]; clear tim tom
-      num_vars = size(spread,2);
+      num_vars = size(spread,1);
 
       % Also need to compute the spread; zero truth for this and
       % compute distance from 0
@@ -122,6 +124,7 @@ switch lower(pinfo.model)
       ylabel('Total Error')
 
    case 'forced_lorenz_96'
+      error('not supported yet')
 
       %% This model has the state variables replicated, so there is a difference
       % between num_state_vars and the length of the state variable.
@@ -143,7 +146,7 @@ switch lower(pinfo.model)
                          'varname','state', 'copyindex',ens_spread_index, ...
                          'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2));
 
-      num_vars = size(Whole_spread,2);
+      num_vars = size(Whole_spread,1);
 
       %--------------------------------------------------------------------------
       % Treat the traditional state variable independent of the forcing variables
@@ -206,6 +209,7 @@ switch lower(pinfo.model)
       ylabel('Total Error')
 
    case {'simple_advection'}
+      error('not supported yet')
 
       %% if the 'state' variable exists ... then
       % 'concentration','source', and 'wind' do not.
@@ -230,7 +234,7 @@ switch lower(pinfo.model)
                       'varname',varlist{ivar}, 'copyindex',ens_spread_index, ...
                       'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2));
 
-         num_vars = size(spread,2);
+         num_vars = size(spread,1);
 
          % Also need to compute the spread; zero truth for this and
          % compute distance from 0
@@ -254,46 +258,55 @@ switch lower(pinfo.model)
       end
 
    case 'fms_bgrid'
+      error('not supported yet')
       %% GFDL bgrid model
 
       BgridTotalError( pinfo )
 
    case 'pe2lyr'
+      error('not supported yet')
       %% primitive equation 2 layer model
 
       Pe2lyrTotalError( pinfo )
 
    case 'pbl_1d'
+      error('not supported yet')
       %% planetary boundary layer column model
 
       PBL1DTotalError( pinfo )
 
    case 'mitgcm_ocean'
+      error('not supported yet')
       %% MIT general circulation ocean model
 
       MITGCMOceanTotalError( pinfo )
 
    case 'cam'
+      error('not supported yet')
       %% community (global) general circulation atmosphere model
 
       CAMTotalError( pinfo )
 
    case 'wrf'
+      error('not supported yet')
       %% weather and research forecasting model
 
       WRFTotalError( pinfo )
 
    case 'mpas_atm'
+      error('not supported yet')
       %% unstructured grid atmosphere model
 
       MPAS_ATMTotalError( pinfo )
 
    case 'pop'
+      error('not supported yet')
       %% parallel ocean program
 
       POPTotalError( pinfo )
 
    case 'sqg'
+      error('not supported yet')
 
       SqgTotalError( pinfo )
 

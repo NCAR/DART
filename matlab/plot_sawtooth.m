@@ -9,8 +9,17 @@
 % trajectory. If there is no change in the model state, this should
 % appear as a series of steps. This necessitates plotting the 'posterior'
 % first ... think about it ...
-
+%
 % Ultimately, plot_sawtooth will be replaced by a GUI.
+%
+% A reminder of the sequence:
+% truth  run (from    pmo):
+%           perfect_input  --->  perfect_output.nc
+% filter run (from filter):
+%           filter_input.nc  --->  [prior inflation]  --->
+%                 preassim.nc   --->  [assimilation]  --->
+%                       postassim.nc  ---> [posterior inflation]  --->
+%                             filter_output.nc
 %
 %
 % All the heavy lifting is done by PlotSawtooth.
@@ -22,27 +31,27 @@
 % DART $Id$
 
 if (exist('truth_file','var') ~= 1)
-   disp('If the True_State.nc exists, it will be plotted. If not, don''t worry.')
-   disp('Input name of True State file:')
-   truth_file = input('<cr> for True_State.nc\n','s');
+   disp('If the true model trajectory exists, it will be plotted. If not, don''t worry.')
+   disp('Input name of true model trajectory file:')
+   truth_file = input('<cr> for perfect_output.nc\n','s');
    if isempty(truth_file)
-      truth_file = 'True_State.nc';
+      truth_file = 'perfect_output.nc';
    end
 end
 
 if (exist('posterior_file','var') ~=1)
-   disp('Input name of posterior diagnostics file:')
-   posterior_file = input('<cr> for Posterior_Diag.nc\n','s');
+   disp('Input name of (posterior) ensemble trajectory file:')
+   posterior_file = input('<cr> for postassim.nc\n','s');
    if isempty(posterior_file)
-      posterior_file = 'Posterior_Diag.nc';
+      posterior_file = 'postassim.nc';
    end
 end
 
 if (exist('prior_file','var') ~=1)
-   disp('Input name of prior diagnostics file:')
-   prior_file = input('<cr> for Prior_Diag.nc\n','s');
+   disp('Input name of (prior) ensemble trajectory file:')
+   prior_file = input('<cr> for preassim.nc\n','s');
    if isempty(prior_file)
-      prior_file = 'Prior_Diag.nc';
+      prior_file = 'preassim.nc';
    end
 end
 

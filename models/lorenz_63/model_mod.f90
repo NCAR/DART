@@ -19,7 +19,7 @@ use     location_mod,      only : location_type, set_location, get_location, &
 
 use    utilities_mod,      only : register_module, error_handler, E_ERR, E_MSG, nmlfileunit, &
                                   do_output, find_namelist_in_file, check_namelist_read,     &
-                                  do_nml_file, do_nml_term
+                                  do_nml_file, do_nml_term, nc_check
 
 use         obs_kind_mod,  only : RAW_STATE_VARIABLE
 
@@ -274,8 +274,6 @@ integer,             intent(out) :: istatus(ens_size)
 
 integer(i8)  :: lower_index, upper_index
 real(r8) :: lctn, lctnfrac
-real(r8) :: x_lower(ens_size) !< the lower piece of state vector
-real(r8) :: x_upper(ens_size) !< the upper piece of state vector
 
 ! All obs okay for now
 istatus = 0
@@ -387,8 +385,7 @@ integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 ! netCDF variables for Location
 !--------------------------------------------------------------------
 
-integer :: LocationVarID
-integer :: StateVarDimID, StateVarVarID
+integer :: LocationDimID, LocationVarID
 integer :: StateVarID, MemberDimID, TimeDimID
 
 !--------------------------------------------------------------------
@@ -404,7 +401,7 @@ character(len=NF90_MAX_NAME) :: str1
 integer             :: i, i4_model_size
 type(location_type) :: lctn 
 ierr = 0                             ! assume normal termination
-model_mod_writes_state_variables = .true. 
+model_mod_writes_state_variables = .false.
 
 i4_model_size = int(model_size,i4)
 
@@ -412,18 +409,9 @@ i4_model_size = int(model_size,i4)
 ! make sure ncFileID refers to an open netCDF file 
 !--------------------------------------------------------------------
 
-call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
-call check(nf90_sync(ncFileID)) ! Ensure netCDF file is current
-call check(nf90_Redef(ncFileID))
-
-!--------------------------------------------------------------------
-! Determine ID's from stuff already in the netCDF file
-!--------------------------------------------------------------------
-
-! make sure time is unlimited dimid
-
-call check(nf90_inq_dimid(ncFileID,"copy",dimid=MemberDimID))
-call check(nf90_inq_dimid(ncFileID,"time",dimid=TimeDimID))
+call nc_check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID), 'nc_write_model_atts', 'nf90_Inquire')
+call nc_check(nf90_sync(ncFileID), 'nc_write_model_atts', 'nf90_sync') ! Ensure netCDF file is current
+call nc_check(nf90_Redef(ncFileID), 'nc_write_model_atts', 'nf90_Redef')
 
 !--------------------------------------------------------------------
 ! Write Global Attributes 
@@ -447,8 +435,8 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_deltat", deltat ))
 ! Define the model size, state variable dimension ... whatever ...
 !--------------------------------------------------------------------
 
-call check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
-                        len=i4_model_size, dimid = StateVarDimID)) 
+call nc_check(nf90_def_dim(ncid=ncFileID, name="location", &
+                        len=i4_model_size, dimid = LocationDimID), 'nc_write_model_atts', 'nf90_def_dim location') 
 
 !--------------------------------------------------------------------
 ! Define the Location Variable and add Attributes
@@ -457,34 +445,23 @@ call check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
 ! http://www.cgd.ucar.edu/cms/eaton/netcdf/CF-working.html#ctype
 !--------------------------------------------------------------------
 
-call check(NF90_def_var(ncFileID, name=trim(adjustl(LocationName)), xtype=nf90_double, &
-              dimids = StateVarDimID, varid=LocationVarID) )
-call check(nf90_put_att(ncFileID, LocationVarID, "long_name", trim(adjustl(LocationLName))))
-call check(nf90_put_att(ncFileID, LocationVarID, "dimension", LocationDims ))
-call check(nf90_put_att(ncFileID, LocationVarID, "units", "nondimensional"))
-call check(nf90_put_att(ncFileID, LocationVarID, "valid_range", (/ 0.0_r8, 1.0_r8 /)))
-
 !--------------------------------------------------------------------
 ! Define either the "state vector" variables -OR- the "prognostic" variables.
 !--------------------------------------------------------------------
 
-! Define the state vector coordinate variable
-call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
-           dimids=StateVarDimID, varid=StateVarVarID))
-call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"))
-call check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical") )
-call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, i4_model_size /)))
-
-! Define the actual state vector
-call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_double, &
-           dimids = (/ StateVarDimID, MemberDimID, TimeDimID /), varid=StateVarID))
-call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"))
+call nc_check(NF90_def_var(ncFileID, name="location", xtype=nf90_double, &
+              dimids = LocationDimID, varid=LocationVarID) , 'nc_write_model_atts', 'nf90_def_var location')
+call nc_check(nf90_put_att(ncFileID, LocationVarID, "short_name", trim(adjustl(LocationLName))), 'nc_write_model_atts', 'nf90_put_att short_name')
+call nc_check(nf90_put_att(ncFileID, LocationVarID, "long_name", "location on a unit circle"), 'nc_write_model_atts', 'nf90_put_att long_name')
+call nc_check(nf90_put_att(ncFileID, LocationVarID, "dimension", LocationDims ), 'nc_write_model_atts', 'nf90_put_att dimension')
+call nc_check(nf90_put_att(ncFileID, LocationVarID, "units", "nondimensional"), 'nc_write_model_atts', 'nf90_put_att units')
+call nc_check(nf90_put_att(ncFileID, LocationVarID, "valid_range", (/ 0.0_r8, 1.0_r8 /)), 'nc_write_model_atts', 'nf90_put_att valid_range')
 
 ! Leave define mode so we can fill
-call check(nf90_enddef(ncfileID))
+call nc_check(nf90_enddef(ncfileID), 'nc_write_model_atts', 'nf90_enddef')
 
 ! Fill the state variable coordinate variable
-call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,i4_model_size) /) ))
+call nc_check(nf90_put_var(ncFileID, LocationVarID, (/ (i,i=1,i4_model_size) /) ), 'nc_write_model_atts', 'nf90_put_var LocationVarID')
 
 !--------------------------------------------------------------------
 ! Fill the location variable
@@ -492,7 +469,7 @@ call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,i4_model_size) /) ))
 
 do i = 1,model_size
    lctn = state_loc(i)
-   call check(nf90_put_var(ncFileID, LocationVarID, get_location(lctn), (/ i /) ))
+   call nc_check(nf90_put_var(ncFileID, LocationVarID, get_location(lctn), (/ i /) ), 'nc_write_model_atts', 'nf90_put_var LocationVarID 2')
 enddo
 
 !--------------------------------------------------------------------

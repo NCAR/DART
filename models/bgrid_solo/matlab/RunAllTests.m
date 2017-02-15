@@ -1,5 +1,5 @@
 function RunAllTests(dummy)
-%% RunAllTests.m
+%% RunAllTests.m bgrid_solo
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -12,6 +12,8 @@ if (nargin() > 0)
 else
    interactive = 0;
 end
+
+%%
 
 figure(1)
 if (interactive)

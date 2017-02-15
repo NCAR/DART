@@ -6,26 +6,25 @@
 #
 # DART $Id$
 
-set SNAME = $0
-set clobber
 
-switch ( $#argv )
-   case 0:
-      # supplying no args - ok
-      breaksw
-      
-   default:
-      echo " "
-      echo "usage: $SNAME:t"
-      echo " "
-      echo "This script compiles all available models for this branch of the DART code."
-      echo "This must be run from the top-level 'DART' directory."
-      exit 1
-      breaksw
-endsw
+set clobber
+setenv MPIFLAG '-nompi'
+
+if ( $#argv > 0 ) then
+  if ( "$argv[1]" == "-mpi" ) then
+    setenv MPIFLAG '-mpi'
+  else if ("$argv[1]" == "-nompi") then
+    setenv MPIFLAG '-nompi'
+  else
+    echo "Unrecognized argument to $0: $argv[1]"
+    echo "Usage: $0 [ -mpi | -nompi ]"
+    echo " default is to run tests without using MPI."
+    exit -1
+  endif
+endif
 
 if ( ! -d models ) then
-   echo "models does not exist. $SNAME:t must be run from the top-level"
+   echo "models does not exist. $0 must be run from the top-level"
    echo "DART directory -- please try again."
    exit 2
 else
@@ -68,74 +67,48 @@ switch ( ${OSTYPE} )
 endsw
 
 #----------------------------------------------------------------------
-# set the environment variable MPI to anything in order to enable the
-# MPI builds and tests.  set the argument to the build scripts so it
-# knows which ones to build.
-if ( $?MPI ) then
-  echo "Will be building with MPI enabled"
-  setenv QUICKBUILD_ARG -mpi
-else
-  echo "Will NOT be building with MPI enabled"
-  setenv QUICKBUILD_ARG -nompi
-endif
-#----------------------------------------------------------------------
 
 echo "Running DART test on $host"
 
 #----------------------------------------------------------------------
 # Compile 'filter' for a wide range of models.
-# CAVEATS:
-#    The PBL_1d model relies on routines that require special compiler
-#    flags to be recognized as F90 code. Since these are compiler-specific,
-#    I have not figured out a way yet to automate this. 
-#
 #----------------------------------------------------------------------
 
-@ modelnum = 10
+echo
+echo
+echo "=================================================================="
+echo "=================================================================="
+echo "Building and testing supported models starting at "`date`
+echo "=================================================================="
+echo "=================================================================="
+echo
+echo
 
+cd ${DARTHOME}/models
 if ( 1 == 1 ) then
-foreach MODEL ( \
-  bgrid_solo \
-  cam-fv \
-  cice \
-  cm1 \
-  lorenz_63 \
-  lorenz_96 \
-  mpas_atm \
-  POP \
-  ROMS \
-  wrf )
-  # many models intentionally omitted.
-    
-    echo "=================================================================="
-    echo "Compiling $MODEL at "`date`
-    echo ""
-
-    cd ${DARTHOME}/models/${MODEL}/work
-
-    ./quickbuild.csh ${QUICKBUILD_ARG} || exit 3
-
-    echo "Trying to run pmo for model $MODEL as a test"
-    ./perfect_model_obs
-
-    echo "Removing the newly-built objects ..."
-    ${REMOVE} *.o *.mod 
-    ${REMOVE} Makefile input.nml.*_default .cppdefs
-    foreach TARGET ( mkmf_* )
-      set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
-      ${REMOVE} $PROG
-    end
-
-    @ modelnum = $modelnum + 1
-end
+  ./buildall.csh $MPIFLAG
 endif
 
 echo
 echo
+echo "=================================================================="
+echo "=================================================================="
+echo "Model testing complete at "`date`
+echo "=================================================================="
+echo "=================================================================="
+echo
+echo
+
+#----------------------------------------------------------------------
+
+echo
 echo
 echo "=================================================================="
-echo "Testing observation converters at "`date`
 echo "=================================================================="
+echo "Testing observation converters starting at "`date`
+echo "=================================================================="
+echo "=================================================================="
+echo
 echo
 
 echo "Not all observation converters are expected to build; you may"
@@ -148,17 +121,25 @@ if ( 1 == 1 ) then
 endif
 
 echo
+echo
+echo "=================================================================="
 echo "=================================================================="
 echo "Observation converter testing complete at "`date`
 echo "=================================================================="
+echo "=================================================================="
 echo
+echo
+
+#----------------------------------------------------------------------
 
 echo
 echo
+echo "=================================================================="
+echo "=================================================================="
+echo "Testing location modules starting at "`date`
+echo "=================================================================="
+echo "=================================================================="
 echo
-echo "=================================================================="
-echo "Testing location modules at "`date`
-echo "=================================================================="
 echo
 
 cd ${DARTHOME}/location
@@ -167,18 +148,26 @@ if ( 1 == 1 ) then
 endif
 
 echo
+echo
+echo "=================================================================="
 echo "=================================================================="
 echo "Location module testing complete at "`date`
 echo "=================================================================="
+echo "=================================================================="
+echo
 echo
 
+#----------------------------------------------------------------------
+
+# FIXME: put this into a separate script
 
 
-echo
 echo
 echo
 echo "=================================================================="
+echo "=================================================================="
 echo "Testing single-threaded bgrid_solo at "`date`
+echo "=================================================================="
 echo "=================================================================="
 echo
 

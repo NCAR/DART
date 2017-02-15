@@ -8941,16 +8941,15 @@ end function query_vert_localization_coord
 !> read the time from the input file
 function read_model_time(filename)
 
-character(len=256),  intent(in) :: filename
-integer                         :: year, month, day, hour, minute, second
-integer                         :: ret !< netcdf return code
-integer                         :: ndims, dimids(2), ivtype, ncid, var_id
-character(len=80)               :: varname
-character(len=19)               :: timestring
-integer                         :: i,  idims(2)
+character(len=*),  intent(in) :: filename
+type(time_type)               :: read_model_time
 
-type(time_type) :: read_model_time
-
+integer           :: year, month, day, hour, minute, second
+integer           :: ret ! netcdf return code
+integer           :: ndims, dimids(2), ivtype, ncid, var_id
+character(len=80) :: varname
+character(len=19) :: timestring
+integer           :: i,  idims(2)
 
 call nc_check( nf90_open(filename, NF90_NOWRITE, ncid), &
                   'opening', filename )

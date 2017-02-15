@@ -1,0 +1,237 @@
+netcdf filter_input {
+dimensions:
+	member = 80 ;
+	metadatalength = 32 ;
+	location = 3 ;
+	time = UNLIMITED ; // (1 currently)
+variables:
+
+	char MemberMetadata(member, metadatalength) ;
+		MemberMetadata:long_name = "description of each member" ;
+
+	double location(location) ;
+		location:short_name = "loc1d" ;
+		location:long_name = "location on a unit circle" ;
+		location:dimension = 1 ;
+		location:valid_range = 0., 1. ;
+
+	double state(time, member, location) ;
+		state:long_name = "the ensemble of model states" ;
+
+	double state_priorinf_mean(time, location) ;
+		state_priorinf_mean:long_name = "prior inflation value" ;
+
+	double state_priorinf_sd(time, location) ;
+		state_priorinf_sd:long_name = "prior inflation standard deviation" ;
+
+	double state_postinf_mean(time, location) ;
+		state_postinf_mean:long_name = "posterior inflation value" ;
+
+	double state_postinf_sd(time, location) ;
+		state_postinf_sd:long_name = "posterior inflation standard deviation" ;
+
+	double time(time) ;
+		time:long_name = "valid time of the model state" ;
+		time:axis = "T" ;
+		time:cartesian_axis = "T" ;
+		time:calendar = "no calendar" ;
+                time:month_lengths = 31,28,31,30,31,30,31,31,30,31,30,31 ;
+		time:units = "days since 0000-01-01 00:00:00" ;
+
+	double advance_to_time ;
+		advance_to_time:long_name = "desired time at end of the next model advance" ;
+		advance_to_time:axis = "T" ;
+		advance_to_time:cartesian_axis = "T" ;
+		advance_to_time:calendar = "no calendar" ;
+                advance_to_time:month_lengths = 31,28,31,30,31,30,31,31,30,31,30,31 ;
+		advance_to_time:units = "days since 0000-01-01 00:00:00" ;
+
+// global attributes:
+		:title = "an ensemble of spun-up model states" ;
+                :version = "$Id: $" ;
+		:model = "Lorenz_63" ;
+		:history = "identical to filter_ics r1293 (circa June 2005)" ;
+data:
+
+ MemberMetadata =
+  "ensemble member      1",
+  "ensemble member      2",
+  "ensemble member      3",
+  "ensemble member      4",
+  "ensemble member      5",
+  "ensemble member      6",
+  "ensemble member      7",
+  "ensemble member      8",
+  "ensemble member      9",
+  "ensemble member     10",
+  "ensemble member     11",
+  "ensemble member     12",
+  "ensemble member     13",
+  "ensemble member     14",
+  "ensemble member     15",
+  "ensemble member     16",
+  "ensemble member     17",
+  "ensemble member     18",
+  "ensemble member     19",
+  "ensemble member     20",
+  "ensemble member     21",
+  "ensemble member     22",
+  "ensemble member     23",
+  "ensemble member     24",
+  "ensemble member     25",
+  "ensemble member     26",
+  "ensemble member     27",
+  "ensemble member     28",
+  "ensemble member     29",
+  "ensemble member     30",
+  "ensemble member     31",
+  "ensemble member     32",
+  "ensemble member     33",
+  "ensemble member     34",
+  "ensemble member     35",
+  "ensemble member     36",
+  "ensemble member     37",
+  "ensemble member     38",
+  "ensemble member     39",
+  "ensemble member     40",
+  "ensemble member     41",
+  "ensemble member     42",
+  "ensemble member     43",
+  "ensemble member     44",
+  "ensemble member     45",
+  "ensemble member     46",
+  "ensemble member     47",
+  "ensemble member     48",
+  "ensemble member     49",
+  "ensemble member     50",
+  "ensemble member     51",
+  "ensemble member     52",
+  "ensemble member     53",
+  "ensemble member     54",
+  "ensemble member     55",
+  "ensemble member     56",
+  "ensemble member     57",
+  "ensemble member     58",
+  "ensemble member     59",
+  "ensemble member     60",
+  "ensemble member     61",
+  "ensemble member     62",
+  "ensemble member     63",
+  "ensemble member     64",
+  "ensemble member     65",
+  "ensemble member     66",
+  "ensemble member     67",
+  "ensemble member     68",
+  "ensemble member     69",
+  "ensemble member     70",
+  "ensemble member     71",
+  "ensemble member     72",
+  "ensemble member     73",
+  "ensemble member     74",
+  "ensemble member     75",
+  "ensemble member     76",
+  "ensemble member     77",
+  "ensemble member     78",
+  "ensemble member     79",
+  "ensemble member     80" ;
+
+ location =  0, 0.333333333333333, 0.666666666666667 ;
+
+ state =
+  -6.28874005309694, -8.845724662179, 19.549594418555,
+  8.71683102653325, 16.7426972269491, 10.7644335551805,
+  -8.49591790769119, -1.51084754246391, 34.1573699421872,
+  8.65656870549975, -1.17521043116365, 36.535433095023,
+  -13.1702405517062, -17.0796487164352, 28.5281801081831,
+  -13.8178082766966, -11.8912738952455, 35.9183228957065,
+  13.4251044197005, 9.73860476389608, 37.0349284184863,
+  -10.7043761282593, -3.8296368141299, 36.3099418817669,
+  8.73655271538819, 13.6634707780932, 19.1867283722496,
+  0.823882328032796, 1.58797136525236, 8.4065777505796,
+  4.75063793185799, 5.50009747857953, 21.2198516297801,
+  -6.49409168615952, -1.17355304323858, 30.9323555936228,
+  1.29150789287777, 0.225507784992048, 21.2826768175026,
+  5.54420723002492, 8.81575682214899, 16.2488622241585,
+  13.0513470438728, 6.50761272296078, 38.8635044820277,
+  -8.60601163243083, -12.807239179002, 20.4436705746756,
+  -5.16752987731829, 7.39399233296956, 35.7116222499777,
+  5.93703547091643, 8.58144959697354, 18.8298943601289,
+  -1.75150495528885, -1.0772862280877, 20.6526373646148,
+  11.3443896451318, 18.7152091207122, 19.6270951053422,
+  2.98329604746719, 5.49356513725326, 23.1642188444211,
+  -0.431777407441208, -1.65717308019207, 20.0605893124423,
+  0.910443251366124, 1.75445346031505, 8.16341553541579,
+  -8.95734000962555, -13.498970206276, 20.3578595078654,
+  7.26981581714414, 11.4504844359903, 17.963178574733,
+  11.4584848981253, 16.6923071491746, 23.7309974626475,
+  11.2995392407622, 9.73522353488669, 32.3433233552164,
+  -13.6149532968852, -23.6834696671908, 19.6997957171821,
+  -9.16135188120064, -16.0631082066764, 15.2019761722893,
+  5.3410940127252, 1.61792776642864, 28.4287159342626,
+  7.1482348956905, 3.07823298156816, 30.3388618519734,
+  5.17026649429946, 7.29564002676691, 18.7081791541346,
+  11.0637972216181, -1.07419879044867, 40.4175064632435,
+  -4.88633131748742, -8.50446647868586, 12.9570729695678,
+  9.40383906110723, 16.7773728166839, 14.7942560749745,
+  -9.91585007710617, -2.99813127142823, 35.5065781985951,
+  1.47073310686747, -0.682089185821357, 23.6495387682892,
+  -9.17977146473766, -13.0395102446682, 22.1469726346454,
+  -16.2475005524484, -10.1938933441156, 42.6915371912641,
+  -14.3702162803117, -12.8384083239258, 36.3274031888839,
+  6.47243692034648, 9.63219262383762, 18.5927574708306,
+  3.36733809678741, 6.29807938405019, 9.54575465341665,
+  12.4415432215083, 10.4440920044102, 34.2178157523851,
+  7.18066433039655, 13.0363795068, 12.5179451648879,
+  -0.756570874084933, -1.34986929103395, 14.1875709588866,
+  13.8559568107829, 17.6012942407436, 29.9581638005713,
+  -14.0428714564638, -2.4577962498651, 43.4469915259454,
+  9.52809736549021, 16.3879580506716, 16.4166988641624,
+  13.3447235530424, 19.5465836746123, 25.6970674184422,
+  11.8705149334602, 21.0041794220002, 17.2873028234765,
+  -8.05229436142488, -14.3186770618767, 13.7991340756919,
+  -5.27667700323753, -1.0863759102758, 28.8204415734224,
+  -6.10534978758283, -9.32987525823044, 18.226525938511,
+  -13.6789593484589, -7.56071416527189, 39.2578677198786,
+  -0.293997574770803, -0.528414513820597, 9.04016268619393,
+  -13.2719191825494, -5.84006356996452, 39.7236378687801,
+  -6.655189321761, -10.9455949486837, 15.7864198152678,
+  7.58030298616422, 3.11100940271971, 31.1354019214098,
+  -8.75484101849827, -2.5466606809526, 33.7568081871749,
+  -3.34006330937766, 3.58580840871182, 30.3978157637166,
+  -2.23510831478486, 0.345929488750442, 24.7192933158201,
+  -12.1983737460626, -0.228453405820163, 41.4855431553895,
+  -7.21839305118577, -1.05722716610362, 32.3113651117697,
+  6.13516522624389, 11.3458347732469, 11.1032776291899,
+  5.94335535135913, 1.69896733582117, 29.4774556259506,
+  8.00589400180315, 13.8043165528465, 15.2057535462036,
+  9.06224012565128, 4.39465192811458, 32.7773410136888,
+  11.9647919663292, 11.2961552117553, 32.2530018016766,
+  -1.06672926140512, -1.99261108477911, 8.31582404789186,
+  11.4196346730044, 14.7210806118052, 26.626772358322,
+  14.6062440798294, 20.4428827706534, 28.5444781036746,
+  -13.9726020745813, -15.8243340457534, 32.3048659882331,
+  14.2235786327411, 16.4182329493858, 32.3900014692532,
+  12.3328702754702, 8.89636555406105, 35.4128444326189,
+  -7.53845706158273, -12.8417912369084, 15.2079482249501,
+  -11.6201204478504, -7.51795213887107, 35.0584331740334,
+  4.01108021245348, -0.227678384503705, 28.0628735424697,
+  8.11545610930881, 3.37997809122434, 31.9007191347844,
+  -5.03036701346132, -8.02404717575566, 16.4031138625906,
+  13.9127978999142, 17.7733097090418, 29.9133122807637 ;
+
+ state_priorinf_mean =
+  1.0, 1.0, 1.0 ;
+
+ state_priorinf_sd =
+  0.6, 0.6, 0.6 ;
+
+ state_postinf_mean =
+  1.0, 1.0, 1.0 ;
+
+ state_postinf_sd =
+  0.6, 0.6, 0.6 ;
+
+ time = 41.625 ;
+
+ advance_to_time = 41.625 ;
+}

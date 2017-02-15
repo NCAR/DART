@@ -1,5 +1,14 @@
 %% plot_reg_factor
 %
+% A reminder of the sequence:
+% truth  run (from    pmo):
+%           perfect_input  --->  perfect_output.nc
+% filter run (from filter):
+%           filter_input.nc  --->  [prior inflation]  --->
+%                 preassim.nc   --->  [assimilation]  --->
+%                       postassim.nc  ---> [posterior inflation]  --->
+%                             filter_output.nc
+%
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -8,7 +17,7 @@
 % DART $Id$
 
 if (exist('fname','var') ~= 1)
-   fname = input('Input name of reg diagnostics file:\n<cr> for reg_diagnostics\n','s');
+   fname = input('Input name of regression diagnostics file:\n<cr> for reg_diagnostics\n','s');
    if isempty(fname)
       fname = 'reg_diagnostics';
    end

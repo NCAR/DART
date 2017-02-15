@@ -4,10 +4,19 @@
 % sure the current figure is "cleared" before you plot the first
 % trajectory.
 %
+% A reminder of the sequence:
+% truth  run (from    pmo):
+%           perfect_input  --->  perfect_output.nc
+% filter run (from filter):
+%           filter_input.nc  --->  [prior inflation]  --->
+%                 preassim.nc   --->  [assimilation]  --->
+%                       postassim.nc  ---> [posterior inflation]  --->
+%                             filter_output.nc
+%
 % It is possible to overlay subsequent trajectories as follows:
 %
 % clf;                      % clears the current figure
-% fname = 'True_State.nc';
+% fname = 'perfect_output.nc';
 % var1  = 1;                % variable ID to be used as 'X'
 % var2  = 2;                % variable ID to be used as 'Y'
 % var3  = 3;                % variable ID to be used as 'Z'
@@ -16,7 +25,7 @@
 % plot_phase_space
 %
 % hold on
-% fname      = 'Posterior_Diag.nc';
+% fname      = 'postassim.nc';
 % ens_mem    = 'ensemble mean';           % ensemble member ID
 % ltype      = 'r-';        % line type ('help plot' for details)
 % plot_phase_space
@@ -24,7 +33,6 @@
 % ens_mem    = 'ensemble member4';        % ensemble member ID
 % ltype      = 'c-';        % line type ('help plot' for details)
 % plot_phase_space
-%
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -33,12 +41,12 @@
 % DART $Id$
 
 if (exist('fname','var') ~=1)
-   fname = input('Input name of netCDF file:\n<cr> for True_State.nc\n','s');
+   fname = input('Input name of netCDF file:\n<cr> for perfect_output.nc\n','s');
    if isempty(fname)
-      fname = 'True_State.nc';
+      fname = 'perfect_output.nc';
    end
 else
-   if isempty(fname), fname = 'True_State.nc'; end
+   if isempty(fname), fname = 'perfect_output.nc'; end
    s1 = input(sprintf('Input name of netCDF file:\n<cr> for %s\n',fname),'s');
    if ~isempty(s1), fname = s1; end
 end
@@ -72,7 +80,7 @@ switch lower(pinfo.model)
 
       if (exist('ens_mem','var') ~=1)
          % Set a viable default ensemble member string
-         metadata = nc_varget(fname,'CopyMetaData');
+         metadata = ncread(fname,'MemberMetadata');
          [N,M]    = size(metadata);
          if M == 1
              cell_array{1} = metadata';
@@ -82,7 +90,7 @@ switch lower(pinfo.model)
          ens_mem = strtrim(cell_array{1});
          disp('It is necessary to pick an ensemble member to plot.')
          disp('Since we pick it based on the metadata string, it could be:')
-         disp('''true state'', ''ensemble mean'', ''ensemble member10'' ... you get it.')
+         disp('''ensemble member 1'', ''ensemble member23'', ''ensemble member10'' ... you get it.')
          str1 = sprintf('Input ensemble member metadata STRING. <cr> for ''%s''\n',ens_mem);
          s1 = input(str1,'s');
          if ~ isempty(s1), ens_mem = s1; end
@@ -121,7 +129,7 @@ switch lower(pinfo.model)
 
       if (exist('ens_mem','var') ~=1)
          % Set a viable default ensemble member string
-         metadata = nc_varget(fname,'CopyMetaData');
+         metadata = ncread(fname,'CopyMetaData');
          [N,M]    = size(metadata);
          if M == 1
              cell_array{1} = metadata';
@@ -192,7 +200,7 @@ switch lower(pinfo.model)
 
       if (exist('ens_mem','var') ~=1)
          % Set a viable default ensemble member string
-         metadata = nc_varget(fname,'CopyMetaData');
+         metadata = ncread(fname,'CopyMetaData');
          [N,M]    = size(metadata);
          if M == 1
              cell_array{1} = metadata';

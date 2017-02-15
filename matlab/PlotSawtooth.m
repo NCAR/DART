@@ -22,18 +22,18 @@ function PlotSawtooth( pinfo )
 %
 % Example 1 ( forced_lorenz_96 model )
 %%--------------------------------------------------------
-% pinfo.truth_file     = 'True_State.nc';
-% pinfo.prior_file     = 'Prior_Diag.nc';
-% pinfo.posterior_file = 'Posterior_Diag.nc';
+% pinfo.truth_file     = 'perfect_output.nc';
+% pinfo.prior_file     = 'preassim.nc';
+% pinfo.posterior_file = 'postassim.nc';
 % pinfo.var            = 'state';
 % pinfo.var_inds       = [ 23 36 42 ];
 % PlotSawtooth( pinfo );
 %
 % Example 2 ( fms_bgrid_model )
 %%--------------------------------------------------------
-% pinfo.truth_file     = 'True_State.nc';
-% pinfo.prior_file     = 'Prior_Diag.nc';
-% pinfo.posterior_file = 'Posterior_Diag.nc';
+% pinfo.truth_file     = 'perfect_output.nc';
+% pinfo.prior_file     = 'preassim.nc';
+% pinfo.posterior_file = 'postassim.nc';
 % pinfo.var        = 'u';
 % pinfo.level      = 3;
 % pinfo.latitude   = 23.5;
@@ -49,7 +49,6 @@ function PlotSawtooth( pinfo )
 % Get some information from the truth_file, if it exists.
 if ( exist(pinfo.truth_file,'file') == 2 )
     truth = CheckModelCompatibility(pinfo.truth_file, pinfo.posterior_file);
-    truth.truth_index = get_copy_index(pinfo.truth_file, 'true state' );
 else
     truth = [];
 end
@@ -58,14 +57,13 @@ end
 %  The metadata is queried to determine which "copy" is appropriate
 %  and a 'doubled up' x axis plotting array is created.
 
-prior.ens_mean_index = get_copy_index(pinfo.prior_file,     'ensemble mean');
-post.ens_mean_index = get_copy_index(pinfo.posterior_file, 'ensemble mean');
+pinfo.ens_mean_var = sprintf('%s_mean',pinfo.var);
 
 x          = zeros(2,pinfo.time_series_length);
 x(1,:)     = pinfo.time;
 x(2,:)     = pinfo.time;
 pinfo.xax  = x(:);
-metadata   = nc_varget(pinfo.prior_file,'CopyMetaData');
+metadata   = ncread(pinfo.prior_file,'MemberMetadata')';
 
 %% The (usually simple) model states that are not stored in prognostic
 %  variables are plotted with thei indices in to the StateVector, if the
@@ -73,14 +71,12 @@ metadata   = nc_varget(pinfo.prior_file,'CopyMetaData');
 %  routine.
 
 if isfield(pinfo,'var_inds')
-    PlotGivenIndices( pinfo, prior, post, truth, metadata);
+    PlotGivenIndices( pinfo, truth, metadata);
 elseif isfield(pinfo,'var_names')
     PlotGivenVariable(pinfo, truth, metadata);
 end
 
-
-
-function PlotGivenIndices(pinfo, prior, post, truth, metadata)
+function PlotGivenIndices(pinfo, truth, metadata)
 
 %% Plot given an index into the (low-order-model) state-space vector.
 %  Each variable gets its own figure.
@@ -91,12 +87,15 @@ for ivar = pinfo.var_inds,
 
     % Get the data from the netcdf files
 
-    po_ens_mean = get_hyperslab('fname',pinfo.posterior_file, 'varname',pinfo.var, ...
-        'copyindex',post.ens_mean_index, 'stateindex',ivar, ...
-        'tindex1',pinfo.posterior_time(1), 'tcount',pinfo.posterior_time(2));
-    pr_ens_mean = get_hyperslab('fname',pinfo.prior_file, 'varname',pinfo.var, ...
-        'copyindex',prior.ens_mean_index, 'stateindex',ivar, ...
-        'tindex1',pinfo.prior_time(1), 'tcount',pinfo.prior_time(2));
+    po_ens_mean = get_hyperslab('fname', pinfo.posterior_file, ...
+                      'varname',pinfo.ens_mean_var, 'stateindex',ivar, ...
+                      'tindex1',pinfo.posterior_time(1), ...
+                      'tcount',pinfo.posterior_time(2));
+
+    pr_ens_mean = get_hyperslab('fname',pinfo.prior_file, ...
+                      'varname',pinfo.ens_mean_var, 'stateindex',ivar, ...
+                      'tindex1',pinfo.prior_time(1), ...
+                      'tcount',pinfo.prior_time(2));
 
     % Now we paste them together in a clever way to show
     % the effect of the assimilation
@@ -107,20 +106,24 @@ for ivar = pinfo.var_inds,
     % Plot the true trajectory if it exists; the ens mean; annotate
 
     iplot = iplot + 1;
-    figure(iplot); clf;
+    figure(iplot); clf; clear h legend_strings nitems;
 
     if ( exist(pinfo.truth_file,'file') == 2 )
 
-        true_trajectory = get_hyperslab('fname',pinfo.truth_file, 'varname',pinfo.var, ...
-            'copyindex',truth.truth_index, 'stateindex',ivar);
+        true_trajectory = get_hyperslab('fname', pinfo.truth_file, ...
+                              'varname', pinfo.var, ...
+                              'stateindex', ivar, 'squeeze', 'true');
 
-        plot(truth.time, true_trajectory, 'k-','linewidth',1.0); hold on;
-        plot(pinfo.xax, a, 'k-','linewidth',2.0);
-        legend('truth','ensemble mean')
+        h(1) = plot(truth.time, true_trajectory, 'k-','linewidth',1.0); hold on;
+        h(2) = plot(pinfo.xax, a, 'k-','linewidth',2.0);
+        legend_strings{1} = 'truth';
+        legend_strings{2} = 'ensemble mean';
     else
-        plot(pinfo.xax, a, 'k-','linewidth',2.0); hold on;
-        legend('ensemble mean')
+        h(1) = plot(pinfo.xax, a, 'k-','linewidth',2.0); hold on;
+        legend_strings{1} = 'ensemble mean';
+
     end
+    nitems = length(h);
 
     ylabel(sprintf('''%s'' index %d', pinfo.var, ivar ))
     xlabel(sprintf('model "days" (%d timesteps)',pinfo.time_series_length))
@@ -141,10 +144,10 @@ for ivar = pinfo.var_inds,
         copy_index = get_copy_index(pinfo.prior_file, str1);
 
         po_series  = get_hyperslab('fname',pinfo.posterior_file, 'varname',pinfo.var, ...
-            'copyindex',copy_index, 'stateindex',ivar, ...
-            'tindex1',pinfo.posterior_time(1), 'tcount',pinfo.posterior_time(2));
+            'memberindex',copy_index,'stateindex',ivar,'squeeze','T', ...
+            'tindex1',pinfo.posterior_time(1),'tcount',pinfo.posterior_time(2));
         pr_series  = get_hyperslab('fname',pinfo.prior_file, 'varname',pinfo.var, ...
-            'copyindex',copy_index, 'stateindex',ivar, ...
+            'memberindex',copy_index,'stateindex',ivar,'squeeze','T', ...
             'tindex1',pinfo.prior_time(1), 'tcount',pinfo.prior_time(2));
 
         ens_member(1,:) = pr_series;
@@ -153,12 +156,10 @@ for ivar = pinfo.var_inds,
 
         hold on;
         memcolor = 1 + mod(nmem-1,ncolors); % cycles through colors [1,6]
-        h = plot(pinfo.xax, b,'linewidth',0.5,'Color',ens_colors(memcolor,:));
-
-        [~, ~, outh, outm] = legend;
-        nlines             = length(outm);
-        outm{nlines+1}     = str1;
-        legend([outh; h],outm,0);
+        nitems = nitems + 1;
+        h(nitems) = plot(pinfo.xax, b,'linewidth',0.5,'Color',ens_colors(memcolor,:));
+        legend_strings{nitems} = str1;
+        legend(h,legend_strings,0);
     end
     legend boxoff
 

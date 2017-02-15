@@ -7,15 +7,16 @@ ensemble_manager/ensemble_manager_mod.f90
 io/dart_time_io_mod.f90
 io/direct_netcdf_mod.f90
 io/io_filenames_mod.f90
+io/state_space_diag_mod.f90
 io/state_structure_mod.f90
 io/state_vector_io_mod.f90
 location/threed_cartesian/xyz_location_mod.f90
 location/threed_sphere/location_mod.f90
-models/mpas_atm/update_mpas_states.f90
 models/mpas_atm/get_coeff_mod.f90
 models/mpas_atm/get_geometry_mod.f90
 models/mpas_atm/get_reconstruct_mod.f90
 models/mpas_atm/model_mod.f90
+models/mpas_atm/update_mpas_states.f90
 mpi_utilities/null_mpi_utilities_mod.f90
 obs_kind/obs_kind_mod.f90
 random_seq/random_seq_mod.f90

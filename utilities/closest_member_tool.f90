@@ -202,8 +202,8 @@ mean_advance_time = set_time_missing()
 mean_advance_time = set_time_missing()
 
 ! read in the ensemble and the mean - always in a separate file
-ens_file_info = io_filenames_init(ens_size, .false., restart_list=input_restart_file_list)
-mean_file_info = io_filenames_init(1, .false., root_name='input')
+call io_filenames_init(ens_file_info, ens_size, .false., .false., restart_list=input_restart_file_list)
+call io_filenames_init(mean_file_info, 1, .false., .false., root_name='input')
 
 call read_state(ens_handle, ens_file_info, .false., member_time)
 call read_state(mean_ens_handle, mean_file_info, .false., mean_time)

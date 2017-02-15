@@ -5,7 +5,7 @@
 # DART $Id$
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Jan 13th 2017 :: rma_fixed_filenames merge changes                         +
++ Jan 13th 2017 :: rma_fixed_filenames merge changes Revision: 10902
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Specific namelist changes include:
@@ -143,6 +143,46 @@ ADDITIONAL NOTES :
   deprecated, since DART formated restarts are no longer supported.
 * some programs such as model_mod_check have not been fully tested and need
   to be exercised with the new naming conventions.
+
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Feb 15th 2017 :: rma_single_file merge changes $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Filter and PMO can now run with multiple cycles for low order models. The output
+for this is only supported with single file output (members, inflation, mean, sd
+are all in the same file).
+
+Added matlab support for diagnostics format in lower order models.
+
+------------------------------------------------------------------------------
+Changes to the filter_nml are :
+------------------------------------------------------------------------------
+
+output_restart          -- RENAMED to output_members
+restart_in_file_name    -- RENAMED to input_state_file_list
+restart_out_file_name   -- RENAMED to output_state_files_list
+single_restart_file_in  -- RENAMED to single_file_in
+single_restart_file_out -- RENAMED to single_file_out
+
+input_state_files       -- ADDED - not currently working
+output_state_files      -- ADDED - not currently working
+
+has_cycling             -- ADDED for low order models
+
+------------------------------------------------------------------------------
+Changes to the perfect_model_obs_nml are :
+------------------------------------------------------------------------------
+
+start_from_restart    -- RENAMED read_input_state_from_file
+output_restart        -- RENAMED write_output_state_to_file
+restart_in_file_name  -- RENAMED input_state_files
+restart_out_file_name -- RENAMED output_state_files
+
+single_file_in        -- ADDED for low order models
+single_file_out       -- ADDED for low order models
+has_cycling           -- ADDED for low order models
 
 # <next few lines under version control, do not edit>
 # $URL$

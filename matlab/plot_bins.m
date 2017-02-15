@@ -8,10 +8,19 @@
 % Ultimately, plot_bins will be replaced by a GUI.
 % In the end, the heavy lifting is done by PlotBins.
 %
-% Example 1 (for low-order models)
+% A reminder of the sequence:
+% truth  run (from    pmo):
+%           perfect_input  --->  perfect_output.nc
+% filter run (from filter):
+%           filter_input.nc  --->  [prior inflation]  --->
+%                 preassim.nc   --->  [assimilation]  --->
+%                       postassim.nc  ---> [posterior inflation]  --->
+%                             filter_output.nc
 %
-% truth_file = 'True_State.nc';
-% diagn_file = 'Prior_Diag.nc';
+% Example (for low-order models)
+%
+% truth_file = 'perfect_output.nc';
+% diagn_file = 'preassim.nc';
 % plot_bins
 
 %% DART software - Copyright UCAR. This open source software is provided
@@ -25,18 +34,18 @@
 %                     the value of the variable is checked later.
 
 if (exist('truth_file','var') ~= 1)
-   disp('Input name of True State file:')
-   truth_file = input('<cr> for True_State.nc\n','s');
+   disp('Input name of true model trajectory file:')
+   truth_file = input('<cr> for perfect_output.nc\n','s');
    if isempty(truth_file)
-      truth_file = 'True_State.nc';
+      truth_file = 'perfect_output.nc';
    end
 end
 
 if (exist('diagn_file','var') ~=1)
-   disp('Input name of prior or posterior diagnostics file:')
-   diagn_file = input('<cr> for Prior_Diag.nc\n','s');
+   disp('Input name of ensemble trajectory file:')
+   diagn_file = input('<cr> for preassim.nc\n','s');
    if isempty(diagn_file)
-      diagn_file = 'Prior_Diag.nc';
+      diagn_file = 'preassim.nc';
    end
 end
 

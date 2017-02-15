@@ -62,14 +62,18 @@ use time_manager_mod,     only : time_type, read_time, write_time, &
                                  get_time
 
 use io_filenames_mod,     only : get_restart_filename, file_info_type, &
-                                 get_single_file, get_stage_metadata, &
+                                 get_single_file, get_cycling, get_stage_metadata, &
                                  assert_file_info_initialized, stage_metadata_type, &
-                                 assert_restart_names_initialized
+                                 assert_restart_names_initialized, &
+                                 single_file_initialized
 
 !>@todo FIXME This should go through assim_model_mod
 use model_mod,            only : read_model_time
 
 use state_structure_mod,  only : get_num_domains
+
+use state_space_diag_mod, only : init_singlefile_output, write_singlefile, &
+                                 read_singlefile
 
 use netcdf
 
@@ -222,8 +226,8 @@ if (inflation_handles) then
 endif
 
 if (get_single_file(file_info)) then
-   call error_handler(E_ERR,'read_state:', &
-      'Writing single file restarts is in progress')
+   ! NOTE: single file is set only in filter, and pmo
+   call read_singlefile(state_ens_handle, file_info, read_time_from_file, time)
 else
    call read_restart_direct(state_ens_handle, file_info, read_time_from_file, time)
 endif
@@ -242,7 +246,7 @@ end subroutine read_state
 subroutine write_state(state_ens_handle, file_info)
 
 type(ensemble_type),                   intent(inout) :: state_ens_handle
-type(file_info_type),                  intent(in)    :: file_info
+type(file_info_type),                  intent(inout) :: file_info
 
 type(stage_metadata_type) :: output_files
 
@@ -255,8 +259,22 @@ call assert_file_info_initialized(file_info, 'write_state')
 ! do this once
 output_files = get_stage_metadata(file_info)
 
-! write ensemble copies
-call write_restart_direct(state_ens_handle, output_files)
+if ( get_single_file(file_info) ) then
+   if (.not. single_file_initialized(file_info)) then
+      call init_singlefile_output(state_ens_handle, file_info)
+   endif
+
+   call write_singlefile(state_ens_handle, file_info)
+
+else ! multiple files
+   if ( get_cycling(file_info) ) then
+      call error_handler(E_ERR, 'write_state: ', 'currently cannot write multiple-file output while advancing the model inside filter', &
+      source, revision, revdate, text2='either use single file i/o, or advance the model outside filter')
+   endif
+   
+   ! write ensemble copies
+   call write_restart_direct(state_ens_handle, output_files)
+endif
 
 end subroutine write_state
 

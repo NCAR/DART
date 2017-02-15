@@ -35,18 +35,18 @@ pinfo_out.truth_time = [-1,-1];
 pinfo_out.diagn_time = [-1,-1];
 
 %% Get some information from the file1
-tmodel  = nc_attget(file1,nc_global,'model');
-
-if (isempty(tmodel))
-   error('%s has no ''model'' global attribute.',file1)
-end
+tmodel  = ncreadatt(file1,'/','model');
 
 tvars       = get_DARTvars(file1);
 tnum_times  = dim_length(file1,'time');
-times       = nc_varget( file1,'time');
-timeunits   = nc_attget( file1,'time','units');
+times       = ncread( file1,'time');
+timeunits   = ncreadatt( file1,'time','units');
 timebase    = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
-timeorigin  = datenum(timebase(1),timebase(2),timebase(3));
+if (timebase(1) > 0000) 
+   timeorigin = datenum(timebase(1),timebase(2),timebase(3));
+else
+   timeorigin = 0;
+end
 ttimes      = times + timeorigin;
 
 [tnum_vars,~] = ModelDimension(file1,tmodel);
@@ -55,18 +55,18 @@ if ( tnum_vars <= 0 )
 end
 
 %% Get some information from the file2
-dmodel  = nc_attget(file1,nc_global,'model');
-
-if (isempty(dmodel))
-   error('%s has no ''model'' global attribute.',file2)
-end
+dmodel  = ncreadatt(file1,'/','model');
 
 dvars       = get_DARTvars(file2);
 dnum_times  = dim_length(file2,'time');
-times       = nc_varget( file2,'time');
-timeunits   = nc_attget( file2,'time','units');
+times       = ncread( file2,'time');
+timeunits   = ncreadatt( file2,'time','units');
 timebase    = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
-timeorigin  = datenum(timebase(1),timebase(2),timebase(3));
+if (timebase(1) > 0000) 
+   timeorigin = datenum(timebase(1),timebase(2),timebase(3));
+else
+   timeorigin = 0;
+end
 dtimes      = times + timeorigin;
 
 [dnum_vars,~] = ModelDimension(file2,dmodel);
@@ -88,17 +88,19 @@ if (prod(tnum_vars) ~= prod(dnum_vars))
    error('no No NO ... both files must have same shape of state variables.')
 end
 
-% find the variables common to both files.
-vars = cell(0);
-for i = 1:length(dvars),
-   if any(strcmpi(dvars(i),tvars))
-       vars(length(vars)+1) = dvars(i);
-   end
-end
-pinfo_out.vars           = vars;
-pinfo_out.num_state_vars = length(vars);
+%% find the variables common to both files.
+%vars = cell(0);
+%for i = 1:length(dvars),
+%   if any(strcmpi(dvars(i),tvars))
+%       vars(length(vars)+1) = dvars(i);
+%   end
+%end
 
-% Call a function to find the indices of theln - times common to both files.
+% Generate the master list of variables to choose from.
+pinfo_out.vars           = union(tvars,dvars);
+pinfo_out.num_state_vars = length(pinfo_out.vars);
+
+% Call a function to find the indices of the times common to both files.
 pinfo_out = timearray_intersect(pinfo_out, file1, file2, ttimes, dtimes);
 
 % fail here if the times had nothing in common.
@@ -228,12 +230,12 @@ function x = dim_length(fname,dimname)
 %% Check for the existence of the named dimension and return it
 % if it exists. If it does not, error out with a useful message.
 
-info = nc_info(fname);
+info = ncinfo(fname);
 n    = length(dimname);
 x    = [];
-for i = 1:length(info.Dimension),
-   if ( strncmp(info.Dimension(i).Name, dimname, n) > 0 )
-      x = info.Dimension(i).Length;
+for i = 1:length(info.Dimensions),
+   if ( strncmp(info.Dimensions(i).Name, dimname, n) > 0 )
+      x = info.Dimensions(i).Length;
       break
    end
 end
@@ -296,12 +298,8 @@ switch lower(modelname)
 	 x = 2;
          y = [dnum_X dnum_Y];
 
-   case {'simple_advection'}
-         y = dim_length(fname,'loc1d');
-	 x = 1;
-
    otherwise
-         y = dim_length(fname,'StateVariable');
+         y = dim_length(fname,'location');
 	 x = 1;
 
 end

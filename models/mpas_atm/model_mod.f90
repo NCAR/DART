@@ -81,8 +81,6 @@ use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, &
                                  get_copy_owner_index, get_var_owner_index, get_my_vars
 
-use dart_time_io_mod,      only : dart_write_model_time => write_model_time
-
 use distributed_state_mod
 
 ! netcdf modules
@@ -812,7 +810,7 @@ domid =  add_domain( trim(model_analysis_filename), nfields,    &
                      var_names  = variable_table (1:nfields,1), &
                      clamp_vals = variable_bounds(1:nfields,:) )
 
-if ( debug > 0 ) call state_structure_info(domid)
+if ( debug > 4 ) call state_structure_info(domid)
 
 end subroutine static_init_model
 
@@ -3081,8 +3079,7 @@ subroutine write_model_time_restart(ncid, dart_time)
 integer,             intent(in) :: ncid !< netcdf file handle
 type(time_type),     intent(in) :: dart_time
 
-call error_handler(E_MSG, 'write_model_time', 'no routine for mpas_atm write model time, writing dart time')
-call dart_write_model_time(ncid, dart_time)
+call error_handler(E_MSG, 'write_model_time', 'no routine for mpas_atm write model time')
 
 end subroutine write_model_time_restart
 

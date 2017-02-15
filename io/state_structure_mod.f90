@@ -427,11 +427,11 @@ state%model_size = state%model_size + domain_size
 
 ! variable
 allocate(state%domain(dom_id)%variable(1))
-state%domain(dom_id)%variable(1)%varname     = 'state'
-state%domain(dom_id)%variable(1)%io_info%units     = 'none'
-state%domain(dom_id)%variable(1)%numdims     = 1
-state%domain(dom_id)%variable(1)%io_info%io_numdims = 1
-state%domain(dom_id)%variable(1)%var_size    = domain_size
+state%domain(dom_id)%variable(1)%varname            = 'state'
+state%domain(dom_id)%variable(1)%io_info%units      = 'none'
+state%domain(dom_id)%variable(1)%numdims            = 1
+state%domain(dom_id)%variable(1)%io_info%io_numdims = 3
+state%domain(dom_id)%variable(1)%var_size           = domain_size
 
 domain_offset = 0
 if (state%num_domains > 1 ) domain_offset = get_index_end(dom_id-1,get_num_variables(dom_id-1))
@@ -444,16 +444,31 @@ state%domain(dom_id)%variable(1)%dart_kind   = &
        get_raw_obs_kind_index(state%domain(dom_id)%variable(1)%kind_string)
 
 ! dimension
-state%domain(dom_id)%variable(1)%dimname(1) = 'domain_size'
+state%domain(dom_id)%variable(1)%dimname(1) = 'location'
+state%domain(dom_id)%variable(1)%dimname(2) = 'member'
+state%domain(dom_id)%variable(1)%dimname(3) = 'time'
+
 state%domain(dom_id)%variable(1)%dimlens(1) =  domain_size
+state%domain(dom_id)%variable(1)%dimlens(2) =  1
+state%domain(dom_id)%variable(1)%dimlens(3) =  1
 
 ! load up the domain unique dimension info
-state%domain(dom_id)%num_unique_dims = 1
-allocate(state%domain(dom_id)%unique_dim_names(1))
-allocate(state%domain(dom_id)%unique_dim_length(1))
-state%domain(dom_id)%unique_dim_names(1)  = 'domain_size'
+state%domain(dom_id)%num_unique_dims = 3
+allocate(state%domain(dom_id)%unique_dim_names(3))
+allocate(state%domain(dom_id)%unique_dim_length(3))
+
+state%domain(dom_id)%unique_dim_names(1)  = 'location'
+state%domain(dom_id)%unique_dim_names(2)  = 'member'
+state%domain(dom_id)%unique_dim_names(3)  = 'time'
+
 state%domain(dom_id)%unique_dim_length(1) =  domain_size
+state%domain(dom_id)%unique_dim_length(2) =  1
+state%domain(dom_id)%unique_dim_length(3) =  1
+
 state%domain(dom_id)%variable(1)%io_info%io_dimids(1) = 1
+state%domain(dom_id)%variable(1)%io_info%io_dimids(2) = 2
+state%domain(dom_id)%variable(1)%io_info%io_dimids(3) = NF90_UNLIMITED
+
 state%domain(dom_id)%variable(1)%io_info%xtype = NF90_DOUBLE
 
 end function add_domain_blank
@@ -578,6 +593,13 @@ do ivar = 1, num_vars
    else
       domain%variable(ivar)%numdims = num_dims
    endif
+
+   ! member is not a spatial domain but could be included in a single file
+   do jdim = 1, num_dims
+      if ( trim(domain%variable(ivar)%dimname(jdim)) == trim('member') ) then
+         domain%variable(ivar)%numdims = domain%variable(ivar)%numdims - 1 
+      endif
+   enddo
 
    domain%variable(ivar)%var_size = variable_size
 
@@ -1011,13 +1033,13 @@ end function get_io_num_unique_dims
 !> Return the unique dimension names
 
 
-function get_io_unique_dim_name(dom_id, ivar)
+function get_io_unique_dim_name(dom_id, jdim)
 
 integer, intent(in) :: dom_id ! domain identifier
-integer, intent(in) :: ivar ! index into array, not connected to dimId
+integer, intent(in) :: jdim ! index into array, not connected to dimId
 character(len=NF90_MAX_NAME) :: get_io_unique_dim_name
 
-get_io_unique_dim_name = state%domain(dom_id)%unique_dim_names(ivar)
+get_io_unique_dim_name = state%domain(dom_id)%unique_dim_names(jdim)
 
 end function get_io_unique_dim_name
 
@@ -1026,13 +1048,13 @@ end function get_io_unique_dim_name
 !> Return the unique dimension lengths
 
 
-function get_io_unique_dim_length(dom_id, ivar)
+function get_io_unique_dim_length(dom_id, jdim)
 
 integer, intent(in) :: dom_id ! domain identifier
-integer, intent(in) :: ivar ! index into array, not connected to dimId
+integer, intent(in) :: jdim ! index into array, not connected to dimId
 integer :: get_io_unique_dim_length
 
-get_io_unique_dim_length = state%domain(dom_id)%unique_dim_length(ivar)
+get_io_unique_dim_length = state%domain(dom_id)%unique_dim_length(jdim)
 
 end function get_io_unique_dim_length
 

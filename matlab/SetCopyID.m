@@ -13,12 +13,12 @@ if (exist(fname,'file') ~= 2), error('%s does not exist.',fname); end
 
 if ( isempty(copyindices) )
    fprintf('%s has no ensemble members\n',fname)
-   disp('To be a valid ensemble member, the CopyMetaData for the member')
+   disp('To be a valid ensemble member, the MemberMetadata for the member')
    disp('must start with the character string ''ensemble member''')
    error('%s has no ensemble members.',fname)
 end
 
-metastrings = nc_varget(fname,'CopyMetaData');
+metastrings = ncread(fname,'MemberMetadata');
 if(size(metastrings,2) == 1), metastrings = metastrings'; end
 metadata    = cellstr(metastrings);
 

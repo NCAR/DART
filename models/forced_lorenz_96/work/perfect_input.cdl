@@ -1,0 +1,102 @@
+netcdf perfect_input {
+dimensions:
+	member = 1 ;
+	metadatalength = 32 ;
+	location = 80 ;
+	time = UNLIMITED ; // (1 currently)
+variables:
+
+	char MemberMetadata(member, metadatalength) ;
+		MemberMetadata:long_name = "description of each member" ;
+
+	double location(location) ;
+		location:short_name = "loc1d" ;
+		location:long_name = "location on a unit circle" ;
+		location:dimension = 1 ;
+		location:valid_range = 0., 1. ;
+
+	double state(time, member, location) ;
+		state:long_name = "the model state" ;
+
+	double time(time) ;
+		time:long_name = "valid time of the model state" ;
+		time:axis = "T" ;
+		time:cartesian_axis = "T" ;
+		time:calendar = "no calendar" ;
+                time:month_lengths = 31,28,31,30,31,30,31,31,30,31,30,31 ;
+		time:units = "days since 0000-01-01 00:00:00" ;
+
+// global attributes:
+		:title = "true state from control" ;
+                :version = "$Id$" ;
+		:model = "Forced_Lorenz_96" ;
+		:model_forcing = 8. ;
+		:model_delta_t = 0.05 ;
+		:model_num_state_vars = 40 ;
+		:model_time_step_days = 0 ;
+		:model_time_step_seconds = 3600 ;
+		:model_random_forcing_amplitude = 0.1 ;
+		:model_reset_forcing = "FALSE" ;
+		:history = "identical (within 64bit precision) to ASCII perfect_ics r1371 (circa June 2005)" ;
+data:
+
+ MemberMetadata =
+  "true state" ;
+
+ location = 0, 0.025, 0.05, 0.075, 0.1, 0.125, 0.15, 0.175, 0.2, 0.225, 0.25, 
+    0.275, 0.3, 0.325, 0.35, 0.375, 0.4, 0.425, 0.45, 0.475, 0.5, 0.525, 
+    0.55, 0.575, 0.6, 0.625, 0.65, 0.675, 0.7, 0.725, 0.75, 0.775, 0.8, 
+    0.825, 0.85, 0.875, 0.9, 0.925, 0.95, 0.975, 0, 0.025, 0.05, 0.075, 0.1, 
+    0.125, 0.15, 0.175, 0.2, 0.225, 0.25, 0.275, 0.3, 0.325, 0.35, 0.375, 
+    0.4, 0.425, 0.45, 0.475, 0.5, 0.525, 0.55, 0.575, 0.6, 0.625, 0.65, 
+    0.675, 0.7, 0.725, 0.75, 0.775, 0.8, 0.825, 0.85, 0.875, 0.9, 0.925, 
+    0.95, 0.975 ;
+
+ state =
+ -0.185331311591446,
+   5.31454076702322,
+   3.27357395454216,
+   -3.92457306906490,
+  0.971115105206856,
+   9.500691847234999E-002,
+   7.37318798227762,
+ -0.869227504254794,
+   -3.48774040989061,
+   -0.940864095619048,
+   8.71732601344682,
+   4.05370238355527,
+   1.55109584657565,
+   4.88174180445344,
+   1.45606015521120,
+  -1.84333478434624,
+   1.86153038958485,
+   8.20183276947151,
+ -0.235360934033463,
+  -5.08065475264320,
+ -0.303690382817370,
+  0.789039477283860,
+   2.34136117182120,
+   3.09023618986268,
+   5.38710583999643,
+   5.11804143977910,
+  -2.72437779243249,
+ -9.959299948455960E-002,
+   1.80928064709101,
+   8.12913462525423,
+   6.49601358145324,
+  -1.59817918227524,
+ -0.205163098886460,
+  0.115652431981411,
+   4.88318336929013,
+   8.35551991202563,
+  0.980640629211172,
+   1.35156757151675,
+  -1.70636358701557,
+  -1.66745422339672,
+   8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0,
+   8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0,
+   8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0,
+   8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0 ;
+
+ time = 41.625 ;
+}

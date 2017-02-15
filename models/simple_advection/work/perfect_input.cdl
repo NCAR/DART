@@ -1,0 +1,81 @@
+netcdf perfect_input {
+dimensions:
+	member = 1 ;
+	metadatalength = 32 ;
+	location = 10 ;
+	time = UNLIMITED ; // (1 currently)
+variables:
+
+	char MemberMetadata(member, metadatalength) ;
+		MemberMetadata:long_name = "description of each member" ;
+
+	double concentration(time, member, location) ;
+		concentration:long_name = "tracer concentration" ;
+		concentration:units = "mass" ;
+
+	double mean_source(time, member, location) ;
+		mean_source:long_name = "mean source" ;
+		mean_source:units = "mass/timestep" ;
+
+	double source(time, member, location) ;
+		source:long_name = "source" ;
+		source:units = "mass/timestep" ;
+
+	double source_phase(time, member, location) ;
+		source_phase:long_name = "source phase" ;
+		source_phase:units = "radians" ;
+
+	double wind(time, member, location) ;
+		wind:long_name = "wind" ;
+		wind:units = "gridpoints/timestep" ;
+
+	double location(location) ;
+		location:short_name = "loc1d" ;
+		location:long_name = "location on a unit circle" ;
+		location:dimension = 1 ;
+		location:valid_range = 0., 1. ;
+		location:axis = "X" ;
+
+	double time(time) ;
+		time:long_name = "valid time of the model state" ;
+		time:axis = "T" ;
+		time:cartesian_axis = "T" ;
+		time:calendar = "no calendar" ;
+                time:month_lengths = 31,28,31,30,31,30,31,31,30,31,30,31 ;
+		time:units = "days since 0000-01-01 00:00:00" ;
+
+// global attributes:
+		:title = "true state from control" ;
+                :version = "$Id$" ;
+		:model = "simple_advection" ;
+		:destruction_rate = 5.555556e-05 ;
+		:history = "same values as in perfect_ics r3002 (circa July 2007)" ;
+data:
+
+ MemberMetadata =
+  "true state" ;
+
+ concentration =
+  4929.32487229225, 4127.56153294082, 3379.82952664072, 2834.40281842557, 
+    2533.94624848142, 2282.73226871306, 2070.22111970557, 1915.17923068156, 
+    1762.41739680922, 1682.88821398598 ;
+
+ mean_source =
+  1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1 ;
+
+ source =
+  1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1 ;
+
+ source_phase =
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ;
+
+ wind =
+  21.8481703942745, 20.1481610783248, 20.9302183644082, 20.7697938399309, 
+    20.6169818006321, 22.3993132701278, 22.0327241481953, 22.2729309428863, 
+    23.2970570682736, 21.3608001247248 ;
+
+ location = 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9 ;
+
+ time = 41.666666666666667 ;
+
+}

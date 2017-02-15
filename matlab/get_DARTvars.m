@@ -1,6 +1,6 @@
 function bob = get_DARTvars(fname)
 %% get_DARTvars returns just the variable names in the netCDF file that are likely to
-%be DART variables.
+% be DART variables.
 %
 % the result is a cell array of strings ... must use {} notation to address elements.
 %
@@ -17,24 +17,24 @@ function bob = get_DARTvars(fname)
 %
 % DART $Id$
 
-fileinfo  = nc_info(fname);
-nvars     = length(fileinfo.Dataset);
+fileinfo  = ncinfo(fname);
+nvars     = length(fileinfo.Variables);
 isDARTvar = zeros(nvars,1);
 
 for i = 1:nvars
 
-   % Anything with a 'copy' dimension is probably a DART state vector variable.
+    rank = length(fileinfo.Variables(i).Dimensions);
+    for idim = 1:rank
+        
+       % Anything with a 'member' dimension is probably a DART state vector variable.
+       dimname = fileinfo.Variables(i).Dimensions(idim).Name;
+       if (strcmp(dimname,'member')), isDARTvar(i) = 1; end
 
-   dimnames = fileinfo.Dataset(i).Dimension;
-
-   if (any(strcmp(dimnames,'copy'))), isDARTvar(i) = 1; end
-
-   % Reject the obvious coordinate variables and some metadata ones
-
-   varname    = fileinfo.Dataset(i).Name;
-   if (         nc_iscoordvar(fname,varname)), isDARTvar(i) = 0; end
-   if (strcmp( varname ,     'CopyMetaData')), isDARTvar(i) = 0; end
-
+       % Reject the obvious coordinate variables and some metadata ones
+       varname    = fileinfo.Variables(i).Name;
+       if (         nc_iscoordvar(fname,varname)), isDARTvar(i) = 0; end
+       if (strcmp(varname ,    'MemberMetadata')), isDARTvar(i) = 0; end
+    end
 end
 
 if (sum(isDARTvar) == 0)
@@ -43,11 +43,29 @@ end
 
 % coerce just the names into a cell array
 
-varind = 0;
+nDARTvars = 0;
 for i = 1:nvars
    if (isDARTvar(i) > 0)
-      varind = varind + 1;
-      bob{varind} = fileinfo.Dataset(i).Name;
+      nDARTvars = nDARTvars + 1;
+      bob{nDARTvars} = fileinfo.Variables(i).Name;
+   end
+end
+
+% Each of the candidate variables may have a _mean or _sd counterpart
+
+varind = nDARTvars;
+extensions = {'mean','sd','priorinf_mean', 'priorinf_sd','postinf_mean','postinf_sd'};
+for i = 1:nDARTvars
+   for ext = 1:length(extensions)
+      % construct candidate name and see if it exists
+      suffix = extensions{ext};
+      candidate_name = sprintf('%s_%s',bob{i},suffix);
+      for ivar = 1:nvars
+         if ( strcmp(candidate_name, fileinfo.Variables(ivar).Name ) )
+            varind = varind + 1;
+            bob{varind} = candidate_name;
+         end
+      end
    end
 end
 

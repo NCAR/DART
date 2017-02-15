@@ -6,17 +6,29 @@
 
 module model_mod
 
-use        types_mod, only : r8
-use time_manager_mod, only : time_type, set_time
-use     location_mod, only : location_type, set_location, get_location, &
-                             LocationDims, LocationName, LocationLName, &
-                             get_close_maxdist_init, get_close_obs_init, get_close_obs
-
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, nmlfileunit, &
-                             do_output, find_namelist_in_file, check_namelist_read,     &
-                             do_nml_file, do_nml_term
+use types_mod,             only : r8, i8, i4
 
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
+use time_manager_mod,      only : time_type, set_time
+
+use location_mod,          only : location_type, set_location, get_location,  &
+                                  LocationDims, LocationName, LocationLName,  &
+                                  get_close_maxdist_init, get_close_obs_init, &
+                                  get_close_type, loc_get_close_obs => get_close_obs
+
+use utilities_mod,         only : register_module, do_nml_file, do_nml_term,    &
+                                  nmlfileunit, find_namelist_in_file, E_ERR,    &
+                                  check_namelist_read, nc_check, error_handler
+
+use         obs_kind_mod,  only : RAW_STATE_VARIABLE
+
+use ensemble_manager_mod,  only : ensemble_type
+
+use distributed_state_mod, only : get_state
+
+use state_structure_mod,   only : add_domain
+
+use dart_time_io_mod,      only : read_model_time, write_model_time
 
 implicit none
 private
@@ -24,7 +36,6 @@ private
 public :: get_model_size, &
           adv_1step, &
           get_state_meta_data, &
-          model_interpolate, &
           get_model_time_step, &
           end_model, &
           static_init_model, &
@@ -32,8 +43,13 @@ public :: get_model_size, &
           init_conditions, &
           nc_write_model_atts, &
           nc_write_model_vars, &
-          pert_model_state, &
-          get_close_maxdist_init, get_close_obs_init, get_close_obs, ens_mean_for_model
+          get_close_maxdist_init, get_close_obs_init, get_close_obs, &
+          model_interpolate, &
+          query_vert_localization_coord, &
+          vert_convert, &
+          pert_model_copies, &
+          read_model_time, &
+          write_model_time
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -61,7 +77,7 @@ namelist /model_nml/ num_state_vars, forcing, delta_t, time_step_days, &
 ! Define the location of the state variables in module storage
 type(location_type), allocatable :: state_loc(:)
 type(time_type) :: time_step
-integer :: model_size
+integer(i8) :: model_size
 
 ! Adding random noise
 type(random_seq_type) :: random
@@ -81,7 +97,7 @@ subroutine static_init_model()
 ! the time type for the time stepping (is this general enough for time???)
 
 real(r8) :: x_loc
-integer  :: i, iunit, io
+integer  :: i, iunit, io, dom_id
 
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
@@ -116,6 +132,10 @@ time_step = set_time(time_step_seconds, time_step_days)
 
 ! Initialize the random sequence
 call init_random_seq(random)
+
+! Tell the DART I/O routines how large the model data is so they
+! can read/write it.
+dom_id = add_domain(model_size)
 
 end subroutine static_init_model
 
@@ -238,7 +258,7 @@ function get_model_size()
 !
 ! Returns size of model
 
-integer :: get_model_size
+integer(i8) :: get_model_size
 
 ! Number of state variables is really twice model size if forcing is assimed
 get_model_size = model_size
@@ -262,14 +282,10 @@ end subroutine init_time
 
 
 
-subroutine model_interpolate(x, location, itype, obs_val, istatus)
+subroutine model_interpolate(state_handle, ens_size, location, itype, expected_val, istatus)
 !------------------------------------------------------------------
 !
-! Interpolates from state vector x to the location. It's not particularly
-! happy dumping all of this straight into the model. Eventually some
-! concept of a grid underlying models but above locations is going to
-! be more general. May want to wait on external infrastructure projects
-! for this?
+! Interpolates from state vector to the location.
 
 ! Argument itype is not used here because there is only one type of variable.
 ! Type is needed to allow swap consistency with more complex models.
@@ -278,17 +294,19 @@ subroutine model_interpolate(x, location, itype, obs_val, istatus)
 ! although this could be added in the future if useful for testing.
 
 
-real(r8),            intent(in) :: x(:)
+type(ensemble_type), intent(in) :: state_handle
+integer,             intent(in) :: ens_size
 type(location_type), intent(in) :: location
 integer,             intent(in) :: itype
-real(r8),           intent(out) :: obs_val
-integer,            intent(out) :: istatus
+real(r8),           intent(out) :: expected_val(ens_size)
+integer,            intent(out) :: istatus(ens_size)
 
-integer :: lower_index, upper_index, i
+integer(i8) :: lower_index, upper_index
+integer :: i
 real(r8) :: lctn, lctnfrac
 
 ! All forward operators supported
-istatus = 0
+istatus(:) = 0
 
 ! Convert location to real
 lctn = get_location(location)
@@ -301,14 +319,15 @@ if(lower_index > num_state_vars) lower_index = lower_index - num_state_vars
 if(upper_index > num_state_vars) upper_index = upper_index - num_state_vars
 
 lctnfrac = lctn - int(lctn)
-obs_val = (1.0_r8 - lctnfrac) * x(lower_index) + lctnfrac * x(upper_index)
+expected_val(:) = (1.0_r8 - lctnfrac) * get_state(lower_index, state_handle) + &
+                            lctnfrac  * get_state(upper_index, state_handle)
 
 if(1 == 1) return
 
 
 ! All the stuff below is for strange forward operator tests; not currently used
 !-----------------------------------------------
-!!!obs_val = obs_val ** 2
+!!!expected_val = expected_val ** 2
 !!!if(1 == 1) return
 
 ! Temporarily add on an observation from the other side of the domain, too
@@ -316,13 +335,14 @@ lower_index = lower_index + model_size / 2
 if(lower_index > model_size) lower_index = lower_index - model_size
 upper_index = upper_index + model_size / 2
 if(upper_index > model_size) upper_index = upper_index - model_size
-obs_val = obs_val + &
-   lctnfrac * x(lower_index) + (1.0_r8 - lctnfrac) * x(upper_index)
+expected_val(:) = expected_val(:) + &
+             lctnfrac  * get_state(lower_index, state_handle) + &
+   (1.0_r8 - lctnfrac) * get_state(upper_index, state_handle)
 if(1 == 1) return
 
 
 ! Next one does an average over a range of points
-obs_val = 0.0_r8
+expected_val(:) = 0.0_r8
 lower_index = lower_index - 7
 upper_index = upper_index - 7
 if(lower_index < 1) lower_index = lower_index + model_size
@@ -331,8 +351,9 @@ if(upper_index < 1) upper_index = upper_index + model_size
 do i = 1, 15
    if(lower_index > model_size) lower_index = lower_index - model_size
    if(upper_index > model_size) upper_index = upper_index - model_size
-   obs_val = obs_val + &
-      (1.0_r8 - lctnfrac) * x(lower_index) + lctnfrac * x(upper_index)
+   expected_val(:) = expected_val(:) + &
+      (1.0_r8 - lctnfrac) * get_state(lower_index, state_handle) + &
+                lctnfrac  * get_state(upper_index, state_handle)
    lower_index = lower_index + 1
    upper_index = upper_index + 1
 end do
@@ -357,7 +378,7 @@ end function get_model_time_step
 
 
 
-subroutine get_state_meta_data(index_in, location, var_type)
+subroutine get_state_meta_data(state_handle, index_in, location, var_type)
 !------------------------------------------------------------------
 !
 ! Given an integer index into the state vector structure, returns the
@@ -365,8 +386,8 @@ subroutine get_state_meta_data(index_in, location, var_type)
 ! form of the call has a second intent(out) optional argument kind.
 ! Maybe a functional form should be added?
 
-
-integer,             intent(in)  :: index_in
+type(ensemble_type), intent(in)  :: state_handle
+integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: var_type
 
@@ -383,46 +404,88 @@ endif
 end subroutine get_state_meta_data
 
 
+! Nothing to do in this model
 
 subroutine end_model()
-!------------------------------------------------------------------
-!
-! Does any shutdown and clean-up needed for model. Nothing for L96 for now.
-
 
 end subroutine end_model
 
+!------------------------------------------------------------------
+! Perturbs a model state copies for generating initial ensembles.
+! Routine which could provide a custom perturbation routine to
+! generate initial ensembles.  The default (if interface is not
+! provided) is to add gaussian noise to each item in the state vector.
+subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
+
+ type(ensemble_type), intent(inout) :: state_ens_handle
+ integer,   intent(in) :: ens_size
+ real(r8),  intent(in) :: pert_amp
+ logical,  intent(out) :: interf_provided
+
+interf_provided = .false.
+
+end subroutine pert_model_copies
+
+!--------------------------------------------------------------------
+
+!> pass the vertical localization coordinate to assim_tools_mod
+
+function query_vert_localization_coord()
+
+integer :: query_vert_localization_coord
+
+!> @todo should define some parameters including something
+!> like HAS_NO_VERT for this use.
+
+query_vert_localization_coord = -1
+
+end function query_vert_localization_coord
+
+!--------------------------------------------------------------------
+
+!> Unused in this model.
+
+subroutine vert_convert(state_handle, location, obs_kind, istatus)
+
+type(ensemble_type), intent(in)  :: state_handle
+type(location_type), intent(in)  :: location
+integer,             intent(in)  :: obs_kind
+integer,             intent(out) :: istatus
+
+istatus = 0
+
+end subroutine vert_convert
+
+!--------------------------------------------------------------------
+
+!> Pass through to the code in the locations module
+
+subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, &
+                         obs_kind, num_close, close_ind, dist, state_handle)
+
+type(ensemble_type),         intent(in)     :: state_handle
+type(get_close_type),        intent(in)     :: gc
+type(location_type),         intent(inout)  :: base_obs_loc, obs_loc(:)
+integer,                     intent(in)     :: base_obs_kind, obs_kind(:)
+integer,                     intent(out)    :: num_close, close_ind(:)
+real(r8),                    intent(out)    :: dist(:)
 
 
-function nc_write_model_atts( ncFileID ) result (ierr)
+call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
+                          num_close, close_ind, dist)
+
+end subroutine get_close_obs
+
 !------------------------------------------------------------------
 ! Writes the model-specific attributes to a netCDF file
-! TJH Jan 24 2003
-!
-! TJH 29 July 2003 -- for the moment, all errors are fatal, so the
-! return code is always '0 == normal', since the fatal errors stop execution.
-!
-! For the lorenz_96 model, each state variable is at a separate location.
-! that's all the model-specific attributes I can think of ...
-!
-! assim_model_mod:init_diag_output uses information from the location_mod
-!     to define the location dimension and variable ID. All we need to do
-!     is query, verify, and fill ...
-!
-! Typical sequence for adding new dimensions,variables,attributes:
-! NF90_OPEN             ! open existing netCDF dataset
-!    NF90_redef         ! put into define mode 
-!    NF90_def_dim       ! define additional dimensions (if any)
-!    NF90_def_var       ! define variables: from name, type, and dims
-!    NF90_put_att       ! assign attribute values
-! NF90_ENDDEF           ! end definitions: leave define mode
-!    NF90_put_var       ! provide values for variable
-! NF90_CLOSE            ! close: save updated netCDF dataset
+
+function nc_write_model_atts( ncFileID, model_mod_writes_state_variables ) result (ierr)
 
 use typeSizes
 use netcdf
 
 integer, intent(in)  :: ncFileID      ! netCDF file identifier
+logical, intent(out) :: model_mod_writes_state_variables
 integer              :: ierr          ! return value of function
 
 !--------------------------------------------------------------------
@@ -435,9 +498,7 @@ integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 ! netCDF variables for Location
 !--------------------------------------------------------------------
 
-integer :: LocationVarID
-integer :: StateVarDimID, StateVarVarID
-integer :: StateVarID, MemberDimID, TimeDimID
+integer :: LocationVarID, LocationDimID
 
 !--------------------------------------------------------------------
 ! local variables
@@ -449,9 +510,15 @@ character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
 integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=NF90_MAX_NAME) :: str1
 
-integer             :: i
+integer(i8)         :: i
 type(location_type) :: lctn 
+character(len=128)  :: filename
+
+type(ensemble_type) :: state_handle ! needed for compilation, not used here
+
 ierr = 0                      ! assume normal termination
+
+model_mod_writes_state_variables = .false. 
 
 !--------------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file 
@@ -460,15 +527,6 @@ ierr = 0                      ! assume normal termination
 call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
 call check(nf90_sync(ncFileID)) ! Ensure netCDF file is current
 call check(nf90_Redef(ncFileID))
-
-!--------------------------------------------------------------------
-! Determine ID's from stuff already in the netCDF file
-!--------------------------------------------------------------------
-
-! make sure time is unlimited dimid
-
-call check(nf90_inq_dimid(ncFileID,"copy",dimid=MemberDimID))
-call check(nf90_inq_dimid(ncFileID,"time",dimid=TimeDimID))
 
 !--------------------------------------------------------------------
 ! Write Global Attributes 
@@ -498,8 +556,8 @@ endif
 ! Define the model size, state variable dimension ... whatever ...
 !--------------------------------------------------------------------
 
-call check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
-                        len=model_size, dimid = StateVarDimID)) 
+call check(nf90_def_dim(ncid=ncFileID, name="location", &
+                        len=int(model_size,i4), dimid = LocationDimID)) 
 
 !--------------------------------------------------------------------
 ! Define the Location Variable and add Attributes
@@ -508,59 +566,22 @@ call check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
 ! http://www.cgd.ucar.edu/cms/eaton/netcdf/CF-working.html#ctype
 !--------------------------------------------------------------------
 
-call check(NF90_def_var(ncFileID, name=trim(adjustl(LocationName)), xtype=nf90_double, &
-              dimids = StateVarDimID, varid=LocationVarID) )
+call check(NF90_def_var(ncFileID, name="location", xtype=nf90_double, &
+              dimids = LocationDimID, varid=LocationVarID) )
 call check(nf90_put_att(ncFileID, LocationVarID, "long_name", trim(adjustl(LocationLName))))
 call check(nf90_put_att(ncFileID, LocationVarID, "dimension", LocationDims ))
 call check(nf90_put_att(ncFileID, LocationVarID, "units", "nondimensional"))
 call check(nf90_put_att(ncFileID, LocationVarID, "valid_range", (/ 0.0_r8, 1.0_r8 /)))
 
-!--------------------------------------------------------------------
-! Define either the "state vector" variables -OR- the "prognostic" variables.
-!--------------------------------------------------------------------
-!if ( output_state_vector ) then
-
-   ! Define the state vector coordinate variable
-   call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
-              dimids=StateVarDimID, varid=StateVarVarID))
-   call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"))
-   call check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical") )
-   call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)))
-
-   ! Define the actual state vector
-   call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_double, &
-              dimids = (/ StateVarDimID, MemberDimID, TimeDimID /), varid=StateVarID))
-   call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"))
-
-   ! Leave define mode so we can fill
-   call check(nf90_enddef(ncfileID))
-
-   ! Fill the state variable coordinate variable
-   call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ))
-
-!This is not ready yet ... the model state is replicated. This is an attempt
-! to parse it back into two pieces -- just don't know what to call them, etc. 
-!else
-!
-!   call check(nf90_def_var(ncid=ncFileID, name="X", xtype=nf90_double, &
-!        dimids = (/ , VelJDimID, levDimID, MemberDimID, unlimitedDimID /), &
-!        varid  = uVarID))
-!   call check(nf90_put_att(ncFileID, uVarID, "long_name", "model component"))
-!
-!   call check(nf90_def_var(ncid=ncFileID, name="XF", xtype=nf90_real, &
-!        dimids = (/ VelIDimID, VelJDimID, levDimID, MemberDimID, unlimitedDimID /), &
-!        varid  = vVarID))
-!   call check(nf90_put_att(ncFileID, vVarID, "long_name", "estimate of forcing"))
-!
-!endif
+! Leave define mode so we can fill
+call check(nf90_enddef(ncfileID))
 
 !--------------------------------------------------------------------
 ! Fill the location variable
 !--------------------------------------------------------------------
 
 do i = 1,model_size
-   call get_state_meta_data(i,lctn)
-   call check(nf90_put_var(ncFileID, LocationVarID, get_location(lctn), (/ i /) ))
+   call check(nf90_put_var(ncFileID, LocationVarID, get_location(state_loc(i)), (/ int(i,i4) /) ))
 enddo
 
 !--------------------------------------------------------------------
@@ -616,71 +637,8 @@ integer,                intent(in) :: copyindex
 integer,                intent(in) :: timeindex
 integer                            :: ierr          ! return value of function
 
-!--------------------------------------------------------------------
-! General netCDF variables
-!--------------------------------------------------------------------
-
-integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: StateVarID
-
-!--------------------------------------------------------------------
-! local variables
-!--------------------------------------------------------------------
-
 ierr = 0                      ! assume normal termination
 
-!--------------------------------------------------------------------
-! make sure ncFileID refers to an open netCDF file
-!--------------------------------------------------------------------
-
-call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
-
-! no matter the value of "output_state_vector", we only do one thing.
-! if ( output_state_vector ) then
-
-   call check(NF90_inq_varid(ncFileID, "state", StateVarID) )
-   call check(NF90_put_var(ncFileID, StateVarID, statevec,  &
-             start=(/ 1, copyindex, timeindex /)))
-
-! else
-!----------------------------------------------------------------------------
-! Fill the variables
-! TemperatureGrid : surface pressure  Var%ps(tis:tie, tjs:tje)
-!                 : temperature       Var%t (tis:tie, tjs:tje, klb:kub)
-!                 : tracers           Var%r (tis:tie, tjs:tje, klb:kub, 1:vars%ntrace)
-! VelocityGrid    : u                 Var%u (vis:vie, vjs:vje, klb:kub)
-!                 : v                 Var%v (vis:vie, vjs:tje, klb:kub)
-!----------------------------------------------------------------------------
-!
-!   x = statevec ! Unfortunately, have to explicity cast it ...
-!                ! the filter uses a type=double,
-!                ! the vector_to_prog_var function expects a single.
-!   call vector_to_prog_var(x, get_model_size(), Var)
-!
-!   call check(NF90_inq_varid(ncFileID, "ps", psVarID))
-!   call check(nf90_put_var( ncFileID, psVarID, Var%ps(tis:tie, tjs:tje), &
-!        start=(/ 1, 1, copyindex, timeindex /)))
-!
-!   call check(NF90_inq_varid(ncFileID, "t", tVarID))
-!   call check(nf90_put_var( ncFileID, tVarID, Var%t( tis:tie, tjs:tje, klb:kub), &
-!        start=(/ 1, 1, 1, copyindex, timeindex /)))
-!
-! endif
-
-
-
-! write (*,*)'Finished filling variables ...'
-call check(nf90_sync(ncFileID))
-! write (*,*)'netCDF file is synched ...'
-
-contains
-   ! Internal subroutine - checks error status after each netcdf, prints
-   !                       text message each time an error code is returned.
-   subroutine check(istatus)
-   integer, intent ( in) :: istatus
-      if(istatus /= nf90_noerr) call error_handler(E_ERR,'nc_write_model_vars',&
-         trim(nf90_strerror(istatus)), source, revision, revdate)
-   end subroutine check
 end function nc_write_model_vars
 
 

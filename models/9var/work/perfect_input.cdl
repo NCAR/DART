@@ -1,0 +1,58 @@
+netcdf perfect_input {
+dimensions:
+	member = 1 ;
+	metadatalength = 32 ;
+	location = 9 ;
+	time = UNLIMITED ; // (1 currently)
+variables:
+
+	char MemberMetadata(member, metadatalength) ;
+		MemberMetadata:long_name = "description of each member" ;
+
+	double location(location) ;
+		location:short_name = "loc1d" ;
+		location:long_name = "location on a unit circle" ;
+		location:dimension = 1 ;
+		location:valid_range = 0., 1. ;
+
+	double state(time, member, location) ;
+		state:long_name = "the model state" ;
+
+	double time(time) ;
+		time:long_name = "valid time of the model state" ;
+		time:axis = "T" ;
+		time:cartesian_axis = "T" ;
+		time:calendar = "no calendar" ;
+                time:month_lengths = 31,28,31,30,31,30,31,31,30,31,30,31 ;
+		time:units = "days since 0000-01-01 00:00:00" ;
+
+// global attributes:
+                :title = "a spun-up model state" ;
+                :version = "$Id$" ;
+                :model = "9var" ;
+                :model_g = 8. ;
+                :model_deltat = 0.0833333333333333 ;
+                :model_a = 1., 1., 3. ;
+                :model_b = -1.5, -1.5, 0.5 ;
+                :model_f = 0.1, 0., 0. ;
+                :model_h = -1., 0., 0. ;
+                :model_nu = 0.0208333333333333 ;
+                :model_kappa = 0.0208333333333333 ;
+                :model_c = 0.8660254 ;
+		:history = "identical (within 64bit precision) to perfect_ics r1330 (circa June 2005)" ;
+data:
+
+ MemberMetadata =
+  "true state" ;
+
+ location = 0, 0.111111111111111, 0.222222222222222, 0.333333333333333,
+    0.444444444444444, 0.555555555555556, 0.666666666666667,
+    0.777777777777778, 0.888888888888889 ;
+
+ state =
+  -1.359785970290813E-002, -8.271910257441239E-003, -3.301950882302266E-003,
+    -6.772829371625590E-002, -0.107812849416474, 0.107143306706929,
+    -5.229291752205766E-002, -9.433843934780711E-002, 0.102288208069023 ;
+
+ time = 249.75 ;
+}

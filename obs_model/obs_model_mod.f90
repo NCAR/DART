@@ -303,8 +303,8 @@ type(time_type),      intent(in)    :: target_time
 integer,              intent(in)    :: ens_size, async
 character(len=*),     intent(in)    :: adv_ens_command
 integer,              intent(in)    :: tasks_per_model_advance
-type(file_info_type), intent(in)    :: file_info_output
-type(file_info_type), intent(in)    :: file_info_input
+type(file_info_type), intent(inout) :: file_info_output
+type(file_info_type), intent(inout) :: file_info_input
 
 character(len = 129), dimension(ens_handle%num_copies) :: ic_file_name, ud_file_name 
 character(len = 129)                                   :: control_file_name

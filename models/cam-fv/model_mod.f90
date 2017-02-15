@@ -226,8 +226,6 @@ use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
 use ensemble_manager_mod, only : ensemble_type
 
-use dart_time_io_mod,      only : write_model_time
-
 use distributed_state_mod, only : get_state, get_state_array
 
 use state_structure_mod,   only : add_domain, get_model_variable_indices, get_dim_name, &
@@ -5358,6 +5356,19 @@ endif
 read_model_time = set_date(iyear,imonth,iday,ihour,imin,isec)
 
 end function read_model_time
+
+!-----------------------------------------------------------------------
+!>@todo this routine should write the model time when 
+!>      creating files from scratch
+subroutine write_model_time(ncid, dart_time)
+
+integer,             intent(in) :: ncid !< netcdf file handle
+type(time_type),     intent(in) :: dart_time
+
+call error_handler(E_MSG, 'write_model_time', 'no routine for cam-fv write model time')
+
+end subroutine write_model_time
+
 
 !--------------------------------------------------------------------
 !> Construct an arry to pass to add_domain that contains the clamping info

@@ -1,5 +1,5 @@
 function RunAllTests(dummy)
-%% RunAllTests.m
+%% RunAllTests.m pe2lyr
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -7,12 +7,13 @@ function RunAllTests(dummy)
 %
 % DART $Id$
 
-
 if (nargin() > 0)
    interactive = 1;
 else
    interactive = 0;
 end
+
+%%
 
 figure(1)
 if (interactive)
@@ -77,7 +78,7 @@ end
  clear pinfo; clf
 
  pinfo                    = CheckModel('Prior_Diag.nc');
- pinfo.time               = nc_varget(pinfo.fname,'time');
+ pinfo.time               = ncread(pinfo.fname,'time');
  pinfo.time_series_length = length(pinfo.time);
  pinfo.base_var           = 'v';
  pinfo.comp_var           = 'u';
@@ -173,7 +174,7 @@ end
  pinfo.latitude    = 38.96;
  pinfo.longitude   = 255;
  pinfo.copies      = 3;
- pinfo.copyindices = [7 12 17];
+ pinfo.copyindices = [5 10 15];
 
  PlotSawtooth(pinfo)
  fprintf('Finished %s ... pausing, hit any key\n','PlotSawtooth'); pause
@@ -201,9 +202,9 @@ end
  vars1 = rmfield(vars1,{'time','time_series_length','fname'});
  vars2 = CheckModelCompatibility(truth_file,diagn_file);
  pinfo = CombineStructs(vars1,vars2);
- pinfo.levels = nc_varget(pinfo.diagn_file,'lev');
- pinfo.lons   = nc_varget(pinfo.diagn_file,'lon');
- pinfo.lats   = nc_varget(pinfo.diagn_file,'lat');
+ pinfo.levels = ncread(pinfo.diagn_file,'lev');
+ pinfo.lons   = ncread(pinfo.diagn_file,'lon');
+ pinfo.lats   = ncread(pinfo.diagn_file,'lat');
 
  PlotTotalErr(pinfo)
  fprintf('Finished %s ... pausing, hit any key\n','PlotTotalErr'); pause

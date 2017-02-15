@@ -21,7 +21,7 @@ function PlotPhaseSpace( pinfo )
 %
 % Example 1   ( 9 variable model )
 %%--------------------------------------------------------
-% pinfo.fname      = 'True_State.nc';
+% pinfo.fname      = 'perfect_output.nc';
 % pinfo.ens_mem    = 'true state';    % true state only has 1 ens mem ...
 % pinfo.var1name   = 'state';         % 9var netCDF has only 1 flavor variable
 % pinfo.var2name   = 'state';
@@ -115,12 +115,17 @@ switch lower(pinfo.model)
 
       ens_mem_id = get_copy_index(pinfo.fname, pinfo.ens_mem);  % errors out if no ens_mem
 
-      x = get_hyperslab('fname',pinfo.fname,        'varname',pinfo.var1name, ...
-                         'copyindex',ens_mem_id, 'stateindex',pinfo.var1ind);
-      y = get_hyperslab('fname',pinfo.fname,        'varname',pinfo.var2name, ...
-                         'copyindex',ens_mem_id, 'stateindex',pinfo.var2ind);
-      z = get_hyperslab('fname',pinfo.fname,        'varname',pinfo.var3name, ...
-                         'copyindex',ens_mem_id, 'stateindex',pinfo.var3ind);
+      x = get_hyperslab('fname', pinfo.fname, 'memberindex', ens_mem_id, ...
+                        'varname',pinfo.var1name,'stateindex', pinfo.var1ind, ...
+                        'squeeze', 'true');
+
+      y = get_hyperslab('fname', pinfo.fname, 'memberindex', ens_mem_id, ...
+                        'varname',pinfo.var2name,'stateindex', pinfo.var2ind, ...
+                        'squeeze', 'true');
+
+      z = get_hyperslab('fname', pinfo.fname, 'memberindex', ens_mem_id, ...
+                        'varname',pinfo.var3name,'stateindex', pinfo.var3ind, ...
+                        'squeeze', 'true');
 
       % There is no model-dependent segment ...
       % As long as you have three variables, this works for all models.
@@ -286,29 +291,38 @@ end
 % Subfunctions
 %======================================================================
 
-
-
 function [nT, nC, n3] = parse_varshape(fname,varname)
 
-y = nc_isvar(fname,varname);
-if (y < 1)
+fileinfo  = ncinfo(fname);
+nvars     = length(fileinfo.Variables);
+isvar     = 0;
+
+for i = 1:nvars
+    candidate = fileinfo.Variables(i).Name;
+    if (strcmp(varname,candidate))
+        isvar = 1;
+        break
+    end
+end
+
+if (isvar < 1)
    error('%s has no variable named %s ',fname,varname)
 end
 
-nT = 0;
+nt = 0;
 nC = 0;
 n3 = 0;
 
-varinfo = nc_getvarinfo(fname,varname);
+varinfo = ncinfo(fname,varname);
 
 % for i = 1:length(varinfo.Dimension)
 for i = 1:3  % only want/need the first 3 dimensions.
-   switch( lower(varinfo.Dimension{i}))
+   switch( lower(varinfo.Dimensions(i).Name))
       case 'time'
          nT = varinfo.Size(i);
-      case 'copy'
+      case 'member'
          nC = varinfo.Size(i);
-      case 'StateVariable'
+      case 'location'
          n3 = varinfo.Size(i);
       otherwise
          n3 = varinfo.Size(i);

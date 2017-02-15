@@ -29,8 +29,6 @@ use      obs_def_mod,     only : obs_def_type, get_obs_def_error_variance, get_o
 use    obs_model_mod,     only : move_ahead, advance_state, set_obs_model_trace
 use  assim_model_mod,     only : static_init_assim_model, get_model_size,                    &
                                  aget_initial_condition
-use state_space_diag_mod, only : netcdf_file_type, init_diag_output, &
-                                 aoutput_diagnostics, finalize_diag_output
    
 use mpi_utilities_mod,    only : task_count, task_sync, initialize_mpi_utilities, &
                                  finalize_mpi_utilities
@@ -39,7 +37,7 @@ use   random_seq_mod,     only : random_seq_type, init_random_seq, random_gaussi
 use ensemble_manager_mod, only : init_ensemble_manager,               &
                                  end_ensemble_manager, ensemble_type,  &
                                  get_my_num_copies, get_ensemble_time, prepare_to_write_to_vars,      &
-                                 prepare_to_read_from_vars, &
+                                 prepare_to_read_from_vars, allocate_vars,  &
                                  all_vars_to_all_copies, &
                                  all_copies_to_all_vars
 
@@ -52,6 +50,7 @@ use io_filenames_mod,      only : io_filenames_init, file_info_type, file_info_d
                                   combine_file_info, set_file_metadata,  &
                                   set_io_copy_flag, check_file_info_variable_shape, &
                                   READ_COPY, WRITE_COPY
+                                  
 
 use quality_control_mod,   only : set_input_qc, initialize_qc
 
@@ -78,12 +77,13 @@ integer            :: trace_level, timestamp_level
 !-----------------------------------------------------------------------------
 ! Namelist with default values
 !
-logical  :: start_from_restart = .false.
-logical  :: output_restart     = .false.
+logical  :: read_input_state_from_file = .false.
+logical  :: write_output_state_to_file = .false.
 integer  :: async              = 0
 logical  :: trace_execution    = .false.
 logical  :: output_timestamps  = .false.
 logical  :: silence            = .false.
+logical  :: distributed_state  = .true.
 
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
@@ -102,14 +102,18 @@ integer  :: tasks_per_model_advance = 1
 integer  :: output_interval = 1
 integer  :: print_every_nth_obs = 0
 
-character(len=256) :: restart_in_file_names(MAX_NUM_DOMS)  = 'null',            &
-                      restart_out_file_names(MAX_NUM_DOMS) = 'null',            &
-                      obs_seq_in_file_name                 = 'obs_seq.in',      &
-                      obs_seq_out_file_name                = 'obs_seq.out',     &
-                      adv_ens_command                      = './advance_model.csh'
+logical  :: has_cycling     = .false.
+logical  :: single_file_in  = .false.
+logical  :: single_file_out = .false.
 
-namelist /perfect_model_obs_nml/ start_from_restart, async, output_restart,         &
-                                 init_time_days, init_time_seconds,                 &
+character(len=256) :: input_state_files(MAX_NUM_DOMS)  = '',               &
+                      output_state_files(MAX_NUM_DOMS) = '',                &
+                      obs_seq_in_file_name            = 'obs_seq.in',      &
+                      obs_seq_out_file_name           = 'obs_seq.out',     &
+                      adv_ens_command                 = './advance_model.csh'
+
+namelist /perfect_model_obs_nml/ read_input_state_from_file, write_output_state_to_file, &
+                                 init_time_days, init_time_seconds, async,          &
                                  first_obs_days, first_obs_seconds,                 &
                                  last_obs_days,  last_obs_seconds, output_interval, &
                                  obs_seq_in_file_name, obs_seq_out_file_name,       &
@@ -117,7 +121,8 @@ namelist /perfect_model_obs_nml/ start_from_restart, async, output_restart,     
                                  obs_window_days, obs_window_seconds, silence,      &
                                  trace_execution, output_timestamps,                &
                                  print_every_nth_obs, output_forward_op_errors,     &
-                                 restart_in_file_names, restart_out_file_names
+                                 input_state_files, output_state_files, has_cycling,  &
+                                 single_file_in, single_file_out, distributed_state
 
 !------------------------------------------------------------------------------
 
@@ -135,7 +140,6 @@ type(obs_type)          :: obs
 type(obs_def_type)      :: obs_def
 type(random_seq_type)   :: random_seq
 type(ensemble_type)     :: ens_handle, fwd_op_ens_handle, qc_ens_handle
-type(netcdf_file_type)  :: StateUnit
 type(time_type)         :: first_obs_time, last_obs_time
 type(time_type)         :: window_time, curr_ens_time, next_ens_time
 
@@ -143,7 +147,7 @@ integer, allocatable    :: keys(:)
 integer                 :: i, j, iunit, time_step_number, obs_seq_file_id
 integer                 :: cnum_copies, cnum_qc, cnum_obs, cnum_max
 integer                 :: additional_qc, additional_copies, forward_unit
-integer                 :: ierr, io, num_obs_in_set, nth_obs
+integer                 :: io, num_obs_in_set, nth_obs
 integer                 :: key_bounds(2), num_qc, last_key_used
 integer                 :: seed
 integer(i8)             :: model_size
@@ -165,10 +169,11 @@ integer              :: secs, days
 character(len=20)    :: task_str ! string to hold the task number
 integer              :: ens_size = 1 ! This is to avoid magic number 1s
 integer              :: copy_indices(1) = 1
+
 type(file_info_type) :: file_info_input
 type(file_info_type) :: file_info_output
 
-character(len=256), allocatable :: restart_in_files(:), restart_out_files(:)
+character(len=256), allocatable :: input_filelist(:), output_filelist(:)
 integer :: nfilesin, nfilesout
 
 ! Initialize all modules used that require it
@@ -242,49 +247,53 @@ call error_handler(E_MSG,'perfect_main',msgstring)
 
 ! Set up the ensemble storage and read in the restart file
 call trace_message('Before reading in ensemble restart file')
-call init_ensemble_manager(ens_handle, ens_size, model_size, 1)
+if(distributed_state) then
+   call init_ensemble_manager(ens_handle, ens_size, model_size)
+else
+   call init_ensemble_manager(ens_handle, ens_size, model_size, transpose_type_in = 2)
+endif
+
 call set_num_extra_copies(ens_handle, 0)
 
 ! Initialize file names:
 
-call parse_filenames(restart_in_file_names,  restart_in_files,  nfilesin)
-call parse_filenames(restart_out_file_names, restart_out_files, nfilesout)
+! this routine allocates the second argument to be the correct length
+call parse_filenames(input_state_files,  input_filelist,  nfilesin)
+call parse_filenames(output_state_files, output_filelist, nfilesout)
 
+!> @todo FIXME  if nfilesout == 0 and write_output_state_to_file is .false.
+!> that shouldn't be an error.  if nfilesin == 0 and read_input_state_from_file
+!> is false, that also shouldn't be an error.  (unless you're writing the mean
+!> and sd, and then maybe we should have a different name for output of input values.)
 if (nfilesin == 0 .or. nfilesout == 0 ) then
-   msgstring = 'nfiles == 0, must specify a restart_in_file_names and '//&
-               'restart_out_file_names'
+   msgstring = 'must specify both "input_state_files" and "output_state_files" in the namelist'
    call error_handler(E_ERR,'perfect_main',msgstring,source,revision,revdate)
 endif
 
-file_info_input  = io_filenames_init(1, single_file=.false.)
-call set_file_metadata(file_info_input, 1, restart_in_files, 'pmo initial condition')
-call set_io_copy_flag( file_info_input, 1, READ_COPY) 
+call io_filenames_init(file_info_input,  1, cycling=has_cycling, single_file=single_file_in)
+call set_file_metadata(file_info_input,  1, input_filelist, 'perfect_input', 'pmo initial condition')
+call set_io_copy_flag( file_info_input,  1, READ_COPY) 
 
-file_info_output = io_filenames_init(1, single_file=.false.)
-call set_file_metadata(file_info_output, 1, restart_out_files, 'pmo restart')
-call set_io_copy_flag( file_info_output, 1, WRITE_COPY) 
-call check_file_info_variable_shape(file_info_output, ens_handle)
-
-if (trace_execution) then
-   call file_info_dump(file_info_input,'pmo:file_info_input')
-   call file_info_dump(file_info_output,'pmo:file_info_output')
-endif
+! Perfect Restart
+call io_filenames_init(file_info_output, 1, cycling=has_cycling, single_file=single_file_out)
+call set_file_metadata(file_info_output, 1, output_filelist, 'perfect_restart', 'pmo restart')
+call set_io_copy_flag( file_info_output, 1, 1, WRITE_COPY, num_output_ens=1)
 
 ! Set a time type for initial time if namelist inputs are not negative
 call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time_from_file)
 
-if (start_from_restart) then
+if (read_input_state_from_file) then
 
+   call error_handler(E_MSG,'perfect_read_restart:', 'reading input state from file')
    call read_state(ens_handle, file_info_input, read_time_from_file, time1)
 
 else ! model spin up
 
    call error_handler(E_MSG,'perfect_read_restart:', &
          'Using code in model_mod to initialize ensemble')
-   allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
+   call allocate_vars(ens_handle)
    if(ens_handle%my_pe == 0) call aget_initial_condition(ens_handle%time(1), ens_handle%vars(:, 1))
    call all_vars_to_all_copies(ens_handle)
-   deallocate(ens_handle%vars)
 
 endif
 
@@ -303,10 +312,6 @@ call create_state_window(ens_handle)
 !>@todo FIXME this block must be supported in the single file loop with time dimension
 call trace_message('Before initializing output diagnostic file')
 state_meta(1) = 'true state'
-! Set up output of truth for state
-if (ens_handle%my_pe == 0) then
-   StateUnit = init_diag_output('True_State', 'true state from control', 1, state_meta)
-endif
 call trace_message('After  initializing output diagnostic file')
 
 ! Get the time of the first observation in the sequence
@@ -388,14 +393,17 @@ AdvanceTime: do
       call     trace_message('Before running model')
       call timestamp_message('Before running model', sync=.true.)
 
-      allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
+      call allocate_vars(ens_handle)
       call all_copies_to_all_vars(ens_handle)
 
       if (ens_handle%my_pe == 0) call advance_state(ens_handle, 1, next_ens_time, async, &
                     adv_ens_command, tasks_per_model_advance, file_info_output, file_info_input)
 
       call all_vars_to_all_copies(ens_handle)
-      deallocate(ens_handle%vars)
+
+      ! update so curr time is accurate.
+      curr_ens_time = next_ens_time
+      ens_handle%current_time = curr_ens_time
 
       call timestamp_message('After  running model', sync=.true.)
       call     trace_message('After  running model')
@@ -433,14 +441,11 @@ AdvanceTime: do
    if((output_interval > 0) .and. &
       (time_step_number / output_interval * output_interval == time_step_number)) then
 
-      allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
-      call all_copies_to_all_vars(ens_handle)
-
-      call trace_message('Before updating truth diagnostics file')
-      if(ens_handle%my_pe == 0) call aoutput_diagnostics(StateUnit, ens_handle%time(1), ens_handle%vars(:, 1), 1)
-      call trace_message('After  updating truth diagnostics file')
-
-      deallocate(ens_handle%vars)
+      call trace_message('Before updating output file')
+      if(write_output_state_to_file) then
+         call write_state(ens_handle, file_info_output)
+      endif
+      call trace_message('After  updating output file')
 
    endif
 
@@ -551,25 +556,22 @@ AdvanceTime: do
 
 end do AdvanceTime
 
+
 ! if logging errors, close unit
 if(output_forward_op_errors) call close_file(forward_unit)
 
 call trace_message('End of main evaluation loop, starting cleanup', 'perfect_model_obs:', -1)
 
-! properly dispose of the diagnostics files
-call trace_message('Before finalizing diagnostics file')
-if(ens_handle%my_pe == 0) ierr = finalize_diag_output(StateUnit)
-call trace_message('After  finalizing diagnostics file')
-
 ! Write out the sequence
 call trace_message('Before writing output sequence file')
 if (ens_handle%my_pe == 0) call write_obs_seq(seq, obs_seq_out_file_name)
-deallocate(fwd_op_ens_handle%vars, qc_ens_handle%vars)
+call end_ensemble_manager(fwd_op_ens_handle)
+call end_ensemble_manager(qc_ens_handle)
 call trace_message('After  writing output sequence file')
 
 ! Output a restart file if requested
 call trace_message('Before writing state restart file if requested')
-if(output_restart) then
+if(write_output_state_to_file) then
    call write_state(ens_handle, file_info_output)
 endif
 call trace_message('After  writing state restart file if requested')
@@ -759,7 +761,7 @@ integer :: i
 ! count the number of valid files
 nfiles = 0
 do i = 1, size(file_array(:),1)
-   if ( file_array(i) == 'null' ) exit
+   if ( file_array(i) == '' ) exit
    nfiles = nfiles + 1 
 enddo
 

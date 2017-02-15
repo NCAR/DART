@@ -18,8 +18,8 @@ function PlotEnsMeanTimeSeries( pinfo )
 %
 % Example 1 ( 9var model )
 %-------------------------------------------------------------
-% pinfo.truth_file  = 'True_State.nc';
-% pinfo.diagn_file  = 'Prior_Diag.nc';
+% pinfo.truth_file  = 'perfect_output.nc';
+% pinfo.diagn_file  = 'preassim.nc';
 % pinfo.model       = '9var';
 % pinfo.var         = 'state';
 % pinfo.var_inds    = [ 4 5 6 ];
@@ -27,8 +27,8 @@ function PlotEnsMeanTimeSeries( pinfo )
 %
 % Example 2 (FMS BGrid model)
 %--------------------------------------------------------
-% pinfo.truth_file = 'True_State.nc';
-% pinfo.diagn_file = 'Prior_Diag.nc';
+% pinfo.truth_file = 'perfect_output.nc';
+% pinfo.diagn_file = 'preassim.nc';
 % pinfo.var        = 'u';
 % pinfo.level      = 3;
 % pinfo.latitude   = 23.5;
@@ -45,12 +45,12 @@ if ( exist(pinfo.diagn_file,'file') ~= 2 ), error('%s does not exist.',pinfo.dia
 
 % Get the indices for the ensemble mean.
 % The metadata is queried to determine which "copy" is appropriate.
-ens_mean_index = get_copy_index(pinfo.diagn_file, 'ensemble mean');
+%ens_mean_index = get_copy_index(pinfo.diagn_file, 'ensemble mean');
 
 % If the truth is known, great.
 if ( exist(pinfo.truth_file,'file') == 2)
    have_truth  = 1;
-   truth_index = get_copy_index(pinfo.truth_file, 'true state');
+%  truth_index = get_copy_index(pinfo.truth_file, 'true state');
 else
    have_truth  = 0;
    pinfo.diagn_time = [1 pinfo.time_series_length];
@@ -70,15 +70,15 @@ switch lower(pinfo.model)
 
             % If the truth is known ...
             if ( have_truth )
-               truth = get_hyperslab('fname',pinfo.truth_file, 'varname',pinfo.var, ...
-                           'copyindex',truth_index, 'stateindex',ivar, ...
+               truth = get_hyperslab('fname',pinfo.truth_file, ...
+                           'varname','state', 'stateindex',ivar, 'squeeze','true', ...
                            'tindex1', pinfo.truth_time(1), 'tcount',pinfo.truth_time(2));
                plot(pinfo.time,truth,'b','LineWidth',1.0); hold on;
                legendstr = 'True State';
             end
 
-            ens_mean = get_hyperslab('fname',pinfo.diagn_file, 'varname',pinfo.var, ...
-                           'copyindex',ens_mean_index, 'stateindex',ivar, ...
+            ens_mean = get_hyperslab('fname',pinfo.diagn_file, ...
+                           'varname','state_mean', 'stateindex',ivar, ...
                            'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2));
             plot(pinfo.time,ens_mean,'r','LineWidth',1.0)
 
@@ -98,22 +98,21 @@ switch lower(pinfo.model)
 
    case {'lorenz_63','lorenz_84'}
 
-      %% Use one figure with three(usually) subplots
+      % Use one figure with three subplots
       figure(1); clf; iplot = 0;
       for ivar = pinfo.var_inds,
 
             iplot = iplot + 1;
             subplot(length(pinfo.var_inds), 1, iplot);
 
-            ens_mean    = get_hyperslab('fname',pinfo.diagn_file, 'varname',pinfo.var, ...
-                              'copyindex',ens_mean_index, 'stateindex', ivar, ...
-                              'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2));
+            ens_mean = get_hyperslab('fname',pinfo.diagn_file,'varname','state_mean', ...
+                       'stateindex',ivar,'tindex1',pinfo.diagn_time(1),'tcount',pinfo.diagn_time(2));
             plot(pinfo.time, ens_mean, 'r');
             legend('Ensemble Mean',0);
 
             if ( have_truth )
-               truth = get_hyperslab('fname',pinfo.truth_file, 'varname',pinfo.var, ...
-                           'copyindex',truth_index, 'stateindex',ivar, ...
+               truth = get_hyperslab('fname',pinfo.truth_file, 'varname','state', ...
+                           'stateindex',ivar, 'squeeze','true', ...
                            'tindex1',pinfo.truth_time(1), 'tcount',pinfo.truth_time(2));
                hold on; plot(pinfo.time,truth,'b'); hold off;
                legend('Ensemble Mean','True State',0);
@@ -127,22 +126,20 @@ switch lower(pinfo.model)
 
       % as a bonus, plot the mean attractors.
       figure(2); clf
-      ens  = get_hyperslab('fname',pinfo.diagn_file, 'varname',pinfo.var, ...
-                       'copyindex',ens_mean_index, ...
+      ens  = get_hyperslab('fname',pinfo.diagn_file, 'varname','state_mean', ...
                        'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2));
-      plot3(ens(:,1), ens(:,2), ens(:,3), 'r')
+      plot3(ens(1,:), ens(2,:), ens(3,:), 'r')
       legend('Ensemble Mean',0)
 
       if (have_truth)
-         ts= get_hyperslab('fname',pinfo.truth_file, 'varname',pinfo.var, ...
-                       'copyindex',truth_index, ...
+         ts= get_hyperslab('fname',pinfo.truth_file, 'varname','state', ...
                        'tindex1',pinfo.truth_time(1), 'tcount',pinfo.truth_time(2));
-         hold on; plot3(  ts(:,1),  ts(:,2),  ts(:,3), 'b'); hold off;
+         hold on; plot3(  ts(1,:),  ts(2,:),  ts(3,:), 'b'); hold off;
          legend('Ensemble Mean','True State',0)
       end
 
-      title(sprintf('%s Attractors for %s', ...
-              pinfo.model, pinfo.diagn_file), ...
+      [~,fname,fext] = fileparts(pinfo.diagn_file);
+      title(sprintf('%s Attractors for %s%s', pinfo.model, fname, fext), ...
               'interpreter','none','fontweight','bold')
       xlabel('state variable 1')
       ylabel('state variable 2')
@@ -157,16 +154,16 @@ switch lower(pinfo.model)
       for ivar = pinfo.var_inds,
             iplot = iplot + 1;
             subplot(length(pinfo.var_inds), 1, iplot);
-            ens_mean = get_hyperslab('fname',pinfo.diagn_file, 'varname',pinfo.var, ...
-                           'copyindex',ens_mean_index, 'stateindex',ivar, ...
+            ens_mean = get_hyperslab('fname',pinfo.diagn_file, ...
+                           'varname', 'state_mean', 'stateindex',ivar, ...
                            'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2));
             plot(pinfo.time, ens_mean, 'r')
             legend('Ensemble Mean',0)
 
             % Get the truth for this variable
             if (have_truth)
-               truth = get_hyperslab('fname',pinfo.truth_file, 'varname',pinfo.var, ...
-                           'copyindex',truth_index, 'stateindex',ivar, ...
+               truth = get_hyperslab('fname',pinfo.truth_file, ...
+                           'varname','state', 'stateindex',ivar, 'squeeze', 'true', ...
                            'tindex1',pinfo.truth_time(1), 'tcount',pinfo.truth_time(2));
                hold on; plot(pinfo.time,truth,'b'); hold off;
                legend('Ensemble Mean','True State',0)

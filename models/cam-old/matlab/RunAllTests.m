@@ -1,5 +1,5 @@
 function RunAllTests(dummy)
-%% RunAllTests.m
+%% RunAllTests.m cam-old
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -12,6 +12,8 @@ if (nargin() > 0)
 else
    interactive = 0;
 end
+
+%%
 
 figure(1)
 if (interactive)
@@ -76,7 +78,7 @@ end
  clear pinfo; clf
 
  pinfo                    = CheckModel('Prior_Diag.nc');
- pinfo.time               = nc_varget(pinfo.fname,'time');
+ pinfo.time               = ncread(pinfo.fname,'time');
  pinfo.time_series_length = length(pinfo.time);
  pinfo.base_var           = 'T';
  pinfo.comp_var           = 'T';

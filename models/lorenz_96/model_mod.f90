@@ -458,8 +458,7 @@ integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 ! netCDF variables for Location
 !--------------------------------------------------------------------
 
-integer :: LocationVarID
-integer :: StateVarDimID, StateVarVarID
+integer :: LocationDimID, LocationVarID
 integer :: StateVarID, MemberDimID, TimeDimID
 
 !--------------------------------------------------------------------
@@ -479,7 +478,7 @@ character(len=128)  :: filename
 type(ensemble_type) :: state_handle ! needed for compilation, not used here
 
 ierr = 0                      ! assume normal termination
-model_mod_writes_state_variables = .true. 
+model_mod_writes_state_variables = .false. 
 
 !--------------------------------------------------------------------
 ! we only have a netcdf handle here so we do not know the filename
@@ -500,17 +499,6 @@ call nc_check(nf90_sync(ncFileID), & ! Ensure netCDF file is current
               'nc_write_model_atts', 'sync, '//trim(filename))
 call nc_check(nf90_Redef(ncFileID), &
               'nc_write_model_atts', 'redef, '//trim(filename))
-
-!--------------------------------------------------------------------
-! Determine ID's from stuff already in the netCDF file
-!--------------------------------------------------------------------
-
-! make sure time is unlimited dimid
-
-call nc_check(nf90_inq_dimid(ncFileID,"copy",dimid=MemberDimID), &
-              'nc_write_model_atts', 'inq_dimid copy, '//trim(filename))
-call nc_check(nf90_inq_dimid(ncFileID,"time",dimid=TimeDimID), &
-              'nc_write_model_atts', 'inq_dimid time, '//trim(filename))
 
 !--------------------------------------------------------------------
 ! Write Global Attributes 
@@ -539,9 +527,9 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_delta_t", delta_t ), &
 ! Define the model size, state variable dimension ... whatever ...
 !--------------------------------------------------------------------
 
-call nc_check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
-                           len=int(model_size, i4), dimid = StateVarDimID), &
-                          'nc_write_model_atts', 'def_dim StateVariable, '//trim(filename))
+call nc_check(nf90_def_dim(ncid=ncFileID, name="location", &
+                           len=int(model_size, i4), dimid = LocationDimID), &
+                          'nc_write_model_atts', 'def_dim location, '//trim(filename))
 
 !--------------------------------------------------------------------
 ! Define the Location Variable and add Attributes
@@ -550,8 +538,8 @@ call nc_check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
 ! http://www.cgd.ucar.edu/cms/eaton/netcdf/CF-working.html#ctype
 !--------------------------------------------------------------------
 
-call nc_check(NF90_def_var(ncFileID, name=trim(adjustl(LocationName)), xtype=nf90_double, &
-              dimids = StateVarDimID, varid=LocationVarID), &
+call nc_check(NF90_def_var(ncFileID, name="location", xtype=nf90_double, &
+              dimids = LocationDimID, varid=LocationVarID), &
               'nc_write_model_atts', 'check, '//trim(LocationName)//', '//trim(filename))
 call nc_check(nf90_put_att(ncFileID, LocationVarID, "long_name", trim(adjustl(LocationLName))), &
               'nc_write_model_atts', 'put_att long_name, '//trim(filename))
@@ -566,31 +554,9 @@ call nc_check(nf90_put_att(ncFileID, LocationVarID, "valid_range", (/ 0.0_r8, 1.
 ! Define either the "state vector" variables -OR- the "prognostic" variables.
 !--------------------------------------------------------------------
 
-! Define the state vector coordinate variable
-call nc_check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
-              dimids=StateVarDimID, varid=StateVarVarID), &
-             'nc_write_model_atts', 'def_var StateVariable, '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"), &
-              'nc_write_model_atts', 'put_att long_name, '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical"), &
-              'nc_write_model_atts', 'put_att units, '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, int(model_size, i4) /)), &
-              'nc_write_model_atts', 'put_att valid_range, '//trim(filename)) 
-
-! Define the actual state vector
-call nc_check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_double, &
-           dimids = (/ StateVarDimID, MemberDimID, TimeDimID /), varid=StateVarID), &
-           'nc_write_model_atts', 'def_var state, '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"), &
-              'nc_write_model_atts', 'put_att long_name, '//trim(filename))
-
 ! Leave define mode so we can fill
 call nc_check(nf90_enddef(ncfileID), &
               'nc_write_model_atts', 'enddef, '//trim(filename))
-
-! Fill the state variable coordinate variable
-call nc_check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,int(model_size, i4)) /) ), &
-              'nc_write_model_atts', 'put_var state variable coordinate, '//trim(filename))
 
 !--------------------------------------------------------------------
 ! Fill the location variable
@@ -647,49 +613,8 @@ real(r8), dimension(:), intent(in) :: statevec
 integer,                intent(in) :: copyindex
 integer,                intent(in) :: timeindex
 integer                            :: ierr          ! return value of function
-!--------------------------------------------------------------------
-! General netCDF variables
-!--------------------------------------------------------------------
-
-integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: StateVarID
-
-!--------------------------------------------------------------------
-! local variables
-!--------------------------------------------------------------------
-
-character(len=128) :: filename
-
-!--------------------------------------------------------------------
-! we only have a netcdf handle here so we do not know the filename
-! or the fortran unit number.  but construct a string with at least
-! the netcdf handle, so in case of error we can trace back to see
-! which netcdf file is involved.
-!--------------------------------------------------------------------
-
-write(filename,*) 'ncFileID', ncFileID
-
 
 ierr = 0                      ! assume normal termination
-
-!--------------------------------------------------------------------
-! make sure ncFileID refers to an open netCDF file
-!--------------------------------------------------------------------
-
-call nc_check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID), &
-              'nc_write_model_vars', 'inquire, '//trim(filename))
-
-! no matter the value of "output_state_vector", we only do one thing.
-
-call nc_check(NF90_inq_varid(ncFileID, "state", StateVarID), & 
-              'nc_write_model_vars', 'inq_varid state, '//trim(filename))
-call nc_check(NF90_put_var(ncFileID, StateVarID, statevec,  &
-              start=(/ 1, copyindex, timeindex /)),  &
-              'nc_write_model_vars', 'put_var state vector, '//trim(filename))
-
-! write (*,*)'Finished filling variables ...'
-call nc_check(nf90_sync(ncFileID), 'nc_write_model_vars', 'sync, '//trim(filename))
-! write (*,*)'netCDF file is synched ...'
 
 end function nc_write_model_vars
 

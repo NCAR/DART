@@ -110,11 +110,6 @@
    assimilate_these_obs_types = 'RAW_STATE_VARIABLE'
    /
 
-&assim_model_nml
-   write_binary_restart_files = .false.,
-   netCDF_large_file_support  = .false.
-   /
-
 &model_nml
    model_size        = 2,
    delta_t           = 0.05,

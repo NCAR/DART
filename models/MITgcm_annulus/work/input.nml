@@ -100,11 +100,6 @@
                                 'RADIOSONDE_V_WIND_COMPONENT'
    evaluate_these_obs_types   = 'RADIOSONDE_SURFACE_PRESSURE'  /
 
-&assim_model_nml
-   write_binary_restart_files = .true.,
-   netCDF_large_file_support  = .false.
-  /
-
 &model_nml
    model_size = 539400,
    naz        = 120,

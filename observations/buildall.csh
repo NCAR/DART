@@ -16,42 +16,65 @@ foreach project ( `find . -name quickbuild.csh -print` )
    set dir = $project:h
    set FAILURE = 0
 
+   echo 
+   echo 
+   echo "=================================================================="
+   echo "=================================================================="
+   echo "Compiling obs converter $dir starting at "`date`
+   echo "=================================================================="
+   echo "=================================================================="
+   echo 
+   echo 
+
+
    cd $dir
    echo
    echo building in $dir
 
-   switch ("$dir")
+   ./quickbuild.csh || set FAILURE = 1
 
-      case */var/*
-         echo "expected to fail unless you have the WRF code in-situ."
-      breaksw
-         
-      case *AIRS*
-         ./quickbuild.csh
-         echo "AIRS build is expected to fail due to dependency on hdfeos libs,"
-         echo "not required to be part of the standard DART environment."
-      breaksw
-         
-      case *quikscat*
-         ./quickbuild.csh
-         echo "quikscat build is expected to fail due to dependency on mfhdf libs,"
-         echo "not required to be part of the standard DART environment."
-      breaksw
-         
-      default:
-         ./quickbuild.csh || set FAILURE = 1
-      breaksw
-         
-   endsw
+   if ( $FAILURE ) then
+      echo
+      echo "=================================================================="
+      echo "ERROR - unsuccessful build in $dir"
+      echo 
 
-   if ( $FAILURE != 0 ) then
-      echo
-      echo "ERROR unsuccessful build in $dir"
-      echo "ERROR unsuccessful build in $dir"
-      echo "ERROR unsuccessful build in $dir"
-      echo
-#     exit -1
-   endif
+      switch ( $dir )
+   
+         case */var/*
+            echo "This build expected to fail unless you have the WRF code in-situ."
+            echo "=================================================================="
+         breaksw
+            
+         case *AIRS*
+            echo "AIRS build is expected to fail due to dependency on hdfeos libs,"
+            echo "not required to be part of the standard DART environment."
+            echo "=================================================================="
+         breaksw
+            
+         case *quikscat*
+            echo "quikscat build is expected to fail due to dependency on mfhdf libs,"
+            echo "not required to be part of the standard DART environment."
+            echo "=================================================================="
+         breaksw
+  
+         default
+            echo " unexpected error"
+            echo "=================================================================="
+         breaksw
+      endsw
+  
+   else
+         
+   echo 
+   echo 
+   echo "=================================================================="
+   echo "=================================================================="
+   echo "Build of obs converter $dir ended at "`date`
+   echo "=================================================================="
+   echo "=================================================================="
+   echo 
+   echo 
 
    cd $startdir
 end

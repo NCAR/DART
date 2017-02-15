@@ -1,5 +1,5 @@
 function RunAllTests(dummy)
-%% RunAllTests.m
+%% RunAllTests.m 9var
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -12,6 +12,8 @@ if (nargin() > 0)
 else
    interactive = 0;
 end
+
+%%
 
 figure(1)
 if (interactive)
@@ -32,7 +34,7 @@ end
  fprintf('Starting %s\n','PlotBins');
  clear pinfo; close all;
 
- pinfo          = CheckModelCompatibility('True_State.nc','Prior_Diag.nc');
+ pinfo          = CheckModelCompatibility('perfect_output.nc','preassim.nc');
  pinfo.var      = 'state';
  pinfo.var_inds = [1 2 3 4 5 6 7 8 9];
 [pinfo.num_ens_members, pinfo.ensemble_indices] = get_ensemble_indices(pinfo.diagn_file);
@@ -62,13 +64,13 @@ if (interactive)
 end
 
  fprintf('Starting %s\n','PlotCorrel');
- clear pinfo; clf
+ clear pinfo; close all
 
- pinfo                    = CheckModel('Prior_Diag.nc');
+ pinfo                    = CheckModel('preassim.nc');
  pinfo.base_var           = 'state';
  pinfo.base_var_index     = 4;
  pinfo.base_time          = 34;
- pinfo.time               = nc_varget(pinfo.fname,'time');
+ pinfo.time               = ncread(pinfo.fname,'time');
  pinfo.time_series_length = length(pinfo.time);
 [pinfo.num_ens_members, pinfo.ensemble_indices] = get_ensemble_indices(pinfo.fname);
 
@@ -85,9 +87,9 @@ if (interactive)
 end
 
  fprintf('Starting %s\n','PlotPhaseSpace');
- clear pinfo; clf
+ clear pinfo; close all
 
- pinfo.fname    = 'True_State.nc';
+ pinfo.fname    = 'perfect_output.nc';
  pinfo.model    = '9var';
  pinfo.var1name = 'state';
  pinfo.var2name = 'state';
@@ -95,7 +97,7 @@ end
  pinfo.var1ind  = 1;
  pinfo.var2ind  = 2;
  pinfo.var3ind  = 3;
- pinfo.ens_mem  = 'true state';
+ pinfo.ens_mem  = 'ensemble member 1';
  pinfo.ltype    = 'k-';
 [pinfo.num_ens_members, pinfo.ensemble_indices] = get_ensemble_indices(pinfo.fname);
 
@@ -125,16 +127,16 @@ end
  pinfo.min_state_var      = 1;
  pinfo.max_state_var      = 9;
  pinfo.def_state_vars     = [1 2 3 4 5 6 7 8 9];
- pinfo.prior_file         = 'Prior_Diag.nc';
- pinfo.posterior_file     = 'Posterior_Diag.nc';
- pinfo.diagn_file         = 'Prior_Diag.nc';
+ pinfo.prior_file         = 'preassim.nc';
+ pinfo.posterior_file     = 'filter_output.nc';
+ pinfo.diagn_file         = 'preassim.nc';
  pinfo.diagn_time         = [-1 -1];
- pinfo.truth_file         = 'True_State.nc';
+ pinfo.truth_file         = 'perfect_output.nc';
  pinfo.truth_time         = [-1 -1];
  pinfo.var                = 'state';
  pinfo.var_inds           = [1 2 3 4 5 6 7 8 9];
- pinfo.copyindices        = [7 12 17];
- pinfo.time               = nc_varget(pinfo.truth_file,'time');
+ pinfo.copyindices        = [5 10 15];
+ pinfo.time               = ncread(pinfo.truth_file,'time');
  pinfo.time_series_length = length(pinfo.time);
  pinfo.prior_time         = [1 pinfo.time_series_length];
  pinfo.posterior_time     = [1 pinfo.time_series_length];
@@ -158,7 +160,7 @@ if (interactive)
 end
 
  fprintf('Starting %s\n','PlotTotalErr');
- clear pinfo; clf
+ clear pinfo; close all
 
  pinfo.model              = '9var';
  pinfo.def_var            = 'state';
@@ -166,9 +168,9 @@ end
  pinfo.min_state_var      = 1;
  pinfo.max_state_var      = 9;
  pinfo.def_state_vars     = [1 2 3 4 5 6 7 8 9];
- pinfo.truth_file         = 'True_State.nc';
- pinfo.diagn_file         = 'Prior_Diag.nc';
- pinfo.time               = nc_varget(pinfo.truth_file,'time');
+ pinfo.truth_file         = 'perfect_output.nc';
+ pinfo.diagn_file         = 'preassim.nc';
+ pinfo.time               = ncread(pinfo.truth_file,'time');
  pinfo.time_series_length = length(pinfo.time);
  pinfo.truth_time         = [1 pinfo.time_series_length];
  pinfo.diagn_time         = [1 pinfo.time_series_length];
@@ -187,16 +189,16 @@ if (interactive)
 end
 
  fprintf('Starting %s\n','PlotVarVarCorrel');
- clear pinfo; clf
+ clear pinfo; close all
 
- pinfo.fname              = 'Prior_Diag.nc';
+ pinfo.fname              = 'preassim.nc';
  pinfo.model              = '9var';
  pinfo.base_var           = 'state';
  pinfo.state_var          = 'state';
  pinfo.base_var_index     = 4;
  pinfo.base_time          = 235;
  pinfo.state_var_index    = 8;
- pinfo.time               = nc_varget(pinfo.fname,'time');
+ pinfo.time               = ncread(pinfo.fname,'time');
  pinfo.time_series_length = length(pinfo.time);
 [pinfo.num_ens_members, pinfo.ensemble_indices] = get_ensemble_indices(pinfo.fname);
 

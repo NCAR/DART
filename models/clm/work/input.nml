@@ -143,10 +143,6 @@
    /
 
 
-&assim_model_nml
-   netCDF_large_file_support  = .true.
-   /
-
 
 # Each variable must have 6 entries.
 # 1: variable name

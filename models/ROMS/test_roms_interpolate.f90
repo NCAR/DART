@@ -10,7 +10,7 @@ module test_roms_interpolate_mod
 ! interpolation test routines for threed sphere locations.
 !-------------------------------------------------------------------------------
 
-use             types_mod, only : r8, i8, missing_r8, metadatalength
+use             types_mod, only : r8, i8, MISSING_R8, metadatalength
 
 use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, &
                                   initialize_utilities, finalize_utilities,     &
@@ -308,7 +308,7 @@ function test_interpolate_single( ens_handle,       &
                                   jval,             &
                                   kval,             &
                                   mykindindex,      &
-                                  location,         &
+                                  value,            &
                                   ios_out) result(num_passed)
 
 type(ensemble_type)   , intent(inout) :: ens_handle
@@ -317,7 +317,7 @@ real(r8)              , intent(in)    :: ival
 real(r8)              , intent(in)    :: jval
 real(r8)              , intent(in)    :: kval
 integer               , intent(in)    :: mykindindex
-real(r8)              , intent(out)   :: location
+real(r8)              , intent(out)   :: value
 integer               , intent(out)   :: ios_out
 integer :: num_passed
 
@@ -330,6 +330,9 @@ num_passed = 0
 vertcoord = get_location_index(vertcoord_string)
 ios_out   = get_location_from_ijk(ival, jval, kval, mykindindex, loc)
 my_loc    = get_location(loc) 
+
+! where is the code that actually does the interpolate??  nsc.
+value = MISSING_R8
 
 if (ios_out == 0 ) then
    if (do_output() ) &

@@ -1,5 +1,5 @@
 function RunAllTests(dummy)
-%% RunAllTests.m
+%% RunAllTests.m lorenz_04
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -12,6 +12,8 @@ if (nargin() > 0)
 else
    interactive = 0;
 end
+
+%%
 
 figure(1)
 if (interactive)
@@ -32,7 +34,7 @@ end
  fprintf('Starting %s\n','PlotBins');
  clear pinfo; close all;
 
- pinfo          = CheckModelCompatibility('True_State.nc','Prior_Diag.nc');
+ pinfo          = CheckModelCompatibility('perfect_output.nc','preassim.nc');
  pinfo.var      = 'state';
  pinfo.var_inds = [100 200 300];
 [pinfo.num_ens_members, pinfo.ensemble_indices] = get_ensemble_indices(pinfo.diagn_file);
@@ -64,7 +66,7 @@ end
  fprintf('Starting %s\n','PlotCorrel');
  clear pinfo; clf
 
- pinfo                    = CheckModel('Prior_Diag.nc');
+ pinfo                    = CheckModel('preassim.nc');
  pinfo.def_var            = 'state';
  pinfo.base_var           = 'state';
  pinfo.base_var_index     = 100;
@@ -85,7 +87,7 @@ end
  fprintf('Starting %s\n','PlotPhaseSpace');
  clear pinfo; clf
 
- pinfo.fname    = 'True_State.nc';
+ pinfo.fname    = 'filter_output.nc';
  pinfo.model    = 'Lorenz_04';
  pinfo.var1name = 'state';
  pinfo.var2name = 'state';
@@ -93,7 +95,7 @@ end
  pinfo.var1ind  = 100;
  pinfo.var2ind  = 200;
  pinfo.var3ind  = 300;
- pinfo.ens_mem  = 'true state';
+ pinfo.ens_mem  = 'ensemble member 13';
  pinfo.ltype    = 'k-';
 
  PlotPhaseSpace(pinfo)
@@ -116,19 +118,19 @@ end
  fprintf('Starting %s\n','PlotSawtooth');
  clear pinfo; close all
 
- pinfo    = CheckModelCompatibility('Prior_Diag.nc','Posterior_Diag.nc');
+ pinfo    = CheckModelCompatibility('preassim.nc','filter_output.nc');
  pinfo.prior_time     = pinfo.truth_time;
  pinfo.prior_file     = pinfo.truth_file;
  pinfo.posterior_time = pinfo.diagn_time;
  pinfo.posterior_file = pinfo.diagn_file;
- pinfo.truth_file     = 'True_State.nc';
+ pinfo.truth_file     = 'perfect_output.nc';
  pinfo = rmfield(pinfo,{'diagn_file','truth_time','diagn_time'});
  [pinfo.num_ens_members, pinfo.ensemble_indices] = get_ensemble_indices(pinfo.prior_file);
  pinfo.def_var         = 'state';
  pinfo.def_state_vars  = [1 320 640];
  pinfo.var             = 'state';
  pinfo.var_inds        = [1 320 640];
- pinfo.copyindices     = [7 12 17];
+ pinfo.copyindices     = [5 10 15];
 
  PlotSawtooth(pinfo)
  fprintf('Finished %s ... pausing, hit any key\n','PlotSawtooth'); pause
@@ -150,7 +152,7 @@ end
  fprintf('Starting %s\n','PlotTotalErr');
  clear pinfo; clf
 
- pinfo    = CheckModelCompatibility('True_State.nc','Prior_Diag.nc');
+ pinfo    = CheckModelCompatibility('perfect_output.nc','preassim.nc');
  pinfo.def_var            = 'state';
  pinfo.num_state_vars     = 960;
  pinfo.def_state_vars     = [1 320 640];
@@ -170,7 +172,7 @@ end
  fprintf('Starting %s\n','PlotVarVarCorrel');
  clear pinfo; clf
 
- pinfo  = CheckModel('Prior_Diag.nc');
+ pinfo  = CheckModel('preassim.nc');
  pinfo.base_var        = 'state';
  pinfo.state_var       = 'state';
  pinfo.base_var_index  = 200;

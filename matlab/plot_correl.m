@@ -7,6 +7,16 @@
 %              Since different models potentially need different pieces
 %              of information ... the model types are determined and
 %              additional user input may be queried.
+%
+% A reminder of the sequence:
+% truth  run (from    pmo):
+%           perfect_input  --->  perfect_output.nc
+% filter run (from filter):
+%           filter_input.nc  --->  [prior inflation]  --->
+%                 preassim.nc   --->  [assimilation]  --->
+%                       postassim.nc  ---> [posterior inflation]  --->
+%                             filter_output.nc
+%
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -15,10 +25,10 @@
 % DART $Id$
 
 if (exist('diagn_file','var') ~=1)
-   disp('Input name of prior or posterior diagnostics file;')
-   diagn_file = input('<cr> for Prior_Diag.nc\n','s');
+   disp('Input name of ensemble trajectory file:')
+   diagn_file = input('<cr> for preassim.nc\n','s');
    if isempty(diagn_file)
-      diagn_file = 'Prior_Diag.nc';
+      diagn_file = 'preassim.nc';
    end
 end
 

@@ -168,11 +168,6 @@
    /
 
 
-&assim_model_nml
-   write_binary_restart_files = .false.,
-   netCDF_large_file_support  = .true.
-   /
-
 # The list of variables to put into the state vector is here:
 # The definitions for the DART kinds are in DART/obs_def/obs_def*f90
 # The order doesn't matter to DART. It may to you.

@@ -29,9 +29,6 @@ use      obs_sequence_mod, only : static_init_obs_sequence
 
 use       assim_model_mod, only : static_init_assim_model
 
-use  state_space_diag_mod, only : aoutput_diagnostics, init_diag_output,        &
-                                  finalize_diag_output, netcdf_file_type
-
 use      time_manager_mod, only : time_type, set_calendar_type, GREGORIAN,      &
                                   set_time, print_time, print_date, operator(-)
 
@@ -159,8 +156,8 @@ model_time  = set_time(21600, 149446)   ! 06Z 4 March 2010
 call init_ensemble_manager(ens_handle, num_ens, model_size)
 
 ! Reading netcdf restart file:
-input_file_info = io_filenames_init(num_ens, .false., root_name='input')
-output_file_info = io_filenames_init(num_ens, .false., root_name='output')
+call io_filenames_init(input_file_info, num_ens, .false., .false., root_name='input')
+call io_filenames_init(output_file_info, num_ens, .false.,.false.,  root_name='output')
 
 
 !----------------------------------------------------------------------

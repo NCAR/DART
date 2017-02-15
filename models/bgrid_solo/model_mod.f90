@@ -95,6 +95,7 @@ use state_structure_mod,  only : add_domain, add_dimension_to_variable, &
                                  get_num_variables, get_model_variable_indices, &
                                  get_dart_vector_index, get_index_start, get_index_end
 
+use dart_time_io_mod,      only : read_model_time, write_model_time
 
 implicit none
 private
@@ -902,22 +903,22 @@ do varnum = 1, get_num_variables(dom_id)
    vsize = get_variable_size(dom_id, varnum) 
    eindx = sindx + vsize - 1
 
-   if (state_variables(1, varnum) == 'T') then
+   if (state_variables(1, varnum) == 't') then
       x(sindx:eindx) = reshape(vars%t(tis:tie, tjs:tje,vars%klb:vars%kub), (/vsize/) )
    
-   else if (state_variables(1, varnum) == 'U') then
+   else if (state_variables(1, varnum) == 'u') then
       x(sindx:eindx) = reshape(vars%u(vis:vie, vjs:vje,vars%klb:vars%kub), (/ vsize /) )
 
-   else if (state_variables(1, varnum) == 'V') then
+   else if (state_variables(1, varnum) == 'v') then
       x(sindx:eindx) = reshape(vars%v(vis:vie, vjs:vje,vars%klb:vars%kub), (/ vsize /) )
 
-   else if (state_variables(1, varnum) == 'PS') then
+   else if (state_variables(1, varnum) == 'ps') then
       x(sindx:eindx) = reshape(vars%ps(tis:tie, tjs:tje), (/ vsize /) )
 
    else ! must be tracer
       x(sindx:eindx) = reshape(vars%r(tis:tie,tjs:tje,vars%klb:vars%kub,ntracer), (/ vsize /))
       ntracer = ntracer + 1
-endif
+   endif
    sindx = eindx + 1
 enddo
 
@@ -954,13 +955,13 @@ ntracer = 1
 do varnum = 1, get_num_variables(dom_id)
    vsize = get_variable_size(dom_id, varnum) 
    eindx = sindx + vsize - 1
-   if (state_variables(1, varnum) == 'T') then
+   if (state_variables(1, varnum) == 't') then
       vars%t(tis:tie, tjs:tje,vars%klb:vars%kub) = reshape(x(sindx:eindx), (/ tie-tis+1, tje-tjs+1, vars%kub-vars%klb+1 /) )
-   else if (state_variables(1, varnum) == 'U') then
+   else if (state_variables(1, varnum) == 'u') then
       vars%u(vis:vie, vjs:vje,vars%klb:vars%kub) = reshape(x(sindx:eindx), (/ vie-vis+1, vje-vjs+1, vars%kub-vars%klb+1 /) )
-   else if (state_variables(1, varnum) == 'V') then
+   else if (state_variables(1, varnum) == 'v') then
       vars%v(vis:vie, vjs:vje,vars%klb:vars%kub) = reshape(x(sindx:eindx), (/ vie-vis+1, vje-vjs+1, vars%kub-vars%klb+1 /) )
-   else if (state_variables(1, varnum) == 'PS') then
+   else if (state_variables(1, varnum) == 'ps') then
       vars%ps(tis:tie, tjs:tje) = reshape(x(sindx:eindx), (/ tie-tis+1, tje-tjs+1 /) )
       vars%pssl = vars%ps   !> @TODO why is this here?  original comment was:
    ! For non-eta models, pssl is same as ps??? Need to change?
@@ -1222,7 +1223,6 @@ real(r8) :: get_val(ens_size)
 character(len = 129) :: msg_string
 integer :: model_type
 integer(i8) :: state_index
-
 ! Need to change the obs kind defined itype to the appropriate model type
 ! The itype_in variable uses types defined in the kinds module. The whole bgrid 
 ! model_mod should be modified to use this correctly. However, as a fast patch
@@ -1234,7 +1234,7 @@ model_type = get_varid_from_kind(itype)
 
 ! Find the index into state array and return this value
 state_index = get_dart_vector_index(lon_index, lat_index, level, dom_id, model_type)
-get_val = get_state(state_index, state_handle)
+get_val     = get_state(state_index, state_handle)
 
 end function get_val
 
@@ -1496,8 +1496,8 @@ call check(nf90_Redef(ncFileID),"redef")
 ! We need the dimension ID for the number of copies 
 !-------------------------------------------------------------------------------
 
-call check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID),"copy dimid")
-call check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID),"time dimid")
+call check(nf90_inq_dimid(ncid=ncFileID, name="member", dimid=MemberDimID),"member dimid")
+call check(nf90_inq_dimid(ncid=ncFileID, name="time",   dimid=  TimeDimID),"time dimid")
 
 if ( TimeDimID /= unlimitedDimId ) then
    write(errstring,*)"Time Dimension ID ",TimeDimID, &
@@ -2120,7 +2120,7 @@ do i = 1, numrows
       call error_handler(E_ERR,'fill_domain_structure', "bad namelist: unknown kind: "//trim(state_variables(2,i)), &
                          source, revision, revdate)
    endif
-      end do
+end do
 
 dom_id = add_domain(numrows, state_variables(1,1:numrows), state_kinds_list(:))
 
@@ -2142,8 +2142,8 @@ do i = 1, numrows
       nVelJ   = vje - vjs + 1
       nlev    = Var_dt%kub - Var_dt%klb + 1
 
-      call add_dimension_to_variable(dom_id, i, "slon", nVelI)
-      call add_dimension_to_variable(dom_id, i, "slat", nVelJ)
+      call add_dimension_to_variable(dom_id, i, "VelI", nVelI)
+      call add_dimension_to_variable(dom_id, i, "VelJ", nVelJ)
       call add_dimension_to_variable(dom_id, i, "lev", nlev)
 
    else if (thiskind == KIND_TEMPERATURE .or. thiskind == KIND_PRESSURE) then
@@ -2153,8 +2153,8 @@ do i = 1, numrows
       nTmpJ   = tje - tjs + 1
       nlev    = Var_dt%kub - Var_dt%klb + 1
 
-      call add_dimension_to_variable(dom_id, i, "lon", nTmpI)
-      call add_dimension_to_variable(dom_id, i, "lat", nTmpJ)
+      call add_dimension_to_variable(dom_id, i, "TmpI", nTmpI)
+      call add_dimension_to_variable(dom_id, i, "TmpJ", nTmpJ)
       call add_dimension_to_variable(dom_id, i, "lev", nlev)
 
    else if (thiskind == KIND_SURFACE_PRESSURE) then
@@ -2164,8 +2164,8 @@ do i = 1, numrows
       nTmpJ   = tje - tjs + 1
       nlev    = 1
 
-      call add_dimension_to_variable(dom_id, i, "lon", nTmpI)
-      call add_dimension_to_variable(dom_id, i, "lat", nTmpJ)
+      call add_dimension_to_variable(dom_id, i, "TmpI", nTmpI)
+      call add_dimension_to_variable(dom_id, i, "TmpJ", nTmpJ)
 
    else ! is tracer, Q, CO, etc
       tis = Dynam%Hgrid%Tmp%is; tie = Dynam%Hgrid%Tmp%ie
@@ -2175,8 +2175,8 @@ do i = 1, numrows
       !ntracer = Var_dt%ntrace 
       nlev    = Var_dt%kub - Var_dt%klb + 1
 
-      call add_dimension_to_variable(dom_id, i, "lon", nTmpI)
-      call add_dimension_to_variable(dom_id, i, "lat", nTmpJ)
+      call add_dimension_to_variable(dom_id, i, "TmpI", nTmpI)
+      call add_dimension_to_variable(dom_id, i, "TmpJ", nTmpJ)
       call add_dimension_to_variable(dom_id, i, "lev", nlev)
 
    endif
@@ -2215,115 +2215,6 @@ call error_handler(E_ERR,'get_varid_from_kind', errstring, &
                    source, revision, revdate)
 
 end function get_varid_from_kind
-
-!--------------------------------------------------------------------
-!> read the dart time from the input file
-!--------------------------------------------------------------------
-function read_model_time(filename)
-
-use typeSizes
-use netcdf
-
-character(len=256), intent(in) :: filename
-type(time_type) :: read_model_time
-
-integer :: ret !< netcdf return code
-integer :: ncid, dart_secsVarID, dart_daysVarID
-integer :: seconds, days
-
-! open netcdf file
-call nc_check( nf90_open(filename, NF90_NOWRITE, ncid), &
-               'read_model_time opening : ', filename )
-
-
-! grab dart_days from file
-call nc_check( nf90_inq_varid(ncid, "dart_days", dart_daysVarID), &
-               'read_model_time', 'inq_varid dart_days' )
-
-call nc_check( nf90_get_var(ncid, dart_daysVarID, days), &
-               'read_model_time','get_var dart_days' )
-
-
-! grab dart_seconds from file
-call nc_check( nf90_inq_varid(ncid, "dart_seconds", dart_secsVarID), &
-               'read_model_time', 'inq_varid dart_days' )
-
-call nc_check( nf90_get_var(ncid, dart_secsVarID, seconds), &
-               'read_model_time','get_var dart_seconds' )
-
-read_model_time = set_time(seconds, days)
-
-call nc_check( nf90_close(ncid) , 'read_model_time closing : ', filename)
-
-end function read_model_time
-
-!--------------------------------------------------------------------
-!> read the time from the input file
-!--------------------------------------------------------------------
-subroutine write_model_time(ncid, dart_time)
-
-use typeSizes
-use netcdf
-
-integer,             intent(in) :: ncid
-type(time_type),     intent(in) :: dart_time
-integer                         :: ret !< netcdf return code
-integer                         :: dart_daysVarID, dart_secondsVarID
-integer                         :: dart_days, dart_seconds
-
-! begin define mode
-call nc_check(nf90_Redef(ncid),"write_model_time", "redef")
-
-! define days if it does not exist
-ret = nf90_inq_varid(ncid, "dart_days", dart_daysVarID)
-if (ret /= NF90_NOERR) then
-   call nc_check( nf90_def_var(ncid, name="dart_days", &
-                  xtype=nf90_int, varid=dart_daysVarID) , &
-                  "write_model_time", "dart_days def_var")
-
-   ! define days attributed
-   call nc_check( nf90_put_att(ncid, dart_daysVarID, "long_name", "days"), &
-                  "write_model_time", "dart_days long_name")
-
-   call nc_check( nf90_put_att(ncid, dart_daysVarID, "calendar", "no calendar"), &
-                  "write_model_time", "dart_days calendar")
-
-   call nc_check( nf90_put_att(ncid, dart_daysVarID, "units", "days since 0000-00-00 00:00:00"), &
-                  "write_model_time", "dart_days units")
-endif
-
-! define seconds if it does not exist
-ret = nf90_inq_varid(ncid, "dart_seconds", dart_secondsVarID)
-if (ret /= NF90_NOERR) then
-   call nc_check( nf90_def_var(ncid, name="dart_seconds", &
-                  xtype=nf90_int, varid=dart_secondsVarID) , &
-                  "write_model_time", "dart_secondsdef_var")
-
-   ! define seconds attributed
-   call nc_check( nf90_put_att(ncid, dart_secondsVarID, "long_name", "seconds"), &
-                  "write_model_time", "dart_seconds long_name")
-
-   call nc_check( nf90_put_att(ncid, dart_secondsVarID, "calendar", "no calendar"), &
-                  "write_model_time", "dart_seconds calendar")
-
-   call nc_check( nf90_put_att(ncid, dart_secondsVarID, "units", "seconds since midnight"), &
-                  "write_model_time", "dart_seconds units")
-endif
-  
-! end define mode
-call nc_check( nf90_Enddef(ncid),"write_model_time", "Enddef" )
-
-! get the dart time
-call get_time(dart_time, dart_seconds, dart_days)
-
-! write dart days and seconds files to netcdf file
-call nc_check( nf90_put_var(ncid, dart_daysVarID, dart_days ), &
-               "write_model_time", "dart_days put_var")
-
-call nc_check( nf90_put_var(ncid, dart_secondsVarID, dart_seconds ), &
-               "write_model_time", "dart_seconds put_var")
-
-end subroutine write_model_time
 
 !--------------------------------------------------------------------
 !> pass the vertical localization coordinate to assim_tools_mod

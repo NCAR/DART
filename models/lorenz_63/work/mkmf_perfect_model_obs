@@ -62,13 +62,10 @@ else
 endif
 
 # remove temp file and now really call mkmf to generate makefile
-rm -f path_names_perfect_model_obs.back
+rm -f path_names_perfect_model_obs.back path_names_perfect_model_obs.temp
 
 ../../../mkmf/mkmf -p perfect_model_obs -t ../../../mkmf/mkmf.template   \
         -a "../../.." ${wrapper_arg} path_names_perfect_model_obs
-
-exit $status
-
 
 exit $status
 

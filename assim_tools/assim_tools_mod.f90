@@ -455,7 +455,7 @@ call init_obs(observation, get_num_copies(obs_seq), get_num_qc(obs_seq))
 ! HK I would like to move this to before the calculation of the forward operator so you could
 ! overwrite the vertical location with the required localization vertical coordinate when you 
 ! do the forward operator calculation
-call get_my_obs_loc(ens_handle, obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type)
+call get_my_obs_loc(ens_handle, obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type, obs_time)
 
 if (.not. lanai_bitwise) then
    ! convert the verical of all my observations to the localization coordinate
@@ -2682,7 +2682,7 @@ end function count_close
 
 !----------------------------------------------------------------------
 !> gets the location of of all my observations
-subroutine get_my_obs_loc(state_ens_handle, obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type)
+subroutine get_my_obs_loc(state_ens_handle, obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type, my_obs_time)
 
 type(ensemble_type),      intent(in)  :: state_ens_handle
 type(ensemble_type),      intent(in)  :: obs_ens_handle
@@ -2690,6 +2690,7 @@ type(obs_sequence_type),  intent(in)  :: obs_seq
 integer,                  intent(in)  :: keys(:)
 type(location_type),      intent(out) :: my_obs_loc(:)
 integer,                  intent(out) :: my_obs_type(:), my_obs_kind(:)
+type(time_type),          intent(out) :: my_obs_time
 
 type(obs_type) :: observation
 type(obs_def_type)   :: obs_def
@@ -2715,6 +2716,9 @@ Get_Obs_Locations: do i = 1, obs_ens_handle%my_num_vars
       call get_state_meta_data(state_ens_handle, -1 * int(my_obs_type(i),i8), dummyloc, my_obs_kind(i))
    endif
 end do Get_Obs_Locations
+
+! Need the time for regression diagnostics potentially; get from first observation
+my_obs_time = get_obs_def_time(obs_def)
 
 end subroutine get_my_obs_loc
 

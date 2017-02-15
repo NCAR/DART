@@ -138,12 +138,10 @@ switch lower(pinfo.model)
       end
 
       % Get 'standard' ensemble series
-      base_var  = get_hyperslab('fname',pinfo.fname, ...
-                      'varname',pinfo.base_var,  'stateindex',pinfo.base_var_index, ...
-                      'copy1',pinfo.ensemble_indices(1), 'copycount',pinfo.num_ens_members);
-      state_var = get_hyperslab('fname',pinfo.fname, ...
-                      'varname',pinfo.state_var, 'stateindex',pinfo.state_var_index, ...
-                      'copy1',pinfo.ensemble_indices(1), 'copycount',pinfo.num_ens_members);
+      base_var  = get_hyperslab('fname',pinfo.fname,'squeeze','T','permute','T', ...
+                      'varname',pinfo.base_var,  'stateindex',pinfo.base_var_index);
+      state_var = get_hyperslab('fname',pinfo.fname,'squeeze','T','permute','T', ...
+                      'varname',pinfo.state_var, 'stateindex',pinfo.state_var_index);
 
       nmembers  = size(state_var,2);
 
@@ -176,8 +174,19 @@ end
 
 function [nT, nC, n3] = parse_varshape(fname,varname)
 
-y = nc_isvar(fname,varname);
-if (y < 1)
+fileinfo  = ncinfo(fname);
+nvars     = length(fileinfo.Variables);
+isvar     = 0;
+
+for i = 1:nvars
+    candidate = fileinfo.Variables(i).Name;
+    if (strcmp(varname,candidate))
+        isvar = 1;
+        break
+    end
+end
+
+if (isvar < 1)
    error('%s has no variable named %s ',fname,varname)
 end
 
@@ -185,16 +194,16 @@ nt = 0;
 nC = 0;
 n3 = 0;
 
-varinfo = nc_getvarinfo(fname,varname);
+varinfo = ncinfo(fname,varname);
 
 % for i = 1:length(varinfo.Dimension)
 for i = 1:3  % only want/need the first 3 dimensions.
-   switch( lower(varinfo.Dimension{i}))
+   switch( lower(varinfo.Dimensions(i).Name))
       case 'time'
          nT = varinfo.Size(i);
-      case 'copy'
+      case 'member'
          nC = varinfo.Size(i);
-      case 'StateVariable'
+      case 'location'
          n3 = varinfo.Size(i);
       otherwise
          n3 = varinfo.Size(i);

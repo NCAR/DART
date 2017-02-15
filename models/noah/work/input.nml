@@ -155,11 +155,6 @@
                               '../../../obs_def/obs_def_COSMOS_mod.f90'
   /
 
-&assim_model_nml
-   write_binary_restart_files = .false.,
-   netCDF_large_file_support  = .false.
-  /
-
 &location_nml
    horiz_dist_only             = .true.,
    vert_normalization_pressure = 100000.0,

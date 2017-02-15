@@ -21,6 +21,7 @@ if (exist(pinfo.fname,'file') ~= 2), error('%s does not exist.',pinfo.fname), en
 switch lower(pinfo.model)
 
    case {'fms_bgrid','pe2lyr','mitgcm_ocean','wrf','cam','sqg','pop'}
+      error('not supported yet')
 
       clf;
 
@@ -54,6 +55,7 @@ switch lower(pinfo.model)
       ylabel('correlation')
 
    case {'mpas_atm'}
+      error('not supported yet')
 
       clf;
 
@@ -88,7 +90,7 @@ switch lower(pinfo.model)
 
    otherwise
 
-      num_vars   = dim_length(pinfo.fname,'StateVariable');
+      [num_vars,~] = nc_dim_info(pinfo.fname,'location');
       fprintf('PlotJeffCorrel: num_vars is %d\n',num_vars)
 
       % The Base Variable Index must be a valid state variable
@@ -106,13 +108,11 @@ switch lower(pinfo.model)
       end
 
       % Get 'standard' ensemble series
-      base_var  = get_hyperslab('fname',pinfo.fname, ...
-                      'varname',pinfo.base_var, 'stateindex',pinfo.base_var_index, ...
-                      'copy1',pinfo.ensemble_indices(1), 'copycount',pinfo.num_ens_members);
+      base_var  = get_hyperslab('fname',pinfo.fname,'varname',pinfo.base_var, ...
+                      'stateindex',pinfo.base_var_index,'squeeze','T','permute','T');
 
-      state_var = get_hyperslab('fname',pinfo.fname, ...
-                      'varname',pinfo.state_var, 'stateindex',pinfo.state_var_index, ...
-                      'copy1',pinfo.ensemble_indices(1), 'copycount',pinfo.num_ens_members);
+      state_var = get_hyperslab('fname',pinfo.fname,'varname',pinfo.state_var, ...
+                      'stateindex',pinfo.state_var_index,'squeeze','T','permute','T');
 
       % perform correlation
       correl = jeff_correl(base_var, state_var);
@@ -133,12 +133,6 @@ end
 %======================================================================
 % Subfunctions
 %======================================================================
-
-
-function x = dim_length(fname,dimname)
-bob = nc_getdiminfo(fname,dimname);
-x   = bob.Length;
-
 
 
 function PlotLocator(pinfo)

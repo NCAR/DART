@@ -10,7 +10,7 @@ function [start, count] = GetNCindices(pinfo, whichfile, varname)
 %                    pinfo.[prior,posterior,truth,diagn,fname]
 %     and may have
 %                    pinfo.timeindex
-%                    pinfo.copyindex
+%                    pinfo.memberindex
 %                    pinfo.levelindex
 %                    pinfo.latindex
 %                    pinfo.lonindex
@@ -37,12 +37,12 @@ function [start, count] = GetNCindices(pinfo, whichfile, varname)
 
 % GetNCindices replaces the following hardwired piece of code.
 %
-%      if ( strcmp(lower(vname),'ps') ==1 ) %  PS(time, copy, lat, lon)
+%      if ( strcmp(lower(vname),'ps') ==1 ) %  PS(time, member, lat, lon)
 %         start = [  1 NaN pinfo.latindex pinfo.lonindex];
-%         count = [ -1 NaN pinfo.latindex pinfo.lonindex];
-%      else % U(time, copy, lev, lat, lon)
+%         count = [Inf NaN pinfo.latindex pinfo.lonindex];
+%      else % U(time, member, lev, lat, lon)
 %         start = [  1 NaN pinfo.levelindex pinfo.latindex pinfo.lonindex ];
-%         count = [ -1 NaN pinfo.levelindex pinfo.latindex pinfo.lonindex ];
+%         count = [Inf NaN pinfo.levelindex pinfo.latindex pinfo.lonindex ];
 %      end
 switch lower(whichfile)
     case 'prior'
@@ -62,158 +62,158 @@ if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 % If the structure has subsetting information, we will ultimately use it.
 % Otherwise, use the whole extent.
 
-lat1        = 0; latN        = -1;
-lon1        = 0; lonN        = -1;
-time1       = 0; timeN       = -1;
-copy1       = 0; copyN       = -1;
-level1      = 0; levelN      = -1;
-state1      = 0; stateN      = -1;
-region1     = 0; regionN     = -1;
-cell1       = 0; cellN       = -1;
-column1     = 0; columnN     = -1;
-pft1        = 0; pftN        = -1;
-rankbin1    = 0; rankbinN    = -1;
-bounds1     = 0; boundsN     = -1;
-obstypes1   = 0; obstypesN   = -1;
+lat1        = 1; latN        = Inf;
+lon1        = 1; lonN        = Inf;
+time1       = 1; timeN       = Inf;
+member1     = 1; memberN     = Inf;
+level1      = 1; levelN      = Inf;
+state1      = 1; stateN      = Inf;
+region1     = 1; regionN     = Inf;
+cell1       = 1; cellN       = Inf;
+column1     = 1; columnN     = Inf;
+pft1        = 1; pftN        = Inf;
+rankbin1    = 1; rankbinN    = Inf;
+bounds1     = 1; boundsN     = Inf;
+obstypes1   = 1; obstypesN   = Inf;
 
 if (isfield(pinfo,'timeindex'))
-   time1 = pinfo.timeindex - 1;
+   time1 = pinfo.timeindex;
    timeN = 1;
 end
 if (isfield(pinfo,'tindex1'))
-   time1 = pinfo.tindex1 - 1;
+   time1 = pinfo.tindex1;
 end
 if (isfield(pinfo,'tcount'))
    timeN = pinfo.tcount;
 end
 
 if (isfield(pinfo,'levelindex'))
-   level1 = pinfo.levelindex - 1;
+   level1 = pinfo.levelindex;
    levelN = 1;
 end
 if (isfield(pinfo,'level1'))
-   level1 = pinfo.level1 - 1;
+   level1 = pinfo.level1;
 end
 if (isfield(pinfo,'levelcount'))
    levelN = pinfo.levelcount;
 end
 
 if (isfield(pinfo,'latindex'))
-   lat1 = pinfo.latindex - 1;
+   lat1 = pinfo.latindex;
    latN = 1;
 end
 if (isfield(pinfo,'lat1'))
-   lat1 = pinfo.lat1 - 1;
+   lat1 = pinfo.lat1;
 end
 if (isfield(pinfo,'latcount'))
    latN = pinfo.latcount;
 end
 
 if (isfield(pinfo,'lonindex'))
-   lon1 = pinfo.lonindex - 1;
+   lon1 = pinfo.lonindex;
    lonN = 1;
 end
 if (isfield(pinfo,'lon1'))
-   lon1 = pinfo.lon1 - 1;
+   lon1 = pinfo.lon1;
 end
 if (isfield(pinfo,'loncount'))
    lonN = pinfo.loncount;
 end
 
 if (isfield(pinfo,'stateindex'))
-   state1 = pinfo.stateindex - 1;
+   state1 = pinfo.stateindex;
    stateN = 1;
 end
 if (isfield(pinfo,'state1'))
-   state1 = pinfo.state1 - 1;
+   state1 = pinfo.state1;
 end
 if (isfield(pinfo,'statecount'))
    stateN = pinfo.statecount;
 end
 
-if (isfield(pinfo,'copyindex'))
-   copy1 = pinfo.copyindex - 1;
-   copyN = 1;
+if (isfield(pinfo,'memberindex'))
+   member1 = pinfo.memberindex;
+   memberN = 1;
 end
-if (isfield(pinfo,'copy1'))
-   copy1 = pinfo.copy1 - 1;
+if (isfield(pinfo,'member1'))
+   member1 = pinfo.member1;
 end
-if (isfield(pinfo,'copycount'))
-   copyN = pinfo.copycount;
+if (isfield(pinfo,'membercount'))
+   memberN = pinfo.membercount;
 end
 
 if (isfield(pinfo,'regionindex'))
-   region1 = pinfo.regionindex - 1;
+   region1 = pinfo.regionindex;
    regionN = 1;
 end
 if (isfield(pinfo,'region1'))
-   region1 = pinfo.region1 - 1;
+   region1 = pinfo.region1;
 end
 if (isfield(pinfo,'regioncount'))
    regionN = pinfo.regioncount;
 end
 
 if (isfield(pinfo,'cellindex'))
-   cell1 = pinfo.cellindex - 1;
+   cell1 = pinfo.cellindex;
    cellN = 1;
 end
 if (isfield(pinfo,'cell1'))
-   cell1 = pinfo.cell1 - 1;
+   cell1 = pinfo.cell1;
 end
 if (isfield(pinfo,'cellcount'))
    cellN = pinfo.cellcount;
 end
 
 if (isfield(pinfo,'columnindex'))
-   column1 = pinfo.columnindex - 1;
+   column1 = pinfo.columnindex;
    columnN = 1;
 end
 if (isfield(pinfo,'column1'))
-   column1 = pinfo.column1 - 1;
+   column1 = pinfo.column1;
 end
 if (isfield(pinfo,'columncount'))
    columnN = pinfo.columncount;
 end
 
 if (isfield(pinfo,'pftindex'))
-   pft1 = pinfo.pftindex - 1;
+   pft1 = pinfo.pftindex;
    pftN = 1;
 end
 if (isfield(pinfo,'pft1'))
-   pft1 = pinfo.pft1 - 1;
+   pft1 = pinfo.pft1;
 end
 if (isfield(pinfo,'pftcount'))
    pftN = pinfo.pftcount;
 end
 
 if (isfield( pinfo,'rankbinindex'))
-   rankbin1 = pinfo.rankbinindex - 1;
+   rankbin1 = pinfo.rankbinindex;
    rankbinN = 1;
 end
 if (isfield( pinfo,'rankbin1'))
-   rankbin1 = pinfo.rankbin1 - 1;
+   rankbin1 = pinfo.rankbin1;
 end
 if (isfield( pinfo,'rankbincount'))
    rankbinN = pinfo.rankbincount;
 end
 
 if (isfield( pinfo,'boundsindex'))
-   bounds1 = pinfo.boundsindex - 1;
+   bounds1 = pinfo.boundsindex;
    boundsN = 1;
 end
 if (isfield( pinfo,'bounds1'))
-   bounds1 = pinfo.bounds1 - 1;
+   bounds1 = pinfo.bounds1;
 end
 if (isfield( pinfo,'boundscount'))
    boundsN = pinfo.boundscount;
 end
 
 if (isfield( pinfo,'obstypesindex'))
-   obstypes1 = pinfo.obstypesindex - 1;
+   obstypes1 = pinfo.obstypesindex;
    obstypesN = 1;
 end
 if (isfield( pinfo,'obstypes1'))
-   obstypes1 = pinfo.obstypes1 - 1;
+   obstypes1 = pinfo.obstypes1;
 end
 if (isfield( pinfo,'obstypescount'))
    obstypesN = pinfo.obstypescount;
@@ -221,8 +221,8 @@ end
 
 % Determine shape of variable in question.
 
-varinfo = nc_getvarinfo(fname,varname);
-ndims   = length(varinfo.Dimension);
+varinfo = ncinfo(fname,varname);
+ndims   = length(varinfo.Dimensions);
 start   = zeros(1,ndims);
 count   = zeros(1,ndims);
 
@@ -235,8 +235,7 @@ count   = zeros(1,ndims);
 
 for i = 1:ndims
 
-   diminfo = nc_getdiminfo(fname,varinfo.Dimension{i});
-   dimname = diminfo.Name;
+   dimname = varinfo.Dimensions(i).Name;
 
    % the coordinate variable is the same name as the dimension
    % some grids have multiple vertical levels so there is no one
@@ -246,13 +245,13 @@ for i = 1:ndims
    % So the XG coordinate dimension has 'cartesian_axis = X',
    % for example.
 
-   [~, status, value] = is_dimension_cartesian(fname, diminfo.Name);
+   [~, status, value] = is_dimension_cartesian(fname, dimname);
 
    if (status > 0)
       dimname = value;
    else
       % Then there is no 'cartesian_axis' attribute and the best we can
-      % hope for is a standard dimension name [time,copy,lat,lon,lev]
+      % hope for is a standard dimension name [time,member,lat,lon,lev]
    end
 
    if (length(dimname) >= 4)
@@ -260,9 +259,9 @@ for i = 1:ndims
            case 'time'
                start(i) = time1;
                count(i) = timeN;
-           case 'copy'
-               start(i) = copy1;
-               count(i) = copyN;
+           case 'memb'
+               start(i) = member1;
+               count(i) = memberN;
            case {'surf','unde','hlev','mlev','plev','heig','leve','bott', ...
                  'ilev','nver','levt','levs','dept'}
                start(i) = level1;
@@ -273,7 +272,7 @@ for i = 1:ndims
            case {'tmpi','west','slon','ixrt'}
                start(i) = lon1;
                count(i) = lonN;
-           case {'stat','xdim','ydim','loc1'}
+           case {'stat','xdim','ydim','loca'}
                % the lorenz_96_2scale has the unfortunate choice of
                % 'Xdim' and 'YDim' for their state variable names.
                start(i) = state1;
@@ -324,36 +323,42 @@ end
 
 count(count < 1) = -1;
 
-
+%% helper function
 
 function [len, status, value] = is_dimension_cartesian(fname,dimname)
 
-status   = 0;
 len      = 0;
+status   = 0;
 value    = [];
 
-if ( nc_isvar(fname,dimname) )
+fileinfo = ncinfo(fname);
+nvars    = length(fileinfo.Variables);
 
-    % Good - the coordinate variable exists.
-
-    Cvarinfo = nc_getvarinfo(fname, dimname);
-
-   for j = 1:length(Cvarinfo.Attribute);
-      attribute = Cvarinfo.Attribute(j);
-      switch lower(attribute.Name)
-         case{'cartesian_axis'}
-            status = 1;
-            len    = Cvarinfo.Size;
-            value  = attribute.Value;
-            break
-          otherwise
-      end
-   end
-
-else % there is no coordinate variable ... use something else
-
+for ivar = 1:nvars
+    
+    if strcmp(fileinfo.Variables(ivar).Name,dimname)
+        
+        natts = length(fileinfo.Variables(ivar).Attributes);
+        
+        for j = 1:natts
+            attribute = fileinfo.Variables(ivar).Attributes(j);
+            switch lower(attribute.Name)
+                case{'cartesian_axis'}
+                    status = 1;
+                    len    = fileinfo.Variables(ivar).Size;
+                    value  = attribute.Value;
+                    return
+                otherwise
+            end
+        end
+        % if we found the coordinate variable and exhaused the atts
+        % there is no point continuing
+        break 
+        
+    else % there is no coordinate variable ... use something else
+        
+    end
 end
-
 
 % <next few lines under version control, do not edit>
 % $URL$

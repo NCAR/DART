@@ -102,11 +102,6 @@
 &obs_sequence_nml
    write_binary_obs_sequence = .false.  /
 
-&assim_model_nml
-   write_binary_restart_files = .false.,
-   netCDF_large_file_support  = .true.
-   /
-
 &lmdz_to_dart_nml
    lmdz_to_dart_input_file  = 'start.nc',
    lmdz_to_dart_output_file = 'perfect_ics',

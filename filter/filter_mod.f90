@@ -44,7 +44,7 @@ use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,  
                                   prepare_to_write_to_copies, get_ensemble_time,              &
                                   map_task_to_pe,  map_pe_to_task, prepare_to_update_copies,  &
                                   copies_in_window, set_num_extra_copies, get_allow_transpose, &
-                                  all_copies_to_all_vars, allocate_single_copy,               &
+                                  all_copies_to_all_vars, allocate_single_copy, allocate_vars, &
                                   get_single_copy, put_single_copy, deallocate_single_copy
 use adaptive_inflate_mod,  only : do_varying_ss_inflate,                &
                                   do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
@@ -64,7 +64,7 @@ use random_seq_mod,        only : random_seq_type, init_random_seq, random_gauss
 use state_vector_io_mod,   only : state_vector_io_init, read_state, write_state, &
                                   set_stage_to_write, get_stage_to_write
 
-use io_filenames_mod,      only : io_filenames_init, file_info_type, file_info_dump, &
+use io_filenames_mod,      only : io_filenames_init, file_info_type, &
                                   combine_file_info, set_file_metadata,  &
                                   set_member_file_metadata, &
                                   set_io_copy_flag, check_file_info_variable_shape, &
@@ -164,27 +164,34 @@ logical  :: silence                  = .false.
 logical  :: distributed_state = .true. ! Default to do state complete forward operators.
 
 ! IO options
+! Names of files given explicitly in namelist
+integer, parameter :: MAXFILES = 200
+!>@todo FIXME - how does this work for multiple domains?  ens1d1, ens2d1, ... ens1d2 or
+!> ens1d1 ens1d2, ens1d1 ens2d2, etc   i like the latter better.
+character(len=256) ::  input_state_files(MAXFILES) = 'null'  
+character(len=256) :: output_state_files(MAXFILES) = 'null'  
 ! Name of files containing a list of {input,output} restart files, 1 file per domain
-character(len=256) :: input_restart_file_list(MAX_NUM_DOMS)  = 'null'  
-character(len=256) :: output_restart_file_list(MAX_NUM_DOMS) = 'null'
+character(len=256) ::  input_state_file_list(MAX_NUM_DOMS) = 'null'  
+character(len=256) :: output_state_file_list(MAX_NUM_DOMS) = 'null'
 ! Read in a single file and perturb this to create an ensemble
 logical            :: perturb_from_single_instance = .false.
 real(r8)           :: perturbation_amplitude       = 0.2_r8
 ! File options.  Single vs. Multiple.
 logical            :: single_file_in               = .false. ! all copies read  from 1 file
 logical            :: single_file_out              = .false. ! all copies written to 1 file
+logical            :: has_cycling                  = .false. ! filter will advance the model
 ! Stages to write.  Valid values include:
-! input, preassim, postassim, output
+!    input, preassim, postassim, output
 character(len=10)  :: stages_to_write(4) = (/"output    ", "null      ", "null      ", "null      "/) 
 
-!>@todo FIXME  output_restarts could be output_members, and
+!>@todo FIXME 
 !> for preassim and postassim output it might be we should
 !> be controlling the writing of individual ensemble members
 !> by looking at the num_output_state_member value.  0 means
 !> don't write any members, otherwise it's a count.  and for
 !> completeness, there could be a count for pre and a count for post.
 
-logical :: output_restarts  = .true.
+logical :: output_members   = .true.
 logical :: output_mean      = .true.
 logical :: output_sd        = .true.
 logical :: write_all_stages_at_end = .false.
@@ -209,7 +216,7 @@ real(r8)             :: inf_upper_bound(2)             = 1000000.0_r8
 real(r8)             :: inf_sd_lower_bound(2)          = 0.0_r8
 
 namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance, &
-   output_restarts, obs_sequence_in_name, obs_sequence_out_name, &
+   output_members, obs_sequence_in_name, obs_sequence_out_name, &
    init_time_days, init_time_seconds, &
    first_obs_days, first_obs_seconds, last_obs_days, last_obs_seconds, &
    obs_window_days, obs_window_seconds, &
@@ -222,10 +229,11 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
    inf_lower_bound, inf_upper_bound, inf_sd_lower_bound, &
    silence, &
    distributed_state, &
-   single_file_in, single_file_out, &
+   single_file_in, single_file_out, has_cycling, &
    perturb_from_single_instance, perturbation_amplitude, &
    stages_to_write, &
-   output_restart_file_list, input_restart_file_list, &
+   input_state_files, output_state_files, &
+   output_state_file_list, input_state_file_list, &
    output_mean, output_sd, write_all_stages_at_end
 
 
@@ -250,10 +258,9 @@ type(adaptive_inflate_type) :: prior_inflate, post_inflate
 
 integer,    allocatable :: keys(:)
 integer(i8)             :: model_size
-integer                 :: i, iunit, io, time_step_number, num_obs_in_set
+integer                 :: j, i, iunit, io, time_step_number, num_obs_in_set
 integer                 :: last_key_used, key_bounds(2)
 integer                 :: in_obs_copy, obs_val_index
-integer                 :: output_state_mean_index, output_state_spread_index
 integer                 :: prior_obs_mean_index, posterior_obs_mean_index
 integer                 :: prior_obs_spread_index, posterior_obs_spread_index
 ! Global indices into ensemble storage - observations
@@ -431,7 +438,7 @@ call initialize_file_information(num_state_ens_copies, file_info_input, &
                                  file_info_preassim, file_info_postassim, &
                                  file_info_output)
 
-call check_file_info_variable_shape(file_info_output, state_ens_handle)
+!call check_file_info_variable_shape(file_info_output, state_ens_handle)
 
 call set_inflation_mean_copy(prior_inflate, PRIOR_INF_COPY)
 call set_inflation_sd_copy(  prior_inflate, PRIOR_INF_SD_COPY)
@@ -472,9 +479,8 @@ call     trace_message('Before initializing output files')
 call timestamp_message('Before initializing output files')
 
 ! Initialize the output sequences and state files and set their meta data
-call filter_generate_copy_meta_data(seq, prior_inflate, &
-      in_obs_copy, output_state_mean_index, &
-      output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
+call filter_generate_copy_meta_data(seq, in_obs_copy, &
+      prior_obs_mean_index, posterior_obs_mean_index, &
       prior_obs_spread_index, posterior_obs_spread_index)
 
 if(ds) call error_handler(E_ERR, 'filter', 'smoother broken by Helen')
@@ -578,16 +584,15 @@ AdvanceTime : do
       call     trace_message('Before running model')
       call timestamp_message('Before running model', sync=.true.)
 
-      ! allocating storage space in ensemble manager
-      if(.not. allocated(state_ens_handle%vars)) allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
+      ! make sure storage is allocated in ensemble manager for vars.
+      call allocate_vars(state_ens_handle)
+
       call all_copies_to_all_vars(state_ens_handle)
 
       call advance_state(state_ens_handle, ens_size, next_ens_time, async, &
                    adv_ens_command, tasks_per_model_advance, file_info_output, file_info_input)
 
       call all_vars_to_all_copies(state_ens_handle)
-      ! deallocate whole state storage
-      if(.not. get_allow_transpose(state_ens_handle)) deallocate(state_ens_handle%vars)
 
       ! update so curr time is accurate.
       curr_ens_time = next_ens_time
@@ -631,8 +636,10 @@ AdvanceTime : do
    
    ! Write out the mean and sd for the input files if requested
    if (get_stage_to_write('input')) then
-      if (output_mean) call set_io_copy_flag(file_info_input, INPUT_MEAN, WRITE_COPY, has_units=.true.)
-      if (output_sd)   call set_io_copy_flag(file_info_input, INPUT_SD,   WRITE_COPY, has_units=.false.)
+      if (output_mean) &
+         call set_io_copy_flag(file_info_input, INPUT_MEAN, WRITE_COPY, has_units=.true.)
+      if (output_sd)   &
+         call set_io_copy_flag(file_info_input, INPUT_SD,   WRITE_COPY, has_units=.false.)
       if (write_all_stages_at_end) then
          call store_input(state_ens_handle)
       else
@@ -820,6 +827,7 @@ AdvanceTime : do
 
    if ((output_interval > 0) .and. &
        (time_step_number / output_interval * output_interval == time_step_number)) then
+
       if (get_stage_to_write('postassim')) then
          if (write_all_stages_at_end) then
             ! If needed store the copies (inf_mean, inf_sd) that would have
@@ -894,6 +902,13 @@ AdvanceTime : do
    call end_ensemble_manager(qc_ens_handle)
 
    call trace_message('Bottom of main advance time loop')
+   if ((output_interval > 0) .and. &
+       (time_step_number / output_interval * output_interval == time_step_number)) then
+
+      if (get_stage_to_write('output')) then
+         call write_state(state_ens_handle, file_info_output)
+      endif
+   endif
 end do AdvanceTime
 
 !call test_state_copies(state_ens_handle, 'last')
@@ -917,7 +932,13 @@ if (write_all_stages_at_end) then
  
    call write_state(state_ens_handle, file_info_all)
 else
-   call write_state(state_ens_handle, file_info_output)
+
+   if (get_stage_to_write('output')) &
+      call write_state(state_ens_handle, file_info_output)
+   if (get_stage_to_write('preassim')) &
+      call write_state(state_ens_handle, file_info_preassim)
+   if (get_stage_to_write('postassim')) &
+      call write_state(state_ens_handle, file_info_postassim)
 endif
 
 if(ds) call smoother_write_restart(1, ens_size)
@@ -960,14 +981,11 @@ end subroutine filter_main
 !> Note for the state space diagnostic files the order of copies
 !> in the diagnostic file is different from the order of copies
 !> in the ensemble handle.
-subroutine filter_generate_copy_meta_data(seq, prior_inflate, &
-   in_obs_copy, output_state_mean_index, &
-   output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
+subroutine filter_generate_copy_meta_data(seq, in_obs_copy, &
+   prior_obs_mean_index, posterior_obs_mean_index, &
    prior_obs_spread_index, posterior_obs_spread_index)
 
 type(obs_sequence_type),     intent(inout) :: seq
-type(adaptive_inflate_type), intent(in)    :: prior_inflate
-integer,                     intent(out)   :: output_state_mean_index, output_state_spread_index
 integer,                     intent(in)    :: in_obs_copy
 integer,                     intent(out)   :: prior_obs_mean_index, posterior_obs_mean_index
 integer,                     intent(out)   :: prior_obs_spread_index, posterior_obs_spread_index
@@ -977,48 +995,7 @@ integer,                     intent(out)   :: prior_obs_spread_index, posterior_
 ! output file which contains both prior and posterior data.
 
 character(len=metadatalength) :: prior_meta_data, posterior_meta_data
-character(len=metadatalength), allocatable :: state_meta(:)
-integer :: i, ensemble_offset, num_state_copies, num_obs_copies
-
-! The 4 is for ensemble mean and spread plus inflation mean and spread
-! The Prior file contains the prior inflation mean and spread only
-! Posterior file contains the posterior inflation mean and spread only
-allocate(state_meta(num_output_state_members + 4))
-
-! Section for state variables + other generated data stored with them.
-
-! Ensemble mean goes first 
-num_state_copies = num_output_state_members + 2
-output_state_mean_index = 1
-state_meta(output_state_mean_index) = 'ensemble mean'
-
-! Ensemble spread goes second
-output_state_spread_index = 2
-state_meta(output_state_spread_index) = 'ensemble spread'
-
-! Check for too many output ensemble members
-if(num_output_state_members > 10000) then
-   write(msgstring, *)'output metadata in filter needs state ensemble size < 10000, not ', &
-                      num_output_state_members
-   call error_handler(E_ERR,'filter_generate_copy_meta_data',msgstring,source,revision,revdate)
-endif
-
-! Compute starting point for ensemble member output
-ensemble_offset = 2
-
-! Set up the metadata for the output state diagnostic files
-do i = 1, num_output_state_members
-   write(state_meta(i + ensemble_offset), '(a15, 1x, i6)') 'ensemble member', i
-end do
-
-! Next two slots are for inflation mean and sd metadata
-! To avoid writing out inflation values to the Prior and Posterior netcdf files,
-! set output_inflation to false in the filter section of input.nml 
-if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
-   num_state_copies = num_state_copies + 2
-   state_meta(num_state_copies-1) = 'inflation mean'
-   state_meta(num_state_copies)   = 'inflation sd'
-endif
+integer :: i, num_state_copies, num_obs_copies
 
 ! Set the metadata for the observations.
 
@@ -2089,14 +2066,12 @@ end subroutine set_filename_info
 
 !------------------------------------------------------------------
 
-subroutine set_input_file_info( file_info, num_ens, MEM_START, ENS_MEAN, ENS_SD, &
+subroutine set_input_file_info( file_info, num_ens, MEM_START, &
                          PRIOR_INF_MEAN, PRIOR_INF_SD, POST_INF_MEAN, POST_INF_SD)
 
 type(file_info_type), intent(inout) :: file_info
 integer,              intent(in)    :: num_ens
 integer,              intent(in)    :: MEM_START
-integer,              intent(in)    :: ENS_MEAN
-integer,              intent(in)    :: ENS_SD
 integer,              intent(in)    :: PRIOR_INF_MEAN
 integer,              intent(in)    :: PRIOR_INF_SD
 integer,              intent(in)    :: POST_INF_MEAN
@@ -2146,8 +2121,8 @@ integer :: MEM_END
 MEM_END = MEM_START+num_ens-1
 
 !>@todo revisit if we should be clamping mean copy for file_info_output
-if ( output_restarts )      &
-   call set_io_copy_flag(file_info, MEM_START, MEM_END, WRITE_COPY, clamp_vars=do_clamping)
+if ( output_members )      &
+   call set_io_copy_flag(file_info, MEM_START, MEM_END, WRITE_COPY, num_output_ens=num_ens, clamp_vars=do_clamping)
 if ( output_mean )          &
    call set_io_copy_flag(file_info, ENS_MEAN,           WRITE_COPY, clamp_vars=do_clamping)
 if ( output_sd )            &
@@ -2217,23 +2192,33 @@ subroutine initialize_file_information(num_state_ens_copies, file_info_input, &
                                        file_info_output)
 
 integer,              intent(in)    :: num_state_ens_copies
-type(file_info_type), intent(inout) :: file_info_input
-type(file_info_type), intent(inout) :: file_info_preassim
-type(file_info_type), intent(inout) :: file_info_postassim
-type(file_info_type), intent(inout) :: file_info_output
+type(file_info_type), intent(out) :: file_info_input
+type(file_info_type), intent(out) :: file_info_preassim
+type(file_info_type), intent(out) :: file_info_postassim
+type(file_info_type), intent(out) :: file_info_output
+
+!>@todo FIXME temporary error message until we handle filename in the namelist
+!> (for now, you need to use the indirect file which contains a list of files)
+if (( input_state_files(1) /= 'null' .and.  input_state_files(1) /= '') .or. &
+    (output_state_files(1) /= 'null' .and. output_state_files(1) /= '')) then
+   call error_handler(E_ERR,'initialize_file_information', &
+                      'input_state_files and output_state_files are currently unsupported.',  &
+                      source, revision, revdate, &
+                      text2='please use input_state_file_list and output_state_file_list instead')
+endif
 
 ! Allocate space for the filename handles
-file_info_input     = io_filenames_init(num_state_ens_copies, single_file_in,      &
-                                        restart_list=input_restart_file_list,  &
-                                        root_name='input')
-file_info_preassim  = io_filenames_init(num_state_ens_copies, single_file_out,     &
-                                        root_name='preassim')
-file_info_postassim = io_filenames_init(num_state_ens_copies, single_file_out,     &
-                                        root_name='postassim')
-file_info_output    = io_filenames_init(num_state_ens_copies, single_file_out,     &
-                                        restart_list=output_restart_file_list, &
-                                        root_name='output', &
-                                        check_output_compatibility = .true.)
+call io_filenames_init(file_info_input,     num_state_ens_copies, has_cycling, single_file_in,      &
+                                            restart_list=input_state_file_list,  &
+                                            root_name='input')
+call io_filenames_init(file_info_preassim,  num_state_ens_copies, has_cycling, single_file_out,     &
+                                            root_name='preassim')
+call io_filenames_init(file_info_postassim, num_state_ens_copies, has_cycling, single_file_out,     &
+                                            root_name='postassim')
+call io_filenames_init(file_info_output,    num_state_ens_copies, has_cycling, single_file_out,     &
+                                            restart_list=output_state_file_list, &
+                                            root_name='output', &
+                                            check_output_compatibility = .true.)
 
 ! Set filename information
 call set_filename_info(file_info_input,    'input', ens_size, &
@@ -2255,7 +2240,7 @@ call set_filename_info(file_info_output,   'output', ens_size, &
 
 ! Set which copies should be read and written
 call set_input_file_info(  file_info_input, ens_size, &
-                           ENS_MEM_START, INPUT_MEAN, INPUT_SD,      &
+                           ENS_MEM_START, &
                            PRIOR_INF_COPY, PRIOR_INF_SD_COPY, &
                            POST_INF_COPY, POST_INF_SD_COPY)
 call set_output_file_info( file_info_preassim, num_output_state_members, &

@@ -1,6 +1,16 @@
 %% DART:plot_var_var_correl - time series of correlation between ...
 % a given variable at a given time and another variable at all times ...
 % in an ensemble time sequence.
+%
+% A reminder of the sequence:
+% truth  run (from    pmo):
+%           perfect_input  --->  perfect_output.nc
+% filter run (from filter):
+%           filter_input.nc  --->  [prior inflation]  --->
+%                 preassim.nc   --->  [assimilation]  --->
+%                       postassim.nc  ---> [posterior inflation]  --->
+%                             filter_output.nc
+%
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -10,9 +20,9 @@
 
 if (exist('fname','var') ~=1)
    disp('Input name of file;')
-   fname = input('<cr> for Prior_Diag.nc\n','s');
+   fname = input('<cr> for preassim.nc\n','s');
    if isempty(fname)
-      fname = 'Prior_Diag.nc';
+      fname = 'preassim.nc';
    end
 end
 
@@ -20,8 +30,7 @@ if (exist(fname,'file') ~=2 ), error('%s does not exist.',fname); end
 
 % check to make sure they are using a file with some ensemble members.
 
-diminfo    = nc_getdiminfo(fname,'copy');
-num_copies = diminfo.Length; % determine # of ensemble members
+[num_copies, dimid] = nc_dim_info(fname,'member');
 
 if (num_copies <= 3)
    error('Sorry -- %s does not have enough ensemble members to correlate.',fname)

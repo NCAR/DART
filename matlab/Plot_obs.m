@@ -34,12 +34,12 @@ tol = input('Input margin (m): ');
 
 map_proj = {'lambert', 'ups', 'mercator'};
 
-if ( exist('Prior_Diag.nc','file') ~= 0 )
-  fname = 'Prior_Diag';
-elseif ( exist('Posterior_Diag.nc','file') ~= 0 )
-  fname = 'Posterior_Diag';
-elseif ( exist('True_State.nc','file') ~= 0 )
-  fname = 'True_State';
+if ( exist('preassim.nc','file') ~= 0 )
+  fname = 'preassim';
+elseif ( exist('postassim.nc','file') ~= 0 )
+  fname = 'postassim';
+elseif ( exist('perfect_output.nc','file') ~= 0 )
+  fname = 'perfect_output';
 else
   fname = input('Enter the name of the netCDF file containing domain information: ');
 end

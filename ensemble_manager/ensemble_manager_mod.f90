@@ -14,7 +14,7 @@ module ensemble_manager_mod
 ! have been placed here for efficiency even though they might be more 
 ! appropriately abstracted at a higher level of code.
 
-use types_mod,         only : r8, i8,  MISSING_R8
+use types_mod,         only : r8, i4, i8,  MISSING_R8
 use utilities_mod,     only : register_module, do_nml_file, do_nml_term, &
                               error_handler, E_ERR, E_MSG, do_output, &
                               nmlfileunit, find_namelist_in_file,        &
@@ -37,12 +37,12 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           get_my_num_copies,          get_my_copies,            get_my_num_vars,            &
           get_my_vars,                compute_copy_mean,        compute_copy_mean_sd,       &
           get_copy,                   put_copy,                 all_vars_to_all_copies,     &
-          all_copies_to_all_vars,      &
+          all_copies_to_all_vars,     allocate_vars,            deallocate_vars,            &
           compute_copy_mean_var,      get_copy_owner_index,     set_ensemble_time,          &
           broadcast_copy,             prepare_to_write_to_vars, prepare_to_write_to_copies, &
           prepare_to_read_from_vars,  prepare_to_read_from_copies, prepare_to_update_vars,  &
-          prepare_to_update_copies,   print_ens_handle,              &
-          map_task_to_pe,             map_pe_to_task,            &
+          prepare_to_update_copies,   print_ens_handle,                                     &
+          map_task_to_pe,             map_pe_to_task,                                       &
           allocate_single_copy,       put_single_copy,          get_single_copy,            &
           deallocate_single_copy
 
@@ -1534,14 +1534,23 @@ endif
 end subroutine timestamp_message
 
 !--------------------------------------------------------------------------------
+! print an ensemble handle file type.  normally won't print unless 'debug' in the
+! namelist is true, but 'force' will override that and print no matter what.
+! if 'contents' is true, print the %copies and %vars arrays.  set integer 'limit'
+! to print only the first N values for each.
 
-subroutine print_ens_handle(ens_handle, force, label)
+subroutine print_ens_handle(ens_handle, force, label, contents, limit)
  type(ensemble_type),        intent(in) :: ens_handle
  logical,          optional, intent(in) :: force
  character(len=*), optional, intent(in) :: label
+ logical,          optional, intent(in) :: contents
+ integer,          optional, intent(in) :: limit
 
 logical :: print_anyway
 logical :: has_label
+logical :: do_contents
+integer :: limit_count
+integer :: i,j
 
 print_anyway = .false.
 if (present(force)) then
@@ -1551,6 +1560,16 @@ endif
 has_label = .false.
 if (present(label)) then
    has_label = .true.
+endif
+
+do_contents = .false.
+if (present(contents)) then
+   do_contents = contents
+endif
+
+limit_count = HUGE(1_i4)
+if (present(limit)) then
+   limit_count = limit
 endif
 
 ! print out contents of an ensemble handle derived type
@@ -1582,6 +1601,24 @@ if (allocated(ens_handle%pe_to_task_list)) then
    call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
 endif
 
+! warning - for large state vectors this is a lot of output
+if (do_contents .and. allocated(ens_handle%copies)) then
+   do j = 1, min(ens_handle%my_num_vars, limit_count)
+      do i = 1, min(ens_handle%num_copies, limit_count)
+         write(msgstring, *) 'ens_handle%copies(i,j) : ', i, j, ens_handle%copies(i,j)
+         call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
+      enddo
+   enddo
+endif
+
+if (do_contents .and. allocated(ens_handle%vars)) then
+   do j = 1, min(ens_handle%my_num_copies, limit_count)
+      do i = 1, min(ens_handle%num_vars, limit_count)
+         write(msgstring, *) 'ens_handle%vars(i,j) : ', i, j, ens_handle%vars(i,j)
+         call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
+      enddo
+   enddo
+endif
 
 end subroutine print_ens_handle
 
@@ -1763,6 +1800,43 @@ integer                         :: map_task_to_pe
 map_task_to_pe = ens_handle%task_to_pe_list(t + 1)
 
 end function map_task_to_pe
+
+!--------------------------------------------------------------------------------
+!> if allow_transpose is ok, allocate the vars if they aren't already allocated,
+!> error out if allow_transpose is false.
+subroutine allocate_vars(ens_handle)
+
+type(ensemble_type), intent(inout) :: ens_handle
+
+!>@todo FIXME: solution 1, don't check.  solution 2, don't override
+!>@ distributed_state if ntasks = 1 in filter.
+!if (.not. get_allow_transpose(ens_handle)) then
+!   call error_handler(E_ERR, 'allocate_vars', &
+!      'cannot allocate the vars array because "allow_transpose" is false', &
+!       source, revision, revdate)
+!endif
+
+if(.not. allocated(ens_handle%vars)) &
+   allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
+
+end subroutine allocate_vars
+
+!--------------------------------------------------------------------------------
+!> not clear if we want to deallocate the vars array - if we needed it once
+!> we'll probably need it again.  but for completeness, make an explicit dealloc.
+subroutine deallocate_vars(ens_handle)
+
+type(ensemble_type), intent(inout) :: ens_handle
+
+!if (.not. get_allow_transpose(ens_handle)) then
+!   call error_handler(E_ERR, 'allocate_vars', &
+!      'cannot deallocate the vars array because "allow_transpose" is false', &
+!       source, revision, revdate)
+!endif
+
+if(allocated(ens_handle%vars)) deallocate(ens_handle%vars)
+
+end subroutine deallocate_vars
 
 !--------------------------------------------------------------------------------
 !> allocate enough space to an allocatable array to hold a single copy

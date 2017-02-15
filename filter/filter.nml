@@ -1,45 +1,53 @@
 &filter_nml
+   single_file_in               = .false.,
+   input_state_files            = ''
+   input_state_file_list        = 'null'
+
+   stages_to_write              = 'output'
+
+   single_file_out              = .false.,
+   output_state_files           = ''
+   output_state_file_list       = 'null'
+   output_interval              = 1,
+   output_members               = .true.
+   num_output_state_members     = 0,
+   output_mean                  = .true.
+   output_sd                    = .true.
+   write_all_stages_at_end      = .false.
+
+   ens_size                     = 20,
+   num_groups                   = 1,
+   perturb_from_single_instance = .false.,
+   perturbation_amplitude       = 0.2,
+   distributed_state            = .true.
+
+   has_cycling                  = .false.,
    async                        = 0,
    adv_ens_command              = "./advance_model.csh",
-   ens_size                     = 20,
-   stages_to_write              = 'output'
-   output_restarts              = .true.,
-   output_mean                  = .true.,
-   output_sd                    = .true.,
-   single_file_in               = .false.,
-   single_file_out              = .false.,
-   input_restart_file_list      = 'null'
-   output_restart_file_list     = 'null',
+
    obs_sequence_in_name         = "obs_seq.out",
    obs_sequence_out_name        = "obs_seq.final",
+   num_output_obs_members       = 0,
    init_time_days               = 0,
    init_time_seconds            = 0,
    first_obs_days               = -1,
    first_obs_seconds            = -1,
    last_obs_days                = -1,
    last_obs_seconds             = -1,
-   num_output_state_members     = 0,
-   num_output_obs_members       = 0,
-   output_interval              = 1,
-   num_groups                   = 1,
-   output_forward_op_errors     = .false.,
-   output_timestamps            = .false.,
+
+   inf_flavor                  = 0,                       0,
+   inf_initial_from_restart    = .false.,                 .false.,
+   inf_sd_initial_from_restart = .false.,                 .false.,
+   inf_deterministic           = .true.,                  .true.,
+   inf_initial                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.0,                     0.0,
+   inf_damping                 = 1.0,                     1.0,
+   inf_lower_bound             = 1.0,                     1.0,
+   inf_upper_bound             = 1000000.0,               1000000.0,
+   inf_sd_lower_bound          = 0.0,                     0.0
+
    trace_execution              = .false.,
+   output_timestamps            = .false.,
+   output_forward_op_errors     = .false.,
    silence                      = .false.,
-   distributed_state            = .true.,
-   write_all_stages_at_end      = .false. 
-   perturb_from_single_instance = .false.,
-   perturbation_amplitude       = 0.2,
-
-   inf_flavor                   = 0,                       0,
-   inf_initial_from_restart     = .false.,                 .false.,
-   inf_sd_initial_from_restart  = .false.,                 .false.,
-   inf_deterministic            = .true.,                  .true.,
-   inf_initial                  = 1.0,                     1.0,
-   inf_sd_initial               = 0.0,                     0.0,
-   inf_damping                  = 1.0,                     1.0,
-   inf_lower_bound              = 1.0,                     1.0,
-   inf_upper_bound              = 1000000.0,               1000000.0,
-   inf_sd_lower_bound           = 0.0,                     0.0
- /
-
+   /
