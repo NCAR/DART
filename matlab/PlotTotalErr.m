@@ -124,29 +124,25 @@ switch lower(pinfo.model)
       ylabel('Total Error')
 
    case 'forced_lorenz_96'
-      error('not supported yet')
 
       %% This model has the state variables replicated, so there is a difference
       % between num_state_vars and the length of the state variable.
-      %forcing           = nc_attget(pinfo.truth_file, nc_global, 'model_forcing');
-      %delta_t           = nc_attget(pinfo.truth_file, nc_global, 'model_delta_t');
-      %time_step_days    = nc_attget(pinfo.truth_file, nc_global, 'model_time_step_days');
-      %time_step_seconds = nc_attget(pinfo.truth_file, nc_global, 'model_time_step_seconds');
-      num_model_vars    = nc_attget(pinfo.truth_file, nc_global, 'model_num_state_vars');
+
+      num_model_vars = ncreadatt(pinfo.truth_file, '/', 'model_num_state_vars');
 
       % Get the appropriate netcdf variables
 
       Whole_truth  = get_hyperslab('fname',pinfo.truth_file, ...
-                         'varname','state', 'copyindex',truth_index, ...
+                         'varname','state', 'permute','T','squeeze','T', ...
                          'tindex1',pinfo.truth_time(1), 'tcount',pinfo.truth_time(2));
       Whole_ens    = get_hyperslab('fname',pinfo.diagn_file, ...
-                         'varname','state', 'copyindex',ens_mean_index, ...
+                         'varname','state_mean', 'permute','T', ...
                          'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2));
       Whole_spread = get_hyperslab('fname',pinfo.diagn_file, ...
-                         'varname','state', 'copyindex',ens_spread_index, ...
+                         'varname','state_sd', 'permute','T', ...
                          'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2));
 
-      num_vars = size(Whole_spread,1);
+      num_vars = size(Whole_spread,2);
 
       %--------------------------------------------------------------------------
       % Treat the traditional state variable independent of the forcing variables

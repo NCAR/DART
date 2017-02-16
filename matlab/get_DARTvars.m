@@ -30,11 +30,18 @@ for i = 1:nvars
        dimname = fileinfo.Variables(i).Dimensions(idim).Name;
        if (strcmp(dimname,'member')), isDARTvar(i) = 1; end
 
-       % Reject the obvious coordinate variables and some metadata ones
-       varname    = fileinfo.Variables(i).Name;
-       if (         nc_iscoordvar(fname,varname)), isDARTvar(i) = 0; end
-       if (strcmp(varname ,    'MemberMetadata')), isDARTvar(i) = 0; end
+       % Reject the obvious metadata variable
+       varname = fileinfo.Variables(i).Name;
+       if (strcmp(varname, 'MemberMetadata')), isDARTvar(i) = 0; end
     end
+
+    % If the variable is 1D and the name and the dimension name are the same,
+    % the variable is a coordinate variable and can be rejected.
+
+    if (rank == 1 && strcmp(varname,fileinfo.Variables(i).Dimensions(1).Name)),
+       isDARTvar(i) = 0;
+    end
+
 end
 
 if (sum(isDARTvar) == 0)
@@ -42,7 +49,7 @@ if (sum(isDARTvar) == 0)
 end
 
 % coerce just the names into a cell array
-
+bob = cell(sum(isDARTvar),1);
 nDARTvars = 0;
 for i = 1:nvars
    if (isDARTvar(i) > 0)

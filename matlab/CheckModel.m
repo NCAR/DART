@@ -86,13 +86,13 @@ switch lower(model)
 
       % This model has the state variables replicated, so there is a difference
       % between num_state_vars and the length of the state variable.
-      forcing           = nc_attget(fname, nc_global, 'model_forcing');
-      delta_t           = nc_attget(fname, nc_global, 'model_delta_t');
-      time_step_days    = nc_attget(fname, nc_global, 'model_time_step_days');
-      time_step_seconds = nc_attget(fname, nc_global, 'model_time_step_seconds');
-      num_model_vars    = nc_attget(fname, nc_global, 'model_num_state_vars');
+      forcing           = ncreadatt(fname, '/', 'model_forcing');
+      delta_t           = ncreadatt(fname, '/', 'model_delta_t');
+      time_step_days    = ncreadatt(fname, '/', 'model_time_step_days');
+      time_step_seconds = ncreadatt(fname, '/', 'model_time_step_seconds');
+      num_model_vars    = ncreadatt(fname, '/', 'model_num_state_vars');
 
-      num_vars = dim_length(fname,'StateVariable'); % determine # of state varbls
+      num_vars = dim_length(fname,'location'); % determine # of state varbls
 
       % The only trick is to pick an equally-spaced subset of state
       % variables for the default.

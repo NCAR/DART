@@ -108,14 +108,15 @@ switch lower(pinfo.model)
             ens_mean = get_hyperslab('fname',pinfo.diagn_file,'varname','state_mean', ...
                        'stateindex',ivar,'tindex1',pinfo.diagn_time(1),'tcount',pinfo.diagn_time(2));
             plot(pinfo.time, ens_mean, 'r');
-            legend('Ensemble Mean',0);
+            legend(sprintf('Ensemble Mean %f',mean(ens_mean)),0)
 
             if ( have_truth )
                truth = get_hyperslab('fname',pinfo.truth_file, 'varname','state', ...
                            'stateindex',ivar, 'squeeze','true', ...
                            'tindex1',pinfo.truth_time(1), 'tcount',pinfo.truth_time(2));
                hold on; plot(pinfo.time,truth,'b'); hold off;
-               legend('Ensemble Mean','True State',0);
+               legend(sprintf('Ensemble Mean %f',mean(ens_mean)),...
+                      sprintf('True State %f',mean(truth)),0)
             end
 
             s1 = sprintf('%s Variable %d',pinfo.model,ivar);
@@ -158,7 +159,7 @@ switch lower(pinfo.model)
                            'varname', 'state_mean', 'stateindex',ivar, ...
                            'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2));
             plot(pinfo.time, ens_mean, 'r')
-            legend('Ensemble Mean',0)
+            legend(sprintf('Ensemble Mean %f',mean(ens_mean)),0)
 
             % Get the truth for this variable
             if (have_truth)
@@ -166,7 +167,8 @@ switch lower(pinfo.model)
                            'varname','state', 'stateindex',ivar, 'squeeze', 'true', ...
                            'tindex1',pinfo.truth_time(1), 'tcount',pinfo.truth_time(2));
                hold on; plot(pinfo.time,truth,'b'); hold off;
-               legend('Ensemble Mean','True State',0)
+               legend(sprintf('Ensemble Mean %f',mean(ens_mean)),...
+                      sprintf('True State %f',mean(truth)),0)
             end
             s1 = sprintf('%s Variable %d',pinfo.model,ivar);
             title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
