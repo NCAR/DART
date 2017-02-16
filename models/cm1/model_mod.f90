@@ -2335,7 +2335,7 @@ MyLoop : do i = 1, MAX_STATE_VARIABLES
    kind_list(   i) = get_raw_obs_kind_index(dartstr)
    clamp_vals(i,1) = string_to_real(minvalstring)
    clamp_vals(i,2) = string_to_real(maxvalstring)
-   update_list( i) = string_to_logical(state_or_aux, 'NO_UPDATE')
+   update_list( i) = string_to_logical(state_or_aux, 'UPDATE')
 
    ngood = ngood + 1
 

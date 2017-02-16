@@ -107,12 +107,12 @@
   calendar                    = 'Gregorian'
   cm1_template_file           = 'cm1out_rst_000001.nc'
   debug                       = 0
-  model_variables             = 'tha', 'KIND_TEMPERATURE',           'UPDATE'  , '0.0' , '1.0e28',
-                                'tsk', 'KIND_2M_TEMPERATURE',        'UPDATE'  , 'NULL', 'NULL',
-                                'ua' , 'KIND_U_WIND_COMPONENT',      'UPDATE'  , '0.0',  'NULL',
-                                'va' , 'KIND_V_WIND_COMPONENT'       'UPDATE'  , 'NULL', '0.03',
-                                'ppi', 'KIND_SURFACE_PRESSURE',      'UPDATE'  , 'NULL', 'NULL',
-                                'u0' , 'KIND_10M_U_WIND_COMPONENT',  'NOUPDATE', 'NULL', 'NULL'
+  model_variables             = 'tha', 'KIND_TEMPERATURE',          '0.0' , '1.0e28', 'UPDATE' 
+                                'tsk', 'KIND_2M_TEMPERATURE',       'NULL', 'NULL'  , 'UPDATE'
+                                'ua' , 'KIND_U_WIND_COMPONENT',     '0.0',  'NULL'  , 'UPDATE'
+                                'va' , 'KIND_V_WIND_COMPONENT'      'NULL', '0.03'  , 'UPDATE'
+                                'ppi', 'KIND_SURFACE_PRESSURE',     'NULL', 'NULL'  , 'UPDATE'
+                                'u0' , 'KIND_10M_U_WIND_COMPONENT', 'NULL', 'NULL'  , 'NOUPDATE'
   output_state_vector         = .true.
   periodic_x                  = .true.
   periodic_y                  = .true.
