@@ -403,7 +403,7 @@ subroutine free_impact_table(table)
 
 real(r8), intent(inout), allocatable :: table(:,:)
 
-deallocate(table)
+if (allocated(table)) deallocate(table)
 
 end subroutine free_impact_table
 
@@ -876,7 +876,6 @@ select case (this_state)
                                source, revision, revdate, text2=errline, text3=readbuf)
          endif
        
-         ! FIXME
          this_category = itemlist(1)
 
          ! require group be empty to start.
@@ -1485,10 +1484,6 @@ character(len=*), intent(in), optional :: label
 integer :: i, typeid(toc%type_count), typesfound
 integer :: kindid
 
-if (present(label)) then
-!   print *, trim(label)
-endif
-
 ! expand tableindex1 if type here and loop over list
 if (get_toc_type(tocindex1, toc) == ENTRY_DARTKIND) then
 
@@ -1524,14 +1519,13 @@ type(type_toc),   intent(in)           :: toc
 character(len=*), intent(in), optional :: label
 
 
-if (present(label)) then
-!   print *, trim(label)
+if (present(label) .and. debug) then
+   print *, trim(label), ' set_impact_table_values: ', tableindex1, tableindex2
 endif
 
-!print *, 'set_impact_table_values: ', tableindex1, tableindex2
 if ((table(tableindex1, tableindex2) /= missing_r8) .and. &
     (table(tableindex1, tableindex2) /= rvalue)) then
-   write(msgstring, *) 'error; different impact factor already set for this pair'
+   write(msgstring,  *) 'error; different impact factor already set for this pair'
    write(msgstring2, *) 'previous value was', table(tableindex1, tableindex2), ' new value is ', rvalue
    write(msgstring3, *) trim(get_name_by_value(tableindex1, ENTRY_DARTTYPE, toc)), ' and ',  &
                         trim(get_name_by_value(tableindex2, ENTRY_DARTKIND, toc))
@@ -1665,7 +1659,6 @@ if (item > toc%toc_count) then
                      source, revision, revdate)
 endif
 
-!print *, 'get_toc_type: item = ', item
 get_toc_type = toc%toc_entries(item)%etype
 
 end function get_toc_type
@@ -1743,7 +1736,6 @@ nkinds = ubound(table, 2)
 do j=0, nkinds
    do i=1, ntypes
       if (table(i, j) /= 1.0_r8) then
-!print *, i, j, table(i, j)
          write(funit, '(A34,A34,F18.6)') &
                         trim(get_name_by_value(i, ENTRY_DARTTYPE, toc)), &
                         trim(get_name_by_value(j, ENTRY_DARTKIND, toc)), &
