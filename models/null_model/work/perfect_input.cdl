@@ -1,0 +1,49 @@
+netcdf perfect_input {
+dimensions:
+	member = 1 ;
+	metadatalength = 32 ;
+	location = 2 ;
+	time = UNLIMITED ; // (1 currently)
+variables:
+
+	char MemberMetadata(member, metadatalength) ;
+		MemberMetadata:long_name = "description of each member" ;
+
+	double location(location) ;
+		location:short_name = "loc1d" ;
+		location:long_name = "location on a unit circle" ;
+		location:dimension = 1 ;
+		location:valid_range = 0., 1. ;
+
+	double state(time, member, location) ;
+		state:long_name = "the model state" ;
+
+	double time(time) ;
+		time:long_name = "valid time of the model state" ;
+		time:axis = "T" ;
+		time:cartesian_axis = "T" ;
+		time:calendar = "no calendar" ;
+		time:month_lengths = 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 ;
+		time:units = "days since 0000-01-01 00:00:00" ;
+
+// global attributes:
+		:title = "true state from control" ;
+		:version = "$Id$" ;
+		:model = "null" ;
+		:model_delta_t = 0.05 ;
+		:model_time_step_days = 0 ;
+		:model_time_step_seconds = 3600 ;
+		:history = "identical to perfect_ics r2411 (circa Oct 2006)" ;
+
+data:
+
+ MemberMetadata =
+  "true state" ;
+
+ location = 0, 0.5 ;
+
+ state =
+  0, 0 ;
+
+ time = 208.291666666667 ;
+}

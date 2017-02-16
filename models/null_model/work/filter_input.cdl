@@ -1,0 +1,141 @@
+netcdf filter_input {
+dimensions:
+	member = 20 ;
+	metadatalength = 32 ;
+	location = 2 ;
+	time = UNLIMITED ; // (1 currently)
+variables:
+
+	char MemberMetadata(member, metadatalength) ;
+		MemberMetadata:long_name = "description of each member" ;
+
+	double location(location) ;
+		location:short_name = "loc1d" ;
+		location:long_name = "location on a unit circle" ;
+		location:dimension = 1 ;
+		location:valid_range = 0., 1. ;
+
+	double state(time, member, location) ;
+		state:long_name = "the ensemble of model states" ;
+
+	double state_priorinf_mean(time, location) ;
+		state_priorinf_mean:long_name = "prior inflation value" ;
+
+	double state_priorinf_sd(time, location) ;
+		state_priorinf_sd:long_name = "prior inflation standard deviation" ;
+
+	double state_postinf_mean(time, location) ;
+		state_postinf_mean:long_name = "posterior inflation value" ;
+
+	double state_postinf_sd(time, location) ;
+		state_postinf_sd:long_name = "posterior inflation standard deviation" ;
+
+	double time(time) ;
+		time:long_name = "valid time of the model state" ;
+		time:axis = "T" ;
+		time:cartesian_axis = "T" ;
+		time:calendar = "no calendar" ;
+		time:month_lengths = 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 ;
+		time:units = "days since 0000-01-01 00:00:00" ;
+
+	double advance_to_time ;
+		advance_to_time:long_name = "desired time at end of the next model advance" ;
+		advance_to_time:axis = "T" ;
+		advance_to_time:cartesian_axis = "T" ;
+		advance_to_time:calendar = "no calendar" ;
+		advance_to_time:month_lengths = 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 ;
+		advance_to_time:units = "days since 0000-01-01 00:00:00" ;
+
+// global attributes:
+		:title = "an ensemble of spun-up model states" ;
+		:version = "$Id$" ;
+		:model = "null" ;
+		:model_delta_t = 0.05 ;
+		:model_time_step_days = 0 ;
+		:model_time_step_seconds = 3600 ;
+		:history = "identical to perfect_ics r2411 (circa Oct 2006)" ;
+
+data:
+
+ MemberMetadata =
+  "ensemble member      1",
+  "ensemble member      2",
+  "ensemble member      3",
+  "ensemble member      4",
+  "ensemble member      5",
+  "ensemble member      6",
+  "ensemble member      7",
+  "ensemble member      8",
+  "ensemble member      9",
+  "ensemble member     10",
+  "ensemble member     11",
+  "ensemble member     12",
+  "ensemble member     13",
+  "ensemble member     14",
+  "ensemble member     15",
+  "ensemble member     16",
+  "ensemble member     17",
+  "ensemble member     18",
+  "ensemble member     19",
+  "ensemble member     20" ;
+
+ location = 0, 0.5 ;
+
+ state =
+  0.260545909547457,
+  0.658465177858100,
+  0.213828780551316,
+  0.331139369651629,
+  2.654467768617646E-002,
+  0.321997094134590,
+ -9.554582090902947E-002,
+   1.78498208660665,
+  0.161265922864727,
+  0.256961771252152,
+ -4.677607364530564E-002,
+   1.27312850332141,
+ -4.249451091787895E-002,
+  0.740222785816497,
+  0.208700758688527,
+   1.76748438466448,
+  0.180835854202773,
+   3.26504852149857,
+  0.276200393558086,
+   1.74127849244947,
+  0.109817627552152,
+  0.298058925706766,
+ -4.170583097675476E-002,
+   2.66753864106513,
+  0.266248081886658,
+   2.58344297789024,
+  0.482169461457278,
+   2.97724916131118,
+  0.294071976913383,
+ -0.391764382801865,
+  0.350597297542000,
+  0.513279831787637,
+  0.170184475438246,
+  0.728278100855289,
+  6.400433593698823E-002,
+   2.20577119961872,
+  0.140644528698956,
+ -0.117180233045826,
+ -4.148912824606413E-002,
+   2.09071531180437 ;
+
+ state_priorinf_mean =
+  1, 1 ;
+
+ state_priorinf_sd =
+  0.6, 0.6 ;
+
+ state_postinf_mean =
+  1, 1 ;
+
+ state_postinf_sd =
+  0.6, 0.6 ;
+
+ time = 208.291666666666667 ;
+
+ advance_to_time = 208.291666666666667 ;
+}
