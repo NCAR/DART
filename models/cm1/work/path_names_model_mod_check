@@ -25,7 +25,6 @@ obs_kind/obs_kind_mod.f90
 obs_model/obs_model_mod.f90
 obs_sequence/obs_sequence_mod.f90
 quality_control/quality_control_mod.f90
-random_nr/random_nr_mod.f90
 random_seq/random_seq_mod.f90
 reg_factor/reg_factor_mod.f90
 smoother/smoother_mod.f90
