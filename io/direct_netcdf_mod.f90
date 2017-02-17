@@ -46,7 +46,7 @@ module direct_netcdf_mod
 !> \endverbatim
 !> read_transpose() is the read routine.
 !> transpose_write() is the write routine.
-!> Note dart_index is an inout variable to read_transpose() and transpose_write(). 
+!> Note dart_index is an inout variable to read_transpose() and transpose_write().
 !> This is making the assumption that the calling code is using dart_index in the following way:
 !>  * dart_index going in to the subroutines is where the domain starts in the state vector.
 !>  * dart_index coming out of the subroutines is where the domain ends.
@@ -83,7 +83,8 @@ use state_structure_mod,  only : get_num_variables, get_sum_variables,  &
 
 use io_filenames_mod,     only : get_restart_filename, copy_has_units, &
                                  stage_metadata_type, get_file_description, &
-                                 copy_is_clamped, query_read_copy, query_write_copy
+                                 copy_is_clamped, query_read_copy, &
+                                 query_write_copy, force_copy_back
 
 use model_mod,            only : write_model_time
 
@@ -249,7 +250,7 @@ integer :: start_var, end_var
 type(time_type) :: dart_time
 integer :: time_owner, time_owner_index
 
-logical :: clamp_vars
+logical :: clamp_vars, force_copy
 
 ! need to read into a tempory array to fill with one copies
 allocate(vector(get_domain_size(domain)))
@@ -292,14 +293,16 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
       vector = state_ens_handle%copies(copy, istart:iend)
 
       ! for a single task the end var will always be the last element.
-      ! do not need to limit memory since the entire state is all on 
+      ! do not need to limit memory since the entire state is all on
       ! a single processor.
       end_var = get_num_variables(domain)
 
       ! actual copy, may need clamping
       clamp_vars = copy_is_clamped(name_handle, copy)
+      force_copy = force_copy_back(name_handle,  copy)
 
-      call write_variables(ncfile_out, vector, start_var, end_var, domain, clamp_vars)
+      call write_variables(ncfile_out, vector, start_var, end_var, &
+                           domain, clamp_vars, force_copy)
 
       ! close netcdf file
       ret = nf90_close(ncfile_out)
@@ -491,9 +494,9 @@ end subroutine read_transpose_multi_task
 
 
 !-------------------------------------------------
-!> Transpose from state_ens_handle%copies to the writers according to 
+!> Transpose from state_ens_handle%copies to the writers according to
 !> the memory limit imposed by limit_mem.
-!> 
+!>
 !> This is assuming round-robin layout of state on procesors (distribution type 1
 !> in the ensemble handle).
 
@@ -536,13 +539,13 @@ integer :: num_state_variables
 type(time_type) :: dart_time
 integer :: time_owner, time_owner_index
 
-logical :: is_writer, clamp_vars
+logical :: is_writer, clamp_vars, force_copy
 
 ens_size = state_ens_handle%num_copies ! have the extras incase you want to read inflation restarts
 my_pe = state_ens_handle%my_pe
 num_state_variables = get_num_variables(domain)
 
-! need to calculate RECEIVING_PE_LOOP start:end, group size, sending_pe start:end for each group. 
+! need to calculate RECEIVING_PE_LOOP start:end, group size, sending_pe start:end for each group.
 ! Flipped send and recv compared to read_transpose.
 call get_pe_loops(ens_size, send_start, send_end, recv_start, recv_end)
 if (my_pe < ens_size) then  ! I am a writer
@@ -645,7 +648,9 @@ COPIES : do c = 1, ens_size
          if ( query_write_copy(name_handle, my_copy)) then
             !var_block = MISSING_R8  ! if you want to create a file for bitwise testing
             clamp_vars = copy_is_clamped(name_handle, my_copy)
-            call write_variables(ncfile_out, var_block, start_var, end_var, domain, clamp_vars)
+            force_copy = force_copy_back(name_handle, my_copy)
+            call write_variables(ncfile_out, var_block, start_var, end_var, &
+                                 domain, clamp_vars, force_copy)
             deallocate(var_block)
          endif
       endif
@@ -658,7 +663,7 @@ COPIES : do c = 1, ens_size
    copies_written = copies_written + task_count()
 
    ! close netcdf file
-   if (is_writer) then 
+   if (is_writer) then
       if (query_write_copy(name_handle, my_copy)) then
          ret = nf90_close(ncfile_out)
          call nc_check(ret, 'transpose_write', 'closing')
@@ -674,9 +679,9 @@ end subroutine transpose_write_multi_task
 
 !-------------------------------------------------------------------------------
 !> Check a variable for out of bounds and clamp or fail if needed.
-!> If the variable has clamping limits, this routine returns .TRUE. 
+!> If the variable has clamping limits, this routine returns .TRUE.
 !> If the variable is unbounded, this routine returns .FALSE.
-!> The return value is not an indication of whether or not the values have 
+!> The return value is not an indication of whether or not the values have
 !> actually been modified.
 
 
@@ -696,8 +701,8 @@ if ( minclamp /= missing_r8 ) then
    !> large variables.  Should we handle this in a different way?
    !> do we want to have a message if the variable is being clamped?
    if ( minval(variable) < minclamp ) then
-      
-      varname = get_variable_name(dom_id, var_index) 
+     
+      varname = get_variable_name(dom_id, var_index)
       write(msgstring, *) 'min val = ', minval(variable), &
                          ' min bounds = ', minclamp
       !@>todo FIXME : do we want to reduce and print out the absolute max/min
@@ -715,7 +720,7 @@ endif ! min range set
 maxclamp = get_io_clamping_maxval(dom_id, var_index)
 if ( maxclamp /= missing_r8 ) then
    if ( maxval(variable) > maxclamp ) then
-      varname = get_variable_name(dom_id, var_index) 
+      varname = get_variable_name(dom_id, var_index)
       write(msgstring, *) 'max val = ', maxval(variable), &
                           'max bounds = ', maxclamp
       call error_handler(E_ALLMSG, 'clamp_variable', &
@@ -732,8 +737,8 @@ end subroutine clamp_variable
 !-------------------------------------------------------------------------------
 !> Read in variables from start_var to end_var
 !>@todo FIXME: At the moment, this code is assuming that the variables in the state start
-!> at (1,1,1) and that the whole variable is read. This is not the case for 
-!> TIEGCM and CLM.  
+!> at (1,1,1) and that the whole variable is read. This is not the case for
+!> TIEGCM and CLM. 
 
 
 subroutine read_variables(ncfile_in, var_block, start_var, end_var, domain)
@@ -781,43 +786,47 @@ end subroutine read_variables
 !> Write variables from start_var to end_var no clamping
 
 
-subroutine write_variables(ncfile_out, var_block, start_var, end_var, domain, do_file_clamping)
+subroutine write_variables(ncid, var_block, start_var, end_var, domain, &
+                           do_file_clamping, force_copy)
 
-integer,  intent(in)    :: ncfile_out
+integer,  intent(in)    :: ncid
 real(r8), intent(inout) :: var_block(:)
 integer,  intent(in)    :: start_var
 integer,  intent(in)    :: end_var
-integer,  intent(in)    :: domain 
-logical,  intent(in)    :: do_file_clamping 
+integer,  intent(in)    :: domain
+logical,  intent(in)    :: do_file_clamping
+logical,  intent(in)    :: force_copy
 
 integer :: istart, iend
-integer, allocatable :: dims(:)
 integer :: i, ret, var_id, var_size
+character(len=256) :: date
+integer, allocatable :: dims(:)
+
 
 istart = 1
 do i = start_var, end_var
 
    var_size = get_variable_size(domain, i)
    iend = istart + var_size - 1
-   
-   ! Some diagnostic variables do not need to be  updated.  
-   ! This information is stored in the state structure and 
+  
+   ! Some diagnostic variables do not need to be  updated. 
+   ! This information is stored in the state structure and
    ! set by the model.
-   if ( do_io_update(domain, i) ) then
+   if ( do_io_update(domain, i) .or. force_copy ) then
       ! diagnostic files do not get clamped but restart may be clamped
       if ( do_io_clamping(domain, i) .and. do_file_clamping) then
          call clamp_variable(domain, i, var_block(istart:iend))
       endif
-
+     
       ! number of dimensions and length of each
       allocate(dims(get_io_num_dims(domain, i)))
 
       dims = get_io_dim_lengths(domain, i)
 
-      ret = nf90_inq_varid(ncfile_out, get_variable_name(domain, i), var_id)
+      ret = nf90_inq_varid(ncid, get_variable_name(domain, i), var_id)
       call nc_check(ret, 'write_variables', 'getting variable id')
 
-      ret = nf90_put_var(ncfile_out, var_id, var_block(istart:iend), count=dims)
+      ret = nf90_put_var(ncid, var_id, var_block(istart:iend), count=dims)
       call nc_check(ret, 'write_variables', 'writing')
 
       deallocate(dims)
@@ -834,7 +843,7 @@ end subroutine write_variables
 !> Create the output files
 !>
 !> A 'blank' domain is one variable called state, with dimension = model size.
-!> It is used when the model has not suppled any netdcf info but 
+!> It is used when the model has not suppled any netdcf info but
 !>     direct_netcdf_write = .true.
 !> The file is intentionally left OPEN.
 
@@ -843,10 +852,10 @@ function create_and_open_state_output(name_handle, dom_id, copy_number, &
                 dart_time, single_precision_output) result(ncfile_out)
 
 type(stage_metadata_type), intent(in) :: name_handle
-integer,                  intent(in) :: dom_id !< domain
-integer,                  intent(in) :: copy_number
-type(time_type),          intent(in) :: dart_time
-logical,                  intent(in) :: single_precision_output
+integer,                   intent(in) :: dom_id !< domain
+integer,                   intent(in) :: copy_number
+type(time_type),           intent(in) :: dart_time
+logical,                   intent(in) :: single_precision_output
 integer :: ncfile_out
 
 integer :: ret !> netcdf return code
@@ -881,7 +890,11 @@ call nc_write_global_att_clamping(ncfile_out, copy_number, dom_id, from_scratch=
 
 ! define dimensions, loop around unique dimensions
 do i = 1, get_io_num_unique_dims(dom_id)
-   ret = nf90_def_dim(ncfile_out, get_io_unique_dim_name(dom_id, i), get_io_unique_dim_length(dom_id, i), new_dimid)
+   if ( trim(get_io_unique_dim_name(dom_id, i)) == 'time' ) then
+      ret = nf90_def_dim(ncfile_out, 'time', NF90_UNLIMITED, new_dimid)
+   else
+      ret = nf90_def_dim(ncfile_out, get_io_unique_dim_name(dom_id, i), get_io_unique_dim_length(dom_id, i), new_dimid)
+   endif
    !>@todo if we already have a unique names we can take this test out
    if(ret /= NF90_NOERR .and. ret /= NF90_ENAMEINUSE) then
       call nc_check(ret, 'create_and_open_state_output', &
@@ -891,34 +904,35 @@ enddo
 
 ! define variables
 do i = 1, get_num_variables(dom_id) ! loop around state variables
-   ! double or single precision?
-   ndims = get_io_num_dims(dom_id, i)
+   if ( do_io_update(dom_id, i) .or. &
+        force_copy_back(name_handle, copy_number) ) then
 
-   if (single_precision_output) then
-      xtype = NF90_REAL
-   else ! write output that is the precision of filter
-      xtype = get_xtype(dom_id, i)
-      if (r8 == r4 .and. xtype == NF90_DOUBLE) xtype = NF90_REAL
+      ! double or single precision?
+      ndims = get_io_num_dims(dom_id, i)
+  
+      if (single_precision_output) then
+         xtype = NF90_REAL
+      else ! write output that is the precision of filter
+         xtype = get_xtype(dom_id, i)
+         if (r8 == r4 .and. xtype == NF90_DOUBLE) xtype = NF90_REAL
+      endif
+  
+      ! query the dimension ids
+      do j = 1, ndims
+         ret = nf90_inq_dimid(ncfile_out, get_dim_name(dom_id, i, j), dimids(j))
+         call nc_check(ret, 'create_and_open_state_output', 'querying dimensions')
+      enddo
+  
+      ! define variable name and attributes
+      ret = nf90_def_var(ncfile_out, trim(get_variable_name(dom_id, i)), &
+                         xtype=xtype, dimids=dimids(1:ndims), varid=new_varid)
+      call nc_check(ret, 'create_and_open_state_output', 'defining variable')
+  
+      call set_var_id(dom_id, i, new_varid)
+  
+      call nc_write_attributes(name_handle, ncfile_out, filename, new_varid, &
+                               dom_id, i, copy_number)
    endif
-
-   ! query the dimension ids
-   do j = 1, ndims
-      ret = nf90_inq_dimid(ncfile_out, get_dim_name(dom_id, i, j), dimids(j))
-      call nc_check(ret, 'create_and_open_state_output', 'querying dimensions')
-   enddo
-
-   !>@todo FIXME : need to include all state variables to the diagnostic files
-   !>@             this will include adding some extra logic in write_variable
-
-   ! define variable name and attributes
-   ret = nf90_def_var(ncfile_out, trim(get_variable_name(dom_id, i)), &
-                      xtype=xtype, dimids=dimids(1:ndims), varid=new_varid)
-   call nc_check(ret, 'create_and_open_state_output', 'defining variable')
-   !variable_ids(i, dom_id) = new_varid
-   call set_var_id(dom_id, i, new_varid)
-
-   call nc_write_attributes(name_handle, ncfile_out, filename, new_varid, &
-                            dom_id, i, copy_number)
 
 enddo
 
@@ -968,14 +982,14 @@ else
 endif
 
 ! attributes for variables without units such as inflation and sd
-if( copy_has_units(name_handle, copy_number) ) then 
+if( copy_has_units(name_handle, copy_number) ) then
    call nc_check(nf90_put_att(ncFileID,ncVarID,'units',get_units(domid, varid)),&
                 'nc_write_attributes','units in :'//trim(filename))
 else if ( get_units(domid, varid) /= ' ' ) then
    call nc_check(nf90_put_att(ncFileID,ncVarID,'units','unitless'),&
                 'nc_write_attributes','units in :'//trim(filename))
 endif
-     
+    
 ! check to see if template file has missing value attributes
 if ( get_has_missing_value(domid, varid) ) then
    select case ( get_xtype(domid, varid) )
@@ -1088,13 +1102,13 @@ do ivar = 1,get_num_variables(domid)
 
      write(clamp_min,*)  'NA'
      write(clamp_max,*)  'NA'
-     
+    
      clamp_val = get_io_clamping_maxval(domid, ivar)
      if ( clamp_val /= MISSING_R8 ) write(clamp_max,*)  clamp_val
-     
+    
      clamp_val = get_io_clamping_minval(domid, ivar)
      if ( clamp_val /= MISSING_R8 ) write(clamp_min,*)  clamp_val
-     
+    
      write(msgstring,'(''min_val = '',A15,'' , max val = '',A15)') trim(clamp_min), trim(clamp_max)
      write(att_name,'(2A)')  'DART_clamp_', trim(get_variable_name(domid, ivar))
      call nc_check(nf90_put_att(ncFileID,NF90_GLOBAL,att_name, msgstring), &
@@ -1320,7 +1334,7 @@ end subroutine get_pe_loops
 !> Send elements of variables to a processor. This routine must be called
 !> with a corresponding 'recv_variables_from_read'.
 !> The data on the sender are non-contiguous with a stride of task_count. The
-!> start is different depending on which pe is the recv and which variables 
+!> start is different depending on which pe is the recv and which variables
 !> are being sent (these are calculated in the calling routine).
 !> The data on the receiver are contiguous (it is the %copies array)
 
@@ -1358,9 +1372,9 @@ end subroutine send_variables_from_read
 !--------------------------------------------------------
 !> Send the data from a pe to a writer.
 !> Note this may be 1 variable or many.  Start is the start index in %copies
-!> on the sending pe. Finish is the last index in %copies to send. 
-!> If all variables are transposed at once, 
-!> start = 1, 
+!> on the sending pe. Finish is the last index in %copies to send.
+!> If all variables are transposed at once,
+!> start = 1,
 !> finish = ens_handle%my_num_vars  (on sending pe)
 !> This routine must be called with a corresponding 'recv_variables_to_write.'
 !> The data on the sender is non-contiguous since it is a ROW of %copies.
@@ -1397,8 +1411,8 @@ end subroutine send_variables_to_write
 !--------------------------------------------------------
 !> Receive data from a reader. Start and finish are the local indicies
 !> in the %copies array for the data being received.
-!> If all variables are transposed at once, 
-!> start = 1, 
+!> If all variables are transposed at once,
+!> start = 1,
 !> finish = ens_handle%my_num_vars  (on receiveing pe)
 !> This routine must be called with a corresponding 'send_variables_from_read'.
 !> The data on the sender is non-contiguous since it is a ROW of %copies.
@@ -1434,10 +1448,10 @@ end subroutine recv_variables_from_read
 
 !--------------------------------------------------------
 !> Receive data to write/collect. The data is put non-contiguously into
-!> variable_block.  Variable_block is the block of data writen to a 
+!> variable_block.  Variable_block is the block of data writen to a
 !> netcdf file. It may be 1 or more variables.
 !> start and elm_count depend on the sending pe. These are calculated in the
-!> calling code. The stride is task_count() since we are assuming a round robin 
+!> calling code. The stride is task_count() since we are assuming a round robin
 !> distribution of state vector onto processors.
 !> This routine must be called with a corresponding 'send_variables_to_write'
 
@@ -1475,13 +1489,13 @@ end subroutine recv_variables_to_write
 
 !--------------------------------------------------------
 !> Calculate number of elements going to the receiving pe (read_transpose)
-!> Or being sent from the sending pe (transpose_write) for a given 
+!> Or being sent from the sending pe (transpose_write) for a given
 !> start_rank and block_size.
 !> block_size is the number of elements in a block of variables. There may
 !> be 1 variable or all variables depending on limit_mem.
-!> start_rank is the pe that owns the 1st element of the 1st variable in 
+!> start_rank is the pe that owns the 1st element of the 1st variable in
 !> the variable_block.
-!>@todo FIXME ? This should go in ensemble manager. 
+!>@todo FIXME ? This should go in ensemble manager.
 
 
 function num_elements_on_pe(pe, start_rank, block_size) result(elm_count)
@@ -1521,7 +1535,7 @@ end function get_start_rank
 
 !-------------------------------------------------------
 !> Find i, the start point in var_block for a given recv_pe
-!> This is assuming round robin. - will have to query the 
+!> This is assuming round robin. - will have to query the
 !> ensemble manager to find this for different disrtibutions
 
 

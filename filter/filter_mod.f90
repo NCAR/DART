@@ -18,7 +18,7 @@ use obs_sequence_mod,      only : read_obs_seq, obs_type, obs_sequence_type,    
                                   delete_obs_from_seq, delete_seq_head,                       &
                                   delete_seq_tail, replace_obs_values, replace_qc,            &
                                   destroy_obs_sequence, get_qc_meta_data, add_qc
-                                  
+                                 
 use obs_def_mod,           only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
                                   get_obs_kind
 use obs_def_utilities_mod, only : set_debug_fwd_op
@@ -131,7 +131,7 @@ integer :: POSTASSIM_PRIORINF_SD    = COPY_NOT_PRESENT
 integer :: POSTASSIM_POSTINF_MEAN   = COPY_NOT_PRESENT
 integer :: POSTASSIM_POSTINF_SD     = COPY_NOT_PRESENT
 
-logical :: do_prior_inflate     = .false. 
+logical :: do_prior_inflate     = .false.
 logical :: do_posterior_inflate = .false.
 
 !----------------------------------------------------------------
@@ -168,10 +168,10 @@ logical  :: distributed_state = .true. ! Default to do state complete forward op
 integer, parameter :: MAXFILES = 200
 !>@todo FIXME - how does this work for multiple domains?  ens1d1, ens2d1, ... ens1d2 or
 !> ens1d1 ens1d2, ens1d1 ens2d2, etc   i like the latter better.
-character(len=256) ::  input_state_files(MAXFILES) = 'null'  
-character(len=256) :: output_state_files(MAXFILES) = 'null'  
+character(len=256) ::  input_state_files(MAXFILES) = 'null' 
+character(len=256) :: output_state_files(MAXFILES) = 'null' 
 ! Name of files containing a list of {input,output} restart files, 1 file per domain
-character(len=256) ::  input_state_file_list(MAX_NUM_DOMS) = 'null'  
+character(len=256) ::  input_state_file_list(MAX_NUM_DOMS) = 'null' 
 character(len=256) :: output_state_file_list(MAX_NUM_DOMS) = 'null'
 ! Read in a single file and perturb this to create an ensemble
 logical            :: perturb_from_single_instance = .false.
@@ -182,9 +182,9 @@ logical            :: single_file_out              = .false. ! all copies writte
 logical            :: has_cycling                  = .false. ! filter will advance the model
 ! Stages to write.  Valid values include:
 !    input, preassim, postassim, output
-character(len=10)  :: stages_to_write(4) = (/"output    ", "null      ", "null      ", "null      "/) 
+character(len=10)  :: stages_to_write(4) = (/"output    ", "null      ", "null      ", "null      "/)
 
-!>@todo FIXME 
+!>@todo FIXME
 !> for preassim and postassim output it might be we should
 !> be controlling the writing of individual ensemble members
 !> by looking at the num_output_state_member value.  0 means
@@ -243,7 +243,7 @@ contains
 
 !----------------------------------------------------------------
 !> The code does not use %vars arrays except:
-!> * Task 0 still writes the obs_sequence file, so there is a transpose (copies to vars) and 
+!> * Task 0 still writes the obs_sequence file, so there is a transpose (copies to vars) and
 !> sending the obs_fwd_op_ens_handle%vars to task 0. Keys is also size obs%vars.
 !> * If you read dart restarts state_ens_handle%vars is allocated.
 !> * If you write dart diagnostics state_ens_handle%vars is allocated.
@@ -544,8 +544,8 @@ AdvanceTime : do
    ! these cases, we must not advance the times on the lags.
 
    ! Figure out how far model needs to move data to make the window
-   ! include the next available observation.  recent change is 
-   ! curr_ens_time in move_ahead() is intent(inout) and doesn't get changed 
+   ! include the next available observation.  recent change is
+   ! curr_ens_time in move_ahead() is intent(inout) and doesn't get changed
    ! even if there are no more obs.
    call trace_message('Before move_ahead checks time of data and next obs')
 
@@ -561,7 +561,7 @@ AdvanceTime : do
    ! PAR For now, can only broadcast real arrays
    call filter_sync_keys_time(state_ens_handle, key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
 
-   if(key_bounds(1) < 0) then 
+   if(key_bounds(1) < 0) then
       call trace_message('No more obs to assimilate, exiting main loop', 'filter:', -1)
       exit AdvanceTime
    endif
@@ -616,7 +616,7 @@ AdvanceTime : do
    call print_obs_time(seq, key_bounds(2), 'Time of last  observation in window')
 
    ! Create an ensemble for the observations from this time plus
-   ! obs_error_variance, observed value, key from sequence, global qc, 
+   ! obs_error_variance, observed value, key from sequence, global qc,
    ! then mean for each group, then variance for each group
    call init_ensemble_manager(obs_fwd_op_ens_handle, TOTAL_OBS_COPIES, int(num_obs_in_set,i8), 1, transpose_type_in = 2)
    ! Also need a qc field for copy of each observation
@@ -633,7 +633,7 @@ AdvanceTime : do
 
    ! Compute mean and spread for inflation and state diagnostics
    call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-   
+  
    ! Write out the mean and sd for the input files if requested
    if (get_stage_to_write('input')) then
       if (output_mean) &
@@ -654,7 +654,7 @@ AdvanceTime : do
       if (inf_damping(1) /= 1.0_r8) then
          call prepare_to_update_copies(state_ens_handle)
          state_ens_handle%copies(PRIOR_INF_COPY, :) = 1.0_r8 + &
-            inf_damping(1) * (state_ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8) 
+            inf_damping(1) * (state_ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8)
       endif
 
       call filter_ensemble_inflate(state_ens_handle, PRIOR_INF_COPY, prior_inflate, ENS_MEAN_COPY)
@@ -725,7 +725,7 @@ AdvanceTime : do
 
 
    ! FIXME:  i believe both copies and vars are equal at the end
-   ! of the obs_space diags, so we can skip this. 
+   ! of the obs_space diags, so we can skip this.
    !call all_vars_to_all_copies(obs_fwd_op_ens_handle)
 
    write(msgstring, '(A,I8,A)') 'Ready to assimilate up to', size(keys), ' observations'
@@ -749,7 +749,7 @@ AdvanceTime : do
    call     trace_message('After  observation assimilation')
 
    ! Do the update for the smoother lagged fields, too.
-   ! Would be more efficient to do these all at once inside filter_assim 
+   ! Would be more efficient to do these all at once inside filter_assim
    ! in the future
    if(ds) then
       write(msgstring, '(A,I8,A)') 'Ready to reassimilate up to', size(keys), ' observations in the smoother'
@@ -779,7 +779,7 @@ AdvanceTime : do
       if (inf_damping(2) /= 1.0_r8) then
          call prepare_to_update_copies(state_ens_handle)
          state_ens_handle%copies(POST_INF_COPY, :) = 1.0_r8 + &
-            inf_damping(2) * (state_ens_handle%copies(POST_INF_COPY, :) - 1.0_r8) 
+            inf_damping(2) * (state_ens_handle%copies(POST_INF_COPY, :) - 1.0_r8)
       endif
 
     call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY)
@@ -798,8 +798,8 @@ AdvanceTime : do
    call     trace_message('Before computing posterior observation values')
    call timestamp_message('Before computing posterior observation values')
 
-   ! Compute the ensemble of posterior observations, load up the obs_err_var 
-   ! and obs_values.  ens_size is the number of regular ensemble members, 
+   ! Compute the ensemble of posterior observations, load up the obs_err_var
+   ! and obs_values.  ens_size is the number of regular ensemble members,
    ! not the number of copies
 
     call get_obs_ens_distrib_state(state_ens_handle, obs_fwd_op_ens_handle, qc_ens_handle, &
@@ -861,7 +861,7 @@ AdvanceTime : do
    call trace_message('After  posterior obs space diagnostics')
 
 !-------- Test of posterior inflate ----------------
- 
+
    if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
 
       ! If not reading the sd values from a restart file and the namelist initial
@@ -929,7 +929,7 @@ call timestamp_message('Before writing state restart files if requested')
 if (write_all_stages_at_end) then
    file_info_all = combine_file_info( (/file_info_input, file_info_preassim, &
                                         file_info_postassim, file_info_output/) )
- 
+
    call write_state(state_ens_handle, file_info_all)
 else
 
@@ -945,7 +945,7 @@ if(ds) call smoother_write_restart(1, ens_size)
 call trace_message('After  writing state restart files if requested')
 call timestamp_message('After  writing state restart files if requested')
 
-! Give the model_mod code a chance to clean up. 
+! Give the model_mod code a chance to clean up.
 call trace_message('Before end_model call')
 call end_assim_model()
 call trace_message('After  end_model call')
@@ -958,7 +958,7 @@ call destroy_obs(observation)
 call destroy_obs_sequence(seq)
 call trace_message('After  ensemble and obs memory cleanup')
 
-if(ds) then 
+if(ds) then
    call trace_message('Before smoother memory cleanup')
    call smoother_end()
    call trace_message('After  smoother memory cleanup')
@@ -966,7 +966,7 @@ endif
 
 call     trace_message('Filter done')
 call timestamp_message('Filter done')
-if(my_task_id() == 0) then 
+if(my_task_id() == 0) then
    write(logfileunit,*)'FINISHED filter.'
    write(logfileunit,*)
 endif
@@ -1008,9 +1008,9 @@ prior_obs_mean_index = num_obs_copies
 num_obs_copies = num_obs_copies + 1
 posterior_meta_data = 'posterior ensemble mean'
 call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
-posterior_obs_mean_index = num_obs_copies 
+posterior_obs_mean_index = num_obs_copies
 
-! Set up obs ensemble spread 
+! Set up obs ensemble spread
 num_obs_copies = num_obs_copies + 1
 prior_meta_data = 'prior ensemble spread'
 call set_copy_meta_data(seq, num_obs_copies, prior_meta_data)
@@ -1075,7 +1075,7 @@ integer              :: tnum_copies, tnum_qc, tnum_obs, tmax_num_obs, qc_num_inc
 logical              :: pre_I_format
 
 ! Determine the number of output obs space fields
-! 4 is for prior/posterior mean and spread, 
+! 4 is for prior/posterior mean and spread,
 ! Prior and posterior values for all selected fields (so times 2)
 num_obs_copies = 2 * num_output_obs_members + 4
 
@@ -1216,7 +1216,7 @@ do i = 1, get_num_qc(seq)
 
    ! Need to avoid 'QC metadata not initialized'
    if(index(get_qc_meta_data(seq, i), 'QC metadata not initialized') > 0) cycle
-  
+ 
    ! Need to look for 'QC' or 'qc'
    if(index(get_qc_meta_data(seq, i), 'QC') > 0) return
    if(index(get_qc_meta_data(seq, i), 'qc') > 0) return
@@ -1377,7 +1377,7 @@ allocate(obs_temp(num_obs_in_set))
 
 ! Update the ensemble mean
 ! Get this copy to process 0
-call get_copy(map_task_to_pe(obs_fwd_op_ens_handle, 0), obs_fwd_op_ens_handle, OBS_MEAN_START, obs_temp) 
+call get_copy(map_task_to_pe(obs_fwd_op_ens_handle, 0), obs_fwd_op_ens_handle, OBS_MEAN_START, obs_temp)
 ! Only pe 0 gets to write the sequence
 if(my_task_id() == 0) then
      ! Loop through the observations for this time
@@ -1415,7 +1415,7 @@ do k = 1, num_output_members
    if(my_task_id() == 0) then
       ! Loop through the observations for this time
       do j = 1, obs_fwd_op_ens_handle%num_vars
-         ! update the obs values 
+         ! update the obs values
          rvalue(1) = obs_temp(j)
          ivalue = ens_offset + 2 * (k - 1)
          call replace_obs_values(seq, keys(j), rvalue, ivalue)
@@ -1483,11 +1483,11 @@ end subroutine filter_sync_keys_time
 
 !-------------------------------------------------------------------------
 ! Only copy 1 on task zero has the correct time after reading
-! when you read one instance using filter_read_restart. 
+! when you read one instance using filter_read_restart.
 ! perturb_from_single_instance = .true.
-! This routine makes the times consistent across the ensemble.  
-! Any task that owns one or more state vectors needs the time for 
-! the move ahead call. 
+! This routine makes the times consistent across the ensemble. 
+! Any task that owns one or more state vectors needs the time for
+! the move ahead call.
 !> @todo This is broadcasting the time to all tasks, not
 !> just the tasks that own copies.
 
@@ -1581,7 +1581,7 @@ subroutine timestamp_message(msg, sync)
 character(len=*), intent(in) :: msg
 logical, intent(in), optional :: sync
 
-! Write current time and message to stdout and log file. 
+! Write current time and message to stdout and log file.
 ! if sync is present and true, sync mpi jobs before printing time.
 
 if (timestamp_level <= 0) return
@@ -1680,16 +1680,16 @@ end subroutine verbose_forward_op_output
 !------------------------------------------------------------------
 !> Produces an ensemble by copying my_vars of the 1st ensemble member
 !> and then perturbing the copies array.
-!> Mimicks the behaviour of pert_model_state: 
+!> Mimicks the behaviour of pert_model_state:
 !> pert_model_copies is called:
 !>   if no model perturb is provided, perturb_copies_task_bitwise is called.
-!> Note: Not enforcing a model_mod to produce a 
+!> Note: Not enforcing a model_mod to produce a
 !> pert_model_copies that is bitwise across any number of
-!> tasks, although there is enough information in the 
+!> tasks, although there is enough information in the
 !> ens_handle to do this.
 !>
-!> Some models allow missing_r8 in the state vector.  If missing_r8 is 
-!> allowed the locations of missing_r8s are stored before the perturb, 
+!> Some models allow missing_r8 in the state vector.  If missing_r8 is
+!> allowed the locations of missing_r8s are stored before the perturb,
 !> then the missing_r8s are put back in after the perturb.
 
 subroutine create_ensemble_from_single_file(ens_handle)
@@ -1728,7 +1728,7 @@ end subroutine create_ensemble_from_single_file
 
 
 !------------------------------------------------------------------
-! Perturb the copies array in a way that is bitwise reproducible 
+! Perturb the copies array in a way that is bitwise reproducible
 ! no matter how many task you run on.
 
 subroutine perturb_copies_task_bitwise(ens_handle)
@@ -1834,7 +1834,7 @@ if (query_copy_present(PREASSIM_POSTINF_MEAN)) &
 
 if (query_copy_present(PREASSIM_POSTINF_SD)) &
    ens_handle%copies(PREASSIM_POSTINF_SD, :) = ens_handle%copies(POST_INF_SD_COPY, :)
-      
+     
 do i = 1, num_output_state_members
    offset = PREASSIM_MEM_START + i - 1
    if (query_copy_present(offset)) ens_handle%copies(offset, :) = ens_handle%copies(i, :)
@@ -1897,12 +1897,12 @@ ENS_MEM_START = next_copy_number(cnum)
 ENS_MEM_END   = next_copy_number(cnum, ens_size)
 
 ! Filter Extra Copies For Assimilation
-!    ENS_MEAN_COPY     
-!    ENS_SD_COPY       
-!    PRIOR_INF_COPY    
-!    PRIOR_INF_SD_COPY 
-!    POST_INF_COPY     
-!    POST_INF_SD_COPY  
+!    ENS_MEAN_COPY    
+!    ENS_SD_COPY      
+!    PRIOR_INF_COPY   
+!    PRIOR_INF_SD_COPY
+!    POST_INF_COPY    
+!    POST_INF_SD_COPY 
 
 ENS_MEAN_COPY     = next_copy_number(cnum)
 ENS_SD_COPY       = next_copy_number(cnum)
@@ -1918,8 +1918,8 @@ POST_INF_SD_COPY  = next_copy_number(cnum)
 if (write_all_stages_at_end) then
    if (get_stage_to_write('input')) then
       ! Option to Output Input Mean and SD
-      !   INPUT_MEAN 
-      !   INPUT_SD   
+      !   INPUT_MEAN
+      !   INPUT_SD  
       if (output_mean) then
          INPUT_MEAN = next_copy_number(cnum)
       endif
@@ -1938,7 +1938,7 @@ if (write_all_stages_at_end) then
       ! Option to Output Input Mean and SD
       !   PREASSIM_MEAN
       !   PREASSIM_SD
-      if (output_mean) then 
+      if (output_mean) then
          PREASSIM_MEAN = next_copy_number(cnum)
       endif
       if (output_sd) then
@@ -1970,7 +1970,7 @@ if (write_all_stages_at_end) then
       ! Option to Output Input Mean and SD
       !   POSTASSIM_MEAN
       !   POSTASSIM_SD
-      if (output_mean) then 
+      if (output_mean) then
          POSTASSIM_MEAN = next_copy_number(cnum)
       endif
       if (output_sd) then
@@ -1999,20 +1999,20 @@ else
    ! Write everything in stages
    INPUT_MEAN              = ENS_MEAN_COPY
    INPUT_SD                = ENS_SD_COPY
-   
+  
    PREASSIM_MEM_START      = ENS_MEM_START
    PREASSIM_MEM_END        = ENS_MEM_END
    PREASSIM_MEAN           = ENS_MEAN_COPY
    PREASSIM_SD             = ENS_SD_COPY
    PREASSIM_PRIORINF_MEAN  = PRIOR_INF_COPY
-   PREASSIM_PRIORINF_SD    = PRIOR_INF_SD_COPY 
+   PREASSIM_PRIORINF_SD    = PRIOR_INF_SD_COPY
    PREASSIM_POSTINF_MEAN   = POST_INF_COPY
    PREASSIM_POSTINF_SD     = POST_INF_SD_COPY
-   
+  
    POSTASSIM_MEM_START     = ENS_MEM_START
    POSTASSIM_MEM_END       = ENS_MEM_END
    POSTASSIM_MEAN          = ENS_MEAN_COPY
-   POSTASSIM_SD            = ENS_SD_COPY 
+   POSTASSIM_SD            = ENS_SD_COPY
    POSTASSIM_PRIORINF_MEAN = PRIOR_INF_COPY
    POSTASSIM_PRIORINF_SD   = PRIOR_INF_SD_COPY
    POSTASSIM_POSTINF_MEAN  = POST_INF_COPY
@@ -2021,7 +2021,7 @@ else
 endif
 
 num_copies = cnum
- 
+
 end function count_state_ens_copies
 
 
@@ -2053,7 +2053,7 @@ integer,              intent(inout) :: POST_INF_SD
 
 call set_member_file_metadata(file_info, num_ens, MEM_START)
 
-MEM_END = MEM_START + num_ens - 1 
+MEM_END = MEM_START + num_ens - 1
 
 call set_file_metadata(file_info, ENS_MEAN,       stage, 'mean',          'ensemble mean')
 call set_file_metadata(file_info, ENS_SD,         stage, 'sd',            'ensemble sd')
@@ -2103,8 +2103,11 @@ end subroutine set_input_file_info
 
 !------------------------------------------------------------------
 
-subroutine set_output_file_info( file_info, num_ens, MEM_START, ENS_MEAN, ENS_SD, &
-                         PRIOR_INF_MEAN, PRIOR_INF_SD, POST_INF_MEAN, POST_INF_SD, do_clamping)
+subroutine set_output_file_info( file_info, num_ens, MEM_START, ENS_MEAN, &
+                                 ENS_SD, PRIOR_INF_MEAN, PRIOR_INF_SD, &
+                                 POST_INF_MEAN, POST_INF_SD, do_clamping, &
+                                 force_copy)
+
 type(file_info_type), intent(inout) :: file_info
 integer,              intent(in)    :: num_ens
 integer,              intent(in)    :: MEM_START
@@ -2115,6 +2118,7 @@ integer,              intent(in)    :: PRIOR_INF_SD
 integer,              intent(in)    :: POST_INF_MEAN
 integer,              intent(in)    :: POST_INF_SD
 logical,              intent(in)    :: do_clamping
+logical,              intent(in)    :: force_copy
 
 integer :: MEM_END
 
@@ -2122,19 +2126,27 @@ MEM_END = MEM_START+num_ens-1
 
 !>@todo revisit if we should be clamping mean copy for file_info_output
 if ( output_members )      &
-   call set_io_copy_flag(file_info, MEM_START, MEM_END, WRITE_COPY, num_output_ens=num_ens, clamp_vars=do_clamping)
+   call set_io_copy_flag(file_info, MEM_START, MEM_END, WRITE_COPY, &
+                         num_output_ens=num_ens, clamp_vars=do_clamping, &
+                         force_copy_back=force_copy)
 if ( output_mean )          &
-   call set_io_copy_flag(file_info, ENS_MEAN,           WRITE_COPY, clamp_vars=do_clamping)
+   call set_io_copy_flag(file_info, ENS_MEAN,           WRITE_COPY, &
+                         clamp_vars=do_clamping, force_copy_back=force_copy)
 if ( output_sd )            &
-   call set_io_copy_flag(file_info, ENS_SD,             WRITE_COPY, has_units=.false.)
+   call set_io_copy_flag(file_info, ENS_SD,             WRITE_COPY, &
+                         has_units=.false., force_copy_back=force_copy)
 if ( do_prior_inflate )     &
-   call set_io_copy_flag(file_info, PRIOR_INF_MEAN,     WRITE_COPY, has_units=.false.)
+   call set_io_copy_flag(file_info, PRIOR_INF_MEAN,     WRITE_COPY, &
+                         has_units=.false., force_copy_back=force_copy)
 if ( do_prior_inflate )     &
-   call set_io_copy_flag(file_info, PRIOR_INF_SD,       WRITE_COPY, has_units=.false.)
+   call set_io_copy_flag(file_info, PRIOR_INF_SD,       WRITE_COPY, &
+                         has_units=.false., force_copy_back=force_copy)
 if ( do_posterior_inflate ) &
-   call set_io_copy_flag(file_info, POST_INF_MEAN,      WRITE_COPY, has_units=.false.)
+   call set_io_copy_flag(file_info, POST_INF_MEAN,      WRITE_COPY, &
+                         has_units=.false., force_copy_back=force_copy)
 if ( do_posterior_inflate ) &
-   call set_io_copy_flag(file_info, POST_INF_SD,        WRITE_COPY, has_units=.false.)
+   call set_io_copy_flag(file_info, POST_INF_SD,        WRITE_COPY, &
+                         has_units=.false., force_copy_back=force_copy)
 
 end subroutine set_output_file_info
 
@@ -2173,7 +2185,7 @@ integer, intent(inout)        :: cnum
 integer, intent(in), optional :: ncopies
 integer :: next_copy_number
 
-if (present(ncopies)) then 
+if (present(ncopies)) then
    next_copy_number = cnum + ncopies - 1
 else
    next_copy_number = cnum + 1
@@ -2246,15 +2258,18 @@ call set_input_file_info(  file_info_input, ens_size, &
 call set_output_file_info( file_info_preassim, num_output_state_members, &
                            PREASSIM_MEM_START, PREASSIM_MEAN, PREASSIM_SD, &
                            PREASSIM_PRIORINF_MEAN, PREASSIM_PRIORINF_SD, &
-                           PREASSIM_POSTINF_MEAN,  PREASSIM_POSTINF_SD, do_clamping=.false.)
+                           PREASSIM_POSTINF_MEAN,  PREASSIM_POSTINF_SD, &
+                           do_clamping=.false., force_copy=.true.)
 call set_output_file_info( file_info_postassim, num_output_state_members, &
                            POSTASSIM_MEM_START, POSTASSIM_MEAN, POSTASSIM_SD, &
                            POSTASSIM_PRIORINF_MEAN, POSTASSIM_PRIORINF_SD, &
-                           POSTASSIM_POSTINF_MEAN , POSTASSIM_POSTINF_SD, do_clamping=.false.)
+                           POSTASSIM_POSTINF_MEAN , POSTASSIM_POSTINF_SD, &
+                           do_clamping=.false., force_copy=.true.)
 call set_output_file_info( file_info_output, ens_size, &
                            ENS_MEM_START, ENS_MEAN_COPY, ENS_SD_COPY, &
                            PRIOR_INF_COPY, PRIOR_INF_SD_COPY, &
-                           POST_INF_COPY, POST_INF_SD_COPY, do_clamping=.true.)
+                           POST_INF_COPY, POST_INF_SD_COPY, &
+                           do_clamping=.true., force_copy=.false.)
 
 end subroutine initialize_file_information
 
