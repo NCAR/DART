@@ -24,12 +24,12 @@ KIND_TD2 = 204;
 map_proj = {'lambert', 'ups', 'mercator'};
 
 fname = 'True_State'
-stdlat1 = nc_varget(fname, 'TRUELAT1');
-stdlat2 = nc_varget(fname, 'TRUELAT2');
-cen_lat = nc_varget(fname, 'CEN_LAT');
-cen_lon = nc_varget(fname, 'CEN_LON');
+stdlat1 = ncread(fname, 'TRUELAT1');
+stdlat2 = ncread(fname, 'TRUELAT2');
+cen_lat = ncread(fname, 'CEN_LAT');
+cen_lon = ncread(fname, 'CEN_LON');
 
-mp = nc_varget(fname, 'MAP_PROJ');
+mp = ncread(fname, 'MAP_PROJ');
 
 num_domains = size(mp,1);
 
@@ -44,8 +44,8 @@ else
 
 end
 
-xlon = nc_varget(fname, ['XLON_d0',int2str(id)]);
-xlat = nc_varget(fname, ['XLAT_d0',int2str(id)]);
+xlon = ncread(fname, ['XLON_d0',int2str(id)]);
+xlat = ncread(fname, ['XLAT_d0',int2str(id)]);
 
 minlat = min(xlat(:)); maxlat = max(xlat(:));
 minlon = min(xlon(:)); maxlon = max(xlon(:));

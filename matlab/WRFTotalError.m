@@ -55,7 +55,7 @@ for ivar=1:pinfo.num_state_vars,
    % Each variable in its own figure window
    %-------------------------------------------------------------------
    figure(ivar); clf;
-      varunits = nc_attget(pinfo.truth_file, pinfo.vars{ivar}, 'units');
+      varunits = ncreadatt(pinfo.truth_file, pinfo.vars{ivar}, 'units');
 
       plot(pinfo.time,rmse,'-', pinfo.time,sprd,'--')
 

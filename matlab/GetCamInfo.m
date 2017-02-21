@@ -16,7 +16,7 @@ function pinfo = GetCamInfo(pstruct,fname,routine)
 if (exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
 pinfo  = pstruct;
-model  = nc_attget(fname,nc_global,'model');
+model  = ncreadatt(fname,'/','model');
 
 if strcmpi(model,'cam') ~= 1
    error('Not so fast, this is not a cam model.')
@@ -24,10 +24,10 @@ end
 
 %% Get the domain information.
 
-ilevel = nc_varget(fname,'ilev');    % interfaces
-levels = nc_varget(fname, 'lev');    % midpoints
-lon    = nc_varget(fname, 'lon');
-lat    = nc_varget(fname, 'lat');
+ilevel = ncread(fname,'ilev');    % interfaces
+levels = ncread(fname, 'lev');    % midpoints
+lon    = ncread(fname, 'lon');
+lat    = ncread(fname, 'lat');
 
 switch lower(deblank(routine))
 

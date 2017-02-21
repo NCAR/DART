@@ -38,7 +38,7 @@ plotdat = netCDFinfo(fname, varname);
 
 timebase   = sscanf(plotdat.timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
 timeorigin = datenum(timebase(1),timebase(2),timebase(3));
-timearr    = nc_varget(fname,'time');
+timearr    = ncread(fname,'time');
 timestring = datestr(timearr(1) + timeorigin);
 
 % create the hyperslab indices ...
@@ -51,6 +51,7 @@ myinfo.levelindex = level;
 myinfo.timeindex  = time;
 [start, count]    = GetNCindices(myinfo,'diagn',varname);
 
+error('Should use get_hyperslab() instead.')
 datmat = nc_varget(fname, varname, start, count);
 
 % Create the plot.
@@ -92,11 +93,11 @@ annotate(plotdat)
 
 function plotdat = netCDFinfo(fname,varname)
 
-plotdat.model      = nc_attget(fname, nc_global, 'model');
-plotdat.varlname   = nc_attget(fname, varname,   'long_name');
-plotdat.varunits   = nc_attget(fname, varname,   'units');
-plotdat.timeunits  = nc_attget(fname,'time',     'units');
-plotdat.calendar   = nc_attget(fname,'time',     'calendar');
+plotdat.model      = ncreadatt(fname, '/',     'model');
+plotdat.varlname   = ncreadatt(fname, varname, 'long_name');
+plotdat.varunits   = ncreadatt(fname, varname, 'units');
+plotdat.timeunits  = ncreadatt(fname,'time',   'units');
+plotdat.calendar   = ncreadatt(fname,'time',   'calendar');
 
 varinfo            = nc_getvarinfo(fname,varname);
 plotdat.dimnames   = varinfo.Dimension;
@@ -126,17 +127,17 @@ for i = 1:length(varinfo.Dimension)
    switch lower(dimname) % loop over all likely coordinate variables
       case {'lev','z'}
          plotdat.levdimname = diminfo.Name;
-         plotdat.levels     = nc_varget(fname,diminfo.Name);
-         plotdat.levunits   = nc_attget(fname,diminfo.Name,'units');
-         plotdat.levlname   = nc_attget(fname,diminfo.Name,'long_name');
+         plotdat.levels     = ncread(   fname,diminfo.Name);
+         plotdat.levunits   = ncreadatt(fname,diminfo.Name,'units');
+         plotdat.levlname   = ncreadatt(fname,diminfo.Name,'long_name');
       case {'lat','y','tmpj'}
          plotdat.latdimname = diminfo.Name;
-         plotdat.lats       = nc_varget(fname,diminfo.Name);
-         plotdat.latunits   = nc_attget(fname,diminfo.Name,'units');
+         plotdat.lats       = ncread(   fname,diminfo.Name);
+         plotdat.latunits   = ncreadatt(fname,diminfo.Name,'units');
       case {'lon','x','tmpi'}
          plotdat.londimname = diminfo.Name;
-         plotdat.lons       = nc_varget(fname,diminfo.Name);
-         plotdat.lonunits   = nc_attget(fname,diminfo.Name,'units');
+         plotdat.lons       = ncread(   fname,diminfo.Name);
+         plotdat.lonunits   = ncreadatt(fname,diminfo.Name,'units');
    end
 end
 

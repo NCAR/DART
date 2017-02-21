@@ -60,21 +60,21 @@ end
 
 % Each of the candidate variables may have a _mean or _sd counterpart
 
-varind = nDARTvars;
-extensions = {'mean','sd','priorinf_mean', 'priorinf_sd','postinf_mean','postinf_sd'};
-for i = 1:nDARTvars
-   for ext = 1:length(extensions)
-      % construct candidate name and see if it exists
-      suffix = extensions{ext};
-      candidate_name = sprintf('%s_%s',bob{i},suffix);
-      for ivar = 1:nvars
-         if ( strcmp(candidate_name, fileinfo.Variables(ivar).Name ) )
-            varind = varind + 1;
-            bob{varind} = candidate_name;
-         end
-      end
-   end
-end
+% varind = nDARTvars;
+% extensions = {'mean','sd','priorinf_mean', 'priorinf_sd','postinf_mean','postinf_sd'};
+% for i = 1:nDARTvars
+%    for ext = 1:length(extensions)
+%       % construct candidate name and see if it exists
+%       suffix = extensions{ext};
+%       candidate_name = sprintf('%s_%s',bob{i},suffix);
+%       for ivar = 1:nvars
+%          if ( strcmp(candidate_name, fileinfo.Variables(ivar).Name ) )
+%             varind = varind + 1;
+%             bob{varind} = candidate_name;
+%          end
+%       end
+%    end
+% end
 
 % <next few lines under version control, do not edit>
 % $URL$

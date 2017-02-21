@@ -125,10 +125,10 @@ switch lower(model)
    case {'lorenz_96_2scale'}
 
       num_X  = dim_length(fname,'Xdim'); % # of X variables
-      Xdim   =  nc_varget(fname,'Xdim');
+      Xdim   =     ncread(fname,'Xdim');
 
       num_Y  = dim_length(fname,'Ydim'); % # of Y variables
-      Ydim   =  nc_varget(fname,'Ydim');
+      Ydim   =     ncread(fname,'Ydim');
 
       % The only trick is to pick an equally-spaced subset of state
       % variables for the default.
@@ -155,7 +155,7 @@ switch lower(model)
    case {'simple_advection'}
 
       num_locs = dim_length(fname,'loc1d'); % # of X variables
-      loc1d    =  nc_varget(fname,'loc1d');
+      loc1d    =     ncread(fname,'loc1d');
 
       if ( nc_isvar(fname,'state') )
          varnames = {'state'};

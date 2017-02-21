@@ -1,4 +1,4 @@
-function varid = SetCopyID(fname);
+function varid = SetCopyID(fname)
 %% SetCopyID queries for the copy index for a set of ensemble members of a specific netCDF file.
 
 %% DART software - Copyright UCAR. This open source software is provided
@@ -17,10 +17,6 @@ if ( isempty(copyindices) )
    disp('must start with the character string ''ensemble member''')
    error('%s has no ensemble members.',fname)
 end
-
-metastrings = ncread(fname,'MemberMetadata');
-if(size(metastrings,2) == 1), metastrings = metastrings'; end
-metadata    = cellstr(metastrings);
 
 def_copies  = round([1*ncopies/4 , 2*ncopies/4 , 3*ncopies/4 ]);
 def_string  = sprintf(' %d ',def_copies);
@@ -51,7 +47,6 @@ else
       end
    end
 end
-
 
 % <next few lines under version control, do not edit>
 % $URL$

@@ -18,7 +18,7 @@ function pinfo = GetMPAS_ATMInfo(pinfo_in,fname,routine)
 if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
 pinfo = pinfo_in;
-model = nc_attget(fname, nc_global, 'model');
+model = ncreadatt(fname, '/', 'model');
 
 if strcmpi(model,'mpas_atm') ~= 1
    error('Not so fast, this is not a MPAS_ATM model.')
@@ -31,11 +31,11 @@ end
 
 varexist(fname, {'lonCell','latCell','areaCell'})
 
-pinfo.area     = nc_varget(fname,'areaCell');
-pinfo.lonCell  = nc_varget(fname,'lonCell');
-pinfo.latCell  = nc_varget(fname,'latCell');
-pinfo.lonunits = nc_attget(fname,'lonCell','units');
-pinfo.latunits = nc_attget(fname,'latCell','units');
+pinfo.area     = ncread(fname,'areaCell');
+pinfo.lonCell  = ncread(fname,'lonCell');
+pinfo.latCell  = ncread(fname,'latCell');
+pinfo.lonunits = ncreadatt(fname,'lonCell','units');
+pinfo.latunits = ncreadatt(fname,'latCell','units');
 
 %% code for each plot type
 
@@ -164,7 +164,7 @@ switch lower(deblank(routine))
        var3_cellind           = GetClosestCell(var3, pinfo.latCell, pinfo.lonCell, var1_cellind);
 
       % query for ensemble member string
-      metastrings = nc_varget(fname,'CopyMetaData');
+      metastrings = ncread(fname,'CopyMetaData');
       if(size(metastrings,2) == 1), metastrings = metastrings'; end
       metadata    = cellstr(metastrings);
       ens_mem     = strtrim(metadata{1});

@@ -279,7 +279,7 @@ switch lower(pinfo.model)
 
       if (exist('ens_mem','var') ~=1)
          % Set a viable default ensemble member string
-         metadata = nc_varget(fname,'CopyMetaData');
+         metadata = ncread(fname,'MemberMetadata')';
          [N,M]    = size(metadata);
          if M == 1
              cell_array{1} = metadata';

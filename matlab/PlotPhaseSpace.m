@@ -48,13 +48,13 @@ function PlotPhaseSpace( pinfo )
 %
 % DART $Id$
 
-if ( exist(pinfo.fname,'file') ~= 2 ), error('file %s does not exist.',pinfo.fname), end
+if ( exist(pinfo.fname, 'file') ~= 2 ), error('file %s does not exist.', pinfo.fname), end
 
-% Get some information for the 'X','Y' variable
+% Get some information for the 'X', 'Y' variable
 [X.num_times, X.num_copies, X.num_vars] = parse_varshape(pinfo.fname, pinfo.var1name);
 [Y.num_times, Y.num_copies, Y.num_vars] = parse_varshape(pinfo.fname, pinfo.var2name);
 
-if ( isfield( pinfo,'var3name') ) % Get some information for the 'Z' variable
+if ( isfield( pinfo, 'var3name') ) % Get some information for the 'Z' variable
 [Z.num_times, Z.num_copies, Z.num_vars] = parse_varshape(pinfo.fname, pinfo.var3name);
 end
 
@@ -64,16 +64,20 @@ switch lower(pinfo.model)
 
       ens_mem_id = get_copy_index(pinfo.fname, pinfo.ens_mem);  % errors out if no ens_mem
 
-      x = get_hyperslab('fname',pinfo.fname,       'varname',pinfo.var1name, ...
-                        'copyindex',ens_mem_id, 'stateindex',pinfo.var1ind);
-      y = get_hyperslab('fname',pinfo.fname,       'varname',pinfo.var2name, ...
-                        'copyindex',ens_mem_id, 'stateindex',pinfo.var2ind);
+      x = get_hyperslab('fname', pinfo.fname, ...
+              'varname', pinfo.var1name, ...
+              'memberindex', ens_mem_id, ...
+              'stateindex', pinfo.var1ind);
+      y = get_hyperslab('fname', pinfo.fname, ...
+              'varname', pinfo.var2name, ...
+              'memberindex', ens_mem_id, ...
+              'stateindex', pinfo.var2ind);
 
-      h = plot(x,y,pinfo.ltype);
+      h = plot(x, y, pinfo.ltype);
       axis image
 
-      % datmin = min(min(x,y));
-      % datmax = max(max(x,y));
+      % datmin = min(min(x, y));
+      % datmax = max(max(x, y));
       % axis([datmin datmax datmin datmax])
 
       % If there is no legend, we are assuming this is the first plot on this
@@ -81,16 +85,16 @@ switch lower(pinfo.model)
       [legh, ~, outh, outm] = legend;
       if (isempty(legh))
 
-         % title(sprintf('%s ensemble member %d of %s',pinfo.model,ens_mem_id,pinfo.fname), ...
-         %    'interpreter','none','fontweight','bold')
-         title('The Ikeda phase space','fontweight','bold')
-         xlabel(sprintf('%s variable # %d',pinfo.var1name, pinfo.var1ind))
-         ylabel(sprintf('%s variable # %d',pinfo.var2name, pinfo.var2ind))
+         % title(sprintf('%s ensemble member %d of %s', pinfo.model, ens_mem_id, pinfo.fname), ...
+         %    'interpreter', 'none', 'fontweight', 'bold')
+         title('The Ikeda phase space', 'fontweight', 'bold')
+         xlabel(sprintf('%s variable # %d', pinfo.var1name, pinfo.var1ind))
+         ylabel(sprintf('%s variable # %d', pinfo.var2name, pinfo.var2ind))
 
          s = sprintf('%d %d %s %s %s', pinfo.var1ind, pinfo.var2ind, ...
                      pinfo.fname, pinfo.model, pinfo.ens_mem);
-         h = legend(s,0);
-         set(h,'interpreter','none')
+         h = legend(s, 0);
+         set(h, 'interpreter', 'none')
 
       else
          % Must add salient information to the legend.
@@ -102,52 +106,58 @@ switch lower(pinfo.model)
          outm{nlines+1} = sprintf('%d %d %s %s %s', ...
               pinfo.var1ind, pinfo.var2ind, pinfo.fname, ...
               pinfo.model, pinfo.ens_mem);
-         [~, objh, ~, ~] = legend([outh; h],outm,0);
+         [~, objh, ~, ~] = legend([outh; h], outm, 0);
 
-         set(objh(1:nlines+1),'interpreter','none')
+         set(objh(1:nlines+1), 'interpreter', 'none')
       end
       legend boxoff
 
-   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
-	 'lorenz_04','forced_lorenz_96','simple_advection'}
+   case {'9var', 'lorenz_63', 'lorenz_84', 'lorenz_96', 'lorenz_96_2scale', ...
+	 'lorenz_04', 'forced_lorenz_96', 'simple_advection'}
 
-      BulletProof(pinfo,X,Y,Z)          % rudimentary bulletproofing
+      BulletProof(pinfo, X, Y, Z)          % rudimentary bulletproofing
 
       ens_mem_id = get_copy_index(pinfo.fname, pinfo.ens_mem);  % errors out if no ens_mem
 
-      x = get_hyperslab('fname', pinfo.fname, 'memberindex', ens_mem_id, ...
-                        'varname',pinfo.var1name,'stateindex', pinfo.var1ind, ...
-                        'squeeze', 'true');
+      x = get_hyperslab('fname', pinfo.fname, ...
+              'memberindex', ens_mem_id, ...
+              'varname', pinfo.var1name, ...
+              'stateindex', pinfo.var1ind, ...
+              'squeeze', 'true');
 
-      y = get_hyperslab('fname', pinfo.fname, 'memberindex', ens_mem_id, ...
-                        'varname',pinfo.var2name,'stateindex', pinfo.var2ind, ...
-                        'squeeze', 'true');
+      y = get_hyperslab('fname', pinfo.fname, ...
+              'memberindex', ens_mem_id, ...
+              'varname', pinfo.var2name, ...
+              'stateindex', pinfo.var2ind, ...
+              'squeeze', 'true');
 
-      z = get_hyperslab('fname', pinfo.fname, 'memberindex', ens_mem_id, ...
-                        'varname',pinfo.var3name,'stateindex', pinfo.var3ind, ...
-                        'squeeze', 'true');
+      z = get_hyperslab('fname', pinfo.fname, ...
+              'memberindex', ens_mem_id, ...
+              'varname', pinfo.var3name, ...
+              'stateindex', pinfo.var3ind, ...
+              'squeeze', 'true');
 
       % There is no model-dependent segment ...
       % As long as you have three variables, this works for all models.
 
-      h = plot3(x,y,z,pinfo.ltype);
+      h = plot3(x, y, z, pinfo.ltype);
 
       % If there is no legend, we are assuming this is the first plot on this
       % axis. We need to add a title, legend, axes labels, etc.
       [legh, ~, outh, outm] = legend;
       if (isempty(legh))
 
-         % title(sprintf('%s ensemble member %d of %s',pinfo.model,ens_mem_id,pinfo.fname), ...
-         %    'interpreter','none','fontweight','bold')
-         title('The Attractor','fontweight','bold')
-         xlabel(sprintf('%s variable # %d',pinfo.var1name, pinfo.var1ind))
-         ylabel(sprintf('%s variable # %d',pinfo.var2name, pinfo.var2ind))
-         zlabel(sprintf('%s variable # %d',pinfo.var3name, pinfo.var3ind))
+         % title(sprintf('%s ensemble member %d of %s', pinfo.model, ens_mem_id, pinfo.fname), ...
+         %    'interpreter', 'none', 'fontweight', 'bold')
+         title('The Attractor', 'fontweight', 'bold')
+         xlabel(sprintf('%s variable # %d', pinfo.var1name, pinfo.var1ind))
+         ylabel(sprintf('%s variable # %d', pinfo.var2name, pinfo.var2ind))
+         zlabel(sprintf('%s variable # %d', pinfo.var3name, pinfo.var3ind))
 
          s = sprintf('%d %d %d %s %s %s', pinfo.var1ind, pinfo.var2ind, ...
                      pinfo.var3ind, pinfo.fname, pinfo.model, pinfo.ens_mem);
-         h = legend(s,0);
-         set(h,'interpreter','none')
+         h = legend(s, 0);
+         set(h, 'interpreter', 'none')
 
       else
          % Must add salient information to the legend.
@@ -159,55 +169,67 @@ switch lower(pinfo.model)
          outm{nlines+1} = sprintf('%d %d %d %s %s %s', ...
               pinfo.var1ind, pinfo.var2ind, pinfo.var3ind, pinfo.fname, ...
               pinfo.model, pinfo.ens_mem);
-         [~, objh, ~, ~] = legend([outh; h],outm,0);
+         [~, objh, ~, ~] = legend([outh; h], outm, 0);
 
-         set(objh(1:nlines+1),'interpreter','none')
+         set(objh(1:nlines+1), 'interpreter', 'none')
       end
       legend boxoff
 
-   case {'fms_bgrid','pe2lyr','mitgcm_ocean','wrf','cam','sqg','pop'}
+   case {'fms_bgrid', 'pe2lyr', 'mitgcm_ocean', 'wrf', 'cam', 'sqg', 'pop'}
 
       ens_mem_id = get_copy_index(pinfo.fname, pinfo.ens_mem);   % errors out if no ens_mem
 
-      x = get_hyperslab('fname',pinfo.fname, 'varname',pinfo.var1name, ...
-              'copyindex',ens_mem_id, 'levelindex',pinfo.var1_lvlind,  ...
-              'latindex',pinfo.var1_latind, 'lonindex',pinfo.var1_lonind);
+      x = get_hyperslab('fname', pinfo.fname, ...
+              'varname', pinfo.var1name, ...
+              'squeeze', 'T', ...
+              'memberindex', ens_mem_id, ...
+              'levelindex', pinfo.var1_lvlind, ...
+              'latindex', pinfo.var1_latind, ...
+              'lonindex', pinfo.var1_lonind);
 
-      y = get_hyperslab('fname',pinfo.fname, 'varname',pinfo.var2name, ...
-              'copyindex',ens_mem_id, 'levelindex',pinfo.var2_lvlind,  ...
-              'latindex',pinfo.var2_latind, 'lonindex',pinfo.var2_lonind);
+      y = get_hyperslab('fname', pinfo.fname, ...
+              'varname', pinfo.var2name, ...
+              'squeeze', 'T', ...
+              'memberindex', ens_mem_id, ...
+              'levelindex', pinfo.var2_lvlind, ...
+              'latindex', pinfo.var2_latind, ...
+              'lonindex', pinfo.var2_lonind);
 
-      z = get_hyperslab('fname',pinfo.fname, 'varname',pinfo.var3name, ...
-              'copyindex',ens_mem_id, 'levelindex',pinfo.var3_lvlind,  ...
-              'latindex',pinfo.var3_latind, 'lonindex',pinfo.var3_lonind);
+      z = get_hyperslab('fname', pinfo.fname, ...
+              'varname', pinfo.var3name, ...
+              'squeeze', 'T', ...
+              'memberindex', ens_mem_id, ...
+              'levelindex', pinfo.var3_lvlind, ...
+              'latindex', pinfo.var3_latind, ...
+              'lonindex', pinfo.var3_lonind);
 
       % There is no model-dependent segment ...
       % As long as you have three variables, this works for all models.
 
-      h = plot3(x,y,z,pinfo.ltype);
+      h = plot3(x, y, z, pinfo.ltype);
 
       % If there is no legend, we are assuming this is the first plot on this
       % axis. We need to add a title, legend, axes labels, etc.
       [legh, ~, outh, outm] = legend;
       if (isempty(legh))
 
-         % title(sprintf('%s ensemble member %d of %s',pinfo.model,ens_mem_id,pinfo.fname), ...
-         %    'interpreter','none','fontweight','bold')
-         title('The Attractor','fontweight','bold')
+         % title(sprintf('%s ensemble member %d of %s', pinfo.model, ens_mem_id, pinfo.fname), ...
+         %    'interpreter', 'none', 'fontweight', 'bold')
+         title('The Attractor', 'fontweight', 'bold')
          hx = xlabel(sprintf('%s %d %.2f %.2f', ...
                pinfo.var1name, pinfo.var1_lvl, pinfo.var1_lat, pinfo.var1_lon));
          hy = ylabel(sprintf('%s %d %.2f %.2f', ...
                pinfo.var2name, pinfo.var2_lvl, pinfo.var2_lat, pinfo.var2_lon));
          hz = zlabel(sprintf('%s %d %.2f %.2f', ...
                pinfo.var3name, pinfo.var3_lvl, pinfo.var3_lat, pinfo.var3_lon));
-         set(hx,'interpreter','none')
-         set(hy,'interpreter','none')
-         set(hz,'interpreter','none')
+         set(hx, 'interpreter', 'none')
+         set(hy, 'interpreter', 'none')
+         set(hz, 'interpreter', 'none')
 
          s = sprintf('%s %s %s %s %s %s', pinfo.var1name, pinfo.var2name, pinfo.var3name, ...
                                               pinfo.model, pinfo.fname, pinfo.ens_mem);
-         h = legend(s,0);
-         set(h,'interpreter','none')
+         h = legend(s, 0);
+         set(h, 'interpreter', 'none')
 
       else
          % Must add salient information to the legend.
@@ -218,9 +240,9 @@ switch lower(pinfo.model)
          nlines = length(outm);
          outm{nlines+1} = sprintf('%s %s %s %s %s %s', pinfo.var1name, ...
                pinfo.var2name, pinfo.var3name, pinfo.model, pinfo.fname, pinfo.ens_mem);
-         [~, objh, ~, ~] = legend([outh; h],outm,0);
+         [~, objh, ~, ~] = legend([outh; h], outm, 0);
 
-         set(objh(1:nlines+1),'interpreter','none')
+         set(objh(1:nlines+1), 'interpreter', 'none')
       end
       legend boxoff
 
@@ -228,42 +250,51 @@ switch lower(pinfo.model)
 
       ens_mem_id = get_copy_index(pinfo.fname, pinfo.ens_mem);   % errors out if no ens_mem
 
-      x = get_hyperslab('fname',pinfo.fname, 'varname',pinfo.var1name, 'copyindex',ens_mem_id,  ...
-                  'levelindex',pinfo.var1_lvlind, 'cellindex',pinfo.var1_cellindex);
+      x = get_hyperslab('fname', pinfo.fname, ...
+              'varname', pinfo.var1name, ...
+              'memberindex', ens_mem_id, ...
+              'levelindex', pinfo.var1_lvlind, ...
+              'cellindex', pinfo.var1_cellindex);
 
-      y = get_hyperslab('fname',pinfo.fname, 'varname',pinfo.var2name, 'copyindex',ens_mem_id,  ...
-                  'levelindex',pinfo.var2_lvlind, 'cellindex',pinfo.var2_cellindex);
+      y = get_hyperslab('fname', pinfo.fname, ...
+              'varname', pinfo.var2name, ...
+              'memberindex', ens_mem_id, ...
+              'levelindex', pinfo.var2_lvlind, ...
+              'cellindex', pinfo.var2_cellindex);
 
-      z = get_hyperslab('fname',pinfo.fname, 'varname',pinfo.var3name, 'copyindex',ens_mem_id,  ...
-                  'levelindex',pinfo.var3_lvlind, 'cellindex',pinfo.var3_cellindex);
+      z = get_hyperslab('fname', pinfo.fname, ...
+              'varname', pinfo.var3name, ...
+              'memberindex', ens_mem_id, ...
+              'levelindex', pinfo.var3_lvlind, ...
+              'cellindex', pinfo.var3_cellindex);
 
       % There is no model-dependent segment ...
       % As long as you have three variables, this works for all models.
 
-      h = plot3(x,y,z,pinfo.ltype);
+      h = plot3(x, y, z, pinfo.ltype);
 
       % If there is no legend, we are assuming this is the first plot on this
       % axis. We need to add a title, legend, axes labels, etc.
       [legh, ~, outh, outm] = legend;
       if (isempty(legh))
 
-         % title(sprintf('%s ensemble member %d of %s',pinfo.model,ens_mem_id,pinfo.fname), ...
-         %    'interpreter','none','fontweight','bold')
-         title('The Attractor','fontweight','bold')
+         % title(sprintf('%s ensemble member %d of %s', pinfo.model, ens_mem_id, pinfo.fname), ...
+         %    'interpreter', 'none', 'fontweight', 'bold')
+         title('The Attractor', 'fontweight', 'bold')
          hx = xlabel(sprintf('%s %d %.2f %.2f', ...
                pinfo.var1name, pinfo.var1_lvl, pinfo.var1_lat, pinfo.var1_lon));
          hy = ylabel(sprintf('%s %d %.2f %.2f', ...
                pinfo.var2name, pinfo.var2_lvl, pinfo.var2_lat, pinfo.var2_lon));
          hz = zlabel(sprintf('%s %d %.2f %.2f', ...
                pinfo.var3name, pinfo.var3_lvl, pinfo.var3_lat, pinfo.var3_lon));
-         set(hx,'interpreter','none')
-         set(hy,'interpreter','none')
-         set(hz,'interpreter','none')
+         set(hx, 'interpreter', 'none')
+         set(hy, 'interpreter', 'none')
+         set(hz, 'interpreter', 'none')
 
          s = sprintf('%s %s %s %s %s %s', pinfo.var1name, pinfo.var2name, pinfo.var3name, ...
                                               pinfo.model, pinfo.fname, pinfo.ens_mem);
-         h = legend(s,0);
-         set(h,'interpreter','none')
+         h = legend(s, 0);
+         set(h, 'interpreter', 'none')
 
       else
          % Must add salient information to the legend.
@@ -274,9 +305,9 @@ switch lower(pinfo.model)
          nlines = length(outm);
          outm{nlines+1} = sprintf('%s %s %s %s %s %s', pinfo.var1name, ...
                pinfo.var2name, pinfo.var3name, pinfo.model, pinfo.fname, pinfo.ens_mem);
-         [~, objh, ~, ~] = legend([outh; h],outm,0);
+         [~, objh, ~, ~] = legend([outh; h], outm, 0);
 
-         set(objh(1:nlines+1),'interpreter','none')
+         set(objh(1:nlines+1), 'interpreter', 'none')
       end
       legend boxoff
 
@@ -291,7 +322,7 @@ end
 % Subfunctions
 %======================================================================
 
-function [nT, nC, n3] = parse_varshape(fname,varname)
+function [nT, nC, n3] = parse_varshape(fname, varname)
 
 fileinfo  = ncinfo(fname);
 nvars     = length(fileinfo.Variables);
@@ -299,21 +330,21 @@ isvar     = 0;
 
 for i = 1:nvars
     candidate = fileinfo.Variables(i).Name;
-    if (strcmp(varname,candidate))
+    if (strcmp(varname, candidate))
         isvar = 1;
         break
     end
 end
 
 if (isvar < 1)
-   error('%s has no variable named %s ',fname,varname)
+   error('%s has no variable named %s ', fname, varname)
 end
 
-nt = 0;
+nT = 0;
 nC = 0;
 n3 = 0;
 
-varinfo = ncinfo(fname,varname);
+varinfo = ncinfo(fname, varname);
 
 % for i = 1:length(varinfo.Dimension)
 for i = 1:3  % only want/need the first 3 dimensions.
@@ -331,24 +362,24 @@ end
 
 
 
-function BulletProof(pinfo,X,Y,Z)
+function BulletProof(pinfo, X, Y, Z)
 
 if ( (pinfo.var1ind > X.num_vars) || (pinfo.var1ind < 1) )
-   fprintf('\n%s has %d %s variables\n',pinfo.fname,X.num_vars,pinfo.var1name)
-   fprintf('%d  <= ''var1'' <= %d\n',1,X.num_vars)
-   error('var1 (%d) out of range',pinfo.var1ind)
+   fprintf('\n%s has %d %s variables\n', pinfo.fname, X.num_vars, pinfo.var1name)
+   fprintf('%d  <= ''var1'' <= %d\n', 1, X.num_vars)
+   error('var1 (%d) out of range', pinfo.var1ind)
 end
 
 if ( (pinfo.var2ind > Y.num_vars) || (pinfo.var2ind < 1) )
-   fprintf('\n%s has %d %s variables\n',pinfo.fname,Y.num_vars,pinfo.var2name)
-   fprintf('%d  <= ''var2'' <= %d\n',1,Y.num_vars)
-   error('var2 (%d) out of range',pinfo.var2ind)
+   fprintf('\n%s has %d %s variables\n', pinfo.fname, Y.num_vars, pinfo.var2name)
+   fprintf('%d  <= ''var2'' <= %d\n', 1, Y.num_vars)
+   error('var2 (%d) out of range', pinfo.var2ind)
 end
 
 if ( (pinfo.var3ind > Z.num_vars) || (pinfo.var3ind < 1) )
-   fprintf('\n%s has %d %s variables\n',pinfo.fname,Z.num_vars,pinfo.var3name)
-   fprintf('%d  <= ''var3'' <= %d\n',1,Z.num_vars)
-   error('var3 (%d) out of range',pinfo.var3ind)
+   fprintf('\n%s has %d %s variables\n', pinfo.fname, Z.num_vars, pinfo.var3name)
+   fprintf('%d  <= ''var3'' <= %d\n', 1, Z.num_vars)
+   error('var3 (%d) out of range', pinfo.var3ind)
 end
 
 % <next few lines under version control, do not edit>

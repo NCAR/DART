@@ -10,8 +10,8 @@ function CAMTotalError( pinfo )
 % DART $Id$
 
 % Since the models are "compatible", get the info from either one.
-lons       = nc_varget(pinfo.truth_file, 'lon');
-gw         = nc_varget(pinfo.truth_file, 'gw');
+lons       = ncread(pinfo.truth_file, 'lon');
+gw         = ncread(pinfo.truth_file, 'gw');
 num_lons   = length(lons);
 
 % make a matrix of weights for each horizontal slice
@@ -84,7 +84,7 @@ for ivar=1:pinfo.num_state_vars,
    % Each variable in its own figure window
    %-------------------------------------------------------------------
    figure(ivar); clf;
-      varunits = nc_attget(pinfo.truth_file, pinfo.vars{ivar}, 'units');
+      varunits = ncreadatt(pinfo.truth_file, pinfo.vars{ivar}, 'units');
 
       plot(pinfo.time,rmse,'-', pinfo.time,sprd,'--')
 

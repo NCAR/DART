@@ -28,17 +28,17 @@ global copy ULON ULAT TLON TLAT ZG ZC KMU KMT
 
 varexist(fname, {'copy','ULON','ULAT','TLON','TLAT','ZG','ZC','KMT','KMU'});
 
-copy = nc_varget(fname, 'copy');
-ULON = nc_varget(fname, 'ULON');
-ULAT = nc_varget(fname, 'ULAT');
-TLON = nc_varget(fname, 'TLON');
-TLAT = nc_varget(fname, 'TLAT');
-ZG   = nc_varget(fname,   'ZG');
-ZC   = nc_varget(fname,   'ZC');
-KMU  = nc_varget(fname,  'KMU');
-KMT  = nc_varget(fname,  'KMT');
+copy = ncread(fname, 'copy');
+ULON = ncread(fname, 'ULON');
+ULAT = ncread(fname, 'ULAT');
+TLON = ncread(fname, 'TLON');
+TLAT = ncread(fname, 'TLAT');
+ZG   = ncread(fname,   'ZG');
+ZC   = ncread(fname,   'ZC');
+KMU  = ncread(fname,  'KMU');
+KMT  = ncread(fname,  'KMT');
 
-depthunits = nc_attget(fname,'ZG','units');
+depthunits = ncreadatt(fname,'ZG','units');
 
 
 %% The POP model has different number of possible levels for each location.
@@ -175,7 +175,7 @@ switch lower(deblank(routine))
         [var3_lvl, var3_lvlind] = GetLevel(fname,var3,var3_lonind,var3_latind,var1_lvl);
 
         % query for ensemble member string
-        metadata   = nc_varget(fname,'CopyMetaData');
+        metadata   = ncread(fname,'MemberMetadata');
         [N,M]      = size(metadata);
         if M == 1
             cell_array{1} = metadata';

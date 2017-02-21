@@ -16,7 +16,7 @@ function pinfo = GetTIEGCMInfo(pstruct,fname,routine);
 if (exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
 pinfo  = pstruct;
-model  = nc_attget(fname,nc_global,'model');
+model  = ncreadatt(fname,'/','model');
 
 if strcmpi(model,'TIEGCM') ~= 1
    error('Not so fast, this is not a TIEGCM model.')
@@ -26,11 +26,11 @@ end
 
 varexist(fname, {'copy','ilev','lev','lon','lat'})
 
-copy   = nc_varget(fname,'copy');
-ilevel = nc_varget(fname,'ilev');    % interfaces
-levels = nc_varget(fname, 'lev');    % midpoints
-lon    = nc_varget(fname, 'lon');
-lat    = nc_varget(fname, 'lat');
+copy   = ncread(fname,'copy');
+ilevel = ncread(fname,'ilev');    % interfaces
+levels = ncread(fname, 'lev');    % midpoints
+lon    = ncread(fname, 'lon');
+lat    = ncread(fname, 'lat');
 
 inds      = find(lon >= 180);
 lon(inds) = lon(inds) - 360.0;

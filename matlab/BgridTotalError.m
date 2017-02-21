@@ -9,39 +9,29 @@ function BgridTotalError( pinfo )
 %
 % DART $Id$
 
-% Get the indices for the true state, ensemble mean and spread
-% The metadata is queried to determine which "copy" is appropriate.
-truth_index      = get_copy_index(pinfo.truth_file, 'true state');
-ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
-ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
-
-%----------------------------------------------------------------------
-%
-%----------------------------------------------------------------------
-
 for ivar=1:pinfo.num_state_vars,
 
    fprintf('Processing %s ...\n', pinfo.vars{ivar} )
 
    rmse     = zeros(pinfo.time_series_length,1);
    sprd     = zeros(pinfo.time_series_length,1);
-   varunits = nc_attget(pinfo.truth_file, pinfo.vars{ivar}, 'units');
+   varunits = ncreadatt(pinfo.truth_file, pinfo.vars{ivar}, 'units');
 
    % determine what grid the variable lives on
    % determine the number of levels
 
    nlevels = 1;
 
-   varinfo = nc_getvarinfo(pinfo.diagn_file,pinfo.vars{ivar});
+   varinfo = ncinfo(pinfo.diagn_file, pinfo.vars{ivar});
 
-   for idim = 1:length(varinfo.Dimension),
-      dimname   = varinfo.Dimension{idim};
-      dimlength = varinfo.Size(idim);
+   for idim = 1:length(varinfo.Dimensions),
+      dimname   = varinfo.Dimensions(idim).Name;
+      dimlength = varinfo.Dimensions(idim).Length;
       switch lower(dimname)
          case {'tmpj', 'velj'}
-            latitudes   = nc_varget(pinfo.diagn_file, dimname);
+            latitudes   = ncread(pinfo.diagn_file, dimname);
          case {'tmpi', 'veli'}
-            longitudes  = nc_varget(pinfo.diagn_file, dimname);
+            longitudes  = ncread(pinfo.diagn_file, dimname);
          case {'lev'}
             nlevels     = dimlength;
       end
@@ -51,13 +41,27 @@ for ivar=1:pinfo.num_state_vars,
    weights = SphereWeights(latitudes, longitudes);
 
    for itime=1:pinfo.time_series_length,
+       
+       truth  = get_hyperslab('fname', pinfo.truth_file, ...
+                    'varname', pinfo.vars{ivar}, ...
+                    'permute', 'T', ...
+                    'timeindex', pinfo.truth_time(1)+itime-1);
 
-      truth  = get_hyperslab('fname',pinfo.truth_file, 'varname',pinfo.vars{ivar}, ...
-                   'copyindex',truth_index, 'timeindex',pinfo.truth_time(1)+itime-1);
-      ens    = get_hyperslab('fname',pinfo.diagn_file, 'varname',pinfo.vars{ivar}, ...
-                   'copyindex',ens_mean_index, 'timeindex',pinfo.diagn_time(1)+itime-1);
-      spread = get_hyperslab('fname',pinfo.diagn_file, 'varname',pinfo.vars{ivar}, ...
-                   'copyindex',ens_spread_index, 'timeindex',pinfo.diagn_time(1)+itime-1);
+       ens    = get_hyperslab('fname', pinfo.diagn_file, ...
+                    'varname', sprintf('%s_mean',pinfo.vars{ivar}), ...
+                    'permute', 'T', ...
+                    'timeindex', pinfo.diagn_time(1)+itime-1);
+
+       varname = sprintf('%s_sd',pinfo.vars{ivar});
+       [var_present, ~] = nc_var_exists(pinfo.diagn_file, varname);
+       if (var_present > 0)
+           spread = get_hyperslab('fname', pinfo.diagn_file, ...
+                    'varname', varname, ...
+                    'permute', 'T', ...
+                    'timeindex', pinfo.diagn_time(1)+itime-1);
+       else
+           spread = zeros(size(ens));
+       end
 
       %% Calculate the weighted mean squared error for each level.
       %  tensors come back [nlev,nlat,nlon] - or - [nlat,nlon]
@@ -86,11 +90,10 @@ for ivar=1:pinfo.num_state_vars,
    %-------------------------------------------------------------------
    figure(ivar); clf;
       plot(pinfo.time,rmse,'-', pinfo.time,sprd,'--')
-
       s{1} = sprintf('time-mean Ensemble Mean error  = %f', mean(rmse));
       s{2} = sprintf('time-mean Ensemble Spread = %f',      mean(sprd));
-
-      h = legend(s); legend(h,'boxoff')
+      legend(s);
+      legend boxoff;
       grid on;
       xdates(pinfo.time)
       ylabel(sprintf('global-area-weighted rmse (%s)',varunits))

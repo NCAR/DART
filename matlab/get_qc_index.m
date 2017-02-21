@@ -19,7 +19,7 @@ function copy_index = get_qc_index(fname, copystring)
 
 if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
-qc_meta_data = nc_varget(fname,'QCMetaData');
+qc_meta_data = ncread(fname,'QCMetaData')';
 atts         = nc_getdiminfo(fname,'qc_copy');
 num_copies   = atts.Length;
 

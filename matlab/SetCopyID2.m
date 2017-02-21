@@ -10,7 +10,7 @@ function [varid copymetadata] = SetCopyID2(fname);
 
 if (exist(fname,'file') ~= 2), error('%s does not exist.',fname); end
 
-metadata = nc_varget(fname,'CopyMetaData');           % get all the metadata
+metadata = ncread(fname,'MemberMetadata')'; % get all the metadata
 ncopies  = size(metadata,1);
 
 if ( ncopies < 2 )

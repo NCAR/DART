@@ -17,7 +17,7 @@ function pinfo = GetPe2lyrInfo(pinfo_in,fname,routine)
 if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
 pinfo  = pinfo_in;
-model  = nc_attget(fname, nc_global, 'model');
+model  = ncreadatt(fname, '/', 'model');
 
 if strcmpi(model,'pe2lyr') ~= 1
    error('Not so fast, this is not a pe2lyr model.')
@@ -26,9 +26,9 @@ if strcmpi(pinfo.model,'pe2lyr') ~= 1
    error('Not so fast, this is not a pe2lyr plotting structure.')
 end
 
-pinfo.levels = nc_varget(fname,'lev');
-pinfo.lons   = nc_varget(fname,'lon');
-pinfo.lats   = nc_varget(fname,'lat');
+pinfo.levels = ncread(fname,'lev');
+pinfo.lons   = ncread(fname,'lon');
+pinfo.lats   = ncread(fname,'lat');
 
 switch lower(deblank(routine))
 

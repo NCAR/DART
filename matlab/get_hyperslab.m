@@ -32,7 +32,7 @@ end
 % permute is the equivalent of an N-D transpose
 if (isfield(pinfo,'permute'))
     rank = length(size(slab));
-    slab = permute(slab,[rank:-1:1]);
+    slab = permute(slab,rank:-1:1);
 end
 
 % <next few lines under version control, do not edit>

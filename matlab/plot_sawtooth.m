@@ -41,9 +41,9 @@ end
 
 if (exist('posterior_file','var') ~=1)
    disp('Input name of (posterior) ensemble trajectory file:')
-   posterior_file = input('<cr> for postassim.nc\n','s');
+   posterior_file = input('<cr> for filter_output.nc\n','s');
    if isempty(posterior_file)
-      posterior_file = 'postassim.nc';
+      posterior_file = 'filter_output.nc';
    end
 end
 

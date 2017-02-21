@@ -17,17 +17,17 @@ function pinfo = GetBgridInfo(pinfo_in,fname,routine)
 if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
 pinfo = pinfo_in;
-model = nc_attget(fname, nc_global, 'model');
+model = ncreadatt(fname, '/', 'model');
 
 if strcmpi(model,'fms_bgrid') ~= 1
    error('Not so fast, this is not a bgrid model.')
 end
 
-levels = nc_varget(fname,'lev');
-TmpI   = nc_varget(fname,'TmpI');    % temperature/pressure grid longitude
-TmpJ   = nc_varget(fname,'TmpJ');    % temperature/pressure grid latitude
-VelI   = nc_varget(fname,'VelI');    % velocity grid longitude
-VelJ   = nc_varget(fname,'VelJ');    % velocity grid latitude
+levels = ncread(fname,'lev');
+TmpI   = ncread(fname,'TmpI');    % temperature/pressure grid longitude
+TmpJ   = ncread(fname,'TmpJ');    % temperature/pressure grid latitude
+VelI   = ncread(fname,'VelI');    % velocity grid longitude
+VelJ   = ncread(fname,'VelJ');    % velocity grid latitude
 
 switch lower(deblank(routine))
 
@@ -109,22 +109,23 @@ switch lower(deblank(routine))
 
    case 'plotsawtooth'
 
-       pgvar          = GetVar(pinfo.vars);
+      pgvar           = GetVar(pinfo.vars);
       [level, lvlind] = GetLevel(    pgvar,levels);
       [lat  , latind] = GetLatitude( pgvar,TmpJ,VelJ);
       [lon  , lonind] = GetLongitude(pgvar,TmpI,VelI);
-      copyindices     = SetCopyID(fname);
-      copy            = length(copyindices);
-
+      memberIDs       = SetCopyID(fname);
+      num_members     = length(memberIDs);
+      
       pinfo.var_names   = pgvar;
+      pinfo.var         = pgvar;
       pinfo.level       = level;
       pinfo.levelindex  = lvlind;
       pinfo.latitude    = lat;
       pinfo.latindex    = latind;
       pinfo.longitude   = lon;
       pinfo.lonindex    = lonind;
-      pinfo.copies      = copy;
-      pinfo.copyindices = copyindices;
+      pinfo.copies      = num_members;
+      pinfo.copyindices = memberIDs;
 
    case 'plotphasespace'
 
@@ -148,7 +149,7 @@ switch lower(deblank(routine))
 
       % query for ensemble member string
       % If there is only one copy, the string needs to be transposed.
-      metadata   = nc_varget(fname,'CopyMetaData');
+      metadata   = ncread(fname,'MemberMetadata');
       [N,M]      = size(metadata);
       if  M == 1 
          cell_array{1} = metadata';
@@ -220,7 +221,7 @@ varstring = input('(no syntax required)\n','s');
 
 if ~isempty(varstring), time  = str2num(varstring); end
 
-d       = abs(time - times);    % crude distance
+d       = abs(time - times);  % crude distance
 ind     = find(min(d) == d);  % multiple minima possible
 timeind = ind(1);             % use the first one
 time    = times(timeind);

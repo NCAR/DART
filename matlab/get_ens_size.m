@@ -13,7 +13,7 @@ function ens_size = get_ens_size(fname)
 
 if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
-copy_meta_data = nc_varget(fname,'CopyMetaData');
+copy_meta_data = ncread(fname,'MemberMetadata')';
 atts           = nc_getdiminfo(fname,'copy');
 num_copies     = atts.Length;
 

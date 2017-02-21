@@ -6,7 +6,7 @@ function value = nc_read_att(fname,varid,attname)
 %
 % Some examples:
 %
-% cdate = nc_read_att('example.nc',nc_global,'creation_date');
+% cdate = nc_read_att('example.nc','/','creation_date');
 % units = nc_read_att('example.nc','temperature','units');
 % uhoh  = nc_read_att('example.nc','temperature','something_that_does_not_exit');
 % if isempty(uhoh), fprintf('no such attribute but life goes on.\n'); end
@@ -19,21 +19,16 @@ function value = nc_read_att(fname,varid,attname)
 
 value = [];
 
-if (varid == nc_global)
-    finfo = ncinfo(fname);
-    for iatt = 1:length(finfo.Attributes)
-        if (strcmp(finfo.Attributes(iatt).Name, deblank(attname)))
-            value = finfo.Attributes(iatt).Value;
-            return
-        end
-    end
+if (varid == '/')
+    vinfo = ncinfo(fname);
 else
     vinfo = ncinfo(fname,varid);
-    for iatt = 1:length(vinfo.Attributes)
-        if (strcmp(vinfo.Attributes(iatt).Name, deblank(attname)))
-            value = vinfo.Attributes(iatt).Value;
-            return
-        end
+end
+
+for iatt = 1:length(vinfo.Attributes)
+    if (strcmp(vinfo.Attributes(iatt).Name, deblank(attname)))
+        value = vinfo.Attributes(iatt).Value;
+        return
     end
 end
 

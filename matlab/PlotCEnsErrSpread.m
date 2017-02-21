@@ -10,14 +10,14 @@ function PlotCEnsErrSpread( pinfo )
 % this sets start/stop time indices for both truth and diagn file now
 pinfo = CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
 
-model     = nc_attget(pinfo.truth_file, nc_global, 'model');
-timeunits = nc_attget(pinfo.truth_file,'time','units');
+model     = ncreadatt(pinfo.truth_file, '/', 'model');
+timeunits = ncreadatt(pinfo.truth_file,'time','units');
 
 nvars = 4;
 
 % Since the models are "compatible", get the info from either one.
-levels    = nc_varget(pinfo.truth_file, 'level'); num_levels = length(levels);
-ens_mems  = nc_varget(pinfo.diagn_file,  'copy'); ens_size   = length(ens_mems);
+levels    = ncread(pinfo.truth_file, 'level'); num_levels = length(levels);
+ens_mems  = ncread(pinfo.diagn_file,  'copy'); ens_size   = length(ens_mems);
 num_times = pinfo.time_series_length;
 
 % Initialize storage for error averaging
@@ -229,6 +229,7 @@ for i = 1:length(varinfo.Dimension)
    end
 end
 
+error('should use get_hyperslab() instead')
 ted        = nc_varget(fname,'ps',start,count);
 [nt,ny,nx] = size(ted);
 slice      = reshape(ted,[nt ny*nx]);
@@ -269,6 +270,7 @@ for i = 1:length(varinfo.Dimension)
          count(i) = -1;
    end
 end
+error('should use get_hyperslab() instead')
 ted        = nc_varget(fname,varstring,start,count);
 [nt,ny,nx] = size(ted);
 slice      = reshape(ted,[nt ny*nx]);

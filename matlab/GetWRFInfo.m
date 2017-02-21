@@ -28,7 +28,7 @@ end
 %% Get the domain-independent information.
 
 varexist(fname, {'copy'});
-copy       = nc_varget(fname,'copy');
+copy       = ncread(fname,'copy');
 
 %% Get 'optional' variables.
 
@@ -197,7 +197,7 @@ switch lower(deblank(routine))
       [var3_lat, var3_lon, var3_latind, var3_lonind] = GetLatLon(fname, var3);
 
       % query for ensemble member string
-      metadata   = nc_varget(fname,'CopyMetaData');
+      metadata   = ncread(fname,'MemberMetadata');
       [N,M]      = size(metadata);
       if M == 1
          cell_array{1} = metadata';
@@ -372,20 +372,20 @@ dID  = pgvar(indx:length(pgvar));
 if ( isempty(latstag) && isempty(lonstag) )
 
    % Both unstaggered.
-   latmat = nc_varget(fname,sprintf( 'XLAT%s',dID));
-   lonmat = nc_varget(fname,sprintf('XLONG%s',dID));
+   latmat = ncread(fname,sprintf( 'XLAT%s',dID));
+   lonmat = ncread(fname,sprintf('XLONG%s',dID));
 
 elseif ( isempty(latstag) )
 
    % LAT unstaggered, LON staggered.
-   latmat = nc_varget(fname,sprintf( 'XLAT_U%s',dID));
-   lonmat = nc_varget(fname,sprintf('XLONG_U%s',dID));
+   latmat = ncread(fname,sprintf( 'XLAT_U%s',dID));
+   lonmat = ncread(fname,sprintf('XLONG_U%s',dID));
 
 else
 
    % LAT staggered, LON unstaggered.
-   latmat = nc_varget(fname,sprintf( 'XLAT_V%s',dID));
-   lonmat = nc_varget(fname,sprintf('XLONG_V%s',dID));
+   latmat = ncread(fname,sprintf( 'XLAT_V%s',dID));
+   lonmat = ncread(fname,sprintf('XLONG_V%s',dID));
 
 end
 
@@ -513,7 +513,7 @@ function x = varget(filename,varname)
 % do not die such a theatrical death ... return an empty.
 
 if ( nc_isvar(filename,varname) )
-   x = nc_varget(filename, varname);
+   x = ncread(filename, varname);
 else
    x = [];
 end

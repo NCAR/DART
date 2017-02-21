@@ -11,26 +11,6 @@
 %
 % DART $Id$
 
-%% Adds the netCDF operators if possible
-
-if ( exist('ncstartup.m','file') == 2 )
-   ncstartup;
-elseif ( exist('/contrib/matlab/ncstartup.m','file') == 2 )
-   addpath  /contrib/matlab
-   ncstartup;
-elseif ( exist('/usr/local/matlab/ncstartup.m','file') == 2 )
-   addpath  /usr/local/matlab
-   ncstartup;
-end
-
-%% See if we have succeeded in adding the netcdf operators.
-
-if ( exist('nc_varget','file') ~= 2 )
-   disp('Sorry. Unable to locate the snctools matlab operators.')
-   disp('The DART diagnostics will not run.')
-   return
-end
-
 %% Try to intelligently add the general DART tools.
 
 mydir      = pwd;
