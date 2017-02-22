@@ -135,6 +135,46 @@ Scripting with CESM
 See models/cam-fv/scripts_cesm1_5/assimilate.csh for an example of how to 
 handle the new filename conventions.
 
+(To help find things:  input_priorinf_mean output_priorinf_mean )
+{in,out}put_{prior,post}inf_{mean,sd}.nc   ARE in use;
+    Search for stage_metadata%filenames turned up
+    interface set_file_metadata
+       module procedure set_explicit_file_metadata
+       module procedure set_stage_file_metadata
+
+      ! stage_name is {input,preassim,postassim,output}
+      ! base_name  is {mean,sd,{prior,post}inf_{mean,sd}} from filter/filter_mod.f90.
+      write(string1,'(A,''.nc'')') trim(stage_name)//'_'//trim(base_name)
+      file_info%stage_metadata%filenames(my_copy,1) = trim(string1)
+
+    This shows where inflation file names are defined.
+      > grep -I set_file_metadata */*.f90 | grep inf
+    filter/filter_mod.f90:
+       call set_file_metadata(file_info, PRIOR_INF_MEAN, stage, 'priorinf_mean', 'prior inflation mean')
+       call set_file_metadata(file_info, PRIOR_INF_SD,   stage, 'priorinf_sd',   'prior inflation sd')
+       call set_file_metadata(file_info, POST_INF_MEAN,  stage, 'postinf_mean',  'posterior inflation mean')
+       call set_file_metadata(file_info, POST_INF_SD,    stage, 'postinf_sd',    'posterior inflation sd')
+
+    subroutine set_member_file_metadata(file_info, ens_size, my_copy_start)
+       call set_file_metadata(file_info, icopy, stage_name, base_name, desc, offset)
+
+    subroutine set_stage_file_metadata(file_info, copy_number, stage, base_name, desc, offset)
+       write(string1,'(A,''.nc'')') trim(stage_name)//'_'//trim(base_name)
+
+    subroutine set_explicit_file_metadata(file_info, cnum, fnames, desc)
+       file_info%stage_metadata%filenames(cnum,idom)        = trim(fnames(idom))
+       file_info%stage_metadata%file_description(cnum,idom) = trim(string1)
+
+    function construct_file_names(file_info, ens_size, copy, domain)
+       write(construct_file_names, '(A, ''_member_'', I4.4, A, ''.nc'')') &
+                           trim(file_info%root_name), copy, trim(dom_str)
+
+
+
+Also see
+   harnesses/filename_harness/files:  ENS_MEAN_COPY       PriorDiag_mean.nc
+
+
 ------------------------------------------------------------------------------
 ADDITIONAL NOTES :
 ------------------------------------------------------------------------------
@@ -162,7 +202,7 @@ Changes to the filter_nml are :
 
 output_restart          -- RENAMED to output_members
 restart_in_file_name    -- RENAMED to input_state_file_list
-restart_out_file_name   -- RENAMED to output_state_files_list
+restart_out_file_name   -- RENAMED to output_state_file_list
 single_restart_file_in  -- RENAMED to single_file_in
 single_restart_file_out -- RENAMED to single_file_out
 
