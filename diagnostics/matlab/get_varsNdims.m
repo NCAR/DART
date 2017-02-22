@@ -34,10 +34,16 @@ ydims = cell(Nvarnames,1);
 for i = 1:Nvarnames
 
    varname = ALLvarnames{i};
-   varinfo = nc_getvarinfo(fname,varname);
-
-   y{i}     = varname;
-   ydims{i} = sprintf('%s ',varinfo.Dimension{:});
+   y{i}    = varname;
+   
+   varinfo = ncinfo(fname,varname);
+   ydims{i} = varinfo.Dimensions(1).Name;
+   
+   rank = length(varinfo.Size);
+    
+   for idim = 2:rank
+      ydims{i} = sprintf('%s %s',ydims{i}, varinfo.Dimensions(idim).Name);
+   end
 
 end
 
