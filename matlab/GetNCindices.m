@@ -1,7 +1,10 @@
 function [start, count] = GetNCindices(pinfo, whichfile, varname)
-%% GETNCindices returns a start,count array for use with nc_getvar.
+%% GETNCindices returns a start,count array for use with ncread.
 % At present, all times, all copies for a specific level,lat,lon.
 % Does not assume anything about the dimension of the variable.
+%
+% ncread uses 1-based addressing for the 'start', 
+% rather than the 0-based system used in C-style indexing.
 %
 % USAGE:
 % [start, count] = GetNCindices(pinfo, whichfile, varname);
