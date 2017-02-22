@@ -90,7 +90,8 @@ for ivar=1:pinfo.num_state_vars,
       s{1} = sprintf('time-mean Ensemble Mean error  = %f', mean(rmse));
       s{2} = sprintf('time-mean Ensemble Spread = %f',      mean(sprd));
 
-      h = legend(s); legend(h,'boxoff')
+      legend(s);
+      legend boxoff;
       grid on;
       xdates(pinfo.time)
       ylabel(sprintf('global-area-weighted rmse (%s)',varunits))
