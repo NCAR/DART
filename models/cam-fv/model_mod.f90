@@ -4,7 +4,8 @@
 
 ! $Id$
 
-! > > > See RMA-KR for changes to Helen's original RMA version.
+! > > > This version has NOT been updated to describe RMA changes.
+!       See RMA-KR for changes to Helen's original RMA version.
 !       Some comments in here are meant to connect with comments in 
 !       the trunk (non-RMA) version as of 2016-7.  These comments
 !       and the sections in the trunk may be helpful in tracing the
@@ -3024,7 +3025,15 @@ if (obs_kind == KIND_SURFACE_ELEVATION) then
    val_12(:) = phis(lon_ind_below, lat_ind_above) / gravity_const
    val_21(:) = phis(lon_ind_above, lat_ind_below) / gravity_const
    val_22(:) = phis(lon_ind_above, lat_ind_above) / gravity_const
-   vstatus(:) = 0 
+   if (val_11(1) == MISSING_R8 .or. &
+       val_12(1) == MISSING_R8 .or. &
+       val_21(1) == MISSING_R8 .or. &
+       val_22(1) == MISSING_R8 ) then
+      vstatus(:) = 1 
+      write(string1,*) 'interp_lonlat: val_##(mem1) = MISSING_R* for ',&
+                       'lon, lat near ',lon_ind_above, lat_ind_above
+      call error_handler(E_WARN, 'interp_lonlat', string1,source,revision,revdate)
+   endif
 
 elseif (vert_is_level(obs_loc)) then
    ! Pobs
@@ -3104,12 +3113,15 @@ endif
 ! RMA-KR; Note that there's no early return based on an interpolation failure.
 !         The interpolation is done for those members for whom it's possible
 !         and the others get 'failed' istatus, which is returned to the calling routine.
-istatus(:) = vstatus(:)
 
 if (abs(lon_lat_lev(2)) > max_obs_lat_degree) then
    ! Define istatus to be a combination of vstatus (= 0 or 2 (for higher than highest_obs...))
    ! and whether the ob is poleward of the limits set in the namelist (+ 4).
-   where (istatus == 0 .or. istatus == 2) istatus = 10*vstatus + 4
+   ! Too confusing for now; 
+   ! istatus(:) = 10*vstatus + 4
+   istatus(:) = 2
+else
+   istatus(:) = vstatus(:)
 endif
 
 where (istatus == 0 .or. istatus == 2) ! These are success codes
@@ -4235,7 +4247,10 @@ elseif (old_which == VERTISSURFACE) then
    endif
 
 elseif (old_which == VERTISPRESSURE) then
-   if (vert_coord == 'log_invP') then
+   if (vert_coord == 'pressure') then
+      new_array(3) =  old_array(3)
+      new_which = VERTISPRESSURE
+   elseif (vert_coord == 'log_invP') then
       new_array(3) = scale_height(p_surface=p_surf(1), p_above=old_array(3))
       new_which = VERTISSCALEHEIGHT
    endif
@@ -4244,6 +4259,9 @@ elseif (old_which == VERTISSCALEHEIGHT) then
    if (vert_coord == 'pressure') then
       new_array(3) = p_surf(1) / exp(old_array(3))
       new_which = VERTISPRESSURE
+   elseif (vert_coord == 'log_invP') then
+      new_array(3) = old_array(3)
+      new_which = old_which
    endif
 
 elseif (old_which == VERTISLEVEL) then
@@ -4379,7 +4397,8 @@ interf_provided = .true.
 
 ! This will make the results reproduce for runs with the same number of MPI tasks.
 ! It will NOT give the same random sequence if you change the task count.
-call init_random_seq(random_seq, my_task_id()+1 * 1000)
+k = (my_task_id()+1) * 1000
+call init_random_seq(random_seq, k)
 
 pert_fld = 1
 
@@ -4395,10 +4414,14 @@ Vars2Perturb : do pert_fld=1,100
 
       perturbed = .true.
 
-      call error_handler(E_MSG,'pert_model_state', 'Perturbing '//trim(pert_names(pert_fld)))
-
       start_index = get_index_start(component_id, m)
       end_index = get_index_end(component_id, m)
+      if (output_task0) then
+         write(string1,'(3A,2I8,A,I8)') 'Perturbing ',trim(pert_names(pert_fld)), &
+               ' start,stop = ',start_index,end_index,' seed=', k
+         call error_handler(E_MSG,'pert_model_copies', string1)
+      endif
+
       ! FIXME : below is not robust. ens_member is always 0 in CESM context.
       !         Probably should remove this option from future versions; hasn't been used for years.
 
@@ -4416,13 +4439,20 @@ Vars2Perturb : do pert_fld=1,100
          mode = pert_fld
       endif
 
+      if (print_details .and. output_task0) then
+         write(string1,'(2A,I8,A,1pE12.3)') &
+              '   WARNING: filter_nml:perturbation_amplitude is not being used. ', &
+              '   INSTEAD: model_nml:pert_sd(',mode,') = ',pert_sd(mode) 
+         call error_handler(E_WARN,'pert_model_copies', string1)
+      endif
+
       ! Handle the fields
 
       ! reset base values to value provided in namelist.
       if (pert_base_vals(mode) /= MISSING_R8) then
          if (print_details) then
             write(string1,*) 'Using a new base value ',pert_base_vals(mode), 'for ',cflds(m)
-            call error_handler(E_MSG, 'pert_model_state', string1, source, revision, revdate)
+            call error_handler(E_MSG, 'pert_model_copies', string1, source, revision, revdate)
          endif
          where (state_handle%my_vars > start_index .and. state_handle%my_vars < end_index)
             state_handle%copies(copy, :) = pert_base_vals(mode)
@@ -4447,7 +4477,7 @@ Vars2Perturb : do pert_fld=1,100
    if (.not. perturbed) then
       write(string1,*)trim(pert_names(pert_fld)),' not found in list of state variables.'
       write(string2,*)'but was supposed to be used to perturb.'
-      call error_handler(E_ERR,'pert_model_state', string1, source, revision, revdate, text2=string2)
+      call error_handler(E_ERR,'pert_model_copies', string1, source, revision, revdate, text2=string2)
    endif
 
 enddo Vars2Perturb
@@ -4779,7 +4809,6 @@ integer,  intent(out) :: istatus(ens_size)
 
 ! local variables; pterm must be dimensioned as an array because dcz2 has it that way
 real(r8), dimension(ens_size, num_levs) :: phi, tv, q, t, pterm
-real(r8), dimension(ens_size, num_levs+1) :: pmln
 real(r8) ::hybrid_As(num_levs+1,2), hybrid_Bs(num_levs+1,2)
 real(r8), dimension(ens_size) :: h_surf, ht_tmp
 
@@ -4875,7 +4904,8 @@ do imem = 1, ens_size
 ! HK pmln, pterm are not used so there is no need to store one for each
 ! ensemble member
    call dcz2(num_levs, p_surf(imem), h_surf(imem), tv(imem, :), P0%vals(1) , &
-             hybrid_As, hybrid_Bs, pmln, pterm, phi(imem, :))
+             hybrid_As, hybrid_Bs, pterm, phi(imem, :))
+!              hybrid_As, hybrid_Bs, pmln, pterm, phi(imem, :))
 enddo
 
 ! used; hybrid_Bs, hybrid_As, hprb
@@ -4902,7 +4932,8 @@ end subroutine  model_heights
 
 !-----------------------------------------------------------------------
 
-subroutine dcz2(kmax,p_surf,h_surf,tv,hprb,hybrid_As,hybrid_Bs,pmln,pterm,z2)
+! subroutine dcz2(kmax,p_surf,h_surf,tv,hprb,hybrid_As,hybrid_Bs,pmln,pterm,z2)
+subroutine dcz2(kmax,p_surf,h_surf,tv,hprb,hybrid_As,hybrid_Bs,pterm,z2)
 
 ! Compute geopotential height for a CESM hybrid coordinate column.
 ! All arrays except hybrid_As, hybrid_Bs are oriented top to bottom.
@@ -4919,7 +4950,6 @@ real(r8), intent(in)  :: tv(kmax)            ! Virtual temperature, top to botto
 real(r8), intent(in)  :: hprb                ! Hybrid base pressure       (pascals)
 real(r8), intent(in)  :: hybrid_As(kmax+1,2)
 real(r8), intent(in)  :: hybrid_Bs(kmax+1,2)
-real(r8), intent(out) :: pmln(kmax+1)        ! logs of midpoint pressures
 real(r8), intent(out) :: pterm(kmax)         ! pressure profile
 real(r8), intent(out) :: z2(kmax)            ! Geopotential height, top to bottom
 
@@ -4930,6 +4960,7 @@ real(r8), parameter :: rbyg=r/g0
 
 integer  :: i,k,l
 real(r8) :: ARG
+real(r8) :: pmln(kmax+1)        ! logs of midpoint pressures
 
 ! Compute intermediate quantities using scratch space
 
