@@ -43,13 +43,9 @@ function PlotEnsTimeSeries( pinfo )
 
 if ( exist(pinfo.diagn_file,'file') ~= 2 ), error('%s does not exist.',pinfo.diagn_file); end
 
-% Query the metadata to determine which "copy" is the ensemble mean.
-% ens_mean_index = get_copy_index(pinfo.diagn_file, 'ensemble mean');
-
 % If the truth is known, great.
 if ( exist(pinfo.truth_file,'file') == 2)
    have_truth  = 1;
-%    truth_index = get_copy_index(pinfo.truth_file, 'true state');
 else
    have_truth  = 0;
    pinfo.diagn_time = [1 pinfo.time_series_length];

@@ -62,7 +62,7 @@ switch lower(pinfo.model)
 
    case {'ikeda'}   % only two state variables
 
-      ens_mem_id = get_copy_index(pinfo.fname, pinfo.ens_mem);  % errors out if no ens_mem
+      ens_mem_id = get_member_index(pinfo.fname, pinfo.ens_mem);  % errors out if no ens_mem
 
       x = get_hyperslab('fname', pinfo.fname, ...
               'varname', pinfo.var1name, ...
@@ -117,7 +117,7 @@ switch lower(pinfo.model)
 
       BulletProof(pinfo, X, Y, Z)          % rudimentary bulletproofing
 
-      ens_mem_id = get_copy_index(pinfo.fname, pinfo.ens_mem);  % errors out if no ens_mem
+      ens_mem_id = get_member_index(pinfo.fname, pinfo.ens_mem);  % errors out if no ens_mem
 
       x = get_hyperslab('fname', pinfo.fname, ...
               'memberindex', ens_mem_id, ...
@@ -177,7 +177,7 @@ switch lower(pinfo.model)
 
    case {'fms_bgrid', 'pe2lyr', 'mitgcm_ocean', 'wrf', 'cam', 'sqg', 'pop'}
 
-      ens_mem_id = get_copy_index(pinfo.fname, pinfo.ens_mem);   % errors out if no ens_mem
+      ens_mem_id = get_member_index(pinfo.fname, pinfo.ens_mem);   % errors out if no ens_mem
 
       x = get_hyperslab('fname', pinfo.fname, ...
               'varname', pinfo.var1name, ...
@@ -248,7 +248,7 @@ switch lower(pinfo.model)
 
    case {'mpas_atm'}
 
-      ens_mem_id = get_copy_index(pinfo.fname, pinfo.ens_mem);   % errors out if no ens_mem
+      ens_mem_id = get_member_index(pinfo.fname, pinfo.ens_mem);   % errors out if no ens_mem
 
       x = get_hyperslab('fname', pinfo.fname, ...
               'varname', pinfo.var1name, ...

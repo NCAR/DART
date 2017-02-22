@@ -171,7 +171,7 @@ switch lower(deblank(routine))
       % So now I have to figure out if the posterior and prior copy metadata match.
 
       for i = 1:copy,
-         copyi = get_copy_index(pinfo_in.posterior_file,copymetadata{i});
+         copyi = get_member_index(pinfo_in.posterior_file,copymetadata{i});
          pstruct.postcopyindices = copyi;
       end
 

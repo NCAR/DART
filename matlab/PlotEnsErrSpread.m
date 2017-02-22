@@ -54,12 +54,6 @@ function PlotEnsErrSpread( pinfo )
 %
 % DART $Id$
 
-% Get the indices for the true state, ensemble mean and spread
-% The metadata is queried to determine which "copy" is appropriate.
-% truth_index      = get_copy_index(pinfo.truth_file, 'true state' );
-% ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
-% ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
-
 switch lower(pinfo.model)
 
    case '9var'

@@ -43,7 +43,7 @@ timestring = datestr(timearr(1) + timeorigin);
 
 % create the hyperslab indices ...
 
-copyindex = get_copy_index(fname,copystring);
+copyindex = get_member_index(fname,copystring);
 
 myinfo.diagn_file = fname;
 myinfo.copyindex  = copyindex;

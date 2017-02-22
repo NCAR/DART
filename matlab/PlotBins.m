@@ -41,9 +41,6 @@ elseif (pinfo.num_ens_members < 2)
     error('not ensemble members in %s, cannot create rank histogram.',pinfo.diagn_file)
 end
 
-% Get the state for the truth
-% truth_index = get_copy_index(pinfo.truth_file,'true state');
-
 switch lower(pinfo.model)
 
    case '9var'

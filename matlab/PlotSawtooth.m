@@ -144,7 +144,7 @@ for ivar = pinfo.var_inds,
         nmem = nmem + 1;
 
         str1 = deblank(metadata(imem, :));
-        copy_index = get_copy_index(pinfo.prior_file, str1);
+        copy_index = get_member_index(pinfo.prior_file, str1);
 
         po_series  = get_hyperslab('fname', pinfo.posterior_file, ...
                       'varname', pinfo.var, ...

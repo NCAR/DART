@@ -33,7 +33,7 @@ if isempty(IDstring)                 % take the default
    varid = zeros(1,length(ensmems));
    for i = 1:length(ensmems),
       copystring = sprintf('ensemble member %d',ensmems(i));
-      varid(i) = get_copy_index(fname,copystring);
+      varid(i) = get_member_index(fname,copystring);
    end
 else
    ensmems = sscanf(IDstring,'%d');  % convert text to numbers
@@ -43,7 +43,7 @@ else
       varid = zeros(1,length(ensmems));
       for i = 1:length(ensmems),
          copystring = sprintf('ensemble member %d',ensmems(i));
-         varid(i) = get_copy_index(fname,copystring);
+         varid(i) = get_member_index(fname,copystring);
       end
    end
 end
