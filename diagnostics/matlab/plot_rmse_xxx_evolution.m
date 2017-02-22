@@ -227,21 +227,20 @@ for ivar = 1:plotdat.nvars
 
    % get appropriate vertical coordinate variable
 
-   guessdims = nc_var_dims(fname, plotdat.guessvar);
-   analydims = nc_var_dims(fname, plotdat.analyvar);
+   [dimnames, ~] = nc_var_dims(fname, plotdat.guessvar);
 
    if ( dimensionality == 1 ) % observations on a unit circle, no level
       plotdat.level = 1;
       plotdat.level_units = [];
-   elseif ( strfind(guessdims{3},'surface') > 0 )
+   elseif ( strfind(dimnames{3},'surface') > 0 )
       plotdat.level       = 1;
       plotdat.level_units = 'surface';
-   elseif ( strfind(guessdims{3},'undef') > 0 )
+   elseif ( strfind(dimnames{3},'undef') > 0 )
       plotdat.level       = 1;
       plotdat.level_units = 'undefined';
    else
-      plotdat.level       = nc_varget(fname, guessdims{3});
-      plotdat.level_units = nc_read_att(fname, guessdims{3}, 'units');
+      plotdat.level       = nc_varget(fname, dimnames{3});
+      plotdat.level_units = nc_read_att(fname, dimnames{3}, 'units');
    end
    plotdat.nlevels = length(plotdat.level);
 

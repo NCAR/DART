@@ -122,36 +122,30 @@ end
 
 plotdat.fname         = fname;
 plotdat.copystring    = copy;
-plotdat.bincenters    = nc_varget(fname,'time');
-plotdat.binedges      = nc_varget(fname,'time_bounds');
-plotdat.mlevel        = local_nc_varget(fname,'mlevel');
-plotdat.plevel        = local_nc_varget(fname,'plevel');
-plotdat.plevel_edges  = local_nc_varget(fname,'plevel_edges');
-plotdat.hlevel        = local_nc_varget(fname,'hlevel');
-plotdat.hlevel_edges  = local_nc_varget(fname,'hlevel_edges');
-plotdat.ncopies       = nc_dim_exists(fname,'copy');
-plotdat.nregions      = nc_dim_exists(fname,'region');
-plotdat.region_names  = nc_varget(fname,'region_names');
+plotdat.bincenters    = ncread(fname,'time');
+plotdat.binedges      = ncread(fname,'time_bounds');
+plotdat.mlevel        = local_ncread(fname,'mlevel');
+plotdat.plevel        = local_ncread(fname,'plevel');
+plotdat.plevel_edges  = local_ncread(fname,'plevel_edges');
+plotdat.hlevel        = local_ncread(fname,'hlevel');
+plotdat.hlevel_edges  = local_ncread(fname,'hlevel_edges');
+[plotdat.ncopies, ~]  = nc_dim_info(fname,'copy');
+[plotdat.nregions, ~] = nc_dim_info(fname,'region');
+plotdat.region_names  = ncread(fname,'region_names')';
 
-% Matlab wants character matrices to be Nx1 instead of 1xN.
-
-if (plotdat.nregions == 1 && (size(plotdat.region_names,2) == 1) )
-   plotdat.region_names = deblank(plotdat.region_names');
-end
-
-dimensionality        = nc_read_att(fname, nc_global, 'LocationRank');
-plotdat.binseparation = nc_read_att(fname, nc_global, 'bin_separation');
-plotdat.binwidth      = nc_read_att(fname, nc_global, 'bin_width');
-time_to_skip          = nc_read_att(fname, nc_global, 'time_to_skip');
-plotdat.lonlim1       = nc_read_att(fname, nc_global, 'lonlim1');
-plotdat.lonlim2       = nc_read_att(fname, nc_global, 'lonlim2');
-plotdat.latlim1       = nc_read_att(fname, nc_global, 'latlim1');
-plotdat.latlim2       = nc_read_att(fname, nc_global, 'latlim2');
-plotdat.biasconv      = nc_read_att(fname, nc_global, 'bias_convention');
+dimensionality        = nc_read_att(fname, '/', 'LocationRank');
+plotdat.binseparation = nc_read_att(fname, '/', 'bin_separation');
+plotdat.binwidth      = nc_read_att(fname, '/', 'bin_width');
+time_to_skip          = nc_read_att(fname, '/', 'time_to_skip');
+plotdat.lonlim1       = nc_read_att(fname, '/', 'lonlim1');
+plotdat.lonlim2       = nc_read_att(fname, '/', 'lonlim2');
+plotdat.latlim1       = nc_read_att(fname, '/', 'latlim1');
+plotdat.latlim2       = nc_read_att(fname, '/', 'latlim2');
+plotdat.biasconv      = nc_read_att(fname, '/', 'bias_convention');
 
 % Coordinate between time types and dates
 
-calendar     = nc_read_att(fname,'time','calendar');
+%calendar     = nc_read_att(fname,'time','calendar');
 timeunits    = nc_read_att(fname,'time','units');
 timebase     = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
 timeorigin   = datenum(timebase(1),timebase(2),timebase(3));
@@ -224,36 +218,42 @@ for ivar = 1:plotdat.nvars
    logfid = fopen(lgfname,'wt');
    fprintf(logfid,'%s\n',lgfname);
 
+   %% todo FIXME replace with a permute routine to get desired shape
    % get appropriate vertical coordinate variable
+   % regions-levels-copy-time
 
-   guessdims = nc_var_dims(fname, plotdat.guessvar);
-   analydims = nc_var_dims(fname, plotdat.analyvar);
+   [dimnames, ~] = nc_var_dims(fname, plotdat.guessvar);
 
    if ( dimensionality == 1 ) % observations on a unit circle, no level
       plotdat.level = 1;
       plotdat.level_units = [];
-   elseif ( strfind(guessdims{3},'surface') > 0 )
+   elseif ( strfind(dimnames{2},'surface') > 0 )
       plotdat.level       = 1;
       plotdat.level_units = 'surface';
-   elseif ( strfind(guessdims{3},'undef') > 0 )
+   elseif ( strfind(dimnames{2},'undef') > 0 )
       plotdat.level       = 1;
       plotdat.level_units = 'undefined';
    else
-      plotdat.level       = nc_varget(fname, guessdims{3});
-      plotdat.level_units = nc_read_att(fname, guessdims{3}, 'units');
+      plotdat.level       = ncread(fname, dimnames{2});
+      plotdat.level_units = nc_read_att(fname, dimnames{2}, 'units');
    end
    plotdat.nlevels = length(plotdat.level);
 
-   % Here is the tricky part. Singleton dimensions are auto-squeezed ...
-   % single levels, single regions ...
+   % Here is the tricky part.
+   % ncread returns: region-level-copy-time ... we need:
+   %                 time-copy-level-region
+   % Singleton dimensions are auto-squeezed; single levels, single regions ...
+   % The reshape restores the singleton dimensions
 
-   guess_raw = nc_varget(fname, plotdat.guessvar);
+   guess_raw = ncread(fname, plotdat.guessvar);
+   guess_raw = permute(guess_raw,length(size(guess_raw)):-1:1);
    guess = reshape(guess_raw, plotdat.Nbins,   plotdat.ncopies, ...
-      plotdat.nlevels, plotdat.nregions);
+                              plotdat.nlevels, plotdat.nregions);
 
-   analy_raw = nc_varget(fname, plotdat.analyvar);
+   analy_raw = ncread(fname, plotdat.analyvar);
+   analy_raw = permute(analy_raw,length(size(analy_raw)):-1:1);
    analy = reshape(analy_raw, plotdat.Nbins,   plotdat.ncopies, ...
-      plotdat.nlevels, plotdat.nregions);
+                              plotdat.nlevels, plotdat.nregions);
 
    % check to see if there is anything to plot
    % The number possible is decreased by the number of observations
@@ -272,7 +272,7 @@ for ivar = 1:plotdat.nvars
            sum(guess(:,plotdat.NQC6index ,:,:));
 
    if ( sum(nposs(:)) < 1 )
-      fprintf('%s no obs for %s...  skipping\n', plotdat.varnames{ivar})
+      fprintf('no obs for %s...  skipping\n', plotdat.varnames{ivar})
       continue
    end
 
@@ -624,16 +624,14 @@ figdata = struct('expcolors',  {{'k','r','b','m','g','c','y'}}, ...
 %=====================================================================
 
 
-function value = local_nc_varget(fname,varname)
+function value = local_ncread(fname,varname)
 %% If the variable exists in the file, return the contents of the variable.
 % if the variable does not exist, return empty value instead of error-ing
 % out.
 
-[variable_present, varid] = nc_var_exists(fname,varname);
+[variable_present, ~] = nc_var_exists(fname,varname);
 if (variable_present)
-   ncid  = netcdf.open(fname,'NOWRITE');
-   value = netcdf.getVar(ncid, varid);
-   netcdf.close(ncid)
+   value = ncread(fname,varname);
 else
    value = [];
 end

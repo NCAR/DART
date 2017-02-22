@@ -323,24 +323,23 @@ myinfo.levelindex     = plotdat.levelindex;
 
 % get appropriate vertical coordinate variable
 
-guessdims = nc_var_dims(fname, plotdat.priorvar);
-analydims = nc_var_dims(fname, plotdat.postevar);
+[dimnames, ~] = nc_var_dims(fname, plotdat.priorvar);
 
 if ( dimensionality == 1 ) % observations on a unit circle, no level
    plotdat.level = 1;
    plotdat.level_units = [];
-elseif ( strfind(guessdims{3},'surface') > 0 )
+elseif ( strfind(dimnames{3},'surface') > 0 )
    plotdat.level       = 1;
    plotdat.level_units = 'surface';
    plotdat.level_edges = [];
-elseif ( strfind(guessdims{3},'undef') > 0 )
+elseif ( strfind(dimnames{3},'undef') > 0 )
    plotdat.level       = 1;
    plotdat.level_units = 'undefined';
    plotdat.level_edges = [];
 else
-   plotdat.level       = nc_varget(fname, guessdims{3});
-   plotdat.level_units = nc_read_att(fname, guessdims{3}, 'units');
-   plotdat.level_edges = nc_varget(fname,sprintf('%s_edges',guessdims{3}));
+   plotdat.level       = nc_varget(fname, dimnames{3});
+   plotdat.level_units = nc_read_att(fname, dimnames{3}, 'units');
+   plotdat.level_edges = nc_varget(fname,sprintf('%s_edges',dimnames{3}));
 end
 
 [start, count]        = GetNCindices(myinfo,'diagn',plotdat.priorvar);

@@ -212,8 +212,7 @@ switch lower(model)
 
       varnames = get_DARTvars(fname);
       num_vars = length(varnames);
-      dinfo    = nc_getdiminfo(fname,'levtot');
-      nlevels  = dinfo.Length;
+      [nlevels,~] = nc_dim_info(fname,'levtot');
 
       vars = struct('model',model, ...
               'num_state_vars',num_vars, ...

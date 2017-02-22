@@ -47,8 +47,7 @@ polar      = varget(fname,     'POLAR');
 % If there is only one domain, we know what to do.
 % otherwise, ask which domain is of interest.
 
-dinfo       = nc_getdiminfo(fname,'domain');  % no graceful error
-num_domains = dinfo.Length;
+[num_domains,~] = nc_dim_info(fname,'domain');  % no graceful error
 
 dID    = 1;
 if (num_domains > 1)
@@ -323,9 +322,9 @@ if (isempty(leveldim))
 
 else
 
-   levelvar = varinfo.Dimension{leveldim};
-   dinfo    = nc_getdiminfo(fname,levelvar);
-   levels   = 1:dinfo.Length;
+   levelvar    = varinfo.Dimension{leveldim};
+   [nlevels,~] = nc_dim_info(fname,levelvar);
+   levels      = 1:nlevels;
 
    if (isempty(level)), level = levels(1); end
 

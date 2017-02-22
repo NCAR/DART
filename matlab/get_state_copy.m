@@ -16,8 +16,7 @@ if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
 if (nargin == 3)
   tstartind =  1;
-  diminfo   = nc_getdiminfo(fname,'time');
-  tcount    = diminfo.Length;
+  [tcount,~] = nc_dim_info(fname,'time');
 end
 
 myinfo.diagn_file = fname;

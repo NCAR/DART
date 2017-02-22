@@ -174,19 +174,18 @@ for ivar = varlist
 
    % get appropriate vertical coordinate variable
 
-   guessdims = nc_var_dims(  fname, plotdat.guessvar);
-   analydims = nc_var_dims(  fname, plotdat.analyvar);
-   varinfo   = nc_getvarinfo(fname, plotdat.analyvar);
+   [dimnames, ~] = nc_var_dims(  fname, plotdat.guessvar);
+   varinfo       = nc_getvarinfo(fname, plotdat.analyvar);
 
    % this is a superfluous check ... FindVerticalVars already weeds out
    % variables only present on surface or undef because obs_diag
    % does not time-average statistics for these.
 
-   if (~ isempty(strfind(guessdims{2},'surface')))
+   if (~ isempty(strfind(dimnames{2},'surface')))
       fprintf('%s is a surface field.\n',plotdat.guessvar)
       fprintf('Cannot display a surface field this way.\n')
       continue
-   elseif (~ isempty(strfind(guessdims{2},'undef')))
+   elseif (~ isempty(strfind(dimnames{2},'undef')))
       fprintf('%s has no vertical definition.\n',plotdat.guessvar)
       fprintf('Cannot display this field this way.\n')
       continue

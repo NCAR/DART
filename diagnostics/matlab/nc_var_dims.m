@@ -1,20 +1,20 @@
-function vdims = nc_var_dims(ncfname,varname);
+function [dimnames, dimsizes] = nc_var_dims(ncfname,varname)
 %% Get the names of the coordinate variables for each 
 % of the dimensions of the variable.
 %
-% vdims = nc_var_dims(ncfname,varname);
+% dimnames = nc_var_dims(ncfname,varname);
 %
 % ncfname    file name of a netcdf file
 % varname    a variable names
-% vdims      a cell array of the coordinate variables
+% dimnames      a cell array of the coordinate variables
 %
 % EXAMPLE:
 % 
 % ncfname = 'obs_seq.final.nc';
 % varname = 'RADIOSONDE_TEMPERATURE_guess';
-% vdims   = nc_var_dims(ncfname,varname);
-% for i = 1:length(vdims)
-%    disp(sprintf('variable %s dimension %d is %s',varname,i,vdims{i}))
+% dimnames   = nc_var_dims(ncfname,varname);
+% for i = 1:length(dimnames)
+%    disp(sprintf('variable %s dimension %d is %s',varname,i,dimnames{i}))
 % end
 
 %% DART software - Copyright UCAR. This open source software is provided
@@ -23,16 +23,22 @@ function vdims = nc_var_dims(ncfname,varname);
 %
 % DART $Id$
 
-if ( nc_isvar(ncfname, varname) )
-   varinfo = nc_getvarinfo(ncfname,varname);
-   vdims   = varinfo.Dimension;
-else
-   fprintf('%s does not have a %s variable.\n',ncfname, varname)
-   fprintf('It does have the following:\n')
-   nc_dump(ncfname)
-   error('%s does not have a %s variable.',ncfname, varname)
-end
+dimnames = [];
+dimsizes = [];
 
+[present, ~] = nc_var_exists(ncfname,varname);
+
+if ( present )
+    varinfo  = ncinfo(ncfname,varname);
+    dimsizes = varinfo.Size;
+    rank     = length(dimsizes);
+    dimnames = cell(rank,1);
+    for idim = 1:rank
+        dimnames{idim} = varinfo.Dimensions(idim).Name;
+    end
+else
+    error('%s does not have a %s variable.',ncfname, varname)
+end
 
 % <next few lines under version control, do not edit>
 % $URL$

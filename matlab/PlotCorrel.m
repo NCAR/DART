@@ -30,6 +30,9 @@ function PlotCorrel( pinfo )
 
 if (exist(pinfo.fname,'file') ~= 2), error('%s does not exist.',pinfo.fname), end
 
+% todo FIXME put in some error cheching to make sure base_var_index > 0,
+% for example.
+
 contourlevels = [-1:0.2:-0.2 0.2:0.2:1.0];  % no contour at zero, please
 
 switch(lower(pinfo.model))

@@ -30,10 +30,9 @@ if (exist(fname,'file') ~=2 ), error('%s does not exist.',fname); end
 
 % check to make sure they are using a file with some ensemble members.
 
-diminfo    = nc_getdiminfo(fname,'copy');
-num_copies = diminfo.Length; % determine # of ensemble members
+[ens_size, ~] = nc_dim_info(fname,'member');
 
-if (num_copies <= 3)
+if (ens_size <= 3)
    error('Sorry -- %s does not have enough ensemble members to correlate.',fname)
 end
 
@@ -142,7 +141,7 @@ pinfo
 
 PlotJeffCorrel( pinfo )
 
-clear inputstring diminfo num_copies
+clear inputstring diminfo ens_size
 
 
 % <next few lines under version control, do not edit>

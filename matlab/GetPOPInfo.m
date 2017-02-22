@@ -291,10 +291,9 @@ if (isempty(leveldim))
 
 else
 
-    levelvar = varinfo.Dimension{leveldim};
-    dinfo    = nc_getdiminfo(fname,levelvar);
-
-    levels   = 1:dinfo.Length;
+    levelvar    = varinfo.Dimension{leveldim};
+    [nlevels,~] = nc_dim_info(fname,levelvar);
+    levels      = 1:nlevels;
 
     % must find the lowest level at this gridcell for this variable
     velcomp = regexp(varinfo.Name,'VEL','ONCE');
