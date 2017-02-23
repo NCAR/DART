@@ -54,12 +54,6 @@ if (exist(fname,'file') ~= 2)
    error('%s does not exist.',fname)
 end
 
-%% this block uses the native Matlab netcdf routines
-ncid        = netcdf.open(fname,'NOWRITE');
-dimid       = netcdf.inqDimID(ncid,'copy');
-[~,ncopies] = netcdf.inqDim(ncid,dimid);
-netcdf.close(ncid);
-
 %% record the user input
 
 obsstruct.fname         = fname;
@@ -69,7 +63,7 @@ obsstruct.region        = region;
 %%
 switch lower(CopyString)
    case 'all'
-      obsstruct.CopyString = cellstr(nc_varget(fname,'CopyMetaData'));
+      obsstruct.CopyString = cellstr(ncread(fname,'CopyMetaData'));
    otherwise
       obsstruct.CopyString = CopyString;
 end
@@ -78,23 +72,30 @@ obsstruct.verbose       = verbose;
 
 %% get going
 
-ObsTypes       = nc_varget(fname,'ObsTypes');
-ObsTypeStrings = cellstr(nc_varget(fname,'ObsTypesMetaData'));
-CopyStrings    = cellstr(nc_varget(fname,'CopyMetaData'));
-QCStrings      = cellstr(nc_varget(fname,'QCMetaData'));
+ObsTypes       = ncread(fname,'ObsTypes');
+ObsTypeStrings = cellstr(ncread(fname,'ObsTypesMetaData')');
+CopyStrings    = cellstr(ncread(fname,'CopyMetaData')');
+QCStrings      = cellstr(ncread(fname,'QCMetaData')');
 
-t              = nc_varget(fname,'time');
-obs_type       = nc_varget(fname,'obs_type');
-obs_keys       = nc_varget(fname,'obs_keys');
+t              = ncread(fname,'time');
+obs_type       = ncread(fname,'obs_type');
+obs_keys       = ncread(fname,'obs_keys');
 
-% FIXME ... if which_vert exists, get it  cartesian models do not have it
-% if it doesn't exist - they all have the same z_type
-%z_type         = nc_varget(fname,'which_vert');
-z_type  = ones(size(obs_keys));
+% FIXME ... if which_vert exists, use it.
+% cartesian models do not have it
+% if it doesn't exist - they all have the same z_type ?
+if (nc_var_exists(fname,'which_vert'))
+    z_type = ncread(fname,'which_vert');
+else
+    z_type = ones(size(obs_keys));
+end
 
-loc            = nc_varget(fname,'location');
-obs            = nc_varget(fname,'observations');
-qc             = nc_varget(fname,'qc');
+% ncread does not recognize the 'missing_value' attribute,
+% it recognizes '_FillValue' ... sheesh
+
+loc            = apply_missing(fname,'location');
+obs            = apply_missing(fname,'observations');
+qc             = apply_missing(fname,'qc');
 
 my_types       = unique(obs_type);  % only ones in the file, actually.
 timeunits      = nc_read_att(fname,'time','units');
@@ -124,6 +125,7 @@ end
 %% Find copies of the correct type.
 %  If 'ALL' is requested ... do not subset.
 
+ncopies = nc_dim_info(fname,'copy');
 switch lower(CopyString)
    case 'all'
       mytypeind = 1:ncopies;
@@ -230,6 +232,18 @@ for itype = 1:obsstruct.numZtypes
       error('not a known vertical coordinate system')
    end
 
+end
+
+
+function hyperslab = apply_missing(fname,varname)
+% ncread does not recognize the 'missing_value' attribute,
+% it recognizes '_FillValue' ... sheesh
+
+hyperslab = ncread(fname,varname)';
+missing   = nc_read_att(fname,varname,'missing_value');
+
+if ~isempty(missing)
+    hyperslab(hyperslab==missing) = NaN;
 end
 
 % <next few lines under version control, do not edit>
