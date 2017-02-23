@@ -70,7 +70,7 @@ data.scalefactor = scalefactor;
 %% Read the observation sequence
 
 [UtypeString, VtypeString] = FindObsType( fname, platform );
-verbose = 1;
+verbose = 0;
 Uobs = read_obs_netcdf(fname, UtypeString, region, CopyString, QCString, verbose);
 Vobs = read_obs_netcdf(fname, VtypeString, region, CopyString, QCString, verbose);
 
