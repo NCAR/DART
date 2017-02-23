@@ -92,9 +92,17 @@ addRequired(p,'titles',@iscell);
 addRequired(p,'obsnames',@iscell);
 addRequired(p,'copy',@ischar);
 addRequired(p,'prpo',@ischar);
-addParamValue(p,'plevel',defaultPlevels,@isnumeric);
-addParamValue(p,'hlevel',defaultHlevels,@isnumeric);
-addParamValue(p,'mlevel',defaultMlevels,@isnumeric);
+
+if (exist('inputParser/addParameter','file') == 2)
+   addParameter(p,'plevel',defaultPlevels,@isnumeric);
+   addParameter(p,'hlevel',defaultHlevels,@isnumeric);
+   addParameter(p,'mlevel',defaultMlevels,@isnumeric);
+else
+   addParamValue(p,'plevel',defaultPlevels,@isnumeric);
+   addParamValue(p,'hlevel',defaultHlevels,@isnumeric);
+   addParamValue(p,'mlevel',defaultMlevels,@isnumeric);
+end
+
 parse(p, files, titles, obsnames, copy, prpo, varargin{:});
 
 % if you want to echo the input
@@ -240,21 +248,18 @@ for i = 1:length(varnames)
 end
 
 for i = 1:nexp
-
    varexist(filenames{i}, {priornames{:}, postenames{:}, 'time', 'time_bounds'})
 
+   commondata{i}.times        = ncread(filenames{i}, 'time');
+   commondata{i}.time_bnds    = ncread(filenames{i}, 'time_bounds');
    commondata{i}.copyindex    = get_copy_index(filenames{i},copystring);
-   commondata{i}.ncopies      = nc_dim_exists(filenames{i}, 'copy');
-   commondata{i}.nobstypes    = nc_dim_exists(filenames{i}, 'obstypes');
-   commondata{i}.nregions     = nc_dim_exists(filenames{i}, 'region');
-   commondata{i}.times        = nc_varget(filenames{i},'time');
-   commondata{i}.time_bnds    = nc_varget(filenames{i},'time_bounds');
-   commondata{i}.time_to_skip = nc_read_att(filenames{i},nc_global,'time_to_skip');
-   commondata{i}.lonlim1      = nc_read_att(filenames{i},nc_global,'lonlim1');
-   commondata{i}.lonlim2      = nc_read_att(filenames{i},nc_global,'lonlim2');
-   commondata{i}.latlim1      = nc_read_att(filenames{i},nc_global,'latlim1');
-   commondata{i}.latlim2      = nc_read_att(filenames{i},nc_global,'latlim2');
-
+   commondata{i}.nobstypes    = nc_dim_info(filenames{i}, 'obstypes');
+   commondata{i}.nregions     = nc_dim_info(filenames{i}, 'region');
+   commondata{i}.time_to_skip = nc_read_att(filenames{i}, '/','time_to_skip');
+   commondata{i}.lonlim1      = nc_read_att(filenames{i}, '/','lonlim1');
+   commondata{i}.lonlim2      = nc_read_att(filenames{i}, '/','lonlim2');
+   commondata{i}.latlim1      = nc_read_att(filenames{i}, '/','latlim1');
+   commondata{i}.latlim2      = nc_read_att(filenames{i}, '/','latlim2');
 end
 
 % error checking - compare everything to the first experiment
@@ -333,23 +338,17 @@ plotdat.varname       = varname;
 plotdat.copystring    = copystring;
 plotdat.region        = regionindex;
 
-plotdat.binseparation = nc_read_att(fname,nc_global,'bin_separation');
-plotdat.binwidth      = nc_read_att(fname,nc_global,'bin_width');
-time_to_skip          = nc_read_att(fname,nc_global,'time_to_skip');
-plotdat.lonlim1       = nc_read_att(fname,nc_global,'lonlim1');
-plotdat.lonlim2       = nc_read_att(fname,nc_global,'lonlim2');
-plotdat.latlim1       = nc_read_att(fname,nc_global,'latlim1');
-plotdat.latlim2       = nc_read_att(fname,nc_global,'latlim2');
-plotdat.biasconv      = nc_read_att(fname,nc_global,'bias_convention');
+plotdat.binseparation = nc_read_att(fname,'/','bin_separation');
+plotdat.binwidth      = nc_read_att(fname,'/','bin_width');
+time_to_skip          = nc_read_att(fname,'/','time_to_skip');
+plotdat.lonlim1       = nc_read_att(fname,'/','lonlim1');
+plotdat.lonlim2       = nc_read_att(fname,'/','lonlim2');
+plotdat.latlim1       = nc_read_att(fname,'/','latlim1');
+plotdat.latlim2       = nc_read_att(fname,'/','latlim2');
+plotdat.biasconv      = nc_read_att(fname,'/','bias_convention');
 
-plotdat.nregions      = nc_dim_exists(fname,'region');
-plotdat.region_names  = nc_varget(fname,'region_names');
-
-% Matlab wants character matrices to be Nx1 instead of 1xN.
-
-if (plotdat.nregions == 1 && (size(plotdat.region_names,2) == 1) )
-   plotdat.region_names = deblank(plotdat.region_names');
-end
+plotdat.nregions      = nc_dim_info(fname,'region');
+plotdat.region_names  = ncread(fname,'region_names')';
 
 % Coordinate between time types and dates
 
@@ -362,8 +361,8 @@ timefloats(:)         = time_to_skip(:);
 skip_seconds          = timefloats(4)*3600 + timefloats(5)*60 + timefloats(6);
 iskip                 = timefloats(3) + skip_seconds/86400;
 
-plotdat.bincenters    = nc_varget(fname,'time');
-plotdat.binedges      = nc_varget(fname,'time_bounds');
+plotdat.bincenters    = ncread(fname,'time');
+plotdat.binedges      = ncread(fname,'time_bounds');
 plotdat.bincenters    = plotdat.bincenters + timeorigin;
 plotdat.binedges      = plotdat.binedges   + timeorigin;
 plotdat.Nbins         = length(plotdat.bincenters);
@@ -381,33 +380,35 @@ plotdat.NQC4index     = get_copy_index(fname, 'N_DARTqc_4');
 plotdat.NQC5index     = get_copy_index(fname, 'N_DARTqc_5');
 plotdat.NQC6index     = get_copy_index(fname, 'N_DARTqc_6');
 plotdat.NQC7index     = get_copy_index(fname, 'N_DARTqc_7');
-
 plotdat.priorvar      = sprintf('%s_VPguess',plotdat.varname);
 plotdat.postevar      = sprintf('%s_VPanaly',plotdat.varname);
 
 myinfo.diagn_file     = fname;
 myinfo.copyindex      = plotdat.copyindex;
 myinfo.regionindex    = plotdat.region;
+
 [start, count]        = GetNCindices(myinfo,'diagn',plotdat.priorvar);
-plotdat.prior         = nc_varget(fname, plotdat.priorvar, start, count);
+plotdat.prior         = ncread(fname, plotdat.priorvar, start, count)';
+
 [start, count]        = GetNCindices(myinfo,'diagn',plotdat.postevar);
-plotdat.poste         = nc_varget(fname, plotdat.postevar, start, count);
+plotdat.poste         = ncread(fname, plotdat.postevar, start, count)';
+
 plotdat.trusted       = nc_read_att(fname, plotdat.priorvar, 'TRUSTED');
 if (isempty(plotdat.trusted)), plotdat.trusted = 'NO'; end
 
 % Now that we know the variable ... get the appropriate vertical information
 
-priordims             = nc_getvarinfo(fname,plotdat.priorvar);
-plotdat.levels        = nc_varget(fname,priordims.Dimension{2});
-plotdat.level_units   = nc_read_att(fname,priordims.Dimension{2},'units');
+priordims             = ncinfo(fname,plotdat.priorvar);
+plotdat.levels        = ncread(fname,priordims.Dimensions(2).Name);
+plotdat.level_units   = nc_read_att(fname,priordims.Dimensions(2).Name,'units');
 plotdat.nlevels       = length(plotdat.levels);
-plotdat.level_edges   = nc_varget(fname,sprintf('%s_edges',priordims.Dimension{2}));
+plotdat.level_edges   = ncread(fname,sprintf('%s_edges',priordims.Dimensions(2).Name));
 
 plotdat.YDir = 'normal';
 inds = 1:plotdat.nlevels;
 
 % find the levels of interest for setting the data limits
-switch lower(priordims.Dimension{2})
+switch lower(priordims.Dimensions(2).Name)
     case {'plevel'}
         plotdat.YDir = 'reverse';
         inds = find((plotdat.levels <= opt.Results.plevel(1)) & ...
@@ -465,26 +466,26 @@ end
 myinfo.diagn_file = fname;
 myinfo.copyindex  = plotdat.Npossindex;
 [start, count]    = GetNCindices(myinfo,'diagn',plotdat.priorvar);
-plotdat.nposs     = nc_varget(fname, plotdat.priorvar, start, count);
+plotdat.nposs     = ncread(fname, plotdat.priorvar, start, count)';
 
 myinfo.copyindex  = plotdat.NQC5index;
 [start, count]    = GetNCindices(myinfo,'diagn',plotdat.priorvar);
-plotdat.Nqc5      = nc_varget(fname, plotdat.priorvar, start, count);
+plotdat.Nqc5      = ncread(fname, plotdat.priorvar, start, count)';
 plotdat.nposs     = plotdat.nposs - plotdat.Nqc5;
 
 myinfo.copyindex  = plotdat.NQC6index;
 [start, count]    = GetNCindices(myinfo,'diagn',plotdat.priorvar);
-plotdat.Nqc6      = nc_varget(fname, plotdat.priorvar, start, count);
+plotdat.Nqc6      = ncread(fname, plotdat.priorvar, start, count)';
 plotdat.nposs     = plotdat.nposs - plotdat.Nqc6;
 
 if ( plotdat.useprior )
    myinfo.copyindex = get_copy_index(fname, 'Nused');
    [start, count]   = GetNCindices(myinfo,'diagn',plotdat.priorvar);
-   plotdat.nused    = nc_varget(fname, plotdat.priorvar, start, count);
+   plotdat.nused    = ncread(fname, plotdat.priorvar, start, count)';
 else
    myinfo.copyindex = get_copy_index(fname, 'Nused');
    [start, count]   = GetNCindices(myinfo,'diagn',plotdat.postevar);
-   plotdat.nused    = nc_varget(fname, plotdat.postevar, start, count);
+   plotdat.nused    = ncread(fname, plotdat.postevar, start, count)';
 end
 
 %% Set the last of the ranges
@@ -721,7 +722,7 @@ nvars  = length(varnames);
 gotone = ones(1,nvars);
 
 for i = 1:nvars
-   gotone(i) = nc_isvar(filename,varnames{i});
+   gotone(i) = nc_var_exists(filename,varnames{i});
    if ( ~ gotone(i) )
       fprintf('\n%s is not a variable in %s\n',varnames{i},filename)
    end

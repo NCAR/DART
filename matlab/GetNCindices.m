@@ -68,6 +68,7 @@ if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 lat1        = 1; latN        = Inf;
 lon1        = 1; lonN        = Inf;
 time1       = 1; timeN       = Inf;
+copy1       = 1; copyN       = Inf;
 member1     = 1; memberN     = Inf;
 level1      = 1; levelN      = Inf;
 state1      = 1; stateN      = Inf;
@@ -132,6 +133,17 @@ if (isfield(pinfo,'state1'))
 end
 if (isfield(pinfo,'statecount'))
    stateN = pinfo.statecount;
+end
+
+if (isfield(pinfo,'copyindex'))
+   copy1 = pinfo.copyindex;
+   copyN = 1;
+end
+if (isfield(pinfo,'copy1'))
+   copy1 = pinfo.copy1;
+end
+if (isfield(pinfo,'copycount'))
+   copyN = pinfo.copycount;
 end
 
 if (isfield(pinfo,'memberindex'))
@@ -262,6 +274,9 @@ for i = 1:ndims
            case 'time'
                start(i) = time1;
                count(i) = timeN;
+           case 'copy'
+               start(i) = copy1;
+               count(i) = copyN;
            case 'memb'
                start(i) = member1;
                count(i) = memberN;
