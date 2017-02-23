@@ -62,7 +62,12 @@ p = inputParser;
 
 addRequired(p,'fname',@ischar);
 addRequired(p,'copy',@ischar);
-addParamValue(p,'obsname',default_obsname,@ischar);
+if (exist('inputParser/addParameter','file') == 2)
+    addParameter(p,'obsname',default_obsname,@ischar);
+else
+    addParamValue(p,'obsname',default_obsname,@ischar);
+end
+
 parse(p, fname, copy, varargin{:});
 
 % if you want to echo the input
@@ -86,34 +91,27 @@ end
 plotdat.fname         = fname;
 plotdat.copystring    = copy;
 
-plotdat.binseparation = nc_read_att(fname, nc_global, 'bin_separation');
-plotdat.binwidth      = nc_read_att(fname, nc_global, 'bin_width');
-time_to_skip          = nc_read_att(fname, nc_global, 'time_to_skip');
-plotdat.lonlim1       = nc_read_att(fname, nc_global, 'lonlim1');
-plotdat.lonlim2       = nc_read_att(fname, nc_global, 'lonlim2');
-plotdat.latlim1       = nc_read_att(fname, nc_global, 'latlim1');
-plotdat.latlim2       = nc_read_att(fname, nc_global, 'latlim2');
-plotdat.biasconv      = nc_read_att(fname, nc_global, 'bias_convention');
+plotdat.binseparation = nc_read_att(fname, '/', 'bin_separation');
+plotdat.binwidth      = nc_read_att(fname, '/', 'bin_width');
+time_to_skip          = nc_read_att(fname, '/', 'time_to_skip');
+plotdat.lonlim1       = nc_read_att(fname, '/', 'lonlim1');
+plotdat.lonlim2       = nc_read_att(fname, '/', 'lonlim2');
+plotdat.latlim1       = nc_read_att(fname, '/', 'latlim1');
+plotdat.latlim2       = nc_read_att(fname, '/', 'latlim2');
+plotdat.biasconv      = nc_read_att(fname, '/', 'bias_convention');
 
-plotdat.mlevel        = local_nc_varget(fname, 'mlevel');
-plotdat.plevel        = local_nc_varget(fname, 'plevel');
-plotdat.plevel_edges  = local_nc_varget(fname, 'plevel_edges');
-plotdat.hlevel        = local_nc_varget(fname, 'hlevel');
-plotdat.hlevel_edges  = local_nc_varget(fname, 'hlevel_edges');
-plotdat.bincenters    = nc_varget(fname, 'time');
-plotdat.binedges      = nc_varget(fname, 'time_bounds');
-plotdat.region_names  = nc_varget(fname, 'region_names');
-plotdat.nregions      = nc_dim_exists(fname,'region');
-
-% Matlab wants character matrices to be Nx1 instead of 1xN.
-
-if (plotdat.nregions == 1 && (size(plotdat.region_names,2) == 1) )
-   plotdat.region_names = deblank(plotdat.region_names');
-end
+plotdat.mlevel        = local_ncread(fname, 'mlevel');
+plotdat.plevel        = local_ncread(fname, 'plevel');
+plotdat.plevel_edges  = local_ncread(fname, 'plevel_edges');
+plotdat.hlevel        = local_ncread(fname, 'hlevel');
+plotdat.hlevel_edges  = local_ncread(fname, 'hlevel_edges');
+plotdat.bincenters    = ncread(fname, 'time');
+plotdat.binedges      = ncread(fname, 'time_bounds');
+plotdat.region_names  = ncread(fname, 'region_names')';
+[plotdat.nregions,~]  = nc_dim_info(fname,'region');
 
 % Coordinate between time types and dates
 
-calendar              = nc_read_att(fname,'time','calendar');
 timeunits             = nc_read_att(fname,'time','units');
 timebase              = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
 timeorigin            = datenum(timebase(1),timebase(2),timebase(3));
@@ -172,19 +170,17 @@ for ivar = varlist
 
    % get appropriate vertical coordinate variable
 
-   guessdims = nc_var_dims(  fname, plotdat.guessvar);
-   analydims = nc_var_dims(  fname, plotdat.analyvar);
-   varinfo   = nc_getvarinfo(fname, plotdat.analyvar);
+   [dimnames,~] = nc_var_dims(fname, plotdat.guessvar);
 
    % this is a superfluous check ... FindVerticalVars already weeds out
    % variables only present on surface or undef because obs_diag
    % does not time-average statistics for these.
 
-   if (~ isempty(strfind(guessdims{2},'surface')))
+   if (~ isempty(strfind(dimnames{2},'surface')))
       fprintf('%s is a surface field.\n',plotdat.guessvar)
       fprintf('Cannot display a surface field this way.\n')
       continue
-   elseif (~ isempty(strfind(guessdims{2},'undef')))
+   elseif (~ isempty(strfind(dimnames{2},'undef')))
       fprintf('%s has no vertical definition.\n',plotdat.guessvar)
       fprintf('Cannot display this field this way.\n')
       continue
@@ -219,27 +215,20 @@ for ivar = varlist
    level_edges         = sort(plotdat.level_edges);
    plotdat.level_edges = level_edges;
 
-   guess = nc_varget(fname, plotdat.guessvar);
-   analy = nc_varget(fname, plotdat.analyvar);
-   n = size(analy);
+   % The rest of this script was written for the third-party netcdf
+   % support. Matlab's native ncread transposes the variables, so I have to
+   % permute them back to the expected storage order.
+   
+   guess = ncread(fname, plotdat.guessvar);
+   analy = ncread(fname, plotdat.analyvar);
+   rank  = length(size(guess));
+   guess = permute(guess,rank:-1:1);
+   analy = permute(analy,rank:-1:1);
 
    % singleton dimensions are auto-squeezed - which is unfortunate.
    % We want these things to be 3D. [copy-level-region]
-   % Sometimes there is one region, sometimes one level, ...
-   % To complicate matters, the stupid 'ones' function does not allow
-   % the last dimension to be unity ... so you have double the size
-   % of the array ...
-
-   if ( plotdat.nregions == 1 )
-      bob = NaN*ones(varinfo.Size(1),varinfo.Size(2),1);
-      ted = NaN*ones(varinfo.Size(1),varinfo.Size(2),1);
-      bob(:,:,1) = guess;
-      ted(:,:,1) = analy;
-      guess = bob; clear bob
-      analy = ted; clear ted
-   elseif ( plotdat.nlevels == 1 )
-      bob = NaN*ones(varinfo.Size);
-      ted = NaN*ones(varinfo.Size);
+   
+   if ( plotdat.nlevels == 1 )
       bob(:,1,:) = guess;
       ted(:,1,:) = analy;
       guess = bob; clear bob
@@ -310,14 +299,11 @@ ca = plotdat.anl_copy(:,:,plotdat.region); CA = ca(plotdat.indices);
 
 g = plotdat.ges_Nposs(:,:,plotdat.region); G = g(plotdat.indices);
 a = plotdat.anl_Nposs(:,:,plotdat.region); A = a(plotdat.indices);
-
 nobs_poss   = G;
-nposs_delta = G - A;
 
 g = plotdat.ges_Nused(:,:,plotdat.region); G = g(plotdat.indices);
 a = plotdat.anl_Nused(:,:,plotdat.region); A = a(plotdat.indices);
 nobs_used   = G;
-nused_delta = G - A;
 
 % Determine some quantities for the legend
 nobs = sum(nobs_used);
@@ -480,11 +466,11 @@ end
 function [level_org, level_units, nlevels, level_edges, Yrange] = FindVerticalInfo(fname,varname)
 %% Find the vertical dimension and harvest some info
 
-varinfo  = nc_getvarinfo(fname,varname);
+varinfo  = ncinfo(fname,varname);
 leveldim = [];
 
-for i = 1:length(varinfo.Dimension)
-   inds = strfind(varinfo.Dimension{i},'level');
+for i = 1:length(varinfo.Dimensions)
+   inds = strfind(varinfo.Dimensions(i).Name,'level');
    if ( ~ isempty(inds)), leveldim = i; end
 end
 
@@ -492,11 +478,11 @@ if ( isempty(leveldim) )
    error('There is no level information for %s in %s',varname,fname)
 end
 
-level_org   = nc_varget(fname,varinfo.Dimension{leveldim});
-level_units = nc_read_att(fname,varinfo.Dimension{leveldim},'units');
+level_org   = ncread(   fname,varinfo.Dimensions(leveldim).Name);
+level_units = ncreadatt(fname,varinfo.Dimensions(leveldim).Name,'units');
 nlevels     = varinfo.Size(leveldim);
-edgename    = sprintf('%s_edges',varinfo.Dimension{leveldim});
-level_edges = nc_varget(fname, edgename);
+edgename    = sprintf('%s_edges',varinfo.Dimensions(leveldim).Name);
+level_edges = ncread(fname, edgename);
 Yrange      = [min(level_edges) max(level_edges)];
 
 
@@ -658,16 +644,14 @@ figdata = struct('expcolors',  {{'k','r','b','m','g','c','y'}}, ...
 %=====================================================================
 
 
-function value = local_nc_varget(fname,varname)
+function value = local_ncread(fname,varname)
 %% If the variable exists in the file, return the contents of the variable.
 % if the variable does not exist, return empty value instead of error-ing
 % out.
 
 [variable_present, varid] = nc_var_exists(fname,varname);
 if (variable_present)
-   ncid  = netcdf.open(fname,'NOWRITE');
-   value = netcdf.getVar(ncid, varid);
-   netcdf.close(ncid)
+   value = ncread(fname, varname);
 else
    value = [];
 end

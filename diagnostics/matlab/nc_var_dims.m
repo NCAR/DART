@@ -32,7 +32,7 @@ if ( present )
     varinfo  = ncinfo(ncfname,varname);
     dimsizes = varinfo.Size;
     rank     = length(dimsizes);
-    dimnames = cell(rank,1);
+    dimnames = cell(1,rank);
     for idim = 1:rank
         dimnames{idim} = varinfo.Dimensions(idim).Name;
     end
