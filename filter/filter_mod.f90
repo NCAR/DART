@@ -933,8 +933,8 @@ if (write_all_stages_at_end) then
    call write_state(state_ens_handle, file_info_all)
 else
 
-   if (get_stage_to_write('output')) &
-      call write_state(state_ens_handle, file_info_output)
+   !#! if (get_stage_to_write('output')) &
+   !#!    call write_state(state_ens_handle, file_info_output)
 endif
 
 if(ds) call smoother_write_restart(1, ens_size)
