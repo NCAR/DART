@@ -69,12 +69,12 @@
    inf_initial_from_restart    = .false.,                 .false.,
    inf_sd_initial_from_restart = .false.,                 .false.,
    inf_deterministic           = .true.,                  .true.,
-   inf_initial                 = 1.01,                    1.0,
-   inf_sd_initial              = 0.6,                     0.0,
-   inf_damping                 = 0.9,                     1.0,
+   inf_initial                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.0,                     0.0,
+   inf_damping                 = 1.0,                     1.0,
    inf_lower_bound             = 1.0,                     1.0,
-   inf_upper_bound             = 100.0,                   1000000.0,
-   inf_sd_lower_bound          = 0.6,                     0.0
+   inf_upper_bound             = 1000000.0,               1000000.0,
+   inf_sd_lower_bound          = 0.0,                     0.0
 
    trace_execution              = .false.,
    output_timestamps            = .false.,
@@ -106,7 +106,8 @@
    adaptive_localization_threshold = -1,
    output_localization_diagnostics = .false.,
    localization_diagnostics_file   = 'localization_diagnostics',
-   print_every_nth_obs             = 0  /
+   print_every_nth_obs             = 0  
+   /
 
 &ensemble_manager_nml
 /
@@ -147,7 +148,7 @@
      hours    = 0, 
      minutes  = 0,
      seconds  = 0,
-     noise_sd = -1.0,
+     noise_sd = 0.0,
      dt_bias  = -1,
      output_state_vector = .false. 
      state_variables = 'ps', 'KIND_SURFACE_PRESSURE',
@@ -312,6 +313,29 @@
    use_zero_error_obs    = .false.,
    verbose               = .false.
    /
+
+
+&schedule_nml
+   calendar        = 'Gregorian'
+   first_bin_start =  1601,  1,  1,  0,  0,  0
+   first_bin_end   =  2999,  1,  1,  0,  0,  0
+   last_bin_end    =  2999,  1,  1,  0,  0,  0
+   bin_interval_days    = 1000000
+   bin_interval_seconds = 0
+   max_num_bins         = 1000
+   print_table          = .true.
+ /
+
+&obs_seq_to_netcdf_nml
+   obs_sequence_name = 'obs_seq.final'
+   obs_sequence_list = ''
+   append_to_netcdf  = .false.
+   lonlim1    =    0.0
+   lonlim2    =  360.0
+   latlim1    =  -90.0
+   latlim2    =   90.0
+   verbose    = .false.
+ /
 
 &model_mod_check_nml
    verbose               = .false.
