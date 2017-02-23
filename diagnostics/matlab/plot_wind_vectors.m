@@ -175,7 +175,7 @@ set(h,'FontSize',18)
 
 h = xlabel(data.filename); set(h,'Interpreter','none');
 
-legend(legh,legstr,'Location','Best')
+legend(legh,legstr,'Location','Best','FontSize',18)
 
 hold off;
 
@@ -195,7 +195,6 @@ dx = 0.05 * (axlims(2) - axlims(1));
 dy = 0.05 * (axlims(4) - axlims(3));
 axlims(1:4) = axlims(1:4) + [-dx dx -dy dy];
 axis(axlims)
-axis image
 
 % It is nice to know where the land is
 worldmap('light');
@@ -265,11 +264,11 @@ for i = 1:size(ObsTypeStrings,1)
    vtf = strncmpi(ObsTypeStrings(i,:),vtarget,n);
 
    if ( utf )
-      ustring = ObsTypeStrings(i,:);
+      ustring = deblank(ObsTypeStrings(i,:));
       uindex  = i;
    end 
    if ( vtf )
-      vstring = ObsTypeStrings(i,:);
+      vstring = deblank(ObsTypeStrings(i,:));
       vindex  = i;
    end 
 
