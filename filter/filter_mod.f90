@@ -935,10 +935,6 @@ else
 
    if (get_stage_to_write('output')) &
       call write_state(state_ens_handle, file_info_output)
-   if (get_stage_to_write('preassim')) &
-      call write_state(state_ens_handle, file_info_preassim)
-   if (get_stage_to_write('postassim')) &
-      call write_state(state_ens_handle, file_info_postassim)
 endif
 
 if(ds) call smoother_write_restart(1, ens_size)
