@@ -953,6 +953,8 @@ do i = 1,size(file_info%stage_metadata%filenames,1)
                              file_info%stage_metadata%my_copy_number(      i)
       write(*,'(A, I4,A,I4)') 'file_info%stage_metadata%io_flag(         ',i,'     ) ', &
                              file_info%stage_metadata%io_flag(             i)
+      write(*,'(A, I4,2A)') 'file_info%stage_metadata%copy_name(         ',i,'     ) ', &
+                             file_info%stage_metadata%copy_name(i)
    enddo
 enddo
 

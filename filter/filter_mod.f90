@@ -75,6 +75,8 @@ use forward_operator_mod,  only : get_obs_ens_distrib_state
 
 use quality_control_mod,   only : initialize_qc
 
+use state_space_diag_mod,  only : finalize_singlefile_output
+
 !------------------------------------------------------------------------------
 
 implicit none
@@ -258,7 +260,7 @@ type(adaptive_inflate_type) :: prior_inflate, post_inflate
 
 integer,    allocatable :: keys(:)
 integer(i8)             :: model_size
-integer                 :: j, i, iunit, io, time_step_number, num_obs_in_set
+integer                 :: ret, j, i, iunit, io, time_step_number, num_obs_in_set
 integer                 :: last_key_used, key_bounds(2)
 integer                 :: in_obs_copy, obs_val_index
 integer                 :: prior_obs_mean_index, posterior_obs_mean_index
@@ -933,8 +935,21 @@ if (write_all_stages_at_end) then
    call write_state(state_ens_handle, file_info_all)
 else
 
-   !#! if (get_stage_to_write('output')) &
-   !#!    call write_state(state_ens_handle, file_info_output)
+   if (get_stage_to_write('output')) &
+       call write_state(state_ens_handle, file_info_output)
+endif
+
+if (single_file_in) then
+   ret = finalize_singlefile_output(file_info_input)
+endif
+
+if( single_file_out ) then
+   if (get_stage_to_write('preassim')) &
+      ret = finalize_singlefile_output(file_info_preassim)
+   if (get_stage_to_write('postassim')) &
+      ret = finalize_singlefile_output(file_info_postassim)
+   if (get_stage_to_write('output')) &
+      ret = finalize_singlefile_output(file_info_output)
 endif
 
 if(ds) call smoother_write_restart(1, ens_size)

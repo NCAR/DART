@@ -356,11 +356,14 @@ end subroutine init_singlefile_output
 !-------------------------------------------------------------------------------
 !>
 
-function finalize_singlefile_output(ncFileID) result(ierr)
+function finalize_singlefile_output(file_handle) result(ierr)
 
-type(netcdf_file_type), intent(inout) :: ncFileID
+type(file_info_type), intent(inout) :: file_handle
 integer             :: ierr
 
+type(netcdf_file_type) :: ncFileID
+
+ncFileID = file_handle%stage_metadata%ncFileID
 ierr = 0
 
 if (my_task_id()==0) then
