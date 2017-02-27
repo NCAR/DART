@@ -41,8 +41,8 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           compute_copy_mean_var,      get_copy_owner_index,     set_ensemble_time,          &
           broadcast_copy,             prepare_to_write_to_vars, prepare_to_write_to_copies, &
           prepare_to_read_from_vars,  prepare_to_read_from_copies, prepare_to_update_vars,  &
-          prepare_to_update_copies,   print_ens_handle,                                     &
-          map_task_to_pe,             map_pe_to_task,                                       &
+          prepare_to_update_copies,   print_ens_handle,         set_current_time,           &
+          map_task_to_pe,             map_pe_to_task,           get_current_time,           &
           allocate_single_copy,       put_single_copy,          get_single_copy,            &
           deallocate_single_copy
 
@@ -54,8 +54,11 @@ character(len=128), parameter :: revdate  = "$Date$"
 
 type ensemble_type
 
-!> @todo Extra argument to init_ensemble_manager so you could set up an ensemble handle
-!> that allowed transposes (e.g. state, fwd_op) or not allow tranposes( e.g. static data)
+!>@todo Extra argument to init_ensemble_manager so you could set up an ensemble handle
+!>that allowed transposes (e.g. state, fwd_op) or not allow tranposes( e.g. static data)
+
+!>@todo FIXME the rule here should be that we only access %copies and %vars for efficiency
+!>but every other part of this structure should go through accessor routines.
 
    !DIRECT ACCESS INTO STORAGE IS USED TO REDUCE COPYING: BE CAREFUL
    !!!private
@@ -1887,6 +1890,30 @@ real(r8), allocatable, intent(inout) :: x(:)
 if (allocated(x)) deallocate(x)
 
 end subroutine deallocate_single_copy
+
+!--------------------------------------------------------------------------------
+!> accessor routines for the single 'current_time'.  all mpi tasks must call this
+!> so there's a consistent view of the current time, even if they didn't advance
+!> a model.
+subroutine set_current_time(ens_handle, t)
+
+type(ensemble_type),   intent(inout) :: ens_handle
+type(time_type),       intent(in)    :: t
+
+ens_handle%current_time = t
+
+end subroutine set_current_time
+
+!--------------------------------------------------------------------------------
+
+subroutine get_current_time(ens_handle, t)
+
+type(ensemble_type),   intent(in)  :: ens_handle
+type(time_type),       intent(out) :: t
+
+t = ens_handle%current_time 
+
+end subroutine get_current_time
 
 !---------------------------------------------------------------------------------
 
