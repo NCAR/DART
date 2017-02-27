@@ -231,7 +231,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
    inf_lower_bound, inf_upper_bound, inf_sd_lower_bound, &
    silence, &
    distributed_state, &
-   single_file_in, single_file_out, has_cycling, &
+   single_file_in, single_file_out, &
    perturb_from_single_instance, perturbation_amplitude, &
    stages_to_write, &
    input_state_files, output_state_files, &
@@ -368,6 +368,19 @@ endif
 
 call trace_message('After  initializing inflation')
 
+! for now, set 'has_cycling' to match 'single_file_out' since we're only supporting
+! multi-file output for a single pass through filter, and allowing cycling if we're
+! writing to a single file.
+
+has_cycling = single_file_out
+
+! don't allow cycling and write all at end - might never be supported
+if (has_cycling .and. write_all_stages_at_end) then
+   call error_handler(E_ERR,'filter:', &
+         'advancing the model inside filter and writing all state data at end not supported', &
+          source, revision, revdate, text2='delaying write until end only supported when advancing model outside filter', &
+          text3='set "write_all_stages_at_end=.false." to cycle and write data as it is computed')
+endif
 
 ! Setup the indices into the ensemble storage:
 
@@ -436,6 +449,8 @@ endif
 call     trace_message('Before reading in ensemble restart files')
 call timestamp_message('Before reading in ensemble restart files')
 
+! for now, assume that we only allow cycling if single_file_out is true.
+! code in this call needs to know how to initialize the output files.
 call initialize_file_information(num_state_ens_copies, file_info_input, &
                                  file_info_preassim, file_info_postassim, &
                                  file_info_output)
@@ -458,7 +473,7 @@ call log_inflation_info(post_inflate, state_ens_handle%my_pe, 'Posterior')
 
 if (perturb_from_single_instance) then
    call error_handler(E_MSG,'read_state:', &
-      'Reading in a single ensemble and perturbing data for the other ensemble members')
+      'Reading in a single member and perturbing data for the other ensemble members')
 
    ! Only zero has the time, so broadcast the time to all other copy owners
    call broadcast_time_across_copy_owners(state_ens_handle, time1)
@@ -467,9 +482,6 @@ else
    call error_handler(E_MSG,'read_state:', &
       'Reading in initial condition/restart data for all ensemble members from file(s)')
 endif
-
-!call test_state_copies(state_ens_handle, 'after_read')
-!goto 10011
 
 call timestamp_message('After  reading in ensemble restart files')
 call     trace_message('After  reading in ensemble restart files')
@@ -568,7 +580,6 @@ AdvanceTime : do
       exit AdvanceTime
    endif
 
-
    ! if model state data not at required time, advance model
    if (curr_ens_time /= next_ens_time) then
       ! Advance the lagged distribution, if needed.
@@ -579,6 +590,14 @@ AdvanceTime : do
          call advance_smoother(state_ens_handle)
          call timestamp_message('After  advancing smoother')
          call     trace_message('After  advancing smoother')
+      endif
+
+      ! we are going to advance the model - make sure we're doing single file output
+      if (.not. has_cycling) then
+         call error_handler(E_ERR,'filter:', &
+             'advancing the model inside filter and multiple file output not currently supported', &
+             source, revision, revdate, text2='support will be added in subsequent releases', &
+             text3='set "single_file_out=.true" for filter to advance the model, or advance the model outside filter')
       endif
 
       call trace_message('Ready to run model to advance data ahead in time', 'filter:', -1)
@@ -638,20 +657,28 @@ AdvanceTime : do
   
    ! Write out the mean and sd for the input files if requested
    if (get_stage_to_write('input')) then
+
       if (output_mean) &
          call set_io_copy_flag(file_info_input, INPUT_MEAN, WRITE_COPY, has_units=.true.)
       if (output_sd)   &
          call set_io_copy_flag(file_info_input, INPUT_SD,   WRITE_COPY, has_units=.false.)
+
+      call     trace_message('Before input state space output')
+      call timestamp_message('Before input state space output')
+
       if (write_all_stages_at_end) then
          call store_input(state_ens_handle)
       else
          call write_state(state_ens_handle, file_info_input)
       endif
+
+      call timestamp_message('After  input state space output')
+      call     trace_message('After  input state space output')
+
    endif
 
    if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
       call trace_message('Before prior inflation damping and prep')
-      !call test_state_copies(state_ens_handle, 'before_prior_inflation')
 
       if (inf_damping(1) /= 1.0_r8) then
          call prepare_to_update_copies(state_ens_handle)
@@ -660,8 +687,6 @@ AdvanceTime : do
       endif
 
       call filter_ensemble_inflate(state_ens_handle, PRIOR_INF_COPY, prior_inflate, ENS_MEAN_COPY)
-
-      !call test_state_copies(state_ens_handle, 'after_prior_inflation')
 
       ! Recompute the the mean and spread as required for diagnostics
       call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -684,32 +709,30 @@ AdvanceTime : do
      OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, &
      OBS_MEAN_START, OBS_VAR_START, isprior=.true., prior_qc_copy=prior_qc_copy)
 
-   !goto 10011 !HK bail out after forward operators
-
    call timestamp_message('After  computing prior observation values')
    call     trace_message('After  computing prior observation values')
 
    ! Do prior state space diagnostic output as required
 
-   call trace_message('Before prior state space diagnostics')
-   call timestamp_message('Before prior state space diagnostics')
+   if (get_stage_to_write('preassim')) then
+      if ((output_interval > 0) .and. &
+          (time_step_number / output_interval * output_interval == time_step_number)) then
 
-   if ((output_interval > 0) .and. &
-       (time_step_number / output_interval * output_interval == time_step_number)) then
+         call     trace_message('Before preassim state space output')
+         call timestamp_message('Before preassim state space output')
 
-      if (get_stage_to_write('preassim')) then
+         ! save or output the data
          if (write_all_stages_at_end) then
-            ! If needed, store copies(mean, sd, inf_mean, inf_sd) that would have
-            ! gone in Prior_Diag.nc and write them at the end.
             call store_preassim(state_ens_handle)
          else
             call write_state(state_ens_handle, file_info_preassim)
          endif
+
+         call timestamp_message('After  preassim state space output')
+         call     trace_message('After  preassim state space output')
+
       endif
    endif
-
-   call timestamp_message('After  prior state space diagnostics')
-   call trace_message('After  prior state space diagnostics')
 
    call trace_message('Before observation space diagnostics')
 
@@ -736,16 +759,12 @@ AdvanceTime : do
    call     trace_message('Before observation assimilation')
    call timestamp_message('Before observation assimilation')
 
-   !call test_state_copies(state_ens_handle, 'before_filter_assim')
-
    call filter_assim(state_ens_handle, obs_fwd_op_ens_handle, seq, keys, &
       ens_size, num_groups, obs_val_index, prior_inflate, &
       ENS_MEAN_COPY, ENS_SD_COPY, &
       PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
       OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
       OBS_VAR_END, inflate_only = .false.)
-
-   !call test_state_copies(state_ens_handle, 'after_filter_assim')
 
    call timestamp_message('After  observation assimilation')
    call     trace_message('After  observation assimilation')
@@ -771,12 +790,39 @@ AdvanceTime : do
    ! Already transformed, so compute mean and spread for state diag as needed
    call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
-!-------- Test of posterior inflate ----------------
+
+   ! Do postassim state space output if requested
+
+   if (get_stage_to_write('postassim')) then
+      if ((output_interval > 0) .and. &
+          (time_step_number / output_interval * output_interval == time_step_number)) then
+
+         call     trace_message('Before postassim state space output')
+         call timestamp_message('Before postassim state space output')
+
+         ! save or output the data
+         if (write_all_stages_at_end) then
+            call store_postassim(state_ens_handle)
+         else
+            call write_state(state_ens_handle, file_info_postassim)
+         endif
+
+         !>@todo What to do here?
+         !call smoother_ss_diagnostics(model_size, num_output_state_members, &
+         !  output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, &
+         ! POST_INF_COPY, POST_INF_SD_COPY)
+
+         call timestamp_message('After  postassim state space output')
+         call     trace_message('After  postassim state space output')
+
+      endif
+   endif
+
+   ! This block applies posterior inflation
 
    if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
 
       call trace_message('Before posterior inflation damping and prep')
-      !call test_state_copies(state_ens_handle, 'before_test_of_inflation')
 
       if (inf_damping(2) /= 1.0_r8) then
          call prepare_to_update_copies(state_ens_handle)
@@ -784,18 +830,16 @@ AdvanceTime : do
             inf_damping(2) * (state_ens_handle%copies(POST_INF_COPY, :) - 1.0_r8)
       endif
 
-    call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY)
-
-    !call test_state_copies(state_ens_handle, 'after_test_of_inflation')
+      call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY)
 
       ! Recompute the mean or the mean and spread as required for diagnostics
       call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
       call trace_message('After  posterior inflation damping and prep')
+
    endif
 
-!-------- End of posterior  inflate ----------------
-
+   ! this block recomputes the expected obs values for the obs_seq.final file
 
    call     trace_message('Before computing posterior observation values')
    call timestamp_message('Before computing posterior observation values')
@@ -809,7 +853,6 @@ AdvanceTime : do
      OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, &
      OBS_MEAN_START, OBS_VAR_START, isprior=.false., prior_qc_copy=prior_qc_copy)
 
-   !call test_obs_copies(obs_fwd_op_ens_handle, 'post')
    call deallocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
 
    call timestamp_message('After  computing posterior observation values')
@@ -821,36 +864,9 @@ AdvanceTime : do
       call trace_message('After  computing smoother means/spread')
    endif
 
-
-   ! Do posterior state space diagnostic output as required
-
-   call trace_message('Before posterior state space diagnostics')
-   call timestamp_message('Before posterior state space diagnostics')
-
-   if ((output_interval > 0) .and. &
-       (time_step_number / output_interval * output_interval == time_step_number)) then
-
-      if (get_stage_to_write('postassim')) then
-         if (write_all_stages_at_end) then
-            ! If needed store the copies (inf_mean, inf_sd) that would have
-            ! gone in Posterior_Diag.nc and write them at the end
-            call store_postassim(state_ens_handle)
-         else
-            call write_state(state_ens_handle, file_info_postassim)
-         endif
-      endif
-      !> @todo What to do here?
-      !call smoother_ss_diagnostics(model_size, num_output_state_members, &
-      !  output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, &
-      ! POST_INF_COPY, POST_INF_SD_COPY)
-   endif
-
-   call timestamp_message('After  posterior state space diagnostics')
-   call trace_message('After  posterior state space diagnostics')
-
    call trace_message('Before posterior obs space diagnostics')
 
-   ! Do posterior observation space diagnostics
+   ! Write posterior observation space diagnostics
    ! There is a transpose (all_copies_to_all_vars(obs_fwd_op_ens_handle)) in obs_space_diagnostics
    call obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size, &
       seq, keys, POSTERIOR_DIAG, num_output_obs_members, in_obs_copy+2, &
@@ -862,7 +878,9 @@ AdvanceTime : do
 
    call trace_message('After  posterior obs space diagnostics')
 
-!-------- Test of posterior inflate ----------------
+   ! this block computes the adaptive state space posterior inflation
+   ! (it was applied earlier, this is computing the updated values for
+   ! the next cycle.)
 
    if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
 
@@ -890,8 +908,6 @@ AdvanceTime : do
    endif  ! if doing state space posterior inflate
 
 
-!-------- End of posterior  inflate ----------------
-
    call trace_message('Near bottom of main loop, cleaning up obs space')
    ! Deallocate storage used for keys for each set
    deallocate(keys)
@@ -903,19 +919,32 @@ AdvanceTime : do
    call end_ensemble_manager(obs_fwd_op_ens_handle)
    call end_ensemble_manager(qc_ens_handle)
 
-   call trace_message('Bottom of main advance time loop')
-   if ((output_interval > 0) .and. &
-       (time_step_number / output_interval * output_interval == time_step_number)) then
+   if (get_stage_to_write('output')) then
+      if ((output_interval > 0) .and. &
+          (time_step_number / output_interval * output_interval == time_step_number)) then
 
-      if (get_stage_to_write('output')) then
-         call write_state(state_ens_handle, file_info_output)
+         call     trace_message('Before state space output')
+         call timestamp_message('Before state space output')
+
+         !>@todo FIXME this assumes we cannot combine cycling inside filter
+         !>and delaying write until the end.
+
+         ! will write outside loop
+         if (.not. write_all_stages_at_end) &
+            call write_state(state_ens_handle, file_info_output)
+      
+         !>@todo need to fix smoother
+         !if(ds) call smoother_write_restart(1, ens_size)
+
+         call timestamp_message('After  state space output')
+         call     trace_message('After  state space output')
+
       endif
    endif
+
+   call trace_message('Bottom of main advance time loop')
+
 end do AdvanceTime
-
-!call test_state_copies(state_ens_handle, 'last')
-
-!10011 continue
 
 call trace_message('End of main filter assimilation loop, starting cleanup', 'filter:', -1)
 
@@ -924,37 +953,34 @@ call trace_message('Before writing output sequence file')
 if(my_task_id() == 0) call write_obs_seq(seq, obs_sequence_out_name)
 call trace_message('After  writing output sequence file')
 
-! Output a restart file if requested
-call trace_message('Before writing state restart files if requested')
-call timestamp_message('Before writing state restart files if requested')
-
+! Output all restart files if requested
 if (write_all_stages_at_end) then
+   call     trace_message('Before writing all state restart files at end')
+   call timestamp_message('Before writing all state restart files at end')
+
    file_info_all = combine_file_info( (/file_info_input, file_info_preassim, &
                                         file_info_postassim, file_info_output/) )
 
    call write_state(state_ens_handle, file_info_all)
-else
 
-   if (get_stage_to_write('output')) &
-       call write_state(state_ens_handle, file_info_output)
+   call timestamp_message('After  writing all state restart files at end')
+   call     trace_message('After  writing all state restart files at end')
 endif
 
-if (single_file_in) then
-   ret = finalize_singlefile_output(file_info_input)
-endif
+! close the diagnostic/restart netcdf files
+if (single_file_out) then
+   if (get_stage_to_write('input')) &
+      call finalize_singlefile_output(file_info_input)
 
-if( single_file_out ) then
    if (get_stage_to_write('preassim')) &
-      ret = finalize_singlefile_output(file_info_preassim)
-   if (get_stage_to_write('postassim')) &
-      ret = finalize_singlefile_output(file_info_postassim)
-   if (get_stage_to_write('output')) &
-      ret = finalize_singlefile_output(file_info_output)
-endif
+      call finalize_singlefile_output(file_info_preassim)
 
-if(ds) call smoother_write_restart(1, ens_size)
-call trace_message('After  writing state restart files if requested')
-call timestamp_message('After  writing state restart files if requested')
+   if (get_stage_to_write('postassim')) &
+      call finalize_singlefile_output(file_info_postassim)
+
+   if (get_stage_to_write('output')) &
+      call finalize_singlefile_output(file_info_output)
+endif
 
 ! Give the model_mod code a chance to clean up.
 call trace_message('Before end_model call')
@@ -981,8 +1007,6 @@ if(my_task_id() == 0) then
    write(logfileunit,*)'FINISHED filter.'
    write(logfileunit,*)
 endif
-
-! 10011 continue
 
 end subroutine filter_main
 

@@ -121,7 +121,7 @@ namelist /perfect_model_obs_nml/ read_input_state_from_file, write_output_state_
                                  obs_window_days, obs_window_seconds, silence,      &
                                  trace_execution, output_timestamps,                &
                                  print_every_nth_obs, output_forward_op_errors,     &
-                                 input_state_files, output_state_files, has_cycling,  &
+                                 input_state_files, output_state_files,             &
                                  single_file_in, single_file_out, distributed_state
 
 !------------------------------------------------------------------------------
@@ -254,6 +254,10 @@ else
 endif
 
 call set_num_extra_copies(ens_handle, 0)
+
+! for now, make the default to allow cycling if we're writing all data
+! to a single file, and false if not.
+has_cycling = single_file_out
 
 ! Initialize file names:
 
@@ -390,6 +394,15 @@ AdvanceTime: do
    if (curr_ens_time /= next_ens_time) then
       call trace_message('Ready to run model to advance data ahead in time', 'perfect_model_obs:', -1)
       call print_ens_time(ens_handle, 'Ensemble data time before advance')
+
+      ! we are going to advance the model - make sure we're doing single file output
+      if (.not. has_cycling) then
+         call error_handler(E_ERR,'filter:', &
+             'advancing the model inside PMO and multiple file output not currently supported', &
+             source, revision, revdate, text2='support will be added in subsequent releases', &
+             text3='set "single_file_out=.true" for PMO to advance the model, or advance the model outside PMO')
+      endif
+
       call     trace_message('Before running model')
       call timestamp_message('Before running model', sync=.true.)
 

@@ -8,7 +8,6 @@
    output_state_files         = "perfect_output.nc"
    output_interval            = 1,
 
-   has_cycling                = .true.
    async                      = 0,
    adv_ens_command            = "./advance_model.csh",
 
@@ -54,7 +53,6 @@
    perturbation_amplitude       = 0.2,
    distributed_state            = .true.
 
-   has_cycling                  = .true.,
    async                        = 0,
    adv_ens_command              = "./advance_model.csh",
 

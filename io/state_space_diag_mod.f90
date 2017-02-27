@@ -356,19 +356,18 @@ end subroutine init_singlefile_output
 !-------------------------------------------------------------------------------
 !>
 
-function finalize_singlefile_output(file_handle) result(ierr)
+subroutine finalize_singlefile_output(file_handle)
 
-type(file_info_type), intent(inout) :: file_handle
-integer             :: ierr
+type(file_info_type), intent(in) :: file_handle
 
 type(netcdf_file_type) :: ncFileID
+integer :: ierr, ncid
 
 ncFileID = file_handle%stage_metadata%ncFileID
-ierr = 0
 
 if (my_task_id()==0) then
    ierr = NF90_close(ncFileID%ncid)
-   if(associated(ncFileID%rtimes)) deallocate(ncFileID%rtimes, ncFileID%times )
+   call nc_check(ierr, 'finalize_singlefile_output: nf90_close', ncFileID%fname)
 endif
 
 call end_diagnostic_structure()
@@ -377,8 +376,9 @@ ncFileID%fname     = "notinuse"
 ncFileID%ncid      = -1
 ncFileID%Ntimes    = -1
 ncFileID%NtimesMax = -1
+if(associated(ncFileID%rtimes)) deallocate(ncFileID%rtimes, ncFileID%times )
 
-end function finalize_singlefile_output
+end subroutine finalize_singlefile_output
 
 
 !-------------------------------------------------------
