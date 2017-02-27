@@ -139,16 +139,16 @@ private
 ! this directory.  It is a sed script that comments in and out the interface
 ! block below.  Please leave the BLOCK comment lines unchanged.
 
-! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
-! ! interface block for getting return code back from system() routine
-! interface
-!  function system(string)    
-!   character(len=*) :: string
-!   integer :: system         
-!  end function system
-! end interface
-! ! end block                 
-! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
+ !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
+ ! interface block for getting return code back from system() routine
+ interface
+  function system(string)    
+   character(len=*) :: string
+   integer :: system         
+  end function system
+ end interface
+ ! end block                 
+ !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
 
 
 interface sum_across_tasks
@@ -666,11 +666,11 @@ end subroutine all_reduce_min_max
 !-----------------------------------------------------------------------------
 ! One sided communication
 
-subroutine get_from_mean(owner, window, index, x)
+subroutine get_from_mean(owner, window, mindex, x)
 
 integer,  intent(in)  :: owner  ! task in the window that owns the memory
 integer,  intent(in)  :: window ! window object
-integer,  intent(in)  :: index  ! index in the tasks memory
+integer,  intent(in)  :: mindex ! index in the tasks memory
 real(r8), intent(out) :: x ! result
 
 call error_handler(E_ERR,'get_from_mean', 'should not call this code', source, revision, revdate)
@@ -679,11 +679,11 @@ end subroutine get_from_mean
 
 !-----------------------------------------------------------------------------
 
-subroutine get_from_fwd(owner, window, index, num_rows, x)
+subroutine get_from_fwd(owner, window, mindex, num_rows, x)
 
-integer, intent(in)  :: owner    ! task in the window that owns the memory
+integer,  intent(in)  :: owner    ! task in the window that owns the memory
 integer,  intent(in)  :: window   ! window object
-integer,  intent(in)  :: index    ! index in the tasks memory
+integer,  intent(in)  :: mindex   ! index in the tasks memory
 integer,  intent(in)  :: num_rows ! number of rows in the window
 real(r8), intent(out) :: x(:)     ! result
 

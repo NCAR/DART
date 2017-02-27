@@ -175,16 +175,16 @@ private
 ! this directory.  It is a sed script that comments in and out the interface
 ! block below.  Please leave the BLOCK comment lines unchanged.
 
-! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
-! ! interface block for getting return code back from system() routine
-! interface
-!  function system(string)
-!   character(len=*) :: string
-!   integer :: system
-!  end function system
-! end interface
-! ! end block
-! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
+ !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
+ ! interface block for getting return code back from system() routine
+ interface
+  function system(string)
+   character(len=*) :: string
+   integer :: system
+  end function system
+ end interface
+ ! end block
+ !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
 
 
 ! allow global sum to be computed for integers, r4, and r8s
@@ -1970,12 +1970,12 @@ end subroutine all_reduce_min_max
 !-----------------------------------------------------------------------------
 ! One sided communication
 
-subroutine get_from_mean(owner, window, index, x)
+subroutine get_from_mean(owner, window, mindex, x)
 
 integer,  intent(in)  :: owner  ! task in the window that owns the memory
 integer,  intent(in)  :: window ! window object
-integer,  intent(in)  :: index  ! index in the tasks memory
-real(r8), intent(out) :: x ! result
+integer,  intent(in)  :: mindex ! index in the tasks memory
+real(r8), intent(out) :: x      ! result
 
 integer(KIND=MPI_ADDRESS_KIND) :: target_disp
 integer :: errcode
@@ -1987,7 +1987,7 @@ integer :: errcode
 ! Note to programmer: openmpi 1.10.0 does not
 ! allow scalars in mpi calls. openmpi 1.10.1 fixes
 ! this.
-target_disp = (index - 1)
+target_disp = (mindex - 1)
 call mpi_win_lock(MPI_LOCK_SHARED, owner, 0, window, errcode)
 call mpi_get(x, 1, datasize, owner, target_disp, 1, datasize, window, errcode)
 call mpi_win_unlock(owner, window, errcode)
@@ -1996,11 +1996,11 @@ end subroutine get_from_mean
 
 !-----------------------------------------------------------------------------
 
-subroutine get_from_fwd(owner, window, index, num_rows, x)
+subroutine get_from_fwd(owner, window, mindex, num_rows, x)
 
 integer,  intent(in)  :: owner    ! task in the window that owns the memory
 integer,  intent(in)  :: window   ! window object
-integer,  intent(in)  :: index    ! index in the tasks memory
+integer,  intent(in)  :: mindex   ! index in the tasks memory
 integer,  intent(in)  :: num_rows ! number of rows in the window
 real(r8), intent(out) :: x(:)     ! result
 
@@ -2012,7 +2012,7 @@ integer :: errcode
 ! => Don't do anything with x in between mpi_get and mpi_win_lock
 
 
-target_disp = (index - 1)*num_rows
+target_disp = (mindex - 1)*num_rows
 call mpi_win_lock(MPI_LOCK_SHARED, owner, 0, window, errcode)
 call mpi_get(x, num_rows, datasize, owner, target_disp, num_rows, datasize, window, errcode)
 call mpi_win_unlock(owner, window, errcode)
