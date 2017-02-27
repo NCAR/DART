@@ -39,6 +39,10 @@ endif
 
 #----------------------------------------------------------------------
 
+if ( ! $?host) then
+   setenv host `uname -n`
+endif
+
 echo "Running DART model test on $host"
 
 #----------------------------------------------------------------------
@@ -56,7 +60,9 @@ foreach MODEL ( \
   lorenz_63 \
   lorenz_84 \
   lorenz_96 \
+  lorenz_04 \
   forced_lorenz_96 \
+  simple_advection \
   9var \
   bgrid_solo \
   cam-fv \
