@@ -397,7 +397,7 @@ while ($stage <= $#MYSTRING)
    if ($MYSTRING[$stage] == 'output')    set STAGE_output = TRUE
    @ stage++
 end
-if ($PRIOR_TF == FALSE && $STAGE_input = TRUE && $STAGE_preassim = TRUE) then
+if ($PRIOR_TF == FALSE && $STAGE_input == TRUE && $STAGE_preassim == TRUE) then
    echo " "
    echo "WARNING ! ! prior inflation is OFF, "
    echo "            but output at stages 'input' and 'preassim' is requested."
@@ -449,8 +449,8 @@ ex_end
       (ls -rt1 $CASE.cam.${stage}* | tail -n 2 >! latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
       if ( $nfiles > 0 ) then
-         set latest_sd   = `head -n1 latestfile`
-         set latest_mean = `tail -n1 latestfile`
+         set latest_mean = `head -n1 latestfile`
+         set latest_sd   = `tail -n1 latestfile`
          # These file names are in use as of (r10786 2016-12-14).
          # filter/filter_mod.f90:
          #    call set_file_metadata(file_info, PRIOR_INF_MEAN, stage, 'priorinf_mean', 'prior inflation mean')
@@ -499,8 +499,8 @@ ex_end
 
       # If one exists, use it as input for this assimilation
       if ( $nfiles > 0 ) then
-         set latest_sd   = `head -n1 latestfile`
-         set latest_mean = `tail -n1 latestfile`
+         set latest_mean = `head -n1 latestfile`
+         set latest_sd   = `tail -n1 latestfile`
          ${LINK} $latest_mean input_postinf_mean.nc
          ${LINK} $latest_sd   input_postinf_sd.nc
       else

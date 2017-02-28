@@ -6,13 +6,10 @@
 #
 # DART $Id$
 
-# This script is designed to interface cesm1_5_beta06 and $dart/rma_fixed_filenames v10819.
+# This script is designed to interface cesm2_0_beta05 and $dart/rma_trunk v11###.
 
 # See 'RMA' for places where there are questions about RMA,
 # especially file naming.
-# This is written for the full implementation of new state space and inflation
-# file names, not what will be in the rma_trunk tag.  The full impl. is being
-# developed in branches/rma_fixed_filenames.
 
 
 
@@ -28,6 +25,9 @@ pwd
 
 set nonomatch       # suppress "rm" warnings if wildcard does not match anything
 
+setenv CASEROOT $1
+setenv cycle    $2
+
 # The FORCE options are not optional.
 # The VERBOSE options are useful for debugging though
 # some systems don't like the -v option to any of the following
@@ -41,7 +41,7 @@ switch ("`hostname`")
       set TASKS_PER_NODE = `echo $LSB_SUB_RES_REQ | sed -ne '/ptile/s#.*\[ptile=\([0-9][0-9]*\)]#\1#p'`
       setenv MP_DEBUG_NOTIMEOUT yes
 
-      set BASEOBSDIR = /glade/p/image/Observations/NCEP+ACARS+GPS
+      set BASEOBSDIR = BOGUSBASEOBSDIR
       set  LAUNCHCMD = mpirun.lsf
    breaksw
 
@@ -52,7 +52,7 @@ switch ("`hostname`")
       set   LINK = '/usr/local/bin/ln -fvs'
       set REMOVE = '/usr/local/bin/rm -fr'
 
-      set BASEOBSDIR = /glade/p/image/Observations/NCEP+ACARS+GPS
+      set BASEOBSDIR = BOGUSBASEOBSDIR
       set LAUNCHCMD  = mpirun.lsf
    breaksw
 
@@ -63,30 +63,21 @@ switch ("`hostname`")
       set   LINK = 'ln -fvs'
       set REMOVE = 'rm -fr'
 
-      set BASEOBSDIR = /glade/p/image/Observations/NCEP+ACARS+GPS
+      set BASEOBSDIR = BOGUSBASEOBSDIR
       set LAUNCHCMD  = "aprun -n $NTASKS"
 
    breaksw
 endsw
 
 # In CESM1_4 xmlquery must be executed in $CASEROOT.
-setenv CASEROOT BOGUSCASEROOT
-setenv CASE     $CASEROOT:t
-
 cd ${CASEROOT}
+setenv CASE           $CASEROOT:t
 setenv ensemble_size  `./xmlquery NINST_ATM   -value`
 setenv CAM_DYCORE     `./xmlquery CAM_DYCORE  -value`
 setenv EXEROOT        `./xmlquery EXEROOT     -value`
 setenv RUNDIR         `./xmlquery RUNDIR      -value`
 setenv archive        `./xmlquery DOUT_S_ROOT -value`
 setenv DATA_ASSIMILATION_CYCLES        `./xmlquery DATA_ASSIMILATION_CYCLES -value`
-# setenv doesn't work as a wordlist.
-if (-f cycle_count) then
-   set cycle = `cat cycle_count`
-else
-   set cycle = 1
-   echo $cycle > cycle_count
-endif
 
 set echo verbose
 cd $RUNDIR
@@ -94,7 +85,7 @@ cd $RUNDIR
 #=========================================================================
 # Block 1: Preliminary clean up, which can run in the background.
 #=========================================================================
-# ATM_forcXX, CESM1_5's new archiver has a mechanism for removing restart file sets,
+# CESM2_0's new archiver has a mechanism for removing restart file sets,
 # which we don't need, but it runs only after the (multicycle) job finishes.  
 # We'd like to remove unneeded restarts as the job progresses, allowing more
 # cycles to run before needing to stop to archive data.  So clean them out of
@@ -142,7 +133,7 @@ if ($#log_list >= 3) then
    echo '$rm_log['$rm_slot']='$rm_log[$rm_slot]
 
    if ( $sec_o_day !~ '00000' || \
-       ($sec_o_day =~ '00000' && $day_o_month % 4 != 0) ) then
+       ($sec_o_day =~ '00000' && $day_o_month % BOGUS_save_every_Mth != 0) ) then
       echo "Removing unneeded restart file set from RUNDIR: "
       echo "    $rm_date[1]"'*.{r,rs,rh0,h0,i}*-*'${day_o_month}-${sec_o_day}
       # Remove member restarts (but not DART output)
@@ -178,8 +169,8 @@ if ($#log_list >= 3) then
    # If it's the last cycle, hide the restart set.
    # This is assuming that DATA_ASSIMILATION_CYCLES has not been changed in env_run.xml
    # since the start (not submission) of this job.
-   # Alternatively, and more robustly, modify case.run to pass 
-   # $cycle and $config{DATA_ASSIMILATION_CYCLES} to DoDataAssimilation.
+   # (Requested by Karspeck for coupled assims, which need to keep 4 atmospheric
+   #  cycles for each ocean cycle.)
    if ($cycle == $DATA_ASSIMILATION_CYCLES) then
       set hide_date = `echo $re_list[2] | sed -e "s/-/ /g;s/\./ /g;"`
       @ day = $#hide_date - 2
@@ -198,17 +189,11 @@ if ($#log_list >= 3) then
       if ($rm_log[$#rm_log] == 'gz') @ rm_slot--
       echo '$rm_log['$rm_slot']='$rm_log[$rm_slot]
       $MOVE  *$rm_log[$rm_slot]*  $hidedir
-
-      # Remove cycle_count so that next job won't see one at the start.
-      rm cycle_count
    endif
 
 endif
 unset echo
 
-# Update cycle count file with for the next iteration
-@ cycle++
-echo $cycle >! cycle_count
 
 #=========================================================================
 # Block 2: Determine time of model state 
@@ -439,6 +424,8 @@ ex_end
    else
       # Look for the output from the previous assimilation
       # RMA; file 'type' output_priorinf is hardwired according to DART2.0 naming convention.
+      # Yes, we want the 'output' or 'postassim' version of the prior inflation,
+      # because the 'preassim' version has not been updated by this cycle's assimilation.
       if ($STAGE_output == TRUE) then
          set stage = 'output'
       else if ($STAGE_postassim == TRUE) then
@@ -446,11 +433,11 @@ ex_end
       endif
 
       # If inflation files exists, use them as input for this assimilation
-      (ls -rt1 $CASE.cam.${stage}* | tail -n 2 >! latestfile) > & /dev/null
+      (ls -rt1 $CASE.cam.${stage}_priorinf* | tail -n 2 >! latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
       if ( $nfiles > 0 ) then
-         set latest_sd   = `head -n1 latestfile`
-         set latest_mean = `tail -n1 latestfile`
+         set latest_mean = `head -n1 latestfile`
+         set latest_sd   = `tail -n1 latestfile`
          # These file names are in use as of (r10786 2016-12-14).
          # filter/filter_mod.f90:
          #    call set_file_metadata(file_info, PRIOR_INF_MEAN, stage, 'priorinf_mean', 'prior inflation mean')
@@ -499,8 +486,8 @@ ex_end
 
       # If one exists, use it as input for this assimilation
       if ( $nfiles > 0 ) then
-         set latest_sd   = `head -n1 latestfile`
-         set latest_mean = `tail -n1 latestfile`
+         set latest_mean = `head -n1 latestfile`
+         set latest_sd   = `tail -n1 latestfile`
          ${LINK} $latest_mean input_postinf_mean.nc
          ${LINK} $latest_sd   input_postinf_sd.nc
       else
@@ -549,13 +536,22 @@ ${LINK} $ATM_INITIAL_FILENAME caminput.nc
 ${LINK} $ATM_HISTORY_FILENAME cam_phis.nc
 
 # RMA
-# Put the names of the CAM initial files, from which filter will get the model states, 
+# Put the names of the CAM initial files, from which filter will get the model state(s), 
 # into a text file, whose name is provided to filter in filter_nml:input_restart_file_list.
+# If filter will create an ensemble from a single state, it's fine (and convenient)
+# to put the whole list of files in input_restart_file_list.  Filter will just use the first.
+# NOTE: if the files in input_restart_file_list are CESM format (all vars and all meta data), 
+#       then they may end up with a different structure than the preassim and postassim stage
+#       output written by filter.  This can be prevented (at the cost of more disk space)
+#       by copying the CESM format input files into the names filter will use, e.g.
+#       $case.cam_0001.i.$date.nc --> preassim_member_0001.nc.  
+#       Filter will replace the state variables with updated versions, but leave the other
+#       variables and all metadata unchanged.
 set line = `grep input_restart_file_list input.nml | sed -e "s#[=,'\.]# #g"`
 echo "$line"
 set input_file_list = $line[2]
 
-ls -1 ${CASE}.cam_*.i.${ATM_DATE_EXT}.nc >! $input_file_list
+ls -1 ${CASE}.cam_[0-9][0-9][0-9][0-9].i.${ATM_DATE_EXT}.nc >! $input_file_list
 
 # If the file names in $output_restart_file_list = names in $input_restart_file_list,
 # then the restart file contents will be overwritten with the states updated by DART.
@@ -563,9 +559,7 @@ ls -1 ${CASE}.cam_*.i.${ATM_DATE_EXT}.nc >! $input_file_list
 set line = `grep output_restart_file_list input.nml | sed -e "s#[=,'\.]# #g"` 
 set output_file_list = $line[2]
 
-if ($input_file_list == $output_file_list) then
-   ${COPY} $input_file_list $output_file_list
-else 
+if ($input_file_list != $output_file_list) then
    # Replace the filetype with something showing it's after the assimilation.
    # This file_type name is consistent with RMA's file naming convention.
    sed -e "s#\.i\.#.i_output.#" $input_file_list >! $output_file_list
@@ -592,18 +586,16 @@ echo "`date` -- END FILTER"
 # Tag the state output
 # RMA; we don't know the exact set of files which will be written,
 # so loop over all possibilities.
-# Rename them with CESM format.  ${case}.atm[_$inst}.${filetype}.${date}.nc 
-# This is a lot more work; 
-#   files with instance/member number handled differently from others,
-#   map DART output type to new (shorter) filetypes ?
-# Simple:
-# CESM format:
-# 2016-12-14; These filenames are not in use as of r10786.
-# 2016-12-22; They are in use as of r10819.
+# Rename them with CESM format.  ${case}.cam[_$inst}.${filetype}.${date}.nc 
+# If output_restart_file_list is filled with custom (CESM) filenames,
+# then 'output' ensemble members will not appear with filter's default,
+# hard-wired names.  But file types output_{mean,sd} will appear and be
+# renamed here.
 foreach FILE (`ls {input,preassim,postassim,output}_{mean,sd}*.nc`)
    set parts = `echo $FILE | sed -e "s#\.# #g"`
    mv $FILE $CASE.cam.$parts[1].${ATM_DATE_EXT}.nc
 end
+# Files with instance/member number handled differently from others,
 foreach FILE (`ls {input,preassim,postassim,output}_member_*.nc`)
    # split off the .nc
    set parts = `echo $FILE | sed -e "s#\.# #g"`
