@@ -187,7 +187,7 @@ ADDITIONAL NOTES :
 
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Feb 15th 2017 :: rma_single_file merge changes $Revision$
++ Feb 15th 2017 :: rma_single_file merge changes Revision: 11136 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Filter and PMO can now run with multiple cycles for low order models. The output
@@ -223,6 +223,41 @@ restart_out_file_name -- RENAMED output_state_files
 single_file_in        -- ADDED for low order models
 single_file_out       -- ADDED for low order models
 has_cycling           -- ADDED for low order models
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Feb 15th 2017 :: filter updates  Revision: 11160 
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+The postassim diagnostics file was being incorrectly written after
+posterior inflation was applied.  It is now written immediately after
+the assimilation update, and then posterior inflation, if enabled,
+is applied.
+
+Sampling Error Correction now reads data from a single netcdf file
+for any ensemble size.  To add other sizes, a program can generate
+any ensemble size and append it to this file.  The default file is
+currently in system_simulation:
+
+system_simulation/work/sampling_error_correction_table.nc
+
+Filter and PMO no longer need the "has_cycling" flag.
+
+------------------------------------------------------------------------------
+Changes to the filter_nml are :
+------------------------------------------------------------------------------
+
+has_cycling             -- REMOVED for low order models
+
+------------------------------------------------------------------------------
+Changes to the perfect_model_obs_nml are :
+------------------------------------------------------------------------------
+
+has_cycling           -- REMOVED for low order models
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Month Day 2017 :: change $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # <next few lines under version control, do not edit>
 # $URL$
