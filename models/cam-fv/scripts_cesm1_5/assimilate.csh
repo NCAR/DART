@@ -144,11 +144,11 @@ if ($#log_list >= 3) then
    if ( $sec_o_day !~ '00000' || \
        ($sec_o_day =~ '00000' && $day_o_month % 4 != 0) ) then
       echo "Removing unneeded restart file set from RUNDIR: "
-      echo "    $rm_date[1]"'*.{r,rs,rh0,h0,i}*-*'${day_o_month}-${sec_o_day}
+      echo "    $rm_date[1]"'*.{r,rs,rh0,h0,i}.*'${day_o_month}-${sec_o_day}
       # Remove member restarts (but not DART output)
       # Note that *cpl.ha.* is retained, and any h#, #>0.
       #        $CASE                          DD          -SSSSS
-      $REMOVE  $rm_date[1]*.{r,rs,rh0,h0,i}*${day_o_month}-${sec_o_day}* &
+      $REMOVE  $rm_date[1]*.{r,rs,rh0,h0,i}.*${day_o_month}-${sec_o_day}* &
 
       # Remove log files: *YYMMDD-HHMMSS.  
       $REMOVE  *$rm_log[$rm_slot]*  &
@@ -160,7 +160,7 @@ if ($#log_list >= 3) then
       set save_root = $archive/rest/$save_date[$piece]
       if (! -d $save_root) then
          mkdir -p $save_root
-         $MOVE $rm_date[1]*.{r,rs,rh0,h0,i}*${day_o_month}-${sec_o_day}*  $save_root &
+         $MOVE $rm_date[1]*.{r,rs,rh0,h0,i}.*${day_o_month}-${sec_o_day}*  $save_root &
          $MOVE                         *inf*${day_o_month}-${sec_o_day}*  $save_root &
 
       endif
