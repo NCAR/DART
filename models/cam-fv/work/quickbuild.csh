@@ -1,104 +1,137 @@
-#!/bin/csh
+#!/bin/csh 
 #
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
-#
-# Script to manage the compilation of all components for this model;
-# executes a known "perfect model" experiment using an existing
-# observation sequence file (obs_seq.in) and initial conditions appropriate 
-# for both 'perfect_model_obs' (perfect_ics) and 'filter' (filter_ics).
-# There are enough initial conditions for 80 ensemble members in filter.
-# Use ens_size = 81 and it WILL bomb. Guaranteed.
-# The 'input.nml' file controls all facets of this execution.
-#
-# 'create_obs_sequence' and 'create_fixed_network_sequence' were used to
-# create the observation sequence file 'obs_seq.in' - this defines 
-# what/where/when we want observations. This script does not run these 
-# programs - intentionally. 
-#
-# 'perfect_model_obs' results in a True_State.nc file that contains 
-# the true state, and obs_seq.out - a file that contains the "observations"
-# that will be assimilated by 'filter'.
-#
-# 'filter' results in three files (at least): Prior_Diag.nc - the state 
-# of all ensemble members prior to the assimilation (i.e. the forecast), 
-# Posterior_Diag.nc - the state of all ensemble members after the 
-# assimilation (i.e. the analysis), and obs_seq.final - the ensemble 
-# members' estimate of what the observations should have been.
-#
-# Once 'perfect_model_obs' has advanced the model and harvested the 
-# observations for the assimilation experiment, 'filter' may be run 
-# over and over by simply changing the namelist parameters in input.nml.
-#
-# The result of each assimilation can be explored in model-space with
-# matlab scripts that directly read the netCDF output, or in observation-space.
-# 'obs_diag' is a program that will create observation-space diagnostics
-# for any result of 'filter' and results in a couple data files that can
-# be explored with yet more matlab scripts.
 
 #----------------------------------------------------------------------
-# 'preprocess' is a program that culls the appropriate sections of the
-# observation module for the observations types in 'input.nml'; the 
-# resulting source file is used by all the remaining programs, 
-# so this MUST be run first.
+# compile all programs in the current directory with a mkmf_xxx file.
+#
+# usage: [ -mpi | -nompi ]
 #----------------------------------------------------------------------
 
-\rm -f preprocess *.o *.mod
-\rm -f ../../../obs_def/obs_def_mod.f90
-\rm -f ../../../obs_kind/obs_kind_mod.f90
-
+# this model name:
 set MODEL = "cam-fv"
 
-@ n = 1
+# programs which have the option of building with MPI:
+set MPI_TARGETS = "filter model_mod_check perfect_model_obs wakeup_filter"
 
-echo
-echo
-echo "---------------------------------------------------------------"
-echo "${MODEL} build number ${n} is preprocess"
+# this model defaults to building filter and other programs WITH mpi
+set with_mpi = 1
 
-csh  mkmf_preprocess
-make || exit $n
 
-./preprocess || exit 99
+# ---------------
+# shouldn't have to modify this script below here.
+
+if ( $#argv >= 1 ) then
+   if ( "$1" == "-mpi" ) then
+      set with_mpi = 1 
+   else if ( "$1" == "-nompi" ) then
+      set with_mpi = 0
+   else
+      echo usage: $0 '[ -mpi | -nompi ]'
+      exit 0
+   endif
+endif
+
+set preprocess_done = 0
+set debug = 0
+
+# set this to 1 in the environment to have the script remove
+# all .o and module files between executable builds.  this helps
+# catch path_names files which are missing required modules.
+
+if ( $?QUICKBUILD_DEBUG ) then
+   set debug = $QUICKBUILD_DEBUG
+endif
+
+@ n = 0
 
 #----------------------------------------------------------------------
-# Build all the targets
+# Build all the single-threaded targets
 #----------------------------------------------------------------------
 
-foreach TARGET ( mkmf_* )
+foreach TARGET ( mkmf_preprocess mkmf_* )
 
-   set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
+   set PROG = `echo $TARGET | sed -e 's/mkmf_//'`
 
-   switch ( $TARGET )
-   case mkmf_preprocess:
-      breaksw
-   default:
-      @ n = $n + 1
-      echo
-      echo "---------------------------------------------------"
-      echo "${MODEL} build number ${n} is ${PROG}" 
-      \rm -f ${PROG}
-      csh $TARGET || exit $n
-      make        || exit $n
-      breaksw
-   endsw
+   if ( $PROG == "preprocess" && $preprocess_done ) goto skip
 
-   rm *.o *.mod
+   if ( $with_mpi ) then
+      foreach i ( $MPI_TARGETS )
+         if ( $PROG == $i ) goto skip
+      end
+   endif
+
+   @ n = $n + 1
+   echo
+   echo "---------------------------------------------------"
+   echo "${MODEL} build number ${n} is ${PROG}" 
+   \rm -f ${PROG}
+   csh $TARGET || exit $n
+   make        || exit $n
+
+   if ( $debug ) then
+      echo 'removing all files between builds'
+      \rm -f *.o *.mod
+   endif
+
+   # preprocess creates module files that are required by
+   # the rest of the executables, so it must be run in addition
+   # to being built.
+   if ( $PROG == "preprocess" ) then
+      ./preprocess || exit $n
+      set preprocess_done = 1
+   endif
+
+skip:
 end
 
 \rm -f *.o *.mod input.nml*_default
 
-echo ""
-echo "Success: All DART programs compiled."
-echo ""
-echo 'time to run filter here:'
-echo ' for lsf run "bsub < runme_filter"'
-echo ' for pbs run "qsub runme_filter"'
-echo ' for lam-mpi run "lamboot" once, then "runme_filter"'
-echo ' for mpich run "mpd" once, then "runme_filter"'
+echo "Success: All single task DART programs compiled."  
+
+if ( $with_mpi ) then
+  echo "Script now compiling MPI parallel versions of the DART programs."
+else
+  echo "Script is exiting after building the serial versions of the DART programs."
+  exit 0
+endif
+
+#----------------------------------------------------------------------
+# to disable an MPI parallel version of filter for this model, 
+# call this script with the -nompi argument, or if you are never going to
+# build with MPI, add an exit after the 'Success' line.
+#----------------------------------------------------------------------
+
+#----------------------------------------------------------------------
+# Build the MPI-enabled target(s) 
+#----------------------------------------------------------------------
+
+foreach PROG ( $MPI_TARGETS )
+
+   set TARGET = `echo $PROG | sed -e 's/^/mkmf_/'`
+
+   @ n = $n + 1
+   echo
+   echo "---------------------------------------------------"
+   echo "${MODEL} build number ${n} is ${PROG}" 
+   \rm -f ${PROG}
+   csh $TARGET -mpi || exit $n
+   make             || exit $n
+
+   if ( $debug ) then
+      echo 'removing all files between builds'
+      \rm -f *.o *.mod
+   endif
+
+end
+
+\rm -f *.o *.mod input.nml*_default
+
+echo "Success: All MPI parallel DART programs compiled."  
 
 exit 0
 
