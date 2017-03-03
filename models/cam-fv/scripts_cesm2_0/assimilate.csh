@@ -140,6 +140,7 @@ if ($#log_list >= 3) then
       # Note that *cpl.ha.* is retained, and any h#, #>0.
       #        $CASE                          DD          -SSSSS
       $REMOVE  $rm_date[1]*.{r,rs,rh0,h0,i}.*${day_o_month}-${sec_o_day}* &
+      $REMOVE  $rm_date[1].*[0-9].{input,preassim,postassim}*${day_o_month}-${sec_o_day}* &
 
       # Remove log files: *YYMMDD-HHMMSS.  
       $REMOVE  *$rm_log[$rm_slot]*  &
@@ -433,7 +434,10 @@ ex_end
       endif
 
       # If inflation files exists, use them as input for this assimilation
-      (ls -rt1 $CASE.cam.${stage}_priorinf* | tail -n 2 >! latestfile) > & /dev/null
+      # Must be separate commands because the 'order' that means and sds 
+      # are finished being written out varies from cycle to cycle.
+      (ls -rt1 $CASE.cam.${stage}_priorinf_mean* | tail -n 1 >! latestfile) > & /dev/null
+      (ls -rt1 $CASE.cam.${stage}_priorinf_sd*   | tail -n 1 >> latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
       if ( $nfiles > 0 ) then
          set latest_mean = `head -n1 latestfile`
@@ -481,7 +485,8 @@ ex_end
    else
       # Look for the output from the previous assimilation.
       # (The only stage after posterior inflation.)
-      (ls -rt1 ${CASE}.cam.output_postinf* | tail -n 2 >! latestfile) > & /dev/null
+      (ls -rt1 ${CASE}.cam.output_postinf_mean* | tail -n 1 >! latestfile) > & /dev/null
+      (ls -rt1 ${CASE}.cam.output_postinf_sd*   | tail -n 1 >> latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
 
       # If one exists, use it as input for this assimilation
@@ -513,7 +518,7 @@ ${REMOVE} cam_inflation_cookie
 # &filter_nml:           direct_netcdf_read      = .true.
 # &filter_nml:           direct_netcdf_write     = .true.
 # &filter_nml:           overwrite_state_input   = .true.
-# &filter_nml:           input_restart_file_list       = 'restart_files.txt'
+# &filter_nml:           input_state_file_list       = 'restart_files.txt'
 # &filter_nml:           obs_sequence_in_name    = 'obs_seq.out'
 # &filter_nml:           obs_sequence_out_name   = 'obs_seq.final'
 # &filter_nml:           init_time_days          = -1,
@@ -537,26 +542,26 @@ ${LINK} $ATM_HISTORY_FILENAME cam_phis.nc
 
 # RMA
 # Put the names of the CAM initial files, from which filter will get the model state(s), 
-# into a text file, whose name is provided to filter in filter_nml:input_restart_file_list.
+# into a text file, whose name is provided to filter in filter_nml:input_state_file_list.
 # If filter will create an ensemble from a single state, it's fine (and convenient)
-# to put the whole list of files in input_restart_file_list.  Filter will just use the first.
-# NOTE: if the files in input_restart_file_list are CESM format (all vars and all meta data), 
+# to put the whole list of files in input_state_file_list.  Filter will just use the first.
+# NOTE: if the files in input_state_file_list are CESM format (all vars and all meta data), 
 #       then they may end up with a different structure than the preassim and postassim stage
 #       output written by filter.  This can be prevented (at the cost of more disk space)
 #       by copying the CESM format input files into the names filter will use, e.g.
 #       $case.cam_0001.i.$date.nc --> preassim_member_0001.nc.  
 #       Filter will replace the state variables with updated versions, but leave the other
 #       variables and all metadata unchanged.
-set line = `grep input_restart_file_list input.nml | sed -e "s#[=,'\.]# #g"`
+set line = `grep input_state_file_list input.nml | sed -e "s#[=,'\.]# #g"`
 echo "$line"
 set input_file_list = $line[2]
 
 ls -1 ${CASE}.cam_[0-9][0-9][0-9][0-9].i.${ATM_DATE_EXT}.nc >! $input_file_list
 
-# If the file names in $output_restart_file_list = names in $input_restart_file_list,
+# If the file names in $output_state_file_list = names in $input_state_file_list,
 # then the restart file contents will be overwritten with the states updated by DART.
 # This is the behavior from DART1.0.
-set line = `grep output_restart_file_list input.nml | sed -e "s#[=,'\.]# #g"` 
+set line = `grep output_state_file_list input.nml | sed -e "s#[=,'\.]# #g"` 
 set output_file_list = $line[2]
 
 if ($input_file_list != $output_file_list) then
@@ -587,7 +592,7 @@ echo "`date` -- END FILTER"
 # RMA; we don't know the exact set of files which will be written,
 # so loop over all possibilities.
 # Rename them with CESM format.  ${case}.cam[_$inst}.${filetype}.${date}.nc 
-# If output_restart_file_list is filled with custom (CESM) filenames,
+# If output_state_file_list is filled with custom (CESM) filenames,
 # then 'output' ensemble members will not appear with filter's default,
 # hard-wired names.  But file types output_{mean,sd} will appear and be
 # renamed here.

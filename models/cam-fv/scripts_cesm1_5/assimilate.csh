@@ -10,9 +10,6 @@
 
 # See 'RMA' for places where there are questions about RMA,
 # especially file naming.
-# This is written for the full implementation of new state space and inflation
-# file names, not what will be in the rma_trunk tag.  The full impl. is being
-# developed in branches/rma_fixed_filenames.
 
 
 
@@ -179,8 +176,6 @@ if ($#log_list >= 3) then
    # If it's the last cycle, hide the restart set.
    # This is assuming that DATA_ASSIMILATION_CYCLES has not been changed in env_run.xml
    # since the start (not submission) of this job.
-   # Alternatively, and more robustly, modify case.run to pass 
-   # $cycle and $config{DATA_ASSIMILATION_CYCLES} to DoDataAssimilation.
    if ($cycle == $DATA_ASSIMILATION_CYCLES) then
       set hide_date = `echo $re_list[2] | sed -e "s/-/ /g;s/\./ /g;"`
       @ day = $#hide_date - 2
@@ -449,7 +444,10 @@ ex_end
       endif
 
       # If inflation files exists, use them as input for this assimilation
-      (ls -rt1 $CASE.cam.${stage}_priorinf* | tail -n 2 >! latestfile) > & /dev/null
+      # Must be separate commands because the 'order' that means and sds 
+      # are finished being written out varies from cycle to cycle.
+      (ls -rt1 $CASE.cam.${stage}_priorinf_mean* | tail -n 1 >! latestfile) > & /dev/null
+      (ls -rt1 $CASE.cam.${stage}_priorinf_sd*   | tail -n 1 >> latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
       if ( $nfiles > 0 ) then
          set latest_mean = `head -n1 latestfile`
@@ -497,7 +495,8 @@ ex_end
    else
       # Look for the output from the previous assimilation.
       # (The only stage after posterior inflation.)
-      (ls -rt1 ${CASE}.cam.output_postinf* | tail -n 2 >! latestfile) > & /dev/null
+      (ls -rt1 ${CASE}.cam.output_postinf_mean* | tail -n 1 >! latestfile) > & /dev/null
+      (ls -rt1 ${CASE}.cam.output_postinf_sd*   | tail -n 1 >> latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
 
       # If one exists, use it as input for this assimilation
