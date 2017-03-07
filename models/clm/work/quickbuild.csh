@@ -15,11 +15,6 @@
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
-#----------------------------------------------------------------------
-#This is where I'm putting some gabage to make a conflict for svn 
-# resolution purposes.
-#----------------------------------------------------------------------
-
 \rm -f preprocess *.o *.mod
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
