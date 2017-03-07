@@ -48,6 +48,8 @@ fig1ax1 = axes('Parent',figure1,'OuterPosition',[0 0 1 0.90]);
 view(fig1ax1,[-37.5 30]);
 grid(fig1ax1,'on');
 
+myworldmap(obs); hold on;
+
 xstring = sprintf('obsmat(:,%d)',obs.lonindex);
 ystring = sprintf('obsmat(:,%d)',obs.latindex);
 zstring = sprintf('obsmat(:,%d)',obs.zindex  );
@@ -63,8 +65,6 @@ scatter3(obsmat(:,obs.lonindex), obsmat(:,obs.latindex), obsmat(:,obs.zindex), .
              'ZDataSource',zstring);
 
 set(fig1ax1,'FontSize',18);
-
-myworldmap(obs);
 
 xlabel(obs.colnames{obs.lonindex});
 ylabel(obs.colnames{obs.latindex});
