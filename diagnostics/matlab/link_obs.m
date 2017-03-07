@@ -99,6 +99,13 @@ obs.CopyString    = copy.CopyString;
 obs.region(5)     = min(obs.z); % use observation Z to specify vertical region
 obs.region(6)     = max(obs.z);
 
+% Some observations are all at same z value. Cannot use same value for
+% upper and lower axis bounds.
+if (obs.region(5) == obs.region(6))
+    obs.region(5) = obs.region(5) - 0.5;
+    obs.region(6) = obs.region(6) + 0.5;
+end
+
 %% Now pack the data in the same fashion as the cell array of column labels.
 
 obs.lonindex  = 1;
