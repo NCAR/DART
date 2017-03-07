@@ -39,6 +39,10 @@ endif
 
 #----------------------------------------------------------------------
 
+if ( ! $?REMOVE) then
+   setenv REMOVE 'rm -rf'
+endif
+
 if ( ! $?host) then
    setenv host `uname -n`
 endif
@@ -46,17 +50,12 @@ endif
 echo "Running DART model test on $host"
 
 #----------------------------------------------------------------------
-# Compile 'filter' for a wide range of models.
-# CAVEATS:
-#    The PBL_1d model relies on routines that require special compiler
-#    flags to be recognized as F90 code. Since these are compiler-specific,
-#    I have not figured out a way yet to automate this. 
-#
-#----------------------------------------------------------------------
 
 set modeldir = `pwd`
 
-foreach MODEL ( \
+# set the list of models to include here
+
+set DO_THESE_MODELS = ( \
   lorenz_63 \
   lorenz_84 \
   lorenz_96 \
@@ -71,14 +70,23 @@ foreach MODEL ( \
   mpas_atm \
   POP \
   ROMS \
-  wrf )
-  # many models intentionally omitted.
+  wrf \
+)
+
+
+#----------------------------------------------------------------------
+# Compile all executables for each model.
+#----------------------------------------------------------------------
+
+@ modelnum = 1
+
+foreach MODEL ( $DO_THESE_MODELS ) 
     
     echo
     echo
     echo "=================================================================="
     echo "=================================================================="
-    echo "Compiling and testing $MODEL starting at "`date`
+    echo "Compiling $MODEL starting at "`date`
     echo "=================================================================="
     echo "=================================================================="
     echo
@@ -88,21 +96,65 @@ foreach MODEL ( \
 
     ./quickbuild.csh ${QUICKBUILD_ARG} || exit 3
 
+    @ modelnum = $modelnum + 1
+
+    echo
+    echo
+    echo "=================================================================="
+    echo "=================================================================="
+    echo "End of $MODEL build at "`date`
+    echo "=================================================================="
+    echo "=================================================================="
+    echo
+    echo
+
+end
+
+#----------------------------------------------------------------------
+# Run PMO and filter if possible.  Save and restore the original input.nml.
+#----------------------------------------------------------------------
+
+@ modelnum = 1
+
+foreach MODEL ( $DO_THESE_MODELS ) 
+    
+    if ($MODEL == 'bgrid_solo') then
+      echo 'skipping bgrid run for now'
+      continue
+    endif
+
+    echo
+    echo
+    echo "=================================================================="
+    echo "=================================================================="
+    echo "Testing $MODEL starting at "`date`
+    echo "=================================================================="
+    echo "=================================================================="
+    echo
+    echo
+
+    cd ${modeldir}/${MODEL}/work
+
+    cp input.nml input.nml.$$
     if ( -f workshop_setup.csh ) then
       echo "Trying to run workshop_setup.csh for model $MODEL as a test"
       ./workshop_setup.csh
     else
       echo "Trying to run pmo for model $MODEL as a test"
       echo "Will generate NetCDF files from any .cdl files first."
-      foreach i ( *.cdl )
-        set base = `basename $i .cdl`
-        if ( -f ${base}.nc ) continue
-        ncgen -o ${base}.nc $i
-      end
+      # try not to error out if no .cdl files found
+      @ nfiles = `ls *.cdl | wc -l`
+      if ( $nfiles > 0 ) then
+         foreach i ( *.cdl )
+           set base = `basename $i .cdl`
+           if ( -f ${base}.nc ) continue
+           ncgen -o ${base}.nc $i
+         end
+      endif
       ./perfect_model_obs
     endif
 
-    echo "Removing the newly-built objects ..."
+    echo "Removing the newly-built objects and restoring original input.nml"
     ${REMOVE} *.o *.mod 
     ${REMOVE} Makefile input.nml.*_default .cppdefs
     foreach TARGET ( mkmf_* )
@@ -113,6 +165,7 @@ foreach MODEL ( \
       set base = `basename $i .cdl`
       if ( -f ${base}.nc ) rm ${base}.nc
     end
+    cp -f input.nml.$$ input.nml
 
     @ modelnum = $modelnum + 1
 
@@ -127,6 +180,10 @@ foreach MODEL ( \
     echo
 
 end
+
+echo
+echo $modelnum models tested.
+echo
 
 exit 0
 
