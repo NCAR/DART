@@ -3523,11 +3523,11 @@ character(len=*),  intent(inout) :: state_variables(:)
 
 ! strings must all be the same length for the gnu compiler
 state_variables( 1:5*num_state_table_columns ) = &
-   (/ 'CONCENTRATION             ', 'QTY_SEAICE_CONCENTR      ', 'UPDATE                    ', &
-      'ICEVOLUME                 ', 'QTY_SEAICE_VOLUME        ', 'UPDATE                    ', &
-      'SNOWVOLUME                ', 'QTY_SEAICE_SNOWVOLUME    ', 'UPDATE                    ', &
-      'UICE                      ', 'QTY_U_SEAICE_COMPONENT   ', 'UPDATE                    ', &
-      'VICE                      ', 'QTY_V_SEAICE_COMPONENT   ', 'UPDATE                    '/)
+   (/ 'CONCENTRATION             ', 'QTY_SEAICE_CONCENTR       ', 'UPDATE                    ', &
+      'ICEVOLUME                 ', 'QTY_SEAICE_VOLUME         ', 'UPDATE                    ', &
+      'SNOWVOLUME                ', 'QTY_SEAICE_SNOWVOLUME     ', 'UPDATE                    ', &
+      'UICE                      ', 'QTY_U_SEAICE_COMPONENT    ', 'UPDATE                    ', &
+      'VICE                      ', 'QTY_V_SEAICE_COMPONENT    ', 'UPDATE                    '/)
 
 end subroutine use_default_state_variables
 
