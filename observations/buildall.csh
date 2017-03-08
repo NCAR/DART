@@ -64,7 +64,7 @@ foreach project ( `find . -name quickbuild.csh -print` )
          breaksw
       endsw
   
-   else
+   endif
          
    echo 
    echo 
