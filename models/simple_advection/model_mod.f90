@@ -6,7 +6,7 @@
 
 module model_mod
 
-use        types_mod, only : r8, PI, i8
+use        types_mod, only : r8, PI, i4, i8
 
 use time_manager_mod, only : time_type, set_time, get_time
 
@@ -218,19 +218,27 @@ endif
 ! can read/write it.
 if (template_file /= '') then
    dom_id = add_domain(template_file, NVARS, &
-                       (/ 'concentration', 'mean_source', 'source', 'source_phase', 'wind' /))
+                       (/ 'concentration', &
+                          'mean_source  ', &
+                          'source       ', &
+                          'source_phase ', &
+                          'wind         ' /))
 else 
    !>@todo FIXME : should not need a template file if initializing members from code
 
    write(string1, *) 'template file is required for now'
    call error_handler(E_ERR,'static_init_model',string1, source, revision, revdate)
 
-   dom_id = add_domain(NVARS, (/ 'concentration', 'mean_source', 'source', 'source_phase', 'wind' /))
+   dom_id = add_domain(NVARS, (/ 'concentration', &
+                                 'mean_source  ', &
+                                 'source       ', &
+                                 'source_phase ', &
+                                 'wind         ' /))
 
    do var_id=1, NVARS
       call add_dimension_to_variable(dom_id, var_id, 'time', 1)
       call add_dimension_to_variable(dom_id, var_id, 'member', my_ens_size)
-      call add_dimension_to_variable(dom_id, var_id, 'location', num_grid_points)
+      call add_dimension_to_variable(dom_id, var_id, 'location', int(num_grid_points, i4))
    enddo
    
    call finished_adding_domain(dom_id)
