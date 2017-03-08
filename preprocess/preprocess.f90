@@ -68,7 +68,7 @@ character(len = 78) :: blank_line = &
 ! List of the DART PREPROCESS strings for obs_def type files.
 character(len = 29) :: preprocess_string(8) = (/ &
       'MODULE CODE                  ', &
-      'USE FOR OBS_QTY_MOD         ', &
+      'USE FOR OBS_QTY_MOD          ', &
       'USE OF SPECIAL OBS_DEF MODULE', &
       'GET_EXPECTED_OBS_FROM_DEF    ', &
       'READ_OBS_DEF                 ', &
