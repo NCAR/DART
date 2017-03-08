@@ -51,14 +51,14 @@ use obs_sequence_mod, only : append_obs_to_seq, copy_obs, delete_obs_from_seq, &
                              set_obs_def, set_obs_values, set_qc, set_qc_meta_data, &
                              static_init_obs_sequence, write_obs_seq, init_obs_sequence
 use      obs_def_mod, only : get_obs_def_error_variance, get_obs_def_location, &
-                             get_obs_def_time, get_obs_kind, obs_def_type, &
-                             set_obs_def_error_variance, set_obs_def_kind, &
+                             get_obs_def_time, get_obs_def_type_of_obs, obs_def_type, &
+                             set_obs_def_error_variance, set_obs_def_type_of_obs, &
                              set_obs_def_location, set_obs_def_time
 use     obs_kind_mod, only : ACARS_DEWPOINT, ACARS_RELATIVE_HUMIDITY, ACARS_SPECIFIC_HUMIDITY, &
                              ACARS_TEMPERATURE, ACARS_U_WIND_COMPONENT, ACARS_V_WIND_COMPONENT, &
                              AIRCRAFT_SPECIFIC_HUMIDITY, AIRCRAFT_TEMPERATURE, AIRCRAFT_U_WIND_COMPONENT, &
                              AIRCRAFT_V_WIND_COMPONENT, GPS_PRECIPITABLE_WATER, GPSRO_REFRACTIVITY, &
-                             KIND_SURFACE_ELEVATION, LAND_SFC_ALTIMETER, LAND_SFC_DEWPOINT, &
+                             QTY_SURFACE_ELEVATION, LAND_SFC_ALTIMETER, LAND_SFC_DEWPOINT, &
                              LAND_SFC_RELATIVE_HUMIDITY, LAND_SFC_SPECIFIC_HUMIDITY, LAND_SFC_TEMPERATURE, &
                              LAND_SFC_U_WIND_COMPONENT, LAND_SFC_V_WIND_COMPONENT, MARINE_SFC_ALTIMETER, &
                              MARINE_SFC_DEWPOINT, MARINE_SFC_RELATIVE_HUMIDITY, MARINE_SFC_SPECIFIC_HUMIDITY, &
@@ -472,7 +472,7 @@ ObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a sequence
 
   !  read data from observation
   call get_obs_def(obs_in, obs_def)
-  okind   = get_obs_kind(obs_def)
+  okind   = get_obs_def_type_of_obs(obs_def)
   obs_loc = get_obs_def_location(obs_def)
   llv_loc = get_location(obs_loc)
   obs_time = get_obs_def_time(obs_def)
@@ -728,7 +728,7 @@ real(r8)              :: obs_val(1), qc_val(1)
 type(obs_def_type)    :: obs_def
 
 call set_obs_def_location(obs_def, set_location(lon, lat, vloc, vcord))
-call set_obs_def_kind(obs_def, okind)
+call set_obs_def_type_of_obs(obs_def, okind)
 call set_obs_def_time(obs_def, otime)
 call set_obs_def_error_variance(obs_def, oerr)
 call set_obs_def(obs, obs_def)
@@ -841,7 +841,7 @@ else
   !  perform elevation check for altimeter
   if ( elev_check ) then
 
-    call model_interpolate(xmod, obs_loc, KIND_SURFACE_ELEVATION, hsfc, istatus)
+    call model_interpolate(xmod, obs_loc, QTY_SURFACE_ELEVATION, hsfc, istatus)
     if ( abs(hsfc - llv_loc(3)) > elev_max ) rawinsonde_obs_check = .false.
 
   end if
@@ -950,7 +950,7 @@ InputObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a seq
 
   !  Get the observation information, check if it is in the domain
   call get_obs_def(obs_in, obs_def)
-  okind   = get_obs_kind(obs_def)
+  okind   = get_obs_def_type_of_obs(obs_def)
   obs_loc = get_obs_def_location(obs_def)
   llv_loc = get_location(obs_loc)
   cellid  = find_closest_cell_center(llv_loc(2), llv_loc(1))
@@ -1293,7 +1293,7 @@ do while ( .not. last_obs )
 
   call get_obs_def(obs, obs_def)
   obs_loc  = get_obs_def_location(obs_def)
-  obs_kind = get_obs_kind(obs_def)
+  obs_kind = get_obs_def_type_of_obs(obs_def)
   llv_loc  = get_location(obs_loc)
 
   locdex = -1
@@ -1718,7 +1718,7 @@ do while ( .not. last_obs )
 
   call get_obs_def(obs, obs_def)
   obs_loc  = get_obs_def_location(obs_def)
-  obs_kind = get_obs_kind(obs_def)
+  obs_kind = get_obs_def_type_of_obs(obs_def)
   llv_loc  = get_location(obs_loc)
 
   !  determine if observation exists
@@ -1937,7 +1937,7 @@ surface_obs_check = .true.
 if ( elev_check ) then
 
   call model_interpolate(xmod, set_location(llv_loc(1), llv_loc(2), &
-      llv_loc(3), VERTISSURFACE), KIND_SURFACE_ELEVATION, hsfc, istatus)
+      llv_loc(3), VERTISSURFACE), QTY_SURFACE_ELEVATION, hsfc, istatus)
   if ( abs(hsfc - llv_loc(3)) > elev_max ) surface_obs_check = .false.
 
 end if

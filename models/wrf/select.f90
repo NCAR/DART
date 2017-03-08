@@ -23,7 +23,7 @@ use     obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT, &
                              RADIOSONDE_SURFACE_PRESSURE, &
                              RADIOSONDE_TEMPERATURE, &
                              RADIOSONDE_SPECIFIC_HUMIDITY
-use      obs_def_mod, only : obs_def_type, get_obs_kind, &
+use      obs_def_mod, only : obs_def_type, get_obs_def_type_of_obs, &
                              get_obs_def_time, get_obs_def_location
 use     location_mod, only : location_type, get_location
 use time_manager_mod, only : time_type, operator(/=), get_time, print_time, &
@@ -120,7 +120,7 @@ do i = 1, real_seq_num_obs
    location = get_obs_def_location(real_obs_def)
    loc = get_location(location)
 
-   kind = get_obs_kind(real_obs_def)
+   kind = get_obs_def_type_of_obs(real_obs_def)
 
    if (  &
 !!$         seconds >= (86401 - delta) .or. &

@@ -239,7 +239,7 @@ call create_state_window(ens_handle)
 ! FIXME: needs to be ensemble_size
 loc = set_location(loc_of_interest(1), loc_of_interest(2), loc_of_interest(3))
 
-mykindindex = get_raw_obs_kind_index(kind_of_interest)
+mykindindex = get_index_for_quantity(kind_of_interest)
 
 allocate(interp_vals(1), ios_out(1))
 call model_interpolate(ens_handle, ens_size, loc, mykindindex, interp_vals, ios_out)

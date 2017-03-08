@@ -23,11 +23,11 @@
 ! put in more descriptive platform names.
 
 ! BEGIN DART PREPROCESS KIND LIST
-!  AQUA_TOTAL_PRECIPITABLE_WATER, KIND_TOTAL_PRECIPITABLE_WATER
-! TERRA_TOTAL_PRECIPITABLE_WATER, KIND_TOTAL_PRECIPITABLE_WATER
-!  AMSR_TOTAL_PRECIPITABLE_WATER, KIND_TOTAL_PRECIPITABLE_WATER
-! MODIS_TOTAL_PRECIPITABLE_WATER, KIND_TOTAL_PRECIPITABLE_WATER
-!   GPS_TOTAL_PRECIPITABLE_WATER, KIND_TOTAL_PRECIPITABLE_WATER
+!  AQUA_TOTAL_PRECIPITABLE_WATER, QTY_TOTAL_PRECIPITABLE_WATER
+! TERRA_TOTAL_PRECIPITABLE_WATER, QTY_TOTAL_PRECIPITABLE_WATER
+!  AMSR_TOTAL_PRECIPITABLE_WATER, QTY_TOTAL_PRECIPITABLE_WATER
+! MODIS_TOTAL_PRECIPITABLE_WATER, QTY_TOTAL_PRECIPITABLE_WATER
+!   GPS_TOTAL_PRECIPITABLE_WATER, QTY_TOTAL_PRECIPITABLE_WATER
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -75,8 +75,8 @@ use     location_mod, only : location_type, set_location, get_location, &
 use time_manager_mod, only : time_type, read_time, write_time, &
                              set_time, set_time_missing
 use  assim_model_mod, only : interpolate
-use     obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_SPECIFIC_HUMIDITY, &
-                             KIND_TOTAL_PRECIPITABLE_WATER, KIND_PRESSURE
+use     obs_kind_mod, only : QTY_SURFACE_PRESSURE, QTY_SPECIFIC_HUMIDITY, &
+                             QTY_TOTAL_PRECIPITABLE_WATER, QTY_PRESSURE
 use ensemble_manager_mod,  only : ensemble_type
 use obs_def_utilities_mod, only : track_status
 
@@ -212,11 +212,11 @@ location2 = set_location(lon, lat, height,  which_vert)
 ! assumes the values returned from the interpolation will be in these units:
 !   surface pressure :  Pa
 !   moisture         :  kg/kg
-call interpolate(state_handle, ens_size, location2, KIND_SURFACE_PRESSURE, pressure(:, 1), this_istatus)
+call interpolate(state_handle, ens_size, location2, QTY_SURFACE_PRESSURE, pressure(:, 1), this_istatus)
 call track_status(ens_size, this_istatus, tpw, istatus, return_now)
 if (return_now) return
 
-call interpolate(state_handle, ens_size, location2, KIND_SPECIFIC_HUMIDITY, qv(:, 1), this_istatus)
+call interpolate(state_handle, ens_size, location2, QTY_SPECIFIC_HUMIDITY, qv(:, 1), this_istatus)
 call track_status(ens_size, this_istatus, tpw, istatus, return_now)
 if (return_now) return
 
@@ -260,12 +260,12 @@ if (model_levels) then
       which_vert = VERTISLEVEL
       location2 = set_location(lon, lat, real(k, r8),  which_vert)
 !> @todo --- This may be different for each ensemble memeber ---
-      call interpolate(state_handle, ens_size, location2, KIND_PRESSURE, pressure(:, lastk), this_istatus)
+      call interpolate(state_handle, ens_size, location2, QTY_PRESSURE, pressure(:, lastk), this_istatus)
       call track_status(ens_size, this_istatus, tpw, istatus, return_now)
       if (any(pressure(:, lastk) < pressure_top)) exit LEVELS
       if (return_now) return
 
-      call interpolate(state_handle, ens_size, location2, KIND_SPECIFIC_HUMIDITY, qv(:, lastk), this_istatus)
+      call interpolate(state_handle, ens_size, location2, QTY_SPECIFIC_HUMIDITY, qv(:, lastk), this_istatus)
       call track_status(ens_size, this_istatus, tpw, istatus, return_now)
 !--------------------------------------------------------------
       if (return_now) return
@@ -309,7 +309,7 @@ else
       !> but what to do in the general case?  set a fixed top and bottom pressure??
       location2 = set_location(lon, lat, pressure(1, k),  which_vert)
    
-      call interpolate(state_handle, ens_size, location2,  KIND_SPECIFIC_HUMIDITY, qv(:, k), this_istatus)
+      call interpolate(state_handle, ens_size, location2,  QTY_SPECIFIC_HUMIDITY, qv(:, k), this_istatus)
       call track_status(ens_size, this_istatus, tpw, istatus, return_now)
       if (return_now) return
    

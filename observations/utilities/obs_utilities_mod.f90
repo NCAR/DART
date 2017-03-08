@@ -9,10 +9,10 @@ module obs_utilities_mod
 
 use        types_mod, only : i2, i4, r8, MISSING_R8, MISSING_I
 use    utilities_mod, only : nc_check, E_MSG, E_ERR, error_handler
-use      obs_def_mod, only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
+use      obs_def_mod, only : obs_def_type, set_obs_def_time, set_obs_def_type_of_obs, &
                              set_obs_def_error_variance, set_obs_def_location, &
                              get_obs_def_time, get_obs_def_location,           &
-                             get_obs_kind, get_obs_def_error_variance,         &
+                             get_obs_def_type_of_obs, get_obs_def_error_variance,         &
                              set_obs_def_key
 use obs_sequence_mod, only : obs_sequence_type, obs_type, insert_obs_in_seq, &
                              set_obs_values, set_qc, set_obs_def, get_qc,    &
@@ -99,7 +99,7 @@ real(r8)              :: obs_val(1), qc_val(1)
 type(obs_def_type)    :: obs_def
 
 call set_obs_def_location(obs_def, set_location(lon, lat, vval, vkind))
-call set_obs_def_kind(obs_def, okind)
+call set_obs_def_type_of_obs(obs_def, okind)
 call set_obs_def_time(obs_def, set_time(sec, day))
 call set_obs_def_error_variance(obs_def, oerr * oerr)
 if (present(key)) then
@@ -159,7 +159,7 @@ lat  = locvals(2)
 vval = locvals(3)
 vkind = query_location(loc)
 
-okind = get_obs_kind(obs_def)
+okind = get_obs_def_type_of_obs(obs_def)
 call get_time(get_obs_def_time(obs_def), sec, day)
 
 oerr = sqrt(get_obs_def_error_variance(obs_def))

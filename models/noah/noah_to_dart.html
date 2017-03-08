@@ -88,14 +88,14 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
 
 &amp;model_nml
      noah_netcdf_filename         = 'restart.nc',
-     noah_state_variables         = 'SOIL_T',   'KIND_SOIL_TEMPERATURE',
-                                    'SOIL_M',   'KIND_SOIL_MOISTURE',
-                                    'SOIL_W',   'KIND_SOIL_LIQUID_WATER',
-                                    'SKINTEMP', 'KIND_SKIN_TEMPERATURE',
-                                    'SNODEP',   'KIND_SNOW_THICKNESS',
-                                    'WEASD',    'KIND_SNOW_WATER',
-                                    'CANWAT',   'KIND_CANOPY_WATER',
-                                    'QFX',      'KIND_LATENT_HEAT_FLUX',
+     noah_state_variables         = 'SOIL_T',   'QTY_SOIL_TEMPERATURE',
+                                    'SOIL_M',   'QTY_SOIL_MOISTURE',
+                                    'SOIL_W',   'QTY_SOIL_LIQUID_WATER',
+                                    'SKINTEMP', 'QTY_SKIN_TEMPERATURE',
+                                    'SNODEP',   'QTY_SNOW_THICKNESS',
+                                    'WEASD',    'QTY_SNOW_WATER',
+                                    'CANWAT',   'QTY_CANOPY_WATER',
+                                    'QFX',      'QTY_LATENT_HEAT_FLUX',
   /
 </pre>
 </div>
@@ -156,16 +156,16 @@ variables for <em class=program>noah_to_dart</em> are repeated here.
 
 &amp;model_nml
      noah_netcdf_file     = 'restart.nc',
-     noah_state_variables = 'SOIL_T',   'KIND_SOIL_TEMPERATURE',
-                            'SOIL_M',   'KIND_SOIL_MOISTURE',
-                            'SOIL_W',   'KIND_SOIL_LIQUID_WATER',
-                            'SKINTEMP', 'KIND_SKIN_TEMPERATURE',
-                            'SNODEP',   'KIND_SNOW_THICKNESS',
-                            'WEASD',    'KIND_SNOW_WATER',
-                            'CANWAT',   'KIND_CANOPY_WATER',
-                            'QFX',      'KIND_LATENT_HEAT_FLUX',
-                            'HFX',      'KIND_SENSIBLE_HEAT_FLUX',
-                            'GRDFLX',   'KIND_GROUND_HEAT_FLUX'
+     noah_state_variables = 'SOIL_T',   'QTY_SOIL_TEMPERATURE',
+                            'SOIL_M',   'QTY_SOIL_MOISTURE',
+                            'SOIL_W',   'QTY_SOIL_LIQUID_WATER',
+                            'SKINTEMP', 'QTY_SKIN_TEMPERATURE',
+                            'SNODEP',   'QTY_SNOW_THICKNESS',
+                            'WEASD',    'QTY_SNOW_WATER',
+                            'CANWAT',   'QTY_CANOPY_WATER',
+                            'QFX',      'QTY_LATENT_HEAT_FLUX',
+                            'HFX',      'QTY_SENSIBLE_HEAT_FLUX',
+                            'GRDFLX',   'QTY_GROUND_HEAT_FLUX'
   /
 </pre>
 

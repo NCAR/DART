@@ -27,7 +27,7 @@ use ensemble_manager_mod,  only : ensemble_type
 
 use state_structure_mod,  only : add_domain, get_domain_size
 
-use obs_kind_mod,  only : get_raw_obs_kind_index
+use obs_kind_mod,  only : get_index_for_quantity
 
 use dart_time_io_mod, only : write_model_time
 
@@ -122,10 +122,10 @@ character(len=129), dimension(max_state_variables, num_state_table_columns):: va
 call register_module(source, revision, revdate)
 
 state_variables(1:4*num_state_table_columns)  = &
-                   (/ 'A            ',  'KIND_PRESSURE', 'NA           ', 'NA           ', 'NO_COPY_BACK ', &
-                      'B            ',  'KIND_PRESSURE', '0.0          ', 'NA           ', 'UPDATE       ', &
-                      'C            ',  'KIND_PRESSURE', '0.0          ', 'NA           ', 'UPDATE       ', &
-                      'temp         ',  'KIND_GPSRO   ', '-1           ', '234567       ', 'UPDATE       ' /)
+                   (/ 'A            ',  'QTY_PRESSURE', 'NA           ', 'NA           ', 'NO_COPY_BACK ', &
+                      'B            ',  'QTY_PRESSURE', '0.0          ', 'NA           ', 'UPDATE       ', &
+                      'C            ',  'QTY_PRESSURE', '0.0          ', 'NA           ', 'UPDATE       ', &
+                      'temp         ',  'QTY_GPSRO   ', '-1           ', '234567       ', 'UPDATE       ' /)
                       !----5----10--     -------------    -------------    -------------    -------------
 
 call parse_variable_table( state_variables, nfields, var_table, statekindlist, stateclampvals, stateupdatelist )
@@ -827,7 +827,7 @@ MyLoop : do i = 1, nrows
    endif
 
    ! Make sure DART kind is valid
-   kindslist(i) = get_raw_obs_kind_index(dartstr)
+   kindslist(i) = get_index_for_quantity(dartstr)
    if( kindslist(i) < 0 ) then
       write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
       call error_handler(E_ERR,'parse_variable_table',string1,source,revision,revdate)

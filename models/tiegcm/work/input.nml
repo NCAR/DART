@@ -104,22 +104,22 @@
 #    all these variables will be updated INTERNALLY IN DART.
 #
 # This is an example of how to restrict the range of each variable
-#  variables = 'NE',    'KIND_ELECTRON_DENSITY',          '1000.0',  'NA',      'restart',   'UPDATE',
-#              'TN',    'KIND_TEMPERATURE',               '0.0',     '6000.0',  'restart',   'UPDATE',
-#              'TN_NM', 'KIND_TEMPERATURE',               '0.0',     '6000.0',  'restart',   'NO_COPY_BACK',
-#              'O1',    'KIND_ATOMIC_OXYGEN_MIXING_RATIO','0.00001', '0.98888', 'restart',   'UPDATE',
-#              'O1_NM', 'KIND_ATOMIC_OXYGEN_MIXING_RATIO','0.00001', '0.98888', 'restart',   'NO_COPY_BACK',
-#              'O2',    'KIND_MOLEC_OXYGEN_MIXING_RATIO', '0.00001', '0.98888', 'restart',   'UPDATE',
-#              'O2_NM', 'KIND_MOLEC_OXYGEN_MIXING_RATIO', '0.00001', '0.98888', 'restart',   'NO_COPY_BACK',
-#              'UN',    'KIND_U_WIND_COMPONENT',          'NA',      'NA',      'restart',   'UPDATE',
-#              'UN_NM', 'KIND_U_WIND_COMPONENT',          'NA',      'NA',      'restart',   'NO_COPY_BACK',
-#              'VN',    'KIND_V_WIND_COMPONENT',          'NA',      'NA',      'restart',   'UPDATE',
-#              'VN_NM', 'KIND_V_WIND_COMPONENT',          'NA',      'NA',      'restart',   'NO_COPY_BACK',
-#              'OP',    'KIND_DENSITY_ION_OP',            'NA',      'NA',      'restart',   'UPDATE',
-#              'TI',    'KIND_TEMPERATURE_ION',           'NA',      'NA',      'restart',   'NO_COPY_BACK',
-#              'TE',    'KIND_TEMPERATURE_ELECTRON',      'NA',      'NA',      'restart',   'NO_COPY_BACK',
-#              'ZG',    'KIND_GEOMETRIC_HEIGHT',          'NA',      'NA',      'secondary', 'NO_COPY_BACK',
-#              'VTEC',  'KIND_VERTICAL_TEC',              'NA',      'NA',      'calculate'  'NO_COPY_BACK' 
+#  variables = 'NE',    'QTY_ELECTRON_DENSITY',          '1000.0',  'NA',      'restart',   'UPDATE',
+#              'TN',    'QTY_TEMPERATURE',               '0.0',     '6000.0',  'restart',   'UPDATE',
+#              'TN_NM', 'QTY_TEMPERATURE',               '0.0',     '6000.0',  'restart',   'NO_COPY_BACK',
+#              'O1',    'QTY_ATOMIC_OXYGEN_MIXING_RATIO','0.00001', '0.98888', 'restart',   'UPDATE',
+#              'O1_NM', 'QTY_ATOMIC_OXYGEN_MIXING_RATIO','0.00001', '0.98888', 'restart',   'NO_COPY_BACK',
+#              'O2',    'QTY_MOLEC_OXYGEN_MIXING_RATIO', '0.00001', '0.98888', 'restart',   'UPDATE',
+#              'O2_NM', 'QTY_MOLEC_OXYGEN_MIXING_RATIO', '0.00001', '0.98888', 'restart',   'NO_COPY_BACK',
+#              'UN',    'QTY_U_WIND_COMPONENT',          'NA',      'NA',      'restart',   'UPDATE',
+#              'UN_NM', 'QTY_U_WIND_COMPONENT',          'NA',      'NA',      'restart',   'NO_COPY_BACK',
+#              'VN',    'QTY_V_WIND_COMPONENT',          'NA',      'NA',      'restart',   'UPDATE',
+#              'VN_NM', 'QTY_V_WIND_COMPONENT',          'NA',      'NA',      'restart',   'NO_COPY_BACK',
+#              'OP',    'QTY_DENSITY_ION_OP',            'NA',      'NA',      'restart',   'UPDATE',
+#              'TI',    'QTY_TEMPERATURE_ION',           'NA',      'NA',      'restart',   'NO_COPY_BACK',
+#              'TE',    'QTY_TEMPERATURE_ELECTRON',      'NA',      'NA',      'restart',   'NO_COPY_BACK',
+#              'ZG',    'QTY_GEOMETRIC_HEIGHT',          'NA',      'NA',      'secondary', 'NO_COPY_BACK',
+#              'VTEC',  'QTY_VERTICAL_TEC',              'NA',      'NA',      'calculate'  'NO_COPY_BACK' 
 
 &model_nml
    debug                       = 1
@@ -129,16 +129,16 @@
    tiegcm_namelist_file_name   = 'tiegcm.nml'
    assimilation_period_seconds = 3600
    estimate_f10_7              = .false.
-   variables = 'NE',    'KIND_ELECTRON_DENSITY',          '1000.0',  'NA',      'restart',    'UPDATE'
-               'OP',    'KIND_DENSITY_ION_OP',            'NA',      'NA',      'restart',    'UPDATE',
-               'TI',    'KIND_TEMPERATURE_ION',           'NA',      'NA',      'restart',    'UPDATE',
-               'TE',    'KIND_TEMPERATURE_ELECTRON',      'NA',      'NA',      'restart',    'UPDATE',
-               'OP_NM', 'KIND_DENSITY_ION_OP',            'NA',      'NA',      'restart',    'UPDATE',
-	       'O1',    'KIND_ATOMIC_OXYGEN_MIXING_RATIO','0.00001', '0.99999', 'restart',    'NO_COPY_BACK',
-               'O2',    'KIND_MOLEC_OXYGEN_MIXING_RATIO', '0.00001', '0.99999', 'restart',    'NO_COPY_BACK',
-               'TN',    'KIND_TEMPERATURE',               '0.0',     '6000.0',  'restart',    'NO_COPY_BACK',
-               'ZG',    'KIND_GEOMETRIC_HEIGHT',          'NA',      'NA',      'secondary',  'NO_COPY_BACK',
-               'VTEC',  'KIND_VERTICAL_TEC',              'NA',      'NA',      'calculate',  'NO_COPY_BACK' 
+   variables = 'NE',    'QTY_ELECTRON_DENSITY',          '1000.0',  'NA',      'restart',    'UPDATE'
+               'OP',    'QTY_DENSITY_ION_OP',            'NA',      'NA',      'restart',    'UPDATE',
+               'TI',    'QTY_TEMPERATURE_ION',           'NA',      'NA',      'restart',    'UPDATE',
+               'TE',    'QTY_TEMPERATURE_ELECTRON',      'NA',      'NA',      'restart',    'UPDATE',
+               'OP_NM', 'QTY_DENSITY_ION_OP',            'NA',      'NA',      'restart',    'UPDATE',
+	       'O1',    'QTY_ATOMIC_OXYGEN_MIXING_RATIO','0.00001', '0.99999', 'restart',    'NO_COPY_BACK',
+               'O2',    'QTY_MOLEC_OXYGEN_MIXING_RATIO', '0.00001', '0.99999', 'restart',    'NO_COPY_BACK',
+               'TN',    'QTY_TEMPERATURE',               '0.0',     '6000.0',  'restart',    'NO_COPY_BACK',
+               'ZG',    'QTY_GEOMETRIC_HEIGHT',          'NA',      'NA',      'secondary',  'NO_COPY_BACK',
+               'VTEC',  'QTY_VERTICAL_TEC',              'NA',      'NA',      'calculate',  'NO_COPY_BACK' 
    /
 
 

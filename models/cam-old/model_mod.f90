@@ -32,7 +32,7 @@
 !>  CAM coordinate order when written to caminput.nc files.
 !>
 !>  If a user wants to add new TYPE_s to the state vector,
-!>  then more KIND_s may be needed in the obs_kind_mod and the 'use obs_kind_mod' statement.
+!>  then more QTY_s may be needed in the obs_kind_mod and the 'use obs_kind_mod' statement.
 !> 
 !>  Observations below the lowest model level (including surface observations) and above
 !>  the highest model level cannot be assimilated (yet).  The spatial extent of observations
@@ -97,7 +97,7 @@ module model_mod
 !  but 3d pressure on staggered grids is calculated as needed. 
 
 !  If a user wants to add new TYPE_s to the state vector,
-!  then more KIND_s may be needed in the obs_kind_mod and the 'use obs_kind_mod' statement.
+!  then more QTY_s may be needed in the obs_kind_mod and the 'use obs_kind_mod' statement.
 
 !  The coordinates of CAM (lats, lons, ncol, etc.) and their dimensions  and attributes are
 !  read into globally accessible data structures (see grid_1d_type).
@@ -163,13 +163,13 @@ use location_mod,      only : location_type, get_location, set_location, query_l
 ! use utilities_YYY, only : solve_quadratic
 
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_PRESSURE,       &
-                             KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY,   &
-                             KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE, KIND_CLOUD_FRACTION,      &
-                             KIND_GRAV_WAVE_DRAG_EFFIC, KIND_GRAV_WAVE_STRESS_FRACTION,         &
-                             KIND_SURFACE_ELEVATION,                                            &
-                             KIND_CO, KIND_CO2, KIND_NO, KIND_NO2, KIND_CH4, KIND_NH3, KIND_O3, &
-                             get_raw_obs_kind_index, get_raw_obs_kind_name, get_obs_kind_var_type
+use     obs_kind_mod, only : QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, QTY_PRESSURE,       &
+                             QTY_SURFACE_PRESSURE, QTY_TEMPERATURE, QTY_SPECIFIC_HUMIDITY,   &
+                             QTY_CLOUD_LIQUID_WATER, QTY_CLOUD_ICE, QTY_CLOUD_FRACTION,      &
+                             QTY_GRAV_WAVE_DRAG_EFFIC, QTY_GRAV_WAVE_STRESS_FRACTION,         &
+                             QTY_SURFACE_ELEVATION,                                            &
+                             QTY_CO, QTY_CO2, QTY_NO, QTY_NO2, QTY_CH4, QTY_NH3, QTY_O3, &
+                             get_index_for_quantity, get_name_for_quantity, get_quantity_for_type_of_obs
 
 
 ! Other possibilities (names have changed with various CAM versions):
@@ -424,7 +424,7 @@ character(len=8) :: pert_names    (MAX_STATE_NAMES) = '        '
 real(r8)         :: pert_sd       (MAX_STATE_NAMES) = MISSING_R8
 real(r8)         :: pert_base_vals(MAX_STATE_NAMES) = MISSING_R8
 
-! Special for an experiment.  Specify one string kind e.g KIND_CLOUD_LIQUID and
+! Special for an experiment.  Specify one string kind e.g QTY_CLOUD_LIQUID and
 ! observations of that kind will only impact other obs and state vars of that
 ! same kind.  All other kinds of obs and state vars will not be impacted
 ! by obs of this kind.  A null string means behave as normal.
@@ -511,9 +511,9 @@ character(len=8), allocatable :: cflds(:)
 character(len=nf90_max_name), allocatable :: state_long_names(:)
 character(len=nf90_max_name), allocatable :: state_units(:)
 
-! array for the linking of obs_kinds(KIND_) to model field TYPE_s
+! array for the linking of obs_kinds(QTY_) to model field TYPE_s
 ! It's filled in map_kinds
-! The max size of KIND_ should come from obs_kind_mod
+! The max size of QTY_ should come from obs_kind_mod
 ! These should be dimensioned the same size as the total of state_names_Nd.
 integer :: dart_to_cam_types(300) = MISSING_I
 integer :: cam_to_dart_kinds(300) = MISSING_I
@@ -714,13 +714,13 @@ max_levs = lev%length
 if (ilev%label /= '') max_levs = max(ilev%length, lev%length)
 
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-! Fills arrays for the linking of obs_kinds (KIND_) to model field TYPE_s
+! Fills arrays for the linking of obs_kinds (QTY_) to model field TYPE_s
 call map_kinds()
 
 ! If restricting impact of a particular kind to only obs and state vars
 ! of the same kind, look up and set the kind index.
 if (len_trim(impact_only_same_kind) > 0) then
-   impact_kind_index = get_raw_obs_kind_index(impact_only_same_kind)
+   impact_kind_index = get_index_for_quantity(impact_only_same_kind)
 endif
 
 ! This validates the namelist value and sets the module global value highest_obs_level.
@@ -1594,59 +1594,59 @@ subroutine map_kinds()
 ! within the state vector according to state_name_Xd.
 ! This subroutine will be called from static_init_model, so it will not have to be
 ! recomputed for every ob.
-! Also maps the local model_mod TYPE_s onto the DART KIND_s by the same mechanism.
+! Also maps the local model_mod TYPE_s onto the DART QTY_s by the same mechanism.
 
-! other KIND_ possibilities are listed after the 'use obs_kind_mod' statement
+! other QTY_ possibilities are listed after the 'use obs_kind_mod' statement
 
 integer :: i
 
 ! Physically 2D fields
-dart_to_cam_types(KIND_SURFACE_PRESSURE) = TYPE_PS
-if (TYPE_PS /= MISSING_I) cam_to_dart_kinds(TYPE_PS) = KIND_SURFACE_PRESSURE
+dart_to_cam_types(QTY_SURFACE_PRESSURE) = TYPE_PS
+if (TYPE_PS /= MISSING_I) cam_to_dart_kinds(TYPE_PS) = QTY_SURFACE_PRESSURE
 
-dart_to_cam_types(KIND_GRAV_WAVE_DRAG_EFFIC) = TYPE_EFGWORO
+dart_to_cam_types(QTY_GRAV_WAVE_DRAG_EFFIC) = TYPE_EFGWORO
 if (TYPE_EFGWORO /= MISSING_I) &
-   cam_to_dart_kinds(TYPE_EFGWORO) = KIND_GRAV_WAVE_DRAG_EFFIC
+   cam_to_dart_kinds(TYPE_EFGWORO) = QTY_GRAV_WAVE_DRAG_EFFIC
 
-dart_to_cam_types(KIND_GRAV_WAVE_STRESS_FRACTION) = TYPE_FRACLDV
+dart_to_cam_types(QTY_GRAV_WAVE_STRESS_FRACTION) = TYPE_FRACLDV
 if (TYPE_FRACLDV /= MISSING_I) &
-   cam_to_dart_kinds(TYPE_FRACLDV) = KIND_GRAV_WAVE_STRESS_FRACTION
+   cam_to_dart_kinds(TYPE_FRACLDV) = QTY_GRAV_WAVE_STRESS_FRACTION
 
-! dart_to_cam_types(KIND_SURFACE_TEMPERATURE  ?  ) = TYPE_TS
-! dart_to_cam_types(KIND_SEA_SURFACE_TEMPERATURE  ?  ) = TYPE_TSOCN
+! dart_to_cam_types(QTY_SURFACE_TEMPERATURE  ?  ) = TYPE_TS
+! dart_to_cam_types(QTY_SEA_SURFACE_TEMPERATURE  ?  ) = TYPE_TSOCN
 
 ! Physically 3D fields
-dart_to_cam_types(KIND_TEMPERATURE)        = TYPE_T
-dart_to_cam_types(KIND_U_WIND_COMPONENT)   = TYPE_U
-dart_to_cam_types(KIND_V_WIND_COMPONENT)   = TYPE_V
-dart_to_cam_types(KIND_SPECIFIC_HUMIDITY)  = TYPE_Q
-dart_to_cam_types(KIND_CLOUD_LIQUID_WATER) = TYPE_CLDLIQ
-dart_to_cam_types(KIND_CLOUD_ICE)          = TYPE_CLDICE
-! dart_to_cam_types(KIND_CLOUD_WATER  ?  ) = TYPE_LCWAT
-dart_to_cam_types(KIND_CO)  = TYPE_CO
-dart_to_cam_types(KIND_CO2) = TYPE_CO2
-dart_to_cam_types(KIND_NO)  = TYPE_NO
-dart_to_cam_types(KIND_NO2) = TYPE_NO2
-dart_to_cam_types(KIND_CH4) = TYPE_CH4
-dart_to_cam_types(KIND_NH3) = TYPE_NH3
-! dart_to_cam_types(KIND_O)   = TYPE_O
-dart_to_cam_types(KIND_O3)  = TYPE_O3
+dart_to_cam_types(QTY_TEMPERATURE)        = TYPE_T
+dart_to_cam_types(QTY_U_WIND_COMPONENT)   = TYPE_U
+dart_to_cam_types(QTY_V_WIND_COMPONENT)   = TYPE_V
+dart_to_cam_types(QTY_SPECIFIC_HUMIDITY)  = TYPE_Q
+dart_to_cam_types(QTY_CLOUD_LIQUID_WATER) = TYPE_CLDLIQ
+dart_to_cam_types(QTY_CLOUD_ICE)          = TYPE_CLDICE
+! dart_to_cam_types(QTY_CLOUD_WATER  ?  ) = TYPE_LCWAT
+dart_to_cam_types(QTY_CO)  = TYPE_CO
+dart_to_cam_types(QTY_CO2) = TYPE_CO2
+dart_to_cam_types(QTY_NO)  = TYPE_NO
+dart_to_cam_types(QTY_NO2) = TYPE_NO2
+dart_to_cam_types(QTY_CH4) = TYPE_CH4
+dart_to_cam_types(QTY_NH3) = TYPE_NH3
+! dart_to_cam_types(QTY_O)   = TYPE_O
+dart_to_cam_types(QTY_O3)  = TYPE_O3
 
-if (TYPE_T      /= MISSING_I) cam_to_dart_kinds(TYPE_T)      = KIND_TEMPERATURE
-if (TYPE_U      /= MISSING_I) cam_to_dart_kinds(TYPE_U)      = KIND_U_WIND_COMPONENT
-if (TYPE_V      /= MISSING_I) cam_to_dart_kinds(TYPE_V)      = KIND_V_WIND_COMPONENT
-if (TYPE_Q      /= MISSING_I) cam_to_dart_kinds(TYPE_Q)      = KIND_SPECIFIC_HUMIDITY
-if (TYPE_CLDLIQ /= MISSING_I) cam_to_dart_kinds(TYPE_CLDLIQ) = KIND_CLOUD_LIQUID_WATER
-if (TYPE_CLDICE /= MISSING_I) cam_to_dart_kinds(TYPE_CLDICE) = KIND_CLOUD_ICE
-! cam_to_dart_kinds(TYPE_LCWAT) = KIND_CLOUD_WATER  ?
-if (TYPE_CO     /= MISSING_I) cam_to_dart_kinds(TYPE_CO)  = KIND_CO
-if (TYPE_CO2    /= MISSING_I) cam_to_dart_kinds(TYPE_CO2) = KIND_CO2
-if (TYPE_NO     /= MISSING_I) cam_to_dart_kinds(TYPE_NO)  = KIND_NO
-if (TYPE_NO2    /= MISSING_I) cam_to_dart_kinds(TYPE_NO2) = KIND_NO2
-if (TYPE_CH4    /= MISSING_I) cam_to_dart_kinds(TYPE_CH4) = KIND_CH4
-if (TYPE_NH3    /= MISSING_I) cam_to_dart_kinds(TYPE_NH3) = KIND_NH3
-! if (TYPE_O  /= MISSING_I) cam_to_dart_kinds(TYPE_O)   = KIND_O
-if (TYPE_O3     /= MISSING_I) cam_to_dart_kinds(TYPE_O3)  = KIND_O3
+if (TYPE_T      /= MISSING_I) cam_to_dart_kinds(TYPE_T)      = QTY_TEMPERATURE
+if (TYPE_U      /= MISSING_I) cam_to_dart_kinds(TYPE_U)      = QTY_U_WIND_COMPONENT
+if (TYPE_V      /= MISSING_I) cam_to_dart_kinds(TYPE_V)      = QTY_V_WIND_COMPONENT
+if (TYPE_Q      /= MISSING_I) cam_to_dart_kinds(TYPE_Q)      = QTY_SPECIFIC_HUMIDITY
+if (TYPE_CLDLIQ /= MISSING_I) cam_to_dart_kinds(TYPE_CLDLIQ) = QTY_CLOUD_LIQUID_WATER
+if (TYPE_CLDICE /= MISSING_I) cam_to_dart_kinds(TYPE_CLDICE) = QTY_CLOUD_ICE
+! cam_to_dart_kinds(TYPE_LCWAT) = QTY_CLOUD_WATER  ?
+if (TYPE_CO     /= MISSING_I) cam_to_dart_kinds(TYPE_CO)  = QTY_CO
+if (TYPE_CO2    /= MISSING_I) cam_to_dart_kinds(TYPE_CO2) = QTY_CO2
+if (TYPE_NO     /= MISSING_I) cam_to_dart_kinds(TYPE_NO)  = QTY_NO
+if (TYPE_NO2    /= MISSING_I) cam_to_dart_kinds(TYPE_NO2) = QTY_NO2
+if (TYPE_CH4    /= MISSING_I) cam_to_dart_kinds(TYPE_CH4) = QTY_CH4
+if (TYPE_NH3    /= MISSING_I) cam_to_dart_kinds(TYPE_NH3) = QTY_NH3
+! if (TYPE_O  /= MISSING_I) cam_to_dart_kinds(TYPE_O)   = QTY_O
+if (TYPE_O3     /= MISSING_I) cam_to_dart_kinds(TYPE_O3)  = QTY_O3
 
 
 if (print_details .and. output_task0) then
@@ -2156,7 +2156,7 @@ subroutine get_state_meta_data(state_handle, index_in, location, var_kind)
 ! and other fiendish fields to be devised by parameterization studies may not
 ! have a longitude, or latitude.  The which_vert should take care of the vertical
 ! coordinate (it will be ignored), but the others will require more interesting  fixes.
-! See order_state_fields for the KIND_s (and corresponding model_mod TYPE_s).
+! See order_state_fields for the QTY_s (and corresponding model_mod TYPE_s).
 
 type(ensemble_type), intent(in)  :: state_handle
 integer(i8),         intent(in)  :: index_in
@@ -2205,7 +2205,7 @@ endif
 
 ! If the type is wanted, return it
 if (present(var_kind)) then
-   ! used by call from assim_tools_mod:filter_assim, which wants the DART KIND_
+   ! used by call from assim_tools_mod:filter_assim, which wants the DART QTY_
    var_kind = cam_to_dart_kinds(nfld)
 endif
 
@@ -2854,14 +2854,14 @@ lon_lat_lev = get_location(obs_loc)
 
 ! Check whether model_mod can interpolate the requested variable.
 ! Pressure (3d) can't be specified as a state vector field (so s_type will = MISSING_I),
-! but can be calculated for CAM, so obs_kind = KIND_PRESSURE is acceptable.
+! but can be calculated for CAM, so obs_kind = QTY_PRESSURE is acceptable.
 ! obs_kind truly is a DART KIND variable, generally passed from
 ! obs_def/obs_def_XXX.f90: call interpolate.
 ! HK I think s_type is the index in cflds
 s_type = dart_to_cam_types(obs_kind)
 
 if (s_type == MISSING_I .and. &
-   (obs_kind /= KIND_PRESSURE) .and.  (obs_kind /= KIND_SURFACE_ELEVATION)) then
+   (obs_kind /= QTY_PRESSURE) .and.  (obs_kind /= QTY_SURFACE_ELEVATION)) then
 !   istatus = 1
 !   interp_val = MISSING_R8
    write(string1,*) 'Wrong type of obs = ', obs_kind
@@ -2876,9 +2876,9 @@ endif
 ! elevation, ...?)
 lon_name = 'lon'
 lat_name = 'lat'
-if (obs_kind == KIND_SURFACE_ELEVATION) then
+if (obs_kind == QTY_SURFACE_ELEVATION) then
    lev_name = 'none'
-elseif (obs_kind == KIND_PRESSURE) then
+elseif (obs_kind == QTY_PRESSURE) then
    lev_name = 'lev'
 endif
 
@@ -2892,7 +2892,7 @@ s_type_3d = s_type_2d - state_num_2d
 
 ! HK This if statement is just finding the rank of the variable (0D, 1D, 2D, 3D).
 if (s_type == MISSING_I .and. &
-   (obs_kind == KIND_PRESSURE) .or.  (obs_kind == KIND_SURFACE_ELEVATION)) then
+   (obs_kind == QTY_PRESSURE) .or.  (obs_kind == QTY_SURFACE_ELEVATION)) then
    ! use defaults lon_name and lat_name set above
 elseif (s_type <= state_num_0d + state_num_1d) then
    ! error; can't deal with observed variables that are 0 or 1D in model_mod.
@@ -2995,7 +2995,7 @@ endif
 ! Find the values for the four corners
 
 ! Determine the vertical coordinate: model level, pressure, or height
-if (obs_kind == KIND_SURFACE_ELEVATION) then
+if (obs_kind == QTY_SURFACE_ELEVATION) then
    ! Acceptable field that's not in the state vector, same across the ensemble
    ! convert from geopotential height to real height in meters
    val_11(:) = phis(lon_ind_below, lat_ind_below) / gravity_const
@@ -3056,10 +3056,10 @@ elseif (vert_is_surface(obs_loc)) then
 
 ! This needs to be at the end of the block.  Otherwise, it short circuits GPS
 ! which asks for pressures on heights.
-! elseif (obs_kind == KIND_PRESSURE) then
+! elseif (obs_kind == QTY_PRESSURE) then
 !    ! Calculate pressures from surface pressures and A and B coeffs.
 !    ! Pobs
-!     write(string1,'(A)') 'No code available yet for obs_kind = KIND_PRESSURE '
+!     write(string1,'(A)') 'No code available yet for obs_kind = QTY_PRESSURE '
 !     call error_handler(E_ERR, 'interp_lon_lat', string1)
 
 elseif (vert_is_scale_height(obs_loc)) then
@@ -3148,10 +3148,10 @@ if (level > num_levs .or. level < 1) return
 ! Interpolate in vertical to get two bounding levels, but treat pressure
 ! specially since it has to be computed from PS instead of interpolated.
 
-if (obs_kind == KIND_PRESSURE) then
+if (obs_kind == QTY_PRESSURE) then
 
    ! p_surf is returned in pascals, which is the right units for plevs_cam() below.
-   call get_val(state_handle, ens_size, lon_index, lat_index, -1, KIND_SURFACE_PRESSURE, p_surf, vstatus)
+   call get_val(state_handle, ens_size, lon_index, lat_index, -1, QTY_SURFACE_PRESSURE, p_surf, vstatus)
    if (all(vstatus /= 0)) then
       deallocate(p_col)
       return
@@ -3233,14 +3233,14 @@ fld_index   = find_name('PS',cflds)
 i = index_from_grid(1,lon_index,lat_index,  fld_index)
 ps_local(:, 1) = get_state(i, state_handle)
 
-if (obs_kind == KIND_U_WIND_COMPONENT .and. find_name('US', cflds) /= 0) then
+if (obs_kind == QTY_U_WIND_COMPONENT .and. find_name('US', cflds) /= 0) then
    ! ps defined on lat grid (-90...90, nlat = nslat + 1),
    !    need it on staggered lat grid, which starts half a grid spacing north.
 
    i = index_from_grid(1,lon_index,lat_index+1,fld_index)
    ps_local(:, 2) = get_state(i, state_handle)
    p_surf(:)      = (ps_local(:, 1) + ps_local(:, 2))* 0.5_r8
-elseif (obs_kind == KIND_V_WIND_COMPONENT .and. find_name('VS', cflds) /= 0) then
+elseif (obs_kind == QTY_V_WIND_COMPONENT .and. find_name('VS', cflds) /= 0) then
    ! lon =     0...     255 (for 5 degree grid)
    !slon = -2.5 ... 252.5
    if (lon_index == slon%length) then
@@ -3297,7 +3297,7 @@ do imem = 1, ens_size
 enddo
 
 ! Pobs
-if (obs_kind == KIND_PRESSURE) then
+if (obs_kind == QTY_PRESSURE) then
    ! can't get pressure on levels from state vector; get it from p_col instead
    do imem = 1, ens_size
       bot_val(imem) = p_col(bot_lev(imem), imem)
@@ -3386,12 +3386,12 @@ ind         = index_from_grid(1,lon_index,lat_index,  fld_index)
 ps_local(:, 1) = get_state(ind, state_handle)
 
 ! find_name returns 0 if the field name is not found in the cflds list.
-if (obs_kind == KIND_U_WIND_COMPONENT .and. find_name('US', cflds) /= 0) then
+if (obs_kind == QTY_U_WIND_COMPONENT .and. find_name('US', cflds) /= 0) then
    stagr_lat = .true.
    ind = index_from_grid(1,lon_index,lat_index+1,fld_index)
    ps_local(2, :) = get_state(ind, state_handle)
    p_surf(:) = (ps_local(1, :) + ps_local(2, :))* 0.5_r8
-elseif (obs_kind == KIND_V_WIND_COMPONENT .and. find_name('VS', cflds) /= 0) then
+elseif (obs_kind == QTY_V_WIND_COMPONENT .and. find_name('VS', cflds) /= 0) then
    stagr_lon = .true.
    if (lon_index == slon%length) then
       ind = index_from_grid(1,1,          lat_index ,fld_index)
@@ -3478,7 +3478,7 @@ do imem = 1, ens_size
    endif
 enddo
 
-if (obs_kind == KIND_PRESSURE) then
+if (obs_kind == QTY_PRESSURE) then
    do imem = 1, ens_size
       bot_val(imem) = p_col(bot_lev(imem), imem)
       top_val(imem) = p_col(top_lev(imem), imem)
@@ -3870,7 +3870,7 @@ if (.not. module_initialized) call static_init_model()
 ! If base_obs vert type is not pressure; convert it to pressure
 base_which    = nint(query_location(base_obs_loc))
 base_array    = get_location(base_obs_loc)
-base_obs_kind = get_obs_kind_var_type(base_obs_type)
+base_obs_kind = get_quantity_for_type_of_obs(base_obs_type)
 
 ! Upgrading convert_vert to use field profiles at the actual ob location is
 ! probably not worthwhile: that approx horiz location of the obs is used only to
@@ -3958,7 +3958,7 @@ do k = 1, num_close
 
       ! Damp the influence of obs, which are below the namelist variable highest_OBS_pressure_Pa,
       ! on variables above highest_STATE_pressure_Pa.
-      ! This section could also change the distance based on the KIND_s of the base_obs and obs.
+      ! This section could also change the distance based on the QTY_s of the base_obs and obs.
 
       ! distances = 0 for some for synthetic obs.
 
@@ -4101,7 +4101,7 @@ if (old_which == VERTISLEVEL ) then
    cam_type = dart_to_cam_types(old_kind)
    if (cam_type < 0) then
       write(string1,*)'old_kind  is ',old_kind,' | cam_type is ',cam_type
-      write(string2,*)'get_raw_obs_kind_name of old_kind ', trim(get_raw_obs_kind_name(old_kind))
+      write(string2,*)'get_name_for_quantity of old_kind ', trim(get_name_for_quantity(old_kind))
       call error_handler(E_ERR,'convert_vert',string1,source,revision,revdate,text2=string2)
    endif
 
@@ -4145,9 +4145,9 @@ else
    temp_loc = set_location(old_array(1), old_array(2), 0.0_r8, VERTISSURFACE)
    ! Find ps at the ob point.  Need to interpolate.
    ! Only interested in P (columns), so don't need to worry about staggered grids here.
-   call interp_lonlat(state_handle, ens_size, temp_loc, KIND_SURFACE_PRESSURE, p_surf, istatus)
+   call interp_lonlat(state_handle, ens_size, temp_loc, QTY_SURFACE_PRESSURE, p_surf, istatus)
    if (istatus(1) == 1) then
-      write(string1,'(A,I8)') 'interp_X failed for KIND_SURFACE_PRESSURE.'
+      write(string1,'(A,I8)') 'interp_X failed for QTY_SURFACE_PRESSURE.'
       call write_location(0, old_loc, charstring=string2)
       call error_handler(E_ERR, 'convert_vert', string1,source,revision,revdate, text2=string2)
    endif
@@ -4758,7 +4758,7 @@ do k = 2,num_levs +1
 enddo
 !*****
 
-call interp_lonlat(state_handle, ens_size, base_obs_loc, KIND_SURFACE_ELEVATION, h_surf, vstatus)
+call interp_lonlat(state_handle, ens_size, base_obs_loc, QTY_SURFACE_ELEVATION, h_surf, vstatus)
 if (any(vstatus == 1)) then
    write(string1,'(A,1p3F12.6)') 'surface elevation could not be interpolated in interp_lonlat at ', &
                         lon_lat_lev
@@ -4775,14 +4775,14 @@ do k = 1, num_levs
    ! construct a location with the same lat/lon but cycle though the model levels
    temp_obs_loc = set_location(lon_lat_lev(1), lon_lat_lev(2), real(k,r8), VERTISLEVEL)
 
-   call interp_lonlat(state_handle, ens_size, temp_obs_loc, KIND_TEMPERATURE, t(:, k), vstatus)
+   call interp_lonlat(state_handle, ens_size, temp_obs_loc, QTY_TEMPERATURE, t(:, k), vstatus)
    if (any(vstatus == 1)) then
       write(string1,'(A,I2,A)') 'Temperature level ',k, &
            ' could not be interpolated in interp_lonlat'
       call error_handler(E_WARN, 'model_heights', string1)
       return
    endif
-   call interp_lonlat(state_handle, ens_size, temp_obs_loc, KIND_SPECIFIC_HUMIDITY, q(:, k), vstatus)
+   call interp_lonlat(state_handle, ens_size, temp_obs_loc, QTY_SPECIFIC_HUMIDITY, q(:, k), vstatus)
    if (any(vstatus == 1)) then
       write(string1,'(A,I2,A)') 'specific humidity level ',k, &
            ' could not be interpolated in interp_lonlat'

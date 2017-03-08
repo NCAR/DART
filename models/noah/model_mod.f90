@@ -29,15 +29,15 @@ use    utilities_mod, only : register_module, error_handler, nc_check,         &
                              find_namelist_in_file, check_namelist_read,       &
                              file_exist, find_textfile_dims, file_to_text
 
-use     obs_kind_mod, only : KIND_SOIL_TEMPERATURE,    &
-                             KIND_LIQUID_WATER,        &
-                             KIND_ICE,                 &
-                             KIND_SNOWCOVER_FRAC,      &
-                             KIND_SNOW_THICKNESS,      &
-                             KIND_LEAF_CARBON,         &
-                             KIND_WATER_TABLE_DEPTH,   &
-                             KIND_GEOPOTENTIAL_HEIGHT, &
-                             get_raw_obs_kind_index
+use     obs_kind_mod, only : QTY_SOIL_TEMPERATURE,    &
+                             QTY_LIQUID_WATER,        &
+                             QTY_ICE,                 &
+                             QTY_SNOWCOVER_FRAC,      &
+                             QTY_SNOW_THICKNESS,      &
+                             QTY_LEAF_CARBON,         &
+                             QTY_WATER_TABLE_DEPTH,   &
+                             QTY_GEOPOTENTIAL_HEIGHT, &
+                             get_index_for_quantity
 
 use mpi_utilities_mod, only: my_task_id
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
@@ -99,13 +99,13 @@ integer, parameter :: NUM_STATE_TABLE_COLUMNS = 2
 ! DART state vector are specified in the input.nml:model_nml namelist.
 ! For example:
 !
-! noah_state_variables  = 'STC',    'KIND_SOIL_TEMPERATURE',
-!                         'SMC',    'KIND_SOIL_MOISTURE',
-!                         'SH2O',   'KIND_LIQUID_SOIL_MOISTURE',
-!                         'T1',     'KIND_SKIN_TEMPERATURE',
-!                         'SNOWH',  'KIND_SNOW_DEPTH',
-!                         'SNEQV',  'KIND_LIQUID_EQUIVALENT',
-!                         'CMC',    'KIND_CANOPY_WATER'
+! noah_state_variables  = 'STC',    'QTY_SOIL_TEMPERATURE',
+!                         'SMC',    'QTY_SOIL_MOISTURE',
+!                         'SH2O',   'QTY_LIQUID_SOIL_MOISTURE',
+!                         'T1',     'QTY_SKIN_TEMPERATURE',
+!                         'SNOWH',  'QTY_SNOW_DEPTH',
+!                         'SNEQV',  'QTY_LIQUID_EQUIVALENT',
+!                         'CMC',    'QTY_CANOPY_WATER'
 !
 !------------------------------------------------------------------
 
@@ -367,7 +367,7 @@ FILL_PROGVAR : do ivar = 1, nfields
    kind_string               = trim(noah_state_variables(2,ivar))
    progvar(ivar)%varname     = varname
    progvar(ivar)%kind_string = kind_string
-   progvar(ivar)%dart_kind   = get_raw_obs_kind_index( progvar(ivar)%kind_string )
+   progvar(ivar)%dart_kind   = get_index_for_quantity( progvar(ivar)%kind_string )
    progvar(ivar)%dimlens     = 0
    progvar(ivar)%dimnames    = ' '
    progvar(ivar)%maxlevels   = 0
@@ -659,9 +659,9 @@ loc_depth = loc(3)
 ! one use of model_interpolate is to allow other modules/routines
 ! the ability to 'see' the model levels. To do this, we can create
 ! locations with model levels and 'interpolate' them to
-! KIND_GEOPOTENTIAL_HEIGHT
+! QTY_GEOPOTENTIAL_HEIGHT
 
-if ( (itype == KIND_GEOPOTENTIAL_HEIGHT) .and. vert_is_level(location) ) then
+if ( (itype == QTY_GEOPOTENTIAL_HEIGHT) .and. vert_is_level(location) ) then
    if (nint(loc_depth) > nsoil) then
       obs_val = MISSING_R8
       istatus = 1
@@ -1516,7 +1516,7 @@ MyLoop : do i = 1, MAX_STATE_VARIABLES
 
    ! Make sure DART kind is valid
 
-   if( get_raw_obs_kind_index(dartstr) < 0 ) then
+   if( get_index_for_quantity(dartstr) < 0 ) then
       write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
       call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
    endif

@@ -29,7 +29,7 @@ use  utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_for
                            check_namelist_read, do_output, do_nml_file,              &
                            do_nml_term, is_longitude_between
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
-use   obs_kind_mod, only : get_num_obs_kinds, get_obs_kind_name, get_obs_kind_index
+use   obs_kind_mod, only : get_num_types_of_obs, get_name_for_type_of_obs, get_index_for_type_of_obs
 use mpi_utilities_mod, only : my_task_id, task_count
 
 implicit none
@@ -319,7 +319,7 @@ if (special_vert_normalization_obs_types(1) /= 'null' .or. &
    ! FIXME: add code to check for mismatched length lists.  are we going to force
    ! users to specify all 4 values for any obs type that is not using the defaults?
 
-   typecount = get_num_obs_kinds()  ! ignore function name, this is specific type count
+   typecount = get_num_types_of_obs()  ! ignore function name, this is specific type count
    allocate(per_type_vert_norm(VERT_TYPE_COUNT, typecount))
   
    ! Set the defaults for all specific types not listed in the special list
@@ -340,7 +340,7 @@ if (special_vert_normalization_obs_types(1) /= 'null' .or. &
    if (num_special_vert_norms > 0) has_special_vertical_norms = .true.
    
    do i = 1, num_special_vert_norms
-      type_index = get_obs_kind_index(special_vert_normalization_obs_types(i))
+      type_index = get_index_for_type_of_obs(special_vert_normalization_obs_types(i))
       if (type_index < 0) then
          write(msgstring, *) 'unrecognized TYPE_ in the special vertical normalization namelist:'
          call error_handler(E_ERR,'location_mod:', msgstring, source, revision, revdate, &
@@ -384,14 +384,14 @@ else
    call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
 
    if (allocated(per_type_vert_norm)) then
-      typecount = get_num_obs_kinds()  ! ignore function name, this is specific type count
+      typecount = get_num_types_of_obs()  ! ignore function name, this is specific type count
       do i = 1, typecount
          if ((per_type_vert_norm(VERTISLEVEL,       i) /= vert_normalization_level) .or. &
              (per_type_vert_norm(VERTISPRESSURE,    i) /= vert_normalization_pressure) .or. &
              (per_type_vert_norm(VERTISHEIGHT,      i) /= vert_normalization_height) .or. &
              (per_type_vert_norm(VERTISSCALEHEIGHT, i) /= vert_normalization_scale_height)) then
  
-            write(msgstring,'(2A)') 'Altering default vertical normalization for type ', trim(get_obs_kind_name(i))
+            write(msgstring,'(2A)') 'Altering default vertical normalization for type ', trim(get_name_for_type_of_obs(i))
             call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
             if (per_type_vert_norm(VERTISPRESSURE,    i) /= vert_normalization_pressure) then
                write(msgstring,'(A,f17.5)') '       # pascals ~ 1 horiz radian: ', &
@@ -455,8 +455,8 @@ function get_dist(loc1, loc2, type1, kind2, no_vert)
 
 ! CHANGE from previous versions:  the 3rd argument is now a specific type
 ! (e.g. RADIOSONDE_TEMPERATURE, AIRCRAFT_SPECIFIC_HUMIDITY) associated
-! with loc1, while the 4th argument is a generic kind (KIND_TEMPERATURE, 
-! KIND_U_WIND_COMPONENT) associated with loc2.
+! with loc1, while the 4th argument is a generic kind (QTY_TEMPERATURE, 
+! QTY_U_WIND_COMPONENT) associated with loc2.
 ! The type and kind are part of the interface in case user-code wants to do 
 ! a more sophisticated distance calculation based on the base type or target
 ! kind. In the usual case this code still doesn't use the kind/type, but 
@@ -1348,7 +1348,7 @@ integer :: i, typecount, distcount
 real(r8), allocatable :: distlist(:)
 
 ! Support per-loc-type localization more efficiently.
-typecount = get_num_obs_kinds()  ! ignore function name, this is specific type count
+typecount = get_num_types_of_obs()  ! ignore function name, this is specific type count
 allocate(gc%type_to_cutoff_map(typecount))
 
 if (present(maxdist_list)) then

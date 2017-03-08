@@ -111,11 +111,11 @@ For example, here is a real list:
 </P>
 <pre>
 ! BEGIN DART PREPROCESS KIND LIST
-!VELOCITY,                     KIND_VELOCITY,              COMMON_CODE
-!TRACER_CONCENTRATION,         KIND_TRACER_CONCENTRATION,  COMMON_CODE
-!TRACER_SOURCE,                KIND_TRACER_SOURCE,         COMMON_CODE
-!MEAN_SOURCE,                  KIND_MEAN_SOURCE,           COMMON_CODE
-!SOURCE_PHASE,                 KIND_SOURCE_PHASE,          COMMON_CODE
+!VELOCITY,                     QTY_VELOCITY,              COMMON_CODE
+!TRACER_CONCENTRATION,         QTY_TRACER_CONCENTRATION,  COMMON_CODE
+!TRACER_SOURCE,                QTY_TRACER_SOURCE,         COMMON_CODE
+!MEAN_SOURCE,                  QTY_MEAN_SOURCE,           COMMON_CODE
+!SOURCE_PHASE,                 QTY_SOURCE_PHASE,          COMMON_CODE
 ! END DART PREPROCESS KIND LIST
 </pre>
 <P>
@@ -152,8 +152,8 @@ For example, here is a real list:
 </P>
 <pre>
 ! BEGIN DART PREPROCESS KIND LIST
-! DOPPLER_RADIAL_VELOCITY, KIND_VELOCITY
-! RADAR_REFLECTIVITY,      KIND_RADAR_REFLECTIVITY
+! DOPPLER_RADIAL_VELOCITY, QTY_VELOCITY
+! RADAR_REFLECTIVITY,      QTY_RADAR_REFLECTIVITY
 ! END DART PREPROCESS KIND LIST
 </pre>
 <P>
@@ -221,7 +221,7 @@ The routine must fill in the values of these variables:
 To call a model_mod interpolate routine directly, the
 argument list must match exactly:
 <pre>
-interpolate(state, location, KIND_xxx, obs_val, istatus)
+interpolate(state, location, QTY_xxx, obs_val, istatus)
 </pre>
 This can be useful if the forward operator needs to retrieve values
 for fields which are typically found in a model and then compute
@@ -361,8 +361,8 @@ the 1d integral has user-supplied processing code:
 </P>
 <pre>
 ! BEGIN DART PREPROCESS KIND LIST
-! RAW_STATE_VARIABLE,    KIND_RAW_STATE_VARIABLE, COMMON_CODE
-! RAW_STATE_1D_INTEGRAL, KIND_1D_INTEGRAL
+! RAW_STATE_VARIABLE,    QTY_RAW_STATE_VARIABLE, COMMON_CODE
+! RAW_STATE_1D_INTEGRAL, QTY_1D_INTEGRAL
 ! END DART PREPROCESS KIND LIST
 
 
@@ -455,12 +455,12 @@ Other special obs_def_kind modules as required
                    <TD><A HREF="#obs_def_type">obs_def_type</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#init_obs_def">init_obs_def</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_obs_def_location">get_obs_def_location</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_obs_kind">get_obs_kind</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_obs_def_type_of_obs">get_obs_def_type_of_obs</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_obs_def_time">get_obs_def_time</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_obs_def_error_variance">get_obs_def_error_variance</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_obs_def_key">get_obs_def_key</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_obs_def_location">set_obs_def_location</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#set_obs_def_kind">set_obs_def_kind</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_obs_def_type_of_obs">set_obs_def_type_of_obs</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_obs_def_time">set_obs_def_time</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_obs_def_error_variance">set_obs_def_error_variance</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_obs_def_key">set_obs_def_key</A></TD></TR>
@@ -471,7 +471,7 @@ Other special obs_def_kind modules as required
 <TR><TD>&nbsp;</TD><TD><A HREF="#destroy_obs_def">destroy_obs_def</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#copy_obs_def">copy_obs_def</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#copy_obs_def">assignment(=)</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_obs_name">get_obs_name</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_name_for_type_of_obs">get_name_for_type_of_obs</A></TD></TR>
 </TABLE>
 
 <P>
@@ -682,12 +682,12 @@ Returns the location from an observation definition.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="get_obs_kind"></A>
+<A NAME="get_obs_def_type_of_obs"></A>
 <br>
 <div class=routine>
-<em class=call> var = get_obs_kind(obs_def) </em>
+<em class=call> var = get_obs_def_type_of_obs(obs_def) </em>
 <pre>
-integer                         :: <em class=code>get_obs_kind</em>
+integer                         :: <em class=code>get_obs_def_type_of_obs</em>
 type(obs_def_type),  intent(in) :: <em class=code>obs_def</em>
 </pre>
 </div>
@@ -740,12 +740,12 @@ Returns time from an observation definition.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="get_obs_name"></A>
+<A NAME="get_name_for_type_of_obs"></A>
 <br>
 <div class=routine>
-<em class=call> obs_name = get_obs_name(obs_kind_ind) </em>
+<em class=call> obs_name = get_name_for_type_of_obs(obs_kind_ind) </em>
 <pre>
-character(len = 32)            :: <em class=code>get_obs_name</em>
+character(len = 32)            :: <em class=code>get_name_for_type_of_obs</em>
 integer, intent(in)            :: <em class=code>obs_kind_ind</em>
 </pre>
 </div>
@@ -856,10 +856,10 @@ Set the key for an observation definition.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="set_obs_def_kind"></A>
+<A NAME="set_obs_def_type_of_obs"></A>
 <br>
 <div class=routine>
-<em class=call> call set_obs_def_kind(obs_def, kind) </em>
+<em class=call> call set_obs_def_type_of_obs(obs_def, kind) </em>
 <pre>
 type(obs_def_type), intent(inout) :: <em class=code>obs_def</em>
 integer,            intent(in)    :: <em class=code>kind</em>

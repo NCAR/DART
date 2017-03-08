@@ -368,12 +368,12 @@ these fields carefully when using bounds to restrict their values.
 <div class=namelist>
 <pre>
 &amp;mpas_vars_nml
-   mpas_state_variables = 'theta',                 'KIND_POTENTIAL_TEMPERATURE',
-                          'uReconstructZonal',     'KIND_U_WIND_COMPONENT',
-                          'uReconstructMeridional','KIND_V_WIND_COMPONENT',
-                          'qv',                    'KIND_VAPOR_MIXING_RATIO',
-                          'qc',                    'KIND_CLOUDWATER_MIXING_RATIO',
-                          'surface_pressure',      'KIND_SURFACE_PRESSURE'
+   mpas_state_variables = 'theta',                 'QTY_POTENTIAL_TEMPERATURE',
+                          'uReconstructZonal',     'QTY_U_WIND_COMPONENT',
+                          'uReconstructMeridional','QTY_V_WIND_COMPONENT',
+                          'qv',                    'QTY_VAPOR_MIXING_RATIO',
+                          'qc',                    'QTY_CLOUDWATER_MIXING_RATIO',
+                          'surface_pressure',      'QTY_SURFACE_PRESSURE'
    mpas_state_bounds    = 'qv','0.0','NULL','CLAMP',
                           'qc','0.0','NULL','CLAMP',
 /

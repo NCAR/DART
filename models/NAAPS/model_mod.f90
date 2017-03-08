@@ -27,7 +27,7 @@ use    utilities_mod, only : register_module, error_handler, nc_check, &
                              find_namelist_in_file, check_namelist_read, &
                              do_nml_file, do_nml_term, do_output, &
                              nmlfileunit, logfileunit
-use     obs_kind_mod, only : get_raw_obs_kind_index
+use     obs_kind_mod, only : get_index_for_quantity
 
 use netcdf
 use typesizes
@@ -153,16 +153,16 @@ subroutine static_init_model()
                      'smoke_conc  ', &
                      'seasalt_conc'/)
        CHARACTER(len=metadatalength),dimension(10) :: species_kinds = (/ &
-                     'KIND_INTEGRATED_SULFATE', &
-                     'KIND_INTEGRATED_DUST   ', &
-                     'KIND_INTEGRATED_SMOKE  ', &
-                     'KIND_INTEGRATED_SEASALT', &
-                     'KIND_INTEGRATED_AOD    ', & 
-                     'KIND_SO2               ', &
-                     'KIND_SULFATE           ', &
-                     'KIND_DUST              ', &
-                     'KIND_SMOKE             ', &
-                     'KIND_SEASALT           '/)
+                     'QTY_INTEGRATED_SULFATE', &
+                     'QTY_INTEGRATED_DUST   ', &
+                     'QTY_INTEGRATED_SMOKE  ', &
+                     'QTY_INTEGRATED_SEASALT', &
+                     'QTY_INTEGRATED_AOD    ', & 
+                     'QTY_SO2               ', &
+                     'QTY_SULFATE           ', &
+                     'QTY_DUST              ', &
+                     'QTY_SMOKE             ', &
+                     'QTY_SEASALT           '/)
        !integer  :: iunit, io
 
        if ( module_initialized ) return
@@ -200,7 +200,7 @@ subroutine static_init_model()
            progvar(i)%indexN = i*(nx*ny) 
            progvar(i)%varname = species_names(i)
            progvar(i)%kind_string = species_kinds(i)
-           progvar(i)%dart_kind = get_raw_obs_kind_index(progvar(i)%kind_string)
+           progvar(i)%dart_kind = get_index_for_quantity(progvar(i)%kind_string)
 
            if (debug) WRITE(*,*)
            if (debug) WRITE(*,*) progvar(i)%numdims 
@@ -227,7 +227,7 @@ subroutine static_init_model()
            progvar(i)%indexN = progvar(i)%index1 + nx*ny*nz -1 
            progvar(i)%varname = species_names(i)
            progvar(i)%kind_string = species_kinds(i)
-           progvar(i)%dart_kind = get_raw_obs_kind_index(progvar(i)%kind_string)
+           progvar(i)%dart_kind = get_index_for_quantity(progvar(i)%kind_string)
 
            if (debug) WRITE(*,*)
            if (debug) WRITE(*,*) progvar(i)%numdims 

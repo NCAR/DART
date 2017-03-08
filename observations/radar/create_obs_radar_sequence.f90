@@ -33,10 +33,10 @@ use     utilities_mod, only : timestamp, register_module, finalize_utilities, &
 use  time_manager_mod, only : set_time
 use      location_mod, only : location_type, interactive_location, &
                               query_location, set_location, VERTISHEIGHT
-use       obs_def_mod, only : obs_def_type, set_obs_def_kind,           &
+use       obs_def_mod, only : obs_def_type, set_obs_def_type_of_obs,           &
                               set_obs_def_location, set_obs_def_time,   &
                               set_obs_def_error_variance, set_obs_def_key
-use      obs_kind_mod, only : KIND_RADAR_REFLECTIVITY, KIND_VELOCITY,   &
+use      obs_kind_mod, only : QTY_RADAR_REFLECTIVITY, QTY_VELOCITY,   &
                               DOPPLER_RADIAL_VELOCITY, RADAR_REFLECTIVITY
 use obs_def_radar_mod, only : set_radial_vel
 use  obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs,         &
@@ -456,7 +456,7 @@ integer,             intent(in)    :: defkey
 type(obs_def_type),  intent(inout) :: obs_def
 
 ! set each part of the obs def
-call set_obs_def_kind(obs_def, obskind)
+call set_obs_def_type_of_obs(obs_def, obskind)
 
 call set_obs_def_location(obs_def, obsloc)
 

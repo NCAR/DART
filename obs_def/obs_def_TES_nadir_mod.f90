@@ -5,10 +5,10 @@
 ! $Id$
 
 ! BEGIN DART PREPROCESS KIND LIST
-! TEMPERATURE,          KIND_TEMPERATURE,         COMMON_CODE
-! SURFACE_PRESSURE,     KIND_SURFACE_PRESSURE,    COMMON_CODE
-! SKIN_TEMPERATURE,     KIND_SKIN_TEMPERATURE,    COMMON_CODE
-! TES_NADIR_OBS,        KIND_NADIR_RADIANCE
+! TEMPERATURE,          QTY_TEMPERATURE,         COMMON_CODE
+! SURFACE_PRESSURE,     QTY_SURFACE_PRESSURE,    COMMON_CODE
+! SKIN_TEMPERATURE,     QTY_SKIN_TEMPERATURE,    COMMON_CODE
+! TES_NADIR_OBS,        QTY_NADIR_RADIANCE
 ! END DART PREPROCESS KIND LIST
 
 
@@ -58,10 +58,10 @@ use     location_mod, only : location_type, set_location, get_location, &
                              VERTISHEIGHT
 use  assim_model_mod, only : interpolate
 
-use     obs_kind_mod, only : KIND_SURFACE_PRESSURE, &
-                             KIND_TEMPERATURE, &
-                             KIND_SKIN_TEMPERATURE, &
-                             KIND_NADIR_RADIANCE
+use     obs_kind_mod, only : QTY_SURFACE_PRESSURE, &
+                             QTY_TEMPERATURE, &
+                             QTY_SKIN_TEMPERATURE, &
+                             QTY_NADIR_RADIANCE
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -745,7 +745,7 @@ if (debug) print*, 'lon = ', lon, ';  lat = ', lat
 ! Get surface pressure at location
 which_vert = VERTISSURFACE
 location2 = set_location( lon, lat, missing_r8, which_vert )
-call interpolate(state_handle, ens_size, location2, KIND_SURFACE_PRESSURE, psfc, psfc_istat )
+call interpolate(state_handle, ens_size, location2, QTY_SURFACE_PRESSURE, psfc, psfc_istat )
 call track_status(ens_size, psfc_istat, expected_obs, istatus, return_now)
 if ( any(psfc_istat > 0) ) then
    !> @todo Are warnings written by tasks other than task 0?
@@ -763,7 +763,7 @@ if (return_now) return
 where (istatus == 0) psfc = psfc * 1.0e-2_r8
 
 ! Now surface temperature at locations
-call interpolate(state_handle, ens_size, location2, KIND_SKIN_TEMPERATURE, tsk, tsk_istat)
+call interpolate(state_handle, ens_size, location2, QTY_SKIN_TEMPERATURE, tsk, tsk_istat)
 call track_status(ens_size, tsk_istat, expected_obs, istatus, return_now)
 
 if ( any(tsk_istat > 0) ) then
@@ -811,7 +811,7 @@ ptmp = isoP * 1.0e2_r8
 
 location2 = set_location( lon, lat, ptmp(1), which_vert ) ! At this point, same across the ensemble
 
-call interpolate(state_handle, ens_size, location2, KIND_TEMPERATURE, isothermalT, tmp_istat)
+call interpolate(state_handle, ens_size, location2, QTY_TEMPERATURE, isothermalT, tmp_istat)
 call track_status(ens_size, tmp_istat, expected_obs, istatus, return_now)
 if (debug) print*, 'isothermalT = ', isothermalT
 
@@ -831,7 +831,7 @@ if ( any(tmp_istat > 0) ) then
       end where
       location2 = set_location( lon, lat, ptmp(1), which_vert )
 
-      call interpolate( state_handle, ens_size, location2, KIND_TEMPERATURE, isothermalT_dummy, tmp_istat )
+      call interpolate( state_handle, ens_size, location2, QTY_TEMPERATURE, isothermalT_dummy, tmp_istat )
 
       if (debug) print*, 'k = ', k, '  isothermalT = ', isothermalT
       write(errstring, *)'lowered isothermalP, key = ',teskey,'; new isoP = ', isoP
@@ -884,7 +884,7 @@ do imem = 1, ens_size
 
          location2 = set_location( lon, lat, ptmp(imem), which_vert )
 
-         call interpolate( state_handle, ens_size, location2, KIND_TEMPERATURE, ret_t_dummy( k ), ret_t_istat )
+         call interpolate( state_handle, ens_size, location2, QTY_TEMPERATURE, ret_t_dummy( k ), ret_t_istat )
 
          if ( ret_t_istat(imem) > 0 ) then
             write(errstring, *)'trouble with T interpolation, key = ', teskey, '; istat = ', &

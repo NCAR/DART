@@ -52,27 +52,27 @@ use    utilities_mod, only : register_module, error_handler,                   &
                              file_to_text, close_file, do_nml_file,            &
                              do_nml_term, scalar
 
-use     obs_kind_mod, only : get_raw_obs_kind_index,  &
-                             get_raw_obs_kind_name,   &
-                             KIND_SURFACE_ELEVATION,  &
-                             KIND_SURFACE_PRESSURE,   &
-                             KIND_VERTICAL_VELOCITY,  &
-                             KIND_POTENTIAL_TEMPERATURE, &
-                             KIND_EDGE_NORMAL_SPEED,  &
-                             KIND_TEMPERATURE,        &
-                             KIND_U_WIND_COMPONENT,   &
-                             KIND_V_WIND_COMPONENT,   &
-                             KIND_PRESSURE,           &
-                             KIND_DENSITY,            &
-                             KIND_VAPOR_MIXING_RATIO,      &
-                             KIND_CLOUDWATER_MIXING_RATIO, &
-                             KIND_RAINWATER_MIXING_RATIO,  &
-                             KIND_ICE_MIXING_RATIO,        &
-                             KIND_SNOW_MIXING_RATIO,       &
-                             KIND_GRAUPEL_MIXING_RATIO,    &
-                             KIND_SPECIFIC_HUMIDITY,       &
-                             KIND_GEOPOTENTIAL_HEIGHT, &
-                             KIND_PRECIPITABLE_WATER
+use     obs_kind_mod, only : get_index_for_quantity,  &
+                             get_name_for_quantity,   &
+                             QTY_SURFACE_ELEVATION,  &
+                             QTY_SURFACE_PRESSURE,   &
+                             QTY_VERTICAL_VELOCITY,  &
+                             QTY_POTENTIAL_TEMPERATURE, &
+                             QTY_EDGE_NORMAL_SPEED,  &
+                             QTY_TEMPERATURE,        &
+                             QTY_U_WIND_COMPONENT,   &
+                             QTY_V_WIND_COMPONENT,   &
+                             QTY_PRESSURE,           &
+                             QTY_DENSITY,            &
+                             QTY_VAPOR_MIXING_RATIO,      &
+                             QTY_CLOUDWATER_MIXING_RATIO, &
+                             QTY_RAINWATER_MIXING_RATIO,  &
+                             QTY_ICE_MIXING_RATIO,        &
+                             QTY_SNOW_MIXING_RATIO,       &
+                             QTY_GRAUPEL_MIXING_RATIO,    &
+                             QTY_SPECIFIC_HUMIDITY,       &
+                             QTY_GEOPOTENTIAL_HEIGHT, &
+                             QTY_PRECIPITABLE_WATER
 
 use mpi_utilities_mod, only: my_task_id, all_reduce_min_max, task_count
 
@@ -615,7 +615,7 @@ do ivar = 1, nfields
    kind_string               = trim(variable_table(ivar,2))
    progvar(ivar)%varname     = varname
    progvar(ivar)%kind_string = kind_string
-   progvar(ivar)%dart_kind   = get_raw_obs_kind_index( progvar(ivar)%kind_string )
+   progvar(ivar)%dart_kind   = get_index_for_quantity( progvar(ivar)%kind_string )
    progvar(ivar)%numdims     = 0
    progvar(ivar)%numvertical = 1
    progvar(ivar)%dimlens     = MISSING_I
@@ -784,9 +784,9 @@ endif
 ! basically we cannot do much without having at least these
 ! three fields in the state vector.  refuse to go further
 ! if these are not present:
-if ((get_progvar_index_from_kind(KIND_POTENTIAL_TEMPERATURE) < 0) .or. &
-    (get_progvar_index_from_kind(KIND_DENSITY) < 0) .or. &
-    (get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO) < 0)) then
+if ((get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE) < 0) .or. &
+    (get_progvar_index_from_kind(QTY_DENSITY) < 0) .or. &
+    (get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO) < 0)) then
    write(string1, *) 'State vector is missing one or more of the following fields:'
    write(string2, *) 'Potential Temperature (theta), Density (rho), Vapor Mixing Ratio (qv).'
    write(string3, *) 'Cannot convert between height/pressure nor compute sensible temps.'
@@ -821,7 +821,7 @@ subroutine get_state_meta_data(state_handle, index_in, location, var_type)
 
 ! given an index into the state vector, return its location and
 ! if given, the var kind.   despite the name, var_type is a generic
-! kind, like those in obs_kind/obs_kind_mod.f90, starting with KIND_
+! kind, like those in obs_kind/obs_kind_mod.f90, starting with QTY_
 
 ! passed variables
 type(ensemble_type), intent(in)  :: state_handle
@@ -923,7 +923,7 @@ end subroutine get_state_meta_data
 !------------------------------------------------------------------
 subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
 
-! given a state vector, a location, and a KIND_xxx, return the
+! given a state vector, a location, and a QTY_xxx, return the
 ! interpolated value at that location, and an error code.  0 is success,
 ! anything positive is an error.  (negative reserved for system use)
 !
@@ -1016,24 +1016,24 @@ else
    ! exceptions if the kind isn't directly
    ! a field in the state vector:
    select case (obs_kind)
-      case (KIND_TEMPERATURE)
+      case (QTY_TEMPERATURE)
          goodkind = .true.
-      case (KIND_SURFACE_ELEVATION)
+      case (QTY_SURFACE_ELEVATION)
          goodkind = .true.
-      case (KIND_SURFACE_PRESSURE)
+      case (QTY_SURFACE_PRESSURE)
          goodkind = .true.
-      case (KIND_PRESSURE)
+      case (QTY_PRESSURE)
          goodkind = .true.
-      case (KIND_GEOPOTENTIAL_HEIGHT)
+      case (QTY_GEOPOTENTIAL_HEIGHT)
          goodkind = .true.
-      case (KIND_SPECIFIC_HUMIDITY)
+      case (QTY_SPECIFIC_HUMIDITY)
          goodkind = .true.
-      case (KIND_PRECIPITABLE_WATER) 
+      case (QTY_PRECIPITABLE_WATER) 
          goodkind = .true.
-      case (KIND_U_WIND_COMPONENT,KIND_V_WIND_COMPONENT)
+      case (QTY_U_WIND_COMPONENT,QTY_V_WIND_COMPONENT)
          ! if the reconstructed winds at the cell centers aren't there,
          ! we can use the edge normal winds, if the user allows it.
-         if (get_progvar_index_from_kind(KIND_EDGE_NORMAL_SPEED) > 0 &
+         if (get_progvar_index_from_kind(QTY_EDGE_NORMAL_SPEED) > 0 &
              .and. use_u_for_wind) goodkind = .true.
    end select
 endif
@@ -1047,16 +1047,16 @@ if (.not. goodkind) then
 endif
 
 ! Not prepared to do w interpolation at this time
-if(obs_kind == KIND_VERTICAL_VELOCITY) then
+if(obs_kind == QTY_VERTICAL_VELOCITY) then
    if (debug > 4) print *, 'model_interpolate: code does not handle vertical velocity yet'
    istatus(:) = 16
    goto 100
 endif
 
 ! winds
-if ((obs_kind == KIND_U_WIND_COMPONENT .or. &
-     obs_kind == KIND_V_WIND_COMPONENT) .and. has_edge_u .and. use_u_for_wind) then
-   if (obs_kind == KIND_U_WIND_COMPONENT) then
+if ((obs_kind == QTY_U_WIND_COMPONENT .or. &
+     obs_kind == QTY_V_WIND_COMPONENT) .and. has_edge_u .and. use_u_for_wind) then
+   if (obs_kind == QTY_U_WIND_COMPONENT) then
       ! return U
       call compute_u_with_rbf(state_handle, ens_size, location, .TRUE., expected_obs, istatus)
    else
@@ -1066,12 +1066,12 @@ if ((obs_kind == KIND_U_WIND_COMPONENT .or. &
    if (debug > 11) print *, 'model_interpolate: u_with_rbf ', obs_kind, istatus, expected_obs
    if (all(istatus /= 0)) goto 100   ! if everyone has failed, we can exit
 
-else if (obs_kind == KIND_TEMPERATURE) then
+else if (obs_kind == QTY_TEMPERATURE) then
    ! need to get potential temp, pressure, qv here, but can
    ! use same weights, so push all three types into the subroutine.
-   tvars(1) = get_progvar_index_from_kind(KIND_POTENTIAL_TEMPERATURE)
-   tvars(2) = get_progvar_index_from_kind(KIND_DENSITY)
-   tvars(3) = get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO)
+   tvars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
+   tvars(2) = get_progvar_index_from_kind(QTY_DENSITY)
+   tvars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
 
    call compute_scalar_with_barycentric(state_handle, ens_size, location, 3, tvars, values, istatus)
    where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
@@ -1084,7 +1084,7 @@ else if (obs_kind == KIND_TEMPERATURE) then
    if (debug > 10) &
       print *, 'model_interpolate: TEMPERATURE ', istatus, expected_obs, trim(locstring)
 
-else if (obs_kind == KIND_PRESSURE) then
+else if (obs_kind == QTY_PRESSURE) then
    call  compute_pressure_at_loc(state_handle, ens_size, location, expected_obs, istatus)
 
    if (debug > 10) &
@@ -1092,17 +1092,17 @@ else if (obs_kind == KIND_PRESSURE) then
 
    if (all(istatus /= 0)) goto 100
 
-else if (obs_kind == KIND_GEOPOTENTIAL_HEIGHT) then
+else if (obs_kind == QTY_GEOPOTENTIAL_HEIGHT) then
    location_tmp = location
-   call convert_vert_distrib(state_handle, ens_size, location_tmp, KIND_GEOPOTENTIAL_HEIGHT, VERTISHEIGHT, istatus)
+   call convert_vert_distrib(state_handle, ens_size, location_tmp, QTY_GEOPOTENTIAL_HEIGHT, VERTISHEIGHT, istatus)
    where (istatus /= 0) expected_obs = MISSING_R8
 
    do e = 1, ens_size
      if(istatus(e) == 0) expected_obs(e) = query_location(location_tmp(e), 'VLOC')
    enddo
 
-else if (obs_kind == KIND_VAPOR_MIXING_RATIO) then
-   tvars(1) = get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO)
+else if (obs_kind == QTY_VAPOR_MIXING_RATIO) then
+   tvars(1) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
    call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
    expected_obs = values(1, :)
    where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
@@ -1116,8 +1116,8 @@ else if (obs_kind == KIND_VAPOR_MIXING_RATIO) then
    if (debug > 10) &
       print *, 'model_interpolate: VAPOR_MIXING_RATIO', istatus, expected_obs, trim(locstring)
 
-else if (obs_kind == KIND_SPECIFIC_HUMIDITY) then
-   tvars(1) = get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO)
+else if (obs_kind == QTY_SPECIFIC_HUMIDITY) then
+   tvars(1) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
    call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
    expected_obs = values(1, :)
    where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
@@ -1137,12 +1137,12 @@ else if (obs_kind == KIND_SPECIFIC_HUMIDITY) then
    if (debug > 10) &
       print *, 'model_interpolate: SH ', istatus, expected_obs, trim(locstring)
 
-else if (obs_kind == KIND_SURFACE_ELEVATION) then
+else if (obs_kind == QTY_SURFACE_ELEVATION) then
    do e = 1, ens_size
       location_tmp(e) = set_location(llv(1),llv(2),1.0_r8,VERTISLEVEL)
    enddo
    ! why do you have to call vert_convert for surface?
-   call convert_vert_distrib(state_handle, ens_size, location_tmp, KIND_SURFACE_ELEVATION, VERTISHEIGHT, istatus)
+   call convert_vert_distrib(state_handle, ens_size, location_tmp, QTY_SURFACE_ELEVATION, VERTISHEIGHT, istatus)
    where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
    if ( all(istatus /= 0 ) ) goto 100
 
@@ -1156,16 +1156,16 @@ else if (obs_kind == KIND_SURFACE_ELEVATION) then
    if (debug > 10) &
       print *, 'model_interpolate: SURFACE_ELEVATION', istatus, expected_obs, trim(locstring)
 
-!> @todo check againt trunk, it does KIND_PRECIPITABLE_WATER and KIND_SURFACE_PRESSURE in the same if
+!> @todo check againt trunk, it does QTY_PRECIPITABLE_WATER and QTY_SURFACE_PRESSURE in the same if
 !> statement
-else if (obs_kind == KIND_PRECIPITABLE_WATER) then
+else if (obs_kind == QTY_PRECIPITABLE_WATER) then
    tvars(1) = ivar
    call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
    expected_obs = values(1, :)
    where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
    if ( all(istatus /= 0) ) goto 100
 
-else if (obs_kind == KIND_SURFACE_PRESSURE) then
+else if (obs_kind == QTY_SURFACE_PRESSURE) then
    tvars(1) = ivar
    do e = 1, ens_size
       location_tmp(e) = set_location(llv(1),llv(2),1.0_r8,VERTISSURFACE)
@@ -4027,7 +4027,7 @@ MyLoop : do i = 1, nrows
 
    ! Make sure DART kind is valid
 
-   if( get_raw_obs_kind_index(dartstr) < 0 ) then
+   if( get_index_for_quantity(dartstr) < 0 ) then
       write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
       call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
    endif
@@ -4446,7 +4446,7 @@ FieldLoop : do i=1,nfields
    exit FieldLoop
 enddo FieldLoop
 
-string = get_raw_obs_kind_name(dartkind)
+string = get_name_for_quantity(dartkind)
 
 if (index1 == 0) then
    write(string1,*) 'Problem, cannot find indices for kind ',dartkind,trim(string)
@@ -4538,7 +4538,7 @@ else if(vert_is_height(location) .or. vert_is_level(location)) then
    new_location = location
 
    ! FIXME: pick a hardcoded obs_kind for this call.
-   call convert_vert_distrib(state_handle, ens_size, new_location, KIND_TEMPERATURE, VERTISPRESSURE, istatus)
+   call convert_vert_distrib(state_handle, ens_size, new_location, QTY_TEMPERATURE, VERTISPRESSURE, istatus)
 
    do e = 1, ens_size
       if(istatus(e) == 0) then
@@ -4552,9 +4552,9 @@ else if(vert_is_surface(location)) then
 
    ! Need to get base offsets for the potential temperature, density, and water
    ! vapor mixing fields in the state vector
-   ivars(1) = get_progvar_index_from_kind(KIND_POTENTIAL_TEMPERATURE)
-   ivars(2) = get_progvar_index_from_kind(KIND_DENSITY)
-   ivars(3) = get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO)
+   ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
+   ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
+   ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
 
    call compute_scalar_with_barycentric (state_handle, ens_size, new_location(1), 3, ivars, values, istatus)
    if ( all(istatus/= 0) ) return
@@ -4716,9 +4716,9 @@ select case (ztypeout)
 
    ! Need to get base offsets for the potential temperature, density, and water
    ! vapor mixing fields in the state vector
-   ivars(1) = get_progvar_index_from_kind(KIND_POTENTIAL_TEMPERATURE)
-   ivars(2) = get_progvar_index_from_kind(KIND_DENSITY)
-   ivars(3) = get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO)
+   ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
+   ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
+   ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
 
    if (any(ivars(1:3) < 0)) then
       write(string1,*) 'Internal error, cannot find one or more of: theta, rho, qv'
@@ -4772,9 +4772,9 @@ select case (ztypeout)
 
    ! Need to get base offsets for the potential temperature, density, and water
    ! vapor mixing fields in the state vector
-   ivars(1) = get_progvar_index_from_kind(KIND_POTENTIAL_TEMPERATURE)
-   ivars(2) = get_progvar_index_from_kind(KIND_DENSITY)
-   ivars(3) = get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO)
+   ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
+   ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
+   ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
 
    ! Get theta, rho, qv at the interpolated location
    call compute_scalar_with_barycentric (state_handle, ens_size, location(1), 3, ivars, values, istatus)
@@ -5138,9 +5138,9 @@ if(verttype == VERTISPRESSURE ) then
 
    ! Need to get base offsets for the potential temperature, density, and water
    ! vapor mixing fields in the state vector
-   call get_index_range(KIND_POTENTIAL_TEMPERATURE, pt_base_offset)
-   call get_index_range(KIND_DENSITY, density_base_offset)
-   call get_index_range(KIND_VAPOR_MIXING_RATIO, qv_base_offset)
+   call get_index_range(QTY_POTENTIAL_TEMPERATURE, pt_base_offset)
+   call get_index_range(QTY_DENSITY, density_base_offset)
+   call get_index_range(QTY_VAPOR_MIXING_RATIO, qv_base_offset)
 
    do i=1, nc
       call find_pressure_bounds(state_handle, vert_array, ids(i), nVertLevels, &

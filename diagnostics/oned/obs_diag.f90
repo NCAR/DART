@@ -26,8 +26,8 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
                              get_qc, destroy_obs_sequence, get_last_obs, get_num_qc, &
                              read_obs_seq_header, destroy_obs, get_qc_meta_data
 use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
-                             get_obs_def_location, get_obs_kind
-use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_name
+                             get_obs_def_location, get_obs_def_type_of_obs
+use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs
 use     location_mod, only : location_type, get_location, operator(/=), LocationDims
 use time_manager_mod, only : time_type, set_time, get_time, print_time, &
                              print_date, set_calendar_type, get_date, &
@@ -256,10 +256,10 @@ call initialize_utilities('obs_diag')
 call register_module(source,revision,revdate)
 call static_init_obs_sequence()
 
-num_obs_types = max_obs_kinds ! for compatibility with 3D version
+num_obs_types = max_defined_types_of_obs ! for compatibility with 3D version
 allocate(obs_type_strings(num_obs_types))
-do ivar = 1,max_obs_kinds
-   obs_type_strings(ivar) = get_obs_kind_name(ivar)
+do ivar = 1,max_defined_types_of_obs
+   obs_type_strings(ivar) = get_name_for_type_of_obs(ivar)
 enddo
 
 !----------------------------------------------------------------------
@@ -542,7 +542,7 @@ ObsFileLoop : do ifile=1, Nfiles
          call get_obs_from_key(seq, keys(obsindex), observation)
          call get_obs_def(observation, obs_def)
 
-         flavor      = get_obs_kind(obs_def) ! this is (almost) always [1,max_obs_kinds]
+         flavor      = get_obs_def_type_of_obs(obs_def) ! this is (almost) always [1,max_defined_types_of_obs]
          obs_time    = get_obs_def_time(obs_def)
          obs_loc     = get_obs_def_location(obs_def)
          rlocation   = get_location(obs_loc)
@@ -553,7 +553,7 @@ ObsFileLoop : do ifile=1, Nfiles
          ! Check to see if this is a trusted observation
          trusted = .false.
          if ( num_trusted > 0 ) then
-            trusted = is_observation_trusted( get_obs_kind_name(flavor) )
+            trusted = is_observation_trusted( get_name_for_type_of_obs(flavor) )
          endif
 
          if ( use_zero_error_obs ) then
@@ -1849,7 +1849,7 @@ end Function Rank_Histogram
            'WriteNetCDF', 'put_att obstypes comment '//trim(fname))
 
    typesdimlen = 0
-   do ivar = 1,max_obs_kinds
+   do ivar = 1,max_defined_types_of_obs
 
       nobs = sum(analy%Nposs(:,:,ivar))
 
@@ -1888,7 +1888,7 @@ end Function Rank_Histogram
               'WriteNetCDF', 'copy:def_dim '//trim(fname))
 
    call nc_check(nf90_def_dim(ncid=ncid, &
-              name='obstypes', len = max_obs_kinds,    dimid = TypesDimID), &
+              name='obstypes', len = max_defined_types_of_obs,    dimid = TypesDimID), &
               'WriteNetCDF', 'types:def_dim '//trim(fname))
 
    call nc_check(nf90_def_dim(ncid=ncid, &
@@ -2048,10 +2048,10 @@ end Function Rank_Histogram
    call nc_check(nf90_put_var(ncid, CopyMetaVarID, copy_names), &
               'WriteNetCDF', 'copymeta:put_var')
 
-   call nc_check(nf90_put_var(ncid, TypesVarId, (/ (i,i=1,max_obs_kinds) /) ), &
+   call nc_check(nf90_put_var(ncid, TypesVarId, (/ (i,i=1,max_defined_types_of_obs) /) ), &
               'WriteNetCDF', 'types:put_var')
 
-   call nc_check(nf90_put_var(ncid, TypesMetaVarID, obs_type_strings(1:max_obs_kinds)), &
+   call nc_check(nf90_put_var(ncid, TypesMetaVarID, obs_type_strings(1:max_defined_types_of_obs)), &
               'WriteNetCDF', 'typesmeta:put_var')
 
    call nc_check(nf90_put_var(ncid, RegionVarID, (/ (i,i=1,Nregions) /) ), &
@@ -2248,8 +2248,8 @@ end Function Rank_Histogram
       if (trim(trusted_obs(i)) == 'null') exit CountTrusted
    
       matched = .false.
-      VerifyTrusted : do ikind = 1,max_obs_kinds
-         if (trim(trusted_obs(i)) == trim( get_obs_kind_name(ikind) )) then
+      VerifyTrusted : do ikind = 1,max_defined_types_of_obs
+         if (trim(trusted_obs(i)) == trim( get_name_for_type_of_obs(ikind) )) then
             matched = .true.
             exit VerifyTrusted
          endif

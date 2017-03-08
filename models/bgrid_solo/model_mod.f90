@@ -74,10 +74,10 @@ use        utilities_mod, only : open_file, error_handler, E_ERR, E_MSG, &
                                  find_namelist_in_file, check_namelist_read, &
                                  do_nml_file, do_nml_term, do_output, nc_check
 
-use          obs_kind_mod, only: KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
-                                 KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, &
-                                 KIND_PRESSURE, KIND_SPECIFIC_HUMIDITY, &
-                                 get_raw_obs_kind_index
+use          obs_kind_mod, only: QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, &
+                                 QTY_SURFACE_PRESSURE, QTY_TEMPERATURE, &
+                                 QTY_PRESSURE, QTY_SPECIFIC_HUMIDITY, &
+                                 get_index_for_quantity
 
 
 
@@ -1036,17 +1036,17 @@ call get_model_variable_indices(index_in, i, j, k, var_id=var_id)
 
 thiskind = state_kinds_list(var_id)
 
-if (thiskind == KIND_TEMPERATURE) then
+if (thiskind == QTY_TEMPERATURE) then
    lon = t_lons(i)
    lat = t_lats(j)
    lev = k
    vtype = VERTISLEVEL
-else if (thiskind == KIND_U_WIND_COMPONENT .or. thiskind == KIND_V_WIND_COMPONENT) then
+else if (thiskind == QTY_U_WIND_COMPONENT .or. thiskind == QTY_V_WIND_COMPONENT) then
    lon = v_lons(i)
    lat = v_lats(j)
    lev = k
    vtype = VERTISLEVEL
-else if (thiskind == KIND_SURFACE_PRESSURE) then
+else if (thiskind == QTY_SURFACE_PRESSURE) then
    lon = t_lons(i)
    lat = t_lats(j)
    lev = 1
@@ -1112,7 +1112,7 @@ else
 endif
    
 ! Depending on obs_type, get appropriate lon and lat grid specs
-if(obs_type == KIND_U_WIND_COMPONENT .or. obs_type == KIND_V_WIND_COMPONENT) then
+if(obs_type == QTY_U_WIND_COMPONENT .or. obs_type == QTY_V_WIND_COMPONENT) then
    num_lons = size(v_lons)
    num_lats = size(v_lats)
    bot_lon = v_lons(1)
@@ -1269,9 +1269,9 @@ istatus(:) = 0
 ! For t or tracers (on mass grid with ps) this is trivial
 ! For u or v (on velocity grid)
 
-if(itype == KIND_TEMPERATURE .or. itype == KIND_SURFACE_PRESSURE) then
+if(itype == QTY_TEMPERATURE .or. itype == QTY_SURFACE_PRESSURE) then
 
-   ps(1,1,:) = get_val(state_handle, ens_size, lon_index, lat_index, -1, KIND_SURFACE_PRESSURE)
+   ps(1,1,:) = get_val(state_handle, ens_size, lon_index, lat_index, -1, QTY_SURFACE_PRESSURE)
 
 else
 
@@ -1281,7 +1281,7 @@ else
    if(ps_lon > 360.00_r8 .and. ps_lon < 360.00001_r8) ps_lon = 360.0_r8
 
    ps_location = set_location(ps_lon, v_lats(lat_index), -1.0_r8, VERTISSURFACE )
-   call model_interpolate(state_handle, ens_size, ps_location, KIND_SURFACE_PRESSURE, ps(1,1,:), istatus)
+   call model_interpolate(state_handle, ens_size, ps_location, QTY_SURFACE_PRESSURE, ps(1,1,:), istatus)
 
 endif
 
@@ -1977,7 +1977,7 @@ if ( .not. module_initialized ) call static_init_model
 interf_provided = .true.
 ! Find temperature in kinds list
 do i = 1, size(state_kinds_list)
-   if (state_kinds_list(i) == KIND_TEMPERATURE) then
+   if (state_kinds_list(i) == QTY_TEMPERATURE) then
       temp_ind = i
       exit
    endif
@@ -2115,7 +2115,7 @@ endif
 
 allocate(state_kinds_list(numrows))
 do i = 1, numrows
-   state_kinds_list(i) = get_raw_obs_kind_index(state_variables(2,i))
+   state_kinds_list(i) = get_index_for_quantity(state_variables(2,i))
    if (state_kinds_list(i) < 0) then
       call error_handler(E_ERR,'fill_domain_structure', "bad namelist: unknown kind: "//trim(state_variables(2,i)), &
                          source, revision, revdate)
@@ -2134,7 +2134,7 @@ do i = 1, numrows
 
    thiskind = state_kinds_list(i)
   
-   if (thiskind == KIND_U_WIND_COMPONENT .or. thiskind == KIND_V_WIND_COMPONENT) then
+   if (thiskind == QTY_U_WIND_COMPONENT .or. thiskind == QTY_V_WIND_COMPONENT) then
       ! the velocity grid is staggered compared to the temperature grid
       vis = Dynam%Hgrid%Vel%is; vie = Dynam%Hgrid%Vel%ie
       vjs = Dynam%Hgrid%Vel%js; vje = Dynam%Hgrid%Vel%je
@@ -2146,7 +2146,7 @@ do i = 1, numrows
       call add_dimension_to_variable(dom_id, i, "VelJ", nVelJ)
       call add_dimension_to_variable(dom_id, i, "lev", nlev)
 
-   else if (thiskind == KIND_TEMPERATURE .or. thiskind == KIND_PRESSURE) then
+   else if (thiskind == QTY_TEMPERATURE .or. thiskind == QTY_PRESSURE) then
       tis = Dynam%Hgrid%Tmp%is; tie = Dynam%Hgrid%Tmp%ie
       tjs = Dynam%Hgrid%Tmp%js; tje = Dynam%Hgrid%Tmp%je
       nTmpI   = tie - tis + 1
@@ -2157,7 +2157,7 @@ do i = 1, numrows
       call add_dimension_to_variable(dom_id, i, "TmpJ", nTmpJ)
       call add_dimension_to_variable(dom_id, i, "lev", nlev)
 
-   else if (thiskind == KIND_SURFACE_PRESSURE) then
+   else if (thiskind == QTY_SURFACE_PRESSURE) then
       tis = Dynam%Hgrid%Tmp%is; tie = Dynam%Hgrid%Tmp%ie
       tjs = Dynam%Hgrid%Tmp%js; tje = Dynam%Hgrid%Tmp%je
       nTmpI   = tie - tis + 1

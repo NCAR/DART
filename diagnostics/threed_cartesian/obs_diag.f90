@@ -29,9 +29,9 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
                              get_qc, destroy_obs_sequence, read_obs_seq_header, &
                              get_last_obs, destroy_obs, get_num_qc, get_qc_meta_data
 use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
-                             get_obs_def_location,  get_obs_kind
-use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_var_type, get_obs_kind_name, &
-                             KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT
+                             get_obs_def_location,  get_obs_def_type_of_obs
+use     obs_kind_mod, only : max_defined_types_of_obs, get_quantity_for_type_of_obs, get_name_for_type_of_obs, &
+                             QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT
 use     location_mod, only : location_type, get_location, set_location_missing,   &
                              write_location, operator(/=), is_location_in_region, &
                              set_location, query_location, LocationDims
@@ -295,7 +295,7 @@ real(r8), allocatable, dimension(:) :: scale_factor ! to convert to plotting uni
 integer,  allocatable, dimension(:) :: ob_defining_vert ! obs index defining vert coord type
 
 ! List of observations types augmented with 'WIND' types if need be.
-! Replace calls to 'get_obs_kind_name' ---> index into 'obs_type_strings'
+! Replace calls to 'get_name_for_type_of_obs' ---> index into 'obs_type_strings'
 character(len=stringlength), pointer, dimension(:) :: obs_type_strings
 
 ! These pairs of variables are used when we diagnose which observations
@@ -331,7 +331,7 @@ call static_init_obs_sequence()  ! Initialize the obs sequence module
 ! Define/Append the 'horizontal wind' obs_kinds to supplant the list declared
 ! in obs_kind_mod.f90 i.e. if there is a RADIOSONDE_U_WIND_COMPONENT
 ! and a RADIOSONDE_V_WIND_COMPONENT, there must be a RADIOSONDE_HORIZONTAL_WIND
-! Replace calls to 'get_obs_kind_name' with variable 'obs_type_strings'
+! Replace calls to 'get_name_for_type_of_obs' with variable 'obs_type_strings'
 !----------------------------------------------------------------------
 
 num_obs_types = grok_observation_names(obs_type_strings)
@@ -640,8 +640,8 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          call get_obs_from_key(seq, keys(obsindex), observation)
          call get_obs_def(observation, obs_def)
 
-         flavor   = get_obs_kind(obs_def)
-         obsname  = get_obs_kind_name(flavor)
+         flavor   = get_obs_def_type_of_obs(obs_def)
+         obsname  = get_name_for_type_of_obs(flavor)
          obs_time = get_obs_def_time(obs_def)
          obs_loc  = get_obs_def_location(obs_def)
          obsloc3  = get_location(obs_loc)
@@ -832,13 +832,13 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          ! U component MUST preceed the V component.
          !--------------------------------------------------------------
 
-         if ( get_obs_kind_var_type(flavor) == KIND_U_WIND_COMPONENT ) then
+         if ( get_quantity_for_type_of_obs(flavor) == QTY_U_WIND_COMPONENT ) then
 
             U_obs         = obs(1)
             U_obs_err_var = obs_err_var
             U_obs_loc     = obs_loc
             U_flavor      = flavor
-            U_type        = KIND_U_WIND_COMPONENT
+            U_type        = QTY_U_WIND_COMPONENT
             U_pr_mean     = pr_mean
             U_pr_sprd     = pr_sprd
             U_po_mean     = po_mean
@@ -933,7 +933,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
             ! Additional work for horizontal wind (given U,V)
             !-----------------------------------------------------------
 
-            ObsIsWindCheck: if ( get_obs_kind_var_type(flavor) == KIND_V_WIND_COMPONENT ) then
+            ObsIsWindCheck: if ( get_quantity_for_type_of_obs(flavor) == QTY_V_WIND_COMPONENT ) then
 
                ! The big assumption is that the U wind component has
                ! immediately preceeded the V component and has been saved.
@@ -1022,7 +1022,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
             ! Handle horizontal wind given U,V components
 
-            if ( get_obs_kind_var_type(flavor) == KIND_V_WIND_COMPONENT ) then
+            if ( get_quantity_for_type_of_obs(flavor) == QTY_V_WIND_COMPONENT ) then
 
                ierr = CheckMate(flavor, U_flavor, obs_loc, U_obs_loc, wflavor)
 
@@ -1066,7 +1066,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          ! pre-existing U wind observations.
          !--------------------------------------------------------------
 
-         if ( get_obs_kind_var_type(flavor) == KIND_V_WIND_COMPONENT ) then
+         if ( get_quantity_for_type_of_obs(flavor) == QTY_V_WIND_COMPONENT ) then
 
             U_obs         = MISSING_R8
             U_obs_err_var = MISSING_R8
@@ -1241,7 +1241,7 @@ function grok_observation_names(my_names)
 ! Define/Append the 'horizontal wind' obs_kinds to supplant the list declared
 ! in obs_kind_mod.f90 i.e. if there is a RADIOSONDE_U_WIND_COMPONENT
 ! and a RADIOSONDE_V_WIND_COMPONENT, there must be a RADIOSONDE_HORIZONTAL_WIND
-! Replace calls to 'get_obs_kind_name' with variable 'obs_type_strings'
+! Replace calls to 'get_name_for_type_of_obs' with variable 'obs_type_strings'
 !----------------------------------------------------------------------
 
 character(len=stringlength), pointer :: my_names(:) ! INTENT OUT, btw
@@ -1249,7 +1249,7 @@ integer :: grok_observation_names
 
 integer :: ivar, nwinds
 character(len=stringlength) :: str1, str2, str3
-character(len=stringlength), dimension(2*max_obs_kinds) :: names
+character(len=stringlength), dimension(2*max_defined_types_of_obs) :: names
 
 ! Initially, the array of obs_kind_names is exactly 'max_num_obs' in length.
 ! This block finds the U,V wind pairs and creates the 'horizontal_wind'
@@ -1266,15 +1266,15 @@ nwinds = 0
 ! as we find wind pairs, we insert the new name at the end of the known
 ! names.
 
-do ivar = 1,max_obs_kinds
-   names(ivar) = get_obs_kind_name(ivar)
+do ivar = 1,max_defined_types_of_obs
+   names(ivar) = get_name_for_type_of_obs(ivar)
 enddo
 
 ! Search through the obs_kind_name list for matching U,V components.
 ! The U component always comes before the V component, so we exploit that.
 ! Once we have counted the pairs - we know how far to expand the obs_kind list.
 
-do ivar = 2,max_obs_kinds
+do ivar = 2,max_defined_types_of_obs
 
    str1   = names(ivar-1)
    indx1  = index(str1,'_U_WIND_COMPONENT') - 1
@@ -1293,7 +1293,7 @@ do ivar = 2,max_obs_kinds
       if (indxN > 0) then ! we know they are matching kinds
          nwinds = nwinds + 1
          str3   = str1(1:indx2)//'_HORIZONTAL_WIND'
-         names(max_obs_kinds + nwinds) = str3
+         names(max_defined_types_of_obs + nwinds) = str3
 
       !  write(*,*)'Seems like ',str1(1:indx1N),' matches ',str2(1:indx2N)
       !  write(*,*)'results in ',str3
@@ -1305,13 +1305,13 @@ enddo
 ! Turns out there is also a [U,V]_10_METER_WIND
 ! Need to find and count them, too.
 
-do ivar = 2,max_obs_kinds
+do ivar = 2,max_defined_types_of_obs
 
-   str1   = get_obs_kind_name(ivar-1)
+   str1   = get_name_for_type_of_obs(ivar-1)
    indx1  = index(str1,'_U_10_METER_WIND') - 1
    indx1N = len_trim(str1)
 
-   str2   = get_obs_kind_name(ivar)
+   str2   = get_name_for_type_of_obs(ivar)
    indx2  = index(str2,'_V_10_METER_WIND') - 1
    indx2N = len_trim(str2)
 
@@ -1320,7 +1320,7 @@ do ivar = 2,max_obs_kinds
       if (indxN > 0) then ! we know they are matching kinds
          nwinds = nwinds + 1
          str3   = str1(1:indx2)//'_10_M_HORZ_WIND'
-         names(max_obs_kinds + nwinds) = str3
+         names(max_defined_types_of_obs + nwinds) = str3
       endif
    endif
 enddo
@@ -1330,7 +1330,7 @@ enddo
 ! Now that we know how many wind pairs there are, we return the
 ! exact number and new array of observation kind names
 
-grok_observation_names = max_obs_kinds + nwinds
+grok_observation_names = max_defined_types_of_obs + nwinds
 
 allocate(my_names(grok_observation_names))
 
@@ -1728,9 +1728,9 @@ InputList : do i = 1,MaxTrusted
 
    matched = .false.
 
-   PossibleList : do ikind = 1,max_obs_kinds
+   PossibleList : do ikind = 1,max_defined_types_of_obs
 
-      possible_obs_type = get_obs_kind_name(ikind)
+      possible_obs_type = get_name_for_type_of_obs(ikind)
       if (trim(trusted_obs(i)) == trim(possible_obs_type)) then
          matched = .true.
          exit PossibleList
@@ -1823,7 +1823,7 @@ do ivar = 1,SIZE(scale_factor)
           scale_factor(ivar) = 1000.0_r8
 
    ! Somehow, we should plot statistics on the dBZ scale for these ...
-   ! scale_factor(KIND_RADAR_REFLECTIVITY) = 10log10(z)
+   ! scale_factor(QTY_RADAR_REFLECTIVITY) = 10log10(z)
 
    ! The scaling is summarized in WriteNetCDF if the verbose option is chosen.
 
@@ -2488,15 +2488,15 @@ if ( (vflavor == MISSING_I) .or. (uflavor == MISSING_I)) then
    return
 endif
 
-vobs_type   = get_obs_kind_var_type(vflavor)
-uobs_type   = get_obs_kind_var_type(uflavor)
-vobs_string = get_obs_kind_name(vflavor)
-uobs_string = get_obs_kind_name(uflavor)
+vobs_type   = get_quantity_for_type_of_obs(vflavor)
+uobs_type   = get_quantity_for_type_of_obs(uflavor)
+vobs_string = get_name_for_type_of_obs(vflavor)
+uobs_string = get_name_for_type_of_obs(uflavor)
 
 write(string2,*)'[',trim(uobs_string),'] and [',trim(vobs_string),']'
 write(string3,*)'observation types are ',uflavor, vflavor
 
-if (uobs_type == KIND_U_WIND_COMPONENT .and. vobs_type == KIND_V_WIND_COMPONENT) then
+if (uobs_type == QTY_U_WIND_COMPONENT .and. vobs_type == QTY_V_WIND_COMPONENT) then
    continue
 else
    write(string1,*) 'cannot pair up wind components around OBS ', keys(obsindex)
@@ -3388,7 +3388,7 @@ if ( debug > 0 ) then
 endif
 
 typesdimlen = 0
-do ivar = 1,max_obs_kinds
+do ivar = 1,max_defined_types_of_obs
 
    nobs = sum(poste%Nposs(:,:,:,ivar))
 
@@ -3439,7 +3439,7 @@ call nc_check(nf90_def_dim(ncid=ncid, &
           'WriteNetCDF', 'copy:def_dim '//trim(fname))
 
 call nc_check(nf90_def_dim(ncid=ncid, &
-          name='obstypes', len=max_obs_kinds, dimid=TypesDimID), &
+          name='obstypes', len=max_defined_types_of_obs, dimid=TypesDimID), &
           'WriteNetCDF', 'types:def_dim '//trim(fname))
 
 call nc_check(nf90_def_dim(ncid=ncid, &
@@ -3611,10 +3611,10 @@ call nc_check(nf90_put_var(ncid, CopyVarId, (/ (i,i=1,Ncopies) /) ), &
 call nc_check(nf90_put_var(ncid, CopyMetaVarID, copy_names), &
           'WriteNetCDF', 'copymeta:put_var')
 
-call nc_check(nf90_put_var(ncid, TypesVarId, (/ (i,i=1,max_obs_kinds) /) ), &
+call nc_check(nf90_put_var(ncid, TypesVarId, (/ (i,i=1,max_defined_types_of_obs) /) ), &
           'WriteNetCDF', 'types:put_var')
 
-call nc_check(nf90_put_var(ncid, TypesMetaVarID, obs_type_strings(1:max_obs_kinds)), &
+call nc_check(nf90_put_var(ncid, TypesMetaVarID, obs_type_strings(1:max_defined_types_of_obs)), &
           'WriteNetCDF', 'typesmeta:put_var')
 
 call nc_check(nf90_put_var(ncid, ZlevVarID, hlevel(1:Nlevels)), &

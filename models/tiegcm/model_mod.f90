@@ -35,16 +35,16 @@ use    utilities_mod, only : file_exist, open_file, close_file, logfileunit,    
                              do_nml_file, do_nml_term, nc_check, register_module,   &
                              file_to_text, find_textfile_dims, to_upper
 
-use     obs_kind_mod, only : KIND_U_WIND_COMPONENT,           &
-                             KIND_V_WIND_COMPONENT,           &
-                             KIND_TEMPERATURE,                &! neutral temperature obs
-                             KIND_PRESSURE,                   &! neutral pressure obs
-                             KIND_MOLEC_OXYGEN_MIXING_RATIO,  &! neutral composition obs
-                             KIND_1D_PARAMETER,               &
-                             KIND_GEOPOTENTIAL_HEIGHT,        &
-                             KIND_GEOMETRIC_HEIGHT,           &
-                             KIND_VERTICAL_TEC,               &! total electron content
-                             get_raw_obs_kind_index, get_raw_obs_kind_name
+use     obs_kind_mod, only : QTY_U_WIND_COMPONENT,           &
+                             QTY_V_WIND_COMPONENT,           &
+                             QTY_TEMPERATURE,                &! neutral temperature obs
+                             QTY_PRESSURE,                   &! neutral pressure obs
+                             QTY_MOLEC_OXYGEN_MIXING_RATIO,  &! neutral composition obs
+                             QTY_1D_PARAMETER,               &
+                             QTY_GEOPOTENTIAL_HEIGHT,        &
+                             QTY_GEOMETRIC_HEIGHT,           &
+                             QTY_VERTICAL_TEC,               &! total electron content
+                             get_index_for_quantity, get_name_for_quantity
 
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
@@ -458,11 +458,11 @@ obs_val = MISSING_R8
 
 ! GITM uses a vtec routine in obs_def_upper_atm_mod:get_expected_gnd_gps_vtec()
 ! TIEGCM has its own vtec routine, so we should use it. This next block ensures that.
-! The get_expected_gnd_gps_vtec() tries to interpolate KIND_GEOPOTENTIAL_HEIGHT
+! The get_expected_gnd_gps_vtec() tries to interpolate QTY_GEOPOTENTIAL_HEIGHT
 ! when it does, this will kill it. 
 
-if ( ikind == KIND_GEOPOTENTIAL_HEIGHT ) then
-   write(string1,*)'KIND_GEOPOTENTIAL_HEIGHT currently unsupported'
+if ( ikind == QTY_GEOPOTENTIAL_HEIGHT ) then
+   write(string1,*)'QTY_GEOPOTENTIAL_HEIGHT currently unsupported'
    call error_handler(E_ERR,'model_interpolate',string1,source, revision, revdate)
 endif
 
@@ -490,13 +490,13 @@ if (vert_is_level(location)) then
    if ((level < 1) .or. (level > nilev)) return
 endif
 
-if ((ikind == KIND_PRESSURE) .and. (vert_is_level(location))) then
+if ((ikind == QTY_PRESSURE) .and. (vert_is_level(location))) then
    ! Some variables need plevs, some need pilevs
    ! We only need the height (aka level)
    ! the obs_def_upper_atm_mod.f90:get_expected_O_N2_ratio routines queries
    ! for the pressure at the model levels - EXACTLY - so ...
    ! FIXME ... at present ... the only time model_interpolate
-   ! gets called with KIND_PRESSURE is to calculate density, which
+   ! gets called with QTY_PRESSURE is to calculate density, which
    ! requires other variables that only live on the midpoints.
    ! I cannot figure out how to generically decide when to
    ! use plevs vs. pilevs 
@@ -555,7 +555,7 @@ endif
 
 ! FIXME ... is it possible to try to get a pressure with which_vert == undefined
 ! At present, vert_interp will simply fail because height is a negative number.
-if (ikind == KIND_PRESSURE) then
+if (ikind == QTY_PRESSURE) then
 
    call vert_interp(x,lon_below,lat_below,height,ikind,'ilev',-1,val(1,1),istatus)
    if (istatus == 0) &
@@ -580,7 +580,7 @@ if (ikind == KIND_PRESSURE) then
 endif
 
 ! If it is not pressure ...
-! FindVar_by_kind would fail with ikind == KIND_PRESSURE, so we have
+! FindVar_by_kind would fail with ikind == QTY_PRESSURE, so we have
 ! to calculate the pressure separately before this part.
 
 ivar = FindVar_by_kind(ikind)
@@ -601,7 +601,7 @@ elseif ((progvar(ivar)%rank == 4) .and. (vert_is_level(location))) then
 
    ! one use of model_interpolate is to allow other modules/routines
    ! the ability to 'count' the model levels. To do this, create observations
-   ! with locations on model levels and 'interpolate' for KIND_GEOMETRIC_HEIGHT.
+   ! with locations on model levels and 'interpolate' for QTY_GEOMETRIC_HEIGHT.
    ! When the interpolation fails, you've gone one level too far. 
    ! The only geometric height variable we have is ZG, and its a 4D variable.
 
@@ -1281,7 +1281,7 @@ endif
 
 do i = 1, get_model_size()
    call get_state_meta_data(i, temp_loc, variable_type)
-   if(variable_type == KIND_1D_PARAMETER) then
+   if(variable_type == QTY_1D_PARAMETER) then
       pert_state(i) = random_gaussian(random_seq,state(i),20.0_r8)
    else
       ! FIXME ... is this really what you want to do - no variability in the states.
@@ -1330,7 +1330,7 @@ call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
 
 do k = 1,num_close
    t_ind  = close_ind(k)
-   if (obs_kind(t_ind) == KIND_GEOMETRIC_HEIGHT) then
+   if (obs_kind(t_ind) == QTY_GEOMETRIC_HEIGHT) then
       if (do_output() .and. (debug > 99)) then
          write(     *     ,*)'get_close_obs ZG distance is ', &
                      dist(k),' changing to ',10.0_r8 * PI
@@ -1354,13 +1354,13 @@ if (estimate_f10_7) then
       ! will be impacted - which is usually the desire. You can then avoid
       ! impacting the tiegcm forecast through the input.nml 'NO_COPY_BACK' feature.
 
-      if (    (obs_kind(t_ind) == KIND_MOLEC_OXYGEN_MIXING_RATIO) &
-         .or. (obs_kind(t_ind) == KIND_U_WIND_COMPONENT) &
-         .or. (obs_kind(t_ind) == KIND_V_WIND_COMPONENT) &
-         .or. (obs_kind(t_ind) == KIND_TEMPERATURE) ) then
+      if (    (obs_kind(t_ind) == QTY_MOLEC_OXYGEN_MIXING_RATIO) &
+         .or. (obs_kind(t_ind) == QTY_U_WIND_COMPONENT) &
+         .or. (obs_kind(t_ind) == QTY_V_WIND_COMPONENT) &
+         .or. (obs_kind(t_ind) == QTY_TEMPERATURE) ) then
       !  dist(k) = 10.0_r8 * PI
 
-      elseif  (obs_kind(t_ind) == KIND_1D_PARAMETER) then
+      elseif  (obs_kind(t_ind) == QTY_1D_PARAMETER) then
          ! f10_7 is given a location of latitude 0.0 and the longitude
          ! of local noon. By decreasing the distance from the observation
          ! to the dynamic f10_7 location we are allowing the already close
@@ -1764,12 +1764,12 @@ integer  :: istatus
 
 location = set_location(locarray(1), locarray(2), locarray(3), VERTISHEIGHT)
 
-call model_interpolate(x, location, KIND_PRESSURE, obs_val, istatus)
+call model_interpolate(x, location, QTY_PRESSURE, obs_val, istatus)
 
 write(*,*)'test_interpolate: PRESSURE value at ',locarray, &
           ' is ',obs_val,' status is ',istatus,' (0 is good)'
 
-call model_interpolate(x, location, KIND_VERTICAL_TEC, obs_val, istatus)
+call model_interpolate(x, location, QTY_VERTICAL_TEC, obs_val, istatus)
 
 write(*,*)'test_interpolate: VERTICAL_TEC value at ',locarray, &
           ' is ',obs_val,' status is ',istatus,' (0 is good)'
@@ -2240,7 +2240,7 @@ MyLoop : do i = 1, nrows
 
    ! Make sure DART kind is valid
 
-   if( get_raw_obs_kind_index(dartstr) < 0 ) then
+   if( get_index_for_quantity(dartstr) < 0 ) then
       write(string1,'(''No obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
       call error_handler(E_ERR,'verify_variables',string1,source,revision,revdate)
    endif
@@ -2260,7 +2260,7 @@ if ( estimate_f10_7 ) then
 
    ngood = ngood + 1
    variable_table(ngood,VT_VARNAMEINDX) = 'f10_7'
-   variable_table(ngood,VT_KINDINDX)    = 'KIND_1D_PARAMETER'
+   variable_table(ngood,VT_KINDINDX)    = 'QTY_1D_PARAMETER'
    variable_table(ngood,VT_MINVALINDX)  = 'NA'
    variable_table(ngood,VT_MAXVALINDX)  = 'NA'
    variable_table(ngood,VT_ORIGININDX)  = 'CALCULATE'
@@ -2351,7 +2351,7 @@ FillLoop : do ivar = 1, ngood
    progvar(ivar)%indexN            = -1
    progvar(ivar)%verticalvar       = 'undefined'
    progvar(ivar)%kind_string       = trim(variable_table(ivar,VT_KINDINDX))
-   progvar(ivar)%dart_kind         = get_raw_obs_kind_index( progvar(ivar)%kind_string )
+   progvar(ivar)%dart_kind         = get_index_for_quantity( progvar(ivar)%kind_string )
    progvar(ivar)%xtype             = -1
    progvar(ivar)%missingR8         = MISSING_R8
    progvar(ivar)%missingR4         = MISSING_R4
@@ -2820,7 +2820,7 @@ endif
 
 istatus = 0 ! If we made it this far, it worked.
 
-if (ikind == KIND_PRESSURE) then ! log-linear interpolation in height
+if (ikind == QTY_PRESSURE) then ! log-linear interpolation in height
 
    val_top    = plevs(lev_top)     !pressure at midpoint [Pa]
    val_bottom = plevs(lev_bottom)  !pressure at midpoint [Pa]

@@ -20,15 +20,15 @@ use obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs_sequence, &
                              get_time_range_keys, get_obs_from_key, get_obs_def, get_qc
 use      obs_def_mod, only : copy_obs_def, obs_def_type, &
                              get_obs_def_time, get_obs_def_location, &
-                             get_obs_def_error_variance, get_obs_kind, &
-                             set_obs_def_kind, set_obs_def_location, set_obs_def_time, &
+                             get_obs_def_error_variance, get_obs_def_type_of_obs, &
+                             set_obs_def_type_of_obs, set_obs_def_location, set_obs_def_time, &
                              set_obs_def_error_variance
 use     obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT, &
                              RADIOSONDE_V_WIND_COMPONENT, &
                              RADIOSONDE_SURFACE_PRESSURE, &
                              RADIOSONDE_TEMPERATURE, &
                              RADIOSONDE_SPECIFIC_HUMIDITY, &
-                             max_obs_kinds, get_obs_kind_name, map_def_index
+                             max_defined_types_of_obs, get_name_for_type_of_obs, map_type_of_obs_table
 use     location_mod, only : location_type, get_location, query_location, set_location
 use time_manager_mod, only : time_type, get_time, set_calendar_type, GREGORIAN, get_date, &
                              set_date, operator(/=), set_time
@@ -58,7 +58,7 @@ integer           :: is, ie, iobs, k
 integer           :: num_obs, num_copies, num_qc, max_num_obs, dart_seq_num_obs, num_obs_in_set
 integer, allocatable :: keys(:)
 
-character(len = 32)  :: obs_name, obs_no_support(max_obs_kinds)
+character(len = 32)  :: obs_name, obs_no_support(max_defined_types_of_obs)
 character(len = 129) :: msgstring
 
 integer              :: n_no_support
@@ -258,7 +258,7 @@ if(.not. littler_to_dart) then
             which_vert = nint(query_location(location,'which_vert'))
 
 !!$            if (which_vert == -1) then
-!!$               obs_kind =  map_def_index(get_obs_kind(obs_def))
+!!$               obs_kind =  map_type_of_obs_table(get_obs_def_type_of_obs(obs_def))
 !!$               if (obs_kind == RADIOSONDE_SURFACE_PRESSURE) then
 !!$                  call get_obs_values(obs, obs_value, 1)
 !!$                  tst_Psfc = obs_value(1)
@@ -271,8 +271,8 @@ if(.not. littler_to_dart) then
          enddo
 
 !!$         if (kx > 1) then
-         obs_kind = map_def_index(get_obs_kind(obs_def))
-         obs_name = get_obs_kind_name(obs_kind)
+         obs_kind = map_type_of_obs_table(get_obs_def_type_of_obs(obs_def))
+         obs_name = get_name_for_type_of_obs(obs_kind)
          if ( obs_name(1:10) == 'RADIOSONDE' ) then
             tst_sound = .true.
             tst_pltfrm = 'FM-35 TEMP'
@@ -366,7 +366,7 @@ if(.not. littler_to_dart) then
                z(k) = loc(3)
             endif
 
-            obs_kind = map_def_index(get_obs_kind(obs_def))
+            obs_kind = map_type_of_obs_table(get_obs_def_type_of_obs(obs_def))
 
             call get_obs_values(obs, obs_value, 1)
             if(obs_kind == RADIOSONDE_U_WIND_COMPONENT) then
@@ -398,10 +398,10 @@ if(.not. littler_to_dart) then
             else
                if (n_no_support == 0) then
                   n_no_support = n_no_support + 1
-                  obs_no_support(n_no_support) = get_obs_kind_name(obs_kind)
-               elseif (obs_no_support(n_no_support) /= get_obs_kind_name(obs_kind)) then
+                  obs_no_support(n_no_support) = get_name_for_type_of_obs(obs_kind)
+               elseif (obs_no_support(n_no_support) /= get_name_for_type_of_obs(obs_kind)) then
                   n_no_support = n_no_support + 1
-                  obs_no_support(n_no_support) = get_obs_kind_name(obs_kind)
+                  obs_no_support(n_no_support) = get_name_for_type_of_obs(obs_kind)
                endif
             endif
          enddo
@@ -606,7 +606,7 @@ else
 
                num_obs = num_obs + 1
 
-               call set_obs_def_kind(obs_def, RADIOSONDE_TEMPERATURE)
+               call set_obs_def_type_of_obs(obs_def, RADIOSONDE_TEMPERATURE)
 
                erms = intplog (p(k)*0.01_r8, pressure_levels, temp_error)
 
@@ -649,7 +649,7 @@ else
 
                num_obs = num_obs + 1
 
-               call set_obs_def_kind(obs_def, RADIOSONDE_U_WIND_COMPONENT)
+               call set_obs_def_type_of_obs(obs_def, RADIOSONDE_U_WIND_COMPONENT)
 
                erms = intplin (p(k)*0.01_r8, wind_pressures, wind_error)
 
@@ -680,7 +680,7 @@ else
 
                num_obs = num_obs + 1
 
-               call set_obs_def_kind(obs_def, RADIOSONDE_V_WIND_COMPONENT)
+               call set_obs_def_type_of_obs(obs_def, RADIOSONDE_V_WIND_COMPONENT)
 
                erms = intplin (p(k)*0.01_r8, wind_pressures, wind_error)
 

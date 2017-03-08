@@ -30,7 +30,7 @@ use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,     
                                  destroy_obs_sequence, get_qc_meta_data, add_qc,             &
                                  get_expected_obs_distrib_state !HK
 use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
-                                 get_obs_kind
+                                 get_obs_def_type_of_obs
 use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), operator(>),   &
                                  operator(-), print_time
 use utilities_mod,        only : register_module,  error_handler, E_ERR, E_MSG, E_DBG,       &
@@ -1922,7 +1922,7 @@ function failed_outlier(ratio, outlier_threshold, obs_ens_handle, OBS_KEY_COPY, 
 ! return true if the observation value is too far away from the ensemble mean
 ! and should be rejected and not assimilated.
 
-use obs_def_mod, only : get_obs_kind
+use obs_def_mod, only : get_obs_def_type_of_obs
 use obs_kind_mod         ! this allows you to use all the types available
 
 
@@ -1964,7 +1964,7 @@ call prepare_to_read_from_copies(obs_ens_handle)
 this_obs_key = obs_ens_handle%copies(OBS_KEY_COPY, j)
 call get_obs_from_key(seq, this_obs_key, observation)
 call get_obs_def(observation, obs_def)
-this_obs_type = get_obs_kind(obs_def)
+this_obs_type = get_obs_def_type_of_obs(obs_def)
 
 ! note that this example uses the specific type (e.g. RADIOSONDE_TEMPERATURE)
 ! to make decisions.  you have the observation so any other part (e.g. the

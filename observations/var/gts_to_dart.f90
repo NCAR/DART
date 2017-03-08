@@ -14,7 +14,7 @@ use  obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs_sequence, in
                               set_copy_meta_data, set_qc_meta_data, write_obs_seq, assignment(=), &
                               init_obs, static_init_obs_sequence, set_obs_def, set_obs_values, set_qc
 use       obs_def_mod, only : set_obs_def_location, set_obs_def_error_variance, &
-                              set_obs_def_kind, set_obs_def_time, set_obs_def_key, &
+                              set_obs_def_type_of_obs, set_obs_def_time, set_obs_def_key, &
                               obs_def_type
 use      obs_kind_mod, only : SAT_U_WIND_COMPONENT, SAT_V_WIND_COMPONENT, &
                               QKSWND_U_WIND_COMPONENT, QKSWND_V_WIND_COMPONENT, &

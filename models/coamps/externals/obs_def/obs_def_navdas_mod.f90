@@ -5,11 +5,11 @@
 ! $Id$
 
 ! BEGIN DART PREPROCESS KIND LIST
-! GEOPOTENTIAL_HEIGHT,   KIND_GEOPOTENTIAL_HEIGHT
-! LOG_SPECIFIC_HUMIDITY, KIND_SPECIFIC_HUMIDITY
-! AIR_TEMPERATURE,       KIND_TEMPERATURE
-! U_WIND_COMPONENT,      KIND_U_WIND_COMPONENT
-! V_WIND_COMPONENT,      KIND_V_WIND_COMPONENT
+! GEOPOTENTIAL_HEIGHT,   QTY_GEOPOTENTIAL_HEIGHT
+! LOG_SPECIFIC_HUMIDITY, QTY_SPECIFIC_HUMIDITY
+! AIR_TEMPERATURE,       QTY_TEMPERATURE
+! U_WIND_COMPONENT,      QTY_U_WIND_COMPONENT
+! V_WIND_COMPONENT,      QTY_V_WIND_COMPONENT
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -91,11 +91,11 @@ module obs_def_navdas_mod
   use     location_mod, only : location_type, vert_is_pressure,&
                                query_location 
   use  assim_model_mod, only : interpolate
-  use     obs_kind_mod, only : KIND_POTENTIAL_TEMPERATURE, &
-                               KIND_SPECIFIC_HUMIDITY,     &
-                               KIND_U_WIND_COMPONENT,      &
-                               KIND_V_WIND_COMPONENT,      &
-                               KIND_GEOPOTENTIAL_HEIGHT
+  use     obs_kind_mod, only : QTY_POTENTIAL_TEMPERATURE, &
+                               QTY_SPECIFIC_HUMIDITY,     &
+                               QTY_U_WIND_COMPONENT,      &
+                               QTY_V_WIND_COMPONENT,      &
+                               QTY_GEOPOTENTIAL_HEIGHT
 
   implicit none
   private
@@ -142,7 +142,7 @@ contains
 
     if ( .not. module_initialized ) call initialize_module
     ! Specific humidity at this location
-    call interpolate(state_vector, location, KIND_GEOPOTENTIAL_HEIGHT,&
+    call interpolate(state_vector, location, QTY_GEOPOTENTIAL_HEIGHT,&
                      geop_height, istatus)
 
   end subroutine get_expected_geopotential_height
@@ -163,7 +163,7 @@ contains
     if ( .not. module_initialized ) call initialize_module
 
     ! Specific humidity at this location
-    call interpolate(state_vector, location, KIND_SPECIFIC_HUMIDITY,&
+    call interpolate(state_vector, location, QTY_SPECIFIC_HUMIDITY,&
                      qv, istatus)
     if (istatus /= 0) then
        ln_qv = missing_r8
@@ -194,7 +194,7 @@ contains
 
     ! Potential temperature at this location
     call interpolate(state_vector, location,&
-                     KIND_POTENTIAL_TEMPERATURE,pot_t, istatus)
+                     QTY_POTENTIAL_TEMPERATURE,pot_t, istatus)
     if (istatus /= 0) then
        t = missing_r8
        return
@@ -202,7 +202,7 @@ contains
     
     ! Pressure - for now, assume that we are working in pressure
     ! coordinates only.  Once we add other capabilities, change this
-    ! to call model_interpolate for KIND_PRESSURE
+    ! to call model_interpolate for QTY_PRESSURE
     if (.not. vert_is_pressure(location)) then
        t = missing_r8
        return
@@ -229,14 +229,14 @@ contains
     if ( .not. module_initialized ) call initialize_module
 
     if (key .eq. U) then
-       call interpolate(state_vector, location, KIND_U_WIND_COMPONENT,&
+       call interpolate(state_vector, location, QTY_U_WIND_COMPONENT,&
                         wind, istatus)
        if (istatus /= 0) then
           wind = missing_r8
           return
        endif
     else if (key .eq. V) then
-       call interpolate(state_vector, location, KIND_V_WIND_COMPONENT,&
+       call interpolate(state_vector, location, QTY_V_WIND_COMPONENT,&
                         wind, istatus)
        if (istatus /= 0) then
           wind = missing_r8

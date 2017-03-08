@@ -61,7 +61,7 @@ module state_structure_mod
 
 use utilities_mod, only : E_ERR, error_handler, nc_check, do_output
 
-use  obs_kind_mod, only : get_raw_obs_kind_name, get_raw_obs_kind_index
+use  obs_kind_mod, only : get_name_for_quantity, get_index_for_quantity
 
 use     types_mod, only : r8, r4, i8, digits12, MISSING_R8, MISSING_R4, MISSING_I, &
                           obstypelength, MAX_NUM_DOMS
@@ -439,9 +439,9 @@ state%domain(dom_id)%variable(1)%index_start = domain_offset + 1
 state%domain(dom_id)%variable(1)%index_end   = domain_offset + domain_size
 !>@todo FIXME : should this be raw state variable or -1?, optional argument
 !>              for kind??
-state%domain(dom_id)%variable(1)%kind_string = 'KIND_RAW_STATE_VARIABLE'
+state%domain(dom_id)%variable(1)%kind_string = 'QTY_RAW_STATE_VARIABLE'
 state%domain(dom_id)%variable(1)%dart_kind   = &
-       get_raw_obs_kind_index(state%domain(dom_id)%variable(1)%kind_string)
+       get_index_for_quantity(state%domain(dom_id)%variable(1)%kind_string)
 
 ! dimension
 state%domain(dom_id)%variable(1)%dimname(1) = 'location'
@@ -1661,7 +1661,7 @@ integer :: ivar
 
 do ivar = 1,num_vars
    state%domain(dom_id)%variable(ivar)%dart_kind = kind_list(ivar)
-   state%domain(dom_id)%variable(ivar)%kind_string = get_raw_obs_kind_name(kind_list(ivar))
+   state%domain(dom_id)%variable(ivar)%kind_string = get_name_for_quantity(kind_list(ivar))
 enddo
 
 end subroutine set_dart_kinds
@@ -1739,7 +1739,7 @@ var_id   = -1
 if ( get_num_varids_from_kind(dom_id, dart_kind_index) > 1 ) then
    write(string1,*) 'Found ', get_num_varids_from_kind(dom_id, dart_kind_index), &
                     ' > 1'
-   write(string2,*) 'for dart kind : ', get_raw_obs_kind_name(dart_kind_index)
+   write(string2,*) 'for dart kind : ', get_name_for_quantity(dart_kind_index)
    write(string3,*) 'Please use get_varids_from_kind to get a list of indices '
    call error_handler(E_ERR,'get_varid_from_kind', string1, &
               source, revision, revdate, text2=string2, text3=string3)

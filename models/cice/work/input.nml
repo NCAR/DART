@@ -151,10 +151,10 @@
    output_state_vector          = .false.
    binary_grid_file_format      = 'big_endian'
    debug                        = 1
-   model_state_variables  =       'aicen', 'KIND_SEAICE_CONCENTR'        , 'UPDATE',
-                                  'vicen', 'KIND_SEAICE_VOLUME'          , 'UPDATE',
-				  'vsnon', 'KIND_SEAICE_SNOWVOLUME'      , 'UPDATE',
-                                  'somtp', 'KIND_SOM_TEMPERATURE'        , 'UPDATE'
+   model_state_variables  =       'aicen', 'QTY_SEAICE_CONCENTR'        , 'UPDATE',
+                                  'vicen', 'QTY_SEAICE_VOLUME'          , 'UPDATE',
+				  'vsnon', 'QTY_SEAICE_SNOWVOLUME'      , 'UPDATE',
+                                  'somtp', 'QTY_SOM_TEMPERATURE'        , 'UPDATE'
    /
 
 # See the cice model_mod.html for a larger listing of CICE variables and their
@@ -296,7 +296,7 @@
    verbose               = .false.
    test1thru             = 5
    x_ind                 = 3210
-   kind_of_interest      = 'KIND_SEAICE_CONCENTR'
+   kind_of_interest      = 'QTY_SEAICE_CONCENTR'
    loc_of_interest       = 287.5, 82.48, 1
    interp_test_lonrange  = 0.0, 359.0
    interp_test_dlon      = 1.0

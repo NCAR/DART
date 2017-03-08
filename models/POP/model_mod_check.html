@@ -72,7 +72,7 @@ prematurely terminating the namelist.
    verbose               = .FALSE.
    test1thru             = 11
    loc_of_interest       = 320.0, 18.0, 5.0
-   kind_of_interest      = 'KIND_U_CURRENT_COMPONENT'
+   kind_of_interest      = 'QTY_U_CURRENT_COMPONENT'
    interp_test_lonrange  = 0.0, 359.0
    interp_test_dlon      = 1.0
    interp_test_latrange  = -89.0, 89.0
@@ -336,7 +336,7 @@ is close in the horizontal only - all vertical levels will be reported.
 <P>
 Test the interpolation value of a single point point at 
 <em class="program">loc_of_interest</em>, of kind, <em class="program">kind_of_interest</em>.
-For POP models we can test KIND_U_CURRENT_COMPONENT and KIND_TEMPERATURE.
+For POP models we can test QTY_U_CURRENT_COMPONENT and QTY_TEMPERATURE.
 </P>
 
 <H3 class=indent1>Test #9: Run a model interpolate on a range of points specified in the input.nml</H3>

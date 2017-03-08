@@ -11,7 +11,7 @@ module model_mod
 
 use types_mod, only : r8
 use location_mod, only : location_type, set_location, get_location
-use kinds_mod, only : KIND_VERTICAL_VORTICITY
+use kinds_mod, only : QTY_VERTICAL_VORTICITY
 
 ! FIXME: we don't have these in the repos
 use transforms_mod
@@ -106,7 +106,7 @@ location = set_location(lon(i), lat(j))
 !end do
 
 if (present(var_type)) then
-   var_type = KIND_VERTICAL_VORTICITY  ! FIXME - complex?  U,V velocity? flux?
+   var_type = QTY_VERTICAL_VORTICITY  ! FIXME - complex?  U,V velocity? flux?
 endif
 
 end subroutine get_state_meta_data

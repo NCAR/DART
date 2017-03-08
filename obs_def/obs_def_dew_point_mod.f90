@@ -5,23 +5,23 @@
 ! $Id$
 
 ! BEGIN DART PREPROCESS KIND LIST
-! DEWPOINT,                KIND_DEWPOINT
-! DEWPOINT_2_METER,        KIND_DEWPOINT
-! BUOY_DEWPOINT,           KIND_DEWPOINT
-! SHIP_DEWPOINT,           KIND_DEWPOINT
-! SYNOP_DEWPOINT,          KIND_DEWPOINT
-! AIREP_DEWPOINT,          KIND_DEWPOINT
-! AMDAR_DEWPOINT,          KIND_DEWPOINT
-! PILOT_DEWPOINT,          KIND_DEWPOINT
-! BOGUS_DEWPOINT,          KIND_DEWPOINT
-! AIRS_DEWPOINT,           KIND_DEWPOINT
-! METAR_DEWPOINT_2_METER,  KIND_DEWPOINT
-! RADIOSONDE_DEWPOINT,     KIND_DEWPOINT
-! DROPSONDE_DEWPOINT,      KIND_DEWPOINT
-! AIRCRAFT_DEWPOINT,       KIND_DEWPOINT
-! ACARS_DEWPOINT,          KIND_DEWPOINT
-! MARINE_SFC_DEWPOINT,     KIND_DEWPOINT
-! LAND_SFC_DEWPOINT,       KIND_DEWPOINT
+! DEWPOINT,                QTY_DEWPOINT
+! DEWPOINT_2_METER,        QTY_DEWPOINT
+! BUOY_DEWPOINT,           QTY_DEWPOINT
+! SHIP_DEWPOINT,           QTY_DEWPOINT
+! SYNOP_DEWPOINT,          QTY_DEWPOINT
+! AIREP_DEWPOINT,          QTY_DEWPOINT
+! AMDAR_DEWPOINT,          QTY_DEWPOINT
+! PILOT_DEWPOINT,          QTY_DEWPOINT
+! BOGUS_DEWPOINT,          QTY_DEWPOINT
+! AIRS_DEWPOINT,           QTY_DEWPOINT
+! METAR_DEWPOINT_2_METER,  QTY_DEWPOINT
+! RADIOSONDE_DEWPOINT,     QTY_DEWPOINT
+! DROPSONDE_DEWPOINT,      QTY_DEWPOINT
+! AIRCRAFT_DEWPOINT,       QTY_DEWPOINT
+! ACARS_DEWPOINT,          QTY_DEWPOINT
+! MARINE_SFC_DEWPOINT,     QTY_DEWPOINT
+! LAND_SFC_DEWPOINT,       QTY_DEWPOINT
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -99,7 +99,7 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
 use     location_mod, only : location_type, set_location, get_location , write_location, &
                              read_location
 use  assim_model_mod, only : interpolate
-use     obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_VAPOR_MIXING_RATIO, KIND_PRESSURE
+use     obs_kind_mod, only : QTY_SURFACE_PRESSURE, QTY_VAPOR_MIXING_RATIO, QTY_PRESSURE
 
 use ensemble_manager_mod,  only : ensemble_type
 use obs_def_utilities_mod, only : track_status
@@ -156,9 +156,9 @@ if ( .not. module_initialized ) call initialize_module
 istatus = 0
 
 if(key == 1) then
-   ipres = KIND_PRESSURE
+   ipres = QTY_PRESSURE
 elseif(key == 2) then
-   ipres = KIND_SURFACE_PRESSURE
+   ipres = QTY_SURFACE_PRESSURE
 else
    write(errstring,*)'key has to be 1 (upper levels) or 2 (2-meter), got ',key
    call error_handler(E_ERR,'get_expected_dew_point', errstring, &
@@ -169,7 +169,7 @@ call interpolate(state_handle, ens_size, location, ipres, p_Pa, ipres_istatus)
 call track_status(ens_size, ipres_istatus, td, istatus, return_now)
 if (return_now) return
 
-call interpolate(state_handle, ens_size,location, KIND_VAPOR_MIXING_RATIO, qv, qv_istatus)
+call interpolate(state_handle, ens_size,location, QTY_VAPOR_MIXING_RATIO, qv, qv_istatus)
 call track_status(ens_size, qv_istatus, td, istatus, return_now)
 if (return_now) return
 

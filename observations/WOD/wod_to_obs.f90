@@ -32,21 +32,21 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,       &
                              insert_obs_in_seq, destroy_obs_sequence,         &
                              set_copy_meta_data, set_qc_meta_data, set_qc,    & 
                              set_obs_values, set_obs_def, insert_obs_in_seq
-use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
+use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_type_of_obs, &
                              set_obs_def_error_variance, set_obs_def_location, &
                              set_obs_def_key
-use obs_kind_mod,     only : get_obs_kind_name
+use obs_kind_mod,     only : get_name_for_type_of_obs
 
 ! FIXME: i don't have all the actual kinds yet (bottle? underway? )
 ! but it's closer than before.  must have obs_def_ocean_mod.f90 in preprocess list.
 
 use     obs_kind_mod, only : &
-         SALINITY,                      KIND_SALINITY,              &
-         TEMPERATURE,                   KIND_TEMPERATURE,           &
-         U_CURRENT_COMPONENT,           KIND_U_CURRENT_COMPONENT,   &
-         V_CURRENT_COMPONENT,           KIND_V_CURRENT_COMPONENT,   &
-         SEA_SURFACE_HEIGHT,            KIND_SEA_SURFACE_HEIGHT,    &
-         SEA_SURFACE_PRESSURE,          KIND_SEA_SURFACE_PRESSURE,  &
+         SALINITY,                      QTY_SALINITY,              &
+         TEMPERATURE,                   QTY_TEMPERATURE,           &
+         U_CURRENT_COMPONENT,           QTY_U_CURRENT_COMPONENT,   &
+         V_CURRENT_COMPONENT,           QTY_V_CURRENT_COMPONENT,   &
+         SEA_SURFACE_HEIGHT,            QTY_SEA_SURFACE_HEIGHT,    &
+         SEA_SURFACE_PRESSURE,          QTY_SEA_SURFACE_PRESSURE,  &
          ARGO_U_CURRENT_COMPONENT,      ARGO_V_CURRENT_COMPONENT,   &
          ARGO_SALINITY,                 ARGO_TEMPERATURE,           &
          ADCP_U_CURRENT_COMPONENT,      ADCP_V_CURRENT_COMPONENT,   &
@@ -73,10 +73,10 @@ use obs_kind_mod, only : &
          DBT_SALINITY,                  APB_SALINITY,                  &
          BOTTLE_TEMPERATURE,            BOTTLE_SALINITY,               &
          DOPPLER_U_CURRENT_COMPONENT,   DOPPLER_V_CURRENT_COMPONENT,   &
-         DOPPLER_W_CURRENT_COMPONENT,   KIND_W_CURRENT_COMPONENT,      &
+         DOPPLER_W_CURRENT_COMPONENT,   QTY_W_CURRENT_COMPONENT,      &
          SATELLITE_MICROWAVE_SST,       SATELLITE_INFRARED_SST,        &
          SATELLITE_SSH,                 SATELLITE_SSS,                 &
-         HFRADAR_RADIAL_VELOCITY,       KIND_VELOCITY
+         HFRADAR_RADIAL_VELOCITY,       QTY_VELOCITY
 
 
 ! not clean interface; going for working code first.
@@ -332,11 +332,11 @@ print *, 'opening file ', trim(next_infile)
       print *, 'num levels: ', levels
       print *, 'has temp, salinity: ', have_temp, have_salt
       if (have_temp) then
-         cdummy = get_obs_kind_name(temp_type)
+         cdummy = get_name_for_type_of_obs(temp_type)
          print *, 'temp type/name: ', temp_type, trim(cdummy)
       endif 
       if (have_salt) then
-         cdummy = get_obs_kind_name(salt_type)
+         cdummy = get_name_for_type_of_obs(salt_type)
          print *, 'salt type/name: ', salt_type, trim(cdummy)
       endif 
       call print_date(obs_time, 'obs time')
@@ -514,7 +514,7 @@ real(r8)           :: valarr(1), qcarr(1)
 
 call set_obs_def_location(obs_def, &
                           set_location(olon, olat, odepth, VERTISHEIGHT))
-call set_obs_def_kind(obs_def, otype)
+call set_obs_def_type_of_obs(obs_def, otype)
 call set_obs_def_time(obs_def, otime)
     
 call set_obs_def_error_variance(obs_def, oerr * oerr)

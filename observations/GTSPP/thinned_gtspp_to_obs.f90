@@ -36,12 +36,12 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,         
                              insert_obs_in_seq, destroy_obs_sequence,           &
                              set_copy_meta_data, set_qc_meta_data, set_qc,      & 
                              set_obs_values, set_obs_def, insert_obs_in_seq
-use      obs_def_mod, only : obs_def_type, set_obs_def_time, set_obs_def_kind,  &
+use      obs_def_mod, only : obs_def_type, set_obs_def_time, set_obs_def_type_of_obs,  &
                              set_obs_def_error_variance, set_obs_def_location,  &
                              set_obs_def_key
 ! FIXME: what actual instrument took these readings? FLOAT_xx is a placeholder
 ! for now.  must have obs_def_ocean_mod.f90 in the preprocess input list.
-use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY,                   &
+use     obs_kind_mod, only : QTY_TEMPERATURE, QTY_SALINITY,                   &
                              FLOAT_TEMPERATURE, FLOAT_SALINITY
 
 use           netcdf
@@ -292,7 +292,7 @@ fileloop: do      ! until out of files
          if (glon < 0.0_r8) glon = glon + 360.0_r8
          call set_obs_def_location(obs_def, &
                            set_location(glon, glat, obs_depth(k),VERTISHEIGHT))
-         call set_obs_def_kind(obs_def, FLOAT_TEMPERATURE)
+         call set_obs_def_type_of_obs(obs_def, FLOAT_TEMPERATURE)
          call set_obs_def_time(obs_def, set_time(osec, oday))
     
          call set_obs_def_error_variance(obs_def, terr * terr)
@@ -333,7 +333,7 @@ fileloop: do      ! until out of files
          if (glon < 0.0_r8) glon = glon + 360.0_r8
          call set_obs_def_location(obs_def, &
                            set_location(glon, glat, obs_depth(k),VERTISHEIGHT))
-         call set_obs_def_kind(obs_def, FLOAT_SALINITY)
+         call set_obs_def_type_of_obs(obs_def, FLOAT_SALINITY)
          call set_obs_def_time(obs_def, set_time(osec, oday))
     
          call set_obs_def_error_variance(obs_def, serr * serr)

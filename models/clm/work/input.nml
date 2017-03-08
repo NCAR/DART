@@ -167,23 +167,23 @@
    output_state_vector          = .false.
    calendar                     = 'Gregorian'
    debug                        = 0
-   clm_variables  = 'frac_sno',    'KIND_SNOWCOVER_FRAC',         'NA' , 'NA', 'restart' , 'NO_COPY_BACK',
-                    'H2OSNO',      'KIND_SNOW_WATER',             '0.0', 'NA', 'restart' , 'UPDATE',
-                    'H2OSOI_LIQ',  'KIND_SOIL_MOISTURE',          '0.0', 'NA', 'restart' , 'UPDATE',
-                    'H2OSOI_ICE',  'KIND_ICE',                    '0.0', 'NA', 'restart' , 'UPDATE',
-                    'T_SOISNO',    'KIND_SOIL_TEMPERATURE',       'NA' , 'NA', 'restart' , 'UPDATE',
-                    'SNOWDP',      'KIND_SNOW_THICKNESS',         'NA' , 'NA', 'restart' , 'UPDATE',
-                    'LAIP_VALUE',  'KIND_LEAF_AREA_INDEX',        'NA' , 'NA', 'restart' , 'NO_COPY_BACK',
-                    'cpool',       'KIND_CARBON',                 '0.0', 'NA', 'restart' , 'UPDATE',
-                    'frootc',      'KIND_ROOT_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
-                    'frootn',      'KIND_ROOT_NITROGEN',          'NA' , 'NA', 'restart' , 'UPDATE',
-                    'leafc',       'KIND_LEAF_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
-                    'leafn',       'KIND_LEAF_NITROGEN',          '0.0', 'NA', 'restart' , 'UPDATE',
-                    'NEP',         'KIND_NET_CARBON_PRODUCTION',  'NA' , 'NA', 'history' , 'NO_COPY_BACK',
-                    'TV',          'KIND_VEGETATION_TEMPERATURE', 'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
-                    'RH2M_R',      'KIND_SPECIFIC_HUMIDITY',      'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
-                    'PBOT',        'KIND_SURFACE_PRESSURE',       'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
-                    'TBOT',        'KIND_TEMPERATURE',            'NA' , 'NA', 'vector'  , 'NO_COPY_BACK'
+   clm_variables  = 'frac_sno',    'QTY_SNOWCOVER_FRAC',         'NA' , 'NA', 'restart' , 'NO_COPY_BACK',
+                    'H2OSNO',      'QTY_SNOW_WATER',             '0.0', 'NA', 'restart' , 'UPDATE',
+                    'H2OSOI_LIQ',  'QTY_SOIL_MOISTURE',          '0.0', 'NA', 'restart' , 'UPDATE',
+                    'H2OSOI_ICE',  'QTY_ICE',                    '0.0', 'NA', 'restart' , 'UPDATE',
+                    'T_SOISNO',    'QTY_SOIL_TEMPERATURE',       'NA' , 'NA', 'restart' , 'UPDATE',
+                    'SNOWDP',      'QTY_SNOW_THICKNESS',         'NA' , 'NA', 'restart' , 'UPDATE',
+                    'LAIP_VALUE',  'QTY_LEAF_AREA_INDEX',        'NA' , 'NA', 'restart' , 'NO_COPY_BACK',
+                    'cpool',       'QTY_CARBON',                 '0.0', 'NA', 'restart' , 'UPDATE',
+                    'frootc',      'QTY_ROOT_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
+                    'frootn',      'QTY_ROOT_NITROGEN',          'NA' , 'NA', 'restart' , 'UPDATE',
+                    'leafc',       'QTY_LEAF_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
+                    'leafn',       'QTY_LEAF_NITROGEN',          '0.0', 'NA', 'restart' , 'UPDATE',
+                    'NEP',         'QTY_NET_CARBON_PRODUCTION',  'NA' , 'NA', 'history' , 'NO_COPY_BACK',
+                    'TV',          'QTY_VEGETATION_TEMPERATURE', 'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
+                    'RH2M_R',      'QTY_SPECIFIC_HUMIDITY',      'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
+                    'PBOT',        'QTY_SURFACE_PRESSURE',       'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
+                    'TBOT',        'QTY_TEMPERATURE',            'NA' , 'NA', 'vector'  , 'NO_COPY_BACK'
    /
 
 # See the clm model_mod.html for a larger listing of CLM variables and their associated DART KINDs.
@@ -328,7 +328,7 @@
    verbose               = .false.
    test1thru             = 5
    x_ind                 = 720
-   kind_of_interest      = 'KIND_LEAF_CARBON'
+   kind_of_interest      = 'QTY_LEAF_CARBON'
    loc_of_interest       = 287.5, 82.48, 0.35
    interp_test_lonrange  = 0.0, 359.0 
    interp_test_dlon      = 1.0

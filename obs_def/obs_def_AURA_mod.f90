@@ -8,7 +8,7 @@
 ! http://winds.jpl.nasa.gov/missions/quikscat/index.cfm
 
 ! BEGIN DART PREPROCESS KIND LIST
-! AURAMLS_TEMPERATURE,        KIND_TEMPERATURE,        COMMON_CODE
+! AURAMLS_TEMPERATURE,        QTY_TEMPERATURE,        COMMON_CODE
 ! END DART PREPROCESS KIND LIST
 
 ! <next few lines under version control, do not edit>

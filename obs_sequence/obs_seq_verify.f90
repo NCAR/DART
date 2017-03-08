@@ -63,13 +63,13 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
                              static_init_obs_sequence, destroy_obs_sequence, destroy_obs, &
                              read_obs_seq_header, get_qc_meta_data
 
-use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_kind, write_obs_def, &
+use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_def_type_of_obs, write_obs_def, &
                              get_obs_def_location, set_obs_def_time, &
-                             set_obs_def_location, set_obs_def_kind, &
+                             set_obs_def_location, set_obs_def_type_of_obs, &
                              set_obs_def_error_variance, get_obs_def_error_variance
 
-use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_name, get_obs_kind_index, &
-                             write_obs_kind
+use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs, get_index_for_type_of_obs, &
+                             write_type_of_obs_table
 
 use     location_mod, only : location_type, get_location, set_location_missing, &
                              write_location, operator(/=), operator(==), &
@@ -282,7 +282,7 @@ string1 = adjustl(obtype_string)
 string2 = adjustl(netcdf_out)
 obtype_string  = trim(string1)
 netcdf_out     = trim(string2)
-obtype_integer = get_obs_kind_index(obtype_string)
+obtype_integer = get_index_for_type_of_obs(obtype_string)
 
 if (obtype_integer < 1) then
    write(string1,*)'obtype_string ',trim(obtype_string),' is unknown. change input.nml'
@@ -439,7 +439,7 @@ ObsFileLoop : do ifile=1,num_input_files
          write(*,*)'Processing obs ',iobs,' of ',num_obs
 
       call get_obs_def(obs1,          obs_def)
-      flavor   = get_obs_kind(        obs_def)
+      flavor   = get_obs_def_type_of_obs(        obs_def)
       obs_time = get_obs_def_time(    obs_def)
       obs_loc  = get_obs_def_location(obs_def)
       call get_qc(obs1, qc_values)
@@ -447,10 +447,10 @@ ObsFileLoop : do ifile=1,num_input_files
    !  if (debug .and. any(iobs == (/1, 295, 1908, 6265/) )) then
       if (debug .and. (iobs == 1)) then
          write(*,*)'looking for observation types of ',obtype_integer, &
-                                     get_obs_kind_name(obtype_integer)
+                                     get_name_for_type_of_obs(obtype_integer)
 
          write(*,*)'First observation "type" happens to be ',flavor, &
-                                get_obs_kind_name(flavor)
+                                get_name_for_type_of_obs(flavor)
          call print_time(obs_time,'First observation time')
          call print_date(obs_time,'First observation date')
          call write_location(6,obs_loc,fform='ascii')
@@ -760,7 +760,7 @@ do ivoxel = 1,nvoxels
    allocate(voxel(ivoxel)%times(num_verif_times))
 
    voxel(ivoxel)%times    = set_time(0,0)        ! SET ONE TIME ONLY
-   voxel(ivoxel)%obs_type = get_obs_kind_index(obs_types(ivoxel))
+   voxel(ivoxel)%obs_type = get_index_for_type_of_obs(obs_types(ivoxel))
 
    ! flag the voxel as uninteresting if not desired in namelist
    if (voxel(ivoxel)%obs_type /= obtype_integer) voxel_flag(ivoxel) = 0

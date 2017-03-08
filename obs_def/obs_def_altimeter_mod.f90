@@ -5,11 +5,11 @@
 ! $Id$
 
 ! BEGIN DART PREPROCESS KIND LIST
-! RADIOSONDE_SURFACE_ALTIMETER, KIND_SURFACE_PRESSURE
-! DROPSONDE_SURFACE_ALTIMETER,  KIND_SURFACE_PRESSURE
-! MARINE_SFC_ALTIMETER,         KIND_SURFACE_PRESSURE
-! LAND_SFC_ALTIMETER,           KIND_SURFACE_PRESSURE
-! METAR_ALTIMETER,              KIND_SURFACE_PRESSURE
+! RADIOSONDE_SURFACE_ALTIMETER, QTY_SURFACE_PRESSURE
+! DROPSONDE_SURFACE_ALTIMETER,  QTY_SURFACE_PRESSURE
+! MARINE_SFC_ALTIMETER,         QTY_SURFACE_PRESSURE
+! LAND_SFC_ALTIMETER,           QTY_SURFACE_PRESSURE
+! METAR_ALTIMETER,              QTY_SURFACE_PRESSURE
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -47,7 +47,7 @@ use           types_mod, only : r8, missing_r8
 use       utilities_mod, only : register_module
 use        location_mod, only : location_type
 use     assim_model_mod, only : interpolate
-use        obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_SURFACE_ELEVATION
+use        obs_kind_mod, only : QTY_SURFACE_PRESSURE, QTY_SURFACE_ELEVATION
 use  ensemble_manager_mod, only : ensemble_type
 use obs_def_utilities_mod, only : track_status
 
@@ -99,12 +99,12 @@ istatus = 0 ! Need to initialize this to zero for track_status.
 altimeter_setting = missing_r8
 
 !  interpolate the surface pressure to the desired location
-call interpolate(state_handle, ens_size, location, KIND_SURFACE_PRESSURE, psfc, psfc_istatus)
+call interpolate(state_handle, ens_size, location, QTY_SURFACE_PRESSURE, psfc, psfc_istatus)
 call track_status(ens_size, psfc_istatus, altimeter_setting, istatus, return_now)
 if (return_now) return
 
 !  interpolate the surface elevation to the desired location
-call interpolate(state_handle, ens_size, location, KIND_SURFACE_ELEVATION, hsfc, hsfc_istatus)
+call interpolate(state_handle, ens_size, location, QTY_SURFACE_ELEVATION, hsfc, hsfc_istatus)
 call track_status(ens_size, hsfc_istatus, altimeter_setting, istatus, return_now)
 if (return_now) return
 

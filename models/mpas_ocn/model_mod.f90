@@ -61,19 +61,19 @@ use    utilities_mod, only : register_module, error_handler,                   &
                              open_file, file_exist, find_textfile_dims,        &
                              file_to_text, close_file, do_nml_file, do_nml_term
 
-use     obs_kind_mod, only : get_raw_obs_kind_index,  &
-                             get_raw_obs_kind_name,   &
-                             KIND_VERTICAL_VELOCITY,  &
-                             KIND_POTENTIAL_TEMPERATURE, &
-                             KIND_TEMPERATURE,        &
-                             KIND_SALINITY,              &
-                             KIND_DRY_LAND,              &
-                             KIND_EDGE_NORMAL_SPEED,     &
-                             KIND_U_CURRENT_COMPONENT,   &
-                             KIND_V_CURRENT_COMPONENT,   &
-                             KIND_SEA_SURFACE_HEIGHT,    &
-                             KIND_SEA_SURFACE_PRESSURE,  &
-                             KIND_TRACER_CONCENTRATION
+use     obs_kind_mod, only : get_index_for_quantity,  &
+                             get_name_for_quantity,   &
+                             QTY_VERTICAL_VELOCITY,  &
+                             QTY_POTENTIAL_TEMPERATURE, &
+                             QTY_TEMPERATURE,        &
+                             QTY_SALINITY,              &
+                             QTY_DRY_LAND,              &
+                             QTY_EDGE_NORMAL_SPEED,     &
+                             QTY_U_CURRENT_COMPONENT,   &
+                             QTY_V_CURRENT_COMPONENT,   &
+                             QTY_SEA_SURFACE_HEIGHT,    &
+                             QTY_SEA_SURFACE_PRESSURE,  &
+                             QTY_TRACER_CONCENTRATION
 
 use mpi_utilities_mod, only: my_task_id
 
@@ -587,7 +587,7 @@ do ivar = 1, nfields
    kind_string               = trim(variable_table(ivar,2))
    progvar(ivar)%varname     = varname
    progvar(ivar)%kind_string = kind_string
-   progvar(ivar)%dart_kind   = get_raw_obs_kind_index( progvar(ivar)%kind_string )
+   progvar(ivar)%dart_kind   = get_index_for_quantity( progvar(ivar)%kind_string )
    progvar(ivar)%numdims     = 0
    progvar(ivar)%numvertical = 1
    progvar(ivar)%dimlens     = MISSING_I
@@ -755,9 +755,9 @@ endif
 ! three fields in the state vector.  refuse to go further
 ! if these are not present:
 !
-! TJH if ((get_progvar_index_from_kind(KIND_POTENTIAL_TEMPERATURE) < 0) .or. &
-! TJH     (get_progvar_index_from_kind(KIND_DENSITY) < 0) .or. &
-! TJH     (get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO) < 0)) then
+! TJH if ((get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE) < 0) .or. &
+! TJH     (get_progvar_index_from_kind(QTY_DENSITY) < 0) .or. &
+! TJH     (get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO) < 0)) then
 ! TJH    write(string1, *) 'State vector is missing one or more of the following fields:'
 ! TJH    write(string2, *) 'Potential Temperature (theta), Density (rho), Vapor Mixing Ratio (qv).'
 ! TJH    write(string3, *) 'Cannot convert between height/pressure nor compute sensible temps.'
@@ -779,7 +779,7 @@ subroutine get_state_meta_data(index_in, location, var_type)
 
 ! given an index into the state vector, return its location and
 ! if given, the var kind.   despite the name, var_type is a generic
-! kind, like those in obs_kind/obs_kind_mod.f90, starting with KIND_
+! kind, like those in obs_kind/obs_kind_mod.f90, starting with QTY_
 
 ! passed variables
 
@@ -905,7 +905,7 @@ end subroutine get_state_meta_data
 
 subroutine model_interpolate(x, location, obs_type, interp_val, istatus)
 
-! given a state vector, a location, and a KIND_xxx, return the
+! given a state vector, a location, and a QTY_xxx, return the
 ! interpolated value at that location, and an error code.  0 is success,
 ! anything positive is an error.  (negative reserved for system use)
 !
@@ -963,9 +963,9 @@ else
    ! exceptions if the kind isn't directly
    ! a field in the state vector:
    select case (obs_kind)
-      !case (KIND_TEMPERATURE)  ! potential temperature is in state vector not in-situ temp
+      !case (QTY_TEMPERATURE)  ! potential temperature is in state vector not in-situ temp
       !   goodkind = .true.
-      !case (KIND_PRESSURE)
+      !case (QTY_PRESSURE)
       !   goodkind = .true.
    end select
 endif
@@ -979,7 +979,7 @@ if (.not. goodkind) then
 endif
 
 ! if you add exceptions above, then you need code like this:
-! if (obs_kind == KIND_xxx) then
+! if (obs_kind == QTY_xxx) then
 !   add code here for how to interpolate it.
 !
 !   compute_scalar_with_barycentric() can take up to 3 kinds at one location
@@ -3703,7 +3703,7 @@ MyLoop : do i = 1, nrows
 
    ! Make sure DART kind is valid
 
-   if( get_raw_obs_kind_index(dartstr) < 0 ) then
+   if( get_index_for_quantity(dartstr) < 0 ) then
       write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
       call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
    endif
@@ -4118,7 +4118,7 @@ FieldLoop : do i=1,nfields
    exit FieldLoop
 enddo FieldLoop
 
-string = get_raw_obs_kind_name(dartkind)
+string = get_name_for_quantity(dartkind)
 
 if (index1 == 0) then
    write(string1,*) 'Problem, cannot find indices for kind ',dartkind,trim(string)
@@ -4324,9 +4324,9 @@ select case (ztypeout)
 
    ! Need to get base offsets for the potential temperature, density, and water
    ! vapor mixing fields in the state vector
-! TJH   ivars(1) = get_progvar_index_from_kind(KIND_POTENTIAL_TEMPERATURE)
-! TJH   ivars(2) = get_progvar_index_from_kind(KIND_DENSITY)
-! TJH   ivars(3) = get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO)
+! TJH   ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
+! TJH   ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
+! TJH   ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
 
 string1 = 'fix VERTISPRESSURE get base offsets - detritus from atmosphere'
 call error_handler(E_ERR,'vert_convert',string1,source,revision,revdate)
@@ -4374,9 +4374,9 @@ call error_handler(E_ERR,'vert_convert',string1,source,revision,revdate)
 
    ! Need to get base offsets for the potential temperature, density, and water
    ! vapor mixing fields in the state vector
-! TJH   ivars(1) = get_progvar_index_from_kind(KIND_POTENTIAL_TEMPERATURE)
-! TJH   ivars(2) = get_progvar_index_from_kind(KIND_DENSITY)
-! TJH   ivars(3) = get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO)
+! TJH   ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
+! TJH   ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
+! TJH   ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
 
 string1 = 'fix vertisscaleheight get base offsets - detritus from atmosphere'
 call error_handler(E_ERR,'vert_convert',string1,source,revision,revdate)
@@ -4641,9 +4641,9 @@ endif
 if(vert_is_pressure(loc) ) then
    ! Need to get base offsets for the potential temperature, density, and water
    ! vapor mixing fields in the state vector
-! TJH   call get_index_range(KIND_POTENTIAL_TEMPERATURE, pt_base_offset)
-! TJH   call get_index_range(KIND_DENSITY,          density_base_offset)
-! TJH   call get_index_range(KIND_VAPOR_MIXING_RATIO,    qv_base_offset)
+! TJH   call get_index_range(QTY_POTENTIAL_TEMPERATURE, pt_base_offset)
+! TJH   call get_index_range(QTY_DENSITY,          density_base_offset)
+! TJH   call get_index_range(QTY_VAPOR_MIXING_RATIO,    qv_base_offset)
 
 string1 = 'fix VERTISPRESSURE vertical interpolation for pressure - detritus from atmosphere'
 call error_handler(E_ERR,'find_vert_level',string1,source,revision,revdate)

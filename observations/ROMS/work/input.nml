@@ -56,11 +56,11 @@
    assimilation_period_seconds  = 0
    vert_localization_coord      = 3
    debug     = 0
-   variables = 'temp',   'KIND_TEMPERATURE',          'NA', 'NA', 'update',
-               'salt',   'KIND_SALINITY',            '0.0', 'NA', 'update',
-               'u',      'KIND_U_CURRENT_COMPONENT',  'NA', 'NA', 'update',
-               'v',      'KIND_V_CURRENT_COMPONENT',  'NA', 'NA', 'update',
-               'zeta',   'KIND_SEA_SURFACE_HEIGHT'    'NA', 'NA', 'update',
+   variables = 'temp',   'QTY_TEMPERATURE',          'NA', 'NA', 'update',
+               'salt',   'QTY_SALINITY',            '0.0', 'NA', 'update',
+               'u',      'QTY_U_CURRENT_COMPONENT',  'NA', 'NA', 'update',
+               'v',      'QTY_V_CURRENT_COMPONENT',  'NA', 'NA', 'update',
+               'zeta',   'QTY_SEA_SURFACE_HEIGHT'    'NA', 'NA', 'update',
   /
 
 &obs_kind_nml

@@ -18,7 +18,7 @@ use    utilities_mod, only : initialize_utilities, finalize_utilities, nc_check,
 use     location_mod, only : location_type, set_location, write_location, get_dist, &
                              query_location, LocationDims, get_location, &
                              VERTISLEVEL
-use     obs_kind_mod, only : get_raw_obs_kind_name, get_raw_obs_kind_index
+use     obs_kind_mod, only : get_name_for_quantity, get_index_for_quantity
 use  assim_model_mod, only : netcdf_file_type, aoutput_diagnostics, &
                              init_diag_output, finalize_diag_output
 
@@ -105,7 +105,7 @@ if (do_nml_term()) write(     *     , nml=model_mod_check_nml)
 loc = set_location(loc_of_interest(1), loc_of_interest(2), loc_of_interest(3), &
                    VERTISLEVEL)
 
-mykindindex = get_raw_obs_kind_index(kind_of_interest)
+mykindindex = get_index_for_quantity(kind_of_interest)
 
 !----------------------------------------------------------------------
 ! This harvests all kinds of initialization information
@@ -287,7 +287,7 @@ if (test1thru > 7) then
    loc = set_location(loc_of_interest(1), loc_of_interest(2), loc_of_interest(3), &
                       vertcoord)
 
-   mykindindex = get_raw_obs_kind_index(kind_of_interest)
+   mykindindex = get_index_for_quantity(kind_of_interest)
 
    call model_interpolate(statevector, loc, mykindindex, interp_val, ios_out)
 
@@ -344,7 +344,7 @@ call get_state_meta_data( iloc, loc, var_type)
 
 call write_location(0, loc, fform='formatted', charstring=string1)
 write(*,*)' indx ',iloc,' is type ',var_type,' ', &
-         trim(get_raw_obs_kind_name(var_type))
+         trim(get_name_for_quantity(var_type))
 write(*,*)' and is at ',trim(string1)
 write(*,*)
 
@@ -428,7 +428,7 @@ do i = 1,get_model_size()
 
    if ( thisdist(i) == closest ) then
       call get_state_meta_data(i, loc1, var_type)
-      kind_name = get_raw_obs_kind_name(var_type)
+      kind_name = get_name_for_quantity(var_type)
       vals = get_location(loc1)
       write(*,'(''lon/lat/cat'',3(1x,f14.5),'' is index '',i10,'' for '',a)') &
              vals, i, trim(kind_name)

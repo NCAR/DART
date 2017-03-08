@@ -349,7 +349,7 @@ use  obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs, set_obs_def
                               get_num_copies, get_num_qc, read_obs_seq, copy_obs, &
                               get_first_obs, get_obs_def, get_next_obs, &
                               get_last_obs, insert_obs_in_seq, destroy_obs_sequence
-use       obs_def_mod, only : obs_def_type, get_obs_kind, set_obs_def_time, &
+use       obs_def_mod, only : obs_def_type, get_obs_def_type_of_obs, set_obs_def_time, &
                               get_obs_def_location, get_obs_def_time
 use      obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT, ACARS_U_WIND_COMPONENT, &
                               LAND_SFC_U_WIND_COMPONENT, MARINE_SFC_U_WIND_COMPONENT, &
@@ -437,7 +437,7 @@ ObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a sequence
 
   !  read data from observation
   call get_obs_def(obs_in, obs_def)
-  okind   = get_obs_kind(obs_def)
+  okind   = get_obs_def_type_of_obs(obs_def)
   obs_loc = get_obs_def_location(obs_def)
   xyz_loc = get_location(obs_loc)
   call get_domain_info(xyz_loc(1),xyz_loc(2),dom_id,xloc,yloc)
@@ -708,7 +708,7 @@ subroutine create_obs_type(lat, lon, vloc, vcord, obsv, okind, oerr, qc, otime, 
 
 use types_mod,        only : r8
 use obs_sequence_mod, only : obs_type, set_obs_values, set_qc, set_obs_def
-use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
+use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_type_of_obs, &
                              set_obs_def_error_variance, set_obs_def_location
 use     location_mod, only : location_type, set_location
 use time_manager_mod, only : time_type
@@ -724,7 +724,7 @@ real(r8)              :: obs_val(1), qc_val(1)
 type(obs_def_type)    :: obs_def
 
 call set_obs_def_location(obs_def, set_location(lon, lat, vloc, vcord))
-call set_obs_def_kind(obs_def, okind)
+call set_obs_def_type_of_obs(obs_def, okind)
 call set_obs_def_time(obs_def, otime)
 call set_obs_def_error_variance(obs_def, oerr)
 call set_obs_def(obs, obs_def)
@@ -900,7 +900,7 @@ function rawinsonde_obs_check(obs_loc, obs_kind, siglevel, &
                                 elev_check, elev_max)
 
 use     types_mod, only : r8
-use  obs_kind_mod, only : RADIOSONDE_SURFACE_ALTIMETER, KIND_SURFACE_ELEVATION
+use  obs_kind_mod, only : RADIOSONDE_SURFACE_ALTIMETER, QTY_SURFACE_ELEVATION
 use     model_mod, only : model_interpolate
 use  location_mod, only : location_type, set_location, get_location, &
                           vert_is_pressure
@@ -932,7 +932,7 @@ else
   !  perform elevation check for altimeter
   if ( elev_check ) then
 
-    call model_interpolate(xmod, obs_loc, KIND_SURFACE_ELEVATION, hsfc, istatus)
+    call model_interpolate(xmod, obs_loc, QTY_SURFACE_ELEVATION, hsfc, istatus)
     if ( abs(hsfc - xyz_loc(3)) > elev_max ) rawinsonde_obs_check = .false.
 
   end if
@@ -983,7 +983,7 @@ use  obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs, &
                               get_first_obs, get_obs_def, copy_obs, get_num_qc, &
                               append_obs_to_seq, get_next_obs, get_qc, set_qc, &
                               destroy_obs_sequence, read_obs_seq, set_obs_def
-use       obs_def_mod, only : obs_def_type, get_obs_kind, get_obs_def_location, &
+use       obs_def_mod, only : obs_def_type, get_obs_def_type_of_obs, get_obs_def_location, &
                               set_obs_def_time
 use      obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT, RADIOSONDE_V_WIND_COMPONENT, &
                               RADIOSONDE_SURFACE_ALTIMETER, RADIOSONDE_TEMPERATURE, &
@@ -1067,7 +1067,7 @@ InputObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a seq
 
   !  Get the observation information, check if it is in the domain
   call get_obs_def(obs_in, obs_def)
-  okind   = get_obs_kind(obs_def)
+  okind   = get_obs_def_type_of_obs(obs_def)
   obs_loc = get_obs_def_location(obs_def)
   xyz_loc = get_location(obs_loc)
   call get_domain_info(xyz_loc(1),xyz_loc(2),dom_id,xloc,yloc)
@@ -1344,7 +1344,7 @@ use  obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs, &
                               get_num_obs, get_obs_values, get_obs_def, &
                               append_obs_to_seq
 use       obs_def_mod, only : obs_def_type, get_obs_def_location, &
-                              get_obs_kind, get_obs_def_error_variance, &
+                              get_obs_def_type_of_obs, get_obs_def_error_variance, &
                               get_obs_def_time
 use      obs_kind_mod, only : AIRCRAFT_U_WIND_COMPONENT, ACARS_U_WIND_COMPONENT, &
                               AIRCRAFT_V_WIND_COMPONENT, ACARS_V_WIND_COMPONENT, &
@@ -1405,7 +1405,7 @@ do while ( .not. last_obs )
 
   call get_obs_def(obs, obs_def)
   obs_loc  = get_obs_def_location(obs_def)
-  obs_kind = get_obs_kind(obs_def)
+  obs_kind = get_obs_def_type_of_obs(obs_def)
   xyz_loc  = get_location(obs_loc)
 
   locdex = -1
@@ -1784,7 +1784,7 @@ use  obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs, &
                               get_num_obs, get_obs_values, get_obs_def, &
                               append_obs_to_seq
 use       obs_def_mod, only : obs_def_type, get_obs_def_location, &
-                              get_obs_kind, get_obs_def_error_variance, &
+                              get_obs_def_type_of_obs, get_obs_def_error_variance, &
                               get_obs_def_time
 use      obs_kind_mod, only : SAT_U_WIND_COMPONENT, SAT_V_WIND_COMPONENT
 
@@ -1837,7 +1837,7 @@ do while ( .not. last_obs )
 
   call get_obs_def(obs, obs_def)
   obs_loc  = get_obs_def_location(obs_def)
-  obs_kind = get_obs_kind(obs_def)
+  obs_kind = get_obs_def_type_of_obs(obs_def)
   xyz_loc  = get_location(obs_loc)
 
   !  determine if observation exists
@@ -1997,7 +1997,7 @@ end subroutine superob_sat_wind_data
 function surface_obs_check(elev_check, elev_max, xyz_loc)
 
 use     types_mod, only : r8
-use  obs_kind_mod, only : KIND_SURFACE_ELEVATION
+use  obs_kind_mod, only : QTY_SURFACE_ELEVATION
 use     model_mod, only : model_interpolate
 use  location_mod, only : set_location, VERTISSURFACE
 
@@ -2015,7 +2015,7 @@ surface_obs_check = .true.
 if ( elev_check ) then
 
   call model_interpolate(xmod, set_location(xyz_loc(1), xyz_loc(2), &
-      xyz_loc(3), VERTISSURFACE), KIND_SURFACE_ELEVATION, hsfc, istatus)
+      xyz_loc(3), VERTISSURFACE), QTY_SURFACE_ELEVATION, hsfc, istatus)
   if ( abs(hsfc - xyz_loc(3)) > elev_max ) surface_obs_check = .false.
 
 end if

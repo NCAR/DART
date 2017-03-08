@@ -27,8 +27,8 @@ use    utilities_mod, only : file_exist, open_file, close_file, &
                              do_output, find_namelist_in_file, check_namelist_read, &
                              do_nml_file, do_nml_term, nc_check
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
-use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT,&
-                             KIND_TEMPERATURE
+use     obs_kind_mod, only : QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT,&
+                             QTY_TEMPERATURE
 use typesizes
 use netcdf
 
@@ -455,7 +455,7 @@ enddo height_loop
 
 lev_bottom = lev_top -1
 
-if (obs_kind == KIND_TEMPERATURE) then
+if (obs_kind == QTY_TEMPERATURE) then
 
   var_type   = TYPE_local_T
 ! val_top = x(get_index(lat_index, lon_index, lev_top, var_type))
@@ -466,13 +466,13 @@ if (obs_kind == KIND_TEMPERATURE) then
   val_bottom = x(get_index(lat_index,lon_index,lev_bottom,var_type)) &
           + tref(lev_bottom)
 
-elseif (obs_kind == KIND_U_WIND_COMPONENT) then
+elseif (obs_kind == QTY_U_WIND_COMPONENT) then
 
   var_type = TYPE_local_U
   val_top = x(get_index(lat_index, lon_index, lev_top, var_type))
   val_bottom =  x(get_index(lat_index, lon_index, lev_bottom, var_type))
 
-elseif (obs_kind == KIND_V_WIND_COMPONENT) then
+elseif (obs_kind == QTY_V_WIND_COMPONENT) then
 
   var_type = TYPE_local_V
   val_top = x(get_index(lat_index, lon_index, lev_top, var_type))
@@ -569,17 +569,17 @@ lev = levs(lev_index + 1)
 ! Find which var_type this element is
 var_type_temp = mod(col_elem, state_num_3d )
 if(var_type_temp == 0) then
-  local_var_type = KIND_U_WIND_COMPONENT
+  local_var_type = QTY_U_WIND_COMPONENT
 else if(var_type_temp == 1) then
-  local_var_type = KIND_V_WIND_COMPONENT
+  local_var_type = QTY_V_WIND_COMPONENT
 else if(var_type_temp == 2) then
-  local_var_type = KIND_TEMPERATURE
+  local_var_type = QTY_TEMPERATURE
 else if(var_type_temp == 3) then
-  local_var_type = KIND_U_WIND_COMPONENT
+  local_var_type = QTY_U_WIND_COMPONENT
 else if(var_type_temp == 4) then
-  local_var_type = KIND_V_WIND_COMPONENT
+  local_var_type = QTY_V_WIND_COMPONENT
 else if(var_type_temp == 5) then
-  local_var_type = KIND_TEMPERATURE
+  local_var_type = QTY_TEMPERATURE
 ! else if(var_type_temp == 6) then
 !  local_var_type = TYPE_Q_H
 !else if(var_type_temp == 7) then 
@@ -938,9 +938,9 @@ endif
 
 do i = 1, get_model_size()
    call get_state_meta_data(i, temp_loc, variable_type)
-   if(variable_type == KIND_U_WIND_COMPONENT .or. &
-      variable_type == KIND_V_WIND_COMPONENT .or. &
-      variable_type == KIND_TEMPERATURE ) then
+   if(variable_type == QTY_U_WIND_COMPONENT .or. &
+      variable_type == QTY_V_WIND_COMPONENT .or. &
+      variable_type == QTY_TEMPERATURE ) then
       pert_state(i) = &
 !       & random_gaussian(random_seq, state(i), state(i)*0.05)
         & state(i)

@@ -19,8 +19,8 @@ use     location_mod, only : location_type, set_location, write_location, get_di
                              query_location, LocationDims, get_location, &
                              VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, &
                              VERTISHEIGHT, VERTISSCALEHEIGHT
-use     obs_kind_mod, only : get_raw_obs_kind_name, get_raw_obs_kind_index, &
-                             KIND_POTENTIAL_TEMPERATURE, KIND_SURFACE_PRESSURE, KIND_U_WIND_COMPONENT
+use     obs_kind_mod, only : get_name_for_quantity, get_index_for_quantity, &
+                             QTY_POTENTIAL_TEMPERATURE, QTY_SURFACE_PRESSURE, QTY_U_WIND_COMPONENT
 use  assim_model_mod, only : open_restart_read, open_restart_write, close_restart, &
                              aread_state_restart, awrite_state_restart, &
                              netcdf_file_type, aoutput_diagnostics, &
@@ -113,7 +113,7 @@ if (do_nml_file()) write(nmlfileunit, nml=model_mod_check_nml)
 if (do_nml_term()) write(     *     , nml=model_mod_check_nml)
 
 loc = set_location(loc_of_interest(1), loc_of_interest(2), loc_of_interest(3), VERTISHEIGHT)
-mykindindex = get_raw_obs_kind_index(kind_of_interest)
+mykindindex = get_index_for_quantity(kind_of_interest)
 
 if (test1thru < 1) goto 999
 
@@ -331,7 +331,7 @@ write(*,*)'Checking metadata routines.'
 call get_state_meta_data( iloc, loc, var_type)
 
 call write_location(0, loc, fform='formatted', charstring=string1)
-write(*,*)' indx ',iloc,' is type ',var_type,' ',trim(get_raw_obs_kind_name(var_type)),' ',trim(string1)
+write(*,*)' indx ',iloc,' is type ',var_type,' ',trim(get_name_for_quantity(var_type)),' ',trim(string1)
 
 end subroutine check_meta_data
 
@@ -413,7 +413,7 @@ do i = 1,get_model_size()
 
    if ( thisdist(i) == closest ) then
       call get_state_meta_data(i, loc1, var_type)
-      kind_name = get_raw_obs_kind_name(var_type)
+      kind_name = get_name_for_quantity(var_type)
       vals = get_location(loc1)
       write(*,'(''lon/lat/lev'',3(1x,f14.5),'' is index '',i10,'' for '',a)') &
              vals, i, trim(kind_name)

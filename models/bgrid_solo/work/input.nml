@@ -149,10 +149,10 @@
      noise_sd = 0.0,
      dt_bias  = -1,
      output_state_vector = .false. 
-     state_variables = 'ps', 'KIND_SURFACE_PRESSURE',
-                       't',  'KIND_TEMPERATURE',
-                       'u',  'KIND_U_WIND_COMPONENT',
-                       'v',  'KIND_V_WIND_COMPONENT',
+     state_variables = 'ps', 'QTY_SURFACE_PRESSURE',
+                       't',  'QTY_TEMPERATURE',
+                       'u',  'QTY_U_WIND_COMPONENT',
+                       'v',  'QTY_V_WIND_COMPONENT',
    /
 
 #
@@ -339,7 +339,7 @@
    verbose               = .false.
    test1thru             = 5
    x_ind                 = 720
-   kind_of_interest      = 'KIND_SURFACE_PRESSURE'
+   kind_of_interest      = 'QTY_SURFACE_PRESSURE'
    loc_of_interest       = 287.5, 82.48, 0.35
    interp_test_lonrange  = 0.0, 359.0 
    interp_test_dlon      = 1.0

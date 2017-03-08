@@ -10,7 +10,7 @@ use       types_mod, only : r8
 use   utilities_mod, only : register_module
 use    location_mod, only : location_type, interactive_location
 use assim_model_mod, only : interpolate
-use    obs_kind_mod, only : obs_kind_type, interactive_kind, get_obs_kind
+use    obs_kind_mod, only : obs_kind_type, interactive_kind, get_obs_def_type_of_obs
 
 implicit none
 private
@@ -57,7 +57,7 @@ if ( .not. module_initialized ) call initialize_module
 ! Initially, have only raw state observations implemented so obs_kind is
 ! irrelevant. Just do interpolation and return.
 
-take_obs = interpolate(state_vector, location, get_obs_kind(obs_kind))
+take_obs = interpolate(state_vector, location, get_obs_def_type_of_obs(obs_kind))
 
 end function take_obs
 

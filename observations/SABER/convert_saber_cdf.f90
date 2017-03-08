@@ -22,7 +22,7 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,       &
                              insert_obs_in_seq, destroy_obs_sequence,         &
                              set_copy_meta_data, set_qc_meta_data, set_qc,    & 
                              set_obs_values, set_obs_def, insert_obs_in_seq
-use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
+use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_type_of_obs, &
                              set_obs_def_error_variance, set_obs_def_location, &
                              set_obs_def_key
 use obs_utilities_mod, only : create_3d_obs,add_obs_to_seq

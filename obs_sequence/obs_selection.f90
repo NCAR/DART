@@ -32,10 +32,10 @@ use     location_mod, only : location_type, get_location, set_location, &
                              write_location, VERTISSURFACE, VERTISHEIGHT, &
                              VERTISLEVEL, VERTISPRESSURE, VERTISSCALEHEIGHT, &
                              VERTISUNDEF, query_location
-use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_kind, &
+use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_def_type_of_obs, &
                              get_obs_def_location, read_obs_def
-use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_name, get_obs_kind_index, &
-                             read_obs_kind
+use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs, get_index_for_type_of_obs, &
+                             read_type_of_obs_table
 use time_manager_mod, only : time_type, operator(>), print_time, set_time, &
                              print_date, set_calendar_type, GREGORIAN,     &
                              operator(/=), operator(<=), NO_CALENDAR,      &
@@ -700,9 +700,9 @@ logical                 :: is_there_one, is_this_last
 integer                 :: size_seq_in
 integer                 :: i
 integer                 :: this_obs_type
-! max_obs_kinds is a public from obs_kind_mod.f90 and really is
+! max_defined_types_of_obs is a public from obs_kind_mod.f90 and really is
 ! counting the max number of types, not kinds.
-integer                 :: type_count(max_obs_kinds), identity_count
+integer                 :: type_count(max_defined_types_of_obs), identity_count
 
 
 ! Initialize input obs_types
@@ -773,9 +773,9 @@ write(msgstring, *) 'Number of obs processed  :          ', size_seq_in
 call error_handler(E_MSG, '', msgstring)
 write(msgstring, *) '---------------------------------------------------------'
 call error_handler(E_MSG, '', msgstring)
-do i = 1, max_obs_kinds
+do i = 1, max_defined_types_of_obs
    if (type_count(i) > 0) then 
-      write(msgstring, '(a32,i8,a)') trim(get_obs_kind_name(i)), &
+      write(msgstring, '(a32,i8,a)') trim(get_name_for_type_of_obs(i)), &
                                      type_count(i), ' obs'
       call error_handler(E_MSG, '', msgstring)
    endif
@@ -952,10 +952,10 @@ subroutine read_selection_list(select_file, select_is_seq, &
      endif
     
      ! set up the mapping table for the kinds here
-     call read_obs_kind(iunit, .false.)
+     call read_type_of_obs_table(iunit, .false.)
     
      ! these ones stay around and are returned from this subroutine
-     allocate(selection_list(count), type_wanted(max_obs_kinds))
+     allocate(selection_list(count), type_wanted(max_defined_types_of_obs))
   
      ! these are temporaries for sorting into time order
      allocate(temp_sel_list(count), temp_time(count), sort_index(count))
@@ -967,7 +967,7 @@ subroutine read_selection_list(select_file, select_is_seq, &
      ! and bookkeep what types are encountered
      do i = 1, count
          call read_obs_def(iunit, temp_sel_list(i), 0, dummy)
-         this_type = get_obs_kind(temp_sel_list(i))
+         this_type = get_obs_def_type_of_obs(temp_sel_list(i))
          if (this_type > 0) type_wanted(this_type) = .true.
      enddo
     
@@ -999,7 +999,7 @@ subroutine read_selection_list(select_file, select_is_seq, &
      call init_obs(obs,      copies, qcs)
      call init_obs(prev_obs, copies, qcs)
 
-     allocate(selection_list(count), type_wanted(max_obs_kinds))
+     allocate(selection_list(count), type_wanted(max_defined_types_of_obs))
     
      if (.not. get_first_obs(seq_in, obs)) then
          call error_handler(E_ERR,'obs_selection', &
@@ -1015,7 +1015,7 @@ subroutine read_selection_list(select_file, select_is_seq, &
          if (is_this_last) exit 
 
          call get_obs_def(obs, selection_list(i))
-         this_type = get_obs_kind(selection_list(i))
+         this_type = get_obs_def_type_of_obs(selection_list(i))
          if (this_type > 0) type_wanted(this_type) = .true.
 
          prev_obs = obs
@@ -1105,7 +1105,7 @@ function good_selection(obs_in, selection_list, selection_count, startindex)
  call get_obs_def(obs_in, base_obs_def)
  base_obs_loc  = get_obs_def_location(base_obs_def)
  base_obs_time = get_obs_def_time(base_obs_def)
- base_obs_type = get_obs_kind(base_obs_def)
+ base_obs_type = get_obs_def_type_of_obs(base_obs_def)
 
  ! this program now time-sorts the selection list first, so we
  ! are guarenteed the obs_defs will be encountered in time order.
@@ -1143,7 +1143,7 @@ function good_selection(obs_in, selection_list, selection_count, startindex)
 
     if (base_obs_time /= test_obs_time) cycle
 
-    test_obs_type = get_obs_kind(selection_list(i))
+    test_obs_type = get_obs_def_type_of_obs(selection_list(i))
     if (base_obs_type /= test_obs_type) cycle
 
     test_obs_loc = get_obs_def_location(selection_list(i))
@@ -1260,7 +1260,7 @@ function get_type_from_obs(this_obs)
 type(obs_def_type) :: this_obs_def
 
 call get_obs_def(this_obs, this_obs_def)
-get_type_from_obs = get_obs_kind(this_obs_def)
+get_type_from_obs = get_obs_def_type_of_obs(this_obs_def)
 
 end function get_type_from_obs
 

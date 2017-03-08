@@ -47,17 +47,17 @@
    interpolate routines. For example:
 </P>
 <pre>&amp;mpas_vars_nml
-   mpas_state_variables = 'uReconstructZonal',      'KIND_U_WIND_COMPONENT',
-                          'uReconstructMeridional', 'KIND_V_WIND_COMPONENT',
-                          'w',                      'KIND_VERTICAL_VELOCITY',
-                          'theta',                  'KIND_POTENTIAL_TEMPERATURE',
-                          'qv',                     'KIND_VAPOR_MIXING_RATIO',
-                          'qc',                     'KIND_CLOUDWATER_MIXING_RATIO',
-                          'qr',                     'KIND_RAINWATER_MIXING_RATIO',
-                          'qi',                     'KIND_ICE_MIXING_RATIO',
-                          'qs',                     'KIND_SNOW_MIXING_RATIO',
-                          'qg',                     'KIND_GRAUPEL_MIXING_RATIO',
-                          'surface_pressure',       'KIND_SURFACE_PRESSURE'
+   mpas_state_variables = 'uReconstructZonal',      'QTY_U_WIND_COMPONENT',
+                          'uReconstructMeridional', 'QTY_V_WIND_COMPONENT',
+                          'w',                      'QTY_VERTICAL_VELOCITY',
+                          'theta',                  'QTY_POTENTIAL_TEMPERATURE',
+                          'qv',                     'QTY_VAPOR_MIXING_RATIO',
+                          'qc',                     'QTY_CLOUDWATER_MIXING_RATIO',
+                          'qr',                     'QTY_RAINWATER_MIXING_RATIO',
+                          'qi',                     'QTY_ICE_MIXING_RATIO',
+                          'qs',                     'QTY_SNOW_MIXING_RATIO',
+                          'qg',                     'QTY_GRAUPEL_MIXING_RATIO',
+                          'surface_pressure',       'QTY_SURFACE_PRESSURE'
    /
 </pre>
 
@@ -472,17 +472,17 @@ You application will likely involve a different DART state vector.
 
 <pre>
 &amp;mpas_vars_nml
-   mpas_state_variables = 'theta',                 'KIND_POTENTIAL_TEMPERATURE',
-                          'uReconstructZonal',     'KIND_U_WIND_COMPONENT',
-                          'uReconstructMeridional','KIND_V_WIND_COMPONENT',
-                          'w',                     'KIND_VERTICAL_VELOCITY',
-                          'qv',                    'KIND_VAPOR_MIXING_RATIO',
-                          'qc',                    'KIND_CLOUDWATER_MIXING_RATIO',
-                          'qr',                    'KIND_RAINWATER_MIXING_RATIO',
-                          'qi',                    'KIND_ICE_MIXING_RATIO',
-                          'qs',                    'KIND_SNOW_MIXING_RATIO',
-                          'qg',                    'KIND_GRAUPEL_MIXING_RATIO'
-                          'surface_pressure',      'KIND_SURFACE_PRESSURE'
+   mpas_state_variables = 'theta',                 'QTY_POTENTIAL_TEMPERATURE',
+                          'uReconstructZonal',     'QTY_U_WIND_COMPONENT',
+                          'uReconstructMeridional','QTY_V_WIND_COMPONENT',
+                          'w',                     'QTY_VERTICAL_VELOCITY',
+                          'qv',                    'QTY_VAPOR_MIXING_RATIO',
+                          'qc',                    'QTY_CLOUDWATER_MIXING_RATIO',
+                          'qr',                    'QTY_RAINWATER_MIXING_RATIO',
+                          'qi',                    'QTY_ICE_MIXING_RATIO',
+                          'qs',                    'QTY_SNOW_MIXING_RATIO',
+                          'qg',                    'QTY_GRAUPEL_MIXING_RATIO'
+                          'surface_pressure',      'QTY_SURFACE_PRESSURE'
    /
 </pre>
 

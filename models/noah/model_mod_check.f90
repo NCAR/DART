@@ -17,8 +17,8 @@ use    utilities_mod, only : initialize_utilities, finalize_utilities, nc_check,
 use     location_mod, only : location_type, set_location, write_location, get_dist, &
                              query_location, LocationDims, get_location, &
                              VERTISHEIGHT, VERTISSURFACE
-use     obs_kind_mod, only : get_raw_obs_kind_name, get_raw_obs_kind_index, &
-                             KIND_SOIL_MOISTURE, KIND_LATENT_HEAT_FLUX
+use     obs_kind_mod, only : get_name_for_quantity, get_index_for_quantity, &
+                             QTY_SOIL_MOISTURE, QTY_LATENT_HEAT_FLUX
 use  assim_model_mod, only : open_restart_read, open_restart_write, close_restart, &
                              aread_state_restart, awrite_state_restart, &
                              netcdf_file_type, aoutput_diagnostics, &
@@ -201,13 +201,13 @@ endif
 
 if (test1thru > 9) then
    write(*,*)
-   write(*,*)'Testing model_interpolate() with KIND_SOIL_MOISTURE'
+   write(*,*)'Testing model_interpolate() with QTY_SOIL_MOISTURE'
 
    loc = set_location(loc_of_interest(1), &
                       loc_of_interest(2), &
                       loc_of_interest(3), VERTISHEIGHT)
 
-   call model_interpolate(statevector, loc, KIND_SOIL_MOISTURE, interp_val, ios_out)
+   call model_interpolate(statevector, loc, QTY_SOIL_MOISTURE, interp_val, ios_out)
 
    if ( ios_out == 0 ) then
       write(*,*)'model_interpolate : value is ',interp_val
@@ -217,12 +217,12 @@ if (test1thru > 9) then
 
 
    write(*,*)
-   write(*,*)'Testing model_interpolate() with KIND_LATENT_HEAT_FLUX'
+   write(*,*)'Testing model_interpolate() with QTY_LATENT_HEAT_FLUX'
 
    loc = set_location(loc_of_interest(1), &
                       loc_of_interest(2), &
                       loc_of_interest(3), VERTISSURFACE)
-   call model_interpolate(statevector, loc, KIND_LATENT_HEAT_FLUX, interp_val, ios_out)
+   call model_interpolate(statevector, loc, QTY_LATENT_HEAT_FLUX, interp_val, ios_out)
 
    if ( ios_out == 0 ) then
       write(*,*)'model_interpolate : value is ',interp_val
@@ -297,7 +297,7 @@ matched   = .false.
 ! With staggered grids, the closest gridpoint might not be of the kind
 ! you are interested in. mykindindex = -1 means anything will do.
 
-mykindindex = get_raw_obs_kind_index(kind_of_interest)
+mykindindex = get_index_for_quantity(kind_of_interest)
 
 rlon = loc_of_interest(1)
 rlat = loc_of_interest(2)
@@ -339,7 +339,7 @@ do i = 1,get_model_size()
       call get_state_meta_data(i, loc1, dart_kind)
       rloc      = get_location(loc1)
 !     if (rloc(3) == rlev) then
-         kind_name = get_raw_obs_kind_name(dart_kind)
+         kind_name = get_name_for_quantity(dart_kind)
          write(*,'(''lon/lat/lev'',3(1x,f10.5),'' is index '',i10,'' for '',a)') &
              rloc, i, trim(kind_name)
          matched = .true.

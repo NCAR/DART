@@ -20,8 +20,8 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              check_namelist_read, nc_check, do_output,     &
                              do_nml_file, do_nml_term
 
-use     obs_kind_mod, only : KIND_VELOCITY, KIND_TRACER_CONCENTRATION, &
-                             KIND_TRACER_SOURCE, KIND_MEAN_SOURCE, KIND_SOURCE_PHASE
+use     obs_kind_mod, only : QTY_VELOCITY, QTY_TRACER_CONCENTRATION, &
+                             QTY_TRACER_SOURCE, QTY_MEAN_SOURCE, QTY_SOURCE_PHASE
 
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
 
@@ -325,12 +325,12 @@ do i = 1, num_grid_points
       source_location = source_location - int(source_location) + 1.0_r8
 
    source_loc = set_location(source_location)
-   call model_interpolate(temp_handle, ens_size, source_loc, KIND_TRACER_CONCENTRATION, new_x(i,:), istatus, x)  
+   call model_interpolate(temp_handle, ens_size, source_loc, QTY_TRACER_CONCENTRATION, new_x(i,:), istatus, x)  
 
    ! Following line does lagangian du
 
    if(lagrangian_for_wind) &
-      call model_interpolate(temp_handle, ens_size, source_loc, KIND_VELOCITY, new_x(2*num_grid_points + i,:), istatus, x)  
+      call model_interpolate(temp_handle, ens_size, source_loc, QTY_VELOCITY, new_x(2*num_grid_points + i,:), istatus, x)  
 enddo
 
 
@@ -503,11 +503,11 @@ if(upper_index > num_grid_points) upper_index = upper_index - num_grid_points
 lctnfrac = lctn - int(lctn)
 
 ! Now figure out which type
-if(itype == KIND_TRACER_CONCENTRATION) then
+if(itype == QTY_TRACER_CONCENTRATION) then
    offset = 0
-else if(itype == KIND_TRACER_SOURCE) then
+else if(itype == QTY_TRACER_SOURCE) then
    offset = num_grid_points
-else if(itype == KIND_VELOCITY) then
+else if(itype == QTY_VELOCITY) then
    offset = 2*num_grid_points
 else
    write(string1, *) 'itype is not supported in model_interpolate', itype
@@ -569,15 +569,15 @@ var_loc_index = index_in - (var_type_index - 1)*num_grid_points
 
 if(present(var_type)) then
    if(var_type_index == 1) then
-      var_type = KIND_TRACER_CONCENTRATION
+      var_type = QTY_TRACER_CONCENTRATION
    else if(var_type_index == 2) then
-      var_type = KIND_TRACER_SOURCE
+      var_type = QTY_TRACER_SOURCE
    else if(var_type_index == 3) then
-      var_type = KIND_VELOCITY
+      var_type = QTY_VELOCITY
    else if(var_type_index == 4) then
-      var_type = KIND_MEAN_SOURCE
+      var_type = QTY_MEAN_SOURCE
    else if(var_type_index == 5) then
-      var_type = KIND_SOURCE_PHASE
+      var_type = QTY_SOURCE_PHASE
    endif
 endif
 

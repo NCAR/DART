@@ -14,7 +14,7 @@ use  obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs_sequence, in
                               write_obs_seq, init_obs, assignment(=), &
                               static_init_obs_sequence, set_obs_def, set_obs_values, set_qc
 use       obs_def_mod, only : set_obs_def_location, set_obs_def_error_variance, &
-                              set_obs_def_kind, set_obs_def_time, set_obs_def_key, &
+                              set_obs_def_type_of_obs, set_obs_def_time, set_obs_def_key, &
                               obs_def_type
 use   obs_def_gps_mod, only : set_gpsro_ref
 !use      obs_kind_mod, only : SAT_U_WIND_COMPONENT, SAT_V_WIND_COMPONENT, &
@@ -116,7 +116,7 @@ SUBROUTINE insert_gts_obs_single(gtsobs, qc_threshold, &
          obs_value(1) = uu
          obs_err = gtsobs%each%speed%error
          obs_qc(1)  = real(max(gtsobs%each%speed%qc, gtsobs%each%direction%qc),kind=r8)
-         call set_obs_def_kind(obs_def, u_wind_type)
+         call set_obs_def_type_of_obs(obs_def, u_wind_type)
          call set_obs_def_error_variance(obs_def, obs_err*obs_err)
          call set_obs_def(obs, obs_def)
          call set_obs_values(obs, obs_value)
@@ -125,7 +125,7 @@ SUBROUTINE insert_gts_obs_single(gtsobs, qc_threshold, &
          call insert_obs_in_seq(seq, obs)
          obs_value(1) = vv
          num_obs = num_obs + 1
-         call set_obs_def_kind(obs_def, v_wind_type)
+         call set_obs_def_type_of_obs(obs_def, v_wind_type)
          call set_obs_def_error_variance(obs_def, obs_err*obs_err)
          call set_obs_def(obs, obs_def)
          call set_obs_values(obs, obs_value)
@@ -147,7 +147,7 @@ SUBROUTINE insert_gts_obs_single(gtsobs, qc_threshold, &
          obs_value(1) = tk
          obs_err = gtsobs%each%temperature%error
          obs_qc(1)  = real(gtsobs%each%temperature%qc,kind=r8)
-         call set_obs_def_kind(obs_def, temperature_type)
+         call set_obs_def_type_of_obs(obs_def, temperature_type)
          call set_obs_def_error_variance(obs_def, obs_err*obs_err)
          call set_obs_def(obs, obs_def)
          call set_obs_values(obs, obs_value)
@@ -170,7 +170,7 @@ SUBROUTINE insert_gts_obs_single(gtsobs, qc_threshold, &
          obs_value(1) = td
          obs_err = gtsobs%each%dew_point%error
          obs_qc(1) = real(gtsobs%each%dew_point%qc,kind=r8)
-         call set_obs_def_kind(obs_def, dew_point_type)
+         call set_obs_def_type_of_obs(obs_def, dew_point_type)
          call set_obs_def_error_variance(obs_def, obs_err*obs_err)
          call set_obs_def(obs, obs_def)
          call set_obs_values(obs, obs_value)
@@ -193,7 +193,7 @@ SUBROUTINE insert_gts_obs_single(gtsobs, qc_threshold, &
          obs_value(1) = rh
          obs_err = gtsobs%each%rh%error
          obs_qc(1)  = real(gtsobs%each%rh%qc,kind=r8)
-         call set_obs_def_kind(obs_def, rh_type)
+         call set_obs_def_type_of_obs(obs_def, rh_type)
          call set_obs_def_error_variance(obs_def, obs_err*obs_err)
          call set_obs_def(obs, obs_def)
          call set_obs_values(obs, obs_value)
@@ -215,7 +215,7 @@ SUBROUTINE insert_gts_obs_single(gtsobs, qc_threshold, &
          obs_value(1) = pressure
          obs_err = gtsobs%each%pressure%error
          obs_qc(1)  = real(gtsobs%each%pressure%qc,kind=r8)
-         call set_obs_def_kind(obs_def, pressure_type)
+         call set_obs_def_type_of_obs(obs_def, pressure_type)
          call set_obs_def_error_variance(obs_def, obs_err*obs_err)
          call set_obs_def(obs, obs_def)
          call set_obs_values(obs, obs_value)
@@ -237,7 +237,7 @@ SUBROUTINE insert_gts_obs_single(gtsobs, qc_threshold, &
          obs_value(1) = height
          obs_err = gtsobs%each%height%error
          obs_qc(1)  = real(gtsobs%each%height%qc,kind=r8)
-         call set_obs_def_kind(obs_def, height_type)
+         call set_obs_def_type_of_obs(obs_def, height_type)
          call set_obs_def_error_variance(obs_def, obs_err*obs_err)
          call set_obs_def(obs, obs_def)
          call set_obs_values(obs, obs_value)
@@ -328,7 +328,7 @@ SUBROUTINE insert_gts_obs_multi(gtsobs, qc_threshold, &
          obs_value(1) = uu
          obs_err = gtsobs%each(i)%speed%error
          obs_qc(1)  = real(max(gtsobs%each(i)%speed%qc, gtsobs%each(i)%direction%qc),kind=r8)
-         call set_obs_def_kind(obs_def, u_wind_type)
+         call set_obs_def_type_of_obs(obs_def, u_wind_type)
          call set_obs_def_error_variance(obs_def, obs_err*obs_err)
          call set_obs_def(obs, obs_def)
          call set_obs_values(obs, obs_value)
@@ -337,7 +337,7 @@ SUBROUTINE insert_gts_obs_multi(gtsobs, qc_threshold, &
          call insert_obs_in_seq(seq, obs)
          obs_value(1) = vv
          num_obs = num_obs + 1
-         call set_obs_def_kind(obs_def, v_wind_type)
+         call set_obs_def_type_of_obs(obs_def, v_wind_type)
          call set_obs_def_error_variance(obs_def, obs_err*obs_err)
          call set_obs_def(obs, obs_def)
          call set_obs_values(obs, obs_value)
@@ -359,7 +359,7 @@ SUBROUTINE insert_gts_obs_multi(gtsobs, qc_threshold, &
          obs_value(1) = tk
          obs_err = gtsobs%each(i)%temperature%error
          obs_qc(1)  = real(gtsobs%each(i)%temperature%qc,kind=r8)
-         call set_obs_def_kind(obs_def, temperature_type)
+         call set_obs_def_type_of_obs(obs_def, temperature_type)
          call set_obs_def_error_variance(obs_def, obs_err*obs_err)
          call set_obs_def(obs, obs_def)
          call set_obs_values(obs, obs_value)
@@ -382,7 +382,7 @@ SUBROUTINE insert_gts_obs_multi(gtsobs, qc_threshold, &
          obs_value(1) = td
          obs_err = gtsobs%each(i)%dew_point%error
          obs_qc(1)  = real(gtsobs%each(i)%dew_point%qc,kind=r8)
-         call set_obs_def_kind(obs_def, dew_point_type)
+         call set_obs_def_type_of_obs(obs_def, dew_point_type)
          call set_obs_def_error_variance(obs_def, obs_err*obs_err)
          call set_obs_def(obs, obs_def)
          call set_obs_values(obs, obs_value)
@@ -405,7 +405,7 @@ SUBROUTINE insert_gts_obs_multi(gtsobs, qc_threshold, &
          obs_value(1) = rh
          obs_err = gtsobs%each(i)%rh%error
          obs_qc(1)  = real(gtsobs%each(i)%rh%qc,kind=r8)
-         call set_obs_def_kind(obs_def, rh_type)
+         call set_obs_def_type_of_obs(obs_def, rh_type)
          call set_obs_def_error_variance(obs_def, obs_err*obs_err)
          call set_obs_def(obs, obs_def)
          call set_obs_values(obs, obs_value)
@@ -427,7 +427,7 @@ SUBROUTINE insert_gts_obs_multi(gtsobs, qc_threshold, &
          obs_value(1) = pressure
          obs_err = gtsobs%each(i)%pressure%error
          obs_qc(1)  = real(gtsobs%each(i)%pressure%qc,kind=r8)
-         call set_obs_def_kind(obs_def, pressure_type)
+         call set_obs_def_type_of_obs(obs_def, pressure_type)
          call set_obs_def_error_variance(obs_def, obs_err*obs_err)
          call set_obs_def(obs, obs_def)
          call set_obs_values(obs, obs_value)
@@ -449,7 +449,7 @@ SUBROUTINE insert_gts_obs_multi(gtsobs, qc_threshold, &
          obs_value(1) = height
          obs_err = gtsobs%each(i)%height%error
          obs_qc(1)  = real(gtsobs%each(i)%height%qc,kind=r8)
-         call set_obs_def_kind(obs_def, height_type)
+         call set_obs_def_type_of_obs(obs_def, height_type)
          call set_obs_def_error_variance(obs_def, obs_err*obs_err)
          call set_obs_def(obs, obs_def)
          call set_obs_values(obs, obs_value)
@@ -554,7 +554,7 @@ SUBROUTINE insert_gts_obs_gpsref(gtsobs, qc_threshold, &
       obs_value(1) = gtsobs%each(i)%dew_point%data
       obs_err = gtsobs%each(i)%dew_point%error
       obs_qc(1)  = real(gtsobs%each(i)%dew_point%qc,kind=r8)
-      call set_obs_def_kind(obs_def, gpsref_type)
+      call set_obs_def_type_of_obs(obs_def, gpsref_type)
       call set_obs_def_key(obs_def, gpsref_key)
       call set_obs_def_error_variance(obs_def, obs_err*obs_err)
       call set_obs_def(obs, obs_def)

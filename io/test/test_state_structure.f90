@@ -12,13 +12,13 @@ use       utilities_mod, only : register_module, initialize_utilities, &
                                 finalize_utilities, error_handler, &
                                 E_ERR, E_MSG
 
-use        obs_kind_mod, only : get_raw_obs_kind_name,   &
-                                KIND_U_WIND_COMPONENT,   &
-                                KIND_V_WIND_COMPONENT,   &
-                                KIND_SURFACE_PRESSURE,   &
-                                KIND_RAW_STATE_VARIABLE, &
-                                KIND_TEMPERATURE,        &
-                                KIND_SALINITY
+use        obs_kind_mod, only : get_name_for_quantity,   &
+                                QTY_U_WIND_COMPONENT,   &
+                                QTY_V_WIND_COMPONENT,   &
+                                QTY_SURFACE_PRESSURE,   &
+                                QTY_RAW_STATE_VARIABLE, &
+                                QTY_TEMPERATURE,        &
+                                QTY_SALINITY
 
 use          assert_mod, only : assert_equal
 
@@ -275,63 +275,63 @@ write(*,*)' ... Testing Domain 1'
 call test_variable_info(did1, VAR1, &
                         exp_var_size    = b1sz, &
                         exp_num_dims    = 1, &
-                        exp_kind_indx   =  KIND_RAW_STATE_VARIABLE, &
-                        exp_kind_string = 'KIND_RAW_STATE_VARIABLE',&
+                        exp_kind_indx   =  QTY_RAW_STATE_VARIABLE, &
+                        exp_kind_string = 'QTY_RAW_STATE_VARIABLE',&
                         exp_var_name    = 'state')
 
 write(*,*)' ... Testing Domain 2'
 call test_variable_info(did2, VAR1, &
                         exp_var_size    = b2sz, &
                         exp_num_dims    = 1, &
-                        exp_kind_indx   =  KIND_RAW_STATE_VARIABLE, &
-                        exp_kind_string = 'KIND_RAW_STATE_VARIABLE',&
+                        exp_kind_indx   =  QTY_RAW_STATE_VARIABLE, &
+                        exp_kind_string = 'QTY_RAW_STATE_VARIABLE',&
                         exp_var_name    = 'state')
 
 write(*,*)' ... Testing Domain 3 Var 1'
 call test_variable_info(did3, VAR1, &
                         exp_var_size    = f1d1, &
                         exp_num_dims    = 1, &
-                        exp_kind_indx   =  KIND_RAW_STATE_VARIABLE, &
-                        exp_kind_string = 'KIND_RAW_STATE_VARIABLE',&
+                        exp_kind_indx   =  QTY_RAW_STATE_VARIABLE, &
+                        exp_kind_string = 'QTY_RAW_STATE_VARIABLE',&
                         exp_var_name    = 'A')
 
 write(*,*)' ... Testing Domain 3 Var 4'
 call test_variable_info(did3, VAR4, &
                         exp_var_size    = f1d1*f1d2*f1d3, &
                         exp_num_dims    = 3, &
-                        exp_kind_indx   =  KIND_TEMPERATURE, &
-                        exp_kind_string = 'KIND_TEMPERATURE',&
+                        exp_kind_indx   =  QTY_TEMPERATURE, &
+                        exp_kind_string = 'QTY_TEMPERATURE',&
                         exp_var_name    = 'temp')
 
 write(*,*)' ... Testing Domain 4 Var 1'
 call test_variable_info(did4, VAR1, &
                         exp_var_size    = f2d1, &
                         exp_num_dims    = 1, &
-                        exp_kind_indx   =  KIND_RAW_STATE_VARIABLE, &
-                        exp_kind_string = 'KIND_RAW_STATE_VARIABLE',&
+                        exp_kind_indx   =  QTY_RAW_STATE_VARIABLE, &
+                        exp_kind_string = 'QTY_RAW_STATE_VARIABLE',&
                         exp_var_name    = 'B')
 
 call test_variable_info(did4, VAR3, &
                         exp_var_size    = f2d1*f2d2*f2d3, &
                         exp_num_dims    = 3, &
-                        exp_kind_indx   =  KIND_TEMPERATURE, &
-                        exp_kind_string = 'KIND_TEMPERATURE',&
+                        exp_kind_indx   =  QTY_TEMPERATURE, &
+                        exp_kind_string = 'QTY_TEMPERATURE',&
                         exp_var_name    = 'temp')
 
 write(*,*)' ... Testing Domain 5 Var 1'
 call test_variable_info(did5, VAR1, &
                         exp_var_size    = spv1sz, &
                         exp_num_dims    = 1, &
-                        exp_kind_indx   = KIND_SURFACE_PRESSURE, &
-                        exp_kind_string = 'KIND_SURFACE_PRESSURE',&
+                        exp_kind_indx   = QTY_SURFACE_PRESSURE, &
+                        exp_kind_string = 'QTY_SURFACE_PRESSURE',&
                         exp_var_name    = 'PS')
 
 write(*,*)' ... Testing Domain 5 Var 4'
 call test_variable_info(did5, VAR4, &
                         exp_var_size    = spv4sz, &
                         exp_num_dims    = 4, &
-                        exp_kind_indx   =  KIND_V_WIND_COMPONENT, &
-                        exp_kind_string = 'KIND_V_WIND_COMPONENT',&
+                        exp_kind_indx   =  QTY_V_WIND_COMPONENT, &
+                        exp_kind_string = 'QTY_V_WIND_COMPONENT',&
                         exp_var_name    = 'V ')
 
 write(*,*)
@@ -639,8 +639,8 @@ call test_state_indicies(state_indx, &
                          exp_kloc =  1, &
                          exp_varid = 1, &
                          exp_domid = dom, &
-                         exp_kind_index  =  KIND_RAW_STATE_VARIABLE, &
-                         exp_kind_string = 'KIND_RAW_STATE_VARIABLE')
+                         exp_kind_index  =  QTY_RAW_STATE_VARIABLE, &
+                         exp_kind_string = 'QTY_RAW_STATE_VARIABLE')
 
 ! DOMAIN2
 state_indx = 109_i8
@@ -652,8 +652,8 @@ call test_state_indicies(state_indx, &
                          exp_kloc =  1, &
                          exp_varid = 1, &
                          exp_domid = dom, &
-                         exp_kind_index  =  KIND_RAW_STATE_VARIABLE, &
-                         exp_kind_string = 'KIND_RAW_STATE_VARIABLE')
+                         exp_kind_index  =  QTY_RAW_STATE_VARIABLE, &
+                         exp_kind_string = 'QTY_RAW_STATE_VARIABLE')
 
 ! DOMAIN3
 state_indx = 112_i8
@@ -665,8 +665,8 @@ call test_state_indicies(state_indx, &
                          exp_kloc =  1, &
                          exp_varid = 1, &
                          exp_domid = dom, &
-                         exp_kind_index  =  KIND_RAW_STATE_VARIABLE, &
-                         exp_kind_string = 'KIND_RAW_STATE_VARIABLE')
+                         exp_kind_index  =  QTY_RAW_STATE_VARIABLE, &
+                         exp_kind_string = 'QTY_RAW_STATE_VARIABLE')
 
 ! DOMAIN3
 state_indx = 115_i8
@@ -678,8 +678,8 @@ call test_state_indicies(state_indx, &
                          exp_kloc =  1, &
                          exp_varid = 2, &
                          exp_domid = dom, &
-                         exp_kind_index  =  KIND_RAW_STATE_VARIABLE, &
-                         exp_kind_string = 'KIND_RAW_STATE_VARIABLE')
+                         exp_kind_index  =  QTY_RAW_STATE_VARIABLE, &
+                         exp_kind_string = 'QTY_RAW_STATE_VARIABLE')
 
 ! DOMAIN3
 state_indx = 179_i8
@@ -691,8 +691,8 @@ call test_state_indicies(state_indx, &
                          exp_kloc =  5, &
                          exp_varid = 4, &
                          exp_domid = dom, &
-                         exp_kind_index  =  KIND_TEMPERATURE, &
-                         exp_kind_string = 'KIND_TEMPERATURE')
+                         exp_kind_index  =  QTY_TEMPERATURE, &
+                         exp_kind_string = 'QTY_TEMPERATURE')
 
 ! DOMAIN3
 state_indx = 178_i8
@@ -704,8 +704,8 @@ call test_state_indicies(state_indx, &
                          exp_kloc =  5, &
                          exp_varid = 4, &
                          exp_domid = dom, &
-                         exp_kind_index  =  KIND_TEMPERATURE, &
-                         exp_kind_string = 'KIND_TEMPERATURE')
+                         exp_kind_index  =  QTY_TEMPERATURE, &
+                         exp_kind_string = 'QTY_TEMPERATURE')
 
 ! DOMAIN4
 state_indx = 179_i8
@@ -717,8 +717,8 @@ call test_state_indicies(state_indx, &
                          exp_kloc =  5, &
                          exp_varid = 4, &
                          exp_domid = dom, &
-                         exp_kind_index  =  KIND_TEMPERATURE, &
-                         exp_kind_string = 'KIND_TEMPERATURE')
+                         exp_kind_index  =  QTY_TEMPERATURE, &
+                         exp_kind_string = 'QTY_TEMPERATURE')
 
 ! DOMAIN4
 state_indx = 187_i8
@@ -730,8 +730,8 @@ call test_state_indicies(state_indx, &
                          exp_kloc =  1, &
                          exp_varid = 2, &
                          exp_domid = dom, &
-                         exp_kind_index  =  KIND_SALINITY, &
-                         exp_kind_string = 'KIND_SALINITY')
+                         exp_kind_index  =  QTY_SALINITY, &
+                         exp_kind_string = 'QTY_SALINITY')
 
 ! DOMAIN4
 state_indx = 194_i8
@@ -743,8 +743,8 @@ call test_state_indicies(state_indx, &
                          exp_kloc =  1, &
                          exp_varid = 3, &
                          exp_domid = dom, &
-                         exp_kind_index  =  KIND_TEMPERATURE, &
-                         exp_kind_string = 'KIND_TEMPERATURE')
+                         exp_kind_index  =  QTY_TEMPERATURE, &
+                         exp_kind_string = 'QTY_TEMPERATURE')
 
 ! DOMAIN4
 state_indx = 307_i8
@@ -756,8 +756,8 @@ call test_state_indicies(state_indx, &
                          exp_kloc =  6, &
                          exp_varid = 3, &
                          exp_domid = dom, &
-                         exp_kind_index  =  KIND_TEMPERATURE, &
-                         exp_kind_string = 'KIND_TEMPERATURE')
+                         exp_kind_index  =  QTY_TEMPERATURE, &
+                         exp_kind_string = 'QTY_TEMPERATURE')
 
 ! DOMAIN5
 state_indx = 308_i8
@@ -769,8 +769,8 @@ call test_state_indicies(state_indx, &
                          exp_kloc =  1, &
                          exp_varid = 1, &
                          exp_domid = dom, &
-                         exp_kind_index  =  KIND_SURFACE_PRESSURE, &
-                         exp_kind_string = 'KIND_SURFACE_PRESSURE')
+                         exp_kind_index  =  QTY_SURFACE_PRESSURE, &
+                         exp_kind_string = 'QTY_SURFACE_PRESSURE')
 
 ! DOMAIN5
 state_indx = 318_i8
@@ -782,8 +782,8 @@ call test_state_indicies(state_indx, &
                          exp_kloc =  1, &
                          exp_varid = 3, &
                          exp_domid = dom, &
-                         exp_kind_index  =  KIND_U_WIND_COMPONENT, &
-                         exp_kind_string = 'KIND_U_WIND_COMPONENT')
+                         exp_kind_index  =  QTY_U_WIND_COMPONENT, &
+                         exp_kind_string = 'QTY_U_WIND_COMPONENT')
 
 write(*,*)
 write(*,*)'=============================================================='
@@ -791,68 +791,68 @@ write(*,*)'Testing varids from kind'
 write(*,*)'=============================================================='
 write(*,*)
 
-write(*,'(2A)')'  ... Testing Domain 1 Kind ', trim(get_raw_obs_kind_name(KIND_RAW_STATE_VARIABLE))
-call test_varids_from_kind(did1, KIND_RAW_STATE_VARIABLE, &
+write(*,'(2A)')'  ... Testing Domain 1 Kind ', trim(get_name_for_quantity(QTY_RAW_STATE_VARIABLE))
+call test_varids_from_kind(did1, QTY_RAW_STATE_VARIABLE, &
                            exp_num_varids_from_kind = 1, &
                            exp_varids_from_kind = (/1/) )
 
-write(*,'(2A)')'  ... Testing Domain 1 Kind ', trim(get_raw_obs_kind_name(KIND_TEMPERATURE))
-call test_varids_from_kind(did1, KIND_TEMPERATURE, &
+write(*,'(2A)')'  ... Testing Domain 1 Kind ', trim(get_name_for_quantity(QTY_TEMPERATURE))
+call test_varids_from_kind(did1, QTY_TEMPERATURE, &
                            exp_num_varids_from_kind = 0, &
                            exp_varids_from_kind = (/-1/) )
 
-write(*,'(2A)')'  ... Testing Domain 2 Kind ', trim(get_raw_obs_kind_name(KIND_RAW_STATE_VARIABLE))
-call test_varids_from_kind(did2, KIND_RAW_STATE_VARIABLE, &
+write(*,'(2A)')'  ... Testing Domain 2 Kind ', trim(get_name_for_quantity(QTY_RAW_STATE_VARIABLE))
+call test_varids_from_kind(did2, QTY_RAW_STATE_VARIABLE, &
                            exp_num_varids_from_kind = 1, &
                            exp_varids_from_kind = (/1/) )
 
-write(*,'(2A)')'  ... Testing Domain 2 Kind ', trim(get_raw_obs_kind_name(KIND_TEMPERATURE))
-call test_varids_from_kind(did2, KIND_TEMPERATURE, &
+write(*,'(2A)')'  ... Testing Domain 2 Kind ', trim(get_name_for_quantity(QTY_TEMPERATURE))
+call test_varids_from_kind(did2, QTY_TEMPERATURE, &
                            exp_num_varids_from_kind = 0, &
                            exp_varids_from_kind = (/-1/) )
 
-write(*,'(2A)')'  ... Testing Domain 3 Kind ', trim(get_raw_obs_kind_name(KIND_RAW_STATE_VARIABLE))
-call test_varids_from_kind(did3, KIND_RAW_STATE_VARIABLE, &
+write(*,'(2A)')'  ... Testing Domain 3 Kind ', trim(get_name_for_quantity(QTY_RAW_STATE_VARIABLE))
+call test_varids_from_kind(did3, QTY_RAW_STATE_VARIABLE, &
                            exp_num_varids_from_kind = 3, &
                            exp_varids_from_kind = (/1, 2, 3/) )
 
-write(*,'(2A)')'  ... Testing Domain 3 Kind ', trim(get_raw_obs_kind_name(KIND_TEMPERATURE))
-call test_varids_from_kind(did3, KIND_TEMPERATURE, &
+write(*,'(2A)')'  ... Testing Domain 3 Kind ', trim(get_name_for_quantity(QTY_TEMPERATURE))
+call test_varids_from_kind(did3, QTY_TEMPERATURE, &
                            exp_num_varids_from_kind = 1, &
                            exp_varids_from_kind = (/4/) )
 
-write(*,'(2A)')'  ... Testing Domain 4 Kind ', trim(get_raw_obs_kind_name(KIND_RAW_STATE_VARIABLE))
-call test_varids_from_kind(did4, KIND_RAW_STATE_VARIABLE, &
+write(*,'(2A)')'  ... Testing Domain 4 Kind ', trim(get_name_for_quantity(QTY_RAW_STATE_VARIABLE))
+call test_varids_from_kind(did4, QTY_RAW_STATE_VARIABLE, &
                            exp_num_varids_from_kind = 1, &
                            exp_varids_from_kind = (/1/) )
 
-write(*,'(2A)')'  ... Testing Domain 4 Kind ', trim(get_raw_obs_kind_name(KIND_SALINITY))
-call test_varids_from_kind(did4, KIND_SALINITY, &
+write(*,'(2A)')'  ... Testing Domain 4 Kind ', trim(get_name_for_quantity(QTY_SALINITY))
+call test_varids_from_kind(did4, QTY_SALINITY, &
                            exp_num_varids_from_kind = 1, &
                            exp_varids_from_kind = (/2/) )
 
-write(*,'(2A)')'  ... Testing Domain 4 Kind ', trim(get_raw_obs_kind_name(KIND_TEMPERATURE))
-call test_varids_from_kind(did4, KIND_TEMPERATURE, &
+write(*,'(2A)')'  ... Testing Domain 4 Kind ', trim(get_name_for_quantity(QTY_TEMPERATURE))
+call test_varids_from_kind(did4, QTY_TEMPERATURE, &
                            exp_num_varids_from_kind = 1, &
                            exp_varids_from_kind = (/3/) )
 
-write(*,'(2A)')'  ... Testing Domain 5 Kind ', trim(get_raw_obs_kind_name(KIND_SURFACE_PRESSURE))
-call test_varids_from_kind(did5, KIND_SURFACE_PRESSURE, &
+write(*,'(2A)')'  ... Testing Domain 5 Kind ', trim(get_name_for_quantity(QTY_SURFACE_PRESSURE))
+call test_varids_from_kind(did5, QTY_SURFACE_PRESSURE, &
                            exp_num_varids_from_kind = 1, &
                            exp_varids_from_kind = (/1/) )
 
-write(*,'(2A)')'  ... Testing Domain 5 Kind ', trim(get_raw_obs_kind_name(KIND_TEMPERATURE))
-call test_varids_from_kind(did5, KIND_TEMPERATURE, &
+write(*,'(2A)')'  ... Testing Domain 5 Kind ', trim(get_name_for_quantity(QTY_TEMPERATURE))
+call test_varids_from_kind(did5, QTY_TEMPERATURE, &
                            exp_num_varids_from_kind = 1, &
                            exp_varids_from_kind = (/2/) )
 
-write(*,'(2A)')'  ... Testing Domain 5 Kind ', trim(get_raw_obs_kind_name(KIND_U_WIND_COMPONENT))
-call test_varids_from_kind(did5, KIND_U_WIND_COMPONENT, &
+write(*,'(2A)')'  ... Testing Domain 5 Kind ', trim(get_name_for_quantity(QTY_U_WIND_COMPONENT))
+call test_varids_from_kind(did5, QTY_U_WIND_COMPONENT, &
                            exp_num_varids_from_kind = 1, &
                            exp_varids_from_kind = (/3/) )
 
-write(*,'(2A)')'  ... Testing Domain 5 Kind ', trim(get_raw_obs_kind_name(KIND_V_WIND_COMPONENT))
-call test_varids_from_kind(did5, KIND_V_WIND_COMPONENT, &
+write(*,'(2A)')'  ... Testing Domain 5 Kind ', trim(get_name_for_quantity(QTY_V_WIND_COMPONENT))
+call test_varids_from_kind(did5, QTY_V_WIND_COMPONENT, &
                            exp_num_varids_from_kind = 1, &
                            exp_varids_from_kind = (/4/) )
 
@@ -882,8 +882,8 @@ subroutine initialize_domains()
 
    ! info for domain from file1
    var_names1 = (/'A   ', 'B   ', 'C   ', 'temp'/)
-   kind_list1 = (/KIND_RAW_STATE_VARIABLE, KIND_RAW_STATE_VARIABLE,  &
-                  KIND_RAW_STATE_VARIABLE, KIND_TEMPERATURE/)
+   kind_list1 = (/QTY_RAW_STATE_VARIABLE, QTY_RAW_STATE_VARIABLE,  &
+                  QTY_RAW_STATE_VARIABLE, QTY_TEMPERATURE/)
    ! variable A
    clamp_vals1(1,1) = 0.0_r8
    clamp_vals1(1,2) = MISSING_R8
@@ -903,8 +903,8 @@ subroutine initialize_domains()
 
    ! info for domain from file2
    var_names2 = (/'B   ', 'C   ', 'temp'/)
-   kind_list2 = (/KIND_RAW_STATE_VARIABLE, KIND_SALINITY,  &
-                  KIND_TEMPERATURE/)
+   kind_list2 = (/QTY_RAW_STATE_VARIABLE, QTY_SALINITY,  &
+                  QTY_TEMPERATURE/)
    ! variable B
    clamp_vals2(1,1) = MISSING_R8
    clamp_vals2(1,2) = MISSING_R8
@@ -921,8 +921,8 @@ subroutine initialize_domains()
 
    ! infor for domain from spec
    var_names3 = (/'PS', 'T ', 'U ', 'V '/)
-   kind_list3 = (/KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, &
-                  KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT/)
+   kind_list3 = (/QTY_SURFACE_PRESSURE, QTY_TEMPERATURE, &
+                  QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT/)
    ! variable PS
    clamp_vals3(1,1) = MISSING_R8
    clamp_vals3(1,2) = MISSING_R8
@@ -1314,7 +1314,7 @@ function write_message_kind(dom_id, kind_index, routine) result(msg)
    character(len=512) :: msg
    character(len=32)  :: kind_string
 
-   kind_string = get_raw_obs_kind_name(kind_index)
+   kind_string = get_name_for_quantity(kind_index)
 
    write(msg, '(''dom'',I1,'':kind:'',A,'':'',A)') dom_id, kind_string, trim(routine)
 

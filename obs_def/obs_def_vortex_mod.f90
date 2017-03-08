@@ -5,10 +5,10 @@
 ! $Id$
 
 ! BEGIN DART PREPROCESS KIND LIST
-! VORTEX_LAT, KIND_VORTEX_LAT
-! VORTEX_LON, KIND_VORTEX_LON
-! VORTEX_PMIN, KIND_VORTEX_PMIN
-! VORTEX_WMAX, KIND_VORTEX_WMAX
+! VORTEX_LAT, QTY_VORTEX_LAT
+! VORTEX_LON, QTY_VORTEX_LON
+! VORTEX_PMIN, QTY_VORTEX_PMIN
+! VORTEX_WMAX, QTY_VORTEX_WMAX
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -66,11 +66,11 @@ use        types_mod, only : r8, missing_r8, ps0, PI, gravity
 use    utilities_mod, only : register_module, error_handler, E_ERR
 use     location_mod, only : location_type
 use  assim_model_mod, only : interpolate
-use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
-                             KIND_TEMPERATURE, KIND_VERTICAL_VELOCITY, &
-                             KIND_RAINWATER_MIXING_RATIO, KIND_DENSITY, &
-                             KIND_VORTEX_LAT, KIND_VORTEX_LON, KIND_VORTEX_PMIN, &
-                             KIND_VORTEX_WMAX
+use     obs_kind_mod, only : QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, &
+                             QTY_TEMPERATURE, QTY_VERTICAL_VELOCITY, &
+                             QTY_RAINWATER_MIXING_RATIO, QTY_DENSITY, &
+                             QTY_VORTEX_LAT, QTY_VORTEX_LON, QTY_VORTEX_PMIN, &
+                             QTY_VORTEX_WMAX
 
 use ensemble_manager_mod,  only : ensemble_type
 
@@ -122,13 +122,13 @@ integer,             intent(out)    :: istatus(ens_size)
 if ( .not. module_initialized ) call initialize_module
 
 if (whichinfo == 'lat') then
-   call interpolate(state_handle, ens_size, location, KIND_VORTEX_LAT, vinfo, istatus)
+   call interpolate(state_handle, ens_size, location, QTY_VORTEX_LAT, vinfo, istatus)
 elseif (whichinfo == 'lon') then
-   call interpolate(state_handle, ens_size, location, KIND_VORTEX_LON, vinfo, istatus)
+   call interpolate(state_handle, ens_size, location, QTY_VORTEX_LON, vinfo, istatus)
 elseif (whichinfo == 'pmi') then
-   call interpolate(state_handle, ens_size, location, KIND_VORTEX_PMIN, vinfo, istatus)
+   call interpolate(state_handle, ens_size, location, QTY_VORTEX_PMIN, vinfo, istatus)
 elseif (whichinfo == 'wma') then
-   call interpolate(state_handle, ens_size, location, KIND_VORTEX_WMAX, vinfo, istatus)
+   call interpolate(state_handle, ens_size, location, QTY_VORTEX_WMAX, vinfo, istatus)
 endif
 
 end subroutine get_expected_vortex_info

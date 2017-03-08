@@ -20,8 +20,8 @@ use     location_mod, only : location_type, set_location, write_location, get_di
                              query_location, LocationDims, get_location, &
                              VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, &
                              VERTISHEIGHT, VERTISSCALEHEIGHT
-use     obs_kind_mod, only : get_raw_obs_kind_name, get_raw_obs_kind_index, &
-                             KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT
+use     obs_kind_mod, only : get_name_for_quantity, get_index_for_quantity, &
+                             QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT
 use  assim_model_mod, only : open_restart_read, open_restart_write, close_restart, &
                              aread_state_restart, awrite_state_restart, &
                              netcdf_file_type, aoutput_diagnostics, &
@@ -111,7 +111,7 @@ call check_namelist_read(iunit, io, "resample_nml")
 if (do_nml_file()) write(nmlfileunit, nml=resample_nml)
 if (do_nml_term()) write(     *     , nml=resample_nml)
 
-mykindindex = get_raw_obs_kind_index(kind_of_interest)
+mykindindex = get_index_for_quantity(kind_of_interest)
 
 ! This harvests all kinds of initialization information
 

@@ -27,11 +27,11 @@ module model_mod
   use location_mod,      only : location_type,      get_close_maxdist_init,      &
                                 get_close_obs_init, get_close_obs, set_location, &
                                 get_location, vert_is_level, vert_is_pressure, vert_is_height
-  use obs_kind_mod,      only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT,  &
-                                KIND_SURFACE_PRESSURE, KIND_TEMPERATURE,       &
-                                KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE,         &
-                                KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE,       &
-                                get_obs_kind_index, get_obs_kind_var_type
+  use obs_kind_mod,      only : QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT,  &
+                                QTY_SURFACE_PRESSURE, QTY_TEMPERATURE,       &
+                                QTY_SPECIFIC_HUMIDITY, QTY_PRESSURE,         &
+                                QTY_CLOUD_LIQUID_WATER, QTY_CLOUD_ICE,       &
+                                get_index_for_type_of_obs, get_quantity_for_type_of_obs
                                 ! We'll need to add a kind_cloud_fraction to correspond to AM2 prog var
   use location_mod,      only:  VERTISSURFACE, VERTISLEVEL
 
@@ -154,9 +154,9 @@ character(len=128), parameter :: revdate  = "$Date$"
   character(len = 2), dimension(num_2d_prog_vars), parameter :: &
          names_2d_prog_vars = (/ "PS" /)
   integer, dimension(num_3d_prog_vars),            parameter :: &
-         kinds_3d_prog_vars = (/ KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_TEMPERATURE /)
+         kinds_3d_prog_vars = (/ QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, QTY_TEMPERATURE /)
   integer, dimension(num_2d_prog_vars),            parameter ::  &
-         kinds_2d_prog_vars = (/ KIND_SURFACE_PRESSURE /)
+         kinds_2d_prog_vars = (/ QTY_SURFACE_PRESSURE /)
 
   !
   ! Information related to dimensions (coordinates)
@@ -291,9 +291,9 @@ contains
       call error_handler(E_ERR, 'static_model_init', &
            "Different number of model tracer names, tracer kinds provided", source, revision, revdate)
     do i = 1, num_tracers
-      index = get_obs_kind_index(tracer_obs_kind_names(i))
+      index = get_index_for_type_of_obs(tracer_obs_kind_names(i))
       if(index > 0) then
-        tracer_obs_kinds(i) = get_obs_kind_var_type(index)
+        tracer_obs_kinds(i) = get_quantity_for_type_of_obs(index)
       else
         call error_handler(E_ERR, 'static_model_init', &
            "Tracer type " // trim(tracer_obs_kind_names(i)) // " unknown" , source, revision, revdate)
@@ -409,8 +409,8 @@ contains
     !
     ! Convert indexes to lat, lon, level values
     !
-    local_lat = lat(lat_index); if(local_type == KIND_U_WIND_COMPONENT) local_lat = latu(lat_index)
-    local_lon = lon(lon_index); if(local_type == KIND_V_WIND_COMPONENT) local_lon = lonv(lon_index)
+    local_lat = lat(lat_index); if(local_type == QTY_U_WIND_COMPONENT) local_lat = latu(lat_index)
+    local_lon = lon(lon_index); if(local_type == QTY_V_WIND_COMPONENT) local_lon = lonv(lon_index)
 
     location = set_location(local_lon, local_lat, real(level_index, r8),  which_vert)
     if(present(var_type)) var_type = local_type
@@ -807,7 +807,7 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
 
     ! Notes after talking to Jeff A
     !   We interpolate the KINDS we have: U, V, T, tracers, and PS; we also allow for surface height
-    !   **adding in KIND_PRESSURE**
+    !   **adding in QTY_PRESSURE**
     !   Vertical coordinates can be expressed as level, pressure (most usual), and height
     !   We'll interpolate linearly in lat, lon, and vertical coordinate since the
     !   errors this introduces are small and can be lumped in to "representativeness"
@@ -824,13 +824,13 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
     !   State vector is ordered ps (2D), u, v, t, tracers
     !
     variableStart = -1
-    if(itype == KIND_SURFACE_PRESSURE .or. itype == KIND_PRESSURE) then
+    if(itype == QTY_SURFACE_PRESSURE .or. itype == QTY_PRESSURE) then
       variableStart = 1
-    else if (itype == KIND_U_WIND_COMPONENT) then
+    else if (itype == QTY_U_WIND_COMPONENT) then
       variableStart = 1 + (num_lons * num_lats)
-    else if (itype == KIND_V_WIND_COMPONENT) then
+    else if (itype == QTY_V_WIND_COMPONENT) then
       variableStart = 1 + (num_lons * num_lats) + 1 * (num_lons * num_lats * num_levels)
-    else if (itype == KIND_TEMPERATURE) then
+    else if (itype == QTY_TEMPERATURE) then
       variableStart = 1 + (num_lons * num_lats) + 2 * (num_lons * num_lats * num_levels)
     else
       do i = 1, num_tracers
@@ -853,12 +853,12 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
       !
       ! U and V are on staggered grids
       !
-      if(itype == KIND_V_WIND_COMPONENT) then
+      if(itype == QTY_V_WIND_COMPONENT) then
         theseLons(:) = lonv(:)
       else
         theseLons(:) = lon(:)
       end if
-      if(itype == KIND_U_WIND_COMPONENT) then
+      if(itype == QTY_U_WIND_COMPONENT) then
         theseLats(:) = (/ latu(:), real(MISSING_R8) /)
       else
         theseLats(:) = lat(:)
@@ -927,7 +927,7 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
         ! Find the four values that bracket the observation location in the horizontal
         !   Storage order is level, lon, lat
         !
-        if(itype == KIND_SURFACE_PRESSURE) then
+        if(itype == QTY_SURFACE_PRESSURE) then
           cornerValues(:, :) = psurf(:, :)   
         else
           !
@@ -943,7 +943,7 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
           ! We know how to interpolate vertically in level, pressure, and height - are we missing any possibilities?
           !
           if(vert_is_level(location)) then
-            if(itype == KIND_PRESSURE) then
+            if(itype == QTY_PRESSURE) then
                forall(i = 1:2, j = 1:2)
                   cornerValues(i, j) = interpolate1D(desiredLocation = lon_lat_height(3),                 &
                                                    values = akmid(:) + bkmid(:) * psurf(i,j),             &
@@ -988,7 +988,7 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
             !
             variableStart = -1
             do i = 1, num_tracers
-              if(tracer_obs_kinds(i) == KIND_SPECIFIC_HUMIDITY) &
+              if(tracer_obs_kinds(i) == QTY_SPECIFIC_HUMIDITY) &
                 variableStart = 1 + (num_lons) * num_lats + (i - 1 + 3) * (num_lons * num_lats * num_levels)
             end do
             if(variableStart > 0) then
@@ -1029,7 +1029,7 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
                                                        values = cornerLogPressureProfiles(i, j,num_levels+1:1:-1),  & 
                                                        locations =  cornerHeights(i, j,num_levels+1:1:-1))
             end forall
-            if(itype == KIND_PRESSURE) then
+            if(itype == QTY_PRESSURE) then
                forall(i = 1:2, j = 1:2)
                   cornerValues(i,j) = exp(cornerLogPressures(i,j))
                end forall
@@ -1046,7 +1046,7 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
                                                  ! Compute pressure at layer midpoints in this column on the fly
                                                  locations = akmid(:) + bkmid(:) * psurf(i, j) )
                end forall
-            end if !KIND_PRESSURE loop
+            end if !QTY_PRESSURE loop
             !
           else
             !

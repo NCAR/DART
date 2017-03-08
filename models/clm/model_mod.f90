@@ -54,26 +54,26 @@ use    utilities_mod, only : register_module, error_handler,                   &
                              open_file, close_file, do_nml_file, do_nml_term,  &
                              nmlfileunit
 
-use     obs_kind_mod, only : KIND_SOIL_TEMPERATURE,       &
-                             KIND_SOIL_MOISTURE,          &
-                             KIND_LIQUID_WATER,           &
-                             KIND_ICE,                    &
-                             KIND_SNOWCOVER_FRAC,         &
-                             KIND_SNOW_THICKNESS,         &
-                             KIND_LEAF_CARBON,            &
-                             KIND_LEAF_AREA_INDEX,        &
-                             KIND_WATER_TABLE_DEPTH,      &
-                             KIND_GEOPOTENTIAL_HEIGHT,    &
-                             KIND_VEGETATION_TEMPERATURE, &
-                             KIND_FPAR,                   &
-                             KIND_FPAR_SUNLIT_DIRECT,     &
-                             KIND_FPAR_SUNLIT_DIFFUSE,    &
-                             KIND_FPAR_SHADED_DIRECT,     &
-                             KIND_FPAR_SHADED_DIFFUSE,    &
-                             KIND_FPAR_SHADED_DIRECT,     &
-                             KIND_FPAR_SHADED_DIFFUSE,    &
-                             get_raw_obs_kind_index,      &
-                             get_raw_obs_kind_name
+use     obs_kind_mod, only : QTY_SOIL_TEMPERATURE,       &
+                             QTY_SOIL_MOISTURE,          &
+                             QTY_LIQUID_WATER,           &
+                             QTY_ICE,                    &
+                             QTY_SNOWCOVER_FRAC,         &
+                             QTY_SNOW_THICKNESS,         &
+                             QTY_LEAF_CARBON,            &
+                             QTY_LEAF_AREA_INDEX,        &
+                             QTY_WATER_TABLE_DEPTH,      &
+                             QTY_GEOPOTENTIAL_HEIGHT,    &
+                             QTY_VEGETATION_TEMPERATURE, &
+                             QTY_FPAR,                   &
+                             QTY_FPAR_SUNLIT_DIRECT,     &
+                             QTY_FPAR_SUNLIT_DIFFUSE,    &
+                             QTY_FPAR_SHADED_DIRECT,     &
+                             QTY_FPAR_SHADED_DIFFUSE,    &
+                             QTY_FPAR_SHADED_DIRECT,     &
+                             QTY_FPAR_SHADED_DIFFUSE,    &
+                             get_index_for_quantity,      &
+                             get_name_for_quantity
 
  use ensemble_manager_mod, only : ensemble_type, &
                                   map_pe_to_task, &
@@ -2536,12 +2536,12 @@ if ((debug > 6) .and. do_output()) print *, 'requesting interpolation at ', llon
 
 select case( obs_kind )
 
-   case ( KIND_SOIL_MOISTURE )
+   case ( QTY_SOIL_MOISTURE )
 
       ! TJH FIXME - actually ROLAND FIXME
       ! This is terrible ... the COSMOS operator wants m3/m3 ... CLM is kg/m2
-      call get_grid_vertval(state_handle, ens_size, location, KIND_LIQUID_WATER, expected_obs,  istatus)
-      call get_grid_vertval(state_handle, ens_size, location, KIND_ICE,          interp_val_2, istatus_2)
+      call get_grid_vertval(state_handle, ens_size, location, QTY_LIQUID_WATER, expected_obs,  istatus)
+      call get_grid_vertval(state_handle, ens_size, location, QTY_ICE,          interp_val_2, istatus_2)
 
       do imem = 1,ens_size
          if ((istatus(imem) == 0) .and. (istatus_2(imem) == 0)) then
@@ -2552,18 +2552,18 @@ select case( obs_kind )
          endif
       enddo
 
-   case ( KIND_SOIL_TEMPERATURE, KIND_LIQUID_WATER, KIND_ICE )
+   case ( QTY_SOIL_TEMPERATURE, QTY_LIQUID_WATER, QTY_ICE )
 
       call get_grid_vertval(state_handle, ens_size, location, obs_kind, expected_obs, istatus)
 
-   case ( KIND_SNOWCOVER_FRAC, KIND_LEAF_AREA_INDEX, KIND_LEAF_CARBON, KIND_WATER_TABLE_DEPTH, &
-          KIND_VEGETATION_TEMPERATURE)
+   case ( QTY_SNOWCOVER_FRAC, QTY_LEAF_AREA_INDEX, QTY_LEAF_CARBON, QTY_WATER_TABLE_DEPTH, &
+          QTY_VEGETATION_TEMPERATURE)
 
       call compute_gridcell_value(state_handle, ens_size, location, obs_kind, expected_obs, istatus)
 
    case default
 
-      kind_string = get_raw_obs_kind_name(obs_kind)
+      kind_string = get_name_for_quantity(obs_kind)
 
       write(string1,*)'not written for (integer) kind ',obs_kind
       write(string2,*)'AKA '//trim(kind_string)
@@ -3881,7 +3881,7 @@ MyLoop : do i = 1, nrows
 
    ! Make sure DART kind is valid
 
-   if( get_raw_obs_kind_index(dartstr) < 0 ) then
+   if( get_index_for_quantity(dartstr) < 0 ) then
       write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
       call error_handler(E_ERR,'parse_variable_table',string1,source,revision,revdate)
    endif
@@ -4804,7 +4804,7 @@ VARTYPES : do i = 1,nfields
 enddo VARTYPES
 
 if (findKindIndex < 1) then
-   kind_string = get_raw_obs_kind_name( kind_index )
+   kind_string = get_name_for_quantity( kind_index )
    write(string1,*) trim(caller)//' cannot find "'//trim(kind_string)//'" in list of DART state variables.'
    write(string2,*) trim(caller)//' looking for DART KIND (index) ', kind_index
    call error_handler(E_ERR,'findKindIndex',string1,source,revision,revdate, text2=string2)
@@ -4954,7 +4954,7 @@ real(r8) :: minvalue, maxvalue
 
 progvar(ivar)%varname     = trim(variable_table(ivar,VT_VARNAMEINDX))
 progvar(ivar)%kind_string = trim(variable_table(ivar,VT_KINDINDX))
-progvar(ivar)%dart_kind   = get_raw_obs_kind_index( progvar(ivar)%kind_string )
+progvar(ivar)%dart_kind   = get_index_for_quantity( progvar(ivar)%kind_string )
 progvar(ivar)%maxlevels   = 0
 progvar(ivar)%dimlens     = 0
 progvar(ivar)%dimnames    = ' '

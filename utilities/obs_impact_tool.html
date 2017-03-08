@@ -91,15 +91,15 @@ types of sections:
 # GROUPs cannot contain nested groups.
 
 GROUP groupname1
- KIND_xxx  KIND_xxx  KIND_xxx
- KIND_xxx                          # comments can be here
+ QTY_xxx  QTY_xxx  QTY_xxx
+ QTY_xxx                          # comments can be here
 END GROUP
 
 GROUP groupname2
- KIND_xxx  
- KIND_xxx  
- KIND_xxx
- KIND_xxx
+ QTY_xxx  
+ QTY_xxx  
+ QTY_xxx
+ QTY_xxx
 END GROUP
 
 # GROUPs can also be defined by specifying ALL, ALLKINDS,
@@ -111,8 +111,8 @@ END GROUP
 # of other groups.
 
 GROUP groupnameM
-ALL EXCEPT KIND_xxx KIND_xxx
-KIND_xxx
+ALL EXCEPT QTY_xxx QTY_xxx
+QTY_xxx
 END GROUP
 
 GROUP groupnameN
@@ -129,9 +129,9 @@ END GROUP
 # (last entry wins).
 
 IMPACT
- KIND_xxx    KIND_xxx     0.0
- KIND_xxx    groupname1   0.0
- groupname1  KIND_xxx     0.0
+ QTY_xxx    QTY_xxx     0.0
+ QTY_xxx    groupname1   0.0
+ groupname1  QTY_xxx     0.0
  groupname1  groupname1   0.0
 END IMPACT
 
@@ -228,7 +228,7 @@ variables in the model state, and vice versa:
 <div>
 <pre>
 GROUP chem
- KIND_CO KIND_NO KIND_C2H4
+ QTY_CO QTY_NO QTY_C2H4
 END GROUP
 
 GROUP met

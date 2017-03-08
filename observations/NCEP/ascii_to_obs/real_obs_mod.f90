@@ -16,11 +16,11 @@ use     location_mod, only : VERTISPRESSURE, VERTISSURFACE
 use obs_sequence_mod, only : init_obs_sequence, init_obs, obs_sequence_type, obs_type, &
                              set_copy_meta_data, set_qc_meta_data
 
-use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_SURFACE_PRESSURE, &
-                             KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, KIND_RELATIVE_HUMIDITY, &
-                             KIND_DEWPOINT, KIND_PRESSURE, KIND_VERTICAL_VELOCITY, &
-                             KIND_RAINWATER_MIXING_RATIO, KIND_DENSITY, KIND_VELOCITY, &
-                             KIND_1D_INTEGRAL, KIND_RADAR_REFLECTIVITY, KIND_GEOPOTENTIAL_HEIGHT
+use     obs_kind_mod, only : QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, QTY_SURFACE_PRESSURE, &
+                             QTY_TEMPERATURE, QTY_SPECIFIC_HUMIDITY, QTY_RELATIVE_HUMIDITY, &
+                             QTY_DEWPOINT, QTY_PRESSURE, QTY_VERTICAL_VELOCITY, &
+                             QTY_RAINWATER_MIXING_RATIO, QTY_DENSITY, QTY_VELOCITY, &
+                             QTY_1D_INTEGRAL, QTY_RADAR_REFLECTIVITY, QTY_GEOPOTENTIAL_HEIGHT
 
 use  obs_utilities_mod, only : add_obs_to_seq, create_3d_obs
 
@@ -307,7 +307,7 @@ obsloop:  do
    obs_kind = -1
 
    if(obs_prof == 1) then
-     obs_kind_gen = KIND_TEMPERATURE
+     obs_kind_gen = QTY_TEMPERATURE
      if(obstype == 120 .or. obstype == 132) obs_kind = RADIOSONDE_TEMPERATURE
      if(obstype == 130 .or. obstype == 131) obs_kind = AIRCRAFT_TEMPERATURE
      if(obstype == 133                    ) obs_kind = ACARS_TEMPERATURE
@@ -319,21 +319,21 @@ obsloop:  do
 
    if(obs_prof == 5) then
      if ( zob2 == 0.0_r8 .and. inc_specific_humidity ) then
-       obs_kind_gen = KIND_SPECIFIC_HUMIDITY
+       obs_kind_gen = QTY_SPECIFIC_HUMIDITY
        if(obstype == 120 .or. obstype == 132) obs_kind = RADIOSONDE_SPECIFIC_HUMIDITY
        if(obstype == 130 .or. obstype == 131) obs_kind = AIRCRAFT_SPECIFIC_HUMIDITY
        if(obstype == 133                    ) obs_kind = ACARS_SPECIFIC_HUMIDITY
        if(obstype == 180 .or. obstype == 182) obs_kind = MARINE_SFC_SPECIFIC_HUMIDITY
        if(obstype == 181 .or. obstype == 183) obs_kind = LAND_SFC_SPECIFIC_HUMIDITY
      else if ( zob2 == 1.0_r8 .and. inc_relative_humidity ) then
-       obs_kind_gen = KIND_RELATIVE_HUMIDITY
+       obs_kind_gen = QTY_RELATIVE_HUMIDITY
        if(obstype == 120 .or. obstype == 132) obs_kind = RADIOSONDE_RELATIVE_HUMIDITY
        if(obstype == 130 .or. obstype == 131) obs_kind = AIRCRAFT_RELATIVE_HUMIDITY
        if(obstype == 133                    ) obs_kind = ACARS_RELATIVE_HUMIDITY
        if(obstype == 180 .or. obstype == 182) obs_kind = MARINE_SFC_RELATIVE_HUMIDITY
        if(obstype == 181 .or. obstype == 183) obs_kind = LAND_SFC_RELATIVE_HUMIDITY
      else if ( zob2 == 2.0_r8 .and. inc_dewpoint ) then
-       obs_kind_gen = KIND_DEWPOINT
+       obs_kind_gen = QTY_DEWPOINT
        if(obstype == 120 .or. obstype == 132) obs_kind = RADIOSONDE_DEWPOINT
        if(obstype == 130 .or. obstype == 131) obs_kind = AIRCRAFT_DEWPOINT
        if(obstype == 133                    ) obs_kind = ACARS_DEWPOINT
@@ -343,7 +343,7 @@ obsloop:  do
    endif
 
    if(obs_prof == 3) then
-     obs_kind_gen = KIND_SURFACE_PRESSURE
+     obs_kind_gen = QTY_SURFACE_PRESSURE
      if ( zob2 == 0.0_r8 .and. inc_surface_pressure ) then
        if(obstype == 120                    ) obs_kind = RADIOSONDE_SURFACE_PRESSURE 
        if(obstype == 180 .or. obstype == 182) obs_kind = MARINE_SFC_PRESSURE 
@@ -356,7 +356,7 @@ obsloop:  do
    endif
 
    if(obs_prof == 2) then
-     obs_kind_gen = KIND_U_WIND_COMPONENT
+     obs_kind_gen = QTY_U_WIND_COMPONENT
      if(obstype == 220 .or. obstype == 232) obs_kind = RADIOSONDE_U_WIND_COMPONENT
      if(obstype == 221                    ) obs_kind = RADIOSONDE_U_WIND_COMPONENT
      if(obstype == 230 .or. obstype == 231) obs_kind = AIRCRAFT_U_WIND_COMPONENT
@@ -370,7 +370,7 @@ obsloop:  do
    endif
 
    if(obs_prof == 9) then
-     obs_kind_gen = KIND_V_WIND_COMPONENT
+     obs_kind_gen = QTY_V_WIND_COMPONENT
      if(obstype == 220 .or. obstype == 232) obs_kind = RADIOSONDE_V_WIND_COMPONENT
      if(obstype == 221                    ) obs_kind = RADIOSONDE_V_WIND_COMPONENT
      if(obstype == 230 .or. obstype == 231) obs_kind = AIRCRAFT_V_WIND_COMPONENT
@@ -384,7 +384,7 @@ obsloop:  do
    endif
 
    if(obs_prof == 7) then
-     obs_kind_gen = KIND_GEOPOTENTIAL_HEIGHT
+     obs_kind_gen = QTY_GEOPOTENTIAL_HEIGHT
      if(obstype == 120 .or. obstype == 220) obs_kind = RADIOSONDE_GEOPOTENTIAL_HGT
    endif
 
@@ -431,14 +431,14 @@ obsloop:  do
           (SATWND .and. (subset =='SATWND'))       ) then
 
          ! then select the obs kind requested
-         if( (obs_T                 .and. (obs_kind_gen == KIND_TEMPERATURE ))      .or. &
-             (obs_U                 .and. (obs_kind_gen == KIND_U_WIND_COMPONENT )) .or. &
-             (obs_V                 .and. (obs_kind_gen == KIND_V_WIND_COMPONENT )) .or. &
-             (obs_PS                .and. (obs_kind_gen == KIND_SURFACE_PRESSURE))  .or. &
-             (obs_QV                .and. (obs_kind_gen == KIND_SPECIFIC_HUMIDITY)) .or. &
-             (obs_Z                 .and. (obs_kind_gen == KIND_GEOPOTENTIAL_HEIGHT)) .or. &
-             (inc_relative_humidity .and. (obs_kind_gen == KIND_RELATIVE_HUMIDITY)) .or. &
-             (inc_dewpoint          .and. (obs_kind_gen == KIND_DEWPOINT)) ) then
+         if( (obs_T                 .and. (obs_kind_gen == QTY_TEMPERATURE ))      .or. &
+             (obs_U                 .and. (obs_kind_gen == QTY_U_WIND_COMPONENT )) .or. &
+             (obs_V                 .and. (obs_kind_gen == QTY_V_WIND_COMPONENT )) .or. &
+             (obs_PS                .and. (obs_kind_gen == QTY_SURFACE_PRESSURE))  .or. &
+             (obs_QV                .and. (obs_kind_gen == QTY_SPECIFIC_HUMIDITY)) .or. &
+             (obs_Z                 .and. (obs_kind_gen == QTY_GEOPOTENTIAL_HEIGHT)) .or. &
+             (inc_relative_humidity .and. (obs_kind_gen == QTY_RELATIVE_HUMIDITY)) .or. &
+             (inc_dewpoint          .and. (obs_kind_gen == QTY_DEWPOINT)) ) then
              pass = .false.
          endif
 
@@ -504,11 +504,11 @@ obsloop:  do
       vloc = lev                  ! station height, not used now for Ps obs
       which_vert = VERTISSURFACE
       obs_value  = compute_altimeter(zob, vloc)  !  altimeter is hPa
-   elseif(obs_kind_gen == KIND_SURFACE_PRESSURE) then
+   elseif(obs_kind_gen == QTY_SURFACE_PRESSURE) then
       obs_value = zob * 100.0_r8  !  for Ps variable only in Pascal
       vloc = lev                  ! station height, not used now for Ps obs
       which_vert = VERTISSURFACE
-   else if(obs_kind_gen == KIND_SPECIFIC_HUMIDITY) then
+   else if(obs_kind_gen == QTY_SPECIFIC_HUMIDITY) then
       obs_err = obs_err*1.0e-3_r8
       obs_value = zob*1.0e-3_r8     !  for Q variable to kg/kg
    else

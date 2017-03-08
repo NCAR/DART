@@ -16,7 +16,7 @@ use    utilities_mod, only : initialize_utilities, finalize_utilities, nc_check,
                              check_namelist_read, error_handler, E_MSG
 use     location_mod, only : location_type, set_location, write_location, get_dist, &
                              query_location, LocationDims, get_location
-use     obs_kind_mod, only : get_raw_obs_kind_name, get_raw_obs_kind_index
+use     obs_kind_mod, only : get_name_for_quantity, get_index_for_quantity
 use  assim_model_mod, only : open_restart_read, open_restart_write, close_restart, &
                              aread_state_restart, awrite_state_restart, &
                              netcdf_file_type, aoutput_diagnostics, &
@@ -246,7 +246,7 @@ matched   = .false.
 ! With staggered grids, the closest gridpoint might not be of the kind
 ! you are interested in. mykindindex = -1 means anything will do.
 
-mykindindex = get_raw_obs_kind_index(kind_of_interest)
+mykindindex = get_index_for_quantity(kind_of_interest)
 
 rlon = loc_of_interest(1)
 rlat = loc_of_interest(2)
@@ -288,7 +288,7 @@ do i = 1,get_model_size()
       call get_state_meta_data(i, loc1, var_type)
       rloc      = get_location(loc1)
       if (nint(rloc(3)) == nint(rlev)) then
-         kind_name = get_raw_obs_kind_name(var_type)
+         kind_name = get_name_for_quantity(var_type)
          write(*,'(''lon/lat/lev'',3(1x,f10.5),'' is index '',i10,'' for '',a)') &
              rloc, i, trim(kind_name)
          matched = .true.

@@ -5,14 +5,14 @@
 ! $Id$
 
 ! BEGIN DART PREPROCESS KIND LIST
-!RADIOSONDE_RELATIVE_HUMIDITY,    KIND_RELATIVE_HUMIDITY
-!DROPSONDE_RELATIVE_HUMIDITY,     KIND_RELATIVE_HUMIDITY
-!AIRCRAFT_RELATIVE_HUMIDITY,      KIND_RELATIVE_HUMIDITY
-!ACARS_RELATIVE_HUMIDITY,         KIND_RELATIVE_HUMIDITY
-!MARINE_SFC_RELATIVE_HUMIDITY,    KIND_RELATIVE_HUMIDITY
-!LAND_SFC_RELATIVE_HUMIDITY,      KIND_RELATIVE_HUMIDITY
-!METAR_RELATIVE_HUMIDITY_2_METER, KIND_RELATIVE_HUMIDITY
-!AIRS_RELATIVE_HUMIDITY,          KIND_RELATIVE_HUMIDITY
+!RADIOSONDE_RELATIVE_HUMIDITY,    QTY_RELATIVE_HUMIDITY
+!DROPSONDE_RELATIVE_HUMIDITY,     QTY_RELATIVE_HUMIDITY
+!AIRCRAFT_RELATIVE_HUMIDITY,      QTY_RELATIVE_HUMIDITY
+!ACARS_RELATIVE_HUMIDITY,         QTY_RELATIVE_HUMIDITY
+!MARINE_SFC_RELATIVE_HUMIDITY,    QTY_RELATIVE_HUMIDITY
+!LAND_SFC_RELATIVE_HUMIDITY,      QTY_RELATIVE_HUMIDITY
+!METAR_RELATIVE_HUMIDITY_2_METER, QTY_RELATIVE_HUMIDITY
+!AIRS_RELATIVE_HUMIDITY,          QTY_RELATIVE_HUMIDITY
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -59,7 +59,7 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, E_ALL
 use     location_mod, only : location_type, set_location, get_location, write_location, &
                              read_location, vert_is_pressure
 use  assim_model_mod, only : interpolate
-use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_PRESSURE, KIND_VAPOR_MIXING_RATIO
+use     obs_kind_mod, only : QTY_TEMPERATURE, QTY_PRESSURE, QTY_VAPOR_MIXING_RATIO
 
 use ensemble_manager_mod,  only : ensemble_type
 use obs_def_utilities_mod, only : track_status
@@ -114,7 +114,7 @@ if ( .not. module_initialized ) call initialize_module
 istatus = 0
 
 !  interpolate the mixing ratio to the location
-call interpolate(state_handle, ens_size, location, KIND_VAPOR_MIXING_RATIO, qvap, qvap_istatus)
+call interpolate(state_handle, ens_size, location, QTY_VAPOR_MIXING_RATIO, qvap, qvap_istatus)
 call track_status(ens_size, qvap_istatus, rh, istatus, return_now)
 
 where (istatus == 0 .and. qvap < 0.0_r8) qvap = epsilon(0.0_r8)  ! clamping?
@@ -122,7 +122,7 @@ where (istatus /= 0) istatus = 99
 if(return_now) return
 
 !  interpolate the temperature to the desired location
-call interpolate(state_handle, ens_size, location, KIND_TEMPERATURE, tmpk, tmpk_istatus)
+call interpolate(state_handle, ens_size, location, QTY_TEMPERATURE, tmpk, tmpk_istatus)
 call track_status(ens_size, tmpk_istatus, rh, istatus, return_now)
 
 where (tmpk <= 0.0_r8)
@@ -138,7 +138,7 @@ if ( vert_is_pressure(location) ) then
    pres = xyz(3)
 else
    ! pressure comes back in pascals (not hPa or mb)
-   call interpolate(state_handle, ens_size, location, KIND_PRESSURE, pres, pres_istatus)
+   call interpolate(state_handle, ens_size, location, QTY_PRESSURE, pres, pres_istatus)
    call track_status(ens_size, pres_istatus, rh, istatus, return_now)
 
    where (pres <= 0.0_r8 .or. pres >= 120000.0_r8)

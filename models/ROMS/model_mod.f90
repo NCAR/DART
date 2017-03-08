@@ -59,15 +59,15 @@ use    utilities_mod, only : register_module, error_handler, do_nml_term,       
                              file_to_text, do_output, close_file,               &
                              string_to_real, string_to_logical
 
-use     obs_kind_mod, only : KIND_TEMPERATURE,           &
-                             KIND_SALINITY,              &
-                             KIND_U_CURRENT_COMPONENT,   &
-                             KIND_V_CURRENT_COMPONENT,   &
-                             KIND_SEA_SURFACE_HEIGHT,    &
-                             KIND_SEA_SURFACE_PRESSURE,  &
-                             KIND_POTENTIAL_TEMPERATURE, &
-                             get_raw_obs_kind_index,     &
-                             get_raw_obs_kind_name
+use     obs_kind_mod, only : QTY_TEMPERATURE,           &
+                             QTY_SALINITY,              &
+                             QTY_U_CURRENT_COMPONENT,   &
+                             QTY_V_CURRENT_COMPONENT,   &
+                             QTY_SEA_SURFACE_HEIGHT,    &
+                             QTY_SEA_SURFACE_PRESSURE,  &
+                             QTY_POTENTIAL_TEMPERATURE, &
+                             get_index_for_quantity,     &
+                             get_name_for_quantity
 
 use     mpi_utilities_mod, only : my_task_id
 
@@ -290,11 +290,11 @@ if (present(var_type)) then
    var_type = get_kind_index(domain_id, myvarid)
 endif
 
-if     (get_kind_index(domain_id,myvarid)==KIND_U_CURRENT_COMPONENT) then
+if     (get_kind_index(domain_id,myvarid)==QTY_U_CURRENT_COMPONENT) then
       location = set_location(ULON(iloc,jloc),ULAT(iloc,jloc), UDEP(iloc,jloc,vloc), VERTISHEIGHT)
-elseif (get_kind_index(domain_id,myvarid)==KIND_V_CURRENT_COMPONENT) then
+elseif (get_kind_index(domain_id,myvarid)==QTY_V_CURRENT_COMPONENT) then
       location = set_location(VLON(iloc,jloc),VLAT(iloc,jloc), VDEP(iloc,jloc,vloc), VERTISHEIGHT)
-elseif (get_kind_index(domain_id,myvarid)==KIND_SEA_SURFACE_HEIGHT) then
+elseif (get_kind_index(domain_id,myvarid)==QTY_SEA_SURFACE_HEIGHT) then
       location = set_location(TLON(iloc,jloc),TLAT(iloc,jloc), 0.0_r8, VERTISSURFACE)
 else  ! Everything else is assumed to be on the rho points
       location = set_location(TLON(iloc,jloc),TLAT(iloc,jloc), TDEP(iloc,jloc,vloc), VERTISHEIGHT)
@@ -1401,7 +1401,7 @@ MyLoop : do i = 1, MAX_STATE_VARIABLES
 
    ! Make sure DART kind is valid
 
-   if( get_raw_obs_kind_index(dartstr) < 0 ) then
+   if( get_index_for_quantity(dartstr) < 0 ) then
       write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
       call error_handler(E_ERR,'parse_variable_input:',string1,source,revision,revdate)
    endif
@@ -1411,7 +1411,7 @@ MyLoop : do i = 1, MAX_STATE_VARIABLES
    call to_upper(state_or_aux)
 
    var_names(   i) = varname
-   kind_list(   i) = get_raw_obs_kind_index(dartstr)
+   kind_list(   i) = get_index_for_quantity(dartstr)
    clamp_vals(i,1) = string_to_real(minvalstring)
    clamp_vals(i,2) = string_to_real(maxvalstring)
    update_list( i) = string_to_logical(state_or_aux, 'UPDATE')
@@ -1857,8 +1857,8 @@ lat_fract = fjloc - jloc
 hgt_fract = fkloc - vloc
 
 my_kind = get_kind_index(domain_id,var_id)
-if (my_kind==KIND_U_CURRENT_COMPONENT) then
-   write(string1,*)'Not interpolating ', get_raw_obs_kind_name(my_kind), ' at the moment.'
+if (my_kind==QTY_U_CURRENT_COMPONENT) then
+   write(string1,*)'Not interpolating ', get_name_for_quantity(my_kind), ' at the moment.'
    write(string2,*)'Need to check that we are using the right grid for location interpolation'
    call error_handler(E_ERR, 'get_location_from_ijk:', string1, &
                       source, revision, revdate, text2=string2)
@@ -1871,8 +1871,8 @@ if (my_kind==KIND_U_CURRENT_COMPONENT) then
    mylon => ULON
    mylat => ULAT
    mydep => UDEP
-elseif (my_kind==KIND_V_CURRENT_COMPONENT) then
-   write(string1,*)'Not interpolating ', get_raw_obs_kind_name(my_kind), ' at the moment.'
+elseif (my_kind==QTY_V_CURRENT_COMPONENT) then
+   write(string1,*)'Not interpolating ', get_name_for_quantity(my_kind), ' at the moment.'
    write(string2,*)'Need to check that we are using the right grid for location interpolation'
    call error_handler(E_ERR, 'get_location_from_ijk:', string1, &
                       source, revision, revdate, text2=string2)
@@ -1911,7 +1911,7 @@ endif
 lon_val = (1.0-lon_fract)*(mylon(iloc,jloc)) + (lon_fract)*(mylon(iloc+1,jloc))
 lat_val = (1.0-lat_fract)*(mylat(iloc,jloc)) + (lat_fract)*(mylat(iloc  ,jloc+1))
 
-if( get_kind_index(domain_id,var_id) == KIND_SEA_SURFACE_HEIGHT ) then
+if( get_kind_index(domain_id,var_id) == QTY_SEA_SURFACE_HEIGHT ) then
    hgt_val    = 0.0_r8
    vert_type  = VERTISSURFACE
 else

@@ -20,14 +20,14 @@
 
 # The following mpas_vars_nml is just for demonstration purposes.
 # You application may likely involve a different DART state vector.
-# NOTE: since h(nVertLevels,nCells,Time) ... it is not really KIND_SEA_SURFACE_HEIGHT
+# NOTE: since h(nVertLevels,nCells,Time) ... it is not really QTY_SEA_SURFACE_HEIGHT
 
 &mpas_vars_nml
-   mpas_state_variables = 'temperature',  'KIND_TEMPERATURE',
-                          'salinity',     'KIND_SALINITY',
-                          'rho',          'KIND_DENSITY',
-                          'u',            'KIND_EDGE_NORMAL_SPEED',
-                          'h',            'KIND_SEA_SURFACE_HEIGHT'
-                          'tracer1',      'KIND_TRACER_CONCENTRATION'
+   mpas_state_variables = 'temperature',  'QTY_TEMPERATURE',
+                          'salinity',     'QTY_SALINITY',
+                          'rho',          'QTY_DENSITY',
+                          'u',            'QTY_EDGE_NORMAL_SPEED',
+                          'h',            'QTY_SEA_SURFACE_HEIGHT'
+                          'tracer1',      'QTY_TRACER_CONCENTRATION'
    /
 

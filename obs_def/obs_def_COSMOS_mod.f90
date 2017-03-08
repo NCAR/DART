@@ -29,7 +29,7 @@
 !----------------------------------------------------------------------
 
 ! BEGIN DART PREPROCESS KIND LIST
-! COSMOS_NEUTRON_INTENSITY,    KIND_NEUTRON_INTENSITY
+! COSMOS_NEUTRON_INTENSITY,    QTY_NEUTRON_INTENSITY
 ! END DART PREPROCESS KIND LIST
 
 
@@ -76,7 +76,7 @@ use     location_mod, only : location_type, set_location, get_location, &
                              vert_is_height,   VERTISHEIGHT,            &
                              vert_is_level,    VERTISLEVEL,             &
                              set_location_missing
-use     obs_kind_mod, only : KIND_GEOPOTENTIAL_HEIGHT, KIND_SOIL_MOISTURE
+use     obs_kind_mod, only : QTY_GEOPOTENTIAL_HEIGHT, QTY_SOIL_MOISTURE
 use  assim_model_mod, only : interpolate
 
 use obs_def_utilities_mod, only : track_status
@@ -515,7 +515,7 @@ loc_lat   = loc_array(2)
 nlevels = 0
 COUNTLEVELS : do i = 1,maxlayers
    loc = set_location(loc_lon, loc_lat, real(i,r8), VERTISLEVEL)
-   call interpolate(state_handle, ens_size, loc, KIND_GEOPOTENTIAL_HEIGHT, loc_value, loc_istatus)
+   call interpolate(state_handle, ens_size, loc, QTY_GEOPOTENTIAL_HEIGHT, loc_value, loc_istatus)
    if ( any(loc_istatus /= 0 ) ) exit COUNTLEVELS
    nlevels = nlevels + 1
 enddo COUNTLEVELS
@@ -541,12 +541,12 @@ istatus = 0
 
 FINDLEVELS : do i = 1,nlevels
    loc = set_location(loc_lon, loc_lat, real(i,r8), VERTISLEVEL)
-   call interpolate(state_handle, ens_size, loc, KIND_GEOPOTENTIAL_HEIGHT, layerz(:,i), layerz_istatus)
+   call interpolate(state_handle, ens_size, loc, QTY_GEOPOTENTIAL_HEIGHT, layerz(:,i), layerz_istatus)
    call track_status(ens_size, layerz_istatus, val, istatus, return_now)
    if (return_now) return
 
    loc = set_location(loc_lon, loc_lat, layerz(1,i), VERTISHEIGHT)
-   call interpolate(state_handle, ens_size, loc, KIND_SOIL_MOISTURE, loc_value, loc_value_istatus)
+   call interpolate(state_handle, ens_size, loc, QTY_SOIL_MOISTURE, loc_value, loc_value_istatus)
    call track_status(ens_size, loc_value_istatus, val, istatus, return_now)
    if ( any(loc_value_istatus /=0) ) then
       write(string1,*) 'FAILED to determine soil moisture for layer',i

@@ -35,8 +35,8 @@ use    utilities_mod, only : register_module, error_handler,                   &
                              file_to_text, close_file
 
 use     obs_kind_mod, only : paramname_length,        &
-                             get_raw_obs_kind_index,  &
-                             get_raw_obs_kind_name
+                             get_index_for_quantity,  &
+                             get_name_for_quantity
 
 use mpi_utilities_mod, only: my_task_id
 
@@ -287,7 +287,7 @@ subroutine get_state_meta_data(index_in, location, var_type)
 ! Done - JLA.
 ! given an index into the state vector, return its location and
 ! if given, the var kind.   despite the name, var_type is a generic
-! kind, like those in obs_kind/obs_kind_mod.f90, starting with KIND_
+! kind, like those in obs_kind/obs_kind_mod.f90, starting with QTY_
 
 integer, intent(in)            :: index_in
 type(location_type)            :: location
@@ -470,7 +470,7 @@ do ivar = 1, nfields
    kind_string               = trim(variable_table(ivar,2))
    progvar(ivar)%varname     = varname
    progvar(ivar)%kind_string = kind_string
-   progvar(ivar)%dart_kind   = get_raw_obs_kind_index( progvar(ivar)%kind_string ) 
+   progvar(ivar)%dart_kind   = get_index_for_quantity( progvar(ivar)%kind_string ) 
    progvar(ivar)%dimlens     = 0
 
    ! I would really like decode_model_indices to set the following (on a per-variable basis)
@@ -2759,7 +2759,7 @@ FieldLoop : do i=1,nfields
    exit FieldLoop
 enddo FieldLoop
 
-string = get_raw_obs_kind_name(dartkind)
+string = get_name_for_quantity(dartkind)
 
 if ((index1 == 0) .or. (indexN == 0)) then
    write(string1,*) 'Problem, cannot find indices for kind ',dartkind,trim(string)
@@ -2890,7 +2890,7 @@ MyLoop : do i = 1, nrows
 
    ! Make sure DART kind is valid
 
-   if( get_raw_obs_kind_index(dartstr) < 0 ) then
+   if( get_index_for_quantity(dartstr) < 0 ) then
       write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
       call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
    endif

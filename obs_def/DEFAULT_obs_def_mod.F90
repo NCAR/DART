@@ -122,10 +122,10 @@ use     location_mod, only : location_type, read_location, write_location, &
 use time_manager_mod, only : time_type, read_time, write_time, &
                              set_time_missing, interactive_time, set_time
 use  assim_model_mod, only : get_state_meta_data, interpolate
-use     obs_kind_mod, only : assimilate_this_obs_kind, evaluate_this_obs_kind, &
-                             get_obs_kind_name, map_def_index, &
-                             get_kind_from_menu, &
-                             use_ext_prior_this_obs_kind
+use     obs_kind_mod, only : assimilate_this_type_of_obs, evaluate_this_type_of_obs, &
+                             get_name_for_type_of_obs, map_type_of_obs_table, &
+                             get_type_of_obs_from_menu, &
+                             use_ext_prior_this_type_of_obs
 use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, end_ensemble_manager
 
 use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, &
@@ -140,7 +140,7 @@ use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, &
 ! Start of obs_def_xxx_mod specific types and kinds
 !----------------------------------------------------------------------
 
-! DART PREPROCESS USE FOR OBS_KIND_MOD INSERTED HERE
+! DART PREPROCESS USE FOR OBS_QTY_MOD INSERTED HERE
 
 !----------------------------------------------------------------------
 ! End of obs_def_xxx_mod specific types and kinds
@@ -170,12 +170,12 @@ interface assignment(=)
    module procedure copy_obs_def
 end interface
 
-public :: init_obs_def, get_obs_def_key, get_obs_def_location, get_obs_kind, &
+public :: init_obs_def, get_obs_def_key, get_obs_def_location, get_obs_def_type_of_obs, &
    get_obs_def_time, get_obs_def_error_variance, set_obs_def_location, &
-   set_obs_def_kind, set_obs_def_time, set_obs_def_error_variance, &
+   set_obs_def_type_of_obs, set_obs_def_time, set_obs_def_error_variance, &
    set_obs_def_key, interactive_obs_def, write_obs_def, read_obs_def, &
    obs_def_type, get_expected_obs_from_def_distrib_state, destroy_obs_def, copy_obs_def, &
-   assignment(=), get_obs_name, set_obs_def_external_FO, set_obs_def_write_external_FO
+   assignment(=), set_obs_def_external_FO, set_obs_def_write_external_FO
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -320,18 +320,18 @@ end function get_obs_def_location
 
 !----------------------------------------------------------------------------
 
-function get_obs_kind(obs_def)
+function get_obs_def_type_of_obs(obs_def)
 
 ! Returns observation kind
 
-integer                        :: get_obs_kind
+integer                        :: get_obs_def_type_of_obs
 type(obs_def_type), intent(in) :: obs_def
 
 if ( .not. module_initialized ) call initialize_module
 
-get_obs_kind = obs_def%kind
+get_obs_def_type_of_obs = obs_def%kind
 
-end function get_obs_kind
+end function get_obs_def_type_of_obs
 
 !----------------------------------------------------------------------------
 
@@ -347,21 +347,6 @@ if ( .not. module_initialized ) call initialize_module
 get_obs_def_time = obs_def%time
 
 end function get_obs_def_time
-
-!----------------------------------------------------------------------------
-
-function get_obs_name(obs_kind_ind)
-
-! Returns observation name
-
-integer, intent(in) :: obs_kind_ind
-character(len=obstypelength) :: get_obs_name
-
-if ( .not. module_initialized ) call initialize_module
-
-get_obs_name = get_obs_kind_name(obs_kind_ind)
-
-end function get_obs_name
 
 !----------------------------------------------------------------------------
 
@@ -453,7 +438,7 @@ end subroutine set_obs_def_write_external_FO
 
 !----------------------------------------------------------------------------
 
-subroutine set_obs_def_kind(obs_def, kind)
+subroutine set_obs_def_type_of_obs(obs_def, kind)
 
 ! Sets the kind of an obs_def
 
@@ -464,7 +449,7 @@ if ( .not. module_initialized ) call initialize_module
 
 obs_def%kind = kind
 
-end subroutine set_obs_def_kind
+end subroutine set_obs_def_type_of_obs
 
 !----------------------------------------------------------------------------
 
@@ -507,9 +492,9 @@ real(r8)            :: error_var
 logical             :: use_precomputed_FO
 
 ! Load up the assimilate and evaluate status for this observation kind
-assimilate_this_ob = assimilate_this_obs_kind(obs_kind_ind)
-evaluate_this_ob = evaluate_this_obs_kind(obs_kind_ind)
-use_precomputed_FO = use_ext_prior_this_obs_kind(obs_kind_ind)
+assimilate_this_ob = assimilate_this_type_of_obs(obs_kind_ind)
+evaluate_this_ob = evaluate_this_type_of_obs(obs_kind_ind)
+use_precomputed_FO = use_ext_prior_this_type_of_obs(obs_kind_ind)
 
 ! If not being assimilated or evaluated return with missing_r8 and istatus 0
 if(assimilate_this_ob .or. evaluate_this_ob) then
@@ -531,7 +516,7 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
          else 
             call error_handler(E_ERR, 'get_expected_obs_from_def', &
                   'Attempt to access an external FO that is not present in the observation information.', &
-                   source, revision, revdate, text2='observation type '//trim(get_obs_name(obs_def%kind)))
+                   source, revision, revdate, text2='observation type '//trim(get_name_for_type_of_obs(obs_def%kind)))
          endif 
       else ! posterior - missing value
          expected_obs(:) = missing_r8
@@ -540,7 +525,7 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
    else 
       ! Compute the forward operator.  In spite of the variable name,
       ! obs_kind_ind is in fact a 'type' index number.  use the function
-      ! get_obs_kind_var_type from the obs_kind_mod if you want to map
+      ! get_quantity_for_type_of_obs from the obs_kind_mod if you want to map
       ! from a specific type to a generic kind.  the third argument of
       ! a call to the 'interpolate()' function must be a kind index and
       ! not a type.  normally the preprocess program does this for you.
@@ -561,7 +546,7 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
          !   istatus -- return code: 0=ok, >0 is error, <0 reserved for system use
          !
          ! to call interpolate() directly, the arg list MUST BE:
-         !  interpolate(state_handle, ens_size, location, KIND_xxx, expected_obs, istatus)
+         !  interpolate(state_handle, ens_size, location, QTY_xxx, expected_obs, istatus)
          !
          ! the preprocess program generates lines like this automatically,
          ! and this matches the interfaces in each model_mod.f90 file.
@@ -661,7 +646,7 @@ endif
 if(o_index < 0) then
    obs_def%kind = o_index
 else
-   obs_def%kind = map_def_index(o_index)
+   obs_def%kind = map_type_of_obs_table(o_index)
 endif
 
 ! This kind may have its own module that needs to read more
@@ -798,7 +783,7 @@ if ( obs_def%has_external_FO .and. obs_def%write_external_FO ) then
    if ( .not. allocated(obs_def%external_FO)) then
       call error_handler(E_ERR, 'write_obs_def', &
          'obs_def%external_FO not allocated but writing was requested.', &
-         source, revision, revdate, text2='observation type '//trim(get_obs_name(obs_def%kind)))
+         source, revision, revdate, text2='observation type '//trim(get_name_for_type_of_obs(obs_def%kind)))
    endif
    if (is_ascii) then
       write(ifile, 12) obs_def%ens_size, obs_def%external_FO_key
@@ -840,7 +825,7 @@ if ( .not. module_initialized ) call initialize_module
 call init_ensemble_manager(cache_ens_handle, 0, int(0,i8), 1, 1, 1)
 
 ! Get the observation kind WANT A STRING OPTION, TOO?
-obs_def%kind = get_kind_from_menu()
+obs_def%kind = get_type_of_obs_from_menu()
 
 ! Input any special stuff for this kind
 select case(obs_def%kind)

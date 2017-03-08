@@ -289,43 +289,43 @@ mainly to indicate the location of the DART observation sequence files on your s
    should be updated may be marked NO_COPY_BACK. There are multiple choices for some
    DART kinds. This list is by no means complete.<P>
 <pre>
-       'livecrootc',  'KIND_ROOT_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-       'deadcrootc',  'KIND_ROOT_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-       'livestemc',   'KIND_STEM_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-       'deadstemc',   'KIND_STEM_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-       'livecrootn',  'KIND_ROOT_NITROGEN',          'NA', 'NA', 'restart', 'UPDATE',
-       'deadcrootn',  'KIND_ROOT_NITROGEN',          'NA', 'NA', 'restart', 'UPDATE',
-       'livestemn',   'KIND_STEM_NITROGEN',          'NA', 'NA', 'restart', 'UPDATE',
-       'deadstemn',   'KIND_STEM_NITROGEN',          'NA', 'NA', 'restart', 'UPDATE',
-       'litr1c',      'KIND_LEAF_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-       'litr2c',      'KIND_LEAF_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-       'litr3c',      'KIND_LEAF_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-       'soil1c',      'KIND_SOIL_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-       'soil2c',      'KIND_SOIL_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-       'soil3c',      'KIND_SOIL_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-       'soil4c',      'KIND_SOIL_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
-       'fabd',        'KIND_FPAR_DIRECT',            'NA', 'NA', 'restart', 'UPDATE',
-       'fabi',        'KIND_FPAR_DIFFUSE',           'NA', 'NA', 'restart', 'UPDATE',
-       'T_VEG',       'KIND_VEGETATION_TEMPERATURE', 'NA', 'NA', 'restart', 'UPDATE',
-       'fabd_sun_z',  'KIND_FPAR_SUNLIT_DIRECT',     'NA', 'NA', 'restart', 'UPDATE',
-       'fabd_sha_z',  'KIND_FPAR_SUNLIT_DIFFUSE',    'NA', 'NA', 'restart', 'UPDATE',
-       'fabi_sun_z',  'KIND_FPAR_SHADED_DIRECT',     'NA', 'NA', 'restart', 'UPDATE',
-       'fabi_sha_z',  'KIND_FPAR_SHADED_DIFFUSE',    'NA', 'NA', 'restart', 'UPDATE',
-       'elai',        'KIND_LEAF_AREA_INDEX',        'NA', 'NA', 'restart', 'UPDATE',
+       'livecrootc',  'QTY_ROOT_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'deadcrootc',  'QTY_ROOT_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'livestemc',   'QTY_STEM_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'deadstemc',   'QTY_STEM_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'livecrootn',  'QTY_ROOT_NITROGEN',          'NA', 'NA', 'restart', 'UPDATE',
+       'deadcrootn',  'QTY_ROOT_NITROGEN',          'NA', 'NA', 'restart', 'UPDATE',
+       'livestemn',   'QTY_STEM_NITROGEN',          'NA', 'NA', 'restart', 'UPDATE',
+       'deadstemn',   'QTY_STEM_NITROGEN',          'NA', 'NA', 'restart', 'UPDATE',
+       'litr1c',      'QTY_LEAF_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'litr2c',      'QTY_LEAF_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'litr3c',      'QTY_LEAF_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'soil1c',      'QTY_SOIL_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'soil2c',      'QTY_SOIL_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'soil3c',      'QTY_SOIL_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'soil4c',      'QTY_SOIL_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'fabd',        'QTY_FPAR_DIRECT',            'NA', 'NA', 'restart', 'UPDATE',
+       'fabi',        'QTY_FPAR_DIFFUSE',           'NA', 'NA', 'restart', 'UPDATE',
+       'T_VEG',       'QTY_VEGETATION_TEMPERATURE', 'NA', 'NA', 'restart', 'UPDATE',
+       'fabd_sun_z',  'QTY_FPAR_SUNLIT_DIRECT',     'NA', 'NA', 'restart', 'UPDATE',
+       'fabd_sha_z',  'QTY_FPAR_SUNLIT_DIFFUSE',    'NA', 'NA', 'restart', 'UPDATE',
+       'fabi_sun_z',  'QTY_FPAR_SHADED_DIRECT',     'NA', 'NA', 'restart', 'UPDATE',
+       'fabi_sha_z',  'QTY_FPAR_SHADED_DIFFUSE',    'NA', 'NA', 'restart', 'UPDATE',
+       'elai',        'QTY_LEAF_AREA_INDEX',        'NA', 'NA', 'restart', 'UPDATE',
 </pre>
 <P>
 <strong>Only the first variable for a DART kind in the clm_variables list 
    will be used for the forward observation operator.</strong> The following is 
    perfectly legal (for CLM4, at least):</P>
 <pre>
-clm_variables = 'LAIP_VALUE', 'KIND_LEAF_AREA_INDEX', 'NA', 'NA', 'restart' , 'UPDATE',
-                'tlai',       'KIND_LEAF_AREA_INDEX', 'NA', 'NA', 'restart' , 'UPDATE',
-                'elai',       'KIND_LEAF_AREA_INDEX', 'NA', 'NA', 'restart' , 'UPDATE',
-                'ELAI',       'KIND_LEAF_AREA_INDEX', 'NA', 'NA', 'history' , 'NO_COPY_BACK',
-                'LAISHA',     'KIND_LEAF_AREA_INDEX', 'NA', 'NA', 'history' , 'NO_COPY_BACK',
-                'LAISUN',     'KIND_LEAF_AREA_INDEX', 'NA', 'NA', 'history' , 'NO_COPY_BACK',
-                'TLAI',       'KIND_LEAF_AREA_INDEX', 'NA', 'NA', 'history' , 'NO_COPY_BACK',
-                'TLAI',       'KIND_LEAF_AREA_INDEX', 'NA', 'NA', 'vector'  , 'NO_COPY_BACK'
+clm_variables = 'LAIP_VALUE', 'QTY_LEAF_AREA_INDEX', 'NA', 'NA', 'restart' , 'UPDATE',
+                'tlai',       'QTY_LEAF_AREA_INDEX', 'NA', 'NA', 'restart' , 'UPDATE',
+                'elai',       'QTY_LEAF_AREA_INDEX', 'NA', 'NA', 'restart' , 'UPDATE',
+                'ELAI',       'QTY_LEAF_AREA_INDEX', 'NA', 'NA', 'history' , 'NO_COPY_BACK',
+                'LAISHA',     'QTY_LEAF_AREA_INDEX', 'NA', 'NA', 'history' , 'NO_COPY_BACK',
+                'LAISUN',     'QTY_LEAF_AREA_INDEX', 'NA', 'NA', 'history' , 'NO_COPY_BACK',
+                'TLAI',       'QTY_LEAF_AREA_INDEX', 'NA', 'NA', 'history' , 'NO_COPY_BACK',
+                'TLAI',       'QTY_LEAF_AREA_INDEX', 'NA', 'NA', 'vector'  , 'NO_COPY_BACK'
    /
 </pre>
 
@@ -364,22 +364,22 @@ prematurely terminating the namelist.
   model_perturbation_amplitude = 0.2,
   calendar                     = 'Gregorian',
   debug                        = 0
-  clm_variables  = 'frac_sno',    'KIND_SNOWCOVER_FRAC',         'NA' , 'NA', 'restart' , 'NO_COPY_BACK',
-                   'H2OSNO',      'KIND_SNOW_WATER',             '0.0', 'NA', 'restart' , 'UPDATE',
-                   'H2OSOI_LIQ',  'KIND_SOIL_MOISTURE',          '0.0', 'NA', 'restart' , 'UPDATE',
-                   'H2OSOI_ICE',  'KIND_ICE',                    '0.0', 'NA', 'restart' , 'UPDATE',
-                   'T_SOISNO',    'KIND_SOIL_TEMPERATURE',       'NA' , 'NA', 'restart' , 'UPDATE',
-                   'SNOWDP',      'KIND_SNOW_THICKNESS',         'NA' , 'NA', 'restart' , 'UPDATE',
-                   'LAIP_VALUE',  'KIND_LEAF_AREA_INDEX',        'NA' , 'NA', 'restart' , 'NO_COPY_BACK',
-                   'cpool',       'KIND_CARBON',                 '0.0', 'NA', 'restart' , 'UPDATE',
-                   'frootc',      'KIND_ROOT_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
-                   'leafc',       'KIND_LEAF_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
-                   'leafn',       'KIND_LEAF_NITROGEN',          '0.0', 'NA', 'restart' , 'UPDATE',
-                   'NEP',         'KIND_NET_CARBON_PRODUCTION',  'NA' , 'NA', 'history' , 'NO_COPY_BACK',
-                   'TV',          'KIND_VEGETATION_TEMPERATURE', 'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
-                   'RH2M_R',      'KIND_SPECIFIC_HUMIDITY',      'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
-                   'PBOT',        'KIND_SURFACE_PRESSURE',       'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
-                   'TBOT',        'KIND_TEMPERATURE',            'NA' , 'NA', 'vector'  , 'NO_COPY_BACK'
+  clm_variables  = 'frac_sno',    'QTY_SNOWCOVER_FRAC',         'NA' , 'NA', 'restart' , 'NO_COPY_BACK',
+                   'H2OSNO',      'QTY_SNOW_WATER',             '0.0', 'NA', 'restart' , 'UPDATE',
+                   'H2OSOI_LIQ',  'QTY_SOIL_MOISTURE',          '0.0', 'NA', 'restart' , 'UPDATE',
+                   'H2OSOI_ICE',  'QTY_ICE',                    '0.0', 'NA', 'restart' , 'UPDATE',
+                   'T_SOISNO',    'QTY_SOIL_TEMPERATURE',       'NA' , 'NA', 'restart' , 'UPDATE',
+                   'SNOWDP',      'QTY_SNOW_THICKNESS',         'NA' , 'NA', 'restart' , 'UPDATE',
+                   'LAIP_VALUE',  'QTY_LEAF_AREA_INDEX',        'NA' , 'NA', 'restart' , 'NO_COPY_BACK',
+                   'cpool',       'QTY_CARBON',                 '0.0', 'NA', 'restart' , 'UPDATE',
+                   'frootc',      'QTY_ROOT_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
+                   'leafc',       'QTY_LEAF_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
+                   'leafn',       'QTY_LEAF_NITROGEN',          '0.0', 'NA', 'restart' , 'UPDATE',
+                   'NEP',         'QTY_NET_CARBON_PRODUCTION',  'NA' , 'NA', 'history' , 'NO_COPY_BACK',
+                   'TV',          'QTY_VEGETATION_TEMPERATURE', 'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
+                   'RH2M_R',      'QTY_SPECIFIC_HUMIDITY',      'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
+                   'PBOT',        'QTY_SURFACE_PRESSURE',       'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
+                   'TBOT',        'QTY_TEMPERATURE',            'NA' , 'NA', 'vector'  , 'NO_COPY_BACK'
    /
 </pre>
 </div>

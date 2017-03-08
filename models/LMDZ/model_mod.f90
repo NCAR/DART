@@ -29,9 +29,9 @@ use     location_mod,  only : location_type, get_location, set_location, query_l
                               get_dist,loc_get_close_obs => get_close_obs
 
 ! BEGIN DART PREPROCESS USED KINDS
-use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT,KIND_PRESSURE,         &
-                             KIND_SURFACE_PRESSURE, KIND_TEMPERATURE,KIND_SPECIFIC_HUMIDITY,     &
-                             KIND_CLOUD_LIQUID_WATER, KIND_SURFACE_ELEVATION
+use     obs_kind_mod, only : QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT,QTY_PRESSURE,         &
+                             QTY_SURFACE_PRESSURE, QTY_TEMPERATURE,QTY_SPECIFIC_HUMIDITY,     &
+                             QTY_CLOUD_LIQUID_WATER, QTY_SURFACE_ELEVATION
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
 ! end of use statements
@@ -224,8 +224,8 @@ integer :: ii
 real(r8), allocatable :: p_col(:), model_h(:)
 
 
-! array for the linking of obs_kinds (KIND_) to model field TYPE_s
-! It's filled in map_kinds.The max size of KIND_ should come from obs_kind_mod
+! array for the linking of obs_kinds (QTY_) to model field TYPE_s
+! It's filled in map_kinds.The max size of QTY_ should come from obs_kind_mod
 ! These should be dimensioned the same size as the total of state_names_Nd.
 integer, dimension(100) :: dart_to_lmdz_kinds = (/(MISSING_I,ii=1,100)/)
 integer, dimension(100) :: lmdz_to_dart_kinds = (/(MISSING_I,ii=1,100)/)
@@ -235,7 +235,7 @@ integer, dimension(100) :: lmdz_to_dart_kinds = (/(MISSING_I,ii=1,100)/)
 ! Namelist variables with default values follow
 !-----------------------------------------------------------------------
 !define names list for  model_nml in input.nml file
-! Special for an experiment.  Specify one string kind e.g KIND_CLOUD_LIQUID and 
+! Special for an experiment.  Specify one string kind e.g QTY_CLOUD_LIQUID and 
 ! observations of that kind will only impact other obs and state vars of that
 ! same kind.  All other kinds of obs and state vars will not be impacted
 ! by obs of this kind.  A null string means behave as normal.  Kind strings
@@ -430,14 +430,14 @@ call nc_check(nf90_close(ncfileid), &
               'static_init_model', 'closing '//trim(model_config_file))
 
 !------------------------------------------------------------------------
-! arrays for the linking of obs_kinds (KIND_) to model field TYPE_s; 
+! arrays for the linking of obs_kinds (QTY_) to model field TYPE_s; 
 ! Makes an array of 'locations within the state vector'
 ! of  all the available obs kinds that come from obs_kind_mod.
 
 call map_kinds()
 
 !if (len_trim(impact_only_same_kind) > 0) then
-!   impact_kind_index = get_raw_obs_kind_index(impact_only_same_kind)
+!   impact_kind_index = get_index_for_quantity(impact_only_same_kind)
 !endif
 
 ! make sure we only come through here once
@@ -745,27 +745,27 @@ end subroutine read_lmdz_horiz
 ! This subroutine will be called from static_init_model, so it will not have to
 ! be 
 ! recomputed for every obs.
-! Also maps the local model_mod TYPE_s onto the DART KIND_s by the same
+! Also maps the local model_mod TYPE_s onto the DART QTY_s by the same
 ! mechanism.
 
-! other KIND_ possibilities are listed after the 'use obs_kind_mod' statement
+! other QTY_ possibilities are listed after the 'use obs_kind_mod' statement
 
 !integer :: i
 
 
-dart_to_lmdz_kinds(KIND_SURFACE_PRESSURE)   = TYPE_PS
-dart_to_lmdz_kinds(KIND_TEMPERATURE)        = TYPE_T
-dart_to_lmdz_kinds(KIND_U_WIND_COMPONENT)   = TYPE_U
-dart_to_lmdz_kinds(KIND_V_WIND_COMPONENT)   = TYPE_V
-dart_to_lmdz_kinds(KIND_SPECIFIC_HUMIDITY)  = TYPE_Q
-dart_to_lmdz_kinds(KIND_CLOUD_LIQUID_WATER) = TYPE_CLDLIQ
+dart_to_lmdz_kinds(QTY_SURFACE_PRESSURE)   = TYPE_PS
+dart_to_lmdz_kinds(QTY_TEMPERATURE)        = TYPE_T
+dart_to_lmdz_kinds(QTY_U_WIND_COMPONENT)   = TYPE_U
+dart_to_lmdz_kinds(QTY_V_WIND_COMPONENT)   = TYPE_V
+dart_to_lmdz_kinds(QTY_SPECIFIC_HUMIDITY)  = TYPE_Q
+dart_to_lmdz_kinds(QTY_CLOUD_LIQUID_WATER) = TYPE_CLDLIQ
 
-if (TYPE_PS /= MISSING_I)      lmdz_to_dart_kinds(TYPE_PS)     = KIND_SURFACE_PRESSURE
-if (TYPE_T /= MISSING_I)       lmdz_to_dart_kinds(TYPE_T)      = KIND_TEMPERATURE
-if (TYPE_U /= MISSING_I)       lmdz_to_dart_kinds(TYPE_U)      = KIND_U_WIND_COMPONENT
-if (TYPE_V /= MISSING_I)       lmdz_to_dart_kinds(TYPE_V)      = KIND_V_WIND_COMPONENT
-if (TYPE_Q /= MISSING_I)       lmdz_to_dart_kinds(TYPE_Q)      = KIND_SPECIFIC_HUMIDITY
-if (TYPE_CLDLIQ /= MISSING_I)  lmdz_to_dart_kinds(TYPE_CLDLIQ) = KIND_CLOUD_LIQUID_WATER 
+if (TYPE_PS /= MISSING_I)      lmdz_to_dart_kinds(TYPE_PS)     = QTY_SURFACE_PRESSURE
+if (TYPE_T /= MISSING_I)       lmdz_to_dart_kinds(TYPE_T)      = QTY_TEMPERATURE
+if (TYPE_U /= MISSING_I)       lmdz_to_dart_kinds(TYPE_U)      = QTY_U_WIND_COMPONENT
+if (TYPE_V /= MISSING_I)       lmdz_to_dart_kinds(TYPE_V)      = QTY_V_WIND_COMPONENT
+if (TYPE_Q /= MISSING_I)       lmdz_to_dart_kinds(TYPE_Q)      = QTY_SPECIFIC_HUMIDITY
+if (TYPE_CLDLIQ /= MISSING_I)  lmdz_to_dart_kinds(TYPE_CLDLIQ) = QTY_CLOUD_LIQUID_WATER 
 
 
 !if (print_details .and. do_out) then
@@ -778,10 +778,10 @@ if (TYPE_CLDLIQ /= MISSING_I)  lmdz_to_dart_kinds(TYPE_CLDLIQ) = KIND_CLOUD_LIQU
 
 ! In the future, if fields are not ordered nicely, or if users are specifying
 ! correspondence of obs fields with state fields, I may want code like:
-! The max size of KIND_ should come from obs_kind_mod
+! The max size of QTY_ should come from obs_kind_mod
 ! do i=1,state_num_3d
 !    if (state_names_3d(i)(1:1) == 'T' .and. &
-!        KIND_TEMPERATURE <= 100) ) dart_to_lmdz_kinds(KIND_TEMPERATURE) =
+!        QTY_TEMPERATURE <= 100) ) dart_to_lmdz_kinds(QTY_TEMPERATURE) =
 !        TYPE_3D(i)
 ! end do 
 
@@ -1799,11 +1799,11 @@ endif
 ! If the type is wanted, return it
 if (present(var_kind)) then
    if (index_in < 0) then ! (Identity Obs)
-      ! used by convert_vert which wants the LMDZ field index, not the DART KIND_ 
+      ! used by convert_vert which wants the LMDZ field index, not the DART QTY_ 
       var_kind = nfld
    else if (index_in > 0) then
       ! used by call from assim_tools_mod:filter_assim, which wants the DART
-      ! KIND_
+      ! QTY_
       var_kind = lmdz_to_dart_kinds(nfld)
    end if
 end if
@@ -1851,7 +1851,7 @@ else
       ! ignore these for now.
       ! Give highest_obs_pressure_mb in mb determine highest_obs_level in model level
       ! here lev_index=-1 is ignored to get value of p_surf because it don't have levels.
-      call get_val(p_surf, x, lon_index, lat_index, -1, KIND_SURFACE_PRESSURE,vstatus) 
+      call get_val(p_surf, x, lon_index, lat_index, -1, QTY_SURFACE_PRESSURE,vstatus) 
       call plevs_lmdz (p_surf, num_levs, p_col)
       highest_obs_level = 1.0_r8
       threshold = highest_obs_pressure_mb*100.0_r8  ! conversion in Pa
@@ -1869,12 +1869,12 @@ else
       istatus = 0
    end if
 
-   if (obs_kind == KIND_PRESSURE) then
+   if (obs_kind == QTY_PRESSURE) then
       ! Can't get the value from get_val because 3d pressure is not a model
       ! variable.
       ! Can calculate it from ps.
       ! ps is on A-grid, so no need to check for staggered grids
-      call get_val(p_surf, x, lon_index, lat_index, -1, KIND_SURFACE_PRESSURE, vstatus)
+      call get_val(p_surf, x, lon_index, lat_index, -1, QTY_SURFACE_PRESSURE, vstatus)
       if (vstatus > 0) then
          val = MISSING_R8
          istatus = 1
@@ -1925,10 +1925,10 @@ vstatus = 0
 ! This version excludes observations below lowest level pressure and above
 ! highest level pressure.
 
-if  (obs_kind == KIND_U_WIND_COMPONENT ) then
+if  (obs_kind == QTY_U_WIND_COMPONENT ) then
       p_surf = ps_ens_mean_stagr_lonu(lon_index, lat_index)
 
-elseif (obs_kind == KIND_V_WIND_COMPONENT ) then
+elseif (obs_kind == QTY_V_WIND_COMPONENT ) then
      p_surf = ps_ens_mean_stagr_latv(lon_index, lat_index)
 else
    ! A-grid ps can be retrieved from state vector, which was used to define ps
@@ -1968,7 +1968,7 @@ else
    21 continue
 
    ! Pobs
-   if (obs_kind == KIND_PRESSURE) then
+   if (obs_kind == QTY_PRESSURE) then
       ! can't get pressure on levels from state vector; get it from p_col  instead 
       bot_val = p_col(bot_lev)
       top_val = p_col(top_lev)
@@ -2362,11 +2362,11 @@ stagr_lat = .false.
 
 num_levs = sigs%length
 
-if  (obs_kind == KIND_U_WIND_COMPONENT ) then
+if  (obs_kind == QTY_U_WIND_COMPONENT ) then
       p_surf = ps_ens_mean_stagr_lonu(lon_index, lat_index)
      stagr_lon = .true.
 
-elseif (obs_kind == KIND_V_WIND_COMPONENT ) then
+elseif (obs_kind == QTY_V_WIND_COMPONENT ) then
      p_surf = ps_ens_mean_stagr_latv(lon_index, lat_index)
      stagr_lat = .true.
 else
@@ -2425,7 +2425,7 @@ else
    21 continue
 
    ! Pobs
-   if (obs_kind == KIND_PRESSURE) then
+   if (obs_kind == QTY_PRESSURE) then
       ! Observing a pressure on a height surface sounds silly.  But for
       ! completeness:
       ! get_val_height is called for 4 different columns, which will have
@@ -2747,7 +2747,7 @@ do k = 1, num_close
       ! Damp the influence of obs (below the namelist variable
       ! highest_obs_pressure_mb) 
       ! on variables above highest_state_pressure_mb.  
-      ! This section could also change the distance based on the KIND_s of the
+      ! This section could also change the distance based on the QTY_s of the
       ! base_obs and obs.
 
       ! dist = 0 for some for synthetic obs.
@@ -2831,10 +2831,10 @@ lon_lat_lev = get_location(location)
 
 ! check whether model_mod can interpolate the requested variable
 ! Pressure (3d) can't be specified as a state vector field (so lmdz_type will =  MISSING_I), 
-! but can be calculated for LMDZ, so obs_type = KIND_PRESSURE is acceptable.
+! but can be calculated for LMDZ, so obs_type = QTY_PRESSURE is acceptable.
 lmdz_type = dart_to_lmdz_kinds(obs_type)
 
-if (lmdz_type == MISSING_I .and.(obs_type .ne. KIND_PRESSURE) ) then
+if (lmdz_type == MISSING_I .and.(obs_type .ne. QTY_PRESSURE) ) then
    istatus = 3
 ! should be MISSING_R8 ?
    interp_val = MISSING_R8
@@ -2854,11 +2854,11 @@ lat_name = 'lat     '
 !   Can't do it automatically/generically because they're not part of state
 !   vector and that info isn't coming from DART.
 
-if (obs_type .eq. KIND_PRESSURE) then
+if (obs_type .eq. QTY_PRESSURE) then
    lev_name = 'lev     '
 endif
 
-if (lmdz_type == MISSING_I .and. (obs_type .eq. KIND_PRESSURE) ) then
+if (lmdz_type == MISSING_I .and. (obs_type .eq. QTY_PRESSURE) ) then
    ! use defaults lon_name and lat_name set above
 
 elseif(lmdz_type==TYPE_PS)then

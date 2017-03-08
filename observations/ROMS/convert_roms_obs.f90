@@ -37,8 +37,8 @@ use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                               init_obs_sequence, get_num_obs, get_obs_def, &
                               set_copy_meta_data, set_qc_meta_data, set_obs_def
 
-use      obs_kind_mod, only : get_obs_kind_var_type, &
-                              get_obs_kind_name, get_obs_kind_index
+use      obs_kind_mod, only : get_quantity_for_type_of_obs, &
+                              get_name_for_type_of_obs, get_index_for_type_of_obs
 
 use       obs_def_mod, only : set_obs_def_external_FO, obs_def_type
 
@@ -465,7 +465,7 @@ if (r_kloc == MISSING_R8) then
 endif
 
 ! convert from specific obs type to a generic obs kind
-dart_kind = get_obs_kind_var_type(dart_type)
+dart_kind = get_quantity_for_type_of_obs(dart_type)
 
 ! if we didn't get lats/lons directly, call the ROMS model_mod code
 ! to convert the grid indices into lat/lon/depth
@@ -696,7 +696,7 @@ parseloop: do i=1, MAX_TYPES
    ! convert strings to corresponding IDs.
    ! there are no assumptions about the IDs other than they must be positive
    romstype = match_roms_flag(   type_translations(1, i))
-   darttype = get_obs_kind_index(type_translations(2, i))
+   darttype = get_index_for_type_of_obs(type_translations(2, i))
 
    if (romstype < 0) then
       call error_handler(E_ERR, 'get_translation_table', &
@@ -741,7 +741,7 @@ if (verbose > 0) then
       if (dart_type_integers(i) > 0) then
    
          write(string1,'(''DART '',i4,1x,A34,'' equates to ROMS '',i8,1x,A)') &
-            dart_type_integers(i), trim(get_obs_kind_name(dart_type_integers(i))), &
+            dart_type_integers(i), trim(get_name_for_type_of_obs(dart_type_integers(i))), &
             roms_prov_integers(i), trim(roms_prov_strings(i))
     
          call error_handler(E_MSG, '', string1)

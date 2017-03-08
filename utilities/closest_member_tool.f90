@@ -26,8 +26,8 @@ use utilities_mod,     only : register_module, find_namelist_in_file,        &
 
 use  location_mod,     only : location_type
 
-use  obs_kind_mod,     only : get_num_raw_obs_kinds, get_raw_obs_kind_index, &
-                              get_raw_obs_kind_name
+use  obs_kind_mod,     only : get_num_quantities, get_index_for_quantity, &
+                              get_name_for_quantity
 
 use  sort_mod,         only : index_sort
 
@@ -157,7 +157,7 @@ allocate(index_list(ens_size), diffs(ens_size))
 if (use_only_kinds(1) /= '') then
    allkinds = .false.
 
-   num_kinds = get_num_raw_obs_kinds()
+   num_kinds = get_num_quantities()
    allocate(usekind(num_kinds))
    usekind = .false.
 
@@ -167,7 +167,7 @@ if (use_only_kinds(1) /= '') then
          done = .true.
          exit KindList
       endif
-      kindindex = get_raw_obs_kind_index(use_only_kinds(i))   
+      kindindex = get_index_for_quantity(use_only_kinds(i))   
       if (kindindex < 0) then
          write(msgstring, *) 'unrecognized KIND string: '//trim(use_only_kinds(i))
          call error_handler(E_ERR,'closest_member_tool', msgstring, &
@@ -187,7 +187,7 @@ if (use_only_kinds(1) /= '') then
    call error_handler(E_MSG,'',msgstring)
    do i=1, num_kinds
       if (usekind(i)) then
-         write(msgstring, *) '   ', trim(get_raw_obs_kind_name(i))
+         write(msgstring, *) '   ', trim(get_name_for_quantity(i))
          call error_handler(E_MSG,'',msgstring)
       endif
    enddo

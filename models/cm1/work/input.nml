@@ -89,7 +89,7 @@
   interp_test_xrange    = 500.0, 1000.0
   interp_test_yrange    = 500.0, 1000.0
   interp_test_zrange    = 100.0,  101.0
-  kind_of_interest      = 'KIND_TEMPERATURE'
+  kind_of_interest      = 'QTY_TEMPERATURE'
   loc_of_interest       = 1000.0, 500.0, 120.0
   num_ens               = 1
   restart_in_file_names  = 'dart_ics.nc'
@@ -107,12 +107,12 @@
   calendar                    = 'Gregorian'
   cm1_template_file           = 'cm1out_rst_000001.nc'
   debug                       = 0
-  model_variables             = 'tha', 'KIND_TEMPERATURE',          '0.0' , '1.0e28', 'UPDATE' 
-                                'tsk', 'KIND_2M_TEMPERATURE',       'NULL', 'NULL'  , 'UPDATE'
-                                'ua' , 'KIND_U_WIND_COMPONENT',     '0.0',  'NULL'  , 'UPDATE'
-                                'va' , 'KIND_V_WIND_COMPONENT'      'NULL', '0.03'  , 'UPDATE'
-                                'ppi', 'KIND_SURFACE_PRESSURE',     'NULL', 'NULL'  , 'UPDATE'
-                                'u0' , 'KIND_10M_U_WIND_COMPONENT', 'NULL', 'NULL'  , 'NOUPDATE'
+  model_variables             = 'tha', 'QTY_TEMPERATURE',          '0.0' , '1.0e28', 'UPDATE' 
+                                'tsk', 'QTY_2M_TEMPERATURE',       'NULL', 'NULL'  , 'UPDATE'
+                                'ua' , 'QTY_U_WIND_COMPONENT',     '0.0',  'NULL'  , 'UPDATE'
+                                'va' , 'QTY_V_WIND_COMPONENT'      'NULL', '0.03'  , 'UPDATE'
+                                'ppi', 'QTY_SURFACE_PRESSURE',     'NULL', 'NULL'  , 'UPDATE'
+                                'u0' , 'QTY_10M_U_WIND_COMPONENT', 'NULL', 'NULL'  , 'NOUPDATE'
   output_state_vector         = .true.
   periodic_x                  = .true.
   periodic_y                  = .true.

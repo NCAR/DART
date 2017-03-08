@@ -39,18 +39,18 @@
 !
 ! # rest of line is comment after hash mark
 ! GROUP groupname1
-!  KIND_xxx  KIND_xxx  KIND_xxx
-!  KIND_xxx
+!  QTY_xxx  QTY_xxx  QTY_xxx
+!  QTY_xxx
 ! END GROUP
 !
 ! GROUP groupname2
-!  KIND_xxx  KIND_xxx  KIND_xxx
-!  KIND_xxx
+!  QTY_xxx  QTY_xxx  QTY_xxx
+!  QTY_xxx
 ! END GROUP
 !
 ! GROUP groupnameM
-! ALL EXCEPT KIND_xxx KIND_xxx
-! KIND_xxx
+! ALL EXCEPT QTY_xxx QTY_xxx
+! QTY_xxx
 ! END GROUP
 ! # to choose all kinds except a select few
 !
@@ -62,9 +62,9 @@
 ! also ALLTYPES, ALLKINDS, as well as ALL
 !
 ! IMPACT
-!  KIND_xxx    KIND_xxx     0.0
-!  KIND_xxx    groupname1   0.0
-!  groupname1  KIND_xxx     0.0
+!  QTY_xxx    QTY_xxx     0.0
+!  QTY_xxx    groupname1   0.0
+!  groupname1  QTY_xxx     0.0
 !  groupname1  groupname1   0.0
 ! END IMPACT
 

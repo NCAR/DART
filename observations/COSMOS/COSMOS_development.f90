@@ -43,7 +43,7 @@ use   obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                                set_copy_meta_data, set_qc_meta_data, &
                                set_obs_values, set_qc
 
-use        obs_def_mod, only : obs_def_type, set_obs_def_kind, &
+use        obs_def_mod, only : obs_def_type, set_obs_def_type_of_obs, &
                                set_obs_def_location, set_obs_def_time, &
                                set_obs_def_error_variance, set_obs_def_key
 
@@ -318,7 +318,7 @@ real(r8)              :: obs_val(1), qc_val(1)
 type(obs_def_type)    :: obs_def
 
 call set_obs_def_location(obs_def, set_location(lon, lat, vval, vkind))
-call set_obs_def_kind(obs_def, okind)
+call set_obs_def_type_of_obs(obs_def, okind)
 call set_obs_def_time(obs_def, set_time(sec, day))
 call set_obs_def_error_variance(obs_def, oerr * oerr)
 call set_obs_def_key(obs_def, key)

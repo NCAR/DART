@@ -25,12 +25,12 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
                              static_init_obs_sequence, destroy_obs_sequence, destroy_obs, &
                              read_obs_seq_header, get_qc_meta_data
 
-use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_kind, write_obs_def, &
+use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_def_type_of_obs, write_obs_def, &
                              get_obs_def_location, set_obs_def_time, &
-                             set_obs_def_location, set_obs_def_kind, set_obs_def_error_variance
+                             set_obs_def_location, set_obs_def_type_of_obs, set_obs_def_error_variance
 
-use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_name, get_obs_kind_index, &
-                             write_obs_kind
+use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs, get_index_for_type_of_obs, &
+                             write_type_of_obs_table
 
 use     location_mod, only : location_type, get_location, set_location_missing, &
                              write_location, operator(/=), operator(==), &
@@ -175,7 +175,7 @@ character(len=metadatalength), allocatable, dimension(:) ::        obs_copy_name
 character(len=metadatalength), allocatable, dimension(:) :: module_qc_copy_names
 character(len=metadatalength), allocatable, dimension(:) ::        qc_copy_names
 
-integer, dimension(max_obs_kinds) :: obs_type_inds = 0
+integer, dimension(max_defined_types_of_obs) :: obs_type_inds = 0
 real(r8),        allocatable, dimension(:)   :: qc_values
 type(time_type), allocatable, dimension(:)   :: all_verif_times
 type(time_type), allocatable, dimension(:,:) :: verification_times
@@ -240,7 +240,7 @@ TypeLoop : do i = 1,MAX_OBS_NAMES_IN_NAMELIST
 
    string2 = adjustl(obs_of_interest(i))
 
-   flavor_of_interest = get_obs_kind_index(trim(string2))
+   flavor_of_interest = get_index_for_type_of_obs(trim(string2))
 
    if (flavor_of_interest < 0) then
       write(string1,*)trim(string2),' is not a known observation type.'
@@ -444,7 +444,7 @@ ObsFileLoop : do ifile = 1, num_input_files
          write(*,*)'Processing obs ',iobs,' of ',num_obs
 
       call get_obs_def(obs1,          obs_def)
-      flavor   = get_obs_kind(        obs_def)
+      flavor   = get_obs_def_type_of_obs(        obs_def)
       obs_time = get_obs_def_time(    obs_def)
       obs_loc  = get_obs_def_location(obs_def)
 
@@ -893,7 +893,7 @@ TYPELOOP : do i = 1,size(obs_type_inds)
    write(string1,'(''obs_of_interest_'',i3.3)') ntypes
 
    ! decode the index into an observation type name
-   string2 = adjustl(get_obs_kind_name(i))
+   string2 = adjustl(get_name_for_type_of_obs(i))
 
    call nc_check(nf90_put_att(ncid, NF90_GLOBAL, string1, string2 ), &
               'InitNetCDF', 'put_att obs_of_interest '//trim(fname))
@@ -1277,7 +1277,7 @@ WriteObs : do voxelindex = 1,num_voxels
 
    string1     = ' '
    stringOb(1) = ' '
-   string1 = get_obs_kind_name(voxels(voxelindex)%obs_type)
+   string1 = get_name_for_type_of_obs(voxels(voxelindex)%obs_type)
    write(stringOb(1),'(A)') string1(1:obstypelength)
 
    call nc_check(nf90_put_var(ncid, ObsTypeVarId, stringOb, &
@@ -1419,7 +1419,7 @@ open(iunit,file=trim(textfile_out), form='formatted', &
 ! and times fit the requirements.
 write(iunit,*)'num_definitions ',num_out_total
 
-call write_obs_kind(iunit, fform='formatted', use_list=obs_type_inds)
+call write_type_of_obs_table(iunit, fform='formatted', use_list=obs_type_inds)
 call set_obs_def_error_variance(obs_def, MISSING_R8)
 
 write(*,*) ! whitespace
@@ -1432,7 +1432,7 @@ write(*,*) ! whitespace
 if ( debug ) then
    TYPELOOP : do i = 1,size(obs_type_inds) 
       if (obs_type_inds(i) < 1) cycle TYPELOOP
-      string2 = adjustl(get_obs_kind_name(i))
+      string2 = adjustl(get_name_for_type_of_obs(i))
       write(*,*)'i,obs_type_inds(i)',i,obs_type_inds(i),trim(string2)
    enddo TYPELOOP
    write(*,*)
@@ -1442,7 +1442,7 @@ Selections : do i = 1,num_voxels
 
    if ( .not. Desiredvoxels(i) ) cycle Selections
 
-   call set_obs_def_kind(    obs_def, voxels(i)%obs_type)
+   call set_obs_def_type_of_obs(    obs_def, voxels(i)%obs_type)
    call set_obs_def_location(obs_def, voxels(i)%location)
 
    TimeLoop : do j = 1,num_verification_times

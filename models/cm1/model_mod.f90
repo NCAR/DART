@@ -31,8 +31,8 @@ use    utilities_mod, only : register_module, error_handler,                   &
                              file_to_text, close_file, do_nml_file,            &
                              do_nml_term, string_to_real, string_to_logical
 
-use     obs_kind_mod, only : get_raw_obs_kind_index,  &
-                             get_raw_obs_kind_name
+use     obs_kind_mod, only : get_index_for_quantity,  &
+                             get_name_for_quantity
 
 use mpi_utilities_mod, only : my_task_id
 
@@ -142,7 +142,7 @@ real(r8) ::                    clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
 
 ! indices associated with variable_table columns
 integer, parameter :: VT_VARNAME_INDEX  = 1
-integer, parameter :: VT_DARTKIND_INDEX = 2
+integer, parameter :: VT_DARTQTY_INDEX = 2
 integer, parameter :: VT_UPDATE_INDEX   = 3
 integer, parameter :: VT_MINVAL_INDEX   = 4
 integer, parameter :: VT_MAXVAL_INDEX   = 5
@@ -403,7 +403,7 @@ end subroutine adv_1step
 
 ! given an index into the state vector, return its location and
 ! if given, the var kind.   despite the name, var_type is a generic
-! kind, like those in obs_kind/obs_kind_mod.f90, starting with KIND_
+! kind, like those in obs_kind/obs_kind_mod.f90, starting with QTY_
 
 subroutine get_state_meta_data(state_ens_handle, index_in, location, var_type)
 
@@ -1023,7 +1023,7 @@ if (varid < 0) then
    if (debug > 0) then
       call write_location(0,location,charstring=string1)
       write(string1, *) 'obs kind not found in state.  kind ', obs_kind, ' (', &
-                                 trim(get_raw_obs_kind_name(obs_kind)), ')  loc: ', trim(string1)
+                                 trim(get_name_for_quantity(obs_kind)), ')  loc: ', trim(string1)
 
       call say(string1)
    endif
@@ -1049,7 +1049,7 @@ else
    nlevs = 1  !? just a guess
    call write_location(0,location,charstring=string1)
    write(string1, *) 'task ', my_task_id(), ' kind ', obs_kind, ' (', &
-                             trim(get_raw_obs_kind_name(obs_kind)), ')  loc: ', trim(string1)
+                             trim(get_name_for_quantity(obs_kind)), ')  loc: ', trim(string1)
 
    call say(string1)
    write(string1, *) 'varid, nlevs, ndims = ', varid, nlevs, ndims
@@ -2322,7 +2322,7 @@ MyLoop : do i = 1, MAX_STATE_VARIABLES
 
    ! Make sure DART kind is valid
 
-   if( get_raw_obs_kind_index(dartstr) < 0 ) then
+   if( get_index_for_quantity(dartstr) < 0 ) then
       write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
       call error_handler(E_ERR,'parse_variable_input:',string1,source,revision,revdate)
    endif
@@ -2332,7 +2332,7 @@ MyLoop : do i = 1, MAX_STATE_VARIABLES
    call to_upper(state_or_aux)
 
    var_names(   i) = varname
-   kind_list(   i) = get_raw_obs_kind_index(dartstr)
+   kind_list(   i) = get_index_for_quantity(dartstr)
    clamp_vals(i,1) = string_to_real(minvalstring)
    clamp_vals(i,2) = string_to_real(maxvalstring)
    update_list( i) = string_to_logical(state_or_aux, 'UPDATE')

@@ -13,7 +13,7 @@
 ! the obs_kind/DEFAULT_obs_kind_mod.F90 file.
 
 ! BEGIN DART PREPROCESS KIND LIST
-! RADIOSONDE_WIND_SPEED,         KIND_VELOCITY
+! RADIOSONDE_WIND_SPEED,         QTY_VELOCITY
 ! END DART PREPROCESS KIND LIST
 
 ! This section will be added to the main obs_def_mod.f90 that
@@ -66,8 +66,8 @@ use        types_mod, only : r8, missing_r8
 use    utilities_mod, only : register_module
 use     location_mod, only : location_type
 use  assim_model_mod, only : interpolate
-use     obs_kind_mod, only : KIND_U_WIND_COMPONENT,  &
-                             KIND_V_WIND_COMPONENT
+use     obs_kind_mod, only : QTY_U_WIND_COMPONENT,  &
+                             QTY_V_WIND_COMPONENT
 use  ensemble_manager_mod, only : ensemble_type
 use obs_def_utilities_mod, only : track_status
 
@@ -122,12 +122,12 @@ if ( .not. module_initialized ) call initialize_module
 istatus = 0   ! to use track_status, it must start out 0
 
 ! Zonal wind at this location - this calls the model_mod code.
-call interpolate(state_handle, ens_size, location, KIND_U_WIND_COMPONENT, uwind, this_istatus)
+call interpolate(state_handle, ens_size, location, QTY_U_WIND_COMPONENT, uwind, this_istatus)
 call track_status(ens_size, this_istatus, wspd, istatus, return_now)
 if (return_now) return
 
 ! Meridional wind at this location - this calls the model_mod code.
-call interpolate(state_handle, ens_size, location, KIND_V_WIND_COMPONENT, vwind, istatus)
+call interpolate(state_handle, ens_size, location, QTY_V_WIND_COMPONENT, vwind, istatus)
 call track_status(ens_size, this_istatus, wspd, istatus, return_now)
 if (return_now) return
 

@@ -23,8 +23,8 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MS
                              logfileunit, get_unit, nc_check, do_output, to_upper, &
                              find_namelist_in_file, check_namelist_read, &
                              open_file, file_exist, find_textfile_dims, file_to_text
-use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_U_CURRENT_COMPONENT, &
-                             KIND_V_CURRENT_COMPONENT, KIND_SEA_SURFACE_HEIGHT
+use     obs_kind_mod, only : QTY_TEMPERATURE, QTY_SALINITY, QTY_U_CURRENT_COMPONENT, &
+                             QTY_V_CURRENT_COMPONENT, QTY_SEA_SURFACE_HEIGHT
 use mpi_utilities_mod, only: my_task_id
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
 
@@ -658,15 +658,15 @@ endif
 
 ! Do horizontal interpolations for the appropriate levels
 ! Find the basic offset of this field
-if(obs_type == KIND_SALINITY) then
+if(obs_type == QTY_SALINITY) then
    base_offset = start_index(1)
-else if(obs_type == KIND_TEMPERATURE) then
+else if(obs_type == QTY_TEMPERATURE) then
    base_offset = start_index(2)
-else if(obs_type == KIND_U_CURRENT_COMPONENT) then
+else if(obs_type == QTY_U_CURRENT_COMPONENT) then
    base_offset = start_index(3)
-else if(obs_type == KIND_V_CURRENT_COMPONENT) then
+else if(obs_type == QTY_V_CURRENT_COMPONENT) then
    base_offset = start_index(4)
-else if(obs_type == KIND_SEA_SURFACE_HEIGHT) then
+else if(obs_type == QTY_SEA_SURFACE_HEIGHT) then
    base_offset = start_index(5)
 else
    ! Not a legal type for interpolation, return istatus error
@@ -796,7 +796,7 @@ istatus = 0
 ! Find out what latitude box and fraction
 ! The latitude grid being used depends on the variable type
 ! V is on the YG latitude grid
-if(var_type == KIND_V_CURRENT_COMPONENT) then
+if(var_type == QTY_V_CURRENT_COMPONENT) then
    lat_array = yg
    call lat_bounds(llat, ny, lat_array, lat_bot, lat_top, lat_fract, lat_status)
 else 
@@ -812,7 +812,7 @@ if(lat_status /= 0) then
 endif
 
 ! Find out what longitude box and fraction
-if(var_type == KIND_U_CURRENT_COMPONENT) then
+if(var_type == QTY_U_CURRENT_COMPONENT) then
    ! U velocity is on the XG grid
    lon_array = xg
    call lon_bounds(llon, nx, lon_array, lon_bot, lon_top, lon_fract, lon_status)
@@ -1137,19 +1137,19 @@ if ( .not. module_initialized ) call static_init_model
 !print *, 'asking for meta data about index ', index_in
 
 if (index_in < start_index(S_index+1)) then
-   if (present(var_type)) var_type = KIND_SALINITY  
+   if (present(var_type)) var_type = QTY_SALINITY  
    var_num = S_index
 else if (index_in < start_index(T_index+1)) then
-   if (present(var_type)) var_type = KIND_TEMPERATURE  
+   if (present(var_type)) var_type = QTY_TEMPERATURE  
    var_num = T_index
 else if (index_in < start_index(U_index+1)) then
-   if (present(var_type)) var_type = KIND_U_CURRENT_COMPONENT
+   if (present(var_type)) var_type = QTY_U_CURRENT_COMPONENT
    var_num = U_index
 else if (index_in < start_index(V_index+1)) then
-   if (present(var_type)) var_type = KIND_V_CURRENT_COMPONENT
+   if (present(var_type)) var_type = QTY_V_CURRENT_COMPONENT
    var_num = V_index
 else 
-   if (present(var_type)) var_type = KIND_SEA_SURFACE_HEIGHT
+   if (present(var_type)) var_type = QTY_SEA_SURFACE_HEIGHT
    var_num = Eta_index
 endif
 

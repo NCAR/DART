@@ -20,8 +20,8 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
                              get_qc, destroy_obs_sequence, read_obs_seq_header, & 
                              get_last_obs, destroy_obs, get_qc_meta_data
 use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
-                             get_obs_def_location,  get_obs_kind
-use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_name
+                             get_obs_def_location,  get_obs_def_type_of_obs
+use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs
 use     location_mod, only : location_type, write_location, operator(/=), operator(==), &
                              set_location, is_location_in_region, query_location, &
                              nc_write_location_atts, nc_get_location_varids, &
@@ -111,7 +111,7 @@ character(len=stringlength), dimension(Ncopies) :: copy_names = &
 character(len=stringlength), allocatable, dimension(:) :: module_obs_copy_names
 character(len=stringlength), allocatable, dimension(:) :: module_qc_copy_names
 character(len=stringlength), allocatable, dimension(:) :: obs_copy_names, qc_copy_names
-character(len=stringlength), dimension(max_obs_kinds) :: my_obs_kind_names
+character(len=stringlength), dimension(max_defined_types_of_obs) :: my_obs_kind_names
 
 real(r8), allocatable, dimension(:) :: qc, copyvals
 real(r8), allocatable, dimension(:) :: obscopies
@@ -169,10 +169,10 @@ call init_obs(   next_obs, 0, 0) ! can destroy at the top of the loop.
 !         re-enter DEFINE mode after all is said and done ...
 !----------------------------------------------------------------------
 
-num_obs_kinds = max_obs_kinds
+num_obs_kinds = max_defined_types_of_obs
 
-do i = 1,max_obs_kinds
-   my_obs_kind_names(i) = get_obs_kind_name(i)
+do i = 1,max_defined_types_of_obs
+   my_obs_kind_names(i) = get_name_for_type_of_obs(i)
 enddo
 
 !----------------------------------------------------------------------
@@ -473,7 +473,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          call get_obs_def(observation, obs_def)
          call get_qc(observation, qc)
 
-         flavor      = get_obs_kind(obs_def)
+         flavor      = get_obs_def_type_of_obs(obs_def)
          obs_time    = get_obs_def_time(obs_def)
          obs_loc     = get_obs_def_location(obs_def)
 

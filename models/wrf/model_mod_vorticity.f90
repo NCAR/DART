@@ -66,28 +66,28 @@ use  mpi_utilities_mod, only : my_task_id
 
 use     random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
-use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
-                              KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, &
-                              KIND_SPECIFIC_HUMIDITY, KIND_SURFACE_ELEVATION, &
-                              KIND_PRESSURE, KIND_VERTICAL_VELOCITY, &
-                              KIND_DENSITY, KIND_FLASH_RATE_2D, &
-                              KIND_RAINWATER_MIXING_RATIO, KIND_HAIL_MIXING_RATIO, &
-                              KIND_GRAUPEL_MIXING_RATIO, KIND_SNOW_MIXING_RATIO, &
-                              KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE, &
-                              KIND_CONDENSATIONAL_HEATING, KIND_VAPOR_MIXING_RATIO, &
-                              KIND_ICE_NUMBER_CONCENTRATION, KIND_GEOPOTENTIAL_HEIGHT, &
-                              KIND_POTENTIAL_TEMPERATURE, KIND_SOIL_MOISTURE, &
-                              KIND_DROPLET_NUMBER_CONCENTR, KIND_SNOW_NUMBER_CONCENTR, &
-                              KIND_RAIN_NUMBER_CONCENTR, KIND_GRAUPEL_NUMBER_CONCENTR, &
-                              KIND_HAIL_NUMBER_CONCENTR, KIND_HAIL_VOLUME, &
-                              KIND_GRAUPEL_VOLUME, KIND_DIFFERENTIAL_REFLECTIVITY, &
-                              KIND_RADAR_REFLECTIVITY, KIND_POWER_WEIGHTED_FALL_SPEED, &
-                              KIND_SPECIFIC_DIFFERENTIAL_PHASE, &
-                              KIND_VORTEX_LAT, KIND_VORTEX_LON, &
-                              KIND_VORTEX_PMIN, KIND_VORTEX_WMAX, &
-                              KIND_SKIN_TEMPERATURE, KIND_LANDMASK, &
-                              get_raw_obs_kind_index, get_num_raw_obs_kinds, &
-                              get_raw_obs_kind_name
+use      obs_kind_mod, only : QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, &
+                              QTY_SURFACE_PRESSURE, QTY_TEMPERATURE, &
+                              QTY_SPECIFIC_HUMIDITY, QTY_SURFACE_ELEVATION, &
+                              QTY_PRESSURE, QTY_VERTICAL_VELOCITY, &
+                              QTY_DENSITY, QTY_FLASH_RATE_2D, &
+                              QTY_RAINWATER_MIXING_RATIO, QTY_HAIL_MIXING_RATIO, &
+                              QTY_GRAUPEL_MIXING_RATIO, QTY_SNOW_MIXING_RATIO, &
+                              QTY_CLOUD_LIQUID_WATER, QTY_CLOUD_ICE, &
+                              QTY_CONDENSATIONAL_HEATING, QTY_VAPOR_MIXING_RATIO, &
+                              QTY_ICE_NUMBER_CONCENTRATION, QTY_GEOPOTENTIAL_HEIGHT, &
+                              QTY_POTENTIAL_TEMPERATURE, QTY_SOIL_MOISTURE, &
+                              QTY_DROPLET_NUMBER_CONCENTR, QTY_SNOW_NUMBER_CONCENTR, &
+                              QTY_RAIN_NUMBER_CONCENTR, QTY_GRAUPEL_NUMBER_CONCENTR, &
+                              QTY_HAIL_NUMBER_CONCENTR, QTY_HAIL_VOLUME, &
+                              QTY_GRAUPEL_VOLUME, QTY_DIFFERENTIAL_REFLECTIVITY, &
+                              QTY_RADAR_REFLECTIVITY, QTY_POWER_WEIGHTED_FALL_SPEED, &
+                              QTY_SPECIFIC_DIFFERENTIAL_PHASE, &
+                              QTY_VORTEX_LAT, QTY_VORTEX_LON, &
+                              QTY_VORTEX_PMIN, QTY_VORTEX_WMAX, &
+                              QTY_SKIN_TEMPERATURE, QTY_LANDMASK, &
+                              get_index_for_quantity, get_num_quantities, &
+                              get_name_for_quantity
 
 !HK should model_mod know about the number of copies?
 use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index, &
@@ -98,11 +98,11 @@ use sort_mod, only : sort
 use distributed_state_mod
 
 ! FIXME:
-! the kinds KIND_CLOUD_LIQUID_WATER should be KIND_CLOUDWATER_MIXING_RATIO, 
-! and kind KIND_CLOUD_ICE should be KIND_ICE_MIXING_RATIO, but for backwards
+! the kinds QTY_CLOUD_LIQUID_WATER should be QTY_CLOUDWATER_MIXING_RATIO, 
+! and kind QTY_CLOUD_ICE should be QTY_ICE_MIXING_RATIO, but for backwards
 ! compatibility with other models, they remain as is for now.  at the next
 ! major dart release, the names will be made consistent.
-! ditto KIND_ICE_NUMBER_CONCENTRATION, which should be KIND_ICE_NUMBER_CONCENTR
+! ditto QTY_ICE_NUMBER_CONCENTRATION, which should be QTY_ICE_NUMBER_CONCENTR
 ! to be consistent with the other concentration names.
 
 !nc -- module_map_utils split the declarations of PROJ_* into a separate module called
@@ -441,7 +441,7 @@ endif
 ! helpful error message if not).
 !---------------------------
 
-num_obs_kinds = get_num_raw_obs_kinds()
+num_obs_kinds = get_num_quantities()
 allocate(in_state_vector(num_obs_kinds))
 call fill_dart_kinds_table(wrf_state_variables, in_state_vector)
 
@@ -588,7 +588,7 @@ WRFDomains : do id=1,num_domains
       my_index =  wrf%dom(id)%var_index_list(ind)
 
       wrf%dom(id)%var_type(ind) = ind ! types are just the order for this domain
-      wrf%dom(id)%dart_kind(ind) = get_raw_obs_kind_index(trim(wrf_state_variables(2,my_index)))
+      wrf%dom(id)%dart_kind(ind) = get_index_for_quantity(trim(wrf_state_variables(2,my_index)))
 
       if ( debug ) then
          print*,'dart kind identified: ',trim(wrf_state_variables(2,my_index)),' ',wrf%dom(id)%dart_kind(ind)
@@ -1113,7 +1113,7 @@ else
    ! Is this a valid kind to interpolate?  Set up in the static_init_model code,
    ! based on entries in wrf_state_vector namelist item.
    if (.not. in_state_vector(obs_kind)) then
-      write(errstring, *) 'cannot interpolate ' // trim(get_raw_obs_kind_name(obs_kind)) &
+      write(errstring, *) 'cannot interpolate ' // trim(get_name_for_quantity(obs_kind)) &
                            // ' with the current WRF arrays in state vector'
       call error_handler(E_ERR, 'model_interpolate', errstring, &
                                  source, revision, revdate)
@@ -1222,7 +1222,7 @@ else
 
       ! get pressure vertical co-ordinate
       call pres_to_zk_distrib(xyz_loc(3), v_p, wrf%dom(id)%bt, ens_size, zloc,is_lev0)
-      if(debug .and. obs_kind /= KIND_SURFACE_PRESSURE) &
+      if(debug .and. obs_kind /= QTY_SURFACE_PRESSURE) &
                 print*,' obs is by pressure and zloc,lev0 =',zloc, is_lev0
       if(debug) print*,'model pressure profile'
       if(debug) print*,v_p
@@ -1441,39 +1441,39 @@ else
    !     at the following forward operator code.  Hence, we can remove the call to 
    !     vert_is_surface.
 
-   if (obs_kind == KIND_RAINWATER_MIXING_RATIO .or. & 
-       obs_kind == KIND_GRAUPEL_MIXING_RATIO .or. &
-       obs_kind == KIND_HAIL_MIXING_RATIO .or. &
-       obs_kind == KIND_SNOW_MIXING_RATIO .or. &
-       obs_kind == KIND_CLOUD_ICE .or. &
-       obs_kind == KIND_CLOUD_LIQUID_WATER .or. &
-       obs_kind == KIND_DROPLET_NUMBER_CONCENTR .or. &
-       obs_kind == KIND_ICE_NUMBER_CONCENTRATION .or. &
-       obs_kind == KIND_SNOW_NUMBER_CONCENTR .or. &
-       obs_kind == KIND_RAIN_NUMBER_CONCENTR .or. &
-       obs_kind == KIND_GRAUPEL_NUMBER_CONCENTR .or. &
-       obs_kind == KIND_HAIL_NUMBER_CONCENTR .or. &
-       obs_kind == KIND_CONDENSATIONAL_HEATING .or. &
-       obs_kind == KIND_POWER_WEIGHTED_FALL_SPEED .or. &
-       obs_kind == KIND_RADAR_REFLECTIVITY .or. &
-       obs_kind == KIND_DIFFERENTIAL_REFLECTIVITY .or. &
-       obs_kind == KIND_SPECIFIC_DIFFERENTIAL_PHASE ) then
+   if (obs_kind == QTY_RAINWATER_MIXING_RATIO .or. & 
+       obs_kind == QTY_GRAUPEL_MIXING_RATIO .or. &
+       obs_kind == QTY_HAIL_MIXING_RATIO .or. &
+       obs_kind == QTY_SNOW_MIXING_RATIO .or. &
+       obs_kind == QTY_CLOUD_ICE .or. &
+       obs_kind == QTY_CLOUD_LIQUID_WATER .or. &
+       obs_kind == QTY_DROPLET_NUMBER_CONCENTR .or. &
+       obs_kind == QTY_ICE_NUMBER_CONCENTRATION .or. &
+       obs_kind == QTY_SNOW_NUMBER_CONCENTR .or. &
+       obs_kind == QTY_RAIN_NUMBER_CONCENTR .or. &
+       obs_kind == QTY_GRAUPEL_NUMBER_CONCENTR .or. &
+       obs_kind == QTY_HAIL_NUMBER_CONCENTR .or. &
+       obs_kind == QTY_CONDENSATIONAL_HEATING .or. &
+       obs_kind == QTY_POWER_WEIGHTED_FALL_SPEED .or. &
+       obs_kind == QTY_RADAR_REFLECTIVITY .or. &
+       obs_kind == QTY_DIFFERENTIAL_REFLECTIVITY .or. &
+       obs_kind == QTY_SPECIFIC_DIFFERENTIAL_PHASE ) then
 
        call simple_interp_distrib(fld, wrf, id, i, j, k, obs_kind, dxm, dx, dy, dym, uniquek, ens_size, state_ens_handle)
 
       ! don't accept negative fld
-      if (obs_kind == KIND_RAINWATER_MIXING_RATIO .or. &
-          obs_kind == KIND_GRAUPEL_MIXING_RATIO .or. &
-          obs_kind == KIND_HAIL_MIXING_RATIO .or. &
-          obs_kind == KIND_SNOW_MIXING_RATIO .or. &
-          obs_kind == KIND_CLOUD_ICE .or. &
-          obs_kind == KIND_CLOUD_LIQUID_WATER .or. &
-          obs_kind == KIND_DROPLET_NUMBER_CONCENTR .or. &
-          obs_kind == KIND_ICE_NUMBER_CONCENTRATION .or. &
-          obs_kind == KIND_SNOW_NUMBER_CONCENTR .or. &
-          obs_kind == KIND_RAIN_NUMBER_CONCENTR .or. &
-          obs_kind == KIND_GRAUPEL_NUMBER_CONCENTR .or. &
-          obs_kind == KIND_HAIL_NUMBER_CONCENTR ) then
+      if (obs_kind == QTY_RAINWATER_MIXING_RATIO .or. &
+          obs_kind == QTY_GRAUPEL_MIXING_RATIO .or. &
+          obs_kind == QTY_HAIL_MIXING_RATIO .or. &
+          obs_kind == QTY_SNOW_MIXING_RATIO .or. &
+          obs_kind == QTY_CLOUD_ICE .or. &
+          obs_kind == QTY_CLOUD_LIQUID_WATER .or. &
+          obs_kind == QTY_DROPLET_NUMBER_CONCENTR .or. &
+          obs_kind == QTY_ICE_NUMBER_CONCENTRATION .or. &
+          obs_kind == QTY_SNOW_NUMBER_CONCENTR .or. &
+          obs_kind == QTY_RAIN_NUMBER_CONCENTR .or. &
+          obs_kind == QTY_GRAUPEL_NUMBER_CONCENTR .or. &
+          obs_kind == QTY_HAIL_NUMBER_CONCENTR ) then
 
           fld = max(0.0_r8, fld) ! Don't accept negative
 
@@ -1484,7 +1484,7 @@ else
 
    ! We need one case structure for both U & V because they comprise a vector which could need
    !   transformation depending on the map projection (hence, the call to gridwind_to_truewind)
-   elseif( obs_kind == KIND_U_WIND_COMPONENT .or. obs_kind == KIND_V_WIND_COMPONENT) then   ! U, V
+   elseif( obs_kind == QTY_U_WIND_COMPONENT .or. obs_kind == QTY_V_WIND_COMPONENT) then   ! U, V
 
      ! This is for 3D wind fields -- surface winds later
       if(.not. surf_var) then
@@ -1574,7 +1574,7 @@ else
                               ! Figure out which field was the actual desired observation and store that
                               !   field as one of the two elements of "fld" (the other element is the other
                               !   k-level)
-                              if( obs_kind == KIND_U_WIND_COMPONENT) then
+                              if( obs_kind == QTY_U_WIND_COMPONENT) then
                                  fld(k2, e) = utrue(e)
                               else   ! must want v
                                  fld(k2, e) = vtrue(e)
@@ -1639,7 +1639,7 @@ else
                        utrue(e), vtrue(e))
 
                   ! U10 (U at 10 meters)
-                  if( obs_kind == KIND_U_WIND_COMPONENT) then
+                  if( obs_kind == QTY_U_WIND_COMPONENT) then
                      fld(1, e) = utrue(e)
                   ! V10 (V at 10 meters)
                   else
@@ -1656,7 +1656,7 @@ else
    !-----------------------------------------------------
    ! 1.b Sensible Temperature (T, T2)
 
-   elseif ( obs_kind == KIND_TEMPERATURE ) then
+   elseif ( obs_kind == QTY_TEMPERATURE ) then
       ! This is for 3D temperature field -- surface temps later
       !print*, 'k ', k
 
@@ -1751,7 +1751,7 @@ else
 
    ! Note:  T is perturbation potential temperature (potential temperature - ts0)
    !   TH2 is potential temperature at 2 m
-   elseif ( obs_kind == KIND_POTENTIAL_TEMPERATURE ) then
+   elseif ( obs_kind == QTY_POTENTIAL_TEMPERATURE ) then
       ! This is for 3D potential temperature field -- surface pot temps later
       if(.not. surf_var) then
 
@@ -1817,7 +1817,7 @@ else
 
    !-----------------------------------------------------
    ! 1.d Density (Rho)
-   elseif (obs_kind == KIND_DENSITY) then
+   elseif (obs_kind == QTY_DENSITY) then
 
       do uk = 1, count ! for the different ks
 
@@ -1868,7 +1868,7 @@ else
    !-----------------------------------------------------
    ! 1.e Vertical Wind (W)
 
-   elseif ( obs_kind == KIND_VERTICAL_VELOCITY ) then
+   elseif ( obs_kind == QTY_VERTICAL_VELOCITY ) then
 
       ! Adjust zloc for staggered ZNW grid (or W-grid, as compared to ZNU or M-grid)
       zloc = zloc + 0.5_r8
@@ -1880,7 +1880,7 @@ else
    ! 1.f Specific Humidity (SH, SH2)
    ! Look at me
    ! Convert water vapor mixing ratio to specific humidity:
-   else if( obs_kind == KIND_SPECIFIC_HUMIDITY ) then
+   else if( obs_kind == QTY_SPECIFIC_HUMIDITY ) then
 
       ! This is for 3D specific humidity -- surface spec humidity later
       if(.not. surf_var) then
@@ -1974,7 +1974,7 @@ else
 
    !-----------------------------------------------------
    ! 1.g Vapor Mixing Ratio (QV, Q2)  
-   else if( obs_kind == KIND_VAPOR_MIXING_RATIO ) then
+   else if( obs_kind == QTY_VAPOR_MIXING_RATIO ) then
 
       ! This is for 3D vapor mixing ratio -- surface QV later
       if(.not. surf_var) then
@@ -1992,7 +1992,7 @@ else
 
    !-----------------------------------------------------
    ! 1.t Pressure (P)
-   else if( obs_kind == KIND_PRESSURE .or. obs_kind == KIND_SURFACE_PRESSURE ) then
+   else if( obs_kind == QTY_PRESSURE .or. obs_kind == QTY_SURFACE_PRESSURE ) then
             ! This is for the 3D pressure field -- surface pressure later
       if(.not. surf_var) then
 
@@ -2084,8 +2084,8 @@ else
 
    !-----------------------------------------------------
    ! 1.u Vortex Center Stuff from Yongsheng
-   else if ( obs_kind == KIND_VORTEX_LAT  .or. obs_kind == KIND_VORTEX_LON .or. &
-             obs_kind == KIND_VORTEX_PMIN .or. obs_kind == KIND_VORTEX_WMAX ) then
+   else if ( obs_kind == QTY_VORTEX_LAT  .or. obs_kind == QTY_VORTEX_LON .or. &
+             obs_kind == QTY_VORTEX_PMIN .or. obs_kind == QTY_VORTEX_WMAX ) then
        if( my_task_id() == 0 ) print*, '*** vortex forward operator not tested'
 
 
@@ -2103,7 +2103,7 @@ else
    !   variable; the same is true for W as well.  If one wants to observe the surface value
    !   of either of these variables, then one can simply operate on the full 3D field 
    !   (toGrid below should return dz ~ 0 and dzm ~ 1) 
-   else if( obs_kind == KIND_GEOPOTENTIAL_HEIGHT ) then
+   else if( obs_kind == QTY_GEOPOTENTIAL_HEIGHT ) then
       if( my_task_id() == 0 ) print*, '*** geopotential height forward operator not tested'
 
       ! make sure vector includes the needed field
@@ -2164,7 +2164,7 @@ else
 
    ! Surface Elevation has been added by Ryan Torn to accommodate altimeter observations.
    !   HGT is not in the dart_ind vector, so get it from wrf%dom(id)%hgt.
-   else if( obs_kind == KIND_SURFACE_ELEVATION ) then
+   else if( obs_kind == QTY_SURFACE_ELEVATION ) then
 
       if ( debug ) print*,'Getting surface elevation'
 
@@ -2189,7 +2189,7 @@ else
    !-----------------------------------------------------
    ! 1.y Surface Skin Temperature (TSK)
 
-   else if( obs_kind == KIND_SKIN_TEMPERATURE ) then
+   else if( obs_kind == QTY_SKIN_TEMPERATURE ) then
      ! make sure vector includes the needed field
      if ( wrf%dom(id)%type_tsk >= 0 ) then
         call surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf%dom(id)%type_tsk, dxm, dx, dy, dym, ens_size, state_ens_handle)
@@ -2200,7 +2200,7 @@ else
 
    ! Land Mask has been added to accommodate satellite observations.
    !   XLAND is not in the dart_ind vector, so get it from wrf%dom(id)%land
-   else if( obs_kind == KIND_LANDMASK ) then
+   else if( obs_kind == QTY_LANDMASK ) then
       if( my_task_id() == 0 ) print*, '*** Land mask forward operator not tested'
 
       if ( debug ) print*,'Getting land mask'
@@ -7465,44 +7465,44 @@ row = 0
 ! fill default state variable table here.
 row = row+1
 default_table(:,row) = (/ 'U                    ', &
-                          'KIND_U_WIND_COMPONENT', &
+                          'QTY_U_WIND_COMPONENT', &
                           'TYPE_U               ', &
                           'UPDATE               ', &
                           '999                  '  /)
 row = row+1
 default_table(:,row) = (/ 'V                    ', &
-                          'KIND_V_WIND_COMPONENT', &
+                          'QTY_V_WIND_COMPONENT', &
                           'TYPE_V               ', &
                           'UPDATE               ', &
                           '999                  '  /)
 row = row+1
 default_table(:,row) = (/ 'W                     ', &
-                          'KIND_VERTICAL_VELOCITY', &
+                          'QTY_VERTICAL_VELOCITY', &
                           'TYPE_W                ', &
                           'UPDATE                ', &
                           '999                   '  /)
 row = row+1
 default_table(:,row) = (/ 'PH                      ', &
-                          'KIND_GEOPOTENTIAL_HEIGHT', &
+                          'QTY_GEOPOTENTIAL_HEIGHT', &
                           'TYPE_GZ                 ', &
                           'UPDATE                  ', &
                           '999                     '  /)
 row = row+1
 default_table(:,row) = (/ 'T                         ', &
-                          'KIND_POTENTIAL_TEMPERATURE', &
+                          'QTY_POTENTIAL_TEMPERATURE', &
                           'TYPE_T                    ', &
                           'UPDATE                    ', &
                           '999                       '  /)
 row = row+1
 default_table(:,row) = (/ 'MU           ', &
-                          'KIND_PRESSURE', &
+                          'QTY_PRESSURE', &
                           'TYPE_MU      ', &
                           'UPDATE       ', &
                           '999          '  /)
 
 row = row+1
 default_table(:,row) = (/ 'QVAPOR                 ', &
-                          'KIND_VAPOR_MIXING_RATIO', &
+                          'QTY_VAPOR_MIXING_RATIO', &
                           'TYPE_QV                ', &
                           'UPDATE                 ', &
                           '999                    '  /)
@@ -7545,22 +7545,22 @@ do i = 1, row
    ! end of the list?
    if (wrf_state_variables(2, i) == 'NULL') exit
 
-   nextkind = get_raw_obs_kind_index(trim(wrf_state_variables(2, i)))
+   nextkind = get_index_for_quantity(trim(wrf_state_variables(2, i)))
    select case(nextkind)
 
    ! wrf stores potential temperature (temperature perturbations around a 
    ! threshold) but we can interpolate sensible temperature from it
-   case (KIND_POTENTIAL_TEMPERATURE)
-      in_state_vector(KIND_TEMPERATURE) = .true.
-      in_state_vector(KIND_POTENTIAL_TEMPERATURE) = .true.
+   case (QTY_POTENTIAL_TEMPERATURE)
+      in_state_vector(QTY_TEMPERATURE) = .true.
+      in_state_vector(QTY_POTENTIAL_TEMPERATURE) = .true.
 
    ! we use vapor mixing ratio to compute specific humidity
-   case (KIND_VAPOR_MIXING_RATIO)
-      in_state_vector(KIND_VAPOR_MIXING_RATIO) = .true.
-      in_state_vector(KIND_SPECIFIC_HUMIDITY) = .true.
+   case (QTY_VAPOR_MIXING_RATIO)
+      in_state_vector(QTY_VAPOR_MIXING_RATIO) = .true.
+      in_state_vector(QTY_SPECIFIC_HUMIDITY) = .true.
 
    ! unrecognized kind string in namelist.
-   ! 0 is actually KIND_RAW_STATE_VARIABLE and not supported here.
+   ! 0 is actually QTY_RAW_STATE_VARIABLE and not supported here.
    case (-1, 0) 
       write(errstring, *) 'unrecognized KIND string: ' // trim(wrf_state_variables(2, i))
       call error_handler(E_ERR, 'fill_dart_kinds_table', errstring, &
@@ -7572,15 +7572,15 @@ do i = 1, row
 
    end select
 
-   ! NOTE: PSFC can be labeled either KIND_PRESSURE or KIND_SURFACE_PRESSURE
+   ! NOTE: PSFC can be labeled either QTY_PRESSURE or QTY_SURFACE_PRESSURE
    ! in the namelist, but make sure however it is labeled that for now we 
    ! allow surface pressure interpolation.  this may go away once we work out
-   ! KIND_FOO vs KIND_SURFACE_FOO - are they fundamentally different things
-   ! or should the decision be made based on a KIND_FOO and the vertical
+   ! QTY_FOO vs QTY_SURFACE_FOO - are they fundamentally different things
+   ! or should the decision be made based on a QTY_FOO and the vertical
    ! location type -- if it is VERTISSURFACE, then you do the 2d calc in the
    ! surface field, otherwise you do the full-up 3d interpolation.
    if ( wrf_state_variables(1, i) == 'PSFC' ) then
-      in_state_vector(KIND_SURFACE_PRESSURE) = .true.
+      in_state_vector(QTY_SURFACE_PRESSURE) = .true.
    endif
 
 enddo
@@ -7595,12 +7595,12 @@ do i = 1, size(in_state_vector)
    select case(i)
   
    ! the vortex center computations require wind speeds and phb?
-   case (KIND_VORTEX_LAT, KIND_VORTEX_LON, KIND_VORTEX_PMIN, KIND_VORTEX_WMAX)
-      if ((.not. in_state_vector(KIND_U_WIND_COMPONENT))   .or. &
-          (.not. in_state_vector(KIND_V_WIND_COMPONENT))   .or. &
-          (.not. in_state_vector(KIND_TEMPERATURE))        .or. &
-          (.not. in_state_vector(KIND_VAPOR_MIXING_RATIO)) .or. &
-          (.not. in_state_vector(KIND_PRESSURE))) then
+   case (QTY_VORTEX_LAT, QTY_VORTEX_LON, QTY_VORTEX_PMIN, QTY_VORTEX_WMAX)
+      if ((.not. in_state_vector(QTY_U_WIND_COMPONENT))   .or. &
+          (.not. in_state_vector(QTY_V_WIND_COMPONENT))   .or. &
+          (.not. in_state_vector(QTY_TEMPERATURE))        .or. &
+          (.not. in_state_vector(QTY_VAPOR_MIXING_RATIO)) .or. &
+          (.not. in_state_vector(QTY_PRESSURE))) then
          write(errstring, *) 'VORTEX kinds will require U,V,T,QVAPOR,MU in state vector'
          ! FIXME: not fatal error, just informative at this point.
          call error_handler(E_MSG, 'fill_dart_kinds_table', errstring, &
@@ -7608,8 +7608,8 @@ do i = 1, size(in_state_vector)
       endif
  
    ! if you have one wind component you have to have both
-   case (KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT)
-      if (in_state_vector(KIND_U_WIND_COMPONENT) .neqv. in_state_vector(KIND_V_WIND_COMPONENT)) then
+   case (QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT)
+      if (in_state_vector(QTY_U_WIND_COMPONENT) .neqv. in_state_vector(QTY_V_WIND_COMPONENT)) then
          write(errstring, *) 'WIND kinds will require both U,V in state vector'
          ! FIXME: not fatal error, just informative at this point.
          call error_handler(E_MSG, 'fill_dart_kinds_table', errstring, &
@@ -7624,7 +7624,7 @@ enddo
 
 ! part 3: fields you just have to have, always, and other exceptions
 ! and things that break the rules.
-if (.not. in_state_vector(KIND_GEOPOTENTIAL_HEIGHT)) then
+if (.not. in_state_vector(QTY_GEOPOTENTIAL_HEIGHT)) then
    write(errstring, *) 'PH is always a required field'
    call error_handler(E_ERR, 'fill_dart_kinds_table', errstring, &
                       source, revision, revdate)
@@ -7632,8 +7632,8 @@ endif
 
 ! FIXME: is this true?  or is pressure always required, and surface
 ! pressure required only if you have any of the surface obs?
-if ((.not. in_state_vector(KIND_PRESSURE)) .and. &
-    (.not. in_state_vector(KIND_SURFACE_PRESSURE))) then
+if ((.not. in_state_vector(QTY_PRESSURE)) .and. &
+    (.not. in_state_vector(QTY_SURFACE_PRESSURE))) then
     write(errstring, *) 'One of MU or PSFC is a required field'
     call error_handler(E_ERR, 'fill_dart_kinds_table', errstring, &
                        source, revision, revdate)
@@ -7642,25 +7642,25 @@ endif
 ! surface elevation is read in outside the state vector mechanism,
 ! directly from the wrfinput template file, and does not vary from
 ! one ensemble member to another.
-in_state_vector(KIND_SURFACE_ELEVATION) = .true.
+in_state_vector(QTY_SURFACE_ELEVATION) = .true.
 
 ! there is no field that directly maps to the vortex measurements.
 ! if you have all the fields it needs, allow them.
-if (in_state_vector(KIND_U_WIND_COMPONENT)    .and. &
-    in_state_vector(KIND_V_WIND_COMPONENT)    .and. &
-    in_state_vector(KIND_TEMPERATURE)         .and. &
-    in_state_vector(KIND_VAPOR_MIXING_RATIO)  .and. &
-    in_state_vector(KIND_PRESSURE)) then        ! ok to add vortex types
-   in_state_vector(KIND_VORTEX_LAT)  = .true.
-   in_state_vector(KIND_VORTEX_LON)  = .true.
-   in_state_vector(KIND_VORTEX_PMIN) = .true.
-   in_state_vector(KIND_VORTEX_WMAX) = .true.
+if (in_state_vector(QTY_U_WIND_COMPONENT)    .and. &
+    in_state_vector(QTY_V_WIND_COMPONENT)    .and. &
+    in_state_vector(QTY_TEMPERATURE)         .and. &
+    in_state_vector(QTY_VAPOR_MIXING_RATIO)  .and. &
+    in_state_vector(QTY_PRESSURE)) then        ! ok to add vortex types
+   in_state_vector(QTY_VORTEX_LAT)  = .true.
+   in_state_vector(QTY_VORTEX_LON)  = .true.
+   in_state_vector(QTY_VORTEX_PMIN) = .true.
+   in_state_vector(QTY_VORTEX_WMAX) = .true.
 endif
  
 ! if you have geopotential height and pressure, you can compute
 ! a density value.
-if (in_state_vector(KIND_GEOPOTENTIAL_HEIGHT) .and. &
-    in_state_vector(KIND_PRESSURE) ) in_state_vector(KIND_DENSITY) = .true.
+if (in_state_vector(QTY_GEOPOTENTIAL_HEIGHT) .and. &
+    in_state_vector(QTY_PRESSURE) ) in_state_vector(QTY_DENSITY) = .true.
 
 
 ! allow reflectivity to be asked for, because the obs_def has an alternative
@@ -7668,8 +7668,8 @@ if (in_state_vector(KIND_GEOPOTENTIAL_HEIGHT) .and. &
 ! is not allowed it will error exit instead of returning with an invalid istatus
 ! to indicate to the caller that the interpolation failed.
 ! ditto for power weighted fall speed.
-in_state_vector(KIND_RADAR_REFLECTIVITY) = .true.
-in_state_vector(KIND_POWER_WEIGHTED_FALL_SPEED) = .true.
+in_state_vector(QTY_RADAR_REFLECTIVITY) = .true.
+in_state_vector(QTY_POWER_WEIGHTED_FALL_SPEED) = .true.
 
 ! FIXME:  i was going to suggest nuking this routine all together because it makes
 ! the default behavior be to exit with an error when requesting to interpolate an
@@ -8333,8 +8333,8 @@ UNIQUEK_LOOP: do uk = 1, size(uniquek)
 
    else
 
-      if ( obs_kind == KIND_VORTEX_LAT .or. obs_kind == KIND_VORTEX_LON .or. &
-        obs_kind == KIND_VORTEX_PMIN ) then
+      if ( obs_kind == QTY_VORTEX_LAT .or. obs_kind == QTY_VORTEX_LON .or. &
+        obs_kind == QTY_VORTEX_PMIN ) then
 
          !!   define spline interpolation box dimensions
          xlen = center_track_xmax - center_track_xmin + 1
@@ -8361,16 +8361,16 @@ UNIQUEK_LOOP: do uk = 1, size(uniquek)
 
       endif
 
-      if ( (obs_kind == KIND_VORTEX_LAT .or. obs_kind == KIND_VORTEX_LON) .and. (.not. use_old_vortex) ) then
+      if ( (obs_kind == QTY_VORTEX_LAT .or. obs_kind == QTY_VORTEX_LON) .and. (.not. use_old_vortex) ) then
 
          call vorticity_one()
 
-      else if ( obs_kind == KIND_VORTEX_PMIN .or. (use_old_vortex .and. & 
-                  (obs_kind == KIND_VORTEX_LAT .or. obs_kind == KIND_VORTEX_LON)) ) then
+      else if ( obs_kind == QTY_VORTEX_PMIN .or. (use_old_vortex .and. & 
+                  (obs_kind == QTY_VORTEX_LAT .or. obs_kind == QTY_VORTEX_LON)) ) then
 
          call vorticity_two()
 
-      else if ( obs_kind == KIND_VORTEX_WMAX ) then   !  Maximum wind speed
+      else if ( obs_kind == QTY_VORTEX_WMAX ) then   !  Maximum wind speed
 
          call vorticity_three()
 
@@ -8384,7 +8384,7 @@ end subroutine vorticity_forward_operator
 
 !--------------------------------------------------------------------------
 !> vorticity one - need a better name than this
-!if ( (obs_kind == KIND_VORTEX_LAT .or. obs_kind == KIND_VORTEX_LON) .and. (.not. use_old_vortex) ) then
+!if ( (obs_kind == QTY_VORTEX_LAT .or. obs_kind == QTY_VORTEX_LON) .and. (.not. use_old_vortex) ) then
 subroutine vorticity_one()
 
 !  determine window that one would need wind components, thus circulation
@@ -8568,7 +8568,7 @@ else
 
    call ij_to_latlon(wrf%dom(id)%proj, cxloc, cyloc, clat, clon)
 
-   if ( obs_kind == KIND_VORTEX_LAT ) then
+   if ( obs_kind == QTY_VORTEX_LAT ) then
       fld(1) = clat
    else
       fld(1) = clon
@@ -8652,9 +8652,9 @@ subroutine vorticity_two()
 
             call ij_to_latlon(wrf%dom(id)%proj, cxloc, cyloc, clat, clon)
 
-            if ( obs_kind == KIND_VORTEX_PMIN ) then
+            if ( obs_kind == QTY_VORTEX_PMIN ) then
                fld(1) = vcrit
-            else if ( obs_kind == KIND_VORTEX_LAT ) then
+            else if ( obs_kind == QTY_VORTEX_LAT ) then
                 fld(1) = clat
             else
                 fld(1) = clon
@@ -8878,70 +8878,70 @@ integer, intent(in)  :: id
 part_of_state_vector = .false. ! assume not in state vector
 
 
-if    ( ( obs_kind == KIND_VERTICAL_VELOCITY)             .and. ( wrf%dom(id)%type_w >= 0 ) )  then
+if    ( ( obs_kind == QTY_VERTICAL_VELOCITY)             .and. ( wrf%dom(id)%type_w >= 0 ) )  then
    part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_w
-else if( ( obs_kind == KIND_RAINWATER_MIXING_RATIO )      .and. ( wrf%dom(id)%type_qr >= 0 ) ) then
+else if( ( obs_kind == QTY_RAINWATER_MIXING_RATIO )      .and. ( wrf%dom(id)%type_qr >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qr
-else if( ( obs_kind == KIND_GRAUPEL_MIXING_RATIO )        .and. ( wrf%dom(id)%type_qg >= 0 ) ) then
+else if( ( obs_kind == QTY_GRAUPEL_MIXING_RATIO )        .and. ( wrf%dom(id)%type_qg >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qg
-else if( ( obs_kind == KIND_HAIL_MIXING_RATIO )           .and. ( wrf%dom(id)%type_qh >= 0 ) ) then
+else if( ( obs_kind == QTY_HAIL_MIXING_RATIO )           .and. ( wrf%dom(id)%type_qh >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qh
-else if( ( obs_kind == KIND_SNOW_MIXING_RATIO )           .and. ( wrf%dom(id)%type_qs >= 0 ) ) then
+else if( ( obs_kind == QTY_SNOW_MIXING_RATIO )           .and. ( wrf%dom(id)%type_qs >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qs
-else if( ( obs_kind == KIND_CLOUD_ICE )                   .and. ( wrf%dom(id)%type_qi >= 0 ) ) then
+else if( ( obs_kind == QTY_CLOUD_ICE )                   .and. ( wrf%dom(id)%type_qi >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qi
-else if( ( obs_kind == KIND_CLOUD_LIQUID_WATER )          .and. ( wrf%dom(id)%type_qc >= 0 ) ) then
+else if( ( obs_kind == QTY_CLOUD_LIQUID_WATER )          .and. ( wrf%dom(id)%type_qc >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_qc
-else if( ( obs_kind == KIND_DROPLET_NUMBER_CONCENTR )     .and. ( wrf%dom(id)%type_qndrp >= 0 ) ) then
+else if( ( obs_kind == QTY_DROPLET_NUMBER_CONCENTR )     .and. ( wrf%dom(id)%type_qndrp >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qndrp
-else if( ( obs_kind == KIND_ICE_NUMBER_CONCENTRATION )    .and. ( wrf%dom(id)%type_qnice >= 0 ) )then
+else if( ( obs_kind == QTY_ICE_NUMBER_CONCENTRATION )    .and. ( wrf%dom(id)%type_qnice >= 0 ) )then
    part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_qnice
-else if( ( obs_kind == KIND_SNOW_NUMBER_CONCENTR )        .and. ( wrf%dom(id)%type_qnsnow >= 0 ) ) then
+else if( ( obs_kind == QTY_SNOW_NUMBER_CONCENTR )        .and. ( wrf%dom(id)%type_qnsnow >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qnsnow
-else if( ( obs_kind == KIND_RAIN_NUMBER_CONCENTR )        .and. ( wrf%dom(id)%type_qnrain >= 0 ) ) then
+else if( ( obs_kind == QTY_RAIN_NUMBER_CONCENTR )        .and. ( wrf%dom(id)%type_qnrain >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qnrain
-else if( ( obs_kind == KIND_GRAUPEL_NUMBER_CONCENTR )     .and. ( wrf%dom(id)%type_qngraupel >= 0 ) ) then
+else if( ( obs_kind == QTY_GRAUPEL_NUMBER_CONCENTR )     .and. ( wrf%dom(id)%type_qngraupel >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qngraupel
-else if( ( obs_kind == KIND_HAIL_NUMBER_CONCENTR )        .and. ( wrf%dom(id)%type_qnhail >= 0 ) ) then
+else if( ( obs_kind == QTY_HAIL_NUMBER_CONCENTR )        .and. ( wrf%dom(id)%type_qnhail >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_qnhail
-else if( ( obs_kind == KIND_CONDENSATIONAL_HEATING )      .and. ( wrf%dom(id)%type_hdiab >= 0 ) ) then
+else if( ( obs_kind == QTY_CONDENSATIONAL_HEATING )      .and. ( wrf%dom(id)%type_hdiab >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_hdiab
-else if( ( obs_kind == KIND_POWER_WEIGHTED_FALL_SPEED )   .and. ( wrf%dom(id)%type_fall_spd >= 0 ) ) then
+else if( ( obs_kind == QTY_POWER_WEIGHTED_FALL_SPEED )   .and. ( wrf%dom(id)%type_fall_spd >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_fall_spd
-else if( ( obs_kind == KIND_RADAR_REFLECTIVITY )          .and. ( wrf%dom(id)%type_refl >= 0 ) ) then
+else if( ( obs_kind == QTY_RADAR_REFLECTIVITY )          .and. ( wrf%dom(id)%type_refl >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_refl
-else if( ( obs_kind == KIND_DIFFERENTIAL_REFLECTIVITY )   .and. ( wrf%dom(id)%type_dref >= 0 ) ) then
+else if( ( obs_kind == QTY_DIFFERENTIAL_REFLECTIVITY )   .and. ( wrf%dom(id)%type_dref >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_dref
-else if( ( obs_kind == KIND_SPECIFIC_DIFFERENTIAL_PHASE ) .and. ( wrf%dom(id)%type_spdp >= 0 ) ) then
+else if( ( obs_kind == QTY_SPECIFIC_DIFFERENTIAL_PHASE ) .and. ( wrf%dom(id)%type_spdp >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_spdp
-else if ( ( obs_kind == KIND_VAPOR_MIXING_RATIO )         .and. ( wrf%dom(id)%type_qv >= 0 ) ) then
+else if ( ( obs_kind == QTY_VAPOR_MIXING_RATIO )         .and. ( wrf%dom(id)%type_qv >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_qv
-else if ( ( obs_kind == KIND_TEMPERATURE )                  .and. ( wrf%dom(id)%type_t >= 0 ) ) then
+else if ( ( obs_kind == QTY_TEMPERATURE )                  .and. ( wrf%dom(id)%type_t >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_t
-else if ( ( obs_kind == KIND_POTENTIAL_TEMPERATURE )        .and. ( wrf%dom(id)%type_t >= 0 ) ) then
+else if ( ( obs_kind == QTY_POTENTIAL_TEMPERATURE )        .and. ( wrf%dom(id)%type_t >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_t
-else if ( ( obs_kind == KIND_SKIN_TEMPERATURE )              .and. ( wrf%dom(id)%type_tsk >= 0 ) )then
+else if ( ( obs_kind == QTY_SKIN_TEMPERATURE )              .and. ( wrf%dom(id)%type_tsk >= 0 ) )then
    part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_tsk
 else

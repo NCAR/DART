@@ -22,7 +22,7 @@ use     mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utiliti
 use          location_mod, only : location_type, set_location, write_location,  &
                                   get_dist, get_location
 
-use          obs_kind_mod, only : get_raw_obs_kind_index, get_raw_obs_kind_name
+use          obs_kind_mod, only : get_index_for_quantity, get_name_for_quantity
                                   
 
 use      obs_sequence_mod, only : static_init_obs_sequence
@@ -206,7 +206,7 @@ call print_test_message('RUNNING TEST 4', &
 
 call create_state_window(ens_handle)
 
-mykindindex = get_raw_obs_kind_index(kind_of_interest)
+mykindindex = get_index_for_quantity(kind_of_interest)
 
 if ( do_output() ) write(*,*) "interpolating at di,dj,dk                   :", &
                                       loc_of_interest(1), &
@@ -272,7 +272,7 @@ call write_location(42, loc, fform='formatted', charstring=string1)
 
 if ( do_output() ) then
    write(*,*)
-   write(*,*)' indx ',iloc,' is type ',var_kind, 'name : ', get_raw_obs_kind_name(var_kind)
+   write(*,*)' indx ',iloc,' is type ',var_kind, 'name : ', get_name_for_quantity(var_kind)
    write(*,*)'   ', trim(string1)
 endif 
 

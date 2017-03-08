@@ -240,8 +240,8 @@ integer :: kind_count, type_count
 ! default to 'unset'.  at the end, anything unset will be
 ! changed to 1.0, which means impact like usual with no change.
 
-kind_count = get_num_raw_obs_kinds() 
-type_count = get_num_obs_kinds() 
+kind_count = get_num_quantities() 
+type_count = get_num_types_of_obs() 
 
 allocate(table(type_count, 0:kind_count))
 table(:,:) = missing_r8
@@ -315,7 +315,7 @@ where (table(:,:) == missing_r8) table(:,:) = 1.0_r8
 do j=0, ubound(table, 2)
    do i=1, ubound(table, 1)
       if (table(i, j) /= 1.0_r8) then
-         write(errline, '(2A33,F12.6)') get_obs_kind_name(i), get_raw_obs_kind_name(j), table(i,j)
+         write(errline, '(2A33,F12.6)') get_name_for_type_of_obs(i), get_name_for_quantity(j), table(i,j)
          call error_handler(E_MSG, 'read_impact_table', errline)
       endif
       ! if (table(i, j) /= 1.0_r8) print *, i, j, table(i,j)
@@ -343,8 +343,8 @@ integer :: index1, index2
 ! expect exactly 3 tokens on these lines:
 !  type  kind  real(r8)
 
-index1 = get_obs_kind_index(typename)
-index2 = get_raw_obs_kind_index(kindname)
+index1 = get_index_for_type_of_obs(typename)
+index2 = get_index_for_quantity(kindname)
 !print *, 'in set_impact, index values are: ', index1, index2
 
 if (index1 < 0) then
@@ -460,18 +460,18 @@ character(len=obstypelength), allocatable :: knowntypes(:)
 
 ! first, get all possible generic kinds from obs_kind_mod
 ! BEWARE!! the first kind number is 0!!!!!
-kind_count = get_num_raw_obs_kinds() 
+kind_count = get_num_quantities() 
 allocate(knownkinds(0:kind_count))
 do i=0, kind_count
-   knownkinds(i) = get_raw_obs_kind_name(i)
+   knownkinds(i) = get_name_for_quantity(i)
    call to_upper(knownkinds(i))
 enddo
 
 ! then, get all possible specific types from obs_kind_mod
-type_count = get_num_obs_kinds() 
+type_count = get_num_types_of_obs() 
 allocate(knowntypes(type_count))
 do i=1, type_count
-   knowntypes(i) = get_obs_kind_name(i)
+   knowntypes(i) = get_name_for_type_of_obs(i)
    call to_upper(knowntypes(i))
 enddo
 
@@ -1341,7 +1341,7 @@ typesfound = 0
 typeidlist(:) = -1
 
 do i=1, typecount
-   kindindex = get_obs_kind_var_type(i)
+   kindindex = get_quantity_for_type_of_obs(i)
    if (kindindex == givenkind) then
       typesfound = typesfound + 1
       typeidlist(typesfound) = i

@@ -127,52 +127,52 @@
 # options for assimilate and evaluate include:
 # (first column is the obs, second is what needs to be in the state vector
 # to compute it.)
-# ARGO_U_CURRENT_COMPONENT,      KIND_U_CURRENT_COMPONENT
-# ARGO_V_CURRENT_COMPONENT,      KIND_V_CURRENT_COMPONENT
-# ARGO_SALINITY,                 KIND_SALINITY
-# ARGO_TEMPERATURE,              KIND_TEMPERATURE
-# ADCP_U_CURRENT_COMPONENT,      KIND_U_CURRENT_COMPONENT
-# ADCP_V_CURRENT_COMPONENT,      KIND_V_CURRENT_COMPONENT
-# ADCP_SALINITY,                 KIND_SALINITY
-# ADCP_TEMPERATURE,              KIND_TEMPERATURE
-# FLOAT_SALINITY,                KIND_SALINITY
-# FLOAT_TEMPERATURE,             KIND_TEMPERATURE
-# DRIFTER_U_CURRENT_COMPONENT,   KIND_U_CURRENT_COMPONENT
-# DRIFTER_V_CURRENT_COMPONENT,   KIND_V_CURRENT_COMPONENT
-# DRIFTER_SALINITY,              KIND_SALINITY
-# DRIFTER_TEMPERATURE,           KIND_TEMPERATURE
-# GLIDER_U_CURRENT_COMPONENT,    KIND_U_CURRENT_COMPONENT
-# GLIDER_V_CURRENT_COMPONENT,    KIND_V_CURRENT_COMPONENT
-# GLIDER_SALINITY,               KIND_SALINITY
-# GLIDER_TEMPERATURE,            KIND_TEMPERATURE
-# MOORING_U_CURRENT_COMPONENT,   KIND_U_CURRENT_COMPONENT
-# MOORING_V_CURRENT_COMPONENT,   KIND_V_CURRENT_COMPONENT
-# MOORING_SALINITY,              KIND_SALINITY
-# MOORING_TEMPERATURE,           KIND_TEMPERATURE
-# MOORING_PRESSURE,              KIND_PRESSURE
-# BOTTLE_SALINITY,               KIND_SALINITY
-# BOTTLE_TEMPERATURE,            KIND_TEMPERATURE
-# CTD_SALINITY,                  KIND_SALINITY
-# CTD_TEMPERATURE,               KIND_TEMPERATURE
-# TCTD_SALINITY,                 KIND_SALINITY
-# TCTD_TEMPERATURE,              KIND_TEMPERATURE
-# STD_SALINITY,                  KIND_SALINITY
-# STD_TEMPERATURE,               KIND_TEMPERATURE
-# XCTD_SALINITY,                 KIND_SALINITY
-# XCTD_TEMPERATURE,              KIND_TEMPERATURE
-# MBT_SALINITY,                  KIND_SALINITY
-# MBT_TEMPERATURE,               KIND_TEMPERATURE
-# XBT_SALINITY,                  KIND_SALINITY
-# XBT_TEMPERATURE,               KIND_TEMPERATURE
-# DBT_SALINITY,                  KIND_SALINITY
-# DBT_TEMPERATURE,               KIND_TEMPERATURE
-# APB_SALINITY,                  KIND_SALINITY
-# APB_TEMPERATURE,               KIND_TEMPERATURE
-# DOPPLER_U_CURRENT_COMPONENT,   KIND_U_CURRENT_COMPONENT
-# DOPPLER_V_CURRENT_COMPONENT,   KIND_V_CURRENT_COMPONENT
-# DOPPLER_W_CURRENT_COMPONENT,   KIND_W_CURRENT_COMPONENT
-# SATELLITE_MICROWAVE_SST,       KIND_TEMPERATURE
-# SATELLITE_INFRARED_SST,        KIND_TEMPERATURE
+# ARGO_U_CURRENT_COMPONENT,      QTY_U_CURRENT_COMPONENT
+# ARGO_V_CURRENT_COMPONENT,      QTY_V_CURRENT_COMPONENT
+# ARGO_SALINITY,                 QTY_SALINITY
+# ARGO_TEMPERATURE,              QTY_TEMPERATURE
+# ADCP_U_CURRENT_COMPONENT,      QTY_U_CURRENT_COMPONENT
+# ADCP_V_CURRENT_COMPONENT,      QTY_V_CURRENT_COMPONENT
+# ADCP_SALINITY,                 QTY_SALINITY
+# ADCP_TEMPERATURE,              QTY_TEMPERATURE
+# FLOAT_SALINITY,                QTY_SALINITY
+# FLOAT_TEMPERATURE,             QTY_TEMPERATURE
+# DRIFTER_U_CURRENT_COMPONENT,   QTY_U_CURRENT_COMPONENT
+# DRIFTER_V_CURRENT_COMPONENT,   QTY_V_CURRENT_COMPONENT
+# DRIFTER_SALINITY,              QTY_SALINITY
+# DRIFTER_TEMPERATURE,           QTY_TEMPERATURE
+# GLIDER_U_CURRENT_COMPONENT,    QTY_U_CURRENT_COMPONENT
+# GLIDER_V_CURRENT_COMPONENT,    QTY_V_CURRENT_COMPONENT
+# GLIDER_SALINITY,               QTY_SALINITY
+# GLIDER_TEMPERATURE,            QTY_TEMPERATURE
+# MOORING_U_CURRENT_COMPONENT,   QTY_U_CURRENT_COMPONENT
+# MOORING_V_CURRENT_COMPONENT,   QTY_V_CURRENT_COMPONENT
+# MOORING_SALINITY,              QTY_SALINITY
+# MOORING_TEMPERATURE,           QTY_TEMPERATURE
+# MOORING_PRESSURE,              QTY_PRESSURE
+# BOTTLE_SALINITY,               QTY_SALINITY
+# BOTTLE_TEMPERATURE,            QTY_TEMPERATURE
+# CTD_SALINITY,                  QTY_SALINITY
+# CTD_TEMPERATURE,               QTY_TEMPERATURE
+# TCTD_SALINITY,                 QTY_SALINITY
+# TCTD_TEMPERATURE,              QTY_TEMPERATURE
+# STD_SALINITY,                  QTY_SALINITY
+# STD_TEMPERATURE,               QTY_TEMPERATURE
+# XCTD_SALINITY,                 QTY_SALINITY
+# XCTD_TEMPERATURE,              QTY_TEMPERATURE
+# MBT_SALINITY,                  QTY_SALINITY
+# MBT_TEMPERATURE,               QTY_TEMPERATURE
+# XBT_SALINITY,                  QTY_SALINITY
+# XBT_TEMPERATURE,               QTY_TEMPERATURE
+# DBT_SALINITY,                  QTY_SALINITY
+# DBT_TEMPERATURE,               QTY_TEMPERATURE
+# APB_SALINITY,                  QTY_SALINITY
+# APB_TEMPERATURE,               QTY_TEMPERATURE
+# DOPPLER_U_CURRENT_COMPONENT,   QTY_U_CURRENT_COMPONENT
+# DOPPLER_V_CURRENT_COMPONENT,   QTY_V_CURRENT_COMPONENT
+# DOPPLER_W_CURRENT_COMPONENT,   QTY_W_CURRENT_COMPONENT
+# SATELLITE_MICROWAVE_SST,       QTY_TEMPERATURE
+# SATELLITE_INFRARED_SST,        QTY_TEMPERATURE
 
 &obs_kind_nml
    assimilate_these_obs_types = 'null',
@@ -202,16 +202,16 @@
 #  conversion routines (at the end of the model_mod.f90 file)
 #  are commented out here because they're for the atmosphere not ocean.
 #  we need to add a case for temp vs potential temp, and conversion code.
-#                    'tracer1',      'KIND_TRACER_CONCENTRATION' 
-#                          'u',      'KIND_EDGE_NORMAL_SPEED',
-#                'temperature',      'KIND_POTENTIAL_TEMPERATURE',
+#                    'tracer1',      'QTY_TRACER_CONCENTRATION' 
+#                          'u',      'QTY_EDGE_NORMAL_SPEED',
+#                'temperature',      'QTY_POTENTIAL_TEMPERATURE',
 
 &mpas_vars_nml
-   mpas_state_variables = 'temperature',            'KIND_TEMPERATURE',
-                          'salinity',               'KIND_SALINITY',
-                          'rho',                    'KIND_DENSITY',
-                          'uReconstructMeridional', 'KIND_U_CURRENT_COMPONENT',
-                          'uReconstructZonal',      'KIND_V_CURRENT_COMPONENT',
+   mpas_state_variables = 'temperature',            'QTY_TEMPERATURE',
+                          'salinity',               'QTY_SALINITY',
+                          'rho',                    'QTY_DENSITY',
+                          'uReconstructMeridional', 'QTY_U_CURRENT_COMPONENT',
+                          'uReconstructZonal',      'QTY_V_CURRENT_COMPONENT',
   /
 
 &model_to_dart_nml
@@ -322,11 +322,11 @@
 
 # possible vertical coordinate systems are:
 # VERTISUNDEF VERTISSURFACE VERTISLEVEL VERTISPRESSURE VERTISHEIGHT VERTISSCALEHEIGHT
-   kind_of_interest = 'KIND_TEMPERATURE',
-   kind_of_interest = 'KIND_SALINITY',
-   kind_of_interest = 'KIND_U_CURRENT',
-   kind_of_interest = 'KIND_V_CURRENT',
-   kind_of_interest = 'KIND_DENSITY',
+   kind_of_interest = 'QTY_TEMPERATURE',
+   kind_of_interest = 'QTY_SALINITY',
+   kind_of_interest = 'QTY_U_CURRENT',
+   kind_of_interest = 'QTY_V_CURRENT',
+   kind_of_interest = 'QTY_DENSITY',
 
 &model_mod_check_nml
    dart_input_file      = 'dart.second',
@@ -336,7 +336,7 @@
    test1thru             = 10,
    x_ind                = 300 ,
    loc_of_interest       = 240.0, 0.0, 10000.0,
-   kind_of_interest       = 'KIND_TEMPERATURE',
+   kind_of_interest       = 'QTY_TEMPERATURE',
    interp_test_lonrange  = 0.0, 359.0,
    interp_test_dlon      = 1.0,
    interp_test_latrange  = -89.0, 89.0,

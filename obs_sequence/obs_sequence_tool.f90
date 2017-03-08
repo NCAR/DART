@@ -18,9 +18,9 @@ use    utilities_mod, only : finalize_utilities, register_module, initialize_uti
 use     location_mod, only : location_type, get_location, set_location, &
                              LocationName !%! , vert_is_height 
                              ! see comment in select_gps_by_height() for explanation of !%!
-use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_kind, &
+use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_def_type_of_obs, &
                              get_obs_def_location
-use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_name, get_obs_kind_index
+use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs, get_index_for_type_of_obs
 use time_manager_mod, only : time_type, operator(>), print_time, set_time, &
                              print_date, set_calendar_type, GREGORIAN
 use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq, &
@@ -1152,13 +1152,13 @@ logical                 :: is_there_one, is_this_last
 integer                 :: size_seq_in
 integer                 :: i
 integer                 :: this_obs_kind
-! max_obs_kinds is a public from obs_kind_mod.f90 and really is
+! max_defined_types_of_obs is a public from obs_kind_mod.f90 and really is
 ! counting the max number of types, not kinds
-integer                 :: type_count(max_obs_kinds), identity_count
+integer                 :: type_count(max_defined_types_of_obs), identity_count
 
 
 ! Initialize input obs_types
-do i = 1, max_obs_kinds
+do i = 1, max_defined_types_of_obs
    type_count(i) = 0
 enddo
 identity_count = 0
@@ -1208,14 +1208,14 @@ if (gregorian_cal) &
 ObsLoop : do while ( .not. is_this_last)
 
    call get_obs_def(obs, this_obs_def)
-   this_obs_kind = get_obs_kind(this_obs_def)
+   this_obs_kind = get_obs_def_type_of_obs(this_obs_def)
    if (this_obs_kind < 0) then
       identity_count = identity_count + 1
    else
       type_count(this_obs_kind) = type_count(this_obs_kind) + 1
    endif
 !   print *, 'obs kind index = ', this_obs_kind
-!   if(this_obs_kind > 0)print *, 'obs name = ', get_obs_kind_name(this_obs_kind)
+!   if(this_obs_kind > 0)print *, 'obs name = ', get_name_for_type_of_obs(this_obs_kind)
 
    call get_next_obs(seq_in, obs, next_obs, is_this_last)
    if (.not. is_this_last) then 
@@ -1233,9 +1233,9 @@ write(msgstring1, *) 'Number of obs processed  :          ', size_seq_in
 call error_handler(E_MSG, '', msgstring1)
 write(msgstring1, *) '---------------------------------------------------------'
 call error_handler(E_MSG, '', msgstring1)
-do i = 1, max_obs_kinds
+do i = 1, max_defined_types_of_obs
    if (type_count(i) > 0) then 
-      write(msgstring1, '(a32,i8,a)') trim(get_obs_kind_name(i)), &
+      write(msgstring1, '(a32,i8,a)') trim(get_name_for_type_of_obs(i)), &
                                      type_count(i), ' obs'
       call error_handler(E_MSG, '', msgstring1)
    endif
@@ -1447,7 +1447,7 @@ end subroutine set_new_data
 !%! real(r8)             :: ll(3), vloc
 !%! 
 !%! ! figure out what index number GPS obs are
-!%! gps_type_index = get_obs_kind_index('GPSRO_REFRACTIVITY')
+!%! gps_type_index = get_index_for_type_of_obs('GPSRO_REFRACTIVITY')
 !%! if (gps_type_index < 0) then
 !%!    write(msgstring1,*) 'obs_type GPSRO_REFRACTIVITY not found'
 !%!    call error_handler(E_ERR,'select_gps_by_height', msgstring1, &
@@ -1476,7 +1476,7 @@ end subroutine set_new_data
 !%!    ! verify GPS obs first, then do height
 !%! 
 !%!    call get_obs_def(obs, obs_def)
-!%!    this_obs_type = get_obs_kind(obs_def)
+!%!    this_obs_type = get_obs_def_type_of_obs(obs_def)
 !%!    if (this_obs_type /= gps_type_index) then
 !%!       ! we are going to keep this
 !%!       above = .true.   
@@ -1569,7 +1569,7 @@ end subroutine set_new_data
 !#! endif
 !#! 
 !#! call get_obs_def(this_obs, this_obs_def)
-!#! this_obs_type = get_obs_kind(this_obs_def)
+!#! this_obs_type = get_obs_def_type_of_obs(this_obs_def)
 !#! 
 !#! ! do not alter identity obs
 !#! if (this_obs_type < 0) return

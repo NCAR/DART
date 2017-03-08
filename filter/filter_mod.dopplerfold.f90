@@ -20,7 +20,7 @@ use obs_sequence_mod,      only : read_obs_seq, obs_type, obs_sequence_type,    
                                   destroy_obs_sequence, get_qc_meta_data, add_qc
                                  
 use obs_def_mod,           only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
-                                  get_obs_kind
+                                  get_obs_def_type_of_obs
 use obs_def_utilities_mod, only : set_debug_fwd_op
 use time_manager_mod,      only : time_type, get_time, set_time, operator(/=), operator(>),   &
                                   operator(-), print_time
@@ -2358,7 +2358,7 @@ subroutine update_observations_radar(obs_ens_handle, ens_size, seq, keys, prior_
       OBS_ERR_VAR_COPY, DART_qc_index, PRIOR_DIAG)
 
 
-use obs_def_mod, only          : get_obs_def_key, get_obs_kind
+use obs_def_mod, only          : get_obs_def_key, get_obs_def_type_of_obs
 use obs_kind_mod, only         : DOPPLER_RADIAL_VELOCITY
 use obs_def_radar_mod, only    : get_obs_def_radial_vel
 use location_mod, only         : location_type
@@ -2416,7 +2416,7 @@ do j = 1, obs_ens_handle%my_num_vars
    this_obs_key = obs_ens_handle%copies(OBS_KEY_COPY, j) 
    call get_obs_from_key(seq, this_obs_key, observation)
    call get_obs_def(observation, obs_def)
-   obs_kind_ind = get_obs_kind(obs_def)
+   obs_kind_ind = get_obs_def_type_of_obs(obs_def)
    if (obs_kind_ind == DOPPLER_RADIAL_VELOCITY) then
       obs_prior_mean = obs_ens_handle%copies(OBS_MEAN_START, j)
       obs_val = obs_ens_handle%copies(OBS_VAL_COPY, j)
@@ -2462,7 +2462,7 @@ call broadcast_copy(obs_ens_handle, OBS_VAL_COPY, updated_obs)
 do j = 1, num_obs_in_set
    call get_obs_from_key(seq, keys(j), observation) 
    call get_obs_def(observation, obs_def)
-   obs_kind_ind = get_obs_kind(obs_def)
+   obs_kind_ind = get_obs_def_type_of_obs(obs_def)
    if (obs_kind_ind == DOPPLER_RADIAL_VELOCITY) then
       call get_obs_values(observation, obs_temp(1:1), obs_val_index)
       obs_val = updated_obs(j)

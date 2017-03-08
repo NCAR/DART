@@ -52,9 +52,9 @@ use    utilities_mod, only : register_module, initialize_utilities,            &
                              do_nml_file, do_nml_term, get_next_filename,      &
                              finalize_utilities, logfileunit
 use     location_mod, only : location_type, operator(/=)
-use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_kind,     &
+use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_def_type_of_obs,     &
                              get_obs_def_location
-use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_name
+use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs
 use time_manager_mod, only : time_type, print_date, print_time, set_time,      &
                              set_calendar_type, get_calendar_type,             &
                              operator(/=), operator(>), NO_CALENDAR
@@ -737,13 +737,13 @@ logical                 :: is_there_one, is_this_last
 integer                 :: size_seq_in
 integer                 :: i
 integer                 :: this_obs_kind
-! max_obs_kinds is a public from obs_kind_mod.f90 and really is
+! max_defined_types_of_obs is a public from obs_kind_mod.f90 and really is
 ! counting the max number of types, not kinds
-integer                 :: type_count(max_obs_kinds), identity_count
+integer                 :: type_count(max_defined_types_of_obs), identity_count
 
 
 ! Initialize input obs_types
-do i = 1, max_obs_kinds
+do i = 1, max_defined_types_of_obs
    type_count(i) = 0
 enddo
 identity_count = 0
@@ -796,7 +796,7 @@ if (cal) call print_date(get_obs_def_time(this_obs_def), '   calendar Date: ')
 ObsLoop : do while ( .not. is_this_last)
 
    call get_obs_def(obs, this_obs_def)
-   this_obs_kind = get_obs_kind(this_obs_def)
+   this_obs_kind = get_obs_def_type_of_obs(this_obs_def)
    if (this_obs_kind < 0) then
       identity_count = identity_count + 1
    else
@@ -818,9 +818,9 @@ write(msgstring, *) 'Number of obs processed  :          ', size_seq_in
 call error_handler(E_MSG, '', msgstring)
 write(msgstring, *) '---------------------------------------------------------'
 call error_handler(E_MSG, '', msgstring)
-do i = 1, max_obs_kinds
+do i = 1, max_defined_types_of_obs
    if (type_count(i) > 0) then
-      write(msgstring, '(a32,i8,a)') trim(get_obs_kind_name(i)), &
+      write(msgstring, '(a32,i8,a)') trim(get_name_for_type_of_obs(i)), &
                                      type_count(i), ' obs'
       call error_handler(E_MSG, '', msgstring)
    endif
@@ -1016,7 +1016,7 @@ all_good = .false.
 call get_obs_def(obs_in(1), test1_obs_def)
 test1_obs_loc  = get_obs_def_location(test1_obs_def)
 test1_obs_time = get_obs_def_time(test1_obs_def)
-test1_obs_type = get_obs_kind(test1_obs_def)
+test1_obs_type = get_obs_def_type_of_obs(test1_obs_def)
 call get_qc(obs_in(1), temp, indx)
 test1_qc = nint(temp(1))
 
@@ -1026,7 +1026,7 @@ do i = 2, count
    call get_obs_def(obs_in(i), testN_obs_def)
    testN_obs_loc  = get_obs_def_location(testN_obs_def)
    testN_obs_time = get_obs_def_time(testN_obs_def)
-   testN_obs_type = get_obs_kind(testN_obs_def)
+   testN_obs_type = get_obs_def_type_of_obs(testN_obs_def)
    call get_qc(obs_in(i), temp, indx)
    testN_qc = nint(temp(1))
 

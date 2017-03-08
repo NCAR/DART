@@ -175,11 +175,11 @@
    assimilation_period_seconds = 0
    vert_localization_coord     = 3
    debug                       = 1
-   variables = 'temp',   'KIND_TEMPERATURE',          'NA', 'NA', 'update',
-               'salt',   'KIND_SALINITY',            '0.0', 'NA', 'update',
-               'u',      'KIND_U_CURRENT_COMPONENT',  'NA', 'NA', 'update',
-               'v',      'KIND_V_CURRENT_COMPONENT',  'NA', 'NA', 'update',
-               'zeta',   'KIND_SEA_SURFACE_HEIGHT'    'NA', 'NA', 'update',
+   variables = 'temp',   'QTY_TEMPERATURE',          'NA', 'NA', 'update',
+               'salt',   'QTY_SALINITY',            '0.0', 'NA', 'update',
+               'u',      'QTY_U_CURRENT_COMPONENT',  'NA', 'NA', 'update',
+               'v',      'QTY_V_CURRENT_COMPONENT',  'NA', 'NA', 'update',
+               'zeta',   'QTY_SEA_SURFACE_HEIGHT'    'NA', 'NA', 'update',
   /
 
 
@@ -299,8 +299,8 @@
 &forward_operator_nml
 /
 
-   kind_of_interest      = 'KIND_U_CURRENT_COMPONENT'
-                            KIND_SEA_SURFACE_HEIGHT
+   kind_of_interest      = 'QTY_U_CURRENT_COMPONENT'
+                            QTY_SEA_SURFACE_HEIGHT
    x_ind                 = 4210 #TEMP (229, 36.6667, 4.xx)
    x_ind                 = 367400 # SSH (229 36.6667)
    x_ind                 = 93530
@@ -311,7 +311,7 @@
    x_ind                 = 87370
    num_ens               = 1
    loc_of_interest       = 231.0, 40.0, 10.0
-   kind_of_interest      = 'KIND_SEA_SURFACE_HEIGHT'
+   kind_of_interest      = 'QTY_SEA_SURFACE_HEIGHT'
    interp_test_dlon      = 0.1
    interp_test_dlat      = 0.1
    interp_test_dvert     = 5.0
@@ -329,7 +329,7 @@
 &test_grid_nml
    x_ind                 = 87370
    loc_of_interest       = 16.0500, 35.1000, 2.5
-   kind_of_interest      = 'KIND_CLOUD_ICE'
+   kind_of_interest      = 'QTY_CLOUD_ICE'
    interp_test_di        = 0.5
    interp_test_dj        = 0.5
    interp_test_dk        = 1.0

@@ -22,7 +22,7 @@ use          location_mod, only : location_type, set_location, write_location,  
                                   VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT,    &
                                   VERTISSCALEHEIGHT, get_location
 
-use          obs_kind_mod, only : get_raw_obs_kind_name
+use          obs_kind_mod, only : get_name_for_quantity
 
 use  ensemble_manager_mod, only : ensemble_type
 
@@ -254,7 +254,7 @@ do ifield = 1, 3
    call nc_check(nf90_def_var(ncid=ncid, name=field_name(ifield), xtype=nf90_double, &
            dimids=(/ NIDimID, NJDimID, NKDimID /), varid=VarID(ifield)), 'test_interpolate_range', &
                     'field def_var '//trim(ncfilename))
-   kind_of_interest = get_raw_obs_kind_name(mykindindex)
+   kind_of_interest = get_name_for_quantity(mykindindex)
    call nc_check(nf90_put_att(ncid, VarID(ifield), 'long_name', kind_of_interest), &
               'test_interpolate_range', 'put_att field long_name '//trim(ncfilename))
    call nc_check(nf90_put_att(ncid, VarID(ifield), '_FillValue', MISSING_R8), &

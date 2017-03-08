@@ -1081,9 +1081,9 @@ Given a model state, returns the value of the variable encoded in
 interpolated to a given location by a method of the model's choosing.  
 Currently DART 
 <A HREF="../../obs_kind/obs_kind_mod.html"><em class=code>KIND</em></A>s:
-KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_SURFACE_PRESSURE,
-KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE are supported, but
-others can be added.  KIND_PRESSURE does not have a corresponding field on
+QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, QTY_SURFACE_PRESSURE,
+QTY_TEMPERATURE, QTY_SPECIFIC_HUMIDITY, QTY_PRESSURE are supported, but
+others can be added.  QTY_PRESSURE does not have a corresponding field on
 CAM initial files, but is routinely calculated in CAM using its own
 subroutines.  Interpolation of this field has been incorporated in order to
 facilitate assimilations of observations which require it, such as GPS
@@ -2130,7 +2130,7 @@ and the model's highest level.
 <TR><TD><em class=code>level_index</em></TD>
     <TD>Index of the level for which this obs_kind must be retrieved.</TD></TR>
 <TR><TD><em class=code>obs_kind</em></TD>
-    <TD>The DART <em class=code>KIND</em> of variable being interpolated, e.g. KIND_TEMPERATURE.</TD></TR>
+    <TD>The DART <em class=code>KIND</em> of variable being interpolated, e.g. QTY_TEMPERATURE.</TD></TR>
 <TR><TD><em class=code>val</em></TD>
     <TD>The value of the obs_kind variable interpolated from state vector x.</TD></TR>
 <TR><TD valign=top><em class=code>istatus</em></TD>
@@ -3488,7 +3488,7 @@ ISSUE; In convert_vert, if a 2D field has dimensions (lev, lat) then how is p_su
        Code would be needed to set the missing dimension to 1, or make
        different calls to coord_ind, etc.
 
-ISSUE; The KIND_ list from obs_def_mod must be updated when new fields are added to state vector.
+ISSUE; The QTY_ list from obs_def_mod must be updated when new fields are added to state vector.
        This could be done by the preprocessor when it inserts the code bits corresponding to the
        lists of observation types, but it currently (10/06) does not.  Document accordingly.
 
@@ -3587,7 +3587,7 @@ i.e. GWD parameters.
        Code would be needed to set the missing dimension to 1, or make
        different calls to coord_ind, etc.
 
-<LI>ISSUE; The KIND_ list from obs_def_mod must be updated when new fields are added to state vector.
+<LI>ISSUE; The QTY_ list from obs_def_mod must be updated when new fields are added to state vector.
        This could be done by the preprocessor when it inserts the code bits corresponding to the
        lists of observation types, but it currently (10/06) does not.  Document accordingly.
 

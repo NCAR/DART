@@ -26,10 +26,10 @@ use     location_mod, only : location_type, is_location_in_region
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
                              write_obs_def, destroy_obs_def, copy_obs_def, &
                              interactive_obs_def, get_obs_def_location, &
-                             get_obs_kind, &
+                             get_obs_def_type_of_obs, &
                              get_obs_def_key
-use     obs_kind_mod, only : write_obs_kind, read_obs_kind, max_obs_kinds, &
-                             get_obs_kind_index
+use     obs_kind_mod, only : write_type_of_obs_table, read_type_of_obs_table, max_defined_types_of_obs, &
+                             get_index_for_type_of_obs
 use time_manager_mod, only : time_type, operator(>), operator(<), &
                              operator(>=), operator(/=), set_time, &
                              operator(-), operator(+), operator(==)
@@ -1068,7 +1068,7 @@ type(obs_sequence_type), intent(in) :: seq
 character(len=*),        intent(in) :: file_name
 
 integer :: i, file_id, rc
-integer :: have(max_obs_kinds)
+integer :: have(max_defined_types_of_obs)
 character(len=11) :: useform
 
 
@@ -1102,7 +1102,7 @@ endif
 call set_used_kinds(seq, have)
 
 ! Write the TOC, with only the kinds that exist in this seq.
-call write_obs_kind(file_id, useform, have)
+call write_type_of_obs_table(file_id, useform, have)
 
 ! First inefficient ugly pass at writing an obs sequence, need to 
 ! update for storage size.  CHANGE - use num_obs for the max_num_obs, to
@@ -1311,7 +1311,7 @@ endif
 ! and we've read the 'obs_sequence' header string.
 
 ! Read in the obs_kind mapping table.  (second arg was pre_I_format)
-call read_obs_kind(file_id, .false., read_format)
+call read_type_of_obs_table(file_id, .false., read_format)
 
 ! Read in the rest of the header information
 if (read_format == 'formatted') then
@@ -1591,7 +1591,7 @@ endif
 
 ! Get index numbers for each type string
 do i=1, num_obs_input_types
-   obs_type_index(i) = get_obs_kind_index(obs_input_types(i))
+   obs_type_index(i) = get_index_for_type_of_obs(obs_input_types(i))
    if (obs_type_index(i) < 0) then
       write(string1,*) 'obs_type ', trim(obs_input_types(i)), ' not found'
       call error_handler(E_ERR,'delete_obs_by_typelist', string1, &
@@ -1620,7 +1620,7 @@ is_this_last = .false.
 allobs : do while (.not. is_this_last)
 
    call get_obs_def(obs, obs_def)
-   this_obs_type = get_obs_kind(obs_def)
+   this_obs_type = get_obs_def_type_of_obs(obs_def)
 !print *, 'this_obs_key, type = ', obs%key, this_obs_type
 
    ! Do we keep things on the list, or toss them?
@@ -1805,7 +1805,7 @@ endif
 
 ! Get index number for the type
 if (len(trim(obs_type_name)) > 0) then
-   obs_type_index = get_obs_kind_index(obs_type_name)
+   obs_type_index = get_index_for_type_of_obs(obs_type_name)
    if (obs_type_index < 0) then
       write(string1,*) 'obs_type ', trim(obs_type_name), ' not found'
       call error_handler(E_ERR,'delete_obs_by_copy', string1, &
@@ -1843,7 +1843,7 @@ allobs : do while (.not. is_this_last)
    ! need to check type here, or below?
    if (obs_type_index > 0) then
       call get_obs_def(obs, obs_def)
-      this_obs_type = get_obs_kind(obs_def)
+      this_obs_type = get_obs_def_type_of_obs(obs_def)
       !print *, 'this_obs_key, type = ', obs%key, this_obs_type
       if (this_obs_type /= obs_type_index) remove_me = .true.
    endif
@@ -1997,7 +1997,7 @@ do i=1, num_obs
    ! of each obs, nothing about time or anything else.
    call get_obs_from_key(seq, i, obs)
    call get_obs_def(obs, obs_def)
-   obs_kind_ind = get_obs_kind(obs_def)
+   obs_kind_ind = get_obs_def_type_of_obs(obs_def)
    if (obs_kind_ind < 0) cycle   ! ignore identity obs
    have(obs_kind_ind) = 1
 enddo

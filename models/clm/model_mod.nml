@@ -7,9 +7,9 @@
    output_state_vector          = .true.,
    calendar                     = 'Gregorian',
    debug                        = 0,
-   clm_state_variables          = 'frac_sno',    'KIND_SNOWCOVER_FRAC',
-                                  'SNOWDP',      'KIND_SNOW_THICKNESS',
-                                  'T_SOISNO',    'KIND_SOIL_TEMPERATURE',
-                                  'leafc',       'KIND_LEAF_CARBON'
+   clm_state_variables          = 'frac_sno',    'QTY_SNOWCOVER_FRAC',
+                                  'SNOWDP',      'QTY_SNOW_THICKNESS',
+                                  'T_SOISNO',    'QTY_SOIL_TEMPERATURE',
+                                  'leafc',       'QTY_LEAF_CARBON'
    /
 

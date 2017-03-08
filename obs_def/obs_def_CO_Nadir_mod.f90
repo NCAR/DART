@@ -6,11 +6,11 @@
 
 
 ! BEGIN DART PREPROCESS KIND LIST
-! MOPITT_CO_RETRIEVAL, KIND_CO
-! IASI_CO_RETRIEVAL, KIND_CO
-! GEO_CO_ASI, KIND_CO
-! GEO_CO_NAM, KIND_CO
-! GEO_CO_EUR, KIND_CO
+! MOPITT_CO_RETRIEVAL, QTY_CO
+! IASI_CO_RETRIEVAL, QTY_CO
+! GEO_CO_ASI, QTY_CO
+! GEO_CO_NAM, QTY_CO
+! GEO_CO_EUR, QTY_CO
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -63,7 +63,7 @@ use     location_mod, only : location_type, set_location, get_location, VERTISPR
                              VERTISLEVEL, VERTISSURFACE
 
 use  assim_model_mod, only : interpolate
-use    obs_kind_mod, only  : KIND_CO, KIND_PRESSURE, KIND_SURFACE_PRESSURE
+use    obs_kind_mod, only  : QTY_CO, QTY_PRESSURE, QTY_SURFACE_PRESSURE
 use ensemble_manager_mod,  only : ensemble_type
 use obs_def_utilities_mod, only : track_status
 
@@ -296,7 +296,7 @@ p_col = MISSING_R8
 lev = 1
 model_levels: do
    locS = set_location(mloc(1),mloc(2),real(lev,r8),VERTISLEVEL)
-   call interpolate(state_handle, ens_size, locS, KIND_PRESSURE, p_col(:, lev), p_col_istatus)
+   call interpolate(state_handle, ens_size, locS, QTY_PRESSURE, p_col(:, lev), p_col_istatus)
    if (any(p_col_istatus /= 0)) then
       p_col(:, lev) = MISSING_R8
       num_levs = lev - 1
@@ -314,7 +314,7 @@ istatus = 0
 !the future the pressure values at the mid-points (need to create a new function
 !plevs_cam in model_mod using the the mid-levels hybrid coefs)
 locS = set_location(mloc(1),mloc(2),0.0_r8,VERTISSURFACE)
-call interpolate(state_handle, ens_size, locS, KIND_SURFACE_PRESSURE, p_col(:,num_levs), p_col_istatus)
+call interpolate(state_handle, ens_size, locS, QTY_SURFACE_PRESSURE, p_col(:,num_levs), p_col_istatus)
 call track_status(ens_size, p_col_istatus, p_col(:,num_levs), istatus, return_now)
 if (return_now) return
 
@@ -350,7 +350,7 @@ do i=start_i, end_i
 
       if ( any(bot_pres > top_pres) ) then
          loc3 = set_location(mloc(1),mloc(2),real(j,r8), VERTISLEVEL)
-         call interpolate(state_handle, ens_size, loc3, KIND_CO, obs_val_int, obs_val_int_istatus)
+         call interpolate(state_handle, ens_size, loc3, QTY_CO, obs_val_int, obs_val_int_istatus)
          call track_status(ens_size, obs_val_int_istatus, obs_val_int, istatus, return_now)
          if (return_now) return
          
@@ -458,7 +458,7 @@ p_col = MISSING_R8
 lev = 1
 model_levels: do 
    locS = set_location(mloc(1),mloc(2),real(lev,r8),VERTISLEVEL)
-   call interpolate(state_handle, ens_size, locS, KIND_PRESSURE, p_col(:, lev), p_col_istatus)
+   call interpolate(state_handle, ens_size, locS, QTY_PRESSURE, p_col(:, lev), p_col_istatus)
    if (any(p_col_istatus /= 0)) then
       p_col(:, lev) = MISSING_R8
       num_levs = lev - 1
@@ -478,7 +478,7 @@ enddo model_levels
 !     This all may be fine, since val is an accumulation of contributions 
 !     from pressure sub-layers.
 locS = set_location(mloc(1),mloc(2),0.0_r8,VERTISSURFACE)
-call interpolate(state_handle, ens_size, locS, KIND_SURFACE_PRESSURE, p_col(:, num_levs), p_col_istatus)
+call interpolate(state_handle, ens_size, locS, QTY_SURFACE_PRESSURE, p_col(:, num_levs), p_col_istatus)
 call track_status(ens_size, p_col_istatus, p_col(:,num_levs), istatus, return_now)
 if (return_now) return
 
@@ -521,7 +521,7 @@ do i=start_i, end_i
 !> @todo same comment as previous subroutine
       if ( any(bot_pres > top_pres) ) then
          loc3 = set_location(mloc(1),mloc(2),real(j,r8), VERTISLEVEL)
-         call interpolate(state_handle, ens_size, loc3, KIND_CO, obs_val_int, obs_val_int_istatus)
+         call interpolate(state_handle, ens_size, loc3, QTY_CO, obs_val_int, obs_val_int_istatus)
          call track_status(ens_size, obs_val_int_istatus, obs_val_int, istatus, return_now)
          if (return_now) return
 

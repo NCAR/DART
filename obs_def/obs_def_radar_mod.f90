@@ -30,10 +30,10 @@
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS KIND LIST
-! DOPPLER_RADIAL_VELOCITY, KIND_VELOCITY
-! RADAR_REFLECTIVITY, KIND_RADAR_REFLECTIVITY
-! RADAR_CLEARAIR_REFLECTIVITY, KIND_RADAR_REFLECTIVITY
-! PRECIPITATION_FALL_SPEED, KIND_POWER_WEIGHTED_FALL_SPEED
+! DOPPLER_RADIAL_VELOCITY, QTY_VELOCITY
+! RADAR_REFLECTIVITY, QTY_RADAR_REFLECTIVITY
+! RADAR_CLEARAIR_REFLECTIVITY, QTY_RADAR_REFLECTIVITY
+! PRECIPITATION_FALL_SPEED, QTY_POWER_WEIGHTED_FALL_SPEED
 ! END DART PREPROCESS KIND LIST
 !-----------------------------------------------------------------------------
 
@@ -110,13 +110,13 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
 use     location_mod, only : location_type, write_location, read_location, &
                              interactive_location, get_location
 use  assim_model_mod, only : interpolate
-use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
-                             KIND_TEMPERATURE, KIND_VERTICAL_VELOCITY,     &
-                             KIND_RAINWATER_MIXING_RATIO, KIND_DENSITY,    &
-                             KIND_GRAUPEL_MIXING_RATIO,                    &
-                             KIND_SNOW_MIXING_RATIO,                       &
-                             KIND_POWER_WEIGHTED_FALL_SPEED,               &
-                             KIND_RADAR_REFLECTIVITY
+use     obs_kind_mod, only : QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, &
+                             QTY_TEMPERATURE, QTY_VERTICAL_VELOCITY,     &
+                             QTY_RAINWATER_MIXING_RATIO, QTY_DENSITY,    &
+                             QTY_GRAUPEL_MIXING_RATIO,                    &
+                             QTY_SNOW_MIXING_RATIO,                       &
+                             QTY_POWER_WEIGHTED_FALL_SPEED,               &
+                             QTY_RADAR_REFLECTIVITY
 
 use ensemble_manager_mod,  only : ensemble_type
 use obs_def_utilities_mod, only : track_status
@@ -878,16 +878,16 @@ if ( .not. module_initialized ) call initialize_module
 call velkey_out_of_range(velkey)
 istatus(:)= 0
 
-call interpolate(state_handle, ens_size, location, KIND_U_WIND_COMPONENT, u, u_istatus)
+call interpolate(state_handle, ens_size, location, QTY_U_WIND_COMPONENT, u, u_istatus)
 call track_status(ens_size, u_istatus, radial_vel, istatus, return_now)
 if (return_now) return
 
-call interpolate(state_handle, ens_size, location, KIND_V_WIND_COMPONENT, v, v_istatus)
+call interpolate(state_handle, ens_size, location, QTY_V_WIND_COMPONENT, v, v_istatus)
 call track_status(ens_size, v_istatus, radial_vel, istatus, return_now)
 if (return_now) return
 
 
-call interpolate(state_handle, ens_size, location, KIND_VERTICAL_VELOCITY, w, w_istatus)
+call interpolate(state_handle, ens_size, location, QTY_VERTICAL_VELOCITY, w, w_istatus)
 call track_status(ens_size, w_istatus, radial_vel, istatus, return_now)
 if (return_now) return
 
@@ -957,10 +957,10 @@ logical               :: return_now
 istatus(:) = 0
 precip_fall_speed(:) = 0.0_r8
 
-call interpolate(state_handle, ens_size, location, KIND_POWER_WEIGHTED_FALL_SPEED, &
+call interpolate(state_handle, ens_size, location, QTY_POWER_WEIGHTED_FALL_SPEED, &
          precip_fall_speed, p_istatus)
 
-! If able to get value, KIND_POWER_WEIGHT_FALL_SPEED is the
+! If able to get value, QTY_POWER_WEIGHT_FALL_SPEED is the
 ! the state so you can return here.
 if (any(istatus == 0) ) return
 
@@ -976,7 +976,7 @@ if (microphysics_type == 3 .or. microphysics_type == 4) then
    return
 endif
 
-! KIND_POWER_WEIGHT_FALL_SPEED is not in the state, try to interpolate
+! QTY_POWER_WEIGHT_FALL_SPEED is not in the state, try to interpolate
 ! in a different way
 istatus(:) = 0
 
@@ -985,27 +985,27 @@ istatus(:) = 0
 
 ! if Kessler or Lin we can compute the fall velocity
 if (microphysics_type == 1 .or. microphysics_type == 2) then
-   call interpolate(state_handle, ens_size, location, KIND_RAINWATER_MIXING_RATIO, qr, qr_istatus)
+   call interpolate(state_handle, ens_size, location, QTY_RAINWATER_MIXING_RATIO, qr, qr_istatus)
    call track_status(ens_size, qr_istatus, precip_fall_speed, istatus, return_now)
    if (return_now) return
 
    if (microphysics_type == 2) then
-      call interpolate(state_handle, ens_size, location, KIND_GRAUPEL_MIXING_RATIO, qg, qg_istatus)
+      call interpolate(state_handle, ens_size, location, QTY_GRAUPEL_MIXING_RATIO, qg, qg_istatus)
       call track_status(ens_size, qg_istatus, precip_fall_speed, istatus, return_now)
       if (return_now) return
 
-      call interpolate(state_handle, ens_size, location, KIND_SNOW_MIXING_RATIO, qs, qs_istatus)
+      call interpolate(state_handle, ens_size, location, QTY_SNOW_MIXING_RATIO, qs, qs_istatus)
       call track_status(ens_size, qs_istatus, precip_fall_speed, istatus, return_now)
       if (return_now) return
 
    endif
 
    ! Done with Lin et al specific calls
-   call interpolate(state_handle, ens_size, location, KIND_DENSITY, rho, rho_istatus)
+   call interpolate(state_handle, ens_size, location, QTY_DENSITY, rho, rho_istatus)
    call track_status(ens_size, rho_istatus, precip_fall_speed, istatus, return_now)
    if (return_now) return
 
-   call interpolate(state_handle, ens_size, location, KIND_TEMPERATURE, temp, temp_istatus)
+   call interpolate(state_handle, ens_size, location, QTY_TEMPERATURE, temp, temp_istatus)
    call track_status(ens_size, temp_istatus, precip_fall_speed, istatus, return_now)
    if (return_now) return
 
@@ -1025,7 +1025,7 @@ else if (microphysics_type == 5 .and. allow_dbztowt_conv) then
    call track_status(ens_size, refl_istatus, precip_fall_speed, istatus, return_now)
    if (return_now) return
 
-   call interpolate(state_handle, ens_size, location, KIND_DENSITY, rho, rho_istatus)
+   call interpolate(state_handle, ens_size, location, QTY_DENSITY, rho, rho_istatus)
    call track_status(ens_size, rho_istatus, precip_fall_speed, istatus, return_now)
    if (return_now) return
 
@@ -1125,9 +1125,9 @@ temp(:) = 0.0_r8
 ! for the simple single-moment microphysics schemes (e.g., Kessler or Lin).
 
 ! Try to draw from state vector first
-call interpolate(state_handle, ens_size, location, KIND_RADAR_REFLECTIVITY, ref, istatus)
+call interpolate(state_handle, ens_size, location, QTY_RADAR_REFLECTIVITY, ref, istatus)
 
-! If able to get value, KIND_RADAR_REFLECTIVITY is the
+! If able to get value, QTY_RADAR_REFLECTIVITY is the
 ! the state so you can return here.
 if (any(istatus == 0) ) return
 
@@ -1147,28 +1147,28 @@ istatus(:) = 0
 
 if (microphysics_type == 1 .or. microphysics_type == 2) then
 
-   call interpolate(state_handle, ens_size, location, KIND_RAINWATER_MIXING_RATIO, qr, qr_istatus)
+   call interpolate(state_handle, ens_size, location, QTY_RAINWATER_MIXING_RATIO, qr, qr_istatus)
    call track_status(ens_size, qr_istatus, ref, istatus, return_now)
    if (return_now) return
 
    if (microphysics_type == 2) then
       ! Also need some ice vars
-      call interpolate(state_handle, ens_size, location, KIND_GRAUPEL_MIXING_RATIO, qg, qg_istatus)
+      call interpolate(state_handle, ens_size, location, QTY_GRAUPEL_MIXING_RATIO, qg, qg_istatus)
       call track_status(ens_size, qg_istatus, ref, istatus, return_now)
       if (return_now) return
 
-      call interpolate(state_handle, ens_size, location, KIND_SNOW_MIXING_RATIO, qs, qs_istatus)
+      call interpolate(state_handle, ens_size, location, QTY_SNOW_MIXING_RATIO, qs, qs_istatus)
       call track_status(ens_size, qs_istatus, ref, istatus, return_now)
       if (return_now) return
 
    endif
 
-   call interpolate(state_handle, ens_size, location, KIND_DENSITY, rho, rho_istatus)
+   call interpolate(state_handle, ens_size, location, QTY_DENSITY, rho, rho_istatus)
    call track_status(ens_size, rho_istatus, ref, istatus, return_now)
    if (return_now) return
 
 
-   call interpolate(state_handle, ens_size, location, KIND_TEMPERATURE, temp, temp_istatus)
+   call interpolate(state_handle, ens_size, location, QTY_TEMPERATURE, temp, temp_istatus)
    call track_status(ens_size, temp_istatus, ref, istatus, return_now)
    if (return_now) return
 

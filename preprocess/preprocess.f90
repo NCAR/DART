@@ -68,7 +68,7 @@ character(len = 78) :: blank_line = &
 ! List of the DART PREPROCESS strings for obs_def type files.
 character(len = 29) :: preprocess_string(8) = (/ &
       'MODULE CODE                  ', &
-      'USE FOR OBS_KIND_MOD         ', &
+      'USE FOR OBS_QTY_MOD         ', &
       'USE OF SPECIAL OBS_DEF MODULE', &
       'GET_EXPECTED_OBS_FROM_DEF    ', &
       'READ_OBS_DEF                 ', &
@@ -263,7 +263,7 @@ SEARCH_INPUT_FILES: do j = 1, num_input_files
 
    ! Read until the ! BEGIN KIND LIST is found
    linenum = 0
-   FIND_KIND_LIST: do
+   FIND_QTY_LIST: do
 
       read(in_unit, 222, IOSTAT = ierr) line
       ! If end of file, input file is incomplete or weird stuff happened
@@ -277,8 +277,8 @@ SEARCH_INPUT_FILES: do j = 1, num_input_files
 
       ! Look for the ! BEGIN KIND LIST in the current line
       test = adjustl(line)
-      if(test(1:33) == kind_start_string) exit FIND_KIND_LIST
-   end do FIND_KIND_LIST
+      if(test(1:33) == kind_start_string) exit FIND_QTY_LIST
+   end do FIND_QTY_LIST
 
    ! Subsequent lines contain the type_identifier (same as type_string), and
    ! kind_string separated by commas, and optional usercode flag
@@ -463,7 +463,7 @@ write(obs_kind_out_unit, 51) blank_line
 ! FIXME:  this should be max_obs_types, but it is a public and all the
 ! subroutines use kind where it means type.  sigh.
 write(obs_kind_out_unit, 51) blank_line
-write(line, 61) 'integer, parameter, public :: max_obs_kinds = ', &
+write(line, 61) 'integer, parameter, public :: max_defined_types_of_obs = ', &
    num_types_found
 write(obs_kind_out_unit, 51) trim(line)
 write(obs_kind_out_unit, 51) blank_line
@@ -481,7 +481,7 @@ do
 
    ! Is this the place to start writing preprocessor stuff
    test = adjustl(line)
-   if(test(1:51) == '! DART PREPROCESS OBS_KIND_INFO INSERTED HERE') exit
+   if(test(1:51) == '! DART PREPROCESS OBS_QTY_INFO INSERTED HERE') exit
 
    ! Write the line to the output file
    write(obs_kind_out_unit, 21) trim(line)
@@ -549,10 +549,10 @@ ITEMS: do i = 1, 8
 
    end do READ_LINE
 
-   ! The 'USE FOR OBS_KIND_MOD' section is handled differently; lines are not
+   ! The 'USE FOR OBS_QTY_MOD' section is handled differently; lines are not
    ! copied, they are generated based on the list of types and kinds.
    if(i == kind_item) then
-      ! Create use statements for both the KIND_ kinds and the individual
+      ! Create use statements for both the QTY_ kinds and the individual
       ! observation type strings.
       write(obs_def_out_unit, 21) separator_line
       write(obs_def_out_unit, 21) blank_line

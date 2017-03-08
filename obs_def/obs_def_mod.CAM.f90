@@ -45,10 +45,10 @@ use time_manager_mod, only : time_type, read_time, write_time, &
                              set_time, set_time_missing, interactive_time
 !use  assim_model_mod, only : interpolate
 
-use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, &
-                             KIND_V_WIND_COMPONENT, KIND_SURFACE_PRESSURE, &
-                             KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, &
-                             KIND_PRESSURE, KIND_GPSRO
+use     obs_kind_mod, only : QTY_U_WIND_COMPONENT, &
+                             QTY_V_WIND_COMPONENT, QTY_SURFACE_PRESSURE, &
+                             QTY_TEMPERATURE, QTY_SPECIFIC_HUMIDITY, &
+                             QTY_PRESSURE, QTY_GPSRO
 
 implicit none
 private
@@ -72,7 +72,7 @@ logical, save :: module_initialized = .false.
 ! obs in all obs_seq files that are read in (e.g. for obs_diag if you
 ! cover multiple days or weeks, you must have enough room for all of them.)
 ! the local operator needs none of this additional info; the best approach
-! would be to keep a single KIND_GPSRO, but make 2 observation types.
+! would be to keep a single QTY_GPSRO, but make 2 observation types.
 ! the local has no additional metadata; the nonlocal needs one of these
 ! allocated and filled in.
 integer :: max_gpsro_obs = 100000
@@ -572,11 +572,11 @@ istatus0 = 3
 ref00 = missing_r8
 
 call error_handler(E_ERR, 'this is not distributed', 'yet')
-!HKcall interpolate(state_vector, location2,  KIND_TEMPERATURE,       t, istatus0)
+!HKcall interpolate(state_vector, location2,  QTY_TEMPERATURE,       t, istatus0)
 !HKif (istatus0 > 0) return
-!HKcall interpolate(state_vector, location2,  KIND_SPECIFIC_HUMIDITY, q, istatus0)
+!HKcall interpolate(state_vector, location2,  QTY_SPECIFIC_HUMIDITY, q, istatus0)
 !HKif (istatus0 > 0) return
-!HKcall interpolate(state_vector, location2,  KIND_PRESSURE,          p, istatus0)
+!HKcall interpolate(state_vector, location2,  QTY_PRESSURE,          p, istatus0)
 !HKif (istatus0 > 0) return
 
 !  required variable units for calculation of GPS refractivity
@@ -677,7 +677,7 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
 use     location_mod, only : location_type, set_location, get_location , write_location, &
                              read_location
 !use  assim_model_mod, only : interpolate
-use     obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_SURFACE_ELEVATION
+use     obs_kind_mod, only : QTY_SURFACE_PRESSURE, QTY_SURFACE_ELEVATION
 
 implicit none
 private
@@ -717,14 +717,14 @@ real(r8) :: hsfc                ! surface elevation level  (m above SL)
 if ( .not. module_initialized ) call initialize_module
 
 !  interpolate the surface pressure to the desired location
-!HK call interpolate(state_vector, location, KIND_SURFACE_PRESSURE, psfc, istatus)
+!HK call interpolate(state_vector, location, QTY_SURFACE_PRESSURE, psfc, istatus)
 if (istatus /= 0) then
    altimeter_setting = missing_r8
    return
 endif
 
 !  interpolate the surface elevation to the desired location
-!HK call interpolate(state_vector, location, KIND_SURFACE_ELEVATION, hsfc, istatus)
+!HK call interpolate(state_vector, location, QTY_SURFACE_ELEVATION, hsfc, istatus)
 if (istatus /= 0) then
    altimeter_setting = missing_r8
    return
@@ -795,9 +795,9 @@ use     location_mod, only : location_type, read_location, write_location, &
 use time_manager_mod, only : time_type, read_time, write_time, set_time, &
                              set_time_missing, interactive_time
 use  assim_model_mod, only : get_state_meta_data_distrib, interpolate_distrib !HK
-use     obs_kind_mod, only : assimilate_this_obs_kind, evaluate_this_obs_kind, &
-                             max_obs_kinds, get_obs_kind_name, map_def_index, &
-                             get_kind_from_menu
+use     obs_kind_mod, only : assimilate_this_type_of_obs, evaluate_this_type_of_obs, &
+                             max_defined_types_of_obs, get_name_for_type_of_obs, map_type_of_obs_table, &
+                             get_type_of_obs_from_menu
 use ensemble_manager_mod, only : ensemble_type
 
 !HK temporary
@@ -860,14 +860,14 @@ use obs_kind_mod, only : ATOV_TEMPERATURE
 use obs_kind_mod, only : AIRS_TEMPERATURE
 use obs_kind_mod, only : AIRS_SPECIFIC_HUMIDITY
                                                                               
-use obs_kind_mod, only : KIND_TEMPERATURE
-use obs_kind_mod, only : KIND_SPECIFIC_HUMIDITY
-use obs_kind_mod, only : KIND_PRESSURE
-use obs_kind_mod, only : KIND_GPSRO
-use obs_kind_mod, only : KIND_SURFACE_PRESSURE
-use obs_kind_mod, only : KIND_U_WIND_COMPONENT
-use obs_kind_mod, only : KIND_V_WIND_COMPONENT
-use obs_kind_mod, only : KIND_GEOPOTENTIAL_HEIGHT
+use obs_kind_mod, only : QTY_TEMPERATURE
+use obs_kind_mod, only : QTY_SPECIFIC_HUMIDITY
+use obs_kind_mod, only : QTY_PRESSURE
+use obs_kind_mod, only : QTY_GPSRO
+use obs_kind_mod, only : QTY_SURFACE_PRESSURE
+use obs_kind_mod, only : QTY_U_WIND_COMPONENT
+use obs_kind_mod, only : QTY_V_WIND_COMPONENT
+use obs_kind_mod, only : QTY_GEOPOTENTIAL_HEIGHT
                                                                               
 !---------------------------------------------------------------------------  
                                                                               
@@ -902,12 +902,12 @@ interface assignment(=)
    module procedure copy_obs_def
 end interface
 
-public :: init_obs_def, get_obs_def_key, get_obs_def_location, get_obs_kind, &
+public :: init_obs_def, get_obs_def_key, get_obs_def_location, get_obs_def_type_of_obs, &
    get_obs_def_time, get_obs_def_error_variance, set_obs_def_location, &
-   set_obs_def_kind, set_obs_def_time, set_obs_def_error_variance, &
+   set_obs_def_type_of_obs, set_obs_def_time, set_obs_def_error_variance, &
    set_obs_def_key, interactive_obs_def, write_obs_def, read_obs_def, &
    obs_def_type, destroy_obs_def, copy_obs_def, &
-   assignment(=), get_obs_name, get_expected_obs_from_def_distrib_state !HK
+   assignment(=), get_name_for_type_of_obs, get_expected_obs_from_def_distrib_state !HK
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -1034,18 +1034,18 @@ end function get_obs_def_location
 
 !----------------------------------------------------------------------------
 
-function get_obs_kind(obs_def)
+function get_obs_def_type_of_obs(obs_def)
 
 ! Returns observation kind
 
-integer                        :: get_obs_kind
+integer                        :: get_obs_def_type_of_obs
 type(obs_def_type), intent(in) :: obs_def
 
 if ( .not. module_initialized ) call initialize_module
 
-get_obs_kind = obs_def%kind
+get_obs_def_type_of_obs = obs_def%kind
 
-end function get_obs_kind
+end function get_obs_def_type_of_obs
 
 !----------------------------------------------------------------------------
 
@@ -1064,18 +1064,18 @@ end function get_obs_def_time
 
 !----------------------------------------------------------------------------
 
-function get_obs_name(obs_kind_ind)
+function get_name_for_type_of_obs(obs_kind_ind)
 
 ! Returns observation name
 
 integer, intent(in) :: obs_kind_ind
-character(len = 32) :: get_obs_name
+character(len = 32) :: get_name_for_type_of_obs
 
 if ( .not. module_initialized ) call initialize_module
 
-get_obs_name = get_obs_kind_name(obs_kind_ind)
+get_name_for_type_of_obs = get_name_for_type_of_obs(obs_kind_ind)
 
-end function get_obs_name
+end function get_name_for_type_of_obs
 
 !----------------------------------------------------------------------------
 
@@ -1124,7 +1124,7 @@ end subroutine set_obs_def_key
 
 !----------------------------------------------------------------------------
 
-subroutine set_obs_def_kind(obs_def, kind)
+subroutine set_obs_def_type_of_obs(obs_def, kind)
 
 ! Sets the kind of an obs_def
 
@@ -1135,7 +1135,7 @@ if ( .not. module_initialized ) call initialize_module
 
 obs_def%kind = kind
 
-end subroutine set_obs_def_kind
+end subroutine set_obs_def_type_of_obs
 
 !----------------------------------------------------------------------------
 
@@ -1177,8 +1177,8 @@ integer, intent(in) :: win !> window for one sided communication
 type(ensemble_type) state_ens_handle
 
 ! Load up the assimilate and evaluate status for this observation kind
-assimilate_this_ob = assimilate_this_obs_kind(obs_kind_ind)
-evaluate_this_ob = evaluate_this_obs_kind(obs_kind_ind)
+assimilate_this_ob = assimilate_this_type_of_obs(obs_kind_ind)
+evaluate_this_ob = evaluate_this_type_of_obs(obs_kind_ind)
 
 ! If not being assimilated or evaluated return with missing_r8 and istatus 0
 if(assimilate_this_ob .or. evaluate_this_ob) then
@@ -1190,7 +1190,7 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
 
    ! Compute the forward operator.  In spite of the variable name,
    ! obs_kind_ind is in fact a 'type' index number.  use the function
-   ! get_obs_kind_var_type from the obs_kind_mod if you want to map
+   ! get_quantity_for_type_of_obs from the obs_kind_mod if you want to map
    ! from a specific type to a generic kind.  the third argument of
    ! a call to the 'interpolate()' function must be a kind index and
    ! not a type.  normally the preprocess program does this for you.
@@ -1211,7 +1211,7 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
       !   istatus -- return code: 0=ok, >0 is error, <0 reserved for system use
       !
       ! to call interpolate() directly, the arg list MUST BE:
-      !  interpolate(state, location, KIND_xxx, obs_val, istatus)
+      !  interpolate(state, location, QTY_xxx, obs_val, istatus)
       !
       ! the preprocess program generates lines like this automatically,
       ! and this matches the interfaces in each model_mod.f90 file.
@@ -1221,27 +1221,27 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
 
       ! DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF INSERTED HERE
       case(RADIOSONDE_TEMPERATURE)
-         call interpolate_distrib(location, KIND_TEMPERATURE, istatus, expected_obs, state_ens_handle, win)
+         call interpolate_distrib(location, QTY_TEMPERATURE, istatus, expected_obs, state_ens_handle, win)
       case(ACARS_TEMPERATURE)
-         call interpolate_distrib(location, KIND_TEMPERATURE, istatus, expected_obs, state_ens_handle, win)
+         call interpolate_distrib(location, QTY_TEMPERATURE, istatus, expected_obs, state_ens_handle, win)
       case(AIRCRAFT_TEMPERATURE)
-         call interpolate_distrib(location, KIND_TEMPERATURE, istatus, expected_obs, state_ens_handle, win)
+         call interpolate_distrib(location, QTY_TEMPERATURE, istatus, expected_obs, state_ens_handle, win)
       case(RADIOSONDE_U_WIND_COMPONENT)
-         call interpolate_distrib(location, KIND_U_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
+         call interpolate_distrib(location, QTY_U_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
       case(RADIOSONDE_V_WIND_COMPONENT)
-         call interpolate_distrib(location, KIND_V_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
+         call interpolate_distrib(location, QTY_V_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
       case(AIRCRAFT_U_WIND_COMPONENT)
-         call interpolate_distrib(location, KIND_U_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
+         call interpolate_distrib(location, QTY_U_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
       case(AIRCRAFT_V_WIND_COMPONENT)
-         call interpolate_distrib(location, KIND_V_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
+         call interpolate_distrib(location, QTY_V_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
       case(ACARS_U_WIND_COMPONENT)
-         call interpolate_distrib(location, KIND_U_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
+         call interpolate_distrib(location, QTY_U_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
       case(ACARS_V_WIND_COMPONENT)
-         call interpolate_distrib(location, KIND_V_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
+         call interpolate_distrib(location, QTY_V_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
       case(SAT_U_WIND_COMPONENT)
-         call interpolate_distrib(location, KIND_U_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
+         call interpolate_distrib(location, QTY_U_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
       case(SAT_V_WIND_COMPONENT)
-         call interpolate_distrib(location, KIND_V_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
+         call interpolate_distrib(location, QTY_V_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
 
 
 
@@ -1330,7 +1330,7 @@ endif
 if(o_index < 0) then
    obs_def%kind = o_index
 else
-   obs_def%kind = map_def_index(o_index)
+   obs_def%kind = map_type_of_obs_table(o_index)
 endif
 
 ! This kind may have its own module that needs to read more
@@ -1597,7 +1597,7 @@ integer,               intent(in) :: key
 if ( .not. module_initialized ) call initialize_module
 
 ! Get the observation kind WANT A STRING OPTION, TOO?
-obs_def%kind = get_kind_from_menu()
+obs_def%kind = get_type_of_obs_from_menu()
 
 ! Input any special stuff for this kind
 select case(obs_def%kind)

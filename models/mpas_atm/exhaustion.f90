@@ -28,8 +28,8 @@ use     location_mod, only : location_type, set_location, write_location, get_di
                              query_location, LocationDims, get_location, &
                              VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, &
                              VERTISHEIGHT, VERTISSCALEHEIGHT
-use     obs_kind_mod, only : get_raw_obs_kind_name, get_raw_obs_kind_index, &
-                             KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT
+use     obs_kind_mod, only : get_name_for_quantity, get_index_for_quantity, &
+                             QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT
 use  assim_model_mod, only : open_restart_read, open_restart_write, close_restart, &
                              aread_state_restart, awrite_state_restart, &
 use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, &
@@ -68,7 +68,7 @@ logical                :: verbose              = .TRUE.
 logical                :: dojitter             = .TRUE.
 logical                :: matlab_out           = .FALSE.
 logical                :: netcdf_out           = .TRUE.
-character (len = 129)  :: kind_of_interest     = 'KIND_POTENTIAL_TEMPERATURE'
+character (len = 129)  :: kind_of_interest     = 'QTY_POTENTIAL_TEMPERATURE'
 real(r8)               :: interp_test_dlon     = 1.0
 real(r8)               :: interp_test_dlat     = 1.0
 real(r8)               :: interp_test_dvert    = 1.0
@@ -275,7 +275,7 @@ select case(trim(interp_test_vertcoord))
 end select
 
 print *, 'interpolating kind: ', kind_of_interest
-mykindindex = get_raw_obs_kind_index(kind_of_interest)
+mykindindex = get_index_for_quantity(kind_of_interest)
 
 end subroutine setup_interpolate
 
@@ -835,9 +835,9 @@ nFailedV = 0
 do xloc = 1, nCells
 do zloc = 1, nVertLevels
    loc = set_location(lonCell(xloc),latCell(xloc), zGridCenter(zloc,xloc), VERTISHEIGHT)
-   call model_interpolate(statevector, loc, KIND_U_WIND_COMPONENT, uhat(zloc,xloc), ios_out)
+   call model_interpolate(statevector, loc, QTY_U_WIND_COMPONENT, uhat(zloc,xloc), ios_out)
    if (ios_out /= 0) nFailedU = nFailedU + 1
-   call model_interpolate(statevector, loc, KIND_V_WIND_COMPONENT, vhat(zloc,xloc), ios_out)
+   call model_interpolate(statevector, loc, QTY_V_WIND_COMPONENT, vhat(zloc,xloc), ios_out)
    if (ios_out /= 0) nFailedV = nFailedV + 1
 enddo
 if (mod(xloc, 100) == 0) then

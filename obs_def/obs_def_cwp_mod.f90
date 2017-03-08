@@ -10,10 +10,10 @@
 !>@todo FIXME remove all the TAB characters - technically not supported, can issue warnings
 
 ! BEGIN DART PREPROCESS KIND LIST
-! GOES_CWP_PATH,      KIND_CWP_PATH
-! GOES_LWP_PATH,      KIND_CWP_PATH
-! GOES_IWP_PATH,      KIND_CWP_PATH
-! GOES_CWP_ZERO,      KIND_CWP_PATH_ZERO
+! GOES_CWP_PATH,      QTY_CWP_PATH
+! GOES_LWP_PATH,      QTY_CWP_PATH
+! GOES_IWP_PATH,      QTY_CWP_PATH
+! GOES_CWP_ZERO,      QTY_CWP_PATH_ZERO
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -84,9 +84,9 @@ use     location_mod, only : location_type, set_location, get_location, &
 use time_manager_mod, only : time_type, read_time, write_time, &
                              set_time, set_time_missing
 use  assim_model_mod, only : interpolate
-use     obs_kind_mod, only : KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE, KIND_PRESSURE, KIND_SURFACE_PRESSURE, &
-                             KIND_GRAUPEL_MIXING_RATIO, KIND_RAINWATER_MIXING_RATIO, KIND_SNOW_MIXING_RATIO, &
-                             KIND_HAIL_MIXING_RATIO, KIND_CWP_PATH, KIND_CWP_PATH_ZERO, &
+use     obs_kind_mod, only : QTY_CLOUD_LIQUID_WATER, QTY_CLOUD_ICE, QTY_PRESSURE, QTY_SURFACE_PRESSURE, &
+                             QTY_GRAUPEL_MIXING_RATIO, QTY_RAINWATER_MIXING_RATIO, QTY_SNOW_MIXING_RATIO, &
+                             QTY_HAIL_MIXING_RATIO, QTY_CWP_PATH, QTY_CWP_PATH_ZERO, &
                              GOES_CWP_PATH, GOES_LWP_PATH, GOES_IWP_PATH, GOES_CWP_ZERO
 use  ensemble_manager_mod, only : ensemble_type
 use obs_def_utilities_mod, only : track_status
@@ -386,7 +386,7 @@ qha(:,:) = 0.0_r8
 !******* SIMUlATED DATA DOES NOT HAVE ANY SURFACE LEVEL INFORMATION
 
 !  interpolate the surface pressure to the desired location (Pa)
- call interpolate(state_handle, ens_size, location2, KIND_SURFACE_PRESSURE, psfc, this_istatus)
+ call interpolate(state_handle, ens_size, location2, QTY_SURFACE_PRESSURE, psfc, this_istatus)
  call track_status(ens_size, this_istatus, out_wp, istatus, return_now)
  if (return_now) return
 
@@ -394,14 +394,14 @@ qha(:,:) = 0.0_r8
  
 !  READ IN QCLOUD AT SURFACE (kg/kg)
 if (physics >= 1)  then
- call interpolate(state_handle, ens_size, location2, KIND_CLOUD_LIQUID_WATER, qc(:, 1), this_istatus)
+ call interpolate(state_handle, ens_size, location2, QTY_CLOUD_LIQUID_WATER, qc(:, 1), this_istatus)
  call track_status(ens_size, this_istatus, out_wp, istatus, return_now)
  if (return_now) return
 endif
 
 !  READ IN QICE AT SURFACE (kg/kg)
 if (physics == 2 .or. physics == 4 .or. physics >= 6)  then
- call interpolate(state_handle, ens_size, location2, KIND_CLOUD_ICE, qi(:, 1), this_istatus)
+ call interpolate(state_handle, ens_size, location2, QTY_CLOUD_ICE, qi(:, 1), this_istatus)
  call track_status(ens_size, this_istatus, out_wp, istatus, return_now)
  if (return_now) return
 endif 
@@ -409,7 +409,7 @@ endif
 !  READ IN QGRUAPEL AT SURFACE (kg/kg)
 if (physics == 2 .or. physics >= 6)  then
  if (physics /= 14) then
-  call interpolate(state_handle, ens_size, location2, KIND_GRAUPEL_MIXING_RATIO, qg(:, 1), this_istatus)
+  call interpolate(state_handle, ens_size, location2, QTY_GRAUPEL_MIXING_RATIO, qg(:, 1), this_istatus)
   call track_status(ens_size, this_istatus, out_wp, istatus, return_now)
   if (return_now) return
  endif
@@ -417,21 +417,21 @@ endif
 
 !  READ IN QRAIN AT SURFACE (kg/kg)
 if (physics >= 1)  then
- call interpolate(state_handle, ens_size, location2, KIND_RAINWATER_MIXING_RATIO, qr(:, 1), this_istatus)
+ call interpolate(state_handle, ens_size, location2, QTY_RAINWATER_MIXING_RATIO, qr(:, 1), this_istatus)
  call track_status(ens_size, this_istatus, out_wp, istatus, return_now)
  if (return_now) return
 endif
 
 !  READ IN QSNOW AT SURFACE (kg/kg)
 if (physics == 2 .or. physics == 4 .or. physics >= 6)  then
- call interpolate(state_handle, ens_size, location2, KIND_SNOW_MIXING_RATIO, qs(:, 1), this_istatus) 
+ call interpolate(state_handle, ens_size, location2, QTY_SNOW_MIXING_RATIO, qs(:, 1), this_istatus) 
  call track_status(ens_size, this_istatus, out_wp, istatus, return_now)
  if (return_now) return
 endif
  
 !  READ IN QHAIL AT SURFACE (kg/kg)  MY AND ZVD (OTHERWISE, JUST ASSUME qha = 0)
 if (physics == 9 .or. physics >= 17) then
- call interpolate(state_handle, ens_size, location2, KIND_HAIL_MIXING_RATIO, qha(:, 1), this_istatus)
+ call interpolate(state_handle, ens_size, location2, QTY_HAIL_MIXING_RATIO, qha(:, 1), this_istatus)
  call track_status(ens_size, this_istatus, out_wp, istatus, return_now)
  if (return_now) return
 endif
@@ -498,46 +498,46 @@ if (model_levels) then
       which_vert = VERTISLEVEL
       location2 = set_location(lon2, lat, real(k, r8),  which_vert)
 
-      call interpolate(state_handle, ens_size, location2, KIND_PRESSURE, press(:, lastk), this_istatus)
+      call interpolate(state_handle, ens_size, location2, QTY_PRESSURE, press(:, lastk), this_istatus)
       if (any(this_istatus /= 0 .or. press(:, lastk) < pressure_top)) exit LEVELS
 
 	  ! ADD VERTICAL COORD TO LOCATION (no need)
 	  !location3 = set_location(lon2, lat, press(1, lastk),  which_vert)
 
 	  if (physics >= 1)  then
-	    call interpolate(state_handle, ens_size, location2,  KIND_CLOUD_LIQUID_WATER, qc(:, lastk), this_istatus)
+	    call interpolate(state_handle, ens_size, location2,  QTY_CLOUD_LIQUID_WATER, qc(:, lastk), this_istatus)
             call track_status(ens_size, this_istatus, out_wp, istatus, return_now)
             if (return_now) return
 	  endif
 	  
 	  if (physics == 2 .or. physics == 4 .or. physics >= 6)  then
-	    call interpolate(state_handle, ens_size, location2,  KIND_CLOUD_ICE, qi(:, lastk), this_istatus)
+	    call interpolate(state_handle, ens_size, location2,  QTY_CLOUD_ICE, qi(:, lastk), this_istatus)
             call track_status(ens_size, this_istatus, out_wp, istatus, return_now)
             if (return_now) return
 	  endif
 	  
 	  if (physics == 2 .or. physics >= 6)  then
             if (physics /= 14) then
-                call interpolate(state_handle, ens_size, location2,  KIND_GRAUPEL_MIXING_RATIO, qg(:, lastk), this_istatus)
+                call interpolate(state_handle, ens_size, location2,  QTY_GRAUPEL_MIXING_RATIO, qg(:, lastk), this_istatus)
                 call track_status(ens_size, this_istatus, out_wp, istatus, return_now)
                 if (return_now) return
             endif
 	  endif
 	  
 	  if (physics >= 1)  then
-	    call interpolate(state_handle, ens_size, location2,  KIND_RAINWATER_MIXING_RATIO, qr(:, lastk), this_istatus)
+	    call interpolate(state_handle, ens_size, location2,  QTY_RAINWATER_MIXING_RATIO, qr(:, lastk), this_istatus)
             call track_status(ens_size, this_istatus, out_wp, istatus, return_now)
             if (return_now) return
 	  endif
 	  
 	  if (physics == 2 .or. physics == 4 .or. physics >= 6)  then
-	    call interpolate(state_handle, ens_size, location2,  KIND_SNOW_MIXING_RATIO, qs(:, lastk), this_istatus)
+	    call interpolate(state_handle, ens_size, location2,  QTY_SNOW_MIXING_RATIO, qs(:, lastk), this_istatus)
             call track_status(ens_size, this_istatus, out_wp, istatus, return_now)
             if (return_now) return
 	  endif
 	  
 	  if (physics == 9 .or. physics >= 17) then
-	    call interpolate(state_handle, ens_size, location2,  KIND_HAIL_MIXING_RATIO, qha(:, lastk), this_istatus)
+	    call interpolate(state_handle, ens_size, location2,  QTY_HAIL_MIXING_RATIO, qha(:, lastk), this_istatus)
             call track_status(ens_size, this_istatus, out_wp, istatus, return_now)
             if (return_now) return
 	  endif
@@ -587,39 +587,39 @@ else
 		location2 = set_location(lon2, lat, p,  which_vert)
 
 		if (physics >= 1)  then
-		  call interpolate(state_handle, ens_size, location2,  KIND_CLOUD_LIQUID_WATER, qc(:, k), this_istatus)
+		  call interpolate(state_handle, ens_size, location2,  QTY_CLOUD_LIQUID_WATER, qc(:, k), this_istatus)
                   call track_status(ens_size, this_istatus, out_wp, istatus, return_now)
                   if (return_now) return
 		endif
 		
 		if (physics == 2 .or. physics == 4 .or. physics >= 6)  then
-		  call interpolate(state_handle, ens_size, location2,  KIND_CLOUD_ICE, qi(:, k), this_istatus)
+		  call interpolate(state_handle, ens_size, location2,  QTY_CLOUD_ICE, qi(:, k), this_istatus)
                   call track_status(ens_size, this_istatus, out_wp, istatus, return_now)
                   if (return_now) return
 		endif
 		
 		if (physics == 2 .or. physics >= 6)  then
 		  if (physics /= 14) then
-		   call interpolate(state_handle, ens_size, location2,  KIND_GRAUPEL_MIXING_RATIO, qg(:, k), this_istatus)
+		   call interpolate(state_handle, ens_size, location2,  QTY_GRAUPEL_MIXING_RATIO, qg(:, k), this_istatus)
                    call track_status(ens_size, this_istatus, out_wp, istatus, return_now)
                    if (return_now) return
 		  endif
 		endif
 		
 		if (physics >= 1)  then
-		  call interpolate(state_handle, ens_size, location2,  KIND_RAINWATER_MIXING_RATIO, qr(:, k), this_istatus)
+		  call interpolate(state_handle, ens_size, location2,  QTY_RAINWATER_MIXING_RATIO, qr(:, k), this_istatus)
                   call track_status(ens_size, this_istatus, out_wp, istatus, return_now)
                   if (return_now) return
 		endif
 		
 		if (physics == 2 .or. physics == 4 .or. physics >= 6)  then
-		  call interpolate(state_handle, ens_size, location2,  KIND_SNOW_MIXING_RATIO, qs(:, k), this_istatus)
+		  call interpolate(state_handle, ens_size, location2,  QTY_SNOW_MIXING_RATIO, qs(:, k), this_istatus)
                   call track_status(ens_size, this_istatus, out_wp, istatus, return_now)
                   if (return_now) return
 		endif
 		
 		if (physics == 9 .or. physics >= 17) then
-		  call interpolate(state_handle, ens_size, location2,  KIND_HAIL_MIXING_RATIO, qha(:, k), this_istatus)
+		  call interpolate(state_handle, ens_size, location2,  QTY_HAIL_MIXING_RATIO, qha(:, k), this_istatus)
                   call track_status(ens_size, this_istatus, out_wp, istatus, return_now)
                   if (return_now) return
 		endif

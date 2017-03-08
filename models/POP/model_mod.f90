@@ -26,11 +26,11 @@ use    utilities_mod, only : register_module, error_handler,                   &
                              nc_check, do_output, to_upper,                    &
                              find_namelist_in_file, check_namelist_read,       &
                              file_exist, find_textfile_dims, file_to_text
-use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_DRY_LAND,   &
-                             KIND_U_CURRENT_COMPONENT,KIND_V_CURRENT_COMPONENT,&
-                             KIND_SEA_SURFACE_HEIGHT, KIND_SEA_SURFACE_PRESSURE,&
-                             KIND_POTENTIAL_TEMPERATURE, get_raw_obs_kind_index,&
-                             get_raw_obs_kind_name
+use     obs_kind_mod, only : QTY_TEMPERATURE, QTY_SALINITY, QTY_DRY_LAND,   &
+                             QTY_U_CURRENT_COMPONENT,QTY_V_CURRENT_COMPONENT,&
+                             QTY_SEA_SURFACE_HEIGHT, QTY_SEA_SURFACE_PRESSURE,&
+                             QTY_POTENTIAL_TEMPERATURE, get_index_for_quantity,&
+                             get_name_for_quantity
 use mpi_utilities_mod, only: my_task_id, task_count
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 use      dart_pop_mod, only: set_model_time_step,                              &
@@ -109,7 +109,7 @@ logical :: update_var_list( max_state_variables )
 
 ! identifiers for variable_table
 integer, parameter :: VAR_NAME_INDEX = 1
-integer, parameter :: VAR_KIND_INDEX = 2
+integer, parameter :: VAR_QTY_INDEX = 2
 integer, parameter :: VAR_UPDATE_INDEX = 3
 
 ! things which can/should be in the model_nml
@@ -453,7 +453,7 @@ do i = 1, nx
    do j = 1, ny - 1
       
       ! Only update regular boxes that contain all wet corners
-      if( all_corners_wet(KIND_U_CURRENT_COMPONENT,i,j,surf_index) ) then
+      if( all_corners_wet(QTY_U_CURRENT_COMPONENT,i,j,surf_index) ) then
          ! Set up array of lons and lats for the corners of these u quads
          call get_quad_corners(ulon, i, j, u_c_lons)
          call get_quad_corners(ulat, i, j, u_c_lats)
@@ -468,7 +468,7 @@ do i = 1, nx
 
       ! Repeat for t dipole quads.
       ! Only update regular boxes that contain all wet corners
-      if( all_corners_wet(KIND_TEMPERATURE,i,j,surf_index) ) then
+      if( all_corners_wet(QTY_TEMPERATURE,i,j,surf_index) ) then
          ! Set up array of lons and lats for the corners of these t quads
          call get_quad_corners(tlon, i, j, t_c_lons)
          call get_quad_corners(tlat, i, j, t_c_lats)
@@ -877,7 +877,7 @@ endif
 ! salinity, and pressure based on depth.  call a routine that
 ! interpolates all three, does the conversion, and returns the
 ! sensible/in-situ temperature.
-if(obs_type == KIND_TEMPERATURE) then
+if(obs_type == QTY_TEMPERATURE) then
    ! we know how to interpolate this from potential temp,
    ! salinity, and pressure based on depth.
    call compute_temperature(state_handle, ens_size, llon, llat, lheight, expected_obs, istatus)
@@ -893,15 +893,15 @@ endif
 convert_to_ssh = .FALSE.
 
 SELECT CASE (obs_type)
-   CASE (KIND_SALINITY,              &
-         KIND_POTENTIAL_TEMPERATURE, &
-         KIND_U_CURRENT_COMPONENT,   &
-         KIND_V_CURRENT_COMPONENT,   &
-         KIND_SEA_SURFACE_PRESSURE)
+   CASE (QTY_SALINITY,              &
+         QTY_POTENTIAL_TEMPERATURE, &
+         QTY_U_CURRENT_COMPONENT,   &
+         QTY_V_CURRENT_COMPONENT,   &
+         QTY_SEA_SURFACE_PRESSURE)
       base_offset = get_index_start(domain_id, get_varid_from_kind(obs_type))
 
-   CASE (KIND_SEA_SURFACE_HEIGHT)
-      base_offset = get_index_start(domain_id, get_varid_from_kind(KIND_SEA_SURFACE_PRESSURE))
+   CASE (QTY_SEA_SURFACE_HEIGHT)
+      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEA_SURFACE_PRESSURE))
       convert_to_ssh = .TRUE. ! simple linear transform of PSURF
 
    CASE DEFAULT
@@ -1788,7 +1788,7 @@ else
    lat = TLAT(lon_index, lat_index)
 endif
 
-if (local_var == KIND_SEA_SURFACE_HEIGHT) then
+if (local_var == QTY_SEA_SURFACE_HEIGHT) then
    depth = 0.0_r8
 else
    depth = ZC(depth_index)
@@ -1801,7 +1801,7 @@ location = set_location(lon, lat, depth, VERTISHEIGHT)
 if (present(var_type)) then
    var_type = local_var
    if(is_dry_land(var_type, lon_index, lat_index, depth_index)) then
-      var_type = KIND_DRY_LAND
+      var_type = QTY_DRY_LAND
    endif
 endif
 
@@ -1827,7 +1827,7 @@ do i = 1, get_num_variables(domain_id)
 end do
 
 write(string1, *) 'Kind ', dart_kind, ' not found in state vector'
-write(string2, *) 'AKA ', get_raw_obs_kind_name(dart_kind), ' not found in state vector'
+write(string2, *) 'AKA ', get_name_for_quantity(dart_kind), ' not found in state vector'
 call error_handler(E_MSG,'get_varid_from_kind', string1, &
                    source, revision, revdate, text2=string2)
 
@@ -1873,7 +1873,7 @@ call get_state_kind(var_id, var_type)
 
 ! if on land or below ocean floor, replace type with dry land.
 if(is_dry_land(var_type, lon_index, lat_index, depth_index)) then
-   var_type = KIND_DRY_LAND
+   var_type = QTY_DRY_LAND
 endif
 
 end subroutine get_state_kind_inc_dry
@@ -2257,7 +2257,7 @@ else
    !>@todo JH : If we store the variable attributes in a structure we can simplly
    ! loop over all of the variables and output prognostic variables and attributes
    !> For now we are only writting the default variables if they exist.
-   if ( get_varid_from_kind(KIND_SALINITY) > 0 ) then
+   if ( get_varid_from_kind(QTY_SALINITY) > 0 ) then
       call nc_check(nf90_def_var(ncid=ncFileID, name='SALT', xtype=nf90_real, &
             dimids = (/NlonDimID,NlatDimID,NzDimID,MemberDimID,unlimitedDimID/),varid=SVarID),&
             'nc_write_model_atts', 'S def_var '//trim(filename))
@@ -2271,7 +2271,7 @@ else
             'nc_write_model_atts', 'S fill '//trim(filename))
    endif
 
-   if ( get_varid_from_kind(KIND_POTENTIAL_TEMPERATURE) > 0 ) then
+   if ( get_varid_from_kind(QTY_POTENTIAL_TEMPERATURE) > 0 ) then
       call nc_check(nf90_def_var(ncid=ncFileID, name='TEMP', xtype=nf90_real, &
             dimids=(/NlonDimID,NlatDimID,NzDimID,MemberDimID,unlimitedDimID/),varid=TVarID),&
             'nc_write_model_atts', 'T def_var '//trim(filename))
@@ -2288,7 +2288,7 @@ else
    endif
 
 
-   if ( get_varid_from_kind(KIND_U_CURRENT_COMPONENT) > 0 ) then
+   if ( get_varid_from_kind(QTY_U_CURRENT_COMPONENT) > 0 ) then
       call nc_check(nf90_def_var(ncid=ncFileID, name='UVEL', xtype=nf90_real, &
             dimids=(/NlonDimID,NlatDimID,NzDimID,MemberDimID,unlimitedDimID/),varid=UVarID),&
             'nc_write_model_atts', 'U def_var '//trim(filename))
@@ -2305,7 +2305,7 @@ else
    endif
 
 
-   if ( get_varid_from_kind(KIND_V_CURRENT_COMPONENT) > 0 ) then
+   if ( get_varid_from_kind(QTY_V_CURRENT_COMPONENT) > 0 ) then
       call nc_check(nf90_def_var(ncid=ncFileID, name='VVEL', xtype=nf90_real, &
             dimids=(/NlonDimID,NlatDimID,NzDimID,MemberDimID,unlimitedDimID/),varid=VVarID),&
             'nc_write_model_atts', 'V def_var '//trim(filename))
@@ -2321,7 +2321,7 @@ else
             'nc_write_model_atts', 'V fill '//trim(filename))
    endif
 
-   if ( get_varid_from_kind(KIND_SEA_SURFACE_PRESSURE) > 0 ) then
+   if ( get_varid_from_kind(QTY_SEA_SURFACE_PRESSURE) > 0 ) then
       call nc_check(nf90_def_var(ncid=ncFileID, name='PSURF', xtype=nf90_real, &
             dimids=(/NlonDimID,NlatDimID,MemberDimID,unlimitedDimID/),varid=PSURFVarID), &
             'nc_write_model_atts', 'PSURF def_var '//trim(filename))
@@ -2459,7 +2459,7 @@ else
    !>@todo JH: If we store the variable attributes in a structure we can simplly
    !> loop over all of the variables and output prognostic variables and attributes.
    !> For now we are only writting the default variables if they exist.
-   S_index = get_varid_from_kind(KIND_SALINITY)
+   S_index = get_varid_from_kind(QTY_SALINITY)
    if ( S_index > 0 ) then
       !>@todo JH: do not need to use vector_to_prog_var to reshape variables for
       !> netcdf file.  you can simply use the count=(dim1, dim2, dim3) in the 
@@ -2472,7 +2472,7 @@ else
                    'nc_write_model_vars', 'S put_var '//trim(filename))
    endif
 
-   T_index = get_varid_from_kind(KIND_POTENTIAL_TEMPERATURE)
+   T_index = get_varid_from_kind(QTY_POTENTIAL_TEMPERATURE)
    if ( T_index > 0 ) then
       call vector_to_prog_var(statevec, T_index, data_3d)
       where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
@@ -2482,7 +2482,7 @@ else
                    'nc_write_model_vars', 'T put_var '//trim(filename))
    endif
 
-   U_index = get_varid_from_kind(KIND_U_CURRENT_COMPONENT)
+   U_index = get_varid_from_kind(QTY_U_CURRENT_COMPONENT)
    if ( U_index > 0 ) then
       call vector_to_prog_var(statevec, U_index, data_3d)
       where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
@@ -2492,7 +2492,7 @@ else
                    'nc_write_model_vars', 'U put_var '//trim(filename))
    endif
 
-   V_index = get_varid_from_kind(KIND_V_CURRENT_COMPONENT)
+   V_index = get_varid_from_kind(QTY_V_CURRENT_COMPONENT)
    if ( V_index > 0 ) then
       call vector_to_prog_var(statevec, V_index, data_3d)
       where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
@@ -2502,7 +2502,7 @@ else
                    'nc_write_model_vars', 'V put_var '//trim(filename))
    endif
 
-   PSURF_index = get_varid_from_kind(KIND_SEA_SURFACE_PRESSURE)
+   PSURF_index = get_varid_from_kind(QTY_SEA_SURFACE_PRESSURE)
    if ( PSURF_index > 0 ) then
       call vector_to_prog_var(statevec, PSURF_index, data_2d)
       where (data_2d == 0.0_r8) data_2d = NF90_FILL_REAL
@@ -2569,7 +2569,7 @@ else
       dart_index = state_ens_handle%my_vars(i)
       call get_state_kind_inc_dry(dart_index, var_type)
       do j=1, ens_size
-         if (var_type /= KIND_DRY_LAND) then
+         if (var_type /= QTY_DRY_LAND) then
             state_ens_handle%copies(j,i) = random_gaussian(random_seq, &
                state_ens_handle%copies(j,i), &
                model_perturbation_amplitude)
@@ -2623,7 +2623,7 @@ do i = 1, ens_size
 
       call get_state_kind_inc_dry(j, var_type)
 
-      if(var_type /= KIND_DRY_LAND) then
+      if(var_type /= QTY_DRY_LAND) then
          random_number = random_gaussian(r(sequence_to_use), 0.0_r8, model_perturbation_amplitude)
          call get_var_owner_index(j, owner, owners_index)
          if (ens_handle%my_pe==owner) then
@@ -3079,8 +3079,8 @@ if ( .not. module_initialized ) call static_init_model
 
 is_on_ugrid = .FALSE.
 
-if ((obs_type == KIND_U_CURRENT_COMPONENT)  .or.  &
-    (obs_type == KIND_V_CURRENT_COMPONENT)) is_on_ugrid = .TRUE.
+if ((obs_type == QTY_U_CURRENT_COMPONENT)  .or.  &
+    (obs_type == QTY_V_CURRENT_COMPONENT)) is_on_ugrid = .TRUE.
 
 end function is_on_ugrid
 
@@ -3239,7 +3239,7 @@ do k = 1, num_close
    t_ind = close_ind(k)
 
    ! if dry land, leave original 1e9 value.  otherwise, compute real dist.
-   if (obs_kind(t_ind) /= KIND_DRY_LAND) then
+   if (obs_kind(t_ind) /= QTY_DRY_LAND) then
       dist(k) = get_dist(base_obs_loc,       obs(t_ind), &
                          base_obs_kind, obs_kind(t_ind))
    endif
@@ -3377,12 +3377,12 @@ if(hstatus /= 0) then
    return
 endif
 
-offset_salt = get_index_start(domain_id, get_varid_from_kind(KIND_SALINITY))
-offset_temp = get_index_start(domain_id, get_varid_from_kind(KIND_POTENTIAL_TEMPERATURE))
+offset_salt = get_index_start(domain_id, get_varid_from_kind(QTY_SALINITY))
+offset_temp = get_index_start(domain_id, get_varid_from_kind(QTY_POTENTIAL_TEMPERATURE))
 
 ! salinity - in msu (kg/kg).  converter will want psu (g/kg).
 call do_interp(state_handle, ens_size, offset_salt, hgt_bot, hgt_top, hgt_fract, llon, llat, &
-               KIND_SALINITY, salinity_val, temp_status)
+               QTY_SALINITY, salinity_val, temp_status)
  istatus = temp_status
 
 if(all(istatus /= 0)) return
@@ -3390,7 +3390,7 @@ if (debug > 8) print *, 'salinity: ', salinity_val
 
 ! potential temperature - degrees C.
 call do_interp(state_handle, ens_size, offset_temp, hgt_bot, hgt_top, hgt_fract, llon, llat, &
-               KIND_POTENTIAL_TEMPERATURE, potential_temp, temp_status)
+               QTY_POTENTIAL_TEMPERATURE, potential_temp, temp_status)
 do e = 1, ens_size
    if(temp_status(e) /= 0) istatus(e) = temp_status(e)
 enddo
@@ -3825,7 +3825,7 @@ MyLoop : do i = 1, nrows
 
    ! Make sure DART kind is valid
 
-   kind_list(i) = get_raw_obs_kind_index(dartstr)
+   kind_list(i) = get_index_for_quantity(dartstr)
    if( kind_list(i)  < 0 ) then
       write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
       call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
@@ -3858,11 +3858,11 @@ enddo MyLoop
 
 ! check to see if temp and salinity are both in the state otherwise you will not
 ! be able to interpolate in XXX subroutine
-if ( any(kind_list == KIND_SALINITY) ) then
+if ( any(kind_list == QTY_SALINITY) ) then
    ! check to see that temperature is also in the variable list
-   if ( .not. any(kind_list == KIND_POTENTIAL_TEMPERATURE) ) then
+   if ( .not. any(kind_list == QTY_POTENTIAL_TEMPERATURE) ) then
       write(string1,'(A)') 'in order to compute temperature you need to have both '
-      write(string2,'(A)') 'KIND_SALINITY and KIND_POTENTIAL_TEMPERATURE in the model state'
+      write(string2,'(A)') 'QTY_SALINITY and QTY_POTENTIAL_TEMPERATURE in the model state'
       call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate, text2=string2)
    endif
 endif
@@ -3881,11 +3881,11 @@ character(len=*),  intent(inout) :: state_variables(:)
 
 ! strings must all be the same length for the gnu compiler
 state_variables( 1:5*num_state_table_columns ) = &
-   (/ 'SALT_CUR                  ', 'KIND_SALINITY             ', 'UPDATE                    ', &
-      'TEMP_CUR                  ', 'KIND_POTENTIAL_TEMPERATURE', 'UPDATE                    ', &
-      'UVEL_CUR                  ', 'KIND_U_CURRENT_COMPONENT  ', 'UPDATE                    ', &
-      'VVEL_CUR                  ', 'KIND_V_CURRENT_COMPONENT  ', 'UPDATE                    ', &
-      'PSURF_CUR                 ', 'KIND_SEA_SURFACE_PRESSURE ', 'UPDATE                    ' /)
+   (/ 'SALT_CUR                  ', 'QTY_SALINITY             ', 'UPDATE                    ', &
+      'TEMP_CUR                  ', 'QTY_POTENTIAL_TEMPERATURE', 'UPDATE                    ', &
+      'UVEL_CUR                  ', 'QTY_U_CURRENT_COMPONENT  ', 'UPDATE                    ', &
+      'VVEL_CUR                  ', 'QTY_V_CURRENT_COMPONENT  ', 'UPDATE                    ', &
+      'PSURF_CUR                 ', 'QTY_SEA_SURFACE_PRESSURE ', 'UPDATE                    ' /)
 
 end subroutine use_default_state_variables
 

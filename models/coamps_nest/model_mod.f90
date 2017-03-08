@@ -421,7 +421,7 @@ contains
         integer                     :: alloc_status, dealloc_status
 
         select case (obs_kind)    
-        case (KIND_VORTEX_LAT, KIND_VORTEX_LON)
+        case (QTY_VORTEX_LAT, QTY_VORTEX_LON)
 
           ! obs_loc
           loc_array = get_location(location)
@@ -467,10 +467,10 @@ contains
 
           ! (1) Get u and v location in the state vector 
           u_var = find_state_variable(state_layout_3D, nest, &
-                   KIND_U_WIND_COMPONENT, .false., 'M', nz)
+                   QTY_U_WIND_COMPONENT, .false., 'M', nz)
 
           v_var = find_state_variable(state_layout_3D, nest, &
-                   KIND_V_WIND_COMPONENT, .false., 'M', nz)
+                   QTY_V_WIND_COMPONENT, .false., 'M', nz)
 
           ! (2) Calculate vorticity
           call timestamp_message('VRTX: Before calculate vorticity')
@@ -548,7 +548,7 @@ contains
           ! (7) Set desired return value
           call nest_point_to_latlon(domain, make_nest_point(nest, ij(1), ij(2)),  &
                                     loc_array(DART_LOC_LAT), loc_array(DART_LOC_LON))
-          if(obs_kind == KIND_VORTEX_LAT) then
+          if(obs_kind == QTY_VORTEX_LAT) then
             obs_val = loc_array(DART_LOC_LAT)
           else
             obs_val = loc_array(DART_LOC_LON)
@@ -694,7 +694,7 @@ contains
         if(base_which == VERTISSURFACE) then
           base_array(3)=0.0_r8 ; base_which=VERTISLEVEL
         else
-          call model_interpolate(ensemble_mean, base_obs_loc, KIND_VERTLEVEL, obs_val, istatus1)
+          call model_interpolate(ensemble_mean, base_obs_loc, QTY_VERTLEVEL, obs_val, istatus1)
           base_array(3)=obs_val ; base_which=VERTISLEVEL
         endif
         base_obs_loc = set_location(base_array(1),  base_array(2), base_array(3), base_which)
@@ -726,7 +726,7 @@ contains
             elseif(local_obs_which == VERTISUNDEF) then
               local_obs_which=VERTISUNDEF
             else
-              call model_interpolate(ensemble_mean, obs_loc(t_ind), KIND_VERTLEVEL, obs_val, istatus2)
+              call model_interpolate(ensemble_mean, obs_loc(t_ind), QTY_VERTLEVEL, obs_val, istatus2)
               local_obs_array(3)=obs_val ; local_obs_which=VERTISLEVEL
             end if
 

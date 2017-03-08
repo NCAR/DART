@@ -165,31 +165,31 @@
    highest_obs_pressure_mb      = -1.0
   /
 
-!                          'theta',                 'KIND_POTENTIAL_TEMPERATURE',
-!                          'surface_pressure',      'KIND_SURFACE_PRESSURE',
-!                          'uReconstructZonal',     'KIND_U_WIND_COMPONENT',
-!                          'uReconstructMeridional','KIND_V_WIND_COMPONENT',
-!                          'u',                     'KIND_EDGE_NORMAL_SPEED',
-!                          'w',                     'KIND_VERTICAL_VELOCITY',
-!                          'qv',                    'KIND_VAPOR_MIXING_RATIO',
-!                          'qc',                    'KIND_CLOUDWATER_MIXING_RATIO',
-!                          'qr',                    'KIND_RAINWATER_MIXING_RATIO',
-!                          'qi',                    'KIND_ICE_MIXING_RATIO',
-!                          'qs',                    'KIND_SNOW_MIXING_RATIO',
-!                          'qg',                    'KIND_GRAUPEL_MIXING_RATIO',
-!                          'rho',                   'KIND_DENSITY',
-!                          'salinity',              'KIND_SALINITY',
-!                          'temperature',           'KIND_TEMPERATURE'
+!                          'theta',                 'QTY_POTENTIAL_TEMPERATURE',
+!                          'surface_pressure',      'QTY_SURFACE_PRESSURE',
+!                          'uReconstructZonal',     'QTY_U_WIND_COMPONENT',
+!                          'uReconstructMeridional','QTY_V_WIND_COMPONENT',
+!                          'u',                     'QTY_EDGE_NORMAL_SPEED',
+!                          'w',                     'QTY_VERTICAL_VELOCITY',
+!                          'qv',                    'QTY_VAPOR_MIXING_RATIO',
+!                          'qc',                    'QTY_CLOUDWATER_MIXING_RATIO',
+!                          'qr',                    'QTY_RAINWATER_MIXING_RATIO',
+!                          'qi',                    'QTY_ICE_MIXING_RATIO',
+!                          'qs',                    'QTY_SNOW_MIXING_RATIO',
+!                          'qg',                    'QTY_GRAUPEL_MIXING_RATIO',
+!                          'rho',                   'QTY_DENSITY',
+!                          'salinity',              'QTY_SALINITY',
+!                          'temperature',           'QTY_TEMPERATURE'
 
 &mpas_vars_nml
    mpas_state_variables =
-                          'uReconstructZonal',     'KIND_U_WIND_COMPONENT',
-                          'uReconstructMeridional','KIND_V_WIND_COMPONENT',
-                          'theta',                 'KIND_POTENTIAL_TEMPERATURE',
-                          'surface_pressure',      'KIND_SURFACE_PRESSURE',
-                          'w',                     'KIND_VERTICAL_VELOCITY',
-                          'rho',                   'KIND_DENSITY',
-                          'qv',                    'KIND_VAPOR_MIXING_RATIO'
+                          'uReconstructZonal',     'QTY_U_WIND_COMPONENT',
+                          'uReconstructMeridional','QTY_V_WIND_COMPONENT',
+                          'theta',                 'QTY_POTENTIAL_TEMPERATURE',
+                          'surface_pressure',      'QTY_SURFACE_PRESSURE',
+                          'w',                     'QTY_VERTICAL_VELOCITY',
+                          'rho',                   'QTY_DENSITY',
+                          'qv',                    'QTY_VAPOR_MIXING_RATIO'
 
    mpas_state_bounds    = 'qv','0.0','NULL','CLAMP',
                           'qc','0.0','NULL','CLAMP',
@@ -335,20 +335,20 @@
 
 # possible vertical coordinate systems are:
 # VERTISUNDEF VERTISSURFACE VERTISLEVEL VERTISPRESSURE VERTISHEIGHT VERTISSCALEHEIGHT
-   kind_of_interest = 'KIND_SURFACE_PRESSURE'
-   kind_of_interest = 'KIND_POTENTIAL_TEMPERATURE'
-   kind_of_interest = 'KIND_TEMPERATURE'
-   kind_of_interest = 'KIND_U_WIND_COMPONENT'
-   kind_of_interest = 'KIND_V_WIND_COMPONENT'
-   kind_of_interest = 'KIND_DENSITY'
-   kind_of_interest = 'KIND_VAPOR_MIXING_RATIO'
+   kind_of_interest = 'QTY_SURFACE_PRESSURE'
+   kind_of_interest = 'QTY_POTENTIAL_TEMPERATURE'
+   kind_of_interest = 'QTY_TEMPERATURE'
+   kind_of_interest = 'QTY_U_WIND_COMPONENT'
+   kind_of_interest = 'QTY_V_WIND_COMPONENT'
+   kind_of_interest = 'QTY_DENSITY'
+   kind_of_interest = 'QTY_VAPOR_MIXING_RATIO'
 
 &model_mod_check_nml
    verbose               = .FALSE.
    test1thru             = 11
    x_ind                 = 300
    loc_of_interest       = 240.0, 0.0, 10000.0
-   kind_of_interest      = 'KIND_U_WIND_COMPONENT'
+   kind_of_interest      = 'QTY_U_WIND_COMPONENT'
    interp_test_lonrange  = 0.0, 359.0
    interp_test_dlon      = 1.0
    interp_test_latrange  = -89.0, 89.0
@@ -365,7 +365,7 @@
    verbose               = .FALSE.
    matlab_out            = .FALSE.
    netcdf_out            = .TRUE.
-   kind_of_interest      = 'KIND_U_WIND_COMPONENT'
+   kind_of_interest      = 'QTY_U_WIND_COMPONENT'
    interp_test_lonrange  = 0.0, 360.0
    interp_test_dlon      = 1.0
    interp_test_latrange  = -89.0, 89.0

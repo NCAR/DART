@@ -20,8 +20,8 @@ use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 use     location_mod, only : location_type, get_location, set_location, get_dist, &
                              LocationDims, LocationName, LocationLName, &
                              get_close_maxdist_init, get_close_obs_init, get_close_obs
-use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
-                             KIND_GEOPOTENTIAL_HEIGHT
+use     obs_kind_mod, only : QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, &
+                             QTY_GEOPOTENTIAL_HEIGHT
 
 
 use  pe2lyr_mod, only : modelvars, modelvars_init, rk4
@@ -288,17 +288,17 @@ if(indx <= u_indxmax) then
    lev_index =  (indx-1)/(nlats*nlons) +1
    lat_index = ((indx-1) - ((lev_index-1)*nlats*nlons)) / nlons +1
    lon_index =  (indx-1) - ((lev_index-1)*nlats*nlons) - ((lat_index-1)*nlons) +1
-   if(present(var_type)) var_type = KIND_U_WIND_COMPONENT
+   if(present(var_type)) var_type = QTY_U_WIND_COMPONENT
 else if(indx <= v_indxmax) then
    lev_index =  (indx-u_indxmax-1)/(nlats*nlons) +1
    lat_index = ((indx-u_indxmax-1) - ((lev_index-1)*nlats*nlons)) / nlons +1
    lon_index =  (indx-u_indxmax-1) - ((lev_index-1)*nlats*nlons) - ((lat_index-1)*nlons) +1
-   if(present(var_type)) var_type = KIND_V_WIND_COMPONENT
+   if(present(var_type)) var_type = QTY_V_WIND_COMPONENT
 else
    lev_index =  (indx-v_indxmax-1)/(nlats*nlons) +1
    lat_index = ((indx-v_indxmax-1) - ((lev_index-1)*nlats*nlons)) / nlons +1
    lon_index =  (indx-v_indxmax-1) - ((lev_index-1)*nlats*nlons) - ((lat_index-1)*nlons) +1
-   if(present(var_type)) var_type = KIND_GEOPOTENTIAL_HEIGHT
+   if(present(var_type)) var_type = QTY_GEOPOTENTIAL_HEIGHT
 endif 
  
 ! With the threed_sphere location module ... you specify that the 
@@ -428,11 +428,11 @@ if (level < 1 .or. level > 2) then
 endif
 
 ! order is u,v,z 
-if(mytype == KIND_U_WIND_COMPONENT) then
+if(mytype == QTY_U_WIND_COMPONENT) then
    indx =               (level-1)*nlats*nlons+(lat_index-1)*nlons + lon_index
-else if(mytype == KIND_V_WIND_COMPONENT) then
+else if(mytype == QTY_V_WIND_COMPONENT) then
    indx = 2*nlats*nlons+(level-1)*nlats*nlons+(lat_index-1)*nlons + lon_index
-else if(mytype == KIND_GEOPOTENTIAL_HEIGHT) then
+else if(mytype == QTY_GEOPOTENTIAL_HEIGHT) then
    indx = 4*nlats*nlons+(level-1)*nlats*nlons+(lat_index-1)*nlons + lon_index
 endif
    

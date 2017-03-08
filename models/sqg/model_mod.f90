@@ -24,7 +24,7 @@ use    utilities_mod, only : register_module, error_handler, nc_check, &
                              dump_unit_attributes, &
                              nmlfileunit, do_output, do_nml_file, do_nml_term,  &
                              find_namelist_in_file, check_namelist_read
-use     obs_kind_mod, only : KIND_POTENTIAL_TEMPERATURE
+use     obs_kind_mod, only : QTY_POTENTIAL_TEMPERATURE
 use     spectral_mod
 use          sqg_mod, only : diffusion, init, init_jet, terrain, invert, advect, &
                              tadv, xy_to_sp, sp_to_xy, d_setup, ft_2d, norm
@@ -646,7 +646,7 @@ location = set_location(lon, lat, lev, 1)
 ! Alternately, use state_loc that is defined in static_init_model()
 !location = state_loc(index_in)
 
-if (present(var_type)) var_type = KIND_POTENTIAL_TEMPERATURE
+if (present(var_type)) var_type = QTY_POTENTIAL_TEMPERATURE
 
 end subroutine get_state_meta_data
 

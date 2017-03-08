@@ -66,7 +66,7 @@
    last_obs_days                = -1,
    last_obs_seconds             = -1,
 
-   inf_flavor                  = 2,                       0,
+   inf_flavor                  = 0,                       0,
    inf_initial_from_restart    = .false.,                 .false.,
    inf_sd_initial_from_restart = .false.,                 .false.,
    inf_deterministic           = .true.,                  .true.,
@@ -96,7 +96,7 @@
 
 &assim_tools_nml
    filter_kind                     = 1,
-   cutoff                          = 0.001,
+   cutoff                          = 0.00001,
    sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
@@ -186,7 +186,7 @@
    verbose               = .false.
    test1thru             = 5
    x_ind                 = 3
-   kind_of_interest      = 'KIND_RAW_STATE_VARIABLE'
+   kind_of_interest      = 'QTY_RAW_STATE_VARIABLE'
    loc_of_interest       = 0.4
    interp_test_xrange    = 0.0, 1.0 
    interp_test_dx        = 0.1

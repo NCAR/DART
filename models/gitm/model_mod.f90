@@ -36,9 +36,9 @@ use    utilities_mod, only : register_module, error_handler,                   &
                              open_file, file_exist, find_textfile_dims,        &
                              file_to_text, close_file
 
-use     obs_kind_mod, only : get_raw_obs_kind_index,  &
-                             get_raw_obs_kind_name,   &
-                             KIND_GEOPOTENTIAL_HEIGHT
+use     obs_kind_mod, only : get_index_for_quantity,  &
+                             get_name_for_quantity,   &
+                             QTY_GEOPOTENTIAL_HEIGHT
 
 use mpi_utilities_mod, only: my_task_id
 
@@ -285,7 +285,7 @@ subroutine get_state_meta_data(index_in, location, var_type)
 !------------------------------------------------------------------
 ! given an index into the state vector, return its location and
 ! if given, the var kind.   despite the name, var_type is a generic
-! kind, like those in obs_kind/obs_kind_mod.f90, starting with KIND_
+! kind, like those in obs_kind/obs_kind_mod.f90, starting with QTY_
 
 integer, intent(in)            :: index_in
 type(location_type)            :: location
@@ -404,7 +404,7 @@ endif
 ! return values have already been set, just give it a more specific error
 ! code and return here.
 
-if (obs_type == KIND_GEOPOTENTIAL_HEIGHT ) then
+if (obs_type == QTY_GEOPOTENTIAL_HEIGHT ) then
    ! ok to continue.  offsets unused in this case, but
    ! set them to something > 0 to indicate its ok.
    base_offset = 1
@@ -471,7 +471,7 @@ if(ier /= 0) then
 endif
 
 ! if we're asking about height, we have the alt arrays directly.
-if (obs_type == KIND_GEOPOTENTIAL_HEIGHT) then
+if (obs_type == QTY_GEOPOTENTIAL_HEIGHT) then
 
    ! Interpolate to the given altitude - lat/lon doesn't matter here.
    interp_val = (1 - alt_fract) * ALT(balt(1)) + alt_fract * ALT(balt(2))
@@ -646,7 +646,7 @@ do ivar = 1, nfields
    kind_string               = trim(variable_table(ivar,2))
    progvar(ivar)%varname     = varname
    progvar(ivar)%kind_string = kind_string
-   progvar(ivar)%dart_kind   = get_raw_obs_kind_index( progvar(ivar)%kind_string )
+   progvar(ivar)%dart_kind   = get_index_for_quantity( progvar(ivar)%kind_string )
    progvar(ivar)%dimlens     = 0
 
    ! I would really like decode_gitm_indices to set the following (on a per-variable basis)
@@ -1495,7 +1495,7 @@ if (istatus1 == 0) then
 !!!! THE following 20-ish+ lines are implementing the search (if f107's dist to obs is to be calculated)
 !!!! Alex 03/07/2012
    do i = 1, size(obs_kind) !have to go over the whole size because these are all the candidates
-      if (obs_kind(i) .eq. get_raw_obs_kind_index('KIND_1D_PARAMETER')) then !so right now any KIND_1D_PARAMETER will match.
+      if (obs_kind(i) .eq. get_index_for_quantity('QTY_1D_PARAMETER')) then !so right now any QTY_1D_PARAMETER will match.
 !+ right now the only parameter is f107, but if you add more parameters, you might want to change their localizations, as
 !+ right now they will be either all at the meas. location or all far (depending on est_f107 setting in pbs_file.sh)
          is_in_obs_kind = 1 !true
@@ -3066,7 +3066,7 @@ FieldLoop : do i=1,nfields
    exit FieldLoop
 enddo FieldLoop
 
-string = get_raw_obs_kind_name(dartkind)
+string = get_name_for_quantity(dartkind)
 
 if ((index1 == 0) .or. (indexN == 0)) then
    write(string1,*) 'Problem, cannot find indices for kind ',dartkind,trim(string)
@@ -3180,7 +3180,7 @@ MyLoop : do i = 1, nrows
 
    ! Make sure DART kind is valid
 
-   if( get_raw_obs_kind_index(dartstr) < 0 ) then
+   if( get_index_for_quantity(dartstr) < 0 ) then
       write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
       call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
    endif

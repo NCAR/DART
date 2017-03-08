@@ -55,14 +55,14 @@ use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,        
                               insert_obs_in_seq, destroy_obs_sequence,          &
                               set_copy_meta_data, set_qc_meta_data, set_qc,     &
                               set_obs_values, set_obs_def, insert_obs_in_seq
-use       obs_def_mod, only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
+use       obs_def_mod, only : obs_def_type, set_obs_def_time, set_obs_def_type_of_obs, &
                               set_obs_def_error_variance, set_obs_def_location, &
                               set_obs_def_key
 use      obs_kind_mod, only :  AQUA_TOTAL_PRECIPITABLE_WATER,  &
                               TERRA_TOTAL_PRECIPITABLE_WATER,  &
                                AMSR_TOTAL_PRECIPITABLE_WATER,  &
                               MODIS_TOTAL_PRECIPITABLE_WATER,  &
-                              get_obs_kind_index
+                              get_index_for_type_of_obs
 use obs_utilities_mod, only : create_3d_obs, add_obs_to_seq
 
 
@@ -186,7 +186,7 @@ if (((min_lon /= missing_r8) .and. (max_lon == missing_r8)) .or. &
 endif
 
 ! convert a string into an observation type number
-obstype = get_obs_kind_index(observation_name)
+obstype = get_index_for_type_of_obs(observation_name)
 if (obstype < 0) then
    write(msgstring, *) 'unrecognized observation type ', trim(observation_name)
    call error_handler(E_ERR,'convert_tpw', msgstring, source, revision, revdate, &

@@ -253,7 +253,7 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine create_3d_obs(add_data, lat, lon, vval, vkind, obsv, okind, oerr, day, sec, qc, obs)
 use        types_mod, only : r8
-use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
+use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_type_of_obs, &
                              set_obs_def_error_variance, set_obs_def_location
 use obs_sequence_mod, only : obs_type, set_obs_values, set_qc, set_obs_def
 use time_manager_mod, only : time_type, set_time
@@ -268,7 +268,7 @@ real(r8)           :: obs_val(1), qc_val(1)
 type(obs_def_type) :: obs_def
 
 call set_obs_def_location(obs_def, set_location(lon, lat, vval, vkind))
-call set_obs_def_kind(obs_def, okind)
+call set_obs_def_type_of_obs(obs_def, okind)
 call set_obs_def_time(obs_def, set_time(sec, day))
 call set_obs_def_error_variance(obs_def, oerr * oerr)
 call set_obs_def(obs, obs_def)

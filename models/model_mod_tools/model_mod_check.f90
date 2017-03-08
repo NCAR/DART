@@ -24,8 +24,8 @@ use     mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utiliti
 use          location_mod, only : location_type, set_location, write_location,  &
                                   get_dist, get_location
 
-use          obs_kind_mod, only : get_raw_obs_kind_index,    &
-                                  KIND_DRY_LAND
+use          obs_kind_mod, only : get_index_for_quantity,    &
+                                  QTY_DRY_LAND
 
 use      obs_sequence_mod, only : static_init_obs_sequence
 
@@ -253,7 +253,7 @@ call print_test_message('RUNNING TEST 4', &
 
 call create_state_window(ens_handle)
 
-mykindindex = get_raw_obs_kind_index(kind_of_interest)
+mykindindex = get_index_for_quantity(kind_of_interest)
 
 allocate(interp_vals(num_ens), ios_out(num_ens))
 

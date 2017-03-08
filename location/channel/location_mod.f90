@@ -16,7 +16,7 @@ use  utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_for
                            check_namelist_read, do_output, do_nml_file,              &
                            do_nml_term, is_longitude_between
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
-use   obs_kind_mod, only : get_num_obs_kinds, get_obs_kind_name
+use   obs_kind_mod, only : get_num_types_of_obs, get_name_for_type_of_obs
 use mpi_utilities_mod, only : my_task_id, task_count
 
 implicit none

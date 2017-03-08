@@ -80,7 +80,7 @@
    test1thru             = 8,
    x_ind                 = 100000,
    loc_of_interest       = 179.5, 89.5, 10000.0,
-   kind_of_interest      = 'KIND_INTEGRATED_DUST',
+   kind_of_interest      = 'QTY_INTEGRATED_DUST',
    interp_test_lonrange  = 0.5, 359.5,
    interp_test_dlon      = 1.0,
    interp_test_latrange  = -89.5, 89.5,

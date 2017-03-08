@@ -47,7 +47,7 @@ from an observation sequence file.
 </P> <P>
 The distinction between kinds and types is this:
 <em class=unix>Kinds</em> apply both to observations and to state vector variables.
-Knowing the KIND_xxx of an observation must be sufficient 
+Knowing the QTY_xxx of an observation must be sufficient 
 to compute the correct forward operator.   
 The kinds also must be able to identify the 
 different variables in the state vector.
@@ -60,7 +60,7 @@ allows users to selectively assimilate, evaluate, or ignore them.
 <P>
 Generic kinds are associated with an observation type or with a model
 state variable. An example kind is 
-<em class="unix">KIND_U_WIND_COMPONENT</em>. 
+<em class="unix">QTY_U_WIND_COMPONENT</em>. 
 Multiple different specific observation
 types can be associated with this generic kind, for instance 
 <em class="unix">RADIOSONDE_U_WIND_COMPONENT</em>,
@@ -70,8 +70,8 @@ Generic kinds are
 defined via an integer parameter statement at the start of this module. As
 new generic kinds are needed they are added to this list. Generic kind
 integer parameters are required to start with 
-<em class="unix">KIND_</em> and observation types
-are NOT allowed to start with <em class="unix">KIND_</em>.
+<em class="unix">QTY_</em> and observation types
+are NOT allowed to start with <em class="unix">QTY_</em>.
 </P> <P>
 Typically kinds are used by 
 model-interface files <em class="file">models/xx/model_mod.f90</em>,
@@ -113,7 +113,7 @@ in the <em class=unix>initialize_module()</em> subroutine,
 and add an entry with the same index to define the string 
 associated with the parameter.  The names must be identical.
 If the number is larger than the current maximum,
-increase the value of <em class=unix>max_obs_generic</em>.
+increase the value of <em class=unix>max_defined_quantities</em>.
 Run the <em class="file">preprocess</em> program to generate the
 <em class="file">obs_kind/obs_kind_mod.f90</em> file which will then be
 used by the rest of the DART system.
@@ -122,7 +122,7 @@ used by the rest of the DART system.
 <P>
 The obs_kind module contains an automatically-generated list
 of integer parameters, derived from the obs_def files, an
-integer parameter <em class=unix>max_obs_kinds</em>, and
+integer parameter <em class=unix>max_defined_types_of_obs</em>, and
 an automatically-generated list of initializers for the
 <em class="unix">obs_type_type</em> derived type that 
 defines the details of each observation type that has been created by the 
@@ -243,22 +243,22 @@ utilities_mod
 
 <TABLE>
 <TR><TD><em class=call>use obs_def_mod, only : </em></TD>
-                   <TD><A HREF="#max_obs_kinds">max_obs_kinds</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_num_obs_kinds">get_num_obs_kinds</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_num_raw_obs_kinds">get_num_raw_obs_kinds</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_obs_kind_name">get_obs_kind_name</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_raw_obs_kind_name">get_raw_obs_kind_name</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_obs_kind_index">get_obs_kind_index</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_raw_obs_kind_index">get_raw_obs_kind_index</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#assimilate_this_obs_kind">assimilate_this_obs_kind</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#evaluate_this_obs_kind">evaluate_this_obs_kind</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_obs_kind_var_type">get_obs_kind_var_type</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#write_obs_kind">write_obs_kind</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#read_obs_kind">read_obs_kind</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_kind_from_menu">get_kind_from_menu</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#map_def_index">map_def_index</A></TD></TR>
+                   <TD><A HREF="#max_defined_types_of_obs">max_defined_types_of_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_num_types_of_obs">get_num_types_of_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_num_quantities">get_num_quantities</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_name_for_type_of_obs">get_name_for_type_of_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_name_for_quantity">get_name_for_quantity</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_index_for_type_of_obs">get_index_for_type_of_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_index_for_quantity">get_index_for_quantity</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#assimilate_this_type_of_obs">assimilate_this_type_of_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#evaluate_this_type_of_obs">evaluate_this_type_of_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_quantity_for_type_of_obs">get_quantity_for_type_of_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#write_type_of_obs_table">write_type_of_obs_table</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#read_type_of_obs_table">read_type_of_obs_table</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_type_of_obs_from_menu">get_type_of_obs_from_menu</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#map_type_of_obs_table">map_type_of_obs_table</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#paramname_length">paramname_length</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#GENERIC_KIND_DEFINITIONS">GENERIC_KIND_DEFINITIONS</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#GENERIC_QTY_DEFINITIONS">GENERIC_QTY_DEFINITIONS</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#OBSERVATION_TYPES">OBSERVATION_TYPES</A></TD></TR>
 </TABLE>
 
@@ -271,10 +271,10 @@ utilities_mod
 
 <!--===================== DESCRIPTION OF PUBLIC VARIABLE =====================-->
 
-<A NAME="max_obs_kinds"></A>
+<A NAME="max_defined_types_of_obs"></A>
 <BR>
 <div class=routine>
-<em class=call>integer, parameter :: max_obs_kinds </em>
+<em class=call>integer, parameter :: max_defined_types_of_obs </em>
 </div>
 
 <div class=indent1>
@@ -301,12 +301,12 @@ at run time the size can be returned by the function interface.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="get_num_obs_kinds"></A>
+<A NAME="get_num_types_of_obs"></A>
 <BR>
 <div class=routine>
-<em class=call> var = get_num_obs_kinds() </em>
+<em class=call> var = get_num_types_of_obs() </em>
 <pre>
-integer :: <em class=code>get_num_obs_kinds</em>
+integer :: <em class=code>get_num_types_of_obs</em>
 </pre>
 </div>
 
@@ -318,7 +318,7 @@ Returns the number of different specific observation types
 (e.g. RADIOSONDE_TEMPERATURE, AIRCRAFT_SPECIFIC_HUMIDITY) defined
 in the obs_kind_mod.f90 file.  This file is generated by
 the preprocess program.  This is the same value as the
-public 'max_obs_kinds' above.
+public 'max_defined_types_of_obs' above.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -333,12 +333,12 @@ public 'max_obs_kinds' above.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="get_num_raw_obs_kinds"></A>
+<A NAME="get_num_quantities"></A>
 <BR>
 <div class=routine>
-<em class=call> var = get_num_raw_obs_kinds() </em>
+<em class=call> var = get_num_quantities() </em>
 <pre>
-integer :: <em class=code>get_num_raw_obs_kinds</em>
+integer :: <em class=code>get_num_quantities</em>
 </pre>
 </div>
 
@@ -347,7 +347,7 @@ integer :: <em class=code>get_num_raw_obs_kinds</em>
 
 <P>
 Returns the number of different generic kinds
-(e.g. KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY) defined
+(e.g. QTY_TEMPERATURE, QTY_SPECIFIC_HUMIDITY) defined
 in the obs_kind_mod.f90 file.  This file is generated by
 the preprocess program.
 </P>
@@ -364,12 +364,12 @@ the preprocess program.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="get_obs_kind_name"></A>
+<A NAME="get_name_for_type_of_obs"></A>
 <BR>
 <div class=routine>
-<em class=call> var = get_obs_kind_name(obs_kind_ind) </em>
+<em class=call> var = get_name_for_type_of_obs(obs_kind_ind) </em>
 <pre>
-character(len=32)              :: <em class=code>get_obs_kind_name</em>
+character(len=32)              :: <em class=code>get_name_for_type_of_obs</em>
 integer, intent(in)            :: <em class=code>obs_kind_ind</em>
 </pre>
 </div>
@@ -397,12 +397,12 @@ associated with the integer index.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="get_raw_obs_kind_name"></A>
+<A NAME="get_name_for_quantity"></A>
 <BR>
 <div class=routine>
-<em class=call> var = get_raw_obs_kind_name(obs_kind_ind) </em>
+<em class=call> var = get_name_for_quantity(obs_kind_ind) </em>
 <pre>
-character(len=32)              :: <em class=code>get_raw_obs_kind_name</em>
+character(len=32)              :: <em class=code>get_name_for_quantity</em>
 integer, intent(in)            :: <em class=code>obs_kind_ind</em>
 </pre>
 </div>
@@ -412,7 +412,7 @@ integer, intent(in)            :: <em class=code>obs_kind_ind</em>
 
 <P>
 Given an integer index return the string name of the corresponding 
-generic kind (e.g. "KIND_TEMPERATURE", "KIND_SPECIFIC_HUMIDITY").
+generic kind (e.g. "QTY_TEMPERATURE", "QTY_SPECIFIC_HUMIDITY").
 This string is the same as the F90 identifier
 associated with the integer index.
 </P>
@@ -430,12 +430,12 @@ associated with the integer index.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="get_obs_kind_index"></A>
+<A NAME="get_index_for_type_of_obs"></A>
 <BR>
 <div class=routine>
-<em class=call> var = get_obs_kind_index(obs_kind_name) </em>
+<em class=call> var = get_index_for_type_of_obs(obs_kind_name) </em>
 <pre>
-integer                       :: <em class=code>get_obs_kind_index</em>
+integer                       :: <em class=code>get_index_for_type_of_obs</em>
 character(len=32), intent(in) :: <em class=code>obs_kind_name</em>
 </pre>
 </div>
@@ -454,7 +454,7 @@ as the name string.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>get_obs_kind_index</em></TD>
+<TR><TD valign=top><em class=code>get_index_for_type_of_obs</em></TD>
     <TD>Integer index into the obs_type_type table entry with name string 
         corresponding to obs_kind_name.</TD></TR>
 <TR><TD valign=top><em class=code>obs_kind_name</em></TD>
@@ -466,12 +466,12 @@ as the name string.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="get_raw_obs_kind_index"></A>
+<A NAME="get_index_for_quantity"></A>
 <BR>
 <div class=routine>
-<em class=call> var = get_raw_obs_kind_index(obs_kind_name) </em>
+<em class=call> var = get_index_for_quantity(obs_kind_name) </em>
 <pre>
-integer                       :: <em class=code>get_raw_obs_kind_index</em>
+integer                       :: <em class=code>get_index_for_quantity</em>
 character(len=32), intent(in) :: <em class=code>obs_kind_name</em>
 </pre>
 </div>
@@ -481,7 +481,7 @@ character(len=32), intent(in) :: <em class=code>obs_kind_name</em>
 
 <P>
 Given the name of a generic kind
-(e.g. "KIND_TEMPERATURE", "KIND_SPECIFIC_HUMIDITY"),
+(e.g. "QTY_TEMPERATURE", "QTY_SPECIFIC_HUMIDITY"),
 returns the index of the entry
 in the obs_kind_type table with this name. If the name is not found in
 the table, a -1 is returned. The integer returned for a successful
@@ -490,7 +490,7 @@ as the name string.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>get_raw_obs_kind_index</em></TD>
+<TR><TD valign=top><em class=code>get_index_for_quantity</em></TD>
     <TD>Integer index into the obs_kind_type table entry with name string 
         corresponding to obs_kind_name.</TD></TR>
 <TR><TD valign=top><em class=code>obs_kind_name</em></TD>
@@ -502,12 +502,12 @@ as the name string.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="assimilate_this_obs_kind"></A>
+<A NAME="assimilate_this_type_of_obs"></A>
 <BR>
 <div class=routine>
-<em class=call> var = assimilate_this_obs_kind(obs_kind_ind) </em>
+<em class=call> var = assimilate_this_type_of_obs(obs_kind_ind) </em>
 <pre>
-logical              :: <em class=code>assimilate_this_obs_kind</em>
+logical              :: <em class=code>assimilate_this_type_of_obs</em>
 integer, intent(in)  :: <em class=code>obs_kind_ind</em>
 </pre>
 </div>
@@ -537,12 +537,12 @@ to return the status of this type.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="evaluate_this_obs_kind"></A>
+<A NAME="evaluate_this_type_of_obs"></A>
 <BR>
 <div class=routine>
-<em class=call> var = evaluate_this_obs_kind(obs_kind_ind) </em>
+<em class=call> var = evaluate_this_type_of_obs(obs_kind_ind) </em>
 <pre>
-logical              :: <em class=code>evaluate_this_obs_kind</em>
+logical              :: <em class=code>evaluate_this_type_of_obs</em>
 integer, intent(in)  :: <em class=code>obs_kind_ind</em>
 </pre>
 </div>
@@ -573,12 +573,12 @@ TD>
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="get_obs_kind_var_type"></A>
+<A NAME="get_quantity_for_type_of_obs"></A>
 <BR>
 <div class=routine>
-<em class=call> var = get_obs_kind_var_type(obs_kind_ind) </em>
+<em class=call> var = get_quantity_for_type_of_obs(obs_kind_ind) </em>
 <pre>
-integer              :: <em class=code>get_obs_kind_var_type</em>
+integer              :: <em class=code>get_quantity_for_type_of_obs</em>
 integer, intent(in)  :: <em class=code>obs_kind_ind</em>
 </pre>
 </div>
@@ -589,8 +589,8 @@ integer, intent(in)  :: <em class=code>obs_kind_ind</em>
 <P>
 Given the integer index associated with a specific observation
 type (e.g. RADIOSONDE_TEMPERATURE, AIRCRAFT_SPECIFIC_HUMIDITY), return
-the generic kind associated with this type (e.g. KIND_TEMPERATURE,
-KIND_SPECIFIC_HUMIDITY).
+the generic kind associated with this type (e.g. QTY_TEMPERATURE,
+QTY_SPECIFIC_HUMIDITY).
 The parameter defined by this name is 
 used as an integer index into the obs_type_type table
 to return the generic kind associated with this type.
@@ -609,10 +609,10 @@ TD>
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="write_obs_kind"></A>
+<A NAME="write_type_of_obs_table"></A>
 <BR>
 <div class=routine>
-<em class=call> call write_obs_kind(ifile
+<em class=call> call write_type_of_obs_table(ifile
                   <em class=optionalcode>[,&nbsp;fform, use_list]</em>) </em>
 <pre>
 integer,                    intent(in) :: <em class=code>ifile</em>
@@ -643,8 +643,8 @@ actually being used.
     <TD>Optional format for file. Default is FORMATTED.</TD></TR>
 <TR><TD valign=top><em class=optionalcode>use_list(:)</em></TD>
     <TD>Optional integer array the same length as the number
-         of specific types (from get_num_obs_kinds() or the public
-         max_obs_kinds). If value is larger than 0, the corresponding
+         of specific types (from get_num_types_of_obs() or the public
+         max_defined_types_of_obs). If value is larger than 0, the corresponding
          type information will be written out.  If 0, it will be skipped.
          If this argument is not specified, all values will be written.</TD></TR>
 </TABLE>
@@ -654,10 +654,10 @@ actually being used.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="read_obs_kind"></A>
+<A NAME="read_type_of_obs_table"></A>
 <BR>
 <div class=routine>
-<em class=call> call read_obs_kind(ifile, pre_I_format
+<em class=call> call read_type_of_obs_table(ifile, pre_I_format
                 <em class=optionalcode>[,&nbsp;fform]</em>) </em>
 <pre>
 integer,                    intent(in) :: <em class=code>ifile</em>
@@ -698,12 +698,12 @@ releases of DART.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="get_kind_from_menu"></A>
+<A NAME="get_type_of_obs_from_menu"></A>
 <BR>
 <div class=routine>
-<em class=call> var = get_kind_from_menu() </em>
+<em class=call> var = get_type_of_obs_from_menu() </em>
 <pre>
-integer              :: <em class=code>get_kind_from_menu</em>
+integer              :: <em class=code>get_type_of_obs_from_menu</em>
 </pre>
 </div>
 
@@ -725,12 +725,12 @@ of available types and validates entry before returning.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="map_def_index"></A>
+<A NAME="map_type_of_obs_table"></A>
 <BR>
 <div class=routine>
-<em class=call> var = map_def_index(obs_def_index) </em>
+<em class=call> var = map_type_of_obs_table(obs_def_index) </em>
 <pre>
-integer              :: <em class=code>map_def_index</em>
+integer              :: <em class=code>map_type_of_obs_table</em>
 integer, intent(in)  :: <em class=code>obs_def_index</em>
 </pre>
 </div>
@@ -782,17 +782,17 @@ The length of these names cannot exceed this parameter-name limit.
 
 <!--===================== DESCRIPTION OF PUBLIC VARIABLE =====================-->
 
-<A NAME="GENERIC_KIND_DEFINITIONS"></A>
+<A NAME="GENERIC_QTY_DEFINITIONS"></A>
 <BR>
 <div class=routine>
-<em class=call>integer, parameter :: KIND_..... </em>
+<em class=call>integer, parameter :: QTY_..... </em>
 </div>
 
 <div class=indent1>
 <!-- Description -->
 
 <P>
-All generic kinds available are public parameters that begin with KIND_.
+All generic kinds available are public parameters that begin with QTY_.
 </P>
 
 </div>
@@ -867,19 +867,19 @@ in the obs_type_type table.
                                  both namelist entries.</TD>
 </TR>
 
-<TR><!-- routine --><TD VALIGN=top>map_def_index</TD>
+<TR><!-- routine --><TD VALIGN=top>map_type_of_obs_table</TD>
     <!-- message --><TD VALIGN=top>Couldnt find obs_def_index __ in obs_kind map.</TD>
     <!-- comment --><TD VALIGN=top>An attempt to use an observation type that was NOT
                                    in the obs_sequence header.</TD>
 </TR>
 
-<TR><!-- routine --><TD VALIGN=top>read_obs_kind</TD>
+<TR><!-- routine --><TD VALIGN=top>read_type_of_obs_table</TD>
     <!-- message --><TD VALIGN=top>Didnt find obs_kind_definition string</TD>
     <!-- comment --><TD VALIGN=top>An obs_sequence file that was expected to contain
               an obs_kind_definition list in its header did not. </TD>
 </TR>
 
-<TR><!-- routine --><TD VALIGN=top>read_obs_kind</TD>
+<TR><!-- routine --><TD VALIGN=top>read_type_of_obs_table</TD>
     <!-- message --><TD VALIGN=top>didnt find observation kind _____ in obs_kind_mod list</TD>
     <!-- comment --><TD VALIGN=top> An observation type specified by name in an observation 
                sequence file header was NOT found in the obs_type_type table. </TD>
@@ -916,7 +916,7 @@ DART code where 'kind' is used for local variable names
 where it really is a 'type'.
 </P> <P>
 As noted in the Overview,
-the real distinction is that knowing the KIND_xxx of an
+the real distinction is that knowing the QTY_xxx of an
 observation should be enough to compute the correct forward operator.   
 The kinds also should be sufficient to identify the 
 different variables in the state vector.

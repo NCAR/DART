@@ -17,11 +17,11 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, do_ou
                              nmlfileunit, find_namelist_in_file, check_namelist_read, &
                              do_nml_file, do_nml_term
 
-use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, &
-                             KIND_V_WIND_COMPONENT, &
-                             KIND_TEMPERATURE, &
-                             KIND_SURFACE_PRESSURE, &
-                             KIND_VERTICAL_VELOCITY
+use     obs_kind_mod, only : QTY_U_WIND_COMPONENT, &
+                             QTY_V_WIND_COMPONENT, &
+                             QTY_TEMPERATURE, &
+                             QTY_SURFACE_PRESSURE, &
+                             QTY_VERTICAL_VELOCITY
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
 implicit none
@@ -249,7 +249,7 @@ do iaz = 1, naz
          zed = - (ized - 1)*dzed - dzed/2.00_r8
          icount = icount + 1
          state_loc(icount)  = set_location(az,rad,zed,3)
-         state_kind(icount) = KIND_U_WIND_COMPONENT 
+         state_kind(icount) = QTY_U_WIND_COMPONENT 
       end do
    end do
 end do
@@ -263,7 +263,7 @@ do iaz = 1, naz
          zed = - (ized - 1)*dzed - dzed/2.00_r8
          icount = icount + 1
          state_loc(icount)  = set_location(az,rad,zed,3)
-         state_kind(icount) = KIND_V_WIND_COMPONENT
+         state_kind(icount) = QTY_V_WIND_COMPONENT
       end do
    end do
 end do
@@ -277,7 +277,7 @@ do iaz = 1, naz
          zed = - (ized - 1)*dzed 
          icount = icount + 1
          state_loc(icount)  = set_location(az,rad,zed,3)
-         state_kind(icount) = KIND_VERTICAL_VELOCITY
+         state_kind(icount) = QTY_VERTICAL_VELOCITY
       end do
    end do
 end do
@@ -291,7 +291,7 @@ do iaz = 1, naz
          zed = - (ized - 1)*dzed - dzed/2.00_r8
          icount = icount + 1
          state_loc(icount)  = set_location(az,rad,zed,3)
-         state_kind(icount) = KIND_TEMPERATURE
+         state_kind(icount) = QTY_TEMPERATURE
       end do
    end do
 end do
@@ -303,7 +303,7 @@ do iaz = 1, naz
          zed = - (ized - 1)*dzed - dzed/2.00_r8
          icount = icount + 1
          state_loc(icount)  = set_location(az,rad,zed,3)
-         state_kind(icount) = KIND_SURFACE_PRESSURE
+         state_kind(icount) = QTY_SURFACE_PRESSURE
       end do
    end do
 end do

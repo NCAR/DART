@@ -262,7 +262,7 @@ contains
 
         ! If we got here, the search failed
         write (message,'(3A,A1,A,I3,L1)') "Could not find  ",    &
-                          trim(get_raw_obs_kind_name(var_kind)), &
+                          trim(get_name_for_quantity(var_kind)), &
                           " on ", level_type,"-level.", sigma_index, is_mean
     end function find_state_variable
 

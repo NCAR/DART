@@ -16,7 +16,7 @@ use    utilities_mod, only : initialize_utilities, finalize_utilities, nc_check,
                              check_namelist_read
 use     location_mod, only : location_type, set_location, write_location, get_dist, &
                              query_location, LocationDims, get_location
-use     obs_kind_mod, only : get_raw_obs_kind_name, get_raw_obs_kind_index
+use     obs_kind_mod, only : get_name_for_quantity, get_index_for_quantity
 use  assim_model_mod, only : open_restart_read, open_restart_write, close_restart, &
                              aread_state_restart, awrite_state_restart, &
                              netcdf_file_type, aoutput_diagnostics, &

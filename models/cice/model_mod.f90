@@ -37,51 +37,51 @@ use         utilities_mod, only : register_module, error_handler,               
                                   do_nml_file, do_nml_term
 
 ! to add more kinds, edit ../../obs_kind/DEFAULT_obs_kind_mod.F90
-use          obs_kind_mod, only : KIND_SEAICE_AGREG_CONCENTR  , &  
-                                  KIND_SEAICE_AGREG_VOLUME    , &
-                                  KIND_SEAICE_AGREG_SNOWVOLUME, &
-                                  KIND_SEAICE_AGREG_THICKNESS , &
-                                  KIND_SEAICE_AGREG_SNOWDEPTH , &
-                                  KIND_U_SEAICE_COMPONENT     , &
-                                  KIND_V_SEAICE_COMPONENT     , &
-                                  KIND_SEAICE_ALBEDODIRVIZ    , &
-                                  KIND_SEAICE_ALBEDODIRNIR    , &
-                                  KIND_SEAICE_ALBEDOINDVIZ    , &
-                                  KIND_SEAICE_ALBEDOINDNIR    , &
-                                  KIND_SEAICE_CONCENTR        , &
-                                  KIND_SEAICE_VOLUME          , &
-                                  KIND_SEAICE_SNOWVOLUME      , &
-                                  KIND_SEAICE_SURFACETEMP     , &
-                                  KIND_SEAICE_FIRSTYEARAREA   , &
-                                  KIND_SEAICE_ICEAGE          , &
-                                  KIND_SEAICE_LEVELAREA       , &
-                                  KIND_SEAICE_LEVELVOLUME     , &
-                                  KIND_SEAICE_MELTPONDAREA    , &
-                                  KIND_SEAICE_MELTPONDDEPTH   , &
-                                  KIND_SEAICE_MELTPONDLID     , &
-                                  KIND_SEAICE_MELTPONDSNOW    , &
-                                  KIND_SEAICE_SALINITY001     , &
-                                  KIND_SEAICE_SALINITY002     , &
-                                  KIND_SEAICE_SALINITY003     , &
-                                  KIND_SEAICE_SALINITY004     , &
-                                  KIND_SEAICE_SALINITY005     , &
-                                  KIND_SEAICE_SALINITY006     , &
-                                  KIND_SEAICE_SALINITY007     , &
-                                  KIND_SEAICE_SALINITY008     , &
-                                  KIND_SEAICE_ICEENTHALPY001  , &
-                                  KIND_SEAICE_ICEENTHALPY002  , &
-                                  KIND_SEAICE_ICEENTHALPY003  , &
-                                  KIND_SEAICE_ICEENTHALPY004  , &
-                                  KIND_SEAICE_ICEENTHALPY005  , &
-                                  KIND_SEAICE_ICEENTHALPY006  , &
-                                  KIND_SEAICE_ICEENTHALPY007  , &
-                                  KIND_SEAICE_ICEENTHALPY008  , &
-                                  KIND_SEAICE_SNOWENTHALPY001 , &
-                                  KIND_SEAICE_SNOWENTHALPY002 , &
-                                  KIND_SEAICE_SNOWENTHALPY003 , &
-                                  KIND_DRY_LAND,                &
-                                  get_raw_obs_kind_index,       &
-                                  get_raw_obs_kind_name
+use          obs_kind_mod, only : QTY_SEAICE_AGREG_CONCENTR  , &  
+                                  QTY_SEAICE_AGREG_VOLUME    , &
+                                  QTY_SEAICE_AGREG_SNOWVOLUME, &
+                                  QTY_SEAICE_AGREG_THICKNESS , &
+                                  QTY_SEAICE_AGREG_SNOWDEPTH , &
+                                  QTY_U_SEAICE_COMPONENT     , &
+                                  QTY_V_SEAICE_COMPONENT     , &
+                                  QTY_SEAICE_ALBEDODIRVIZ    , &
+                                  QTY_SEAICE_ALBEDODIRNIR    , &
+                                  QTY_SEAICE_ALBEDOINDVIZ    , &
+                                  QTY_SEAICE_ALBEDOINDNIR    , &
+                                  QTY_SEAICE_CONCENTR        , &
+                                  QTY_SEAICE_VOLUME          , &
+                                  QTY_SEAICE_SNOWVOLUME      , &
+                                  QTY_SEAICE_SURFACETEMP     , &
+                                  QTY_SEAICE_FIRSTYEARAREA   , &
+                                  QTY_SEAICE_ICEAGE          , &
+                                  QTY_SEAICE_LEVELAREA       , &
+                                  QTY_SEAICE_LEVELVOLUME     , &
+                                  QTY_SEAICE_MELTPONDAREA    , &
+                                  QTY_SEAICE_MELTPONDDEPTH   , &
+                                  QTY_SEAICE_MELTPONDLID     , &
+                                  QTY_SEAICE_MELTPONDSNOW    , &
+                                  QTY_SEAICE_SALINITY001     , &
+                                  QTY_SEAICE_SALINITY002     , &
+                                  QTY_SEAICE_SALINITY003     , &
+                                  QTY_SEAICE_SALINITY004     , &
+                                  QTY_SEAICE_SALINITY005     , &
+                                  QTY_SEAICE_SALINITY006     , &
+                                  QTY_SEAICE_SALINITY007     , &
+                                  QTY_SEAICE_SALINITY008     , &
+                                  QTY_SEAICE_ICEENTHALPY001  , &
+                                  QTY_SEAICE_ICEENTHALPY002  , &
+                                  QTY_SEAICE_ICEENTHALPY003  , &
+                                  QTY_SEAICE_ICEENTHALPY004  , &
+                                  QTY_SEAICE_ICEENTHALPY005  , &
+                                  QTY_SEAICE_ICEENTHALPY006  , &
+                                  QTY_SEAICE_ICEENTHALPY007  , &
+                                  QTY_SEAICE_ICEENTHALPY008  , &
+                                  QTY_SEAICE_SNOWENTHALPY001 , &
+                                  QTY_SEAICE_SNOWENTHALPY002 , &
+                                  QTY_SEAICE_SNOWENTHALPY003 , &
+                                  QTY_DRY_LAND,                &
+                                  get_index_for_quantity,       &
+                                  get_name_for_quantity
 
 use     mpi_utilities_mod, only : my_task_id, task_count
 
@@ -167,7 +167,7 @@ logical :: update_var_list( max_state_variables )
 
 ! identifiers for variable_table
 integer, parameter :: VAR_NAME_INDEX = 1
-integer, parameter :: VAR_KIND_INDEX = 2
+integer, parameter :: VAR_QTY_INDEX = 2
 integer, parameter :: VAR_UPDATE_INDEX = 3
 
 ! things which can/should be in the model_nml
@@ -482,7 +482,7 @@ end subroutine init_interp
 
 !------------------------------------------------------------
 
-!CMB change only KIND_X to KIND_SEAICE_X and took out 
+!CMB change only QTY_X to QTY_SEAICE_X and took out 
 ! height sent to all_corners_wet since no bathym in cice
 subroutine init_dipole_interp()
 
@@ -547,7 +547,7 @@ do i = 1, nx
    do j = 1, ny - 1
       
       ! Only update regular boxes that contain all wet corners
-      if( all_corners_wet(KIND_U_SEAICE_COMPONENT,i,j) ) then
+      if( all_corners_wet(QTY_U_SEAICE_COMPONENT,i,j) ) then
          ! Set up array of lons and lats for the corners of these u quads
          call get_quad_corners(ulon, i, j, u_c_lons)
          call get_quad_corners(ulat, i, j, u_c_lats)
@@ -562,7 +562,7 @@ do i = 1, nx
 
       ! Repeat for t dipole quads.
       ! Only update regular boxes that contain all wet corners
-      if( all_corners_wet(KIND_SEAICE_AGREG_CONCENTR,i,j) ) then
+      if( all_corners_wet(QTY_SEAICE_AGREG_CONCENTR,i,j) ) then
          ! Set up array of lons and lats for the corners of these t quads
          call get_quad_corners(tlon, i, j, t_c_lons)
          call get_quad_corners(tlat, i, j, t_c_lats)
@@ -953,63 +953,63 @@ if (debug > 1) print *, 'requesting interpolation of ', obs_type, ' at ', llon, 
 ! cat_signal says whether to aggregate multiple categories into a sum, interpolate a 3d var 
 ! on a particular level, or interpolate a simple 2d variable.
 SELECT CASE (obs_type)
-   CASE (KIND_SEAICE_AGREG_THICKNESS )  ! these kinds require aggregating 3D vars to make a 2D var
+   CASE (QTY_SEAICE_AGREG_THICKNESS )  ! these kinds require aggregating 3D vars to make a 2D var
       cat_signal = -1 ! for extra special procedure to aggregate
-      base_offset = get_index_start(domain_id, get_varid_from_kind(KIND_SEAICE_VOLUME))  
-   CASE (KIND_SEAICE_AGREG_SNOWDEPTH )  ! these kinds require aggregating 3D vars to make a 2D var
+      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_VOLUME))  
+   CASE (QTY_SEAICE_AGREG_SNOWDEPTH )  ! these kinds require aggregating 3D vars to make a 2D var
       cat_signal = -1 ! for extra special procedure to aggregate
-      base_offset = get_index_start(domain_id, get_varid_from_kind(KIND_SEAICE_SNOWVOLUME))  
-   CASE (KIND_SEAICE_AGREG_CONCENTR )   ! these kinds require aggregating a 3D var to make a 2D var
+      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_SNOWVOLUME))  
+   CASE (QTY_SEAICE_AGREG_CONCENTR )   ! these kinds require aggregating a 3D var to make a 2D var
       cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
-      base_offset = get_index_start(domain_id, get_varid_from_kind(KIND_SEAICE_CONCENTR))  
-   CASE (KIND_SEAICE_AGREG_VOLUME   )   ! these kinds require aggregating a 3D var to make a 2D var
+      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_CONCENTR))  
+   CASE (QTY_SEAICE_AGREG_VOLUME   )   ! these kinds require aggregating a 3D var to make a 2D var
       cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
-      base_offset = get_index_start(domain_id, get_varid_from_kind(KIND_SEAICE_VOLUME))  
-   CASE (KIND_SEAICE_AGREG_SNOWVOLUME ) ! these kinds require aggregating a 3D var to make a 2D var
+      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_VOLUME))  
+   CASE (QTY_SEAICE_AGREG_SNOWVOLUME ) ! these kinds require aggregating a 3D var to make a 2D var
       cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
-      base_offset = get_index_start(domain_id, get_varid_from_kind(KIND_SEAICE_SNOWVOLUME))  
-   CASE (KIND_SEAICE_CONCENTR       , &  ! these kinds have an additional dim for category
-         KIND_SEAICE_VOLUME         , &
-         KIND_SEAICE_SNOWVOLUME     , &
-         KIND_SEAICE_SURFACETEMP    , &
-         KIND_SEAICE_FIRSTYEARAREA  , &
-         KIND_SEAICE_ICEAGE         , &
-         KIND_SEAICE_LEVELAREA      , &
-         KIND_SEAICE_LEVELVOLUME    , &
-         KIND_SEAICE_MELTPONDAREA   , &
-         KIND_SEAICE_MELTPONDDEPTH  , &
-         KIND_SEAICE_MELTPONDLID    , &
-         KIND_SEAICE_MELTPONDSNOW   , &
-         KIND_SEAICE_SALINITY001    , &
-         KIND_SEAICE_SALINITY002    , &
-         KIND_SEAICE_SALINITY003    , &
-         KIND_SEAICE_SALINITY004    , &
-         KIND_SEAICE_SALINITY005    , &
-         KIND_SEAICE_SALINITY006    , &
-         KIND_SEAICE_SALINITY007    , &
-         KIND_SEAICE_SALINITY008    , &
-         KIND_SEAICE_ICEENTHALPY001 , &
-         KIND_SEAICE_ICEENTHALPY002 , &
-         KIND_SEAICE_ICEENTHALPY003 , &
-         KIND_SEAICE_ICEENTHALPY004 , &
-         KIND_SEAICE_ICEENTHALPY005 , &
-         KIND_SEAICE_ICEENTHALPY006 , &
-         KIND_SEAICE_ICEENTHALPY007 , &
-         KIND_SEAICE_ICEENTHALPY008 , &
-         KIND_SEAICE_SNOWENTHALPY001, &
-         KIND_SEAICE_SNOWENTHALPY002, &
-         KIND_SEAICE_SNOWENTHALPY003  )
+      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_SNOWVOLUME))  
+   CASE (QTY_SEAICE_CONCENTR       , &  ! these kinds have an additional dim for category
+         QTY_SEAICE_VOLUME         , &
+         QTY_SEAICE_SNOWVOLUME     , &
+         QTY_SEAICE_SURFACETEMP    , &
+         QTY_SEAICE_FIRSTYEARAREA  , &
+         QTY_SEAICE_ICEAGE         , &
+         QTY_SEAICE_LEVELAREA      , &
+         QTY_SEAICE_LEVELVOLUME    , &
+         QTY_SEAICE_MELTPONDAREA   , &
+         QTY_SEAICE_MELTPONDDEPTH  , &
+         QTY_SEAICE_MELTPONDLID    , &
+         QTY_SEAICE_MELTPONDSNOW   , &
+         QTY_SEAICE_SALINITY001    , &
+         QTY_SEAICE_SALINITY002    , &
+         QTY_SEAICE_SALINITY003    , &
+         QTY_SEAICE_SALINITY004    , &
+         QTY_SEAICE_SALINITY005    , &
+         QTY_SEAICE_SALINITY006    , &
+         QTY_SEAICE_SALINITY007    , &
+         QTY_SEAICE_SALINITY008    , &
+         QTY_SEAICE_ICEENTHALPY001 , &
+         QTY_SEAICE_ICEENTHALPY002 , &
+         QTY_SEAICE_ICEENTHALPY003 , &
+         QTY_SEAICE_ICEENTHALPY004 , &
+         QTY_SEAICE_ICEENTHALPY005 , &
+         QTY_SEAICE_ICEENTHALPY006 , &
+         QTY_SEAICE_ICEENTHALPY007 , &
+         QTY_SEAICE_ICEENTHALPY008 , &
+         QTY_SEAICE_SNOWENTHALPY001, &
+         QTY_SEAICE_SNOWENTHALPY002, &
+         QTY_SEAICE_SNOWENTHALPY003  )
       ! move pointer to the particular category
       ! then treat as 2d field in lon_lat_interp
       base_offset = get_index_start(domain_id, get_varid_from_kind(obs_type))
       base_offset = base_offset + (cat_index-1) * Nx * Ny 
       cat_signal = 1 ! now same as boring 2d field
-   CASE ( KIND_U_SEAICE_COMPONENT    , &   ! these kinds are just 2D vars
-          KIND_V_SEAICE_COMPONENT    , &
-          KIND_SEAICE_ALBEDODIRVIZ   , &
-          KIND_SEAICE_ALBEDODIRNIR   , &
-          KIND_SEAICE_ALBEDOINDVIZ   , &
-          KIND_SEAICE_ALBEDOINDNIR   )
+   CASE ( QTY_U_SEAICE_COMPONENT    , &   ! these kinds are just 2D vars
+          QTY_V_SEAICE_COMPONENT    , &
+          QTY_SEAICE_ALBEDODIRVIZ   , &
+          QTY_SEAICE_ALBEDODIRNIR   , &
+          QTY_SEAICE_ALBEDOINDVIZ   , &
+          QTY_SEAICE_ALBEDOINDNIR   )
       base_offset = get_index_start(domain_id, get_varid_from_kind(obs_type))
       cat_signal = 2 ! also boring 2d field (treat same as cat_signal 1)
    CASE DEFAULT
@@ -1023,7 +1023,7 @@ call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_ty
 
 if (cat_signal == -1) then
       ! we need to know the aggregate sea ice concentration for these special cases
-      base_offset = get_index_start(domain_id, get_varid_from_kind(KIND_SEAICE_CONCENTR))  
+      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_CONCENTR))  
       call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal, expected_aggr_conc, istatus)
       expected_obs = expected_obs/max(expected_aggr_conc,1.0e-8)  ! hope this is allowed so we never divide by zero
 endif
@@ -1846,7 +1846,7 @@ location = set_location(lon, lat, rcat, VERTISLEVEL)
 if (present(var_type)) then   ! CMB hacked is_dry_land to ignore depth
    var_type = local_var
    if(is_dry_land(var_type, lon_index, lat_index)) then
-      var_type = KIND_DRY_LAND  
+      var_type = QTY_DRY_LAND  
    endif
 endif
 
@@ -1873,7 +1873,7 @@ end do
 
 if (debug > 1) then
    write(string1, *) 'Kind ', dart_kind, ' not found in state vector'
-   write(string2, *) 'AKA ', get_raw_obs_kind_name(dart_kind), ' not found in state vector'
+   write(string2, *) 'AKA ', get_name_for_quantity(dart_kind), ' not found in state vector'
    call error_handler(E_MSG,'get_varid_from_kind', string1, &
                       source, revision, revdate, text2=string2)
 endif
@@ -1919,7 +1919,7 @@ call get_state_kind(var_id, var_type)
 
 ! if on land, replace type with dry land.
 if(is_dry_land(var_type, lon_index, lat_index)) then
-   var_type = KIND_DRY_LAND
+   var_type = QTY_DRY_LAND
 endif
 
 end subroutine get_state_kind_inc_dry
@@ -2269,7 +2269,7 @@ else
    !>@todo JH : If we store the variable attributes in a structure we can simply
    ! loop over all of the variables and output prognostic variables and attributes
    !> For now we are only writing the default variables if they exist.
-   if ( get_varid_from_kind(KIND_SEAICE_CONCENTR) > 0 ) then
+   if ( get_varid_from_kind(QTY_SEAICE_CONCENTR) > 0 ) then
       call nc_check(nf90_def_var(ncid=ncFileID, name='aice', xtype=nf90_real, &
             dimids = (/NlonDimID,NlatDimID,NcatDimID,MemberDimID,unlimitedDimID/),varid=AVarID),&
             'nc_write_model_atts', 'aice def_var '//trim(filename))
@@ -2285,7 +2285,7 @@ else
             'nc_write_model_atts', 'aice fill '//trim(filename))
    endif
 
-   if ( get_varid_from_kind(KIND_SEAICE_VOLUME) > 0 ) then
+   if ( get_varid_from_kind(QTY_SEAICE_VOLUME) > 0 ) then
       call nc_check(nf90_def_var(ncid=ncFileID, name='vi', xtype=nf90_real, &
             dimids=(/NlonDimID,NlatDimID,NcatDimID,MemberDimID,unlimitedDimID/),varid=VVarID),&
             'nc_write_model_atts', 'vi def_var '//trim(filename))
@@ -2301,7 +2301,7 @@ else
             'nc_write_model_atts', 'vi fill '//trim(filename))
    endif
 
-   if ( get_varid_from_kind(KIND_SEAICE_SNOWVOLUME) > 0 ) then
+   if ( get_varid_from_kind(QTY_SEAICE_SNOWVOLUME) > 0 ) then
       call nc_check(nf90_def_var(ncid=ncFileID, name='vs', xtype=nf90_real, &
             dimids=(/NlonDimID,NlatDimID,NcatDimID,MemberDimID,unlimitedDimID/),varid=VSVarID),&
             'nc_write_model_atts', 'vs def_var '//trim(filename))
@@ -2317,7 +2317,7 @@ else
             'nc_write_model_atts', 'vs fill '//trim(filename))
    endif
 
-   if ( get_varid_from_kind(KIND_U_SEAICE_COMPONENT) > 0 ) then
+   if ( get_varid_from_kind(QTY_U_SEAICE_COMPONENT) > 0 ) then
       call nc_check(nf90_def_var(ncid=ncFileID, name='uvel', xtype=nf90_real, &
             dimids=(/NlonDimID,NlatDimID,MemberDimID,unlimitedDimID/),varid=UVarID),&
             'nc_write_model_atts', 'uvel def_var '//trim(filename))
@@ -2333,7 +2333,7 @@ else
             'nc_write_model_atts', 'uvel fill '//trim(filename))
    endif
 
-   if ( get_varid_from_kind(KIND_V_SEAICE_COMPONENT) > 0 ) then
+   if ( get_varid_from_kind(QTY_V_SEAICE_COMPONENT) > 0 ) then
       call nc_check(nf90_def_var(ncid=ncFileID, name='vvel', xtype=nf90_real, &
             dimids=(/NlonDimID,NlatDimID,MemberDimID,unlimitedDimID/),varid=VVarID),&
             'nc_write_model_atts', 'vvel def_var '//trim(filename))
@@ -2461,7 +2461,7 @@ else
    ! Staggered grid causes some logistical problems.
    !----------------------------------------------------------------------------
 
-   AICE_index = get_varid_from_kind(KIND_SEAICE_CONCENTR)
+   AICE_index = get_varid_from_kind(QTY_SEAICE_CONCENTR)
    if ( AICE_index > 0 ) then
       !>@todo JH: do not need to use vector_to_prog_var to reshape variables for
       !> netcdf file.  you can simply use the count=(dim1, dim2, dim3) in the 
@@ -2474,7 +2474,7 @@ else
                    'nc_write_model_vars', 'aice put_var '//trim(filename))
    endif
 
-   VI_index = get_varid_from_kind(KIND_SEAICE_VOLUME)
+   VI_index = get_varid_from_kind(QTY_SEAICE_VOLUME)
    if ( VI_index > 0 ) then
       call vector_to_prog_var(statevec, VI_index, data_3d)
       where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
@@ -2484,7 +2484,7 @@ else
                    'nc_write_model_vars', 'vi put_var '//trim(filename))
    endif
 
-   VS_index = get_varid_from_kind(KIND_SEAICE_SNOWVOLUME)
+   VS_index = get_varid_from_kind(QTY_SEAICE_SNOWVOLUME)
    if ( VS_index > 0 ) then
       call vector_to_prog_var(statevec, VS_index, data_3d)
       where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
@@ -2494,7 +2494,7 @@ else
                    'nc_write_model_vars', 'vs put_var '//trim(filename))
    endif
 
-   U_index = get_varid_from_kind(KIND_U_SEAICE_COMPONENT)
+   U_index = get_varid_from_kind(QTY_U_SEAICE_COMPONENT)
    if ( U_index > 0 ) then
       call vector_to_prog_var(statevec, U_index, data_3d)
       where (data_2d == 0.0_r8) data_2d = NF90_FILL_REAL
@@ -2504,7 +2504,7 @@ else
                    'nc_write_model_vars', 'uvel put_var '//trim(filename))
    endif
 
-   V_index = get_varid_from_kind(KIND_V_SEAICE_COMPONENT)
+   V_index = get_varid_from_kind(QTY_V_SEAICE_COMPONENT)
    if ( V_index > 0 ) then
       call vector_to_prog_var(statevec, V_index, data_3d)
       where (data_2d == 0.0_r8) data_2d = NF90_FILL_REAL
@@ -2573,7 +2573,7 @@ else
       dart_index = state_ens_handle%my_vars(i)
       call get_state_kind_inc_dry(dart_index, var_type)
       do j=1, ens_size
-         if (var_type /= KIND_DRY_LAND) then
+         if (var_type /= QTY_DRY_LAND) then
             state_ens_handle%copies(j,i) = random_gaussian(random_seq, &
                state_ens_handle%copies(j,i), &
                model_perturbation_amplitude)
@@ -2625,7 +2625,7 @@ do i = 1, ens_size
 
       call get_state_kind_inc_dry(j, var_type)
 
-      if(var_type /= KIND_DRY_LAND) then
+      if(var_type /= QTY_DRY_LAND) then
          random_number = random_gaussian(r(sequence_to_use), 0.0_r8, model_perturbation_amplitude)
          call get_var_owner_index(j, owner, owners_index)
          if (ens_handle%my_pe==owner) then
@@ -3097,8 +3097,8 @@ if ( .not. module_initialized ) call static_init_model
 
 is_on_ugrid = .FALSE.
 
-if ((obs_type == KIND_U_SEAICE_COMPONENT)  .or.  &
-    (obs_type == KIND_V_SEAICE_COMPONENT)) is_on_ugrid = .TRUE.
+if ((obs_type == QTY_U_SEAICE_COMPONENT)  .or.  &
+    (obs_type == QTY_V_SEAICE_COMPONENT)) is_on_ugrid = .TRUE.
 
 end function is_on_ugrid
 
@@ -3242,7 +3242,7 @@ do k = 1, num_close
    t_ind = close_ind(k)
 
    ! if dry land, leave original 1e9 value.  otherwise, compute real dist.
-   if (obs_kind(t_ind) /= KIND_DRY_LAND) then
+   if (obs_kind(t_ind) /= QTY_DRY_LAND) then
       dist(k) = get_dist(base_obs_loc,       obs(t_ind), &
                          base_obs_kind, obs_kind(t_ind))
    endif
@@ -3480,7 +3480,7 @@ MyLoop : do i = 1, nrows
 
    ! Make sure DART kind is valid
 
-   kind_list(i) = get_raw_obs_kind_index(dartstr)
+   kind_list(i) = get_index_for_quantity(dartstr)
    if( kind_list(i)  < 0 ) then
       write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
       call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
@@ -3523,11 +3523,11 @@ character(len=*),  intent(inout) :: state_variables(:)
 
 ! strings must all be the same length for the gnu compiler
 state_variables( 1:5*num_state_table_columns ) = &
-   (/ 'CONCENTRATION             ', 'KIND_SEAICE_CONCENTR      ', 'UPDATE                    ', &
-      'ICEVOLUME                 ', 'KIND_SEAICE_VOLUME        ', 'UPDATE                    ', &
-      'SNOWVOLUME                ', 'KIND_SEAICE_SNOWVOLUME    ', 'UPDATE                    ', &
-      'UICE                      ', 'KIND_U_SEAICE_COMPONENT   ', 'UPDATE                    ', &
-      'VICE                      ', 'KIND_V_SEAICE_COMPONENT   ', 'UPDATE                    '/)
+   (/ 'CONCENTRATION             ', 'QTY_SEAICE_CONCENTR      ', 'UPDATE                    ', &
+      'ICEVOLUME                 ', 'QTY_SEAICE_VOLUME        ', 'UPDATE                    ', &
+      'SNOWVOLUME                ', 'QTY_SEAICE_SNOWVOLUME    ', 'UPDATE                    ', &
+      'UICE                      ', 'QTY_U_SEAICE_COMPONENT   ', 'UPDATE                    ', &
+      'VICE                      ', 'QTY_V_SEAICE_COMPONENT   ', 'UPDATE                    '/)
 
 end subroutine use_default_state_variables
 

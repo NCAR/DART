@@ -24,7 +24,7 @@ use location_mod,     only : location_type
 use obs_sequence_mod, only : obs_sequence_type, init_obs, get_obs_from_key, &
                              get_obs_def, obs_type
 
-use obs_def_mod,      only : get_obs_kind, obs_def_type
+use obs_def_mod,      only : get_obs_def_type_of_obs, obs_def_type
 
 !------------------------------------------------------------------------------
 
@@ -363,7 +363,7 @@ endif
 ! if you want to do something different based on the observation specific type:
 call get_obs_from_key(seq, this_obs_key, observation)
 call get_obs_def(observation, obs_def)
-this_obs_type = get_obs_kind(obs_def)
+this_obs_type = get_obs_def_type_of_obs(obs_def)
 
 ! note that this example uses the specific type (e.g. RADIOSONDE_TEMPERATURE)
 ! to make decisions.  you have the observation so any other part (e.g. the

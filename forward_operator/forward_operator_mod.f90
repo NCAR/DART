@@ -27,9 +27,9 @@ use obs_sequence_mod,      only : init_obs, destroy_obs, obs_sequence_type, &
 
 use obs_def_mod,           only : obs_def_type, get_obs_def_error_variance, &
                                   get_expected_obs_from_def_distrib_state,  &
-                                  get_obs_kind 
+                                  get_obs_def_type_of_obs 
 
-use obs_kind_mod,          only : assimilate_this_obs_kind, evaluate_this_obs_kind
+use obs_kind_mod,          only : assimilate_this_type_of_obs, evaluate_this_type_of_obs
 
 use ensemble_manager_mod,  only : ensemble_type, compute_copy_mean_var, &
                                   prepare_to_read_from_vars,            &
@@ -445,7 +445,7 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
    call get_obs_from_key(seq, keys(i), obs)
    call get_obs_def(obs, obs_def)
 
-   obs_kind_ind = get_obs_kind(obs_def)
+   obs_kind_ind = get_obs_def_type_of_obs(obs_def)
 
    !location = get_obs_def_location(obs_def)
    
@@ -497,7 +497,7 @@ type(obs_def_type)  :: obs_def
 call init_obs(obs, 0, 0)
 call get_obs_from_key(seq, thiskey, obs)
 call get_obs_def(obs, obs_def)
-obs_kind_ind = get_obs_kind(obs_def)
+obs_kind_ind = get_obs_def_type_of_obs(obs_def)
 
 if (obs_kind_ind < 0) then
    if ( -obs_kind_ind > numvars ) then
@@ -512,8 +512,8 @@ if (obs_kind_ind < 0) then
    assimilate_this_ob = .true.; evaluate_this_ob = .false.
 else
 
-   assimilate_this_ob = assimilate_this_obs_kind(obs_kind_ind)
-   evaluate_this_ob   = evaluate_this_obs_kind(obs_kind_ind)
+   assimilate_this_ob = assimilate_this_type_of_obs(obs_kind_ind)
+   evaluate_this_ob   = evaluate_this_type_of_obs(obs_kind_ind)
 
 endif
 

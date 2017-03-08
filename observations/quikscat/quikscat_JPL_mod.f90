@@ -10,7 +10,7 @@ use types_mod,        only : r4, r8, digits12, deg2rad, rad2deg
 
 use obs_def_mod,      only : obs_def_type, get_obs_def_time, read_obs_def, &
                              write_obs_def, destroy_obs_def, interactive_obs_def, &
-                             copy_obs_def, set_obs_def_time, set_obs_def_kind, &
+                             copy_obs_def, set_obs_def_time, set_obs_def_type_of_obs, &
                              set_obs_def_error_variance, set_obs_def_location
 
 use time_manager_mod, only : time_type, get_date, set_date, get_time, set_time, &
@@ -24,8 +24,8 @@ use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
 
 use     location_mod, only : location_type, set_location, VERTISHEIGHT
 
-use     obs_kind_mod, only : get_obs_kind_index, &
-                             KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT
+use     obs_kind_mod, only : get_index_for_type_of_obs, &
+                             QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT
 
 use obs_kind_mod,     only : QKSWND_U_WIND_COMPONENT, QKSWND_V_WIND_COMPONENT
 
@@ -190,8 +190,8 @@ call init_obs(     obs, num_copies, num_qc)
 call init_obs(prev_obs, num_copies, num_qc)
 
 ! assign each observation the correct observation type
-uobstype = get_obs_kind_index('QKSWND_U_WIND_COMPONENT')
-vobstype = get_obs_kind_index('QKSWND_V_WIND_COMPONENT')
+uobstype = get_index_for_type_of_obs('QKSWND_U_WIND_COMPONENT')
+vobstype = get_index_for_type_of_obs('QKSWND_V_WIND_COMPONENT')
 if(( uobstype < 1) .or. ( vobstype < 1)) then
    msgstring = 'unknown observation type [QKSWND_U_WIND_COMPONENT] ... dying ...'
    call error_handler(E_ERR,'real_obs_sequence',msgstring,source,revision,revdate)
@@ -415,7 +415,7 @@ loc0 = set_location(lon, lat, vloc, which_vert )
 call set_obs_def_location(obs_def, loc0)
 
 ! set obs kind
-call set_obs_def_kind(obs_def, obs_kind)
+call set_obs_def_type_of_obs(obs_def, obs_kind)
 
 call set_obs_def_time(obs_def, set_time(seconds, days) )
 call set_obs_def_error_variance(obs_def, var2)
