@@ -7893,48 +7893,48 @@ row = 0
 
 ! fill default state variable table here.
 row = row+1
-default_table(:,row) = (/ 'U                    ', &
-                          'QTY_U_WIND_COMPONENT', &
-                          'TYPE_U               ', &
-                          'UPDATE               ', &
-                          '999                  '  /)
+default_table(:,row) = (/ 'U                         ', &
+                          'QTY_U_WIND_COMPONENT      ', &
+                          'TYPE_U                    ', &
+                          'UPDATE                    ', &
+                          '999                       '  /)
 row = row+1
-default_table(:,row) = (/ 'V                    ', &
-                          'QTY_V_WIND_COMPONENT', &
-                          'TYPE_V               ', &
-                          'UPDATE               ', &
-                          '999                  '  /)
+default_table(:,row) = (/ 'V                         ', &
+                          'QTY_V_WIND_COMPONENT      ', &
+                          'TYPE_V                    ', &
+                          'UPDATE                    ', &
+                          '999                       '  /)
 row = row+1
-default_table(:,row) = (/ 'W                     ', &
-                          'QTY_VERTICAL_VELOCITY', &
-                          'TYPE_W                ', &
-                          'UPDATE                ', &
-                          '999                   '  /)
+default_table(:,row) = (/ 'W                         ', &
+                          'QTY_VERTICAL_VELOCITY     ', &
+                          'TYPE_W                    ', &
+                          'UPDATE                    ', &
+                          '999                       '  /)
 row = row+1
-default_table(:,row) = (/ 'PH                      ', &
-                          'QTY_GEOPOTENTIAL_HEIGHT', &
-                          'TYPE_GZ                 ', &
-                          'UPDATE                  ', &
-                          '999                     '  /)
+default_table(:,row) = (/ 'PH                        ', &
+                          'QTY_GEOPOTENTIAL_HEIGHT   ', &
+                          'TYPE_GZ                   ', &
+                          'UPDATE                    ', &
+                          '999                       '  /)
 row = row+1
 default_table(:,row) = (/ 'T                         ', &
-                          'QTY_POTENTIAL_TEMPERATURE', &
+                          'QTY_POTENTIAL_TEMPERATURE ', &
                           'TYPE_T                    ', &
                           'UPDATE                    ', &
                           '999                       '  /)
 row = row+1
-default_table(:,row) = (/ 'MU           ', &
-                          'QTY_PRESSURE', &
-                          'TYPE_MU      ', &
-                          'UPDATE       ', &
-                          '999          '  /)
+default_table(:,row) = (/ 'MU                        ', &
+                          'QTY_PRESSURE              ', &
+                          'TYPE_MU                   ', &
+                          'UPDATE                    ', &
+                          '999                       '  /)
 
 row = row+1
-default_table(:,row) = (/ 'QVAPOR                 ', &
-                          'QTY_VAPOR_MIXING_RATIO', &
-                          'TYPE_QV                ', &
-                          'UPDATE                 ', &
-                          '999                    '  /)
+default_table(:,row) = (/ 'QVAPOR                    ', &
+                          'QTY_VAPOR_MIXING_RATIO    ', &
+                          'TYPE_QV                   ', &
+                          'UPDATE                    ', &
+                          '999                       '  /)
 
 return
 
