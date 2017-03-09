@@ -457,14 +457,14 @@ call nc_check(nf90_Redef(ncFileID), 'nc_write_model_atts', 'nf90_Redef')
 
 call put_global_creation_time(ncFileID)
 
-call put_global_char_att(ncFileID, "model_source", source ))
-call put_global_char_att(ncFileID, "model_revision", revision ))
-call put_global_char_att(ncFileID, "model_revdate", revdate ))
-call put_global_char_att(ncFileID, "model", "Lorenz_63"))
-call put_global_real_att(ncFileID, "model_r", r ))
-call put_global_real_att(ncFileID, "model_b", b ))
-call put_global_real_att(ncFileID, "model_sigma", sigma ))
-call put_global_real_att(ncFileID, "model_deltat", deltat ))
+call put_global_char_att(ncFileID, "model_source", source )
+call put_global_char_att(ncFileID, "model_revision", revision )
+call put_global_char_att(ncFileID, "model_revdate", revdate )
+call put_global_char_att(ncFileID, "model", "Lorenz_63")
+call put_global_real_att(ncFileID, "model_r", r )
+call put_global_real_att(ncFileID, "model_b", b )
+call put_global_real_att(ncFileID, "model_sigma", sigma )
+call put_global_real_att(ncFileID, "model_deltat", deltat )
 
 
 !--------------------------------------------------------------------
@@ -499,7 +499,7 @@ call nc_check(nf90_put_att(ncFileID, LocationVarID, "valid_range", (/ 0.0_r8, 1.
 call nc_check(nf90_enddef(ncfileID), 'nc_write_model_atts', 'nf90_enddef')
 
 ! Fill the state variable coordinate variable
-call nc_check(nf90_put_var(ncFileID, LocationVarID, (/ (i,i=1,i4_model_size) /) ), &
+call nc_check(nf90_put_var(ncFileID, LocationVarID, (/ (i,i=1,int(model_size,i4)) /) ), &
               'nc_write_model_atts', 'nf90_put_var LocationVarID')
 
 ! Fill the location variable
@@ -518,6 +518,9 @@ end function nc_write_model_atts
 !--------------------------------------------------------------------
 
 subroutine put_global_char_att(ncid, name, val)
+
+use netcdf
+
 integer,          intent(in) :: ncid
 character(len=*), intent(in) :: name
 character(len=*), intent(in) :: val
@@ -532,9 +535,12 @@ end subroutine put_global_char_att
 !--------------------------------------------------------------------
 
 subroutine put_global_real_att(ncid, name, val)
+
+use netcdf
+
 integer,          intent(in) :: ncid
 character(len=*), intent(in) :: name
-real(r8),       , intent(in) :: val
+real(r8),         intent(in) :: val
 
 integer :: ret
 
@@ -552,15 +558,16 @@ character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
 integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=NF90_MAX_NAME) :: str1
+
+character(len=128) :: str1
 
 call DATE_AND_TIME(crdate,crtime,crzone,values)
 write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
                   values(1), values(2), values(3), values(5), values(6), values(7)
 
-call put_global_char_att(ncFileID, "creation_date",str1))
+call put_global_char_att(ncid, "creation_date",str1)
 
-end subroutine put_global_creation_dim
+end subroutine put_global_creation_time
 
 !===================================================================
 ! End of model_mod
