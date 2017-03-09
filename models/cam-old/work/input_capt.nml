@@ -249,25 +249,6 @@
   /
 
 
-&restart_file_tool_nml
-   input_file_name              = "filter_restart"
-   output_file_name             = "filter_updated_restart"
-   ens_size                     = 1
-   single_restart_file_in       = .true.
-   single_restart_file_out      = .true.
-   write_binary_restart_files   = .true.
-   overwrite_data_time          = .false.
-   new_data_days                = -1
-   new_data_secs                = -1
-   input_is_model_advance_file  = .false.
-   output_is_model_advance_file = .false.
-   overwrite_advance_time       = .false.
-   new_advance_days             = -1
-   new_advance_secs             = -1
-   gregorian_cal                = .true.
-  /
-
-
 &schedule_nml
    calendar             = 'Gregorian'
    first_bin_start      = 2007, 1, 01, 3, 0, 0

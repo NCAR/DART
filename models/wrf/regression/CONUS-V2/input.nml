@@ -154,24 +154,6 @@
    verbose               = .false.
    /
 
-&restart_file_tool_nml
-   input_file_name              = "filter_ic_old",
-   output_file_name             = "filter_ic_up",
-   ens_size                     = 50,
-   single_restart_file_in       = .false.,
-   single_restart_file_out      = .false.,
-   write_binary_restart_files   = .false.,
-   overwrite_data_time          = .true.,
-   new_data_days                = 148403,
-   new_data_secs                = 21600,
-   input_is_model_advance_file  = .false.,
-   output_is_model_advance_file = .false.,
-   overwrite_advance_time       = .false.,
-   new_advance_days             = -1,
-   new_advance_secs             = -1,
-/
-
-
 &obs_sequence_tool_nml
    num_input_files    = 2,
    filename_seq       = 'obs_seq2007042606','obs_seq2007042612',

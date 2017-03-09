@@ -199,23 +199,6 @@
   max_gpsro_obs = 100000,
   / 
 
-&restart_file_tool_nml
-   input_file_name              = "temp_ic",
-   output_file_name             = "filter_updated_restart",
-   ens_size                     =  1,
-   single_restart_file_in       = .true.,
-   single_restart_file_out      = .true.,
-   write_binary_restart_files   = .true.,
-   overwrite_data_time          = .true.,
-   new_data_days                =  149140,
-   new_data_secs                =  0,
-   input_is_model_advance_file  = .false.,
-   output_is_model_advance_file = .false.,
-   overwrite_advance_time       = .false.,
-   new_advance_days             =  -1,
-   new_advance_secs             =  -1,
-   gregorian_cal                = .true.   /
-
 &obs_sequence_tool_nml
    filename_seq       = 'obs_seq.one', 'obs_seq.two',
    filename_out       = 'obs_seq.processed',

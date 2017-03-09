@@ -171,24 +171,6 @@
 #
 
 
-&restart_file_tool_nml
-   input_file_name              = "filter_restart",
-   output_file_name             = "filter_updated_restart",
-   ens_size                     = 1,
-   single_restart_file_in       = .true.,
-   single_restart_file_out      = .true.,
-   write_binary_restart_files   = .true.,
-   overwrite_data_time          = .false.,
-   new_data_days                = -1,
-   new_data_secs                = -1,
-   input_is_model_advance_file  = .false.,
-   output_is_model_advance_file = .false.,
-   overwrite_advance_time       = .false.,
-   new_advance_days             = -1,
-   new_advance_secs             = -1,
-   gregorian_cal                = .false.
-/
-
 # again - this model doesn't use a calendar.  it starts at
 # day 0, seconds 0.  that's equiv to year 1601 in gregorian,
 # so use that for now.  but it should allow a no_calendar option.
