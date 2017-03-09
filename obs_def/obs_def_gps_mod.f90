@@ -438,7 +438,7 @@ call ref_local(state_handle, ens_size,  lat, lon, height, ref_perigee, this_ista
 call track_status(ens_size, this_istatus, ro_ref, istatus, return_now)
 if (return_now) return
 
-!> @TODO we need to add a different obs type and kind for the local operator,
+!>@todo we need to add a different obs type and kind for the local operator,
 !> so we can avoid allocating metadata because it isn't needed *at all*
 !> for the local operator.  nsc 30oct2015
 choosetype: if(gps_data(gpskey)%gpsro_ref_form == 'GPSREF') then
@@ -532,7 +532,7 @@ else  ! gps_data(gpskey)%gpsro_ref_form == 'GPSEXC'
 endif choosetype
 
 ! make sure return is missing_r8 if failure.
-!> @TODO is the first line necessary?  i believe the second one
+!>@todo is the first line necessary?  i believe the second one
 !> is a necessary test.
 where (istatus /= 0) ro_ref = missing_r8
 where (istatus == 0 .and. ro_ref < 0.0_r8)

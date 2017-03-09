@@ -119,18 +119,13 @@ end subroutine initialize_qc
 !>
 !> if observation is not geing evaluated or assimilated, skip it and return
 !> 1000 in qc field so the observation is not used again 
-!>
-!> @param[in] input_qc - result from forward operator calculation
-!> @param[in] assimilate_this_ob - true if obs was assimilated, false otherwise
-!> @param[in] evaluate_this_ob - true if obs was assimilated, false otherwise
-!> @return    set_input_qc - 0 for good observation, 1000 otherwise
 !------------------------------------------------------------------------------
 function set_input_qc(input_qc, assimilate_this_ob, evaluate_this_ob)
 
-integer,  intent(in) :: input_qc
-logical,  intent(in) :: assimilate_this_ob
-logical,  intent(in) :: evaluate_this_ob
-integer              :: set_input_qc
+integer,  intent(in) :: input_qc   !> result from forward operator calculation 
+logical,  intent(in) :: assimilate_this_ob  !> true if obs was assimilated
+logical,  intent(in) :: evaluate_this_ob  !> true if obs was evaluated
+integer              :: set_input_qc  !>  return value
 
 if(input_qc == 0 .and. (assimilate_this_ob .or. evaluate_this_ob)) then
    set_input_qc = 0.0_r8
@@ -151,15 +146,12 @@ end function set_input_qc
 !> e.g. to keep only obs with a data qc of 0, set the 
 !> threshold to 0.
 !>
-!> @param[in]  input_qc - QC after forward operator calculation
-!> @param[out] qc_to_use - resulting dart QC
-!> @return     input_qc_ok - 
 !------------------------------------------------------------------------------
 function input_qc_ok(input_qc, qc_to_use)
 
-real(r8), intent(in)  :: input_qc
-integer,  intent(out) :: qc_to_use
-logical               :: input_qc_ok
+real(r8), intent(in)  :: input_qc   !> result from forward operator calculation 
+integer,  intent(out) :: qc_to_use  !> resulting DART QC
+logical               :: input_qc_ok !> true if input_qc is good
 
 qc_to_use = DARTQC_ASSIM_GOOD_FOP
 
@@ -176,25 +168,19 @@ end function input_qc_ok
 !> Subroutine get_dart_qc
 !>
 !> Consolidate forward operator qc
-!> find the min and max istatus values across all ensemble members.  Chese are
+!> find the min and max istatus values across all ensemble members.  These are
 !> either set by dart code, or returned by the model-specific model_interpolate()
 !> routine, or by forward operator code in obs_def_xxx_mod files.
 !>
-!> @param[in]    ens_size - number of ensemble members
-!> @param[in]    istatus - 0=ok, >0 is error, <0 reserved for system use
-!> @param[in]    assimilate_this_ob - true if obs was assimilated, false otherwise
-!> @param[in]    evaluate_this_ob -  true if obs was evaluated, false otherwise
-!> @param[in]    isprior - true for prior eval; false for posterior
-!> @param[inout] dart_qc - resulting dart qc
 !------------------------------------------------------------------------------
 subroutine get_dart_qc(istatus, ens_size, assimilate_this_ob, evaluate_this_ob, isprior, dart_qc)
 
-integer, intent(in)    :: ens_size
-integer, intent(in)    :: istatus(ens_size)
-logical, intent(in)    :: assimilate_this_ob
-logical, intent(in)    :: evaluate_this_ob
-logical, intent(in)    :: isprior
-integer, intent(inout) :: dart_qc
+integer, intent(in)    :: ens_size !>  number of ensemble members
+integer, intent(in)    :: istatus(ens_size) !>   0=ok, >0 is error, <0 reserved for system use
+logical, intent(in)    :: assimilate_this_ob !>   true if obs was assimilated
+logical, intent(in)    :: evaluate_this_ob !>  true if obs was evaluated
+logical, intent(in)    :: isprior !>  true for prior pass; false for posterior
+integer, intent(inout) :: dart_qc !>   resulting dart qc
 
 logical :: failed_fop, inconsistent
 
@@ -227,8 +213,8 @@ if(isprior) then
    
    else   ! 'should not happen'
       dart_qc = -99  ! inconsistent istatus codes
-      print *, 'got to bad else in qc case statement'
-      stop
+      call error_handler(E_ERR, 'get_dart_qc: ', 'internal error, should not happen: bad else in qc case', &
+                         source, revision, revdate)
    endif
 
 else ! posterior
@@ -254,26 +240,19 @@ end subroutine get_dart_qc
 !------------------------------------------------------------------------------
 !> Subroutine check_outlier_threshold
 !>
-!> Check on the outlier threshold quality control:
-!>
-!> @param[in]    obs_prior_mean - prior observation mean
-!> @param[in]    obs_prior_var - prior observation variance
-!> @param[in]    obs_val - observation value
-!> @param[in]    obs_err_var - observation error variance
-!> @param[in]    obs_seq - the observation sequence
-!> @param[in]    this_obs_key - key to particular observation
-!> @param[inout] dart_qc - resulting dart QC
+!> Check on the outlier threshold quality control.  If existing DART QC
+!> is good and the obs is outside the threshold, set the QC to indicate that.
 !------------------------------------------------------------------------------
 subroutine check_outlier_threshold(obs_prior_mean, obs_prior_var, obs_val, obs_err_var, &
                                    obs_seq, this_obs_key, dart_qc)
 
-real(r8),                intent(in)    :: obs_prior_mean
-real(r8),                intent(in)    :: obs_prior_var
-real(r8),                intent(in)    :: obs_val
-real(r8),                intent(in)    :: obs_err_var
-type(obs_sequence_type), intent(in)    :: obs_seq
-integer,                 intent(in)    :: this_obs_key
-integer,                 intent(inout) :: dart_qc
+real(r8),                intent(in)    :: obs_prior_mean !>  prior observation mean 
+real(r8),                intent(in)    :: obs_prior_var !>  prior observation variance
+real(r8),                intent(in)    :: obs_val !>  observation value
+real(r8),                intent(in)    :: obs_err_var !>  observation error variance
+type(obs_sequence_type), intent(in)    :: obs_seq !>  observation sequence
+integer,                 intent(in)    :: this_obs_key !>  index for this observation
+integer,                 intent(inout) :: dart_qc !>  possibly modified DART QC
 
 real(r8) :: error, diff_sd, ratio
 
@@ -318,22 +297,21 @@ end subroutine check_outlier_threshold
 !------------------------------------------------------------------------------
 !> Function failed_outlier
 !>
-!> Check on the outlier threshold quality control:
-!>
-!> @param[in]    ratio - observation error ratio
-!> @param[in]    this_obs_key - key to particular observation
-!> @param[in]    seq - the observation sequence
-!> @return       failed_outlier 
+!> Intended to be easy to modify if needed to use other criteria
+!> when evaluating the outlier threshold.  Set the namelist to
+!> turn this call on (enable_special_outlier_code) and then add your
+!> own tests to this section.  Return 'true' if the tests fail,
+!> return 'false' if the obs is ok.
 !------------------------------------------------------------------------------
 function failed_outlier(ratio, this_obs_key, seq)
 
 ! return true if the observation value is too far away from the ensemble mean
 ! and should be rejected and not assimilated.
 
-real(r8),                intent(in) :: ratio
-integer,                 intent(in) :: this_obs_key
-type(obs_sequence_type), intent(in) :: seq
-logical                             :: failed_outlier
+real(r8),                intent(in) :: ratio !>   observation error ratio
+integer,                 intent(in) :: this_obs_key !>  index for this observation
+type(obs_sequence_type), intent(in) :: seq !> the observation sequence
+logical                             :: failed_outlier !> true if outlier test fails
 
 ! the default test is:  if (ratio > outlier_threshold) failed_outlier = .true.
 ! but you can add code here to do different tests for different observation 
@@ -398,15 +376,13 @@ end function failed_outlier
 !------------------------------------------------------------------------------
 !> Function good_dart_qc
 !>
-!> Check incoming dart QC
+!> Check incoming dart QC to see if the obs was processed ok.
 !>
-!> @param[in] qc_value - incoming dart QC
-!> @return    good_dart_qc
 !------------------------------------------------------------------------------
 function good_dart_qc(qc_value)
 
-integer, intent(in) :: qc_value
-logical             :: good_dart_qc
+integer, intent(in) :: qc_value  !> incoming DART QC (not data qc)
+logical             :: good_dart_qc  !> whether this is a good value or not
 
 
 if ( (qc_value == DARTQC_ASSIM_GOOD_FOP) .or. &

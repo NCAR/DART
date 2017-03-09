@@ -46,7 +46,7 @@ use utilities_mod,        only : file_exist, E_ERR, E_MSG, E_WARN, error_handler
 use time_manager_mod,     only : time_type
 use mpi_utilities_mod,    only : my_task_id
 use state_structure_mod,  only : get_num_domains, get_dim_length, get_dim_name, &
-                                 get_io_num_dims, get_num_variables, get_variable_name, &
+                                 get_num_dims, get_io_num_dims, get_num_variables, get_variable_name, &
                                  get_units, get_long_name, get_short_name, get_missing_value, &
                                  get_FillValue, get_xtype, get_add_offset, get_scale_factor, &
                                  get_has_missing_value
@@ -369,15 +369,15 @@ if (file_info%restart_list(1) == 'null' .or. &
 
   if (file_info%root_name == 'null') then
      write(msgstring,*) 'Unable to construct file names.', &
-                        ' No root_name or input_state_file_list'
+                        ' No stage name or file list given'
      call error_handler(E_ERR,'set_member_file_metadata', &
                  msgstring, source, revision, revdate)
   endif
 
   ! Construct file names
-  write(msgstring,*) 'no input_state_file_list for root "'//trim(file_info%root_name)//'"'
   call error_handler(E_MSG,'set_member_file_metadata', &
-                     msgstring, source, revision, revdate, text2='using default names')
+            'no file list given for stage "'//trim(file_info%root_name)//'" so using default names', &
+             source, revision, revdate)
 
   stage_name = file_info%root_name
   if (file_info%single_file) then
@@ -599,7 +599,6 @@ integer :: ndims ! number of dimensions
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimids ! dimension ids for a variable
 character(len=NF90_MAX_NAME), dimension(NF90_MAX_VAR_DIMS) :: name ! dimension names for a variables
 integer, dimension(NF90_MAX_VAR_DIMS) :: length
-integer :: xtype ! do we care about this? Yes.
 
 ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
 call nc_check(ret, 'check_correct_variables opening ', netcdf_filename)
@@ -613,10 +612,11 @@ do i = 1, get_num_variables(dom)
    call nc_check(ret, 'check_correct_variables', msgstring)
 
    ! get dimension information from ncfile
-   ret = nf90_inquire_variable(ncfile, var_id, ndims=ndims, dimids=dimids, xtype=xtype)
+   ret = nf90_inquire_variable(ncfile, var_id, ndims=ndims, dimids=dimids)
    call nc_check(ret, 'check_correct_variables', 'nf90_inquire_variable')
 
-   ! check number of dimensions are the same - should you worry about the unlimited dimension?
+   ! check number of dimensions are the same.  we are comparing
+   ! the full number of dimensions including time and member if present.
    if (ndims /= get_io_num_dims(dom,i)) then
       write(msgstring,*) 'ndims ', get_io_num_dims(dom,i), ' in state does not', &
                          ' match ndims ', ndims, ' in ', trim(netcdf_filename)
@@ -628,7 +628,8 @@ do i = 1, get_num_variables(dom)
    call check_attributes(ncFile, netcdf_filename, var_id, dom, i)
 
    ! check if the dimensions are what we expect. The dimensions should be same size same order.
-   do j = 1, get_io_num_dims(dom,i)
+   ! in this case check only the dims for the variables, excluding time and member.
+   do j = 1, get_num_dims(dom,i)
 
       ! get dimension names and lengths from ncfile
       ret = nf90_inquire_dimension(ncfile, dimids(j), name=name(j), len=length(j))
@@ -685,23 +686,23 @@ call check_attributes_name(ncFile, filename, ncVarId, 'short_name', get_short_na
 if ( get_has_missing_value(domid, varid) ) then
    select case (get_xtype(domid,varid))
       case (NF90_INT)
-
          call get_FillValue(domid, varid, spvalINT)
          call check_attribute_value_int(ncFile, filename, ncVarID, '_FillValue', spvalINT)
          call get_missing_value(domid, varid, spvalINT)
          call check_attribute_value_int(ncFile, filename, ncVarID, 'missing_value', spvalINT)
-      case (NF90_FLOAT)
 
+      case (NF90_FLOAT)
          call get_FillValue(domid, varid, spvalR4)
          call check_attribute_value_r4(ncFile, filename, ncVarID, '_FillValue', spvalR4)
          call get_missing_value(domid, varid, spvalR4)
          call check_attribute_value_r4(ncFile, filename, ncVarID, 'missing_value', spvalR4)
-      case (NF90_DOUBLE)
 
+      case (NF90_DOUBLE)
          call get_FillValue(domid, varid, spvalR8)
          call check_attribute_value_r8(ncFile, filename, ncVarID, '_FillValue', spvalR8)
          call get_missing_value(domid, varid, spvalR8)
          call check_attribute_value_r8(ncFile, filename, ncVarID, 'missing_value', spvalR8)
+
       case default
          call error_handler(E_ERR, 'check_attributes', 'unknown xtype', &
                             source, revision, revdate)

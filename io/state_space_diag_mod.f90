@@ -190,13 +190,10 @@ if (my_task_id() == 0) then
    ! Create the file
    fname          = get_restart_filename(file_handle%stage_metadata, 1, 1)
    ncFileID%fname = fname
-   call nc_check(nf90_create(path=trim(fname), cmode=createmode, ncid=ncFileID%ncid), &
+   call nc_check(nf90_create(path=fname, cmode=createmode, ncid=ncFileID%ncid), &
                  'init_singlefile_output', 'create '//trim(fname))
 
    ncFileID%ncid = ncFileID%ncid
-   
-   write(msgstring,*) trim(fname), ' is ncFileID ',ncFileID%ncid
-   call error_handler(E_MSG,'init_singlefile_output',msgstring,source,revision,revdate)
    
    ! Define the dimensions
    call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
@@ -305,7 +302,7 @@ if (my_task_id() == 0) then
 
    ens_size = ens_handle%num_copies - ens_handle%num_extras
    do icopy = ens_size+1, ens_handle%num_copies 
-      copyname = trim(get_copy_name(file_handle,icopy))
+      copyname = get_copy_name(file_handle,icopy)
       if ( file_handle%stage_metadata%io_flag(icopy) == WRITE_COPY ) then
          call write_extra_attributes(ncFileID, TimeDimID, copyname)
       endif
@@ -361,7 +358,7 @@ subroutine finalize_singlefile_output(file_handle)
 type(file_info_type), intent(in) :: file_handle
 
 type(netcdf_file_type) :: ncFileID
-integer :: ierr, ncid
+integer :: ierr
 
 ncFileID = file_handle%stage_metadata%ncFileID
 
@@ -384,23 +381,25 @@ end subroutine finalize_singlefile_output
 !-------------------------------------------------------
 !> read a single netcdf file containing all of the members
 !> and possibly inflation information
-subroutine read_singlefile(state_ens_handle, file_info, use_time_from_file, time)
+subroutine read_singlefile(state_ens_handle, file_info, use_time_from_file, time, perturb_from_single_copy)
 
 type(ensemble_type),  intent(inout) :: state_ens_handle
 type(file_info_type), intent(in)    :: file_info
 logical,              intent(in)    :: use_time_from_file
 type(time_type),      intent(inout) :: time
+logical, optional,    intent(in)    :: perturb_from_single_copy
 
 type(stage_metadata_type) :: name_handle
 
 ! NetCDF IO variables
 integer :: my_ncid, varid, MemDimID, TimeDimID, ret, icopy, ivar, jdim, istart, iend
-integer :: ens_size, mem_size, time_size, var_size, domain
-integer :: num_output_ens, ncount, ndims
+integer :: ens_size, member_size, time_size, var_size, domain
+integer :: ndims, member_dim, dcount
 real(r8), allocatable :: var_block(:)
 character(len=NF90_MAX_NAME) :: fname, dimname, varname, copyname, extraname
 integer, dimension(NF90_MAX_VAR_DIMS) :: dim_lengths
 integer, dimension(NF90_MAX_VAR_DIMS) :: start_point
+logical :: do_perturb, has_member_dim
 
 ! check whether file_info handle is initialized
 if (task_count() > 1) then
@@ -409,16 +408,17 @@ if (task_count() > 1) then
     source, revision, revdate, text2='compile without MPI, or use multi-file i/o')
 endif
 
-call allocate_vars(state_ens_handle)
+do_perturb = .false.
+if (present(perturb_from_single_copy)) then
+   do_perturb = perturb_from_single_copy
+endif
 
-!>@todo FIXME aren't we reading in the initial data here?
-!> so what's in copies that needs to be moved to vars?
-!call all_copies_to_all_vars(state_ens_handle)
 
 ! do this once
 name_handle = get_stage_metadata(file_info)
 
 ens_size = state_ens_handle%num_copies - state_ens_handle%num_extras
+if (do_perturb) ens_size = 1
 
 domain = 1 !>@todo : only a single domain for single file read supported. need
            !>        to consider case for multiple domains.
@@ -448,51 +448,65 @@ call nc_check(ret, 'read_singlefile', 'inquire_dimension time '//trim(fname))
 istart = 1
 do ivar = 1, get_num_variables(domain)
    var_size = get_variable_size(domain, ivar)
+   iend = istart + var_size - 1
+
    allocate( var_block(var_size) )
    
    varname = get_variable_name(domain, ivar)
    ret      = nf90_inq_varid(my_ncid, varname, varid)
    call nc_check(ret, 'read_singlefile', 'inq_varid '//trim(varname)//' : '//trim(fname))
 
-   ! if member dimension is defined then we are reading from a single file
-   !>@todo there is probably a cleaner way of doing this
+   ! we're in read_singlefile - there better be multiple members or
+   ! we can't read in an ensemble from this file. the only exception is
+   ! if we are reading in a single member to perturb into an ensemble.
+   ! otherwise it's an error.
+
    ret = nf90_inq_dimid(my_ncid, "member", MemDimID)
    if( ret == 0 ) then
-      ret = nf90_inquire_dimension(my_ncid, MemDimID, len=mem_size) 
+      ret = nf90_inquire_dimension(my_ncid, MemDimID, len=member_size) 
       call nc_check(ret, 'read_singlefile', 'inq_varid member : '//trim(fname))
-      num_output_ens = ens_size
-      if (mem_size < ens_size) num_output_ens = mem_size
+      if (member_size < ens_size) then ! not enough members to start from this file
+         write(msgstring, *) 'input file only contains ', member_size, ' ensemble members; requested ensemble size is ', ens_size
+         call error_handler(E_ERR, 'read_singlefile: ', msgstring, source, revision, revdate)
+      endif
+   else
+      if (.not. do_perturb) then
+         write(msgstring, *) 'input file does not contain a "member" dimension; cannot read in an ensemble of values'
+         call error_handler(E_ERR, 'read_singlefile: ', msgstring, source, revision, revdate)
+      endif
    endif
 
-   ncount = 0
-   ndims = get_num_dims(domain, ivar)
+   ! set defaults for start, count, then modify in the loop below
+   start_point(:) = 1
+   dim_lengths(:) = 1
+   has_member_dim = .false.
+   member_dim = -1
+
+   ndims = get_io_num_dims(domain, ivar)
    do jdim = 1, ndims
       dimname = get_dim_name(domain, ivar, jdim)
-      if ( trim(dimname) == 'time' .or. trim(dimname) == 'member') cycle
-
-      ncount = ncount+1
-      dim_lengths(ncount) = get_dim_length(domain, ivar, jdim)
+      if ( dimname == 'time' ) then
+         ! we agreed the expected behavior was to read the last time in file
+         start_point(jdim) = time_size 
+      else if ( dimname == 'member') then
+         member_dim = jdim
+         has_member_dim = .true.
+      else
+         dim_lengths(jdim) = get_dim_length(domain, ivar, jdim)
+      endif
    enddo
 
-   dim_lengths(ncount + 1) = 1 ! member
-   dim_lengths(ncount + 2) = 1 ! time
+   do icopy = 1, ens_size
+      if (has_member_dim) start_point(member_dim) = icopy  ! member number
 
-   iend   = istart + var_size - 1
-   do icopy = 1, num_output_ens
-      start_point(1:ncount) = 1
-      start_point(ncount + 1) = icopy  ! member
-      start_point(ncount + 2) = time_size ! time
-
-      ret = nf90_get_var(my_ncid, varid, var_block, count=dim_lengths(1:ncount+2), &
-                         start=start_point(1:ncount+2))
+      ret = nf90_get_var(my_ncid, varid, var_block, &
+                         count=dim_lengths(1:ndims), start=start_point(1:ndims))
       call nc_check(ret, 'read_singlefile', 'get_var '//trim(varname)//' : '//trim(fname))
-      state_ens_handle%copies(icopy, istart:iend) = var_block
+      state_ens_handle%copies(icopy, istart:iend) = var_block   ! non-contig memory
  
-
    enddo
 
    istart = iend + 1
-
    deallocate( var_block )
 enddo
 
@@ -501,54 +515,57 @@ enddo
 !   {variable}_priorinf_{mean,sd}
 !   {variable}_postinf_{mean,sd}
 
+istart = 1
 do ivar = 1, get_num_variables(domain) ! assuming one domain for single files
    var_size = get_variable_size(domain, ivar)
-   varname  = get_variable_name(1,ivar) 
+   iend = istart + var_size - 1
+
    allocate( var_block(var_size) )
+
+   varname  = get_variable_name(1,ivar) 
 
    do icopy = ens_size+1, state_ens_handle%num_copies 
       copyname = get_copy_name(file_info,icopy)
 
       if ( file_info%stage_metadata%io_flag(icopy) == READ_COPY) then
 
-         ncount = 0
-         ndims = get_num_dims(domain, ivar)
+         ! set defaults for start, count, then modify in the loop below
+         start_point(:) = 1
+         dim_lengths(:) = 1
+         dcount = 0
+
+         ndims = get_io_num_dims(domain, ivar)
          do jdim = 1, ndims
             dimname = get_dim_name(domain, ivar, jdim)
-            if ( trim(dimname) == 'time' .or. trim(dimname) == 'member') cycle
 
-            ncount = ncount+1
-            dim_lengths(ncount) = get_dim_length(domain, ivar, jdim)
+            if ( dimname == 'time' ) then
+               dcount = dcount + 1
+               start_point(dcount) = time_size ! time
+            else if (dimname == 'member') then
+               continue   ! ignore member dim
+            else
+               dcount = dcount + 1
+               dim_lengths(dcount) = get_dim_length(domain, ivar, jdim)
+            endif
          enddo
-
-         dim_lengths(ncount + 1) = 1 ! time
-
-         start_point(1:ncount)    = 1
-         start_point(ncount + 1) = time_size ! time
 
          write(extraname,'(a,"_",a)') trim(varname), trim(copyname)
          ret = nf90_inq_varid(my_ncid, extraname, varid)
          call nc_check(ret, 'read_singlefile', 'inq_varid '//trim(extraname))
 
-         ret = nf90_get_var(my_ncid, varid, var_block, count=dim_lengths(1:ncount+1), &
-                            start=start_point(1:ncount+1))
+         ret = nf90_get_var(my_ncid, varid, var_block, &
+                            count=dim_lengths(1:dcount), start=start_point(1:dcount))
          call nc_check(ret, 'read_singlefile', 'get_var '//trim(varname)//' : '//trim(fname))
-         state_ens_handle%copies(icopy, istart:iend) = var_block
-
-         istart = 1
-         iend   = var_size
-         state_ens_handle%copies(icopy, istart:iend) = var_block
+         state_ens_handle%copies(icopy, istart:iend) = var_block   ! non-contig memory
       endif
    enddo
 
+   istart = iend + 1
    deallocate( var_block )
 enddo 
 
 ret = nf90_close(my_ncid)
 call nc_check(ret, 'read_singlefile: nf90_close', fname)
-
-! and now distribute the var data to the copies
-! call all_vars_to_all_copies(state_ens_handle)
 
 end subroutine read_singlefile
 
@@ -569,7 +586,7 @@ type(file_info_type),        intent(inout) :: file_info
 
 
 ! Local variables
-integer                :: copyindex, my_ncid
+integer                :: member_index, copy_index, my_ncid
 integer                :: num_output_ens, ens_size
 integer(i8)            :: model_size
 character(len=128)     :: copyname
@@ -598,18 +615,18 @@ my_ncid        = ncFileID%ncid
 num_output_ens = noutput_state_variables(file_info)
 
 ! Output ensemble members
-do copyindex = 1, num_output_ens
-   call get_copy(map_task_to_pe(ens_handle, 0), ens_handle, copyindex, temp_ens)
-   call write_model_variables(ncFileID,  temp_ens, copyindex, curr_ens_time)
+do member_index = 1, num_output_ens
+   call get_copy(map_task_to_pe(ens_handle, 0), ens_handle, member_index, temp_ens)
+   call write_model_variables(ncFileID,  temp_ens, member_index, curr_ens_time)
 enddo
 
 ! Output Extras
 ens_size = ens_handle%num_copies - ens_handle%num_extras
 
-do copyindex = ens_size+1, ens_handle%num_copies
-   if ( file_info%stage_metadata%io_flag(copyindex) == WRITE_COPY ) then
-      copyname = get_copy_name(file_info, copyindex)
-      call get_copy(map_task_to_pe(ens_handle, 0), ens_handle, copyindex, temp_ens)
+do copy_index = ens_size+1, ens_handle%num_copies
+   if ( file_info%stage_metadata%io_flag(copy_index) == WRITE_COPY ) then
+      copyname = get_copy_name(file_info, copy_index)
+      call get_copy(map_task_to_pe(ens_handle, 0), ens_handle, copy_index, temp_ens)
       if(my_task_id() == 0) then
          call write_extra_variable(ncFileID, temp_ens, copyname, curr_ens_time)
       endif
@@ -620,31 +637,27 @@ call set_netcdf_file_type(file_info, ncFileID)
 
 deallocate(temp_ens)
 
-!>@todo FIXME we haven't changed anything in the vars array
-!> so there's no need to transpose back.  save time by skipping this.
-!call all_vars_to_all_copies(ens_handle)
-
 end subroutine write_singlefile
 
 
 !-----------------------------------------------------------
 !> write out a single variable appending time stamp curr_ens_time
 
-subroutine write_extra_variable(ncFileID, model_state, cname, curr_ens_time)
+subroutine write_extra_variable(ncFileID, model_state, copyname, curr_ens_time)
 
 type(netcdf_file_type), intent(inout) :: ncFileID
 real(r8),               intent(in)    :: model_state(:)
-character(len=*),       intent(in)    :: cname
+character(len=*),       intent(in)    :: copyname
 type(time_type),        intent(in)    :: curr_ens_time
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dim_lengths
 integer, dimension(NF90_MAX_VAR_DIMS) :: start_point
 integer :: istart, iend
 integer :: ivar, jdim
-integer :: ndims, ncount
+integer :: ndims
 integer :: ret ! netcdf return code
 integer :: var_id ! netcdf variable id
-integer :: domain
+integer :: domain, dcount
 integer :: my_ncid
 integer :: timeindex
 integer :: is1, id1
@@ -674,34 +687,34 @@ do ivar = 1, get_num_variables(domain)
 
    istart   = get_index_start(   domain, ivar )
    iend     = get_index_end(     domain, ivar )
-   ndims    = get_num_dims(      domain, ivar )
+   ndims    = get_io_num_dims(   domain, ivar )
    varname  = get_variable_name( domain, ivar )
 
-   !#! print*, 'number of dimensions ', ndims
-   ncount = 0
+   ! set the defaults and then change any needed below
+   dim_lengths(:) = 1
+   start_point(:) = 1
+   dcount = 0
+
    do jdim = 1, ndims
       dimname = get_dim_name(domain, ivar, jdim)
-      if ( trim(dimname) == 'time' .or. trim(dimname) == 'member') cycle
-
-      ncount = ncount+1
-      dim_lengths(ncount) = get_dim_length(domain, ivar, jdim)
+      if (dimname == 'time') then
+         dcount = dcount + 1
+         start_point(dcount) = timeindex
+      else if (dimname == 'member') then
+         continue   ! extra vars have no member dimension
+      else 
+         dcount = dcount + 1
+         dim_lengths(dcount) = get_dim_length(domain, ivar, jdim)
+      endif
    enddo
 
-   !#! dim_lengths(ncount + 1) = 1 ! member
-   dim_lengths(ncount+1) = 1 ! time
-
-   start_point(1:ncount) = 1
-   !#! start_point(ncount + 1) = memindex  ! member
-   start_point(ncount + 1) = timeindex ! time
-
-   write(extraname,'(a,"_",a)') trim(varname), trim(cname)
-   !#! write(*        ,'(a,"_",a)') trim(varname), trim(cname)
+   write(extraname,'(a,"_",a)') trim(varname), trim(copyname)
 
    ret = nf90_inq_varid(my_ncid, extraname, var_id)
    call nc_check(ret, 'write_extra_variable', 'inq_varid '//trim(extraname))
 
    ret = nf90_put_var(my_ncid, var_id, model_state(istart:iend), &
-                count=dim_lengths(1:ncount+2), start=start_point(1:ncount+2))
+                count=dim_lengths(1:dcount), start=start_point(1:dcount))
    call nc_check(ret, 'write_extra_variable', 'put_var '//trim(extraname))
 
 enddo
@@ -728,7 +741,7 @@ integer, dimension(NF90_MAX_VAR_DIMS) :: dim_lengths
 integer, dimension(NF90_MAX_VAR_DIMS) :: start_point
 integer :: istart, iend
 integer :: ivar, jdim
-integer :: ndims, ncount
+integer :: ndims
 integer :: ret ! netcdf return code
 integer :: var_id ! netcdf variable id
 integer :: domain
@@ -763,31 +776,28 @@ do ivar = 1, get_num_variables(domain)
 
    istart  = get_index_start(  domain, ivar)
    iend    = get_index_end(    domain, ivar)
-   ndims   = get_num_dims(     domain, ivar)
+   ndims   = get_io_num_dims(  domain, ivar)
    varname = get_variable_name(domain, ivar)
 
-   ncount = 0
+   dim_lengths(:) = 1
+   start_point(:) = 1
+
    do jdim = 1, ndims
       dimname = get_dim_name(domain, ivar, jdim)
-      if ( trim(dimname) == 'time' .or. trim(dimname) == 'member') cycle
-
-      ncount = ncount+1
-      dim_lengths(ncount) = get_dim_length(domain, ivar, jdim)
-
+      if (dimname == 'time') then
+         start_point(jdim) = timeindex
+      else if (dimname == 'member') then
+         start_point(jdim) = memindex
+      else
+         dim_lengths(jdim) = get_dim_length(domain, ivar, jdim)
+      endif
    enddo
-
-   dim_lengths(ncount + 1) = 1 ! member
-   dim_lengths(ncount + 2) = 1 ! time
-
-   start_point(1:ncount) = 1
-   start_point(ncount + 1) = memindex  ! member
-   start_point(ncount + 2) = timeindex ! time
 
    ret = nf90_inq_varid(my_ncid, varname, var_id)
    call nc_check(ret, 'write_model_variables', 'inq_varid '//trim(varname))
 
    ret = nf90_put_var(my_ncid, var_id, model_state(istart:iend), &
-                count=dim_lengths(1:ncount+2), start=start_point(1:ncount+2))
+                count=dim_lengths(1:ndims), start=start_point(1:ndims))
    call nc_check(ret, 'write_model_variables', 'put_var '//trim(varname))
 
 enddo
@@ -798,13 +808,13 @@ end subroutine write_model_variables
 !-----------------------------------------------------------
 !>
 
-subroutine write_extra_attributes(ncFileID, time_dimId, cname)
+subroutine write_extra_attributes(ncFileID, time_dimId, copyname)
 
 type(netcdf_file_type), intent(inout) :: ncFileID
 integer,          intent(in) :: time_dimId
-character(len=*), intent(in) :: cname
+character(len=*), intent(in) :: copyname
 
-integer :: ivar, jdim, ndims, countdims, domain
+integer :: ivar, jdim, ndims, domain
 integer :: ret, my_ncid, new_varid, my_dimid, my_xtype
 character(len=NF90_MAX_VAR_DIMS) :: varname, dimname, extraname
 integer ::  model_dimids(NF90_MAX_VAR_DIMS)
@@ -820,6 +830,9 @@ my_ncid  = ncFileID%ncid
 
 if(my_task_id()==0) then
 
+   !>@todo we should always write double, unless the single output namelist
+   !>flag is set.  this gives you no way to write single precision if you've
+   !>compiled with normal r8 - FIXME
    if (r8 == digits12) then
       my_xtype = nf90_double
    else
@@ -832,23 +845,19 @@ if(my_task_id()==0) then
       varname = get_variable_name(domain, ivar)
       ndims   = get_num_dims(domain, ivar)
    
-      countdims = 0
       do jdim = 1, ndims
          dimname = get_dim_name(domain, ivar, jdim)
-         if ( trim(dimname) == 'time' .or. trim(dimname) == 'member') cycle
-   
-         countdims = countdims+1
          ret = nf90_inq_dimid(my_ncid, dimname, dimid=my_dimid)
          call nc_check(ret, 'write_extra_attributes', 'inq_dimid '//trim(dimname))
-         model_dimids(countdims) = my_dimid
-         !#! print*, ivar, jdim, ndims, trim(varname), ' ', trim(dimname), my_dimid
+         model_dimids(jdim) = my_dimid
       enddo
-      model_dimids(countdims+1) = time_dimId
    
-      write(extraname,'(a,"_",a)') trim(varname), trim(cname)
+      model_dimids(ndims+1) = time_dimId
+   
+      write(extraname,'(a,"_",a)') trim(varname), trim(copyname)
       ret = nf90_def_var(my_ncid, name   = extraname,& 
                                xtype  = my_xtype, &
-                               dimids = model_dimids(1:countdims+1), &
+                               dimids = model_dimids(1:ndims+1), &
                                varid  = new_varid)
       call nc_check(ret, 'write_extra_attributes', 'defining variable '//trim(extraname))
    enddo
@@ -895,6 +904,9 @@ my_ncid  = ncFileID%ncid
 
 if(my_task_id()==0) then
 
+   !>@todo we should always write double, unless the single output namelist
+   !>flag is set.  this gives you no way to write single precision if you've
+   !>compiled with normal r8 - FIXME
    if (r8 == digits12) then
       my_xtype = nf90_double
    else
@@ -947,7 +959,10 @@ end subroutine write_model_attributes
 
 
 !-------------------------------------------------------------------------------
-!> routine write callendar attributes
+!> routine write calendar attributes
+
+!>@todo FIXME this duplicates code in dart_time_io_mod.f90 - it should
+!>be one place or the other.
 
 function nc_write_calendar_atts(ncFileID, TimeVarID) result(ierr)
 
@@ -963,10 +978,6 @@ my_ncid = ncFileID%ncid
 
 call nc_check(nf90_put_att(my_ncid, TimeVarID, "long_name", "time"), &
               'nc_write_calendar_atts', 'put_att long_name '//trim(ncFileID%fname))
-call nc_check(nf90_put_att(my_ncid, TimeVarID, "axis", "T"), &
-              'nc_write_calendar_atts', 'put_att axis '//trim(ncFileID%fname))
-call nc_check(nf90_put_att(my_ncid, TimeVarID, "cartesian_axis", "T"), &
-              'nc_write_calendar_atts', 'put_att cartesian_axis '//trim(ncFileID%fname))
 
 select case( get_calendar_type() )
 case(THIRTY_DAY_MONTHS)
@@ -983,11 +994,8 @@ case(NOLEAP)
    call nc_check(nf90_put_att(my_ncid, TimeVarID, "calendar", "no_leap" ), &
               'nc_write_calendar_atts', 'put_att calendar '//trim(ncFileID%fname))
 case default
-   call nc_check(nf90_put_att(my_ncid, TimeVarID, "calendar", "no calendar" ), &
+   call nc_check(nf90_put_att(my_ncid, TimeVarID, "calendar", "none" ), &
               'nc_write_calendar_atts', 'put_att calendar '//trim(ncFileID%fname))
-   call nc_check(nf90_put_att(my_ncid, TimeVarID, "month_lengths", &
-              (/31,28,31,30,31,30,31,31,30,31,30,31/)), &
-              'nc_write_calendar_atts', 'put_att month_lengths '//trim(ncFileID%fname))
    call nc_check(nf90_put_att(my_ncid, TimeVarID, "units", &
               'days since 0000-01-01 00:00:00'), &
               'nc_write_calendar_atts', 'put_att units '//trim(ncFileID%fname))

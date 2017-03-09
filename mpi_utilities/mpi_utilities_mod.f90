@@ -4,141 +4,17 @@
 !
 ! $Id$
 
-module mpi_utilities_mod
 
-!-----------------------------------------------------------------------------
-!
-!   A collection of interfaces to the MPI (Message Passing Interface)
-!   multi-processor communication library routines.
-!
-!    # initialize_mpi_utilities()  Subroutine that initializes MPI and sets
-!                                  local values needed later.  Must be called
-!                                  before any other routine here.
-!
-!    # finalize_mpi_utilities()  Subroutine that shuts down MPI cleanly.
-!                                Must be called before program exits, and no
-!                                other routines here can be used afterwards.
-!
-!    # task_count()       Function that returns the total number of MPI tasks.
-!
-!    # my_task_id()       Function that returns my task number.  Note that
-!                         in the MPI world task numbers run from 0 to N-1.
-!
-!    # send_to()          Subroutine which sends a 1D data array
-!                         synchronously to another task (point-to-point).
-!
-!    # receive_from()     Subroutine which receives a 1D data array
-!                         synchronously from another task (point-to-point).
-!
-!    # task_sync()        Subroutine that only returns after every task has
-!                         reached this same location in the code.
-!        
-!    # array_broadcast()  Subroutine that sends a copy of the entire data 
-!                         array to all other tasks. 
-!                
-!    # exit_all()         Subroutine that substitutes for the intrinsic exit.
-!                         It calls MPI_Abort() to force other MPI tasks to
-!                         exit as well in case of error. 
-! 
-!    * transpose_array()  Subroutine that transposes a 2D array
-!                         from column-major to row-major or back.
-!
-!   ** array_distribute() Subroutine that distributes a data array across the
-!                         other tasks, so each task gets a non-overlapping 
-!                         subset of the data.
-!                
-!   MPI cover routines more specific for DART and hopefully more useful.
-!
-!    # iam_task0()        Function which returns .TRUE. if task id is 0,
-!                         .FALSE. for anything else.
-!
-!    # broadcast_send()   Subroutine which takes up to 5 real arrays and up to 
-!                         5 scalar reals and broadcasts them to all other tasks.
-!                         One array is required; the rest are optional.
-!                         If sender ID is not the same as the local task ID
-!                         it is an error.  This call does not return until
-!                         all other tasks have called broadcast_recv() to pick
-!                         up the data.  The arg lists for the data arrays and
-!                         scalar values must match exactly between send/recv.
-!
-!    # broadcast_recv()   Subroutine which takes up to 5 real arrays and up to 
-!                         5 scalar reals and receives them from a sending task.
-!                         One array is required; the rest are optional.
-!                         If sender ID is the same as the local task ID
-!                         it is an error.  This call does not return until
-!                         all other tasks have called broadcast_recv() to pick
-!                         up the data.  The arg lists for the data arrays and
-!                         scalar values must match exactly between send/recv.
-!
-!    # sum_across_tasks() Subroutine which takes a single integer argument
-!                         from each task, and returns the sum of all integers
-!                         across all tasks back to all tasks.  All tasks must
-!                         call this routine before it can compute and return
-!                         the value.
-!
-!   # get_dart_mpi_comm() This code creates a private communicator for use by
-!                         the routines in this file.  This function returns it.
-!
-!   Lower level utility routines which interact with the utilities_mod.f90 
-!   code to open a named pipe per MPI task, read and write from them, and
-!   close and/or remove them.
-!
-!    # block_task()       Create a named pipe (fifo) and read from it to
-!                         block the process in such a way that it consumes
-!                         no CPU time.  NOTE that once you put yourself to
-!                         sleep, you cannot wake yourself up.  Some other MPI
-!                         task must call restart_task(), on the same set of
-!                         processors the original program was distributed over.
-!
-!    # restart_task()     Write into the pipe to restart the reading task.
-!                         Note that this must be an entirely separate executable
-!                         from the one which called block_task(), because it is
-!                         asleep like Sleeping Beauty and cannot wake itself.
-!                         See filter and wakeup_filter for examples
-!                         of a program pair which uses these calls.
-! 
-!    # finished_task()    Called from finalize_mpi_utilities, if async=4 
-!                         writes out a string to the model pipe to tell it 
-!                         the main executable is exiting.
-!
-!   Wrappers for system functions.  Covers differences if you run with
-!   or without MPI.
-!
-!  *** shell_execute()    Use the system() command to execute a command string.
-!                         Will wait for the command to complete and returns an
-!                         error code unless you end the command with & to put
-!                         it into background.   Function which returns the rc
-!                         of the command, 0 being all is ok.
-!
-!  *** sleep_seconds()    Wrapper for the sleep command.  Argument is a real
-!                         in seconds.  Different systems have different lower
-!                         resolutions for the minimum time it will sleep.
-!                         Subroutine, no return value.
-!
-!
-!   # code done and tested
-! *** both code and interface are done (but untested so far)
-!  ** interface with proposed arguments exists but code not complete
-!   * interface name only; no arg list devised yet 
-!
-!-----------------------------------------------------------------------------
-! 
-! these do not exist - i believe a single transpose will work.  but if not,
-! they can be separated into these two, which can either work on a real
-! 2D array or a single linearized array which is logically 2D but in reality
-! stored in a 1D fortran array:
-!
-!      transpose_row_major()  Subroutine which transposes a logical 2D array
-!                             from column-major to row-major.  The source and
-!                             destination arrays must be stored in 1D arrays 
-!                             of length (nrows * ncols).
-!
-!      transpose_col_major()  Subroutine which transposes a logical 2D array
-!                             from row-major to column-major.  The source and
-!                             destination arrays must be stored in 1D arrays 
-!                             of length (nrows * ncols).
-!
-!-----------------------------------------------------------------------------
+!> A collection of interfaces to the MPI (Message Passing Interface)
+!> multi-processor communication library routines.
+!>
+!> All MPI routines are called from here.  There is a companion
+!> file which has the same module name and entry points but all
+!> routines are stubs.  This allows a single-task version of the
+!> code to be compiled without the MPI libraries.
+!>
+
+module mpi_utilities_mod
 
 use types_mod, only :  i8, r8, digits12
 use utilities_mod, only : register_module, error_handler, & 
@@ -161,6 +37,27 @@ use time_manager_mod, only : time_type, get_time, set_time
 ! $DART/doc/mpi directory. 
 
 use mpi
+
+! the NAG compiler needs these special definitions enabled
+! but we don't preprocess this file (why?) so you have to
+! edit this by hand for NAG.
+
+!#ifdef __NAG__
+ !use F90_unix_proc, only : sleep, system, exit
+ !! block for NAG compiler
+ !  PURE SUBROUTINE SLEEP(SECONDS,SECLEFT)
+ !    INTEGER,INTENT(IN) :: SECONDS
+ !    INTEGER,OPTIONAL,INTENT(OUT) :: SECLEFT
+ !
+ !  SUBROUTINE SYSTEM(STRING,STATUS,ERRNO)
+ !    CHARACTER*(*),INTENT(IN) :: STRING
+ !    INTEGER,OPTIONAL,INTENT(OUT) :: STATUS,ERRNO
+ !
+ !!also used in exit_all outside this module
+ !  SUBROUTINE EXIT(STATUS)
+ !    INTEGER,OPTIONAL :: STATUS
+ !! end block
+!#endif
 
 implicit none
 private
@@ -200,7 +97,7 @@ integer :: myrank        = -1  ! my mpi number
 integer :: total_tasks   = -1  ! total mpi tasks/procs
 integer :: my_local_comm =  0  ! duplicate communicator private to this file
 integer :: datasize      =  0  ! which MPI type corresponds to our r8 definition
-integer :: longinttype   = 0   ! create an MPI type corresponding to our i8 definition
+integer :: longinttype   =  0  ! create an MPI type corresponding to our i8 definition
 
 
 
@@ -208,8 +105,10 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           task_count, my_task_id, block_task, restart_task,                  &
           task_sync, array_broadcast, send_to, receive_from, iam_task0,      &
           broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
-          sum_across_tasks, get_dart_mpi_comm, datasize, reduce_min_max,     &
-          get_from_fwd, get_from_mean, all_reduce_min_max, broadcast_flag
+          sum_across_tasks, get_dart_mpi_comm, datasize, send_minmax_to,     &
+          get_from_fwd, get_from_mean, broadcast_minmax, broadcast_flag,     &
+          start_mpi_timer, read_mpi_timer, &
+          all_reduce_min_max  ! deprecated, replace by broadcast_minmax
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -1916,6 +1815,50 @@ subroutine sleep_seconds(naplength)
 end subroutine sleep_seconds
 
 !-----------------------------------------------------------------------------
+
+!> start a time block.  call with different argument
+!> to start multiple or nested timers.  same argument
+!> must be supplied to read_timer function to get
+!> elapsed time since that timer was set.  contrast this with
+!> 'start_timer/read_timer' in the utils module which returns
+!> elapsed seconds.  this returns whatever units the mpi wtime()
+!> function returns.
+!>
+!> usage:
+!>  real(digits12) :: base, time_elapsed
+!>
+!>  call start_mpi_timer(base)
+!>  time_elapsed = read_mpi_timer(base)
+
+subroutine start_mpi_timer(base)
+
+real(digits12), intent(out) :: base
+
+base = mpi_wtime()
+
+end subroutine start_mpi_timer
+
+!-----------------------------------------------------------------------------
+
+!> return the time since the last call to start_timer().
+!> can call multiple times to get running times.
+!> call with a different base for nested timers.
+
+function read_mpi_timer(base)
+
+real(digits12), intent(in) :: base
+real(digits12) :: read_mpi_timer
+
+real(digits12) :: now
+
+now = mpi_wtime()
+
+read_mpi_timer = now - base
+
+end function read_mpi_timer
+
+
+!-----------------------------------------------------------------------------
 function get_dart_mpi_comm()
  integer :: get_dart_mpi_comm
 
@@ -1927,31 +1870,58 @@ end function get_dart_mpi_comm
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
 ! Collect min and max on task. This is for adaptive_inflate_mod
-subroutine reduce_min_max(minmax, task, global_val)
+subroutine send_minmax_to(minmax, task, global_val)
 
-real(r8), intent(in)  :: minmax(2) ! min max on each task
-integer,  intent(in)  :: task ! task to collect on
-real(r8), intent(out) :: global_val(2) ! only concerned with this on task collecting result
+real(r8), intent(in)  :: minmax(2) !> min max on each task
+integer,  intent(in)  :: task !> task to collect on
+real(r8), intent(out) :: global_val(2) !> only concerned with this on task collecting result
 
 integer :: errcode
 
-! collect on task 
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'send_minmax_to', errstring, source, revision, revdate)
+endif
+
+! collect values on a single given task 
 call mpi_reduce(minmax(1:1), global_val(1:1), 1, datasize, MPI_MIN, task, get_dart_mpi_comm(), errcode)
 call mpi_reduce(minmax(2:2), global_val(2:2), 1, datasize, MPI_MAX, task, get_dart_mpi_comm(), errcode)
 
-end subroutine reduce_min_max
+end subroutine send_minmax_to
 
 !-----------------------------------------------------------------------------
-! Find min and max of each element of an array, put the result on every task.
-! Overwrites arrays min_var, max_var with the minimum and maximum for each 
-! element across all tasks.
+! cover routine which is deprecated.  when all user code replaces this
+! with broadcast_minmax(), remove this.
 subroutine all_reduce_min_max(min_var, max_var, num_elements)
 
 integer,  intent(in)    :: num_elements
 real(r8), intent(inout) :: min_var(num_elements)
 real(r8), intent(inout) :: max_var(num_elements)
 
+call broadcast_minmax(min_var, max_var, num_elements)
+
+end subroutine all_reduce_min_max
+
+!-----------------------------------------------------------------------------
+! Find min and max of each element of an array, put the result on every task.
+! Overwrites arrays min_var, max_var with the minimum and maximum for each 
+! element across all tasks.
+subroutine broadcast_minmax(min_var, max_var, num_elements)
+
+integer,  intent(in)    :: num_elements
+real(r8), intent(inout) :: min_var(num_elements)
+real(r8), intent(inout) :: max_var(num_elements)
+
 integer :: errcode
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'broadcast_minmax', errstring, source, revision, revdate)
+endif
+
+! why can't we just use datasize in a single call, like the code above?
+!   call mpi_allreduce(MPI_IN_PLACE, min_var, num_elements, datasize, MPI_MIN, get_dart_mpi_comm(), errcode)
+!   call mpi_allreduce(MPI_IN_PLACE, max_var, num_elements, datasize, MPI_MAX, get_dart_mpi_comm(), errcode)
 
 if (datasize == mpi_real8) then
 
@@ -1965,7 +1935,7 @@ else ! single precision
 
 endif
 
-end subroutine all_reduce_min_max
+end subroutine broadcast_minmax
 
 !-----------------------------------------------------------------------------
 ! One sided communication
@@ -2026,9 +1996,14 @@ end subroutine get_from_fwd
 subroutine broadcast_flag(flag, root)
 
 logical, intent(inout) :: flag
-integer, intent(in)    :: root ! in get_dart_mpi_comm()
+integer, intent(in)    :: root !> relative to get_dart_mpi_comm()
 
 integer :: errcode
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'broadcast_flag', errstring, source, revision, revdate)
+endif
 
 call MPI_Bcast(flag, 1, MPI_LOGICAL, root, my_local_comm, errcode)
 

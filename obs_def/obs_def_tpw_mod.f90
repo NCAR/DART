@@ -259,7 +259,7 @@ if (model_levels) then
 
       which_vert = VERTISLEVEL
       location2 = set_location(lon, lat, real(k, r8),  which_vert)
-!> @todo --- This may be different for each ensemble memeber ---
+!>@todo --- This may be different for each ensemble memeber ---
       call interpolate(state_handle, ens_size, location2, QTY_PRESSURE, pressure(:, lastk), this_istatus)
       call track_status(ens_size, this_istatus, tpw, istatus, return_now)
       if (any(pressure(:, lastk) < pressure_top)) exit LEVELS
@@ -305,7 +305,7 @@ else
    do k=2, lastk
 
       which_vert = VERTISPRESSURE
-      !> @TODO - there should be only a single location here.  for now, use 1
+      !>@todo - there should be only a single location here.  for now, use 1
       !> but what to do in the general case?  set a fixed top and bottom pressure??
       location2 = set_location(lon, lat, pressure(1, k),  which_vert)
    

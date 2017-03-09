@@ -179,7 +179,7 @@ end subroutine state_vector_io_init
 
 
 subroutine read_state(state_ens_handle, file_info, read_time_from_file, time, &
-            prior_inflate_handle, post_inflate_handle)
+            prior_inflate_handle, post_inflate_handle, perturb_from_single_copy)
 
 type(ensemble_type),         intent(inout) :: state_ens_handle
 type(file_info_type),        intent(in)    :: file_info
@@ -187,6 +187,7 @@ logical,                     intent(in)    :: read_time_from_file ! state time
 type(time_type),             intent(inout) :: time
 type(adaptive_inflate_type), optional, intent(in) :: prior_inflate_handle
 type(adaptive_inflate_type), optional, intent(in) :: post_inflate_handle
+logical,                     optional, intent(in) :: perturb_from_single_copy
 
 logical :: inflation_handles = .false.
 
@@ -227,7 +228,7 @@ endif
 
 if (get_single_file(file_info)) then
    ! NOTE: single file is set only in filter, and pmo
-   call read_singlefile(state_ens_handle, file_info, read_time_from_file, time)
+   call read_singlefile(state_ens_handle, file_info, read_time_from_file, time, perturb_from_single_copy)
 else
    call read_restart_direct(state_ens_handle, file_info, read_time_from_file, time)
 endif

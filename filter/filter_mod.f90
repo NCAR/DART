@@ -45,18 +45,19 @@ use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,  
                                   map_task_to_pe,  map_pe_to_task, prepare_to_update_copies,  &
                                   copies_in_window, set_num_extra_copies, get_allow_transpose, &
                                   all_copies_to_all_vars, allocate_single_copy, allocate_vars, &
-                                  get_single_copy, put_single_copy, deallocate_single_copy
-use adaptive_inflate_mod,  only : do_varying_ss_inflate,                &
+                                  get_single_copy, put_single_copy, deallocate_single_copy,   &
+                                  print_ens_handle
+use adaptive_inflate_mod,  only : do_varying_ss_inflate,                                      &
                                   do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
                                   adaptive_inflate_type, set_inflation_mean_copy ,            &
                                   log_inflation_info, set_inflation_sd_copy,                  &
-                                  get_minmax_task_zero
+                                  get_minmax_task_zero, do_rtps_inflate
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                   task_count
 use smoother_mod,          only : smoother_read_restart, advance_smoother,                    &
                                   smoother_gen_copy_meta_data, smoother_write_restart,        &
                                   init_smoother, do_smoothing, smoother_mean_spread,          &
-                                  smoother_assim,            &
+                                  smoother_assim,                                             &
                                   smoother_ss_diagnostics, smoother_end, set_smoother_trace
 
 use random_seq_mod,        only : random_seq_type, init_random_seq, random_gaussian
@@ -132,6 +133,7 @@ integer :: POSTASSIM_PRIORINF_MEAN  = COPY_NOT_PRESENT
 integer :: POSTASSIM_PRIORINF_SD    = COPY_NOT_PRESENT
 integer :: POSTASSIM_POSTINF_MEAN   = COPY_NOT_PRESENT
 integer :: POSTASSIM_POSTINF_SD     = COPY_NOT_PRESENT
+integer :: SPARE_PRIOR_SPREAD       = COPY_NOT_PRESENT
 
 logical :: do_prior_inflate     = .false.
 logical :: do_posterior_inflate = .false.
@@ -205,7 +207,8 @@ character(len=256) :: obs_sequence_in_name  = "obs_seq.out",    &
 !                  == './advance_model.csh'    -> advance ensemble using a script
 
 ! Inflation namelist entries follow, first entry for prior, second for posterior
-! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space
+! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space,
+! 4 is rtps (relax to prior spread)
 integer              :: inf_flavor(2)                  = 0
 logical              :: inf_initial_from_restart(2)    = .false.
 logical              :: inf_sd_initial_from_restart(2) = .false.
@@ -260,7 +263,7 @@ type(adaptive_inflate_type) :: prior_inflate, post_inflate
 
 integer,    allocatable :: keys(:)
 integer(i8)             :: model_size
-integer                 :: ret, j, i, iunit, io, time_step_number, num_obs_in_set
+integer                 :: i, j, iunit, io, time_step_number, num_obs_in_set
 integer                 :: last_key_used, key_bounds(2)
 integer                 :: in_obs_copy, obs_val_index
 integer                 :: prior_obs_mean_index, posterior_obs_mean_index
@@ -319,10 +322,11 @@ call error_handler(E_MSG,'filter:', msgstring, source, revision, revdate)
 ! See if smoothing is turned on
 ds = do_smoothing()
 
-! Make sure inflation options are legal
+! Make sure inflation options are legal - this should be in the inflation module
+! and not here.  FIXME!
 do i = 1, 2
-   if(inf_flavor(i) < 0 .or. inf_flavor(i) > 3) then
-      write(msgstring, *) 'inf_flavor=', inf_flavor(i), ' Must be 0, 1, 2, 3 '
+   if(inf_flavor(i) < 0 .or. inf_flavor(i) > 4) then
+      write(msgstring, *) 'inf_flavor=', inf_flavor(i), ' Must be 0, 1, 2, 3, or 4 '
       call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
    endif
    if(inf_damping(i) < 0.0_r8 .or. inf_damping(i) > 1.0_r8) then
@@ -339,6 +343,23 @@ if (do_prior_inflate .or. do_posterior_inflate)   output_inflation     = .true.
 ! Observation space inflation for posterior not currently supported
 if(inf_flavor(2) == 1) call error_handler(E_ERR, 'filter_main', &
    'Posterior observation space inflation (type 1) not supported', source, revision, revdate)
+
+! Whitaker/Hamill (2012) relaxation-to-prior-spread (rtps) inflation (inf_flavor = 4) only is for posterior
+if ( inf_flavor(1) == 4 ) then 
+   write(msgstring, *) 'Prior inflation [i.e., inf_flavor(1)]=', inf_flavor(1), ' is not allowed.  Must be 0, 1, 2, or 3' 
+   call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate) 
+endif 
+
+! CSS Whitaker/Hamill (2012) relaxation-to-prior-spread (rtps) inflation (inf_flavor = 4)
+!    needs a single parameter from namelist: inf_initial(2).  Do not read-in any files
+!    Also, no damping
+if ( inf_flavor(2) == 4 ) then
+   inf_initial_from_restart(2)    = .false. ! get parameter from namelist inf_inital(2), not from file
+   inf_sd_initial_from_restart(2) = .false. ! inf_sd not used in this algorithm
+   inf_deterministic(2)           = .true.  ! this algorithm is deterministic
+   inf_damping(2)                 = 1.0_r8  ! no damping
+endif
+
 
 call trace_message('Before initializing inflation')
 
@@ -455,14 +476,15 @@ call initialize_file_information(num_state_ens_copies, file_info_input, &
                                  file_info_preassim, file_info_postassim, &
                                  file_info_output)
 
-!call check_file_info_variable_shape(file_info_output, state_ens_handle)
+call check_file_info_variable_shape(file_info_output, state_ens_handle)
 
 call set_inflation_mean_copy(prior_inflate, PRIOR_INF_COPY)
 call set_inflation_sd_copy(  prior_inflate, PRIOR_INF_SD_COPY)
 call set_inflation_mean_copy(post_inflate,  POST_INF_COPY)
 call set_inflation_sd_copy(  post_inflate,  POST_INF_SD_COPY)
 
-call read_state(state_ens_handle, file_info_input, read_time_from_file, time1, prior_inflate, post_inflate)
+call read_state(state_ens_handle, file_info_input, read_time_from_file, time1, prior_inflate, post_inflate, &
+                perturb_from_single_instance)
 
 ! This must be after read_state
 call get_minmax_task_zero(prior_inflate, state_ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
@@ -2054,6 +2076,16 @@ else
    POSTASSIM_POSTINF_SD    = POST_INF_SD_COPY
 
 endif
+
+
+! CSS If Whitaker/Hamill (2012) relaxation-to-prior-spread (rpts) inflation (inf_flavor = 4)
+!  then we need an extra copy to hold (save) the prior ensemble spread
+!   ENS_SD_COPY will be overwritten with the posterior spread before
+!   applying the inflation algorithm; hence we must save the prior ensemble spread in a different copy
+if ( inf_flavor(2) == 4 ) then ! CSS
+   SPARE_PRIOR_SPREAD = next_copy_number(cnum)
+endif 
+
 
 num_copies = cnum
 

@@ -577,10 +577,24 @@ do ivar = 1, num_vars
       call nc_check(ret, 'load_variable_sizes, inq_dimension', &
                     trim(domain%variable(ivar)%dimname(jdim)))
       
+      !>@todo FIXME we'll have to document that no user can have a 'member' dimension
+      !>in their own netcdf files.  it's more reasonable to indicate 'time' is special
+      !>but this code doesn't know if its a user file or one we wrote.  but without
+      !>skipping these dimensions you get the wrong variable size because it includes
+      !>all times and all members in the size.  this needs to be revisited later.
+
+      if ((domain%variable(ivar)%dimname(jdim) == 'time') .or. &
+          (domain%variable(ivar)%dimname(jdim) == 'member')) cycle
+
       variable_size = variable_size * domain%variable(ivar)%dimlens(jdim)
 
    enddo
 
+
+   ! to be consistent this needs to ignore both 'time' and 'member' for
+   ! files we write, and newer netcdf libs support multiple unlimited dims
+   ! so this does need to change.  but it works, somehow, as-is so leave it
+   ! for now.
    ! subtract the unlimited dimension if it exists
    !>@todo : how to handle models with multiple unlimited dimensions?
    !>         nf90_inquire returns the first unlimited dimension id  which
@@ -596,7 +610,7 @@ do ivar = 1, num_vars
 
    ! member is not a spatial domain but could be included in a single file
    do jdim = 1, num_dims
-      if ( trim(domain%variable(ivar)%dimname(jdim)) == trim('member') ) then
+      if ( domain%variable(ivar)%dimname(jdim) == 'member') then
          domain%variable(ivar)%numdims = domain%variable(ivar)%numdims - 1 
       endif
    enddo
@@ -1442,7 +1456,7 @@ integer,          intent(in) :: dim_size
 
 integer :: d_new ! dimension you are adding
 
-if ( trim(state%domain(dom_id)%method) /= 'spec') then
+if ( state%domain(dom_id)%method /= 'spec') then
    write(string1,'(''domain '',i4,'' created with method "'',A,''"'')')dom_id, trim(state%domain(dom_id)%method)
    write(string2,*)'only domains created by add_domain_from_spec() may add dimensions to their variables.'
    call error_handler(E_ERR,'add_dimension_to_variable', string1, &
@@ -1480,7 +1494,7 @@ integer :: num_vars, num_dims, variable_size
 integer :: next_start, count_dims
 integer(i8) :: domain_offset
 
-if ( trim(state%domain(dom_id)%method) /= 'spec') then
+if ( state%domain(dom_id)%method /= 'spec') then
    write(string1,'(''domain '',i4,'' created with method "'',A,''"'')')dom_id, trim(state%domain(dom_id)%method)
    write(string2,*)'only domains created by add_domain_from_spec() may call finished_adding_domain.'
    call error_handler(E_ERR,'finished_adding_domain', string1, &
@@ -1505,7 +1519,7 @@ if (state%num_domains > 1 ) domain_offset = get_index_end(dom_id-1,get_num_varia
 num_vars = get_num_variables(dom_id)
 do ivar = 1, num_vars
    variable_size = 1
-   num_dims = get_io_num_dims(dom_id, ivar)
+   num_dims = get_num_dims(dom_id, ivar)
 
    do jdim = 1, num_dims
       ! product of dimensions to get variable size
@@ -1602,7 +1616,7 @@ do ivar = 1, num_vars
       write(*,'('' io_unique_dim_length  : '',I5)' ) get_io_unique_dim_length(dom_id,jdim)
    enddo
 
-   if ( trim(state%domain(dom_id)%info_file) /= 'NULL' ) then
+   if ( state%domain(dom_id)%info_file /= 'NULL' ) then
       write(*,*) 'CF-Conventions that exist in : ', trim(state%domain(dom_id)%info_file)
       write(*,*) 'units             : ', trim(get_units(dom_id,ivar))
       write(*,*) 'short_name        : ', trim(get_short_name(dom_id,ivar))
@@ -1713,7 +1727,7 @@ var_id   = -1
 num_vars = get_num_variables(dom_id)
 
 do ivar = 1, num_vars
-   if ( trim(varname) == trim(get_variable_name(dom_id,ivar)) ) then
+   if ( varname == get_variable_name(dom_id,ivar) ) then
       var_id = ivar
       return
    endif

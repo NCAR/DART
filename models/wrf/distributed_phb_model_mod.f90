@@ -90,7 +90,7 @@ use state_structure_mod, only : add_domain, get_model_variable_indices, &
                                 get_index_start, get_index_end, &
                                 get_dart_vector_index
 
-use mpi_utilities_mod,   only : all_reduce_min_max
+use mpi_utilities_mod,   only : broadcast_minmax
 
 ! FIXME:
 ! the kinds QTY_CLOUD_LIQUID_WATER should be QTY_CLOUDWATER_MIXING_RATIO, 
@@ -6263,7 +6263,7 @@ do id = 1, num_domains
    enddo
 enddo
 
-call all_reduce_min_max(min_var, max_var, num_variables)
+call broadcast_minmax(min_var, max_var, num_variables)
 
 bitwise_lanai = .true.
 if (bitwise_lanai) then

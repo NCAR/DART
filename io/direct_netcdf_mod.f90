@@ -107,6 +107,22 @@ integer :: ret !< netcdf return code
 
 character(len=512) :: msgstring
 
+!>@todo FIXME:
+!> this should be in a namelist somewhere and passed in from
+!> a higher level routine.
+!>
+!> we had this in the ROMS branch but no one can remember why.
+!> we think it's because we copied a template file into place
+!> for filter to overwrite and it might not have had the right
+!> analysis time in the file.  it's true that filter doesn't
+!> change the time in the file, but when we're doing direct
+!> updates of a netcdf file it's also true that we rarely
+!> update the file we read from; in case of an error you've
+!> destroyed your input needed to rerun the job.
+!> (but we don't remember for sure if this was the reason.)
+
+logical :: overwrite_time_in_output_file = .false.
+
 contains
 
 
@@ -162,7 +178,6 @@ end subroutine transpose_write
 !-------------------------------------------------
 !> Single processor version of read_transpose.  Reads ens_size whole vectors from
 !> netcdf files and fills up a row of %copies for each file.
-
 
 subroutine read_transpose_single_task(state_ens_handle, name_handle, domain, dart_index)
 
@@ -227,7 +242,6 @@ end subroutine read_transpose_single_task
 !> Single processor version of transpose write.  Takes copies array one row
 !> at a time and writes copy to a netcdf file.
 
-
 subroutine transpose_write_single_task(state_ens_handle, name_handle, domain, &
                      dart_index, write_single_precision)
 
@@ -272,6 +286,13 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
          ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
          call nc_check(ret, 'transpose_write: opening', trim(netcdf_filename_out))
          call nc_write_global_att_clamping(ncfile_out, copy, domain)
+
+         if (overwrite_time_in_output_file) then
+            call get_copy_owner_index(copy, time_owner, time_owner_index)
+            call get_ensemble_time(state_ens_handle, time_owner_index, dart_time)
+            call write_model_time(ncfile_out, dart_time)
+         endif
+
       else ! create and open file
 
          !>@todo This is grabbing the time assuming the ensemble is var complete.
@@ -328,7 +349,6 @@ end subroutine transpose_write_single_task
 !> has all copies of a subset of state variables (fill state_ens_handle%copies)
 !> Read and transpose data according to the memory limit imposed by
 !> limit_mem. Note limit_mem cannot be smaller than a variable.
-
 
 subroutine read_transpose_multi_task(state_ens_handle, name_handle, domain, &
                 dart_index, limit_mem)
@@ -500,7 +520,6 @@ end subroutine read_transpose_multi_task
 !> This is assuming round-robin layout of state on procesors (distribution type 1
 !> in the ensemble handle).
 
-
 subroutine transpose_write_multi_task(state_ens_handle, name_handle, domain, &
                 dart_index, limit_mem, write_single_precision)
 
@@ -573,6 +592,13 @@ COPIES : do c = 1, ens_size
             ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
             call nc_check(ret, 'transpose_write: opening', trim(netcdf_filename_out))
             call nc_write_global_att_clamping(ncfile_out, my_copy, domain)
+
+            if (overwrite_time_in_output_file) then
+               call get_copy_owner_index(my_copy, time_owner, time_owner_index)
+               call get_ensemble_time(state_ens_handle, time_owner_index, dart_time)
+               call write_model_time(ncfile_out, dart_time)
+            endif
+
          else ! create and open output file
 
             !>@todo This is grabbing the time assuming the ensemble is var complete.
@@ -683,7 +709,7 @@ end subroutine transpose_write_multi_task
 !> If the variable is unbounded, this routine returns .FALSE.
 !> The return value is not an indication of whether or not the values have
 !> actually been modified.
-
+!-------------------------------------------------------------------------------
 
 subroutine clamp_variable(dom_id, var_index, variable)
 
@@ -741,6 +767,7 @@ end subroutine clamp_variable
 !> TIEGCM and CLM. 
 
 
+
 subroutine read_variables(ncfile_in, var_block, start_var, end_var, domain)
 
 integer,  intent(in)    :: ncfile_in
@@ -784,7 +811,7 @@ end subroutine read_variables
 
 !-------------------------------------------------------------------------------
 !> Write variables from start_var to end_var no clamping
-
+!-------------------------------------------------------------------------------
 
 subroutine write_variables(ncid, var_block, start_var, end_var, domain, &
                            do_file_clamping, force_copy)
@@ -838,6 +865,9 @@ enddo
 
 end subroutine write_variables
 
+!-------------------------------------------------------------------------------
+!> Write variables from start_var to end_var for actual ensemble members
+!-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
 !> Create the output files
@@ -846,7 +876,7 @@ end subroutine write_variables
 !> It is used when the model has not suppled any netdcf info but
 !>     direct_netcdf_write = .true.
 !> The file is intentionally left OPEN.
-
+!-------------------------------------------------------------------------------
 
 function create_and_open_state_output(name_handle, dom_id, copy_number, &
                 dart_time, single_precision_output) result(ncfile_out)
@@ -946,8 +976,6 @@ end function create_and_open_state_output
 
 !-------------------------------------------------
 !> Write model attributes if they exist
-!>@todo repurpose for single file I/O
-
 
 subroutine nc_write_attributes(name_handle, ncFileID, filename, ncVarID, domid, varid, copy_number)
 
@@ -1039,7 +1067,6 @@ end subroutine nc_write_file_information
 
 !-------------------------------------------------
 !> Write clamping to variable attributes to files created from scratch
-
 
 subroutine nc_write_variable_att_clamping(ncFileID, filename, ncVarID, domid, varid)
 

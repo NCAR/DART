@@ -77,43 +77,29 @@ contains
 !> Computes the forward observation operators and related quality 
 !> control indicators.
 !> 
-!> @param[in]    ens_handle - state ensemble handle
-!> @param[inout] obs_fwd_op_ens_handle - observation forward operator handle
-!> @param[inout] qc_ens_handle - quality control handle
-!> @param[in]    seq - the observation sequence
-!> @param[in]    keys - unique integer key when is an obs_sequence
-!> @param[in]    obs_val_index - observation value index
-!> @param[in]    input_qc_index - input QC index
-!> @param[in]    OBS_ERR_VAR_COPY - observation error variance copy number
-!> @param[in]    OBS_VAL_COPY - observation value copy number
-!> @param[in]    OBS_KEY_COPY - observation key copy number
-!> @param[in]    OBS_GLOBAL_QC_COPY - observation global QC copy number
-!> @param[in]    OBS_MEAN_START - start of group observation mean copy number
-!> @param[in]    OBS_VAR_START - start of group observation variance copy number
-!> @param[in]    isprior - true for prior eval; false for posterior
 !------------------------------------------------------------------------------
 subroutine get_obs_ens_distrib_state(ens_handle, obs_fwd_op_ens_handle, &
    qc_ens_handle, seq, keys, obs_val_index, input_qc_index, &
    OBS_ERR_VAR_COPY,   OBS_VAL_COPY,   OBS_KEY_COPY, &
-   OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, OBS_MEAN_START, &
-   OBS_VAR_START, isprior, prior_qc_copy)
+   OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, OBS_MEAN_COPY, &
+   OBS_VAR_COPY, isprior, prior_qc_copy)
 
-type(ensemble_type),     intent(inout) :: ens_handle
-type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle
-type(ensemble_type),     intent(inout) :: qc_ens_handle 
-type(obs_sequence_type), intent(in)    :: seq
-integer,                 intent(in)    :: keys(:)
-integer,                 intent(in)    :: obs_val_index
-integer,                 intent(in)    :: input_qc_index
-integer,                 intent(in)    :: OBS_ERR_VAR_COPY
-integer,                 intent(in)    :: OBS_VAL_COPY
-integer,                 intent(in)    :: OBS_KEY_COPY
-integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY
-integer,                 intent(in)    :: OBS_EXTRA_QC_COPY
-integer,                 intent(in)    :: OBS_MEAN_START
-integer,                 intent(in)    :: OBS_VAR_START 
-logical,                 intent(in)    :: isprior
-real(r8),                intent(inout) :: prior_qc_copy(:)
+type(ensemble_type),     intent(inout) :: ens_handle  !< state ensemble handle
+type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle  !< observation forward operator handle
+type(ensemble_type),     intent(inout) :: qc_ens_handle  !< quality control handle
+type(obs_sequence_type), intent(in)    :: seq  !< the observation sequence
+integer,                 intent(in)    :: keys(:)  !< observation key numbers
+integer,                 intent(in)    :: obs_val_index  !< copy index for observation value 
+integer,                 intent(in)    :: input_qc_index  !< qc index for incoming QC value
+integer,                 intent(in)    :: OBS_ERR_VAR_COPY  !< ensemble copy number for observation error variances
+integer,                 intent(in)    :: OBS_VAL_COPY  !< ensemble copy number for observation values
+integer,                 intent(in)    :: OBS_KEY_COPY  !> ensemble copy number for observation keys
+integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY  !< ensemble copy number for ??
+integer,                 intent(in)    :: OBS_EXTRA_QC_COPY  !< ensemble copy number for ??
+integer,                 intent(in)    :: OBS_MEAN_COPY  !< ensemble copy number for obs mean values
+integer,                 intent(in)    :: OBS_VAR_COPY  !< ensemble copy number for obs variance 
+logical,                 intent(in)    :: isprior  !< true for prior eval; false for posterior
+real(r8),                intent(inout) :: prior_qc_copy(:)  !< array instead of ensemble copy ??
 
 real(r8) :: input_qc(1), obs_value(1), obs_err_var
 
@@ -362,7 +348,7 @@ if (get_allow_transpose(ens_handle)) then
 endif
 
 call compute_copy_mean_var(obs_fwd_op_ens_handle, 1, qc_ens_handle%num_copies, &
-        OBS_MEAN_START, OBS_VAR_START)
+                           OBS_MEAN_COPY, OBS_VAR_COPY)
 
 !>@todo Science quesion: Should groups be considered separately for outlier threshold test?
 QC_LOOP: do j = 1,  obs_fwd_op_ens_handle%my_num_vars
@@ -371,11 +357,11 @@ QC_LOOP: do j = 1,  obs_fwd_op_ens_handle%my_num_vars
 
       global_qc_value = nint(obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j))
       ! check_outlier_threshold could change the global_qc_value
-      call check_outlier_threshold(obs_fwd_op_ens_handle%copies(OBS_MEAN_START,j), &
-                                   obs_fwd_op_ens_handle%copies(OBS_VAR_START    , j),       &
-                                   obs_fwd_op_ens_handle%copies(OBS_VAL_COPY     , j),       &
-                                   obs_fwd_op_ens_handle%copies(OBS_ERR_VAR_COPY , j),  seq, &
-                              nint(obs_fwd_op_ens_handle%copies(OBS_KEY_COPY     , j)), global_qc_value)
+      call check_outlier_threshold(obs_fwd_op_ens_handle%copies(OBS_MEAN_COPY,    j),       &
+                                   obs_fwd_op_ens_handle%copies(OBS_VAR_COPY,     j),       &
+                                   obs_fwd_op_ens_handle%copies(OBS_VAL_COPY,     j),       &
+                                   obs_fwd_op_ens_handle%copies(OBS_ERR_VAR_COPY, j),  seq, &
+                              nint(obs_fwd_op_ens_handle%copies(OBS_KEY_COPY,     j)), global_qc_value)
 
       obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = global_qc_value
 
@@ -384,8 +370,8 @@ QC_LOOP: do j = 1,  obs_fwd_op_ens_handle%my_num_vars
    ! for either prior or posterior, if any forward operator failed,
    ! reset the mean/var to missing_r8, regardless of the DART QC status
    if (any(qc_ens_handle%copies(:, j) /= 0)) then
-      obs_fwd_op_ens_handle%copies(OBS_MEAN_START, j) = missing_r8
-      obs_fwd_op_ens_handle%copies(OBS_VAR_START,  j) = missing_r8
+      obs_fwd_op_ens_handle%copies(OBS_MEAN_COPY, j) = missing_r8
+      obs_fwd_op_ens_handle%copies(OBS_VAR_COPY,  j) = missing_r8
    endif
 
 end do QC_LOOP
@@ -402,30 +388,21 @@ end subroutine get_obs_ens_distrib_state
 !> Compute forward operator for set of obs in sequence for distributed state vector. 
 !> @todo does this need to be for a set of obs?
 !> 
-!> @param[in]    seq - the observation sequence 
-!> @param[in]    keys - unique integer key into an obs_sequence
-!> @param[in]    state_time -  the time of the state vector data
-!> @param[in]    isprior - true for prior eval; false for posterior
-!> @param[out]   istatus - return code: 0=ok, >0 is error, <0 reserved for system use
-!> @param[out]   assimilate_this_ob - true if obs was assimilated, false otherwise 
-!> @param[out]   evaluate_this_ob - true if obs was evaluated, false otherwise
-!> @param[in]    state_ens_handle - state ensemble handle
-!> @param[inout] expected_obs - the computed forward operator value
 !------------------------------------------------------------------------------
 subroutine get_expected_obs_distrib_state(seq, keys, state_time, isprior, &
    istatus, assimilate_this_ob, evaluate_this_ob, state_ens_handle, num_ens, copy_indices, expected_obs)
 
-integer,                 intent(in)    :: num_ens
-type(obs_sequence_type), intent(in)    :: seq
-integer,                 intent(in)    :: keys(:)
-type(time_type),         intent(in)    :: state_time
-logical,                 intent(in)    :: isprior
-integer,                 intent(out)   :: istatus(num_ens)
-logical,                 intent(out)   :: assimilate_this_ob
-logical,                 intent(out)   :: evaluate_this_ob
-type(ensemble_type),     intent(in)    :: state_ens_handle
-integer,                 intent(in)    :: copy_indices(num_ens)
-real(r8),                intent(inout) :: expected_obs(num_ens) !> @todo needs to be 2d for a set of obs - no because you don't have an array of assimilate_this_ob, evaluate_this_ob
+type(obs_sequence_type), intent(in)    :: seq  !< the observation sequence
+integer,                 intent(in)    :: keys(:)  !< list of obs numbers
+type(time_type),         intent(in)    :: state_time  !< time state vector data is valid for
+logical,                 intent(in)    :: isprior  !< true if prior; false if posterior
+integer,                 intent(in)    :: num_ens  !< number of ensemble members (decl must preceed use)
+integer,                 intent(out)   :: istatus(num_ens)  !< FO return codes; 0=ok, >0 is error, <0 reserved for system use
+logical,                 intent(out)   :: assimilate_this_ob  !< true if assimilated; false otherwise
+logical,                 intent(out)   :: evaluate_this_ob  !< true if evaluated; false otherwise
+type(ensemble_type),     intent(in)    :: state_ens_handle  !< state ensemble handle
+integer,                 intent(in)    :: copy_indices(num_ens)  !< ??
+real(r8),                intent(inout) :: expected_obs(num_ens)  !< the array of computed forward operator values
 
 type(obs_type)     :: obs
 type(obs_def_type) :: obs_def

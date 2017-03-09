@@ -6,6 +6,10 @@
 #
 # DART $Id$
 
+# if you are building this on yellowstone.ucar.edu you can changed 
+# each of the /opt/local build directories below to /glade/p/work/nancy
+# where i have built the jpg, hdf, and eos libraries.
+
 set JPGDIR = /opt/local
 set JPGLIB = ${JPGDIR}/lib
 set JPGINC = ${JPGDIR}/include
@@ -22,8 +26,6 @@ set MYLIBS = "-lhdfeos -lmfhdf -ldf -ljpeg -lz  -lm"
 
 set MYINCDIR = "-I${EOSDIR}/include -I${HDFDIR}/include -I${JPGDIR}/include"
 set MYLIBDIR = "-L${EOSDIR}/lib     -L${HDFDIR}/lib     -L${JPGDIR}/lib"
-
-#-o "-ffixed-line-length-132 -I${HDFDIR}/include -L/usr/lib64 -L${HDFDIR}/lib ${HDFLIBS}" \
 
 ../../../mkmf/mkmf -p convert_airs_L2 -t ../../../mkmf/mkmf.template \
  -l "${MYINCDIR} ${MYLIBDIR} ${MYLIBS}" \

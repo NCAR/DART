@@ -168,7 +168,7 @@ module_initialized = .true.
 end subroutine initialize_module
 
 !-----------------------------------------------------------------------------
-!> @todo Test RMA.
+!>@todo Test RMA.
 ! Given DART state vector and a location, 
 ! it computes thermospheric neutral density [Kg/m3] 
 ! The istatus variable should be returned as 0 unless there is a problem
@@ -236,7 +236,7 @@ end subroutine get_expected_upper_atm_density
 ! Given DART state vector and a location, 
 ! it computes ground GPS vertical total electron content
 ! The istatus variable should be returned as 0 unless there is a problem
-!> @todo Is the logic correct in this code on the Trunk
+!>@todo Is the logic correct in this code on the Trunk
 !>  Should you return from the subroutine instead of exiting 
 !> the loop at exit LEVELS
 subroutine get_expected_gnd_gps_vtec(state_handle, ens_size, location, obs_val, istatus)
@@ -454,7 +454,7 @@ enddo FILLMIDPOINTS
 if (nlevels == 0) return
 
 ! Check to make sure we have more interfaces than layers.
-!> @TODO should this be an error instead of a message?
+!>@todo should this be an error instead of a message?
 
 if (nilevels /= (nlevels+1)) then
    write(string1,*)'Require there to be 1 more interfaces than midpoints.'

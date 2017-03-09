@@ -134,7 +134,10 @@ character(len=256) :: type_translations(2, MAX_TYPES) = 'NULL'
 !> multiple ROMS variants that relate to the same DART TYPE. hernan and tim
 !> prefer the superset, Chris and Nancy prefer the subset ... Andy?
 
-!>@todo support the ability to specify locations_in_IJK
+!>@todo FIXME -
+!> TJH: could remove the locations_in_IJK variable by simply checking 
+!> if the obs_lon,obs_lat variables exist. 
+!> If they do exist, use them; if not - try the IJK method.
 
 namelist /convert_roms_obs_nml/ &
    ens_size, &
@@ -200,6 +203,8 @@ allocate(lon(nobs))
 allocate(depth(nobs))
 
 ! read in the data arrays
+!>@todo FIXME make sure the missing values in the depth arrays are handled
+! correctly further downstream
 
 call set_missing_name('missing_value')
 
@@ -354,6 +359,9 @@ obsloop: do n = 1, nobs
 
    if ( lon(n) < 0.0_r8 )  lon(n) = lon(n) + 360.0_r8
 
+   !>@todo FIXME ... depth may be MISSING_R8 ... in that the parent variable
+   !> "obs_depth" has a 'missing_value' attribute
+
    ! extract actual time of observation in file into oday, osec.
    call get_time(time_obs, osec, oday)
 
@@ -459,6 +467,8 @@ integer :: dart_kind, status
 type(location_type) :: dart_location
 real(r8) :: dummy(3)
 
+!>@todo FIXME ... r_kloc may be MISSING_R8 ... in that the parent variable
+!> "obs_depth" in the IJK world has a 'missing_value' attribute
 if (r_kloc == MISSING_R8) then
    convert_ijk_to_latlondepth = 3
    return 

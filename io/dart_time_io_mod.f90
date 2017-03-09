@@ -15,7 +15,8 @@ module dart_time_io_mod
 
 use types_mod,        only : r8, digits12
 use time_manager_mod, only : time_type, set_time, get_time, print_time, &
-                             set_calendar_type, set_date, get_calendar_string
+                             set_calendar_type, set_date, get_calendar_string, &
+                             operator(+)
 
 use utilities_mod,    only : nc_check, E_MSG, E_ERR, error_handler, to_upper
 
@@ -40,24 +41,30 @@ contains
 
 !--------------------------------------------------------------------
 !> Make a stab at reading the time from the input file
-!> and setting the calendar
+!> and setting the calendar.  This routine assumes the file hasn't
+!> been opened yet, and closes it when it's done.
 
 function read_model_time(filename)
 
 character(len=*), intent(in) :: filename
 type(time_type)              :: read_model_time
 
-integer :: ncid, ios, numdims, xtype, VarID, TimeDimID
+integer :: ncid, ios, numdims, xtype, VarID
 integer :: ntimes, seconds, days
 integer :: year, month, day, hour, minute, second
-type(time_type) :: base_time
+type(time_type) :: base_time, delta_time
 
-real(digits12), allocatable :: model_time(:)
+real(digits12) :: model_time, time_array(1)
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME)          :: varname,dimname
 character(len=256) :: file_calendar, dart_calendar
 character(len=256) :: unitstring
+
+! this is used in many error messages below.  set it here, and 
+! don't reuse string3 here, please.
+write(string3,*)'You may need to supply a model-specific "read_model_time()" to read the time.'
+
 
 call nc_check( nf90_open(filename, NF90_NOWRITE, ncid), &
                'read_model_time',  'opening : "'//trim(filename)//'"')
@@ -65,8 +72,7 @@ call nc_check( nf90_open(filename, NF90_NOWRITE, ncid), &
 ios = nf90_inq_varid(ncid, "time", VarID)
 if (ios /= NF90_NOERR) then
    write(string1,*)'Expecting to be able to read the model time from a "time" variable'
-   write(string2,*)'in "'//trim(filename)//'"'
-   write(string3,*)'You may need to supply a model-specific "read_model_time()" to read the time.'
+   write(string2,*)'in file "'//trim(filename)//'"'
    call error_handler(E_ERR,'read_model_time', string1, &
               source, revision, revdate, text2=string2, text3=string3)
 endif
@@ -76,106 +82,118 @@ call nc_check(ios, 'read_model_time', 'inquire_variable "time" from "'//trim(fil
 
 if (numdims > 1) then
    write(string1,*)'Expecting the "time" variable to be a single dimension.'
-   write(string2,*)'in "'//trim(filename)//'"'
-   write(string3,*)'You may need to supply a model-specific "read_model_time()" to read the time.'
+   write(string2,*)'in file "'//trim(filename)//'"'
    call error_handler(E_ERR,'read_model_time', string1, &
               source, revision, revdate, text2=string2, text3=string3)
 endif
 
-! Since the time variable is known to have only 1 dimension, we know TimeDimID is the first one.
-TimeDimID = dimids(1)
+! Since the time variable is known to have only 1 dimension, we know it is the first one.
 
-ios = nf90_inquire_dimension(ncid, TimeDimID, len=ntimes)
-call nc_check(ios, 'read_model_time', 'inquire_dimension for ntimes "'//trim(filename) )
+ios = nf90_inquire_dimension(ncid, dimids(1), len=ntimes)
+call nc_check(ios, 'read_model_time', 'inquire_dimension for time dimension from "'//trim(filename) )
 
-allocate( model_time(ntimes) )
-
-ios = nf90_get_var(ncid, VarID, model_time)
+! read the last one
+ios = nf90_get_var(ncid, VarID, time_array, start=(/ntimes/), count=(/1/))
 call nc_check(ios, 'read_model_time','get_var time' )
+model_time = time_array(1)
 
-!>@todo calendar madness 
+! try to handle the calendar in a generic way
 
 call get_calendar_string(dart_calendar)
 
 ios = nf90_get_att(ncid, VarID, 'calendar', file_calendar)
-if (ios /= NF90_NOERR) file_calendar = 'no_calendar'
-if (trim(file_calendar) == 'no calendar') file_calendar = 'no_calendar'
+if (ios /= NF90_NOERR) file_calendar = 'NO_CALENDAR'
 call to_upper(file_calendar)
 
-if (trim(dart_calendar) /= trim(file_calendar) ) then
-      write(*,*)trim(dart_calendar)
-      write(*,*)trim(file_calendar)
-      write(string1,*)'I dunno what to do.'
-      call error_handler(E_ERR, 'read_model_time:', string1, source,revision, revdate)
+if (dart_calendar /= file_calendar ) then
+   ! allow NO_CALENDAR, NO CALENDAR, and NONE to be synonyms.
+   ! replace file_calendar with what dart uses to simplify the tests below.
+   if (dart_calendar == 'NO_CALENDAR' .and. (file_calendar == 'NONE'        .or. &
+                                             file_calendar == 'NO CALENDAR')) then
+      file_calendar = 'NO_CALENDAR'
+   else
+      write(string1,*)'inconsistent calendar types between DART program and input file.'
+      write(string2,*)'DART initialized with: ', trim(dart_calendar), ' File uses: ', trim(file_calendar)
+      call error_handler(E_ERR, 'read_model_time:', string1, source,revision, revdate, &
+                      text2=string2, text3=string3)
+   endif
 endif
 
-if ( trim(file_calendar) == 'NO_CALENDAR' ) then
+if ( dart_calendar == 'NO_CALENDAR' ) then
 
-   days    = floor(model_time(ntimes))
-   seconds = (model_time(ntimes)-real(days,r8))*86400
+   !> assumes time variable is real and fractional days.  if this isn't true,
+   !> user has to supply their own read time routine.
+   
+   days    = floor(model_time)
+   seconds = (model_time-real(days,digits12))*86400
    read_model_time = set_time(seconds, days)
 
-   call print_time(read_model_time,'read_model_time')
+else if ( dart_calendar == 'GREGORIAN' ) then
 
-   call nc_check( nf90_close(ncid) , 'read_model_time closing : ', filename)
-   return
-endif
+   ios = nf90_get_att(ncid, VarID, 'units', unitstring)
+   call nc_check(ios, 'read_model_time', 'get_att time units "'//trim(filename)//'"')
+   
+   if (unitstring(1:10) == 'days since') then
+   
+      read(unitstring,'(11x,i4,5(1x,i2))',iostat=ios)year,month,day,hour,minute,second
+      if (ios /= 0) then
+         write(string1,*)'Unable to interpret time unit attribute. Error status was ',ios
+         write(string2,*)'expected "days since YYYY-MM-DD HH:MM:SS", got "'//trim(unitstring)//'"'
+         call error_handler(E_ERR, 'read_model_time:', string1, &
+                source, revision, revdate, text2=string2, text3=string3)
+      endif
+   
+      ! This is the start of their calendar
+      base_time = set_date(year, month, day, hour, minute, second)
+   
+      days    = floor(model_time)
+      seconds = (model_time-real(days,digits12))*86400
 
-!>@todo where does DART normally set the calendar now?
-call set_calendar_type(trim(file_calendar))
+      delta_time = set_time(seconds, days)
+      read_model_time = base_time + delta_time
+   
+   else if (unitstring(1:13) == 'seconds since') then
+            
+      read(unitstring,'(14x,i4,5(1x,i2))',iostat=ios)year,month,day,hour,minute,second
+      if (ios /= 0) then
+         write(string1,*)'Unable to interpret time unit attribute. Error status was ',ios
+         write(string2,*)'expected "seconds since YYYY-MM-DD HH:MM:SS", got "'//trim(unitstring)//'"'
+         call error_handler(E_ERR, 'read_model_time:', string1, &
+                source, revision, revdate, text2=string2, text3=string3)
+      endif
+   
+      ! This is the start of their calendar
+      base_time = set_date(year, month, day, hour, minute, second)
+      delta_time = set_time(seconds)
 
-ios = nf90_get_att(ncid, VarID, 'units', unitstring)
-call nc_check(ios, 'read_model_time', 'get_att time units "'//trim(filename)//'"')
-
-if (unitstring(1:10) == 'days since') then
-
-   read(unitstring,'(11x,i4,5(1x,i2))',iostat=ios)year,month,day,hour,minute,second
-   if (ios /= 0) then
-      write(string1,*)'Unable to read dtime units. Error status was ',ios
-      write(string2,*)'expected "days since YYYY-MM-DD HH:MM:SS"'
-      write(string3,*)'was      "'//trim(unitstring)//'"'
-      call error_handler(E_ERR, 'read_model_time:', string1, &
-             source, revision, revdate, text2=string2, text3=string3)
+      read_model_time = base_time + delta_time
+   
+   else
+   
+      write(string1, *) 'looking for "days since" or "seconds since" in the "units" attribute'
+      call error_handler(E_ERR, 'read_model_time:', 'unable to set base time for gregorian calendar', &
+                         source, revision, revdate, text2=string1, text3=string3)
+   
    endif
-
-   ! This is the start of their calendar
-   base_time = set_date(year, month, day, hour, minute, second)
-
-elseif (unitstring(1:13) == 'seconds since') then
-         
-   read(unitstring,'(14x,i4,5(1x,i2))',iostat=ios)year,month,day,hour,minute,second
-   if (ios /= 0) then
-      write(string1,*)'Unable to read dtime units. Error status was ',ios
-      write(string2,*)'expected "seconds since YYYY-MM-DD HH:MM:SS"'
-      write(string3,*)'was      "'//trim(unitstring)//'"'
-      call error_handler(E_ERR, 'read_model_time:', string1, &
-             source, revision, revdate, text2=string2, text3=string3)
-   endif
-
-   ! This is the start of their calendar
-   base_time = set_date(year, month, day, hour, minute, second)
-
 else
-
- !>@todo put something here
-
+   call error_handler(E_ERR, 'read_model_time:', &
+    'calendar type "'//trim(dart_calendar)//' unsupported by default read_model_time() routine', &
+                      source, revision, revdate, text2=string3)
 endif
 
-!>@ todo  fix converting from our calendar to their calendar
-! some_days    = floor(dstart)
-! some_seconds = int(fraction(dstart) * (24*60*60))
-! time_offset  = set_time(some_seconds, some_days)  ! seconds, days
-! spinup_end   = base_time + time_offset
+call print_time(read_model_time,'read_model_time')
+!>@todo FIXME:
+! make print_date() return without error if calendar is no_calendar,
+! and then add a call to print_date() here.
 
-
-deallocate( model_time )
+call nc_check( nf90_close(ncid) , 'read_model_time closing : ', filename)
 
 end function read_model_time
 
 
 !--------------------------------------------------------------------
-!> Write time to a netcdf file
-
+!> Write time to a netcdf file.
+!> This routine assumes the file comes in already opened, and doesn't close it.
 
 subroutine write_model_time(ncid, dart_time)
 
@@ -184,23 +202,25 @@ type(time_type),     intent(in) :: dart_time
 
 integer  :: ios
 integer  :: xtype, numdims, ntimes
-integer  :: VarID, TimeDimID
+integer  :: VarID
 integer  :: dart_days, dart_seconds
 
 real(digits12) :: model_time
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME)          :: varname,dimname
-character(len=NF90_MAX_NAME)          :: calendar
+character(len=NF90_MAX_NAME)          :: dart_calendar, file_calendar
 
-! convert time to something that netCDF can store
-call get_time(dart_time, dart_seconds, dart_days)
-model_time = real(dart_days,digits12) + real(dart_seconds,digits12)/86400.0_digits12
+! this is used in many error messages below.  set it here, and
+! don't reuse string3 here, please.
+write(string3,*)'You may need to supply a model-specific "write_model_time()" to write the time.'
 
 ios = nf90_inq_varid(ncid, "time", VarID)
+
+! if the file doesn't already have a "time" variable, we make one
 if (ios /= NF90_NOERR) then
 
-   call error_handler(E_MSG,'write_model_time','no time variable to exploit', &
+   call error_handler(E_MSG,'write_model_time','no time variable found in file', &
               source, revision, revdate, text2='creating one')
 
    ! begin define mode
@@ -215,21 +235,25 @@ if (ios /= NF90_NOERR) then
    ios = nf90_put_att(ncid, VarID, "long_name", "valid time of the model state")
    call nc_check(ios, "write_model_time", "time long_name")
 
-   ios = nf90_put_att(ncid, VarID, "calendar", "no calendar")
-   call nc_check(ios, "write_model_time", "calendar long_name")
+   call get_calendar_string(dart_calendar)
+   if (dart_calendar == 'NO_CALENDAR') then
+      ios = nf90_put_att(ncid, VarID, "calendar", "none")
+      call nc_check(ios, "write_model_time", "calendar long_name")
 
-   ios = nf90_put_att(ncid, VarID, "axis", "T")
-   call nc_check(ios, "write_model_time", "axis long_name")
+      ios = nf90_put_att(ncid, VarID, "units", "days since 0000-01-01 00:00:00")
+      call nc_check(ios, "write_model_time", "units long_name")
 
-   ios = nf90_put_att(ncid, VarID, "cartesian_axis", "T")
-   call nc_check(ios, "write_model_time", "cartesian_axis long_name")
+   else if (dart_calendar == 'GREGORIAN') then
+      ios = nf90_put_att(ncid, VarID, "calendar", "gregorian")
+      call nc_check(ios, "write_model_time", "calendar long_name")
 
-   ios = nf90_put_att(ncid, VarID, "month_lengths", &
-                  (/31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /))
-   call nc_check(ios, "write_model_time", "month_lengths long_name")
-
-   ios = nf90_put_att(ncid, VarID, "units", "days since 0000-01-01 00:00:00")
-   call nc_check(ios, "write_model_time", "units long_name")
+      ios = nf90_put_att(ncid, VarID, "units", "days since 1601-01-01 00:00:00")
+      call nc_check(ios, "write_model_time", "units long_name")
+   else
+      call error_handler(E_ERR, 'write_model_time:', &
+      'calendar type "'//trim(dart_calendar)//' unsupported by default write_model_time() routine', &
+                      source, revision, revdate, text2=string3)
+   endif
 
    ! end define mode
    call nc_check( nf90_Enddef(ncid),"write_model_time", "Enddef" )
@@ -237,13 +261,23 @@ endif
 
 ! See if the existing time dimension has a calendar and start date to consider
 
-ios = nf90_get_att(ncid, VarID, 'calendar', calendar)
-if (ios == NF90_NOERR) then
-   call set_calendar_type(trim(calendar))
-else
-   call set_calendar_type('no calendar')
-endif
+ios = nf90_get_att(ncid, VarID, 'calendar', file_calendar)
+if (ios /= NF90_NOERR) file_calendar = 'NO_CALENDAR'
+call to_upper(file_calendar)
 
+if (dart_calendar /= file_calendar ) then
+   ! allow NO_CALENDAR, NO CALENDAR, and NONE to be synonyms.
+   ! replace file_calendar with what dart uses to simplify the tests below.
+   if (dart_calendar == 'NO_CALENDAR' .and. (file_calendar == 'NONE'        .or. &
+                                             file_calendar == 'NO CALENDAR')) then
+      file_calendar = 'NO_CALENDAR'
+   else
+      write(string1,*)'inconsistent calendar types between DART program and input file.'
+      write(string2,*)'DART initialized with: ', trim(dart_calendar), ' File uses: ', trim(file_calendar)
+      call error_handler(E_ERR, 'write_model_time:', string1, source,revision, revdate, &
+                      text2=string2, text3=string3)
+   endif
+endif
 
 ! need to know how long the time variable is and hammer the last time
 ios = nf90_inquire_variable(ncid, VarID, xtype=xtype, dimids=dimIDs, ndims=numdims)
@@ -251,16 +285,18 @@ call nc_check(ios, 'write_model_time', 'inquire_variable "time"')
 
 if (numdims > 1) then
    write(string1,*)'Expecting the "time" variable to be a single dimension.'
-   write(string2,*)'You may need to supply a model-specific "write_model_time()".'
    call error_handler(E_ERR,'write_model_time', string1, &
-              source, revision, revdate, text2=string2)
+              source, revision, revdate, text2=string3)
 endif
 
-! Since the time variable is known to have only 1 dimension, we know TimeDimID is the first one.
-TimeDimID = dimids(1)
+! Since the time variable is known to have only 1 dimension, we know it is the first one.
 
-ios = nf90_inquire_dimension(ncid, TimeDimID, len=ntimes)
-call nc_check(ios, 'write_model_time', 'inquire_dimension for ntimes ')
+ios = nf90_inquire_dimension(ncid, dimids(1), len=ntimes)
+call nc_check(ios, 'write_model_time', 'inquire_dimension for time dimension')
+
+! convert time to something that netCDF can store, fractional days
+call get_time(dart_time, dart_seconds, dart_days)
+model_time = real(dart_days,digits12) + real(dart_seconds,digits12)/86400.0_digits12
 
 ! write dart days and seconds files to netcdf file
 ios = nf90_put_var(ncid, VarID, model_time, start=(/ ntimes /))

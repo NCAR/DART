@@ -16,7 +16,7 @@ private
 
 public :: i2, i4, i8, r4, c4, r8, c8, digits12
 public :: PI, DEG2RAD, RAD2DEG, MISSING_R4, MISSING_R8
-public :: MISSING_I, MISSING_DATA
+public :: MISSING_I, MISSING_I8, MISSING_DATA
 public :: SECPERDAY
 public :: t_kelvin, es_alpha, es_beta, es_gamma, gas_constant_v, gas_constant
 public :: L_over_Rv, ps0, earth_radius, gravity
@@ -74,16 +74,16 @@ integer, parameter :: i4 = SELECTED_INT_KIND(8)
 integer, parameter :: i8 = SELECTED_INT_KIND(13)
 
 ! real precision:
+! TO RUN WITH REDUCED PRECISION REALS (and use correspondingly less memory)
+! comment OUT the r8 definition below and use the second one:
 integer, parameter :: r4 = SELECTED_REAL_KIND(6,30)
 integer, parameter :: r8 = SELECTED_REAL_KIND(12)   ! real r8
-! integer, parameter :: r8 = r4                       ! alias r8 to r4
+!integer, parameter :: r8 = r4                      ! alias r8 to r4
 
 ! complex precision:
 integer, parameter :: c4 = SELECTED_REAL_KIND(6,30)
 integer, parameter :: c8 = SELECTED_REAL_KIND(12)
 
-! TO RUN WITH REDUCED PRECISION REALS (and use correspondingly less memory)
-! comment OUT the r8 definition above and use this one:
 
 
 ! 'digits12' is reserved for real variables that MUST retain 64 bits of
@@ -104,10 +104,11 @@ real(kind=r8), parameter :: PI = 3.14159265358979323846_r8
 real(kind=r8), parameter :: DEG2RAD = PI / 180.0_r8
 real(kind=r8), parameter :: RAD2DEG = 180.0_r8 / PI
 
-integer,       parameter ::  MISSING_I    = -888888
-integer,       parameter ::  MISSING_DATA = -88
-real(kind=r4), parameter ::  MISSING_R4   = -888888.0_r4
-real(kind=r8), parameter ::  MISSING_R8   = -888888.0_r8
+integer,          parameter ::  MISSING_I    = -888888
+integer(kind=i8), parameter ::  MISSING_I8   = -888888_I8
+integer,          parameter ::  MISSING_DATA = -88
+real(kind=r4),    parameter ::  MISSING_R4   = -888888.0_r4
+real(kind=r8),    parameter ::  MISSING_R8   = -888888.0_r8
 
 real(r8), parameter :: t_kelvin       = 273.15_r8
 real(r8), parameter :: es_alpha       = 611.2_r8

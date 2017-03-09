@@ -161,6 +161,7 @@ logical, save :: module_initialized = .false.
    real(r8) :: noise_sd = -1.0_r8
    integer  :: dt_bias  = -1
    logical  :: output_state_vector = .false.  ! output prognostic variables
+   character(len=256) :: template_file = 'null'   ! optional; sets sizes of arrays
 
    ! dimensions for the namelist state variable table 
 
@@ -175,7 +176,8 @@ logical, save :: module_initialized = .false.
 
    namelist /model_nml/ current_time, override, dt_atmos, &
                        days, hours, minutes, seconds, noise_sd, &
-                       dt_bias, output_state_vector, state_variables
+                       dt_bias, output_state_vector, state_variables, &
+                       template_file
 
 !-----------------------------------------------------------------------
 ! More stuff from atmos_solo driver
@@ -437,6 +439,9 @@ end subroutine init_conditions
    endif
 
    !----- read restart file -----
+   ! this is a bgrid/fms style restart.  for dart style,
+   ! if a template file is given, set the sizes of things from that.
+   ! otherwise construct the domain from scratch.
 
    if (file_exist('INPUT/atmos_model.res')) then
        iunit = open_restart_file ('INPUT/atmos_model.res', 'read')
@@ -1960,6 +1965,7 @@ type(random_seq_type) :: r
 logical :: trunk_bitwise
 ! change the amount of perturbation here and recompile
 real(r8), parameter :: model_pert_amp = 0.01 ! This is hard coded in the trunk
+real(r8) :: bob
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1984,6 +1990,7 @@ do i = 1, size(state_kinds_list)
 enddo
 
 trunk_bitwise = .true.
+!trunk_bitwise = .false.
 
 if (trunk_bitwise) then
 
@@ -2002,10 +2009,15 @@ else
 
    call init_random_seq(r, my_task_id()+1)
 
+print *, 'kind index, start/end varindex for temperature: ', temp_ind, &
+           get_index_start(dom_id, temp_ind), get_index_end(dom_id, temp_ind)
    do i = 1, ens_handle%my_num_vars
       if (ens_handle%my_vars(i) >= get_index_start(dom_id, temp_ind) .and. ens_handle%my_vars(i) <= get_index_end(dom_id, temp_ind)) then
          do j = 1, ens_size
+bob = ens_handle%copies(j, i)
             ens_handle%copies(j, i)  = random_gaussian(r, ens_handle%copies(j,i), model_pert_amp)
+print *, 'model_mod perturb routine: ensnum, varindex, val before/after: ', j, i, bob, ens_handle%copies(j,i)
+
          enddo
       endif
    enddo
@@ -2122,69 +2134,79 @@ do i = 1, numrows
    endif
 end do
 
-dom_id = add_domain(numrows, state_variables(1,1:numrows), state_kinds_list(:))
+! if the user gives us a template file, use that to set the sizes of everything.
+! otherwise, like if using 'start_from_restart = .false', set things by hand.
 
-kub = Var_dt%kub
-klb = Var_dt%klb
+if (template_file /= 'null') then
 
-do i = 1, numrows
+   dom_id = add_domain(template_file, numrows, state_variables(1,1:numrows), state_kinds_list(:))
 
-   ! add each variable to the domain structure, with fixed
-   ! dimension names because we know what they should be.
-
-   thiskind = state_kinds_list(i)
-  
-   if (thiskind == QTY_U_WIND_COMPONENT .or. thiskind == QTY_V_WIND_COMPONENT) then
-      ! the velocity grid is staggered compared to the temperature grid
-      vis = Dynam%Hgrid%Vel%is; vie = Dynam%Hgrid%Vel%ie
-      vjs = Dynam%Hgrid%Vel%js; vje = Dynam%Hgrid%Vel%je
-      nVelI   = vie - vis + 1
-      nVelJ   = vje - vjs + 1
-      nlev    = Var_dt%kub - Var_dt%klb + 1
-
-      call add_dimension_to_variable(dom_id, i, "VelI", nVelI)
-      call add_dimension_to_variable(dom_id, i, "VelJ", nVelJ)
-      call add_dimension_to_variable(dom_id, i, "lev", nlev)
-
-   else if (thiskind == QTY_TEMPERATURE .or. thiskind == QTY_PRESSURE) then
-      tis = Dynam%Hgrid%Tmp%is; tie = Dynam%Hgrid%Tmp%ie
-      tjs = Dynam%Hgrid%Tmp%js; tje = Dynam%Hgrid%Tmp%je
-      nTmpI   = tie - tis + 1
-      nTmpJ   = tje - tjs + 1
-      nlev    = Var_dt%kub - Var_dt%klb + 1
-
-      call add_dimension_to_variable(dom_id, i, "TmpI", nTmpI)
-      call add_dimension_to_variable(dom_id, i, "TmpJ", nTmpJ)
-      call add_dimension_to_variable(dom_id, i, "lev", nlev)
-
-   else if (thiskind == QTY_SURFACE_PRESSURE) then
-      tis = Dynam%Hgrid%Tmp%is; tie = Dynam%Hgrid%Tmp%ie
-      tjs = Dynam%Hgrid%Tmp%js; tje = Dynam%Hgrid%Tmp%je
-      nTmpI   = tie - tis + 1
-      nTmpJ   = tje - tjs + 1
-      nlev    = 1
-
-      call add_dimension_to_variable(dom_id, i, "TmpI", nTmpI)
-      call add_dimension_to_variable(dom_id, i, "TmpJ", nTmpJ)
-
-   else ! is tracer, Q, CO, etc
-      tis = Dynam%Hgrid%Tmp%is; tie = Dynam%Hgrid%Tmp%ie
-      tjs = Dynam%Hgrid%Tmp%js; tje = Dynam%Hgrid%Tmp%je
-      nTmpI   = tie - tis + 1
-      nTmpJ   = tje - tjs + 1
-      !ntracer = Var_dt%ntrace 
-      nlev    = Var_dt%kub - Var_dt%klb + 1
-
-      call add_dimension_to_variable(dom_id, i, "TmpI", nTmpI)
-      call add_dimension_to_variable(dom_id, i, "TmpJ", nTmpJ)
-      call add_dimension_to_variable(dom_id, i, "lev", nlev)
-
-   endif
-    
+else
+   
+   dom_id = add_domain(numrows, state_variables(1,1:numrows), state_kinds_list(:))
+   
+   kub = Var_dt%kub
+   klb = Var_dt%klb
+   
+   do i = 1, numrows
+   
+      ! add each variable to the domain structure, with fixed
+      ! dimension names because we know what they should be.
+   
+      thiskind = state_kinds_list(i)
+     
+      if (thiskind == QTY_U_WIND_COMPONENT .or. thiskind == QTY_V_WIND_COMPONENT) then
+         ! the velocity grid is staggered compared to the temperature grid
+         vis = Dynam%Hgrid%Vel%is; vie = Dynam%Hgrid%Vel%ie
+         vjs = Dynam%Hgrid%Vel%js; vje = Dynam%Hgrid%Vel%je
+         nVelI   = vie - vis + 1
+         nVelJ   = vje - vjs + 1
+         nlev    = Var_dt%kub - Var_dt%klb + 1
+   
+         call add_dimension_to_variable(dom_id, i, "VelI", nVelI)
+         call add_dimension_to_variable(dom_id, i, "VelJ", nVelJ)
+         call add_dimension_to_variable(dom_id, i, "lev", nlev)
+   
+      else if (thiskind == QTY_TEMPERATURE .or. thiskind == QTY_PRESSURE) then
+         tis = Dynam%Hgrid%Tmp%is; tie = Dynam%Hgrid%Tmp%ie
+         tjs = Dynam%Hgrid%Tmp%js; tje = Dynam%Hgrid%Tmp%je
+         nTmpI   = tie - tis + 1
+         nTmpJ   = tje - tjs + 1
+         nlev    = Var_dt%kub - Var_dt%klb + 1
+   
+         call add_dimension_to_variable(dom_id, i, "TmpI", nTmpI)
+         call add_dimension_to_variable(dom_id, i, "TmpJ", nTmpJ)
+         call add_dimension_to_variable(dom_id, i, "lev", nlev)
+   
+      else if (thiskind == QTY_SURFACE_PRESSURE) then
+         tis = Dynam%Hgrid%Tmp%is; tie = Dynam%Hgrid%Tmp%ie
+         tjs = Dynam%Hgrid%Tmp%js; tje = Dynam%Hgrid%Tmp%je
+         nTmpI   = tie - tis + 1
+         nTmpJ   = tje - tjs + 1
+         nlev    = 1
+   
+         call add_dimension_to_variable(dom_id, i, "TmpI", nTmpI)
+         call add_dimension_to_variable(dom_id, i, "TmpJ", nTmpJ)
+   
+      else ! is tracer, Q, CO, etc
+         tis = Dynam%Hgrid%Tmp%is; tie = Dynam%Hgrid%Tmp%ie
+         tjs = Dynam%Hgrid%Tmp%js; tje = Dynam%Hgrid%Tmp%je
+         nTmpI   = tie - tis + 1
+         nTmpJ   = tje - tjs + 1
+         !ntracer = Var_dt%ntrace 
+         nlev    = Var_dt%kub - Var_dt%klb + 1
+   
+         call add_dimension_to_variable(dom_id, i, "TmpI", nTmpI)
+         call add_dimension_to_variable(dom_id, i, "TmpJ", nTmpJ)
+         call add_dimension_to_variable(dom_id, i, "lev", nlev)
+   
+      endif
+       
    end do
+   
+   call finished_adding_domain(dom_id)
+endif
 
-
-call finished_adding_domain(dom_id)
 
 !> @TODO we will have to fill in the lon, lat, and lev arrays
 !> with actual grid values somewhere so they get written to

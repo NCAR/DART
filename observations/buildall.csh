@@ -11,7 +11,38 @@ set clobber
 
 set startdir=`pwd`
 
+# the NCEP bufr libs are needed and they build differently.
+# do them first.
+
+cd NCEP/prep_bufr
+
+echo 
+echo 
+echo "=================================================================="
+echo "=================================================================="
+echo "Compiling NCEP BUFR libs starting at "`date`
+echo "=================================================================="
+echo "=================================================================="
+echo 
+echo 
+
+./install.sh
+
+echo 
+echo 
+echo "=================================================================="
+echo "=================================================================="
+echo "Build of NCEP BUFR libs ended at "`date`
+echo "=================================================================="
+echo "=================================================================="
+echo 
+echo 
+
+cd $startdir
+
 foreach project ( `find . -name quickbuild.csh -print` )
+
+   cd $startdir
 
    set dir = $project:h
    set FAILURE = 0
@@ -66,17 +97,17 @@ foreach project ( `find . -name quickbuild.csh -print` )
   
    endif
          
-   echo 
-   echo 
-   echo "=================================================================="
-   echo "=================================================================="
-   echo "Build of obs converter $dir ended at "`date`
-   echo "=================================================================="
-   echo "=================================================================="
-   echo 
-   echo 
-
-   cd $startdir
+      echo 
+      echo 
+      echo "=================================================================="
+      echo "=================================================================="
+      echo "Build of obs converter $dir ended at "`date`
+      echo "=================================================================="
+      echo "=================================================================="
+      echo 
+      echo 
+   
+   endif
 end
 
 exit 0
