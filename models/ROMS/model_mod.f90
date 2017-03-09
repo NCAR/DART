@@ -146,6 +146,7 @@ namelist /model_nml/  &
    variables
 
 ! DART contents are specified in the input.nml:&model_nml namelist.
+!>@todo  NF90_MAX_NAME is 256 ... this makes the namelist output unreadable
 integer, parameter :: MAX_STATE_VARIABLES = 80
 integer, parameter :: num_state_table_columns = 5
 character(len=NF90_MAX_NAME) :: variables(MAX_STATE_VARIABLES * num_state_table_columns ) = ' '
@@ -178,20 +179,20 @@ integer :: Neta_v
 integer :: Ns_rho
 integer :: Ns_w
 
-!>@ TODO FIXME ... nancy suggested creating pointers for each of these so
+!>@todo FIXME ... nancy suggested creating pointers for each of these so
 !    we could simply use the myvarid as the index in the pointer ...
 
 real(r8), allocatable, target :: ULAT(:,:), ULON(:,:), UDEP(:,:,:), &
                                  TLAT(:,:), TLON(:,:), TDEP(:,:,:), &
                                  VLAT(:,:), VLON(:,:), VDEP(:,:,:), &
-                                 WDEP(:,:,:) !>@ TODO FIXME : JPH may not need this array
+                                 WDEP(:,:,:) !>@todo FIXME : JPH may not need this array
 
 type(time_type) :: model_timestep
 
 integer :: model_size    ! the state vector length
 
 !> Reshapes a part of the DART vector back to the original variable shape.
-!>@ TODO FIXME Replaces the DART MISSING value with the original _FillValue value.
+!>@todo FIXME Replaces the DART MISSING value with the original _FillValue value.
 
 
 contains
@@ -998,7 +999,7 @@ subroutine get_close_obs(gc, base_obs_loc, base_obs_type, &
 ! within filter_assim. In other words, these modifications will only matter within
 ! filter_assim, but will not propagate backwards to filter.
 
-!>@ TODO FIXME implement masking ...
+!>@todo FIXME implement masking ...
 
 ! use the default system routine
 
@@ -1180,11 +1181,11 @@ type(time_type) :: set_model_time_step
 
 ! assimilation_period_seconds, assimilation_period_days are from the namelist
 
-!>@ TODO FIXME make sure set_model_time_step is an integer multiple of
+!>@todo FIXME make sure set_model_time_step is an integer multiple of
 !> the dynamical timestep or whatever strategy ROMS employs.
 ! TJH NHIST*DT ... from the inputfile ... can remove assim_* from DART input namelist
 
-!@> TODO FIXME : JPH we should really be getting this from the history file??
+!>@todo FIXME : JPH we should really be getting this from the history file??
 set_model_time_step = set_time(assimilation_period_seconds, assimilation_period_days)
 
 end function set_model_time_step
@@ -1238,7 +1239,7 @@ end subroutine get_grid_dimensions
 !>
 !> Read the actual grid values from the ROMS netcdf file.
 !>
-!> @todo FIXME:  the original implementation opened 3 different files
+!>@todo FIXME:  the original implementation opened 3 different files
 !> to get the grid info - the namelist was:
 !>    roms_ini_filename            = '../data/wc13_ini.nc'
 !>    grid_definition_filename     = '../data/wc13_grd.nc'
@@ -1444,7 +1445,7 @@ end subroutine parse_variable_input
 !> @param origin_time the base time other times are relative to
 !> @param all_times an array of all times in the variable
 !>
-!>@ TODO FIXME Make sure the calculation is correct.
+!>@todo FIXME Make sure the calculation is correct.
 !>  A 64bit real can support whole numbers that overflow a 32 bit integer.
 
 subroutine get_time_information(filename, ncid, var_name, dim_name, myvarid, &
@@ -1473,7 +1474,7 @@ logical :: offset_in_seconds  ! if .false., assuming offset in days
 
 integer :: original_calendar_type
 
-!>@ TODO FIXME get the variable length from the varid and remove the need for the dimension name
+!>@todo FIXME get the variable length from the varid and remove the need for the dimension name
 
 call nc_check(nf90_inq_dimid(ncid,dim_name,dimid=DimID), &
        'get_time_information','cannot find "'//trim(dim_name)//'" dimension in '//trim(filename))
