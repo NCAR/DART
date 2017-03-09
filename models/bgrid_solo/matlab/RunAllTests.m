@@ -34,7 +34,7 @@ end
  fprintf('Starting %s\n','PlotBins');
  clear pinfo; close all;
 
- pinfo = CheckModelCompatibility('True_State.nc','Prior_Diag.nc');
+ pinfo = CheckModelCompatibility('perfect_output.nc','preassim.nc');
 [pinfo.num_ens_members, pinfo.ensemble_indices] = get_ensemble_indices(pinfo.diagn_file);
  pinfo.var         = 'u';
  pinfo.level       = 2;
@@ -72,7 +72,7 @@ end
  fprintf('Starting %s\n','PlotCorrel');
  clear pinfo; clf
 
- pinfo = CheckModel('Prior_Diag.nc');
+ pinfo = CheckModel('preassim.nc');
  pinfo.base_var           = 't';
  pinfo.comp_var           = 'u';
  pinfo.base_time          = 0;
@@ -101,11 +101,12 @@ end
  fprintf('Starting %s\n','PlotPhaseSpace');
  clear pinfo; clf
 
- pinfo.fname       = 'True_State.nc';
+ pinfo.fname       = 'perfect_output.nc';
  pinfo.model       = 'FMS_Bgrid';
  pinfo.var1name    = 'ps';
  pinfo.var2name    = 't';
  pinfo.var3name    = 'u';
+ 
  pinfo.var1_lvl    = 1;
  pinfo.var2_lvl    = 1;
  pinfo.var3_lvl    = 1;
@@ -124,7 +125,7 @@ end
  pinfo.var1_lonind = 43;
  pinfo.var2_lonind = 43;
  pinfo.var3_lonind = 42;
- pinfo.ens_mem     = 'true state';
+ pinfo.ens_mem     = 'ensemble member 1';
  pinfo.ltype       = 'k-';
  
  PlotPhaseSpace(pinfo)
@@ -147,12 +148,12 @@ end
  fprintf('Starting %s\n','PlotSawtooth');
  clear pinfo; close all
 
- pinfo    = CheckModelCompatibility('Prior_Diag.nc','Posterior_Diag.nc');
+ pinfo    = CheckModelCompatibility('preassim.nc','filter_output.nc');
  pinfo.prior_time     = pinfo.truth_time;
  pinfo.prior_file     = pinfo.truth_file;
  pinfo.posterior_time = pinfo.diagn_time;
  pinfo.posterior_file = pinfo.diagn_file;
- pinfo.truth_file     = 'True_State.nc';
+ pinfo.truth_file     = 'perfect_output.nc';
  pinfo = rmfield(pinfo,{'diagn_file','truth_time','diagn_time'});
 [pinfo.num_ens_members, pinfo.ensemble_indices] = get_ensemble_indices(pinfo.prior_file);
  pinfo.var_names      = 'ps';
@@ -162,7 +163,7 @@ end
  pinfo.latindex       = 22;
  pinfo.longitude      = 255.0;
  pinfo.lonindex       = 43;
- pinfo.copyindices    = [7 12 17]
+ pinfo.copyindices    = [5 10 15];
  pinfo.copies         = length(pinfo.copyindices);
 
  PlotSawtooth(pinfo)
@@ -185,7 +186,7 @@ end
  fprintf('Starting %s\n','PlotTotalErr');
  clear pinfo; clf
 
- pinfo    = CheckModelCompatibility('True_State.nc','Prior_Diag.nc');
+ pinfo    = CheckModelCompatibility('perfect_output.nc','preassim.nc');
 
  PlotTotalErr(pinfo)
  fprintf('Finished %s ... pausing, hit any key\n','PlotTotalErr'); pause
@@ -202,7 +203,7 @@ end
  fprintf('Starting %s\n','PlotVarVarCorrel');
  clear pinfo; clf
 
- pinfo  = CheckModel('Prior_Diag.nc');
+ pinfo  = CheckModel('preassim.nc');
  pinfo.model       = 'FMS_Bgrid';
  pinfo.base_var    = 't';
  pinfo.comp_var    = 'u';

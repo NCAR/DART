@@ -30,7 +30,7 @@ tlat  = nc_varget(prfname,  'XLAT_d01'); sn        = size(  tlat, 1);
 level = nc_varget(prfname, 'level_d01'); bt        = size( level, 1);
 times = nc_varget(prfname,      'time'); num_times = size( times, 1);
 
-ens_size       = get_ens_size(prfname);
+[ens_size,~] = nc_dim_info(prfname,'member');
 
 state_vec_truth = nc_varget(trfname, 'state');
 state_vec_prior = nc_varget(prfname, 'state');

@@ -20,11 +20,11 @@ if (exist(pofname,'file') ~= 2)
    error('%s does not exist.',pofname)
 end
 
-tlon  = nc_varget(prfname,  'XLON_d01'); we = size( tlon, 2);
-tlat  = nc_varget(prfname,  'XLAT_d01'); sn = size( tlat, 1);
-level = nc_varget(prfname, 'level_d01'); bt = size(level, 1);
+tlon  = ncread(prfname,  'XLON_d01'); we = size( tlon, 2);
+tlat  = ncread(prfname,  'XLAT_d01'); sn = size( tlat, 1);
+level = ncread(prfname, 'level_d01'); bt = size(level, 1);
 
-ens_size = get_ens_size(prfname);
+[ens_size,~] = nc_dim_info(prfname,'member');
 sprd_ind = get_copy_index(prfname,'ensemble spread');
 
 stime = input('Initial time (index): ');

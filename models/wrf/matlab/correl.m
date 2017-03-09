@@ -19,11 +19,11 @@ if (~ nc_isvar(fname,'state'))
     error('%s does not have a "state" variable',fname)
 end
 
-tlon  = nc_varget(fname,  'XLON_d01'); we = size( tlon, 2);
-tlat  = nc_varget(fname,  'XLAT_d01'); sn = size( tlat, 1);
-level = nc_varget(fname, 'level_d01'); bt = size(level, 1);
+tlon  = ncread(fname,  'XLON_d01'); we = size( tlon, 2);
+tlat  = ncread(fname,  'XLAT_d01'); sn = size( tlat, 1);
+level = ncread(fname, 'level_d01'); bt = size(level, 1);
 
-ens_size = get_ens_size(fname);
+[ens_size,~] = nc_dim_info(fname,'member');
 
 vartype = input('Input variable type for correlation, 1=U, 2=V, 3=W, 4=GZ, 5=T, 6=MU, 7=QV, 8=QC, 9=QR: ');
 vartime = input('Input variable time (index): ');
@@ -72,10 +72,10 @@ ens_var  = zeros(1,ens_size);
 for imem = 1:ens_size
 
    memstring = sprintf('ensemble member %d',imem);
-   memindex  = get_copy_index(fname,memstring);
+   memindex  = get_member_index(fname,memstring);
 
-   start = [vartime memindex start_var] - 1 ;
-   ens_var(imem) = nc_varget(fname, 'state', start, count);
+   start = [vartime memindex start_var];
+   ens_var(imem) = ncread(fname, 'state', start, count);
 end
 
 iso = 0.1:0.1:1;
@@ -155,8 +155,8 @@ for itime = stime:ftime
    for imem = 1:ens_size
       memstring         = sprintf('ensemble member %d',imem);
       memindex          = get_copy_index(fname,memstring);
-      start             = [itime memindex start_var] - 1;
-      state_vec_prior   = nc_varget(fname, 'state', start, count);
+      start             = [itime memindex start_var];
+      state_vec_prior   = ncread(fname, 'state', start, count);
       field_vec(:,imem) = state_vec_prior;
    end
 

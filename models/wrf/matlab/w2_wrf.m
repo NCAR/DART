@@ -30,7 +30,7 @@ tlat    = nc_varget(prfname, 'south_north'); sn         = size(  tlat, 1);
 level   = nc_varget(prfname,  'bottom_top'); bt         = size( level, 1);
 ttimes  = nc_varget(prfname,        'time'); num_ttimes = size(ttimes, 1);
 
-ens_size = get_ens_size(prfname);
+[ens_size, ~] = nc_dim_info(prfname,'member');
 
 true_ind = get_copy_index(prfname,'true state');
 mean_ind = get_copy_index(prfname,'ensemble mean');
