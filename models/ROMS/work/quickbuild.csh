@@ -7,10 +7,18 @@
 # DART $Id$
 
 #----------------------------------------------------------------------
-# compile all programs in the current directory with a mkmf_xxx file.
+#
+# compile all programs in the current directory that have a mkmf_xxx file.
 #
 # usage: [ -mpi | -nompi ]
 #
+#
+# environment variable options:
+#  before running this script, do:
+#   "setenv CODE_DEBUG 1" (csh) or "export CODE_DEBUG=1" (bash)
+#  to keep the .o and .mod files in the current directory instead of 
+#  removing them at the end.  this usually improves runtime error reports 
+#  and these files are required by most debuggers.
 #----------------------------------------------------------------------
 
 # this model name:
@@ -19,7 +27,8 @@ set MODEL = "ROMS"
 # programs which have the option of building with MPI:
 set MPI_TARGETS = "filter model_mod_check perfect_model_obs"
 
-# this model defaults to building filter and other programs WITH mpi
+# set default (override with -mpi or -nompi):
+#  0 = build without MPI, 1 = build with MPI
 set with_mpi = 1
 
 
@@ -38,15 +47,12 @@ if ( $#argv >= 1 ) then
 endif
 
 set preprocess_done = 0
-set debug = 0
+set cdebug = 0
 
-# set this to 1 in the environment to have the script remove
-# all .o and module files between executable builds.  this helps
-# catch path_names files which are missing required modules.
-
-if ( $?QUICKBUILD_DEBUG ) then
-   set debug = $QUICKBUILD_DEBUG
+if ( $?CODE_DEBUG ) then
+   set cdebug = $CODE_DEBUG
 endif
+
 
 @ n = 0
 
@@ -74,11 +80,6 @@ foreach TARGET ( mkmf_preprocess mkmf_* )
    csh $TARGET || exit $n
    make        || exit $n
 
-   if ( $debug ) then
-      echo 'removing all files between builds'
-      \rm -f *.o *.mod
-   endif
-
    # preprocess creates module files that are required by
    # the rest of the executables, so it must be run in addition
    # to being built.
@@ -90,7 +91,13 @@ foreach TARGET ( mkmf_preprocess mkmf_* )
 skip:
 end
 
-\rm -f *.o *.mod input.nml*_default
+if ( $cdebug ) then 
+   echo 'preserving .o and .mod files for debugging'
+else
+   \rm -f *.o *.mod 
+endif
+
+\rm -f input.nml*_default
 
 echo "Success: All single task DART programs compiled."  
 
@@ -106,6 +113,8 @@ endif
 # call this script with the -nompi argument, or if you are never going to
 # build with MPI, add an exit after the 'Success' line.
 #----------------------------------------------------------------------
+
+\rm -f *.o *.mod 
 
 #----------------------------------------------------------------------
 # Build the MPI-enabled target(s) 
@@ -123,14 +132,14 @@ foreach PROG ( $MPI_TARGETS )
    csh $TARGET -mpi || exit $n
    make             || exit $n
 
-   if ( $debug ) then
-      echo 'removing all files between builds'
-      \rm -f *.o *.mod
-   endif
-
 end
 
-\rm -f *.o *.mod input.nml*_default
+if ( $cdebug ) then 
+   echo 'preserving .o and .mod files for debugging'
+else
+   \rm -f *.o *.mod 
+endif
+\rm -f input.nml*_default
 
 echo "Success: All MPI parallel DART programs compiled."  
 
