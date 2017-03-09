@@ -726,6 +726,14 @@ WhichCalendar : do i = 0, max_type
            calendar_type  = NO_CALENDAR
            found_calendar = .true.
            exit WhichCalendar
+   elseif ( cstring == 'NO CALENDAR' ) then   ! allow this as a synonym 
+           calendar_type  = NO_CALENDAR
+           found_calendar = .true.
+           exit WhichCalendar
+   elseif ( cstring == 'NONE' ) then          ! also allow this
+           calendar_type  = NO_CALENDAR
+           found_calendar = .true.
+           exit WhichCalendar
    elseif ( cstring == 'THIRTY_DAY_MONTHS' ) then
            calendar_type  = THIRTY_DAY_MONTHS
            found_calendar = .true.
@@ -2953,10 +2961,13 @@ character(len=9) :: mon
 
 if ( .not. module_initialized ) call time_manager_init
 
+! if there is no calendar return without error and without
+! printing anything. 
+if (calendar_type == NO_CALENDAR) return
+
 ! prints the time to standard output (or optional iunit) as a date
 ! NOTE: there is no check for PE number
 
-!!!  unit_in = stdout()
   unit_in = 6
 
   if (present(iunit)) unit_in = iunit
