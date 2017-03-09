@@ -21,7 +21,7 @@ use ensemble_manager_mod, only : ensemble_type,   &
                                  prepare_to_read_from_vars, prepare_to_update_vars, &
                                  map_pe_to_task
 
-use mpi_utilities_mod,    only : my_task_id, send_to, receive_from, reduce_min_max
+use mpi_utilities_mod,    only : my_task_id, send_to, receive_from, send_minmax_to
 
 implicit none
 private
@@ -35,7 +35,7 @@ public :: update_inflation,                                          do_obs_infl
           output_inf_restart,         get_inflate_mean,              get_inflate_sd,     &
           get_is_prior,               get_is_posterior,              do_ss_inflate,      &
           set_inflation_mean_copy,    set_inflation_sd_copy,         get_inflation_mean_copy, &
-          get_inflation_sd_copy
+          get_inflation_sd_copy,      do_rtps_inflate
 
 
 ! version controlled file description for error handling, do not edit
@@ -163,7 +163,8 @@ function do_ss_inflate(inflation)
 type(adaptive_inflate_type), intent(in) :: inflation
 logical :: do_ss_inflate
 
-if (do_single_ss_inflate(inflation) .or. do_varying_ss_inflate(inflation)) then
+if (do_single_ss_inflate(inflation) .or. do_varying_ss_inflate(inflation) .or. &
+    do_rtps_inflate(inflation)) then
    do_ss_inflate = .true.
 else
    do_ss_inflate = .false.
@@ -294,6 +295,19 @@ do_single_ss_inflate = (inflate_handle%inflation_flavor == 3)
 
 end function do_single_ss_inflate
 
+!------------------------------------------------------------------
+
+function do_rtps_inflate(inflate_handle)
+
+! Returns true if this inflation type indicates posterior relaxion-to-prior-spread
+! (whitaker & Hamill, 2012)
+
+logical                                 :: do_rtps_inflate
+type(adaptive_inflate_type), intent(in) :: inflate_handle
+
+do_rtps_inflate = (inflate_handle%inflation_flavor == 4)
+
+end function do_rtps_inflate
 
 !------------------------------------------------------------------
 
@@ -310,7 +324,7 @@ end function deterministic_inflate
 
 !------------------------------------------------------------------
 
-subroutine inflate_ens(inflate_handle, ens, mean, inflate, var_in)
+subroutine inflate_ens(inflate_handle, ens, mean, inflate, var_in, fsprd, asprd)
 
 ! Inflates subset of ensemble members given mean and inflate
 ! Selects between deterministic and stochastic inflation
@@ -319,6 +333,7 @@ type(adaptive_inflate_type), intent(inout) :: inflate_handle
 real(r8),                    intent(inout) :: ens(:)
 real(r8),                    intent(in)    :: mean, inflate
 real(r8), optional,          intent(in)    :: var_in
+real(r8), optional,          intent(in)    :: fsprd, asprd
 
 integer  :: i, ens_size
 real(r8) :: rand_sd, var, sd_inflate
@@ -331,12 +346,25 @@ if (inflate_handle%allow_missing_in_clm) then
 endif
 
 if(inflate_handle%deterministic) then
-   ! Just spread the ensemble out linearly for deterministic
-   ! Following line can lead to inflation of 1.0 changing ens on some compilers
-   !!! ens = (ens - mean) * sqrt(inflate) + mean
-   ! Following gives 1.0 inflation having no impact on known compilers
-   sd_inflate = sqrt(inflate) 
-   ens = ens * sd_inflate + mean * (1.0_r8 - sd_inflate)
+
+   if ( do_rtps_inflate(inflate_handle)) then
+      if ( .not. present(fsprd) .or. .not. present(asprd)) then 
+         write(msgstring, *) 'missing arguments for RTPS inflation, should not happen'
+         call error_handler(E_ERR,'inflate_ens',msgstring,source,revision,revdate) 
+      endif 
+      ! only inflate if spreads are > 0
+      if ( asprd .gt. 0.0_r8 .and. fsprd .gt. 0.0_r8) &
+          ens = mean + (ens-mean) * ( inflate*((fsprd-asprd)/asprd) + 1.0_r8 )
+   else 
+
+      ! Spread the ensemble out linearly for deterministic
+      ! Following line can lead to inflation of 1.0 changing ens on some compilers
+      !!! ens = (ens - mean) * sqrt(inflate) + mean
+      ! Following gives 1.0 inflation having no impact on known compilers
+      sd_inflate = sqrt(inflate) 
+      ens = ens * sd_inflate + mean * (1.0_r8 - sd_inflate)
+
+   endif
 
 else
    ! Use a stochastic algorithm to spread out.
@@ -706,6 +734,9 @@ select case(inflation_handle%inflation_flavor)
    case (3)
       sadapt = ' spatially-constant,'
       akind = ' state-space'
+   case (4)
+      sadapt = ' spatially-varying relaxation-to-prior-spread,'
+      akind = ' state-space'
    case default
       write(msgstring, *) 'Illegal inflation value for ', label
       call error_handler(E_ERR, 'adaptive_inflate_init', msgstring, source, revision, revdate)
@@ -772,7 +803,7 @@ if (inflation_handle%mean_from_restart) then
    minmax_mean(2) = maxval(ens_handle%copies(ss_inflate_index, :))
 
    ! collect on pe 0
-   call reduce_min_max(minmax_mean, map_pe_to_task(ens_handle, 0), global_val)
+   call send_minmax_to(minmax_mean, map_pe_to_task(ens_handle, 0), global_val)
    if (ens_handle%my_pe == 0) inflation_handle%minmax_mean = global_val
 
 endif
@@ -784,7 +815,7 @@ if (inflation_handle%sd_from_restart) then
    minmax_sd(2) = maxval(ens_handle%copies(ss_inflate_sd_index, :))
 
    ! collect on task 0
-   call reduce_min_max(minmax_sd, map_pe_to_task(ens_handle, 0), global_val)
+   call send_minmax_to(minmax_sd, map_pe_to_task(ens_handle, 0), global_val)
    if (ens_handle%my_pe == 0) inflation_handle%minmax_sd = minmax_sd
 
 endif
