@@ -1640,7 +1640,7 @@ if ( output_state_vector ) then
                                     "statevariable valid_range")
 
    ! Define the actual state vector
-   call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_real, &
+   call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_double, &
               dimids = (/ StateVarDimID, MemberDimID, unlimitedDimID /), &
               varid=StateVarID), "state def_var")
    call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"), &
@@ -1675,7 +1675,7 @@ else
    ! Create the (empty) Variables and the Attributes
    !----------------------------------------------------------------------------
  
-   call check(nf90_def_var(ncid=ncFileID, name="ps", xtype=nf90_real, &
+   call check(nf90_def_var(ncid=ncFileID, name="ps", xtype=nf90_double, &
          dimids = (/ TmpIDimID, TmpJDimID, MemberDimID, unlimitedDimID /), &
          varid  = psVarID), "ps def_var")
    call check(nf90_put_att(ncFileID, psVarID, "long_name", "surface pressure"), &
@@ -1686,14 +1686,14 @@ else
                                            "ps units_long_name")
 
 
-   call check(nf90_def_var(ncid=ncFileID, name="t", xtype=nf90_real, &
+   call check(nf90_def_var(ncid=ncFileID, name="t", xtype=nf90_double, &
          dimids = (/ TmpIDimID, TmpJDimID, levDimID, MemberDimID, unlimitedDimID /), &
          varid  = tVarID), "t def_var")
    call check(nf90_put_att(ncFileID, tVarID, "long_name", "temperature"), "t long_name")
    call check(nf90_put_att(ncFileID, tVarID, "units", "degrees Kelvin"), "t units")
 
 
-   call check(nf90_def_var(ncid=ncFileID, name="u", xtype=nf90_real, &
+   call check(nf90_def_var(ncid=ncFileID, name="u", xtype=nf90_double, &
          dimids = (/ VelIDimID, VelJDimID, levDimID, MemberDimID, unlimitedDimID /), &
          varid  = uVarID), "u def_var")
    call check(nf90_put_att(ncFileID, uVarID, "long_name", "zonal wind component"), &
@@ -1701,7 +1701,7 @@ else
    call check(nf90_put_att(ncFileID, uVarID, "units", "m/s"), "u units")
 
 
-   call check(nf90_def_var(ncid=ncFileID, name="v", xtype=nf90_real, &
+   call check(nf90_def_var(ncid=ncFileID, name="v", xtype=nf90_double, &
          dimids = (/ VelIDimID, VelJDimID, levDimID, MemberDimID, unlimitedDimID /), &
          varid  = vVarID), "v def_var")
    call check(nf90_put_att(ncFileID, vVarID, "long_name", "meridional wind component"), &
@@ -1709,7 +1709,7 @@ else
    call check(nf90_put_att(ncFileID, vVarID, "units", "m/s"), "v units")
 
    if ( ntracer > 0 ) then
-      call check(nf90_def_var(ncid=ncFileID, name="r", xtype=nf90_real, &
+      call check(nf90_def_var(ncid=ncFileID, name="r", xtype=nf90_double, &
       dimids = (/TmpIDimID, TmpJDimID, levDimID, tracerDimID, MemberDimID, unlimitedDimID/),&
          varid  = rVarID), "r def_var")
       call check(nf90_put_att(ncFileID, rVarID, "long_name", "various tracers"), "r long_name")
