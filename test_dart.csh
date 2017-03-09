@@ -179,22 +179,23 @@ cd ${DARTHOME}/models/${MODEL}/work
 
 ${COPY} input.nml     input.nml.$$
 ${COPY} obs_seq.in   obs_seq.in.$$
-${COPY} perfect_ics perfect_ics.$$
-${COPY} filter_ics   filter_ics.$$
 
 # Begin by compiling all programs; need to stop if an error is detected
 ./quickbuild.csh -nompi || exit 91
 
+# Build the input files
+ncgen -o perfect_input.nc perfect_input.cdl
+ncgen -o  filter_input.nc  filter_input.cdl
  
 # Run the perfect model and the filter
 ./perfect_model_obs  || exit 92
 ./filter             || exit 93
 
 echo "Removing the newly-built objects ..."
-${REMOVE} filter_restart perfect_restart
-${REMOVE} input.nml perfect_ics filter_ics
+${REMOVE} filter_output.nc perfect_output.nc
+${REMOVE} input.nml perfect_input.nc filter_input.nc
 ${REMOVE} obs_seq.in obs_seq.out obs_seq.final
-${REMOVE} True_State.nc Prior_Diag.nc Posterior_Diag.nc
+${REMOVE} preassim.nc postassim.nc
 ${REMOVE} *.o *.mod 
 ${REMOVE} Makefile input.nml.*_default .cppdefs
 foreach TARGET ( mkmf_* )
@@ -206,8 +207,6 @@ end
 
 ${MOVE}   input.nml.$$   input.nml
 ${MOVE}  obs_seq.in.$$ obs_seq.in
-${MOVE} perfect_ics.$$ perfect_ics
-${MOVE}  filter_ics.$$  filter_ics
 
 echo
 echo "=================================================================="
