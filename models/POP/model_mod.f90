@@ -26,17 +26,18 @@ use    utilities_mod, only : register_module, error_handler,                   &
                              nc_check, do_output, to_upper,                    &
                              find_namelist_in_file, check_namelist_read,       &
                              file_exist, find_textfile_dims, file_to_text
-use     obs_kind_mod, only : QTY_TEMPERATURE, QTY_SALINITY, QTY_DRY_LAND,   &
-                             QTY_U_CURRENT_COMPONENT,QTY_V_CURRENT_COMPONENT,&
-                             QTY_SEA_SURFACE_HEIGHT, QTY_SEA_SURFACE_PRESSURE,&
-                             QTY_POTENTIAL_TEMPERATURE, get_index_for_quantity,&
-                             get_name_for_quantity
+use     obs_kind_mod, only : QTY_TEMPERATURE, QTY_SALINITY, QTY_DRY_LAND,      &
+                             QTY_U_CURRENT_COMPONENT,QTY_V_CURRENT_COMPONENT,  &
+                             QTY_SEA_SURFACE_HEIGHT, QTY_SEA_SURFACE_PRESSURE, &
+                             QTY_POTENTIAL_TEMPERATURE, QTY_SEA_SURFACE_ANOMALY, &
+                             get_index_for_quantity, get_name_for_quantity
 use mpi_utilities_mod, only: my_task_id, task_count
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 use      dart_pop_mod, only: set_model_time_step,                              &
                              get_horiz_grid_dims, get_vert_grid_dim,           &
                              read_horiz_grid, read_topography, read_vert_grid, &
-                             get_pop_restart_filename, set_binary_file_conversion
+                             get_pop_restart_filename, set_binary_file_conversion, &
+                             read_mean_dynamic_topography
 
 use ensemble_manager_mod,  only : ensemble_type, map_pe_to_task, get_copy_owner_index, &
                                   get_var_owner_index
@@ -45,7 +46,8 @@ use distributed_state_mod, only : get_state
 
 use state_structure_mod,   only : add_domain, get_model_variable_indices, &
                                   get_num_variables, get_index_start, &
-                                  get_num_dims, get_domain_size
+                                  get_num_dims, get_domain_size, &
+                                  get_dart_vector_index
 
 use typesizes
 use netcdf 
@@ -79,8 +81,7 @@ public :: get_model_size,                &
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
 public :: get_gridsize, &
-          restart_file_to_sv, &
-          sv_to_restart_file, &
+          restart_file_to_sv, &    !>@ only used by model_mod_check ... not working
           get_pop_restart_filename, &
           test_interpolation
 
@@ -122,7 +123,8 @@ character(len=vtablenamelength) :: model_state_variables(max_state_variables * n
 integer  :: debug = 0   ! turn up for more and more debug messages
 
 ! only valid values:  native, big_endian, little_endian
-character(len=32) :: binary_grid_file_format = 'big_endian'
+character(len=32)  :: binary_grid_file_format = 'big_endian'
+character(len=256) :: mdt_reference_file_name = 'none'
 
 ! FIXME: currently the update_dry_cell_walls namelist value DOES
 ! NOTHING.  it needs additional code to detect the cells which are
@@ -136,6 +138,7 @@ namelist /model_nml/  &
    update_dry_cell_walls,       &
    model_state_variables,       &
    binary_grid_file_format,     &
+   mdt_reference_file_name,     &
    debug
 
 !------------------------------------------------------------------
@@ -169,8 +172,10 @@ real(r8), allocatable :: ULAT(:,:), ULON(:,:), TLAT(:,:), TLON(:,:)
 
 ! integer, lowest valid cell number in the vertical
 integer, allocatable  :: KMT(:, :), KMU(:, :)
-! real, depth of lowest valid cell (0 = land).  use only if KMT/KMU not avail.
-real(r8), allocatable :: HT(:,:), HU(:,:)
+
+! real 'mean' dynamic sea surface topography
+!>@todo only allocate if we need it ... 
+real(r8), allocatable :: MDT(:,:)
 
 ! compute pressure based on depth - can do once upfront.
 real(r8), allocatable :: pressure(:)
@@ -316,15 +321,18 @@ call get_vert_grid_dim(Nz)
 ! Allocate space for grid variables. 
 allocate(ULAT(Nx,Ny), ULON(Nx,Ny), TLAT(Nx,Ny), TLON(Nx,Ny))
 allocate( KMT(Nx,Ny),  KMU(Nx,Ny))
-allocate(  HT(Nx,Ny),   HU(Nx,Ny))
 allocate(     ZC(Nz),      ZG(Nz))
 
 ! Fill them in.
 ! horiz grid initializes ULAT/LON, TLAT/LON as well.
-! kmt initializes HT/HU if present in input file.
 call read_horiz_grid(Nx, Ny, ULAT, ULON, TLAT, TLON)
 call read_topography(Nx, Ny,  KMT,  KMU)
 call read_vert_grid( Nz, ZC, ZG)
+
+if (mdt_reference_file_name /= 'none') then
+   allocate( MDT(Nx,Ny))
+   call read_mean_dynamic_topography(mdt_reference_file_name, MDT)
+endif
 
 if (debug > 2) call write_grid_netcdf() ! DEBUG only
 if (debug > 2) call write_grid_interptest() ! DEBUG only
@@ -835,6 +843,7 @@ real(r8)       :: hgt_fract
 integer        :: hstatus
 logical        :: convert_to_ssh
 integer        :: e
+real(r8)       :: expected_mdt
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -844,7 +853,7 @@ if ( .not. module_initialized ) call static_init_model
 ! good value, and the last line here sets istatus to 0.
 ! make any error codes set here be in the 10s
 
-expected_obs(:) = MISSING_R8     ! the DART bad value flag
+expected_obs(:) = MISSING_R8   ! the DART bad value flag
 istatus(:) = 99                ! unknown error
 
 ! Get the individual locations values
@@ -885,6 +894,31 @@ if(obs_type == QTY_TEMPERATURE) then
    return
 endif
 
+!>@todo put all these into the CASE statement ...
+! POP's sea surface height and the mean dynamic topography for this location
+! are needed to calculate the SSA. The mean dynamic topography can be 
+! extracted by providing the optional argument to lon_lat_interpolate()
+! The POP SSH can be derived by converting the SEA SURFACE PRESSURE
+! The POP state is CGS, the observations (and mdt) are SI.
+
+if(obs_type == QTY_SEA_SURFACE_ANOMALY) then
+
+   if (mdt_reference_file_name == 'none') then
+      string1 = 'Mean Dynamic Topography unavailable.'
+      string2 = 'Forward Operator for QTY_SEA_SURFACE_ANOMALY observations unavailable.'  
+      string3 = 'This filename is specified by input.nml:model_nml:mdt_reference_file_name'
+      call error_handler(E_ERR,'model_interpolate', string1, &
+                   source, revision, revdate, text2=string2, text3=string3)
+   endif
+
+   base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEA_SURFACE_PRESSURE))
+   call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, &
+           QTY_SEA_SURFACE_HEIGHT, 1, expected_obs, istatus, expected_mdt)
+
+   where(istatus == 0) expected_obs = expected_obs/98060.0_r8 - expected_mdt ! use meters
+
+   return
+endif
 
 ! The following kinds are either in the state vector (so you
 ! can simply interpolate to find the value) or they are a simple
@@ -914,15 +948,11 @@ END SELECT
 ! For Sea Surface Height or Pressure don't need the vertical coordinate
 ! SSP needs to be converted to a SSH if height is required.
 if( vert_is_surface(location) ) then
-   ! HK CHECK surface observations
+   !>@todo HK CHECK surface observations
    call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, 1, expected_obs, istatus)
-   do e = 1, ens_size
-      if (convert_to_ssh .and. (istatus(e) == 0)) then !HK why check istatus?
-         expected_obs(e) = expected_obs(e) / 980.6_r8   ! POP uses CGS units
-      endif
-   enddo
 
-   if (debug > 1) print *, 'interp val, istatus = ', expected_obs, istatus
+   if (convert_to_ssh) where(istatus == 0) expected_obs = expected_obs/980.6_r8 ! POP uses CGS units
+
    return
 endif
 
@@ -938,6 +968,7 @@ endif
 ! final value.  this sets both interp_val and istatus.
 call do_interp(state_handle, ens_size, base_offset, hgt_bot, hgt_top, hgt_fract, &
                llon, llat, obs_type, expected_obs, istatus)
+
 if (debug > 1) print *, 'interp val, istatus = ', expected_obs, istatus
 
 end subroutine model_interpolate
@@ -962,7 +993,8 @@ end subroutine model_interpolate
 !> The irregular grid is also assumed to be global east
 !> west for all applications.
 
-subroutine lon_lat_interpolate(state_handle, ens_size, offset, lon, lat, var_type, height, expected_obs, istatus)
+subroutine lon_lat_interpolate(state_handle, ens_size, offset, lon, lat, var_type, &
+             height, expected_obs, istatus, expected_mdt)
 
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
@@ -971,6 +1003,7 @@ real(r8),            intent(in)  :: lon, lat
 integer,             intent(in)  :: var_type, height
 real(r8),            intent(out) :: expected_obs(ens_size)
 integer,             intent(out) :: istatus(ens_size)
+real(r8), optional,  intent(out) :: expected_mdt  ! Mean Dynamic Topography
 
 ! Is height ens_size? Should quad status be ens_size?
 
@@ -987,10 +1020,12 @@ integer  :: lat_bot, lat_top, lon_bot, lon_top, num_inds, start_ind
 integer  :: x_ind, y_ind
 real(r8) :: x_corners(4), y_corners(4)
 real(r8) :: p(4,ens_size), xbot(ens_size), xtop(ens_size)
+real(r8) :: mdtbot, mdttop
 real(r8) :: lon_fract, lat_fract
 logical  :: masked
 integer  :: quad_status
 integer  :: e
+real(r8) :: pmdt(4)
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1108,14 +1143,11 @@ if(masked) then
    return
 endif
 
-
 p(2, :) = get_val(lon_top, lat_bot, nx, state_handle, offset, ens_size, var_type, height, masked)
 if(masked) then
    istatus = 3
    return
 endif
-
-
 
 p(3, :) = get_val(lon_top, lat_top, nx, state_handle, offset, ens_size, var_type, height, masked)
 if(masked) then
@@ -1129,17 +1161,36 @@ if(masked) then
    return
 endif
 
+! Find the matching Mean Dynamic Topography (sea surface height reference)
+if (present(expected_mdt)) then
+   pmdt(1) = MDT(lon_bot,lat_bot)
+   pmdt(2) = MDT(lon_top,lat_bot)
+   pmdt(3) = MDT(lon_top,lat_top)
+   pmdt(4) = MDT(lon_bot,lat_top)
+endif
+
 ! Full bilinear interpolation for quads
 if(dipole_grid) then
    do e = 1, ens_size
       call quad_bilinear_interp(lon, lat, x_corners, y_corners, p(:,e), ens_size, expected_obs(e))
    enddo
+
+   if (present(expected_mdt)) then
+      call quad_bilinear_interp(lon, lat, x_corners, y_corners, pmdt(:), 1, expected_mdt)
+   endif
+
 else
-   ! Rectangular biliear interpolation
+   ! Rectangular bilinear interpolation
    xbot = p(1, :) + lon_fract * (p(2, :) - p(1, :))
    xtop = p(4, :) + lon_fract * (p(3, :) - p(4, :))
    ! Now interpolate in latitude
    expected_obs = xbot + lat_fract * (xtop - xbot)
+
+   if (present(expected_mdt)) then
+      mdtbot = pmdt(1) + lon_fract * (pmdt(2) - pmdt(1))
+      mdttop = pmdt(4) + lon_fract * (pmdt(3) - pmdt(4))
+      expected_mdt = mdtbot + lat_fract * (mdttop - mdtbot)
+   endif
 endif
 
 end subroutine lon_lat_interpolate
@@ -1174,9 +1225,6 @@ endif
 ! state index must be 8byte integer
 state_index = int(lat_index - 1,i8)*int(nlon,i8) + int(lon_index,i8) + int(offset-1,i8)
 
-! Layout has lons varying most rapidly
-!get_val = x((lat_index - 1) * nlon + lon_index)
-! The x above is only a horizontal slice, not the whole state.   HK WHY -1?
 get_val = get_state(state_index, state_handle)
 
 ! this is a valid ocean water cell, not land or below ocean floor
@@ -1888,8 +1936,9 @@ subroutine end_model()
 ! assume if one is allocated, they all were.  if no one ever
 ! called the init routine, don't try to dealloc something that
 ! was never alloc'd.
-if (allocated(ULAT)) deallocate(ULAT, ULON, TLAT, TLON, KMT, KMU, HT, HU)
+if (allocated(ULAT)) deallocate(ULAT, ULON, TLAT, TLON, KMT, KMU)
 if (allocated(ZC))   deallocate(ZC, ZG, pressure)
+if (allocated(MDT))  deallocate(MDT)
 
 end subroutine end_model
 

@@ -15,7 +15,7 @@
 #BSUB -o %J.out
 #BSUB -e %J.err
 #BSUB -q geyser
-#BSUB -P CESM0005
+#BSUB -P P86850054
 #BSUB -n 1
 
 # set the first and last days to be split.  can roll over
@@ -32,13 +32,14 @@ let end_day=30
 
 EXEDIR='../work'
 DATDIR='/glade/p/work/fredc/Observations/AVISO/data'
+OUTDIR=/glade/p/image/${USER}/observations
 
 # end of things you should have to set in this script
 
 # make sure there is an initial input.nml for advance_time                                            
 # input.nml gets overwritten in the subsequent loop.                                                  
-cp -f  ../work/input.nml.advance_time_default input.nml || exit -1
 
+cp -f  input.nml.template input.nml || exit -1
 
 # convert the start and stop times to gregorian days, so we can
 # compute total number of days including rolling over month and
@@ -64,9 +65,8 @@ echo $start_d
 
 # these are a string in the format YYYYMMDDHH
 # do them here to prime the loop below which first takes them apart.
-currday=(`echo ${start_year}${mon2}${day2}00   0 | ${EXEDIR}/advance_time`)
-nextday=(`echo ${start_year}${mon2}${day2}00 +1d | ${EXEDIR}/advance_time`)
 prevday=(`echo ${start_year}${mon2}${day2}00 -1d | ${EXEDIR}/advance_time`)
+currday=(`echo ${start_year}${mon2}${day2}00   0 | ${EXEDIR}/advance_time`)
 
 # how many total days are going to be merged (for the loop counter)
 # (pull out the first of the 2 numbers which are output from advance_time)
@@ -76,64 +76,65 @@ echo $totaldays
 # loop over each day
 let d=1
 while (( d <= totaldays)) ; do
-#echo top of loop
-#echo $currday $nextday
+
   # parse out the parts from a string which is YYYYMMDDHH
   # both for the current day and tomorrow
-  cyear=${currday:0:4}
-  cmonth=${currday:4:2}
-  cday=${currday:6:2}
-  nyear=${nextday:0:4}
-  nmonth=${nextday:4:2}
-  nday=${nextday:6:2}
   pyear=${prevday:0:4}
   pmonth=${prevday:4:2}
   pday=${prevday:6:2}
-echo curr $cyear $cmonth $cday
-echo next $nyear $nmonth $nday
-echo prev $pyear $pmonth $pday
+
+  cyear=${currday:0:4}
+  cmonth=${currday:4:2}
+  cday=${currday:6:2}
+
+  echo ' '
+  echo day $d ... prev $pyear $pmonth $pday
+  echo day $d ... curr $cyear $cmonth $cday
 
   # compute the equivalent gregorian days here.
-  g=(`echo ${cyear}${cmonth}${cday}00 -1d -g | ${EXEDIR}/advance_time`)
+  g=(`echo ${cyear}${cmonth}${cday}00 -12h -g | ${EXEDIR}/advance_time`)
   greg0=${g[0]}
-  g=(`echo ${cyear}${cmonth}${cday}00 0 -g | ${EXEDIR}/advance_time`)
+  g=(`echo ${cyear}${cmonth}${cday}00 +12h -g | ${EXEDIR}/advance_time`)
   greg1=${g[0]}
-  g=(`echo ${cyear}${cmonth}${cday}00 +1d -g | ${EXEDIR}/advance_time`)
-  greg2=${g[0]}
-echo $greg0 $greg1 $greg2
+
+  echo "start = $greg0"
+  echo "end   = $greg1"
 
   echo starting AVISO obs for ${cyear}${cmonth}${cday} gregorian= $greg1
 
   # last 12 hrs yesterdays data plus the first 12 hrs of todays
-  echo "${DATDIR}/obs_seq.j1.${pyear}${pmonth}${pday}" > olist
+  echo "${DATDIR}/obs_seq.j1.${pyear}${pmonth}${pday}" >  olist
   echo "${DATDIR}/obs_seq.j1.${cyear}${cmonth}${cday}" >> olist
   echo "${DATDIR}/obs_seq.en.${pyear}${pmonth}${pday}" >> olist
   echo "${DATDIR}/obs_seq.en.${cyear}${cmonth}${cday}" >> olist
   echo "${DATDIR}/obs_seq.g2.${pyear}${pmonth}${pday}" >> olist
   echo "${DATDIR}/obs_seq.g2.${cyear}${cmonth}${cday}" >> olist
 
-  sed -e "s/YYYY/${cyear}/g"    \
-      -e "s/MM/${cmonth}/g"     \
-      -e "s/PP/${pmonth}/g"     \
-      -e "s/DD/${cday}/g"       \
+  # There are also observations in the world ocean database we might want.
+
+  echo "/glade/p/image/Observations/WOD09/${pyear}${pmonth}/obs_seq.0Z.${pyear}${pmonth}${pday}" >> olist
+  echo "/glade/p/image/Observations/WOD09/${cyear}${cmonth}/obs_seq.0Z.${cyear}${cmonth}${cday}" >> olist
+
+  sed -e "s/YYYY/${cyear}/g"   \
+      -e "s/MM/${cmonth}/g"    \
+      -e "s/DD/${cday}/g"      \
       -e "s/GREG0/${greg0}/g"  \
-      -e "s/GREG1/${greg1}/g"  \
-      -e "s/GREG2/${greg2}/g"    < ./input.nml.template > input.nml
+      -e "s/GREG1/${greg1}/g"  < input.nml.template > input.nml
 
   # make sure output dir exists
-  if [[ ! -d /glade/p/work/fredc/Observations/AVISO/${cyear}${cmonth} ]] ; then
-     mkdir /glade/p/work/fredc/Observations/AVISO/${cyear}${cmonth}
+  OBSDIR=${OUTDIR}/${cyear}${cmonth}
+  if [[ ! -d $OBSDIR ]] ; then
+     mkdir -p $OBSDIR
   fi
 
   # do the extract here
   ${EXEDIR}/obs_sequence_tool
-  
+
+   \mv -v obs_seq.0Z.${cyear}${cmonth}${cday} ${OBSDIR}
 
   # advance the day; the output is YYYYMMDD00
   prevday=$currday
-  currday=$nextday
-  nextday=(`echo ${nyear}${nmonth}${nday}00 +1d | ${EXEDIR}/advance_time`)
-echo $currday $nextday $prevday
+  currday=(`echo ${cyear}${cmonth}${cday}00 +1d | ${EXEDIR}/advance_time`)
 
   # advance the loop counter
   let d=d+1

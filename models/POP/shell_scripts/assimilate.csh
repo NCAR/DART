@@ -76,20 +76,6 @@ set OCN_HOUR     = `echo $OCN_DATE[4] / 3600 | bc`
 echo "valid time of model is $OCN_YEAR $OCN_MONTH $OCN_DAY $OCN_SECONDS (seconds)"
 echo "valid time of model is $OCN_YEAR $OCN_MONTH $OCN_DAY $OCN_HOUR (hours)"
 
-#-------------------------------------------------------------------------
-# Create temporary working directory for the assimilation and go there
-#-------------------------------------------------------------------------
-
-#set temp_dir = assimilate_pop
-#echo "temp_dir is $temp_dir"
-#
-#if ( -d $temp_dir ) then
-#   ${REMOVE} $temp_dir/*
-#else
-#   mkdir -p $temp_dir
-#endif
-#cd $temp_dir
-
 #-----------------------------------------------------------------------------
 # Get observation sequence file ... or die right away.
 # The observation file names have a time that matches the stopping time of POP.
@@ -136,36 +122,7 @@ if ($?TASKS_PER_NODE) then
 endif
 
 #=========================================================================
-# Block 2: Stage the files needed for SAMPLING ERROR CORRECTION
-#
-# The sampling error correction is a lookup table.
-# The tables were originally in the DART distribution, but should
-# have been staged to $CASEROOT at setup time.
-# Each ensemble size has its own (static) file.
-# It is only needed if
-# input.nml:&assim_tools_nml:sampling_error_correction = .true.,
-#=========================================================================
-
-set  MYSTRING = `grep sampling_error_correction input.nml`
-set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,'\.]# #g"`
-set  MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
-set SECSTRING = `echo $MYSTRING[2] | tr '[:upper:]' '[:lower:]'`
-
-if ( $SECSTRING == true ) then
-   set SAMP_ERR_FILE = ${CASEROOT}/final_full.${ensemble_size}
-   if (  -e   ${SAMP_ERR_FILE} ) then
-      ${COPY} ${SAMP_ERR_FILE} .
-   else
-      echo "ERROR: no sampling error correction file for this ensemble size."
-      echo "ERROR: looking for ${SAMP_ERR_FILE}"
-      exit -3
-   endif
-else
-   echo "Sampling Error Correction not requested for this assimilation."
-endif
-
-#=========================================================================
-# Block 3: DART INFLATION
+# Block 2: DART INFLATION
 # This stages the files that contain the inflation values.
 # The inflation values change through time and should be archived.
 #
@@ -175,13 +132,6 @@ endif
 # filter_nml
 # inf_flavor                  = 2,                       0,
 # inf_initial_from_restart    = .true.,                  .false.,
-# inf_in_file_name            = 'prior_inflate_ics',     'post_inflate_ics',
-# inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart',
-# inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag',
-#
-# NOTICE: the archiving scripts more or less require the names of these
-# files to be as listed above. When being archived, the filenames get a
-# unique extension (describing the assimilation time) appended to them.
 #
 # The inflation file is essentially a duplicate of the DART model state ...
 # For the purpose of this script, they are the output of a previous assimilation,
@@ -223,26 +173,6 @@ set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,'\.]# #g"`
 set  PRIOR_TF = `echo $MYSTRING[2] | tr '[:upper:]' '[:lower:]'`
 set  POSTE_TF = `echo $MYSTRING[3] | tr '[:upper:]' '[:lower:]'`
 
-# its a little tricky to remove both styles of quotes from the string.
-
-set  MYSTRING = `grep inf_in_file_name input.nml`
-set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,'\.]# #g"`
-set  MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
-set  PRIOR_INF_IFNAME = $MYSTRING[2]
-set  POSTE_INF_IFNAME = $MYSTRING[3]
-
-set  MYSTRING = `grep inf_out_file_name input.nml`
-set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,'\.]# #g"`
-set  MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
-set  PRIOR_INF_OFNAME = $MYSTRING[2]
-set  POSTE_INF_OFNAME = $MYSTRING[3]
-
-set  MYSTRING = `grep inf_diag_file_name input.nml`
-set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,'\.]# #g"`
-set  MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
-set  PRIOR_INF_DIAG = $MYSTRING[2]
-set  POSTE_INF_DIAG = $MYSTRING[3]
-
 # IFF we want PRIOR inflation:
 
 if ( $PRIOR_INF > 0 ) then
@@ -268,17 +198,34 @@ ex_end
 
    else
       # Look for the output from the previous assimilation
-      (ls -rt1 pop_${PRIOR_INF_OFNAME}.* | tail -n 1 >! latestfile) > & /dev/null
+
+      # Checking for a prior inflation file to use
+
+      (ls -rt1 ${CASE}.pop.output_priorinf_mean.* | tail -n 1 >! latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
 
       # If one exists, use it as input for this assimilation
       if ( $nfiles > 0 ) then
          set latest = `cat latestfile`
-         ${LINK} $latest ${PRIOR_INF_IFNAME}
+         ${LINK} $latest input_priorinf_mean.nc
       else
          echo "ERROR: Requested PRIOR inflation but specified no incoming inflation file."
-         echo "ERROR: expected something like ../pop_${PRIOR_INF_OFNAME}.YYYY-MM-DD-SSSSS"
+         echo "ERROR: expected something like ${CASE}.pop.output_priorinf_mean.YYYY-MM-DD-SSSSS.nc"
          exit -4
+      endif
+
+      # Checking for a prior inflation sd file to use
+
+      (ls -rt1 ${CASE}.pop.output_priorinf_sd.* | tail -n 1 >! latestfile) > & /dev/null
+      set nfiles = `cat latestfile | wc -l`
+
+      if ( $nfiles > 0 ) then
+         set latest = `cat latestfile`
+         ${LINK} $latest input_priorinf_sd.nc
+      else
+         echo "ERROR: Requested PRIOR inflation but specified no incoming inflation SD file."
+         echo "ERROR: expected something like ${CASE}.pop.output_priorinf_sd.YYYY-MM-DD-SSSSS.nc"
+         exit 2
       endif
 
    endif
@@ -311,37 +258,58 @@ ex_end
 
    else
       # Look for the output from the previous assimilation
-      (ls -rt1 pop_${POSTE_INF_OFNAME}.* | tail -n 1 >! latestfile) > & /dev/null
+      # Checking for a posterior inflation file to use
+
+      (ls -rt1 ${CASE}.pop.output_postinf_mean.* | tail -n 1 >! latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
 
-      # If one exists, use it as input for this assimilation
       if ( $nfiles > 0 ) then
          set latest = `cat latestfile`
-         ${LINK} $latest ${POSTE_INF_IFNAME}
+         ${LINK} $latest input_postinf_mean.nc
       else
          echo "ERROR: Requested POSTERIOR inflation but specified no incoming inflation file."
-         echo "ERROR: expected something like ../pop_${POSTE_INF_OFNAME}.YYYY-MM-DD-SSSSS"
+         echo "ERROR: expected something like ${CASE}.pop.output_postinf_mean.YYYY-MM-DD-SSSSS.nc"
          exit -5
       endif
+
+      # Checking for a posterior inflation sd file to use
+
+      (ls -rt1 ${CASE}.pop.output_postinf_sd.* | tail -n 1 >! latestfile) > & /dev/null
+      set nfiles = `cat latestfile | wc -l`
+
+      if ( $nfiles > 0 ) then
+         set latest = `cat latestfile`
+         ${LINK} $latest input_postinf_sd.nc
+      else
+         echo "ERROR: Requested POSTERIOR inflation but specified no incoming inflation SD file."
+         echo "ERROR: expected something like ${CASE}.pop.output_postinf_sd.YYYY-MM-DD-SSSSS.nc"
+         exit 2
+      endif
+
    endif
+
 else
    echo "Posterior Inflation       not requested for this assimilation."
 endif
 
 # Eat the cookie regardless
-${REMOVE} pop_inflation_cookie
+${REMOVE} pop_inflation_cookie latestfile
 
 #=========================================================================
-# Block 4: Actually run the assimilation. 
+# Block 3: Actually run the assimilation. 
 # WARNING: this version just overwrites the input - no ability to recover
 #
 # DART namelist settings required:
-# &filter_nml:           async                   = 0,
-# &filter_nml:           adv_ens_command         = "no_CESM_advance_script",
-# &filter_nml:           direct_netcdf_read      = .true.
-# &filter_nml:           direct_netcdf_write     = .true.
-# &filter_nml:           overwrite_state_input   = .true.
-# &filter_nml:           restart_file_list       = 'restart_files.txt'
+# &filter_nml:           async                    = 0,
+# &filter_nml:           adv_ens_command          = "no_CESM_advance_script",
+# &filter_nml:           input_restart_file_list  = "restarts_in.txt"
+# &filter_nml:           output_restart_file_list = "restarts_out.txt"
+# &filter_nml:           stages_to_write          = 'preassim', 'output'
+# &filter_nml:           output_restarts          = .true.
+# &filter_nml:           output_mean              = .true.
+# &filter_nml:           output_sd                = .true.
+# &filter_nml:           write_all_stages_at_end  = .true.
+#
 # &filter_nml:           obs_sequence_in_name    = 'obs_seq.out'
 # &filter_nml:           obs_sequence_out_name   = 'obs_seq.final'
 # &filter_nml:           init_time_days          = -1,
@@ -355,11 +323,14 @@ ${REMOVE} pop_inflation_cookie
 #
 #=========================================================================
 
-${REMOVE} restart_files.txt
+${REMOVE} restarts_in.txt restarts_out.txt
 
 foreach FILE ( rpointer.ocn_????.restart )
-   head -n 1 ${FILE} >> restart_files.txt
+   head -n 1 ${FILE} >> restarts_in.txt
 end
+
+# WARNING: this is the part where the files just get overwritten
+${COPY} restarts_in.txt restarts_out.txt
 
 # POP always needs a pop_in and a pop.r.nc to start.
 # Lots of ways to get the filename
@@ -387,31 +358,30 @@ if ( $?LSB_PJL_TASK_GEOMETRY ) then
 endif
 
 #========================================================================
-# Block 5: Tag the output with the valid time of the model state
+# Block 4: Tag the output with the valid time of the model state
 #=========================================================================
 
-# Tag the state output
+foreach FILE ( preassim_mean.nc           preassim_sd.nc \
+               preassim_priorinf_mean.nc  preassim_priorinf_sd.nc \
+               preassim_postinf_mean.nc   preassim_postinf_sd.nc \
+               postassim_mean.nc          postassim_sd.nc \
+               postassim_priorinf_mean.nc postassim_priorinf_sd.nc \
+               postassim_postinf_mean.nc  postassim_postinf_sd.nc \
+               output_mean.nc             output_sd.nc \
+               output_priorinf_mean.nc    output_priorinf_sd.nc \
+               output_postinf_mean.nc     output_postinf_sd.nc )
 
-${MOVE} Prior_Diag.nc             pop_Prior_Diag.${OCN_DATE_EXT}.nc
-${MOVE} Posterior_Diag.nc         pop_Posterior_Diag.${OCN_DATE_EXT}.nc
-${MOVE} PriorDiag_inf_mean.nc     pop_preassim_mean.${OCN_DATE_EXT}.nc
-${MOVE} PriorDiag_inf_sd.nc       pop_preassim_sd.${OCN_DATE_EXT}.nc
-${MOVE} PosteriorDiag_inf_mean.nc pop_postassim_mean.${OCN_DATE_EXT}.nc
-${MOVE} PosteriorDiag_inf_sd.nc   pop_postassim_sd.${OCN_DATE_EXT}.nc
-${MOVE} mean.nc                   pop_output_mean.${OCN_DATE_EXT}.nc
-${MOVE} sd.nc                     pop_output_sd.${OCN_DATE_EXT}.nc
+   if ( -e $FILE ) then
+      set FBASE = $FILE:r
+      set FEXT = $FILE:e
+      ${MOVE} ${FILE} ${CASE}.pop.${FBASE}.${OCN_DATE_EXT}.${FEXT}
+   endif
+end
 
-# # Tag the inflation files
+# Tag the observation file and run-time output
 
-${MOVE} output_priorinf_mean.nc   pop_output_priorinf_mean.${OCN_DATE_EXT}.nc
-${MOVE} output_priorinf_sd.nc     pop_output_priorinf_sd.${OCN_DATE_EXT}.nc
-${MOVE} output_postinf_mean.nc    pop_output_postinf_mean.${OCN_DATE_EXT}.nc
-${MOVE} output_postinf_sd.nc      pop_output_postinf_sd.${OCN_DATE_EXT}.nc
-
-# # Tag the observation file and run-time output
-
-${MOVE} obs_seq.final             pop_obs_seq.final.${OCN_DATE_EXT}
-${MOVE} dart_log.out              pop_dart_log.${OCN_DATE_EXT}.out
+${MOVE} obs_seq.final   ${CASE}.pop.obs_seq.final.${OCN_DATE_EXT}
+${MOVE} dart_log.out    ${CASE}.pop.dart_log.${OCN_DATE_EXT}.out
 
 echo "`date` -- END POP_ASSIMILATE"
 

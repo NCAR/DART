@@ -127,12 +127,12 @@ setenv num_instances        30
 # ==============================================================================
 
 setenv mach         yellowstone
-setenv cesmroot     /glade/p/cesm/cseg/collections/$cesmtag
+setenv cesmroot     /glade/p/cesm/releases/$cesmtag
 setenv caseroot     /glade/p/work/${USER}/cases/${case}
 setenv rundir       /glade/scratch/${USER}/${case}/run
 setenv exeroot      /glade/scratch/${USER}/${case}/bld
 setenv archdir      /glade/scratch/${USER}/archive/${case}
-setenv dartroot     /glade/u/home/${USER}/svn/DART/trunk
+setenv dartroot     /glade/p/work/${USER}/DART/rma_trunk
 
 # ==============================================================================
 # configure settings:
@@ -852,6 +852,13 @@ else     # CONTINUE_RUN == FALSE
    # building of the case; to change them rebuild the case.
    # After running this script resubmit the job to rerun.
    #----------------------------------------------------------------------
+
+   # These are not needed, so remove the clutter
+   \rm -f rpointer.atm_????
+   \rm -f rpointer.ice_????
+   \rm -f rpointer.ocn_????.tavg
+   \rm -f rpointer.drv
+   \rm -f rpointer.rof
 
    @ inst=1
    while (\$inst <= $num_instances)

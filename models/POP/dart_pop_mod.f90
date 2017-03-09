@@ -6,7 +6,7 @@
 
 module dart_pop_mod
 
-use        types_mod, only : r8, rad2deg, PI, SECPERDAY
+use        types_mod, only : r4, r8, rad2deg, PI, SECPERDAY, MISSING_R8
 use time_manager_mod, only : time_type, get_date, set_date, get_time, set_time, &
                              set_calendar_type, get_calendar_string, &
                              print_date, print_time, operator(==), operator(-)
@@ -26,7 +26,7 @@ public :: get_pop_calendar, set_model_time_step, &
           get_horiz_grid_dims, get_vert_grid_dim, &
           read_horiz_grid, read_topography, read_vert_grid, &
           write_pop_namelist, get_pop_restart_filename, &
-          set_binary_file_conversion
+          set_binary_file_conversion, read_mean_dynamic_topography
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -63,11 +63,15 @@ logical  :: impcor, laccel, allow_leapyear
 real(r8) :: dtuxcel, dt_count
 integer  :: iyear0, imonth0, iday0, ihour0, iminute0, isecond0
 integer  :: stop_count, fit_freq, time_mix_freq
+real(r8) :: robert_alpha, robert_nu
+
 
 namelist /time_manager_nml/ runid, time_mix_opt, time_mix_freq, &
     impcor, laccel, accel_file, dtuxcel, iyear0, imonth0, &
     iday0, ihour0, iminute0, isecond0, dt_option, dt_count, &
-    stop_option, stop_count, date_separator, allow_leapyear, fit_freq
+    stop_option, stop_count, date_separator, allow_leapyear, fit_freq, &
+    robert_alpha, robert_nu
+
 
 !------------------------------------------------------------------
 ! The POP I/O namelist variables
@@ -114,10 +118,12 @@ namelist /init_ts_nml/ init_ts_option, init_ts_suboption, &
 character(len= 64) :: clinic_distribution_type, tropic_distribution_type
 character(len= 64) :: ew_boundary_type, ns_boundary_type
 integer :: nprocs_clinic, nprocs_tropic
+logical :: profile_barrier
 
 namelist /domain_nml/ clinic_distribution_type, nprocs_clinic, &
                       tropic_distribution_type, nprocs_tropic, &
-                      ew_boundary_type, ns_boundary_type
+                      ew_boundary_type, ns_boundary_type, &
+                      profile_barrier
 
 !------------------------------------------------------------------
 ! The POP grid info namelist
@@ -160,7 +166,8 @@ character(len=100) :: horiz_grid_file, vert_grid_file, &
                       bottom_cell_file, region_mask_file
 character(len= 64) :: horiz_grid_opt, sfc_layer_opt, vert_grid_opt, &
                       topography_opt
-logical :: partial_bottom_cells, topo_smooth, flat_bottom, lremove_points
+logical :: partial_bottom_cells, topo_smooth, flat_bottom, lremove_points, &
+           l1ddyn
 integer :: kmt_kmin, n_topo_smooth
 
 namelist /grid_nml/ horiz_grid_opt, horiz_grid_file, sfc_layer_opt, &
@@ -168,7 +175,7 @@ namelist /grid_nml/ horiz_grid_opt, horiz_grid_file, sfc_layer_opt, &
     topography_file, topography_outfile, bathymetry_file, &
     partial_bottom_cells, bottom_cell_file, n_topo_smooth, &
     region_mask_file, topo_smooth, flat_bottom, lremove_points, &
-    region_info_file
+    region_info_file, l1ddyn
 
 !======================================================================
 contains
@@ -731,7 +738,7 @@ real(r8) :: depth
 logical :: three_columns
 character(len=256) :: line
 
-real(r8), parameter :: centemeters_to_meters = 0.01_r8
+real(r8), parameter :: centimeters_to_meters = 0.01_r8
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -760,8 +767,8 @@ else
    ! read depth and calculate center and bottom of cells
    read(line,*,iostat=ios) depth
 
-   ZC(1) = depth*centemeters_to_meters*0.5_r8
-   ZG(1) = depth*centemeters_to_meters
+   ZC(1) = depth*centimeters_to_meters*0.5_r8
+   ZG(1) = depth*centimeters_to_meters
 endif
 
 do i=2, nz
@@ -771,8 +778,8 @@ do i=2, nz
    else
       read(iunit,*,iostat=ios) depth
 
-      ZC(i) = ZG(i-1) + depth*centemeters_to_meters*0.5_r8
-      ZG(i) = ZG(i-1) + depth*centemeters_to_meters
+      ZC(i) = ZG(i-1) + depth*centimeters_to_meters*0.5_r8
+      ZG(i) = ZG(i-1) + depth*centimeters_to_meters
    endif
 
    if ( ios /= 0 ) then ! error
@@ -783,6 +790,123 @@ do i=2, nz
 enddo
 
 end subroutine read_vert_grid
+
+
+!------------------------------------------------------------------
+!> Open and read the mean dynamic sea surface topography
+!> There is an assumed name and the shape of the variable must
+!> match the POP grid being used. The hope is that that actual
+!> locations MUST MATCH EXACTLY the POP SSH grid.
+
+subroutine read_mean_dynamic_topography(fname, mdt)
+character(len=*), intent(in)  :: fname
+real(r8),         intent(out) :: mdt(:,:)
+
+integer  :: ncid, VarID, io, xtype, ii
+integer  :: numdims, dimIDs(NF90_MAX_DIMS), dimlen
+character(len=128) :: unitsstring
+real(r4) :: rmiss
+real(r8) :: dmiss, dmin, dmax
+
+if ( .not. module_initialized ) call initialize_module
+
+mdt = MISSING_R8
+dmiss = MISSING_R8
+
+! Check to see that the netCDF file exists.
+
+if ( .not. file_exist(fname) ) then
+   string1 = 'Mean dynamic sea surface topography file not found.'
+   string2 = 'Looking for filename "'//trim(fname)//'"'
+   string3 = 'This filename is specified by input.nml:model_nml:mdt_reference_file_name'
+   call error_handler(E_ERR,'read_mean_dynamic_topography', &
+          string1, source, revision, revdate, text2=string2, text3=string3)
+endif
+
+io = nf90_open(trim(fname), NF90_NOWRITE, ncid)
+call nc_check(io, 'read_mean_dynamic_topography','open "'//trim(fname)//'"')
+
+io = nf90_inq_varid(ncid, 'mdt', VarID)
+call nc_check(io, 'read_mean_dynamic_topography', &
+                  '"mdt" not found but is required in "'//trim(fname)//'"')
+
+! check variable shape against assumed shape
+
+io = nf90_inquire_variable(ncid, VarId, dimids=dimIDs, ndims=numdims, xtype=xtype)
+call nc_check(io, 'read_mean_dynamic_topography', &
+                  'inquire_variable "mdt" from "'//trim(fname)//'"')
+
+do ii = 1,numdims
+   write(string1,*)'inquire_dimension ',ii,'for "mdt"'
+   io = nf90_inquire_dimension(ncid,dimIDs(ii),len=dimlen)
+   call nc_check(io, 'read_mean_dynamic_topography', string1)
+
+   if (dimlen /= size(mdt,ii)) then
+      write(string1,*)'mdt dimension mismatch'
+      write(string2,*)'mdt dimension ',ii,' in file is ',dimlen
+      write(string3,*)'mdt dimension ',ii,' in code is ',size(mdt,ii)
+      call error_handler(E_ERR,'read_mean_dynamic_topography', &
+          string1, source, revision, revdate, text2=string2, text3=string3)
+   endif
+
+enddo
+
+io = nf90_get_var(ncid, VarID, mdt)
+call nc_check(io, 'read_mean_dynamic_topography', &
+                  'get_var "mdt" from "'//trim(fname)//'"')
+
+! Replace _FillValue with something
+!>@todo CHECK ... does it xtype of the variable matter when getting a _FillValue attribute. 
+!> If it does not, these lines could collapse into something cleaner.
+
+if (xtype == NF90_REAL) then
+   io = nf90_get_att(ncid, VarId, '_FillValue', rmiss)
+   if (io == NF90_NOERR) then
+      dmiss=rmiss
+      where (mdt == dmiss) mdt = MISSING_R8
+   endif
+elseif (xtype == NF90_DOUBLE) then
+   io = nf90_get_att(ncid, VarId, '_FillValue', dmiss)
+   if (io == NF90_NOERR) then
+      where (mdt == dmiss) mdt = MISSING_R8
+   endif
+else
+   call error_handler(E_ERR,'read_mean_dynamic_topography', &
+        'unsupported variable type for "mdt"', source, revision, revdate, &
+        text2 = 'must be "float" or "double"')
+endif
+
+! The observations are in meters, the mean dynamic topography should be in meters
+! and internally in the POP model_mod, the CGS units are converted to SI.
+
+io = nf90_get_att(ncid, VarId, 'units', unitsstring)
+call nc_check(io, 'read_mean_dynamic_topography', &
+                  'get_att "units" for "mdt" from "'//trim(fname)//'"')
+
+if (unitsstring == 'centimeter' .or. unitsstring == 'cm') then
+   where(mdt /= MISSING_R8) mdt = mdt/100.0_r8
+elseif (unitsstring == 'm' .or. unitsstring == 'meters') then
+   continue
+else
+   call error_handler(E_ERR,'read_mean_dynamic_topography', &
+        'unsupported units for "mdt"', source, revision, revdate, &
+        text2 = 'must be "centimeter", "cm", "meter", or "m"')
+endif
+
+call nc_check(nf90_close(ncid), &
+              'read_mean_dynamic_topography','close ' // trim(fname) )
+
+! Just something to do a basic check.
+
+dmin = minval(mdt, mdt /= MISSING_R8) 
+dmax = maxval(mdt, mdt /= MISSING_R8) 
+write(string1,*)'..  mdt sizes are ',size(mdt,1),size(mdt,2)
+write(string2,*)'_FillValue was ',dmiss,' original units "'//trim(unitsstring)//'"'
+write(string3,*)'min,max (meters) ',dmin, dmax
+call error_handler(E_MSG,'read_mean_dynamic_topography', &
+     string1, text2=string2, text3=string3)
+
+end subroutine read_mean_dynamic_topography
 
 
 !------------------------------------------------------------------
