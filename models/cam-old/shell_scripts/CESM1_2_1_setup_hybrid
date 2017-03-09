@@ -145,7 +145,7 @@ setenv num_instances        30
 
 setenv mach         yellowstone
 setenv cesmdata     /glade/p/cesm/cseg/inputdata
-setenv cesmroot     /glade/p/cesm/cseg/collections/$cesmtag
+setenv cesmroot     /glade/p/cesm/releases/$cesmtag
 setenv caseroot     /glade/p/work/${USER}/cases/${case}
 setenv rundir       /glade/scratch/${USER}/${case}/run
 setenv exeroot      /glade/scratch/${USER}/${case}/bld
