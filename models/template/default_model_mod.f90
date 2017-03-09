@@ -6,8 +6,8 @@
 
 module default_model_mod
 
-! bypass routines for all required entry points.
-! if a model has no need of a routine, use these instead.
+!> bypass routines for all required entry points.
+!> if a model has no need of a routine, use these instead.
 
 use        types_mod,      only : r8, i8, i4, MISSING_R8
 
