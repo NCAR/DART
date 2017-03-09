@@ -4,7 +4,7 @@
 !
 ! $Id$
 
-module dummy_model_mod
+module default_model_mod
 
 ! bypass routines for all required entry points.
 ! if a model has no need of a routine, use these instead.
@@ -71,7 +71,7 @@ end subroutine static_init_model
 subroutine init_conditions(x)
 real(r8), intent(out) :: x(:)
 
-! dummy
+! default
 x = 0.0_r8
 
 end subroutine init_conditions
@@ -243,7 +243,7 @@ end subroutine get_close_obs
 !===================================================================
 ! End of model_mod
 !===================================================================
-end module dummy_model_mod
+end module default_model_mod
 
 ! <next few lines under version control, do not edit>
 ! $URL$
