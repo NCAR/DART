@@ -299,6 +299,18 @@ if (do_output()) then
    if(sampling_error_correction) then
       call error_handler(E_MSG,'assim_tools_init:', 'Using Sampling Error Correction')
    endif
+
+   if (task_count() > 1) then
+       if(distribute_mean) then
+          call error_handler(E_MSG,'assim_tools_init:', 'Distributing one copy of the ensemble mean across all tasks', &
+                             text2='(uses less memory per task but may run slower if doing vertical coordinate conversion,', &
+                             text3='controlled by namelist item "distribute_mean")')
+       else
+          call error_handler(E_MSG,'assim_tools_init:', 'Replicating a copy of the ensemble mean on every task', &
+                             text2='(uses more memory per task but may run faster if doing vertical coordinate conversion,', &
+                             text3='controlled by namelist item "distribute_mean")')
+       endif
+   endif
 endif
 
 end subroutine assim_tools_init
