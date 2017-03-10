@@ -66,36 +66,39 @@ foreach project ( `find . -name quickbuild.csh -print` )
 
    if ( $FAILURE ) then
       echo
+      echo
       echo "=================================================================="
-      echo "ERROR - unsuccessful build in $dir"
+      echo "=================================================================="
+      echo "ERROR - unsuccessful build in $dir at "`date`
       echo 
 
       switch ( $dir )
    
          case */var/*
             echo "This build expected to fail unless you have the WRF code in-situ."
-            echo "=================================================================="
          breaksw
             
          case *AIRS*
             echo "AIRS build is expected to fail due to dependency on hdfeos libs,"
             echo "not required to be part of the standard DART environment."
-            echo "=================================================================="
          breaksw
             
          case *quikscat*
             echo "quikscat build is expected to fail due to dependency on mfhdf libs,"
             echo "not required to be part of the standard DART environment."
-            echo "=================================================================="
          breaksw
   
          default
             echo " unexpected error"
-            echo "=================================================================="
          breaksw
       endsw
+
+      echo "=================================================================="
+      echo "=================================================================="
+      echo
+      echo
   
-   endif
+   else
          
       echo 
       echo 
