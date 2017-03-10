@@ -138,6 +138,8 @@ integer :: SPARE_PRIOR_SPREAD       = COPY_NOT_PRESENT
 logical :: do_prior_inflate     = .false.
 logical :: do_posterior_inflate = .false.
 
+logical :: has_cycling                  = .false. ! filter will advance the model
+
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
@@ -183,7 +185,6 @@ real(r8)           :: perturbation_amplitude       = 0.2_r8
 ! File options.  Single vs. Multiple.
 logical            :: single_file_in               = .false. ! all copies read  from 1 file
 logical            :: single_file_out              = .false. ! all copies written to 1 file
-logical            :: has_cycling                  = .false. ! filter will advance the model
 ! Stages to write.  Valid values include:
 !    input, preassim, postassim, output
 character(len=10)  :: stages_to_write(4) = (/"output    ", "null      ", "null      ", "null      "/)
