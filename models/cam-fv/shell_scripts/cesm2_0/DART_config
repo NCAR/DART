@@ -150,7 +150,7 @@ ${MOVE} temp.$$ case.st_archive
 chmod 755       case.st_archive
 
 # Same for lt_archive
-# CESM1_5; queue and wall_clock can/should be modified via xmlchange in CESM1_5_setup_advanced 
+# CESM2_0; queue and wall_clock can/should be modified via xmlchange in CESM2_0_setup_advanced 
 # (see env_batch.xml)
 sed -e "/BSUB[ ]*-o/c\#BSUB  -o cesm_lt_arch.stdout.%J  \n" \
     -e "/BSUB[ ]*-e/c\#BSUB  -e cesm_lt_arch.stderr.%J  \n" \
@@ -159,11 +159,11 @@ ${MOVE} temp.$$ case.lt_archive
 chmod 755       case.lt_archive
 
 # SetupFileName comes from CESM#_#_setup*, the calling script.
-${COPY} ${DARTROOT}/models/cam-fv/scripts_cesm1_5/no_assimilate.csh > no_assimilate.csh  
+${COPY} ${DARTROOT}/models/cam-fv/scripts_cesm2_0/no_assimilate.csh > no_assimilate.csh  
 sed -e "s#BOGUSCASEROOT#$CASEROOT#" \
     -e "s#BOGUSBASEOBSDIR#$baseobsdir#"  \
     -e "s#BOGUS_save_every_Mth#$save_every_Mth_day_restarts#" \
-    ${DARTROOT}/models/cam-fv/scripts_cesm1_5/assimilate.csh    > assimilate.csh  || exit 23
+    ${DARTROOT}/models/cam-fv/scripts_cesm2_0/assimilate.csh    > assimilate.csh  || exit 23
 #     -e "s#BOGUSSETUP#$SetupFileName#"  \
 chmod 755 assimilate.csh
 chmod 755 no_assimilate.csh
@@ -324,8 +324,8 @@ cat << EndOfText >! DART_instructions.txt
 
 Check the DART configuration:
 
-1) The default behavior is to invoke DART (set in CESM1_5_setup_...) .
-   If your confidence is not high that the CESM1_5 configuration will be correct,
+1) The default behavior is to invoke DART (set in CESM2_0_setup_...) .
+   If your confidence is not high that the CESM2_0 configuration will be correct,
    we recommend turning off the assimilation at first.
 
 2) If you want to turn off DART, edit the env_run.xml: DATA_ASSIMILATION_* 
