@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p trans_perfect_ics -t ../../../mkmf/mkmf.template   \
+../../../build_templates/mkmf -p trans_perfect_ics -t ../../../build_templates/mkmf.template   \
  -a "../../.." path_names_perfect_ics
 
 exit $status

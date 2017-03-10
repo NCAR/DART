@@ -1,7 +1,3 @@
-../../../common/types_mod.f90
-../../../mpi_utilities/null_mpi_utilities_mod.f90
-../../../time_manager/time_manager_mod.f90
-../../../utilities/utilities_mod.f90
 ../dynamics_testing_DA/DArose.f
 ../dynamics_testing_DA/DArose_mod.f90
 ../dynamics_testing_DA/calc_daily_avg.f
@@ -32,7 +28,6 @@
 ../dynamics_testing_DA/ncep.mod.f
 ../dynamics_testing_DA/ncep_lbc.f
 ../dynamics_testing_DA/output.mod.f
-../dynamics_testing_DA/params.mod.f 
 ../dynamics_testing_DA/phys.mod.f
 ../dynamics_testing_DA/radiation.f
 ../dynamics_testing_DA/restart.mod.f
@@ -47,3 +42,8 @@
 ../dynamics_testing_DA/vertdiff_t.f
 ../dynamics_testing_DA/wcont.f
 ../dynamics_testing_DA/zenith.f 
+assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
+assimilation_code/modules/utilities/time_manager_mod.f90
+assimilation_code/modules/utilities/types_mod.f90
+assimilation_code/modules/utilities/utilities_mod.f90
+models/rose/params.mod.f 

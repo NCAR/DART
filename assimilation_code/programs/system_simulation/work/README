@@ -1,0 +1,35 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+Looking at sampling error correction factor for regression
+for ensemble filters. Basic idea here is that there is 
+some noise so that the sample statistics provide a 
+sample regression factor with some mean and some standard
+deviation. When I run the multi-group ensemble, I end up
+getting an estimate of this mean and the standard 
+deviation. Right now, I'm ignoring the fact that there
+are errors in this mean and sample standard deviation
+but this should be accounted for in the future. Anyway,
+one can then look for a factor that is a function of
+only the ratio of the standard deviation of the sample
+regression coefficient to the sample mean. This factor
+is adjusted so that the expected value of the squared
+error of the sample regression coefficient from the actual
+value is a minimum. sys_sim101.f90 simulates this. If one
+selects a single group the appropriate coefficient is
+returned. Fitting to this gives the following analytic
+relation:
+
+reduction factor = 1 / (ratio**2 + 1) 
+
+where ratio is the ratio of the standard deviation to the
+sample mean for the regression (or distance moved if one
+prefers).
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

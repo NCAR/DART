@@ -37,9 +37,8 @@ if ( $usingmpi ) then
 
   echo "Making Makefile with MPI"
   touch using_mpi_for_model_mod_check
-  sed -e 's;/null_mpi_util;/mpi_util;' path_names_model_mod_check.back >! path_names_model_mod_check
-  cp -f path_names_model_mod_check path_names_model_mod_check.temp
-  sed -e 's;/null_win_mod;/no_cray_win_mod;' path_names_model_mod_check.temp >! path_names_model_mod_check
+  sed -e 's#/null_mpi_util#/mpi_util#' \
+      -e 's#/null_win_mod#/no_cray_win_mod#' path_names_model_mod_check.back >! path_names_model_mod_check
 
   setenv wrapper_arg -w
 
@@ -47,24 +46,23 @@ else
 
   echo "Making Makefile without MPI"
   rm -f using_mpi_for_model_mod_check
-  sed -e 's;/mpi_util;/null_mpi_util;' path_names_model_mod_check.back >! path_names_model_mod_check
-  setenv wrapper_arg ""
-  cp -f path_names_model_mod_check path_names_model_mod_check.temp
-  sed '\,distributed/no_cray_win_mod,d' path_names_model_mod_check.temp >! path_names_model_mod_check
-  cp -f path_names_model_mod_check path_names_model_mod_check.temp
-  sed '\,distributed/cray_win_mod,d' path_names_model_mod_check.temp >! path_names_model_mod_check
-  set p=`grep distributed/null_win_mod.f90 path_names_model_mod_check | wc -w`
+  sed -e 's#/mpi_util#/null_mpi_util#' \
+      -e '\#no_cray_win_mod.f90#d' \
+      -e '\#cray_win_mod.f90#d' path_names_model_mod_check.back >! path_names_model_mod_check
+
+  set p=`grep null_win_mod.f90 path_names_model_mod_check | wc -w`
   if ( $p == 0) then
-  #  echo distributed/null_win_mod.f90 >> path_names_model_mod_check
-     echo 'distributed/null_win_mod.f90' | cat - path_names_model_mod_check > temp && mv temp path_names_model_mod_check
+     echo assimilation_code/modules/utilities/null_win_mod.f90 >> path_names_model_mod_check
   endif
+
+  setenv wrapper_arg ""
 
 endif
 
 # remove temp file and now really call mkmf to generate makefile
-\rm -f path_names_model_mod_check.back path_names_model_mod_check.temp
+rm -f path_names_model_mod_check.back
 
-../../../mkmf/mkmf -p model_mod_check -t ../../../mkmf/mkmf.template \
+../../../build_templates/mkmf -p model_mod_check -t ../../../build_templates/mkmf.template   \
         -a "../../.." ${wrapper_arg} path_names_model_mod_check
 
 exit $status

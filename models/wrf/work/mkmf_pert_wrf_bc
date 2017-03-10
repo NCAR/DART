@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p pert_wrf_bc -t ../../../mkmf/mkmf.template   \
+../../../build_templates/mkmf -p pert_wrf_bc -t ../../../build_templates/mkmf.template   \
  -a "../../.." path_names_pert_wrf_bc
 
 exit $status

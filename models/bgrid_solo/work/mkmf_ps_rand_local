@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p ps_rand_local -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
+../../../build_templates/mkmf -p ps_rand_local -t ../../../build_templates/mkmf.template -c"-Duse_netCDF" \
  -a "../../.." path_names_ps_rand_local
 
 exit $status

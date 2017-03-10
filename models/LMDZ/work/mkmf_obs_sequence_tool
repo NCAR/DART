@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p obs_sequence_tool -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
+../../../build_templates/mkmf -p obs_sequence_tool -t ../../../build_templates/mkmf.template -c"-Duse_netCDF" \
  -a "../../.." path_names_obs_sequence_tool
 
 exit $status

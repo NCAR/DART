@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p extract -t ../../../mkmf/mkmf.template   \
+../../../build_templates/mkmf -p extract -t ../../../build_templates/mkmf.template   \
  -a "../../.." path_names_extract
 
 exit $status

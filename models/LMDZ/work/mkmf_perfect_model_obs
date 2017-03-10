@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p perfect_model_obs -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
+../../../build_templates/mkmf -p perfect_model_obs -t ../../../build_templates/mkmf.template -c"-Duse_netCDF" \
  -a "../../.." path_names_perfect_model_obs
 
 exit $status

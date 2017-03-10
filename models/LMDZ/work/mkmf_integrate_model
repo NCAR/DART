@@ -6,7 +6,7 @@
 #
 # $Id$
 
-../../../mkmf/mkmf -p integrate_model -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
+../../../build_templates/mkmf -p integrate_model -t ../../../build_templates/mkmf.template -c"-Duse_netCDF" \
  -a "../../.." path_names_integrate_model
 
 exit $status

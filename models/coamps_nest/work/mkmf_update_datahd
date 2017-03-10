@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p update_datahd_file -t ../../../mkmf/mkmf.template -c" -C -Duse_netCDF" \
+../../../build_templates/mkmf -p update_datahd_file -t ../../../build_templates/mkmf.template -c" -C -Duse_netCDF" \
  -a "../../.." path_names_update_datahd_file
 
 exit $status

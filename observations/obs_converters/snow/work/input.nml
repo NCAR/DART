@@ -1,0 +1,36 @@
+
+# this was using obs_def_land_mod, but the type moved to
+# the tower obs_def.  it probably belongs in a different
+# obs_def mod; perhaps MODIS or something.
+&preprocess_nml
+    input_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
+   output_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90',
+     input_obs_def_mod_file = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
+    output_obs_def_mod_file = '../../../../observations/forward_operators/obs_def_mod.f90',
+   input_files              = '../../../../observations/forward_operators/obs_def_tower_mod.f90',
+   /
+
+&snow_to_obs_nml
+   /
+
+&snow_to_obs_nc_nml
+   year = 2002, 
+   doy  = 327,
+   snow_input_file = '../data/MOD10_L2.A2002327.0000.005.2007231010135.nc', 
+   debug = .true.,
+   /
+
+&obs_kind_nml
+   /
+
+&location_nml
+   /
+
+&utilities_nml
+   module_details = .false.
+   /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.  
+   /
+

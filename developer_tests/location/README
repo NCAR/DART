@@ -1,0 +1,60 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+The core algorithms of DART work with many different models
+which have a variety of coordinate systems.  This directory
+provides code for creating, setting/getting, copying location
+information (coordinates) independently of the actual specific
+coordinate information.  It also contains distance routines
+needed by the DART algorithms.
+
+Each of the different location_mod.f90 files provides the same
+set of interfaces and defines a 'module location_mod', so by
+selecting the proper version in your path_names_xxx file you
+can compile your model code with the main DART routines.
+
+threed_sphere:
+
+The most frequently used version for real-world 3d models is
+the 'threed_sphere' module, which uses latitude and longitude
+coordinates, plus a vertical coordinate which can be meters,
+pressure, or model level.
+
+oned:
+
+For small models, the 'oned' version is most frequently used.
+It has a cyclic domain from 0 to 1.
+
+threed_cartesian:
+
+A full 3D X,Y,Z coordinate system.
+
+others:
+
+For other uses, there are also:
+ 'column', no x,y but 1d height, pressure, or model level for vertical.
+ 'annulus', a hollow 3d cylinder with azimuth, radius, and depth.
+ 'twod', a periodic 2d domain with x,y coordinates between 0 and 1.
+ 'twod_sphere', a 2d shell with latitude, longitude pairs.
+ 'threed', a periodic 3d domain with x,y,z coordinates between 0 and 1.
+ 'channel', a 3d domain periodic in x, limited in y, and unlimited z.
+
+Other schemes can be added, as needed by the models.
+Possible ideas are a non-periodic version of the 1d, 2d
+cartesian versions.  Email 'dart@ucar.edu' if you have a different 
+coordinate scheme which we might want to support.
+
+testing:
+
+The testall.csh script will cd into each of the locations
+module directories and build and run a simple testcase to
+verify the distance calculations and the read/write options
+are working.  
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

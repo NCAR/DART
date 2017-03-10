@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p write_sqg_restart -t ../../../mkmf/mkmf.template   \
+../../../build_templates/mkmf -p write_sqg_restart -t ../../../build_templates/mkmf.template   \
  -a "../../.." path_names_write_sqg_restart
 
 exit $status

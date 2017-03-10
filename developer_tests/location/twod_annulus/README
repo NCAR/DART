@@ -1,0 +1,22 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+A location consists of the pair (azimuth, radius).
+
+This is copied from the cylindrical version of the
+annulus location module which has an azimuthal angle,
+a radius, and a height.
+
+The location_mod.f90 requires the parameters inner_rad (inner
+radius of the annulus) and outer_rad (outer radius of the annulus)
+from the input.nml.
+
+Azimuthal angle is in degrees, radius is in meters.
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

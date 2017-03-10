@@ -1,6 +1,11 @@
-common/types_mod.f90
-location/threed_sphere/location_mod.f90
-models/coamps_nest/byteswap.c
+assimilation_code/location/threed_sphere/location_mod.f90
+assimilation_code/modules/observations/obs_kind_mod.f90
+assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
+assimilation_code/modules/utilities/random_seq_mod.f90
+assimilation_code/modules/utilities/time_manager_mod.f90
+assimilation_code/modules/utilities/types_mod.f90
+assimilation_code/modules/utilities/utilities_mod.f90
+models/coamps/byteswap.c models/coamps_nest/byteswap.c models/MITgcm_annulus/shell_scripts/byteswap.c
 models/coamps_nest/coamps_domain_mod.f90
 models/coamps_nest/coamps_intrinsic_mod.f90
 models/coamps_nest/coamps_map_mod.f90
@@ -12,8 +17,3 @@ models/coamps_nest/coamps_util_mod.f90
 models/coamps_nest/coamps_vertical_mod.f90
 models/coamps_nest/get_name_info.f90
 models/coamps_nest/trans_statevec_to_coamps.f90
-mpi_utilities/null_mpi_utilities_mod.f90
-obs_kind/obs_kind_mod.f90
-random_seq/random_seq_mod.f90
-time_manager/time_manager_mod.f90
-utilities/utilities_mod.f90

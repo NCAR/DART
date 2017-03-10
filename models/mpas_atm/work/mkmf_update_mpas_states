@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p update_mpas_states -t ../../../mkmf/mkmf.template   \
+../../../build_templates/mkmf -p update_mpas_states -t ../../../build_templates/mkmf.template   \
  -a "../../.."  path_names_update_mpas_states
 
 exit $status

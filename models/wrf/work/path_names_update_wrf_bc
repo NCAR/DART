@@ -1,8 +1,8 @@
-common/types_mod.f90
+assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
+assimilation_code/modules/utilities/time_manager_mod.f90
+assimilation_code/modules/utilities/types_mod.f90
+assimilation_code/modules/utilities/utilities_mod.f90
 models/wrf/WRF_BC/module_couple_uv.f90
 models/wrf/WRF_BC/module_netcdf_interface.f90
 models/wrf/WRF_BC/module_timediff.f90
 models/wrf/WRF_BC/update_wrf_bc.f90
-mpi_utilities/null_mpi_utilities_mod.f90
-time_manager/time_manager_mod.f90
-utilities/utilities_mod.f90

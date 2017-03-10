@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p gau_param -t ../../../mkmf/mkmf.template   \
+../../../build_templates/mkmf -p gau_param -t ../../../build_templates/mkmf.template   \
  -a "../../.." path_names_gau_param
 
 exit $status

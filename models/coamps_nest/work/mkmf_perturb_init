@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p perturb_init -t ../../../mkmf/mkmf.template -c" -C -Duse_netCDF" \
+../../../build_templates/mkmf -p perturb_init -t ../../../build_templates/mkmf.template -c" -C -Duse_netCDF" \
  -a "../../.." path_names_perturb_init
 
 exit $status

@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p ensemble_init -t ../../../mkmf/mkmf.template   \
+../../../build_templates/mkmf -p ensemble_init -t ../../../build_templates/mkmf.template   \
  -a "../../.." path_names_ensemble_init
 
 exit $status

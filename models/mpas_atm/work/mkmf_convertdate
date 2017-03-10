@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p convertdate -t ../../../mkmf/mkmf.template   \
+../../../build_templates/mkmf -p convertdate -t ../../../build_templates/mkmf.template   \
  -a "../../.." path_names_convertdate
 
 exit $status

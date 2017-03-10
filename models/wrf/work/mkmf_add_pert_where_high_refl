@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p add_pert_where_high_refl -t ../../../mkmf/mkmf.template   \
+../../../build_templates/mkmf -p add_pert_where_high_refl -t ../../../build_templates/mkmf.template   \
  -a "../../.." path_names_add_pert_where_high_refl
 
 exit $status

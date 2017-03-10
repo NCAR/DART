@@ -1,0 +1,48 @@
+&utilities_nml
+   module_details = .false.,
+   write_nml = 'none'
+/
+
+&mpi_utilities_nml
+/
+
+&compare_states_nml
+  do_all_numeric_fields = .true.,
+  debug = .false.
+/
+
+&error_handler_test_nml
+  test1 = 1  ,
+  test2 = .false. ,
+  test3 = 2.0 ,
+/
+
+# pick a random set of inputs
+&preprocess_nml
+           overwrite_output = .true.,
+    input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
+   output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90',
+     input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
+    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90',
+   input_files              = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
+                              '../../../observations/forward_operators/obs_def_radar_mod.f90',
+                              '../../../observations/forward_operators/obs_def_metar_mod.f90',
+                              '../../../observations/forward_operators/obs_def_dew_point_mod.f90',
+                              '../../../observations/forward_operators/obs_def_rel_humidity_mod.f90',
+                              '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
+                              '../../../observations/forward_operators/obs_def_gps_mod.f90',
+                              '../../../observations/forward_operators/obs_def_vortex_mod.f90',
+                              '../../../observations/forward_operators/obs_def_gts_mod.f90',
+                              '../../../observations/forward_operators/obs_def_QuikSCAT_mod.f90',
+   /
+
+
+&obs_impact_tool_nml
+  input_filename         = 'crosstest'
+  output_filename        = 'control_impact_runtime.txt'
+  debug                  = .false.
+  /
+
+&obs_kind_nml
+  /
+

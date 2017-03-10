@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p dart_to_cice -t ../../../mkmf/mkmf.template   \
+../../../build_templates/mkmf -p dart_to_cice -t ../../../build_templates/mkmf.template   \
  -a "../../.." path_names_dart_to_cice
 
 exit $status

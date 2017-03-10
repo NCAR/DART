@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p lmdz_to_dart -t ../../../mkmf/mkmf.template -c "-Duse_netCDF" \
+../../../build_templates/mkmf -p lmdz_to_dart -t ../../../build_templates/mkmf.template -c "-Duse_netCDF" \
  -a "../../.." path_names_lmdz_to_dart
 
 exit $status

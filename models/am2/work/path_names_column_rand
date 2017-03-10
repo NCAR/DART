@@ -1,6 +1,6 @@
-common/types_mod.f90
+assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
+assimilation_code/modules/utilities/random_seq_mod.f90
+assimilation_code/modules/utilities/time_manager_mod.f90
+assimilation_code/modules/utilities/types_mod.f90
+assimilation_code/modules/utilities/utilities_mod.f90
 models/am2/column_rand.f90
-mpi_utilities/null_mpi_utilities_mod.f90
-random_seq/random_seq_mod.f90
-time_manager/time_manager_mod.f90
-utilities/utilities_mod.f90

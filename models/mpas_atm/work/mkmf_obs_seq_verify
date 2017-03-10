@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p obs_seq_verify -t ../../../mkmf/mkmf.template \
+../../../build_templates/mkmf -p obs_seq_verify -t ../../../build_templates/mkmf.template \
  -a "../../.."  path_names_obs_seq_verify
 
 exit $status

@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p replace_wrf_fields -t ../../../mkmf/mkmf.template   \
+../../../build_templates/mkmf -p replace_wrf_fields -t ../../../build_templates/mkmf.template   \
  -a "../../.."   path_names_replace_wrf_fields
 
 exit $status

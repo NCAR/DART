@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p dobsdx -t ../../../mkmf/mkmf.template   \
+../../../build_templates/mkmf -p dobsdx -t ../../../build_templates/mkmf.template   \
  -a "../../.." path_names_dobsdx
 
 exit $status

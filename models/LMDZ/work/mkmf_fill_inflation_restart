@@ -6,7 +6,7 @@
 #
 # $Id$
 
-../../../mkmf/mkmf -p fill_inflation_restart -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
+../../../build_templates/mkmf -p fill_inflation_restart -t ../../../build_templates/mkmf.template -c"-Duse_netCDF" \
  -a "../../.." path_names_fill_inflation_restart
 
 exit $status

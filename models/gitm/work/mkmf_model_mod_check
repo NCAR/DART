@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p model_mod_check -t ../../../mkmf/mkmf.template \
+../../../build_templates/mkmf -p model_mod_check -t ../../../build_templates/mkmf.template \
  -a "../../.." path_names_model_mod_check
 
 exit $status

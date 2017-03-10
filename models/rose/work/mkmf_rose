@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p rose -t ../../../mkmf/mkmf.template   \
+../../../build_templates/mkmf -p rose -t ../../../build_templates/mkmf.template   \
 path_names_rose
 
 exit $status

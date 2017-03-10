@@ -1,0 +1,40 @@
+#!/bin/csh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+# if you are building this on yellowstone.ucar.edu you can changed 
+# each of the /opt/local build directories below to /glade/p/work/nancy
+# where i have built the jpg, hdf, and eos libraries.
+
+set JPGDIR = /opt/local
+set JPGLIB = ${JPGDIR}/lib
+set JPGINC = ${JPGDIR}/include
+
+set HDFDIR = /opt/local
+set HDFLIB = ${HDFDIR}/lib
+set HDFINC = ${HDFDIR}/include
+
+set EOSDIR = /opt/local
+set EOSLIB = ${EOSDIR}/lib
+set EOSINC = ${EOSDIR}/include
+
+set MYLIBS = "-lhdfeos -lmfhdf -ldf -ljpeg -lz  -lm"
+
+set MYINCDIR = "-I${EOSDIR}/include -I${HDFDIR}/include -I${JPGDIR}/include"
+set MYLIBDIR = "-L${EOSDIR}/lib     -L${HDFDIR}/lib     -L${JPGDIR}/lib"
+
+../../../../build_templates/mkmf -p convert_airs_L2 -t ../../../../build_templates/mkmf.template \
+ -l "${MYINCDIR} ${MYLIBDIR} ${MYLIBS}" \
+ -a "../../../.." path_names_convert_airs_L2
+
+exit $status
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+
