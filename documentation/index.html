@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>DART Documentation Index</TITLE>
-<link rel="stylesheet" type="text/css" href="doc/html/doc.css" />
-<link href="doc/images/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="documentation/html/doc.css" />
+<link href="images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P><!-- already here: Jump to <a href="index.html">DART Documentation Main Index</a --><br />
@@ -35,7 +35,7 @@
 
 
 <center>
-<a href=rma_doc/rma.html>
+<a href=html/rma.html>
 <H2>Click here for RMA DART</H2>
 </a>
 </center>
@@ -70,18 +70,18 @@ To get started, look here:
 </P>
 <ul>
 <li>Our extensive <a href="http://www.image.ucar.edu/DAReS/">web pages</a></li>
-<li>The <a href="doc/html/Lanai_release.html">release notes</a> which include
+<li>The <a href="html/Lanai_release.html">release notes</a> which include
 installation hints, a walk-through of building and running a model, and an
 overview of the diagnostics.</li>
 <li>Documentation for the 
-main assimilation program <a href="filter/filter.html">filter</a></li>
+main assimilation program <a href="../assimilation_code/programs/filter/filter.html">filter</a></li>
 <li>Documentation for the other related 
 <a href="#Programs">programs</a> that come with DART</li>
 <li>Documentation for <a href="observations/observations.html">observation 
 types</a> supported by DART</li>
 <li>Documentation for the Matlab <a href="#Diagnostics">diagnostic tools</a></li>
 <li>Discussion of <a href="assim_tools/assim_tools_mod.html">localization</a>,
-<a href="filter/filter.html#Inflation">inflation</a></li>
+<a href="../assimilation_code/programs/filter/filter.html#Inflation">inflation</a></li>
 <li>The web pages specific to <a href="#Models">each model</a></li>
 <li>The web pages specific to <a href="#Observations">each observation type</a></li>
 </ul>
@@ -94,11 +94,11 @@ and then the <a href="tutorial/index.html">DART/tutorial</a> directory.
 <P>
 The latest official release is named "Lanai".  
 See the extensive release notes 
-<a href="doc/html/Lanai_release.html">Lanai_release</a>
+<a href="html/Lanai_release.html">Lanai_release</a>
 which include installation help, a walk-through of building and
 running a model, and then examples of how to use the diagnostics
 to evaluate the success of the assimilation.
-See <a href="doc/html/Lanai_diffs_from_Kodiak.html">Lanai_diffs_from_Kodiak</a>
+See <a href="html/Lanai_diffs_from_Kodiak.html">Lanai_diffs_from_Kodiak</a>
 for a brief summary of changes since Kodiak, including new functionality,
 new models and tools, and any non-backwards-compatible changes 
 since the Kodiak release.
@@ -136,7 +136,7 @@ including release notes for each version, a walk-through on-line
 tutorial, and a full set of pdf and framemaker tutorial materials.
 </P>
 
-<P>The Lanai <a href="doc/html/Lanai_release.html">release notes</a> include
+<P>The Lanai <a href="html/Lanai_release.html">release notes</a> include
 installation hints, a walk-through of building and running a model, 
 and an overview of the diagnostics.
 It also includes a list of new or changed models, observation support, 
@@ -145,7 +145,7 @@ diagnostics, and non-backwards compatible changes.
 
 <P>
 For a shorter summary document of only the changes since the last release
-see <a href="doc/html/Lanai_diffs_from_Kodiak.html">Lanai_diffs_from_Kodiak</a>.
+see <a href="html/Lanai_diffs_from_Kodiak.html">Lanai_diffs_from_Kodiak</a>.
 This may be more helpful for current DART users who are 
 looking for pointers to differences when they update.
 </P>
@@ -155,7 +155,7 @@ Three tutorials, in PDF format, are available.  The first
 is more introductory and interactive with
 <A HREF="DART_LAB/DART_LAB.html">PDF documents and Hands-On 
 Matlab exercises</A>.  The second is a longer, single
-<A HREF="doc/html/tut1.pdf">PDF document</A> which
+<A HREF="html/tut1.pdf">PDF document</A> which
 covers much of the background for how and why
 the algorithms in DART work.
 The <a href="tutorial/index.html">full-fledged DART Tutorial</a> is more 
@@ -189,7 +189,7 @@ The executable programs that come with DART include:
 </P>
 
 <UL style="list-style: none;">
-<LI><A href="filter/filter.html">filter</A> - the main assimilation code</LI>
+<LI><A href="../assimilation_code/programs/filter/filter.html">filter</A> - the main assimilation code</LI>
 <LI><A href="perfect_model_obs/perfect_model_obs.html">perfect_model_obs</A> - run a model to generate synthetic observation values</LI>
 <LI><A href="obs_sequence/create_obs_sequence.html">create_obs_sequence</A> - interactive program to generate observations</LI>
 <LI><A href="obs_sequence/create_fixed_network_seq.html">create_fixed_network_seq</A> - repeat a set of observations at multiple times</LI>
@@ -368,7 +368,7 @@ We adhere to the F90 standard of starting a namelist with an ampersand
 <UL style="list-style: none;">
 <LI><A HREF="utilities/closest_member_tool.html#Namelist">&amp;closest_member_tool_nml</A></LI>
 <LI><A HREF="utilities/compare_states.html#Namelist">&amp;compare_states_nml</A></LI>
-<LI><A HREF="filter/filter.html#Namelist">&amp;filter_nml</A></LI>
+<LI><A HREF="../assimilation_code/programs/filter/filter.html#Namelist">&amp;filter_nml</A></LI>
 <LI><A HREF="system_simulation/system_simulation.html#Namelist">&amp;full_error_nml</A> (system simulation)</LI>
 <LI><A HREF="utilities/model_mod_check.html#Namelist">&amp;model_mod_check_nml</A></LI>
 <LI><A HREF="obs_sequence/obs_common_subset.html#Namelist">&amp;obs_common_subset_nml</A></LI>
@@ -544,12 +544,12 @@ the other categories.
 </P>
 
 <UL style="list-style: none;">
-<LI><A HREF='doc/html/Lanai_release.html'>Lanai release notes</A></LI>
-<LI><A HREF='doc/html/Lanai_diffs_from_Kodiak.html'>Brief summary of Lanai differences from Kodiak</A></LI>
-<LI><A HREF='doc/html/mpi_intro.html'>MPI intro</A></LI>
-<LI><A HREF='doc/html/filter_async_modes.html'>Filter 'async' modes</A></LI>
-<LI><A HREF='doc/html/history/ASP_DART_exercise.html'>ASP DART exercises</A></LI>
-<LI><A HREF='doc/html/history/DART_ASP_Summer2003.html'>DART ASP Summer 2003 Workshop</A></LI>
+<LI><A HREF='html/Lanai_release.html'>Lanai release notes</A></LI>
+<LI><A HREF='html/Lanai_diffs_from_Kodiak.html'>Brief summary of Lanai differences from Kodiak</A></LI>
+<LI><A HREF='html/mpi_intro.html'>MPI intro</A></LI>
+<LI><A HREF='html/filter_async_modes.html'>Filter 'async' modes</A></LI>
+<LI><A HREF='html/history/ASP_DART_exercise.html'>ASP DART exercises</A></LI>
+<LI><A HREF='html/history/DART_ASP_Summer2003.html'>DART ASP Summer 2003 Workshop</A></LI>
 <LI><A HREF='mkmf/mkmf.html'>mkmf</A></LI>
 <LI><A HREF='tutorial/index.html'>DART Tutorial</A></LI>
 <LI><A HREF='DART_LAB/DART_LAB.html'>DART_LAB</A></LI>
@@ -579,17 +579,17 @@ all model_mod source files in the DART distribution tree:
 <LI><A href="DART_LAB/DART_LAB.html">DART_LAB/DART_LAB</A></LI>
 <LI><A href="diagnostics/oned/obs_diag.html">diagnostics/oned/obs_diag</A></LI>
 <LI><A href="diagnostics/threed_sphere/obs_diag.html">diagnostics/threed_sphere/obs_diag</A></LI>
-<LI><A href="doc/html/history/ASP_DART_exercise.html">doc/html/ASP_DART_exercise</A></LI>
-<LI><A href="doc/html/boilerplate/boilerplate.html">doc/html/boilerplate/boilerplate</A></LI>
-<LI><A href="doc/html/boilerplate/template.html">doc/html/boilerplate/template</A></LI>
-<LI><A href="doc/html/history/DART_ASP_Summer2003.html">doc/html/DART_ASP_Summer2003</A></LI>
-<LI><A href="doc/html/filter_async_modes.html">doc/html/filter_async_modes</A></LI>
-<LI><A href="doc/html/header.html">doc/html/header</A></LI>
-<LI><A href="doc/html/Lanai_diffs_from_Kodiak.html">doc/html/Lanai_diffs_from_Kodiak</A></LI>
-<LI><A href="doc/html/Lanai_release.html">doc/html/Lanai_release</A></LI>
-<LI><A href="doc/html/mpi_intro.html">doc/html/mpi_intro</A></LI>
+<LI><A href="html/history/ASP_DART_exercise.html">html/ASP_DART_exercise</A></LI>
+<LI><A href="html/boilerplate/boilerplate.html">html/boilerplate/boilerplate</A></LI>
+<LI><A href="html/boilerplate/template.html">html/boilerplate/template</A></LI>
+<LI><A href="html/history/DART_ASP_Summer2003.html">html/DART_ASP_Summer2003</A></LI>
+<LI><A href="html/filter_async_modes.html">html/filter_async_modes</A></LI>
+<LI><A href="html/header.html">html/header</A></LI>
+<LI><A href="html/Lanai_diffs_from_Kodiak.html">html/Lanai_diffs_from_Kodiak</A></LI>
+<LI><A href="html/Lanai_release.html">html/Lanai_release</A></LI>
+<LI><A href="html/mpi_intro.html">html/mpi_intro</A></LI>
 <LI><A href="ensemble_manager/ensemble_manager_mod.html">ensemble_manager/ensemble_manager_mod</A></LI>
-<LI><A href="filter/filter.html">filter/filter</A></LI>
+<LI><A href="../assimilation_code/programs/filter/filter.html">filter/filter</A></LI>
 <LI><A href="filter/wakeup_filter.html">filter/wakeup_filter</A></LI>
 <LI><A href="integrate_model/integrate_model.html">integrate_model/integrate_model</A></LI>
 <LI><A href="location/channel/location_mod.html">location/channel/location_mod</A></LI>
@@ -630,8 +630,8 @@ all model_mod source files in the DART distribution tree:
 <LI><A href="models/bgrid_solo/model_mod.f90">models/bgrid_solo/model_mod</A> (source)</LI>
 <LI><A href="models/cam/cam_to_dart.html">models/cam/cam_to_dart</A></LI>
 <LI><A href="models/cam/dart_to_cam.html">models/cam/dart_to_cam</A></LI>
-<LI><A href="models/cam/doc/cam_guidelines.html">models/cam/doc/cam_guidelines</A></LI>
-<LI><A href="models/cam/doc/script_doc.html">models/cam/doc/script_doc</A></LI>
+<LI><A href="models/cam/cam_guidelines.html">models/cam/cam_guidelines</A></LI>
+<LI><A href="models/cam/script_doc.html">models/cam/script_doc</A></LI>
 <LI><A href="models/cam/model_mod.f90">models/cam/model_mod</A> (source)</LI>
 <LI><A href="models/cam/model_mod.html">models/cam/model_mod</A> (html)</LI>
 <LI><A href="models/clm/clm_to_dart.html">models/clm/clm_to_dart</A></LI>
