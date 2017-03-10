@@ -23,9 +23,12 @@ if ( $#argv > 0 ) then
   endif
 endif
 
+# cd to the start of the DART directory
+cd ..
+
 if ( ! -d models ) then
-   echo "models does not exist. $0 must be run from the top-level"
-   echo "DART directory -- please try again."
+   echo "models does not exist. $0 must be run from the developer_tests"
+   echo "directory -- please try again."
    exit 2
 else
    set DARTHOME = `pwd`
@@ -115,7 +118,7 @@ echo "Not all observation converters are expected to build; you may"
 echo "not have all the necessary supporting libraries.  So errors here"
 echo "are not fatal."
 
-cd ${DARTHOME}/observations
+cd ${DARTHOME}/observations/obs_converters
 if ( 1 == 1 ) then
   ./buildall.csh
 endif
@@ -142,7 +145,7 @@ echo "=================================================================="
 echo
 echo
 
-cd ${DARTHOME}/location
+cd ${DARTHOME}/developer_tests/location
 if ( 1 == 1 ) then
   ./testall.csh
 endif
@@ -157,65 +160,6 @@ echo "=================================================================="
 echo
 echo
 
-#----------------------------------------------------------------------
-
-# FIXME: put this into a separate script
-
-
-echo
-echo
-echo "=================================================================="
-echo "=================================================================="
-echo "Testing single-threaded bgrid_solo at "`date`
-echo "=================================================================="
-echo "=================================================================="
-echo
-
-set MODEL = bgrid_solo
-
-cd ${DARTHOME}/models/${MODEL}/work
-
-# Save the 'original' files so we can reinstate them as needed
-
-${COPY} input.nml     input.nml.$$
-${COPY} obs_seq.in   obs_seq.in.$$
-
-# Begin by compiling all programs; need to stop if an error is detected
-./quickbuild.csh -nompi || exit 91
-
-# Build the input files
-ncgen -o perfect_input.nc perfect_input.cdl
-ncgen -o  filter_input.nc  filter_input.cdl
- 
-# Run the perfect model and the filter
-./perfect_model_obs  || exit 92
-./filter             || exit 93
-
-echo "Removing the newly-built objects ..."
-${REMOVE} filter_output.nc perfect_output.nc
-${REMOVE} input.nml perfect_input.nc filter_input.nc
-${REMOVE} obs_seq.in obs_seq.out obs_seq.final
-${REMOVE} preassim.nc postassim.nc
-${REMOVE} *.o *.mod 
-${REMOVE} Makefile input.nml.*_default .cppdefs
-foreach TARGET ( mkmf_* )
-  set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
-  ${REMOVE} $PROG
-end
-
-# Reinstate the 'original' files so we can run this again if we need to.
-
-${MOVE}   input.nml.$$   input.nml
-${MOVE}  obs_seq.in.$$ obs_seq.in
-
-echo
-echo "=================================================================="
-echo "Single-threaded testing of bgrid_solo complete at "`date`
-echo "=================================================================="
-echo
-
-echo
-echo "=================================================================="
 echo "SKIPPING Testing single-threaded lorenz_96 (L96) at "`date`
 #echo "Testing single-threaded lorenz_96 (L96) at "`date`
 echo "=================================================================="
