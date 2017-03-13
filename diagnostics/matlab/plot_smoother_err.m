@@ -1,3 +1,4 @@
+function plot_smoother_err
 %% DART:plot_smoother_err - summary plots of global error and spread using the smoother
 %
 % A reminder of the sequence:

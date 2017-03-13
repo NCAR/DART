@@ -1,4 +1,3 @@
-
 function localization_visualizer
 % localization_visualizer helps explore the localization impact for a given cutoff value.
 %           You can change projections, resolutions, location, etc.

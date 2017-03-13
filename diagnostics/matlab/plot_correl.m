@@ -1,3 +1,4 @@
+function plot_correl(diagn_file)
 %% DART:plot_correl Plots space-time series of correlation between a given variable
 %               at a given time and other variables at all times in an
 %               ensemble time sequence.
@@ -17,6 +18,12 @@
 %                       postassim.nc  ---> [posterior inflation]  --->
 %                             filter_output.nc
 %
+% Example 1 (prompts you for a filename - default is 'preassim.nc')
+% plot_correl
+%
+% Example 2
+% fname = 'filter_output.nc';
+% plot_correl(fname)
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -24,12 +31,16 @@
 %
 % DART $Id$
 
-if (exist('diagn_file','var') ~=1)
-   disp('Input name of ensemble trajectory file:')
-   diagn_file = input('<cr> for preassim.nc\n','s');
-   if isempty(diagn_file)
-      diagn_file = 'preassim.nc';
-   end
+if (nargin == 0)
+    disp('Input name of ensemble trajectory file:')
+    diagn_file = input('<cr> for preassim.nc\n','s');
+    if isempty(diagn_file)
+        diagn_file = 'preassim.nc';
+    end
+elseif (nargin ==1 )
+    % nothing to do
+else
+    error('Must supply 1 filename or none.')
 end
 
 if ( exist(diagn_file,'file') ~= 2 ), error('%s does not exist.',diagn_file); end
@@ -50,12 +61,12 @@ switch lower(pinfo.model)
       inputstring = input( ...
            sprintf('Input index for base variable (between %d and %d, inclusive)  ', ...
            pinfo.min_state_var,pinfo.max_state_var),'s');
-      pinfo.base_var_index = str2num(deblank(inputstring));
+      pinfo.base_var_index = str2double(deblank(inputstring));
 
       inputstring = input( ...
            sprintf('Input time index for base point (between 1 and %d, inclusive)  ', ...
            pinfo.time_series_length),'s');
-      pinfo.base_time = str2num(deblank(inputstring));
+      pinfo.base_time = str2double(deblank(inputstring));
 
       fprintf('Using diagnostic file %s\n',diagn_file)
       fprintf('Correlating variable %s index %d at time %d.\n', ...
@@ -74,7 +85,7 @@ switch lower(pinfo.model)
       inputstring = input( ...
            sprintf('Input time index for base point (between 1 and %d, inclusive)  ', ...
            pinfo.time_series_length),'s');
-      pinfo.base_time = str2num(deblank(inputstring));
+      pinfo.base_time = str2double(deblank(inputstring));
 
       fprintf('Using diagnostic file %s\n',diagn_file)
       fprintf('Correlating variable %s index %d at time %d.\n', ...
@@ -95,7 +106,7 @@ switch lower(pinfo.model)
       inputstring = input( ...
            sprintf('Input time index for base point (between 1 and %d, inclusive)  ', ...
            pinfo.time_series_length),'s');
-      pinfo.base_time = str2num(deblank(inputstring));
+      pinfo.base_time = str2double(deblank(inputstring));
 
       fprintf('Using diagnostic file %s\n',diagn_file)
       fprintf('Correlating variable %s index %d at time %d.\n', ...

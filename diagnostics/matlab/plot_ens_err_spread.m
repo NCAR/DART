@@ -1,3 +1,4 @@
+function plot_ens_err_spread(truth_file, diagn_file)
 %% DART: plot_ens_err_spread - summary plots of the ensemble error and ensemble spread.
 %                        Interactively queries for the needed information.
 %                        Since different models potentially need different
@@ -16,11 +17,13 @@
 %                       postassim.nc  ---> [posterior inflation]  --->
 %                             filter_output.nc
 %
-% Example 1 (for low-order models)
+% Example 1  (Prompt for filenames. Defaults are 'perfect_output.nc' and 'preassim.nc')
+% plot_ens_err_spread
 %
+% Example 2
 % truth_file = 'perfect_output.nc';
 % diagn_file = 'preassim.nc';
-% plot_ens_err_spread
+% plot_ens_err_spread(truth_file, diagn_file)
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -28,21 +31,25 @@
 %
 % DART $Id$
 
-if (exist('truth_file','var') ~= 1)
-   disp('Input name of true model trajectory file:')
-   truth_file = input('<cr> for perfect_output.nc\n','s');
-   if isempty(truth_file)
-      truth_file = 'perfect_output.nc';
-   end
+if (nargin == 0)
+    disp('Input name of true model trajectory file:')
+    truth_file = input('<cr> for perfect_output.nc\n','s');
+    if isempty(truth_file)
+        truth_file = 'perfect_output.nc';
+    end
+    disp('Input name of ensemble trajectory file:')
+    diagn_file = input('<cr> for preassim.nc\n','s');
+    if isempty(diagn_file)
+        diagn_file = 'preassim.nc';
+    end
+elseif (nargin == 2)
+    % all good - nothing to do
+else
+    error('Must supply either two filenames or none.')
 end
 
-if (exist('diagn_file','var') ~=1)
-   disp('Input name of ensemble trajectory file:')
-   diagn_file = input('<cr> for preassim.nc\n','s');
-   if isempty(diagn_file)
-      diagn_file = 'preassim.nc';
-   end
-end
+if ( exist(truth_file,'file') ~= 2 ), error('%s does not exist.',truth_file); end
+if ( exist(diagn_file,'file') ~= 2 ), error('%s does not exist.',diagn_file); end
 
 vars  = CheckModel(diagn_file);   % also gets default values for this model.
 vars  = rmfield(vars,{'fname','time','time_series_length'});

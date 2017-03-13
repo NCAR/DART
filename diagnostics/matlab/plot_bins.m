@@ -1,3 +1,4 @@
+function plot_bins(truth_file, diagn_file)
 %% DART:plot_bins Plots ensemble rank histograms
 %
 % plot_bins    interactively queries for the information needed to create
@@ -17,11 +18,13 @@
 %                       postassim.nc  ---> [posterior inflation]  --->
 %                             filter_output.nc
 %
-% Example (for low-order models)
+% Example 1  (Prompt for filenames. Defaults are 'perfect_output.nc' and 'preassim.nc')
+% plot_bins
 %
+% Example 2
 % truth_file = 'perfect_output.nc';
 % diagn_file = 'preassim.nc';
-% plot_bins
+% plot_bins(truth_file,diagn_file)
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -33,20 +36,21 @@
 % exist('bob') == 1   means the variable exists.
 %                     the value of the variable is checked later.
 
-if (exist('truth_file','var') ~= 1)
-   disp('Input name of true model trajectory file:')
-   truth_file = input('<cr> for perfect_output.nc\n','s');
-   if isempty(truth_file)
-      truth_file = 'perfect_output.nc';
-   end
-end
-
-if (exist('diagn_file','var') ~=1)
-   disp('Input name of ensemble trajectory file:')
-   diagn_file = input('<cr> for preassim.nc\n','s');
-   if isempty(diagn_file)
-      diagn_file = 'preassim.nc';
-   end
+if (nargin == 0)
+    disp('Input name of true model trajectory file:')
+    truth_file = input('<cr> for perfect_output.nc\n','s');
+    if isempty(truth_file)
+        truth_file = 'perfect_output.nc';
+    end
+    disp('Input name of ensemble trajectory file:')
+    diagn_file = input('<cr> for preassim.nc\n','s');
+    if isempty(diagn_file)
+        diagn_file = 'preassim.nc';
+    end
+elseif (nargin == 2)
+    % all good - nothing to do
+else
+    error('Must supply either two filenames or none.')
 end
 
 if ( exist(truth_file,'file') ~= 2 ), error('%s does not exist.',truth_file); end

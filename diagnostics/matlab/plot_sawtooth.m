@@ -1,3 +1,4 @@
+function plot_sawtooth(truth_file,posterior_file,prior_file)
 %% DART:plot_sawtooth - time series of a state variable including updates.
 %
 % plot_sawtooth    interactively queries for the needed information.
@@ -9,8 +10,7 @@
 % trajectory. If there is no change in the model state, this should
 % appear as a series of steps. This necessitates plotting the 'posterior'
 % first ... think about it ...
-%
-% Ultimately, plot_sawtooth will be replaced by a GUI.
+% If the true state is available, it is also plotted.
 %
 % A reminder of the sequence:
 % truth  run (from    pmo):
@@ -21,8 +21,17 @@
 %                       postassim.nc  ---> [posterior inflation]  --->
 %                             filter_output.nc
 %
+% Example 1:
+% truth_file = 'perfect_output.nc';
+% posterior_file = 'filter_output.nc';
+% prior_file = 'preassim.nc';
+% plot_sawtooth(truth_file,posterior_file,prior_file)
 %
-% All the heavy lifting is done by PlotSawtooth.
+% Example 2: no true state available
+% posterior_file = 'filter_output.nc';
+% prior_file = 'preassim.nc';
+% plot_sawtooth([],posterior_file,prior_file)
+
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -30,30 +39,31 @@
 %
 % DART $Id$
 
-if (exist('truth_file','var') ~= 1)
-   disp('If the true model trajectory exists, it will be plotted. If not, don''t worry.')
-   disp('Input name of true model trajectory file:')
-   truth_file = input('<cr> for perfect_output.nc\n','s');
-   if isempty(truth_file)
-      truth_file = 'perfect_output.nc';
-   end
+if (nargin == 0)
+    disp('If the true model trajectory exists, it will be plotted. If not, don''t worry.')
+    disp('Input name of true model trajectory file:')
+    truth_file = input('<cr> for perfect_output.nc\n','s');
+    if isempty(truth_file)
+        truth_file = 'perfect_output.nc';
+    end
+    
+    disp('Input name of (posterior) ensemble trajectory file:')
+    posterior_file = input('<cr> for filter_output.nc\n','s');
+    if isempty(posterior_file)
+        posterior_file = 'filter_output.nc';
+    end
+    
+    disp('Input name of (prior) ensemble trajectory file:')
+    prior_file = input('<cr> for preassim.nc\n','s');
+    if isempty(prior_file)
+        prior_file = 'preassim.nc';
+    end
+elseif (nargin == 3)
+    % proceed as normal
+else
+    error('Requires exactly 3 input filenames.')
 end
 
-if (exist('posterior_file','var') ~=1)
-   disp('Input name of (posterior) ensemble trajectory file:')
-   posterior_file = input('<cr> for filter_output.nc\n','s');
-   if isempty(posterior_file)
-      posterior_file = 'filter_output.nc';
-   end
-end
-
-if (exist('prior_file','var') ~=1)
-   disp('Input name of (prior) ensemble trajectory file:')
-   prior_file = input('<cr> for preassim.nc\n','s');
-   if isempty(prior_file)
-      prior_file = 'preassim.nc';
-   end
-end
 
 % CheckModelCompatibility assumes first file is 'truth', so the
 % components must be renamed in this context.

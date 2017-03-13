@@ -1,3 +1,4 @@
+function plot_reg_factor(fname)
 %% plot_reg_factor
 %
 % A reminder of the sequence:
@@ -16,18 +17,18 @@
 %
 % DART $Id$
 
-if (exist('fname','var') ~= 1)
-   fname = input('Input name of regression diagnostics file:\n<cr> for reg_diagnostics\n','s');
-   if isempty(fname)
-      fname = 'reg_diagnostics';
-   end
+if (nargin > 1)
+    error('Must supply at most 1 filename.')
+elseif (nargin ==1)
+    % nothing do do
 else
-   s1 = input(sprintf('Input name of reg_diagnostics file:\n<cr> for  %s ',fname),'s');
-   if ~isempty(s1), fname = deblank(s1); end
+    fname = input('Input name of regression diagnostics file:\n<cr> for reg_diagnostics\n','s');
+    if isempty(fname)
+        fname = 'reg_diagnostics';
+    end
 end
 
 if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
-
 
 obs_index = input('Input observation index: \n');
 
