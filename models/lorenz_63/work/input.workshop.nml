@@ -27,9 +27,6 @@
    silence                    = .false.,
    /
 
-   #input_state_file_list        = 'filter_input_list.txt'
-   #output_state_file_list       = 'filter_output_list.txt'
-
 &filter_nml
    single_file_in               = .true.,
    input_state_files            = ''
