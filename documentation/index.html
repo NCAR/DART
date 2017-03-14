@@ -67,7 +67,25 @@ There are tools built into the DART framework to address
 many of these problems.
 </P> 
 <P>
-Paragraph from Nancy about new functionality (IO, diagnostics, large memory)
+This release of DART includes many new features.
+DART will now read directly from NetCDF files.  If your
+model uses NetCDF file format the model_to_dart and
+dart_to_model steps are no longer needed.  Given that
+many jobs spend a large percentage of time doing
+file I/O, this can be a significant speedup in the overall
+assimilation cycle.   DART now distributes the ensemble
+of model states across the MPI tasks, removing the hard
+memory limit that a single ensemble member's data
+fit into the memory of a single task.  This removes the
+memory limit for models at high resolution or with nested 
+grids.   DART can assimilate forward operators computed
+outside of the filter process.  Users can provide a table of
+observations and state vector items along with a factor
+that can easily prevent one class of observations from 
+impacting another class of state vector data, and vice versa.
+The DART directory structure has been revamped to help
+users more easily find the various utilities, tools, supported models,
+and observation types that come with the DART distribution.
 </P>
 <P>
 To get started, look here:
