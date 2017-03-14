@@ -15,8 +15,10 @@ use time_manager_mod,      only : time_type, set_time
 
 use     location_mod,      only : location_type, set_location, set_location_missing, &
                                   get_close_maxdist_init, get_close_obs_init, &
-                                  get_close_state_init, loc_get_close_state => get_close_obs, &
-                                  loc_get_close_obs => get_close_obs, get_close_type
+                                  get_close_state_init => get_close_obs_init, &
+                                  loc_get_close_obs => get_close_obs, &
+                                  loc_get_close_state => get_close_obs, &
+                                  get_close_type
 
 use    utilities_mod,      only : register_module, error_handler, E_ERR, E_MSG, nmlfileunit, &
                                   do_output, find_namelist_in_file, check_namelist_read,     &
