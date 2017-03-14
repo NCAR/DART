@@ -390,13 +390,16 @@ ${COPY} $SetupFileName ${caseroot}/${SetupFileName}.original
 if (   -e DART_config ) then
    sed -e "s#BOGUS_DART_ROOT_STRING#${dartroot}#" < DART_config \
        >! ${caseroot}/DART_config  || exit 20
-   chmod 755       ${caseroot}/DART_config
+else if ( -e ../DART_config ) then
+   sed -e "s#BOGUS_DART_ROOT_STRING#${dartroot}#" < ../DART_config \
+       >! ${caseroot}/DART_config  || exit 21
 else
    echo "ERROR: the script to configure for data assimilation is not available."
    echo "       DART_config MUST be present locally or in"
    echo "       ${dartroot}/models/cam-fv/scripts_cesm1_5/"
-   exit 21
+   exit 22
 endif
+chmod 755       ${caseroot}/DART_config
 
 
 # FIXME; DReaD suggested merging our env_archive needs into their file,
@@ -637,8 +640,8 @@ endif
 # if RESUBMIT > 0, (re)submit a new case.run job.
 ./xmlchange DATA_ASSIMILATION=TRUE
 ./xmlchange DATA_ASSIMILATION_CYCLES=1
-./xmlchange DATA_ASSIMILATION_SCRIPT=${CASEROOT}/assimilate.csh
-# ./xmlchange DATA_ASSIMILATION_SCRIPT=${CASEROOT}/no_assimilate.csh
+# ./xmlchange DATA_ASSIMILATION_SCRIPT=${CASEROOT}/assimilate.csh
+./xmlchange DATA_ASSIMILATION_SCRIPT=${CASEROOT}/no_assimilate.csh
 
 # How many jobs (not cycles per job) to run after the first, 
 # each of which will do DATA_ASSIMILATION_CYCLES cycles.

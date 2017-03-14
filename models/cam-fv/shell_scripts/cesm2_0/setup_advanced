@@ -1,26 +1,28 @@
 #!/bin/csh -f
-#
-# DART software - Copyright UCAR. This open source software is provided
-# by UCAR, "as is", without charge, subject to all terms of use at
-# http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
-#
 #BSUB  -n 1 
 #BSUB  -R "span[ptile=1]"
 #BSUB  -q caldera 
 #BSUB  -P P86850054
-#BSUB  -W 1:00
+#BSUB  -W 2:00
 #BSUB  -u raeder@ucar.edu
 #BSUB  -N  
 #BSUB  -a poe 
 # The job name MUST be the name of this script(file), or this file will not be
 # archived in $CASEROOT.
-#BSUB  -J setup_hybrid
-#BSUB  -o Test_DART_config.bld2
-#BSUB  -e Test_DART_config.bld2
+#BSUB  -J setup_advanced
+#BSUB  -o CAM6_clouds_4.bld1
+#BSUB  -e CAM6_clouds_4.bld1
+
 
 # setup_advanced will need parts from CESM1_5_setup_advanced(?)
+
+
+#
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id: setup_advanced 7946 2015-04-30 21:11:34Z nancy $
 
 
 #*******************************************************************************
@@ -35,7 +37,7 @@
 # is used. Instructions on what to change to use the SE core or WACCM are
 # outlined in the models/cam-fv/model_mod.html documentation.
 #
-# This script ($rma/models/cam-fv/scripts_cesm1_5/setup_hybrid) has many 
+# This script ($rma/models/cam-fv/scripts_cesm2_0/setup_advanced) has many 
 # changes from $non-rma/models/cam-fv/shell_scripts/CESM1_2_1_setup_hybrid
 # due to CESM's implementation of cime and move to perl scripts and xml files 
 # for all of the setup and running.  CESM1_5 enables running multiple cycles in a single
@@ -129,7 +131,6 @@
 #                  T85           ... eulerian at ~ 1 degree
 #                  ne30np4_gx1v6 ... SE core at ~ 1 degree
 # cesmtag       The version of the CESM source code to use when building the code.
-#               The assimilate.csh in this directory will handle only cesm2_0_beta05 and later.
 #               A directory with this name must exist in your home directory,
 #               and have SourceMods in it. See the SourceMods section.
 #               http://www.image.ucar.edu/pub/DART/CESM/README
@@ -140,13 +141,21 @@
 # ==============================================================================
 # AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV (F_AMIP_CAM5) (FAMIPC5)
 
-setenv case                 Test_DART_config
+setenv case                 CAM6_clouds_4
 # setenv case            Tune_c.2_v1.5_dflt_dflt
-setenv compset              F
-setenv resolution           f19_f19
-setenv cesmtag              cesm2_0_beta05_cam5_4_101
-setenv num_instances        3
+# F2000_DEV = 2000_CAM60_CLM50%BGC_CICE%PRES_DOCN%DOM_MOSART_CISM1%NOEVOLVE_SWAV
+#             defined in components/cam, not cime(!).
+setenv compset          F2000_DEV
+setenv compset_args     "--compset $compset"
+# setenv resolution       f09_f09
+setenv resolution       f09_d025
+setenv user_grid        "  --gridfile /glade/p/work/raeder/Exp/CAM6_clouds"
+setenv user_grid        "${user_grid}/config_grids+fv1deg_oi0.25_gland20.xml"
+setenv cesmtag          cesm2_0_beta05_cam5_4_101
+setenv num_instances    80
 
+#
+#
 # ==============================================================================
 # machines and directories:
 #
@@ -219,11 +228,14 @@ setenv baseobsdir   /glade/p/image/Observations/NCEP+ACARS+GPS
 # setenv refmon      01
 # setenv refday      10
 
-setenv refcase     Tune_2deg_3
-setenv refyear     2010
-setenv refmon      08
+# /glade/scratch/raeder/CAM6_spinup_sst.25/archive/rest/2013-06-15-00000
+# setenv refcase     CAM6_spinup2
+setenv refcase     CAM6_spinup_sst.25
+setenv refyear     2013
+setenv refmon      06
 
-setenv refday      16
+# setenv refday      16
+setenv refday      15
 setenv reftod      00000
 
 # useful combinations of time that we use below
@@ -260,10 +272,9 @@ setenv stagedir /glade/scratch/${USER}/${refcase}/archive/rest/${reftimestamp}
 # setenv start_year    2005
 # setenv start_month   12
 # setenv start_day     15
-setenv start_year    2010
-setenv stop_year     2010
-setenv start_month   08
-setenv start_day     16
+setenv start_year    2013
+setenv start_month   06
+setenv start_day     15
 setenv start_tod     00000
 
 setenv short_term_archiver off
@@ -271,6 +282,24 @@ setenv long_term_archiver  off
 
 setenv stop_option         nhours
 setenv stop_n              6
+
+# Daily, 1/4-degree SSTs from Reynolds,...,Tomas
+setenv sst_dataset \
+   "/glade/p/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20130101_cat_20130731_filled_c170223.nc"
+#    "/glade/p/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20100101_cat_20101231_filled_c130829.nc"
+#     /glade/p/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20110101_cat_20111231_filled_c130829.nc
+setenv sst_grid    /glade/p/work/raeder/Models/CAM_init/SST/domain.ocn.d025.120821.nc
+setenv sst_year_start $start_year
+setenv sst_year_end   $start_year
+# 
+# Monthly, 1- or 2-degree SSTs from HadOI.
+#    setenv sst_dataset ${cesmdata}/atm/cam/sst/sst_HadOIBl_bc_0.9x1.25_1850_2013_c140701.nc
+#    setenv sst_grid    ${cesmdata}/share/domains/domain.ocn.fv0.9x1.25_gx1v6.130409.nc
+#    setenv sst_year_start 1850
+#    setenv sst_year_end   2013
+# setenv sst_dataset "${cesmdata}/atm/cam/sst/sst_HadOIBl_bc_1.9x2.5_1850_2014_c150416.nc"
+# setenv sst_grid    "${cesmdata}/share/domains/domain.ocn.fv1.9x2.5_gx1v6.130409.nc"
+# setenv sst_year_end   2014
 
 # ==============================================================================
 # job settings:
@@ -286,7 +315,7 @@ setenv stop_n              6
 
 setenv PROJECT      P86850054
 setenv queue        premium
-setenv timewall     0:20
+setenv timewall     2:00
 
 # ==============================================================================
 # standard commands:
@@ -385,7 +414,8 @@ ${REMOVE} ${rundir}
 # setup_advanced will need more flexible arguments, as in CESM1_5_setup_advanced(?)
 # This may need --project, if env var PROJECT is no longer used.
 ${CIMEROOT}/scripts/create_newcase --case ${caseroot} --mach ${mach} \
-    --res ${resolution} --compset ${compset} --ninst $num_instances
+           --res ${resolution} ${compset_args} ${user_grid}
+#    --res ${resolution} --compset ${compset} --ninst $num_instances
     
 if ( $status != 0 ) then
    echo "ERROR: Case could not be created."
@@ -437,14 +467,26 @@ chmod 755       ${caseroot}/DART_config
 if (! -f ${caseroot}/env_archive.xml.original) then
    ${COPY} ${caseroot}/env_archive.xml  ${caseroot}/env_archive.xml.original
 endif
+
+# > > > This needs testing.  < < < 
+# "ex_end" prevents the $s from being interpreted as shell variables.
 ex ${caseroot}/env_archive.xml <<"ex_end"
 /"dart"
-/<files>
+.+1,/obs_seq/d
 append
       <file_extension suffix="da\.log\..+">
         <subdir>logs</subdir>
         <keep_last_in_rundir>false</keep_last_in_rundir>
       </file_extension> 
+      <file_extension suffix="[\w\d]*?dart_log\..+">
+        <subdir>logs</subdir>
+        <keep_last_in_rundir>false</keep_last_in_rundir>
+      </file_extension>
+      <rest_file_extension>\..*?inf_.*?\.nc</rest_file_extension>
+      <hist_file_extension>\..*?[^f]_mean\..*?\.nc$</hist_file_extension>
+      <hist_file_extension>\..*?[^f]_sd\..*?\.nc$</hist_file_extension>
+      <hist_file_extension>\..*?[^f]_member.*?\.nc$</hist_file_extension>
+      <hist_file_extension>\w*?obs_seq\..*</hist_file_extension>
 .
 wq
 "ex_end"
@@ -551,7 +593,7 @@ end
 #       BUT, do arrange it so that each member(instance) spans complete nodes:
 #       modulo(total pe count / number of instances, 15) == 0.
 
-@ nodes_per_instance = 2
+@ nodes_per_instance = 3
 
 # cesm2; is num_instances still needed here, with ninst being a create_newcase argument?
 #        Try it as it is.  Fix as necessary.
@@ -644,6 +686,20 @@ endif
 ./xmlchange EXEROOT=${exeroot}
 ./xmlchange RUNDIR=${rundir}
 
+./xmlchange SSTICE_DATA_FILENAME=$sst_dataset
+./xmlchange SSTICE_GRID_FILENAME=$sst_grid
+./xmlchange SSTICE_YEAR_ALIGN=$sst_year_start
+./xmlchange SSTICE_YEAR_START=$sst_year_start
+./xmlchange SSTICE_YEAR_END=$sst_year_end
+# Kluge to fix env_run.xml for hi-res SST data set, because something is wrong with the config_grids file.
+echo $resolution | grep d025
+if ($status == 0) then
+./xmlchange LND_DOMAIN_PATH=/glade/p/work/raeder/Models/cesm1_4_beta06/cime/tools/mapping/gen_domain_files/
+./xmlchange LND_DOMAIN_FILE=domain.lnd.fv0.9x1.25_d.25x.25.150907.nc
+./xmlchange ROF2OCN_LIQ_RMAPNAME=/glade/p/work/raeder/Exp/GWD_TMS_CLUBB/mapping/gridmaps/map_r05_to_d.25_nnsm_e1000r300_160229.nc
+./xmlchange ROF2OCN_ICE_RMAPNAME=/glade/p/work/raeder/Exp/GWD_TMS_CLUBB/mapping/gridmaps/map_r05_to_d.25_nnsm_e1000r300_160229.nc
+endif
+
 # Do not change the CALENDAR or the value of CONTINUE_RUN in this script.
 # Even if it's a branch from another run, where all restarts, etc. are available,
 # it still needs to change case/file names for this new case.
@@ -711,7 +767,7 @@ endif
 
 # CAM physics (etc.) selection.  (Eaton said?) It's safer to always specify the physics,
 # instead of letting the compset choose it.
-./xmlchange CAM_CONFIG_OPTS="-phys cam4 "
+# ./xmlchange CAM_CONFIG_OPTS="-phys cam4 "
 
 # These are archiving options that may be used.
 # You can turn the short/long term archivers on or off ({short,long}_term_archiver),
@@ -726,8 +782,7 @@ endif
 #       assimilate.csh uses save_every_Mth_day_restarts to remove extraneous restart
 #          sets in the DART context.  
 #          This will be inherited by DART_config and inserted into assimilate.csh.
-setenv save_every_Mth_day_restarts 4
-#
+setenv save_every_Mth_day_restarts 2
 
 
 ./xmlchange -file env_batch.xml -subgroup case.st_archive -id JOB_QUEUE          -val geyser
@@ -846,6 +901,7 @@ endif
 # implementation bugs. These are known problems and will be fixed soon.
 # this should be removed when the files are fixed:
 
+# CESM1_5:
 # rtm.buildnml.csh have been replaced with rtm.buildnml perl scripts,
 # which have the multi-instance fixes in them.
 # BUT, they look in the wrong places for the rtm restart file in this hybrid setup:
@@ -976,35 +1032,41 @@ while ($inst <= $num_instances)
 
       set chem_datapath = "${cesmdata}/atm/cam/chem/trop_mozart_aero"
 
+
+# INTERP...  seems to not work in beta05.
+# It assigns a value to cycle year somewhere, which is incompatible with "INTERP..."
+#       if ($start_year <= 2015) then
+# 
+#          # This might be better (30 levels): ozone_1.9x2.5_L30_2005-2099_c130313.nc
+#          # No, it doesn't have PS on it.
+#          echo "prescribed_ozone_type = 'INTERP_MISSING_MONTHS'"                                          >> ${fname}
+#          echo "prescribed_ozone_datapath = '/glade/p/cesmdata/cseg/inputdata/atm/cam/ozone'"             >> ${fname}
+#          echo "prescribed_ozone_file = 'ozone_1.9x2.5_L26_1850-2015_rcp45_c101108.nc'"                   >> ${fname}
+#          echo "prescribed_ozone_name = 'O3'"                                                             >> ${fname}
+# 
+#          # Don't specify tracer_cnst_cycle_yr if _type is SERIAL or INTERP_MISSING_MONTH
+#          # echo "tracer_cnst_cycle_yr = 2010 "                                                             >> ${fname}
+#          echo "tracer_cnst_type      =  'INTERP_MISSING_MONTHS'"                                              >> ${fname}
+#          echo "tracer_cnst_datapath  = '/glade/p/cesmdata/cseg/inputdata/atm/cam/chem/trop_mozart_aero/oxid'" >> ${fname}
+#          echo "tracer_cnst_file      =  'oxid_1.9x2.5_L26_1850-2015_rcp45_c101108.nc'"                        >> ${fname}
+#          echo "tracer_cnst_filelist  = 'oxid_1.9x2.5_L26_clim_list.c090805.txt'"                              >> ${fname}
+#          echo "tracer_cnst_specifier = 'O3','OH','NO3','HO2'"                                                 >> ${fname}
+# 
+#       else 
+         if ($inst == 1) then
+            echo 'WARNING; using default ozone and tracer_cnst forcing files'
+         endif
+#       endif
+# 
+# 
       # CAM5 does prognostic aerosols by default (which is expensive).
       # Specifying the following causes CAM to use prescribed aerosols, which is cheaper.
       # Prescribed aerosols on the timescales of interest to assimilation are acceptable.
       # WACCM5 should not have these set.
 
-
-      if ($start_year <= 2015) then
-
-         # This might be better (30 levels): ozone_1.9x2.5_L30_2005-2099_c130313.nc
-         # No, it doesn't have PS on it.
-         echo "prescribed_ozone_type = 'INTERP_MISSING_MONTHS'"                                          >> ${fname}
-         echo "prescribed_ozone_datapath = '/glade/p/cesmdata/cseg/inputdata/atm/cam/ozone'"             >> ${fname}
-         echo "prescribed_ozone_file = 'ozone_1.9x2.5_L26_1850-2015_rcp45_c101108.nc'"                   >> ${fname}
-         echo "prescribed_ozone_name = 'O3'"                                                             >> ${fname}
-
-         # Don't specify tracer_cnst_cycle_yr if _type is SERIAL or INTERP_MISSING_MONTH
-         # echo "tracer_cnst_cycle_yr = 2010 "                                                             >> ${fname}
-         echo "tracer_cnst_type      =  'INTERP_MISSING_MONTHS'"                                              >> ${fname}
-         echo "tracer_cnst_datapath  = '/glade/p/cesmdata/cseg/inputdata/atm/cam/chem/trop_mozart_aero/oxid'" >> ${fname}
-         echo "tracer_cnst_file      =  'oxid_1.9x2.5_L26_1850-2015_rcp45_c101108.nc'"                        >> ${fname}
-         echo "tracer_cnst_filelist  = 'oxid_1.9x2.5_L26_clim_list.c090805.txt'"                              >> ${fname}
-         echo "tracer_cnst_specifier = 'O3','OH','NO3','HO2'"                                                 >> ${fname}
-
-      else 
-         echo 'WARNING; using default ozone and tracer_cnst forcing files'
-      endif
-# 
-# 
-      if ($start_year <= 2010) then
+      # CAM6_clouds wants prognostic aerosols.
+      if (0) then
+#       if ($start_year <= 2010) then
 # 
 #          # As of April 2015, the default files only run through 2005.
 #          # Specify non-default files for assimilation for years 2006-2010.
@@ -1057,7 +1119,10 @@ while ($inst <= $num_instances)
          echo "WARNING; using default bndtvghg"
       endif
 
-      if ($start_year <= 2013) then
+      # CAM6_clouds
+      # Can't specify this file, when CAM prognostic aerosols apparently also specifies prescribed_strataero_file.
+      if (0) then
+      # if ($start_year <= 2013) then
          echo " prescribed_volcaero_datapath = '/glade/p/cesmdata/cseg/inputdata/atm/cam/volc'"       >> ${fname}
          echo " prescribed_volcaero_file      = 'CCSM4_volcanic_1850-2013_prototype1_c130430.nc'"     >> ${fname}
       else 
@@ -1120,9 +1185,9 @@ while ($inst <= $num_instances)
    # CICE Namelist
 
    # CAM5: 
-   # echo "ice_ic = '${refcase}.cice${inst_string}.r.${reftimestamp}.nc'" >> ${fname}
+   echo "ice_ic = '${refcase}.cice${inst_string}.r.${reftimestamp}.nc'" >> ${fname}
    # CAM4: 
-   echo "ice_ic = 'default'" >> ${fname}
+   # echo "ice_ic = 'default'" >> ${fname}
 
    if ($glacier =~ 'CISM*') then
       # ===========================================================================
@@ -1312,7 +1377,7 @@ else     # CONTINUE_RUN == FALSE
       else if ($river_runoff == 'MOSART') then
          ${LINK} ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc .
       endif
-      if (\$CISM_RESTART == TRUE) then
+      if (\$CISM_RESTART == 'TRUE') then
          ${LINK} ${stagedir}/${refcase}.cism\${inst_string}.r.${init_time}.nc  .
       endif
 
@@ -1435,6 +1500,7 @@ cat ${caseroot}/DART_instructions.txt
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
+# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/cam-fv/scripts_cesm1_5/setup_hybrid $
+# $Revision: 7946 $
+# $Date: 2015-04-30 15:11:34 -0600 (Thu, 30 Apr 2015) $
+
