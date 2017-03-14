@@ -73,12 +73,26 @@ See the DARTLAB demos or read more in the tutorials included with the
 DART distribution.  They are described below.</p>
 
 <p>
-DART diagnostic output includes two netCDF files containing 
-the model states just before
-the adjustment (<em class=file>preassim_{member,mean,sd,priorinf,postinf.nc</em>) and just after the adjustment
-(<em class=file>postassim_{member,mean,sd,priorinf,postinf.nc</em>) as well as a file
-<em class=file>obs_seq.final</em> with the model estimates of the observations.
-There is a suite of Matlab&reg; functions that facilitate exploration of the
+DART diagnostic output were <i>previously</i> stored in two netCDF files containing 
+the model states just before the adjustment (<em class=file>Prior_Diag.nc</em>) and 
+just after the adjustment (<em class=file>Posterior_Diag.nc</em>). These files are
+now separated into multiple files in order to take advantage of parallel IO. In 
+particular <em class=file>Prior_Diag.nc</em> is broken up into files:
+  <ul><li> <em class=file>preassim_member_####.nc</em></li>
+      <li> <em class=file>preassim_mean.nc</em></li>
+      <li> <em class=file>preassim_sd.nc</em></li>
+      <li> <em class=file>preassim_priorinf.nc</em> (if prior inflation is turned on)</li>
+      <li> <em class=file>preassim_postinf.nc</em> (if posterior inflation is turned on)</li>
+  </ul>
+and similarly for <em class=file>Posterior_Diag.nc</em> :
+  <ul><li> <em class=file>postassim_member_####.nc</em></li>
+      <li> <em class=file>postassim_mean.nc</em></li>
+      <li> <em class=file>postassim_sd.nc</em></li>
+      <li> <em class=file>postassim_priorinf.nc</em> (if prior inflation is turned on)</li>
+      <li> <em class=file>postassim_postinf.nc</em> (if posterior inflation is turned on)</li>
+  </ul>
+There is also a text file, <em class=file>obs_seq.final</em>, with the model estimates of the 
+observations.  There is a suite of Matlab&reg; functions that facilitate exploration of the
 results, but the netCDF files are inherently portable and contain all the
 necessary metadata to interpret the contents with other analysis programs
 such as NCL, R, etc.
@@ -125,7 +139,7 @@ compile cleanly.
 <br />
 <br />
 DART uses the 
-<a href="http://www.unidata.ucar.edu/packages/netcdf/">netCDF</a> 
+<a href="https://www.unidata.ucar.edu/downloads/netcdf/index.jsp">netCDF</a> 
 self-describing data format with a particular metadata convention to 
 describe output that is used to analyze the results of assimilation 
 experiments.  These files have the extension <em class=file>.nc</em> 
@@ -574,12 +588,11 @@ ls -1
 <p>
 With the result:
 <pre>
-Posterior_Diag.nc
-Prior_Diag.nc
-True_State.nc
-filter_ics
-filter_restart
+filter_input.cdl
+filter_input_list.txt
+filter_output_list.txt
 input.nml
+input.workshop.nml
 mkmf_create_fixed_network_seq
 mkmf_create_obs_sequence
 mkmf_filter
@@ -587,8 +600,6 @@ mkmf_obs_diag
 mkmf_obs_sequence_tool
 mkmf_perfect_model_obs
 mkmf_preprocess
-mkmf_restart_file_tool
-mkmf_wakeup_filter
 obs_seq.final
 obs_seq.in
 obs_seq.out
@@ -604,14 +615,10 @@ path_names_obs_diag
 path_names_obs_sequence_tool
 path_names_perfect_model_obs
 path_names_preprocess
-path_names_restart_file_tool
-path_names_wakeup_filter
-perfect_ics
-perfect_restart
+perfect_input.cdl
 quickbuild.csh
 set_def.out
-workshop_setup.csh
-</pre>
+workshop_setup.csh</pre>
 
 <p>
 In all the <em class=file>work</em> directories there
@@ -624,7 +631,7 @@ will be the normal way to do the compiles.
 </p>
 
 <p>
-There are nine <em class=file>mkmf_</em><em class=italic>xxxxxx</em> 
+There are seven <em class=file>mkmf_</em><em class=italic>xxxxxx</em> 
 files for the programs 
 </p>
 
@@ -633,9 +640,7 @@ files for the programs
     <li><em class=program>create_fixed_network_seq</em>, 
     <li><em class=program>perfect_model_obs</em>,
     <li><em class=program>filter</em>, 
-    <li><em class=program>wakeup_filter</em>, 
     <li><em class=program>obs_sequence_tool</em>, and 
-    <li><em class=program>restart_file_tool</em>, and 
     <li><em class=program>obs_diag</em>,
 </ol>
 
@@ -702,18 +707,18 @@ automatically.)
 
 <div class=unix>
 <pre>
-\rm -f ../../../obs_def/obs_def_mod.f90
-\rm -f ../../../obs_kind/obs_kind_mod.f90
+\rm -f ../../../observations/forward_operators/obs_def_mod.f90
+\rm -f ../../../assimilation_code/modules/observations/obs_kind_mod.f90
 ./preprocess
-ls -l ../../../obs_def/obs_def_mod.f90
-ls -l ../../../obs_kind/obs_kind_mod.f90
+ls -l  ../../../observations/forward_operators/obs_def_mod.f90
+ls -l  ../../../assimilation_code/modules/observations/obs_kind_mod.f90
 </pre>
 </div>
 
 <p>
-This created <em class=file>../../../obs_def/obs_def_mod.f90</em> from
-<em class=file>../../../obs_kind/DEFAULT_obs_kind_mod.F90</em> and several other
-modules. <em class=file>../../../obs_kind/obs_kind_mod.f90</em> was created similarly.
+This created <em class=file>DART/observations/forward_operators/obs_def_mod.f90</em> from
+<em class=file>DART/assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90</em> and several other
+modules. <em class=file>DART/assimilation_code/modules/observations/obs_kind_mod.f90</em> was created similarly.
 Now we can build the rest of the project.
 <br /><br />
 A series of object files for each module compiled will also be 
@@ -740,7 +745,7 @@ make
 The result (hopefully) is that six executables now 
 reside in your work directory. The most common problem is that the netCDF libraries
 and include files (particularly <em class=file>typesizes.mod</em>) are not found. 
-Edit the <em class=file>DART/mkmf/mkmf.template</em>,
+Edit the <em class=file>DART/build_templates/mkmf.template</em>,
 recreate the <em class=file>Makefile</em>, and try again.
 </p>
 
@@ -786,13 +791,6 @@ recreate the <em class=file>Makefile</em>, and try again.
         We will not cover its use in this document.</td>
 </tr>
 
-<tr><td><em class=program>restart_file_tool</em></td>
-    <td>manipulates the initial condition and restart files.
-        We're going to ignore this one here.</td>
-
-<tr><td><em class=program>wakeup_filter</em></td>
-    <td>is only needed for MPI applications. We're starting at 
-        the beginning here, so we're going to ignore this one, too.</td>
 </tr>
 </table>
 
