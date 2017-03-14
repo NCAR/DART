@@ -34,6 +34,7 @@ use dart_time_io_mod,      only : read_model_time, write_model_time
 use default_model_mod,     only : end_model, pert_model_copies, vert_convert, &
                                   query_vert_localization_coord, get_close_obs, &
                                   get_close_maxdist_init, get_close_obs_init, &
+                                  get_close_state_init, get_close_state, &
                                   get_close_type, nc_write_model_vars
 
 implicit none
@@ -56,6 +57,8 @@ public :: get_model_size, &
           get_close_maxdist_init, &
           get_close_obs_init, &
           get_close_obs, &
+          get_close_state_init, &
+          get_close_state, &
           vert_convert, &
           query_vert_localization_coord, &
           read_model_time, &
