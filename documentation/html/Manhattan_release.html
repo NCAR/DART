@@ -1878,7 +1878,7 @@ this model?
 There are many more options for inflation, including spatially
 and temporarily varying values, with and without damping.  See 
 the discussion of all inflation-related namelist items 
-<a href="../../filter/filter.html#Inflation">local file</a>.
+<a href="../../assimilation_code/programs/filter.html#Inflation">local file</a>.
 </p>
 
 
@@ -2073,8 +2073,8 @@ Set this namelist item to .false. to recover the previous behavior.</li>
         that enables a call to a subroutine at the end of the filter.f90 source file.
         That subroutine can be customized by the user to do any computation required.
         See the filter namelist documentation 
-        <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/filter/filter.html#Namelist">
-        Website</a> or <a href="../../filter/filter.html#Namelist">local file</a>
+        <a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/filter/filter.html#Namelist">
+        Website</a> or <a href="../../assimilation_code/programs/filter.html#Namelist">local file</a>
         for more details.</li></ul>
 </li>
 <br /> 
@@ -2085,8 +2085,8 @@ Set this namelist item to .false. to recover the previous behavior.</li>
         'read inflation values from a file' option set to .true. for all steps instead of
         having to change the namelist after the first cycle.
         See the documentation
-        <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/adaptive_inflate/fill_inflation_restart.html">Website</a> 
-        or <a href="../../adaptive_inflate/fill_inflation_restart.html">local file</a>
+        <a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/adaptive_inflate/fill_inflation_restart.html">Website</a> 
+        or <a href="../../assimilation_code/programs/fill_inflation_restart.html">local file</a>
         for more details.</li></ul>
 </li>
 <br /> 
@@ -2101,7 +2101,7 @@ Set this namelist item to .false. to recover the previous behavior.</li>
         <li>2D annulus coordinate system</li>
         </ul>
         See the documentation
-        <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/location/location_mod.html">Website</a> 
+        <a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/location/location_mod.html">Website</a> 
         or <a href="../../location/location_mod.html">local file</a>
         for more details.</li></ul>
 </li>
@@ -2122,8 +2122,8 @@ Set this namelist item to .false. to recover the previous behavior.</li>
         forward operators must test for and be prepared to return with a failed forward
         operator code if any of the interpolation items it requires are missing.
         See the documentation
-        <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/assim_tools/assim_tools_mod.html#Namelist">Website</a> 
-        or <a href="../../assim_tools/assim_tools_mod.html#Namelist">local file</a>
+        <a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/assim_tools/assim_tools_mod.html#Namelist">Website</a> 
+        or <a href="../../assimilation_code/modules/assimilation/assim_tools_mod.html#Namelist">local file</a>
         for more details.</li></ul>
 </li>
 <br /> 
@@ -2137,7 +2137,7 @@ Set this namelist item to .false. to recover the previous behavior.</li>
         but it might allow using fewer nodes for the job and thus reduce the job cost.
         See the documentation for the <em class=code>layout</em> and 
         <em class=code>tasks_per_node</em> in the &amp;ensemble_manager_nml namelist
-        <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/assimilation_code/modules/utilities/ensemble_manager_mod.html#Namelist">Website</a> 
+        <a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/assimilation_code/modules/utilities/ensemble_manager_mod.html#Namelist">Website</a> 
         or <a href="../../assimilation_code/modules/utilities/ensemble_manager_mod.html#Namelist">local file</a>
         for more details.</li></ul>
 </li>
@@ -2154,7 +2154,7 @@ Set this namelist item to .false. to recover the previous behavior.</li>
         processor speed, and node memory size and so it is almost impossible 
         to recommend a value without doing timing tests on the target system.  
         See the documentation in the &amp;ensemble_manager_nml namelist
-        <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/assimilation_code/modules/utilities/ensemble_manager_mod.html#Namelist">Website</a> 
+        <a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/assimilation_code/modules/utilities/ensemble_manager_mod.html#Namelist">Website</a> 
         or <a href="../../assimilation_code/modules/utilities/ensemble_manager_mod.html#Namelist">local file</a>
         for more details.</li></ul>
 </li>
@@ -2182,19 +2182,19 @@ Setup scripts are provided to configure a single or multiple component assimilat
 See:
 <ul>
 <li>
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/CESM/model_mod.html">Website</a> or
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/CESM/model_mod.html">Website</a> or
 <a href="../../models/CESM/model_mod.html">local file</a> for multi-component assimilation, 
 </li>
 <li>
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/cam/model_mod.html">Website</a> or
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/cam/model_mod.html">Website</a> or
 <a href="../../models/cam/model_mod.html">local file</a> for CAM single component assimilation
 </li>
 <li>
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/POP/model_mod.html">Website</a> or
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/POP/model_mod.html">Website</a> or
 <a href="../../models/POP/model_mod.html">local file</a> for POP single component assimilation
 </li>
 <li>
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/clm/model_mod.html">Website</a> or
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/clm/model_mod.html">Website</a> or
 <a href="../../models/clm/model_mod.html">local file</a> for CLM single component assimilation
 </li>
 </ul>
@@ -2223,11 +2223,11 @@ Documentation for the model:
 
 <li>MPAS Atmosphere and Ocean Models
 <ul><li>DART interface documentation for the MPAS Atmosphere component:
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/mpas_atm/model_mod.html">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/mpas_atm/model_mod.html">Website</a>
 or
 <a href="../../models/mpas_atm/model_mod.html">local file</a>.
 <li>DART interface documentation for the MPAS Ocean component:
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/mpas_ocn/model_mod.html">Website</a> or
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/mpas_ocn/model_mod.html">Website</a> or
 <a href="../../models/mpas_ocn/model_mod.html">local file</a>.
 </li>
 <li>Documentation for the model:
@@ -2238,7 +2238,7 @@ or
 
 <li>NOAH Land Model
 <ul><li>Dart interface documentation
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/noah/model_mod.html">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/noah/model_mod.html">Website</a>
 or
 <a href="../../models/noah/model_mod.html">local file</a>.</li>
 <li>Documentation for the model:
@@ -2250,7 +2250,7 @@ The Community NOAH Land Surface Model (LSM)</a>.
 
 <li>NAAPS Aerosol Model
 <ul><li>Dart interface documentation
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/NAAPS/model_mod.html">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/NAAPS/model_mod.html">Website</a>
 or
 <a href="../../models/NAAPS/model_mod.html">local file</a>.</li>
 <li>Documentation for the model:
@@ -2261,7 +2261,7 @@ or
 
 <li>GITM Global Ionosphere Thermosphere Model
 <ul><li>Dart interface documentation
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/GITM/model_mod.html">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/GITM/model_mod.html">Website</a>
 or
 <a href="../../models/GITM/model_mod.html">local file</a>.</li>
 <li>Documentation for the model:
@@ -2273,7 +2273,7 @@ GITM Web Pages</a>.
 
 <li>NOGAPS Global Atmosphere Model
 <ul><li>Dart interface documentation
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/NOGAPS/model_mod.html">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/NOGAPS/model_mod.html">Website</a>
 or
 <a href="../../models/NOGAPS/model_mod.html">local file</a>.</li>
 <li>Documentation for the model:
@@ -2284,7 +2284,7 @@ or
 
 <li>SQG Surface Quasi-Geostrophic Model
 <ul><li>Dart interface documentation
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/SQG/model_mod.html">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/SQG/model_mod.html">Website</a>
 or
 <a href="../../models/SQG/model_mod.html">local file</a>.</li>
 <li>Documentation for the model:
@@ -2365,26 +2365,26 @@ a list of the generic kinds now available.</li>
 
 <li>New forward operator for total precipitable water.  It loops over
 model levels to compute the accumulated value.  See
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/observations/obs_converters/tpw/tpw.html">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/obs_converters/tpw/tpw.html">Website</a>
 or <a href="../../observations/obs_converters/tpw/tpw.html">local file</a>.
 </li>
 <br />
 
 <li>New forward operator for COSMOS ground moisture observations. See
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/observations/COSMOS/observations/obs_converters/COSMOS/COSMOS_to_obs.html">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/COSMOS/observations/obs_converters/COSMOS/COSMOS_to_obs.html">Website</a>
 or <a href="../../observations/COSMOS/observations/obs_converters/COSMOS/COSMOS_to_obs.html">local file</a>.
 </li>
 <br />
 
 <li>New forward operator for MIDAS total electron count observations. See
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/observations/MIDAS/MIDAS.html">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/MIDAS/MIDAS.html">Website</a>
 or <a href="../../observations/MIDAS/MIDAS.html">local file</a>.
 </li>
 <br />
 
 <li>Added example of how to set additional metadata in an observation
 to the <em code=file>obs_def_1d_state_mod.f90</em> file.
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/observations/forward_operators/observations/forward_operators/obs_def_1d_state_mod.html">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/forward_operators/observations/forward_operators/obs_def_1d_state_mod.html">Website</a>
 or <a href="../../obs_def_observations/forward_operators/obs_def_1d_state_mod.html">local file</a>.
 </li>
 <br />
@@ -2403,7 +2403,7 @@ Added a converter for wind profiler data to the set of existing MADIS converters
 More scripting support in the MADIS obs converters; more error checks
 added to the rawin converter.
 Documentation 
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/observations/observations/obs_converters/MADIS/MADIS.html">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/observations/obs_converters/MADIS/MADIS.html">Website</a>
 or <a href="../../observations/observations/obs_converters/MADIS/MADIS.html">local file</a>.
 </li>
 <br />
@@ -2412,7 +2412,7 @@ or <a href="../../observations/observations/obs_converters/MADIS/MADIS.html">loc
 Added an obs_sequence converter for Ameriflux land observations of latent
 heat flux, sensible heat flux, net ecosystem production).
 Documentation 
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/observations/obs_converters/Ameriflux/level4_to_obs.html">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/obs_converters/Ameriflux/level4_to_obs.html">Website</a>
 or <a href="../../observations/obs_converters/Ameriflux/level4_to_obs.html">local file</a>.
 </li>
 </li>
@@ -2422,7 +2422,7 @@ or <a href="../../observations/obs_converters/Ameriflux/level4_to_obs.html">loca
 <li>MODIS<br />
 Added an obs_sequence converter for MODIS snow coverage measurements.
 Documentation 
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/observations/obs_converters/snow/snow_to_obs.html">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/obs_converters/snow/snow_to_obs.html">Website</a>
 or <a href="../../observations/obs_converters/snow/snow_to_obs.html">local file</a>.
 </li>
 <br />
@@ -2430,7 +2430,7 @@ or <a href="../../observations/obs_converters/snow/snow_to_obs.html">local file<
 <li>COSMOS<br />
 Added an obs_sequence converter for COSMOS ground moisture observations.
 Documentation 
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/observations/COSMOS/observations/obs_converters/COSMOS/COSMOS_to_obs.html">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/COSMOS/observations/obs_converters/COSMOS/COSMOS_to_obs.html">Website</a>
 or <a href="../../observations/COSMOS/observations/obs_converters/COSMOS/COSMOS_to_obs.html">local file</a>.
 </li>
 <br />
@@ -2438,7 +2438,7 @@ or <a href="../../observations/COSMOS/observations/obs_converters/COSMOS/COSMOS_
 <li>MIDAS<br />
 Added an obs_sequence converter for MIDAS observations of Total Electron Count.
 Documentation 
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/observations/obs_converters/MIDAS/MIDAS_to_obs.html">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/obs_converters/MIDAS/MIDAS_to_obs.html">Website</a>
 or <a href="../../observations/obs_converters/MIDAS/MIDAS_to_obs.html">local file</a>.
 </li>
 <br />
@@ -2447,7 +2447,7 @@ or <a href="../../observations/obs_converters/MIDAS/MIDAS_to_obs.html">local fil
 Updated scripts for the GPS converter; added options to convert data from
 multiple satellites.
 Documentation 
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/observations/observations/obs_converters/gps/gps.html">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/observations/obs_converters/gps/gps.html">Website</a>
 or <a href="../../observations/observations/obs_converters/gps/gps.html">local file</a>.
 </li>
 <br />
@@ -2456,7 +2456,7 @@ or <a href="../../observations/observations/obs_converters/gps/gps.html">local f
 Added processing for wind profiler observation to the
 wrf_dart_obs_preprocess program.
 Documentation
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html">Website</a>
 or <a href="../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html">local file</a>.
 </li>
 <br />
@@ -2467,7 +2467,7 @@ layers and so the best location for them is the layer midpoint and not on the
 edges (levels) as the temperature obs are. Also fixed off-by-one error where
 the converter would make one more obs above the requested top level.
 Documentation 
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/observations/observations/obs_converters/AIRS/AIRS.html">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/observations/obs_converters/AIRS/AIRS.html">Website</a>
 or <a href="../../observations/observations/obs_converters/AIRS/AIRS.html">local file</a>.
 </li>
 <br />
@@ -2476,7 +2476,7 @@ or <a href="../../observations/observations/obs_converters/AIRS/AIRS.html">local
 Made gts_to_dart converter create separate obs types for surface dewpoint
 vs obs aloft because they have different vertical coordinates.
 Documentation 
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/observations/observations/obs_converters/GTSPP/GTSPP.html">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/observations/obs_converters/GTSPP/GTSPP.html">Website</a>
 or <a href="../../observations/observations/obs_converters/GTSPP/GTSPP.html">local file</a>.
 </li>
 <br />
@@ -2490,7 +2490,7 @@ converter shell scripts (inc AIRS).</li>
 New matlab code to generate evenly spaced observations on the surface of
 a sphere (e.g. the globe).
 Documentation 
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/observations/even_sphere/README">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/even_sphere/README">Website</a>
 or <a href="../../observations/even_sphere/README">local file</a>.
 </li>
 <br />
@@ -2499,7 +2499,7 @@ or <a href="../../observations/even_sphere/README">local file</a>.
 Added obs_loop.f90 example file in obs_sequence directory; example
 template for how to construct special purpose obs_sequence tools.
 Documentation (source)
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/obs_sequence/obs_loop.f90">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/obs_sequence/obs_loop.f90">Website</a>
 or <a href="../../obs_sequence/obs_loop.f90">local file</a>.
 </li>
 <br />
@@ -2508,7 +2508,7 @@ or <a href="../../obs_sequence/obs_loop.f90">local file</a>.
 Change the default in the script for the prepbufr converter so it will
 swap bytes, since all machines except ibms will need this now.
 Documentation 
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/observations/observations/obs_converters/NCEP/prep_bufr/prep_bufr.html">Website</a>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/observations/observations/obs_converters/NCEP/prep_bufr/prep_bufr.html">Website</a>
 or <a href="../../observations/observations/obs_converters/NCEP/prep_bufr/prep_bufr.html">local file</a>.
 </li>
 <br />
