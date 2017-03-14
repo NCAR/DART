@@ -3,7 +3,7 @@
 <HTML>
 <HEAD>
 <TITLE>PROGRAM create_obs_sequence</TITLE>
-<link rel="stylesheet" type="text/css" href="../../../documentation/html/dart.css" />
+<link rel="stylesheet" type="text/css" href="../../../documentation/html/doc.css" />
 <link href="../../../documentation/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
@@ -14,10 +14,10 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../../documentation/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
-       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+       <P>Jump to <a href="../../../documentation/index.html">DART Documentation Main Index</a><br />
           <small><small>version information for this file: <br />
           <!-- version tag follows, do not edit -->
           $Id$</small></small>
@@ -41,7 +41,7 @@ standard input.  It is typically used to create synthetic observations,
 or shorter sequences of observations (although there is no limit on
 the number of observations).  For creating observation sequence files
 directly from large, real-world observation datasets, see the 
-<a href="../observations/obs_converters/observations.html">observations</a> directory.
+<a href="../../../observations/obs_converters/observations.html">observations</a> directory.
 </P>
 
 <P>
@@ -61,7 +61,7 @@ and optionally a data value and/or a quality control indicator.
 For perfect model applications, it is usually convenient to define 0
 quality control fields and 0 copies of the data for each observation. 
 The output of create_obs_sequence can be read by 
-<a href="../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html">perfect_model_obs</a> 
+<a href="../../../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html">perfect_model_obs</a> 
 which will then create a synthetic (perfect_model) observation sequence 
 complete with two copies of the data for each observation: the observed 
 value and the 'true' value.
@@ -75,7 +75,7 @@ When running create_obs_sequence, specify a single observation for
 each different location and type, with 0 copies of data and giving
 all the observations the same time.
 Then the program 
-<a href="assimilation_code/programs/create_fixed_network_seq/create_fixed_network_seq.html">create_fixed_network_seq</a>
+<a href="../create_fixed_network_seq/create_fixed_network_seq.html">create_fixed_network_seq</a>
 can read the output of create_obs_sequence
 and create an observation sequence file that will contain the set of 
 input observations at a number of different times.
@@ -98,7 +98,7 @@ kind and location of that state variable.
 The types of observations which can be created by this program is
 controlled by the observation types built into the source files
 created by the
-<a href="../assimilation_code/programs/preprocess/preprocess.html">preprocess</a>
+<a href="../../../assimilation_code/programs/preprocess/preprocess.html">preprocess</a>
 program.  The preprocess namelist sets the available observation
 types, and must be run each time it is changed, and then the
 create_obs_sequence program must be recompiled to incorporate

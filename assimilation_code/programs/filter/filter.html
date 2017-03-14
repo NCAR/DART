@@ -3,7 +3,7 @@
 <HTML>
 <HEAD>
 <TITLE>program filter</TITLE>
-<link rel="stylesheet" type="text/css" href="../../../documentation/html/dart.css" />
+<link rel="stylesheet" type="text/css" href="../../../documentation/html/doc.css" />
 <link href="../../../documentation/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
@@ -14,10 +14,10 @@
 <table border=0 summary="dart header" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../../documentation/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
-       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+       <P>Jump to <a href="../../../documentation/index.html">DART Documentation Main Index</a><br />
           <small><small>version information for this file: <br />
           <!-- version tag follows, do not edit -->
           $Id$</small></small>
@@ -129,7 +129,7 @@ to a batch system so all run as independent parallel jobs.
    The different types of assimilation algorithms 
    (EAKF, ENKF, Kernel filter, Particle filter, etc.) are determined
    by the <em class=code>&amp;assim_tools_nml:filter_kind</em> entry,
-   described in <a href="../assim_tools/assim_tools_mod.html">assim_tools_mod.html</a>.
+   described in <a href="../../modules/assimilation/assim_tools_mod.html">assim_tools_mod.html</a>.
    Despite having 'filter' in the name, they are assimilation algorithms
    and so are implemented in <em class=file>assim_tools_mod.f90</em>.
 </P>
@@ -204,7 +204,7 @@ run-time performance because only points within the localization
 radius need to be considered.  Because of the way the parallelization
 was implemented in DART, localization was easy to add and
 using it usually results in a very large performance gain. 
-See <a href="../assim_tools/assim_tools_mod.html#Localization">here</a>
+See <a href="../../modules/assimilation/assim_tools_mod.html#Localization">here</a>
 for a discussion of localization-related namelist items.
 </P></li>
 <li>Inflation
@@ -252,9 +252,9 @@ Additionally you will need to have a
 precomputed correction file <em class="file">final_full.X</em>,
 where X matches your ensemble size, in the run directory.
 See the description of the namelist item in the
-<a href="../assim_tools/assim_tools_mod.html#Namelist">
+<a href="../../modules/assimilation/assim_tools_mod.html#Namelist">
 &amp;assim_tools_nml</a> namelist, and 
-<a href="../assimilation_code/programs/system_simulation/system_simulation.html">look here</a>
+<a href="../system_simulation/system_simulation.html">look here</a>
 for instructions on where to find (or how to generate) 
 the auxiliary file needed by this code.
 See Anderson (2011).
@@ -271,7 +271,7 @@ See Anderson (2011).
    using one or more of the last updated model states from filter.
    Since all ensemble members are equally likely a member can be
    selected at random, or a member close to the mean can be chosen.
-   See the <a href="../assimilation_code/programs/closest_member_tool/closest_member_tool.html">closest_member_tool</a>
+   See the <a href="../../../assimilation_code/programs/closest_member_tool/closest_member_tool.html">closest_member_tool</a>
    for one way to select a "close" member.  The ensemble mean is available to
    be used, but since it is a combination of all the member states it
    may not have self-consistent features, so using a single member is
@@ -592,7 +592,7 @@ Copy (recursively, e.g. <em class=code>cp -r</em>) the contents of the
 file in the template dir is appropriate for small models; for large geophysical
 models see the <em class=file>full_model_mod.f90</em> file 
 and also examine other model directories for ideas.
-See additional documentation in the <a href="../models/model_mod.html">model_mod</a>
+See additional documentation in the <a href="../../../models/model_mod.html">model_mod</a>
 documentation, and the 
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#adding_a_model">
 DART web pages</a> on adding new models.
@@ -600,7 +600,7 @@ DART web pages</a> on adding new models.
 <DT>New Observation Types</DT><DD>Define a new type via a file in the 
 <em class=file>obs_def</em> subdirectory.  To convert observations from other
 formats to DART format, add a new directory in the <em class=file>observations</em> subdirectory.
-See additional documentation in the <a href="../observations/forward_operators/observations/forward_operators/obs_def_mod.html">obs_def_mod</a>
+See additional documentation in the <a href="../../../observations/forward_operators/obs_def_mod.html">obs_def_mod</a>
 documentation, and the 
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_Observations.php#adding_types">
 DART web pages</a> on adding new models.
@@ -611,8 +611,8 @@ added in the <em class=file>obs_def</em> subdirectory. See the same
 documentation for adding new observations types above.
 <DT>New Assimilation Algorithms</DT><DD>If you want to try
 out a different filter type modify the filter code in the
-<em class=file>assim_tools/assim_tools_mod.f90</em> file.
-See the <a href="../assim_tools/assim_tools_mod.html">assim_tools_mod</a> documentation.
+<em class=file>assim_tools_mod.f90</em> file.
+See the <a href="../../modules/assimilation/assim_tools_mod.html">assim_tools_mod</a> documentation.
 </DD>
 </DL>
 
