@@ -404,12 +404,20 @@ if ( $caseroot == `pwd` ) then
    exit 11
 endif
 
-echo "removing old files from ${caseroot}"
-echo "removing old files from ${exeroot}"
-echo "removing old files from ${rundir}"
-${REMOVE} ${caseroot}
-${REMOVE} ${exeroot}
-${REMOVE} ${rundir}
+set old_files = ()
+if (-d $archdir/dart/hist) set old_files = `ls $archdir/dart/hist`
+if ($#old_files == 0) then
+   echo "removing old files from ${caseroot}"
+   echo "removing old files from ${exeroot}"
+   echo "removing old files from ${rundir}"
+   ${REMOVE} ${caseroot}
+   ${REMOVE} ${exeroot}
+   ${REMOVE} ${rundir}
+else
+   echo "There are DART output files in $archdir/dart/hist."
+   echo "Do you REALLY want to rebuild this case?"
+   exit 12
+endif
 
 # setup_advanced will need more flexible arguments, as in CESM1_5_setup_advanced(?)
 # This may need --project, if env var PROJECT is no longer used.
@@ -419,7 +427,7 @@ ${CIMEROOT}/scripts/create_newcase --case ${caseroot} --mach ${mach} \
     
 if ( $status != 0 ) then
    echo "ERROR: Case could not be created."
-   exit 12
+   exit 15
 endif
 
 # ==============================================================================
