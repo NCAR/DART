@@ -56,23 +56,25 @@ set modeldir = `pwd`
 # set the list of models to include here
 
 set DO_THESE_MODELS = ( \
-  lorenz_63 \
-  lorenz_84 \
-  lorenz_96 \
-  lorenz_04 \
-  forced_lorenz_96 \
-  simple_advection \
   9var \
+  POP \
+  ROMS \
   bgrid_solo \
   cam-fv \
   cice \
+  clm \
   cm1 \
+  forced_lorenz_96 \
+  lorenz_04 \
+  lorenz_63 \
+  lorenz_84 \
+  lorenz_96 \
   mpas_atm \
-  POP \
-  ROMS \
+  simple_advection \
   wrf \
 )
 
+# needed soon: null_model, lorenz_96_2scale
 
 #----------------------------------------------------------------------
 # Compile all executables for each model.
@@ -92,9 +94,10 @@ foreach MODEL ( $DO_THESE_MODELS )
     echo
     echo
 
-    cd ${modeldir}/${MODEL}/work
+    cd ${modeldir}/${MODEL}/work 
+    set FAILURE = 0
 
-    ./quickbuild.csh ${QUICKBUILD_ARG} || exit 3
+    ./quickbuild.csh ${QUICKBUILD_ARG} || set FAILURE = 1
 
     @ modelnum = $modelnum + 1
 
@@ -102,7 +105,11 @@ foreach MODEL ( $DO_THESE_MODELS )
     echo
     echo "=================================================================="
     echo "=================================================================="
-    echo "End of $MODEL build at "`date`
+    if ( $FAILURE ) then
+      echo "ERROR - unsuccessful build of $MODEL at "`date`
+    else
+      echo "End of succesful build of $MODEL at "`date`
+    endif
     echo "=================================================================="
     echo "=================================================================="
     echo
@@ -134,24 +141,27 @@ foreach MODEL ( $DO_THESE_MODELS )
     echo
 
     cd ${modeldir}/${MODEL}/work
+    set FAILURE = 0
 
     cp input.nml input.nml.$$
+    @ ncdlfiles = `ls *.cdl | wc -l`
+
     if ( -f workshop_setup.csh ) then
       echo "Trying to run workshop_setup.csh for model $MODEL as a test"
-      ./workshop_setup.csh
+      ./workshop_setup.csh || set FAILURE = 1
     else
       echo "Trying to run pmo for model $MODEL as a test"
       echo "Will generate NetCDF files from any .cdl files first."
       # try not to error out if no .cdl files found
-      @ nfiles = `ls *.cdl | wc -l`
-      if ( $nfiles > 0 ) then
+      if ( $ncdlfiles > 0 ) then
          foreach i ( *.cdl )
            set base = `basename $i .cdl`
            if ( -f ${base}.nc ) continue
            ncgen -o ${base}.nc $i
          end
       endif
-      ./perfect_model_obs
+      # assumes the executables from the first pass are still here
+      ./perfect_model_obs || set FAILURE = 1
     endif
 
     echo "Removing the newly-built objects and restoring original input.nml"
@@ -161,11 +171,14 @@ foreach MODEL ( $DO_THESE_MODELS )
       set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
       ${REMOVE} $PROG
     end
-    foreach i ( *.cdl )
-      set base = `basename $i .cdl`
-      if ( -f ${base}.nc ) rm ${base}.nc
-    end
-    cp -f input.nml.$$ input.nml
+    if ( $ncdlfiles > 0 ) then
+      foreach i ( *.cdl )
+        set base = `basename $i .cdl`
+        if ( -f ${base}.nc ) rm ${base}.nc
+      end
+    endif
+    mv -f input.nml.$$ input.nml
+    # or svn revert input.nml?
 
     @ modelnum = $modelnum + 1
 
@@ -173,7 +186,11 @@ foreach MODEL ( $DO_THESE_MODELS )
     echo
     echo "=================================================================="
     echo "=================================================================="
-    echo "End of $MODEL test at "`date`
+    if ( $FAILURE ) then
+      echo "ERROR - unsuccessful test of $MODEL at "`date`
+    else
+      echo "End of succesful test of $MODEL at "`date`
+    endif
     echo "=================================================================="
     echo "=================================================================="
     echo
