@@ -4,6 +4,14 @@
 !
 ! $Id$
 
+!> this version of the model_mod is probably more appropriate to start with
+!> if you are porting a geophysical model with locations specified in lat/lon
+!> and some kind of vertical.  it assumes a gridded model.
+
+!> THIS FILE HAS NOT BEEN CONVERTED to read netcdf directly by
+!> defining a domain - a list of netcdf variables per input file.
+!> THIS WILL BE UPDATED SOON.
+
 module model_mod
 
 ! This is the interface between the model model and DART.
@@ -26,6 +34,7 @@ use     location_mod, only : location_type, get_dist, query_location,          &
                              vert_is_pressure, VERTISPRESSURE,                 &
                              vert_is_height,   VERTISHEIGHT,                   &
                              get_close_obs_init, loc_get_close_obs => get_close_obs
+                             get_close_state_init => get_close_obs_init, 
 
 use    utilities_mod, only : register_module, error_handler,                   &
                              E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
@@ -68,7 +77,9 @@ public :: get_model_size,         &
           pert_model_state,       &
           get_close_maxdist_init, &
           get_close_obs_init,     &
-          get_close_obs
+          get_close_obs,          &
+          get_close_state_init,   &
+          get_close_state
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.

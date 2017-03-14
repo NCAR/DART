@@ -18,5 +18,5 @@ assimilation_code/modules/utilities/time_manager_mod.f90
 assimilation_code/modules/utilities/types_mod.f90
 assimilation_code/modules/utilities/utilities_mod.f90
 models/template/model_mod.f90
-models/template/model_mod_check.f90
+models/model_mod_tools/model_mod_check.f90
 observations/forward_operators/obs_def_mod.f90

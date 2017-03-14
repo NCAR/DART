@@ -15,6 +15,7 @@ use time_manager_mod,      only : time_type, set_time
 
 use     location_mod,      only : location_type, set_location, set_location_missing, &
                                   get_close_maxdist_init, get_close_obs_init, &
+                                  get_close_state_init, loc_get_close_state => get_close_obs, &
                                   loc_get_close_obs => get_close_obs, get_close_type
 
 use    utilities_mod,      only : register_module, error_handler, E_ERR, E_MSG, nmlfileunit, &
@@ -42,10 +43,12 @@ public :: get_model_size, &
           nc_write_model_atts, &
           nc_write_model_vars, &
           pert_model_copies, &
+          get_close_type, &
           get_close_maxdist_init, &
           get_close_obs_init, &
           get_close_obs, &
-          get_close_type, &
+          get_close_state_init, &
+          get_close_state, &
           vert_convert, &
           query_vert_localization_coord, &
           read_model_time, &
@@ -237,6 +240,26 @@ call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
                           num_close, close_ind, dist)
 
 end subroutine get_close_obs
+
+!--------------------------------------------------------------------
+
+!> Pass through to the code in the locations module
+
+subroutine get_close_state(gc, base_obs_loc, base_obs_kind, state_loc, &
+                           state_kind, num_close, close_ind, dist, state_handle)
+
+type(ensemble_type),         intent(in)     :: state_handle
+type(get_close_type),        intent(in)     :: gc
+type(location_type),         intent(inout)  :: base_obs_loc, state_loc(:)
+integer,                     intent(in)     :: base_obs_kind, state_kind(:)
+integer,                     intent(out)    :: num_close, close_ind(:)
+real(r8),                    intent(out)    :: dist(:)
+
+
+call loc_get_close_state(gc, base_obs_loc, base_obs_kind, state_loc, state_kind, &
+                         num_close, close_ind, dist)
+
+end subroutine get_close_state
 
 !--------------------------------------------------------------------
 
