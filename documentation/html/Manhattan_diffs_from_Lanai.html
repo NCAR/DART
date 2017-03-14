@@ -22,7 +22,7 @@
        or <a href="../../../documentation/index.html">local file</a><br />
           <small><small>version information for this file: <br />
           <!-- version tag follows, do not edit -->
-          $Id: Lanai_diffs_from_Kodiak.html 11243 2017-03-08 21:35:09Z nancy@ucar.edu $</small></small>
+          $Id: Manhattan_diffs_from_Lanai.html 11243 2017-03-08 21:35:09Z nancy@ucar.edu $</small></small>
        </p></td>
 </tr>
 </table>
@@ -318,7 +318,7 @@ New namelist variables
 <TR><TD>single_file_in</TD>
     <TD>logical</TD>
     <TD>True mean that all of the restart and inflation information is read from
-        a single NetCDF file.  False means that you must specify a input_restart_file_list
+        a single NetCDF file.  False means that you must specify a input_state_file_list
         and DART will be expecting input_{priorinf,postinf}_{mean,sd}.nc files for 
         inflation.
  </TD></TR>
@@ -327,33 +327,33 @@ New namelist variables
     <TD>logical</TD>
     <TD>True mean that all of the restart and inflation information is written to
         a single NetCDF file.  False means that you must specify a 
-        output_restart_file_list and DART will be output files specified in the
+        output_state_files and DART will be output files specified in the
         list.  Inflation files will be written in the form 
         input_{priorinf,postinf}_{mean,sd}.nc.
  </TD></TR>
 
-<TR><TD>input_restart_files</TD>
+<TR><TD>input_state_files</TD>
     <TD>character array</TD>
     <TD>This is used for single file input for low order models. For multiple domains 
         you can specify a file for each domain. When specifying a list single_file_in, 
         single_file_out must be set to .true.
  </TD></TR>
 
-<TR><TD>output_restart_files</TD>
+<TR><TD>output_state_files</TD>
     <TD>character array</TD>
     <TD>This is used for single file input for low order models. For multiple domains 
         you can specify a file for each domain. When specifying a list single_file_in, 
         single_file_out must be set to .true.
  </TD></TR>
 
-<TR><TD>input_restart_file_list</TD>
+<TR><TD>input_state_file_list</TD>
     <TD>character array</TD>
     <TD>A list of files containing input model restarts. For multiple domains you can 
         specify a file for each domain. When specifying a list single_file_in, 
         single_file_out must be set to .false.
  </TD></TR>
 
-<TR><TD>output_restart_file_list</TD>
+<TR><TD>output_state_files</TD>
     <TD>character array</TD>
     <TD>A list of files containing output model restarts. For multiple domains you can 
         specify a file for each domain. When specifying a list single_file_in, 
@@ -381,14 +381,14 @@ New namelist variables
         intensive but requires less memory.  For larger models IO begins to dominate
         the overall cost of the assimilation so writting all stages at the end write
         more files in parallel, reducing the IO time.
-        <code>output_restart_file_list</code>.
+        <code>output_state_files</code>.
  </TD></TR>
 
 
 <TR><TD>output_restarts</TD>
     <TD>logical</TD>
     <TD>True means output a restart file(s). Filenames are defined in 
-        <code>output_restart_file_list</code>.
+        <code>output_state_files</code>.
  </TD></TR>
 
 <TR><TD>output_mean</TD>
@@ -430,9 +430,9 @@ New namelist variables
 <p>
 For <b>input</b> file names:
 <ul>
-<li> <code>input_restart_file_list to</code> give a file (one for each domain) 
+<li> <code>input_state_file_list to</code> give a file (one for each domain) 
      containing a list of restart files
-<li> if no <code>input_restart_file_list</code> is provided then default 
+<li> if no <code>input_state_file_list</code> is provided then default 
      filenames will be used e.g. input_member_000*.nc, input_priorinf_mean.nc, 
      input_priorinf_sd.nc
 </ul>
@@ -440,9 +440,9 @@ For <b>input</b> file names:
 <p>
 For <b>output</b> file names:
 <ul>
-<li> <code>output_restart_file_list</code> to give a file (one for each domain)
+<li> <code>output_state_files</code> to give a file (one for each domain)
      containing a list of restart files
-<li> if no <code>output_restart_file_list</code> is provided then default 
+<li> if no <code>output_state_files</code> is provided then default 
      filenames will be used e.g. output_member_000*.nc, 
      output_priorinf_mean.nc, output_priorinf_sd.nc
 </ul>
@@ -453,7 +453,7 @@ For small models you may want to use <code>single_file_in</code>,
 <p>
 <b>For Lanai style dart input and output restart files:</b> <br>
 <ul>
-<li> output_restart_file_list and restart_out_file_name are used in the same way as Lanai.
+<li> output_state_files and restart_out_file_name are used in the same way as Lanai.
 </ul>
 -->
 

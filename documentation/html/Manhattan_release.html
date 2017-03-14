@@ -81,15 +81,15 @@ particular <em class=file>Prior_Diag.nc</em> is broken up into files:
   <ul><li> <em class=file>preassim_member_####.nc</em></li>
       <li> <em class=file>preassim_mean.nc</em></li>
       <li> <em class=file>preassim_sd.nc</em></li>
-      <li> <em class=file>preassim_priorinf.nc</em> (if prior inflation is turned on)</li>
-      <li> <em class=file>preassim_postinf.nc</em> (if posterior inflation is turned on)</li>
+      <li> <em class=file>preassim_priorinf_{mean,sd}.nc</em> (if prior inflation is turned on)</li>
+      <li> <em class=file>preassim_postinf_{mean,sd}.nc</em> (if posterior inflation is turned on)</li>
   </ul>
 and similarly for <em class=file>Posterior_Diag.nc</em> :
   <ul><li> <em class=file>postassim_member_####.nc</em></li>
       <li> <em class=file>postassim_mean.nc</em></li>
       <li> <em class=file>postassim_sd.nc</em></li>
-      <li> <em class=file>postassim_priorinf.nc</em> (if prior inflation is turned on)</li>
-      <li> <em class=file>postassim_postinf.nc</em> (if posterior inflation is turned on)</li>
+      <li> <em class=file>postassim_priorinf_{mean,sd}.nc</em> (if prior inflation is turned on)</li>
+      <li> <em class=file>postassim_postinf_{mean,sd}.nc</em> (if posterior inflation is turned on)</li>
   </ul>
 There is also a text file, <em class=file>obs_seq.final</em>, with the model estimates of the 
 observations.  There is a suite of Matlab&reg; functions that facilitate exploration of the
@@ -405,9 +405,9 @@ compile and run ANY of the low-order models. For this reason,
 we can focus on the Lorenz `63 model. Subsequently, the only
 directories with files to be modified to check the installation 
 are:
-&nbsp;<em class=file>DART/mkmf</em>,
+&nbsp;<em class=file>DART/build_templates</em>,
 &nbsp;<em class=file>DART/models/lorenz_63/work</em>, and 
-&nbsp;<em class=file>DART/matlab</em> (but only for analysis).
+&nbsp;<em class=file>DART/diagnostics/matlab</em> (but only for analysis).
 </p>
 
 <!--==================================================================-->
@@ -457,7 +457,7 @@ standard <em class=program>make</em> utility.
 Shell scripts that execute the mkmf command for all standard 
 DART executables are provided as part of the standard DART software. 
 For more information on <em class=program>mkmf</em> see 
-<a href="http://www.gfdl.gov/fms/pubrel/j/atm_dycores/doc/dycore_public_manual.html#mkmf">
+<a href="https://www.gfdl.noaa.gov/~vb/mkmf.html#mkmf">
 the FMS mkmf description</a>.
 <br />
 One of the benefits of using <em class=program>mkmf</em> is that it also 
@@ -473,7 +473,7 @@ exising <em class=file>input.nml</em> that may exist in that directory.
 
 <p>
 A series of templates for different compilers/architectures exists 
-in the <em class=file>DART/mkmf/</em> directory and have names with
+in the <em class=file>DART/build_templates/</em> directory and have names with
 extensions that identify the compiler, the architecture, or both. 
 This is how you inform the build process of the specifics of your system. 
 Our intent is that you copy one that is similar to your system into 
@@ -685,7 +685,7 @@ The second command results in the compilation of a series of
 Fortran90 modules which ultimately produces an executable file: 
 <em class=program>preprocess</em>.
 Should you need to make any changes to the 
-<em class=file>DART/mkmf/mkmf.template</em>, 
+<em class=file>DART/build_templates/mkmf.template</em>, 
 you will need to regenerate the <em class=file>Makefile</em>.  
 <br /><br />
 The <em class=program>preprocess</em> program actually builds source code to
@@ -916,7 +916,7 @@ the user input looks <em class=input>like this</em>.
  Trying to open file dart_log.out
  
  Registering module :
- $url: http://squish/DART/trunk/utilities/utilities_mod.f90 $
+ $url: http:/build_templatessquish/DART/trunk/utilities/utilities_mod.f90 $
  $revision: 2713 $
  $date: 2007-03-25 22:09:04 -0600 (Sun, 25 Mar 2007) $
  Registration complete.
