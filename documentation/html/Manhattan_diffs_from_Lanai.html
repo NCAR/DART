@@ -1,15 +1,15 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
           "http://www.w3.org/TR/html4/strict.dtd">
-<HTML>
-<HEAD>
-<TITLE>RMA DART</TITLE>
-<link rel="stylesheet" type="text/css" href="../html/doc.css" />
+<html>
+<head>
+<title>DART Manhattan Differences from Lanai Release Notes</title>
+<link rel="stylesheet" type="text/css" href="doc.css" />
 <link href="../images/dart.ico" rel="shortcut icon" />
-</HEAD>
-<BODY>
-<A NAME="TOP"></A>
+</head>
+<body>
+<a name="TOP"></a>
 
-<H1>RMA Release notes</H1>
+<h1>DART Manhattan Differences from Lanai Release Notes</h1>
 
 <table border=0 summary="" cellpadding=5>
 <tr>
@@ -17,33 +17,55 @@
     <img src="../images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
-       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+       <p>Jump to DART Documentation Main Index 
+       <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/documentation/index.html">Website</a>  
+       or <a href="../../../documentation/index.html">local file</a><br />
           <small><small>version information for this file: <br />
           <!-- version tag follows, do not edit -->
-          $Id$</small></small>
-       </P></td>
+          $Id: Lanai_diffs_from_Kodiak.html 11243 2017-03-08 21:35:09Z nancy@ucar.edu $</small></small>
+       </p></td>
 </tr>
 </table>
 
-In the RMA version of DART, the state vector is not required to be stored 
+<a href="#Changes">Changes to Core DART routines</a> /
+<a href="#NewModels">New Models or Changes to Existing Models</a> /
+<a href="#ForwardOps">New or Changed Forward Operators</a> /
+<a href="#ObsConvert">Observation Converters</a> /
+<a href="#Diagnostics">New or Updated DART Diagnostics</a> /
+<a href="#Misc">Tutorial, Scripting, Setup, Builds</a> /
+<a href="#Legalese">Terms of Use</a>
+
+<!--==================================================================-->
+
+<A NAME="Overview"></A>
+<H2>Overview</H2>
+<P>
+This document includes an overview of the changes in the DART
+system since the Lanai release.  For further details on any of
+these items look at the HTML documentation for that specific part
+of the system.
+</P>
+In the Manhattan version of DART, the state vector is not required to be stored 
 completely on any process. This is achieved using Remote Memory Access (RMA).  
 The RMA programing model allows processes to read (and write) memory on other 
 processors asynchronously.
 
-RMA DART supported models:
+Manhattan supported models:
 <ul>
-<li> 9var
-<li> bgrid_solo
-<li> cam-fv
-<li> cice
-<li> cm1
-<li> lorenz_04
-<li> lorenz_63
-<li> lorenz_84
-<li> lorenz_96
+<li> 9var 
+<li> bgrid_solo 
+<li> cam-fv 
+<li> cice 
+<li> cm1 
+<li> forced_lorenz_96 
+<li> lorenz_63 
+<li> lorenz_84 
+<li> lorenz_96 
+<li> lorenz_04 
 <li> mpas_atm (NetCDF overwrite not supported for update_u_from_reconstruct = .true. )
-<li> POP
-<li> ROMS
+<li> POP 
+<li> ROMS 
+<li> simple_advection
 <li> wrf
 </ul>
 
@@ -503,9 +525,9 @@ http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 
 <TABLE border=0 cellpadding=0 width=100% summary="">
 <TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision: 11299 $ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/documentation/documentation/html/rma.html $ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date: 2017-03-10 16:45:23 -0700 (Fri, 10 Mar 2017) $ </TD></TR>
 <TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
 </TABLE>
 

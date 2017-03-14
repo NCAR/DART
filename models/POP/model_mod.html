@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>module model_mod (POP)</TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
-<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../../../documentation/html/doc.css" />
+<link href="../../../documentation/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,10 +14,10 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../../documentation/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
-       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+       <P>Jump to <a href="../../../documentation/index.html">DART Documentation Main Index</a><br />
           <small><small>version information for this file: <br />
           <!-- version tag follows, do not edit -->
           $Id$</small></small>
@@ -168,7 +168,7 @@
       The observations come from the 
       <a href="http://www.nodc.noaa.gov/OC5/WOD05/pr_wod05.html">World Ocean Database 2005</a>
       and are processed by DART routines in the
-   <a href="../../observations/WOD/WOD.html">DART/observations/WOD</a> directory.  
+   <a href="../../observations/observations/obs_converters/WOD/WOD.html">DART/observations/WOD</a> directory.  
    </P>
 </div>
 
@@ -233,9 +233,9 @@
       </li>
 
       <li>create a TINY (i.e. 1) set of 'perfect' observations in the normal fashion:
-         <a href="../../../obs_sequence/create_obs_sequence.html">create_obs_sequence</a>
+         <a href="../../../assimilation_code/programs/create_obs_sequence/create_obs_sequence.html">create_obs_sequence</a>
          and then 
-         <a href="../../../obs_sequence/create_fixed_network_seq.html">create_fixed_network_seq</a>
+         <a href="../../../obs_sequence/assimilation_code/programs/create_fixed_network_seq/create_fixed_network_seq.html">create_fixed_network_seq</a>
          to create an empty observation sequence file 
          (usually called <em class=file>obs_seq.in</em>).
 	 The programs will prompt you for all the information they require.
@@ -266,7 +266,7 @@
 	  The script may require some modification, but not much. 
 	  Please let me know if I can improve the readability or comments. 
 	  <em class=program>run_perfect_model_obs.batch</em> runs 
-	  <a href="../../perfect_model_obs/perfect_model_obs.html">perfect_model_obs</a>
+	  <a href="../../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html">perfect_model_obs</a>
       </li>
 
       <li><em class=program>run_filter.batch</em> runs 
@@ -287,7 +287,7 @@
       <em class=file>DART/matlab</em> directory. 
       There are Matlab&#174; scripts for exploring the performance of the 
       assimilation in observation-space (after running 
-      <a href="../../diagnostics/threed_sphere/obs_diag.html">obs_diag</a> 
+      <a href="../../assimilation_code/programs/obs_diag/oned/obs_diag.html assimilation_code/programs/obs_diag/threed_cartesian/obs_diag.html assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html">obs_diag</a> 
       to explore the <em class=file>obs_seq.final</em> file) - use the 
       scripts starting with 'plot_', i.e. 
       <em class=file>DART/diagnostics/matlab/plot_*.m</em>.
@@ -297,7 +297,7 @@
       <br />
       <br />
       It is also worthwhile to convert your obs_seq.final file to a netCDF format
-      obs_sequence file with <a href="../../obs_sequence/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>
+      obs_sequence file with <a href="../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>
 </P>
 </div>
 

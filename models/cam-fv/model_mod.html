@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>module model_mod (CAM)</TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
-<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../../../documentation/html/doc.css" />
+<link href="../../../documentation/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,10 +14,10 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../../documentation/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
-       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+       <P>Jump to <a href="../../../documentation/index.html">DART Documentation Main Index</a><br />
           <small><small>version information for this file: <br />
           <!-- version tag follows, do not edit -->
           $Id$</small></small>
@@ -853,7 +853,7 @@ integer, optional,        intent(out)   :: <em class=code> var_kind </em>
 Returns metadata about a given element, indexed by <em class=code>index_in</em>, 
 in the model state vector. The location defines where the state variable is located 
 while the DART 
-<A HREF="../../obs_kind/obs_kind_mod.html"><em class=code>KIND</em></A>
+<A HREF="../../assimilation_code/modules/observations/obs_kind_mod.html"><em class=code>KIND</em></A>
 of the variable (for instance temperature, 
 or u wind component) is returned by <em class=optionalcode>var_kind</em>. 
 </P>
@@ -1085,7 +1085,7 @@ Given a model state, returns the value of the variable encoded in
 <em class=code>obs_kind</em>
 interpolated to a given location by a method of the model's choosing.  
 Currently DART 
-<A HREF="../../obs_kind/obs_kind_mod.html"><em class=code>KIND</em></A>s:
+<A HREF="../../assimilation_code/modules/observations/obs_kind_mod.html"><em class=code>KIND</em></A>s:
 QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, QTY_SURFACE_PRESSURE,
 QTY_TEMPERATURE, QTY_SPECIFIC_HUMIDITY, QTY_PRESSURE are supported, but
 others can be added.  QTY_PRESSURE does not have a corresponding field on

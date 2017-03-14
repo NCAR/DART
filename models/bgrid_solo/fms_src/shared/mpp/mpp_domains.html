@@ -62,7 +62,7 @@
 <br>
 <b>Change History:&nbsp;</b><a href="http://www.gfdl.noaa.gov/fms-cgi-bin/cvsweb.cgi/FMS/">WebCVS Log</a>
 <br>
-<b>RCS Log:&nbsp;</b><a href="http://www.gfdl.noaa.gov/~vb/changes_mpp_domains.html">RCS Log</a>
+<b>RCS Log:&nbsp;</b><a href="http://www.gfdl.noaa.gov/~vb/changes_models/bgrid_solo/fms_src/shared/mpp/mpp_domains.html">RCS Log</a>
 <br>
 <b>Last Modified:&nbsp;</b>2002/07/19 18:10:06<br>
 <br>
@@ -75,7 +75,7 @@
 <p class="text"> 
 <tt>mpp_domains_mod</tt>   is a set of simple calls for domain
    decomposition and domain updates on rectilinear grids. It requires the
-   module <a href="mpp.html"></a>, upon which it is built. </p>
+   module <a href="models/bgrid_solo/fms_src/shared/mpp/mpp.html"></a>, upon which it is built. </p>
 <!-- END OVERVIEW -->
 <a name="DESCRIPTION"></a>
 <!-- BEGIN DESCRIPTION -->
@@ -90,7 +90,7 @@
    <br>
 <br> 
 <tt>mpp_domains_mod</tt>   provides a domain decomposition and domain
-   update API for <i>rectilinear</i>   grids, built on top of the <a href="mpp.html"></a>   API for message passing. Features
+   update API for <i>rectilinear</i>   grids, built on top of the <a href="models/bgrid_solo/fms_src/shared/mpp/mpp.html"></a>   API for message passing. Features
    of <tt>mpp_domains_mod</tt>   include:
    <br>
 <br>
@@ -474,7 +474,7 @@ some elements are repeated below if they are needed once per domain
 <tt>mpp_update_domains</tt>   internally buffers the date being sent
    and received into single messages for efficiency. A turnable internal
    buffer area in memory is provided for this purpose by <tt>mpp_domains_mod</tt>. The size of this buffer area can be set by
-   the user by calling <a href="mpp_domains.html#mpp_domains_set_stack_size"> </a>. </dd>
+   the user by calling <a href="models/bgrid_solo/fms_src/shared/mpp/mpp_domains.html#mpp_domains_set_stack_size"> </a>. </dd>
 <br>
 <br>
 </dl>
@@ -653,7 +653,7 @@ some elements are repeated below if they are needed once per domain
    decomposed. This method does the sum first along the ranks beyond 2,
    and then calls <a href="#mpp_global_field"></a>   to produce a
    global 2D array which is then summed. The default method, which is
-   considerably faster, does a local sum followed by <a href="mpp.html#mpp_sum"></a>   across the domain
+   considerably faster, does a local sum followed by <a href="models/bgrid_solo/fms_src/shared/mpp/mpp.html#mpp_sum"></a>   across the domain
    decomposition. </td>
 </tr>
 </table>
@@ -848,7 +848,7 @@ some elements are repeated below if they are needed once per domain
    decomposition. In addition the optional argument <tt>pos</tt>   may be
    used to retrieve the 0-based position of the domain local to the
    calling PE, i.e <tt>domain%list(pos)%pe</tt>   is the local PE,
-   as returned by <a href="mpp.html#mpp_pe"></a>.
+   as returned by <a href="models/bgrid_solo/fms_src/shared/mpp/mpp.html#mpp_pe"></a>.
    The 2D version of this call is identical to 1D version. </dd>
 <br>
 <br>
@@ -943,7 +943,7 @@ some elements are repeated below if they are needed once per domain
    to. <tt>MPP_DEBUG</tt>   returns even more information for debugging.
    <br>
 <br> 
-<tt>mpp_domains_init</tt>   will call <tt>mpp_init</tt>, to make sure <a href="mpp.html"></a>   is initialized. (Repeated
+<tt>mpp_domains_init</tt>   will call <tt>mpp_init</tt>, to make sure <a href="models/bgrid_solo/fms_src/shared/mpp/mpp.html"></a>   is initialized. (Repeated
    calls to <tt>mpp_init</tt>   do no harm, so don't worry if you already
    called it). </dd>
 <br>
@@ -1086,7 +1086,7 @@ some elements are repeated below if they are needed once per domain
 <dl>
 <dt></dt>
 <dd>   Any module or program unit using <tt>mpp_domains_mod</tt>   must contain the line <pre>     use mpp_domains_mod</pre> 
-<tt>mpp_domains_mod</tt> <tt>use</tt>s <a href="mpp.html"></a>, and therefore is subject to the <a href="mpp.html#COMPILING AND LINKING SOURCE">compiling and linking requirements of that module.</a> 
+<tt>mpp_domains_mod</tt> <tt>use</tt>s <a href="models/bgrid_solo/fms_src/shared/mpp/mpp.html"></a>, and therefore is subject to the <a href="models/bgrid_solo/fms_src/shared/mpp/mpp.html#COMPILING AND LINKING SOURCE">compiling and linking requirements of that module.</a> 
 </dd>
 </dl>
 </div>
@@ -1103,7 +1103,7 @@ some elements are repeated below if they are needed once per domain
 <tt>mpp_domains_mod</tt>   uses standard f90, and has no special
    requirements. There are some OS-dependent
    pre-processor directives that you might need to modify on
-   non-SGI/Cray systems and compilers. The <a href="mpp.html#PORTABILITY">portability of </a>   obviously is a constraint, since this module is built on top of
+   non-SGI/Cray systems and compilers. The <a href="models/bgrid_solo/fms_src/shared/mpp/mpp.html#PORTABILITY">portability of </a>   obviously is a constraint, since this module is built on top of
    it. Contact me, Balaji, SGI/GFDL, with questions. </dd>
 </dl>
 </div>

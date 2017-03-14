@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>module MITgcm_ocean model_mod</TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
-<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../../../documentation/html/doc.css">
+<link href="../../../documentation/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,10 +14,10 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../../documentation/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
-       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+       <P>Jump to <a href="../../../documentation/index.html">DART Documentation Main Index</a><br />
           <small><small>version information for this file: <br />
           <!-- version tag follows, do not edit -->
           $Id$</small></small>
@@ -84,7 +84,7 @@
    <em>U_CURRENT_COMPONENT</em>.
    Using the specific types when possible will allow flexibility 
    specifying what kinds of observations to assimilate. 
-   <A href="create_ocean_obs.html">create_ocean_obs</a> is the program
+   <A href="models/MITgcm_ocean/create_ocean_obs.html">create_ocean_obs</a> is the program
    to create a DART observation sequence from a very particular ASCII file.
  </p>
 
@@ -95,11 +95,11 @@
    There are a set of support programs: 
  </p>
    <table width="100%" cellpadding="10">
-   <tr><td valign="top"><a href="trans_pv_sv.html">trans_pv_sv.f90</a></td>
+   <tr><td valign="top"><a href="models/MITgcm_ocean/trans_pv_sv.html">trans_pv_sv.f90</a></td>
        <td>converts the ocean model snapshot files into a DART-compatible format
       </td></tr>
     
-   <tr><td valign="top"><a href="trans_sv_pv.html">trans_sv_pv.f90</a></td>
+   <tr><td valign="top"><a href="models/MITgcm_ocean/trans_sv_pv.html">trans_sv_pv.f90</a></td>
        <td>converts the DART output into snapshot files to be used as 
            ocean model input datasets (specified in 
            <em class="file">data</em><em class="code">&amp;PARM05</em>); creates
@@ -111,7 +111,7 @@
            (<em class="file">data.cal.DART</em>) containing the calendar information.
       </td></tr>
 
-   <tr><td valign="top"><A href="create_ocean_obs.html">create_ocean_obs.f90</a></td>
+   <tr><td valign="top"><A href="models/MITgcm_ocean/create_ocean_obs.html">create_ocean_obs.f90</a></td>
        <td>create observation sequence files
       </td></tr>
    </table>
@@ -192,7 +192,7 @@
    in the <em class="file">data</em><em class="code">&amp;PARM05</em> namelist. 
    Apparently, this requires 
    <em class="file">data</em><em class="code">&amp;PARM03:startTime</em> to be <b>0.0</b>. 
-   One of the DART support routines (<a href="trans_sv_pv.html">trans_sv_pv</a>) 
+   One of the DART support routines (<a href="models/MITgcm_ocean/trans_sv_pv.html">trans_sv_pv</a>) 
    converts the DART state vector to the files used in 
    <em class="file">data</em><em class="code">&amp;PARM05</em> and creates new 
    <em class="file">data.cal</em><em class="code">&amp;CAL_NML</em> and 
@@ -202,7 +202,7 @@
    <BR>
    The ocean model then 
    advances till <em class="file">data</em><em class="code">&amp;PARM03:endTime</em> 
-   and writes out snapshot files. <a href="trans_pv_sv.html">trans_pv_sv</a> converts the 
+   and writes out snapshot files. <a href="models/MITgcm_ocean/trans_pv_sv.html">trans_pv_sv</a> converts the 
    snapshot files to a DART-compatible file which is ingested by 
    <em class="program">filter</em>. <em class="program">filter</em> also reads 
    the observation sequence file to determine which observations are 
@@ -234,9 +234,9 @@
       of the 'middle' snapshot - then use it as the initial condition
       for <em class="program">perfect_model_obs</em>.</li>
       <li>create a TINY set of 'perfect' observations in the normal fashion:
-      <a href="../../../obs_sequence/create_obs_sequence.html">create_obs_sequence</a>
+      <a href="../../../assimilation_code/programs/create_obs_sequence/create_obs_sequence.html">create_obs_sequence</a>
       and then 
-      <a href="../../../obs_sequence/create_fixed_network_seq.html">create_fixed_network_seq</a>
+      <a href="../../../obs_sequence/assimilation_code/programs/create_fixed_network_seq/create_fixed_network_seq.html">create_fixed_network_seq</a>
       to create an empty observation sequence file (usually called 
       <em class="file">obs_seq.in</em>) 
       </li>
@@ -244,7 +244,7 @@
                  <em class="file">data.cal</em>, and
                  <em class="file">input.nml</em> to control
           the experiment and populate the observation sequence file by
-          running <a href="../../../perfect_model_obs/perfect_model_obs.html">perfect_model_obs</a>
+          running <a href="../../../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html">perfect_model_obs</a>
       </li>
       <li>Now use the full ensemble of initial conditions from Step 1 and run 
           <a href="../../../filter/filter.html">filter</a></li>
@@ -272,7 +272,7 @@
    scripts for perusing the netCDF files in the <em class="file">DART/matlab</em>
    directory. There are Matlab&#174; scripts for exploring the performance of the
    assimilation in observation-space (after running 
-   <a href="../../../diagnostics/threed_sphere/obs_diag.html">obs_diag</a> to 
+   <a href="../../../assimilation_code/programs/obs_diag/oned/obs_diag.html assimilation_code/programs/obs_diag/threed_cartesian/obs_diag.html assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html">obs_diag</a> to 
    explore the <em class="file">obs_seq.final</em> file) - use the scripts starting
    with 'plot_', i.e. <em class="file">DART/diagnostics/matlab/plot_*.m</em>.  
    As always, there are some model-specific item you should know about in
@@ -1842,7 +1842,7 @@ This namelist is the same one that is used by the ocean model.
 The values <strong>must</strong> correspond to the date at the
 start of an experiment. This is more important for 
 <em class="file">create_ocean_obs, trans_pv_sv</em> than
-for <em class="file">filter</em> and <a href="trans_sv_pv.html">trans_sv_pv</a> since 
+for <em class="file">filter</em> and <a href="models/MITgcm_ocean/trans_sv_pv.html">trans_sv_pv</a> since 
 <em class="file">trans_sv_pv</em> takes the start time of the experiment from the DART
 initial conditions file and actually writes a new <em class="file">data.cal.DART</em> and a new
 <em class="file">data.DART</em> file.

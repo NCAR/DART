@@ -4,8 +4,8 @@
 <HEAD>
 <TITLE>module model_mod (NOAH)</TITLE>
 <meta http-equiv="content-type" content="text/html; charset=utf-8" />
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
-<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../../../documentation/html/doc.css" />
+<link href="../../../documentation/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -15,10 +15,10 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../../documentation/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
-       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+       <P>Jump to <a href="../../../documentation/index.html">DART Documentation Main Index</a><br />
           <small><small>version information for this file: <br />
           <!-- version tag follows, do not edit -->
           $Id$</small></small>
@@ -222,15 +222,15 @@
       and both have their own documentation :
    </P>
    <table width="100%" cellpadding="10">
-   <tr><td valign="top"><a href="noah_to_dart.html">noah_to_dart.f90</a></td>
+   <tr><td valign="top"><a href="models/noah/noah_to_dart.html">noah_to_dart.f90</a></td>
        <td>converts a NOAH restart file into a DART-compatible file normally 
        called <em class=file>dart_ics</em>&nbsp;.
        We usually wind up linking the NOAH restart files to a
        static name (<em class=file>restart.nc</em>).
-       <a href="noah_to_dart.html">[noah_to_dart.html]</a>
+       <a href="models/noah/noah_to_dart.html">[models/noah/noah_to_dart.html]</a>
        </td>
    </tr>
-   <tr><td valign="top"><a href="dart_to_noah.html">dart_to_noah.f90</a></td>
+   <tr><td valign="top"><a href="models/noah/dart_to_noah.html">dart_to_noah.f90</a></td>
        <td><strong>updates</strong> some or all of a NOAH restart file with the 
        posterior DART state vector.  There is the ability to selectively avoid
        updating the NOAH variables. This allows one to include NOAH variables in
@@ -246,7 +246,7 @@
        <em class=program>dart_to_noah</em> creates a file
        <em class=file>noah_advance_information.txt</em> which contains information
        to control the length of the NOAH integration.-->
-       <a href="dart_to_noah.html">[dart_to_noah.html]</a>
+       <a href="models/noah/dart_to_noah.html">[models/noah/dart_to_noah.html]</a>
        </td>
    </tr>
    </table>
@@ -278,7 +278,7 @@
    <table width="100%" cellpadding="10">
    <TR><TD valign=top>1)<a href="shell_scripts/setup_pmo.csh">&nbsp;setup_pmo.csh</a></TD>
        <TD>This script stages the run of
-       <a href="../../perfect_model_obs/perfect_model_obs.html">perfect_model_obs</a>.
+       <a href="../../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html">perfect_model_obs</a>.
        The directory where you run the script is called <strong>CENTRALDIR</strong>
        and will be the working directory for the experiment. The required input
        observation sequence file must be created in the normal DART way 
@@ -336,12 +336,12 @@
       Some novel observations come from the Cosmic-ray Soil Moisture Observing System:
       <a href="http://cosmos.hwr.arizona.edu/">COSMOS</a>
       and are processed by DART routines in the
-   <a href="../../observations/COSMOS/COSMOS_to_obs.html">DART/observations/COSMOS</a> directory.
+   <a href="../../observations/COSMOS/observations/obs_converters/COSMOS/COSMOS_to_obs.html">DART/observations/COSMOS</a> directory.
    <br />
    <br />
    DART has a very object-oriented approach to observation support. 
    All observations that are intended to be supported must be
-   <a href="../../preprocess/preprocess.html">preprocessed</a> into a single
+   <a href="../../assimilation_code/programs/preprocess/preprocess.html">preprocessed</a> into a single
    <em class=file>obs_def_mod.f90</em> and
    <em class=file>obs_kind_mod.f90</em> in the standard DART way.
    </P>
@@ -351,7 +351,7 @@
    <P>
       There are Matlab&#174; scripts for exploring the performance of the
       assimilation in observation-space (after running
-      <a href="../../diagnostics/threed_sphere/obs_diag.html">obs_diag</a>
+      <a href="../../assimilation_code/programs/obs_diag/oned/obs_diag.html assimilation_code/programs/obs_diag/threed_cartesian/obs_diag.html assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html">obs_diag</a>
       to explore the <em class=file>obs_seq.final</em> file) - use the
       scripts starting with 'plot_', i.e.
       <em class=file>DART/diagnostics/matlab/plot_*.m</em>.
@@ -366,7 +366,7 @@
       <br />
       <br />
       It is also worthwhile to convert your obs_seq.final file to a netCDF format
-      obs_sequence file with <a href="../../obs_sequence/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>
+      obs_sequence file with <a href="../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>
       and use any of the standard plots. Be aware that the COSMOS site-specific
       metadata will not get conveyed to the netCDF file.
 </P>
@@ -499,8 +499,8 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
 The DART 'KIND's match what the <em class=program>model_mod</em> knows
 how to interpolate, so you can't just add a new kind and expect it to work.
 There is a complex interplay between 
-<a href="../../obs_def/obs_def_mod.html">obs_def_mod</a>,
-<a href="../../preprocess/preprocess.html">preprocess</a>, and
+<a href="../../observations/forward_operators/observations/forward_operators/obs_def_mod.html">obs_def_mod</a>,
+<a href="../../assimilation_code/programs/preprocess/preprocess.html">preprocess</a>, and
 <a href="model_mod.html">model_mod</a> that defines what KINDs are supported.
 There is only a single KIND that works with each variable and the example shows
 the current KINDs. Support for these KINDs was provided by running 

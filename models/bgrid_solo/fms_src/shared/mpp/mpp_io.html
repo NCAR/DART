@@ -62,7 +62,7 @@
 <br>
 <b>Change History:&nbsp;</b><a href="http://www.gfdl.noaa.gov/fms-cgi-bin/cvsweb.cgi/FMS/">WebCVS Log</a>
 <br>
-<b>RCS Log:&nbsp;</b><a href="http://www.gfdl.noaa.gov/~vb/changes_mpp_io.html">RCS Log</a>
+<b>RCS Log:&nbsp;</b><a href="http://www.gfdl.noaa.gov/~vb/changes_models/bgrid_solo/fms_src/shared/mpp/mpp_io.html">RCS Log</a>
 <br>
 <b>Last Modified:&nbsp;</b>2002/07/19 18:10:07<br>
 <br>
@@ -75,7 +75,7 @@
 <p class="text"> 
 <tt>mpp_io_mod</tt>, is a set of simple calls for parallel I/O on
    distributed systems. It is geared toward the writing of data in netCDF
-   format. It requires the modules <a href="mpp_domains.html"></a>   and <a href="mpp.html"></a>, upon which it is built. </p>
+   format. It requires the modules <a href="models/bgrid_solo/fms_src/shared/mpp/mpp_domains.html"></a>   and <a href="models/bgrid_solo/fms_src/shared/mpp/mpp.html"></a>, upon which it is built. </p>
 <!-- END OVERVIEW -->
 <a name="DESCRIPTION"></a>
 <!-- BEGIN DESCRIPTION -->
@@ -91,7 +91,7 @@
    APIs while providing a layer of insulation for user codes.
    <br>
 <br>
-   The <tt>mpp_io_mod</tt>   parallel I/O API built on top of the <a href="mpp_domains.html"></a>   and <a href="mpp.html"></a>   API for domain decomposition and
+   The <tt>mpp_io_mod</tt>   parallel I/O API built on top of the <a href="models/bgrid_solo/fms_src/shared/mpp/mpp_domains.html"></a>   and <a href="models/bgrid_solo/fms_src/shared/mpp/mpp.html"></a>   API for domain decomposition and
    message passing. Features of <tt>mpp_io_mod</tt>   include:
    <br>
 <br>
@@ -558,7 +558,7 @@
    The <tt>data</tt>   argument for distributed data is expected by <tt>mpp_write</tt>   to contain data specified on the <i>data</i>   domain,
    and will write the data belonging to the <i>compute</i>   domain,
    fetching or sending data as required by the parallel I/O <a href="#modes">mode</a>   specified in the <tt>mpp_open</tt>   call. This
-   is consistent with our definition of <a href="http:mpp_domains.html#domains">domains</a>, where all arrays are
+   is consistent with our definition of <a href="http:models/bgrid_solo/fms_src/shared/mpp/mpp_domains.html#domains">domains</a>, where all arrays are
    expected to be dimensioned on the data domain, and all operations
    performed on the compute domain.
    <br>
@@ -638,7 +638,7 @@
    The <tt>data</tt>   argument for distributed data is expected by <tt>mpp_read</tt>   to contain data specified on the <i>data</i>   domain,
    and will read the data belonging to the <i>compute</i>   domain,
    fetching data as required by the parallel I/O <a href="#modes">mode</a>   specified in the <tt>mpp_open</tt>   call. This
-   is consistent with our definition of <a href="http:mpp_domains.html#domains">domains</a>, where all arrays are
+   is consistent with our definition of <a href="http:models/bgrid_solo/fms_src/shared/mpp/mpp_domains.html#domains">domains</a>, where all arrays are
    expected to be dimensioned on the data domain, and all operations
    performed on the compute domain. </dd>
 <br>
@@ -1157,7 +1157,7 @@
    release 3 for fortran</a>   is required.
    <br>
 <br>
-   Please also consider the compiling and linking requirements of <a href="mpp_domains.html#linking"></a>   and <a href="mpp.html#linking"></a>, which are <tt>use</tt>d by this module. </dd>
+   Please also consider the compiling and linking requirements of <a href="models/bgrid_solo/fms_src/shared/mpp/mpp_domains.html#linking"></a>   and <a href="models/bgrid_solo/fms_src/shared/mpp/mpp.html#linking"></a>, which are <tt>use</tt>d by this module. </dd>
 </dl>
 </div>
 <br>

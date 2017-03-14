@@ -62,7 +62,7 @@
 <br>
 <b>Change History:&nbsp;</b><a href="http://www.gfdl.noaa.gov/fms-cgi-bin/cvsweb.cgi/FMS/">WebCVS Log</a>
 <br>
-<b>RCS Log:&nbsp;</b><a href="http://www.gfdl.noaa.gov/~vb/changes_mpp.html">RCS Log</a>
+<b>RCS Log:&nbsp;</b><a href="http://www.gfdl.noaa.gov/~vb/changes_models/bgrid_solo/fms_src/shared/mpp/mpp.html">RCS Log</a>
 <br>
 <b>Last Modified:&nbsp;</b>2002/07/19 18:10:05<br>
 <br>
@@ -119,7 +119,7 @@
    more complicated stuff.<br>   2) Design toward typical use in climate/weather CFD codes.<br>   3) Performance to be not significantly lower than any native API.
    <br>
 <br>
-   This module is used to develop higher-level calls for <a href="mpp_domains.html">domain decomposition</a>   and <a href="mpp_io.html">parallel I/O</a>.
+   This module is used to develop higher-level calls for <a href="models/bgrid_solo/fms_src/shared/mpp/mpp_domains.html">domain decomposition</a>   and <a href="models/bgrid_solo/fms_src/shared/mpp/mpp_io.html">parallel I/O</a>.
    <br>
 <br>
    Parallel computing is initially daunting, but it soon becomes
@@ -313,7 +313,7 @@
    Library reduction operators are not required or guaranteed to be
    bit-reproducible. In any case, changing the processor count changes
    the data layout, and thus very likely the order of operations. For
-   bit-reproducible sums of distributed arrays, consider using the <tt>mpp_global_sum</tt>   routine provided by the <a href="mpp_domains.html"></a>   module.
+   bit-reproducible sums of distributed arrays, consider using the <tt>mpp_global_sum</tt>   routine provided by the <a href="models/bgrid_solo/fms_src/shared/mpp/mpp_domains.html"></a>   module.
    <br>
 <br>
    The <tt>bit_reproducible</tt>   flag provided in earlier versions of
@@ -1132,7 +1132,7 @@
    becoming available on other systems as well.
    <br>
 <br>
-   There are some <a href="os.html">OS-dependent
+   There are some <a href="">OS-dependent
    pre-processor directives</a>   that you might need to modify on
    non-SGI/Cray systems and compilers.
    <br>

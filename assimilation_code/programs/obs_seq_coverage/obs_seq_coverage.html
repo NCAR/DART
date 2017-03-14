@@ -61,7 +61,7 @@ not be used anyway ...
 <li><em class=file>obsdef_mask.txt</em> contains the list of observation definitions
 (but not the observations themselves) that are desired. The observation definitions
 include the locations and times for each of the desired observation types. This file
-is read by <a href="obs_selection.html">obs_selection</a> and combined with the raw
+is read by <a href="assimilation_code/programs/obs_selection/obs_selection.html">obs_selection</a> and combined with the raw
 observation sequence files to create the observation sequence file appropriate for 
 use in a forecast.
 <br />
@@ -70,7 +70,7 @@ use in a forecast.
 to plot the times and locations of the observations in a manner to help explore 
 the design of the verification locations/network. 
 <em class=file>obsdef_mask.nc</em> is <em class=strong>required</em> by
-<a href="obs_seq_verify.html">obs_seq_verify</a>, the program
+<a href="assimilation_code/programs/obs_seq_verify/obs_seq_verify.html">obs_seq_verify</a>, the program
 that reorders the observations into a structure that  
 makes it easy to calculate statistics like ROC, etc.</li>
 </ul>
@@ -275,7 +275,7 @@ example.
     <TD>The name of the file that will contain the observation
 definitions of the verfication observations.  Only the metadata from the
 observations (location, time, obs_type) are preserved in this file. They are
-in no particular order.  <a href="obs_selection.html">obs_selection</a> will
+in no particular order.  <a href="assimilation_code/programs/obs_selection/obs_selection.html">obs_selection</a> will
 use this file as a 'mask' to extract the real observations from the candidate
 observation sequence files.
 </TD></TR>
@@ -285,7 +285,7 @@ observation sequence files.
     <TD>The name of the file that will contain the observation
 definitions of the unique locations that match <strong>any</strong> of the
 verification times.  This file is used in conjunction with 
-<a href="obs_seq_verify.html">obs_seq_verify</a> to reorder the 
+<a href="assimilation_code/programs/obs_seq_verify/obs_seq_verify.html">obs_seq_verify</a> to reorder the 
 <em class=file>obs_seq.forecast</em> into a structure that will facilitate
 calculating the statistics and scores of the forecasts.
 </TD></TR>
@@ -437,7 +437,7 @@ utilities_mod
    
    <LI>A text file containing the metadata for the observations to be used
        for forecast evaluation is created. This file is subsequently
-       required by <a href="obs_selection.html">obs_selection</a> to
+       required by <a href="assimilation_code/programs/obs_selection/obs_selection.html">obs_selection</a> to
        subset the set of input observation sequence files into a
        single observation sequence file 
        (<em class=file>obs_seq.evaluate</em>) for the forecast step.
@@ -445,7 +445,7 @@ utilities_mod
        (<em class=file>obsdef_mask.txt</em> is the default name)<br /></LI>
    <LI>A netCDF file containing the metadata for a much larger set of 
        observations that may be used is created. This file is subsequently
-       required by <a href="obs_seq_coverage.html">obs_seq_coverage</a> to
+       required by <a href="assimilation_code/programs/obs_seq_coverage/obs_seq_coverage.html">obs_seq_coverage</a> to
        define the desired times and locations for the verification.
        <br />
        (<em class=file>obsdef_mask.nc</em> is the default name)</LI>
@@ -751,7 +751,7 @@ any particular observation type will take place.
 <br />
 <br />
 Now that you have the <em class=file>obsdef_mask.txt</em>, you can run 
-<a href="obs_selection.html">obs_selection</a> to subset the observation sequence
+<a href="assimilation_code/programs/obs_selection/obs_selection.html">obs_selection</a> to subset the observation sequence
 files into one compact file to use in your ensemble forecast.
 </P>
 

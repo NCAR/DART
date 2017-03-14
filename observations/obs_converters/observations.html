@@ -190,7 +190,7 @@ usually are distributed with a year/month/day,
 hour/min/seconds timestamp.  There are routines in DART
 to convert back and forth between the (day-number/seconds) 
 format and a variety of (year/month/day) calendars. 
-See <a href="../time_manager/time_manager_mod.html#time_type">the
+See <a href="../assimilation_code/modules/utilities/time_manager_mod.html#time_type">the
 time manager documentation</a>
 for more details on how DART stores time information and
 the types of available calendars.  Some climate models which do
@@ -233,7 +233,7 @@ maker.  Sadly, it is frequently surprisingly
 difficult to find these values.
 For the representativeness error, a set of artificial
 observations could be generated with the 
-<a href="../perfect_model_obs/perfect_model_obs.html">perfect_model_obs</a>
+<a href="../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html">perfect_model_obs</a>
 program and an assimilation experiment could be run to
 generate an estimate of the error in the model.
 In practice however most people make an educated guess
@@ -296,7 +296,7 @@ Each type is associated with a single underlying generic 'kind',
 which controls what forward operator code is called inside the
 model, e.g. QTY_TEMPERATURE, QTY_DENSITY, etc.
 </P><P>
-See <a href="../obs_def/obs_def_mod.html">here</a> for more
+See <a href="../observations/forward_operators/observations/forward_operators/obs_def_mod.html">here</a> for more
 details on how to use and add new DART types.
 The DART obs_kind_mod.f90 defines a list of already defined
 observation kinds, and users can either use existing observation
@@ -329,20 +329,20 @@ format required by DART.</P>
 
 <P>The current list of converters include:</P>
 <UL>
-<LI><a href="AIRS/AIRS.html">AIRS</a></LI>
-<LI><a href="GTSPP/GTSPP.html">GTSPP</a></LI>
-<LI><a href="MADIS/MADIS.html">MADIS</a></LI>
-<LI><a href="NCEP/prep_bufr/prep_bufr.html">NCEP (prepbufr->ascii)</a></LI>
-<LI><a href="NCEP/ascii_to_obs/create_real_obs.html">NCEP (ascii->obs_seq)</a></LI>
-<LI><a href="SSEC/SSEC.html">SSEC</a></LI>
-<LI><a href="WOD/WOD.html">WOD</a></LI>
-<LI><a href="gps/gps.html">GPS</a></LI>
-<LI><a href="quikscat/QuikSCAT.html">QuikSCAT</a></LI>
-<LI><a href="radar/radar.html">Radar</a></LI>
-<LI><a href="text/text_to_obs.html">Text</a></LI>
-<LI><a href="tropical_cyclone/tc_to_obs.html">Tropical Cyclones</a></LI>
-<LI><a href="var/littler_tf_dart.html">Var (little-r)</a></LI>
-<LI><a href="var/rad_3dvar_to_dart.html">Var (radar)</a></LI>
+<LI><a href="observations/obs_converters/AIRS/AIRS.html">AIRS</a></LI>
+<LI><a href="observations/obs_converters/GTSPP/GTSPP.html">GTSPP</a></LI>
+<LI><a href="observations/obs_converters/MADIS/MADIS.html">MADIS</a></LI>
+<LI><a href="observations/obs_converters/NCEP/prep_bufr/prep_bufr.html">NCEP (prepbufr->ascii)</a></LI>
+<LI><a href="observations/obs_converters/NCEP/ascii_to_obs/create_real_obs.html">NCEP (ascii->obs_seq)</a></LI>
+<LI><a href="observations/obs_converters/SSEC/SSEC.html">SSEC</a></LI>
+<LI><a href="observations/obs_converters/WOD/WOD.html">WOD</a></LI>
+<LI><a href="observations/obs_converters/gps/gps.html">GPS</a></LI>
+<LI><a href="observations/obs_converters/quikscat/QuikSCAT.html">QuikSCAT</a></LI>
+<LI><a href="observations/obs_converters/radar/radar.html">Radar</a></LI>
+<LI><a href="observations/obs_converters/text/text_to_obs.html">Text</a></LI>
+<LI><a href="observations/obs_converters/tropical_cyclone/tc_to_obs.html">Tropical Cyclones</a></LI>
+<LI><a href="observations/obs_converters/var/littler_tf_dart.html">Var (little-r)</a></LI>
+<LI><a href="observations/obs_converters/var/rad_3dvar_to_dart.html">Var (radar)</a></LI>
 </UL>
 <P>
 In addition the following external program produces
@@ -359,16 +359,16 @@ DART observation sequence files:
 </ul>
 <P>
 For generating synthetic observations, see the
-<a href="../obs_sequence/create_obs_sequence.html">create_obs_sequence</a> 
+<a href="../assimilation_code/programs/create_obs_sequence/create_obs_sequence.html">create_obs_sequence</a> 
 program documentation.
 You can also generate observation files based on text input.  See the
-<a href="text/text_to_obs.html">text_to_obs</a> program documentation.
+<a href="observations/obs_converters/text/text_to_obs.html">text_to_obs</a> program documentation.
 Or for simulating a large complex observing system, you can use the
 DART library routines in a Fortran program to compute the observation
 information and have the DART routines write the output file.
 </P><P>
 See the 
-<a href="../perfect_model_obs/perfect_model_obs.html">perfect_model</a>
+<a href="../assimilation_code/programs/perfect_model_obs/perfect_model_obs.html">perfect_model</a>
 program documentation on how to run a model with a set of observations
 that have only locations, types, and times, and have the forward operators
 compute the observation values.
