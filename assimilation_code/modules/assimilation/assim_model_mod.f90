@@ -20,10 +20,13 @@ use utilities_mod, only : register_module
 use     model_mod, only : get_model_size, static_init_model, get_state_meta_data,  &
                           get_model_time_step, init_conditions,                    &
                           init_time, adv_1step, end_model,                         &
-                          nc_write_model_vars,                                     &
-                          get_close_maxdist_init, get_close_obs_init,              &
-                          model_interpolate,                                       &
-                          get_close_obs, pert_model_copies
+                          nc_write_model_vars, pert_model_copies,                  &
+                          get_close_maxdist_init, model_interpolate,               &
+                          get_close_obs_init, get_close_obs,                       &
+                          get_close_state_init => get_close_obs_init,              &
+                          get_close_state => get_close_obs,                        &
+                          query_vert_localization_coord, vert_convert
+
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -38,15 +41,30 @@ public :: static_init_assim_model, &
           get_model_time, copy_assim_model, &
           end_assim_model, &
           assim_model_type, &
-          init_assim_model, &
           aget_closest_state_time_to,&
           get_model_time_step, &
           adv_1step, &
           aget_initial_condition, &
+          interpolate, &
           get_close_maxdist_init, &
-          get_close_obs_init, interpolate, &
+          get_close_obs_init, &
           get_close_obs, &
-          pert_model_copies
+          get_close_state_init, &
+          get_close_state, &
+          pert_model_copies, &
+          query_vert_localization_coord, &
+          vert_convert 
+
+!>@todo FIXME
+!> eventually i think we need two convert routines - one for state
+!> and one for obs.  they can default to the same routine, but many
+!> model_mods could do the conversions much more efficiently if they
+!> know they don't have to interpolate for state (e.g. they could use
+!> get_state_meta_data-like code.  we could also pass the state vector
+!> index as an argument, which could help speed things up.)
+!          convert_vert_obs, &
+!          convert_vert_state
+
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -79,6 +97,10 @@ contains
 !======================================================================
 
 
+!>@todo FIXME i believe this routine is NOT being called anymore,
+!> because it would be allocating an entire state vector on each
+!> task, which large models cannot do anymore.  remove this routine?
+
 subroutine init_assim_model(state)
 !----------------------------------------------------------------------
 !
@@ -92,7 +114,9 @@ type(assim_model_type), intent(inout) :: state
 ! Get the model_size from the model
 model_size = get_model_size()
 
-allocate(state%state_vector(model_size))
+!>@todo FIXME isn't this allocating a full state-vector size array
+!> on all tasks?  this can't work for the large models. 
+!allocate(state%state_vector(model_size))
 state%model_size = model_size
 
 end subroutine init_assim_model
@@ -296,6 +320,9 @@ subroutine end_assim_model()
 
 implicit none
 
+!>@todo FIXME if we allocate state, we have to free it here,
+!> which means this routine needs a state argument.
+!if (allocated(state%state_vector)) deallocate(state%state_vector)
 call end_model()
 
 end subroutine end_assim_model

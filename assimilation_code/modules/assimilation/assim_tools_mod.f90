@@ -33,6 +33,8 @@ use       cov_cutoff_mod, only : comp_cov_factor
 
 use       reg_factor_mod, only : comp_reg_factor
 
+use       obs_impact_mod, only : allocate_impact_table, read_impact_table, free_impact_table
+
 use         location_mod, only : location_type, get_close_type, get_close_obs_destroy,    &
                                  operator(==), set_location_missing, write_location,      &
                                  LocationDims, vert_is_surface, has_vertical_localization,&
@@ -43,7 +45,8 @@ use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars,   
                                  prepare_to_update_copies, map_pe_to_task
 
 use mpi_utilities_mod,    only : my_task_id, broadcast_send, broadcast_recv,              & 
-                                 sum_across_tasks, task_count
+                                 sum_across_tasks, task_count, start_mpi_timer,           &
+                                 read_mpi_timer
 
 use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate,                   &
                                  do_varying_ss_inflate,                                   &
@@ -54,9 +57,12 @@ use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate,         
 use time_manager_mod,     only : time_type, get_time
 
 use assim_model_mod,      only : get_state_meta_data, get_close_maxdist_init,             &
-                                 get_close_obs_init, get_close_obs
+                                 get_close_obs_init, get_close_state_init,                &
+                                 get_close_obs, get_close_state,                          &
+                                 query_vert_localization_coord, vert_convert
 
-use model_mod,            only : query_vert_localization_coord, vert_convert
+!>@todo FIXME would like to separate vert_convert into these:
+!                                 convert_vert_obs, convert_vert_state
 
 use distributed_state_mod, only : create_mean_window, free_mean_window
 
@@ -92,6 +98,12 @@ character(len = 255)   :: msgstring, msgstring2, msgstring3
 ! Need to read in table for off-line based sampling correction and store it
 logical                :: first_get_correction = .true.
 real(r8)               :: exp_true_correl(200), alpha(200)
+
+! if adjust_obs_impact is true, read in triplets from the ascii file
+! and fill this 2d impact table.  it should be allocated for both
+! kinds and types, 0-N for kinds, 1-N for types, with a type offset
+! computed somehow.
+real(r8), allocatable  :: obs_impact_table(:,:)
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -142,6 +154,15 @@ logical  :: gaussian_likelihood_tails       = .false.
 ! CLM and POP (more?) should have allow_missing_in_clm = .true.
 logical  :: allow_missing_in_clm = .false.
 
+! False by default; if true, expect to read in an ascii table
+! to adjust the impact of obs on other state vector and obs values.
+! for now, remove the 'allow_any_impact_values' flag from the namelist.
+! only 0 and 1 are valid values with the defaults. 
+logical            :: adjust_obs_impact  = .false.
+character(len=256) :: obs_impact_filename = ''
+logical            :: allow_any_impact_values = .false.
+
+
 ! Not in the namelist; this var disables the experimental
 ! linear and spherical case code in the adaptive localization 
 ! sections.  to try out the alternatives, set this to .false.
@@ -160,7 +181,8 @@ namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
    print_every_nth_obs, rectangular_quadrature, gaussian_likelihood_tails, &
    output_localization_diagnostics, localization_diagnostics_file,         &
    special_localization_obs_types, special_localization_cutoffs,           &
-   allow_missing_in_clm, distribute_mean, close_obs_caching, lanai_bitwise
+   allow_missing_in_clm, distribute_mean, close_obs_caching,               &
+   allow_any_impact_values, lanai_bitwise
 
 !============================================================================
 
@@ -252,6 +274,13 @@ if (has_special_cutoffs .and. close_obs_caching) then
    close_obs_caching = .false.
 endif
 
+if (adjust_obs_impact) then
+   call allocate_impact_table(obs_impact_table)
+   call read_impact_table(obs_impact_filename, obs_impact_table, allow_any_impact_values)
+   call error_handler(E_MSG, 'assim_tools_init: ', &
+                      'Using observation impact table from file "'//trim(obs_impact_filename)//'"')
+endif
+
 if (do_output()) then
    write(msgstring, '(A,F18.6)') 'The cutoff namelist value is ', cutoff
    call error_handler(E_MSG,'assim_tools_init:', msgstring)
@@ -336,7 +365,7 @@ integer,                     intent(in)    :: OBS_PRIOR_VAR_START, OBS_PRIOR_VAR
 logical,                     intent(in)    :: inflate_only
 
 real(r8) :: obs_prior(ens_size), obs_inc(ens_size), increment(ens_size)
-real(r8) :: reg_factor
+real(r8) :: reg_factor, impact_factor
 real(r8) :: net_a(num_groups), reg_coef(num_groups), correl(num_groups)
 real(r8) :: cov_factor, obs(1), obs_err_var, my_inflate, my_inflate_sd
 real(r8) :: varying_ss_inflate, varying_ss_inflate_sd
@@ -356,7 +385,7 @@ integer(i8) :: my_state_indx(ens_handle%my_num_vars)
 integer(i8) :: my_obs_indx(obs_ens_handle%my_num_vars)
 
 integer  :: my_num_obs, i, j, owner, owners_index, my_num_state
-integer  :: obs_mean_index, obs_var_index
+integer  :: this_obs_key, obs_mean_index, obs_var_index
 integer  :: grp_beg(num_groups), grp_end(num_groups), grp_size, grp_bot, grp_top, group
 integer  :: close_obs_ind(obs_ens_handle%my_num_vars)
 integer  :: close_state_ind(ens_handle%my_num_vars)
@@ -391,10 +420,15 @@ logical :: local_obs_inflate
 ! HK observation location conversion
 real(r8) :: vert_obs_loc_in_localization_coord
 
-!HK timing
-! double precision :: start, finish
+! timing - set one or both of the parameters to true
+! to get timing info printed out.
+real(digits12) :: base, elapsed, base2
+logical, parameter :: timing = .false.
+logical, parameter :: timing1 = .false.
+real(digits12), allocatable :: elapse_array(:)
 
 integer :: vstatus !< for vertical conversion status. Can we just smash the dart qc instead?
+
 
 ! we are going to read/write the copies array
 call prepare_to_update_copies(ens_handle)
@@ -438,8 +472,25 @@ local_obs_inflate        = do_obs_inflate(inflate)
 ! Default to printing nothing
 nth_obs = -1
 
-! Divide ensemble into num_groups groups
+! Divide ensemble into num_groups groups.
+! make sure the number of groups and ensemble size result in 
+! at least 2 members in each group (to avoid divide by 0) and 
+! that the groups all have the same number of members.
 grp_size = ens_size / num_groups
+if ((grp_size * num_groups) /= ens_size) then
+   write(msgstring,  *) 'The number of ensemble members must divide into the number of groups evenly.'
+   write(msgstring2, *) 'Ensemble size = ', ens_size, '  Number of groups = ', num_groups
+   write(msgstring3, *) 'Change number of groups or ensemble size to avoid remainders.'
+   call error_handler(E_ERR,'filter_assim:', msgstring, source, revision, revdate, &
+                         text2=msgstring2,text3=msgstring3)
+endif
+if (grp_size < 2) then
+   write(msgstring,  *) 'There must be at least 2 ensemble members in each group.'
+   write(msgstring2, *) 'Ensemble size = ', ens_size, '  Number of groups = ', num_groups
+   write(msgstring3, *) 'results in < 2 members/group.  Decrease number of groups or increase ensemble size'
+   call error_handler(E_ERR,'filter_assim:', msgstring, source, revision, revdate, &
+                         text2=msgstring2,text3=msgstring3)
+endif
 do group = 1, num_groups
    grp_beg(group) = (group - 1) * grp_size + 1
    grp_end(group) = grp_beg(group) + grp_size - 1
@@ -472,6 +523,7 @@ call get_my_obs_loc(ens_handle, obs_ens_handle, obs_seq, keys, my_obs_loc, my_ob
 if (.not. lanai_bitwise) then
    ! convert the verical of all my observations to the localization coordinate
    ! this may not be bitwise with Lanai because of a different number of set_location calls
+   if (timing) call start_mpi_timer(base)
    do i = 1, obs_ens_handle%my_num_vars
       call vert_convert(ens_handle, my_obs_loc(i), my_obs_kind(i), vstatus)
       if (good_dart_qc(nint(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i)))) then
@@ -479,6 +531,10 @@ if (.not. lanai_bitwise) then
          if (vstatus /= 0) obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i) = DARTQC_FAILED_VERT_CONVERT
       endif
    enddo
+   if (timing) then
+      elapsed = read_mpi_timer(base)
+      print*, 'vert_convert time :', elapsed, 'rank ', my_task_id()
+   endif
 endif
 
 ! Get info on my number and indices for state
@@ -486,12 +542,14 @@ my_num_state = get_my_num_vars(ens_handle)
 call get_my_vars(ens_handle, my_state_indx)
 
 ! Get the location and kind of all my state variables
-!start = MPI_WTIME()
+if (timing) call start_mpi_timer(base)
 do i = 1, ens_handle%my_num_vars
    call get_state_meta_data(ens_handle, my_state_indx(i), my_state_loc(i), my_state_kind(i))
 end do
-!finish = MPI_WTIME()
-!print*, 'get state meta data time :', finish - start, 'rank ', my_task_id()
+if (timing) then
+   elapsed = read_mpi_timer(base)
+   print*, 'get_state_meta_data time :', elapsed, 'rank ', my_task_id()
+endif
 
 !call test_get_state_meta_data(my_state_loc, ens_handle%my_num_vars)
 
@@ -526,7 +584,7 @@ if (has_special_cutoffs) then
 else
    call get_close_maxdist_init(gc_state, 2.0_r8*cutoff)
 endif
-call get_close_obs_init(gc_state, my_num_state, my_state_loc)
+call get_close_state_init(gc_state, my_num_state, my_state_loc)
 
 ! Initialize the method for getting obs close to a given ob on my process
 if (has_special_cutoffs) then
@@ -554,8 +612,13 @@ if (close_obs_caching) then
    num_close_states_calls_made = 0
 endif
 
+! timing
+if (my_task_id() == 0 .and. timing) allocate(elapse_array(obs_ens_handle%num_vars))
+
 ! Loop through all the (global) observations sequentially
 SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
+
+   call start_mpi_timer(base2)
 
    ! Some compilers do not like mod by 0, so test first.
    if (print_every_nth_obs > 0) nth_obs = mod(i, print_every_nth_obs)
@@ -737,7 +800,12 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
 
    if (.not. close_obs_caching) then
+      if (timing) call start_mpi_timer(base)
       call get_close_obs(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
+      if (timing) then
+         elapsed = read_mpi_timer(base)
+         print*, 'get_close_obs1 time :', elapsed, 'rank ', my_task_id()
+      endif
 
    else
  
@@ -747,7 +815,12 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          close_obs_dist(:) = last_close_obs_dist(:)
          num_close_obs_cached = num_close_obs_cached + 1
       else
+         if (timing .and. i < 100) call start_mpi_timer(base)
          call get_close_obs(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
+         if (timing .and. i < 100) then
+            elapsed = read_mpi_timer(base)
+            print*, 'get_close_obs2 time :', elapsed, 'rank ', my_task_id()
+         endif
 
          last_base_obs_loc      = base_obs_loc
          last_num_close_obs     = num_close_obs
@@ -845,9 +918,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Now everybody updates their close states
    ! Find state variables on my process that are close to observation being assimilated
    if (.not. close_obs_caching) then
-
-       call get_close_obs(gc_state, base_obs_loc, base_obs_type, my_state_loc, my_state_kind, &
+      if (timing .and. i < 100) call start_mpi_timer(base)
+      call get_close_state(gc_state, base_obs_loc, base_obs_type, my_state_loc, my_state_kind, &
          num_close_states, close_state_ind, close_state_dist, ens_handle)
+      if (timing .and. i < 100) then
+         elapsed = read_mpi_timer(base)
+         print*, 'get_close_state1 time :', elapsed, 'rank ', my_task_id()
+      endif
    else
       if (base_obs_loc == last_base_states_loc) then
          num_close_states    = last_num_close_states
@@ -855,11 +932,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          close_state_dist(:) = last_close_state_dist(:)
          num_close_states_cached = num_close_states_cached + 1
       else
-         !start = MPI_WTIME()
-         call get_close_obs(gc_state, base_obs_loc, base_obs_type, my_state_loc, &
-                  my_state_kind, num_close_states, close_state_ind,&
-                  close_state_dist, ens_handle)
-         !finish = MPI_WTIME()
+         if (timing .and. i < 100) call start_mpi_timer(base)
+         call get_close_state(gc_state, base_obs_loc, base_obs_type, my_state_loc, my_state_kind, &
+            num_close_states, close_state_ind, close_state_dist, ens_handle)
+         if (timing .and. i < 100) then
+            elapsed = read_mpi_timer(base)
+            print*, 'get_close_state2 time :', elapsed, 'rank ', my_task_id()
+         endif
 
          last_base_states_loc     = base_obs_loc
          last_num_close_states    = num_close_states
@@ -874,6 +953,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    !call test_state_copies(ens_handle, 'beforeupdates')
 
    ! Loop through to update each of my state variables that is potentially close
+   if (i < 1000) call start_mpi_timer(base)
    STATE_UPDATE: do j = 1, num_close_states
       state_index = close_state_ind(j)
 
@@ -894,9 +974,17 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
      
       ! Compute the distance and covariance factor 
-!PAR URGENT: MAKE SURE THIS INDEXING IS CORRECT; SAME FOR OTHER COMP_COV_FACTOR
       cov_factor = comp_cov_factor(close_state_dist(j), cutoff_rev, &
          base_obs_loc, base_obs_type, my_state_loc(state_index), my_state_kind(state_index))
+
+      ! if external impact factors supplied, factor them in here
+      ! FIXME: this would execute faster for 0.0 impact factors if
+      ! we check for that before calling comp_cov_factor.  but it makes
+      ! the logic more complicated - this is simpler if we do it after.
+      if (adjust_obs_impact) then
+         impact_factor = obs_impact_table(base_obs_type, my_state_kind(state_index))
+         cov_factor = cov_factor * impact_factor
+      endif
 
       ! If no weight is indicated, no more to do with this state variable
       if(cov_factor <= 0.0_r8) cycle STATE_UPDATE
@@ -977,6 +1065,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                ! Update the inflation values
                call update_inflation(inflate, varying_ss_inflate, varying_ss_inflate_sd, &
                   r_mean, r_var, obs(1), obs_err_var, gamma)
+            else
+               ! if we don't go into the previous if block, make sure these
+               ! have good values going out for the block below
+               r_mean = orig_obs_prior_mean(group)
+               r_var =  orig_obs_prior_var(group)
             endif
 
             ! Update adaptive values if posterior outlier_ratio test doesn't fail.
@@ -997,12 +1090,17 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
 
    end do STATE_UPDATE
+   if (timing .and. i < 1000) then
+      elapsed = read_mpi_timer(base)
+      print*, 'state_update time :', elapsed, 'rank ', my_task_id()
+   endif
 
    !call test_state_copies(ens_handle, 'after_state_updates')
 
    !------------------------------------------------------
 
    ! Now everybody updates their obs priors (only ones after this one)
+   if (timing .and. i < 1000) call start_mpi_timer(base)
    OBS_UPDATE: do j = 1, num_close_obs
       obs_index = close_obs_ind(j)
 
@@ -1016,6 +1114,16 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          ! Compute the distance and the covar_factor
          cov_factor = comp_cov_factor(close_obs_dist(j), cutoff_rev, &
             base_obs_loc, base_obs_type, my_obs_loc(obs_index), my_obs_kind(obs_index))
+
+         ! if external impact factors supplied, factor them in here
+         ! FIXME: this would execute faster for 0.0 impact factors if
+         ! we check for that before calling comp_cov_factor.  but it makes
+         ! the logic more complicated - this is simpler if we do it after.
+         if (adjust_obs_impact) then
+            impact_factor = obs_impact_table(base_obs_type, my_obs_kind(obs_index))
+            cov_factor = cov_factor * impact_factor
+         endif
+
          if(cov_factor <= 0.0_r8) cycle OBS_UPDATE
 
          ! Loop through and update ensemble members in each group
@@ -1027,6 +1135,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                 obs_ens_handle%copies(grp_bot:grp_top, obs_index), grp_size, &
                 increment(grp_bot:grp_top), reg_coef(group), net_a(group))
          end do
+
+         ! FIXME: could we move the if test for inflate only to here?
 
          ! Compute an information factor for impact of this observation on this state
          if(num_groups == 1) then
@@ -1048,10 +1158,18 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          endif
       endif
    end do OBS_UPDATE
+   if (timing .and. i < 1000) then
+      elapsed = read_mpi_timer(base)
+      print*, 'obs_update time :', elapsed, 'rank ', my_task_id()
+   endif
 
    !call test_state_copies(ens_handle, 'after_obs_updates')
 
 
+   if (my_task_id() == 0 .and. timing) then
+      elapse_array(i) = read_mpi_timer(base2)
+      if (timing1) print*, 'outer sequential obs time :', elapsed, ' obs ', i, ' rank ', my_task_id()
+   endif
 end do SEQUENTIAL_OBS
 
 ! Every pe needs to get the current my_inflate and my_inflate_sd back
@@ -1064,6 +1182,20 @@ end if
 call destroy_obs(observation)
 call get_close_obs_destroy(gc_state)
 call get_close_obs_destroy(gc_obs)
+
+! print some stats about the assimilation
+if (my_task_id() == 0 .and. timing) then
+   write(msgstring, *) 'average assim time: ', sum(elapse_array) / size(elapse_array)
+   call error_handler(E_MSG,'filter_assim:',msgstring)
+
+   write(msgstring, *) 'minimum assim time: ', minval(elapse_array)
+   call error_handler(E_MSG,'filter_assim:',msgstring)
+
+   write(msgstring, *) 'maximum assim time: ', maxval(elapse_array)
+   call error_handler(E_MSG,'filter_assim:',msgstring)
+endif
+
+if (my_task_id() == 0 .and. timing) deallocate(elapse_array)
 
 ! Assure user we have done something
 write(msgstring, '(A,I8,A)') &
@@ -1096,7 +1228,7 @@ if(output_localization_diagnostics .and. my_task_id() == 0) then
 end if
 
 ! get rid of mpi window
-call free_mean_window
+call free_mean_window()
 
 end subroutine filter_assim
 
@@ -1197,7 +1329,7 @@ else
    else if(filter_kind == 7) then
       call obs_increment_boxcar(ens, ens_size, obs, obs_var, obs_inc, rel_weights)
    else if(filter_kind == 8) then
-      call obs_increment_boxcar2(ens, ens_size, prior_var, obs, obs_var, obs_inc)
+      call obs_increment_rank_histogram(ens, ens_size, prior_var, obs, obs_var, obs_inc)
    else 
       call error_handler(E_ERR,'obs_increment', &
                  'Illegal value of filter_kind in assim_tools namelist [1-8 OK]', &
@@ -2028,7 +2160,7 @@ end subroutine obs_increment_boxcar
 
 
 
-subroutine obs_increment_boxcar2(ens, ens_size, prior_var, &
+subroutine obs_increment_rank_histogram(ens, ens_size, prior_var, &
    obs, obs_var, obs_inc)
 !------------------------------------------------------------------------
 ! 
@@ -2264,7 +2396,7 @@ do i = 1, ens_size
                      new_ens(i) = adj_r2
                   else
                      msgstring = 'Did not get a satisfactory quadratic root' 
-                     call error_handler(E_ERR, 'obs_increment_boxcar2', msgstring, &
+                     call error_handler(E_ERR, 'obs_increment_rank_histogram', msgstring, &
                         source, revision, revdate)
                   endif
                endif
@@ -2285,7 +2417,7 @@ do i = 1, ens_size
    obs_inc(e_ind(i)) = new_ens(i) - x(i)
 end do
 
-end subroutine obs_increment_boxcar2
+end subroutine obs_increment_rank_histogram
 
 
 

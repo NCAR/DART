@@ -141,7 +141,7 @@ type(file_info_type), intent(inout) :: file_handle
 !  noleap   Modern calendar without leap years, i.e., all years are 365 days long. 
 !  360_day  All years are 360 days divided into 30 day months. 
 !  julian   Julian calendar. 
-!  none     No calendar. 
+!  no_calendar No calendar. 
 !
 ! location is another one ...
 !
@@ -994,7 +994,7 @@ case(NOLEAP)
    call nc_check(nf90_put_att(my_ncid, TimeVarID, "calendar", "no_leap" ), &
               'nc_write_calendar_atts', 'put_att calendar '//trim(ncFileID%fname))
 case default
-   call nc_check(nf90_put_att(my_ncid, TimeVarID, "calendar", "none" ), &
+   call nc_check(nf90_put_att(my_ncid, TimeVarID, "calendar", "no_calendar" ), &
               'nc_write_calendar_atts', 'put_att calendar '//trim(ncFileID%fname))
    call nc_check(nf90_put_att(my_ncid, TimeVarID, "units", &
               'days since 0000-01-01 00:00:00'), &

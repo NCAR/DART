@@ -237,7 +237,7 @@ if (ios /= NF90_NOERR) then
 
    call get_calendar_string(dart_calendar)
    if (dart_calendar == 'NO_CALENDAR') then
-      ios = nf90_put_att(ncid, VarID, "calendar", "none")
+      ios = nf90_put_att(ncid, VarID, "calendar", "no_calendar")
       call nc_check(ios, "write_model_time", "calendar long_name")
 
       ios = nf90_put_att(ncid, VarID, "units", "days since 0000-01-01 00:00:00")
