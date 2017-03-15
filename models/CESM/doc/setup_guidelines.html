@@ -1,3 +1,10 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>CESM+DART setup </TITLE>
+<link rel="stylesheet" type="text/css" href="../../../doc/html/doc.css" />
+<link href="../../../doc/images/dart.ico" rel="shortcut icon" />
 
 <!-- Classes of style to apply to text below
    <div class="top">[<a href="#">top</a>]</div><hr />
@@ -10,28 +17,22 @@
    <div class=indent1>
    </div>
 -->
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-          "http://www.w3.org/TR/html4/strict.dtd">
-<HTML>
-<HEAD>
-<TITLE>CESM+DART setup </TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
-<link href="../../../doc/images/dart.ico" rel="shortcut icon" />
+
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
 <H1>CESM+DART setup </H1>
 
+          <!-- version tag follows, do not edit -->
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../../../index.html">DART Documentation Main Index</a><br />
           <small><small>version information for this file: <br />
-          <!-- version tag follows, do not edit -->
           $Id$</small></small>
        </P></td>
 </tr>
@@ -234,48 +235,63 @@ This mode will use code in this models/CESM directory.
 [>>> highlight each "model"]
 [>>> highlight each CESM version]
 [>>> Compress the rows vertically.  None of the attributes in Nancy's book do it.]
-<TR><!-- script --><TD height="10">$DART/models/cam-fv/</TD>
 -->
-<TABLE border=0 cellpadding=0 cellspacing=0 width=100%>
-<TR><TH align=left>SCRIPT     </TH>
+
+<!-- <TABLE border=0; cellpadding=0 cellspacing=0 width=100%> -->
+<!--
+    <pre> seems to prevent vertical compaction of the rows.
+    margin-left: 8%; doesn't preserve the indentation I want when added to TD or TR
+ WORKS with nospacing from css:
+<table class="nospacing" border="0" style="border-spacing: 0;" cellpadding="0" cellspacing="0" width="100%">
+-->
+<div class="keepspace" >
+<table cellpadding="0" width="100%">
+<TR><TH align=left width="18%">SCRIPT     </TH>
     <TH align=left>NOTES  </TH></TR>
 
-<TR><!--script--><TD >$DART/models/cam-fv/</TD>
-    <!-- note --><TD >A 'model' for each CAM dynamical core (see note below this outline) </TD></TR>
-<TR><!--script--><TD ><pre>      model_mod.* </pre></TD>
-    <!-- note --><TD  >The fortran interface between CAM-FV and DART </TD></TR>
-<TR><!--script--><TD ><pre>      shell_scripts/ </pre></TD>
+<TR><!--script--><TD> </TD>
     <!-- note --><TD> </TD></TR>
-<TR><!--script--><TD ><pre>         no_assimilate.csh,... </pre></TD>
-    <!-- note --><TD>INdependent_of_cesm_version</TD></TR>
-<TR><!--script--><TD ><pre>         cesm1_5/</pre></TD>
-    <!-- note --><TD> </TD></TR>
-<TR><!--script--><TD ><pre>            setup_hybrid,.../</pre></TD>
-    <!-- note --><TD>DEpendent on CESM version</TD></TR>
-<TR><!--script--><TD ><pre>         cesm2_0/</pre></TD>
-    <!-- note --><TD> </TD></TR>
-<TR><!--script--><TD ><pre>            setup_hybrid,.../</pre></TD>
-    <!-- note --><TD>DEpendent on CESM version</TD></TR>
-
-<TR><!--script--><TD >$DART/models/pop/</TD>
-    <!-- note --><TD>A 'model' for each ocean model (MOM may be interfaced next)</TD></TR>
-<TR><!--script--><TD ><pre>      model_mod.* </pre></TD>
+<TR><!--script--><TD>$DART/models/cam-fv/</TD>
+    <!-- note --><TD>A 'model' for each CAM dynamical core (see note below this outline) </TD></TR>
+<TR><!--script--><TD>      model_mod.* </TD>
     <!-- note --><TD>The fortran interface between CAM-FV and DART </TD></TR>
-<TR><!--script--><TD ><pre>      shell_scripts/ </pre></TD>
+<TR><!--script--><TD>      shell_scripts/ </TD>
     <!-- note --><TD> </TD></TR>
-<TR><!--script--><TD ><pre>         no_assimilate.csh,... </pre></TD>
+<TR><!--script--><TD>           no_assimilate.csh,... </TD>
     <!-- note --><TD>INdependent_of_cesm_version</TD></TR>
-<TR><!--script--><TD ><pre>         cesm1_5/</pre></TD>
+<TR><!--script--><TD>           cesm1_5/</TD>
     <!-- note --><TD> </TD></TR>
-<TR><!--script--><TD ><pre>            setup_hybrid,.../</pre></TD>
+<TR><!--script--><TD>               setup_hybrid,... </TD>
     <!-- note --><TD>DEpendent on CESM version</TD></TR>
-<TR><!--script--><TD ><pre>         cesm2_0/</pre></TD>
+<TR><!--script--><TD>           cesm2_0/</TD>
     <!-- note --><TD> </TD></TR>
-<TR><!--script--><TD ><pre>            setup_hybrid,.../</pre></TD>
+<TR><!--script--><TD>               setup_hybrid,... </TD>
     <!-- note --><TD>DEpendent on CESM version</TD></TR>
 
-...
+<TR><!--script--><TD> </TD>
+    <!-- note --><TD> </TD></TR>
+<TR><!--script--><TD>$DART/models/pop/</TD>
+    <!-- note --><TD>A 'model' for each ocean model (MOM may be interfaced next)</TD></TR>
+<TR><!--script--><TD>       model_mod.* </TD>
+    <!-- note --><TD>The fortran interface between CAM-FV and DART </TD></TR>
+<TR><!--script--><TD>       shell_scripts/ </TD>
+    <!-- note --><TD> </TD></TR>
+<TR><!--script--><TD>           no_assimilate.csh,... </TD>
+    <!-- note --><TD>INdependent_of_cesm_version</TD></TR>
+<TR><!--script--><TD>           cesm1_5/</TD>
+    <!-- note --><TD> </TD></TR>
+<TR><!--script--><TD>               setup_hybrid,... </TD>
+    <!-- note --><TD>DEpendent on CESM version</TD></TR>
+<TR><!--script--><TD>           cesm2_0/</TD>
+    <!-- note --><TD> </TD></TR>
+<TR><!--script--><TD>               setup_hybrid,... </TD>
+    <!-- note --><TD>DEpendent on CESM version</TD></TR>
+
+<TR><!--script--><TD>... </TD>
+    <!-- note --><TD> </TD></TR>
+
 </TABLE>
+</div>
 
 <pre>
 For each CAM dynamical core "model", e.g. "cam-fv",  the scripts  in cesm#_# will handle:
