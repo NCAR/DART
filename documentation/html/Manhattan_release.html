@@ -72,25 +72,9 @@ its uncertainty ultimately results in the adjustments to the model states.
 See the DARTLAB demos or read more in the tutorials included with the
 DART distribution.  They are described below.</p>
 
-<p>
-DART diagnostic output were <i>previously</i> stored in two netCDF files containing 
-the model states just before the adjustment (<em class=file>Prior_Diag.nc</em>) and 
-just after the adjustment (<em class=file>Posterior_Diag.nc</em>). These files are
-now separated into multiple files in order to take advantage of parallel IO. In 
-particular <em class=file>Prior_Diag.nc</em> is broken up into files:
-  <ul><li> <em class=file>preassim_member_####.nc</em></li>
-      <li> <em class=file>preassim_mean.nc</em></li>
-      <li> <em class=file>preassim_sd.nc</em></li>
-      <li> <em class=file>preassim_priorinf_{mean,sd}.nc</em> (if prior inflation is turned on)</li>
-      <li> <em class=file>preassim_postinf_{mean,sd}.nc</em> (if posterior inflation is turned on)</li>
-  </ul>
-and similarly for <em class=file>Posterior_Diag.nc</em> :
-  <ul><li> <em class=file>postassim_member_####.nc</em></li>
-      <li> <em class=file>postassim_mean.nc</em></li>
-      <li> <em class=file>postassim_sd.nc</em></li>
-      <li> <em class=file>postassim_priorinf_{mean,sd}.nc</em> (if prior inflation is turned on)</li>
-      <li> <em class=file>postassim_postinf_{mean,sd}.nc</em> (if posterior inflation is turned on)</li>
-  </ul>
+<p>DART diagnostic output can be written that contains the model
+state before and after the adjustment, along with the ensemble mean
+and standard deviation, and prior or posterior inflation values if inflation is enabled.
 There is also a text file, <em class=file>obs_seq.final</em>, with the model estimates of the 
 observations.  There is a suite of MATLAB&reg; functions that facilitate exploration of the
 results, but the netCDF files are inherently portable and contain all the
@@ -112,7 +96,7 @@ connected to the internet you can use the
 Website links to view other documentation pages.
 </p>
 
-<p>To get started running with lorenz 63 model refer to
+<p>To get started running with Lorenz 63 model refer to
 <a href="Manhattan_getting_started.html">Getting Started</a> 
 </p>
 
@@ -123,7 +107,7 @@ Website links to view other documentation pages.
 <h2>Notes for Current Users</h2>
 
 <p>
-If you have been updating from the development branch of the DART subversion
+If you have been updating from the rma_trunk branch of the DART subversion
 repository you will notice that the code tree has been simplified to be more
 intuitive for users. The new top level directory structure looks like :
 
@@ -141,27 +125,26 @@ if you do try to do an 'svn update' on an existing directory, you will
 encounter many 'tree conflicts'.
 
 <p>
-We suggest that current users checkout a fresh version of Manhattan.
-to see which files need to be moved to the new location you can use
-'svn status'.  Anything with an M or ? in the first column needs to be moved
+We suggest that current users checkout a fresh version of Manhattan in
+a new location.
+To see which files need to be moved, run 'svn status' on your original
+checked out version.
+Anything with an M or ? in the first column needs to be moved
 to the new location in the new tree.  Please <a href="mailto:dart@ucar.edu">contact</a>
 DART if you have any issues migrating your existing code to the new tree structure.
 </p>
 
 <p>
-There is a short list of non-backwards compatible changes
-(<a href="#Nonbackward">see below</a>), and then a long list
+There is a list of non-backwards compatible changes
+(<a href="#Nonbackward">see below</a>), and a list
 of new options and functions.
 </p>
 
-
 <p>
-We will continue to maintain the Manhattan release with bug fixes, but
-we will be updating the subversion trunk with new and
-non-backwards-compatible code.
+The Manhattan release will continue to be updated for the next few months
+as we continue to add features.  
 Checking out the Manhattan release branch and running 'svn update'
-from time to time is the recommended way to update your
-DART tree.
+from time to time is the recommended way to update your DART tree.
 </p>
 
 <!--==================================================================-->
@@ -170,9 +153,15 @@ DART tree.
 <div class="top">[<a href="#">top</a>]</div><hr />
 <h2>Non-backwards Compatible Changes</h2>
 
+<p>Unlike previous releases of DART, this version contains
+more non-backwards compatible changes than usual.  Please examine the
+following list carefully.  We do suggest you check out the Manhattan
+release into a new location and migrate any local changes from previous
+versions as a second step.
+</p>
+
 <p>
-Changes in the Manhattan release (15 May 2015)
-which are <em>not</em> backwards compatible
+Changes in the Manhattan release (15 May 2015) which are <em>not</em> backwards compatible
 with the Lanai release (13 Dec 2013):
 </p>
 
@@ -309,7 +298,7 @@ Our use of TYPES and KINDS has been very confusing in
 the past.  In Manhattan we have tried  to make it clearer 
 which things in DART are generic quantities (QTY) - temperature, 
 pressure, etc - and which things are specific types of 
-observations - radiosonde_temperature, argo_salinity etc.
+observations - Radiosonde_temperature, Argo_salinity etc.
 </p>
 
 <p>
@@ -378,7 +367,7 @@ old on left, new on right:
 </li>
 
 <li>
-   For low order models we have single file input and output.  These files contain all of 
+   For smaller models we support single file input and output.  These files contain all of 
    the member information, mean, standard deviation and inflation values for all of the
    state variables.  This can be run with cycling and all time steps will be appended 
    to the file.
@@ -401,7 +390,7 @@ old on left, new on right:
    </p>
 
    <p>
-   To generate a NetCDF file from a cdl file you can run
+   To generate a NetCDF file from a .cdl file run:
    <pre>
    ncgen -o perfect_input.nc perfect_input.cdl
    ncgen -o filter_input.nc filter_input.cdl
