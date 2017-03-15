@@ -19,18 +19,8 @@ if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 model      = ncreadatt(fname,'/','model');
 num_copies = dim_length(fname,'member'); % determine # of ensemble members
 [ens_size, ens_indices] = get_ensemble_indices(fname);
-times      = ncread(fname,'time');
-timeunits  = ncreadatt(fname,'time','units');
-timebase   = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
-if (timebase(1) > 0000) 
-   timeorigin = datenum(timebase(1),timebase(2),timebase(3));
-else
-   timeorigin = 0;
-end
-dates      = times + timeorigin;
+dates      = nc_read_time(fname,'time');
 num_times  = length(dates);
-
-clear times timeunits timebase timeorigin
 
 if (isempty(model))
    error('%s has no ''model'' global attribute.',fname)

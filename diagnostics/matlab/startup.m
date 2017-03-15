@@ -12,36 +12,34 @@
 % DART $Id$
 
 %% Try to intelligently add the general DART tools.
+% Basically checks to see if you are in the DART_LAB/matlab directory
+% or any one of the DART models directories. If so, we know
+% where everything is. If not, assume you are using Matlab outside
+% the DART context.
 
 mydir      = pwd;
 dartloc    = strfind(mydir,'/models/'  )-1;
-dartlabloc = strfind(mydir,'/DART_LAB/')-1;
+dartlabloc = strfind(mydir,'/documentation/DART_LAB/')-1;
 if (isempty(dartloc) && isempty(dartlabloc))
    return
+elseif (isempty(dartloc))
+   dartloc = dartlabloc;
 end
 
 fprintf('\nWelcome to DART ...\n')
 fprintf('\nYour current directory is  %s\n',mydir)
 
-% DART/matlab directory ...
-
-dartpath = sprintf('%s/matlab',mydir(1:dartloc));
-if (exist(dartpath,'dir')==7)
-   addpath(dartpath,'-BEGIN');
-   fprintf('Using general tools in     %s\n',dartpath)
-end
-
-% add the observation-space DART tools ...
+%% DART/diagnostics/matlab directory ...
 
 dartpath = sprintf('%s/diagnostics/matlab',mydir(1:dartloc));
-if ( ~isempty(dartloc) )
+if (exist(dartpath,'dir')==7)
    addpath(dartpath,'-BEGIN');
-   fprintf('observation-space tools in %s\n',dartpath)
+   fprintf('Using DART tools in     %s\n',dartpath)
 end
 
-% add the DART_LAB/matlab directory ...
+%% add the DART_LAB/matlab directory ...
 
-dartpath = sprintf('%s/DART_LAB/matlab',mydir(1:dartloc));
+dartpath = sprintf('%s/documentation/DART_LAB/matlab',mydir(1:dartloc));
 if (exist(dartpath,'dir')==7)
    addpath(dartpath,'-BEGIN');
    fprintf('Using DART_LAB tools in    %s\n',dartpath)
@@ -60,7 +58,7 @@ if ( ~isempty(dartloc) )
    end
 end
 
-% summarize
+%% summarize
 
 truth_file = fullfile(mydir,'perfect_output.nc');
 diagn_file = fullfile(mydir,'preassim.nc');

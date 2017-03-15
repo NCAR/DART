@@ -39,15 +39,7 @@ tmodel  = ncreadatt(file1,'/','model');
 
 tvars       = get_DARTvars(file1);
 tnum_times  = dim_length(file1,'time');
-times       = ncread( file1,'time');
-timeunits   = ncreadatt( file1,'time','units');
-timebase    = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
-if (timebase(1) > 0000) 
-   timeorigin = datenum(timebase(1),timebase(2),timebase(3));
-else
-   timeorigin = 0;
-end
-ttimes      = times + timeorigin;
+ttimes      = nc_read_time(file1,'time');
 
 [tnum_vars,~] = ModelDimension(file1,tmodel);
 if ( tnum_vars <= 0 )
@@ -59,15 +51,7 @@ dmodel  = ncreadatt(file1,'/','model');
 
 dvars       = get_DARTvars(file2);
 dnum_times  = dim_length(file2,'time');
-times       = ncread( file2,'time');
-timeunits   = ncreadatt( file2,'time','units');
-timebase    = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
-if (timebase(1) > 0000) 
-   timeorigin = datenum(timebase(1),timebase(2),timebase(3));
-else
-   timeorigin = 0;
-end
-dtimes      = times + timeorigin;
+dtimes      = nc_read_time(file2,'time');
 
 [dnum_vars,~] = ModelDimension(file2,dmodel);
 if ( dnum_vars <= 0 )
