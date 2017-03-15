@@ -775,118 +775,76 @@ or <a href="../../observations/forward_operators/obs_def_1d_state_mod.html">loca
 <h2>New Observation Types/Sources</h2>
 
 <ul>
-<li>MADIS<br />
-Added a converter for wind profiler data to the set of existing MADIS converters.
-More scripting support in the MADIS obs converters; more error checks
-added to the rawin converter.
+<li>AVISO<br />
+Added an obs_sequence converter for Sea Surface Height Anomoly ocean observations.
 Documentation 
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/MADIS/MADIS.html">Website</a>
-or <a href="../../observations/obs_converters/MADIS/MADIS.html">local/ file</a>.
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/AVISO/AVISO.html">Website</a>
+or <a href="../../observations/obs_converters/AVISO/AVISO.html">local/ file</a>.
 </li>
 <br />
 
-<li>Ameriflux<br />
-Added an obs_sequence converter for Ameriflux land observations of latent
-heat flux, sensible heat flux, net ecosystem production).
+<ul>
+<li>cice<br />
+Added an obs_sequence converter for Sea Ice observations.
 Documentation 
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/Ameriflux/level4_to_obs.html">Website</a>
-or <a href="../../observations/obs_converters/Ameriflux/level4_to_obs.html">local file</a>.
-</li>
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/cice/cice.html">Website</a>
+or <a href="../../observations/obs_converters/cice/cice.html">local/ file</a>.
 </li>
 <br />
 
+<ul>
+<li>GPSPW<br />
+Added an obs_sequence converter for GPS precipitable water observations.
+Documentation 
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/GPSPW/GPSPW.html">Website</a>
+or <a href="../../observations/obs_converters/GPSPW/GPSPW.html">local/ file</a>.
+</li>
+<br />
 
+<ul>
 <li>MODIS<br />
-Added an obs_sequence converter for MODIS snow coverage measurements.
+Added an obs_sequence converter for MODIS FPAR (Fraction of Photosynthetically Active Radiation) 
+and LAI (Leaf Area Index) obseverations.
 Documentation 
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/snow/snow_to_obs.html">Website</a>
-or <a href="../../observations/obs_converters/snow/snow_to_obs.html">local file</a>.
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/MODIS/MODIS.html">Website</a>
+or <a href="../../observations/obs_converters/MODIS/MODIS.html">local/ file</a>.
 </li>
 <br />
 
-<li>COSMOS<br />
-Added an obs_sequence converter for COSMOS ground moisture observations.
+<ul>
+<li>ok_mesonet<br />
+Added an obs_sequence converter for the Oklahoma Mesonet observations.
 Documentation 
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/COSMOS/COSMOS_to_obs.html">Website</a>
-or <a href="../../observations/obs_converters/COSMOS/COSMOS_to_obs.html">local file</a>.
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/ok_mesonet/ok_mesonet.html">Website</a>
+or <a href="../../observations/obs_converters/ok_mesonet/ok_mesonet.html">local/ file</a>.
 </li>
 <br />
 
-<li>MIDAS<br />
-Added an obs_sequence converter for MIDAS observations of Total Electron Count.
+<ul>
+<li>ROMS<br />
+Added an obs_sequence converter for ROMS ocean data.  This converter includes externally computed
+forward operators output from the ROMS model using FGAT (First Guess At Time) during the model run.
 Documentation 
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/MIDAS/MIDAS_to_obs.html">Website</a>
-or <a href="../../observations/obs_converters/MIDAS/MIDAS_to_obs.html">local file</a>.
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/ROMS/ROMS.html">Website</a>
+or <a href="../../observations/obs_converters/ROMS/ROMS.html">local/ file</a>.
 </li>
 <br />
 
-<li>GPS<br />
-Updated scripts for the GPS converter; added options to convert data from
-multiple satellites.
+<ul>
+<li>SSUSI<br />
+Added an obs_sequence converter for wind profiler observations.
 Documentation 
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/gps/gps.html">Website</a>
-or <a href="../../observations/obs_converters/gps/gps.html">local file</a>.
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/SSUSI/SSUSI.html">Website</a>
+or <a href="../../observations/obs_converters/SSUSI/SSUSI.html">local/ file</a>.
 </li>
 <br />
 
-<li>wrf_dart_obs_preprocess<br />
-Added processing for wind profiler observation to the
-wrf_dart_obs_preprocess program.
-Documentation
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html">Website</a>
-or <a href="../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html">local file</a>.
-</li>
-<br />
-
-<li>AIRS<br />
-Fix BUG in AIRS converter - the humidity obs are accumulated across the
-layers and so the best location for them is the layer midpoint and not on the
-edges (levels) as the temperature obs are. Also fixed off-by-one error where
-the converter would make one more obs above the requested top level.
+<ul>
+<li>tropical_cyclone<br />
+Added an obs_sequence converter for ASCII format tropical cyclone track observations.
 Documentation 
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/AIRS/AIRS.html">Website</a>
-or <a href="../../observations/obs_converters/AIRS/AIRS.html">local file</a>.
-</li>
-<br />
-
-<li>GTS<br />
-Made gts_to_dart converter create separate obs types for surface dewpoint
-vs obs aloft because they have different vertical coordinates.
-Documentation 
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/GTSPP/GTSPP.html">Website</a>
-or <a href="../../observations/obs_converters/GTSPP/GTSPP.html">local file</a>.
-</li>
-<br />
-
-<li>Tape Archive scripts<br />
-Converted mss commands to hpss commands for a couple observation
-converter shell scripts (inc AIRS).</li>
-<br />
-
-<li>Evenly distributed obs<br />
-New matlab code to generate evenly spaced observations on the surface of
-a sphere (e.g. the globe).
-Documentation 
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/even_sphere/README">Website</a>
-or <a href="../../observations/obs_converters/even_sphere/README">local file</a>.
-</li>
-<br />
-
-<li>observation utilities<br />
-Added obs_loop.f90 example file in obs_sequence directory; example
-template for how to construct special purpose obs_sequence tools.
-Documentation (source)
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/assimilation_code/programs/obs_loop/obs_loop.f90">Website</a>
-or <a href="../../assimilation_code/programs/obs_loop/obs_loop.f90">local file</a>.
-</li>
-<br />
-
-<li>PREPBUFR<br />
-Change the default in the script for the prepbufr converter so it will
-swap bytes, since all machines except ibms will need this now.
-Documentation 
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/NCEP/prep_bufr/prep_bufr.html">Website</a>
-or <a href="../../observations/obs_converters/NCEP/prep_bufr/prep_bufr.html">local file</a>.
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/tropical_cyclone/tropical_cyclone.html">Website</a>
+or <a href="../../observations/obs_converters/tropical_cyclone/tropical_cyclone.html">local/ file</a>.
 </li>
 <br />
 
