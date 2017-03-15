@@ -124,7 +124,7 @@ file.  For models with NetCDF restarts use
 <code>add_domain(info_file, num_vars, var_names)</code> which lets DART read 
 the NetCDF dimensions for a list of variables from a file 
 (<code>info_file</code>). There are several routines that can be used together 
-to create a domain from a decsription:
+to create a domain from a description:
 <code>add_domain, add_dimension_to_variable, finished_adding_domain</code>. 
 This can be used in models such as bgrid_solo where the model is spun up in 
 perfect_model_obs, but the model itself has variable structure 
@@ -191,7 +191,7 @@ For Prior_Diag.nc:
    <br>&nbsp;&nbsp;preassim_priorinf_mean.nc
    <br>&nbsp;&nbsp;preassim_priorinf_sd.nc
 <li><b>The number of ensemble members specifed</b> in filter_nml (num_output_state_members):
-   <br>&nbsp;&nbsp;preassim_member.000*.nc
+   <br>&nbsp;&nbsp;preassim_member_####.nc
 </ul>
 
 <p>
@@ -206,7 +206,7 @@ For Posterior_Diag.nc:
    <br>&nbsp;&nbsp;postassim_priorinf_mean.nc
    <br>&nbsp;&nbsp;postassim_priorinf_sd.nc
 <li><b>The number of ensemble members specifed</b> in filter_nml (num_output_state_members):
-   <br>&nbsp;&nbsp;postassim_member.000*.nc
+   <br>&nbsp;&nbsp;postassim_member_####.nc
 </ul>
 <p>
 
@@ -214,6 +214,9 @@ The <code>num_output_state_members</code> are not written separately from the re
 Note that restarts will have been clamped if any clamping is applied (given 
 as an arguement to add_domain). This is <em>different</em> to Posterior_Diag.nc
 which contains unclamped values.
+Note also that there are 2 more 
+<a href="#STAGES_TO_WRITE">"stages" </a>
+which might be output, in addition to the preassim and postassim discussed here.
 
 <p> For models with multiple domains the filenames above are appended with the 
 domain number, e.g. preassim_mean.nc becomes preassim_mean_d01.nc, 
@@ -293,15 +296,15 @@ New namelist variables
 <TBODY valign=top>
 <TR><TD>single_file_in</TD>
     <TD>logical</TD>
-    <TD>True mean that all of the restart and inflation information is read from
-        a single NetCDF file.  False means that you must specify a input_state_file_list
+    <TD>True means that all of the restart and inflation information is read from
+        a single NetCDF file.  False means that you must specify an input_state_file_list
         and DART will be expecting input_{priorinf,postinf}_{mean,sd}.nc files for 
         inflation.
  </TD></TR>
 
 <TR><TD>single_file_out</TD>
     <TD>logical</TD>
-    <TD>True mean that all of the restart and inflation information is written to
+    <TD>True means that all of the restart and inflation information is written to
         a single NetCDF file.  False means that you must specify a 
         output_state_files and DART will be output files specified in the
         list.  Inflation files will be written in the form 
@@ -329,19 +332,20 @@ New namelist variables
         single_file_out must be set to .false.
  </TD></TR>
 
-<TR><TD>output_state_files</TD>
+<TR><TD>output_state_file_list</TD>
     <TD>character array</TD>
     <TD>A list of files containing output model restarts. For multiple domains you can 
         specify a file for each domain. When specifying a list single_file_in, 
         single_file_out must be set to .false.
  </TD></TR>
 
+<A NAME="STAGES_TO_WRITE"></A>
 <TBODY valign=top>
 <TR><TD>stages_to_write</TD>
     <TD>character array</TD>
     <TD>Controls which stages to write. Currently there are four options:
          <UL>
-          <LI><code>input</code> -- outputs input mean and sd only</LI>
+          <LI><code>input</code> -- writes input mean and sd only</LI>
           <LI><code>preassim</code> -- before assimilation, before prior inflation 
               is applied</LI>
           <LI><code>postassim</code> -- after assimilation, before posterior inflation 
@@ -354,9 +358,9 @@ New namelist variables
 <TR><TD>write_all_stages_at_end</TD>
     <TD>logical</TD>
     <TD>True means output all stages at the end of filter.  This is more memory 
-        intensive but requires less memory.  For larger models IO begins to dominate
-        the overall cost of the assimilation so writting all stages at the end write
-        more files in parallel, reducing the IO time.
+        intensive but requires less time.  For larger models IO begins to dominate
+        the overall cost of the assimilation, so writting all stages at the end writes
+        more files in parallel, reducing the IO time. Filenames are defined in
         <code>output_state_files</code>.
  </TD></TR>
 
@@ -376,7 +380,7 @@ New namelist variables
 
 <TR><TD>output_sd</TD>
     <TD>logical</TD>
-    <TD>True means output a restart file which contains the ensemble sd for
+    <TD>True means output a restart file which contains the ensemble standard deviation for
         the stages that have been turned on in <code>stages_to_write</code>.  
         The file name will have the stage with <em class=code>_sd</em> appended.
  </TD></TR>
@@ -406,9 +410,9 @@ New namelist variables
 <p>
 For <b>input</b> file names:
 <ul>
-<li> <code>input_state_file_list to</code> give a file (one for each domain) 
-     containing a list of restart files. An example of a 'input_list.txt' might
-     look something like :
+<li> give <code>input_state_file_list </code> a file for each domain,
+     each of which contains a list of restart files.  
+     An example of an 'input_list.txt' might look something like :
 
 <br>
 <div class=namelist>
@@ -424,16 +428,16 @@ advance_temp5/wrfinput_d01
 <br/>
 
 <li> if no <code>input_state_file_list</code> is provided then default 
-     filenames will be used e.g. input_member_000*.nc, input_priorinf_mean.nc, 
+     filenames will be used e.g. input_member_####.nc, input_priorinf_mean.nc, 
      input_priorinf_sd.nc
 </ul>
 
 <p>
 For <b>output</b> file names:
 <ul>
-<li> <code>output_state_file_list</code> to give a file (one for each domain)
-     containing a list of restart files. An Example of an 'output_list.txt'
-     for WRF might look something like :
+<li> give <code>output_state_file_list</code> a file for each domain,
+     each of which contains a list of restart files.
+     An example of an 'input_list.txt' might for WRF might look something like :
 
 <br>
 <div class=namelist>
@@ -451,7 +455,7 @@ wrf_out_d01.0005.nc
      input_list.txt = output_list.txt
 
 <li> if no <code>output_state_files</code> is provided then default 
-     filenames will be used e.g. output_member_000*.nc, 
+     filenames will be used e.g. output_member_####.nc, 
      output_priorinf_mean.nc, output_priorinf_sd.nc
 </ul>
 For small models you may want to use <code>single_file_in</code>, 
