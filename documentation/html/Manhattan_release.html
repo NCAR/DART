@@ -178,16 +178,28 @@ with the Lanai release (13 Dec 2013):
 
 <ol>
 
-<li> We are no longer supporting DART formated restart files.  We can now
+<li> 
+We are no longer supporting DART formated restart files.  We can now
 directly read restart files in NetCDF format.  This is done by providing
-a 'input_state_file_list' and 'output_state_file_list' in the filter
-namelist.  
+a <code>'input_state_file_list'</code> and <code>'output_state_file_list'</code> 
+in the filter namelist.  
 </li>
 
-<li> Prior_Diag.nc and Posterior_Diag.nc have been broken up into multiple
-files.  Now we have options for writting out files in four stages of the
-assimilation code 'input', 'preassim', 'postassim', 'output'
+<li> 
+<em class=file>Prior_Diag.nc</em> and <em class=file> Posterior_Diag.nc</em> 
+have been broken up into multiple files.  Now we have options for writting out 
+files in four stages of the assimilation code 
+<code>'input', 'preassim', 'postassim', 'output'</code>. 
+This is set in the &amp;filter_nml  namelist with stages_to_write. Output files will
+be written to:
+  <ul><li> <em class=file>[stage]_member_####.nc</em></li>
+      <li> <em class=file>[stage]_mean.nc</em></li>
+      <li> <em class=file>[stage]_sd.nc</em></li>
+      <li> <em class=file>[stage]_priorinf_{mean,sd}.nc</em> (if prior inflation is turned on)</li>
+      <li> <em class=file>[stage]_postinf_{mean,sd}.nc</em>  (if posterior inflation is turned on)</li>
+  </ul>
 </li>
+
 
 <li> New model_mod.f90 required routines:
     <ul><li> <em class=code>vert_convert()</em></li>
@@ -217,46 +229,163 @@ assimilation code 'input', 'preassim', 'postassim', 'output'
 </li>
 
 
-<li>namelist changes
+<li>
+There are several namelist changes, mainly in the &amp;filter_nml and 
+&amp;perfect_model_mod which are outlined in detail in 
+<a href="html/Manhattan_diffs_from_Lanai.html">Manhattan_diffs_from_Lanai</a>
 </li>
 
-<li> All modules have been moved to have moved to 
+<li> 
+     All modules have been moved to have moved to 
      <em class=dir>DART/assimilation_code/modules/</em> 
      directory. And similarly all of the programs have moved to 
      <em class=dir>DART/assimilation_code/programs/</em>
 </li>
 
-<li>The location modules which were stored in <em class=dir>locations</em> 
+<li>
+    The location modules which were stored in <em class=dir>locations</em> 
     have moved to <em class=dir>DART/assimilation_code/location</em> 
     directory
 </li>
 
-<li>The observation converters which were stored in <em class=dir>observations</em> 
+<li>
+    The observation converters which were stored in <em class=dir>observations</em> 
     have moved to <em class=dir>DART/observations/obs_converters</em> 
     directory
 </li>
 
-<li>The forward operators have moved from <em class=dir>obs_def/*mod</em> to
-<em class=dir>observations/forward_operators</em></li>
-
-<li>The tutorial files have moved to <em class=dir>DART/documentation/tutorial directory</em>
+<li>
+    The forward operators have moved from <em class=dir>obs_def/*mod</em> to
+    <em class=dir>observations/forward_operators</em>
 </li>
 
-<li>The program <em class=file>fill_inflation_restart</em> is OBSOLETE since
-DART inflation files are now in NetCDF format. Now inflation files can be filled
-using <em class=program>ncap2</em>.  Here is an exapmle using version 4.4.2 or later
-of the NCO tools:
+<li>
+    The tutorial files have moved to 
+    <em class=dir>DART/documentation/tutorial directory</em>
+</li>
+
+<li>
+   The program <em class=file>fill_inflation_restart</em> is OBSOLETE since
+   DART inflation files are now in NetCDF format. Now inflation files can be filled
+   using <em class=program>ncap2</em>.  Here is an exapmle using version 4.4.2 or later
+   of the NCO tools:
 <pre>
   ncap2 -s "T=1.0;U=1.0;V=1.0" wrfinput_d01 prior_inf.nc'
   ncap2 -s "T=0.6;U=0.6;V=0.6" wrfinput_d01 prior_sd.nc'
 </pre>
 </li>
 
-<li>The default flags in the mkmf_template.XXX files have been updated to
-be more consistent with current compiler versions.</li>
+<li>
+   The default flags in the mkmf_template.XXX files have been updated to
+   be more consistent with current compiler versions.</li>
+</li>
+
+<li> 
+Sampling error correction reads from a netcdf file that supports multiple 
+ensemble sizes
+</li> 
+
 
 <li>
-TYPES and KINDS have changed.
+<p>
+Our use of TYPES and KINDS has been very confusing in
+the past.  In Manhattan we have tried  to make it clearer 
+which things in dart are generic quantities (QTY)- temperature, 
+pressure, etc - and which things are specific types of 
+observations - radiosonde_temperature, argo_salinity etc.
+</p>
+
+<p>
+Below is a mapping between old and new names
+here for reference.   We have made these changes to all files
+If you have lots of code please contact 
+<a href="mailto:dart@ucar.edu">DART</a> for a sed script to 
+help automate the changes. 
+</p>
+
+public subroutines, existing name on left, replacement on right:
+
+<pre>
+    
+    assimilate_this_obs_kind()     =>     assimilate_this_type_of_obs(type_index)
+    evaluate_this_obs_kind()       =>       evaluate_this_type_of_obs(type_index)
+    use_ext_prior_this_obs_kind()  =>  use_ext_prior_this_type_of_obs(type_index)
+    
+    get_num_obs_kinds()            =>  get_num_types_of_obs()
+    get_num_raw_obs_kinds()        =>  get_num_quantities()
+    
+    get_obs_kind_index()           => get_index_for_type_of_obs(type_name)
+    get_obs_kind_name()            => get_name_for_type_of_obs(type_index)
+    
+    get_raw_obs_kind_index()       =>  get_index_for_quantity(qty_name)
+    get_raw_obs_kind_name()        =>  get_name_for_quantity(qty_index)
+    
+    get_obs_kind_var_type()        =>  get_quantity_for_type_of_obs(type_index)
+    
+    get_obs_kind()                 =>  get_obs_def_type_of_obs(obs_def)
+    set_obs_def_kind()             =>  set_obs_def_type_of_obs(obs_def)
+    
+    get_kind_from_menu()           =>  get_type_of_obs_from_menu()
+    
+    read_obs_kind()                =>   read_type_of_obs_table(file_unit, file_format)
+    write_obs_kind()               =>  write_type_of_obs_table(file_unit, file_format)
+    
+    maps obs_seq nums to specific type nums, only used in read_obs_seq:
+    map_def_index()                => map_type_of_obs_table()
+    
+    removed this.  apparently unused, and simply calls get_obs_kind_name():
+    get_obs_name()
+    
+    apparently unused anywhere, removed:
+    add_wind_names()
+    do_obs_form_pair()
+</pre>
+
+public integer parameter constants and subroutine formal argument names,
+old on left, new on right:
+
+<pre>
+
+   KIND_ => QTY_
+   kind  => quantity
+   
+   TYPE_ => TYPE_
+   type  => type_of_obs
+   
+   integer parameters:
+   max_obs_generic  =>  max_defined_quantities  (not currently public, stays private)
+   max_obs_kinds    =>  max_defined_types_of_obs 
+</pre>
+</li>
+
+<li>
+   For low order models we have single file input.  These files contain all of the
+   member information, mean, standard deviation and inflation values for all of the
+   state variables.  This can be run with cycling and all time steps will be appended 
+   to the file.
+
+   <p>
+   For <em class=program>perfect_model_obs</em> we provide a 
+   <em class=file>perfect_input.cdl</em> file which contains all of the state member 
+   variables. The output will contain all of the cycling timesteps all of the state
+   variables
+   </p>
+
+   <p>
+   For <em class=program>filter</em> we provide a 
+   <em class=file>filter_input.cdl</em> file which contains all of the state member 
+   variables and potentially inflation mean and standard deviation values. The 
+   output will contain all of the cycling timesteps all of the state variables.
+   Additionally you have the option to write out different stages during the
+   assimilation in the &amp;filter_nml <code>stages_to_write</code> mentioned above.
+   </p>
+
+   <p>
+   To generate a NetCDF file from a cdl file you can run
+   <pre>
+   ncgen -o perfect_input.nc perfect_input.cdl
+   </pre>
+   </p>
 </li>
 
 </ol>
