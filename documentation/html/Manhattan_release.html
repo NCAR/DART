@@ -490,124 +490,184 @@ A tool to simplify constructing the table of interactions is provided
 <div class="top">[<a href="#">top</a>]</div><hr />
 <h2>Supported Models</h2>
 
-
+Currently we support 15 models listed below.  There is several new
+models that have been added that are not on the Lanai Release
+including CM1, CICE, ROMS.
 <ul>
 
+   <!--   9var   -->
+
+   <li> <b>9var</b> 
+      <ul><li>DART interface documentation for the 9var Model:
+      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/9var/model_mod.html">Website</a>
+      or
+      <a href="../../models/9var/model_mod.html">local file</a>.</ul>
+
+   <!--   bgrid_solo   -->
+   
+   <li> <b>bgrid_solo</b> 
+      <ul><li>DART interface documentation for the Bgrid Solo:
+      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/bgrid_solo/model_mod.html">Website</a>
+      or
+      <a href="../../models/bgrid_solo/model_mod.html">local file</a>.</ul>
+
+   <!--   cam-fv   -->
+
+   <li> <b>cam-fv</b>
+      <ul><li>DART interface documentation for the cam-fv Global Atmospheric Model:
+      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/cam-fv/model_mod.html">Website</a></li>
+      or
+      <a href="../../models/cam-fv/model_mod.html">local file</a>.
+
+      <li>Documentation for the model
+      <a href="http://www.cesm.ucar.edu/models/atm-cam/">Website</a></li></ul>
+
+   <!--   cice   -->
+
+   <li> <b>cice (NEW)</b>  
+      <ul><li>DART interface documentation for the CICE Ice Model:
+      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/cice/model_mod.html">Website</a></li>
+      or
+      <a href="../../models/cice/model_mod.html">local file</a>.
+
+      <li>Documentation for the model
+      <a href="http://www.cesm.ucar.edu/models/ccsm4.0/cice/">Website</a></li></ul>
+
+   <!--   cm1   -->
+
+   <li> <b>cm1 (NEW)</b> 
+      <ul><li>DART interface documentation for the CM1 Cloud Model:
+      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/cm1/model_mod.html">Website</a></li>
+      or
+      <a href="../../models cm1/model_mod.html">local file</a>.
+
+      <li>Documentation for the model
+      <a href="http://www2.mmm.ucar.edu/people/bryan/cm1/">Website</a></li></ul>
+   
+   <!--   forced_lorenz_96   -->
+
+   <li> <b>forced_lorenz_96</b> 
+      <ul><li>DART interface documentation for the Forced Lorenz 96 Model:
+      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/forced_lorenz_96/model_mod.html">Website</a>
+      or
+      <a href="../../models/forced_lorenz_96/model_mod.html">local file</a>.</li></ul>
+
+   <!--   lorenz_63   -->
+
+   <li> <b>lorenz_63</b> 
+      <ul><li>DART interface documentation for the Lorenz 63 model:
+      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/lorenz_63/model_mod.html">Website</a></li>
+      or
+      <a href="../../models/lorenz_63/model_mod.html">local file</a>.</ul>
+
+   <!--   lorenz_84   -->
+
+   <li> <b>lorenz_84</b> 
+      <ul><li>DART interface documentation for the Lorenz 84 Model:
+      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/lorenz_84/model_mod.html">Website</a>
+      or
+      <a href="../../models/lorenz_84/model_mod.html">local file</a>.</li></ul>
+
+   <!--   lorenz_96   -->
+
+   <li> <b>lorenz_96</b> 
+      <ul><li>DART interface documentation for the Lorenz 96 Model:
+      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/lorenz_84/model_mod.html">Website</a>
+      or
+      <a href="../../models/lorenz_84/model_mod.html">local file</a>.</li></ul>
+
+   <!--   lorenz_04   -->
+
+   <li> <b>lorenz_04</b> 
+      <ul><li>DART interface documentation for the Lorenz 04 Model:
+      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/lorenz_04/model_mod.html">Website</a>
+      or
+      <a href="../../models/lorenz_04/model_mod.html">local file</a>.</li></ul>
+
+   <!--   mpas_atm   -->
+
+   <li> <b>mpas_atm</b> (NetCDF overwrite not supported for update_u_from_reconstruct = .true. )
+      <ul><li>DART interface documentation for the MPAS Atmosphere Model:
+      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/mpas_atm/model_mod.html">Website</a>
+      or
+      <a href="../../models/mpas_atm/model_mod.html">local file</a>.</li>
+
+      <li>Documentation for the model
+      <a href="https://mpas-dev.github.io/atmosphere/atmosphere.html">Website</a></li></ul>
+   
+   <li> <b>POP</b> 
+      <ul><li>DART interface documentation for the POP Global Ocean Model:
+      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/POP/model_mod.html">Website</a>
+      or
+      <a href="../../models/POP/model_mod.html">local file</a>.</li>
+
+      <li>Documentation for the model
+      <a href="http://www.cesm.ucar.edu/models/ccsm2.0/pop/">Website</a></li></ul>
+
+   <!--   ROMS   -->
+   
+   <li> <b>ROMS (NEW)</b> 
+      <ul><li>DART interface documentation for the ROMS Regional Ocean Model:
+      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/ROMS/model_mod.html">Website</a>
+      or
+      <a href="../../models/ROMS/model_mod.html">local file</a>.</li>
+
+      <li>Documentation for the model
+      <a href="https://www.myroms.org/">Website</a></li></ul>
+
+   <!--   simple_advenction   -->
+
+   <li> <b>simple_advection</b>
+      <ul><li>DART interface documentation for the Simple Advection Model:
+      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/simple_advection/model_mod.html">Website</a>
+      or
+      <a href="../../models/simple_advection/model_mod.html">local file</a>.</ul>
+
+   <!--   simple_advenction   -->
+
+   <li> <b>wrf</b>
+      <ul><li>DART interface documentation for the WRF Regional Forecast Model:
+      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/POP/model_mod.html">Website</a>
+      or
+      <a href="../../models/POP/model_mod.html">local file</a>.</li>
+
+      <li>Documentation for the model
+      <a href="http://www.cesm.ucar.edu/models/ccsm2.0/pop/">Website</a></li></ul>
+
+<!--
 <li>CESM framework components
+
 <ul><li>DART now supports running CESM components CAM, POP, and CLM under the CESM framework.
 Setup scripts are provided to configure a single or multiple component assimilation.
 See:
 <ul>
 <li>
-<!-- <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/CESM/model_mod.html">Website</a> or
+<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/CESM/model_mod.html">Website</a> or
 <a href="../../models/CESM/model_mod.html">local file</a> for multi-component assimilation, 
-</li> -->
+</li> 
 <li>
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/cam-fv/model_mod.html">Website</a> or
-<a href="../../models/cam/model_mod.html">local file</a> for CAM single component assimilation
-</li>
-<li>
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/POP/model_mod.html">Website</a> or
-<a href="../../models/POP/model_mod.html">local file</a> for POP single component assimilation
-</li>
-<li>
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/clm/model_mod.html">Website</a> or
-<a href="../../models/clm/model_mod.html">local file</a> for CLM single component assimilation
-</li>
-</ul>
-Documentation for the model:
 <ul>
-<li>the user's guide for CESM version 1.1.1:<br />
- <a href="http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/book1.html">
- http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/book1.html</a>
+<li>the user's guide for CESM version 1.2:<br />
+ <a href="http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide/book1.html">
+ http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide/book1.html</a>
 </li> 
 <li>the page that explains how to download the release code:<br />
-  <a href="http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x388.html">
-  http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x388.html</a>
+  <a href="http://www.cesm.ucar.edu/models/cesm1.2/tags/">
+  http://www.cesm.ucar.edu/models/cesm1.2/tags/</a>
 </li>
 <li>the web page that shows the names of the 'compsets' which are the
   configurations of the various models:<br />
-   <a href="http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/modelnl/compsets.html">
-   http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/modelnl/compsets.html</a>
+   <a href="http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/modelnl/compsets.html">
+   http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/modelnl/compsets.html</a>
 </li>
 <li>list of recent CESM versions:<br />
-    <a href="http://www2.cesm.ucar.edu/models/current">
-    http://www2.cesm.ucar.edu/models/current</a>
+    <a href="http://www.cesm.ucar.edu/models/current.html">
+    http://www.cesm.ucar.edu/models/current.html</a>
 </li></ul>
 </li></ul>
 </li>
 <br /> 
-
-<li>MPAS Atmosphere and Ocean Models
-<ul><li>DART interface documentation for the MPAS Atmosphere component:
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/mpas_atm/model_mod.html">Website</a>
-or
-<a href="../../models/mpas_atm/model_mod.html">local file</a>.
-<li>DART interface documentation for the MPAS Ocean component:
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/mpas_ocn/model_mod.html">Website</a> or
-<a href="../../models/mpas_ocn/model_mod.html">local file</a>.
-</li>
-<li>Documentation for the model:
-<a href="http://mpas-dev.github.io/"">MPAS</a>.
-</li></ul>
-</li>
-<br /> 
-
-<li>NOAH Land Model
-<ul><li>Dart interface documentation
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/noah/model_mod.html">Website</a>
-or
-<a href="../../models/noah/model_mod.html">local file</a>.</li>
-<li>Documentation for the model:
-<a href="http://www.ral.ucar.edu/research/land/technology/lsm.php">
-The Community NOAH Land Surface Model (LSM)</a>.
-</li></ul>
-</li>
-<br /> 
-
-<li>NAAPS Aerosol Model
-<ul><li>Dart interface documentation
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/NAAPS/model_mod.html">Website</a>
-or
-<a href="../../models/NAAPS/model_mod.html">local file</a>.</li>
-<li>Documentation for the model:
-<a href="http://www.nrlmry.navy.mil/aerosol_web">NRL/Monterery Aerosol Model</a>.
-</li></ul>
-</li>
-<br /> 
-
-<li>GITM Global Ionosphere Thermosphere Model
-<ul><li>Dart interface documentation
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/GITM/model_mod.html">Website</a>
-or
-<a href="../../models/GITM/model_mod.html">local file</a>.</li>
-<li>Documentation for the model:
-<a href="http://ccmc.gsfc.nasa.gov/models/modelinfo.php?model=GITM">
-GITM Web Pages</a>.
-</li></ul>
-</li>
-<br /> 
-
-<li>NOGAPS Global Atmosphere Model
-<ul><li>Dart interface documentation
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/NOGAPS/model_mod.html">Website</a>
-or
-<a href="../../models/NOGAPS/model_mod.html">local file</a>.</li>
-<li>Documentation for the model:
-<a href="http://www.srh.noaa.gov/ssd/nwpmodel/html/nogover.htm">NOGAPS</a>.
-</li></ul>
-</li>
-<br /> 
-
-<li>SQG Surface Quasi-Geostrophic Model
-<ul><li>Dart interface documentation
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/SQG/model_mod.html">Website</a>
-or
-<a href="../../models/SQG/model_mod.html">local file</a>.</li>
-<li>Documentation for the model:
-<a href="http://dx.doi.org/10.1175/1520-0469(2000)057<2951:RONGAN>2.0.CO%3B2">Paper 
-on SQG model</a>.
-</li></ul>
+-->
 </li>
 
 
