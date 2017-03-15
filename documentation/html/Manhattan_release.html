@@ -92,7 +92,7 @@ and similarly for <em class=file>Posterior_Diag.nc</em> :
       <li> <em class=file>postassim_postinf_{mean,sd}.nc</em> (if posterior inflation is turned on)</li>
   </ul>
 There is also a text file, <em class=file>obs_seq.final</em>, with the model estimates of the 
-observations.  There is a suite of Matlab&reg; functions that facilitate exploration of the
+observations.  There is a suite of MATLAB&reg; functions that facilitate exploration of the
 results, but the netCDF files are inherently portable and contain all the
 necessary metadata to interpret the contents with other analysis programs
 such as NCL, R, etc.
@@ -397,6 +397,63 @@ old on left, new on right:
 <h2>New Features</h2>
 
 <ul>
+
+<li>DART now reads and writes NetCDF files for the model state information.
+If your model uses NetCDF file format, you no longer need model_to_dart or
+dart_to_model to translate to a DART format file.  If your model does not
+use NetCDF, you can adapt your model_to_dart and dart_to_model executables
+to read and write a NetCDF file for DART to use.<br>
+The read/write code is part of the core DART routines, so no code is needed
+in the model_mod model-specific module.  There is a new routine "add_domain()"
+that a model_mod::static_init_model() can call to define which NetCDF variables
+should be part of the model state, and what DART quantity (formerly kind) they
+correspond to.
+</li>
+<br /> 
+
+<li>DART no longer limits the size of a model state to the size of a single
+MPI task's memory.  The state is read in variable by variable and distributed
+across all MPI tasks, so the memory use is much smaller than previous versions
+of DART.  One-sided MPI communication is used during the computation of
+forward operator values to get required parts of the state from other tasks.
+</li>
+<br /> 
+
+<li>Many of the DART namelists have been simplified, and some items have
+moved to a more specific namelist.
+</li>
+<br /> 
+
+<li>Observation sequence files can include externally computed forward operator
+values which can be used in the assimilation instead of calling a forward
+operator inside DART.
+</li>
+<br /> 
+
+<li>The DART directory structure has been reorganized to make it easier to
+identify the various software tools, modules, documentation and tutorials 
+supplied with the system.
+</li>
+<br /> 
+
+<li>The MATLAB diagnostic routines have been updated to not require the
+MEXNC toolbox.  These routines use the built-in NetCDF support that comes
+with MATLAB.
+</li>
+<br /> 
+
+<li>There is a new Particle Filter type.  Please contact us if you 
+are interested in using it.
+</li>
+<br /> 
+
+<li>DART can now take subsets of observation types and restrict them
+from impacting certain quantities in the state during the assimilation.
+A tool to simplify constructing the table of interactions is provided
+(obs_impact_tool).
+</li>
+<br /> 
+
 <li>State Structure
     <ul><li> Contains information about dimensions and size of variables in your
              state.  There is a number of accessor functions to get variable information
@@ -405,95 +462,15 @@ old on left, new on right:
         Website</a> or <a href="../../assimilation_code/programs/state_strucutre.hmtl">local file</a>
         for more details.</li></ul>
 </li>
-<br /> 
 
-<li> add_domain:w
-    <ul><li>There is a new utility that will write inflation restart files based on 
-        values read from the console.  This enables multi-step runs to start with the
-        'read inflation values from a file' option set to .true. for all steps instead of
-        having to change the namelist after the first cycle.
-        See the documentation
-        <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/assimilation_code/programs/fill_inflation_restart/fill_inflation_restart.html">Website</a> 
-        or <a href="../../assimilation_code/programs/fill_inflation_restart/fill_inflation_restart.html">local file</a>
-        for more details.</li></ul>
+<li> add_domain 
 </li>
 <br /> 
 
 <li>The POP model_mod now can interpolate Sea Surface Anomalies
 </li>
-
-<li>New location module options
-    <ul><li>There are additional options for the model and observation coordinate systems.
-        Note that only a single location option can be chosen and all observations and all
-        model locations must use that coordinate system. New options include:
-        <ul><li>Channel coordinate system</li>
-        <li>[0-1] periodic 3D coordinate system</li>
-        <li>X,Y,Z 3D Cartesian coordinate system</li>
-        <li>2D annulus coordinate system</li>
-        </ul>
-        See the documentation
-        <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/assimilation_code/location/location_mod.html">Website</a> 
-        or <a href="../../assimilation_code/location/location_mod.html">local file</a>
-        for more details.</li></ul>
-</li>
 <br /> 
 
-<li>Missing values in state
-    <ul><li>In some models there are values which are not valid in all ensemble members.
-        With this release there is limited support for this in DART.  There are still
-        serious questions about what the correct results should be if the ensemble
-        count for some state vector item is smaller than the total ensemble size.
-        Nevertheless, with this release we have implemented support for missing
-        state vector values in the CLM Land model.
-        There is a new namelist item <em class=code>allow_missing_in_clm</em>
-        in the &amp;assim_tools_nml namelist.  Setting this to .true. will allow DART to
-        avoid updating any state vector items in which one or more of the ensemble members
-        in CLM have a missing value.  Inflation will be disabled for any state vector
-        items where one or more ensemble members have missing values. All CLM
-        forward operators must test for and be prepared to return with a failed forward
-        operator code if any of the interpolation items it requires are missing.
-        See the documentation
-        <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/assimilation_code/modules/assimilation/assim_tools_mod.html#Namelist">Website</a> 
-        or <a href="../../assimilation_code/modules/assimilation/assim_tools_mod.html#Namelist">local file</a>
-        for more details.</li></ul>
-</li>
-<br /> 
-
-<li>Different task layout options
-    <ul><li>The ensemble manager has a new option to distribute MPI tasks round robin
-        across the available nodes instead of assigning them sequentially.  The first N
-        tasks, where N is the ensemble size, require more memory than other tasks.
-        Distributing them round-robin may allow assigning more tasks per node with a more
-        uniform memory usage.  This may result in a small decrease in performance at runtime,
-        but it might allow using fewer nodes for the job and thus reduce the job cost.
-        See the documentation for the <em class=code>layout</em> and 
-        <em class=code>tasks_per_node</em> in the &amp;ensemble_manager_nml namelist
-        <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/assimilation_code/modules/utilities/ensemble_manager_mod.html#Namelist">Website</a> 
-        or <a href="../../assimilation_code/modules/utilities/ensemble_manager_mod.html#Namelist">local file</a>
-        for more details.</li></ul>
-</li>
-<br /> 
-
-<li>Different MPI communication options
-    <ul><li>The ensemble manager has 3 new options for the order in which the
-        communication is done when transposing the ensemble of state vectors.
-        There is a new namelist option in the &amp;ensemble_manager_nml called
-        <em class=code>communication_configuration</em> which can have the values 1-4.
-        If DART is running slower than expected, try the various options and see
-        which is fastest on your hardware.  The fastest value depends on the
-        MPI library implementation, the type and speed of interconnect, the
-        processor speed, and node memory size and so it is almost impossible 
-        to recommend a value without doing timing tests on the target system.  
-        See the documentation in the &amp;ensemble_manager_nml namelist
-        <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/assimilation_code/modules/utilities/ensemble_manager_mod.html#Namelist">Website</a> 
-        or <a href="../../assimilation_code/modules/utilities/ensemble_manager_mod.html#Namelist">local file</a>
-        for more details.</li></ul>
-</li>
-<br /> 
-
-<li>Several more places where large arrays were put on the stack
-have been removed, decreasing the total amount of stack required by DART.
-</li>
 
 </ul>
 
@@ -857,7 +834,7 @@ or <a href="../../observations/obs_converters/NCEP/prep_bufr/prep_bufr.html">loc
 We've put a lot of effort into expanding our documentation.
 For example, please check out 
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#mat_obs">
-the Matlab diagnostics section</a> or the pages outlining the 
+the MATLAB diagnostics section</a> or the pages outlining the 
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_Observations.php#obs_seq_overview">
 observation sequence file contents</a>.
 <br />
@@ -896,7 +873,7 @@ program.</li>
 <li>Extend obs_seq_verify so it can be used for forecasts from a single
 member. minor changes to obs_selection, obs_seq_coverage and obs_seq_verify
 to support a single member.</li>
-<li>Added Matlab script to read/print timestamps from binary dart restart/ic
+<li>Added MATLAB script to read/print timestamps from binary dart restart/ic
 files.</li>
 <li>Default for obs_seq_to_netcdf in all the namelists is now 'one big time
 bin' so you don't have to know the exact timespan of an obs_seq.final file
