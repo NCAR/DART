@@ -63,7 +63,7 @@
 <A HREF="#INITIALFILES">INITIAL ENSEMBLE</A> /
 <A HREF="#OUTPUTDIRECTORY">OUTPUT DIRECTORY</A> /
 <A HREF="#HINTS">HINTS</A> /
-<A HREF="#SPACE">SPACE</A>
+<A HREF="#SPACE">SPACE</A> /
 <!--  <A HREF="#FLOW CHART">FLOW CHART</A> / -->
 <A HREF="#Legalese">TERMS OF USE</A>
 
@@ -106,15 +106,60 @@ Using this DART with other CESM versions will quite possibly fail.
 </P>
 
 <P>
-Since DART has not been completely integrated into CESM testing,
-it is necessary to use some CESM fortran subroutines
-which have been modified for use with DART.
+Since the ability to use DART has not been completely integrated 
+into CESM testing, it is necessary to use some CESM fortran 
+subroutines which have been modified for use with DART.
 These must be provided to CESM through the SourceMods mechanism.
 SourceMods for selected versions of CESM are available from
 the DART website.  They can often be used as a template for
 making a SourceMods for a different CESM version.
 If you have other CESM modifications, they must be merged with
 the DART modifications.
+
+CESM2 (expected release May, 2017) has several noteworthy improvements
+from DART's perspective.
+</P>
+<UL>
+   <LI> Reduced number of subroutines in DART's SourceMods. </LI>
+   <LI> "Multi-instance" capability enables the ensemble forecasts DART needs.
+   <LI> Cycling capability, enabling multiple assimilation cycles
+        in a single job, which reduces the frequency of waiting in the queue. </LI>
+   <LI> Removal of the short term archiver from the run script
+        so that the MPI run doesn't need to idle while the single task archiver runs.
+        This significantly reduces the core hours required. </LI>
+   <LI> CESM's translation of the short term archiver to python,
+        and control of it to an xml file ($caseroot/env_archive.xml),
+        so that DART modifications to the short term archiver are
+        more straight-forward.  </LI>
+   <LI> The creation of a new component class, "External Statistical Processing",
+        of which DART is the first instance, integrates DART more fully
+        into the CESM development, testing, and running environment. 
+        This will help make DART available in the most recent tagged CESM versions
+        which have the most recent CESM component versions. </LI>
+</UL>
+<P>
+These have been exploited most fully in the CAM interfaces to DART,
+since the other components' interfaces still use older CESMs.
+The cam-fv/shell_scripts can be used as a template for updating 
+other models' scripting.
+The multi-cycling capability, with the short- and long-term archivers
+running as separate jobs at the end, results in assimilation jobs 
+which rapidly fill the scratch space.  
+Cam-fv's and pop's assimilate.csh scripts have code to remove 
+older and unneeded CESM restart file sets during the run.
+All of DART's output and user selected, restart file sets are preserved.
+</P>
+
+<P>
+DART's manhattan release includes the change to hard-wired input and output
+filenames in filter.  Cam-fv's assimilate.csh renames these files into
+the CESM file format: $case.$component{_$instance}.$filetype.$date.nc.
+DART's hard-wired names are used as new filetypes, just like CESM's existing
+"r", "h0", etc.
+For example, preassim_mean.nc from a CAM assimilation named Test0 will be renamed 
+Test0.cam.preassim_mean.2013-03-14-21600.nc.
+The obs_seq files remain an exception to this renaming, 
+since they are not in NetCDF format (yet).
 </P>
 
 <A NAME="CESM MODES"></A>
@@ -136,7 +181,7 @@ into one active component.
 Most/all of the rest of the components are 'data'.
 For example, observations of the oceans can be assimilated
 into the POP model state, while the atmospheric forcing of
-the ocean comes from re-analysis files, and is not changed
+the ocean comes from CAM re-analysis files, and is not changed
 by the observations.
 A variation of this is used by CAM assimilations.
 A CAM forecast usually uses an active land component (CLM)
