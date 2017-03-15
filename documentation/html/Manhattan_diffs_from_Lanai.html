@@ -27,12 +27,15 @@
 </tr>
 </table>
 
-<a href="#Changes">Changes to Core DART routines</a> /
-<a href="#NewModels">New Models or Changes to Existing Models</a> /
+<a href="#Overview">Changes to Core DART routines</a> /
+<!-- <a href="#NewModels">New Models or Changes to Existing Models</a> / -->
+<a href="#NetcdfRestarts">NetCDF Restart Files</a> /
 <a href="#ForwardOps">New or Changed Forward Operators</a> /
 <a href="#ObsConvert">Observation Converters</a> /
 <a href="#Diagnostics">New or Updated DART Diagnostics</a> /
-<a href="#Misc">Tutorial, Scripting, Setup, Builds</a> /
+<a href="#NameListChanges">Additions/Changes to Existing Namelists</a> /
+<a href="#Perturbations">Perturbations</a> /
+<!-- <a href="#Misc">Tutorial, Scripting, Setup, Builds</a> / -->
 <a href="#Legalese">Terms of Use</a>
 
 <!--==================================================================-->
@@ -75,14 +78,17 @@ There are six major differences between Lanai and RMA DART:
 <li> Calculation of forward operators
 <li> Vertical conversion of observation locations
 <li> Diagnostic file changes
-<li> <a href="documentation/html/state_structure.html">State structure module </a>
+<li> <a href="state_structure.html">State structure module </a>
 <li> Perturbation of the state
 </ul>
 
 <p> Before bitwise testing with Lanai please read 
-<a href="documentation/html/bitwise_considerations.html">bitwise considerations</a>
+<a href="bitwise_considerations.html">bitwise considerations</a>
 
-<h4> NetCDF Restarts </h4>
+<!--==================================================================-->
+
+<A NAME="NetcdfRestarts"></A>
+<h2> NetCDF Restarts </h2>
 
 The programs filter and perfect_model_obs now read/write directly from NetCDF 
 files, rather than having to run converters (<code>model_to_dart</code> and 
@@ -131,9 +137,10 @@ See <a href="#namelist_changes">Additions/Changes to existing namelists for how 
 The inflation mean and inflation standard deviation are in separate files 
 when you use NetCDF restarts. See <a href="documentation/html/netcdf_inflation_files.html">NetCDF inflation files</a> for details.
 
+<!--==================================================================-->
 
-<p>
-<h4> Calculation of forward operators</h4>
+<A NAME="ForwardOps"></A>
+<h2> Calculation of forward operators</h2>
 The forward operator code in model_mod now operates on an array of state 
 values. See <a href="documentation/html/forward_operator.html">forward operator</a> for more 
 detail about distributed vs. non-distributed forward operators.
@@ -144,6 +151,7 @@ mode, the forward oeprators for all ensemble members a task owns (1-ens_size)
 are calculated at once.
 <p>
 
+<A NAME="ObsConvert"></A>
 <h4> Vertical conversion of observation locations </h4>
 The vertical conversion of observation locations is done before the 
 assimilation. In Lanai this calculation is done in the assimilation as part
@@ -163,8 +171,10 @@ nothing if there is no vertical conversion)
 </ul>
 <p>
 
-<p>
-<h4> Diagnostic file changes </h4>
+<!--==================================================================-->
+
+<A NAME="Diagnostics"></A>
+<h2> Diagnostic file changes </h2>
 For large models DART format diagnostic files (Prior_Diag.nc and 
 Posterior_Diag.nc) have been replaced with separate files for each copy that would 
 have gone into Prior_Diag.nc and Posterior_Diag.nc.
@@ -218,42 +228,10 @@ DART will define and write state variables to the new diagnostic files.  If
 <code>model_model_writes_state_variables = .true.,  nc_write_model_vars</code> 
 is called as normal.
 
-<h4>Perturbations</h4>
-The option to perturb one ensemble member to produce an ensemble is in 
-filter_nml:<code>perturb_from_single_instance</code>. The model_mod interface 
-is now <code>pert_model_copies</code> not <code>pert_model_state</code>. Each 
-task perturbs every ensemble member for its own subsection of state.  This is 
-more complicated than the Lanai routine <code>pert_model_state</code>, where a 
-whole state vector is available. If a model_mod does not provide a perturb 
-interface, filter will do the perturbing with an amplitude set in 
-filter_nml:perturbation_amplitude. Note the perturb 
-namelist options have been removed from ensemble_manager_nml
+<!--==================================================================-->
 
-<h4>state_vector_io_nml</h4>
-
-<P>
-<div class=namelist>
-<pre>
-&amp;state_vector_io_nml
-   limit_mem                  = HUGE(1_i4),
-   single_precision_output    = .false.,
-/
-</pre>
-</div>
-<p>
-<code>limit_mem</code> can be used to limit how much of the state is read/written at once. 
-It is for use with very large state vectors (e.g. 17GB) that cannot be read 
-into one array.  Using this increases the number of communication calls during 
-IO so it is only advisable to use this when your state vector size is 
-approaching your total memory per node.  <code>limit_mem</code> is the number of elements 
-to read/write and transpose in one step.  For example if you set 3000 element 
-limit and had 3 variables of size 1000, 1500 and 1000. The 1500 element
-variable and 1000 elmement variable would be read and transposed together, but 
-the next 1000 element variable would be read and tranposed in a second step.
-<p>
-<code>single_precision_output</code> allows you to run filter in double precision but write 
-NetCDF files in single presision
-<p>
+<A NAME="NamelistChanges"></A>
+<H2> Additions/Changes to Existing Namelists </H2>
 
 <P>
 <h4>quality_control_nml</h4>
@@ -269,9 +247,6 @@ These namelist options used to be in filter_nml, now they are in quality_control
 /
 </pre>
 </div>
-
-<A NAME="namelist_changes"></A>
-<H3> Additions/Changes to existing namelists </H3>
 
 New namelist variables
 
@@ -456,6 +431,32 @@ For small models you may want to use <code>single_file_in</code>,
 <li> output_state_files and restart_out_file_name are used in the same way as Lanai.
 </ul>
 -->
+<h4>state_vector_io_nml</h4>
+
+<P>
+<div class=namelist>
+<pre>
+&amp;state_vector_io_nml
+   limit_mem                  = HUGE(1_i4),
+   single_precision_output    = .false.,
+/
+</pre>
+</div>
+<p>
+<code>limit_mem</code> can be used to limit how much of the state is read/written at once. 
+It is for use with very large state vectors (e.g. 17GB) that cannot be read 
+into one array.  Using this increases the number of communication calls during 
+IO so it is only advisable to use this when your state vector size is 
+approaching your total memory per node.  <code>limit_mem</code> is the number of elements 
+to read/write and transpose in one step.  For example if you set 3000 element 
+limit and had 3 variables of size 1000, 1500 and 1000. The 1500 element
+variable and 1000 elmement variable would be read and transposed together, but 
+the next 1000 element variable would be read and tranposed in a second step.
+<p>
+<code>single_precision_output</code> allows you to run filter in double precision but write 
+NetCDF files in single presision
+<p>
+
 
 <h4>assim_tools_nml</h4>
 <P>
@@ -507,6 +508,21 @@ and only writes inflation files if <code>inf_flavor > 1</code>
    /
 </pre>
 </div>
+
+<!--==================================================================-->
+
+<A NAME="Perturbations"></A>
+<h2>Perturbations</h2>
+The option to perturb one ensemble member to produce an ensemble is in 
+filter_nml:<code>perturb_from_single_instance</code>. The model_mod interface 
+is now <code>pert_model_copies</code> not <code>pert_model_state</code>. Each 
+task perturbs every ensemble member for its own subsection of state.  This is 
+more complicated than the Lanai routine <code>pert_model_state</code>, where a 
+whole state vector is available. If a model_mod does not provide a perturb 
+interface, filter will do the perturbing with an amplitude set in 
+filter_nml:perturbation_amplitude. Note the perturb 
+namelist options have been removed from ensemble_manager_nml
+
 
 <!--==================================================================-->
 <!-- Legalese & Metadata                                              -->

@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>RMA DART</TITLE>
-<link rel="stylesheet" type="text/css" href="../../../documentation/html/dart.css" />
-<link href="../../../documentation/images/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="dart.css" />
+<link href="dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
@@ -26,11 +26,11 @@
 </table>
 
 By bitwise we mean bit for bit identical results in the output obs_sequence 
-file and the restarts (netcdf-to-netcdf or dart format-to-dart format) when 
+file and the restarts (netcdf-to-netcdf or DART format-to-dart format) when 
 comparing one version of the code to another.
 
 For testing the code to be bitwise with Lanai there are several things to 
-change/set in RMA_DART and your mkmf:
+change/set in Manhattan and your mkmf:
 
 <ol>
 <li>assim_tools_mod.f90:<br>
@@ -38,7 +38,7 @@ change/set in RMA_DART and your mkmf:
      it is very slow to be bitwise with Lanai.  
      <code>lanai_bitwise = .true.</code> causes the vertical conversion of 
      observations to be done in get_close_obs inside the sequential obs do 
-     loop.  See <a href="documentation/html/vertical_conversion.html">vertical conversion</a> for 
+     loop.  See <a href="vertical_conversion.html">vertical conversion</a> for 
      details about this change.
 <li>filter_nml:<br>
     <code>output_forward_op_errors = .true.</code> This will cause the forward 
@@ -51,8 +51,8 @@ change/set in RMA_DART and your mkmf:
 
 <h3>Important</h3>
 <P>The <em>CAM</em> and <em>bgrid_solo</em> model_mods have been altered so the 
-state is in a different order inside filter. Thus dart format restarts will 
-<b>not</b> be bitwise with Lanai dart format restarts, but netcdf files will 
+state is in a different order inside filter. Thus DART format restarts will 
+<b>not</b> be bitwise with Lanai DART format restarts, but netcdf files will 
 be (after running dart_to_cam).
 </P>
 
