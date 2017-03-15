@@ -492,7 +492,8 @@ A tool to simplify constructing the table of interactions is provided
 
 Currently we support 15 models listed below.  There is several new
 models that have been added that are not on the Lanai Release
-including CM1, CICE, ROMS.
+including CM1, CICE, ROMS. Any previously supported models not on
+this list are still supported in DART <a href="https://svn-dares-dart.cgd.ucar.edu/DART/releases/classic">classic</a>
 <ul>
 
    <!--   9var   -->
@@ -850,48 +851,16 @@ the MATLAB diagnostics section</a> or the pages outlining the
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_Observations.php#obs_seq_overview">
 observation sequence file contents</a>.
 <br />
+<ul>
+<li>The MATLAB diagnostic routines have been updated to not require the
+MEXNC toolbox.  These routines use the built-in NetCDF support that comes
+with MATLAB.
+</li>
+</ul>
 <br />
 But there's always more to add.
 <strong>Please <a href="http://www2.image.ucar.edu/forms/dart-suggestion-box">let us know</a> where we are lacking.</strong>
 </p>
-
-<p>Other new stuff:</p>
-<ul>
-<li>Handle empty epochs in the obs_seq_to_netcdf converter.</li>
-<li>Added a matlab utility to show the output of a 'hop' test (running a
-model for a continuous period vs. stopping and restarting a run).</li>
-<li>Improved the routine that computes axes tick values in plots with
-multiple values plotted on the same plot.</li>
-<li>The obs_common_subset program can select common observations from up to 4
-observation sequence files at a time.</li>
-<li>Add code in obs_seq_verify to ensure that the ensemble members are in the
-same order in all netcdf files.</li>
-<li>Added support for the unstructured grids of mpas to our matlab  diagnostics.</li>
-<li>Fix to writing of ReportTime in obs_seq_coverage.</li>
-<li>Fixed logic in obs_seq_verify when determining the forecast lat.</li>
-<li>Fixed loops inside obs_seq_coverage which were using the wrong limits on
-the loops. Fixed writing of 'ntimes' in output netcdf variable.</li>
-<li>Rewrote the algorithm in the obs_selection tool so it had better scaling
-with large numbers of obs.</li>
-<li>Several improvements to the 'obs_diag' program:
-<ul>
-<li>Added preliminary support for a list of 'trusted obs' in the obs_diag
-program.</li>
-<li>Can disable the rank histogram generation with a namelist item.</li>
-<li>Can define height_edges or heights in the namelist, but not both.</li>
-<li>The 'rat_cri' namelist item (critical ratio) has been deprecated.</li>
-</ul>
-</li>
-<li>Extend obs_seq_verify so it can be used for forecasts from a single
-member. minor changes to obs_selection, obs_seq_coverage and obs_seq_verify
-to support a single member.</li>
-<li>Added MATLAB script to read/print timestamps from binary dart restart/ic
-files.</li>
-<li>Default for obs_seq_to_netcdf in all the namelists is now 'one big time
-bin' so you don't have to know the exact timespan of an obs_seq.final file
-before converting to netCDF.</li>
-</ul>
-
 
 <!--==================================================================-->
 
@@ -908,32 +877,17 @@ since the Lanai release.
 
 
 <ul>
-<li>The mkmf-generated Makefiles now take care of calling 'fixsystem' if
-needed so the mpi utilities code compiles without further user
-intervention for any compiler.</li>
-<li>Make the default input.nml for the Lorenz 96 and Lorenz 63 model gives
-good assimilation results. Rename the original input.nml to
-input.workshop.nml. The workshop_setup script renames it back before doing
-anything else so this won't break the workshop instructions. Simplify all the
-workshop_setup.csh scripts to do the minimal work needed by the DART
-tutorial.</li>
-<li>Updates to the models/template directory with the start of a full 3d
-geophysical model template. Still under construction.</li>
-<li>Move the pdf files in the tutorial directory up a level.  Removed
-framemaker source files because we no longer have access to a working
-version of the Framemaker software.  Moved routines that generate figures
-and diagrams to a non-distributed directory of the subversion repository.</li>
-<li>Enable netCDF large file support in the work/input.nml for models which
-are likely to have large state vectors.</li>
-<li>Minor updates to the doc.css file, make pages look identical in the
-safari and firefox browsers.</li>
-<li>Added a utility that sorts and reformats namelists, culls all comments to
-the bottom of the file. Useful for doing diffs and finding duplicated
-namelists in a file.</li>
-<li>Cleaned up mkmf files - removed files for obsolete platforms and
-compilers, updated suggested default flags for intel.</li>
-<li>Update the mkmf template for gfortran to allow fortran source lines
-longer than 132 characters.</li>
+   <li><em class=program>obs_impact_tool </em> please refer to
+       <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/assimilation_code/programs/obs_impact_tool/obs_impact_tool.html">Website</a>  
+       or <a href="../../assimilation_code/programs/obs_impact_tool/obs_impact_tool.html">local file</a></li>
+   <li><em class=program>gen_sampling_error_table</em> now computes sampling error correction tables for any ensemble size.
+       <!--
+       <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/assimilation_code/programs/gen_sampling_err_table/gen_sampling_err_table.html">Website</a>  
+       or <a href="../../assimilation_code/programs/gen_sampling_err_table/gen_sampling_err_table.html">local file</a></li>
+   -->
+   <li><em class=program>compute_error</em>
+       <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/assimilation_code/programs/compute_error/compute_error.html">Website</a>  
+       or <a href="../../assimilation_code/programs/compute_error/compute_error.html">local file</a></li>
 </ul>
 
 
@@ -944,7 +898,8 @@ longer than 132 characters.</li>
 <h2>Known Problems</h2>
 
 <ul>
-<li>There are many changes in this release and more updates are
+<li>
+There are many changes in this release and more updates are
 expected to come soon.  We are not aware of any obvious bugs, but 
 if you encounter any unexpected behavior please contact us. 
 Please watch the dart-users email list for announcements of updates
