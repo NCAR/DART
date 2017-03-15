@@ -27,10 +27,6 @@
    silence                    = .false.,
    /
 
-# these don't work yet, but will soon:
-#    input_state_files            = 'filter_input.nc'
-#   output_state_files            = 'filter_output.nc'
-
 &filter_nml
    single_file_in               = .true.,
    input_state_files            = ''
@@ -71,11 +67,11 @@
    inf_sd_initial_from_restart = .false.,                 .false.,
    inf_deterministic           = .true.,                  .true.,
    inf_initial                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.6,                     0.0,
-   inf_damping                 = 0.9,                     1.0,
+   inf_sd_initial              = 0.0,                     0.0,
+   inf_damping                 = 1.0,                     1.0,
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
-   inf_sd_lower_bound          = 0.6,                     0.0,
+   inf_sd_lower_bound          = 0.0,                     0.0,
 
    trace_execution              = .false.,
    output_timestamps            = .false.,
