@@ -240,8 +240,15 @@ if (ios /= NF90_NOERR) then
       ios = nf90_put_att(ncid, VarID, "calendar", "no_calendar")
       call nc_check(ios, "write_model_time", "calendar long_name")
 
-      ios = nf90_put_att(ncid, VarID, "units", "days since 0000-01-01 00:00:00")
-      call nc_check(ios, "write_model_time", "units long_name")
+      ! version 2.1.7 of ncview crashes if there is a 'days since' units attribute.
+      ! it doesn't recognize 'no_calendar', tries to use the standard calendar,
+      ! and then flips out when the year is 0000.  our solution for now is to
+      ! remove the units attribute for no_calendar.  this behaves differently in 
+      ! different versions of ncview (e.g 2.1.1 is fine), so be careful testing.  
+      ! this code also appears in single_file_io_mod.f90 - we need to consolidate 
+      ! it in a single location - but until then, updates need to be made both places.
+      !ios = nf90_put_att(ncid, VarID, "units", "days since 0000-01-01 00:00:00")
+      !call nc_check(ios, "write_model_time", "units long_name")
 
    else if (dart_calendar == 'GREGORIAN') then
       ios = nf90_put_att(ncid, VarID, "calendar", "gregorian")
