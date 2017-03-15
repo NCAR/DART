@@ -117,7 +117,11 @@ making a SourceMods for a different CESM version.
 If you have other CESM modifications, they must be merged with
 the DART modifications.
 
-CESM2 (expected release May, 2017) has several noteworthy improvements
+<H4>
+CESM2
+</H4>
+
+CESM2 (expected release May, 2017) has several helpful improvements,
 from DART's perspective.
 </P>
 <UL>
@@ -132,9 +136,11 @@ from DART's perspective.
         and control of it to an xml file ($caseroot/env_archive.xml),
         so that DART modifications to the short term archiver are
         more straight-forward.  </LI>
-   <LI> The creation of a new component class, "External Statistical Processing",
+   <LI> The creation of a new component class, 
+        "External Statistical Processing" ("esp"),
         of which DART is the first instance, integrates DART more fully
         into the CESM development, testing, and running environment. 
+        This is the same as the atm class, which has CAM as an instance.
         This will help make DART available in the most recent tagged CESM versions
         which have the most recent CESM component versions. </LI>
 </UL>
@@ -154,11 +160,12 @@ All of DART's output and user selected, restart file sets are preserved.
 <P>
 DART's manhattan release includes the change to hard-wired input and output
 filenames in filter.  Cam-fv's assimilate.csh renames these files into
-the CESM file format: $case.$component{_$instance}.$filetype.$date.nc.
+the CESM file format: <br>
+$case.$component{_$instance}.$filetype.$date.nc.<br>
 DART's hard-wired names are used as new filetypes, just like CESM's existing
 "r", "h0", etc.
-For example, preassim_mean.nc from a CAM assimilation named Test0 will be renamed 
-Test0.cam.preassim_mean.2013-03-14-21600.nc.
+For example, preassim_mean.nc from a CAM assimilation named Test0 will be renamed <br>
+Test0.cam.preassim_mean.2013-03-14-21600.nc <br>
 The obs_seq files remain an exception to this renaming, 
 since they are not in NetCDF format (yet).
 </P>
@@ -224,18 +231,12 @@ This mode will use code in this models/CESM directory.
 
 
 <P>
-<A HREF="../model_mod.html">Go to cam/model_mod page</A>  
+<A HREF="../../cam-fv/model_mod.html">Go to cam-fv/model_mod page</A>  
 </P> 
 
 <A NAME="CESM+DART MODELS"> <A>
 <HR>
 <H2>$DART/models/{CESM components} organization</H2>
-
-<!--
-[>>> highlight each "model"]
-[>>> highlight each CESM version]
-[>>> Compress the rows vertically.  None of the attributes in Nancy's book do it.]
--->
 
 <!-- <TABLE border=0; cellpadding=0 cellspacing=0 width=100%> -->
 <!--
@@ -246,46 +247,46 @@ This mode will use code in this models/CESM directory.
 -->
 <div class="keepspace" >
 <table cellpadding="0" width="100%">
-<TR><TH align=left width="18%">SCRIPT     </TH>
+<TR><TH align=left width="20%">SCRIPT     </TH>
     <TH align=left>NOTES  </TH></TR>
 
 <TR><!--script--><TD> </TD>
     <!-- note --><TD> </TD></TR>
-<TR><!--script--><TD>$DART/models/cam-fv/</TD>
+<TR><!--script--><TD>$DART/models/<b>cam-fv</b>/</TD>
     <!-- note --><TD>A 'model' for each CAM dynamical core (see note below this outline) </TD></TR>
 <TR><!--script--><TD>      model_mod.* </TD>
     <!-- note --><TD>The fortran interface between CAM-FV and DART </TD></TR>
 <TR><!--script--><TD>      shell_scripts/ </TD>
     <!-- note --><TD> </TD></TR>
 <TR><!--script--><TD>           no_assimilate.csh,... </TD>
-    <!-- note --><TD>INdependent_of_cesm_version</TD></TR>
-<TR><!--script--><TD>           cesm1_5/</TD>
+    <!-- note --><TD><b>In</b>dependent_of_cesm_version</TD></TR>
+<TR><!--script--><TD>           cesm<b>1_5</b>/</TD>
     <!-- note --><TD> </TD></TR>
 <TR><!--script--><TD>               setup_hybrid,... </TD>
-    <!-- note --><TD>DEpendent on CESM version</TD></TR>
-<TR><!--script--><TD>           cesm2_0/</TD>
+    <!-- note --><TD><b>De</b>pendent on CESM version</TD></TR>
+<TR><!--script--><TD>           cesm<b>2_0</b>/</TD>
     <!-- note --><TD> </TD></TR>
 <TR><!--script--><TD>               setup_hybrid,... </TD>
-    <!-- note --><TD>DEpendent on CESM version</TD></TR>
+    <!-- note --><TD><b>De</b>pendent on CESM version</TD></TR>
 
 <TR><!--script--><TD> </TD>
     <!-- note --><TD> </TD></TR>
-<TR><!--script--><TD>$DART/models/pop/</TD>
+<TR><!--script--><TD>$DART/models/<b>pop</b>/</TD>
     <!-- note --><TD>A 'model' for each ocean model (MOM may be interfaced next)</TD></TR>
 <TR><!--script--><TD>       model_mod.* </TD>
     <!-- note --><TD>The fortran interface between CAM-FV and DART </TD></TR>
 <TR><!--script--><TD>       shell_scripts/ </TD>
     <!-- note --><TD> </TD></TR>
 <TR><!--script--><TD>           no_assimilate.csh,... </TD>
-    <!-- note --><TD>INdependent_of_cesm_version</TD></TR>
-<TR><!--script--><TD>           cesm1_5/</TD>
+    <!-- note --><TD><b>In</b>dependent_of_cesm_version</TD></TR>
+<TR><!--script--><TD>           cesm<b>1_5</b>/</TD>
     <!-- note --><TD> </TD></TR>
 <TR><!--script--><TD>               setup_hybrid,... </TD>
-    <!-- note --><TD>DEpendent on CESM version</TD></TR>
-<TR><!--script--><TD>           cesm2_0/</TD>
+    <!-- note --><TD><b>De</b>pendent on CESM version</TD></TR>
+<TR><!--script--><TD>           cesm<b>2_0</b>/</TD>
     <!-- note --><TD> </TD></TR>
 <TR><!--script--><TD>               setup_hybrid,... </TD>
-    <!-- note --><TD>DEpendent on CESM version</TD></TR>
+    <!-- note --><TD><b>De</b>pendent on CESM version</TD></TR>
 
 <TR><!--script--><TD>... </TD>
     <!-- note --><TD> </TD></TR>
@@ -337,7 +338,7 @@ Some of the steps can be skipped if you have a suitable replacement, as noted.
    <LI>
        Decide which component(s) you want to use as the assimilating model(s).
        (The rest of this example assumes that you're building a cam-fv assimilation.)
-       Look in models/cam-fv to see which CESM versions are supported.
+       Look in models/cam-fv/shell_scripts to see which CESM versions are supported.
    </LI>
    <LI>
        CESM: locate that version on your system, or check it out from
@@ -404,7 +405,7 @@ Some of the steps can be skipped if you have a suitable replacement, as noted.
    </LI>
    <LI>
        Finally, build a new case with the full ensemble, activate the assimilate.csh script
-       and repeat the steps in the previous list entry.
+       and repeat the steps in step 10.
    </LI>
    
 </OL>
@@ -494,13 +495,16 @@ renumbering them 1,...,60.
 <HR>
 <H2>Output Directory </H2>
 <P>
-CESM's short term archiver (st_archive) is controlled by it's env_archive.xml.
+CESM's short term archiver (st_archive) is controlled 
+by its <em class=file>env_archive.xml</em>.
 DART's setup scripts modify that file to archive DART output along with CESM's.
-(See _______ for a description of DART's output).
-DART's output is archived in $arch_dir/dart/{hist,rest,logs,...},
-where arch_dir is defined in setup_{hybrid,advanced},
-hist contains all of the state space and observation space output
-and rest contains the inflation restart files.
+(See the <a href="../../../documentation/html/rma.html">list of RMA changes</a>
+for a description of DART's output).
+DART's output is archived in 
+<em class=file>$arch_dir/dart/{hist,rest,logs,...}</em>,
+where arch_dir is defined in <em class=file>setup_{hybrid,advanced}</em>,
+<em class=file>hist</em> contains all of the state space and observation space output,
+and <em class=file>rest</em> contains the inflation restart files.
 </P>
 
 <!--
@@ -577,14 +581,14 @@ Useful terms found in this web page.
 <TR><TH align=left>TERM     </TH>
     <TH align=left>MEANING     </TH></TR>
 
-<TR><!-- term  --><TD valign=top>{Central}</TD>
-    <!--meaning--><TD>The directory where filter runs and from which job_mpi.csh is submitted, 
+<TR><!-- term  -><TD valign=top>{Central}</TD>
+    <!--meaning-><TD>The directory where filter runs and from which job_mpi.csh is submitted, 
                       if used.  There should be enough disk space for all of the output. </TD></TR>
-<TR><!-- term  --><TD valign=top>{Experiment}</TD>
-    <!--meaning--><TD>The directory where the output from the assimilation of all obs_seq.out files
+<TR><!-- term  -><TD valign=top>{Experiment}</TD>
+    <!--meaning-><TD>The directory where the output from the assimilation of all obs_seq.out files
                       will be put.  </TD></TR>
-<TR><!-- term  --><TD valign=top>{obs_#}</TD>
-    <!--meaning--><TD>The sequence number (as defined in job_mpi.csh parameters) used to make
+<TR><!-- term  -><TD valign=top>{obs_#}</TD>
+    <!--meaning-><TD>The sequence number (as defined in job_mpi.csh parameters) used to make
                       a directory name, which will store the output of the assimilation of 1 
                       obs_seq.out file, e.g. obs_#### </TD></TR>
 </TABLE>
