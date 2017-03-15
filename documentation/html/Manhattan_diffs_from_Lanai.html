@@ -27,12 +27,12 @@
 </tr>
 </table>
 
-<a href="#Overview">Changes to Core DART routines</a> /
+<a href="#Overview">Overview</a> /
 <!-- <a href="#NewModels">New Models or Changes to Existing Models</a> / -->
 <a href="#NetcdfRestarts">NetCDF Restart Files</a> /
-<a href="#ForwardOps">New or Changed Forward Operators</a> /
-<a href="#ObsConvert">Observation Converters</a> /
-<a href="#Diagnostics">New or Updated DART Diagnostics</a> /
+<a href="#ForwardOps">Calculation of Forward Operators</a> /
+<a href="#ObsConvert">Vertical Conversion of Observations</a> /
+<a href="#Diagnostics">DART Diagnostics Changes</a> /
 <a href="#NameListChanges">Additions/Changes to Existing Namelists</a> /
 <a href="#Perturbations">Perturbations</a> /
 <!-- <a href="#Misc">Tutorial, Scripting, Setup, Builds</a> / -->
@@ -88,7 +88,7 @@ There are six major differences between Lanai and RMA DART:
 <!--==================================================================-->
 
 <A NAME="NetcdfRestarts"></A>
-<h2> NetCDF Restarts </h2>
+<h2> NetCDF Restart Files </h2>
 
 The programs filter and perfect_model_obs now read/write directly from NetCDF 
 files, rather than having to run converters (<code>model_to_dart</code> and 
@@ -140,7 +140,7 @@ when you use NetCDF restarts. See <a href="documentation/html/netcdf_inflation_f
 <!--==================================================================-->
 
 <A NAME="ForwardOps"></A>
-<h2> Calculation of forward operators</h2>
+<h2> Calculation of Forward Operators</h2>
 The forward operator code in model_mod now operates on an array of state 
 values. See <a href="documentation/html/forward_operator.html">forward operator</a> for more 
 detail about distributed vs. non-distributed forward operators.
@@ -149,10 +149,11 @@ In distributed mode the forward operators for all ensemble members are
 calculated in the same <code>model_interpolate</code> call.  In non-distributed
 mode, the forward oeprators for all ensemble members a task owns (1-ens_size) 
 are calculated at once.
-<p>
+
+<!--==================================================================-->
 
 <A NAME="ObsConvert"></A>
-<h4> Vertical conversion of observation locations </h4>
+<h2> Vertical Conversion of Observations </h2>
 The vertical conversion of observation locations is done before the 
 assimilation. In Lanai this calculation is done in the assimilation as part
 of <code>get_close_obs</code> if a model_mod does vertical conversion. See 
@@ -174,7 +175,7 @@ nothing if there is no vertical conversion)
 <!--==================================================================-->
 
 <A NAME="Diagnostics"></A>
-<h2> Diagnostic file changes </h2>
+<h2> DART Diagnostic file changes</h2>
 For large models DART format diagnostic files (Prior_Diag.nc and 
 Posterior_Diag.nc) have been replaced with separate files for each copy that would 
 have gone into Prior_Diag.nc and Posterior_Diag.nc.
@@ -401,12 +402,27 @@ New namelist variables
 </div>
 
 <p>
-<b>For NetCDF reads and writes:</b>
+<b>NetCDF reads and writes:</b>
 <p>
 For <b>input</b> file names:
 <ul>
 <li> <code>input_state_file_list to</code> give a file (one for each domain) 
-     containing a list of restart files
+     containing a list of restart files. An example of a 'input_list.txt' might
+     look something like :
+
+<br>
+<div class=namelist>
+<pre>
+advance_temp1/wrfinput_d01
+advance_temp2/wrfinput_d01
+advance_temp3/wrfinput_d01
+advance_temp4/wrfinput_d01
+advance_temp5/wrfinput_d01
+....
+</pre>
+</div>
+<br/>
+
 <li> if no <code>input_state_file_list</code> is provided then default 
      filenames will be used e.g. input_member_000*.nc, input_priorinf_mean.nc, 
      input_priorinf_sd.nc
@@ -415,8 +431,25 @@ For <b>input</b> file names:
 <p>
 For <b>output</b> file names:
 <ul>
-<li> <code>output_state_files</code> to give a file (one for each domain)
-     containing a list of restart files
+<li> <code>output_state_file_list</code> to give a file (one for each domain)
+     containing a list of restart files. An Example of an 'output_list.txt'
+     for WRF might look something like :
+
+<br>
+<div class=namelist>
+<pre>
+wrf_out_d01.0001.nc
+wrf_out_d01.0002.nc
+wrf_out_d01.0003.nc
+wrf_out_d01.0004.nc
+wrf_out_d01.0005.nc
+....
+</pre>
+</div>
+<br/>
+     if you would like to simply like to overwrite your previous data
+     input_list.txt = output_list.txt
+
 <li> if no <code>output_state_files</code> is provided then default 
      filenames will be used e.g. output_member_000*.nc, 
      output_priorinf_mean.nc, output_priorinf_sd.nc
