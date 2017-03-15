@@ -47,6 +47,16 @@ change/set in Manhattan and your mkmf:
 <li>mkmf:<br>
     ifort fp-model precise<br>
     In general use the debugging FLAGS in the mkmfs provided with DART.
+<li>sampling_error_correction:<br>
+    Use the sampling_error_correction_table.Lanai.nc from the 
+    assimilation_code/programs/system_simulation/work directory.
+    These values are identical to the Lanai release.
+<li>posterior inflation:<br>
+    Try to avoid testing cases which use posterior inflation.
+    The posterior inflation has additional code in the Manhattan version
+    compared to Lanai. If you need to test a case that has posterior,
+    copy assim_tools/assim_tools_mod.f90 from the 'classic' release to
+    your Lanai build, and run your test against that version.
 </ol>
 
 <h3>Important</h3>
