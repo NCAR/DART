@@ -179,25 +179,41 @@ with the Lanai release (13 Dec 2013):
 <ol>
 
 <li> 
-We are no longer supporting DART formated restart files.  We can now
-directly read restart files in NetCDF format.  This is done by providing
-a <code>'input_state_file_list'</code> and <code>'output_state_file_list'</code> 
-in the filter namelist.  
+We no longer require model data to be converted to DART format restart files.
+We directly read and write NetCDF format only.  To specify the input and output
+files for filter, there are new namelist items in the &filter_nml namelist:
+<code>'input_state_file_list'</code> and <code>'output_state_file_list'</code> .
 </li>
 
 <li> 
+The information formerly in
 <em class=file>Prior_Diag.nc</em> and <em class=file> Posterior_Diag.nc</em> 
-have been broken up into multiple files.  Now we have options for writting out 
-files in four stages of the assimilation code 
-<code>'input', 'preassim', 'postassim', 'output'</code>. 
-This is set in the &amp;filter_nml  namelist with stages_to_write. Output files will
-be written to:
+has been moved.  If you are reading and writing ensemble members from
+different files, the state information, the ensemble mean and standard deviation,
+and the inflation mean and standard deviation will all be read and written to
+separate files:  
   <ul><li> <em class=file>[stage]_member_####.nc</em></li>
       <li> <em class=file>[stage]_mean.nc</em></li>
       <li> <em class=file>[stage]_sd.nc</em></li>
       <li> <em class=file>[stage]_priorinf_{mean,sd}.nc</em> (if prior inflation is turned on)</li>
       <li> <em class=file>[stage]_postinf_{mean,sd}.nc</em>  (if posterior inflation is turned on)</li>
   </ul>
+
+<br />
+If you are reading and writing ensemble members from a
+single file, all this information will now be in a single NetCDF file but
+will be stored in different variables inside that file:
+  <ul><li> <em class=file>[var].nc</em></li>
+      <li> <em class=file>[var]_mean.nc</em></li>
+      <li> <em class=file>[var]_sd.nc</em></li>
+      <li> <em class=file>[var]_priorinf_{mean,sd}.nc</em> (if prior inflation is turned on)</li>
+      <li> <em class=file>[var]_postinf_{mean,sd}.nc</em>  (if posterior inflation is turned on)</li>
+  </ul>
+<br />
+We also now have options for writing files at four stages of the 
+assimilation cycle:
+<code>'input', 'preassim', 'postassim', 'output'</code>. 
+This is set in the &amp;filter_nml  namelist with stages_to_write. 
 </li>
 
 
@@ -230,13 +246,13 @@ be written to:
 
 
 <li>
-There are several namelist changes, mainly in the &amp;filter_nml and 
+There are several namelist changes mainly in the &amp;filter_nml and 
 &amp;perfect_model_mod which are outlined in detail in 
 <a href="html/Manhattan_diffs_from_Lanai.html">Manhattan_diffs_from_Lanai</a>
 </li>
 
 <li> 
-     All modules have been moved to have moved to 
+     All modules have been moved to 
      <em class=dir>DART/assimilation_code/modules/</em> 
      directory. And similarly all of the programs have moved to 
      <em class=dir>DART/assimilation_code/programs/</em>
@@ -255,7 +271,7 @@ There are several namelist changes, mainly in the &amp;filter_nml and
 </li>
 
 <li>
-    The forward operators have moved from <em class=dir>obs_def/*mod</em> to
+    The forward operators have moved from <em class=dir>obs_def/obs_def_*_mod.f90</em> to
     <em class=dir>observations/forward_operators</em>
 </li>
 
@@ -267,7 +283,7 @@ There are several namelist changes, mainly in the &amp;filter_nml and
 <li>
    The program <em class=file>fill_inflation_restart</em> is OBSOLETE since
    DART inflation files are now in NetCDF format. Now inflation files can be filled
-   using <em class=program>ncap2</em>.  Here is an exapmle using version 4.4.2 or later
+   using <em class=program>ncap2</em>.  Here is an example using version 4.4.2 or later
    of the NCO tools:
 <pre>
   ncap2 -s "T=1.0;U=1.0;V=1.0" wrfinput_d01 prior_inf.nc'
@@ -280,9 +296,10 @@ There are several namelist changes, mainly in the &amp;filter_nml and
    be more consistent with current compiler versions.</li>
 </li>
 
-<li> 
-Sampling error correction reads from a netcdf file that supports multiple 
-ensemble sizes
+<li>If you enable the sampling error correction option, the required
+data is now read from a single netcdf file which supports multiple
+ensemble sizes.  A program is provided to compute additional ensemble
+sizes if they are not in the default file.
 </li> 
 
 
@@ -290,20 +307,22 @@ ensemble sizes
 <p>
 Our use of TYPES and KINDS has been very confusing in
 the past.  In Manhattan we have tried  to make it clearer 
-which things in dart are generic quantities (QTY)- temperature, 
+which things in DART are generic quantities (QTY) - temperature, 
 pressure, etc - and which things are specific types of 
 observations - radiosonde_temperature, argo_salinity etc.
 </p>
 
 <p>
-Below is a mapping between old and new names
+Below is a mapping between old and new subroutine names
 here for reference.   We have made these changes to all files
-If you have lots of code please contact 
+distributed with DART.
+If you have lots of code developed outside of the subversion
+repository, please contact 
 <a href="mailto:dart@ucar.edu">DART</a> for a sed script to 
 help automate the changes. 
 </p>
 
-public subroutines, existing name on left, replacement on right:
+Public subroutines, existing name on left, replacement on right:
 
 <pre>
     
@@ -341,7 +360,7 @@ public subroutines, existing name on left, replacement on right:
     do_obs_form_pair()
 </pre>
 
-public integer parameter constants and subroutine formal argument names,
+Public integer parameter constants and subroutine formal argument names,
 old on left, new on right:
 
 <pre>
@@ -359,16 +378,17 @@ old on left, new on right:
 </li>
 
 <li>
-   For low order models we have single file input.  These files contain all of the
-   member information, mean, standard deviation and inflation values for all of the
+   For low order models we have single file input and output.  These files contain all of 
+   the member information, mean, standard deviation and inflation values for all of the
    state variables.  This can be run with cycling and all time steps will be appended 
    to the file.
 
    <p>
    For <em class=program>perfect_model_obs</em> we provide a 
-   <em class=file>perfect_input.cdl</em> file which contains all of the state member 
-   variables. The output will contain all of the cycling timesteps all of the state
-   variables
+   <em class=file>perfect_input.cdl</em> file which contains a single ensemble member
+   which will be considered the 'truth' and observations will be generated based on
+   those values. The output will contain all of the cycling timesteps all of the state
+   variables.
    </p>
 
    <p>
@@ -384,6 +404,7 @@ old on left, new on right:
    To generate a NetCDF file from a cdl file you can run
    <pre>
    ncgen -o perfect_input.nc perfect_input.cdl
+   ncgen -o filter_input.nc filter_input.cdl
    </pre>
    </p>
 </li>
@@ -402,10 +423,12 @@ old on left, new on right:
 If your model uses NetCDF file format, you no longer need model_to_dart or
 dart_to_model to translate to a DART format file.  If your model does not
 use NetCDF, you can adapt your model_to_dart and dart_to_model executables
-to read and write a NetCDF file for DART to use.<br>
-The read/write code is part of the core DART routines, so no code is needed
-in the model_mod model-specific module.  There is a new routine "add_domain()"
-that a model_mod::static_init_model() can call to define which NetCDF variables
+to read and write a NetCDF file for DART to use.<br />
+<br />
+The read/write code is part of the core DART routines so no code is needed
+in the model_mod model-specific module.  There is a new routine 
+<a href="state_structure.html">add_domain()</a>
+that a model_mod::static_init_model() can user to define which NetCDF variables
 should be part of the model state, and what DART quantity (formerly kind) they
 correspond to.
 </li>
@@ -458,16 +481,13 @@ A tool to simplify constructing the table of interactions is provided
     <ul><li> Contains information about dimensions and size of variables in your
              state.  There is a number of accessor functions to get variable information
              such as <code>get_variable_size()</code>.
-        <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/documentation/state_strucutre.html">
-        Website</a> or <a href="../../assimilation_code/programs/state_strucutre.hmtl">local file</a>
+        <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/documentation/state_structure.html">
+        Website</a> or <a href="../../assimilation_code/programs/state_structure.hmtl">local file</a>
         for more details.</li></ul>
-</li>
-
-<li> add_domain 
 </li>
 <br /> 
 
-<li>The POP model_mod now can interpolate Sea Surface Anomalies
+<li>The POP model_mod now can interpolate Sea Surface Anomaly observations.
 </li>
 <br /> 
 
