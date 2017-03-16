@@ -392,7 +392,7 @@ function write_this_ob_type_external_FO(ob_type)
 
    integer                            :: i
    logical                       :: is_all
-   character(len = paramname_length)  :: ob_type_string  ! paramname_length from obs_kind_mod
+   character(len = obstypelength)  :: ob_type_string  ! obstypelength from obs_kind_mod
 
    ! Initialize to false
    write_this_ob_type_external_FO = .false.

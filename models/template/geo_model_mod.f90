@@ -43,7 +43,7 @@ use    utilities_mod, only : register_module, error_handler,                   &
                              open_file, file_exist, find_textfile_dims,        &
                              file_to_text, close_file
 
-use     obs_kind_mod, only : paramname_length,        &
+use     obs_kind_mod, only : obstypelength,        &
                              get_index_for_quantity,  &
                              get_name_for_quantity
 
@@ -173,7 +173,7 @@ type progvartype
    integer :: index1      ! location in dart state vector of first occurrence
    integer :: indexN      ! location in dart state vector of last  occurrence
    integer :: dart_kind
-   character(len=paramname_length) :: kind_string
+   character(len=obstypelength) :: kind_string
 end type progvartype
 
 type(progvartype), dimension(max_state_variables) :: progvar
@@ -372,7 +372,7 @@ subroutine static_init_model()
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME)          :: varname
-character(len=paramname_length)       :: kind_string
+character(len=obstypelength)       :: kind_string
 integer :: ncid, VarID, numdims, dimlen, varsize
 integer :: iunit, io, ivar, i, index1, indexN
 integer :: ss, dd
@@ -1882,7 +1882,7 @@ integer,  intent(out) :: nBlocksLon, nBlocksLat
 real(r8), intent(out) :: LatStart, LatEnd, LonStart
 
 integer :: grid_id, dimid
-character(len=paramname_length) :: filename = 'UAM.in'
+character(len=obstypelength) :: filename = 'UAM.in'
 
 character(len=100) :: cLine  ! iCharLen_ == 100
 character(len=128) :: fileloc
@@ -2756,7 +2756,7 @@ integer, intent(in) :: dartkind
 integer, intent(out) :: index1,indexN
 
 integer :: i
-character(len=paramname_length) :: string
+character(len=obstypelength) :: string
 
 index1 = 0
 indexN = 0
