@@ -185,7 +185,7 @@ subroutine dart_obs_seq (datestring,                              &
       endif
 
       ! modify observations and observation errors if necessary
-      if( obs_kind_gen == KIND_SURFACE_PRESSURE) then
+      if( obs_kind_gen == QTY_SURFACE_PRESSURE) then
          ens_copy(1) = ens_copy(1)*100.0 ! Get into Pa
          oerr = oerr * 10000.0             ! Get into Pa^2--this is variance
          anal_ob(1:ens_size,i) = anal_ob(1:ens_size,i) * 100.        ! Get into Pa
@@ -280,7 +280,7 @@ subroutine prepbufr_to_dart_obs_kind (obtype, obstype, obs_kind, which_vert, obs
    endif
 
    if(obtype(1:3) == '  t') then
-     obs_kind_gen = KIND_TEMPERATURE
+     obs_kind_gen = QTY_TEMPERATURE
      if(obstype == 120 .or. obstype == 132) obs_kind = RADIOSONDE_TEMPERATURE
      if(obstype == 130 .or. obstype == 131) obs_kind = AIRCRAFT_TEMPERATURE
      if(obstype == 133                    ) obs_kind = ACARS_TEMPERATURE
@@ -291,7 +291,7 @@ subroutine prepbufr_to_dart_obs_kind (obtype, obstype, obs_kind, which_vert, obs
    endif
 
    if(obtype(1:3) == '  q') then
-     obs_kind_gen = KIND_SPECIFIC_HUMIDITY
+     obs_kind_gen = QTY_SPECIFIC_HUMIDITY
      if(obstype == 120 .or. obstype == 132) obs_kind = RADIOSONDE_RELATIVE_HUMIDITY  ! RADIOSONDE_SPECIFIC_HUMIDITY
      if(obstype == 130 .or. obstype == 131) obs_kind = AIRCRAFT_RELATIVE_HUMIDITY    ! AIRCRAFT_SPECIFIC_HUMIDITY
      if(obstype == 133                    ) obs_kind = ACARS_RELATIVE_HUMIDITY       ! ACARS_SPECIFIC_HUMIDITY
@@ -300,7 +300,7 @@ subroutine prepbufr_to_dart_obs_kind (obtype, obstype, obs_kind, which_vert, obs
    endif
 
    if(obtype(1:3) == ' ps') then
-     obs_kind_gen = KIND_SURFACE_PRESSURE
+     obs_kind_gen = QTY_SURFACE_PRESSURE
      ! what to use: PRESSURE or ALTIMETER ?
      if(obstype == 120                    ) obs_kind = RADIOSONDE_SURFACE_PRESSURE ! RADIOSONDE_SURFACE_ALTIMETER
      if(obstype == 180 .or. obstype == 182) obs_kind = MARINE_SFC_PRESSURE !MARINE_SFC_ALTIMETER
@@ -308,7 +308,7 @@ subroutine prepbufr_to_dart_obs_kind (obtype, obstype, obs_kind, which_vert, obs
    endif
 
    if(obtype(1:3) == '  u') then
-     obs_kind_gen = KIND_U_WIND_COMPONENT
+     obs_kind_gen = QTY_U_WIND_COMPONENT
      if(obstype == 220 .or. obstype == 232)  obs_kind = RADIOSONDE_U_WIND_COMPONENT
      if(obstype == 221                    )  obs_kind = RADIOSONDE_U_WIND_COMPONENT
      if(obstype == 223                    )  obs_kind = PROFILER_U_WIND_COMPONENT
@@ -326,7 +326,7 @@ subroutine prepbufr_to_dart_obs_kind (obtype, obstype, obs_kind, which_vert, obs
    endif
 
    if(obtype(1:3) == '  v') then
-     obs_kind_gen = KIND_V_WIND_COMPONENT
+     obs_kind_gen = QTY_V_WIND_COMPONENT
      if(obstype == 220 .or. obstype == 232)  obs_kind = RADIOSONDE_V_WIND_COMPONENT
      if(obstype == 221                    )  obs_kind = RADIOSONDE_V_WIND_COMPONENT
      if(obstype == 223                    )  obs_kind = PROFILER_V_WIND_COMPONENT
@@ -374,7 +374,7 @@ subroutine radiance_to_dart_obs_kind(obtype, channel, obs_kind, which_vert, obs_
    
    ! Be careful about upper/lower case.  Make sure this matches the obs_def
    obs_kind =  get_obs_kind_index(this_string)  ! get_obs_kind_index from obs_kind_mod
-   obs_kind_gen = KIND_TEMPERATURE ! KIND_RADIANCE
+   obs_kind_gen = QTY_TEMPERATURE ! QTY_RADIANCE
    which_vert  = VERTISPRESSURE
 end subroutine radiance_to_dart_obs_kind
 
