@@ -1,0 +1,272 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>program gen_sampling_err_tool</TITLE>
+<link rel="stylesheet" type="text/css" href="../../../documentation/html/doc.css" />
+<link href="../../../documentation/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>PROGRAM <em class=program>gen_sampling_err_tool</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../../documentation/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../../documentation/index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<A NAME="Overview"></A>
+<H2>Overview</H2>
+
+<P>
+Utility program which computes a table of values needed 
+to apply Sampling Error Correction (SEC) during assimilation.
+These values are used to correct 
+covariances based on small sample size statistics.
+See <a href="#References">reference</a> below.
+</P>
+<P>
+The name of the SEC table is always 
+<em class=file>sampling_error_correction_table.nc</em>.
+This is a NetCDF format file.
+If this file already exists in the current directory any 
+tables for new ensemble sizes will be appended to the existing file.
+If the file does not exist a new file will be created by this tool.
+The resulting file should be copied into the current working
+directory when <em class=program>filter</em> is run.
+</P>
+<P>
+A file with 40 common ensemble sizes is distributed
+with the system. Any new ensemble sizes can be
+generated on demand.  Be aware that the computation can
+be time consuming.  The job may need to be submitted to
+a batch system if many new ensemble sizes are being
+generated, or start the job on a laptop and leave it
+to run overnight.
+</P>
+<P>
+The file contains a "sparse array" of ensemble sizes.
+Only sizes which have an existing table are stored in
+the file so large ensemble sizes do not require a large
+jump in the size of the output file.
+</P>
+<P>
+This program uses the random number generator to compute
+the correction factors.  The generator is seeded with
+the ensemble size so repeated runs of the program will 
+generate the same values for the tables.
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST ====================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;gen_sampling_error_table_nml
+   ens_sizes = -1
+   debug = .false.
+   /
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD>ens_sizes</TD>
+    <TD>integer(200)</TD>
+    <TD>List of ensemble sizes to compute Sampling Error Correction
+tables for.  These do not need to be in any particular order.  Duplicates
+will be removed and any sizes which already have tables computed in the
+output file will be skipped.  The file which comes with the system
+already has tables computed for these ensemble sizes:
+<pre>
+   ens_sizes = 5, 6, 7, 8, 9, 10, 12, 14, 15, 16, 18, 20,
+              22, 24, 28, 30, 32, 36, 40, 44, 48, 49, 50,
+              52, 56, 60, 64, 70, 72, 80, 84, 88, 90, 96,
+              100, 120, 140, 160, 180, 200
+</pre>
+</TD></TR>
+
+<TR><TD>debug</TD>
+    <TD>logical</TD>
+    <TD>If true print out debugging info.
+<TD></TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+<P></P>
+
+<!--==================================================================-->
+
+<A NAME="Examples"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>EXAMPLES</H2>
+
+<P>
+To add tables for ensemble sizes 128 and 256 run the
+program with this namelist:
+<div> <pre>
+&amp;gen_sampling_error_table_nml
+   ens_sizes = 128, 256,
+   debug = .false.
+   /
+</pre></div>
+</P>
+
+
+<P>
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>MODULES USED</H2>
+
+<PRE>
+types_mod
+utilities_mod
+random_seq_mod
+netcdf
+</PRE>
+<P></P>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<UL><LI>output file is always <em class=file>sampling_error_corrrection_table.nc</em>
+If one exists new ensemble sizes will be appended.  If it doesn't exist
+a new file will be created.  This is a NetCDF format file.
+</UL>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ul>
+<li> Ref: Anderson, J., 2012:
+Localization and Sampling Error Correction in Ensemble Kalman Filter Data Assimilation.
+Mon. Wea. Rev., 140, 2359-2371, doi: 10.1175/MWR-D-11-00013.1.
+</li>
+</ul>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>gen_sampling_err_tool</TD>
+    <!-- message --><TD VALIGN=top> </TD>
+    <!-- comment --><TD VALIGN=top>
+                    </TD></TR>
+
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+This table was regenerated using a different random number
+generator than the Lanai release of DART used.  If you are
+doing a regression test with Lanai and have Sampling Error
+Correction enabled you will not get bitwise reproducible results.
+<a href="mailto:dart@ucar.edu">Contact the DART team</a>
+if you are interested in a table that
+includes the exact tables used in the Lanai version.
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright UCAR. This open source software is provided
+by UCAR, "as is", without charge, subject to all terms of use at
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>
