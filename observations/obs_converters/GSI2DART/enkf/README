@@ -1,0 +1,10 @@
+The following files are copied from GSI/enkf without modifications
+
+   constants.f90
+   kinds.F90
+   read_diag.f90
+   readconvobs.f90
+   readozobs.f90
+   readsatobs.f90
+   mpi_readobs.f90
+
