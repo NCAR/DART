@@ -64,29 +64,36 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;perfect_model_obs_nml
-   start_from_restart       = .false.,
-   output_restart           = .false.,
-   async                    = 0,
-   tasks_per_model_advance  = 1,
-   init_time_days           = 0,
-   init_time_seconds        = 0,
-   first_obs_days           = -1,
-   first_obs_seconds        = -1,
-   last_obs_days            = -1,
-   last_obs_seconds         = -1,
-   obs_window_days          = -1,
-   obs_window_seconds       = -1,
-   output_timestamps        = .false.,
-   trace_execution          = .false.,
-   output_forward_op_errors = .false.,
-   print_every_nth_obs      = -1,
-   silence                  = .false.,
-   output_interval          = 1,
-   restart_in_file_name     = "perfect_ics",
-   restart_out_file_name    = "perfect_restart",
-   obs_seq_in_file_name     = "obs_seq.in",
-   obs_seq_out_file_name    = "obs_seq.out",
-   adv_ens_command          = "./advance_model.csh"  
+   single_file_in             = .false.,
+   read_input_state_from_file = .false.,
+   input_state_files          = "",
+   init_time_days             = 0,
+   init_time_seconds          = 0,
+
+   single_file_out            = .false.,
+   output_state_files         = "",
+   write_output_state_to_file = .false.,
+   output_interval            = 1,
+
+   distributed_state          = .false.,
+   async                      = 0,
+   adv_ens_command            = "./advance_model.csh",
+   tasks_per_model_advance    = 1,
+
+   obs_seq_in_file_name       = "obs_seq.in",
+   obs_seq_out_file_name      = "obs_seq.out",
+   first_obs_days             = -1,
+   first_obs_seconds          = -1,
+   last_obs_days              = -1,
+   last_obs_seconds           = -1,
+   obs_window_days            = -1,
+   obs_window_seconds         = -1,
+
+   trace_execution            = .false.,
+   output_timestamps          = .false.,
+   print_every_nth_obs        = 0,
+   output_forward_op_errors   = .false.,
+   silence                    = .false.,
 /
 </pre>
 </div>
@@ -105,16 +112,63 @@ prematurely terminating the namelist.
 
 <TBODY valign=top>
 
-<TR><TD>start_from_restart</TD>
+<TR><TD>read_input_state_from_file</TD>
     <TD>logical</TD>
-    <TD>.true. means read starting state data from a restart file, 
-.false. means call model_mod routine to set initial condition data.
+    <TD>If false, model_mod must provide the input state.
 </TD></TR>
 
-<TR><TD>output_restart</TD>
-    <TD>logical</TD>
-    <TD>.true. means output a restart file.
+<TR><TD>single_file_in</TD>
+    <TD>logical</TD>  
+    <TD>Get all 1 states from a single file.
 </TD></TR>
+
+<TR><TD>input_state_files</TD>
+    <TD>character(len=256) dimension(MAX_NUM_DOMS)</TD>
+    <TD>A list of files, one per domain.  Each file must be a text file containing
+        the name of the NetCDF file to open.
+ </TD></TR>
+
+<TR><TD>write_output_state_to_file </TD>
+    <TD>logical</TD>
+    <TD>If false, state is not written out.
+</TD></TR>
+
+<TR><TD>single_file_out<TD>
+    <TD>logical<TD>  
+    <TD>Write all 1 states to a single file.
+</TD></TR>
+
+<TR><TD>output_state_files</TD>
+    <TD>character(len=256) dimension(MAX_NUM_DOMS)</TD>
+    <TD>A list of files, one per domain.  Each file must be a text file containing
+        the names of the NetCDF file to open.
+ </TD></TR>
+
+<TR><TD>init_time_days</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use.
+        If non-negative, override the initial data time read from restart file.
+</TD></TR>
+
+<TR><TD>init_time_seconds</TD>
+    <TD>integer</TD>
+    <TD>If negative don't use. 
+        If non-negative, override the initial data time read from restart file.
+</TD></TR>
+
+<TR><TD>output_interval</TD>
+    <TD>integer</TD>
+    <TD>Output state and observation diagnostics every nth 
+        assimilation time, n is output_interval.
+</TD></TR>
+
+<TR><TD>distributed_state</TD>
+    <TD>logical</TD>
+    <TD>True means the ensemble data is distributed across all tasks as it
+        is read in, so a single task never has to have enough memory to store
+        the data for an ensemble member.  Large models should always set this
+        to .true., while for small models it may be faster to set this to .false.
+ </TD></TR>
 
 <TR><TD>async</TD>
     <TD>integer</TD>
@@ -126,119 +180,96 @@ prematurely terminating the namelist.
 </UL>
 </TD></TR>
 
-<TR><TD>init_time_days</TD>
-    <TD>integer</TD>
-    <TD>If negative, don't use.
-If non-negative, override the initial data time read from restart file.
-</TD></TR>
-
-<TR><TD>init_time_seconds</TD>
-    <TD>integer</TD>
-    <TD>If negative don't use. 
-If non-negative, override the initial data time read from restart file.
-</TD></TR>
-
-<TR><TD>first_obs_days</TD>
-    <TD>integer</TD>
-    <TD>If negative, don't use.
-If non-negative, ignore any observations before this time.
-</TD></TR>
-
-<TR><TD>first_obs_seconds</TD>
-    <TD>integer</TD>
-    <TD>If negative, don't use.
-If non-negative, ignore any observations before this time.
-</TD></TR>
-
-<TR><TD>last_obs_days</TD>
-    <TD>integer</TD>
-    <TD>If negative, don't use.
-If non-negative, ignore any observations after this time.
-</TD></TR>
-
-<TR><TD>last_obs_seconds</TD>
-    <TD>integer</TD>
-    <TD>If negative, don't use.
-If non-negative, ignore any observations after this time.
-</TD></TR>
-
-<TR><TD>output_interval</TD>
-    <TD>integer</TD>
-    <TD>Output state and observation diagnostics every nth 
-assimilation time, n is output_interval.
-</TD></TR>
-
-<TR><TD>restart_in_file_name</TD>
-    <TD>character(len=129)</TD>
-    <TD>File containing state restart vector. 
-</TD></TR>
-
-<TR><TD>restart_out_file_name</TD>
-    <TD>character(len=129)</TD>
-    <TD>File to which to write state restart state vector. 
-</TD></TR>
-
-<TR><TD>obs_seq_in_file_name</TD>
-    <TD>character(len=129)</TD>
-    <TD>File name from which to read an observation sequence.
-</TD></TR>
-
-<TR><TD>obs_seq_out_file_name</TD>
-    <TD>character(len=129)</TD>
-    <TD>File name to which to write output observation sequence.
-</TD></TR>
-
 <TR><TD>adv_ens_command</TD>
     <TD>character(len=129)</TD>
     <TD>Command sent to shell if async == 2 or 4.
 </TD></TR>
 
-<TR><TD>output_forward_op_errors</TD>
-    <TD>logical</TD>
-    <TD>True means output errors from forward observation operators.
-This is the 'istatus' error return code from the model
-interpolate routine.  An ascii text file 'forward_op_errors'
-will be created in the current directory.  Each line will 
-contain an observation key number, and the istatus return code.
-</TD></TR>
-
-<TR><TD>output_timestamps</TD>
-    <TD>logical</TD>
-    <TD>True means output timestamps before and after the model advance
-and the forward observation computation phases.
-</TD></TR>
-
-<TR><TD>trace_execution</TD>
-    <TD>logical</TD>
-    <TD>True means output very detailed messages about what routines
-are being called in the main loop.  Useful if a job
-hangs or otherwise doesn't execute as expected.
-</TD></TR>
-
-<TR><TD>silence</TD>
-    <TD>logical</TD>
-    <TD>True means output almost no runtime messages.  Not recommended
-for general use, but can speed test programs if the execution
-time becomes dominated by the volume of output.
-</TD></TR>
-
 <TR><TD>tasks_per_model_advance</TD>
     <TD>integer</TD>
-    <TD>Reserved for future use.
+    <TD>Number of tasks to use while advancing the model.
+</TD></TR>
+
+<TR><TD>obs_seq_in_file_name</TD>
+    <TD>character(len=256)</TD>
+    <TD>File name from which to read an observation sequence.
+</TD></TR>
+
+<TR><TD>obs_seq_out_file_name</TD>
+    <TD>character(len=256)</TD>
+    <TD>File name to which to write output observation sequence.
+</TD></TR>
+
+<TR><TD>first_obs_days</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use.
+    If non-negative, ignore any observations before this time.
+</TD></TR>
+
+<TR><TD>first_obs_seconds</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use.
+    If non-negative, ignore any observations before this time.
+</TD></TR>
+
+<TR><TD>last_obs_days</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use.
+    If non-negative, ignore any observations after this time.
+</TD></TR>
+
+<TR><TD>last_obs_seconds</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use.
+    If non-negative, ignore any observations after this time.
 </TD></TR>
 
 <TR><TD>obs_window_days</TD>
     <TD>integer</TD>
     <TD>If negative, don't use.
-If non-negative, reserved for future use.
+    If non-negative, reserved for future use.
 </TD></TR>
 
 <TR><TD>obs_window_seconds</TD>
     <TD>integer</TD>
     <TD>If negative, don't use.
-If non-negative, reserved for future use.
+    If non-negative, reserved for future use.
 </TD></TR>
 
+<TR><TD>trace_execution</TD>
+    <TD>logical</TD>
+    <TD>True means output very detailed messages about what routines
+        are being called in the main loop.  Useful if a job
+        hangs or otherwise doesn't execute as expected.
+</TD></TR>
+
+<TR><TD>output_timestamps</TD>
+    <TD>logical</TD>
+    <TD>True means output timestamps before and after the model advance
+        and the forward observation computation phases.
+</TD></TR>
+
+<TR><TD>print_every_nth_obs</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use.
+        If non-negative, print a message noting the processing of every Nth observation.
+</TD></TR>
+
+<TR><TD>output_forward_op_errors</TD>
+    <TD>logical</TD>
+    <TD>True means output errors from forward observation operators.
+        This is the 'istatus' error return code from the model
+        interpolate routine.  An ascii text file 'forward_op_errors'
+        will be created in the current directory.  Each line will 
+        contain an observation key number, and the istatus return code.
+</TD></TR>
+
+<TR><TD>silence</TD>
+    <TD>logical</TD>
+    <TD>True means output almost no runtime messages.  Not recommended
+        for general use, but can speed test programs if the execution
+        time becomes dominated by the volume of output.
+</TD></TR>
 
 </TBODY> 
 </TABLE>
