@@ -5,19 +5,26 @@
 ! $Id$
 
 !> Correct covariances for fixed ensemble sizes.
+!>
 !> Ref: Anderson, J., 2012: 
 !> Localization and Sampling Error Correction in Ensemble Kalman Filter Data Assimilation.
 !> Mon. Wea. Rev., 140, 2359-2371, doi: 10.1175/MWR-D-11-00013.1. 
-
+!>
 !> this version is a sparse array - the ens_sizes array lists the ensemble
 !> sizes that have been computed, using the unlimited dimension.  to generate
 !> a new ensemble size, it can be added at the end of the existing arrays.
+!> the read code will search the unlimited dimension until it finds a matching
+!> ensemble size.
 !>
 !> the initial table has the 40 sizes that the previous release of DART
-!> came with.  to generate other ensemble sizes, run this program with
+!> came with.  to generate other ensemble sizes run this program with
 !> the desired ensemble sizes listed in the namelist.
+!>
+!> the random number generator is seeded with the ensemble size
+!> so repeated runs of the program will generate the same tables.
+!>
 !> the output file is named 'sampling_error_correction_table.nc'
-!> and if one already exists, it will be appended to instead of
+!> and if one already exists it will be appended to instead of
 !> created from scratch.
 
 

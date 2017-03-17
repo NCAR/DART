@@ -6,14 +6,13 @@
 #
 # DART $Id$
 
-../../../../build_templates/mkmf -p obs_seq_coverage -t ../../../../build_templates/mkmf.template   \
- -a "../../../.." $* path_names_obs_seq_coverage
+../../build_templates/mkmf -p obs_seq_to_netcdf -t ../../../build_templates/mkmf.template   \
+ -a "../../.." path_names_obs_seq_to_netcdf
 
 exit $status
 
 # <next few lines under version control, do not edit>
-# $URL:
-# http://subversion.ucar.edu/DAReS/DART/trunk/models/wrf/work/mkmf_obs_seq_coverage $
+# $URL$
 # $Revision$
 # $Date$
 

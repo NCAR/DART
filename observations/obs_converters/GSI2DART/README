@@ -1,0 +1,39 @@
+
+gsi_to_dart.f90: the main program
+dart_obs_seq_mod.f90: the DART obs_seq output subroutine
+params.f90: same module name as GSI/enkf/params.f90 but with different content. The purpose is to avoid modifying enkf/read*.f90
+radinfo.f90: same module name as GSI/radinfo.f90 but with different content. The purpose is to avoid modifying enkf/read*.f90
+mpisetup.f90: same module name as GSI/enkf/mpisetup.f90 but with different content. The purpose is to avoid dependency on GSI.
+
+The files that are copied directly from GSI/enkf without modifications
+are placed under the directory enkf
+   constants.f90
+   kinds.F90
+   mpi_readobs.f90
+   read_diag.f90
+   readconvobs.f90
+   readozobs.f90
+   readsatobs.f90
+
+DART modifications:
+   modified ../../../obs_def/DEFAULT_obs_def_mod.F90
+   modified ../../../obs_kind/DEFAULT_obs_kind_mod.F90
+   modified ../../../preprocess/preprocess.f90
+   Added   ../../../obs_def/obs_def_radiance_mod.f90 which has radiance observation types
+
+
+
+
+ISSUES:
+
+1) Radiance and surface pressure bias correction
+2) Surface pressure altimeter adjustment?
+3) Specific humidity obs are transformed to relative humidity.  What to do? [Just run EnSRF with psuedo_rh=.false. and assimilate RH obs]
+4) DART must use W and PH as control variables [okay, EnSRF can do this too (nvars=6 for WRF-ARW)]
+5) Does DART not do vertical localization for surface obs?
+
+     ! If which_vert has no vertical definition for either location do only horizontal
+     if(loc1%which_vert == VERTISUNDEF .or. loc2%which_vert == VERTISUNDEF) comp_h_only = .true.
+     ! If both verts are surface, do only horizontal
+     if(loc1%which_vert == VERTISSURFACE .and. loc2%which_vert == VERTISSURFACE) comp_h_only = .true.
+

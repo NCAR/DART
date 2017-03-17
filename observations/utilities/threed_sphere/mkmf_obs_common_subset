@@ -6,8 +6,8 @@
 #
 # DART $Id$
 
-../../../../build_templates/mkmf -p preprocess -t ../../../../build_templates/mkmf.template   \
- -a "../../../.." path_names_preprocess
+../../../build_templates/mkmf -p obs_common_subset -t ../../../build_templates/mkmf.template   \
+ -a "../../.." path_names_obs_common_subset
 
 exit $status
 

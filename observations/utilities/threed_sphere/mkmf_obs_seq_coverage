@@ -6,13 +6,14 @@
 #
 # DART $Id$
 
-../../../../build_templates/mkmf -p advance_time -t ../../../../build_templates/mkmf.template   \
- -a "../../../.." path_names_advance_time
+../../../build_templates/mkmf -p obs_seq_coverage -t ../../../build_templates/mkmf.template   \
+ -a "../../.." $* path_names_obs_seq_coverage
 
 exit $status
 
 # <next few lines under version control, do not edit>
-# $URL$
+# $URL:
+# http://subversion.ucar.edu/DAReS/DART/trunk/models/wrf/work/mkmf_obs_seq_coverage $
 # $Revision$
 # $Date$
 

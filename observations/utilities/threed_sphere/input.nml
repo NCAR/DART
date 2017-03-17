@@ -1,0 +1,151 @@
+
+&preprocess_nml
+    input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
+   output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90',
+     input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
+    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90',
+   input_files              = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
+                              '../../../observations/forward_operators/obs_def_radar_mod.f90',
+                              '../../../observations/forward_operators/obs_def_ocean_mod.f90',
+                              '../../../observations/forward_operators/obs_def_metar_mod.f90',
+                              '../../../observations/forward_operators/obs_def_dew_point_mod.f90',
+                              '../../../observations/forward_operators/obs_def_rel_humidity_mod.f90',
+                              '../../../observations/forward_operators/obs_def_AIRS_mod.f90',
+                              '../../../observations/forward_operators/obs_def_QuikSCAT_mod.f90',
+                              '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
+                              '../../../observations/forward_operators/obs_def_gps_mod.f90',
+                              '../../../observations/forward_operators/obs_def_gts_mod.f90',
+                              '../../../observations/forward_operators/obs_def_eval_mod.f90',
+                              '../../../observations/forward_operators/obs_def_vortex_mod.f90',
+                              '../../../observations/forward_operators/obs_def_GWD_mod.f90'
+   /
+
+&assim_tools_nml
+   /
+
+&obs_kind_nml
+   /
+
+&location_nml
+   /
+
+&obs_def_gps_nml
+   max_gpsro_obs = 100000,
+   / 
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.
+   /
+
+&utilities_nml
+   TERMLEVEL = 1,
+   module_details = .true.,
+   logfilename = 'dart_log.out',
+   nmlfilename = 'dart_log.nml'
+   /
+
+&schedule_nml
+   calendar        = 'Gregorian',
+   first_bin_start =  1601,  1,  1,  0,  0,  0,
+   first_bin_end   =  2999,  1,  1,  0,  0,  0,
+   last_bin_end    =  2999,  1,  1,  0,  0,  0,
+   bin_interval_days    = 1000000,
+   bin_interval_seconds = 0,
+   max_num_bins         = 1000,
+   print_table          = .true.
+   /
+
+&obs_seq_to_netcdf_nml
+   obs_sequence_name = 'obs_seq.final',
+   obs_sequence_list = '',
+   append_to_netcdf  = .false.,
+   lonlim1    =    0.0,
+   lonlim2    =  360.0,
+   latlim1    =  -90.0,
+   latlim2    =   90.0,
+   verbose    = .false.
+   /
+
+&obs_diag_nml
+   obs_sequence_name = 'obs_seq.final',
+   obs_sequence_list = '',
+   first_bin_center =  2003, 1, 1, 0, 0, 0 ,
+   last_bin_center  =  2003, 1, 2, 0, 0, 0 ,
+   bin_separation   =     0, 0, 0,12, 0, 0 ,
+   bin_width        =     0, 0, 0, 6, 0, 0 ,
+   time_to_skip     =     0, 0, 0, 0, 0, 0 ,
+   max_num_bins     = 1000,
+   trusted_obs      = 'null',
+   Nregions   = 1,
+   lonlim1    =   0.0,   0.0,   0.0, 235.0,
+   lonlim2    = 360.0, 360.0, 360.0, 295.0,
+   latlim1    =  20.0, -80.0, -20.0,  25.0,
+   latlim2    =  80.0, -20.0,  20.0,  55.0,
+   reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America',
+   print_mismatched_locs = .false.,
+   create_rank_histogram = .true.,
+   outliers_in_histogram = .true.,
+   use_zero_error_obs    = .false.,
+   verbose               = .false.
+   /
+
+&obs_seq_coverage_nml
+   obs_sequences     = ''
+   obs_sequence_list = 'obs_coverage_list.txt'
+   obs_of_interest   = 'METAR_U_10_METER_WIND'
+   textfile_out      = 'obsdef_mask.txt'
+   netcdf_out        = 'obsdef_mask.nc'
+   calendar          = 'Gregorian'
+   first_analysis    =  2003, 1, 1, 0, 0, 0
+   last_analysis     =  2003, 1, 1, 6, 0, 0
+   forecast_length_days          = 1
+   forecast_length_seconds       = 0
+   verification_interval_seconds = 21600
+   temporal_coverage_percent     = 100.0
+   lonlim1 =    0.0
+   lonlim2 =  360.0
+   latlim1 =  -90.0
+   latlim2 =   90.0
+   verbose = .false.
+   /
+
+# selections_file is a list of obs_defs output
+# from the obs_seq_coverage utility.
+
+&obs_selection_nml
+   filename_seq        = 'obs_seq.out', 
+   filename_seq_list   = '', 
+   filename_out        = 'obs_seq.processed', 
+   selections_file     = 'obs_defs.txt', 
+   print_only          = .false., 
+   calendar            = 'gregorian',
+   /
+
+
+&obs_seq_verify_nml
+   obs_sequences     = ''
+   obs_sequence_list = 'obs_forecast_list.txt'
+   input_template    = 'obsdef_mask.nc'
+   netcdf_out        = 'forecast.nc'
+   obtype_string     = 'RADIOSONDE_TEMPERATURE'
+   print_every       = 20000
+   verbose           = .true.
+   debug             = .false.
+  /
+
+&obs_sequence_tool_nml
+   filename_seq = 'obs_seq.out',
+   filename_out = 'obs_seq.processed', 
+   first_obs_days = -1, 
+   first_obs_seconds = -1, 
+   last_obs_days = -1, 
+   last_obs_seconds = -1, 
+   obs_types = '', 
+   keep_types = .false., 
+   print_only = .false., 
+   min_lat = -90.0, 
+   max_lat =  90.0, 
+   min_lon =   0.0, 
+   max_lon = 360.0
+   /
+
