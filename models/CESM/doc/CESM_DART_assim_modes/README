@@ -1,0 +1,9 @@
+These files were created by the following.
+1) Generate the pictures in Powerpoint.
+2) Export the file as .png, which created this directory
+   and put each slide into a separate file; Slide1.png, ....
+3) on a Mac: 
+   a) 'open' each Slide#.png, 
+   b) take a screen shot of the useful part of the image
+   c) rename the result with a useful name, like CAM-only.png
+4) Put the pathname of that file into $dart/models/CESM/doc/setup_guidelines.html
