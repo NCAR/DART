@@ -32,7 +32,7 @@ program mpas_dart_obs_preprocess
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-use        types_mod, only : r8, missing_r8, earth_radius, RAD2DEG, DEG2RAD
+use        types_mod, only : r8, missing_r8, earth_radius, RAD2DEG, DEG2RAD, i8
 use    utilities_mod, only : error_handler, E_MSG, find_namelist_in_file, &
                              check_namelist_read, nc_check
 use time_manager_mod, only : time_type, operator(>=), operator(<), operator(>), operator(<=), &
@@ -177,7 +177,7 @@ call check_namelist_read(iunit, io, "mpas_obs_preproc_nml")
 
 call static_init_obs_sequence()
 call static_init_model()
-call init_ensemble_manager(dummy_ens, 1, 1)
+call init_ensemble_manager(dummy_ens, 1, 1_i8)
 
 call get_grid_dims(nCells, nVertices, nEdges, nVertLevels, vertexDegree, nSoilLevels)
 
