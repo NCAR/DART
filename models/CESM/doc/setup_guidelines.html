@@ -203,31 +203,59 @@ If you want to use an unusual combination of active and data
 components, you may need to (work with us to) modify the
 setup scripts.
 </P>
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+       <img src="./CESM_DART_assim_modes/CAM_only.png" alt="CAM+DART flowchart" width=300 height=400 /> 
+    </td>
+    <td>
+       <img src="./CESM_DART_assim_modes/POP_only.png" alt="POP+DART flowchart" width=550 height=400 />
+    </td>
+</tr>
+</table>
 
 <H4>Multi-Component Assimilation (aka "weakly coupled")</H4>
-<P>
-It's also possible to assimilate observations into multiple
-active components, but restricting the impact of observations
-to only "their own" component.  So in a "coupled" CESM with
-active CAM and POP, atmospheric observations change
-only the CAM model state while oceanic observations change
-only the POP model state.
-This mode uses multiple DART models; cam-fv and pop in this example
-to make a filter for each model.
-</P>
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+       <img src="./CESM_DART_assim_modes/multi-component.png" alt="Multi-component flowchart" height=400 />
+    </td>
+    <td valign=top>
+    <P>
+       It's also possible to assimilate observations into multiple
+       active components, but restricting the impact of observations
+       to only "their own" component.  So in a "coupled" CESM with
+       active CAM and POP, atmospheric observations change
+       only the CAM model state while oceanic observations change
+       only the POP model state.
+       This mode uses multiple DART models; cam-fv and pop in this example
+       to make a filter for each model.
+    </P>
+</td>
+</tr>
+</table>
 
 <H4>Cross-Component Assimilation (aka "strongly coupled")</H4>
-<P>
-Work is underway to enable the assimilation of all
-observations into multiple active CESM components.
-So observations of the atmosphere would directly
-the POP state variables and vice versa.
-Some unresolved issues include defining the "distance"
-between an observation in the atmosphere and a grid
-point in the ocean, and how frequently to assimilate
-in CAM versus POP.
-This mode will use code in this models/CESM directory.
-</P>
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="./CESM_DART_assim_modes/cross-component.png" alt="Cross-component flowchart" height=400 />
+    </td>
+    <td valign=top>
+    <P>
+       Work is underway to enable the assimilation of all
+       observations into multiple active CESM components.
+       So observations of the atmosphere would directly change
+       the POP state variables and vice versa.
+       Some unresolved issues include defining the "distance"
+       between an observation in the atmosphere and a grid
+       point in the ocean (for localization), and how frequently 
+       to assimilate in CAM versus POP.
+       This mode will use code in this models/CESM directory.
+    </P>
+</td>
+</tr>
+</table>
 
 
 <P>
@@ -298,7 +326,7 @@ This mode will use code in this models/CESM directory.
 For each CAM dynamical core "model", e.g. "cam-fv",  the scripts  in cesm#_# will handle:
    all CAM variants + vertical resolutions (*dy-core is NOT part of this.*):
        CAM5.5, CAM6, ...
-       WACCM4, WACCM6, ...
+       WACCM4, WACCM6, WACCM-X...
        CAM-Chem,
        ...
    all horizontal resolutions of its dy-core:
