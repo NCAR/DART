@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p mpas_dart_obs_preprocess -t ../../../mkmf/mkmf.template   \
+../../../build_templates/mkmf -p mpas_dart_obs_preprocess -t ../../../build_templates/mkmf.template   \
  -a "../../.." path_names_mpas_dart_obs_preprocess
 
 exit $status

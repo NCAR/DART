@@ -72,6 +72,7 @@ use     obs_kind_mod, only : ACARS_DEWPOINT, ACARS_RELATIVE_HUMIDITY, ACARS_SPEC
                              VORTEX_LAT, VORTEX_LON, VORTEX_PMIN, VORTEX_WMAX
 use        model_mod, only : static_init_model, get_grid_dims, get_xland, &
                              model_interpolate, find_closest_cell_center
+use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, end_ensemble_manager
 
 use           netcdf
 
@@ -153,6 +154,8 @@ type(obs_sequence_type) :: seq_all, seq_rawin, seq_sfc, seq_acars, seq_satwnd, &
 
 type(time_type)         :: anal_time
 
+type(ensemble_type)     :: dummy_ens
+
 integer :: nCells        = -1  ! Total number of cells making up the grid
 integer :: nVertices     = -1  ! Unique points in grid that are corners of cells
 integer :: nEdges        = -1  ! Straight lines between vertices making up cells
@@ -174,6 +177,7 @@ call check_namelist_read(iunit, io, "mpas_obs_preproc_nml")
 
 call static_init_obs_sequence()
 call static_init_model()
+call init_ensemble_manager(dummy_ens, 1, 1)
 
 call get_grid_dims(nCells, nVertices, nEdges, nVertLevels, vertexDegree, nSoilLevels)
 
@@ -822,8 +826,8 @@ logical, intent(in)             :: siglevel, elev_check
 real(r8), intent(in)            :: elev_max
 logical  :: rawinsonde_obs_check
 
-integer  :: istatus
-real(r8) :: llv_loc(3), xmod(1), hsfc
+integer  :: istatus(1)
+real(r8) :: llv_loc(3), hsfc(1)
 
 rawinsonde_obs_check = .true.
 llv_loc = get_location(obs_loc)
@@ -841,8 +845,8 @@ else
   !  perform elevation check for altimeter
   if ( elev_check ) then
 
-    call model_interpolate(xmod, obs_loc, QTY_SURFACE_ELEVATION, hsfc, istatus)
-    if ( abs(hsfc - llv_loc(3)) > elev_max ) rawinsonde_obs_check = .false.
+    call model_interpolate(dummy_ens, 1, obs_loc, QTY_SURFACE_ELEVATION, hsfc, istatus)
+    if ( abs(hsfc(1) - llv_loc(3)) > elev_max ) rawinsonde_obs_check = .false.
 
   end if
 
@@ -1928,17 +1932,17 @@ function surface_obs_check(elev_check, elev_max, llv_loc)
 logical, intent(in)  :: elev_check
 real(r8), intent(in) :: llv_loc(3), elev_max
 
-integer              :: istatus
+integer              :: istatus(1)
 logical              :: surface_obs_check
-real(r8)             :: xmod(1), hsfc
+real(r8)             :: hsfc(1)
 
 surface_obs_check = .true.
 
 if ( elev_check ) then
 
-  call model_interpolate(xmod, set_location(llv_loc(1), llv_loc(2), &
+  call model_interpolate(dummy_ens, 1, set_location(llv_loc(1), llv_loc(2), &
       llv_loc(3), VERTISSURFACE), QTY_SURFACE_ELEVATION, hsfc, istatus)
-  if ( abs(hsfc - llv_loc(3)) > elev_max ) surface_obs_check = .false.
+  if ( abs(hsfc(1) - llv_loc(3)) > elev_max ) surface_obs_check = .false.
 
 end if
 
