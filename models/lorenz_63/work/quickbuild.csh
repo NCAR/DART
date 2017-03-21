@@ -69,7 +69,7 @@ foreach DATAFILE ( *.cdl )
       echo "---------------------------------------------------"
       echo "constructing $MODEL data file $n named $OUTNAME" 
    
-      ncgen -o $OUTNAME $DATAFILE
+      ncgen -o $OUTNAME $DATAFILE  || exit $n
    endif
 
 end
