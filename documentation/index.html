@@ -29,6 +29,7 @@
 <A HREF="#Models">Models</A> /
 <A HREF="#Namelists">Namelist</A> /
 <A HREF="#Modules">Modules</A> /
+<A HREF="#Directories">Directory Tree</A> /
 <A HREF="#OtherDocs">Other Documentation</A> /
 <A HREF="#KitchenSink">All Documents</A> /
 <A HREF="#Legalese">Terms of Use</A>
@@ -527,6 +528,398 @@ pages, which can be found here:
 </UL>
 
 <P><!-- make sure the 'top' is aligned correctly --></P>
+
+<!--==================================================================-->
+
+<A NAME="Directories"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Directory Tree </H2>
+<!--==================================================================-->
+<h3>RMA-DART</h3>
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=top>
+    <p>
+    <pre>
+  |--assimilation_code
+  |  |--location
+  |  |  |--annulus
+  |  |  |--channel
+  |  |  |--column
+  |  |  |--oned
+  |  |  |--threed
+  |  |  |--threed_cartesian
+  |  |  |--threed_sphere
+  |  |  |--twod
+  |  |  |--twod_annulus
+  |  |  |--twod_sphere
+  |  |--modules
+  |  |  |--assimilation
+  |  |  |--io
+  |  |  |--observations
+  |  |  |--utilities
+  |  |--programs
+  |  |  |--advance_time
+  |  |  |--closest_member_tool
+  |  |  |--compare_states
+  |  |  |  |--work
+  |  |  |--compute_error
+  |  |  |--create_fixed_network_seq
+  |  |  |--create_obs_sequence
+  |  |  |--fill_inflation_restart
+  |  |  |--filter
+  |  |  |--gen_sampling_err_table
+  |  |  |  |--work
+  |  |  |--integrate_model
+  |  |  |--model_mod_check
+  |  |  |--obs_common_subset
+  |  |  |--obs_diag
+  |  |  |  |--oned
+  |  |  |  |--threed_cartesian
+  |  |  |  |--threed_sphere
+  |  |  |--obs_impact_tool
+  |  |  |--obs_loop
+  |  |  |--obs_selection
+  |  |  |--obs_seq_coverage
+  |  |  |--obs_seq_to_netcdf
+  |  |  |--obs_sequence_tool
+  |  |  |--obs_seq_verify
+  |  |  |--perfect_model_obs
+  |  |  |--preprocess
+  |  |  |--restart_file_tool
+  |  |  |--system_simulation
+  |  |  |  |--final_full_precomputed_tables
+  |  |  |  |--work
+  |  |  |--wakeup_filter
+  |  |--scripts
+  |--build_templates
+  |--developer_tests
+  |  |--forward_operators
+  |  |--harnesses
+  |  |  |--filename_harness
+  |  |  |--read_transpose_write
+  |  |--io
+  |  |  |--work
+  |  |--location
+  |  |  |--annulus
+  |  |  |  |--test
+  |  |  |--channel
+  |  |  |  |--test
+  |  |  |--column
+  |  |  |  |--test
+  |  |  |--oned
+  |  |  |  |--test
+  |  |  |--threed
+  |  |  |  |--test
+  |  |  |--threed_cartesian
+  |  |  |  |--test
+  |  |  |--threed_sphere
+  |  |  |  |--test
+  |  |  |--twod
+  |  |  |  |--test
+  |  |  |--twod_annulus
+  |  |  |  |--test
+  |  |  |--twod_sphere
+  |  |     |--test
+  |  |--mpi_utilities
+  |  |  |--tests
+  |  |--obs_sequence
+  |  |  |--data
+  |  |  |--work
+  |  |--random_seq
+  |  |  |--test
+  |  |--reg_factor
+  |  |--time_manager
+  |  |--utilities
+  |     |--work
+  |--diagnostics
+  |  |--matlab
+  |     |--deprecated
+  |     |--private
+  |--documentation
+  |  |--DART_LAB
+  |  |  |--matlab
+  |  |  |  |--private
+  |  |  |--presentation
+  |  |--doxygen
+  |  |--Graphs
+  |  |--html
+  |  |  |--boilerplate
+  |  |  |--design
+  |  |  |--history
+  |  |--images
+  |  |--tutorial
+  |--observations
+    |--forward_operators
+    |  |--test
+    |--obs_converters
+       |--AIRS
+       |  |--data
+       |  |--output
+       |  |--shell_scripts
+       |  |--work
+       |--Ameriflux
+       |  |--shell_scripts
+       |  |--work
+       |--AURA
+       |  |--data
+       |  |--work
+       |--AVISO
+       |  |--shell_scripts
+       |  |--work
+       |--CHAMP
+       |  |--work
+       |--cice
+       |  |--data
+       |  |--shell_scripts
+       |  |--work
+       |--CNOFS
+       |  |--work
+       |--COSMOS
+       |  |--data
+       |  |--work
+       |--DWL
+       |  |--data
+       |  |--shell_scripts
+       |  |--work
+       |--even_sphere
+       |--gnd_gps_vtec
+       |  |--work
+       |--gps
+       |  |--cosmic
+       |  |  |--20071001
+       |  |--matlab
+       |  |--shell_scripts
+       |  |--work
+       |--GPSPW
+       |  |--data
+       |  |--shell_scripts
+       |  |--work
+       |--GTSPP
+       |  |--data
+       |  |--matlab
+       |  |--work
+       |--MADIS
+       |  |--data
+       |  |--shell_scripts
+       |  |--work
+       |--MIDAS
+       |  |--data
+       |  |--work
+       |--MODIS
+       |  |--data
+       |  |--shell_scripts
+       |  |--work
+       |--NCEP
+       |  |--ascii_to_obs
+       |  |  |--work
+       |  |--prep_bufr
+       |     |--blk_ublk
+       |     |--convert_bufr
+       |     |--data
+       |     |  |--201012
+       |     |--docs
+       |     |  |--Reason_codes
+       |     |--exe
+       |     |--lib
+       |     |--src
+       |     |--work
+       |--obs_error
+       |--ok_mesonet
+       |  |--data
+       |  |--shell_scripts
+       |  |--work
+       |--quikscat
+       |  |--data
+       |  |--work
+       |--radar
+       |  |--examples
+       |  |--work
+       |--ROMS
+       |  |--data
+       |  |--shell_scripts
+       |  |--work
+       |--SABER
+       |  |--data
+       |  |--progs
+       |  |--work
+       |--snow
+       |  |--data
+       |  |--shell_scripts
+       |  |--work
+       |--SSEC
+       |  |--data
+       |  |--work
+       |--SSUSI
+       |  |--data
+       |  |--shell_scripts
+       |  |--work
+       |--text
+       |  |--data
+       |  |--shell_scripts
+       |  |--work
+       |--text_GITM
+       |  |--work
+       |--tpw
+       |  |--data
+       |  |--doc
+       |  |--work
+       |--tropical_cyclone
+       |  |--data
+       |  |--work
+       |--utilities
+       |  |--oned
+       |  |--threed_sphere
+       |--var
+       |  |--3DVAR_OBSPROC
+       |  |--data
+       |  |--work
+       |--WOD
+          |--data
+          |--shell_scripts
+          |--work
+        </pre>
+        <br><br>
+        </p>
+    </td>
+    <td valign=top>
+    <p>
+        NOTE: 'work', 'matlab', and 'shell_scripts' directory names have been removed from this list.
+    <pre> 
+  |--models
+  |  |--9var
+  |  |--am2
+  |  |--bgrid_solo
+  |  |  |--fms_src
+  |  |  |  |--atmos_bgrid
+  |  |  |  |  |--driver
+  |  |  |  |  |  |--solo
+  |  |  |  |  |--model
+  |  |  |  |  |--tools
+  |  |  |  |--atmos_param
+  |  |  |  |  |--hs_forcing
+  |  |  |  |--atmos_shared
+  |  |  |  |  |--tracer_driver
+  |  |  |  |  |--vert_advection
+  |  |  |  |--atmos_solo
+  |  |  |  |--shared
+  |  |  |     |--axis_utils
+  |  |  |     |--constants
+  |  |  |     |--diag_manager
+  |  |  |     |--fft
+  |  |  |     |--field_manager
+  |  |  |     |--fms
+  |  |  |     |--horiz_interp
+  |  |  |     |--mpp
+  |  |  |     |--platform
+  |  |  |     |--sat_vapor_pres
+  |  |  |     |--time_manager
+  |  |  |     |--topography
+  |  |  |     |--tracer_manager
+  |  |  |     |--udunits
+  |  |  |     |--utilities
+  |  |  |--test
+  |  |--cam-fv
+  |  |  |--deprecated
+  |  |  |--doc
+  |  |  |--shell_scripts
+  |  |     |--cesm1_5
+  |  |     |--cesm2_0
+  |  |--cam-old
+  |  |  |--deprecated
+  |  |  |--doc
+  |  |  |--full_experiment
+  |  |  |--perfect_model
+  |  |--CESM
+  |  |  |--doc
+  |  |     |--CESM_DART_assim_modes
+  |  |--cice
+  |  |--clm
+  |  |  |--datm
+  |  |  |--docs
+  |  |--cm1
+  |  |--coamps
+  |  |  |--doc
+  |  |  |--externals
+  |  |  |  |--obs_def
+  |  |  |--templates
+  |  |--coamps_nest
+  |  |  |--doc
+  |  |  |--externals
+  |  |  |  |--obs_def
+  |  |  |--shell_scripts
+  |  |  |  |--COAMPS_RESTART_SCRIPTS
+  |  |  |  |--TEMPLATES
+  |  |  |--templates
+  |  |  |  |--EXPERIMENT_EXAMPLE
+  |  |--dynamo
+  |  |  |--data
+  |  |--ECHAM
+  |  |--forced_barot
+  |  |  |--obs
+  |  |--forced_lorenz_96
+  |  |--gitm
+  |  |  |--GITM2
+  |  |  |  |--src
+  |  |  |--python
+  |  |  |--testdata1
+  |  |--ikeda
+  |  |--LMDZ
+  |  |--lorenz_04
+  |  |--lorenz_63
+  |  |--lorenz_84
+  |  |--lorenz_96
+  |  |  |--tests
+  |  |--lorenz_96_2scale
+  |  |--MITgcm_annulus
+  |  |--MITgcm_ocean
+  |  |  |--inputs
+  |  |--model_mod_tools
+  |  |--mpas_atm
+  |  |  |--data
+  |  |--mpas_ocn
+  |  |  |--data
+  |  |--NAAPS
+  |  |--NCOMMAS
+  |  |  |--docs
+  |  |--noah
+  |  |  |--ensemble_source
+  |  |  |--forcing
+  |  |  |--templates
+  |  |--null_model
+  |  |--PBL_1d
+  |  |--pe2lyr
+  |  |--POP
+  |  |--ROMS
+  |  |  |--data
+  |  |  |--doc
+  |  |--rose
+  |  |--simple_advection
+  |  |--sqg
+  |  |--template
+  |  |--tiegcm
+  |  |--wrf
+  |     |--experiments
+  |     |  |--Radar
+  |     |     |--IC
+  |     |     |  |--sounding_perturbation
+  |     |     |--obs
+  |     |--namelist
+  |     |--PERTURB
+  |     |  |--3DVAR-COVAR
+  |     |--regression
+  |     |  |--CONUS-V2
+  |     |  |--CONUS-V3
+  |     |  |--Global-V3
+  |     |  |--Radar
+  |     |  |--WRF
+  |     |--WRF_BC
+  |     |--WRF_DART_utilities
+	<br><br>
+      </pre>
+    </td>
+</tr>
+</table>
 
 <!--==================================================================-->
 
