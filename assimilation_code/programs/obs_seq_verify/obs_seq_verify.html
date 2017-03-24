@@ -36,7 +36,7 @@
 
 <H2>Overview</H2>
 <center>
-<img src="../doc/images/obs_seq_verify_diagram.png" alt="verify schematic" width=50% />
+<img src="../../../documentation/images/obs_seq_verify_diagram.png" alt="verify schematic" width=50% />
 </center>
 
 <P>
@@ -50,14 +50,14 @@ are put into a netCDF variable that looks like this:
 <br />
 <br />
 <!-- MyVariable(analysisT, stations, levels, copy, nmembers, forecast_lead) -->
-<img src="../doc/images/verify_variable_shape.png" alt="verify variable" width=75% />
+<img src="../../../documentation/images/verify_variable_shape.png" alt="verify variable" width=75% />
 <br />
 <br />
 <em class=program>obs_seq_verify</em> can read in a series of
 observation sequence files - each of the files <strong>must</strong> contain
 the <strong>entire forecast from a single analysis time</strong>.
 The extension of each filename is <strong>required</strong> to reflect the analysis time.
-Use <a href="assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool</a> to
+Use <a href="../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool</a> to
 concatenate multiple files into a single observation sequence file if necessary.
 <em class=removed>Only the individual ensemble members <em>forecast</em> values 
 are used - the ensemble mean and spread (as individual copies) are completely ignored.</em>
@@ -86,7 +86,7 @@ there are no individual ensemble members present (i.e. <em class=file>input.nml<
     <td valign=top>The vertical level at each location. Observations with a 
         pressure vertical coordinate are selected based on their proximity to 
         the mandatory levels as defined in 
-        <a href="assimilation_code/programs/obs_seq_coverage/obs_seq_coverage.html">obs_seq_coverage</a>. Surface observations 
+        <a href="../../../assimilation_code/programs/obs_seq_coverage/obs_seq_coverage.html">obs_seq_coverage</a>. Surface observations 
         or observations with undefined vertical coordinates are simply 
         put into level 1.</td>
 </tr>
@@ -188,7 +188,7 @@ If <em class=code>obs_sequence_list</em> is specified,
 <TR><TD> station_template </TD>
     <TD> character(len=256) </TD>
     <TD>The name of the netCDF file created by 
-<a href="assimilation_code/programs/obs_seq_coverage/obs_seq_coverage.html">obs_seq_coverage</a> that contains the
+<a href="../../../assimilation_code/programs/obs_seq_coverage/obs_seq_coverage.html">obs_seq_coverage</a> that contains the
 verification network description.
 </TD></TR>
 
@@ -266,7 +266,7 @@ utilities/utilities_mod
        <em class=option>obs_seq_verify_nml</em><br /></LI>
 
    <LI>A netCDF file containing the metadata for the verification network.
-       This file is created by <a href="assimilation_code/programs/obs_seq_coverage/obs_seq_coverage.html">obs_seq_coverage</a> to
+       This file is created by <a href="../../../assimilation_code/programs/obs_seq_coverage/obs_seq_coverage.html">obs_seq_coverage</a> to
        define the desired times and locations for the verification.
        <br />
       (<em class=file>obsdef_mask.nc</em> is the default name)<br /></LI>
@@ -275,7 +275,7 @@ utilities/utilities_mod
        in <em class=option>forecast</em> mode - meaning all the observations were
        flagged as <em class=option>evaluate_only</em>. It is required/presumed that
        all the ensemble members are output to the observation sequence file
-       (see <a href="../filter/filter.hmtl#Namelist">num_output_obs_members</a>).
+       (see <a href="../../../assimilation_code/programs/filter/filter.html#Namelist">num_output_obs_members</a>).
        Each observation sequence file contains all the forecasts from a single
        analysis time and the filename extension must reflect the analysis time
        used to start the forecast.
@@ -313,13 +313,13 @@ observations into a predetermined configuration.
 
 <H3 class=indent1>Example: a single 48-hour forecast that is evaluated every 6 hours.</H3>
 <p>
-<img src="../doc/images/verification_48hrX6hr.png" alt="Example 1" width=75% />
+<img src="../../../documentation/images/verification_48hrX6hr.png" alt="Example 1" width=75% />
 <br />
 <br />
 In this example, the <em class=file>obsdef_mask.nc</em> file was created by running
-<a href="assimilation_code/programs/obs_seq_coverage/obs_seq_coverage.html">obs_seq_coverage</a> with the namelist specified in the
-<a href="assimilation_code/programs/obs_seq_coverage/obs_seq_coverage.html#example48x6">single 48hour forecast evaluated every 6 hours</a> example. The <em class=file>obsdef_mask.txt</em> file was used to mask the
-input observation sequence files by <a href="assimilation_code/programs/obs_selection/obs_selection.html">obs_selection</a> and
+<a href="../../../assimilation_code/programs/obs_seq_coverage/obs_seq_coverage.html">obs_seq_coverage</a> with the namelist specified in the
+<a href="../../../assimilation_code/programs/obs_seq_coverage/obs_seq_coverage.html#example48x6">single 48hour forecast evaluated every 6 hours</a> example. The <em class=file>obsdef_mask.txt</em> file was used to mask the
+input observation sequence files by <a href="../../../assimilation_code/programs/obs_selection/obs_selection.html">obs_selection</a> and
 the result was run through <a href="../filter/filter.html">filter</a> with the
 observations marked as <em class=option>evaluate_only</em> - resulting in a file
 called <em class=file>obs_seq.forecast.2008060818</em>. This filename could also

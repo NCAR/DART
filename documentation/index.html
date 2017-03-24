@@ -96,7 +96,7 @@ To get started, look here:
 </P>
 <ul>
 <li>Our extensive <a href="http://www.image.ucar.edu/DAReS/">web pages</a></li>
-<li>The <a href="html/M_release.html">release notes</a> which include
+<li>The <a href="html/Manhattan_release.html">release notes</a> which include
 installation hints, a walk-through of building and running a model, and an
 overview of the diagnostics.</li>
 <li>Documentation for the 
@@ -220,8 +220,8 @@ The executable programs that come with DART include:
 <LI><A href="../assimilation_code/programs/create_obs_sequence/create_obs_sequence.html">create_obs_sequence</A> - interactive program to generate observations</LI>
 <LI><A href="../assimilation_code/programs/create_fixed_network_seq/create_fixed_network_seq.html">create_fixed_network_seq</A> - repeat a set of observations at multiple times</LI>
 <LI><A href="../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool</A> - general observation sequence file manipulation tool</LI>
-<LI><A href="../assimilation_code/programs/restart_file_tool/restart_file_tool.html">restart_file_tool</A> - utility for DART restart files</LI>
-<LI><A href="../assimilation_code/modules/assimilation/adaptive_inflate_mod.html">fill_inflation_restart</A> - initialize inflation files</LI>
+<!-- <LI><A href="../assimilation_code/programs/restart_file_tool/restart_file_tool.html">restart_file_tool</A> - utility for DART restart files</LI> -->
+<!-- <LI><A href="../assimilation_code/modules/assimilation/adaptive_inflate_mod.html">fill_inflation_restart</A> - initialize inflation files</LI> -->
 <LI><A href="../assimilation_code/programs/advance_time/advance_time.html">advance_time</A> - increment calendar times, useful for scripting loops</LI>
 <LI><A href="../assimilation_code/programs/closest_member_tool/closest_member_tool.html">closest_member_tool</A> - select DART restart file closest to mean</LI>
 <LI><A href="../assimilation_code/programs/integrate_model/integrate_model.html">integrate_model</A> - wrapper for models called as subroutines</LI>
@@ -283,6 +283,7 @@ The executable programs that convert observations into DART format include:
 <LI><A href="../observations/obs_converters/WOD/WOD.html">World Ocean Database data</A></LI>
 </UL>
 
+<!--
 <A NAME="Model_specific_programs"></A>
 <P>
 Executable programs specific to a single model.  Many are converters
@@ -301,6 +302,7 @@ from model file format to DART state vector, and back.
 <LI>wrf <A href="../models/wrf/WRF_DART_utilities/replace_wrf_fields.html">replace_wrf_fields</A></LI>
 <LI>wrf <A href="../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html">wrf_dart_obs_preprocess</A> - preprocess observations intended to be assimilated into WRF.  Program has understanding of the WRF domain information.</LI>
 </UL>
+-->
 
 <P><!-- make sure the 'top' is aligned correctly --></P>
 
@@ -321,9 +323,15 @@ All models in the DART project have individual documentation
 pages, which can be found here (if an html document is not
 available, the link is to the .f90 source):
 </P>
+<P>
+Currently Manhattan has support for many of our larger models
+such as WRF, POP, CAM, CICE, CLM, ROMS, MPAS_ATM, ... and
+all lower models such as lorenz_96.  Models previously avilable
+on Lanai can still be found with dart <A HREF="https://svn-dares-dart.cgd.ucar.edu/DART/releases/classic/">classic</A>.
+</P>
 
 <UL style="list-style: none;">
-<LI><A HREF="../models/model_mod.html">Overview for all models</A></LI>
+<LI><A HREF="../models/template/model_mod.html">Overview for all models</A></LI>
 <LI><A HREF="../models/template/model_mod.f90">template</A> (source)</LI>
 <LI>&nbsp;</LI>
 <LI><A HREF="../models/9var/model_mod.html">9var</A> (html)</LI>
@@ -462,6 +470,7 @@ We adhere to the F90 standard of starting a namelist with an ampersand
 <LI>MITgcm_ocean <A HREF="../models/MITgcm_ocean/model_mod.nml#Namelist">&amp;model_nml</A></LI>
 <LI>mpas_atm <A HREF="../models/mpas_atm/model_mod.nml#Namelist">&amp;model_nml</A></LI>
 <LI>mpas_ocn <A HREF="../models/mpas_ocn/model_mod.nml#Namelist">&amp;model_nml</A></LI>
+<!--
 <LI>NAAPS <A HREF="../models/NAAPS/dart_to_naaps.nml#Namelist">&amp;dart_to_naaps_nml</A></LI>
 <LI>NAAPS <A HREF="../models/NAAPS/model_mod.nml#Namelist">&amp;model_nml</A></LI>
 <LI>NAAPS <A HREF="../models/NAAPS/model_mod_check.nml#Namelist">&amp;model_mod_check_nml</A></LI>
@@ -472,6 +481,7 @@ We adhere to the F90 standard of starting a namelist with an ampersand
 <LI>NCOMMAS <A HREF="../models/NCOMMAS/work/ncommas_vars.nml#Namelist">&amp;ncommas_vars_nml</A></LI>
 <LI>noah <A HREF="../models/noah/dart_to_noah.nml#Namelist">&amp;dart_to_noah_nml</A></LI>
 <LI>noah <A HREF="../models/noah/model_mod.nml#Namelist">&amp;model_nml</A></LI>
+-->
 <LI>null_model <A HREF="../models/noah/noah_to_dart.nml#Namelist">&amp;noah_to_dart_nml</A></LI>
 <LI>null_model <A HREF="../models/null_model/model_mod.nml#Namelist">&amp;model_nml</A></LI>
 <LI>POP <A HREF="../models/POP/model_mod.nml#Namelist">&amp;model_nml</A></LI>
@@ -497,34 +507,50 @@ All modules in the DART project have individual documentation
 pages, which can be found here:
 </P>
 
-<UL style="list-style: none;">
-<LI><A href="../assimilation_code/modules/assimilation/adaptive_inflate_mod.html">adaptive_inflate/adaptive_inflate_mod</A></LI>
-<LI><A href="../assimilation_code/modules/assimilation/assim_tools_mod.html">assim_tools/assim_tools_mod</A></LI>
-<LI><A href="../assimilation_code/modules/utilities/types_mod.html">common/types_mod</A></LI>
-<LI><A href="../assimilation_code/modules/assimilation/cov_cutoff_mod.html">cov_cutoff/cov_cutoff_mod</A></LI>
-<LI><A href="../assimilation_code/modules/utilities/ensemble_manager_mod.html">ensemble_manager/ensemble_manager_mod</A></LI>
-<LI><A href="../assimilation_code/location/channel/location_mod.html">location/channel/location_mod</A></LI>
-<LI><A href="../assimilation_code/location/oned/location_mod.html">location/oned/location_mod</A></LI>
-<LI><A href="../assimilation_code/location/threed_cartesian/location_mod.html">location/threed_cartesian/location_mod</A></LI>
-<LI><A href="../assimilation_code/location/threed_sphere/location_mod.html">location/threed_sphere/location_mod</A></LI>
-<LI><A href="../models/POP/dart_pop_mod.html">models/POP/dart_pop_mod</A></LI>
-<LI><A href="../assimilation_code/modules/utilities/mpi_utilities_mod.html">mpi_utilities/mpi_utilities_mod</A></LI>
-<LI><A href="../observations/forward_operators/DEFAULT_obs_def_mod.html">obs_def/DEFAULT_obs_def_mod</A></LI>
-<LI><A href="../observations/forward_operators/obs_def_1d_state_mod.html">obs_def/obs_def_1d_state_mod</A></LI>
-<LI><A href="../observations/forward_operators/obs_def_dew_point_mod.html">obs_def/obs_def_dew_point_mod</A></LI>
-<LI><A href="../observations/forward_operators/obs_def_gps_mod.html">obs_def/obs_def_gps_mod</A></LI>
-<LI><A href="../observations/forward_operators/obs_def_mod.html">obs_def/obs_def_mod</A></LI>
-<LI><A href="../observations/forward_operators/obs_def_ocean_mod.html">obs_def/obs_def_ocean_mod</A></LI>
-<LI><A href="../observations/forward_operators/obs_def_radar_mod.html">obs_def/obs_def_radar_mod</A></LI>
-<LI><A href="../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.html">obs_kind/DEFAULT_obs_kind_mod</A></LI>
-<LI><A href="../assimilation_code/modules/observations/obs_kind_mod.html">obs_kind/obs_kind_mod</A></LI>
-<LI><A href="../assimilation_code/modules/observations/obs_sequence_mod.html">obs_sequence/obs_sequence_mod</A></LI>
-<LI><A href="../assimilation_code/modules/utilities/random_seq_mod.html">random_seq/random_seq_mod</A></LI>
-<LI><A href="../assimilation_code/modules/assimilation/reg_factor_mod.html">reg_factor/reg_factor_mod</A></LI>
-<LI><A href="../assimilation_code/modules/assimilation/smoother_mod.html">smoother/smoother_mod</A></LI>
-<LI><A href="../assimilation_code/modules/utilities/schedule_mod.html">time_manager/schedule_mod</A></LI>
-<LI><A href="../assimilation_code/modules/utilities/time_manager_mod.html">time_manager/time_manager_mod</A></LI>
-<LI><A href="../assimilation_code/modules/utilities/utilities_mod.html">utilities/utilities_mod</A></LI>
+Location Modules
+<UL>
+<LI><A href="../assimilation_code/location/channel/location_mod.html">            assimilation_code/location/channel/location_mod</A></LI>
+<LI><A href="../assimilation_code/location/oned/location_mod.html">               assimilation_code/location/oned/location_mod</A></LI>
+<LI><A href="../assimilation_code/location/threed_cartesian/location_mod.html">   assimilation_code/location/threed_cartesian/location_mod</A></LI>
+<LI><A href="../assimilation_code/location/threed_sphere/location_mod.html">      assimilation_code/location/threed_sphere/location_mod</A></LI>
+</UL>
+Assimilation Modules
+<UL>
+<LI><A href="../assimilation_code/modules/assimilation/adaptive_inflate_mod.html">assimilation_code/modules/assimilation/adaptive_inflate_mod</A></LI>
+<LI><A href="../assimilation_code/modules/assimilation/assim_tools_mod.html">     assimilation_code/modules/assimilation/assim_tools_mod</A></LI>
+<LI><A href="../assimilation_code/modules/assimilation/cov_cutoff_mod.html">      assimilation_code/modules/assimilation/cov_cutoff_mod</A></LI>
+<LI><A href="../assimilation_code/modules/assimilation/reg_factor_mod.html">      assimilation_code/modules/assimilation/reg_factor_mod</A></LI>
+<LI><A href="../assimilation_code/modules/assimilation/smoother_mod.html">        assimilation_code/modules/assimilation/smoother_mod</A></LI>
+</UL>
+Observation Modules
+<UL>
+<LI><A href="../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.html">assimilation_code/modules/observations/DEFAULT_obs_kind_mod</A></LI>
+<LI><A href="../assimilation_code/modules/observations/obs_kind_mod.html">        assimilation_code/modules/observations/obs_kind_mod</A></LI>
+<LI><A href="../assimilation_code/modules/observations/obs_sequence_mod.html">    assimilation_code/modules/observations/obs_sequence_mod</A></LI>
+</UL>
+Utilities Modules
+<UL>
+<LI><A href="../assimilation_code/modules/utilities/random_seq_mod.html">         assimilation_code/modules/utilities/random_seq_mod</A></LI>
+<LI><A href="../assimilation_code/modules/utilities/schedule_mod.html">           assimilation_code/modules/utilities/schedule_mod</A></LI>
+<LI><A href="../assimilation_code/modules/utilities/time_manager_mod.html">       assimilation_code/modules/utilities/time_manager_mod</A></LI>
+<LI><A href="../assimilation_code/modules/utilities/utilities_mod.html">          assimilation_code/modules/utilities/utilities_mod</A></LI>
+<LI><A href="../assimilation_code/modules/utilities/types_mod.html">              assimilation_code/modules/utilities/types_mod</A></LI>
+<LI><A href="../assimilation_code/modules/utilities/ensemble_manager_mod.html">   assimilation_code/modules/utilities/ensemble_manager_mod</A></LI>
+<LI><A href="../assimilation_code/modules/utilities/mpi_utilities_mod.html">      assimilation_code/modules/utilities/mpi_utilities_mod</A></LI>
+</UL>
+Example Model Module
+<UL>
+<LI><A href="../models/POP/dart_pop_mod.html">                                    models/POP/dart_pop_mod</A></LI>
+</UL>
+Forward Operators Modules
+<UL>
+<LI><A href="../observations/forward_operators/DEFAULT_obs_def_mod.html">         observations/forward_operators/DEFAULT_obs_def_mod</A></LI>
+<LI><A href="../observations/forward_operators/obs_def_1d_state_mod.html">        observations/forward_operators/obs_def_1d_state_mod</A></LI>
+<LI><A href="../observations/forward_operators/obs_def_dew_point_mod.html">       observations/forward_operators/obs_def_dew_point_mod</A></LI>
+<LI><A href="../observations/forward_operators/obs_def_gps_mod.html">             observations/forward_operators/obs_def_gps_mod</A></LI>
+<LI><A href="../observations/forward_operators/obs_def_mod.html">                 observations/forward_operators/obs_def_mod</A></LI>
+<LI><A href="../observations/forward_operators/obs_def_ocean_mod.html">           observations/forward_operators/obs_def_ocean_mod</A></LI>
+<LI><A href="../observations/forward_operators/obs_def_radar_mod.html">           observations/forward_operators/obs_def_radar_mod</A></LI>
 </UL>
 
 <P><!-- make sure the 'top' is aligned correctly --></P>
@@ -990,7 +1016,7 @@ all model_mod source files in the DART distribution tree:
 <LI><A href="../models/lorenz_96/model_mod.f90">models/lorenz_96/model_mod</A> (source)</LI>
 <LI><A href="../models/lorenz_96/model_mod.html">models/lorenz_96/model_mod</A> (html)</LI>
 <LI><A href="../models/lorenz_96_2scale/model_mod.f90">models/lorenz_96_2scale/model_mod</A> (source)</LI>
-<LI><A href="../models/model_mod.html">models/model_mod</A> (html)</LI>
+<LI><A href="../models/template/model_mod.html">models/model_mod</A> (html)</LI>
 <LI><A href="../models/mpas_atm/model_mod.f90">models/mpas_atm/model_mod</A> (source)</LI>
 <LI><A href="../models/mpas_atm/model_mod.html">models/mpas_atm/model_mod</A> (html)</LI>
 <LI><A href="../models/mpas_ocn/model_mod.f90">models/mpas_ocn/model_mod</A> (source)</LI>

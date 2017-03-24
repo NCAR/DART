@@ -91,12 +91,10 @@ wrapped in an external script which does these additional steps:
 </P>
 <UL><LI>Link to an observation sequence file which contains only observation times
         within the next assimilation window </LI>
-    <LI>Convert the latest model output files to DART format</LI>
     <LI>Link any output inflation files from the previous step to be
         the input files for this step</LI>
     <LI>Run filter, which will exit after doing the assimilation without trying
         to advance the model</LI>
-    <LI>Convert the filter output to be model input</LI>
     <LI>Save the output diagnostic files for later</LI>
     <LI>Advance the N copies of the model using the model scripts or whatever
         method is appropriate</LI>
@@ -112,15 +110,29 @@ to a batch system so all run as independent parallel jobs.
 <P>
    The same source code is used for all applications of filter.
    The code specific to the types of observations and the interface code
-   for the computational model is configured at compile time.
-   The DART directory structure is arranged slightly differently than usual
-   in that the main code is spread across a dozen directories
-   at the top level, e.g. the filter source code is in DART/filter/filter.f90.
-   Each model has a separate directory under DART/models, and under each model
-   is a work directory where the code is compiled and can be run for testing.
-   Generally when a full-size experiment is done the executables are copied
-   to a different location - e.g. scratch space on a large filesystem - since the
-   data files for 10s to 100s of copies of a model can get very large.
+   for the computational model is configured at compile time. The directory 
+   has been simplified from previous version to look like : 
+   
+   <ul><li> <em class=file>README</em>            </li>
+       <li> <em class=file>COPYRIGHT</em>         </li>
+       <li> <em class=dir >assimilation_code</em> </li>
+       <li> <em class=dir >build_templates</em>   </li>
+       <li> <em class=dir >diagnostics</em>       </li>
+       <li> <em class=dir >documentation</em>     </li>
+       <li> <em class=dir >models</em>            </li>
+       <li> <em class=dir >observations</em>      </li>
+   </ul>
+   
+   the  <em class=dir >assimilation_code</em> contains all 
+   <em class=dir >module</em> and <em class=dir >program</em> souce code for 
+   all of the main programs including filter.  Specifically in the modules 
+   directory there is a <em class=file >filter_mod.f90</em> which contains the souce for the 
+   filter main program.  Each model has a separate directory under DART/models, 
+   and under each model is a work directory where the code is compiled and 
+   can be run for testing.  Generally when a full-size experiment is done the 
+   executables are copied to a different location - e.g. scratch space on a 
+   large filesystem - since the data files for 10s to 100s of copies of a model 
+   can get very large.
 </P>
 
 <A NAME="FilterTypes"></A>
@@ -151,7 +163,7 @@ If you are adding a new model or a new observation type, we suggest
 you assimilate exactly one observation, with no model advance, 
 with inflation turned off, with a large cutoff, and with the 
 outlier threshold off (see below for how to set these namelist 
-items).  Run an assimilation.  Look at the obs_seq.final file
+items).  Run an assimilation.  Look at the <em class=file>obs_seq.final</em> file
 to see what the forward operator computed.  Use ncdiff to difference
 the Prior and Posterior Diag NetCDF files and look at the changes
 (the "innovations") in the various model fields.  Is it in the right
@@ -302,7 +314,7 @@ See Anderson (2011).
    list in the <em class="code">&amp;obs_kind_nml</em>
    section of the namelist, and none in the assimilation list.  
    Run filter as usual, including model advances if needed.
-   Run observation diagnostics on the resulting obs_seq.final file to
+   Run observation diagnostics on the resulting <em class=file>obs_seq.final</em> file to
    compute the difference between the observed values and the
    predicted values from this model state.
 </P>
@@ -327,7 +339,7 @@ See Anderson (2011).
 <H4>DART Quality Control Flag added to Output Observation Sequence File</H4>
 <P>
    The filter adds a quality control field with metadata 'DART quality control'
-   to the obs_seq.final file. At present, this field can have the following
+   to the <em class=file>obs_seq.final</em> file. At present, this field can have the following
    values:
 </P>
 
@@ -592,9 +604,9 @@ Copy (recursively, e.g. <em class=code>cp -r</em>) the contents of the
 file in the template dir is appropriate for small models; for large geophysical
 models see the <em class=file>full_model_mod.f90</em> file 
 and also examine other model directories for ideas.
-See additional documentation in the <a href="../../../models/model_mod.html">model_mod</a>
+See additional documentation in the <a href="../../../models/template/model_mod.html">model_mod</a>
 documentation, and the 
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#adding_a_model">
+<a href="http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#adding_a_model">
 DART web pages</a> on adding new models.
 </DD>
 <DT>New Observation Types</DT><DD>Define a new type via a file in the 
@@ -602,7 +614,7 @@ DART web pages</a> on adding new models.
 formats to DART format, add a new directory in the <em class=file>observations</em> subdirectory.
 See additional documentation in the <a href="../../../observations/forward_operators/obs_def_mod.html">obs_def_mod</a>
 documentation, and the 
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_Observations.php#adding_types">
+<a href="http://www.image.ucar.edu/DAReS/DART/DART2_Observations.php#adding_types">
 DART web pages</a> on adding new models.
 </DD>
 <DT>New Observation Forward Operators</DT><DD>If the forward operator is more
@@ -1262,8 +1274,8 @@ Contact author.</li>
     <!-- comment --><TD VALIGN=top>Ensemble size must be at least 2. </TD></TR>
 
 <TR><!-- routine --><TD VALIGN=top>filter_main</TD>
-    <!-- message --><TD VALIGN=top>inf_flavor= ### Must be 0, 1, 2, 3.</TD>
-    <!-- comment --><TD VALIGN=top>Only inflation options 0 to 3 are supported. </TD></TR>
+    <!-- message --><TD VALIGN=top>inf_flavor= ### Must be 0, 2, 3.</TD>
+    <!-- comment --><TD VALIGN=top>Observation Inflation is no longer supported (i.e flavor 1). </TD></TR>
 
 <TR><!-- routine --><TD VALIGN=top>filter_main</TD>
     <!-- message --><TD VALIGN=top>Posterior observation space inflation (type 1) not supported.</TD>
