@@ -2,16 +2,21 @@
 
  &model_nml
      current_time =  0, 0, 0, 0
-     override = .false.,
-     dt_atmos = 3600,
-     days     = 10,
-     hours    = 0, 
-     minutes  = 0,
-     seconds  = 0,
-     noise_sd = -1.0,
-     dt_bias  = -1,
-     output_state_vector = .false. /
-#
+     override     = .false.,
+     dt_atmos     = 3600,
+     days         = 10,
+     hours        = 0, 
+     minutes      = 0,
+     seconds      = 0,
+     noise_sd     = -1.0,
+     dt_bias      = -1,
+     state_variables = 'ps', 'QTY_SURFACE_PRESSURE',
+                       't',  'QTY_TEMPERATURE',
+                       'u',  'QTY_U_WIND_COMPONENT',
+                       'v',  'QTY_V_WIND_COMPONENT',
+     template_file = 'perfect_input.nc'
+  /
+
 # namelists used for cold start of bgrid core (N45L20)
 # running the held-suarez benchmark
 #

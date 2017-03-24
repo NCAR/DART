@@ -160,7 +160,6 @@ logical, save :: module_initialized = .false.
    integer  :: dt_atmos = 3600
    real(r8) :: noise_sd = -1.0_r8
    integer  :: dt_bias  = -1
-   logical  :: output_state_vector = .false.  ! output prognostic variables
    character(len=256) :: template_file = 'null'   ! optional; sets sizes of arrays
 
    ! dimensions for the namelist state variable table 
@@ -176,7 +175,7 @@ logical, save :: module_initialized = .false.
 
    namelist /model_nml/ current_time, override, dt_atmos, &
                        days, hours, minutes, seconds, noise_sd, &
-                       dt_bias, output_state_vector, state_variables, &
+                       dt_bias, state_variables, &
                        template_file
 
 !-----------------------------------------------------------------------
@@ -1623,101 +1622,59 @@ if ( ntracer > 0 ) then
                                     "tracers long_name")
 endif
 
-if ( output_state_vector ) then
+!----------------------------------------------------------------------------
+! We need to process the prognostic variables.
+!----------------------------------------------------------------------------
+! TemperatureGrid : surface pressure  vars%ps(tis:tie, tjs:tje) 
+!                 : temperature       vars%t (tis:tie, tjs:tje, klb:kub)
+!                 : tracers           vars%r (tis:tie, tjs:tje, klb:kub, 1:vars%ntrace)
+! VelocityGrid    : u                 vars%u (vis:vie, vjs:vje, klb:kub) 
+!                 : v                 vars%v (vis:vie, vjs:tje, klb:kub)
+!----------------------------------------------------------------------------
+! Create the (empty) Variables and the Attributes
+!----------------------------------------------------------------------------
 
-   !----------------------------------------------------------------------------
-   ! Create attributes for the state vector 
-   !----------------------------------------------------------------------------
-
-  ! Define the state vector coordinate variable
-   call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
-              dimids=StateVarDimID, varid=StateVarVarID), "statevariable def_var")
-   call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"), &
-                                    "statevariable long_name")
-   call check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical"), &
-                                    "statevariable units")
-   call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size_i4 /)), &
-                                    "statevariable valid_range")
-
-   ! Define the actual state vector
-   call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_double, &
-              dimids = (/ StateVarDimID, MemberDimID, unlimitedDimID /), &
-              varid=StateVarID), "state def_var")
-   call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"), &
-                                           "state long_name")
-   call check(nf90_put_att(ncFileID, StateVarId, "vector_to_prog_var","FMS-Bgrid"), &
-                                           "state vector_to_prog_var")
-   call check(nf90_put_att(ncFileID, StateVarId, "temperature_units","degrees Kelvin"), &
-                                           "state temperature_units")
-   call check(nf90_put_att(ncFileID, StateVarId, "pressure_units","Pa"), &
-                                           "state pressure_units")
-   call check(nf90_put_att(ncFileID, StateVarId, "U_units","m/s"),"state U_units")
-   call check(nf90_put_att(ncFileID, StateVarId, "V_units","m/s"),"state V_units")
-
-   ! Leave define mode so we can fill
-   call check(nf90_enddef(ncfileID),"state enddef")
-
-   ! Fill the state variable coordinate variable
-   call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,int(model_size,i4)) /) ), &
-                                    "state put_var")
-
-else
-
-   !----------------------------------------------------------------------------
-   ! We need to process the prognostic variables.
-   !----------------------------------------------------------------------------
-   ! TemperatureGrid : surface pressure  vars%ps(tis:tie, tjs:tje) 
-   !                 : temperature       vars%t (tis:tie, tjs:tje, klb:kub)
-   !                 : tracers           vars%r (tis:tie, tjs:tje, klb:kub, 1:vars%ntrace)
-   ! VelocityGrid    : u                 vars%u (vis:vie, vjs:vje, klb:kub) 
-   !                 : v                 vars%v (vis:vie, vjs:tje, klb:kub)
-   !----------------------------------------------------------------------------
-   ! Create the (empty) Variables and the Attributes
-   !----------------------------------------------------------------------------
- 
-   call check(nf90_def_var(ncid=ncFileID, name="ps", xtype=nf90_double, &
-         dimids = (/ TmpIDimID, TmpJDimID, MemberDimID, unlimitedDimID /), &
-         varid  = psVarID), "ps def_var")
-   call check(nf90_put_att(ncFileID, psVarID, "long_name", "surface pressure"), &
-                                           "ps long_name")
-   call check(nf90_put_att(ncFileID, psVarID, "units", "Pa"), &
-                                           "ps units")
-   call check(nf90_put_att(ncFileID, psVarID, "units_long_name", "pascals"), &
-                                           "ps units_long_name")
+call check(nf90_def_var(ncid=ncFileID, name="ps", xtype=nf90_double, &
+      dimids = (/ TmpIDimID, TmpJDimID, MemberDimID, unlimitedDimID /), &
+      varid  = psVarID), "ps def_var")
+call check(nf90_put_att(ncFileID, psVarID, "long_name", "surface pressure"), &
+                                        "ps long_name")
+call check(nf90_put_att(ncFileID, psVarID, "units", "Pa"), &
+                                        "ps units")
+call check(nf90_put_att(ncFileID, psVarID, "units_long_name", "pascals"), &
+                                        "ps units_long_name")
 
 
-   call check(nf90_def_var(ncid=ncFileID, name="t", xtype=nf90_double, &
-         dimids = (/ TmpIDimID, TmpJDimID, levDimID, MemberDimID, unlimitedDimID /), &
-         varid  = tVarID), "t def_var")
-   call check(nf90_put_att(ncFileID, tVarID, "long_name", "temperature"), "t long_name")
-   call check(nf90_put_att(ncFileID, tVarID, "units", "degrees Kelvin"), "t units")
+call check(nf90_def_var(ncid=ncFileID, name="t", xtype=nf90_double, &
+      dimids = (/ TmpIDimID, TmpJDimID, levDimID, MemberDimID, unlimitedDimID /), &
+      varid  = tVarID), "t def_var")
+call check(nf90_put_att(ncFileID, tVarID, "long_name", "temperature"), "t long_name")
+call check(nf90_put_att(ncFileID, tVarID, "units", "degrees Kelvin"), "t units")
 
 
-   call check(nf90_def_var(ncid=ncFileID, name="u", xtype=nf90_double, &
-         dimids = (/ VelIDimID, VelJDimID, levDimID, MemberDimID, unlimitedDimID /), &
-         varid  = uVarID), "u def_var")
-   call check(nf90_put_att(ncFileID, uVarID, "long_name", "zonal wind component"), &
-                                           "u long_name")
-   call check(nf90_put_att(ncFileID, uVarID, "units", "m/s"), "u units")
+call check(nf90_def_var(ncid=ncFileID, name="u", xtype=nf90_double, &
+      dimids = (/ VelIDimID, VelJDimID, levDimID, MemberDimID, unlimitedDimID /), &
+      varid  = uVarID), "u def_var")
+call check(nf90_put_att(ncFileID, uVarID, "long_name", "zonal wind component"), &
+                                        "u long_name")
+call check(nf90_put_att(ncFileID, uVarID, "units", "m/s"), "u units")
 
 
-   call check(nf90_def_var(ncid=ncFileID, name="v", xtype=nf90_double, &
-         dimids = (/ VelIDimID, VelJDimID, levDimID, MemberDimID, unlimitedDimID /), &
-         varid  = vVarID), "v def_var")
-   call check(nf90_put_att(ncFileID, vVarID, "long_name", "meridional wind component"), &
-                                           "v long_name")
-   call check(nf90_put_att(ncFileID, vVarID, "units", "m/s"), "v units")
+call check(nf90_def_var(ncid=ncFileID, name="v", xtype=nf90_double, &
+      dimids = (/ VelIDimID, VelJDimID, levDimID, MemberDimID, unlimitedDimID /), &
+      varid  = vVarID), "v def_var")
+call check(nf90_put_att(ncFileID, vVarID, "long_name", "meridional wind component"), &
+                                        "v long_name")
+call check(nf90_put_att(ncFileID, vVarID, "units", "m/s"), "v units")
 
-   if ( ntracer > 0 ) then
-      call check(nf90_def_var(ncid=ncFileID, name="r", xtype=nf90_double, &
-      dimids = (/TmpIDimID, TmpJDimID, levDimID, tracerDimID, MemberDimID, unlimitedDimID/),&
-         varid  = rVarID), "r def_var")
-      call check(nf90_put_att(ncFileID, rVarID, "long_name", "various tracers"), "r long_name")
-   endif
-
-   call check(nf90_enddef(ncfileID), "prognostic enddef")
-
+if ( ntracer > 0 ) then
+   call check(nf90_def_var(ncid=ncFileID, name="r", xtype=nf90_double, &
+   dimids = (/TmpIDimID, TmpJDimID, levDimID, tracerDimID, MemberDimID, unlimitedDimID/),&
+      varid  = rVarID), "r def_var")
+   call check(nf90_put_att(ncFileID, rVarID, "long_name", "various tracers"), "r long_name")
 endif
+
+call check(nf90_enddef(ncfileID), "prognostic enddef")
 
 !-------------------------------------------------------------------------------
 ! Fill the variables
@@ -1853,51 +1810,42 @@ nVelJ   = vje - vjs + 1
 call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID), &
         "inquire")
 
-if ( output_state_vector ) then
+!----------------------------------------------------------------------------
+! Fill the variables
+! TemperatureGrid : surface pressure  Var%ps(tis:tie, tjs:tje) 
+!                 : temperature       Var%t (tis:tie, tjs:tje, klb:kub)
+!                 : tracers           Var%r (tis:tie, tjs:tje, klb:kub, 1:vars%ntrace)
+! VelocityGrid    : u                 Var%u (vis:vie, vjs:vje, klb:kub) 
+!                 : v                 Var%v (vis:vie, vjs:vje, klb:kub)
+!----------------------------------------------------------------------------
 
-   call check(NF90_inq_varid(ncFileID, "state", StateVarID), "state inq_varid" )
-   call check(NF90_put_var(ncFileID, StateVarID, statevec,  &
-                start=(/ 1, copyindex, timeindex /)), "state put_var")                               
+x = statevec ! Unfortunately, have to explicity cast it ...
+             ! the filter uses a type=double,
+             ! the vector_to_prog_var function expects a single.
+call vector_to_prog_var(x, get_model_size(), global_Var)
 
-else
-   
-   !----------------------------------------------------------------------------
-   ! Fill the variables
-   ! TemperatureGrid : surface pressure  Var%ps(tis:tie, tjs:tje) 
-   !                 : temperature       Var%t (tis:tie, tjs:tje, klb:kub)
-   !                 : tracers           Var%r (tis:tie, tjs:tje, klb:kub, 1:vars%ntrace)
-   ! VelocityGrid    : u                 Var%u (vis:vie, vjs:vje, klb:kub) 
-   !                 : v                 Var%v (vis:vie, vjs:vje, klb:kub)
-   !----------------------------------------------------------------------------
 
-   x = statevec ! Unfortunately, have to explicity cast it ...
-                ! the filter uses a type=double,
-                ! the vector_to_prog_var function expects a single.
-   call vector_to_prog_var(x, get_model_size(), global_Var)
-   
-   
-   call check(NF90_inq_varid(ncFileID, "ps", psVarID), "ps inq_varid")
-   call check(nf90_put_var( ncFileID, psVarID, global_Var%ps(tis:tie, tjs:tje), &
-                            start=(/ 1, 1, copyindex, timeindex /) ), "ps put_var")
+call check(NF90_inq_varid(ncFileID, "ps", psVarID), "ps inq_varid")
+call check(nf90_put_var( ncFileID, psVarID, global_Var%ps(tis:tie, tjs:tje), &
+                         start=(/ 1, 1, copyindex, timeindex /) ), "ps put_var")
 
-   call check(NF90_inq_varid(ncFileID,  "t",  tVarID), "t inq_varid")
-   call check(nf90_put_var( ncFileID,  tVarID, global_Var%t( tis:tie, tjs:tje, klb:kub ), &
-                            start=(/ 1, 1, 1, copyindex, timeindex /) ), "t put_var")
+call check(NF90_inq_varid(ncFileID,  "t",  tVarID), "t inq_varid")
+call check(nf90_put_var( ncFileID,  tVarID, global_Var%t( tis:tie, tjs:tje, klb:kub ), &
+                         start=(/ 1, 1, 1, copyindex, timeindex /) ), "t put_var")
 
-   call check(NF90_inq_varid(ncFileID,  "u",  uVarID), "u inq_varid")
-   call check(nf90_put_var( ncFileID,  uVarId, global_Var%u( vis:vie, vjs:vje, klb:kub ), &
-                            start=(/ 1, 1, 1, copyindex, timeindex /) ), "u put_var")
+call check(NF90_inq_varid(ncFileID,  "u",  uVarID), "u inq_varid")
+call check(nf90_put_var( ncFileID,  uVarId, global_Var%u( vis:vie, vjs:vje, klb:kub ), &
+                         start=(/ 1, 1, 1, copyindex, timeindex /) ), "u put_var")
 
-   call check(NF90_inq_varid(ncFileID,  "v",  vVarID), "v inq_varid")
-   call check(nf90_put_var( ncFileID,  vVarId, global_Var%v( vis:vie, vjs:vje, klb:kub ), &
-                            start=(/ 1, 1, 1, copyindex, timeindex /) ), "v put_var")
+call check(NF90_inq_varid(ncFileID,  "v",  vVarID), "v inq_varid")
+call check(nf90_put_var( ncFileID,  vVarId, global_Var%v( vis:vie, vjs:vje, klb:kub ), &
+                         start=(/ 1, 1, 1, copyindex, timeindex /) ), "v put_var")
 
-   if ( ntracer > 0 ) then
-      call check(NF90_inq_varid(ncFileID,  "r",  rVarID), "r inq_varid")
-      call check(nf90_put_var( ncFileID,  rVarID, &
-                    global_Var%r( tis:tie, tjs:tje, klb:kub, 1:ntracer ), & 
-                   start=(/  1,   1,   1,   1, copyindex, timeindex /) ), "r put_var")
-   endif
+if ( ntracer > 0 ) then
+   call check(NF90_inq_varid(ncFileID,  "r",  rVarID), "r inq_varid")
+   call check(nf90_put_var( ncFileID,  rVarID, &
+                 global_Var%r( tis:tie, tjs:tje, klb:kub, 1:ntracer ), & 
+                start=(/  1,   1,   1,   1, copyindex, timeindex /) ), "r put_var")
 endif
 
 !-------------------------------------------------------------------------------
