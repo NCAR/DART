@@ -302,7 +302,7 @@ from model file format to DART state vector, and back.
 <LI>wrf <A href="../models/wrf/WRF_DART_utilities/replace_wrf_fields.html">replace_wrf_fields</A></LI>
 <LI>wrf <A href="../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html">wrf_dart_obs_preprocess</A> - preprocess observations intended to be assimilated into WRF.  Program has understanding of the WRF domain information.</LI>
 </UL>
--->
+ -->
 
 <P><!-- make sure the 'top' is aligned correctly --></P>
 
@@ -331,8 +331,7 @@ on Lanai can still be found with dart <A HREF="https://svn-dares-dart.cgd.ucar.e
 </P>
 
 <UL style="list-style: none;">
-<LI><A HREF="../models/template/model_mod.html">Overview for all models</A></LI>
-<LI><A HREF="../models/template/model_mod.f90">template</A> (source)</LI>
+<LI><A HREF="../models/template/model_mod.html">template</A></LI>
 <LI>&nbsp;</LI>
 <LI><A HREF="../models/9var/model_mod.html">9var</A> (html)</LI>
 <LI><A HREF="../models/am2/model_mod.f90">AM2</A> (source)</LI>
@@ -451,47 +450,39 @@ We adhere to the F90 standard of starting a namelist with an ampersand
 <P>Namelists for Models:</P>
 
 <UL style="list-style: none;">
-<LI>9var <A HREF="../models/9var/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>bgrid_solo <A HREF="../models/bgrid_solo/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>cam <A HREF="../models/cam-fv/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<!-- <LI>CESM <A HREF="../models/CESM/model_mod.nml#Namelist">&amp;model_nml</A></LI> -->
-<LI>clm <A HREF="../models/clm/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>coamps <A HREF="../models/coamps/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>coamps_nest <A HREF="../models/coamps_nest/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>forced_lorenz_96 <A HREF="../models/forced_lorenz_96/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>ikeda <A HREF="../models/ikeda/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>lorenz_04 <A HREF="../models/lorenz_04/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>lorenz_63 <A HREF="../models/lorenz_63/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>lorenz_84 <A HREF="../models/lorenz_84/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>lorenz_96 <A HREF="../models/lorenz_96/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>lorenz_92_2scale <A HREF="../models/lorenz_96_2scale/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<!-- <LI>MITgcm_annulus <A HREF="../models/MITgcm_annulus/model_mod.nml#Namelist">&amp;model_nml</A></LI> -->
-<!-- <LI>MITgcm_ocean <A HREF="../models/MITgcm_ocean/create_ocean_obs.nml#Namelist">&amp;create_ocean_obs_nml</A></LI> -->
-<LI>MITgcm_ocean <A HREF="../models/MITgcm_ocean/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>mpas_atm <A HREF="../models/mpas_atm/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>mpas_ocn <A HREF="../models/mpas_ocn/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<!--
-<LI>NAAPS <A HREF="../models/NAAPS/dart_to_naaps.nml#Namelist">&amp;dart_to_naaps_nml</A></LI>
-<LI>NAAPS <A HREF="../models/NAAPS/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>NAAPS <A HREF="../models/NAAPS/model_mod_check.nml#Namelist">&amp;model_mod_check_nml</A></LI>
-<LI>NAAPS <A HREF="../models/NAAPS/naaps_to_dart.nml#Namelist">&amp;naaps_to_dart_nml</A></LI>
-<LI>NCOMMAS <A HREF="../models/NCOMMAS/dart_to_ncommas.nml#Namelist">&amp;dart_to_ncommas_nml</A></LI>
-<LI>NCOMMAS <A HREF="../models/NCOMMAS/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>NCOMMAS <A HREF="../models/NCOMMAS/ncommas_to_dart.nml#Namelist">&amp;ncommas_to_dart_nml</A></LI>
-<LI>NCOMMAS <A HREF="../models/NCOMMAS/work/ncommas_vars.nml#Namelist">&amp;ncommas_vars_nml</A></LI>
-<LI>noah <A HREF="../models/noah/dart_to_noah.nml#Namelist">&amp;dart_to_noah_nml</A></LI>
-<LI>noah <A HREF="../models/noah/model_mod.nml#Namelist">&amp;model_nml</A></LI>
--->
-<LI>null_model <A HREF="../models/noah/noah_to_dart.nml#Namelist">&amp;noah_to_dart_nml</A></LI>
-<LI>null_model <A HREF="../models/null_model/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>POP <A HREF="../models/POP/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>ROMS <A HREF="../models/ROMS/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>simple_advection <A HREF="../models/simple_advection/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>sqg <A HREF="../models/sqg/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>template <A HREF="../models/template/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>wrf <A HREF="../models/wrf/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>wrf <A HREF="../models/wrf/WRF_DART_utilities/replace_wrf_fields.nml#Namelist">&amp;replace_wrf_fields_nml</A></LI>
-<LI>wrf <A HREF="../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.nml#Namelist">&amp;wrf_dart_obs_preprocess_nml</A></LI>
+<LI>9var <A HREF="../models/9var/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>bgrid_solo <A HREF="../models/bgrid_solo/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>cam <A HREF="../models/cam-fv/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<!-- <LI>CESM <A HREF="../models/CESM/model_mod.nml">&amp;model_nml</A></LI> -->
+<LI>clm <A HREF="../models/clm/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>coamps <A HREF="../models/coamps/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>coamps_nest <A HREF="../models/coamps_nest/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>forced_lorenz_96 <A HREF="../models/forced_lorenz_96/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>ikeda <A HREF="../models/ikeda/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>lorenz_04 <A HREF="../models/lorenz_04/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>lorenz_63 <A HREF="../models/lorenz_63/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>lorenz_84 <A HREF="../models/lorenz_84/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>lorenz_96 <A HREF="../models/lorenz_96/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>lorenz_96_2scale <A HREF="../models/lorenz_96_2scale/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<!-- <LI>MITgcm_annulus <A HREF="../models/MITgcm_annulus/model_mod.nml">&amp;model_nml</A></LI> -->
+<LI>MITgcm_ocean <A HREF="../models/MITgcm_ocean/create_ocean_obs.html#Namelist">&amp;create_ocean_obs_nml</A></LI>
+<LI>MITgcm_ocean <A HREF="../models/MITgcm_ocean/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>mpas_atm <A HREF="../models/mpas_atm/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>mpas_ocn <A HREF="../models/mpas_ocn/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>NAAPS <A HREF="../models/NAAPS/model_mod.nml">&amp;model_nml</A></LI>
+<LI>NAAPS <A HREF="../models/NAAPS/model_mod_check.nml">&amp;model_mod_check_nml</A></LI>
+<LI>NCOMMAS <A HREF="../models/NCOMMAS/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>NCOMMAS <A HREF="../models/NCOMMAS/model_mod.html#Namelist">&amp;ncommas_vars_nml</A></LI>
+<LI>noah <A HREF="../models/noah/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>null_model <A HREF="../models/null_model/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>POP <A HREF="../models/POP/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>ROMS <A HREF="../models/ROMS/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>simple_advection <A HREF="../models/simple_advection/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>sqg <A HREF="../models/sqg/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>template <A HREF="../models/template/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>wrf <A HREF="../models/wrf/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>wrf <A HREF="../models/wrf/WRF_DART_utilities/replace_wrf_fields.html#Namelist">&amp;replace_wrf_fields_nml</A></LI>
+<LI>wrf <A HREF="../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html#Namelist">&amp;wrf_dart_obs_preprocess_nml</A></LI>
 </UL>
 
 <P><!-- make sure the 'top' is aligned correctly --></P>
