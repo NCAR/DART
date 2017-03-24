@@ -17,9 +17,7 @@
     <img src="../images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
-       <p>Jump to DART Documentation Main Index 
-       <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/documentation/index.html">Website</a>  
-       or <a href="../index.html">local file</a><br />
+       <p>Jump to the <a href="../index.html">DART Documentation Main Index</a><br />
           <small><small>version information for this file: <br />
           <!-- version tag follows, do not edit -->
           $Id: documentation/html/Manhattan_release.html 10979 2017-02-01 20:07:34Z thoar@ucar.edu $</small></small>
@@ -56,7 +54,7 @@ compiled with many Fortran 90 compilers
 and run on linux compute-servers, linux clusters, OSX laptops/desktops,
 SGI Altix clusters, supercomputers running AIX, and more.
 Read the 
-<a href="#customizations">Customizations</a> section
+<a href="https://www.image.ucar.edu/DAReS/DART/DART2_Starting.php#customizations">Customizations</a> section
 for help in building on new platforms.</p>
 
 <p>
@@ -69,8 +67,9 @@ states. A forward operator appropriate for the type of observation being assimil
 is applied to each of the states to generate the model's estimate of the observation.
 Comparing these estimates and their uncertainty to the observation and
 its uncertainty ultimately results in the adjustments to the model states.
-See the DARTLAB demos or read more in the tutorials included with the
-DART distribution.  They are described below.</p>
+See the <a href="../DART_LAB/DART_LAB.html">DART_LAB</a>
+demos or read more <a href="../tutorial/index.html">in the DART tutorial</a>.
+</p>
 
 <p>DART diagnostic output can be written that contains the model
 state before and after the adjustment, along with the ensemble mean
@@ -80,20 +79,6 @@ observations.  There is a suite of MATLAB&reg; functions that facilitate explora
 results, but the netCDF files are inherently portable and contain all the
 necessary metadata to interpret the contents with other analysis programs
 such as NCL, R, etc.
-</p>
-
-<p>In this document links are available which point to Web-based documentation
-files and also to the same information in html files distributed with DART.
-If you have used subversion to check out a local copy of the DART files you
-can open this file in a browser by loading 
-<em class=file>DART/documentation/html/Manhattan_release.html</em>
-and then use the 'local file' links to see 
-other documentation pages without requiring a connection to
-the internet.
-If you are looking at this documentation from
-the <a href="www.image.ucar.edu">www.image.ucar.edu </a> web server or you are
-connected to the internet you can use the 
-Website links to view other documentation pages.
 </p>
 
 <p>To get started running with Lorenz 63 model refer to
@@ -237,7 +222,7 @@ This is set in the &amp;filter_nml  namelist with stages_to_write.
 <li>
 There are several namelist changes mainly in the &amp;filter_nml and 
 &amp;perfect_model_mod which are outlined in detail in 
-<a href="html/Manhattan_diffs_from_Lanai.html">Manhattan_diffs_from_Lanai</a>
+<a href="Manhattan_diffs_from_Lanai.html">Manhattan_diffs_from_Lanai</a>
 </li>
 
 <li> 
@@ -315,31 +300,31 @@ Public subroutines, existing name on left, replacement on right:
 
 <pre>
     
-    assimilate_this_obs_kind()     =>     assimilate_this_type_of_obs(type_index)
-    evaluate_this_obs_kind()       =>       evaluate_this_type_of_obs(type_index)
-    use_ext_prior_this_obs_kind()  =>  use_ext_prior_this_type_of_obs(type_index)
+    assimilate_this_obs_kind()     =&gt;     assimilate_this_type_of_obs(type_index)
+    evaluate_this_obs_kind()       =&gt;       evaluate_this_type_of_obs(type_index)
+    use_ext_prior_this_obs_kind()  =&gt;  use_ext_prior_this_type_of_obs(type_index)
     
-    get_num_obs_kinds()            =>  get_num_types_of_obs()
-    get_num_raw_obs_kinds()        =>  get_num_quantities()
+    get_num_obs_kinds()            =&gt;  get_num_types_of_obs()
+    get_num_raw_obs_kinds()        =&gt;  get_num_quantities()
     
-    get_obs_kind_index()           => get_index_for_type_of_obs(type_name)
-    get_obs_kind_name()            => get_name_for_type_of_obs(type_index)
+    get_obs_kind_index()           =&gt; get_index_for_type_of_obs(type_name)
+    get_obs_kind_name()            =&gt; get_name_for_type_of_obs(type_index)
     
-    get_raw_obs_kind_index()       =>  get_index_for_quantity(qty_name)
-    get_raw_obs_kind_name()        =>  get_name_for_quantity(qty_index)
+    get_raw_obs_kind_index()       =&gt;  get_index_for_quantity(qty_name)
+    get_raw_obs_kind_name()        =&gt;  get_name_for_quantity(qty_index)
     
-    get_obs_kind_var_type()        =>  get_quantity_for_type_of_obs(type_index)
+    get_obs_kind_var_type()        =&gt;  get_quantity_for_type_of_obs(type_index)
     
-    get_obs_kind()                 =>  get_obs_def_type_of_obs(obs_def)
-    set_obs_def_kind()             =>  set_obs_def_type_of_obs(obs_def)
+    get_obs_kind()                 =&gt;  get_obs_def_type_of_obs(obs_def)
+    set_obs_def_kind()             =&gt;  set_obs_def_type_of_obs(obs_def)
     
-    get_kind_from_menu()           =>  get_type_of_obs_from_menu()
+    get_kind_from_menu()           =&gt;  get_type_of_obs_from_menu()
     
-    read_obs_kind()                =>   read_type_of_obs_table(file_unit, file_format)
-    write_obs_kind()               =>  write_type_of_obs_table(file_unit, file_format)
+    read_obs_kind()                =&gt;   read_type_of_obs_table(file_unit, file_format)
+    write_obs_kind()               =&gt;  write_type_of_obs_table(file_unit, file_format)
     
     maps obs_seq nums to specific type nums, only used in read_obs_seq:
-    map_def_index()                => map_type_of_obs_table()
+    map_def_index()                =&gt; map_type_of_obs_table()
     
     removed this.  apparently unused, and simply calls get_obs_kind_name():
     get_obs_name()
@@ -354,15 +339,15 @@ old on left, new on right:
 
 <pre>
 
-   KIND_ => QTY_
-   kind  => quantity
+   KIND_ =&gt; QTY_
+   kind  =&gt; quantity
    
-   TYPE_ => TYPE_
-   type  => type_of_obs
+   TYPE_ =&gt; TYPE_
+   type  =&gt; type_of_obs
    
    integer parameters:
-   max_obs_generic  =>  max_defined_quantities  (not currently public, stays private)
-   max_obs_kinds    =>  max_defined_types_of_obs 
+   max_obs_generic  =&gt;  max_defined_quantities  (not currently public, stays private)
+   max_obs_kinds    =&gt;  max_defined_types_of_obs 
 </pre>
 </li>
 
@@ -448,9 +433,9 @@ supplied with the system.
 </li>
 <br /> 
 
-<li>The MATLAB diagnostic routines have been updated to not require the
+<li>The MATLAB&reg; diagnostic routines have been updated to not require the
 MEXNC toolbox.  These routines use the built-in NetCDF support that comes
-with MATLAB.
+with MATLAB&reg;.
 </li>
 <br /> 
 
@@ -470,8 +455,7 @@ A tool to simplify constructing the table of interactions is provided
     <ul><li> Contains information about dimensions and size of variables in your
              state.  There is a number of accessor functions to get variable information
              such as <code>get_variable_size()</code>.
-        <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/documentation/state_structure.html">
-        Website</a> or <a href="../../assimilation_code/programs/state_structure.hmtl">local file</a>
+         See the  <a href="state_structure.html">state_structure.html</a>
         for more details.</li></ul>
 </li>
 <br /> 
@@ -490,150 +474,102 @@ A tool to simplify constructing the table of interactions is provided
 <div class="top">[<a href="#">top</a>]</div><hr />
 <h2>Supported Models</h2>
 
-Currently we support 15 models listed below.  There is several new
+Currently we support the models listed below.  There are several new
 models that have been added that are not on the Lanai Release
-including CM1, CICE, ROMS. Any previously supported models not on
-this list are still supported in DART <a href="https://svn-dares-dart.cgd.ucar.edu/DART/releases/classic">classic</a>
+including CM1, CICE, and ROMS. Any previously supported models not on
+this list are still supported in DART <a href="http://www.image.ucar.edu/DAReS/DART/classic/index.html">classic</a>
 <ul>
 
-   <!--   9var   -->
+   <li><b>9var</b> 
+      <ul><li>DART interface documentation for the 
+          <a href="../../models/9var/model_mod.html">9var</a> model.
+          </li>
+      </ul></li>
 
-   <li> <b>9var</b> 
-      <ul><li>DART interface documentation for the 9var Model:
-      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/9var/model_mod.html">Website</a>
-      or
-      <a href="../../models/9var/model_mod.html">local file</a>.</ul>
+   <li><b>bgrid_solo</b> 
+      <ul><li>DART interface documentation for the 
+          <a href="../../models/bgrid_solo/model_mod.html">bgrid solo</a> model.
+          </li>
+      </ul></li>
 
-   <!--   bgrid_solo   -->
+   <li><b>cam-fv</b>
+      <ul><li>DART interface documentation for the
+          <a href="../../models/cam-fv/model_mod.html">CAM finite volume</a> global atmospheric model.</li>
+          <li>Documentation for the
+          <a href="http://www.cesm.ucar.edu/models/atm-cam/">CAM model</a>.</li>
+      </ul></li>
+
+   <li><b>cice (NEW)</b>  
+      <ul><li>DART interface documentation for the 
+          <a href="../../models/cice/model_mod.html">CICE</a> model.</li>
+          <li>Documentation for the 
+          <a href="http://www.cesm.ucar.edu/models/ccsm4.0/cice/">CICE model</a>.</li>
+      </ul></li>
+
+   <li><b>cm1 (NEW)</b> 
+      <ul><li>DART interface documentation for the 
+          <a href="../../models/cm1/model_mod.html">CM1 cloud-resolving model</a>.</li>
+          <li>Documentation for the
+          <a href="http://www2.mmm.ucar.edu/people/bryan/cm1/">CM1 model</a>.</li>
+      </ul></li>
    
-   <li> <b>bgrid_solo</b> 
-      <ul><li>DART interface documentation for the Bgrid Solo:
-      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/bgrid_solo/model_mod.html">Website</a>
-      or
-      <a href="../../models/bgrid_solo/model_mod.html">local file</a>.</ul>
+   <li><b>forced_lorenz_96</b> 
+      <ul><li>DART interface documentation for the
+          <a href="../../models/forced_lorenz_96/model_mod.html">forced lorenz_96</a> model.</li>
+      </ul></li>
 
-   <!--   cam-fv   -->
+   <li><b>lorenz_63</b> 
+      <ul><li>DART interface documentation for the
+          <a href="../../models/lorenz_63/model_mod.html">lorenz_96</a> model.</li>
+      </ul></li>
 
-   <li> <b>cam-fv</b>
-      <ul><li>DART interface documentation for the cam-fv Global Atmospheric Model:
-      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/cam-fv/model_mod.html">Website</a></li>
-      or
-      <a href="../../models/cam-fv/model_mod.html">local file</a>.
+   <li><b>lorenz_84</b> 
+      <ul><li>DART interface documentation for the
+          <a href="../../models/lorenz_84/model_mod.html">lorenz_84</a> model.</li>
+      </ul></li>
 
-      <li>Documentation for the model
-      <a href="http://www.cesm.ucar.edu/models/atm-cam/">Website</a></li></ul>
-
-   <!--   cice   -->
-
-   <li> <b>cice (NEW)</b>  
-      <ul><li>DART interface documentation for the CICE Ice Model:
-      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/cice/model_mod.html">Website</a></li>
-      or
-      <a href="../../models/cice/model_mod.html">local file</a>.
-
-      <li>Documentation for the model
-      <a href="http://www.cesm.ucar.edu/models/ccsm4.0/cice/">Website</a></li></ul>
-
-   <!--   cm1   -->
-
-   <li> <b>cm1 (NEW)</b> 
-      <ul><li>DART interface documentation for the CM1 Cloud Model:
-      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/cm1/model_mod.html">Website</a></li>
-      or
-      <a href="../../models cm1/model_mod.html">local file</a>.
-
-      <li>Documentation for the model
-      <a href="http://www2.mmm.ucar.edu/people/bryan/cm1/">Website</a></li></ul>
-   
-   <!--   forced_lorenz_96   -->
-
-   <li> <b>forced_lorenz_96</b> 
-      <ul><li>DART interface documentation for the Forced Lorenz 96 Model:
-      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/forced_lorenz_96/model_mod.html">Website</a>
-      or
-      <a href="../../models/forced_lorenz_96/model_mod.html">local file</a>.</li></ul>
-
-   <!--   lorenz_63   -->
-
-   <li> <b>lorenz_63</b> 
-      <ul><li>DART interface documentation for the Lorenz 63 model:
-      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/lorenz_63/model_mod.html">Website</a></li>
-      or
-      <a href="../../models/lorenz_63/model_mod.html">local file</a>.</ul>
-
-   <!--   lorenz_84   -->
-
-   <li> <b>lorenz_84</b> 
-      <ul><li>DART interface documentation for the Lorenz 84 Model:
-      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/lorenz_84/model_mod.html">Website</a>
-      or
-      <a href="../../models/lorenz_84/model_mod.html">local file</a>.</li></ul>
-
-   <!--   lorenz_96   -->
-
-   <li> <b>lorenz_96</b> 
-      <ul><li>DART interface documentation for the Lorenz 96 Model:
-      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/lorenz_84/model_mod.html">Website</a>
-      or
-      <a href="../../models/lorenz_84/model_mod.html">local file</a>.</li></ul>
-
-   <!--   lorenz_04   -->
+   <li><b>lorenz_96</b> 
+      <ul><li>DART interface documentation for the
+          <a href="../../models/lorenz_96/model_mod.html">lorenz_96</a> model.</li>
+      </ul></li>
 
    <li> <b>lorenz_04</b> 
-      <ul><li>DART interface documentation for the Lorenz 04 Model:
-      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/lorenz_04/model_mod.html">Website</a>
-      or
-      <a href="../../models/lorenz_04/model_mod.html">local file</a>.</li></ul>
+      <ul><li>DART interface documentation for the
+          <a href="../../models/lorenz_04/model_mod.html">lorenz_04</a> model.</li>
+      </ul></li>
 
-   <!--   mpas_atm   -->
-
-   <li> <b>mpas_atm</b> (NetCDF overwrite not supported for update_u_from_reconstruct = .true. )
-      <ul><li>DART interface documentation for the MPAS Atmosphere Model:
-      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/mpas_atm/model_mod.html">Website</a>
-      or
-      <a href="../../models/mpas_atm/model_mod.html">local file</a>.</li>
-
-      <li>Documentation for the model
-      <a href="https://mpas-dev.github.io/atmosphere/atmosphere.html">Website</a></li></ul>
+   <li><b>mpas_atm</b> (NetCDF overwrite not supported for update_u_from_reconstruct = .true. )
+      <ul><li>DART interface documentation for the
+          <a href="../../models/mpas_atm/model_mod.html">MPAS atmosphere</a> model.</li>
+          <li>Documentation for the
+          <a href="https://mpas-dev.github.io/atmosphere/atmosphere.html">MPAS model</a>.</li>
+      </ul></li>
    
-   <li> <b>POP</b> 
-      <ul><li>DART interface documentation for the POP Global Ocean Model:
-      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/POP/model_mod.html">Website</a>
-      or
-      <a href="../../models/POP/model_mod.html">local file</a>.</li>
+   <li><b>POP</b> 
+      <ul><li>DART interface documentation for the
+           <a href="../../models/POP/model_mod.html">POP</a> global ocean model.</li>
+          <li>Documentation for the
+      <a href="http://www.cesm.ucar.edu/models/ccsm2.0/pop/">POP model</a>.</li>
+      </ul></li>
 
-      <li>Documentation for the model
-      <a href="http://www.cesm.ucar.edu/models/ccsm2.0/pop/">Website</a></li></ul>
+   <li><b>ROMS (NEW)</b> 
+      <ul><li>DART interface documentation for the
+          <a href="../../models/ROMS/model_mod.html">ROMS</a> regional ocean model.</li>
+          <li>Documentation for the
+          <a href="https://www.myroms.org/">ROMS model</a>.</li>
+      </ul></li>
 
-   <!--   ROMS   -->
-   
-   <li> <b>ROMS (NEW)</b> 
-      <ul><li>DART interface documentation for the ROMS Regional Ocean Model:
-      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/ROMS/model_mod.html">Website</a>
-      or
-      <a href="../../models/ROMS/model_mod.html">local file</a>.</li>
+   <li><b>simple_advection</b>
+      <ul><li>DART interface documentation for the
+          <a href="../../models/simple_advection/model_mod.html">simple advection</a> model.</li>
+      </ul></li>
 
-      <li>Documentation for the model
-      <a href="https://www.myroms.org/">Website</a></li></ul>
-
-   <!--   simple_advenction   -->
-
-   <li> <b>simple_advection</b>
-      <ul><li>DART interface documentation for the Simple Advection Model:
-      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/simple_advection/model_mod.html">Website</a>
-      or
-      <a href="../../models/simple_advection/model_mod.html">local file</a>.</ul>
-
-   <!--   simple_advenction   -->
-
-   <li> <b>wrf</b>
-      <ul><li>DART interface documentation for the WRF Regional Forecast Model:
-      <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/POP/model_mod.html">Website</a>
-      or
-      <a href="../../models/POP/model_mod.html">local file</a>.</li>
-
-      <li>Documentation for the model
-      <a href="http://www.cesm.ucar.edu/models/ccsm2.0/pop/">Website</a></li></ul>
+   <li><b>wrf</b>
+      <ul><li>DART interface documentation for the
+          <a href="../../models/wrf/model_mod.html">WRF</a> regional forecast model.</li>
+          <li>Documentation for the
+          <a href="http://www.wrf-model.org/index.php">WRF model</a>.</li>
+      </ul></li>
 
 <!--
 <li>CESM framework components
@@ -643,7 +579,7 @@ Setup scripts are provided to configure a single or multiple component assimilat
 See:
 <ul>
 <li>
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/CESM/model_mod.html">Website</a> or
+<a href="https://www.image.ucar.edu/DAReS/DART/Manhattan/models/CESM/model_mod.html">Website</a> or
 <a href="../../models/CESM/model_mod.html">local file</a> for multi-component assimilation, 
 </li> 
 <li>
@@ -669,16 +605,14 @@ See:
 </li>
 <br /> 
 -->
-</li>
-
 
 </ul>
 
 <p>
 The <em class=file>DART/models/template</em> directory contains sample
-files for adding a new model.  See 
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#adding_a_model">
-this section</a> of the DART web pages for more help on adding a new model.
+files for adding a new model.  See the
+<a href="http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#adding_a_model">
+Adding a Model</a> section of the DART web pages for more help on adding a new model.
 </p>
 
 <!--==================================================================-->
@@ -737,25 +671,22 @@ used before being called with an initial seed.</li>
 
 <ul>
 <li>Many new observation types related to land and atmospheric chemistry
-have been added.  See the <em class=file>obs_kind/obs_kind_mod.f90</em> for
+have been added.  See the <a href="../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90">obs_kind_mod.f90</a> for
 a list of the generic quantities now available.</li>
 <br />
 
-<li>New forward operator for Sea Ice (cice) ice thickness observations. See
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/releases/manhattan/observations/forward_operators/obs_def_cice_mod.f90">Website</a>
-or <a href="../../observations/forward_operators/obs_def_cice_mod.f90">local file</a>.
+<li>New forward operator for Sea Ice (cice) ice thickness observations. See the
+<a href="../../observations/forward_operators/obs_def_cice_mod.f90">obs_def_cice_mod.f90</a> file for details.
 </li>
 <br />
 
-<li>New forward operator for Carbon Monoxide (CO) Natir observations. See
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/releases/manhattan/observations/forward_operators/obs_def_CO_Nadir_mod.f90">Website</a>
-or <a href="../../observations/forward_operators/obs_def_CO_Nadir_mod.f90">local file</a>.
+<li>New forward operator for Carbon Monoxide (CO) Nadir observations. See the
+<a href="../../observations/forward_operators/obs_def_CO_Nadir_mod.f90">obs_def_CO_Nadir_mod.f90</a> file for details.
 </li>
 <br />
 
-<li>New forward operator for Total Cloud Water in a column observations. See
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/releases/manhattan/observations/forward_operators/obs_def_cwp_mod.f90">Website</a>
-or <a href="../../observations/forward_operators/obs_def_cwp_mod.f90">local file</a>.
+<li>New forward operator for Total Cloud Water in a column observations. See the
+<a href="../../observations/forward_operators/obs_def_cwp_mod.f90">obs_def_cwp_mod.f90</a> file for details.
 </li>
 <br />
 
@@ -769,68 +700,60 @@ or <a href="../../observations/forward_operators/obs_def_cwp_mod.f90">local file
 
 <ul>
 <li>AVISO<br />
-Added an obs_sequence converter for Sea Surface Height Anomoly ocean observations.
-Documentation 
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/AVISO/AVISO.html">Website</a>
-or <a href="../../observations/obs_converters/AVISO/AVISO.html">local/ file</a>.
+Added an observation converter for Sea Surface Height Anomaly observations.
+Documentation in
+<a href="../../observations/obs_converters/AVISO/AVISO.html">AVISO.html</a>.
 </li>
 <br />
 
 <li>cice<br />
 Added an obs_sequence converter for Sea Ice observations.
-Documentation 
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/cice/cice.html">Website</a>
-or <a href="../../observations/obs_converters/cice/cice.html">local/ file</a>.
+Documentation in 
+<a href="../../observations/obs_converters/cice/cice_to_obs.html">cice_to_obs.html</a>.
 </li>
 <br />
 
 <li>GPSPW<br />
 Added an obs_sequence converter for GPS precipitable water observations.
-Documentation 
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/GPSPW/GPSPW.html">Website</a>
-or <a href="../../observations/obs_converters/GPSPW/GPSPW.html">local/ file</a>.
+Documentation in
+<a href="../../observations/obs_converters/GPSPW/GPSPW.html">GPSPW.html</a>.
 </li>
 <br />
 
 <li>MODIS<br />
 Added an obs_sequence converter for MODIS FPAR (Fraction of Photosynthetically Active Radiation) 
 and LAI (Leaf Area Index) obseverations.
-Documentation 
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/MODIS/MODIS.html">Website</a>
-or <a href="../../observations/obs_converters/MODIS/MODIS.html">local/ file</a>.
+Documentation in 
+<a href="../../observations/obs_converters/MODIS/MOD15A2_to_obs.html">MOD15A2_to_obs.html</a>.
 </li>
 <br />
 
 <li>ok_mesonet<br />
 Added an obs_sequence converter for the Oklahoma Mesonet observations.
-Documentation 
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/ok_mesonet/ok_mesonet.html">Website</a>
-or <a href="../../observations/obs_converters/ok_mesonet/ok_mesonet.html">local/ file</a>.
+Documentation in
+<a href="../../observations/obs_converters/ok_mesonet/ok_mesonet.html">ok_mesonet.html</a>.
 </li>
 <br />
 
 <li>ROMS<br />
 Added an obs_sequence converter for ROMS ocean data.  This converter includes externally computed
 forward operators output from the ROMS model using FGAT (First Guess At Time) during the model run.
-Documentation 
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/ROMS/ROMS.html">Website</a>
-or <a href="../../observations/obs_converters/ROMS/ROMS.html">local/ file</a>.
+Documentation in
+<a href="../../observations/obs_converters/ROMS/ROMS_to_obs.html">ROMS.html</a>.
 </li>
 <br />
 
 <li>SSUSI<br />
 Added an obs_sequence converter for wind profiler observations.
-Documentation 
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/SSUSI/SSUSI.html">Website</a>
-or <a href="../../observations/obs_converters/SSUSI/SSUSI.html">local/ file</a>.
+Documentation in
+<a href="../../observations/obs_converters/SSUSI/convert_f16_edr_dsk.html">convert_f16_edr_dsk.html</a>.
 </li>
 <br />
 
 <li>tropical_cyclone<br />
 Added an obs_sequence converter for ASCII format tropical cyclone track observations.
-Documentation 
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/observations/obs_converters/tropical_cyclone/tropical_cyclone.html">Website</a>
-or <a href="../../observations/obs_converters/tropical_cyclone/tropical_cyclone.html">local/ file</a>.
+Documentation in
+<a href="../../observations/obs_converters/tropical_cyclone/tc_to_obs.html">tc_to_obs.html</a>.
 </li>
 <br />
 
@@ -838,28 +761,28 @@ or <a href="../../observations/obs_converters/tropical_cyclone/tropical_cyclone.
 
 <!--==================================================================-->
 
-
 <a name="NewDiagnostics"></a>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <h2>New Diagnostics and Documentation</h2>
 
 <p>
 <strong>Better Web Pages.</strong>
 We've put a lot of effort into expanding our documentation.
 For example, please check out 
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#mat_obs">
+<a href="http://www.image.ucar.edu/DAReS/DART/DART2_Diagnostics.php#mat_obs">
 the MATLAB diagnostics section</a> or the pages outlining the 
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_Observations.php#obs_seq_overview">
+<a href="http://www.image.ucar.edu/DAReS/DART/DART2_Observations.php#obs_seq_overview">
 observation sequence file contents</a>.
 <br />
 <ul>
-<li>The MATLAB diagnostic routines have been updated to not require the
-MEXNC toolbox.  These routines use the built-in NetCDF support that comes
-with MATLAB.
+<li>The MATLAB&reg; diagnostic routines have been updated to remove the dependency on third-party 
+toolboxes.  These routines use the built-in netCDF support that comes
+with basic MATLAB&reg; (no other toolboxes needed).
 </li>
 </ul>
 <br />
 But there's always more to add.
-<strong>Please <a href="http://www2.image.ucar.edu/forms/dart-suggestion-box">let us know</a> where we are lacking.</strong>
+<strong>Please <a href="http://www2.cisl.ucar.edu/image/software/dart/suggestion-box">let us know</a> where we are lacking.</strong>
 </p>
 
 <!--==================================================================-->
@@ -878,15 +801,15 @@ since the Lanai release.
 
 <ul>
    <li><em class=program>obs_impact_tool </em> please refer to
-       <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/assimilation_code/programs/obs_impact_tool/obs_impact_tool.html">Website</a>  
+       <a href="https://www.image.ucar.edu/DAReS/DART/Manhattan/assimilation_code/programs/obs_impact_tool/obs_impact_tool.html">Website</a>  
        or <a href="../../assimilation_code/programs/obs_impact_tool/obs_impact_tool.html">local file</a></li>
    <li><em class=program>gen_sampling_error_table</em> now computes sampling error correction tables for any ensemble size.
        <!--
-       <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/assimilation_code/programs/gen_sampling_err_table/gen_sampling_err_table.html">Website</a>  
+       <a href="https://www.image.ucar.edu/DAReS/DART/Manhattan/assimilation_code/programs/gen_sampling_err_table/gen_sampling_err_table.html">Website</a>  
        or <a href="../../assimilation_code/programs/gen_sampling_err_table/gen_sampling_err_table.html">local file</a></li>
    -->
    <li><em class=program>compute_error</em>
-       <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/assimilation_code/programs/compute_error/compute_error.html">Website</a>  
+       <a href="https://www.image.ucar.edu/DAReS/DART/Manhattan/assimilation_code/programs/compute_error/compute_error.html">Website</a>  
        or <a href="../../assimilation_code/programs/compute_error/compute_error.html">local file</a></li>
 </ul>
 
@@ -926,7 +849,7 @@ http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 <table border=0 cellpadding=0 width=100% summary="">
 <tr><td valign=top>Contact:       </td><td> DART core group   </td></tr>
 <tr><td>Revision:      </td><td> $Revision: 10979 $ </td></tr>
-<tr><td>Source:        </td><td> $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/documentation/html/Manhattan_release.html $ </td></tr>
+<tr><td>Source:        </td><td> $URL: https://www.image.ucar.edu/DAReS/DART/Manhattan/documentation/html/Manhattan_release.html $ </td></tr>
 <tr><td>Change Date:   </td><td> $Date: 2017-02-01 13:07:34 -0700 (Wed, 01 Feb 2017) $ </td></tr>
 <tr><td valign=top>Change&nbsp;history:&nbsp;</td><td> try "svn&nbsp;log" or "svn&nbsp;diff" </td></tr>
 </table>
