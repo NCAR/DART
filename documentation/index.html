@@ -29,6 +29,7 @@
 <A HREF="#Models">Models</A> /
 <A HREF="#Namelists">Namelist</A> /
 <A HREF="#Modules">Modules</A> /
+<A HREF="#Directories">Directory Tree</A> /
 <A HREF="#OtherDocs">Other Documentation</A> /
 <A HREF="#KitchenSink">All Documents</A> /
 <A HREF="#Legalese">Terms of Use</A>
@@ -95,7 +96,7 @@ To get started, look here:
 </P>
 <ul>
 <li>Our extensive <a href="http://www.image.ucar.edu/DAReS/">web pages</a></li>
-<li>The <a href="html/M_release.html">release notes</a> which include
+<li>The <a href="html/Manhattan_release.html">release notes</a> which include
 installation hints, a walk-through of building and running a model, and an
 overview of the diagnostics.</li>
 <li>Documentation for the 
@@ -219,8 +220,8 @@ The executable programs that come with DART include:
 <LI><A href="../assimilation_code/programs/create_obs_sequence/create_obs_sequence.html">create_obs_sequence</A> - interactive program to generate observations</LI>
 <LI><A href="../assimilation_code/programs/create_fixed_network_seq/create_fixed_network_seq.html">create_fixed_network_seq</A> - repeat a set of observations at multiple times</LI>
 <LI><A href="../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool</A> - general observation sequence file manipulation tool</LI>
-<LI><A href="../assimilation_code/programs/restart_file_tool/restart_file_tool.html">restart_file_tool</A> - utility for DART restart files</LI>
-<LI><A href="../assimilation_code/modules/assimilation/adaptive_inflate_mod.html">fill_inflation_restart</A> - initialize inflation files</LI>
+<!-- <LI><A href="../assimilation_code/programs/restart_file_tool/restart_file_tool.html">restart_file_tool</A> - utility for DART restart files</LI> -->
+<!-- <LI><A href="../assimilation_code/modules/assimilation/adaptive_inflate_mod.html">fill_inflation_restart</A> - initialize inflation files</LI> -->
 <LI><A href="../assimilation_code/programs/advance_time/advance_time.html">advance_time</A> - increment calendar times, useful for scripting loops</LI>
 <LI><A href="../assimilation_code/programs/closest_member_tool/closest_member_tool.html">closest_member_tool</A> - select DART restart file closest to mean</LI>
 <LI><A href="../assimilation_code/programs/integrate_model/integrate_model.html">integrate_model</A> - wrapper for models called as subroutines</LI>
@@ -282,6 +283,7 @@ The executable programs that convert observations into DART format include:
 <LI><A href="../observations/obs_converters/WOD/WOD.html">World Ocean Database data</A></LI>
 </UL>
 
+<!--
 <A NAME="Model_specific_programs"></A>
 <P>
 Executable programs specific to a single model.  Many are converters
@@ -300,6 +302,7 @@ from model file format to DART state vector, and back.
 <LI>wrf <A href="../models/wrf/WRF_DART_utilities/replace_wrf_fields.html">replace_wrf_fields</A></LI>
 <LI>wrf <A href="../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html">wrf_dart_obs_preprocess</A> - preprocess observations intended to be assimilated into WRF.  Program has understanding of the WRF domain information.</LI>
 </UL>
+ -->
 
 <P><!-- make sure the 'top' is aligned correctly --></P>
 
@@ -320,10 +323,15 @@ All models in the DART project have individual documentation
 pages, which can be found here (if an html document is not
 available, the link is to the .f90 source):
 </P>
+<P>
+Currently Manhattan has support for many of our larger models
+such as WRF, POP, CAM, CICE, CLM, ROMS, MPAS_ATM, ... and
+all lower models such as lorenz_96.  Models previously avilable
+on Lanai can still be found with dart <A HREF="https://svn-dares-dart.cgd.ucar.edu/DART/releases/classic/">classic</A>.
+</P>
 
 <UL style="list-style: none;">
-<LI><A HREF="../models/model_mod.html">Overview for all models</A></LI>
-<LI><A HREF="../models/template/model_mod.f90">template</A> (source)</LI>
+<LI><A HREF="../models/template/model_mod.html">template</A></LI>
 <LI>&nbsp;</LI>
 <LI><A HREF="../models/9var/model_mod.html">9var</A> (html)</LI>
 <LI><A HREF="../models/am2/model_mod.f90">AM2</A> (source)</LI>
@@ -442,45 +450,39 @@ We adhere to the F90 standard of starting a namelist with an ampersand
 <P>Namelists for Models:</P>
 
 <UL style="list-style: none;">
-<LI>9var <A HREF="../models/9var/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>bgrid_solo <A HREF="../models/bgrid_solo/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>cam <A HREF="../models/cam-fv/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<!-- <LI>CESM <A HREF="../models/CESM/model_mod.nml#Namelist">&amp;model_nml</A></LI> -->
-<LI>clm <A HREF="../models/clm/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>coamps <A HREF="../models/coamps/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>coamps_nest <A HREF="../models/coamps_nest/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>forced_lorenz_96 <A HREF="../models/forced_lorenz_96/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>ikeda <A HREF="../models/ikeda/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>lorenz_04 <A HREF="../models/lorenz_04/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>lorenz_63 <A HREF="../models/lorenz_63/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>lorenz_84 <A HREF="../models/lorenz_84/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>lorenz_96 <A HREF="../models/lorenz_96/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>lorenz_92_2scale <A HREF="../models/lorenz_96_2scale/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<!-- <LI>MITgcm_annulus <A HREF="../models/MITgcm_annulus/model_mod.nml#Namelist">&amp;model_nml</A></LI> -->
-<!-- <LI>MITgcm_ocean <A HREF="../models/MITgcm_ocean/create_ocean_obs.nml#Namelist">&amp;create_ocean_obs_nml</A></LI> -->
-<LI>MITgcm_ocean <A HREF="../models/MITgcm_ocean/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>mpas_atm <A HREF="../models/mpas_atm/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>mpas_ocn <A HREF="../models/mpas_ocn/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>NAAPS <A HREF="../models/NAAPS/dart_to_naaps.nml#Namelist">&amp;dart_to_naaps_nml</A></LI>
-<LI>NAAPS <A HREF="../models/NAAPS/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>NAAPS <A HREF="../models/NAAPS/model_mod_check.nml#Namelist">&amp;model_mod_check_nml</A></LI>
-<LI>NAAPS <A HREF="../models/NAAPS/naaps_to_dart.nml#Namelist">&amp;naaps_to_dart_nml</A></LI>
-<LI>NCOMMAS <A HREF="../models/NCOMMAS/dart_to_ncommas.nml#Namelist">&amp;dart_to_ncommas_nml</A></LI>
-<LI>NCOMMAS <A HREF="../models/NCOMMAS/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>NCOMMAS <A HREF="../models/NCOMMAS/ncommas_to_dart.nml#Namelist">&amp;ncommas_to_dart_nml</A></LI>
-<LI>NCOMMAS <A HREF="../models/NCOMMAS/work/ncommas_vars.nml#Namelist">&amp;ncommas_vars_nml</A></LI>
-<LI>noah <A HREF="../models/noah/dart_to_noah.nml#Namelist">&amp;dart_to_noah_nml</A></LI>
-<LI>noah <A HREF="../models/noah/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>null_model <A HREF="../models/noah/noah_to_dart.nml#Namelist">&amp;noah_to_dart_nml</A></LI>
-<LI>null_model <A HREF="../models/null_model/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>POP <A HREF="../models/POP/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>ROMS <A HREF="../models/ROMS/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>simple_advection <A HREF="../models/simple_advection/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>sqg <A HREF="../models/sqg/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>template <A HREF="../models/template/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>wrf <A HREF="../models/wrf/model_mod.nml#Namelist">&amp;model_nml</A></LI>
-<LI>wrf <A HREF="../models/wrf/WRF_DART_utilities/replace_wrf_fields.nml#Namelist">&amp;replace_wrf_fields_nml</A></LI>
-<LI>wrf <A HREF="../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.nml#Namelist">&amp;wrf_dart_obs_preprocess_nml</A></LI>
+<LI>9var <A HREF="../models/9var/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>bgrid_solo <A HREF="../models/bgrid_solo/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>cam <A HREF="../models/cam-fv/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<!-- <LI>CESM <A HREF="../models/CESM/model_mod.nml">&amp;model_nml</A></LI> -->
+<LI>clm <A HREF="../models/clm/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>coamps <A HREF="../models/coamps/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>coamps_nest <A HREF="../models/coamps_nest/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>forced_lorenz_96 <A HREF="../models/forced_lorenz_96/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>ikeda <A HREF="../models/ikeda/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>lorenz_04 <A HREF="../models/lorenz_04/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>lorenz_63 <A HREF="../models/lorenz_63/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>lorenz_84 <A HREF="../models/lorenz_84/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>lorenz_96 <A HREF="../models/lorenz_96/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>lorenz_96_2scale <A HREF="../models/lorenz_96_2scale/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<!-- <LI>MITgcm_annulus <A HREF="../models/MITgcm_annulus/model_mod.nml">&amp;model_nml</A></LI> -->
+<LI>MITgcm_ocean <A HREF="../models/MITgcm_ocean/create_ocean_obs.html#Namelist">&amp;create_ocean_obs_nml</A></LI>
+<LI>MITgcm_ocean <A HREF="../models/MITgcm_ocean/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>mpas_atm <A HREF="../models/mpas_atm/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>mpas_ocn <A HREF="../models/mpas_ocn/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>NAAPS <A HREF="../models/NAAPS/model_mod.nml">&amp;model_nml</A></LI>
+<LI>NAAPS <A HREF="../models/NAAPS/model_mod_check.nml">&amp;model_mod_check_nml</A></LI>
+<LI>NCOMMAS <A HREF="../models/NCOMMAS/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>NCOMMAS <A HREF="../models/NCOMMAS/model_mod.html#Namelist">&amp;ncommas_vars_nml</A></LI>
+<LI>noah <A HREF="../models/noah/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>null_model <A HREF="../models/null_model/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>POP <A HREF="../models/POP/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>ROMS <A HREF="../models/ROMS/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>simple_advection <A HREF="../models/simple_advection/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>sqg <A HREF="../models/sqg/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>template <A HREF="../models/template/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>wrf <A HREF="../models/wrf/model_mod.html#Namelist">&amp;model_nml</A></LI>
+<LI>wrf <A HREF="../models/wrf/WRF_DART_utilities/replace_wrf_fields.html#Namelist">&amp;replace_wrf_fields_nml</A></LI>
+<LI>wrf <A HREF="../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html#Namelist">&amp;wrf_dart_obs_preprocess_nml</A></LI>
 </UL>
 
 <P><!-- make sure the 'top' is aligned correctly --></P>
@@ -496,37 +498,399 @@ All modules in the DART project have individual documentation
 pages, which can be found here:
 </P>
 
-<UL style="list-style: none;">
-<LI><A href="../assimilation_code/modules/assimilation/adaptive_inflate_mod.html">adaptive_inflate/adaptive_inflate_mod</A></LI>
-<LI><A href="../assimilation_code/modules/assimilation/assim_tools_mod.html">assim_tools/assim_tools_mod</A></LI>
-<LI><A href="../assimilation_code/modules/utilities/types_mod.html">common/types_mod</A></LI>
-<LI><A href="../assimilation_code/modules/assimilation/cov_cutoff_mod.html">cov_cutoff/cov_cutoff_mod</A></LI>
-<LI><A href="../assimilation_code/modules/utilities/ensemble_manager_mod.html">ensemble_manager/ensemble_manager_mod</A></LI>
-<LI><A href="../assimilation_code/location/channel/location_mod.html">location/channel/location_mod</A></LI>
-<LI><A href="../assimilation_code/location/oned/location_mod.html">location/oned/location_mod</A></LI>
-<LI><A href="../assimilation_code/location/threed_cartesian/location_mod.html">location/threed_cartesian/location_mod</A></LI>
-<LI><A href="../assimilation_code/location/threed_sphere/location_mod.html">location/threed_sphere/location_mod</A></LI>
-<LI><A href="../models/POP/dart_pop_mod.html">models/POP/dart_pop_mod</A></LI>
-<LI><A href="../assimilation_code/modules/utilities/mpi_utilities_mod.html">mpi_utilities/mpi_utilities_mod</A></LI>
-<LI><A href="../observations/forward_operators/DEFAULT_obs_def_mod.html">obs_def/DEFAULT_obs_def_mod</A></LI>
-<LI><A href="../observations/forward_operators/obs_def_1d_state_mod.html">obs_def/obs_def_1d_state_mod</A></LI>
-<LI><A href="../observations/forward_operators/obs_def_dew_point_mod.html">obs_def/obs_def_dew_point_mod</A></LI>
-<LI><A href="../observations/forward_operators/obs_def_gps_mod.html">obs_def/obs_def_gps_mod</A></LI>
-<LI><A href="../observations/forward_operators/obs_def_mod.html">obs_def/obs_def_mod</A></LI>
-<LI><A href="../observations/forward_operators/obs_def_ocean_mod.html">obs_def/obs_def_ocean_mod</A></LI>
-<LI><A href="../observations/forward_operators/obs_def_radar_mod.html">obs_def/obs_def_radar_mod</A></LI>
-<LI><A href="../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.html">obs_kind/DEFAULT_obs_kind_mod</A></LI>
-<LI><A href="../assimilation_code/modules/observations/obs_kind_mod.html">obs_kind/obs_kind_mod</A></LI>
-<LI><A href="../assimilation_code/modules/observations/obs_sequence_mod.html">obs_sequence/obs_sequence_mod</A></LI>
-<LI><A href="../assimilation_code/modules/utilities/random_seq_mod.html">random_seq/random_seq_mod</A></LI>
-<LI><A href="../assimilation_code/modules/assimilation/reg_factor_mod.html">reg_factor/reg_factor_mod</A></LI>
-<LI><A href="../assimilation_code/modules/assimilation/smoother_mod.html">smoother/smoother_mod</A></LI>
-<LI><A href="../assimilation_code/modules/utilities/schedule_mod.html">time_manager/schedule_mod</A></LI>
-<LI><A href="../assimilation_code/modules/utilities/time_manager_mod.html">time_manager/time_manager_mod</A></LI>
-<LI><A href="../assimilation_code/modules/utilities/utilities_mod.html">utilities/utilities_mod</A></LI>
+Location Modules
+<UL>
+<LI><A href="../assimilation_code/location/channel/location_mod.html">            assimilation_code/location/channel/location_mod</A></LI>
+<LI><A href="../assimilation_code/location/oned/location_mod.html">               assimilation_code/location/oned/location_mod</A></LI>
+<LI><A href="../assimilation_code/location/threed_cartesian/location_mod.html">   assimilation_code/location/threed_cartesian/location_mod</A></LI>
+<LI><A href="../assimilation_code/location/threed_sphere/location_mod.html">      assimilation_code/location/threed_sphere/location_mod</A></LI>
+</UL>
+Assimilation Modules
+<UL>
+<LI><A href="../assimilation_code/modules/assimilation/adaptive_inflate_mod.html">assimilation_code/modules/assimilation/adaptive_inflate_mod</A></LI>
+<LI><A href="../assimilation_code/modules/assimilation/assim_tools_mod.html">     assimilation_code/modules/assimilation/assim_tools_mod</A></LI>
+<LI><A href="../assimilation_code/modules/assimilation/cov_cutoff_mod.html">      assimilation_code/modules/assimilation/cov_cutoff_mod</A></LI>
+<LI><A href="../assimilation_code/modules/assimilation/reg_factor_mod.html">      assimilation_code/modules/assimilation/reg_factor_mod</A></LI>
+<LI><A href="../assimilation_code/modules/assimilation/smoother_mod.html">        assimilation_code/modules/assimilation/smoother_mod</A></LI>
+</UL>
+Observation Modules
+<UL>
+<LI><A href="../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.html">assimilation_code/modules/observations/DEFAULT_obs_kind_mod</A></LI>
+<LI><A href="../assimilation_code/modules/observations/obs_kind_mod.html">        assimilation_code/modules/observations/obs_kind_mod</A></LI>
+<LI><A href="../assimilation_code/modules/observations/obs_sequence_mod.html">    assimilation_code/modules/observations/obs_sequence_mod</A></LI>
+</UL>
+Utilities Modules
+<UL>
+<LI><A href="../assimilation_code/modules/utilities/random_seq_mod.html">         assimilation_code/modules/utilities/random_seq_mod</A></LI>
+<LI><A href="../assimilation_code/modules/utilities/schedule_mod.html">           assimilation_code/modules/utilities/schedule_mod</A></LI>
+<LI><A href="../assimilation_code/modules/utilities/time_manager_mod.html">       assimilation_code/modules/utilities/time_manager_mod</A></LI>
+<LI><A href="../assimilation_code/modules/utilities/utilities_mod.html">          assimilation_code/modules/utilities/utilities_mod</A></LI>
+<LI><A href="../assimilation_code/modules/utilities/types_mod.html">              assimilation_code/modules/utilities/types_mod</A></LI>
+<LI><A href="../assimilation_code/modules/utilities/ensemble_manager_mod.html">   assimilation_code/modules/utilities/ensemble_manager_mod</A></LI>
+<LI><A href="../assimilation_code/modules/utilities/mpi_utilities_mod.html">      assimilation_code/modules/utilities/mpi_utilities_mod</A></LI>
+</UL>
+Example Model Module
+<UL>
+<LI><A href="../models/POP/dart_pop_mod.html">                                    models/POP/dart_pop_mod</A></LI>
+</UL>
+Forward Operators Modules
+<UL>
+<LI><A href="../observations/forward_operators/DEFAULT_obs_def_mod.html">         observations/forward_operators/DEFAULT_obs_def_mod</A></LI>
+<LI><A href="../observations/forward_operators/obs_def_1d_state_mod.html">        observations/forward_operators/obs_def_1d_state_mod</A></LI>
+<LI><A href="../observations/forward_operators/obs_def_dew_point_mod.html">       observations/forward_operators/obs_def_dew_point_mod</A></LI>
+<LI><A href="../observations/forward_operators/obs_def_gps_mod.html">             observations/forward_operators/obs_def_gps_mod</A></LI>
+<LI><A href="../observations/forward_operators/obs_def_mod.html">                 observations/forward_operators/obs_def_mod</A></LI>
+<LI><A href="../observations/forward_operators/obs_def_ocean_mod.html">           observations/forward_operators/obs_def_ocean_mod</A></LI>
+<LI><A href="../observations/forward_operators/obs_def_radar_mod.html">           observations/forward_operators/obs_def_radar_mod</A></LI>
 </UL>
 
 <P><!-- make sure the 'top' is aligned correctly --></P>
+
+<!--==================================================================-->
+
+<A NAME="Directories"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Directory Tree </H2>
+<!--==================================================================-->
+<h3>RMA-DART</h3>
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=top>
+    <p>
+        NOTE: 'work', 'matlab', and 'shell_scripts' directory names have been removed from this list.
+    <pre>
+  |--assimilation_code
+  |  |--location
+  |  |  |--annulus
+  |  |  |--channel
+  |  |  |--column
+  |  |  |--oned
+  |  |  |--threed
+  |  |  |--threed_cartesian
+  |  |  |--threed_sphere
+  |  |  |--twod
+  |  |  |--twod_annulus
+  |  |  |--twod_sphere
+  |  |--modules
+  |  |  |--assimilation
+  |  |  |--io
+  |  |  |--observations
+  |  |  |--utilities
+  |  |--programs
+  |  |  |--advance_time
+  |  |  |--closest_member_tool
+  |  |  |--compare_states
+  |  |  |  |--work
+  |  |  |--compute_error
+  |  |  |--create_fixed_network_seq
+  |  |  |--create_obs_sequence
+  |  |  |--fill_inflation_restart
+  |  |  |--filter
+  |  |  |--gen_sampling_err_table
+  |  |  |  |--work
+  |  |  |--integrate_model
+  |  |  |--model_mod_check
+  |  |  |--obs_common_subset
+  |  |  |--obs_diag
+  |  |  |  |--oned
+  |  |  |  |--threed_cartesian
+  |  |  |  |--threed_sphere
+  |  |  |--obs_impact_tool
+  |  |  |--obs_loop
+  |  |  |--obs_selection
+  |  |  |--obs_seq_coverage
+  |  |  |--obs_seq_to_netcdf
+  |  |  |--obs_sequence_tool
+  |  |  |--obs_seq_verify
+  |  |  |--perfect_model_obs
+  |  |  |--preprocess
+  |  |  |--restart_file_tool
+  |  |  |--system_simulation
+  |  |  |  |--final_full_precomputed_tables
+  |  |  |  |--work
+  |  |  |--wakeup_filter
+  |  |--scripts
+  |--build_templates
+  |--developer_tests
+  |  |--forward_operators
+  |  |--harnesses
+  |  |  |--filename_harness
+  |  |  |--read_transpose_write
+  |  |--io
+  |  |  |--work
+  |  |--location
+  |  |  |--annulus
+  |  |  |  |--test
+  |  |  |--channel
+  |  |  |  |--test
+  |  |  |--column
+  |  |  |  |--test
+  |  |  |--oned
+  |  |  |  |--test
+  |  |  |--threed
+  |  |  |  |--test
+  |  |  |--threed_cartesian
+  |  |  |  |--test
+  |  |  |--threed_sphere
+  |  |  |  |--test
+  |  |  |--twod
+  |  |  |  |--test
+  |  |  |--twod_annulus
+  |  |  |  |--test
+  |  |  |--twod_sphere
+  |  |     |--test
+  |  |--mpi_utilities
+  |  |  |--tests
+  |  |--obs_sequence
+  |  |  |--data
+  |  |  |--work
+  |  |--random_seq
+  |  |  |--test
+  |  |--reg_factor
+  |  |--time_manager
+  |  |--utilities
+  |     |--work
+  |--diagnostics
+  |  |--matlab
+  |     |--deprecated
+  |     |--private
+  |--documentation
+  |  |--DART_LAB
+  |  |  |--matlab
+  |  |  |  |--private
+  |  |  |--presentation
+  |  |--doxygen
+  |  |--Graphs
+  |  |--html
+  |  |  |--boilerplate
+  |  |  |--design
+  |  |  |--history
+  |  |--images
+  |  |--tutorial
+  |--observations
+     |--forward_operators
+     |  |--test
+     |--obs_converters
+        |--AIRS
+        |  |--data
+        |  |--output
+        |--Ameriflux
+        |--AURA
+        |  |--data
+        |--AVISO
+        |--CHAMP
+        |--cice
+        |  |--data
+        |--CNOFS
+        |--COSMOS
+        |  |--data
+        |--DWL
+        |  |--data
+        |--even_sphere
+        |--gnd_gps_vtec
+        |--gps
+        |  |--cosmic
+        |  |  |--20071001
+        |  |--matlab
+        |--GPSPW
+        |  |--data
+        |--GTSPP
+        |  |--data
+        |  |--matlab
+        |--MADIS
+        |  |--data
+        |--MIDAS
+        |  |--data
+        |--MODIS
+        |  |--data
+        |--NCEP
+        |  |--ascii_to_obs
+        |  |--prep_bufr
+        |     |--blk_ublk
+        |     |--convert_bufr
+        |     |--data
+        |     |  |--201012
+        |     |--docs
+        |     |  |--Reason_codes
+        |     |--exe
+        |     |--lib
+        |     |--src
+        |--obs_error
+        |--ok_mesonet
+        |  |--data
+        |--quikscat
+        |  |--data
+        |--radar
+        |  |--examples
+        |--ROMS
+        |  |--data
+        |--SABER
+        |  |--data
+        |  |--progs
+        |--snow
+        |  |--data
+        |--SSEC
+        |  |--data
+        |--SSUSI
+        |  |--data
+        |--text
+        |  |--data
+        |--text_GITM
+        |--tpw
+        |  |--data
+        |  |--doc
+        |--tropical_cyclone
+        |  |--data
+        |--utilities
+        |  |--oned
+        |  |--threed_sphere
+        |--var
+        |  |--3DVAR_OBSPROC
+        |  |--data
+        |--WOD
+           |--data
+         </pre>
+        <br><br>
+        </p>
+    </td>
+    <td valign=top>
+    <p>
+    <pre> 
+
+  |--models
+     |--9var
+     |--am2
+     |--bgrid_solo
+     |  |--fms_src
+     |  |  |--atmos_bgrid
+     |  |  |  |--driver
+     |  |  |  |  |--solo
+     |  |  |  |--model
+     |  |  |  |--tools
+     |  |  |--atmos_param
+     |  |  |  |--hs_forcing
+     |  |  |--atmos_shared
+     |  |  |  |--tracer_driver
+     |  |  |  |--vert_advection
+     |  |  |--atmos_solo
+     |  |  |--shared
+     |  |     |--axis_utils
+     |  |     |--constants
+     |  |     |--diag_manager
+     |  |     |--fft
+     |  |     |--field_manager
+     |  |     |--fms
+     |  |     |--horiz_interp
+     |  |     |--mpp
+     |  |     |--platform
+     |  |     |--sat_vapor_pres
+     |  |     |--time_manager
+     |  |     |--topography
+     |  |     |--tracer_manager
+     |  |     |--udunits
+     |  |     |--utilities
+     |  |--test
+     |--cam-fv
+     |  |--deprecated
+     |  |--doc
+     |  |--shell_scripts
+     |     |--cesm1_5
+     |     |--cesm2_0
+     |--cam-old
+     |  |--deprecated
+     |  |--doc
+     |  |--full_experiment
+     |  |--perfect_model
+     |--CESM
+     |  |--doc
+     |     |--CESM_DART_assim_modes
+     |--cice
+     |--clm
+     |  |--datm
+     |  |--docs
+     |--cm1
+     |--coamps
+     |  |--doc
+     |  |--externals
+     |  |  |--obs_def
+     |  |--templates
+     |--coamps_nest
+     |  |--doc
+     |  |--externals
+     |  |  |--obs_def
+     |  |--shell_scripts
+     |  |  |--COAMPS_RESTART_SCRIPTS
+     |  |  |--TEMPLATES
+     |  |--templates
+     |  |  |--EXPERIMENT_EXAMPLE
+     |--dynamo
+     |  |--data
+     |--ECHAM
+     |--forced_barot
+     |  |--obs
+     |--forced_lorenz_96
+     |--gitm
+     |  |--GITM2
+     |  |  |--src
+     |  |--python
+     |  |--testdata1
+     |--ikeda
+     |--LMDZ
+     |--lorenz_04
+     |--lorenz_63
+     |--lorenz_84
+     |--lorenz_96
+     |  |--tests
+     |--lorenz_96_2scale
+     |--MITgcm_annulus
+     |--MITgcm_ocean
+     |  |--inputs
+     |--model_mod_tools
+     |--mpas_atm
+     |  |--data
+     |--mpas_ocn
+     |  |--data
+     |--NAAPS
+     |--NCOMMAS
+     |  |--docs
+     |--noah
+     |  |--ensemble_source
+     |  |--forcing
+     |  |--templates
+     |--null_model
+     |--PBL_1d
+     |--pe2lyr
+     |--POP
+     |--ROMS
+     |  |--data
+     |  |--doc
+     |--rose
+     |--simple_advection
+     |--sqg
+     |--template
+     |--tiegcm
+     |--wrf
+        |--experiments
+        |  |--Radar
+        |     |--IC
+        |     |  |--sounding_perturbation
+        |     |--obs
+        |--namelist
+        |--PERTURB
+        |  |--3DVAR-COVAR
+        |--regression
+        |  |--CONUS-V2
+        |  |--CONUS-V3
+        |  |--Global-V3
+        |  |--Radar
+        |  |--WRF
+        |--WRF_BC
+        |--WRF_DART_utilities
+	<br><br>
+      </pre>
+    </td>
+</tr>
+</table>
 
 <!--==================================================================-->
 
@@ -643,7 +1007,7 @@ all model_mod source files in the DART distribution tree:
 <LI><A href="../models/lorenz_96/model_mod.f90">models/lorenz_96/model_mod</A> (source)</LI>
 <LI><A href="../models/lorenz_96/model_mod.html">models/lorenz_96/model_mod</A> (html)</LI>
 <LI><A href="../models/lorenz_96_2scale/model_mod.f90">models/lorenz_96_2scale/model_mod</A> (source)</LI>
-<LI><A href="../models/model_mod.html">models/model_mod</A> (html)</LI>
+<LI><A href="../models/template/model_mod.html">models/model_mod</A> (html)</LI>
 <LI><A href="../models/mpas_atm/model_mod.f90">models/mpas_atm/model_mod</A> (source)</LI>
 <LI><A href="../models/mpas_atm/model_mod.html">models/mpas_atm/model_mod</A> (html)</LI>
 <LI><A href="../models/mpas_ocn/model_mod.f90">models/mpas_ocn/model_mod</A> (source)</LI>

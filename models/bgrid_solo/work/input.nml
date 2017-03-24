@@ -1,7 +1,7 @@
 &perfect_model_obs_nml
    read_input_state_from_file  = .true.,
    single_file_in              = .true.
-   input_state_files           = "perfect_input.nc" 
+   input_state_files           = "perfect_input.nc"
 
    write_output_state_to_file = .true.,
    single_file_out            = .true.
@@ -82,7 +82,7 @@
 
 &state_vector_io_nml
    single_precision_output    = .false.,
-/
+   /
 
 &smoother_nml
    num_lags              = 0,
@@ -104,56 +104,60 @@
    adaptive_localization_threshold = -1,
    output_localization_diagnostics = .false.,
    localization_diagnostics_file   = 'localization_diagnostics',
-   print_every_nth_obs             = 0  
+   print_every_nth_obs             = 0
    /
 
 &ensemble_manager_nml
-/
+   /
 
 &cov_cutoff_nml
-   select_localization = 1  /
+   select_localization = 1
+   /
 
 &reg_factor_nml
    select_regression    = 1,
    input_reg_file       = "time_mean_reg",
    save_reg_diagnostics = .false.,
-   reg_diagnostics_file = "reg_diagnostics"  /
+   reg_diagnostics_file = "reg_diagnostics"
+   /
 
 &obs_sequence_nml
-   write_binary_obs_sequence = .false.  /
+   write_binary_obs_sequence = .false.
+   /
 
 &obs_kind_nml
    assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
                                 'RADIOSONDE_U_WIND_COMPONENT',
                                 'RADIOSONDE_V_WIND_COMPONENT',
-                                'RADIOSONDE_SURFACE_PRESSURE'  /
+                                'RADIOSONDE_SURFACE_PRESSURE'
+   /
 
 &preprocess_nml
     input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
    output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90',
      input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
     output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90',
-   input_files              = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90'  /
+   input_files              = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90'
+   /
 
 
 # Group of namelists required for bgrid model
 
- &model_nml
-     current_time =  0, 0, 0, 0
-     override = .false.,
-     dt_atmos = 3600,
-     days     = 10,
-     hours    = 0, 
-     minutes  = 0,
-     seconds  = 0,
-     noise_sd = 0.0,
-     dt_bias  = -1,
-     output_state_vector = .false. 
-     state_variables = 'ps', 'QTY_SURFACE_PRESSURE',
-                       't',  'QTY_TEMPERATURE',
-                       'u',  'QTY_U_WIND_COMPONENT',
-                       'v',  'QTY_V_WIND_COMPONENT',
-     template_file = 'perfect_input.nc'
+&model_nml
+   current_time =  0, 0, 0, 0
+   override = .false.,
+   dt_atmos = 3600,
+   days     = 10,
+   hours    = 0,
+   minutes  = 0,
+   seconds  = 0,
+   noise_sd = 0.0,
+   dt_bias  = -1,
+   state_variables = 'ps', 'QTY_SURFACE_PRESSURE',
+                     't',  'QTY_TEMPERATURE',
+                     'u',  'QTY_U_WIND_COMPONENT',
+                     'v',  'QTY_V_WIND_COMPONENT',
+   template_file = 'perfect_input.nc'
    /
 
 #
@@ -163,74 +167,80 @@
 #     nlon = 144, nlat = 90, nlev = 20,
 #     nlon = 60, nlat = 30, nlev = 5,
 
- &fms_nml
-     domains_stack_size = 90000  /
+&fms_nml
+   domains_stack_size = 90000
+   /
 
 # only used if initial conditions file not specified in run
- &bgrid_cold_start_nml
-     nlon = 60, 
-     nlat = 30, 
-     nlev = 5,
-     equal_vert_spacing = .true. /
+&bgrid_cold_start_nml
+   nlon = 60,
+   nlat = 30,
+   nlev = 5,
+   equal_vert_spacing = .true.
+   /
 
 #Values set in hs_forcing_nml are from:
 #Held, I. M., and M. J. Suarez, 1994: A proposal for the intercomparison
 #of the dynamical cores of atmospheric general circulation models.
 #Bulletin of the American Meteorological Society, 75(10), 1825-1830.
 
- &hs_forcing_nml
-     delh      =  60.,
-     t_zero    = 315.,
-     t_strat   = 200.,
-     delv      =  10.,
-     eps       =   0.,
-     ka        = -40.,
-     ks        =  -4.,
-     kf        =  -1.,
-     sigma_b   =  .7,
-     do_conserve_energy = .false. /
+&hs_forcing_nml
+   delh      =  60.,
+   t_zero    = 315.,
+   t_strat   = 200.,
+   delv      =  10.,
+   eps       =   0.,
+   ka        = -40.,
+   ks        =  -4.,
+   kf        =  -1.,
+   sigma_b   =  .7,
+   do_conserve_energy = .false.
+   /
 
- &bgrid_core_driver_nml
-     damp_coeff_wind   = 0.10,
-     damp_coeff_temp   = 0.10,
-     damp_coeff_tracer = 0.10,
-     advec_order_wind   = 4,
-     advec_order_temp   = 2,
-     advec_order_tracer = 2,
-     num_sponge_levels = 1,
-     sponge_coeff_wind   = 1.00,
-     sponge_coeff_temp   = 1.00,
-     sponge_coeff_tracer = 1.00,
-     num_fill_pass = 2,
-     decomp = 0,0,
-     num_adjust_dt = 3,
-     num_advec_dt  = 3,
-     halo = 1,
-     do_conserve_energy = .false. /
+&bgrid_core_driver_nml
+   damp_coeff_wind   = 0.10,
+   damp_coeff_temp   = 0.10,
+   damp_coeff_tracer = 0.10,
+   advec_order_wind   = 4,
+   advec_order_temp   = 2,
+   advec_order_tracer = 2,
+   num_sponge_levels = 1,
+   sponge_coeff_wind   = 1.00,
+   sponge_coeff_temp   = 1.00,
+   sponge_coeff_tracer = 1.00,
+   num_fill_pass = 2,
+   decomp = 0,0,
+   num_adjust_dt = 3,
+   num_advec_dt  = 3,
+   halo = 1,
+   do_conserve_energy = .false.
+   /
 
- &bgrid_integrals_nml
-     file_name  = 'dynam_integral.out',
-     time_units = 'days',
-     output_interval = 1.00   /
+&bgrid_integrals_nml
+   file_name  = 'dynam_integral.out',
+   time_units = 'days',
+   output_interval = 1.00
+   /
 
-&atmosphere_nml 
-                        /
+&atmosphere_nml
+   /
 
 &topography_nml
-                        /
+   /
 
 &gaussian_topog_nml
-                        /
+   /
 
 &location_nml
    horiz_dist_only             = .true.,
-   vert_normalization_pressure = 100000.0, 
+   vert_normalization_pressure = 100000.0,
    vert_normalization_height   = 10000.0,
    vert_normalization_level    = 20.0,
    approximate_distance        = .true.,
    nlon                        = 71,
    nlat                        = 36,
-   output_box_info             = .false.  /
+   output_box_info             = .false.
+   /
 
 &utilities_nml
    print_debug = .false.
@@ -238,8 +248,8 @@
    module_details = .false.,
    logfilename = 'dart_log.out',
    nmlfilename = 'dart_log.nml',
-   write_nml   = 'file'  /
-
+   write_nml   = 'file'
+   /
 
 &obs_sequence_tool_nml
    num_input_files    = 2,
@@ -255,17 +265,17 @@
    min_lon            =    0.0,
    max_lon            =  360.0,
    gregorian_cal      = .false.
-/
+   /
 
 # other possible obs tool namelist items:
 #
 # keep only the U and V radiosonde winds:
-#   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT', 
+#   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT',
 #                        'RADIOSONDE_V_WIND_COMPONENT',
 #   keep_types         = .true.,
 #
 # remove the U and V radiosonde winds:
-#   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT', 
+#   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT',
 #                        'RADIOSONDE_V_WIND_COMPONENT',
 #   keep_types         = .false.,
 #
@@ -276,7 +286,7 @@
 #
 # keep only radiosonde temp obs between 250 and 300 K:
 #   copy_metadata      = 'NCEP BUFR observation',
-#   copy_type          = 'RADIOSONDE_TEMPERATURE', 
+#   copy_type          = 'RADIOSONDE_TEMPERATURE',
 #   min_copy           = 250.0,
 #   max_copy           = 300.0,
 #
@@ -323,7 +333,7 @@
    bin_interval_seconds = 0
    max_num_bins         = 1000
    print_table          = .true.
- /
+   /
 
 &obs_seq_to_netcdf_nml
    obs_sequence_name = 'obs_seq.final'
@@ -334,7 +344,7 @@
    latlim1    =  -90.0
    latlim2    =   90.0
    verbose    = .false.
- /
+   /
 
 &model_mod_check_nml
    verbose               = .false.
@@ -342,7 +352,7 @@
    x_ind                 = 720
    kind_of_interest      = 'QTY_SURFACE_PRESSURE'
    loc_of_interest       = 287.5, 82.48, 0.35
-   interp_test_lonrange  = 0.0, 359.0 
+   interp_test_lonrange  = 0.0, 359.0
    interp_test_dlon      = 1.0
    interp_test_latrange  = -89.0, 89.0
    interp_test_dlat      = 1.0
@@ -350,8 +360,8 @@
    interp_test_dvert     = 1.0
    interp_test_vertcoord = 'VERTISLEVEL'
    /
- 
+
 &quality_control_nml
-   input_qc_threshold       =  3.0,
-   outlier_threshold        = -1.0,
+   input_qc_threshold    =  3.0,
+   outlier_threshold     = -1.0,
    /

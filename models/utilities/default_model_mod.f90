@@ -232,11 +232,13 @@ subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, &
 
 type(ensemble_type),         intent(in)     :: state_handle
 type(get_close_type),        intent(in)     :: gc
-type(location_type),         intent(inout)  :: base_obs_loc, obs_loc(:)
-integer,                     intent(in)     :: base_obs_kind, obs_kind(:)
-integer,                     intent(out)    :: num_close, close_ind(:)
+type(location_type),         intent(inout)  :: base_obs_loc
+type(location_type),         intent(inout)  :: obs_loc(:)
+integer,                     intent(in)     :: base_obs_kind
+integer,                     intent(in)     :: obs_kind(:)
+integer,                     intent(out)    :: num_close
+integer,                     intent(out)    :: close_ind(:)
 real(r8),                    intent(out)    :: dist(:)
-
 
 call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
                           num_close, close_ind, dist)
@@ -252,9 +254,12 @@ subroutine get_close_state(gc, base_obs_loc, base_obs_kind, state_loc, &
 
 type(ensemble_type),         intent(in)     :: state_handle
 type(get_close_type),        intent(in)     :: gc
-type(location_type),         intent(inout)  :: base_obs_loc, state_loc(:)
-integer,                     intent(in)     :: base_obs_kind, state_kind(:)
-integer,                     intent(out)    :: num_close, close_ind(:)
+type(location_type),         intent(inout)  :: base_obs_loc
+type(location_type),         intent(inout)  :: state_loc(:)
+integer,                     intent(in)     :: base_obs_kind
+integer,                     intent(in)     :: state_kind(:)
+integer,                     intent(out)    :: num_close
+integer,                     intent(out)    :: close_ind(:)
 real(r8),                    intent(out)    :: dist(:)
 
 
