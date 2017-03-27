@@ -17,9 +17,7 @@
     <img src="../images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
-       <p>Jump to DART Documentation Main Index 
-       <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/documentation/index.html">Website</a>  
-       or <a href="../../../documentation/index.html">local file</a><br />
+       <p>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
           <small><small>version information for this file: <br />
           <!-- version tag follows, do not edit -->
           $Id: Manhattan_diffs_from_Lanai.html 11243 2017-03-08 21:35:09Z nancy@ucar.edu $</small></small>
@@ -135,14 +133,14 @@ See <a href="#namelist_changes">Additions/Changes to existing namelists for how 
 <p>
 <b>Note</b> when using NetCDF restarts, inflation files are NetCDF also. 
 The inflation mean and inflation standard deviation are in separate files 
-when you use NetCDF restarts. See <a href="documentation/html/netcdf_inflation_files.html">NetCDF inflation files</a> for details.
+when you use NetCDF restarts. See <a href="netcdf_inflation_files.html">NetCDF inflation files</a> for details.
 
 <!--==================================================================-->
 
 <A NAME="ForwardOps"></A>
 <h2> Calculation of Forward Operators</h2>
 The forward operator code in model_mod now operates on an array of state 
-values. See <a href="documentation/html/forward_operator.html">forward operator</a> for more 
+values. See <a href="forward_operator.html">forward operator</a> for more 
 detail about distributed vs. non-distributed forward operators.
 
 In distributed mode the forward operators for all ensemble members are
@@ -157,7 +155,7 @@ are calculated at once.
 The vertical conversion of observation locations is done before the 
 assimilation. In Lanai this calculation is done in the assimilation as part
 of <code>get_close_obs</code> if a model_mod does vertical conversion. See 
-<a href="documentation/html/vertical_conversion.html">vertical conversion</a> for details about 
+<a href="vertical_conversion.html">vertical conversion</a> for details about 
 this change.  Note that not all models do vertical conversion or even have a 
 concept of vertical location, but every model_mod must have the following 
 routines:

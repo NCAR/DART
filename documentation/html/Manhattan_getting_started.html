@@ -17,9 +17,7 @@
     <img src="../images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
-       <p>Jump to DART Documentation Main Index 
-       <a href="https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/documentation/index.html">Website</a>  
-       or <a href="../index.html">local file</a><br />
+       <p>Jump to <a href="../index.html">DART Documentation Main Index </a><br />
           <small><small>version information for this file: <br />
           <!-- version tag follows, do not edit -->
           $Id: documentation/html/Manhattan_release.html 10979 2017-02-01 20:07:34Z thoar@ucar.edu $</small></small>
@@ -38,7 +36,7 @@
 
 <h3>What's Required</h3>
 <ol><li>a Fortran 90 compiler</li>
-    <li>a netCDF library including the F90 interfaces</li>
+    <li>a NetCDF library including the F90 interfaces</li>
     <li>the C shell</li>
     <li>(optional, to run in parallel) an MPI library</li>
 </ol>
@@ -58,7 +56,7 @@ compile cleanly.
 <br />
 <br />
 DART uses the 
-<a href="https://www.unidata.ucar.edu/downloads/netcdf/index.jsp">netCDF</a> 
+<a href="https://www.unidata.ucar.edu/downloads/netcdf/index.jsp">NetCDF</a> 
 self-describing data format with a particular metadata convention to 
 describe output that is used to analyze the results of assimilation 
 experiments.  These files have the extension <em class=file>.nc</em> 
@@ -70,27 +68,29 @@ written in Fortran and run on various UNIX or *nix platforms, the
 development environment for DART is highly skewed to these machines.
 We do most of our development on a small linux workstation and a mac laptop
 running OSX 10.x, and we have an extensive test network.
+<!--
 (I've never built nor run DART on a Windows machine - so I don't even
 know if it's possible. If you have run it (under Cygwin?) please let me
-know how it went -- I'm curious.  Tim - thoar 'at' ucar 'dot ' edu)
+know how it went - I'm curious.  Tim - thoar 'at' ucar 'dot ' edu)
+-->
 </p>
 
 <h3>What's nice to have</h3>
 
 <strong>ncview</strong>: DART users have used 
 <a href="http://meteora.ucsd.edu/~pierce/ncview_home_page.html">ncview</a> 
-to create graphical displays of output data fields. The 2D rendering is
-good for 'quick-look' type uses, but I wouldn't want to publish with it.
+to create graphical displays of output data fields. <!--The 2D rendering is
+good for 'quick-look' type uses, but I wouldn't want to publish with it.-->
 <br /><br />
 
 <strong>NCO</strong>: The <a href="http://nco.sourceforge.net">NCO</a> tools 
-are able to perform operations on netCDF files like concatenating, slicing, 
+are able to perform operations on NetCDF files like concatenating, slicing, 
 and dicing.<br /><br />
 
 <strong>Matlab</strong>&reg;: A set of 
 <a href="http://www.mathworks.com/">Matlab&reg;</a> scripts designed to 
-produce graphical diagnostics from DART. netCDF output files are also part
-of the DART project.<br /><br />
+produce graphical diagnostics from DART. <!--NetCDF output files are also part
+of the DART project.--><br /><br />
 
 <strong>MPI</strong>: The DART system includes an MPI
 option. MPI stands for 'Message Passing Interface', and is both a library and
@@ -172,7 +172,7 @@ the following steps:
 
 <ol><li><a href="#compilers">Determine which F90 compiler is available</a>.</li>
     <li><a href="#netCDFlib">Determine the location of the 
-        <em class=code>netCDF</em> library</a>.</li>
+        <em class=code>NetCDF</em> library</a>.</li>
     <li><a href="#download">Download the DART software 
         into the expected source tree</a>.</li>
     <li><a href="#customizations">Modify certain DART files to reflect 
@@ -232,13 +232,13 @@ with different models, there are no binaries to distribute.
 
 <!--==================================================================-->
 
-<a name="netCDFlib"></a>
+<a name="NetCDFlib"></a>
 <div class="top">[<a href="#">top</a>]</div><hr />
-<h3>Requirements: the <em class=file>netCDF</em> library</h3>
+<h3>Requirements: the <em class=file>NetCDF</em> library</h3>
 
 <p>
 DART uses the 
-<a href="http://www.unidata.ucar.edu/packages/netcdf/">netCDF</a> 
+<a href="http://www.unidata.ucar.edu/packages/netcdf/">NetCDF</a> 
 self-describing data format for the results of assimilation 
 experiments. These files have the extension <em class=file>.nc</em> 
 and can be read by a number of standard data analysis tools. 
@@ -253,20 +253,20 @@ directory, as opposed to the  <tt>netcdf/lib</tt> directory.
 </p>
 
 <p>
-If the netCDF library does not exist on your system, you must build
+If the NetCDF library does not exist on your system, you must build
 it (as well as the F90 interface modules). The library and instructions 
 for building the library or installing from an RPM may be found at 
-the netCDF home page: 
+the NetCDF home page: 
 <a href="http://www.unidata.ucar.edu/packages/netcdf/">
 http://www.unidata.ucar.edu/packages/netcdf/</a> 
 </p>
 
 <p>
-The location of the netCDF library, <em class=file>libnetcdf.a</em>,
+The location of the NetCDF library, <em class=file>libnetcdf.a</em>,
 and the locations of both <em class=file>netcdf.mod</em> and
 <em class=file>typesizes.mod</em> will be needed by the makefile
 template, as described in the <a href="#compiling">compiling</a>
-section.  Depending on the netCDF build options, the Fortran 90
+section.  Depending on the NetCDF build options, the Fortran 90
 interfaces may be built in a separate library named
 <em class=file>netcdff.a</em> and you may need to add
 <em class=code>-lnetcdff</em> to the library flags.
@@ -425,21 +425,20 @@ The <em class=code>FC = gfortran</em> line ultimately defines the
 Fortran90 compiler to use, etc.
 The lines which are most likely to need site-specific changes 
 start with <em class=code>FFLAGS</em> and <em class=code>NETCDF</em>, which 
-indicate where to look for the netCDF F90 modules and the 
-location of the netCDF library and modules.
+indicate where to look for the NetCDF F90 modules and the 
+location of the NetCDF library and modules.
 <br /><br />
 If you have MPI installed on your system <em class=code>MPIFC, MPILD</em>
 dictate which compiler will be used in that instance. If you do not have
 MPI, these variables are of no consequence.  
 </p>
 
-<a href="netCDF"></a>
 <h4 class=indent2>NETCDF</h4>
 
 <p class=indent1>
 Modifying the <em class=code>NETCDF</em> value should be relatively
 straightforward.<br />
-Change the string to reflect the location of your netCDF installation 
+Change the string to reflect the location of your NetCDF installation 
 containing <em class=file>netcdf.mod</em> and
 <em class=file>typesizes.mod</em>.
 The value of the <em class=code>NETCDF</em> variable will be used by 
@@ -448,18 +447,16 @@ variables.<br />
 </p>
 
 
-<a href="fflags"></a>
 <h4 class=indent2>FFLAGS</h4>
 
 <p class=indent1>
 Each compiler has different compile flags, so there is really no way
 to exhaustively cover this other than to say the templates as we supply
-them should work -- depending on the location of your netCDF.
+them should work -- depending on the location of your NetCDF.
 The low-order models can be compiled without a <em class=code>-r8</em> 
 switch, but the <em class=file>bgrid_solo</em> model cannot. 
 </p>
 
-<a href="libs"></a>
 <h4 class=indent2>LIBS</h4>
 <p class=indent1>
 The Fortran 90 interfaces may be part of the default
@@ -470,7 +467,7 @@ interfaces to be built in a separate library named
 <em class=file>netcdff.a</em>.  In that case you will
 need <em class=code>-lnetcdf</em> and also
 <em class=code>-lnetcdff</em> on the <strong>LIBS</strong> line.
-This is a build-time option when the netCDF libraries
+This is a build-time option when the NetCDF libraries
 are compiled so it varies from site to site.
 </p>
 <br />
@@ -566,7 +563,7 @@ files for the programs
 <p>
 along with the 
 corresponding <em class=file>path_names_</em><em class=italic>xxxxxx</em> files.
-There are also files that contain initial conditions, netCDF output, and 
+There are also files that contain initial conditions, NetCDF output, and 
 several observation sequence files, all of which will be discussed later.
 You can examine the contents of one of the 
 <em class=file>path_names_</em><em class=italic>xxxxxx</em> files, 
@@ -662,7 +659,7 @@ make
 
 <p>
 The result (hopefully) is that six executables now 
-reside in your work directory. The most common problem is that the netCDF libraries
+reside in your work directory. The most common problem is that the NetCDF libraries
 and include files (particularly <em class=file>typesizes.mod</em>) are not found. 
 Edit the <em class=file>DART/build_templates/mkmf.template</em>,
 recreate the <em class=file>Makefile</em>, and try again.
@@ -1360,7 +1357,7 @@ spinup in the <em class=file>True_State.nc</em> file.
         these state variables.</td></tr>
 
 <tr><td valign=top><em class=code>num_output_state_members</em></td>
-    <td>specifies the number of state vectors contained in the netCDF 
+    <td>specifies the number of state vectors contained in the NetCDF 
         diagnostic files. May be a value from 0 to 
         <em class=code>ens_size</em>.</td></tr>
 
@@ -1415,7 +1412,7 @@ cp filter_restart filter_ics
 
 <p class=indent1>
 The spin-up of the ensemble can be viewed by examining the 
-output in the netCDF files <em class=file>True_State.nc</em> 
+output in the NetCDF files <em class=file>True_State.nc</em> 
 generated by <em class=program>perfect_model_obs</em> and 
 <em class=file>Posterior_Diag.nc</em> and <em class=file>Prior_Diag.nc</em> 
 generated by <em class=program>filter</em>. 
@@ -1526,7 +1523,7 @@ following input sequence:</p>
    This integrates the model starting from the state in 
    <em class=file>perfect_ics</em> for 1000 12-hour intervals 
    outputting synthetic observations of the three state variables 
-   every 12 hours and producing a netCDF diagnostic file, 
+   every 12 hours and producing a NetCDF diagnostic file, 
    <em class=file>True_State.nc</em>.
 </p>
 
@@ -1611,7 +1608,7 @@ If you have gotten this far, you can run anything in the tutorial.
 <div class="top">[<a href="#">top</a>]</div><hr />
 <!--==================================================================-->
 <h2>Matlab&reg; Diagnostics</h2>
-<p>The output files are netCDF files and may be examined with many
+<p>The output files are NetCDF files and may be examined with many
 different software packages. We use Matlab&reg;, and provide our
 diagnostic scripts in the hopes that they are useful.
 </p>
@@ -1619,9 +1616,9 @@ diagnostic scripts in the hopes that they are useful.
 The diagnostic scripts and underlying functions reside in two places: 
 <em class=file>DART/diagnostics/matlab</em> and
 <em class=file>DART/matlab</em>. 
-They are reliant on the public-domain MEXNC/SNCTOOLS netCDF interface from
+They are reliant on the public-domain MEXNC/SNCTOOLS NetCDF interface from
 <a href="http://mexcdf.sourceforge.net">http://mexcdf.sourceforge.net</a>.
-If you do not have them installed on your system and want to use Matlab to peruse netCDF,
+If you do not have them installed on your system and want to use Matlab to peruse NetCDF,
 you must follow their installation instructions. The 'interested reader' may want to
 look at the <em class=code>DART/matlab/startup.m</em> file I use on my system.
 If you put it in your <em class=unix>$HOME/matlab</em> directory 
@@ -1631,7 +1628,7 @@ it is invoked every time you start up Matlab.
 <p>Once you can access the <em class=program>nc_varget</em> function from within Matlab
 you can use our diagnostic scripts. It is necessary to prepend the location of
 the <em class=file>DART/matlab</em> scripts to the <em class=code>matlabpath</em>. 
-Keep in mind the location of the netcdf
+Keep in mind the location of the Netcdf
 operators on your system WILL be different from ours ... and that's OK.
 <br />
 <br />
@@ -1797,7 +1794,7 @@ this model?
 There are many more options for inflation, including spatially
 and temporarily varying values, with and without damping.  See 
 the discussion of all inflation-related namelist items 
-<a href="../../assimilation_code/programs/filter.html#Inflation">local file</a>.
+<a href="../../assimilation_code/programs/filter/filter.html#Inflation">local file</a>.
 </p>
 
 
