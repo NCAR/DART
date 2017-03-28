@@ -1,3 +1,6 @@
+ obs_sequence
+obs_kind_definitions
+           0
   num_copies:  0  num_qc:  0
   num_obs:  3  max_num_obs:  3
   first:  1  last:  3
