@@ -168,8 +168,13 @@ logical            :: allow_any_impact_values = .false.
 ! sections.  to try out the alternatives, set this to .false.
 logical  :: only_area_adapt  = .true.
 
-! Option to distribute the mean.
-logical  :: distribute_mean  = .true.
+! Option to distribute the mean.  If 'false' each task will have a full
+! copy of the ensemble mean, which speeds models doing vertical conversion.
+! If 'true' the mean will be spread across all tasks which reduces the
+! memory needed per task but requires communication if the mean is used
+! for vertical conversion.  We have changed the default to be .false.
+! compared to previous versions of this namelist item.
+logical  :: distribute_mean  = .false.
 
 ! Lanai bitwise. This is for unit testing and runs much slower.
 ! Only use for when testing against the non-rma trunk.
