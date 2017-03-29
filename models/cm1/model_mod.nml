@@ -1,5 +1,12 @@
 &model_nml
-   output_state_vector = .true., 
-   time_step_days      = 0,
-   time_step_seconds   = 3600  /
-
+   assimilation_period_days     = 0
+   assimilation_period_seconds  = 21600
+   model_perturbation_amplitude = 0.2
+   cm1_template_file            = 'null'
+   calendar                     = 'Gregorian'
+   debug                        = 0
+   model_variables              = ' '
+   periodic_x                   = .true.
+   periodic_y                   = .true.
+   periodic_z                   = .false.
+  /
