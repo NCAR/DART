@@ -1,0 +1,13 @@
+
+&convert_madis_rawin_nml
+   LH_err                     = .false.
+   include_specific_humidity  = .true.
+   include_relative_humidity  = .false.
+   include_dewpoint           = .false.
+   use_input_qc               = .true. 
+   wind_use_vert_pressure     = .true.
+   do_significant_level_temps = .true.
+   do_significant_level_winds = .true.
+   
+   /
+

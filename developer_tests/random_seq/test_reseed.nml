@@ -1,0 +1,8 @@
+
+&test_reseed_nml
+   calendar_name = 'GREGORIAN'
+   nsamples      = 1000000
+   start_day     = 148866
+   start_sec     = 0
+   /
+

@@ -40,8 +40,8 @@ Preprocess is a DART-supplied preprocessor program which
 creates observation kind and observation definition modules from a set of
 other specially formatted Fortran 90 files.
 The output files are normally named 
-<em class="file">obs_kind/obs_kind_mod.f90</em> and 
-<em class="file">obs_def/obs_def_mod.f90</em>, but can
+<em class="file">assimilation_code/modules/observations/obs_kind_mod.f90</em> and 
+<em class="file">observations/forward_operators/obs_def_mod.f90</em>, but can
 be renamed by namelist control if needed.
 <br>
 <br>
@@ -50,9 +50,9 @@ There are three kinds of input files:
 
 <ol>
 <li>A default template for the obs_kind_mod (normally 
-<em class="file">obs_kind/DEFAULT_obs_kind_mod.F90</em>).
+<em class="file">assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90</em>).
 <li>A default template of the obs_def_mod (normally
-<em class="file">obs_def/DEFAULT_obs_def_mod.F90</em>). 
+<em class="file">observations/forward_operators/DEFAULT_obs_def_mod.F90</em>). 
 <li>0 or more special obs_def modules which contain
 observation specific types and code, such as
 <em class="file">obs_def_mod_reanalysis_bufr_mod.f90</em>.
@@ -114,11 +114,11 @@ prematurely terminating the namelist.
 <pre>
 &amp;preprocess_nml
           overwrite_output = .true.,
-    input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90', 
-   output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90', 
-   input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90', 
-  output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90', 
-               input_files = '../../../obs_def/null',
+    input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90', 
+   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90', 
+   input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90', 
+  output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90', 
+               input_files = '../../../observations/forward_operators/null
  /
 </pre>
 </div>
@@ -196,7 +196,6 @@ complain about existing files but will silently update them in place.
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES USED</H2>
 <PRE>
-types_mod
 utilities_mod
 </PRE>
 
@@ -213,9 +212,9 @@ must be read from file <em class=file>input.nml</em>.
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL><LI>input_obs_def_mod_file, specified by namelist; usually <em class="file">DEFAULT_obs_def_mod.F90</em>.
-<LI>output_obs_def_mod_file, specified by namelist; usually <em class="file">obs_def_mod.f90</em>.
-<LI>input_obs_kind_mod_file, specified by namelist; usually <em class="file">DEFAULT_obs_kind_mod.F90</em>.
-<LI>output_obs_kind_mod_file, specified by namelist; usually <em class="file">obs_kind_mod.f90</em>.
+    <LI>output_obs_def_mod_file, specified by namelist; usually <em class="file">obs_def_mod.f90</em>.
+    <LI>input_obs_kind_mod_file, specified by namelist; usually <em class="file">DEFAULT_obs_kind_mod.F90</em>.
+    <LI>output_obs_kind_mod_file, specified by namelist; usually <em class="file">obs_kind_mod.f90</em>.
     <LI>input_files, specified by namelist; usually files like <em class="file">obs_def_reanalysis_bufr_mod.f90</em>.
     <LI>namelistfile
 </UL>

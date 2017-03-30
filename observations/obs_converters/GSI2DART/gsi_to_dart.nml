@@ -1,0 +1,19 @@
+
+&gsi_to_dart_nml
+   ens_size                     = 1
+   convert_conv                 = .true.
+   convert_sat                  = .false.
+   datestring                   = '0000000000'
+   datapath                     = ' '
+   sattypes_rad                 = ' '
+   dsis                         = ' '
+   sattypes_oz                  = ' '
+   write_FO_for_these_obs_types = ' '
+   write_prior_copies           = .false.
+   exclude_these_obs_types      = ' '
+   output_option                = 1
+   obs_seq_out_filename         = obs_seq.out
+   lie_about_ob_times           = .false.
+   recenter_about_mean_prior    = .true.
+   /
+

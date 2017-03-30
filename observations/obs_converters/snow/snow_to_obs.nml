@@ -1,0 +1,11 @@
+
+&snow_to_obs_nml
+   longrid         = 360
+   latgrid         = 90
+   year            = 2000
+   doy             = 1
+   snow_input_file = 'snowdata.input'
+   missing_value   = -20.0
+   debug           = .false.
+   /
+

@@ -1,0 +1,7 @@
+
+&test_corr_nml
+   n_pairs        = 10
+   n_cycles       = 100
+   desired_correl = 0.75
+   /
+

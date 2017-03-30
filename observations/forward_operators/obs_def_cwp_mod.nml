@@ -1,0 +1,6 @@
+
+&obs_def_cwp_nml
+   physics      = 8
+   pressure_top = 15000.0
+   /
+

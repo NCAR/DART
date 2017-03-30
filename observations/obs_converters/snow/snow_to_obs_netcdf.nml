@@ -1,0 +1,8 @@
+
+&snow_to_obs_nc_nml
+   year            = 2000
+   doy             = 1
+   snow_input_file = 'snowdata.input'
+   debug           = .false.
+   /
+

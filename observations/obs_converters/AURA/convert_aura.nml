@@ -1,0 +1,9 @@
+
+&convert_aura_nml
+   aura_netcdf_file      = 'aura_input.nc'
+   aura_netcdf_filelist  = 'aura_input_list'
+   aura_outfile          = 'obs_seq.aura'
+   aura_yr               = 2011
+   aura_doy              = 1
+   /
+

@@ -256,10 +256,10 @@ prematurely terminating the namelist.
         kind, the min &amp; max values, what file to read from, and whether
         or not the file should be updated after the assimilation.
         The DART kind must be one found in the
-        <em class=file>DART/obs_kind/obs_kind_mod.f90</em>
+        <em class=file>DART/assimilation_code/modules/observations/obs_kind_mod.f90</em>
         AFTER it gets built by <em class=program>preprocess</em>.
         Most of the upper atmosphere observation kinds are specified by
-        <em class=file>DART/obs_def/obs_def_upper_atm_mod.f90</em>, 
+        <em class=file>DART/observations/forward_operators/obs_def_upper_atm_mod.f90</em>, 
         so it should be specified in the 
         <em class=file>preprocess_nml</em>:<em class=code>input_files</em>
         variable. Since TIEGCM has an entire class of variables 
@@ -320,25 +320,25 @@ prematurely terminating the namelist.
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
-adaptive_inflate/adaptive_inflate_mod.f90
-assim_model/assim_model_mod.f90
-assim_tools/assim_tools_mod.f90
-common/types_mod.f90
-cov_cutoff/cov_cutoff_mod.f90
-ensemble_manager/ensemble_manager_mod.f90
-filter/filter.f90
+adaptive_inflate_mod.f90
+assim_model_mod.f90
+assim_tools_mod.f90
+types_mod.f90
+cov_cutoff_mod.f90
+ensemble_manager_mod.f90
+filter.f90
 location/threed_sphere/location_mod.f90
-mpi_utilities/[null_,]mpi_utilities_mod.f90
-obs_def/obs_def_mod.f90
-obs_kind/obs_kind_mod.f90
-obs_model/obs_model_mod.f90
-obs_sequence/obs_sequence_mod.f90
-random_seq/random_seq_mod.f90
-reg_factor/reg_factor_mod.f90
-smoother/smoother_mod.f90
-sort/sort_mod.f90
-time_manager/time_manager_mod.f90
-utilities/utilities_mod.f90
+[null_,]mpi_utilities_mod.f90
+obs_def_mod.f90
+obs_kind_mod.f90
+obs_model_mod.f90
+obs_sequence_mod.f90
+random_seq_mod.f90
+reg_factor_mod.f90
+smoother_mod.f90
+sort_mod.f90
+time_manager_mod.f90
+utilities_mod.f90
 </PRE>
 <P></P>
 

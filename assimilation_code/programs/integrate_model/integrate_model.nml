@@ -1,0 +1,10 @@
+
+&integrate_model_nml
+  ic_file_name          = temp_ic.nc
+  ud_file_name          = temp_ud.nc
+  is_model_advance_file = .false.
+  target_days           = -1
+  target_seconds        = -1
+  trace_execution       = .false.
+  /
+

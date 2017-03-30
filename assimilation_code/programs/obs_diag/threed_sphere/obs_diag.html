@@ -67,7 +67,7 @@
    has taken place! Similarly, the forward observation operator is applied AFTER any posterior 
    inflation. This has always been the case.</em> For a detailed 
    look at the relationship between the observation operators and inflation, please look at the
-   <a href="../../assimilation_code/programs/filter.html#DetailedProgramFlow">Detailed&nbsp;Program&nbsp;Execution Flow</a>
+   <a href="../../filter/filter.html#DetailedProgramFlow">Detailed&nbsp;Program&nbsp;Execution Flow</a>
    section of <a href="../../assimilation_code/programs/filter.html">filter.html</a>.<br /><br />
    Given multiple estimates of 
    the observation, several quantities can be calculated. It is possible to
@@ -126,8 +126,8 @@
    relative to the  rest of the ensemble?" (figures on the right).
    The figures on the left and center were created by several Matlab&#174; 
    scripts that query the <em class="file">obs_diag_output.nc</em> file: 
-   <em class="file">DART/diagnostics/matlab/<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/diagnostics/matlab/plot_evolution.m">plot_evolution.m</a></em> and 
-   <a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/diagnostics/matlab/plot_profile.m">plot_profile.m</a>.
+   <em class="file">DART/diagnostics/matlab/<a href="../../../../diagnostics/matlab/plot_evolution.m">plot_evolution.m</a></em> and 
+   <a href="../../../../diagnostics/matlab/plot_profile.m">plot_profile.m</a>.
    Both of these takes as input a 
    file name and a 'quantity' to plot ('rmse','spread','totalspread',&nbsp;...)
    and exhaustively plots the quantity (for every variable, every level, 
@@ -587,9 +587,9 @@ If you'd like to change that see the routine <em class="routine">Rmidpoints2edge
     <TD>No longer supported.
         <strong>To plot the locations of observations,</strong> please convert 
 	your observation sequence file to netCDF with 
-	<a href="../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>
+	<a href="../../obs_seq_to_netcdf/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>
 	and then plot with
-	<a href="../../diagnostics/matlab/plot_obs_netcdf.m">plot_obs_netcdf</a>
+	<a href="../../../../diagnostics/matlab/plot_obs_netcdf.m">plot_obs_netcdf</a>
 </TD></TR>
 
 <TR><TD> create_rank_histogram </TD>
@@ -809,10 +809,10 @@ Please note:
 
 <table width="100%">
 <tr><td><a href="../../../../documentation/images/RankHistogram_ncview.png"><img src="../../../../documentation/images/RankHistogram_ncview.png" width="200"></a></td>
-    <td><a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#ncview_histogram">Instructions for viewing the rank histogram with ncview</a>.</td>
+    <td><a href="http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#ncview_histogram">Instructions for viewing the rank histogram with ncview</a>.</td>
 </tr>
 <tr><td><a href="../../../../documentation/images/RankHistogram_matlab.png"><img src="../../../../documentation/images/RankHistogram_matlab.png" width="200"></a></td>
-    <td><a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#mat_obs">Instructions for viewing the rank histogram with Matlab</a>.</td>
+    <td><a href="http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#mat_obs">Instructions for viewing the rank histogram with Matlab</a>.</td>
 </tr>
 </table>
 
@@ -1083,7 +1083,7 @@ in the netCDF file.
 <br />
 <br />
 Now that you have the <em class=file>obs_diag_output.nc</em>, you can explore it with
-<a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#mat_obs">plot_profile.m, plot_bias_xxx_profile.m, or plot_rmse_xxx_profile.m</a>,
+<a href="http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#mat_obs">plot_profile.m, plot_bias_xxx_profile.m, or plot_rmse_xxx_profile.m</a>,
 and look at the rank histograms with 
 <a href="http://meteora.ucsd.edu/~pierce/ncview_home_page.html">ncview</a> or
 <em class="program">plot_rank_histogram.m</em>.
@@ -1092,9 +1092,9 @@ and look at the rank histograms with
   
 <H3 class=indent1><em class=removed>Example: plotting locations</em> deprecated</H3>
 <P>
-<strong>please convert your observation sequence file to netCDF format with <a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>
+<strong>please convert your observation sequence file to netCDF format with <a href="../../obs_seq_to_netcdf/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>
 and use 
-<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/diagnostics/matlab/plot_obs_netcdf.m">plot_obs_netcdf.m</a></strong>.
+<a href="../../../../diagnostics/matlab/plot_obs_netcdf.m">plot_obs_netcdf.m</a></strong>.
 </P>
 
 

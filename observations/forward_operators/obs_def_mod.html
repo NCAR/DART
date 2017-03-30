@@ -124,7 +124,7 @@ The first column is the specific observation
 is the generic observation <em class="unix">kind</em> and must match
 the list of known kinds in the
 <em class="file">obs_kind_mod.f90</em>.  (To add a new kind, the
-<em class="file">obs_kind/DEFAULT_obs_kind_mod.F90</em> file must be edited
+<em class="file">assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90</em> file must be edited
 to include a unique integer identifier for the kind.)
 The third column must be the keyword
 <em class="unix">COMMON_CODE</em> which tells the
@@ -411,7 +411,7 @@ end module obs_def_1d_state_mod
 ! END DART PREPROCESS MODULE CODE
 </pre>
 <P>
-See the <a href="observations/forward_operators/obs_def_1d_state_mod.html">obs_def_1d_state_mod</a> 
+See the <a href="obs_def_1d_state_mod.html">obs_def_1d_state_mod</a> 
 documentation for more details and examples of each section.  Also see
 <a href="obs_def_wind_speed_mod.f90">obs_def_wind_speed_mod.f90</a> for
 an example of a 3D geophysical forward operator.

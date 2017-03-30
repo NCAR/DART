@@ -1,0 +1,12 @@
+
+&obs_def_TES_nadir_mod_nml
+   N_layers              = 30
+   n_gauss               = 20
+   corrk_dir             = '/home/wglawson/lee/TES_ktables/'
+   fn_corrk              = 'lattice_coordinates.dat'
+   ptop                  = 1.0e-4
+   isothermalP           = 4.0e-4
+   fixed_dust            = .true.
+   max_TES_nadir_obs     = 100000
+   /
+

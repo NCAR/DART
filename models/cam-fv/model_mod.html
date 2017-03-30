@@ -316,7 +316,7 @@ and change it to a large enough value and recompile DART.
 <P>
 The values for which_vert_#d are described in 
 
-<em class=file>location_mod</em>:<A HREF="../../location/threed_sphere/location_mod.html#get_close_obs">
+<em class=file>location_mod</em>:<A HREF="../../assimilation_code/location/threed_sphere/location_mod.html#get_close_obs">
 location_mod.html.</a>
 </P>
 
@@ -379,7 +379,7 @@ not spatial dimensions of the fields.
 <TR><TD>which_vert_#d,<br /> #=1,2,3 </TD>
     <TD>integer, dimension(100)  </TD>
     <TD>Vertical location types of fields in state_names_#d.
-See the <a href="../../location/threed_sphere/location_mod.html">3D sphere location</a>
+See the <a href="../../assimilation_code/location/threed_sphere/location_mod.html">3D sphere location</a>
 documentation for the mapping of integer values to vertical location types.
 </TD></TR>
 
@@ -1246,7 +1246,7 @@ real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
 <div class=indent1>
 <P>
 First calls the 
-<em class=file>location_mod</em>:<A HREF="../../location/threed_sphere/location_mod.html#get_close_obs">get_close_obs()</a>
+<em class=file>location_mod</em>:<A HREF="../../assimilation_code/location/threed_sphere/location_mod.html#get_close_obs">get_close_obs()</a>
 and then updates the distances to account for the extra diffusion in CAM's highest levels.
 
 <P>
@@ -1291,7 +1291,7 @@ real(r8),             intent(in)    :: <em class=code>maxdist</em>
 <div class=indent1>
 <P>
 Pass-through to the 3-D sphere locations module routine of the same name. See 
-<em class=file>location_mod</em>:<A HREF="../../location/threed_sphere/location_mod.html#get_close_maxdist_init">get_close_maxdist_init()</A>
+<em class=file>location_mod</em>:<A HREF="../../assimilation_code/location/threed_sphere/location_mod.html#get_close_maxdist_init">get_close_maxdist_init()</A>
 for the documentation of this subroutine.
 </P>
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -1321,7 +1321,7 @@ type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
 <div class=indent1>
 <P>
 Pass-through to the 3-D sphere locations module. See
-<em class=file>location_mod</em>:<A HREF="../../location/threed_sphere/location_mod.html#get_close_obs_init">get_close_obs_init()</A>
+<em class=file>location_mod</em>:<A HREF="../../assimilation_code/location/threed_sphere/location_mod.html#get_close_obs_init">get_close_obs_init()</A>
 for the documentation of this subroutine.
 </P>
 </div>

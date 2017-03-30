@@ -1,0 +1,7 @@
+
+&error_handler_test_nml
+   test1 = 2
+   test2 = .true.
+   test3 = 3.14159
+   /
+

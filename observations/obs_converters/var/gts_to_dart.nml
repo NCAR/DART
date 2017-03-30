@@ -1,0 +1,30 @@
+# calandar_type 3 = GREGORIAN
+
+&gts_to_dart_nml
+   gts_file              = 'gts_obsout.dat'
+   obs_seq_out_file_name = 'obs_seq.out'
+   calendar_type         = 3
+   gts_qc_threshold      = -1     
+   Use_SynopObs          = .TRUE.
+   Use_ShipsObs          = .TRUE.
+   Use_MetarObs          = .TRUE.
+   Use_BuoysObs          = .TRUE.
+   Use_PilotObs          = .TRUE.
+   Use_SoundObs          = .TRUE.
+   Use_SatemObs          = .TRUE.
+   Use_SatobObs          = .TRUE.
+   Use_AirepObs          = .TRUE.
+   Use_AmdarObs          = .TRUE.
+   Use_GpspwObs          = .TRUE.
+   Use_SsmiRetrievalObs  = .TRUE.
+   Use_SsmiTbObs         = .TRUE.
+   Use_Ssmt1Obs          = .TRUE.
+   Use_Ssmt2Obs          = .TRUE.
+   Use_ProflObs          = .TRUE.
+   Use_QscatObs          = .TRUE.
+   Use_BogusObs          = .TRUE.
+   Use_gpsrefobs         = .TRUE.
+   dropsonde_only        = .FALSE.
+   num_thin_satob        = 50 
+   num_thin_qscat        = 100
+   /
