@@ -1,0 +1,7 @@
+
+&gnd_gps_vtec_text_to_obs_nml
+    text_input_file = 'Density_3deg_02_335_2p2.ascii'
+    obs_out_file    = 'obs_seq.out'
+    debug           = .true.
+    /
+

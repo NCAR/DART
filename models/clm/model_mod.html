@@ -466,10 +466,10 @@ prematurely terminating the namelist.
         or not the file should be updated after the assimilation.
         <em class=removed> Only CLM variable names in the CLM restart file are valid.</em>
         The DART kind must be one found in the 
-        <em class=file>DART/obs_kind/obs_kind_mod.f90</em>
+        <em class=file>DART/assimilation_code/modules/observations/obs_kind_mod.f90</em>
         AFTER it gets built by <em class=program>preprocess</em>. Most of
         the land observation kinds are specified by 
-        <em class=file>DART/obs_def/obs_def_tower_mod.f90</em>, so it should
+        <em class=file>DART/observations/forward_operators/obs_def_tower_mod.f90</em>, so it should
         be specified in the preprocess_nml:input_files variable.
         </TD>
 </TR>

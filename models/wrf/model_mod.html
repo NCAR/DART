@@ -843,7 +843,7 @@ real(r8),             intent(in)    :: <em class=code>maxdist</em>
 
 <P>
 Pass-through to the 3-D sphere locations module. See
-<A HREF="../../location/threed-sphere/location_mod.html#get_close_maxdist_init">
+<A HREF="../../assimilation_code/location/threed_sphere/location_mod.html#get_close_maxdist_init">
 get_close_maxdist_init()</A> for the documentation of this subroutine.
 </P>
 
@@ -868,7 +868,7 @@ type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
 
 <P>
 Pass-through to the 3-D sphere locations module. See
-<A HREF="../../location/threed-sphere/location_mod.html#get_close_obs_init">
+<A HREF="../../assimilation_code/location/threed_sphere/location_mod.html#get_close_obs_init">
 get_close_obs_init()</A> for the documentation of this subroutine.
 </P>
 
@@ -901,7 +901,7 @@ real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
 <P>
 Calls the 3-D sphere locations module to get a list of potentially
 close state vector points, and again for unassimilated observations.
-See <A HREF="../../location/threed-sphere/location_mod.html#get_close_obs">
+See <A HREF="../../assimilation_code/location/threed_sphere/location_mod.html#get_close_obs">
 get_close_obs()</A> for the documentation of the locations module
 version of this code.  Then,
 if vertical localization is enabled, this code converts all vertical

@@ -1,0 +1,7 @@
+
+&update_mpas_states_nml
+   dart_analysis_filename = 'filter_restart.nc'
+   print_data_ranges      = .true.
+   dom_id                 = 1
+   /
+

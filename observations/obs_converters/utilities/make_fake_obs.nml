@@ -1,0 +1,15 @@
+
+&obs_diag_nml
+   plevel           = -888888.0
+   hlevel           = -888888.0
+   mlevel           = -888888.0
+   plevel_edges     = -888888.0
+   hlevel_edges     = -888888.0
+   mlevel_edges     = -888888.0
+   first_bin_center = 2003, 1, 1, 0, 0, 0
+   last_bin_center  = 2003, 1, 2, 0, 0, 0
+   bin_separation   =    0, 0, 0, 6, 0, 0
+   bin_width        =    0, 0, 0, 6, 0, 0
+   time_to_skip     =    0, 0, 1, 0, 0, 0
+   /
+

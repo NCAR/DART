@@ -75,8 +75,8 @@ are NOT allowed to start with <em class="unix">QTY_</em>.
 </P> <P>
 Typically kinds are used by 
 model-interface files <em class="file">models/xx/model_mod.f90</em>,
-observation forward operator files <em class="file">obs_def/obs_def_xx_mod.f90</em>,
-and observation converter programs <em class="file">observations/xx/xx.f90</em>.
+observation forward operator files <em class="file">observations/forward_operators/obs_def_xx_mod.f90</em>,
+and observation converter programs <em class="file">observations/obs_converters/xx/xx.f90</em>.
 </P> <P>
 The obs_kind module being described here is created by the program
 <em class="file">preprocess</em> from two kinds of input files. 
@@ -105,7 +105,7 @@ direct changes will be lost.
 <H4>Adding Additional Kinds</H4>
 <P>
 To add an additional kind, edit the
-<em class="file">obs_kind/DEFAULT_obs_kind_mod.F90</em> file and
+<em class="file">assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90</em> file and
 add a unique number to the list of generic kinds at the top of the file.
 Then find the 
 <em class=unix>obs_kind_names</em> initializer statements
@@ -115,7 +115,7 @@ associated with the parameter.  The names must be identical.
 If the number is larger than the current maximum,
 increase the value of <em class=unix>max_defined_quantities</em>.
 Run the <em class="file">preprocess</em> program to generate the
-<em class="file">obs_kind/obs_kind_mod.f90</em> file which will then be
+<em class="file">assimilation_code/modules/observations/obs_kind_mod.f90</em> file which will then be
 used by the rest of the DART system.
 </P> 
 <H4>Implementation Details</H4>
@@ -284,7 +284,7 @@ utilities_mod
 The total number of available observation types in the obs_type_type table.
 This value is added by the preprocess program and depends on which
 <em class="file">obs_def_xxx_mod.f90</em> files are listed in the
-<a href="../assimilation_code/programs/preprocess/preprocess.html#Namelist">&amp;preprocess_nml</a> namelist.
+<a href="../../programs/preprocess/preprocess.html#Namelist">&amp;preprocess_nml</a> namelist.
 (Note that in spite of the name, this is the number of specific types,
 e.g. RADIOSONDE_TEMPERATURE, AIRCRAFT_SPECIFIC_HUMIDITY) and not the number
 of generic kinds.

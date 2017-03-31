@@ -1,0 +1,6 @@
+
+&convert_gpspw_nml
+   max_num_obs   = 1000000
+   obs_window_hr = 6
+   global_data   = .true.
+   /

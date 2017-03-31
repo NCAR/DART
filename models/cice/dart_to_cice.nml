@@ -1,0 +1,6 @@
+
+&dart_to_cice_nml
+   dart_to_cice_input_file = 'dart_restart.nc'
+   balance_method          = 'simple_squeeze'
+   /
+

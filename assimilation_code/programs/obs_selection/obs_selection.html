@@ -2,14 +2,14 @@
           "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
-<TITLE>PROGRAM obs_selection</TITLE>
+<TITLE>program obs_selection</TITLE>
 <link rel="stylesheet" type="text/css" href="../../../documentation/html/doc.css" />
 <link href="../../../documentation/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<H1>PROGRAM <em class=program>obs_selection</em></H1>
+<H1>program <em class=program>obs_selection</em></H1>
 
 <table border=0 summary="" cellpadding=5>
 <tr>
@@ -39,12 +39,12 @@
 This specialized tool selects a subset of input observations
 from an observation sequence file.
 For a more general purpose observation sequence file tool, see the
-<a href="assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool</a>.
+<a href="../obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool</a>.
 This tool takes a selected list of observation
 types, times, and locations, and extracts only the matching
 observations out of one or more obs_sequence files.
 The tool which creates the input selection file is usually
-<a href="assimilation_code/programs/obs_seq_coverage/obs_seq_coverage.html">obs_seq_coverage</a>.
+<a href="../obs_seq_coverage/obs_seq_coverage.html">obs_seq_coverage</a>.
 Alternatively, the selection file can be a full observation
 sequence file, in which case the types, times, and locations
 of those observations are used as the selection criteria.
@@ -153,7 +153,7 @@ into a single output file.
 <TR><TD>selections_file</TD>
     <TD>character(len=256)</TD>
     <TD>The name of the input file containing the mask of observation
-definitions (the textfile output of <a href="assimilation_code/programs/obs_seq_coverage/obs_seq_coverage.html">obs_seq_coverage</a>).
+definitions (the textfile output of <a href="../obs_seq_coverage/obs_seq_coverage.html">obs_seq_coverage</a>).
 Alternatively, this can be the name of a full observation sequence file.
 In this case, the types, times, and locations are extracted from this
 file and then used in the same manner as a mask file from the coverage tool.

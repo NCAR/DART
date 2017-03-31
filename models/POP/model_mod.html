@@ -168,7 +168,7 @@
       The observations come from the 
       <a href="http://www.nodc.noaa.gov/OC5/WOD05/pr_wod05.html">World Ocean Database 2005</a>
       and are processed by DART routines in the
-   <a href="../../observations/observations/obs_converters/WOD/WOD.html">DART/observations/WOD</a> directory.  
+   <a href="../../observations/obs_converters/WOD/WOD.html">DART/observations/WOD</a> directory.  
    </P>
 </div>
 
@@ -233,9 +233,9 @@
       </li>
 
       <li>create a TINY (i.e. 1) set of 'perfect' observations in the normal fashion:
-         <a href="../../../assimilation_code/programs/create_obs_sequence/create_obs_sequence.html">create_obs_sequence</a>
+         <a href="../../assimilation_code/programs/create_obs_sequence/create_obs_sequence.html">create_obs_sequence</a>
          and then 
-         <a href="../../../obs_sequence/assimilation_code/programs/create_fixed_network_seq/create_fixed_network_seq.html">create_fixed_network_seq</a>
+         <a href="../../assimilation_code/programs/create_fixed_network_seq/create_fixed_network_seq.html">create_fixed_network_seq</a>
          to create an empty observation sequence file 
          (usually called <em class=file>obs_seq.in</em>).
 	 The programs will prompt you for all the information they require.
@@ -270,7 +270,7 @@
       </li>
 
       <li><em class=program>run_filter.batch</em> runs 
-          <a href="../../assimilation_code/programs/filter.html">filter</a> in a similar fashion.
+          <a href="../../assimilation_code/programs/filter/filter.html">filter</a> in a similar fashion.
 	  I have not finished the documentation for this yet.
       </li>
    </ol>
@@ -287,7 +287,7 @@
       <em class=file>DART/matlab</em> directory. 
       There are Matlab&#174; scripts for exploring the performance of the 
       assimilation in observation-space (after running 
-      <a href="../../assimilation_code/programs/obs_diag/oned/obs_diag.html assimilation_code/programs/obs_diag/threed_cartesian/obs_diag.html assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html">obs_diag</a> 
+      <a href="../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html">obs_diag</a> 
       to explore the <em class=file>obs_seq.final</em> file) - use the 
       scripts starting with 'plot_', i.e. 
       <em class=file>DART/diagnostics/matlab/plot_*.m</em>.
@@ -423,10 +423,10 @@ The variables and their default values are listed here:
                        observation operator but have no impact on the forecast trajectory 
                        of the model could have a value of 'NO_COPY_BACK'.
                        The DART kind must be one found in the 
-                       <em class=file>DART/obs_kind/obs_kind_mod.f90</em> AFTER it gets 
+                       <em class=file>DART/assimilation_code/modules/observations/obs_kind_mod.f90</em> AFTER it gets 
                        built by <em class=program>preprocess</em>. Most of the ocean 
                        observation kinds are specified by
-                       <em class=file>DART/obs_def/obs_def_ocean_mod.f90</em>, 
+                       <em class=file>DART/observations/forward_operators/obs_def_ocean_mod.f90</em>, 
                        so it should be specified in the
                        <em class=code>&amp;preprocess_nml:input_files</em> variable.
                        </TD></TR>
@@ -613,7 +613,7 @@ is read from file <em class=file>data.cal</em>.
 
 <TABLE>
 <TR><TD><em class=call>use location_mod, only : </em></TD>
-    <TD><A HREF="../../location/threed_sphere/location_mod.html#get_close_obs">get_close_obs</A></TD></TR>
+    <TD><A HREF="../../assimilation_code/location/threed_sphere/location_mod.html#get_close_obs">get_close_obs</A></TD></TR>
 </TABLE>
 
 <P>The presence of 'dry' gridpoints causes a little extra work for the
@@ -758,13 +758,13 @@ to model_mod if required.
         The type is one of the list of supported observation types, found in
         the block of code starting 
         <em class=code>!&nbsp;Integer&nbsp;definitions&nbsp;for&nbsp;DART&nbsp;TYPES</em>
-        in <em class=file>DART/obs_kind/obs_kind_mod.f90</em> 
+        in <em class=file>DART/assimilation_code/modules/observations/obs_kind_mod.f90</em> 
         </TD></TR>
 
 </TABLE>
 
 <P>
-The list of supported variables in <em class=file>DART/obs_kind/obs_kind_mod.f90</em>
+The list of supported variables in <em class=file>DART/assimilation_code/modules/observations/obs_kind_mod.f90</em>
 is created by <em class=program>preprocess</em> using the entries in 
 <em class=file>input.nml</em>[<em class=code>&amp;preprocess_nml, &amp;obs_kind_nml</em>], 
 <em class=file>DEFAULT_obs_kin_mod.F90</em> and
@@ -1181,7 +1181,7 @@ real(r8),             intent(in)    :: <em class=code>maxdist</em>
 
 <P>
 Pass-through to the 3-D sphere locations module. See
-<A HREF="../../location/threed_sphere/location_mod.html#get_close_maxdist_init">get_close_maxdist_init()</A> for the documentation of this subroutine.
+<A HREF="../../assimilation_code/location/threed_sphere/location_mod.html#get_close_maxdist_init">get_close_maxdist_init()</A> for the documentation of this subroutine.
 </P>
 
 </div>
@@ -1205,7 +1205,7 @@ type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
 
 <P>
 Pass-through to the 3-D sphere locations module. See
-<A HREF="../../location/threed_sphere/location_mod.html#get_close_obs_init">
+<A HREF="../../assimilation_code/location/threed_sphere/location_mod.html#get_close_obs_init">
 get_close_obs_init()</A> for the documentation of this subroutine.
 </P>
 

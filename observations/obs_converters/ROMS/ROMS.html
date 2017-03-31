@@ -230,7 +230,7 @@ that occurs in the global attribute '<em class=mono>obs_provenance</em>'.
 Note that the <em class=mono>obs_provenance:flag_values</em> and 
 <em class=mono>obs_provenance:flag_meanings</em> attributes are ignored.
 The second column should be a DART specific obs type that
-is found in <em class=file>DART/obs_kind/obs_kind_mod.f90</em>, 
+is found in <em class=file>DART/assimilation_code/modules/observations/obs_kind_mod.f90</em>, 
 which is created by the DART <em class=program>preprocess</em> program.
 </TD></TR>
 
@@ -259,10 +259,10 @@ The origin of the input observation files used by ROMS are completely unknown to
 <H2>PROGRAMS</H2>
 
 <ul><li><a href="../convert_roms_obs.html">convert_roms_obs</a>
-    <li><a href="../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>
-    <li><a href="../../assimilation_code/programs/obs_sequence_tool/assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool</a>
-    <li><a href="../../assimilation_code/programs/preprocess/preprocess.html">preprocess</a>
-    <li><a href="../../assimilation_code/programs/advance_time/advance_time.html">advance_time</a>
+    <li><a href="../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>
+    <li><a href="../../../assimilation_code/programs/obs_sequence_tool/assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool</a>
+    <li><a href="../../../assimilation_code/programs/preprocess/preprocess.html">preprocess</a>
+    <li><a href="../../../assimilation_code/programs/advance_time/advance_time.html">advance_time</a>
 </ul>
 
 <P>
@@ -362,7 +362,7 @@ The following is the relevent section of the DART <em class=file>input.nml</em>:
   /
 </pre>
 
-<P>A complete list of DART observation TYPES is available in <a href="../../obs_def/obs_def_ocean_mod.f90">obs_def_ocean_mod.f90</a>
+<P>A complete list of DART observation TYPES is available in <a href="../../forward_operators/obs_def_ocean_mod.f90">obs_def_ocean_mod.f90</a>
 </P>
 
 <A NAME="obs_kind_section"></A>

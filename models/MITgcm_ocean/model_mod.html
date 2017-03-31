@@ -75,7 +75,7 @@
 <p>
    The observations for the ocean model were the first observations 
    of oceanic quantities, so there is an 
-   <em class="file">obs_def/obs_def_MITgcm_ocean_mod.f90</em>
+   <em class="file">observations/forward_operators/obs_def_MITgcm_ocean_mod.f90</em>
    file containing the novel observation definitions like 
    <em>salinity, sea surface height, current components ...</em>. 
    In keeping with the DART philosophy, there is a concept of
@@ -492,13 +492,13 @@ to model_mod if required.
         The type is one of the list of supported observation types, found in
         the block of code starting 
         <em class="code">!&nbsp;Integer&nbsp;definitions&nbsp;for&nbsp;DART&nbsp;TYPES</em>
-        in <em class="file">DART/obs_kind/obs_kind_mod.f90</em> 
+        in <em class="file">DART/assimilation_code/modules/observations/obs_kind_mod.f90</em> 
         </TD></TR>
 
 </TABLE>
 
 <P>
-The list of supported variables in <em class="file">DART/obs_kind/obs_kind_mod.f90</em>
+The list of supported variables in <em class="file">DART/assimilation_code/modules/observations/obs_kind_mod.f90</em>
 is created by <em class="program">preprocess</em> using the entries in 
 <em class="file">input.nml</em>[<em class="code">&amp;preprocess_nml, &amp;obs_kind_nml</em>], 
 <em class="file">DEFAULT_obs_kin_mod.F90</em> and

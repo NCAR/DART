@@ -1,0 +1,10 @@
+
+&convert_saber_nml
+   saber_netcdf_file     = 'saber_input.nc'
+   saber_netcdf_filelist = 'saber_input_list'
+   saber_outfile         = 'obs_seq.saber'
+   saber_yr              = 2008
+   saber_mon             = 1
+   saber_day             = 1
+   /
+

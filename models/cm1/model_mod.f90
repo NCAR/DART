@@ -98,7 +98,6 @@ type(random_seq_type) :: random_seq
 integer            :: assimilation_period_days = 0
 integer            :: assimilation_period_seconds = 21600
 real(r8)           :: model_perturbation_amplitude = 0.2
-logical            :: output_state_vector = .true.
 integer            :: debug = 0   ! turn up for more and more debug messages
 character(len=32)  :: calendar = 'Gregorian'
 character(len=512) :: cm1_template_file = 'null'
@@ -148,7 +147,6 @@ integer, parameter :: VT_MINVAL_INDEX   = 4
 integer, parameter :: VT_MAXVAL_INDEX   = 5
 
 namelist /model_nml/  &
-   output_state_vector,         &
    assimilation_period_days,    &  ! for now, this is the timestep
    assimilation_period_seconds, &
    model_perturbation_amplitude,&

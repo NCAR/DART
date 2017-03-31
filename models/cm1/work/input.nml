@@ -106,16 +106,15 @@
   assimilation_period_seconds = 60
   calendar                    = 'Gregorian'
   cm1_template_file           = 'cm1out_rst_000001.nc'
-  debug                       = 0
   model_variables             = 'tha', 'QTY_TEMPERATURE',          '0.0' , '1.0e28', 'UPDATE' 
                                 'tsk', 'QTY_2M_TEMPERATURE',       'NULL', 'NULL'  , 'UPDATE'
                                 'ua' , 'QTY_U_WIND_COMPONENT',     '0.0',  'NULL'  , 'UPDATE'
                                 'va' , 'QTY_V_WIND_COMPONENT'      'NULL', '0.03'  , 'UPDATE'
                                 'ppi', 'QTY_SURFACE_PRESSURE',     'NULL', 'NULL'  , 'UPDATE'
                                 'u0' , 'QTY_10M_U_WIND_COMPONENT', 'NULL', 'NULL'  , 'NOUPDATE'
-  output_state_vector         = .true.
   periodic_x                  = .true.
   periodic_y                  = .true.
+  debug                       = 0
 /
 
 
