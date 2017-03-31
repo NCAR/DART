@@ -53,12 +53,12 @@ There are six major differences between Lanai and RMA DART:
 <li> Calculation of forward operators
 <li> Vertical conversion of observation locations
 <li> Diagnostic file changes
-<li> <a href="documentation/html/state_structure.html">State structure module </a>
+<li> <a href="state_structure.html">State structure module </a>
 <li> Perturbation of the state
 </ul>
 
 <p> Before bitwise testing with Lanai please read 
-<a href="documentation/html/bitwise_considerations.html">bitwise considerations</a>
+<a href="bitwise_considerations.html">bitwise considerations</a>
 
 <h4> NetCDF Restarts </h4>
 
@@ -107,13 +107,13 @@ See <a href="#namelist_changes">Additions/Changes to existing namelists for how 
 <p>
 <b>Note</b> when using NetCDF restarts, inflation files are NetCDF also. 
 The inflation mean and inflation standard deviation are in separate files 
-when you use NetCDF restarts. See <a href="documentation/html/netcdf_inflation_files.html">NetCDF inflation files</a> for details.
+when you use NetCDF restarts. See <a href="netcdf_inflation_files.html">NetCDF inflation files</a> for details.
 
 
 <p>
 <h4> Calculation of forward operators</h4>
 The forward operator code in model_mod now operates on an array of state 
-values. See <a href="documentation/html/forward_operator.html">forward operator</a> for more 
+values. See <a href="forward_operator.html">forward operator</a> for more 
 detail about distributed vs. non-distributed forward operators.
 
 In distributed mode the forward operators for all ensemble members are
@@ -126,7 +126,7 @@ are calculated at once.
 The vertical conversion of observation locations is done before the 
 assimilation. In Lanai this calculation is done in the assimilation as part
 of <code>get_close_obs</code> if a model_mod does vertical conversion. See 
-<a href="documentation/html/vertical_conversion.html">vertical conversion</a> for details about 
+<a href="vertical_conversion.html">vertical conversion</a> for details about 
 this change.  Note that not all models do vertical conversion or even have a 
 concept of vertical location, but every model_mod must have the following 
 routines:
