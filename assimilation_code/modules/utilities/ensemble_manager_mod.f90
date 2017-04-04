@@ -1553,7 +1553,7 @@ logical :: print_anyway
 logical :: has_label
 logical :: do_contents
 integer :: limit_count
-integer :: i,j
+integer :: i,j,listlen
 
 print_anyway = .false.
 if (present(force)) then
@@ -1597,11 +1597,19 @@ write(msgstring, *) 'distribution_type  : ', ens_handle%distribution_type
 call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
 write(msgstring, *) 'my_pe number       : ', ens_handle%my_pe
 call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
+
+! large task counts crash here when the list length exceeds the buffer length.
+! break the list up into chunks of 10 to avoid this.
 if (allocated(ens_handle%pe_to_task_list)) then
-   write(msgstring, *) 'task_to_pe_list    : ', ens_handle%task_to_pe_list
-   call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
-   write(msgstring, *) 'pe_to_task_list    : ', ens_handle%pe_to_task_list
-   call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
+   listlen = size(ens_handle%pe_to_task_list)
+   do i=1, listlen, 10
+      write(msgstring, *) 'task_to_pe_list    : ', ens_handle%task_to_pe_list(i:min(i+9,listlen))
+      call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
+   enddo
+   do i=1, listlen, 10
+      write(msgstring, *) 'pe_to_task_list    : ', ens_handle%pe_to_task_list(i:min(i+9,listlen))
+      call error_handler(E_MSG, 'ensemble handle: ', msgstring, source, revision, revdate)
+   enddo
 endif
 
 ! warning - for large state vectors this is a lot of output
