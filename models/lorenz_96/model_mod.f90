@@ -545,8 +545,6 @@ call nc_check(nf90_put_att(ncFileID, LocationVarID, "long_name", trim(adjustl(Lo
               'nc_write_model_atts', 'put_att long_name, '//trim(filename))
 call nc_check(nf90_put_att(ncFileID, LocationVarID, "dimension", LocationDims), &
               'nc_write_model_atts', 'put_att dimension, '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, LocationVarID, "units", "nondimensional"), &
-              'nc_write_model_atts', 'put_att units, '//trim(filename))
 call nc_check(nf90_put_att(ncFileID, LocationVarID, "valid_range", (/ 0.0_r8, 1.0_r8 /)), &
               'nc_write_model_atts', 'put_att valid_range, '//trim(filename))
 

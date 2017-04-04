@@ -121,13 +121,13 @@ logical            :: periodic_z = .false. ! not supported at the moment
 !         wa:units = "m/s" ;
 ! float ppi(nk, nj, ni) ;
 !         ppi:long_name = "perturbation non-dimensional pressure" ;
-!         ppi:units = "nondimensional" ;
+!         ppi:units = "none" ;
 ! float tha(nk, nj, ni) ;
 !         tha:long_name = "perturbation potential temperature" ;
 !         tha:units = "K" ;
 ! float ppx(nk, nj, ni) ;
 !         ppx:long_name = "change in nondimensional pressure used for forward-time-weighting on small steps" ;
-!         ppx:units = "nondimensional" ;
+!         ppx:units = "none" ;
 
 ! DART state vector contents are specified in the input.nml:&model_nml namelist.
 integer, parameter :: max_state_variables = 80

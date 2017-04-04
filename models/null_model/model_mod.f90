@@ -464,7 +464,6 @@ call check(NF90_def_var(ncFileID, name=trim(adjustl(LocationName)), xtype=nf90_d
               dimids = StateVarDimID, varid=LocationVarID) )
 call check(nf90_put_att(ncFileID, LocationVarID, "long_name", trim(adjustl(LocationLName))))
 call check(nf90_put_att(ncFileID, LocationVarID, "dimension", LocationDims ))
-call check(nf90_put_att(ncFileID, LocationVarID, "units", "nondimensional"))
 call check(nf90_put_att(ncFileID, LocationVarID, "valid_range", (/ 0.0_r8, 1.0_r8 /)))
 
 !--------------------------------------------------------------------
