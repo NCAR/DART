@@ -22,9 +22,8 @@ variables:
 		time:long_name = "valid time of the model state" ;
 		time:axis = "T" ;
 		time:cartesian_axis = "T" ;
-		time:calendar = "no calendar" ;
-		time:month_lengths = 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 ;
-		time:units = "days since 0000-01-01 00:00:00" ;
+		time:calendar = "none" ;
+		time:units = "days" ;
 
 // global attributes:
 		:title = "true state from control" ;

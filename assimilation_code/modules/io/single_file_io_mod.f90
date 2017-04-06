@@ -994,19 +994,15 @@ case(NOLEAP)
    call nc_check(nf90_put_att(my_ncid, TimeVarID, "calendar", "no_leap" ), &
               'nc_write_calendar_atts', 'put_att calendar '//trim(ncFileID%fname))
 case default
-   call nc_check(nf90_put_att(my_ncid, TimeVarID, "calendar", "no_calendar" ), &
+   call nc_check(nf90_put_att(my_ncid, TimeVarID, "calendar", "none" ), &
               'nc_write_calendar_atts', 'put_att calendar '//trim(ncFileID%fname))
 
-   ! version 2.1.7 of ncview crashes if there is a 'days since' units attribute.
-   ! it doesn't recognize 'no_calendar', tries to use the standard calendar,
-   ! and then flips out when the year is 0000.  our solution for now is to
-   ! remove the units attribute for no_calendar.  this behaves differently in 
-   ! different versions of ncview (e.g 2.1.1 is fine), so be careful testing.  
-   ! this code also appears in dart_time_io_mod.f90 - we need to consolidate 
-   ! it in a single location - but until then, updates need to be made both places.
-   !call nc_check(nf90_put_att(my_ncid, TimeVarID, "units", &
-   !           'days since 0000-01-01 00:00:00'), &
-   !           'nc_write_calendar_atts', 'put_att units '//trim(ncFileID%fname))
+   ! ncview (actually, probably udunits2) crashes or errors out or
+   ! displays misleading plot axes if you use 'days since ...' as the units.
+   ! if you simply use 'days' it works much better.
+
+   call nc_check(nf90_put_att(my_ncid, TimeVarID, "units", "days"), &
+               'nc_write_calendar_atts', 'put_att units '//trim(ncFileID%fname))
 end select
 
 end function nc_write_calendar_atts

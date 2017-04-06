@@ -59,7 +59,7 @@ endif
 
 @ n = 0
 
-foreach DATAFILE ( *.cdl )
+foreach DATAFILE ( `ls *.cdl` )
 
    set OUTNAME = `basename $DATAFILE .cdl`.nc
 

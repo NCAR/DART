@@ -1824,7 +1824,7 @@ call nc_check(nf90_def_var(ncid=ncFileID, name="num_nghbrs", xtype=nf90_int, &
 call nc_check(nf90_put_att(ncFileID, num_nghbrsVarID, "long_name", &
               "number of neighbors of each node/column"), &
               'nc_write_cs_grid_file', 'long_name')
-call nc_check(nf90_put_att(ncFileID, num_nghbrsVarID, "units",     "nondimensional"), &
+call nc_check(nf90_put_att(ncFileID, num_nghbrsVarID, "units",     "none"), &
               'nc_write_cs_grid_file', 'units')
 call nc_check(nf90_put_att(ncFileID, num_nghbrsVarID, "valid_range", &
               (/ 1,max_neighbors /)), 'nc_write_cs_grid_file', 'put_att valid_range')
@@ -1835,7 +1835,7 @@ call nc_check(nf90_def_var(ncid=ncFileID, name="centers", xtype=nf90_int, &
 call nc_check(nf90_put_att(ncFileID, centersVarID, "long_name", &
               "cells which use node/column as a corner"), &
               'nc_write_cs_grid_file', 'long_name')
-call nc_check(nf90_put_att(ncFileID, centersVarID, "units",     "nondimensional"), &
+call nc_check(nf90_put_att(ncFileID, centersVarID, "units",     "none"), &
               'nc_write_cs_grid_file', 'units')
 call nc_check(nf90_put_att(ncFileID, centersVarID, "valid_range", &
               (/ 1, ncenters /)), 'nc_write_cs_grid_file', 'put_att valid_range')
@@ -1848,7 +1848,7 @@ call nc_check(nf90_def_var(ncid=ncFileID, name="corners", xtype=nf90_int, &
 call nc_check(nf90_put_att(ncFileID, cornersVarID, "long_name", &
               "corners/nodes of each cell "), &
               'nc_write_cs_grid_file', 'long_name')
-call nc_check(nf90_put_att(ncFileID, cornersVarID, "units",     "nondimensional"), &
+call nc_check(nf90_put_att(ncFileID, cornersVarID, "units",     "none"), &
               'nc_write_cs_grid_file', 'units')
 call nc_check(nf90_put_att(ncFileID, cornersVarID, "valid_range", &
               (/ 1, ncol /)), 'nc_write_cs_grid_file', 'put_att valid_range')
@@ -1861,7 +1861,7 @@ call nc_check(nf90_def_var(ncid=ncFileID, name="a", xtype=nf90_double, &
 call nc_check(nf90_put_att(ncFileID, aVarID, "long_name",  &
               "Coefficients of mapping from planar x coord to unit square"), &
               'nc_write_cs_grid_file', 'long_name')
-call nc_check(nf90_put_att(ncFileID, aVarID, "units",     "nondimensional"), &
+call nc_check(nf90_put_att(ncFileID, aVarID, "units",     "none"), &
               'nc_write_cs_grid_file', 'units')
 !call nc_check(nf90_put_att(ncFileID, aVarID, "valid_range", &
 !              (/ 1, ncol /)), 'nc_write_cs_grid_file', 'put_att valid_range')
@@ -1875,7 +1875,7 @@ call nc_check(nf90_def_var(ncid=ncFileID, name="b", xtype=nf90_double, &
 call nc_check(nf90_put_att(ncFileID, bVarID, "long_name", &
               "Coefficients of mapping from planar y coord to unit square"), &
               'nc_write_cs_grid_file', 'long_name')
-call nc_check(nf90_put_att(ncFileID, bVarID, "units",     "nondimensional"), &
+call nc_check(nf90_put_att(ncFileID, bVarID, "units",     "none"), &
               'nc_write_cs_grid_file', 'units')
 !call nc_check(nf90_put_att(ncFileID, bVarID, "valid_range", &
 !              (/ 1, ncol /)), 'nc_write_cs_grid_file', 'put_att valid_range')

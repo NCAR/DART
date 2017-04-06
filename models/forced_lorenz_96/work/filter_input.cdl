@@ -28,17 +28,15 @@ variables:
 		time:long_name = "valid time of the model state" ;
 		time:axis = "T" ;
 		time:cartesian_axis = "T" ;
-		time:calendar = "no calendar" ;
-                time:month_lengths = 31,28,31,30,31,30,31,31,30,31,30,31 ;
-		time:units = "days since 0000-01-01 00:00:00" ;
+		time:calendar = "none" ;
+		time:units = "days" ;
 
 	double advance_to_time ;
 		advance_to_time:long_name = "desired time at end of the next model advance" ;
 		advance_to_time:axis = "T" ;
 		advance_to_time:cartesian_axis = "T" ;
-		advance_to_time:calendar = "no calendar" ;
-                advance_to_time:month_lengths = 31,28,31,30,31,30,31,31,30,31,30,31 ;
-		advance_to_time:units = "days since 0000-01-01 00:00:00" ;
+		advance_to_time:calendar = "none" ;
+		advance_to_time:units = "days" ;
 
 // global attributes:
 		:title = "an ensemble of spun-up model states" ;

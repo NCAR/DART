@@ -61,8 +61,8 @@ There are two streams to download the data formats we support,
 they differ only in the very first line of the file. One of the formats has a header
 record, the other does not. Other than that, the file formats are identical. The format
 with the header record is fully described in
-<a href="http://daac.ornl.gov/MODIS/Data_File_Description_fixed_sites.html">
-http://daac.ornl.gov/MODIS/Data_File_Description_fixed_sites.html</a>.
+<a href="https://lpdaac.usgs.gov/dataset_discovery/modis">
+https://lpdaac.usgs.gov/dataset_discovery/modis</a>.
 Please remember to cite the data in your publications, 
 <a href="https://lpdaac.usgs.gov/about/citing_lp_daac_and_data">specific instructions from LP DAAC are available here.</a> This is an example:
 </P>
@@ -87,7 +87,7 @@ page indicates that the Collection 5 MODIS Subsets are available three ways:
        how to retrieve the file(s) of interest. The converter <strong>does not</strong> 
        currently support this format, but will soon. Worst case scenario is that you make 
        your own header file and add your 'site' to the metadata file described below.</li>
-   <li><a href="http://daac.ornl.gov/MODIS/MODIS-menu/modis_webservice.html"
+   <li><a href="https://lpdaac.usgs.gov/tools/lp_daac_web_services"
       >Web Service</a>. I have not used the Web Service.</li>
 </ol>
 
@@ -109,7 +109,7 @@ The DART workflow is usually:
 <li>convert each MODIS data file individually using 
     <em class=program>MOD15A2_to_obs</em></li>
 <li>combine all output files for the region and timeframe of interest into one file
-    using <a href="../../assimilation_code/programs/obs_sequence_tool/assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html ">obs_sequence_tool</a></li>
+    using <a href="../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html ">obs_sequence_tool</a></li>
 </ol>
 
 <P>
@@ -290,7 +290,7 @@ which provides the location information otherwise provided by the <em class=file
 
 <h3>Web Service</H3>
 <P>I have not used the 
-<a href="http://daac.ornl.gov/MODIS/MODIS-menu/modis_webservice.html">Web Service</a>.
+<a href="https://lpdaac.usgs.gov/tools/lp_daac_web_services">Web Service</a>.
 </P>
 
 <!--==================================================================-->
@@ -305,8 +305,8 @@ been able to determine is how to interpret the 'Date' ... if it is 2000049 ... I
 Is that the start of the 8 day composite, the middle, the end? If you know the answer, please let me know.
 <br />
 <br />
-Taken (almost) directly from <a href="http://daac.ornl.gov/MODIS/Data_File_Description_fixed_sites.html">
-http://daac.ornl.gov/MODIS/Data_File_Description_fixed_sites.html</a> and modified only slightly with examples
+Taken (almost) directly from <a href="https://lpdaac.usgs.gov/tools/lp_daac_web_services">
+https://lpdaac.usgs.gov/tools/lp_daac_web_services</a> and modified only slightly with examples
 more appropriate for the LAI/FPAR product.
 <br />
 The MODIS MOD15A2 products in question are ASCII files of comma-separated values.
