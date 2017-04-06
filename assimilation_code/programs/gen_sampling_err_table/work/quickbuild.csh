@@ -37,7 +37,7 @@ end
 
 echo "Success: All programs compiled."  
 
-\rm -f *.o *.mod  input.nml*_default
+\rm -f *.o *.mod  input.nml.*_default
 
 exit 0
 
