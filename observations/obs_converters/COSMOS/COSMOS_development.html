@@ -49,7 +49,7 @@ have a correction for the amount of hydrogen in the atmospheric volume near the 
 To this end, Rafael Rosolem has a separate data stream.  <em class=program>COSMOS_development</em>
 reads Rafaels data streams and converts them to DART observation sequence files. 
 <b>Since these data streams are not widespread, we recommend using 
-<a href="observations/obs_converters/COSMOS/COSMOS_to_obs.html"> COSMOS_to_obs.f90</a>.</b>
+<a href="COSMOS_to_obs.html"> COSMOS_to_obs.f90</a>.</b>
 <br />
 <br />
 The workflow is usually: 
@@ -74,7 +74,7 @@ The workflow is usually:
 <li>repeat steps 1-4 for this converter to generate a DART observation sequence 
     file for each station.</li>
 
-<li>use the <a href="../../assimilation_code/programs/obs_sequence_tool/assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool.f90</a> 
+<li>use the <a href="../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool.f90</a> 
     to combine the observations from multiple sites</li>
 </ol>
 
@@ -92,7 +92,7 @@ http://cosmos.hwr.arizona.edu/Probes/probemap.php</a>
 The development observation data for each station is generally not available.
 The metadata for each station (location, height, etc) is also
 available from the data portal. The <b>Level 2 Data</b> is most suited for use with DART.
-<b>We recommend using <a href="observations/obs_converters/COSMOS/COSMOS_to_obs.html"> COSMOS_to_obs.f90</a>.</b>
+<b>We recommend using <a href="COSMOS_to_obs.html"> COSMOS_to_obs.f90</a>.</b>
 An example of the development observation data follows:
 </P>
 <pre>
@@ -126,11 +126,11 @@ each observation.
 To compile and test, go into the <em class=file>COSMOS/work</em> subdirectory and 
 run the <em class=program>quickbuild.csh</em>
 script to build the converter and a couple of general purpose utilities.
-The <a href="../../assimilation_code/programs/obs_sequence_tool/assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool</a>
+The <a href="../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool</a>
 manipulates (i.e. combines, subsets) DART observation files once they have been created.
 The default observations supported are those defined in 
-<a href="../../obs_def/obs_def_tower_mod.f90">DART/obs_def/obs_def_tower_mod.f90</a> and
-<a href="../../obs_def/obs_def_COSMOS_mod.f90">DART/obs_def/obs_def_COSMOS_mod.f90</a>.
+<a href="../../forward_operators/obs_def_tower_mod.f90">observations/forward_operators/obs_def_tower_mod.f90</a> and
+<a href="../../forward_operators/obs_def_COSMOS_mod.f90">observations/forward_operators/obs_def_COSMOS_mod.f90</a>.
 If you need additional observation types, you will have to add the 
 appropriate <em class=file>obs_def_XXX_mod.f90</em> file to the
 <em class=file>input.nml</em>&nbsp;<em class=code>&amp;preprocess_nml:input_files</em>

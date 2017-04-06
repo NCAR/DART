@@ -176,7 +176,7 @@ type(progvartype), dimension(max_state_variables) :: progvar
        We usually wind up linking the actual analysis file to a static name that is used by DART.
        </td>
    </tr>
-   <tr><td valign="top"><a href="dart_to_model.html">dart_to_model.f90</a></td>
+   <tr><td valign="top"><a href="dart_to_model.f90">dart_to_model.f90</a></td>
        <td>inserts the DART output into an existing MPAS analysis netCDF file by
        overwriting the variables in the analysis netCDF file. 
        There are two different types of DART output files, so there is a namelist
@@ -570,7 +570,7 @@ Each module has its own discussion of their routines.
 
 <TABLE>
 <TR><TD><em class=call>use location_mod, only : </em></TD>
-    <TD><A HREF="../../location/threed_sphere/location_mod.html#get_close_obs">get_close_obs</A></TD></TR>
+    <TD><A HREF="../../assimilation_code/location/threed_sphere/location_mod.html#get_close_obs">get_close_obs</A></TD></TR>
 </TABLE>
 
 <P>
@@ -685,7 +685,7 @@ to model_mod if required.
 <TR><TD valign=top><em class=code>location</em></TD>
     <TD>Returns the 3D location of the indexed state variable.
         The <em class=code>location_ type</em> comes from
-        <em class=file>DART/location/threed_sphere/location_mod.f90</em>.
+        <em class=file>DART/assimilation_code/location/threed_sphere/location_mod.f90</em>.
         Note that the lat/lon are specified in degrees by the user but are converted
         to radians internally.</TD></TR>
 
@@ -1109,7 +1109,7 @@ real(r8),             intent(in)    :: <em class=code>maxdist</em>
 
 <P>
 Pass-through to the 3-D sphere locations module. See
-<A HREF="../../location/threed_sphere/location_mod.html#get_close_maxdist_init">get_close_maxdist_init()</A> for the documentation of this subroutine.
+<A HREF="../../assimilation_code/location/threed_sphere/location_mod.html#get_close_maxdist_init">get_close_maxdist_init()</A> for the documentation of this subroutine.
 </P>
 
 </div>
@@ -1133,7 +1133,7 @@ type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
 
 <P>
 Pass-through to the 3-D sphere locations module. See
-<A HREF="../../location/threed_sphere/location_mod.html#get_close_obs_init">
+<A HREF="../../assimilation_code/location/threed_sphere/location_mod.html#get_close_obs_init">
 get_close_obs_init()</A> for the documentation of this subroutine.
 </P>
 

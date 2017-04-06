@@ -51,7 +51,7 @@
 <TR><TD> 5</TD>
     <TD>vertical coordinate flag</TD>
     <TD> see <a
-href="../../location/threed_sphere/location_mod.html#location_type">location_mod:location_type</a>
+href="../../assimilation_code/location/threed_sphere/location_mod.html#location_type">location_mod:location_type</a>
         for a full explanation. The short explanation is that
         <em>surface == -1</em>, and
         <em>depth == 3</em> There is a pathological difference between
@@ -65,12 +65,12 @@ href="../../location/threed_sphere/location_mod.html#location_type">location_mod
          parameter for <em class="program">filter</em> to ignore any 
          observation with a 
          QC&nbsp;value&nbsp;&#60;&#61;&nbsp;<a
-         href="../../assimilation_code/programs/filter.html#Namelist">input_qc_threshold</a>
+         href="../../assimilation_code/programs/filter/filter.html#Namelist">input_qc_threshold</a>
     </TD></TR>
 <TR><TD> 8</TD>
     <TD> obs_kind_name</TD>
     <TD> a character string that must match a string in
-         <a href="../../obs_def/obs_def_MITgcm_ocean_model_mod.html">obs_def/obs_def_MITgcm_ocean_mod.f90</a></TD></TR>
+         <a href="../../observations/forward_operators/obs_def_MITgcm_ocean_model_mod.html">obs_def/obs_def_MITgcm_ocean_mod.f90</a></TD></TR>
 <TR><TD> 9</TD>
     <TD> startDate_1</TD> 
     <TD> the year-month-date of the observation (YYYYMMDD format)</TD></TR>
@@ -99,7 +99,7 @@ For example:
 
 <P>
 It is always possible to combine observation sequence files with the program 
-<a href="../../assimilation_code/programs/obs_sequence_tool/assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool</a>, so
+<a href="../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool</a>, so
 it was simply convenient to generate a separate file for each observation
 platform and type ('GLIDER' and 'TEMPERATURE'), however it is by no means
 required.

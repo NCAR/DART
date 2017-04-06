@@ -38,7 +38,7 @@
 
 <P>The <strong>Parallel Ocean Program (POP)</strong> may be used with the 
    <strong>Data Assimilation Research Testbed (DART)</strong>.
-   Both main variants - <a href="http://climate.lanl.gov/Models/POP/">LANL POP</a> and
+   Both main variants - <a href="http://gcmd.nasa.gov/getserf.htm?LANL-POP">LANL POP</a> and
    <a href="http://www.cesm.ucar.edu/models/cesm1.0/pop2/">CESM1.0 POP2</a> have been 
    tested. We are assimilating salinity and temperature 
    observations from either the World Ocean Database (2005) or (2009).
@@ -1409,7 +1409,7 @@ type(time_type), intent(in) :: <em class=code>dart_time</em>
 
 <P>
 Writes the time to a netCDF file. For POP, this is actually a 'pass-through' to a routine of the same name in 
-<a href='../../../io/dart_time_io_mod.f90'>io/dart_time_io_mod.f90</a>  
+<a href='../../assimilation_code/modules/io/dart_time_io_mod.f90'>io/dart_time_io_mod.f90</a>  
 which will write variables <em class=code>dart_days</em> and
 <em class=code>dart_seconds</em> to the netCDF file if they do 
 not already exist.

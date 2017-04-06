@@ -47,7 +47,7 @@ Several of the options can be customized at runtime by
 setting values in a Fortran namelist.  See the <a href="#Namelist">namelist</a>
 section below for more details.
 In the current release of DART only the 
-<a href="../../models/wrf/model_mod.html">WRF model</a>
+<a href="../../../models/wrf/model_mod.html">WRF model</a>
 has forward operator code to generate expected obs values for these
 vortex observations.
 </P>
@@ -111,7 +111,7 @@ once they have been created.
 </P>
 <P>
 This converter creates observation types defined in the
-<em class=file>DART/obs_def/obs_def_vortex_mod.f90</em> file.
+<em class=file>DART/observations/forward_operators/obs_def_vortex_mod.f90</em> file.
 This file must be listed in the
 <em class=file>input.nml</em> namelist file,
 in the <em class=file>&amp;preprocess_nml</em> namelist, 
@@ -220,7 +220,7 @@ no code to check for duplicated observations. If this is
 observations in the file which is bad. (It will affect the
 quality of your assimilation results.)  Use with care.<br />
 You can concatenate multiple obs sequence files as a postprocessing
-step with the <a href="../../assimilation_code/programs/obs_sequence_tool/assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">
+step with the <a href="../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">
 observation sequence tool</a> which comes with DART
 and is in fact built by the quickbuild.csh script
 in the TC converter work directory.
