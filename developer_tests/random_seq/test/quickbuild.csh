@@ -17,6 +17,8 @@ set ITEM = "Random Number Tests"
 # ---------------
 # shouldn't have to modify this script below here.
 
+\rm -f *.o *.mod 
+
 @ n = 0
 
 foreach TARGET ( mkmf_* )
@@ -35,7 +37,7 @@ end
 
 echo "Success: All programs compiled."  
 
-\rm -f *.o *.mod 
+\rm -f *.o *.mod  input.nml*_default
 
 exit 0
 
