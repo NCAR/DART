@@ -6,8 +6,8 @@
 #
 # DART $Id$
 
-../../mkmf/mkmf -p test_reseed -t ../../mkmf/mkmf.template   \
- -a "../../" path_names_test_reseed
+../../../build_templates/mkmf -p test_reseed -t ../../../build_templates/mkmf.template   \
+ -a "../../../" path_names_test_reseed
 
 exit $status
 

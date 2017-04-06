@@ -6,8 +6,8 @@
 #
 # DART $Id$
 
-../../mkmf/mkmf -p test_diff -t ../../mkmf/mkmf.template   \
- -a "../../" path_names_test_diff
+../../../build_templates/mkmf -p test_diff -t ../../../build_templates/mkmf.template   \
+ -a "../../../" path_names_test_diff
 
 exit $status
 

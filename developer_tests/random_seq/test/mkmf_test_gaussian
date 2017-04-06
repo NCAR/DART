@@ -6,8 +6,8 @@
 #
 # DART $Id$
 
-../../mkmf/mkmf -p test_gaussian -t ../../mkmf/mkmf.template   \
- -a "../../" path_names_test_gaussian
+../../../build_templates/mkmf -p test_gaussian -t ../../../build_templates/mkmf.template   \
+ -a "../../../" path_names_test_gaussian
 
 exit $status
 

@@ -6,8 +6,8 @@
 #
 # DART $Id$
 
-../../mkmf/mkmf -p test_corr -t ../../mkmf/mkmf.template   \
- -a "../../" path_names_test_corr
+../../../build_templates/mkmf -p test_corr -t ../../../build_templates/mkmf.template   \
+ -a "../../../" path_names_test_corr
 
 exit $status
 
