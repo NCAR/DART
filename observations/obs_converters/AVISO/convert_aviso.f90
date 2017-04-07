@@ -8,9 +8,13 @@ program convert_aviso
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!   convert_aviso - program that reads a MADIS netCDF profiler
-!                          wind observation file and writes a DART
-!                          obs_seq file using the DART library routines.
+! convert_aviso - program that reads a netCDF file from CMEMS/Aviso+
+!                 containing L3 (along-track) sea level anomalies from 
+!                 any of three supported platforms and writes a DART 
+!                 observation sequence file.
+!
+! http://marine.copernicus.eu/services-portfolio/access-to-products/
+! product: SEALEVEL_GLO_SLA_L3_REP_OBSERVATIONS_008_018
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -29,8 +33,9 @@ use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                               init_obs_sequence, get_num_obs, & 
                               set_copy_meta_data, set_qc_meta_data
 
-use      obs_kind_mod, only : J1_SEA_SURFACE_ANOMALY, EN_SEA_SURFACE_ANOMALY, &
-                              GFO_SEA_SURFACE_ANOMALY
+use      obs_kind_mod, only : J1_SEA_SURFACE_ANOMALY, &  ! Jason-1
+                              EN_SEA_SURFACE_ANOMALY, &  ! Envisat
+                              GFO_SEA_SURFACE_ANOMALY    ! Geosat Follow On
 
 use          sort_mod, only : index_sort
 

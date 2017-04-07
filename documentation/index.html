@@ -25,6 +25,7 @@
 </tr>
 </table>
 
+<A HREF="#Updates">Updates</A> /
 <A HREF="#Programs">Programs</A> /
 <A HREF="#Models">Models</A> /
 <A HREF="#Namelists">Namelist</A> /
@@ -149,6 +150,52 @@ contains links to all the documentation for this DART release.
 <P><!-- make sure the 'top' is aligned correctly --></P>
 
 <!--==================================================================-->
+<A NAME="Updates"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Software Updates</H2>
+
+<P>
+Here are the notable updates since the Manhattan release.
+</P>
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Commit&nbsp;Date </TH>
+    <TH> SVN&nbsp;Revision </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<!-- blank template for next update.
+<TR><TD>  </TD>
+    <TD>  </TD>
+    <TD>
+    </TD>
+</TR>
+ -->
+
+<TR><TD> 24 Mar 2017 </TD>
+    <TD> 11400 </TD>
+    <TD> Updates to web pages and online documentation.
+         Much better, but not done yet.
+    </TD>
+</TR>
+
+<TR><TD> 15 Mar 2017 </TD>
+    <TD> 11355 </TD>
+    <TD> Manhattan release date and version.
+    </TD>
+</TR>
+
+</TBODY>
+</TABLE>
+</div>
+
+<P><!-- make sure the 'top' is aligned correctly --></P>
+
+<!--==================================================================-->
 
 <A NAME="UserDocs"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
@@ -257,7 +304,7 @@ The executable programs that convert observations into DART format include:
 <LI>&nbsp;</LI>
 <LI><A href="../observations/obs_converters/AIRS/AIRS.html">AIRS data</A></LI>
 <LI><A href="../observations/obs_converters/AURA/convert_aura.f90">AURA temperature data</A> (source)</LI>
-<LI><A href="../observations/obs_converters/AVISO/convert_aviso.f90">AVISO wind data</A> (source)</LI>
+<LI><A href="../observations/obs_converters/AVISO/AVISO.html">Aviso+/CMEMS along-track sea level anomalies</A></LI>
 <LI><A href="../observations/obs_converters/Ameriflux/level4_to_obs.html">Ameriflux tower data</A></LI>
 <LI><A href="../observations/obs_converters/cice/cice_to_obs.html">CICE data</A></LI>
 <LI><A href="../observations/obs_converters/CHAMP/CHAMP_density_text_to_obs.f90">CHAMP data</A> (source)</LI>
@@ -1009,79 +1056,75 @@ all model_mod source files in the DART distribution tree:
 <!-- <LI><A href="../models/CESM/model_mod.html">models/CESM/model_mod</A> (html)</LI> -->
 <!-- <LI><A href="../models/cam-fv/cam_guidelines.html">models/cam-fv/cam_guidelines</A></LI> -->
 <!-- <LI><A href="../models/cam-fv/script_doc.html">models/cam-fv/script_doc</A></LI> -->
-<LI><A HREF="../models/9var/model_mod.html"> 9var/model_mod</A></LI>
-<LI><A HREF="../observations/obs_converters/AIRS/AIRS.html"> AIRS/AIRS</A></LI>
-<LI><A HREF="../models/am2/model_mod.f90"> AM2</A> (source)</LI>
-<LI><A HREF="../observations/obs_converters/AURA/convert_aura.f90"> AURA temperature data</A> (source)</LI>
-<LI><A HREF="../observations/obs_converters/AVISO/convert_aviso.f90"> AVISO wind data</A> (source)</LI>
-<LI><A HREF="../observations/obs_converters/Ameriflux/level4_to_obs.html"> Ameriflux/level4_to_obs</A></LI>
-<LI><A HREF="../models/CESM/doc/setup_guidelines.html"> CESM/doc/setup_guidelines</A></LI>
-<LI><A HREF="../models/CESM/model_mod.f90"> CESM</A> (source)</LI>
-<LI><A HREF="../observations/obs_converters/CHAMP/CHAMP_density_text_to_obs.f90"> CHAMP data</A> (source)</LI>
-<LI><A HREF="../observations/obs_converters/CHAMP/CHAMP_density_text_to_obs.f90"> CHAMP data</A> (source)</LI>
-<LI><A HREF="../observations/obs_converters/CNOFS/CNOFS_text_to_obs.f90"> CNOFS data</A> (source)</LI>
-<LI><A HREF="../observations/obs_converters/CNOFS/CNOFS_text_to_obs.f90"> CNOFS data</A> (source)</LI>
-<LI><A HREF="../models/coamps_nest/model_mod.f90"> COAMPS_nest</A> (source)</LI>
-<LI><A HREF="../observations/obs_converters/COSMOS/COSMOS_development.html"> COSMOS/COSMOS_development</A></LI>
-<LI><A HREF="../observations/obs_converters/COSMOS/COSMOS_to_obs.html"> COSMOS/COSMOS_to_obs</A></LI>
-<LI><A HREF="../documentation/DART_LAB/DART_LAB.html"> DART_LAB/DART_LAB</A></LI>
-<LI><A HREF="../observations/forward_operators/DEFAULT_obs_def_mod.html"> DEFAULT_obs_def_mod</A></LI>
-<LI><A HREF="../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.html"> DEFAULT_obs_kind_mod</A></LI>
-<LI><A HREF="../observations/obs_converters/DWL/dwl_to_obs.html"> DWL/dwl_to_obs</A></LI>
-<LI><A HREF="../observations/obs_converters/even_sphere/even_sphere.m"> Even Sphere data</A> (source)</LI>
-<LI><A HREF="../observations/obs_converters/text_GITM/text_to_obs.f90"> GITM data</A> (source)</LI>
-<LI><A HREF="../observations/obs_converters/GSI2DART/gsi_to_dart.f90"> GSI data</A> (source)</LI>
-<LI><A HREF="../observations/obs_converters/GTSPP/GTSPP.html"> GTSPP/GTSPP</A></LI>
-<LI><A HREF="../observations/obs_converters/gnd_gps_vtec/gnd_gps_vtec_text_to_obs.f90"> Ground GPS Vtec data</A> (source)</LI>
-<LI><A HREF="../documentation/html/Lanai_diffs_from_Kodiak.html"> Lanai_diffs_from_Kodiak</A></LI>
-<LI><A HREF="../documentation/html/Lanai_release.html"> Lanai_release</A></LI>
-<LI><A HREF="../models/lorenz_96_2scale/model_mod.f90"> Lorenz_96_2scale</A> (source)</LI>
-<LI><A HREF="../observations/obs_converters/MADIS/MADIS.html"> MADIS/MADIS</A></LI>
-<LI><A HREF="../observations/obs_converters/MIDAS/MIDAS_to_obs.html"> MIDAS/MIDAS_to_obs</A></LI>
-<LI><A HREF="../models/MITgcm_annulus/model_mod.f90"> MITgcm_annulus</A> (source)</LI>
-<LI><A HREF="../models/MITgcm_ocean/create_ocean_obs.html"> MITgcm_ocean/create_ocean_obs</A></LI>
-<LI><A HREF="../models/MITgcm_ocean/model_mod.html"> MITgcm_ocean/model_mod</A></LI>
-<LI><A HREF="../models/MITgcm_ocean/trans_pv_sv.html"> MITgcm_ocean/trans_pv_sv</A></LI>
-<LI><A HREF="../models/MITgcm_ocean/trans_sv_pv.html"> MITgcm_ocean/trans_sv_pv</A></LI>
-<LI><A HREF="../observations/obs_converters/snow/snow_to_obs.html"> MODIS Snow data</A> (source)</LI>
-<LI><A HREF="../observations/obs_converters/MODIS/MOD15A2_to_obs.html"> MODIS/MOD15A2_to_obs</A></LI>
-<LI><A HREF="../observations/obs_converters/MODIS/MODIS_README.html"> MODIS/MODIS_README</A></LI>
-<LI><A HREF="../documentation/html/Manhattan_diffs_from_Lanai.html"> Manhattan_diffs_from_Lanai</A></LI>
-<LI><A HREF="../documentation/html/Manhattan_getting_started.html"> Manhattan_getting_started</A></LI>
-<LI><A HREF="../documentation/html/Manhattan_release.html"> Manhattan_release</A></LI>
-<LI><A HREF="../observations/obs_converters/NCEP/prep_bufr/prep_bufr.html"> NCEP prepbufr to source</A></LI>
-<LI><A HREF="../observations/obs_converters/NCEP/ascii_to_obs/create_real_obs.html"> NCEP/ascii_to_obs/create_real_obs</A></LI>
-<LI><A HREF="../observations/obs_converters/NCEP/prep_bufr/prep_bufr.html"> NCEP/prep_bufr/prep_bufr</A></LI>
-<LI><A HREF="../models/NCOMMAS/dart_to_ncommas.html"> NCOMMAS/dart_to_ncommas</A></LI>
-<LI><A HREF="../models/NCOMMAS/model_mod.html"> NCOMMAS/model_mod</A></LI>
-<LI><A HREF="../models/NCOMMAS/ncommas_to_dart.html"> NCOMMAS/ncommas_to_dart</A></LI>
-<LI><A HREF="../models/POP/dart_pop_mod.html"> POP/dart_pop_mod</A></LI>
-<LI><A HREF="../models/POP/model_mod.html"> POP/model_mod</A></LI>
-<LI><A HREF="../models/POP/model_mod_check.html"> POP/model_mod_check</A></LI>
-<LI><A HREF="../developer_tests/utilities/PrecisionCheck.html"> PrecisionCheck</A></LI>
-<LI><A HREF="../observations/obs_converters/ROMS/convert_roms_obs.f90"> ROMS data</A> (source)</LI>
-<LI><A HREF="../observations/obs_converters/ROMS/ROMS.html"> ROMS/ROMS</A></LI>
-<LI><A HREF="../models/ROMS/model_mod.html"> ROMS/model_mod</A></LI>
-<LI><A HREF="../models/rose/model_mod.f90"> Rose</A> (source)</LI>
-<LI><A HREF="../observations/obs_converters/SABER/convert_saber_cdf.f90"> SABER data</A> (source)</LI>
-<LI><A HREF="../observations/obs_converters/SSEC/SSEC.html"> SSEC/SSEC</A></LI>
-<LI><A HREF="../observations/obs_converters/SSUSI/convert_f16_edr_dsk.html"> SSUSI/convert_f16_edr_dsk</A></LI>
-<LI><A HREF="../models/tiegcm/model_mod.f90"> TIEgcm</A> (source)</LI>
+<LI><A HREF="../models/9var/model_mod.html"> models/9var/model_mod.html</A></LI>
+<LI><A HREF="../observations/obs_converters/AIRS/AIRS.html"> AIRS.html</A></LI>
+<LI><A HREF="../models/am2/model_mod.f90"> models/am2/model_mod.f90</A></LI>
+<LI><A HREF="../observations/obs_converters/AURA/convert_aura.f90"> convert_aura.f90</A></LI>
+<LI><A HREF="../observations/obs_converters/AVISO/AVISO.html"> AVISO.html</A></LI>
+<LI><A HREF="../observations/obs_converters/Ameriflux/level4_to_obs.html"> level4_to_obs.html</A></LI>
+<LI><A HREF="../models/CESM/doc/setup_guidelines.html"> models/CESM/doc/setup_guidelines.html</A></LI>
+<LI><A HREF="../observations/obs_converters/CHAMP/CHAMP_density_text_to_obs.f90"> CHAMP_density_text_to_obs.f90</A></LI>
+<LI><A HREF="../observations/obs_converters/CNOFS/CNOFS_text_to_obs.f90"> CNOFS_text_to_obs.f90</A></LI>
+<LI><A HREF="../models/coamps_nest/model_mod.f90"> models/coamps_nest/model_mod.f90</A></LI>
+<LI><A HREF="../observations/obs_converters/COSMOS/COSMOS_development.html"> COSMOS_development.html</A></LI>
+<LI><A HREF="../observations/obs_converters/COSMOS/COSMOS_to_obs.html"> COSMOS_to_obs.html</A></LI>
+<LI><A HREF="../documentation/DART_LAB/DART_LAB.html"> DART_LAB.html</A></LI>
+<LI><A HREF="../observations/forward_operators/DEFAULT_obs_def_mod.html"> DEFAULT_obs_def_mod.html</A></LI>
+<LI><A HREF="../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.html"> DEFAULT_obs_kind_mod.html</A></LI>
+<LI><A HREF="../observations/obs_converters/DWL/dwl_to_obs.html"> dwl_to_obs.html</A></LI>
+<LI><A HREF="../observations/obs_converters/even_sphere/even_sphere.m"> even_sphere.m</A></LI>
+<LI><A HREF="../observations/obs_converters/text_GITM/text_to_obs.f90"> text_GITM/text_to_obs.f90</A></LI>
+<LI><A HREF="../observations/obs_converters/GSI2DART/gsi_to_dart.f90"> gsi_to_dart.f90</A></LI>
+<LI><A HREF="../observations/obs_converters/GTSPP/GTSPP.html"> GTSPP.html</A></LI>
+<LI><A HREF="../observations/obs_converters/gnd_gps_vtec/gnd_gps_vtec_text_to_obs.f90"> gnd_gps_vtec_text_to_obs.f90</A></LI>
+<LI><A HREF="../documentation/html/Lanai_diffs_from_Kodiak.html"> Lanai_diffs_from_Kodiak.html</A></LI>
+<LI><A HREF="../documentation/html/Lanai_release.html"> Lanai_release.html</A></LI>
+<LI><A HREF="../models/lorenz_96_2scale/model_mod.f90"> models/lorenz_96_2scale/model_mod.f90</A></LI>
+<LI><A HREF="../observations/obs_converters/MADIS/MADIS.html"> MADIS.html</A></LI>
+<LI><A HREF="../observations/obs_converters/MIDAS/MIDAS_to_obs.html"> MIDAS/MIDAS_to_obs.html</A></LI>
+<LI><A HREF="../models/MITgcm_annulus/model_mod.f90"> models/MITgcm_annulus/model_mod.f90</A></LI>
+<LI><A HREF="../models/MITgcm_ocean/create_ocean_obs.html"> models/MITgcm_ocean/create_ocean_obs</A></LI>
+<LI><A HREF="../models/MITgcm_ocean/model_mod.html"> models/MITgcm_ocean/model_mod.html</A></LI>
+<LI><A HREF="../models/MITgcm_ocean/trans_pv_sv.html"> models/MITgcm_ocean/trans_pv_sv.html</A></LI>
+<LI><A HREF="../models/MITgcm_ocean/trans_sv_pv.html"> models/MITgcm_ocean/trans_sv_pv.html</A></LI>
+<LI><A HREF="../observations/obs_converters/snow/snow_to_obs.html"> snow_to_obs.html</A></LI>
+<LI><A HREF="../observations/obs_converters/MODIS/MOD15A2_to_obs.html"> MODIS/MOD15A2_to_obs.html</A></LI>
+<LI><A HREF="../observations/obs_converters/MODIS/MODIS_README.html"> MODIS/MODIS_README.html</A></LI>
+<LI><A HREF="../documentation/html/Manhattan_diffs_from_Lanai.html"> Manhattan_diffs_from_Lanai.html</A></LI>
+<LI><A HREF="../documentation/html/Manhattan_getting_started.html"> Manhattan_getting_started.html</A></LI>
+<LI><A HREF="../documentation/html/Manhattan_release.html"> Manhattan_release.html</A></LI>
+<LI><A HREF="../observations/obs_converters/NCEP/prep_bufr/prep_bufr.html"> NCEP prepbufr to source.html</A></LI>
+<LI><A HREF="../observations/obs_converters/NCEP/ascii_to_obs/create_real_obs.html"> NCEP/ascii_to_obs/create_real_obs.html</A></LI>
+<LI><A HREF="../observations/obs_converters/NCEP/prep_bufr/prep_bufr.html"> NCEP/prep_bufr/prep_bufr.html</A></LI>
+<LI><A HREF="../models/NCOMMAS/dart_to_ncommas.html"> models/NCOMMAS/dart_to_ncommas.html</A></LI>
+<LI><A HREF="../models/NCOMMAS/model_mod.html"> models/NCOMMAS/model_mod.html</A></LI>
+<LI><A HREF="../models/NCOMMAS/ncommas_to_dart.html"> models/NCOMMAS/ncommas_to_dart.html</A></LI>
+<LI><A HREF="../models/POP/dart_pop_mod.html"> models/POP/dart_pop_mod</A></LI>
+<LI><A HREF="../models/POP/model_mod.html"> models/POP/model_mod.html</A></LI>
+<LI><A HREF="../models/POP/model_mod_check.html"> models/POP/model_mod_check.html</A></LI>
+<LI><A HREF="../developer_tests/utilities/PrecisionCheck.html"> PrecisionCheck.html</A></LI>
+<LI><A HREF="../observations/obs_converters/ROMS/ROMS.html"> ROMS.html</A></LI>
+<LI><A HREF="../models/ROMS/model_mod.html"> models/ROMS/model_mod.html</A></LI>
+<LI><A HREF="../models/rose/model_mod.f90"> models/rose/model_mod.f90</A></LI>
+<LI><A HREF="../observations/obs_converters/SABER/convert_saber_cdf.f90"> convert_saber_cdf.f90</A></LI>
+<LI><A HREF="../observations/obs_converters/SSEC/SSEC.html"> SSEC.html</A></LI>
+<LI><A HREF="../observations/obs_converters/SSUSI/convert_f16_edr_dsk.html"> SSUSI/convert_f16_edr_dsk.html</A></LI>
+<LI><A HREF="../models/tiegcm/model_mod.f90"> models/tiegdm/model_mod.f90</A></LI>
 <LI><A HREF="../observations/obs_converters/tpw/tpw.html"> Total Precipitable Water obs</A></LI>
 <LI><A HREF="../observations/obs_converters/tropical_cyclone/tc_to_obs.html"> Tropical Cyclone ATCF reports</A></LI>
-<LI><A HREF="tutorial/index.html">DART Tutorial</A></LI>
-<LI><A HREF="../observations/obs_converters/WOD/WOD.html"> WOD/WOD</A></LI>
-<LI><A HREF="../assimilation_code/modules/assimilation/adaptive_inflate_mod.html"> adaptive_inflate_mod</A></LI>
-<LI><A HREF="../assimilation_code/programs/advance_time/advance_time.html"> advance_time</A></LI>
+<LI><A HREF="tutorial/index.html"> DART Tutorial</A></LI>
+<LI><A HREF="../observations/obs_converters/WOD/WOD.html"> WOD.html</A></LI>
+<LI><A HREF="../assimilation_code/modules/assimilation/adaptive_inflate_mod.html"> adaptive_inflate_mod.html</A></LI>
+<LI><A HREF="../assimilation_code/programs/advance_time/advance_time.html"> advance_time.html</A></LI>
 <LI><A HREF="../assimilation_code/modules/utilities/assert_mod.f90"> assert_mod</A> (source)</LI>
-<LI><A HREF="../assimilation_code/modules/assimilation/assim_model_mod.html"> assim_model_mod</A></LI>
-<LI><A HREF="../assimilation_code/modules/assimilation/assim_tools_mod.html"> assim_tools_mod</A></LI>
-<LI><A HREF="../models/bgrid_solo/model_mod.html"> bgrid_solo/model_mod</A></LI>
-<LI><A HREF="../documentation/html/bitwise_considerations.html"> bitwise_considerations</A></LI>
-<LI><A HREF="../documentation/html/boilerplate/boilerplate.html"> boilerplate</A></LI>
-<LI><A HREF="../models/cam-fv/model_mod.html"> cam-fv/model_mod</A></LI>
-<LI><A HREF="../models/cam-old/cam_to_dart.html"> cam-old/cam_to_dart</A></LI>
-<LI><A HREF="../models/cam-old/dart_to_cam.html"> cam-old/dart_to_cam</A></LI>
+<LI><A HREF="../assimilation_code/modules/assimilation/assim_model_mod.html"> assim_model_mod.html</A></LI>
+<LI><A HREF="../assimilation_code/modules/assimilation/assim_tools_mod.html"> assim_tools_mod.html</A></LI>
+<LI><A HREF="../models/bgrid_solo/model_mod.html"> models/bgrid_solo/model_mod.html</A></LI>
+<LI><A HREF="../documentation/html/bitwise_considerations.html"> bitwise_considerations.html</A></LI>
+<LI><A HREF="../documentation/html/boilerplate/boilerplate.html"> boilerplate.html</A></LI>
+<LI><A HREF="../models/cam-fv/model_mod.html"> cam-fv/model_mod.html</A></LI>
+<LI><A HREF="../models/cam-old/cam_to_dart.html"> cam-old/cam_to_dart.html</A></LI>
+<LI><A HREF="../models/cam-old/dart_to_cam.html"> cam-old/dart_to_cam.html</A></LI>
 <LI><A HREF="../models/cam-old/model_mod.html"> cam-old/model_mod</A></LI>
 <LI><A HREF="../assimilation_code/location/channel/location_mod.html"> channel/location_mod</A></LI>
 <LI><A HREF="../observations/obs_converters/cice/cice_to_obs.html"> cice/cice_to_obs</A></LI>

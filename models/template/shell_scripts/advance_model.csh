@@ -6,6 +6,8 @@
 #
 # DART $Id$
 #
+#>@todo FIXME UPDATE for netCDF I/O
+#
 # Standard script for use in assimilation applications
 # where the model advance is executed as a separate process.
 # Can be used as-is with most low-order models and the bgrid model which
