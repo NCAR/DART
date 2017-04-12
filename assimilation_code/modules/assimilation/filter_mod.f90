@@ -341,24 +341,32 @@ if (inf_flavor(1) > 1 )                           do_prior_inflate     = .true.
 if (inf_flavor(2) > 1 )                           do_posterior_inflate = .true.
 if (do_prior_inflate .or. do_posterior_inflate)   output_inflation     = .true.
 
-! Observation space inflation for posterior not currently supported
-if(inf_flavor(2) == 1) call error_handler(E_ERR, 'filter_main', &
-   'Posterior observation space inflation (type 1) not supported', source, revision, revdate)
+! Observation space inflation not currently supported
+if(inf_flavor(1) == 1 .or. inf_flavor(2) == 1) call error_handler(E_ERR, 'filter_main', &
+   'observation space inflation (type 1) not currently supported', source, revision, revdate, &
+   text2='contact DART developers if you are interested in using it.')
 
-! Whitaker/Hamill (2012) relaxation-to-prior-spread (rtps) inflation (inf_flavor = 4) only is for posterior
-if ( inf_flavor(1) == 4 ) then 
-   write(msgstring, *) 'Prior inflation [i.e., inf_flavor(1)]=', inf_flavor(1), ' is not allowed.  Must be 0, 1, 2, or 3' 
-   call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate) 
-endif 
+! Relaxation-to-prior-spread (RTPS) is only an option for posterior inflation
+if(inf_flavor(1) == 4) call error_handler(E_ERR, 'filter_main', &
+   'RTPS inflation (type 4) only supported for Posterior inflation', source, revision, revdate)
 
-! CSS Whitaker/Hamill (2012) relaxation-to-prior-spread (rtps) inflation (inf_flavor = 4)
-!    needs a single parameter from namelist: inf_initial(2).  Do not read-in any files
-!    Also, no damping
+! RTPS needs a single parameter from namelist: inf_initial(2).  
+! Do not read in any files.  Also, no damping.  but warn the user if they try to set different
+! values in the namelist.
 if ( inf_flavor(2) == 4 ) then
-   inf_initial_from_restart(2)    = .false. ! get parameter from namelist inf_inital(2), not from file
+   if (inf_initial_from_restart(2) .or. inf_sd_initial_from_restart(2)) &
+      call error_handler(E_MSG, 'filter_main', 'RTPS inflation (type 4) overrides posterior inflation restart file with value in namelist', &
+         text2='posterior inflation standard deviation value not used in RTPS')
+   inf_initial_from_restart(2) = .false.    ! Get parameter from namelist inf_initial(2), not from file
    inf_sd_initial_from_restart(2) = .false. ! inf_sd not used in this algorithm
-   inf_deterministic(2)           = .true.  ! this algorithm is deterministic
-   inf_damping(2)                 = 1.0_r8  ! no damping
+
+   if (.not. inf_deterministic(2)) &
+      call error_handler(E_MSG, 'filter_main', 'RTPS inflation (type 4) overrides posterior inf_deterministic with .true.')
+   inf_deterministic(2) = .true.  ! this algorithm is deterministic
+
+   if (inf_damping(2) /= 1.0_r8) &
+      call error_handler(E_MSG, 'filter_main', 'RTPS inflation (type 4) disables posterior inf_damping')
+   inf_damping(2) = 1.0_r8  ! no damping
 endif
 
 
@@ -717,6 +725,10 @@ AdvanceTime : do
       call trace_message('After  prior inflation damping and prep')
    endif
 
+   ! if relaxation-to-prior-spread inflation, save the prior spread in SPARE_PRIOR_SPREAD
+   if ( do_rtps_inflate(post_inflate) ) &
+      call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, SPARE_PRIOR_SPREAD)
+
    call     trace_message('Before computing prior observation values')
    call timestamp_message('Before computing prior observation values')
 
@@ -843,7 +855,8 @@ AdvanceTime : do
 
    ! This block applies posterior inflation
 
-   if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
+   if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate) .or. &
+      do_rtps_inflate(post_inflate)) then
 
       call trace_message('Before posterior inflation damping and prep')
 
@@ -853,7 +866,12 @@ AdvanceTime : do
             inf_damping(2) * (state_ens_handle%copies(POST_INF_COPY, :) - 1.0_r8)
       endif
 
-      call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY)
+      if (do_rtps_inflate(post_inflate)) then   
+         call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY, &
+                                      SPARE_PRIOR_SPREAD, ENS_SD_COPY)
+      else
+         call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY)
+      endif
 
       ! Recompute the mean or the mean and spread as required for diagnostics
       call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -1366,11 +1384,13 @@ end subroutine filter_set_window_time
 
 !-------------------------------------------------------------------------
 
-subroutine filter_ensemble_inflate(ens_handle, inflate_copy, inflate, ENS_MEAN_COPY)
+subroutine filter_ensemble_inflate(ens_handle, inflate_copy, inflate, ENS_MEAN_COPY, &
+                                   SPARE_PRIOR_SPREAD, ENS_SD_COPY)
 
 type(ensemble_type),         intent(inout) :: ens_handle
 integer,                     intent(in)    :: inflate_copy, ENS_MEAN_COPY
 type(adaptive_inflate_type), intent(inout) :: inflate
+integer, optional,           intent(in)    :: SPARE_PRIOR_SPREAD, ENS_SD_COPY
 
 integer :: j, group, grp_bot, grp_top, grp_size
 
@@ -1386,10 +1406,25 @@ do group = 1, num_groups
    ! Compute the mean for this group
    call compute_copy_mean(ens_handle, grp_bot, grp_top, ENS_MEAN_COPY)
 
-   do j = 1, ens_handle%my_num_vars
-      call inflate_ens(inflate, ens_handle%copies(grp_bot:grp_top, j), &
-         ens_handle%copies(ENS_MEAN_COPY, j), ens_handle%copies(inflate_copy, j))
-   end do
+   if ( do_rtps_inflate(inflate)) then 
+      if ( present(SPARE_PRIOR_SPREAD) .and. present(ENS_SD_COPY)) then 
+         write(msgstring, *) ' doing RTPS inflation'
+         call error_handler(E_MSG,'filter_ensemble_inflate',msgstring,source,revision,revdate)
+         do j = 1, ens_handle%my_num_vars 
+            call inflate_ens(inflate, ens_handle%copies(grp_bot:grp_top, j), &
+               ens_handle%copies(ENS_MEAN_COPY, j), ens_handle%copies(inflate_copy, j), 0.0_r8, &
+               ens_handle%copies(SPARE_PRIOR_SPREAD, j), ens_handle%copies(ENS_SD_COPY, j)) 
+         end do 
+      else 
+         write(msgstring, *) 'internal error: missing arguments for RTPS inflation, should not happen'
+         call error_handler(E_ERR,'filter_ensemble_inflate',msgstring,source,revision,revdate)
+      endif 
+   else 
+      do j = 1, ens_handle%my_num_vars
+         call inflate_ens(inflate, ens_handle%copies(grp_bot:grp_top, j), &
+            ens_handle%copies(ENS_MEAN_COPY, j), ens_handle%copies(inflate_copy, j))
+      end do
+   endif
 end do
 
 end subroutine filter_ensemble_inflate
@@ -1627,7 +1662,7 @@ if (.not. do_output()) return
 if (present(label)) then
    call error_handler(E_MSG,trim(label),trim(msg))
 else
-   call error_handler(E_MSG,'filter trace:',trim(msg))
+   call error_handler(E_MSG,' filter trace:',trim(msg))
 endif
 
 end subroutine trace_message
