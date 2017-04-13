@@ -12,10 +12,11 @@
 ! files (e.g. for the obs_diag program) might be a larger number than 100K.
 
 ! BEGIN DART PREPROCESS KIND LIST
-! TEMPERATURE,        QTY_TEMPERATURE,        COMMON_CODE
-! SPECIFIC_HUMIDITY,  QTY_SPECIFIC_HUMIDITY,  COMMON_CODE
-! PRESSURE,           QTY_PRESSURE,           COMMON_CODE
-! GPSRO_REFRACTIVITY, QTY_GPSRO
+! TEMPERATURE,             QTY_TEMPERATURE,        COMMON_CODE
+! SPECIFIC_HUMIDITY,       QTY_SPECIFIC_HUMIDITY,  COMMON_CODE
+! PRESSURE,                QTY_PRESSURE,           COMMON_CODE
+! GPSRO_REFRACTIVITY,      QTY_GPSRO
+! COSMIC_ELECTRON_DENSITY, QTY_ELECTRON_DENSITY,   COMMON_CODE
 ! END DART PREPROCESS KIND LIST
 
 
@@ -372,7 +373,7 @@ end subroutine interactive_gpsro_ref
  subroutine get_expected_gpsro_ref(state_handle, ens_size,  location, gpskey, ro_ref, istatus)
 !------------------------------------------------------------------------------
 !
-! Purpose: Calculate GPS RO local refractivity or non_local (integrated)
+! Purpose: Calculate GPS RO local refractivity or non_local (integrated) 
 !          refractivity (excess phase, Sergey Sokolovskiy et al., 2005)
 !------------------------------------------------------------------------------
 !
@@ -380,12 +381,12 @@ end subroutine interactive_gpsro_ref
 !    state_vector:    DART state vector
 !
 ! output parameters:
-!    ro_ref: modeled local refractivity (N-1)*1.0e6 or non_local
+!    ro_ref: modeled local refractivity (N-1)*1.0e6 or non_local 
 !            refractivity (excess phase, m)
 !            (according to the input data parameter subset)
 !    istatus:  =0 normal; =1 outside of domain.
 !------------------------------------------------------------------------------
-!  Author: Hui Liu
+!  Author: Hui Liu 
 !  Version 1.1: June 15, 2004: Initial version CAM
 !
 !  Version 1.2: July 29, 2005: revised for new obs_def and WRF
@@ -425,6 +426,7 @@ endif
 
 obsloc   = get_location(location)
 
+
 lon      = obsloc(1)                       ! degree: 0 to 360
 lat      = obsloc(2)                       ! degree: -90 to 90
 height   = obsloc(3)                       ! (m)
@@ -450,7 +452,7 @@ else  ! gps_data(gpskey)%gpsro_ref_form == 'GPSEXC'
     ! otherwise, use non_local refractivity(excess phase delay)
 
     ! Initialization
-    phase = 0.0_r8
+    phase = 0.0_r8  
     dist_to_perigee =  0.0_r8   ! distance to perigee from a point of the ray
 
     nx = gps_data(gpskey)%ray_direction(1)
@@ -458,12 +460,13 @@ else  ! gps_data(gpskey)%gpsro_ref_form == 'GPSEXC'
     nz = gps_data(gpskey)%ray_direction(3)
 
     ! convert location of the perigee from geodetic to Cartesian coordinate
-    call geo2carte(height, lat, lon, xo, yo, zo, gps_data(gpskey)%rfict )
+
+    call geo2carte (height, lat, lon, xo, yo, zo, gps_data(gpskey)%rfict )
 
     ! currently, use a straight line passing the perigee point as ray model.
     ! later, more sophisticated ray models can be used.
     !
-    ! Start the horizontal integrate of the model refractivity along a
+    ! Start the horizontal integrate of the model refractivity along a 
     ! straight line path in cartesian coordinate
     !
     ! (x-xo)/a = (y-yo)/b = (z-zo)/c,  (a,b,c) is the line direction
@@ -476,48 +479,48 @@ else  ! gps_data(gpskey)%gpsro_ref_form == 'GPSEXC'
 
        iter = iter + 1
        dist_to_perigee = dist_to_perigee + gps_data(gpskey)%step_size
-
+   
        !  integrate to one direction of the ray for one step
        ! HK These are now different for each ensemble member
        xx = xo + dist_to_perigee * nx
        yy = yo + dist_to_perigee * ny
        zz = zo + dist_to_perigee * nz
-
-       ! convert the location of the point to geodetic coordinates
+      
+       ! convert the location of the point to geodetic coordinates 
        ! height(m), lat, lon(deg)
-
-       call carte2geo( xx, yy, zz, height1, lat1, lon1, gps_data(gpskey)%rfict )
+   
+       call carte2geo(xx, yy, zz, height1, lat1, lon1, gps_data(gpskey)%rfict )  
        if (height1 >= gps_data(gpskey)%ray_top) exit INTEGRATE
-    
+   
        ! get the refractivity at this ray point(ref00)
        call ref_local(state_handle, ens_size, lat1, lon1, height1, ref00, this_istatus)
        call track_status(ens_size, this_istatus, ro_ref, istatus, return_now)
        if (return_now) return
-
+   
        ! get the excess phase due to this ray interval
        where(istatus == 0) delta_phase1 = (ref1 + ref00) * gps_data(gpskey)%step_size * 0.5_r8
-
+   
        ! save the refractivity for integration of next ray interval
        ref1 = ref00
-
+   
        ! integrate to the other direction of the ray
        xx = xo - dist_to_perigee * nx
-       yy = yo - dist_to_perigee * ny
+       yy = yo - dist_to_perigee * ny 
        zz = zo - dist_to_perigee * nz
-
-       call carte2geo( xx, yy, zz, height1, lat1, lon1, gps_data(gpskey)%rfict )
-
+      
+       call carte2geo (xx, yy, zz, height1, lat1, lon1, gps_data(gpskey)%rfict )  
+   
        ! get the refractivity at this ray point(ref00)
        call ref_local(state_handle, ens_size, lat1, lon1, height1, ref00, this_istatus)
        call track_status(ens_size, this_istatus, ro_ref, istatus, return_now)
        if (return_now) return
-
+   
        ! get the excess phase due to this ray interval
        where(istatus == 0) delta_phase2 = (ref2 + ref00) * gps_data(gpskey)%step_size * 0.5_r8
-
+   
        ! save the refractivity for integration of next ray interval
        ref2 = ref00
-
+   
        where(istatus == 0) phase = phase + delta_phase1 + delta_phase2
        ! print*, 'phase= ',  phase, delta_phase1, delta_phase2
 
@@ -563,7 +566,7 @@ subroutine ref_local(state_handle, ens_size, lat, lon, height, ref00, istatus0)
 
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
-real(r8),            intent(in)  :: lon, lat, height
+real(r8), intent(in) :: lon, lat, height
 real(r8),            intent(out) :: ref00(ens_size)
 integer,             intent(out) :: istatus0(ens_size)
 
@@ -608,11 +611,11 @@ if (return_now) return
 !   p :  mb
 
 where (istatus0 == 0) 
-   p     = p * 0.01_r8      ! to mb
+p     = p * 0.01_r8      ! to mb
 
-   tv    = t * (1.0_r8+(rv/rd - 1.0_r8)*q)         ! virtual temperature
-   ew    = q * p/(rdorv + (1.0_r8-rdorv)*q )
-   ref00 = c1*p/t + c2*ew/(t**2)                   ! (N-1)
+tv    = t * (1.0_r8+(rv/rd - 1.0_r8)*q)         ! virtual temperature
+ew    = q * p/(rdorv + (1.0_r8-rdorv)*q )
+ref00 = c1*p/t + c2*ew/(t**2)              ! (N-1)
 endwhere
 
 end subroutine ref_local

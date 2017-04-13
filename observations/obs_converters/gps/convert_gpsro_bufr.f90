@@ -40,7 +40,7 @@ use   obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,       
                                insert_obs_in_seq, destroy_obs_sequence,         &
                                set_copy_meta_data, set_qc_meta_data, set_qc,    & 
                                set_obs_values, set_obs_def
-use   obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
+use   obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_type_of_obs, &
                                set_obs_def_error_variance, set_obs_def_location, &
                                set_obs_def_key
 use    obs_def_gps_mod, only : set_gpsro_ref
@@ -134,7 +134,7 @@ real(r8) :: obs_window_hr = -1.0      ! observation time window (+/-hours); A ne
 real(r8) :: gsi_error_inv_factor = 1.0     ! scale factor for the inverse of gsi error
 logical  :: if_global = .true.               ! Is your forecast model a regional or a global model?
 logical  :: obs_error_in_gsi = .true.        ! obs error is overwritten as one percent of the refractivity obs value
-logical  :: convert_to_geopotential_height = .true.  ! convert geometric height in bufr data to geopotential height?
+logical  :: convert_to_geopotential_height = .false.  ! convert geometric height in bufr data to geopotential height?
 logical  :: debug = .false.
 character(len=128) :: gpsro_bufr_file     = 'gdas.gpsro.bufr'
 character(len=128) :: gpsro_bufr_filelist = 'list_gpsro_bufr'
@@ -483,7 +483,7 @@ fileloop: do      ! until out of files
             if(convert_to_geopotential_height) height = geopot
             call set_gpsro_ref(obs_num, nx, ny, nz, rfict, ray_ds, ray_htop, subset)
             call set_obs_def_location(obs_def,set_location(rlon,rlat,height,VERTISHEIGHT))
-            call set_obs_def_kind(obs_def, GPSRO_REFRACTIVITY)
+            call set_obs_def_type_of_obs(obs_def, GPSRO_REFRACTIVITY)
             call set_obs_def_time(obs_def, set_time(osec, oday))
             call set_obs_def_error_variance(obs_def, oerr * oerr)
             call set_obs_def_key(obs_def, obs_num)
