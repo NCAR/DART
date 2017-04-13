@@ -134,13 +134,13 @@ LD = ifort
 
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
-FFLAGS  = -O -vec-report0 -assume buffered_io $(INCS)
+FFLAGS  = -O -assume buffered_io $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
 # for development or debugging, use this instead:
-# FFLAGS = -g -C -check noarg_temp_created -fpe0 -vec-report0 \
+# FFLAGS = -g -C -check noarg_temp_created -fpe0 \
 #          -fp-model precise  -ftrapuv -traceback \
-#          -warn argument_checking,declarations,uncalled,unused $(INCS)
+#          -warn declarations,uncalled,unused $(INCS)
 #
 # for speed on yellowstone (verify against a run with with -O and -fp-model precise
 #        that the numerical differences aren't too large to be acceptable):
