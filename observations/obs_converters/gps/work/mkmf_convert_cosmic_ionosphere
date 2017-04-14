@@ -6,8 +6,8 @@
 #
 # DART $Id$
 
-../../../../build_templates/mkmf -p preprocess -t ../../../../build_templates/mkmf.template   \
- -a "../../../.." path_names_preprocess
+../../../../build_templates/mkmf -p convert_cosmic_ionosphere -t ../../../../build_templates/mkmf.template   \
+ -a "../../../.." path_names_convert_cosmic_ionosphere
 
 exit $status
 

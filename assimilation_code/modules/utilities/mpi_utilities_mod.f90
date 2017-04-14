@@ -1869,7 +1869,7 @@ end function get_dart_mpi_comm
 
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
-! Collect min and max on task. This is for adaptive_inflate_mod
+! Collect min and max on task.
 subroutine send_minmax_to(minmax, task, global_val)
 
 real(r8), intent(in)  :: minmax(2) !> min max on each task
@@ -1919,7 +1919,7 @@ if ( .not. module_initialized ) then
    call error_handler(E_ERR,'broadcast_minmax', errstring, source, revision, revdate)
 endif
 
-! why can't we just use datasize in a single call, like the code above?
+!>@todo FIXME shouldn't this use datasize in a single call, like the code above?
 !   call mpi_allreduce(MPI_IN_PLACE, min_var, num_elements, datasize, MPI_MIN, get_dart_mpi_comm(), errcode)
 !   call mpi_allreduce(MPI_IN_PLACE, max_var, num_elements, datasize, MPI_MAX, get_dart_mpi_comm(), errcode)
 

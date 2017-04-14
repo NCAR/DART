@@ -718,43 +718,65 @@ integer,     intent(in) :: var_index ! variable index
 real(r8), intent(inout) :: variable(:) ! variable
 
 real(r8) :: minclamp, maxclamp
-character(len=NF90_MAX_NAME) :: varname ! for debugging only
+character(len=NF90_MAX_NAME) :: varname ! for informational log messages
+real(r8) :: my_minmax(2)
 
-! is lower bound set
+! if neither bound is set, return early
 minclamp = get_io_clamping_minval(dom_id, var_index)
-if ( minclamp /= missing_r8 ) then
-   !>@todo Calculating both minval, and max might be expensive for
-   !> large variables.  Should we handle this in a different way?
-   !> do we want to have a message if the variable is being clamped?
-   if ( minval(variable) < minclamp ) then
-     
-      varname = get_variable_name(dom_id, var_index)
-      write(msgstring, *) 'min val = ', minval(variable), &
-                         ' min bounds = ', minclamp
-      !@>todo FIXME : do we want to reduce and print out the absolute max/min
-      call error_handler(E_ALLMSG, 'clamp_variable', &
-                  'Clamping '//trim(varname)//', values out of bounds.', &
-                   source,revision,revdate, text2=msgstring)
+maxclamp = get_io_clamping_maxval(dom_id, var_index)
 
-      !>@todo FIXME : if allow_missing_in_state then we need to be careful
-      !>              not to clamp missing values
+if (minclamp == missing_r8 .and. maxclamp == missing_r8) return
+
+! if we get here, either the min, max or both have a clamping value.
+  
+!>@todo this is what the code needs to be for CLM and any other
+! model that allows missing values in the state.  right now that
+! is defined in assim_tools_mod but i don't think we can use it
+! because of circular module dependencies.  it should be defined
+! maybe in filter?  and set into some low level module (like types
+! or constants or options_mod so anyone can query it).
+!
+! if we allow missing values in the state (which jeff has never
+! liked because it makes the statistics funny), then these next
+! two lines need to be:
+!if (allow_missing_in_clm) then
+!   my_minmax(1) = minval(variable, mask=(variable /= missing_r8))
+!   my_minmax(2) = maxval(variable, mask=(variable /= missing_r8))
+!else
+   ! get the min/max for this variable before we start
+   my_minmax(1) = minval(variable)
+   my_minmax(2) = maxval(variable)
+!endif
+     
+varname = get_variable_name(dom_id, var_index)
+
+! is lower bound set?
+if ( minclamp /= missing_r8 ) then
+   if ( my_minmax(1) < minclamp ) then
+      !>@todo again, if we're allowing missing in state, this has to be masked:
+      ! if (allow_missing_in_clm) then
+      !    variable = max(minclamp, variable, mask=(variable /= missing_r8))
       variable = max(minclamp, variable)
+   
+      write(msgstring, *) trim(varname)// ' lower bound ', minclamp, ' min value ', my_minmax(1)
+      call error_handler(E_ALLMSG, 'clamp_variable', msgstring, &
+                         source,revision,revdate)
    endif
 endif ! min range set
 
-! is upper bound set
-maxclamp = get_io_clamping_maxval(dom_id, var_index)
+! is upper bound set?
 if ( maxclamp /= missing_r8 ) then
-   if ( maxval(variable) > maxclamp ) then
-      varname = get_variable_name(dom_id, var_index)
-      write(msgstring, *) 'max val = ', maxval(variable), &
-                          'max bounds = ', maxclamp
-      call error_handler(E_ALLMSG, 'clamp_variable', &
-                  'Clamping '//trim(varname)//', values out of bounds.', &
-                   source,revision,revdate, text2=msgstring)
-
+   if ( my_minmax(2) > maxclamp ) then
+      !>@todo again, if we're allowing missing in state, this has to be masked:
+      ! if (allow_missing_in_clm) then
+      !    variable = min(maxclamp, variable, mask=(variable /= missing_r8))
       variable = min(maxclamp, variable)
+
+      write(msgstring, *) trim(varname)// ' upper bound ', maxclamp, ' max value ', my_minmax(2)
+      call error_handler(E_ALLMSG, 'clamp_variable', msgstring, &
+                         source,revision,revdate)
    endif
+
 endif ! max range set
 
 end subroutine clamp_variable
@@ -829,6 +851,15 @@ integer :: i, ret, var_id, var_size
 character(len=256) :: date
 integer, allocatable :: dims(:)
 
+!>@todo reduce output in log file?
+! clamp_variable() currently prints out a line per variable per ensemble member.
+! this results in a lot of output in the log file.  we may want to enable or
+! disable the clamping output with a namelist or some other mechanism.  it would
+! be nice to print a single value per variable across all ensemble members, but
+! at this point we've gathered the variables for a single ensemble onto different
+! tasks, so only N tasks (where N = number of ensemble members) have the information.
+! we'd need a selective gather or a loop of send_to() calls to get the info into
+! a single task for writing.
 
 istart = 1
 do i = start_var, end_var
@@ -873,7 +904,7 @@ end subroutine write_variables
 !> Create the output files
 !>
 !> A 'blank' domain is one variable called state, with dimension = model size.
-!> It is used when the model has not suppled any netdcf info but
+!> It is used when the model has not supplied any netcdf info but
 !>     direct_netcdf_write = .true.
 !> The file is intentionally left OPEN.
 !-------------------------------------------------------------------------------

@@ -1,20 +1,20 @@
 
 &preprocess_nml
-    input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
-   output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
-     input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
-    output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
-   input_files              = '../../../obs_def/obs_def_reanalysis_bufr_mod.f90',
-                              '../../../obs_def/obs_def_altimeter_mod.f90',
-                              '../../../obs_def/obs_def_radar_mod.f90',
-                              '../../../obs_def/obs_def_metar_mod.f90',
-                              '../../../obs_def/obs_def_dew_point_mod.f90',
-                              '../../../obs_def/obs_def_rel_humidity_mod.f90',
-                              '../../../obs_def/obs_def_gps_mod.f90',
-                              '../../../obs_def/obs_def_gts_mod.f90',
-                              '../../../obs_def/obs_def_QuikSCAT_mod.f90',
-                              '../../../obs_def/obs_def_vortex_mod.f90'
-                              '../../../obs_def/obs_def_radiance_mod.f90'  /
+    input_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
+   output_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90',
+     input_obs_def_mod_file = '../../../forward_operators/DEFAULT_obs_def_mod.F90',
+    output_obs_def_mod_file = '../../../forward_operators/obs_def_mod.f90',
+   input_files              = '../../../forward_operators/obs_def_reanalysis_bufr_mod.f90',
+                              '../../../forward_operators/obs_def_altimeter_mod.f90',
+                              '../../../forward_operators/obs_def_radar_mod.f90',
+                              '../../../forward_operators/obs_def_metar_mod.f90',
+                              '../../../forward_operators/obs_def_dew_point_mod.f90',
+                              '../../../forward_operators/obs_def_rel_humidity_mod.f90',
+                              '../../../forward_operators/obs_def_gps_mod.f90',
+                              '../../../forward_operators/obs_def_gts_mod.f90',
+                              '../../../forward_operators/obs_def_QuikSCAT_mod.f90',
+                              '../../../forward_operators/obs_def_vortex_mod.f90'
+                              '../../../forward_operators/obs_def_radiance_mod.f90'  /
 
  /
 

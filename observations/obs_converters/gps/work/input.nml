@@ -46,7 +46,29 @@
    output_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90',
      input_obs_def_mod_file = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
     output_obs_def_mod_file = '../../../../observations/forward_operators/obs_def_mod.f90',
-   input_files              = '../../../../observations/forward_operators/obs_def_gps_mod.f90' /
+   input_files              = '../../../../observations/forward_operators/obs_def_gps_mod.f90' 
+/
+
+&convert_cosmic_ion_nml
+  obs_levels          = 100., 200., 300., 400., 500., 600., 700., 800.
+  ion_netcdf_file     = 'cosmic_ion_input.nc'
+  ion_netcdf_filelist = ''
+  ion_out_file        = 'obs_seq.iondens'
+/
+
+&convert_gpsro_bufr_nml
+   gpsro_bufr_file     = 'gdas.gpsro.bufr',
+   gpsro_bufr_filelist = '',
+   gpsro_out_file      = 'obs_seq.gpsro',
+   gpsro_aux_file      = 'convinfo.txt',
+   ray_htop            = 30000.0,
+   ray_hbot            =  3000.0
+   obs_error_in_gsi    = .true.,
+   if_global           = .true.,
+   convert_to_geopotential_height = .true.,
+   obs_window_hr       = 1.5,
+   debug = .true.
+ /
 
 &obs_kind_nml
  /

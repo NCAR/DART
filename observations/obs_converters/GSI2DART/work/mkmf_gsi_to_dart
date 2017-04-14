@@ -9,8 +9,8 @@
 rm -f ../enkf/kinds.f90
 /usr/bin/cpp -C -P -D_REAL8_ -traditional-cpp ../enkf/kinds.F90 > ../enkf/kinds.f90
 
-../../../mkmf/mkmf -p gsi_to_dart -t ../../../mkmf/mkmf.template   \
- -a "../../.." -w path_names_gsi_to_dart  # Note the "-w" for MPI build
+../../../../build_templates/mkmf -p gsi_to_dart -t ../../../../build_templates/mkmf.template   \
+ -a "../../../.." -w path_names_gsi_to_dart  # Note the "-w" for MPI build
 
 exit $status
 
