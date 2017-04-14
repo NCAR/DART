@@ -959,7 +959,7 @@ integer  :: ivar, obs_kind
 integer  :: tvars(3)
 integer  :: cellid
 logical  :: goodkind
-real(r8) :: lpres(ens_size), values(3, ens_size), loc_array(3, ens_size)
+real(r8) :: lpres(ens_size), values(3, ens_size)
 real(r8) :: llv(3)    ! lon/lat/vert
 integer  :: e, verttype
 
@@ -984,15 +984,20 @@ print *, 'task ', my_task_id(), ' model_interpolate: obs_kind', obs_kind,' at', 
 ! Reject obs if the station height is far way from the model terrain.
 ! HK is this the same across the ensemble?
 if(vert_is_surface(location).and. sfc_elev_max_diff >= 0) then
-      cellid = find_closest_cell_center(llv(2), llv(1))
-      if (cellid < 1) then
-         if(debug > 0) print *, 'closest cell center for lat/lon: ', llv(1), llv(2), cellid
-         goto 100
-      endif
-      if(abs(loc_array(3, 1) - zGridFace(1,cellid)) > sfc_elev_max_diff) then
+   cellid = find_closest_cell_center(llv(2), llv(1))
+   if (cellid < 1) then
+      if(debug > 0) print *, 'no closest cell center for lat/lon: ', llv(1), llv(2), cellid
+      goto 100
+   endif
+   if(abs(llv(3) - zGridFace(1,cellid)) > sfc_elev_max_diff) then
+      !Soyoung: No threshold for surface altimeter 
+      !if(obs_kind == KIND_SURFACE_PRESSURE .or. obs_kind == KIND_SURFACE_ELEVATION) then
+      !   istatus = 0
+      !else
          istatus = 12
          goto 100
-      endif
+      !endif
+   endif
 endif
 
 
@@ -1167,10 +1172,8 @@ else if (obs_kind == QTY_PRECIPITABLE_WATER) then
 
 else if (obs_kind == QTY_SURFACE_PRESSURE) then
    tvars(1) = ivar
-   do e = 1, ens_size
-      location_tmp(e) = set_location(llv(1),llv(2),1.0_r8,VERTISSURFACE)
-   enddo
-   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
+   location_tmp(1) = set_location(llv(1),llv(2),1.0_r8,VERTISSURFACE)
+   call compute_scalar_with_barycentric(state_handle, ens_size, location_tmp(1), 1, tvars, values, istatus)
    expected_obs = values(1, :)
    where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
    if ( all(istatus /= 0) ) goto 100
@@ -5504,8 +5507,8 @@ if (any(abs(weights) < roundoff)) then
    where (abs(weights) < roundoff) weights = 0.0_r8
    where (abs(1.0_r8 - abs(weights)) < roundoff) weights = 1.0_r8
 endif
-if(abs(sum(weights)-1.0_r8) > roundoff) &
-   print *, 'fail in get_barycentric_weights: sum(weights) = ',sum(weights)
+!if(abs(sum(weights)-1.0_r8) > roundoff) &
+!   print *, 'fail in get_barycentric_weights: sum(weights) = ',sum(weights)
 !end FIXME section
 
 end subroutine get_barycentric_weights
@@ -7084,7 +7087,7 @@ tk = theta_to_tk(ens_size, theta, rho, qv_nonzero, istatus_in)
 
 !tk = theta_to_tk(theta, rho, max(qv,0.0_r8))
 where (istatus_in == 0)
-   pressure = rho * rgas * tk * (1.0_r8 + 1.61_r8 * qv)
+   pressure = rho * rgas * tk * (1.0_r8 + 1.61_r8 * qv_nonzero)
 end where
 !if ((debug > 9) .and. do_output()) print *, 't,r,q,p,tk =', theta, rho, qv, pressure, tk
 
