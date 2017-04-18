@@ -181,7 +181,7 @@ end
 function PlotGivenVariable(pinfo, truth, metadata)
 %% Plot given an variable name.
 
-var_names = parse(pinfo.var_names);
+var_names = breakapart(pinfo.var_names);
 
 iplot = 0;
 

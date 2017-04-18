@@ -1,6 +1,6 @@
 function [dimlen, dimid] = nc_dim_info(fname,dimname)
-%% nc_dim_info Tests to see if the variable exists in a netCDF file - without throwing an error.
-% If the variable exists, returns a 1, if it does not exist, it returns a 0
+%% nc_dim_info Tests to see if the dimension exists in a netCDF file - without throwing an error.
+% If the dimension exists, returns a 1, if it does not exist, it returns a 0
 % Optionally returns the Matlab 'native' variable id ...
 %
 %
