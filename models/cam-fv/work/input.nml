@@ -539,8 +539,8 @@
 &obs_impact_tool_nml
   input_filename         = 'cross_correlations.txt'
   output_filename        = 'control_impact_runtime.txt'
-  allow_any_factor_value = .false.
-  debug                  = .true.
+  allow_any_impact_value = .false.
+  debug                  = .false.
   /
 
 # different methods to compute 'distance' from mean:
