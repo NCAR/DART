@@ -5,8 +5,9 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
-
+#
 #==========================================================================
+#
 # This script prepares a directory for an assimilation experiment.
 # The idea is basically that everything you need should be assembled
 # by this script and that this should only be run ONCE per experiment.
