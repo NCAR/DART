@@ -47,6 +47,8 @@ if ( $?QUICKBUILD_DEBUG ) then
    set debug = $QUICKBUILD_DEBUG
 endif
 
+\rm -f *.o *.mod
+
 @ n = 0
 
 #----------------------------------------------------------------------

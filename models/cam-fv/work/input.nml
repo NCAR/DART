@@ -536,6 +536,13 @@
    interp_test_vertcoord = 'VERTISHEIGHT'
   /
 
+&obs_impact_tool_nml
+  input_filename         = 'cross_correlations.txt'
+  output_filename        = 'control_impact_runtime.txt'
+  allow_any_factor_value = .false.
+  debug                  = .true.
+  /
+
 # different methods to compute 'distance' from mean:
 #  1 = simple absolute difference
 #  2 = normalized absolute difference
@@ -549,4 +556,5 @@
    single_restart_file_in = .true.,
    difference_method      = 4,
    /
+
 
