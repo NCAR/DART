@@ -8,7 +8,7 @@
 !> table at runtime for use during the assimilation phase, to
 !> alter the impact of observations on the state vector.
 !>
-!> these routines build a table(ntypes, nkinds) which can be
+!> these routines build a table(ntypes, nqtys) which can be
 !> indexed quickly at runtime.  this happens in the assimilation
 !> loop so performance matters.
 
@@ -19,7 +19,7 @@ use  utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,       &
                            open_file, close_file, nc_check, get_next_filename, &
                            find_namelist_in_file, check_namelist_read,         &
                            do_nml_file, do_nml_term, nmlfileunit, to_upper
-use  obs_kind_mod        ! all kinds/types, so impossible to enumerate them here
+use  obs_kind_mod        ! all qtys/types, so impossible to enumerate them here
 use parse_args_mod, only : get_args_from_string
 
 implicit none
@@ -56,12 +56,12 @@ integer :: itemlist(MAXWORDS)
 
 ! table of contents entry types
 integer, parameter :: ENTRY_UNKNOWN  = 0
-integer, parameter :: ENTRY_DARTKIND = 1
+integer, parameter :: ENTRY_DARTQTY  = 1
 integer, parameter :: ENTRY_DARTTYPE = 2
 integer, parameter :: ENTRY_GROUP    = 3
 integer, parameter :: ENTRY_KEYWORD  = 4
 
-! predefined keywords, group names, and dart type/kind names
+! predefined keywords, group names, and dart type/qty names
 type type_entry
   character(len=string_length) :: ename
   integer :: etype
@@ -71,7 +71,7 @@ end type type_entry
 type type_toc
    integer :: toc_count
    integer :: type_count
-   integer :: kind_count
+   integer :: qty_count
    type(type_entry), allocatable :: toc_entries(:)
 end type
 
@@ -101,7 +101,7 @@ integer, parameter :: STATE_DEFGROUP = 1
 integer, parameter :: STATE_DEFNOTGROUP = 2
 integer, parameter :: STATE_DEFIMPACT = 3
 
-! are we processing ALL, ALLTYPES, or ALLKINDS
+! are we processing ALL, ALLTYPES, or ALLQTYS
 integer :: this_category
 
 ! define a comment character (#, %, !) which makes the rest
@@ -119,12 +119,14 @@ character(len=512) :: msgstring, msgstring2, msgstring3
 ! namelist: input/output names, values, etc
 character(len=512) :: input_filename  = ''
 character(len=512) :: output_filename = ''
+logical :: allow_any_impact_value = .false.
 logical :: debug = .false.  ! .true. for more output
 
 ! namelist
 namelist /obs_impact_tool_nml/  &
    input_filename,  &
    output_filename, &
+   allow_any_impact_value, &
    debug
 
 contains
@@ -149,7 +151,7 @@ call initialize_module()
 ! set up space for the output table
 call allocate_impact_table(table)
 
-! read in types and kinds strings, compute sizes,
+! read in types and qty strings, compute sizes,
 ! allocate space for the toc and group types
 
 call init_strings_and_toc(toc, group_toc)
@@ -224,30 +226,30 @@ end subroutine create_impact_table
 !----------------------------------------------------------------------
 
 ! TOOL & RUNTIME:
-subroutine allocate_impact_table(table, ntypes, nkinds)
+subroutine allocate_impact_table(table, ntypes, nqtys)
 
 real(r8), allocatable, intent(out) :: table(:,:)
 integer, optional,     intent(out) :: ntypes
-integer, optional,     intent(out) :: nkinds
+integer, optional,     intent(out) :: nqtys
 
-integer :: kind_count, type_count
+integer :: qty_count, type_count
 
 ! initialization and setup
 !call initialize_module()
 
-! output table is dimensioned (numtypes, 0:numkinds)
+! output table is dimensioned (numtypes, 0:numqtys)
 ! space for results, and initial values
 ! default to 'unset'.  at the end, anything unset will be
 ! changed to 1.0, which means impact like usual with no change.
 
-kind_count = get_num_quantities() 
+qty_count = get_num_quantities() 
 type_count = get_num_types_of_obs() 
 
-allocate(table(type_count, 0:kind_count))
+allocate(table(type_count, 0:qty_count))
 table(:,:) = missing_r8
 
 if (present(ntypes)) ntypes = type_count
-if (present(nkinds)) nkinds = kind_count
+if (present(nqtys)) nqtys = qty_count
 
 end subroutine allocate_impact_table
 
@@ -257,9 +259,9 @@ end subroutine allocate_impact_table
 ! been replaced with a routine that reads 3 words per line, errors 
 ! out if not 3, and then calls the set routine immediately.  input
 ! lines have to be: 
-!  type_name kind_name real_value
+!  type_name qty_name real_value
 ! at this stage in the process.  it identifies words which aren't 
-! type or kind names without a dictionary or state machine.
+! type or qty names without a dictionary or state machine.
 
 ! RUNTIME:
 subroutine read_impact_table(sourcefile, table, allow_any_values)
@@ -270,7 +272,7 @@ logical,          intent(in)    :: allow_any_values
 
 integer :: i, j
 integer :: funit
-character(len=obstypelength) :: typename, kindname
+character(len=obstypelength) :: typename, qtyname
 real(r8) :: rvalue
 
 ! assumes the table is already allocated the proper size.
@@ -295,15 +297,15 @@ readloop: do
    write(errline, '(A,I6,A)') 'error on line ', linecount, '; line contents: '
 
    ! parse it into 3 white-space separated words, two strings and one real
-   read(readbuf, *, iostat=ios) typename, kindname, rvalue
+   read(readbuf, *, iostat=ios) typename, qtyname, rvalue
    if (ios /= 0) then
       call error_handler(E_ERR, 'read_impact_table', &
-                        'lines must contain a specific type, a generic kind, and a real value', &
+                        'lines must contain a specific type, a generic qty, and a real value', &
                         source, revision, revdate, text2=errline, text3=readbuf)
    endif
-!print *, trim(typename)//' '//trim(kindname)//' ', rvalue
+!print *, trim(typename)//' '//trim(qtyname)//' ', rvalue
 
-   call set_impact(table, typename, kindname, rvalue, allow_any_values)
+   call set_impact(table, typename, qtyname, rvalue, allow_any_values)
 
 enddo readloop
 call close_file(funit)
@@ -327,11 +329,11 @@ end subroutine read_impact_table
 !----------------------------------------------------------------------
 
 ! RUNTIME:
-subroutine set_impact(table, typename, kindname, rvalue, allow_any_values)
+subroutine set_impact(table, typename, qtyname, rvalue, allow_any_values)
 
 real(r8),         intent(inout) :: table(:,0:)
 character(len=*), intent(in)    :: typename
-character(len=*), intent(in)    :: kindname
+character(len=*), intent(in)    :: qtyname
 real(r8),         intent(in)    :: rvalue
 logical,          intent(in)    :: allow_any_values
 
@@ -341,10 +343,10 @@ logical, save :: must_be_on_or_off = .true.
 integer :: index1, index2
 
 ! expect exactly 3 tokens on these lines:
-!  type  kind  real(r8)
+!  type  qty  real(r8)
 
 index1 = get_index_for_type_of_obs(typename)
-index2 = get_index_for_quantity(kindname)
+index2 = get_index_for_quantity(qtyname)
 !print *, 'in set_impact, index values are: ', index1, index2
 
 if (index1 < 0) then
@@ -354,7 +356,7 @@ if (index1 < 0) then
 endif
 if (index2 < 0) then
    call error_handler(E_ERR, 'obs_impact', &
-                     'second word on line is unrecognized generic KIND', &
+                     'second word on line is unrecognized generic QTY', &
                      source, revision, revdate, text2=errline, text3=readbuf)
 endif
 
@@ -386,7 +388,7 @@ if ((table(index1, index2) /= missing_r8) .and. &
     (table(index1, index2) /= rvalue)) then
    write(msgstring, *) 'error; different impact factor already set for this pair'
    write(msgstring2, *) 'previous value was', table(index1, index2), ' new value is ', rvalue
-   write(msgstring3, *) trim(typename), ' and ', trim(kindname)
+   write(msgstring3, *) trim(typename), ' and ', trim(qtyname)
    call error_handler(E_ERR, 'obs_impact', msgstring, &
                      source, revision, revdate, text2=msgstring2, text3=msgstring3)
    
@@ -453,18 +455,18 @@ subroutine init_strings_and_toc(toc, group_toc)
 type(type_toc),        intent(inout) :: toc
 type(type_group),      intent(inout) :: group_toc
 
-integer :: i, type_count, kind_count, ntoc
+integer :: i, type_count, qty_count, ntoc
 integer :: groupsize, membersize
-character(len=obstypelength), allocatable :: knownkinds(:)
+character(len=obstypelength), allocatable :: knownqtys(:)
 character(len=obstypelength), allocatable :: knowntypes(:)
 
-! first, get all possible generic kinds from obs_kind_mod
-! BEWARE!! the first kind number is 0!!!!!
-kind_count = get_num_quantities() 
-allocate(knownkinds(0:kind_count))
-do i=0, kind_count
-   knownkinds(i) = get_name_for_quantity(i)
-   call to_upper(knownkinds(i))
+! first, get all possible generic qtys from obs_kind_mod
+! BEWARE!! the first qty number is 0!!!!!
+qty_count = get_num_quantities() 
+allocate(knownqtys(0:qty_count))
+do i=0, qty_count
+   knownqtys(i) = get_name_for_quantity(i)
+   call to_upper(knownqtys(i))
 enddo
 
 ! then, get all possible specific types from obs_kind_mod
@@ -477,11 +479,11 @@ enddo
 
 
 ! toc size  - arbitrary size, could be larger
-ntoc = (type_count + kind_count) * 4
+ntoc = (type_count + qty_count) * 4
 
 ! space for groups - both sizes completely arbitrary
-groupsize = kind_count * 2
-membersize = kind_count * 4
+groupsize = qty_count * 2
+membersize = qty_count * 4
 group_toc%group_count = groupsize
 allocate(group_toc%groups(groupsize))
 do i=1, groupsize
@@ -491,9 +493,9 @@ enddo
 
 allocate(toc%toc_entries(ntoc))
 
-call build_toc(kind_count, knownkinds, type_count, knowntypes, toc)
+call build_toc(qty_count, knownqtys, type_count, knowntypes, toc)
 
-deallocate(knownkinds, knowntypes)
+deallocate(knownqtys, knowntypes)
 
 end subroutine init_strings_and_toc
 
@@ -516,7 +518,7 @@ group_toc%group_count = 0
 
 deallocate(toc%toc_entries)
 toc%toc_count = 0
-toc%kind_count = 0
+toc%qty_count = 0
 toc%type_count = 0
 
 if (present(table)) call free_impact_table(table)
@@ -563,10 +565,10 @@ end subroutine search_toc
 
 !----------------------------------------------------------------------
 
-subroutine build_toc(nkinds, kindnames, ntypes, typenames, toc)
+subroutine build_toc(nqtys, qtynames, ntypes, typenames, toc)
 
-integer,          intent(in)    :: nkinds
-character(len=*), intent(in)    :: kindnames(0:)
+integer,          intent(in)    :: nqtys
+character(len=*), intent(in)    :: qtynames(0:)
 integer,          intent(in)    :: ntypes
 character(len=*), intent(in)    :: typenames(:)
 type(type_toc),   intent(inout) :: toc
@@ -576,21 +578,21 @@ integer :: i
 ! add keyword entries to toc table
 call add_keywords(toc)
 
-! a bit specialized but types and kind counts seem to be
+! a bit specialized but types and qty counts seem to be
 ! needed everywhere, so put them where we can access them.
-call add_limits(toc, ntypes, nkinds)
+call add_limits(toc, ntypes, nqtys)
 
-! at some point we should make types and kinds disjoint
+! at some point we should make types and qtys disjoint
 ! sets of integer parameter values, because then there is 
 ! no confusion about using one when you meant the other.
 ! (e.g. do not use 1->n at all; start one at 1000 and the
 ! other at 5000, and subtract the offset each time before
 ! using.)
 
-! the first kind has a value of 0
-do i=0, nkinds
-   if (kindnames(i) /= 'UNKNOWN') then
-      call add_toc(kindnames(i), toc, ENTRY_DARTKIND, i)
+! the first qty has a value of 0
+do i=0, nqtys
+   if (qtynames(i) /= 'UNKNOWN') then
+      call add_toc(qtynames(i), toc, ENTRY_DARTQTY, i)
    endif
 enddo
 
@@ -727,7 +729,7 @@ call add_toc("EXCEPT",   toc, ENTRY_KEYWORD)
 call add_toc("UNKNOWN",  toc, ENTRY_KEYWORD)
 call add_toc("ALL",      toc, ENTRY_KEYWORD)
 
-call add_toc("ALLKINDS", toc, ENTRY_KEYWORD)
+call add_toc("ALLQTYS",  toc, ENTRY_KEYWORD)
 call add_toc("ALLTYPES", toc, ENTRY_KEYWORD)
 
 
@@ -753,13 +755,13 @@ end function is_keyword
 
 !----------------------------------------------------------------------
 
-subroutine add_limits(toc, ntypes, nkinds)
+subroutine add_limits(toc, ntypes, nqtys)
 
 type(type_toc),   intent(inout) :: toc
 integer,          intent(in)    :: ntypes
-integer,          intent(in)    :: nkinds
+integer,          intent(in)    :: nqtys
 
-toc%kind_count = nkinds
+toc%qty_count = nqtys
 toc%type_count = ntypes
 
 end subroutine add_limits
@@ -790,7 +792,7 @@ if (wordcount < 1) return
 
 if (itemlist(1) < 0) then
    call error_handler(E_ERR, 'state_change',  &
-                     'first word on line is unrecognized keyword, KIND, TYPE, or group name', &
+                     'first word on line is unrecognized keyword, QTY, TYPE, or group name', &
                      source, revision, revdate, text2=errline, text3=readbuf)
 endif
 
@@ -866,7 +868,7 @@ select case (this_state)
          this_state = STATE_UNDEFINED
 
       else if ((is_keyword(itemlist(1), 'ALL',      toc)) .or. &
-               (is_keyword(itemlist(1), 'ALLKINDS', toc)) .or. &
+               (is_keyword(itemlist(1), 'ALLQTYS', toc)) .or. &
                (is_keyword(itemlist(1), 'ALLTYPES', toc))) then
 
          !ALL and friends - add all, and then if word 2 is EXCEPT, take away
@@ -885,7 +887,7 @@ select case (this_state)
                                source, revision, revdate, text2=errline, text3=readbuf)
          endif
    
-         ! add all kinds, types, or types+kinds to group.
+         ! add all qtys, types, or types+qtys to group.
          call add_all_to_group(toc, current_group_id, itemlist(1), group_toc)
 
          if (wordcount >= 2) then
@@ -896,13 +898,13 @@ select case (this_state)
             endif
    
 !print *, 'changing state to defnotgroup'
-            ! finish any kinds/groups on rest of this line.
+            ! finish any qtys/groups on rest of this line.
             if (wordcount > 2) &
                call sub_from_group(wordcount-2, itemlist(3:wordcount), current_group_id, itemlist(1), group_toc, toc)
 
          endif
 
-         ! subsequent lines remove kinds and groups from group.
+         ! subsequent lines remove qtys and groups from group.
          this_state = STATE_DEFNOTGROUP
 
       else
@@ -1013,10 +1015,10 @@ do i = 1, wordcount
       endif
    enddo
 
-   ! make sure they are kinds or types, do not allow nested groups
+   ! make sure they are qtys or types, do not allow nested groups
    if (get_toc_type(itemlist(i), toc) == ENTRY_GROUP) then
       call error_handler(E_ERR, 'add_to_group', &
-                         'group members must be DART KINDS or TYPES (nested groups not allowed)', &
+                         'group members must be DART QTYS or TYPES (nested groups not allowed)', &
                          source, revision, revdate, text2=errline, text3=readbuf)
    endif
 
@@ -1041,16 +1043,16 @@ integer,          intent(in)    :: category
 type(type_group), intent(inout) :: group_toc
 
 integer :: i, itemtype, num_mem
-logical :: dokinds, dotypes
+logical :: doqtys, dotypes
 
-dokinds = .false.
+doqtys = .false.
 dotypes = .false.
 
 if (is_keyword(category, 'ALL', toc)) then
-   dokinds = .true.
+   doqtys = .true.
    dotypes = .true.
-else if (is_keyword(category, 'ALLKINDS', toc)) then
-   dokinds = .true.
+else if (is_keyword(category, 'ALLQTYS',  toc)) then
+   doqtys = .true.
 else if (is_keyword(category, 'ALLTYPES', toc)) then
    dotypes = .true.
 else
@@ -1061,11 +1063,11 @@ endif
 
 call check_groupindex(groupid, 'add_all_to_group', group_toc)
 
-! for all kinds and/or types in toc, add them as requested
+! for all qtys and/or types in toc, add them as requested
 toc_loop: do i = 1, toc%toc_count
 
    itemtype = get_toc_type(i, toc)
-   if ((itemtype == ENTRY_DARTKIND .and. dokinds) .or. &
+   if ((itemtype == ENTRY_DARTQTY  .and. doqtys) .or. &
        (itemtype == ENTRY_DARTTYPE .and. dotypes)) then
 
       num_mem = group_toc%groups(groupid)%member_count + 1
@@ -1093,16 +1095,16 @@ type(type_toc),   intent(inout) :: toc
 integer :: i, j, itemtype
 logical :: isgroup
 integer :: itemval, itemcount, subgroupid
-logical :: dokinds, dotypes
+logical :: doqtys, dotypes
 
-dokinds = .false.
+doqtys = .false.
 dotypes = .false.
 
 if (is_keyword(category, 'ALL', toc)) then
-   dokinds = .true.
+   doqtys = .true.
    dotypes = .true.
-else if (is_keyword(category, 'ALLKINDS', toc)) then
-   dokinds = .true.
+else if (is_keyword(category, 'ALLQTYS',  toc)) then
+   doqtys = .true.
 else if (is_keyword(category, 'ALLTYPES', toc)) then
    dotypes = .true.
 else
@@ -1116,7 +1118,7 @@ call check_groupindex(groupid, 'sub_from_group', group_toc)
 do i = 1, wordcount
    if (itemlist(i) < 0) then
       call error_handler(E_ERR, 'sub_from_group', &
-                         'EXCEPT items must be known KINDS, TYPES, or groups', &
+                         'EXCEPT items must be known QTYS, TYPES, or groups', &
                          source, revision, revdate, text2=errline, text3=readbuf)
 
    endif
@@ -1128,7 +1130,7 @@ do i = 1, wordcount
    ! error checking a nightmare, and hard to detect logical loops.
    ! for now, just say no.
 
-   call iteminfo(itemlist(i), itemval, isgroup, itemcount, toc, group_toc, kindonly = .false.)
+   call iteminfo(itemlist(i), itemval, isgroup, itemcount, toc, group_toc, qtyonly = .false.)
 
    if (isgroup) subgroupid = itemval
 
@@ -1139,7 +1141,7 @@ do i = 1, wordcount
          itemval = get_group_member_by_index(subgroupid, j, group_toc)
 
          itemtype = get_toc_type(itemval, toc)
-         if (.not. (itemtype == ENTRY_DARTKIND .and. dokinds) .and. &
+         if (.not. (itemtype == ENTRY_DARTQTY  .and. doqtys) .and. &
              .not. (itemtype == ENTRY_DARTTYPE .and. dotypes)) then
             call error_handler(E_ERR, 'sub_from_group', &
                                'error using EXCEPT; item '//trim(get_toc_name(itemval, toc))//' not a group member', &
@@ -1321,34 +1323,34 @@ end subroutine check_groupindex
 
 !----------------------------------------------------------------------
 
-subroutine find_all_types_for_kind(givenkind, typecount, typesfound, typeidlist)
+subroutine find_all_types_for_qty(givenqty, typecount, typesfound, typeidlist)
  
-integer, intent(in)  :: givenkind
+integer, intent(in)  :: givenqty
 integer, intent(in)  :: typecount
 integer, intent(out) :: typesfound
 integer, intent(out) :: typeidlist(:)
 
-integer :: i, kindindex
+integer :: i, qtyindex
 
-! given a generic kind, find all the specific types which
-! map to this kind.  i believe this has to be done by iterating
-! through every type to see what the kind is.
+! given a generic qty, find all the specific types which
+! map to this qty.  i believe this has to be done by iterating
+! through every type to see what the qty is.
 
-! this routine is dealing with the raw indices into the kinds
+! this routine is dealing with the raw indices into the qtys
 ! and types array - it no longer is using the table of contents values.
 
 typesfound = 0
 typeidlist(:) = -1
 
 do i=1, typecount
-   kindindex = get_quantity_for_type_of_obs(i)
-   if (kindindex == givenkind) then
+   qtyindex = get_quantity_for_type_of_obs(i)
+   if (qtyindex == givenqty) then
       typesfound = typesfound + 1
       typeidlist(typesfound) = i
    endif
 enddo
 
-end subroutine find_all_types_for_kind
+end subroutine find_all_types_for_qty
 
 !----------------------------------------------------------------------
 
@@ -1369,16 +1371,16 @@ logical :: isgroup1, isgroup2
 integer :: i, j
 
 ! expect exactly 3 tokens on these lines:
-!  kind_or_type_or_group   kind_or_group   real(r8)
+!  qty_or_type_or_group   qty_or_group   real(r8)
 ! (where 2nd group cannot contain types)
 
 call check_impact_line(wordcount, itemlist, wordarray, rvalue)
 
 ! ok, we have the first, second, and value.  update the table.
-! any combination of kind names or group names is allowed.
+! any combination of qty names or group names is allowed.
 
-call iteminfo(itemlist(1), itemval1, isgroup1, itemcount1, toc, group_toc, kindonly=.false.)
-call iteminfo(itemlist(2), itemval2, isgroup2, itemcount2, toc, group_toc, kindonly=.true.)
+call iteminfo(itemlist(1), itemval1, isgroup1, itemcount1, toc, group_toc, qtyonly=.false.)
+call iteminfo(itemlist(2), itemval2, isgroup2, itemcount2, toc, group_toc, qtyonly=.true.)
 
 ! both single items
 if (.not. isgroup1 .and. .not. isgroup2) then
@@ -1390,7 +1392,7 @@ else if (.not. isgroup1 .and. isgroup2) then
    groupid2 = itemval2
    do i=1, itemcount2
       groupitem2 = get_group_member_by_index(groupid2, i, group_toc)
-      call require_only_kinds_in_group(groupitem2, groupid2, toc)
+      call require_only_qtys_in_group(groupitem2, groupid2, toc)
       itemval2 = get_toc_value(groupitem2, toc)   
       call fill_impact_table_values(table, itemval1, itemval2, rvalue, toc, itemlist(1), 'k/g')
    enddo
@@ -1414,7 +1416,7 @@ else if (isgroup1 .and. isgroup2) then
       itemval1 = get_toc_value(groupitem1, toc)
       do j=1, itemcount2
          groupitem2 = get_group_member_by_index(groupid2, j, group_toc)
-         call require_only_kinds_in_group(groupitem2, groupid2, toc)
+         call require_only_qtys_in_group(groupitem2, groupid2, toc)
          itemval2 = get_toc_value(groupitem2, toc)
          call fill_impact_table_values(table, itemval1, itemval2, rvalue, toc, groupitem1, 'g/g')
       enddo
@@ -1422,7 +1424,7 @@ else if (isgroup1 .and. isgroup2) then
 
 else
    call error_handler(E_ERR, 'update_impact', &
-                     'first and second entries on line must be either a KIND or a group name', &
+                     'first and second entries on line must be either a QTY or a group name', &
                      source, revision, revdate, text2=errline, text3=readbuf)
 endif
 
@@ -1444,12 +1446,12 @@ if (wordcount /= 3) then
 endif
 if (itemlist(1) < 0) then
    call error_handler(E_ERR, 'check_impact_line', &
-                     'first word on line is unrecognized KIND, TYPE, or group name', &
+                     'first word on line is unrecognized QTY, TYPE, or group name', &
                      source, revision, revdate, text2=errline, text3=readbuf)
 endif
 if (itemlist(2) < 0) then
    call error_handler(E_ERR, 'check_impact_line', &
-                     'second word on line is unrecognized KIND or group name', &
+                     'second word on line is unrecognized QTY or group name', &
                      source, revision, revdate, text2=errline, text3=readbuf)
 endif
 
@@ -1482,17 +1484,17 @@ integer,          intent(in)           :: tocindex1
 character(len=*), intent(in), optional :: label
 
 integer :: i, typeid(toc%type_count), typesfound
-integer :: kindid
+integer :: qtyid
 
 ! expand tableindex1 if type here and loop over list
-if (get_toc_type(tocindex1, toc) == ENTRY_DARTKIND) then
+if (get_toc_type(tocindex1, toc) == ENTRY_DARTQTY) then
 
    ! this routine is now dealing with the absolute indices into the types
-   ! and kinds array; not the indices in the table of contents.  the values
+   ! and qtys array; not the indices in the table of contents.  the values
    ! returned can be used directly to set the table entries.
 
-   kindid = tableindex1 - 1   ! kinds must be offset down by one, 0:num_kinds
-   call find_all_types_for_kind(kindid, toc%type_count, typesfound, typeid)
+   qtyid = tableindex1 - 1   ! qtys must be offset down by one, 0:num_qtys
+   call find_all_types_for_qty(qtyid, toc%type_count, typesfound, typeid)
  
    do i=1, typesfound
       call set_impact_table_values(table, typeid(i), tableindex2, rvalue, toc, label)
@@ -1528,7 +1530,7 @@ if ((table(tableindex1, tableindex2) /= missing_r8) .and. &
    write(msgstring,  *) 'error; different impact factor already set for this pair'
    write(msgstring2, *) 'previous value was', table(tableindex1, tableindex2), ' new value is ', rvalue
    write(msgstring3, *) trim(get_name_by_value(tableindex1, ENTRY_DARTTYPE, toc)), ' and ',  &
-                        trim(get_name_by_value(tableindex2, ENTRY_DARTKIND, toc))
+                        trim(get_name_by_value(tableindex2, ENTRY_DARTQTY,  toc))
    call error_handler(E_ERR, 'update_impact', msgstring, &
                      source, revision, revdate, text2=msgstring2, text3=msgstring3)
    
@@ -1540,7 +1542,7 @@ end subroutine set_impact_table_values
 
 !----------------------------------------------------------------------
 
-subroutine iteminfo(item, itemid, isgroup, itemcount, toc, group_toc, kindonly)
+subroutine iteminfo(item, itemid, isgroup, itemcount, toc, group_toc, qtyonly)
 
 integer,          intent(in)  :: item
 integer,          intent(out) :: itemid
@@ -1548,7 +1550,7 @@ logical,          intent(out) :: isgroup
 integer,          intent(out) :: itemcount
 type(type_toc),   intent(in)  :: toc
 type(type_group), intent(in)  :: group_toc
-logical,          intent(in)  :: kindonly
+logical,          intent(in)  :: qtyonly
 
 integer :: entryinfo
 
@@ -1562,17 +1564,17 @@ if(entryinfo == ENTRY_GROUP) then
    itemcount = get_group_count(itemid, group_toc)
    ! FIXME: same for group members for item 2 - not symmetric? check here?
 
-else if (kindonly .and. entryinfo == ENTRY_DARTTYPE) then
+else if (qtyonly .and. entryinfo == ENTRY_DARTTYPE) then
    call error_handler(E_ERR, 'iteminfo', &
-                     'entry on right, '//trim(get_toc_name(item,toc))//' can only be a DART KIND', &
+                     'entry on right, '//trim(get_toc_name(item,toc))//' can only be a DART QTY', &
                      source, revision, revdate, text2=errline, text3=readbuf)
 
-else if (kindonly .and. entryinfo == ENTRY_DARTKIND) then
+else if (qtyonly .and. entryinfo == ENTRY_DARTQTY) then
    itemid = get_toc_value(item, toc)
    isgroup = .false.
    itemcount = 1
 
-else if (.not. kindonly .and. (entryinfo == ENTRY_DARTKIND .or. entryinfo == ENTRY_DARTTYPE)) then
+else if (.not. qtyonly .and. (entryinfo == ENTRY_DARTQTY .or. entryinfo == ENTRY_DARTTYPE)) then
    itemid = get_toc_value(item, toc)
    isgroup = .false.
    itemcount = 1
@@ -1580,7 +1582,7 @@ else if (.not. kindonly .and. (entryinfo == ENTRY_DARTKIND .or. entryinfo == ENT
 else
 
    call error_handler(E_ERR, 'iteminfo', &
-                     'unrecognized input; expecting a DART KIND, TYPE, or GROUP name', &
+                     'unrecognized input; expecting a DART QTY, TYPE, or GROUP name', &
                      source, revision, revdate, text2=errline, text3=readbuf)
 endif
 
@@ -1589,7 +1591,7 @@ end subroutine iteminfo
 
 !----------------------------------------------------------------------
 
-subroutine require_only_kinds_in_group(item, groupid, toc)
+subroutine require_only_qtys_in_group(item, groupid, toc)
 
 integer,        intent(in) :: item
 integer,        intent(in) :: groupid
@@ -1597,15 +1599,15 @@ type(type_toc), intent(in) :: toc
 
 character(len=string_length) :: gname
 
-if (get_toc_type(item, toc) /= ENTRY_DARTKIND) then
+if (get_toc_type(item, toc) /= ENTRY_DARTQTY) then
 
    gname = get_name_by_value(groupid, ENTRY_GROUP, toc)
-   call error_handler(E_ERR, 'require_only_kinds_in_group', &
-                     'if in righthand column, group '//trim(gname)//' must include only DART KINDS', &
+   call error_handler(E_ERR, 'require_only_qtys_in_group', &
+                     'if in righthand column, group '//trim(gname)//' must include only DART QTYS', &
                      source, revision, revdate, text2=errline, text3=readbuf)
 endif
 
-end subroutine require_only_kinds_in_group
+end subroutine require_only_qtys_in_group
 
 !----------------------------------------------------------------------
 
@@ -1628,22 +1630,22 @@ end subroutine must_be_specific_type
 
 !----------------------------------------------------------------------
 
-subroutine must_be_generic_kind(item, toc)
+subroutine must_be_generic_qty(item, toc)
 
 integer,        intent(in) :: item
 type(type_toc), intent(in) :: toc
 
 character(len=string_length) :: ename
 
-if (get_toc_type(item, toc) /= ENTRY_DARTKIND) then
+if (get_toc_type(item, toc) /= ENTRY_DARTQTY) then
 
    ename = get_toc_name(item, toc)
-   call error_handler(E_ERR, 'must_be_generic_kind', &
-                     'righthand column must be a DART KIND, not '//trim(ename), &
+   call error_handler(E_ERR, 'must_be_generic_qty', &
+                     'righthand column must be a DART QTY, not '//trim(ename), &
                      source, revision, revdate, text2=errline, text3=readbuf)
 endif
 
-end subroutine must_be_generic_kind
+end subroutine must_be_generic_qty
 
 !----------------------------------------------------------------------
 
@@ -1726,19 +1728,19 @@ real(r8),         intent(in) :: table(:,0:)
 type(type_toc),   intent(in) :: toc
 
 integer :: i, j, funit
-integer :: ntypes, nkinds
+integer :: ntypes, nqtys
 
 funit = open_file(oname, 'formatted', action='write')
 
 ntypes = ubound(table, 1)
-nkinds = ubound(table, 2)
+nqtys = ubound(table, 2)
 
-do j=0, nkinds
+do j=0, nqtys
    do i=1, ntypes
       if (table(i, j) /= 1.0_r8) then
          write(funit, '(A34,A34,F18.6)') &
                         trim(get_name_by_value(i, ENTRY_DARTTYPE, toc)), &
-                        trim(get_name_by_value(j, ENTRY_DARTKIND, toc)), &
+                        trim(get_name_by_value(j, ENTRY_DARTQTY,  toc)), &
                         table(i, j)
       endif
    enddo
