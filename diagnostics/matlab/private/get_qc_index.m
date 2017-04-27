@@ -1,11 +1,11 @@
 function copy_index = get_qc_index(fname, copystring)
-%% get_qc_index  Gets an index corresponding to copy meta_data string
-% Retrieves index associated with a given copy meta_data string in
+%% get_qc_index  Gets an index corresponding to QC meta_data string
+% Retrieves index associated with a given QC meta_data string in
 % file fname. If string is not found in meta_data list, a -1 is returned.
 %
 % Example:
-% fname = 'Prior_Diag.nc';
-% copystring = 'ensemble member 5';
+% fname = 'obs_epoch_001.nc';
+% copystring = 'Data QC';
 % copy_index = get_qc_index(fname, copystring);
 
 %% DART software - Copyright UCAR. This open source software is provided

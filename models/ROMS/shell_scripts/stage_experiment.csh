@@ -73,11 +73,11 @@ rsync -Cavz ${ROMSDIR}/WC13/Ensemble/  ${EXPERIMENTDIR}/      || exit 1
 \cp ${ROMSDIR}/WC13/timtest2/oceanM    ${EXPERIMENTDIR}/.     || exit 1
 \cp ${ROMSDIR}/WC13/timtest2/oceanG    ${EXPERIMENTDIR}/.
 
-\cp ${DARTDIR}/models/ROMS/shell_scripts/run_multiple_jobs.csh  ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/shell_scripts/cycle.csh.template  ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/work/input.nml.template           ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/work/filter                       ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/observations/ROMS/work/convert_roms_obs       ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/shell_scripts/run_multiple_jobs.csh        ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/shell_scripts/cycle.csh.template           ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/work/input.nml.template                    ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/work/filter                                ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/observations/obs_converters/ROMS/work/convert_roms_obs ${EXPERIMENTDIR}/. || exit 2
 
 echo "no preexisting inflation files" >! ${EXPERIMENTDIR}/roms_inflation_cookie
 
@@ -151,7 +151,7 @@ $SUBSTITUTE  s4dvar.in.template  MyMODname   $ROMS_MOD
 $SUBSTITUTE  input.nml.template  Myens_size  $ENSEMBLE_SIZE
 $SUBSTITUTE  input.nml.template  MyDAINAME   $ROMS_DAI
 
-\cp ${DARTDIR}/system_simulation/final_full_precomputed_tables/final_full.$ENSEMBLE_SIZE .
+\cp ${DARTDIR}/assimilation_code/programs/system_simulation/work/sampling_error_correction_table.Lanai.nc sampling_error_correction_table.nc
 \mv cycle.csh.template cycle.csh
 chmod u+x cycle.csh
 chmod u+x run_multiple_jobs.csh
@@ -223,12 +223,10 @@ in cycle.csh to work correctly.  There are many more that you _may_ want
 to change or set to impact the performance of the assimilation.
 
 &filter_nml:
-   perturb_from_single_instance = .false.     (USUALLY!)
-   use_restart_list             = .true.
-   restart_list_file            = 'restart_files.txt'
-   overwrite_state_input        = .true.
-   obs_sequence_in_name         = "obs_seq.out"
-   obs_sequence_out_name        = "obs_seq.final"
+   input_state_file_list        = 'restart_files.txt'
+   output_state_file_list       = 'restart_files.txt'
+   obs_sequence_in_name         = 'obs_seq.out'
+   obs_sequence_out_name        = 'obs_seq.final'
    ens_size                     = <YOUR ACTUAL ENSEMBLE SIZE>
 
 &convert_roms_obs_nml
@@ -236,10 +234,8 @@ to change or set to impact the performance of the assimilation.
    dart_output_obs_file         = 'obs_seq.out'
    append_to_existing           = .false.
    use_precomputed_values       = .true.
-   locations_in_IJK             = .false.
 
 &model_nml
-   output_state_vector          = .false.
    assimilation_period_days     = <something bigger than NTIMES*DT>
    assimilation_period_seconds  = 0
    vert_localization_coord      = 3

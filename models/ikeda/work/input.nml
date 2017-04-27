@@ -116,7 +116,6 @@
    mu = 0.83,
    time_step_days      = 0,
    time_step_seconds   = 3600,
-   output_state_vector = .true.
    /
 
 &utilities_nml

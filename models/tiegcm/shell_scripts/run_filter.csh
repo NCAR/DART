@@ -274,8 +274,8 @@ ${MPI_RUN_CMD} ./filter || exit 3
 # ${MOVE} tiegcm_restart_p.nc*       ${EXPERIMENT}/tiegcm
 # ${MOVE} tiegcm_out_*               ${EXPERIMENT}/tiegcm
 
-# ${MOVE} Posterior_Diag.nc          ${EXPERIMENT}/DART
-# ${MOVE} Prior_Diag.nc              ${EXPERIMENT}/DART
+# ${MOVE} analysis.nc                ${EXPERIMENT}/DART
+# ${MOVE} preassim.nc                ${EXPERIMENT}/DART
 # ${MOVE} obs_seq.final              ${EXPERIMENT}/DART
 # ${MOVE} dart_log.out               ${EXPERIMENT}/DART
 

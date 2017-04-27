@@ -5,13 +5,15 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
-#
-# Script to manage the compilation of all components for this model;
 
 #----------------------------------------------------------------------
+# compile all programs in the current directory with a mkmf_xxx file.
+#
+# usage: [ -mpi | -nompi ]
+#----------------------------------------------------------------------
 # 'preprocess' is a program that culls the appropriate sections of the
-# observation module for the observations types in 'input.nml'; the 
-# resulting source file is used by all the remaining programs, 
+# observation module for the observations types in 'input.nml'; the
+# resulting source file is used by all the remaining programs,
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
@@ -48,7 +50,7 @@ foreach TARGET ( mkmf_* )
       @ n = $n + 1
       echo
       echo "---------------------------------------------------"
-      echo "${MODEL} build number ${n} is ${PROG}" 
+      echo "${MODEL} build number ${n} is ${PROG}"
       \rm -f ${PROG}
       csh $TARGET || exit $n
       make        || exit $n

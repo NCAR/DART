@@ -114,7 +114,6 @@
    /
 
 &model_nml
-   output_state_vector = .false.,
    model_config_file   = 'start.nc',
    pert_names          = 'T', 'U', 'V',
    pert_sd             = 0.30,

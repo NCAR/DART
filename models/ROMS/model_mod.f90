@@ -137,7 +137,6 @@ integer  :: debug = 0   ! turn up for more and more debug messages
 character(len=256) :: roms_filename = 'roms_input.nc'
 
 namelist /model_nml/  &
-   output_state_vector,         &
    assimilation_period_days,    &
    assimilation_period_seconds, &
    roms_filename,               &
@@ -579,7 +578,7 @@ integer :: StateVarID      ! netCDF pointer to 3D [state,copy,time] array
 ! for the dimensions and coordinate variables
 integer :: nxirhoDimID, nxiuDimID, nxivDimID
 integer :: netarhoDimID, netauDimID, netavDimID
-integer :: nsrhoDimID
+integer :: nsrhoDimID, nswDimID
 
 ! for the prognostic variables
 integer :: VarID
@@ -600,6 +599,7 @@ character(len=256) :: filename
 if ( .not. module_initialized ) call static_init_model
 
 ierr = -1 ! assume things go poorly
+
 model_writes_state = .false.
 
 ! we only have a netcdf handle here so we do not know the filename
@@ -615,26 +615,6 @@ write(filename,*) 'ncFileID', ncFileID
 call nc_check(nf90_Inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID),&
                                    'nc_write_model_atts', 'inquire '//trim(filename))
 call nc_check(nf90_Redef(ncFileID),'nc_write_model_atts',   'redef '//trim(filename))
-
-! We need the dimension ID for the number of copies/ensemble members, and
-! we might as well check to make sure that Time is the Unlimited dimension.
-! Our job is create the 'model size' dimension.
-
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name='copy', dimid=MemberDimID), &
-                           'nc_write_model_atts', 'copy dimid '//trim(filename))
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name='time', dimid=  TimeDimID), &
-                           'nc_write_model_atts', 'time dimid '//trim(filename))
-
-if ( TimeDimID /= unlimitedDimId ) then
-   write(string1,*)'Time Dimension ID ',TimeDimID, &
-             ' should equal Unlimited Dimension ID',unlimitedDimID
-   call error_handler(E_ERR,'nc_write_model_atts:', string1, source, revision, revdate)
-endif
-
-! Define the model size / state variable dimension / whatever ...
-
-call nc_check(nf90_def_dim(ncid=ncFileID, name='StateVariable', len=model_size, &
-        dimid = StateVarDimID),'nc_write_model_atts', 'state def_dim '//trim(filename))
 
 ! Write Global Attributes
 
@@ -658,192 +638,178 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model',  'ROMS' ), &
 ! to know the geometry, the output variables (PS,U,V,T,Q,...) etc. We're skipping
 ! complicated part.
 
-if ( output_state_vector ) then
+! We need to output the prognostic variables.
+! Define the new dimensions IDs
 
-   ! Create a variable for the state vector
-   ! Define the actual (3D) state vector, which gets filled as time goes on ...
+call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_rho',  len = Nxi_rho, &
+     dimid = nxirhoDimID),'nc_write_model_atts', 'xi_rho def_dim '//trim(filename))
 
-   call nc_check(nf90_def_var(ncid=ncFileID, name='state', xtype=nf90_real, &
-                 dimids=(/StateVarDimID,MemberDimID,unlimitedDimID/),VarID=StateVarID),&
-                 'nc_write_model_atts','state def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,StateVarID,'long_name','model state or fcopy'),&
-                 'nc_write_model_atts', 'state long_name '//trim(filename))
+call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_rho', len = Neta_rho,&
+     dimid = netarhoDimID),'nc_write_model_atts', 'eta_rho def_dim '//trim(filename))
 
-   call nc_check(nf90_enddef(ncFileID),'nc_write_model_atts','state enddef '//trim(filename))
+call nc_check(nf90_def_dim(ncid=ncFileID, name='s_rho',   len = Ns_rho,&
+     dimid = nsrhoDimID),'nc_write_model_atts', 's_rho def_dim '//trim(filename))
 
-else
+call nc_check(nf90_def_dim(ncid=ncFileID, name='s_w',   len = Ns_w,&
+     dimid = nswDimID),'nc_write_model_atts', 's_w def_dim '//trim(filename))
 
-   ! We need to output the prognostic variables.
-   ! Define the new dimensions IDs
+call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_u',    len = Nxi_u,&
+     dimid = nxiuDimID),'nc_write_model_atts', 'xi_u def_dim '//trim(filename))
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_rho',  len = Nxi_rho, &
-        dimid = nxirhoDimID),'nc_write_model_atts', 'xi_rho def_dim '//trim(filename))
+call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_v',    len = Nxi_v,&
+     dimid = nxivDimID),'nc_write_model_atts', 'xi_v def_dim '//trim(filename))
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_rho', len = Neta_rho,&
-        dimid = netarhoDimID),'nc_write_model_atts', 'eta_rho def_dim '//trim(filename))
+call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_u',   len = Neta_u,&
+     dimid = netauDimID),'nc_write_model_atts', 'eta_u def_dim '//trim(filename))
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='s_rho',   len = Ns_rho,&
-        dimid = nsrhoDimID),'nc_write_model_atts', 's_rho def_dim '//trim(filename))
+call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_v',   len = Neta_v,&
+     dimid = netavDimID),'nc_write_model_atts', 'eta_v def_dim '//trim(filename))
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_u',    len = Nxi_u,&
-        dimid = nxiuDimID),'nc_write_model_atts', 'xi_u def_dim '//trim(filename))
+! Create the (empty) Coordinate Variables and the Attributes
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_v',    len = Nxi_v,&
-        dimid = nxivDimID),'nc_write_model_atts', 'xi_v def_dim '//trim(filename))
+call nc_check(nf90_def_var(ncFileID,name='lon_rho', xtype=nf90_double, &
+              dimids=(/ nxirhoDimID, netarhoDimID /), varid=VarID),&
+              'nc_write_model_atts', 'lon_rho def_var '//trim(filename))
+call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'rho longitudes'), &
+              'nc_write_model_atts', 'lon_rho long_name '//trim(filename))
+call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'degrees_east'), &
+              'nc_write_model_atts', 'lon_rho units '//trim(filename))
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_u',   len = Neta_u,&
-        dimid = netauDimID),'nc_write_model_atts', 'eta_u def_dim '//trim(filename))
+call nc_check(nf90_def_var(ncFileID,name='lat_rho', xtype=nf90_double, &
+              dimids=(/ nxirhoDimID, netarhoDimID /), varid=VarID),&
+              'nc_write_model_atts', 'lat_rho def_var '//trim(filename))
+call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'rho latitudes'), &
+              'nc_write_model_atts', 'lat_rho long_name '//trim(filename))
+call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'degrees_north'), &
+              'nc_write_model_atts', 'lat_rho units '//trim(filename))
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_v',   len = Neta_v,&
-        dimid = netavDimID),'nc_write_model_atts', 'eta_v def_dim '//trim(filename))
+call nc_check(nf90_def_var(ncFileID,name='lon_u', xtype=nf90_double, &
+              dimids=(/ nxiuDimID, netauDimID /), varid=VarID),&
+              'nc_write_model_atts', 'lon_u def_var '//trim(filename))
+call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'u longitudes'), &
+              'nc_write_model_atts', 'lon_u long_name '//trim(filename))
+call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'degrees_east'), &
+              'nc_write_model_atts', 'lon_u units '//trim(filename))
 
-   ! Create the (empty) Coordinate Variables and the Attributes
+call nc_check(nf90_def_var(ncFileID,name='lat_u', xtype=nf90_double, &
+              dimids=(/ nxiuDimID, netauDimID /), varid=VarID),&
+              'nc_write_model_atts', 'lat_u def_var '//trim(filename))
+call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'u latitudes'), &
+              'nc_write_model_atts', 'lat_u long_name '//trim(filename))
+call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'degrees_north'), &
+              'nc_write_model_atts', 'lat_u units '//trim(filename))
 
-   call nc_check(nf90_def_var(ncFileID,name='lon_rho', xtype=nf90_double, &
-                 dimids=(/ nxirhoDimID, netarhoDimID /), varid=VarID),&
-                 'nc_write_model_atts', 'lon_rho def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'rho longitudes'), &
-                 'nc_write_model_atts', 'lon_rho long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'degrees_east'), &
-                 'nc_write_model_atts', 'lon_rho units '//trim(filename))
+call nc_check(nf90_def_var(ncFileID,name='lon_v', xtype=nf90_double, &
+              dimids=(/ nxivDimID, netavDimID /), varid=VarID),&
+              'nc_write_model_atts', 'lon_v def_var '//trim(filename))
+call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'v longitudes'), &
+              'nc_write_model_atts', 'lon_v long_name '//trim(filename))
+call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'degrees_east'), &
+              'nc_write_model_atts', 'lon_v units '//trim(filename))
 
-   call nc_check(nf90_def_var(ncFileID,name='lat_rho', xtype=nf90_double, &
-                 dimids=(/ nxirhoDimID, netarhoDimID /), varid=VarID),&
-                 'nc_write_model_atts', 'lat_rho def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'rho latitudes'), &
-                 'nc_write_model_atts', 'lat_rho long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'degrees_north'), &
-                 'nc_write_model_atts', 'lat_rho units '//trim(filename))
+call nc_check(nf90_def_var(ncFileID,name='lat_v', xtype=nf90_double, &
+              dimids=(/ nxivDimID, netavDimID /), varid=VarID),&
+              'nc_write_model_atts', 'lat_v def_var '//trim(filename))
+call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'v latitudes'), &
+              'nc_write_model_atts', 'lat_v long_name '//trim(filename))
+call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'degrees_north'), &
+              'nc_write_model_atts', 'lat_v units '//trim(filename))
 
-   call nc_check(nf90_def_var(ncFileID,name='lon_u', xtype=nf90_double, &
-                 dimids=(/ nxiuDimID, netauDimID /), varid=VarID),&
-                 'nc_write_model_atts', 'lon_u def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'u longitudes'), &
-                 'nc_write_model_atts', 'lon_u long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'degrees_east'), &
-                 'nc_write_model_atts', 'lon_u units '//trim(filename))
+call nc_check(nf90_def_var(ncFileID,name='z_rho', xtype=nf90_double, &
+              dimids=(/ nxirhoDimID, netarhoDimID, nsrhoDimID /), varid=VarID),&
+              'nc_write_model_atts', 'z_rho def_var '//trim(filename))
+call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'z at rho'), &
+              'nc_write_model_atts', 'z_rho long_name '//trim(filename))
+call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'm'), &
+              'nc_write_model_atts', 'z_rho units '//trim(filename))
 
-   call nc_check(nf90_def_var(ncFileID,name='lat_u', xtype=nf90_double, &
-                 dimids=(/ nxiuDimID, netauDimID /), varid=VarID),&
-                 'nc_write_model_atts', 'lat_u def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'u latitudes'), &
-                 'nc_write_model_atts', 'lat_u long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'degrees_north'), &
-                 'nc_write_model_atts', 'lat_u units '//trim(filename))
+call nc_check(nf90_def_var(ncFileID,name='z_u', xtype=nf90_double, &
+              dimids=(/ nxiuDimID, netauDimID, nsrhoDimID /), varid=VarID),&
+              'nc_write_model_atts', 'z_u def_var '//trim(filename))
+call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'z at rho'), &
+              'nc_write_model_atts', 'z_u long_name '//trim(filename))
+call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'm'), &
+              'nc_write_model_atts', 'z_u units '//trim(filename))
 
-   call nc_check(nf90_def_var(ncFileID,name='lon_v', xtype=nf90_double, &
-                 dimids=(/ nxivDimID, netavDimID /), varid=VarID),&
-                 'nc_write_model_atts', 'lon_v def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'v longitudes'), &
-                 'nc_write_model_atts', 'lon_v long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'degrees_east'), &
-                 'nc_write_model_atts', 'lon_v units '//trim(filename))
+call nc_check(nf90_def_var(ncFileID,name='z_v', xtype=nf90_double, &
+              dimids=(/ nxivDimID, netavDimID, nsrhoDimID /), varid=VarID),&
+              'nc_write_model_atts', 'z_v def_var '//trim(filename))
+call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'z at rho'), &
+              'nc_write_model_atts', 'z_v long_name '//trim(filename))
+call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'm'), &
+              'nc_write_model_atts', 'z_v units '//trim(filename))
 
-   call nc_check(nf90_def_var(ncFileID,name='lat_v', xtype=nf90_double, &
-                 dimids=(/ nxivDimID, netavDimID /), varid=VarID),&
-                 'nc_write_model_atts', 'lat_v def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'v latitudes'), &
-                 'nc_write_model_atts', 'lat_v long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'degrees_north'), &
-                 'nc_write_model_atts', 'lat_v units '//trim(filename))
+call nc_check(nf90_def_var(ncFileID,name='z_w', xtype=nf90_double, &
+              dimids=(/ nxirhoDimID, netarhoDimID, nswDimID /), varid=VarID),&
+              'nc_write_model_atts', 'z_w def_var '//trim(filename))
+call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'z at rho'), &
+              'nc_write_model_atts', 'z_w long_name '//trim(filename))
+call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'm'), &
+              'nc_write_model_atts', 'z_w units '//trim(filename))
 
-   call nc_check(nf90_def_var(ncFileID,name='z_rho', xtype=nf90_double, &
-                 dimids=(/ nxirhoDimID, netarhoDimID /), varid=VarID),&
-                 'nc_write_model_atts', 'z_rho def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'z at rho'), &
-                 'nc_write_model_atts', 'z_rho long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'm'), &
-                 'nc_write_model_atts', 'z_rho units '//trim(filename))
+! Finished with dimension/variable definitions, must end 'define' mode to fill.
 
-   call nc_check(nf90_def_var(ncFileID,name='z_u', xtype=nf90_double, &
-                 dimids=(/ nxiuDimID, netauDimID /), varid=VarID),&
-                 'nc_write_model_atts', 'z_u def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'z at rho'), &
-                 'nc_write_model_atts', 'z_u long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'm'), &
-                 'nc_write_model_atts', 'z_u units '//trim(filename))
+call nc_check(nf90_enddef(ncFileID), 'prognostic enddef '//trim(filename))
 
-   call nc_check(nf90_def_var(ncFileID,name='z_v', xtype=nf90_double, &
-                 dimids=(/ nxivDimID, netavDimID /), varid=VarID),&
-                 'nc_write_model_atts', 'z_v def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'z at rho'), &
-                 'nc_write_model_atts', 'z_v long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'm'), &
-                 'nc_write_model_atts', 'z_v units '//trim(filename))
+! Fill the coordinate variables that DART needs and has locally
 
-   call nc_check(nf90_def_var(ncFileID,name='z_w', xtype=nf90_double, &
-                 dimids=(/ nxivDimID, netavDimID /), varid=VarID),&
-                 'nc_write_model_atts', 'z_w def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'z at rho'), &
-                 'nc_write_model_atts', 'z_w long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'm'), &
-                 'nc_write_model_atts', 'z_w units '//trim(filename))
+! the RHO grid
 
-   ! Finished with dimension/variable definitions, must end 'define' mode to fill.
+call nc_check(NF90_inq_varid(ncFileID, 'lon_rho', VarID), &
+              'nc_write_model_atts', 'lon_rho inq_varid '//trim(filename))
+call nc_check(nf90_put_var(ncFileID, VarID, TLON ), &
+             'nc_write_model_atts', 'lon_rho put_var '//trim(filename))
 
-   call nc_check(nf90_enddef(ncFileID), 'prognostic enddef '//trim(filename))
+call nc_check(NF90_inq_varid(ncFileID, 'lat_rho', VarID), &
+              'nc_write_model_atts', 'lat_rho inq_varid '//trim(filename))
+call nc_check(nf90_put_var(ncFileID, VarID, TLAT ), &
+             'nc_write_model_atts', 'lat_rho put_var '//trim(filename))
 
-   ! Fill the coordinate variables that DART needs and has locally
+call nc_check(NF90_inq_varid(ncFileID, 'z_rho', VarID), &
+              'nc_write_model_atts', 'z_rho inq_varid '//trim(filename))
+call nc_check(nf90_put_var(ncFileID, VarID, TDEP ), &
+             'nc_write_model_atts', 'z_rho put_var '//trim(filename))
 
-   ! the RHO grid
+! the U grid
 
-   call nc_check(NF90_inq_varid(ncFileID, 'lon_rho', VarID), &
-                 'nc_write_model_atts', 'lon_rho inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID, VarID, TLON ), &
-                'nc_write_model_atts', 'lon_rho put_var '//trim(filename))
+call nc_check(NF90_inq_varid(ncFileID, 'lon_u', VarID), &
+              'nc_write_model_atts', 'lon_u inq_varid '//trim(filename))
+call nc_check(nf90_put_var(ncFileID, VarID, ULON ), &
+             'nc_write_model_atts', 'lon_u put_var '//trim(filename))
 
-   call nc_check(NF90_inq_varid(ncFileID, 'lat_rho', VarID), &
-                 'nc_write_model_atts', 'lat_rho inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID, VarID, TLAT ), &
-                'nc_write_model_atts', 'lat_rho put_var '//trim(filename))
+call nc_check(NF90_inq_varid(ncFileID, 'lat_u', VarID), &
+              'nc_write_model_atts', 'lat_u inq_varid '//trim(filename))
+call nc_check(nf90_put_var(ncFileID, VarID, ULAT ), &
+             'nc_write_model_atts', 'lat_u put_var '//trim(filename))
 
-   call nc_check(NF90_inq_varid(ncFileID, 'z_rho', VarID), &
-                 'nc_write_model_atts', 'z_rho inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID, VarID, TDEP ), &
-                'nc_write_model_atts', 'z_rho put_var '//trim(filename))
+call nc_check(NF90_inq_varid(ncFileID, 'z_u', VarID), &
+              'nc_write_model_atts', 'z_u inq_varid '//trim(filename))
+call nc_check(nf90_put_var(ncFileID, VarID, UDEP ), &
+             'nc_write_model_atts', 'z_u put_var '//trim(filename))
 
-   ! the U grid
+! the V grid
 
-   call nc_check(NF90_inq_varid(ncFileID, 'lon_u', VarID), &
-                 'nc_write_model_atts', 'lon_u inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID, VarID, ULON ), &
-                'nc_write_model_atts', 'lon_u put_var '//trim(filename))
+call nc_check(NF90_inq_varid(ncFileID, 'lon_v', VarID), &
+              'nc_write_model_atts', 'lon_v inq_varid '//trim(filename))
+call nc_check(nf90_put_var(ncFileID, VarID, VLON ), &
+             'nc_write_model_atts', 'lon_v put_var '//trim(filename))
 
-   call nc_check(NF90_inq_varid(ncFileID, 'lat_u', VarID), &
-                 'nc_write_model_atts', 'lat_u inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID, VarID, ULAT ), &
-                'nc_write_model_atts', 'lat_u put_var '//trim(filename))
+call nc_check(NF90_inq_varid(ncFileID, 'lat_v', VarID), &
+              'nc_write_model_atts', 'lat_v inq_varid '//trim(filename))
+call nc_check(nf90_put_var(ncFileID, VarID, VLAT ), &
+             'nc_write_model_atts', 'lat_v put_var '//trim(filename))
 
-   call nc_check(NF90_inq_varid(ncFileID, 'z_u', VarID), &
-                 'nc_write_model_atts', 'z_u inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID, VarID, UDEP ), &
-                'nc_write_model_atts', 'z_u put_var '//trim(filename))
+call nc_check(NF90_inq_varid(ncFileID, 'z_v', VarID), &
+              'nc_write_model_atts', 'z_v inq_varid '//trim(filename))
+call nc_check(nf90_put_var(ncFileID, VarID, VDEP ), &
+             'nc_write_model_atts', 'z_v put_var '//trim(filename))
 
-   ! the V grid
+! the W grid
 
-   call nc_check(NF90_inq_varid(ncFileID, 'lon_v', VarID), &
-                 'nc_write_model_atts', 'lon_v inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID, VarID, VLON ), &
-                'nc_write_model_atts', 'lon_v put_var '//trim(filename))
-
-   call nc_check(NF90_inq_varid(ncFileID, 'lat_v', VarID), &
-                 'nc_write_model_atts', 'lat_v inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID, VarID, VLAT ), &
-                'nc_write_model_atts', 'lat_v put_var '//trim(filename))
-
-   call nc_check(NF90_inq_varid(ncFileID, 'z_v', VarID), &
-                 'nc_write_model_atts', 'z_v inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID, VarID, VDEP ), &
-                'nc_write_model_atts', 'z_v put_var '//trim(filename))
-
-   ! the W grid
-
-   call nc_check(NF90_inq_varid(ncFileID, 'z_w', VarID), &
-                 'nc_write_model_atts', 'z_w inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID, VarID, WDEP ), &
-                'nc_write_model_atts', 'z_w put_var '//trim(filename))
-
-   endif
+call nc_check(NF90_inq_varid(ncFileID, 'z_w', VarID), &
+              'nc_write_model_atts', 'z_w inq_varid '//trim(filename))
+call nc_check(nf90_put_var(ncFileID, VarID, WDEP ), &
+             'nc_write_model_atts', 'z_w put_var '//trim(filename))
 
 ! Flush the buffer and leave netCDF file open
 call nc_check(nf90_sync(ncFileID), 'nc_write_model_atts', 'atts sync')
@@ -905,25 +871,6 @@ ierr = -1 ! assume things go poorly
 ! which netcdf file is involved.
 
 write(filename,*) 'ncFileID', ncFileID
-
-! make sure ncFileID refers to an open netCDF file,
-
-call nc_check(nf90_inq_dimid(ncFileID, 'copy', dimid=CopyDimID), &
-            'nc_write_model_vars', 'inq_dimid copy '//trim(filename))
-
-call nc_check(nf90_inq_dimid(ncFileID, 'time', dimid=TimeDimID), &
-            'nc_write_model_vars', 'inq_dimid time '//trim(filename))
-
-if ( output_state_vector ) then
-
-   call nc_check(NF90_inq_varid(ncFileID, 'state', VarID), &
-                 'nc_write_model_vars', 'state inq_varid '//trim(filename))
-   call nc_check(NF90_put_var(ncFileID,VarID,state_vec,start=(/1,copyindex,timeindex/)),&
-                 'nc_write_model_vars', 'state put_var '//trim(filename))
-
-endif
-
-! Flush the buffer and leave netCDF file open
 
 call nc_check(nf90_sync(ncFileID), 'nc_write_model_vars', 'sync '//trim(filename))
 

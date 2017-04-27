@@ -164,7 +164,6 @@
    assimilation_period_days     = 2
    assimilation_period_seconds  = 3600
    model_perturbation_amplitude = 0.2
-   output_state_vector          = .false.
    calendar                     = 'Gregorian'
    debug                        = 0
    clm_variables  = 'frac_sno',    'QTY_SNOWCOVER_FRAC',         'NA' , 'NA', 'restart' , 'NO_COPY_BACK',

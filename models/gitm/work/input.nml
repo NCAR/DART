@@ -177,7 +177,6 @@
    assimilation_period_days     = 0,
    assimilation_period_seconds  = 1800,
    model_perturbation_amplitude = 0.2,
-   output_state_vector          = .false.,
    calendar                     = 'Gregorian',
    debug                        = 0,
    gitm_state_variables =

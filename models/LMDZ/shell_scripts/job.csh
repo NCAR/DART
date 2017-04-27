@@ -132,8 +132,8 @@ foreach file (`cat $obs_seq_list`)
   #-------copy outputs file in OUTPUT_#### directory ----------------------------------------------
   if ($status == 0) then
     echo "Filter Finished for observation $file"
-    $MOVE Posterior_Diag.nc OUTPUT_$date
-    $MOVE Prior_Diag.nc     OUTPUT_$date
+    $MOVE analysis.nc       OUTPUT_$date
+    $MOVE preassim.nc       OUTPUT_$date
     $MOVE obs_seq.final     OUTPUT_$date
     $MOVE histhf*.nc*       OUTPUT_$date
     $MOVE histins*.nc*      OUTPUT_$date

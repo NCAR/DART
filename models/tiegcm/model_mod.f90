@@ -106,7 +106,7 @@ integer, parameter :: max_num_variables = 30
 integer, parameter :: max_num_columns = 6
 character(len=NF90_MAX_NAME) :: variables(max_num_variables * max_num_columns) = ' '
 
-namelist /model_nml/ output_state_vector, tiegcm_restart_file_name, &
+namelist /model_nml/ tiegcm_restart_file_name, &
                      tiegcm_secondary_file_name, tiegcm_namelist_file_name, &
                      variables, debug, estimate_f10_7, assimilation_period_seconds
 
@@ -3061,7 +3061,7 @@ subroutine vector_to_prog_var(statevec, ivar, ncid, VarID, numdims, &
 ! to the netCDF file. The shape of the variable is specified by the 'mycount' array.
 ! If 'limit' has a value of TRUE, the min/max values of the variable are
 ! restricted to those values specified in the 'progvar' array.
-! Typically, the DART files (True_State.nc, Prior_Diag.nc, Posterior_Diag.nc)
+! Typically, the DART files (true_state.nc, preassim.nc, analysis.nc)
 ! are not restricted, but the files for TIEGCM may be.
 
 real(r8), dimension(:), intent(in) :: statevec

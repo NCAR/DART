@@ -8,8 +8,8 @@ function cislar(timeindex)
 %
 % DART $Id$
 
-priorfname = '/glade/user/thoar/CLM_leafc/Prior_Diag.nc';
-postefname = '/glade/user/thoar/CLM_leafc/Posterior_Diag.nc';
+priorfname = '/glade/user/thoar/CLM_leafc/preassim.nc';
+postefname = '/glade/user/thoar/CLM_leafc/analysis.nc';
 varname    = 'leafc';
 levelindex = 1;
 timeindex  = 6;

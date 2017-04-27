@@ -133,8 +133,8 @@ the general flow is:
 
    5) generate an ensemble of states, or set 'start_from_restart' to .false.
    6) run ./filter with the single observation 
-   7) look at the Prior_Diag.nc and Posterior_Diag.nc files
-        diff them with ncdiff:  ncdiff Posterior_Diag.nc Prior_Diag.nc Innov.nc
+   7) look at the preassim.nc and analysis.nc files
+        diff them with ncdiff:  ncdiff analysis.nc preassim.nc Innov.nc
         plot it, with ncview if possible:  ncview Innov.nc
         the difference between the two is the impact of that single observation
         see if it's at the right location and if the differences seem reasonable
@@ -215,10 +215,10 @@ usually a good range.  make sure your observation type is in the
 'assimilate_these_obs_types' list and not in the evaluate list.
 run filter.  find bugs and fix them until the output 'obs_seq.final' 
 seems to have reasonable values.  running filter will generate two
-netcdf diagnostic files: Prior_Diag.nc and Posterior_Diag.nc
+netcdf diagnostic files: preassim.nc and analysis.nc
 
 7) diagnostics
-run 'ncdiff Posterior_Diag.nc Prior_Diag.nc differences.nc' and use
+run 'ncdiff analysis.nc preassim.nc differences.nc' and use
 your favorite netcdf plotting tool to see if there are any differences
 between the 2 files.  for modules using a regular lat/lon grid 'ncview'
 is a quick and dirty way to scan files.  for something on an irregular

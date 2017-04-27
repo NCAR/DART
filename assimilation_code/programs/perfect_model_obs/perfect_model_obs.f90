@@ -51,10 +51,12 @@ use io_filenames_mod,      only : io_filenames_init, file_info_type, file_info_d
                                   set_io_copy_flag, check_file_info_variable_shape, &
                                   READ_COPY, WRITE_COPY
                                   
+use single_file_io_mod,    only : finalize_singlefile_output
 
 use quality_control_mod,   only : set_input_qc, initialize_qc
 
 use ensemble_manager_mod,  only : set_num_extra_copies ! should this be through ensemble_manager?
+
 use distributed_state_mod, only : create_state_window, free_state_window
 
 use forward_operator_mod, only : get_expected_obs_distrib_state
@@ -172,8 +174,9 @@ integer              :: copy_indices(1) = 1
 
 type(file_info_type) :: file_info_input
 type(file_info_type) :: file_info_output
+type(file_info_type) :: file_info_true
 
-character(len=256), allocatable :: input_filelist(:), output_filelist(:)
+character(len=256), allocatable :: input_filelist(:), output_filelist(:), true_state_filelist(:)
 integer :: nfilesin, nfilesout
 
 ! Initialize all modules used that require it
@@ -265,6 +268,19 @@ has_cycling = single_file_out
 call parse_filenames(input_state_files,  input_filelist,  nfilesin)
 call parse_filenames(output_state_files, output_filelist, nfilesout)
 
+allocate(true_state_filelist(nfilesout))
+
+! mutiple domains ( this is very unlikely to be the case, but in order to
+! set_file_metadata we need to have a file list that has the same number
+! of files as domains.
+if (nfilesout > 1) then
+   do i = 1, nfilesout
+      write(true_state_filelist(i),'(a,i0.2)') 'true_state_d',i
+   enddo
+else
+   true_state_filelist(1) = 'true_state.nc'
+endif
+
 !> @todo FIXME  if nfilesout == 0 and write_output_state_to_file is .false.
 !> that shouldn't be an error.  if nfilesin == 0 and read_input_state_from_file
 !> is false, that also shouldn't be an error.  (unless you're writing the mean
@@ -277,6 +293,11 @@ endif
 call io_filenames_init(file_info_input,  1, cycling=has_cycling, single_file=single_file_in)
 call set_file_metadata(file_info_input,  1, input_filelist, 'perfect_input', 'pmo initial condition')
 call set_io_copy_flag( file_info_input,  1, READ_COPY) 
+
+! True State
+call io_filenames_init(file_info_true, 1, cycling=has_cycling, single_file=single_file_out)
+call set_file_metadata(file_info_true, 1, true_state_filelist, 'true_state', 'true state')
+call set_io_copy_flag( file_info_true, 1, 1, WRITE_COPY, num_output_ens=1)
 
 ! Perfect Restart
 call io_filenames_init(file_info_output, 1, cycling=has_cycling, single_file=single_file_out)
@@ -410,7 +431,7 @@ AdvanceTime: do
       call all_copies_to_all_vars(ens_handle)
 
       if (ens_handle%my_pe == 0) call advance_state(ens_handle, 1, next_ens_time, async, &
-                    adv_ens_command, tasks_per_model_advance, file_info_output, file_info_input)
+                    adv_ens_command, tasks_per_model_advance, file_info_true, file_info_input)
 
       call all_vars_to_all_copies(ens_handle)
 
@@ -454,11 +475,11 @@ AdvanceTime: do
    if((output_interval > 0) .and. &
       (time_step_number / output_interval * output_interval == time_step_number)) then
 
-      call trace_message('Before updating output file')
-      if(write_output_state_to_file) then
-         call write_state(ens_handle, file_info_output)
+      call trace_message('Before updating true state')
+      if(has_cycling) then
+         call write_state(ens_handle, file_info_true)
       endif
-      call trace_message('After  updating output file')
+      call trace_message('After  updating true state')
 
    endif
 
@@ -569,7 +590,6 @@ AdvanceTime: do
 
 end do AdvanceTime
 
-
 ! if logging errors, close unit
 if(output_forward_op_errors) call close_file(forward_unit)
 
@@ -586,9 +606,17 @@ call trace_message('After  writing output sequence file')
 call trace_message('Before writing state restart file if requested')
 if(write_output_state_to_file) then
    call write_state(ens_handle, file_info_output)
+   if (single_file_out) &
+      call finalize_singlefile_output(file_info_output)
 endif
-call trace_message('After  writing state restart file if requested')
 
+! Write the last time step to the true state file
+if (single_file_out) then
+   call write_state(ens_handle, file_info_true)
+   call finalize_singlefile_output(file_info_true)
+endif
+
+call trace_message('After  writing state restart file if requested')
 call trace_message('Before ensemble and obs memory cleanup')
 
 !  Release storage for ensemble

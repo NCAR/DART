@@ -43,9 +43,9 @@ Here are instructions to help visualize the Prior/Posterior/True_State netCDF fi
    is convenient to differ the files and then add back the metadata from one of the
    parents:
 
-   ncdiff Posterior_Diag.2000-01-06-00000.nc Prior_Diag.2000-01-06-00000.nc Innov.nc
+   ncdiff analysis.2000-01-06-00000.nc preassim.2000-01-06-00000.nc Innov.nc
 
-   ncks -A -v lon,lat,levgrnd,area,landfrac,cols1d_ixy,cols1d_jxy,pfts1d_ixy,pfts1d_jxy,cols1d_wtxy,pfts1d_wtxy Prior_Diag.2000-01-06-00000.nc  Innov.nc
+   ncks -A -v lon,lat,levgrnd,area,landfrac,cols1d_ixy,cols1d_jxy,pfts1d_ixy,pfts1d_jxy,cols1d_wtxy,pfts1d_wtxy preassim.2000-01-06-00000.nc  Innov.nc
 
    % Now - visualize as before, with one added twist. 
    % To differentiate between ocean and a difference of zero,

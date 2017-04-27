@@ -72,8 +72,7 @@ integer  :: time_step_days      = 0
 integer  :: time_step_seconds   = 3600
 logical  :: output_state_vector = .true.
 
-namelist /model_nml/ a, b, mu, time_step_days, time_step_seconds, &
-                     output_state_vector
+namelist /model_nml/ a, b, mu, time_step_days, time_step_seconds
 
 
 !==================================================================

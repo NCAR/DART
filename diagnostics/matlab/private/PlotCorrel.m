@@ -16,7 +16,7 @@ function PlotCorrel( pinfo )
 %
 % Example 1   (9var model with 1000 time steps)
 %%------------------------------------------------------------------
-% pinfo.fname          = 'Prior_Diag.nc';
+% pinfo.fname          = 'preassim.nc';
 % pinfo.base_var       = 'state';
 % pinfo.base_var_index = 5;          % picked arbitrarily
 % pinfo.base_time      = 238;        % ditto
@@ -37,11 +37,11 @@ contourlevels = [-1:0.2:-0.2 0.2:0.2:1.0];  % no contour at zero, please
 
 switch(lower(pinfo.model))
 
-    case {'lorenz_96_2scale','simple_advection'}
+    case {'lorenz_96_2scale'}
 
         error('%s not supported yet',pinfo.model)
 
-    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04','forced_lorenz_96','ikeda'}
+    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04','forced_lorenz_96','ikeda','simple_advection'}
 
         % The Base Variable Index must be a valid state variable
         if ( pinfo.base_var_index > pinfo.num_state_vars )
@@ -95,7 +95,6 @@ switch(lower(pinfo.model))
         ylabel('state variable (index)')
         set(gca,'YTick',1:pinfo.num_state_vars)
         colorbar
-
 
     case {'fms_bgrid'}
 

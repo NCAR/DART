@@ -49,7 +49,7 @@ use state_structure_mod,  only : get_num_domains, get_dim_length, get_dim_name, 
                                  get_num_dims, get_io_num_dims, get_num_variables, get_variable_name, &
                                  get_units, get_long_name, get_short_name, get_missing_value, &
                                  get_FillValue, get_xtype, get_add_offset, get_scale_factor, &
-                                 get_has_missing_value
+                                 get_has_missing_value, do_io_update
 use ensemble_manager_mod, only : ensemble_type
 
 use netcdf
@@ -605,6 +605,8 @@ call nc_check(ret, 'check_correct_variables opening ', netcdf_filename)
 
 do i = 1, get_num_variables(dom)
 
+   if ( .not. do_io_update(dom,i) ) cycle
+
    ! get variable id from necfile
    ret = nf90_inq_varid(ncfile, get_variable_name(dom,i), var_id)
    write(msgstring,*) 'no match for variable ',  trim(get_variable_name(dom,i)), &
@@ -653,7 +655,6 @@ do i = 1, get_num_variables(dom)
       endif
 
    enddo
-
 enddo
 
 ret = nf90_close(ncfile)
@@ -946,16 +947,18 @@ enddo
 
 do i = 1,size(file_info%stage_metadata%filenames,1)
    do j = 1,size(file_info%stage_metadata%filenames,2)
-      write(*,'(A,2I4,2A)')   'file_info%stage_metadata%filenames(       ',i,j,' ) ', &
-                        trim(file_info%stage_metadata%filenames(           i,j))
-      write(*,'(A,2I4,2A)')   'file_info%stage_metadata%file_description(',i,j,' ) ', &
-                        trim(file_info%stage_metadata%file_description(    i,j))
-      write(*,'(A,2I4,A,I4)') 'file_info%stage_metadata%my_copy_number(  ',i,j,' ) ', &
-                             file_info%stage_metadata%my_copy_number(      i)
-      write(*,'(A, I4,A,I4)') 'file_info%stage_metadata%io_flag(         ',i,'     ) ', &
-                             file_info%stage_metadata%io_flag(             i)
-      write(*,'(A, I4,2A)') 'file_info%stage_metadata%copy_name(         ',i,'     ) ', &
-                             file_info%stage_metadata%copy_name(i)
+      if (file_info%stage_metadata%filenames(i,j) /= 'null') then
+         write(*,'(A,2I4,2A)')   'file_info%stage_metadata%filenames(       ',i,j,' ) ', &
+                           trim(file_info%stage_metadata%filenames(           i,j))
+         write(*,'(A,2I4,2A)')   'file_info%stage_metadata%file_description(',i,j,' ) ', &
+                           trim(file_info%stage_metadata%file_description(    i,j))
+         write(*,'(A,2I4,A,I4)') 'file_info%stage_metadata%my_copy_number(  ',i,j,' ) ', &
+                                file_info%stage_metadata%my_copy_number(      i)
+         write(*,'(A, I4,A,I4)') 'file_info%stage_metadata%io_flag(         ',i,'     ) ', &
+                                file_info%stage_metadata%io_flag(             i)
+         write(*,'(A, I4,2A)')   'file_info%stage_metadata%copy_name(       ',i,'     ) ', &
+                                  file_info%stage_metadata%copy_name(i)
+      endif
    enddo
 enddo
 
@@ -965,32 +968,33 @@ end subroutine file_info_dump
 !> Combine multiple file_info_type into a single file_info
 
 
-function combine_file_info(file_info) result(file_info_out)
+function combine_file_info(file_info_array) result(file_info_out)
 
-type(file_info_type), intent(in) :: file_info(:)
+type(file_info_type), intent(in) :: file_info_array(:)
 type(file_info_type) :: file_info_out
 
 integer :: i, j, k, num_domains, num_files
 
 num_domains = get_num_domains()
 
-num_files = size(file_info(1)%stage_metadata%filenames(:,:),1)
+num_files = size(file_info_array(1)%stage_metadata%filenames(:,:),1)
 
-call io_filenames_init(file_info_out, num_files, .false., .false.)
+call io_filenames_init(file_info_out, num_files, .false., .false., root_name='combine_files')
 
-do i = 1, size(file_info(:),1)
+do i = 1, size(file_info_array(:),1)
    do j = 1, num_files
-
       do k = 1, num_domains
-         if (trim(file_info(i)%stage_metadata%filenames(j, k)) /= trim('null'))then
+         if (trim(file_info_array(i)%stage_metadata%filenames(j, k)) /= trim('null'))then
             file_info_out%stage_metadata%filenames(                   j, k) = &
-                                file_info(i)%stage_metadata%filenames(j, k)
+                                file_info_array(i)%stage_metadata%filenames(j, k)
             file_info_out%stage_metadata%file_description(            j, k) = &
-                         file_info(i)%stage_metadata%file_description(j, k)
+                         file_info_array(i)%stage_metadata%file_description(j, k)
             file_info_out%stage_metadata%io_flag(                     j   ) = &
-                         file_info(i)%stage_metadata%io_flag(j)
+                         file_info_array(i)%stage_metadata%io_flag(j)
             file_info_out%stage_metadata%clamp_vars(                     j   ) = &
-                         file_info(i)%stage_metadata%clamp_vars(j)
+                         file_info_array(i)%stage_metadata%clamp_vars(j)
+            file_info_out%stage_metadata%copy_name(                      j   ) = &
+                         file_info_array(i)%stage_metadata%copy_name(j)
          endif
       enddo
    enddo

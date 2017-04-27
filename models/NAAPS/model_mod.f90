@@ -88,7 +88,7 @@ integer            :: member              = 1
 
 namelist /model_nml/ nens, dtg, naaps_restart_path, &
                      time_step_seconds, time_step_days, &
-                     output_state_vector, debug, member
+                     debug, member
 
 ! Everything needed to describe a variable
 integer, parameter :: max_state_variables = 80

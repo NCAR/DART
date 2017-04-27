@@ -10,7 +10,6 @@ module model_mod
 ! purpose: interface between AM2 and DART
 !              Translate to/from state_vector and restart file(s)
 !              Initialize model
-!              Write out model fields to Prior and Posterior_Diag.nc,
 !              Generate expected obs from model state (model_interpolate)
 !              Find state variables (or obs) that are close to a given base observation.
 !                  (get_close_obs)

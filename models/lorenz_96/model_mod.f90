@@ -403,41 +403,7 @@ call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
 end subroutine get_close_obs
 
 !------------------------------------------------------------------
-
-!> @todo can we replace most of this with:
-!> 
-!> call put_standard_attributes()
-!> call put_my_model_name("Lorenz_96")
-!> call put_model_info("model_forcing", forcing)
-!> call put_model_info("model_delta_t", delta_t)
-
-
-! Can't write netcdf i8 - do we just have 
-! a 32 bit version of the netcdf library?
-! Bgrid errors out if we have an model size greater than largest i4
-
 ! Writes the model-specific attributes to a netCDF file
-! TJH Jan 24 2003
-!
-! TJH 29 July 2003 -- for the moment, all errors are fatal, so the
-! return code is always '0 == normal', since the fatal errors stop execution.
-!
-! For the lorenz_96 model, each state variable is at a separate location.
-! that's all the model-specific attributes I can think of ...
-!
-! assim_model_mod:init_diag_output uses information from the location_mod
-!     to define the location dimension and variable ID. All we need to do
-!     is query, verify, and fill ...
-!
-! Typical sequence for adding new dimensions,variables,attributes:
-! NF90_OPEN             ! open existing netCDF dataset
-!    NF90_redef         ! put into define mode 
-!    NF90_def_dim       ! define additional dimensions (if any)
-!    NF90_def_var       ! define variables: from name, type, and dims
-!    NF90_put_att       ! assign attribute values
-! NF90_ENDDEF           ! end definitions: leave define mode
-!    NF90_put_var       ! provide values for variable
-! NF90_CLOSE            ! close: save updated netCDF dataset
 
 function nc_write_model_atts( ncFileID, model_mod_writes_state_variables ) result (ierr)
 
@@ -478,6 +444,7 @@ character(len=128)  :: filename
 type(ensemble_type) :: state_handle ! needed for compilation, not used here
 
 ierr = 0                      ! assume normal termination
+
 model_mod_writes_state_variables = .false. 
 
 !--------------------------------------------------------------------
@@ -572,34 +539,11 @@ enddo
 call nc_check(nf90_sync(ncFileID), &
               'nc_write_model_atts', 'sync, '//trim(filename))
 
-! write (*,*)'Model attributes written, netCDF file synched ...'
-
 end function nc_write_model_atts
 
-!------------------------------------------------------------------
 
-! Writes the model-specific attributes to a netCDF file
-! TJH 23 May 2003
-!
-! TJH 29 July 2003 -- for the moment, all errors are fatal, so the
-! return code is always '0 == normal', since the fatal errors stop execution.
-!
-! For the lorenz_96 model, each state variable is at a separate location.
-! that's all the model-specific attributes I can think of ...
-!
-! assim_model_mod:init_diag_output uses information from the location_mod
-!     to define the location dimension and variable ID. All we need to do
-!     is query, verify, and fill ...
-!
-! Typical sequence for adding new dimensions,variables,attributes:
-! NF90_OPEN             ! open existing netCDF dataset
-!    NF90_redef         ! put into define mode
-!    NF90_def_dim       ! define additional dimensions (if any)
-!    NF90_def_var       ! define variables: from name, type, and dims
-!    NF90_put_att       ! assign attribute values
-! NF90_ENDDEF           ! end definitions: leave define mode
-!    NF90_put_var       ! provide values for variable
-! NF90_CLOSE            ! close: save updated netCDF dataset
+!------------------------------------------------------------------
+!> ! Writes the model-specific variables to a netCDF file
 
 function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex) result (ierr)
 

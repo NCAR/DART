@@ -469,10 +469,10 @@ if ( $?LSB_PJL_TASK_GEOMETRY ) then
    setenv LSB_PJL_TASK_GEOMETRY "${ORIGINAL_LAYOUT}"
 endif
 
-${MOVE} Prior_Diag.nc      ../pop_Prior_Diag.${OCN_DATE_EXT}.nc
-${MOVE} Posterior_Diag.nc  ../pop_Posterior_Diag.${OCN_DATE_EXT}.nc
-${MOVE} obs_seq.final      ../pop_obs_seq.${OCN_DATE_EXT}.final
-${MOVE} dart_log.out       ../pop_dart_log.${OCN_DATE_EXT}.out
+${MOVE} preassim.nc      ../pop_preassim.${OCN_DATE_EXT}.nc
+${MOVE} analysis.nc      ../pop_analysis.${OCN_DATE_EXT}.nc
+${MOVE} obs_seq.final    ../pop_obs_seq.${OCN_DATE_EXT}.final
+${MOVE} dart_log.out     ../pop_dart_log.${OCN_DATE_EXT}.out
 
 # Accomodate any possible inflation files
 # 1) rename file to reflect current date

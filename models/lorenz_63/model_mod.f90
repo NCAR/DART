@@ -446,7 +446,6 @@ ierr = 0                             ! assume normal termination
 
 model_mod_writes_state_variables = .false.
 
-
 ! make sure ncFileID refers to an open netCDF file 
 
 ! are the inq and sync needed?  can we just redef here?
@@ -509,8 +508,6 @@ do i = 1,model_size
    call nc_check(nf90_put_var(ncFileID, LocationVarID, get_location(lctn), (/ i /) ), &
                  'nc_write_model_atts', 'nf90_put_var LocationVarID 2')
 enddo
-!--------------------------------------------------------------------
-!--------------------------------------------------------------------
 
 call nc_check(nf90_sync(ncFileID), 'nc_write_model_atts', 'nf90_sync')
 

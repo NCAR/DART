@@ -34,7 +34,7 @@ end
  fprintf('Starting %s\n','PlotBins');
  clear pinfo; close all;
 
- pinfo          = CheckModelCompatibility('perfect_input.nc','preassim.nc');
+ pinfo          = CheckModelCompatibility('true_state.nc','preassim.nc');
  pinfo.var      = 'state';
  pinfo.var_inds = [1 2];
 [pinfo.num_ens_members, pinfo.ensemble_indices] = get_ensemble_indices(pinfo.diagn_file);
@@ -86,7 +86,7 @@ end
  fprintf('Starting %s\n','PlotPhaseSpace');
  clear pinfo; clf
 
- pinfo.fname    = 'perfect_input.nc';
+ pinfo.fname    = 'true_state.nc';
  pinfo.model    = 'Ikeda';
  pinfo.var1name = 'state';
  pinfo.var2name = 'state';
@@ -115,12 +115,12 @@ end
  fprintf('Starting %s\n','PlotSawtooth');
  clear pinfo; close all
 
- pinfo    = CheckModelCompatibility('preassim.nc','filter_output.nc');
+ pinfo    = CheckModelCompatibility('preassim.nc','analysis.nc');
  pinfo.prior_time     = pinfo.truth_time;
  pinfo.prior_file     = pinfo.truth_file;
  pinfo.posterior_time = pinfo.diagn_time;
  pinfo.posterior_file = pinfo.diagn_file;
- pinfo.truth_file     = 'perfect_input.nc';
+ pinfo.truth_file     = 'true_state.nc';
  pinfo = rmfield(pinfo,{'diagn_file','truth_time','diagn_time'});
  [pinfo.num_ens_members, pinfo.ensemble_indices] = get_ensemble_indices(pinfo.prior_file);
  pinfo.var                = 'state';
@@ -147,7 +147,7 @@ end
  fprintf('Starting %s\n','PlotTotalErr');
  clear pinfo; clf
 
- pinfo    = CheckModelCompatibility('perfect_input.nc','preassim.nc');
+ pinfo    = CheckModelCompatibility('true_state.nc','preassim.nc');
 
  PlotTotalErr(pinfo)
  fprintf('Finished %s ... pausing, hit any key\n','PlotTotalErr'); pause

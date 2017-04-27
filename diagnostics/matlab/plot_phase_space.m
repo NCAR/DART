@@ -7,7 +7,7 @@ function plot_phase_space(fname)
 %
 % A reminder of the sequence:
 % truth  run (from    pmo):
-%           perfect_input  --->  perfect_output.nc
+%           perfect_input  --->  true_state.nc
 % filter run (from filter):
 %           filter_input.nc  --->  [prior inflation]  --->
 %                 preassim.nc   --->  [assimilation]  --->
@@ -17,7 +17,7 @@ function plot_phase_space(fname)
 % It is possible to overlay subsequent trajectories as follows:
 %
 % clf;                      % clears the current figure
-% fname = 'perfect_output.nc';
+% fname = 'true_state.nc';
 % var1  = 1;                % variable ID to be used as 'X'
 % var2  = 2;                % variable ID to be used as 'Y'
 % var3  = 3;                % variable ID to be used as 'Z'
@@ -42,12 +42,12 @@ function plot_phase_space(fname)
 % DART $Id$
 
 if (exist('fname','var') ~=1)
-   fname = input('Input name of netCDF file:\n<cr> for perfect_output.nc\n','s');
+   fname = input('Input name of netCDF file:\n<cr> for true_state.nc\n','s');
    if isempty(fname)
-      fname = 'perfect_output.nc';
+      fname = 'true_state.nc';
    end
 else
-   if isempty(fname), fname = 'perfect_output.nc'; end
+   if isempty(fname), fname = 'true_state.nc'; end
    s1 = input(sprintf('Input name of netCDF file:\n<cr> for %s\n',fname),'s');
    if ~isempty(s1), fname = s1; end
 end

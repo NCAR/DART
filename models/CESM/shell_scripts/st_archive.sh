@@ -148,9 +148,9 @@ set ${CASE}.cpl.h* ;                                                            
 set assimilate_???/*/*dart_log.*;                                                                                     dispose ifiles_n ${sta}/dart/logs $*
 set assimilate_???/*/output.*;                                                                                        dispose ifiles_n ${sta}/dart/logs $*
 set *dart_log.*;                                                                                                      dispose ifiles_n ${sta}/dart/logs $*
-set *True_State.*.nc;                                                                                                 dispose ifiles_n ${sta}/dart/hist $*
-set *Prior_Diag.*.nc;                                                                                                 dispose ifiles_n ${sta}/dart/hist $*
-set *Posterior_Diag.*.nc;                                                                                             dispose ifiles_n ${sta}/dart/hist $*
+set *true_state.*.nc;                                                                                                 dispose ifiles_n ${sta}/dart/hist $*
+set *preassim.*.nc;                                                                                                   dispose ifiles_n ${sta}/dart/hist $*
+set *analysis.*.nc;                                                                                                   dispose ifiles_n ${sta}/dart/hist $*
 set *obs_seq.*.out;                                                                                                   dispose ifiles_n ${sta}/dart/hist $*
 set *obs_seq.*.final;                                                                                                 dispose ifiles_n ${sta}/dart/hist $*
 set *obs_seq.*.perfect;                                                                                               dispose ifiles_n ${sta}/dart/hist $*

@@ -254,10 +254,43 @@ Changes to the perfect_model_obs_nml are :
 
 has_cycling           -- REMOVED for low order models
 
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ April 27th 2017 :: change $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Month Day 2017 :: change $Revision$
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Two additional Diagnostic Files (forecast and analysis) in Filter 
+which can be set with the namelist option (stages_to_write)
+
+  input    - writes out mean and sd if requested. for low order models
+             mean and sd are only inserted into restart files with a 
+             single time step.
+
+  forecast - contains the forecast and potentially the mean and sd for the,
+             this is mostly important for lower order models which cycle
+
+  preassim - before assimilation
+     * No Inflation:       same as forecast
+     * Prior Inf:          the inflated ensemble and damped prior inf
+     * Post Inf:           same as forecast
+     * Prior and Post Inf: the inflated ensemble and damped prior inf
+
+  postassim - after assimilation (before posterior infation)
+     * No Inflation:       same as analysis
+     * Prior Inf:          same as analysis
+     * Post Inf:           assimilated ensemble and damped posterior inflation
+     * Prior and Post Inf: assimilated ensemble and damped posterior inflation
+
+  analysis - after assimilation and before potentially update posterior inflation ensemble 
+             and updated prior inf
+     * No Inflation:       assimilated ensemble
+     * Prior Inf:          assimilated ensemble and updated prior inf
+     * Post Inf:           post inflated ensemble and updated posterior inflation
+     * Prior and Post Inf: post inflated ensemble and updated prior inf and posterior 
+                           inflation
+
+  output - a single time step of the output ensemble and potentially updated prior inf 
+           and posterior inflation
+
 
 # <next few lines under version control, do not edit>
 # $URL$

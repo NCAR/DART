@@ -1445,7 +1445,7 @@ integer              :: ierr            ! return value of function
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: TmpIDimID, TmpJDimID, levDimID, tracerDimID, VelIDimID, VelJDimID, MemberDimID
 integer :: TmpIVarID, TmpJVarID, levVarID, tracerVarID, VelIVarID, VelJVarID, StateVarID
-integer :: StateVarDimID, StateVarVarID, TimeDimID
+integer :: StateVarVarID, TimeDimID
 integer :: psVarID, tVarID, rVarID, uVarID, vVarID
 integer :: tis, tie, tjs, tje       ! temperature grid start/stop
 integer :: vis, vie, vjs, vje       ! velocity    grid start/stop
@@ -1466,7 +1466,7 @@ character(len=256) :: msgstring
 if ( .not. module_initialized ) call static_init_model
 
 ierr = 0     ! assume normal termination
-model_mod_writes_state_variables = .true. 
+model_mod_writes_state_variables = .false. 
 
 !-------------------------------------------------------------------------------
 ! Get the bounds for storage on Temp and Velocity grids
@@ -1510,24 +1510,6 @@ if ( TimeDimID /= unlimitedDimId ) then
 endif
 
 !-------------------------------------------------------------------------------
-! Define the model size, state variable dimension ... whatever ...
-!-------------------------------------------------------------------------------
-! JH -- nf90_def_dim is expecting a lenght that is i4.  Here we type cast size
-!    and check if the values are the same.  In the case where model_size is 
-!    larger than the largest i4 integer we error out.
-!-------------------------------------------------------------------------------
-
-model_size_i4 = int(model_size,i4) 
-if (model_size_i4 /= model_size) then
-   write(msgstring,*)'model_size =  ', model_size, ' is too big to write ', &
-             ' diagnostic files.'
-   call error_handler(E_ERR,'nc_write_model_atts', msgstring, source, revision, revdate)
-endif
-
-call check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
-                        len=model_size_i4, dimid = StateVarDimID),"state def_dim")
-
-!-------------------------------------------------------------------------------
 ! Write Global Attributes 
 !-------------------------------------------------------------------------------
 
@@ -1540,8 +1522,6 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source"  ,source  ),"sourc
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision),"revision put")
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate" ,revdate ),"revdate put")
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","FMS_Bgrid"      ),"model put")
-
-! how about namelist input? might be nice to save ...
 
 !-------------------------------------------------------------------------------
 ! Define the new dimensions IDs
@@ -1622,58 +1602,6 @@ if ( ntracer > 0 ) then
                                     "tracers long_name")
 endif
 
-!----------------------------------------------------------------------------
-! We need to process the prognostic variables.
-!----------------------------------------------------------------------------
-! TemperatureGrid : surface pressure  vars%ps(tis:tie, tjs:tje) 
-!                 : temperature       vars%t (tis:tie, tjs:tje, klb:kub)
-!                 : tracers           vars%r (tis:tie, tjs:tje, klb:kub, 1:vars%ntrace)
-! VelocityGrid    : u                 vars%u (vis:vie, vjs:vje, klb:kub) 
-!                 : v                 vars%v (vis:vie, vjs:tje, klb:kub)
-!----------------------------------------------------------------------------
-! Create the (empty) Variables and the Attributes
-!----------------------------------------------------------------------------
-
-call check(nf90_def_var(ncid=ncFileID, name="ps", xtype=nf90_double, &
-      dimids = (/ TmpIDimID, TmpJDimID, MemberDimID, unlimitedDimID /), &
-      varid  = psVarID), "ps def_var")
-call check(nf90_put_att(ncFileID, psVarID, "long_name", "surface pressure"), &
-                                        "ps long_name")
-call check(nf90_put_att(ncFileID, psVarID, "units", "Pa"), &
-                                        "ps units")
-call check(nf90_put_att(ncFileID, psVarID, "units_long_name", "pascals"), &
-                                        "ps units_long_name")
-
-
-call check(nf90_def_var(ncid=ncFileID, name="t", xtype=nf90_double, &
-      dimids = (/ TmpIDimID, TmpJDimID, levDimID, MemberDimID, unlimitedDimID /), &
-      varid  = tVarID), "t def_var")
-call check(nf90_put_att(ncFileID, tVarID, "long_name", "temperature"), "t long_name")
-call check(nf90_put_att(ncFileID, tVarID, "units", "degrees Kelvin"), "t units")
-
-
-call check(nf90_def_var(ncid=ncFileID, name="u", xtype=nf90_double, &
-      dimids = (/ VelIDimID, VelJDimID, levDimID, MemberDimID, unlimitedDimID /), &
-      varid  = uVarID), "u def_var")
-call check(nf90_put_att(ncFileID, uVarID, "long_name", "zonal wind component"), &
-                                        "u long_name")
-call check(nf90_put_att(ncFileID, uVarID, "units", "m/s"), "u units")
-
-
-call check(nf90_def_var(ncid=ncFileID, name="v", xtype=nf90_double, &
-      dimids = (/ VelIDimID, VelJDimID, levDimID, MemberDimID, unlimitedDimID /), &
-      varid  = vVarID), "v def_var")
-call check(nf90_put_att(ncFileID, vVarID, "long_name", "meridional wind component"), &
-                                        "v long_name")
-call check(nf90_put_att(ncFileID, vVarID, "units", "m/s"), "v units")
-
-if ( ntracer > 0 ) then
-   call check(nf90_def_var(ncid=ncFileID, name="r", xtype=nf90_double, &
-   dimids = (/TmpIDimID, TmpJDimID, levDimID, tracerDimID, MemberDimID, unlimitedDimID/),&
-      varid  = rVarID), "r def_var")
-   call check(nf90_put_att(ncFileID, rVarID, "long_name", "various tracers"), "r long_name")
-endif
-
 call check(nf90_enddef(ncfileID), "prognostic enddef")
 
 !-------------------------------------------------------------------------------
@@ -1693,8 +1621,6 @@ endif
 ! Flush the buffer and leave netCDF file open
 !-------------------------------------------------------------------------------
 call check(nf90_sync(ncFileID),"atts sync")
-
-!write (*,*)'nc_write_model_atts: netCDF file ',ncFileID,' is synched ...'
 
 contains
 

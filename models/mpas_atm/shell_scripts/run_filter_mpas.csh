@@ -546,7 +546,7 @@ EOF
      endif
    endif
 
-   foreach FILE ( Prior_Diag.nc Posterior_Diag.nc obs_seq.final )
+   foreach FILE ( preassim.nc analysis.nc obs_seq.final )
      ${MOVE} $FILE $sav_dir/
      if( ! $status == 0 ) then
          echo Failed moving $FILE to ${sav_dir}.

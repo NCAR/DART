@@ -34,7 +34,7 @@ end
  fprintf('Starting %s\n','PlotBins');
  clear pinfo; close all;
 
- pinfo = CheckModelCompatibility('perfect_output.nc','preassim.nc');
+ pinfo = CheckModelCompatibility('true_state.nc','preassim.nc');
 [pinfo.num_ens_members, pinfo.ensemble_indices] = get_ensemble_indices(pinfo.diagn_file);
  pinfo.var            = 'Y';
  pinfo.var_inds       = [100 200 300];
@@ -117,12 +117,12 @@ end
  fprintf('Starting %s\n','PlotSawtooth');
  clear pinfo; close all
 
- pinfo    = CheckModelCompatibility('preassim.nc','filter_output.nc');
+ pinfo    = CheckModelCompatibility('preassim.nc','analysis.nc');
  pinfo.prior_time     = pinfo.truth_time;
  pinfo.prior_file     = pinfo.truth_file;
  pinfo.posterior_time = pinfo.diagn_time;
  pinfo.posterior_file = pinfo.diagn_file;
- pinfo.truth_file     = 'perfect_output.nc';
+ pinfo.truth_file     = 'true_state.nc';
  pinfo = rmfield(pinfo,{'diagn_file','truth_time','diagn_time'});
  [pinfo.num_ens_members, pinfo.ensemble_indices] = get_ensemble_indices(pinfo.prior_file);
  pinfo.var            = 'X';
@@ -149,7 +149,7 @@ end
  fprintf('Starting %s\n','PlotTotalErr');
  clear pinfo; clf
 
- pinfo    = CheckModelCompatibility('perfect_output.nc','preassim.nc');
+ pinfo    = CheckModelCompatibility('true_state.nc','preassim.nc');
  pinfo.def_state_vars     = [1 12 24];
 
  PlotTotalErr(pinfo)

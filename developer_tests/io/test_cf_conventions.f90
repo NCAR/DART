@@ -414,9 +414,9 @@ endif
 ! Set up diagnostic output for model state
 ! All task call init and finalize diag_output.  The choice can then be made 
 ! in single_file_io_mod to use a collective call (e.g. pnetcdf) or not.
-PriorStateUnit     = init_diag_output('Prior_Diag', &
+PriorStateUnit     = init_diag_output('preassim', &
                      'prior ensemble state', num_state_copies, state_meta)
-PosteriorStateUnit = init_diag_output('Posterior_Diag', &
+PosteriorStateUnit = init_diag_output('analysis', &
                      'posterior ensemble state', num_state_copies, state_meta)
 
 end subroutine initialize_diagnostics

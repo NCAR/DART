@@ -69,7 +69,7 @@ integer  :: time_step_seconds = 3600
 
 namelist /model_nml/ model_size_x, y_per_x, forcing, delta_t, &
                      coupling_b, coupling_c, coupling_h, &
-                     output_state_vector, local_y, time_step_days, time_step_seconds
+                     local_y, time_step_days, time_step_seconds
 !----------------------------------------------------------------
 
 ! Definition of variable types

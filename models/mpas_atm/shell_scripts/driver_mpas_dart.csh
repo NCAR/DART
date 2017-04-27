@@ -660,7 +660,7 @@ EOF
         endif
         gzip -f $frst
             
-        foreach FILE ( Prior_Diag.nc Posterior_Diag.nc $obs_seq_out ${frst}.gz )
+        foreach FILE ( preassim.nc analysis.nc $obs_seq_out ${frst}.gz )
           echo ${HSICMD} $FILE : ${hd}/$FILE
                ${HSICMD} $FILE : ${hd}/$FILE
           if ( ! $status == 0 ) then
@@ -688,7 +688,7 @@ EOF
 
    else		# local back-up
 
-   foreach FILE ( Prior_Diag.nc Posterior_Diag.nc $obs_seq_out )
+   foreach FILE ( preassim.nc analysis.nc $obs_seq_out )
      ${MOVE} $FILE $sav_dir/
      if( ! $status == 0 ) then
          echo Failed moving $FILE to ${sav_dir}.

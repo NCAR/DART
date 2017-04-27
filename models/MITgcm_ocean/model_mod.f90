@@ -262,13 +262,12 @@ integer :: model_size    ! the state vector length
 
 ! Skeleton of a model_nml that would be in input.nml
 ! This is where dart-related model parms could be set.
-logical  :: output_state_vector = .true.
+logical  :: output_state_vector = .false.
 integer  :: assimilation_period_days = 7
 integer  :: assimilation_period_seconds = 0
 real(r8) :: model_perturbation_amplitude = 0.2
 
-namelist /model_nml/ output_state_vector,         &
-                     assimilation_period_days,    &
+namelist /model_nml/ assimilation_period_days,    &
                      assimilation_period_seconds, &
                      model_perturbation_amplitude
 

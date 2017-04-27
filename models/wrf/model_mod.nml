@@ -47,7 +47,6 @@
    wrf_state_variables         = 'NULL',
    wrf_state_bounds            = 'NULL',
    num_domains                 = 1,
-   output_state_vector         = .false.,
    calendar_type               = 3,
    assimilation_period_seconds = 21600,
    allow_obs_below_vol         = .false.,

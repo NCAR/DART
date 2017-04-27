@@ -3,7 +3,6 @@
      assimilation_period_days     =    0,
      assimilation_period_seconds  = 3600,
      model_perturbation_amplitude = 0.0,
-     output_state_vector          = .false.
      debug                        = 1,
      noah_state_variables         = 'SOIL_T',   'QTY_SOIL_TEMPERATURE',
                                     'SOIL_M',   'QTY_SOIL_MOISTURE',

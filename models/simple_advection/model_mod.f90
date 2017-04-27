@@ -65,14 +65,13 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-character(len=512) :: string1, string2, string3
+character(len=512) :: string1
 
 ! Simplest 1D advection model with spatially-constant wind
 
 ! Module storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
 logical :: random_seq_init = .false.
-logical :: verbose = .false.
 
 ! Permanent static initialized information about domain width
 real(r8) :: domain_width_meters 
@@ -124,8 +123,6 @@ real(r8)  :: source_damping_rate    = 0.000002777778
 real(r8)  :: source_diurnal_rel_amp = 0.05_r8
 real(r8)  :: source_phase_noise     = 0.0_r8
 
-logical   :: output_state_vector    = .false.
-
 integer, parameter :: NVARS = 5
 integer :: my_ens_size = 1
 
@@ -135,7 +132,7 @@ namelist /model_nml/ num_grid_points, grid_spacing_meters, &
                      lagrangian_for_wind, destruction_rate, &
                      source_random_amp_frac, source_damping_rate, &
                      source_diurnal_rel_amp, source_phase_noise, &
-                     output_state_vector, template_file
+                     template_file
 
 !----------------------------------------------------------------
 
@@ -291,7 +288,7 @@ real(r8), intent(inout) :: x(:)
 type(time_type), intent(in) :: time
 
 integer :: next, prev, seconds, days, ens_size
-type(location_type) :: this_loc, source_loc
+type(location_type) :: source_loc
 real(r8) :: lctn, source_location, old_u_mean, new_u_mean
 real(r8) :: du_dx, dt_seconds, t_phase, phase, random_src
 type(ensemble_type) :: temp_handle
@@ -636,11 +633,137 @@ integer, intent(in)  :: ncFileID      ! netCDF file identifier
 logical, intent(out) :: model_mod_writes_state_variables
 integer              :: ierr          ! return value of function
 
-ierr = 0                      ! assume normal termination
+integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
+integer :: LocationDimID, LocationVarID
+integer :: i
+type(location_type) :: lctn 
+
+ierr = 0                             ! assume normal termination
+
+! dart code will write the state into the file
+! so this routine just needs to write any model-specific
+! attributes it wants to record.
+
 model_mod_writes_state_variables = .false.
+
+! are the inq and sync needed?  can we just redef here?
+call nc_check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID), &
+                           'nc_write_model_atts', 'nf90_Inquire')
+call nc_check(nf90_sync(ncFileID), 'nc_write_model_atts', 'nf90_sync') ! Ensure netCDF file is current
+call nc_check(nf90_Redef(ncFileID), 'nc_write_model_atts', 'nf90_Redef')
+
+! Write Global Attributes 
+
+call put_global_creation_time(ncFileID)
+
+call put_global_char_att(ncFileID, "model_source"           , source )
+call put_global_char_att(ncFileID, "model_revision"         , revision )
+call put_global_char_att(ncFileID, "model_revdate"          , revdate )
+call put_global_char_att(ncFileID, "model"                  , "simple_advection" )
+call put_global_real_att(ncFileID, "mean_wind"              , mean_wind )
+call put_global_real_att(ncFileID, "wind_random_amp"        , wind_random_amp )
+call put_global_real_att(ncFileID, "wind_damping_rate"      , wind_damping_rate )
+call put_global_real_att(ncFileID, "destruction_rate"       , destruction_rate )
+call put_global_real_att(ncFileID, "source_random_amp_frac" , source_random_amp_frac )
+call put_global_real_att(ncFileID, "source_damping_rate"    , source_damping_rate )
+call put_global_real_att(ncFileID, "source_diurnal_rel_amp" , source_diurnal_rel_amp )
+call put_global_real_att(ncFileID, "source_phase_noise"     , source_phase_noise )
+
+!--------------------------------------------------------------------
+!--------------------------------------------------------------------
+!>@todo
+!> this same location attr and write code is in the oned locations module.
+!> this code should call it to fill in the locations attrs and data.
+
+! call nc_write_location_atts(ncFileID)
+! call nc_get_location_varids(ncFileID, LocationVarID)
+! do i=1, num_grid_points
+!    call nc_write_location(ncFileID, LocationVarID, loc, index)
+! enddo
+
+call nc_check(nf90_def_dim(ncid=ncFileID, name="location", len=int(num_grid_points,i4), dimid = LocationDimID), &
+              'nc_write_model_atts', 'nf90_def_dim location') 
+call nc_check(NF90_def_var(ncFileID, name="location", xtype=nf90_double, dimids = LocationDimID, varid=LocationVarID) , &
+             'nc_write_model_atts', 'nf90_def_var location')
+
+call nc_check(nf90_put_att(ncFileID, LocationVarID, "short_name", trim(adjustl(LocationLName))), &
+              'nc_write_model_atts', 'nf90_put_att short_name')
+call nc_check(nf90_put_att(ncFileID, LocationVarID, "long_name", "location on a unit circle"), &
+              'nc_write_model_atts', 'nf90_put_att long_name')
+call nc_check(nf90_put_att(ncFileID, LocationVarID, "dimension", LocationDims ), &
+              'nc_write_model_atts', 'nf90_put_att dimension')
+call nc_check(nf90_put_att(ncFileID, LocationVarID, "valid_range", (/ 0.0_r8, 1.0_r8 /)), &
+              'nc_write_model_atts', 'nf90_put_att valid_range')
+
+! Leave define mode so we can fill
+call nc_check(nf90_enddef(ncfileID), 'nc_write_model_atts', 'nf90_enddef')
+
+! Fill the location variable
+do i = 1,num_grid_points
+   lctn = state_loc(i)
+   call nc_check(nf90_put_var(ncFileID, LocationVarID, get_location(lctn), (/ i /) ), &
+                 'nc_write_model_atts', 'nf90_put_var LocationVarID 2')
+enddo
+!--------------------------------------------------------------------
+!--------------------------------------------------------------------
+
+call nc_check(nf90_sync(ncFileID), 'nc_write_model_atts', 'nf90_sync')
 
 end function nc_write_model_atts
 
+!--------------------------------------------------------------------
+
+subroutine put_global_char_att(ncid, name, val)
+
+use netcdf
+
+integer,          intent(in) :: ncid
+character(len=*), intent(in) :: name
+character(len=*), intent(in) :: val
+
+integer :: ret
+
+ret = nf90_put_att(ncid, NF90_GLOBAL, name, val)
+call nc_check(ret, 'put_global_char_att', 'adding the global attribute: '//trim(name))
+
+end subroutine put_global_char_att
+
+!--------------------------------------------------------------------
+
+subroutine put_global_real_att(ncid, name, val)
+
+use netcdf
+
+integer,          intent(in) :: ncid
+character(len=*), intent(in) :: name
+real(r8),         intent(in) :: val
+
+integer :: ret
+
+ret = nf90_put_att(ncid, NF90_GLOBAL, name, val)
+call nc_check(ret, 'put_global_real_att', 'adding the global attribute: '//trim(name))
+
+end subroutine put_global_real_att
+
+!--------------------------------------------------------------------
+
+subroutine put_global_creation_time(ncid)
+integer, intent(in) :: ncid
+
+character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
+character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
+character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
+integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
+
+character(len=128) :: str1
+
+call DATE_AND_TIME(crdate,crtime,crzone,values)
+write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
+                  values(1), values(2), values(3), values(5), values(6), values(7)
+
+call put_global_char_att(ncid, "creation_date",str1)
+
+end subroutine put_global_creation_time
 
 
 function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)         

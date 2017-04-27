@@ -78,7 +78,6 @@
    output_box_info             = .false.  /
 
 &model_nml
-   output_state_vector         = .false.,
    default_state_variables     = .false.
    wrf_state_variables         = 'U',          'QTY_U_WIND_COMPONENT',       'TYPE_U',     'UPDATE', '999',
                                  'V',          'QTY_V_WIND_COMPONENT',       'TYPE_V',     'UPDATE', '999',

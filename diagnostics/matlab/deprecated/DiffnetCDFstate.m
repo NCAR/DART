@@ -11,8 +11,8 @@ function DiffnetCDFstate(file1,file2,outfile)
 %
 % Example:
 %
-% file1   = 'test1/Prior_Diag.nc';
-% file2   = 'test2/Prior_Diag.nc';
+% file1   = 'test1/preassim.nc';
+% file2   = 'test2/preassim.nc';
 % outfile = 'test1_2.diff';
 % DiffnetCDFstate(file1,file2,outfile)
 

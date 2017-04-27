@@ -7,9 +7,13 @@
 # DART $Id$
 
 #----------------------------------------------------------------------
+# compile all programs in the current directory with a mkmf_xxx file.
+#
+# usage: [ -mpi | -nompi ]
+#----------------------------------------------------------------------
 # 'preprocess' is a program that culls the appropriate sections of the
-# observation module for the observations types in 'input.nml'; the 
-# resulting source file is used by all the remaining programs, 
+# observation module for the observations types in 'input.nml'; the
+# resulting source file is used by all the remaining programs,
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
@@ -64,10 +68,10 @@ end
 \rm -f *.o *.mod input.nml*_default
 
 if ( $#argv == 1 && "$1" == "-mpi" ) then
-  echo "Success: All single task DART programs compiled."  
+  echo "Success: All single task DART programs compiled."
   echo "Script now compiling MPI parallel versions of the DART programs."
 else if ( $#argv == 1 && "$1" == "-nompi" ) then
-  echo "Success: All single task DART programs compiled."  
+  echo "Success: All single task DART programs compiled."
   echo "Script is exiting without building the MPI version of the DART programs."
   exit 0
 else

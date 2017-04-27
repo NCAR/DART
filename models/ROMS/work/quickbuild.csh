@@ -1,4 +1,4 @@
-#!/bin/csh 
+#!/bin/csh
 #
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
@@ -7,8 +7,7 @@
 # DART $Id$
 
 #----------------------------------------------------------------------
-#
-# compile all programs in the current directory that have a mkmf_xxx file.
+# compile all programs in the current directory with a mkmf_xxx file.
 #
 # usage: [ -mpi | -nompi ]
 #

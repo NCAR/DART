@@ -180,7 +180,6 @@
    wrf_state_bounds    = 'QVAPOR','0.0','NULL','CLAMP',
                          'QRAIN', '0.0','NULL','CLAMP',
                          'QCLOUD','0.0','NULL','CLAMP',
-   output_state_vector         = .false.,
    num_domains                 = 1,
    calendar_type               = 3,
    assimilation_period_seconds = 21600,

@@ -38,8 +38,8 @@ if ( exist('preassim.nc','file') ~= 0 )
   fname = 'preassim';
 elseif ( exist('postassim.nc','file') ~= 0 )
   fname = 'postassim';
-elseif ( exist('perfect_output.nc','file') ~= 0 )
-  fname = 'perfect_output';
+elseif ( exist('true_state.nc','file') ~= 0 )
+  fname = 'true_state';
 else
   fname = input('Enter the name of the netCDF file containing domain information: ');
 end

@@ -203,7 +203,6 @@ logical :: use_increments_for_u_update = .true.
 namelist /model_nml/             &
    model_analysis_filename,      &
    grid_definition_filename,     &
-   output_state_vector,          &
    vert_localization_coord,      &
    assimilation_period_days,     &
    assimilation_period_seconds,  &

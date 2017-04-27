@@ -1,21 +1,12 @@
 function plot_total_err(truth_file,diagn_file)
 %% DART:plot_total_err - summary plots of global error and spread
 %
-% A reminder of the sequence:
-% truth  run (from    pmo):
-%           perfect_input  --->  perfect_output.nc
-% filter run (from filter):
-%           filter_input.nc  --->  [prior inflation]  --->
-%                 preassim.nc   --->  [assimilation]  --->
-%                       postassim.nc  ---> [posterior inflation]  --->
-%                             filter_output.nc
-%
-% Example 1  (uses default names 'perfect_output.nc', 'preassim.nc' and
+% Example 1  (uses default names 'true_state.nc', 'preassim.nc' and
 % will prompt you for others if these do not exist.)
 % plot_total_err
 %
 % Example 2
-% truth_file = 'perfect_output.nc';
+% truth_file = 'true_state.nc';
 % diagn_file = 'preassim.nc';
 % plot_total_err(truth_file,diagn_file)
 
@@ -27,9 +18,9 @@ function plot_total_err(truth_file,diagn_file)
 
 if (nargin == 0)
     disp('Input name of true model trajectory file:')
-    truth_file = input('<cr> for perfect_output.nc\n','s');
+    truth_file = input('<cr> for true_state.nc\n','s');
     if isempty(truth_file)
-        truth_file = 'perfect_output.nc';
+        truth_file = 'true_state.nc';
     end
     disp('Input name of ensemble trajectory file:')
     diagn_file = input('<cr> for preassim.nc\n','s');

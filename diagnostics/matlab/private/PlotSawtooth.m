@@ -22,7 +22,7 @@ function PlotSawtooth( pinfo )
 %
 % Example 1 ( forced_lorenz_96 model )
 %%--------------------------------------------------------
-% pinfo.truth_file     = 'perfect_output.nc';
+% pinfo.truth_file     = 'true_state.nc';
 % pinfo.prior_file     = 'preassim.nc';
 % pinfo.posterior_file = 'postassim.nc';
 % pinfo.var            = 'state';
@@ -31,7 +31,7 @@ function PlotSawtooth( pinfo )
 %
 % Example 2 ( fms_bgrid_model )
 %%--------------------------------------------------------
-% pinfo.truth_file     = 'perfect_output.nc';
+% pinfo.truth_file     = 'true_state.nc';
 % pinfo.prior_file     = 'preassim.nc';
 % pinfo.posterior_file = 'filter_output.nc';
 % pinfo.var        = 'u';

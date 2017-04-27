@@ -15,11 +15,11 @@ date +"%T"
 
 #Get new files, remove old ones
 rm *.nc 
-cp ../Posterior_Diag.nc .
+cp ../analysis.nc .
 cp ../Output/*.nc .
 
 # Make copy the record dimension
-ncpdq -O -a copy,time Posterior_Diag.nc Posterior_Diag.nc
+ncpdq -O -a copy,time analysis.nc analysis.nc
 
 export mean='mean_copy_d01.nc'
 export sd='sd_copy_d01.nc'
@@ -53,19 +53,19 @@ do
 
    wait
  
-   # concatenate the 4 files into Posterior_Diag
+   # concatenate the 4 files into analysis
    # append
-   ncrcat -A -v $var $mean $sd $inf_mean $inf_sd Posterior_Diag.nc  
+   ncrcat -A -v $var $mean $sd $inf_mean $inf_sd analysis.nc  
    echo -n "done variable " $var "time "
    date +"%T"   
 done
 
 # switch time and copy dimensions back
-ncpdq -O -a time,copy Posterior_Diag.nc Posterior_Diag.nc
+ncpdq -O -a time,copy analysis.nc analysis.nc
 echo -n "finished " 
 date +"%T"
 
-#mv Posterior_Diag.nc Posterior_Diag.nc.full
+#mv analysis.nc analysis.nc.full
 
 exit 0
 

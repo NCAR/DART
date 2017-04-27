@@ -11,7 +11,7 @@ function plot_ens_time_series(diagn_file, truth_file)
 %              If no filenames are provided, you will be prompted for filenames.
 %              Only the filename containing the ensemble mean is required.
 %
-% Example 1  (Prompt for filenames. Defaults are 'preassim.nc' and 'perfect_output.nc')
+% Example 1  (Prompt for filenames. Defaults are 'preassim.nc' and 'true_state.nc')
 % plot_ens_mean_time_series
 %
 % Example 2
@@ -19,7 +19,7 @@ function plot_ens_time_series(diagn_file, truth_file)
 % plot_ens_mean_time_series(diagn_file)
 %
 % Example 3 
-% truth_file = 'perfect_output.nc';
+% truth_file = 'true_state.nc';
 % diagn_file = 'postassim.nc';
 % plot_ens_time_series
 
@@ -44,9 +44,9 @@ elseif (nargin == 0)
    disp('        : the name of the input file. If not, enter a dummy filename.')
    disp('        : Input name of true model trajectory file:')
 
-   truth_file = input('<cr> for perfect_output.nc\n','s');
+   truth_file = input('<cr> for true_state.nc\n','s');
    if isempty(truth_file)
-      truth_file = 'perfect_output.nc';
+      truth_file = 'true_state.nc';
    end
 elseif (nargin == 1)
    disp(' ')
@@ -54,9 +54,9 @@ elseif (nargin == 1)
    disp('        : the name of the input file. If not, enter a dummy filename.')
    disp('        : Input name of true model trajectory file:')
 
-   truth_file = input('<cr> for perfect_output.nc\n','s');
+   truth_file = input('<cr> for true_state.nc\n','s');
    if isempty(truth_file)
-      truth_file = 'perfect_output.nc';
+      truth_file = 'true_state.nc';
    end
 end
 

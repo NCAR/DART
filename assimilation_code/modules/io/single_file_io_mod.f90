@@ -92,8 +92,10 @@ private
 public :: init_singlefile_output, &          
           finalize_singlefile_output, &
           get_netcdf_file_type, &
+          get_num_times_netcdf, &
           read_singlefile, &
-          write_singlefile
+          write_singlefile, &
+          write_augmented_state
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -593,6 +595,8 @@ character(len=128)     :: copyname
 type(time_type)        :: curr_ens_time
 type(netcdf_file_type) :: ncFileID
 real(r8), allocatable  :: temp_ens(:)
+integer                :: timeindex
+integer                :: is1, id1
 
 ! assumes that mean and spread have already been computed
 ! make sure vars is up-to-date
@@ -611,13 +615,28 @@ endif
 curr_ens_time = ens_handle%current_time
 call get_netcdf_file_type(file_info, ncFileID) 
 
+timeindex = nc_get_tindex(ncFileID, curr_ens_time)
+
+if ( timeindex < 0 ) then
+   call get_time(curr_ens_time,is1,id1)
+   write(msgstring,*)'model time (d,s)',id1,is1,' not in ',ncFileID%fname
+   write(msgstring,'(''model time (d,s) ('',i8,i5,'') is index '',i6, '' in ncFileID '',i10)') &
+          id1,is1,timeindex,ncFileID%ncid
+   call error_handler(E_ERR,'write_model_variables', msgstring, source, revision, revdate)
+endif
+
+call get_time(curr_ens_time,is1,id1)
+write(msgstring,'(''model time (d,s) ('',i8,i5,'') is index '',i6, '' in ncFileID '',i10)') &
+       id1,is1,timeindex,ncFileID%ncid
+call error_handler(E_DBG,'write_model_variables', msgstring, source, revision, revdate)
+
 my_ncid        = ncFileID%ncid
 num_output_ens = noutput_state_variables(file_info)
 
 ! Output ensemble members
 do member_index = 1, num_output_ens
    call get_copy(map_task_to_pe(ens_handle, 0), ens_handle, member_index, temp_ens)
-   call write_model_variables(ncFileID,  temp_ens, member_index, curr_ens_time)
+   call write_model_variables(ncFileID,  temp_ens, member_index, curr_ens_time, timeindex)
 enddo
 
 ! Output Extras
@@ -628,27 +647,110 @@ do copy_index = ens_size+1, ens_handle%num_copies
       copyname = get_copy_name(file_info, copy_index)
       call get_copy(map_task_to_pe(ens_handle, 0), ens_handle, copy_index, temp_ens)
       if(my_task_id() == 0) then
-         call write_extra_variable(ncFileID, temp_ens, copyname, curr_ens_time)
+         call write_extra_variables(ncFileID, temp_ens, copyname, curr_ens_time, timeindex)
       endif
    endif
 enddo
 
-call set_netcdf_file_type(file_info, ncFileID)
+!>@ todo FIXME : This sync is not necessary but ensures that all of the variable
+!>  information gets written out if filter happens to crash in the middle of a
+!> run. This may slow down the code for longer runs.
+call nc_check(nf90_sync(my_ncid), 'write_single_file', 'nf90_sync')
 
+call set_netcdf_file_type(file_info, ncFileID)
+   
 deallocate(temp_ens)
 
 end subroutine write_singlefile
 
 
 !-----------------------------------------------------------
+!> insert the mean and sd into the input file if the user requests
+!> this assumes that the files has already been closed and the
+!> variables read in.
+!>
+
+subroutine write_augmented_state(ens_handle, file_info)
+
+type(ensemble_type),  intent(inout) :: ens_handle
+type(file_info_type), intent(inout) :: file_info
+
+! Local variables
+integer                :: member_index, copy_index, my_ncid
+integer                :: num_output_ens, ens_size
+integer(i8)            :: model_size
+character(len=128)     :: copyname
+type(time_type)        :: curr_ens_time
+type(netcdf_file_type) :: ncFileID
+real(r8), allocatable  :: temp_ens(:)
+integer                :: TimeDimID, time_size, varid, ret, icopy, ivar, domain
+character(len=NF90_MAX_NAME) :: dimname, varname, extraname, fname
+
+! assumes that mean and spread have already been computed
+! make sure vars is up-to-date
+call allocate_vars(ens_handle)
+call all_copies_to_all_vars(ens_handle)
+
+model_size = get_model_size()
+
+! task 0 needs some space
+if (my_task_id() == 0) then
+   allocate(temp_ens(model_size))
+else
+   allocate(temp_ens(1))
+endif
+
+curr_ens_time = ens_handle%current_time
+
+domain = 1 !>@todo : only a single domain for single file read supported. need
+           !>        to consider case for multiple domains.
+fname = get_restart_filename(file_info%stage_metadata, 1, domain)
+
+ret = nf90_open(fname, NF90_WRITE, my_ncid)
+call nc_check(ret, 'write_augmented_state: nf90_open', fname)
+
+ret = nf90_inq_dimid(my_ncid, "time", TimeDimID)
+call nc_check(ret, 'write_augmented_state', 'inq_varid time : '//trim(fname))
+
+ret = nf90_inquire_dimension(my_ncid, TimeDimID, len=time_size) 
+call nc_check(ret, 'write_augmented_state', 'inquire_dimension time '//trim(fname))
+
+ncFileID%ncid  = my_ncid
+ncFileID%fname = fname
+
+! Output Mean and SD
+
+ens_size = ens_handle%num_copies - ens_handle%num_extras
+
+do copy_index = ens_size+1, ens_handle%num_copies
+   if ( file_info%stage_metadata%io_flag(copy_index) == WRITE_COPY ) then
+      copyname = get_copy_name(file_info,copy_index)
+      call get_copy(map_task_to_pe(ens_handle, 0), ens_handle, copy_index, temp_ens)
+      if(my_task_id() == 0) then
+         call write_extra_attributes(ncFileID, TimeDimID, copyname)
+         call write_extra_variables(  ncFileID, temp_ens,  copyname, curr_ens_time, 1)
+      endif
+   endif
+enddo
+
+ret = nf90_close(my_ncid)
+call nc_check(ret, 'write_augmented_state: nf90_close', fname)
+
+deallocate(temp_ens)
+
+end subroutine write_augmented_state
+
+
+!-----------------------------------------------------------
 !> write out a single variable appending time stamp curr_ens_time
 
-subroutine write_extra_variable(ncFileID, model_state, copyname, curr_ens_time)
+subroutine write_extra_variables(ncFileID, model_state, copyname, curr_ens_time, timeindex)
 
 type(netcdf_file_type), intent(inout) :: ncFileID
 real(r8),               intent(in)    :: model_state(:)
 character(len=*),       intent(in)    :: copyname
 type(time_type),        intent(in)    :: curr_ens_time
+integer,                intent(in)    :: timeindex
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dim_lengths
 integer, dimension(NF90_MAX_VAR_DIMS) :: start_point
@@ -659,27 +761,10 @@ integer :: ret ! netcdf return code
 integer :: var_id ! netcdf variable id
 integer :: domain, dcount
 integer :: my_ncid
-integer :: timeindex
 integer :: is1, id1
 character(len=NF90_MAX_NAME) :: dimname, varname, extraname
 
 my_ncid = ncFileID%ncid
-timeindex = nc_get_tindex(ncFileID, curr_ens_time)
-
-if ( timeindex < 0 ) then
-   call get_time(curr_ens_time,is1,id1)
-   write(msgstring,*)'model time (d,s)',id1,is1,' not in ',ncFileID%fname
-   write(msgstring,'(''model time (d,s) ('',i8,i5,'') is index '',i6, '' in ncFileID '',i10)') &
-          id1,is1,timeindex,ncFileID%ncid
-   call error_handler(E_ERR,'write_singlefile', msgstring, source, revision, revdate)
-endif
-
-call get_time(curr_ens_time,is1,id1)
-write(msgstring,'(''model time (d,s) ('',i8,i5,'') is index '',i6, '' in ncFileID '',i10)') &
-       id1,is1,timeindex,ncFileID%ncid
-call error_handler(E_DBG,'write_singlefile', msgstring, source, revision, revdate)
-
-!#! print*, 'write_extra_variable ', trim(varname), ' timeind [',timeindex,'], size state = ', size(model_state)
 
 domain    = 1 !>@todo ONLY ONE DOMAIN FOR SINGLE FILE OUTPUT
 
@@ -709,17 +794,16 @@ do ivar = 1, get_num_variables(domain)
    enddo
 
    write(extraname,'(a,"_",a)') trim(varname), trim(copyname)
-
    ret = nf90_inq_varid(my_ncid, extraname, var_id)
-   call nc_check(ret, 'write_extra_variable', 'inq_varid '//trim(extraname))
+   call nc_check(ret, 'write_extra_variables', 'inq_varid '//trim(extraname))
 
    ret = nf90_put_var(my_ncid, var_id, model_state(istart:iend), &
                 count=dim_lengths(1:dcount), start=start_point(1:dcount))
-   call nc_check(ret, 'write_extra_variable', 'put_var '//trim(extraname))
+   call nc_check(ret, 'write_extra_variables', 'put_var '//trim(extraname))
 
 enddo
 
-end subroutine write_extra_variable
+end subroutine write_extra_variables
 
 
 !-------------------------------------------------------------------------------
@@ -730,12 +814,13 @@ end subroutine write_extra_variable
 !> nc_write_model_vars has returned 
 !> model_mod_will_write_state_varaibles = .false.
 
-subroutine write_model_variables(ncFileID, model_state, memindex, curr_ens_time)
+subroutine write_model_variables(ncFileID, model_state, memindex, curr_ens_time, timeindex)
 
 type(netcdf_file_type), intent(inout) :: ncFileID
 real(r8),               intent(in) :: model_state(:)
 integer,                intent(in) :: memindex
 type(time_type),        intent(in) :: curr_ens_time
+integer,                intent(in) :: timeindex
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dim_lengths
 integer, dimension(NF90_MAX_VAR_DIMS) :: start_point
@@ -746,29 +831,12 @@ integer :: ret ! netcdf return code
 integer :: var_id ! netcdf variable id
 integer :: domain
 integer :: my_ncid
-integer :: timeindex
 integer :: is1, id1
 character(len=NF90_MAX_NAME) :: dimname, varname
 
 ! may not be needed
 ncFileID%diag_id = create_diagnostic_structure()
 my_ncid          = ncFileID%ncid
-
-timeindex = nc_get_tindex(ncFileID, curr_ens_time)
-
-if ( timeindex < 0 ) then
-   call get_time(curr_ens_time,is1,id1)
-   write(msgstring,*)'model time (d,s)',id1,is1,' not in ',ncFileID%fname
-   write(msgstring,'(''model time (d,s) ('',i8,i5,'') is index '',i6, '' in ncFileID '',i10)') &
-          id1,is1,timeindex,ncFileID%ncid
-   call error_handler(E_ERR,'write_model_variables', msgstring, source, revision, revdate)
-endif
-
-call get_time(curr_ens_time,is1,id1)
-write(msgstring,'(''model time (d,s) ('',i8,i5,'') is index '',i6, '' in ncFileID '',i10)') &
-       id1,is1,timeindex,ncFileID%ncid
-call error_handler(E_DBG,'write_model_variables', msgstring, source, revision, revdate)
-
 
 domain = 1 !>@todo ONLY ONE DOMAIN FOR SINGLE FILE OUTPUT
 
@@ -811,8 +879,8 @@ end subroutine write_model_variables
 subroutine write_extra_attributes(ncFileID, time_dimId, copyname)
 
 type(netcdf_file_type), intent(inout) :: ncFileID
-integer,          intent(in) :: time_dimId
-character(len=*), intent(in) :: copyname
+integer,           intent(in) :: time_dimId
+character(len=*),  intent(in) :: copyname
 
 integer :: ivar, jdim, ndims, domain
 integer :: ret, my_ncid, new_varid, my_dimid, my_xtype
@@ -823,7 +891,6 @@ integer ::  model_dimids(NF90_MAX_VAR_DIMS)
 ! make sure ncFileID refers to an open netCDF file 
 !--------------------------------------------------------------------
 
-call nc_check(nf90_sync(ncFileID%ncid),  'write_extra_attributes', 'nf90_sync') ! Ensure netCDF file is current
 call nc_check(nf90_Redef(ncFileID%ncid), 'write_extra_attributes', 'nf90_Redef')
 
 my_ncid  = ncFileID%ncid
@@ -855,11 +922,14 @@ if(my_task_id()==0) then
       model_dimids(ndims+1) = time_dimId
    
       write(extraname,'(a,"_",a)') trim(varname), trim(copyname)
-      ret = nf90_def_var(my_ncid, name   = extraname,& 
-                               xtype  = my_xtype, &
-                               dimids = model_dimids(1:ndims+1), &
-                               varid  = new_varid)
-      call nc_check(ret, 'write_extra_attributes', 'defining variable '//trim(extraname))
+      ret = nf90_inq_varid(my_ncid, extraname, new_varid)
+      if(ret /= NF90_NOERR .and. ret /= NF90_ENAMEINUSE) then
+         ret = nf90_def_var(my_ncid, name   = extraname,& 
+                                  xtype  = my_xtype, &
+                                  dimids = model_dimids(1:ndims+1), &
+                                  varid  = new_varid)
+         call nc_check(ret, 'write_extra_attributes', 'defining variable '//trim(extraname))
+      endif
    enddo
 endif
 
@@ -895,7 +965,6 @@ integer :: ivar, jdim ! loop variables
 integer :: new_varid
 character(len=metadatalength) :: dimname, varname
 
-call nc_check(nf90_sync(ncFileID%ncid), 'write_model_attributes', 'nf90_sync') ! Ensure netCDF file is current
 call nc_check(nf90_Redef(ncFileID%ncid), 'write_model_attributes', 'nf90_Redef')
 
 ncFileID%diag_id = create_diagnostic_structure()
@@ -1292,7 +1361,33 @@ end subroutine get_netcdf_file_type
 !------------------------------------------------------------------
 !------------------------------------------------------------------
 
+function get_num_times_netcdf(fname) result(time_size) 
+
+character(len=256), intent(in) :: fname 
+integer :: time_size
+
+integer :: my_ncid, TimeDimID, ret
+
+time_size = -1 ! assume bad size
+
+ret = nf90_open(fname, NF90_NOWRITE, my_ncid)
+call nc_check(ret, 'get_num_times_netcdf: nf90_open', fname)
+
+ret = nf90_inq_dimid(my_ncid, "time", TimeDimID)
+if (ret == NF90_NOERR) then
+   ret = nf90_inquire_dimension(my_ncid, TimeDimID, len=time_size) 
+   call nc_check(ret, 'get_num_times_netcdf', 'inquire_dimension time '//trim(fname))
+endif
+
+ret = nf90_close(my_ncid)
+call nc_check(ret, 'get_num_times_netcdf: nf90_close', fname)
+
+end function get_num_times_netcdf
+
+!------------------------------------------------------------------
+
 !> @}
+
 end module single_file_io_mod
 
 ! <next few lines under version control, do not edit>

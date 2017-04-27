@@ -34,7 +34,7 @@ end
  fprintf('Starting %s\n','PlotBins');
  clear pinfo; close all;
 
- pinfo          = CheckModelCompatibility('perfect_output.nc','preassim.nc');
+ pinfo          = CheckModelCompatibility('true_state.nc','preassim.nc');
  pinfo.var      = 'state';
  pinfo.var_inds = [1 2 3 4 5 6 7 8 9];
 [pinfo.num_ens_members, pinfo.ensemble_indices] = get_ensemble_indices(pinfo.diagn_file);
@@ -89,7 +89,7 @@ end
  fprintf('Starting %s\n','PlotPhaseSpace');
  clear pinfo; close all
 
- pinfo.fname    = 'perfect_output.nc';
+ pinfo.fname    = 'true_state.nc';
  pinfo.model    = '9var';
  pinfo.var1name = 'state';
  pinfo.var2name = 'state';
@@ -128,10 +128,10 @@ end
  pinfo.max_state_var      = 9;
  pinfo.def_state_vars     = [1 2 3 4 5 6 7 8 9];
  pinfo.prior_file         = 'preassim.nc';
- pinfo.posterior_file     = 'filter_output.nc';
+ pinfo.posterior_file     = 'analysis.nc';
  pinfo.diagn_file         = 'preassim.nc';
  pinfo.diagn_time         = [-1 -1];
- pinfo.truth_file         = 'perfect_output.nc';
+ pinfo.truth_file         = 'true_state.nc';
  pinfo.truth_time         = [-1 -1];
  pinfo.var                = 'state';
  pinfo.var_inds           = [1 2 3 4 5 6 7 8 9];
@@ -168,7 +168,7 @@ end
  pinfo.min_state_var      = 1;
  pinfo.max_state_var      = 9;
  pinfo.def_state_vars     = [1 2 3 4 5 6 7 8 9];
- pinfo.truth_file         = 'perfect_output.nc';
+ pinfo.truth_file         = 'true_state.nc';
  pinfo.diagn_file         = 'preassim.nc';
  pinfo.time               = ncread(pinfo.truth_file,'time');
  pinfo.time_series_length = length(pinfo.time);

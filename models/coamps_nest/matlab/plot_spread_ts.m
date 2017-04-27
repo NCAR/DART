@@ -19,7 +19,7 @@ xdim = 100;
 ydim = 100;
 
 % Open up the NetCDF file
-filename='Posterior_Diag.nc';
+filename='analysis.nc';
 diag_nc = netcdf(sprintf('%s/%s',path,filename));
 
 % Grab the entire set of times

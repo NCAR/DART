@@ -86,7 +86,7 @@ use io_filenames_mod,     only : get_restart_filename, copy_has_units, &
                                  copy_is_clamped, query_read_copy, &
                                  query_write_copy, force_copy_back
 
-use model_mod,            only : write_model_time
+use model_mod,            only : write_model_time, nc_write_model_atts
 
 use netcdf
 
@@ -881,11 +881,11 @@ do i = start_var, end_var
 
       dims = get_io_dim_lengths(domain, i)
 
-      ret = nf90_inq_varid(ncid, get_variable_name(domain, i), var_id)
-      call nc_check(ret, 'write_variables', 'getting variable id')
+      ret = nf90_inq_varid(ncid, trim(get_variable_name(domain, i)), var_id)
+      call nc_check(ret, 'write_variables:', 'getting variable "'//trim(get_variable_name(domain,i))//'"')
 
       ret = nf90_put_var(ncid, var_id, var_block(istart:iend), count=dims)
-      call nc_check(ret, 'write_variables', 'writing')
+      call nc_check(ret, 'write_variables:', 'writing "'//trim(get_variable_name(domain,i))//'"')
 
       deallocate(dims)
    endif
@@ -927,6 +927,7 @@ integer :: new_varid
 integer :: ndims
 integer :: xtype ! precision for netcdf file
 integer :: dimids(NF90_MAX_VAR_DIMS)
+logical :: model_writes_atts
 
 character(len=NF90_MAX_NAME) :: filename
 
@@ -940,14 +941,23 @@ create_mode = ior(NF90_CLOBBER, NF90_64BIT_OFFSET)
 ret = nf90_create(filename, create_mode, ncfile_out)
 call nc_check(ret, 'create_and_open_state_output: creating', trim(filename))
 
+ret = nf90_enddef(ncfile_out)
+call nc_check(ret, 'create_and_open_state_output', 'end define mode')
+
+! write grid information
+ret =  nc_write_model_atts(ncfile_out, model_writes_atts)
+call nc_check(nf90_Redef(ncfile_out),'create_and_open_state_output',   'redef ')
+
 ! filename discription
 call nc_write_file_information(ncfile_out, filename, get_file_description(name_handle, copy_number, dom_id))
+
 
 ! revision information
 call nc_write_revision_info(ncfile_out)
 
 ! clamping information
 call nc_write_global_att_clamping(ncfile_out, copy_number, dom_id, from_scratch=.true.)
+
 
 ! define dimensions, loop around unique dimensions
 do i = 1, get_io_num_unique_dims(dom_id)
@@ -1001,6 +1011,7 @@ ret = nf90_enddef(ncfile_out)
 call nc_check(ret, 'create_and_open_state_output', 'end define mode')
 
 call write_model_time(ncfile_out, dart_time)
+
 
 end function create_and_open_state_output
 

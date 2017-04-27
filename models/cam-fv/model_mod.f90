@@ -2276,7 +2276,8 @@ character(len=NF90_MAX_NAME) :: str1
 
 if (.not. module_initialized) call static_init_model()
 
-model_mod_will_write_state = .true.
+! this should be false for large models, as it never call nc_write_model_vars
+model_mod_will_write_state = .false.
 
 ! FIXME; bad strategy; start with failure.
 ierr = 0     ! assume normal termination
@@ -2292,27 +2293,6 @@ write(string1,*) 'nc_file_ID', nc_file_ID
 call nc_check(nf90_Inquire(nc_file_ID, n_dims, n_vars, n_attribs, unlimited_dim_ID), &
               'nc_write_model_atts', 'Inquire '//trim(string1))
 call nc_check(nf90_Redef(nc_file_ID), 'nc_write_model_atts', 'Redef '//trim(string1))
-
-!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-! We need the dimension ID for the number of copies
-!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-call nc_check(nf90_inq_dimid(ncid=nc_file_ID, name="copy", dimid=member_dim_ID), &
-              'nc_write_model_atts', 'inq_dimid copy')
-call nc_check(nf90_inq_dimid(ncid=nc_file_ID, name="time", dimid=  time_dim_ID), &
-              'nc_write_model_atts', 'inq_dimid time')
-
-if (time_dim_ID /= unlimited_dim_Id) then
-  write(string1,*)'Time dimension ID ',time_dim_ID,'must match Unlimited dimension ID ',unlimited_dim_Id
-  call error_handler(E_ERR,'nc_write_model_atts', string1, source, revision, revdate)
-endif
-
-!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-! Define the model size, state variable dimension ... whatever ...
-!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-call nc_check(nf90_def_dim(ncid=nc_file_ID, name="StateVariable",  &
-                        len=model_size, dimid = state_var_dim_ID),  &
-              'nc_write_model_atts', 'def_dim StateVariable')
 
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! Write Global Attributes
@@ -2457,145 +2437,51 @@ if (print_details .and. output_task0) then
    enddo
 endif
 
-if (output_state_vector) then
+! Leave define mode so we can fill variables
+call nc_check(nf90_enddef(nc_file_ID), 'nc_write_model_atts','enddef ')
 
-   !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-   ! Create attributes for the state vector
-   !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+! Fill the coordinate variables
+! Each 'vals' vector has been dimensioned to the right size for its coordinate.
+! The default values of 'start' and 'count'  write out the whole thing.
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-   ! Define the state vector coordinate variable
-   call nc_check(nf90_def_var(ncid=nc_file_ID,name="StateVariable", xtype=nf90_int,           &
-              dimids=state_var_dim_ID, varid=state_var_var_ID),                                   &
-                 'nc_write_model_atts','def_var  state vector')
-   call nc_check(nf90_put_att(nc_file_ID, state_var_var_ID, "long_name", "State Variable ID"),   &
-                 'nc_write_model_atts','put_att long_name state vector ')
-   call nc_check(nf90_put_att(nc_file_ID, state_var_var_ID, "units",     "indexical"),           &
-                 'nc_write_model_atts','put_att units state vector ' )
-   call nc_check(nf90_put_att(nc_file_ID, state_var_var_ID, "valid_range", (/ 1, model_size /)), &
-                 'nc_write_model_atts','put_att valid range state vector ')
-   ! Define the actual state vector
-   call nc_check(nf90_def_var(ncid=nc_file_ID, name="state", xtype=nf90_real,                 &
-              dimids = (/ state_var_dim_ID, member_dim_ID, unlimited_dim_ID /), varid=state_var_ID), &
-                 'nc_write_model_atts','def_var state vector')
-   call nc_check(nf90_put_att(nc_file_ID, state_var_ID, "long_name", "model state or fcopy"),   &
-                 'nc_write_model_atts','put_att long_name model state or fcopy ')
-
-   ! Leave define mode so we can fill
-   call nc_check(nf90_enddef(nc_file_ID), 'nc_write_model_atts','enddef ')
-
-   ! Fill the state variable coordinate variable
-   call nc_check(nf90_put_var(nc_file_ID, state_var_var_ID, (/ (i,i=1,model_size) /) ),         &
-                 'nc_write_model_atts','put_var state_var ')
-
-else
-
-   !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-   ! Create the (empty) Variables and the Attributes
-   !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-   ! 0-d fields
-   ifld = 0
-   do i = 1,state_num_0d
-      ifld = ifld + 1
-      call nc_check(nf90_def_var(ncid=nc_file_ID, name=trim(cflds(ifld)), xtype=nf90_real, &
-                 dimids = (/ member_dim_ID, unlimited_dim_ID /),                             &
-                 varid  = x_var_ID),                                                       &
-                 'nc_write_model_atts','def_var 0d '//trim(cflds(ifld)))
-      call nc_check(nf90_put_att(nc_file_ID, x_var_ID, "long_name", state_long_names(ifld)), &
-                 'nc_write_model_atts','put_att long_name ')
-      call nc_check(nf90_put_att(nc_file_ID, x_var_ID, "units", state_units(ifld)),          &
-                 'nc_write_model_atts','put_att units ')
-   enddo
-
-   ! 1-d fields
-   do i = 1,state_num_1d
-      ifld = ifld + 1
-      call nc_check(nf90_def_var(ncid=nc_file_ID, name=trim(cflds(ifld)), xtype=nf90_real, &
-                 dimids = (/ P_id(f_dimid_1d(1, i)), member_dim_ID, unlimited_dim_ID /),        &
-                 varid  = x_var_ID),                                                       &
-                 'nc_write_model_atts','def_var 1d '//trim(cflds(ifld)))
-      call nc_check(nf90_put_att(nc_file_ID, x_var_ID, "long_name", state_long_names(ifld)), &
-                 'nc_write_model_atts','put_att long_name ')
-      call nc_check(nf90_put_att(nc_file_ID, x_var_ID, "units", state_units(ifld)),          &
-                 'nc_write_model_atts','put_att units ')
-   enddo
-
-   ! 2-d fields
-   do i = 1,state_num_2d
-      ifld = ifld + 1
-      call nc_check(nf90_def_var(ncid=nc_file_ID, name=trim(cflds(ifld)), xtype=nf90_real, &
-                 dimids = (/ P_id(f_dimid_2d(1,i)), P_id(f_dimid_2d(2,i)),               &
-                             member_dim_ID, unlimited_dim_ID /),                             &
-                 varid  = x_var_ID),                                                       &
-                 'nc_write_model_atts','def_var 2d '//trim(cflds(ifld)))
-      call nc_check(nf90_put_att(nc_file_ID, x_var_ID, "long_name", state_long_names(ifld)), &
-                 'nc_write_model_atts','put_att long_name ')
-      call nc_check(nf90_put_att(nc_file_ID, x_var_ID, "units", state_units(ifld)),          &
-                 'nc_write_model_atts','put_att units ')
-   enddo
-
-   ! 3-d fields
-   do i = 1,state_num_3d
-      ifld = ifld + 1
-      call nc_check(nf90_def_var                                                              &
-           (ncid=nc_file_ID, name=trim(cflds(ifld)), xtype=nf90_real,                           &
-            dimids = (/ P_id(f_dimid_3d(1,i)), P_id(f_dimid_3d(2,i)), P_id(f_dimid_3d(3,i)),  &
-                        member_dim_ID, unlimited_dim_ID /),                                       &
-            varid  = x_var_ID),                                                                 &
-                 'nc_write_model_atts','def_var 3d'//trim(cflds(ifld)))
-      call nc_check(nf90_put_att(nc_file_ID, x_var_ID, "long_name", state_long_names(ifld)),      &
-                 'nc_write_model_atts','put_att long_name ')
-      call nc_check(nf90_put_att(nc_file_ID, x_var_ID, "units", state_units(ifld)),               &
-                 'nc_write_model_atts','put_att units ')
-   enddo
-
-   ! Leave define mode so we can fill variables
-   call nc_check(nf90_enddef(nc_file_ID), 'nc_write_model_atts','enddef ')
-
-   !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-   ! Fill the coordinate variables
-   ! Each 'vals' vector has been dimensioned to the right size for its coordinate.
-   ! The default values of 'start' and 'count'  write out the whole thing.
-   !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-   
-   if (lon%label  /= ' ') &
-       call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('lon',grid_names_1d)),  lon%vals) &
-                    ,'nc_write_model_atts', 'put_var lon')
-   if (lat%label  /= ' ') &
-       call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('lat',grid_names_1d)),  lat%vals) &
-                    ,'nc_write_model_atts', 'put_var lat')
-   if (lev%label  /= ' ') &
-       call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('lev',grid_names_1d)),  lev%vals) &
-                    ,'nc_write_model_atts', 'put_var lev')
-   if (gw%label   /= ' ') &
-       call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('gw',grid_names_1d)),   gw%vals) &
-                    ,'nc_write_model_atts', 'put_var gw')
-   if (hyam%label /= ' ') &
-       call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('hyam',grid_names_1d)), hyam%vals) &
-                    ,'nc_write_model_atts', 'put_var hyam')
-   if (hybm%label /= ' ') &
-       call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('hybm',grid_names_1d)), hybm%vals) &
-                    ,'nc_write_model_atts', 'put_var hybm')
-   if (hyai%label /= ' ') &
-       call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('hyai',grid_names_1d)), hyai%vals) &
-                    ,'nc_write_model_atts', 'put_var hyai')
-   if (hybi%label /= ' ') &
-       call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('hybi',grid_names_1d)), hybi%vals) &
-                    ,'nc_write_model_atts', 'put_var hybi')
-   if (slon%label /= ' ') &
-       call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('slon',grid_names_1d)), slon%vals) &
-                    ,'nc_write_model_atts', 'put_var slon')
-   if (slat%label /= ' ') &
-       call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('slat',grid_names_1d)), slat%vals) &
-                    ,'nc_write_model_atts', 'put_var slat')
-   if (ilev%label /= ' ') &
-       call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('ilev',grid_names_1d)), ilev%vals) &
-                    ,'nc_write_model_atts', 'put_var ilev')
-   if (P0%label   /= ' ') &
-       call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('P0',grid_names_1d)),   P0%vals) &
-                    ,'nc_write_model_atts', 'put_var P0')
-
-endif
+if (lon%label  /= ' ') &
+    call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('lon',grid_names_1d)),  lon%vals) &
+                 ,'nc_write_model_atts', 'put_var lon')
+if (lat%label  /= ' ') &
+    call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('lat',grid_names_1d)),  lat%vals) &
+                 ,'nc_write_model_atts', 'put_var lat')
+if (lev%label  /= ' ') &
+    call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('lev',grid_names_1d)),  lev%vals) &
+                 ,'nc_write_model_atts', 'put_var lev')
+if (gw%label   /= ' ') &
+    call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('gw',grid_names_1d)),   gw%vals) &
+                 ,'nc_write_model_atts', 'put_var gw')
+if (hyam%label /= ' ') &
+    call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('hyam',grid_names_1d)), hyam%vals) &
+                 ,'nc_write_model_atts', 'put_var hyam')
+if (hybm%label /= ' ') &
+    call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('hybm',grid_names_1d)), hybm%vals) &
+                 ,'nc_write_model_atts', 'put_var hybm')
+if (hyai%label /= ' ') &
+    call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('hyai',grid_names_1d)), hyai%vals) &
+                 ,'nc_write_model_atts', 'put_var hyai')
+if (hybi%label /= ' ') &
+    call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('hybi',grid_names_1d)), hybi%vals) &
+                 ,'nc_write_model_atts', 'put_var hybi')
+if (slon%label /= ' ') &
+    call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('slon',grid_names_1d)), slon%vals) &
+                 ,'nc_write_model_atts', 'put_var slon')
+if (slat%label /= ' ') &
+    call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('slat',grid_names_1d)), slat%vals) &
+                 ,'nc_write_model_atts', 'put_var slat')
+if (ilev%label /= ' ') &
+    call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('ilev',grid_names_1d)), ilev%vals) &
+                 ,'nc_write_model_atts', 'put_var ilev')
+if (P0%label   /= ' ') &
+    call nc_check(nf90_put_var(nc_file_ID, grid_id(find_name('P0',grid_names_1d)),   P0%vals) &
+                 ,'nc_write_model_atts', 'put_var P0')
 
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! Flush the buffer and leave netCDF file open

@@ -18,7 +18,7 @@ function PlotEnsMeanTimeSeries( pinfo )
 %
 % Example 1 ( 9var model )
 %-------------------------------------------------------------
-% pinfo.truth_file  = 'perfect_output.nc';
+% pinfo.truth_file  = 'true_state.nc';
 % pinfo.diagn_file  = 'preassim.nc';
 % pinfo.model       = '9var';
 % pinfo.var         = 'state';
@@ -27,7 +27,7 @@ function PlotEnsMeanTimeSeries( pinfo )
 %
 % Example 2 (FMS BGrid model)
 %--------------------------------------------------------
-% pinfo.truth_file = 'perfect_output.nc';
+% pinfo.truth_file = 'true_state.nc';
 % pinfo.diagn_file = 'preassim.nc';
 % pinfo.var        = 'u';
 % pinfo.level      = 3;
@@ -165,8 +165,10 @@ switch lower(pinfo.model)
       for ivar = pinfo.var_inds,
             iplot = iplot + 1;
             subplot(length(pinfo.var_inds), 1, iplot);
+
+            varname = sprintf('%s_mean',pinfo.var);
             ens_mean = get_hyperslab('fname',pinfo.diagn_file, ...
-                           'varname', 'state_mean', ...
+                           'varname', varname, ...
                            'stateindex',ivar, ...
                            'tindex1',pinfo.diagn_time(1), ...
                            'tcount',pinfo.diagn_time(2));
@@ -176,7 +178,7 @@ switch lower(pinfo.model)
             % Get the truth for this variable
             if (have_truth)
                truth = get_hyperslab('fname',pinfo.truth_file, ...
-                           'varname','state', ...
+                           'varname',pinfo.var, ...
                            'stateindex',ivar, ...
                            'squeeze', 'true', ...
                            'tindex1',pinfo.truth_time(1), ...

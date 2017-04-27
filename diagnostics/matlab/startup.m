@@ -60,7 +60,7 @@ end
 
 %% summarize
 
-truth_file = fullfile(mydir,'perfect_output.nc');
+truth_file = fullfile(mydir,'true_state.nc');
 diagn_file = fullfile(mydir,'preassim.nc');
 
 disp(' ')

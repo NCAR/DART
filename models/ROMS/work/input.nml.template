@@ -1,30 +1,30 @@
 &perfect_model_obs_nml
-   start_from_restart     = .true.
-   output_restart         = .true.
-   async                  = 0
-   init_time_days         = -1
-   init_time_seconds      = -1
-   first_obs_days         = -1
-   first_obs_seconds      = -1
-   last_obs_days          = -1
-   last_obs_seconds       = -1
-   output_interval        = 1
-   restart_in_file_names  = "input_roms.nc"
-   restart_out_file_names = "output_roms.nc"
-   obs_seq_in_file_name   = "obs_seq.in"
-   obs_seq_out_file_name  = "obs_seq.out"
-   adv_ens_command        = "./DART_trying_to_advance_ROMS_not_supported.csh"
-   output_timestamps      = .false.
-   trace_execution        = .false.
-   output_forward_op_errors = .false.
-   print_every_nth_obs    = -1
-   silence                = .false.
+   read_input_state_from_file = .true.
+   write_output_state_to_file = .true.
+   async                      = 0
+   init_time_days             = -1
+   init_time_seconds          = -1
+   first_obs_days             = -1
+   first_obs_seconds          = -1
+   last_obs_days              = -1
+   last_obs_seconds           = -1
+   output_interval            = 1
+   input_state_files          = "input_roms.nc"
+   output_state_files         = "output_roms.nc"
+   obs_seq_in_file_name       = "obs_seq.in"
+   obs_seq_out_file_name      = "obs_seq.out"
+   adv_ens_command            = "DART_trying_to_advance_ROMS_not_supported"
+   output_timestamps          = .false.
+   trace_execution            = .false.
+   output_forward_op_errors   = .false.
+   print_every_nth_obs        = -1
+   silence                    = .false.
   /
 
 
 &filter_nml
    async                    = 0
-   adv_ens_command          = "./DART_trying_to_advance_ROMS_not_supported.csh"
+   adv_ens_command          = "DART_trying_to_advance_ROMS_not_supported"
    ens_size                 = Myens_size
    obs_sequence_in_name     = "obs_seq.out"
    obs_sequence_out_name    = "obs_seq.final"
@@ -44,13 +44,13 @@
    trace_execution          = .true.
    silence                  = .false.
 
-   input_restart_file_list  = "restart_files.txt"
-   output_restart_file_list = "restart_files.txt"
-   stages_to_write          = 'input', 'preassim', 'output'
-   output_restarts          = .true.
+   input_state_file_list    = "restart_files.txt"
+   output_state_file_list   = "restart_files.txt"
+   stages_to_write          = 'preassim', 'analysis'
+   output_members           = .true.
    output_mean              = .true.
    output_sd                = .true.
-   write_all_stages_at_end  = .false.
+   write_all_stages_at_end  = .true.
    num_output_state_members = 0
 
    inf_flavor                  = 0,                       0
@@ -170,16 +170,15 @@
 
 &model_nml
    roms_filename               = 'MyDAINAME'
-   output_state_vector         = .false.
    assimilation_period_days    = 8
    assimilation_period_seconds = 0
    vert_localization_coord     = 3
    debug                       = 1
-   variables = 'temp',   'KIND_TEMPERATURE',          'NA', 'NA', 'update',
-               'salt',   'KIND_SALINITY',            '0.0', 'NA', 'update',
-               'u',      'KIND_U_CURRENT_COMPONENT',  'NA', 'NA', 'update',
-               'v',      'KIND_V_CURRENT_COMPONENT',  'NA', 'NA', 'update',
-               'zeta',   'KIND_SEA_SURFACE_HEIGHT'    'NA', 'NA', 'update',
+   variables = 'temp',   'QTY_TEMPERATURE',          'NA', 'NA', 'update',
+               'salt',   'QTY_SALINITY',            '0.0', 'NA', 'update',
+               'u',      'QTY_U_CURRENT_COMPONENT',  'NA', 'NA', 'update',
+               'v',      'QTY_V_CURRENT_COMPONENT',  'NA', 'NA', 'update',
+               'zeta',   'QTY_SEA_SURFACE_HEIGHT'    'NA', 'NA', 'update',
   /
 
 
@@ -299,8 +298,8 @@
 &forward_operator_nml
 /
 
-   kind_of_interest      = 'KIND_U_CURRENT_COMPONENT'
-                            KIND_SEA_SURFACE_HEIGHT
+   kind_of_interest      = 'QTY_U_CURRENT_COMPONENT'
+                            QTY_SEA_SURFACE_HEIGHT
    x_ind                 = 4210 #TEMP (229, 36.6667, 4.xx)
    x_ind                 = 367400 # SSH (229 36.6667)
    x_ind                 = 93530
@@ -311,7 +310,7 @@
    x_ind                 = 87370
    num_ens               = 1
    loc_of_interest       = 231.0, 40.0, 10.0
-   kind_of_interest      = 'KIND_SEA_SURFACE_HEIGHT'
+   kind_of_interest      = 'QTY_SEA_SURFACE_HEIGHT'
    interp_test_dlon      = 0.1
    interp_test_dlat      = 0.1
    interp_test_dvert     = 5.0
@@ -329,7 +328,7 @@
 &test_grid_nml
    x_ind                 = 87370
    loc_of_interest       = 16.0500, 35.1000, 2.5
-   kind_of_interest      = 'KIND_CLOUD_ICE'
+   kind_of_interest      = 'QTY_CLOUD_ICE'
    interp_test_di        = 0.5
    interp_test_dj        = 0.5
    interp_test_dk        = 1.0

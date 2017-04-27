@@ -113,13 +113,13 @@ character(len=128)    :: noah_netcdf_filename   = 'restart.nc'
 integer               :: assimilation_period_days     = 0
 integer               :: assimilation_period_seconds  = 60
 real(r8)              :: model_perturbation_amplitude = 0.2
-logical               :: output_state_vector          = .true.
+logical               :: output_state_vector          = .false.
 integer               :: debug    = 0  ! turn up for more and more debug messages
 character(len=obstypelength) :: noah_state_variables(NUM_STATE_TABLE_COLUMNS,MAX_STATE_VARIABLES) = ' '
 
 namelist /model_nml/ noah_netcdf_filename, &
-          assimilation_period_days, assimilation_period_seconds,   &
-          model_perturbation_amplitude, output_state_vector,       &
+          assimilation_period_days, assimilation_period_seconds, &
+          model_perturbation_amplitude, &
           debug, noah_state_variables
 
 !------------------------------------------------------------------

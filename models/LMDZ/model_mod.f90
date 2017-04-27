@@ -281,7 +281,7 @@ real(r8) :: highest_obs_level         = MISSING_R8
 real(r8) :: highest_obs_height_m      = MISSING_R8
 !---- end of namelist (found in file input.nml) ----
 
-namelist /model_nml/ output_state_vector, model_config_file,time_step_seconds, time_step_days, write_grads, &
+namelist /model_nml/ model_config_file,time_step_seconds, time_step_days, write_grads, &
                      impact_only_same_kind, print_details, max_obs_lat_degree, highest_obs_pressure_mb,     &
                       highest_state_pressure_mb, pert_names,pert_sd,pert_base_vals, exclude_pert_upper_levs    
 

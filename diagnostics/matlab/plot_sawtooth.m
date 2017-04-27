@@ -12,23 +12,14 @@ function plot_sawtooth(truth_file,posterior_file,prior_file)
 % first ... think about it ...
 % If the true state is available, it is also plotted.
 %
-% A reminder of the sequence:
-% truth  run (from    pmo):
-%           perfect_input  --->  perfect_output.nc
-% filter run (from filter):
-%           filter_input.nc  --->  [prior inflation]  --->
-%                 preassim.nc   --->  [assimilation]  --->
-%                       postassim.nc  ---> [posterior inflation]  --->
-%                             filter_output.nc
-%
 % Example 1:
-% truth_file = 'perfect_output.nc';
-% posterior_file = 'filter_output.nc';
+% truth_file = 'true_state.nc';
+% posterior_file = 'analysis.nc';
 % prior_file = 'preassim.nc';
 % plot_sawtooth(truth_file,posterior_file,prior_file)
 %
 % Example 2: no true state available
-% posterior_file = 'filter_output.nc';
+% posterior_file = 'analysis.nc';
 % prior_file = 'preassim.nc';
 % plot_sawtooth([],posterior_file,prior_file)
 
@@ -42,15 +33,15 @@ function plot_sawtooth(truth_file,posterior_file,prior_file)
 if (nargin == 0)
     disp('If the true model trajectory exists, it will be plotted. If not, don''t worry.')
     disp('Input name of true model trajectory file:')
-    truth_file = input('<cr> for perfect_output.nc\n','s');
+    truth_file = input('<cr> for true_state.nc\n','s');
     if isempty(truth_file)
-        truth_file = 'perfect_output.nc';
+        truth_file = 'true_state.nc';
     end
     
     disp('Input name of (posterior) ensemble trajectory file:')
-    posterior_file = input('<cr> for filter_output.nc\n','s');
+    posterior_file = input('<cr> for analysis.nc\n','s');
     if isempty(posterior_file)
-        posterior_file = 'filter_output.nc';
+        posterior_file = 'analysis.nc';
     end
     
     disp('Input name of (prior) ensemble trajectory file:')

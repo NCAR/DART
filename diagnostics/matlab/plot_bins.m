@@ -11,18 +11,18 @@ function plot_bins(truth_file, diagn_file)
 %
 % A reminder of the sequence:
 % truth  run (from    pmo):
-%           perfect_input  --->  perfect_output.nc
+%           perfect_input  --->  true_state.nc
 % filter run (from filter):
 %           filter_input.nc  --->  [prior inflation]  --->
 %                 preassim.nc   --->  [assimilation]  --->
 %                       postassim.nc  ---> [posterior inflation]  --->
 %                             filter_output.nc
 %
-% Example 1  (Prompt for filenames. Defaults are 'perfect_output.nc' and 'preassim.nc')
+% Example 1  (Prompt for filenames. Defaults are 'true_state.nc' and 'preassim.nc')
 % plot_bins
 %
 % Example 2
-% truth_file = 'perfect_output.nc';
+% truth_file = 'true_state.nc';
 % diagn_file = 'preassim.nc';
 % plot_bins(truth_file,diagn_file)
 
@@ -38,9 +38,9 @@ function plot_bins(truth_file, diagn_file)
 
 if (nargin == 0)
     disp('Input name of true model trajectory file:')
-    truth_file = input('<cr> for perfect_output.nc\n','s');
+    truth_file = input('<cr> for true_state.nc\n','s');
     if isempty(truth_file)
-        truth_file = 'perfect_output.nc';
+        truth_file = 'true_state.nc';
     end
     disp('Input name of ensemble trajectory file:')
     diagn_file = input('<cr> for preassim.nc\n','s');

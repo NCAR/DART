@@ -254,7 +254,7 @@ character(len = 72) :: adv_mod_command = ''
 ! are IGNORED no matter what their settings in the namelist are.
 ! they are obsolete, but removing them here will cause a fatal error
 ! until users remove them from their input.nml files as well.
-namelist /model_nml/ output_state_vector, num_moist_vars, &
+namelist /model_nml/ num_moist_vars, &
                      num_domains, calendar_type, surf_obs, soil_data, h_diab, &
                      default_state_variables, wrf_state_variables, &
                      wrf_state_bounds, sfc_elev_max_diff, &
@@ -438,14 +438,6 @@ num_obs_kinds = get_num_quantities()
 allocate(in_state_vector(num_obs_kinds))
 call fill_dart_kinds_table(wrf_state_variables, in_state_vector)
 
-
-if ( debug ) then
-   if ( output_state_vector ) then
-      write(*,*)'netcdf file in state vector format'
-   else
-      write(*,*)'netcdf file in prognostic vector format'
-   endif
-endif
 
 ! set calendar type
 call set_calendar_type(calendar_type)
@@ -746,9 +738,10 @@ WRFDomains : do id=1,num_domains
    ! add domain - not doing anything with domain_id yet so just overwriting it
    domain_id(id) = add_domain( 'wrfinput_d0'//idom, &
                            wrf%dom(id)%number_of_wrf_variables, &
-                           var_names  = netcdf_variable_names(1:wrf%dom(id)%number_of_wrf_variables), &
-                           clamp_vals = var_bounds_table(1:wrf%dom(id)%number_of_wrf_variables,:) )
-                          
+                           var_names   = netcdf_variable_names(1:wrf%dom(id)%number_of_wrf_variables), &
+                           clamp_vals  = var_bounds_table(1:wrf%dom(id)%number_of_wrf_variables,:), &
+                           update_list = var_update_list(1:wrf%dom(id)%number_of_wrf_variables) )
+
    if (debug) call state_structure_info(domain_id(id))
 
 enddo WRFDomains 
@@ -3673,7 +3666,17 @@ logical               :: debug = .false.
 !-----------------------------------------------------------------
 
 ierr = 0     ! assume normal termination
-model_mod_writes_state_variables = .true. 
+model_mod_writes_state_variables = .false. 
+
+return
+
+!>@todo FIXME
+!> this has design problems because we don't know which domain number this
+!> is being called for, and each has a different grid.  
+!> 
+!> this was never being called before, so returning early maintains the
+!> same behavior.  we can revisit this issue later.
+!>
 
 !-----------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file, 
@@ -3688,26 +3691,6 @@ call nc_check(nf90_Redef(ncFileID),'nc_write_model_atts','redef')
 !-----------------------------------------------------------------
 ! We need the dimension ID for the number of copies 
 !-----------------------------------------------------------------
-
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name="NMLlinelen", dimid=linelenDimID), &
-              'nc_write_model_atts','inq_dimid NMLlinelen')
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID), &
-              'nc_write_model_atts','inq_dimid copy')
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid= TimeDimID), &
-              'nc_write_model_atts','inq_dimid time')
-
-if ( TimeDimID /= unlimitedDimId ) then
-   write(errstring,*)'Time Dimension ID ',TimeDimID, &
-        ' must match Unlimited Dimension ID ',unlimitedDimID
-   call error_handler(E_ERR,'nc_write_model_atts', errstring, source, revision, revdate)
-endif
-
-!-----------------------------------------------------------------
-! Define the model size, state variable dimension ... whatever ...
-!-----------------------------------------------------------------
-call nc_check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
-              len=wrf%model_size, dimid = StateVarDimID), &
-              'nc_write_model_atts','def_dim StateVariable')
 
 !-----------------------------------------------------------------
 ! Write Global Attributes 
@@ -3731,18 +3714,6 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate), &
 ! how about namelist input? might be nice to save ...
 ! long lines are truncated when read into textblock
 !-----------------------------------------------------------------
-
-call find_textfile_dims(wrf_nml_file, nlines, linelen)
-if (nlines <= 0 .or. linelen <= 0) have_wrf_nml_file = .false.
-
-if (have_wrf_nml_file) then
-   allocate(textblock(nlines))
-   textblock = ''
-
-   call nc_check(nf90_def_dim(ncid=ncFileID, name="nlines", &
-                 len = nlines, dimid = nlinesDimID), &
-                 'nc_write_model_atts', 'def_dim nlines ')
-endif
 
 !-----------------------------------------------------------------
 ! Define the dimensions IDs
@@ -4225,133 +4196,6 @@ do id=1,num_domains
 
 enddo
 
-if ( output_state_vector ) then
-
-   !-----------------------------------------------------------------
-   ! Create attributes for the state vector 
-   !-----------------------------------------------------------------
-
-   call nc_check(nf90_inq_dimid(ncFileID, "metadatalength", metadataID), &
-                 'nc_write_model_atts','inq_dimid metadatalength')
-
-   call nc_check(nf90_def_dim(ncid=ncFileID, name="WRFStateVariables", &
-                 len = wrf%dom(1)%number_of_wrf_variables,  dimid = wrfStateID), &
-                 'nc_write_model_atts','def_dim WRFStateVariables')
-
-   call nc_check(nf90_def_dim(ncid=ncFileID, name="WRFVarDimension", &
-                 len = 3,  dimid = wrfDimID), &
-                 'nc_write_model_atts','def_dim WRFVarDimensionID')
-
-   ! Define the state variable name variable
-   call nc_check(nf90_def_var(ncid=ncFileID,name="WRFStateVariables", xtype=nf90_char, &
-                 dimids=(/ metadataID, wrfStateID /), varid=WRFStateVarID), &
-                 'nc_write_model_atts','def_var WRFStateVariables')
-
-   call nc_check(nf90_put_att(ncFileID, WRFStateVarID, "long_name", &
-                 "WRF State Variable Name"), &
-                 'nc_write_model_atts','put_att WRFStateVariables long_name')
-
-   ! Define the WRF state variable dimension lengths
-   call nc_check(nf90_def_var(ncid=ncFileID,name="WRFStateDimensions", xtype=nf90_int, &
-                 dimids=(/ wrfDimID, wrfStateID, DomDimID /), varid=WRFStateDimID), &
-                 'nc_write_model_atts','def_var WRFStateDimensions')
-
-   call nc_check(nf90_put_att(ncFileID, WRFStateDimID, "long_name", &
-                 "WRF State Variable Dimensions"), &
-                 'nc_write_model_atts','put_att WRFStateDimensions long_name')
-
-   ! Define the actual state vector
-
-   call nc_check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_real, &
-                 dimids = (/ StateVarDimID, MemberDimID, unlimitedDimID /), &
-                 varid=StateVarID), &
-                 'nc_write_model_atts','def_var state')
-   call nc_check(nf90_put_att(ncFileID, StateVarID, "long_name", &
-                 "model state or fcopy"), &
-                 'nc_write_model_atts','put_att state long_name')
-
-   ! only define those that are present in the state vector
-   do id = 1,num_domains ! this makes sure we get them all 
-   write( idom , '(I1)') id
-   do ind = 1,wrf%dom(id)%number_of_wrf_variables
-
-      ! actual location in state variable table
-      my_index =  wrf%dom(id)%var_index_list(ind)
-      ! units
-      attname = trim(wrf_state_variables(1,my_index))//'_units'
-
-      ! if we didn't already write it, do it now
-      if ( nf90_inquire_attribute(ncFileID,StateVarID,trim(attname)) &
-           /= NF90_NOERR ) then
-
-         unitsval = trim(wrf%dom(id)%units(ind))
-         call nc_check(nf90_put_att(ncFileID, StateVarId, trim(attname),&
-                    unitsval), &
-                    'nc_write_model_atts','put_att state '//trim(attname))
-      endif
-
-      ! description
-      attname = trim(wrf_state_variables(1,my_index))//'_description'
-      if ( nf90_inquire_attribute(ncFileID,StateVarID,trim(attname)) &
-           /= NF90_NOERR ) then
-         descriptionval = trim(wrf%dom(id)%description(ind))
-         call nc_check(nf90_put_att(ncFileID, StateVarId, trim(attname),&
-                    descriptionval), &
-                    'nc_write_model_atts','put_att state '//trim(attname))
-      endif
-
-      ! long_name - same as description
-      attname = trim(wrf_state_variables(1,my_index))//'_long_name'
-      if ( nf90_inquire_attribute(ncFileID,StateVarID,trim(attname)) &
-           /= NF90_NOERR ) then
-         long_nameval = trim(wrf%dom(id)%description(ind))
-         call nc_check(nf90_put_att(ncFileID, StateVarId, trim(attname),&
-                    long_nameval), &
-                    'nc_write_model_atts','put_att state '//trim(attname))
-      endif
-
-      ! coordinates - define the name of the (sometimes staggered) 
-      !               coordinate variables to use to decode locations
-      attname = trim(wrf_state_variables(1,my_index))//'_coordinates'
-      if ( nf90_inquire_attribute(ncFileID,StateVarID,trim(attname)) &
-           /= NF90_NOERR ) then
-         coordinatesval = trim(wrf%dom(id)%coordinates(ind))
-         if (coordinatesval(1:7) .eq. 'XLONG_U') then
-           coordinate_char = "XLONG_U_d0"//idom//" XLAT_U_d0"//idom
-         else if (coordinatesval(1:7) .eq. 'XLONG_V') then
-           coordinate_char = "XLONG_V_d0"//idom//" XLAT_V_d0"//idom
-         else
-           coordinate_char = "XLONG_d0"//idom//" XLAT_d0"//idom
-         end if
-         call nc_check(nf90_put_att(ncFileID, StateVarId, trim(attname),&
-                    trim(coordinate_char)), &
-                    'nc_write_model_atts','put_att state '//trim(attname))
-      endif
-
-   enddo
-   enddo
-
-   ! Leave define mode so we can actually fill the variables.
-
-   call nc_check(nf90_enddef(ncfileID),'nc_write_model_atts','enddef')
-
-   do ind = 1,wrf%dom(1)%number_of_wrf_variables
-      my_index =  wrf%dom(1)%var_index_list(ind)
-      call nc_check(nf90_put_var(ncFileID,WRFStateVarID,trim(wrf_state_variables(1,my_index)), &
-                    start = (/ 1, ind /), count = (/ len_trim(wrf_state_variables(1,my_index)),  1 /)), &
-                    'nc_write_model_atts', 'put_var WRFStateVariables')
-   enddo
-
-   do id = 1, num_domains
-      do ind = 1,wrf%dom(id)%number_of_wrf_variables
-        call nc_check(nf90_put_var(ncFileID,WRFStateDimID,wrf%dom(id)%var_size(:,ind), &
-                      start = (/ 1, ind, id /), count = (/ 3, 1, 1 /)), &
-                      'nc_write_model_atts', 'put_var WRFStateDimensions')
-      enddo
-   enddo
-
-else ! physical arrays
-
 do id=1,num_domains
    write( idom , '(I1)') id
 
@@ -4467,8 +4311,6 @@ enddo ! domains
 
 ! Leave define mode so we can actually fill the variables.
 call nc_check(nf90_enddef(ncfileID),'nc_write_model_atts','enddef')
-
-endif
 
 !-----------------------------------------------------------------
 ! Fill the variables we can
@@ -4612,16 +4454,6 @@ ierr = 0     ! assume normal termination
 call nc_check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID), &
               'nc_write_model_vars','inquire')
 
-if ( output_state_vector ) then
-
-   call nc_check(nf90_inq_varid(ncFileID, "state", StateVarID), &
-              'nc_write_model_vars','inq_varid state')
-   call nc_check(nf90_put_var(ncFileID, StateVarID, statevec, &
-                start=(/ 1, copyindex, timeindex /)), &
-              'nc_write_model_vars','put_var statevec')
-
-else
-
 j = 0
 
 do id=1,num_domains
@@ -4682,7 +4514,6 @@ do id=1,num_domains
 
 enddo ! domains
 
-endif
 
 !-----------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open

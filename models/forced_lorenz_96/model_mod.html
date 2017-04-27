@@ -118,7 +118,7 @@ explores parameter estimation using the <em class=program>forced_lorenz_96</em> 
    /</pre> </div> </li>
 <br />
 <li>Run <em class=program>perfect_model_obs</em> to generate
-    <em class=file>True_State.nc</em> and  
+    <em class=file>true_state.nc</em> and  
     <em class=file>obs_seq.out</em>. The default <em class=file>obs_seq.in</em>
     will cause the model to advance for 1000 time steps.<br /><br />
     <div class=unix>
@@ -127,17 +127,17 @@ explores parameter estimation using the <em class=program>forced_lorenz_96</em> 
 </li>
 <br />
 <li>If you have <em class=program>ncview</em>, 
-    explore the <em class=file>True_State.nc</em>. Notice that the 
+    explore the <em class=file>true_state.nc</em>. Notice that the 
     State Variable indices from 1-40 are the dynamical part of the 
     model and 41-80 are the Forcing variables.<br /><br />
     <div class=unix>
-    ncview True_State.nc
+    ncview true_state.nc
     </div>
 </li>
 <br />
 <li>Run <em class=program>filter</em> to generate
-    <em class=file>Prior_Diag.nc</em>, 
-    <em class=file>Posterior_Diag.nc</em> and  
+    <em class=file>preassim.nc</em>, 
+    <em class=file>analysis.nc</em> and  
     <em class=file>obs_seq.final</em>.<br /><br />
     <div class=unix>
     ./filter
@@ -149,14 +149,14 @@ explores parameter estimation using the <em class=program>forced_lorenz_96</em> 
     &gt;&gt; plot_ens_time_series<br />
     
     Input name of prior or posterior diagnostics file:<br />
-    <cr> for Prior_Diag.nc<br />
-    <em class=input>Prior_Diag.nc</em><br />
+    <cr> for preassim.nc<br />
+    <em class=input>preassim.nc</em><br />
     <br />
     OPTIONAL: if you have the true state and want it superimposed, provide<br />
            : the name of the input file. If not, enter a dummy filename.<br />
            : Input name of True State file:<br />
-    <cr> for True_State.nc<br />
-    <em class=input>True_State.nc</em><br />
+    <cr> for true_state.nc<br />
+    <em class=input>true_state.nc</em><br />
     <br />
     Using state state variable IDs 1  13  27<br />
     If these are OK, <cr>;<br />
@@ -854,13 +854,13 @@ each forcing value's time step.
 <TR><TD><em class=file>input.nml</em></TD>
     <TD>to read the model_mod namelist</TD></TR>
 
-<TR><TD><em class=file>True_State.nc</em></TD>
+<TR><TD><em class=file>true_state.nc</em></TD>
     <TD>the time-history of the single model state used to generate the synthetic observations</TD></TR>
 
-<TR><TD><em class=file>Prior_Diag.nc</em></TD>
+<TR><TD><em class=file>preassim.nc</em></TD>
     <TD>the time-history of the model state before assimilation</TD></TR>
 
-<TR><TD><em class=file>Posterior_Diag.nc&nbsp;&nbsp;</em></TD>
+<TR><TD><em class=file>analysis.nc&nbsp;&nbsp;</em></TD>
     <TD>the time-history of the model state after assimilation</TD></TR>
 
 <TR><TD><em class=file>advance_model.csh</em></TD>
