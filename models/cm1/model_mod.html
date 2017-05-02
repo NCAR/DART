@@ -88,8 +88,10 @@ Observation locations are specified in meters relative to the domain origin as d
 <P>There are two sets of scripts in the <em class=file>shell_scripts</em> directory.
 Luke contributed a set written in python, and the DART team had a set written in csh.
 The csh scripts have not been tested in quite some time, so use with the understanding
-that they will need work.
-<P>
+that they will need work. Those csh scripts and some unfinished python scripts reside
+in a <em class=file>shell_scripts/unfinished</em> directory and should be used with the
+understanding that they will need work.
+</P>
 <H3>Strategy and Instructions for using the python scripts.</H3>
 <H4>There are some prerequisites:</H4>
 <ol><li>CM1 is required to use netCDF restart files.</li>
@@ -116,6 +118,14 @@ The term {centraldir} refers to a filesystem and directory that will be used to
 run the experiment, the working directory. {centraldir} should have a lot of capacity, 
 as ensemble data assimilation will require lots of disk.
 The term {dart_dir} will refer to the location of the DART source code.
+<br />
+<br />
+The data referenced in the directories (the initial ensemble, etc.) are provided
+as a compressed tar file 
+<a href="http://www.image.ucar.edu/pub/DART/CM1/cm1r18_3member_example_data.tar.gz">cm1r18_3member_example_data.tar.gz</a>
+You will have to download the tar file, uncompress it, and modify the scripts to 
+use these directories instead of the example directories in the scripts.
+You will also have to compile your own cm1 executable.
 </P>
 
 <ol>
