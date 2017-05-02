@@ -1,16 +1,162 @@
 
+! For high-resolution models with large DART states, 
+! use 'distributed_state = .true.'
+
+&filter_nml
+  async                       = 2
+  adv_ens_command             = "advance_model.csh"
+  input_state_file_list       = "input_filelist.txt"
+  output_state_file_list      = "output_filelist.txt"
+  init_time_days              = -1
+  init_time_seconds           = -1
+  obs_sequence_in_name        = "obs_seq.out"
+  obs_sequence_out_name       = "obs_seq.final"
+  first_obs_days              = -1
+  first_obs_seconds           = -1
+  last_obs_days               = -1
+  last_obs_seconds            = -1
+  distributed_state           = .false.
+  ens_size                    = 20 
+  num_output_obs_members      = 20
+  num_output_state_members    = 20
+  output_interval             = 1
+  output_members              = .true.
+  output_mean                 = .true.
+  output_sd                   = .true.
+  stages_to_write             = 'preassim', 'analysis', 'output'
+  write_all_stages_at_end     = .true.
+  trace_execution             = .true.
+  output_timestamps           = .true.
+  num_groups                  = 1
+  output_forward_op_errors    = .false.
+
+  inf_flavor                  = 2,                 0
+  inf_initial_from_restart    = .false.,           .false.
+  inf_sd_initial_from_restart = .false.,           .false.
+  inf_initial                 = 1.0,               1.0
+  inf_sd_initial              = 0.6,               0.6
+  inf_damping                 = 0.9,               0.9
+  inf_lower_bound             = 1.0,               1.0
+  inf_upper_bound             = 1000000.0,         1000000.0
+  inf_sd_lower_bound          = 0.6,               0.6
+/
+
+
+&model_nml
+  assimilation_period_days    = 0
+  assimilation_period_seconds = 60
+  calendar                    = 'Gregorian'
+  cm1_template_file           = 'cm1out_rst_000001.nc'
+  periodic_x                  = .true.
+  periodic_y                  = .true.
+  debug                       = 0
+  model_variables = 'ua'   , 'QTY_U_WIND_COMPONENT'      , 'NULL', 'NULL', 'UPDATE',
+                    'va'   , 'QTY_V_WIND_COMPONENT'      , 'NULL', 'NULL', 'UPDATE',
+                    'wa'   , 'QTY_VERTICAL_VELOCITY'     , 'NULL', 'NULL', 'UPDATE',
+                    'theta', 'QTY_POTENTIAL_TEMPERATURE' , 0.0000, 'NULL', 'UPDATE',
+                    'ppi'  , 'QTY_PRESSURE'              , 'NULL', 'NULL', 'UPDATE',
+                    'u10'  , 'QTY_10M_U_WIND_COMPONENT'  , 'NULL', 'NULL', 'UPDATE',
+                    'v10'  , 'QTY_10M_V_WIND_COMPONENT'  , 'NULL', 'NULL', 'UPDATE',
+                    't2'   , 'QTY_2M_TEMPERATURE'        , 0.0000, 'NULL', 'UPDATE',
+                    'th2'  , 'QTY_POTENTIAL_TEMPERATURE' , 0.0000, 'NULL', 'UPDATE',
+                    'tsk'  , 'QTY_SURFACE_TEMPERATURE'   , 0.0000, 'NULL', 'UPDATE',
+                    'q2'   , 'QTY_SPECIFIC_HUMIDITY'     , 0.0000, 'NULL', 'UPDATE',
+                    'psfc' , 'QTY_SURFACE_PRESSURE'      , 0.0000, 'NULL', 'UPDATE',
+                    'qv'   , 'QTY_VAPOR_MIXING_RATIO'    , 0.0000, 'NULL', 'UPDATE',
+                    'qc'   , 'QTY_CLOUD_LIQUID_WATER'    , 0.0000, 'NULL', 'UPDATE',
+                    'qr'   , 'QTY_RAINWATER_MIXING_RATIO', 0.0000, 'NULL', 'UPDATE',
+                    'qi'   , 'QTY_CLOUD_ICE'             , 0.0000, 'NULL', 'UPDATE',
+                    'qs'   , 'QTY_SNOW_MIXING_RATIO'     , 0.0000, 'NULL', 'UPDATE',
+                    'qg'   , 'QTY_GRAUPEL_MIXING_RATIO'  , 0.0000, 'NULL', 'UPDATE' 
+/
+
+
+&obs_kind_nml
+  assimilate_these_obs_types = 'TEMPERATURE_2M',
+                               'U_WIND_10M',
+                               'V_WIND_10M',
+                               'SURFACE_PRESSURE',
+                               'SPECIFIC_HUMIDITY_2M'
+  evaluate_these_obs_types   = ''
+/
+
+
+&location_nml
+   x_is_periodic       = .true.
+   y_is_periodic       = .true.
+   z_is_periodic       = .false.
+   min_x_for_periodic  = 0.0
+   max_x_for_periodic  = 128000.0
+   min_y_for_periodic  = 0.0
+   max_y_for_periodic  = 128000.0
+   min_z_for_periodic  = 0.0
+   max_z_for_periodic  = 1.0
+   compare_to_correct  = .false.
+   output_box_info     = .false.
+   print_box_level     = 0
+   nx                  = 10
+   ny                  = 10
+   nz                  = 10
+/
+
+
+&perfect_model_obs_nml
+  adv_ens_command          = "advance_model.csh"
+  async                    = 2
+  init_time_days           = -1
+  init_time_seconds        = -1
+  start_from_restart       = .true.
+  input_state_files        = "perfect_input.nc"
+  output_state_files       = "perfect_output.nc"
+  first_obs_days           = -1
+  first_obs_seconds        = -1
+  last_obs_days            = -1
+  last_obs_seconds         = -1
+  obs_seq_in_file_name     = "obs_seq.in"
+  obs_seq_out_file_name    = "obs_seq.out"
+  output_forward_op_errors = .false.
+  output_interval          = 1
+  print_every_nth_obs      = -1
+  output_timestamps        = .false.
+  silence                  = .false.
+  trace_execution          = .false.
+/
+
+
+&preprocess_nml
+  overwrite_output         = .true.
+  input_obs_kind_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+  output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+  input_obs_def_mod_file   = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+  output_obs_def_mod_file  = '../../../observations/forward_operators/obs_def_mod.f90'
+  input_files              = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
+                             '../../../observations/forward_operators/obs_def_surface_mod.f90'
+/
+
+
+&quality_control_nml
+  enable_special_outlier_code = .false.
+  input_qc_threshold          = 3.0
+  outlier_threshold           = -1.0
+/
+
+
+! If performing vertical conversion, try
+! 'distribute_mean = .false.'
+
 &assim_tools_nml
   adaptive_localization_threshold = -1
-  cutoff                          = 100
+  cutoff                          = 4000.0
   filter_kind                     = 1
-  gaussian_likelihood_tails       = .false.
-  localization_diagnostics_file   = 'localization_diagnostics'
-  output_localization_diagnostics = .false.
-  print_every_nth_obs             = 0
+  print_every_nth_obs             = 100
   rectangular_quadrature          = .true.
   sampling_error_correction       = .false.
   sort_obs_inc                    = .false.
   spread_restoration              = .false.
+  gaussian_likelihood_tails       = .false.
+  distribute_mean                 = .true.
+  output_localization_diagnostics = .false.
+  localization_diagnostics_file   = 'localization_diagnostics'
 /
 
 
@@ -20,101 +166,6 @@
 
 
 &ensemble_manager_nml
-/
-
-
-&filter_nml
-  adv_ens_command             = "../shell_scripts/advance_model.csh"
-  async                       = 2
-  ens_size                    = 20 
-  first_obs_days              = -1
-  first_obs_seconds           = -1
-  inf_damping                 = 0.9,                     1.0
-  inf_deterministic           = .true.,                  .true.
-  inf_flavor                  = 2,                       0
-  inf_initial                 = 1.0,                     1.0
-  inf_initial_from_restart    = .false.,                 .false.
-  inf_lower_bound             = 1.0,                     1.0
-  inf_sd_initial              = 0.6,                     0.0
-  inf_sd_initial_from_restart = .false.,                 .false.
-  inf_sd_lower_bound          = 0.6,                     0.0
-  inf_upper_bound             = 1000000.0,               1000000.0
-  init_time_days              = -1
-  init_time_seconds           = -1
-  input_state_file_list       = "input_filelist.txt"
-  last_obs_days               = -1
-  last_obs_seconds            = -1
-  num_groups                  = 1
-  num_output_obs_members      = 20
-  num_output_state_members    = 20
-  obs_sequence_in_name        = "obs_seq.out"
-  obs_sequence_out_name       = "obs_seq.final"
-  output_forward_op_errors    = .false.
-  output_interval             = 1
-  output_mean                 = .true.
-  output_state_file_list      = "output_filelist.txt"
-  output_members              = .true.
-  output_sd                   = .true.
-  output_timestamps           = .true.
-  stages_to_write             = 'preassim', 'output'
-  trace_execution             = .true.
-  write_all_stages_at_end     = .false.
-/
-
-
-&location_nml
-   nx                  = 10
-   ny                  = 10
-   nz                  = 10
-   x_is_periodic       = .false.
-   min_x_for_periodic  = 0.0
-   max_x_for_periodic  = 1.0
-   y_is_periodic       = .false.
-   min_y_for_periodic  = 0.0
-   max_y_for_periodic  = 1.0
-   z_is_periodic       = .false.
-   min_z_for_periodic  = 0.0
-   max_z_for_periodic  = 1.0
-   compare_to_correct  = .false.
-   output_box_info     = .false.
-   print_box_level     = 0
-/
-
-
-&model_mod_check_nml
-  interp_test_dx        = 10.0
-  interp_test_dy        = 10.0
-  interp_test_dz        = 1.0
-  interp_test_vertcoord = 'VERTISHEIGHT'
-  interp_test_xrange    = 500.0, 1000.0
-  interp_test_yrange    = 500.0, 1000.0
-  interp_test_zrange    = 100.0,  101.0
-  kind_of_interest      = 'QTY_TEMPERATURE'
-  loc_of_interest       = 1000.0, 500.0, 120.0
-  num_ens               = 1
-  restart_in_file_names  = 'dart_ics.nc'
-  restart_out_file_names = 'cm1_output'
-  test1thru             = 4
-  verbose               = .true.
-  verbose               = .true.
-  x_ind                 = 1000000
-/
-
-
-&model_nml
-  assimilation_period_days    = 0
-  assimilation_period_seconds = 60
-  calendar                    = 'Gregorian'
-  cm1_template_file           = 'cm1out_rst_000001.nc'
-  model_variables             = 'tha', 'QTY_TEMPERATURE',          '0.0' , '1.0e28', 'UPDATE' 
-                                'tsk', 'QTY_2M_TEMPERATURE',       'NULL', 'NULL'  , 'UPDATE'
-                                'ua' , 'QTY_U_WIND_COMPONENT',     '0.0',  'NULL'  , 'UPDATE'
-                                'va' , 'QTY_V_WIND_COMPONENT'      'NULL', '0.03'  , 'UPDATE'
-                                'ppi', 'QTY_SURFACE_PRESSURE',     'NULL', 'NULL'  , 'UPDATE'
-                                'u0' , 'QTY_10M_U_WIND_COMPONENT', 'NULL', 'NULL'  , 'NOUPDATE'
-  periodic_x                  = .true.
-  periodic_y                  = .true.
-  debug                       = 0
 /
 
 
@@ -143,25 +194,7 @@
 /
 
 
-&obs_kind_nml
-  assimilate_these_obs_types = 'TEMPERATURE_2M', 'U_WIND_10M', 'V_WIND_10M', 'SURFACE_PRESSURE', 'SPECIFIC_HUMIDITY_2M'
-
-/
-
-
 &obs_model_nml
-/
-
-
-&obs_seq_to_netcdf_nml
-  append_to_netcdf  = .false.
-  latlim1           = -10000000.0
-  latlim2           = 10000000.0
-  lonlim1           = -10000000.0
-  lonlim2           = 10000000.0
-  obs_sequence_list = ''
-  obs_sequence_name = 'obs_seq.out'
-  verbose           = .true.
 /
 
 
@@ -176,51 +209,34 @@
   filename_seq_list = ''
   first_obs_days    = -1
   first_obs_seconds = -1
-  gregorian_cal     = .false.
+  gregorian_cal     = .true.
   last_obs_days     = -1
   last_obs_seconds  = -1
   print_only        = .false.
 /
 
 
-&perfect_model_obs_nml
-  adv_ens_command          = "../shell_scripts/advance_model.csh"
-  async                    = 2
-  first_obs_days           = -1
-  first_obs_seconds        = -1
-  init_time_days           = -1
-  init_time_seconds        = -1
-  last_obs_days            = -1
-  last_obs_seconds         = -1
-  obs_seq_in_file_name     = "obs_seq.in"
-  obs_seq_out_file_name    = "obs_seq.out"
-  output_forward_op_errors = .false.
-  output_interval          = 1
-  output_timestamps        = .false.
-  print_every_nth_obs      = -1
-  input_state_files        = "perfect_input.nc"
-  output_state_files       = "perfect_output.nc"
-  silence                  = .false.
-  start_from_restart       = .true.
-  trace_execution          = .false.
+&smoother_nml
+  num_lags              = 0
+  output_restart        = .true.
+  restart_in_file_name  = 'ics'
+  restart_out_file_name = 'restart'
+  start_from_restart    = .false.
 /
 
 
-&preprocess_nml
-  input_files              = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
-                             '../../../observations/forward_operators/obs_def_surface_mod.f90'
-  input_obs_def_mod_file   = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
-  input_obs_kind_mod_file  = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
-  output_obs_def_mod_file  = '../../../observations/forward_operators/obs_def_mod.f90'
-  output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
-  overwrite_output         = .true.
+&state_vector_io_nml
+  single_precision_output = .false.
 /
 
 
-&quality_control_nml
-  enable_special_outlier_code = .false.
-  input_qc_threshold          = 3.0
-  outlier_threshold           = -1.0
+&utilities_nml
+  module_details = .false.
+  logfilename    = 'dart_log.out'
+  nmlfilename    = 'dart_log.nml'
+  print_debug    = .false.
+  termlevel      = 1
+  write_nml      = 'file'
 /
 
 
@@ -244,25 +260,33 @@
 /
 
 
-&smoother_nml
-  num_lags              = 0
-  output_restart        = .true.
-  restart_in_file_name  = 'ics'
-  restart_out_file_name = 'restart'
-  start_from_restart    = .false.
+&obs_seq_to_netcdf_nml
+  append_to_netcdf  = .false.
+  latlim1           = -10000000.0
+  latlim2           = 10000000.0
+  lonlim1           = -10000000.0
+  lonlim2           = 10000000.0
+  obs_sequence_list = ''
+  obs_sequence_name = 'obs_seq.out'
+  verbose           = .true.
 /
 
 
-&state_vector_io_nml
-  single_precision_output = .false.
-/
-
-
-&utilities_nml
-  logfilename    = 'dart_log.out'
-  module_details = .false.
-  nmlfilename    = 'dart_log.nml'
-  print_debug    = .false.
-  termlevel      = 1
-  write_nml      = 'file'
+&model_mod_check_nml
+  interp_test_dx        = 10.0
+  interp_test_dy        = 10.0
+  interp_test_dz        = 1.0
+  interp_test_vertcoord = 'VERTISHEIGHT'
+  interp_test_xrange    = 500.0, 1000.0
+  interp_test_yrange    = 500.0, 1000.0
+  interp_test_zrange    = 100.0,  101.0
+  kind_of_interest      = 'QTY_TEMPERATURE'
+  loc_of_interest       = 1000.0, 500.0, 120.0
+  num_ens               = 1
+  restart_in_file_names  = 'dart_ics.nc'
+  restart_out_file_names = 'cm1_output'
+  test1thru             = 4
+  verbose               = .true.
+  verbose               = .true.
+  x_ind                 = 1000000
 /

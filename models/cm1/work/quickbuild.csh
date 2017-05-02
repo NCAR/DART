@@ -57,10 +57,6 @@ foreach TARGET ( mkmf_* )
       \rm -f ${PROG}
       csh $TARGET || exit $n
       make        || exit $n
-      # FIXME: to verify we have correct path_names_xxx
-      # uncomment the next 2 lines.
-      echo 'removing all files between serial builds'
-      \rm -f *.o *.mod
       breaksw
    endsw
 end
@@ -109,10 +105,6 @@ foreach TARGET ( mkmf_* )
       \rm -f ${PROG}
       csh $TARGET -mpi || exit $n
       make             || exit $n
-      # FIXME: to verify we have correct path_names_xxx
-      # uncomment the next 2 lines.
-      echo 'removing all files between parallel builds'
-      \rm -f *.o *.mod
       breaksw
    default:
       breaksw

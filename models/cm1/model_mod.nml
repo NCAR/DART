@@ -4,9 +4,9 @@
    model_perturbation_amplitude = 0.2
    cm1_template_file            = 'null'
    calendar                     = 'Gregorian'
-   debug                        = 0
-   model_variables              = ' '
    periodic_x                   = .true.
    periodic_y                   = .true.
    periodic_z                   = .false.
+   debug                        = 0
+   model_variables              = ' '
   /

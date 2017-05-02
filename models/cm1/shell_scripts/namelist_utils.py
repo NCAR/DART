@@ -8,8 +8,6 @@
 #
 # CREDIT: This script was donated to DART by Luke Madaus during his time
 # at the University of Washington. Thanks Luke!
-#
-# Modified for Python (Oct. 2015) Luke Madaus, University of Washington
 #-----------------------------------------------------------------------------
 
 from __future__ import print_function, division
@@ -28,6 +26,9 @@ def read_namelist(infname='namelist.input'):
     with open(infname, 'r') as infile:
         for line in infile.readlines():
             cleanline = line.strip() # This is like Fortran 'trim'
+            # Skip comment lines 
+            if cleanline.startswith('!'):
+                continue
             # Skip blank lines and section ends
             if cleanline in ['', '/']:
                 continue
@@ -166,7 +167,7 @@ def write_namelist(nmld, outfname='namelist.input'):
     # Set the newline character and a default indentation
     nl = '\n'
     indent = ' '
-    with open(outfname, 'wb') as outfile:
+    with open(outfname, 'w') as outfile:
         print('', file=outfile)
         # Loop through all the sections of the namelist
         #section_names = nmld.keys()
