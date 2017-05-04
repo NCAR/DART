@@ -10,8 +10,8 @@
 # this script submits the jobs to advance the ROMS ensemble members using
 # a job array. Each ensemble member gets executed on its own node.
 #
-#SBATCH --array=1-ENSEMBLESIZE
-#SBATCH --ntasks 16 
+#SBATCH --array=1-Myens_size
+#SBATCH --ntasks=16 
 #SBATCH --time=10:00
 #SXXXXX --dependency=afterok:FILTERJOBID
 #
@@ -22,39 +22,64 @@
 # with 'My' is a string that gets replaced in the "normal" ROMs fashion.
 # The next few are not standard. 
 #
-# ENSEMBLESIZE           gets replaced in the 'stage_experiment.csh' script
+# Myens_size             gets replaced in the 'stage_experiment.csh' script
 # SXXXXX                 gets replaced if this is a dependent job (with SBATCH)
 # FILTERJOBID            gets replaced by the job ID that must finish first
 # EXPERIMENT_DIRECTORY   gets replaced in the 'stage_experiment.csh' script
 
 # machine-specific dereferencing
 if ($?LS_SUBCWD) then
-   set LAUNCHCMD = "mpirun.lsf"
+   set     JOBNAME = $LSB_JOBNAME
+   set       JOBID = $LSB_JOBID
+   set    NODELIST = $LSB_SUB_HOST
+   set   LAUNCHCMD = "mpirun.lsf"
 else if ($?SLURM_JOB_ID) then
-   set LAUNCHCMD = "mpirun -np $SLURM_NTASKS -bind-to core"
+   set     JOBNAME = $SLURM_JOB_NAME
+   set       JOBID = $SLURM_JOBID
+   set    NODELIST = $SLURM_NODELIST
+   set   LAUNCHCMD = "mpirun -np $SLURM_NTASKS -bind-to core"
 else if ($?PBS_O_WORKDIR) then
-   set LAUNCHCMD = "mpirun -np $SLURM_NTASKS -bind-to core"
+   set   LAUNCHCMD = "mpirun -np $SLURM_NTASKS -bind-to core"
 else
+   set     JOBNAME = roms_filter
+   set       JOBID = $$
+   set    NODELIST = $host
    set LAUNCHCMD = "aprun -n 16"
 endif
 
-# set some useful environment variables
-set   DSTART = MyDSTART
+#----------------------------------------------------------------------
+# Just an echo of job attributes
+#----------------------------------------------------------------------
+
 set instance = $SLURM_ARRAY_TASK_ID
-echo "STARTING ENSEMBLE MEMBER $instance at "`date`
-
 set INSTANCE_DIRECTORY = `printf "instance_%04d" $instance`
-
-# get to work
 cd EXPERIMENT_DIRECTORY/$INSTANCE_DIRECTORY
+
+echo
+echo "#---------------------------------------------------------------------"
+echo "# ROMS $instance started at "`date`
+echo "#---------------------------------------------------------------------"
+echo
+echo "${JOBNAME} ($JOBID) working directory "`pwd`
+echo "${JOBNAME} ($JOBID) running       on ${NODELIST}"
+echo "${JOBNAME} ($JOBID) started at "`date`
+echo
+
+#----------------------------------------------------------------------
+# get to work
+#----------------------------------------------------------------------
 
 rm -f log_$instance.txt
 
 echo "advancing instance $instance at ..."`date`
 
+set   DSTART = MyDSTART
+
 \cp ../s4dvar.in.template s4dvar.in
+
 set OBS_PREF = ../Obs/obs
-set NEW_OBS     = `printf %s_%d.nc ${OBS_PREF} $DSTART`
+set  NEW_OBS = `printf %s_%d.nc ${OBS_PREF} $DSTART`
+
 MySUBSTITUTE s4dvar.in MyOBSname   $NEW_OBS
 
 ${LAUNCHCMD} ../MyROMS_EXE MyROMS_STDIN >& log_$instance.txt

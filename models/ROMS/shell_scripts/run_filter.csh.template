@@ -66,6 +66,7 @@ if ($?LS_SUBCWD) then
    set      MYHOST = $LSB_SUB_HOST
    set    NODELIST = $LSB_SUB_HOST
    #>@todo NODELIST wrong for LSF ...
+   set   LAUNCHCMD = "mpirun.lsf"
 
 else if ($?SLURM_JOB_ID) then
 
@@ -75,6 +76,7 @@ else if ($?SLURM_JOB_ID) then
    set     MYQUEUE = $SLURM_JOB_PARTITION
    set      MYHOST = $SLURM_SUBMIT_HOST
    set    NODELIST = $SLURM_NODELIST
+   set   LAUNCHCMD = "mpirun -np $SLURM_NTASKS -bind-to core"
 
 else if ($?PBS_O_WORKDIR) then
 
@@ -85,14 +87,7 @@ else
    set       JOBID = $$
    set     MYQUEUE = Interactive
    set      MYHOST = $host
-
-   set   MOVE = 'mv -fv'
-   set   COPY = 'cp -fv --preserve=timestamps'
-   set   LINK = 'ln -fvs'
-   set REMOVE = 'rm -fr'
-
-   set BASEOBSDIR = /scratch/scratchdirs/nscollin/ACARS
-   set  LAUNCHCMD = "aprun -n $NTASKS"
+   set   LAUNCHCMD = "aprun -n $NTASKS"
 
 endif
 
@@ -279,7 +274,7 @@ else
    echo "Posterior Inflation       not requested for this assimilation."
 endif
 
-# Eat the cookie regardless
+# Eat the cookie whether it exists or not
 \rm -f roms_inflation_cookie
 
 #==============================================================================
@@ -288,8 +283,16 @@ endif
 #==============================================================================
 
 # Remove the last set of DART run-time logs - if they exist.
-
 \rm -f dart_log.out dart_log.nml
+
+# grab the DSTART from someplace
+set DSTARTSTRING = `grep 'DSTART =' instance_0001/MyROMS_STDIN | grep -oE '[[:digit:]]+'`
+set DSTART = $DSTARTSTRING[1]
+
+# grab the base MODname from someplace. The advance_ensemble.csh script tags
+# each of these with the instance number to keep them unique.
+set  MODname = myMODname
+set OBS_ROOT = $MODname:r
 
 # Because convert_roms_obs and filter need bits from the ROMS model_mod,
 # a (single) ROMS input file is required to satisfy 'static_init_model()'.

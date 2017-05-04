@@ -89,11 +89,14 @@ rsync -Cavz ${ROMSDIR}/Ensemble/      ${EXPERIMENTDIR}/      || exit 1
 \cp ${ROMSDIR}/machines               ${EXPERIMENTDIR}/.     || exit 1
 #\cp ${ROMSDIR}/WC13/timtest2/oceanG   ${EXPERIMENTDIR}/.
 
-\cp ${DARTDIR}/models/ROMS/shell_scripts/run_multiple_jobs.csh        ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/shell_scripts/cycle.csh.template           ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/work/input.nml.template                    ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/work/filter                                ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/observations/obs_converters/ROMS/work/convert_roms_obs ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/observations/obs_converters/ROMS/work/convert_roms_obs  ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/work/input.nml.template                     ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/work/filter                                 ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/shell_scripts/run_multiple_jobs.csh         ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/shell_scripts/cycle.csh.template            ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/shell_scripts/run_filter.csh.template       ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/shell_scripts/advance_ensemble.csh.template ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/assimilation_code/programs/system_simulation/work/sampling_error_correction_table.Lanai.nc sampling_error_correction_table.nc
 
 echo "no preexisting inflation files" >! ${EXPERIMENTDIR}/roms_inflation_cookie
 
@@ -153,25 +156,47 @@ $SUBSTITUTE  ocean.in.template  MyDAINAME   $ROMS_DAI
 $SUBSTITUTE  ocean.in.template  MyRSTNAME   $ROMS_RST
 $SUBSTITUTE  ocean.in.template  MyAPARNAM   $ROMS_DAPAR
 
-$SUBSTITUTE  cycle.csh.template  MySUBSTITUTE          $SUBSTITUTE
-$SUBSTITUTE  cycle.csh.template  EXPERIMENT_DIRECTORY  $EXPERIMENTDIR
-$SUBSTITUTE  cycle.csh.template  MyROMS_EXE            $ROMS_EXE
-$SUBSTITUTE  cycle.csh.template  MyROMS_STDIN          $ROMS_STDIN
-#$SUBSTITUTE  cycle.csh.template  MyOBSname             $ROMS_OBS
-$SUBSTITUTE  cycle.csh.template  MyMODname             $ROMS_MOD
-$SUBSTITUTE  cycle.csh.template  MyRSTNAME             $ROMS_RST
-$SUBSTITUTE  cycle.csh.template  MyDAINAME             $ROMS_DAI
-
-$SUBSTITUTE  run_multiple_jobs.csh  EXPERIMENT_DIRECTORY  $EXPERIMENTDIR
-
 $SUBSTITUTE  s4dvar.in.template  MyMODname   $ROMS_MOD
 
 $SUBSTITUTE  input.nml.template  Myens_size  $ENSEMBLE_SIZE
 $SUBSTITUTE  input.nml.template  MyDAINAME   $ROMS_DAI
 
-\cp ${DARTDIR}/assimilation_code/programs/system_simulation/work/sampling_error_correction_table.Lanai.nc sampling_error_correction_table.nc
+# run_filter.csh and advance_ensemble.csh go together
+
+$SUBSTITUTE  advance_ensemble.csh.template  Myens_size            $ENSEMBLE_SIZE
+$SUBSTITUTE  advance_ensemble.csh.template  MySUBSTITUTE          $SUBSTITUTE
+$SUBSTITUTE  advance_ensemble.csh.template  EXPERIMENT_DIRECTORY  $EXPERIMENTDIR
+$SUBSTITUTE  advance_ensemble.csh.template  MyROMS_EXE            $ROMS_EXE
+$SUBSTITUTE  advance_ensemble.csh.template  MyROMS_STDIN          $ROMS_STDIN
+$SUBSTITUTE  advance_ensemble.csh.template  MyMODname             $ROMS_MOD
+$SUBSTITUTE  advance_ensemble.csh.template  MyRSTNAME             $ROMS_RST
+$SUBSTITUTE  advance_ensemble.csh.template  MyDAINAME             $ROMS_DAI
+\mv advance_ensemble.csh.template advance_ensemble.csh
+chmod u+x advance_ensemble.csh
+
+$SUBSTITUTE  run_filter.csh.template  MySUBSTITUTE          $SUBSTITUTE
+$SUBSTITUTE  run_filter.csh.template  EXPERIMENT_DIRECTORY  $EXPERIMENTDIR
+$SUBSTITUTE  run_filter.csh.template  MyDAINAME             $ROMS_DAI
+$SUBSTITUTE  run_filter.csh.template  MyMODname             $ROMS_MOD
+$SUBSTITUTE  run_filter.csh.template  MyROMS_STDIN          $ROMS_STDIN
+
+\mv run_filter.csh.template run_filter.csh
+chmod u+x run_filter.csh
+
+# cycle.csh and  run_multiple_jobs.csh go together
+
+$SUBSTITUTE  cycle.csh.template  MySUBSTITUTE          $SUBSTITUTE
+$SUBSTITUTE  cycle.csh.template  EXPERIMENT_DIRECTORY  $EXPERIMENTDIR
+$SUBSTITUTE  cycle.csh.template  MyROMS_EXE            $ROMS_EXE
+$SUBSTITUTE  cycle.csh.template  MyROMS_STDIN          $ROMS_STDIN
+$SUBSTITUTE  cycle.csh.template  MyOBSname             $ROMS_OBS
+$SUBSTITUTE  cycle.csh.template  MyMODname             $ROMS_MOD
+$SUBSTITUTE  cycle.csh.template  MyRSTNAME             $ROMS_RST
+$SUBSTITUTE  cycle.csh.template  MyDAINAME             $ROMS_DAI
 \mv cycle.csh.template cycle.csh
 chmod u+x cycle.csh
+
+$SUBSTITUTE  run_multiple_jobs.csh  EXPERIMENT_DIRECTORY  $EXPERIMENTDIR
 chmod u+x run_multiple_jobs.csh
 
 set member = 1
@@ -200,15 +225,19 @@ while ( ${member} <= ${ENSEMBLE_SIZE} )
    $SUBSTITUTE $ROMS_STDIN MyDSTART   $DSTART
    $SUBSTITUTE $ROMS_STDIN MyININAME  $ROMS_INI
 
-#   $SUBSTITUTE $ROMS_DAPAR MyOBSname  ../$ROMS_OBS
-
    cd ..
 
    @ member++
 end
 
+# want to convert the floating point DSTART to an integer
+set IDSTART = `echo "scale=0; $DSTART/1" | bc`
+
+$SUBSTITUTE advance_ensemble.csh MyDSTART  $IDSTART
+$SUBSTITUTE run_filter.csh MyDSTART  $IDSTART
+
 # remove any leftover ensemble members
-\rm wc12_ini_*.nc
+# \rm wc12_ini_*.nc TJH DEBUG
 
 #--------------------------------------------------------------------------
 # put some instructions in the experiment directory and echo to screen
