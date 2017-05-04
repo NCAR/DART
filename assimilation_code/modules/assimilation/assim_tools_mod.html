@@ -292,11 +292,12 @@ prematurely terminating the namelist.
 &amp;assim_tools_nml
    filter_kind                     = 1,
    cutoff                          = 0.2,
+   distribute_mean                 = .false.
    sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
    adaptive_localization_threshold = -1,
-   adaptive_cutoff_floor           = -1.0,
+   adaptive_cutoff_floor           = 0.0,
    output_localization_diagnostics = .false.,
    localization_diagnostics_file   = "localization_diagnostics",
    print_every_nth_obs             = 0,
@@ -304,6 +305,8 @@ prematurely terminating the namelist.
    gaussian_likelihood_tails       = .false.,
    close_obs_caching               = .true.,
    allow_missing_in_clm            = .false.
+   adjust_obs_impact               = .false.
+   obs_impact_filename             = ""
    special_localization_obs_types  = "",
    special_localization_cutoffs    = -1,
 /
@@ -326,13 +329,23 @@ prematurely terminating the namelist.
  <TD> integer </TD>
  <TD> Selects the variant of filter to be used.
 <UL>
- <LI>1 = EAKF</LI>
- <LI>2 = ENKF,
+ <LI>1 = EAKF (Ensemble Adjustment Kalman Filter)</LI>
+ <LI>2 = ENKF (ENsemble Kalman Filter),
  <LI>3 = Kernel filter</LI> 
- <LI>4 = particle filter</LI>  
- <LI>7 = Boxcar kernel filter</LI>
+ <LI>4 = Observation Space Particle filter</LI>  
+ <LI>7 = Boxcar Kernel filter</LI>
  <LI>8 = Rank Histogram Filter</LI>
+ <LI>9 = New Particle Filter (see details below)</LI>
 </UL>
+
+The EAKF is the most commonly used filter. 
+The Rank Histgram filter can be more successful for highly nongaussian
+distributsion. 
+
+Jon Poterjoy's Particle filter is included with this code release.
+To use it rename assimilation_code/modules/assimilation/assim_tools_mod.pf.f90 to
+assim_tools_mod.f90 and rebuild filter.  There are additional namelist items in
+this version specific to the particle filter.  Read the code for more details.
  </TD> </TR>
 
 <TR>
@@ -343,6 +356,20 @@ the impact of an observation on a state variable. The units depend
 both on the location module being used and on the covariance cutoff
 module options selected.  As defined in the original paper, this is
 the half-width; the localization goes to 0 at 2 times this value.
+ </TD> </TR>
+
+<TR>
+ <TD> distribute_mean </TD>
+ <TD> logical </TD>
+ <TD> If your model uses coordinates that have no options for
+different vertical coordinates then this setting has no effect
+on speed and should be .true. to use less memory.  If your model
+has code to convert between different coordinate systems, for
+example Pressure, Height, Model Levels, etc, then setting this
+.false. will generally run much faster at assimilation time
+but will require more memory per MPI task.  If you run out of
+memory, setting this to .true. may allow you to run but take
+longer.
  </TD> </TR>
 
 <TR>
@@ -425,29 +452,6 @@ at the end of any existing data.
 
 
 <TR>
- <TD> special_localization_obs_types </TD>
- <TD> character(len=32), dimension(:) </TD>
- <TD> Optional list of observation types (e.g. "RADAR_REFLECTIVITY",
-"RADIOSONDE_TEMPERATURE") which will use a different cutoff
-value other than the default specified by the 'cutoff' namelist.
-This is only implemented for the 'threed_sphere' locations module.
- </TD> </TR>
-
-
-<TR>
- <TD> special_localization_cutoffs </TD>
- <TD> real(r8), dimension(:) </TD>
- <TD> Optional list of real values which must be the same
-length and in the same order as the observation types list
-given for the 'special_localization_obs_types' item.
-These values will set a different cutoff distance for localization
-based on the type of the observation currently being assimilated.
-Any observation type not in the list will use the default cutoff value.
-This is only implemented for the 'threed_sphere' locations module.
- </TD> </TR>
-
-
-<TR>
  <TD> print_every_nth_obs </TD>
  <TD> integer </TD>
  <TD> If set to a value <em class=code>N</em> greater than 0,
@@ -455,6 +459,20 @@ the observation assimilation loop prints out a progress message
 every <em class=code>N</em>th observations.  This can be useful to
 estimate the expected run time for a large observation file,
 or to verify progress is being made in cases with suspected problems.
+ </TD> </TR>
+
+
+<TR>
+ <TD> rectangular quadrature </TD>
+ <TD> logical </TD>
+ <TD> Only relevant for filter type 8 and recommended to leave .true.
+ </TD> </TR>
+
+
+<TR>
+ <TD> gaussian_likelihood_tails </TD>
+ <TD> logical </TD>
+ <TD> Only relevant for filter type 8 and recommended to leave .false.
  </TD> </TR>
 
 
@@ -482,6 +500,51 @@ support for this option; the CLM model has been tested and is known
 to work.  Other users with models which would benefit from setting missing
 values in the state vector are encouraged to contact
 <a href="mailto:dart@ucar.edu">dart at ucar.edu</a>.
+ </TD> </TR>
+
+
+<TR>
+ <TD> adjust_obs_impact </TD>
+ <TD> logical </TD>
+ <TD> If true, reads a table of observation quantities and types
+which should be artifically adjusted regardless of the actual
+correlation computed during assimilation.  Setting the impact
+value to 0 prevents items from being adjusted by that class of observations.
+The input file can be constructed by the 'obs_impact_tool' program,
+included in this release. See the documentation for more details.
+ </TD> </TR>
+
+
+<TR>
+ <TD> obs_impact_filename </TD>
+ <TD> character(len=256) </TD>
+ <TD> If adjust_obs_impact is true, the name of the file with
+the observation types and quantities and state quantities that
+should have have an additional factor applied to the correlations
+during assimilation.
+ </TD> </TR>
+
+
+<TR>
+ <TD> special_localization_obs_types </TD>
+ <TD> character(len=32), dimension(:) </TD>
+ <TD> Optional list of observation types (e.g. "RADAR_REFLECTIVITY",
+"RADIOSONDE_TEMPERATURE") which will use a different cutoff
+value other than the default specified by the 'cutoff' namelist.
+This is only implemented for the 'threed_sphere' locations module.
+ </TD> </TR>
+
+
+<TR>
+ <TD> special_localization_cutoffs </TD>
+ <TD> real(r8), dimension(:) </TD>
+ <TD> Optional list of real values which must be the same
+length and in the same order as the observation types list
+given for the 'special_localization_obs_types' item.
+These values will set a different cutoff distance for localization
+based on the type of the observation currently being assimilated.
+Any observation type not in the list will use the default cutoff value.
+This is only implemented for the 'threed_sphere' locations module.
  </TD> </TR>
 
 </TBODY>

@@ -35,6 +35,9 @@ use       reg_factor_mod, only : comp_reg_factor
 
 use       obs_impact_mod, only : allocate_impact_table, read_impact_table, free_impact_table
 
+use sampling_error_correction_mod, only : get_sampling_error_table_size, &
+                                          read_sampling_error_correction
+
 use         location_mod, only : location_type, get_close_type, get_close_obs_destroy,    &
                                  operator(==), set_location_missing, write_location,      &
                                  LocationDims, vert_is_surface, has_vertical_localization,&
@@ -96,13 +99,11 @@ real(r8), parameter    :: small = epsilon(1.0_r8)   ! threshold for avoiding NaN
 character(len = 255)   :: msgstring, msgstring2, msgstring3
 
 ! Need to read in table for off-line based sampling correction and store it
-logical                :: first_get_correction = .true.
-real(r8)               :: exp_true_correl(200), alpha(200)
+integer                :: sec_table_size
+real(r8), allocatable  :: exp_true_correl(:), alpha(:)
 
 ! if adjust_obs_impact is true, read in triplets from the ascii file
-! and fill this 2d impact table.  it should be allocated for both
-! kinds and types, 0-N for kinds, 1-N for types, with a type offset
-! computed somehow.
+! and fill this 2d impact table. 
 real(r8), allocatable  :: obs_impact_table(:,:)
 
 ! version controlled file description for error handling, do not edit
@@ -174,8 +175,13 @@ logical            :: allow_any_impact_values = .false.
 ! sections.  to try out the alternatives, set this to .false.
 logical  :: only_area_adapt  = .true.
 
-! Option to distribute the mean.
-logical  :: distribute_mean  = .true.
+! Option to distribute the mean.  If 'false' each task will have a full
+! copy of the ensemble mean, which speeds models doing vertical conversion.
+! If 'true' the mean will be spread across all tasks which reduces the
+! memory needed per task but requires communication if the mean is used
+! for vertical conversion.  We have changed the default to be .false.
+! compared to previous versions of this namelist item.
+logical  :: distribute_mean  = .false.
 
 ! Lanai bitwise. This is for unit testing and runs much slower.
 ! Only use for when testing against the non-rma trunk.
@@ -190,7 +196,8 @@ namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
    output_localization_diagnostics, localization_diagnostics_file,         &
    special_localization_obs_types, special_localization_cutoffs,           &
    allow_missing_in_clm, distribute_mean, close_obs_caching,               &
-   allow_any_impact_values, lanai_bitwise
+   adjust_obs_impact, obs_impact_filename,                                 &  
+   allow_any_impact_values, lanai_bitwise ! don't document these last two for now
 
 !============================================================================
 
@@ -280,6 +287,12 @@ end do
 if (has_special_cutoffs .and. close_obs_caching) then
    cache_override = .true.
    close_obs_caching = .false.
+endif
+
+if(sampling_error_correction) then
+   sec_table_size = get_sampling_error_table_size()
+   allocate(exp_true_correl(sec_table_size), alpha(sec_table_size))
+   ! we can't read the table here because we don't have access to the ens_size
 endif
 
 ! log what the user has selected via the namelist choices
@@ -2779,10 +2792,9 @@ endif
 if(present(correl_out)) correl_out = correl
 
 
-! BEGIN TEST OF CORRECTION FROM FILE +++++++++++++++++++++++++++++++++++++++++++++++++
 ! Get the expected actual correlation and the regression weight reduction factor
 if(sampling_error_correction) then
-   call get_correction_from_file(ens_size, correl, mean_factor, exp_true_correl)
+   call get_correction_from_table(correl, mean_factor, exp_true_correl, ens_size)
    ! Watch out for division by zero; if correl is really small regression is safely 0
    if(abs(correl) > 0.001_r8) then
       reg_coef = reg_coef * (exp_true_correl / correl) * mean_factor
@@ -2791,8 +2803,6 @@ if(sampling_error_correction) then
    endif
    correl = exp_true_correl
 endif
-
-! END TEST OF CORRECTION FROM FILE +++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 
@@ -2838,56 +2848,23 @@ end subroutine update_from_obs_inc
 
 !------------------------------------------------------------------------
 
-subroutine get_correction_from_file(ens_size, scorrel, mean_factor, expected_true_correl)
+subroutine get_correction_from_table(scorrel, mean_factor, expected_true_correl, ens_size)
 
-integer,   intent(in) :: ens_size
 real(r8),  intent(in) :: scorrel
 real(r8), intent(out) :: mean_factor, expected_true_correl
+integer,  intent(in)  :: ens_size
 
-! Reads in a regression error file for a give ensemble_size and uses interpolation
-! to get correction factor into the file
+! Uses interpolation to get correction factor into the table
 
 integer             :: iunit, i, low_indx, high_indx
 real(r8)            :: temp, temp2, correl, fract, low_correl, low_exp_correl, low_alpha
 real(r8)            :: high_correl, high_exp_correl, high_alpha
-character(len = 20) :: correction_file_name
 
-if(first_get_correction) then
-   ! Compute the file name for this ensemble size
-   if(ens_size < 10) then
-      write(correction_file_name, 11) 'final_full.', ens_size
-   else if(ens_size < 100) then
-      write(correction_file_name, 21) 'final_full.', ens_size
-   else if(ens_size < 1000) then
-      write(correction_file_name, 31) 'final_full.', ens_size
-   else if(ens_size < 10000) then
-      write(correction_file_name, 41) 'final_full.', ens_size
-   else
-      write(msgstring,*)'Trying to use ',ens_size,' model states -- too many.'
-      call error_handler(E_ERR,'get_correction_from_file','Use less than 10000 ens members.',&
-         source,revision,revdate, text2=msgstring)
+logical, save :: first_time = .true.
 
-    11   format(a11, i1)
-    21   format(a11, i2)
-    31   format(a11, i3)
-    41   format(a11, i4)
-   endif
- 
-   ! Make sure that the correction file exists, else an error
-   if(.not. file_exist(correction_file_name)) then
-      write(msgstring,*) 'Correction file ', correction_file_name, ' does not exist'
-      call error_handler(E_ERR,'get_correction_from_file',msgstring,source,revision,revdate)
-   endif
-
-   ! Read in file to get the expected value of the true correlation given the sample
-   iunit = get_unit()
-   open(unit = iunit, file = correction_file_name)
-   do i = 1, 200
-      read(iunit, *) temp, temp2, exp_true_correl(i), alpha(i)
-   end do
-   close(iunit)
-
-   first_get_correction = .false.
+if (first_time) then
+   call read_sampling_error_correction(ens_size, exp_true_correl, alpha)
+   first_time = .false.
 endif
 
 ! Interpolate to get values of expected correlation and mean_factor
@@ -2903,8 +2880,8 @@ else if(scorrel <= -0.995_r8) then
    mean_factor = (alpha(1) - 1.0_r8) * fract + 1.0_r8
 else if(scorrel >= 0.995_r8) then
    fract = (scorrel - 0.995_r8) / 0.005_r8
-   correl = (1.0_r8 - exp_true_correl(200)) * fract + exp_true_correl(200)
-   mean_factor = (1.0_r8 - alpha(200)) * fract + alpha(200)
+   correl = (1.0_r8 - exp_true_correl(sec_table_size)) * fract + exp_true_correl(sec_table_size)
+   mean_factor = (1.0_r8 - alpha(sec_table_size)) * fract + alpha(sec_table_size)
 else
    ! given the ifs above, the floor() computation below for low_indx 
    ! should always result in a value in the range 1 to 199.  but if this
@@ -2939,7 +2916,7 @@ else if(abs(expected_true_correl) > abs(scorrel)) then
    expected_true_correl = scorrel
 endif 
 
-end subroutine get_correction_from_file
+end subroutine get_correction_from_table
 
 
 
