@@ -4,12 +4,12 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id$
+# DART $Id$
 #
-#=============================================================================
+#===============================================================================
 # This block of directives constitutes the preamble for the LSF queuing system
 #
-# the normal way to submit to the queue is:    bsub < cycle.csh
+# the normal way to submit to the queue is:    bsub < run_filter.csh
 #
 # an explanation of the most common directives follows:
 # -J Job_name
@@ -19,22 +19,22 @@
 # -q queue    cheapest == [standby, economy, (regular,debug), premium] == $$$$
 # -n number of MPI processes (not nodes)
 # -W hh:mm  wallclock time (required on some systems)
-#=============================================================================
-#BSUB -J roms_cycle
-#BSUB -o roms_cycle.%J.log
+#
+#BSUB -J roms_filter
+#BSUB -o roms_filter.%J.log
 #BSUB -P P86850054
-#BSUB -q small
-#BSUB -n 16
+#BSUB -q regular
+#BSUB -n 48
 #BSUB -R "span[ptile=16]"
 #BSUB -W 1:00
 #BSUB -N -u ${USER}@ucar.edu
 #
-#=============================================================================
-# This block of directives constitutes the preamble for the PBS queuing system
+#===============================================================================
+# This block of directives constitutes the preamble for the PBS queuing system.
 # Turns out SLURM (in particular 'sbatch') recognizes PBS directives, so we
 # don't need two sets of directives.
-# the normal way to submit with pbs:    qsub   cycle.csh
-# the normal way to submit with slurm:  sbatch cycle.csh
+# the normal way to submit with pbs:    qsub   run_filter.csh
+# the normal way to submit with slurm:  sbatch run_filter.csh
 #
 # an explanation of the most common directives follows:
 # -N     Job name
@@ -46,46 +46,26 @@
 #                     and calgary, there is no way to 'share' the processors
 #                     on the node with another job, so you might as well use
 #                     them both. (ppn == Processors Per Node)
-#=============================================================================
-#PBS -N roms_cycle
-#PBS -e roms_cycle.err
-#PBS -o roms_cycle.log
+#
+#PBS -N filter
+#PBS -e filter.err
+#PBS -o filter.log
 #PBS -l nodes=1:ppn=16
 #PBS -r n
-#
-#=============================================================================
-# Important things to know about slurm:
-#
-# sinfo     information about the whole slurm system
-# squeue    information about running jobs
-# sbatch    submitting a job
-# scancel   killing a job
-#
-# specifying the run-time limit with slurm:
-# --time=10                10 minutes
-# --time=10:00             10 minutes and no seconds - really
-# --time=2:00:00           2 hours
-# --time=3-1:23:45         3 days, 1 hour, 23 minutes and 45 seconds
-#==========================================================================
 #SBATCH --time=01:00:00
-
-cd EXPERIMENT_DIRECTORY
-
-#=========================================================================
-# STEP 0: figure out the platform-specific nuances.
-#=========================================================================
+#SXXXXX --dependency=afterok:ADVANCEJOBID
+#
+#===============================================================================
 
 if ($?LS_SUBCWD) then
 
-   set  ORIGINALDIR = $LS_SUBCWD
-   set      JOBNAME = $LSB_JOBNAME
-   set        JOBID = $LSB_JOBID
-   set      MYQUEUE = $LSB_QUEUE
-   set       MYHOST = $LSB_SUB_HOST
-   set       NTASKS = 
-   set    LAUNCHCMD = "mpirun.lsf"
-
-else if ($?PBS_O_WORKDIR) then
+   set ORIGINALDIR = $LS_SUBCWD
+   set     JOBNAME = $LSB_JOBNAME
+   set       JOBID = $LSB_JOBID
+   set     MYQUEUE = $LSB_QUEUE
+   set      MYHOST = $LSB_SUB_HOST
+   set    NODELIST = $LSB_SUB_HOST
+   #>@todo NODELIST wrong for LSF ...
 
 else if ($?SLURM_JOB_ID) then
 
@@ -93,14 +73,10 @@ else if ($?SLURM_JOB_ID) then
    set     JOBNAME = $SLURM_JOB_NAME
    set       JOBID = $SLURM_JOBID
    set     MYQUEUE = $SLURM_JOB_PARTITION
-   set      MYHOST = $SLURM_JOB_NODELIST
-   set      NTASKS = $SLURM_NTASKS
-   set   LAUNCHCMD = "mpirun -np $NTASKS -bind-to core"
+   set      MYHOST = $SLURM_SUBMIT_HOST
+   set    NODELIST = $SLURM_NODELIST
 
-   echo "SLURM_JOB_NUM_NODES = ${SLURM_JOB_NUM_NODES}"
-   echo "SLURM_JOB_NODELIST  = ${SLURM_JOB_NODELIST}"
-   echo "SLURM_NNODES        = ${SLURM_NNODES}"
-   echo "SLURM_NODELIST      = ${SLURM_NODELIST}"
+else if ($?PBS_O_WORKDIR) then
 
 else
 
@@ -109,93 +85,33 @@ else
    set       JOBID = $$
    set     MYQUEUE = Interactive
    set      MYHOST = $host
-   set      TASKID = 1
-   set      NTASKS = 1
-   set   LAUNCHCMD = "aprun -n $NTASKS"
+
+   set   MOVE = 'mv -fv'
+   set   COPY = 'cp -fv --preserve=timestamps'
+   set   LINK = 'ln -fvs'
+   set REMOVE = 'rm -fr'
+
+   set BASEOBSDIR = /scratch/scratchdirs/nscollin/ACARS
+   set  LAUNCHCMD = "aprun -n $NTASKS"
 
 endif
 
-#=========================================================================
-# STEP 1: Advance the ocean ensemble ... one after another.
-#=========================================================================
+#----------------------------------------------------------------------
+# Just an echo of job attributes
+#----------------------------------------------------------------------
 
-set DSTART = 37623
+echo
+echo "${JOBNAME} ($JOBID) submit directory ${ORIGINALDIR}"
+echo "${JOBNAME} ($JOBID) submit      host ${MYHOST}"
+echo "${JOBNAME} ($JOBID) running in queue ${MYQUEUE}"
+echo "${JOBNAME} ($JOBID) running       on ${NODELIST}"
+echo "${JOBNAME} ($JOBID) started at "`date`
+echo
 
-@ instance = 0
-foreach INSTANCE_DIRECTORY ( instance_???? )
-
-   @ instance++
-
-   cd ${INSTANCE_DIRECTORY}
-
-   rm -f log_$instance.txt
-
-   echo "advancing instance $instance at ..."`date`
-
-   \cp ../s4dvar.in.template s4dvar.in
-   set OBS_PREF = ../Obs/obs
-   set NEW_OBS     = `printf %s_%d.nc ${OBS_PREF} $DSTART`
-   MySUBSTITUTE s4dvar.in MyOBSname   $NEW_OBS
-
-   ${LAUNCHCMD} ../MyROMS_EXE MyROMS_STDIN >& log_$instance.txt
-
-   # Check for successful completion - log file should NOT have something like:
-   # Blowing-up: Saving latest model state into  RESTART file
-   grep -i blow log_$instance.txt > /dev/null
-   if ($status == 0) then
-      echo "ROMS instance $instance FAILED."
-      echo "ROMS instance $instance FAILED."
-      echo "ROMS instance $instance FAILED."
-      exit 1
-   endif
-
-   # sometimes we need the full name, sometimes we need it without the extension
-   set RST_FILE = MyRSTNAME
-   set DAI_FILE = MyDAINAME
-   set OBS_FILE = MyMODname
-   set RST_ROOT = $RST_FILE:r
-   set DAI_ROOT = $DAI_FILE:r
-   set OBS_ROOT = $OBS_FILE:r
-
-   # The ROMS restart file will be treated as the DART prior.
-   # Create a ROMS POSTERIOR file that will be updated by DART and
-   # tag the output with the model time.
-
-#  set OCEAN_TIME_STRING = `ncdump -v ocean_time ${DAI_FILE} | grep '^ ocean_time = '`
-#  set OCEAN_TIME = `echo $OCEAN_TIME_STRING | sed -e "s#[=;a-z_ ]##g"`
-
-#  set ROMS_PRIOR     = `printf %s_%04d_%d.nc ${RST_ROOT} $instance $OCEAN_TIME`
-#  set ROMS_POSTERIOR = `printf roms_posterior_%04d_%d.nc $instance $OCEAN_TIME`
-#  set ROMS_OBSFILE   = `printf %s_%04d_%d.nc ${OBS_ROOT} $instance $OCEAN_TIME`
-#  set SAFETY         = `printf roms_dai_original_%04d_%d.nc $instance $OCEAN_TIME`
-
-   set DSTART_STRING = `ncdump -v dstart ${DAI_FILE} | grep '^ dstart = '`
-   set DSTART = `echo $DSTART_STRING | sed -e "s#[=;a-z_ ]##g"`
-
-   set ROMS_PRIOR     = `printf %s_%04d_%d.nc ${RST_ROOT} $instance $DSTART`
-   set ROMS_POSTERIOR = `printf roms_posterior_%04d_%d.nc $instance $DSTART`
-   set ROMS_OBSFILE   = `printf %s_%04d_%d.nc ${OBS_ROOT} $instance $DSTART`
-   set SAFETY         = `printf roms_dai_original_%04d_%d.nc $instance $DSTART`
-
-   # THE SAFETY FILE COPY IS NOT FOR PRODUCTION RUNS AND SHOULD BE REMOVED.
-
-   \cp -v ${DAI_FILE} ${SAFETY}          || exit 1
-   \mv -v ${RST_FILE} ${ROMS_PRIOR}      || exit 1
-   \mv -v ${DAI_FILE} ${ROMS_POSTERIOR}  || exit 1
-   \mv -v ${OBS_FILE} ${ROMS_OBSFILE}    || exit 1
-
-   echo
-   echo "#---------------------------------------------------------------------"
-   echo "# ROMS instance $instance completed at "`date`
-   echo "#---------------------------------------------------------------------"
-   echo
-
-   cd ..
-
-end
+cd EXPERIMENT_DIRECTORY
 
 #=========================================================================
-# STEP 2: prepare for DART INFLATION
+# STEP 1: prepare for DART INFLATION
 # This stages the files that contain the inflation values.
 # The inflation values change through time and should be archived.
 #
@@ -205,17 +121,10 @@ end
 # filter_nml
 # inf_flavor                  = 2,                 0,
 # inf_initial_from_restart    = .true.,            .false.,
-# inf_in_file_name            = 'input_priorinf',  'input_postinf',
-# inf_out_file_name           = 'output_priorinf', 'output_postinf',
-# inf_diag_file_name          = 'preassim',        'postassim',
 #
 # NOTICE: the archiving scripts require the names of these
 # files to be as listed above. When being archived, the filenames get a
 # unique extension (describing the assimilation time) appended to them.
-#
-# The inflation file is essentially a duplicate of the DART model state ...
-# For the purpose of this script, they are the output of a previous assimilation,
-# so they should be named something like output_priorinf_[mean,sd].SSSSS.nc
 #
 # NOTICE: inf_initial_from_restart and inf_sd_initial_from_restart are somewhat
 # problematic. During the bulk of an experiment, these should be TRUE, since
@@ -374,7 +283,8 @@ endif
 \rm -f roms_inflation_cookie
 
 #==============================================================================
-# STEP 3:  Then we run DART on the ensemble of new states
+# STEP 2:  Consolidate all of the ROMS precomputed forward observations into
+#          a DART observation sequence file.
 #==============================================================================
 
 # Remove the last set of DART run-time logs - if they exist.
@@ -388,14 +298,14 @@ endif
 #ln -sf instance_0001/roms_posterior_????_${OCEAN_TIME}.nc MyDAINAME
 ln -sf instance_0001/roms_posterior_????_${DSTART}.nc MyDAINAME
 
-# 1) Collect all the ROMS_OBSFILEs into a list of input files
-#    and then convert them to a single DART observation sequence file.
-
 #ls -1 instance_*/${OBS_ROOT}*_${OCEAN_TIME}.nc  >! precomputed_files.txt
 ls -1 instance_*/${OBS_ROOT}*_${DSTART}.nc  >! precomputed_files.txt
 
 ./convert_roms_obs  || exit 2
 
+#==============================================================================
+# STEP 3:  Then we run DART on the ensemble of new states
+#==============================================================================
 # 2) collect all the ROMS_RESTARTs into a list of input files for filter
 #    The io module will error out if the file_list.txt is too short.
 #    (make sure all instances of ROMS advanced successfully)
@@ -472,9 +382,13 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
 
 end
 
-#==============================================================================
+echo "${JOBNAME} ($JOBID) finished at "`date`
+echo "These are the files in the run directory at completion:"
+ls -lrt
+
+exit 0
+
 # <next few lines under version control, do not edit>
 # $URL$
 # $Revision$
 # $Date$
-

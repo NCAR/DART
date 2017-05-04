@@ -119,6 +119,29 @@
    add_random_noise       = .false.
    pert_amplitude         = 0.01
    verbose                = 1
+   type_translations = "gridded AVISO sea level ",                  "SATELLITE_SSH",
+                       "AVHRR pathfinder SST ",                     "SATELLITE_INFRARED_SST",
+                       "GOES SST ",                                 "SATELLITE_INFRARED_SST",
+                       "AMSR SST ",                                 "SATELLITE_MICROWAVE_SST",
+                       "Super SST observation ",                    "SATELLITE_BLENDED_SST",
+                       "GTSPP EN3 temperature",                     "TEMPERATURE",
+                       "GTSPP EN3 salinity",                        "SALINITY",
+                       "WOD05 EN3 temperature",                     "TEMPERATURE",
+                       "WOD05 EN3 salinity",                        "SALINITY",
+                       "ASBO EN3 temperature",                      "TEMPERATURE",
+                       "ASBO EN3 salinity",                         "SALINITY",
+                       "ARGOR EN3 real time temperature",           "ARGO_TEMPERATURE",
+                       "ARGOR EN3 real time salinity",              "ARGO_SALINITY",
+                       "ARGOA EN3 real time adjusted temperature",  "ARGO_TEMPERATURE",
+                       "ARGOA EN3 real time adjusted salinity",     "ARGO_SALINITY",
+                       "ARGOD EN3 delayed mode temperature",        "ARGO_TEMPERATURE",
+                       "ARGOD EN3 delayed mode salinity",           "ARGO_SALINITY",
+                       "ARGO EN3 misc temperature",                 "ARGO_TEMPERATURE",
+                       "ARGO EN3 misc salinity",                    "ARGO_SALINITY",
+                       "TOPP APB temperature",                      "ARGO_TEMPERATURE",
+                       "MODIS SST ",                                "SATELLITE_INFRARED_SST"
+  /
+
    type_translations = "gridded AVISO sea level anomaly (zeta)", "SATELLITE_SSH",
                        "gridded Aquarius SSS (salinity)",        "SATELLITE_SSS",
                        "XBT from Met Office (temperature)",      "XBT_TEMPERATURE",
@@ -129,7 +152,6 @@
                        "glider UCSD (temperature)",              "GLIDER_TEMPERATURE",
                        "glider UCSD (salinity)",                 "GLIDER_SALINITY",
                        "blended satellite SST (temperature)",    "SATELLITE_BLENDED_SST"
-  /
 
 &obs_kind_nml
    evaluate_these_obs_types = ''

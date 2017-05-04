@@ -46,17 +46,32 @@
 # ROMSDIR declares the location of the ROMS 'test' code tree
 #         because that's where I built my ROMS and I'm using the
 #         default forcing/data files.
+#
+switch ( $host )
+   case eddy
+      set DARTDIR = /home/${USER}/DART/rma_trunk
+      set ROMSDIR = /home/amm/WC12_DART
+      set EXPERIMENTDIR = /proj/thoar_eddy1/roms_cycling_test
+      set EXPERIMENTDIR = /home/thoar/thoar_eddy1/roms_cycling_test
+      set SRCDIR = /home/amm/ROMS/TRUNK_JAN17/ROMS
+      set SUBSTITUTE = /home/amm/ROMS/TRUNK_JAN17/ROMS/Bin/substitute
+      breaksw
+   case ys*
+      set DARTDIR = /glade/p/work/${USER}/DART/rma_trunk
+      set ROMSDIR = /glade/p/work/${USER}/roms/test
+      set EXPERIMENTDIR = /glade/scratch/${USER}/roms_cycling_test
+      set SUBSTITUTE = /glade/p/work/${USER}/roms/trunk/ROMS/Bin/substitute
+      breaksw
+   default
+      breaksw
+endsw
 
-set DARTDIR = /glade/p/work/${USER}/DART/rma_trunk
-set ROMSDIR = /glade/p/work/${USER}/roms/test
-set EXPERIMENTDIR = /glade/scratch/${USER}/roms_cycling_test
-set SUBSTITUTE = /glade/p/work/${USER}/roms/trunk/ROMS/Bin/substitute
 
 if (-e ${EXPERIMENTDIR} ) then
    echo "ERROR: ${EXPERIMENTDIR} already exists."
    echo "Intentionally leaving it alone."
    echo "Must provide a new directory name for the experiement."
-   exit 1
+#  exit 1
 endif
 
 #--------------------------------------------------------------------------
@@ -66,12 +81,13 @@ endif
 mkdir -p ${EXPERIMENTDIR}
 cd ${EXPERIMENTDIR}
 
-rsync -Cavz ${ROMSDIR}/WC13/Data/      ${EXPERIMENTDIR}/Data/ || exit 1
-rsync -Cavz ${ROMSDIR}/WC13/Ensemble/  ${EXPERIMENTDIR}/      || exit 1
+rsync -Cavz ${ROMSDIR}/Obs/           ${EXPERIMENTDIR}/Obs/  || exit 1
+rsync -Cavz ${ROMSDIR}/Ensemble/      ${EXPERIMENTDIR}/      || exit 1
 
-\cp ${ROMSDIR}/External/varinfo.dat    ${EXPERIMENTDIR}/.     || exit 1
-\cp ${ROMSDIR}/WC13/timtest2/oceanM    ${EXPERIMENTDIR}/.     || exit 1
-\cp ${ROMSDIR}/WC13/timtest2/oceanG    ${EXPERIMENTDIR}/.
+\cp ${SRCDIR}/External/varinfo.dat    ${EXPERIMENTDIR}/.     || exit 1
+\cp ${ROMSDIR}/oceanM                 ${EXPERIMENTDIR}/.     || exit 1
+\cp ${ROMSDIR}/machines               ${EXPERIMENTDIR}/.     || exit 1
+#\cp ${ROMSDIR}/WC13/timtest2/oceanG   ${EXPERIMENTDIR}/.
 
 \cp ${DARTDIR}/models/ROMS/shell_scripts/run_multiple_jobs.csh        ${EXPERIMENTDIR}/. || exit 2
 \cp ${DARTDIR}/models/ROMS/shell_scripts/cycle.csh.template           ${EXPERIMENTDIR}/. || exit 2
@@ -83,14 +99,16 @@ echo "no preexisting inflation files" >! ${EXPERIMENTDIR}/roms_inflation_cookie
 
 # THIS PARTICULAR observation file had some quirks.
 # These changes should not be needed in general.
+#
+# set ROMS_OBS = Data/obs_wc13_merged_2013+07d_pp1_depthinmeters_dt5400_physonly.nc
+#
+# ncatted -a    units,survey_time,m,c,'days since 1900-01-01 00:00:00 GMT' \
+#         -a calendar,survey_time,c,c,'gregorian' \
+#         -a    units,obs_time,m,c,'days since 1900-01-01 00:00:00 GMT' \
+#         -a calendar,obs_time,c,c,'gregorian' \
+#         ${ROMS_OBS}
 
-set ROMS_OBS = Data/obs_wc13_merged_2013+07d_pp1_depthinmeters_dt5400_physonly.nc
-
-ncatted -a    units,survey_time,m,c,'days since 1900-01-01 00:00:00 GMT' \
-        -a calendar,survey_time,c,c,'gregorian' \
-        -a    units,obs_time,m,c,'days since 1900-01-01 00:00:00 GMT' \
-        -a calendar,obs_time,c,c,'gregorian' \
-        ${ROMS_OBS}
+set ROMS_OBS = Obs/obs_37623.nc
 
 #--------------------------------------------------------------------------
 # customize the user input templates with things that will remain constant
@@ -111,7 +129,7 @@ foreach FILE ( ocean.in.template s4dvar.in.template )
    endif
 end
 
-set ENSEMBLE_SIZE = 32
+set ENSEMBLE_SIZE = 5
 set ROMS_STDIN = ocean.in
 set ROMS_DAPAR = s4dvar.in
 set ROMS_DAI = roms_dai.nc
@@ -127,9 +145,9 @@ set ROMS_EXE = oceanM
 $SUBSTITUTE  ocean.in.template  MyVARNAME   ../varinfo.dat
 $SUBSTITUTE  ocean.in.template  MyNtileI    4
 $SUBSTITUTE  ocean.in.template  MyNtileJ    4
-$SUBSTITUTE  ocean.in.template  MyNTIMES    48
-$SUBSTITUTE  ocean.in.template  MyDT        3600.0d0
-$SUBSTITUTE  ocean.in.template  MyNRST      24
+$SUBSTITUTE  ocean.in.template  MyNTIMES    96
+$SUBSTITUTE  ocean.in.template  MyDT        900.0d0
+$SUBSTITUTE  ocean.in.template  MyNRST      96
 $SUBSTITUTE  ocean.in.template  MyTIME_REF  19000101.0d0
 $SUBSTITUTE  ocean.in.template  MyDAINAME   $ROMS_DAI
 $SUBSTITUTE  ocean.in.template  MyRSTNAME   $ROMS_RST
@@ -139,7 +157,7 @@ $SUBSTITUTE  cycle.csh.template  MySUBSTITUTE          $SUBSTITUTE
 $SUBSTITUTE  cycle.csh.template  EXPERIMENT_DIRECTORY  $EXPERIMENTDIR
 $SUBSTITUTE  cycle.csh.template  MyROMS_EXE            $ROMS_EXE
 $SUBSTITUTE  cycle.csh.template  MyROMS_STDIN          $ROMS_STDIN
-$SUBSTITUTE  cycle.csh.template  MyOBSname             $ROMS_OBS
+#$SUBSTITUTE  cycle.csh.template  MyOBSname             $ROMS_OBS
 $SUBSTITUTE  cycle.csh.template  MyMODname             $ROMS_MOD
 $SUBSTITUTE  cycle.csh.template  MyRSTNAME             $ROMS_RST
 $SUBSTITUTE  cycle.csh.template  MyDAINAME             $ROMS_DAI
@@ -163,7 +181,7 @@ while ( ${member} <= ${ENSEMBLE_SIZE} )
    mkdir -p $dirname
    cd $dirname
 
-   set ROMS_INI = `printf wc13_ini_%04d_2013_01_01.nc $member`
+   set ROMS_INI = `printf wc12_ini_%04d.nc $member`
 
    \cp ../ocean.in.template    $ROMS_STDIN || exit 4
    \cp ../s4dvar.in.template   $ROMS_DAPAR || exit 4
@@ -182,7 +200,7 @@ while ( ${member} <= ${ENSEMBLE_SIZE} )
    $SUBSTITUTE $ROMS_STDIN MyDSTART   $DSTART
    $SUBSTITUTE $ROMS_STDIN MyININAME  $ROMS_INI
 
-   $SUBSTITUTE $ROMS_DAPAR MyOBSname  ../$ROMS_OBS
+#   $SUBSTITUTE $ROMS_DAPAR MyOBSname  ../$ROMS_OBS
 
    cd ..
 
@@ -190,7 +208,7 @@ while ( ${member} <= ${ENSEMBLE_SIZE} )
 end
 
 # remove any leftover ensemble members
-\rm wc13_ini_*.nc
+\rm wc12_ini_*.nc
 
 #--------------------------------------------------------------------------
 # put some instructions in the experiment directory and echo to screen
