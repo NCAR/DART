@@ -33,7 +33,8 @@ module model_mod
 
 ! Modules that are absolutely required for use are listed
 use        types_mod, only : r4, r8, digits12, SECPERDAY, DEG2RAD, rad2deg, PI, &
-                             MISSING_I, MISSING_R4, MISSING_R8, i4, i8
+                             MISSING_I, MISSING_R4, MISSING_R8, i4, i8, &
+                             vtablenamelength
 
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time, &
                              print_time, print_date,                            &
@@ -146,10 +147,10 @@ namelist /model_nml/  &
 
 ! DART contents are specified in the input.nml:&model_nml namelist.
 !>@todo  NF90_MAX_NAME is 256 ... this makes the namelist output unreadable
-integer, parameter :: MAX_STATE_VARIABLES = 80
+integer, parameter :: MAX_STATE_VARIABLES = 8
 integer, parameter :: num_state_table_columns = 5
-character(len=NF90_MAX_NAME) :: variables(MAX_STATE_VARIABLES * num_state_table_columns ) = ' '
-character(len=NF90_MAX_NAME) :: var_names(MAX_STATE_VARIABLES) = ' '
+character(len=vtablenamelength) :: variables(MAX_STATE_VARIABLES * num_state_table_columns ) = ' '
+character(len=vtablenamelength) :: var_names(MAX_STATE_VARIABLES) = ' '
 logical  ::                   update_list(MAX_STATE_VARIABLES) = .FALSE.
 integer  ::                     kind_list(MAX_STATE_VARIABLES) = MISSING_I
 real(r8) ::                    clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8

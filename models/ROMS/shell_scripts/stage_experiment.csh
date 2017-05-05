@@ -46,11 +46,11 @@
 # ROMSDIR declares the location of the ROMS 'test' code tree
 #         because that's where I built my ROMS and I'm using the
 #         default forcing/data files.
-#
+
 switch ( $host )
    case eddy
       set DARTDIR = /home/${USER}/DART/rma_trunk
-      set ROMSDIR = /home/amm/WC12_DART
+      set ROMSDIR = /home/${USER}/WC12_DART
       set EXPERIMENTDIR = /proj/thoar_eddy1/roms_cycling_test
       set EXPERIMENTDIR = /home/thoar/thoar_eddy1/roms_cycling_test
       set SRCDIR = /home/amm/ROMS/TRUNK_JAN17/ROMS
@@ -86,8 +86,6 @@ rsync -Cavz ${ROMSDIR}/Ensemble/      ${EXPERIMENTDIR}/      || exit 1
 
 \cp ${SRCDIR}/External/varinfo.dat    ${EXPERIMENTDIR}/.     || exit 1
 \cp ${ROMSDIR}/oceanM                 ${EXPERIMENTDIR}/.     || exit 1
-\cp ${ROMSDIR}/machines               ${EXPERIMENTDIR}/.     || exit 1
-#\cp ${ROMSDIR}/WC13/timtest2/oceanG   ${EXPERIMENTDIR}/.
 
 \cp ${DARTDIR}/observations/obs_converters/ROMS/work/convert_roms_obs  ${EXPERIMENTDIR}/. || exit 2
 \cp ${DARTDIR}/models/ROMS/work/input.nml.template                     ${EXPERIMENTDIR}/. || exit 2
@@ -110,8 +108,6 @@ echo "no preexisting inflation files" >! ${EXPERIMENTDIR}/roms_inflation_cookie
 #         -a    units,obs_time,m,c,'days since 1900-01-01 00:00:00 GMT' \
 #         -a calendar,obs_time,c,c,'gregorian' \
 #         ${ROMS_OBS}
-
-set ROMS_OBS = Obs/obs_37623.nc
 
 #--------------------------------------------------------------------------
 # customize the user input templates with things that will remain constant
@@ -139,22 +135,25 @@ set ROMS_DAI = roms_dai.nc
 set ROMS_MOD = roms_mod_obs.nc
 set ROMS_RST = roms_rst.nc
 set ROMS_EXE = oceanM
+set ROMS_OBS = Obs/obs_37623.nc
+set ROMS_INIBASE = wc12_ini
 
 # Set DART and ROMS (static) input values.
 # There are some replacement strings left in the templates
 # that will need to be replaced after each assimilation cycle.
 # Things like DSTART and the ININAME ...
 
-$SUBSTITUTE  ocean.in.template  MyVARNAME   ../varinfo.dat
-$SUBSTITUTE  ocean.in.template  MyNtileI    4
-$SUBSTITUTE  ocean.in.template  MyNtileJ    4
-$SUBSTITUTE  ocean.in.template  MyNTIMES    96
-$SUBSTITUTE  ocean.in.template  MyDT        900.0d0
-$SUBSTITUTE  ocean.in.template  MyNRST      96
-$SUBSTITUTE  ocean.in.template  MyTIME_REF  19000101.0d0
-$SUBSTITUTE  ocean.in.template  MyDAINAME   $ROMS_DAI
-$SUBSTITUTE  ocean.in.template  MyRSTNAME   $ROMS_RST
-$SUBSTITUTE  ocean.in.template  MyAPARNAM   $ROMS_DAPAR
+$SUBSTITUTE  ocean.in.template  MyVARNAME    ../varinfo.dat
+$SUBSTITUTE  ocean.in.template  MyNtileI     4
+$SUBSTITUTE  ocean.in.template  MyNtileJ     4
+$SUBSTITUTE  ocean.in.template  MyNTIMES     96
+$SUBSTITUTE  ocean.in.template  MyDT         900.0d0
+$SUBSTITUTE  ocean.in.template  MyNRST       96
+$SUBSTITUTE  ocean.in.template  MyTIME_REF   19000101.0d0
+$SUBSTITUTE  ocean.in.template  MyDAINAME    $ROMS_DAI
+$SUBSTITUTE  ocean.in.template  MyRSTNAME    $ROMS_RST
+$SUBSTITUTE  ocean.in.template  MyAPARNAM    $ROMS_DAPAR
+$SUBSTITUTE  ocean.in.template  MyROMS_STDIN $ROMS_STDIN
 
 $SUBSTITUTE  s4dvar.in.template  MyMODname   $ROMS_MOD
 
@@ -171,6 +170,8 @@ $SUBSTITUTE  advance_ensemble.csh.template  MyROMS_STDIN          $ROMS_STDIN
 $SUBSTITUTE  advance_ensemble.csh.template  MyMODname             $ROMS_MOD
 $SUBSTITUTE  advance_ensemble.csh.template  MyRSTNAME             $ROMS_RST
 $SUBSTITUTE  advance_ensemble.csh.template  MyDAINAME             $ROMS_DAI
+$SUBSTITUTE  advance_ensemble.csh.template  MyAPARNAM             $ROMS_DAPAR
+$SUBSTITUTE  advance_ensemble.csh.template  MyINIBASE             $ROMS_INIBASE
 \mv advance_ensemble.csh.template advance_ensemble.csh
 chmod u+x advance_ensemble.csh
 
@@ -206,23 +207,12 @@ while ( ${member} <= ${ENSEMBLE_SIZE} )
    mkdir -p $dirname
    cd $dirname
 
-   set ROMS_INI = `printf wc12_ini_%04d.nc $member`
+   set ROMS_INI = `printf %s_%04d.nc $ROMS_INIBASE $member`
 
    \cp ../ocean.in.template    $ROMS_STDIN || exit 4
    \cp ../s4dvar.in.template   $ROMS_DAPAR || exit 4
    \mv ../$ROMS_INI            .           || exit 4
 
-   # Set DSTART for the current ensemble.
-   # NOTE ... bc can handle the 'long' integers that happen when the
-   # reference time is 1900-01-01, the shell divide cannot.
-
-   set OCEAN_TIME = `ncdump -v ocean_time ${ROMS_INI} | grep "ocean_time =" | tail -1`
-   set TIME_SEC = `echo $OCEAN_TIME | grep -oE '[[:digit:]]+'`
-   set DSTART = `echo "scale=6; $TIME_SEC / 86400.0" | bc `
-
-   # Set ROMS standard input parameters needed in template scripts.
-
-   $SUBSTITUTE $ROMS_STDIN MyDSTART   $DSTART
    $SUBSTITUTE $ROMS_STDIN MyININAME  $ROMS_INI
 
    cd ..
@@ -230,14 +220,8 @@ while ( ${member} <= ${ENSEMBLE_SIZE} )
    @ member++
 end
 
-# want to convert the floating point DSTART to an integer
-set IDSTART = `echo "scale=0; $DSTART/1" | bc`
-
-$SUBSTITUTE advance_ensemble.csh MyDSTART  $IDSTART
-$SUBSTITUTE run_filter.csh MyDSTART  $IDSTART
-
 # remove any leftover ensemble members
-# \rm wc12_ini_*.nc TJH DEBUG
+\rm wc12_ini_*.nc
 
 #--------------------------------------------------------------------------
 # put some instructions in the experiment directory and echo to screen

@@ -53,6 +53,8 @@
 #PBS -l nodes=1:ppn=16
 #PBS -r n
 #SBATCH --time=01:00:00
+#SBATCH --error=filter-%A.err
+#SBATCH --output=filter-%A.log
 #SXXXXX --dependency=afterok:ADVANCEJOBID
 #
 #===============================================================================
@@ -291,7 +293,7 @@ set DSTART = $DSTARTSTRING[1]
 
 # grab the base MODname from someplace. The advance_ensemble.csh script tags
 # each of these with the instance number to keep them unique.
-set  MODname = myMODname
+set  MODname = MyMODname
 set OBS_ROOT = $MODname:r
 
 # Because convert_roms_obs and filter need bits from the ROMS model_mod,
@@ -386,8 +388,6 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
 end
 
 echo "${JOBNAME} ($JOBID) finished at "`date`
-echo "These are the files in the run directory at completion:"
-ls -lrt
 
 exit 0
 

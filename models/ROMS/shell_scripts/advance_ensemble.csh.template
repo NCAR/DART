@@ -65,22 +65,35 @@ echo "${JOBNAME} ($JOBID) running       on ${NODELIST}"
 echo "${JOBNAME} ($JOBID) started at "`date`
 echo
 
-#----------------------------------------------------------------------
-# get to work
-#----------------------------------------------------------------------
-
 rm -f log_$instance.txt
 
+#----------------------------------------------------------------------
 echo "advancing instance $instance at ..."`date`
+#----------------------------------------------------------------------
 
-set   DSTART = MyDSTART
+# Set ROMS standard input parameters needed in template scripts.
 
-\cp ../s4dvar.in.template s4dvar.in
+\cp ../s4dvar.in.template MyAPARNAM
+\cp ../ocean.in.template  MyROMS_STDIN
+
+# determine the current model time to use as DSTART -and-
+# to know which observation file to use.
+# NOTE ... bc can handle the 'long' integers that happen when the
+# reference time is 1900-01-01, the shell divide cannot.
+
+set ROMS_INI = `printf %s_%04d.nc MyINIBASE $instance`
+
+set OCEAN_TIME = `ncdump -v ocean_time ${ROMS_INI} | grep "ocean_time =" | tail -1`
+set TIME_SEC = `echo $OCEAN_TIME | grep -oE '[[:digit:]]+'`
+set DSTART = `echo "scale=6; $TIME_SEC / 86400.0" | bc `
+set IDSTART = `echo "scale=0; $DSTART / 1" | bc `
 
 set OBS_PREF = ../Obs/obs
-set  NEW_OBS = `printf %s_%d.nc ${OBS_PREF} $DSTART`
+set  NEW_OBS = `printf %s_%d.nc ${OBS_PREF} $IDSTART`
 
-MySUBSTITUTE s4dvar.in MyOBSname   $NEW_OBS
+MySUBSTITUTE MyAPARNAM     MyOBSname   $NEW_OBS
+MySUBSTITUTE MyROMS_STDIN  MyDSTART    $DSTART
+MySUBSTITUTE MyROMS_STDIN  MyININAME   $ROMS_INI
 
 ${LAUNCHCMD} ../MyROMS_EXE MyROMS_STDIN >& log_$instance.txt
 

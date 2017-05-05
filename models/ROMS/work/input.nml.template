@@ -46,11 +46,11 @@
 
    input_state_file_list    = "restart_files.txt"
    output_state_file_list   = "restart_files.txt"
-   stages_to_write          = 'preassim', 'analysis'
+   stages_to_write          = 'preassim', 'analysis', 'output'
    output_members           = .true.
    output_mean              = .true.
    output_sd                = .true.
-   write_all_stages_at_end  = .true.
+   write_all_stages_at_end  = .false.
    num_output_state_members = 0
 
    inf_flavor                  = 0,                       0
@@ -154,8 +154,8 @@
                        "blended satellite SST (temperature)",    "SATELLITE_BLENDED_SST"
 
 &obs_kind_nml
-   evaluate_these_obs_types = ''
-   assimilate_these_obs_types =          'SATELLITE_SSH',
+   assimilate_these_obs_types = ''
+   evaluate_these_obs_types =            'SATELLITE_SSH',
                                          'SATELLITE_SSS',
                                          'XBT_TEMPERATURE',
                                          'CTD_TEMPERATURE',
@@ -164,7 +164,9 @@
                                          'ARGO_SALINITY',
                                          'GLIDER_TEMPERATURE',
                                          'GLIDER_SALINITY',
-                                         'SATELLITE_BLENDED_SST'
+                                         'SATELLITE_BLENDED_SST',
+                                         'SATELLITE_MICROWAVE_SST',
+                                         'SATELLITE_INFRARED_SST'
    use_precomputed_FOs_these_obs_types = 'SATELLITE_SSH',
                                          'SATELLITE_SSS',
                                          'XBT_TEMPERATURE',
@@ -174,7 +176,9 @@
                                          'ARGO_SALINITY',
                                          'GLIDER_TEMPERATURE',
                                          'GLIDER_SALINITY',
-                                         'SATELLITE_BLENDED_SST'
+                                         'SATELLITE_BLENDED_SST',
+                                         'SATELLITE_MICROWAVE_SST',
+                                         'SATELLITE_INFRARED_SST'
   /
 
 
