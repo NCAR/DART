@@ -46,7 +46,7 @@
 
    input_state_file_list    = "restart_files.txt"
    output_state_file_list   = "restart_files.txt"
-   stages_to_write          = 'preassim', 'analysis', 'output'
+   stages_to_write          = 'preassim', 'output'
    output_members           = .true.
    output_mean              = .true.
    output_sd                = .true.
@@ -154,8 +154,8 @@
                        "blended satellite SST (temperature)",    "SATELLITE_BLENDED_SST"
 
 &obs_kind_nml
-   assimilate_these_obs_types = ''
-   evaluate_these_obs_types =            'SATELLITE_SSH',
+   evaluate_these_obs_types = ''
+   assimilate_these_obs_types =          'SATELLITE_SSH',
                                          'SATELLITE_SSS',
                                          'XBT_TEMPERATURE',
                                          'CTD_TEMPERATURE',

@@ -13,8 +13,12 @@
 #SBATCH --array=1-Myens_size
 #SBATCH --ntasks=16 
 #SBATCH --time=10:00
-#SXXXXX --dependency=afterok:FILTERJOBID
+#SBATCH --exclude=node04
+#SBATCH --job-name=roms_filter
+#SBATCH --output=roms_filter-%A-%a.out
+#SBATCH --error=roms_filter-%A-%a.err
 #
+#SXXXXX --dependency=afterok:FILTERJOBID
 #==========================================================================
 #
 # Things to note: many strings are intended to be replaced when this
@@ -81,7 +85,12 @@ echo "advancing instance $instance at ..."`date`
 # NOTE ... bc can handle the 'long' integers that happen when the
 # reference time is 1900-01-01, the shell divide cannot.
 
-set ROMS_INI = `printf %s_%04d.nc MyINIBASE $instance`
+if ( -e ../restart_files.txt ) then
+   set FULLFILE = `head -n $instance ../restart_files.txt| tail -n 1`
+   set ROMS_INI = $FULLFILE:t
+else
+   set ROMS_INI = `printf %s_%04d.nc MyINIBASE $instance`
+endif
 
 set OCEAN_TIME = `ncdump -v ocean_time ${ROMS_INI} | grep "ocean_time =" | tail -1`
 set TIME_SEC = `echo $OCEAN_TIME | grep -oE '[[:digit:]]+'`

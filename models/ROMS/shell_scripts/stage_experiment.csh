@@ -23,12 +23,12 @@
 # |-- varinfo.dat
 # |-- s4dvar.in.template
 # |-- ocean.in.template
-# |-- wc13_obs.nc
+# |-- wc12_obs.nc
 # |-- Data
 # |   |-- adsen.cdl
 # |   |-- <snip> whatever your configuration requires <snip>
-# |   |-- wc13_grd.nc
-# |   |-- wc13_ini.nc
+# |   |-- wc12_grd.nc
+# |   |-- wc12_ini.nc
 # |-- instance_0001
 # |   |-- ocean.in
 # |   `-- roms_input.nc
@@ -71,7 +71,7 @@ if (-e ${EXPERIMENTDIR} ) then
    echo "ERROR: ${EXPERIMENTDIR} already exists."
    echo "Intentionally leaving it alone."
    echo "Must provide a new directory name for the experiement."
-#  exit 1
+   exit 1
 endif
 
 #--------------------------------------------------------------------------
@@ -128,7 +128,7 @@ foreach FILE ( ocean.in.template s4dvar.in.template )
    endif
 end
 
-set ENSEMBLE_SIZE = 5
+set ENSEMBLE_SIZE = 50
 set ROMS_STDIN = ocean.in
 set ROMS_DAPAR = s4dvar.in
 set ROMS_DAI = roms_dai.nc
@@ -180,7 +180,6 @@ $SUBSTITUTE  run_filter.csh.template  EXPERIMENT_DIRECTORY  $EXPERIMENTDIR
 $SUBSTITUTE  run_filter.csh.template  MyDAINAME             $ROMS_DAI
 $SUBSTITUTE  run_filter.csh.template  MyMODname             $ROMS_MOD
 $SUBSTITUTE  run_filter.csh.template  MyROMS_STDIN          $ROMS_STDIN
-
 \mv run_filter.csh.template run_filter.csh
 chmod u+x run_filter.csh
 
@@ -190,7 +189,6 @@ $SUBSTITUTE  cycle.csh.template  MySUBSTITUTE          $SUBSTITUTE
 $SUBSTITUTE  cycle.csh.template  EXPERIMENT_DIRECTORY  $EXPERIMENTDIR
 $SUBSTITUTE  cycle.csh.template  MyROMS_EXE            $ROMS_EXE
 $SUBSTITUTE  cycle.csh.template  MyROMS_STDIN          $ROMS_STDIN
-$SUBSTITUTE  cycle.csh.template  MyOBSname             $ROMS_OBS
 $SUBSTITUTE  cycle.csh.template  MyMODname             $ROMS_MOD
 $SUBSTITUTE  cycle.csh.template  MyRSTNAME             $ROMS_RST
 $SUBSTITUTE  cycle.csh.template  MyDAINAME             $ROMS_DAI

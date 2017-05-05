@@ -30,29 +30,14 @@
 #BSUB -N -u ${USER}@ucar.edu
 #
 #===============================================================================
-# This block of directives constitutes the preamble for the PBS queuing system.
-# Turns out SLURM (in particular 'sbatch') recognizes PBS directives, so we
-# don't need two sets of directives.
-# the normal way to submit with pbs:    qsub   run_filter.csh
+# This block of directives constitutes the preamble for the SLURM queuing system.
 # the normal way to submit with slurm:  sbatch run_filter.csh
 #
-# an explanation of the most common directives follows:
-# -N     Job name
-# -r n   Declare job non-rerunable
-# -e <arg>  filename for standard error
-# -o <arg>  filename for standard out
-# -q <arg>   Queue name (small, medium, long, verylong)
-# -l nodes=xx:ppn=2   requests BOTH processors on the node. On both bangkok
-#                     and calgary, there is no way to 'share' the processors
-#                     on the node with another job, so you might as well use
-#                     them both. (ppn == Processors Per Node)
-#
-#PBS -N filter
-#PBS -e filter.err
-#PBS -o filter.log
-#PBS -l nodes=1:ppn=16
-#PBS -r n
-#SBATCH --time=01:00:00
+#SBATCH --job-name=filter
+#SBATCH --output=filter-%A.log
+#SBATCH --error=filter-%A.err
+#SBATCH --ntasks=16
+#SBATCH --time=00:30:00
 #SBATCH --error=filter-%A.err
 #SBATCH --output=filter-%A.log
 #SXXXXX --dependency=afterok:ADVANCEJOBID
