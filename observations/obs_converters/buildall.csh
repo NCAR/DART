@@ -75,18 +75,22 @@ foreach project ( `find . -name quickbuild.csh -print` )
 
       switch ( $dir )
    
+         case *GSI2DART*
+            echo " This build expected to fail on case-insensitive filesystems."
+         breaksw
+            
          case */var/*
-            echo "This build expected to fail unless you have the WRF code in-situ."
+            echo " This build expected to fail unless you have the WRF code in-situ."
          breaksw
             
          case *AIRS*
-            echo "AIRS build is expected to fail due to dependency on hdfeos libs,"
-            echo "not required to be part of the standard DART environment."
+            echo " AIRS build is expected to fail due to dependency on hdfeos libs,"
+            echo " which are not required to be part of the standard DART environment."
          breaksw
             
          case *quikscat*
-            echo "quikscat build is expected to fail due to dependency on mfhdf libs,"
-            echo "not required to be part of the standard DART environment."
+            echo " quikscat build is expected to fail due to dependency on mfhdf libs,"
+            echo " which are not required to be part of the standard DART environment."
          breaksw
   
          default

@@ -52,10 +52,7 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MS
                              open_file, close_file, get_unit, do_nml_file, do_nml_term, &
                              ascii_file_format
 use     location_mod, only : location_type, set_location, get_location, &
-                             vert_is_undef, vert_is_surface, &
-                             vert_is_level, vert_is_pressure, vert_is_height, &
-                             VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, &
-                             VERTISHEIGHT
+                             is_vertical, VERTISSURFACE, VERTISPRESSURE
 use  assim_model_mod, only : interpolate
 
 use     obs_kind_mod, only : QTY_SURFACE_PRESSURE, &
@@ -728,7 +725,7 @@ end if
 !   location does not really make sense -- for threed_sphere/location, we 
 !   will use and expect a vertical location of "undefined".  Don't let this
 !   necessarily break the code though.
-if ( .not. vert_is_undef(location) ) then
+if ( .not. is_vertical(location, "UNDEFINED") ) then
    write(errstring, *)'vertical location should be undefined; TES obs key ', teskey
    call error_handler(E_WARN,'get_expected_TES_nadir_obs', errstring, &
                       source, revision, revdate)

@@ -15,17 +15,20 @@ module model_mod
 ! Modules that are absolutely required for use are listed
 use        types_mod, only : r8, i8, MISSING_R8
 use time_manager_mod, only : time_type, set_time, set_time_missing
-use     location_mod, only : location_type, get_close_type, get_close_maxdist_init, &
-                             get_close_obs_init, loc_get_close_obs => get_close_obs, &
+use     location_mod, only : location_type, get_close_type, &
+                             get_close_obs, get_close_state, &
+                             convert_vertical_obs, convert_vertical_state, &
                              set_location, set_location_missing
-use    utilities_mod, only : register_module, error_handler, nc_check, &
+use    utilities_mod, only : register_module, error_handler, &
                              E_ERR, E_MSG
                              ! nmlfileunit, do_output, do_nml_file, do_nml_term,  &
                              ! find_namelist_in_file, check_namelist_read
-
-use ensemble_manager_mod,  only : ensemble_type
-
-use dart_time_io_mod, only : write_model_time
+use netcdf_utilities_mod, only : nc_add_global_attribute, nc_sync, &
+                                 nc_add_global_creation_time, nc_redef, nc_enddef
+use state_structure_mod, only : add_domain
+use ensemble_manager_mod, only : ensemble_type
+use dart_time_io_mod, only  : read_model_time, write_model_time
+use default_model_mod, only : pert_model_copies, nc_write_model_vars
 
 implicit none
 private
@@ -37,27 +40,23 @@ public :: get_model_size,         &
           adv_1step,              &
           get_state_meta_data,    &
           model_interpolate,      &
-          get_model_time_step,    &
+          shortest_time_between_assimilations, &
           end_model,              &
           static_init_model,      &
-          init_time,              &
-          init_conditions,        &
           nc_write_model_atts,    &
+          init_time,              &
+          init_conditions
+
+! public but in another module
+public ::
           nc_write_model_vars,    &
           pert_model_copies,      &
-          get_close_maxdist_init, &
-          get_close_obs_init,     &
           get_close_obs,          &
-          query_vert_localization_coord, &
-          vert_convert, &
+          get_close_state,        &
+          convert_vertical_obs,   &
+          convert_vertical_state, &
           read_model_time, &
           write_model_time
-
-! not required by DART but for larger models can be useful for
-! utility programs that are tightly tied to the other parts of
-! the model_mod code.
-public :: model_file_to_dart_vector, &
-          dart_vector_to_model_file
 
 
 ! version controlled file description for error handling, do not edit
@@ -78,11 +77,6 @@ namelist /model_nml/ time_step_days, time_step_seconds
 
 contains
 
-!==================================================================
-
-
-
-subroutine static_init_model()
 !------------------------------------------------------------------
 !
 ! Called to do one time initialization of the model. As examples,
@@ -91,8 +85,10 @@ subroutine static_init_model()
 ! spherical harmonic weights, these would also be computed here.
 ! Can be a NULL INTERFACE for the simplest models.
 
+subroutine static_init_model()
+
  real(r8) :: x_loc
- integer  :: i
+ integer  :: i, dom_id
 !integer  :: iunit, io
 
 ! Print module information to log file and stdout.
@@ -124,15 +120,15 @@ end do
 ! The time_step in terms of a time type must also be initialized.
 time_step = set_time(time_step_seconds, time_step_days)
 
+! tell dart the size of the model
+dom_id = add_domain(int(model_size,i8))
+
 end subroutine static_init_model
 
 
 
 
-subroutine init_conditions(x)
 !------------------------------------------------------------------
-! subroutine init_conditions(x)
-!
 ! Returns a model state vector, x, that is some sort of appropriate
 ! initial condition for starting up a long integration of the model.
 ! At present, this is only used if the namelist parameter 
@@ -140,6 +136,8 @@ subroutine init_conditions(x)
 ! If this option is not to be used in perfect_model_obs, or if no 
 ! synthetic data experiments using perfect_model_obs are planned, 
 ! this can be a NULL INTERFACE.
+
+subroutine init_conditions(x)
 
 real(r8), intent(out) :: x(:)
 
@@ -149,10 +147,7 @@ end subroutine init_conditions
 
 
 
-subroutine adv_1step(x, time)
 !------------------------------------------------------------------
-! subroutine adv_1step(x, time)
-!
 ! Does a single timestep advance of the model. The input value of
 ! the vector x is the starting condition and x is updated to reflect
 ! the changed state after a timestep. The time argument is intent
@@ -166,6 +161,8 @@ subroutine adv_1step(x, time)
 ! a separate model-specific executable), this can be a 
 ! NULL INTERFACE.
 
+subroutine adv_1step(x, time)
+
 real(r8),        intent(inout) :: x(:)
 type(time_type), intent(in)    :: time
 
@@ -173,13 +170,13 @@ end subroutine adv_1step
 
 
 
-function get_model_size()
 !------------------------------------------------------------------
-!
-! Returns the size of the model as an integer. Required for all
-! applications.
+! Returns the number of items in the state vector as an integer. 
+! This interface is required for all applications.
 
-integer :: get_model_size
+function get_model_size()
+
+integer(i8) :: get_model_size
 
 get_model_size = model_size
 
@@ -187,9 +184,7 @@ end function get_model_size
 
 
 
-subroutine init_time(time)
 !------------------------------------------------------------------
-!
 ! Companion interface to init_conditions. Returns a time that is somehow 
 ! appropriate for starting up a long integration of the model.
 ! At present, this is only used if the namelist parameter 
@@ -197,6 +192,8 @@ subroutine init_time(time)
 ! If this option is not to be used in perfect_model_obs, or if no 
 ! synthetic data experiments using perfect_model_obs are planned, 
 ! this can be a NULL INTERFACE.
+
+subroutine init_time(time)
 
 type(time_type), intent(out) :: time
 
@@ -208,9 +205,7 @@ end subroutine init_time
 
 
 
-subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
 !------------------------------------------------------------------
-!
 ! Given a state handle, a location, and a model state variable type,
 ! interpolates the state variable fields to that location and returns
 ! the values in expected_obs. The istatus variables should be returned as
@@ -223,6 +218,7 @@ subroutine model_interpolate(state_handle, ens_size, location, obs_type, expecte
 ! with identity observations (i.e. only the value of a particular
 ! state variable is observed), this can be a NULL INTERFACE.
 
+subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
 
 
 type(ensemble_type), intent(in) :: state_handle
@@ -247,24 +243,23 @@ end subroutine model_interpolate
 
 
 
-function get_model_time_step()
 !------------------------------------------------------------------
-!
-! Returns the the time step of the model; the smallest increment
-! in time that the model is capable of advancing the state in a given
-! implementation. This interface is required for all applications.
+! Returns the smallest increment in time that the model is capable 
+! of advancing the state in a given implementation, or the shortest
+! time you want the model to advance between assimilations.
+! This interface is required for all applications.
 
-type(time_type) :: get_model_time_step
+function shortest_time_between_assimilations()
 
-get_model_time_step = time_step
+type(time_type) :: shortest_time_between_assimilations
 
-end function get_model_time_step
+shortest_time_between_assimilations = time_step
+
+end function shortest_time_between_assimilations
 
 
 
-subroutine get_state_meta_data(state_handle, index_in, location, var_type)
 !------------------------------------------------------------------
-!
 ! Given an integer index into the state vector structure, returns the
 ! associated location. A second intent(out) optional argument kind
 ! can be returned if the model has more than one type of field (for
@@ -272,12 +267,13 @@ subroutine get_state_meta_data(state_handle, index_in, location, var_type)
 ! required for all filter applications as it is required for computing
 ! the distance between observations and state variables.
 
-type(ensemble_type), intent(in)  :: state_handle
+subroutine get_state_meta_data(index_in, location, var_type)
+
 integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: var_type
 
-! these should be set to the actual location and obs kind
+! these should be set to the actual location and state quantity
 location = set_location_missing()
 if (present(var_type)) var_type = 0  
 
@@ -285,276 +281,41 @@ end subroutine get_state_meta_data
 
 
 
-subroutine end_model()
 !------------------------------------------------------------------
-!
 ! Does any shutdown and clean-up needed for model. Can be a NULL
 ! INTERFACE if the model has no need to clean up storage, etc.
 
-! good style ... perhaps you could deallocate stuff (from static_init_model?).
+subroutine end_model()
+
 ! deallocate(state_loc)
 
 end subroutine end_model
 
 
-
-function nc_write_model_atts( ncFileID , model_writes_state ) result (ierr)
 !------------------------------------------------------------------
-! TJH 24 Oct 2006 -- Writes the model-specific attributes to a netCDF file.
-!     This includes coordinate variables and some metadata, and the state
-!     as a single vector.
-!
+! write any additional attributes to the output and diagnostic files
 
-use typeSizes
-use netcdf
+subroutine nc_write_model_atts(ncid, domain_id)
 
-integer, intent(in)  :: ncFileID      ! netCDF file identifier
-logical, intent(out) :: model_writes_state ! if true, dart libs will write state
-integer              :: ierr          ! return value of function
+integer, intent(in) :: ncid      ! netCDF file identifier
+integer, intent(in) :: domain_id
 
-integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
+! put file into define mode.
 
-integer :: StateVarDimID   ! netCDF pointer to state variable dimension (model size)
-integer :: MemberDimID     ! netCDF pointer to dimension of ensemble    (ens_size)
-integer :: TimeDimID       ! netCDF pointer to time dimension           (unlimited)
+call nc_redef(ncid)
 
-integer :: StateVarVarID   ! netCDF pointer to state variable coordinate array
-integer :: StateVarID      ! netCDF pointer to 3D [state,copy,time] array
+call nc_add_global_creation_time(ncid)
 
-character(len=129)    :: errstring
+call nc_add_global_attribute(ncid, "model_source", source )
+call nc_add_global_attribute(ncid, "model_revision", revision )
+call nc_add_global_attribute(ncid, "model_revdate", revdate )
 
-! we are going to need these to record the creation date in the netCDF file.
-! This is entirely optional, but nice.
+call nc_add_global_attribute(ncid, "model", "template")
 
-character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
-integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=NF90_MAX_NAME) :: str1
-
-integer :: i
-
-model_writes_state = .true.
-
-!-------------------------------------------------------------------------------
-! make sure ncFileID refers to an open netCDF file, 
-! and then put into define mode.
-!-------------------------------------------------------------------------------
-
-ierr = -1 ! assume things go poorly
-
-call nc_check(nf90_inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID), &
-                     "nc_write_model_atts", "inquire")
-call nc_check(nf90_redef(ncFileID), "nc_write_model_atts", "redef")
-
-!-------------------------------------------------------------------------------
-! We need the dimension ID for the number of copies/ensemble members, and
-! we might as well check to make sure that Time is the Unlimited dimension. 
-! Our job is create the 'model size' dimension.
-!-------------------------------------------------------------------------------
-
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID), &
-                            "nc_write_model_atts", "inq_dimid copy")
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid= TimeDimID), &
-                            "nc_write_model_atts", "inq_dimid time")
-
-if ( TimeDimID /= unlimitedDimId ) then
-   write(errstring,*)"Time Dimension ID ",TimeDimID, &
-                     " should equal Unlimited Dimension ID",unlimitedDimID
-   call error_handler(E_ERR,"nc_write_model_atts", errstring, source, revision, revdate)
-endif
-
-!-------------------------------------------------------------------------------
-! Write Global Attributes 
-!-------------------------------------------------------------------------------
-
-call DATE_AND_TIME(crdate,crtime,crzone,values)
-write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
-                  values(1), values(2), values(3), values(5), values(6), values(7)
-
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date" ,str1), &
-                          "nc_write_model_atts", "put_att creation_date")
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source"  ,source), &
-                          "nc_write_model_atts", "put_att model_source")
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision), &
-                          "nc_write_model_atts", "put_att model_revision")
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate" ,revdate), &
-                          "nc_write_model_atts", "put_att model_revdate")
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","template"), &
-                          "nc_write_model_atts", "put_att model")
-
-
-!-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
-!-------------------------------------------------------------------------------
-call nc_check(nf90_sync(ncFileID),"nc_write_model_atts", "sync")
+call nc_sync(ncid)
 
-ierr = 0 ! If we got here, things went well.
-
-end function nc_write_model_atts
-
-
-
-function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)         
-!------------------------------------------------------------------
-! TJH 24 Oct 2006 -- Writes the model variables to a netCDF file.
-!
-! TJH 29 Jul 2003 -- for the moment, all errors are fatal, so the
-! return code is always '0 == normal', since the fatal errors stop execution.
-!
-! For the lorenz_96 model, each state variable is at a separate location.
-! that's all the model-specific attributes I can think of ...
-!
-! assim_model_mod:init_diag_output uses information from the location_mod
-!     to define the location dimension and variable ID. All we need to do
-!     is query, verify, and fill ...
-!
-! Typical sequence for adding new dimensions,variables,attributes:
-! NF90_OPEN             ! open existing netCDF dataset
-!    NF90_redef         ! put into define mode
-!    NF90_def_dim       ! define additional dimensions (if any)
-!    NF90_def_var       ! define variables: from name, type, and dims
-!    NF90_put_att       ! assign attribute values
-! NF90_ENDDEF           ! end definitions: leave define mode
-!    NF90_put_var       ! provide values for variable
-! NF90_CLOSE            ! close: save updated netCDF dataset
-
-use typeSizes
-use netcdf
-
-integer,                intent(in) :: ncFileID      ! netCDF file identifier
-real(r8), dimension(:), intent(in) :: statevec
-integer,                intent(in) :: copyindex
-integer,                intent(in) :: timeindex
-integer                            :: ierr          ! return value of function
-
-! just sync the file and return.  lib routines will write state vector
-
-call nc_check(nf90_sync(ncFileID), "nc_write_model_vars", "sync")
-
-ierr = 0 
-
-end function nc_write_model_vars
-
-!------------------------------------------------------------------
-
-subroutine pert_model_copies(state_handle, ens_size, pert_amp, interf_provided)
- type(ensemble_type), intent(inout) :: state_handle
- integer,             intent(in)    :: ens_size
- real(r8),            intent(in)    :: pert_amp
- logical,             intent(out)   :: interf_provided
-
-! Perturbs a model state copies for generating initial ensembles.
-! The perturbed state is returned in pert_state.
-! A model may choose to provide a NULL INTERFACE by returning
-! .false. for the interf_provided argument. This indicates to
-! the filter that if it needs to generate perturbed states, it
-! may do so by adding a perturbation to each model state
-! variable independently. The interf_provided argument
-! should be returned as .true. if the model wants to do its own
-! perturbing of states.
-
-interf_provided = .false.
-
-end subroutine pert_model_copies
-
-!--------------------------------------------------------------------
-
-!> Pass through to the code in the locations module
-
-subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, &
-                         obs_kind, num_close, close_ind, dist, state_handle)
-
-type(ensemble_type),         intent(in)     :: state_handle
-type(get_close_type),        intent(in)     :: gc
-type(location_type),         intent(inout)  :: base_obs_loc, obs_loc(:)
-integer,                     intent(in)     :: base_obs_kind, obs_kind(:)
-integer,                     intent(out)    :: num_close, close_ind(:)
-real(r8),                    intent(out)    :: dist(:)
-
-
-call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-                          num_close, close_ind, dist)
-
-end subroutine get_close_obs
-
-
-
-!--------------------------------------------------------------------
-!> pass the vertical localization coordinate to assim_tools_mod
-function query_vert_localization_coord()
-
-integer :: query_vert_localization_coord
-
-query_vert_localization_coord = 0 ! any value
-
-end function query_vert_localization_coord
-
-!--------------------------------------------------------------------
-!> This is used in the filter_assim. The vertical conversion is done using the
-!> mean state.
-!> Calling this is a waste of time
-subroutine vert_convert(state_handle, location, obs_kind, istatus)
-
-type(ensemble_type), intent(in)  :: state_handle
-type(location_type), intent(in)  :: location
-integer,             intent(in)  :: obs_kind
-integer,             intent(out) :: istatus
-
-istatus = 0
-
-end subroutine vert_convert
-
-!--------------------------------------------------------------------
-!> read the time from the input file
-!> Stolen from pop model_mod.f90 restart_to_sv
-function read_model_time(filename)
-
-character(len=*), intent(in) :: filename
-type(time_type) :: read_model_time
-
-read_model_time = set_time_missing()
-
-
-end function read_model_time
-
-
-
-!=================================================================
-! PUBLIC interfaces that aren't required by the DART code but are
-! generally useful for other related utility programs.
-! (less necessary for small models; generally used for larger models
-! with predefined file formats and control structures.)
-!==================================================================
-
-
-subroutine model_file_to_dart_vector(filename, state_vector, model_time)
-!------------------------------------------------------------------
-! Reads the current time and state variables from a model data
-! file and packs them into a dart state vector.
-
-character(len=*), intent(in)    :: filename
-real(r8),         intent(inout) :: state_vector(:)
-type(time_type),  intent(out)   :: model_time
-
-! code goes here
-
-end subroutine model_file_to_dart_vector
-
-
-subroutine dart_vector_to_model_file(state_vector, filename, statedate)
-!------------------------------------------------------------------
-! Writes the current time and state variables from a dart state
-! vector (1d array) into a ncommas netcdf restart file.
-!
-real(r8),         intent(in) :: state_vector(:)
-character(len=*), intent(in) :: filename
-type(time_type),  intent(in) :: statedate
-
-! code goes here
-
-end subroutine dart_vector_to_model_file
-
+end subroutine nc_write_model_atts
 
 !===================================================================
 ! End of model_mod

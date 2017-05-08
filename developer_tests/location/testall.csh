@@ -24,6 +24,7 @@ foreach i ( $LOCLIST )
         $i/test/location_test
 end
 
+
 # and now build afresh and run tests
 foreach i ( $LOCLIST )
 
@@ -37,12 +38,14 @@ foreach i ( $LOCLIST )
  echo
  echo
 
+ set FAILURE = 0
+
  cd $i/test
 
  ./mkmf_location_test
- make
+ make || set FAILURE = 1
  ls -l location_test
- ./location_test  < test.in
+ ./location_test  < test.in || set FAILURE = 1
 
  cd ../..
 
@@ -50,7 +53,13 @@ foreach i ( $LOCLIST )
  echo
  echo "=================================================================="
  echo "=================================================================="
- echo "Tests of location module $i complete at "`date`
+ if ( $FAILURE ) then
+   echo
+   echo "ERROR - unsuccessful build of location module $i at "`date`
+   echo
+ else
+   echo "Tests of location module $i complete at "`date`
+ endif
  echo "=================================================================="
  echo "=================================================================="
  echo

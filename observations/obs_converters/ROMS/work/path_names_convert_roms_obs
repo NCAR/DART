@@ -1,4 +1,6 @@
 assimilation_code/location/threed_sphere/location_mod.f90
+assimilation_code/location/utilities/default_location_mod.f90
+assimilation_code/location/utilities/location_io_mod.f90
 assimilation_code/modules/assimilation/adaptive_inflate_mod.f90
 assimilation_code/modules/assimilation/assim_model_mod.f90
 assimilation_code/modules/assimilation/obs_model_mod.f90
@@ -14,6 +16,7 @@ assimilation_code/modules/observations/obs_kind_mod.f90
 assimilation_code/modules/observations/obs_sequence_mod.f90
 assimilation_code/modules/utilities/distributed_state_mod.f90
 assimilation_code/modules/utilities/ensemble_manager_mod.f90
+assimilation_code/modules/utilities/netcdf_utilities_mod.f90
 assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
 assimilation_code/modules/utilities/null_win_mod.f90
 assimilation_code/modules/utilities/random_seq_mod.f90
@@ -22,6 +25,7 @@ assimilation_code/modules/utilities/time_manager_mod.f90
 assimilation_code/modules/utilities/types_mod.f90
 assimilation_code/modules/utilities/utilities_mod.f90
 models/ROMS/model_mod.f90
+models/utilities/default_model_mod.f90
 observations/forward_operators/obs_def_mod.f90
 observations/obs_converters/ROMS/convert_roms_obs.f90
 observations/obs_converters/utilities/obs_utilities_mod.f90

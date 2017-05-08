@@ -48,7 +48,7 @@ public :: get_num_types_of_obs, get_num_quantities
 ! kind strings are defined here.
 
 integer, parameter, public :: &
-    QTY_RAW_STATE_VARIABLE          = 0, &
+    QTY_STATE_VARIABLE              = 0, &
     QTY_U_WIND_COMPONENT            = 1, &
     QTY_V_WIND_COMPONENT            = 2, &
     QTY_SURFACE_PRESSURE            = 3, &
@@ -538,7 +538,7 @@ do i = 0, max_defined_quantities
    obs_kind_names(i) = obs_kind_type(i, 'UNKNOWN')
 enddo
 
-obs_kind_names( 0) = obs_kind_type(QTY_RAW_STATE_VARIABLE, 'QTY_RAW_STATE_VARIABLE')
+obs_kind_names( 0) = obs_kind_type(QTY_STATE_VARIABLE, 'QTY_STATE_VARIABLE')
 obs_kind_names( 1) = obs_kind_type(QTY_U_WIND_COMPONENT, 'QTY_U_WIND_COMPONENT')
 obs_kind_names( 2) = obs_kind_type(QTY_V_WIND_COMPONENT, 'QTY_V_WIND_COMPONENT')
 obs_kind_names( 3) = obs_kind_type(QTY_SURFACE_PRESSURE, 'QTY_SURFACE_PRESSURE')

@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p id_set_def_stdin -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
+../../../build_templates/mkmf -p id_set_def_stdin -t ../../../build_templates/mkmf.template \
  -a "../../.." path_names_id_set_def_stdin
 
 exit $status

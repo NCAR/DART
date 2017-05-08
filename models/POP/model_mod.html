@@ -319,7 +319,6 @@ The variables and their default values are listed here:
    assimilation_period_days     = -1
    assimilation_period_seconds  = -1
    model_perturbation_amplitude = 0.2
-   output_state_vector          = .false.
    binary_grid_file_format      = 'big_endian'
    debug                        = 0,
    model_state_variables        = 'SALT_CUR ', 'QTY_SALINITY             ', 'UPDATE',
@@ -379,16 +378,6 @@ The variables and their default values are listed here:
                        at the start of this document. units: standard deviation 
                        of a gaussian distribution with the mean at the value of 
                        the state vector element. --> </TD></TR> 
-
-<TR><!--contents--><TD valign=top>output_state_vector</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD valign=top>The switch to determine the form of the state vector in the
-                       diagnostic output netCDF files. If <em class=code>.true.</em> 
-                       the state vector will be output exactly as DART uses it 
-                       ... one long array.  If <em class=code>.false.</em>, 
-                       the state vector is parsed into prognostic variables and 
-                       output that way -- much easier to use with 'ncview', for
-                       example.</TD></TR>
 
 <TR><!--contents--><TD valign=top>binary_grid_file_format</TD>
     <!--  type  --><TD valign=top>character(len=32)</em></TD>

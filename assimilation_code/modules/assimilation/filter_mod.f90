@@ -2416,7 +2416,7 @@ call set_filename_info(file_info_output,   'output',    ens_size,               
 call set_input_file_info(  file_info_input, ens_size, CURRENT_COPIES ) 
 
 !   Output Files
-call set_output_file_info( file_info_mean_sd, ens_size,                       INPUT_COPIES, &
+call set_output_file_info( file_info_mean_sd,  0,                             INPUT_COPIES, &
                            do_clamping=.false., force_copy=.true. )
 call set_output_file_info( file_info_forecast, num_output_state_members,   FORECAST_COPIES, &
                            do_clamping=.false., force_copy=.true. )
@@ -2426,7 +2426,7 @@ call set_output_file_info( file_info_postassim, num_output_state_members, POSTAS
                            do_clamping=.false., force_copy=.true. )
 call set_output_file_info( file_info_analysis, num_output_state_members,   ANALYSIS_COPIES, &
                            do_clamping=.false., force_copy=.true. )
-call set_output_file_info( file_info_output, ens_size,                      CURRENT_COPIES, &
+call set_output_file_info( file_info_output,   ens_size,                    CURRENT_COPIES, &
                            do_clamping=.true.,  force_copy=.false. )
 
 end subroutine initialize_file_information

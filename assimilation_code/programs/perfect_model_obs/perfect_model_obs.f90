@@ -28,7 +28,7 @@ use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,     
 use      obs_def_mod,     only : obs_def_type, get_obs_def_error_variance, get_obs_def_time
 use    obs_model_mod,     only : move_ahead, advance_state, set_obs_model_trace
 use  assim_model_mod,     only : static_init_assim_model, get_model_size,                    &
-                                 aget_initial_condition
+                                 get_initial_condition
    
 use mpi_utilities_mod,    only : task_count, task_sync, initialize_mpi_utilities, &
                                  finalize_mpi_utilities
@@ -317,7 +317,7 @@ else ! model spin up
    call error_handler(E_MSG,'perfect_read_restart:', &
          'Using code in model_mod to initialize ensemble')
    call allocate_vars(ens_handle)
-   if(ens_handle%my_pe == 0) call aget_initial_condition(ens_handle%time(1), ens_handle%vars(:, 1))
+   if(ens_handle%my_pe == 0) call get_initial_condition(ens_handle%time(1), ens_handle%vars(:, 1))
    call all_vars_to_all_copies(ens_handle)
 
 endif

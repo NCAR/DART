@@ -202,7 +202,7 @@ character(len=129)  :: string1
 write(*,*)
 write(*,*)'Checking metadata routines.'
 
-call get_state_meta_data( iloc, loc, var_type)
+call get_state_meta_data(iloc, loc, var_type)
 
 call write_location(42, loc, fform='formatted', charstring=string1)
 write(*,*)' indx ',iloc,' is type ',var_type,trim(string1)

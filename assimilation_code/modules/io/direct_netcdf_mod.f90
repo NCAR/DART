@@ -927,7 +927,6 @@ integer :: new_varid
 integer :: ndims
 integer :: xtype ! precision for netcdf file
 integer :: dimids(NF90_MAX_VAR_DIMS)
-logical :: model_writes_atts
 
 character(len=NF90_MAX_NAME) :: filename
 
@@ -945,7 +944,7 @@ ret = nf90_enddef(ncfile_out)
 call nc_check(ret, 'create_and_open_state_output', 'end define mode')
 
 ! write grid information
-ret =  nc_write_model_atts(ncfile_out, model_writes_atts)
+call nc_write_model_atts(ncfile_out, dom_id)
 call nc_check(nf90_Redef(ncfile_out),'create_and_open_state_output',   'redef ')
 
 ! filename discription

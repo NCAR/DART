@@ -23,15 +23,25 @@ use      time_manager_mod, only : time_type, set_time, set_date, get_date, get_t
 ! location_mod is at rma-cice/location/xxx/location_mod.f90
 ! with the specific subdir set in path_names_xxx
 ! in our case, threed_sphere is the most appropriate choice
-use          location_mod, only : location_type, get_dist, get_close_maxdist_init,  &
-                                  get_close_obs_init, set_location, get_location,   &
-                                  loc_get_close_obs => get_close_obs, get_close_type, &
-                                  vert_is_undef,    VERTISUNDEF,                    &
-                                  vert_is_level,    VERTISLEVEL  ! treat cat as vert level
+use          location_mod, only : location_type, get_dist, get_close_type,      &
+                                  set_location, get_location,                   &
+                                  get_close_obs,                                &
+                                  loc_get_close_state => get_close_state,       &
+                                  convert_vertical_obs, convert_vertical_state, &
+                                  VERTISLEVEL  ! treat cat as vert level
+
+use netcdf_utilities_mod, only : nc_add_global_attribute, nc_sync, nc_check, &
+                                 nc_add_global_creation_time, nc_redef, nc_enddef
+
+use location_io_mod,      only :  nc_write_location_atts, nc_get_location_varids, &
+                                  nc_write_location
+
+use default_model_mod,     only : init_time, init_conditions, adv_1step, &
+                                  nc_write_model_vars
 
 use         utilities_mod, only : register_module, error_handler,               &
-                                  E_ERR, E_WARN, E_MSG, nmlfileunit, get_unit,  &
-                                  nc_check, do_output, to_upper, logfileunit,   &
+                                  E_ERR, E_MSG, nmlfileunit, get_unit,  &
+                                  do_output, to_upper, logfileunit,   &
                                   find_namelist_in_file, check_namelist_read,   &
                                   file_exist, find_textfile_dims, file_to_text, &
                                   do_nml_file, do_nml_term
@@ -97,15 +107,12 @@ use         dart_cice_mod, only : set_model_time_step,               &
 use  ensemble_manager_mod, only : ensemble_type, map_pe_to_task, get_copy_owner_index, &
                                   get_var_owner_index
 
-! ../../distributed/distributed_state_mod.f90
 use distributed_state_mod, only : get_state
 
-! ../../io/state_structure_mod.f90
 use   state_structure_mod, only : add_domain, get_model_variable_indices, &
                                   get_num_variables, get_index_start, &
                                   get_num_dims, get_domain_size, state_structure_info
 
-! ../../io/dart_time_io_mod
 use      dart_time_io_mod, only : write_model_time
 
 use typesizes
@@ -116,31 +123,32 @@ private
 
 ! these routines must be public and you cannot change
 ! the arguments - they will be called *from* the DART code.
+! these routines have code in this module
 public :: get_model_size,                &
           adv_1step,                     &
           get_state_meta_data,           &
           model_interpolate,             &
-          get_model_time_step,           &
+          shortest_time_between_assimilations, &
           static_init_model,             &
-          end_model,                     &
-          init_time,                     &
-          init_conditions,               &
+          read_model_time,               &
           nc_write_model_atts,           &
+          get_close_state,               &
+          end_model
+
+! the code for these routines are in other modules
+public :: init_time,                     &
+          init_conditions,               &
           nc_write_model_vars,           &
           pert_model_copies,             &
-          get_close_maxdist_init,        &
-          get_close_obs_init,            &
           get_close_obs,                 &
-          query_vert_localization_coord, &
-          vert_convert,                  &
-          read_model_time,               &
+          convert_vertical_obs,          &
+          convert_vertical_state,        &
           write_model_time
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
 ! FIXME: we should no longer need restart_file_to_sv and sv_to_restart_file
-public :: get_gridsize, restart_file_to_sv, sv_to_restart_file, &
-          get_cice_restart_filename, test_interpolation
+public :: get_cice_restart_filename, test_interpolation
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -171,7 +179,6 @@ integer, parameter :: VAR_QTY_INDEX = 2
 integer, parameter :: VAR_UPDATE_INDEX = 3
 
 ! things which can/should be in the model_nml
-logical  :: output_state_vector = .false.
 integer  :: assimilation_period_days = 1
 integer  :: assimilation_period_seconds = 0
 real(r8) :: model_perturbation_amplitude = 0.2
@@ -261,19 +268,6 @@ integer         :: timestepcount = 0
 type(time_type) :: model_time, model_timestep
 
 integer(i8) :: model_size    ! the state vector length
-
-
-! FIXME: i would like to remove these routines.  we can reshape 
-! arrays with the reshape() fortran intrinsic if needed in this code.  
-! (but i cannot see where it will be needed anymore.)
-! if we are reading/writing a netcdf variable we can give counts 
-! along with a 1d array source and the netcdf libraries will reshape 
-! the array as it writes without needing to allocate, iterate, deallocate.
-! this is good:  faster, and less code to maintain.
-INTERFACE vector_to_prog_var
-      MODULE PROCEDURE vector_to_2d_prog_var
-      MODULE PROCEDURE vector_to_3d_prog_var
-END INTERFACE
 
 
 !-------------------------- CMB did not touch from here -------------------
@@ -816,88 +810,18 @@ enddo
 
 end subroutine update_reg_list
 
-!------------------------------------------------------------
-
-!CMB no change
-subroutine init_conditions(x)
- real(r8), intent(out) :: x(:)
-
-! Returns a model state vector, x, that is some sort of appropriate
-! initial condition for starting up a long integration of the model.
-! At present, this is only used if the namelist parameter 
-! start_from_restart is set to .false. in the program perfect_model_obs.
-
-character(len=128) :: msgstring2, msgstring3
-
-msgstring2 = "cannot run perfect_model_obs with 'start_from_restart = .false.' "
-msgstring3 = 'use cice_to_dart to generate an initial state'
-call error_handler(E_ERR,'init_conditions', &
-                  'WARNING!!  cice model has no built-in default state', &
-                  source, revision, revdate, &
-                  text2=msgstring2, text3=msgstring3)
-
-! this code never reached - just here to avoid compiler warnings
-! about an intent(out) variable not being set to a value.
-x = 0.0_r8
-
-end subroutine init_conditions
-
 !------------------------------------------------------------------
-
-!CMB no change
-subroutine adv_1step(x, time)
- real(r8),        intent(inout) :: x(:)
- type(time_type), intent(in)    :: time
-
-! If the model could be called as a subroutine, does a single
-
-call error_handler(E_ERR,'adv_1step', &
-                  'cice model cannot be called as a subroutine; async cannot = 0', &
-                  source, revision, revdate)
-
-end subroutine adv_1step
-
-!------------------------------------------------------------------
+!> Returns the number of items in the state vector
 
 !CMB no change
 function get_model_size()
  integer(i8) :: get_model_size
-
-! Returns the size of the model as an integer. Required for all
-! applications.
 
 if ( .not. module_initialized ) call static_init_model
 
 get_model_size = model_size
 
 end function get_model_size
-
-!------------------------------------------------------------------
-
-!CMB no change
-!CMB assume like POP, cice has no built-in default time
-subroutine init_time(time)
- type(time_type), intent(out) :: time
-
-! Companion interface to init_conditions. Returns a time that is
-! appropriate for starting up a long integration of the model.
-! At present, this is only used if the namelist parameter 
-! start_from_restart is set to .false. in the program perfect_model_obs.
-
-character(len=128) :: msgstring2, msgstring3
-
-msgstring2 = "cannot run perfect_model_obs with 'start_from_restart = .false.' "
-msgstring3 = 'use cice_to_dart to generate an initial state which contains a timestamp'
-call error_handler(E_ERR,'init_time', &
-                  'WARNING!!  CICE model has no built-in default time', &
-                  source, revision, revdate, &
-                  text2=msgstring2, text3=msgstring3)
-
-! this code never reached - just here to avoid compiler warnings
-! about an intent(out) variable not being set to a value.
-time = set_time(0,0)
-
-end subroutine init_time
 
 !------------------------------------------------------------------
 
@@ -1788,26 +1712,24 @@ end function deter3
 !------------------------------------------------------------
 ! CMB removed height_bounds since unused
 !------------------------------------------------------------------
+!> Returns the the time step of the model; the smallest increment
+!> in time that the model is capable of advancing the state in a given
+!> implementation. This interface is required for all applications.
 
 ! CMB no change
-function get_model_time_step()
- type(time_type) :: get_model_time_step
-
-! Returns the the time step of the model; the smallest increment
-! in time that the model is capable of advancing the state in a given
-! implementation. This interface is required for all applications.
+function shortest_time_between_assimilations()
+ type(time_type) :: shortest_time_between_assimilations
 
 if ( .not. module_initialized ) call static_init_model
 
-get_model_time_step = model_timestep
+shortest_time_between_assimilations = model_timestep
 
-end function get_model_time_step
+end function shortest_time_between_assimilations
 
 !------------------------------------------------------------------
 
 ! CMB changed extensively
-subroutine get_state_meta_data(state_handle, index_in, location, var_type)
- type(ensemble_type), intent(in)  :: state_handle ! handle to state vector structure
+subroutine get_state_meta_data(index_in, location, var_type)
  integer(i8),         intent(in)  :: index_in  ! index of point in state vector
                                                ! depends on variable, lat, lon, and cat 
  type(location_type), intent(out) :: location
@@ -1941,65 +1863,19 @@ end subroutine end_model
 !> This includes coordinate variables and some metadata, but NOT
 !> the model state vector.
 
-function nc_write_model_atts( ncFileID, model_mod_writes_state_variables ) result (ierr)
-integer, intent(in)  :: ncFileID      ! netCDF file identifier
-logical, intent(out) :: model_mod_writes_state_variables
-integer              :: ierr          ! return value of function
-
-integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-
-!----------------------------------------------------------------------
-! variables if we just blast out one long state vector
-!----------------------------------------------------------------------
-
-integer :: StateVarDimID   ! netCDF pointer to state variable dimension (model size)
-integer :: TimeDimID       ! netCDF pointer to time dimension           (unlimited)
-
-integer :: StateVarVarID   ! netCDF pointer to state variable coordinate array
-integer :: StateVarID      ! netCDF pointer to 3D [state,copy,time] array
-
-!----------------------------------------------------------------------
-! variables if we parse the state vector into prognostic variables.
-!----------------------------------------------------------------------
+subroutine nc_write_model_atts( ncid, domain_id ) 
+integer, intent(in) :: ncid      ! netCDF file identifier
+integer, intent(in) :: domain_id
 
 ! for the dimensions and coordinate variables
 integer :: NlonDimID, NlatDimID, NcatDimID
 integer :: ulonVarID, ulatVarID, tlonVarID, tlatVarID
 integer :: KMTVarID, KMUVarID
 
-! for the prognostic variables
-integer :: AVarID, VIVarID, VSVARID, UVarID, VVarID
-
-!----------------------------------------------------------------------
-! variables for the namelist output
-!----------------------------------------------------------------------
-
-character(len=129), allocatable, dimension(:) :: textblock
-integer :: LineLenDimID, nlinesDimID, nmlVarID
-integer :: nlines, linelen
-logical :: has_cice_namelist
-
-!----------------------------------------------------------------------
-! local variables 
-!----------------------------------------------------------------------
-
-! we are going to need these to record the creation date in the netCDF file.
-! This is entirely optional, but nice.
-
-character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
-integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=NF90_MAX_NAME) :: str1
-
 integer     :: i
 character(len=128)  :: filename
 
 if ( .not. module_initialized ) call static_init_model
-
-ierr = -1 ! assume things go poorly
-
-model_mod_writes_state_variables = .false. 
 
 !--------------------------------------------------------------------
 ! we only have a netcdf handle here so we do not know the filename
@@ -2008,91 +1884,36 @@ model_mod_writes_state_variables = .false.
 ! which netcdf file is involved.
 !--------------------------------------------------------------------
 
-write(filename,*) 'ncFileID', ncFileID
+write(filename,*) 'ncid', ncid
 
 !-------------------------------------------------------------------------------
-! make sure ncFileID refers to an open netCDF file, 
+! make sure ncid refers to an open netCDF file, 
 ! and then put into define mode.
 !-------------------------------------------------------------------------------
 
-call nc_check(nf90_Inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID),&
-                                   'nc_write_model_atts', 'inquire '//trim(filename))
-call nc_check(nf90_Redef(ncFileID),'nc_write_model_atts',   'redef '//trim(filename))
-
-!-------------------------------------------------------------------------------
-! We need the dimension ID for the number of copies/ensemble members, and
-! we might as well check to make sure that Time is the Unlimited dimension. 
-! Our job is create the 'model size' dimension.
-!-------------------------------------------------------------------------------
-
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name='NMLlinelen', dimid=LineLenDimID), &
-                           'nc_write_model_atts','inq_dimid NMLlinelen')
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name='time', dimid=  TimeDimID), &
-                           'nc_write_model_atts', 'time dimid '//trim(filename))
-
-if ( TimeDimID /= unlimitedDimId ) then
-   write(msgstring,*)'Time Dimension ID ',TimeDimID, &
-             ' should equal Unlimited Dimension ID',unlimitedDimID
-   call error_handler(E_ERR,'nc_write_model_atts', msgstring, source, revision, revdate)
-endif
+call nc_redef(ncid)
 
 !-------------------------------------------------------------------------------
 ! Write Global Attributes 
 !-------------------------------------------------------------------------------
 
-call DATE_AND_TIME(crdate,crtime,crzone,values)
-write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
-                  values(1), values(2), values(3), values(5), values(6), values(7)
+call nc_add_global_creation_time(ncid)
 
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'creation_date' ,str1    ), &
-           'nc_write_model_atts', 'creation put '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model_source'  ,source  ), &
-           'nc_write_model_atts', 'source put '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model_revision',revision), &
-           'nc_write_model_atts', 'revision put '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model_revdate' ,revdate ), &
-           'nc_write_model_atts', 'revdate put '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model',  'CICE' ), &
-           'nc_write_model_atts', 'model put '//trim(filename))
+call nc_add_global_attribute(ncid, "model_source", source )
+call nc_add_global_attribute(ncid, "model_revision", revision )
+call nc_add_global_attribute(ncid, "model_revdate", revdate )
 
-!-------------------------------------------------------------------------------
-! Determine shape of most important namelist
-!-------------------------------------------------------------------------------
-
-call find_textfile_dims('cice_in', nlines, linelen)
-if (nlines > 0) then
-  has_cice_namelist = .true.
-else
-  has_cice_namelist = .false.
-endif
-
-if (debug > 0)    print *, 'cice namelist: nlines, linelen = ', nlines, linelen
-  
-if (has_cice_namelist) then 
-   allocate(textblock(nlines))
-   textblock = ''
-
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='nlines', &
-                 len = nlines, dimid = nlinesDimID), &
-                 'nc_write_model_atts', 'def_dim nlines ')
-
-   call nc_check(nf90_def_var(ncFileID,name='cice_in', xtype=nf90_char,    &
-                 dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID), &
-                 'nc_write_model_atts', 'def_var cice_in')
-   call nc_check(nf90_put_att(ncFileID, nmlVarID, 'long_name',       &
-                 'contents of cice_in namelist'), 'nc_write_model_atts', 'put_att cice_in')
-
-endif
+call nc_add_global_attribute(ncid, "model", "CICE")
 
 !----------------------------------------------------------------------------
 ! Define the new dimensions IDs
 !----------------------------------------------------------------------------
 
-call nc_check(nf90_def_dim(ncid=ncFileID, name='i', &
+call nc_check(nf90_def_dim(ncid, name='i', &
        len = Nx, dimid = NlonDimID),'nc_write_model_atts', 'i def_dim '//trim(filename))
-call nc_check(nf90_def_dim(ncid=ncFileID, name='j', &
+call nc_check(nf90_def_dim(ncid, name='j', &
        len = Ny, dimid = NlatDimID),'nc_write_model_atts', 'j def_dim '//trim(filename))
-call nc_check(nf90_def_dim(ncid=ncFileID, name='k', &
+call nc_check(nf90_def_dim(ncid, name='k', &
        len = Ncat, dimid = NcatDimID),'nc_write_model_atts', 'k def_dim '//trim(filename))
 
 !----------------------------------------------------------------------------
@@ -2100,249 +1921,114 @@ call nc_check(nf90_def_dim(ncid=ncFileID, name='k', &
 !----------------------------------------------------------------------------
 
 ! U,V Grid Longitudes
-call nc_check(nf90_def_var(ncFileID,name='ULON', xtype=nf90_real, &
+call nc_check(nf90_def_var(ncid,name='ULON', xtype=nf90_real, &
               dimids=(/ NlonDimID, NlatDimID /), varid=ulonVarID),&
               'nc_write_model_atts', 'ULON def_var '//trim(filename))
-call nc_check(nf90_put_att(ncFileID,  ulonVarID, 'long_name', 'longitudes of U,V grid'), &
+call nc_check(nf90_put_att(ncid,  ulonVarID, 'long_name', 'longitudes of U,V grid'), &
               'nc_write_model_atts', 'ULON long_name '//trim(filename))
-call nc_check(nf90_put_att(ncFileID,  ulonVarID, 'cartesian_axis', 'X'),  &
+call nc_check(nf90_put_att(ncid,  ulonVarID, 'cartesian_axis', 'X'),  &
               'nc_write_model_atts', 'ULON cartesian_axis '//trim(filename))
-call nc_check(nf90_put_att(ncFileID,  ulonVarID, 'units', 'degrees_east'), &
+call nc_check(nf90_put_att(ncid,  ulonVarID, 'units', 'degrees_east'), &
               'nc_write_model_atts', 'ULON units '//trim(filename))
-call nc_check(nf90_put_att(ncFileID,  ulonVarID, 'valid_range', (/ 0.0_r8, 360.0_r8 /)), &
+call nc_check(nf90_put_att(ncid,  ulonVarID, 'valid_range', (/ 0.0_r8, 360.0_r8 /)), &
               'nc_write_model_atts', 'ULON valid_range '//trim(filename))
 
 ! U,V Grid Latitudes
-call nc_check(nf90_def_var(ncFileID,name='ULAT', xtype=nf90_real, &
+call nc_check(nf90_def_var(ncid,name='ULAT', xtype=nf90_real, &
               dimids=(/ NlonDimID, NlatDimID /), varid=ulatVarID),&
               'nc_write_model_atts', 'ULAT def_var '//trim(filename))
-call nc_check(nf90_put_att(ncFileID,  ulatVarID, 'long_name', 'latitudes of U,V grid'), &
+call nc_check(nf90_put_att(ncid,  ulatVarID, 'long_name', 'latitudes of U,V grid'), &
               'nc_write_model_atts', 'ULAT long_name '//trim(filename))
-call nc_check(nf90_put_att(ncFileID,  ulatVarID, 'cartesian_axis', 'Y'),   &
+call nc_check(nf90_put_att(ncid,  ulatVarID, 'cartesian_axis', 'Y'),   &
               'nc_write_model_atts', 'ULAT cartesian_axis '//trim(filename))
-call nc_check(nf90_put_att(ncFileID,  ulatVarID, 'units', 'degrees_north'),  &
+call nc_check(nf90_put_att(ncid,  ulatVarID, 'units', 'degrees_north'),  &
               'nc_write_model_atts', 'ULAT units '//trim(filename))
-call nc_check(nf90_put_att(ncFileID,  ulatVarID,'valid_range',(/ -90.0_r8, 90.0_r8 /)), &
+call nc_check(nf90_put_att(ncid,  ulatVarID,'valid_range',(/ -90.0_r8, 90.0_r8 /)), &
               'nc_write_model_atts', 'ULAT valid_range '//trim(filename))
 
 ! Tracer Grid Longitudes
-call nc_check(nf90_def_var(ncFileID,name='TLON', xtype=nf90_real, &
+call nc_check(nf90_def_var(ncid,name='TLON', xtype=nf90_real, &
               dimids=(/ NlonDimID, NlatDimID /), varid=tlonVarID),&
               'nc_write_model_atts', 'TLON def_var '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, tlonVarID, 'long_name', 'longitudes of tracer grid'), &
+call nc_check(nf90_put_att(ncid, tlonVarID, 'long_name', 'longitudes of tracer grid'), &
               'nc_write_model_atts', 'TLON long_name '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, tlonVarID, 'cartesian_axis', 'X'),   &
+call nc_check(nf90_put_att(ncid, tlonVarID, 'cartesian_axis', 'X'),   &
               'nc_write_model_atts', 'TLON cartesian_axis '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, tlonVarID, 'units', 'degrees_east'),  &
+call nc_check(nf90_put_att(ncid, tlonVarID, 'units', 'degrees_east'),  &
               'nc_write_model_atts', 'TLON units '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, tlonVarID, 'valid_range', (/ 0.0_r8, 360.0_r8 /)), &
+call nc_check(nf90_put_att(ncid, tlonVarID, 'valid_range', (/ 0.0_r8, 360.0_r8 /)), &
               'nc_write_model_atts', 'TLON valid_range '//trim(filename))
 
 ! Tracer Grid (center) Latitudes
-call nc_check(nf90_def_var(ncFileID,name='TLAT', xtype=nf90_real, &
+call nc_check(nf90_def_var(ncid,name='TLAT', xtype=nf90_real, &
               dimids= (/ NlonDimID, NlatDimID /), varid=tlatVarID), &
               'nc_write_model_atts', 'TLAT def_var '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, tlatVarID, 'long_name', 'latitudes of tracer grid'), &
+call nc_check(nf90_put_att(ncid, tlatVarID, 'long_name', 'latitudes of tracer grid'), &
               'nc_write_model_atts', 'TLAT long_name '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, tlatVarID, 'cartesian_axis', 'Y'),   &
+call nc_check(nf90_put_att(ncid, tlatVarID, 'cartesian_axis', 'Y'),   &
               'nc_write_model_atts', 'TLAT cartesian_axis '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, tlatVarID, 'units', 'degrees_north'),  &
+call nc_check(nf90_put_att(ncid, tlatVarID, 'units', 'degrees_north'),  &
               'nc_write_model_atts', 'TLAT units '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, tlatVarID, 'valid_range', (/ -90.0_r8, 90.0_r8 /)), &
+call nc_check(nf90_put_att(ncid, tlatVarID, 'valid_range', (/ -90.0_r8, 90.0_r8 /)), &
               'nc_write_model_atts', 'TLAT valid_range '//trim(filename))
 
 ! Depth mask
-call nc_check(nf90_def_var(ncFileID,name='KMT',xtype=nf90_int, &
+call nc_check(nf90_def_var(ncid,name='KMT',xtype=nf90_int, &
               dimids= (/ NlonDimID, NlatDimID /), varid=KMTVarID), &
               'nc_write_model_atts', 'KMT def_var '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, KMTVarID, 'long_name', 'lowest valid depth index at grid centroids'), &
+call nc_check(nf90_put_att(ncid, KMTVarID, 'long_name', 'lowest valid depth index at grid centroids'), &
               'nc_write_model_atts', 'KMT long_name '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, KMTVarID, 'units', 'levels'),  &
+call nc_check(nf90_put_att(ncid, KMTVarID, 'units', 'levels'),  &
               'nc_write_model_atts', 'KMT units '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, KMTVarID, 'positive', 'down'),  &
+call nc_check(nf90_put_att(ncid, KMTVarID, 'positive', 'down'),  &
               'nc_write_model_atts', 'KMT units '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, KMTVarID, 'comment', &
+call nc_check(nf90_put_att(ncid, KMTVarID, 'comment', &
                'more positive is closer to the center of the earth'),  &
               'nc_write_model_atts', 'KMT comment '//trim(filename))
 
 ! Depth mask
-call nc_check(nf90_def_var(ncFileID,name='KMU',xtype=nf90_int, &
+call nc_check(nf90_def_var(ncid,name='KMU',xtype=nf90_int, &
               dimids= (/ NlonDimID, NlatDimID /), varid=KMUVarID), &
               'nc_write_model_atts', 'KMU def_var '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, KMUVarID, 'long_name', 'lowest valid depth index at grid corners'), &
+call nc_check(nf90_put_att(ncid, KMUVarID, 'long_name', 'lowest valid depth index at grid corners'), &
               'nc_write_model_atts', 'KMU long_name '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, KMUVarID, 'units', 'levels'),  &
+call nc_check(nf90_put_att(ncid, KMUVarID, 'units', 'levels'),  &
               'nc_write_model_atts', 'KMU units '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, KMUVarID, 'positive', 'down'),  &
+call nc_check(nf90_put_att(ncid, KMUVarID, 'positive', 'down'),  &
               'nc_write_model_atts', 'KMU units '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, KMUVarID, 'comment', &
+call nc_check(nf90_put_att(ncid, KMUVarID, 'comment', &
                'more positive is closer to the center of the earth'),  &
               'nc_write_model_atts', 'KMU comment '//trim(filename))
 
 ! Finished with dimension/variable definitions, must end 'define' mode to fill.
 
-call nc_check(nf90_enddef(ncfileID), 'prognostic enddef '//trim(filename))
+call nc_enddef(ncid)
 
 !----------------------------------------------------------------------------
 ! Fill the coordinate variables
 !----------------------------------------------------------------------------
 
-call nc_check(nf90_put_var(ncFileID, ulonVarID, ULON ), &
+call nc_check(nf90_put_var(ncid, ulonVarID, ULON ), &
              'nc_write_model_atts', 'ULON put_var '//trim(filename))
-call nc_check(nf90_put_var(ncFileID, ulatVarID, ULAT ), &
+call nc_check(nf90_put_var(ncid, ulatVarID, ULAT ), &
              'nc_write_model_atts', 'ULAT put_var '//trim(filename))
-call nc_check(nf90_put_var(ncFileID, tlonVarID, TLON ), &
+call nc_check(nf90_put_var(ncid, tlonVarID, TLON ), &
              'nc_write_model_atts', 'TLON put_var '//trim(filename))
-call nc_check(nf90_put_var(ncFileID, tlatVarID, TLAT ), &
+call nc_check(nf90_put_var(ncid, tlatVarID, TLAT ), &
              'nc_write_model_atts', 'TLAT put_var '//trim(filename))
-call nc_check(nf90_put_var(ncFileID, KMTVarID, KMT ), &
+call nc_check(nf90_put_var(ncid, KMTVarID, KMT ), &
              'nc_write_model_atts', 'KMT put_var '//trim(filename))
-call nc_check(nf90_put_var(ncFileID, KMUVarID, KMU ), &
+call nc_check(nf90_put_var(ncid, KMUVarID, KMU ), &
              'nc_write_model_atts', 'KMU put_var '//trim(filename))
 
 !-------------------------------------------------------------------------------
-! Fill the variables we can
-!-------------------------------------------------------------------------------
-
-if (has_cice_namelist) then
-   call file_to_text('cice_in', textblock)
-   call nc_check(nf90_put_var(ncFileID, nmlVarID, textblock ), &
-                 'nc_write_model_atts', 'put_var nmlVarID')
-   deallocate(textblock)
-endif
-
-!-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
 !-------------------------------------------------------------------------------
-call nc_check(nf90_sync(ncFileID), 'nc_write_model_atts', 'atts sync')
+call nc_sync(ncid)
 
-ierr = 0 ! If we got here, things went well.
-
-end function nc_write_model_atts
+end subroutine nc_write_model_atts
 
 !------------------------------------------------------------------
-!> Writes the model variables to a netCDF file.
-
-
-function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)
-
-integer,                intent(in) :: ncFileID      ! netCDF file identifier
-real(r8), dimension(:), intent(in) :: statevec
-integer,                intent(in) :: copyindex
-integer,                intent(in) :: timeindex
-integer                            :: ierr          ! return value of function
-
-integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: VarID
-
-real(r8), dimension(Nx,Ny,Ncat) :: data_3d
-real(r8), dimension(Nx,Ny)    :: data_2d
-character(len=128)  :: filename
-
-integer :: AICE_index ,VI_index ,VS_index, U_index, V_index
-
-if ( .not. module_initialized ) call static_init_model
-
-ierr = -1 ! assume things go poorly
-
-!--------------------------------------------------------------------
-! we only have a netcdf handle here so we do not know the filename
-! or the fortran unit number.  but construct a string with at least
-! the netcdf handle, so in case of error we can trace back to see
-! which netcdf file is involved.
-!--------------------------------------------------------------------
-
-write(filename,*) 'ncFileID', ncFileID
-
-!-------------------------------------------------------------------------------
-! make sure ncFileID refers to an open netCDF file, 
-!-------------------------------------------------------------------------------
-
-call nc_check(nf90_Inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID),&
-              'nc_write_model_vars', 'inquire '//trim(filename))
-
-if ( output_state_vector ) then
-
-   call nc_check(NF90_inq_varid(ncFileID, 'state', VarID), &
-                 'nc_write_model_vars', 'state inq_varid '//trim(filename))
-   call nc_check(NF90_put_var(ncFileID,VarID,statevec,start=(/1,copyindex,timeindex/)),&
-                 'nc_write_model_vars', 'state put_var '//trim(filename))
-
-else
-
-   !----------------------------------------------------------------------------
-   ! We need to process the prognostic variables.
-   ! Replace missing values (0.0) with netcdf missing value.
-   ! Staggered grid causes some logistical problems.
-   !----------------------------------------------------------------------------
-
-   AICE_index = get_varid_from_kind(QTY_SEAICE_CONCENTR)
-   if ( AICE_index > 0 ) then
-      !>@todo JH: do not need to use vector_to_prog_var to reshape variables for
-      !> netcdf file.  you can simply use the count=(dim1, dim2, dim3) in the 
-      !> netcdf optional arguments.
-      call vector_to_prog_var(statevec, AICE_index, data_3d)
-      where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
-      call nc_check(NF90_inq_varid(ncFileID, 'aice', VarID), &
-                   'nc_write_model_vars', 'aice inq_varid '//trim(filename))
-      call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-                   'nc_write_model_vars', 'aice put_var '//trim(filename))
-   endif
-
-   VI_index = get_varid_from_kind(QTY_SEAICE_VOLUME)
-   if ( VI_index > 0 ) then
-      call vector_to_prog_var(statevec, VI_index, data_3d)
-      where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
-      call nc_check(NF90_inq_varid(ncFileID, 'vi', VarID), &
-                   'nc_write_model_vars', 'vi inq_varid '//trim(filename))
-      call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-                   'nc_write_model_vars', 'vi put_var '//trim(filename))
-   endif
-
-   VS_index = get_varid_from_kind(QTY_SEAICE_SNOWVOLUME)
-   if ( VS_index > 0 ) then
-      call vector_to_prog_var(statevec, VS_index, data_3d)
-      where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
-      call nc_check(NF90_inq_varid(ncFileID, 'vs', VarID), &
-                   'nc_write_model_vars', 'vs inq_varid '//trim(filename))
-      call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-                   'nc_write_model_vars', 'vs put_var '//trim(filename))
-   endif
-
-   U_index = get_varid_from_kind(QTY_U_SEAICE_COMPONENT)
-   if ( U_index > 0 ) then
-      call vector_to_prog_var(statevec, U_index, data_3d)
-      where (data_2d == 0.0_r8) data_2d = NF90_FILL_REAL
-      call nc_check(NF90_inq_varid(ncFileID, 'uvel', VarID), &
-                   'nc_write_model_vars', 'uvel inq_varid '//trim(filename))
-      call nc_check(nf90_put_var(ncFileID,VarID,data_2d,start=(/1,1,1,copyindex,timeindex/)),&
-                   'nc_write_model_vars', 'uvel put_var '//trim(filename))
-   endif
-
-   V_index = get_varid_from_kind(QTY_V_SEAICE_COMPONENT)
-   if ( V_index > 0 ) then
-      call vector_to_prog_var(statevec, V_index, data_3d)
-      where (data_2d == 0.0_r8) data_2d = NF90_FILL_REAL
-      call nc_check(NF90_inq_varid(ncFileID, 'vvel', VarID), &
-                   'nc_write_model_vars', 'vvel inq_varid '//trim(filename))
-      call nc_check(nf90_put_var(ncFileID,VarID,data_2d,start=(/1,1,1,copyindex,timeindex/)),&
-                   'nc_write_model_vars', 'vvel put_var '//trim(filename))
-   endif
-
-endif
-
-!-------------------------------------------------------------------------------
-! Flush the buffer and leave netCDF file open
-!-------------------------------------------------------------------------------
-
-call nc_check(nf90_sync(ncFileID), 'nc_write_model_vars', 'sync '//trim(filename))
-
-ierr = 0 ! If we got here, things went well.
-
-end function nc_write_model_vars
-
-!------------------------------------------------------------------
-!> @TODO FIXME ... lanai_bitwise makes no sense here ... 
 
 ! CMB no change
 subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
@@ -2368,511 +2054,30 @@ real(r8)    :: random_number
 
 ! Storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
-logical :: lanai_bitwise
 
 if ( .not. module_initialized ) call static_init_model
 
 interf_provided = .true.
-lanai_bitwise = .true.
 
-if (lanai_bitwise) then
-   call pert_model_copies_bitwise_lanai(state_ens_handle, ens_size)
-else
+! Initialize random number sequence
+call init_random_seq(random_seq, my_task_id())
 
-   ! Initialize random number sequence
-   call init_random_seq(random_seq, my_task_id())
+! only perturb the actual ocean cells; leave the land and
+! ocean floor values alone.
+do i=1,state_ens_handle%my_num_vars
+   dart_index = state_ens_handle%my_vars(i)
+   call get_state_kind_inc_dry(dart_index, var_type)
+   do j=1, ens_size
+      if (var_type /= QTY_DRY_LAND) then
+         state_ens_handle%copies(j,i) = random_gaussian(random_seq, &
+            state_ens_handle%copies(j,i), &
+            model_perturbation_amplitude)
 
-   ! only perturb the actual ocean cells; leave the land and
-   ! ocean floor values alone.
-   do i=1,state_ens_handle%my_num_vars
-      dart_index = state_ens_handle%my_vars(i)
-      call get_state_kind_inc_dry(dart_index, var_type)
-      do j=1, ens_size
-         if (var_type /= QTY_DRY_LAND) then
-            state_ens_handle%copies(j,i) = random_gaussian(random_seq, &
-               state_ens_handle%copies(j,i), &
-               model_perturbation_amplitude)
-   
-         endif
-      enddo
+      endif
    enddo
-
-endif
-
+enddo
 
 end subroutine pert_model_copies
-
-!------------------------------------------------------------------
-!> Perturb the state such that the perturbation is bitwise with
-!> a perturbed Lanai.
-!> Note:
-!> * This is not bitwise with itself (like Lanai) if task_count < ens_size
-!> * This is very slow because you have a loop around the length of the
-!> state inside a loop around the ensemble.
-!> If a task has more than one copy then the random number
-!> sequence continues from the end of one copy to the start of the other.
-! CMB no change
-subroutine pert_model_copies_bitwise_lanai(ens_handle, ens_size)
-
-type(ensemble_type), intent(inout) :: ens_handle
-integer,             intent(in)    :: ens_size
-
-type(random_seq_type) :: r(ens_size)
-integer     :: i ! loop variable
-integer(i8) :: j ! loop variable
-real(r8)    :: random_number
-integer     :: var_type
-integer     :: sequence_to_use
-integer     :: owner, owners_index
-integer     :: copy_owner
-
-do i = 1, min(ens_size, task_count())
-   call init_random_seq(r(i), map_pe_to_task(ens_handle,i-1)) ! my_task_id in Lanai
-   sequence_to_use = i 
-enddo
-
-
-do i = 1, ens_size
-
-   call get_copy_owner_index(i, copy_owner, owners_index) ! owners index not used. Distribution type 1
-   sequence_to_use = copy_owner + 1
-   do j = 1, ens_handle%num_vars
-
-      call get_state_kind_inc_dry(j, var_type)
-
-      if(var_type /= QTY_DRY_LAND) then
-         random_number = random_gaussian(r(sequence_to_use), 0.0_r8, model_perturbation_amplitude)
-         call get_var_owner_index(j, owner, owners_index)
-         if (ens_handle%my_pe==owner) then
-            ens_handle%copies(i, owners_index) = ens_handle%copies(i, owners_index) + random_number
-         endif
-      endif
-
-   enddo
-
-enddo
-
-end subroutine pert_model_copies_bitwise_lanai
-
-!------------------------------------------------------------------
-
-! FIXME: should not be needed anymore - filter reads directly from
-! the model netcdf files.  same with companion sv_to_restart_file.
-
-!CMB changed a lot
-subroutine restart_file_to_sv(filename, state_vector, model_time)
- character(len=*), intent(in)    :: filename 
- real(r8),         intent(inout) :: state_vector(:)
- type(time_type),  intent(out)   :: model_time
-
-! Reads the current time and state variables from a CICE restart
-! file and packs them into a dart state vector.
-
-! temp space to hold data while we are reading it
-real(r8) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Ncat)
-integer  :: i, j, k, ivar, indx
-
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
-character(len=NF90_MAX_NAME) :: varname 
-integer :: VarID, numdims, dimlen
-integer :: ncid 
-integer :: nyr      , & ! year number, in cice restart
-           month    , & ! month number, 1 to 12, in cice restart
-           mday     , & ! day of the month, in cice restart
-           sec          ! elapsed seconds into date, in cice restart
-integer :: hour     , & ! hour of the day, needed for dart set_date
-           minute   , & ! minute of the hour, needed for dart set_date
-           secthismin 
-
-if ( .not. module_initialized ) call static_init_model
-
-state_vector = MISSING_R8
-
-! Check that the input file exists ... 
-! Read the time data. 
-!
-! pop_time is determined from iyear, imonth, iday, and isecond (*seconds_this_day*)
-! isecond is rounded to the nearest
-!
-! cice_time is determined from nyr, month, mday and sec (*seconds_this_day*)
-! sec is rounded to the nearest too
-!
-! DART only knows about integer number of seconds, so using the rounded one
-! is what we would have to do anyway ... and we already have a set_date routine
-! that takes ihour, iminute, isecond information.
-
-if ( .not. file_exist(filename) ) then
-   write(msgstring,*) 'cannot open file ', trim(filename),' for reading.'
-   call error_handler(E_ERR,'restart_file_to_sv',msgstring,source,revision,revdate)
-endif
-
-call nc_check( nf90_open(trim(filename), NF90_NOWRITE, ncid), &
-                  'restart_file_to_sv', 'open '//trim(filename))
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'nyr'  , nyr), &
-                  'restart_file_to_sv', 'get_att nyr')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'month' , month), &
-                  'restart_file_to_sv', 'get_att month')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'mday'   , mday), &
-                  'restart_file_to_sv', 'get_att mday')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'sec', sec), &
-                  'restart_file_to_sv', 'get_att sec')
-
-! FIXME: we don't allow a real year of 0 - add one for now, but
-! THIS MUST BE FIXED IN ANOTHER WAY!
-if (nyr == 0) then
-  call error_handler(E_MSG, 'restart_file_to_sv', &
-                     'WARNING!!!   year 0 not supported; setting to year 1')
-  nyr = 1
-endif
-
-hour = int(sec/3600) 
-minute=int((sec-hour*3600)/60)
-secthismin=int(sec-hour*3600-minute*60) 
-
-!CMB looked at ../../time_manager/time_manager_mod.f90
-! and it wants inputs with seconds between 0 and 60
-! it has another variable that is totseconds, which is seconds in a day
-model_time = set_date(nyr, month, mday, hour, minute, secthismin)
-
-if (do_output()) &
-    call print_time(model_time,'time for restart file '//trim(filename))
-if (do_output()) &
-    call print_date(model_time,'date for restart file '//trim(filename))
-
-! Start counting and filling the state vector one item at a time,
-! repacking the 3d arrays into a single 1d list of numbers.
-! These must be a fixed number and in a fixed order.
-
-indx = 1
-
-! Fill the state vector with the variables that are provided.
-! The CICE restart files have one time step for each variable,
-
-do ivar=1, nfields
-
-   varname = trim(variable_table(ivar, VAR_NAME_INDEX))
-   numdims = get_num_dims(domain_id, ivar)
-   string2 = trim(filename)//' '//trim(varname)
-
-   call nc_check(nf90_inq_varid(ncid,varname,VarID), &
-                'restart_file_to_sv','inq_varid'//trim(string2))
-   call nc_check(nf90_inquire_variable(ncid,VarID,dimids=dimIDs), &
-                'restart_file_to_sv','inquire'//trim(string2))
-   
-   SELECT CASE (numdims)
-      CASE (3) ! 3D variable
-
-         do i = 1,numdims
-            write(msgstring,'(''inquire dimension'',i2,A)') i,trim(string2)
-            call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
-                  'restart_file_to_sv', msgstring)
-
-            if (dimlen /= size(data_3d_array,i)) then
-               write(msgstring,*) trim(string2),'dim/dimlen',i,dimlen,'not',size(data_3d_array,i)
-               call error_handler(E_ERR,'restart_file_to_sv',msgstring,source,revision,revdate)
-            endif
-         enddo   
-
-         ! Actually get the variable and stuff it into the array
-
-         call nc_check(nf90_get_var(ncid, VarID, data_3d_array), 'restart_file_to_sv', &
-                      'get_var '//trim(varname))
-
-         !>@todo JH: use reshape instead of manualy unfolding the vector
-         do k = 1, Ncat   ! size(data_3d_array,3)
-         do j = 1, Ny   ! size(data_3d_array,2)
-         do i = 1, Nx   ! size(data_3d_array,1)
-            state_vector(indx) = data_3d_array(i, j, k)
-            indx = indx + 1
-         enddo
-         enddo
-         enddo
-
-      CASE (2) ! 2D variable
-
-         do i = 1,numdims
-            write(msgstring,'(''inquire dimension'',i2,A)') i,trim(string2)
-            call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
-                  'restart_file_to_sv', msgstring)
-
-            if (dimlen /= size(data_2d_array,i)) then
-               write(msgstring,*) trim(string2),'dim/dimlen',i,dimlen,'not',size(data_2d_array,i)
-               call error_handler(E_ERR,'restart_file_to_sv',msgstring,source,revision,revdate)
-            endif
-         enddo   
-
-         ! Actually get the variable and stuff it into the array
-
-         call nc_check(nf90_get_var(ncid, VarID, data_2d_array), 'restart_file_to_sv', &
-                      'get_var '//trim(varname))
-
-         !>@todo JH: use reshape instead of manualy unfolding the vector
-         do j = 1, Ny   ! size(data_3d_array,2)
-         do i = 1, Nx   ! size(data_3d_array,1)
-            state_vector(indx) = data_2d_array(i, j)
-            indx = indx + 1
-         enddo
-         enddo
-
-      CASE DEFAULT
-
-         write(msgstring,*) trim(string2),'numdims ',numdims,' not supported'
-         call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate)
-
-   END SELECT
-enddo
-
-end subroutine restart_file_to_sv
-
-!------------------------------------------------------------------
-
-! CMB changed a lot
-subroutine sv_to_restart_file(state_vector, filename, statedate)
- real(r8),         intent(in) :: state_vector(:)
- character(len=*), intent(in) :: filename 
- type(time_type),  intent(in) :: statedate
-
-! Writes the current time and state variables from a dart state
-! vector (1d fortran array) into a CICE netcdf restart file.
-
-integer :: nyr      , & ! year number, in cice restart
-           month    , & ! month number, 1 to 12, in cice restart
-           mday     , & ! day of the month, in cice restart
-           sec          ! elapsed seconds into date, in cice restart
-integer :: hour     , & ! hour of the day, needed for dart set_date
-           minute   , & ! minute of the hour, needed for dart set_date
-           secthismin 
-type(time_type) :: cice_time
-
-! temp space to hold data while we are writing it
-real(r8) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Ncat)
-
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
-character(len=NF90_MAX_NAME)          :: varname 
-
-integer :: i, ivar, ncid, VarID, numdims, dimlen
-
-if ( .not. module_initialized ) call static_init_model
-
-! Check that the input file exists. 
-! make sure the time tag in the restart file matches 
-! the current time of the DART state ...
-
-if ( .not. file_exist(filename)) then
-   write(msgstring,*)trim(filename),' does not exist. FATAL error.'
-   call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate) 
-endif
-
-call nc_check( nf90_open(trim(filename), NF90_WRITE, ncid), &
-                  'sv_to_restart_file', 'open '//trim(filename))
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'nyr'  , nyr), &
-                  'sv_to_restart_file', 'get_att nyr')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'month' , month), &
-                  'sv_to_restart_file', 'get_att month')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'mday'   , mday), &
-                  'sv_to_restart_file', 'get_att mday')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'sec', sec), &
-                  'sv_to_restart_file', 'get_att sec')
-
-! FIXME: we don't allow a real year of 0 - add one for now, but
-! THIS MUST BE FIXED IN ANOTHER WAY!
-if (nyr == 0) then
-  call error_handler(E_MSG, 'sv_to_restart_file', &
-                     'WARNING!!!   year 0 not supported; setting to year 1')
-  nyr = 1
-endif
-
-hour = int(sec/3600) 
-minute=int((sec-hour*3600)/60)
-secthismin=int(sec-hour*3600-minute*60) 
-
-cice_time = set_date(nyr, month, mday, hour, minute, secthismin)
-
-if ( cice_time /= statedate ) then
-   call print_time(statedate,'DART current time',logfileunit) 
-   call print_time(cice_time,'CICE current time',logfileunit) 
-   call print_time(statedate,'DART current time') 
-   call print_time(cice_time,'CICE current time') 
-   write(msgstring,*)trim(filename),' current time /= model time. FATAL error.'
-   call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate) 
-endif
-
-if (do_output()) &
-    call print_time(cice_time,'time of restart file '//trim(filename))
-if (do_output()) &
-    call print_date(cice_time,'date of restart file '//trim(filename))
-
-! fill up the netcdf file with values
-do ivar=1, nfields
-
-   varname = trim(variable_table(ivar, VAR_NAME_INDEX))
-   numdims = get_num_dims(domain_id, ivar)
-   string2 = trim(filename)//' '//trim(varname)
-
-   call nc_check(nf90_inq_varid(ncid,varname,VarID), &
-                'restart_file_to_sv','inq_varid'//trim(string2))
-   call nc_check(nf90_inquire_variable(ncid,VarID,dimids=dimIDs), &
-                'restart_file_to_sv','inquire'//trim(string2))
-   
-   SELECT CASE (numdims)
-      CASE (3) ! 3D variable
-
-         do i = 1,numdims
-            write(msgstring,'(''inquire dimension'',i2,A)') i,trim(string2)
-            call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
-                  'sv_to_restart_file', msgstring)
-
-            if (dimlen /= size(data_3d_array,i)) then
-               write(msgstring,*) trim(string2),'dim/dimlen',i,dimlen,'not',size(data_3d_array,i)
-               call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate)
-            endif
-         enddo
-
-         call vector_to_prog_var(state_vector, ivar, data_3d_array)
-
-         ! Actually stuff it into the netcdf file
-         call nc_check(nf90_put_var(ncid, VarID, data_3d_array), &
-                  'sv_to_restart_file', 'put_var '//trim(string2))
-
-      CASE (2) ! 2D variable
-
-         do i = 1,numdims
-            write(msgstring,'(''inquire dimension'',i2,A)') i,trim(string2)
-            call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
-                  'sv_to_restart_file', msgstring)
-      
-            if (dimlen /= size(data_2d_array,i)) then
-               write(msgstring,*) trim(string2),'dim/dimlen',i,dimlen,'not',size(data_2d_array,i)
-               call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate)
-            endif
-         enddo
-      
-         call vector_to_prog_var(state_vector, ivar, data_2d_array)
-      
-         call nc_check(nf90_put_var(ncid, VarID, data_2d_array), &
-                  'sv_to_restart_file', 'put_var '//trim(string2))
-      
-      CASE DEFAULT
-
-         write(msgstring,*) trim(string2),'numdims ',numdims,' not supported'
-         call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate)
-
-   END SELECT
-
-enddo
-
-call nc_check(nf90_close(ncid), 'sv_to_restart_file', 'close '//trim(filename))
-
-end subroutine sv_to_restart_file
-
-!------------------------------------------------------------------
-
-! CMB no change
-subroutine vector_to_2d_prog_var(x, varindex, data_2d_array)
- real(r8), dimension(:),   intent(in)  :: x
- integer,                  intent(in)  :: varindex
- real(r8), dimension(:,:), intent(out) :: data_2d_array
-
-! convert the values from a 1d fortran array, starting at an offset,
-! into a 2d fortran array.  the 2 dims are taken from the array size.
-
-integer :: i,j,ii
-integer :: dim1,dim2
-character(len=128) :: varname
-
-if ( .not. module_initialized ) call static_init_model
-
-dim1 = size(data_2d_array,1)
-dim2 = size(data_2d_array,2)
-
-! only used in error messages
-varname = variable_table(varindex, VAR_NAME_INDEX)
-
-if (dim1 /= Nx) then
-   write(msgstring,*)trim(varname),' 2d array dim 1 ',dim1,' /= ',Nx
-   call error_handler(E_ERR,'vector_to_2d_prog_var',msgstring,source,revision,revdate) 
-endif
-if (dim2 /= Ny) then
-   write(msgstring,*)trim(varname),' 2d array dim 2 ',dim2,' /= ',Ny
-   call error_handler(E_ERR,'vector_to_2d_prog_var',msgstring,source,revision,revdate) 
-endif
-
-ii = get_index_start(domain_id, varindex)
-
-do j = 1,Ny   ! latitudes
-do i = 1,Nx   ! longitudes
-   data_2d_array(i,j) = x(ii)
-   ii = ii + 1
-enddo
-enddo
-
-end subroutine vector_to_2d_prog_var
-
-!------------------------------------------------------------------
-
-! CMB changed to make vert dim cat
-subroutine vector_to_3d_prog_var(x, varindex, data_3d_array)
- real(r8), dimension(:),     intent(in)  :: x
- integer,                    intent(in)  :: varindex
- real(r8), dimension(:,:,:), intent(out) :: data_3d_array
-
-! convert the values from a 1d fortran array, starting at an offset,
-! into a 3d fortran array.  the 3 dims are taken from the array size.
-
-integer :: i,j,k,ii
-integer :: dim1,dim2,dim3
-character(len=128) :: varname
-
-if ( .not. module_initialized ) call static_init_model
-
-dim1 = size(data_3d_array,1)
-dim2 = size(data_3d_array,2)
-dim3 = size(data_3d_array,3)
-
-! only used in error messages
-varname = variable_table(varindex, VAR_NAME_INDEX)
-
-if (dim1 /= Nx) then
-   write(msgstring,*)trim(varname),' 3d array dim 1 ',dim1,' /= ',Nx
-   call error_handler(E_ERR,'vector_to_3d_prog_var',msgstring,source,revision,revdate) 
-endif
-if (dim2 /= Ny) then
-   write(msgstring,*)trim(varname),' 3d array dim 2 ',dim2,' /= ',Ny
-   call error_handler(E_ERR,'vector_to_3d_prog_var',msgstring,source,revision,revdate) 
-endif
-if (dim3 /= Ncat) then
-   write(msgstring,*)trim(varname),' 3d array dim 3 ',dim3,' /= ',Ncat
-   call error_handler(E_ERR,'vector_to_3d_prog_var',msgstring,source,revision,revdate) 
-endif
-
-ii = get_index_start(domain_id, varindex)
-
-do k = 1,Ncat   ! vertical
-do j = 1,Ny   ! latitudes
-do i = 1,Nx   ! longitudes
-   data_3d_array(i,j,k) = x(ii)
-   ii = ii + 1
-enddo
-enddo
-enddo
-
-end subroutine vector_to_3d_prog_var
-
-!------------------------------------------------------------------
-
-!CMB does not appear to be used in pop or cice, made vert dim cat anyway
-subroutine get_gridsize(num_x, num_y, num_z)
- integer, intent(out) :: num_x, num_y, num_z
-
-! public utility routine.
-
-if ( .not. module_initialized ) call static_init_model
-
- num_x = Nx
- num_y = Ny
- num_z = Ncat
-
-end subroutine get_gridsize
 
 !------------------------------------------------------------------
 
@@ -3012,34 +2217,31 @@ end subroutine write_grid_netcdf
 !------------------------------------------------------------------
 
 ! CMB no change
-subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, &
-                         obs, obs_kind, num_close, close_ind, dist, state_handle)
- type(ensemble_type),               intent(in) :: state_handle
- type(get_close_type),              intent(in) :: gc
- type(location_type),               intent(in) :: base_obs_loc
- integer,                           intent(in) :: base_obs_kind
- type(location_type), dimension(:), intent(in) :: obs
- integer,             dimension(:), intent(in) :: obs_kind
- integer,                           intent(out):: num_close
- integer,             dimension(:), intent(out):: close_ind
- real(r8),            dimension(:), intent(out):: dist !does this need to be optional? It is not in WRF
+subroutine get_close_state(filt_gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
+                         num_close, close_indices, distances, state_handle)
+
+type(get_close_type), intent(in)    :: filt_gc
+type(location_type),  intent(inout) :: base_loc
+integer,              intent(in)    :: base_type
+type(location_type),  intent(inout) :: locs(:)
+integer,              intent(in)    :: loc_qtys(:)
+integer(i8),          intent(in)    :: loc_indx(:)
+integer,              intent(out)   :: num_close
+integer,              intent(out)   :: close_indices(:)
+real(r8),             intent(out), optional :: distances(:)
+type(ensemble_type),  intent(in),  optional :: state_handle
 
 ! Given a DART location (referred to as "base") and a set of candidate
-! locations & kinds (obs, obs_kind), returns the subset close to the
+! locations & kinds (locs, loc_qtys/indx), returns the subset close to the
 ! "base", their indices, and their distances to the "base" ...
-
-! For vertical distance computations, general philosophy is to convert all
-! vertical coordinates to a common coordinate. This coordinate type is defined
-! in the namelist with the variable "vert_localization_coord".
 
 integer :: t_ind, k
 
 ! Initialize variables to missing status
 
 num_close = 0
-close_ind = -99
-!if (present(dist)) dist = 1.0e9   !something big and positive (far away)
-dist = 1.0e9   !something big and positive (far away)
+close_indices = -99
+if (present(distances)) distances(:) = 1.0e9   !something big and positive (far away)
 
 ! Get all the potentially close obs but no dist (optional argument dist(:)
 ! is not present) This way, we are decreasing the number of distance
@@ -3047,25 +2249,25 @@ dist = 1.0e9   !something big and positive (far away)
 ! we don't need to have the relevant vertical coordinate information yet 
 ! (for obs).
 
-call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs, obs_kind, &
-                       num_close, close_ind)
+call loc_get_close_state(filt_gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
+                         num_close, close_indices)
 
 ! Loop over potentially close subset of obs priors or state variables
-!if (present(dist)) then
-do k = 1, num_close
+if (present(distances)) then
+   do k = 1, num_close
 
-   t_ind = close_ind(k)
+      t_ind = close_indices(k)
 
-   ! if dry land, leave original 1e9 value.  otherwise, compute real dist.
-   if (obs_kind(t_ind) /= QTY_DRY_LAND) then
-      dist(k) = get_dist(base_obs_loc,       obs(t_ind), &
-                         base_obs_kind, obs_kind(t_ind))
-   endif
+      ! if dry land, leave original 1e9 value.  otherwise, compute real dist.
+      if (loc_qtys(t_ind) /= QTY_DRY_LAND) then
+         distances(k) = get_dist(base_loc,      locs(t_ind), &
+                                 base_type, loc_qtys(t_ind))
+      endif
+   
+   enddo
+endif
 
-enddo
-!endif
-
-end subroutine get_close_obs
+end subroutine get_close_state
 
 !------------------------------------------------------------------
 ! CMB no change
@@ -3216,32 +2418,6 @@ secthismin=int(sec-hour*3600-minute*60)
 read_model_time = set_date(nyr, month, mday, hour, minute, secthismin)
 
 end function read_model_time
-
-!--------------------------------------------------------------------
-!> pass the vertical localization coordinate to assim_tools_mod
-!CMB no change
-function query_vert_localization_coord()
-
-integer :: query_vert_localization_coord
-
-query_vert_localization_coord = 1 ! any old value
-
-end function query_vert_localization_coord
-
-!--------------------------------------------------------------------
-!> This is used in the filter_assim. The vertical conversion is done using the 
-!> mean state. 
-!CMB no change
-subroutine vert_convert(state_handle, location, obs_kind, istatus)
-
-type(ensemble_type), intent(in)  :: state_handle
-type(location_type), intent(in)  :: location
-integer,             intent(in)  :: obs_kind
-integer,             intent(out) :: istatus
-
-istatus = 0
-
-end subroutine vert_convert
 
 !------------------------------------------------------------------
 !> Verify that the namelist was filled in correctly, and check

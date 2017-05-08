@@ -9,7 +9,7 @@ module obs_model_mod
 use utilities_mod,        only : register_module, error_handler,     &
                                  E_ERR, E_MSG, E_WARN,               &
                                  get_unit, file_exist, set_output
-use assim_model_mod,      only : aget_closest_state_time_to,         &
+use assim_model_mod,      only : get_closest_state_time_to,         &
                                  get_model_time_step,  adv_1step
 
 use state_vector_io_mod,  only : read_state, write_state
@@ -176,6 +176,7 @@ if (print_trace_details > 0) then
    end_time = ens_time + delta_time / 2
    call timechat(ens_time,    'move_ahead', .false.,        'Current model data time            is: ')
    call timechat(start_time,  'move_ahead', .false.,        'Current assimilation window starts at: ')
+   call timechat(next_time,   'move_ahead', .false.,        'Next available observation time    is: ')
    call timechat(end_time,    'move_ahead', .false.,        'Current assimilation window ends   at: ')
   !call timechat(delta_time,  'move_ahead', .false.,        'Width of assimilation window       is: ')
 endif
@@ -184,7 +185,7 @@ endif
 ! Figure out what time to advance the model to.
 
 ! More control over time window use of observations would come in here
-time2 = aget_closest_state_time_to(ens_time, next_time)
+time2 = get_closest_state_time_to(ens_time, next_time)
 
 ! WATCH OUT FOR USING BOUNDARY TIME OBS TWICE; add one second to bottom time
 ! ALSO, avoid having a negative time for the start (for low-order models in general)
@@ -206,7 +207,7 @@ endif
 if(next_time < start_time .or. next_time > end_time .or. print_trace_details > 0) then
 
    if (time2 /= ens_time) then
-      call timechat(next_time,   'move_ahead', .false.,     'Next available observation time    is: ')
+      !call timechat(next_time,   'move_ahead', .false.,     'Next available observation time    is: ')
       call timechat(time2,       'move_ahead', .false.,     'Next data time should be           at: ', &
          'Not within current window, model will be called to advance state.')
       call timechat(start_time,  'move_ahead', .false.,     'Next assimilation window starts    at: ')

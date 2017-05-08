@@ -7,18 +7,27 @@
 # DART $Id$
 
 #----------------------------------------------------------------------
-# compile all programs in the current directory with a mkmf_xxx file.
+# compile all programs in the current directory that have a mkmf_xxx file.
 #
 # usage: [ -mpi | -nompi ]
+#
+#
+# environment variable options:
+#  before running this script, do:
+#   "setenv CODE_DEBUG 1" (csh) or "export CODE_DEBUG=1" (bash)
+#  to keep the .o and .mod files in the current directory instead of 
+#  removing them at the end.  this usually improves runtime error reports 
+#  and these files are required by most debuggers.
 #----------------------------------------------------------------------
 
 # this model name:
-set MODEL = "cam-fv"
+set BUILDING = "CAM FV"
 
 # programs which have the option of building with MPI:
-set MPI_TARGETS = "filter model_mod_check perfect_model_obs wakeup_filter"
+set MPI_TARGETS = "filter perfect_model_obs model_mod_check"
 
-# this model defaults to building filter and other programs WITH mpi
+# set default (override with -mpi or -nompi):
+#  0 = build without MPI, 1 = build with MPI
 set with_mpi = 1
 
 
@@ -37,23 +46,49 @@ if ( $#argv >= 1 ) then
 endif
 
 set preprocess_done = 0
-set debug = 0
+set tdebug = 0
+set cdebug = 0
 
-# set this to 1 in the environment to have the script remove
-# all .o and module files between executable builds.  this helps
-# catch path_names files which are missing required modules.
-
-if ( $?QUICKBUILD_DEBUG ) then
-   set debug = $QUICKBUILD_DEBUG
+if ( $?CODE_DEBUG ) then
+   set cdebug = $CODE_DEBUG
+endif
+if ( $?DART_TEST ) then
+   set tdebug = $DART_TEST
 endif
 
-\rm -f *.o *.mod
+\rm -f *.o *.mod 
+
+#----------------------------------------------------------------------
+# Build any NetCDF files from .cdl files
+#----------------------------------------------------------------------
 
 @ n = 0
+
+@ has_cdl = `ls *.cdl | wc -l` >& /dev/null
+
+if ( $has_cdl > 0 ) then
+   foreach DATAFILE ( *.cdl )
+   
+      set OUTNAME = `basename $DATAFILE .cdl`.nc
+   
+      if ( ! -f $OUTNAME ) then
+         @ n = $n + 1
+         echo
+         echo "---------------------------------------------------"
+         echo "constructing $BUILDING data file $n named $OUTNAME" 
+      
+         ncgen -o $OUTNAME $DATAFILE  || exit $n
+      endif
+   
+   end
+endif
+
 
 #----------------------------------------------------------------------
 # Build all the single-threaded targets
 #----------------------------------------------------------------------
+
+@ n = 0
 
 foreach TARGET ( mkmf_preprocess mkmf_* )
 
@@ -70,12 +105,12 @@ foreach TARGET ( mkmf_preprocess mkmf_* )
    @ n = $n + 1
    echo
    echo "---------------------------------------------------"
-   echo "${MODEL} build number ${n} is ${PROG}" 
-   \rm -f ${PROG}
+   echo "$BUILDING build number $n is $PROG" 
+   \rm -f $PROG
    csh $TARGET || exit $n
    make        || exit $n
 
-   if ( $debug ) then
+   if ( $tdebug ) then
       echo 'removing all files between builds'
       \rm -f *.o *.mod
    endif
@@ -91,7 +126,13 @@ foreach TARGET ( mkmf_preprocess mkmf_* )
 skip:
 end
 
-\rm -f *.o *.mod input.nml*_default
+if ( $cdebug ) then 
+   echo 'preserving .o and .mod files for debugging'
+else
+   \rm -f *.o *.mod 
+endif
+
+\rm -f input.nml*_default
 
 echo "Success: All single task DART programs compiled."  
 
@@ -102,11 +143,7 @@ else
   exit 0
 endif
 
-#----------------------------------------------------------------------
-# to disable an MPI parallel version of filter for this model, 
-# call this script with the -nompi argument, or if you are never going to
-# build with MPI, add an exit after the 'Success' line.
-#----------------------------------------------------------------------
+\rm -f *.o *.mod 
 
 #----------------------------------------------------------------------
 # Build the MPI-enabled target(s) 
@@ -119,19 +156,24 @@ foreach PROG ( $MPI_TARGETS )
    @ n = $n + 1
    echo
    echo "---------------------------------------------------"
-   echo "${MODEL} build number ${n} is ${PROG}" 
-   \rm -f ${PROG}
+   echo "$BUILDING with MPI build number $n is $PROG" 
+   \rm -f $PROG
    csh $TARGET -mpi || exit $n
    make             || exit $n
 
-   if ( $debug ) then
+   if ( $tdebug ) then
       echo 'removing all files between builds'
       \rm -f *.o *.mod
    endif
 
 end
 
-\rm -f *.o *.mod input.nml*_default
+if ( $cdebug ) then 
+   echo 'preserving .o and .mod files for debugging'
+else
+   \rm -f *.o *.mod 
+endif
+\rm -f input.nml*_default
 
 echo "Success: All MPI parallel DART programs compiled."  
 

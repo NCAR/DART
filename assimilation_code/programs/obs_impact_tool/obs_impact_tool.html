@@ -163,9 +163,10 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;obs_impact_tool_nml
-  input_filename         = 'cross_correlations.txt'
-  output_filename        = 'control_impact_runtime.txt'
-  debug                  = .true.
+  input_filename          = 'cross_correlations.txt'
+  output_filename         = 'control_impact_runtime.txt'
+  allow_any_impact_values = .false.
+  debug                   = .true.
   /
 </pre>
 </div>
@@ -200,6 +201,14 @@ The format of this file is set by this tool and should
 not be modified by hand.  Rerun this tool to recreate
 the file.
 </TD></TR>
+
+<TR><TD>allow_any_impact_values</TD>
+    <TD>logical</TD>
+    <TD>Recommended to stay false.  This allows only 0.0 and 1.0 as the
+impact factors, effectively using the full increments or no increments
+during the assimilation.  To experiment with partial application of
+the increments this flag can be set to true to allow other values.
+<TD></TR>
 
 <TR><TD>debug</TD>
     <TD>logical</TD>

@@ -74,9 +74,9 @@ use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs,
 use     location_mod, only : location_type, get_location, set_location_missing, &
                              write_location, operator(/=), operator(==), &
                              set_location, is_location_in_region, query_location, &
-                             nc_write_location_atts, nc_get_location_varids, &
-                             nc_write_location, LocationDims, VERTISUNDEF, &
-                             vert_is_undef, vert_is_surface, vert_is_pressure
+                             VERTISUNDEF, is_vertical
+
+use  location_io_mod, only : nc_write_location_atts, nc_write_location
 
 use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time, &
                              set_time_missing, print_date, set_calendar_type, &
@@ -963,7 +963,7 @@ integer                      :: InitNetCDF
 
 integer :: ncid, i, nlines, linelen, ndims
 integer ::  LineLenDimID,   nlinesDimID,   stringDimID
-integer :: VarID, LocationVarID, WhichVertVarID
+integer :: VarID
 character(len=nf90_max_name) :: dimName
 integer, dimension(nf90_max_var_dims) :: dimIDs, dimLengths
 
@@ -1153,10 +1153,7 @@ call nc_check(nf90_put_att(ncid, VarID, 'units',     'seconds'), &
 
 ! let the location module write what it needs to ...
 
-if ( nc_write_location_atts( ncid, fname, ncmeta%StationsDimID ) /= 0 ) then
-   write(string1,*)'problem initializing netCDF location attributes'
-   call error_handler(E_ERR,'InitNetCDF:',string1,source,revision,revdate)
-endif
+call nc_write_location_atts(ncid, num_stations, ncmeta%StationsDimID)
 
 !----------------------------------------------------------------------------
 ! Define the RECORD variables
@@ -1263,11 +1260,8 @@ call nc_check(nf90_put_var(ncid, VarID, forecast_leads ), &
 
 ! Record station locations using location_mod:nc_write_location()
 
-call nc_get_location_varids(ncid, fname, LocationVarID, WhichVertVarID)
-
 do i = 1,num_stations
-   call nc_write_location(ncid, LocationVarId, station(i)%location, &
-             i, WhichVertVarId)
+   call nc_write_location(ncid, station(i)%location, i, do_vert=.true.)
 enddo
 
 !----------------------------------------------------------------------------
@@ -1795,7 +1789,7 @@ forecast_lead_index = -1
 
 obslocarray = get_location(ob_loc)
 
-if ( vert_is_pressure(ob_loc) ) then
+if ( is_vertical(ob_loc, "PRESSURE") ) then
    ! Determine which mandatory vertical level is closest
 
    distances = abs(obslocarray(3) - mandatory_level)
@@ -1809,10 +1803,10 @@ if ( vert_is_pressure(ob_loc) ) then
       return
    endif
 
-elseif ( vert_is_undef(ob_loc) ) then
+elseif ( is_vertical(ob_loc, "UNDEFINED") ) then
    ilevel = 1
 
-elseif ( vert_is_surface(ob_loc) ) then
+elseif ( is_vertical(ob_loc, "SURFACE") ) then
    ilevel = 1
 
 else ! unwanted

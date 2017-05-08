@@ -40,7 +40,7 @@ endif
 #----------------------------------------------------------------------
 
 if ( ! $?REMOVE) then
-   setenv REMOVE 'rm -rf'
+   setenv REMOVE 'rm -f'
 endif
 
 if ( ! $?host) then
@@ -108,7 +108,7 @@ foreach MODEL ( $DO_THESE_MODELS )
     if ( $FAILURE ) then
       echo "ERROR - unsuccessful build of $MODEL at "`date`
     else
-      echo "End of succesful build of $MODEL at "`date`
+      echo "End of successful build of $MODEL at "`date`
     endif
     echo "=================================================================="
     echo "=================================================================="
@@ -143,11 +143,12 @@ foreach MODEL ( $DO_THESE_MODELS )
     cd ${modeldir}/${MODEL}/work
     set FAILURE = 0
 
-    cp input.nml input.nml.$$
     @ ncdlfiles = `ls *.cdl | wc -l`
 
     if ( -f workshop_setup.csh ) then
       echo "Trying to run workshop_setup.csh for model $MODEL as a test"
+      ./workshop_setup.csh || set FAILURE = 1
+      echo "Re-running workshop_setup.csh to test overwriting files for model $MODEL"
       ./workshop_setup.csh || set FAILURE = 1
     else
       echo "Trying to run pmo for model $MODEL as a test"
@@ -161,6 +162,8 @@ foreach MODEL ( $DO_THESE_MODELS )
          end
       endif
       # assumes the executables from the first pass are still here
+      ./perfect_model_obs || set FAILURE = 1
+      echo "Rerunning PMO to test for file overwrite"
       ./perfect_model_obs || set FAILURE = 1
     endif
 
@@ -177,8 +180,7 @@ foreach MODEL ( $DO_THESE_MODELS )
         if ( -f ${base}.nc ) rm ${base}.nc
       end
     endif
-    mv -f input.nml.$$ input.nml
-    # or svn revert input.nml?
+    svn revert input.nml obs_seq.*
 
     @ modelnum = $modelnum + 1
 

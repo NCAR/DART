@@ -4,15 +4,16 @@ use kinds, only: r_kind, r_single, i_kind
 use params
 use mpisetup
 
-use  obs_utilities_mod, only : add_obs_to_seq
+use obs_utilities_mod, only : add_obs_to_seq
 use  obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs_sequence, insert_obs_in_seq, &
                               set_copy_meta_data, set_qc_meta_data, write_obs_seq, assignment(=), &
                               init_obs, static_init_obs_sequence, set_obs_def, set_obs_values, set_qc, &
                               destroy_obs, destroy_obs_sequence
 use       obs_def_mod, only : set_obs_def_location, set_obs_def_error_variance, &
-                              set_obs_def_kind, set_obs_def_time, set_obs_def_key, &
+                              set_obs_def_type_of_obs, set_obs_def_time, set_obs_def_key, &
                               obs_def_type,set_obs_def_external_FO,destroy_obs_def ! CSS added set_obs_def_external_FO, destroy_obs_def
 use   obs_def_gps_mod, only : set_gpsro_ref
+use         types_mod, only : obstypelength
 use      obs_kind_mod
 use      location_mod, only : location_type, set_location, VERTISSURFACE, VERTISPRESSURE, VERTISHEIGHT
 use  time_manager_mod, only : time_type, set_date, set_time, set_calendar_type, GREGORIAN, &
@@ -207,7 +208,7 @@ subroutine dart_obs_seq (datestring,                              &
       location = set_location(lon, lat, vloc, which_vert)
 
       call set_obs_def_location(obs_def, location)
-      call set_obs_def_kind(obs_def, obskind)
+      call set_obs_def_type_of_obs(obs_def, obskind)
       call set_obs_def_time(obs_def, time_obs)
       if ( obskind == GPSRO_REFRACTIVITY ) then
          gnx   = 0.0
@@ -373,7 +374,7 @@ subroutine radiance_to_dart_obs_kind(obtype, channel, obs_kind, which_vert, obs_
    call replace_hyphen(this_string)  ! Bad things will happen in DART preprocess "obs_def" files if there are hyphens in names. Replace with underscores
    
    ! Be careful about upper/lower case.  Make sure this matches the obs_def
-   obs_kind =  get_obs_kind_index(this_string)  ! get_obs_kind_index from obs_kind_mod
+   obs_kind =  get_index_for_type_of_obs(this_string)    ! from obs_kind_mod
    obs_kind_gen = QTY_TEMPERATURE ! QTY_RADIANCE
    which_vert  = VERTISPRESSURE
 end subroutine radiance_to_dart_obs_kind
@@ -399,7 +400,7 @@ function write_this_ob_type_external_FO(ob_type)
    is_all = .false.
 
    ! Get the ob_type string corresponding to the ob_type integer
-   ob_type_string = get_obs_kind_name(ob_type) !  get_obs_kind_name from obs_kind_mod
+   ob_type_string = get_name_for_type_of_obs(ob_type)   ! from obs_kind_mod
 
    ! Determine whether we want to write out this ob type
    do i=1,ntypes_to_compute_FO_max  ! ntypes_to_compute_FO_max,write_FO_for_these_obs_types from params

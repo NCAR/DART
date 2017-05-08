@@ -19,7 +19,7 @@ use     location_mod, only : location_type, get_location, set_location, &
                              LocationName !%! , vert_is_height 
                              ! see comment in select_gps_by_height() for explanation of !%!
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_def_type_of_obs, &
-                             get_obs_def_location
+                             get_obs_def_location, set_obs_def_write_external_FO
 use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs, get_index_for_type_of_obs
 use time_manager_mod, only : time_type, operator(>), print_time, set_time, &
                              print_date, set_calendar_type, GREGORIAN
@@ -135,6 +135,8 @@ logical  :: print_only = .false.
 logical  :: gregorian_cal = .true.
 real(r8) :: min_gps_height = missing_r8
 
+logical  :: write_external_FOs
+
 namelist /obs_sequence_tool_nml/ &
          num_input_files, filename_seq, filename_seq_list, filename_out,     &
          first_obs_days, first_obs_seconds, last_obs_days, last_obs_seconds, &
@@ -144,7 +146,7 @@ namelist /obs_sequence_tool_nml/ &
          min_gps_height, edit_copy_metadata, new_copy_index,                 &
          edit_qc_metadata, new_qc_index, synonymous_copy_list,               &
          synonymous_qc_list, edit_copies, edit_qcs, new_copy_metadata,       &
-         new_qc_metadata, new_copy_data, new_qc_data
+         new_qc_metadata, new_copy_data, new_qc_data, write_external_FOs
 
 !----------------------------------------------------------------
 ! Start of the program:

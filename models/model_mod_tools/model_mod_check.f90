@@ -311,9 +311,7 @@ if ( do_output() ) then
    write(*,*)
 endif
 
-call create_mean_window(ens_handle, 1, .false.)
-call get_state_meta_data(ens_handle, iloc, loc, var_type)
-call free_mean_window
+call get_state_meta_data(iloc, loc, var_type)
 
 call write_location(42, loc, fform='formatted', charstring=string1)
 

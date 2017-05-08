@@ -270,7 +270,6 @@ logical :: diagnostic_initialized = .false.
 ! debug flag for get_state_indices
 logical :: debug = .false.
 
-!>@todo ultimately only support blank and from_file ... models that currently do not start from netCDF can easily be made to start from netCDF because the nc_write_model_vars() functions already exist ... Tim thinks this is easy.
 interface add_domain
    module procedure add_domain_blank
    module procedure add_domain_from_file
@@ -439,7 +438,7 @@ state%domain(dom_id)%variable(1)%index_start = domain_offset + 1
 state%domain(dom_id)%variable(1)%index_end   = domain_offset + domain_size
 !>@todo FIXME : should this be raw state variable or -1?, optional argument
 !>              for kind??
-state%domain(dom_id)%variable(1)%kind_string = 'QTY_RAW_STATE_VARIABLE'
+state%domain(dom_id)%variable(1)%kind_string = 'QTY_STATE_VARIABLE'
 state%domain(dom_id)%variable(1)%dart_kind   = &
        get_index_for_quantity(state%domain(dom_id)%variable(1)%kind_string)
 

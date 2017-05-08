@@ -18,14 +18,14 @@ use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time,&
                              operator(/=), operator(<=)
 
 use     location_mod, only : location_type, get_dist, query_location,          &
-                             get_close_maxdist_init, get_close_type,           &
-                             set_location, get_location,                       &
-                             get_close_obs_init, write_location,               &
-                             loc_get_close_obs => get_close_obs, set_periodic
+                             get_close_type, set_location, get_location,       &
+                             write_location, get_close_obs, get_close_state,   &
+                             convert_vertical_obs, convert_vertical_state,     &
+                             set_periodic
 
 use    utilities_mod, only : register_module, error_handler,                   &
                              E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
-                             nc_check, do_output, to_upper,                    &
+                             do_output, to_upper,                              &
                              find_namelist_in_file, check_namelist_read,       &
                              open_file, file_exist, find_textfile_dims,        &
                              file_to_text, close_file, do_nml_file,            &
@@ -33,6 +33,9 @@ use    utilities_mod, only : register_module, error_handler,                   &
 
 use     obs_kind_mod, only : get_index_for_quantity,  &
                              get_name_for_quantity
+
+use netcdf_utilities_mod, only : nc_add_global_attribute, nc_sync, nc_check, &
+                                 nc_add_global_creation_time, nc_redef, nc_enddef
 
 use mpi_utilities_mod, only : my_task_id
 
@@ -49,6 +52,9 @@ use state_structure_mod,   only : add_domain, get_model_variable_indices, &
                                   get_num_variables,  &
                                   get_num_dims
 
+use default_model_mod,     only : pert_model_copies, nc_write_model_vars, &
+                                  adv_1step, init_time, init_conditions
+
 use ensemble_manager_mod, only : ensemble_type, copies_in_window
 
 use typesizes
@@ -59,23 +65,26 @@ private
 
 ! these routines must be public and you cannot change
 ! the arguments - they will be called *from* the DART code.
+
+!> required routines with code in this module
 public :: static_init_model,             &
           get_model_size,                &
-          adv_1step,                     &
           get_state_meta_data,           &
           model_interpolate,             &
-          get_model_time_step,           &
+          shortest_time_between_assimilations, &
           end_model,                     &
+          nc_write_model_atts
+
+!> required routines where code is in other modules
+public::  nc_write_model_vars,           &
+          pert_model_copies,             &
+          get_close_obs,                 &
+          get_close_state,               &
+          convert_vertical_obs,          &
+          convert_vertical_state,        &
           init_time,                     &
           init_conditions,               &
-          nc_write_model_atts,           &
-          nc_write_model_vars,           &
-          pert_model_copies,             &
-          get_close_maxdist_init,        &
-          get_close_obs_init,            &
-          get_close_obs,                 &
-          query_vert_localization_coord, &
-          vert_convert,                  &
+          adv_1step,                     &
           read_model_time,               &
           write_model_time
 
@@ -363,7 +372,7 @@ end subroutine static_init_model
 
 function get_model_size()
 
-integer :: get_model_size
+integer(i8) :: get_model_size
 
 if ( .not. module_initialized ) call static_init_model()
 
@@ -374,36 +383,12 @@ end function get_model_size
 
 !------------------------------------------------------------------
 !>
-!> Cannot call CM1 as a subroutine. It is an error to try.
-
-subroutine adv_1step(x, time)
-
-real(r8),        intent(inout) :: x(:)
-type(time_type), intent(in)    :: time
-
-if ( .not. module_initialized ) call static_init_model()
-
-if (do_output()) then
-   call print_time(time,'adv_1step called with DART time of')
-   call print_time(time,'adv_1step called with DART time of', logfileunit)
-endif
-
-call error_handler(E_ERR, 'adv_1step', &
-   'Cannot advance CM1 with a subroutine call; async cannot equal 0', &
-   source,revision,revdate)
-
-end subroutine adv_1step
-
-
-!------------------------------------------------------------------
-!>
 !> given an index into the state vector, return its location and
 !> if given, the var kind.   despite the name, var_type is a generic
 !> kind, like those in obs_kind/obs_kind_mod.f90, starting with QTY_
 
-subroutine get_state_meta_data(state_ens_handle, index_in, location, var_type)
+subroutine get_state_meta_data(index_in, location, var_type)
 
-type(ensemble_type), intent(in)  :: state_ens_handle
 integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer, optional,   intent(out) :: var_type
@@ -543,23 +528,17 @@ end function
 
 
 !------------------------------------------------------------------
-!>
-!> Returns the external time step of the model; the smallest increment
-!> in time that the model is capable of advancing the state in a given
-!> implementation. This interface is required for all applications.
-!> this implementation assumes that static_init_model() will set a
-!> module global variable before returning.
-!> THIS IS NOT RELATED TO THE INTERNAL TIMESTEP OF THE MODEL.
+! Returns the smallest increment in time that the model is capable of 
+! advancing the state
+function shortest_time_between_assimilations()
 
-function get_model_time_step()
-
-type(time_type) :: get_model_time_step
+type(time_type) :: shortest_time_between_assimilations
 
 if ( .not. module_initialized ) call static_init_model()
 
-get_model_time_step = model_timestep
+shortest_time_between_assimilations = model_timestep
 
-end function get_model_time_step
+end function shortest_time_between_assimilations
 
 
 !------------------------------------------------------------------
@@ -577,77 +556,14 @@ end subroutine end_model
 
 !------------------------------------------------------------------
 !>
-!> Returns an initial time for the case when there is no restart file
-!> that contains a real model time.
-!>
-!> only useful if there is a pre-defined set of initial conditions
-!> that isn't read from a file.  i'm assuming that is not true for CM1,
-!> so make it an error to call this routine.
-!>
-!> This is only used if the namelist parameter
-!> start_from_restart is set to .false. in the program perfect_model_obs.
-!> If this option is not to be used in perfect_model_obs, or if no
-!> synthetic data experiments using perfect_model_obs are planned,
-!> this can be a NULL INTERFACE.
-
-subroutine init_time(time)
-
-type(time_type), intent(out) :: time
-
-if ( .not. module_initialized ) call static_init_model()
-
-! example of how to set the time to seconds=0, days=0:
-time = set_time(0,0)
-
-call error_handler(E_ERR, 'init_time', &
-   'Cannot start CM1 without a restart file; start_from_restart cannot be .false. in PMO', &
-   source,revision,revdate)
-
-end subroutine init_time
-
-
-!------------------------------------------------------------------
-!>
-!> Returns a model state vector, x, that is some sort of appropriate
-!> initial condition for starting up a long integration of the model.
-!>
-!> only useful if there is a pre-defined set of initial conditions
-!> that isn't read from a file.  i'm assuming that is not true for CM1,
-!> so make it an error to call this routine.
-!>
-!> This is only used if the namelist parameter
-!> start_from_restart is set to .false. in the program perfect_model_obs.
-!> If this option is not to be used in perfect_model_obs, or if no
-!> synthetic data experiments using perfect_model_obs are planned,
-!> this can be a NULL INTERFACE.
-
-subroutine init_conditions(x)
-
-real(r8), intent(out) :: x(:)
-
-if ( .not. module_initialized ) call static_init_model()
-
-! example of how to set the state vector to all 0s:
-x = 0.0_r8
-
-call error_handler(E_ERR, 'init_conditions', &
-   'Cannot start CM1 without a restart file; start_from_restart cannot be .false. in PMO', &
-   source,revision,revdate)
-
-end subroutine init_conditions
-
-
-!------------------------------------------------------------------
-!>
 !> Writes the model-specific attributes to a netCDF file.
 !> This includes coordinate variables and some metadata, but NOT
 !> the model state vector.
 
-function nc_write_model_atts( ncFileID , local_model_mod_will_write_state_variables ) result (ierr)
+subroutine nc_write_model_atts(ncid, domain_id)
 
-integer, intent(in)  :: ncFileID      ! netCDF file identifier
-logical, intent(out) :: local_model_mod_will_write_state_variables   ! if false, dart writes for us
-integer              :: ierr          ! return value of function
+integer, intent(in)  :: ncid
+integer, intent(in) :: domain_id
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 
@@ -660,49 +576,31 @@ logical :: has_model_namelist
 
 ! local variables
 
-! we are going to need these to record the creation date in the netCDF file.
-! This is entirely optional, but nice.
-
-character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
-integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=NF90_MAX_NAME) :: time_str
 integer :: io
 
 character(len=128) :: filename
 
 if ( .not. module_initialized ) call static_init_model()
 
-ierr = -1 ! assume things go poorly
-
-local_model_mod_will_write_state_variables = .false.  ! have dart do it
-
 ! we only have a netcdf handle here so we do not know the filename
 ! or the fortran unit number.  but construct a string with at least
 ! the netcdf handle, so in case of error we can trace back to see
 ! which netcdf file is involved.
 
-write(filename,*) 'ncFileID ', ncFileID
+write(filename,*) 'ncid', ncid
 
-! make sure ncFileID refers to an open netCDF file,
-! and then put into define mode.
 
-call nc_check(nf90_Inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID),&
-                                   'nc_write_model_atts', 'inquire '//trim(filename))
-call nc_check(nf90_Redef(ncFileID),'nc_write_model_atts',   'redef '//trim(filename))
+! Write Global Attributes 
+call nc_redef(ncid)
 
-! Write Global Attributes
+call nc_add_global_creation_time(ncid)
 
-call DATE_AND_TIME(crdate,crtime,crzone,values)
-write(time_str,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
-                  values(1), values(2), values(3), values(5), values(6), values(7)
+call nc_add_global_attribute(ncid, "model_source", source )
+call nc_add_global_attribute(ncid, "model_revision", revision )
+call nc_add_global_attribute(ncid, "model_revdate", revdate )
 
-call set_netcdf_string_attr(ncFileID, 'creation_date',  time_str, filename)
-call set_netcdf_string_attr(ncFileID, 'model_source',   source,   filename)
-call set_netcdf_string_attr(ncFileID, 'model_revision', revision, filename)
-call set_netcdf_string_attr(ncFileID, 'model_revdate',  revdate,  filename)
-call set_netcdf_string_attr(ncFileID, 'model',          'CM1',    filename)
+call nc_add_global_attribute(ncid, "model", "CM1")
+
 
 ! Determine shape of CM1 namelist
 
@@ -722,182 +620,45 @@ if (has_model_namelist) then
    allocate(textblock(nlines))
    textblock = ''
 
-   io = nf90_inq_dimid(ncid=ncFileID, name='NMLlinelen', dimid=LineLenDimID)
+   io = nf90_inq_dimid(ncid, name='NMLlinelen', dimid=LineLenDimID)
    if ( io == NF90_NOERR ) then
       continue
    else
-      call nc_check(nf90_def_dim(ncid=ncFileID, name='NMLlinelen', &
+      call nc_check(nf90_def_dim(ncid, name='NMLlinelen', &
                  len = nlines, dimid = LineLenDimID), &
                  'nc_write_model_atts', 'def_dim NMLlinelen ')
    endif
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='nlines', &
+   call nc_check(nf90_def_dim(ncid, name='nlines', &
                  len = nlines, dimid = nlinesDimID), &
                  'nc_write_model_atts', 'def_dim nlines ')
 
-   call nc_check(nf90_def_var(ncFileID,name='CM1_namelist', xtype=nf90_char,    &
+   call nc_check(nf90_def_var(ncid, name='CM1_namelist', xtype=nf90_char,    &
                  dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID), &
                  'nc_write_model_atts', 'def_var model_in')
-   call nc_check(nf90_put_att(ncFileID, nmlVarID, 'long_name',       &
+   call nc_check(nf90_put_att(ncid, nmlVarID, 'long_name',       &
                  'contents of model_in namelist'), 'nc_write_model_atts', 'put_att model_in')
 
 endif
 
 ! Leave define mode so we can write the static data
-call nc_check(nf90_enddef(ncfileID),'nc_write_model_atts','enddef '//trim(filename))
+call nc_enddef(ncid)
+
+! write the namelist contents.  could also write grid information
+! if desired.
 
 if (has_model_namelist) then
    call file_to_text('namelist.input', textblock)
-   call nc_check(nf90_put_var(ncFileID, nmlVarID, textblock ), &
+   call nc_check(nf90_put_var(ncid, nmlVarID, textblock ), &
                  'nc_write_model_atts', 'put_var nmlVarID')
    deallocate(textblock)
 endif
 
 ! Flush the buffer and leave netCDF file open
 
-call nc_check(nf90_sync(ncFileID), 'nc_write_model_atts', 'atts sync')
+call nc_sync(ncid)
 
-ierr = 0 ! If we got here, things went well.
-
-end function nc_write_model_atts
-
-
-!------------------------------------------------------------------
-!>
-
-function nc_write_model_vars( ncFileID, state_vec, copyindex, timeindex ) result (ierr)
-
-integer,                intent(in) :: ncFileID      ! netCDF file identifier
-real(r8), dimension(:), intent(in) :: state_vec
-integer,                intent(in) :: copyindex
-integer,                intent(in) :: timeindex
-integer                            :: ierr          ! return value of function
-
-integer :: TimeDimID, MemberDimID
-
-character(len=128) :: filename
-
-if ( .not. module_initialized ) call static_init_model()
-
-ierr = -1 ! assume things go poorly
-
-! we only have a netcdf handle here so we do not know the filename
-! or the fortran unit number.  but construct a string with at least
-! the netcdf handle, so in case of error we can trace back to see
-! which netcdf file is involved.
-
-write(filename,*) 'ncFileID', ncFileID
-
-! make sure ncFileID refers to an open netCDF file,
-
-call nc_check(nf90_inq_dimid(ncFileID, 'member', dimid=MemberDimID), &
-            'nc_write_model_vars', 'inq_dimid copy '//trim(filename))
-
-call nc_check(nf90_inq_dimid(ncFileID, 'time', dimid=TimeDimID), &
-            'nc_write_model_vars', 'inq_dimid time '//trim(filename))
-
-! Flush the buffer and leave netCDF file open
-
-call nc_check(nf90_sync(ncFileID), 'nc_write_model_vars', 'sync '//trim(filename))
-
-ierr = 0 ! If we got here, things went well.
-
-end function nc_write_model_vars
-
-
-!------------------------------------------------------------------
-!>
-
-subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
-
-type(ensemble_type), intent(inout) :: state_ens_handle
-integer,             intent(in)    :: ens_size
-real(r8),            intent(in)    :: pert_amp
-logical,             intent(out)   :: interf_provided
-
-interf_provided = .false.
-
-end subroutine pert_model_copies
-
-
-!------------------------------------------------------------------
-!>
-!> Given a DART location (referred to as "base") and a set of candidate
-!> locations & kinds (obs, obs_kind), returns the subset close to the
-!> "base", their indices, and their distances to the "base" ...
-
-! Vertical conversion is carried out by the subroutine vert_convert.
-
-! Note that both base_obs_loc and obs_loc are intent(inout), meaning that these
-! locations are possibly modified here and returned as such to the calling routine.
-! The calling routine is always filter_assim and these arrays are local arrays
-! within filter_assim. In other words, these modifications will only matter within
-! filter_assim, but will not propagate backwards to filter.
-
-subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, &
-                         obs_loc, obs_kind, num_close, close_ind, dist, state_ens_handle)
-
-type(get_close_type),              intent(in)    :: gc
-type(location_type),               intent(inout) :: base_obs_loc
-integer,                           intent(in)    :: base_obs_kind
-type(location_type), dimension(:), intent(inout) :: obs_loc
-integer,             dimension(:), intent(in)    :: obs_kind
-integer,                           intent(out)   :: num_close
-integer,             dimension(:), intent(out)   :: close_ind
-real(r8), optional,  dimension(:), intent(out)   :: dist
-type(ensemble_type),               intent(in)    :: state_ens_handle
-
-! Loop over potentially close subset of obs priors or state variables
-! This way, we are decreasing the number of distance computations that will follow.
-! This is a horizontal-distance operation and we don't need to have the relevant vertical
-! coordinate information yet (for obs_loc).
-
-call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-                       num_close, close_ind, dist)
-
-end subroutine get_close_obs
-
-
-!------------------------------------------------------------------
-!>
-!> This subroutine converts a given ob/state vertical coordinate to
-!> the vertical localization coordinate type requested through the
-!> model_mod namelist.
-!>
-!> Notes: (1) obs_kind is only necessary to check whether the ob
-!>            is an identity ob.
-!>        (2) This subroutine can convert both obs' and state points'
-!>            vertical coordinates. Remember that state points get
-!>            their DART location information from get_state_meta_data
-!>            which is called by filter_assim during the assimilation
-!>            process.
-!>        (3) x is the relevant DART state vector for carrying out
-!>            computations necessary for the vertical coordinate
-!>            transformations. As the vertical coordinate is only used
-!>            in distance computations, this is actually the "expected"
-!>            vertical coordinate, so that computed distance is the
-!>            "expected" distance. Thus, under normal circumstances,
-!>            x that is supplied to vert_convert should be the
-!>            ensemble mean. Nevertheless, the subroutine has the
-!>            functionality to operate on any DART state vector that
-!>            is supplied to it.
-
-subroutine vert_convert(state_ens_handle, location, obs_kind, vstatus)
-
-type(ensemble_type),    intent(in)    :: state_ens_handle
-type(location_type),    intent(inout) :: location
-integer,                intent(in)    :: obs_kind
-integer,                intent(out)   :: vstatus
-
-integer :: ens_size
-
-ens_size = copies_in_window(state_ens_handle)
-
-!>@todo FIXME: completely dummied out for now
-
-vstatus = 0
-
-end subroutine vert_convert
+end subroutine nc_write_model_atts
 
 
 !------------------------------------------------------------------

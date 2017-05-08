@@ -26,11 +26,11 @@
 &filter_nml
    async                    = 0,
    adv_ens_command          = "../shell_scripts/advance_model.csh",
-   ens_size                 = 32,
+   ens_size                 = 3,
    obs_sequence_in_name     = "obs_seq.out",
    obs_sequence_out_name    = "obs_seq.final",
-   input_state_file_list    = "restarts_in_d01.txt"
-   output_state_file_list   = "restarts_out_d01.txt"
+   input_state_file_list    = "input_list.txt"
+   output_state_file_list   = "output_list.txt"
    init_time_days           = -1,
    init_time_seconds        = -1,
    first_obs_days           = -1,
@@ -90,7 +90,9 @@
    adaptive_localization_threshold = -1,
    output_localization_diagnostics = .false.,
    localization_diagnostics_file   = 'localization_diagnostics',
-   print_every_nth_obs             = 0,
+   convert_all_state_verticals_first = .true.
+   convert_all_obs_verticals_first   = .true.
+   print_every_nth_obs               = 0,
    /
 
 &cov_cutoff_nml
@@ -206,7 +208,7 @@
 # an internal structure that speeds up searches.  don't change it
 # based on your grid size.  nlon must be an odd number.
 &location_nml
-   horiz_dist_only             = .true.,
+   horiz_dist_only             = .false.,
    vert_normalization_pressure = 6666666.7,
    vert_normalization_height   = 5000000.0,
    vert_normalization_level    = 2666.7,
@@ -502,3 +504,5 @@
    single_precision_output    = .true.,
    /
 
+&compare_states_nml
+/

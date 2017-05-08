@@ -39,11 +39,7 @@ use        map_utils, only : proj_info, map_init, map_set, latlon_to_ij, &
                              ij_to_latlon, gridwind_to_truewind
 use     location_mod, only : location_type, get_location, set_location_missing, &
                              write_location, operator(/=),     &
-                             vert_is_undef,    VERTISUNDEF,    &
-                             vert_is_surface,  VERTISSURFACE,  &
-                             vert_is_level,    VERTISLEVEL,    &
-                             vert_is_pressure, VERTISPRESSURE, &
-                             vert_is_height,   VERTISHEIGHT
+                             is_vertical
 use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time, &
                              set_calendar_type, print_date, GREGORIAN, &
                              operator(*), operator(+), operator(-), &
@@ -327,7 +323,7 @@ do o = 1, num_obs_in_time_period
   ob_loc = get_obs_def_location(obs_def)
   obs_kind_ind = get_obs_def_type_of_obs(obs_def)
 
-  if ( (obs_kind_ind == RADAR_REFLECTIVITY) .and. (vert_is_height(ob_loc)) ) then
+  if ( (obs_kind_ind == RADAR_REFLECTIVITY) .and. (is_vertical(ob_loc, "HEIGHT")) ) then
   
     num_refl_obs = num_refl_obs + 1
 

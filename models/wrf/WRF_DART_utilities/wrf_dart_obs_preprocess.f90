@@ -28,7 +28,7 @@ program wrf_dart_obs_preprocess
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-use        types_mod, only : r8
+use        types_mod, only : r8, i8
 use obs_sequence_mod, only : obs_sequence_type, static_init_obs_sequence, &
                              read_obs_seq_header, destroy_obs_sequence, &
                              get_num_obs, write_obs_seq 
@@ -38,6 +38,7 @@ use     obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT, ACARS_U_WIND_COMPONENT
                              METAR_U_10_METER_WIND, GPSRO_REFRACTIVITY, &
                              SAT_U_WIND_COMPONENT, PROFILER_U_WIND_COMPONENT, VORTEX_LAT
 use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time
+use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, end_ensemble_manager
 use        model_mod, only : static_init_model
 use           netcdf
 
@@ -121,6 +122,8 @@ type(obs_sequence_type) :: seq_all, seq_rawin, seq_sfc, seq_acars, seq_satwnd, &
 
 type(time_type)         :: anal_time
 
+type(ensemble_type)     :: dummy_ens
+
 print*,'Enter target assimilation time (gregorian day, second): '
 read*,gday,gsec
 call set_calendar_type(GREGORIAN)
@@ -128,6 +131,7 @@ anal_time = set_time(gsec, gday)
 
 call static_init_obs_sequence()
 call static_init_model()
+call init_ensemble_manager(dummy_ens, 1, 1_i8)
 
 call find_namelist_in_file("input.nml", "wrf_obs_preproc_nml", iunit)
 read(iunit, nml = wrf_obs_preproc_nml, iostat = io)
@@ -293,8 +297,7 @@ if ( increase_bdy_error ) call increase_obs_err_bdy(seq_all, &
 call write_obs_seq(seq_all, file_name_output)
 call destroy_obs_sequence(seq_all)
 
-stop
-end
+contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -343,8 +346,7 @@ subroutine add_supplimental_obs(filename, obs_seq, max_obs_seq, plat_kind, &
 
 use         types_mod, only : r8
 use  time_manager_mod, only : time_type, operator(>=)
-use      location_mod, only : location_type, get_location, vert_is_pressure, &
-                              vert_is_height
+use      location_mod, only : location_type, get_location, is_vertical
 use  obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs, set_obs_def, &
                               get_num_copies, get_num_qc, read_obs_seq, copy_obs, &
                               get_first_obs, get_obs_def, get_next_obs, &
@@ -367,9 +369,7 @@ logical, intent(in)                    :: siglevel, sfcelev, overwrite_time
 real(r8), intent(in)                   :: obs_bdy, ptop, htop, elev_max
 
 integer  :: nloc, okind, dom_id
-logical  :: file_exist, last_obs, pass_checks, original_observation, &
-            rawinsonde_obs_check, aircraft_obs_check, surface_obs_check, &
-            sat_wind_obs_check, first_obs
+logical  :: file_exist, last_obs, pass_checks, first_obs
 real(r8) :: xyz_loc(3), xloc, yloc
 real(r8) :: real_nx, real_ny
 
@@ -454,8 +454,8 @@ ObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a sequence
   end if
 
   !  check if the observation is within vertical bounds of domain
-  if ( (vert_is_pressure(obs_loc) .and. xyz_loc(3) < ptop) .or. &
-       (vert_is_height(obs_loc)   .and. xyz_loc(3) > htop) ) then
+  if ( (is_vertical(obs_loc, "PRESSURE") .and. xyz_loc(3) < ptop) .or. &
+       (is_vertical(obs_loc, "HEIGHT")   .and. xyz_loc(3) > htop) ) then
 
     prev_obsi = obs_in
     call get_next_obs(supp_obs_seq, prev_obsi, obs_in, last_obs)
@@ -655,7 +655,7 @@ type(obs_sequence_type), intent(in) :: seq
 integer, intent(out)                :: nloc 
 type(location_type), intent(out)    :: obs_loc_list(maxobs)
 
-logical             :: last_obs, original_observation
+logical             :: last_obs
 type(obs_type)      :: obs, prev_obs
 type(obs_def_type)  :: obs_def
 type(location_type) :: obs_loc
@@ -902,8 +902,7 @@ function rawinsonde_obs_check(obs_loc, obs_kind, siglevel, &
 use     types_mod, only : r8
 use  obs_kind_mod, only : RADIOSONDE_SURFACE_ALTIMETER, QTY_SURFACE_ELEVATION
 use     model_mod, only : model_interpolate
-use  location_mod, only : location_type, set_location, get_location, &
-                          vert_is_pressure
+use  location_mod, only : location_type, set_location, get_location
 
 implicit none
 
@@ -912,9 +911,9 @@ integer, intent(in)             :: obs_kind
 logical, intent(in)             :: siglevel, elev_check
 real(r8), intent(in)            :: elev_max
 
-integer  :: istatus
-logical  :: rawinsonde_obs_check, isManLevel
-real(r8) :: xyz_loc(3), xmod(1), hsfc
+integer  :: istatus(1)
+logical  :: rawinsonde_obs_check
+real(r8) :: xyz_loc(3), xmod(1), hsfc(1)
 
 rawinsonde_obs_check = .true.
 xyz_loc = get_location(obs_loc)
@@ -932,8 +931,8 @@ else
   !  perform elevation check for altimeter
   if ( elev_check ) then
 
-    call model_interpolate(xmod, obs_loc, QTY_SURFACE_ELEVATION, hsfc, istatus)
-    if ( abs(hsfc - xyz_loc(3)) > elev_max ) rawinsonde_obs_check = .false.
+    call model_interpolate(dummy_ens, 1, obs_loc, QTY_SURFACE_ELEVATION, hsfc, istatus)
+    if ( abs(hsfc(1) - xyz_loc(3)) > elev_max ) rawinsonde_obs_check = .false.
 
   end if
 
@@ -976,8 +975,7 @@ subroutine read_and_parse_input_seq(filename, nx, ny, obs_bdy, siglevel, ptop, &
 use         types_mod, only : r8
 use     utilities_mod, only : nc_check
 use  time_manager_mod, only : time_type 
-use      location_mod, only : location_type, get_location, vert_is_pressure, &
-                              vert_is_height
+use      location_mod, only : location_type, get_location, is_vertical
 use  obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs, &
                               get_num_copies, get_num_qc, get_qc_meta_data, &
                               get_first_obs, get_obs_def, copy_obs, get_num_qc, &
@@ -1026,8 +1024,7 @@ type(obs_sequence_type), intent(inout) :: rawin_seq, sfc_seq, acars_seq, &
 
 character(len=129)    :: qcmeta
 integer               :: fid, var_id, okind, dom_id, i, j
-logical               :: file_exist, last_obs, input_ncep_qc, rawinsonde_obs_check, &
-                         surface_obs_check, aircraft_obs_check, sat_wind_obs_check
+logical               :: file_exist, last_obs, input_ncep_qc
 real(r8), allocatable :: xland(:,:), qc(:)
 real(r8)              :: xyz_loc(3), xloc, yloc
 
@@ -1085,8 +1082,8 @@ InputObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a seq
   end if
 
   !  check vertical location
-  if ( (vert_is_pressure(obs_loc) .and. xyz_loc(3) < ptop) .or. &
-       (vert_is_height(obs_loc)   .and. xyz_loc(3) > htop) ) then
+  if ( (is_vertical(obs_loc, "PRESSURE") .and. xyz_loc(3) < ptop) .or. &
+       (is_vertical(obs_loc, "HEIGHT")   .and. xyz_loc(3) > htop) ) then
 
     prev_obs = obs_in
     call get_next_obs(seq, prev_obs, obs_in, last_obs)
@@ -1360,7 +1357,7 @@ real(r8), intent(in)                   :: hdist, vdist
 
 integer             :: num_copies, num_qc, nloc, k, locdex, obs_kind, n, &
                        num_obs, poleward_obs
-logical             :: last_obs, close_to_greenwich, pole_check
+logical             :: last_obs, close_to_greenwich
 real(r8)            :: nuwnd, latu, lonu, preu, uwnd, erru, qcu, nvwnd, latv, &
                        lonv, prev, vwnd, errv, qcv, ntmpk, latt, lont, pret, &
                        tmpk, errt, qct, nqvap, latq, lonq, preq, qvap, errq, &
@@ -1796,7 +1793,7 @@ real(r8), intent(in)                   :: hdist, vdist
 
 integer             :: num_copies, num_qc, nloc, k, locdex, obs_kind, n, &
                        num_obs, poleward_obs
-logical             :: last_obs, close_to_greenwich, pole_check
+logical             :: last_obs, close_to_greenwich
 real(r8)            :: nwnd, lat, lon, pres, uwnd, erru, qcu, vwnd, &
                        errv, qcv, obs_dist, xyz_loc(3), obs_val(1), qc_val(1), &
                        lon_degree_limit
@@ -2006,17 +2003,17 @@ implicit none
 logical, intent(in)  :: elev_check
 real(r8), intent(in) :: xyz_loc(3), elev_max
 
-integer              :: istatus
+integer              :: istatus(1)
 logical              :: surface_obs_check
-real(r8)             :: xmod(1), hsfc
+real(r8)             :: xmod(1), hsfc(1)
 
 surface_obs_check = .true.
 
 if ( elev_check ) then
 
-  call model_interpolate(xmod, set_location(xyz_loc(1), xyz_loc(2), &
+  call model_interpolate(dummy_ens, 1, set_location(xyz_loc(1), xyz_loc(2), &
       xyz_loc(3), VERTISSURFACE), QTY_SURFACE_ELEVATION, hsfc, istatus)
-  if ( abs(hsfc - xyz_loc(3)) > elev_max ) surface_obs_check = .false.
+  if ( abs(hsfc(1) - xyz_loc(3)) > elev_max ) surface_obs_check = .false.
 
 end if
 
@@ -2189,6 +2186,8 @@ if (westl > eastl .and. lon <= eastl) lon = lon + circumf
 
 return
 end subroutine wrap_lon
+
+end program
 
 ! <next few lines under version control, do not edit>
 ! $URL$

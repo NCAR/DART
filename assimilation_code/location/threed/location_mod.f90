@@ -13,10 +13,13 @@ module location_mod
 ! If you are looking for a geophysical locations module, look at either
 ! the threed_sphere or threed_cartesian versions of this file.
 
-use      types_mod, only : r8, MISSING_R8
-use  utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format, &
-                           nc_check
-use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
+use            types_mod, only : r8, MISSING_R8, i8
+use        utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format
+use       random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
+use ensemble_manager_mod, only : ensemble_type
+use default_location_mod, only : has_vertical_choice, vertical_localization_on, &
+                                 get_vertical_localization_coord, &
+                                 set_vertical_localization_coord
 
 implicit none
 private
@@ -24,13 +27,12 @@ private
 public :: location_type, get_location, set_location, &
           set_location_missing, is_location_in_region, &
           write_location, read_location, interactive_location, query_location, &
-          LocationDims, LocationName, LocationLName, get_close_obs, &
-          get_close_maxdist_init, get_close_obs_init, get_close_type, &
-          operator(==), operator(/=), get_dist, get_close_obs_destroy, &
-          nc_write_location_atts, nc_get_location_varids, nc_write_location, &
-          vert_is_height, vert_is_pressure, vert_is_undef, vert_is_level, &
-          vert_is_surface, has_vertical_localization, &
-          set_vert, get_vert, set_which_vert
+          LocationDims, LocationName, LocationLName, LocationStorageOrder, LocationUnits, &
+          get_close_type, get_close_init, get_close, get_close_destroy, &
+          operator(==), operator(/=), get_dist, has_vertical_choice, vertical_localization_on, &
+          set_vertical, is_vertical, get_vertical_localization_coord, &
+          set_vertical_localization_coord, convert_vertical_obs, convert_vertical_state
+
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -57,6 +59,9 @@ logical, save :: module_initialized = .false.
 integer,              parameter :: LocationDims = 3
 character(len = 129), parameter :: LocationName = "loc3D"
 character(len = 129), parameter :: LocationLName = "threed cyclic locations: x, y, z"
+character(len = 129), parameter :: LocationStorageOrder = "X Y Z"
+character(len = 129), parameter :: LocationUnits = "none none none"
+
 
 character(len = 129) :: errstring
 
@@ -423,182 +428,63 @@ end subroutine interactive_location
 
 !----------------------------------------------------------------------------
 
-function nc_write_location_atts( ncFileID, fname, ObsNumDimID ) result (ierr)
+subroutine get_close_init(gc, num, maxdist, locs, maxdist_list)
  
-! Writes the "location module" -specific attributes to a netCDF file.
-
-use typeSizes
-use netcdf
-
-integer,          intent(in) :: ncFileID     ! handle to the netcdf file
-character(len=*), intent(in) :: fname        ! file name (for printing purposes)
-integer,          intent(in) :: ObsNumDimID  ! handle to the dimension that grows
-integer                      :: ierr
-
-integer :: LocDimID
-integer :: VarID
-
-if ( .not. module_initialized ) call initialize_module
-
-ierr = -1 ! assume things will fail ...
-
-! define the rank/dimension of the location information
-call nc_check(nf90_def_dim(ncid=ncFileID, name='location', len=LocationDims, &
-       dimid = LocDimID), 'nc_write_location_atts', 'def_dim:location '//trim(fname))
-
-! Define the observation location variable and attributes
-
-call nc_check(nf90_def_var(ncid=ncFileID, name='location', xtype=nf90_double, &
-          dimids=(/ LocDimID, ObsNumDimID /), varid=VarID), &
-            'nc_write_location_atts', 'location:def_var')
-
-call nc_check(nf90_put_att(ncFileID, VarID, 'description', &
-        'location coordinates'), 'nc_write_location_atts', 'location:description')
-call nc_check(nf90_put_att(ncFileID, VarID, 'location_type', &
-        trim(LocationName)), 'nc_write_location_atts', 'location:location_type')
-call nc_check(nf90_put_att(ncFileID, VarID, 'long_name', &
-        trim(LocationLName)), 'nc_write_location_atts', 'location:long_name')
-call nc_check(nf90_put_att(ncFileID, VarID, 'storage_order',     &
-        'X  Y'), 'nc_write_location_atts', 'location:storage_order')
-call nc_check(nf90_put_att(ncFileID, VarID, 'units',     &
-        'none none'), 'nc_write_location_atts', 'location:units')
-
-! no vertical array here.
-
-! If we made it to here without error-ing out ... we're good.
-
-ierr = 0
-
-end function nc_write_location_atts
-
-!----------------------------------------------------------------------------
-
-subroutine nc_get_location_varids( ncFileID, fname, LocationVarID, WhichVertVarID )
-
-! Return the LocationVarID and WhichVertVarID variables from a given netCDF file.
-!
-! ncFileId         the netcdf file descriptor
-! fname            the name of the netcdf file (for error messages only)
-! LocationVarID    the integer ID of the 'location' variable in the netCDF file
-! WhichVertVarID   the integer ID of the 'which_vert' variable in the netCDF file
-!
-! In this instance, WhichVertVarID will never be defined, ... set to a bogus value
-
-use typeSizes
-use netcdf
-
-integer,          intent(in)  :: ncFileID   ! handle to the netcdf file
-character(len=*), intent(in)  :: fname      ! file name (for printing purposes)
-integer,          intent(out) :: LocationVarID, WhichVertVarID
-
-if ( .not. module_initialized ) call initialize_module
-
-call nc_check(nf90_inq_varid(ncFileID, 'location', varid=LocationVarID), &
-          'nc_get_location_varids', 'inq_varid:location '//trim(fname))
-
-WhichVertVarID = -99
-
-end subroutine nc_get_location_varids
-
-!----------------------------------------------------------------------------
-
-subroutine nc_write_location(ncFileID, LocationVarID, loc, obsindex, WhichVertVarID)
- 
-! Writes a SINGLE location to the specified netCDF variable and file.
-! The LocationVarID and WhichVertVarID must be the values returned from
-! the nc_get_location_varids call.
-
-use typeSizes
-use netcdf
-
-integer,             intent(in) :: ncFileID, LocationVarID
-type(location_type), intent(in) :: loc
-integer,             intent(in) :: obsindex
-integer,             intent(in) :: WhichVertVarID
-
-real(r8), dimension(LocationDims) :: locations
-
-if ( .not. module_initialized ) call initialize_module
-
-locations = get_location( loc )
-
-call nc_check(nf90_put_var(ncFileID, LocationVarId, locations, &
-          start=(/ 1, obsindex /), count=(/ LocationDims, 1 /) ), &
-            'nc_write_location', 'put_var:location')
-
-if ( WhichVertVarID >= 0 ) then
-   write(errstring,*)'WhichVertVarID supposed to be negative ... is ',WhichVertVarID
-   call error_handler(E_ERR, 'nc_write_location', errstring, source, revision, revdate)
-endif ! if less than zero (as it should be) ... just ignore 
-
-end subroutine nc_write_location
-
-!----------------------------------------------------------------------------
-
-subroutine get_close_obs_init(gc, num, obs)
- 
-! Initializes part of get_close accelerator that depends on the particular obs
-
 type(get_close_type), intent(inout) :: gc
 integer,              intent(in)    :: num
-type(location_type),  intent(in)    :: obs(num)
-
-! Set the value of num_obs in the structure
-gc%num = num
-
-end subroutine get_close_obs_init
-
-!----------------------------------------------------------------------------
-
-subroutine get_close_obs_destroy(gc)
-
-type(get_close_type), intent(inout) :: gc
-
-end subroutine get_close_obs_destroy
-
-!----------------------------------------------------------------------------
-
-subroutine get_close_maxdist_init(gc, maxdist, maxdist_list)
-
-type(get_close_type), intent(inout) :: gc
 real(r8),             intent(in)    :: maxdist
+type(location_type),  intent(in)    :: locs(:)
 real(r8), intent(in), optional      :: maxdist_list(:)
 
-! Set the maximum distance in the structure
+! Set the maximum localization distance
 gc%maxdist = maxdist
 
-end subroutine get_close_maxdist_init
+! Save the value of num_locs
+gc%num = num
+
+if (present(maxdist_list)) then
+   write(errstring,*)'threed locations does not support different cutoff distances by type'
+   call error_handler(E_ERR, 'get_close_init', errstring, source, revision, revdate)
+endif
+
+end subroutine get_close_init
 
 !----------------------------------------------------------------------------
 
-subroutine get_close_obs(gc, base_obs_loc, base_obs_type, obs, obs_kind, &
-   num_close, close_ind, dist)
+subroutine get_close_destroy(gc)
 
-! Default version with no smarts; no need to be smart in 1D
-! Kinds are available here if one wanted to do more refined distances.
+type(get_close_type), intent(inout) :: gc
 
-type(get_close_type), intent(in)  :: gc
-type(location_type),  intent(in)  :: base_obs_loc, obs(:)
-integer,              intent(in)  :: base_obs_type, obs_kind(:)
-integer,              intent(out) :: num_close, close_ind(:)
-real(r8), optional,   intent(out) :: dist(:)
+end subroutine get_close_destroy
+
+!----------------------------------------------------------------------------
+
+subroutine get_close(gc, base_loc, base_type, locs, loc_qtys, &
+                     num_close, close_ind, dist, ensemble_handle)
+
+type(get_close_type),          intent(in)  :: gc
+type(location_type),           intent(in)  :: base_loc, locs(:)
+integer,                       intent(in)  :: base_type, loc_qtys(:)
+integer,                       intent(out) :: num_close, close_ind(:)
+real(r8),            optional, intent(out) :: dist(:)
+type(ensemble_type), optional, intent(in)  :: ensemble_handle
 
 integer :: i
 real(r8) :: this_dist
 
-! the list of locations in the obs() argument must be the same
-! as the list of locations passed into get_close_obs_init(), so
-! gc%num and size(obs) better be the same.   if the list changes,
+! the list of locations in the locs() argument must be the same
+! as the list of locations passed into get_close_init(), so
+! gc%num and size(locs) better be the same.   if the list changes,
 ! you have to destroy the old gc and init a new one.
-if (size(obs) /= gc%num) then
-   write(errstring,*)'obs() array must match one passed to get_close_obs_init()'
-   call error_handler(E_ERR, 'get_close_obs', errstring, source, revision, revdate)
+if (size(locs) /= gc%num) then
+   write(errstring,*)'locs() array must match one passed to get_close_init()'
+   call error_handler(E_ERR, 'get_close', errstring, source, revision, revdate)
 endif
 
 ! Return list of obs that are within maxdist and their distances
 num_close = 0
 do i = 1, gc%num
-   this_dist = get_dist(base_obs_loc, obs(i), base_obs_type, obs_kind(i))
+   this_dist = get_dist(base_loc, locs(i), base_type, loc_qtys(i))
    if(this_dist <= gc%maxdist) then
       ! Add this ob to the list
       num_close = num_close + 1
@@ -607,7 +493,7 @@ do i = 1, gc%num
    endif
 end do
 
-end subroutine get_close_obs
+end subroutine get_close
 
 !----------------------------------------------------------------------------
 
@@ -636,118 +522,63 @@ is_location_in_region = .true.
 end function is_location_in_region
 
 !----------------------------------------------------------------------------
-! stubs - always say no, but allow this code to be compiled with
-!         common code that sometimes needs vertical info.
+! stubs - here only because they have a location type as one of the arguments
 !----------------------------------------------------------------------------
 
-function vert_is_undef(loc)
- 
-! Stub, always returns false.
+function is_vertical(loc, which_vert)
 
-logical                          :: vert_is_undef
+logical                          :: is_vertical
 type(location_type), intent(in)  :: loc
+character(len=*),    intent(in)  :: which_vert
 
-vert_is_undef = .false.
+is_vertical = .false.
 
-end function vert_is_undef
-
-!----------------------------------------------------------------------------
-
-function vert_is_surface(loc)
- 
-! Stub, always returns false.
-
-logical                          :: vert_is_surface
-type(location_type), intent(in)  :: loc
-
-vert_is_surface = .false.
-
-end function vert_is_surface
-
-!----------------------------------------------------------------------------
-
-function vert_is_pressure(loc)
- 
-! Stub, always returns false.
-
-logical                          :: vert_is_pressure
-type(location_type), intent(in)  :: loc
-
-vert_is_pressure = .false.
-
-end function vert_is_pressure
-
-!----------------------------------------------------------------------------
-
-function vert_is_height(loc)
- 
-! Stub, always returns false.
-
-logical                          :: vert_is_height
-type(location_type), intent(in)  :: loc
-
-vert_is_height = .false.
-
-end function vert_is_height
-
-!----------------------------------------------------------------------------
-
-function vert_is_level(loc)
- 
-! Stub, always returns false.
-
-logical                          :: vert_is_level
-type(location_type), intent(in)  :: loc
-
-vert_is_level = .false.
-
-end function vert_is_level
-
-!---------------------------------------------------------------------------
-
-function has_vertical_localization()
- 
-! Always returns false since this type of location doesn't support
-! vertical localization.
-
-logical :: has_vertical_localization
-
-if ( .not. module_initialized ) call initialize_module
-
-has_vertical_localization = .false.
-
-end function has_vertical_localization
+end function is_vertical
 
 !--------------------------------------------------------------------
-!> dummy routine for models that don't have a vertical location
-function get_vert(loc)
 
-type(location_type), intent(in) :: loc
-real(r8) :: get_vert
+subroutine set_vertical(loc, vloc, which_vert)
 
-get_vert = 1 ! any old value
+type(location_type), intent(inout) :: loc
+real(r8), optional,  intent(in)    :: vloc
+integer,  optional,  intent(in)    :: which_vert
 
-end function get_vert
+
+end subroutine set_vertical
 
 !--------------------------------------------------------------------
-!> dummy routine for models that don't have a vertical location
-subroutine set_vert(loc, vloc)
 
-type(location_type), intent(inout) :: loc
-real(r8), intent(in) :: vloc
+subroutine convert_vertical_obs(ens_handle, num, locs, loc_qtys, loc_types, &
+                                which_vert, status)
 
+type(ensemble_type), intent(in)    :: ens_handle
+integer,             intent(in)    :: num
+type(location_type), intent(inout) :: locs(:)
+integer,             intent(in)    :: loc_qtys(:)
+integer,             intent(in)    :: loc_types(:)
+integer,             intent(in)    :: which_vert
+integer,             intent(out)   :: status(:)
 
-end subroutine set_vert
+status(:) = 0
 
-!----------------------------------------------------------------------------
-!> set the which vert
-subroutine set_which_vert(loc, which_vert)
+end subroutine convert_vertical_obs
 
-type(location_type), intent(inout) :: loc
-integer,                intent(in) :: which_vert !< vertical coordinate type
+!--------------------------------------------------------------------
 
+subroutine convert_vertical_state(ens_handle, num, locs, loc_qtys, loc_indx, &
+                                  which_vert, status)
 
-end subroutine set_which_vert
+type(ensemble_type), intent(in)    :: ens_handle
+integer,             intent(in)    :: num
+type(location_type), intent(inout) :: locs(:)
+integer,             intent(in)    :: loc_qtys(:)
+integer(i8),         intent(in)    :: loc_indx(:)
+integer,             intent(in)    :: which_vert
+integer,             intent(out)   :: status
+
+status = 0
+
+end subroutine convert_vertical_state
 
 !----------------------------------------------------------------------------
 ! end of location/threed/location_mod.f90

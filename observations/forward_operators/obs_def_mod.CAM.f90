@@ -1698,8 +1698,7 @@ end select
 ! Get location from state meta_data
 if(obs_def%kind < 0) then
 ! Get the location of this from model
-   !call get_state_meta_data(-1 * obs_def%kind, obs_def%location)
-   call error_handler(E_ERR, 'broken by Helen', 'get_state_meta_data')
+   call get_state_meta_data(-1 * obs_def%kind, obs_def%location)
 else! Get the location
    call interactive_location(obs_def%location)
 endif

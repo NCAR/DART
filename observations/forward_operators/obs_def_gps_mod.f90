@@ -59,7 +59,7 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, &
                              find_namelist_in_file, do_nml_file, do_nml_term, &
                              ascii_file_format
 use     location_mod, only : location_type, set_location, get_location, &
-                             vert_is_height, &
+                             is_vertical, &
                              VERTISHEIGHT
 use  assim_model_mod, only : interpolate
 
@@ -418,7 +418,7 @@ logical  :: return_now
 
 if ( .not. module_initialized ) call initialize_module
 
-if ( .not. vert_is_height(location)) then
+if ( .not. is_vertical(location, "HEIGHT")) then
    write(string1, *) 'vertical location must be height; gps obs key ', gpskey
    call error_handler(E_ERR,'get_expected_gpsro_ref', string1, &
                       source, revision, revdate)

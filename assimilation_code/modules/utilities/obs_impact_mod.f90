@@ -119,14 +119,14 @@ character(len=512) :: msgstring, msgstring2, msgstring3
 ! namelist: input/output names, values, etc
 character(len=512) :: input_filename  = ''
 character(len=512) :: output_filename = ''
-logical :: allow_any_impact_value = .false.
+logical :: allow_any_impact_values = .false.
 logical :: debug = .false.  ! .true. for more output
 
 ! namelist
 namelist /obs_impact_tool_nml/  &
    input_filename,  &
    output_filename, &
-   allow_any_impact_value, &
+   allow_any_impact_values, &
    debug
 
 contains
@@ -377,7 +377,7 @@ if (.not. allow_any_values) then
          call error_handler(E_ERR, 'obs_impact', &
                            'impact values must be between 0 and 1, inclusive', &
                            source, revision, revdate, text2=readbuf, &
-                           text3='set "allow_any_impact_value=.true." in namelist to allow')
+                           text3='set "allow_any_impact_values=.true." in namelist to allow')
       endif
    endif
 endif
@@ -1459,12 +1459,12 @@ call extract_value(wordarray(3), rvalue)
 
 ! FIXME: do this at runtime now.  if you want to check values
 ! at table build time, uncomment this code again.
-!if (.not. allow_any_factor_value) then
+!if (.not. allow_any_impact_values) then
 !   if (rvalue < 0.0_r8 .or. rvalue > 1.0_r8) then 
 !      call error_handler(E_ERR, 'check_impact_line', &
 !                        'impact values must be between 0 and 1, inclusive', &
 !                        source, revision, revdate, text2=readbuf, &
-!                        text3='set "allow_any_factor_value=.true." in namelist to allow')
+!                        text3='set "allow_any_impact_values=.true." in namelist to allow')
 !   endif
 !endif
 

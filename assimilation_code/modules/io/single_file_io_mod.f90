@@ -62,7 +62,7 @@ use time_manager_mod,     only : time_type, get_time, get_calendar_type, &
 use ensemble_manager_mod, only : ensemble_type, map_task_to_pe, get_copy, &
                                  all_copies_to_all_vars, all_vars_to_all_copies, &
                                  get_allow_transpose, allocate_vars
-use assim_model_mod,      only : assim_model_type, get_model_size
+use assim_model_mod,      only : get_model_size
 use model_mod,            only : nc_write_model_vars, nc_write_model_atts
 use mpi_utilities_mod,    only : my_task_id, broadcast_flag, task_count
 use utilities_mod,        only : error_handler, E_MSG, E_ERR, E_DBG, E_WARN, &
@@ -109,6 +109,8 @@ logical :: module_initialized = .false.
 character(len=512)  :: msgstring
 
 !-------------------------------------------------------------------------------
+
+!@todo FIXME : need to have this work for multiple domains
 
 contains
 
@@ -166,7 +168,7 @@ logical :: local_model_mod_will_write_state_variables = .false.
 
 ! Local variables including counters and storing names
 character(len=256) :: fname, copyname
-integer :: icopy, ivar, ret, ens_size, num_output_ens
+integer :: icopy, ivar, ret, ens_size, num_output_ens, domain
 
 if (my_task_id() == 0) then
    if(.not. byteSizesOK()) then
@@ -286,11 +288,11 @@ if (my_task_id() == 0) then
    !----------------------------------------------------------------------------
    ! Define the model-specific components
    !----------------------------------------------------------------------------
-   ret =  nc_write_model_atts( ncFileID%ncid, local_model_mod_will_write_state_variables)
-   if ( ret /= 0 ) then
-      write(msgstring, *)'nc_write_model_atts  bombed with error ', ret
-      call error_handler(E_MSG,'init_diag_output',msgstring,source,revision,revdate)
-   endif
+   ! for single file io, we are assuming a single domain, no lower order models
+   ! have multiple domains.
+
+   domain = 1
+   call nc_write_model_atts( ncFileID%ncid, domain)
 
    if ( .not. local_model_mod_will_write_state_variables ) then
       call write_model_attributes(ncFileID, MemberDimID, TimeDimID)
@@ -365,7 +367,7 @@ integer :: ierr
 ncFileID = file_handle%stage_metadata%ncFileID
 
 if (my_task_id()==0) then
-   ierr = NF90_close(ncFileID%ncid)
+   ierr = nf90_close(ncFileID%ncid)
    call nc_check(ierr, 'finalize_singlefile_output: nf90_close', ncFileID%fname)
 endif
 

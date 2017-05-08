@@ -56,8 +56,6 @@ use utilities_mod,        only : error_handler, nc_check, check_namelist_read, &
                                  close_file, dump_unit_attributes, &
                                  register_module, set_output, to_upper
 
-use assim_model_mod,      only : assim_model_type
-
 use time_manager_mod,     only : time_type, read_time, write_time, &
                                  get_time
 
