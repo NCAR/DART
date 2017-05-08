@@ -311,6 +311,8 @@ prematurely terminating the namelist.
    allow_missing_in_clm            = .false.
    adjust_obs_impact               = .false.
    obs_impact_filename             = ""
+   convert_all_obs_verticals_first   = .true.
+   convert_all_state_verticals_first = .false.
    special_localization_obs_types  = "",
    special_localization_cutoffs    = -1,
 /
@@ -539,6 +541,30 @@ included in this release. See the documentation for more details.
 the observation types and quantities and state quantities that
 should have have an additional factor applied to the correlations
 during assimilation.
+ </TD> </TR>
+
+
+<TR>
+ <TD> convert_all_state_verticals_first </TD>
+ <TD> logical </TD>
+ <TD> If the model has multiple choices for the vertical coordinate
+system during localization (e.g. pressure, height, etc) then this
+should be .true. if previous versions of get_state_meta_data() did
+a vertical conversion or if most of the state is going to be impacted
+by at least one observation.  If only part of the state is going to
+be updated or if get_state_meta_data() never used to do vertical 
+conversions, leave it .false..  The results should be the same
+but the run time may be impacted by doing unneeded conversions
+up front.  For models without vertical conversion choices the
+setting of this item has no impact.
+ </TD> </TR>
+
+
+<TR>
+ <TD> convert_all_obs_verticals_first </TD>
+ <TD> logical </TD>
+ <TD> Should generally always be left .True..  For models without
+vertical conversion choices the setting of this item has no impact.
  </TD> </TR>
 
 

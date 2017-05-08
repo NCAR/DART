@@ -33,6 +33,8 @@
    allow_missing_in_clm            = .false.
    adjust_obs_impact               = .false.
    obs_impact_filename             = ""
+   convert_all_obs_verticals_first   = .true.
+   convert_all_state_verticals_first = .false.
    special_localization_obs_types  = "",
    special_localization_cutoffs    = -1.0,
 /
