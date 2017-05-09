@@ -3,7 +3,6 @@ function plot_smoother_err
 %
 % Example 1
 % diagn_file = 'postassim.nc';
-% truth_file = 'true_state.nc';   % for smoother, is Lag_00001_Diag.nc better?
 % num_lags   = 10;
 % plot_total_err
 
@@ -16,17 +15,7 @@ function plot_smoother_err
 lag_file   = 'Lag_%05d_Diag.nc'; % pattern for lag file names
 
 if (exist('num_lags','var')   ~= 1), num_lags = 10000; end
-if (exist('truth_file','var') == 1),
-   def_true = truth_file;
-else
-   def_true = 'True_State.nc';
-end
-
-disp('Input name of True State file:')
-truth_file = input(sprintf('<cr> for %s\n',def_true),'s');
-if isempty(truth_file)
-   truth_file = def_true;
-end
+truth_file = 'true_state.nc';
 
 if ( exist(truth_file,'file') ~= 2 ), error('%s does not exist.',truth_file); end
 

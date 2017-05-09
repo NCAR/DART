@@ -1,29 +1,29 @@
-function plot_ens_err_spread(truth_file, diagn_file)
+function plot_ens_err_spread(diagn_file)
 %% DART: plot_ens_err_spread - summary plots of the ensemble error and ensemble spread.
 %                        Interactively queries for the needed information.
 %                        Since different models potentially need different
 %                        pieces of information ... the model types are
 %                        determined and additional user input may be queried.
 %
-% Ultimately, plot_ens_err_spread will be replaced by a GUI.
-% All the heavy lifting is done by PlotEnsErrSpread.
+% 
+%
+% The true state ('true_state.nc') is REQUIRED.
 %
 % A reminder of the sequence:
 % truth  run (from    pmo):
-%           perfect_input  --->  true_state.nc
+%           perfect_input  --->  true_state.nc   REQUIRED
 % filter run (from filter):
 %           filter_input.nc  --->  [prior inflation]  --->
 %                 preassim.nc   --->  [assimilation]  --->
 %                       postassim.nc  ---> [posterior inflation]  --->
 %                             filter_output.nc
 %
-% Example 1  (Prompt for filenames. Defaults are 'true_state.nc' and 'preassim.nc')
+% Example 1  (Prompt for filter output filename. Default is 'preassim.nc')
 % plot_ens_err_spread
 %
 % Example 2
-% truth_file = 'true_state.nc';
 % diagn_file = 'preassim.nc';
-% plot_ens_err_spread(truth_file, diagn_file)
+% plot_ens_err_spread(diagn_file)
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -32,21 +32,18 @@ function plot_ens_err_spread(truth_file, diagn_file)
 % DART $Id$
 
 if (nargin == 0)
-    disp('Input name of true model trajectory file:')
-    truth_file = input('<cr> for true_state.nc\n','s');
-    if isempty(truth_file)
-        truth_file = 'true_state.nc';
-    end
     disp('Input name of ensemble trajectory file:')
     diagn_file = input('<cr> for preassim.nc\n','s');
     if isempty(diagn_file)
         diagn_file = 'preassim.nc';
     end
-elseif (nargin == 2)
+elseif (nargin == 1)
     % all good - nothing to do
 else
-    error('Must supply either two filenames or none.')
+    error('Must supply exactly one filename or none.')
 end
+
+truth_file = 'true_state.nc';
 
 if ( exist(truth_file,'file') ~= 2 ), error('%s does not exist.',truth_file); end
 if ( exist(diagn_file,'file') ~= 2 ), error('%s does not exist.',diagn_file); end

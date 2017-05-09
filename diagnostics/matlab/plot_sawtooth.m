@@ -1,4 +1,4 @@
-function plot_sawtooth(truth_file,posterior_file,prior_file)
+function plot_sawtooth(posterior_file,prior_file)
 %% DART:plot_sawtooth - time series of a state variable including updates.
 %
 % plot_sawtooth    interactively queries for the needed information.
@@ -10,19 +10,15 @@ function plot_sawtooth(truth_file,posterior_file,prior_file)
 % trajectory. If there is no change in the model state, this should
 % appear as a series of steps. This necessitates plotting the 'posterior'
 % first ... think about it ...
-% If the true state is available, it is also plotted.
+% If the true state ('true_state.nc') is available, it is also plotted.
 %
-% Example 1:
-% truth_file = 'true_state.nc';
-% posterior_file = 'analysis.nc';
-% prior_file = 'preassim.nc';
-% plot_sawtooth(truth_file,posterior_file,prior_file)
-%
-% Example 2: no true state available
-% posterior_file = 'analysis.nc';
-% prior_file = 'preassim.nc';
-% plot_sawtooth([],posterior_file,prior_file)
+% Example 1:  prompt for filenames 
+% plot_sawtooth
 
+% Example 2:
+% posterior_file = 'analysis.nc';
+% prior_file = 'preassim.nc';
+% plot_sawtooth(posterior_file,prior_file)
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -31,13 +27,6 @@ function plot_sawtooth(truth_file,posterior_file,prior_file)
 % DART $Id$
 
 if (nargin == 0)
-    disp('If the true model trajectory exists, it will be plotted. If not, don''t worry.')
-    disp('Input name of true model trajectory file:')
-    truth_file = input('<cr> for true_state.nc\n','s');
-    if isempty(truth_file)
-        truth_file = 'true_state.nc';
-    end
-    
     disp('Input name of (posterior) ensemble trajectory file:')
     posterior_file = input('<cr> for analysis.nc\n','s');
     if isempty(posterior_file)
@@ -49,12 +38,11 @@ if (nargin == 0)
     if isempty(prior_file)
         prior_file = 'preassim.nc';
     end
-elseif (nargin == 3)
+elseif (nargin == 2)
     % proceed as normal
 else
-    error('Requires exactly 3 input filenames.')
+    error('Requires exactly 2 input filenames.')
 end
-
 
 % CheckModelCompatibility assumes first file is 'truth', so the
 % components must be renamed in this context.
@@ -62,7 +50,7 @@ vars     = CheckModel(prior_file);
 pinfo    = CheckModelCompatibility(prior_file, posterior_file);
 pinfo.prior_time     = pinfo.truth_time;
 pinfo.posterior_time = pinfo.diagn_time;
-pinfo.truth_file     = truth_file;
+pinfo.truth_file     = 'true_state.nc';
 pinfo.prior_file     = prior_file;
 pinfo.posterior_file = posterior_file;
 pinfo = rmfield(pinfo,{'diagn_file','truth_time','diagn_time'});

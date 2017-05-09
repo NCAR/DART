@@ -1,14 +1,15 @@
-function plot_total_err(truth_file,diagn_file)
+function plot_total_err(diagn_file)
 %% DART:plot_total_err - summary plots of global error and spread
 %
-% Example 1  (uses default names 'true_state.nc', 'preassim.nc' and
-% will prompt you for others if these do not exist.)
+% The true state ('true_state.nc') is REQUIRED.
+%
+% Example 1. Uses default name 'preassim.nc' and will prompt you 
+%            for a new filename if 'preassim.nc' does not exist.)
 % plot_total_err
 %
-% Example 2
-% truth_file = 'true_state.nc';
+% Example 2.
 % diagn_file = 'preassim.nc';
-% plot_total_err(truth_file,diagn_file)
+% plot_total_err(diagn_file)
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -17,21 +18,18 @@ function plot_total_err(truth_file,diagn_file)
 % DART $Id$
 
 if (nargin == 0)
-    disp('Input name of true model trajectory file:')
-    truth_file = input('<cr> for true_state.nc\n','s');
-    if isempty(truth_file)
-        truth_file = 'true_state.nc';
-    end
     disp('Input name of ensemble trajectory file:')
     diagn_file = input('<cr> for preassim.nc\n','s');
     if isempty(diagn_file)
         diagn_file = 'preassim.nc';
     end
-elseif (nargin == 2)
+elseif (nargin == 1)
     % all good - nothing to do
 else
-    error('Must supply either two filenames or none.')
+    error('Must supply exactly one filename or none.')
 end
+
+truth_file = 'true_state.nc';
 
 if ( exist(truth_file,'file') ~= 2 ), error('%s does not exist.',truth_file); end
 if ( exist(diagn_file,'file') ~= 2 ), error('%s does not exist.',diagn_file); end
