@@ -346,9 +346,13 @@ and never had anything to do with the internal time step of the dynamics of the 
 We have removed 'output_state_vector' from the namelist of all model_mods since
 we no longer output a single 1d vector.  all i/o is now in netcdf format.
 
-Models that were doing vertical conversion in get_state_meta_data should set
+Models that were doing vertical conversion in get_state_meta_data should set:
 &assim_tools_nml
    convert_all_state_verticals_first = .true.
+   convert_all_obs_verticals_first = .true.
+
+Models which were not should set:
+   convert_all_state_verticals_first = .false.
    convert_all_obs_verticals_first = .true.
 
 The location_mod::vert_is_xxx() routines have become a single is_vertical(loc, "string") where
