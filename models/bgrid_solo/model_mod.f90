@@ -1439,9 +1439,9 @@ integer, intent(in) :: domain_id
 !-----------------------------------------------------------------------------------------
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: TmpIDimID, TmpJDimID, levDimID, tracerDimID, VelIDimID, VelJDimID, MemberDimID
+integer :: TmpIDimID, TmpJDimID, levDimID, tracerDimID, VelIDimID, VelJDimID
 integer :: TmpIVarID, TmpJVarID, levVarID, tracerVarID, VelIVarID, VelJVarID, StateVarID
-integer :: StateVarVarID, TimeDimID
+integer :: StateVarVarID
 integer :: psVarID, tVarID, rVarID, uVarID, vVarID
 integer :: tis, tie, tjs, tje       ! temperature grid start/stop
 integer :: vis, vie, vjs, vje       ! velocity    grid start/stop
@@ -1479,19 +1479,6 @@ nVelJ   = vje - vjs + 1
 !-------------------------------------------------------------------------------
 
 call nc_redef(ncFileID)
-
-!-------------------------------------------------------------------------------
-! We need the dimension ID for the number of copies 
-!-------------------------------------------------------------------------------
-
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name="member", dimid=MemberDimID),"member dimid")
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name="time",   dimid=  TimeDimID),"time dimid")
-
-if ( TimeDimID /= unlimitedDimId ) then
-   write(errstring,*)"Time Dimension ID ",TimeDimID, &
-                     " should equal Unlimited Dimension ID",unlimitedDimID
-   call error_handler(E_ERR,"nc_write_model_atts", errstring, source, revision, revdate)
-endif
 
 !-------------------------------------------------------------------------------
 ! Write Global Attributes 
