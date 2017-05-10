@@ -3738,8 +3738,14 @@ call nc_add_global_attribute(ncid, "model", "wrf")
 !-----------------------------------------------------------------
 
 !>@todo all the wrf files use Time as the first dimension
+!> but if we are creating a file from scratch, we need this
+!> to be made
 ret = nf90_inq_dimid(ncid, "Time", TimeDimID)
-call nc_check(ret, context, 'inquire Time dimension')
+if (ret /= NF90_NOERR) then
+   call nc_check(nf90_def_dim(ncid=ncid, name="Time", &
+                 len = 1,  dimid = TimeDimID), &
+                 'nc_write_model_atts','def_dim domain')
+endif
 
 !>@todo FIXME we shouldn't need domain anymore because this
 !> routine is called once per domain.
