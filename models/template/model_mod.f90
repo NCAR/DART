@@ -48,8 +48,7 @@ public :: get_model_size,         &
           init_conditions
 
 ! public but in another module
-public ::
-          nc_write_model_vars,    &
+public :: nc_write_model_vars,    &
           pert_model_copies,      &
           get_close_obs,          &
           get_close_state,        &
