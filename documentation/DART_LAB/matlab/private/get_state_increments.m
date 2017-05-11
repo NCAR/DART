@@ -1,4 +1,4 @@
-function [state_incs] = get_state_increments(state_ens, obs_ens, obs_incs)
+function [state_incs, Rxy] = get_state_increments(state_ens, obs_ens, obs_incs)
 %% get_state_increments Computes state increments given observation increments and
 % the state and obs prior ensembles
 
@@ -11,6 +11,7 @@ function [state_incs] = get_state_increments(state_ens, obs_ens, obs_incs)
 % Compute state variance and covariance
 covar = cov(state_ens, obs_ens);
 
+Rxy = covar(1, 2);
 
 state_incs = obs_incs * covar(1, 2) / covar(2, 2);
 

@@ -19,8 +19,8 @@ function twod_ensemble
 %      The increments are shown as red lines, the new Posterior estimates
 %      are in blue.
 %
-% See also: gaussian_product, oned_model, oned_ensemble, run_lorenz_63,
-%           run_lorenz_96
+% See also: gaussian_product.m oned_model.m oned_model_inf.m oned_ensemble.m
+%           run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at

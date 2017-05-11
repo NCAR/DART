@@ -29,8 +29,8 @@ function oned_ensemble
 %      change the Observation Error SD, lay down an ensemble pretty far away
 %      from the observation - have fun with it.
 %
-% See also: gaussian_product, oned_model, twod_ensemble, run_lorenz_63,
-%           run_lorenz_96
+% See also: gaussian_product.m oned_model.m oned_model_inf.m
+%           twod_ensemble.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -61,7 +61,7 @@ handles.h_inf_axis       = [];
 
 %% -----------------------------------------------------------------------------
 
-% Specify the figure size in pixels. After that, all positions are 
+% Specify the figure size in pixels. After that, all positions are
 % specified as fractions (units=Normalized). That way, the objects
 % scale proportionally as the figure gets resized.
 figXmin   = 450; % The horizontal position of the entire figure, in pixels
@@ -235,9 +235,9 @@ handles.inflation = str2double(get(handles.ui_edit_inflation_label,'String'));
 %  doesn't seem to do a great job of centering ... but the distribute is nice.
 
 hlist = [handles.observation_panel,   ...
-         handles.ui_button_create_new_ens,  ...
-         handles.ui_button_update_ens,  ...
-         handles.inflation_panel];
+    handles.ui_button_create_new_ens,  ...
+    handles.ui_button_update_ens,  ...
+    handles.inflation_panel];
 
 align(hlist,'Center','Distribute')
 
@@ -387,16 +387,16 @@ handles.ui_text_post_sd = uicontrol('Style', 'text', ...
     'HorizontalAlignment','right');
 
 handles.ui_text_inflated_post_sd = uicontrol('Style', 'text', ...
-    'Units', 'Normalized', ...
-    'Position', [0.340 0.713 0.270 0.065], ...
-    'String', 'Inflated = ', ...
-    'Visible', 'Off', ...
+    'Units',           'Normalized', ...
+    'Position',        [0.340 0.713 0.270 0.065], ...
+    'String',          'Inflated = ', ...
+    'Visible',         'Off', ...
     'BackgroundColor', 'White', ...
     'ForegroundColor', 'b', ...
-    'FontUnits', 'normalized', ...
-    'FontName', atts.fontname, ...
-    'FontSize', 0.4, ...
-    'FontWeight','Bold', ...
+    'FontUnits',       'normalized', ...
+    'FontName',        atts.fontname, ...
+    'FontSize',        0.4, ...
+    'FontWeight',      'Bold', ...
     'HorizontalAlignment','right');
 
 % justify all the strings:
@@ -525,8 +525,8 @@ title('oned_ensemble','Interpreter','none')
             
             if(xt >= xlower && xt <= xupper && yt >= ylower && yt <= yupper)
                 ens_size = ens_size + 1;
-                x(ens_size) = xt;
-                y(ens_size) = 0;
+                x(ens_size) = xt; %#ok<AGROW>
+                y(ens_size) = 0; %#ok<AGROW>
                 handles.h_ens_member(ens_size) = ...
                     plot(x(ens_size), y(ens_size), '*', 'MarkerSize', 16, 'Color', atts.green,'LineWidth',2.0);
                 
@@ -572,7 +572,7 @@ title('oned_ensemble','Interpreter','none')
         
     end
 
-        
+
 %% -----------------------------------------------------------------------------
 
     function inflation_toggle_Callback (~, ~)
@@ -586,7 +586,7 @@ title('oned_ensemble','Interpreter','none')
             set(handles.ui_text_inflated_post_mean,  'Visible', 'On');
             set(handles.ui_text_inflated_prior_sd,   'Visible', 'On');
             set(handles.ui_text_inflated_post_sd,    'Visible', 'On');
-           
+            
         else
             set(handles.ui_slider_inflation,         'Enable',  'Off');
             set(handles.ui_text_inflation,           'Enable',  'Off');
@@ -596,27 +596,27 @@ title('oned_ensemble','Interpreter','none')
             set(handles.ui_text_inflated_prior_sd,   'Visible', 'Off');
             set(handles.ui_text_inflated_post_sd,    'Visible', 'Off');
         end
-    end 
+    end
 
 %% -----------------------------------------------------------------------------
 
     function slider_Callback (~, ~)
-     
+        
         handles.inflation = get(handles.ui_slider_inflation, 'Value');
-
+        
         str1 = sprintf('%.4f',handles.inflation);
         set(handles.ui_edit_inflation_label, 'String', str1);
- 
+        
         % Just in case the inflation label was in the error state, reset
         set(handles.ui_edit_inflation_label, 'BackgroundColor', 'White', 'FontWeight', 'Normal');
         set(handles.ui_text_inf_err_print, 'Visible', 'Off')
         
         % Disable other input to guarantee only one error at a time!
-            set(handles.ui_edit_observation,      'Enable', 'On')
-            set(handles.ui_edit_obs_error_sd,     'Enable', 'On')
-            set(handles.ui_button_create_new_ens, 'Enable', 'On')
-            set(handles.ui_button_update_ens,     'Enable', 'On')
-
+        set(handles.ui_edit_observation,      'Enable', 'On')
+        set(handles.ui_edit_obs_error_sd,     'Enable', 'On')
+        set(handles.ui_button_create_new_ens, 'Enable', 'On')
+        set(handles.ui_button_update_ens,     'Enable', 'On')
+        
     end
 
 %% -----------------------------------------------------------------------------
@@ -675,7 +675,7 @@ title('oned_ensemble','Interpreter','none')
         % Update mean and sd of old posterior
         str1 = sprintf('Posterior Mean = %.4f',new_mean);
         set(handles.ui_text_post_mean, 'String', str1, 'Visible', 'on');
-
+        
         str1 = sprintf('Posterior SD = %.4f',new_sd);
         set(handles.ui_text_post_sd,   'String', str1, 'Visible', 'on');
         
@@ -699,7 +699,7 @@ title('oned_ensemble','Interpreter','none')
         
         % Update mean and sd of old posterior
         handles.inf_prior_sd = std(inf_ens(1:handles.ens_size));
-
+        
         str1 = sprintf('Inflated = %.4f',handles.prior_mean);
         set(handles.ui_text_inflated_prior_mean,'String',str1,'Visible','on');
         str1 = sprintf('Inflated = %.4f',handles.inf_prior_sd);
@@ -748,10 +748,10 @@ title('oned_ensemble','Interpreter','none')
         % Update mean and sd of old posterior
         handles.update_inf_mean = mean(new_ensemble(1:handles.ens_size));
         handles.update_inf_sd =   std (new_ensemble(1:handles.ens_size));
-
+        
         str1 = sprintf('Inflated = %.4f',handles.update_inf_mean);
         set(handles.ui_text_inflated_post_mean, 'String', str1, 'Visible','on');
-
+        
         str1 = sprintf('Inflated = %.4f',handles.update_inf_sd);
         set(handles.ui_text_inflated_post_sd, 'String', str1, 'Visible', 'on');
         
@@ -799,12 +799,12 @@ title('oned_ensemble','Interpreter','none')
             
         end
         
-        % Get the value of the inflation 
+        % Get the value of the inflation
         inf_value = str2double(get(handles.ui_edit_inflation_label, 'String'));
         
-        if( isfinite(inf_value) && (inf_value >= 1) && (inf_value <= 5))  
-           inflation = inf_value;
-           
+        if( isfinite(inf_value) && (inf_value >= 1) && (inf_value <= 5))
+            inflation = inf_value;
+            
         else
             set(handles.ui_edit_inflation_label, 'String', '??','FontWeight','Bold', ...
                 'BackgroundColor', 'r');
@@ -812,7 +812,7 @@ title('oned_ensemble','Interpreter','none')
             
             fprintf('ERROR: Inflation value must be between 1 and 5.\n')
             fprintf('ERROR: Inflation value must be between 1 and 5.\n')
-
+            
             % Disable other input to guarantee only one error at a time!
             set(handles.ui_edit_observation,      'Enable', 'Off')
             set(handles.ui_edit_obs_error_sd,     'Enable', 'Off')
@@ -829,7 +829,7 @@ title('oned_ensemble','Interpreter','none')
         set(handles.ui_slider_inflation,'Value', handles.inflation);
         set(handles.ui_text_inf_err_print,'Visible','Off')
         
-                       
+        
         % Plot the updated distribution
         set(handles.h_obs_plot, 'Visible', 'Off');
         handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
@@ -893,7 +893,7 @@ title('oned_ensemble','Interpreter','none')
             fprintf('ERROR: Observation value must be numeric.\n')
             
             
-        % Disable other input to guarantee only one error at a time!
+            % Disable other input to guarantee only one error at a time!
             set(handles.ui_edit_obs_error_sd,     'Enable', 'Off')
             set(handles.ui_edit_inflation_label,  'Enable', 'Off')
             set(handles.ui_button_create_new_ens, 'Enable', 'Off')
@@ -962,19 +962,19 @@ title('oned_ensemble','Interpreter','none')
         obs_error_value = str2double(get(handles.ui_edit_obs_error_sd, 'String'));
         
         if(isfinite(obs_error_value) && (obs_error_value > 0))
-          obs_error_sd = obs_error_value;
-         
+            obs_error_sd = obs_error_value;
+            
         else
-                
+            
             set(handles.ui_edit_obs_error_sd, 'String', '??','FontWeight','Bold', ...
                 'BackgroundColor', 'r');
-            set(handles.ui_text_obs_sd_err_print,'Visible','On')  
+            set(handles.ui_text_obs_sd_err_print,'Visible','On')
             
             fprintf('ERROR: Obs. Error SD value must be numeric.\n')
             fprintf('ERROR: Obs. Error SD value must be numeric.\n')
             
             
-        % Disable other input to guarantee only one error at a time!
+            % Disable other input to guarantee only one error at a time!
             set(handles.ui_edit_observation,      'Enable', 'Off')
             set(handles.ui_edit_inflation_label,  'Enable', 'Off')
             set(handles.ui_button_create_new_ens, 'Enable', 'Off')
@@ -1013,7 +1013,7 @@ title('oned_ensemble','Interpreter','none')
     end
 
 %% -----------------------------------------------------------------------------
-  
+
 end
 
 % <next few lines under version control, do not edit>

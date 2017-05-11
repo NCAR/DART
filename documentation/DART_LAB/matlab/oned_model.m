@@ -13,7 +13,7 @@ function oned_model
 %      process is ready to repeat.
 %
 %      ONED_MODEL opens a gui control window that plots
-%      the most recent prior, posterior, and observation, 
+%      the most recent prior, posterior, and observation,
 %      time sequences of the assimilation, the RMS error,
 %      spread and kurtosis, and prior and posterior rank histograms.
 %
@@ -35,8 +35,8 @@ function oned_model
 %      indistinguishable from any of the ensemble members. This results
 %      in a flat rank histogram, given enough samples.
 %
-% See also: gaussian_product, oned_ensemble, twod_ensemble, run_lorenz_63,
-%           run_lorenz_96
+% See also: gaussian_product.m oned_model_inf.m oned_ensemble.m
+%           twod_ensemble.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -278,14 +278,25 @@ handles.ui_radio_button_rhf = uicontrol(handles.ui_radio_button_group, ...
 
 handles.ui_button_reset = uicontrol('Style', 'pushbutton', ...
     'Units', 'Normalized', ...
-    'Position', [0.836 0.060 0.095 0.063], ...
-    'String', 'Reset', ...
+    'Position', [0.824 0.016 0.125 0.067], ...
+    'String', 'Reset All', ...
     'BackgroundColor', 'White', ...
     'FontName', atts.fontname, ...
     'FontUnits', 'Normalized', ...
     'FontSize', scaled_fontsize, ...
     'FontWeight', 'normal', ...
     'Callback', @reset_button_Callback);
+
+handles.ClearHistograms = uicontrol('Style', 'pushbutton', ...
+    'Units'             , 'Normalized', ...
+    'Position'          , [0.824 0.09 0.125 0.067], ...
+    'String'            , 'Clear Hist', ...
+    'BackgroundColor'   , 'White', ...
+    'FontName'          , atts.fontname, ...
+    'FontUnits'         , 'Normalized', ...
+    'FontSize'          , scaled_fontsize, ...
+    'FontWeight'        , 'normal', ...
+    'Callback'          , @ClearHistograms_Callback);
 
 %% -----------------------------------------------------------------------------
 %  These appear to be error messages that can be turned on or off.
@@ -356,8 +367,8 @@ reset_button_Callback()
             turn_off_controls;
             
             set(handles.ui_edit_ens_size, 'Enable', 'On',  ...
-                                          'String', '?', ...
-                                          'BackgroundColor', 'r');
+                'String', '?', ...
+                'BackgroundColor', atts.red);
             set(handles.ui_text_ens_size_err_print, 'Visible', 'On')
             
             return
@@ -410,21 +421,21 @@ reset_button_Callback()
         model_bias_value = str2double(get(handles.ui_edit_model_bias, 'String'));
         
         if(isfinite(model_bias_value) && (model_bias_value >= 0))
-
-            % If valid, update the value of the model bias. 
+            
+            % If valid, update the value of the model bias.
             handles.model_bias = model_bias_value;
             turn_on_controls;
             set(handles.ui_text_model_bias_err_print,'Visible','Off')
             set(handles.ui_edit_model_bias, 'Enable', 'On', ...
-                                            'BackgroundColor', 'White');
+                'BackgroundColor', 'White');
             
         else
             % If not valid, force user to try again.
             % After this, only this edit box will work
             turn_off_controls;
             set(handles.ui_edit_model_bias, 'String', '?', ...
-                                            'Enable', 'On', ...
-                                            'BackgroundColor', 'r');
+                'Enable', 'On', ...
+                'BackgroundColor', atts.red);
             set(handles.ui_text_model_bias_err_print,'Visible','On')
             
             fprintf('ERROR: Model Bias value must be greater or equal to 0.\n')
@@ -459,8 +470,8 @@ reset_button_Callback()
             turn_off_controls;
             
             set(handles.ui_edit_inflation, 'Enable', 'On', ...
-                                           'String', '?', ...
-                                           'BackgroundColor', 'r');
+                'String', '?', ...
+                'BackgroundColor', atts.red);
             set(handles.ui_text_inf_err_print,'Visible','On')
             
             return
@@ -494,8 +505,8 @@ reset_button_Callback()
             fprintf('ERROR: Nonlin a must be non-negative.\n')
             
             set(handles.ui_edit_nonlin_a, 'Enable', 'On', ...
-                                          'String', '?', ...
-                                          'BackgroundColor', 'r');
+                'String', '?', ...
+                'BackgroundColor', 'r');
             set(handles.ui_text_nonlin_err_print, 'Visible', 'On')
             
             return
@@ -507,8 +518,23 @@ reset_button_Callback()
 %% -----------------------------------------------------------------------------
 
 
-    function reset_button_Callback(~, ~)
+    function ClearHistograms_Callback(~, ~)
+        
+        % An array to keep track of rank histograms
+        handles.prior_rank(    1 : handles.ens_size + 1) = 0;
+        handles.post_rank(1 : handles.ens_size + 1) = 0;
+        
+        % Clear out the old graphics. The legends remain, which is nice.
+        cla(handles.h_prior_rank_histogram)
+        cla(handles.h_post_rank_histogram)
+        
+    end
 
+%% -----------------------------------------------------------------------------
+
+
+    function reset_button_Callback(~, ~)
+        
         initialize_data();
         reset_graphics();
         
@@ -613,7 +639,7 @@ reset_button_Callback()
                 
                 % Do the next advance or assimilation step
                 step_ahead;
-                pause(0.2)
+                drawnow
                 
             end
             
@@ -632,15 +658,15 @@ reset_button_Callback()
         axes(handles.h_state_evolution);
         
         % If this is an advance, get and plot new model state, advance time
-        if(handles.ready_to_advance);
+        if(handles.ready_to_advance)
             
             % Set to do an assimilation next time
             handles.ready_to_advance = false;
             
             % Advance the model and then inflate
-            ens_new = advance_oned(handles.ens, handles.alpha, handles.model_bias);
+            ens_new      = advance_oned(handles.ens, handles.alpha, handles.model_bias);
             ens_new_mean = mean(ens_new);
-            ens_new = (ens_new - ens_new_mean) * sqrt(handles.inflation) + ens_new_mean;
+            ens_new      = (ens_new - ens_new_mean) * sqrt(handles.inflation) + ens_new_mean;
             
             % plot the model evolution
             handles.time_step = handles.time_step + 1;
@@ -661,11 +687,11 @@ reset_button_Callback()
             
             h_e = line([handles.time_step - 1 + 0.1, handles.time_step - 0.1], ...
                 [handles.error, prior_error]);
-            set(h_e, 'Color', 'b', 'LineWidth', 2.0);
+            set(h_e, 'Color', atts.blue, 'LineWidth', 2.0);
             
             h_s = line([handles.time_step - 1 + 0.1, handles.time_step - 0.1], ...
                 [handles.spread, prior_spread]);
-            set(h_s, 'Color', 'r', 'LineWidth', 2.0);
+            set(h_s, 'Color', atts.red, 'LineWidth', 2.0);
             
             handles.error  = prior_error;
             handles.spread = prior_spread;
@@ -689,7 +715,7 @@ reset_button_Callback()
                 [handles.kurtosis, prior_kurtosis], 'Color', 'r','LineWidth',2);
             
             handles.kurtosis = prior_kurtosis;
-
+            
             axlims = axis;
             axlims(3) = 0.0;
             axis(axlims)
@@ -713,7 +739,7 @@ reset_button_Callback()
             % Find the limits of the plot
             % The height of the obs likelihood controls the vertical axis
             y_max = 1 / (sqrt(2 * pi) * handles.obs_error_sd);
-
+            
             % Want axes to encompass likely values for plotted obs_likelihood
             % The observed value will be between -4 and 4 with very high probability, then +/-3 more for likelihood
             xmin = -7;
@@ -724,7 +750,7 @@ reset_button_Callback()
             xmax = max([xmax, max(ens_new)*1.02]);
             
             % Put on a black axis line using data limits
-
+            
             plot([xmin xmax], [0, 0], 'k', 'Linewidth', 2);
             hold on;
             ens_axis = [xmin xmax -0.2 y_max + 0.02];
@@ -735,7 +761,7 @@ reset_button_Callback()
             % Turn off the negative labels
             set(gca, 'YTick', [0 0.1 0.2 0.3 0.4]);
             grid on;
-
+            
             % Plot the prior ensemble members in green
             % Plotting ticks instead of asterisks makes bins clearer
             tick_half = 0.015;
@@ -769,8 +795,8 @@ reset_button_Callback()
             xlabel('State'               ,'FontName', atts.fontname, 'FontSize', atts.fontsize);
             title('Latest Ensemble Prior','FontName', atts.fontname, 'FontSize', atts.fontsize);
             
-            legend([hg_prior hg_truth],'Prior','Truth');
-            set(legend                   ,'FontName', atts.fontname, 'FontSize', atts.fontsize);
+            L = legend([hg_prior hg_truth],'Prior','Truth');
+            set(L, 'FontName', atts.fontname, 'FontSize', atts.fontsize);
             
             % Update the permanent storage of the rank values
             handles.prior_rank(ens_rank) = handles.prior_rank(ens_rank) + 1;
@@ -788,7 +814,7 @@ reset_button_Callback()
             
             % Generate the observation as a draw Normal(0, 1)
             obs_error_sd = handles.obs_error_sd;
-            observation = obs_error_sd * randn(1);
+            observation  = obs_error_sd * randn(1);
             
             % Plot the observation
             plot(handles.time_step, observation, 'r*', 'MarkerSize', 10);
@@ -873,7 +899,7 @@ reset_button_Callback()
             
             h = plot([handles.time_step - 0.1, handles.time_step + 0.1], ...
                 [handles.error, post_error]);
-            set(h,'Color', 'b', 'LineWidth', 2.0);
+            set(h,'Color', atts.blue, 'LineWidth', 2.0);
             
             handles.error = post_error;
             
@@ -884,7 +910,7 @@ reset_button_Callback()
             
             h = plot([handles.time_step - 0.1, handles.time_step + 0.1], ...
                 [handles.spread, post_spread]);
-            set(h, 'Color', 'r', 'LineWidth', 2.0);
+            set(h, 'Color', atts.red, 'LineWidth', 2.0);
             
             % Want the lower y limit to stay 0 for error spread
             axlims    = axis;
@@ -918,7 +944,7 @@ reset_button_Callback()
             % The height of the obs likelihood controls the vertical axis
             % Plot the observation likelihood
             [hg_like, ~, ylims] = plot_gaussian(observation, obs_error_sd, 1.0);
-            set(hg_like, 'Color', 'r', 'LineWidth', 2, 'LineStyle', '--');
+            set(hg_like, 'Color', atts.red, 'LineWidth', 2, 'LineStyle', '--');
             hold on;
             
             % Want axes to encompass likely values for plotted obs_likelihood
@@ -935,7 +961,7 @@ reset_button_Callback()
             
             % Put on a black axis line using data limits
             plot([xmin xmax], [0, 0], 'k', 'Linewidth', 2);
-
+            
             % Plot the prior ensemble members in green
             % Plotting ticks instead of asterisks makes bins clearer
             tick_half = 0.015;
@@ -949,10 +975,10 @@ reset_button_Callback()
             % Plot the posterior ensemble members in blue
             for n_tick = 1:handles.ens_size
                 hg_post = plot([new_ens(n_tick), new_ens(n_tick)], ...
-                    [-0.1 - tick_half, -0.1 + tick_half], 'Color', 'b', ...
+                    [-0.1 - tick_half, -0.1 + tick_half], 'Color', atts.blue, ...
                     'LineWidth', 2);
             end
-                        
+            
             % Plot the observation (at 0) as an asterisk
             plot(observation, 0, 'r*', 'MarkerSize', 14, 'LineWidth', 2.0);
             
@@ -998,8 +1024,8 @@ reset_button_Callback()
                 'FontName', atts.fontname, 'FontSize', atts.fontsize,'FontWeight', 'Bold');
             
             % Put on legend
-            legend([hg_prior hg_post hg_like], 'Prior', 'Posterior', 'Likelihood', 'Location','NorthEast');
-            set(legend,'FontName', atts.fontname, 'FontSize', atts.fontsize);
+            L = legend([hg_prior hg_post hg_like], 'Prior', 'Posterior', 'Likelihood', 'Location','NorthEast');
+            set(L, 'FontName', atts.fontname, 'FontSize', atts.fontsize);
         end
         
     end
@@ -1062,8 +1088,8 @@ reset_button_Callback()
             hold off
         else
             handles.axes = axes('Units', 'Normalized', ...
-                'Position', [0.050 0.382 0.333 0.400], ...
-                'Color', 'White');
+                'Position'  , [0.050 0.382 0.333 0.400], ...
+                'Color'     , 'White');
         end
         
         % plot some bogus items to create handles for legend
@@ -1071,10 +1097,10 @@ reset_button_Callback()
         set(hg_prior, 'LineWidth', 2, 'Color', atts.green, 'Visible', 'off');
         
         hg_post  = line([0 1], [0 0.1]);
-        set(hg_post, 'LineWidth', 2, 'Color', 'b', 'Visible', 'off');
+        set(hg_post, 'LineWidth', 2, 'Color', atts.blue, 'Visible', 'off');
         
         hg_like  = line([0 1], [0 0.1]);
-        set(hg_like, 'LineWidth', 2, 'Color', 'r', 'LineStyle','--', 'Visible', 'off');
+        set(hg_like, 'LineWidth', 2, 'Color', atts.red, 'LineStyle','--', 'Visible', 'off');
         
         legend([hg_prior hg_post hg_like],'Prior','Posterior','Likelihood');
         set(legend,'FontName', atts.fontname, 'FontSize', atts.fontsize);
@@ -1083,7 +1109,7 @@ reset_button_Callback()
         hold on;
         % Set original horizontal axes
         axis([-7 7 -Inf Inf])
-
+        
     end
 
 %% -----------------------------------------------------------------------------
@@ -1107,9 +1133,11 @@ reset_button_Callback()
         x(1:handles.ens_size) = handles.time_step + 0.1;
         
         plot(x, handles.ens, 'b*', 'MarkerSize', 6);
-        hold on;
-        str = 'x_t_+_1 = x_t + (x_t+model bias) + a{\cdot}x_t{\cdot}{\mid}x_t{\mid}';
-        title({str,'observation is a draw from N(0,1)'},'FontSize',18)
+        hold on
+        str1  = '$x_{t+1} = x_t + (x_t+$model bias$) + a{\cdot}x_t{\cdot}{\mid}x_t{\mid}$';
+        str2  = '\hspace{1.5mm} observation is a draw from $\mathcal{N}(0,1)$';
+        TITLE = title( {str1,str2} );
+        set( TITLE, 'interpreter', 'latex', 'FontSize', 20, 'FontWeight', 'bold' );
         
         % Include the 0 line as the truth for all times
         plot([1 100000], [0 0], 'k--');
@@ -1127,7 +1155,7 @@ reset_button_Callback()
         
         legend(h_evolution_handles, 'Truth', 'Observation', 'Prior', 'Posterior');
         set(legend,'FontName', atts.fontname, 'FontSize', 12, ...
-                   'Position',[0.821 0.770 0.118 0.148])
+            'Position',[0.821 0.770 0.118 0.148])
         legend boxon
         axis([1 10 -Inf Inf]);
         
@@ -1146,8 +1174,8 @@ reset_button_Callback()
             hold off
         else
             handles.h_err_spread_evolution = axes('Units', 'Normalized', ...
-                 'Position',[0.430 0.557 0.333 0.164], ...
-                 'Color', 'White');
+                'Position',[0.430 0.557 0.333 0.164], ...
+                'Color', 'White');
         end
         
         ylabel('Error, Spread','FontName', atts.fontname,'FontSize', atts.fontsize);
@@ -1199,7 +1227,7 @@ reset_button_Callback()
         title ('Prior Rank Histogram','FontName', atts.fontname,'FontSize', atts.fontsize);
         axis([0 handles.ens_size+2 -Inf Inf])
         set(handles.h_prior_rank_histogram,'XTick',1:(handles.ens_size+1));
-        hold on;
+        hold on
         
     end
 

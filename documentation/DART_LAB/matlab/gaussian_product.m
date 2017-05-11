@@ -10,8 +10,8 @@ function gaussian_product
 %    If the parameters of the two gaussians are known, the parameters of the
 %    resulting gaussian can be calculated.
 %
-% See also: oned_model, oned_ensemble, twod_ensemble,
-%           run_lorenz_63, run_lorenz_96
+% See also: oned_model.m oned_model_inf.m oned_ensemble.m
+%           twod_ensemble.m run_lorenz_63.m run_lorenz_96.m run_lorenz_96_inf.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at

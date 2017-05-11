@@ -30,8 +30,8 @@ function run_lorenz_63
 %      particularly difficult - especially in the highly nonlinear
 %      'saddle' region.
 %
-% See also: gaussian_product, oned_model, oned_ensemble, twod_ensemble,
-%           run_lorenz_96
+% See also: gaussian_product.m oned_model.m oned_model_inf.m oned_ensemble.m
+%           twod_ensemble.m run_lorenz_96.m run_lorenz_96_inf.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
