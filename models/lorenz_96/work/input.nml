@@ -27,6 +27,10 @@
    silence                    = .false.,
    /
 
+# these don't work yet, but will soon:
+#    input_state_files            = 'filter_input.nc'
+#   output_state_files            = 'filter_output.nc'
+
 &filter_nml
    single_file_in               = .true.,
    input_state_files            = ''
@@ -62,16 +66,16 @@
    last_obs_days                = -1,
    last_obs_seconds             = -1,
 
-   inf_flavor                  = 0,                       0,
+   inf_flavor                  = 2,                       0,
    inf_initial_from_restart    = .false.,                 .false.,
    inf_sd_initial_from_restart = .false.,                 .false.,
    inf_deterministic           = .true.,                  .true.,
    inf_initial                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.0,                     0.0,
-   inf_damping                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.6,                     0.0,
+   inf_damping                 = 0.9,                     1.0,
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
-   inf_sd_lower_bound          = 0.0,                     0.0,
+   inf_sd_lower_bound          = 0.6,                     0.0,
 
    trace_execution              = .false.,
    output_timestamps            = .false.,
@@ -90,12 +94,9 @@
 &ensemble_manager_nml
    /
 
-# the localization cutoff in this file is distributed is too
-# large for the model to converge.  to test that the model is 
-# doing a successful assimilation, change cutoff to 0.02 and rerun.
 &assim_tools_nml
    filter_kind                     = 1,
-   cutoff                          = 1000000.0,
+   cutoff                          = 0.02,
    sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
