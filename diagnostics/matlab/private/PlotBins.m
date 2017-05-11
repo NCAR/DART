@@ -14,14 +14,14 @@ function PlotBins(pinfo)
 %
 % Example 1 (Lorenz_96  model)
 %%--------------------------------------------------------
-% pinfo.truth_file = 'perfect_output.nc';
+% pinfo.truth_file = 'true_state.nc';
 % pinfo.diagn_file = 'preassim.nc';
 % pinfo.var_inds   = [3 4 36 39 22];
 % PlotBins( pinfo );
 %
 % Example 2 (FMS BGrid model)
 %%--------------------------------------------------------
-% pinfo.truth_file = 'perfect_output.nc';
+% pinfo.truth_file = 'true_state.nc';
 % pinfo.diagn_file = 'preassim.nc';
 % pinfo.var        = 'u';
 % pinfo.level      = 3;

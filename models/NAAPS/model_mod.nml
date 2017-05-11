@@ -5,7 +5,6 @@
    naaps_restart_path           = '/users/sessions/products/ENS/FCAST_2011080100_f120';
    time_step_days               = 0,
    time_step_seconds            = 21600,
-   output_state_vector          = .false.,
    debug                        = .false.
    /
 

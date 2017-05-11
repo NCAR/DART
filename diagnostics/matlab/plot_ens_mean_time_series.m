@@ -1,26 +1,21 @@
-function plot_ens_mean_time_series(diagn_file, truth_file)
-%% DART:plot_ens_mean_time_series  time series of ensemble mean and truth
+function plot_ens_mean_time_series(diagn_file)
+
+%% DART:plot_ens_mean_time_series  time series of ensemble mean and truth (if available)
 %
 % plot_ens_mean_time_series    interactively queries for the needed information.
 %              Since different models potentially need different pieces of
 %              information ... the model types are determined and additional
 %              user input may be queried.
 %              The first filename specifies the file with the ensemble mean.
-%              If a second filename is supplied, it is used to plot the truth.
-%              If no filenames are provided, you will be prompted for filenames.
-%              Only the filename containing the ensemble mean is required.
-%
-% Example 1  (Prompt for filenames. Defaults are 'preassim.nc' and 'perfect_output.nc')
+%              If no filename is provided, you will be prompted for one.
+%              If the 'true_state.nc' is available, it is used to plot the truth.
+
+% Example 1  (Prompt for filename. Default is 'preassim.nc')
 % plot_ens_mean_time_series
 %
 % Example 2
 % diagn_file = 'preassim.nc';
 % plot_ens_mean_time_series(diagn_file)
-%
-% Example 3
-% diagn_file = 'preassim.nc';
-% truth_file = 'perfect_output.nc';
-% plot_ens_mean_time_series(diagn_file,truth_file)
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -28,8 +23,8 @@ function plot_ens_mean_time_series(diagn_file, truth_file)
 %
 % DART $Id$
 
-if (nargin > 2)
-   error('Must supply at most 2 filenames.')
+if (nargin > 1)
+   error('Must supply at most 1 filename.')
 elseif (nargin == 0)
    disp(' ')
    disp('Input name of ensemble trajectory file:')
@@ -37,30 +32,11 @@ elseif (nargin == 0)
    if isempty(diagn_file)
       diagn_file = 'preassim.nc';
    end
-
-   disp(' ')
-   disp('OPTIONAL: if you have the true state and want it superimposed, provide')
-   disp('        : the name of the input file. If not, enter a dummy filename.')
-   disp('        : Input name of true model trajectory file:')
-
-   truth_file = input('<cr> for perfect_output.nc\n','s');
-   if isempty(truth_file)
-      truth_file = 'perfect_output.nc';
-   end
-elseif (nargin == 1)
-   disp(' ')
-   disp('OPTIONAL: if you have the true state and want it superimposed, provide')
-   disp('        : the name of the input file. If not, enter a dummy filename.')
-   disp('        : Input name of true model trajectory file:')
-
-   truth_file = input('<cr> for perfect_output.nc\n','s');
-   if isempty(truth_file)
-      truth_file = 'perfect_output.nc';
-   end
 end
 
 pinfo = CheckModel(diagn_file); % also gets default values for this model.
 
+truth_file = 'true_state.nc';
 if (exist(truth_file,'file')==2)
    pinfo  = rmfield(pinfo,{'time_series_length','time','fname'});
    MyInfo = CheckModelCompatibility(truth_file, diagn_file);

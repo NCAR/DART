@@ -11,9 +11,9 @@ xdim = 100;
 ydim = 100;
 
 % Open up the various NetCDF files
-%truth = netcdf('True_State.nc');
-prior = netcdf('Prior_Diag.nc');
-postr = netcdf('Posterior_Diag.nc');
+%truth = netcdf('true_state.nc');
+prior = netcdf('preassim.nc');
+postr = netcdf('analysis.nc');
 
 % Only consider a single state variable - note that the first two
 % items are the ensemble mean and spread

@@ -56,8 +56,6 @@ use utilities_mod,        only : error_handler, nc_check, check_namelist_read, &
                                  close_file, dump_unit_attributes, &
                                  register_module, set_output, to_upper
 
-use assim_model_mod,      only : assim_model_type
-
 use time_manager_mod,     only : time_type, read_time, write_time, &
                                  get_time
 
@@ -108,7 +106,7 @@ character(len=512) :: msgstring
 !> the calling code knows what they are for; it should be a black box
 !> here.
 
-integer, parameter :: MAX_STAGES = 4
+integer, parameter :: MAX_STAGES = 6
 
 type stages_to_write
    logical            :: write_stage(MAX_STAGES) = .false.
@@ -246,11 +244,10 @@ end subroutine read_state
 
 subroutine write_state(state_ens_handle, file_info)
 
-type(ensemble_type),                   intent(inout) :: state_ens_handle
-type(file_info_type),                  intent(inout) :: file_info
+type(ensemble_type),   intent(inout) :: state_ens_handle
+type(file_info_type),  intent(inout) :: file_info
 
 type(stage_metadata_type) :: output_files
-
 
 if ( .not. module_initialized ) call state_vector_io_init() ! to read the namelist
 
@@ -549,7 +546,7 @@ character(len=32) :: input_stage, global_stage
 integer :: i, nstages
 
 write_this_stage = .false.
-nstages     = global_stages_to_write%my_num_stages 
+nstages          = global_stages_to_write%my_num_stages 
 
 input_stage = stage_name_in
 call to_upper(input_stage)

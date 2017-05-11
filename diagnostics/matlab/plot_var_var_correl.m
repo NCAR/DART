@@ -2,16 +2,16 @@ function plot_var_var_correl(fname)
 %% DART:plot_var_var_correl - time series of correlation between ...
 % a given variable at a given time and another variable at all times ...
 % in an ensemble time sequence.
-%
-% A reminder of the sequence:
-% truth  run (from    pmo):
-%           perfect_input  --->  perfect_output.nc
-% filter run (from filter):
-%           filter_input.nc  --->  [prior inflation]  --->
-%                 preassim.nc   --->  [assimilation]  --->
-%                       postassim.nc  ---> [posterior inflation]  --->
-%                             filter_output.nc
 
+% truth  run (from    pmo):
+%           perfect_input.nc  --->  true_state.nc  & perfect_output.nc
+% filter run (from filter):
+%         filter_input.nc ---> [possible model advance] --->
+%           forecast.nc   ---> [prior inflation]        --->
+%           preassim.nc   ---> [assimilation]
+%           postassim.nc  ---> [posterior inflation]    --->
+%           analysis.nc   ---> [may need to make another forecast]
+%         filter_output.nc
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at

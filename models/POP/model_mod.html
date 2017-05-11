@@ -319,7 +319,6 @@ The variables and their default values are listed here:
    assimilation_period_days     = -1
    assimilation_period_seconds  = -1
    model_perturbation_amplitude = 0.2
-   output_state_vector          = .false.
    binary_grid_file_format      = 'big_endian'
    debug                        = 0,
    model_state_variables        = 'SALT_CUR ', 'QTY_SALINITY             ', 'UPDATE',
@@ -379,16 +378,6 @@ The variables and their default values are listed here:
                        at the start of this document. units: standard deviation 
                        of a gaussian distribution with the mean at the value of 
                        the state vector element. --> </TD></TR> 
-
-<TR><!--contents--><TD valign=top>output_state_vector</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD valign=top>The switch to determine the form of the state vector in the
-                       diagnostic output netCDF files. If <em class=code>.true.</em> 
-                       the state vector will be output exactly as DART uses it 
-                       ... one long array.  If <em class=code>.false.</em>, 
-                       the state vector is parsed into prognostic variables and 
-                       output that way -- much easier to use with 'ncview', for
-                       example.</TD></TR>
 
 <TR><!--contents--><TD valign=top>binary_grid_file_format</TD>
     <!--  type  --><TD valign=top>character(len=32)</em></TD>
@@ -1044,9 +1033,9 @@ are preserved in the netCDF file as variables <em class=code>inputnml</em> and
 <P>
 <em class=code>nc_write_model_atts</em>
 is responsible for the model-specific attributes in the following DART-output netCDF files:
-<em class=file>True_State.nc</em>, 
-<em class=file>Prior_Diag.nc</em>, and 
-<em class=file>Posterior_Diag.nc</em>.
+<em class=file>true_state.nc</em>, 
+<em class=file>preassim.nc</em>, and 
+<em class=file>analysis.nc</em>.
 </P>
 
 </div>
@@ -1644,11 +1633,11 @@ normally part of the user-callable routines.
     <TD>contains the values of the horizontal grid</TD></TR>
 <TR><TD><em class=code>&amp;grid_nml</em> "vert_grid_file"</TD>
     <TD>contains the number and values of the vertical levels</TD></TR>
-<TR><TD>True_State.nc</TD>
+<TR><TD>true_state.nc</TD>
     <TD>the time-history of the "true" model state from an OSSE</TD></TR>
-<TR><TD>Prior_Diag.nc</TD>
+<TR><TD>preassim.nc</TD>
     <TD>the time-history of the model state before assimilation</TD></TR>
-<TR><TD>Posterior_Diag.nc&nbsp;</TD>
+<TR><TD>analysis.nc&nbsp;</TD>
     <TD>the time-history of the model state after assimilation</TD></TR>
 <TR><TD>dart_log.out [default name]</TD>
     <TD>the run-time diagnostic output</TD></TR>

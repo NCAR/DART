@@ -5,13 +5,11 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # $Id$
-#=============================================================================
-#
 #
 #=============================================================================
 # This block of directives constitutes the preamble for the LSF queuing system
 #
-# the normal way to submit to the queue is:    bsub < roms_ensemble.csh
+# the normal way to submit to the queue is:    bsub < cycle.csh
 #
 # an explanation of the most common directives follows:
 # -J Job_name
@@ -22,8 +20,8 @@
 # -n number of MPI processes (not nodes)
 # -W hh:mm  wallclock time (required on some systems)
 #=============================================================================
-#BSUB -J roms_ensemble
-#BSUB -o roms_ensemble.%J.log
+#BSUB -J roms_cycle
+#BSUB -o roms_cycle.%J.log
 #BSUB -P P86850054
 #BSUB -q small
 #BSUB -n 16
@@ -32,66 +30,96 @@
 #BSUB -N -u ${USER}@ucar.edu
 #
 #=============================================================================
-## This block of directives constitutes the preamble for the PBS queuing system
-##
-## the normal way to submit to the queue is:    qsub run_roms_ensemble.csh
-##
-## an explanation of the most common directives follows:
-## -N     Job name
-## -r n   Declare job non-rerunable
-## -e <arg>  filename for standard error
-## -o <arg>  filename for standard out
-## -q <arg>   Queue name (small, medium, long, verylong)
-## -l nodes=xx:ppn=2   requests BOTH processors on the node. On both bangkok
-##                     and calgary, there is no way to 'share' the processors
-##                     on the node with another job, so you might as well use
-##                     them both. (ppn == Processors Per Node)
+# This block of directives constitutes the preamble for the PBS queuing system
+# Turns out SLURM (in particular 'sbatch') recognizes PBS directives, so we
+# don't need two sets of directives.
+# the normal way to submit with pbs:    qsub   cycle.csh
+# the normal way to submit with slurm:  sbatch cycle.csh
+#
+# an explanation of the most common directives follows:
+# -N     Job name
+# -r n   Declare job non-rerunable
+# -e <arg>  filename for standard error
+# -o <arg>  filename for standard out
+# -q <arg>   Queue name (small, medium, long, verylong)
+# -l nodes=xx:ppn=2   requests BOTH processors on the node. On both bangkok
+#                     and calgary, there is no way to 'share' the processors
+#                     on the node with another job, so you might as well use
+#                     them both. (ppn == Processors Per Node)
 #=============================================================================
-#PBS -N roms_ensemble
+#PBS -N roms_cycle
+#PBS -e roms_cycle.err
+#PBS -o roms_cycle.log
+#PBS -l nodes=1:ppn=16
 #PBS -r n
-#PBS -e roms_ensemble.err
-#PBS -o roms_ensemble.log
-#PBS -q dedicated
-#PBS -l nodes=10:ppn=2
+#
+#=============================================================================
+# Important things to know about slurm:
+#
+# sinfo     information about the whole slurm system
+# squeue    information about running jobs
+# sbatch    submitting a job
+# scancel   killing a job
+#
+# specifying the run-time limit with slurm:
+# --time=10                10 minutes
+# --time=10:00             10 minutes and no seconds - really
+# --time=2:00:00           2 hours
+# --time=3-1:23:45         3 days, 1 hour, 23 minutes and 45 seconds
+#==========================================================================
+#SBATCH --time=01:00:00
 
 cd EXPERIMENT_DIRECTORY
 
 #=========================================================================
-# STEP 1: Stage the file for SAMPLING ERROR CORRECTION if needed.
-#
-# The sampling error correction is a lookup table.
-# The tables are in the DART distribution and have been staged to
-# EXPERIMENT_DIRECTORY by stage_experiment.csh
-# Each ensemble size has its own (static) file. It is only needed if
-# input.nml:&assim_tools_nml:sampling_error_correction = .true.,
-#
-# This is easy to check - and since it is a fatal error to have an ensemble
-# size that is not supported, we die before we advance the model.
+# STEP 0: figure out the platform-specific nuances.
 #=========================================================================
 
-set ensemble_size = `find instance_???? -type d -print | wc -l`
+if ($?LS_SUBCWD) then
 
-\cp input.nml.template input.nml
+   set  ORIGINALDIR = $LS_SUBCWD
+   set      JOBNAME = $LSB_JOBNAME
+   set        JOBID = $LSB_JOBID
+   set      MYQUEUE = $LSB_QUEUE
+   set       MYHOST = $LSB_SUB_HOST
+   set       NTASKS = 
+   set    LAUNCHCMD = "mpirun.lsf"
 
-set  MYSTRING = `grep 'sampling_error_correction' input.nml`
-set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,'\.]# #g"`
-set  MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
-set SECSTRING = `echo $MYSTRING[2] | tr '[:upper:]' '[:lower:]'`
+else if ($?PBS_O_WORKDIR) then
 
-if ( $SECSTRING == true ) then
-   set SAMP_ERR_FILE = final_full.${ensemble_size}
-   if (! -e  ${SAMP_ERR_FILE} ) then
-      echo "ERROR: no sampling error correction file for this ensemble size."
-      echo "ERROR: looking for ${SAMP_ERR_FILE}"
-      exit 2
-   endif
+else if ($?SLURM_JOB_ID) then
+
+   set ORIGINALDIR = $SLURM_SUBMIT_DIR
+   set     JOBNAME = $SLURM_JOB_NAME
+   set       JOBID = $SLURM_JOBID
+   set     MYQUEUE = $SLURM_JOB_PARTITION
+   set      MYHOST = $SLURM_JOB_NODELIST
+   set      NTASKS = $SLURM_NTASKS
+   set   LAUNCHCMD = "mpirun -np $NTASKS -bind-to core"
+
+   echo "SLURM_JOB_NUM_NODES = ${SLURM_JOB_NUM_NODES}"
+   echo "SLURM_JOB_NODELIST  = ${SLURM_JOB_NODELIST}"
+   echo "SLURM_NNODES        = ${SLURM_NNODES}"
+   echo "SLURM_NODELIST      = ${SLURM_NODELIST}"
+
 else
-   echo "Sampling Error Correction not requested for this assimilation."
+
+   set ORIGINALDIR = `pwd`
+   set     JOBNAME = roms_filter
+   set       JOBID = $$
+   set     MYQUEUE = Interactive
+   set      MYHOST = $host
+   set      TASKID = 1
+   set      NTASKS = 1
+   set   LAUNCHCMD = "aprun -n $NTASKS"
+
 endif
 
 #=========================================================================
-# STEP 2: Advance the ocean ensemble ... one after another.
+# STEP 1: Advance the ocean ensemble ... one after another.
 #=========================================================================
+
+set DSTART = 37623
 
 @ instance = 0
 foreach INSTANCE_DIRECTORY ( instance_???? )
@@ -104,7 +132,12 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
 
    echo "advancing instance $instance at ..."`date`
 
-   mpirun.lsf ../MyROMS_EXE MyROMS_STDIN >& log_$instance.txt
+   \cp ../s4dvar.in.template s4dvar.in
+   set OBS_PREF = ../Obs/obs
+   set NEW_OBS     = `printf %s_%d.nc ${OBS_PREF} $DSTART`
+   MySUBSTITUTE s4dvar.in MyOBSname   $NEW_OBS
+
+   ${LAUNCHCMD} ../MyROMS_EXE MyROMS_STDIN >& log_$instance.txt
 
    # Check for successful completion - log file should NOT have something like:
    # Blowing-up: Saving latest model state into  RESTART file
@@ -128,13 +161,21 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
    # Create a ROMS POSTERIOR file that will be updated by DART and
    # tag the output with the model time.
 
-   set OCEAN_TIME_STRING = `ncdump -v ocean_time ${DAI_FILE} | grep '^ ocean_time = '`
-   set OCEAN_TIME = `echo $OCEAN_TIME_STRING | sed -e "s#[=;a-z_ ]##g"`
+#  set OCEAN_TIME_STRING = `ncdump -v ocean_time ${DAI_FILE} | grep '^ ocean_time = '`
+#  set OCEAN_TIME = `echo $OCEAN_TIME_STRING | sed -e "s#[=;a-z_ ]##g"`
 
-   set ROMS_PRIOR     = `printf %s_%04d_%d.nc ${RST_ROOT} $instance $OCEAN_TIME`
-   set ROMS_POSTERIOR = `printf roms_posterior_%04d_%d.nc $instance $OCEAN_TIME`
-   set ROMS_OBSFILE   = `printf %s_%04d_%d.nc ${OBS_ROOT} $instance $OCEAN_TIME`
-   set SAFETY         = `printf roms_dai_original_%04d_%d.nc $instance $OCEAN_TIME`
+#  set ROMS_PRIOR     = `printf %s_%04d_%d.nc ${RST_ROOT} $instance $OCEAN_TIME`
+#  set ROMS_POSTERIOR = `printf roms_posterior_%04d_%d.nc $instance $OCEAN_TIME`
+#  set ROMS_OBSFILE   = `printf %s_%04d_%d.nc ${OBS_ROOT} $instance $OCEAN_TIME`
+#  set SAFETY         = `printf roms_dai_original_%04d_%d.nc $instance $OCEAN_TIME`
+
+   set DSTART_STRING = `ncdump -v dstart ${DAI_FILE} | grep '^ dstart = '`
+   set DSTART = `echo $DSTART_STRING | sed -e "s#[=;a-z_ ]##g"`
+
+   set ROMS_PRIOR     = `printf %s_%04d_%d.nc ${RST_ROOT} $instance $DSTART`
+   set ROMS_POSTERIOR = `printf roms_posterior_%04d_%d.nc $instance $DSTART`
+   set ROMS_OBSFILE   = `printf %s_%04d_%d.nc ${OBS_ROOT} $instance $DSTART`
+   set SAFETY         = `printf roms_dai_original_%04d_%d.nc $instance $DSTART`
 
    # THE SAFETY FILE COPY IS NOT FOR PRODUCTION RUNS AND SHOULD BE REMOVED.
 
@@ -154,7 +195,7 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
 end
 
 #=========================================================================
-# STEP 3: prepare for DART INFLATION
+# STEP 2: prepare for DART INFLATION
 # This stages the files that contain the inflation values.
 # The inflation values change through time and should be archived.
 #
@@ -195,6 +236,8 @@ end
 
 # The input.nml may be modified differently for each assimilation cycle.
 # (for example, inflation files for the first cycle)
+
+\cp input.nml.template input.nml
 
 # These are used to determine IF we are doing inflation.
 
@@ -331,7 +374,7 @@ endif
 \rm -f roms_inflation_cookie
 
 #==============================================================================
-# STEP 4:  Then we run DART on the ensemble of new states
+# STEP 3:  Then we run DART on the ensemble of new states
 #==============================================================================
 
 # Remove the last set of DART run-time logs - if they exist.
@@ -342,12 +385,14 @@ endif
 # a (single) ROMS input file is required to satisfy 'static_init_model()'.
 # Any one will do.
 
-ln -sf instance_0001/roms_posterior_????_${OCEAN_TIME}.nc MyDAINAME
+#ln -sf instance_0001/roms_posterior_????_${OCEAN_TIME}.nc MyDAINAME
+ln -sf instance_0001/roms_posterior_????_${DSTART}.nc MyDAINAME
 
 # 1) Collect all the ROMS_OBSFILEs into a list of input files
 #    and then convert them to a single DART observation sequence file.
 
-ls -1 instance_*/${OBS_ROOT}*_${OCEAN_TIME}.nc  >! precomputed_files.txt
+#ls -1 instance_*/${OBS_ROOT}*_${OCEAN_TIME}.nc  >! precomputed_files.txt
+ls -1 instance_*/${OBS_ROOT}*_${DSTART}.nc  >! precomputed_files.txt
 
 ./convert_roms_obs  || exit 2
 
@@ -356,23 +401,26 @@ ls -1 instance_*/${OBS_ROOT}*_${OCEAN_TIME}.nc  >! precomputed_files.txt
 #    (make sure all instances of ROMS advanced successfully)
 #    DART (filter) will modify these files in-place.
 
-ls -1 instance_*/roms_posterior_????_${OCEAN_TIME}.nc  >! restart_files.txt
+#ls -1 instance_*/roms_posterior_????_${OCEAN_TIME}.nc  >! restart_files.txt
+ls -1 instance_*/roms_posterior_????_${DSTART}.nc  >! restart_files.txt
 
-mpirun.lsf ./filter || exit 3
+${LAUNCHCMD} ./filter || exit 3
 
 # Tag the output with the valid time of the model state.
 
-foreach FILE ( input_*mean.nc input_*sd.nc \
-               preassim_*mean.nc preassim_*sd.nc \
-               preassim_member_????.nc \
-               postassim_*mean.nc postassim_*sd.nc \
-               postassim_member_????.nc \
-               output_*mean.nc output_*sd.nc )
+foreach FILE ( input_*mean.nc     input_*sd.nc \
+            preassim_*mean.nc  preassim_*sd.nc \
+           postassim_*mean.nc postassim_*sd.nc \
+            analysis_*mean.nc  analysis_*sd.nc \
+              output_*mean.nc    output_*sd.nc \
+           preassim_member_????.nc \
+           postassim_member_????.nc )
 
    if (  -e $FILE ) then
       set FEXT  = $FILE:e
       set FBASE = $FILE:r
-      \mv -v $FILE ${FBASE}.${OCEAN_TIME}.${FEXT}
+#     \mv -v $FILE ${FBASE}.${OCEAN_TIME}.${FEXT}
+      \mv -v $FILE ${FBASE}.${DSTART}.${FEXT}
    else
       echo "$FILE does not exist, no need to take action."
    endif
@@ -381,10 +429,11 @@ end
 
 # Tag the observation file with the valid time of the model state.
 
-\mv -v obs_seq.final             obs_seq.final.${OCEAN_TIME}
+#\mv -v obs_seq.final             obs_seq.final.${OCEAN_TIME}
+\mv -v obs_seq.final             obs_seq.final.${DSTART}
 
 #==============================================================================
-# STEP 5: Prepare for the next model advance
+# STEP 4: Prepare for the next model advance
 #==============================================================================
 # Rename the existing files to have their future names.
 # Sometime soon, the base filenames will not need to be changed.

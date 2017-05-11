@@ -62,9 +62,9 @@ The list of files attached:
 ./work/obs_seq.out         - Sample run output
 ./work/dyn_dart_err.725015 - Sample run output (stderr)
 ./work/dyn_dart_out.725015 - Sample run output (stdout)
-./work/Posterior_Diag.nc   - Sample run output
-./work/Prior_Diag.nc       - Sample run output
-./work/True_State.nc       - Sample run output
+./work/analysis.nc         - Sample run output
+./work/preassim.nc         - Sample run output
+./work/true_state.nc       - Sample run output
 ./work/filter_restart      - Sample run output
 ./work/ens_time_series.ps  - Sample run output (ps version of ens time series)
 ./work/ens_time_series.pdf - Sample run output (pdf version of ens time series)

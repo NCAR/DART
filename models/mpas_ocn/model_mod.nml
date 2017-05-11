@@ -4,7 +4,6 @@
 &model_nml
    model_analysis_filename      = 'mpas_analysis.nc'
    grid_definition_filename     = 'mpas_analysis.nc'
-   output_state_vector          = .true., 
    vert_localization_coord      = 3,
    assimilation_period_days     = 0,
    assimilation_period_seconds  = 60,

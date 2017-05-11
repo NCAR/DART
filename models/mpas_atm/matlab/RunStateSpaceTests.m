@@ -33,8 +33,8 @@ end
 
  clear pinfo; close all;
 
- truth_file = 'True_State.nc';
- diagn_file = 'Prior_Diag.nc';
+ truth_file = 'true_state.nc';
+ diagn_file = 'preassim.nc';
  vars1 = CheckModel(diagn_file);
  vars1 = rmfield(vars1,{'time','time_series_length','fname'});
  vars2 = CheckModelCompatibility(truth_file,diagn_file);
@@ -78,7 +78,7 @@ if (interactive)
 end
 
  clear pinfo;
- pinfo                    = CheckModel('Prior_Diag.nc');
+ pinfo                    = CheckModel('preassim.nc');
  pinfo.lonCell            = nc_varget(pinfo.fname,'lonCell');
  pinfo.latCell            = nc_varget(pinfo.fname,'latCell');
  pinfo.area               = nc_varget(pinfo.fname,'areaCell');
@@ -111,7 +111,7 @@ if (interactive)
 end
 
  clear pinfo;
- pinfo                 = CheckModel('Prior_Diag.nc');
+ pinfo                 = CheckModel('preassim.nc');
  pinfo.lonCell         = nc_varget(pinfo.fname,'lonCell');
  pinfo.latCell         = nc_varget(pinfo.fname,'latCell');
  pinfo.area            = nc_varget(pinfo.fname,'areaCell');
@@ -157,9 +157,9 @@ if (interactive)
 end
 
  clear pinfo; clf
- truth_file     = 'True_State.nc';
- prior_file     = 'Prior_Diag.nc';
- posterior_file = 'Posterior_Diag.nc';
+ truth_file     = 'true_state.nc';
+ prior_file     = 'preassim.nc';
+ posterior_file = 'analysis.nc';
  pinfo = CheckModelCompatibility(prior_file,posterior_file);
  pinfo.prior_time     = pinfo.truth_time;
  pinfo.posterior_time = pinfo.diagn_time;
@@ -198,8 +198,8 @@ if (interactive)
 end
 
  clear pinfo; clf
- truth_file           = 'True_State.nc';
- diagn_file           = 'Prior_Diag.nc';
+ truth_file           = 'true_state.nc';
+ diagn_file           = 'preassim.nc';
  vars1                = CheckModel(diagn_file);
  rmfield(vars1,{'time','time_series_length','fname'});
  vars2                = CheckModelCompatibility(truth_file,diagn_file);
@@ -224,7 +224,7 @@ end
 % Tahiti            : -17.643368, 210.575638
 
  clear pinfo; clf
- diagn_file = 'Prior_Diag.nc';
+ diagn_file = 'preassim.nc';
  pinfo = CheckModel(diagn_file);
 [pinfo.num_ens_members, pinfo.ensemble_indices] = get_ensemble_indices(pinfo.fname);
  pinfo.lonCell            = nc_varget(pinfo.fname,'lonCell');

@@ -329,9 +329,9 @@ EXAMPLE
 
 % load the true trajectory and the analysis ensembles
 clear;pack
-ncload('True_State.nc');
+ncload('true_state.nc');
 truth(:,:)=state(:,1,:);
-ncload('Posterior_Diag.nc');
+ncload('analysis.nc');
 len=100;
 
 % plot ensemble mean analysis and truth at end of run

@@ -144,10 +144,10 @@ switch lower(model)
 
    case {'simple_advection'}
 
-      num_locs = dim_length(fname,'loc1d'); % # of X variables
-      loc1d    =     ncread(fname,'loc1d');
+      num_locs = dim_length(fname,'location'); % # of X variables
+      loc1d    =     ncread(fname,'location');
 
-      if ( nc_isvar(fname,'state') )
+      if ( nc_var_exists(fname,'state') )
          varnames = {'state'};
          def_inds = [1 13 27];
       else

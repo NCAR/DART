@@ -35,14 +35,9 @@ use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs,
 use     location_mod, only : location_type, get_location, set_location_missing, &
                              write_location, operator(/=), operator(==), &
                              set_location, is_location_in_region, query_location, &
-                             nc_write_location_atts, nc_get_location_varids, &
-                             nc_write_location, LocationDims, &
-                             vert_is_undef,        VERTISUNDEF,    &
-                             vert_is_surface,      VERTISSURFACE,  &
-                             vert_is_level,        VERTISLEVEL,    &
-                             vert_is_pressure,     VERTISPRESSURE, &
-                             vert_is_height,       VERTISHEIGHT,   &
-                             vert_is_scale_height, VERTISSCALEHEIGHT
+                             is_vertical, VERTISUNDEF
+
+use  location_io_mod, only : nc_write_location_atts, nc_write_location
 
 use time_manager_mod, only : time_type, set_date, set_time, get_time, &
                              set_calendar_type, get_calendar_string, &
@@ -604,7 +599,7 @@ FindLoop : do i = 1,num_voxels
    londiff = abs(obslocarray(1) - stnlocarray(1)) 
    latdiff = abs(obslocarray(2) - stnlocarray(2)) 
 
-   if (vert_is_pressure(ObsLocation) ) then
+   if (is_vertical(ObsLocation, "PRESSURE") ) then
       hgtdiff = abs(obslocarray(3) - stnlocarray(3)) 
    else
       ! if the vertical is undefined or surface, then
@@ -1045,10 +1040,8 @@ call nc_check(nf90_put_att(ncid, VarID, 'long_name', &
 
 ! let the location module write what it needs to ...
 
-if ( nc_write_location_atts( ncid, fname, voxelsDimID ) /= 0 ) then
-   write(string1,*)'problem initializing netCDF location attributes'
-   call error_handler(E_ERR,'InitNetCDF',string1,source,revision,revdate)
-endif
+! create a 'location' variable
+call nc_write_location_atts(ncid, 0, voxelsDimID)
 
 ! Define the mandatory level corresponding to each voxel
 
@@ -1219,8 +1212,7 @@ integer :: DimID, ntimes, voxelindex, days, secs, i
 integer, dimension(1) :: istart, icount
 
 integer :: voxelVarID, TimeVarID, NTimesVarID, &
-           T1VarID, TNVarID, ObsTypeVarID, &
-           LocationVarID, WhichVertVarID, IlevVarID
+           T1VarID, TNVarID, ObsTypeVarID, IlevVarID
 
 real(digits12), allocatable, dimension(:) :: mytimes
 integer, dimension(num_voxels) :: gooduns    ! Cray compiler likes this better
@@ -1262,8 +1254,6 @@ call nc_check(nf90_inq_varid(ncid, 'last_time', varid=TNVarID), &
 
 call nc_check(nf90_inq_varid(ncid, 'voxel_level_index', varid=IlevVarID), &
           'WriteNetCDF', 'inq_varid:voxel_level_index '//trim(fname))
-
-call nc_get_location_varids(ncid, fname, LocationVarID, WhichVertVarID)
 
 allocate(mytimes(ntimes))
 
@@ -1318,8 +1308,7 @@ WriteObs : do voxelindex = 1,num_voxels
    !----------------------------------------------------------------------------
    ! Using the location_mod:nc_write_location() routine.
    !----------------------------------------------------------------------------
-   call nc_write_location(ncid, LocationVarId, voxels(voxelindex)%location, &
-             voxelindex, WhichVertVarId)
+   call nc_write_location(ncid, voxels(voxelindex)%location, voxelindex, do_vert=.true.)
 
 enddo WriteObs
 
@@ -1726,13 +1715,13 @@ real(r8) :: zdist
 
 ilevel = MISSING_I
 
-if (vert_is_undef(  location)  .or. &
-    vert_is_surface(location)) then
+if (is_vertical(location, "UNDEFINED")  .or. &
+    is_vertical(location, "SURFACE")) then
 
    vertically_desired = .true.
    ilevel = 1
    
-elseif ( vert_is_pressure(location) ) then
+elseif ( is_vertical(location, "PRESSURE") ) then
 
    obslocarray(1:3) = get_location(location)
    obslocarray( 4 ) = query_location(location,'which_vert') 

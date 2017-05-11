@@ -11,6 +11,7 @@ assimilation_code/modules/observations/obs_kind_mod.f90
 assimilation_code/modules/observations/obs_sequence_mod.f90
 assimilation_code/modules/utilities/distributed_state_mod.f90
 assimilation_code/modules/utilities/ensemble_manager_mod.f90
+assimilation_code/modules/utilities/netcdf_utilities_mod.f90
 assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
 assimilation_code/modules/utilities/null_win_mod.f90
 assimilation_code/modules/utilities/random_seq_mod.f90
@@ -20,4 +21,5 @@ assimilation_code/modules/utilities/types_mod.f90
 assimilation_code/modules/utilities/utilities_mod.f90
 assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.f90
 models/template/model_mod.f90
+models/utilities/default_model_mod.f90
 observations/forward_operators/obs_def_mod.f90

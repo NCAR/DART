@@ -18,9 +18,9 @@ xdim = 92;
 ydim = 55;
 
 % Open up the NetCDF files - need the ensemble mean and truth
-diag_filename='Posterior_Diag.nc';
+diag_filename='analysis.nc';
 diag_nc = netcdf(sprintf('%s/%s',path,diag_filename));
-true_filename='True_State.nc';
+true_filename='true_state.nc';
 true_nc = netcdf(sprintf('%s/%s',path,true_filename));
 
 % Grab the entire set of times

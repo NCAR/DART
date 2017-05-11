@@ -44,8 +44,6 @@ use  wrf_data_module, only : wrf_data, wrf_bdy_data, &
                              wrf_io, wrfbdy_io, &
                              set_wrf_date
 use      location_mod, only : location_type, get_location, set_location, & 
-                              vert_is_surface, vert_is_level, vert_is_pressure, vert_is_height, &
-                              VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, &
                               VERTISHEIGHT
 use    utilities_mod, only : get_unit, file_exist, open_file, &
                              close_file, error_handler, E_ERR, E_MSG, initialize_utilities, &

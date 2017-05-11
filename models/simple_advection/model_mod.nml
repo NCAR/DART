@@ -11,5 +11,5 @@
    source_random_amp_frac = 0.00001,
    source_damping_rate    = 0.0000027878,
    source_diurnal_rel_amp = 0.05,
-   source_phase_noise     = 0.0,
-   output_state_vector  = .false./
+   source_phase_noise     = 0.0
+  /

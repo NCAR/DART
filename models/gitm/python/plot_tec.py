@@ -75,7 +75,7 @@ VtecT = tecify(timeT, LonT, LatT, AltT, EdsT)
 
 #read DART netcdf files
 print 'Reading DART netcdf files... '
-f = netcdf.netcdf_file('../work/Prior_Diag.nc', 'r')
+f = netcdf.netcdf_file('../work/preassim.nc', 'r')
 #f.dimensions
 #for d in dir(f): print d
 #for d in f.variables: print d
@@ -100,7 +100,7 @@ f107Er = f.variables['f107'].data[:,0,0] #[time,copy,wavelength] - mean, just 1 
 f107sdEr = f.variables['f107'].data[:,1,0] #standard deviation
 f.close()
 
-f = netcdf.netcdf_file('../work/Posterior_Diag.nc', 'r') 
+f = netcdf.netcdf_file('../work/analysis.nc', 'r') 
 EdsEo = f.variables['ie_IDensityS'].data[:,0,:,:,:].T #mean
 EdssdEo = f.variables['ie_IDensityS'].data[:,1,:,:,:].T #standard deviation
 f107Eo = f.variables['f107'].data[:,0,0] #mean

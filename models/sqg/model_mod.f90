@@ -76,8 +76,7 @@ logical  :: debug                       = .false.
 integer  :: assimilation_period_days    = 0
 integer  :: assimilation_period_seconds = 60*60*6
 
-namelist /model_nml/ output_state_vector, &
-                     channel_center, channel_width, &
+namelist /model_nml/ channel_center, channel_width, &
                      assimilation_period_days, assimilation_period_seconds, &
                      debug
 

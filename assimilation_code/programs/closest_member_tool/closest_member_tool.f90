@@ -222,7 +222,7 @@ if (.not. allkinds) then
    do ii=1, model_size
       !> @todo WRF and MPAS are doing vertical conversion here. Does this work
       !> if you have the non-mpi version.
-      call get_state_meta_data(ens_handle, ii, loc, stype)
+      call get_state_meta_data(ii, loc, stype)
       if (stype < 1 .or. stype > num_kinds) then
          write(msgstring, *) 'bad KIND from get_state_meta_data, ', stype, ' for index ', ii
          write(msgstring1, *) 'must be between 1 and ', num_kinds

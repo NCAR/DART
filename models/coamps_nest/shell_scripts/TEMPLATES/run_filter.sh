@@ -151,8 +151,8 @@ if [ \${init_ens} == 'f' ]; then
   fi
 
 # change the names of the prior and posterior netCDF files.
-  mv ./Prior_Diag.nc ./Prior_Diag.\${dtg}.nc
-  mv ./Posterior_Diag.nc ./Posterior_Diag.\${dtg}.nc
+  mv ./preassim.nc ./preassim.\${dtg}.nc
+  mv ./analysis.nc ./analysis.\${dtg}.nc
 
   if [ ! -e \${scrDir}/obs_seq.list ]; then touch \${scrDir}/obs_seq.list; fi
   echo "./\${dtg}/obs_seq.final" >> \${scrDir}/obs_seq.list

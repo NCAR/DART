@@ -126,7 +126,7 @@ character(len=NF90_MAX_NAME) :: variable_table(max_state_variables, num_state_ta
 integer            :: assimilation_period_days = 0
 integer            :: assimilation_period_seconds = 60
 real(r8)           :: model_perturbation_amplitude = 0.2
-logical            :: output_state_vector = .true.
+logical            :: output_state_vector = .false.
 integer            :: debug = 0   ! turn up for more and more debug messages
 character(len=32)  :: calendar = 'Gregorian'
 character(len=256) :: gitm_restart_dirname = 'gitm_restartdir'

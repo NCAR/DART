@@ -4,7 +4,7 @@
 !
 ! $Id$
 
-!> Program to read True_State.nc and Prior_Diag.nc (or Posterior_Diag.nc)
+!> Program to read true_state.nc and preassim.nc (or analysis.nc)
 !> and print out the time-mean total error and spread.  The matlab macros 
 !> do this with graphics, but if you want numerical output suitable for 
 !> shell scripting/automation this should be easier to incorporate.
@@ -74,8 +74,8 @@ type(fileinfo) :: t, d
 
 ! Namelist variables
 
-character(len=256) :: diag_file_name  = 'Prior_Diag.nc'
-character(len=256) :: truth_file_name = 'True_State.nc'
+character(len=256) :: diag_file_name  = 'preassim.nc'
+character(len=256) :: truth_file_name = 'true_state.nc'
 integer            :: skip_first_ntimes = 0
 
 namelist /compute_error_nml/  &

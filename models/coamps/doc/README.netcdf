@@ -13,8 +13,8 @@ The state vector is defined with dimensions (time, copy, StateVariable).
 Time and StateVariable should be fairly self-explanatory, but the copy
 coordinate can differ depending on the DART configuration.
 
-In True_State.nc, the length of the copy dimension is 1 - there is only
-one truth.  In Prior_Diag.nc and Posterior_Diag.nc, though, there are
+In true_state.nc, the length of the copy dimension is 1 - there is only
+one truth.  In preassim.nc and analysis.nc, though, there are
 more things to be stored:
 Copy 1:         Ensemble mean
 Copy 2:         Ensemble spread

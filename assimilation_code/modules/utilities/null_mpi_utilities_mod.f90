@@ -652,7 +652,10 @@ integer,  intent(in)  :: window ! window object
 integer,  intent(in)  :: mindex ! index in the tasks memory
 real(r8), intent(out) :: x ! result
 
-call error_handler(E_ERR,'get_from_mean', 'should not call this code', source, revision, revdate)
+call error_handler(E_ERR,'get_from_mean', 'cannot be used in serial mode', source, revision, revdate)
+
+! NOT REACHED
+x = 0.0_r8
 
 end subroutine get_from_mean
 
@@ -666,7 +669,10 @@ integer,  intent(in)  :: mindex   ! index in the tasks memory
 integer,  intent(in)  :: num_rows ! number of rows in the window
 real(r8), intent(out) :: x(:)     ! result
 
-call error_handler(E_ERR,'get_from_fwd', 'should not call this code', source, revision, revdate)
+call error_handler(E_ERR,'get_from_fwd', 'cannot be used in serial mode', source, revision, revdate)
+
+! NOT REACHED
+x(:) = 0.0_r8
 
 end subroutine get_from_fwd
 

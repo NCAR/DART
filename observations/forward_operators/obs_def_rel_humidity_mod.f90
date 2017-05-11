@@ -57,7 +57,7 @@ module obs_def_rel_humidity_mod
 use        types_mod, only : r8, missing_r8, L_over_Rv
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, E_ALLMSG
 use     location_mod, only : location_type, set_location, get_location, write_location, &
-                             read_location, vert_is_pressure
+                             read_location, is_vertical
 use  assim_model_mod, only : interpolate
 use     obs_kind_mod, only : QTY_TEMPERATURE, QTY_PRESSURE, QTY_VAPOR_MIXING_RATIO
 
@@ -133,7 +133,7 @@ endwhere
 if(all(istatus /= 0)) return  ! not using return_now because where clause modifies istatus.
 
 !  interpolate the pressure, if observation location is not pressure
-if ( vert_is_pressure(location) ) then
+if ( is_vertical(location, "PRESSURE") ) then
    xyz = get_location(location)
    pres = xyz(3)
 else

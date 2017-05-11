@@ -40,7 +40,7 @@ use time_manager_mod, only : time_type, operator(>=), operator(<), operator(>), 
                              set_calendar_type, GREGORIAN, set_time, get_time
 use     location_mod, only : location_type, get_location, set_location, get_dist, &
                              VERTISUNDEF, VERTISSURFACE, VERTISPRESSURE, &
-                             vert_is_pressure, vert_is_height, operator(==)
+                             is_vertical, operator(==)
 use obs_sequence_mod, only : append_obs_to_seq, copy_obs, delete_obs_from_seq, &
                              destroy_obs_sequence, get_first_obs, get_last_obs, &
                              get_next_obs, get_next_obs_from_key, get_num_copies, &
@@ -482,8 +482,8 @@ ObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a sequence
   obs_time = get_obs_def_time(obs_def)
 
   !  check if the observation is within vertical bounds of domain
-  if ( (vert_is_pressure(obs_loc) .and. llv_loc(3) < ptop) .or. &
-       (vert_is_height(obs_loc)   .and. llv_loc(3) > htop) ) then
+  if ( (is_vertical(obs_loc, "PRESSURE") .and. llv_loc(3) < ptop) .or. &
+       (is_vertical(obs_loc, "HEIGHT")   .and. llv_loc(3) > htop) ) then
 
     prev_obsi = obs_in
     call get_next_obs(supp_obs_seq, prev_obsi, obs_in, last_obs)
@@ -961,8 +961,8 @@ InputObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a seq
   obs_time = get_obs_def_time(obs_def)
 
   !  check vertical location
-  if ( (vert_is_pressure(obs_loc) .and. llv_loc(3) < ptop) .or. &
-       (vert_is_height(obs_loc)   .and. llv_loc(3) > htop) ) then
+  if ( (is_vertical(obs_loc, "PRESSURE") .and. llv_loc(3) < ptop) .or. &
+       (is_vertical(obs_loc, "HEIGHT")   .and. llv_loc(3) > htop) ) then
 
     prev_obs = obs_in
     call get_next_obs(seq, prev_obs, obs_in, last_obs)

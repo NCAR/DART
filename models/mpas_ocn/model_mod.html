@@ -977,9 +977,9 @@ are preserved in the netCDF file as variables <em class=code>inputnml</em> and
 <P>
 <em class=code>nc_write_model_atts</em>
 is responsible for the model-specific attributes in the following DART-output netCDF files:
-<em class=file>True_State.nc</em>, 
-<em class=file>Prior_Diag.nc</em>, and 
-<em class=file>Posterior_Diag.nc</em>.
+<em class=file>true_state.nc</em>, 
+<em class=file>preassim.nc</em>, and 
+<em class=file>analysis.nc</em>.
 </P>
 
 </div>
@@ -1466,11 +1466,11 @@ string or the integer netCDF fid.
     <TD>to read the <em class=code>gitm_vars_nml</em> namelist</TD></TR>
 <TR><TD>gitm_restart.nc</TD>
     <TD>provides grid dimensions, model state, and 'valid_time' of the model state</TD></TR>
-<TR><TD>True_State.nc</TD>
+<TR><TD>true_state.nc</TD>
     <TD>the time-history of the "true" model state from an OSSE</TD></TR>
-<TR><TD>Prior_Diag.nc</TD>
+<TR><TD>preassim.nc</TD>
     <TD>the time-history of the model state before assimilation</TD></TR>
-<TR><TD>Posterior_Diag.nc&nbsp;</TD>
+<TR><TD>analysis.nc&nbsp;</TD>
     <TD>the time-history of the model state after assimilation</TD></TR>
 <TR><TD>dart_log.out [default name]</TD>
     <TD>the run-time diagnostic output</TD></TR>

@@ -155,7 +155,6 @@
    assimilation_period_days     = 0
    assimilation_period_seconds  = 43200
    model_perturbation_amplitude = 0.0001
-   output_state_vector          = .false.
    vert_localization_coord      = 3
    calendar                     = 'Gregorian'
    debug                        = 0

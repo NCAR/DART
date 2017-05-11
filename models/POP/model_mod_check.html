@@ -107,8 +107,8 @@ prematurely terminating the namelist.
 <TR><TD> output_file  </TD>
     <TD> character(len=256) </TD>
     <TD>base portion of the name of the test netCDF file that will exercise the
-    DART routines that create the <em class="file">True_State.nc</em>, 
-    <em class="file">Prior_Diag.nc</em>, and <em class="file">Posterior_Diag.nc</em>
+    DART routines that create the <em class="file">true_state.nc</em>, 
+    <em class="file">preassim.nc</em>, and <em class="file">analysis.nc</em>
     files. The proper file extension will be added.
 </TD></TR>  
 
@@ -308,9 +308,9 @@ what was in the restart file (presumably, once you get
 <em class="program">model_to_dart</em> working, you have converted
 a real model state to a DART restart and are using <em>that</em>), 
 you can fine-tune what gets put into the DART 
-<em class="file">True_State.nc</em>, 
-<em class="file">Prior_Diag.nc</em>, and
-<em class="file">Posterior_Diag.nc</em> diagnostic files. Only one
+<em class="file">true_state.nc</em>, 
+<em class="file">preassim.nc</em>, and
+<em class="file">analysis.nc</em> diagnostic files. Only one
 ensemble member is needed to test the routines (hence the hardcoded 1
 in the test block).
 </P>

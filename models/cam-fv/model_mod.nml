@@ -1,5 +1,4 @@
 &model_nml
-   output_state_vector       = .false.
    model_version             = '4.0'
    model_config_file         = 'caminput.nc'
    cam_phis                  = 'cam_phis.nc'

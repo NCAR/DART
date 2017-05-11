@@ -135,6 +135,10 @@ module utilities_mod
 !-----------------------------------------------------------------------
 
 use types_mod, only : r4, r8, digits12, i4, i8, PI, MISSING_R8, MISSING_I
+
+!>@todo FIXME  netcdf is only needed for the nc_check() routine.
+!>when it moves to the netcdf_utilities_mod module remove the 'use'
+!>from here to simplify things.
 use netcdf
 
 implicit none
@@ -812,14 +816,11 @@ select case(level)
       else
         write(taskstr, '(a,i5)' ) "PE ", task_number
         write(     *     , *) trim(taskstr),': ',trim(routine),' ', trim(text)
-        write(logfileunit, *) trim(taskstr),': ',trim(routine),' ', trim(text)
         if ( present(text2)) then
            write(     *     , *) trim(taskstr),': ',trim(routine),' ... ', trim(text2)
-           write(logfileunit, *) trim(taskstr),': ',trim(routine),' ... ', trim(text2)
         endif
         if ( present(text3)) then
            write(     *     , *) trim(taskstr),': ',trim(routine),' ... ', trim(text3)
-           write(logfileunit, *) trim(taskstr),': ',trim(routine),' ... ', trim(text3)
         endif
       endif
 

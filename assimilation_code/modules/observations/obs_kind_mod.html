@@ -159,8 +159,9 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;obs_kind_nml
-   assimilate_these_obs_types = 'null',
-   evaluate_these_obs_types   = 'null'  
+   assimilate_these_obs_types          = 'null',
+   evaluate_these_obs_types            = 'null'  
+   use_precomputed_FOs_these_obs_types = 'null'
  /
 </pre>
 </div>
@@ -193,12 +194,20 @@ if present in the obs_seq.out file.
 <TBODY valign=top>
 
 <TR><TD>assimilate_these_obs_types</TD>
-    <TD>character(len=129), dimension(:)</TD>
+    <TD>character(len=31), dimension(:)</TD>
     <TD>Names of observation types to be assimilated.</TD></TR>
 
 <TR><TD>evaluate_these_obs_types</TD>
-    <TD>character(len=129), dimension(:)</TD>
+    <TD>character(len=31), dimension(:)</TD>
     <TD>Names of observation types to be evaluated only.</TD></TR>
+
+<TR><TD>use_precomputed_FOs_these_obs_types</TD>
+    <TD>character(len=31), dimension(:)</TD>
+    <TD>If the forward operator values have been precomputed outside of
+filter, for example for radiances or other compute intensive computations,
+the ensemble of forward operator values can be stored in the observation
+sequence file.  For any type listed here, the forward operator interpolation
+code will not be called and the values in the file will be used instead.</TD></TR>
 
 </TBODY> 
 </TABLE>

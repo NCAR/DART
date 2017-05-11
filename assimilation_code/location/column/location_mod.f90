@@ -18,14 +18,12 @@ private
 public :: location_type, get_location, set_location, &
           set_location_missing, is_location_in_region, &
           write_location, read_location, interactive_location, query_location, &
-          LocationDims, LocationName, LocationLName, get_close_obs, &
-          get_close_maxdist_init, get_close_obs_init, get_close_type, &
-          operator(==), operator(/=), get_dist, get_close_obs_destroy, &
-          nc_write_location_atts, nc_get_location_varids, nc_write_location, &
-          vert_is_height, vert_is_pressure, vert_is_undef, vert_is_level, &
-          vert_is_surface, has_vertical_localization, VERTISUNDEF, VERTISSURFACE, &
-          VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, &
-          set_vert, get_vert, set_which_vert
+          LocationDims, LocationName, LocationLName, LocationStorageOrder, LocationUnits, &
+          get_close_type, get_close_init, get_close_obs, get_close_state, get_close_destroy, &
+          operator(==), operator(/=), get_dist, has_vertical_choice, vertical_localization_on, &
+          set_vertical, is_vertical, get_vertical_localization_coord, get_close, &
+          set_vertical_localization_coord, convert_vertical_obs, convert_vertical_state, &
+          VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT
 
 
 ! version controlled file description for error handling, do not edit
@@ -58,9 +56,12 @@ end type get_close_type
 
 logical, save :: module_initialized = .false.
 
-integer,              parameter :: LocationDims = 1
-character(len = 129), parameter :: LocationName = "loc1Dcolumn"
-character(len = 129), parameter :: LocationLName = "one-dimensional column"
+integer,             parameter :: LocationDims = 1
+character(len = 64), parameter :: LocationName = "loc1Dcolumn"
+character(len = 64), parameter :: LocationLName = "one-dimensional column"
+character(len = 64), parameter :: LocationStorageOrder = "Vertical"
+character(len = 64), parameter :: LocationUnits = "which_vert"
+
 
 character(len = 129) :: errstring
 
@@ -652,153 +653,128 @@ end function is_location_in_region
 
 !----------------------------------------------------------------------------
 
-function vert_is_undef(loc)
- 
-! Given a location, return true if vertical coordinate is undefined, else false
+function has_vertical_choice()
 
-logical                          :: vert_is_undef
-type(location_type), intent(in)  :: loc
+logical :: has_vertical_choice
 
 if ( .not. module_initialized ) call initialize_module
 
-if(loc%which_vert == VERTISUNDEF) then
-   vert_is_undef = .true.
-else
-   vert_is_undef = .false.
-endif
+has_vertical_choice = .true.
 
-end function vert_is_undef
+end function has_vertical_choice
 
 !----------------------------------------------------------------------------
 
-function vert_is_surface(loc)
- 
-! Given a location, return true if vertical coordinate is surface, else false
+function get_vertical_localization_coord()
 
-logical                          :: vert_is_surface
-type(location_type), intent(in)  :: loc
+integer :: get_vertical_localization_coord
 
 if ( .not. module_initialized ) call initialize_module
 
-if(loc%which_vert == VERTISSURFACE) then
-   vert_is_surface = .true.
-else
-   vert_is_surface = .false.
-endif
+get_vertical_localization_coord = location_vertical_localization_coord
 
-end function vert_is_surface
+end function get_vertical_localization_coord
 
 !----------------------------------------------------------------------------
 
-function vert_is_pressure(loc)
- 
-! Given a location, return true if vertical coordinate is pressure, else false
+subroutine set_vertical_localization_coord(which_vert)
 
-logical                          :: vert_is_pressure
-type(location_type), intent(in)  :: loc
+integer, intent(in) :: which_vert
 
 if ( .not. module_initialized ) call initialize_module
 
-if(loc%which_vert == VERTISPRESSURE) then
-   vert_is_pressure = .true.
-else
-   vert_is_pressure = .false.
-endif
+location_vertical_localization_coord = which_vert
 
-end function vert_is_pressure
-
-!----------------------------------------------------------------------------
-
-function vert_is_height(loc)
- 
-! Given a location, return true if vertical coordinate is height, else false
-
-logical                          :: vert_is_height
-type(location_type), intent(in)  :: loc
-
-if ( .not. module_initialized ) call initialize_module
-
-if(loc%which_vert == VERTISHEIGHT) then
-   vert_is_height = .true.
-else
-   vert_is_height = .false.
-endif
-
-end function vert_is_height
-
-!----------------------------------------------------------------------------
-
-function vert_is_level(loc)
- 
-! Given a location, return true if vertical coordinate is level, else false
-
-logical                          :: vert_is_level
-type(location_type), intent(in)  :: loc
-
-if ( .not. module_initialized ) call initialize_module
-
-if(loc%which_vert == VERTISLEVEL) then
-   vert_is_level = .true.
-else
-   vert_is_level = .false.
-endif
-
-end function vert_is_level
+end subroutine set_vertical_localization_coord
 
 !---------------------------------------------------------------------------
 
-function has_vertical_localization()
- 
-! Always returns false since this type of location doesn't support
-! vertical localization. (but it could - it makes sense for this type.)
+function vertical_localization_on()
 
-logical :: has_vertical_localization
+logical :: vertical_localization_on
 
 if ( .not. module_initialized ) call initialize_module
 
-has_vertical_localization = .false.
+!>@todo FIXME
+!> Always returns false since this type of location doesn't support
+!> vertical localization (no namelist choice).  but it could since
+!> it makes sense for this type.
+vertical_localization_on = .false.
 
-end function has_vertical_localization
-
-!----------------------------------------------------------------------------
-!> return the vertical location 
-function get_vert(loc)
-
-type(location_type), intent(in) :: loc
-real(r8) :: get_vert
-
-if ( .not. module_initialized ) call initialize_module
-
-get_vert = loc%vloc
-
-end function get_vert
+end function vertical_localization_on
 
 !----------------------------------------------------------------------------
-!> set the vertical location
-subroutine set_vert(loc, vloc)
+!> use a string so caller doesn't have to have access to VERTISxxx values
+
+function is_vertical(loc, which_vert)
+
+logical                          :: is_vertical
+type(location_type), intent(in)  :: loc
+character(len=*),    intent(in)  :: which_vert
+
+select case  (which_vert)
+   case ("UNDEFINED")
+      is_vertical = (VERTISUNDEF == loc%which_vert)
+   case ("SURFACE")
+      is_vertical = (VERTISSURFACE == loc%which_vert)
+   case ("LEVEL")
+      is_vertical = (VERTISLEVEL == loc%which_vert) 
+   case ("PRESSURE")
+      is_vertical = (VERTISPRESSURE == loc%which_vert)
+   case ("HEIGHT") 
+      is_vertical = (VERTISHEIGHT == loc%which_vert)
+   case default
+      write(msgstring, *) 'unrecognized key for vertical type: ', which_vert
+      call error_handler(E_ERR, 'is_vertical', msgstring, source, revision, revdate)
+end select
+
+end function is_vertical
+   
+!--------------------------------------------------------------------
+
+subroutine set_vertical(loc, vloc, which_vert)
 
 type(location_type), intent(inout) :: loc
-real(r8),            intent(in) :: vloc !< vertical location
+real(r8), optional,  intent(in)    :: vloc
+integer,  optional,  intent(in)    :: which_vert
 
-if ( .not. module_initialized ) call initialize_module
+if (present(vloc)) loc%vloc = vloc
+if (present(which_vert)) loc%which_vert = which_vert
 
-loc%vloc = vloc
+end subroutine set_vertical
 
-end subroutine set_vert
+!--------------------------------------------------------------------
 
-!----------------------------------------------------------------------------
-!> set the which vert
-subroutine set_which_vert(loc, which_vert)
+subroutine convert_vertical_obs(ens_handle, num, locs, loc_qtys, loc_types, &
+                                which_vert, status)
 
-type(location_type), intent(inout) :: loc
-integer,                intent(in) :: which_vert !< vertical coordinate type
+type(ensemble_type), intent(in)    :: ens_handle
+integer,             intent(in)    :: num
+type(location_type), intent(inout) :: locs(:)
+integer,             intent(in)    :: loc_qtys(:), loc_types(:)
+integer,             intent(in)    :: which_vert
+integer,             intent(out)   :: status(:)
 
-if ( .not. module_initialized ) call initialize_module
+status(:) = 0
 
-loc%which_vert = which_vert
+end subroutine convert_vertical_obs
 
-end subroutine set_which_vert
+!--------------------------------------------------------------------
 
+subroutine convert_vertical_state(ens_handle, num, locs, loc_qtys, loc_indx, &
+                                  which_vert, istatus)
+
+type(ensemble_type), intent(in)    :: ens_handle
+integer,             intent(in)    :: num
+type(location_type), intent(inout) :: locs(:)
+integer,             intent(in)    :: loc_qtys(:)
+integer(i8),         intent(in)    :: loc_indx(:)
+integer,             intent(in)    :: which_vert
+integer,             intent(out)   :: istatus
+
+istatus = 0
+
+end subroutine convert_vertical_state
 
 !----------------------------------------------------------------------------
 ! end of location/column/location_mod.f90

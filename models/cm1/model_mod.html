@@ -66,7 +66,7 @@ CM1 restart files: (<em class=code>&amp;param9:&nbsp;restart_file_theta&nbsp;=&n
 <br />
 <br />
 Additional state variables that have been tested within DART include 
-<em class=code>ua, va, wa, ppi, u10, v10, t2, th2, tsk, q2, psfc, qv, qc, qr, qi qs, and qg</em>.
+<em class=code>ua, va, wa, ppi, u0, v0, u10, v10, t2, th2, tsk, q2, psfc, qv, qc, qr, qi qs, and qg</em>.
 At present, observation times are evaluated relative to the date and time specified in section 
 <em class=code>&amp;param11</em>.  
 Observation locations are specified in meters relative to the domain origin as defined in 
@@ -83,6 +83,212 @@ Observation locations are specified in meters relative to the domain origin as d
   /
 </pre>
 </div>
+
+<H2>About testing CM1 and DART</H2>
+<P>There are two sets of scripts in the <em class=file>shell_scripts</em> directory.
+Luke contributed a set written in python, and the DART team had a set written in csh.
+The csh scripts have not been tested in quite some time, so use with the understanding
+that they will need work. Those csh scripts and some unfinished python scripts reside
+in a <em class=file>shell_scripts/unfinished</em> directory and should be used with the
+understanding that they will need work.
+</P>
+<H3>Strategy and Instructions for using the python scripts.</H3>
+<H4>There are some prerequisites:</H4>
+<ol><li>CM1 is required to use netCDF restart files.</li>
+    <li>A collection of CM1 model states for initial conditions will be available.</li>
+    <li>There is a separate observation sequence file for each assimilation time.</li>
+    <li>The DART <em class=file>input.nml</em> file has some required values as defined below.</li>
+    <li>Each time CM1 is advanced, it will start from the same filename,
+    and the restart number in that filename will be 000001 - ALWAYS.
+    That filename will be a link to the most current model state.</li>
+</ol>
+
+<H4>Testing a cycling experiment.</H4>
+<P>The big picture: three scripts (
+<em class=program>setup_filter.py</em>, 
+<em class=program>run_filter.py</em>, and
+<em class=program>advance_ensemble.py</em>
+) are alternated to configure an experiment, perform an assimilation on a 
+set of restart files, and make the ensemble forecast. 
+Time management is controlled through command-line arguments.
+<br />
+<br />
+It is required that you have generated the DART executables before you test.
+The term {centraldir} refers to a filesystem and directory that will be used to
+run the experiment, the working directory. {centraldir} should have a lot of capacity, 
+as ensemble data assimilation will require lots of disk.
+The term {dart_dir} will refer to the location of the DART source code.
+<br />
+<br />
+The data referenced in the directories (the initial ensemble, etc.) are provided
+as a compressed tar file 
+<a href="http://www.image.ucar.edu/pub/DART/CM1/cm1r18_3member_example_data.tar.gz">cm1r18_3member_example_data.tar.gz</a>
+You will have to download the tar file, uncompress it, and modify the scripts to 
+use these directories instead of the example directories in the scripts.
+You will also have to compile your own cm1 executable.
+</P>
+
+<ol>
+<li>Set some variables in both 
+    <em class=program>shell_scripts/setup_filter.py</em> and
+    <em class=program>shell_scripts/advance_ensemble.py</em>
+    as described below.</li>
+    <br />
+
+<li>In the <em class=file>{dart_dir}/models/cm1/shell_scripts</em> directory, run 
+    <em>./setup_filter.py -d YYYYmmDDHHMMSS -i</em>  where <em>YYYYmmDDHHMMSS</em>
+    is the date and time of the first assimilation cycle
+    (the <em>-i</em> option indicates this is the initial setup and 
+    extra work will be performed). 
+    This will create the working directory {centraldir}, 
+    link in required executables, 
+    copy in the initial conditions for each member from some predetermined location, 
+    copy in the observation sequence file for this assimilation time from some predetermined location,
+    modify namelists, and 
+    build a queue submission script in the {centraldir}: <em class=program>run_filter.py</em>.</li>
+    <br />
+
+<li>Change into {centraldir} and verify the contents of <em class=program>run_filter.py</em>.
+    Ensure the assimilation settings in <em class=file>input.nml</em> are correct.
+    Once you are satisfied, submit 
+    <em class=program>run_filter.py</em> to the queue to perform an assimilation.</li>
+    <br />
+
+<li>After the assimilation job completes, check to be sure that the assimilation completed 
+    successfully, and the archived files requested in the <em class=program>setup_filter.py</em>
+    <em class=code>files_to_archive</em> variable are in
+    <em class=file>{centraldir}/archive/</em><em>YYYYmmDDHHMMSS</em></li>
+    <br />
+
+<li>Change into <em class=file>{dart_dir}/models/cm1/shell_scripts</em> and advance the 
+    ensemble to the next assimilation time by running
+    <em>./advance_ensemble.py -d YYYYmmDDHHMMSS -l nnnn</em> where <em>YYYYmmDDHHMMSS</em>
+    is the date of the COMPLETED analysis (the start time for the model) and
+    <em>nnnn</em> is the length of model integration in seconds (the forecast length).
+    (The forecast length option is specified by 'hypen ell' - the lowercase letter L, 
+    not the number one.)
+    <em class=program>advance_ensemble.py</em> will submit jobs to the queue to advance the
+    ensemble.</li>
+    <br />
+
+<li>After all ensemble members have successfully completed, run
+    <em>./setup_filter.py -d YYYYmmDDHHMMSS</em> where <em>YYYYmmDDHHMMSS</em> is the 
+    <strong>new</strong> current analysis time.  Note the -i flag is NOT used here, 
+    as we do not need to (should not!) re-initialize the entire directory structure.</li>
+    <br />
+
+<li>Change into {centraldir} and submit the <em class=program>run_filter.py</em> script
+    to perform the assimilation.</li>
+    <br />
+
+<li>Go back to step 4 and repeat steps 4-7 for each assimilation cycle until the end of 
+    the experiment.</li>
+</ol>
+
+<P>
+Within the <em class=program>setup_filter.py</em> and 
+<em class=program>advance_ensemble.py</em> scripts, the following
+variables need to be set between the "BEGIN USER-DEFINED VARIABLES" and
+"END USER-DEFINED VARIABLES" comment blocks:
+</P>
+
+<table>
+
+<TABLE border=0 cellpadding=5 cellspacing=3 width=100% summary='python variable setup'>
+<THEAD align=left>
+<TR><TH>variable </TH>
+    <TH>description </TH> </TR>
+</THEAD>
+<TBODY valign=top>
+<TR><TD><em class=code>jobname</em></TD>
+    <TD>A name for this experiment, will be included in the working directory path.</TD></TR>
+
+<TR><TD><em class=code>ens_size</em></TD>
+    <TD>Number of ensemble members.</TD></TR>
+
+<TR><TD><em class=code>restart_filename</em></TD>
+    <TD>The filename for each ensemble member's restart.
+        Highly recommended to leave this as 'cm1out_rst_000001.nc'</TD></TR>
+
+<TR><TD><em class=code>window_mins</em></TD>
+    <TD>The assimilation window width (in minutes) for each assimilation cycle.</TD></TR>
+
+<TR><TD><em class=code>copy</em></TD>
+    <TD>The copy command with desired flags for this system.</TD></TR>
+
+<TR><TD><em class=code>link</em></TD>
+    <TD>The link command with desired flags for this system.</TD></TR>
+
+<TR><TD><em class=code>remove</em></TD>
+    <TD>The remove command with desired flags for this system.</TD></TR>
+
+<TR><TD><em class=code>files_to_archive</em></TD>
+    <TD>A list of DART output files to archive for each assimilation cycle.
+        Note that any inflation files generated are automatically carried over.</TD></TR>
+
+<TR><TD><em class=code>centraldir</em></TD>
+    <TD>Directory (which will be created if <em class=program>setup_filter.py</em> 
+        is run in intialization mode) where the assimilation and model advances 
+        will take place.  Should be on a system with enough space to allow for 
+        several assimilation cycles of archived output.
+</TD></TR>
+
+<TR><TD><em class=code>dart_dir</em></TD>
+    <TD>Path to the cm1 subdirectory of DART.</TD></TR>
+
+<TR><TD><em class=code>cm1_dir</em></TD>
+    <TD>Path to the cm1 model executable (<em class=program>cm1.exe</em>)</TD></TR>
+
+<TR><TD><em class=code>icdir</em></TD>
+    <TD>Path to the ensemble of initial conditions.  It is assumed that
+         within this directory, each ensemble member has a subdirectory
+         (<em class=file>m1</em>,
+         <em class=file>m2</em>, 
+         <em class=file>m3</em>, ...) that contains:
+        <ul><li>a restart file for cm1 at the desired start time and having the
+                filename defined in <em class=code>restart_filename</em> above</li>
+            <li>a <em class=file>namelist.input</em> file compatible with the 
+                generation of that restart file.</li>
+        </ul>
+</TD></TR>
+
+<TR><TD><em class=code>obsdir</em></TD>
+    <TD>Path to a directory containing observation sequence files to be
+        assimilated.  It is assumed that the observation sequence files
+        are named following the convention <em class=file>YYYYmmDDHHMMSS_obs_seq.prior</em>,
+        where the date of the analysis time whose observations are contained
+        in that file is the first part of the file name.
+</TD></TR>
+
+<tr><th colspan=2 align=left>
+    <em class=program>setup_filter.py</em> and 
+    <em class=program>advance_ensemble.py</em> 
+    assume that mpi queue submissions are required 
+    to run <em class=program>cm1.exe</em> and <em class=program>filter</em>.
+    These variables control how that is handled.</td></th>
+
+<TR><TD><em class=code>queue_system</em></TD>
+    <TD>The name of the queueing system</TD></TR>
+
+<TR><TD><em class=code>mpi_run_command</em></TD>
+    <TD>The command used in a submitted script to execute an mpi task in the queue, 
+        including any required flags </TD></TR>
+
+<TR><TD><em class=code>queue_sub_command</em></TD>
+    <TD>The command used to submit a script to the queue</TD></TR>
+
+<TR><TD><em class=code>job_sub_info</em></TD>
+    <TD>A dictionary of all flags required to execute a job in the
+queue, with the key being the flag and the value being the variable.
+e.g. {'-P' : 'PROJECT CODE HERE', '-W' : '00:20'}, etc.</TD></TR>
+
+</table>
+
+<H4 class=indent1>
+Additionally, <em class=file>{dart_dir}/work/input.nml</em> should be modified
+with the desired assimilation settings. Some of the variables listed above will
+override the values in <em class=file>{dart_dir}/work/input.nml</em> should be modified
+</H4>
 
 <!--=====================================================================-->
 <!--===================== DESCRIPTION OF A NAMELIST =====================-->
@@ -105,22 +311,16 @@ prematurely terminating the namelist.
 <pre>
 &amp;model_nml 
    assimilation_period_days     = 0
-   assimilation_period_seconds  = 60
+   assimilation_period_seconds  = 21600
    model_perturbation_amplitude = 0.2
-   cm1_template_file            = 'cm1out_rst_000001.nc'
+   cm1_template_file            = 'null'
    calendar                     = 'Gregorian'
-   model_variables              = 'tha', 'QTY_TEMPERATURE',          '0.0' , '1.0e28', 'UPDATE',
-                                  'tsk', 'QTY_2M_TEMPERATURE',       'NULL', 'NULL'  , 'UPDATE',
-                                  'ua' , 'QTY_U_WIND_COMPONENT',     '0.0',  'NULL'  , 'UPDATE',
-                                  'va' , 'QTY_V_WIND_COMPONENT'      'NULL', '0.03'  , 'UPDATE',
-                                  'ppi', 'QTY_SURFACE_PRESSURE',     'NULL', 'NULL'  , 'UPDATE',
-                                  'u0' , 'QTY_10M_U_WIND_COMPONENT', 'NULL', 'NULL'  , 'NOUPDATE'
    periodic_x                   = .true.
    periodic_y                   = .true.
    periodic_z                   = .false.
    debug                        = 0
+   model_variables              = ' '
   /
-
 </pre>
 </div>
 
@@ -221,8 +421,43 @@ prematurely terminating the namelist.
 <br />
 
 <P>
-<strong>Note:</strong> the values above are examples only.
+<strong>Note:</strong> the values above are the default values. A more realistic (useful?)
+example is shown below and closely matches the values in the default <em class=file>input.nml</em>. 
 </P>
+
+<div class=namelist>
+<pre>
+&amp;model_nml 
+   assimilation_period_days     = 0
+   assimilation_period_seconds  = 60
+   cm1_template_file            = 'cm1out_rst_000001.nc'
+   calendar                     = 'Gregorian'
+   periodic_x                   = .true.
+   periodic_y                   = .true.
+   periodic_z                   = .false.
+   debug                        = 0
+   model_variables = 'ua'   , 'QTY_U_WIND_COMPONENT'      , 'NULL', 'NULL', 'UPDATE',
+                     'va'   , 'QTY_V_WIND_COMPONENT'      , 'NULL', 'NULL', 'UPDATE',
+                     'wa'   , 'QTY_VERTICAL_VELOCITY'     , 'NULL', 'NULL', 'UPDATE',
+                     'theta', 'QTY_POTENTIAL_TEMPERATURE' , 0.0000, 'NULL', 'UPDATE',
+                     'ppi'  , 'QTY_PRESSURE'              , 'NULL', 'NULL', 'UPDATE',
+                     'u10'  , 'QTY_10M_U_WIND_COMPONENT'  , 'NULL', 'NULL', 'UPDATE',
+                     'v10'  , 'QTY_10M_V_WIND_COMPONENT'  , 'NULL', 'NULL', 'UPDATE',
+                     't2'   , 'QTY_2M_TEMPERATURE'        , 0.0000, 'NULL', 'UPDATE',
+                     'th2'  , 'QTY_POTENTIAL_TEMPERATURE' , 0.0000, 'NULL', 'UPDATE',
+                     'tsk'  , 'QTY_SURFACE_TEMPERATURE'   , 0.0000, 'NULL', 'UPDATE',
+                     'q2'   , 'QTY_SPECIFIC_HUMIDITY'     , 0.0000, 'NULL', 'UPDATE',
+                     'psfc' , 'QTY_SURFACE_PRESSURE'      , 0.0000, 'NULL', 'UPDATE',
+                     'qv'   , 'QTY_VAPOR_MIXING_RATIO'    , 0.0000, 'NULL', 'UPDATE',
+                     'qc'   , 'QTY_CLOUD_LIQUID_WATER'    , 0.0000, 'NULL', 'UPDATE',
+                     'qr'   , 'QTY_RAINWATER_MIXING_RATIO', 0.0000, 'NULL', 'UPDATE',
+                     'qi'   , 'QTY_CLOUD_ICE'             , 0.0000, 'NULL', 'UPDATE',
+                     'qs'   , 'QTY_SNOW_MIXING_RATIO'     , 0.0000, 'NULL', 'UPDATE',
+                     'qg'   , 'QTY_GRAUPEL_MIXING_RATIO'  , 0.0000, 'NULL', 'UPDATE'
+
+  /
+</pre>
+</div>
 
 <!--==================================================================-->
 
@@ -1421,7 +1656,7 @@ Can be a NULL INTERFACE if the model has no need to clean up storage, etc.
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ol>
-<li> none </li>
+<li>Madaus, L. and G. Hakim (2017): "Constraining Ensemble Forecasts of Discrete Convective Initiation with Surface Observations." Mon. Wea. Rev. doi: 10.1175/MWR-D-16-0395.1</li>
 </ol>
 
 <!--==================================================================-->

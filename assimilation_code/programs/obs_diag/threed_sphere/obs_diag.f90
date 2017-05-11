@@ -35,12 +35,9 @@ use     obs_kind_mod, only : max_defined_types_of_obs, get_quantity_for_type_of_
 use     location_mod, only : location_type, get_location, set_location_missing,   &
                              write_location, operator(/=), is_location_in_region, &
                              set_location, query_location, LocationDims,          &
-                             vert_is_undef,        VERTISUNDEF,    &
-                             vert_is_surface,      VERTISSURFACE,  &
-                             vert_is_level,        VERTISLEVEL,    &
-                             vert_is_pressure,     VERTISPRESSURE, &
-                             vert_is_height,       VERTISHEIGHT,   &
-                             vert_is_scale_height, VERTISSCALEHEIGHT
+                             is_vertical, VERTISUNDEF, VERTISSURFACE,  &
+                             VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT,   &
+                             VERTISSCALEHEIGHT
 use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time, &
                              set_calendar_type, print_date, GREGORIAN, &
                              operator(*), operator(+), operator(-), &
@@ -700,7 +697,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          ! address change of units ... DART tracks around Pascals,
          ! however, we like to plot hPa ... that sort of thing.
          ! cvrt to hPa
-         if(vert_is_pressure(obs_loc)) obslevel = 0.01_r8 * obsloc3(3)
+         if(is_vertical(obs_loc, "PRESSURE")) obslevel = 0.01_r8 * obsloc3(3)
 
          ! same sort of thing for the scale factors
          if ( use_zero_error_obs ) then
@@ -2524,7 +2521,7 @@ integer,               intent(in) :: flavor
 !  integer, dimension(:), intent(in) :: which_vert       GLOBAL SCOPE
 !  integer, dimension(:), intent(in) :: ob_defining_vert GLOBAL SCOPE
 
-if (vert_is_surface(obslocation)               .and. &
+if (is_vertical(obslocation, "SURFACE")               .and. &
    (      which_vert(flavor) /= VERTISSURFACE) .and. &
    (ob_defining_vert(flavor)  >     0        ) ) then
         write(string1,'(''obs '', i8, '' type '', i3, &
@@ -2533,7 +2530,7 @@ if (vert_is_surface(obslocation)               .and. &
    call error_handler(E_WARN,'CheckVertical',string1,source,revision,revdate)
 endif
 
-if (vert_is_level(obslocation)               .and. &
+if (is_vertical(obslocation, "LEVEL")               .and. &
    (      which_vert(flavor) /= VERTISLEVEL) .and. &
    (ob_defining_vert(flavor)  >     0      ) ) then
         write(string1,'(''obs '', i8, '' type '', i3, &
@@ -2542,7 +2539,7 @@ if (vert_is_level(obslocation)               .and. &
    call error_handler(E_WARN,'CheckVertical',string1,source,revision,revdate)
 endif
 
-if (vert_is_pressure(obslocation)               .and. &
+if (is_vertical(obslocation, "PRESSURE")               .and. &
    (      which_vert(flavor) /= VERTISPRESSURE) .and. &
    (ob_defining_vert(flavor)  >     0         ) ) then
         write(string1,'(''obs '', i8, '' type '', i3, &
@@ -2551,7 +2548,7 @@ if (vert_is_pressure(obslocation)               .and. &
    call error_handler(E_WARN,'CheckVertical',string1,source,revision,revdate)
 endif
 
-if (vert_is_height(obslocation)               .and. &
+if (is_vertical(obslocation, "HEIGHT")               .and. &
    (      which_vert(flavor) /= VERTISHEIGHT) .and. &
    (ob_defining_vert(flavor)  >     0       ) ) then
         write(string1,'(''obs '', i8, '' type '', i3, &
@@ -2560,7 +2557,7 @@ if (vert_is_height(obslocation)               .and. &
    call error_handler(E_WARN,'CheckVertical',string1,source,revision,revdate)
 endif
 
-if (vert_is_scale_height(obslocation)               .and. &
+if (is_vertical(obslocation, "SCALE_HEIGHT")               .and. &
    (      which_vert(flavor) /= VERTISSCALEHEIGHT) .and. &
    (ob_defining_vert(flavor)  >     0       ) ) then
         write(string1,'(''obs '', i8, '' type '', i3, &
@@ -2587,12 +2584,12 @@ integer :: ParseLevel
 !  integer, dimension(:), intent(inout) :: which_vert        GLOBAL SCOPE
 !  logical, dimension(:), intent(inout) :: ob_defining_vert  GLOBAL SCOPE
 
-if(vert_is_surface(obslocation)) then
+if(is_vertical(obslocation, "SURFACE")) then
    obslevel           = 1
    ParseLevel         = 1
    which_vert(flavor) = VERTISSURFACE
 
-elseif(vert_is_level(obslocation)) then
+elseif(is_vertical(obslocation, "LEVEL")) then
    ! at one point, negative (model) levels were used to indicate
    ! surface observations - ancient history ...
    if (obslevel < 1.0_r8 ) obslevel = 1.0_r8  ! TJH negative model level
@@ -2604,7 +2601,7 @@ elseif(vert_is_level(obslocation)) then
          mlevel_edges(ParseLevel), obslevel, mlevel_edges(ParseLevel+1), &
          mlevel(ParseLevel), ParseLevel, 'level'
 
-elseif(vert_is_pressure(obslocation)) then
+elseif(is_vertical(obslocation, "PRESSURE")) then
    ParseLevel         = find_my_level(obslevel, VERTISPRESSURE)
    which_vert(flavor) = VERTISPRESSURE
 
@@ -2613,7 +2610,7 @@ elseif(vert_is_pressure(obslocation)) then
          plevel_edges(ParseLevel), obslevel, plevel_edges(ParseLevel+1), &
          plevel(ParseLevel), ParseLevel, 'pressure'
 
-elseif(vert_is_height(obslocation)) then
+elseif(is_vertical(obslocation, "HEIGHT")) then
    ParseLevel         = find_my_level(obslevel, VERTISHEIGHT)
    which_vert(flavor) = VERTISHEIGHT
 
@@ -2622,7 +2619,7 @@ elseif(vert_is_height(obslocation)) then
          hlevel_edges(ParseLevel), obslevel, hlevel_edges(ParseLevel+1), &
          hlevel(ParseLevel), ParseLevel, 'height'
 
-elseif(vert_is_scale_height(obslocation)) then
+elseif(is_vertical(obslocation, "SCALE_HEIGHT")) then
    ParseLevel         = find_my_level(obslevel, VERTISSCALEHEIGHT)
    which_vert(flavor) = VERTISSCALEHEIGHT
 
@@ -2631,7 +2628,7 @@ elseif(vert_is_scale_height(obslocation)) then
          hlevel_edges(ParseLevel), obslevel, hlevel_edges(ParseLevel+1), &
          hlevel(ParseLevel), ParseLevel, 'height'
 
-elseif(vert_is_undef(obslocation)) then
+elseif(is_vertical(obslocation, "UNDEFINED")) then
    obslevel           = 1
    ParseLevel         = 1
    which_vert(flavor) = VERTISUNDEF

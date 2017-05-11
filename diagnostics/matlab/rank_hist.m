@@ -5,7 +5,7 @@ function bins = rank_hist(ens, verif)
 %
 % Example
 %
-% truth_file = 'perfect_output.nc';
+% truth_file = 'true_state.nc';
 % diagn_file = 'preassim.nc';
 % plot_bins
 

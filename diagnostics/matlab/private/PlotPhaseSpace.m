@@ -21,7 +21,7 @@ function PlotPhaseSpace( pinfo )
 %
 % Example 1   ( 9 variable model )
 %%--------------------------------------------------------
-% pinfo.fname      = 'perfect_output.nc';
+% pinfo.fname      = 'true_state.nc';
 % pinfo.ens_mem    = 'true state';    % true state only has 1 ens mem ...
 % pinfo.var1name   = 'state';         % 9var netCDF has only 1 flavor variable
 % pinfo.var2name   = 'state';
@@ -35,7 +35,7 @@ function PlotPhaseSpace( pinfo )
 % that worked so well, lets overlay another (using the same state variables)
 %
 % hold on;
-% pinfo.fname      = 'Prior_Diag.nc';
+% pinfo.fname      = 'preassim.nc';
 % pinfo.ens_mem    = 'ensemble member4';               % why not?
 % pinfo.ltype      = 'r:';            % plot it in a red 'dotted' line
 % PlotPhaseSpace( pinfo )

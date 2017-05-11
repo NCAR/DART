@@ -56,23 +56,16 @@ use        hs_forcing_mod, only: hs_forcing_init, hs_forcing
 
 ! DART routines 
 use          location_mod, only: location_type, get_location, set_location, &
-                                 vert_is_level, query_location, &
-                                 LocationDims, LocationName, LocationLName, &
-                                 vert_is_pressure, vert_is_surface, &
-                                 get_close_maxdist_init, get_close_obs_init, &
-                                 loc_get_close_obs => get_close_obs, &
-                                 VERTISSURFACE, VERTISLEVEL, &
-                                 get_close_type
+                                 is_vertical, query_location, VERTISLEVEL,  &
+                                 VERTISSURFACE
 
 
 use        random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 use             types_mod, only: r8, i4, i8, pi, MISSING_R8
-! combined duplicate use lines for utilities_mod; the intel 8.x compiler
-! was unhappy about the repetition.  nsc 11apr06
 use        utilities_mod, only : open_file, error_handler, E_ERR, E_MSG, &
                                  nmlfileunit, register_module, &
                                  find_namelist_in_file, check_namelist_read, &
-                                 do_nml_file, do_nml_term, do_output, nc_check
+                                 do_nml_file, do_nml_term, do_output
 
 use          obs_kind_mod, only: QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, &
                                  QTY_SURFACE_PRESSURE, QTY_TEMPERATURE, &
@@ -84,7 +77,7 @@ use          obs_kind_mod, only: QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, &
 ! routines used by rma
 use mpi_utilities_mod,     only : my_task_id, task_count
 
-use ensemble_manager_mod,    only : ensemble_type, copies_in_window, &
+use ensemble_manager_mod,    only : ensemble_type, &
                                     get_var_owner_index, map_pe_to_task, &
                                     get_copy_owner_index
 
@@ -95,20 +88,40 @@ use state_structure_mod,  only : add_domain, add_dimension_to_variable, &
                                  get_num_variables, get_model_variable_indices, &
                                  get_dart_vector_index, get_index_start, get_index_end
 
+use default_model_mod,     only : get_close_obs, get_close_state, convert_vertical_obs, &
+                                  convert_vertical_state, nc_write_model_vars  
+
+use netcdf_utilities_mod,  only : nc_redef, nc_add_global_creation_time, &
+                                  nc_add_global_attribute, nc_enddef, nc_sync, nc_check
+
 use dart_time_io_mod,      only : read_model_time, write_model_time
 
 implicit none
 private
 
-public  get_model_size, adv_1step, get_state_meta_data, &
-        get_model_time_step, end_model, static_init_model, init_time, &
-        init_conditions, nc_write_model_atts, nc_write_model_vars, &
-        pert_model_copies, &
-        get_close_maxdist_init, get_close_obs_init, get_close_obs, &
-        model_interpolate, &
-        query_vert_localization_coord, &
-        vert_convert, &
-        read_model_time, write_model_time
+! required interfaces (will be called by dart code, cannot
+! change any of the arguments to these routines).  the first
+! list are routines with code in this file
+public :: get_model_size,                      &
+          adv_1step,                           &
+          get_state_meta_data,                 &
+          shortest_time_between_assimilations, &
+          end_model,                           &
+          static_init_model,                   &
+          init_time,                           &
+          init_conditions,                     &
+          pert_model_copies,                   &
+          nc_write_model_atts
+
+! public routines where the code is in other modules
+public :: nc_write_model_vars,     &
+          model_interpolate,       &
+          get_close_obs,           &
+          get_close_state,         &
+          convert_vertical_obs,    &
+          convert_vertical_state,  &
+          read_model_time,         &
+          write_model_time
 
 !-----------------------------------------------------------------------
 ! version controlled file description for error handling, do not edit
@@ -990,20 +1003,17 @@ end subroutine vector_to_prog_var
 
 !#######################################################################
 
-function get_model_time_step()
+function shortest_time_between_assimilations()
 !------------------------------------------------------------------------
-! function get_model_time_step()
-!
-! Returns the the time step of the model. In the long run should be repalced
-! by a more general routine that returns details of a general time-stepping
-! capability.
+! the shortest time you are willing to run the model between assimilation
+! windows
 
-type(time_type) :: get_model_time_step
+type(time_type) :: shortest_time_between_assimilations
 
 if ( .not. module_initialized ) call static_init_model
 
 ! Time_step_atmos is global static storage
-get_model_time_step =  Time_step_atmos
+shortest_time_between_assimilations =  Time_step_atmos
 
 
 ! CODE ADDED TO SIMULATE MODEL ERROR BY MAKING MODEL THINK IT IS
@@ -1011,9 +1021,9 @@ get_model_time_step =  Time_step_atmos
 ! THIS auxiliary timestep is only used if namelist parameter
 ! dt_bias is set to a non-zero value 
 
-if(dt_bias > 0) get_model_time_step = set_time(dt_bias, 0)
+if(dt_bias > 0) shortest_time_between_assimilations = set_time(dt_bias, 0)
 
-end function get_model_time_step
+end function shortest_time_between_assimilations
 
 !#######################################################################
 
@@ -1023,9 +1033,8 @@ end function get_model_time_step
 ! Given an integer index into the state vector structure, returns the
 ! associated location and optionally the generic kind.
 !---------------------------------------------------------------------
-subroutine get_state_meta_data(state_handle, index_in, location, var_type)
+subroutine get_state_meta_data(index_in, location, var_type)
 
-type(ensemble_type), intent(in)  :: state_handle
 integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer, optional,   intent(out) :: var_type
@@ -1102,11 +1111,11 @@ tmp_status = 0
 ! Get the position, determine if it is model level or pressure in vertical
 lon_lat_lev = get_location(location)
 lon = lon_lat_lev(1); lat = lon_lat_lev(2); 
-if(vert_is_level(location)) then 
+if(is_vertical(location, "LEVEL")) then 
    level = lon_lat_lev(3)
-else if(vert_is_pressure(location)) then
+else if(is_vertical(location, "PRESSURE")) then
    pressure = lon_lat_lev(3)
-else if(vert_is_surface(location)) then
+else if(is_vertical(location, "SURFACE")) then
    ! level is not used for surface pressure observations
    level = -1
 else
@@ -1175,7 +1184,7 @@ else
 endif
 
 ! Case 1: model level specified in vertical
-if(vert_is_level(location) .or. vert_is_surface(location)) then
+if(is_vertical(location, "LEVEL") .or. is_vertical(location, "SURFACE")) then
 ! Now, need to find the values for the four corners
    val(1, 1,:) =  get_val(state_handle, ens_size, &
                      lon_below, lat_below, nint(level), obs_type)
@@ -1407,18 +1416,9 @@ end subroutine init_time
 
 
 
-function nc_write_model_atts( ncFileID, model_mod_writes_state_variables ) result (ierr)
+subroutine nc_write_model_atts( ncFileID, domain_id ) 
 !-----------------------------------------------------------------------------------------
-! Writes the model-specific attributes to a netCDF file
-! TJH Dec 5 2002
-!
-! TJH 29 July 2003 -- for the moment, all errors are fatal, so the
-! return code is always '0 == normal', since the fatal errors stop execution.
-!                                                                                
 ! There are two different (staggered) 3D grids being used simultaneously here. 
-! The routine "prog_var_to_vector" packs the prognostic variables into
-! the requisite array for the data assimilation routines. That routine
-! is the basis for the information stored in the netCDF files.
 !
 ! TemperatureGrid : surface pressure  vars%ps(tis:tie, tjs:tje) 
 !                 : temperature       vars%t (tis:tie, tjs:tje, klb:kup)
@@ -1429,44 +1429,30 @@ function nc_write_model_atts( ncFileID, model_mod_writes_state_variables ) resul
 ! So there are six different dimensions and five different variables as long as
 ! simply lump "tracers" into one. 
 !
-! TJH 22 May 2003 -- It is now possible to output the prognostic variables 
-! _or_ the state vector. If a "state" variable exists, we do nothing. 
-! If it does not exist, we can assume we need to define the prognostic variables.
 
 use typeSizes
 use netcdf
 
-integer, intent(in)  :: ncFileID        ! netCDF file identifier
-logical, intent(out) :: model_mod_writes_state_variables
-integer              :: ierr            ! return value of function
+integer, intent(in) :: ncFileID        ! netCDF file identifier
+integer, intent(in) :: domain_id
 
 !-----------------------------------------------------------------------------------------
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: TmpIDimID, TmpJDimID, levDimID, tracerDimID, VelIDimID, VelJDimID, MemberDimID
+integer :: TmpIDimID, TmpJDimID, levDimID, tracerDimID, VelIDimID, VelJDimID
 integer :: TmpIVarID, TmpJVarID, levVarID, tracerVarID, VelIVarID, VelJVarID, StateVarID
-integer :: StateVarDimID, StateVarVarID, TimeDimID
+integer :: StateVarVarID
 integer :: psVarID, tVarID, rVarID, uVarID, vVarID
 integer :: tis, tie, tjs, tje       ! temperature grid start/stop
 integer :: vis, vie, vjs, vje       ! velocity    grid start/stop
 integer :: klb, kub
 integer :: nTmpI, nTmpJ, nVelI, nVelJ, nlev, ntracer, i
 
-
-character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
-integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=NF90_MAX_NAME) :: str1
-
 integer(i4)        :: model_size_i4 ! this is for checking model_size
 character(len=256) :: msgstring
 !-----------------------------------------------------------------------------------------
 
 if ( .not. module_initialized ) call static_init_model
-
-ierr = 0     ! assume normal termination
-model_mod_writes_state_variables = .true. 
 
 !-------------------------------------------------------------------------------
 ! Get the bounds for storage on Temp and Velocity grids
@@ -1492,78 +1478,41 @@ nVelJ   = vje - vjs + 1
 ! and then put into define mode.
 !-------------------------------------------------------------------------------
 
-call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID), &
-           "inquire")
-call check(nf90_Redef(ncFileID),"redef")
-
-!-------------------------------------------------------------------------------
-! We need the dimension ID for the number of copies 
-!-------------------------------------------------------------------------------
-
-call check(nf90_inq_dimid(ncid=ncFileID, name="member", dimid=MemberDimID),"member dimid")
-call check(nf90_inq_dimid(ncid=ncFileID, name="time",   dimid=  TimeDimID),"time dimid")
-
-if ( TimeDimID /= unlimitedDimId ) then
-   write(errstring,*)"Time Dimension ID ",TimeDimID, &
-                     " should equal Unlimited Dimension ID",unlimitedDimID
-   call error_handler(E_ERR,"nc_write_model_atts", errstring, source, revision, revdate)
-endif
-
-!-------------------------------------------------------------------------------
-! Define the model size, state variable dimension ... whatever ...
-!-------------------------------------------------------------------------------
-! JH -- nf90_def_dim is expecting a lenght that is i4.  Here we type cast size
-!    and check if the values are the same.  In the case where model_size is 
-!    larger than the largest i4 integer we error out.
-!-------------------------------------------------------------------------------
-
-model_size_i4 = int(model_size,i4) 
-if (model_size_i4 /= model_size) then
-   write(msgstring,*)'model_size =  ', model_size, ' is too big to write ', &
-             ' diagnostic files.'
-   call error_handler(E_ERR,'nc_write_model_atts', msgstring, source, revision, revdate)
-endif
-
-call check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
-                        len=model_size_i4, dimid = StateVarDimID),"state def_dim")
+call nc_redef(ncFileID)
 
 !-------------------------------------------------------------------------------
 ! Write Global Attributes 
 !-------------------------------------------------------------------------------
 
-call DATE_AND_TIME(crdate,crtime,crzone,values)
-write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
-                  values(1), values(2), values(3), values(5), values(6), values(7)
+call nc_add_global_creation_time(ncFileID)
 
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date" ,str1    ),"creation put")
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source"  ,source  ),"source put")
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision),"revision put")
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate" ,revdate ),"revdate put")
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","FMS_Bgrid"      ),"model put")
+call nc_add_global_attribute(ncFileID, "model_source", source)
+call nc_add_global_attribute(ncFileID, "model_revision", revision)
+call nc_add_global_attribute(ncFileID, "model_revdate", revdate)
 
-! how about namelist input? might be nice to save ...
+call nc_add_global_attribute(ncFileID, "model", "bgrid_solo")
 
 !-------------------------------------------------------------------------------
 ! Define the new dimensions IDs
 !-------------------------------------------------------------------------------
 
-call check(nf90_def_dim(ncid=ncFileID, name="TmpI", &
+call nc_check(nf90_def_dim(ncid=ncFileID, name="TmpI", &
                                       len = nTmpI, dimid = TmpIDimID),"TmpI def_dim") 
-call check(nf90_def_dim(ncid=ncFileID, name="TmpJ", &
+call nc_check(nf90_def_dim(ncid=ncFileID, name="TmpJ", &
                                       len = nTmpJ, dimid = TmpJDimID),"TmpJ def_dim") 
-call check(nf90_def_dim(ncid=ncFileID, name="lev",  &
+call nc_check(nf90_def_dim(ncid=ncFileID, name="lev",  &
                                       len = nlev,  dimid = levDimID), "lev  def_dim") 
-call check(nf90_def_dim(ncid=ncFileID, name="VelI", &
+call nc_check(nf90_def_dim(ncid=ncFileID, name="VelI", &
                                       len = nVelI, dimid = VelIDimID),"VelI def_dim") 
-call check(nf90_def_dim(ncid=ncFileID, name="VelJ", &
+call nc_check(nf90_def_dim(ncid=ncFileID, name="VelJ", &
                                       len = nVelJ, dimid = VelJDimID),"VelJ def_dim") 
 if ( ntracer > 0 ) then
-   call check(nf90_def_dim(ncid=ncFileID, name="tracers", &
+   call nc_check(nf90_def_dim(ncid=ncFileID, name="tracers", &
                                          len = ntracer, dimid = tracerDimID),"tracer def_dim") 
 endif
 
 ! should implement "trajectory-like" coordinate defn ... a'la section 5.4, 5.5 of CF standard
-! call check(nf90_def_dim(ncid=ncFileID, name="locationrank", &
+! call nc_check(nf90_def_dim(ncid=ncFileID, name="locationrank", &
 !   len = LocationDims, dimid = LocationDimID))
 
 !-------------------------------------------------------------------------------
@@ -1571,323 +1520,79 @@ endif
 !-------------------------------------------------------------------------------
 
 ! Temperature Grid Longitudes
-call check(nf90_def_var(ncFileID, name="TmpI", &
+call nc_check(nf90_def_var(ncFileID, name="TmpI", &
               xtype=nf90_double, dimids=TmpIDimID, varid=TmpIVarID),   "TmpI def_var")
-call check(nf90_put_att(ncFileID, TmpIVarID, "long_name", "longitude"),"TmpI long_name")
-call check(nf90_put_att(ncFileID, TmpIVarID, "cartesian_axis", "X"),   "TmpI cartesian_axis")
-call check(nf90_put_att(ncFileID, TmpIVarID, "units", "degrees_east"), "TmpI units")
-call check(nf90_put_att(ncFileID, TmpIVarID, "valid_range", (/ 0.0_r8, 360.0_r8 /)), &
+call nc_check(nf90_put_att(ncFileID, TmpIVarID, "long_name", "longitude"),"TmpI long_name")
+call nc_check(nf90_put_att(ncFileID, TmpIVarID, "cartesian_axis", "X"),   "TmpI cartesian_axis")
+call nc_check(nf90_put_att(ncFileID, TmpIVarID, "units", "degrees_east"), "TmpI units")
+call nc_check(nf90_put_att(ncFileID, TmpIVarID, "valid_range", (/ 0.0_r8, 360.0_r8 /)), &
                                  "TmpI valid_range")
 
 ! Temperature Grid Latitudes
-call check(nf90_def_var(ncFileID, name="TmpJ", &
+call nc_check(nf90_def_var(ncFileID, name="TmpJ", &
               xtype=nf90_double, dimids=TmpJDimID, varid=TmpJVarID),   "TmpJ def_var" )
-call check(nf90_put_att(ncFileID, TmpJVarID, "long_name", "latitude"), "TmpJ long_name")
-call check(nf90_put_att(ncFileID, TmpJVarID, "cartesian_axis", "Y"),   "TmpJ cartesian_axis")
-call check(nf90_put_att(ncFileID, TmpJVarID, "units", "degrees_north"),"TmpJ units")
-call check(nf90_put_att(ncFileID, TmpJVarID, "valid_range", (/ -90.0_r8, 90.0_r8 /)), &
+call nc_check(nf90_put_att(ncFileID, TmpJVarID, "long_name", "latitude"), "TmpJ long_name")
+call nc_check(nf90_put_att(ncFileID, TmpJVarID, "cartesian_axis", "Y"),   "TmpJ cartesian_axis")
+call nc_check(nf90_put_att(ncFileID, TmpJVarID, "units", "degrees_north"),"TmpJ units")
+call nc_check(nf90_put_att(ncFileID, TmpJVarID, "valid_range", (/ -90.0_r8, 90.0_r8 /)), &
                                  "TmpJ valid_range")
 
 ! (Common) grid levels
-call check(nf90_def_var(ncFileID, name="lev", &
+call nc_check(nf90_def_var(ncFileID, name="lev", &
               xtype=nf90_int, dimids=levDimID, varid=levVarID) ,    "lev def_var")
-call check(nf90_put_att(ncFileID, levVarID, "long_name", "level"),  "lev long_name")
-call check(nf90_put_att(ncFileID, levVarID, "cartesian_axis", "Z"), "lev cartesian_axis")
-call check(nf90_put_att(ncFileID, levVarID, "units", "hPa"),        "lev units")
-call check(nf90_put_att(ncFileID, levVarID, "positive", "down"),    "lev positive")
+call nc_check(nf90_put_att(ncFileID, levVarID, "long_name", "level"),  "lev long_name")
+call nc_check(nf90_put_att(ncFileID, levVarID, "cartesian_axis", "Z"), "lev cartesian_axis")
+call nc_check(nf90_put_att(ncFileID, levVarID, "units", "hPa"),        "lev units")
+call nc_check(nf90_put_att(ncFileID, levVarID, "positive", "down"),    "lev positive")
 
 ! Velocity Grid Longitudes
-call check(nf90_def_var(ncFileID, name="VelI", &
+call nc_check(nf90_def_var(ncFileID, name="VelI", &
               xtype=nf90_double, dimids=VelIDimID, varid=VelIVarID) ,  "VelI def_var")
-call check(nf90_put_att(ncFileID, VelIVarID, "long_name", "longitude"),"VelI long_name")
-call check(nf90_put_att(ncFileID, VelIVarID, "cartesian_axis", "X"),   "VelI cartesian_axis")
-call check(nf90_put_att(ncFileID, VelIVarID, "units", "degrees_east"), "VelI units")
-call check(nf90_put_att(ncFileID, VelIVarID, "valid_range", (/ 0.0_r8, 360.1_r8 /)), &
+call nc_check(nf90_put_att(ncFileID, VelIVarID, "long_name", "longitude"),"VelI long_name")
+call nc_check(nf90_put_att(ncFileID, VelIVarID, "cartesian_axis", "X"),   "VelI cartesian_axis")
+call nc_check(nf90_put_att(ncFileID, VelIVarID, "units", "degrees_east"), "VelI units")
+call nc_check(nf90_put_att(ncFileID, VelIVarID, "valid_range", (/ 0.0_r8, 360.1_r8 /)), &
                                  "VelI valid_range")
 
 ! Velocity Grid Latitudes
-call check(nf90_def_var(ncFileID, name="VelJ", &
+call nc_check(nf90_def_var(ncFileID, name="VelJ", &
               xtype=nf90_double, dimids=VelJDimID, varid=VelJVarID) ,   "VelJ def_var")
-call check(nf90_put_att(ncFileID, VelJVarID, "long_name", "latitude"),  "VelJ long_name")
-call check(nf90_put_att(ncFileID, VelJVarID, "cartesian_axis", "Y"),    "VelJ cartesian_axis")
-call check(nf90_put_att(ncFileID, VelJVarID, "units", "degrees_north"), "VelJ units")
-call check(nf90_put_att(ncFileID, VelJVarID, "valid_range", (/ -90.0_r8, 90.0_r8 /)), &
+call nc_check(nf90_put_att(ncFileID, VelJVarID, "long_name", "latitude"),  "VelJ long_name")
+call nc_check(nf90_put_att(ncFileID, VelJVarID, "cartesian_axis", "Y"),    "VelJ cartesian_axis")
+call nc_check(nf90_put_att(ncFileID, VelJVarID, "units", "degrees_north"), "VelJ units")
+call nc_check(nf90_put_att(ncFileID, VelJVarID, "valid_range", (/ -90.0_r8, 90.0_r8 /)), &
                                  "VelJ valid_range")
 
 ! Number of Tracers
 if ( ntracer > 0 ) then
-   call check(nf90_def_var(ncFileID, name="tracers", &
+   call nc_check(nf90_def_var(ncFileID, name="tracers", &
                  xtype=nf90_int, dimids=tracerDimID, varid=tracerVarID) , "tracers def_var")
-   call check(nf90_put_att(ncFileID, tracerVarID, "long_name", "tracer identifier"), &
+   call nc_check(nf90_put_att(ncFileID, tracerVarID, "long_name", "tracer identifier"), &
                                     "tracers long_name")
 endif
 
-!----------------------------------------------------------------------------
-! We need to process the prognostic variables.
-!----------------------------------------------------------------------------
-! TemperatureGrid : surface pressure  vars%ps(tis:tie, tjs:tje) 
-!                 : temperature       vars%t (tis:tie, tjs:tje, klb:kub)
-!                 : tracers           vars%r (tis:tie, tjs:tje, klb:kub, 1:vars%ntrace)
-! VelocityGrid    : u                 vars%u (vis:vie, vjs:vje, klb:kub) 
-!                 : v                 vars%v (vis:vie, vjs:tje, klb:kub)
-!----------------------------------------------------------------------------
-! Create the (empty) Variables and the Attributes
-!----------------------------------------------------------------------------
-
-call check(nf90_def_var(ncid=ncFileID, name="ps", xtype=nf90_double, &
-      dimids = (/ TmpIDimID, TmpJDimID, MemberDimID, unlimitedDimID /), &
-      varid  = psVarID), "ps def_var")
-call check(nf90_put_att(ncFileID, psVarID, "long_name", "surface pressure"), &
-                                        "ps long_name")
-call check(nf90_put_att(ncFileID, psVarID, "units", "Pa"), &
-                                        "ps units")
-call check(nf90_put_att(ncFileID, psVarID, "units_long_name", "pascals"), &
-                                        "ps units_long_name")
-
-
-call check(nf90_def_var(ncid=ncFileID, name="t", xtype=nf90_double, &
-      dimids = (/ TmpIDimID, TmpJDimID, levDimID, MemberDimID, unlimitedDimID /), &
-      varid  = tVarID), "t def_var")
-call check(nf90_put_att(ncFileID, tVarID, "long_name", "temperature"), "t long_name")
-call check(nf90_put_att(ncFileID, tVarID, "units", "degrees Kelvin"), "t units")
-
-
-call check(nf90_def_var(ncid=ncFileID, name="u", xtype=nf90_double, &
-      dimids = (/ VelIDimID, VelJDimID, levDimID, MemberDimID, unlimitedDimID /), &
-      varid  = uVarID), "u def_var")
-call check(nf90_put_att(ncFileID, uVarID, "long_name", "zonal wind component"), &
-                                        "u long_name")
-call check(nf90_put_att(ncFileID, uVarID, "units", "m/s"), "u units")
-
-
-call check(nf90_def_var(ncid=ncFileID, name="v", xtype=nf90_double, &
-      dimids = (/ VelIDimID, VelJDimID, levDimID, MemberDimID, unlimitedDimID /), &
-      varid  = vVarID), "v def_var")
-call check(nf90_put_att(ncFileID, vVarID, "long_name", "meridional wind component"), &
-                                        "v long_name")
-call check(nf90_put_att(ncFileID, vVarID, "units", "m/s"), "v units")
-
-if ( ntracer > 0 ) then
-   call check(nf90_def_var(ncid=ncFileID, name="r", xtype=nf90_double, &
-   dimids = (/TmpIDimID, TmpJDimID, levDimID, tracerDimID, MemberDimID, unlimitedDimID/),&
-      varid  = rVarID), "r def_var")
-   call check(nf90_put_att(ncFileID, rVarID, "long_name", "various tracers"), "r long_name")
-endif
-
-call check(nf90_enddef(ncfileID), "prognostic enddef")
+call nc_enddef(ncFileID)
 
 !-------------------------------------------------------------------------------
 ! Fill the variables
 !-------------------------------------------------------------------------------
 
-call check(nf90_put_var(ncFileID,   TmpIVarID, t_lons(tis:tie) ), "TmpI put_var")
-call check(nf90_put_var(ncFileID,   TmpJVarID, t_lats(tjs:tje) ), "TmpJ put_var")
-call check(nf90_put_var(ncFileID,   VelIVarID, v_lons(vis:vie) ), "VelI put_var")
-call check(nf90_put_var(ncFileID,   VelJVarID, v_lats(vjs:vje) ), "VelJ put_var")
-call check(nf90_put_var(ncFileID,    levVarID, (/ (i,i=1,   nlev) /) ), "lev put_var")
+call nc_check(nf90_put_var(ncFileID,   TmpIVarID, t_lons(tis:tie) ), "TmpI put_var")
+call nc_check(nf90_put_var(ncFileID,   TmpJVarID, t_lats(tjs:tje) ), "TmpJ put_var")
+call nc_check(nf90_put_var(ncFileID,   VelIVarID, v_lons(vis:vie) ), "VelI put_var")
+call nc_check(nf90_put_var(ncFileID,   VelJVarID, v_lats(vjs:vje) ), "VelJ put_var")
+call nc_check(nf90_put_var(ncFileID,    levVarID, (/ (i,i=1,   nlev) /) ), "lev put_var")
 if ( ntracer > 0 ) then
-   call check(nf90_put_var(ncFileID, tracerVarID, (/ (i,i=1,ntracer) /) ), "tracer put_var")
+   call nc_check(nf90_put_var(ncFileID, tracerVarID, (/ (i,i=1,ntracer) /) ), "tracer put_var")
 endif
 
 !-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
 !-------------------------------------------------------------------------------
-call check(nf90_sync(ncFileID),"atts sync")
+call nc_sync(ncFileID)
 
-!write (*,*)'nc_write_model_atts: netCDF file ',ncFileID,' is synched ...'
+end subroutine nc_write_model_atts
 
-contains
-
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
-  subroutine check(istatus, string1)
-    integer, intent ( in) :: istatus
-    character(len=*), intent(in), optional :: string1
-
-    character(len=20)  :: myname = 'nc_write_model_atts '
-    character(len=129) :: mystring
-    integer            :: indexN
-
-    if( istatus /= nf90_noerr) then
-
-       if (present(string1) ) then
-          if ((len_trim(string1)+len(myname)) <= len(mystring) ) then
-             mystring = myname // trim(adjustl(string1))
-          else
-             indexN = len(mystring) - len(myname)
-             mystring = myname // string1(1:indexN)
-          endif 
-       else
-          mystring = myname
-       endif
-
-       call error_mesg(mystring, trim(nf90_strerror(istatus)), FATAL)
-
-    endif
-
-  end subroutine check
-
-end function nc_write_model_atts
-
-
-
-function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)
-!-----------------------------------------------------------------------------------------
-! Writes the model-specific variables to a netCDF file
-! TJH 25 June 2003
-!
-! TJH 29 July 2003 -- for the moment, all errors are fatal, so the
-! return code is always '0 == normal', since the fatal errors stop execution.
-!                                                                                
-! There are two different (staggered) 3D grids being used simultaneously here. 
-! The routines "prog_var_to_vector" and "vector_to_prog_var", 
-! packs the prognostic variables into
-! the requisite array for the data assimilation routines. That routine
-! is the basis for the information stored in the netCDF files.
-!
-! TemperatureGrid : surface pressure  vars%ps(tis:tie, tjs:tje) 
-!                 : temperature       vars%t (tis:tie, tjs:tje, klb:kup)
-!                 : tracers           vars%r (tis:tie, tjs:tje, klb:kub, 1:vars%ntrace)
-! VelocityGrid    : u                 vars%u (vis:vie, vjs:vje, klb:kub) 
-!                 : v                 vars%v (vis:vie, vjs:tje, klb:kup)
-!
-! So there are six different dimensions and five different variables as long as
-! simply lump "tracers" into one. 
-
-use typeSizes
-use netcdf
-
-integer,                intent(in) :: ncFileID      ! netCDF file identifier
-real(r8), dimension(:), intent(in) :: statevec
-integer,                intent(in) :: copyindex
-integer,                intent(in) :: timeindex
-integer                            :: ierr          ! return value of function
-
-!-------------------------------------------------------------------------------
-real(r8), dimension(SIZE(statevec)) :: x
-! removed local instance of Var (since it contains pointers which are
-! then left hanging if Var goes out of scope), and replaced all references
-! to Var with global_Var below.    nsc 31mar06
-!type(prog_var_type) :: Var
-
-integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: StateVarID, psVarID, tVarID, rVarID, uVarID, vVarID
-integer :: tis, tie, tjs, tje       ! temperature grid start/stop
-integer :: vis, vie, vjs, vje       ! velocity    grid start/stop
-integer :: kub, klb
-integer :: nTmpI, nTmpJ, nVelI, nVelJ, nlev, ntracer
-
-if ( .not. module_initialized ) call static_init_model
-
-ierr = 0     ! assume normal termination
-
-!-------------------------------------------------------------------------------
-! Get the bounds for storage on Temp and Velocity grids
-! ?JEFF why can't I use the components of the prog_var_type?  
-! More precisely, why doesn't prog_var_type drag around the necessary
-! indices instead of just the extents?
-!-------------------------------------------------------------------------------
-
-tis = Dynam%Hgrid%Tmp%is; tie = Dynam%Hgrid%Tmp%ie
-tjs = Dynam%Hgrid%Tmp%js; tje = Dynam%Hgrid%Tmp%je
-vis = Dynam%Hgrid%Vel%is; vie = Dynam%Hgrid%Vel%ie
-vjs = Dynam%Hgrid%Vel%js; vje = Dynam%Hgrid%Vel%je
-kub = Var_dt%kub
-klb = Var_dt%klb
-
-nTmpI   = tie - tis + 1
-nTmpJ   = tje - tjs + 1
-nlev    = Var_dt%kub - Var_dt%klb + 1
-ntracer = Var_dt%ntrace 
-nVelI   = vie - vis + 1
-nVelJ   = vje - vjs + 1
-
-!-------------------------------------------------------------------------------
-! make sure ncFileID refers to an open netCDF file, 
-! then get all the Variable ID's we need.
-!-------------------------------------------------------------------------------
-
-call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID), &
-        "inquire")
-
-!----------------------------------------------------------------------------
-! Fill the variables
-! TemperatureGrid : surface pressure  Var%ps(tis:tie, tjs:tje) 
-!                 : temperature       Var%t (tis:tie, tjs:tje, klb:kub)
-!                 : tracers           Var%r (tis:tie, tjs:tje, klb:kub, 1:vars%ntrace)
-! VelocityGrid    : u                 Var%u (vis:vie, vjs:vje, klb:kub) 
-!                 : v                 Var%v (vis:vie, vjs:vje, klb:kub)
-!----------------------------------------------------------------------------
-
-x = statevec ! Unfortunately, have to explicity cast it ...
-             ! the filter uses a type=double,
-             ! the vector_to_prog_var function expects a single.
-call vector_to_prog_var(x, get_model_size(), global_Var)
-
-
-call check(NF90_inq_varid(ncFileID, "ps", psVarID), "ps inq_varid")
-call check(nf90_put_var( ncFileID, psVarID, global_Var%ps(tis:tie, tjs:tje), &
-                         start=(/ 1, 1, copyindex, timeindex /) ), "ps put_var")
-
-call check(NF90_inq_varid(ncFileID,  "t",  tVarID), "t inq_varid")
-call check(nf90_put_var( ncFileID,  tVarID, global_Var%t( tis:tie, tjs:tje, klb:kub ), &
-                         start=(/ 1, 1, 1, copyindex, timeindex /) ), "t put_var")
-
-call check(NF90_inq_varid(ncFileID,  "u",  uVarID), "u inq_varid")
-call check(nf90_put_var( ncFileID,  uVarId, global_Var%u( vis:vie, vjs:vje, klb:kub ), &
-                         start=(/ 1, 1, 1, copyindex, timeindex /) ), "u put_var")
-
-call check(NF90_inq_varid(ncFileID,  "v",  vVarID), "v inq_varid")
-call check(nf90_put_var( ncFileID,  vVarId, global_Var%v( vis:vie, vjs:vje, klb:kub ), &
-                         start=(/ 1, 1, 1, copyindex, timeindex /) ), "v put_var")
-
-if ( ntracer > 0 ) then
-   call check(NF90_inq_varid(ncFileID,  "r",  rVarID), "r inq_varid")
-   call check(nf90_put_var( ncFileID,  rVarID, &
-                 global_Var%r( tis:tie, tjs:tje, klb:kub, 1:ntracer ), & 
-                start=(/  1,   1,   1,   1, copyindex, timeindex /) ), "r put_var")
-endif
-
-!-------------------------------------------------------------------------------
-! Flush the buffer and leave netCDF file open
-!-------------------------------------------------------------------------------
-
-! write (*,*)'Finished filling variables ...'
-call check(nf90_sync(ncFileID), "sync")
-! write (*,*)'netCDF file is synched ...'
-
-contains
-
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
-  subroutine check(istatus, string1)
-    integer, intent ( in) :: istatus
-    character(len=*), intent(in), optional :: string1
-
-    character(len=20)  :: myname = 'nc_write_model_vars '
-    character(len=129) :: mystring
-    integer            :: indexN
-
-    if( istatus /= nf90_noerr) then
-
-       if (present(string1) ) then
-          if ((len_trim(string1)+len(myname)) <= len(mystring) ) then
-             mystring = myname // trim(adjustl(string1))
-          else
-             indexN = len(mystring) - len(myname)
-             mystring = myname // string1(1:indexN)
-          endif 
-       else
-          mystring = myname
-       endif
-
-       call error_mesg(mystring, trim(nf90_strerror(istatus)), FATAL)
-
-    endif
-
-  end subroutine check
-
-end function nc_write_model_vars
 
 !--------------------------------------------------------------------
 subroutine pert_model_copies(ens_handle, ens_size, pert_amp, interf_provided)
@@ -2185,48 +1890,6 @@ call error_handler(E_ERR,'get_varid_from_kind', errstring, &
                    source, revision, revdate)
 
 end function get_varid_from_kind
-
-!--------------------------------------------------------------------
-!> pass the vertical localization coordinate to assim_tools_mod
-function query_vert_localization_coord()
-
-integer :: query_vert_localization_coord
-
-query_vert_localization_coord = 1 ! any old value
-
-end function query_vert_localization_coord
-
-!--------------------------------------------------------------------
-!> This is used in the filter_assim. The vertical conversion is done using the 
-!> mean state.
-!> Calling this is a waste of time
-subroutine vert_convert(state_handle, location, obs_kind, istatus)
-
-type(ensemble_type), intent(in)  :: state_handle
-type(location_type), intent(in)  :: location
-integer,             intent(in)  :: obs_kind
-integer,             intent(out) :: istatus
-
-istatus = 0
-
-end subroutine vert_convert
-
-!--------------------------------------------------------------------
-subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, &
-                                 obs_kind, num_close, close_ind, dist, state_handle)
-
-type(ensemble_type),         intent(inout)  :: state_handle
-type(get_close_type),        intent(in)     :: gc
-type(location_type),         intent(inout)  :: base_obs_loc, obs_loc(:)
-integer,                     intent(in)     :: base_obs_kind, obs_kind(:)
-integer,                     intent(out)    :: num_close, close_ind(:)
-real(r8),                    intent(out)    :: dist(:)
-
-
-call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-                          num_close, close_ind, dist)
-
-end subroutine get_close_obs
 
 !#######################################################################
 

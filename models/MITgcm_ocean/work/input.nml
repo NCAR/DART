@@ -156,7 +156,6 @@
    assimilation_period_days     = 1,
    assimilation_period_seconds  = 0, 
    model_perturbation_amplitude = 0.2, 
-   output_state_vector          = .false.
    /
 
 &location_nml

@@ -8,59 +8,64 @@
 
 module model_mod
 
-! Revised assim_model version of Lorenz-63 3-variable model
+! Interface to Lorenz-63 3-variable model
 
 use        types_mod,      only : r8, i8, i4
 
+use    utilities_mod,      only : register_module, error_handler, E_ERR, E_MSG, &
+                                  nmlfileunit, do_output, find_namelist_in_file, &
+                                  check_namelist_read, do_nml_file, do_nml_term
+
+use netcdf_utilities_mod, only : nc_add_global_attribute, nc_sync, &
+                                 nc_add_global_creation_time, nc_redef, nc_enddef
+
 use time_manager_mod,      only : time_type, set_time
-
-use     location_mod,      only : location_type, set_location, get_location, &
-                                  LocationDims, LocationName, LocationLName
-
-use    utilities_mod,      only : register_module, error_handler, E_ERR, E_MSG, nmlfileunit, &
-                                  do_output, find_namelist_in_file, check_namelist_read,     &
-                                  do_nml_file, do_nml_term, nc_check
-
-use         obs_kind_mod,  only : RAW_STATE_VARIABLE
-
-use ensemble_manager_mod,  only : ensemble_type
 
 use distributed_state_mod, only : get_state
 
 use state_structure_mod,   only : add_domain
 
+use     location_mod,      only : location_type, set_location, get_location, &
+                                  get_close_obs, get_close_state, &
+                                  convert_vertical_obs, convert_vertical_state
+
+use location_io_mod,      only :  nc_write_location_atts, nc_get_location_varids, &
+                                  nc_write_location
+
+use         obs_kind_mod,  only : QTY_STATE_VARIABLE
+
+use ensemble_manager_mod,  only : ensemble_type
+
 use dart_time_io_mod,      only : read_model_time, write_model_time
 
-use default_model_mod,     only : end_model, pert_model_copies, vert_convert, &
-                                  query_vert_localization_coord, get_close_obs, &
-                                  get_close_maxdist_init, get_close_obs_init, &
-                                  get_close_state_init, get_close_state, &
-                                  get_close_type, nc_write_model_vars
+use default_model_mod,     only : end_model, pert_model_copies, nc_write_model_vars, &
+                                  init_time
 
 implicit none
 private
 
-!>@todo list real routines first, passthrus at end,
-!> or two public lists w/ !default comments
+! these routines must be public and you cannot change the
+! arguments because they will be called *from* other DART code.
+
+!> required routines with code in this module
 public :: get_model_size, &
-          adv_1step, &
-          get_state_meta_data, &
+          get_state_meta_data,  &
           model_interpolate, &
-          get_model_time_step, &
-          end_model, &
+          shortest_time_between_assimilations, &
           static_init_model, &
-          init_time, &
-          init_conditions, &
-          nc_write_model_atts, &
+          init_conditions,    &
+          adv_1step, &
+          nc_write_model_atts
+
+!> required routines where code is in other modules
+public :: pert_model_copies, &
           nc_write_model_vars, &
-          pert_model_copies, &
-          get_close_maxdist_init, &
-          get_close_obs_init, &
+          init_time, &
           get_close_obs, &
-          get_close_state_init, &
           get_close_state, &
-          vert_convert, &
-          query_vert_localization_coord, &
+          end_model, &
+          convert_vertical_obs, &
+          convert_vertical_state, &
           read_model_time, &
           write_model_time
 
@@ -76,7 +81,6 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! Model size is fixed for Lorenz-63
 integer(i8), parameter :: model_size = 3
 
-!-------------------------------------------------------------
 ! Namelist with default values
 
 real(r8) ::  sigma = 10.0_r8
@@ -88,7 +92,6 @@ integer  :: time_step_seconds = 3600
 
 namelist /model_nml/ sigma, r, b, deltat, time_step_days, time_step_seconds
 
-!---------------------------------------------------------------
 
 ! Define the location of the state variables in module storage
 type(location_type) :: state_loc(model_size)
@@ -96,9 +99,6 @@ type(time_type)     :: time_step
 
 
 contains
-
-!==================================================================
-
 
 
 !------------------------------------------------------------------
@@ -155,18 +155,6 @@ dt(3) = x(1)*x(2) - b*x(3)
 end subroutine comp_dt
 
 
-!------------------------------------------------------------------
-!>  off-attractor initial conditions for lorenz 63
-
-subroutine init_conditions(x)
-
-real(r8), intent(out) :: x(:)
-
-! Initial conditions that move nicely onto attractor
-x = 0.10_r8
-
-end subroutine init_conditions
-
 
 !------------------------------------------------------------------
 !> does single time step advance for lorenz convective 3 variable model
@@ -210,32 +198,7 @@ end subroutine adv_single
 
 
 !------------------------------------------------------------------
-!> Returns size of model
-
-function get_model_size()
-
-integer :: get_model_size
-
-get_model_size = model_size
-
-end function get_model_size
-
-
-!------------------------------------------------------------------
-!> Sets the initial time for a state from the model.
-
-subroutine init_time(time)
-
-type(time_type), intent(out) :: time
-
-! Set to 0
-time = set_time(0, 0)
-
-end subroutine init_time
-
-
-!------------------------------------------------------------------
-!> Interpolates from state vector x to the location.
+!> Interpolates an ensemble of expected values at the given location.
 !>
 !> Argument itype is not used here because there is only one type of variable.
 
@@ -271,31 +234,57 @@ end subroutine model_interpolate
 
 
 !------------------------------------------------------------------
+!> Returns number of items in the state vector
+
+function get_model_size()
+
+integer(i8) :: get_model_size
+
+get_model_size = model_size
+
+end function get_model_size
+
+
+!------------------------------------------------------------------
+!>  off-attractor initial conditions for lorenz 63
+
+subroutine init_conditions(x)
+
+real(r8), intent(out) :: x(:)
+
+! Initial conditions that move nicely onto attractor
+x = 0.10_r8
+
+end subroutine init_conditions
+
+
+!------------------------------------------------------------------
 !> Returns the mininum time step of the model.
 
-function get_model_time_step()
+function shortest_time_between_assimilations()
 
-type(time_type) :: get_model_time_step
+type(time_type) :: shortest_time_between_assimilations
 
-get_model_time_step = time_step
+shortest_time_between_assimilations = time_step
 
-end function get_model_time_step
+end function shortest_time_between_assimilations
+
 
 !------------------------------------------------------------------
 !> Given an integer index into the state vector structure, returns the
 !> associated location.
 
-subroutine get_state_meta_data(state_handle, index_in, location, var_type)
+subroutine get_state_meta_data(index_in, location, var_type)
 
-type(ensemble_type), intent(in)  :: state_handle !< some large models need this
 integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: var_type
 
 location = state_loc(index_in)
-if (present(var_type)) var_type = RAW_STATE_VARIABLE    ! default variable type
+if (present(var_type)) var_type = QTY_STATE_VARIABLE    ! default variable quantity
 
 end subroutine get_state_meta_data
+
 
 !------------------------------------------------------------------
 !> old version of linearized lorenz 63 model time tendency computation
@@ -312,6 +301,7 @@ dt(2) = (r - x(3))*dx(1) - dx(2) - x(1)*dx(3)
 dt(3) = x(2)*dx(1) + x(1)*dx(2) - b*dx(3)
 
 end subroutine linear_dt
+
 
 !------------------------------------------------------------------
 !> does single time step advance for lorenz convective 3 variable model
@@ -344,6 +334,7 @@ x4 = fract * deltat * dx
 x = x + x1/6.0_r8 + x2/3.0_r8 + x3/3.0_r8 + x4/6.0_r8
 
 end subroutine adv_single_rk4
+
 
 !------------------------------------------------------------------
 !>  compute inv linear model lorenz time tendency (see notes 13mar94)
@@ -421,154 +412,43 @@ end subroutine linearize
 
 !------------------------------------------------------------------
 !> Writes the model-specific attributes to a netCDF file
-!> For the lorenz_63 model, each state variable is at a separate location.
 
-function nc_write_model_atts( ncFileID, model_mod_writes_state_variables ) result (ierr)
+subroutine nc_write_model_atts(ncid, domain_id)
 
-use typeSizes
-use netcdf
+integer, intent(in)  :: ncid
+integer, intent(in) :: domain_id
 
-integer, intent(in)  :: ncFileID      ! netCDF file identifier
-logical, intent(out) :: model_mod_writes_state_variables
-integer              :: ierr          ! return value of function
+integer :: msize
 
-integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: LocationDimID, LocationVarID
-integer :: StateVarID, MemberDimID, TimeDimID
-integer :: i
-type(location_type) :: lctn 
-
-ierr = 0                             ! assume normal termination
-
-! dart code will write the state into the file
+! other parts of the dart system will write the state into the file
 ! so this routine just needs to write any model-specific
 ! attributes it wants to record.
 
-model_mod_writes_state_variables = .false.
-
-
-! make sure ncFileID refers to an open netCDF file 
-
-! are the inq and sync needed?  can we just redef here?
-call nc_check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID), &
-                           'nc_write_model_atts', 'nf90_Inquire')
-call nc_check(nf90_sync(ncFileID), 'nc_write_model_atts', 'nf90_sync') ! Ensure netCDF file is current
-call nc_check(nf90_Redef(ncFileID), 'nc_write_model_atts', 'nf90_Redef')
-
+msize = int(model_size, i4)
 
 ! Write Global Attributes 
 
-call put_global_creation_time(ncFileID)
+call nc_redef(ncid)
 
-call put_global_char_att(ncFileID, "model_source", source )
-call put_global_char_att(ncFileID, "model_revision", revision )
-call put_global_char_att(ncFileID, "model_revdate", revdate )
-call put_global_char_att(ncFileID, "model", "Lorenz_63")
-call put_global_real_att(ncFileID, "model_r", r )
-call put_global_real_att(ncFileID, "model_b", b )
-call put_global_real_att(ncFileID, "model_sigma", sigma )
-call put_global_real_att(ncFileID, "model_deltat", deltat )
+call nc_add_global_creation_time(ncid)
 
+call nc_add_global_attribute(ncid, "model_source", source )
+call nc_add_global_attribute(ncid, "model_revision", revision )
+call nc_add_global_attribute(ncid, "model_revdate", revdate )
 
-!--------------------------------------------------------------------
-!--------------------------------------------------------------------
-!>@todo
-!> this same location attr and write code is in the oned locations module.
-!> this code should call it to fill in the locations attrs and data.
+call nc_add_global_attribute(ncid, "model", "Lorenz_63")
+call nc_add_global_attribute(ncid, "model_r", r )
+call nc_add_global_attribute(ncid, "model_b", b )
+call nc_add_global_attribute(ncid, "model_sigma", sigma )
+call nc_add_global_attribute(ncid, "model_delta_t", deltat )
 
-! call nc_write_location_atts(ncFileID)
-! call nc_get_location_varids(ncFileID, LocationVarID)
-! do i=1, model_size
-!    call nc_write_location(ncFileID, LocationVarID, loc, index)
-! enddo
+call nc_write_location_atts(ncid, msize)
+call nc_enddef(ncid)
+call nc_write_location(ncid, state_loc, msize)
 
-call nc_check(nf90_def_dim(ncid=ncFileID, name="location", len=int(model_size,i4), dimid = LocationDimID), &
-              'nc_write_model_atts', 'nf90_def_dim location') 
-call nc_check(NF90_def_var(ncFileID, name="location", xtype=nf90_double, dimids = LocationDimID, varid=LocationVarID) , &
-             'nc_write_model_atts', 'nf90_def_var location')
+call nc_sync(ncid)
 
-call nc_check(nf90_put_att(ncFileID, LocationVarID, "short_name", trim(adjustl(LocationLName))), &
-              'nc_write_model_atts', 'nf90_put_att short_name')
-call nc_check(nf90_put_att(ncFileID, LocationVarID, "long_name", "location on a unit circle"), &
-              'nc_write_model_atts', 'nf90_put_att long_name')
-call nc_check(nf90_put_att(ncFileID, LocationVarID, "dimension", LocationDims ), &
-              'nc_write_model_atts', 'nf90_put_att dimension')
-call nc_check(nf90_put_att(ncFileID, LocationVarID, "valid_range", (/ 0.0_r8, 1.0_r8 /)), &
-              'nc_write_model_atts', 'nf90_put_att valid_range')
-
-! Leave define mode so we can fill
-call nc_check(nf90_enddef(ncfileID), 'nc_write_model_atts', 'nf90_enddef')
-
-! Fill the state variable coordinate variable
-call nc_check(nf90_put_var(ncFileID, LocationVarID, (/ (i,i=1,int(model_size,i4)) /) ), &
-              'nc_write_model_atts', 'nf90_put_var LocationVarID')
-
-! Fill the location variable
-do i = 1,model_size
-   lctn = state_loc(i)
-   call nc_check(nf90_put_var(ncFileID, LocationVarID, get_location(lctn), (/ i /) ), &
-                 'nc_write_model_atts', 'nf90_put_var LocationVarID 2')
-enddo
-!--------------------------------------------------------------------
-!--------------------------------------------------------------------
-
-call nc_check(nf90_sync(ncFileID), 'nc_write_model_atts', 'nf90_sync')
-
-end function nc_write_model_atts
-
-!--------------------------------------------------------------------
-
-subroutine put_global_char_att(ncid, name, val)
-
-use netcdf
-
-integer,          intent(in) :: ncid
-character(len=*), intent(in) :: name
-character(len=*), intent(in) :: val
-
-integer :: ret
-
-ret = nf90_put_att(ncid, NF90_GLOBAL, name, val)
-call nc_check(ret, 'put_global_char_att', 'adding the global attribute: '//trim(name))
-
-end subroutine put_global_char_att
-
-!--------------------------------------------------------------------
-
-subroutine put_global_real_att(ncid, name, val)
-
-use netcdf
-
-integer,          intent(in) :: ncid
-character(len=*), intent(in) :: name
-real(r8),         intent(in) :: val
-
-integer :: ret
-
-ret = nf90_put_att(ncid, NF90_GLOBAL, name, val)
-call nc_check(ret, 'put_global_real_att', 'adding the global attribute: '//trim(name))
-
-end subroutine put_global_real_att
-
-!--------------------------------------------------------------------
-
-subroutine put_global_creation_time(ncid)
-integer, intent(in) :: ncid
-
-character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
-integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
-
-character(len=128) :: str1
-
-call DATE_AND_TIME(crdate,crtime,crzone,values)
-write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
-                  values(1), values(2), values(3), values(5), values(6), values(7)
-
-call put_global_char_att(ncid, "creation_date",str1)
-
-end subroutine put_global_creation_time
+end subroutine nc_write_model_atts
 
 !===================================================================
 ! End of model_mod

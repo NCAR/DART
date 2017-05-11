@@ -1,9 +1,9 @@
-function x = parse(mystring)
-%% parse  breaks a character string into a cell array of words
+function x = breakapart(mystring)
+%% breakapart  breaks a character string into a cell array of words
 %
 % Example:
 % mystring = 'This has several words 1.234';
-% x = parse(mystring)
+% x = breakapart(mystring)
 % x =
 %
 %    'This'    'has'    'several'    'words'    '1.234'

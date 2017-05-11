@@ -41,9 +41,9 @@
 Utility program which assists in constructing a table that is read
 by filter at run time to alter how the assimilation
 of different types of observations impact the state vector values
-based on their dart kind, and other observations based on their 
-observation type or dart kind.  This tool allows users to group related
-collections of observation types and state vector kinds by name
+based on their quantity, and other observations based on their 
+observation type or quantity.  This tool allows users to group related
+collections of observation types and state vector quantities by name
 and then express the relationship of the named groups to each
 other in a concise way.
 </P>
@@ -58,13 +58,13 @@ column to be 0.0 or 1.0, but future extensions may allow
 different values to be used.
 </P>
 <P>
-All the listed observation types and state vector kinds
+All the listed observation types and state vector quantities
 must be known by the system.  If they are not, look at the
 &preprocess_nml :: input_items namelist which specifies
 which obs_def_xxx_mod.f90 files are included, which is
-where observation types are defined.  kinds are defined
+where observation types are defined.  Quantities are defined
 in the obs_kinds/DEFAULT_obs_kinds_mod.F90 file and
-are static.  (note you must add new kinds in 2 places 
+are static.  (Note you must add new quantities in 2 places 
 if you do alter this file.)
 </P>
 <P>
@@ -85,7 +85,7 @@ types of sections:
 # hash mark starts a comment.
 
 # the GROUP keyword starts a group and must be followed
-# by a name.  All types or kinds listed before the END
+# by a name.  All types or quantities listed before the END
 # line becomes members of this group.
 
 # GROUPs cannot contain nested groups.
@@ -102,9 +102,9 @@ GROUP groupname2
  QTY_xxx
 END GROUP
 
-# GROUPs can also be defined by specifying ALL, ALLKINDS,
+# GROUPs can also be defined by specifying ALL, ALLQTYS,
 # or ALLTYPES and then EXCEPT and listing the types or
-# kinds which should be removed from this group.
+# quantities which should be removed from this group.
 # ALL EXCEPT must be the first line in a group, and all
 # subsequent items are removed from the list.
 # The items listed after EXCEPT can include the names
@@ -122,7 +122,7 @@ END GROUP
 
 # once any groups have been defined, a single instance
 # of the IMPACT table is specified by listing a TYPE,
-# KIND, or group in column 1, then a KIND or GROUP
+# QTY, or group in column 1, then a QTY or GROUP
 # in column 2 (the second name cannot be a specific type).
 # column 3 must be 0.0 or 1.0.  subsequent entries
 # that overlap previous entries have precedence
@@ -163,9 +163,10 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;obs_impact_tool_nml
-  input_filename         = 'cross_correlations.txt'
-  output_filename        = 'control_impact_runtime.txt'
-  debug                  = .true.
+  input_filename          = 'cross_correlations.txt'
+  output_filename         = 'control_impact_runtime.txt'
+  allow_any_impact_values = .false.
+  debug                   = .true.
   /
 </pre>
 </div>
@@ -201,6 +202,14 @@ not be modified by hand.  Rerun this tool to recreate
 the file.
 </TD></TR>
 
+<TR><TD>allow_any_impact_values</TD>
+    <TD>logical</TD>
+    <TD>Recommended to stay false.  This allows only 0.0 and 1.0 as the
+impact factors, effectively using the full increments or no increments
+during the assimilation.  To experiment with partial application of
+the increments this flag can be set to true to allow other values.
+<TD></TR>
+
 <TR><TD>debug</TD>
     <TD>logical</TD>
     <TD>If true print out debugging info.
@@ -232,7 +241,7 @@ GROUP chem
 END GROUP
 
 GROUP met
- ALLKINDS EXCEPT chem
+ ALLQTYS EXCEPT chem
 END GROUP
 
 IMPACT

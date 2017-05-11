@@ -6,16 +6,23 @@
 
 module model_mod
 
-use        types_mod,      only : r8, i8, i4
+use types_mod,             only : r8, i8, i4
 
-use     location_mod,      only : location_type, set_location, get_location, &
-                                  LocationDims, LocationName, LocationLName, &
-                                  get_close_maxdist_init, get_close_obs_init, &
-                                  loc_get_close_obs => get_close_obs, get_close_type
+use location_mod,          only : location_type, set_location, get_location, &
+                                  get_close_obs, get_close_state, &
+                                  convert_vertical_obs, convert_vertical_state
 
-use    utilities_mod,      only : register_module, error_handler, E_ERR, E_MSG, do_output, &
+use utilities_mod,         only : register_module, error_handler, E_ERR, E_MSG, do_output, &
                                   nmlfileunit, find_namelist_in_file, check_namelist_read, &
                                   do_nml_file, do_nml_term
+
+use netcdf_utilities_mod,  only : nc_add_global_attribute, &
+                                  nc_add_global_creation_time, nc_redef, nc_enddef
+
+use location_io_mod,       only : nc_write_location_atts, nc_get_location_varids, &
+                                  nc_write_location
+
+use obs_kind_mod,          only : QTY_STATE_VARIABLE
 
 use ensemble_manager_mod,  only : ensemble_type
 
@@ -25,34 +32,36 @@ use state_structure_mod,   only : add_domain
 
 use dart_time_io_mod,      only : read_model_time, write_model_time
 
+use default_model_mod,     only : end_model, pert_model_copies, nc_write_model_vars, &
+                                  init_time
 
-! All random_seq_mod calls were suppressed because a) they are not being used,
-! and b) they make the pg5.02 compiler complain about a gap in the common block.
-! TJH 29 April 2004
-! TJH use   random_seq_mod, only : random_seq_type, random_gaussian, &
-! TJH                             init_random_seq, several_random_gaussians
-use time_manager_mod, only : time_type, set_time
+use random_seq_mod,        only : random_seq_type, random_gaussian, &
+                                  init_random_seq, several_random_gaussians
+
+use time_manager_mod,      only : time_type, set_time
 
 implicit none
 private
 
+!> required routines with code in this module
 public :: get_model_size, &
-          adv_1step, &
-          get_state_meta_data, &
+          get_state_meta_data,  &
           model_interpolate, &
-          get_model_time_step, &
-          end_model, &
+          shortest_time_between_assimilations, &
           static_init_model, &
-          init_time, &
-          init_conditions, &
-          nc_write_model_atts, &
+          init_conditions,    &
+          adv_1step, &
+          nc_write_model_atts
+
+!> required routines where code is in other modules
+public :: pert_model_copies, &
           nc_write_model_vars, &
-          pert_model_copies, &
-          get_close_maxdist_init, &
-          get_close_obs_init, &
           get_close_obs, &
-          vert_convert, &
-          query_vert_localization_coord, &
+          get_close_state, &
+          init_time, &
+          end_model, &
+          convert_vertical_obs, &
+          convert_vertical_state, &
           read_model_time, &
           write_model_time
 
@@ -73,20 +82,6 @@ real(r8), private, parameter :: a(3) = (/  1.0_r8,  1.0_r8, 3.0_r8 /), &
                                 h(3) = (/ -1.0_r8,  0.0_r8, 0.0_r8 /), &
                                 nu = 1.0_r8 / 48.0_r8, kappa = nu, c = 0.8660254_r8
 
-!-------------------------------------------------------------
-! Namelist with default values
-!
-real(r8) :: g = 8.0_r8     ! lorenz default
-!real(r8) :: g = 9.90_r8    ! higher dimension attractor
-
-real(r8) :: deltat = 1.0_r8 / 12.0_r8     ! model time step
-integer :: time_step_days = 0
-integer :: time_step_seconds = 3600
-
-namelist /model_nml/ g, deltat, time_step_days, time_step_seconds
-!---------------------------------------------------------------
-
-
 ! Define the location of the state variables in module storage
 ! This is used for distance dependence stuff in more general models but is 
 ! currently just set to give 0 separation distance for all 9 vars here.
@@ -97,26 +92,33 @@ type(time_type)     :: time_step
 ! Need reproducible sequence of noise added so that different runs
 ! can be cleanly compared
 
-!! used in code that is currently commented out.
-!!logical :: first_ran_call = .true.
-!!type(random_seq_type) :: ran_seq
+logical :: first_ran_call = .true.
+type(random_seq_type) :: ran_seq
+
+
+! Namelist with default values
+
+real(r8) :: g = 8.0_r8  ! lorenz default; 9.90_r8 is a higher dimension attractor
+
+real(r8) :: deltat = 1.0_r8 / 12.0_r8     ! model time step
+integer :: time_step_days = 0
+integer :: time_step_seconds = 3600
+
+logical :: add_noise = .false.
+
+namelist /model_nml/ g, deltat, time_step_days, time_step_seconds, add_noise
 
 
 
 contains
 
-!======================================================================
-
+!----------------------------------------------------------------------
+!> Initializes class data for this model. For now, simply outputs the
+!> identity info, sets the location of the state variables, and initializes
+!> the time type for the time stepping (is this general enough for time???)
 
 subroutine static_init_model()
-!----------------------------------------------------------------------
-! subroutine static_init_model()
-!
-! Initializes class data for this model. For now, simply outputs the
-! identity info, sets the location of the state variables, and initializes
-! the time type for the time stepping (is this general enough for time???)
 
-implicit none
 real(r8) :: x_loc
 integer :: i, iunit, io, dom_id
 
@@ -150,23 +152,18 @@ dom_id = add_domain(model_size)
 end subroutine static_init_model
 
 
-
+!----------------------------------------------------------------------
+!> computes time tendency for the 9 variable lorenz model given the
+!> current values of the 9 variables (x, y, z each with three elements)
+!> and the values of a number of parameters.
 
 subroutine comp_dt(xxx, dxxx)
-!----------------------------------------------------------------------
-! subroutine comp_dt(xxx, dxxx)
-!
-! computes time tendency for the 9 variable lorenz model given the
-! current values of the 9 variables (x, y, z each with three elements)
-! and the values of a number of parameters.
-
-implicit none
 
 real(r8), intent(in)  :: xxx(:)
 real(r8), intent(out) :: dxxx(:)
 
 real(r8) :: x(3), y(3), z(3), dx(3), dy(3), dz(3)
-!!! real(r8) :: rnum(9)
+real(r8) :: rnum(9)
 integer  :: i, j, k
 
 !  unpack the 9-vectors into the x, y and z 3-vectors
@@ -200,34 +197,28 @@ end do
 
 call pack9var(dx, dy, dz, dxxx)     !  pack the results into 9 vector
 
-! OPTIONAL ADDItion OF NOISE
-! ADDITION OF SOME NOISE AT 1/10 the amplitude of DT
-! We need to initialize the repeatable random gen
-!!!if(first_ran_call) then
-!!!   first_ran_call = .false.
-!!!   call init_random_seq(ran_seq)
-!!!end if
+! We need to initialize the random gen for experiments to be repeatable
+if(first_ran_call) then
+   first_ran_call = .false.
+   call init_random_seq(ran_seq)
+end if
 
-!!!call several_random_gaussians(ran_seq, dble(0.0), dxxx(i) / 10.0, 9, rnum)
-!!!do i = 1, 9
-!!!   dxxx(i) = dxxx(i) + rnum(i)
-!!!end do
+! ADDITION OF SOME NOISE AT 1/10 the amplitude of DT
+if (add_noise) then
+   call several_random_gaussians(ran_seq, dble(0.0), dxxx(i) / 10.0, 9, rnum)
+   do i = 1, 9
+      dxxx(i) = dxxx(i) + rnum(i)
+   end do
+endif
 
 end subroutine comp_dt
 
 
-
+!---------------------------------------------------------------------------
+!> set of routines used to switch between 3 3-variable sets and 9-variable
+!> set for lorenz 9 variable pe model
 
 subroutine pack9var(x, y, z, pert)
-!---------------------------------------------------------------------------
-! subroutine pack9var(x, y, z, pert)
-!
-! set of routines used to switch between 3 3-variable sets and 9-variable
-! set for lorenz 9 variable pe model
-
-implicit none
-
-!  pack9var and unpack9var convert from x, y, z to full 9 vector format
 
 real(r8), intent(in)  :: x(3), y(3), z(3)
 real(r8), intent(out) :: pert(9)
@@ -239,14 +230,10 @@ pert(7:9) = z
 end subroutine pack9var
 
 
+!---------------------------------------------------------------------------
+!> inverse of pack9var above
 
 subroutine unpack9var(pert, x, y, z)
-!---------------------------------------------------------------------------
-! subroutine unpack9var(pert, x, y, z)
-!
-! inverse of pack9var above
-
-implicit none
 
 real(r8), intent(in)  :: pert(9)
 real(r8), intent(out) :: x(3), y(3), z(3)
@@ -258,43 +245,10 @@ z = pert(7:9)
 end subroutine unpack9var
 
 
-
-subroutine advance(x, num, xnew, time)
-!-----------------------------------------------------------------------
-! subroutine advance(x, num, xnew, time)
-!
-! advance advances the 9 variable model by a given number of steps
-
-implicit none
-
-real(r8),        intent(in)  :: x(9)
-integer,         intent(in)  :: num
-real(r8),        intent(out) :: xnew(9)
-type(time_type), intent(in)  :: time
-
-integer :: i
-
-xnew = x                 !  copy initial conditions to avoid overwrite
-
-do i = 1, num            !  advance the appropriate number of steps
-   call adv_1step(xnew, time)
-end do
-
-end subroutine advance
-
-
-
-
+!-------------------------------------------------------------------------
+!> does one time step advance for 9 variable model using two-step rk.
 
 subroutine adv_1step(x, time)
-!-------------------------------------------------------------------------
-! subroutine adv_1step(x, time)
-!
-! does one time step advance for 9 variable model using two-step rk.
-! The Time argument is needed for compatibility with more complex models
-! that need to know the time to compute their time tendency and is not
-! used in L96. Is there a better way to do this in F90 than to just hang
-! this argument out everywhere?
 
 implicit none
 
@@ -308,15 +262,10 @@ call adv_single(x, fract)
 end subroutine adv_1step
 
 
-
+!-------------------------------------------------------------------------
+!> does one time step advance for 9 variable model using two-step rk
 
 subroutine adv_single(x, fract)
-!-------------------------------------------------------------------------
-! subroutine adv_single(x, fract)
-!
-! does one time step advance for 9 variable model using two-step rk
-
-implicit none
 
 real(r8), intent(inout) :: x(:)
 real(r8), intent(in)    :: fract
@@ -340,14 +289,10 @@ x = (x + x2) / 2.0_r8
 end subroutine adv_single
 
 
+!----------------------------------------------------------------------
+!> generates set of random off-attractor initial conditions for 9 variable
 
 subroutine init_conditions(x)
-!----------------------------------------------------------------------
-! subroutine init_conditions(x)
-!
-! generates set of random off-attractor initial conditions for 9 variable
-
-implicit none
 
 real(r8), intent(out) ::  x(:)
 
@@ -356,32 +301,14 @@ x = 0.10_r8
 end subroutine init_conditions
 
 
-
-subroutine linearize(nl, l)
-!----------------------------------------------------------------------
-! subroutine linearize(nl, l)
-!
-
-implicit none
-
-real(r8) :: nl(:), l(:, :)
-
-!  no-op subroutine header for linking in standard packages
-
-end subroutine linearize
-
-
-
-subroutine balance_init(xxx, init_xxx)
 !---------------------------------------------------------------------------
-! subroutine balance_init(xxx, init_xxx)
-!
+!> unused?
 ! application of balance eqtn as initialization method
 ! to the 9 variable lorenz model given the
 ! current values of the 9 variables (x, y, z each with three elements)
 ! and the values of a number of parameters.
 
-implicit none
+subroutine balance_init(xxx, init_xxx)
 
 real(r8), intent(in)  :: xxx(9)
 real(r8), intent(out) :: init_xxx(9)
@@ -436,47 +363,12 @@ call pack9var(x, y, z, init_xxx)
 end subroutine balance_init
 
 
-
-subroutine get_close_pts(list, num)
 !-------------------------------------------------------------------------
-! subroutine get_close_pts(list, num)
-!
-
-implicit none
-
-integer, intent(in)    :: num
-integer, intent(inout) :: list(model_size, num)
-
-integer :: i, offset, indx, temp
-
-do i = 1, model_size
-
-   do offset = -num/2, -num/2 + num - 1
-      indx = i + offset
-      if(indx > model_size) indx = indx - model_size
-      if(indx < 1         ) indx = model_size + indx
-      list(i, offset + num/2 + 1) = indx
-   end do
-
-   ! Always need the actual point first in list
-
-   temp = list(i, 1)
-   list(i, 1) =  list(i, num / 2 + 1)
-   list(i, num / 2 + 1) = temp
-
-end do
-
-end subroutine get_close_pts
-
-
+! Returns number of items in state vector
 
 function get_model_size()
-!-------------------------------------------------------------------------
-! function get_model_size()
-!
-! Returns size of model
 
-integer :: get_model_size
+integer(i8) :: get_model_size
 
 get_model_size = model_size
 
@@ -484,36 +376,20 @@ end function get_model_size
 
 
 
-
-function get_model_time_step()
 !------------------------------------------------------------------------
-! function get_model_time_step()
-!
-! Returns the the time step of the model. In the long run should be repalced
-! by a more general routine that returns details of a general time-stepping
-! capability.
 
-type(time_type) :: get_model_time_step
+function shortest_time_between_assimilations()
 
-get_model_time_step = time_step
+type(time_type) :: shortest_time_between_assimilations
 
-end function get_model_time_step
+shortest_time_between_assimilations = time_step
+
+end function shortest_time_between_assimilations
 
 
+!---------------------------------------------------------------------
 
 subroutine model_interpolate(state_handle, ens_size, location, itype, expected_obs, istatus)
-!---------------------------------------------------------------------
-!
-! Interpolates from state vector x to the location. It's not particularly
-! happy dumping all of this straight into the model. Eventually some
-! concept of a grid underlying models but above locations is going to
-! be more general. May want to wait on external infrastructure projects
-! for this?
-
-! Argument itype is not used here because there is only one type of variable.
-! itype is needed to allow swap consistency with more complex models.
-
-implicit none
 
 type(ensemble_type),  intent(in) :: state_handle
 integer,              intent(in) :: ens_size
@@ -525,7 +401,7 @@ integer,             intent(out) :: istatus(ens_size)
 integer(i8)  :: lower_index, upper_index
 real(r8) :: lctn, lctnfrac
 
-! All interps okay for now
+! All obs okay for now
 istatus(:) = 0
 
 ! Convert location to real
@@ -545,319 +421,65 @@ expected_obs = (1.0_r8 - lctnfrac) * get_state(lower_index, state_handle) + &
 end subroutine model_interpolate
 
 
-
-subroutine get_state_meta_data(state_handle, index_in, location, var_type)
 !---------------------------------------------------------------------
-!
-! Given an integer index into the state vector structure, returns the
-! associated location. This is not a function because the more general
-! form of the call has a second intent(out) optional argument kind.
-! Maybe a functional form should be added?
+!> Given an integer index into the state vector structure, returns the
+!> associated location.
 
-type(ensemble_type), intent(in)  :: state_handle !< some large models need this
+subroutine get_state_meta_data(index_in, location, var_type)
+
 integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: var_type
 
 location = state_loc(index_in)
-if (present(var_type)) var_type = 1    ! default variable type
+if (present(var_type)) var_type = QTY_STATE_VARIABLE    ! default variable quantity
 
 end subroutine get_state_meta_data
 
 
-
-  subroutine init_model()
-!-------------------------------------------------------------------------
-! subroutine init_model()
-!
-! Stub for model initialization, not needed for 9var
-
-end subroutine init_model
-
-
-
-
-subroutine init_time(time)
-!----------------------------------------------------------------------
-!
-! Gets the initial time for a state from the model. Where should this info
-! come from in the most general case?
-
-implicit none
-
-type(time_type), intent(out) :: time
-
-! For now, just set to 0
-time = set_time(0, 0)
-
-end subroutine init_time
-
-
-
-subroutine end_model()
-!------------------------------------------------------------------------
-!
-! Does any shutdown and clean-up needed for model. Nothing for L96 for now.
-
-
-end subroutine end_model
-
-
-
-
-
-
-function nc_write_model_atts( ncFileID, model_mod_writes_state_variables ) result (ierr)
-!--------------------------------------------------------------------
-! Writes the model-specific attributes to a netCDF file
-! TJH Jan 24 2003; added by JLA 18 June, 2003
-!
-! TJH 29 July 2003 -- for the moment, all errors are fatal, so the
-! return code is always '0 == normal', since the fatal errors stop execution.
-!
-! For the 9var model, each state variable is at a separate location.
-! that's all the model-specific attributes I can think of ...
-! In addition, there are technically three kinds of variables; this
-! level of detail will have to be added by TJH at a later date.
-!
-! assim_model_mod:init_diag_output uses information from the location_mod
-!     to define the location dimension and variable ID. All we need to do
-!     is query, verify, and fill ...
-!
-! Typical sequence for adding new dimensions,variables,attributes:
-! NF90_OPEN             ! open existing netCDF dataset
-!    NF90_redef         ! put into define mode
-!    NF90_def_dim       ! define additional dimensions (if any)
-!    NF90_def_var       ! define variables: from name, type, and dims
-!    NF90_put_att       ! assign attribute values
-! NF90_ENDDEF           ! end definitions: leave define mode
-!    NF90_put_var       ! provide values for variable
-! NF90_CLOSE            ! close: save updated netCDF dataset
-!
-
-use typesizes           ! comes from F90 netCDF interface
-use netcdf              ! comes from F90 netCDF interface
-implicit none
-
-integer, intent(in)  :: ncFileID      ! netCDF file identifier
-logical, intent(out) :: model_mod_writes_state_variables
-integer              :: ierr          ! return value of function
-
-!--------------------------------------------------------------------
-! General netCDF variables
-!--------------------------------------------------------------------
-
-integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-
-!--------------------------------------------------------------------
-! netCDF variables for Location
-!--------------------------------------------------------------------
-
-integer :: LocationVarID, LocationDimID
-
-!--------------------------------------------------------------------
-! local variables
-!--------------------------------------------------------------------
-
-character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
-integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=NF90_MAX_NAME) :: str1
-
-integer             :: i
-ierr = 0                      ! assume normal termination
-model_mod_writes_state_variables = .false. 
-
-!--------------------------------------------------------------------
-! make sure ncFileID refers to an open netCDF file
-!--------------------------------------------------------------------
-
-call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
-call check(nf90_sync(ncFileID)) ! Ensure netCDF file is current
-call check(nf90_Redef(ncFileID))
-
-!--------------------------------------------------------------------
-! Write Global Attributes
-!--------------------------------------------------------------------
-
-call DATE_AND_TIME(crdate,crtime,crzone,values)
-write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
-                  values(1), values(2), values(3), values(5), values(6), values(7)
-
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date",str1))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source", source ))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision", revision ))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate", revdate ))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model", "9var" ))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_g", g ))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_deltat", deltat ))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_a", a ))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_b", b ))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_f", f ))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_h", h ))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_nu", nu ))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_kappa", kappa ))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_c", c ))
-
-!--------------------------------------------------------------------
-! Define the model size, state variable dimension ... whatever ...
-!--------------------------------------------------------------------
-call check(nf90_def_dim(ncid=ncFileID, name="location", &
-                        len=int(model_size,i4), dimid = LocationDimID))
-
-!--------------------------------------------------------------------
-! Define the Location Variable and add Attributes
-! Some of the atts come from location_mod (via the USE: stmnt)
-! CF standards for Locations:
-! http://www.cgd.ucar.edu/cms/eaton/netcdf/CF-working.html#ctype
-!--------------------------------------------------------------------
-
-call check(NF90_def_var(ncFileID, name="location", xtype=nf90_double, &
-              dimids = LocationDimID, varid=LocationVarID) )
-call check(nf90_put_att(ncFileID, LocationVarID, "long_name", trim(adjustl(LocationLName))))
-call check(nf90_put_att(ncFileID, LocationVarID, "dimension", LocationDims ))
-call check(nf90_put_att(ncFileID, LocationVarID, "valid_range", (/ 0.0_r8, 1.0_r8 /)))
-
-! Leave define mode so we can fill
-call check(nf90_enddef(ncfileID))
-
-!--------------------------------------------------------------------
-! Fill the location variable
-!--------------------------------------------------------------------
-
-do i = 1,model_size
-   call check(nf90_put_var(ncFileID, LocationVarID, get_location(state_loc(i)), (/ int(i, i4) /) ))
-enddo
-
-!--------------------------------------------------------------------
-! Flush the buffer and leave netCDF file open
-!--------------------------------------------------------------------
-call check(nf90_sync(ncFileID))
-
-write (*,*)'Model attributes written, netCDF file synched ...'
-
-contains
-
-  ! Internal subroutine - checks error status after each netcdf, prints
-  !                       text message each time an error code is returned.
-  subroutine check(istatus)
-    integer, intent ( in) :: istatus
-
-    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'nc_write_model_atts', &
-      trim(nf90_strerror(istatus)), source, revision, revdate)
-
-  end subroutine check
-
-end function nc_write_model_atts
-
-
-
-function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)
-!--------------------------------------------------------------------
-! Writes the model-specific attributes to a netCDF file
-! TJH 25 June 2003
-!
-! TJH 29 July 2003 -- for the moment, all errors are fatal, so the
-! return code is always '0 == normal', since the fatal errors stop execution.
-!
-! For the 9var model, there are actually 3 triplets of variables, 
-! which generate a state vector of 9 variables. Completing the "prognostic"
-! netCDF write will occurr at a later date.
-!
-! assim_model_mod:init_diag_output uses information from the location_mod
-!     to define the location dimension and variable ID. All we need to do
-!     is query, verify, and fill ...
-!
-! Typical sequence for adding new dimensions,variables,attributes:
-! NF90_OPEN             ! open existing netCDF dataset
-!    NF90_redef         ! put into define mode 
-!    NF90_def_dim       ! define additional dimensions (if any)
-!    NF90_def_var       ! define variables: from name, type, and dims
-!    NF90_put_att       ! assign attribute values
-! NF90_ENDDEF           ! end definitions: leave define mode
-!    NF90_put_var       ! provide values for variable
-! NF90_CLOSE            ! close: save updated netCDF dataset
-!
-
-use typeSizes      ! comes from F90 netCDF interface
-use netcdf         ! comes from F90 netCDF interface
-implicit none
-
-integer,                intent(in) :: ncFileID      ! netCDF file identifier
-real(r8), dimension(:), intent(in) :: statevec
-integer,                intent(in) :: copyindex
-integer,                intent(in) :: timeindex
-integer                            :: ierr          ! return value of function
-
-ierr = 0                      ! assume normal termination
-
-end function nc_write_model_vars
-
-
-subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
 !------------------------------------------------------------------
-! Perturbs a model state copies for generating initial ensembles.
-! Routine which could provide a custom perturbation routine to
-! generate initial ensembles.  The default (if interface is not
-! provided) is to add gaussian noise to each item in the state vector.
+!> Writes the model-specific attributes to a netCDF file
 
- type(ensemble_type), intent(inout) :: state_ens_handle
- integer,   intent(in) :: ens_size
- real(r8),  intent(in) :: pert_amp
- logical,  intent(out) :: interf_provided
+subroutine nc_write_model_atts(ncid, domain_id)
 
-interf_provided = .false.
+integer, intent(in) :: ncid      ! netCDF file identifier
+integer, intent(in) :: domain_id
 
-end subroutine pert_model_copies
+integer :: msize, i
 
-!--------------------------------------------------------------------
+! other parts of the dart system will write the state into the file
+! so this routine just needs to write any model-specific
+! attributes it wants to record.
 
-!> Unused in this model.
+msize = int(model_size, i4)
 
-subroutine vert_convert(state_handle, location, obs_kind, istatus)
+! Write Global Attributes
 
-type(ensemble_type), intent(in)  :: state_handle
-type(location_type), intent(in)  :: location
-integer,             intent(in)  :: obs_kind
-integer,             intent(out) :: istatus
+call nc_redef(ncid)
 
-istatus = 0
+call nc_add_global_creation_time(ncid)
 
-end subroutine vert_convert
+call nc_add_global_attribute(ncid, "model_source", source )
+call nc_add_global_attribute(ncid, "model_revision", revision )
+call nc_add_global_attribute(ncid, "model_revdate", revdate )
 
-!--------------------------------------------------------------------
-!> pass the vertical localization coordinate to assim_tools_mod
+call nc_add_global_attribute(ncid, "model", "9var")
 
-function query_vert_localization_coord()
+call nc_add_global_attribute(ncid, "model_g", g )
+call nc_add_global_attribute(ncid, "model_deltat", deltat )
+call nc_add_global_attribute(ncid, "model_a", a )
+call nc_add_global_attribute(ncid, "model_b", b )
+call nc_add_global_attribute(ncid, "model_f", f )
+call nc_add_global_attribute(ncid, "model_h", h )
+call nc_add_global_attribute(ncid, "model_nu", nu )
+call nc_add_global_attribute(ncid, "model_kappa", kappa )
+call nc_add_global_attribute(ncid, "model_c", c )
 
-integer :: query_vert_localization_coord
+call nc_write_location_atts(ncid, msize)
+call nc_enddef(ncid)
+call nc_write_location(ncid, state_loc, msize)
 
-!> @TODO should define some parameters including something
-!> like HAS_NO_VERT for this use.
-
-query_vert_localization_coord = -1
-
-end function query_vert_localization_coord
-
-!--------------------------------------------------------------------
-!> Pass through to the code in the locations module
-
-subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, &
-                         obs_kind, num_close, close_ind, dist, state_handle)
-
-type(ensemble_type),         intent(in)     :: state_handle
-type(get_close_type),        intent(in)     :: gc
-type(location_type),         intent(inout)  :: base_obs_loc, obs_loc(:)
-integer,                     intent(in)     :: base_obs_kind, obs_kind(:)
-integer,                     intent(out)    :: num_close, close_ind(:)
-real(r8),                    intent(out)    :: dist(:)
-
-
-call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-                          num_close, close_ind, dist)
-
-end subroutine get_close_obs
+end subroutine nc_write_model_atts
 
 !--------------------------------------------------------------------
 

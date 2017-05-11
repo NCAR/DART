@@ -254,10 +254,140 @@ Changes to the perfect_model_obs_nml are :
 
 has_cycling           -- REMOVED for low order models
 
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ April 27th 2017 :: changes  Revision: 11545
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Two additional Diagnostic Files (forecast and analysis) in Filter 
+which can be set with the namelist option (stages_to_write)
+
+  input    - writes out mean and sd if requested. for low order models
+             mean and sd are only inserted into restart files with a 
+             single time step.
+
+  forecast - contains the forecast and potentially the mean and sd for the,
+             this is mostly important for lower order models which cycle
+
+  preassim - before assimilation
+     * No Inflation:       same as forecast
+     * Prior Inf:          the inflated ensemble and damped prior inf
+     * Post Inf:           same as forecast
+     * Prior and Post Inf: the inflated ensemble and damped prior inf
+
+  postassim - after assimilation (before posterior infation)
+     * No Inflation:       same as analysis
+     * Prior Inf:          same as analysis
+     * Post Inf:           assimilated ensemble and damped posterior inflation
+     * Prior and Post Inf: assimilated ensemble and damped posterior inflation
+
+  analysis - after assimilation and before potentially update posterior inflation ensemble 
+             and updated prior inf
+     * No Inflation:       assimilated ensemble
+     * Prior Inf:          assimilated ensemble and updated prior inf
+     * Post Inf:           post inflated ensemble and updated posterior inflation
+     * Prior and Post Inf: post inflated ensemble and updated prior inf and posterior 
+                           inflation
+
+  output - a single time step of the output ensemble and potentially updated prior inf 
+           and posterior inflation
+
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Month Day 2017 :: change $Revision$
++ May 5th 2017 :: major changes to model_mod interfaces  $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+A long-awaited overhaul of the model_mod interfaces. All models which are
+in our subversion repository and are supported in the Manhattan release
+have been updated to match the new interfaces.  If you have model_mods with
+extensive changes, our recommendation is to diff your changes with the version
+you checked out and insert those changes into the new version.  The changes for
+this update are unfortunately extensive.
+
+The detailed list of changes: 
+
+model_mod::get_state_meta_data() is no longer passed an ensemble_handle as the
+first argument.  it should not do vertical coordinate conversion.  that will be
+done as a separate step by convert_vertical_state()
+
+model_mod::vert_convert is replaced by convert_vertical_state() and convert_vertical_obs()
+Any vertical conversion code that was in get_state_meta_data should be moved
+to convert_vertical_state() which has access to the state vector index, so the
+code should move easily.
+
+model_mod::query_vert_localization_coord is no longer a required interface
+model_mod::get_close_maxdist_init is not longer a required interface
+model_mod::get_close_obs_init is not longer a required interface
+
+model_mod::get_close_obs has a different calling convention and is split into
+get_close_obs() and get_close_state().  the close obs routine is passed both the
+obs types and quantities, and the close state routine is passed both the
+state quantities and the state index, for ease in vertical conversion if needed.
+
+model_mod::nc_write_model_vars() is deprecated for now; it may return in a
+slightly different form in the future.  
+
+model_mod::nc_write_model_atts() is now a subroutine with different arguments.
+it should now only write any global attributes wanted, and possibly some grid 
+information.  it should NOT write any of the state variables; those will be 
+written by DART routines.
+
+model_mod::get_model_size() needs to return an i8 for the size.
+
+A new module "default_model_mod" supplies default routines for any required
+interfaces that don't need to be specialized for this model.
+
+A new module "netcdf_utilities_mod" can do some simple netcdf functions for
+you and we plan to add many more over the next couple months.
+
+model_mod::get_model_time_step has been replaced by shortest_time_between_assimilations()
+since in fact it has always controlled the minimum time filter would request a model advance
+and never had anything to do with the internal time step of the dynamics of the model.
+
+We have removed 'output_state_vector' from the namelist of all model_mods since
+we no longer output a single 1d vector.  all i/o is now in netcdf format.
+
+Models now have more control over when vertical conversion happens - on demand
+as needed, or all up front before assimilation.
+
+Models that were doing vertical conversion in get_state_meta_data should set:
+&assim_tools_nml
+   convert_all_state_verticals_first = .true.
+   convert_all_obs_verticals_first = .true.
+
+Models which were not should set:
+   convert_all_state_verticals_first = .false.
+   convert_all_obs_verticals_first = .true.
+
+The location_mod::vert_is_xxx() routines have become a single is_vertical(loc, "string") where
+string is one of: "PRESSURE", "HEIGHT", "SURFACE", "LEVEL", "UNDEFINED", "SCALE_HEIGHT"
+
+Models doing vertical localization should add a call to set_vertical_localization_coord()
+in their static_init_model() routine to tell dart what vertical coordinate system they
+are expecting to convert to for vert localization
+
+Most path_names_xxx files have been updated to add additional modules.  compare against
+what is checked out to see the differences.
+
+Some of the internal changes include pulling common code from the locations
+modules into a location_io_mod which contains common functions for creating
+and writing 'location' variables for any location type.
+
+QTY_RAW_STATE_VARIABLE is redundant and was shortened to QTY_STATE_VARIABLE
+
+Many utility programs use the template/model_mod.f90 because they don't
+depend on any model-specific functions.  this file was also updated to
+match the new interfaces.
+
+The obs_impact facility is enabled in the assim_tools namelist. you can
+use the obs_impact_tool to construct a table which prevents one class of
+observations from impacting another class of state.
+
+Sampling Error Correction now reads the values it needs from a single
+netcdf file found in assimilation_code/programs/gen_sampling_err_table/work.
+copy it to the same directory as where filter is running.  all ensemble
+sizes which were previously in final_full.XX files are included, and there
+is a tool to generate and append to the file any other ensemble size required.
+
 
 # <next few lines under version control, do not edit>
 # $URL$

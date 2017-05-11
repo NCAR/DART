@@ -6,8 +6,8 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p id_set_def_stdin -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
- -a "../../.." path_names_id_set_def_stdin
+../../../build_templates/mkmf -p obs_impact_tool -t ../../../build_templates/mkmf.template   \
+ -a "../../.." path_names_obs_impact_tool
 
 exit $status
 

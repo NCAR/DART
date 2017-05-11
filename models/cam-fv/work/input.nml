@@ -233,7 +233,6 @@
 #========================================================================
 
 &model_nml
-   output_state_vector = .false.,
    model_version       = '4.1',
    model_config_file   = 'caminput.nc' 
    cam_phis            = 'cam_phis.nc'
@@ -278,7 +277,6 @@
 #========================================================================
 
 !CAM-SE &model_nml
-!CAM-SE    output_state_vector = .false.,
 !CAM-SE    model_version       = '5.1.1',
 !CAM-SE    model_config_file   = 'caminput.nc' 
 !CAM-SE    cs_grid_file        = 'SEMapping_cs_grid.nc'
@@ -536,6 +534,13 @@
    interp_test_vertcoord = 'VERTISHEIGHT'
   /
 
+&obs_impact_tool_nml
+  input_filename         = 'cross_correlations.txt'
+  output_filename        = 'control_impact_runtime.txt'
+  allow_any_impact_value = .false.
+  debug                  = .false.
+  /
+
 # different methods to compute 'distance' from mean:
 #  1 = simple absolute difference
 #  2 = normalized absolute difference
@@ -549,4 +554,5 @@
    single_restart_file_in = .true.,
    difference_method      = 4,
    /
+
 

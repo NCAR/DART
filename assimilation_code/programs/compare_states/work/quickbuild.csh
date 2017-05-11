@@ -10,7 +10,7 @@
 
 \rm -f *.o *.mod 
 
-set MODEL = "system_simulation"
+set MODEL = "compare_states"
 
 @ n = 0
 

@@ -16,7 +16,7 @@ function PlotEnsErrSpread( pinfo )
 %
 % Example 0   (9var  model)
 %%--------------------------------------------------------
-% pinfo.truth_file = 'perfect_output.nc';
+% pinfo.truth_file = 'true_state.nc';
 % pinfo.diagn_file = 'preassim.nc';
 % pinfo.var        = 'state';
 % pinfo.var_inds   = [ 1 2 3 4 5 6 7 8 9 ];
@@ -24,7 +24,7 @@ function PlotEnsErrSpread( pinfo )
 %
 % Example 1   (Lorenz_96  model)
 %%--------------------------------------------------------
-% pinfo.truth_file = 'perfect_output.nc';
+% pinfo.truth_file = 'true_state.nc';
 % pinfo.diagn_file = 'preassim.nc';
 % pinfo.var        = 'state';
 % pinfo.var_inds   = [ 3 4 36 39 22 ];
@@ -32,7 +32,7 @@ function PlotEnsErrSpread( pinfo )
 %
 % Example 2   (Lorenz_96_2scale  model)
 %%--------------------------------------------------------
-% pinfo.truth_file = 'perfect_output.nc';
+% pinfo.truth_file = 'true_state.nc';
 % pinfo.diagn_file = 'preassim.nc';
 % pinfo.var        = 'X';
 % pinfo.var_inds   = [ 3 18 27 ];
@@ -40,7 +40,7 @@ function PlotEnsErrSpread( pinfo )
 %
 % Example 3 (FMS BGrid model)
 %%--------------------------------------------------------
-% pinfo.truth_file = 'perfect_output.nc';
+% pinfo.truth_file = 'true_state.nc';
 % pinfo.diagn_file = 'preassim.nc';
 % pinfo.var        = 'u';
 % pinfo.level      = 3;
@@ -55,207 +55,210 @@ function PlotEnsErrSpread( pinfo )
 % DART $Id$
 
 switch lower(pinfo.model)
-
-   case '9var'
-
-      truth      = get_hyperslab('fname',pinfo.truth_file, ...
-                       'varname','state', ...
-                       'permute','T', ...
-                       'tindex1',pinfo.truth_time(1), ...
-                       'tcount',pinfo.truth_time(2)) ;
-
-      ens_mean   = get_hyperslab('fname',pinfo.diagn_file, ...
-                       'varname','state_mean', ...
-                       'permute','T', ...
-                       'tindex1',pinfo.diagn_time(1), ...
-                       'tcount',pinfo.diagn_time(2)) ;
-
-      ens_spread = get_hyperslab('fname',pinfo.diagn_file, ...
-                       'varname','state_sd', ...
-                       'permute','T', ...
-                       'tindex1',pinfo.diagn_time(1), ...
-                       'tcount',pinfo.diagn_time(2)) ;
-
-      % Use three different figures with three subplots each
-      for i = 1:3
-         figure(i); clf
-         for j = 1:3
-
-            ivar = (i - 1)*3 + j;
-
-            err         = total_err(ens_mean(:,ivar) , truth(:,ivar));
-            errTotal    = sum(err)                / pinfo.time_series_length;
-            spreadTotal = sum(ens_spread(:,ivar)) / pinfo.time_series_length;
-            string1 = ['time-mean Ensemble Mean Total Error = ' num2str(errTotal)];
-            string2 = ['time-mean Ensemble Spread = ' num2str(spreadTotal)];
-
-            fprintf('%s model Variable %d\n',pinfo.model,ivar)
-
-            subplot(3, 1, j);
-               plot(pinfo.time,err, 'b', ...
+    
+    case '9var'
+        
+        truth      = get_hyperslab('fname',pinfo.truth_file, ...
+            'varname','state', ...
+            'permute','T', ...
+            'tindex1',pinfo.truth_time(1), ...
+            'tcount',pinfo.truth_time(2)) ;
+        
+        ens_mean   = get_hyperslab('fname',pinfo.diagn_file, ...
+            'varname','state_mean', ...
+            'permute','T', ...
+            'tindex1',pinfo.diagn_time(1), ...
+            'tcount',pinfo.diagn_time(2)) ;
+        
+        ens_spread = get_hyperslab('fname',pinfo.diagn_file, ...
+            'varname','state_sd', ...
+            'permute','T', ...
+            'tindex1',pinfo.diagn_time(1), ...
+            'tcount',pinfo.diagn_time(2)) ;
+        
+        % Use three different figures with three subplots each
+        for i = 1:3
+            figure(i); clf
+            for j = 1:3
+                
+                ivar = (i - 1)*3 + j;
+                
+                err         = total_err(ens_mean(:,ivar) , truth(:,ivar));
+                errTotal    = sum(err)                / pinfo.time_series_length;
+                spreadTotal = sum(ens_spread(:,ivar)) / pinfo.time_series_length;
+                string1 = ['time-mean Ensemble Mean Total Error = ' num2str(errTotal)];
+                string2 = ['time-mean Ensemble Spread = ' num2str(spreadTotal)];
+                
+                fprintf('%s model Variable %d\n',pinfo.model,ivar)
+                
+                subplot(3, 1, j);
+                plot(pinfo.time,err, 'b', ...
                     pinfo.time,ens_spread(:, ivar), 'r');
-               s1 = sprintf('%s model Var %d Ensemble Error Spread', pinfo.model, ivar);
-               title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
-               legend(string1,string2,0)
-               legend boxoff
-               xlabel(sprintf('model "days" (%d timesteps)',pinfo.time_series_length))
-               ylabel('distance')
-         end
-      end
-
-   case {'lorenz_96_2scale', 'simple_advection'}
-      % The variable names are not simply 'state', 'state_mean', 'state_sd'
-      error('not supported yet')
-
-   case {'lorenz_63','lorenz_84','lorenz_96','lorenz_04','forced_lorenz_96','ikeda'}
-
-      truth      = get_hyperslab('fname',pinfo.truth_file, ...
-                       'varname','state', ...
-                       'permute','T', ...
-                       'tindex1',pinfo.truth_time(1), ...
-                       'tcount',pinfo.truth_time(2)) ;
-
-      ens_mean   = get_hyperslab('fname',pinfo.diagn_file, ...
-                       'varname','state_mean', ...
-                       'permute','T', ...
-                       'tindex1',pinfo.diagn_time(1), ...
-                       'tcount',pinfo.diagn_time(2)) ;
-
-      ens_spread = get_hyperslab('fname',pinfo.diagn_file, ...
-                       'varname','state_sd', ...
-                       'permute','T', ...
-                       'tindex1',pinfo.diagn_time(1), ...
-                       'tcount',pinfo.diagn_time(2)) ;
-
-      clf; iplot = 0;
-      for ivar = pinfo.var_inds,
+                s1 = sprintf('%s model Var %d Ensemble Error Spread', pinfo.model, ivar);
+                title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
+                legend(string1,string2,0)
+                legend boxoff
+                xlabel(sprintf('model "days" (%d timesteps)',pinfo.time_series_length))
+                ylabel('distance')
+            end
+        end
+        
+    case 'lorenz_96_2scale'
+        
+        % The variable names are not simply 'state', 'state_mean', 'state_sd'
+        error('not supported yet')
+        
+    case {'lorenz_63','lorenz_84','lorenz_96','lorenz_04','forced_lorenz_96','ikeda','simple_advection'}
+        
+        truth      = get_hyperslab('fname',pinfo.truth_file, ...
+            'varname',pinfo.var, ...
+            'permute','T', ...
+            'tindex1',pinfo.truth_time(1), ...
+            'tcount',pinfo.truth_time(2)) ;
+        
+        varname = sprintf('%s_mean',pinfo.var);
+        ens_mean   = get_hyperslab('fname',pinfo.diagn_file, ...
+            'varname',varname, ...
+            'permute','T', ...
+            'tindex1',pinfo.diagn_time(1), ...
+            'tcount',pinfo.diagn_time(2)) ;
+        
+        varname = sprintf('%s_sd',pinfo.var);
+        ens_spread = get_hyperslab('fname',pinfo.diagn_file, ...
+            'varname',varname, ...
+            'permute','T', ...
+            'tindex1',pinfo.diagn_time(1), ...
+            'tcount',pinfo.diagn_time(2)) ;
+        
+        clf; iplot = 0;
+        for ivar = pinfo.var_inds,
             iplot = iplot + 1;
             err         = total_err(ens_mean(:,ivar) , truth(:,ivar));
             errTotal    = sum(err)                / pinfo.time_series_length;
             spreadTotal = sum(ens_spread(:,ivar)) / pinfo.time_series_length;
             string1 = ['time-mean Ensemble Mean Total Error = ' num2str(errTotal)];
             string2 = ['time-mean Ensemble Spread = ' num2str(spreadTotal)];
-
+            
             subplot(length(pinfo.var_inds), 1, iplot);
-               plot(pinfo.time,err, 'b', ...
-                    pinfo.time,ens_spread(:,ivar), 'r');
-               s1 = sprintf('%s model Var %d Ensemble Error Spread', pinfo.model, ivar);
-               title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
-               legend(string1,string2,0)
-               legend boxoff
-               xlabel(sprintf('model "days" (%d timesteps)',pinfo.time_series_length))
-               ylabel('distance')
-      end
-
-   case {'fms_bgrid','pe2lyr','mitgcm_ocean','cam','wrf','sqg','pop'}
-
-      clf;
-
-      truth      = get_hyperslab('fname',pinfo.truth_file, ...
-                       'varname', pinfo.var, ...
-                       'permute', 'T', ...
-                       'levelindex', pinfo.levelindex, ...
-                       'latindex', pinfo.latindex, ...
-                       'lonindex', pinfo.lonindex, ...
-                       'tindex1', pinfo.truth_time(1), ...
-                       'tcount',pinfo.truth_time(2)) ;
-
-      varname = sprintf('%s_mean',pinfo.var);
-      ens_mean   = get_hyperslab('fname',pinfo.diagn_file, ...
-                       'varname', varname, ...
-                       'permute', 'T', ...
-                       'levelindex', pinfo.levelindex, ...
-                       'latindex', pinfo.latindex, ...
-                       'lonindex', pinfo.lonindex, ...
-                       'tindex1', pinfo.diagn_time(1), ...
-                       'tcount',pinfo.diagn_time(2)) ;
-
-      varname = sprintf('%s_sd',pinfo.var);
-      ens_spread = get_hyperslab('fname',pinfo.diagn_file, ...
-                       'varname', varname, ...
-                       'permute', 'T', ...
-                       'levelindex', pinfo.levelindex, ...
-                       'latindex', pinfo.latindex, ...
-                       'lonindex', pinfo.lonindex, ...
-                       'tindex1', pinfo.diagn_time(1), ...
-                       'tcount',pinfo.diagn_time(2)) ;
-
-      subplot(2,1,1)
-         PlotLocator(pinfo);
-
-      subplot(2,1,2)
-         err         = total_err(ens_mean, truth);
-         errTotal    = sum(err)        / pinfo.time_series_length;
-         spreadTotal = sum(ens_spread) / pinfo.time_series_length;
-         string1 = ['time-mean Ensemble Mean Total Error = ' num2str(errTotal)];
-         string2 = ['time-mean Ensemble Spread = ' num2str(spreadTotal)];
-
-         plot(pinfo.time,err, 'b', pinfo.time,ens_spread, 'r');
-
-         s1 = sprintf('Ensemble Mean Error, Ensemble Spread %s ''%s''',pinfo.model,pinfo.var);
-         s2 = sprintf('level %d lat %.2f lon %.2f', ...
-                       pinfo.level, pinfo.latitude, pinfo.longitude);
-         title({s1, s2, pinfo.diagn_file},'interpreter','none','fontweight','bold');
-
-         legend(string1,string2,0);
-         legend boxoff
-         xdates(pinfo.time);
-         ylabel('distance');
-
-   case {'mpas_atm'}
-      error('not supported yet')
-      clf;
-
-      truth      = get_hyperslab('fname',pinfo.truth_file, ...
-                       'varname', pinfo.var, ...
-                       'permute', 'T', ...
-                       'levelindex', pinfo.levelindex, ...
-                       'cellindex', pinfo.cellindex, ...
-                       'tindex1', pinfo.truth_time(1), ...
-                       'tcount',pinfo.truth_time(2)) ;
-
-      varname    = sprintf('%s_mean',pinfo.var);
-      ens_mean   = get_hyperslab('fname',pinfo.diagn_file, ...
-                       'varname', varname, ...
-                       'permute', 'T', ...
-                       'levelindex', pinfo.levelindex, ...
-                       'cellindex', pinfo.cellindex, ...
-                       'tindex1', pinfo.diagn_time(1), ...
-                       'tcount',pinfo.diagn_time(2)) ;
-
-      varname    = sprintf('%s_sd',pinfo.var);
-      ens_spread = get_hyperslab('fname',pinfo.diagn_file, ...
-                       'varname', varname, ...
-                       'permute', 'T', ...
-                       'levelindex', pinfo.levelindex, ...
-                       'cellindex', pinfo.cellindex, ...
-                       'tindex1', pinfo.diagn_time(1), ...
-                       'tcount',pinfo.diagn_time(2)) ;
-
-      subplot(2,1,1)
-         PlotLocator(pinfo);
-
-      subplot(2,1,2)
-         err         = total_err(ens_mean, truth);
-         errTotal    = sum(err)        / pinfo.time_series_length;
-         spreadTotal = sum(ens_spread) / pinfo.time_series_length;
-         string1 = ['time-mean Ensemble Mean Total Error = ' num2str(errTotal)];
-         string2 = ['time-mean Ensemble Spread = ' num2str(spreadTotal)];
-
-         plot(pinfo.time,err, 'b', pinfo.time,ens_spread, 'r');
-
-         s1 = sprintf('Ensemble Mean Error, Ensemble Spread %s ''%s''',pinfo.model,pinfo.var);
-         s2 = sprintf('level number %d lat %.2f lon %.2f', ...
-                       pinfo.level, pinfo.latCell(pinfo.cellindex), pinfo.lonCell(pinfo.cellindex));
-         title({s1, s2, pinfo.diagn_file},'interpreter','none','fontweight','bold');
-
-         legend(string1,string2,0);
-         legend boxoff
-         xdates(pinfo.time);
-         ylabel('distance');
-
-   otherwise
-      error('model %s unknown.',pinfo.model)
+            plot(pinfo.time,err, 'b', ...
+                pinfo.time,ens_spread(:,ivar), 'r');
+            s1 = sprintf('%s model Var %d Ensemble Error Spread', pinfo.model, ivar);
+            title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
+            legend(string1,string2,0)
+            legend boxoff
+            xlabel(sprintf('model "days" (%d timesteps)',pinfo.time_series_length))
+            ylabel('distance')
+        end
+        
+    case {'fms_bgrid','pe2lyr','mitgcm_ocean','cam','wrf','sqg','pop'}
+        
+        clf;
+        
+        truth      = get_hyperslab('fname',pinfo.truth_file, ...
+            'varname', pinfo.var, ...
+            'permute', 'T', ...
+            'levelindex', pinfo.levelindex, ...
+            'latindex', pinfo.latindex, ...
+            'lonindex', pinfo.lonindex, ...
+            'tindex1', pinfo.truth_time(1), ...
+            'tcount',pinfo.truth_time(2)) ;
+        
+        varname = sprintf('%s_mean',pinfo.var);
+        ens_mean   = get_hyperslab('fname',pinfo.diagn_file, ...
+            'varname', varname, ...
+            'permute', 'T', ...
+            'levelindex', pinfo.levelindex, ...
+            'latindex', pinfo.latindex, ...
+            'lonindex', pinfo.lonindex, ...
+            'tindex1', pinfo.diagn_time(1), ...
+            'tcount',pinfo.diagn_time(2)) ;
+        
+        varname = sprintf('%s_sd',pinfo.var);
+        ens_spread = get_hyperslab('fname',pinfo.diagn_file, ...
+            'varname', varname, ...
+            'permute', 'T', ...
+            'levelindex', pinfo.levelindex, ...
+            'latindex', pinfo.latindex, ...
+            'lonindex', pinfo.lonindex, ...
+            'tindex1', pinfo.diagn_time(1), ...
+            'tcount',pinfo.diagn_time(2)) ;
+        
+        subplot(2,1,1)
+        PlotLocator(pinfo);
+        
+        subplot(2,1,2)
+        err         = total_err(ens_mean, truth);
+        errTotal    = sum(err)        / pinfo.time_series_length;
+        spreadTotal = sum(ens_spread) / pinfo.time_series_length;
+        string1 = ['time-mean Ensemble Mean Total Error = ' num2str(errTotal)];
+        string2 = ['time-mean Ensemble Spread = ' num2str(spreadTotal)];
+        
+        plot(pinfo.time,err, 'b', pinfo.time,ens_spread, 'r');
+        
+        s1 = sprintf('Ensemble Mean Error, Ensemble Spread %s ''%s''',pinfo.model,pinfo.var);
+        s2 = sprintf('level %d lat %.2f lon %.2f', ...
+            pinfo.level, pinfo.latitude, pinfo.longitude);
+        title({s1, s2, pinfo.diagn_file},'interpreter','none','fontweight','bold');
+        
+        legend(string1,string2,0);
+        legend boxoff
+        xdates(pinfo.time);
+        ylabel('distance');
+        
+    case {'mpas_atm'}
+        error('not supported yet')
+        clf;
+        
+        truth      = get_hyperslab('fname',pinfo.truth_file, ...
+            'varname', pinfo.var, ...
+            'permute', 'T', ...
+            'levelindex', pinfo.levelindex, ...
+            'cellindex', pinfo.cellindex, ...
+            'tindex1', pinfo.truth_time(1), ...
+            'tcount',pinfo.truth_time(2)) ;
+        
+        varname    = sprintf('%s_mean',pinfo.var);
+        ens_mean   = get_hyperslab('fname',pinfo.diagn_file, ...
+            'varname', varname, ...
+            'permute', 'T', ...
+            'levelindex', pinfo.levelindex, ...
+            'cellindex', pinfo.cellindex, ...
+            'tindex1', pinfo.diagn_time(1), ...
+            'tcount',pinfo.diagn_time(2)) ;
+        
+        varname    = sprintf('%s_sd',pinfo.var);
+        ens_spread = get_hyperslab('fname',pinfo.diagn_file, ...
+            'varname', varname, ...
+            'permute', 'T', ...
+            'levelindex', pinfo.levelindex, ...
+            'cellindex', pinfo.cellindex, ...
+            'tindex1', pinfo.diagn_time(1), ...
+            'tcount',pinfo.diagn_time(2)) ;
+        
+        subplot(2,1,1)
+        PlotLocator(pinfo);
+        
+        subplot(2,1,2)
+        err         = total_err(ens_mean, truth);
+        errTotal    = sum(err)        / pinfo.time_series_length;
+        spreadTotal = sum(ens_spread) / pinfo.time_series_length;
+        string1 = ['time-mean Ensemble Mean Total Error = ' num2str(errTotal)];
+        string2 = ['time-mean Ensemble Spread = ' num2str(spreadTotal)];
+        
+        plot(pinfo.time,err, 'b', pinfo.time,ens_spread, 'r');
+        
+        s1 = sprintf('Ensemble Mean Error, Ensemble Spread %s ''%s''',pinfo.model,pinfo.var);
+        s2 = sprintf('level number %d lat %.2f lon %.2f', ...
+            pinfo.level, pinfo.latCell(pinfo.cellindex), pinfo.lonCell(pinfo.cellindex));
+        title({s1, s2, pinfo.diagn_file},'interpreter','none','fontweight','bold');
+        
+        legend(string1,string2,0);
+        legend boxoff
+        xdates(pinfo.time);
+        ylabel('distance');
+        
+    otherwise
+        error('model %s unknown.',pinfo.model)
 end
 
 %======================================================================
@@ -264,29 +267,29 @@ end
 
 
 function PlotLocator(pinfo)
-   plot(pinfo.longitude,pinfo.latitude,'pb','MarkerSize',12,'MarkerFaceColor','b');
-   axlims = axis;
-   axlims = axlims + [-20 20 -20 20];
-   grid on
-   axis image
-   axis(axlims)
-   if (axlims(2) < 0)
-       continents('hollow','dateline');
-   else
-       continents('hollow','greenwich');
-   end
+plot(pinfo.longitude,pinfo.latitude,'pb','MarkerSize',12,'MarkerFaceColor','b');
+axlims = axis;
+axlims = axlims + [-20 20 -20 20];
+grid on
+axis image
+axis(axlims)
+if (axlims(2) < 0)
+    continents('hollow','dateline');
+else
+    continents('hollow','greenwich');
+end
 
 
 
 function xdates(dates)
 if (length(dates) < 5)
-   set(gca,'XTick',dates);
-   datetick('x',31,'keepticks','keeplimits');
-   xlabel('Model date (YYYY-MM-DD HH:MM:SS)')
+    set(gca,'XTick',dates);
+    datetick('x',31,'keepticks','keeplimits');
+    xlabel('Model date (YYYY-MM-DD HH:MM:SS)')
 else
-   datetick('x','mm.dd.HH','keeplimits'); % 'mm/dd'
-   monstr = datestr(dates(1),31);
-   xlabel(sprintf('month.day.HH - %s start',monstr))
+    datetick('x','mm.dd.HH','keeplimits'); % 'mm/dd'
+    monstr = datestr(dates(1),31);
+    xlabel(sprintf('month.day.HH - %s start',monstr))
 end
 
 

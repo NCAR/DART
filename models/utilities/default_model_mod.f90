@@ -14,17 +14,12 @@ use        types_mod,      only : r8, i8, i4, MISSING_R8
 use time_manager_mod,      only : time_type, set_time
 
 use     location_mod,      only : location_type, set_location, set_location_missing, &
-                                  get_close_maxdist_init, get_close_obs_init, &
-                                  get_close_state_init => get_close_obs_init, &
-                                  loc_get_close_obs => get_close_obs, &
-                                  loc_get_close_state => get_close_obs, &
-                                  get_close_type
+                                  get_close_type, get_close_obs, get_close_state, &
+                                  convert_vertical_obs, convert_vertical_state
 
 use    utilities_mod,      only : register_module, error_handler, E_ERR, E_MSG, nmlfileunit, &
                                   do_output, find_namelist_in_file, check_namelist_read,     &
                                   do_nml_file, do_nml_term, nc_check
-
-use         obs_kind_mod,  only : RAW_STATE_VARIABLE
 
 use ensemble_manager_mod,  only : ensemble_type
 
@@ -37,7 +32,7 @@ public :: get_model_size, &
           adv_1step, &
           get_state_meta_data, &
           model_interpolate, &
-          get_model_time_step, &
+          shortest_time_between_assimilations, &
           end_model, &
           static_init_model, &
           init_time, &
@@ -45,14 +40,10 @@ public :: get_model_size, &
           nc_write_model_atts, &
           nc_write_model_vars, &
           pert_model_copies, &
-          get_close_type, &
-          get_close_maxdist_init, &
-          get_close_obs_init, &
           get_close_obs, &
-          get_close_state_init, &
           get_close_state, &
-          vert_convert, &
-          query_vert_localization_coord, &
+          convert_vertical_obs, &
+          convert_vertical_state, &
           read_model_time, &
           write_model_time
 
@@ -112,12 +103,12 @@ end subroutine init_time
 
 !------------------------------------------------------------------
 
-subroutine model_interpolate(state_handle, ens_size, location, itype, expected_obs, istatus)
+subroutine model_interpolate(state_handle, ens_size, location, obs_quantity, expected_obs, istatus)
 
 type(ensemble_type),  intent(in) :: state_handle
 integer,              intent(in) :: ens_size
 type(location_type),  intent(in) :: location
-integer,              intent(in) :: itype
+integer,              intent(in) :: obs_quantity
 real(r8),            intent(out) :: expected_obs(ens_size)
 integer,             intent(out) :: istatus(ens_size)
 
@@ -129,13 +120,13 @@ end subroutine model_interpolate
 
 !------------------------------------------------------------------
 
-function get_model_time_step()
-type(time_type) :: get_model_time_step
+function shortest_time_between_assimilations()
+type(time_type) :: shortest_time_between_assimilations
 
 ! default to 1 day
-get_model_time_step = set_time(0, 1)
+shortest_time_between_assimilations = set_time(0, 1)
 
-end function get_model_time_step
+end function shortest_time_between_assimilations
 
 !------------------------------------------------------------------
 
@@ -147,7 +138,7 @@ type(location_type), intent(out) :: location
 integer,             intent(out), optional :: var_type
 
 location = set_location_missing()
-if (present(var_type)) var_type = RAW_STATE_VARIABLE    ! default variable type
+if (present(var_type)) var_type = 0    ! default variable type
 
 end subroutine get_state_meta_data
 
@@ -159,30 +150,24 @@ end subroutine end_model
 
 !------------------------------------------------------------------
 
-function nc_write_model_atts( ncFileID, model_mod_writes_state_variables ) result (ierr)
+subroutine nc_write_model_atts(ncid, domain_id) 
 
-integer, intent(in)  :: ncFileID      ! netCDF file identifier
-logical, intent(out) :: model_mod_writes_state_variables
-integer              :: ierr          ! return value of function
+integer, intent(in) :: ncid
+integer, intent(in) :: domain_id
 
-ierr = 0                             ! assume normal termination
-model_mod_writes_state_variables = .false.
-
-end function nc_write_model_atts
+end subroutine nc_write_model_atts
 
 !------------------------------------------------------------------
 
-function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)         
+subroutine nc_write_model_vars(ncid, domain_id, state_ens_handle, memberindex, timeindex)
 
-integer,                intent(in) :: ncFileID      ! netCDF file identifier
-real(r8), dimension(:), intent(in) :: statevec
-integer,                intent(in) :: copyindex
-integer,                intent(in) :: timeindex
-integer                            :: ierr          ! return value of function
+integer,             intent(in) :: ncid      
+integer,             intent(in) :: domain_id
+type(ensemble_type), intent(in) :: state_ens_handle
+integer, optional,   intent(in) :: memberindex
+integer, optional,   intent(in) :: timeindex
 
-ierr = 0                      ! assume normal termination
-
-end function nc_write_model_vars
+end subroutine nc_write_model_vars
 
 !--------------------------------------------------------------------
 
@@ -196,79 +181,6 @@ logical,  intent(out) :: interf_provided
 interf_provided = .false.
 
 end subroutine pert_model_copies
-
-!--------------------------------------------------------------------
-
-subroutine vert_convert(state_handle, location, obs_kind, istatus)
-
-type(ensemble_type), intent(in)  :: state_handle
-type(location_type), intent(in)  :: location
-integer,             intent(in)  :: obs_kind
-integer,             intent(out) :: istatus
-
-istatus = 0
-
-end subroutine vert_convert
-
-!--------------------------------------------------------------------
-
-function query_vert_localization_coord()
-
-integer :: query_vert_localization_coord
-
-!> @TODO should define some parameters including something
-!> like HAS_NO_VERT for this use.
-
-query_vert_localization_coord = -1
-
-end function query_vert_localization_coord
-
-!--------------------------------------------------------------------
-
-!> Pass through to the code in the locations module
-
-subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, &
-                         obs_kind, num_close, close_ind, dist, state_handle)
-
-type(ensemble_type),         intent(in)     :: state_handle
-type(get_close_type),        intent(in)     :: gc
-type(location_type),         intent(inout)  :: base_obs_loc
-type(location_type),         intent(inout)  :: obs_loc(:)
-integer,                     intent(in)     :: base_obs_kind
-integer,                     intent(in)     :: obs_kind(:)
-integer,                     intent(out)    :: num_close
-integer,                     intent(out)    :: close_ind(:)
-real(r8),                    intent(out)    :: dist(:)
-
-call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-                          num_close, close_ind, dist)
-
-end subroutine get_close_obs
-
-!--------------------------------------------------------------------
-
-!> Pass through to the code in the locations module
-
-subroutine get_close_state(gc, base_obs_loc, base_obs_kind, state_loc, &
-                           state_kind, num_close, close_ind, dist, state_handle)
-
-type(ensemble_type),         intent(in)     :: state_handle
-type(get_close_type),        intent(in)     :: gc
-type(location_type),         intent(inout)  :: base_obs_loc
-type(location_type),         intent(inout)  :: state_loc(:)
-integer,                     intent(in)     :: base_obs_kind
-integer,                     intent(in)     :: state_kind(:)
-integer,                     intent(out)    :: num_close
-integer,                     intent(out)    :: close_ind(:)
-real(r8),                    intent(out)    :: dist(:)
-
-
-call loc_get_close_state(gc, base_obs_loc, base_obs_kind, state_loc, state_kind, &
-                         num_close, close_ind, dist)
-
-end subroutine get_close_state
-
-!--------------------------------------------------------------------
 
 !===================================================================
 ! End of model_mod

@@ -1,128 +1,148 @@
-#!/bin/csh
+#!/bin/csh 
 #
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
+
+#----------------------------------------------------------------------
+# compile all programs in the current directory that have a mkmf_xxx file.
 #
-# Script to manage the compilation of all components for this model;
-
+# usage: [ -mpi | -nompi ]
+#
+#
+# environment variable options:
+#  before running this script, do:
+#   "setenv CODE_DEBUG 1" (csh) or "export CODE_DEBUG=1" (bash)
+#  to keep the .o and .mod files in the current directory instead of 
+#  removing them at the end.  this usually improves runtime error reports 
+#  and these files are required by most debuggers.
 #----------------------------------------------------------------------
-# 'preprocess' is a program that culls the appropriate sections of the
-# observation module for the observations types in 'input.nml'; the 
-# resulting source file is used by all the remaining programs, 
-# so this MUST be run first.
-#----------------------------------------------------------------------
 
-\rm -f preprocess *.o *.mod
-\rm -f ../../../obs_def/obs_def_mod.f90
-\rm -f ../../../obs_kind/obs_kind_mod.f90
-
+# this model name:
 set MODEL = "POP"
 
-@ n = 1
+# programs which have the option of building with MPI:
+set MPI_TARGETS = "filter model_mod_check perfect_model_obs"
 
-echo
-echo
-echo "---------------------------------------------------------------"
-echo "${MODEL} build number ${n} is preprocess"
+# set default (override with -mpi or -nompi):
+#  0 = build without MPI, 1 = build with MPI
+set with_mpi = 1
 
-csh  mkmf_preprocess
-make || exit $n
 
-./preprocess || exit 99
+# ---------------
+# shouldn't have to modify this script below here.
+
+if ( $#argv >= 1 ) then
+   if ( "$1" == "-mpi" ) then
+      set with_mpi = 1 
+   else if ( "$1" == "-nompi" ) then
+      set with_mpi = 0
+   else
+      echo usage: $0 '[ -mpi | -nompi ]'
+      exit 0
+   endif
+endif
+
+set preprocess_done = 0
+set cdebug = 0
+
+if ( $?CODE_DEBUG ) then
+   set cdebug = $CODE_DEBUG
+endif
+
+
+@ n = 0
 
 #----------------------------------------------------------------------
 # Build all the single-threaded targets
 #----------------------------------------------------------------------
 
-foreach TARGET ( mkmf_* )
+\rm -f *.o *.mod
 
-   set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
+foreach TARGET ( mkmf_preprocess mkmf_* )
 
-   switch ( $TARGET )
-   case mkmf_preprocess:
-      breaksw
-   default:
-      @ n = $n + 1
-      echo
-      echo "---------------------------------------------------"
-      echo "${MODEL} build number ${n} is ${PROG}" 
-      \rm -f ${PROG}
-      csh $TARGET || exit $n
-      make        || exit $n
-      breaksw
-   endsw
+   set PROG = `echo $TARGET | sed -e 's/mkmf_//'`
+
+   if ( $PROG == "preprocess" && $preprocess_done ) goto skip
+
+   if ( $with_mpi ) then
+      foreach i ( $MPI_TARGETS )
+         if ( $PROG == $i ) goto skip
+      end
+   endif
+
+   @ n = $n + 1
+   echo
+   echo "---------------------------------------------------"
+   echo "${MODEL} build number ${n} is ${PROG}" 
+   \rm -f ${PROG}
+   csh $TARGET || exit $n
+   make        || exit $n
+
+   # preprocess creates module files that are required by
+   # the rest of the executables, so it must be run in addition
+   # to being built.
+   if ( $PROG == "preprocess" ) then
+      ./preprocess || exit $n
+      set preprocess_done = 1
+   endif
+
+skip:
 end
 
-if ( $#argv == 1 && "$1" == "-mpi" ) then
-  echo "Success: All single task DART programs compiled."  
-  echo "Script now compiling MPI parallel versions of the DART programs."
-else if ( $#argv == 1 && "$1" == "-nompi" ) then
-  echo "Success: All single task DART programs compiled."  
-  echo "Script is exiting without building the MPI version of the DART programs."
-  exit 0
+if ( $cdebug ) then 
+   echo 'preserving .o and .mod files for debugging'
 else
-  echo ""
-  echo "Success: All single task DART programs compiled."  
+   \rm -f *.o *.mod 
+endif
+
+\rm -f input.nml*_default
+
+echo "Success: All single task DART programs compiled."  
+
+if ( $with_mpi ) then
   echo "Script now compiling MPI parallel versions of the DART programs."
-  echo "Run the quickbuild.csh script with a -nompi argument or"
-  echo "edit the quickbuild.csh script and add an exit line"
-  echo "to bypass compiling with MPI to run in parallel on multiple cpus."
-  echo ""
+else
+  echo "Script is exiting after building the serial versions of the DART programs."
+  exit 0
 endif
 
 #----------------------------------------------------------------------
 # to disable an MPI parallel version of filter for this model, 
 # call this script with the -nompi argument, or if you are never going to
-# build with MPI, add an exit before the entire section above.
+# build with MPI, add an exit here.
 #----------------------------------------------------------------------
+
+\rm -f *.o *.mod 
 
 #----------------------------------------------------------------------
 # Build the MPI-enabled target(s) 
 #----------------------------------------------------------------------
 
-\rm -f *.o *.mod filter wakeup_filter
+foreach PROG ( $MPI_TARGETS )
 
-@ n = $n + 1
-echo
-echo "---------------------------------------------------"
-echo "build number $n is mkmf_filter"
-csh   mkmf_filter -mpi
-make
+   set TARGET = `echo $PROG | sed -e 's/^/mkmf_/'`
 
-if ($status != 0) then
+   @ n = $n + 1
    echo
-   echo "If this died in mpi_utilities_mod, see code comment"
-   echo "in mpi_utilities_mod.f90 starting with 'BUILD TIP' "
-   echo
-   exit $n
+   echo "---------------------------------------------------"
+   echo "${MODEL} build number ${n} is ${PROG}" 
+   \rm -f ${PROG}
+   csh $TARGET -mpi || exit $n
+   make             || exit $n
+
+end
+
+if ( $cdebug ) then 
+   echo 'preserving .o and .mod files for debugging'
+else
+   \rm -f *.o *.mod 
 endif
+\rm -f input.nml*_default
 
-@ n = $n + 1
-echo
-echo "---------------------------------------------------"
-echo "build number $n is mkmf_wakeup_filter"
-csh  mkmf_wakeup_filter -mpi
-make || exit $n
-
-@ n = $n + 1
-echo
-echo "---------------------------------------------------"
-echo "build number $n is mkmf_perfect_model_obs"
-csh  mkmf_perfect_model_obs -mpi
-make || exit $n
-
-
-\rm -f *.o *.mod
-
-echo
-echo 'time to run filter here:'
-echo ' for lsf run "bsub < runme_filter"'
-echo ' for pbs run "qsub runme_filter"'
-echo ' for lam-mpi run "lamboot" once, then "runme_filter"'
-echo ' for mpich run "mpd" once, then "runme_filter"'
+echo "Success: All MPI parallel DART programs compiled."  
 
 exit 0
 

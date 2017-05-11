@@ -19,15 +19,15 @@
 # what/where/when we want observations. This script does not run these 
 # programs - intentionally. 
 #
-# 'perfect_model_obs' results in a True_State.nc file that contains 
+# 'perfect_model_obs' results in a true_state.nc file that contains 
 # the true state, and obs_seq.out - a file that contains the "observations"
 # that will be assimilated by 'filter'.
 #
-# 'filter' results in three files (at least): Prior_Diag.nc - the state 
-# of all ensemble members prior to the assimilation (i.e. the forecast), 
-# Posterior_Diag.nc - the state of all ensemble members after the 
-# assimilation (i.e. the analysis), and obs_seq.final - the ensemble 
-# members' estimate of what the observations should have been.
+# 'filter' results in three files (depending on values in 'stages_to_write'): 
+# preassim.nc - all ensemble members prior to assimilation 
+#               i.e. the (potentially inflated) forecast, 
+# analysis.nc - all ensemble members after the assimilation (i.e. the analysis), and 
+# obs_seq.final - the ensemble members' estimates of the observations
 #
 # Once 'perfect_model_obs' has advanced the model and harvested the 
 # observations for the assimilation experiment, 'filter' may be run 

@@ -23,14 +23,11 @@ use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_d
                              get_obs_def_location,  get_obs_def_type_of_obs
 use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs
 use     location_mod, only : location_type, write_location, operator(/=), operator(==), &
-                             set_location, is_location_in_region, query_location, &
-                             nc_write_location_atts, nc_get_location_varids, &
-                             nc_write_location
+                             set_location, is_location_in_region, query_location
+use  location_io_mod, only : nc_write_location_atts, nc_write_location
 use time_manager_mod, only : time_type, get_time, print_time, &
                              get_calendar_string, print_date, &
-                             operator(*), operator(+), operator(-), &
-                             operator(>), operator(<), operator(/), &
-                             operator(/=), operator(<=)
+                             operator(>), operator(<) 
 use     schedule_mod, only : schedule_type, set_regular_schedule, get_schedule_length, &
                              get_time_from_schedule
 use    utilities_mod, only : register_module, &
@@ -843,10 +840,7 @@ call nc_check(nf90_put_att(ncid, VarID, 'explanation', 'see QCMetaData'), &
 
 ! let the location module write what it needs to ...
 
-if ( nc_write_location_atts( ncid, fname, ObsNumDimID ) /= 0 ) then
-   write(string1,*)'problem initializing netCDF location attributes'
-   call error_handler(E_ERR,'InitNetCDF',string1,source,revision,revdate)
-endif
+call nc_write_location_atts(ncid, 0, ObsNumDimID)
 
 !----------------------------------------------------------------------------
 ! Leave define mode so we can fill
@@ -928,8 +922,8 @@ integer, dimension(1) :: istart, icount, intval
 
 integer :: obsldimlen, qcldimlen
 
-integer :: ObsIndexVarID, TimeVarID, ObsTypeVarID, WhichVertVarID, &
-           LocationVarID,  ObsVarID, QCVarID, ObsKeyVarID
+integer :: ObsIndexVarID, TimeVarID, ObsTypeVarID, &
+           ObsVarID, QCVarID, ObsKeyVarID
 
 !----------------------------------------------------------------------------
 ! Find the current length of the unlimited dimension so we can add correctly.
@@ -969,8 +963,6 @@ call nc_check(nf90_inq_varid(ncid, 'observations', varid=ObsVarID), &
 
 call nc_check(nf90_inq_varid(ncid, 'qc', varid=QCVarID), &
           'WriteNetCDF', 'inq_varid:qc '//trim(fname))
-
-call nc_get_location_varids(ncid, fname, LocationVarID, WhichVertVarID)
 
 WriteObs : do iobs = 1,ngood
 
@@ -1015,8 +1007,7 @@ WriteObs : do iobs = 1,ngood
    !----------------------------------------------------------------------------
    ! Using the location_mod:nc_write_location() routine.
    !----------------------------------------------------------------------------
-   call nc_write_location(ncid, LocationVarId,  locations(iobs), obsindex, &
-                               WhichVertVarId )
+   call nc_write_location(ncid, locations(iobs), obsindex, do_vert=.true.)
 
    !----------------------------------------------------------------------------
    ! call nc_check(nf90_def_var(ncid=ncid, name='observations', xtype=nf90_double, &

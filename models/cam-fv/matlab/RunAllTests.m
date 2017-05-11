@@ -34,8 +34,8 @@ end
  fprintf('Starting %s\n','PlotBins');
  clear pinfo; close all;
 
- truth_file = 'True_State.nc';
- diagn_file = 'Prior_Diag.nc';
+ truth_file = 'true_state.nc';
+ diagn_file = 'preassim.nc';
  vars1 = CheckModel(diagn_file);
  vars1 = rmfield(vars1,{'time','time_series_length','fname'});
  vars2 = CheckModelCompatibility(truth_file,diagn_file);
@@ -77,7 +77,7 @@ end
  fprintf('Starting %s\n','PlotCorrel');
  clear pinfo; clf
 
- pinfo                    = CheckModel('Prior_Diag.nc');
+ pinfo                    = CheckModel('preassim.nc');
  pinfo.time               = ncread(pinfo.fname,'time');
  pinfo.time_series_length = length(pinfo.time);
  pinfo.base_var           = 'T';
@@ -109,7 +109,7 @@ end
  fprintf('Starting %s\n','PlotPhaseSpace');
  clear pinfo; clf
 
- pinfo              = CheckModel('Prior_Diag.nc');
+ pinfo              = CheckModel('preassim.nc');
 [pinfo.num_ens_members, pinfo.ensemble_indices] = get_ensemble_indices(pinfo.fname);
  pinfo.var1name     = 'T';
  pinfo.var2name     = 'U';
@@ -155,9 +155,9 @@ end
  fprintf('Starting %s\n','PlotSawtooth');
  clear pinfo; close all
 
- truth_file       = 'True_State.nc';
- prior_file       = 'Prior_Diag.nc';
- posterior_file   = 'Posterior_Diag.nc';
+ truth_file       = 'true_state.nc';
+ prior_file       = 'preassim.nc';
+ posterior_file   = 'analysis.nc';
  pinfo = CheckModelCompatibility(prior_file,posterior_file);
  pinfo.prior_time     = pinfo.truth_time;
  pinfo.posterior_time = pinfo.diagn_time;
@@ -196,8 +196,8 @@ end
  fprintf('Starting %s\n','PlotTotalErr');
  clear pinfo; clf
 
- truth_file = 'True_State.nc';
- diagn_file = 'Prior_Diag.nc';
+ truth_file = 'true_state.nc';
+ diagn_file = 'preassim.nc';
  vars1      = CheckModel(diagn_file);
  rmfield(vars1,{'time','time_series_length','fname'});
  vars2      = CheckModelCompatibility(truth_file,diagn_file);
@@ -219,7 +219,7 @@ end
  fprintf('Starting %s\n','PlotVarVarCorrel');
  clear pinfo; clf
 
- diagn_file = 'Prior_Diag.nc';
+ diagn_file = 'preassim.nc';
  pinfo = CheckModel(diagn_file);
 [pinfo.num_ens_members, pinfo.ensemble_indices] = get_ensemble_indices(pinfo.fname);
  pinfo.base_var           = 'T';

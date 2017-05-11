@@ -10,15 +10,22 @@ use        types_mod, only : r8, PI, i4, i8
 
 use time_manager_mod, only : time_type, set_time, get_time
 
-use     location_mod, only : location_type, set_location, get_location,  &
-                             LocationDims, LocationName, LocationLName,  &
-                             get_close_maxdist_init, get_close_obs_init, &
-                             loc_get_close_obs => get_close_obs, get_close_type
-
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              nmlfileunit, find_namelist_in_file,           &
-                             check_namelist_read, nc_check, do_output,     &
+                             check_namelist_read, do_output,               &
                              do_nml_file, do_nml_term
+
+use     location_mod,      only : location_type, set_location, get_location, &
+                                  get_close_obs, get_close_state, &
+                                  convert_vertical_obs, convert_vertical_state
+
+use netcdf_utilities_mod, only : nc_add_global_attribute, nc_sync, &
+                                 nc_add_global_creation_time, nc_redef, nc_enddef
+
+use location_io_mod,      only :  nc_write_location_atts, nc_get_location_varids, &
+                                  nc_write_location
+
+use default_model_mod,     only : end_model, nc_write_model_vars, init_time
 
 use     obs_kind_mod, only : QTY_VELOCITY, QTY_TRACER_CONCENTRATION, &
                              QTY_TRACER_SOURCE, QTY_MEAN_SOURCE, QTY_SOURCE_PHASE
@@ -39,23 +46,29 @@ use dart_time_io_mod,      only : read_model_time, write_model_time
 implicit none
 private
 
+
+! these routines must be public and you cannot change the
+! arguments because they will be called *from* other DART code.
+
+!> required routines with code in this module
 public :: get_model_size, &
-          adv_1step, &
-          get_state_meta_data, &
+          get_state_meta_data,  &
           model_interpolate, &
-          get_model_time_step, &
-          end_model, &
+          shortest_time_between_assimilations, &
           static_init_model, &
-          init_time, &
-          init_conditions, &
-          nc_write_model_atts, &
-          nc_write_model_vars, &
+          init_conditions,    &
+          adv_1step, &
           pert_model_copies, &
-          get_close_maxdist_init, &
-          get_close_obs_init, &
+          nc_write_model_atts
+
+!> required routines where code is in other modules
+public :: nc_write_model_vars, &
+          init_time, &
           get_close_obs, &
-          vert_convert, &
-          query_vert_localization_coord, &
+          get_close_state, &
+          end_model, &
+          convert_vertical_obs, &
+          convert_vertical_state, &
           read_model_time, &
           write_model_time
 
@@ -65,14 +78,13 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-character(len=512) :: string1, string2, string3
+character(len=512) :: string1
 
 ! Simplest 1D advection model with spatially-constant wind
 
 ! Module storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
 logical :: random_seq_init = .false.
-logical :: verbose = .false.
 
 ! Permanent static initialized information about domain width
 real(r8) :: domain_width_meters 
@@ -82,7 +94,6 @@ real(r8), allocatable :: mean_source(:)
 real(r8), allocatable :: source_phase_offset(:)
 real(r8), allocatable :: source_random_amp(:)
 
-!---------------------------------------------------------------
 
 ! Namelist with default values
 !
@@ -124,8 +135,6 @@ real(r8)  :: source_damping_rate    = 0.000002777778
 real(r8)  :: source_diurnal_rel_amp = 0.05_r8
 real(r8)  :: source_phase_noise     = 0.0_r8
 
-logical   :: output_state_vector    = .false.
-
 integer, parameter :: NVARS = 5
 integer :: my_ens_size = 1
 
@@ -135,23 +144,20 @@ namelist /model_nml/ num_grid_points, grid_spacing_meters, &
                      lagrangian_for_wind, destruction_rate, &
                      source_random_amp_frac, source_damping_rate, &
                      source_diurnal_rel_amp, source_phase_noise, &
-                     output_state_vector, template_file
+                     template_file
 
-!----------------------------------------------------------------
 
 ! Define the location of the state variables in module storage
 type(location_type), allocatable :: state_loc(:)
 type(time_type)                  :: time_step
 
-!==================================================================
 
 contains
 
-subroutine static_init_model()
 !------------------------------------------------------------------
-! Initializes class data for this model. For now, simply outputs the
-! identity info, sets the location of the state variables, and initializes
-! the time type for the time stepping
+!> initialize anything needed. this routine is called once at startup.
+
+subroutine static_init_model()
 
 real(r8) :: x_loc
 integer  :: i, iunit, io, j, dom_id, var_id
@@ -248,12 +254,10 @@ endif
 end subroutine static_init_model
 
 
+!------------------------------------------------------------------
+!> Initial conditions for simplest 1d Advection.
 
 subroutine init_conditions(x)
-!------------------------------------------------------------------
-! subroutine init_conditions(x)
-!
-! Initial conditions for simplest 1d Advection.
 
 real(r8), intent(out) :: x(:)
 
@@ -278,20 +282,17 @@ x(4*num_grid_points + 1 : 5*num_grid_points) = source_phase_offset
 end subroutine init_conditions
 
 
+!------------------------------------------------------------------
+!> Single time step advance for simplest 1D advection model.
+!> time is for models that need to know it to compute their time tendency. 
 
 subroutine adv_1step(x, time)
-!------------------------------------------------------------------
-! subroutine adv_1step(x, time)
-!
-! Does single time step advance for simplest 1D advection model.
-! The Time argument is needed for compatibility with more complex models
-! that need to know the time to compute their time tendency. 
 
 real(r8), intent(inout) :: x(:)
 type(time_type), intent(in) :: time
 
 integer :: next, prev, seconds, days, ens_size
-type(location_type) :: this_loc, source_loc
+type(location_type) :: source_loc
 real(r8) :: lctn, source_location, old_u_mean, new_u_mean
 real(r8) :: du_dx, dt_seconds, t_phase, phase, random_src
 type(ensemble_type) :: temp_handle
@@ -300,7 +301,9 @@ integer(i8) :: i
 integer  :: istatus(1)
 real(r8) :: new_x(size(x),1)
 
-!>@todo  model_interpolate must have a real ensemble_handle
+!>@todo  model_interpolate requires an ensemble handle as one of the
+!> parameters to the call.  create a dummy one here.
+
 ens_size = 1
 call init_ensemble_manager(temp_handle, ens_size, int(NVARS*num_grid_points,i8))
 temp_handle%copies(1,:) = x(:)
@@ -439,12 +442,10 @@ end subroutine adv_1step
 
 
 
+!------------------------------------------------------------------
+!> Return the number of items in the state vector
 
 function get_model_size()
-!------------------------------------------------------------------
-! function get_model_size()
-!
-! Returns size of model
 
 integer(i8) :: get_model_size
 
@@ -453,34 +454,19 @@ get_model_size = NVARS*num_grid_points
 end function get_model_size
 
 
-
-subroutine init_time(time)
-!------------------------------------------------------------------
-!
-! Gets the initial time for a state from the model. Where should this info
-! come from in the most general case?
-
-type(time_type), intent(out) :: time
-
-! For now, just set to 0
-time = set_time(0, 0)
-
-end subroutine init_time
-
-
-
 !------------------------------------------------------------------
 !> this is a non-standard interface to model_interpolate.  it allows
-!> an optional last argument, which is present should be a model state
+!> an optional last argument, which if present should be a model state
 !> and is used instead of the state handle.  this model_mod uses interpolate
 !> during the adv_1step() when there's no state handle available; a naked
 !> state is passed in to be advanced.    (having optional args is ok with
 !> filter - it just never passes in that final arg.)
+!>
+!> Interpolates from ensemble of states to the location.
+!> If x is present, Interpolates from state vector x to the location. 
+!> This code supports three obs types: concentration, source, and u
 
 subroutine model_interpolate(state_handle, ens_size, location, itype, expected_val, istatus, x)
-!
-! Interpolates from state vector x to the location. 
-! This code supports three obs types: concentration, source, and u
 
 type(ensemble_type),  intent(in)  :: state_handle
 integer,              intent(in)  :: ens_size
@@ -540,31 +526,25 @@ end subroutine model_interpolate
 
 
 
-function get_model_time_step()
 !------------------------------------------------------------------
-! function get_model_time_step()
-!
-! Returns the the time step of the model. In the long run should be replaced
-! by a more general routine that returns details of a general time-stepping
-! capability.
+!> the smallest time the model should be called to advance
 
-type(time_type) :: get_model_time_step
+function shortest_time_between_assimilations()
 
-get_model_time_step = time_step
+type(time_type) :: shortest_time_between_assimilations
 
-end function get_model_time_step
+shortest_time_between_assimilations = time_step
+
+end function shortest_time_between_assimilations
 
 
 
-subroutine get_state_meta_data(state_handle, index_in, location, var_type)
 !------------------------------------------------------------------
-!
-! Given an integer index into the state vector structure, returns the
-! associated location. This is not a function because the more general
-! form of the call has a second intent(out) optional argument kind.
-! Maybe a functional form should be added?
+!> Given an integer index into the state vector structure, returns the
+!> assoicated location and optionally the state quantity.
 
-type(ensemble_type), intent(in)  :: state_handle !< some large models need this
+subroutine get_state_meta_data(index_in, location, var_type)
+
 integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: var_type
@@ -594,85 +574,59 @@ location = state_loc(var_loc_index)
 end subroutine get_state_meta_data
 
 
-
-subroutine end_model()
-!------------------------------------------------------------------
-!
-! Does any shutdown and clean-up needed for model. Nothing for now.
-
-
-end subroutine end_model
-
-
-
-subroutine model_get_close_states(o_loc, radius, inum, indices, dist, x)
-!------------------------------------------------------------------
-! 
-! Stub for computation of get close states
-
-type(location_type), intent(in)  :: o_loc
-real(r8),            intent(in)  :: radius
-integer,             intent(out) :: inum
-integer,             intent(in)  :: indices(:)
-real(r8),            intent(in)  :: dist(:)
-real(r8),            intent(in)  :: x(:)
-
-! Because of F90 limits this stub must be here telling assim_model
-! to do exhaustive search (inum = -1 return)
-inum = -1
-
-end subroutine model_get_close_states
-
-
-
-function nc_write_model_atts( ncFileID, model_mod_writes_state_variables ) result (ierr)
 !------------------------------------------------------------------
 ! Writes the model-specific attributes to a netCDF file
 
-use typeSizes
-use netcdf
+subroutine nc_write_model_atts(ncid, domain_id)
 
-integer, intent(in)  :: ncFileID      ! netCDF file identifier
-logical, intent(out) :: model_mod_writes_state_variables
-integer              :: ierr          ! return value of function
+integer, intent(in) :: ncid      ! netCDF file identifier
+integer, intent(in) :: domain_id
 
-ierr = 0                      ! assume normal termination
-model_mod_writes_state_variables = .false.
+integer :: msize
 
-end function nc_write_model_atts
+! other parts of the dart system will write the state into the file
+! so this routine just needs to write any model-specific
+! attributes it wants to record.
+
+msize = int(num_grid_points, i4)
+
+! Write Global Attributes
+
+call nc_redef(ncid)
+
+call nc_add_global_creation_time(ncid)
+
+call nc_add_global_attribute(ncid, "model_source", source )
+call nc_add_global_attribute(ncid, "model_revision", revision )
+call nc_add_global_attribute(ncid, "model_revdate", revdate )
+
+call nc_add_global_attribute(ncid, "model", "simple_advection")
+
+call nc_add_global_attribute(ncid, "mean_wind"              , mean_wind )
+call nc_add_global_attribute(ncid, "wind_random_amp"        , wind_random_amp )
+call nc_add_global_attribute(ncid, "wind_damping_rate"      , wind_damping_rate )
+call nc_add_global_attribute(ncid, "destruction_rate"       , destruction_rate )
+call nc_add_global_attribute(ncid, "source_random_amp_frac" , source_random_amp_frac )
+call nc_add_global_attribute(ncid, "source_damping_rate"    , source_damping_rate )
+call nc_add_global_attribute(ncid, "source_diurnal_rel_amp" , source_diurnal_rel_amp )
+call nc_add_global_attribute(ncid, "source_phase_noise"     , source_phase_noise )
+
+call nc_write_location_atts(ncid, msize)
+call nc_enddef(ncid)
+call nc_write_location(ncid, state_loc, msize)
+
+call nc_sync(ncid)
 
 
+end subroutine nc_write_model_atts
 
-function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)         
+
 !------------------------------------------------------------------
-! Writes the model-specific attributes to a netCDF file
-! TJH 30 Apr 2007
-!
-! assim_model_mod:init_diag_output uses information from the location_mod
-!     to define the location dimension and variable ID. All we need to do
-!     is query, verify, and fill ...
-!
-use typeSizes
-use netcdf
-
-integer,                intent(in) :: ncFileID      ! netCDF file identifier
-real(r8), dimension(:), intent(in) :: statevec
-integer,                intent(in) :: copyindex
-integer,                intent(in) :: timeindex
-integer                            :: ierr          ! return value of function
-
-call error_handler(E_ERR,'nc_write_model_vars','never gets used',source, revision, revdate)
-ierr = -1  ! never reached
-
-end function nc_write_model_vars
-
-
+!> Perturbs a model state for generating initial ensembles
+!> Returning interf_provided means go ahead and do this with uniform
+!> small independent perturbations.
 
 subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
-!------------------------------------------------------------------
-! Perturbs a model state for generating initial ensembles
-! Returning interf_provided means go ahead and do this with uniform
-! small independent perturbations.
 
 type(ensemble_type), intent(inout) :: state_ens_handle
 integer,   intent(in) :: ens_size
@@ -734,56 +688,6 @@ if(.not. get_allow_transpose(state_ens_handle)) deallocate(state_ens_handle%vars
 
 end subroutine pert_model_copies
 
-!--------------------------------------------------------------------
-
-!> Pass through to the code in the locations module ... 
-!> state_handle not needed in this application
-
-subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, &
-                         obs_kind, num_close, close_ind, dist, state_handle)
-
-type(ensemble_type),         intent(in)     :: state_handle
-type(get_close_type),        intent(in)     :: gc
-type(location_type),         intent(inout)  :: base_obs_loc, obs_loc(:)
-integer,                     intent(in)     :: base_obs_kind, obs_kind(:)
-integer,                     intent(out)    :: num_close, close_ind(:)
-real(r8),                    intent(out)    :: dist(:)
-
-call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-                          num_close, close_ind, dist)
-
-end subroutine get_close_obs
-
-
-!--------------------------------------------------------------------
-
-!> Unused in this model.
-
-subroutine vert_convert(state_handle, location, obs_kind, istatus)
-
-type(ensemble_type), intent(in)  :: state_handle
-type(location_type), intent(in)  :: location
-integer,             intent(in)  :: obs_kind
-integer,             intent(out) :: istatus
-
-istatus = 0
-
-end subroutine vert_convert
-
-!--------------------------------------------------------------------
-
-!> pass the vertical localization coordinate to assim_tools_mod
-
-function query_vert_localization_coord()
-
-integer :: query_vert_localization_coord
-
-!> @TODO should define some parameters including something
-!> like HAS_NO_VERT for this use.
-
-query_vert_localization_coord = -1
-
-end function query_vert_localization_coord
 
 !===================================================================
 ! End of model_mod

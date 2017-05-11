@@ -124,7 +124,6 @@
 #     3 = height
 
 &model_nml
-   output_state_vector = .false.,
    num_moist_vars      = 6,
    num_domains         = 1,
    calendar_type       = 3,

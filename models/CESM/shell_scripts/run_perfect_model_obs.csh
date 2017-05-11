@@ -255,8 +255,8 @@ ${MOVE} STD*                  ${experiment}/POP
 ${MOVE} filter_restart*            ${experiment}/DART
 ${MOVE} assim_model_state_ud[1-9]* ${experiment}/DART
 ${MOVE} assim_model_state_ic[1-9]* ${experiment}/DART
-${MOVE} Posterior_Diag.nc          ${experiment}/DART
-${MOVE} Prior_Diag.nc              ${experiment}/DART
+${MOVE} analysis.nc                ${experiment}/DART
+${MOVE} preassim.nc                ${experiment}/DART
 ${MOVE} obs_seq.final              ${experiment}/DART
 ${MOVE} dart_log.out               ${experiment}/DART
 

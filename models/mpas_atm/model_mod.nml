@@ -1,7 +1,6 @@
 &model_nml
    model_analysis_filename      = 'mpas_init.nc',
    grid_definition_filename     = 'mpas_init.nc',
-   output_state_vector          = .false.,
    vert_localization_coord      = 3,
    assimilation_period_days     = 0,
    assimilation_period_seconds  = 21600,

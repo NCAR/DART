@@ -6,7 +6,7 @@
 
 program location_test3
 
-! Simple test program to exercise oned location module.
+! Simple test program to exercise threed_sphere location module.
 
 use location_mod
 use types_mod,      only : r8
@@ -85,8 +85,7 @@ do i = 1, nl
    call write_location(iunit, loc1(i))
 enddo
 
-call get_close_maxdist_init(cc_gc, maxdist)
-call get_close_obs_init(cc_gc, nl, loc1)
+call get_close_init(cc_gc, nl, maxdist, loc1)
 
 call print_get_close_type(cc_gc)
 
@@ -111,7 +110,7 @@ do i = 1, nl
    enddo
  
 
-   call get_close_obs(cc_gc, loc2, 0, loc1, dummy, num_close, close_ind, dist)
+   call get_close_obs(cc_gc, loc2, 0, loc1, dummy, dummy, num_close, close_ind, dist)
    if (num_close > 0) then
       print *, 'num close = ', num_close
       do j=1, min(num_close, nl)

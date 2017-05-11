@@ -11,7 +11,7 @@ function plot_correl(diagn_file)
 %
 % A reminder of the sequence:
 % truth  run (from    pmo):
-%           perfect_input  --->  perfect_output.nc
+%           perfect_input  --->  true_state.nc
 % filter run (from filter):
 %           filter_input.nc  --->  [prior inflation]  --->
 %                 preassim.nc   --->  [assimilation]  --->
@@ -22,7 +22,7 @@ function plot_correl(diagn_file)
 % plot_correl
 %
 % Example 2
-% fname = 'filter_output.nc';
+% fname = 'analysis.nc';
 % plot_correl(fname)
 
 %% DART software - Copyright UCAR. This open source software is provided

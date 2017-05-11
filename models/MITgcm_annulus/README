@@ -579,7 +579,7 @@ clear;pack
 dartpath
 
 % load the truth state
-ncload('True_State.nc');
+ncload('true_state.nc');
 
 % specify the dimensions of the annulus
 naz=length(az);nrad=length(rad);nzed=length(zed);
@@ -596,7 +596,7 @@ for i=1:len
 end
 
 % load the ensemble analysis states
-ncload('Posterior_Diag.nc');
+ncload('analysis.nc');
 
 % grab the ensemble mean and do some reshaping
 % (remember, nens+1 is the ensemble mean!)

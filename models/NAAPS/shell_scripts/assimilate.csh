@@ -198,10 +198,10 @@ sed -e "s/MEMBER_NUMBER/1/" < input.nml.template >! input.nml
 
 ./filter || exit 2
 
-${MOVE} Prior_Diag.nc      ../Prior_Diag.${DTG}.nc
-${MOVE} Posterior_Diag.nc  ../Posterior_Diag.${DTG}.nc
-${MOVE} obs_seq.final      ../obs_seq.${DTG}.final
-${MOVE} dart_log.out       ../dart_log.${DTG}.out
+${MOVE} preassim.nc      ../preassim.${DTG}.nc
+${MOVE} analysis.nc      ../analysis.${DTG}.nc
+${MOVE} obs_seq.final    ../obs_seq.${DTG}.final
+${MOVE} dart_log.out     ../dart_log.${DTG}.out
 
 # Accomodate any possible inflation files 
 

@@ -120,7 +120,6 @@
                   'CLOUD_LIQUID_WATER', 
                   'CLOUD_ICE', 
                   'CLOUD_FRACTION'
-   output_state_vector = .false., 
    highest_obs_pressure_mb   = 100.0,
    highest_state_pressure_mb = 150.0,
    max_obs_lat_degree        = 85.0,

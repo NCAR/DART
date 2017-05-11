@@ -34,7 +34,10 @@ character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
 ! Using hardcoded filename for ease of scripting.
+! and for now, say where the default location in the dart distribution tree is
+! since it's so obscure.
 character(len=128) :: input_filename = 'sampling_error_correction_table.nc'
+character(len=128) :: default_path = ' "assimilation_code/programs/gen_sampling_err_table/work"'
 
 ! module globals - nentries is the number of values per ensemble size,
 ! nens is how many different ensemble sizes this file contains.
@@ -129,7 +132,12 @@ integer :: open_input_file
 integer :: rc, ncid
 
 rc = nf90_open(input_filename, NF90_NOWRITE, ncid)
-call nc_check(rc, 'open_input_file', 'opening "'//trim(input_filename)//'"')
+if (rc /= nf90_noerr) then
+   msgstring  = 'File "'//trim(input_filename)//'" not found in the current directory.'
+   msgstring1 = 'This file can be copied from this location in the DART distribution: '
+   call error_handler(E_ERR, 'read_sampling_error_correction:', msgstring, &
+                      source, revision, revdate, text2=msgstring1, text3=default_path)
+endif
 
 open_input_file = ncid
 

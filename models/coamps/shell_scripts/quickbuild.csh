@@ -5,11 +5,14 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
-#
-# Script to manage the compilation of all components for this model;
 
 #----------------------------------------------------------------------
+# compile all programs in the current directory with a mkmf_xxx file.
+#
+# usage: [ -mpi | -nompi ]
+#----------------------------------------------------------------------
 # Extra checks for missing files.
+
 if ( ! -e ../get_name_info.f90 || ! -e ../coamps_intrinsic_mod.f90 ) then
  echo ''
  echo 'ERROR:'
@@ -35,11 +38,10 @@ endif
 
 #----------------------------------------------------------------------
 # 'preprocess' is a program that culls the appropriate sections of the
-# observation module for the observations types in 'input.nml'; the 
-# resulting source file is used by all the remaining programs, 
+# observation module for the observations types in 'input.nml'; the
+# resulting source file is used by all the remaining programs,
 # so this MUST be run first.
 #----------------------------------------------------------------------
-
 
 \rm -f preprocess *.o *.mod
 \rm -f ../../../obs_def/obs_def_mod.f90

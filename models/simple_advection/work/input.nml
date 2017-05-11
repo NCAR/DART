@@ -36,7 +36,7 @@
    input_state_files            = ''
    input_state_file_list        = 'filter_input_list.txt'
 
-   stages_to_write  = 'preassim', 'output'
+   stages_to_write  = 'preassim', 'analysis', 'output'
 
    single_file_out              = .true.,
    output_state_files           = ''
@@ -145,7 +145,6 @@
    source_damping_rate    = 0.000002777778,
    source_diurnal_rel_amp = 0.0,
    source_phase_noise     = 0.0,
-   output_state_vector    = .false.
    template_file          = 'perfect_input.nc'
    /
 

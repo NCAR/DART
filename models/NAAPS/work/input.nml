@@ -36,7 +36,6 @@
    member              = MEMBER_NUMBER,
    time_step_days      = 0,
    time_step_seconds   = 21600, 
-   output_state_vector = .false., 
    debug               = .true.
    /
 

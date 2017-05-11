@@ -7,9 +7,6 @@ function pinfo = GetWRFInfo(pinfo_in,fname,routine)
 % pinfo_in  Name of existing pinfo struct, e.g. output from CheckModelCompatibility
 % fname     Name of the DART netcdf file
 % routine   name of subsequent plot routine.
-%
-% fname = '/glade/proj2/image/romine/dart/work_Radar/rad_regression/geom/Prior_Diag.nc';
-%
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at

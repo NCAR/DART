@@ -73,9 +73,7 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MS
                              logfileunit, get_unit, open_file, close_file, nc_check, &
                              file_exist, ascii_file_format
 use     location_mod, only : location_type, set_location, get_location, &
-                             vert_is_height,   VERTISHEIGHT,            &
-                             vert_is_level,    VERTISLEVEL,             &
-                             set_location_missing
+                             VERTISHEIGHT, VERTISLEVEL, set_location_missing
 use     obs_kind_mod, only : QTY_GEOPOTENTIAL_HEIGHT, QTY_SOIL_MOISTURE
 use  assim_model_mod, only : interpolate
 

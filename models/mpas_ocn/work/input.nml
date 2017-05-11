@@ -184,7 +184,6 @@
    grid_definition_filename     = '../data/mpas_ocean_in.nc'
    assimilation_period_days     = 0,
    assimilation_period_seconds  = 3600,
-   output_state_vector          = .true., 
    model_perturbation_amplitude = 0.0001,
    calendar                     = 'Gregorian',
    use_u_for_wind               = .false.,

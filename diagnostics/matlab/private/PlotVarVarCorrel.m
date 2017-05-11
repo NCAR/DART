@@ -15,7 +15,7 @@ function PlotVarVarCorrel( pinfo )
 %
 % Example  (lorenz 63 model with 1000 timesteps)
 %%--------------------------------------------------------
-% pinfo.fname = 'Posterior_Diag.nc';
+% pinfo.fname = 'analysis.nc';
 % pinfo.base_var          = 'state';
 % pinfo.base_var_index    = 2;
 % pinfo.base_time         = 500;
