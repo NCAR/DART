@@ -354,81 +354,81 @@ reset_button_Callback()
 %% -----------------------------------------------------------------------------
 
     function ens_size_Callback(~, ~)
-        
+
         new_ens_size = str2double(get(handles.ui_edit_ens_size, 'String'));
-        
+
         % Get a new ensemble size if not valid value
         if( ~ isfinite(new_ens_size) || (new_ens_size < 2) )
-            
+
             fprintf('ERROR: Ens. Size value must be greater or equal to 2.\n')
             fprintf('ERROR: Ens. Size value must be greater or equal to 2.\n')
-            
+
             % After this, only this edit box will work
             turn_off_controls;
-            
+
             set(handles.ui_edit_ens_size, 'Enable', 'On',  ...
                 'String', '?', ...
                 'BackgroundColor', atts.red);
             set(handles.ui_text_ens_size_err_print, 'Visible', 'On')
-            
+
             return
         end
-        
+
         turn_on_controls;
-        
+
         set(handles.ui_edit_ens_size, 'Enable', 'On', 'BackgroundColor', 'White');
         set(handles.ui_text_ens_size_err_print, 'Visible', 'Off')
-        
+
         % Generate a new ensemble by truncating old ensemble OR adding new
         if(new_ens_size == handles.ens_size)
-            
+
             return
-            
+
         elseif(new_ens_size < handles.ens_size)
-            
+
             % Get rid of extra ensemble members, recompute mean, spread and kurtosis
             handles.ens      = handles.ens(1:new_ens_size);
             handles.ens_size = new_ens_size;
-            
+
         else
             % Add new ensemble members drawn from present distribution
             handles.ens(handles.ens_size + 1 : new_ens_size) = ...
                 randn([1 new_ens_size - handles.ens_size]);
             handles.ens_size = new_ens_size;
-            
+
         end
-        
+
         % Update moments
         handles.error    = calculate_rmse(handles.ens, 0.0);
         handles.spread   = std(handles.ens);
         handles.kurtosis = kurt(handles.ens);
-        
+
         % If you change the ensemble size, you also have to reset the
         % histograms.
         handles.prior_rank = zeros(1, handles.ens_size + 1);
         handles.post_rank  = zeros(1, handles.ens_size + 1);
-        
+
         set_prior_histogram();
         set_posterior_histogram();
-        
+
     end
 
 %% -----------------------------------------------------------------------------
 
     function model_bias_Callback(~, ~)
-        
+
         % Check to make sure the input is a valid number
         model_bias_value = str2double(get(handles.ui_edit_model_bias, 'String'));
-        
+
         if(isfinite(model_bias_value) && (model_bias_value >= 0))
-            
+
             % If valid, update the value of the model bias.
             handles.model_bias = model_bias_value;
             turn_on_controls;
             set(handles.ui_text_model_bias_err_print,'Visible','Off')
             set(handles.ui_edit_model_bias, 'Enable', 'On', ...
                 'BackgroundColor', 'White');
-            
+
         else
             % If not valid, force user to try again.
             % After this, only this edit box will work
@@ -437,10 +437,10 @@ reset_button_Callback()
                 'Enable', 'On', ...
                 'BackgroundColor', atts.red);
             set(handles.ui_text_model_bias_err_print,'Visible','On')
-            
+
             fprintf('ERROR: Model Bias value must be greater or equal to 0.\n')
             fprintf('ERROR: Model Bias value must be greater or equal to 0.\n')
-            
+
             return
         end
     end
@@ -448,298 +448,298 @@ reset_button_Callback()
 %% -----------------------------------------------------------------------------
 
     function inflation_Callback(~, ~)
-        
+
         % Get the value of the inflation
         inflation_value = str2double(get(handles.ui_edit_inflation, 'String'));
-        
+
         if(isfinite(inflation_value) && (inflation_value >= 1) && (inflation_value <= 5))
-            
+
             handles.inflation = inflation_value;
-            
+
             turn_on_controls;
-            
+
             set(handles.ui_edit_inflation, 'Enable', 'On', 'BackgroundColor', 'White');
             set(handles.ui_text_inf_err_print,'Visible','Off')
-            
+
         else
-            
+
             fprintf('ERROR: Inflation value must be between 1 and 5.\n')
             fprintf('ERROR: Inflation value must be between 1 and 5.\n')
-            
+
             % After this, only this edit box will work
             turn_off_controls;
-            
+
             set(handles.ui_edit_inflation, 'Enable', 'On', ...
                 'String', '?', ...
                 'BackgroundColor', atts.red);
             set(handles.ui_text_inf_err_print,'Visible','On')
-            
+
             return
-            
+
         end
-        
+
     end
 
 %% -----------------------------------------------------------------------------
 
     function nonlin_a_Callback(~, ~)
-        
+
         % Get the value of the model nonlinearity parameter 'alpha'
-        
+
         nonlin_value = str2double(get(handles.ui_edit_nonlin_a, 'String'));
-        
+
         if(isfinite(nonlin_value) && (nonlin_value >= 0))
-            
+
             handles.alpha = nonlin_value;
             turn_on_controls;
-            
+
             set(handles.ui_edit_nonlin_a, 'Enable', 'On', 'BackgroundColor', 'White');
             set(handles.ui_text_nonlin_err_print, 'Visible', 'Off')
-            
+
         else  % ERROR STATE, force them to fix before moving on
-            
+
             % After this, only this edit box will work
             turn_off_controls;
-            
+
             fprintf('ERROR: Nonlin a must be non-negative.\n')
             fprintf('ERROR: Nonlin a must be non-negative.\n')
-            
+
             set(handles.ui_edit_nonlin_a, 'Enable', 'On', ...
                 'String', '?', ...
-                'BackgroundColor', 'r');
+                'BackgroundColor', atts.red);
             set(handles.ui_text_nonlin_err_print, 'Visible', 'On')
-            
+
             return
-            
+
         end
-        
+
     end
 
 %% -----------------------------------------------------------------------------
 
 
     function ClearHistograms_Callback(~, ~)
-        
+
         % An array to keep track of rank histograms
         handles.prior_rank(    1 : handles.ens_size + 1) = 0;
         handles.post_rank(1 : handles.ens_size + 1) = 0;
-        
+
         % Clear out the old graphics. The legends remain, which is nice.
         cla(handles.h_prior_rank_histogram)
         cla(handles.h_post_rank_histogram)
-        
+
     end
 
 %% -----------------------------------------------------------------------------
 
 
     function reset_button_Callback(~, ~)
-        
+
         initialize_data();
         reset_graphics();
-        
+
     end
 
 %% -----------------------------------------------------------------------------
 
 
     function initialize_data(~, ~)
-        
+
         % Reset all the figures and the data structures
         % Keep the current filter type, ensemble size and obs characteristics
         % Reset the time to 1 and be ready to advance
-        
+
         % set random number seed to same value to generate known sequences
         % rng('default') is the Mersenne Twister with seed 0
         rng(0,'twister')
-        
+
         % Set up global storage with initial values
         handles.ens_size         = 4;
         handles.ens              = randn(1, handles.ens_size);
         handles.model_bias       = 0.0;
         handles.inflation        = 1.0;
-        
+
         handles.time_step        = 1;
         handles.ready_to_advance = true;
         handles.alpha            = 0.0;   % aka nonlin a
         handles.obs_error_sd     = 1;
         handles.observation      = 0;
-        
+
         %  Compute the initial error (truth is 0.0) and spread (standard deviation)
         handles.error    = calculate_rmse(handles.ens, 0.0);
         handles.spread   = std(handles.ens);
         handles.kurtosis = kurt(handles.ens);
-        
+
         % An array to keep track of rank histograms
         handles.prior_rank = zeros(1, handles.ens_size + 1);
         handles.post_rank  = zeros(1, handles.ens_size + 1);
-        
+
         % Set the ui values/strings to starting values.
         set(handles.ui_button_advance_model, 'String', 'Advance Model');
-        
+
         set(handles.ui_edit_ens_size,   'Value',               handles.ens_size);
         set(handles.ui_edit_ens_size,   'String', sprintf('%d',handles.ens_size));
-        
+
         set(handles.ui_edit_model_bias, 'Value',                 handles.model_bias);
         set(handles.ui_edit_model_bias, 'String', sprintf('%.1f',handles.model_bias));
-        
+
         set(handles.ui_edit_inflation,  'Value',                 handles.inflation);
         set(handles.ui_edit_inflation,  'String', sprintf('%.1f',handles.inflation));
-        
+
         set(handles.ui_edit_nonlin_a,   'Value',                 handles.alpha);
         set(handles.ui_edit_nonlin_a,   'String', sprintf('%.1f',handles.alpha));
-        
+
     end
 
 %% -----------------------------------------------------------------------------
 
     function reset_graphics(~, ~)
-        
+
         set_main_axes();
         set_error_spread_evolution();
         set_kurtosis_evolution()
         set_prior_histogram();
         set_posterior_histogram();
         set_state_evolution();
-        
+
     end
 
 %% -----------------------------------------------------------------------------
 
     function auto_run_Callback(~, ~)
-        
+
         % Turn off all the other controls to avoid a mess
         turn_off_controls;
-        
+
         set(handles.ui_button_start_auto_run, 'Enable', 'On');
-        
+
         if(strcmp(get(handles.ui_button_start_auto_run, 'String'), 'Pause Auto Run'))
-            
+
             % Being told to stop; switch to not running status
             set(handles.ui_button_start_auto_run, 'String', 'Start Auto Run');
-            
+
         else
             % Being told to start run
             % Change the button to 'Pause Auto Run')
             set(handles.ui_button_start_auto_run, 'String', 'Pause Auto Run');
-            
+
             % Loop through advance and assimilate steps until stopped
             while(true)
-                
+
                 % Check to see if stop has been pushed
                 status_string = get(handles.ui_button_start_auto_run, 'String');
-                
+
                 if(strcmp(status_string, 'Start Auto Run'))
-                    
+
                     turn_on_controls;
-                    
+
                     return
-                    
+
                 end
-                
+
                 % Do the next advance or assimilation step
                 step_ahead;
                 drawnow
-                
+
             end
-            
+
         end
-        
+
         % Turn all the other controls back on
         turn_on_controls;
-        
+
     end
 
 %% -----------------------------------------------------------------------------
 
     function step_ahead(~, ~)
-        
+
         % Start out working in ensemble time series plot
         axes(handles.h_state_evolution);
-        
+
         % If this is an advance, get and plot new model state, advance time
         if(handles.ready_to_advance)
-            
+
             % Set to do an assimilation next time
             handles.ready_to_advance = false;
-            
+
             % Advance the model and then inflate
             ens_new      = advance_oned(handles.ens, handles.alpha, handles.model_bias);
             ens_new_mean = mean(ens_new);
             ens_new      = (ens_new - ens_new_mean) * sqrt(handles.inflation) + ens_new_mean;
-            
+
             % plot the model evolution
             handles.time_step = handles.time_step + 1;
             h_evolution.prior = plot(handles.time_step - 0.1, ens_new, '*', ...
                 'MarkerSize', 6, 'Color', atts.green);
-            
+
             for i = 1:handles.ens_size
                 plot([handles.time_step - 1 + 0.1, handles.time_step - 0.1], ...
                     [handles.ens(i), ens_new(i)], 'Color', atts.green);
             end
-            
+
             %% Plot the segment for the prior error and spread
             % Want the lower y limit to stay 0 for error spread
             axes(handles.h_err_spread_evolution);
-            
+
             prior_error = calculate_rmse(ens_new, 0.0);
             prior_spread = std(ens_new);
-            
+
             h_e = line([handles.time_step - 1 + 0.1, handles.time_step - 0.1], ...
                 [handles.error, prior_error]);
             set(h_e, 'Color', atts.blue, 'LineWidth', 2.0);
-            
+
             h_s = line([handles.time_step - 1 + 0.1, handles.time_step - 0.1], ...
                 [handles.spread, prior_spread]);
             set(h_s, 'Color', atts.red, 'LineWidth', 2.0);
-            
+
             handles.error  = prior_error;
             handles.spread = prior_spread;
-            
+
             legend([h_e h_s], 'Error', 'Spread', 'Location', 'NorthEast');
             set(legend,'FontName', atts.fontname, 'FontSize', atts.fontsize);
             legend boxon
-            
+
             axlims    = axis;
             axlims(3) = 0.0;
             axis(axlims)
-            
+
             %% Plot the segment for the prior kurtosis
             % Want the lower y limit to stay 0 for kurtosis
-            
+
             axes(handles.h_kurtosis_evolution);
-            
+
             prior_kurtosis = kurt(ens_new);
-            
+
             plot([handles.time_step - 1 + 0.1, handles.time_step - 0.1], ...
-                [handles.kurtosis, prior_kurtosis], 'Color', 'r','LineWidth',2);
-            
+                [handles.kurtosis, prior_kurtosis], 'Color', atts.red,'LineWidth',2);
+
             handles.kurtosis = prior_kurtosis;
-            
+
             axlims = axis;
             axlims(3) = 0.0;
             axis(axlims)
-            
+
             % Update the prior rank histogram figure
             axes(handles.h_prior_rank_histogram);
-            
+
             ens_rank = get_ens_rank(ens_new, 0);
-            
+
             % Plot the latest rank entry as a different color
             temp_rank(:, 1)        = handles.prior_rank(1:handles.ens_size + 1);
             temp_rank(:, 2)        = 0;
             temp_rank(ens_rank, 2) = 1;
-            
+
             bar(temp_rank,'stacked');
-            
+
             % Plot the figure window for this update
             axes(handles.axes);
             hold off;
-            
+
             % Find the limits of the plot
             % The height of the obs likelihood controls the vertical axis
             y_max = 1 / (sqrt(2 * pi) * handles.obs_error_sd);
-            
+
             % Want axes to encompass likely values for plotted obs_likelihood
             % The observed value will be between -4 and 4 with very high probability, then +/-3 more for likelihood
             xmin = -7;
@@ -748,119 +748,119 @@ reset_button_Callback()
             % Want some slack if ensemble members are defining limits, too
             xmin = min([xmin, min(ens_new)*1.02]);
             xmax = max([xmax, max(ens_new)*1.02]);
-            
+
             % Put on a black axis line using data limits
-            
+
             plot([xmin xmax], [0, 0], 'k', 'Linewidth', 2);
             hold on;
             ens_axis = [xmin xmax -0.2 y_max + 0.02];
-            
+
             % Set the axis for the figure window
             axis(ens_axis);
-            
+
             % Turn off the negative labels
             set(gca, 'YTick', [0 0.1 0.2 0.3 0.4]);
             grid on;
-            
+
             % Plot the prior ensemble members in green
             % Plotting ticks instead of asterisks makes bins clearer
             tick_half = 0.015;
-            
+
             for n_tick = 1:handles.ens_size
                 hg_prior = line([ens_new(n_tick), ens_new(n_tick)], ...
                     [-tick_half, tick_half]);
                 set(hg_prior, 'Color', atts.green, 'LineWidth', 2);
             end
-            
+
             % Plot the truth (at 0) as a tick
             hg_truth = line([0 0], [-0.02 0.02]);
             set(hg_truth, 'Color', 'k', 'LineWidth', 2);
-            
+
             % Put in some information about the bin, x position tricky
             base_x = max(0, ens_axis(3));
             text_width = (ens_axis(4) - ens_axis(3)) / 3;
-            
+
             if((base_x + text_width) > ens_axis(4))
                 base_x = ens_axis(4) - text_width;
             end
-            
+
             text(base_x, -0.1, ['Truth in Prior Bin ', num2str(ens_rank)], ...
                 'FontSize', 14, 'FontWeight', 'Bold','FontName', atts.fontname);
-            
+
             % Draw a line from the label string to the truth
             h = line([base_x + text_width / 8, 0], [-0.08, -0.03]);
             set(h, 'Color', 'k');
-            
+
             % Label this plot
             xlabel('State'               ,'FontName', atts.fontname, 'FontSize', atts.fontsize);
             title('Latest Ensemble Prior','FontName', atts.fontname, 'FontSize', atts.fontsize);
-            
+
             L = legend([hg_prior hg_truth],'Prior','Truth');
             set(L, 'FontName', atts.fontname, 'FontSize', atts.fontsize);
-            
+
             % Update the permanent storage of the rank values
             handles.prior_rank(ens_rank) = handles.prior_rank(ens_rank) + 1;
-            
+
             % Set the pushbutton to say Assimilate Obs
             set(handles.ui_button_advance_model, 'String', 'Assimilate Obs');
-            
+
             % Update the global storage of the ensemble
             handles.ens = ens_new;
-            
+
         else
             % Ready to do an assimilation
             % Next step should be an advance
             handles.ready_to_advance = true;
-            
+
             % Generate the observation as a draw Normal(0, 1)
             obs_error_sd = handles.obs_error_sd;
             observation  = obs_error_sd * randn(1);
-            
+
             % Plot the observation
             plot(handles.time_step, observation, 'r*', 'MarkerSize', 10);
-            
+
             % Set the pushbutton to say Advance Model
             set(handles.ui_button_advance_model, 'String', 'Advance Model');
-            
+
             % Adjust the horizontal range of the plot windows as needed
             if( mod(handles.time_step, 5) == 0)
-                
+
                 axes(handles.h_state_evolution);
                 axlims    = axis;
                 axlims(1) = handles.time_step - 4;
                 axlims(2) = handles.time_step + 6;
                 axis(axlims)
-                
+
                 % Want the lower y limit to stay 0 for error spread
-                
+
                 axes(handles.h_err_spread_evolution);
                 axlims    = axis;
                 axlims(1) = handles.time_step - 4;
                 axlims(2) = handles.time_step + 6;
                 axlims(3) = 0.0;
                 axis(axlims)
-                
+
                 % Want the lower y limit to stay 0 for kurtosis
-                
+
                 axes(handles.h_kurtosis_evolution);
                 axlims    = axis;
                 axlims(1) = handles.time_step - 4;
                 axlims(2) = handles.time_step + 6;
                 axlims(3) = 0.0;
                 axis(axlims)
-                
+
             end
-            
+
             % Do the assimilation
             ens = handles.ens;
             obs_error_sd = handles.obs_error_sd;
-            
+
             % Figure out which filter option is currently selected
             val = get(handles.ui_radio_button_group,'SelectedObject');
             filter_type = get(val,'String');
-            
+
             switch filter_type
-                
+
                 case 'EAKF'
                     [obs_increments, ~] = ...
                         obs_increment_eakf(ens, observation, obs_error_sd^2);
@@ -871,82 +871,82 @@ reset_button_Callback()
                     [obs_increments, ~] = ...
                         obs_increment_rhf(ens, observation, obs_error_sd^2);
             end
-            
+
             new_ens = ens + obs_increments;
             axes(handles.h_state_evolution);
             plot(handles.time_step + 0.1, new_ens, 'b*', 'MarkerSize', 6);
             handles.ens = new_ens;
-            
+
             % Update the rank data
             axes(handles.h_post_rank_histogram);
             ens_rank = get_ens_rank(handles.ens, 0);
-            
+
             % Plot the latest rank entry as a different color
             temp_rank(:, 1)        = handles.post_rank(1:handles.ens_size + 1);
             temp_rank(:, 2)        = 0;
             temp_rank(ens_rank, 2) = 1;
-            
+
             bar(temp_rank, 'stacked');
-            
+
             % Update the permanent storage of the rank values
             handles.post_rank(ens_rank) = handles.post_rank(ens_rank) + 1;
-            
+
             %% Plot the segment for the updated error
-            
+
             axes(handles.h_err_spread_evolution);
-            
+
             post_error = calculate_rmse(new_ens, 0.0);
-            
+
             h = plot([handles.time_step - 0.1, handles.time_step + 0.1], ...
                 [handles.error, post_error]);
             set(h,'Color', atts.blue, 'LineWidth', 2.0);
-            
+
             handles.error = post_error;
-            
+
             % Plot the segment for the updated spread
             post_spread = std(new_ens);
-            
+
             axes(handles.h_err_spread_evolution);
-            
+
             h = plot([handles.time_step - 0.1, handles.time_step + 0.1], ...
                 [handles.spread, post_spread]);
             set(h, 'Color', atts.red, 'LineWidth', 2.0);
-            
+
             % Want the lower y limit to stay 0 for error spread
             axlims    = axis;
             axlims(3) = 0.0;
             axis(axlims)
-            
+
             handles.spread = post_spread;
-            
+
             %% Plot the segment for the updated kurtosis
             % Want the lower y limit to stay 0 for kurtosis
-            
+
             axes(handles.h_kurtosis_evolution);
-            
+
             post_kurtosis = kurt(new_ens);
-            
+
             h = plot([handles.time_step - 0.1, handles.time_step + 0.1], ...
                 [handles.kurtosis, post_kurtosis]);
-            set(h, 'Color', 'r', 'LineWidth', 2.0);
-            
+            set(h, 'Color', atts.red, 'LineWidth', 2.0);
+
             axlims    = axis;
             axlims(3) = 0.0;
             axis(axlims)
-            
+
             handles.kurtosis= post_kurtosis;
-            
+
             %% Plot the figure for this update
             axes(handles.axes);
             hold off
-            
+
             % Find the limits of the plot
             % The height of the obs likelihood controls the vertical axis
             % Plot the observation likelihood
             [hg_like, ~, ylims] = plot_gaussian(observation, obs_error_sd, 1.0);
             set(hg_like, 'Color', atts.red, 'LineWidth', 2, 'LineStyle', '--');
             hold on;
-            
+
             % Want axes to encompass likely values for plotted obs_likelihood
             % The observed value will be between -4 and 4 with very high probability, then +/-3 more for likelihood
             xmin = -7;
@@ -955,85 +955,85 @@ reset_button_Callback()
             % Want some slack if ensemble members are defining limits, too
             xmin = min([xmin, min(ens)*1.02, min(new_ens)*1.02]);
             xmax = max([xmax, max(ens)*1.02, max(new_ens)*1.02]);
-            
+
             ens_axis = [xmin xmax -0.2 ylims(2)+0.02];
             axis(ens_axis);
-            
+
             % Put on a black axis line using data limits
             plot([xmin xmax], [0, 0], 'k', 'Linewidth', 2);
-            
+
             % Plot the prior ensemble members in green
             % Plotting ticks instead of asterisks makes bins clearer
             tick_half = 0.015;
-            
+
             for n_tick = 1:handles.ens_size
                 hg_prior = plot([ens(n_tick), ens(n_tick)], ...
                     [-tick_half, tick_half], 'Color', atts.green, ...
                     'LineWidth', 2);
             end
-            
+
             % Plot the posterior ensemble members in blue
             for n_tick = 1:handles.ens_size
                 hg_post = plot([new_ens(n_tick), new_ens(n_tick)], ...
                     [-0.1 - tick_half, -0.1 + tick_half], 'Color', atts.blue, ...
                     'LineWidth', 2);
             end
-            
+
             % Plot the observation (at 0) as an asterisk
             plot(observation, 0, 'r*', 'MarkerSize', 14, 'LineWidth', 2.0);
-            
+
             % Plot the truth (at -0.1 and 0) as a tick
             tick_half = 0.02;
             plot([0 0], [-0.1 - tick_half, -0.1 + tick_half], ...
                 'k', 'LineWidth', 2.0);
-            
+
             plot([0 0], [- tick_half, tick_half], ...
                 'k', 'LineWidth', 2.0);
-            
+
             % Put in some information about the bin, x position tricky
             base_x = max(0, ens_axis(1));
             text_width = (ens_axis(2) - ens_axis(1)) / 3;
-            
+
             if((base_x + text_width) > ens_axis(2))
                 base_x = ens_axis(2) - text_width;
             end
-            
+
             text(base_x, -0.18, ['Truth in Posterior Bin ', num2str(ens_rank)], ...
                 'FontSize', 14, 'FontWeight', 'Bold','FontName', atts.fontname);
-            
+
             % Draw a line from the label string to the truth
             plot([base_x + text_width/8, 0], [-0.16, -0.13], 'k');
-            
+
             % Fix up the final axis
             def_axis = axis;
             def_axis(1:2) = ens_axis(1:2);
             def_axis(3) = -0.2;
             def_axis(4) = 1 / (sqrt(2 * pi) * handles.obs_error_sd) + 0.02;
             axis(def_axis);
-            
+
             % Turn off the negative labels
             set(gca, 'YTick', [0 0.1 0.2 0.3 0.4]);
             grid on;
-            
+
             % Plot an additional axis
             plot(ens_axis(1:2), [-0.1 -0.1], 'k', 'LineWidth', 2);
-            
+
             % Label this plot
             xlabel('State','FontName', atts.fontname,'FontSize', atts.fontsize);
             title('Latest Ensemble Prior, Likelihood, Posterior', ...
                 'FontName', atts.fontname, 'FontSize', atts.fontsize,'FontWeight', 'Bold');
-            
+
             % Put on legend
             L = legend([hg_prior hg_post hg_like], 'Prior', 'Posterior', 'Likelihood', 'Location','NorthEast');
             set(L, 'FontName', atts.fontname, 'FontSize', atts.fontsize);
         end
-        
+
     end
 
 %% -----------------------------------------------------------------------------
 
     function turn_off_controls()
-        
+
         % Turn off all the other controls to avoid a mess
         set(handles.ui_button_advance_model,   'Enable', 'Off');
         set(handles.ui_button_start_auto_run,  'Enable', 'Off');
@@ -1045,13 +1045,13 @@ reset_button_Callback()
         set(handles.ui_radio_button_eakf,      'Enable', 'Off');
         set(handles.ui_radio_button_enkf,      'Enable', 'Off');
         set(handles.ui_radio_button_rhf,       'Enable', 'Off');
-        
+
     end
 
 %% -----------------------------------------------------------------------------
 
     function turn_on_controls ()
-        
+
         % Turn on all the other controls to avoid a mess
         set(handles.ui_button_advance_model,    'Enable', 'On');
         set(handles.ui_button_start_auto_run,   'Enable', 'On');
@@ -1063,23 +1063,23 @@ reset_button_Callback()
         set(handles.ui_radio_button_eakf,       'Enable', 'On');
         set(handles.ui_radio_button_enkf,       'Enable', 'On');
         set(handles.ui_radio_button_rhf,        'Enable', 'On');
-        
+
     end
 
 %% -----------------------------------------------------------------------------
 
     function y = calculate_rmse(x, truth)
-        
+
         squared_error = (x - truth).^2;
         y = sqrt(mean(squared_error));
-        
+
     end
 
 
 %% -----------------------------------------------------------------------------
 
     function set_main_axes
-        
+
         if (isfield(handles,'axes'))
             % 'cla reset' resets all properties of the axes except for the
             % Position and Units properties.
@@ -1091,35 +1091,35 @@ reset_button_Callback()
                 'Position'  , [0.050 0.382 0.333 0.400], ...
                 'Color'     , 'White');
         end
-        
+
         % plot some bogus items to create handles for legend
         hg_prior = plot([0 1],[0 0.1]);
         set(hg_prior, 'LineWidth', 2, 'Color', atts.green, 'Visible', 'off');
-        
+
         hg_post  = line([0 1], [0 0.1]);
         set(hg_post, 'LineWidth', 2, 'Color', atts.blue, 'Visible', 'off');
-        
+
         hg_like  = line([0 1], [0 0.1]);
         set(hg_like, 'LineWidth', 2, 'Color', atts.red, 'LineStyle','--', 'Visible', 'off');
-        
+
         legend([hg_prior hg_post hg_like],'Prior','Posterior','Likelihood');
         set(legend,'FontName', atts.fontname, 'FontSize', atts.fontsize);
         legend boxon
-        
+
         hold on;
         % Set original horizontal axes
         axis([-7 7 -Inf Inf])
-        
+
     end
 
 %% -----------------------------------------------------------------------------
 
     function set_state_evolution
-        
+
         %  axes for ensemble time series
         %  plot some items invisible just to be able to create a legend with all the
         %  potential elements.
-        
+
         if (isfield(handles,'h_state_evolution'))
             cla( handles.h_state_evolution,'reset');
             axes(handles.h_state_evolution);
@@ -1129,36 +1129,36 @@ reset_button_Callback()
                 'Position',[0.430 0.748 0.333 0.164], ...
                 'Color', 'White');
         end
-        
+
         x(1:handles.ens_size) = handles.time_step + 0.1;
-        
+
         plot(x, handles.ens, 'b*', 'MarkerSize', 6);
         hold on
         str1  = '$x_{t+1} = x_t + (x_t+$model bias$) + a{\cdot}x_t{\cdot}{\mid}x_t{\mid}$';
         str2  = '\hspace{1.5mm} observation is a draw from $\mathcal{N}(0,1)$';
         TITLE = title( {str1,str2} );
         set( TITLE, 'interpreter', 'latex', 'FontSize', 20, 'FontWeight', 'bold' );
-        
+
         % Include the 0 line as the truth for all times
         plot([1 100000], [0 0], 'k--');
-        
+
         % plot the invisible stuff and capture a nice handle array for later.
         h_truth     = plot(1, 0, 'k--', 'Visible', 'off');
         h_obs       = plot(1, 0, 'r*' , 'Visible', 'off', 'MarkerSize', 10);
         h_prior     = plot(1, 0, 'g*-', 'Visible', 'off', 'MarkerSize', 6, 'Color', atts.green);
         h_posterior = plot(1, 0, 'b*' , 'Visible', 'off', 'MarkerSize', 6);
         h_evolution_handles = [h_truth h_obs h_prior h_posterior];
-        
+
         % Want the y axis limits to take care of themselves
         set(gca, 'YLimMode', 'Auto','XTickLabel',[],'XGrid','on');
         ylabel('State','FontName', atts.fontname,'FontSize', atts.fontsize);
-        
+
         legend(h_evolution_handles, 'Truth', 'Observation', 'Prior', 'Posterior');
         set(legend,'FontName', atts.fontname, 'FontSize', 12, ...
             'Position',[0.821 0.770 0.118 0.148])
         legend boxon
         axis([1 10 -Inf Inf]);
-        
+
     end
 
 %% -----------------------------------------------------------------------------
@@ -1167,7 +1167,7 @@ reset_button_Callback()
         % axes  for mean and spread
         % calculate rmse and spread ... expectation over a long time is
         % that they would be the same.
-        
+
         if (isfield(handles,'h_err_spread_evolution'))
             cla( handles.h_err_spread_evolution,'reset');
             axes(handles.h_err_spread_evolution);
@@ -1177,18 +1177,18 @@ reset_button_Callback()
                 'Position',[0.430 0.557 0.333 0.164], ...
                 'Color', 'White');
         end
-        
+
         ylabel('Error, Spread','FontName', atts.fontname,'FontSize', atts.fontsize);
         axis([1 10 0 Inf]);
         set(gca,'XTickLabel',[],'XGrid','on')
         hold on;
-        
+
     end
 
 %% -----------------------------------------------------------------------------
 
     function set_kurtosis_evolution
-        
+
         %  axes  for kurtosis
         if (isfield(handles,'h_kurtosis_evolution'))
             cla( handles.h_kurtosis_evolution,'reset');
@@ -1200,19 +1200,19 @@ reset_button_Callback()
                 'Color', 'White', ...
                 'XAxisLocation','bottom');
         end
-        
+
         axis([1 10 0 Inf]);
         ylabel('Kurtosis', 'FontName', atts.fontname, 'FontSize', atts.fontsize);
         xlabel('Timestep', 'FontName', atts.fontname, 'FontSize', atts.fontsize);
         set(gca,'XGrid', 'on')
         hold on;
-        
+
     end
 
 %% -------------------------------------------------------------------------
 
     function set_prior_histogram()
-        
+
         %  axes for prior rank histogram
         if (isfield(handles,'h_prior_rank_histogram'))
             cla( handles.h_prior_rank_histogram,'reset');
@@ -1221,20 +1221,20 @@ reset_button_Callback()
         else
             handles.h_prior_rank_histogram = axes('Position',[0.050 0.075 0.333 0.208]);
         end
-        
+
         ylabel('Frequency'           ,'FontName', atts.fontname,'FontSize', atts.fontsize);
         xlabel('Rank'                ,'FontName', atts.fontname,'FontSize', atts.fontsize);
         title ('Prior Rank Histogram','FontName', atts.fontname,'FontSize', atts.fontsize);
         axis([0 handles.ens_size+2 -Inf Inf])
         set(handles.h_prior_rank_histogram,'XTick',1:(handles.ens_size+1));
         hold on
-        
+
     end
 
 %% -----------------------------------------------------------------------------
 
     function set_posterior_histogram()
-        
+
         %  axes for posterior rank histogram
         if (isfield(handles,'h_post_rank_histogram'))
             cla(handles.h_post_rank_histogram,'reset');
@@ -1243,14 +1243,14 @@ reset_button_Callback()
         else
             handles.h_post_rank_histogram = axes('Position',[0.43 0.075 0.333 0.208]);
         end
-        
+
         ylabel('Frequency'               ,'FontName', atts.fontname,'FontSize', atts.fontsize);
         xlabel('Rank'                    ,'FontName', atts.fontname,'FontSize', atts.fontsize);
         title ('Posterior Rank Histogram','FontName', atts.fontname,'FontSize', atts.fontsize);
         axis([0 handles.ens_size+2 -Inf Inf])
         set(handles.h_post_rank_histogram,'XTick',1:(handles.ens_size+1));
         hold on;
-        
+
     end
 
 %% -----------------------------------------------------------------------------

@@ -345,7 +345,7 @@ reset;
         %This Function is called whenever the button_Single_Step is
         %pressed. It disables all the buttons, calls step ahead, then re-enables
         %all the buttons
-        
+
         %Disable all the buttons
         set(handles.ui_button_Single_Step,          'Enable', 'Off');
         set(handles.ui_radio_noAssimilation,        'Enable', 'Off');
@@ -354,10 +354,10 @@ reset;
         set(handles.ui_radio_RHF,                   'Enable', 'Off');
         set(handles.ui_button_Auto_Run,             'Enable', 'Off');
         set(handles.ui_button_Reset,                'Enable', 'Off');
-        
+
         %Advance the model one time.
         step_ahead;
-        
+
         %If the menu has a value of 'No Assimilation' then go ahead and
         %call step ahead one more time as there are no observations to
         %assimilate
@@ -365,7 +365,7 @@ reset;
             strcmp(get(handles.ui_button_Single_Step, 'String'), 'Assimilate Obs'))
             step_ahead();
         end
-        
+
         %Re-Enable All the buttons
         set(handles.ui_button_Auto_Run,         'Enable', 'On');
         set(handles.ui_button_Single_Step,      'Enable', 'On');
@@ -374,17 +374,17 @@ reset;
         set(handles.ui_radio_EnKF,              'Enable', 'On');
         set(handles.ui_radio_RHF,               'Enable', 'On');
         set(handles.ui_button_Reset,            'Enable', 'On');
-        
+
     end
 
 %% ----------------------------------------------------------------------
 
     function AutoRun(~,~)
-        
+
         % This function is called when the ui_button_Auto_Run is pressed. It
         % continuously calls the step_ahead function until the ui_button_Auto_Run is
         % pressed again.
-        
+
         % Turn off all the other model status controls to avoid a mess
         % MAKE SURE TO INCLUDE OTHER CONTROLS HERE
         set(handles.ui_button_Single_Step,          'Enable', 'Off');
@@ -396,19 +396,19 @@ reset;
         set(handles.ui_radio_EnKF,                  'Enable', 'Off');
         set(handles.ui_radio_RHF,                   'Enable', 'Off');
         set(handles.ui_button_Reset,                'Enable', 'Off');
-        
+
         % Check the label to see if we are starting or stopping a free run
         if(strcmp(get(handles.ui_button_Auto_Run, 'String'), 'Pause Auto Run'))
-            
+
             % Being told to stop; switch to not running status
             set(handles.ui_button_Auto_Run, 'Enable', 'Off');
             set(handles.ui_button_Auto_Run, 'String', 'Start Auto Run');
-            
+
         else
             % Being told to start free run
 
             set(handles.ui_button_Auto_Run, 'String', 'Pause Auto Run');
-            
+
             % Loop through advance and assimilate steps until stopped
             while(true)
 
@@ -416,7 +416,7 @@ reset;
                 status_string = get(handles.ui_button_Auto_Run, 'String');
 
                 if(strcmp(status_string, 'Start Auto Run'))
-                    
+
                     % Turn all the other model status controls back on
                     % MAKE SURE TO INCLUDE OTHER CONTROLS HERE
                     set(handles.ui_button_Single_Step,     'Enable', 'On');
@@ -427,7 +427,7 @@ reset;
                     set(handles.ui_button_Reset,           'Enable', 'On');
                     % Very last, turn on the start free run button
                     set(handles.ui_button_Auto_Run,        'Enable', 'On');
-                    
+
                     return
                 end
                 % Do the next advance or assimilation step
@@ -446,15 +446,15 @@ reset;
         if(handles.ready_to_advance)
             % Set semaphore to indicate that next step is an assimilation
             handles.ready_to_advance = false;
-            
+
             % Set the text to indicate that next step is an assimilate
             set(handles.ui_button_Single_Step, 'String', 'Assimilate Obs');
-            
+
             % Turn off the recent observation plot if it exists
             if(handles.global_init)
                 set(handles.h_global_obs, 'Visible', 'off');
             end
-            
+
             % Advance a number of steps in between each assimilation
             num_steps_to_advance = 20;
             for i = 1:num_steps_to_advance
@@ -463,20 +463,20 @@ reset;
                 [new_truth, new_time] = lorenz_63_adv_1step(handles.true_state(time, :), time);
                 handles.time = new_time;
                 handles.true_state(new_time, :) = new_truth;
-                
+
                 % Advance the ensemble members; posterior -> new prior
                 for imem = 1:handles.ens_size
                     [new_ens, new_time] = lorenz_63_adv_1step(handles.post(time, :, imem), time);
                     handles.prior(new_time, :, imem) = new_ens;
                 end
-                
+
                 % Plot a long trajectory of truth in small window for reference
                 axes(handles.global_view);
                 hold on;
                 plot3(handles.true_state(new_time-1:new_time, 1), ...
                     handles.true_state(new_time-1:new_time, 2), ...
                     handles.true_state(new_time-1:new_time, 3), 'k');
-                
+
                 % Also plot an asterisk on the leading edge
                 if(new_time > 2)
                     set(handles.h_star, 'Visible', 'Off');
@@ -488,35 +488,35 @@ reset;
                     'k*', 'MarkerSize', 16, 'LineWidth', 2);
                 view([2 -1 1]);
                 axis([-25 25 -25 25 5 45]);
-                
+
                 % Plot the close-up view of the ensemble
                 axes(handles.local_view)
-                
+
                 % Plot the truth trajectory for the last 8 steps
                 hold off;
-                
+
                 btime = new_time - 7;
                 if(btime < 1), btime = 1; end
                 plot3(handles.true_state(btime:new_time, 1), ...
                     handles.true_state(btime:new_time, 2), ...
                     handles.true_state(btime:new_time, 3), 'k', 'linewidth', 2);
-                
+
                 hold on
                 % Set an appropriate consistent view angle
                 view([2, -1 1]);
-                
+
                 % Plot an asterisk at the head of the trajectory
                 plot3(handles.true_state(new_time, 1), ...
                     handles.true_state(new_time, 2), ...
                     handles.true_state(new_time, 3), 'k*', 'MarkerSize', 16, 'LineWidth', 2);
-                
+
                 % Adjust the axes to follow the truth
                 xb = handles.true_state(new_time, 1);
                 yb = handles.true_state(new_time, 2);
                 zb = handles.true_state(new_time, 3);
                 limits = [xb - 3,  xb + 3,  yb - 3,  yb + 3, zb - 3, zb + 3];
                 axis(limits);
-                
+
                 % Plot the ensemble members advance trajectories, too
                 for imem = 1:handles.ens_size
                     %Axes continually changes, so reset grid to on
@@ -525,23 +525,23 @@ reset;
                           handles.prior(btime:new_time, 2, imem), ...
                           handles.prior(btime:new_time, 3, imem), '-', 'Color', atts.green)
                 end
-                
+
                 % Update the time label
                 set(handles.ui_text_time, 'String', ['Time = ', num2str(new_time)]);
-                
+
                 % Force the buffers to flush and plot the advance
                 drawnow
-                
+
                 % Last prior update will get overwritten when assimilation is done
                 handles.post(new_time, :, :) = handles.prior(new_time, :, :);
             end
-            
+
             % Compute the observations for this time and save
             for i = 1:3
                 handles.obs(i) = handles.true_state(new_time, i) + ...
                                  handles.obs_sd * randn;
             end
-            
+
             % Plot the observation as a red asterisk in both axes
             h = plot3(handles.obs(1), handles.obs(2), handles.obs(3), ...
                'r*', 'MarkerSize', 20);
@@ -554,33 +554,33 @@ reset;
             set(handles.h_global_obs,'Color',atts.red);
             handles.global_init = true;
             axes(handles.local_view);
-            
+
         else
             % Set semaphore to indicate that next step is a model advance
             handles.ready_to_advance = true;
-            
+
             % Set the pushbutton text to indicate that the next step is a model advance
             set(handles.ui_button_Single_Step, 'String', 'Advance Model');
-            
+
             % Get current time step
             time = handles.time;
-            
+
             % Determine what type of assimilation is being done (none, EAKF, EnKF, RHF)
             if(strcmp(handles.filter_kind, 'No Assimilation'))
                 % Just copy prior to posterior
                 handles.post(time, :, :) = handles.prior(time, :, :);
             else
                 % Code for doing the assimilation comes here
-                
+
                 % Do fully sequential assimilation algorithm
                 temp_ens = squeeze(handles.prior(time, :, :));
-                
+
                 % Observe each state variable independently
                 obs = zeros(1,3);
                 for i = 1:3
                     obs_prior = temp_ens(i, :);
                     obs(i) = handles.obs(i);
-                    
+
                     % Compute the increments for observed variable
                     switch handles.filter_kind
                         case 'EAKF'
@@ -593,7 +593,7 @@ reset;
                             [obs_increments, ~] = ...
                                 obs_increment_rhf(obs_prior, obs(i), handles.obs_error_var);
                     end
-                    
+
                     % Regress the increments onto each of the three state variables
                     for j = 1:3
                         state_incs = get_state_increments(temp_ens(j, :), ...
@@ -601,10 +601,10 @@ reset;
                         temp_ens(j, :) = temp_ens(j, :) + state_incs;
                     end
                 end
-                
+
                 % Update the posterior
                 handles.post(time, :, :) = temp_ens;
-                
+
                 % Plot a segment showing the impact of the observation
                 for imem = 1:handles.ens_size
                     xup = [handles.prior(time, 1, imem), handles.post(time, 1, imem)];
@@ -615,7 +615,7 @@ reset;
                 end
             end
         end
-        
+
     end
 
 %% ----------------------------------------------------------------------
@@ -623,14 +623,14 @@ reset;
     function reset(~,~)
         %This function resets handles to it's original values and clears the graphs
         % Also, called at the beginning to initialize the variables
-        
+
         % set random number seed to same value to generate known sequences
         % rng('default')  is the Mersenne Twister with seed 0
         rng(0,'twister')
-        
+
         % Global semaphore; ready to advance or assimilate?
         handles.ready_to_advance = true;
-        
+
         %Set handles to original values
         ens_size                   = 20;
         handles.ens_size           = ens_size;
@@ -644,29 +644,29 @@ reset;
         handles.h_global_obs       = [];
         handles.global_init        = false;
         handles.filter_kind        = 'No Assimilation';
-        
+
         handles.post = zeros(1, MODEL_SIZE, ens_size);
         for n = 1:handles.ens_size
             handles.post(1, :, n) = handles.true_state(1, :) + ...
                 0.1 * randn(1, MODEL_SIZE);
         end
-        
+
         % Make first prior identical to the first posterior
         handles.prior = handles.post;
-        
+
         %clears the two graphs
         fontsize = get(handles.local_view,'FontSize');
         cla(handles.local_view); set(handles.local_view,'FontSize',fontsize)
         cla(handles.global_view); set(handles.global_view,'FontSize',fontsize)
-        
+
         set(handles.ui_text_time         , 'String', 'Time = 0');
         set(handles.ui_button_Single_Step, 'String', 'Advance Model');
         set(handles.ui_button_group_assimilation,'SelectedObject',handles.ui_radio_noAssimilation);
-        
+
         % Plot the initial state
         initial_plot(handles.local_view);
         initial_plot(handles.global_view);
-        
+
     end
 
 %% ----------------------------------------------------------------------
@@ -677,14 +677,14 @@ reset;
         axes(hax)
         hold off;
         FontSize = get(hax,'FontSize');
-        
+
         % Plot an asterisk
         handles.initial_ob = plot3(handles.true_state(1, 1), ...
             handles.true_state(1, 2), ...
             handles.true_state(1, 3), 'k*', 'MarkerSize', 16, 'LineWidth', 2);
-        
+
         view([2, -1 1]); % Set an appropriate consistent view angle
-        
+
         % Adjust the axes to follow the truth
         xb = handles.true_state(1, 1);
         yb = handles.true_state(1, 2);
@@ -692,7 +692,7 @@ reset;
         limits = [xb - 3,  xb + 3,  yb - 3,  yb + 3, zb - 3, zb + 3];
         axis(limits);
         hold on
-        
+
         % Plot the ensemble members
         for imem = 1:handles.ens_size
             plot3(handles.prior(1, 1, imem), ...
@@ -708,10 +708,10 @@ reset;
     function Assimilation_selection(~, eventdata)
         % Function is called whenever a radio button has been selected, it sets
         % the global filter variable
-        
+
         % eventdata refers to the data in the GUI when a radio button in the
         % group is changed
-        
+
         % Set the filter_type_string to newest radiobutton Value
         handles.filter_kind = get(eventdata.NewValue,'String');
     end

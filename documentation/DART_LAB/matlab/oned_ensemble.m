@@ -354,7 +354,7 @@ handles.ui_text_post_mean = uicontrol('Style', 'text', ...
     'Position', [0.340 0.852 0.270 0.065], ...
     'String', 'Posterior Mean = ', ...
     'BackgroundColor', 'White', ...
-    'ForegroundColor', 'b', ...
+    'ForegroundColor', atts.blue, ...
     'FontUnits', 'normalized', ...
     'FontName', atts.fontname, ...
     'FontSize', 0.4, ...
@@ -367,7 +367,7 @@ handles.ui_text_inflated_post_mean = uicontrol('Style', 'text', ...
     'String', 'Inflated = ', ...
     'Visible', 'Off', ...
     'BackgroundColor', 'White', ...
-    'ForegroundColor', 'b', ...
+    'ForegroundColor', atts.blue, ...
     'FontUnits', 'normalized', ...
     'FontName', atts.fontname, ...
     'FontSize', 0.4, ...
@@ -379,7 +379,7 @@ handles.ui_text_post_sd = uicontrol('Style', 'text', ...
     'Position', [0.340 0.762 0.270 0.065], ...
     'String', 'Posterior SD = ', ...
     'BackgroundColor', 'White', ...
-    'ForegroundColor', 'b', ...
+    'ForegroundColor', atts.blue, ...
     'FontUnits', 'normalized', ...
     'FontName', atts.fontname, ...
     'FontSize', 0.4, ...
@@ -387,17 +387,17 @@ handles.ui_text_post_sd = uicontrol('Style', 'text', ...
     'HorizontalAlignment','right');
 
 handles.ui_text_inflated_post_sd = uicontrol('Style', 'text', ...
-    'Units',           'Normalized', ...
-    'Position',        [0.340 0.713 0.270 0.065], ...
-    'String',          'Inflated = ', ...
-    'Visible',         'Off', ...
-    'BackgroundColor', 'White', ...
-    'ForegroundColor', 'b', ...
-    'FontUnits',       'normalized', ...
-    'FontName',        atts.fontname, ...
-    'FontSize',        0.4, ...
-    'FontWeight',      'Bold', ...
-    'HorizontalAlignment','right');
+    'Units'              , 'Normalized', ...
+    'Position'           , [0.340 0.713 0.270 0.065], ...
+    'String'             , 'Inflated = ', ...
+    'Visible'            , 'Off', ...
+    'BackgroundColor'    , 'White', ...
+    'ForegroundColor'    , atts.blue, ...
+    'FontUnits'          , 'normalized', ...
+    'FontName'           , atts.fontname, ...
+    'FontSize'           , 0.4, ...
+    'FontWeight'         , 'Bold', ...
+    'HorizontalAlignment', 'right');
 
 % justify all the strings:
 
@@ -451,7 +451,7 @@ handles.ui_text_obs_sd_err_print = uicontrol('Style', 'text', ...
 % Go ahead and plot the initial observational error distribution
 
 handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
-set(handles.h_obs_plot, 'Color', 'r', 'Linestyle', '--', 'Linewidth', 2.0);
+set(handles.h_obs_plot, 'Color', atts.red, 'Linestyle', '--', 'Linewidth', 2.0);
 hold on
 
 % Plot an asterisk
@@ -474,62 +474,62 @@ title('oned_ensemble','Interpreter','none')
 %% -----------------------------------------------------------------------------
 
     function button_create_new_ens_Callback(~,~)
-        
+
         % Disable the update ensemble button and all other active buttons
         set(handles.ui_button_update_ens,     'Enable', 'Off');
         set(handles.ui_edit_observation,      'Enable', 'Off');
         set(handles.ui_edit_obs_error_sd,     'Enable', 'Off');
         set(handles.ui_edit_inflation_label,  'Enable', 'Off');
-        
+
         % Clear out any old ensemble members if they exist
         set(handles.h_ens_member,          'Visible', 'Off');
         set(handles.h_inf_ens_member,      'Visible', 'Off');
-        
+
         set(handles.h_update_lines,        'Visible', 'Off');
         set(handles.h_inf_lines,           'Visible', 'Off');
         set(handles.h_inf_axis,            'Visible', 'Off');
-        
+
         % Turn Off any old update points
         set(handles.h_update_ens,          'Visible', 'Off');
         set(handles.h_inf_up_ens,          'Visible', 'Off');
         set(handles.h_inf_ens_member,      'Visible', 'Off');
-        
+
         clear_ui_labels;
-        
+
         hold on
-        
+
         % Set a basic plotting domain range that includes mean +/- 3 obs SDs
         xlower = min(handles.observation - 3*handles.obs_error_sd, min(handles.ens_members));
         xupper = max(handles.observation + 3*handles.obs_error_sd, max(handles.ens_members));
         ylower = -0.4;
         yupper = 1.0;
         axis([xlower xupper ylower yupper]);
-        
+
         set(gca, 'YTick',      [0 0.2 0.4 0.6 0.8]);
-        
+
         % Messages are centered in the middle.
         xmid = (xupper + xlower) / 2.0;
         h_click    = text(xmid,  0.6, {'Click inside graphics box to create member', ...
             '(only X value is used)'}, 'FontSize', atts.fontsize, 'HorizontalAlignment', 'center');
-        
+
         h_err_text = text(xmid, -0.15, 'An ensemble has to have at least 2 members.', ...
-            'FontSize', atts.fontsize, 'Visible', 'on', 'HorizontalAlignment', 'center','Color', 'r');
-        
+            'FontSize', atts.fontsize, 'Visible', 'on', 'HorizontalAlignment', 'center','Color', atts.red);
+
         h_finish   = text(xmid, -0.15, 'Click outside of plot to finish', ...
             'Fontsize', atts.fontsize, 'Visible', 'Off', 'HorizontalAlignment', 'center');
-        
+
         ens_size = 0;
-        
+
         while ens_size < 100
             [xt, yt] = ginput(1);
-            
+
             if(xt >= xlower && xt <= xupper && yt >= ylower && yt <= yupper)
                 ens_size = ens_size + 1;
                 x(ens_size) = xt; %#ok<AGROW>
                 y(ens_size) = 0; %#ok<AGROW>
                 handles.h_ens_member(ens_size) = ...
                     plot(x(ens_size), y(ens_size), '*', 'MarkerSize', 16, 'Color', atts.green,'LineWidth',2.0);
-                
+
                 % Display the prior mean and sd
                 prior_mean = mean(x);
                 prior_sd   = std(x);
@@ -537,46 +537,46 @@ title('oned_ensemble','Interpreter','none')
                 set(handles.ui_text_prior_mean, 'String', str1);
                 str1 = sprintf('Prior SD = %.4f', prior_sd);
                 set(handles.ui_text_prior_sd,   'String', str1);
-                
+
             elseif (ens_size < 2)
                 set(h_err_text,'FontWeight','bold')
-                
+
             else
                 break;
-                
+
             end
-            
+
             % Swap messages once you have a minimal ensemble.
             if (ens_size == 2)
                 set(h_err_text, 'Visible', 'Off');
                 set(h_finish,   'Visible', 'on');
-                
+
             end
-            
+
         end
-        
+
         % Ensemble created, compute mean and sd, clean up and return
         % Set the global gui storage
         handles.ens_size    = ens_size;
         handles.ens_members = x;
-        
+
         % Turn Off the data entry messages
         set(h_click,  'Visible', 'Off');
         set(h_finish, 'Visible', 'Off');
-        
+
         % Enable the update ensemble button
         set(handles.ui_button_update_ens,     'Enable', 'On');
         set(handles.ui_edit_observation,      'Enable', 'On');
         set(handles.ui_edit_obs_error_sd,     'Enable', 'On');
         set(handles.ui_edit_inflation_label,  'Enable', 'On');
-        
+
     end
 
 
 %% -----------------------------------------------------------------------------
 
     function inflation_toggle_Callback (~, ~)
-        
+
         enabled = get(handles.ui_checkbox_inflation, 'Value');
         if (enabled)
             set(handles.ui_slider_inflation,         'Enable',  'On');
@@ -586,7 +586,7 @@ title('oned_ensemble','Interpreter','none')
             set(handles.ui_text_inflated_post_mean,  'Visible', 'On');
             set(handles.ui_text_inflated_prior_sd,   'Visible', 'On');
             set(handles.ui_text_inflated_post_sd,    'Visible', 'On');
-            
+
         else
             set(handles.ui_slider_inflation,         'Enable',  'Off');
             set(handles.ui_text_inflation,           'Enable',  'Off');
@@ -601,49 +601,49 @@ title('oned_ensemble','Interpreter','none')
 %% -----------------------------------------------------------------------------
 
     function slider_Callback (~, ~)
-        
+
         handles.inflation = get(handles.ui_slider_inflation, 'Value');
-        
+
         str1 = sprintf('%.4f',handles.inflation);
         set(handles.ui_edit_inflation_label, 'String', str1);
-        
+
         % Just in case the inflation label was in the error state, reset
         set(handles.ui_edit_inflation_label, 'BackgroundColor', 'White', 'FontWeight', 'Normal');
         set(handles.ui_text_inf_err_print, 'Visible', 'Off')
-        
+
         % Disable other input to guarantee only one error at a time!
         set(handles.ui_edit_observation,      'Enable', 'On')
         set(handles.ui_edit_obs_error_sd,     'Enable', 'On')
         set(handles.ui_button_create_new_ens, 'Enable', 'On')
         set(handles.ui_button_update_ens,     'Enable', 'On')
-        
+
     end
 
 %% -----------------------------------------------------------------------------
 
     function button_update_ens_Callback (~, ~)
-        
+
         % Turn Off any old points
         set(handles.h_update_ens,     'Visible', 'Off');
         set(handles.h_inf_up_ens,     'Visible', 'Off');
         set(handles.h_inf_ens_member, 'Visible', 'Off');
-        
+
         % Remove mean and sd of old posterior
         clear_ui_labels;
-        
+
         % And the lines in between
         set(handles.h_update_lines, 'Visible', 'Off');
         set(handles.h_inf_lines,    'Visible', 'Off');
         set(handles.h_inf_axis,     'Visible', 'Off');
-        
+
         ensemble = handles.ens_members;
-        
+
         % Figure out which filter option is currently selected
         val = get(handles.ui_radio_button_group,'SelectedObject');
         filter_type = get(val,'String');
-        
+
         switch filter_type
-            
+
             case 'EAKF'
                 [obs_increments, ~] = ...
                     obs_increment_eakf(ensemble, handles.observation, handles.obs_error_sd^2);
@@ -654,60 +654,60 @@ title('oned_ensemble','Interpreter','none')
                 [obs_increments, ~] = ...
                     obs_increment_rhf(ensemble, handles.observation, handles.obs_error_sd^2);
         end
-        
+
         % Add on increments to get new ensemble
         new_ensemble = ensemble + obs_increments;
-        
+
         y(1:size(ensemble)) = -0.1;
-        handles.h_update_ens = plot(new_ensemble, y, '*', 'MarkerSize', 16, 'Color', 'Blue');
-        
+        handles.h_update_ens = plot(new_ensemble, y, '*', 'MarkerSize', 16, 'Color', atts.blue);
+
         % Plot lines connecting the prior and posterior ensemble members
         for i = 1:size(ensemble, 2)
             x_line = [handles.ens_members(i), new_ensemble(i)];
             y_line = [0, -0.1];
             handles.h_update_lines(i) = plot(x_line, y_line, 'k');
         end
-        
+
         % Add in a label of the updated mean and sd
         new_mean = mean(new_ensemble);
         new_sd   = std(new_ensemble);
-        
+
         % Update mean and sd of old posterior
         str1 = sprintf('Posterior Mean = %.4f',new_mean);
         set(handles.ui_text_post_mean, 'String', str1, 'Visible', 'on');
-        
+
         str1 = sprintf('Posterior SD = %.4f',new_sd);
         set(handles.ui_text_post_sd,   'String', str1, 'Visible', 'on');
-        
+
         % If the checkbox isn't set, return now
         if(not(get(handles.ui_checkbox_inflation, 'Value')))
             return
         end
-        
+
         % Plot the inflated prior ensemble
         y = -0.2;
         handles.prior_mean = mean(handles.ens_members(1:handles.ens_size));
-        
+
         inf_ens = zeros(1,handles.ens_size);
-        
+
         for i = 1: handles.ens_size
             inf_ens(i) = (handles.ens_members(i) - handles.prior_mean) * sqrt(handles.inflation) + ...
                 handles.prior_mean;
             handles.h_inf_ens_member(i) = plot(inf_ens(i), y, '*', 'MarkerSize', 16, 'Color', atts.green,'LineWidth',2.0);
-            
+
         end
-        
+
         % Update mean and sd of old posterior
         handles.inf_prior_sd = std(inf_ens(1:handles.ens_size));
-        
+
         str1 = sprintf('Inflated = %.4f',handles.prior_mean);
         set(handles.ui_text_inflated_prior_mean,'String',str1,'Visible','on');
         str1 = sprintf('Inflated = %.4f',handles.inf_prior_sd);
         set(handles.ui_text_inflated_prior_sd,  'String',str1,'Visible','on');
-        
+
         % Get the update for the inflated ensemble
         switch filter_type
-            
+
             case 'EAKF'
                 [obs_increments, ~] = ...
                     obs_increment_eakf(inf_ens, handles.observation, handles.obs_error_sd^2);
@@ -718,21 +718,21 @@ title('oned_ensemble','Interpreter','none')
                 [obs_increments, ~] = ...
                     obs_increment_rhf(inf_ens, handles.observation, handles.obs_error_sd^2);
         end
-        
+
         % Add on increments to get new ensemble
         new_ensemble = inf_ens + obs_increments;
-        
+
         y(1:size(ensemble)) = -0.3;
-        handles.h_inf_up_ens = plot(new_ensemble, y, '*', 'MarkerSize', 16, 'Color', 'Blue');
-        
+        handles.h_inf_up_ens = plot(new_ensemble, y, '*', 'MarkerSize', 16, 'Color', atts.blue);
+
         % Plot lines connecting the prior and posterior ensemble members
         for i = 1:size(ensemble, 2)
             x_line = [inf_ens(i), new_ensemble(i)];
             y_line = [-0.2, -0.3];
             handles.h_inf_lines(i) = plot(x_line, y_line, 'k');
-            
+
         end
-        
+
         % Set a basic plotting domain range that includes mean +/- 3 obs SDs
         % Plus all inflated members
         xlower = min(handles.observation - 3*handles.obs_error_sd, min(inf_ens));
@@ -740,27 +740,27 @@ title('oned_ensemble','Interpreter','none')
         ylower = -0.4;
         yupper = 1.0;
         axis([xlower xupper ylower yupper]);
-        
+
         % Plot the axes for the two priors
         plot([xlower xupper], [0 0], 'k', 'Linewidth', 1.7);
         handles.h_inf_axis = plot([xlower xupper], [-0.2 -0.2], 'k', 'Linewidth', 1.7);
-        
+
         % Update mean and sd of old posterior
         handles.update_inf_mean = mean(new_ensemble(1:handles.ens_size));
         handles.update_inf_sd =   std (new_ensemble(1:handles.ens_size));
-        
+
         str1 = sprintf('Inflated = %.4f',handles.update_inf_mean);
         set(handles.ui_text_inflated_post_mean, 'String', str1, 'Visible','on');
-        
+
         str1 = sprintf('Inflated = %.4f',handles.update_inf_sd);
         set(handles.ui_text_inflated_post_sd, 'String', str1, 'Visible', 'on');
-        
+
     end
 
 %% -----------------------------------------------------------------------------
 
     function clear_ui_labels()
-        
+
         % Turns Off all labels except for the prior mean and SD
         set(handles.ui_text_post_sd,             'Visible', 'Off');
         set(handles.ui_text_post_mean,           'Visible', 'Off');
@@ -768,248 +768,248 @@ title('oned_ensemble','Interpreter','none')
         set(handles.ui_text_inflated_prior_sd,   'Visible', 'Off');
         set(handles.ui_text_inflated_post_sd,    'Visible', 'Off');
         set(handles.ui_text_inflated_post_mean,  'Visible', 'Off');
-        
+
     end
 
 %% -----------------------------------------------------------------------------
 
     function edit_inflation_Callback(~, ~)
-        
+
         % Turn Off any old updated points
         set(handles.h_update_ens,          'Visible', 'Off');
         set(handles.h_inf_up_ens,          'Visible', 'Off');
         set(handles.h_inf_ens_member,      'Visible', 'Off');
-        
+
         % Remove mean and sd of old posterior
         clear_ui_labels;
-        
+
         % And the lines in between
         set(handles.h_update_lines,        'Visible', 'Off');
         set(handles.h_inf_lines,           'Visible', 'Off');
         set(handles.h_inf_axis,            'Visible', 'Off');
-        
+
         % Enable things that an error might have turned Off
         set(handles.ui_edit_observation,      'Enable', 'on')
         set(handles.ui_edit_obs_error_sd,     'Enable', 'on')
         set(handles.ui_button_create_new_ens, 'Enable', 'on')
-        
+
         % Only enable the update ensemble pushbutton if an ensemble has been created
         if(handles.ens_size > 0)
             set(handles.ui_button_update_ens, 'Enable', 'on');
-            
+
         end
-        
+
         % Get the value of the inflation
         inf_value = str2double(get(handles.ui_edit_inflation_label, 'String'));
-        
+
         if( isfinite(inf_value) && (inf_value >= 1) && (inf_value <= 5))
             inflation = inf_value;
-            
+
         else
             set(handles.ui_edit_inflation_label, 'String', '??','FontWeight','Bold', ...
-                'BackgroundColor', 'r');
+                'BackgroundColor', atts.red);
             set(handles.ui_text_inf_err_print,'Visible','On')
-            
+
             fprintf('ERROR: Inflation value must be between 1 and 5.\n')
             fprintf('ERROR: Inflation value must be between 1 and 5.\n')
-            
+
             % Disable other input to guarantee only one error at a time!
             set(handles.ui_edit_observation,      'Enable', 'Off')
             set(handles.ui_edit_obs_error_sd,     'Enable', 'Off')
             set(handles.ui_button_create_new_ens, 'Enable', 'Off')
             set(handles.ui_button_update_ens,     'Enable', 'Off')
-            
+
             return
-            
+
         end
-        
+
         % Update the value in global storage
         handles.inflation = inflation;
         set(handles.ui_edit_inflation_label, 'BackgroundColor', 'White', 'FontWeight', 'Normal');
         set(handles.ui_slider_inflation,'Value', handles.inflation);
         set(handles.ui_text_inf_err_print,'Visible','Off')
-        
-        
+
+
         % Plot the updated distribution
         set(handles.h_obs_plot, 'Visible', 'Off');
         handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
-        set(handles.h_obs_plot, 'Color', 'r', 'Linestyle', '--', 'Linewidth', 1.7);
-        
+        set(handles.h_obs_plot, 'Color', atts.red, 'Linestyle', '--', 'Linewidth', 1.7);
+
         % Set a basic plotting domain range that includes mean +/- 3 obs SDs
         xlower = min(handles.observation - 3*handles.obs_error_sd, min(handles.ens_members));
         xupper = max(handles.observation + 3*handles.obs_error_sd, max(handles.ens_members));
         ylower = -0.4;
         yupper = 1.0;
         axis([xlower xupper ylower yupper]);
-        
-        set(handles.h_obs_plot, 'Color', 'r', 'Linestyle', '--', 'Linewidth', 1.7);
-        
+
+        set(handles.h_obs_plot, 'Color', atts.red, 'Linestyle', '--', 'Linewidth', 1.7);
+
         set(gca, 'YTick', [0 0.2 0.4 0.6 0.8]);
-        
+
         hold on
-        
+
         plot([xlower xupper], [0 0], 'k', 'Linewidth', 1.7);
-        
+
     end
 
 %% -----------------------------------------------------------------------------
 
     function edit_observation_Callback(~, ~)
-        
+
         % Turn Off any old updated points
         set(handles.h_update_ens,     'Visible', 'Off');
         set(handles.h_inf_up_ens,     'Visible', 'Off');
         set(handles.h_inf_ens_member, 'Visible', 'Off');
-        
+
         % Remove mean and sd of old posterior
         clear_ui_labels;
-        
+
         % And the lines in between
         set(handles.h_update_lines,        'Visible', 'Off');
         set(handles.h_inf_lines,           'Visible', 'Off');
         set(handles.h_inf_axis,            'Visible', 'Off');
-        
+
         % Enable things that an error might have turned Off
         set(handles.ui_edit_obs_error_sd,     'Enable', 'on')
         set(handles.ui_edit_inflation_label,  'Enable', 'on')
         set(handles.ui_button_create_new_ens, 'Enable', 'on')
-        
+
         % Only enable the update ensemble pushbutton if an ensemble has been created
         if(handles.ens_size > 0)
             set(handles.ui_button_update_ens, 'Enable', 'on');
-            
+
         end
-        
+
         % Get the value of the observation
         if(isfinite(      str2double(get(handles.ui_edit_observation, 'String'))))
             observation = str2double(get(handles.ui_edit_observation, 'String'));
-            
+
         else
             set(handles.ui_edit_observation, 'String', '??','FontWeight','Bold', ...
-                'BackgroundColor', 'r');
+                'BackgroundColor', atts.red);
             set(handles.ui_text_obs_err_print,'Visible','On')
-            
+
             fprintf('ERROR: Observation value must be numeric.\n')
             fprintf('ERROR: Observation value must be numeric.\n')
-            
-            
+
+
             % Disable other input to guarantee only one error at a time!
             set(handles.ui_edit_obs_error_sd,     'Enable', 'Off')
             set(handles.ui_edit_inflation_label,  'Enable', 'Off')
             set(handles.ui_button_create_new_ens, 'Enable', 'Off')
             set(handles.ui_button_update_ens,     'Enable', 'Off')
-            
+
             return
-            
+
         end
-        
+
         % Update the global storage
         handles.observation = observation;
         set(handles.ui_edit_observation, 'BackgroundColor', 'White','FontWeight', 'Normal');
         set(handles.ui_text_obs_err_print,'Visible','Off')
-        
+
         % Plot the updated distribution
         set(handles.h_obs_plot, 'Visible', 'Off');
         handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
-        set(handles.h_obs_plot, 'Color', 'r', 'Linestyle', '--', 'Linewidth', 1.7);
-        
+        set(handles.h_obs_plot, 'Color', atts.red, 'Linestyle', '--', 'Linewidth', 1.7);
+
         % Move the observation asterisk
         set(handles.h_obs_ast, 'Visible', 'Off');
         handles.h_obs_ast = plot(handles.observation, 0, 'r*', 'MarkerSize', 16,'LineWidth',2.0);
-        
+
         % Set a basic plotting domain range that includes mean +/- 3 obs SDs
         xlower = min(handles.observation - 3*handles.obs_error_sd, min(handles.ens_members));
         xupper = max(handles.observation + 3*handles.obs_error_sd, max(handles.ens_members));
         ylower = -0.4;
         yupper = 1.0;
         axis([xlower xupper ylower yupper]);
-        
+
         set(gca, 'YTick', [0 0.2 0.4 0.6 0.8]);
-        
+
         hold on
         plot([xlower xupper], [0 0], 'k', 'Linewidth', 1.7);
-        
+
     end
 
 %% -----------------------------------------------------------------------------
 
     function edit_obs_error_sd_Callback(~, ~)
-        
+
         % Turn Off any old updated points
         set(handles.h_update_ens,          'Visible', 'Off');
         set(handles.h_inf_up_ens,          'Visible', 'Off');
         set(handles.h_inf_ens_member,      'Visible', 'Off');
-        
+
         % Remove mean and sd of old posterior
         clear_ui_labels;
-        
+
         % And the lines in between
         set(handles.h_update_lines,        'Visible', 'Off');
         set(handles.h_inf_lines,           'Visible', 'Off');
         set(handles.h_inf_axis,            'Visible', 'Off');
-        
+
         % Enable things that an error might have turned Off
         set(handles.ui_edit_observation,      'Enable', 'on')
         set(handles.ui_edit_inflation_label,  'Enable', 'on')
         set(handles.ui_button_create_new_ens, 'Enable', 'on')
-        
+
         % Only enable the update ensemble pushbutton if an ensemble has been created
         if(handles.ens_size > 0)
             set(handles.ui_button_update_ens, 'Enable', 'on');
         end
-        
+
         % Get the value of the observation error sd
         obs_error_value = str2double(get(handles.ui_edit_obs_error_sd, 'String'));
-        
+
         if(isfinite(obs_error_value) && (obs_error_value > 0))
             obs_error_sd = obs_error_value;
-            
+
         else
-            
+
             set(handles.ui_edit_obs_error_sd, 'String', '??','FontWeight','Bold', ...
-                'BackgroundColor', 'r');
+                'BackgroundColor', atts.red);
             set(handles.ui_text_obs_sd_err_print,'Visible','On')
-            
+
             fprintf('ERROR: Obs. Error SD value must be numeric.\n')
             fprintf('ERROR: Obs. Error SD value must be numeric.\n')
-            
-            
+
+
             % Disable other input to guarantee only one error at a time!
             set(handles.ui_edit_observation,      'Enable', 'Off')
             set(handles.ui_edit_inflation_label,  'Enable', 'Off')
             set(handles.ui_button_create_new_ens, 'Enable', 'Off')
             set(handles.ui_button_update_ens,     'Enable', 'Off')
-            
+
             return
-            
+
         end
-        
+
         % Update the value in global storage
         handles.obs_error_sd = obs_error_sd;
         set(handles.ui_edit_obs_error_sd, 'BackgroundColor', 'White',  'FontWeight', 'Normal');
         set(handles.ui_text_obs_sd_err_print,'Visible','Off')
-        
-        
+
+
         % Plot the updated distribution
         set(handles.h_obs_plot, 'Visible', 'Off');
         handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
-        set(handles.h_obs_plot, 'Color', 'r', 'Linestyle', '--', 'Linewidth', 1.7);
-        
+        set(handles.h_obs_plot, 'Color', atts.red, 'Linestyle', '--', 'Linewidth', 1.7);
+
         % Set a basic plotting domain range that includes mean +/- 3 obs SDs
         xlower = min(handles.observation - 3*handles.obs_error_sd, min(handles.ens_members));
         xupper = max(handles.observation + 3*handles.obs_error_sd, max(handles.ens_members));
         ylower = -0.4;
         yupper = 1.0;
         axis([xlower xupper ylower yupper]);
-        
-        set(handles.h_obs_plot, 'Color', 'r', 'Linestyle', '--', 'Linewidth', 1.7);
-        
+
+        set(handles.h_obs_plot, 'Color', atts.red, 'Linestyle', '--', 'Linewidth', 1.7);
+
         set(gca, 'YTick', [0 0.2 0.4 0.6 0.8]);
-        
+
         hold on
-        
+
         plot([xlower xupper], [0 0], 'k', 'Linewidth', 1.7);
-        
+
     end
 
 %% -----------------------------------------------------------------------------
