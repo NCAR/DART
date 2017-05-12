@@ -2,8 +2,8 @@ function L96 = lorenz_96_static_init_model()
 
 %% lorenz_96_static_init_model Initializes class data for L96
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -21,4 +21,3 @@ L96.state_loc  = (0:L96.model_size - 1) / L96.model_size;
 % $URL$
 % $Revision$
 % $Date$
-
