@@ -102,8 +102,8 @@
      
 &state_vector_io_nml
   /
-!  limit_mem
-!  single_precision_output
+!  buffer_state_io         = .false.
+!  single_precision_output = .false.
 
 &perfect_model_obs_nml
   start_from_restart       = .true.

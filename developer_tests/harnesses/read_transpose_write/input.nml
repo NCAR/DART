@@ -182,27 +182,6 @@
    verbose = .true.
    /
 
-# Gregorian: 12 Z 1 January 1996 <==> DART: 144270 days 43200 seconds
-# Gregorian: 12 Z 1 January 2000 <==> DART: 145731 days 43200 seconds
-
-&restart_file_tool_nml
-   input_file_name              = "dart_input",
-   output_file_name             = "dart_output",
-   ens_size                     = 1,
-   single_restart_file_in       = .true.,
-   single_restart_file_out      = .true.,
-   write_binary_restart_files   = .true.,
-   overwrite_data_time          = .false.,
-   new_data_days                = -1,
-   new_data_secs                = -1,
-   input_is_model_advance_file  = .false.,
-   output_is_model_advance_file = .false.,
-   overwrite_advance_time       = .false.,
-   new_advance_days             = -1,
-   new_advance_secs             = -1,
-   gregorian_cal                = .true.
-  /
-
 &obs_sequence_tool_nml
    num_input_files = 7,
    filename_seq    = '../observations/ssh_pseudo.obs_seq.out',
@@ -312,16 +291,6 @@
   /
 
 &state_vector_io_nml
-  limit_mem =  2142720000
-  limit_procs = 100000 
-  create_restarts = .false.
-  create_restarts = .false.
-  /
-# 1071360000
-# 535680000  7372800
-
-&io_filenames_nml
-  restart_in_stub = '/glade/p/work/hendric/inputdata/ocn/pop/gx1v6_ocn'
-  restart_out_stub = 'advance_temp'
+  buffer_state_io = .false.
   /
 

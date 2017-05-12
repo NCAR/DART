@@ -25,14 +25,14 @@ module direct_netcdf_mod
 !> \par Aim of the limited transpose:
 !>
 !>To limit how much of the state vector you can read at once.
-!> You can limit the transpose by memory using <code>limit_mem</code>.
+!> You can limit the transpose by memory using <code>buffer_state_io</code>.
 !>
 !>What you (potentially) gain from this:
 !>
 !>* Don't have to have the whole state vector.
 !>* Don't have to use a parallel IO library.
 !>
-!>If limit_mem > state vector size you have the regular transpose + IO, except:
+!>If buffer_state_io is false you have the regular transpose + IO, except:
 !>  1. You are reading directly from a netcdf file, not a dart state vector file.
 !>  2. You only transpose the copies that are being written/read.
 !>
@@ -133,18 +133,18 @@ contains
 !>   * Multi processor (memory limit applied)
 
 
-subroutine read_transpose(state_ens_handle, name_handle, domain, dart_index, limit_mem)
+subroutine read_transpose(state_ens_handle, name_handle, domain, dart_index, read_single_vars)
 
 type(ensemble_type),       intent(inout) :: state_ens_handle
 type(stage_metadata_type), intent(in)    :: name_handle
 integer,                   intent(in)    :: domain
 integer,                   intent(inout) :: dart_index !< This is for multiple domains
-integer,                   intent(in)    :: limit_mem  !< How many state elements you can read at once
+logical,                   intent(in)    :: read_single_vars  !< read one variable at a time
 
 if (task_count() == 1) then
    call read_transpose_single_task(state_ens_handle, name_handle, domain, dart_index)
 else
-   call read_transpose_multi_task(state_ens_handle, name_handle, domain, dart_index, limit_mem)
+   call read_transpose_multi_task(state_ens_handle, name_handle, domain, dart_index, read_single_vars)
 endif
 
 end subroutine read_transpose
@@ -155,13 +155,13 @@ end subroutine read_transpose
 
 
 subroutine transpose_write(state_ens_handle, name_handle, domain, &
-                     dart_index, limit_mem, write_single_precision)
+                     dart_index, write_single_vars, write_single_precision)
 
 type(ensemble_type),       intent(inout) :: state_ens_handle
 type(stage_metadata_type), intent(in)    :: name_handle
 integer,                   intent(in)    :: domain
 integer,                   intent(inout) :: dart_index
-integer,                   intent(in)    :: limit_mem !< How many state elements you can write at once
+logical,                   intent(in)    :: write_single_vars !< write one variable at a time
 logical,                   intent(in)    :: write_single_precision
 
 if (task_count() == 1) then
@@ -169,7 +169,7 @@ if (task_count() == 1) then
                                     dart_index, write_single_precision)
 else
    call transpose_write_multi_task(state_ens_handle, name_handle, domain, &
-                                   dart_index, limit_mem, write_single_precision)
+                                   dart_index, write_single_vars, write_single_precision)
 endif
 
 end subroutine transpose_write
@@ -348,16 +348,16 @@ end subroutine transpose_write_single_task
 !> Read in variables from model restart file and transpose so that every processor
 !> has all copies of a subset of state variables (fill state_ens_handle%copies)
 !> Read and transpose data according to the memory limit imposed by
-!> limit_mem. Note limit_mem cannot be smaller than a variable.
+!> read_var_by_var.
 
 subroutine read_transpose_multi_task(state_ens_handle, name_handle, domain, &
-                dart_index, limit_mem)
+                dart_index, read_var_by_var)
 
 type(ensemble_type),       intent(inout) :: state_ens_handle
 type(stage_metadata_type), intent(in)    :: name_handle
 integer,                   intent(in)    :: domain
 integer,                   intent(inout) :: dart_index !< This is for multiple domains
-integer,                   intent(in)    :: limit_mem !< How many state elements you can read at once
+logical,                   intent(in)    :: read_var_by_var !< Read one variable at a time 
 
 integer :: i
 integer :: start_var, end_var !< start/end variables in a read block
@@ -426,7 +426,12 @@ COPIES: do c = 1, ens_size
       if (start_var > num_state_variables) exit ! instead of using do while loop
 
       ! calculate how many variables will be read
-      end_var = calc_end_var(start_var, domain, limit_mem)
+      if (read_var_by_var) then 
+         end_var = start_var
+      else
+         end_var = num_state_variables
+      endif
+
       block_size = get_sum_variables(start_var, end_var, domain)
 
       if (is_reader) then
@@ -515,19 +520,19 @@ end subroutine read_transpose_multi_task
 
 !-------------------------------------------------
 !> Transpose from state_ens_handle%copies to the writers according to
-!> the memory limit imposed by limit_mem.
+!> the memory limit imposed by write_var_by_var.
 !>
 !> This is assuming round-robin layout of state on procesors (distribution type 1
 !> in the ensemble handle).
 
 subroutine transpose_write_multi_task(state_ens_handle, name_handle, domain, &
-                dart_index, limit_mem, write_single_precision)
+                dart_index, write_var_by_var, write_single_precision)
 
 type(ensemble_type),       intent(inout) :: state_ens_handle
 type(stage_metadata_type), intent(in)    :: name_handle
 integer,                   intent(in)    :: domain
 integer,                   intent(inout) :: dart_index
-integer,                   intent(in)    :: limit_mem !< How many state elements you can read at once
+logical,                   intent(in)    :: write_var_by_var !< Write a single variable, one at a time
 logical,                   intent(in)    :: write_single_precision
 
 integer :: i
@@ -617,7 +622,12 @@ COPIES : do c = 1, ens_size
       if (start_var > num_state_variables) exit ! instead of using do while loop
 
       ! calculate how many variables will be sent to writer
-      end_var = calc_end_var(start_var, domain, limit_mem)
+      if (write_var_by_var) then 
+         end_var = start_var
+      else
+         end_var = num_state_variables
+      endif
+
       block_size = get_sum_variables(start_var, end_var, domain)
 
       if (is_writer) then
@@ -1309,64 +1319,6 @@ end subroutine nc_write_missing_value_r8
 
 
 !-------------------------------------------------
-!> Calculate how many variables to read in one go.
-
-
-function calc_end_var(start_var, domain, limit_mem)
-
-integer              :: calc_end_var !< end variable index
-integer, intent(in)  :: start_var !< start variable index
-integer, intent(in)  :: domain
-integer, intent(in)  :: limit_mem
-
-integer :: i, var_count
-integer :: num_state_variables
-integer, allocatable :: num_elements(:) !< cummulative size
-
-num_state_variables = get_num_variables(domain)
-
-allocate(num_elements(num_state_variables - start_var + 1))
-
-calc_end_var = num_state_variables ! assume you can fit them all to start with
-
-var_count = 0
-
-do i = 1, num_state_variables - start_var + 1
-   num_elements(i) = get_sum_variables(start_var, start_var + var_count, domain)
-   var_count = var_count + 1
-enddo
-
-var_count = 1
-do i = start_var, num_state_variables
-
-   if (start_var == num_state_variables) then
-      calc_end_var = num_state_variables
-      exit
-   endif
-
-   if (var_count >= num_state_variables) then
-      calc_end_var = num_state_variables
-      exit
-   endif
-
-   if(var_count + 1> size(num_elements)) then
-      calc_end_var = num_state_variables
-      exit
-   endif
-
-   if (num_elements(var_count+1) >= limit_mem ) then
-      calc_end_var =  i
-      exit
-   endif
-   var_count = var_count + 1
-enddo
-
-deallocate(num_elements)
-
-end function calc_end_var
-
-
-!-------------------------------------------------
 !> Find pes for loop indices
 
 
@@ -1560,7 +1512,7 @@ end subroutine recv_variables_to_write
 !> Or being sent from the sending pe (transpose_write) for a given
 !> start_rank and block_size.
 !> block_size is the number of elements in a block of variables. There may
-!> be 1 variable or all variables depending on limit_mem.
+!> be 1 variable or all variables depending on buffer_state_io.
 !> start_rank is the pe that owns the 1st element of the 1st variable in
 !> the variable_block.
 !>@todo FIXME ? This should go in ensemble manager.

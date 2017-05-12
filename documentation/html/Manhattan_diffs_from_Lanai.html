@@ -472,21 +472,17 @@ For small models you may want to use <code>single_file_in</code>,
 <div class=namelist>
 <pre>
 &amp;state_vector_io_nml
-   limit_mem                  = HUGE(1_i4),
-   single_precision_output    = .false.,
+   buffer_state_io          = .false.,
+   single_precision_output  = .false.,
 /
 </pre>
 </div>
-<p>
-<code>limit_mem</code> can be used to limit how much of the state is read/written at once. 
-It is for use with very large state vectors (e.g. 17GB) that cannot be read 
-into one array.  Using this increases the number of communication calls during 
-IO so it is only advisable to use this when your state vector size is 
-approaching your total memory per node.  <code>limit_mem</code> is the number of elements 
-to read/write and transpose in one step.  For example if you set 3000 element 
-limit and had 3 variables of size 1000, 1500 and 1000. The 1500 element
-variable and 1000 elmement variable would be read and transposed together, but 
-the next 1000 element variable would be read and tranposed in a second step.
+<P> 
+When <code>buffer_state_io</code> is
+<code>.false.</code> the entire state is read into memory at once
+if .true. variables are read one at a time. 
+If your model can not fit into memory at once this must 
+be set to <code>.true.</code> . 
 <p>
 <code>single_precision_output</code> allows you to run filter in double precision but write 
 NetCDF files in single presision
