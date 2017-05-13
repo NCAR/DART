@@ -13,10 +13,6 @@
 #BSUB  -o CAM6_clouds_4.bld1
 #BSUB  -e CAM6_clouds_4.bld1
 
-
-# setup_advanced will need parts from CESM1_5_setup_advanced(?)
-
-
 #
 # DART software - Copyright 2004 - 2013 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -37,7 +33,7 @@
 # is used. Instructions on what to change to use the SE core or WACCM are
 # outlined in the models/cam-fv/model_mod.html documentation.
 #
-# This script ($rma/models/cam-fv/scripts_cesm2_0/setup_advanced) has many 
+# This script ($rma/models/cam-fv/shell_scripts/cesm2_0_beta05/setup_advanced) has many 
 # changes from $non-rma/models/cam-fv/shell_scripts/CESM1_2_1_setup_hybrid
 # due to CESM's implementation of cime and move to perl scripts and xml files 
 # for all of the setup and running.  CESM1_5 enables running multiple cycles in a single
@@ -131,6 +127,7 @@
 #                  T85           ... eulerian at ~ 1 degree
 #                  ne30np4_gx1v6 ... SE core at ~ 1 degree
 # cesmtag       The version of the CESM source code to use when building the code.
+#               The assimilate.csh in this directory will handle only cesm2_0_beta05 and later.
 #               A directory with this name must exist in your home directory,
 #               and have SourceMods in it. See the SourceMods section.
 #               http://www.image.ucar.edu/pub/DART/CESM/README
@@ -150,12 +147,10 @@ setenv compset_args     "--compset $compset"
 # setenv resolution       f09_f09
 setenv resolution       f09_d025
 setenv user_grid        "  --gridfile /glade/p/work/raeder/Exp/CAM6_clouds"
-setenv user_grid        "${user_grid}/config_grids+fv1deg_oi0.25_gland20.xml"
+setenv user_grid        "${user_grid}/config_grids+fv1+2deg_oi0.25_gland20.xml"
 setenv cesmtag          cesm2_0_beta05_cam5_4_101
-setenv num_instances    80
+setenv num_instances    3
 
-#
-#
 # ==============================================================================
 # machines and directories:
 #
@@ -201,7 +196,6 @@ setenv archdir      /glade/scratch/${USER}/${case}/archive
 setenv CIMEROOT     $cesmroot/cime
 
 setenv dartroot     /glade/u/home/${USER}/DART/rma_dirs
-# setenv dartroot     /glade/u/home/${USER}/DART/rma_trunk
 
 # Note that assimilate.csh looks for $base_obs_dir/YYYYMM_6H_CESM.
 setenv baseobsdir   /glade/p/image/Observations/NCEP+ACARS+GPS
@@ -222,11 +216,6 @@ setenv baseobsdir   /glade/p/image/Observations/NCEP+ACARS+GPS
 # stagedir   The directory location of the reference case files.
 # ==============================================================================
 
-# GWD:
-# setenv refcase     cesm_hybrid
-# setenv refyear     2004
-# setenv refmon      01
-# setenv refday      10
 
 # /glade/scratch/raeder/CAM6_spinup_sst.25/archive/rest/2013-06-15-00000
 # setenv refcase     CAM6_spinup2
@@ -234,7 +223,6 @@ setenv refcase     CAM6_spinup_sst.25
 setenv refyear     2013
 setenv refmon      06
 
-# setenv refday      16
 setenv refday      15
 setenv reftod      00000
 
@@ -286,8 +274,6 @@ setenv stop_n              6
 # Daily, 1/4-degree SSTs from Reynolds,...,Tomas
 setenv sst_dataset \
    "/glade/p/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20130101_cat_20130731_filled_c170223.nc"
-#    "/glade/p/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20100101_cat_20101231_filled_c130829.nc"
-#     /glade/p/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20110101_cat_20111231_filled_c130829.nc
 setenv sst_grid    /glade/p/work/raeder/Models/CAM_init/SST/domain.ocn.d025.120821.nc
 setenv sst_year_start $start_year
 setenv sst_year_end   $start_year
@@ -476,25 +462,54 @@ if (! -f ${caseroot}/env_archive.xml.original) then
    ${COPY} ${caseroot}/env_archive.xml  ${caseroot}/env_archive.xml.original
 endif
 
-# > > > This needs testing.  < < < 
+# This was last updated for cesm2_0_beta05, when st_archiving of DART
+# output was still in flux (2017-4).   It relies on the modified
+# $p/Models/cesm2_0_beta05_cam5_4_101/cime/utils/python/CIME/case_st_archive.py,
+# which is in this directory too.
+cd $CIMEROOT
+set st_arch = `find [^\.]* -name case_st_archive.py -print`
+cd -
+if (! -f $CIMEROOT/${st_arch}.orig) then
+   $MOVE $CIMEROOT/${st_arch} $CIMEROOT/${st_arch}.orig
+   cp ./case_st_archive.py $CIMEROOT/$st_arch
+endif
+
+# The rpointer files created in $archive/rest/$date for interim dates
+# (not the last date when st_archive is run) had the wrong form:
+# rpointer$NINST_STRING.atm, compared to the rpointers in run:
+# rpointer.atm$NINST_STRING.
+# Fix this (for cesm2_0_beta05 and ...?) by replacing the config_archive.xml file.
+if (! -f $CIMEROOT/cime_config/cesm/config_archive.xml.orig) then
+   mv $CIMEROOT/cime_config/cesm/config_archive.xml \
+      $CIMEROOT/cime_config/cesm/config_archive.xml.orig
+   cp ./config_archive.xml $CIMEROOT/cime_config/cesm/config_archive.xml
+endif
+# St_archive will also need updating for new stage names: 
+#     input, forecast, preassim, postassim, analysis, output.
+
 # "ex_end" prevents the $s from being interpreted as shell variables.
+# .+1,/obs_seq/d    old code, when I wanted to keep the "dart" compname line.
 ex ${caseroot}/env_archive.xml <<"ex_end"
 /"dart"
-.+1,/obs_seq/d
-append
+.,/obs_seq/d
+insert
+    <comp_archive_spec compclass="esp" compname="cam">
       <file_extension suffix="da\.log\..+">
         <subdir>logs</subdir>
         <keep_last_in_rundir>false</keep_last_in_rundir>
       </file_extension> 
-      <file_extension suffix="[\w\d]*?dart_log\..+">
+      <file_extension suffix="dart_log\..+">
         <subdir>logs</subdir>
         <keep_last_in_rundir>false</keep_last_in_rundir>
       </file_extension>
-      <rest_file_extension>\..*?inf_.*?\.nc</rest_file_extension>
+      <rest_file_extension>\..*?inf_.*?\.</rest_file_extension>
       <hist_file_extension>\..*?[^f]_mean\..*?\.nc$</hist_file_extension>
       <hist_file_extension>\..*?[^f]_sd\..*?\.nc$</hist_file_extension>
-      <hist_file_extension>\..*?[^f]_member.*?\.nc$</hist_file_extension>
-      <hist_file_extension>\w*?obs_seq\..*</hist_file_extension>
+      <hist_file_extension>\.input\..*?\.nc$</hist_file_extension>
+      <hist_file_extension>\.preassim\..*?\.nc$</hist_file_extension>
+      <hist_file_extension>\.postassim\..*?\.nc$</hist_file_extension>
+      <hist_file_extension>\.output\..*?\.nc$</hist_file_extension>
+      <hist_file_extension>cam_obs_seq\..*</hist_file_extension>
 .
 wq
 "ex_end"
@@ -702,10 +717,15 @@ endif
 # Kluge to fix env_run.xml for hi-res SST data set, because something is wrong with the config_grids file.
 echo $resolution | grep d025
 if ($status == 0) then
-./xmlchange LND_DOMAIN_PATH=/glade/p/work/raeder/Models/cesm1_4_beta06/cime/tools/mapping/gen_domain_files/
-./xmlchange LND_DOMAIN_FILE=domain.lnd.fv0.9x1.25_d.25x.25.150907.nc
-./xmlchange ROF2OCN_LIQ_RMAPNAME=/glade/p/work/raeder/Exp/GWD_TMS_CLUBB/mapping/gridmaps/map_r05_to_d.25_nnsm_e1000r300_160229.nc
-./xmlchange ROF2OCN_ICE_RMAPNAME=/glade/p/work/raeder/Exp/GWD_TMS_CLUBB/mapping/gridmaps/map_r05_to_d.25_nnsm_e1000r300_160229.nc
+   set dom_map_path = /glade/p/work/raeder/Exp/GWD_TMS_CLUBB/mapping
+#    ./xmlchange LND_DOMAIN_PATH=$dom_map_path/domain_files
+#    ./xmlchange LND_DOMAIN_FILE=domain.lnd.fv1.9x2.5_d.25x.25.160407.nc
+#    ./xmlchange ROF2OCN_LIQ_RMAPNAME=$dom_map_path/gridmaps/map_r05_to_d.25_nnsm_e1000r300_160229.nc
+#    ./xmlchange ROF2OCN_ICE_RMAPNAME=$dom_map_path/gridmaps/map_r05_to_d.25_nnsm_e1000r300_160229.nc
+   ./xmlchange LND_DOMAIN_PATH=/glade/p/work/raeder/Models/cesm1_4_beta06/cime/tools/mapping/gen_domain_files/
+   ./xmlchange LND_DOMAIN_FILE=domain.lnd.fv0.9x1.25_d.25x.25.150907.nc
+   ./xmlchange ROF2OCN_LIQ_RMAPNAME=${dom_map_path}/gridmaps/map_r05_to_d.25_nnsm_e1000r300_160229.nc
+   ./xmlchange ROF2OCN_ICE_RMAPNAME=${dom_map_path}/gridmaps/map_r05_to_d.25_nnsm_e1000r300_160229.nc
 endif
 
 # Do not change the CALENDAR or the value of CONTINUE_RUN in this script.
@@ -794,7 +814,7 @@ setenv save_every_Mth_day_restarts 2
 
 
 ./xmlchange -file env_batch.xml -subgroup case.st_archive -id JOB_QUEUE          -val geyser
-./xmlchange -file env_batch.xml -subgroup case.st_archive -id JOB_WALLCLOCK_TIME -val 1:00
+./xmlchange -file env_batch.xml -subgroup case.st_archive -id JOB_WALLCLOCK_TIME -val 4:00
 
 ./xmlchange DOUT_L_MSROOT="${case}"
 ./xmlchange DOUT_L_HPSS_ACCNT="${PROJECT}"
@@ -1007,12 +1027,15 @@ while ($inst <= $num_instances)
    set fname = "user_nl_cam${inst_string}"
    # ===========================================================================
    # ATM Namelist
+
    # DART/CAM requires a PHIS field in a history file at the same frequency as
    # the CAM assimilation. This script sets it to be written to the .h0. every
    # assimilation time. If you want to write it to a different .h?. file, you MUST
    # modify the assimilate.csh script in TWO places. You will need to set
    # 'empty_htapes = .false.' and change 'nhtfrq' and 'mfilt' to get a CAM
    # default-looking .h0. file.
+   # If you want other fields written to history files, use h1,...,
+   # which are not purged by assimilate.csh.
    #
    # inithist == 'ENDOFRUN' ensures that CAM writes the required initial file
    # every time it stops.
@@ -1023,6 +1046,10 @@ while ($inst <= $num_instances)
    echo " fincl1        = 'PHIS:I' "                      >> ${fname}
    echo " nhtfrq        = -$stop_n "                      >> ${fname}
    echo " mfilt         = 1 "                             >> ${fname}
+   # Was needed for 2 degree spinup CAM6_2deg_spinup_sst.25,
+   # even though 1 degree worked with default 1 degree topo with a name similar to this.
+#    echo "bnd_topo = '/glade/p/cesmdata/cseg/inputdata/atm/cam/topo/fv_1.9x2.5_nc3000_Nsw084_Nrs016_Co120_Fi001_ZR_061116.nc' " >> ${fname}
+
 
 
    # Settings that differ between regular CAM and the WACCM version:
@@ -1181,6 +1208,11 @@ while ($inst <= $num_instances)
    echo "hist_nhtfrq = -$stop_n"       >> ${fname}
    echo "hist_mfilt  = 1"              >> ${fname}
    echo "hist_avgflag_pertape = 'I'"   >> ${fname}
+   # This was needed to allow the interpolation of the default CLM restart file.
+   # It may not be needed in runs that start from a somewhat spun up ensemble,
+   # but we don't particularly want or need this bit of physics.
+   echo "urban_hac = 'OFF'"            >> ${fname}
+   echo "building_temp_method = 0 "    >> ${fname}
 
    # Probably never want, but if I need to start from a not spun up CLM file,
    # specified in finidat, use this
@@ -1270,7 +1302,7 @@ cd \${RUNDIR}
 
 echo 'Copying the required CESM files to the run directory to rerun a previous step. '
 echo 'CONTINUE_RUN from env_run.xml is' \${CONTINUE_RUN}
-if ( \${CONTINUE_RUN} == TRUE ) then
+if ( \${CONTINUE_RUN} =~ TRUE ) then
   echo 'so files for some later step than the initial one will be restaged.'
   echo "Date to reset files to is: \${restart_time}"
 else
@@ -1279,7 +1311,7 @@ else
 endif
 echo ''
 
-if ( \${CONTINUE_RUN} == TRUE ) then
+if ( \${CONTINUE_RUN} =~ TRUE ) then
 
    #----------------------------------------------------------------------
    # This block copies over a set of restart files from any previous step of
@@ -1293,7 +1325,7 @@ if ( \${CONTINUE_RUN} == TRUE ) then
    #  of the short term archive 'rest' restart directories.  This assumes
    #  the long term archiver has NOT copied these files to the HPSS yet.
 
-   if (  \${DOUT_S} == TRUE ) then
+   if (  \${DOUT_S} =~ TRUE ) then
 
       # The restarts should be in the short term archive directory.  See
       # www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide1_2/x1565.html#running_ccsm_restarts
@@ -1335,7 +1367,7 @@ if ( \${CONTINUE_RUN} == TRUE ) then
          else if ($river_runoff == 'MOSART') then
             echo "${case}.mosart\${inst_string}.r.\${restart_time}.nc"  >! rpointer.rof\${inst_string}
          endif
-         if (\$CISM_RESTART == TRUE) then
+         if (\$CISM_RESTART =~ TRUE) then
             echo "${case}.cism\${inst_string}.r.\${restart_time}.nc"  >! rpointer.glc\${inst_string}
          endif
 
@@ -1385,7 +1417,7 @@ else     # CONTINUE_RUN == FALSE
       else if ($river_runoff == 'MOSART') then
          ${LINK} ${stagedir}/${refcase}.mosart\${inst_string}.r.${init_time}.nc .
       endif
-      if (\$CISM_RESTART == 'TRUE') then
+      if (\$CISM_RESTART =~ TRUE) then
          ${LINK} ${stagedir}/${refcase}.cism\${inst_string}.r.${init_time}.nc  .
       endif
 
@@ -1414,9 +1446,9 @@ else     # CONTINUE_RUN == FALSE
    # file from the RUNDIR directory.
    # Replace the inflation cookie, in case it was removed by a failed first cycle.
    if ( $num_instances > 1 ) then
-      ls ${stagedir}/*infl*
+      ls ${stagedir}/*inf*
       if ($status == 0) then
-         cp ${stagedir}/*infl* .
+         cp ${stagedir}/*inf* .
       else
          date >! \${rundir}/cam_inflation_cookie
       endif

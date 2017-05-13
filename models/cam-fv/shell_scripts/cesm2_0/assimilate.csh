@@ -27,7 +27,9 @@ pwd
 set nonomatch       # suppress "rm" warnings if wildcard does not match anything
 
 setenv CASEROOT $1
-setenv cycle    $2
+# Python uses C indexing on loops; cycle = [0,....,$DATA_ASSIMILATION_CYCLES - 1]
+# "Fix" that here, so the rest of the script isn't confusing.
+@ cycle = $2 + 1
 
 # The FORCE options are not optional.
 # The VERBOSE options are useful for debugging though
@@ -79,6 +81,9 @@ setenv EXEROOT        `./xmlquery EXEROOT     -value`
 setenv RUNDIR         `./xmlquery RUNDIR      -value`
 setenv archive        `./xmlquery DOUT_S_ROOT -value`
 setenv DATA_ASSIMILATION_CYCLES        `./xmlquery DATA_ASSIMILATION_CYCLES -value`
+setenv save_all_inf TRUE
+# A switch to signal how often to save the stages' ensemble members: NONE, RESTART_TIMES, ALL
+setenv save_stages TRUE
 
 set echo verbose
 cd $RUNDIR
@@ -99,6 +104,10 @@ if ($status == 0) then
    $MOVE ../Hide*/* .
    rmdir ../Hide*
 endif
+
+# Make a place to store inflation restarts to protect from purging until
+# st_archive can make a home for them.
+if (! -d $archive/esp/rest && $save_all_inf =~ TRUE) mkdir -p $archive/esp/rest
 
 # Cwd is currently RUNDIR.
 set log_list = `ls -t cesm.log.*`
@@ -137,15 +146,27 @@ if ($#log_list >= 3) then
        ($sec_o_day =~ '00000' && $day_o_month % BOGUS_save_every_Mth != 0) ) then
       echo "Removing unneeded restart file set from RUNDIR: "
       echo "    $rm_date[1]"'*.{r,rs,rh0,h0,i}.*'${day_o_month}-${sec_o_day}
-      # Remove member restarts (but not DART output)
+      # Optionally save inflation restarts, even if it's not a 'save restart' time.
+      if ($save_all_inf =~ TRUE) $MOVE $rm_date[1]*inf*${day_o_month}-${sec_o_day}*  $archive/esp/rest
+
+      # Remove intermediate member restarts (but not DART means, sd, obs_seq, inflation restarts output)
       # Note that *cpl.ha.* is retained, and any h#, #>0.
       #        $CASE                          DD          -SSSSS
-      $REMOVE  $rm_date[1]*.{r,rs,rh0,h0,i}.*${day_o_month}-${sec_o_day}* &
-      $REMOVE  $rm_date[1].*[0-9].{input,preassim,postassim}*${day_o_month}-${sec_o_day}* &
-
-      # Remove log files: *YYMMDD-HHMMSS.  
-      $REMOVE  *$rm_log[$rm_slot]*  &
+      $REMOVE  $rm_date[1]*.{r,rs,rh0,h0}.*${day_o_month}-${sec_o_day}* &
+      # Handle .i. separately to avoid sweeping up .input_{mean,sd,...} files.
+      $REMOVE $rm_date[1]*.i.*${day_o_month}-${sec_o_day}*  &
+      if ($save_stages =~ NONE || $save_stages =~ RESTART_TIMES) then
+         $REMOVE  $rm_date[1].*[0-9].{input,preassim,postassim}*${day_o_month}-${sec_o_day}* &
+      endif
    else
+      # Optionally COPY inflation restarts to the same place as the other inflation restarts.
+      if ($save_all_inf =~ TRUE) $COPY $rm_date[1]*inf*${day_o_month}-${sec_o_day}*  $archive/esp/rest
+
+      # Optionally REMOVE stages' ensemble members (not means and sds).
+      if ($save_stages =~ NONE ) then
+         $REMOVE  $rm_date[1].*[0-9].{input,preassim,postassim}*${day_o_month}-${sec_o_day}* &
+      endif
+
       # Save the restart set to archive/rest/$datename, where it will be safe
       # from removes of $component/rest and ${case}.locked/archive.
       set save_date = `echo $re_list[3] | sed -e "s/\./ /g;"`
@@ -153,14 +174,17 @@ if ($#log_list >= 3) then
       set save_root = $archive/rest/$save_date[$piece]
       if (! -d $save_root) then
          mkdir -p $save_root
-         $MOVE $rm_date[1]*.{r,rs,rh0,h0,i}.*${day_o_month}-${sec_o_day}*  $save_root &
-         $MOVE                         *inf*${day_o_month}-${sec_o_day}*  $save_root &
+         $MOVE $rm_date[1]*.{r,rs,rh0,h0}.*${day_o_month}-${sec_o_day}*  $save_root &
+         # Handle .i. separately to avoid sweeping up .input_{mean,sd,...} files.
+         $MOVE $rm_date[1]*.i.*${day_o_month}-${sec_o_day}*  $save_root &
+         $COPY            *inf*${day_o_month}-${sec_o_day}*  $save_root &
+         # Save a few log files
+         $MOVE *0001*$rm_log[$rm_slot]*                      $save_root 
 
       endif
-
-      # Remove log files: *YYMMDD-HHMMSS*.  
-      $REMOVE  *$rm_log[$rm_slot]*  &
    endif
+   # Remove log files: *YYMMDD-HHMMSS*.  Except not da.log files
+   $REMOVE  [^d]*$rm_log[$rm_slot]*  &
 
    # I'd like to remove the CAM .r. files, since we always use the .i. files to do a hybrid start,
    # but apparently CESM needs them to be there, even though it doesn't read fields from them.
@@ -168,7 +192,6 @@ if ($#log_list >= 3) then
 
    # During the last cycle, hide the 2nd newest restart set 
    # so that it's not archived, but is available for debugging.
-   # If it's the last cycle, hide the restart set.
    # This is assuming that DATA_ASSIMILATION_CYCLES has not been changed in env_run.xml
    # since the start (not submission) of this job.
    # (Requested by Karspeck for coupled assims, which need to keep 4 atmospheric
@@ -181,15 +204,27 @@ if ($#log_list >= 3) then
       set sec_o_day   = $hide_date[$sec]
       set hidedir = ../Hide_${day_o_month}-${sec_o_day}
       mkdir $hidedir
-      $MOVE  $hide_date[1]*.[rhi]*${day_o_month}-${sec_o_day}*   $hidedir
-      $MOVE  $hide_date[1]*.*inf*${day_o_month}-${sec_o_day}*    $hidedir
+      # Optionally COPY the 2nd to last inflation restarts to the archive directory.
+      if ($save_all_inf =~ TRUE) \
+         $COPY $hide_date[1]*.*inf*${day_o_month}-${sec_o_day}*  $archive/esp/rest
+      # input*inf at this last cycle will be linked to the output of the previous cycle,
+      # which is being hidden here.
+      # output*inf must be copied because it needs to be in rundir when st_archive runs
+      # to save the results of the following assim (number $DATA_ASSIMILATION_CYCLES).
+      $MOVE           $hide_date[1]**inf*${day_o_month}-${sec_o_day}*    $hidedir
+      $COPY  $hidedir/$hide_date[1]*.output*inf*${day_o_month}-${sec_o_day}*    .
+
+      $MOVE $hide_date[1]*.[rhi]*${day_o_month}-${sec_o_day}*    $hidedir
+      # Move DART files (but not output inflation) back here for possible archiving.
+      $MOVE ${hidedir}/*[^f]_{mean,sd}* .
+      $MOVE ${hidedir}/*.[ip]*inf_{mean,sd}* .
 
       # Move log files: *YYMMDD-HHMMSS.  [2] means the 2nd newest restart set is being moved.
       set rm_log = `echo $log_list[2] | sed -e "s/\./ /g;"`
       # -1 skips the gz at the end of the names.
       set rm_slot = $#rm_log
-      if ($rm_log[$#rm_log] == 'gz') @ rm_slot--
-      echo '$rm_log['$rm_slot']='$rm_log[$rm_slot]
+      if ($rm_log[$#rm_log] =~ gz) @ rm_slot--
+      echo 'Moving log files into $hidedir; $rm_log['$rm_slot']='$rm_log[$rm_slot]
       $MOVE  *$rm_log[$rm_slot]*  $hidedir
    endif
 
@@ -437,8 +472,9 @@ ex_end
       # If inflation files exists, use them as input for this assimilation
       # Must be separate commands because the 'order' that means and sds 
       # are finished being written out varies from cycle to cycle.
-      (ls -rt1 $CASE.cam.${stage}_priorinf_mean* | tail -n 1 >! latestfile) > & /dev/null
-      (ls -rt1 $CASE.cam.${stage}_priorinf_sd*   | tail -n 1 >> latestfile) > & /dev/null
+      # Leaving $CASE off of these ls allows it to find inflation files from ref_case.
+      (ls -rt1 *.cam.${stage}_priorinf_mean* | tail -n 1 >! latestfile) > & /dev/null
+      (ls -rt1 *.cam.${stage}_priorinf_sd*   | tail -n 1 >> latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
       if ( $nfiles > 0 ) then
          set latest_mean = `head -n1 latestfile`
@@ -446,8 +482,9 @@ ex_end
          # These file names are in use as of (r10786 2016-12-14).
          # filter/filter_mod.f90:
          #    call set_file_metadata(file_info, PRIOR_INF_MEAN, stage, 'priorinf_mean', 'prior inflation mean')
-         ${LINK} $latest_mean input_priorinf_mean.nc
-         ${LINK} $latest_sd   input_priorinf_sd.nc
+         # Need to COPY instead of link because of short-term archiver and disk management.
+         ${COPY} $latest_mean input_priorinf_mean.nc
+         ${COPY} $latest_sd   input_priorinf_sd.nc
       else
          echo "ERROR: Requested PRIOR inflation, but neither stage 'postassim' nor 'output' is requested."
          echo "       There's no inflation file for the next cycle to use."
@@ -486,8 +523,8 @@ ex_end
    else
       # Look for the output from the previous assimilation.
       # (The only stage after posterior inflation.)
-      (ls -rt1 ${CASE}.cam.output_postinf_mean* | tail -n 1 >! latestfile) > & /dev/null
-      (ls -rt1 ${CASE}.cam.output_postinf_sd*   | tail -n 1 >> latestfile) > & /dev/null
+      (ls -rt1 *.cam.output_postinf_mean* | tail -n 1 >! latestfile) > & /dev/null
+      (ls -rt1 *.cam.output_postinf_sd*   | tail -n 1 >> latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
 
       # If one exists, use it as input for this assimilation
@@ -658,15 +695,13 @@ if (-f $reg_diag) then
 endif
 
 
-endif
-
 # RMA
 # Then this script will need to feed the files in output_restart_list_file
 # to the next model advance.  
 set line = `grep 0001 $output_file_list | sed -e "s#[\.]# #g"` 
 set l = 1
 while ($l < $#line)
-   if ($line[$l] == 'cam_0001') then
+   if ($line[$l] =~ cam_0001) then
       @ l++
       set file_type = $line[$l]
       break
@@ -685,6 +720,14 @@ while ( ${member} <= ${ensemble_size} )
    @ member++
 
 end
+
+# DEBUB st_archive by making a shadow copy of this directory.
+if ($case == $DATA_ASSIMILATION_CYCLES) then
+   mkdir ../run_shadow
+   foreach f (`ls`)
+      ls -l $f > ../run_shadow/$f
+   end
+endif   
 
 echo "`date` -- END CAM_ASSIMILATE"
 
