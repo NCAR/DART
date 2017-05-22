@@ -1490,7 +1490,7 @@ call nc_add_global_attribute(ncFileID, "model_source", source)
 call nc_add_global_attribute(ncFileID, "model_revision", revision)
 call nc_add_global_attribute(ncFileID, "model_revdate", revdate)
 
-call nc_add_global_attribute(ncFileID, "model", "bgrid_solo")
+call nc_add_global_attribute(ncFileID, "model", "FMS_Bgrid")
 
 !-------------------------------------------------------------------------------
 ! Define the new dimensions IDs
