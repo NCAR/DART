@@ -47,7 +47,7 @@ if ( tnum_vars <= 0 )
 end
 
 %% Get some information from the file2
-dmodel  = ncreadatt(file1,'/','model');
+dmodel  = ncreadatt(file2,'/','model');
 
 dvars       = get_DARTvars(file2);
 dnum_times  = dim_length(file2,'time');

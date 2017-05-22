@@ -51,7 +51,7 @@ switch lower(pinfo.model)
                    'tindex1',pinfo.diagn_time(1), ...
                    'tcount',pinfo.diagn_time(2));
 
-      num_vars = size(spread,1);
+      [~,num_vars] = size(spread);
 
       % Also need to compute the spread; zero truth for this and
       % compute distance from 0
