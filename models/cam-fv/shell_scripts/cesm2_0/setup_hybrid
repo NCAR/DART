@@ -34,7 +34,7 @@
 # is used. Instructions on what to change to use the SE core or WACCM are
 # outlined in the models/cam-fv/model_mod.html documentation.
 #
-# This script ($rma/models/cam-fv/shell_scripts/cesm2_0_beta05/setup_advanced) has many 
+# This script ($rma/models/cam-fv/shell_scripts/cesm2_0/setup_hybrid) has many 
 # changes from $non-rma/models/cam-fv/shell_scripts/CESM1_2_1_setup_hybrid
 # due to CESM's implementation of cime and move to perl scripts and xml files 
 # for all of the setup and running.  CESM1_5 enables running multiple cycles in a single
@@ -145,14 +145,6 @@ setenv compset              F
 setenv resolution           f19_f19
 setenv cesmtag              cesm2_0_beta05_cam5_4_101
 setenv num_instances        3
-# F2000_DEV = 2000_CAM60_CLM50%BGC_CICE%PRES_DOCN%DOM_MOSART_CISM1%NOEVOLVE_SWAV
-#             defined in components/cam, not cime(!).
-# setenv compset          F2000_DEV
-setenv compset_args     "--compset $compset"
-# setenv resolution       f19_d025
-# setenv user_grid        "  --gridfile /glade/p/work/raeder/Exp/CAM6_clouds"
-# setenv user_grid        "${user_grid}/config_grids+fv1+2deg_oi0.25_gland20.xml"
-setenv num_instances    3
 
 # ==============================================================================
 # machines and directories:
@@ -292,7 +284,7 @@ setenv stop_n              6
 # ==============================================================================
 
 setenv PROJECT      P86850054
-setenv queue        economy
+setenv queue        premium
 setenv timewall     0:20
 
 # ==============================================================================
@@ -902,7 +894,6 @@ endif
 # implementation bugs. These are known problems and will be fixed soon.
 # this should be removed when the files are fixed:
 
-# CESM1_5:
 # rtm.buildnml.csh have been replaced with rtm.buildnml perl scripts,
 # which have the multi-instance fixes in them.
 # BUT, they look in the wrong places for the rtm restart file in this hybrid setup:

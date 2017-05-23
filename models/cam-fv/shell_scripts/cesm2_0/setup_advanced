@@ -32,8 +32,8 @@
 # is used. Instructions on what to change to use the SE core or WACCM are
 # outlined in the models/cam-fv/model_mod.html documentation.
 #
-# This script ($rma/models/cam-fv/shell_scripts/cesm2_0_beta05/setup_advanced) has many 
-# changes from $non-rma/models/cam-fv/shell_scripts/CESM1_2_1_setup_hybrid
+# This script ($rma/models/cam-fv/shell_scripts/cesm2_0/setup_advanced) has many 
+# changes from $non-rma/models/cam-fv/shell_scripts/CESM1_2_1_setup_advanced
 # due to CESM's implementation of cime and move to perl scripts and xml files 
 # for all of the setup and running.  CESM1_5 enables running multiple cycles in a single
 # job without running st_archive.  This can make use of a large run directory, 
@@ -273,6 +273,7 @@ setenv stop_n              6
 # Daily, 1/4-degree SSTs from Reynolds,...,Tomas
 setenv sst_dataset \
    "/glade/p/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20130101_cat_20130731_filled_c170223.nc"
+#    "/glade/p/work/raeder/Models/CAM_init/SST/avhrr-only-v2.20100101_cat_20101231_filled_c130829.nc"
 setenv sst_grid    /glade/p/work/raeder/Models/CAM_init/SST/domain.ocn.d025.120821.nc
 setenv sst_year_start $start_year
 setenv sst_year_end   $start_year
