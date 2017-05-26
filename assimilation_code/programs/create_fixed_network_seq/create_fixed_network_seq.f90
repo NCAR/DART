@@ -49,8 +49,10 @@ call static_init_model()
 call static_init_obs_sequence
 
 ! Write the sequence to a file
-write(*, *) 'Input filename for network definition sequence (usually  set_def.out  )'
-read(*, *) file_name
+write(*, *) 'Input filename for network definition sequence (<return> for set_def.out  )'
+read(*, 11) file_name
+11 format(a256)
+if(file_name == '') file_name = 'set_def.out'
 call read_obs_seq(file_name, 0, 0, 0, seq_in)
 
 ! Find out how many obs there are
@@ -183,8 +185,10 @@ else
    goto 20
 endif
 
-write(*, *) 'What is output file name for sequence (  obs_seq.in   is recommended )'
-read(*, *) file_name
+write(*, *) 'What is output file name for sequence (<return> for obs_seq.in)'
+read(*, 11) file_name
+if(file_name == '') file_name = 'obs_seq.in'
+
 call write_obs_seq(seq, file_name)
 
 call error_handler(E_MSG,'create_fixed_network_seq','Finished successfully.',source,revision,revdate)
