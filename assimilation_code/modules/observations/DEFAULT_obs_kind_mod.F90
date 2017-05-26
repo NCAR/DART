@@ -296,7 +296,41 @@ integer, parameter, public :: &
     QTY_NO                          = 155, &
     QTY_NO2                         = 156
 
-! more chemistry kinds (Jerome Barre)  (last three slots)
+! more chemistry kinds (Jerome Barre)  (through 249)
+integer, parameter, public :: &
+    QTY_CO01                        = 161, &
+    QTY_CO02                        = 162, &
+    QTY_CO03                        = 163 
+
+integer, parameter, public :: &
+    QTY_SFCO                        = 170, &
+    QTY_SFCO01                      = 171, &
+    QTY_SFCO02                      = 172, &
+    QTY_SFCO03                      = 173
+
+
+integer, parameter, public :: &
+    QTY_AOD                         = 200, &
+    QTY_CB1                         = 201, &
+    QTY_CB2                         = 202, &
+    QTY_OC1                         = 203, &
+    QTY_OC2                         = 204, &
+    QTY_CB102                       = 205, &
+    QTY_CB202                       = 206, &
+    QTY_OC102                       = 207, &
+    QTY_OC202                       = 208
+
+integer, parameter, public :: &
+
+    QTY_SFCB1                       = 221, &
+    QTY_SFCB2                       = 222, &
+    QTY_SFOC1                       = 223, &
+    QTY_SFOC2                       = 224, &
+    QTY_SFCB102                     = 225, &
+    QTY_SFCB202                     = 226, &
+    QTY_SFOC102                     = 227, &
+    QTY_SFOC202                     = 228
+
 integer, parameter, public :: &
     QTY_CO2                         = 247, &
     QTY_NH3                         = 248, &
@@ -677,14 +711,42 @@ obs_kind_names(142) = obs_kind_type(QTY_GROUND_HEAT_FLUX      ,'QTY_GROUND_HEAT_
 obs_kind_names(143) = obs_kind_type(QTY_VERTICAL_TEC          ,'QTY_VERTICAL_TEC')
 obs_kind_names(144) = obs_kind_type(QTY_O_N2_COLUMN_DENSITY_RATIO, 'QTY_O_N2_COLUMN_DENSITY_RATIO')
 
-obs_kind_names(151) = obs_kind_type(QTY_O3,              'QTY_O3')
-obs_kind_names(153) = obs_kind_type(QTY_CO,              'QTY_CO')
-obs_kind_names(155) = obs_kind_type(QTY_NO,              'QTY_NO')
-obs_kind_names(156) = obs_kind_type(QTY_NO2,             'QTY_NO2')
+obs_kind_names(151) = obs_kind_type(QTY_O3,             'QTY_O3')
+obs_kind_names(153) = obs_kind_type(QTY_CO,             'QTY_CO')
+obs_kind_names(155) = obs_kind_type(QTY_NO,             'QTY_NO')
+obs_kind_names(156) = obs_kind_type(QTY_NO2,            'QTY_NO2')
 
-obs_kind_names(247) = obs_kind_type(QTY_CO2,             'QTY_CO2')
-obs_kind_names(248) = obs_kind_type(QTY_NH3,             'QTY_NH3')
-obs_kind_names(249) = obs_kind_type(QTY_CH4,             'QTY_CH4')
+obs_kind_names(161) = obs_kind_type(QTY_CO01,           'QTY_CO01')
+obs_kind_names(162) = obs_kind_type(QTY_CO02,           'QTY_CO02')
+obs_kind_names(163) = obs_kind_type(QTY_CO03,           'QTY_CO03')
+
+obs_kind_names(170) = obs_kind_type(QTY_SFCO,           'QTY_SFCO')
+obs_kind_names(171) = obs_kind_type(QTY_SFCO01,         'QTY_SFCO01')
+obs_kind_names(172) = obs_kind_type(QTY_SFCO02,         'QTY_SFCO02')
+obs_kind_names(173) = obs_kind_type(QTY_SFCO03,         'QTY_SFCO03')
+
+obs_kind_names(200) = obs_kind_type(QTY_AOD,            'QTY_AOD')
+obs_kind_names(201) = obs_kind_type(QTY_CB1,            'QTY_CB1')
+obs_kind_names(202) = obs_kind_type(QTY_CB2,            'QTY_CB2')
+obs_kind_names(203) = obs_kind_type(QTY_OC1,            'QTY_OC1')
+obs_kind_names(204) = obs_kind_type(QTY_OC2,            'QTY_OC2')
+obs_kind_names(205) = obs_kind_type(QTY_CB1,            'QTY_CB102')
+obs_kind_names(206) = obs_kind_type(QTY_CB2,            'QTY_CB202')
+obs_kind_names(207) = obs_kind_type(QTY_OC1,            'QTY_OC102')
+obs_kind_names(208) = obs_kind_type(QTY_OC2,            'QTY_OC202')
+
+obs_kind_names(221) = obs_kind_type(QTY_SFCB1,          'QTY_SFCB1')
+obs_kind_names(222) = obs_kind_type(QTY_SFCB2,          'QTY_SFCB2')
+obs_kind_names(223) = obs_kind_type(QTY_SFOC1,          'QTY_SFOC1')
+obs_kind_names(224) = obs_kind_type(QTY_SFOC2,          'QTY_SFOC2')
+obs_kind_names(225) = obs_kind_type(QTY_SFCB1,          'QTY_SFCB102')
+obs_kind_names(226) = obs_kind_type(QTY_SFCB2,          'QTY_SFCB202')
+obs_kind_names(227) = obs_kind_type(QTY_SFOC1,          'QTY_SFOC102')
+obs_kind_names(228) = obs_kind_type(QTY_SFOC2,          'QTY_SFOC202')
+
+obs_kind_names(247) = obs_kind_type(QTY_CO2,            'QTY_CO2')
+obs_kind_names(248) = obs_kind_type(QTY_NH3,            'QTY_NH3')
+obs_kind_names(249) = obs_kind_type(QTY_CH4,            'QTY_CH4')
 
 obs_kind_names(251) = obs_kind_type(QTY_TEMPERATURE_ELECTRON  ,'QTY_TEMPERATURE_ELECTRON')
 obs_kind_names(252) = obs_kind_type(QTY_TEMPERATURE_ION       ,'QTY_TEMPERATURE_ION')
