@@ -56,6 +56,17 @@ endif
 if ( ! -e perfect_input.nc ) ncgen -o perfect_input.nc perfect_input.cdl
 if ( ! -e  filter_input.nc ) ncgen -o  filter_input.nc  filter_input.cdl
 
+if ( ! -e perfect_input_diurnal.nc ) ncgen -o perfect_input_diurnal.nc perfect_input_diurnal.cdl
+if ( ! -e  filter_input_diurnal.nc ) ncgen -o  filter_input_diurnal.nc  filter_input_diurnal.cdl
+
+if ( ! -e perfect_input_saw.nc ) ncgen -o perfect_input_saw.nc perfect_input_saw.cdl
+if ( ! -e  filter_input_saw.nc ) ncgen -o  filter_input_saw.nc  filter_input_saw.cdl
+
+if ( ! -e perfect_input_source_noise.nc ) ncgen -o perfect_input_source_noise.nc perfect_input_source_noise.cdl
+if ( ! -e  filter_input_source_noise.nc ) ncgen -o  filter_input_source_noise.nc  filter_input_source_noise.cdl
+
+
+
 #----------------------------------------------------------------------
 # 'preprocess' is a program that culls the appropriate sections of the
 # observation module for the observations types in 'input.nml'; the
