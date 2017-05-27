@@ -10,7 +10,7 @@ function h = plot_polar(y, x, mean_dist, string, model_size)
 % Y includes a wraparound point, x does not
 x_t(model_size + 1) = x(1);
 x_t(1:model_size) = x;
-h = polar(y, mean_dist + x_t, string);
+h = polar_dares(y, mean_dist + x_t, string);
 
 end
 
