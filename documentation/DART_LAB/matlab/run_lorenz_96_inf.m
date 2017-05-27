@@ -386,7 +386,7 @@ handles.ClearHistograms = uicontrol('Style', 'pushbutton', ...
 handles.ui_text_ens_size_err_print = uicontrol('Style', 'text', ...
     'Units'             , 'Normalized', ...
     'Position'          , [0.1 0.6000 0.3000 0.0800], ...
-    'String'            , 'ERROR: Ens. Size value must be greater or equal to 2.', ...
+    'String'            , 'ERROR: Ens. Size value must be greater than or equal to 2.', ...
     'BackgroundColor'   , 'White', ...
     'ForegroundColor'   , atts.red, ...
     'FontName'          , atts.fontname, ...
@@ -478,21 +478,21 @@ reset_Callback();
 subplot(handles.timeseries);
 set(handles.timeseries, 'FontSize', atts.fontsize);
 
-h_prior_rms        = plot(handles.prior_rms       , '-'  , 'LineWidth',2.0, 'Color', atts.green); hold on
-h_posterior_rms    = plot(handles.posterior_rms   , 'b'  , 'LineWidth',2.0);
-h_prior_spread     = plot(handles.prior_spread    , '-.' , 'LineWidth',2.0, 'Color', atts.green);
-h_posterior_spread = plot(handles.posterior_spread, 'b-.', 'LineWidth',2.0);
+h_prior_rms        = plot(handles.prior_rms       , '-' , 'LineWidth',2.0, 'Color', atts.green); hold on
+h_posterior_rms    = plot(handles.posterior_rms   , '-' , 'LineWidth',2.0, 'Color', atts.blue );
+h_prior_spread     = plot(handles.prior_spread    , '-.', 'LineWidth',2.0, 'Color', atts.green);
+h_posterior_spread = plot(handles.posterior_spread, '-.', 'LineWidth',2.0, 'Color', atts.blue );
 
 h = legend('Prior RMSE', 'Posterior RMSE', 'Prior Spread', 'Posterior Spread');
-set(h, 'FontSize', atts.fontsize, 'Position',[0.51 0.601 0.118 0.148]); % Sadly, these dont seem to scale - even when normalized.
+set(h, 'FontSize', atts.fontsize, 'Position',[0.51 0.601 0.118 0.148], 'EdgeColor', 'w'); % Sadly, these dont seem to scale - even when normalized.
 
 ylabel('RMSE & Spread', 'FontSize', atts.fontsize);
 xlabel('Time',          'FontSize', atts.fontsize);
 
-set(h_prior_rms,        'Visible', 'off')
-set(h_posterior_rms,    'Visible', 'off')
-set(h_prior_spread,     'Visible', 'off')
-set(h_posterior_spread, 'Visible', 'off')
+set(h_prior_rms,        'Visible', 'on')
+set(h_posterior_rms,    'Visible', 'on')
+set(h_prior_spread,     'Visible', 'on')
+set(h_posterior_spread, 'Visible', 'on')
 
 %%%% -----
 subplot(handles.infseries);
@@ -502,16 +502,15 @@ cartes_s = 360/40;
 cartes_y = 0:cartes_s:351;
 cartes_t = 0:30:330;
 
-h_inflation = plot(handles.prior_inf, '-x', 'Color', atts.red);
+h_inflation = plot(handles.prior_inf, '-x', 'Color', atts.blue, 'MarkerFaceColor', atts.red);
 set(gca, 'XLim', [ cartes_y(1)-cartes_s, cartes_y(end)+cartes_s ], 'XTick', cartes_t ); box on
 
 ylabel('Inflation | Deflation', 'FontSize', atts.fontsize);
 xlabel('Location', 'FontSize', atts.fontsize);
 
 set(h_inflation, 'Visible', 'off')
+
 %%%% ----
-
-
 subplot(handles.prior_rank_histogram);
 set(handles.prior_rank_histogram, 'FontSize', atts.fontsize);
 ylabel('Frequency');
@@ -526,22 +525,29 @@ xlabel('Rank');
 title ('Posterior Rank Histogram', 'FontSize', atts.fontsize);
 hold on
 
+%%%% ----
 subplot(handles.polar_plot);
-
 polar_y = (0:MODEL_SIZE) / MODEL_SIZE * 2 * pi;
 
 % Plot a single point to make sure the axis limits are okay
 % Unclear if these can be set more cleanly with polar
 % This also gets the observations into the legend
 
-x     = 14.9;
-y_2   = [0, 2*pi];
-h_obs = plot_polar(y_2, x, handles.mean_dist, 'r*', 1);
-hold on
+        h_obs   = plot_polar([0, 2*pi], 14.9, handles.mean_dist, 'r*', 1); hold on
+handles.h_ens   = plot_polar([0, 2*pi], 1000, handles.mean_dist, '-g', 1); 
+handles.h_truth = plot_polar([0, 2*pi], 1000, handles.mean_dist, '-k', 1);
+
+set(handles.h_truth, 'linewidth', 3); 
+set(handles.h_ens  , 'linewidth', 1, 'Color', atts.green); 
+set(        h_obs  , 'linewidth', 1, 'Color', atts.red, 'Visible', 'off'); 
+
+h_leg = legend( [handles.h_truth, handles.h_ens, h_obs], 'True State', ...
+                'Ensemble', 'Observations', 'Location', 'NorthEast');
+pos   = get(h_leg, 'Position') + [0.046 0.050 0.021 0.012];
+set(h_leg, 'Position', pos, 'FontSize', atts.fontsize, 'EdgeColor', 'w');
 
 % Plot the localization width
-plot_localization();
-set(h_obs, 'Visible', 'Off');
+plot_localization;
 
 %% ----------------------------------------------------------------------
 %  All function below can use the variables defined above.
@@ -674,11 +680,6 @@ set(h_obs, 'Visible', 'Off');
 
             return
 
-        %elseif ( handles.inflation_Damp == 0 )
-        %    % When Damping is zero, no inflation case!
-        %    set(handles.ui_edit_inflation_Damp,'BackgroundColor', atts.red);
-        %    set(handles.ui_text_inf_damp_warn_print, 'Visible','On')
-
         end
 
         % Enable all controls
@@ -725,11 +726,10 @@ set(h_obs, 'Visible', 'Off');
             % After this, only this edit box will work
             turn_off_controls();
             set(handles.ui_edit_localization, 'Enable', 'On');
-
             set(handles.ui_edit_localization, 'String', '?','FontWeight','Bold','BackgroundColor', atts.red );
             set(handles.ui_text_localization_err_print, 'Visible','On')
 
-            fprintf('ERROR: localization must be greater than 0.\n')
+            fprintf('\nERROR: localization must be greater than 0.\n')
             fprintf('ERROR: localization must be greater than 0.\n')
 
             return
@@ -738,10 +738,11 @@ set(h_obs, 'Visible', 'Off');
         % Enable all controls
         turn_on_controls();
         set(handles.ui_edit_localization, 'BackgroundColor', 'White','FontWeight','Normal');
+        set(handles.ui_text_localization_err_print, 'Visible','Off')
 
         % Update the localization plot
         cla(handles.polar_plot);
-        plot_localization();
+        plot_localization;
     end
 
 %% ----------------------------------------------------------------------
@@ -760,7 +761,7 @@ set(h_obs, 'Visible', 'Off');
             set(handles.ui_edit_ens_size, 'String', '?','FontWeight','Bold','BackgroundColor', atts.red );
             set(handles.ui_text_ens_size_err_print, 'Visible','On')
 
-            fprintf('ERROR: Must input an integer Ens. Size greater than 1 and less than 40\n');
+            fprintf('\nERROR: Must input an integer Ens. Size greater than 1 and less than 40\n');
             fprintf('ERROR: Must input an integer Ens. Size greater than 1 and less than 40\n');
 
             return
@@ -797,6 +798,7 @@ set(h_obs, 'Visible', 'Off');
 
         % For convenience make the first prior identical to the first posterior
         handles.prior            = handles.posterior;
+        handles.prior_inf        = ones(1, MODEL_SIZE);
         handles.prior_rms        = 0;
         handles.prior_spread     = 0;
         handles.posterior_rms    = 0;
@@ -908,7 +910,7 @@ set(h_obs, 'Visible', 'Off');
         if(first_call_to_reset)
            first_call_to_reset = false;
         else
-           plot_localization();
+           plot_localization;
         end
 
     end
@@ -957,7 +959,7 @@ set(h_obs, 'Visible', 'Off');
                 [new_ens, new_time] = lorenz_96_adv_1step(handles.posterior(time, :, imem), time, FORCING);
                 handles.prior(new_time, :, imem) = new_ens;
             end
-
+            
             % Inflate ensemble
             handles.prior_inf = 1.0 + handles.inflation_Damp * ( handles.prior_inf - 1.0 );
             for i = 1:MODEL_SIZE
@@ -974,13 +976,9 @@ set(h_obs, 'Visible', 'Off');
 
             % Plot a single invisible point to wipe out the previous plot
             % and maintain axis limits of polar plot.
-            axes(handles.polar_plot);
-            hold off
-            x     = 14.9;
-            y_2   = [0, 2*pi];
-            h_obs = plot_polar(y_2, x, handles.mean_dist, 'r*', 1);
-            hold on
-            set(h_obs, 'Visible', 'Off');
+            axes(handles.polar_plot); cla;
+            h_obs = plot_polar([0, 2*pi], 14.9, handles.mean_dist, 'r*', 1);
+            set(h_obs, 'Visible', 'Off', 'Color', atts.red)
 
             % Plot the ensemble members (green) and the truth (black)
             for imem = 1:handles.ens_size
@@ -993,16 +991,7 @@ set(h_obs, 'Visible', 'Off');
             set(handles.h_truth, 'linewidth', 3);
 
             % Plot a graphical indication of the localization halfwidth; Is expense of this a problem.
-            plot_localization();
-
-            % Get a legend shifted outside the plot
-            h_leg = legend([handles.h_truth handles.h_ens, h_obs], ...
-                'True State', 'Ensemble', 'Observations', 'Location', 'NorthEast');
-            % Following replacement pair of lines puts localization into legend.
-            %h_leg = legend([handles.h_truth handles.h_ens, h_obs, h_loc], ...
-                %'True State', 'Ensemble', 'Observations', 'Localization', 'Location', 'NorthEast');
-            pos = get(h_leg, 'Position')+ [0.046 0.050 0.021 0.012];
-            set(h_leg, 'Position', pos, 'FontSize', atts.fontsize, 'EdgeColor', 'w');
+            plot_localization;
 
             % Update the time label
             set(handles.ui_text_time, 'String', sprintf('Time = %d', handles.time));
@@ -1025,13 +1014,10 @@ set(h_obs, 'Visible', 'Off');
             % Plot the prior_rms error time series
 
             % Change Focus to time evolution of rmse & spread
-            %   axes(handles.timeseries)
-            subplot(handles.timeseries);
-
-            hold on   % FIXME ... do we need this ...
-            plot(handles.prior_rms,         'Color',atts.green,'LineWidth',2.0);
+            subplot(handles.timeseries)
+            plot(handles.prior_rms,    '-' ,'Color',atts.green,'LineWidth',2.0);
             plot(handles.prior_spread, '-.','Color',atts.green,'LineWidth',2.0);
-            set(handles.timeseries,'YGrid','on')
+            set (handles.timeseries,'YGrid','on')
 
             % Plot inflation
             subplot(handles.infseries)
@@ -1040,14 +1026,15 @@ set(h_obs, 'Visible', 'Off');
                     'YLim', [0, 3], 'XTick', cartes_t, 'YTick', [1, 2])
             ylabel('Inflation | Deflation', 'FontSize', atts.fontsize);
             xlabel('Location', 'FontSize', atts.fontsize);
-            L = legend( [ 'Overall mean= ' sprintf( '%.4f', mean(handles.prior_inf) ) ], 'Location', 'South' );
-            set( L, 'EdgeColor','w','FontSize', atts.fontsize );
+            text( 97, .5, [ 'Overall mean= ' sprintf( '%.4f', mean(handles.prior_inf) ) ], 'FontSize', atts.fontsize );
             hold off
 
             % Plot the rank histogram for the prior
             subplot(handles.prior_rank_histogram);
-            bar(temp_rank, 'stacked');
-            axis tight;
+            B = bar(temp_rank, 0.7, 'stacked');
+            B(1).FaceColor= atts.blue ; B(1).EdgeColor= 'k';
+            B(2).FaceColor= atts.red  ; B(2).EdgeColor= 'k';
+            axis tight
 
         else % We need to do an assimilation.
 
@@ -1076,14 +1063,11 @@ set(h_obs, 'Visible', 'Off');
                 % Compute the increments for observed variable
                 switch handles.filter_type_string
                     case 'EAKF'
-                        [obs_increments, ~] = ...
-                            obs_increment_eakf(obs_prior, obs(i), obs_error_var);
+                        obs_increments = obs_increment_eakf(obs_prior, obs(i), obs_error_var);
                     case 'EnKF'
-                        [obs_increments, ~] = ...
-                            obs_increment_enkf(obs_prior, obs(i), obs_error_var);
+                        obs_increments = obs_increment_enkf(obs_prior, obs(i), obs_error_var);
                     case 'RHF'
-                        [obs_increments, ~] = ...
-                            obs_increment_rhf(obs_prior, obs(i), obs_error_var);
+                        obs_increments = obs_increment_rhf (obs_prior, obs(i), obs_error_var);
                     case 'No Assimilation'
                         %No Incrementation
                         obs_increments = 0;
@@ -1096,7 +1080,7 @@ set(h_obs, 'Visible', 'Off');
                         obs_prior, obs_increments);
 
                     % Compute distance between obs and state for localization
-                    dist = abs(i - j) / 40;
+                    dist = abs(i - j) / MODEL_SIZE;
                     if(dist > 0.5), dist = 1 - dist; end
 
                     % Compute the localization factor
@@ -1117,8 +1101,8 @@ set(h_obs, 'Visible', 'Off');
 
             % Plot the observations
             subplot(handles.polar_plot)
-            h_obs= plot_polar(polar_y, obs, handles.mean_dist, 'r*', MODEL_SIZE);
-            set(h_obs, 'Visible', 'On');
+            h_obs = plot_polar(polar_y, obs, handles.mean_dist, 'r*', MODEL_SIZE);
+            set(h_obs, 'Color', atts.red)
 
             % Update the posterior
             handles.posterior(time, :, :) = temp_ens;
@@ -1141,15 +1125,15 @@ set(h_obs, 'Visible', 'Off');
 
             % Plot the posterior_rms error time series
             subplot(handles.timeseries);
-            set(handles.timeseries,'YGrid','on')
-            hold on
-            plot(handles.posterior_rms,    'b',  'LineWidth', 2.0);
-            plot(handles.posterior_spread, 'b-.','LineWidth', 2.0);
+            plot(handles.posterior_rms,    '-' , 'Color', atts.blue, 'LineWidth', 2.0);
+            plot(handles.posterior_spread, '-.', 'Color', atts.blue, 'LineWidth', 2.0);
 
             % Plot the rank histogram for the prior
             subplot(handles.post_rank_histogram);
-            bar(temp_rank, 'stacked');
-            axis tight;
+            B = bar(temp_rank, 0.7, 'stacked');
+            B(1).FaceColor= atts.blue ; B(1).EdgeColor= 'k';
+            B(2).FaceColor= atts.red  ; B(2).EdgeColor= 'k';
+            axis tight
 
             % Set semaphore to indicate that next step is a model advance
             handles.ready_to_advance = true;
@@ -1311,10 +1295,11 @@ set(h_obs, 'Visible', 'Off');
 
 %% -----------------------------------------------------------------------
 
-   function h_loc = plot_localization()
+   function my_h_loc = plot_localization
       % Plot a graphical indication of the localization halfwidth
       subplot(handles.polar_plot);
-
+      dist = 16;
+      
       % Localization is in halfwidth, fraction of domain (NOT RADIANS AS IN 3D MODELS).
       % Convert to halfwidth in radians for plotting
       half_radians = handles.localization * 2 * pi;
@@ -1327,19 +1312,18 @@ set(h_obs, 'Visible', 'Off');
          ymin = -ymax;
          % Use 40 points for each range
          y = ymin:ymax/20:ymax;
-         my_h_loc(ipl) = polar(y, 15*ones(size(y)));
+         my_h_loc = polar_dares(y, dist*ones(size(y)));
          hold on
          % Lines get wider for larger localization
-         set(my_h_loc(ipl), 'linewidth', 2*ipl, 'Color', my_col_loc(ipl, :));
+         set(my_h_loc, 'linewidth', 2*ipl, 'Color', my_col_loc(ipl, :));
       end
-      h_loc = my_h_loc(1);
 
       % Plot a label for the localization graphic
-      h_loc_text = text(-13, 0, 'Localization');
+      h_loc_text = text(-12, 0, 'Localization');
       set(h_loc_text, 'color', 'k', 'fontsize', 15, 'fontweight', 'bold');
 
       % Plot an observation asterisk
-      plot(15, 0, '*', 'MarkerSize', 12, 'MarkerFaceColor', atts.red, 'MarkerEdgeColor', atts.red);
+      plot(dist, 0, '*', 'MarkerSize', 12, 'MarkerFaceColor', atts.red, 'MarkerEdgeColor', atts.red);
    end
 
 end

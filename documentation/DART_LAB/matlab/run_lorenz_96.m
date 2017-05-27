@@ -891,7 +891,7 @@ set(h_obs, 'Visible', 'Off');
                         obs_prior, obs_increments);
 
                     % Compute distance between obs and state for localization
-                    dist = abs(i - j) / 40;
+                    dist = abs(i - j) / MODEL_SIZE;
                     if(dist > 0.5), dist = 1 - dist; end
 
                     % Compute the localization factor

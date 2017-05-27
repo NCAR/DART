@@ -5,7 +5,7 @@ function [new_cov_inflate, new_cov_inflate_sd] = update_inflate(x, sigma_p_2, ob
 % Anderson, J. L., 2009: Spatially and temporally varying adaptive covariance 
 % inflation for ensemble filters. Tellus A, 61, 72-83. doi: 10.1111/j.1600-0870.2008.00361.x 
 %
-% Available at:
+% More documentation available at:
 % https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/assimilation_code/modules/assimilation/adaptive_inflate_mod.html
 
 %% DART software - Copyright UCAR. This open source software is provided
@@ -68,7 +68,7 @@ else
 end
 
 % Make sure the update is not smaller than the lower bound
-if new_cov_inflate < lambda_mean_LB || new_cov_inflate > lambda_mean_UB
+if new_cov_inflate < lambda_mean_LB || new_cov_inflate > lambda_mean_UB || isnan(new_cov_inflate)
     new_cov_inflate = lambda_mean_LB; 
     new_cov_inflate_sd = lambda_sd;
     return
