@@ -60,8 +60,8 @@ end
 
 %% summarize
 
-truth_file = fullfile(mydir,'true_state.nc');
-diagn_file = fullfile(mydir,'preassim.nc');
+truth_file = 'true_state.nc';
+diagn_file = 'preassim.nc';
 
 disp(' ')
 fprintf('the default data directory is          %s\n',mydir)
