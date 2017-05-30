@@ -34,7 +34,8 @@ implicit none
 private
 
 public :: nc_write_location_atts, nc_get_location_varids, &
-          nc_write_location, nc_write_location_vert
+          nc_write_location, nc_write_location_vert,      &
+          nc_add_location_atts
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -76,7 +77,7 @@ integer :: LocDimID, LDimID, VarID
 integer :: rc
 character(len=32) :: context = 'nc_write_location_atts'
 
-! get an id for the locations dimension:  
+! get an id for the location dimension:  
 !  if the user passes us in a dimension id, 
 !     assume it is already created and use it.
 !  if they pass in a valid length, create a 'location' dimension.
@@ -113,6 +114,28 @@ else
    call nc_check(rc, context, 'def_var4:location', fname)
 endif
 
+call nc_add_location_atts(ncFileID, 'location', fname)
+
+end subroutine nc_write_location_atts
+
+!----------------------------------------------------------------------------
+!> Add location-related attributes to the given variable.
+!> (assumes that this variable will contain location info)
+
+subroutine nc_add_location_atts(ncFileID, varname, fname) 
+ 
+integer,                    intent(in) :: ncFileID    ! handle to the netcdf file
+character(len=*),           intent(in) :: varname     ! name of location variable
+character(len=*), optional, intent(in) :: fname       ! file name (for error printing purposes)
+
+integer :: VarID
+integer :: rc
+character(len=32) :: context = 'nc_add_location_atts'
+
+! find the id of the given variable name
+rc = nf90_inq_varid(ncFileID, varname, varid=VarID)
+call nc_check(rc, context, 'inq_varid:'//trim(varname), fname)
+
 rc = nf90_put_att(ncFileID, VarID, 'description', 'location coordinates')
 call nc_check(rc, context, 'put_att:description', fname)
 
@@ -132,10 +155,10 @@ call nc_check(rc, context, 'put_att:units', fname)
 ! create a variable to store the vert choice
 
 if (has_vertical_choice()) then
-   call nc_write_location_vert(ncFileID, LocDimID, fname)
+   call nc_write_location_vert(ncFileID, VarID, fname)
 endif
 
-end subroutine nc_write_location_atts
+end subroutine nc_add_location_atts
 
 !----------------------------------------------------------------------------
 !> Define the ancillary vertical array and attributes

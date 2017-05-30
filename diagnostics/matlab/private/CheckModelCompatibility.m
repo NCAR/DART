@@ -270,15 +270,14 @@ switch lower(modelname)
          y = [dnum_lons dnum_lats dnum_lvls];
 
    case {'mpas_atm'}
-
       dnum_cells = dim_length(fname,'nCells');
       dnum_lvls  = dim_length(fname,'nVertLevels');
          x = 2;
          y = [dnum_cells dnum_lvls];
 
    case {'lorenz_96_2scale'}
-      dnum_X = dim_length(fname,'Xdim');
-      dnum_Y = dim_length(fname,'Ydim');
+      dnum_X = dim_length(fname,'Xlocation');
+      dnum_Y = dim_length(fname,'Ylocation');
 	 x = 2;
          y = [dnum_X dnum_Y];
 
@@ -287,7 +286,6 @@ switch lower(modelname)
 	 x = 1;
 
 end
-
 
 % <next few lines under version control, do not edit>
 % $URL$

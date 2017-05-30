@@ -7,20 +7,22 @@
 # DART $Id$
 #
 # build and test all the models given in the list.
-# usage: [ -mpi | -nompi]
+# usage: [ -mpi | -nompi | -default ]
 #
 #----------------------------------------------------------------------
 
-setenv usingmpi 0
+set usingmpi=no
 
 if ( $#argv > 0 ) then
-  if ("$argv[1]" == "-mpi") then
-    setenv usingmpi 1
-  else if ("$argv[1]" == "-nompi") then
-    setenv usingmpi 0
+  if ( "$argv[1]" == "-mpi" ) then
+    set usingmpi=yes
+  else if ( "$argv[1]" == "-default" ) then
+    set usingmpi=default
+  else if ( "$argv[1]" == "-nompi" ) then
+    set usingmpi=no
   else
     echo "Unrecognized argument to $0: $argv[1]"
-    echo "Usage: $0 [ -mpi | -nompi ]"
+    echo "Usage: $0 [ -mpi | -nompi | -default ]"
     echo " default is to run tests without MPI"
     exit -1
   endif
@@ -29,12 +31,18 @@ endif
 # set the environment variable MPI to anything in order to enable the
 # MPI builds and tests.  set the argument to the build scripts so it
 # knows which ones to build.
-if ( $usingmpi ) then
+if ( "$usingmpi" == "yes" ) then
   echo "Will be building with MPI enabled"
-  setenv QUICKBUILD_ARG -mpi
-else
+  set QUICKBUILD_ARG='-mpi'
+else if ( "$usingmpi" == "default" ) then
+  echo "Will be building with the default MPI settings"
+  set QUICKBUILD_ARG=''
+else if ( "$usingmpi" == "no" ) then
   echo "Will NOT be building with MPI enabled"
-  setenv QUICKBUILD_ARG -nompi
+  set QUICKBUILD_ARG='-nompi'
+else
+  echo "Internal error: unrecognized value of usingmpi; should not happen"
+  exit -1
 endif
 
 #----------------------------------------------------------------------
