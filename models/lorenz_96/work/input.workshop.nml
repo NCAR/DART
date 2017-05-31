@@ -223,7 +223,7 @@
   x_ind            = 2
   num_ens          = 1
   loc_of_interest  = 0.3, 0.0, 0.0
-  kind_of_interest = 'QTY_RAW_STATE_VARIABLE'
+  kind_of_interest = 'QTY_STATE_VARIABLE'
   verbose          = .true.
   interp_test_xrange  = 0.0, 1.0
   interp_test_dx      = 0.02

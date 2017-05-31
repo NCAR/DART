@@ -7556,7 +7556,7 @@ do i = 1, row
       in_state_vector(QTY_SPECIFIC_HUMIDITY) = .true.
 
    ! unrecognized kind string in namelist.
-   ! 0 is actually QTY_RAW_STATE_VARIABLE and not supported here.
+   ! 0 is actually QTY_STATE_VARIABLE and not supported here.
    case (-1, 0) 
       write(errstring, *) 'unrecognized KIND string: ' // trim(wrf_state_variables(2, i))
       call error_handler(E_ERR, 'fill_dart_kinds_table', errstring, &
