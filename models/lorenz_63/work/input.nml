@@ -67,11 +67,11 @@
    inf_initial_from_restart    = .false.,                 .false.,
    inf_sd_initial_from_restart = .false.,                 .false.,
    inf_deterministic           = .true.,                  .true.,
-   inf_initial                 = 1.0,                     1.0,
+   inf_initial                 = 1.0,                    1.0,
    inf_sd_initial              = 0.0,                     0.0,
    inf_damping                 = 1.0,                     1.0,
    inf_lower_bound             = 1.0,                     1.0,
-   inf_upper_bound             = 1000000.0,               1000000.0,
+   inf_upper_bound             = 100.0,                   1000000.0,
    inf_sd_lower_bound          = 0.0,                     0.0
 
    trace_execution              = .false.,
@@ -93,7 +93,7 @@
 
 &assim_tools_nml
    filter_kind                     = 1,
-   cutoff                          = 0.00001,
+   cutoff                          = 1000000.0
    sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
@@ -193,4 +193,5 @@
    input_qc_threshold       =  3.0,
    outlier_threshold        = -1.0,
 /
+
 
