@@ -2246,38 +2246,38 @@ endif
 
 if ( do_prior_inflate ) then
    if ( inf_initial_from_restart(1)    ) &
-      call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_MEAN), READ_COPY, has_units=.false.)
+      call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_MEAN), READ_COPY, inherit_units=.false.)
    if ( inf_sd_initial_from_restart(1) ) &
-      call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_SD),   READ_COPY, has_units=.false.)
+      call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_SD),   READ_COPY, inherit_units=.false.)
 endif
 
 if ( do_posterior_inflate ) then
    if ( inf_initial_from_restart(2)    ) &
-      call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),  READ_COPY, has_units=.false.)
+      call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),  READ_COPY, inherit_units=.false.)
    if ( inf_sd_initial_from_restart(2) ) &
-      call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),    READ_COPY, has_units=.false.)
+      call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),    READ_COPY, inherit_units=.false.)
 endif
 
 ! This is for single file augmented state mean and sd if requested
 if(single_file_in) then
    if (output_mean) then
-     call set_io_copy_flag(file_info,    STAGE_COPIES(ENS_MEAN),  WRITE_COPY, has_units=.true.)
+     call set_io_copy_flag(file_info,    STAGE_COPIES(ENS_MEAN),  WRITE_COPY, inherit_units=.true.)
 
       if ( do_prior_inflate .and. .not. mean_from_restart(prior_inflate) ) &
-        call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_MEAN), WRITE_COPY, has_units=.true.)
+        call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_MEAN), WRITE_COPY, inherit_units=.false.)
 
       if ( do_posterior_inflate .and. .not. mean_from_restart(post_inflate) ) &
-        call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),  WRITE_COPY, has_units=.true.)
+        call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),  WRITE_COPY, inherit_units=.false.)
    endif
    
    if (output_sd) then
-     call set_io_copy_flag(file_info, STAGE_COPIES(ENS_SD),    WRITE_COPY, has_units=.false.)
+     call set_io_copy_flag(file_info, STAGE_COPIES(ENS_SD),    WRITE_COPY, inherit_units=.true.)
 
       if ( do_prior_inflate .and. .not. sd_from_restart(prior_inflate) ) &
-        call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_SD), WRITE_COPY, has_units=.false.)
+        call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_SD), WRITE_COPY, inherit_units=.false.)
 
       if ( do_posterior_inflate .and. .not. sd_from_restart(post_inflate) ) &
-        call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),  WRITE_COPY, has_units=.false.)
+        call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),  WRITE_COPY, inherit_units=.false.)
    endif
 endif
 
@@ -2302,22 +2302,22 @@ endif
 
 if ( output_mean )          &
    call set_io_copy_flag(file_info, STAGE_COPIES(ENS_MEAN),       WRITE_COPY, &
-                         clamp_vars=do_clamping, force_copy_back=force_copy)
+                         inherit_units=.true., clamp_vars=do_clamping, force_copy_back=force_copy)
 if ( output_sd )            &
    call set_io_copy_flag(file_info, STAGE_COPIES(ENS_SD),         WRITE_COPY, &
-                         has_units=.false., force_copy_back=force_copy)
+                         inherit_units=.true., force_copy_back=force_copy)
 if ( do_prior_inflate )     &
-   call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_MEAN), WRITE_COPY, &
-                         has_units=.false., force_copy_back=force_copy)
+   call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_MEAN),  WRITE_COPY, &
+                         inherit_units=.false., force_copy_back=force_copy)
 if ( do_prior_inflate )     &
-   call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_SD),   WRITE_COPY, &
-                         has_units=.false., force_copy_back=force_copy)
+   call set_io_copy_flag(file_info, STAGE_COPIES(PRIORINF_SD),    WRITE_COPY, &
+                         inherit_units=.false., force_copy_back=force_copy)
 if ( do_posterior_inflate ) &
-   call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),  WRITE_COPY, &
-                         has_units=.false., force_copy_back=force_copy)
+   call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_MEAN),   WRITE_COPY, &
+                         inherit_units=.false., force_copy_back=force_copy)
 if ( do_posterior_inflate ) &
-   call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),    WRITE_COPY, &
-                         has_units=.false., force_copy_back=force_copy)
+   call set_io_copy_flag(file_info, STAGE_COPIES(POSTINF_SD),     WRITE_COPY, &
+                         inherit_units=.false., force_copy_back=force_copy)
 
 end subroutine set_output_file_info
 
