@@ -103,12 +103,8 @@ switch lower(pinfo.model)
             end
         end
         
-    case 'lorenz_96_2scale'
-        
-        % The variable names are not simply 'state', 'state_mean', 'state_sd'
-        error('not supported yet')
-        
-    case {'lorenz_63','lorenz_84','lorenz_96','lorenz_04','forced_lorenz_96','ikeda','simple_advection'}
+    case {'lorenz_63','lorenz_84','lorenz_96', 'lorenz_96_2scale', ...
+          'lorenz_04','forced_lorenz_96','ikeda','simple_advection'}
         
         truth      = get_hyperslab('fname',pinfo.truth_file, ...
             'varname',pinfo.var, ...

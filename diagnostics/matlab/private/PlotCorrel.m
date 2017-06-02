@@ -37,11 +37,8 @@ contourlevels = [-1:0.2:-0.2 0.2:0.2:1.0];  % no contour at zero, please
 
 switch(lower(pinfo.model))
 
-    case {'lorenz_96_2scale'}
-
-        error('%s not supported yet',pinfo.model)
-
-    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04','forced_lorenz_96','ikeda','simple_advection'}
+    case {'9var','lorenz_63','lorenz_84','lorenz_96', 'lorenz_96_2scale', ...
+            'lorenz_04','forced_lorenz_96','ikeda','simple_advection'}
 
         % The Base Variable Index must be a valid state variable
         if ( pinfo.base_var_index > pinfo.num_state_vars )

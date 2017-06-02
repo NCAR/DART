@@ -107,7 +107,6 @@ model_time = get_analysis_time(ncBckID, trim(model_analysis_filename))
 !----------------------------------------------------------------------
 ! Read analysis state vector (assuming to be available at the model time)
 !----------------------------------------------------------------------
-!call read_transpose(state_ens_handle, name_handle, domain, dart_index, limit_mem)
 call read_variables(ncAnlID, statevector, 1, nvars, dom_id)
 
 !----------------------------------------------------------------------

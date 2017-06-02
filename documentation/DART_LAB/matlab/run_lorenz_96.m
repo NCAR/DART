@@ -20,8 +20,8 @@ function run_lorenz_96
 %      perturbations to grow large enough to be seen using the default
 %      settings.
 %
-% See also: gaussian_product, oned_model, oned_ensemble, twod_ensemble,
-%           run_lorenz_63
+% See also: gaussian_product.m oned_model.m oned_model_inf.m oned_ensemble.m
+%           twod_ensemble.m run_lorenz_63.m run_lorenz_96_inf.m
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -39,6 +39,7 @@ help run_lorenz_96
 % that variable, in any function, is visible to all the functions that declare
 % it as global.
 
+global TRUE_FORCING;
 global FORCING;
 global MODEL_SIZE;
 global DELTA_T;
@@ -230,7 +231,7 @@ handles.ui_edit_localization = uicontrol(handles.RedPanel, ...
     'Style', 'edit', ...
     'Units', 'Normalized', ...
     'Position', [0.663 0.686 0.300 0.250], ...
-    'String', '100000', ...
+    'String', '1.0', ...
     'BackgroundColor', 'White', ...
     'FontName', atts.fontname, ...
     'FontUnits', 'normalized', ...
@@ -287,7 +288,7 @@ handles.ui_edit_ens_size = uicontrol(handles.RedPanel, ...
 
 handles.ResetButton = uicontrol('Style', 'pushbutton', ...
     'Units', 'Normalized', ...
-    'Position', [0.872 0.016 0.114 0.096], ...
+    'Position', [0.825 0.026 0.158 0.082], ...
     'String', 'Reset', ...
     'BackgroundColor', 'White', ...
     'FontName', atts.fontname, ...
@@ -300,7 +301,7 @@ handles.ResetButton = uicontrol('Style', 'pushbutton', ...
 
 handles.ClearHistograms = uicontrol('Style', 'pushbutton', ...
     'Units', 'Normalized', ...
-    'Position', [0.514 0.006 0.146 0.069], ...
+    'Position', [0.522 0.026 0.158 0.082], ...
     'String', 'Clear Histograms', ...
     'BackgroundColor', 'White', ...
     'FontName', atts.fontname, ...
@@ -308,6 +309,43 @@ handles.ClearHistograms = uicontrol('Style', 'pushbutton', ...
     'FontSize', 0.3, ...
     'FontWeight', 'bold', ...
     'Callback', @ClearHistograms_Callback);
+
+%% -----------------------------------------------------------------------------
+%  These appear to be error messages that can be turned on or off.
+%  They start turned off.
+
+handles.ui_text_ens_size_err_print = uicontrol('Style', 'text', ...
+    'Units'             , 'Normalized', ...
+    'Position'          , [0.1 0.5000 0.3000 0.0800], ...
+    'String'            , 'ERROR: Ens. Size value must be greater than or equal to 2.', ...
+    'BackgroundColor'   , 'White', ...
+    'ForegroundColor'   , atts.red, ...
+    'FontName'          , atts.fontname, ...
+    'FontSize'          , atts.fontsize, ...
+    'FontWeight'        , 'Bold', ...
+    'Visible'           ,'Off');
+
+handles.ui_text_localization_err_print = uicontrol('Style', 'text', ...
+    'Units'             , 'Normalized', ...
+    'Position'          , [0.1 0.5000 0.3000 0.0800], ...
+    'String'            , 'ERROR: localization must be greater than 0.', ...
+    'BackgroundColor'   , 'White', ...
+    'ForegroundColor'   , atts.red, ...
+    'FontName'          , atts.fontname, ...
+    'FontSize'          , atts.fontsize, ...
+    'FontWeight'        , 'Bold', ...
+    'Visible'           ,'Off');
+
+handles.ui_text_inf_err_print = uicontrol('Style', 'text', ...
+    'Units'             , 'Normalized', ...
+    'Position'          , [0.1 0.5000 0.3000 0.0800], ...
+    'String'            , 'ERROR: Inflation value must be greater than 0.', ...
+    'BackgroundColor'   , 'White', ...
+    'ForegroundColor'   , atts.red, ...
+    'FontName'          , atts.fontname, ...
+    'FontSize'          , atts.fontsize, ...
+    'FontWeight'        , 'Bold', ...
+    'Visible'           ,'Off');
 
 %% Set the positions to the plot components. These handles must exist before
 % the call to reset_Callback()
@@ -382,9 +420,8 @@ h_obs = plot_polar(y_2, x, handles.mean_dist, 'r*', 1);
 hold on
 
 % Plot the localization width
-h_loc = plot_localization();
+plot_localization();
 set(h_obs, 'Visible', 'Off');
-
 
 %% ----------------------------------------------------------------------
 %  All function below can use the variables defined above.
@@ -393,10 +430,10 @@ set(h_obs, 'Visible', 'Off');
     function SingleStep_Callback(~, ~)
         % Called whenever [Advance Model/Assimilate Obs] is pressed.
         % If Assimilation is turned off ... we are always ready to advance.
-        
+
         % Signal that something has happened.
         set(handles.ui_button_Single_Step, 'Enable', 'Off');
-        
+
         if(strcmp(handles.filter_type_string, 'No Assimilation'))
             if (strcmp(get(handles.ui_button_Single_Step, 'String') , 'Assimilate Obs'))
                 %If it says Assimilate Obs, that means another assimilation
@@ -405,9 +442,9 @@ set(h_obs, 'Visible', 'Off');
             end
             handles.ready_to_advance = true;
         end
-        
+
         step_ahead();
-        
+
         set(handles.ui_button_Single_Step, 'Enable', 'On');
     end
 
@@ -415,38 +452,38 @@ set(h_obs, 'Visible', 'Off');
 
     function AutoRun_Callback(~, ~)
         % Specifies action for the 'Start/Pause Auto Run' button.
-        
+
         % Turn off all the other model status controls to avoid a mess
         turn_off_controls();
         set(handles.ui_button_Auto_Run, 'Enable', 'On');
-        
+
         % Check the button label to see if we are starting or stopping a Auto run
         if(strcmp(get(handles.ui_button_Auto_Run, 'String'), 'Pause Auto Run'))
-            
+
             % Turn off the Auto run pushbutton until everything has completely stopped
             set(handles.ui_button_Auto_Run, 'Enable', 'Off');
-            
+
             % Being told to stop; switch to not running status
             set(handles.ui_button_Auto_Run, 'String', 'Start Auto Run');
-            
+
         else
             % Being told to start Auto run
             % Change the pushbutton to stop
             set(handles.ui_button_Auto_Run, 'String', 'Pause Auto Run');
-            
+
             % Loop through advance and assimilate steps until stopped
             while(true)
-                
+
                 % Check to see if stop has been pushed
                 status_string = get(handles.ui_button_Auto_Run, 'String');
                 if(strcmp(status_string, 'Start Auto Run'))
                     turn_on_controls();
                     return
                 end
-                
+
                 % Do the next advance or assimilation step
                 step_ahead();
-                pause(0.1)
+                drawnow
             end
         end
     end
@@ -455,7 +492,7 @@ set(h_obs, 'Visible', 'Off');
 
     function Forcing_Callback(~, ~)
         %Called when the slider has been changed
-        
+
         err = get(handles.ui_slider_error, 'Value');
 
         % Round the Value of the slider to the nearest integer
@@ -468,164 +505,172 @@ set(h_obs, 'Visible', 'Off');
     end
 
 %% ----------------------------------------------------------------------
-%>@ TODO FIXME ... add text to the plot indicating the error message
 
     function edit_inflation_Callback(~, ~)
         % Is called when the edit_inflation field is changed
-        
+
         % Set the inflation value to the update
         handles.inflation = str2double(get(handles.ui_edit_inflation, 'String'));
         if(not(isfinite(handles.inflation)) || handles.inflation < 1)
+
             % After this, only this edit box will work
             turn_off_controls();
             set(handles.ui_edit_inflation, 'Enable', 'On');
-            
-            set(handles.ui_edit_inflation, 'String', '???','FontWeight','Bold','BackgroundColor', 'Red');
-            
-            fprintf('ERROR: inflation must be greater than 1\n')
+            set(handles.ui_edit_inflation, 'String', '?','FontWeight','Bold','BackgroundColor', atts.red);
+            set(handles.ui_text_inf_err_print, 'Visible','On')
+
+            fprintf('\nERROR: inflation must be greater than or equal to 1.\n')
             fprintf('ERROR: unable to interpret inflation value, please try again.\n')
-            
+
             return
         end
-        
+
         % Enable all controls
         turn_on_controls();
         set(handles.ui_edit_inflation, 'BackgroundColor', 'White','FontWeight','Normal');
+        set(handles.ui_text_inf_err_print, 'Visible','Off')
+
     end
 
 %% ----------------------------------------------------------------------
 
     function edit_localization_Callback(~, ~)
         % Specifies the action for the 'Localization' text box
-        
+
         % Set the localization value to the update
         handles.localization= str2double(get(handles.ui_edit_localization, 'String'));
-        
-        if(not(isfinite(handles.localization)) || handles.localization < 0)
-            
+
+        if(not(isfinite(handles.localization)) || handles.localization <= 0)
+
             % After this, only this edit box will work
             turn_off_controls();
             set(handles.ui_edit_localization, 'Enable', 'On');
-            
-            set(handles.ui_edit_localization, 'String', '???','FontWeight','Bold','BackgroundColor', 'r' );
-            
-            fprintf('ERROR: localization must be greater than 0\n')
-            fprintf('ERROR: localization must be greater than 0\n')
-            
+            set(handles.ui_edit_localization, 'String', '?','FontWeight','Bold','BackgroundColor', atts.red );
+            set(handles.ui_text_localization_err_print, 'Visible','On')
+
+            fprintf('\nERROR: localization must be greater than 0.\n')
+            fprintf('ERROR: localization must be greater than 0.\n')
+
             return
         end
-        
+
         % Enable all controls
         turn_on_controls();
         set(handles.ui_edit_localization, 'BackgroundColor', 'White','FontWeight','Normal');
+        set(handles.ui_text_localization_err_print, 'Visible','Off')
 
         % Update the localization plot
         cla(handles.polar_plot);
-        h_loc = plot_localization();
+        plot_localization();
     end
 
 %% ----------------------------------------------------------------------
 
     function edit_ens_size_Callback(~, ~)
-        
+
         % Check to see if the new ensemble size is valid
         new_ens_size = str2double(get(handles.ui_edit_ens_size, 'String'));
-        
+
         if(not(isfinite(new_ens_size)) || new_ens_size < 2 || new_ens_size > 40)
-            
-            
+
             % After this, only this edit box will work
             turn_off_controls();
             set(handles.ui_edit_ens_size, 'Enable', 'On');
-            
-            set(handles.ui_edit_ens_size, 'String', '???','FontWeight','Bold','BackgroundColor', 'r' );
-            
+
+            set(handles.ui_edit_ens_size, 'String', '?','FontWeight','Bold','BackgroundColor', atts.red );
+            set(handles.ui_text_ens_size_err_print, 'Visible','On')
+
+            fprintf('\nERROR: Must input an integer Ens. Size greater than 1 and less than 40\n');
             fprintf('ERROR: Must input an integer Ens. Size greater than 1 and less than 40\n');
-            
+
             return
-            
-            
+
         end
-        
+
         % Enable all controls
         turn_on_controls();
-        
+
         % clear out the old graphics
         cla(handles.polar_plot)
         cla(handles.timeseries)
         cla(handles.prior_rank_histogram)
         cla(handles.post_rank_histogram)
-        
+
         set(handles.ui_edit_ens_size, 'BackgroundColor', 'White','FontWeight','Normal');
-        
+
         % Set the ensemble size global value to the update
         handles.ens_size = new_ens_size;
-        
+
         % Need to reset the ensemble and the time
         clear handles.true_state
-        handles.true_state(1, 1:handles.model_size) = FORCING;
-        handles.true_state(1, 1) = 1.001 * FORCING;
+        handles.true_state(1, 1:handles.model_size) = TRUE_FORCING;
+        handles.true_state(1, 1) = 1.001 * TRUE_FORCING;
         handles.time = 1;
-        
+
         % Generate set of ensemble perturbations
         handles.posterior = zeros(1, handles.model_size, handles.ens_size);
         for imem = 1:handles.ens_size
             handles.posterior(1, 1:handles.model_size, imem) = ...
                 handles.true_state(1, :) + 0.001 * randn(1, handles.model_size);
         end
-        
+
         % For convenience make the first prior identical to the first posterior
-        handles.prior = handles.posterior;
-        
+        handles.prior            = handles.posterior;
+        handles.prior_rms        = 0;
+        handles.prior_spread     = 0;
+        handles.posterior_rms    = 0;
+        handles.posterior_spread = 0;
+
         % An array to keep track of rank histograms
         handles.prior_rank(    1 : handles.ens_size + 1) = 0;
         handles.posterior_rank(1 : handles.ens_size + 1) = 0;
-        
+
         %Reset button to 'Advance Model'
         set(handles.ui_button_Single_Step, 'String' , 'Advance Model');
         handles.ready_to_advance = true;
-        
+
         %Reset the time text
         set(handles.ui_text_time,'String', 'Time = 1');
-        
+
     end
 
 %% ----------------------------------------------------------------------
 
     function reset_Callback(~, ~)
         % Sets the graphs and the values to original values
-        
+
         % set random number seed to same value to generate known sequences
         % rng('default')  is the Mersenne Twister with seed 0
         rng(0,'twister')
-        
+
         % Initialize the L96 model
-        L96        = lorenz_96_static_init_model;
-        FORCING    = L96.forcing;
-        MODEL_SIZE = L96.model_size;
-        DELTA_T    = L96.delta_t;
-        
+        L96          = lorenz_96_static_init_model;
+        TRUE_FORCING = L96.forcing;
+        FORCING      = L96.forcing;
+        MODEL_SIZE   = L96.model_size;
+        DELTA_T      = L96.delta_t;
+
         % Set the edit fields
-        
-        set(handles.ui_edit_localization, 'String', '100000');
+
+        set(handles.ui_edit_localization, 'String', '1.0');
         set(handles.ui_edit_inflation   , 'String', '1.0');
         set(handles.ui_edit_ens_size    , 'String', '20');
         set(handles.ui_button_group_assimilation,'SelectedObject',handles.ui_radio_noAssimilation);
         handles.filter_type_string = 'No Assimilation';
         set(handles.ui_button_Single_Step, 'String' , 'Advance Model');
-        
+
         set(handles.ui_slider_error       , 'Value', 8);
         set(handles.ui_edit_forcing       , 'String' , 8);
-        
+
         handles.localization = str2double(get(handles.ui_edit_localization, 'String'));
         handles.inflation    = str2double(get(handles.ui_edit_inflation, 'String'));
         handles.ens_size     = str2double(get(handles.ui_edit_ens_size, 'String'));
-        
+
         clear handles.true_state
-        
-        handles.model_size = MODEL_SIZE;
-        handles.true_state(1, 1:MODEL_SIZE) = FORCING;
-        handles.true_state(1, 1) = 1.001 * FORCING;
+
+        handles.model_size                  = MODEL_SIZE;
+        handles.true_state(1, 1:MODEL_SIZE) = TRUE_FORCING;
+        handles.true_state(1, 1)            = 1.001 * TRUE_FORCING;
         handles.time                = 1;
         handles.prior               = 0;
         handles.prior_rms           = 0;
@@ -633,35 +678,35 @@ set(h_obs, 'Visible', 'Off');
         handles.posterior           = 0;
         handles.posterior_rms       = 0;
         handles.posterior_spread    = 0;
-        
+
         %str = get(handles.menu_assimilation,'String');
         %handles.filter_type_string = str{get(handles.menu_assimilation,'Value')};
-        
+
         set(handles.ui_text_time,'String', sprintf('Time = %d',handles.time))
-        
+
         % Used to normalize the polar plotting
         handles.mean_dist = 35;
-        
+
         handles.h_ens   = [];
         handles.h_truth = [];
-        
+
         % Global semaphore; ready to advance or assimilate?
         handles.ready_to_advance = true;
-        
+
         % Generate set of ensemble perturbations
         handles.posterior = zeros(1, handles.model_size, handles.ens_size);
         for imem = 1:handles.ens_size
             handles.posterior(1, 1:handles.model_size, imem) = ...
                 handles.true_state(1, :) + 0.001 * randn(1, handles.model_size);
         end
-        
+
         % For convenience make the first prior identical to the first posterior
         handles.prior = handles.posterior;
-        
+
         % An array to keep track of rank histograms
         handles.prior_rank(    1 : handles.ens_size + 1) = 0;
         handles.posterior_rank(1 : handles.ens_size + 1) = 0;
-        
+
         % Clear out the old graphics. The legends remain, which is nice.
         cla(handles.polar_plot)
         cla(handles.timeseries)
@@ -672,7 +717,7 @@ set(h_obs, 'Visible', 'Off');
         if(first_call_to_reset)
            first_call_to_reset = false;
         else
-           h_loc = plot_localization();
+           plot_localization();
         end
 
     end
@@ -684,21 +729,21 @@ set(h_obs, 'Visible', 'Off');
         % An array to keep track of rank histograms
         handles.prior_rank(    1 : handles.ens_size + 1) = 0;
         handles.posterior_rank(1 : handles.ens_size + 1) = 0;
-        
+
         % Clear out the old graphics. The legends remain, which is nice.
         cla(handles.prior_rank_histogram)
         cla(handles.post_rank_histogram)
-        
+
     end
 
 %% ----------------------------------------------------------------------
 
     function step_ahead()
         % Specifies the action for the [Assimilate Obs/Advance Model] button.
-        
+
         % Test on semaphore, either advance or assimilate
         if(handles.ready_to_advance)
-            
+
             % Set semaphore to indicate that next step may be an assimilation
             % Set the pushbutton text to indicate that next step is an assimilate
             % only if we have selected a filter algorithm
@@ -709,38 +754,32 @@ set(h_obs, 'Visible', 'Off');
                 handles.ready_to_advance = false;
                 set(handles.ui_button_Single_Step, 'String', 'Assimilate Obs');
             end
-            
+
             % Code for advancing model comes next
             time = handles.time;
-            % Truth should always use forcing of 8
-            % FORCING is global that controls model but is also used to store current assimilating model value
-            % Temporarily set FORCING to 8 for truth, then revert
-            temp_forcing = FORCING;
-            FORCING = 8;
-            [new_truth, new_time] = lorenz_96_adv_1step(handles.true_state(time, :), time);
-            FORCING = temp_forcing;
+            [new_truth, new_time] = lorenz_96_adv_1step(handles.true_state(time, :), time, TRUE_FORCING);
             handles.time = new_time;
             handles.true_state(new_time, :) = new_truth;
-            
+
             %  Advance the ensemble members; posterior -> new prior
             for imem = 1:handles.ens_size
-                [new_ens, new_time] = lorenz_96_adv_1step(handles.posterior(time, :, imem), time);
+                [new_ens, new_time] = lorenz_96_adv_1step(handles.posterior(time, :, imem), time, FORCING);
                 handles.prior(new_time, :, imem) = new_ens;
             end
-            
+
             % Inflate ensemble
             for i = 1:MODEL_SIZE
                 ens_mean = mean(handles.prior(new_time, i, :));
                 handles.prior(new_time, i, :) = ens_mean + ...
                     sqrt(handles.inflation) * (handles.prior(new_time, i, :) - ens_mean);
             end
-            
+
             if(strcmp(handles.filter_type_string, 'No Assimilation'))
                 % we are not assimilating
                 % just copy prior to posterior
                 handles.posterior(new_time, :, :) = handles.prior(new_time, :, :);
             end
-            
+
             % Plot a single invisible point to wipe out the previous plot
             % and maintain axis limits of polar plot.
             axes(handles.polar_plot);
@@ -750,7 +789,7 @@ set(h_obs, 'Visible', 'Off');
             h_obs = plot_polar(y_2, x, handles.mean_dist, 'r*', 1);
             hold on
             set(h_obs, 'Visible', 'Off');
-            
+
             % Plot the ensemble members (green) and the truth (black)
             for imem = 1:handles.ens_size
                 handles.h_ens = plot_polar(polar_y, handles.prior(new_time, :, imem), ...
@@ -762,7 +801,7 @@ set(h_obs, 'Visible', 'Off');
             set(handles.h_truth, 'linewidth', 3);
 
             % Plot a graphical indication of the localization halfwidth; Is expense of this a problem.
-            h_loc = plot_localization();
+            plot_localization();
 
             % Get a legend shifted outside the plot
             h_leg = legend([handles.h_truth handles.h_ens, h_obs], ...
@@ -774,62 +813,62 @@ set(h_obs, 'Visible', 'Off');
             set(h_leg, 'Position', pos, ...
                 'FontSize', atts.fontsize, ...
                 'EdgeColor', 'w');
-            
+
             % Update the time label
             set(handles.ui_text_time, 'String', sprintf('Time = %d', handles.time));
-            
+
             % Compute the prior RMS error of ensemble mean
             handles.prior_rms(new_time) = rms_error(new_truth, handles.prior(new_time, :, :));
             handles.prior_spread(new_time) = ens_spread(handles.prior(new_time, :, :));
-            
+
             % Save the information about the histograms from before
             temp_rank(:, 1) = handles.prior_rank(1:handles.ens_size + 1);
             temp_rank(:, 2) = 0;
-            
+
             % Compute the prior rank histograms
             for i = 1:handles.ens_size
                 ens_rank = get_ens_rank(squeeze(handles.prior(new_time, i, :)), squeeze(new_truth(i)));
                 handles.prior_rank(ens_rank) = handles.prior_rank(ens_rank) + 1;
                 temp_rank(ens_rank, 2) = temp_rank(ens_rank, 2) + 1;
             end
-            
+
             % Plot the prior_rms error time series
-            
+
             % Change Focus to time evolution of rmse & spread
             %   axes(handles.timeseries)
             subplot(handles.timeseries);
-            
+
             hold on   % FIXME ... do we need this ...
             plot(handles.prior_rms,         'Color',atts.green,'LineWidth',2.0);
             plot(handles.prior_spread, '-.','Color',atts.green,'LineWidth',2.0);
             set(handles.timeseries,'YGrid','on')
-            
+
             % Plot the rank histogram for the prior
             subplot(handles.prior_rank_histogram);
             bar(temp_rank, 'stacked');
             axis tight;
-            
+
         else % We need to do an assimilation.
-            
+
             % Get current time step
             time = handles.time;
-            
+
             % Generate noisy observations of the truth
             obs_sd = 4;
             obs_error_var = obs_sd^2;
-            
+
             % Do fully sequential assimilation algorithm
             temp_ens = squeeze(handles.prior(time, :, :));
-            
+
             % Select the first plotting box
             axes(handles.polar_plot);
-            
+
             % Observe each state variable independently
             obs = zeros(1,MODEL_SIZE);
             for i = 1:MODEL_SIZE
                 obs_prior = temp_ens(i, :);
                 obs(i) = handles.true_state(time, i) + obs_sd * randn;
-                
+
                 % Compute the increments for observed variable
                 switch handles.filter_type_string
                     case 'EAKF'
@@ -845,38 +884,38 @@ set(h_obs, 'Visible', 'Off');
                         %No Incrementation
                         obs_increments = 0;
                 end
-                
+
                 % Regress the increments onto each of the state variables
                 for j = 1:MODEL_SIZE
                     state_incs = get_state_increments(temp_ens(j, :), ...
                         obs_prior, obs_increments);
-                    
+
                     % Compute distance between obs and state for localization
-                    dist = abs(i - j) / 40;
+                    dist = abs(i - j) / MODEL_SIZE;
                     if(dist > 0.5), dist = 1 - dist; end
-                    
+
                     % Compute the localization factor
                     cov_factor = comp_cov_factor(dist, handles.localization);
-                    
+
                     temp_ens(j, :) = temp_ens(j, :) + state_incs * cov_factor;
                 end
             end
-            
+
             % Plot the observations
             subplot(handles.polar_plot)
             plot_polar(polar_y, obs, handles.mean_dist, 'r*', MODEL_SIZE);
-            
+
             % Update the posterior
             handles.posterior(time, :, :) = temp_ens;
-            
+
             % Compute the posterior rms, spread
             handles.posterior_rms(time) = rms_error(handles.true_state(time, :), handles.posterior(time, :, :));
             handles.posterior_spread(time) = ens_spread(handles.posterior(time, :, :));
-            
+
             % Save the information about the histograms from before
             temp_rank(:, 1) = handles.posterior_rank(1:handles.ens_size + 1);
             temp_rank(:, 2) = 0;
-            
+
             % Compute the posterior rank histograms
             for i = 1:handles.ens_size
                 ens_rank = get_ens_rank(squeeze(handles.posterior(time, i, :)), ...
@@ -884,37 +923,35 @@ set(h_obs, 'Visible', 'Off');
                 handles.posterior_rank(ens_rank) = handles.posterior_rank(ens_rank) + 1;
                 temp_rank(ens_rank, 2) = temp_rank(ens_rank, 2) + 1;
             end
-            
+
             % Plot the posterior_rms error time series
             subplot(handles.timeseries);
             set(handles.timeseries,'YGrid','on')
             hold on
             plot(handles.posterior_rms,    'b',  'LineWidth', 2.0);
             plot(handles.posterior_spread, 'b-.','LineWidth', 2.0);
-            
+
             % Plot the rank histogram for the prior
             subplot(handles.post_rank_histogram);
             bar(temp_rank, 'stacked');
             axis tight;
-            
-            % pause(0.1)
-            
+
             % Set semaphore to indicate that next step is a model advance
             handles.ready_to_advance = true;
-            
+
             % Set the pushbutton text to indicate that the next step is a model advance
             set(handles.ui_button_Single_Step, 'String', 'Advance Model');
-            
+
         end
-        
-        
+
+
     end
 
 %% ----------------------------------------------------------------------
 
     function ens_mean_rms = rms_error(truth, ens)
         % Calculates the rms_error
-        
+
         ens_mean = mean(squeeze(ens),2)';
         ens_mean_rms = sqrt(sum((truth - ens_mean).^2) / size(truth, 2));
     end
@@ -925,7 +962,7 @@ set(h_obs, 'Visible', 'Off');
         % Calculates the ens_spread
         % Remove the mean of each of the 40 model variables (40 locations).
         % resulting matrix is 40x20 ... each row/location is centered (zero mean).
-        
+
         [~, model_size, ens_size] = size(ens);
         datmat = detrend(squeeze(ens)','constant'); % remove the mean of each location.
         denom  = (model_size - 1)*ens_size;
@@ -936,10 +973,10 @@ set(h_obs, 'Visible', 'Off');
 
     function turn_off_controls()
         % Disables all the buttons,menus, and edit fields
-        
+
         set(handles.ui_button_Single_Step,      'Enable', 'Off');
         set(handles.ui_button_Auto_Run,         'Enable', 'Off');
-        
+
         % In 2015, there is a way to disable the button group, but it is not
         % compatible with 2014, so we must enable/disable each radio button
         % seperately
@@ -947,7 +984,7 @@ set(h_obs, 'Visible', 'Off');
         set(handles.ui_radio_EAKF,              'Enable', 'Off');
         set(handles.ui_radio_EnKF,              'Enable', 'Off');
         set(handles.ui_radio_RHF,               'Enable', 'Off');
-        
+
         set(handles.ui_slider_error,            'Enable', 'Off');
         set(handles.ui_edit_forcing,            'Enable', 'Off');
         set(handles.ui_edit_localization,       'Enable', 'Off');
@@ -961,18 +998,18 @@ set(h_obs, 'Visible', 'Off');
 
     function turn_on_controls()
         % Enables all the buttons,menus, and edit fields
-        
+
         set(handles.ui_button_Single_Step,      'Enable', 'On');
         set(handles.ui_button_Auto_Run,         'Enable', 'On');
-        
-        % In 2015, there is a way to disable the button group, 
+
+        % In 2015, there is a way to disable the button group,
         % but it is not compatible with 2014, so we must enable/disable
         % each radio button seperately
         set(handles.ui_radio_noAssimilation,    'Enable', 'On');
         set(handles.ui_radio_EAKF,              'Enable', 'On');
         set(handles.ui_radio_EnKF,              'Enable', 'On');
         set(handles.ui_radio_RHF,               'Enable', 'On');
-        
+
         set(handles.ui_slider_error,            'Enable', 'On');
         set(handles.ui_edit_forcing,            'Enable', 'On');
         set(handles.ui_edit_localization,       'Enable', 'On');
@@ -998,18 +1035,18 @@ set(h_obs, 'Visible', 'Off');
         % slider is changed, the slider and the edit field are connected,
         % the edit field is simply used to allow for more precise forcing
         % values
-        
+
         % Undo any changes that could have been made by erros
         turn_on_controls();
         set(handles.ui_edit_forcing, 'BackgroundColor' , 'White');
         set(handles.ui_edit_forcing, 'FontWeight' , 'Normal');
-        
+
         if(isfinite(str2double(get(handles.ui_edit_forcing, 'String'))))
             if (str2double(get(handles.ui_edit_forcing, 'String')) >= 4 && ...
                     str2double(get(handles.ui_edit_forcing, 'String')) <= 12)
                 FORCING = str2double(get(handles.ui_edit_forcing, 'String'));
                 set(handles.ui_slider_error, 'Value' , FORCING);
-                
+
                 % Fix everything created by a potential previous error
                 turn_on_controls();
                 set(handles.ui_edit_forcing, 'BackgroundColor' , 'White');
@@ -1020,7 +1057,7 @@ set(h_obs, 'Visible', 'Off');
                 turn_off_controls();
                 set(handles.ui_edit_forcing,'Enable', 'On');
                 set(handles.ui_edit_forcing, 'String' , '>4');
-                set(handles.ui_edit_forcing, 'BackgroundColor' , 'Red');
+                set(handles.ui_edit_forcing, 'BackgroundColor' , atts.red);
                 set(handles.ui_edit_forcing, 'FontWeight' , 'Bold');
                 fprintf('ERROR: Number must be greater than or equal to 4\n');
                 return;
@@ -1030,7 +1067,7 @@ set(h_obs, 'Visible', 'Off');
                 turn_off_controls();
                 set(handles.ui_edit_forcing,'Enable', 'On');
                 set(handles.ui_edit_forcing, 'String' , '<12');
-                set(handles.ui_edit_forcing, 'BackgroundColor' , 'Red');
+                set(handles.ui_edit_forcing, 'BackgroundColor' , atts.red);
                 set(handles.ui_edit_forcing, 'FontWeight' , 'Bold');
                 fprintf('ERROR: Number must be less than or equal to 12\n');
                 return
@@ -1040,10 +1077,10 @@ set(h_obs, 'Visible', 'Off');
             % Prevent 2 errors at once
             turn_off_controls();
             set(handles.ui_edit_forcing,'Enable', 'On');
-            set(handles.ui_edit_forcing, 'String' , '???');
-            set(handles.ui_edit_forcing, 'BackgroundColor' , 'Red');
+            set(handles.ui_edit_forcing, 'String' , '?');
+            set(handles.ui_edit_forcing, 'BackgroundColor' , atts.red);
             set(handles.ui_edit_forcing, 'FontWeight' , 'Bold');
-            
+
             fprintf('ERROR: Must enter a number between 4 and 12\n');
             return;
         end
@@ -1060,25 +1097,26 @@ set(h_obs, 'Visible', 'Off');
       half_radians = handles.localization * 2 * pi;
 
       % Plot 4 ranges
+      my_h_loc   = zeros(1, 4);
+      my_col_loc = atts.colors4loc;
       for ipl = 1:4
          ymax = min([half_radians * (5.-ipl) / 2., pi]);
          ymin = -ymax;
          % Use 40 points for each range
-         y = [ymin:ymax/20:ymax];
-         my_h_loc(ipl) = polar(y, 15*ones(size(y)), 'b');
+         y = ymin:ymax/20:ymax;
+         my_h_loc(ipl) = polar(y, 15*ones(size(y)));
          hold on
          % Lines get wider for larger localization
-         set(my_h_loc(ipl), 'linewidth', 2*ipl);
+         set(my_h_loc(ipl), 'linewidth', 2*ipl, 'Color', my_col_loc(ipl, :));
       end
       h_loc = my_h_loc(1);
 
       % Plot a label for the localization graphic
       h_loc_text = text(-13, 0, 'Localization');
-      set(h_loc_text, 'color', 'b', 'fontsize', 15, 'fontweight', 'bold');
-     
-      % Plot an observation asterisk 
-      h_loc_text = text(15, 0, '*');
-      set(h_loc_text, 'color', 'r', 'fontsize', 24);
+      set(h_loc_text, 'color', 'k', 'fontsize', 15, 'fontweight', 'bold');
+
+      % Plot an observation asterisk
+      plot(15, 0, '*', 'MarkerSize', 12, 'MarkerFaceColor', atts.red, 'MarkerEdgeColor', atts.red);
    end
 
 end

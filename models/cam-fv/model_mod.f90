@@ -10,7 +10,7 @@
 !       the trunk (non-RMA) version as of 2016-7.  These comments
 !       and the sections in the trunk may be helpful in tracing the
 !       development of the RMA for FV, and help with the development
-!       of the RAM SE version.
+!       of the RMA SE version.
 
 
 !>  This is the interface module between remote memory access capable DART (RMA) 
@@ -18,34 +18,29 @@
 !>  It contains the required 16 interface procedures, as specified by DART.  
 !>  It also contains several utility routines which help translate between CAM and DART 
 !>  formats, and deal with time.
-!>  It is used by filter, perfect_model_obs, $dart/models/cam/{cam_to_dart,dart_to_cam}.
+!>  It is used by filter and perfect_model_obs.
 !>
 !>  This module handles the finite volume dynamical core version of CAM.
-!>  A separate (most likely) model_mod will handle CAM-SE, the spectral element dycore.
+!>  A separate model_mod will handle CAM-SE, the spectral element dycore.
 !>  CAM-FV uses a logically rectangular grid,
 !>  while CAM-SE uses the cubed sphere (non-rectangular) horizontal grid.
 !>
-!>  It contains a perturburbation routine for generating initial ensembles,
-!>  but does not provide adv_1step or init_conditions because CAM is a separate executable
-!>  and cannot be called as a subroutine.
+!>  There is a perturburbation routine for generating and initial ensemble.
+!>  This routine is activated by the filter namelist logical perturb_from_single_instance
+!>  and the model_mod namelist variable pert_names.
+!>  The module does not provide adv_1step or init_conditions because CAM 
+!>  is a separate executable and cannot be called as a subroutine.
 !>
 !>  This module intercepts the get_close_obs() calls and can alter the distances
 !>  for obs near the top of the model to reduce the impact on the state near the
 !>  top.
 !>
 !>  The coordinate orders of fields are preserved from the CAM initial file order.
-! RMA-KR  Is this true?  Or are FV variables still re-ordered?
-! REMOVE?:
-! For example; various vintages of CAM 3D fields may be read in with (lon, lat, lev) or
-! (lon, lev, lat).  These are uniformly converted to (lev, lon, lat) for use in model_mod.
-! This latter form is different than pre MPI model_mods.  Then such fields are stored in
-! the state vector with the same coordinate order.  They are converted to the *modern*
-! CAM coordinate order when written to caminput.nc files.
 !>
-! RMA-KR  Removed all code referring to TYPE_s, since they were replaced by association
-!         with CAM variables and use of find_name. 
-!         Also, DART KINDs will be associated with CAM variables by the ${comp}_variables
-!         mechanism as in models/clm.
+!>  The RMA model_mod does not refer to TYPE_s, since they were replaced by association
+!>  with CAM variables and use of find_name. 
+!>  In the future, DART KINDs will be associated with CAM variables by the ${comp}_variables
+!>  mechanism as in models/clm.
 !>  If a user wants to add new CAM variables to the state vector,
 !>  then more QTY_s may be needed in the 'use obs_kind_mod' statement and maybe the obs_kind_mod.
 !> 
@@ -63,7 +58,7 @@
 !>       Module I/O to/from DART and files
 !>       model_interpolate section
 !>       Vector-field translations
-!>       get_close_obs section
+!>       get_close section
 !>       Utility routines; called by several main subroutines
 !>       Stubs not used by cam/model_mod (this is not all of them)
 !>
@@ -86,30 +81,19 @@ module model_mod
 
 ! NOTES about the module.
 
-!  This module keeps a copy of the ensemble mean in module global storage and
-!  uses it for computing the pressure-to-height conversions.
-!
-!  During the assimilation stage, only a piece of the state vector is available to each
-!  process, and each process calls parts of model_mod.  In order to handle the conversion
-!  of vertical coordinates of obs and/or state variables into a consistent coordinate,
-!  an entire state vector is needed, so the ensemble mean is passed to model_mod before
-!  the assimilation starts.  This is NOT done for model_interpolate; the whole vector is
-!  available, and should be used.  All locations are now converted to a standard coordinate
+!  This module no longer (RMA) keeps a copy of the ensemble mean in module global storage.
+!  That was needed for convert_vert to transform the vertical coordinate of something
+!  passed from filter into the coordinate used in model_mod.  But now convert_vert is
+!  called directly by filter, where the model states and or mean are available, 
+!  so ens_mean is not needed.
+!  All locations are now converted to a standard coordinate
 !  (pressure or log(P0/pressure), aka scale height), instead of always converting the state 
 !  vertical location to that of the ob.  The highest_obs_level and ..._height_m variables 
 !  are derived from highest_obs_pressure_Pa namelist variable.
 !
-!  The coordinate orders of fields stored in various forms have also been simplified.
-!  For example; various vintages of CAM 3D fields may be read in with (lon, lat, lev) or
-!  (lon, lev, lat).  These are uniformly converted to (lev, lon, lat) for use in model_mod.
-!  This latter form is different than pre MPI model_mods.  Then such fields are stored in
-!  the state vector with the same coordinate order.  They are converted back to the modern
-!  CAM coordinate order when written to caminput.nc files.
 !  Surface pressure may be needed on the A-grid (thermodynamic variables) and grids staggered
-!  relative to the A-grid.   Currently, PS for the A-grid and for the 2 staggered grids is
-!  stored for global access for the (re)calculation of pressures and heights on model levels
-!  as needed.  The 3d pressure on the A-grid or cubed sphere grid is calculated and stored, 
-!  but 3d pressure on staggered grids is calculated as needed. 
+!  relative to the A-grid (winds).   These are retrieved (A-grid) and/or calculated (staggered)
+!  as needed from filter, rather than being stored globally in this module.
 
 !  The coordinates of CAM (lats, lons, etc.) and their dimensions  and attributes are
 !  read into globally accessible data structures (see grid_1d_type).
@@ -124,7 +108,7 @@ module model_mod
 !          Module I/O to/from DART and files
 !          model_interpolate section
 !          Vector-field translations
-!          get_close_obs section
+!          get_close section
 !          Utility routines; called by several main subroutines
 !          Stubs not used by cam/model_mod (this is not all of them)
 
@@ -164,21 +148,27 @@ use location_mod,      only : location_type, get_location, set_location, query_l
 ! READ THIS SYNTAX as:
 !   There's a subroutine in location_mod named 'get_close'.
 !   If I want to use that one in this module then refer to it as 'loc_get_close'.
-!   If I call 'get_close_obs', then I'll get the one in this module,
+!   If I call 'get_close', then I'll get the one in this module,
 !   which does some stuff I need, AND ALSO CALLS 'loc_get_close'
 
 ! FIXME
 ! I've put a copy of solve_quadratic in this model_mod.
-! Eventually it should go into a untilities module.
+! Eventually it should go into a utilities module.
 ! use utilities_YYY, only : solve_quadratic
 
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 use     obs_kind_mod, only : QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, QTY_PRESSURE,       &
                              QTY_SURFACE_PRESSURE, QTY_TEMPERATURE, QTY_SPECIFIC_HUMIDITY,   &
                              QTY_CLOUD_LIQUID_WATER, QTY_CLOUD_ICE, QTY_CLOUD_FRACTION,      &
-                             QTY_GRAV_WAVE_DRAG_EFFIC, QTY_GRAV_WAVE_STRESS_FRACTION,         &
-                             QTY_SURFACE_ELEVATION,                                            &
-                             QTY_CO, QTY_CO2, QTY_NO, QTY_NO2, QTY_CH4, QTY_NH3, QTY_O3, &
+                             QTY_GRAV_WAVE_DRAG_EFFIC, QTY_GRAV_WAVE_STRESS_FRACTION,        &
+                             QTY_SURFACE_ELEVATION,                                          &
+                             QTY_CO, QTY_CO2, QTY_NO, QTY_NO2, QTY_CH4, QTY_NH3, QTY_O3,     &
+                             QTY_AOD, QTY_CO01, QTY_CO02, QTY_CO03,                          &
+                             QTY_SFCO, QTY_SFCO01, QTY_SFCO02, QTY_SFCO03,                   &
+                             QTY_CB1, QTY_CB2, QTY_OC1, QTY_OC2,                             &
+                             QTY_SFCB1, QTY_SFCB2, QTY_SFOC1, QTY_SFOC2,                     &
+                             QTY_CB102, QTY_CB202, QTY_OC102, QTY_OC202,                     &
+                             QTY_SFCB102, QTY_SFCB202, QTY_SFOC102, QTY_SFOC202,             &
                              get_index_for_quantity, get_name_for_quantity, get_quantity_for_type_of_obs
 
 
@@ -219,11 +209,12 @@ use     obs_kind_mod, only : QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, QTY_PRE
 
 ! Other fields which users may add to the CAM initial files are not listed here.
 ! Examples are EFGWORO, FRACLDV from the gravity wave drag parameterization study
+! and chemical species from WACCM and CAM-Chem.
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
+use random_seq_mod,        only : random_seq_type, init_random_seq, random_gaussian
 
-use ensemble_manager_mod, only : ensemble_type
+use ensemble_manager_mod,  only : ensemble_type
 
 use distributed_state_mod, only : get_state, get_state_array
 
@@ -335,14 +326,81 @@ type(grid_1d_type), target ::  lon ,lat ,lev ,gw ,hyam ,hybm ,hyai ,hybi, slon ,
 ! "Any non-pointer sub-object of an object with the TARGET attribute also has the TARGET attribute."
 ! So I can point to, e.g., lat%vals.
 
-! Other useful 1D grid arrays (for cubed sphere)
-real(r8), allocatable :: lon_rad(:), lat_rad(:)   ! longitude and latitude in radians, used by bearings()
-
 ! grid_2d_type ?
 ! integer :: grid_num_2d = 0              ! # of 2d grid fields to read from file
 ! ? should phis be in grid_names_2d?
 ! character (len=8),dimension(100) :: grid_names_2d = (/(' ',iii=1,100)/)
 
+! CAM-chem 1))
+! FIXME It would be better if the following 2 vectors were read from an external file....
+! If meteorological variables (including PRESSURE), or SURFACE_ELEVATION need to have 
+! their units converted, their names and conversion factors could be entered in these lists.
+
+integer, parameter :: chemical_list=128
+! Names of chemical species. 
+character(len=16)  :: solsym(chemical_list) = &
+(/'O3              ','O               ','O1D             ','N2O             ','NO              ', &
+  'NO2             ','NO3             ','HNO3            ','HO2NO2          ','N2O5            ', &
+  'H2              ','OH              ','HO2             ','H2O2            ','CH4             ', &
+  'CO              ','CH3O2           ','CH3OOH          ','CH2O            ','CH3OH           ', &
+  'C2H5OH          ','C2H4            ','EO              ','EO2             ','CH3COOH         ', &
+  'GLYALD          ','C2H6            ','C2H5O2          ','C2H5OOH         ','CH3CHO          ', &
+  'CH3CO3          ','CH3COOOH        ','C3H6            ','C3H8            ','C3H7O2          ', &
+  'C3H7OOH         ','PO2             ','POOH            ','CH3COCH3        ','RO2             ', &
+  'ROOH            ','BIGENE          ','ENEO2           ','MEK             ','MEKO2           ', &
+  'MEKOOH          ','BIGALK          ','ALKO2           ','ALKOOH          ','ISOP            ', &
+  'ISOPO2          ','ISOPOOH         ','MVK             ','MACR            ','MACRO2          ', &
+  'MACROOH         ','MCO3            ','HYDRALD         ','HYAC            ','CH3COCHO        ', &
+  'XO2             ','XOOH            ','C10H16          ','TERPO2          ','TERPOOH         ', &
+  'TOLUENE         ','CRESOL          ','TOLO2           ','TOLOOH          ','XOH             ', &
+  'BIGALD          ','GLYOXAL         ','PAN             ','ONIT            ','MPAN            ', &
+  'ISOPNO3         ','ONITR           ','SOA             ','SO2             ','DMS             ', &
+  'NH3             ','NH4             ','NH4NO3          ','Rn              ','Pb              ', &
+  'HCN             ','CH3CN           ','C2H2            ','HCOOH           ','HOCH2OO         ', &
+  'H2SO4           ','SOAG            ','so4_a1          ','pom_a1          ','soa_a1          ', &
+  'bc_a1           ','dst_a1          ','ncl_a1          ','num_a1          ','so4_a2          ', &
+  'soa_a2          ','ncl_a2          ','num_a2          ','dst_a3          ','ncl_a3          ', &
+  'so4_a3          ','num_a3          ','CO01            ','CO02            ','CO03            ', &
+  'CO04            ','CO05            ','CO06            ','CO07            ','CO08            ', &
+  'CO09            ','CB1             ','CB2             ','OC1             ','OC2             ', &
+  'CB101           ','CB201           ','OC101           ','OC201           ', &
+  'CB102           ','CB202           ','OC102           ','OC202           '  &
+  /)
+
+! The molar mass of each chemical species
+real(r8) :: adv_mass(chemical_list) =  &
+(/47.9982_r8,     15.9994_r8,     15.9994_r8,     44.01288_r8,  30.00614_r8,    &
+  46.00554_r8,    62.00494_r8,    63.01234_r8,    79.01174_r8,  108.01048_r8,   &
+  2.0148_r8,      17.0068_r8,     33.0062_r8,     34.0136_r8,   16.0406_r8,     &
+  28.0104_r8,     47.032_r8,      48.0394_r8,     30.0252_r8,   32.04_r8,       &
+  46.0658_r8,     28.0516_r8,     61.0578_r8,     77.0572_r8,   60.0504_r8,     &
+  60.0504_r8,     30.0664_r8,     61.0578_r8,     62.0652_r8,   44.051_r8,      &
+  75.0424_r8,     76.0498_r8,     42.0774_r8,     44.0922_r8,   75.0836_r8,     &
+  76.091_r8,      91.083_r8,      92.0904_r8,     58.0768_r8,   89.0682_r8,     &
+  90.0756_r8,     56.1032_r8,     105.1088_r8,    72.1026_r8,   103.094_r8,     &
+  104.1014_r8,    72.1438_r8,     103.1352_r8,    104.1426_r8,  68.1142_r8,     &
+  117.1198_r8,    118.1272_r8,    70.0878_r8,     70.0878_r8,   119.0934_r8,    &
+  120.1008_r8,    101.0792_r8,    100.113_r8,     74.0762_r8,   72.0614_r8,     &
+  149.1186_r8,    150.126_r8,     136.2284_r8,    185.234_r8,   186.2414_r8,    &
+  92.1362_r8,     108.1356_r8,    173.1406_r8,    174.148_r8,   190.1474_r8,    &
+  98.0982_r8,     58.0356_r8,     121.04794_r8,   119.07434_r8, 147.08474_r8,   &
+  162.11794_r8,   147.12594_r8,   144.132_r8,     64.0648_r8,   62.1324_r8,     &
+  17.02894_r8,    18.03634_r8,    80.04128_r8,    222.0_r8,     207.2_r8,       &
+  27.02514_r8,    41.05094_r8,    26.0368_r8,     46.0246_r8,   63.0314_r8,     &
+  98.0784_r8,     12.011_r8,      115.10734_r8,   12.011_r8,    12.011_r8,      &
+  12.011_r8,      135.064039_r8,  58.442468_r8,   1.0074_r8,    115.10734_r8,   &
+  12.011_r8,      58.442468_r8,   1.0074_r8,      135.064039_r8,58.442468_r8,   &
+  115.10734_r8,   1.0074_r8,      28.0104_r8,     28.0104_r8,   28.0104_r8,     &
+  28.0104_r8,     28.0104_r8,     28.0104_r8,     28.0104_r8,   28.0104_r8,     &
+  28.0104_r8,     12.011_r8,      12.011_r8,      12.011_r8,    12.011_r8,      &
+  12.011_r8,      12.011_r8,      12.011_r8,    12.011_r8,      &
+  12.011_r8,      12.011_r8,      12.011_r8,    12.011_r8       &
+/)
+
+! 2 unit conversion arrays derived from adv_mass will be filled in map_kinds.
+real(r8), parameter :: molar_mass_dry_air = 28.9644_r8
+
+! CAM-chem end
 
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! Namelist variables with default values follow
@@ -355,7 +413,7 @@ logical :: output_state_vector = .false.
 character(len=128) :: &
    model_config_file = 'caminput.nc',             & ! An example cam initial file.
    cam_phis          = 'cam_phis.nc',             & ! Separate source of PHIS/topography.
-   model_version     = '5.0'
+   model_version     = '6.0'
 
 
 ! Define location restrictions on which observations are assimilated
@@ -478,7 +536,6 @@ integer :: f_dim_max(4,3)
 ! Surface potential; used for calculation of geometric heights.
 logical               :: alloc_phis=.true.    ! Flag whether to allocate space for phis
 real(r8), allocatable :: phis(:, :)           ! surface geopotential
-! RMA-KR; phis_stagr_{lon,lat} were not needed in trunk...model_mod.f90
 
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! RMA-KR; cubed sphere (CAM-SE) section removed from here.
@@ -489,6 +546,7 @@ real(r8), allocatable :: phis(:, :)           ! surface geopotential
 ! into cflds, regardless of their original order, and tallies how many of each.
 ! Is there a way to exclude state_nums from namelist and have those filled in
 ! the same subroutine?
+! RMA-KR; this may/will be replaced by the ${comp}_variables mechanism.
 
 character(len=8), allocatable :: cflds(:)
 
@@ -502,6 +560,14 @@ character(len=nf90_max_name), allocatable :: state_units(:)
 ! These should be dimensioned the same size as the total of state_names_Nd.
 character(len=8) :: dart_to_cam_types(300) = ''
 integer          :: cam_to_dart_kinds(300) = MISSING_I
+! Strategy; array elements are only changed for conversion factors that are != 1.0.
+!           Then convert_mmr2vmr = MISSING_R8 triggers a convert_units of 1.0 in interp_lonlat.
+! So far, the conversion from obs units back to state units is no needed.
+! If it becomes needed: 
+! 1) define array convert_vmr2mmr(MAX_STATE_NAMES) = MISSING_R8 
+! 2) Add lines to function map_kinds similar to the convert_mm42vmr lines:
+!       convert_vmr2mmr(i) = 1.0_r8/convert_mmr2vmr(i)
+real(r8)         :: convert_mmr2vmr(MAX_STATE_NAMES) = MISSING_R8
 
 !-----------------------------------------------------------------------
 ! These are calculated from highest_obs_pressure_Pa
@@ -567,19 +633,8 @@ read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
 call verify_namelist()
 
-! Stand-alone CAM (not CESM) uses the first block of the if statement.
 ! Set the printed output logical variable to reduce printed output;
-
-if (file_exist('element')) then
-   iunit = get_unit()
-   open(unit=iunit, file='element', form='formatted')
-   read(iunit,*) ens_member
-   close(iunit)
-   output_task0 = .false.
-   if (ens_member == 1) output_task0 = .true.
-else
-   output_task0 = do_output()
-endif
+output_task0 = do_output()
 
 ! Record the namelist values
 if (do_nml_file()) write(nmlfileunit, nml=model_nml)
@@ -597,7 +652,6 @@ call nc_check(nf90_open(path=trim(model_config_file), mode=nf90_nowrite, ncid=nc
 call read_cam_init_size(nc_file_ID)
 
 ! RMA-KR; model size is now calculated in state_structure_mod/get_domain_size
-!         ens_mean is not used (or available) in RMA.
 
 ! Allocate space for global coordinate arrays and read them in.
 ! There's a query of caminput.nc within read_cam_coord for the existence of the field.
@@ -702,13 +756,14 @@ if (ilev%label /= '') max_levs = max(ilev%length, lev%length)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! RMA-KR; 
 !    p_col is now a local variable, allocated when/where it's needed.
-!    Was map_kinds really absent from Helen's model_mod?
 ! Fills arrays for the linking of obs_kinds (QTY_) to model field names
 call map_kinds()
 
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! If restricting impact of a particular kind to only obs and state vars
 ! of the same kind, look up and set the kind index.
+! RMA-KR This will/may be replaced by Nancy's more general code for restricting
+!        the influence of obs on listed variables.
 if (len_trim(impact_only_same_kind) > 0) then
    impact_kind_index = get_index_for_quantity(impact_only_same_kind)
 endif
@@ -1517,8 +1572,8 @@ subroutine map_kinds()
 ! Makes an array of 'locations within the state vector' of the obs kinds
 ! that come from obs_kind_mod, which we anticipate CAM's model_mod will need.
 ! The obs kind that's needed will be the index into this array,
-! the corresponding value will be the position of that field (not individual variable)
-! within the state vector according to state_name_Xd.
+! the corresponding value will be the name of that field.
+! This name will be used with find_name.
 ! This subroutine will be called from static_init_model, so it will not have to be
 ! recomputed for every ob.
 ! Also maps the model variable names onto the DART QTY_s by the same mechanism.
@@ -1532,22 +1587,117 @@ i = find_name('PS',cflds)
 if (i /= MISSING_I) then
    dart_to_cam_types(QTY_SURFACE_PRESSURE) = 'PS'
    cam_to_dart_kinds(i) = QTY_SURFACE_PRESSURE
+   convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
-! i = find_name('EFGWORO ',cflds)
-! if (i/= 0) then
-!    dart_to_cam_types(QTY_GRAV_WAVE_DRAG_EFFIC) = 'EFGWORO'
-!    cam_to_dart_kinds(i) = QTY_GRAV_WAVE_DRAG_EFFIC
-! endif
-! 
-! i = find_name('FRACLDV',cflds)
-! if (i /= 0) then
-!    dart_to_cam_types(QTY_GRAV_WAVE_STRESS_FRACTION) = 'FRACLDV'
-!    cam_to_dart_kinds(i) = QTY_GRAV_WAVE_STRESS_FRACTION
-! endif
+i = find_name('AEROD_v',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_AOD) = 'AEROD_v'
+   cam_to_dart_kinds(i) = QTY_AOD
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('SFCO',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_SFCO) = 'SFCO'
+   cam_to_dart_kinds(i) = QTY_SFCO
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('SFCO01',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_SFCO01) = 'SFCO01'
+   cam_to_dart_kinds(i) = QTY_SFCO01
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('SFCO02',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_SFCO02) = 'SFCO02'
+   cam_to_dart_kinds(i) = QTY_SFCO02
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('SFCO03',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_SFCO03) = 'SFCO03'
+   cam_to_dart_kinds(i) = QTY_SFCO03
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('SFOC1',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_SFOC1) = 'SFOC1'
+   cam_to_dart_kinds(i) = QTY_SFOC1
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('SFOC2',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_SFOC2) = 'SFOC2'
+   cam_to_dart_kinds(i) = QTY_SFOC2
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('SFCB1',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_SFCB1) = 'SFCB1'
+   cam_to_dart_kinds(i) = QTY_SFCB1
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('SFCB2',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_SFCB2) = 'SFCB2'
+   cam_to_dart_kinds(i) = QTY_SFCB2
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('SFOC102',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_SFOC102) = 'SFOC102'
+   cam_to_dart_kinds(i) = QTY_SFOC102
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('SFOC202',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_SFOC202) = 'SFOC202'
+   cam_to_dart_kinds(i) = QTY_SFOC202
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('SFCB102',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_SFCB102) = 'SFCB102'
+   cam_to_dart_kinds(i) = QTY_SFCB102
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('SFCB202',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_SFCB202) = 'SFCB202'
+   cam_to_dart_kinds(i) = QTY_SFCB202
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('EFGWORO ',cflds)
+if (i/= 0) then
+   dart_to_cam_types(QTY_GRAV_WAVE_DRAG_EFFIC) = 'EFGWORO'
+   cam_to_dart_kinds(i) = QTY_GRAV_WAVE_DRAG_EFFIC
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('FRACLDV',cflds)
+if (i /= 0) then
+   dart_to_cam_types(QTY_GRAV_WAVE_STRESS_FRACTION) = 'FRACLDV'
+   cam_to_dart_kinds(i) = QTY_GRAV_WAVE_STRESS_FRACTION
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
 
 ! dart_to_cam_types(QTY_SURFACE_TEMPERATURE  ?  ) = TYPE_TS
 ! dart_to_cam_types(QTY_SEA_SURFACE_TEMPERATURE  ?  ) = TYPE_TSOCN
+!    convert_mmr2vmr(i) = mmr2vmr(i)
 
 
 ! Physically 3D fields
@@ -1555,74 +1705,164 @@ i = find_name('T',cflds)
 if (i /= MISSING_I) then
    dart_to_cam_types(QTY_TEMPERATURE)        = 'T'
    cam_to_dart_kinds(i)      = QTY_TEMPERATURE
+   convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('US',cflds)
 if (i /= MISSING_I) then
    dart_to_cam_types(QTY_U_WIND_COMPONENT)   = 'US'
    cam_to_dart_kinds(i)      = QTY_U_WIND_COMPONENT
+   convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('VS',cflds)
 if (i /= MISSING_I) then
    dart_to_cam_types(QTY_V_WIND_COMPONENT)   = 'VS'
    cam_to_dart_kinds(i)      = QTY_V_WIND_COMPONENT
+   convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('Q',cflds)
 if (i /= MISSING_I) then
    dart_to_cam_types(QTY_SPECIFIC_HUMIDITY)  = 'Q'
    cam_to_dart_kinds(i)      = QTY_SPECIFIC_HUMIDITY
+   convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('CLDLIQ',cflds)
 if (i /= MISSING_I)  then
    dart_to_cam_types(QTY_CLOUD_LIQUID_WATER) = 'CLDLIQ'
   cam_to_dart_kinds(i) = QTY_CLOUD_LIQUID_WATER
+   convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('CLDICE',cflds)
 if (i /= MISSING_I) then
    dart_to_cam_types(QTY_CLOUD_ICE)          = 'CLDICE'
    cam_to_dart_kinds(i) = QTY_CLOUD_ICE
+   convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 !    dart_to_cam_types(QTY_CLOUD_WATER  ?  ) = 'LCWAT'
 ! cam_to_dart_kinds(i) = QTY_CLOUD_WATER  ?
+!    convert_mmr2vmr(i) = mmr2vmr(i)
 
 i = find_name('CO',cflds)
 if (i /= MISSING_I) then
    dart_to_cam_types(QTY_CO)  = 'CO'
    cam_to_dart_kinds(i)  = QTY_CO
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('CO01',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_CO01)  = 'CO01'
+   cam_to_dart_kinds(i)  = QTY_CO01
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('CO02',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_CO02)  = 'CO02'
+   cam_to_dart_kinds(i)  = QTY_CO02
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('CO03',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_CO03)  = 'CO03'
+   cam_to_dart_kinds(i)  = QTY_CO03
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('OC1',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_OC1)  = 'OC1'
+   cam_to_dart_kinds(i)  = QTY_OC1
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('OC2',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_OC2)  = 'OC2'
+   cam_to_dart_kinds(i)  = QTY_OC2
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('CB1',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_CB1)  = 'CB1'
+   cam_to_dart_kinds(i)  = QTY_CB1
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('CB2',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_CB2)  = 'CB2'
+   cam_to_dart_kinds(i)  = QTY_CB2
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('OC102',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_OC102)  = 'OC102'
+   cam_to_dart_kinds(i)  = QTY_OC102
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('OC202',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_OC202)  = 'OC202'
+   cam_to_dart_kinds(i)  = QTY_OC202
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('CB102',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_CB102)  = 'CB102'
+   cam_to_dart_kinds(i)  = QTY_CB102
+   convert_mmr2vmr(i) = mmr2vmr(i)
+endif
+
+i = find_name('CB202',cflds)
+if (i /= MISSING_I) then
+   dart_to_cam_types(QTY_CB202)  = 'CB202'
+   cam_to_dart_kinds(i)  = QTY_CB202
+   convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('CO2',cflds)
 if (i /= MISSING_I) then
    dart_to_cam_types(QTY_CO2) = 'CO2'
    cam_to_dart_kinds(i) = QTY_CO2
+   convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('NO',cflds)
 if (i /= MISSING_I) then
    dart_to_cam_types(QTY_NO)  = 'NO'
    cam_to_dart_kinds(i)  = QTY_NO
+   convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('NO2',cflds)
 if (i /= MISSING_I) then
    dart_to_cam_types(QTY_NO2) = 'NO2'
    cam_to_dart_kinds(i) = QTY_NO2
+   convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('CH4',cflds)
 if (i /= MISSING_I) then
    dart_to_cam_types(QTY_CH4) = 'CH4'
    cam_to_dart_kinds(i) = QTY_CH4
+   convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('NH3',cflds)
 if (i /= MISSING_I) then
    dart_to_cam_types(QTY_NH3) = 'NH3'
    cam_to_dart_kinds(i) = QTY_NH3
+   convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 ! i = find_name('O',cflds)
@@ -1635,6 +1875,7 @@ i = find_name('O3',cflds)
 if (i /= MISSING_I) then
    dart_to_cam_types(QTY_O3)  = 'O3'
    cam_to_dart_kinds(i)  = QTY_O3
+   convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 
@@ -1643,13 +1884,38 @@ if (print_details .and. output_task0) then
    call error_handler(E_MSG, 'map_kinds', string1,source,revision,revdate)
    do i=1,300
       if (dart_to_cam_types(i) /= '') then
-         write(string1,'(2I8)') i, dart_to_cam_types(i)
+         write(string1,'(I8,A)') i, dart_to_cam_types(i)
          call error_handler(E_MSG, 'map_kinds', string1,source,revision,revdate)
       end if
    end do
 end if
 
 end subroutine map_kinds
+
+!-----------------------------------------------------------------------
+! CAM-chem 3))
+! Function to calculate the unit conversion factors, which make 
+! estimated obs have units consistent with actual obs in model_interpolate.
+
+function mmr2vmr(var_index)
+
+integer, intent(in) :: var_index
+
+real(r8) :: mmr2vmr
+integer  :: chem_index
+
+mmr2vmr = 1.0_r8
+do chem_index=1,chemical_list
+   if ( cflds(var_index) .eq. solsym(chem_index) ) then
+      mmr2vmr = molar_mass_dry_air/adv_mass(chem_index)
+      write(string1,'(2A,I4)') 'State field(= chemical name), mmr2vmr = ', &
+             solsym(chem_index), mmr2vmr
+      call error_handler(E_MSG, 'mmr2vmr', string1,source,revision,revdate)
+      exit
+   endif
+enddo
+
+end function mmr2vmr
 
 !-----------------------------------------------------------------------
 
@@ -2245,6 +2511,12 @@ end function shortest_time_between_assimilations
 !> nc_write_model_atts
 !> writes the model-specific attributes to a netCDF file.
 !> 
+!> @param[in] ncid      
+!>  netCDF file identifier
+!>
+!> @param[in] domain_id      
+!>  domain identifier (CAM has only 1 domain).
+
 subroutine nc_write_model_atts( ncid, domain_id ) 
 
 
@@ -2277,6 +2549,7 @@ call nc_add_global_attribute(ncid, "model_revdate", revdate)
 call nc_add_global_attribute(ncid, "model", "CAM")
 
 ! Define the new dimensions IDs
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 ! They have different dimids for this file than they had for caminput.nc
 ! P_id serves as a map between the 2 sets.
@@ -2556,7 +2829,7 @@ integer  :: i, vstatus(ens_size), cur_vstatus(ens_size)
 real(r8) :: bot_lon, top_lon, delta_lon,                                &
             lon_below, lat_below, lat_above, lev_below,                 &
             lon_fract, lat_fract, temp_lon, a(ens_size, 2),           &
-            lon_lat_lev(3)
+            lon_lat_lev(3), convert_units
 real(r8), dimension(ens_size) :: val_11, val_12, val_21, val_22
 
 ! FIXME: Positions within the rank 2 and 3 fields.   I don't remember the issue...
@@ -2600,13 +2873,21 @@ lon_lat_lev = get_location(obs_loc)
 !         Does paradigm of separating vars into 0d, 1d, 2d, and 3d make sense?
 s_type = find_name(dart_to_cam_types(obs_kind),cflds)
 
-if (s_type == MISSING_I .and. &
-   (obs_kind /= QTY_PRESSURE) .and.  (obs_kind /= QTY_SURFACE_ELEVATION)) then
-!   istatus = 1
-!   interp_val = MISSING_R8
-   write(string1,*) 'Wrong type of obs = ', obs_kind
-   call error_handler(E_WARN, 'interp_lonlat', string1,source,revision,revdate)
-   return
+if (s_type == MISSING_I) then
+   if (obs_kind /= QTY_PRESSURE .and. obs_kind /= QTY_SURFACE_ELEVATION) then
+      write(string1,*) 'Wrong type of obs = ', obs_kind
+      call error_handler(E_WARN, 'interp_lonlat', string1,source,revision,revdate)
+      return
+   else
+      ! CAM-chem 5))
+      !          This will be used when interp_val is calculated,
+      !          but define it here, as soon as it can be.
+      ! Define for the non-chemical, state KINDs.
+      convert_units = 1.0_r8
+   endif
+else
+   ! CAM-chem Define it here for state variables
+   convert_units = convert_mmr2vmr(s_type) 
 endif
 
 ! Get lon and lat dimension names.
@@ -2846,7 +3127,8 @@ where (istatus == 0 .or. istatus == 2) ! These are success codes
    a(:, 1) = lon_fract * val_21 + (1.0_r8 - lon_fract) * val_11
    a(:, 2) = lon_fract * val_22 + (1.0_r8 - lon_fract) * val_12
 
-   interp_val(:) = lat_fract * a(:, 2) + (1.0_r8 - lat_fract) * a(:, 1)
+   ! CAM-chem 6)); multiply the result by the unit conversion factor
+   interp_val(:) = (lat_fract * a(:, 2) + (1.0_r8 - lat_fract) * a(:, 1)) * convert_units
 endwhere
 
 end subroutine interp_lonlat
@@ -2982,6 +3264,8 @@ istatus(:) = 1
 cur_vstatus(:) = 1
 vstatus(:) = 0 ! so you can track statuses
 val(:)     = MISSING_R8
+p_col(:,:) = MISSING_R8
+p_surf(:) = MISSING_R8
 
 ! Need to get the surface pressure at this point.
 ! Find out whether the observed field is a staggered field in CAM.
@@ -3087,6 +3371,7 @@ if (pressure < highest_obs_pressure_Pa) then
    where (istatus == 0) istatus = 2
 endif
 
+deallocate(p_col)
 
 end subroutine get_val_pressure
 
@@ -3200,7 +3485,8 @@ enddo
 !> @todo The location used in the distributed forward operator will be different 
 !> on each task for the highest_obs_height_calculation
 if (highest_obs_height_m == MISSING_R8) then
-   do imem = 1, 1 ! only want this to happen once instead of ens_size times (match the trunk)
+   ! Search until we find a good member
+   memloop: do imem = 1, ens_size 
       if (vstatus(imem) == 0) then
          levloop: do i=2,num_levs
             if (p_col(i, imem) > highest_obs_pressure_Pa) then
@@ -3208,11 +3494,13 @@ if (highest_obs_height_m == MISSING_R8) then
                highest_obs_height_m = model_h(i, imem) + (model_h(i, imem)-model_h(i-1, imem))*  &
                                              ((p_col(i, imem)-highest_obs_pressure_Pa) / &
                                               (p_col(i, imem)-p_col(i-1, imem)))
-               exit levloop
+! only want this to happen once, but may need to search for a good member. 
+!                exit levloop
+               exit memloop
             endif
          enddo levloop
       endif
-   enddo
+   enddo memloop
 endif
 
 
@@ -3550,7 +3838,7 @@ end subroutine vector_to_prog_var
 
 
 !#######################################################################
-! get_close_obs section
+! get_close section
 
 !-----------------------------------------------------------------------
 !>
@@ -4097,8 +4385,6 @@ elseif (old_which == VERTISLEVEL) then
 
 elseif (old_which == VERTISHEIGHT) then
 
-   ! Ens_mean is global storage that should have been filled
-   ! by a call from filter_assim to ens_mean_for_model.
    allocate(model_h(num_levs))
    call model_heights(state_handle, ens_size, num_levs, p_surf(1), old_loc,  model_h, istatus(1))
    if (istatus(1) == 1) then
@@ -4163,7 +4449,7 @@ return
 
 end subroutine convert_vert
 
-! End of get_close_obs section
+! End of get_close section
 
 !#######################################################################
 
@@ -4614,6 +4900,7 @@ type(location_type) :: temp_obs_loc
 integer :: k, i, imem
 integer :: vstatus(ens_size)
 istatus(:) = 1
+model_h(:,:) = MISSING_R8
 
 ! RMA-KR; CAM-SE section was removed from here.
 
@@ -4753,6 +5040,9 @@ real(r8) :: pmln(kmax+1)        ! logs of midpoint pressures
 
 ! Compute intermediate quantities using scratch space
 
+! DEBUG: z2 was unassigned in previous code.
+z2(:) = MISSING_R8
+
 ! Invert vertical loop
 ! Compute top only if top interface pressure is nonzero.
 !
@@ -4771,12 +5061,15 @@ do K = 2,kmax - 1
    pterm(k) = rbyg*tv(k)*0.5_r8* (pmln(k+1)-pmln(k-1))
 enddo
 
-! Initialize z2 to sum of ground height and thickness of top half-layer
+! Initialize z2 to sum of ground height and thickness of top half layer
+! DEBUG; this is NOT adding the thickness of the 'top' half layer.
+!        it's adding the thickness of the half layer at level K,
 do K = 1,kmax - 1
    z2(k) = h_surf + rbyg*tv(k)*0.5_r8* (pmln(K+1)-pmln(K))
 enddo
 z2(kmax) = h_surf + rbyg*tv(kmax)* (log(p_surf*hybrid_Bs(1,1))-pmln(kmax))
 
+! DEBUG; THIS is adding the half layer at the BOTTOM.
 do k = 1,kmax - 1
     z2(k) = z2(k) + rbyg*tv(kmax)* (log(p_surf*hybrid_Bs(1,1))-0.5_r8* &
                                        (pmln(kmax-1)+pmln(kmax)))

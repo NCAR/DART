@@ -225,10 +225,10 @@ endif
 if (template_file /= '') then
    dom_id = add_domain(template_file, NVARS, &
                        (/ 'concentration', &
-                          'mean_source  ', &
                           'source       ', &
-                          'source_phase ', &
-                          'wind         ' /))
+                          'wind         ', &
+                          'mean_source  ', &
+                          'source_phase ' /))
 else 
    !>@todo FIXME : should not need a template file if initializing members from code
 
@@ -236,10 +236,10 @@ else
    call error_handler(E_ERR,'static_init_model',string1, source, revision, revdate)
 
    dom_id = add_domain(NVARS, (/ 'concentration', &
-                                 'mean_source  ', &
                                  'source       ', &
-                                 'source_phase ', &
-                                 'wind         ' /))
+                                 'wind         ', &
+                                 'mean_source  ', &
+                                 'source_phase ' /))
 
    do var_id=1, NVARS
       call add_dimension_to_variable(dom_id, var_id, 'time', 1)

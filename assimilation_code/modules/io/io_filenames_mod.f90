@@ -91,7 +91,7 @@ public :: get_restart_filename, &
           get_copy_name, &
           get_stage_metadata, &
           single_file_initialized, &
-          copy_has_units, &
+          inherit_copy_units, &
           copy_is_clamped, &
           force_copy_back, &
           noutput_state_variables
@@ -155,7 +155,7 @@ type stage_metadata_type
    integer                         :: noutput_ens = 0   ! num_output_state_members
    integer                         :: num_copies  = 0
    logical,            allocatable :: clamp_vars(:)     ! num_copies
-   logical,            allocatable :: has_units(:)      ! num_copies
+   logical,            allocatable :: inherit_units(:)  ! num_copies
    logical,            allocatable :: force_copy_back(:)! num_copies
    integer,            allocatable :: io_flag(:)        ! read = 1, write = 2, read/write = 3
    integer,            allocatable :: my_copy_number(:) ! num_copies
@@ -289,7 +289,7 @@ num_domains = get_num_domains()
 
 allocate(file_info%stage_metadata%force_copy_back(num_copies))
 allocate(file_info%stage_metadata%clamp_vars(     num_copies))
-allocate(file_info%stage_metadata%has_units(      num_copies))
+allocate(file_info%stage_metadata%inherit_units(  num_copies))
 allocate(file_info%stage_metadata%io_flag(        num_copies))
 allocate(file_info%stage_metadata%my_copy_number( num_copies))
 allocate(file_info%stage_metadata%copy_name(      num_copies))
@@ -299,7 +299,7 @@ allocate(file_info%stage_metadata%file_description(num_copies , num_domains))
 
 file_info%stage_metadata%force_copy_back  = .false.
 file_info%stage_metadata%clamp_vars       = .false.
-file_info%stage_metadata%has_units        = .true.
+file_info%stage_metadata%inherit_units    = .true.
 file_info%stage_metadata%io_flag          = NO_IO
 file_info%stage_metadata%my_copy_number   = -1
 file_info%stage_metadata%noutput_ens      = 0
@@ -1015,14 +1015,14 @@ end function combine_file_info
 
 
 subroutine set_io_copy_flag_range(file_info, c1, c2, io_flag, num_output_ens, &
-                                  has_units, clamp_vars, force_copy_back)
+                                  inherit_units, clamp_vars, force_copy_back)
 
-type(file_info_type),      intent(inout) :: file_info   !< stage name handle
-integer,                   intent(in)    :: c1          !< start copy to read
-integer,                   intent(in)    :: c2          !< end copy to read
-integer,                   intent(in)    :: io_flag     !< read = 1, write = 2, read/write = 3
-integer, optional,         intent(in)    :: num_output_ens
-logical, optional,         intent(in)    :: has_units
+type(file_info_type),      intent(inout) :: file_info      !< stage name handle
+integer,                   intent(in)    :: c1             !< start copy to read
+integer,                   intent(in)    :: c2             !< end copy to read
+integer,                   intent(in)    :: io_flag        !< read = 1, write = 2, read/write = 3
+integer, optional,         intent(in)    :: num_output_ens !< number of output ensembles to diag files
+logical, optional,         intent(in)    :: inherit_units  !< inherit units from state structure
 logical, optional,         intent(in)    :: clamp_vars
 logical, optional,         intent(in)    :: force_copy_back
 
@@ -1033,8 +1033,8 @@ if (c1 <=0 .or. c2 <=0) return
 do i = c1, c2
   file_info%stage_metadata%io_flag(i) = io_flag
 
-  if(present(has_units)  )    &
-     file_info%stage_metadata%has_units( i) = has_units
+  if(present(inherit_units)  )    &
+     file_info%stage_metadata%inherit_units( i) = inherit_units
 
   if(present(clamp_vars) )    &
      file_info%stage_metadata%clamp_vars(i) = clamp_vars
@@ -1057,13 +1057,13 @@ end subroutine set_io_copy_flag_range
 !> created from scratch.
 
 
-subroutine set_io_copy_flag_single(file_info, c, io_flag, has_units, &
+subroutine set_io_copy_flag_single(file_info, c, io_flag, inherit_units, &
                                    clamp_vars, force_copy_back)
 
-type(file_info_type),      intent(inout) :: file_info   !< stage name handle
-integer,                   intent(in)    :: c           !< start copy to read
-integer,                   intent(in)    :: io_flag     !< read = 1, write = 2, read/write = 3
-logical, optional,         intent(in)    :: has_units   !<  if the copy has units
+type(file_info_type),      intent(inout) :: file_info     !< stage name handle
+integer,                   intent(in)    :: c             !< start copy to read
+integer,                   intent(in)    :: io_flag       !< read = 1, write = 2, read/write = 3
+logical, optional,         intent(in)    :: inherit_units !< inherit units from state structure
 logical, optional,         intent(in)    :: clamp_vars
 logical, optional,         intent(in)    :: force_copy_back
 
@@ -1071,8 +1071,8 @@ if (c <=0) return
 
 file_info%stage_metadata%io_flag(c)   = io_flag
 
-if(present(has_units)  ) &
-   file_info%stage_metadata%has_units( c) = has_units
+if(present(inherit_units)  ) &
+   file_info%stage_metadata%inherit_units( c) = inherit_units
 if(present(clamp_vars) ) &
    file_info%stage_metadata%clamp_vars(c) = clamp_vars
 if(present(force_copy_back) ) &
@@ -1086,16 +1086,16 @@ end subroutine set_io_copy_flag_single
 !> Copies such as Spread and Inflation never have units.
 
 
-function copy_has_units(name_handle, copy)
+function inherit_copy_units(name_handle, copy)
 type(stage_metadata_type), intent(in) :: name_handle
 integer,                   intent(in) :: copy
-logical :: copy_has_units
+logical :: inherit_copy_units
 
 if (copy <= 0) return
 
-copy_has_units = name_handle%has_units(copy)
+inherit_copy_units = name_handle%inherit_units(copy)
 
-end function copy_has_units
+end function inherit_copy_units
 
 !----------------------------------
 !> Determine if a variable should be clamped or not. If

@@ -17,10 +17,9 @@
 # The job name MUST be the name of this script(file), or this file will not be
 # archived in $CASEROOT.
 #BSUB  -J setup_hybrid
-#BSUB  -o Test_DART_config.bld2
-#BSUB  -e Test_DART_config.bld2
+#BSUB  -o CAM4_test1_hyb.bld1
+#BSUB  -e CAM4_test1_hyb.bld1
 
-# setup_advanced will need parts from CESM1_5_setup_advanced(?)
 
 
 #*******************************************************************************
@@ -35,7 +34,7 @@
 # is used. Instructions on what to change to use the SE core or WACCM are
 # outlined in the models/cam-fv/model_mod.html documentation.
 #
-# This script ($rma/models/cam-fv/scripts_cesm1_5/setup_hybrid) has many 
+# This script ($rma/models/cam-fv/shell_scripts/cesm2_0/setup_hybrid) has many 
 # changes from $non-rma/models/cam-fv/shell_scripts/CESM1_2_1_setup_hybrid
 # due to CESM's implementation of cime and move to perl scripts and xml files 
 # for all of the setup and running.  CESM1_5 enables running multiple cycles in a single
@@ -140,7 +139,7 @@
 # ==============================================================================
 # AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV (F_AMIP_CAM5) (FAMIPC5)
 
-setenv case                 Test_DART_config
+setenv case                 CAM4_test1_hyb
 # setenv case            Tune_c.2_v1.5_dflt_dflt
 setenv compset              F
 setenv resolution           f19_f19
@@ -192,10 +191,10 @@ setenv archdir      /glade/scratch/${USER}/${case}/archive
 setenv CIMEROOT     $cesmroot/cime
 
 setenv dartroot     /glade/u/home/${USER}/DART/rma_dirs
-# setenv dartroot     /glade/u/home/${USER}/DART/rma_trunk
 
 # Note that assimilate.csh looks for $base_obs_dir/YYYYMM_6H_CESM.
-setenv baseobsdir   /glade/p/image/Observations/NCEP+ACARS+GPS
+setenv baseobsdir   /glade/p/image/Observations/NCEP+ACARS
+# setenv baseobsdir   /glade/p/image/Observations/NCEP+ACARS+GPS
 
 # ==============================================================================
 # configure settings:
@@ -393,7 +392,8 @@ endif
 # setup_advanced will need more flexible arguments, as in CESM1_5_setup_advanced(?)
 # This may need --project, if env var PROJECT is no longer used.
 ${CIMEROOT}/scripts/create_newcase --case ${caseroot} --mach ${mach} \
-    --res ${resolution} --compset ${compset} --ninst $num_instances
+    --res ${resolution} ${compset_args}
+#  --ninst $num_instances
     
 if ( $status != 0 ) then
    echo "ERROR: Case could not be created."
@@ -445,14 +445,55 @@ chmod 755       ${caseroot}/DART_config
 if (! -f ${caseroot}/env_archive.xml.original) then
    ${COPY} ${caseroot}/env_archive.xml  ${caseroot}/env_archive.xml.original
 endif
+
+# This was last updated for cesm2_0_beta05, when st_archiving of DART
+# output was still in flux (2017-4).   It relies on the modified
+# $p/Models/cesm2_0_beta05_cam5_4_101/cime/utils/python/CIME/case_st_archive.py,
+# which is in this directory too.
+cd $CIMEROOT
+set st_arch = `find [^\.]* -name case_st_archive.py -print`
+cd -
+if (! -f $CIMEROOT/${st_arch}.orig) then
+   $MOVE $CIMEROOT/${st_arch} $CIMEROOT/${st_arch}.orig
+   cp ./case_st_archive.py $CIMEROOT/$st_arch
+endif
+
+# The rpointer files created in $archive/rest/$date for interim dates
+# (not the last date when st_archive is run) had the wrong form:
+# rpointer$NINST_STRING.atm, compared to the rpointers in run:
+# rpointer.atm$NINST_STRING.
+# Fix this (for cesm2_0_beta05 and ...?) by replacing the config_archive.xml file.
+if (! -f $CIMEROOT/cime_config/cesm/config_archive.xml.orig) then
+   mv $CIMEROOT/cime_config/cesm/config_archive.xml \
+      $CIMEROOT/cime_config/cesm/config_archive.xml.orig
+   cp ./config_archive.xml $CIMEROOT/cime_config/cesm/config_archive.xml
+endif
+# St_archive will also need updating for new stage names: 
+#     input, forecast, preassim, postassim, analysis, output.
+
+# "ex_end" prevents the $s from being interpreted as shell variables.
+# .+1,/obs_seq/d    old code, when I wanted to keep the "dart" compname line.
 ex ${caseroot}/env_archive.xml <<"ex_end"
 /"dart"
-/<files>
-append
+.,/obs_seq/d
+insert
+    <comp_archive_spec compclass="esp" compname="cam">
       <file_extension suffix="da\.log\..+">
         <subdir>logs</subdir>
         <keep_last_in_rundir>false</keep_last_in_rundir>
       </file_extension> 
+      <file_extension suffix="dart_log\..+">
+        <subdir>logs</subdir>
+        <keep_last_in_rundir>false</keep_last_in_rundir>
+      </file_extension>
+      <rest_file_extension>\..*?inf_.*?\.</rest_file_extension>
+      <hist_file_extension>\..*?[^f]_mean\..*?\.nc$</hist_file_extension>
+      <hist_file_extension>\..*?[^f]_sd\..*?\.nc$</hist_file_extension>
+      <hist_file_extension>\.input\..*?\.nc$</hist_file_extension>
+      <hist_file_extension>\.preassim\..*?\.nc$</hist_file_extension>
+      <hist_file_extension>\.postassim\..*?\.nc$</hist_file_extension>
+      <hist_file_extension>\.output\..*?\.nc$</hist_file_extension>
+      <hist_file_extension>cam_obs_seq\..*</hist_file_extension>
 .
 wq
 "ex_end"
@@ -734,8 +775,7 @@ endif
 #       assimilate.csh uses save_every_Mth_day_restarts to remove extraneous restart
 #          sets in the DART context.  
 #          This will be inherited by DART_config and inserted into assimilate.csh.
-setenv save_every_Mth_day_restarts 4
-#
+setenv save_every_Mth_day_restarts 1
 
 
 ./xmlchange -file env_batch.xml -subgroup case.st_archive -id JOB_QUEUE          -val geyser
@@ -951,12 +991,15 @@ while ($inst <= $num_instances)
    set fname = "user_nl_cam${inst_string}"
    # ===========================================================================
    # ATM Namelist
+
    # DART/CAM requires a PHIS field in a history file at the same frequency as
    # the CAM assimilation. This script sets it to be written to the .h0. every
    # assimilation time. If you want to write it to a different .h?. file, you MUST
    # modify the assimilate.csh script in TWO places. You will need to set
    # 'empty_htapes = .false.' and change 'nhtfrq' and 'mfilt' to get a CAM
    # default-looking .h0. file.
+   # If you want other fields written to history files, use h1,...,
+   # which are not purged by assimilate.csh.
    #
    # inithist == 'ENDOFRUN' ensures that CAM writes the required initial file
    # every time it stops.
@@ -1349,9 +1392,9 @@ else     # CONTINUE_RUN == FALSE
    # file from the RUNDIR directory.
    # Replace the inflation cookie, in case it was removed by a failed first cycle.
    if ( $num_instances > 1 ) then
-      ls ${stagedir}/*infl*
+      ls ${stagedir}/*inf*
       if ($status == 0) then
-         cp ${stagedir}/*infl* .
+         cp ${stagedir}/*inf* .
       else
          date >! \${rundir}/cam_inflation_cookie
       endif

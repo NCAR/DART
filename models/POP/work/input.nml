@@ -70,7 +70,7 @@
 
 
 &state_vector_io_nml
-   limit_mem = 362880000
+   buffer_state_io = .false.
   /
 
 

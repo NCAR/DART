@@ -944,7 +944,7 @@ integer,             intent(out) :: istatus(ens_size)
 ! Local vars
 logical, save :: first_time = .true.
 real(r8), dimension(ens_size) :: qr, qg, qs, rho, temp, refl
-integer,  dimension(ens_size) :: qr_istatus, qg_istatus, qs_istatus, rho_istatus, refl_istatus, p_istatus, temp_istatus
+integer,  dimension(ens_size) :: qr_istatus, qg_istatus, qs_istatus, rho_istatus, refl_istatus, temp_istatus
 integer               :: imem
 logical               :: return_now
 ! If the model can return the precipitation fall speed directly, let it do
@@ -958,7 +958,7 @@ istatus(:) = 0
 precip_fall_speed(:) = 0.0_r8
 
 call interpolate(state_handle, ens_size, location, QTY_POWER_WEIGHTED_FALL_SPEED, &
-         precip_fall_speed, p_istatus)
+                 precip_fall_speed, istatus)
 
 ! If able to get value, QTY_POWER_WEIGHT_FALL_SPEED is the
 ! the state so you can return here.

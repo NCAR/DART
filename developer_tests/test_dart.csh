@@ -15,9 +15,11 @@ if ( $#argv > 0 ) then
     setenv MPIFLAG '-mpi'
   else if ("$argv[1]" == "-nompi") then
     setenv MPIFLAG '-nompi'
+  else if ("$argv[1]" == "-default") then
+    setenv MPIFLAG '-default'
   else
     echo "Unrecognized argument to $0: $argv[1]"
-    echo "Usage: $0 [ -mpi | -nompi ]"
+    echo "Usage: $0 [ -mpi | -nompi | -default ]"
     echo " default is to run tests without using MPI."
     exit -1
   endif

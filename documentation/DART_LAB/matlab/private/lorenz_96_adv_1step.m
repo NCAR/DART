@@ -1,4 +1,4 @@
-function[x_new, time_new] = lorenz_96_adv_1step(x, time)
+function[x_new, time_new] = lorenz_96_adv_1step(x, time, forcing)
 %% lorenz_96_adv_1step Does a single time step advance for lorenz_96 40-variable model using four step runge-kutta time step
 %
 % x is the 40-vector state, time is the 2-vector days and seconds time
@@ -12,22 +12,22 @@ function[x_new, time_new] = lorenz_96_adv_1step(x, time)
 global DELTA_T
 
 % Compute first intermediate step
-dx = comp_dt(x);
+dx = comp_dt(x, forcing);
 x1 = DELTA_T * dx;
 inter = x + x1 / 2;
 
 % Compute second intermediate step
-dx = comp_dt(inter);
+dx = comp_dt(inter, forcing);
 x2 = DELTA_T * dx;
 inter = x + x2 / 2;
 
 % Compute third intermediate step
-dx = comp_dt(inter);
+dx = comp_dt(inter, forcing);
 x3 = DELTA_T * dx;
 inter = x + x3;
 
 % Compute fourth intermediate step
-dx = comp_dt(inter);
+dx = comp_dt(inter, forcing);
 x4 = DELTA_T * dx;
 
 % Compute new value for x
@@ -41,9 +41,8 @@ end
 
 %------------------------------------------------------------------------------
 
-function[dt] = comp_dt(x)
+function[dt] = comp_dt(x,forcing)
 
-global FORCING
 global MODEL_SIZE
 
 dt = zeros(1,MODEL_SIZE);
@@ -58,7 +57,7 @@ for j = 1:MODEL_SIZE
    jm1 = j - 1;
    if(jm1 < 1), jm1 = MODEL_SIZE; end
 
-   dt(j) = (x(jp1) - x(jm2)) * x(jm1) - x(j) + FORCING;
+   dt(j) = (x(jp1) - x(jm2)) * x(jm1) - x(j) + forcing;
 end
 
 end

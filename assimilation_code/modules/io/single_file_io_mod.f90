@@ -66,22 +66,20 @@ use assim_model_mod,      only : get_model_size
 use model_mod,            only : nc_write_model_vars, nc_write_model_atts
 use mpi_utilities_mod,    only : my_task_id, broadcast_flag, task_count
 use utilities_mod,        only : error_handler, E_MSG, E_ERR, E_DBG, E_WARN, &
-                                 file_to_text, find_textfile_dims, nc_check, &
-                                 register_module
+                                 file_to_text, find_textfile_dims, nc_check
 use io_filenames_mod,     only : file_info_type, stage_metadata_type, &
                                  noutput_state_variables, get_stage_metadata, &
                                  get_copy_name, netcdf_file_type, file_info_dump, &
                                  get_restart_filename, READ_COPY, WRITE_COPY
-use state_structure_mod,  only : get_num_domains, get_io_num_dims, &
+use state_structure_mod,  only : get_io_num_dims, &
                                  get_dim_name, get_num_dims, get_dim_length, &
-                                 get_io_num_unique_dims, get_io_unique_dim_name, &
-                                 get_io_unique_dim_length, get_dim_lengths, &
                                  get_num_variables, get_variable_name, &
                                  get_variable_size, set_var_id, &
                                  get_index_start, get_index_end,  &
                                  create_diagnostic_structure, &
                                  end_diagnostic_structure
-                                 
+use direct_netcdf_mod,    only : write_variable_attributes
+
 use model_mod,            only : read_model_time
 use netcdf
 use typesizes ! Part of netcdf?
@@ -102,8 +100,6 @@ character(len=256), parameter :: source   = &
    "$url: https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_single_file/io/single_file_io_mod.f90 $"
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
-
-logical :: module_initialized = .false.
 
 ! global storage for error/message string output
 character(len=512)  :: msgstring
@@ -167,7 +163,7 @@ integer ::   nlinesDimID,   linelenDimID, nmlVarID
 logical :: local_model_mod_will_write_state_variables = .false.
 
 ! Local variables including counters and storing names
-character(len=256) :: fname, copyname
+character(len=256) :: fname
 integer :: icopy, ivar, ret, ens_size, num_output_ens, domain
 
 if (my_task_id() == 0) then
@@ -295,7 +291,7 @@ if (my_task_id() == 0) then
    call nc_write_model_atts( ncFileID%ncid, domain)
 
    if ( .not. local_model_mod_will_write_state_variables ) then
-      call write_model_attributes(ncFileID, MemberDimID, TimeDimID)
+      call write_model_attributes(ncFileID, MemberDimID, TimeDimID, file_handle)
    endif
 
    !----------------------------------------------------------------------------
@@ -306,9 +302,8 @@ if (my_task_id() == 0) then
 
    ens_size = ens_handle%num_copies - ens_handle%num_extras
    do icopy = ens_size+1, ens_handle%num_copies 
-      copyname = get_copy_name(file_handle,icopy)
       if ( file_handle%stage_metadata%io_flag(icopy) == WRITE_COPY ) then
-         call write_extra_attributes(ncFileID, TimeDimID, copyname)
+         call write_extra_attributes( ncFileID, TimeDimID, file_handle, icopy )
       endif
    enddo 
    
@@ -529,7 +524,6 @@ do ivar = 1, get_num_variables(domain) ! assuming one domain for single files
    varname  = get_variable_name(1,ivar) 
 
    do icopy = ens_size+1, state_ens_handle%num_copies 
-      copyname = get_copy_name(file_info,icopy)
 
       if ( file_info%stage_metadata%io_flag(icopy) == READ_COPY) then
 
@@ -553,6 +547,7 @@ do ivar = 1, get_num_variables(domain) ! assuming one domain for single files
             endif
          enddo
 
+         copyname = get_copy_name(file_info,icopy)
          write(extraname,'(a,"_",a)') trim(varname), trim(copyname)
          ret = nf90_inq_varid(my_ncid, extraname, varid)
          call nc_check(ret, 'read_singlefile', 'inq_varid '//trim(extraname))
@@ -678,15 +673,13 @@ type(ensemble_type),  intent(inout) :: ens_handle
 type(file_info_type), intent(inout) :: file_info
 
 ! Local variables
-integer                :: member_index, copy_index, my_ncid
-integer                :: num_output_ens, ens_size
+integer                :: copy_index, time_size, ens_size, domain
+integer                :: TimeDimID, my_ncid, ret
 integer(i8)            :: model_size
-character(len=128)     :: copyname
 type(time_type)        :: curr_ens_time
 type(netcdf_file_type) :: ncFileID
 real(r8), allocatable  :: temp_ens(:)
-integer                :: TimeDimID, time_size, varid, ret, icopy, ivar, domain
-character(len=NF90_MAX_NAME) :: dimname, varname, extraname, fname
+character(len=256) :: fname, copyname
 
 ! assumes that mean and spread have already been computed
 ! make sure vars is up-to-date
@@ -726,10 +719,10 @@ ens_size = ens_handle%num_copies - ens_handle%num_extras
 
 do copy_index = ens_size+1, ens_handle%num_copies
    if ( file_info%stage_metadata%io_flag(copy_index) == WRITE_COPY ) then
-      copyname = get_copy_name(file_info,copy_index)
       call get_copy(map_task_to_pe(ens_handle, 0), ens_handle, copy_index, temp_ens)
       if(my_task_id() == 0) then
-         call write_extra_attributes(ncFileID, TimeDimID, copyname)
+         copyname = get_copy_name(file_info, copy_index)
+         call write_extra_attributes( ncFileID, TimeDimID, file_info, copy_index)
          call write_extra_variables(  ncFileID, temp_ens,  copyname, curr_ens_time, 1)
       endif
    endif
@@ -763,7 +756,6 @@ integer :: ret ! netcdf return code
 integer :: var_id ! netcdf variable id
 integer :: domain, dcount
 integer :: my_ncid
-integer :: is1, id1
 character(len=NF90_MAX_NAME) :: dimname, varname, extraname
 
 my_ncid = ncFileID%ncid
@@ -833,7 +825,6 @@ integer :: ret ! netcdf return code
 integer :: var_id ! netcdf variable id
 integer :: domain
 integer :: my_ncid
-integer :: is1, id1
 character(len=NF90_MAX_NAME) :: dimname, varname
 
 ! may not be needed
@@ -878,15 +869,17 @@ end subroutine write_model_variables
 !-----------------------------------------------------------
 !>
 
-subroutine write_extra_attributes(ncFileID, time_dimId, copyname)
+subroutine write_extra_attributes(ncFileID, time_dimId, file_handle, copy_index)
 
 type(netcdf_file_type), intent(inout) :: ncFileID
-integer,           intent(in) :: time_dimId
-character(len=*),  intent(in) :: copyname
+integer,                intent(in)    :: time_dimId
+type(file_info_type),   intent(in)    :: file_handle
+integer,                intent(in)    :: copy_index
 
 integer :: ivar, jdim, ndims, domain
 integer :: ret, my_ncid, new_varid, my_dimid, my_xtype
-character(len=NF90_MAX_VAR_DIMS) :: varname, dimname, extraname
+character(len=NF90_MAX_NAME) :: varname, dimname, extraname
+character(len=256) :: fname, copyname
 integer ::  model_dimids(NF90_MAX_VAR_DIMS)
 
 !--------------------------------------------------------------------
@@ -896,6 +889,8 @@ integer ::  model_dimids(NF90_MAX_VAR_DIMS)
 call nc_check(nf90_Redef(ncFileID%ncid), 'write_extra_attributes', 'nf90_Redef')
 
 my_ncid  = ncFileID%ncid
+fname    = ncFileID%fname
+copyname = get_copy_name(file_handle,copy_index)
 
 if(my_task_id()==0) then
 
@@ -931,6 +926,8 @@ if(my_task_id()==0) then
                                   dimids = model_dimids(1:ndims+1), &
                                   varid  = new_varid)
          call nc_check(ret, 'write_extra_attributes', 'defining variable '//trim(extraname))
+         call write_variable_attributes(fname, my_ncid, new_varid, domain, ivar, &
+                                        file_handle%stage_metadata, copy_index)
       endif
    enddo
 endif
@@ -951,27 +948,31 @@ end subroutine write_extra_attributes
 !> If there are multiple domains the variables and dimensions are
 !> given the suffix _d0*, where * is the domain number.
 
-subroutine write_model_attributes(ncFileID, member_dimID, time_dimId)
+subroutine write_model_attributes(ncFileID, member_dimID, time_dimId, file_handle)
 
 type(netcdf_file_type), intent(inout) :: ncFileID
 integer,                intent(in)    :: member_dimID
 integer,                intent(in)    :: time_dimId
+type(file_info_type),   intent(in)    :: file_handle
 
 integer :: domain, my_ncid ! local variable
 integer :: ret ! netcdf return code
-integer :: dummy
+integer :: copynumber, dummy
 integer :: dimids(NF90_MAX_VAR_DIMS)
 integer :: ndims
 integer :: my_xtype ! precision for netcdf variable
 integer :: ivar, jdim ! loop variables
 integer :: new_varid
-character(len=metadatalength) :: dimname, varname
+character(len=256) :: fname
+character(len=NF90_MAX_NAME) :: dimname, varname
 
 call nc_check(nf90_Redef(ncFileID%ncid), 'write_model_attributes', 'nf90_Redef')
 
 ncFileID%diag_id = create_diagnostic_structure()
 
-my_ncid  = ncFileID%ncid
+my_ncid    = ncFileID%ncid
+fname      = ncFileID%fname
+copynumber = 1 ! assuming it is an ensemble memeber
 
 if(my_task_id()==0) then
 
@@ -1017,6 +1018,8 @@ if(my_task_id()==0) then
                                varid  = new_varid)
       call nc_check(ret, 'write_model_attributes', 'defining variable '//trim(varname))
       call set_var_id(domain, ivar, new_varid)
+      call write_variable_attributes(fname, my_ncid, new_varid, domain, ivar, &
+                                     file_handle%stage_metadata, copynumber)
 
    enddo
 

@@ -38,8 +38,11 @@ call static_init_obs_sequence()
 seq = interactive_obs_sequence()
 
 ! Write the sequence to a file
-write(*, *) 'Input filename for sequence (  set_def.out   usually works well)'
-read(*, *) file_name
+write(*, *) 'Input filename for sequence (<return> for set_def.out )'
+read(*, 11) file_name
+11 format(a256)
+if(file_name == '') file_name = 'set_def.out'
+
 call write_obs_seq(seq, file_name)
 
 call error_handler(E_MSG,'create_obs_sequence','Finished successfully.',source,revision,revdate)

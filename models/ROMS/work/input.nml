@@ -66,7 +66,7 @@
 
 
 &state_vector_io_nml
-   limit_mem               = 2100000000
+   buffer_state_io = .false.
    single_precision_output = .false.
   /
 

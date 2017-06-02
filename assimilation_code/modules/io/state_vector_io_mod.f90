@@ -121,17 +121,13 @@ logical :: module_initialized = .false.
 
 ! namelist variables with default values
 ! Aim: to have the regular transpose as the default
-integer :: limit_mem = HUGE(1_i4) !< This is the number of elements (not bytes) 
-                                  !< so you don't have times the number by 4 or 8
+logical :: buffer_state_io         = .false. !< Write one variable at a time. This is for models
+                                             !< whose entire model state can not fit into a single array on
+                                             !< a given node
 logical :: single_precision_output = .false. !< Allows you to write r4 netcdf files 
                                              !< even if filter is double precision
 
-!>@todo FIXME there should be a 'variable_by_variable' logical here
-!> that says do i/o a single variable at a time instead of the entire
-!> state.  the limit_mem can stay, but it's much harder to use for
-!> the average user.
-
-namelist /  state_vector_io_nml / limit_mem, single_precision_output
+namelist /  state_vector_io_nml / buffer_state_io, single_precision_output
 
 contains
 
@@ -309,7 +305,7 @@ state_ens_handle%time = time
 ! read in the data and transpose
 dart_index = 1 ! where to start in state_ens_handle%copies - this is modified by read_transpose
 do domain = 1, get_num_domains()
-   call read_transpose(state_ens_handle, restart_files, domain, dart_index, limit_mem)
+   call read_transpose(state_ens_handle, restart_files, domain, dart_index, buffer_state_io)
 enddo
 
 ! Need Temporary print of initial model time?
@@ -340,7 +336,7 @@ dart_index = 1
 ! Different filenames for prior vs. posterior vs. diagnostic files
 do domain = 1, get_num_domains()
    call transpose_write(state_ens_handle, file_name_handle, domain, &
-                  dart_index, limit_mem, single_precision_output)
+                  dart_index, buffer_state_io, single_precision_output)
 enddo
 
 end subroutine write_restart_direct
