@@ -1,9 +1,9 @@
-function oned_model
-%% ONED_MODEL simple ensemble data assimilation example.
+function oned_model_inf
+%% ONED_MODEL_INF simple ensemble data assimilation example.
 %
 %      There are no input arguments. Simply invoke by typing the name.
 %
-%      ONED_MODEL demonstrates the simplest possible case of ensemble data
+%      ONED_MODEL_INF demonstrates the simplest possible case of ensemble data
 %      assimilation. It is possible to explore assimilation algorithms,
 %      ensemble sizes, model biases, etc. on-the-fly. The posterior
 %      of the state is indicated by blue asterisks, the states evolve along
@@ -12,10 +12,10 @@ function oned_model
 %      assimilation, the (posterior) state is indicated in blue and the
 %      process is ready to repeat.
 %
-%      ONED_MODEL opens a gui control window that plots
+%      ONED_MODEL_INF opens a gui control window that plots
 %      the most recent prior, posterior, and observation,
 %      time sequences of the assimilation, the RMS error,
-%      spread and kurtosis, and prior and posterior rank histograms.
+%      spread and inflation, and prior and posterior rank histograms.
 %
 %      The top button alternates between "Advance Model" and "Assimilate" to
 %      single-step the model. The "Start Auto Run" button is useful to watch
@@ -44,12 +44,7 @@ function oned_model
 %
 % DART $Id$
 
-%>@todo FIXME really should set plot limits based on model bias and inflation values
-%> could set state limits to +/- 7
-%> observation likelihood graphic (handles.axes) can have a static range
-%> based on these values as well.
-
-help oned_model
+help oned_model_inf
 
 atts = stylesheet; % get the default fonts and colors
 
@@ -59,14 +54,14 @@ atts = stylesheet; % get the default fonts and colors
 % specified as fractions (units = Normalized). That way, the objects
 % scale proportionally as the figure gets resized.
 
-figXmin   =  50; % The horizontal position of the entire figure, in pixels
+figXmin   = 150; % The horizontal position of the entire figure, in pixels
 figYmin   = 250; % The vertical   position of the entire figure, in pixels
-figWidth  = 900; % The width of the entire figure, in pixels
-figHeight = 600; % The height of the entire figure, in pixels
+figWidth  = 1550; % The width of the entire figure, in pixels
+figHeight = 800; % The height of the entire figure, in pixels
 
 handles.figure = figure('Position', [figXmin figYmin figWidth figHeight], ...
     'Units'               , 'Pixels', ...
-    'Name'                , 'oned_model');
+    'Name'                , 'oned_model_inf');
 
 set(handles.figure, 'Color', atts.background);
 
@@ -109,22 +104,15 @@ handles.ui_button_start_auto_run = uicontrol('Style', 'pushbutton', ...
 %  trying to manipulate the positions of all the components.
 
 handles.ui_InputPanel = uipanel('Units','Normalized', ...
-    'Position'            , [0.774 0.378 0.210 0.370], ...
+    'Position'            , [0.765 0.365 0.210 0.370], ...
     'BorderType'          , 'none', ...
     'BackgroundColor'     , atts.background);
 
-delta = 0.02;
-tXmin = delta;
-tXwid = 0.70;
-tYwid = 0.23;
-
-tYmin = 1.0 - tYwid - delta;
-
-scaled_fontsize = 0.50;
+scaled_fontsize = 0.35;
 handles.ui_text_ens_size = uicontrol(handles.ui_InputPanel, ...
     'Style'               , 'text', ...
     'Units'               , 'Normalized', ...
-    'Position'            , [0.010 0.750 0.690 0.180], ...
+    'Position'            , [0.01 0.78 0.30 0.180], ...
     'String'              , 'Ens. Size' , ...
     'BackgroundColor'     , atts.background, ...
     'HorizontalAlignment' ,'right', ...
@@ -133,12 +121,10 @@ handles.ui_text_ens_size = uicontrol(handles.ui_InputPanel, ...
     'FontSize'            , scaled_fontsize, ...
     'FontWeight'          , 'normal');
 
-eXmin = tXmin + tXwid + delta;
-
 handles.ui_edit_ens_size = uicontrol(handles.ui_InputPanel, ...
     'Style'               , 'edit', ...
     'Units'               , 'Normalized', ...
-    'Position'            , [eXmin tYmin+0.03 0.257 0.18], ...
+    'Position'            , [0.09 0.72 0.20 0.15], ...
     'String'              , '4', ...
     'BackgroundColor'     , 'White', ...
     'FontName'            , atts.fontname, ...
@@ -148,11 +134,10 @@ handles.ui_edit_ens_size = uicontrol(handles.ui_InputPanel, ...
     'Callback'            , @ens_size_Callback);
 handles.ens_size = str2double(get(handles.ui_edit_ens_size,'String'));
 
-tYmin = tYmin - tYwid - delta;
 handles.ui_text_model_bias = uicontrol(handles.ui_InputPanel, ...
     'Style'               , 'text', ...
     'Units'               , 'Normalized', ...
-    'Position'            , [0.010 0.488 0.690 0.180], ...
+    'Position'            , [0.39 0.78 0.31 0.180], ...
     'String'              , 'Model Bias' , ...
     'BackgroundColor'     , atts.background, ...
     'HorizontalAlignment' ,'right', ...
@@ -164,7 +149,7 @@ handles.ui_text_model_bias = uicontrol(handles.ui_InputPanel, ...
 handles.ui_edit_model_bias = uicontrol(handles.ui_InputPanel, ...
     'Style'               , 'edit', ...
     'Units'               , 'Normalized', ...
-    'Position'            , [eXmin tYmin+0.02 0.257 0.18], ...
+    'Position'            , [0.44 0.72 0.20 0.15], ...
     'String'              , '0.0', ...
     'BackgroundColor'     , 'White', ...
     'FontName'            , atts.fontname, ...
@@ -174,38 +159,11 @@ handles.ui_edit_model_bias = uicontrol(handles.ui_InputPanel, ...
     'Callback'            , @model_bias_Callback);
 handles.model_bias = str2double(get(handles.ui_edit_model_bias,'String'));
 
-tYmin = tYmin - tYwid - delta;
-handles.ui_text_inflation = uicontrol(handles.ui_InputPanel, ...
-    'Style'               , 'text', ...
-    'Units'               , 'Normalized', ...
-    'Position'            , [0.010 0.240 0.690 0.180], ...
-    'String'              , 'Inflation' , ...
-    'BackgroundColor'     , atts.background, ...
-    'HorizontalAlignment' ,'right', ...
-    'FontName'            , atts.fontname, ...
-    'FontUnits'           , 'Normalized', ...
-    'FontSize'            , scaled_fontsize, ...
-    'FontWeight'          , 'normal');
-
-handles.ui_edit_inflation = uicontrol(handles.ui_InputPanel, ...
-    'Style'               , 'edit', ...
-    'Units'               , 'Normalized', ...
-    'Position'            , [eXmin tYmin+0.02 0.257 0.18], ...
-    'String'              , '1.0', ...
-    'BackgroundColor'     , 'White', ...
-    'FontName'            , atts.fontname, ...
-    'FontUnits'           , 'Normalized', ...
-    'FontSize'            , scaled_fontsize, ...
-    'FontWeight'          , 'normal', ...
-    'Callback'            , @inflation_Callback);
-handles.inflation = str2double(get(handles.ui_edit_inflation,'String'));
-
-tYmin = tYmin - tYwid - delta;
 handles.ui_text_nonlin_a = uicontrol(handles.ui_InputPanel, ...
     'Style'               , 'text',...
     'Units'               , 'Normalized',...
-    'Position'            , [0.010 0.007 0.690 0.180],...
-    'String'              , 'Nonlin. a' ,...
+    'Position'            , [0.705 0.78 0.30 0.180],...
+    'String'              , 'NonL. a' ,...
     'BackgroundColor'     , atts.background,...
     'HorizontalAlignment' ,'right', ...
     'FontName'            , atts.fontname,...
@@ -216,7 +174,7 @@ handles.ui_text_nonlin_a = uicontrol(handles.ui_InputPanel, ...
 handles.ui_edit_nonlin_a = uicontrol(handles.ui_InputPanel, ...
     'Style'               , 'edit', ...
     'Units'               , 'Normalized', ...
-    'Position'            , [eXmin tYmin+0.03 0.257 0.18], ...
+    'Position'            , [0.79 0.72 0.20 0.15], ...
     'String'              , '0.0', ...
     'BackgroundColor'     , 'White', ...
     'FontName'            , atts.fontname, ...
@@ -226,11 +184,190 @@ handles.ui_edit_nonlin_a = uicontrol(handles.ui_InputPanel, ...
     'Callback'            , @nonlin_a_Callback);
 handles.nonlin_a = str2double(get(handles.ui_edit_nonlin_a,'String'));
 
+
+
+%% -------------------------t---------------------------------------------------
+%  Set up another parent container so we can move the one container around instead of
+%  trying to manipulate the positions of all the components.
+
+handles.ui_Inflate_Panel = uibuttongroup('Units','Normalized', ...
+    'Position'            , [0.77 0.28 0.210 0.30], ...
+    'BorderType'          , 'none', ...
+    'BackgroundColor'     , atts.background);
+
+scaled_fontsize = 0.45;
+handles.ui_radio_button_fixed_inflation = uicontrol(handles.ui_Inflate_Panel, ...
+    'Style'               , 'radio button', ...
+    'Units'               , 'Normalized', ...
+    'Position'            , [0.07 0.8 0.690 0.180], ...
+    'String'              , 'Fixed Inflation', ...
+    'BackgroundColor'     , atts.background, ...
+    'Foreground'          , 'k', ...
+    'FontUnits'           , 'Normalized', ...
+    'FontName'            , atts.fontname, ...
+    'FontWeight'          ,'normal', ...
+    'FontSize'            , scaled_fontsize, ...
+    'HandleVisibility'    , 'On');
+
+handles.ui_edit_fixed_inflation = uicontrol(handles.ui_Inflate_Panel, ...
+    'Style'               , 'edit', ...
+    'Units'               , 'Normalized', ...
+    'Position'            , [0.675 .8 0.257 0.18], ...
+    'String'              , '1.02', ...
+    'BackgroundColor'     , 'White', ...
+    'FontName'            , atts.fontname, ...
+    'FontUnits'           , 'Normalized', ...
+    'FontSize'            , scaled_fontsize, ...
+    'FontWeight'          , 'normal', ...
+    'Callback'            , @fixed_inflation_Callback);
+handles.inflation = str2double(get(handles.ui_edit_fixed_inflation,'String'));
+
+% BELOW IS ADAPTIVE INFLATION SECTION:
+handles.ui_radio_button_adaptive_inflation = uicontrol(handles.ui_Inflate_Panel, ...
+    'Style'               , 'radio button', ...
+    'Units'               , 'Normalized', ...
+    'Position'            , [0.20 0.57 0.690 0.180], ...
+    'String'              , 'Adaptive Inflation', ...
+    'BackgroundColor'     , atts.background, ...
+    'Foreground'          , 'k', ...
+    'FontUnits'           , 'Normalized', ...
+    'FontName'            , atts.fontname, ...
+    'FontWeight'          ,'normal', ...
+    'FontSize'            , scaled_fontsize, ...
+    'HandleVisibility'    , 'On');
+
+scaled_fontsize = 0.40;
+handles.ui_text_adap_inf_Min = uicontrol(handles.ui_Inflate_Panel, ...
+    'Style'               , 'text',...
+    'Units'               , 'Normalized',...
+    'Position'            , [-0.01 0.38 0.25 0.180],...
+    'String'              , 'Inf Min',...
+    'BackgroundColor'     , atts.background,...
+    'HorizontalAlignment' ,'right', ...
+    'FontName'            , atts.fontname,...
+    'FontUnits'           , 'Normalized',...
+    'FontSize'            , scaled_fontsize,...
+    'FontWeight'          , 'normal');
+
+handles.ui_edit_adap_inf_Min = uicontrol(handles.ui_Inflate_Panel, ...
+    'Style'               , 'edit', ...
+    'Units'               , 'Normalized', ...
+    'Position'            , [0.06 0.30 0.20 0.15], ...
+    'String'              , '1.0', ...
+    'BackgroundColor'     , 'White', ...
+    'FontName'            , atts.fontname, ...
+    'FontUnits'           , 'Normalized', ...
+    'FontSize'            , scaled_fontsize, ...
+    'FontWeight'          , 'normal', ...
+    'Callback'            , @adap_inf_Min_Callback);
+handles.adap_inf_Min = str2double(get(handles.ui_edit_adap_inf_Min,'String'));
+
+handles.ui_text_adap_inf_Damp = uicontrol(handles.ui_Inflate_Panel, ...
+    'Style'               , 'text',...
+    'Units'               , 'Normalized',...
+    'Position'            , [0.34 0.38 0.30 0.180],...
+    'String'              , 'Inf Damp',...
+    'BackgroundColor'     , atts.background,...
+    'HorizontalAlignment' ,'right', ...
+    'FontName'            , atts.fontname,...
+    'FontUnits'           , 'Normalized',...
+    'FontSize'            , scaled_fontsize,...
+    'FontWeight'          , 'normal');
+
+handles.ui_edit_adap_inf_Damp = uicontrol(handles.ui_Inflate_Panel, ...
+    'Style'               , 'edit', ...
+    'Units'               , 'Normalized', ...
+    'Position'            , [0.425 0.30 0.20 0.15], ...
+    'String'              , '0.9', ...
+    'BackgroundColor'     , 'White', ...
+    'FontName'            , atts.fontname, ...
+    'FontUnits'           , 'Normalized', ...
+    'FontSize'            , scaled_fontsize, ...
+    'FontWeight'          , 'normal', ...
+    'Callback'            , @adap_inf_Damp_Callback);
+handles.adap_inf_Damp = str2double(get(handles.ui_edit_adap_inf_Damp,'String'));
+
+handles.ui_text_adap_inf_Max = uicontrol(handles.ui_Inflate_Panel, ...
+    'Style'               , 'text',...
+    'Units'               , 'Normalized',...
+    'Position'            , [0.69 0.38 0.30 0.180],...
+    'String'              , 'Inf Max',...
+    'BackgroundColor'     , atts.background,...
+    'HorizontalAlignment' ,'right', ...
+    'FontName'            , atts.fontname,...
+    'FontUnits'           , 'Normalized',...
+    'FontSize'            , scaled_fontsize,...
+    'FontWeight'          , 'normal');
+
+handles.ui_edit_adap_inf_Max = uicontrol(handles.ui_Inflate_Panel, ...
+    'Style'               , 'edit', ...
+    'Units'               , 'Normalized', ...
+    'Position'            , [0.795 0.30 0.20 0.15], ...
+    'String'              , '3.0', ...
+    'BackgroundColor'     , 'White', ...
+    'FontName'            , atts.fontname, ...
+    'FontUnits'           , 'Normalized', ...
+    'FontSize'            , scaled_fontsize, ...
+    'FontWeight'          , 'normal', ...
+    'Callback'            , @adap_inf_Max_Callback);
+handles.adap_inf_Max = str2double(get(handles.ui_edit_adap_inf_Max,'String'));
+
+handles.ui_text_adap_inf_Std = uicontrol(handles.ui_Inflate_Panel, ...
+    'Style'               , 'text',...
+    'Units'               , 'Normalized',...
+    'Position'            , [0.145 0.08 0.33 0.180],...
+    'String'              , 'Inf Std Init.',...
+    'BackgroundColor'     , atts.background,...
+    'HorizontalAlignment' ,'right', ...
+    'FontName'            , atts.fontname,...
+    'FontUnits'           , 'Normalized',...
+    'FontSize'            , scaled_fontsize,...
+    'FontWeight'          , 'normal');
+
+handles.ui_edit_adap_inf_Std = uicontrol(handles.ui_Inflate_Panel, ...
+    'Style'               , 'edit', ...
+    'Units'               , 'Normalized', ...
+    'Position'            , [0.24 0.00 0.20 0.15], ...
+    'String'              , '0.6', ...
+    'BackgroundColor'     , 'White', ...
+    'FontName'            , atts.fontname, ...
+    'FontUnits'           , 'Normalized', ...
+    'FontSize'            , scaled_fontsize, ...
+    'FontWeight'          , 'normal', ...
+    'Callback'            , @adap_inf_Std_Callback);
+handles.adap_inf_Std = str2double(get(handles.ui_edit_adap_inf_Std,'String'));
+
+handles.ui_text_adap_inf_Std_Min = uicontrol(handles.ui_Inflate_Panel, ...
+    'Style'               , 'text',...
+    'Units'               , 'Normalized',...
+    'Position'            , [0.52 0.08 0.33 0.180],...
+    'String'              , 'Inf Std Min',...
+    'BackgroundColor'     , atts.background,...
+    'HorizontalAlignment' ,'right', ...
+    'FontName'            , atts.fontname,...
+    'FontUnits'           , 'Normalized',...
+    'FontSize'            , scaled_fontsize,...
+    'FontWeight'          , 'normal');
+
+handles.ui_edit_adap_inf_Std_Min = uicontrol(handles.ui_Inflate_Panel, ...
+    'Style'               , 'edit', ...
+    'Units'               , 'Normalized', ...
+    'Position'            , [0.61 0.00 0.20 0.15], ...
+    'String'              , '0.3', ...
+    'BackgroundColor'     , 'White', ...
+    'FontName'            , atts.fontname, ...
+    'FontUnits'           , 'Normalized', ...
+    'FontSize'            , scaled_fontsize, ...
+    'FontWeight'          , 'normal', ...
+    'Callback'            , @adap_inf_Std_Min_Callback);
+handles.adap_inf_Std_Min = str2double(get(handles.ui_edit_adap_inf_Std_Min,'String'));
+
+
 %% -----------------------------------------------------------------------------
 
 handles.ui_radio_button_group = uibuttongroup('BackgroundColor', atts.background, ...
     'BorderType'          , 'none', ...
-    'Position'            , [0.834 0.142 0.130 0.240]);
+    'Position'            , [0.90 0.01 0.130 0.240]);
 
 rXmin    = 0.033;  % x location of radio buttons
 rdeltaX  = 0.830;  % width of radio buttons
@@ -283,7 +420,7 @@ handles.ui_radio_button_rhf = uicontrol(handles.ui_radio_button_group, ...
 
 handles.ui_button_reset = uicontrol('Style', 'pushbutton', ...
     'Units'               , 'Normalized', ...
-    'Position'            , [0.824 0.016 0.125 0.067], ...
+    'Position'            , [0.800 0.15 0.075 0.063], ...
     'String'              , 'Reset', ...
     'BackgroundColor'     , 'White', ...
     'FontName'            , atts.fontname, ...
@@ -294,7 +431,7 @@ handles.ui_button_reset = uicontrol('Style', 'pushbutton', ...
 
 handles.ClearHistograms = uicontrol('Style', 'pushbutton', ...
     'Units'               , 'Normalized', ...
-    'Position'            , [0.824 0.09 0.125 0.067], ...
+    'Position'            , [0.800 0.05 0.075 0.063], ...
     'String'              , 'Clear Hist', ...
     'BackgroundColor'     , 'White', ...
     'FontName'            , atts.fontname, ...
@@ -306,17 +443,6 @@ handles.ClearHistograms = uicontrol('Style', 'pushbutton', ...
 %% -----------------------------------------------------------------------------
 %  These appear to be error messages that can be turned on or off.
 %  They start turned off.
-
-handles.ui_text_inf_err_print = uicontrol('Style', 'text', ...
-    'Units'               , 'Normalized', ...
-    'Position'            , [0.0600 0.6000 0.3000 0.0800], ...
-    'String'              , 'ERROR: Inflation value must be between 1 and 5.', ...
-    'ForegroundColor'     , atts.red, ...
-    'BackgroundColor'     , 'White', ...
-    'FontSize'            , atts.fontsize, ...
-    'FontName'            , atts.fontname, ...
-    'FontWeight'          , 'Bold', ...
-    'Visible'             , 'Off');
 
 handles.ui_text_model_bias_err_print = uicontrol('Style', 'text', ...
     'Units'               , 'Normalized', ...
@@ -344,6 +470,72 @@ handles.ui_text_ens_size_err_print = uicontrol('Style', 'text', ...
     'Units'               , 'Normalized', ...
     'Position'            , [0.0600 0.6000 0.3000 0.0800], ...
     'String'              , 'ERROR: Ens. Size value must be greater or equal to 2.', ...
+    'BackgroundColor'     , 'White', ...
+    'ForegroundColor'     , atts.red, ...
+    'FontName'            , atts.fontname, ...
+    'FontSize'            , atts.fontsize, ...
+    'FontWeight'          , 'Bold', ...
+    'Visible'             , 'Off');
+
+handles.ui_text_inf_err_print = uicontrol('Style', 'text', ...
+    'Units'               , 'Normalized', ...
+    'Position'            , [0.0600 0.6000 0.3000 0.0800], ...
+    'String'              , 'ERROR: Fixed Inflation value must be between 1 and 5.', ...
+    'ForegroundColor'     , atts.red, ...
+    'BackgroundColor'     , 'White', ...
+    'FontSize'            , atts.fontsize, ...
+    'FontName'            , atts.fontname, ...
+    'FontWeight'          , 'Bold', ...
+    'Visible'             , 'Off');
+
+handles.ui_text_inf_damp_err_print = uicontrol('Style', 'text', ...
+    'Units'               , 'Normalized', ...
+    'Position'            , [0.0600 0.6000 0.3000 0.0800], ...
+    'String'              , 'ERROR: Inf. Damp value must be between 0.1 and 1.', ...
+    'BackgroundColor'     , 'White', ...
+    'ForegroundColor'     , atts.red, ...
+    'FontName'            , atts.fontname, ...
+    'FontSize'            , atts.fontsize, ...
+    'FontWeight'          , 'Bold', ...
+    'Visible'             , 'Off');
+
+handles.ui_text_inf_min_err_print = uicontrol('Style', 'text', ...
+    'Units'               , 'Normalized', ...
+    'Position'            , [0.0600 0.6000 0.3000 0.0800], ...
+    'String'              , 'ERROR: Minimum Inf. value must be greater or equal to 0.', ...
+    'BackgroundColor'     , 'White', ...
+    'ForegroundColor'     , atts.red, ...
+    'FontName'            , atts.fontname, ...
+    'FontSize'            , atts.fontsize, ...
+    'FontWeight'          , 'Bold', ...
+    'Visible'             , 'Off');
+
+handles.ui_text_inf_max_err_print = uicontrol('Style', 'text', ...
+    'Units'               , 'Normalized', ...
+    'Position'            , [0.0600 0.6000 0.3000 0.0800], ...
+    'String'              , 'ERROR: Maximum Inf. value must be greater than or equal Inf. Min and less than or equal 5.', ...
+    'BackgroundColor'     , 'White', ...
+    'ForegroundColor'     , atts.red, ...
+    'FontName'            , atts.fontname, ...
+    'FontSize'            , atts.fontsize, ...
+    'FontWeight'          , 'Bold', ...
+    'Visible'             , 'Off');
+
+handles.ui_text_inf_std_err_print = uicontrol('Style', 'text', ...
+    'Units'               , 'Normalized', ...
+    'Position'            , [0.0600 0.6000 0.3000 0.0800], ...
+    'String'              , 'ERROR: Initial Inf. Std value must be greater than 0 & the lower bound.', ...
+    'BackgroundColor'     , 'White', ...
+    'ForegroundColor'     , atts.red, ...
+    'FontName'            , atts.fontname, ...
+    'FontSize'            , atts.fontsize, ...
+    'FontWeight'          , 'Bold', ...
+    'Visible'             , 'Off');
+
+handles.ui_text_inf_std_min_err_print = uicontrol('Style', 'text', ...
+    'Units'               , 'Normalized', ...
+    'Position'            , [0.0600 0.6000 0.3000 0.0800], ...
+    'String'              , 'ERROR: Lower Bound of Inf. Std must be greater than 0.', ...
     'BackgroundColor'     , 'White', ...
     'ForegroundColor'     , atts.red, ...
     'FontName'            , atts.fontname, ...
@@ -391,7 +583,7 @@ reset_button_Callback()
 
         elseif(new_ens_size < handles.ens_size)
 
-            % Get rid of extra ensemble members, recompute mean, spread and kurtosis
+            % Get rid of extra ensemble members, recompute mean and spread
             handles.ens      = handles.ens(1:new_ens_size);
             handles.ens_size = new_ens_size;
 
@@ -406,7 +598,6 @@ reset_button_Callback()
         % Update moments
         handles.error    = calculate_rmse(handles.ens, 0.0);
         handles.spread   = std(handles.ens);
-        handles.kurtosis = kurt(handles.ens);
 
         % If you change the ensemble size, you also have to reset the
         % histograms.
@@ -452,10 +643,10 @@ reset_button_Callback()
 
 %% -----------------------------------------------------------------------------
 
-    function inflation_Callback(~, ~)
+    function fixed_inflation_Callback(~, ~)
 
         % Get the value of the inflation
-        inflation_value = str2double(get(handles.ui_edit_inflation, 'String'));
+        inflation_value = str2double(get(handles.ui_edit_fixed_inflation, 'String'));
 
         if(isfinite(inflation_value) && (inflation_value >= 1) && (inflation_value <= 5))
 
@@ -463,21 +654,218 @@ reset_button_Callback()
 
             turn_on_controls;
 
-            set(handles.ui_edit_inflation, 'Enable', 'On', 'BackgroundColor', 'White');
+            set(handles.ui_edit_fixed_inflation, 'Enable', 'On', 'BackgroundColor', 'White');
             set(handles.ui_text_inf_err_print,'Visible','Off')
 
         else
 
-            fprintf('ERROR: Inflation value must be between 1 and 5.\n')
-            fprintf('ERROR: Inflation value must be between 1 and 5.\n')
+            fprintf('ERROR: Fixed Inflation value must be between 1 and 5.\n')
+            fprintf('ERROR: Fixed Inflation value must be between 1 and 5.\n')
 
             % After this, only this edit box will work
             turn_off_controls;
 
-            set(handles.ui_edit_inflation, 'Enable', 'On', ...
+            set(handles.ui_edit_fixed_inflation, 'Enable', 'On', ...
                 'String', '?', ...
                 'BackgroundColor', atts.red);
-            set(handles.ui_text_inf_err_print,'Visible','On')
+            set(handles.ui_text_inf_err_print, 'Visible','On')
+
+            return
+
+        end
+
+    end
+
+%% -----------------------------------------------------------------------------
+
+    function adap_inf_Damp_Callback(~, ~)
+
+        % Get the value of the inflation
+        inf_Damp_value = str2double(get(handles.ui_edit_adap_inf_Damp, 'String'));
+
+        if(isfinite(inf_Damp_value) && (inf_Damp_value >= .1) && (inf_Damp_value <= 1) )
+
+            handles.adap_inf_Damp = inf_Damp_value;
+
+            turn_on_controls;
+
+            set(handles.ui_edit_adap_inf_Damp, 'Enable', 'On', 'BackgroundColor', 'White');
+            set(handles.ui_text_inf_damp_err_print,'Visible','Off')
+
+        else
+
+            fprintf('ERROR: Inf. Damp value must be between 0.1 and 1. \n')
+            fprintf('ERROR: Inf. Damp value must be between 0.1 and 1. \n')
+
+            % After this, only this edit box will work
+            turn_off_controls;
+
+            set(handles.ui_edit_adap_inf_Damp, 'Enable', 'On', ...
+                'String', '?', ...
+                'BackgroundColor', atts.red);
+            set(handles.ui_text_inf_damp_err_print, 'Visible','On')
+
+            return
+
+        end
+
+    end
+
+%% -----------------------------------------------------------------------------
+
+    function adap_inf_Min_Callback(~, ~)
+
+        % Get the value of the inflation
+        inf_Min_value = str2double(get(handles.ui_edit_adap_inf_Min, 'String'));
+
+        if(isfinite(inf_Min_value) && (inf_Min_value >= 0.) )
+
+            handles.adap_inf_Min = inf_Min_value;
+
+            turn_on_controls;
+
+            set(handles.ui_edit_adap_inf_Min, 'Enable', 'On', 'BackgroundColor', 'White');
+            set(handles.ui_text_inf_min_err_print,'Visible','Off')
+
+        else
+
+            fprintf('ERROR: Inf. Min value must be greater or equal to 0. \n')
+            fprintf('ERROR: Inf. Min value must be greater or equal to 0. \n')
+
+            % After this, only this edit box will work
+            turn_off_controls;
+
+            set(handles.ui_edit_adap_inf_Min, 'Enable', 'On', ...
+                'String', '?' , ...
+                'BackgroundColor', atts.red);
+            set(handles.ui_text_inf_min_err_print, 'Visible','On')
+
+            return
+
+        end
+
+    end
+
+%% -----------------------------------------------------------------------------
+
+    function adap_inf_Max_Callback(~, ~)
+
+        % Get the value of the inflation
+        inf_Max_value = str2double(get(handles.ui_edit_adap_inf_Max, 'String'));
+        inf_Min_tmpor = str2double(get(handles.ui_edit_adap_inf_Min, 'String'));
+
+        if(isfinite(inf_Max_value) && (inf_Max_value >= inf_Min_tmpor) && (inf_Max_value <= 5.) )
+
+            handles.adap_inf_Max = inf_Max_value;
+
+            turn_on_controls;
+
+            set(handles.ui_edit_adap_inf_Max, 'Enable', 'On', 'BackgroundColor', 'White');
+            set(handles.ui_text_inf_max_err_print,'Visible','Off')
+
+        else
+
+            fprintf('ERROR: Inf. Max value must be greater than or equal Inf. Min and less than or equal 5. \n')
+            fprintf('ERROR: Inf. Max value must be greater than or equal Inf. Min and less than or equal 5. \n')
+
+            % After this, only this edit box will work
+            turn_off_controls;
+
+            set(handles.ui_edit_adap_inf_Max, 'Enable', 'On', ...
+                'String', '?' , ...
+                'BackgroundColor', atts.red);
+            set(handles.ui_text_inf_max_err_print, 'Visible','On')
+
+            return
+
+        end
+
+    end
+
+%% -----------------------------------------------------------------------------
+
+    function adap_inf_Std_Callback(~, ~)
+
+        % Get the value of the inflation
+        inf_Std_value   = str2double(get(handles.ui_edit_adap_inf_Std, 'String'));
+        int_std_min_val = str2double(get(handles.ui_edit_adap_inf_Std_Min, 'String'));
+
+        if(isfinite(inf_Std_value) && (inf_Std_value > 0) && (inf_Std_value >= int_std_min_val))
+
+            handles.adap_inf_Std = inf_Std_value;
+
+            turn_on_controls;
+
+            set(handles.ui_edit_adap_inf_Std, 'Enable', 'On', 'BackgroundColor', 'White');
+            set(handles.ui_text_inf_std_err_print,'Visible','Off')
+
+        elseif (inf_Std_value < int_std_min_val)
+
+            fprintf('ERROR: Initial Inf. Std value must be greater than the lower bound.\n')
+            fprintf('ERROR: Initial Inf. Std value must be greater than the lower bound.\n')
+
+            % After this, only this edit box will work
+            turn_off_controls;
+
+            set(handles.ui_edit_adap_inf_Std, 'Enable', 'On', ...
+                'String', '?', ...
+                'BackgroundColor', atts.red);
+            set(handles.ui_text_inf_std_err_print, 'Visible','On')
+
+            return
+
+        else
+
+            fprintf('ERROR: Initial Inf. Std value must be greater than 0.\n')
+            fprintf('ERROR: Initial Inf. Std value must be greater than 0.\n')
+
+            % After this, only this edit box will work
+            turn_off_controls;
+
+            set(handles.ui_edit_adap_inf_Std, 'Enable', 'On', ...
+                'String', '?', ...
+                'BackgroundColor', atts.red);
+            set(handles.ui_text_inf_std_err_print, 'Visible','On')
+
+            return
+
+        end
+
+    end
+
+%% -----------------------------------------------------------------------------
+
+    function adap_inf_Std_Min_Callback(~, ~)
+
+        % Get the value of the inflation
+        inf_Std_Min_value = str2double(get(handles.ui_edit_adap_inf_Std_Min, 'String'));
+
+        if(isfinite(inf_Std_Min_value) && (inf_Std_Min_value > 0) && (inf_Std_Min_value < handles.adap_inf_Std))
+
+            handles.adap_inf_Std_Min = inf_Std_Min_value;
+
+            turn_on_controls;
+
+            set(handles.ui_edit_adap_inf_Std_Min, 'Enable', 'On', 'BackgroundColor', 'White');
+            set(handles.ui_text_inf_std_min_err_print,'Visible','Off')
+
+        elseif (inf_Std_Min_value > handles.adap_inf_Std)
+            % if the new value for the lower-bound is larger than the
+            % current SD, set the current SD value to teh new Minimum.
+            handles.adap_inf_Std = inf_Std_Min_value;
+
+        else
+
+            fprintf('ERROR: Lower bound of Inf. Std must be greater than 0.\n')
+            fprintf('ERROR: Lower bound of Inf. Std must be greater than 0.\n')
+
+            % After this, only this edit box will work
+            turn_off_controls;
+
+            set(handles.ui_edit_adap_inf_Std_Min,   'Enable', 'On', ...
+                'String', '?', ...
+                'BackgroundColor', atts.red);
+            set(handles.ui_text_inf_std_min_err_print, 'Visible','On')
 
             return
 
@@ -562,7 +950,12 @@ reset_button_Callback()
         handles.ens_size         = 4;
         handles.ens              = randn(1, handles.ens_size);
         handles.model_bias       = 0.0;
-        handles.inflation        = 1.0;
+        handles.inflation        = 1.02;
+        handles.adap_inf_Min     = 1.0;
+        handles.adap_inf_Damp    = 0.9;
+        handles.adap_inf_Max     = 3.0;
+        handles.adap_inf_Std     = 0.6;
+        handles.adap_inf_Std_Min = 0.3;
 
         handles.time_step        = 1;
         handles.ready_to_advance = true;
@@ -573,26 +966,40 @@ reset_button_Callback()
         %  Compute the initial error (truth is 0.0) and spread (standard deviation)
         handles.error    = calculate_rmse(handles.ens, 0.0);
         handles.spread   = std(handles.ens);
-        handles.kurtosis = kurt(handles.ens);
 
         % An array to keep track of rank histograms
         handles.prior_rank = zeros(1, handles.ens_size + 1);
         handles.post_rank  = zeros(1, handles.ens_size + 1);
 
         % Set the ui values/strings to starting values.
-        set(handles.ui_button_advance_model, 'String', 'Advance Model');
+        set(handles.ui_button_advance_model,    'String'  , 'Advance Model');
 
-        set(handles.ui_edit_ens_size,   'Value',               handles.ens_size);
-        set(handles.ui_edit_ens_size,   'String', sprintf('%d',handles.ens_size));
+        set(handles.ui_edit_ens_size,           'Value'   , handles.ens_size);
+        set(handles.ui_edit_ens_size,           'String'  , sprintf('%d',handles.ens_size));
 
-        set(handles.ui_edit_model_bias, 'Value',                 handles.model_bias);
-        set(handles.ui_edit_model_bias, 'String', sprintf('%.1f',handles.model_bias));
+        set(handles.ui_edit_model_bias,         'Value'   , handles.model_bias);
+        set(handles.ui_edit_model_bias,         'String'  , sprintf('%.1f',handles.model_bias));
 
-        set(handles.ui_edit_inflation,  'Value',                 handles.inflation);
-        set(handles.ui_edit_inflation,  'String', sprintf('%.1f',handles.inflation));
+        set(handles.ui_edit_nonlin_a,           'Value'   , handles.alpha);
+        set(handles.ui_edit_nonlin_a,           'String'  , sprintf('%.1f',handles.alpha));
 
-        set(handles.ui_edit_nonlin_a,   'Value',                 handles.alpha);
-        set(handles.ui_edit_nonlin_a,   'String', sprintf('%.1f',handles.alpha));
+        set(handles.ui_edit_fixed_inflation,    'Value'   , handles.inflation);
+        set(handles.ui_edit_fixed_inflation,    'String'  , sprintf('%.2f',handles.inflation));
+
+        set(handles.ui_edit_adap_inf_Min,       'Value'   , handles.adap_inf_Min);
+        set(handles.ui_edit_adap_inf_Min,       'String'  , sprintf('%.1f',handles.adap_inf_Min));
+
+        set(handles.ui_edit_adap_inf_Damp,      'Value'   , handles.adap_inf_Damp);
+        set(handles.ui_edit_adap_inf_Damp,      'String'  , sprintf('%.1f',handles.adap_inf_Damp));
+
+        set(handles.ui_edit_adap_inf_Max,       'Value'   , handles.adap_inf_Max);
+        set(handles.ui_edit_adap_inf_Max,       'String'  , sprintf('%.1f',handles.adap_inf_Max));
+
+        set(handles.ui_edit_adap_inf_Std,       'Value'   , handles.adap_inf_Std);
+        set(handles.ui_edit_adap_inf_Std,       'String'  , sprintf('%.1f',handles.adap_inf_Std));
+
+        set(handles.ui_edit_adap_inf_Std_Min,   'Value'   , handles.adap_inf_Std_Min);
+        set(handles.ui_edit_adap_inf_Std_Min,   'String'  , sprintf('%.1f',handles.adap_inf_Std_Min));
 
     end
 
@@ -602,7 +1009,7 @@ reset_button_Callback()
 
         set_main_axes();
         set_error_spread_evolution();
-        set_kurtosis_evolution()
+        set_inflation_evolution()
         set_prior_histogram();
         set_posterior_histogram();
         set_state_evolution();
@@ -701,27 +1108,7 @@ reset_button_Callback()
             handles.error  = prior_error;
             handles.spread = prior_spread;
 
-            legend([h_e h_s], 'Error', 'Spread', 'Location', 'NorthEast');
-            set(legend,'FontName', atts.fontname, 'FontSize', atts.fontsize);
-            legend boxon
-
-            axlims    = axis;
-            axlims(3) = 0.0;
-            axis(axlims)
-
-            %% Plot the segment for the prior kurtosis
-            % Want the lower y limit to stay 0 for kurtosis
-
-            axes(handles.h_kurtosis_evolution);
-
-            prior_kurtosis = kurt(ens_new);
-
-            plot([handles.time_step - 1 + 0.1, handles.time_step - 0.1], ...
-                [handles.kurtosis, prior_kurtosis], 'Color', atts.red,'LineWidth',2);
-
-            handles.kurtosis = prior_kurtosis;
-
-            %% Update the prior rank histogram figure
+            % Update the prior rank histogram figure
             axes(handles.h_prior_rank_histogram);
 
             ens_rank = get_ens_rank(ens_new, 0);
@@ -733,7 +1120,7 @@ reset_button_Callback()
 
             bar(temp_rank,'stacked');
 
-            %% Plot the figure window for this update
+            % Plot the figure window for this update
             axes(handles.axes);
             cla;
 
@@ -742,20 +1129,13 @@ reset_button_Callback()
             % The observed value will be between -4 and 4 with very high probability, 
             % then +/-3 more for likelihood, then +/- 3 more model bias and inflation
             y_max = 1 / (sqrt(2 * pi) * handles.obs_error_sd);
-            xmin  = -7;
-            xmax  =  7;
-            xmin  = min([xmin, min(ens_new)*1.02]);
-            xmax  = max([xmax, max(ens_new)*1.02]);
+            xmin  = -10;
+            xmax  =  10;
 
             % Put on a black axis line using data limits
             plot([xmin xmax], [0, 0], 'k', 'Linewidth', 2);
             hold on;
             ens_axis = [xmin xmax -0.2 y_max + 0.02];
-
-            % Turn off the negative labels, enforce limits (faster than axis())
-            set(gca, 'YTick', [0 0.1 0.2 0.3 0.4], ...
-                     'XLim' , [ens_axis(1) ens_axis(2)], ...
-                     'YLim' , [ens_axis(3) ens_axis(4)]);
             grid on;
 
             % Plot the prior ensemble members in green
@@ -787,13 +1167,6 @@ reset_button_Callback()
             h = line([base_x + text_width / 8, 0], [-0.08, -0.03]);
             set(h, 'Color', 'k');
 
-            % Label this plot
-            xlabel('State'               ,'FontName', atts.fontname, 'FontSize', atts.fontsize);
-            title('Latest Ensemble Prior','FontName', atts.fontname, 'FontSize', atts.fontsize);
-
-            L = legend([hg_prior hg_truth],'Prior','Truth');
-            set(L, 'FontName', atts.fontname, 'FontSize', atts.fontsize);
-
             % Update the permanent storage of the rank values
             handles.prior_rank(ens_rank) = handles.prior_rank(ens_rank) + 1;
 
@@ -811,6 +1184,7 @@ reset_button_Callback()
             % Generate the observation as a draw Normal(0, 1)
             obs_error_sd = handles.obs_error_sd;
             observation  = obs_error_sd * randn(1);
+            inf_prior    = handles.inflation;
 
             % Plot the observation
             plot(handles.time_step, observation, 'r*', 'MarkerSize', 10);
@@ -834,12 +1208,11 @@ reset_button_Callback()
                 axlims(3) = 0.0;
                 axis(axlims)
 
-                % Want the lower y limit to stay 0 for kurtosis
-                axes(handles.h_kurtosis_evolution);
+                % Want the lower y limit to stay 0 for inflation
+                axes(handles.h_inflation_evolution);
                 axlims    = axis;
                 axlims(1) = handles.time_step - 4;
                 axlims(2) = handles.time_step + 6;
-                axlims(3) = 0.0;
                 axis(axlims)
 
             end
@@ -847,6 +1220,25 @@ reset_button_Callback()
             % Do the assimilation
             ens = handles.ens;
             obs_error_sd = handles.obs_error_sd;
+
+            % Figure out which inflation option is currently selected
+            val = get(handles.ui_Inflate_Panel,'SelectedObject');
+            inflation_type = get(val,'String');
+
+            switch inflation_type
+
+                case 'Fixed Inflation'
+                    handles.inflation = str2double(get(handles.ui_edit_fixed_inflation,'String'));
+
+                case 'Adaptive Inflation'
+                    [lambda, handles.adap_inf_Std] = ...
+                        update_inflate(mean(ens), var(ens), observation, obs_error_sd^2, inf_prior, ...
+                        handles.inflation, handles.adap_inf_Min, handles.adap_inf_Max, ...
+                        1, handles.adap_inf_Std, handles.adap_inf_Std_Min);
+                    % Damping is placed unusually here to obtain a less messy code
+                    % It won't matter because it's a single variable case!
+                    handles.inflation = 1.0 + handles.adap_inf_Damp * ( lambda - 1.0 );
+            end
 
             % Figure out which filter option is currently selected
             val = get(handles.ui_radio_button_group,'SelectedObject');
@@ -865,13 +1257,12 @@ reset_button_Callback()
                         obs_increment_rhf(ens, observation, obs_error_sd^2);
             end
 
-            %% Plot the evolution of the state
             new_ens = ens + obs_increments;
             axes(handles.h_state_evolution);
             plot(handles.time_step + 0.1, new_ens, 'b*', 'MarkerSize', 6);
             handles.ens = new_ens;
 
-            %% Update the rank data
+            % Update the rank data
             axes(handles.h_post_rank_histogram);
             ens_rank = get_ens_rank(handles.ens, 0);
 
@@ -886,6 +1277,7 @@ reset_button_Callback()
             handles.post_rank(ens_rank) = handles.post_rank(ens_rank) + 1;
 
             %% Plot the segment for the updated error
+
             axes(handles.h_err_spread_evolution);
 
             post_error = calculate_rmse(new_ens, 0.0);
@@ -896,32 +1288,32 @@ reset_button_Callback()
 
             handles.error = post_error;
 
-            %% Plot the segment for the updated spread
+            % Plot the segment for the updated spread
+            post_spread = std(new_ens);
+
             axes(handles.h_err_spread_evolution);
 
-            post_spread = std(new_ens);
             h = plot([handles.time_step - 0.1, handles.time_step + 0.1], ...
                 [handles.spread, post_spread]);
             set(h, 'Color', atts.red, 'LineWidth', 2.0);
 
             handles.spread = post_spread;
 
-            %% Plot the segment for the updated kurtosis
-            axes(handles.h_kurtosis_evolution);
+            %% Plot the segment for the updated inflation
+            axes(handles.h_inflation_evolution);
 
-            post_kurtosis = kurt(new_ens);
+            post_inflation = handles.inflation;
 
-            h = plot([handles.time_step - 0.1, handles.time_step + 0.1], ...
-                [handles.kurtosis, post_kurtosis]);
-            set(h, 'Color', atts.red, 'LineWidth', 2.0);
+            plot([handles.time_step - 1 + 0.1, handles.time_step + 0.1], ...
+                [inf_prior, handles.inflation], 'Linestyle', '-.', 'Color', atts.blue);
+            g = errorbar(handles.time_step + 0.1, post_inflation, handles.adap_inf_Std,'-.ob','MarkerSize',8,...
+                'MarkerEdgeColor',atts.blue,'MarkerFaceColor',atts.blue);
 
-            % Want the lower y limit to stay 0 for kurtosis
+            L = legend( g, [  '\lambda= ' sprintf('%.4f', post_inflation) ...
+                ', \sigma= '  sprintf('%.4f', handles.adap_inf_Std) ], ...
+                'Location', 'NorthWest');
+            set(L, 'FontName', atts.fontname, 'FontSize', 14, 'EdgeColor', 'w');
 
-            axlims    = axis;
-            axlims(3) = 0.0;
-            axis(axlims)
-
-            handles.kurtosis= post_kurtosis;
 
             %% Plot the figure for this update
             axes(handles.axes);
@@ -935,16 +1327,12 @@ reset_button_Callback()
             hold on;
 
             % Want axes to encompass likely values for plotted obs_likelihood
-            % The observed value will be between -4 and 4 with very high probability, then +/-3 more for likelihood
-            xmin = -7;
-            xmax =  7;
-            % Horizontal also needs to include all prior ensemble members (posteriors not yet known)
-            % Want some slack if ensemble members are defining limits, too
-            xmin = min([xmin, min(ens)*1.02, min(new_ens)*1.02]);
-            xmax = max([xmax, max(ens)*1.02, max(new_ens)*1.02]);
-
+            % The observed value will be between -4 and 4 with very high probability,
+            % then +/-3 more for likelihood
+            % then +/-3 more for inflation, model bias
+            xmin = -10;
+            xmax =  10;
             ens_axis = [xmin xmax -0.2 ylims(2)+0.02];
-            axis(ens_axis);
 
             % Put on a black axis line using data limits
             plot([xmin xmax], [0, 0], 'k', 'Linewidth', 2);
@@ -954,14 +1342,14 @@ reset_button_Callback()
             tick_half = 0.015;
 
             for n_tick = 1:handles.ens_size
-                hg_prior = plot([ens(n_tick), ens(n_tick)], ...
+                plot([ens(n_tick), ens(n_tick)], ...
                     [-tick_half, tick_half], 'Color', atts.green, ...
                     'LineWidth', 2);
             end
 
             % Plot the posterior ensemble members in blue
             for n_tick = 1:handles.ens_size
-                hg_post = plot([new_ens(n_tick), new_ens(n_tick)], ...
+                plot([new_ens(n_tick), new_ens(n_tick)], ...
                     [-0.1 - tick_half, -0.1 + tick_half], 'Color', atts.blue, ...
                     'LineWidth', 2);
             end
@@ -1005,14 +1393,6 @@ reset_button_Callback()
             % Plot an additional axis
             plot(ens_axis(1:2), [-0.1 -0.1], 'k', 'LineWidth', 2);
 
-            % Label this plot
-            xlabel('State','FontName', atts.fontname,'FontSize', atts.fontsize);
-            title('Latest Ensemble Prior, Likelihood, Posterior', ...
-                'FontName', atts.fontname, 'FontSize', atts.fontsize,'FontWeight', 'Bold');
-
-            % Put on legend
-            L = legend([hg_prior hg_post hg_like], 'Prior', 'Posterior', 'Likelihood', 'Location','NorthEast');
-            set(L, 'FontName', atts.fontname, 'FontSize', atts.fontsize);
         end
 
     end
@@ -1022,16 +1402,32 @@ reset_button_Callback()
     function turn_off_controls()
 
         % Turn off all the other controls to avoid a mess
-        set(handles.ui_button_advance_model,   'Enable', 'Off');
-        set(handles.ui_button_start_auto_run,  'Enable', 'Off');
-        set(handles.ui_button_reset,           'Enable', 'Off');
-        set(handles.ui_edit_model_bias,        'Enable', 'Off');
-        set(handles.ui_edit_nonlin_a,          'Enable', 'Off');
-        set(handles.ui_edit_ens_size,          'Enable', 'Off');
-        set(handles.ui_edit_inflation,         'Enable', 'Off');
-        set(handles.ui_radio_button_eakf,      'Enable', 'Off');
-        set(handles.ui_radio_button_enkf,      'Enable', 'Off');
-        set(handles.ui_radio_button_rhf,       'Enable', 'Off');
+        set(handles.ui_button_advance_model,            'Enable', 'Off');
+        set(handles.ui_button_start_auto_run,           'Enable', 'Off');
+        set(handles.ui_button_reset,                    'Enable', 'Off');
+        set(handles.ui_edit_model_bias,                 'Enable', 'Off');
+        set(handles.ui_text_model_bias,                 'Enable', 'Off');
+        set(handles.ui_edit_nonlin_a,                   'Enable', 'Off');
+        set(handles.ui_text_nonlin_a,                   'Enable', 'Off');
+        set(handles.ui_edit_ens_size,                   'Enable', 'Off');
+        set(handles.ui_text_ens_size,                   'Enable', 'Off');
+        set(handles.ui_edit_fixed_inflation,            'Enable', 'Off');
+        set(handles.ui_radio_button_fixed_inflation,    'Enable', 'Off');
+        set(handles.ui_radio_button_adaptive_inflation, 'Enable', 'Off');
+        set(handles.ui_edit_adap_inf_Std,               'Enable', 'Off');
+        set(handles.ui_text_adap_inf_Std,               'Enable', 'Off');
+        set(handles.ui_edit_adap_inf_Std_Min,           'Enable', 'Off');
+        set(handles.ui_text_adap_inf_Std_Min,           'Enable', 'Off');
+        set(handles.ui_edit_adap_inf_Damp,              'Enable', 'Off');
+        set(handles.ui_text_adap_inf_Damp,              'Enable', 'Off');
+        set(handles.ui_edit_adap_inf_Min,               'Enable', 'Off');
+        set(handles.ui_text_adap_inf_Min,               'Enable', 'Off');
+        set(handles.ui_edit_adap_inf_Max,               'Enable', 'Off');
+        set(handles.ui_text_adap_inf_Max,               'Enable', 'Off');
+        set(handles.ui_radio_button_eakf,               'Enable', 'Off');
+        set(handles.ui_radio_button_enkf,               'Enable', 'Off');
+        set(handles.ui_radio_button_rhf,                'Enable', 'Off');
+        set(handles.ClearHistograms,                    'Enable', 'Off');
 
     end
 
@@ -1040,16 +1436,30 @@ reset_button_Callback()
     function turn_on_controls ()
 
         % Turn on all the other controls to avoid a mess
-        set(handles.ui_button_advance_model,    'Enable', 'On');
-        set(handles.ui_button_start_auto_run,   'Enable', 'On');
-        set(handles.ui_button_reset,            'Enable', 'On');
-        set(handles.ui_edit_model_bias,         'Enable', 'On');
-        set(handles.ui_edit_nonlin_a,           'Enable', 'On');
-        set(handles.ui_edit_ens_size,           'Enable', 'On');
-        set(handles.ui_edit_inflation,          'Enable', 'On');
-        set(handles.ui_radio_button_eakf,       'Enable', 'On');
-        set(handles.ui_radio_button_enkf,       'Enable', 'On');
-        set(handles.ui_radio_button_rhf,        'Enable', 'On');
+        set(handles.ui_button_advance_model,            'Enable', 'On');
+        set(handles.ui_button_start_auto_run,           'Enable', 'On');
+        set(handles.ui_button_reset,                    'Enable', 'On');
+        set(handles.ui_edit_model_bias,                 'Enable', 'On');
+        set(handles.ui_text_model_bias,                 'Enable', 'On');
+        set(handles.ui_edit_nonlin_a,                   'Enable', 'On');
+        set(handles.ui_text_nonlin_a,                   'Enable', 'On');
+        set(handles.ui_edit_ens_size,                   'Enable', 'On');
+        set(handles.ui_text_ens_size,                   'Enable', 'On');
+        set(handles.ui_edit_fixed_inflation,            'Enable', 'On');
+        set(handles.ui_radio_button_fixed_inflation,    'Enable', 'On');
+        set(handles.ui_radio_button_adaptive_inflation, 'Enable', 'On');
+        set(handles.ui_edit_adap_inf_Std_Min,           'Enable', 'On');
+        set(handles.ui_text_adap_inf_Std_Min,           'Enable', 'On');
+        set(handles.ui_edit_adap_inf_Damp,              'Enable', 'On');
+        set(handles.ui_text_adap_inf_Damp,              'Enable', 'On');
+        set(handles.ui_edit_adap_inf_Min,               'Enable', 'On');
+        set(handles.ui_text_adap_inf_Min,               'Enable', 'On');
+        set(handles.ui_edit_adap_inf_Max,               'Enable', 'On');
+        set(handles.ui_text_adap_inf_Max,               'Enable', 'On');
+        set(handles.ui_radio_button_eakf,               'Enable', 'On');
+        set(handles.ui_radio_button_enkf,               'Enable', 'On');
+        set(handles.ui_radio_button_rhf,                'Enable', 'On');
+        set(handles.ClearHistograms,                    'Enable', 'On');
 
     end
 
@@ -1080,22 +1490,30 @@ reset_button_Callback()
         end
 
         % plot some bogus items to create handles for legend
-        hg_prior = plot([0 1],[0 0.1]);
-        set(hg_prior, 'LineWidth', 2, 'Color', atts.green, 'Visible', 'off');
+        hg_prior = plot([0 0],[0 0]);
+        set(hg_prior, 'LineWidth', 2, 'Color', atts.green, 'Visible', 'on');
 
-        hg_post  = line([0 1], [0 0.1]);
-        set(hg_post, 'LineWidth', 2, 'Color', atts.blue, 'Visible', 'off');
+        hg_post  = line([0 0], [0 0]);
+        set(hg_post, 'LineWidth', 2, 'Color', atts.blue, 'Visible', 'on');
 
-        hg_like  = line([0 1], [0 0.1]);
-        set(hg_like, 'LineWidth', 2, 'Color', atts.red, 'LineStyle','--', 'Visible', 'off');
+        hg_like  = line([0 0], [0 0]);
+        set(hg_like, 'LineWidth', 2, 'Color', atts.red, 'LineStyle','--', 'Visible', 'on');
 
         legend([hg_prior hg_post hg_like],'Prior','Posterior','Likelihood');
         set(legend,'FontName', atts.fontname, 'FontSize', atts.fontsize);
         legend boxon
+        
+        xlabel('State', 'FontName', atts.fontname, 'FontSize', atts.fontsize);
+        title('Latest Ensemble Prior, Likelihood, Posterior', ...
+                'FontName', atts.fontname, 'FontSize', atts.fontsize,'FontWeight', 'Bold');
+            
+        % Axis Limits    
+        y_max = 1 / (sqrt(2 * pi) * handles.obs_error_sd);
+        xmin  = -10;
+        xmax  =  10;
 
         hold on;
-        % Set original horizontal axes
-        axis([-7 7 -Inf Inf])
+        axis([xmin xmax -0.2 y_max + 0.02])
 
     end
 
@@ -1141,10 +1559,10 @@ reset_button_Callback()
         ylabel('State','FontName', atts.fontname,'FontSize', atts.fontsize);
 
         legend(h_evolution_handles, 'Truth', 'Observation', 'Prior', 'Posterior');
-        set(legend,'FontName', atts.fontname, 'FontSize', 12, ...
+        set(legend,'FontName', atts.fontname, 'FontSize', 14, ...
             'Position',[0.821 0.770 0.118 0.148])
         legend boxon
-        axis([1 10 -Inf Inf]);
+        axis([1 10 -10 10]);
 
     end
 
@@ -1165,8 +1583,18 @@ reset_button_Callback()
                 'Color', 'White');
         end
 
+        h_e = plot([0 0],[0 0]);
+        set(h_e, 'LineWidth', 2, 'Color', atts.blue, 'Visible', 'on');
+
+        h_s  = line([0 0], [0 0]);
+        set(h_s, 'LineWidth', 2, 'Color', atts.red, 'Visible', 'on');
+
+        L = legend([h_e h_s],'Error','Spread','Location', 'NorthEast');
+        set(L,'FontName', atts.fontname, 'FontSize', atts.fontsize);
+        legend boxon
+        
         ylabel('Error, Spread','FontName', atts.fontname,'FontSize', atts.fontsize);
-        axis([1 10 0 Inf]);
+        axis([1 10 0 10]);
         set(gca,'XTickLabel',[],'XGrid','on')
         hold on;
 
@@ -1174,25 +1602,26 @@ reset_button_Callback()
 
 %% -----------------------------------------------------------------------------
 
-    function set_kurtosis_evolution
+    function set_inflation_evolution
 
-        %  axes  for kurtosis
-        if (isfield(handles,'h_kurtosis_evolution'))
-            cla( handles.h_kurtosis_evolution,'reset');
-            axes(handles.h_kurtosis_evolution);
+        %  axes for inflation
+        if (isfield(handles,'h_inflation_evolution'))
+            cla( handles.h_inflation_evolution,'reset');
+            axes(handles.h_inflation_evolution);
             hold off
         else
-            handles.h_kurtosis_evolution = axes('Units', 'Normalized', ...
+            handles.h_inflation_evolution = axes('Units', 'Normalized', ...
                 'Position', [0.430 0.372 0.333 0.164], ...
                 'Color', 'White', ...
                 'XAxisLocation','bottom');
         end
 
-        axis([1 10 0 Inf]);
-        ylabel('Kurtosis', 'FontName', atts.fontname, 'FontSize', atts.fontsize);
+        plot([1 100000], [1 1], 'k:');
+        axis([1 10 0. 3]);
+        ylabel('Inflation', 'FontName', atts.fontname, 'FontSize', atts.fontsize);
         xlabel('Timestep', 'FontName', atts.fontname, 'FontSize', atts.fontsize);
         set(gca,'XGrid', 'on')
-        hold on;
+        hold on
 
     end
 

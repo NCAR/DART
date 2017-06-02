@@ -3,8 +3,8 @@ function [obs_increments, err] =  obs_increment_rhf(ensemble, observation, obs_e
 % Need to discuss the available options eventually
 % For now this implements the default options
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
@@ -182,4 +182,3 @@ x = mean + x * sd;
 % $URL$
 % $Revision$
 % $Date$
-
