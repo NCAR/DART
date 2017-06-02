@@ -958,7 +958,7 @@ istatus(:) = 0
 precip_fall_speed(:) = 0.0_r8
 
 call interpolate(state_handle, ens_size, location, QTY_POWER_WEIGHTED_FALL_SPEED, &
-         precip_fall_speed, istatus)
+                 precip_fall_speed, istatus)
 
 ! If able to get value, QTY_POWER_WEIGHT_FALL_SPEED is the
 ! the state so you can return here.
