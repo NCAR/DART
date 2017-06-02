@@ -293,7 +293,7 @@ which can be set with the namelist option (stages_to_write)
 
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ May 5th 2017 :: major changes to model_mod interfaces  $Revision$
++ May 5th 2017 :: major changes to model_mod interfaces  Revision: 11626 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 A long-awaited overhaul of the model_mod interfaces. All models which are
@@ -387,6 +387,39 @@ netcdf file found in assimilation_code/programs/gen_sampling_err_table/work.
 copy it to the same directory as where filter is running.  all ensemble
 sizes which were previously in final_full.XX files are included, and there
 is a tool to generate and append to the file any other ensemble size required.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Jun 2nd 2017 :: tutorial, DART_LAB, and various updates $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- bring the DART tutorial pdf slides up to date with the current release.
+
+- include new GUIs with inflation options in DART_LAB
+
+- added the lorenz_96_2scale model
+
+- add useful attributes to the variables in the diagnostic files
+
+- updates and minor bug fixes to the matlab diagnostic scripts
+
+- updates to the default input.nmls for models
+
+- updates to the cam-fv shell scripts to work with the cesm 2.0 framework
+
+- updates to the cam-fv model_mod for support of cam-chem variables
+
+- major bug fix in the simple_advection model_mod
+
+- bug fix in the radar forward operator if the fall velocity is not in the state vector
+
+- bug fix in the wrf model_mod for fields which have a vertical stagger
+
+- fix to the makefiles for the GSI2DART observation converter
+
+- added additional netcdf and location utility routines
+
+- various fixes to documentation and test code
+
 
 
 # <next few lines under version control, do not edit>
