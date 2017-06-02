@@ -1815,8 +1815,28 @@ else
       zloc = zloc + 0.5_r8
       k = max(1,int(zloc))  !> @todo what should you do with this?
 
-     call simple_interp_distrib(fld, wrf, id, i, j, k, obs_kind, dxm, dx, dy, dym, uniquek, ens_size, state_handle )
-     if (all(fld == missing_r8)) goto 200
+      deallocate(uniquek)
+
+      ! Re-find the unique k values
+      ksort = sort(k)
+   
+      count = 1
+      do e = 2, ens_size
+          if ( ksort(e) /= ksort(e-1) ) count = count + 1
+      enddo
+   
+      allocate(uniquek(count))
+    
+      uk = 1
+      do e = 1, ens_size
+         if ( all(uniquek /= k(e)) ) then
+            uniquek(uk) = k(e)
+            uk = uk + 1
+         endif
+      enddo
+
+      call simple_interp_distrib(fld, wrf, id, i, j, k, obs_kind, dxm, dx, dy, dym, uniquek, ens_size, state_handle )
+      if (all(fld == missing_r8)) goto 200
 
     !-----------------------------------------------------
    ! 1.f Specific Humidity (SH, SH2)
@@ -2598,6 +2618,25 @@ else
          zloc = zloc + 0.5_r8
          k = max(1,int(zloc))  ! Only 1 value of k across the ensemble?
 
+         deallocate(uniquek)
+         ! Re-find the unique k values
+         ksort = sort(k)
+      
+         count = 1
+         do e = 2, ens_size
+             if ( ksort(e) /= ksort(e-1) ) count = count + 1
+         enddo
+      
+         allocate(uniquek(count))
+       
+         uk = 1
+         do e = 1, ens_size
+            if ( all(uniquek /= k(e)) ) then
+               uniquek(uk) = k(e)
+               uk = uk + 1
+            endif
+         enddo
+
          ! Check to make sure retrieved integer gridpoints are in valid range
          if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_gz ) .and. &
               boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_gz ) .and. &
@@ -2717,6 +2756,7 @@ else
       istatus = 3
       if (debug) print*, 'unrecognized obs KIND, value = ', obs_kind
       deallocate(v_h, v_p)
+      if (allocated(uniquek)) deallocate(uniquek)
       return
 
    endif
@@ -8348,6 +8388,9 @@ else if ( ( obs_kind == QTY_POTENTIAL_TEMPERATURE )        .and. ( wrf%dom(id)%t
 else if ( ( obs_kind == QTY_SKIN_TEMPERATURE )              .and. ( wrf%dom(id)%type_tsk >= 0 ) )then
    part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_tsk
+else if ( ( obs_kind == QTY_GEOPOTENTIAL_HEIGHT )        .and. ( wrf%dom(id)%type_gz >= 0 ) )then
+   part_of_state_vector = .true.
+   wrf_type = wrf%dom(id)%type_gz
 else
    call error_handler(E_MSG, 'obs_kind_in_state_vector', &
       'obs_kind "'//trim(get_name_for_quantity(obs_kind))//'" is not in state vector', &
