@@ -11,7 +11,7 @@
 #  these builds will fail.  See ../../mkmf/mkmf.template.* for various
 #  compiler and platform settings.
 
-include ../../mkmf/mkmf.template
+include ../../../build_templates/mkmf.template
 
 # the include defines the following makefile variables:
 # MPIFC = 
