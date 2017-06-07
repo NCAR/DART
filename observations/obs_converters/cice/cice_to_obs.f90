@@ -2,37 +2,31 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
+! DART $Id$
 
-!> convert snow and ice data center files from binary to obs_seq format.
+!> cice_to_obs - read binary files from the national snow and ice data
+!>      center and convert percentages into sea ice concentration 
+!>      observation sequence files.
 !> 
-!> ;============data description from CC matlab script=================================
-!> ; Data are stored as flat two-byte integers representing sea ice concentration
-!> ; values. The sea ice concentration data values are packed into integer
-!> ; format by multiplying the original sea ice concentration values by
-!> ; 10. These values range from 0 to 1,000, with land registered as -800 and
-!> ; -100 being the northern hemisphere hole poleward of 85 degrees for the
-!> ; SMMR data and poleward of 87 degrees for the SSM/I data, which the
-!> ; satellite cannot cover due to orbit inclination.
-!> ;
-!> ; (nsc -- what are these? ...)
-!> ; little-endian byte order no mention of header
-!> ; One-byte (scaled, unsigned integer) flat binary arrays preceded by a 300-byte header;
-!> ; *uint8
-!> ;=====================================================================================
-!>
+!>      nsc 28 june 2016 based on conversion programs from Yongfei Zhang, 
+!>      now at University of Washington working with Cecelia Bitz.
 
 program cice_to_obs
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   cice_to_obs - read binary files from the national snow and ice data
-!      center and convert percentages into sea ice concentration observations.
-!
-!      nsc 28 june 2016 based on conversion programs from yongfei zhang, 
-!                       now at UW working with cecelia bitz.
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! ;============data description from CC matlab script=================================
+! ; Data are stored as flat two-byte integers representing sea ice concentration
+! ; values. The sea ice concentration data values are packed into integer
+! ; format by multiplying the original sea ice concentration values by
+! ; 10. These values range from 0 to 1,000, with land registered as -800 and
+! ; -100 being the northern hemisphere hole poleward of 85 degrees for the
+! ; SMMR data and poleward of 87 degrees for the SSM/I data, which the
+! ; satellite cannot cover due to orbit inclination.
+! ;
+! ; (nsc -- what are these? ...)
+! ; little-endian byte order no mention of header
+! ; One-byte (scaled, unsigned integer) flat binary arrays preceded by a 300-byte header;
+! ; *uint8
+! ;=====================================================================================
 
 use         types_mod, only : r8, i2, i4, missing_r8
 use     utilities_mod, only : initialize_utilities, finalize_utilities, &
@@ -75,6 +69,8 @@ use      obs_kind_mod, only : SAT_SEAICE_AGREG_CONCENTR, &
 
 implicit none
 
+character(len=11), parameter :: routine ='cice_to_obs'
+
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
    "$URL$"
@@ -86,7 +82,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 !character(len=256) :: land_mask_file  = 'cice_hist.nc'
 
 character(len=256) :: input_line, input_filename, next_file, out_file
-character(len=256) :: msgstring, msgstring1
+character(len=512) :: msgstring, msgstring1
 
 integer :: oday, osec, rcio, iunit, otype, io, rc
 integer :: year, month, day, hour, minute, second
@@ -208,7 +204,7 @@ namelist /cice_to_obs_nml/ &
 
 ! start of executable code
 
-call initialize_utilities('cice_to_obs')
+call initialize_utilities(routine)
 
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "cice_to_obs_nml", iunit)
@@ -277,13 +273,13 @@ where (lon < 0.0_r8)  lon = lon + 360.0_r8  ! changes into 0-360
 ! ! LANDMASK
 ! ! read in land mask.  we are going to skip obs over land.
 ! rc = nf90_open(land_mask_file, nf90_nowrite, ncid)
-! call nc_check(rc, 'cice_to_obs', 'opening land mask file '//trim(land_mask_file))
+! call nc_check(rc, routine, 'opening land mask file '//trim(land_mask_file))
 ! rc = nf90_inq_varid(ncid, "tmask", varid)
-! call nc_check(rc, 'cice_to_obs', 'inquire var "tmask"')
+! call nc_check(rc, routine, 'inquire var "tmask"')
 ! rc = nf90_get_var(ncid, varid, tmask)
-! call nc_check(rc, 'cice_to_obs', 'getting var "tmask"')
+! call nc_check(rc, routine, 'getting var "tmask"')
 ! rc = nf90_close(ncid)
-! call nc_check(rc, 'cice_to_obs', 'closing land mask file '//trim(land_mask_file))
+! call nc_check(rc, routine, 'closing land mask file '//trim(land_mask_file))
 !
 
 ! each observation in this series will have a single observation value 
@@ -402,6 +398,7 @@ obsloop: do    ! no end limit - have the loop break when end time exceeded
       do ilat=1, num_latitudes
  
          ! here is where we decide to ignore obs or not
+         !if (lat(ilat,ilon) < 40 ) cycle
 
          if (percent(ilat, ilon) == missing_r8) cycle
 
@@ -409,7 +406,7 @@ obsloop: do    ! no end limit - have the loop break when end time exceeded
             perr = percent(ilat, ilon) / 100.0_r8 * error_factor   ! percentage from namelist
          else
             if (ignore_zero_obs) cycle
-            perr = error_factor ! if obs value is 0, give a non-zero error
+            perr = 0.05 !error_factor ! if obs value is 0, give a non-zero error
          endif
 
          ! LANDMASK

@@ -6,8 +6,8 @@
 #
 # DART $Id$
 
-../../../../build_templates/mkmf -p advance_time -t ../../../../build_templates/mkmf.template \
- -a "../../../.." path_names_advance_time
+../../../../build_templates/mkmf -p seaice_sat_to_obs_netcdf -t ../../../../build_templates/mkmf.template \
+ -a "../../../.." path_names_seaice_sat_to_obs_netcdf
 
 exit $status
 

@@ -5,14 +5,14 @@
 ! DART $Id$
 
 !-----------------------------------------------------------------------
-!> seaice_syn_to_obs_netcdf - input is a seaice-coverage file that has been
+!> seaice_thickness_to_obs_netcdf - input is a seaice-coverage file that has been
 !>     converted from HDF to netCDF with an automated tool.  this
 !>     program then takes the unsigned byte/integer(1) data and
 !>     converts it into a seaice coverage obs_seq file.
 !>
 !>     Credits: Yongfei Zhang - University of Washington.
 
-program seaice_syn_to_obs_netcdf
+program seaice_thickness_to_obs_netcdf
 
 use         types_mod, only : r8, PI, DEG2RAD
 use     utilities_mod, only : initialize_utilities, finalize_utilities,      &
@@ -22,19 +22,19 @@ use     utilities_mod, only : initialize_utilities, finalize_utilities,      &
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, set_time, &
                               operator(>=), increment_time, get_time, &
                               operator(-), GREGORIAN, operator(+), print_date
-use      location_mod, only : VERTISLEVEL
+use      location_mod, only : VERTISSURFACE
 use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,     &
                               static_init_obs_sequence, init_obs,            &
                               write_obs_seq, init_obs_sequence, get_num_obs, &
                               set_copy_meta_data, set_qc_meta_data
 use obs_utilities_mod, only : create_3d_obs, add_obs_to_seq, getdimlen
-use      obs_kind_mod, only : SYN_SEAICE_CONCENTR
+use      obs_kind_mod, only : SAT_SEAICE_AGREG_THICKNESS
 
 use netcdf
 
 implicit none
 
-character(len=24), parameter :: routine = 'seaice_syn_to_obs_netcdf'
+character(len=30), parameter :: routine = 'seaice_thickness_to_obs_netcdf'
 
 integer :: n, i, j, oday, osec, rcio, iunit, otype, io
 integer :: num_copies, num_qc, max_obs, iacc, ialo, ncid, varid
@@ -46,11 +46,11 @@ character(len=128) :: varname
 
 logical  :: file_exist, first_obs
 
-real(r8) :: temp, qc, wdir, wspeed, werr,thiserr
+real(r8) :: temp, qc, wdir, wspeed, werr, thiserr
 real(r8) :: uwnd, uerr, vwnd, verr
 real(r8) :: dlon, dlat, thislon, thislat
 real(r8), allocatable :: lat(:,:), lon(:,:)
-real(r8), allocatable :: seaice_concentr(:,:)
+real(r8), allocatable :: seaice_thickness(:,:)
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
@@ -58,14 +58,13 @@ type(time_type)         :: comp_day0, time_obs, prev_time
 
 integer  :: year  = 2000
 integer  :: doy   = 1
-real(r8) :: terr = 0.15_r8
-real(r8) :: cat  = 1_r8
+real(r8) :: terr = 0.1_r8
 character(len=256) :: seaice_input_file = 'seaicedata.input'
 character(len=256) :: obs_out_file      = 'obs_seq.out'
 character(len=256) :: maskfile          = 'cice_hist.nc'
 logical  :: debug = .false.  ! set to .true. to print info
 
-namelist /seaice_syn_to_obs_nc_nml/  year, doy, cat, terr, &
+namelist /seaice_thickness_to_obs_nc_nml/  year, doy, terr, &
                                seaice_input_file, obs_out_file, &
                                maskfile, debug
 
@@ -75,13 +74,13 @@ namelist /seaice_syn_to_obs_nc_nml/  year, doy, cat, terr, &
 
 call initialize_utilities(routine)
 
-call find_namelist_in_file('input.nml', 'seaice_syn_to_obs_nc_nml', iunit)
-read(iunit, nml = seaice_syn_to_obs_nc_nml, iostat = io)
-call check_namelist_read(iunit, io, 'seaice_syn_to_obs_nc_nml')
+call find_namelist_in_file('input.nml', 'seaice_thickness_to_obs_nc_nml', iunit)
+read(iunit, nml = seaice_thickness_to_obs_nc_nml, iostat = io)
+call check_namelist_read(iunit, io, 'seaice_thickness_to_obs_nc_nml')
 
 ! Record the namelist values used for the run
-if (do_nml_file()) write(nmlfileunit, nml=seaice_syn_to_obs_nc_nml)
-if (do_nml_term()) write(     *     , nml=seaice_syn_to_obs_nc_nml)
+if (do_nml_file()) write(nmlfileunit, nml=seaice_thickness_to_obs_nc_nml)
+if (do_nml_term()) write(     *     , nml=seaice_thickness_to_obs_nc_nml)
 
 ! open netcdf file here.
 call nc_check( nf90_open(seaice_input_file, nf90_nowrite, ncid), &
@@ -94,15 +93,15 @@ call getdimlen(ncid, 'nj', aydim)
 
 ! remember that when you ncdump the netcdf file, the dimensions are
 ! listed in C order.  when you allocate them for fortran, reverse the order.
-allocate(seaice_concentr(axdim, aydim))
+allocate(seaice_thickness(axdim, aydim))
 allocate(lon(axdim,aydim), lat(axdim,aydim))
 allocate(qc_array(axdim,aydim))
 allocate(tmask(axdim,aydim))
 
-varname = 'aicen'
+varname = 'hice'
 call nc_check( nf90_inq_varid(ncid, varname, varid), &
                routine, 'inquire var '// trim(varname))
-call nc_check( nf90_get_var(ncid, varid, seaice_concentr), &
+call nc_check( nf90_get_var(ncid, varid, seaice_thickness), &
                routine, 'getting var '// trim(varname))
 
 !! obtain lat and lon
@@ -197,7 +196,7 @@ if (debug) print *, 'start of main loop, ', iacc, ialo
 
             if ( qc_array(i,j) /= 0) cycle acrossloop  !reserve for future quality control
             if (    tmask(i,j) <  0.5_r8) cycle acrossloop  !do not convert if it's a land grid
-            if (seaice_concentr(i,j).lt.0.01_r8 .or. seaice_concentr(i,j).gt.1.0_r8) cycle acrossloop   !FIXME temporary do not assimilate
+           ! if (seaice_thickness(i,j).lt.0.01_r8) cycle acrossloop   !FIXME temporary do not assimilate
                                                                     !when observed sea ice is 0 coverage
             ! compute the lat/lon for this obs  FIXME: this isn't right
 
@@ -205,11 +204,11 @@ if (debug) print *, 'start of main loop, ', iacc, ialo
 
             thislon = lon(i,j)
 
-            thiserr = terr* seaice_concentr(i,j)
+            thiserr = terr
 
             ! make an obs derived type, and then add it to the sequence
-            call create_3d_obs(thislat, thislon, cat, VERTISLEVEL, seaice_concentr(i,j), &
-                               SYN_SEAICE_CONCENTR, thiserr, oday, osec, qc, obs)
+            call create_3d_obs(thislat, thislon, 0.0_r8, VERTISSURFACE, seaice_thickness(i,j), &
+                               SAT_SEAICE_AGREG_THICKNESS, thiserr, oday, osec, qc, obs)
             call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
 
             if (debug) print *, 'added seaice obs to output seq'
@@ -226,7 +225,7 @@ endif
 ! end of main program
 call finalize_utilities()
 
-end program seaice_syn_to_obs_netcdf
+end program seaice_thickness_to_obs_netcdf
 
 ! <next few lines under version control, do not edit>
 ! $URL$
