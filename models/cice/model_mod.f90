@@ -89,8 +89,12 @@ use          obs_kind_mod, only : QTY_SEAICE_AGREG_CONCENTR  , &
                                   QTY_SEAICE_SNOWENTHALPY001 , &
                                   QTY_SEAICE_SNOWENTHALPY002 , &
                                   QTY_SEAICE_SNOWENTHALPY003 , &
-                                  QTY_DRY_LAND,                &
-                                  get_index_for_quantity,       &
+                                  QTY_DRY_LAND               , &
+                                  QTY_SOM_TEMPERATURE        , &
+                                  QTY_SEAICE_FY              , &
+                                  QTY_SEAICE_AGREG_FY        , &
+                                  QTY_SEAICE_AGREG_SURFACETEMP,&
+                                  get_index_for_quantity     , &
                                   get_name_for_quantity
 
 use     mpi_utilities_mod, only : my_task_id, task_count
@@ -113,8 +117,6 @@ use   state_structure_mod, only : add_domain, get_model_variable_indices, &
                                   get_num_variables, get_index_start, &
                                   get_num_dims, get_domain_size, state_structure_info
 
-use      dart_time_io_mod, only : write_model_time
-
 use typesizes
 use netcdf 
 
@@ -132,6 +134,7 @@ public :: get_model_size,                &
           static_init_model,             &
           read_model_time,               &
           nc_write_model_atts,           &
+          write_model_time,              &
           get_close_state,               &
           end_model
 
@@ -142,8 +145,7 @@ public :: init_time,                     &
           pert_model_copies,             &
           get_close_obs,                 &
           convert_vertical_obs,          &
-          convert_vertical_state,        &
-          write_model_time
+          convert_vertical_state
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
@@ -159,7 +161,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! message strings
 character(len=512) :: string1
 character(len=512) :: string2
-character(len=512) :: msgstring
+character(len=512) :: string3
 
 logical, save :: module_initialized = .false.
 
@@ -387,8 +389,8 @@ model_timestep = set_model_time_step()
 
 call get_time(model_timestep,ss,dd) ! set_time() assures the seconds [0,86400)
 
-write(msgstring,*)'assimilation period is ',dd,' days ',ss,' seconds'
-call error_handler(E_MSG,'static_init_model',msgstring,source,revision,revdate)
+write(string1,*)'assimilation period is ',dd,' days ',ss,' seconds'
+call error_handler(E_MSG,'static_init_model',string1,source,revision,revdate)
 
 ! BEFORE calling grid routines, set the endian-ness of the binary files if needed.
 call set_binary_file_conversion(binary_grid_file_format)
@@ -617,12 +619,12 @@ enddo
 
 ! Confirm that the indices come out okay as debug
 if(u_index /= u_total + 1) then
-   msgstring = 'Storage indices did not balance for U grid: : contact DART developers'
-   call error_handler(E_ERR, 'init_dipole_interp', msgstring, source, revision, revdate)
+   string1 = 'Storage indices did not balance for U grid: : contact DART developers'
+   call error_handler(E_ERR, 'init_dipole_interp', string1, source, revision, revdate)
 endif
 if(t_index /= t_total + 1) then
-   msgstring = 'Storage indices did not balance for T grid: : contact DART developers'
-   call error_handler(E_ERR, 'init_dipole_interp', msgstring, source, revision, revdate)
+   string1 = 'Storage indices did not balance for T grid: : contact DART developers'
+   call error_handler(E_ERR, 'init_dipole_interp', string1, source, revision, revdate)
 endif
 
 end subroutine init_dipole_interp
@@ -796,8 +798,8 @@ do ind_x = reg_lon_ind(1), reg_lon_ind(2)
    do ind_y = reg_lat_ind(1), reg_lat_ind(2)
       ! Make sure the list storage isn't full
       if(reg_list_num(index_x, ind_y) >= max_reg_list_num) then
-         write(msgstring,*) 'max_reg_list_num (',max_reg_list_num,') is too small ... increase'
-         call error_handler(E_ERR, 'update_reg_list', msgstring, source, revision, revdate)
+         write(string1,*) 'max_reg_list_num (',max_reg_list_num,') is too small ... increase'
+         call error_handler(E_ERR, 'update_reg_list', string1, source, revision, revdate)
       endif
 
       ! Increment the count
@@ -844,8 +846,16 @@ subroutine model_interpolate(state_handle, ens_size, location, obs_type, expecte
 ! Local storage
 real(r8)       :: loc_array(3), llon, llat
 integer(i8)    :: base_offset
-integer        :: cat_index, cat_signal
+integer        :: cat_index, cat_signal, icat, cat_signal_interm
 real(r8)       :: expected_aggr_conc(ens_size) ! array of interpolated values
+
+!Fei---need aicen*fyn to calculate the aggregate FY concentration------------
+real(r8)       :: expected_conc(ens_size)
+real(r8)       :: expected_fy(ens_size)
+real(r8)       :: expected_tsfc(ens_size)
+real(r8)       :: temp(ens_size)
+real(r8)       :: temp1(ens_size)
+!----------------------------------------------------------------------------
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -891,7 +901,14 @@ SELECT CASE (obs_type)
    CASE (QTY_SEAICE_AGREG_SNOWVOLUME ) ! these kinds require aggregating a 3D var to make a 2D var
       cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
       base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_SNOWVOLUME))  
+   CASE (QTY_SEAICE_AGREG_SURFACETEMP) ! FEI need aicen to average the temp, have not considered open water temp yet
+      cat_signal = -3
+      base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_SURFACETEMP))
+   CASE (QTY_SOM_TEMPERATURE) ! these kinds are 1d variables
+      cat_signal = 3
+      base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SOM_TEMPERATURE))
    CASE (QTY_SEAICE_CONCENTR       , &  ! these kinds have an additional dim for category
+         QTY_SEAICE_FY       , & 
          QTY_SEAICE_VOLUME         , &
          QTY_SEAICE_SNOWVOLUME     , &
          QTY_SEAICE_SURFACETEMP    , &
@@ -942,7 +959,54 @@ SELECT CASE (obs_type)
 END SELECT
 
 ! finally the interpolation for all sea ice kinds
-call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal, expected_obs, istatus)
+
+!Fei--------need aicen and fyn-----------------------------------
+!special treatment to calculate the aggregate fy = sum(aicen*fyn)/aice
+if (cat_signal == -2) then
+   temp = 0.0_r8
+   temp1= 0.0_r8
+   do icat = 1,Ncat
+      !reads in aicen 
+      cat_signal_interm = 1
+      base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SEAICE_CONCENTR))
+      base_offset = base_offset + (icat-1) * Nx * Ny
+      call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal_interm, expected_conc, istatus)
+      !reads in fyn
+      cat_signal_interm = 1
+      base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SEAICE_FY))
+      base_offset = base_offset + (icat-1) * Nx * Ny
+      call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal_interm, expected_fy, istatus)
+   temp = temp + expected_conc * expected_fy  !sum(aicen*fyn) = FY % over ice
+   temp1= temp1+ expected_conc                        !sum(aicen) = aice
+   end do 
+   expected_obs = temp/max(temp1,1.0e-8)  !sum(aicen*fyn)/aice = FY % in the gridcell
+else if (cat_signal == -3 ) then
+   temp = 0.0_r8
+   temp1= 0.0_r8
+   do icat = 1,Ncat
+      !reads in aicen 
+      cat_signal_interm = 1
+      base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SEAICE_CONCENTR))
+      base_offset = base_offset + (icat-1) * Nx * Ny
+      call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal_interm, expected_conc, istatus)
+      !reads in Tsfcn
+      cat_signal_interm = 1
+      base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SEAICE_SURFACETEMP))
+      base_offset = base_offset + (icat-1) * Nx * Ny
+      call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal_interm, expected_tsfc, istatus)
+      if (any(expected_tsfc>50.0) .or. any(expected_tsfc<-100.0)) then
+      print*,'expected value:',expected_tsfc
+      print*,'lat,lon:',llat,llon 
+      endif
+      temp = temp + expected_conc * expected_tsfc  !sum(aicen*Tsfcn)
+      temp1= temp1+ expected_conc                  !sum(aicen) = aice
+   end do
+   expected_obs = temp/max(temp1,1.0e-8)  !sum(aicen*Tsfcn)/aice = Tsfc ;averaged temperature over sea-ice covered portion
+else
+    call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal, expected_obs, istatus)
+endif
+
+   
 
 if (cat_signal == -1) then
       ! we need to know the aggregate sea ice concentration for these special cases
@@ -1864,6 +1928,7 @@ end subroutine end_model
 !> the model state vector.
 
 subroutine nc_write_model_atts( ncid, domain_id ) 
+
 integer, intent(in) :: ncid      ! netCDF file identifier
 integer, intent(in) :: domain_id
 
@@ -1872,8 +1937,16 @@ integer :: NlonDimID, NlatDimID, NcatDimID
 integer :: ulonVarID, ulatVarID, tlonVarID, tlatVarID
 integer :: KMTVarID, KMUVarID
 
-integer     :: i
-character(len=128)  :: filename
+! variables for the namelist output
+integer, parameter :: MAXLINELEN = 128
+character(len=8), parameter :: cice_namelist_file = 'cice_in'
+character(len=MAXLINELEN), allocatable, dimension(:) :: textblock
+integer :: LineLenDimID, nlinesDimID, nmlVarID
+integer :: nlines, linelen
+logical :: has_cice_namelist
+
+integer :: i
+character(len=256) :: filename
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1899,11 +1972,46 @@ call nc_redef(ncid)
 
 call nc_add_global_creation_time(ncid)
 
-call nc_add_global_attribute(ncid, "model_source", source )
-call nc_add_global_attribute(ncid, "model_revision", revision )
-call nc_add_global_attribute(ncid, "model_revdate", revdate )
+!-------------------------------------------------------------------------------
+! Determine shape of auxiliary namelist
+!-------------------------------------------------------------------------------
 
-call nc_add_global_attribute(ncid, "model", "CICE")
+call find_textfile_dims(cice_namelist_file, nlines, linelen)
+if (nlines > 0) then
+  has_cice_namelist = .true.
+else
+  has_cice_namelist = .false.
+endif
+
+if (debug > 0) print *, 'cice namelist: nlines, linelen = ', nlines, linelen
+  
+if (has_cice_namelist) then 
+   allocate(textblock(nlines))
+   textblock = ''
+
+   call nc_check(nf90_def_dim(ncid=ncid, name='linelength', &
+                 len = MAXLINELEN, dimid = LineLenDimID), &
+                 'nc_write_model_atts', 'def_dim linelength ')
+
+   call nc_check(nf90_def_dim(ncid=ncid, name='nlines', &
+                 len = nlines, dimid = nlinesDimID), &
+                 'nc_write_model_atts', 'def_dim nlines ')
+
+   call nc_check(nf90_def_var(ncid,name=cice_namelist_file, xtype=nf90_char,    &
+                 dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID), &
+                 'nc_write_model_atts', 'def_var cice_in')
+
+   call nc_check(nf90_put_att(ncid, nmlVarID, 'long_name',       &
+                 'contents of cice_in namelist'), 'nc_write_model_atts', 'put_att cice_in long_name')
+   call nc_check(nf90_put_att(ncid, nmlVarID, 'original file name',       &
+                 cice_namelist_file), 'nc_write_model_atts', 'put_att cice_in filename')
+
+endif
+
+call nc_add_global_attribute(ncid, "model_source"  , source )
+call nc_add_global_attribute(ncid, "model_revision", revision )
+call nc_add_global_attribute(ncid, "model_revdate" , revdate )
+call nc_add_global_attribute(ncid, "model"         , "CICE")
 
 !----------------------------------------------------------------------------
 ! Define the new dimensions IDs
@@ -2022,11 +2130,68 @@ call nc_check(nf90_put_var(ncid, KMUVarID, KMU ), &
              'nc_write_model_atts', 'KMU put_var '//trim(filename))
 
 !-------------------------------------------------------------------------------
+! Record the cice_in namelist
+!-------------------------------------------------------------------------------
+
+if (has_cice_namelist) then
+   call file_to_text(cice_namelist_file, textblock)
+   call nc_check(nf90_put_var(ncid, nmlVarID, textblock ), &
+                 'nc_write_model_atts', 'put_var nmlVarID')
+   deallocate(textblock)
+endif
+
+!-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
 !-------------------------------------------------------------------------------
 call nc_sync(ncid)
 
 end subroutine nc_write_model_atts
+
+
+!-----------------------------------------------------------------------
+!> writes the time of the current state  and (optionally) the time
+!> that dictates the length of the forecast.
+!>
+!> @param ncfile_out name of the file
+!> @param model_time the current time of the model state
+!> @param adv_to_time the time in the future of the next assimilation.
+!>
+
+subroutine write_model_time(ncid, model_time, adv_to_time)
+
+integer,         intent(in)           :: ncid
+type(time_type), intent(in)           :: model_time
+type(time_type), intent(in), optional :: adv_to_time
+
+character(len=16), parameter :: routine = 'write_model_time'
+
+integer :: io, varid, iyear, imonth, iday, ihour, imin, isec
+integer :: seconds
+
+if ( .not. module_initialized ) call static_init_model
+
+if (present(adv_to_time)) then
+   call get_date(adv_to_time, iyear, imonth, iday, ihour, imin, isec)
+   write(string1,*)'CICE/DART not configured to advance CICE.'
+   write(string2,*)'called with optional advance_to_time of'
+   write(string3,'(i4.4,5(1x,i2.2))')iyear,imonth,iday,ihour,imin, isec
+   call error_handler(E_ERR, routine, string1, &
+              source, revision, revdate, text2=string2,text3=string3)
+endif
+
+call get_date(model_time, iyear, imonth, iday, ihour, imin, isec)
+
+seconds = (ihour*60 + imin)*60 + isec
+
+call nc_redef(ncid)
+call nc_add_global_attribute(ncid, 'nyr'   , iyear)
+call nc_add_global_attribute(ncid, 'month' , imonth)
+call nc_add_global_attribute(ncid, 'mday'  , iday)
+call nc_add_global_attribute(ncid, 'sec'   , seconds)
+call nc_enddef(ncid)
+
+end subroutine write_model_time
+
 
 !------------------------------------------------------------------
 
@@ -2385,8 +2550,8 @@ integer :: hour     , & ! hour of the day, needed for dart set_date
 if ( .not. module_initialized ) call static_init_model
 
 if ( .not. file_exist(filename) ) then
-   write(msgstring,*) 'cannot open file ', trim(filename),' for reading.'
-   call error_handler(E_ERR,'read_model_time',msgstring,source,revision,revdate)
+   write(string1,*) 'cannot open file ', trim(filename),' for reading.'
+   call error_handler(E_ERR,'read_model_time',string1,source,revision,revdate)
 endif
 
 call nc_check( nf90_open(trim(filename), NF90_NOWRITE, ncid), &
