@@ -1317,6 +1317,79 @@ end subroutine tstd
 
 
 
+subroutine hm2uv(hxm,hym,hxu,hyu,hxv,hyv,m,n)
+
+! rcs keywords: $RCSfile: hm2uv.f,v $ 
+!               $Revision: 1.1 $ $Date: 1997/12/05 20:19:58 $c
+      implicit none
+!
+!***********************************************************************
+!           parameters:
+!***********************************************************************
+!
+      integer m
+      integer n
+!
+      real(kind=r8) hxm    (m,n)
+      real(kind=r8) hxu    (m,n)
+      real(kind=r8) hxv    (m,n)
+      real(kind=r8) hym    (m,n)
+      real(kind=r8) hyu    (m,n)
+      real(kind=r8) hyv    (m,n)
+!
+!***********************************************************************
+!          local variables and dynamic storage:
+!***********************************************************************
+!
+      integer i
+      integer j
+      integer m1
+      integer n1
+!
+!***********************************************************************
+!          local constants
+!***********************************************************************
+!
+      m1=m-1
+      n1=n-1
+!
+!***********************************************************************
+!          convert the map factor in x and y direction at mass points 
+!          to the map factor in x and y direction at u wind points
+!***********************************************************************
+!
+      do j=1,n
+        do i=1,m1
+          hxu(i,j)=(hxm(i,j)+hxm(i+1,j))*0.5
+          hyu(i,j)=(hym(i,j)+hym(i+1,j))*0.5
+        enddo
+      enddo
+      do j=1,n
+        hxu(m,j)=hxu(m1,j)
+        hyu(m,j)=hyu(m1,j)
+      enddo
+!
+!***********************************************************************
+!          convert the map factor in x and y direction at mass points 
+!          to the map factor in x and y direction at v wind points
+!***********************************************************************
+!
+      do j=1,n1
+        do i=1,m
+          hxv(i,j)=(hxm(i,j)+hxm(i,j+1))*0.5
+          hyv(i,j)=(hym(i,j)+hym(i,j+1))*0.5
+        enddo
+      enddo
+      do i=1,m
+        hxv(i,n)=hxv(i,n1)
+        hyv(i,n)=hyv(i,n1)
+      enddo
+!
+!***********************************************************************
+!
+      return
+end subroutine hm2uv
+
 subroutine vor(u,v,m,n,kk,delx,dely,hxm,hym,fm,sigmma,sigmwa&
                      ,dsigw,zsfc,iflag,rvor)
 !

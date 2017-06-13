@@ -35,6 +35,7 @@ INTRINSIC_SUBS="ij2ll
                 tstd
                 deriv_x
                 deriv_y
+                hm2uv
                 vor
                 filt9"
 
