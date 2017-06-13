@@ -1,12 +1,12 @@
 #!/bin/csh
 #
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id$
+# DART $Id$
 
-../../../mkmf/mkmf -p perturb_bndy -t ../../../mkmf/mkmf.template -c" -C -Duse_netCDF" \
+../../../build_templates/mkmf -p perturb_bndy -t ../../../build_templates/mkmf.template \
  -a "../../.." path_names_perturb_bndy
 
 exit $status
