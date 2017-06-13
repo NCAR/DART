@@ -1,8 +1,3 @@
-! This code may (or may not) be part of the COAMPS distribution,
-! So it is not protected by the DART copyright agreement.
-!
-! DART $Id$
-
 module navdas_innov_mod
 
 !------------------------------
@@ -44,9 +39,9 @@ module navdas_innov_mod
                               set_obs_def,                                 &
                               set_obs_values
 
-  use obs_kind_mod,    only : get_index_for_type_of_obs,                          &
-                              get_quantity_for_type_of_obs,                       &
-                              QTY_VORTEX_LAT, QTY_VORTEX_LON
+  use obs_kind_mod,    only : get_obs_kind_index,                          &
+                              get_obs_kind_var_type,                       &
+                              KIND_VORTEX_LAT, KIND_VORTEX_LON
 
   use obs_err_mod,     only : rawin_temp_error,                            &
                               rawin_wind_error,                            &
@@ -116,10 +111,10 @@ module navdas_innov_mod
   !------------------------------
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=128), parameter :: &
+   source = "$URL$", &
+   revision = "$Revision$", &
+   revdate = "$Date$"
 
   character(len=100) :: format_header(5)
   character(len=100) :: format_data
@@ -391,7 +386,7 @@ contains
       ob_qc  = 0.0_r8
 
       ! Set the vortex lat location
-      call init_obs_def(obs_def, ob_loc, get_index_for_type_of_obs('VORTEX_LAT'),time_ob, ob_err) 
+      call init_obs_def(obs_def, ob_loc, get_obs_kind_index('VORTEX_LAT'),time_ob, ob_err) 
       call set_obs_def(obs, obs_def) 
       call set_obs_values(obs, (/ob_lat/))
       call set_qc(obs, (/ob_qc/))
@@ -399,7 +394,7 @@ contains
       call insert_obs_in_seq(seq, obs)
 
       ! Set the vortex lon location
-      call init_obs_def(obs_def, ob_loc, get_index_for_type_of_obs('VORTEX_LON'),time_ob, ob_err) 
+      call init_obs_def(obs_def, ob_loc, get_obs_kind_index('VORTEX_LON'),time_ob, ob_err) 
       call set_obs_def(obs, obs_def) 
       call set_obs_values(obs, (/ob_lon/))
       call set_qc(obs, (/ob_qc/))
@@ -508,11 +503,11 @@ contains
     if(vert_level == VERTISPRESSURE) ob_lev = ob_lev*CONVERT_MB_TO_PA
 
     ob_loc  = set_location(ob_lon, ob_lat, ob_lev, vert_level)
-    ob_type_indx = get_index_for_type_of_obs(ob_type) 
+    ob_type_indx = get_obs_kind_index(ob_type) 
 
     if(ob_type_indx <= 0) return
 
-    ob_kind_indx=get_quantity_for_type_of_obs(ob_type_indx)
+    ob_kind_indx=get_obs_kind_var_type(ob_type_indx)
 
     call init_obs_def(obs_def, ob_loc, ob_type_indx, time_ob, ob_err) 
     call set_obs_def(obs, obs_def) 
@@ -721,9 +716,3 @@ contains
   ! END PRIVATE ROUTINES
   !------------------------------
 end module navdas_innov_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

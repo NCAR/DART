@@ -1,8 +1,5 @@
-! This code is not protected by the DART copyright agreement.
-! DART $Id$
-
-! rcs keywords: &RCSfile& 
-!               &Revision: 2820 & &Date: 2010-07-26 14:35:27 -0500 (Mon, 26 Jul 2010) &
+! rcs keywords: $RCSfile$ 
+!               $Revision$ $Date$ 
 ! SCCS IDENTIFICATION:  %W% %G% 
 !                       %U% %P% 
 !
@@ -115,9 +112,3 @@
        , 999,   'MSG',        1,   'missing',    999  & ! dummy entry to save space for a future addition
        , 999,   'MSG',        1,   'missing',    999  & ! dummy entry to save space for a future addition
        , 999,   'MSG',        1,   'missing',    999  / ! dummy entry to save space for a future addition
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

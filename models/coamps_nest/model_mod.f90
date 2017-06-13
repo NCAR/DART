@@ -1,7 +1,6 @@
-! This code may (or may not) be part of the COAMPS distribution,
-! So it is not protected by the DART copyright agreement.
-!
-! DART $Id$
+! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
 
 module model_mod
 
@@ -188,11 +187,11 @@ module model_mod
     ! BEGIN MODULE VARIABLES
     !------------------------------
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+    ! Modified automatically by Subversion 
+    character(len=128) :: &
+        source   = '$URL$', & 
+        revision = '$Revision$', &
+        revdate  = '$Date$'
 
     ! Main model_mod namelist - not too much here as we read most of
     ! the data we need in from the COAMPS files themselves
@@ -421,7 +420,7 @@ contains
         integer                     :: alloc_status, dealloc_status
 
         select case (obs_kind)    
-        case (QTY_VORTEX_LAT, QTY_VORTEX_LON)
+        case (KIND_VORTEX_LAT, KIND_VORTEX_LON)
 
           ! obs_loc
           loc_array = get_location(location)
@@ -467,10 +466,10 @@ contains
 
           ! (1) Get u and v location in the state vector 
           u_var = find_state_variable(state_layout_3D, nest, &
-                   QTY_U_WIND_COMPONENT, .false., 'M', nz)
+                   KIND_U_WIND_COMPONENT, .false., 'M', nz)
 
           v_var = find_state_variable(state_layout_3D, nest, &
-                   QTY_V_WIND_COMPONENT, .false., 'M', nz)
+                   KIND_V_WIND_COMPONENT, .false., 'M', nz)
 
           ! (2) Calculate vorticity
           call timestamp_message('VRTX: Before calculate vorticity')
@@ -548,7 +547,7 @@ contains
           ! (7) Set desired return value
           call nest_point_to_latlon(domain, make_nest_point(nest, ij(1), ij(2)),  &
                                     loc_array(DART_LOC_LAT), loc_array(DART_LOC_LON))
-          if(obs_kind == QTY_VORTEX_LAT) then
+          if(obs_kind == KIND_VORTEX_LAT) then
             obs_val = loc_array(DART_LOC_LAT)
           else
             obs_val = loc_array(DART_LOC_LON)
@@ -615,12 +614,11 @@ contains
     !  PARAMETERS
     ! INOUT gc                get_close_type structure to initialize
     !   IN  maxdist           the maximum distance to process  
-    subroutine get_close_maxdist_init (gc, maxdist, maxdist_array)
+    subroutine get_close_maxdist_init (gc, maxdist)
         type(get_close_type), intent(inout) :: gc
         real(r8), intent(in)                :: maxdist
-        real(r8), intent(in), optional      :: maxdist_array(:)
 
-        call loc_get_close_maxdist_init(gc, maxdist, maxdist_array)
+        call loc_get_close_maxdist_init(gc, maxdist)
     end subroutine get_close_maxdist_init
 
     ! get_close_obs_init
@@ -694,7 +692,7 @@ contains
         if(base_which == VERTISSURFACE) then
           base_array(3)=0.0_r8 ; base_which=VERTISLEVEL
         else
-          call model_interpolate(ensemble_mean, base_obs_loc, QTY_VERTLEVEL, obs_val, istatus1)
+          call model_interpolate(ensemble_mean, base_obs_loc, KIND_VERTLEVEL, obs_val, istatus1)
           base_array(3)=obs_val ; base_which=VERTISLEVEL
         endif
         base_obs_loc = set_location(base_array(1),  base_array(2), base_array(3), base_which)
@@ -726,7 +724,7 @@ contains
             elseif(local_obs_which == VERTISUNDEF) then
               local_obs_which=VERTISUNDEF
             else
-              call model_interpolate(ensemble_mean, obs_loc(t_ind), QTY_VERTLEVEL, obs_val, istatus2)
+              call model_interpolate(ensemble_mean, obs_loc(t_ind), KIND_VERTLEVEL, obs_val, istatus2)
               local_obs_array(3)=obs_val ; local_obs_which=VERTISLEVEL
             end if
 
@@ -1022,9 +1020,3 @@ contains
     !------------------------------
 
 end module model_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

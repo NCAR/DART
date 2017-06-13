@@ -1,12 +1,5 @@
 #!/bin/bash
 #
-# This code may (or may not) be part of the COAMPS distribution,
-# So it is not protected by the DART copyright agreement.
-#
-# DART $Id$
-#
-########################################################################
-#
 # SCRIPT:   change_ens_size.sh
 # AUTHOR:   T. R. Whitcomb
 #           Naval Research Laboratory
@@ -33,9 +26,4 @@ echo "  input.nml - num_output_state_members"
 perl -i.bak -p -e "s/(num_output_state_members\s*)=\s*\d+/\1= ${new_ens_size}/" input.nml 
 echo "  input.nml - num_output_obs_members"
 perl -i.bak -p -e "s/(num_output_obs_members\s*)=\s*\d+/\1= ${new_ens_size}/" input.nml 
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

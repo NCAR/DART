@@ -2,11 +2,15 @@
 % state (TrueState.nc), plot the spread field specified for the
 % number of times specified
 
-%% DART software - Copyright UCAR. This open source software is provided
-% by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% DART $Id$
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 
 clear all;
 close all;
@@ -19,7 +23,7 @@ xdim = 100;
 ydim = 100;
 
 % Open up the NetCDF file
-filename='analysis.nc';
+filename='Posterior_Diag.nc';
 diag_nc = netcdf(sprintf('%s/%s',path,filename));
 
 % Grab the entire set of times
@@ -49,7 +53,3 @@ ylabel('Ensemble Spread');
 title([var_name ',\sigma=' sprintf('%d',sigma_level)]);
 saveas(diag_ncfig,'spread','png');
 
-% <next few lines under version control, do not edit>
-% $URL$
-% $Revision$
-% $Date$

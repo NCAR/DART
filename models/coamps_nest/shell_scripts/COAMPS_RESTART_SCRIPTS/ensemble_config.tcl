@@ -1,12 +1,5 @@
 #!/usr/bin/wish -f
 
-# This code may (or may not) be part of the COAMPS distribution,
-# So it is not protected by the DART copyright agreement.
-#
-# DART $Id$
-#
-########################################################################
-#
 # createFileOptionFrame
 # -----------------
 # creates a "option frame" that includes a description, a resizing
@@ -102,9 +95,4 @@ pack $frameFile -expand y -fill x -padx 5 -pady 5
 
 button .btnWrite -text "Finish" -command { writeConfig; destroy .}
 pack .btnWrite -expand y -fill x -padx 5 -pady 5 -side bottom
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

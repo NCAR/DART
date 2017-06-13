@@ -1,10 +1,9 @@
-! DART software - Copyright UCAR. This open source software is provided
-! by UCAR, "as is", without charge, subject to all terms of use at
+! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program trans_coamps_to_statevec
+
 
 ! trans_coamps_to_statevec
 ! ------------------------
@@ -25,11 +24,11 @@ program trans_coamps_to_statevec
 
   implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+  ! Modified automatically by Subversion
+  character(len=128) :: &
+       source = "$URL$",&
+       revision = "$Revision$", &
+       revdate = "$Date$"
 
   ! The translation module uses internal flags for whether it's
   ! reading or writing - help me remember what they are
@@ -54,11 +53,4 @@ character(len=128), parameter :: revdate  = "$Date$"
 
   ! Clean up
   call finalize_translator()
-
 end program trans_coamps_to_statevec
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

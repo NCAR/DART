@@ -1,8 +1,5 @@
-! This code is not protected by the DART copyright agreement.
-! DART $Id$
-
-! rcs keywords: &RCSfile& 
-!               &Revision: 2479 & &Date: 2006-08-21 00:41:09 +0000 (Mon, 21 Aug 2006) &
+! rcs keywords: $RCSfile$ 
+!               $Revision$ $Date$ 
 ! SCCS IDENTIFICATION:  %W% %G% 
 !                       %U% %P% 
 !
@@ -32,9 +29,4 @@
       ,     15,'q'      &  ! specific humidity in kg/kg
       ,     22,'theta'  &  ! potential temperature (deg K)
       ,     23,'lnq'  /   ! ln(mixing ratio) or ln(specific humidity)
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
+!

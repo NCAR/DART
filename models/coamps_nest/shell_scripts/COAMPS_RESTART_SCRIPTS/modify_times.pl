@@ -1,12 +1,5 @@
 #!/usr/bin/perl
 #
-# This code may (or may not) be part of the COAMPS distribution,
-# So it is not protected by the DART copyright agreement.
-#
-# DART $Id$
-#
-########################################################################
-#
 # SCRIPT:   modify_times.pl
 # AUTHOR:   T. R. Whitcomb
 #           Naval Research Laboratory
@@ -55,8 +48,4 @@ open(NAMELIST, ">$ARGV[1]");
 print NAMELIST $namelist_data;
 close(NAMELIST);
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

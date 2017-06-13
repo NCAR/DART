@@ -1,8 +1,3 @@
-! This code may (or may not) be part of the COAMPS distribution,
-! So it is not protected by the DART copyright agreement.
-!
-! DART $Id$
-
 !------------------------------
 ! MODULE:       coamps_statevar_mod
 ! AUTHOR:       T. R. Whitcomb
@@ -12,7 +7,6 @@
 ! Module containing the data structure and routines for dealing with
 ! a COAMPS state variable
 !------------------------------ 
-
 module coamps_statevar_mod
 
     use coamps_domain_mod, only : coamps_domain, &
@@ -148,7 +142,7 @@ module coamps_statevar_mod
 
     ! Length of string variables
     integer, parameter :: VAR_NAME_LEN  = 10
-    integer, parameter :: VAR_QTY_LEN  = 32
+    integer, parameter :: VAR_KIND_LEN  = 32
     integer, parameter :: PERT_TYPE_LEN = 7
 
     ! Perturbation types - don't perturb at all, perturb whole sigma
@@ -245,11 +239,11 @@ module coamps_statevar_mod
     ! BEGIN MODULE VARIABLES
     !------------------------------
   
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+    ! Modified automatically by Subversion
+    character(len=128) :: &
+        source   = "$URL$", &
+        revision = "$Revision$", &
+        revdate  = "$Date$"
   
     !------------------------------
     ! END MODULE VARIABLES
@@ -358,7 +352,7 @@ contains
         character(len=PERT_TYPE_LEN)     :: pert_type_name
         real(kind=r8)                    :: pert_magnitude
         character                        :: level_type
-        character(len=VAR_QTY_LEN)      :: var_kind_name
+        character(len=VAR_KIND_LEN)      :: var_kind_name
         character(len=FIELD_UPDATE_LEN)  :: update_type
         logical                          :: is_mean_field
         character(len=POS_DEF_LEN)       :: positive_type_name
@@ -389,14 +383,14 @@ contains
         !FIXME:  Level values should be read in from the state_def file
         ! Set the level values for 10-m wind and 2-m temperature
         select case (var_kind_num_from_name(var_kind_name))
-          case (QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT)
+          case (KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT)
              if(vert_type_from_level_type(level_type) == VERTISHEIGHT) then
                vert_value = 10.0_r8
              else
                vert_value = missing_r8
              end if
                
-          case (QTY_TEMPERATURE)
+          case (KIND_TEMPERATURE)
              if(vert_type_from_level_type(level_type) == VERTISHEIGHT) then
                vert_value = 10.0_r8
              else
@@ -456,13 +450,13 @@ contains
       select case (trim(uppercase(variable_name)))
         case ('EXBM')
           level_type      = 'M' 
-          var_kind_name = 'QTY_EXNER_FUNCTION'
+          var_kind_name = 'KIND_EXNER_FUNCTION'
         case ('THBM')
           level_type      = 'M' 
-          var_kind_name = 'QTY_POTENTIAL_TEMPERATURE'
+          var_kind_name = 'KIND_POTENTIAL_TEMPERATURE'
         case ('EXBW')
           level_type      = 'W' 
-          var_kind_name = 'QTY_EXNER_FUNCTION'
+          var_kind_name = 'KIND_EXNER_FUNCTION'
       end select
 
       var = new_state_variable(nest_number,                               &
@@ -987,7 +981,7 @@ contains
         write (*, '(A12,T15,F8.6)') "PTRB PCT:", var%pert_mag
         write (*, '(A12,T15,I8.8)') "PTB TYPE:", var%pert_type
         write (*, '(A12,T15,L1)')   "UPDATE??:", var%update_field
-        write (*, '(A12,T15,A32)')  "VAR TYPE:", get_name_for_quantity(var%var_kind)
+        write (*, '(A12,T15,A32)')  "VAR TYPE:", get_raw_obs_kind_name(var%var_kind)
         write (*, '(A12,T15,I8.8)') "VAR NMBR:", var%var_kind
         write (*, '(A12,T15,L1)')   "MASSLVL?:", var%mass_level
         write (*, '(A12,T15,L1)')   "MEANFLD?:", var%mean_field
@@ -1034,7 +1028,7 @@ contains
         character(len=*), intent(in)  :: var_kind_name
         integer                       :: var_kind_num_from_name
 
-        var_kind_num_from_name = get_index_for_quantity(var_kind_name)
+        var_kind_num_from_name = get_raw_obs_kind_index(var_kind_name)
 
         if (var_kind_num_from_name .lt. 0) then
             call error_handler(E_ERR, 'var_kind_num_from_name',           &
@@ -1264,8 +1258,3 @@ contains
 
 end module coamps_statevar_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

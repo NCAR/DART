@@ -1,17 +1,16 @@
-! DART software - Copyright UCAR. This open source software is provided
-! by UCAR, "as is", without charge, subject to all terms of use at
+! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-!
-! $Id$
 
 program trans_coamps_to_dart
 
+
+! trans_coamps_to_dart
+! --------------------
 ! This program pulls pieces out of the large COAMPS restart file,
 ! then assembles them into a state vector that can be used by DART.
 ! This includes two pieces of information - the current time and
 ! the actual state
-!
-! DART $Id$
 
   use coamps_translate_mod, only : initialize_translator,         &
                                    generate_coamps_filenames,     &
@@ -24,11 +23,11 @@ program trans_coamps_to_dart
 
   implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+  ! Modified automatically by Subversion 
+  character(len=128) :: &
+       source = "$URL$",&
+       revision = "$Revision$", &
+       revdate = "$Date$"
  
   ! The translation module uses internal flags for whether it's
   ! reading or writing - these are just aliases so it's clearer
@@ -51,9 +50,3 @@ character(len=128), parameter :: revdate  = "$Date$"
 
   call finalize_translator()
 end program trans_coamps_to_dart
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

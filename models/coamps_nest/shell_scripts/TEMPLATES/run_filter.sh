@@ -1,11 +1,10 @@
 #!/bin/bash
 #
-# This code may (or may not) be part of the COAMPS distribution,
-# So it is not protected by the DART copyright agreement.
-#
-# DART $Id$
-#
 ###############################################################################
+#
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # AUTHOR:   P. A. Reinecke
 #           Naval Research Laboratory
@@ -151,8 +150,8 @@ if [ \${init_ens} == 'f' ]; then
   fi
 
 # change the names of the prior and posterior netCDF files.
-  mv ./preassim.nc ./preassim.\${dtg}.nc
-  mv ./analysis.nc ./analysis.\${dtg}.nc
+  mv ./Prior_Diag.nc ./Prior_Diag.\${dtg}.nc
+  mv ./Posterior_Diag.nc ./Posterior_Diag.\${dtg}.nc
 
   if [ ! -e \${scrDir}/obs_seq.list ]; then touch \${scrDir}/obs_seq.list; fi
   echo "./\${dtg}/obs_seq.final" >> \${scrDir}/obs_seq.list
@@ -231,9 +230,3 @@ rm -f ${stageIN}
 rm -f ${run_filter}
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
-

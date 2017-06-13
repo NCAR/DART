@@ -1,7 +1,6 @@
-! This code may (or may not) be part of the COAMPS distribution,
-! So it is not protected by the DART copyright agreement.
-!
-! DART $Id$
+! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
 
 module coamps_interp_mod
 !------------------------------
@@ -225,11 +224,11 @@ module coamps_interp_mod
     ! BEGIN MODULE VARIABLES
     !------------------------------
   
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+    ! Modified automatically by Subversion
+    character(len=128) :: &
+         source = "$URL$", &
+         revision = "$Revision$", &
+         revdate = "$Date$"
   
     integer, save :: NUM_MODEL_LEVELS
   
@@ -299,10 +298,10 @@ contains
         call calculate_interp_weights(interpolator)
 
         select case (obs_kind)
-        case (QTY_SURFACE_PRESSURE)
+        case (KIND_SURFACE_PRESSURE)
           call calculate_surface_pressure(interpolator)
 
-        case (QTY_SURFACE_ELEVATION)
+        case (KIND_SURFACE_ELEVATION)
           call calculate_surface_heights(interpolator)
 
         case default
@@ -704,10 +703,10 @@ contains
 
         ! Not all the observed variables must come from the state vector
         select case (obs_kind)
-          case (QTY_GEOPOTENTIAL_HEIGHT)
+          case (KIND_GEOPOTENTIAL_HEIGHT)
               call calculate_heights(interpolator, AVAILABLE_INDEX_TARGET,      &
                                      interpolator%target_values)
-          case (QTY_VERTLEVEL)
+          case (KIND_VERTLEVEL)
              interpolator%target_values  =                             &
                 spread(get_domain_msigma(interpolator%model_domain),   &
                        VALUES_DIM_NEIGHBOR, NUM_NEIGHBORS)
@@ -815,16 +814,16 @@ contains
         allocate(mean_theta_values(NUM_NEIGHBORS, num_model_levels), stat=alloc_status)
         call check_alloc_status(alloc_status, routine, source, revision, revdate, 'mean_theta_values')
 
-        call get_matching_var_values(interpolator, QTY_EXNER_FUNCTION, IS_NOT_MEAN, &
+        call get_matching_var_values(interpolator, KIND_EXNER_FUNCTION, IS_NOT_MEAN, &
                                      IS_M_LEVEL, matching_values = exner_values)
 
-        call get_matching_var_values(interpolator, QTY_POTENTIAL_TEMPERATURE, IS_NOT_MEAN, &
+        call get_matching_var_values(interpolator, KIND_POTENTIAL_TEMPERATURE, IS_NOT_MEAN, &
                                      IS_M_LEVEL, matching_values = theta_values)
 
-        call get_matching_var_values(interpolator, QTY_EXNER_FUNCTION, IS_MEAN, &
+        call get_matching_var_values(interpolator, KIND_EXNER_FUNCTION, IS_MEAN, &
                                      IS_W_LEVEL, matching_values = mean_exner_values)
 
-        call get_matching_var_values(interpolator, QTY_POTENTIAL_TEMPERATURE, IS_MEAN, &
+        call get_matching_var_values(interpolator, KIND_POTENTIAL_TEMPERATURE, IS_MEAN, &
                                      IS_M_LEVEL, matching_values = mean_theta_values)
 
         call get_terrain_height_at_points(get_nest(interpolator%interp_point),                      &
@@ -1036,7 +1035,7 @@ contains
         logical, parameter :: IS_MEAN_VARIABLE = .true.
         logical, parameter :: IS_ON_MASS_LEVEL = .true.
 
-        call get_matching_var_values(interpolator, QTY_POTENTIAL_TEMPERATURE,       &
+        call get_matching_var_values(interpolator, KIND_POTENTIAL_TEMPERATURE,       &
                                      IS_MEAN_VARIABLE, IS_ON_MASS_LEVEL,      &
                                      availability_index, mean_exner)
     end subroutine get_mean_theta_values
@@ -1052,7 +1051,7 @@ contains
         logical, parameter :: IS_MEAN_VARIABLE = .true.
         logical, parameter :: IS_ON_MASS_LEVEL = .true.
 
-        call get_matching_var_values(interpolator, QTY_EXNER_FUNCTION,       &
+        call get_matching_var_values(interpolator, KIND_EXNER_FUNCTION,       &
                                      IS_MEAN_VARIABLE, IS_ON_MASS_LEVEL,      &
                                      availability_index, mean_exner)
     end subroutine get_mean_exner_values
@@ -1070,7 +1069,7 @@ contains
         logical, parameter :: IS_NOT_MEAN_VARIABLE = .false.
         logical, parameter :: IS_ON_MASS_LEVEL     = .true.
 
-        call get_matching_var_values(interpolator, QTY_EXNER_FUNCTION,       &
+        call get_matching_var_values(interpolator, KIND_EXNER_FUNCTION,       &
                                      IS_NOT_MEAN_VARIABLE, IS_ON_MASS_LEVEL,  &
                                      availability_index, pert_exner)
     end subroutine get_pert_exner_values
@@ -1228,16 +1227,16 @@ contains
 
         nest = get_nest(interpolator%interp_point)
 
-        if ( (var_kind .eq. QTY_U_WIND_COMPONENT)  .or. &
-             (var_kind .eq. QTY_V_WIND_COMPONENT)) then
+        if ( (var_kind .eq. KIND_U_WIND_COMPONENT)  .or. &
+             (var_kind .eq. KIND_V_WIND_COMPONENT)) then
                 var_field = var_values
         end if
 
         select case (var_kind)
-        case (QTY_U_WIND_COMPONENT)
+        case (KIND_U_WIND_COMPONENT)
             call utom(var_field, get_nest_i_width(nest),     &
                       get_nest_j_width(nest), NUM_VERT_LEVELS, .true.)
-        case (QTY_V_WIND_COMPONENT)
+        case (KIND_V_WIND_COMPONENT)
             call vtom(var_field, get_nest_i_width(nest),     &
                       get_nest_j_width(nest), NUM_VERT_LEVELS, .true.)
         case default
@@ -1334,7 +1333,7 @@ contains
             ! Take care for U and V wind components.  If the variable is on a sigma level
             ! it is staggered.  If it is on any other vert_type it is unstaggered.
             select case (var_kind)
-              case (QTY_U_WIND_COMPONENT)
+              case (KIND_U_WIND_COMPONENT)
 
                 if(is_sigma_level(matching_var)) then
                 call extract_neighbors_ustag(interpolator,                              &
@@ -1344,7 +1343,7 @@ contains
                        get_var_substate(matching_var, interpolator%model_state), neighbors)
                 end if
 
-              case (QTY_V_WIND_COMPONENT)
+              case (KIND_V_WIND_COMPONENT)
 
                 if(is_sigma_level(matching_var)) then
                 call extract_neighbors_vstag(interpolator,                              &
@@ -1684,7 +1683,7 @@ contains
                 interpolator%interp_level_type
             write (*,'(A15,T25,I10)'  ) 'On Nest Level :', &
                 get_nest_level(interpolator%interp_point)
-            write (*,'(A15,T25,A30)'  ) 'Variable Type :', trim(get_name_for_quantity(obs_kind))
+            write (*,'(A15,T25,A30)'  ) 'Variable Type :', trim(get_raw_obs_kind_name(obs_kind))
             write (*,'(A15,T25,F15.6)') 'Value         :', obs_value
             write (*,*)
         end if
@@ -1703,8 +1702,3 @@ contains
 
 end module coamps_interp_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

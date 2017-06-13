@@ -1,8 +1,5 @@
-! This code may (or may not) be part of the COAMPS distribution,
-! So it is not protected by the DART copyright agreement.
-!
-! DART $Id$
-
+! update_datahd_file
+! --------------------
 program update_datahd_file
 
   use coamps_util_mod,      only : check_io_status,              &
@@ -25,11 +22,10 @@ program update_datahd_file
 
   implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+  character(len=128) :: &
+       source   = " ",  &
+       revision = " ",  &
+       revdate  = " "
 
   character(len=*), parameter :: routine = 'update_datahd_file'
 
@@ -90,9 +86,3 @@ character(len=128), parameter :: revdate  = "$Date$"
   !call write_datahd_file(dtg_new, datahd)
 
 end program update_datahd_file
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -1,8 +1,12 @@
-%% DART software - Copyright UCAR. This open source software is provided
-% by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% DART $Id$
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 
 clear all;
 close all;
@@ -12,9 +16,9 @@ xdim = 28;
 ydim = 28;
 
 % Open up the various NetCDF files
-%truth = netcdf('true_state.nc');
-prior = netcdf('preassim.nc');
-postr = netcdf('analysis.nc');
+%truth = netcdf('True_State.nc');
+prior = netcdf('Prior_Diag.nc');
+postr = netcdf('Posterior_Diag.nc');
 
 
 % Only consider a single state variable - note that the first two
@@ -143,8 +147,3 @@ ylabel('Latitude (degrees N)');
 
 print -f2 -dtiff postr20
 print -f3 -dtiff diffr20
-
-% <next few lines under version control, do not edit>
-% $URL$
-% $Revision$
-% $Date$

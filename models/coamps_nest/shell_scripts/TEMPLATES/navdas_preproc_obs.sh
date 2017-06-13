@@ -1,15 +1,8 @@
 #!/bin/bash
-#
-# This code may (or may not) be part of the COAMPS distribution,
-# So it is not protected by the DART copyright agreement.
-#
-# DART $Id$
-#
 ########################################################################
-#
 # Helper functions for main script
-#
 ########################################################################
+#
 # Filtered directory listings to output file.
 function set_field_list
 {
@@ -546,9 +539,4 @@ eof
 #######################################################################
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 
