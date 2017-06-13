@@ -173,7 +173,7 @@ module coamps_interp_mod
         ! ORIGINAL:
         !real(kind=r8), dimension(:), pointer :: model_state 
         ! NEW:
-        type(ensemble_handle),       pointer :: state_handle
+        type(ensemble_type),         pointer :: state_handle
         integer                              :: ensemble_size
         type(coamps_domain),         pointer :: model_domain
         type(coamps_nest),           pointer :: interp_nest
@@ -556,7 +556,7 @@ contains
         integer                     :: alloc_status
         integer                     :: ens_size
 
-        ens_size = interpolator%ens_size
+        ens_size = interpolator%ensemble_size
 
         allocate(interpolator%target_values(ens_size, NUM_NEIGHBORS, num_model_levels),&
                  stat=alloc_status)
@@ -899,7 +899,7 @@ contains
         integer                     :: alloc_status
         integer                     :: dealloc_status
 
-        allocate(matching_values(interpolator%ens_size, NUM_NEIGHBORS))
+        allocate(matching_values(interpolator%ensemble_size, NUM_NEIGHBORS))
         call get_single_level_var_values(interpolator, var_kind, LEVEL_TYPE,   &
                                          vert_value, matching_values, is_succes)
         if(.not. is_succes) then
@@ -1165,7 +1165,7 @@ contains
         integer                     :: dealloc_status
 
         nullify(matching_var)
-        allocate(neighbors(interpolator%ens_size, NUM_NEIGHBORS))
+        allocate(neighbors(interpolator%ensemble_size, NUM_NEIGHBORS))
 
         if(is_mass_level) then
           num_levels = num_model_levels
@@ -1282,7 +1282,7 @@ contains
     subroutine extract_neighbors_ustag(interpolator, var_limits, neighbors)
         type(coamps_interpolator),      intent(in)  :: interpolator
         ! OLD: real(kind=r8), dimension(:),    intent(in)  :: var_values
-        type(state_limits)              intent(in)  :: var_limits
+        type(state_limits),             intent(in)  :: var_limits
         ! OLD: real(kind=r8), dimension(:),    intent(out) :: neighbors
         real(kind=r8), dimension(:,:),  intent(out) :: neighbors  ! (ens_size, NUM_NEIGHBORS)
 
@@ -1313,9 +1313,9 @@ contains
     ! -----------------
     ! Given an entire field, extracts the neighboring points specified by
     ! their i-j coordinate for variables staggered on the u grid
-    subroutine extract_neighbors_vstag(interpolator, var_values, neighbors)
+    subroutine extract_neighbors_vstag(interpolator, var_limits, neighbors)
         type(coamps_interpolator),      intent(in)  :: interpolator
-        type(state_limits)              intent(in)  :: var_limits
+        type(state_limits),             intent(in)  :: var_limits
         real(kind=r8), dimension(:,:),  intent(out) :: neighbors   ! (ens_size, NUM_NEIGHBORS)
 
         integer :: cur_neighbor
@@ -1345,9 +1345,9 @@ contains
     ! -----------------
     ! Given an entire field, extracts the neighboring points specified by
     ! their i-j coordinate
-    subroutine extract_neighbors_tstag(interpolator, var_values, neighbors)
+    subroutine extract_neighbors_tstag(interpolator, var_limits, neighbors)
         type(coamps_interpolator),      intent(in)  :: interpolator
-        real(kind=r8), dimension(:),    intent(in)  :: var_values
+        real(kind=r8), dimension(:),    intent(in)  :: var_limits
         ! OLD:
         !real(kind=r8), dimension(:),    intent(out) :: neighbors
         real(kind=r8), dimension(:,:),  intent(out) :: neighbors   ! (ens_size, NUM_NEIGHBORS)
@@ -1468,7 +1468,7 @@ contains
         integer                     :: alloc_status
 
         num_levels = interpolator%num_levels_available
-        ens_size   = interpolator%ens_size
+        ens_size   = interpolator%ensemble_size
 
         allocate(interpolator%available_target_values(ens_size, &
                                                       NUM_NEIGHBORS, &
@@ -1716,10 +1716,10 @@ contains
     !  PARAMETERS
     !   IN  obs_kind          Type of the observation (integer)
     !   IN  obs_value         Result of the interpolation
-    subroutine print_interpolation_diagnostics(interpolator, obs_kind, obs_value)
+    subroutine print_interpolation_diagnostics(interpolator, obs_kind, obs_values)
         type(coamps_interpolator), intent(in) :: interpolator
         integer,                   intent(in) :: obs_kind
-        real(kind=r8),             intent(in) :: obs_value
+        real(kind=r8),             intent(in) :: obs_values(:)
 
         real(kind=r8)       :: lat, lon
 
@@ -1738,8 +1738,10 @@ contains
                 interpolator%interp_level_type
             write (*,'(A15,T25,I10)'  ) 'On Nest Level :', &
                 get_nest_level(interpolator%interp_point)
-            write (*,'(A15,T25,A30)'  ) 'Variable Type :', trim(get_raw_obs_kind_name(obs_kind))
-            write (*,'(A15,T25,F15.6)') 'Value         :', obs_value
+            write (*,'(A15,T25,A30)'  ) 'Variable Type :', trim(get_name_from_quantity(obs_kind))
+            do i=1,interpolator%ensemble_size
+              write (*,'(A15,T25,F15.6)') 'Value         :', obs_values(i)
+            enddo
             write (*,*)
         end if
     end subroutine print_interpolation_diagnostics
