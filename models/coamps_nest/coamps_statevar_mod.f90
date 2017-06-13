@@ -40,6 +40,7 @@ module coamps_statevar_mod
 
     public :: state_variable
     public :: new_state_variable
+    public :: state_limits
 
     public :: read_state_variable
     public :: dump_state_variable
@@ -117,9 +118,9 @@ module coamps_statevar_mod
     ! Generic procedure to allow selection of an array subsection
     ! corresponding to a particular state variable - need 2 since there
     ! is potentially a state vector of type r8 or r4
-    interface get_var_substate
-        module procedure get_var_substate_r8, get_var_substate_r4
-    end interface get_var_substate
+    !interface get_var_substate
+    !    module procedure get_var_substate_r8, get_var_substate_r4
+    !end interface get_var_substate
 
     ! Check if two state variables are talking about the same thing
     interface operator(==)
@@ -231,6 +232,13 @@ module coamps_statevar_mod
         real(kind=r8)               :: vert_value           ! IN  
     end type state_variable
   
+    ! type to return the start/end indices of interest in the
+    ! state vector
+    type :: state_limits
+        integer  :: state_begin
+        integer  :: state_end
+    end type state_limits
+
     !------------------------------
     ! END TYPES AND CONSTANTS
     !------------------------------
@@ -472,6 +480,30 @@ contains
 
     end function define_mean_var
 
+    ! get_var_substate
+    ! ---------------------
+    ! OLD: Return a pointer to the subsection of a kind(r8) vector corresponding 
+    ! to a given state variable.
+    ! NEW: return the starting and ending indices relative to the entire
+    !  state vector for where this variable starts and ends.
+    !  PARAMETERS
+    ! OLD:
+    !   IN  vector          The vector to take the section from
+    !   IN  var             The state variable to base the section on
+    ! NEW:
+    !   IN state_limits     Enough information to extract the right
+    !                       values from the state handle
+    ! OLD:
+    ! function get_var_substate_r8(var, vector) result(var_substate)
+    function get_var_substate(var) result(var_substate)
+        type(state_variable),                 intent(in)  :: var
+        type(state_limits)                                :: var_substate
+
+        var_substate%state_begin = var%state_begin
+        var_substate%state_end   = var%state_end
+    end function get_var_substate
+
+    ! OLD:
     ! get_var_substate_r8
     ! ---------------------
     ! Return a pointer to the subsection of a kind(r8) vector corresponding 
@@ -479,13 +511,13 @@ contains
     !  PARAMETERS
     !   IN  vector          The vector to take the section from
     !   IN  var             The state variable to base the section on
-    function get_var_substate_r8(var, vector) result(var_substate)
-        type(state_variable),                 intent(in)  :: var
-        real(kind=r8), dimension(:), target,  intent(in)  :: vector
-        real(kind=r8), dimension(:), pointer              :: var_substate
-
-        var_substate => vector(var%state_begin:var%state_end)
-    end function get_var_substate_r8
+    !function get_var_substate_r8(var, vector) result(var_substate)
+    !    type(state_variable),                 intent(in)  :: var
+    !    real(kind=r8), dimension(:), target,  intent(in)  :: vector
+    !    real(kind=r8), dimension(:), pointer              :: var_substate
+    !
+    !    var_substate => vector(var%state_begin:var%state_end)
+    !end function get_var_substate_r8
 
     ! get_var_substate_r4
     ! -----------------------
@@ -494,13 +526,13 @@ contains
     !  PARAMETERS
     !   IN  vector          The vector to take the section from
     !   IN  var             The state variable to base the section on
-    function get_var_substate_r4(var, vector) result(var_substate)
-        type(state_variable),                     intent(in)  :: var
-        real(kind=r4), dimension(:), target,  intent(in)      :: vector
-        real(kind=r4), dimension(:), pointer                  :: var_substate
-
-        var_substate => vector(var%state_begin:var%state_end)
-    end function get_var_substate_r4
+    !function get_var_substate_r4(var, vector) result(var_substate)
+    !    type(state_variable),                     intent(in)  :: var
+    !    real(kind=r4), dimension(:), target,  intent(in)      :: vector
+    !    real(kind=r4), dimension(:), pointer                  :: var_substate
+    !
+    !    var_substate => vector(var%state_begin:var%state_end)
+    !end function get_var_substate_r4
 
     ! gets_update
     ! -----------

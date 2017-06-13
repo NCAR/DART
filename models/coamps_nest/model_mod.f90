@@ -9,6 +9,7 @@ module model_mod
 ! AUTHOR:       T. R. Whitcomb
 !               Naval Research Laboratory
 ! DART VERSION: Jamaica
+!               Manhattan (updated jun 2017)
 !
 ! Module for the interface between DART and the U. S. Navy's COAMPS
 ! mesoscale model.  COAMPS was developed by the Naval Research Laboratory,
@@ -90,14 +91,11 @@ module model_mod
                                     get_dist,                      &
                                     get_location,                  &
                                     location_type,                 &
-                                    loc_get_close_maxdist_init  => &
-                                        get_close_maxdist_init,    &
+                                    loc_get_close_state         => &
+                                        get_close_state,           &
                                     loc_get_close_obs           => &
                                         get_close_obs,             &
-                                    loc_get_close_obs_init      => &
-                                        get_close_obs_init,        &
                                     set_location,                  &
-                                    vert_is_pressure,              &
                                   horiz_dist_only,                 &
                                   query_location,                  &
                                   VERTISLEVEL,                     &
@@ -106,6 +104,8 @@ module model_mod
                                   VERTISSURFACE,                   &
                                   VERTISUNDEF
     use obs_kind_mod
+
+    use ensemble_manager_mod, only : ensemble_handle
 
     use time_manager_mod,    only : set_time,                      &
                                     set_time_missing,              &
@@ -124,44 +124,57 @@ module model_mod
                                     get_unit,                      &
                                     register_module
 
+    use default_model_mod,  only :  init_conditions,               &
+                                    init_time,                     &
+                                    adv_1step
+
+    use dart_io_time_mod,   only :  read_model_time,               &
+                                    write_model_time
+
     implicit none
 
     private
 
-    !------------------------------
-    ! BEGIN PUBLIC INTERFACE
-    !------------------------------
+    !-------------------------------------------------------
+    ! BEGIN PUBLIC INTERFACE - updated for Manhattan release
+    !-------------------------------------------------------
 
     ! Initialization/finalization
     public :: static_init_model 
     public :: end_model      
 
-    ! NetCDF
+    ! NetCDF diagnostics
     public :: nc_write_model_atts 
-    public :: nc_write_model_vars 
 
     ! Ensemble generation
     public :: pert_model_state 
 
     ! Forward operator
     public :: model_interpolate
-    public :: ens_mean_for_model
 
     ! Localization
-    public :: get_close_maxdist_init
-    public :: get_close_obs_init
     public :: get_close_obs
+    public :: get_close_state
+
+    ! Vertical conversion if multiple choices for vert coordinate
+    public :: convert_vertical_obs
+    public :: convert_vertical_state
 
     ! Information about model setup
     public :: get_model_size 
     public :: get_state_meta_data 
-    public :: get_model_time_step 
-    public :: get_coamps_domain 
+    public :: shortest_time_between_assimilations
+    public :: get_coamps_domain   ! not required by DART
 
-    ! Null interfaces
+    ! Null interfaces - code in other modules
     public :: init_conditions
     public :: init_time      
     public :: adv_1step 
+    public :: nc_write_model_vars
+
+    ! Time management - must conform to COAMPS file format for time
+    public :: read_model_time
+    public :: write_model_time
 
     !------------------------------
     ! END PUBLIC INTERFACE
@@ -375,15 +388,34 @@ contains
     !   IN  obs_kind          raw variable kind
     !   OUT obs_val           interpolated value
     !   OUT interp_status     status of interpolation (0 is success)
-    subroutine model_interpolate(x, location, obs_kind, obs_val, interp_status)
-        real(r8), dimension(:), intent(in)  :: x
+    !
+    ! ORIGINAL:
+    !subroutine model_interpolate(x, location, obs_kind, obs_val, interp_status)
+    !    real(r8), dimension(:), intent(in)  :: x
+    !    type(location_type),    intent(in)  :: location
+    !    integer,                intent(in)  :: obs_kind
+    !    real(r8),               intent(out) :: obs_val
+    !    integer,                intent(out) :: interp_status
+    !
+    ! NEW WITH MANHATTAN:
+    !  PARAMETERS
+    !   IN  state_handl                 full state vector
+    !   IN  location          DART location structure for interpolation
+    !                         target location
+    !   IN  obs_kind          raw variable kind
+    !   OUT obs_val           interpolated value
+    !   OUT interp_status     status of interpolation (0 is success)
+    !
+    subroutine model_interpolate(state_handle, ens_size, location, obs_kind, expected_obs, interp_status)
+        type(ensemble_type),    intent(in)  :: state_handle
+        integer,                intent(in)  :: ens_size
         type(location_type),    intent(in)  :: location
         integer,                intent(in)  :: obs_kind
-        real(r8),               intent(out) :: obs_val
-        integer,                intent(out) :: interp_status
+        real(r8),               intent(out) :: expected_obs(ens_size)
+        integer,                intent(out) :: interp_status(ens_size)
 
         integer :: which_vert
-        logical :: interp_worked
+        logical :: interp_worked(ens_size)
         logical :: in_domain
 
         type(coamps_nest)      :: nest
@@ -422,6 +454,11 @@ contains
         select case (obs_kind)    
         case (QTY_VORTEX_LAT, QTY_VORTEX_LON)
 
+          ! this currently HAS NOT BEEN CONVERTED
+          expected_obs(:) = MISSING_R8
+          interp_status(:) = 999
+          return
+         
           ! obs_loc
           loc_array = get_location(location)
           loc_which = nint(query_location(location))
@@ -479,11 +516,12 @@ contains
 
           fm(:,:) = 1.0_r8
 
-          call vor(reshape(get_var_substate(u_var, x),(/nx, ny, nz/)),                         &
-                   reshape(get_var_substate(v_var, x),(/nx, ny, nz/)),                         &
-                   nx, ny, nz, delx, dely, fm,                              &
-                   get_domain_msigma(domain), get_domain_wsigma(domain),    &
-                   get_domain_dsigmaw(domain), get_terrain(nest), 1, vort_z )
+          ! get_var_substate() uses old x() array
+          !call vor(reshape(get_var_substate(u_var, x),(/nx, ny, nz/)),                         &
+          !         reshape(get_var_substate(v_var, x),(/nx, ny, nz/)),                         &
+          !         nx, ny, nz, delx, dely, fm,                              &
+          !         get_domain_msigma(domain), get_domain_wsigma(domain),    &
+          !         get_domain_dsigmaw(domain), get_terrain(nest), 1, vort_z )
 
           deallocate(fm, stat=dealloc_status)
           call check_dealloc_status(dealloc_status, routine, source, revision, &
@@ -552,7 +590,7 @@ contains
           else
             obs_val = loc_array(DART_LOC_LON)
           endif
-          interp_worked = .true.
+          interp_worked(:) = .true.
 
           ! deallocate arrays
           deallocate(vort_z_smooth, stat=dealloc_status)
@@ -577,66 +615,42 @@ contains
 
         case default 
 
+          expected_obs(:) = MISSING_R8
+          interp_status(:) = 999
+
+          ! ORIGINAL:
           call interpolate(x, domain, state_definition, location, &
                            obs_kind, obs_val, interp_worked)
+          ! NEW:
+          call interpolate(state_handle, domain, state_definition, location, &
+                           obs_kind, expected_obs, interp_worked)
 
         end select
 
-        if (interp_worked) then
-            interp_status = 0
-        else
-            obs_val = MISSING_R8
-            interp_status = 1
-        end if
+        ! interpolate needs to set expected_obs(:) where the interpolation worked
+        where (interp_worked) interp_status = 0
 
         return
     end subroutine model_interpolate
 
-    ! ens_mean_for_model
-    ! ------------------
-    ! Allow the ensemble mean to be passed in and stored if we need it
-    ! (can be handy for forward operators)
-    !  PARAMETERS
-    !   IN  ens_mean          ensemble mean state vector
-    subroutine ens_mean_for_model(ens_mean)
-        real(kind=r8), intent(in), dimension(:) :: ens_mean
+    ! get_close_state
+    ! -------------
+    ! Gets the number of close state locations.  Wrapper for location
+    ! module's get_close_state subroutine.
+    subroutine get_close_state(gc, base_obs_loc, base_obs_kind, obs_loc, &
+                               obs_kind, num_close, close_ind, dist)
 
-        if (need_mean) then
-            ensemble_mean = ens_mean
-        end if
-    end subroutine ens_mean_for_model
+    type(get_close_type), intent(in)    :: gc
+    type(location_type), intent(inout)  :: base_obs_loc, obs_loc(:)
+    integer, intent(in)                 :: base_obs_kind, obs_kind(:)
+    integer, intent(out)                :: num_close, close_ind(:)
+    real(r8), optional, intent(out)     :: dist(:)
 
-    ! get_close_maxdist_init
-    ! ----------------------
-    ! Set the maximum distance for the processor for finding nearby 
-    ! points. Wrapper for location module's get_close_maxdist_init 
-    ! subroutine.
-    !  PARAMETERS
-    ! INOUT gc                get_close_type structure to initialize
-    !   IN  maxdist           the maximum distance to process  
-    subroutine get_close_maxdist_init (gc, maxdist)
-        type(get_close_type), intent(inout) :: gc
-        real(r8), intent(in)                :: maxdist
+     call loc_get_close_state(gc, base_obs_loc, base_obs_kind, obs_loc, &
+                              obs_kind, num_close, close_ind, dist)
 
-        call loc_get_close_maxdist_init(gc, maxdist)
-    end subroutine get_close_maxdist_init
+    end subroutine get_close_state
 
-    ! get_close_obs_init
-    ! ------------------
-    ! Initializes part of get_close accelerator that depends on the
-    ! particular observation(s).  Wrapper for location module's
-    ! get_close_obs_init subroutine.
-    !  PARAMETERS
-    ! INOUT  gc               get_close_type accelerator to initialize
-    !   IN   num              number of observations in the set
-    !   IN   obs              set of observation locations
-    subroutine get_close_obs_init(gc, num, obs)
-        type(get_close_type), intent(inout) :: gc
-        integer, intent(in)                 :: num
-        type(location_type), intent(in)     :: obs(num)
-
-        call loc_get_close_obs_init(gc, num, obs)
-    end subroutine get_close_obs_init
 
     ! get_close_obs
     ! -------------

@@ -27,7 +27,8 @@ module coamps_interp_mod
                                      get_nest_size, get_nest_level,             &
                                      in_this_nest
 
-    use coamps_statevar_mod,  only : state_variable, get_var_substate, is_sigma_level
+    use coamps_statevar_mod,  only : state_variable, get_var_substate, is_sigma_level, &
+                                     state_limits
 
     use coamps_statevec_mod,  only : state_vector, find_state_variable
 
@@ -45,11 +46,7 @@ module coamps_interp_mod
   
     use location_mod,         only : location_type,    &
                                      query_location,   &
-                                     vert_is_height,   &
-                                     vert_is_undef,    &
-                                     vert_is_level,    &
-                                     vert_is_pressure, &
-                                     vert_is_surface
+                                     is_vertical
     use obs_kind_mod
     use types_mod,            only : MISSING_I,        &
                                      MISSING_R8,       &
@@ -60,6 +57,7 @@ module coamps_interp_mod
                                      E_WARN,           &
                                      error_handler,    &
                                      register_module 
+    use ensemble_manager_mod, only : ensemble_type
   
     implicit none
   
@@ -172,10 +170,15 @@ module coamps_interp_mod
         private
 
         ! Shortcut references
-        real(kind=r8), dimension(:), pointer :: model_state 
+        ! ORIGINAL:
+        !real(kind=r8), dimension(:), pointer :: model_state 
+        ! NEW:
+        type(ensemble_handle),       pointer :: state_handle
+        integer                              :: ensemble_size
         type(coamps_domain),         pointer :: model_domain
         type(coamps_nest),           pointer :: interp_nest
         type(state_vector),          pointer :: state_definition
+        type(state_limits)                   :: state_limits 
 
         ! Location (horizontal and vertical) of where we will interpolate
         type(nest_point)  :: interp_point
@@ -186,9 +189,10 @@ module coamps_interp_mod
         integer, dimension(NUM_NEIGHBORS) :: neighbors_i
         integer, dimension(NUM_NEIGHBORS) :: neighbors_j
 
-        ! Raw values - indexed by (neighbor, sigma level)
-        real(kind=r8), dimension(:,:), pointer :: target_values
-        real(kind=r8), dimension(:,:), pointer :: vcoord_values
+        ! OLD Raw values - indexed by (neighbor, sigma level)
+        ! Raw values - indexed by (ens_size, neighbor, sigma level)
+        real(kind=r8), dimension(:,:,:), pointer :: target_values
+        real(kind=r8), dimension(:,:,:), pointer :: vcoord_values
 
         ! Variable availability is stored as an (# of levels) x (# of vars)
         ! array - if the value at (level, variable) is .true., then that
@@ -199,8 +203,8 @@ module coamps_interp_mod
         integer                          :: num_levels_available
 
         ! Filtered raw values only on levels that have all data available
-        real(kind=r8), dimension(:,:), pointer :: available_target_values
-        real(kind=r8), dimension(:,:), pointer :: available_vcoord_values
+        real(kind=r8), dimension(:,:,:), pointer :: available_target_values
+        real(kind=r8), dimension(:,:,:), pointer :: available_vcoord_values
 
         ! Results of vertical interpolation
         real(kind=r8), dimension(:,:),          pointer :: vinterp_values
@@ -254,21 +258,24 @@ contains
     ! Driver for interpolation calculation
     !  PARAMETERS
     !   IN  state             big ol' DART state vector
+    ! NOW: state_handle       handle to entire ensemble of state
+    !   IN  ens_size          ensemble size
     !   IN  domain            COAMPS domain to interpolate on
     !   IN  state_def         COAMPS state vector definition
     !   IN  obs_loc           DART location structure to interpolate to
     !   IN  obs_kind          integer version of raw variable type
     !   OUT obs_value         result of interpolation
     !   OUT interp_worked     true if interpolation was successful
-    subroutine interpolate(state, domain, state_def, obs_loc, obs_kind, &
+    subroutine interpolate(state_handle, ens_size, domain, state_def, obs_loc, obs_kind, &
                            obs_value, interp_worked)
-        real(kind=r8), dimension(:), intent(in)  :: state
+        type(ensemble_type),         intent(in)  :: state_handle
+        integer,                     intent(in)  :: ens_size
         type(coamps_domain),         intent(in)  :: domain
         type(state_vector),          intent(in)  :: state_def
         type(location_type),         intent(in)  :: obs_loc
         integer,                     intent(in)  :: obs_kind
-        real(kind=r8),               intent(out) :: obs_value
-        logical, optional,           intent(out) :: interp_worked
+        real(kind=r8),               intent(out) :: obs_value(ens_size)
+        logical, optional,           intent(out) :: interp_worked(ens_size)
 
         type(coamps_interpolator) :: interpolator
         integer :: ii,k
@@ -276,12 +283,13 @@ contains
 
         if (.not. module_initialized) call initialize_module(domain)
 
-        call initialize_interpolator(interpolator, state, domain, state_def)
+        call initialize_interpolator(interpolator, state_handle, ens_size, domain, state_def)
 
         call set_interpolation_location(interpolator, obs_loc)
 
         if (.not. has_valid_location(interpolator)) then
             interp_worked = .false.
+            call finalize_interpolator(interpolator)
             return
         end if
 
@@ -308,13 +316,13 @@ contains
            
           ! Try to find if the state variable is defined on the same level 
           ! as the observation.  If it is not, interpolate in the vertical. 
-          if( vert_is_height(obs_loc) ) then
+          if( is_vertical(obs_loc, 'height') ) then
              call calculate_height_level_var(interpolator, obs_kind, &
                      query_location(obs_loc, 'VLOC'), is_success)
 
-          !elseif( vert_is_pressure(obs_loc) ) then
-          !elseif( vert_is_surface(obs_loc) ) then
-          elseif( vert_is_undef(obs_loc) ) then
+          !elseif( is_vertical(obs_loc, 'pressure') ) then
+          !elseif( is_vertical(obs_loc, 'surface') ) then
+          elseif( is_vertical(obs_loc, 'undefined') ) then
              call calculate_undef_level_var(interpolator, obs_kind, &
                      query_location(obs_loc, 'VLOC'), is_success)
           end if 
@@ -329,6 +337,7 @@ contains
           call calculate_available_levels(interpolator)
           if (.not. enough_levels_available(interpolator)) then
             interp_worked = .false.
+            call finalize_interpolator(interpolator)
             return
           end if
 
@@ -339,6 +348,7 @@ contains
           ! bounded by the available levels
           if (.not. interp_level_in_available_range(interpolator)) then
             interp_worked = .false.
+            call finalize_interpolator(interpolator)
             return
           end if
 
@@ -346,14 +356,17 @@ contains
           call interpolate_to_level(interpolator)
           if (.not. no_missing_values(interpolator)) then
             interp_worked = .false.
+            call finalize_interpolator(interpolator)
             return
           end if
           end if
 
         end select
 
-        ! ... then interpolate neighbors to a single point
-        obs_value = interpolate_to_point(interpolator) 
+        ! ... then interpolate neighbors to an array of single points
+        do ii=1, ens_size
+           obs_value(ii) = interpolate_to_point(interpolator, ii) 
+        enddo
 
         interp_worked = .true.
 
@@ -497,13 +510,17 @@ contains
     ! initialize_interpolator
     ! -----------------------
     ! Set up the interpolator object
-    subroutine initialize_interpolator(interpolator, state, domain, state_def)
+    subroutine initialize_interpolator(interpolator, state_handle, ens_size, domain, state_def)
         type(coamps_interpolator),           intent(inout) :: interpolator
-        real(kind=r8), dimension(:), target, intent(in)    :: state
+        !real(kind=r8), dimension(:), target, intent(in)    :: state
+        type(ensemble_type),         target, intent(in)    :: state_handle
+        integer,                             intent(in)    :: ens_size
         type(coamps_domain),         target, intent(in)    :: domain
         type(state_vector),          target, intent(in)    :: state_def
 
-        interpolator%model_state      => state
+        !!!!interpolator%model_state     => state
+        interpolator%state_handle     => state_handle
+        interpolator%ensemble_size    =  ens_size
         interpolator%model_domain     => domain
         interpolator%state_definition => state_def
 
@@ -517,7 +534,9 @@ contains
     subroutine finalize_interpolator(interpolator)
         type(coamps_interpolator), intent(inout) :: interpolator
 
-        nullify(interpolator%model_state)
+        !!!nullify(interpolator%model_state)
+        nullify(interpolator%state_handle)
+        interpolator%ensemble_size = -1
         nullify(interpolator%model_domain)
         nullify(interpolator%state_definition)
 
@@ -535,19 +554,22 @@ contains
 
         character(len=*), parameter :: routine = 'allocate_raw_values'
         integer                     :: alloc_status
+        integer                     :: ens_size
 
-        allocate(interpolator%target_values(NUM_NEIGHBORS, num_model_levels),&
+        ens_size = interpolator%ens_size
+
+        allocate(interpolator%target_values(ens_size, NUM_NEIGHBORS, num_model_levels),&
                  stat=alloc_status)
         call check_alloc_status(alloc_status, routine, source, revision,     &
                                 revdate, 'target_values')
-        allocate(interpolator%vcoord_values(NUM_NEIGHBORS, num_model_levels),&
+        allocate(interpolator%vcoord_values(ens_size, NUM_NEIGHBORS, num_model_levels),&
                  stat=alloc_status)
         call check_alloc_status(alloc_status, routine, source, revision,     &
                                 revdate, 'vcoord_values')
 
         ! After the vertical interpolation to a single level we will have one
         ! value for each neighboring point
-        allocate(interpolator%vinterp_values(NUM_NEIGHBORS, SINGLE_LEVEL),   &
+        allocate(interpolator%vinterp_values(ens_size, NUM_NEIGHBORS, SINGLE_LEVEL),   &
                  stat=alloc_status)
         call check_alloc_status(alloc_status, routine, source, revision,     &
                                 revdate, 'vinterp_values')
@@ -668,15 +690,15 @@ contains
 
         ! Note that the DART vertical location type of "model level" is
         ! a sigma level in COAMPS
-        if      ( vert_is_pressure(obs_loc) ) then
+        if      ( is_vertical(obs_loc, 'pressure') ) then
             interpolator%interp_level_type = INTERPOLATE_TO_PRESSURE
-        else if ( vert_is_height(obs_loc)   ) then
+        else if ( is_vertical(obs_loc, 'height')   ) then
             interpolator%interp_level_type = INTERPOLATE_TO_HEIGHT
-        else if ( vert_is_level(obs_loc)    ) then
+        else if ( is_vertical(obs_loc, 'level')    ) then
             interpolator%interp_level_type = INTERPOLATE_TO_SIGMA
-        else if ( vert_is_surface(obs_loc)  ) then
+        else if ( is_vertical(obs_loc, 'surface')  ) then
             interpolator%interp_level_type = INTERPOLATE_TO_SURFACE
-        else if ( vert_is_undef(obs_loc)  ) then
+        else if ( is_vertical(obs_loc, 'undefined')  ) then
             interpolator%interp_level_type = INTERPOLATE_TO_UNDEF
         else
             interpolator%interp_level_type = INTERPOLATE_TO_OTHER
@@ -867,7 +889,7 @@ contains
         real(kind=r8),             intent(in)     :: vert_value
         logical,                   intent(out)    :: is_succes
 
-        real(kind=r8), dimension(NUM_NEIGHBORS)   :: matching_values
+        real(kind=r8), dimension(:, :)   :: matching_values  ! (ens_size, NUM_NEIGHBORS)
         logical,       dimension(NUM_NEIGHBORS)   :: is_available_var
 
         character(len=*), parameter :: LEVEL_TYPE = 'U'
@@ -877,14 +899,19 @@ contains
         integer                     :: alloc_status
         integer                     :: dealloc_status
 
+        allocate(matching_values(interpolator%ens_size, NUM_NEIGHBORS))
         call get_single_level_var_values(interpolator, var_kind, LEVEL_TYPE,   &
                                          vert_value, matching_values, is_succes)
-        if(.not. is_succes) return
+        if(.not. is_succes) then
+           deallocate(matching_values)
+           return
+        endif
 
         do n=1,NUM_NEIGHBORS
-           interpolator%vinterp_values(n, SINGLE_LEVEL) =  matching_values(n)
+           interpolator%vinterp_values(:, n, SINGLE_LEVEL) =  matching_values(:, n)
         end do
 
+        deallocate(matching_values)
     end subroutine calculate_undef_level_var
 
     ! calculate_height_level_var
@@ -970,7 +997,7 @@ contains
     subroutine calculate_heights(interpolator, availability_index, heights)
         type(coamps_interpolator),     intent(inout) :: interpolator
         integer,                       intent(in)    :: availability_index
-        real(kind=r8), dimension(:,:), intent(out)   :: heights
+        real(kind=r8), dimension(:,:,:), intent(out) :: heights
 
         ! Surface height
         real(kind=r8), dimension(NUM_NEIGHBORS) :: Zs
@@ -1028,9 +1055,9 @@ contains
     ! ---------------------
     ! Get the value of the mean potential on all available mass levels. 
     subroutine get_mean_theta_values(interpolator, availability_index, mean_exner)
-        type(coamps_interpolator),     intent(inout)  :: interpolator
-        integer,                       intent(in)     :: availability_index
-        real(kind=r8), dimension(:,:), intent(out)    :: mean_exner
+        type(coamps_interpolator),       intent(inout)  :: interpolator
+        integer,                         intent(in)     :: availability_index
+        real(kind=r8), dimension(:,:,:), intent(out)    :: mean_exner
         
         logical, parameter :: IS_MEAN_VARIABLE = .true.
         logical, parameter :: IS_ON_MASS_LEVEL = .true.
@@ -1044,9 +1071,9 @@ contains
     ! ---------------------
     ! Get the value of the mean exner function on all available mass levels. 
     subroutine get_mean_exner_values(interpolator, availability_index, mean_exner)
-        type(coamps_interpolator),     intent(inout)  :: interpolator
-        integer,                       intent(in)     :: availability_index
-        real(kind=r8), dimension(:,:), intent(out)    :: mean_exner
+        type(coamps_interpolator),       intent(inout)  :: interpolator
+        integer,                         intent(in)     :: availability_index
+        real(kind=r8), dimension(:,:,:), intent(out)    :: mean_exner
         
         logical, parameter :: IS_MEAN_VARIABLE = .true.
         logical, parameter :: IS_ON_MASS_LEVEL = .true.
@@ -1061,9 +1088,9 @@ contains
     ! Get the value of the perturbation exner function on all available 
     ! mass levels.
     subroutine get_pert_exner_values(interpolator, availability_index, pert_exner)
-        type(coamps_interpolator),     intent(inout)  :: interpolator
-        integer,                       intent(in)     :: availability_index
-        real(kind=r8), dimension(:,:), intent(out)    :: pert_exner
+        type(coamps_interpolator),       intent(inout)  :: interpolator
+        integer,                         intent(in)     :: availability_index
+        real(kind=r8), dimension(:,:,:), intent(out)    :: pert_exner
 
         ! Search parameters for this variable
         logical, parameter :: IS_NOT_MEAN_VARIABLE = .false.
@@ -1085,13 +1112,13 @@ contains
                                        pert_exner_values,             &
                                        pert_availability_index,       &
                                        pressure)
-        type(coamps_interpolator),     intent(inout) :: interpolator
-        integer,                       intent(in)    :: pres_availability_index
-        real(kind=r8), dimension(:,:), intent(in)    :: mean_exner_values
-        integer,                       intent(in)    :: mean_availability_index
-        real(kind=r8), dimension(:,:), intent(in)    :: pert_exner_values
-        integer,                       intent(in)    :: pert_availability_index
-        real(kind=r8), dimension(:,:), intent(out)   :: pressure
+        type(coamps_interpolator),       intent(inout) :: interpolator
+        integer,                         intent(in)    :: pres_availability_index
+        real(kind=r8), dimension(:,:,:), intent(in)    :: mean_exner_values
+        integer,                         intent(in)    :: mean_availability_index
+        real(kind=r8), dimension(:,:,:), intent(in)    :: pert_exner_values
+        integer,                         intent(in)    :: pert_availability_index
+        real(kind=r8), dimension(:,:,:), intent(out)   :: pressure
 
         ! Atmospheric constants - specific heat, gas constant (dry air),
         ! and the initial pressure for calculating the Exner function
@@ -1117,17 +1144,17 @@ contains
     subroutine get_matching_var_values(interpolator, var_kind, is_mean,       &
                                        is_mass_level, var_availability_index, &
                                        matching_values)
-        type(coamps_interpolator),      intent(inout)  :: interpolator
-        integer,                        intent(in)     :: var_kind
-        logical,                        intent(in)     :: is_mean
-        logical,                        intent(in)     :: is_mass_level
-        integer, optional,              intent(in)     :: var_availability_index
-        real(kind=r8), dimension(:,:),  intent(out)    :: matching_values
+        type(coamps_interpolator),        intent(inout)  :: interpolator
+        integer,                          intent(in)     :: var_kind
+        logical,                          intent(in)     :: is_mean
+        logical,                          intent(in)     :: is_mass_level
+        integer, optional,                intent(in)     :: var_availability_index
+        real(kind=r8), dimension(:,:,:),  intent(out)    :: matching_values
 
         integer                       :: num_levels, cur_level_num
         type(state_variable), pointer :: matching_var
-        real(kind=r8), dimension(NUM_NEIGHBORS) :: neighbors
-        real(kind=r8), allocatable, dimension(:)       :: var_field
+        real(kind=r8), allocatable, dimension(:,:) :: neighbors  ! (ens_size, NUM_NEIGHBORS)
+        real(kind=r8), allocatable, dimension(:)   :: var_field
 
         character(len=*), parameter :: MASS_LEVEL = 'M'
         character(len=*), parameter :: W_LEVEL    = 'W'
@@ -1138,6 +1165,7 @@ contains
         integer                     :: dealloc_status
 
         nullify(matching_var)
+        allocate(neighbors(interpolator%ens_size, NUM_NEIGHBORS))
 
         if(is_mass_level) then
           num_levels = num_model_levels
@@ -1150,8 +1178,8 @@ contains
         do cur_level_num = 1, num_levels
             matching_var => find_state_variable(interpolator%state_definition, &
                                                interpolator%interp_nest,       &
-                                               var_kind,  is_mean,             &
-                                                 level_type, cur_level_num)
+                                               var_kind,   is_mean,             &
+                                               level_type, cur_level_num)
 
             if(present(var_availability_index)) then
               if (.not. associated(matching_var)) then
@@ -1162,13 +1190,14 @@ contains
 
             call extract_neighbors(interpolator, matching_var, var_kind, neighbors)
 
-            matching_values(:, cur_level_num) = neighbors(:)
+            matching_values(:, :, cur_level_num) = neighbors(:,:)   ! IS THIS RIGHT?
 
             if(present(var_availability_index)) &
               call mark_available(interpolator, cur_level_num, var_availability_index)
         end do
 
         nullify(matching_var)
+        deallocate(neighbors)
 
     end subroutine get_matching_var_values
 
@@ -1182,7 +1211,8 @@ contains
         integer,                        intent(in)     :: var_kind
         character(len=*),               intent(in)     :: level_type
         real(kind=r8),                  intent(in)     :: vert_value
-        real(kind=r8), dimension(:),    intent(out)    :: matching_values
+        ! OLD real(kind=r8), dimension(:),    intent(out)    :: matching_values
+        real(kind=r8), dimension(:,:),  intent(out)    :: matching_values
         logical,                        intent(out)    :: is_available
 
         type(state_variable), pointer :: matching_var
@@ -1249,10 +1279,12 @@ contains
     ! -----------------
     ! Given an entire field, extracts the neighboring points specified by
     ! their i-j coordinate for variables staggered on the u grid
-    subroutine extract_neighbors_ustag(interpolator, var_values, neighbors)
+    subroutine extract_neighbors_ustag(interpolator, var_limits, neighbors)
         type(coamps_interpolator),      intent(in)  :: interpolator
-        real(kind=r8), dimension(:),    intent(in)  :: var_values
-        real(kind=r8), dimension(:),    intent(out) :: neighbors
+        ! OLD: real(kind=r8), dimension(:),    intent(in)  :: var_values
+        type(state_limits)              intent(in)  :: var_limits
+        ! OLD: real(kind=r8), dimension(:),    intent(out) :: neighbors
+        real(kind=r8), dimension(:,:),  intent(out) :: neighbors  ! (ens_size, NUM_NEIGHBORS)
 
         integer :: cur_neighbor
         integer :: ii_west, ii_east, indx_west, indx_east
@@ -1267,8 +1299,13 @@ contains
           indx_east = nest_index_2d_to_1d(interpolator%interp_nest,    &
                       ii_east, interpolator%neighbors_j(cur_neighbor))
 
-          neighbors(cur_neighbor) = 0.5_r8 *   &
-               (var_values(indx_west) + var_values(indx_east))   
+   ! FIXME: does this need the starting offset of this variable in the state?
+          ! OLD:
+          !neighbors(cur_neighbor) = 0.5_r8 *   &
+          !     (var_values(indx_west) + var_values(indx_east))   
+          neighbors(:, cur_neighbor) = 0.5_r8 *   &
+               (get_state(interpolator%state_handle, var_limits%start_index+indx_west) + &
+                get_state(interpolator%state_handle, var_limits%start_index+indx_east))   
         end do                                           
     end subroutine extract_neighbors_ustag
 
@@ -1278,8 +1315,8 @@ contains
     ! their i-j coordinate for variables staggered on the u grid
     subroutine extract_neighbors_vstag(interpolator, var_values, neighbors)
         type(coamps_interpolator),      intent(in)  :: interpolator
-        real(kind=r8), dimension(:),    intent(in)  :: var_values
-        real(kind=r8), dimension(:),    intent(out) :: neighbors
+        type(state_limits)              intent(in)  :: var_limits
+        real(kind=r8), dimension(:,:),  intent(out) :: neighbors   ! (ens_size, NUM_NEIGHBORS)
 
         integer :: cur_neighbor
         integer :: jj_south, jj_north, indx_north, indx_south
@@ -1294,8 +1331,12 @@ contains
           indx_north = nest_index_2d_to_1d(interpolator%interp_nest,    &
                       interpolator%neighbors_i(cur_neighbor), jj_north)
 
-          neighbors(cur_neighbor) = 0.5_r8 *   &
-               (var_values(indx_south) + var_values(indx_north))   
+          ! OLD:
+          !neighbors(cur_neighbor) = 0.5_r8 *   &
+          !     (var_values(indx_south) + var_values(indx_north))   
+          neighbors(:, cur_neighbor) = 0.5_r8 *   &
+               (get_state(interpolator%state_handle, var_limits%start_index+indx_south) + &
+                get_state(interpolator%state_handle, var_limits%start_index+indx_north))   
         end do                                           
 
     end subroutine extract_neighbors_vstag
@@ -1307,15 +1348,23 @@ contains
     subroutine extract_neighbors_tstag(interpolator, var_values, neighbors)
         type(coamps_interpolator),      intent(in)  :: interpolator
         real(kind=r8), dimension(:),    intent(in)  :: var_values
-        real(kind=r8), dimension(:),    intent(out) :: neighbors
+        ! OLD:
+        !real(kind=r8), dimension(:),    intent(out) :: neighbors
+        real(kind=r8), dimension(:,:),  intent(out) :: neighbors   ! (ens_size, NUM_NEIGHBORS)
 
         integer :: cur_neighbor
 
         do cur_neighbor = 1, NUM_NEIGHBORS
-            neighbors(cur_neighbor) =                                    &
-                var_values(nest_index_2d_to_1d(interpolator%interp_nest, &
-                                interpolator%neighbors_i(cur_neighbor),  &
-                                interpolator%neighbors_j(cur_neighbor)))
+            ! OLD:
+            !neighbors(cur_neighbor) =                                    &
+            !    var_values(nest_index_2d_to_1d(interpolator%interp_nest, &
+            !                    interpolator%neighbors_i(cur_neighbor),  &
+            !                    interpolator%neighbors_j(cur_neighbor)))
+            neighbors(:, cur_neighbor) = get_state(interpolator%state_handle, &
+                                var_limits%start_index + &
+                                nest_index_2d_to_1d(interpolator%interp_nest, &
+                                                    interpolator%neighbors_i(cur_neighbor),  &
+                                                    interpolator%neighbors_j(cur_neighbor)))
         end do                                           
 
     end subroutine extract_neighbors_tstag
@@ -1325,10 +1374,11 @@ contains
     ! Given an entire field, extracts the neighboring points specified by
     ! their i-j-k coordinate
     subroutine extract_neighbors(interpolator, matching_var, var_kind, neighbors)
-        type(coamps_interpolator),     intent(in)    :: interpolator
-        type(state_variable),          intent(in)    :: matching_var
-        integer,                       intent(in)    :: var_kind
-        real(kind=r8), dimension(:),   intent(out)   :: neighbors
+        type(coamps_interpolator),       intent(in)    :: interpolator
+        type(state_variable),            intent(in)    :: matching_var
+        integer,                         intent(in)    :: var_kind
+        ! OLD real(kind=r8), dimension(:),   intent(out)   :: neighbors
+        real(kind=r8), dimension(:,:),   intent(out)   :: neighbors
 
             ! Take care for U and V wind components.  If the variable is on a sigma level
             ! it is staggered.  If it is on any other vert_type it is unstaggered.
@@ -1337,26 +1387,27 @@ contains
 
                 if(is_sigma_level(matching_var)) then
                 call extract_neighbors_ustag(interpolator,                              &
-                     get_var_substate(matching_var, interpolator%model_state), neighbors)
+                     get_var_substate(matching_var), neighbors)
+                     ! OLD get_var_substate(matching_var, interpolator%model_state), neighbors)
                 else
                   call extract_neighbors_tstag(interpolator,                              &
-                       get_var_substate(matching_var, interpolator%model_state), neighbors)
+                       get_var_substate(matching_var), neighbors)
                 end if
 
               case (QTY_V_WIND_COMPONENT)
 
                 if(is_sigma_level(matching_var)) then
                 call extract_neighbors_vstag(interpolator,                              &
-                     get_var_substate(matching_var, interpolator%model_state), neighbors)
+                     get_var_substate(matching_var), neighbors)
                 else
                   call extract_neighbors_tstag(interpolator,                              &
-                       get_var_substate(matching_var, interpolator%model_state), neighbors)
+                       get_var_substate(matching_var), neighbors)
                 end if
 
               case default
 
                 call extract_neighbors_tstag(interpolator,                              &
-                     get_var_substate(matching_var, interpolator%model_state), neighbors)
+                     get_var_substate(matching_var), neighbors)
 
             end select
 
@@ -1411,20 +1462,23 @@ contains
     subroutine initialize_available_values(interpolator)
         type(coamps_interpolator), intent(inout) :: interpolator
 
-        integer :: num_levels
+        integer :: num_levels, ens_size
 
         character(len=*), parameter :: routine = 'initialize_available_values'
         integer                     :: alloc_status
 
         num_levels = interpolator%num_levels_available
+        ens_size   = interpolator%ens_size
 
-        allocate(interpolator%available_target_values(NUM_NEIGHBORS, &
+        allocate(interpolator%available_target_values(ens_size, &
+                                                      NUM_NEIGHBORS, &
                                                       num_levels),   &
                  stat=alloc_status)
         call check_alloc_status(alloc_status, routine, source, revision, &
                                 revdate, 'available_target_values')
 
-        allocate(interpolator%available_vcoord_values(NUM_NEIGHBORS, &
+        allocate(interpolator%available_vcoord_values(ens_size, &
+                                                      NUM_NEIGHBORS, &
                                                       num_levels),   &
                  stat=alloc_status)
         call check_alloc_status(alloc_status, routine, source, revision, &
@@ -1497,14 +1551,15 @@ contains
     ! variables for arrays holding the data and the weights
     !  PARAMETERS
     !   OUT obs_value         result of interpolation
-    function interpolate_to_point(interpolator)
+    function interpolate_to_point(interpolator, ens)
         type(coamps_interpolator), intent(in)  :: interpolator
+        integer,                   intent(in)  :: ens
         real(kind=r8)                          :: interpolate_to_point
 
         ! Need to remove the singleton dimension of vinterp_values since 
         ! dot_product wants a 1-d vector for both arguments
         interpolate_to_point = dot_product(interpolator%interp_weights,      &
-                                           pack(interpolator%vinterp_values, &
+                                           pack(interpolator%vinterp_values(ens,:,:), &
                                                 .true.))
     end function interpolate_to_point
 
