@@ -726,6 +726,8 @@ subroutine z2zint(din,dout,ifin,zin,zout,zsfc,kin,kout,len&
 !***********************************************************************
 !           parameters:
 !***********************************************************************
+
+      integer, parameter :: maxlevels = 50
 !
       integer kin
       integer kout
@@ -941,9 +943,9 @@ subroutine uvg2uv (u, v, kk, mn, rot,utru,vtru)
             ff   = sqrt((uu*uu) + (vv*vv))
             if (uu .eq. 0.0) uu = 1.0E-6
             dd   = 270.0 - (atan2(vv,uu)*r2d)
-            dd   = dmod(dd, 360.0)
+            dd   = dmod(dd, 360.0_r8)
             ndd  = dd - rot(i) + 360.0
-            ndd  = dmod(ndd, 360.0)
+            ndd  = dmod(ndd, 360.0_r8)
             utru(i,k) = -sin(ndd*d2r)*ff
             vtru(i,k) = -cos(ndd*d2r)*ff
 10    continue

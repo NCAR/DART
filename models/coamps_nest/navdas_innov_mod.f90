@@ -41,7 +41,7 @@ module navdas_innov_mod
 
   use obs_kind_mod,    only : get_obs_kind_index,                          &
                               get_obs_kind_var_type,                       &
-                              KIND_VORTEX_LAT, KIND_VORTEX_LON
+                              QTY_VORTEX_LAT, QTY_VORTEX_LON
 
   use obs_err_mod,     only : rawin_temp_error,                            &
                               rawin_wind_error,                            &

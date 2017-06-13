@@ -383,14 +383,14 @@ contains
         !FIXME:  Level values should be read in from the state_def file
         ! Set the level values for 10-m wind and 2-m temperature
         select case (var_kind_num_from_name(var_kind_name))
-          case (KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT)
+          case (QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT)
              if(vert_type_from_level_type(level_type) == VERTISHEIGHT) then
                vert_value = 10.0_r8
              else
                vert_value = missing_r8
              end if
                
-          case (KIND_TEMPERATURE)
+          case (QTY_TEMPERATURE)
              if(vert_type_from_level_type(level_type) == VERTISHEIGHT) then
                vert_value = 10.0_r8
              else
@@ -450,13 +450,13 @@ contains
       select case (trim(uppercase(variable_name)))
         case ('EXBM')
           level_type      = 'M' 
-          var_kind_name = 'KIND_EXNER_FUNCTION'
+          var_kind_name = 'QTY_EXNER_FUNCTION'
         case ('THBM')
           level_type      = 'M' 
-          var_kind_name = 'KIND_POTENTIAL_TEMPERATURE'
+          var_kind_name = 'QTY_POTENTIAL_TEMPERATURE'
         case ('EXBW')
           level_type      = 'W' 
-          var_kind_name = 'KIND_EXNER_FUNCTION'
+          var_kind_name = 'QTY_EXNER_FUNCTION'
       end select
 
       var = new_state_variable(nest_number,                               &
@@ -981,7 +981,7 @@ contains
         write (*, '(A12,T15,F8.6)') "PTRB PCT:", var%pert_mag
         write (*, '(A12,T15,I8.8)') "PTB TYPE:", var%pert_type
         write (*, '(A12,T15,L1)')   "UPDATE??:", var%update_field
-        write (*, '(A12,T15,A32)')  "VAR TYPE:", get_raw_obs_kind_name(var%var_kind)
+        write (*, '(A12,T15,A32)')  "VAR TYPE:", get_name_for_quantity(var%var_kind)
         write (*, '(A12,T15,I8.8)') "VAR NMBR:", var%var_kind
         write (*, '(A12,T15,L1)')   "MASSLVL?:", var%mass_level
         write (*, '(A12,T15,L1)')   "MEANFLD?:", var%mean_field
@@ -1028,7 +1028,8 @@ contains
         character(len=*), intent(in)  :: var_kind_name
         integer                       :: var_kind_num_from_name
 
-        var_kind_num_from_name = get_raw_obs_kind_index(var_kind_name)
+!       var_kind_num_from_name = get_raw_obs_kind_index(var_kind_name)
+        var_kind_num_from_name = get_index_for_quantity(var_kind_name)
 
         if (var_kind_num_from_name .lt. 0) then
             call error_handler(E_ERR, 'var_kind_num_from_name',           &
