@@ -58,6 +58,7 @@ module coamps_interp_mod
                                      error_handler,    &
                                      register_module 
     use ensemble_manager_mod, only : ensemble_type
+    use distributed_state_mod, only : get_state
   
     implicit none
   
@@ -207,7 +208,7 @@ module coamps_interp_mod
         real(kind=r8), dimension(:,:,:), pointer :: available_vcoord_values
 
         ! Results of vertical interpolation
-        real(kind=r8), dimension(:,:),          pointer :: vinterp_values
+        real(kind=r8), dimension(:,:,:),        pointer :: vinterp_values
         real(kind=r8), dimension(SINGLE_LEVEL)          :: vinterp_level
 
         ! Weights for the horizontal interpolation
@@ -729,9 +730,11 @@ contains
               call calculate_heights(interpolator, AVAILABLE_INDEX_TARGET,      &
                                      interpolator%target_values)
           case (QTY_VERTLEVEL)
-             interpolator%target_values  =                             &
+             interpolator%target_values(1,:,:)  =                      &
                 spread(get_domain_msigma(interpolator%model_domain),   &
                        VALUES_DIM_NEIGHBOR, NUM_NEIGHBORS)
+             interpolator%target_values = spread(interpolator%target_values(1,:,:), &
+                                                 1, interpolator%ensemble_size)
 
              interpolator%vars_available(:, AVAILABLE_INDEX_TARGET) = .true.
 
@@ -823,17 +826,20 @@ contains
         character(len=*), parameter :: routine = 'calculate_surface_pressure'
         integer                     :: alloc_status
         integer                     :: dealloc_status
+        integer                     :: ens_size
 
-        allocate(exner_values(NUM_NEIGHBORS, num_model_levels), stat=alloc_status)
+        ens_size = interpolator%ensemble_size
+
+        allocate(exner_values(ens_size, NUM_NEIGHBORS, num_model_levels), stat=alloc_status)
         call check_alloc_status(alloc_status, routine, source, revision, revdate, 'exner_values')
 
-        allocate(theta_values(NUM_NEIGHBORS, num_model_levels), stat=alloc_status)
+        allocate(theta_values(ens_size, NUM_NEIGHBORS, num_model_levels), stat=alloc_status)
         call check_alloc_status(alloc_status, routine, source, revision, revdate, 'theta_values')
 
-        allocate(mean_exner_values(NUM_NEIGHBORS, num_model_levels + 1), stat=alloc_status)
+        allocate(mean_exner_values(ens_size, NUM_NEIGHBORS, num_model_levels + 1), stat=alloc_status)
         call check_alloc_status(alloc_status, routine, source, revision, revdate, 'mean_exner_values')
 
-        allocate(mean_theta_values(NUM_NEIGHBORS, num_model_levels), stat=alloc_status)
+        allocate(mean_theta_values(ens_size, NUM_NEIGHBORS, num_model_levels), stat=alloc_status)
         call check_alloc_status(alloc_status, routine, source, revision, revdate, 'mean_theta_values')
 
         call get_matching_var_values(interpolator, QTY_EXNER_FUNCTION, IS_NOT_MEAN, &
@@ -860,7 +866,7 @@ contains
                     zsfc(n), SINGLE_POINT, SINGLE_POINT,               &
                     num_model_levels, sfc_pres)
 
-                    interpolator%vinterp_values(n, SINGLE_LEVEL) =     &
+                    interpolator%vinterp_values(ens_size, n, SINGLE_LEVEL) =     &
                        sfc_pres(SINGLE_POINT, SINGLE_POINT) * CONVERT_MB_TO_PA
 
         end do
@@ -951,10 +957,13 @@ contains
     subroutine calculate_pressure(interpolator, availability_index, pressure)
         type(coamps_interpolator),     intent(inout)  :: interpolator
         integer,                       intent(in)     :: availability_index
-        real(kind=r8), dimension(:,:), intent(out)    :: pressure        
+        !OLD real(kind=r8), dimension(:,:), intent(out)    :: pressure        
+        real(kind=r8), dimension(:,:,:), intent(out)    :: pressure        
 
-        real(kind=r8), dimension(:,:), pointer :: mean_exner_values
-        real(kind=r8), dimension(:,:), pointer :: pert_exner_values
+        !real(kind=r8), dimension(:,:), pointer :: mean_exner_values
+        !real(kind=r8), dimension(:,:), pointer :: pert_exner_values
+        real(kind=r8), dimension(:,:,:), pointer :: mean_exner_values
+        real(kind=r8), dimension(:,:,:), pointer :: pert_exner_values
 
         integer :: mean_availability_index
         integer :: pert_availability_index
@@ -962,8 +971,11 @@ contains
         character(len=*), parameter :: routine = 'calculate_pressure'
         integer                     :: alloc_status
         integer                     :: dealloc_status
+        integer                     :: ens_size
 
-        allocate(mean_exner_values(NUM_NEIGHBORS, num_model_levels), stat=alloc_status)
+        ens_size = interpolator%ensemble_size
+
+        allocate(mean_exner_values(ens_size, NUM_NEIGHBORS, num_model_levels), stat=alloc_status)
         call check_alloc_status(alloc_status, routine, source, revision, revdate, 'mean_exner_values')
 
         allocate(pert_exner_values(NUM_NEIGHBORS, num_model_levels), stat=alloc_status)
