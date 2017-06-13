@@ -11,5 +11,5 @@
 # $Revision$
 # $Date$
 #
-../../../mkmf/mkmf -p advance_time -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
+../../../build_templates/mkmf -p advance_time -t ../../../build_templates/mkmf.template \
  -a "../../.." path_names_advance_time
