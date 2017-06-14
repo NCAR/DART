@@ -399,12 +399,13 @@ contains
     !
     ! NEW WITH MANHATTAN:
     !  PARAMETERS
-    !   IN  state_handl                 full state vector
+    !   IN  state_handle      full state vector handle
+    !   IN  ens_size          ensemble size
     !   IN  location          DART location structure for interpolation
     !                         target location
-    !   IN  obs_kind          raw variable kind
-    !   OUT obs_val           interpolated value
-    !   OUT interp_status     status of interpolation (0 is success)
+    !   IN  obs_kind          raw variable quantity
+    !   OUT obs_val           interpolated value (now ens_size array)
+    !   OUT interp_status     status of interpolations (all 0s is success)
     !
     subroutine model_interpolate(state_handle, ens_size, location, obs_kind, expected_obs, interp_status)
         type(ensemble_type),    intent(in)  :: state_handle
@@ -622,12 +623,13 @@ contains
           call interpolate(x, domain, state_definition, location, &
                            obs_kind, obs_val, interp_worked)
           ! NEW:
-          call interpolate(state_handle, domain, state_definition, location, &
-                           obs_kind, expected_obs, interp_worked)
+          do i = 1, ens_size
+             call interpolate(state_handle, ens_size, i, domain, state_definition, location, &
+                              obs_kind, expected_obs(i), interp_worked(i))
+          enddo
 
         end select
 
-        ! interpolate needs to set expected_obs(:) where the interpolation worked
         where (interp_worked) interp_status = 0
 
         return

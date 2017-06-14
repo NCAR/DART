@@ -40,7 +40,6 @@ module coamps_statevar_mod
 
     public :: state_variable
     public :: new_state_variable
-    public :: state_limits
 
     public :: read_state_variable
     public :: dump_state_variable
@@ -80,8 +79,8 @@ module coamps_statevar_mod
     public :: set_var_stagger
     public :: define_mean_var
 
-    ! Array sectioning
-    public :: get_var_substate
+    ! Logical array sectioning
+    public :: get_var_start
 
     ! Perturbation information
     public :: PERT_TYPE_NOPERTS
@@ -232,13 +231,6 @@ module coamps_statevar_mod
         real(kind=r8)               :: vert_value           ! IN  
     end type state_variable
   
-    ! type to return the start/end indices of interest in the
-    ! state vector
-    type :: state_limits
-        integer  :: state_begin
-        integer  :: state_end
-    end type state_limits
-
     !------------------------------
     ! END TYPES AND CONSTANTS
     !------------------------------
@@ -480,8 +472,9 @@ contains
 
     end function define_mean_var
 
-    ! get_var_substate
+    ! get_var_start
     ! ---------------------
+    ! get_var_limits
     ! OLD: Return a pointer to the subsection of a kind(r8) vector corresponding 
     ! to a given state variable.
     ! NEW: return the starting and ending indices relative to the entire
@@ -491,17 +484,16 @@ contains
     !   IN  vector          The vector to take the section from
     !   IN  var             The state variable to base the section on
     ! NEW:
-    !   IN state_limits     Enough information to extract the right
-    !                       values from the state handle
+    !   IN state_variable   The variable of interest
+    !   OUT integer offset  The index offset into the entire state vector
     ! OLD:
     ! function get_var_substate_r8(var, vector) result(var_substate)
-    function get_var_substate(var) result(var_substate)
-        type(state_variable),                 intent(in)  :: var
-        type(state_limits)                                :: var_substate
+    function get_var_start(var) result(var_limit)
+        type(state_variable), intent(in)  :: var
+        integer                           :: var_limit
 
-        var_substate%state_begin = var%state_begin
-        var_substate%state_end   = var%state_end
-    end function get_var_substate
+        var_limit = var%state_begin
+    end function get_var_start
 
     ! OLD:
     ! get_var_substate_r8
