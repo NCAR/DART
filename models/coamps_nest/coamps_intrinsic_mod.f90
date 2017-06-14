@@ -737,8 +737,8 @@ subroutine z2zint(din,dout,ifin,zin,zout,zsfc,kin,kout,len&
       real(kind=r8) din    (len,kin)
       real(kind=r8) dout   (len,kout)
       real(kind=r8) zin    (len,kin)
-!      real(kind=r8) zout   (kout)
-      real(kind=r8) zout   (maxlevels)
+      real(kind=r8) zout   (kout)
+!      real(kind=r8) zout   (maxlevels)
       real(kind=r8) zsfc   (len)
       real(kind=r8) zagl   (len,kout)
 !

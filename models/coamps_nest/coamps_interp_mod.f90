@@ -1641,8 +1641,10 @@ stop
             ! the vertical coordinate variable
             call z2zint(interpolator%available_target_values,         & 
                         interpolator%vinterp_values,                  &
+                        0, &   ! ifin == 6 adds in surface elevation
                         interpolator%available_vcoord_values,         &
                         interpolator%vinterp_level,                   &
+                        (/ 0.0_r8, 0.0_r8, 0.0_r8, 0.0_r8 /),         &  ! assumes NUM_NEIGHBORS is 4
                         num_levels_in, num_levels_out, NUM_NEIGHBORS, &
                         USE_MISSING_VALUE, MISSING_R8)
         end select

@@ -96,8 +96,10 @@ module model_mod
                                     loc_get_close_obs           => &
                                         get_close_obs,             &
                                     set_location,                  &
-                                  horiz_dist_only,                 &
+                                  vertical_localization_on,        &
                                   query_location,                  &
+                                  convert_vertical_obs,            &
+                                  convert_vertical_state,          &
                                   VERTISLEVEL,                     &
                                   VERTISPRESSURE,                  &
                                   VERTISHEIGHT,                    &
@@ -105,7 +107,7 @@ module model_mod
                                   VERTISUNDEF
     use obs_kind_mod
 
-    use ensemble_manager_mod, only : ensemble_handle
+    use ensemble_manager_mod, only : ensemble_type
 
     use time_manager_mod,    only : set_time,                      &
                                     set_time_missing,              &
@@ -113,7 +115,8 @@ module model_mod
 
     use types_mod,           only : MISSING_R8,                    &
                                     DEG2RAD,                       &
-                                    r8
+                                    r8,                            &
+                                    i8
 
     use utilities_mod,       only : check_namelist_read,           &
                                     do_output,                     &
@@ -128,7 +131,7 @@ module model_mod
                                     init_time,                     &
                                     adv_1step
 
-    use dart_io_time_mod,   only :  read_model_time,               &
+    use dart_time_io_mod,   only :  read_model_time,               &
                                     write_model_time
 
     implicit none
@@ -460,159 +463,159 @@ contains
           interp_status(:) = 999
           return
          
-          ! obs_loc
-          loc_array = get_location(location)
-          loc_which = nint(query_location(location))
-
-          ztop = get_domain_wsigma(domain, 1)
-
-          call latlon_to_nest_point(domain, loc_array(DART_LOC_LAT), loc_array(DART_LOC_LON),&
-                                    nest_pt, in_domain)
-          if(.not. in_domain) then
-            obs_val = MISSING_R8
-            interp_status = 1
-            return
-          end if
-
-          nest = get_nest(nest_pt)
-
-          nx = get_nest_i_width(nest)
-          ny = get_nest_j_width(nest)
-          nz = get_domain_num_levels(domain)
-
-          delx = get_nest_delta_x(nest)
-          dely = get_nest_delta_y(nest)
-
-          ! allocate arrays
-          allocate(vort_z(nx, ny, nz), stat=alloc_status )
-          call check_alloc_status(alloc_status, routine, source, revision, &
-                                  revdate, 'model_interpolate: vort_z')
-
-          allocate(vort_z_zlev(nx, ny), stat=alloc_status )
-          call check_alloc_status(alloc_status, routine, source, revision, &
-                                  revdate, 'model_interpolate: vort_z_zlev')
-
-          allocate(vort_z_smooth(nx, ny), stat=alloc_status )
-          call check_alloc_status(alloc_status, routine, source, revision, &
-                                  revdate, 'model_interpolate: vort_z_smooth')
-
-          !allocate(heights(nx*ny, nz), stat=alloc_status )
-          allocate(heights(nz), stat=alloc_status )
-          call check_alloc_status(alloc_status, routine, source, revision, &
-                                  revdate, 'model_interpolate: heights')
-
-
-          ! (1) Get u and v location in the state vector 
-          u_var = find_state_variable(state_layout_3D, nest, &
-                   QTY_U_WIND_COMPONENT, .false., 'M', nz)
-
-          v_var = find_state_variable(state_layout_3D, nest, &
-                   QTY_V_WIND_COMPONENT, .false., 'M', nz)
-
-          ! (2) Calculate vorticity
-          call timestamp_message('VRTX: Before calculate vorticity')
-          allocate(fm(nx, ny), stat=alloc_status )
-          call check_alloc_status(alloc_status, routine, source, revision, &
-                                  revdate, 'model_interpolate: fm')
-
-          fm(:,:) = 1.0_r8
-
-          ! get_var_substate() uses old x() array
-          !call vor(reshape(get_var_substate(u_var, x),(/nx, ny, nz/)),                         &
-          !         reshape(get_var_substate(v_var, x),(/nx, ny, nz/)),                         &
-          !         nx, ny, nz, delx, dely, fm,                              &
-          !         get_domain_msigma(domain), get_domain_wsigma(domain),    &
-          !         get_domain_dsigmaw(domain), get_terrain(nest), 1, vort_z )
-
-          deallocate(fm, stat=dealloc_status)
-          call check_dealloc_status(dealloc_status, routine, source, revision, &
-                                    revdate, 'model_interpolate: fm')
-
-          call timestamp_message('VRTX: After calculate vorticity')
-
-          ! (3) Compute sigma level heights.  Since we want to interpolate to a 
-          ! a height above ground level we will not add the surface height.
-          !call timestamp_message('VRTX: Before calculate heights')
-          !heights = spread(get_domain_msigma(domain), 1, nx*ny) * &
-          !          ( 1 - spread(reshape(get_terrain(nest)/ztop, (/nx*ny/)), 2, nz) )
-          !call timestamp_message('VRTX: After calculate heights')
-
-          ! (4) Interpolate vorticity to the deisred level
-          call timestamp_message('VRTX: Before interpolate vorticity')
-          do i=1,nx ; do j=1,ny
-
-            call get_terrain_height_at_points(nest, (/i/), (/j/), terrain) 
-
-            heights(:) = get_domain_msigma(domain) * (1 - terrain(1)/ztop)
-
-            call z2zint(vort_z(i, j, :), vort_z_zlev(i, j), heights(:),   &
-                        (/vort_max_lev/), nz, 1, 1, USE_MISSING_VALUE, MISSING_R8 )
-
-          end do ; end do
-
-!          call z2zint(reshape(vort_z, (/nx*ny, nz/)), reshape(vort_z_zlev, (/nx*ny, nz/)), &
-!                      reshape(heights,(/nx*ny, nz/)), (/vort_max_lev/), nz, 1, nx*ny,      &
-!                      USE_MISSING_VALUE, MISSING_R8)
-          call timestamp_message('VRTX: After interpolate vorticity')
-
-          ! (5) Smooth vorticity
-          call timestamp_message('VRTX: Before smooth vorticity')
-          call kernal_smoother(vort_z_zlev, vort_z_smooth, &
-                               ceiling(vrtx_scale/delx), nx, ny)
-
-          call timestamp_message('VRTX: After smooth vorticity')
-         
-          ! (6) Search for vorticity maximum within a given radius of obs.
-          call timestamp_message('VRTX: Before maximum vorticity search')
-
-          allocate(mask(nx,ny), stat=alloc_status )
-          call check_alloc_status(alloc_status, routine, source, revision, &
-                                  revdate, 'model_interpolate: mask')
-
-          do i=1,nx ; do j=1,ny
-            call nest_point_to_latlon(domain, make_nest_point(nest, i, j),  &
-                                      loc_array(DART_LOC_LAT), loc_array(DART_LOC_LON))
-
-            cur_loc = set_location(loc_array(DART_LOC_LON), loc_array(DART_LOC_LAT), &
-                                   loc_array(DART_LOC_VERT), loc_which)
-
-            mask(i,j) = get_dist(location, cur_loc, no_vert=.true.) &
-                                 <= (vort_srch_radius*DEG2RAD)
-          end do ; end do
-          ij = maxloc(vort_z_smooth, mask)
-
-          call timestamp_message('VRTX: After maximum vorticity search')
-
-          ! (7) Set desired return value
-          call nest_point_to_latlon(domain, make_nest_point(nest, ij(1), ij(2)),  &
-                                    loc_array(DART_LOC_LAT), loc_array(DART_LOC_LON))
-          if(obs_kind == QTY_VORTEX_LAT) then
-            obs_val = loc_array(DART_LOC_LAT)
-          else
-            obs_val = loc_array(DART_LOC_LON)
-          endif
-          interp_worked(:) = .true.
-
-          ! deallocate arrays
-          deallocate(vort_z_smooth, stat=dealloc_status)
-          call check_dealloc_status(dealloc_status, routine, source, revision, &
-                                    revdate, 'model_interpolate: vort_z_smooth')
-
-          deallocate(heights, stat=dealloc_status)
-          call check_dealloc_status(dealloc_status, routine, source, revision, &
-                                    revdate, 'model_interpolate: heights')
-
-          deallocate(vort_z, stat=dealloc_status)
-          call check_dealloc_status(dealloc_status, routine, source, revision, &
-                                    revdate, 'model_interpolate: vort_z')
-
-          deallocate(vort_z_zlev, stat=dealloc_status)
-          call check_dealloc_status(dealloc_status, routine, source, revision, &
-                                    revdate, 'model_interpolate: vort_z_zlev')
-
-          deallocate(mask, stat=dealloc_status)
-          call check_dealloc_status(dealloc_status, routine, source, revision, &
-                                    revdate, 'model_interpolate: mask')
+!#!           ! obs_loc
+!#!           loc_array = get_location(location)
+!#!           loc_which = nint(query_location(location))
+!#! 
+!#!           ztop = get_domain_wsigma(domain, 1)
+!#! 
+!#!           call latlon_to_nest_point(domain, loc_array(DART_LOC_LAT), loc_array(DART_LOC_LON),&
+!#!                                     nest_pt, in_domain)
+!#!           if(.not. in_domain) then
+!#!             obs_val = MISSING_R8
+!#!             interp_status = 1
+!#!             return
+!#!           end if
+!#! 
+!#!           nest = get_nest(nest_pt)
+!#! 
+!#!           nx = get_nest_i_width(nest)
+!#!           ny = get_nest_j_width(nest)
+!#!           nz = get_domain_num_levels(domain)
+!#! 
+!#!           delx = get_nest_delta_x(nest)
+!#!           dely = get_nest_delta_y(nest)
+!#! 
+!#!           ! allocate arrays
+!#!           allocate(vort_z(nx, ny, nz), stat=alloc_status )
+!#!           call check_alloc_status(alloc_status, routine, source, revision, &
+!#!                                   revdate, 'model_interpolate: vort_z')
+!#! 
+!#!           allocate(vort_z_zlev(nx, ny), stat=alloc_status )
+!#!           call check_alloc_status(alloc_status, routine, source, revision, &
+!#!                                   revdate, 'model_interpolate: vort_z_zlev')
+!#! 
+!#!           allocate(vort_z_smooth(nx, ny), stat=alloc_status )
+!#!           call check_alloc_status(alloc_status, routine, source, revision, &
+!#!                                   revdate, 'model_interpolate: vort_z_smooth')
+!#! 
+!#!           !allocate(heights(nx*ny, nz), stat=alloc_status )
+!#!           allocate(heights(nz), stat=alloc_status )
+!#!           call check_alloc_status(alloc_status, routine, source, revision, &
+!#!                                   revdate, 'model_interpolate: heights')
+!#! 
+!#! 
+!#!           ! (1) Get u and v location in the state vector 
+!#!           u_var = find_state_variable(state_layout_3D, nest, &
+!#!                    QTY_U_WIND_COMPONENT, .false., 'M', nz)
+!#! 
+!#!           v_var = find_state_variable(state_layout_3D, nest, &
+!#!                    QTY_V_WIND_COMPONENT, .false., 'M', nz)
+!#! 
+!#!           ! (2) Calculate vorticity
+!#!           call timestamp_message('VRTX: Before calculate vorticity')
+!#!           allocate(fm(nx, ny), stat=alloc_status )
+!#!           call check_alloc_status(alloc_status, routine, source, revision, &
+!#!                                   revdate, 'model_interpolate: fm')
+!#! 
+!#!           fm(:,:) = 1.0_r8
+!#! 
+!#!           ! get_var_substate() uses old x() array
+!#!           !call vor(reshape(get_var_substate(u_var, x),(/nx, ny, nz/)),                         &
+!#!           !         reshape(get_var_substate(v_var, x),(/nx, ny, nz/)),                         &
+!#!           !         nx, ny, nz, delx, dely, fm,                              &
+!#!           !         get_domain_msigma(domain), get_domain_wsigma(domain),    &
+!#!           !         get_domain_dsigmaw(domain), get_terrain(nest), 1, vort_z )
+!#! 
+!#!           deallocate(fm, stat=dealloc_status)
+!#!           call check_dealloc_status(dealloc_status, routine, source, revision, &
+!#!                                     revdate, 'model_interpolate: fm')
+!#! 
+!#!           call timestamp_message('VRTX: After calculate vorticity')
+!#! 
+!#!           ! (3) Compute sigma level heights.  Since we want to interpolate to a 
+!#!           ! a height above ground level we will not add the surface height.
+!#!           !call timestamp_message('VRTX: Before calculate heights')
+!#!           !heights = spread(get_domain_msigma(domain), 1, nx*ny) * &
+!#!           !          ( 1 - spread(reshape(get_terrain(nest)/ztop, (/nx*ny/)), 2, nz) )
+!#!           !call timestamp_message('VRTX: After calculate heights')
+!#! 
+!#!           ! (4) Interpolate vorticity to the deisred level
+!#!           call timestamp_message('VRTX: Before interpolate vorticity')
+!#!           do i=1,nx ; do j=1,ny
+!#! 
+!#!             call get_terrain_height_at_points(nest, (/i/), (/j/), terrain) 
+!#! 
+!#!             heights(:) = get_domain_msigma(domain) * (1 - terrain(1)/ztop)
+!#! 
+!#!             call z2zint(vort_z(i, j, :), vort_z_zlev(i, j), heights(:),   &
+!#!                         (/vort_max_lev/), nz, 1, 1, USE_MISSING_VALUE, MISSING_R8 )
+!#! 
+!#!           end do ; end do
+!#! 
+!#! !          call z2zint(reshape(vort_z, (/nx*ny, nz/)), reshape(vort_z_zlev, (/nx*ny, nz/)), &
+!#! !                      reshape(heights,(/nx*ny, nz/)), (/vort_max_lev/), nz, 1, nx*ny,      &
+!#! !                      USE_MISSING_VALUE, MISSING_R8)
+!#!           call timestamp_message('VRTX: After interpolate vorticity')
+!#! 
+!#!           ! (5) Smooth vorticity
+!#!           call timestamp_message('VRTX: Before smooth vorticity')
+!#!           call kernal_smoother(vort_z_zlev, vort_z_smooth, &
+!#!                                ceiling(vrtx_scale/delx), nx, ny)
+!#! 
+!#!           call timestamp_message('VRTX: After smooth vorticity')
+!#!          
+!#!           ! (6) Search for vorticity maximum within a given radius of obs.
+!#!           call timestamp_message('VRTX: Before maximum vorticity search')
+!#! 
+!#!           allocate(mask(nx,ny), stat=alloc_status )
+!#!           call check_alloc_status(alloc_status, routine, source, revision, &
+!#!                                   revdate, 'model_interpolate: mask')
+!#! 
+!#!           do i=1,nx ; do j=1,ny
+!#!             call nest_point_to_latlon(domain, make_nest_point(nest, i, j),  &
+!#!                                       loc_array(DART_LOC_LAT), loc_array(DART_LOC_LON))
+!#! 
+!#!             cur_loc = set_location(loc_array(DART_LOC_LON), loc_array(DART_LOC_LAT), &
+!#!                                    loc_array(DART_LOC_VERT), loc_which)
+!#! 
+!#!             mask(i,j) = get_dist(location, cur_loc, no_vert=.true.) &
+!#!                                  <= (vort_srch_radius*DEG2RAD)
+!#!           end do ; end do
+!#!           ij = maxloc(vort_z_smooth, mask)
+!#! 
+!#!           call timestamp_message('VRTX: After maximum vorticity search')
+!#! 
+!#!           ! (7) Set desired return value
+!#!           call nest_point_to_latlon(domain, make_nest_point(nest, ij(1), ij(2)),  &
+!#!                                     loc_array(DART_LOC_LAT), loc_array(DART_LOC_LON))
+!#!           if(obs_kind == QTY_VORTEX_LAT) then
+!#!             obs_val = loc_array(DART_LOC_LAT)
+!#!           else
+!#!             obs_val = loc_array(DART_LOC_LON)
+!#!           endif
+!#!           interp_worked(:) = .true.
+!#! 
+!#!           ! deallocate arrays
+!#!           deallocate(vort_z_smooth, stat=dealloc_status)
+!#!           call check_dealloc_status(dealloc_status, routine, source, revision, &
+!#!                                     revdate, 'model_interpolate: vort_z_smooth')
+!#! 
+!#!           deallocate(heights, stat=dealloc_status)
+!#!           call check_dealloc_status(dealloc_status, routine, source, revision, &
+!#!                                     revdate, 'model_interpolate: heights')
+!#! 
+!#!           deallocate(vort_z, stat=dealloc_status)
+!#!           call check_dealloc_status(dealloc_status, routine, source, revision, &
+!#!                                     revdate, 'model_interpolate: vort_z')
+!#! 
+!#!           deallocate(vort_z_zlev, stat=dealloc_status)
+!#!           call check_dealloc_status(dealloc_status, routine, source, revision, &
+!#!                                     revdate, 'model_interpolate: vort_z_zlev')
+!#! 
+!#!           deallocate(mask, stat=dealloc_status)
+!#!           call check_dealloc_status(dealloc_status, routine, source, revision, &
+!#!                                     revdate, 'model_interpolate: mask')
 
         case default 
 
@@ -670,37 +673,34 @@ contains
     !                         the base observation
     !   OUT dist              OPTIONAL distance from the observations
     !                         to the base observation
-    subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, &
-                             obs_kind, num_close, close_ind, dist)
+    !   IN  ens_handle        handle to ensemble mean
+    subroutine get_close_obs(gc, base_obs_loc, base_obs_type, obs_locs, loc_qtys, loc_types, &
+                             num_close, close_ind, dist, ens_mean_handle)
+    
+    type(get_close_type),          intent(in)  :: gc
+    type(location_type),           intent(inout) :: base_obs_loc, obs_locs(:)
+    integer,                       intent(in)  :: base_ob_type, loc_qtys(:), loc_types(:)
+    integer,                       intent(out) :: num_close, close_ind(:)
+    real(r8),            optional, intent(out) :: dist(:)
+    type(ensemble_type), optional, intent(in)  :: ens_mean_handle
 
-    type(get_close_type), intent(in)    :: gc
-    type(location_type), intent(inout)  :: base_obs_loc, obs_loc(:)
-    integer, intent(in)                 :: base_obs_kind, obs_kind(:)
-    integer, intent(out)                :: num_close, close_ind(:)
-    real(r8), optional, intent(out)     :: dist(:)
-
-    integer                                 :: t_ind, istatus1, istatus2, k
+    integer                                 :: t_ind, istatus1(1), istatus2(1), k
     integer                                 :: base_which, local_obs_which
-	real(r8), dimension(3)                  :: base_array, local_obs_array
-	real(r8)                                :: obs_val
+    real(r8), dimension(3)                  :: base_array, local_obs_array
+    real(r8)                                :: obs_val(1)
     type(location_type)                     :: local_obs_loc
 
     ! Initialize variables to missing status
     num_close = 0 ; close_ind = -99 ; dist = 1.0e9
     istatus1  = 0 ; istatus2  = 0
 
-    base_which =nint(query_location(base_obs_loc)) 
+    base_which = nint(query_location(base_obs_loc)) 
     base_array = get_location(base_obs_loc)
 
     ! Consider horizontal localization first.  Also consider undefined vertical coordinate.
-    if(horiz_dist_only .or. base_which == VERTISUNDEF) then
-      if(present(dist)) then
-        call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-                               num_close, close_ind, dist)
-      else    
-         call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-                                num_close, close_ind)
-      end if
+    if(.not. vertical_localization_on() .or. base_which == VERTISUNDEF) then
+        call loc_get_close_obs(gc, base_obs_loc, base_obs_type, obs_locs, loc_qtys, &
+                               loc_types, num_close, close_ind, dist, ens_handle)
     else
       ! Convert base_obs vertical coordinate to requested vertical coordinate if necessary
 
@@ -708,21 +708,21 @@ contains
         if(base_which == VERTISSURFACE) then
           base_array(3)=0.0_r8 ; base_which=VERTISLEVEL
         else
-          call model_interpolate(ensemble_mean, base_obs_loc, QTY_VERTLEVEL, obs_val, istatus1)
-          base_array(3)=obs_val ; base_which=VERTISLEVEL
+          call model_interpolate(ens_mean_handle, 1, base_obs_loc, QTY_VERTLEVEL, obs_val, istatus1)
+          base_array(3)=obs_val(1) ; base_which=VERTISLEVEL
         endif
         base_obs_loc = set_location(base_array(1),  base_array(2), base_array(3), base_which)
       elseif (base_array(3) == MISSING_R8) then
         istatus1 = 1
       endif
 
-      if (istatus1 == 0) then
+      if (istatus1(1) == 0) then
       ! Get all the potentially close obs but no dist (optional argument dist(:) is not present)
       ! This way, we are decreasing the number of distance computations that will follow.
       ! This is a horizontal-distance operation and we don't need to have the relevant vertical
       ! coordinate information yet (for obs_loc).
-        call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-                               num_close, close_ind)
+        call loc_get_close_obs(gc, base_obs_loc, base_obs_type, obs_locs, loc_qtys, &
+                               loc_types, num_close, close_ind)
 
         ! Loop over potentially close subset of obs priors or state variables
         do k = 1, num_close
@@ -740,8 +740,9 @@ contains
             elseif(local_obs_which == VERTISUNDEF) then
               local_obs_which=VERTISUNDEF
             else
+             call model_interpolate(ens_mean_handle, 1, obs_loc(t_ind), QTY_VERTLEVEL, obs_val, istatus2)
               call model_interpolate(ensemble_mean, obs_loc(t_ind), QTY_VERTLEVEL, obs_val, istatus2)
-              local_obs_array(3)=obs_val ; local_obs_which=VERTISLEVEL
+              local_obs_array(3)=obs_val(1) ; local_obs_which=VERTISLEVEL
             end if
 
             ! Store the "new" location into the original full local array
@@ -752,10 +753,10 @@ contains
 
           ! Compute distance - set distance to a very large value if vert coordinate is missing
           ! or vert_interpolate returned error (istatus2=1)
-          if ((local_obs_array(3) == missing_r8) .or. (istatus2 == 1)) then
+          if ((local_obs_array(3) == missing_r8) .or. (istatus2(1) == 1)) then
             dist(k) = 1.0e9
           else
-            dist(k) = get_dist(base_obs_loc, local_obs_loc, base_obs_kind, obs_kind(t_ind))
+            dist(k) = get_dist(base_obs_loc, local_obs_loc, base_obs_type, obs_kind(t_ind))
           endif
 
         end do
@@ -770,9 +771,9 @@ contains
     !  PARAMETERS
     !   OUT get_model_size    length of the DART state vector
     function get_model_size()
-        integer :: get_model_size
+        integer(i8) :: get_model_size
 
-        get_model_size = get_total_size(state_definition)
+        get_model_size = int(get_total_size(state_definition), i8)
     end function get_model_size
 
     ! get_state_meta_data
@@ -814,64 +815,17 @@ contains
 
     end subroutine get_state_meta_data
 
-    ! get_model_time_step
+    ! shortest_time_between_assimilations
     ! -------------------
     ! Returns the smallest increment in time that the model is capable
     ! of advancing the state - just call it a minute for now
     !  PARAMETERS
-    !   OUT get_model_time_step  model time step as a DART time_type
-    function get_model_time_step()
-        type(time_type) :: get_model_time_step
+    !   OUT shortest_time_between_assimilations  model time step as a DART time_type
+    function shortest_time_between_assimilations()
+        type(time_type) :: shortest_time_between_assimilations
 
-        get_model_time_step = set_time(60,0)
-    end function get_model_time_step
-
-    ! init_conditions
-    ! ---------------
-    ! NULL INTERFACE
-    ! (sets up initial conditions for the model, but we're using
-    ! already existing restart file data)
-    !  PARAMETERS
-    !   OUT x                 state vector initial condition 
-    subroutine init_conditions(x)
-        real(r8), intent(out) :: x(:)
-
-        call error_handler(E_ERR, 'init_conditions', 'inoperable', &
-                           source, revision, revdate) 
-        x = MISSING_R8
-
-    end subroutine init_conditions
-
-    ! init_time
-    ! ---------
-    ! NULL INTERFACE
-    ! (sets up initial time information for the model, but we're using
-    ! already existing restart file data)
-    !  PARAMETERS
-    !   OUT time              time initial condition
-    subroutine init_time(time)
-        type(time_type), intent(out) :: time
-
-      time = set_time_missing()
-
-    end subroutine init_time
-
-    ! adv_1step
-    ! ---------
-    ! NULL INTERFACE
-    ! (advances the model with function calls, but we're doing it
-    ! asynchronously)
-    !  PARAMETERS
-    ! INOUT x                 (in)  state vector analysis
-    !                         (out) state vector forecast 
-    ! INOUT time              (in)  analysis time
-    !                         (out) forecast time 
-    subroutine adv_1step(x, time)
-        real(r8), intent(inout) :: x(:)
-        type(time_type), intent(in) :: time
-        x = MISSING_R8  ! Just to satisfy compiler/complainer
-
-    end subroutine adv_1step
+        shortest_time_between_assimilations = set_time(60,0)
+    end function shortest_time_between_assimilations
 
     ! get_coamps_domain
     ! ---------
