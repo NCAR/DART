@@ -3,10 +3,13 @@
 ! AUTHOR:       T. R. Whitcomb
 !               Naval Research Laboratory
 ! DART VERSION: Jamaica
+!               Manhattan (updated jun 2017)
 !
 ! Module containing data structures and routines for dealing
 ! with the nest component of a coamps domain
 !------------------------------ 
+! DART $Id$
+
 module coamps_nest_mod
 
     use coamps_util_mod, only : generate_flat_file_name,    &
@@ -20,6 +23,11 @@ module coamps_nest_mod
     use types_mod, only : r4, r8
 
     use utilities_mod, only: E_ERR, error_handler, get_unit
+
+    use netcdf_utilities_mod, only : nc_check
+
+    use netcdf
+    use typesizes
 
     implicit none
 
@@ -207,11 +215,11 @@ module coamps_nest_mod
     ! BEGIN MODULE VARIABLES
     !------------------------------
 
-    ! Modified automatically by Subversion
-    character(len=128) :: &
-        source = "$URL$", &
-        revision = "$Revision$", &
-        revdate = "$Date$"
+    ! version controlled file description for error handling, do not edit
+    character(len=*), parameter :: source   = &
+       "$URL$"
+    character(len=*), parameter :: revision = "$Revision$"
+    character(len=*), parameter :: revdate  = "$Date$"
 
     !------------------------------
     ! END MODULE VARIABLES
@@ -230,9 +238,10 @@ contains
     ! INOUT nest              COAMPS nest to initialize
     !   IN  dtg               COAMPS date-time-group
     !   IN  datahd            datahd record to source
-    subroutine initialize_nest(nest, dtg, datahd)
+    subroutine initialize_nest(filename, nest, dtg, datahd)
+        character(len=*),            intent(in)    :: filename
         type(coamps_nest),           intent(inout) :: nest
-        character(len=10),           intent(in)    :: dtg
+        character(len=*),            intent(in)    :: dtg
         real(kind=r8), dimension(:), intent(in)    :: datahd
 
         integer :: nest_offset
@@ -253,7 +262,7 @@ contains
         nest%nest_level = int(datahd(DATAHD_NEST_LEVEL + nest_offset))
 
         call initialize_list(nest%child_nests)
-        call read_terrain_height(nest, dtg)
+        call read_terrain_height(filename, nest, dtg)
 
         nullify(nest%iminf)
         nullify(nest%imaxf)
@@ -1141,19 +1150,20 @@ contains
     !  PARAMETERS
     ! INOUT nest              The nest to add terrain data to
     !   IN  dtg               COAMPS date-time group
-    subroutine read_terrain_height(nest, dtg)
-        type(coamps_nest), intent(inout) :: nest
-        character(len=10), intent(in)    :: dtg
 
-        character(len=64) :: terrht_name
-        integer           :: terrht_unit
-        integer           :: terrht_record_len
-        integer           :: r4_len
+    subroutine read_terrain_height(filename, nest, dtg)
+
+        character(len=*),  intent(in)    :: filename
+        type(coamps_nest), intent(inout) :: nest
+        character(len=*),  intent(in)    :: dtg
 
         character(len=*), parameter :: routine = 'read_terrain_height'
-        integer :: io_status
-        integer :: alloc_status
-        integer :: dealloc_status
+
+        character(len=64) :: terrht_name
+        integer           :: terrht_unit, VarID
+        integer           :: io
+        integer           :: alloc_status
+        integer           :: dealloc_status
 
         ! Terrain data is stored in a flat file, so it uses the COAMPS real
         ! number size.  Storing it as a single dimension instead of 2-D makes
@@ -1171,22 +1181,27 @@ contains
         call check_alloc_status(alloc_status, routine, source, revision,  &
                                 revdate, 'nest terrain')
 
-        inquire(IOLENGTH=r4_len) 0_r4
+  ! actually generate the VARIABLE name in the HDF5 file.
+  call generate_terrht_filename(nest, dtg, terrht_name)
 
-        terrht_record_len = nest%pts_x * nest%pts_y * r4_len
+!TJH  write(*,*)'terrht_varname is "'//trim(terrht_name)//'"'
+!TJH  write(*,*)'desired size is ',nest%pts_x, nest%pts_y
+!>@todo check the storage order is correct, remove temporary variable
 
-        terrht_unit = get_unit()
-        call generate_terrht_filename(nest, dtg, terrht_name)
-        open(unit = terrht_unit, file = terrht_name, status = 'old',    & 
-             access = 'direct', action = 'read', form = 'unformatted',  &
-             recl = terrht_record_len, iostat = io_status)  
-        call check_io_status(io_status, routine, source, revision, &
-                             revdate, 'Opening terrain height file')
+  io = nf90_open(filename, NF90_NOWRITE, terrht_unit)
+  call nc_check(io, routine, 'opening "',trim(filename),'"')
 
-        call read_flat_file(terrht_unit, temp_terrain)
-        close(terrht_unit)
+  io = nf90_inq_varid(terrht_unit, terrht_name, VarID)
+  call nc_check(io, routine, 'inquire "'//trim(terrht_name)//'"')
 
-        nest%terrain = reshape(real(temp_terrain, kind=r8), (/ nest%pts_x, nest%pts_y /))
+  !>@todo make sure temp_terrain is declared to be proper length
+  io = nf90_get_var(terrht_unit, VarID, nest%terrain)
+  call nc_check(io, routine, 'get_var "terrht+" from "'//trim(filename)//'"')
+
+  io = nf90_close(terrht_unit)
+  call nc_check(io, routine, 'closing "'//trim(filename)//'"')
+
+    !    nest%terrain = reshape(temp_terrain, (/ nest%pts_x, nest%pts_y /))
 
         deallocate(temp_terrain, stat=dealloc_status)
         call check_dealloc_status(dealloc_status, routine, source, revision, &
@@ -1360,3 +1375,9 @@ contains
     !------------------------------
 
 end module coamps_nest_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

@@ -1,6 +1,8 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! DART $Id$
 
 module model_mod
 
@@ -39,8 +41,9 @@ module model_mod
                                     find_state_variable,      &
                                     get_num_fields,           &
                                     get_var_by_index,         &
-                                    dump_state_vector,         &
-                                    get_total_size
+                                    dump_state_vector,        &
+                                    get_total_size,           &
+                                    construct_domain_info
 
 
     use coamps_statevar_mod, only : state_variable,           &
@@ -85,7 +88,7 @@ module model_mod
                                     nc_write_statearray_data, &
                                     nc_write_prognostic_data
 
-    use coamps_pert_mod,     only : perturb_state
+!#!    use coamps_pert_mod,     only : perturb_state
 
     use location_mod,        only : get_close_type,                &
                                     get_dist,                      &
@@ -113,7 +116,7 @@ module model_mod
                                     set_time_missing,              &
                                     time_type
 
-    use types_mod,           only : MISSING_R8,                    &
+    use types_mod,           only : MISSING_R8, MISSING_I,         &
                                     DEG2RAD,                       &
                                     r8,                            &
                                     i8
@@ -125,7 +128,7 @@ module model_mod
                                     error_handler,                 &
                                     find_namelist_in_file,         &
                                     get_unit,                      &
-                                    register_module
+                                    register_module, string_to_real, string_to_logical, to_upper
 
     use default_model_mod,  only :  init_conditions,               &
                                     init_time,                     &
@@ -133,6 +136,14 @@ module model_mod
 
     use dart_time_io_mod,   only :  read_model_time,               &
                                     write_model_time
+
+    use state_structure_mod, only : add_domain, get_domain_size, state_structure_info
+
+    use netcdf_utilities_mod, only : nc_add_global_attribute, nc_sync, nc_check, &
+                                 nc_add_global_creation_time, nc_redef, nc_enddef
+
+    use netcdf
+    use typesizes
 
     implicit none
 
@@ -150,7 +161,8 @@ module model_mod
     public :: nc_write_model_atts 
 
     ! Ensemble generation
-    public :: pert_model_state 
+    public :: pert_model_copies 
+    !public :: pert_model_state 
 
     ! Forward operator
     public :: model_interpolate
@@ -203,11 +215,24 @@ module model_mod
     ! BEGIN MODULE VARIABLES
     !------------------------------
 
-    ! Modified automatically by Subversion 
-    character(len=128) :: &
-        source   = '$URL$', & 
-        revision = '$Revision$', &
-        revdate  = '$Date$'
+    ! version controlled file description for error handling, do not edit
+    character(len=*), parameter :: source   = &
+       "$URL$"
+    character(len=*), parameter :: revision = "$Revision$"
+    character(len=*), parameter :: revdate  = "$Date$"
+          
+character(len=512) :: string1, string2
+logical, save :: module_initialized = .false.
+
+! DART state vector contents are specified in the input.nml:&model_nml namelist.
+integer, parameter :: max_state_variables = 10
+integer, parameter :: num_state_table_columns = 5
+
+character(len=NF90_MAX_NAME) :: var_names(MAX_STATE_VARIABLES) = ' '
+logical  ::                   update_list(MAX_STATE_VARIABLES) = .FALSE.
+integer  ::                     kind_list(MAX_STATE_VARIABLES) = MISSING_I
+real(r8) ::                    clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
+integer :: num_domains
 
     ! Main model_mod namelist - not too much here as we read most of
     ! the data we need in from the COAMPS files themselves
@@ -223,9 +248,15 @@ module model_mod
     logical           :: output_interpolation = .false. 
     logical           :: output_state_vector  = .false.
     integer           :: debug                = 0            ! increase for debug messages
+    integer           :: assimilation_period_days = 0
+    integer           :: assimilation_period_seconds = 216000
+
+    character(len=256) :: template_file = 'coamps.hdf5'      ! file that has grid/variable sizes
 
     namelist /model_nml/ cdtg, y_bound_skip, x_bound_skip, need_mean, dsnrff, &
-                         output_interpolation, output_state_vector, debug
+                         output_interpolation, output_state_vector, debug, &
+                         template_file, num_domains, &
+                         assimilation_period_days, assimilation_period_seconds
 
     ! Locations of state variables
     integer, dimension(:), allocatable :: all_vars
@@ -237,6 +268,9 @@ module model_mod
 
     ! Ensemble mean
     real(kind=r8), dimension(:), allocatable :: ensemble_mean
+
+integer :: nfields
+integer :: domid
 
     !------------------------------
     ! END MODULE VARIABLES
@@ -259,13 +293,21 @@ contains
     subroutine static_init_model()
 
         character(len=*), parameter :: STATE_VEC_DEF_FILE = 'state.vars'
+        character(len=*), parameter :: routine = 'static_init_model'
+
+integer :: ncid
+integer(i8) :: model_size
+
+        if (module_initialized) return ! only need to do this once
 
         call register_module(source, revision, revdate)
+
+        module_initialized = .true.
 
         call read_model_namelist()
         call set_debug_level(debug)
 
-        call initialize_domain(cdtg, domain)
+        call initialize_domain(template_file, cdtg, domain)
         call set_interp_diag(output_interpolation)
 
         call initialize_state_vector(state_definition, STATE_VEC_DEF_FILE, domain)
@@ -278,6 +320,24 @@ contains
         call allocate_metadata_arrays()
 
         call populate_metadata_arrays()
+
+write(*,*)'we think there are ', get_num_fields(state_definition),' variables of interest.'
+
+        call construct_domain_info(state_definition, var_names, kind_list, clamp_vals, update_list)
+
+domid = add_domain(template_file, get_num_fields(state_definition), &
+                   var_names, kind_list, clamp_vals, update_list )
+
+! print information in the state structure
+
+if (debug > 0 .and. do_output()) call state_structure_info(domid)
+
+model_size = get_domain_size(domid)
+
+if (debug > 0 .and. do_output()) then
+  write(string1, *)'static_init_model: model_size = ', model_size
+  call error_handler(E_MSG, routine, string1)
+endif
 
     end subroutine static_init_model
 
@@ -300,15 +360,12 @@ contains
     !  PARAMETERS
     !   IN  ncFileID          numeric ID of an *open* NetCDF file
     !   OUT ierr              0 if writing was successful
-    function nc_write_model_atts( ncFileID ) result (ierr)
+    subroutine nc_write_model_atts( ncFileID, domain_id ) 
         integer, intent(in)         :: ncFileID
-        integer                     :: ierr          
+        integer, intent(in)         :: domain_id
 
         ! Error handling
         character(len=*), parameter :: routine = 'nc_write_model_atts'
-
-        ! Assume success - the function will abort if there is an error
-        ierr = 0
 
         !FIXME Add support for state vector output
         !if ( output_state_vector ) then
@@ -317,7 +374,7 @@ contains
           call nc_write_prognostic_atts( ncFileID, state_layout_3D )
         !endif
 
-    end function nc_write_model_atts
+    end subroutine nc_write_model_atts
 
     ! nc_write_model_vars
     ! -------------------
@@ -367,17 +424,30 @@ contains
     !   IN  state             DART state vector
     !   OUT pert_state        state vector after perturbations
     !   OUT interf_provided   true if this routine did the perturbation
-    subroutine pert_model_state(state, pert_state, interf_provided)
-        real(kind=r8), dimension(:), intent(in)  :: state
-        real(kind=r8), dimension(:), intent(out) :: pert_state
-        logical,                     intent(out) :: interf_provided
 
-        call error_handler(E_MSG, 'pert_model_state', 'Perturbing '// &
-                           'model state', source, revision, revdate) 
-        
-        pert_state = perturb_state(state, state_definition, x_bound_skip, y_bound_skip)
-        interf_provided = .true.
-    end subroutine pert_model_state
+    subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
+    
+    type(ensemble_type), intent(inout) :: state_ens_handle
+    integer,   intent(in) :: ens_size
+    real(r8),  intent(in) :: pert_amp
+    logical,  intent(out) :: interf_provided
+    
+    interf_provided = .false.
+    
+    end subroutine pert_model_copies
+    
+
+!#!    subroutine pert_model_state(state, pert_state, interf_provided)
+!#!        real(kind=r8), dimension(:), intent(in)  :: state
+!#!        real(kind=r8), dimension(:), intent(out) :: pert_state
+!#!        logical,                     intent(out) :: interf_provided
+!#!
+!#!        call error_handler(E_MSG, 'pert_model_state', 'Perturbing '// &
+!#!                           'model state', source, revision, revdate) 
+!#!        
+!#!        pert_state = perturb_state(state, state_definition, x_bound_skip, y_bound_skip)
+!#!        interf_provided = .true.
+!#!    end subroutine pert_model_state
     
     ! model_interpolate
     ! -----------------
@@ -623,8 +693,8 @@ contains
           interp_status(:) = 999
 
           ! ORIGINAL:
-          call interpolate(x, domain, state_definition, location, &
-                           obs_kind, obs_val, interp_worked)
+          !call interpolate(x, domain, state_definition, location, &
+          !                 obs_kind, obs_val, interp_worked)
           ! NEW:
           do i = 1, ens_size
              call interpolate(state_handle, ens_size, i, domain, state_definition, location, &
@@ -642,18 +712,25 @@ contains
     ! -------------
     ! Gets the number of close state locations.  Wrapper for location
     ! module's get_close_state subroutine.
-    subroutine get_close_state(gc, base_obs_loc, base_obs_kind, obs_loc, &
-                               obs_kind, num_close, close_ind, dist)
 
-    type(get_close_type), intent(in)    :: gc
-    type(location_type), intent(inout)  :: base_obs_loc, obs_loc(:)
-    integer, intent(in)                 :: base_obs_kind, obs_kind(:)
-    integer, intent(out)                :: num_close, close_ind(:)
-    real(r8), optional, intent(out)     :: dist(:)
-
-     call loc_get_close_state(gc, base_obs_loc, base_obs_kind, obs_loc, &
-                              obs_kind, num_close, close_ind, dist)
-
+    subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
+                               num_close, close_ind, dist, ens_handle)
+    
+    ! The specific type of the base observation, plus the generic kinds list
+    ! for either the state or obs lists are available if a more sophisticated
+    ! distance computation is needed.
+    
+    type(get_close_type),          intent(in)  :: gc
+    type(location_type),           intent(inout)  :: base_loc, locs(:)
+    integer,                       intent(in)  :: base_type, loc_qtys(:)
+    integer(i8),                   intent(in)  :: loc_indx(:)
+    integer(i8),                   intent(out) :: num_close, close_ind(:)
+    real(r8),            optional, intent(out) :: dist(:)
+    type(ensemble_type), optional, intent(in)  :: ens_handle
+    
+    call loc_get_close_state(gc, base_loc, base_type, locs, loc_qtys, &
+                             loc_indx, num_close, close_ind, dist, ens_handle)
+    
     end subroutine get_close_state
 
 
@@ -679,8 +756,9 @@ contains
     
     type(get_close_type),          intent(in)  :: gc
     type(location_type),           intent(inout) :: base_obs_loc, obs_locs(:)
-    integer,                       intent(in)  :: base_ob_type, loc_qtys(:), loc_types(:)
-    integer,                       intent(out) :: num_close, close_ind(:)
+    integer,                       intent(in)  :: base_obs_type, loc_qtys(:), loc_types(:)
+    integer(i8),                   intent(out) :: num_close
+    integer(i8),                   intent(out) :: close_ind(:)
     real(r8),            optional, intent(out) :: dist(:)
     type(ensemble_type), optional, intent(in)  :: ens_mean_handle
 
@@ -700,7 +778,7 @@ contains
     ! Consider horizontal localization first.  Also consider undefined vertical coordinate.
     if(.not. vertical_localization_on() .or. base_which == VERTISUNDEF) then
         call loc_get_close_obs(gc, base_obs_loc, base_obs_type, obs_locs, loc_qtys, &
-                               loc_types, num_close, close_ind, dist, ens_handle)
+                               loc_types, num_close, close_ind, dist, ens_mean_handle)
     else
       ! Convert base_obs vertical coordinate to requested vertical coordinate if necessary
 
@@ -727,7 +805,7 @@ contains
         ! Loop over potentially close subset of obs priors or state variables
         do k = 1, num_close
           t_ind           = close_ind(k)
-          local_obs_loc   = obs_loc(t_ind)
+          local_obs_loc   = obs_locs(t_ind)
           local_obs_which = nint(query_location(local_obs_loc))
           local_obs_array = get_location(local_obs_loc)
 
@@ -736,19 +814,18 @@ contains
           ! contains the correct vertical coordinate (filter_assim's call to get_state_meta_data).
           if (local_obs_which /= VERTISLEVEL) then
             if(local_obs_which == VERTISSURFACE) then
-              local_obs_array(3)=obs_val ; local_obs_which=VERTISLEVEL
+              local_obs_array(3)=obs_val(1) ; local_obs_which=VERTISLEVEL
             elseif(local_obs_which == VERTISUNDEF) then
               local_obs_which=VERTISUNDEF
             else
-             call model_interpolate(ens_mean_handle, 1, obs_loc(t_ind), QTY_VERTLEVEL, obs_val, istatus2)
-              call model_interpolate(ensemble_mean, obs_loc(t_ind), QTY_VERTLEVEL, obs_val, istatus2)
+              call model_interpolate(ens_mean_handle, 1, obs_locs(t_ind), QTY_VERTLEVEL, obs_val, istatus2)
               local_obs_array(3)=obs_val(1) ; local_obs_which=VERTISLEVEL
             end if
 
             ! Store the "new" location into the original full local array
             local_obs_loc = set_location(local_obs_array(1),local_obs_array(2), &
                                          local_obs_array(3),local_obs_which)
-            obs_loc(t_ind) = local_obs_loc
+            obs_locs(t_ind) = local_obs_loc
           endif
 
           ! Compute distance - set distance to a very large value if vert coordinate is missing
@@ -756,7 +833,7 @@ contains
           if ((local_obs_array(3) == missing_r8) .or. (istatus2(1) == 1)) then
             dist(k) = 1.0e9
           else
-            dist(k) = get_dist(base_obs_loc, local_obs_loc, base_obs_type, obs_kind(t_ind))
+            dist(k) = get_dist(base_obs_loc, local_obs_loc, base_obs_type, loc_qtys(t_ind))
           endif
 
         end do
@@ -785,7 +862,7 @@ contains
     !   OUT location          DART location_type for that index
     !   OUT var_type          OPTIONAL numeric variable type
     subroutine get_state_meta_data(index_in, location, var_type)
-        integer,                       intent(in)  :: index_in
+        integer(i8),                   intent(in)  :: index_in
         type(location_type), optional, intent(out) :: location
         integer,             optional, intent(out) :: var_type
 
@@ -984,9 +1061,15 @@ contains
       call check_dealloc_status(dealloc_status, routine, source, revision, revdate, 'kernal')
 
     end subroutine kernal_smoother
-     
+
     !------------------------------
     ! END PRIVATE ROUTINES
     !------------------------------
 
 end module model_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

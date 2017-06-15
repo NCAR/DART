@@ -3,10 +3,13 @@
 ! AUTHOR:       T. R. Whitcomb
 !               Naval Research Laboratory
 ! DART VERSION: Jamaica
+!               Manhattan (updated jun 2017)
 !
 ! Module containing the data structure and routines for dealing with
 ! a COAMPS state vector (a collection of COAMPS state variables)
 !------------------------------ 
+! DART $Id$
+
 module coamps_statevec_mod
 
     use coamps_statevar_mod, only : state_variable, new_state_variable,    &
@@ -16,7 +19,9 @@ module coamps_statevec_mod
                                     get_mean_flag, define_mean_var,        &
                                     get_sigma_record, set_sigma_record,    &
                                     get_mass_level_flag,                   &
-                                    operator(==)
+                                    operator(==), &
+                                    get_var_name, get_var_kind, &
+                                    gets_update, is_nonnegative
 
     use coamps_domain_mod,   only : coamps_domain, get_domain_num_levels, &
                                     get_nest_count
@@ -26,7 +31,7 @@ module coamps_statevec_mod
     use coamps_util_mod,     only : check_alloc_status,  &
                                     check_io_status
 
-    use types_mod,           only :  r8
+    use types_mod,           only :  r8, MISSING_R8
 
     use obs_kind_mod
 
@@ -54,6 +59,7 @@ module coamps_statevec_mod
     public :: get_iterator
     public :: has_next
     public :: get_next
+    public :: construct_domain_info
 
     ! Diagnostics
     public :: dump_state_vector
@@ -121,12 +127,12 @@ module coamps_statevec_mod
     !------------------------------
     ! BEGIN MODULE VARIABLES
     !------------------------------
-  
-    ! Modified automatically by Subversion
-    character(len=128) :: &
-        source   = "$URL$", &
-        revision = "$Revision$", &
-        revdate  = "$Date$"
+
+    ! version controlled file description for error handling, do not edit
+    character(len=*), parameter :: source   = &
+       "$URL$"
+    character(len=*), parameter :: revision = "$Revision$"
+    character(len=*), parameter :: revdate  = "$Date$"
   
     !------------------------------
     ! END MODULE VARIABLES
@@ -350,6 +356,38 @@ contains
 
         get_var_by_index => state%vars(index_in)
     end function get_var_by_index
+
+    ! construct_domain_info
+    ! -----------------
+    subroutine construct_domain_info(state, varnames, kindlist, clampvals, updatelist)
+        type(state_vector), intent(in)  :: state
+        character(len=*),   intent(out) :: varnames(:)
+        integer,            intent(out) :: kindlist(:)
+        real(r8),           intent(out) :: clampvals(:,:)
+        logical,            intent(out) :: updatelist(:)
+
+        type(state_iterator) :: iterator
+        type(state_variable) :: var
+        integer :: varindex
+
+        clampvals(:,:) = MISSING_R8
+
+        varindex = 1
+        iterator = get_iterator(state)    
+        do while (has_next(iterator))
+
+            var = get_next(iterator)
+
+            varnames(  varindex) = get_var_name(var)
+            kindlist(  varindex) = get_var_kind(var)
+            updatelist(varindex) = gets_update( var)
+            if (is_nonnegative(var)) clampvals(varindex,1) = 0.0_r8
+
+            varindex = varindex + 1
+
+        enddo
+
+    end subroutine construct_domain_info
 
     !------------------------------
     ! END PUBLIC ROUTINES
@@ -580,3 +618,8 @@ contains
     !------------------------------
 end module coamps_statevec_mod
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

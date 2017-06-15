@@ -1,6 +1,8 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! DART $Id$
 
 module coamps_util_mod
 !------------------------------
@@ -8,10 +10,12 @@ module coamps_util_mod
 ! AUTHOR:       T. R. Whitcomb
 !               Naval Research Laboratory
 ! DART VERSION: Jamaica
+!               Manhattan (updated jun 2017)
 !
 ! Module with various COAMPS utility routines to handle things
 ! like error checking
 !------------------------------ 
+! DART $Id$
   
   use types_mod,     only : r4, r8
   use utilities_mod, only : E_ERR,         &
@@ -21,6 +25,11 @@ module coamps_util_mod
                             get_unit,      &
                             timestamp,     &
                             register_module
+
+  use netcdf_utilities_mod, only : nc_check
+
+  use typesizes
+  use netcdf
 
   implicit none
 
@@ -115,11 +124,11 @@ module coamps_util_mod
   ! BEGIN MODULE VARIABLES
   !------------------------------
 
-  ! Modified automatically by Subversion
-  character(len=128) :: &
-       source = "$URL$", &
-       revision = "$Revision$", &
-       revdate = "$Date$"
+  ! version controlled file description for error handling, do not edit
+  character(len=*), parameter :: source   = &
+     "$URL$"
+  character(len=*), parameter :: revision = "$Revision$"
+  character(len=*), parameter :: revdate  = "$Date$"
 
   logical :: module_initialized = .false.
   integer :: debug_level = 0
@@ -524,34 +533,39 @@ contains
   !  PARAMETERS
   !   IN  dtg               COAMPS date-time-group for filename generation
   !   OUT datahd            array to be filled
-  subroutine read_datahd_file(dtg, datahd)
-    character(len=10),            intent(in) :: dtg
+  subroutine read_datahd_file(filename, dtg, datahd)
+    character(len=*),            intent(in)  :: filename
+    character(len=*),            intent(in)  :: dtg
     real(kind=r8), dimension(:), intent(out) :: datahd
 
-    character(len=64)                    :: datahd_filename
-    integer                              :: datahd_unit
+    character(len=64) :: datahd_filename
+    character(len=64) :: datahd_varname
+    integer           :: datahd_unit
+    integer           :: VarID
 
     ! Error checking
-    logical :: is_opened
     character(len=*), parameter :: routine = 'read_datahd_file'
-    integer :: io_status, alloc_status
+    integer :: io
 
-    integer :: ii
-
+    ! Actually generates the appropriate variable name in the HDF5 file
+    ! using existing routine for the old file name.
     call generate_datahd_filename(dtg, datahd_filename)
-    datahd_unit = get_unit()
-    open(unit=datahd_unit, file=datahd_filename, status='old', &
-         access='sequential', action='read', form='formatted', &
-         iostat=io_status)
-    call check_io_status(io_status, routine, source, revision, &
-                         revdate, 'Opening datahd file')
 
-    read(unit=datahd_unit, fmt='(5e13.6)', iostat=io_status)   &
-        (datahd(ii), ii=1,size(datahd))
-    call check_io_status(io_status, routine, source, revision, &
-                         revdate, 'Reading datahd file')
+    datahd_varname = datahd_filename
 
-    close(datahd_unit)
+    io = nf90_open(trim(filename), NF90_NOWRITE, datahd_unit)
+    call nc_check(io, routine, 'open "'//trim(filename)//'"')
+
+    io = nf90_inq_varid(datahd_unit, datahd_varname, VarID)
+    call nc_check(io, routine, 'inquire "'//trim(datahd_varname)//'"')
+
+    !>@todo make sure datahd is declared to be proper length
+    io = nf90_get_var(datahd_unit, VarID, datahd)
+    call nc_check(io, routine, 'get_var datahd from "'//trim(filename)//'"')
+
+    io = nf90_close(datahd_unit)
+    call nc_check(io, routine, 'closing "'//trim(filename)//'"')
+
   end subroutine read_datahd_file
 
   ! write_datahd_file
@@ -710,6 +724,7 @@ contains
     end do
   end subroutine change_case
 
+  !>@todo this generates the datahd variable name (which is also the flat file name)
   ! generate_datahd_filename
   ! ------------------------
   ! Generates the COAMPS domain information file name for the first
@@ -746,3 +761,9 @@ contains
   !------------------------------
 
 end module coamps_util_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

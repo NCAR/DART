@@ -8,6 +8,8 @@
 ! which is an amalgamation of a grid (a map projection and how the domain
 ! connects to it), an arbitrary number of nests, and vertical structure.
 !------------------------------ 
+! DART $Id$
+
 module coamps_domain_mod
 
     use coamps_intrinsic_mod, only : uvg2uv   
@@ -48,7 +50,7 @@ module coamps_domain_mod
                                     generate_flat_file_name,     &
                                     read_datahd_file,            &
                                     DATAHD_LEN,                  &   
-                                    trace_message,                    &
+                                    trace_message,               &
                                     DATAHD_NUM_NESTS 
 
     use location_mod,        only : get_location,                &
@@ -156,11 +158,11 @@ module coamps_domain_mod
     ! BEGIN MODULE VARIABLES
     !------------------------------
 
-    ! Modified automatically by Subversion
-    character(len=128) :: &
-    source = "$URL$", &
-    revision = "$Revision$", &
-    revdate = "$Date$"
+    ! version controlled file description for error handling, do not edit
+    character(len=*), parameter :: source   = &
+       "$URL$"
+    character(len=*), parameter :: revision = "$Revision$"
+    character(len=*), parameter :: revdate  = "$Date$"
 
     logical, save :: module_initialized = .false.
 
@@ -177,10 +179,16 @@ contains
     ! -----------------
     ! Constructor for a COAMPS domain possibly consisting of several nests
     !  PARAMETERS
+    !   IN  filename          HDF5-format file that has a datahd_sfc_yaddayadda variable
     !   IN  dtg               COAMPS date-time-group (for filenames)
     !   OUT domain            Domain to initialize
-    subroutine initialize_domain(dtg, domain)
-        character(len=10),      intent(in) :: dtg
+    !
+    ! this routine used to read the datahd information from an exclusive file.
+    ! This information is now a single variable
+
+    subroutine initialize_domain(filename, dtg, domain)
+        character(len=*),    intent(in)    :: filename
+        character(len=*),    intent(in)    :: dtg
         type(coamps_domain), intent(inout) :: domain
 
         real(kind=r8), dimension(DATAHD_LEN) :: coamps_datahd
@@ -192,13 +200,16 @@ contains
 
         if (domain%is_initialized) return
 
-        call read_datahd_file(dtg, coamps_datahd)
+        ! read from datahd_sfc  variable instead of flat file
+        call read_datahd_file(filename, dtg, coamps_datahd)
 
         call initialize_grid(coamps_datahd, domain%static_grid)
 
-        call initialize_nests(dtg, coamps_datahd, domain)
+        call initialize_nests(filename, dtg, coamps_datahd, domain)
 
         call initialize_vertical(coamps_datahd, domain%vertical)
+
+        call dump_domain_info(domain, .true.)
 
         domain%is_initialized = .true.
     end subroutine initialize_domain
@@ -750,8 +761,9 @@ contains
   !   IN  dtg               date-time-group of forecast
   !   IN  datahd            datahd record to source
   ! INOUT domain            COAMPS domain to populate
-  subroutine initialize_nests(dtg, datahd, domain)
-    character(len=10),           intent(in)    :: dtg
+  subroutine initialize_nests(filename, dtg, datahd, domain)
+    character(len=*),            intent(in)    :: filename
+    character(len=*),            intent(in)    :: dtg
     real(kind=r8), dimension(:), intent(in)    :: datahd
     type(coamps_domain),         intent(inout) :: domain 
 
@@ -768,7 +780,7 @@ contains
     do cur_nest_id = 1, domain%nest_count
         call set_nest_id(domain%nests(cur_nest_id), cur_nest_id)
 
-        call initialize_nest(domain%nests(cur_nest_id), dtg, datahd)    
+        call initialize_nest(filename, domain%nests(cur_nest_id), dtg, datahd)    
 
         ! Interface this nest with the other nests
         parent_nest_id = get_parent_nest_id(domain%nests(cur_nest_id))
@@ -790,3 +802,8 @@ contains
 
 end module coamps_domain_mod
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
