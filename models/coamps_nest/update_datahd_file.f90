@@ -1,12 +1,15 @@
 ! update_datahd_file
 ! --------------------
+! DART $Id$
+
 program update_datahd_file
 
   use coamps_util_mod,      only : check_io_status,              &
                                    read_datahd_file,             &
                                    write_datahd_file,            &
                                    DATAHD_LEN,                   &
-                                   DATAHD_NUM_NESTS
+                                   DATAHD_NUM_NESTS,             &
+                                   HDF5_FILE_NAME
 
   use utilities_mod,        only : E_ERR,                        &
                                    error_handler,                &
@@ -22,10 +25,11 @@ program update_datahd_file
 
   implicit none
 
-  character(len=128) :: &
-       source   = " ",  &
-       revision = " ",  &
-       revdate  = " "
+  ! version controlled file description for error handling, do not edit
+  character(len=*), parameter :: source   = &
+     "$URL$"
+  character(len=*), parameter :: revision = "$Revision$"
+  character(len=*), parameter :: revdate  = "$Date$"
 
   character(len=*), parameter :: routine = 'update_datahd_file'
 
@@ -73,8 +77,9 @@ program update_datahd_file
 
   print *,dtg_new
   print *,dtg_old
+  print *,HDF5_FILE_NAME
 
-  call read_datahd_file(dtg_old, datahd)
+  call read_datahd_file(HDF5_FILE_NAME, dtg_old, datahd)
 
   print *,'nnest: ',datahd(11)
   do nn=1,DATAHD_NUM_NESTS
@@ -86,3 +91,9 @@ program update_datahd_file
   !call write_datahd_file(dtg_new, datahd)
 
 end program update_datahd_file
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

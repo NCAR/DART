@@ -4,6 +4,9 @@
 ! then assembles them into a state vector that can be used by DART.
 ! This includes two pieces of information - the current time and
 ! the actual state
+! --------------------
+! DART $Id$
+
 program perturb_init
 
   use coamps_nest_mod,      only : coamps_nest,                  &
@@ -25,7 +28,8 @@ program perturb_init
                                    read_flat_file,               &
                                    write_flat_file,              &
                                    read_datahd_file,             &
-                                   DATAHD_LEN
+                                   DATAHD_LEN,                   &
+                                   HDF5_FILE_NAME
 
   use utilities_mod,        only : E_ERR,                        &
                                    error_handler,                &
@@ -41,10 +45,11 @@ program perturb_init
 
   implicit none
 
-  character(len=128) :: &
-       source   = " ",  &
-       revision = " ",  &
-       revdate  = " "
+  ! version controlled file description for error handling, do not edit
+  character(len=*), parameter :: source   = &
+     "$URL$"
+  character(len=*), parameter :: revision = "$Revision$"
+  character(len=*), parameter :: revdate  = "$Date$"
 
   character(len=*), parameter :: routine = 'perturb_init'
   character(len=64)           :: coamps_file_name
@@ -147,7 +152,10 @@ program perturb_init
 !------------------------------------------------------------------------------
 ! Read data header file and set sizes
 !------------------------------------------------------------------------------
-  call read_datahd_file(cdtg, coamps_datahd)
+
+!>@todo  should this be coamps_file_name instead of HDF5_FILE_NAME
+
+  call read_datahd_file(HDF5_FILE_NAME, cdtg, coamps_datahd)
   call initialize_vertical(coamps_datahd, static_vgrid)
 
   call set_nest_id(static_nest, NEST_ID)
@@ -355,3 +363,9 @@ program perturb_init
   deallocate(ipert_nums)
 
 end program perturb_init
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

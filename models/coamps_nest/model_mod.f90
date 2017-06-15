@@ -81,7 +81,8 @@ module model_mod
                                     set_debug_level,          &
                                     timestamp_message,        &
                                     dump_data_file,           &
-                                    check_dealloc_status
+                                    check_dealloc_status,     &
+                                    HDF5_FILE_NAME
 
     use coamps_netcdf_mod,   only : nc_write_statearray_atts, &
                                     nc_write_prognostic_atts, &
@@ -251,11 +252,9 @@ integer :: num_domains
     integer           :: assimilation_period_days = 0
     integer           :: assimilation_period_seconds = 216000
 
-    character(len=256) :: template_file = 'coamps.hdf5'      ! file that has grid/variable sizes
-
     namelist /model_nml/ cdtg, y_bound_skip, x_bound_skip, need_mean, dsnrff, &
                          output_interpolation, output_state_vector, debug, &
-                         template_file, num_domains, &
+                         num_domains, &
                          assimilation_period_days, assimilation_period_seconds
 
     ! Locations of state variables
@@ -307,7 +306,7 @@ integer(i8) :: model_size
         call read_model_namelist()
         call set_debug_level(debug)
 
-        call initialize_domain(template_file, cdtg, domain)
+        call initialize_domain(HDF5_FILE_NAME, cdtg, domain)
         call set_interp_diag(output_interpolation)
 
         call initialize_state_vector(state_definition, STATE_VEC_DEF_FILE, domain)
@@ -325,7 +324,7 @@ write(*,*)'we think there are ', get_num_fields(state_definition),' variables of
 
         call construct_domain_info(state_definition, var_names, kind_list, clamp_vals, update_list)
 
-domid = add_domain(template_file, get_num_fields(state_definition), &
+domid = add_domain(HDF5_FILE_NAME, get_num_fields(state_definition), &
                    var_names, kind_list, clamp_vals, update_list )
 
 ! print information in the state structure

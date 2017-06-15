@@ -60,6 +60,9 @@ module coamps_util_mod
 
   public :: dump_data_file
 
+  ! Working with HDF5 files
+  public :: HDF5_FILE_NAME
+
   ! Variable type
   public :: C_REAL
 
@@ -115,6 +118,11 @@ module coamps_util_mod
 
   integer, parameter :: DATAHD_LEN       = 2000
   integer, parameter :: DATAHD_NUM_NESTS = 11
+
+  ! this is a generic name for the file - there is no dtg
+  ! or ensemble member number needed - just line the specific file
+  ! to this static name
+  character(len=*), parameter :: HDF5_FILE_NAME = 'coamps.hdf5'
 
   !------------------------------
   ! END TYPES AND CONSTANTS 
@@ -584,7 +592,7 @@ contains
 
     ! Error checking
     logical :: is_opened
-    character(len=*), parameter :: routine = 'read_datahd_file'
+    character(len=*), parameter :: routine = 'write_datahd_file'
     integer :: io_status, alloc_status
 
     integer :: ii

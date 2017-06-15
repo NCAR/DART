@@ -3,6 +3,7 @@
 ! AUTHOR:       T. R. Whitcomb
 !               Naval Research Laboratory
 ! DART VERSION: Jamaica
+!               Manhattan (updated jun 2017)
 !
 ! Module containing storage for a DART state vector, a COAMPS state
 ! vector (spanning multiple restart files in the case of multi-
@@ -14,6 +15,8 @@
 ! the time to hours/minutes/seconds with no respect to dates 
 ! (since we're restricting to a single date-time group).
 !------------------------------ 
+! DART $Id$
+
 module coamps_translate_mod
 
   use coamps_domain_mod,    only : coamps_domain, decompose_domain,           &
@@ -55,7 +58,8 @@ module coamps_translate_mod
                                    fix_for_platform,                          &
                                    generate_flat_file_name,                   &
                                    read_flat_file,                            &
-                                   write_flat_file
+                                   write_flat_file,                           &
+                                   HDF5_FILE_NAME
 
   use time_manager_mod,     only : get_date,                                  &
                                    get_time,                                  &
@@ -173,11 +177,11 @@ module coamps_translate_mod
   ! BEGIN MODULE VARIABLES
   !------------------------------
 
-    ! Modified automatically by Subversion
-    character(len=128) :: &
-    source = "$URL$", &
-    revision = "$Revision$", &
-    revdate = "$Date$"
+  ! version controlled file description for error handling, do not edit
+  character(len=*), parameter :: source   = &
+     "$URL$"
+  character(len=*), parameter :: revision = "$Revision$"
+  character(len=*), parameter :: revdate  = "$Date$"
 
   ! Namelist containing the date time group and lead time information
   ! Also include information about the domain decomposition: number
@@ -285,7 +289,7 @@ contains
       coamps_used_io_proc = .false. 
     end if
 
-    call initialize_domain(cdtgm1, domain)
+    call initialize_domain(HDF5_FILE_NAME, cdtgm1, domain)
 
     ! Set up the state vector field definitions 
     call initialize_state_vector(state_layout, STATE_VEC_DEF_FILE, domain)
@@ -983,7 +987,7 @@ contains
                             'Reading ' // nml_file // ' convert')
        close(nml_unit)
     else
-       call error_handler(E_ERR, 'coamps_translate_mod', 'Convert name' // &
+       call error_handler(E_ERR, routine, 'Convert name ' // &
                           'namelist read failed - target file not found',  &
                           source, revision, revdate)
     end if
@@ -1090,7 +1094,7 @@ contains
       cur_var  = get_next(iterator)
       if( .not. get_io_flag(cur_var)) cycle flat_file_loop
 
-      var_state => get_var_substate(cur_var, coamps_state)
+!TJH      var_state => get_var_substate(cur_var, coamps_state)
 
       cur_file = cur_file + 1
 
@@ -1127,7 +1131,8 @@ contains
       cur_var   = get_next(iterator)
       if(.not. get_mean_flag(cur_var)) cycle mean_fld_loop
 
-      var_state => get_var_substate(cur_var, coamps_state)
+!TJH      var_state => get_var_substate(cur_var, coamps_state)
+
       call calculate_mean_var(cur_var, var_state)
     end do mean_fld_loop
 
@@ -1329,7 +1334,7 @@ contains
     end if 
 
     var_nest  =  get_domain_nest(domain, get_nest_number(var_to_process))
-    var_state => get_var_substate(var_to_process, coamps_state)
+!TJH    var_state => get_var_substate(var_to_process, coamps_state)
 
     ! The "subfield" boundaries for the single-processor I/O case
     ! is just the i/j limits for the entire field - multi-processor
@@ -1495,7 +1500,7 @@ contains
        cur_var = get_next(var_iterator)
 
        if (is_nonnegative(cur_var)) then
-         state_subsect => get_var_substate(cur_var, dart_state)
+!TJH         state_subsect => get_var_substate(cur_var, dart_state)
          where (state_subsect < 0) state_subsect = 0     
        end if
     end do
@@ -1625,7 +1630,7 @@ contains
     do while(has_next(iterator))
 
       cur_var = get_next(iterator)
-      var_state => get_var_substate(cur_var, dart_state)
+!TJH      var_state => get_var_substate(cur_var, dart_state)
       max_value = maxval(var_state)
       min_value = minval(var_state)
 
@@ -1760,3 +1765,9 @@ contains
   !------------------------------
 
 end module coamps_translate_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

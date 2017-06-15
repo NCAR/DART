@@ -51,7 +51,7 @@ module coamps_domain_mod
                                     read_datahd_file,            &
                                     DATAHD_LEN,                  &   
                                     trace_message,               &
-                                    DATAHD_NUM_NESTS 
+                                    DATAHD_NUM_NESTS
 
     use location_mod,        only : get_location,                &
                                     location_type

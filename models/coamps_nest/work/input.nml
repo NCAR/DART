@@ -92,7 +92,6 @@
 
 &model_nml
    cdtg                        = '2013011000'
-   template_file               = 'coamps.hdf5'
    x_bound_skip                = 4
    y_bound_skip                = 4
    num_domains                 = 2
