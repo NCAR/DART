@@ -159,7 +159,7 @@ program perturb_init
   call initialize_vertical(coamps_datahd, static_vgrid)
 
   call set_nest_id(static_nest, NEST_ID)
-  call initialize_nest(static_nest, cdtg, coamps_datahd)
+  call initialize_nest(HDF5_FILE_NAME, static_nest, cdtg, coamps_datahd)
 
   gridnum = 1
   !nt = ktauf(1, NEST_ID)/kgetbc + 1
