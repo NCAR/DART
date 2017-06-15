@@ -265,7 +265,6 @@ contains
 
     if(.not.is_initialized) call init_navdas_innov_mod()
     do n=1,max_num_obs
-print *, 'read_innov_data, line ', n
       call read_innov_line(is_ob_defined,is_last)
       if(is_ob_defined) call insert_obs_in_seq(seq, obs)
     end do
@@ -315,7 +314,6 @@ print *, 'read_innov_data, line ', n
     deallocate(pressure,stat=dealloc_status)
     call check_dealloc_status(dealloc_status, routine, source, revision, &
                               revdate, 'pressure')
-print *, 'date = ', yyyy, mm, dd, hh
     return
   end subroutine
   ! get_max_obs
@@ -324,7 +322,6 @@ print *, 'date = ', yyyy, mm, dd, hh
   function get_max_obs() result(max_obs)
     integer :: max_obs
     max_obs=max_num_obs+100
-print *, 'got max_obs = ', max_obs
     return
   end function get_max_obs
 
@@ -508,11 +505,9 @@ print *, 'got max_obs = ', max_obs
 
     ob_loc  = set_location(ob_lon, ob_lat, ob_lev, vert_level)
     ob_type_indx = get_index_for_type_of_obs(ob_type) 
-print *, 'ob_type = ', ob_type, ' ob_type_indx = ', ob_type_indx
 
     if(ob_type_indx <= 0) return
 
-print *, 'did not return early'
     ob_kind_indx=get_quantity_for_type_of_obs(ob_type_indx)
 
     call init_obs_def(obs_def, ob_loc, ob_type_indx, time_ob, ob_err) 

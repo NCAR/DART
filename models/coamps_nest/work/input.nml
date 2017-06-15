@@ -163,8 +163,8 @@
   /
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'EVAL_TEMPERATURE'
-   evaluate_these_obs_types   = 'RADIOSONDE_SPECIFIC_HUMIDITY'
+   assimilate_these_obs_types = 'EVAL_POT_TEMPERATURE'
+   evaluate_these_obs_types   = 'RADIOSONDE_LOG_SPECIFIC_HUMIDITY'
   /
 
 # Notes for obs_def_radar_mod_nml:
