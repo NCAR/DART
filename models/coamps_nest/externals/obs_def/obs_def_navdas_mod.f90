@@ -88,11 +88,11 @@
 !   case(RADIOSONDE_AIR_TEMPERATURE,EVAL_AIR_TEMPERATURE, &
 !        T_RAOB,T_PIBAL,T_AIREP,T_AMDAR,T_ACARS,T_MDCRS, &
 !        T_TOVS_T, T_TC_SYNTH, T_DROPSONDE)
-!        call get_expected_air_temperature(state, location, obs_val, istatus) 
+!        call get_expected_air_temperature(state_handle, ens_size, location, expected_obs, istatus) 
 !   case(P_SFC_LAND, P_SFC_SHIP)
-!        call get_expected_altimeter(state, location, obs_val, istatus) 
+!        call get_expected_altimeter(state_handle, ens_size, location, expected_obs, istatus) 
 !   case(WS_SSMI_FF1, WS_SSMI_FF2)
-!        call get_expected_windspeed(state, location, obs_val, istatus) 
+!        call get_expected_windspeed(state_handle, ens_size, location, expected_obs, istatus) 
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
@@ -146,6 +146,10 @@ module obs_def_navdas_mod
 
   use  assim_model_mod, only : interpolate
 
+  use ensemble_manager_mod, only : ensemble_type
+
+  use obs_def_utilities_mod, only : track_status
+
   use     obs_kind_mod, only : QTY_POTENTIAL_TEMPERATURE, &
                                QTY_SURFACE_PRESSURE,      &
                                QTY_U_WIND_COMPONENT,      &
@@ -185,31 +189,35 @@ contains
   ! get_expected_windspeed
   ! ----------------------------
   ! Forward operator for windspeed
-  subroutine get_expected_windspeed(state_vector, location, wspd, istatus)  
-    real(r8),            intent(in)  :: state_vector(:)
+  subroutine get_expected_windspeed(state_handle, ens_size, location, wspd, istatus)  
+    type(ensemble_type), intent(in)  :: state_handle
+    integer,             intent(in)  :: ens_size
     type(location_type), intent(in)  :: location
-    real(r8),            intent(out) :: wspd
-    integer,             intent(out) :: istatus
+    real(r8),            intent(out) :: wspd(ens_size)
+    integer,             intent(out) :: istatus(ens_size)
 
-    real(r8) :: uwind   ! zonal wind component
-    real(r8) :: vwind   ! meridional wind component
+    real(r8) :: uwind(ens_size)   ! zonal wind component
+    real(r8) :: vwind(ens_size)   ! meridional wind component
+    integer  :: this_istatus(ens_size)
+    logical  :: return_now
 
     if ( .not. module_initialized ) call initialize_module
 
+    ! start out with all set to success.  as each call to interpolate() is made
+    ! accumulate those who fail.  
+    istatus(:) = 0
+
     ! Zonal wind at this location
-    call interpolate(state_vector, location, QTY_U_WIND_COMPONENT, uwind, istatus)
-    if (istatus /= 0) then
-       wspd = missing_r8
-       return
-    endif
+    call interpolate(state_handle, ens_size, location, QTY_U_WIND_COMPONENT, uwind, this_istatus)
+    call track_status(ens_size, this_istatus, wspd, istatus, return_now)
+    if (return_now) return
 
     ! Meridional wind at this location
-    call interpolate(state_vector, location, QTY_V_WIND_COMPONENT, vwind, istatus)
-    if (istatus /= 0) then
-       wspd = missing_r8
-       return
-    endif
+    call interpolate(state_handle, ens_size, location, QTY_V_WIND_COMPONENT, vwind, this_istatus)
+    call track_status(ens_size, this_istatus, wspd, istatus, return_now)
+    if (return_now) return
 
+    ! this is an array operation now - interpolate returns an ensemble-sized array
     wspd = sqrt(uwind**2 + vwind**2)
     
   end subroutine get_expected_windspeed
@@ -218,30 +226,36 @@ contains
   ! ----------------------------
   ! Forward operator for T (in Kelvin) - note that this currently
   ! assumes that the location is 3D in pressure coordinates
-  subroutine get_expected_air_temperature(state_vector, location, t, istatus)  
-    real(r8),            intent(in)  :: state_vector(:)
+  subroutine get_expected_air_temperature(state_handle, ens_size, location, t, istatus)  
+    type(ensemble_type), intent(in)  :: state_handle
+    integer,             intent(in)  :: ens_size
     type(location_type), intent(in)  :: location
-    real(r8),            intent(out) :: t
-    integer,             intent(out) :: istatus
+    real(r8),            intent(out) :: t(ens_size)
+    integer,             intent(out) :: istatus(ens_size)
 
-    real(r8) :: pot_t   ! Potential temperature
-    real(r8) :: pres    ! Working pressure
-    real(r8) :: rocp    ! R over Cp
+    real(r8) :: pot_t(ens_size)   ! Potential temperature
+    real(r8) :: pres(ens_size)    ! Working pressure
+    real(r8) :: rocp(ens_size)    ! R over Cp
+    integer  :: this_istatus(ens_size)
+    logical  :: return_now
 
     if ( .not. module_initialized ) call initialize_module
 
+    ! start out with all set to success.  as each call to interpolate() is made
+    ! accumulate those who fail.  
+    istatus(:) = 0
+
     ! Potential temperature at this location
-    call interpolate(state_vector, location, QTY_POTENTIAL_TEMPERATURE,pot_t, istatus)
-    if (istatus /= 0) then
-       t = missing_r8
-       return
-    endif
+    call interpolate(state_handle, ens_size, location, QTY_POTENTIAL_TEMPERATURE, pot_t, this_istatus)
+    call track_status(ens_size, this_istatus, t, istatus, return_now)
+    if (return_now) return
     
     ! Pressure - for now, assume that we are working in pressure
     ! coordinates only.  Once we add other capabilities, change this
     ! to call model_interpolate for QTY_PRESSURE
     if (.not. is_vertical(location, 'pressure')) then
-       t = missing_r8
+       t(:) = missing_r8
+       istatus(:) = 11
        return
     end if
     pres = query_location(location,'VLOC')
@@ -255,38 +269,43 @@ contains
   ! get_expected_altimeter
   ! ----------------------------
   ! Forward operator for altimeter
-  subroutine get_expected_altimeter(state_vector, location, altimeter, istatus)
-    real(r8),            intent(in)  :: state_vector(:)
+  subroutine get_expected_altimeter(state_handle, ens_size, location, altimeter, istatus)
+    type(ensemble_type), intent(in)  :: state_handle
+    integer,             intent(in)  :: ens_size
     type(location_type), intent(in)  :: location
-    real(r8),            intent(out) :: altimeter
-    integer,             intent(out) :: istatus
+    real(r8),            intent(out) :: altimeter(ens_size)
+    integer,             intent(out) :: istatus(ens_size)
 
-    real(r8)                         :: sfc_pres
-    real(r8)                         :: sfc_elev
+    real(r8) :: sfc_pres(ens_size)
+    real(r8) :: sfc_elev(ens_size)
+    integer  :: this_istatus(ens_size)
+    logical  :: return_now
+    integer  :: i
+
+    ! start out with all set to success.  as each call to interpolate() is made
+    ! accumulate those who fail.  
+    istatus(:) = 0
 
     if ( .not. module_initialized ) call initialize_module
 
-    call interpolate(state_vector, location, QTY_SURFACE_PRESSURE, sfc_pres, istatus)
-    if (istatus /= 0) then
+    call interpolate(state_handle, ens_size, location, QTY_SURFACE_PRESSURE, sfc_pres, this_istatus)
+    call track_status(ens_size, this_istatus, altimeter, istatus, return_now)
+    if (return_now) return
+
+    call interpolate(state_handle, ens_size, location, QTY_SURFACE_ELEVATION, sfc_elev, this_istatus)
+    call track_status(ens_size, this_istatus, altimeter, istatus, return_now)
+    if (return_now) return
+
+    do i = 1, ens_size
+       altimeter(i) = compute_altimeter(sfc_pres(i), sfc_elev(i))
+    enddo
+
+    !>@todo check to see if these are reasonable limits for altimeter
+    where (altimeter < 88000.0_r8 .or. altimeter >= 110000.0_r8)
        altimeter = missing_r8
-       return
-    endif
+       istatus = 15
+    endwhere
 
-    call interpolate(state_vector, location, QTY_SURFACE_ELEVATION, sfc_elev, istatus)
-    if (istatus /= 0) then
-       altimeter = missing_r8
-       return
-    endif
-
-    altimeter = compute_altimeter(sfc_pres, sfc_elev)
-
-    if (altimeter < 88000.0_r8 .or. altimeter >= 110000.0_r8) then
-       istatus = 1
-       altimeter = missing_r8
-       return
-    endif
-
-    return
   end subroutine get_expected_altimeter
 
 end module obs_def_navdas_mod
