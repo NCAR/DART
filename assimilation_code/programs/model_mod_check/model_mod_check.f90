@@ -4,30 +4,53 @@
 !
 ! $Id$
 
+!----------------------------------------------------------------------
+!> purpose: test model_mod routines.  this version works for models
+!> with any location type.  depends on a location-specific module
+!> for test_interpolate_single and test_interpolate_range.
+!----------------------------------------------------------------------
+
 program model_mod_check
 
-!----------------------------------------------------------------------
-! purpose: test routines
-!----------------------------------------------------------------------
+use             types_mod, only : r8, i8, missing_r8, metadatalength, MAX_NUM_DOMS
 
-use        types_mod, only : r8, digits12, metadatalength
-use    utilities_mod, only : initialize_utilities, finalize_utilities, nc_check, &
-                             open_file, close_file, find_namelist_in_file, &
-                             check_namelist_read, error_handler, E_MSG
-use     location_mod, only : location_type, set_location, write_location, get_dist, &
-                             query_location, LocationDims, get_location
-use     obs_kind_mod, only : get_name_for_quantity, get_index_for_quantity
-use  assim_model_mod, only : open_restart_read, open_restart_write, close_restart, &
-                             aread_state_restart, awrite_state_restart, &
-                             netcdf_file_type, aoutput_diagnostics, &
-                             init_diag_output, finalize_diag_output
-use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, &
-                             read_time, get_time, set_time,  &
-                             print_date, get_date, &
-                             print_time, write_time, &
-                             operator(-)
-use        model_mod, only : static_init_model, get_model_size, get_state_meta_data
-               !             test_interpolate, get_gridsize
+use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, &
+                                  initialize_utilities, finalize_utilities,     &
+                                  find_namelist_in_file, check_namelist_read,   &
+                                  nc_check, E_MSG, open_file, close_file, do_output
+
+use     mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities
+
+use          location_mod, only : location_type, write_location
+
+use          obs_kind_mod, only : get_index_for_quantity, get_name_for_quantity
+
+use      obs_sequence_mod, only : static_init_obs_sequence
+
+use       assim_model_mod, only : static_init_assim_model
+
+use      time_manager_mod, only : time_type, set_time, print_time, print_date, operator(-)
+
+use  ensemble_manager_mod, only : init_ensemble_manager, ensemble_type
+
+use   state_vector_io_mod, only : state_vector_io_init, read_state, write_state
+
+use   state_structure_mod, only : get_num_domains
+
+use      io_filenames_mod, only : io_filenames_init, file_info_type,       &
+                                  stage_metadata_type, get_stage_metadata, &
+                                  get_restart_filename,                    &
+                                  set_file_metadata, file_info_dump,       &
+                                  set_io_copy_flag, READ_COPY, WRITE_COPY
+
+use distributed_state_mod, only : create_state_window, free_state_window
+
+use             model_mod, only : static_init_model, get_model_size,       &
+                                  get_state_meta_data, model_interpolate
+
+use  test_interpolate_mod, only : test_interpolate_single, test_interpolate_range
+
+use netcdf
 
 implicit none
 
@@ -41,269 +64,365 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! The namelist variables
 !------------------------------------------------------------------
 
-character (len = 129) :: input_file  = 'dart_ics'
-character (len = 129) :: output_file = 'check_me'
-logical               :: advance_time_present = .FALSE.
-logical               :: verbose              = .FALSE.
-integer               :: x_ind = -1
-real(r8), dimension(3) :: loc_of_interest = -1.0_r8
+logical                       :: single_file = .false.
+integer                       :: num_ens = 1
+character(len=256)            :: input_state_files(MAX_NUM_DOMS)  = 'null'
+character(len=256)            :: output_state_files(MAX_NUM_DOMS) = 'null'
+
+integer(i8)                   :: x_ind   = -1
+real(r8), dimension(3)        :: loc_of_interest = -1.0_r8
 character(len=metadatalength) :: kind_of_interest = 'ANY'
+character(len=metadatalength) :: interp_test_vertcoord = 'VERTISHEIGHT'
+logical                       :: verbose = .FALSE.
+integer                       :: test1thru = 1
+real(r8)               :: interp_test_dlat  = 10.0
+real(r8)               :: interp_test_dlon  = 10.0
+real(r8)               :: interp_test_dvert = 10.0
+real(r8), dimension(2) :: interp_test_latrange  = (/   0.0,  120.0 /)
+real(r8), dimension(2) :: interp_test_lonrange  = (/   0.0,  120.0 /)
+real(r8), dimension(2) :: interp_test_vertrange = (/   0.0,  100.0 /)
+real(r8)               :: interp_test_dx = missing_r8
+real(r8)               :: interp_test_dy = missing_r8
+real(r8)               :: interp_test_dz = missing_r8
+real(r8), dimension(2) :: interp_test_xrange = (/ missing_r8, missing_r8 /)
+real(r8), dimension(2) :: interp_test_yrange = (/ missing_r8, missing_r8 /)
+real(r8), dimension(2) :: interp_test_zrange = (/ missing_r8, missing_r8 /)
 
-namelist /model_mod_check_nml/ input_file, output_file, &
-                        advance_time_present, x_ind,    &
-                        loc_of_interest, kind_of_interest, verbose
+namelist /model_mod_check_nml/ x_ind, num_ens,                             &
+                               loc_of_interest,    kind_of_interest,       &
+                               interp_test_dlat,   interp_test_lonrange,   &
+                               interp_test_dlon,   interp_test_latrange,   &
+                               interp_test_dvert,  interp_test_vertrange,  &
+                               interp_test_dx,     interp_test_xrange,     &
+                               interp_test_dy,     interp_test_yrange,     &
+                               interp_test_dz,     interp_test_zrange,     &
+                               verbose, test1thru, interp_test_vertcoord,  &
+                               single_file, input_state_files, output_state_files
+
+! io variables
+integer                   :: iunit, io
+integer, allocatable      :: ios_out(:)
+type(file_info_type)      :: file_info_input, file_info_output
+type(stage_metadata_type) :: input_restart_files, output_restart_files
+logical :: read_time_from_file = .true.
+
+! model state variables
+type(ensemble_type)   :: ens_handle
+
+type(time_type)       :: model_time
+integer               :: mykindindex
+integer(i8)           :: model_size
+real(r8), allocatable :: interp_vals(:)
+
+! misc. variables
+integer :: idom, imem, num_failed, num_domains
+logical :: cartesian = .false.
+
+! error handler strings
+character(len=512) :: my_base, my_desc, my_location
 
 !----------------------------------------------------------------------
-! integer :: numlons, numlats, numlevs
-
-integer :: in_unit, out_unit, ios_out, iunit, io, offset
-integer :: x_size
-integer :: year, month, day, hour, minute, second
-integer :: secs, days
-
-type(time_type)       :: model_time, adv_to_time
-real(r8), allocatable :: statevector(:)
-
-character(len=metadatalength) :: state_meta(1)
-type(netcdf_file_type) :: ncFileID
-
-!----------------------------------------------------------------------
-! This portion checks the geometry information. 
+! This portion checks the geometry information.
 !----------------------------------------------------------------------
 
-call initialize_utilities(progname='model_mod_check', output_flag=verbose)
-call set_calendar_type(GREGORIAN)
-
-write(*,*)
-write(*,*)'Reading the namelist to get the input filename.'
+call initialize_modules_used()
 
 call find_namelist_in_file("input.nml", "model_mod_check_nml", iunit)
 read(iunit, nml = model_mod_check_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_mod_check_nml")
 
-write(*,'(''Converting DART file '',A,'' to restart file '',A)') &
-     trim(input_file), trim(output_file)
+if ( interp_test_dx  /= missing_r8 .or. &
+     interp_test_dy  /= missing_r8 .or. &
+     interp_test_dz  /= missing_r8 ) then
 
-! This harvests all kinds of initialization information
-call static_init_model()
+   ! if the user defines cartesian coordinates just 
+   ! overwrite values for the test_interpolation calls.
 
-! model_mod:get_gridsize() is a trivial routine to write and is not
-! required. If your model_mod:static_init_model() does not have this
-! information written to stdout, do it here.
-if (verbose) then
-!  call get_gridsize(numlons, numlats, numlevs)
-!  write(*,'(''nlons, nlats, nlevs'',3(1x,i10))') numlons,numlats,numlevs
+   interp_test_dlon  = interp_test_dx
+   interp_test_dlat  = interp_test_dy
+   interp_test_dvert = interp_test_dz
+   
+   interp_test_lonrange  = interp_test_xrange 
+   interp_test_latrange  = interp_test_yrange 
+   interp_test_vertrange = interp_test_zrange 
+   
+   cartesian = .true.
 endif
 
-x_size = get_model_size()
-write(*,'(''state vector has length'',i10)') x_size
-allocate(statevector(x_size))
+call print_test_message('RUNNING TEST 1', &
+                        'Reading the namelist and running static_init_model', &
+                        'calling get_model_size()')
+
+call static_init_assim_model()
+
+model_size = get_model_size()
+
+if ( do_output() ) then 
+   write(*,'(A)') '-------------------------------------------------------------'
+   write(*,'(''state vector has length of '',i10)') model_size
+   write(*,'(A)') '-------------------------------------------------------------'
+endif
+
+call print_test_message('FINISHED TEST 1')
+write(*,'(A)') 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+write(*,'(A)') 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+
+if ( test1thru == 1 ) call exit(0)
+
+
+call print_test_message('RUNNING TEST 2', &
+                        'Read and write trivial restart file')
+
+! Set up the ensemble storage and read in the restart file
+call init_ensemble_manager(ens_handle, num_ens, model_size)
+
+! Initialize input file info
+call io_filenames_init(file_info_input,             &
+                       num_copies   = num_ens,      &
+                       cycling      = single_file,  &
+                       single_file  = single_file,  & 
+                       restart_list = input_state_files)
+
+do imem = 1, num_ens
+   write(my_base,'(A,I2)') 'inens_',    imem
+   write(my_desc,'(A,I2)') 'input ens', imem
+   call set_file_metadata(file_info_input,                          &
+                          cnum     = imem,                          &
+                          fnames   = (/input_state_files(imem)/),  &
+                          basename = my_base,                       &
+                          desc     = my_desc)
+   
+   call set_io_copy_flag(file_info_input, &
+                         cnum    = imem,     &
+                         io_flag = READ_COPY)
+enddo
+
+! Initialize output file info
+call io_filenames_init(file_info_output,           &
+                       num_copies   = num_ens,     &
+                       cycling      = single_file, &
+                       single_file  = single_file, &
+                       restart_list = output_state_files)
+      
+do imem = 1, num_ens
+   write(my_base,'(A,I2)') 'outens_',    imem
+   write(my_desc,'(A,I2)') 'output ens', imem
+   call set_file_metadata(file_info_output,                          & 
+                          cnum     = imem,                           &
+                          fnames   = (/output_state_files(imem)/),  &
+                          basename = my_base,                        &
+                          desc     = my_desc)
+   
+   call set_io_copy_flag(file_info_output,    &
+                         cnum    = imem,      &
+                         io_flag = WRITE_COPY)  
+enddo
+
+!call file_info_dump(file_info_input, 'mmc')
 
 !----------------------------------------------------------------------
-! Write a supremely simple restart file. Most of the time, I just use
-! this as a starting point for a Matlab function that replaces the 
-! values with something more complicated.
+! Open a test netcdf initial conditions file.
+!----------------------------------------------------------------------
+input_restart_files = get_stage_metadata(file_info_input)
+num_domains         = get_num_domains()
+
+do idom = 1, num_domains
+do imem = 1, num_ens
+   if ( do_output() ) then
+      write(*,'(A)')  ''
+      write(*,'(A)')  '-------------------------------------------------------------'
+      write(*,'(2A)') '- Reading File : ', trim(get_restart_filename(input_restart_files, imem, domain=idom))
+      write(*,'(A)')  '-------------------------------------------------------------'
+   endif
+enddo
+enddo
+
+call read_state(ens_handle, file_info_input, read_time_from_file, model_time)
+
+output_restart_files = get_stage_metadata(file_info_output)
+do idom = 1, num_domains
+do imem = 1, num_ens
+   if ( do_output() ) then
+      write(*,'(A)')  ''
+      write(*,'(A)')  '-------------------------------------------------------------'
+      write(*,'(2A)') '- Writing File : ', trim(get_restart_filename(output_restart_files, imem, domain=idom))
+      write(*,'(A)')  '-------------------------------------------------------------'
+   endif
+enddo
+enddo
+
+call write_state(ens_handle, file_info_output)
+
+! print date does not work when a model does not have a calendar
+!write(*,'(A)') '-- printing model date --------------------------------------'
+!call print_date( model_date,' model_mod_check:model date')
+write(*,'(A)') '-- printing model time --------------------------------------'
+call print_time( model_time,' model_mod_check:model time')
+write(*,'(A)') '-------------------------------------------------------------'
+write(*,'(A)') ''
+
+call print_test_message('FINISHED TEST 2')
+write(*,'(A)') 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+write(*,'(A)') 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+
+if ( test1thru == 2 ) call exit(0)
+
+!----------------------------------------------------------------------
+! Check the meta data
 !----------------------------------------------------------------------
 
-write(*,*)
-write(*,*)'Writing a trivial restart file.'
+call print_test_message('RUNNING TEST 3', &
+                        'Testing get_state_meta_data')
 
-statevector = 1.0_r8;
-model_time  = set_time(21600, 149446)   ! 06Z 4 March 2010
-
-iunit = open_restart_write('allones.ics')
-call awrite_state_restart(model_time, statevector, iunit)
-call close_restart(iunit)
-
-!----------------------------------------------------------------------
-! Open a test DART initial conditions file.
-! Reads the valid time, the state, and (possibly) a target time.
-!----------------------------------------------------------------------
-
-write(*,*)
-write(*,*)'Reading the restart file '//trim(input_file)
-
-iunit = open_restart_read(input_file)
-if ( advance_time_present ) then
-   call aread_state_restart(model_time, statevector, iunit, adv_to_time)
+if ( x_ind >= 1 .and. x_ind <= model_size ) then
+   call check_meta_data( x_ind )
 else
-   call aread_state_restart(model_time, statevector, iunit)
+   if ( do_output() )  then
+      write(*,'(A)') '-------------------------------------------------------------'
+      write(*,'(A)') "x_ind = ", x_ind, " is not in valid range 1-", model_size
+      write(*,'(A)') '-------------------------------------------------------------'
+   endif
 endif
 
-call close_restart(iunit)
-call print_date( model_time,'model_mod_check:model date')
-call print_time( model_time,'model_mod_check:model time')
+call print_test_message('FINISHED TEST 3')
+write(*,'(A)') 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+write(*,'(A)') 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 
-!----------------------------------------------------------------------
-! Output the state vector to a netCDF file ...
-! This is the same procedure used by 'perfect_model_obs' & 'filter'
-! init_diag_output()
-! aoutput_diagnostics()
-! finalize_diag_output()
-!----------------------------------------------------------------------
-
-write(*,*)
-write(*,*)'Exercising the netCDF routines.'
-write(*,*)'Creating '//trim(output_file)//'.nc'
-
-state_meta(1) = 'restart test'
-ncFileID = init_diag_output(trim(output_file),'just testing a restart', 1, state_meta)
-
-call aoutput_diagnostics(ncFileID, model_time, statevector, 1)
-
-call nc_check( finalize_diag_output(ncFileID), 'model_mod_check:main', 'finalize')
+if ( test1thru == 3 ) call exit(0)
 
 !----------------------------------------------------------------------
 ! Check the interpolation - print initially to STDOUT
 !----------------------------------------------------------------------
-! Use 500 mb ~ level 30 (in the 42-level version)
 
-!write(*,*)
-!write(*,*)'Testing the interpolation ...'
+call print_test_message('RUNNING TEST 4', &
+                        'Testing loc_of_interest for model_interpolate')
 
-! call test_interpolate(statevector, test_pressure=500.0_r8, &
-!                       start_lon=142.5_r8)
-
-!----------------------------------------------------------------------
-! Checking get_state_meta_data (and get_state_indices, get_state_kind)
-! nx = 144; ny=72; nz=42; produce the expected values :
-!  U(       1 :  435456)
-!  V(  435457 :  870912)
-!  T(  870913 : 1306368)
-!  Q( 1306369 : 1741824)
-! PS( 1741825 : 1752193)    (only 144x72)
-!----------------------------------------------------------------------
-
-if ( x_ind > 0 .and. x_ind <= x_size ) call check_meta_data( x_ind )
-
-!----------------------------------------------------------------------
-! Trying to find the state vector index closest to a particular ...
-! Checking for valid input is tricky ... we don't know much. 
-!----------------------------------------------------------------------
-
-if ( loc_of_interest(1) > 0.0_r8 ) call find_closest_gridpoint( loc_of_interest )
-
-
-call error_handler(E_MSG, 'model_mod_check', 'FINISHED successfully.',&
-                   source,revision,revdate)
-call finalize_utilities()
-
-
-contains
-
-
-subroutine check_meta_data( iloc )
-
-integer, intent(in) :: iloc
-type(location_type) :: loc
-integer             :: var_type
-character(len=129)  :: string1
-
-write(*,*)
-write(*,*)'Checking metadata routines.'
-
-call get_state_meta_data(iloc, loc, var_type)
-
-call write_location(42, loc, fform='formatted', charstring=string1)
-write(*,*)' indx ',iloc,' is type ',var_type,trim(string1)
-
-end subroutine check_meta_data
-
-
-
-subroutine find_closest_gridpoint( loc_of_interest )
-! Simple exhaustive search to find the indices into the 
-! state vector of a particular lon/lat/level. They will 
-! occur multiple times - once for each state variable.
-real(r8), dimension(:), intent(in) :: loc_of_interest
-
-type(location_type) :: loc0, loc1
-integer  :: mykindindex
-integer  :: i, var_type, which_vert
-real(r8) :: closest, rlon, rlat, rlev
-real(r8), allocatable, dimension(:) :: thisdist
-real(r8), dimension(LocationDims) :: rloc
-character(len=32) :: kind_name
-logical :: matched
-
-! Check user input ... if there is no 'vertical' ...  
-if ( (count(loc_of_interest >= 0.0_r8) < 3) .or. &
-     (LocationDims < 3 ) ) then
-   write(*,*)
-   write(*,*)'Interface not fully implemented.' 
-   return
-endif
-
-write(*,*)
-write(*,'(''Checking for the indices into the state vector that are at'')')
-write(*,'(''lon/lat/lev'',2(1x,f10.5),1x,f17.7)')loc_of_interest(1:LocationDims)
-
-allocate( thisdist(get_model_size()) )
-thisdist  = 9999999999.9_r8         ! really far away 
-matched   = .false.
-
-! Trying to support the ability to specify matching a particular KIND.
-! With staggered grids, the closest gridpoint might not be of the kind
-! you are interested in. mykindindex = -1 means anything will do.
+call create_state_window(ens_handle)
 
 mykindindex = get_index_for_quantity(kind_of_interest)
 
-rlon = loc_of_interest(1)
-rlat = loc_of_interest(2)
-rlev = loc_of_interest(3)
+allocate(interp_vals(num_ens), ios_out(num_ens))
 
-! Since there can be/will be multiple variables with
-! identical distances, we will just cruise once through 
-! the array and come back to find all the 'identical' values.
-do i = 1,get_model_size()
+num_failed = test_interpolate_single( ens_handle,            &
+                                      num_ens,               &
+                                      interp_test_vertcoord, &
+                                      loc_of_interest(1),    &
+                                      loc_of_interest(2),    &
+                                      loc_of_interest(3),    &
+                                      mykindindex,           &
+                                      interp_vals,           &
+                                      ios_out )
 
-   ! Really inefficient, but grab the 'which_vert' from the
-   ! grid and set our target location to have the same.
-   ! Then, compute the distance and compare.
+call print_test_message('FINISHED TEST 4')
+write(*,'(A)') 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+write(*,'(A)') 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 
-   call get_state_meta_data(i, loc1, var_type)
+if ( test1thru == 4 ) call exit(0)
 
-   if ( (var_type == mykindindex) .or. (mykindindex < 0) ) then
-      which_vert  = nint( query_location(loc1) )
-      loc0        = set_location(rlon, rlat, rlev, which_vert)
-      thisdist(i) = get_dist( loc1, loc0, no_vert= .true. )
-      matched     = .true.
-   endif
+call print_test_message('RUNNING TEST 5', &
+                        'Testing range of data for model_interpolate')
+write(*,'(A)') ''
 
-enddo
+num_failed = test_interpolate_range( ens_handle,            &
+                                     num_ens,               &
+                                     interp_test_dlon,      &
+                                     interp_test_dlat,      &
+                                     interp_test_dvert,     &
+                                     interp_test_vertcoord, &
+                                     interp_test_lonrange,  &
+                                     interp_test_latrange,  &
+                                     interp_test_vertrange, &
+                                     mykindindex,           &
+                                     verbose )
 
-closest = minval(thisdist)
+call print_test_message('FINISHED TEST 5')
+write(*,'(A)') 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+write(*,'(A)') 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 
-if (.not. matched) then
-   write(*,*)'No state vector elements of type '//trim(kind_of_interest)
-   return
+! finalize model_mod_check
+
+write(*,'(A)') ''
+write(*,'(A)') '-------------------------------------------------------------'
+write(*,'(A)') '- model_mod_check Finished successfully                      '
+write(*,'(A)') '-------------------------------------------------------------'
+
+call finalize_mpi_utilities()
+
+!----------------------------------------------------------------------
+
+contains
+
+!----------------------------------------------------------------------
+subroutine check_meta_data( iloc )
+
+integer(i8), intent(in) :: iloc
+
+type(location_type) :: loc
+integer             :: var_type
+
+call get_state_meta_data(iloc, loc, var_type)
+
+if ( do_output() ) then
+   write(*,'(A)')  ''
+   write(*,'(A)') '-------------------------------------------------------------'
+   write(*,'("index = ",I10,", has variable type : ", I4," ", A)') &
+      iloc, var_type, trim(get_name_for_quantity(var_type))
+   write(*,'(A)') '-------------------------------------------------------------'
+endif 
+
+end subroutine check_meta_data
+
+!----------------------------------------------------------------------
+
+subroutine initialize_modules_used()
+
+! Standard initialization (mpi not needed to use ensemble manager
+! since we are enforcing that this run as a single task).
+call initialize_mpi_utilities('model_mod_check')
+
+! Initialize modules used that require it
+call register_module(source,revision,revdate)
+
+! Initialize modules used that require it
+call static_init_obs_sequence()
+
+call state_vector_io_init()
+
+end subroutine initialize_modules_used
+
+!----------------------------------------------------------------------
+
+subroutine print_test_message(test_msg, msg1, msg2, msg3)
+
+character(len=*), intent(in) :: test_msg
+character(len=*), intent(in), optional :: msg1
+character(len=*), intent(in), optional :: msg2
+character(len=*), intent(in), optional :: msg3
+
+character(len=15) :: my_msg
+character(len=64) :: msg_string
+character(len=64) :: msg_close
+
+my_msg = test_msg
+
+if ( do_output() ) then
+   write(*,'(A)') ''
+   write(*,'(A)') ''
+   write(msg_string,'(3A)') '******************** ', my_msg,    ' *************************'
+   write(msg_close ,'(A)' ) '**************************************************************'
+
+                        write(*,'(A)') trim(msg_string)
+   if ( present(msg1) ) write(*,'(2A)') ' -- ', trim(msg1)
+   if ( present(msg2) ) write(*,'(2A)') ' -- ', trim(msg2)
+   if ( present(msg3) ) write(*,'(2A)') ' -- ', trim(msg3)
+   if ( present(msg1) ) write(*,'(A)') trim(msg_close)
+
 endif
 
-! Now that we know the distances ... report 
+end subroutine print_test_message
 
-matched = .false.
-do i = 1,get_model_size()
 
-   if ( thisdist(i) == closest ) then
-      call get_state_meta_data(i, loc1, var_type)
-      rloc      = get_location(loc1)
-      if (nint(rloc(3)) == nint(rlev)) then
-         kind_name = get_name_for_quantity(var_type)
-         write(*,'(''lon/lat/lev'',3(1x,f10.5),'' is index '',i10,'' for '',a)') &
-             rloc, i, trim(kind_name)
-         matched = .true.
-      endif
-   endif
-
-enddo
-
-if ( .not. matched ) then
-   write(*,*)'Nothing matched the vertical.'
-endif
-
-deallocate( thisdist )
-
-end subroutine find_closest_gridpoint
+!----------------------------------------------------------------------
 
 
 end program model_mod_check

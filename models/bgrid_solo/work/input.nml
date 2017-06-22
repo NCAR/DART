@@ -80,6 +80,11 @@
    silence                      = .false.,
    /
 
+&quality_control_nml
+   input_qc_threshold    =  3.0,
+   outlier_threshold     = -1.0,
+   /
+
 &state_vector_io_nml
    single_precision_output    = .false.,
    /
@@ -347,21 +352,21 @@
    /
 
 &model_mod_check_nml
+   num_ens               = 1
+   single_file           = .true.
+   input_state_files     = 'filter_input.nc'
+   output_state_files    = 'check_me.nc'
    verbose               = .false.
    test1thru             = 5
    x_ind                 = 720
-   kind_of_interest      = 'QTY_SURFACE_PRESSURE'
+   kind_of_interest      = 'QTY_TEMPERATURE'
    loc_of_interest       = 287.5, 82.48, 0.35
    interp_test_lonrange  = 0.0, 359.0
    interp_test_dlon      = 1.0
    interp_test_latrange  = -89.0, 89.0
    interp_test_dlat      = 1.0
-   interp_test_vertrange = -1.0, 12.0
-   interp_test_dvert     = 1.0
+   interp_test_vertrange = 1.0, 5.0
+   interp_test_dvert     = 0.5
    interp_test_vertcoord = 'VERTISLEVEL'
    /
 
-&quality_control_nml
-   input_qc_threshold    =  3.0,
-   outlier_threshold     = -1.0,
-   /

@@ -22,8 +22,9 @@ assimilation_code/modules/observations/obs_kind_mod.f90
 assimilation_code/modules/observations/obs_sequence_mod.f90
 assimilation_code/modules/utilities/distributed_state_mod.f90
 assimilation_code/modules/utilities/ensemble_manager_mod.f90
-assimilation_code/modules/utilities/netcdf_utilities_mod.f90
 assimilation_code/modules/utilities/mpi_utilities_mod.f90
+assimilation_code/modules/utilities/netcdf_utilities_mod.f90
+assimilation_code/modules/utilities/no_cray_win_mod.f90
 assimilation_code/modules/utilities/obs_impact_mod.f90
 assimilation_code/modules/utilities/parse_args_mod.f90
 assimilation_code/modules/utilities/random_seq_mod.f90
@@ -31,9 +32,8 @@ assimilation_code/modules/utilities/sort_mod.f90
 assimilation_code/modules/utilities/time_manager_mod.f90
 assimilation_code/modules/utilities/types_mod.f90
 assimilation_code/modules/utilities/utilities_mod.f90
+assimilation_code/programs/model_mod_check/model_mod_check.f90
 models/cm1/model_mod.f90
-models/model_mod_tools/model_mod_check.f90
 models/model_mod_tools/test_interpolate_threed_cartesian.f90
 models/utilities/default_model_mod.f90
 observations/forward_operators/obs_def_mod.f90
-assimilation_code/modules/utilities/no_cray_win_mod.f90

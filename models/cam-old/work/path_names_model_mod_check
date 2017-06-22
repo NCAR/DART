@@ -31,6 +31,7 @@ assimilation_code/modules/utilities/time_manager_mod.f90
 assimilation_code/modules/utilities/types_mod.f90
 assimilation_code/modules/utilities/utilities_mod.f90
 assimilation_code/programs/filter/filter.f90
+assimilation_code/programs/model_mod_check/model_mod_check.f90
 models/cam/model_mod.f90
 models/model_mod_tools/test_interpolate_threed_sphere.f90
 observations/forward_operators/obs_def_mod.f90

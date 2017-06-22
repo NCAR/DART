@@ -318,9 +318,8 @@
    difference_method      = 4,
  /
 &model_mod_check_nml 
-   input_file           = "dart_ics",        
-   output_file          = "check_me",
-   advance_time_present = .FALSE.,
+   input_state_files    = "dart_ics.nc",        
+   output_state_files   = "check_me.nc",
    x_ind                = 10000,
    loc_of_interest      = -1.0, -1.0, -1.0,
    kind_of_interest     = 'ANY'

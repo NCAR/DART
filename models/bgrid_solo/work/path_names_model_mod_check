@@ -32,6 +32,7 @@ assimilation_code/modules/utilities/sort_mod.f90
 assimilation_code/modules/utilities/time_manager_mod.f90
 assimilation_code/modules/utilities/types_mod.f90
 assimilation_code/modules/utilities/utilities_mod.f90
+assimilation_code/programs/model_mod_check/model_mod_check.f90
 models/bgrid_solo/fms_src/atmos_bgrid/driver/solo/atmosphere.f90
 models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_advection.f90
 models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_conserve_energy.f90
@@ -70,7 +71,6 @@ models/bgrid_solo/fms_src/shared/topography/gaussian_topog.f90
 models/bgrid_solo/fms_src/shared/topography/topography.f90
 models/bgrid_solo/fms_src/shared/tracer_manager/tracer_manager.F90
 models/bgrid_solo/model_mod.f90
-models/model_mod_tools/model_mod_check.f90
 models/model_mod_tools/test_interpolate_threed_sphere.f90
 models/utilities/default_model_mod.f90
 observations/forward_operators/obs_def_mod.f90

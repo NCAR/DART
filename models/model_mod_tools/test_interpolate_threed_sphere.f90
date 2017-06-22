@@ -106,11 +106,11 @@ test_interpolate_range = 0
 
 if ((interp_test_dlon < 0.0_r8) .or. (interp_test_dlat < 0.0_r8)) then
    if ( do_output() ) then
-      write(*,*)'Skipping the rigorous interpolation test because one of'
-      write(*,*)'interp_test_dlon,interp_test_dlat are < 0.0'
-      write(*,*)'interp_test_dlon  = ',interp_test_dlon
-      write(*,*)'interp_test_dlat  = ',interp_test_dlat
-      write(*,*)'interp_test_dvert = ',interp_test_dvert
+      write(*,'(A)')    'Skipping the rigorous interpolation test because one of'
+      write(*,'(A)')    'interp_test_dlon,interp_test_dlat are < 0.0'
+      write(*,'(A,I2)') 'interp_test_dlon  = ',interp_test_dlon
+      write(*,'(A,I2)') 'interp_test_dlat  = ',interp_test_dlat
+      write(*,'(A,I2)') 'interp_test_dvert = ',interp_test_dvert
    endif
    return
 endif
@@ -171,8 +171,10 @@ write(iunit,'(''datmat(datmat == missingvals) = NaN;'')')
 call close_file(iunit)
 
 if ( do_output() ) then
-   write(*,*) 'total interpolations  : ', nlon*nlat*nvert
-   write(*,*) 'failed interpolations : ', nfailed
+   write(*,'(A)')     '-------------------------------------------------------------'
+   write(*,'(A,I10)') 'total  interpolations : ', nlon*nlat*nvert
+   write(*,'(A,I10)') 'failed interpolations : ', nfailed
+   write(*,'(A)')     '-------------------------------------------------------------'
 endif
 
 call count_error_codes(all_ios_out, nfailed)
@@ -305,6 +307,7 @@ integer :: test_interpolate_single
 
 type(location_type) :: loc
 integer :: imem, num_passed, vertcoord
+character(len=128) :: my_location
 
 num_passed = 0
 
@@ -312,16 +315,31 @@ vertcoord = get_location_index(vertcoord_string)
 
 loc = set_location(lonval, latval, vertval, vertcoord)
 
+if ( do_output() ) then
+   call write_location(0, loc, charstring=my_location)
+   write(*,'(A)') ''
+   write(*,'(A)') '-------------------------------------------------------------'
+   write(*,'("interpolating at ",A)') trim(my_location)
+   write(*,'(A)') '-------------------------------------------------------------'
+   write(*,'(A)') ''
+endif
+
 call model_interpolate(ens_handle, ens_size, loc, mykindindex, interp_vals, ios_out)
 
 do imem = 1, ens_size
    if (ios_out(imem) == 0 ) then
-      if (do_output() ) &
-         write(*,*) 'member ', imem, 'model_interpolate SUCCESS with value', interp_vals(imem)
-      num_passed = num_passed + 1
+      if (do_output() ) then
+         write(*,'(A)') '-------------------------------------------------------------'
+         write(*,'("member ",I3,", model_interpolate SUCCESS with value ",F10.3)') imem, interp_vals(imem)
+         write(*,'(A)') '-------------------------------------------------------------'
+         num_passed = num_passed + 1
+      endif
    else
-      if (do_output() ) &
-         write(*,*) 'member ', imem, 'model_interpolate ERROR with error code', ios_out(imem)
+      if (do_output() ) then
+         write(*,'(A)') '-------------------------------------------------------------'
+         write(*,'("member ",I3,", model_interpolate ERROR with error code",I2  )') imem, ios_out(imem)
+         write(*,'(A)') '-------------------------------------------------------------'
+      endif
    endif
 enddo
 

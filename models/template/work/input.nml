@@ -182,9 +182,8 @@
    /
 
 &model_mod_check_nml
-   input_file            = 'allones.ics'
-   output_file           = 'check_me'
-   advance_time_present  = .false.
+   input_state_files     = 'allones.nc'
+   output_state_files    = 'check_me.nc'
    x_ind                 = 1
    loc_of_interest       = 0.42
    kind_of_interest      = 'ANY'

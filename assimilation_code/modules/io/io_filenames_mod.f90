@@ -488,8 +488,8 @@ file_info%stage_metadata%copy_name(     cnum) = trim(basename)
 
 ! check that the number of domains matches the size of file names provided
 if (get_num_domains() /= size(fnames(:),1)) then
-   write(msgstring,'(A,I2,A,I2)') 'num domains ', get_num_domains(), &
-                                  ' /= size(fnames) : ', size(fnames(:),1)
+   write(msgstring,'(A,I2,A,I2)') 'The number of domains, ', get_num_domains(), &
+                                  ', does not match the number of filenames, ', size(fnames(:),1)
    call error_handler(E_ERR, 'set_explicit_file_metadata', msgstring, &
                       source, revision, revdate)
 endif
@@ -1050,33 +1050,33 @@ end subroutine set_io_copy_flag_range
 
 !-------------------------------------------------------
 !> Set whether a copy should be read/written for a single
-!> copy c.  Optional argument to set if the
+!> copy cnum.  Optional argument to set if the
 !> copy could have units and if the variables should be
 !> clamped.  If this information is available it grabs
 !> it from the state structure and stores it in files
 !> created from scratch.
 
 
-subroutine set_io_copy_flag_single(file_info, c, io_flag, inherit_units, &
+subroutine set_io_copy_flag_single(file_info, cnum, io_flag, inherit_units, &
                                    clamp_vars, force_copy_back)
 
 type(file_info_type),      intent(inout) :: file_info     !< stage name handle
-integer,                   intent(in)    :: c             !< start copy to read
+integer,                   intent(in)    :: cnum          !< start copy to read
 integer,                   intent(in)    :: io_flag       !< read = 1, write = 2, read/write = 3
 logical, optional,         intent(in)    :: inherit_units !< inherit units from state structure
 logical, optional,         intent(in)    :: clamp_vars
 logical, optional,         intent(in)    :: force_copy_back
 
-if (c <=0) return
+if (cnum <=0) return
 
-file_info%stage_metadata%io_flag(c)   = io_flag
+file_info%stage_metadata%io_flag(cnum)   = io_flag
 
 if(present(inherit_units)  ) &
-   file_info%stage_metadata%inherit_units( c) = inherit_units
+   file_info%stage_metadata%inherit_units(   cnum ) = inherit_units
 if(present(clamp_vars) ) &
-   file_info%stage_metadata%clamp_vars(c) = clamp_vars
+   file_info%stage_metadata%clamp_vars(      cnum ) = clamp_vars
 if(present(force_copy_back) ) &
-   file_info%stage_metadata%force_copy_back(c) = force_copy_back
+   file_info%stage_metadata%force_copy_back( cnum ) = force_copy_back
 
 end subroutine set_io_copy_flag_single
 

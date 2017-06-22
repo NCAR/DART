@@ -283,8 +283,8 @@
   kind_of_interest      = 'QTY_TEMPERATURE'
   loc_of_interest       = 1000.0, 500.0, 120.0
   num_ens               = 1
-  restart_in_file_names  = 'dart_ics.nc'
-  restart_out_file_names = 'cm1_output'
+  input_state_files     = 'dart_ics.nc'
+  output_state_files    = 'cm1_output.nc'
   test1thru             = 4
   verbose               = .true.
   verbose               = .true.
