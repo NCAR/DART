@@ -1,5 +1,10 @@
-"""
+# This code may (or may not) be part of the CESM distribution,
+# So it is not protected by the DART copyright agreement. 
+
+# DART $Id$
+
 short term archiving
+"""
 """
 
 import shutil, glob, re, os
@@ -453,3 +458,8 @@ def case_st_archive(case):
             submit(case, resubmit=True)
 
     return True
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$ -->
