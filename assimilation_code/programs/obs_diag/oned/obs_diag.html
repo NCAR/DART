@@ -258,23 +258,23 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;obs_diag_nml
-   obs_sequence_name     = 'obs_seq.final',
-   obs_sequence_list     = '',
-   bin_width_days        = -1,
-   bin_width_seconds     = -1,
-   init_skip_days        = 0,
-   init_skip_seconds     = 0,
-   max_num_bins          = 9999,
-   trusted_obs           = 'null',
-   Nregions              = 3,
-   lonlim1               = 0.00, 0.00, 0.50, -1.0,
-   lonlim2               = 1.01, 0.50, 1.01, -1.0,
-   reg_names             = 'whole', 'yin', 'yang', 'bogus',
-   create_rank_histogram = .true.,
-   outliers_in_histogram = .true.,
-   use_zero_error_obs    = .false.,
+   obs_sequence_name     = 'obs_seq.final'
+   obs_sequence_list     = ''
+   bin_width_days        = -1
+   bin_width_seconds     = -1
+   init_skip_days        = 0
+   init_skip_seconds     = 0
+   max_num_bins          = 9999
+   trusted_obs           = 'null'
+   Nregions              = 3
+   lonlim1               = 0.0, 0.0, 0.5
+   lonlim2               = 1.0, 0.5, 1.0
+   reg_names             = 'whole', 'yin', 'yang'
+   create_rank_histogram = .true.
+   outliers_in_histogram = .true.
+   use_zero_error_obs    = .false.
    verbose               = .false.
-   /
+  /
 </pre>
 </div>
 
@@ -290,7 +290,8 @@ An observation with a location exactly ON a region boundary cannot
 <blockquote>if((lon &ge; lon1) .and. (lon &lt; lon2)) keeper = .true.</blockquote>
 <br />
 <P>
-   Consequently, if you want to include an observation precisely AT 1.0, (for example),    you need to specify something a little larger than 1.0.<br /><br />
+   Consequently, if you want to include an observation precisely AT 1.0, (for example),
+   you need to specify something a little larger than 1.0.<br /><br />
    You can only specify <strong>either</strong>
    <em class="code">obs_sequence_name</em>
    <strong>or</strong>
@@ -361,7 +362,7 @@ An observation with a location exactly ON a region boundary cannot
 <TR><TD> Nregions </TD>
     <TD> integer </TD>
     <TD>The number of regions for the unit circle for which you'd like
-    observation-space diagnostics. If 4 is not enough increase
+    observation-space diagnostics. If 3 is not enough increase
     <em class=code>MaxRegions</em> in <em class=file>obs_diag.f90</em>
     and recompile.
 </TD></TR>

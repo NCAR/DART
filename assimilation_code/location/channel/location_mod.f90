@@ -4,6 +4,8 @@
 !
 ! $Id$
 
+!>@todo the channel location_mod.html needs to be written.
+
 module location_mod
 
 ! Implements location interfaces for a 3d channel in X,Y,Z where X is periodic,
@@ -134,7 +136,8 @@ integer :: filled           = 10   ! threshold at which you quit splitting
 logical :: use_octree       = .false.  ! if false, use regular boxes, true = octree
 
 ! Option for verification using exhaustive search
-logical :: compare_to_correct = .true.    ! normally false
+! .true. means recompute everything - expensive
+logical :: compare_to_correct = .false.
 
 namelist /location_nml/ &
    filled, nboxes, maxdepth, use_octree, &

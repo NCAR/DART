@@ -3,16 +3,17 @@
    ny                  = 10
    nz                  = 10
    x_is_periodic       = .false.
-   min_x_for_periodic  = 0.0
-   max_x_for_periodic  = 1.0
+   min_x_for_periodic  = -888888.0
+   max_x_for_periodic  = -888888.0
    y_is_periodic       = .false.
-   min_y_for_periodic  = 0.0
-   max_y_for_periodic  = 1.0
+   min_y_for_periodic  = -888888.0
+   max_y_for_periodic  = -888888.0
    z_is_periodic       = .false.
-   min_z_for_periodic  = 0.0
-   max_z_for_periodic  = 1.0
+   min_z_for_periodic  = -888888.0
+   max_z_for_periodic  = -888888.0
    compare_to_correct  = .false.
    output_box_info     = .false.
    print_box_level     = 0
-/
+   debug               = 0
+  /
 

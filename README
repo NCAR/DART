@@ -22,7 +22,7 @@ A slightly more advanced tutorial in PDF format is in the documentationb/tutoria
 subdirectory.  Start with the index file which explains what each subsection covers.
 
 The DART Manhattan release documentation is on the web:
- http://www.image.ucar.edu/DAReS/DART/Manhattan_release.html
+http://www.image.ucar.edu/DAReS/DART/Manhattan/documentation/html/Manhattan_release.html
 
 and also in the subversion tree here at:
  documentation/html/Manhattan_release.html

@@ -1,17 +1,18 @@
 &location_nml
-   horiz_dist_only                 = .true.,
-   vert_normalization_pressure     = 100000.0, 
-   vert_normalization_height       = 10000.0,
-   vert_normalization_level        = 20.0,
-   vert_normalization_scale_height = 5.0,
-   approximate_distance            = .false.,
-   nlon                            = 71,
-   nlat                            = 36,
-   output_box_info                 = .false.,
-   special_vert_normalization_obs_types     = ''
-   special_vert_normalization_pressures     = 100000.0
-   special_vert_normalization_heights       = 10000.0
-   special_vert_normalization_levels        = 20.0
-   special_vert_normalization_scale_heights = 5.0
-/
+   horiz_dist_only                 = .true.
+   vert_normalization_pressure     = 100000.0
+   vert_normalization_height       = 10000.0
+   vert_normalization_level        = 20.0
+   vert_normalization_scale_height = 5.0
+   approximate_distance            = .false.
+   nlon                            = 71
+   nlat                            = 36
+   output_box_info                 = .false.
+   print_box_level                 = 0
+   special_vert_normalization_obs_types     = 'null'
+   special_vert_normalization_pressures     = -888888.0
+   special_vert_normalization_heights       = -888888.0
+   special_vert_normalization_levels        = -888888.0
+   special_vert_normalization_scale_heights = -888888.0
+  /
 

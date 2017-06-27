@@ -182,7 +182,6 @@ logical :: COMPARE_TO_CORRECT = .false.    ! normally false
 !                                    to one radian in horizontal
 ! vert_normalization_scale_height -> Number scale heights that give a distance 
 !                                    equivalent to one radian in horizontal
-! maintain_original_vert          -> DEPRECATED.  use the special values now.
 ! approximate_distance            -> Use a faster table lookup for the trig math.
 !                                    Works well for global models and large areas,
 !                                    and improves performance.  For smaller regions
@@ -205,25 +204,25 @@ real(r8) :: vert_normalization_pressure     = 100000.0_r8
 real(r8) :: vert_normalization_height       = 10000.0_r8
 real(r8) :: vert_normalization_level        = 20.0_r8
 real(r8) :: vert_normalization_scale_height = 5.0_r8
-logical  :: maintain_original_vert          = .false. 
 logical  :: approximate_distance            = .false.
 integer  :: nlon                            = 71
 integer  :: nlat                            = 36
 logical  :: output_box_info                 = .false.
 integer  :: print_box_level                 = 0
 
+!>@todo make these allocatable instead of fixed length
 integer, parameter :: MAX_ITEMS = 500
-character(len=OBSTYPELENGTH) :: special_vert_normalization_obs_types(MAX_ITEMS) 
-real(r8) :: special_vert_normalization_pressures(MAX_ITEMS) 
-real(r8) :: special_vert_normalization_heights(MAX_ITEMS) 
-real(r8) :: special_vert_normalization_levels(MAX_ITEMS) 
-real(r8) :: special_vert_normalization_scale_heights(MAX_ITEMS) 
+character(len=OBSTYPELENGTH) :: special_vert_normalization_obs_types(MAX_ITEMS)
+real(r8) :: special_vert_normalization_pressures(MAX_ITEMS)
+real(r8) :: special_vert_normalization_heights(MAX_ITEMS)
+real(r8) :: special_vert_normalization_levels(MAX_ITEMS)
+real(r8) :: special_vert_normalization_scale_heights(MAX_ITEMS)
 
 
 namelist /location_nml/ horiz_dist_only, vert_normalization_pressure, &
    vert_normalization_height, vert_normalization_level,               &
    vert_normalization_scale_height, approximate_distance, nlon, nlat, &
-   output_box_info, print_box_level, maintain_original_vert,          &
+   output_box_info, print_box_level, &
    special_vert_normalization_obs_types, special_vert_normalization_pressures, &
    special_vert_normalization_heights, special_vert_normalization_levels, &
    special_vert_normalization_scale_heights
@@ -279,16 +278,6 @@ if(do_nml_term()) write(     *     , nml=location_nml)
 
 call error_handler(E_MSG, 'location_mod:', 'using code with optimized cutoffs', &
                    source, revision, revdate)
-
-! Stop supporting this now that you can specify per-type vertical normalization factors
-if (maintain_original_vert) then
-   write(msgstring, '(A)') 'namelist item "maintain_original_vert" is deprecated'
-   write(msgstring1, '(A)') 'use the per-type vertical normalization settings now'
-   write(msgstring2, '(A)') 'remove it from the namelist, or set it to .false. to continue'
-   call error_handler(E_ERR, 'location_mod', msgstring, &
-                      source, revision, revdate, text2=msgstring1, text3=msgstring2)
-
-endif
 
 ! Simple error checking for nlon, nlat to be sure we can use them for allocations.
 if (nlon < 1 .or. nlat < 1) then

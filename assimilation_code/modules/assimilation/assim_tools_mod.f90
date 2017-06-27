@@ -162,8 +162,6 @@ logical  :: allow_missing_in_clm = .false.
 
 ! False by default; if true, expect to read in an ascii table
 ! to adjust the impact of obs on other state vector and obs values.
-! for now, remove the 'allow_any_impact_values' flag from the namelist.
-! only 0 and 1 are valid values with the defaults. 
 logical            :: adjust_obs_impact  = .false.
 character(len=256) :: obs_impact_filename = ''
 logical            :: allow_any_impact_values = .false.

@@ -271,6 +271,12 @@
 
 <A NAME="New"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
+<H2>What is new in the Manhattan Release.</H2>
+<ol><li>Removed <em class=code>rat_cri</em> and
+        <em class=code>input_qc_threshold</em> from the namelists. They had been
+        deprecated for quite some time.</li>
+</ol>
+
 <H2>What is new in the Lanai Release.</H2>
 <P>
    <em class=program>obs_diag</em> has several improvements:
@@ -331,39 +337,29 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;obs_diag_nml
-   obs_sequence_name = 'obs_seq.final',
-   obs_sequence_list = '',
-   first_bin_center =  2003, 1, 1, 0, 0, 0 ,
-   last_bin_center  =  2003, 1, 2, 0, 0, 0 ,
-   bin_separation   =     0, 0, 0, 6, 0, 0 ,
-   bin_width        =     0, 0, 0, 6, 0, 0 ,
-   time_to_skip     =     0, 0, 0, 6, 0, 0 ,
-   max_num_bins     = 1000,
-   <em class=removed>rat_cri            = 3.0,</em>
-   <em class=removed>input_qc_threshold = 3.0,</em>
-
-   plevel     = 1000, 925, 850, 700, 500, 400, 300, 250, 200, 150, 100,
-   hlevel     = 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000,
-   mlevel     = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-
-   Nregions   = 4,
-   lonlim1    =   0.0,   0.0,   0.0, 235.0,
-   lonlim2    = 360.0, 360.0, 360.0, 295.0,
-   latlim1    =  20.0, -80.0, -20.0,  25.0,
-   latlim2    =  80.0, -20.0,  20.0,  55.0,
-   reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America',
-
-   <em class=changed>trusted_obs      = 'null',</em>
-   print_mismatched_locs = .false.,
-   create_rank_histogram = .false.,
-   outliers_in_histogram = .false.,
-   <em class=changed>use_zero_error_obs             = .false.,</em>
-   verbose               = .false.  
+   obs_sequence_name = 'obs_seq.final'
+   obs_sequence_list = ''
+   first_bin_center =  2003, 1, 1, 0, 0, 0
+   last_bin_center  =  2003, 1, 2, 0, 0, 0
+   bin_separation   =     0, 0, 0, 6, 0, 0
+   bin_width        =     0, 0, 0, 6, 0, 0
+   time_to_skip     =     0, 0, 0, 6, 0, 0
+   max_num_bins     = 1000
+   hlevel           = -888888.0
+   hlevel_edges     = -888888.0
+   Nregions         = 0
+   xlim1            = -888888.0
+   xlim2            = -888888.0
+   ylim1            = -888888.0
+   ylim2            = -888888.0
+   reg_names        = 'null'
+   trusted_obs      = 'null'
+   create_rank_histogram = .true.
+   outliers_in_histogram = .false.
+   use_zero_error_obs    = .false.
+   debug                 = .false.  
    /
 
-   <em class=changed>-or- plevel_edges = 1050, 962.5, 887.5, 775, 600, 450, 350, 275, 225, 175, 125, 75</em>
-   <em class=changed>-or- hlevel_edges = 0, 1500, 2500, 3500, 4500, 5500, 6500,</em>
-   <em class=changed>-or- mlevel_edges = 0.5, 1.5, 2.5, 3.5, 10.5,</em>
 </pre>
 </div>
 
@@ -466,92 +462,47 @@ to '10', only 10 timesteps will be output - provided <em class=code>last_bin_cen
 is set to some later date.
 </TD></TR>
 
-<TR><TD> plevel </TD>
-    <TD> real, dimension(50) </TD>
-    <TD>The midpoints defining the pressure levels for the vertical binning.
-There is no specification of bin width - a continuum is used. If a single
-midpoint value is entered, the bin edges are +/- 10% of the midpoint value.
-If you'd like to change that see the routine <em class="routine">Rmidpoints2edges()</em>.
-        You may specify either <em class=code>plevel</em> or 
-        <em class=code>plevel_edges</em>, but not both.
-</TD></TR>
-
-<TR><TD> <em class=new>plevel_edges</em> </TD>
-    <TD> real, dimension(51) </TD>
-    <TD>The edges defining the pressure levels for the vertical binning.
-        You may specify either <em class=code>plevel</em> or 
-        <em class=code>plevel_edges</em>, but not both.
-</TD></TR>
-
 <TR><TD> hlevel </TD>
     <TD> real, dimension(50) </TD>
-    <TD>Same, but for observations that have height(m) or depth(m) as the vertical coordinate.
+    <TD>Same, but for observations that have height(m) or depth(m) as the vertical 
+        coordinate. An example of defining the midpoints is:<br>
+        <em class=code>hlevel = 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000,</em>
 </TD></TR>
-<TR><TD> <em class=new>hlevel_edges</em> </TD>
+
+<TR><TD> hlevel_edges </TD>
     <TD> real, dimension(51) </TD>
     <TD>The edges defining the height (or depth) levels for the vertical binning.
         You may specify either <em class=code>hlevel</em> or 
         <em class=code>hlevel_edges</em>, but not both.
-</TD></TR>
-
-<TR><TD> mlevel </TD>
-    <TD> real, dimension(50) </TD>
-    <TD>Same, but for observations that have model level as the vertical coordinate.
-</TD></TR>
-<TR><TD> <em class=new>mlevel_edges</em> </TD>
-    <TD> real, dimension(51) </TD>
-    <TD>The edges defining the model levels for the vertical binning.
-        You may specify either <em class=code>mlevel</em> or 
-        <em class=code>mlevel_edges</em>, but not both.
-</TD></TR>
-
-
-<TR><TD> <em class=removed>rat_cri</em> </TD>
-    <TD> real </TD>
-    <TD><em class=changed>Deprecated. This was useful before the advent of the 
-        DART QC mechanism, which has been in place for years now. 
-	The only thing <em class=code>rat_cri</em> did was to count how many 
-	observations were 'far' away from the ensemble, something the DART QC 
-	codes convey much better. The histogram of the magnitude of the 
-	innovations is still in <em class=file>LargeInnov.txt</em>&nbsp;.</em>
-        
-</TD></TR>
-
-<TR><TD> <em class=removed>input_qc_threshold</em> </TD>
-    <TD> real </TD>
-    <TD><em class=changed>Deprecated. Observations with original quality control 
-    values greater than this were counted in <b>NbigQC</b>. The DART QC value 
-    has controlled whether or not the observation was rejected or not. </em>
+        An example of defining the edges is:<br>
+        <em class=code>hlevel_edges = 0, 1500, 2500, 3500, 4500, 5500, 6500,</em>
 </TD></TR>
 
 <TR><TD> Nregions </TD>
     <TD> integer </TD>
     <TD>Number of regions of the globe for which obs space diagnostics 
-        are computed separately. Must be between [1,50].
+        are computed separately. Must be between [1,50]. If 50 is not enough,
+        increase <em class=file>obs_diag.f90</em><em class=code>MaxRegions</em> and recompile.
 </TD></TR>
 
-<TR><TD> lonlim1 </TD>
+<TR><TD> xlim1 </TD>
     <TD> real, dimension(50) </TD>
-    <TD>Westernmost longitudes of each of the regions.
+    <TD> western extent of each of the regions.
 </TD></TR>
 
-<TR><TD> lonlim2 </TD>
+<TR><TD> xlim2 </TD>
     <TD> real, dimension(50) </TD>
-    <TD>Easternmost longitudes of each of the regions.
-        <em class="new">If any of these values is <b>less than</b> the 
-	westernmost values, it defines a region that spans the prime meridian.
-	</em> e.g. a specification of <em class=code>lonlim1 = 330 , 
-	lonlim2 = 50</em> could identify a region like "Africa".
+    <TD> eastern extent of each of the regions.
 </TD></TR>
 
-<TR><TD> latlim1 </TD>
+<TR><TD> ylim1 </TD>
     <TD> real, dimension(50) </TD>
-    <TD> Southernmost latitudes of the regions.
+    <TD> southern extent of the regions.
 </TD></TR>
 
-<TR><TD> latlim2 </TD>
+<TR><TD> ylim2 </TD>
     <TD> real, dimension(50) </TD>
-    <TD> Northernmost latitudes of the regions.
+    <TD> northern extent of the regions.
 </TD></TR>
 
 <TR><TD> reg_names </TD>
@@ -607,14 +558,20 @@ If you'd like to change that see the routine <em class="routine">Rmidpoints2edge
 	 in the calculation of the rank histogram.
 </TD></TR>
 
-<TR><TD> verbose </TD>
-    <TD> logical </TD>
-    <TD> Print extra info about the obs_diag run.
+<TR><TD> debug </TD>
+    <TD> integer </TD>
+    <TD> Print extra info about the obs_diag run. 0 is minimal output, 
+         larger values increase the amount of output.
 </TD></TR>
 
 </TBODY> 
 </TABLE>
 </div>
+
+<P> some useful values are:
+<pre>
+&amp;obs_diag_nml;
+   hlevel     = 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000,
 
 <br />
 <br />
@@ -706,10 +663,10 @@ is appended to the variable name.  An example seems appropriate:
   char ObservationTypes(obstypes, stringlength) ;
           ObservationTypes:long_name = "DART observation types" ;
           ObservationTypes:comment = "table relating integer to observation type string" ;
-  float RADIOSONDE_U_WIND_COMPONENT_guess(time, copy, plevel, region) ;
+  float RADIOSONDE_U_WIND_COMPONENT_guess(time, copy, mlevel, region) ;
           RADIOSONDE_U_WIND_COMPONENT_guess:_FillValue = -888888.f ;
           RADIOSONDE_U_WIND_COMPONENT_guess:missing_value = -888888.f ;
-  float RADIOSONDE_V_WIND_COMPONENT_guess(time, copy, plevel, region) ;
+  float RADIOSONDE_V_WIND_COMPONENT_guess(time, copy, mlevel, region) ;
           RADIOSONDE_V_WIND_COMPONENT_guess:_FillValue = -888888.f ;
           RADIOSONDE_V_WIND_COMPONENT_guess:missing_value = -888888.f ;
   ...
@@ -717,14 +674,14 @@ is appended to the variable name.  An example seems appropriate:
           MARINE_SFC_ALTIMETER_guess:_FillValue = -888888.f ;
           MARINE_SFC_ALTIMETER_guess:missing_value = -888888.f ;
   ...
-  float RADIOSONDE_WIND_VELOCITY_guess(time, copy, plevel, region) ;
+  float RADIOSONDE_WIND_VELOCITY_guess(time, copy, mlevel, region) ;
           RADIOSONDE_WIND_VELOCITY_guess:_FillValue = -888888.f ;
           RADIOSONDE_WIND_VELOCITY_guess:missing_value = -888888.f ;
   ...
-  float RADIOSONDE_U_WIND_COMPONENT_analy(time, copy, plevel, region) ;
+  float RADIOSONDE_U_WIND_COMPONENT_analy(time, copy, mlevel, region) ;
           RADIOSONDE_U_WIND_COMPONENT_analy:_FillValue = -888888.f ;
           RADIOSONDE_U_WIND_COMPONENT_analy:missing_value = -888888.f ;
-  float RADIOSONDE_V_WIND_COMPONENT_analy(time, copy, plevel, region) ;
+  float RADIOSONDE_V_WIND_COMPONENT_analy(time, copy, mlevel, region) ;
           RADIOSONDE_V_WIND_COMPONENT_analy:_FillValue = -888888.f ;
           RADIOSONDE_V_WIND_COMPONENT_analy:missing_value = -888888.f ;
   ...
@@ -737,7 +694,7 @@ There are several things to note:
 <li>the 'WIND_VELOCITY' component is nowhere 'near' the corresponding U,V components.</li>
 <li>all of the 'guess' variables come before the matching 'analy' variables.</li>
 <li>surface variables (i.e. <tt>MARINE_SFC_ALTIMETER</tt> have a
-coordinate called 'surface' as opposed to 'plevel' for the others in
+coordinate called 'surface' as opposed to 'mlevel' for the others in
 this example).</li>
 </ol>
 
@@ -753,11 +710,11 @@ and 'VPanaly' - 'VP' for Vertical Profile.
 </P>
 <pre>
   ...
-  float SAT_WIND_VELOCITY_VPguess(copy, plevel, region) ;
+  float SAT_WIND_VELOCITY_VPguess(copy, mlevel, region) ;
           SAT_WIND_VELOCITY_VPguess:_FillValue = -888888.f ;
           SAT_WIND_VELOCITY_VPguess:missing_value = -888888.f ;
   ...
-  float RADIOSONDE_U_WIND_COMPONENT_VPanaly(copy, plevel, region) ;
+  float RADIOSONDE_U_WIND_COMPONENT_VPanaly(copy, mlevel, region) ;
           RADIOSONDE_U_WIND_COMPONENT_VPanaly:_FillValue = -888888.f ;
           RADIOSONDE_U_WIND_COMPONENT_VPanaly:missing_value = -888888.f ;
   ...
@@ -776,9 +733,9 @@ participate. There's a difference!
 If it is possible to calculate a rank histogram, there will also be :</P>
 <pre>
    ...
-   int RADIOSONDE_U_WIND_COMPONENT_guess_RankHi(time, rank_bins, plevel, region) ;
+   int RADIOSONDE_U_WIND_COMPONENT_guess_RankHi(time, rank_bins, mlevel, region) ;
    ...
-   int RADIOSONDE_V_WIND_COMPONENT_guess_RankHi(time, rank_bins, plevel, region) ;
+   int RADIOSONDE_V_WIND_COMPONENT_guess_RankHi(time, rank_bins, mlevel, region) ;
    ...
    int MARINE_SFC_ALTIMETER_guess_RankHist(time, rank_bins, surface, region) ;
    ...
@@ -856,11 +813,11 @@ was set:
 </P>
 <pre>
   ...
-        float RADIOSONDE_U_WIND_COMPONENT_guess(time, copy, plevel, region) ;
+        float RADIOSONDE_U_WIND_COMPONENT_guess(time, copy, mlevel, region) ;
                 RADIOSONDE_U_WIND_COMPONENT_guess:_FillValue = -888888.f ;
                 RADIOSONDE_U_WIND_COMPONENT_guess:missing_value = -888888.f ;
                 RADIOSONDE_U_WIND_COMPONENT_guess:<em>TRUSTED = "TRUE" ;</em>
-        float RADIOSONDE_V_WIND_COMPONENT_guess(time, copy, plevel, region) ;
+        float RADIOSONDE_V_WIND_COMPONENT_guess(time, copy, mlevel, region) ;
                 RADIOSONDE_V_WIND_COMPONENT_guess:_FillValue = -888888.f ;
                 RADIOSONDE_V_WIND_COMPONENT_guess:missing_value = -888888.f ;
   ...
@@ -1031,8 +988,6 @@ Then, the namelist settings for 2008 07 31 12Z through 2008 08 30 12Z are:
    bin_width          = <em class="input">    0, 0,30, 0, 0, 0 ,</em>
    time_to_skip       = <em class="input">    0, 0, 0, 0, 0, 0 ,</em>
    max_num_bins       = 1000,
-   <em class=removed>rat_cri            = 5000.0,</em>
-   <em class=removed>input_qc_threshold = 3.0,</em>
    Nregions   = 1,
    lonlim1    = <em class="input">  0.0,</em>
    lonlim2    = <em class="input">360.0,</em>

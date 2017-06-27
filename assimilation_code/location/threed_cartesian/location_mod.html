@@ -245,17 +245,23 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;location_nml
-   use_octree          = .false.,
-   nx                  = 10,
-   ny                  = 10,
-   nz                  = 10,
-   filled              = 10,
-   nboxes              = 1000,
-   maxdepth            = 4, 
-   compare_to_correct, = .false.,
-   output_box_info     = .false.,
-   print_box_level     = 0,
-/
+   nx                  = 10
+   ny                  = 10
+   nz                  = 10
+   x_is_periodic       = .false.
+   min_x_for_periodic  = -888888.0
+   max_x_for_periodic  = -888888.0
+   y_is_periodic       = .false.
+   min_y_for_periodic  = -888888.0
+   max_y_for_periodic  = -888888.0
+   z_is_periodic       = .false.
+   min_z_for_periodic  = -888888.0
+   max_z_for_periodic  = -888888.0
+   compare_to_correct  = .false.
+   output_box_info     = .false.
+   print_box_level     = 0
+   debug               = 0
+  /
 </pre>
 </div>
 
@@ -277,26 +283,39 @@ are computed and/or influence the code performance.
 
 <TBODY>
 
-<TR><TD>use_octree</TD>
-    <TD>logical</TD>
-    <TD>Currently must be false. The octree code bins points
-correctly but cannot do searches for all points within a specified radius.
-</TD></TR>
-
 <TR><TD>nx, ny, nz</TD>
     <TD>integer</TD>
-    <TD>How many boxes in each dimension should be used to speed the searches.
+    <TD>The number of boxes in each dimension to use to speed the searches.
+        This is <strong>not</strong> the number of gridcells.
 </TD></TR>
 
-<TR><TD>filled, nboxes, maxdepth</TD>
-    <TD>integer</TD>
-    <TD>Options for the (non-working) octree code.
+<TR><TD>x_is_periodic, y_is_periodic, z_is_periodic</TD>
+    <TD>logical</TD>
+    <TD>If .true., the domain wraps in the coordinate.
+</TD></TR>
+
+<TR><TD>min_x_for_periodic, max_x_for_periodic</TD>
+    <TD>real(r8)</TD>
+    <TD>The minimum and maximum values that are considered to be identical locations
+        if <em class=code>x_is_periodic&nbsp;=&nbsp;.true.</em>
+</TD></TR>
+
+<TR><TD>min_y_for_periodic, max_y_for_periodic</TD>
+    <TD>real(r8)</TD>
+    <TD>The minimum and maximum values that are considered to be identical locations
+        if <em class=code>y_is_periodic&nbsp;=&nbsp;.true.</em>
+</TD></TR>
+
+<TR><TD>min_z_for_periodic, max_z_for_periodic</TD>
+    <TD>real(r8)</TD>
+    <TD>The minimum and maximum values that are considered to be identical locations
+        if <em class=code>z_is_periodic&nbsp;=&nbsp;.true.</em>
 </TD></TR>
 
 <TR><TD>compare_to_correct</TD>
     <TD>logical</TD>
     <TD>If true, do an exhaustive search for the closest point.  Only useful
-for debugging because the performance is prohibitive.
+        for debugging because the performance cost is prohibitive.
 </TD></TR>
 
 <TR><TD>output_box_info</TD>
@@ -309,6 +328,11 @@ for debugging because the performance is prohibitive.
     <TD>If output_box_info is true, how detailed should the output be.
 </TD></TR>
 
+<TR><TD>debug</TD>
+    <TD>integer</TD>
+    <TD>The higher the number, the more verbose the run-time output.
+        0 (zero) is the minimum run-time output.
+</TD></TR>
 
 </TBODY> 
 </TABLE>

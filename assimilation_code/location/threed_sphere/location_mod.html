@@ -341,22 +341,22 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;location_nml
-   horiz_dist_only                 = .true.,
-   vert_normalization_pressure     = 100000.0, 
-   vert_normalization_height       = 10000.0,
-   vert_normalization_level        = 20.0,
-   vert_normalization_scale_height = 5.0,
-   approximate_distance            = .false.,
-   nlon                            = 71,
-   nlat                            = 36,
-   output_box_info                 = .false.,
-   special_vert_normalization_obs_types     = ''
-   special_vert_normalization_pressures     = 100000.0
-   special_vert_normalization_heights       = 10000.0
-   special_vert_normalization_levels        = 20.0
-   special_vert_normalization_scale_heights = 5.0
-   <em class=removed>maintain_original_vert = .false.</em>
-/
+    horiz_dist_only                          = .true.
+    vert_normalization_pressure              = 100000.0
+    vert_normalization_height                = 10000.0
+    vert_normalization_level                 = 20.0
+    vert_normalization_scale_height          = 5.0
+    approximate_distance                     = .false.
+    nlon                                     = 71
+    nlat                                     = 36
+    output_box_info                          = .false.
+    print_box_level                          = 0
+    special_vert_normalization_obs_types     = 'null'
+    special_vert_normalization_pressures     = -888888.0
+    special_vert_normalization_heights       = -888888.0
+    special_vert_normalization_levels        = -888888.0
+    special_vert_normalization_scale_heights = -888888.0
+  /
 </pre>
 </div>
 
@@ -405,15 +405,15 @@ distance of one radian.
 distance of one radian.
 </TD></TR>
 
-<TR><TD>vert_normalization_scale_height</TD>
-    <TD>real(r8)</TD>
-    <TD>The number of scale heights equivalent to a horizontal
-distance of one radian.
-</TD></TR>
-
 <TR><TD>vert_normalization_level</TD>
     <TD>real(r8)</TD>
     <TD>The number of model levels equivalent to a horizontal
+distance of one radian.
+</TD></TR>
+
+<TR><TD>vert_normalization_scale_height</TD>
+    <TD>real(r8)</TD>
+    <TD>The number of scale heights equivalent to a horizontal
 distance of one radian.
 </TD></TR>
 
@@ -443,9 +443,18 @@ discussion above for more information about this item.)
 
 <TR><TD>output_box_info</TD>
     <TD>logical</TD>
-    <TD> If true, print more details about the distribution of locations across
-the array of boxes.
+    <TD> If true, print details about the distribution of locations across
+the array of boxes. <em class=code>print_box_level</em> controls how much detail is printed.
 </TD></TR>
+
+
+<TR><TD>print_box_level</TD>
+    <TD>integer</TD>
+    <TD>If <em class=code>output_box_info&nbsp;=&nbsp;.true.</em>, <em class=code>print_box_level</em>
+       controls how much detail is printed. 0&nbsp;=&nbsp;no detail. 1,2,3 are progressively 
+       more and more detail.
+</TD></TR>
+
 
 <TR><TD>special_vert_normalization_obs_types</TD>
     <TD>character(len=32), dimension(500)</TD>
@@ -486,35 +495,6 @@ listed in the 'special_vert_normalization_obs_types' list.
 </TBODY> 
 </TABLE>
 </div>
-
-<P> The following item used to be in the namelist
-but has been removed since the functionality has
-been superseded by the special vertical normalizations.
-Remove it from your namelist to avoid errors.
-</P>
-
-<div>
-<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
-<THEAD align=left>
-<TR><TH> Deprecated Item </TH>
-    <TH> Type </TH>
-    <TH> Description </TH> </TR>
-</THEAD>
-
-<TBODY valign=top>
-
-<TR><TD>maintain_original_vert</TD>
-    <TD>logical</TD>
-    <TD>If using per-type specialized localization distances
-(see <a href="../../modules/assimilation/assim_tools_mod.html#Namelist">assim_tools_mod</a>)
-by default the vertical distances are altered also.  To maintain
-the original vertical scaling while changing the horizontal, set this to true.
-</TD></TR>
-
-</TBODY>
-</TABLE>
-</div>
-
 
 <br />
 <br />
