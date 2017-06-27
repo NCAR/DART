@@ -436,7 +436,7 @@ is a tool to generate and append to the file any other ensemble size required.
   DART it it should read and write variables all at once or variable-by-variable.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ June 27rd 2017 :: $Revision$
++ June 27rd 2017 :: Revision: 11770 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Updated support for CICE5.
@@ -455,6 +455,11 @@ DART will error out right away.
 obs_diag: namelist variables 'rat_cri' and 'input_qc_threshold' have been 
 deprecated for years, they have been removed. You must remove them from 
 your existing namelists or obs_diag will error out right away.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ XXX YY 2017 :: $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 # <next few lines under version control, do not edit>
 # $URL$
