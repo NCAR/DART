@@ -147,7 +147,9 @@ type(periodic_info_type) :: loopy
 ! Namelist with default values
 
 ! Option for verification using exhaustive search, and debugging
-logical :: compare_to_correct = .true.    ! normally false
+! compare_to_correct = .true. is expensive
+logical :: compare_to_correct = .false.
+
 logical :: output_box_info  = .false.
 integer :: print_box_level  = 0
 integer :: debug  = 0

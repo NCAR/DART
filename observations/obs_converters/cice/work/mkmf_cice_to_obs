@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../../build_templates/mkmf -p cice_to_obs -t ../../../../build_templates/mkmf.template   \
+../../../../build_templates/mkmf -p cice_to_obs -t ../../../../build_templates/mkmf.template \
  -a "../../../.." path_names_cice_to_obs
 
 exit $status

@@ -57,7 +57,6 @@ type(time_type) :: base_time, delta_time
 real(digits12) :: model_time, time_array(1)
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
-character(len=NF90_MAX_NAME)          :: varname,dimname
 character(len=256) :: file_calendar, dart_calendar
 character(len=256) :: unitstring
 
@@ -163,7 +162,7 @@ else if ( dart_calendar == 'GREGORIAN' ) then
       endif
    
       ! This is the start of their calendar
-      base_time = set_date(year, month, day, hour, minute, second)
+      base_time  = set_date(year, month, day, hour, minute, second)
       delta_time = set_time(seconds)
 
       read_model_time = base_time + delta_time
@@ -208,8 +207,7 @@ integer  :: dart_days, dart_seconds
 real(digits12) :: model_time
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
-character(len=NF90_MAX_NAME)          :: varname,dimname
-character(len=NF90_MAX_NAME)          :: dart_calendar, file_calendar
+character     (len=NF90_MAX_NAME)     :: dart_calendar, file_calendar
 
 ! this is used in many error messages below.  set it here, and
 ! don't reuse string3 here, please.
@@ -226,6 +224,15 @@ if (ios /= NF90_NOERR) then
    ! begin define mode
    ios = nf90_Redef(ncid)
    call nc_check(ios, "write_model_time", "redef")
+
+   ! check to see if there is a time dimension
+   ios = nf90_inq_dimid(ncid, "time", dimIds(1))
+
+   ! if time dimension does not exist create it
+   if (ios /= NF90_NOERR) then
+      call nc_check(nf90_def_dim(ncid, "time", nf90_unlimited, dimIds(1)), &
+        "write_model_time def_var dimension time")
+   endif
 
    !>@todo NF90_UNLIMITED
    ios = nf90_def_var(ncid, name="time", xtype=nf90_int, varid=VarID)
@@ -295,7 +302,7 @@ endif
 
 ! Since the time variable is known to have only 1 dimension, we know it is the first one.
 
-ios = nf90_inquire_dimension(ncid, dimids(1), len=ntimes)
+ios = nf90_inquire_dimension(ncid, dimIds(1), len=ntimes)
 call nc_check(ios, 'write_model_time', 'inquire_dimension for time dimension')
 
 ! convert time to something that netCDF can store, fractional days

@@ -293,7 +293,7 @@ which can be set with the namelist option (stages_to_write)
 
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ May 5th 2017 :: major changes to model_mod interfaces  Revision: 11626 
++ May 5th 2017 :: major changes to model_mod interfaces  Revision: 11615
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 A long-awaited overhaul of the model_mod interfaces. All models which are
@@ -389,14 +389,17 @@ sizes which were previously in final_full.XX files are included, and there
 is a tool to generate and append to the file any other ensemble size required.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Jun 2nd 2017 :: tutorial, DART_LAB, and various updates $Revision$
++ Jun 2nd 2017 :: tutorial, DART_LAB, and various updates Revision: 11696
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - bring the DART tutorial pdf slides up to date with the current release.
 
-- include new GUIs with inflation options in DART_LAB
+- include new GUIs with adaptive inflation options in DART_LAB:
+  oned_model_inf.m
+  run_lorenz_96_inf.m
 
-- added the lorenz_96_2scale model
+- added the lorenz_96_2scale model - additional kinds of 
+  QTY_SMALL_SCALE_STATE and QTY_LARGE_SCALE_STATE added as required.
 
 - add useful attributes to the variables in the diagnostic files
 
@@ -407,10 +410,16 @@ is a tool to generate and append to the file any other ensemble size required.
 - updates to the cam-fv shell scripts to work with the cesm 2.0 framework
 
 - updates to the cam-fv model_mod for support of cam-chem variables
+  Added more QUANTITIES/KINDS for chemistry species.
+  Removed support for 'stand-alone' CAM and CAM-SE (cam-se will be a separate 'model'). 
 
-- major bug fix in the simple_advection model_mod
+- major bug fix in the simple_advection model_mod: Fixed an error with 
+  the layout of the state vector. 
 
-- bug fix in the radar forward operator if the fall velocity is not in the state vector
+- obs_def_radar_mod: Fixed a serious bug in the fall velocity forward operator.
+  If the fall speed field is not in the state the test for a bad istatus from 
+  the interpolate() call was looking at the wrong variable and returning ok 
+  even if interpolate() had set bad values.
 
 - bug fix in the wrf model_mod for fields which have a vertical stagger
 
@@ -420,7 +429,32 @@ is a tool to generate and append to the file any other ensemble size required.
 
 - various fixes to documentation and test code
 
+- renamed QTY_RAW_STATE_VARIABLE to QTY_STATE_VARIABLE  (RAW is redundant)
 
+- direct_netcdf_mod: Renamed 'limit_mem' to 'buffer_state_io'.
+  buffer_state_io is now a logical that states if a variable that tells 
+  DART it it should read and write variables all at once or variable-by-variable.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ June 27rd 2017 :: $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Updated support for CICE5.
+
+Updated support for model_mod_check - now compatible with netCDF input files, 
+input is through [input,output]_state_files namelist variable 
+(variables renamed).
+
+Ensured consistency between low-order namelists and the updated DART tutorial.
+Updated documentation of many namelists. More to come.
+
+location_mod: namelist variable 'maintain_original_vert' was deprecated, 
+it is now removed.  You must remove it from your existing namelists or 
+DART will error out right away.
+
+obs_diag: namelist variables 'rat_cri' and 'input_qc_threshold' have been 
+deprecated for years, they have been removed. You must remove them from 
+your existing namelists or obs_diag will error out right away.
 
 # <next few lines under version control, do not edit>
 # $URL$

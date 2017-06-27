@@ -1,11 +1,12 @@
 &mpi_utilities_nml
-   reverse_task_layout = .false., 
-   all_tasks_print     = .false., 
-   verbose             = .false., 
-   async2_verbose      = .false., 
-   async4_verbose      = .false., 
-   shell_name          = '',
-   separate_node_sync  = .false.,
-   create_local_comm   = .true.,
-   /
+   reverse_task_layout        = .false.
+   all_tasks_print            = .false. 
+   verbose                    = .false.
+   async2_verbose             = .false.
+   async4_verbose             = .false. 
+   shell_name                 = ''
+   separate_node_sync         = .false.
+   create_local_comm          = .true.
+   make_copy_before_sendrecv  = .false.
+  /
 

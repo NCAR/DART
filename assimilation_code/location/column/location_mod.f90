@@ -8,9 +8,10 @@ module location_mod
 
 ! Implements location interfaces for a one dimensional column domain
 
-use      types_mod, only : r8, MISSING_R8, MISSING_I
-use  utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format, &
-                           nc_check
+use            types_mod, only : i8, r8, MISSING_R8, MISSING_I
+use ensemble_manager_mod, only : ensemble_type
+use        utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format, &
+                                 nc_check
 
 implicit none
 private

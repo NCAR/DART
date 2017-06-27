@@ -32,6 +32,10 @@
 !       direct_netcdf*
 !    To be added: 
 !       output_list_file         = 'cam_output_init_files'
+!       perturb_from_single_instance = .true.       MUST be true in order to use model_mod's 
+!                                                   perturbation routine
+!       perturbation_amplitude       = 0.2,         Will be ignored because the amplitude is 
+!                                                   provided in model_nml.
 
 ! Removed from the filter_nml in $rma_trunk
 !    direct_netcdf_read       = .true.
@@ -52,18 +56,19 @@
    adv_ens_command          = 'no_CESM_advance_script'
    async                    = 0
    tasks_per_model_advance  = 1
-   stages_to_write          = 'null','preassim','null','output'
+   stages_to_write          = 'preassim','postassim'
    write_all_stages_at_end  = .true.
-   distributed_state        = .true.,
+   distributed_state        = .true.
    ens_size                 = 3
    num_groups               = 1
    
-   input_restart_file_list  = 'cam_init_files',
    single_file_in           = .false.,
+   input_state_files        = '',
+   input_state_file_list    = 'cam_init_files',
    init_time_days           = -1
    init_time_seconds        = -1
-   perturb_from_single_instance = .false.
-   perturbation_amplitude       = 0.2,
+   perturb_from_single_instance = .true.
+   perturbation_amplitude       = 0.1,
    
    inf_flavor                  = 2,                       0
    inf_initial_from_restart    = .false.,                  .true.
@@ -86,24 +91,25 @@
    obs_window_days          = -1
    obs_window_seconds       = -1
    
-   output_restarts          = .true.
+   single_file_out          = .false.,
+   output_state_files       = '',
+   output_state_file_list   = 'cam_init_files',
    output_mean              = .true.
    output_sd                = .true.
-   single_file_out          = .false.,
-   output_restart_file_list = 'cam_init_files',
-   
+   output_members           = .true.
    num_output_state_members = 3
    output_interval          = 1
    output_timestamps        = .false.
    output_forward_op_errors = .false.
+   
    silence                  = .false.
    trace_execution          = .false.
      /
      
 &state_vector_io_nml
   /
-!  buffer_state_io         = .false.
-!  single_precision_output = .false.
+!  limit_mem
+!  single_precision_output
 
 &perfect_model_obs_nml
   start_from_restart       = .true.
@@ -141,7 +147,7 @@
 
 &ensemble_manager_nml
    layout                  = 2
-   tasks_per_node          = 15
+   tasks_per_node          = 16
    /
 
 &assim_tools_nml
@@ -154,6 +160,7 @@
    output_localization_diagnostics = .false.,
    localization_diagnostics_file   = 'localization_diagnostics',
    print_every_nth_obs             = 10000,
+   distribute_mean                 = .false.,
    /
 
 &cov_cutoff_nml
@@ -233,7 +240,8 @@
 #========================================================================
 
 &model_nml
-   model_version       = '4.1',
+   output_state_vector = .false.,
+   model_version       = 'cam5.4.101',
    model_config_file   = 'caminput.nc' 
    cam_phis            = 'cam_phis.nc'
    state_num_0d        = 0,
@@ -246,10 +254,10 @@
    which_vert_2d       = -1,
    which_vert_3d       = 6*1,
    vert_coord          = 'log_invP'
-   pert_names          = ''
-   pert_sd             = 0.0,
+   pert_names          = 'T'
+   pert_sd             = 0.1,
    pert_base_vals      = -888888.0d0,
-   highest_obs_pressure_Pa   = 1.0,
+   highest_obs_pressure_Pa   = 0.001,
    highest_state_pressure_Pa = 0.0,
    max_obs_lat_degree        = 90.0,
    Time_step_seconds         = 21600,
@@ -262,7 +270,7 @@
    vert_normalization_pressure = 20000.0, 
    vert_normalization_height   = 10000.0,
    vert_normalization_level    = 20.0,
-   vert_normalization_scale_height    = 1.5,
+   vert_normalization_scale_height    = 2.5,
    approximate_distance        = .true.,
    nlon                        = 141, 
    nlat                        = 72,
@@ -277,6 +285,7 @@
 #========================================================================
 
 !CAM-SE &model_nml
+!CAM-SE    output_state_vector = .false.,
 !CAM-SE    model_version       = '5.1.1',
 !CAM-SE    model_config_file   = 'caminput.nc' 
 !CAM-SE    cs_grid_file        = 'SEMapping_cs_grid.nc'
@@ -347,19 +356,20 @@
 
 &obs_kind_nml
    assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
+                                'RADIOSONDE_U_WIND_COMPONENT',
+                                'GPSRO_REFRACTIVITY', 
+
+   evaluate_these_obs_types = 'RADIOSONDE_SPECIFIC_HUMIDITY',
+   /
+                                'RADIOSONDE_V_WIND_COMPONENT',
                                 'AIRCRAFT_TEMPERATURE',
                                 'ACARS_TEMPERATURE',
-                                'RADIOSONDE_U_WIND_COMPONENT',
-                                'RADIOSONDE_V_WIND_COMPONENT',
                                 'AIRCRAFT_U_WIND_COMPONENT',
                                 'AIRCRAFT_V_WIND_COMPONENT',
                                 'ACARS_U_WIND_COMPONENT',
                                 'ACARS_V_WIND_COMPONENT',
                                 'SAT_U_WIND_COMPONENT',
                                 'SAT_V_WIND_COMPONENT',
-                                'GPSRO_REFRACTIVITY', 
-   evaluate_these_obs_types = 'RADIOSONDE_SPECIFIC_HUMIDITY',
-   /
 
 
 !  : error codes >= TERMLEVEL will cause termination
@@ -377,6 +387,24 @@
 &obs_def_gps_nml
    max_gpsro_obs = 15000000
    / 
+
+&restart_file_tool_nml
+   input_file_name              = 'dart_input'
+   output_file_name             = 'dart_output'
+   ens_size                     = 3
+   single_restart_file_in       = .true.
+   single_restart_file_out      = .true.
+   write_binary_restart_files   = .true.
+   overwrite_data_time          = .false.
+   new_data_days                = -1
+   new_data_secs                = -1
+   input_is_model_advance_file  = .false.
+   output_is_model_advance_file = .false.
+   overwrite_advance_time       = .false.
+   new_advance_days             = -1
+   new_advance_secs             = -1
+   gregorian_cal                = .true.
+   /
 
 &obs_sequence_tool_nml
    num_input_files = 7
@@ -463,11 +491,11 @@
 &obs_diag_nml
    obs_sequence_name = 'obs_seq.final',
    obs_sequence_list = '',
-   first_bin_center =  2010, 8,16, 0, 0, 0 ,
-   last_bin_center  =  2010, 9, 1, 0, 0, 0 ,
+   first_bin_center =  2013, 1, 1, 0, 0, 0 ,
+   last_bin_center  =  2013, 1, 2, 0, 0, 0 ,
    bin_separation   =     0, 0, 0, 6, 0, 0 ,
    bin_width        =     0, 0, 0, 6, 0, 0 ,
-   time_to_skip     =     0, 0, 0, 0, 0, 0 ,
+   time_to_skip     =     0, 0, 1, 0, 0, 0 ,
    max_num_bins     = 1000,
    trusted_obs      = 'null',
    plevel_edges = 1035.5, 962.5, 887.5, 775, 600, 450, 350, 275, 225,   175,   125,   75,   35,   15,    2
@@ -554,5 +582,4 @@
    single_restart_file_in = .true.,
    difference_method      = 4,
    /
-
 

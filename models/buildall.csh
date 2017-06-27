@@ -20,6 +20,8 @@ if ( $#argv > 0 ) then
     set usingmpi=default
   else if ( "$argv[1]" == "-nompi" ) then
     set usingmpi=no
+  else if ("$argv[1]" == "-default") then
+    setenv usingmpi -1
   else
     echo "Unrecognized argument to $0: $argv[1]"
     echo "Usage: $0 [ -mpi | -nompi | -default ]"
@@ -40,6 +42,9 @@ else if ( "$usingmpi" == "default" ) then
 else if ( "$usingmpi" == "no" ) then
   echo "Will NOT be building with MPI enabled"
   set QUICKBUILD_ARG='-nompi'
+elseif ( $usingmpi == -1 ) then
+  echo "Will be building with the default MPI settings"
+  setenv QUICKBUILD_ARG ''
 else
   echo "Internal error: unrecognized value of usingmpi; should not happen"
   exit -1
@@ -77,12 +82,13 @@ set DO_THESE_MODELS = ( \
   lorenz_63 \
   lorenz_84 \
   lorenz_96 \
+  lorenz_96_2scale \
   mpas_atm \
   simple_advection \
   wrf \
 )
 
-# needed soon: null_model, lorenz_96_2scale
+# needed soon: null_model
 
 #----------------------------------------------------------------------
 # Compile all executables for each model.

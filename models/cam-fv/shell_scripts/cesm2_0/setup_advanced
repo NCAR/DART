@@ -17,7 +17,7 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: setup_advanced 7946 2015-04-30 21:11:34Z nancy $
+# DART $Id$
 
 
 #*******************************************************************************
@@ -1540,7 +1540,7 @@ cat ${caseroot}/DART_instructions.txt
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/cam-fv/scripts_cesm1_5/setup_hybrid $
-# $Revision: 7946 $
-# $Date: 2015-04-30 15:11:34 -0600 (Thu, 30 Apr 2015) $
+# $URL$
+# $Revision$
+# $Date$
 

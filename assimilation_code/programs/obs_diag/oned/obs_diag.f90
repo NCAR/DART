@@ -58,7 +58,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 !---------------------------------------------------------------------
 !---------------------------------------------------------------------
 
-integer, parameter :: MaxRegions = 4
+integer, parameter :: MaxRegions = 3
 integer, parameter :: MaxTrusted = 5
 integer, parameter :: stringlength = 32
 
@@ -72,8 +72,8 @@ type(obs_type)          :: obs1, obsN
 type(obs_def_type)      :: obs_def
 type(location_type)     :: obs_loc
 
-character(len = 129) :: obs_seq_in_file_name
-character(len = 129), allocatable, dimension(:) :: obs_seq_filenames
+character(len=256) :: obs_seq_in_file_name
+character(len=256), allocatable, dimension(:) :: obs_seq_filenames
 character(len = stringlength), dimension(MaxTrusted) :: trusted_obsname = 'null'
 
 ! Storage with fixed size for observation space diagnostics
@@ -140,10 +140,10 @@ integer :: numqcvals
 !-----------------------------------------------------------------------
 ! Namelist with default values
 !
-character(len = 129) :: obs_sequence_name = "obs_seq.final"
-character(len = 129) :: obs_sequence_list = ""
+character(len=256) :: obs_sequence_name = "obs_seq.final"
+character(len=256) :: obs_sequence_list = ""
 
-character(len = stringlength), dimension(MaxTrusted) :: trusted_obs = 'null'
+character(len=stringlength), dimension(MaxTrusted) :: trusted_obs = 'null'
 
 integer :: max_num_bins       = 9999 ! maximum number of temporal bins to consider
 integer :: bin_width_days     = -1   ! width of the assimilation bin - seconds
@@ -160,11 +160,11 @@ logical :: use_zero_error_obs    = .false.
 ! index 3 == region 3 == [0.5, 1.0)
 
 integer :: Nregions = MaxRegions
-real(r8), dimension(MaxRegions) :: lonlim1 = (/ 0.0_r8, 0.0_r8, 0.5_r8, -1.0_r8 /)
-real(r8), dimension(MaxRegions) :: lonlim2 = (/ 1.0_r8, 0.5_r8, 1.0_r8, -1.0_r8 /)
+real(r8), dimension(MaxRegions) :: lonlim1 = (/ 0.0_r8, 0.0_r8, 0.5_r8 /)
+real(r8), dimension(MaxRegions) :: lonlim2 = (/ 1.0_r8, 0.5_r8, 1.0_r8 /)
 
 character(len=6), dimension(MaxRegions) :: reg_names = &
-                                   (/ 'whole ','yin   ','yang  ','bogus '/)
+                                   (/ 'whole ','yin   ','yang  '/)
 
 namelist /obs_diag_nml/ obs_sequence_name, obs_sequence_list,  &
                         bin_width_days, bin_width_seconds,     &

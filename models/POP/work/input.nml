@@ -302,6 +302,8 @@
   /
 
 &model_mod_check_nml
+   input_state_files     = 'pop.r.nc'
+   output_state_files    = 'check_me.nc'
    verbose               = .FALSE.
    test1thru             = 5
    loc_of_interest       = 320.0, 18.0, 5.0

@@ -50,7 +50,7 @@
    ens_size                     = 80
    num_groups                   = 1
    perturb_from_single_instance = .false.
-   perturbation_amplitude       = 2.0
+   perturbation_amplitude       = 0.2
    distributed_state            = .true.
 
    async                    = 0

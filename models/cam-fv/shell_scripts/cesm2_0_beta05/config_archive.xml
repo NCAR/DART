@@ -1,3 +1,9 @@
+<!-- This code may (or may not) be part of the CESM distribution,
+     So it is not protected by the DART copyright agreement. 
+
+! DART $Id: config_archive.xml 6256 2013-06-12 16:19:10Z raeder@ucar.edu $
+-->
+
 <components>
 
   <comp_archive_spec compname="cam" compclass="atm">
@@ -166,3 +172,7 @@
 
 </components>
 
+<!-- <next few lines under version control, do not edit>
+     $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/cam-fv/shell_scripts/cesm2_0_beta05/config_archive.xml $
+     $Revision: 11763 $
+     $Date: 2017-06-27 08:57:51 -0600 (Tue, 27 Jun 2017) $ -->

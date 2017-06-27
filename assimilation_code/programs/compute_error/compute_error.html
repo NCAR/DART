@@ -85,10 +85,10 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;compute_error_nml
-   truth_file_name = 'True_State.nc'
-   diag_file_name  = 'Prior_Diag.nc'
+   truth_file_name   = 'true_state.nc'
+   diag_file_name    = 'preassim.nc'
    skip_first_ntimes = 0
- /
+  /
 </pre>
 </div>
 
@@ -106,12 +106,12 @@ prematurely terminating the namelist.
 <TBODY valign=top>
 
 <TR><TD>truth_file_name</TD>
-    <TD>character</TD>
+    <TD>character(len=256)</TD>
     <TD>State-space diagnostic file from the 'perfect_model_obs' program.
 </TD></TR>
 
 <TR><TD>diag_file_name</TD>
-    <TD>character</TD>
+    <TD>character(len=256)</TD>
     <TD>State space diagnostic file output from the 'filter' program.
 </TD></TR>
 
@@ -122,7 +122,6 @@ a second time, skipping the first N times.  This can be useful when running
 an experiment that has an initial error spike as the model spins up and then
 decays down to a more steady state.
 </TD></TR>
-
 
 </TBODY> 
 </TABLE>

@@ -297,9 +297,8 @@
    /
 
 &model_mod_check_nml
-   input_file           = "dart_ics"
-   output_file          = "check_me_out"
-   advance_time_present = .false.
+   input_state_files    = "dart_ics.nc"
+   output_state_files   = "check_me_out.nc"
    verbose              = .true.
    x_ind                = 36288
    loc_of_interest      = 240.0, 12.49, 200000.0

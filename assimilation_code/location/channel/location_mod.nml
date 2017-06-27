@@ -1,10 +1,10 @@
 &location_nml
-   use_octree      = .false.
-   nboxes          = 1000
-   maxdepth        = 4
-   filled          = 10
-   output_box_info = .false.
-   print_box_level = 0
+   use_octree         = .false.
+   nboxes             = 1000
+   maxdepth           = 4
+   filled             = 10
+   output_box_info    = .false.
+   print_box_level    = 0
    compare_to_correct = .false.
-/
+  /
 

@@ -127,13 +127,14 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;closest_member_tool_nml
-   input_file_name        = 'filter_restart',
-   output_file_name       = 'closest_restart',
-   ens_size               = 20,
-   single_restart_file_in = .true.,
-   difference_method      = 4,
-   use_only_kinds         = '',
- /
+   input_restart_file_list   = 'null'
+   mean_restart_file_list    = 'null'
+   output_file_name          = 'closest_restart'
+   ens_size                  = 20
+   single_restart_file_in    = .false.
+   difference_method         = 4
+   use_only_kinds            = ''
+  /
 </pre>
 </div>
 
@@ -150,19 +151,28 @@ prematurely terminating the namelist.
 
 <TBODY valign=top>
 
-<TR><TD>input_file_name</TD>
-    <TD>character</TD>
-<TD>File containing the DART restart data.  If 'single_restart_file_in' is
+<TR><TD>input_restart_file_list</TD>
+    <TD>character(len=256),dimension(500)</TD>
+<TD>an array of filenames each containing a list DART restart data.
+<!-- @>todo  If 'single_restart_file_in' is
 .true., this is the exact filename.  If 'single_restart_file_in' is .false.
-this is the base name and '.NNNN' will be appended to each name before being opened.
+this is the base name and '.NNNN' will be appended to each name before being opened. -->
+</TD></TR>
+
+<TR><TD>mean_restart_file_list</TD>
+    <TD>character(len=256),dimension(500)</TD>
+    <TD><!-- @>todo File created by this program with either the ensemble number or full
+restart filename for the closest member.  If 'single_restart_file_in' is
+.true., the file contains the ensemble number.  If 'single_restart_file_in' is
+.false. the file contains the base name and '.NNNN' appended for the closest member. -->
 </TD></TR>
 
 <TR><TD>output_file_name</TD>
-    <TD>character</TD>
-    <TD>File created by this program with either the ensemble number or full
+    <TD>character(len=256)</TD>
+    <TD><!-- @>todo File created by this program with either the ensemble number or full
 restart filename for the closest member.  If 'single_restart_file_in' is
 .true., the file contains the ensemble number.  If 'single_restart_file_in' is
-.false. the file contains the base name and '.NNNN' appended for the closest member.
+.false. the file contains the base name and '.NNNN' appended for the closest member. -->
 </TD></TR>
 
 <TR><TD>ens_size</TD>

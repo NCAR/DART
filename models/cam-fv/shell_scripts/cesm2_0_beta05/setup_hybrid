@@ -1,29 +1,30 @@
 #!/bin/csh -f
-#--------------------------------------------
+
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: setup_hybrid 11634 2017-05-13 15:14:15Z raeder@ucar.edu $
+# DART $Id$
 #
+#--------------------------------------------
 #BSUB  -n 1 
 #BSUB  -R "span[ptile=1]"
 #BSUB  -q caldera 
-#BSUB  -P P86850054
-#BSUB  -W 1:00
-#BSUB  -u raeder@ucar.edu
+#BSUB  -P Pyouracct
+#BSUB  -W 2:00
+#BSUB  -u your@email
 #BSUB  -N  
 #BSUB  -a poe 
 # The job name MUST be the name of this script(file), or this file will not be
 # archived in $CASEROOT.
 #BSUB  -J setup_hybrid
-#BSUB  -o CAM4_test1_hyb.bld1
-#BSUB  -e CAM4_test1_hyb.bld1
+#BSUB  -o Test.bld1
+#BSUB  -e Test.bld1
 #--------------------------------------------
 ## The job name MUST be the name of this script(file), or this file will not be
 ## archived in $CASEROOT.
 #PBS  -N setup_hybrid
-#PBS  -A NCGD0028
+#PBS  -A youracct
 # Resources I want:
 #    select=#nodes
 #    ncpus=#CPUs/node
@@ -33,10 +34,9 @@
 #PBS  -l walltime=02:00:00
 # Send email after a(bort) or e(nd)
 #PBS  -m ae
-#PBS  -M raeder@ucar.edu
+#PBS  -M your@email
 # Send standard output and error to this file
-# #PBS  -o CAM4_test2_hyb.bld2
-#PBS  -o Dev5.bld2
+#PBS  -o Test.bld
 #PBS  -j oe 
 #--------------------------------------------
 
@@ -159,8 +159,7 @@
 # ==============================================================================
 # AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV (F_AMIP_CAM5) (FAMIPC5)
 
-setenv case             Dev5
-# setenv case             CAM4_test2_hyb
+setenv case             Test
 setenv compset          F
 setenv compset_args     "--compset $compset"
 setenv resolution       f19_f19
@@ -303,7 +302,7 @@ setenv stop_n              6
 #      less than 10 minutes on yellowstone using 1800 pes (120 nodes)
 # ==============================================================================
 
-setenv PROJECT      your_project_#
+setenv PROJECT      your_computer_time_account
 setenv queue        regular
 setenv timewall     0:20
 
@@ -414,8 +413,8 @@ else
    exit 12
 endif
 
-# setup_advanced will need more flexible arguments, as in CESM1_5_setup_advanced(?)
 # This may need --project, if env var PROJECT is no longer used.
+
 ${CIMEROOT}/scripts/create_newcase --case ${caseroot} --mach ${mach} \
     --res ${resolution} ${compset_args}
 #  --ninst $num_instances
@@ -477,6 +476,7 @@ endif
 # which is in this directory too.
 cd $CIMEROOT
 set st_arch = `find [^\.]* -name case_st_archive.py -print`
+set ca_arch = `find [^\.]* -name config_archive.xml -print | grep cesm`
 cd -
 if (! -f $CIMEROOT/${st_arch}.orig) then
    $MOVE $CIMEROOT/${st_arch} $CIMEROOT/${st_arch}.orig
@@ -488,10 +488,9 @@ endif
 # rpointer$NINST_STRING.atm, compared to the rpointers in run:
 # rpointer.atm$NINST_STRING.
 # Fix this (for cesm2_0_beta05 and ...?) by replacing the config_archive.xml file.
-if (! -f $CIMEROOT/cime_config/cesm/config_archive.xml.orig) then
-   mv $CIMEROOT/cime_config/cesm/config_archive.xml \
-      $CIMEROOT/cime_config/cesm/config_archive.xml.orig
-   cp ./config_archive.xml $CIMEROOT/cime_config/cesm/config_archive.xml
+if (! -f $CIMEROOT/${ca_arch}.orig) then
+   ${MOVE} $CIMEROOT/${ca_arch} $CIMEROOT/${ca_arch}.orig
+   ${COPY} ./config_archive.xml $CIMEROOT/${ca_arch}
 endif
 # St_archive will also need updating for new stage names: 
 #     input, forecast, preassim, postassim, analysis, output.
@@ -868,16 +867,21 @@ while ($iarg <= $#clm_opts)
    @ iarg = $iarg + 2
 end
 
-# Need to know if we are using WACCM (aka WCCM) for several reasons.
+# Need to know if we are using WACCM (aka WCCM or WXIE) for several reasons.
+# CESM2; maybe not needed anymore?
 # Mostly file managment issues.
 # WARNING:   Check your $COMPSET to see whether the grep pattern below will detect your WACCM ! !
-set waccm = `echo $COMPSET | grep CCM`
+set comps = `echo $COMPSET | sed -e "s#_# #"`
+set atm = `echo $comps[2] | sed -e "s#%# #"`
+echo $atm[2] | grep WC 
 if ($status == 0) then
    set waccm = true
 else
    set waccm = false
    # WACCM benefits from a modified cd_core.F90, but none of the
    # other configurations do.
+   # Manhattan; I think cd_core.F90 (doubled div2 diffusion) is no longer needed or useful.
+   # The new default fv_div24del2flag = 4 is a better option.
 endif
 
 # Each CAM dynamical core has its own SourceMods
@@ -982,6 +986,9 @@ endif
 # In addition, env_batch.xml has a section we want to change, which xmlchange can't do.
 #    Make st_archive run on 1 processor ( 'select' for pbs, 'ptile' for lsf). 
 
+if (-f case.st_archive) ${COPY} case.st_archive case.st_archive.orig
+if (-f case.lt_archive) ${COPY} case.lt_archive case.lt_archive.orig
+
 if ($?LSB_JOBNAME) then
    sed -e "/BSUB[ ]*-o/c\#BSUB  -o cesm_st_arch.stdout.%J" \
        -e "/BSUB[ ]*-e/c\#BSUB  -e cesm_st_arch.stderr.%J" \
@@ -999,8 +1006,7 @@ if ($?LSB_JOBNAME) then
    ./xmlchange -file env_batch.xml -subgroup case.lt_archive -id JOB_QUEUE -val caldera
 
 else if ($?PBS_JOBNAME) then
-   sed -e  "/PBS[ ]*-j/a\#PBS  -o cesm_st_arch.std.\$PBS_JOBID" \
-       -e  "/PBS[ ]*-N/c\#PBS  -N ${case}.st_arch"     \
+   sed -e  "/PBS[ ]*-N/c\#PBS  -N ${case}.st_arch"     \
        -e "/\-l select/c\#PBS  -l select=1:ncpus=1:mpiprocs=1:ompthreads=1" \
        case.st_archive >! temp.$$  || exit 55
    ${MOVE} temp.$$ case.st_archive
@@ -1009,9 +1015,8 @@ else if ($?PBS_JOBNAME) then
    # on 36 processors.  Ugh.
    # But I ran a manual st_archive in CAM6_test2_adv with 1 task in 'share' and it worked.
    
-This is appearing literally.
-   sed -e  "/PBS[ ]*-j/a\#PBS  -o cesm_lt_arch.std.\$PBS_JOBID " \
-       -e  "/PBS[ ]*-N/c\#PBS  -N ${case}.lt_arch"      \
+# Is PBS_JOBID appearing literally?
+   sed -e  "/PBS[ ]*-N/c\#PBS  -N ${case}.lt_arch"      \
        -e "/\-l select/c\#PBS  -l select=1:ncpus=1:mpiprocs=1:ompthreads=1" \
        case.lt_archive >! temp.$$  || exit 56
    ${MOVE} temp.$$ case.lt_archive
@@ -1061,6 +1066,7 @@ while ($inst <= $num_instances)
    # modify the assimilate.csh script in TWO places. You will need to set
    # 'empty_htapes = .false.' and change 'nhtfrq' and 'mfilt' to get a CAM
    # default-looking .h0. file.
+   # mfilt; # of times/history file.   Default values are NOT 1 (,30,30,.....)
    # If you want other fields written to history files, use h1,...,
    # which are not purged by assimilate.csh.
    #
@@ -1080,7 +1086,8 @@ while ($inst <= $num_instances)
    if ($waccm == true ) then
 
     # WACCM requires a reduced time step for stability.
-    echo "dtime = 900"                                    >> ${fname}
+    # The default is 900
+    # echo "dtime = 900"                                    >> ${fname}
 
    else
 
@@ -1222,6 +1229,11 @@ while ($inst <= $num_instances)
    echo "hist_nhtfrq = -$stop_n"       >> ${fname}
    echo "hist_mfilt  = 1"              >> ${fname}
    echo "hist_avgflag_pertape = 'I'"   >> ${fname}
+   # This was needed to allow the interpolation of the default CLM restart file.
+   # It may not be needed in runs that start from a somewhat spun up ensemble,
+   # but we don't particularly want or need this bit of physics.
+   # echo "urban_hac = 'OFF'"            >> ${fname}
+   # echo "building_temp_method = 0 "    >> ${fname}
 
    # Probably never want, but if I need to start from a not spun up CLM file,
    # specified in finidat, use this
@@ -1549,6 +1561,6 @@ cat ${caseroot}/DART_instructions.txt
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/cam-fv/shell_scripts/cesm2_0/setup_hybrid $
-# $Revision: 11634 $
-# $Date: 2017-05-13 09:14:15 -0600 (Sat, 13 May 2017) $
+# $URL$
+# $Revision$
+# $Date$

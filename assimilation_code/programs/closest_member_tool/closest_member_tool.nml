@@ -6,10 +6,11 @@
 #  4 = normalized rmse difference
 
 &closest_member_tool_nml
-   input_file_name        = 'filter_restart',
+   input_restart_file_list   = 'null',
+   mean_restart_file_list    = 'null',
    output_file_name       = 'closest_restart',
    ens_size               = 20,
-   single_restart_file_in = .true.,
+   single_restart_file_in = .false.,
    difference_method      = 4,
    use_only_kinds         = '',
  /

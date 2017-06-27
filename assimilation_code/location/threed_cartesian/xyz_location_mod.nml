@@ -1,0 +1,8 @@
+&xyz_location_nml
+   filled     = 10
+   use_octree = .false.
+   nx         = 20
+   ny         = 20
+   nz         = 20
+  /
+
