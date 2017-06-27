@@ -346,6 +346,9 @@ and never had anything to do with the internal time step of the dynamics of the 
 We have removed 'output_state_vector' from the namelist of all model_mods since
 we no longer output a single 1d vector.  all i/o is now in netcdf format.
 
+Models now have more control over when vertical conversion happens - on demand
+as needed, or all up front before assimilation.
+
 Models that were doing vertical conversion in get_state_meta_data should set:
 &assim_tools_nml
    convert_all_state_verticals_first = .true.
@@ -369,9 +372,6 @@ Some of the internal changes include pulling common code from the locations
 modules into a location_io_mod which contains common functions for creating
 and writing 'location' variables for any location type.
 
-Models now have more control over when vertical conversion happens - on demand
-as needed, or all up front before assimilation.
-
 QTY_RAW_STATE_VARIABLE is redundant and was shortened to QTY_STATE_VARIABLE
 
 Many utility programs use the template/model_mod.f90 because they don't
@@ -389,6 +389,53 @@ sizes which were previously in final_full.XX files are included, and there
 is a tool to generate and append to the file any other ensemble size required.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Jun 2nd 2017 :: tutorial, DART_LAB, and various updates Revision: 11696
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- bring the DART tutorial pdf slides up to date with the current release.
+
+- include new GUIs with adaptive inflation options in DART_LAB:
+  oned_model_inf.m
+  run_lorenz_96_inf.m
+
+- added the lorenz_96_2scale model - additional kinds of 
+  QTY_SMALL_SCALE_STATE and QTY_LARGE_SCALE_STATE added as required.
+
+- add useful attributes to the variables in the diagnostic files
+
+- updates and minor bug fixes to the matlab diagnostic scripts
+
+- updates to the default input.nmls for models
+
+- updates to the cam-fv shell scripts to work with the cesm 2.0 framework
+
+- updates to the cam-fv model_mod for support of cam-chem variables
+  Added more QUANTITIES/KINDS for chemistry species.
+  Removed support for 'stand-alone' CAM and CAM-SE (cam-se will be a separate 'model'). 
+
+- major bug fix in the simple_advection model_mod: Fixed an error with 
+  the layout of the state vector. 
+
+- obs_def_radar_mod: Fixed a serious bug in the fall velocity forward operator.
+  If the fall speed field is not in the state the test for a bad istatus from 
+  the interpolate() call was looking at the wrong variable and returning ok 
+  even if interpolate() had set bad values.
+
+- bug fix in the wrf model_mod for fields which have a vertical stagger
+
+- fix to the makefiles for the GSI2DART observation converter
+
+- added additional netcdf and location utility routines
+
+- various fixes to documentation and test code
+
+- renamed QTY_RAW_STATE_VARIABLE to QTY_STATE_VARIABLE  (RAW is redundant)
+
+- direct_netcdf_mod: Renamed 'limit_mem' to 'buffer_state_io'.
+  buffer_state_io is now a logical that states if a variable that tells 
+  DART it it should read and write variables all at once or variable-by-variable.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + June 27rd 2017 :: $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -398,45 +445,8 @@ Updated support for model_mod_check - now compatible with netCDF input files,
 input is through [input,output]_state_files namelist variable 
 (variables renamed).
 
-lorenz_96_2scale model now supported by netCDF input - additional kinds of 
-QTY_SMALL_SCALE_STATE and QTY_LARGE_SCALE_STATE added as required.
-
-simple_advection/model_mod: Fixed a really bad error with the layout of 
-the state vector. 
-
 Ensured consistency between low-order namelists and the updated DART tutorial.
-
-cam-fv: Updates for CIME2.0, add unit conversion of chemical species for 
-CAM-chem, removed support for 'stand-alone' CAM and CAM-SE (cam-se will 
-be a separate 'model'). 
-
-netcdf_utilities_mod: more routines for defining and reading netCDF 
-dimensions and variables.
-
-Added more QUANTITIES/KINDS for chemistry species.
-
-Including model and variable metadata/ancillary data when creating files 
-from scratch.
-
-Matlab diagnostics have default filenames that match DART defaults. 
-
-New DART_LABb GUIs demonstrating adaptive inflation: oned_model_inf.m, 
-run_lorenz_96_inf.m
-
-renamed QTY_RAW_STATE_VARIABLE to QTY_STATE_VARIABLE  (RAW is redundant)
-
-wrf/model_mod: Minimal changes to the wrf model_mod to fix problems with 
-interpolation of fields with a vertical stagger (vertical velocity and 
-geopotential height)
-
-obs_def_radar_mod: Fixed a serious bug in the fall velocity forward operator.
-If the fall speed field is not in the state the test for a bad istatus from 
-the interpolate() call was looking at the wrong variable and returning ok 
-even if interpolate() had set bad values.
-
-direct_netcdf_mod: Renamed 'limit_mem' to 'buffer_state_io'.
-buffer_state_io is now a logical that states if a variable that tells 
-DART it it should read and write variables all at once or variable-by-variable.
+Updated documentation of many namelists. More to come.
 
 location_mod: namelist variable 'maintain_original_vert' was deprecated, 
 it is now removed.  You must remove it from your existing namelists or 
