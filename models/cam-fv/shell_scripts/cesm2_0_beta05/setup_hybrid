@@ -1,10 +1,10 @@
 #!/bin/csh -f
 
-# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# DART software - Copyright UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: setup_hybrid 11634 2017-05-13 15:14:15Z raeder@ucar.edu $
+# DART $Id$
 #
 #--------------------------------------------
 #BSUB  -n 1 
@@ -1561,6 +1561,6 @@ cat ${caseroot}/DART_instructions.txt
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/models/cam-fv/shell_scripts/cesm2_0/setup_hybrid $
-# $Revision: 11634 $
-# $Date: 2017-05-13 09:14:15 -0600 (Sat, 13 May 2017) $
+# $URL$
+# $Revision$
+# $Date$
