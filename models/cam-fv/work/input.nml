@@ -56,9 +56,9 @@
    adv_ens_command          = 'no_CESM_advance_script'
    async                    = 0
    tasks_per_model_advance  = 1
-   stages_to_write          = 'input','preassim','postassim','output'
+   stages_to_write          = 'preassim','postassim'
    write_all_stages_at_end  = .true.
-   distributed_state        = .true.,
+   distributed_state        = .true.
    ens_size                 = 3
    num_groups               = 1
    
