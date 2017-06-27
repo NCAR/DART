@@ -170,7 +170,7 @@ for ivar = pinfo.var_inds,
         nitems = nitems + 1;
         h(nitems) = plot(pinfo.xax, b, 'linewidth', 0.5, 'Color', ens_colors(memcolor, :));
         legend_strings{nitems} = str1;
-        legend(h, legend_strings, 0);
+        legend(h, legend_strings, 'Location','NorthEast');
     end
     legend boxoff
 

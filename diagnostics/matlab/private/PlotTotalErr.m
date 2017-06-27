@@ -64,7 +64,7 @@ switch lower(pinfo.model)
 
       clf;
       plot(pinfo.time,err, 'b', pinfo.time,err_spread, 'r');
-      legend(string1,string2,0)
+      legend(string1,string2,'Location','NorthEast')
       legend boxoff
       s1 = sprintf('%s Total Error over all %d variables', pinfo.model, num_vars);
       title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
@@ -129,7 +129,7 @@ switch lower(pinfo.model)
 
       clf;
       plot(pinfo.time,err, 'b', pinfo.time ,err_spread, 'r');
-      legend(string1,string2,0)
+      legend(string1,string2,'Location','NorthEast')
       legend boxoff
       s1 = sprintf('%s Total Error over all %d variables', pinfo.model, num_vars);
       title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
@@ -189,7 +189,7 @@ switch lower(pinfo.model)
       clf; subplot(2,1,1);
 
       plot(pinfo.time,err, 'b', pinfo.time,err_spread, 'r');
-      legend(string1,string2,0)
+      legend(string1,string2,'Location','NorthEast')
       legend boxoff
       s1 = sprintf('%s Total Error over statevars %d to %d', pinfo.model, ind1, indN);
       title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
@@ -219,7 +219,7 @@ switch lower(pinfo.model)
       subplot(2,1,2)
 
       plot(pinfo.time,err, 'b', pinfo.time,err_spread, 'r');
-      legend(string1,string2,0)
+      legend(string1,string2,'Location','NorthEast')
       legend boxoff
       s1 = sprintf('%s Total Error over statevars %d to %d', pinfo.model, ind1, indN);
       title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
@@ -268,7 +268,7 @@ switch lower(pinfo.model)
 
          figure(ivar); clf(ivar);
          plot(pinfo.time,err, 'b', pinfo.time,err_spread, 'r');
-         legend(string1,string2,0)
+         legend(string1,string2,'Location','NorthEast')
          legend boxoff
          string1 = sprintf('%s Total Error over all %d variables', pinfo.model, num_vars);
          string2 = sprintf('''%s'' %s', varlist{ivar}, pinfo.diagn_file);
