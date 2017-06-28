@@ -10,7 +10,6 @@ module dart_time_io_mod
 !> Netcdf reading and writing dart model time.
 !> Temporary module for dart time.
 !>@todo should this go in state_vector_io_mod or io_filename_mod?
-!>@todo some synergy with single_file_io_mod.f90 routines ... nc_get_tindex, etc
 !> @{
 
 use types_mod,        only : r8, digits12

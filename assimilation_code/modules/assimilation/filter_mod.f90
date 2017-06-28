@@ -21,18 +21,24 @@ use obs_sequence_mod,      only : read_obs_seq, obs_type, obs_sequence_type,    
                                  
 use obs_def_mod,           only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
                                   get_obs_def_type_of_obs
+
 use obs_def_utilities_mod, only : set_debug_fwd_op
+
 use time_manager_mod,      only : time_type, get_time, set_time, operator(/=), operator(>),   &
                                   operator(-), print_time
+
 use utilities_mod,         only : register_module,  error_handler, E_ERR, E_MSG, E_DBG,       &
                                   logfileunit, nmlfileunit, timestamp,  &
                                   do_output, find_namelist_in_file, check_namelist_read,      &
                                   open_file, close_file, do_nml_file, do_nml_term, to_upper
+
 use assim_model_mod,       only : static_init_assim_model, get_model_size,                    &
                                   end_assim_model,  pert_model_copies
+
 use assim_tools_mod,       only : filter_assim, set_assim_tools_trace, get_missing_ok_status, &
                                   test_state_copies
 use obs_model_mod,         only : move_ahead, advance_state, set_obs_model_trace
+
 use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,                &
                                   ensemble_type, get_copy, get_my_num_copies, put_copy,       &
                                   all_vars_to_all_copies, all_copies_to_all_vars,             &
@@ -47,13 +53,16 @@ use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,  
                                   all_copies_to_all_vars, allocate_single_copy, allocate_vars, &
                                   get_single_copy, put_single_copy, deallocate_single_copy,   &
                                   print_ens_handle
+
 use adaptive_inflate_mod,  only : do_varying_ss_inflate, mean_from_restart, sd_from_restart,  &
                                   do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
                                   adaptive_inflate_type, set_inflation_mean_copy ,            &
                                   log_inflation_info, set_inflation_sd_copy,                  &
                                   get_minmax_task_zero, do_rtps_inflate
+
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                   task_count
+
 use smoother_mod,          only : smoother_read_restart, advance_smoother,                    &
                                   smoother_gen_copy_meta_data, smoother_write_restart,        &
                                   init_smoother, do_smoothing, smoother_mean_spread,          &
@@ -72,11 +81,12 @@ use io_filenames_mod,      only : io_filenames_init, file_info_type, &
                                   query_copy_present, COPY_NOT_PRESENT, &
                                   READ_COPY, WRITE_COPY, READ_WRITE_COPY
 
+use direct_netcdf_mod,     only : finalize_single_file_io, write_augmented_state, &
+                                  nc_get_num_times
+
 use forward_operator_mod,  only : get_obs_ens_distrib_state
 
 use quality_control_mod,   only : initialize_qc
-
-use single_file_io_mod,    only : get_num_times_netcdf, write_augmented_state, finalize_singlefile_output
 
 !------------------------------------------------------------------------------
 
@@ -594,7 +604,7 @@ if (get_stage_to_write('input')) then
       call store_input(state_ens_handle, prior_inflate, post_inflate)
    else
       ! if there is only one timestep in your input file insert the mean and sd if requested
-      ntimes = get_num_times_netcdf(file_info_input%stage_metadata%filenames(1,1))
+      ntimes = nc_get_num_times(file_info_input%stage_metadata%filenames(1,1))
       if (single_file_out) then
         if ( ntimes == 1 ) then
            call write_augmented_state(state_ens_handle, file_info_input)
@@ -1092,19 +1102,19 @@ endif
 if (single_file_out) then
 
    if (get_stage_to_write('forecast')) &
-      call finalize_singlefile_output(file_info_forecast)
+      call finalize_single_file_io(file_info_forecast)
 
    if (get_stage_to_write('preassim')) &
-      call finalize_singlefile_output(file_info_preassim)
+      call finalize_single_file_io(file_info_preassim)
 
    if (get_stage_to_write('postassim')) &
-      call finalize_singlefile_output(file_info_postassim)
+      call finalize_single_file_io(file_info_postassim)
 
    if (get_stage_to_write('analysis')) &
-      call finalize_singlefile_output(file_info_analysis)
+      call finalize_single_file_io(file_info_analysis)
 
    if (get_stage_to_write('output')) &
-      call finalize_singlefile_output(file_info_output)
+      call finalize_single_file_io(file_info_output)
 endif
 
 ! Give the model_mod code a chance to clean up.

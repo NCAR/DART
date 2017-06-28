@@ -457,7 +457,18 @@ deprecated for years, they have been removed. You must remove them from
 your existing namelists or obs_diag will error out right away.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ XXX YY 2017 :: $Revision$
++ June 28th 2017 :: $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Now we are able to run 'single_file_in' and 'single_file_out' with MPI.
+
+single_file_io_mod.f90 has been removed and its functionality has been moved 
+to direct_netcdf_mod.f90.  
+
+single_file_io_mod.f90 has been removed from all of the path_names_* files.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ XXX MM 2017 :: $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 

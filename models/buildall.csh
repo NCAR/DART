@@ -42,7 +42,7 @@ else if ( "$usingmpi" == "default" ) then
 else if ( "$usingmpi" == "no" ) then
   echo "Will NOT be building with MPI enabled"
   set QUICKBUILD_ARG='-nompi'
-elseif ( $usingmpi == -1 ) then
+else if ( $usingmpi == -1 ) then
   echo "Will be building with the default MPI settings"
   setenv QUICKBUILD_ARG ''
 else
