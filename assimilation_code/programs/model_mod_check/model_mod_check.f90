@@ -178,7 +178,7 @@ call init_ensemble_manager(ens_handle, num_ens, model_size)
 
 ! Initialize input file info
 call io_filenames_init(file_info_input,             &
-                       num_copies   = num_ens,      &
+                       ncopies      = num_ens,      &
                        cycling      = single_file,  &
                        single_file  = single_file,  & 
                        restart_list = input_state_files)
@@ -199,7 +199,7 @@ enddo
 
 ! Initialize output file info
 call io_filenames_init(file_info_output,           &
-                       num_copies   = num_ens,     &
+                       ncopies      = num_ens,     &
                        cycling      = single_file, &
                        single_file  = single_file, &
                        restart_list = output_state_files)
