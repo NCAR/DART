@@ -34,7 +34,7 @@ use time_manager_mod, only : time_type, get_time, set_time
 ! Use one but not both.   The 'use' line must be before the 'implicit none' 
 ! and 'private' lines, 'include' must come after.  Go figure.
 ! For more help on compiling a module which uses MPI see the 
-! $DART/doc/mpi directory. 
+! $DART/developer_tests/mpi_utilities/tests/README
 
 use mpi
 
