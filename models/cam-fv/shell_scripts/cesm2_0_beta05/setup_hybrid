@@ -163,7 +163,7 @@ setenv case             Test
 setenv compset          F
 setenv compset_args     "--compset $compset"
 setenv resolution       f19_f19
-setenv cesmtag          cesm2_0_beta05_cam5_4_101
+setenv cesmtag          cesm2_0_beta05
 setenv num_instances    3
 
 # ==============================================================================
@@ -172,7 +172,9 @@ setenv num_instances    3
 # mach            Computer name
 # cesmdata        Location of some supporting CESM data files.
 # cesmroot        Location of the CESM code base.  This version of the script
-#                 only supports version cesm1_5
+#                 only supports version cesm2_0_beta05.
+#                 You need to make your own local copy of this, so that this
+#                 setup script can modify (non-fortran) parts of it.
 # sourcemods      Location of sourcemods needed to make CESM work with DART.
 #                 If you have additional sourcemods, they will need to be merged 
 #                 into any DART mods and put into the $sourcemods location.
@@ -197,8 +199,6 @@ setenv num_instances    3
 
 setenv mach         cheyenne
 setenv cesmdata     /glade/p/cesm/cseg/inputdata
-# setenv cesmroot     /glade/p/cesm/cseg/collections/${cesmtag}
-# setenv cesmroot     /glade/p/cesmdata/cseg/.dev/${cesmtag}
 setenv cesmroot     /glade/p/work/${USER}/Models/${cesmtag}
 setenv sourcemods   ~/${cesmtag}/SourceMods
 setenv caseroot     /glade/p/work/${USER}/Exp/${case}
@@ -475,9 +475,14 @@ endif
 # $p/Models/cesm2_0_beta05_cam5_4_101/cime/utils/python/CIME/case_st_archive.py,
 # which is in this directory too.
 cd $CIMEROOT
-set st_arch = `find [^\.]* -name case_st_archive.py -print`
-set ca_arch = `find [^\.]* -name config_archive.xml -print | grep cesm`
+set case_run = `find [^\.]* -name case_run.py -print `
+set st_arch  = `find [^\.]* -name case_st_archive.py -print`
+set ca_arch  = `find [^\.]* -name config_archive.xml -print | grep cesm`
 cd -
+if (! -f $CIMEROOT/${case_run}.orig) then
+   $MOVE $CIMEROOT/${case_run} $CIMEROOT/${case_run}.orig
+   cp ./case_run.py $CIMEROOT/$case_run
+endif
 if (! -f $CIMEROOT/${st_arch}.orig) then
    $MOVE $CIMEROOT/${st_arch} $CIMEROOT/${st_arch}.orig
    cp ./case_st_archive.py $CIMEROOT/$st_arch
@@ -1178,7 +1183,9 @@ while ($inst <= $num_instances)
          echo "WARNING; using default bndtvghg"
       endif
 
-      if ($start_year <= 2013) then
+      # Can't specify this file, when CAM6 prognostic aerosols apparently also specifies prescribed_strataero_file.
+      if (0) then
+      # if ($start_year <= 2013) then
          echo " prescribed_volcaero_datapath = '/glade/p/cesmdata/cseg/inputdata/atm/cam/volc'"       >> ${fname}
          echo " prescribed_volcaero_file      = 'CCSM4_volcanic_1850-2013_prototype1_c130430.nc'"     >> ${fname}
       else 

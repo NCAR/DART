@@ -170,9 +170,9 @@ switch lower(pinfo.model)
                  'interpreter','none','fontweight','bold');
 
       if (exist('legendstr','var'))
-         legend(legendstr,'Ensemble Mean',0);
+         legend(legendstr,'Ensemble Mean','Location','NorthEast');
       else
-         legend(          'Ensemble Mean',0);
+         legend(          'Ensemble Mean','Location','NorthEast');
       end
 
       xlabel('state variable 1');

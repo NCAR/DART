@@ -51,7 +51,7 @@ use io_filenames_mod,      only : io_filenames_init, file_info_type, file_info_d
                                   set_io_copy_flag, check_file_info_variable_shape, &
                                   READ_COPY, WRITE_COPY
                                   
-use single_file_io_mod,    only : finalize_singlefile_output
+use direct_netcdf_mod,     only : finalize_single_file_io
 
 use quality_control_mod,   only : set_input_qc, initialize_qc
 
@@ -607,13 +607,13 @@ call trace_message('Before writing state restart file if requested')
 if(write_output_state_to_file) then
    call write_state(ens_handle, file_info_output)
    if (single_file_out) &
-      call finalize_singlefile_output(file_info_output)
+      call finalize_single_file_io(file_info_output)
 endif
 
 ! Write the last time step to the true state file
 if (single_file_out) then
    call write_state(ens_handle, file_info_true)
-   call finalize_singlefile_output(file_info_true)
+   call finalize_single_file_io(file_info_true)
 endif
 
 call trace_message('After  writing state restart file if requested')

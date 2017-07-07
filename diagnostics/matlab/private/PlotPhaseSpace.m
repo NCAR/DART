@@ -93,7 +93,7 @@ switch lower(pinfo.model)
 
          s = sprintf('%d %d %s %s %s', pinfo.var1ind, pinfo.var2ind, ...
                      pinfo.fname, pinfo.model, pinfo.ens_mem);
-         h = legend(s, 0);
+         h = legend(s, 'Location','NorthEast');
          set(h, 'interpreter', 'none')
 
       else
@@ -106,7 +106,7 @@ switch lower(pinfo.model)
          outm{nlines+1} = sprintf('%d %d %s %s %s', ...
               pinfo.var1ind, pinfo.var2ind, pinfo.fname, ...
               pinfo.model, pinfo.ens_mem);
-         [~, objh, ~, ~] = legend([outh; h], outm, 0);
+         [~, objh, ~, ~] = legend([outh; h], outm, 'Location','NorthEast');
 
          set(objh(1:nlines+1), 'interpreter', 'none')
       end
@@ -156,7 +156,7 @@ switch lower(pinfo.model)
 
          s = sprintf('%d %d %d %s %s %s', pinfo.var1ind, pinfo.var2ind, ...
                      pinfo.var3ind, pinfo.fname, pinfo.model, pinfo.ens_mem);
-         h = legend(s, 0);
+         h = legend(s, 'Location','NorthEast');
          set(h, 'interpreter', 'none')
 
       else
@@ -169,7 +169,7 @@ switch lower(pinfo.model)
          outm{nlines+1} = sprintf('%d %d %d %s %s %s', ...
               pinfo.var1ind, pinfo.var2ind, pinfo.var3ind, pinfo.fname, ...
               pinfo.model, pinfo.ens_mem);
-         [~, objh, ~, ~] = legend([outh; h], outm, 0);
+         [~, objh, ~, ~] = legend([outh; h], outm, 'Location','NorthEast');
 
          set(objh(1:nlines+1), 'interpreter', 'none')
       end
@@ -228,7 +228,7 @@ switch lower(pinfo.model)
 
          s = sprintf('%s %s %s %s %s %s', pinfo.var1name, pinfo.var2name, pinfo.var3name, ...
                                               pinfo.model, pinfo.fname, pinfo.ens_mem);
-         h = legend(s, 0);
+         h = legend(s, 'Location','NorthEast');
          set(h, 'interpreter', 'none')
 
       else
@@ -240,7 +240,7 @@ switch lower(pinfo.model)
          nlines = length(outm);
          outm{nlines+1} = sprintf('%s %s %s %s %s %s', pinfo.var1name, ...
                pinfo.var2name, pinfo.var3name, pinfo.model, pinfo.fname, pinfo.ens_mem);
-         [~, objh, ~, ~] = legend([outh; h], outm, 0);
+         [~, objh, ~, ~] = legend([outh; h], outm, 'Location','NorthEast');
 
          set(objh(1:nlines+1), 'interpreter', 'none')
       end
@@ -293,7 +293,7 @@ switch lower(pinfo.model)
 
          s = sprintf('%s %s %s %s %s %s', pinfo.var1name, pinfo.var2name, pinfo.var3name, ...
                                               pinfo.model, pinfo.fname, pinfo.ens_mem);
-         h = legend(s, 0);
+         h = legend(s, 'Location','NorthEast');
          set(h, 'interpreter', 'none')
 
       else
@@ -305,7 +305,7 @@ switch lower(pinfo.model)
          nlines = length(outm);
          outm{nlines+1} = sprintf('%s %s %s %s %s %s', pinfo.var1name, ...
                pinfo.var2name, pinfo.var3name, pinfo.model, pinfo.fname, pinfo.ens_mem);
-         [~, objh, ~, ~] = legend([outh; h], outm, 0);
+         [~, objh, ~, ~] = legend([outh; h], outm, 'Location','NorthEast');
 
          set(objh(1:nlines+1), 'interpreter', 'none')
       end

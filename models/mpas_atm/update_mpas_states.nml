@@ -1,7 +1,6 @@
 
 &update_mpas_states_nml
-   dart_analysis_filename = 'filter_restart.nc'
-   print_data_ranges      = .true.
-   dom_id                 = 1
-   /
-
+  update_input_file_list  = 'filter_out.txt'
+  update_output_file_list = 'filter_in.txt'
+  print_data_ranges      = .true.
+  /

@@ -17,20 +17,14 @@ module io_filenames_mod
 !> A file_info_type is created with a call to file_info_type = io_filenames_init()
 !>
 !> The file_info_type is public and contains:
-!>   * file_options_type (private)
-!>   * 3 restart_names_types (private):
-!>        - restart_files_in
-!>        - restart_files_out_prior (see single_file_io_mod.f90 for where this is used.)
-!>        - restart_files_out
-!>
-!> The file_options_type contains all the read/write options that typically
-!> come from the filter or perfect_model_obs namelist. These options are passed from
-!> the calling routine to io_file_namesames_init()
+!>   * IO file names
+!>   * IO metadata such as units, copy number, description, ...
 !>
 !> The restart_names_types contain a 2D array of filenames (num files, num_domains).
 !>
 !> The file_info_type is passed to the state IO routines: read_state, write_state,
 !> and filter_state_space_diagnostics (diagnostic file)
+!> 
 !> The internals of the file_info_type are accessed through the accessor functions
 !> listed below. assert_file_info_initialized() and assert_restart_names_initialized()
 !> should be used to check that the file_info_type has been initialized before
@@ -264,10 +258,10 @@ end function get_single_file
 !> Initialize file_info type
 
 
-subroutine io_filenames_init(file_info, num_copies, cycling, single_file, restart_list, root_name, &
-                           check_output_compatibility)
+subroutine io_filenames_init(file_info, num_copies, cycling, single_file, &
+                             restart_list, root_name, check_output_compatibility)
 
-type(file_info_type),       intent(out):: file_info  !< structure with expanded list of filenames
+type(file_info_type),       intent(out):: file_info        !< structure with expanded list of filenames
 integer,                    intent(in) :: num_copies       !< number of ensemble copies
 logical,                    intent(in) :: cycling          !< model will cycle
 logical,                    intent(in) :: single_file      !< all copies read from one file

@@ -96,7 +96,7 @@ switch lower(pinfo.model)
                     pinfo.time,ens_spread(:, ivar), 'r');
                 s1 = sprintf('%s model Var %d Ensemble Error Spread', pinfo.model, ivar);
                 title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
-                legend(string1,string2,0)
+                legend(string1,string2,'Location','NorthEast')
                 legend boxoff
                 xlabel(sprintf('model "days" (%d timesteps)',pinfo.time_series_length))
                 ylabel('distance')
@@ -140,7 +140,7 @@ switch lower(pinfo.model)
                 pinfo.time,ens_spread(:,ivar), 'r');
             s1 = sprintf('%s model Var %d Ensemble Error Spread', pinfo.model, ivar);
             title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
-            legend(string1,string2,0)
+            legend(string1,string2,'Location','NorthEast')
             legend boxoff
             xlabel(sprintf('model "days" (%d timesteps)',pinfo.time_series_length))
             ylabel('distance')
@@ -196,7 +196,7 @@ switch lower(pinfo.model)
             pinfo.level, pinfo.latitude, pinfo.longitude);
         title({s1, s2, pinfo.diagn_file},'interpreter','none','fontweight','bold');
         
-        legend(string1,string2,0);
+        legend(string1,string2,'Location','NorthEast');
         legend boxoff
         xdates(pinfo.time);
         ylabel('distance');
@@ -248,7 +248,7 @@ switch lower(pinfo.model)
             pinfo.level, pinfo.latCell(pinfo.cellindex), pinfo.lonCell(pinfo.cellindex));
         title({s1, s2, pinfo.diagn_file},'interpreter','none','fontweight','bold');
         
-        legend(string1,string2,0);
+        legend(string1,string2,'Location','NorthEast');
         legend boxoff
         xdates(pinfo.time);
         ylabel('distance');

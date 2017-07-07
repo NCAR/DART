@@ -136,7 +136,7 @@ for ivar = 1:plotdat.nvars,
       % outm     cell array for the text in the legend
       nlines = length(outm);
       outm{nlines + 1} = Regions{iregion};
-      [~, ~, outh, outm] = legend([outh; h],outm,0);
+      [~, ~, outh, outm] = legend([outh; h],outm,'Location','NorthEast');
    end
 
    legend boxoff

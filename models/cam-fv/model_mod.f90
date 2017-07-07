@@ -331,7 +331,10 @@ type(grid_1d_type), target ::  lon ,lat ,lev ,gw ,hyam ,hybm ,hyai ,hybi, slon ,
 ! ? should phis be in grid_names_2d?
 ! character (len=8),dimension(100) :: grid_names_2d = (/(' ',iii=1,100)/)
 
-! CAM-chem 1))
+! CAM-chem 
+! These lists were provided by Jerome Barre' and/or Avelino Arellano.
+! They implemented the unit conversion in subroutine read_cam_init in Lanai (and/or earlier DARTs).
+! The Manhattan implementation at the end of model_interpolate was by Kevin Raeder.
 ! FIXME It would be better if the following 2 vectors were read from an external file....
 ! If meteorological variables (including PRESSURE), or SURFACE_ELEVATION need to have 
 ! their units converted, their names and conversion factors could be entered in these lists.
@@ -405,10 +408,6 @@ real(r8), parameter :: molar_mass_dry_air = 28.9644_r8
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! Namelist variables with default values follow
 
-! output_state_vector = .true.     results in a "state-vector" netCDF file
-! output_state_vector = .false.    results in a "prognostic-var" netCDF file
-logical :: output_state_vector = .false.
-
 ! Files where basic info about model configuration can be found
 character(len=128) :: &
    model_config_file = 'caminput.nc',             & ! An example cam initial file.
@@ -479,7 +478,7 @@ integer :: Time_step_seconds = 21600, Time_step_days = 0
 logical :: print_details = .false.
 
 
-namelist /model_nml/ vert_coord, output_state_vector, model_version, cam_phis,        &
+namelist /model_nml/ vert_coord, model_version, cam_phis,        &
                        state_num_0d,   state_num_1d,   state_num_2d,   state_num_3d,  &
                      state_names_0d, state_names_1d, state_names_2d, state_names_3d,  &
                                       which_vert_1d,  which_vert_2d,  which_vert_3d,  &
@@ -1682,14 +1681,14 @@ if (i /= MISSING_I) then
 endif
 
 i = find_name('EFGWORO ',cflds)
-if (i/= 0) then
+if (i/= MISSING_I) then
    dart_to_cam_types(QTY_GRAV_WAVE_DRAG_EFFIC) = 'EFGWORO'
    cam_to_dart_kinds(i) = QTY_GRAV_WAVE_DRAG_EFFIC
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('FRACLDV',cflds)
-if (i /= 0) then
+if (i /= MISSING_I) then
    dart_to_cam_types(QTY_GRAV_WAVE_STRESS_FRACTION) = 'FRACLDV'
    cam_to_dart_kinds(i) = QTY_GRAV_WAVE_STRESS_FRACTION
    convert_mmr2vmr(i) = mmr2vmr(i)
@@ -2903,7 +2902,7 @@ elseif (obs_kind == QTY_PRESSURE) then
    lev_name = 'lev'
 endif
 
-! Need to get lon, lat, lev dimesion names for this field
+! Need to get lon, lat, lev dimension names for this field
 
 
 ! DART can't handle any 0d or 1d ob fields, so lump them together for elimination in this search.
@@ -3264,7 +3263,6 @@ istatus(:) = 1
 cur_vstatus(:) = 1
 vstatus(:) = 0 ! so you can track statuses
 val(:)     = MISSING_R8
-p_col(:,:) = MISSING_R8
 p_surf(:) = MISSING_R8
 
 ! Need to get the surface pressure at this point.
@@ -3305,6 +3303,7 @@ endif
 !     from the grid-correct ps[_stagr] grid
 num_levs = dim_sizes(find_name('lev',dim_names))
 allocate(p_col(num_levs, ens_size))
+p_col(:,:) = MISSING_R8
 do imem = 1, ens_size
    call plevs_cam(p_surf(imem), num_levs, p_col(:, imem))
 enddo

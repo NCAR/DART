@@ -83,9 +83,9 @@ switch lower(pinfo.model)
             plot(pinfo.time,ens_mean,'r','LineWidth',1.0)
 
             if (exist('legendstr','var'))
-               legend(legendstr,'Ensemble Mean',0)
+               legend(legendstr,'Ensemble Mean','Location','NorthEast')
             else
-               legend('Ensemble Mean',0)
+               legend('Ensemble Mean','Location','NorthEast')
             end
 
             title(sprintf('%s Variable %d of %s',pinfo.model,ivar,pinfo.diagn_file), ...
@@ -111,7 +111,7 @@ switch lower(pinfo.model)
                            'tindex1',pinfo.diagn_time(1),...
                            'tcount',pinfo.diagn_time(2));
             plot(pinfo.time, ens_mean, 'r');
-            legend(sprintf('Ensemble Mean %f',mean(ens_mean)),0)
+            legend(sprintf('Ensemble Mean %f',mean(ens_mean)),'Location','NorthEast')
 
             if ( have_truth )
                truth = get_hyperslab('fname',pinfo.truth_file, ...
@@ -122,7 +122,7 @@ switch lower(pinfo.model)
                            'tcount',pinfo.truth_time(2));
                hold on; plot(pinfo.time,truth,'b'); hold off;
                legend(sprintf('Ensemble Mean %f',mean(ens_mean)),...
-                      sprintf('True State %f',mean(truth)),0)
+                      sprintf('True State %f',mean(truth)),'Location','NorthEast')
             end
 
             s1 = sprintf('%s Variable %d',pinfo.model,ivar);
@@ -138,7 +138,7 @@ switch lower(pinfo.model)
                  'tindex1',pinfo.diagn_time(1), ...
                  'tcount',pinfo.diagn_time(2));
       plot3(ens(1,:), ens(2,:), ens(3,:), 'r')
-      legend('Ensemble Mean',0)
+      legend('Ensemble Mean','Location','NorthEast')
 
       if (have_truth)
          ts= get_hyperslab('fname',pinfo.truth_file, ...
@@ -146,7 +146,7 @@ switch lower(pinfo.model)
                  'tindex1',pinfo.truth_time(1), ...
                  'tcount',pinfo.truth_time(2));
          hold on; plot3(  ts(1,:),  ts(2,:),  ts(3,:), 'b'); hold off;
-         legend('Ensemble Mean','True State',0)
+         legend('Ensemble Mean','True State','Location','NorthEast')
       end
 
       [~,fname,fext] = fileparts(pinfo.diagn_file);
@@ -173,7 +173,7 @@ switch lower(pinfo.model)
                            'tindex1',pinfo.diagn_time(1), ...
                            'tcount',pinfo.diagn_time(2));
             plot(pinfo.time, ens_mean, 'r')
-            legend(sprintf('Ensemble Mean %f',mean(ens_mean)),0)
+            legend(sprintf('Ensemble Mean %f',mean(ens_mean)),'Location','NorthEast')
 
             % Get the truth for this variable
             if (have_truth)
@@ -185,7 +185,7 @@ switch lower(pinfo.model)
                            'tcount',pinfo.truth_time(2));
                hold on; plot(pinfo.time,truth,'b'); hold off;
                legend(sprintf('Ensemble Mean %f',mean(ens_mean)),...
-                      sprintf('True State %f',mean(truth)),0)
+                      sprintf('True State %f',mean(truth)),'Location','NorthEast')
             end
             s1 = sprintf('%s Variable %d',pinfo.model,ivar);
             title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
@@ -214,7 +214,7 @@ switch lower(pinfo.model)
 
       subplot(2,1,2)
          plot(pinfo.time, ens_mean, 'r');
-         legend('Ensemble Mean',0)
+         legend('Ensemble Mean','Location','NorthEast')
 
          s1 = sprintf('%s ''%s'' -- %s Ensemble Mean', ...
                             pinfo.model, pinfo.var, pinfo.diagn_file);
@@ -234,7 +234,7 @@ switch lower(pinfo.model)
                         'tcount',pinfo.truth_time(2));
 
             hold on; plot(pinfo.time, truth,'b'); hold off;
-            legend('Ensemble Mean','True State',0)
+            legend('Ensemble Mean','True State','Location','NorthEast')
          end
 
          legend boxoff
