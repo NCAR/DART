@@ -5,7 +5,7 @@
 # DART $Id$
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Jan 13th 2017 :: rma_fixed_filenames merge changes Revision: 10902
++ Jan 13th 2017 :: rma_fixed_filenames merge changes.  Revision: 10902
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Specific namelist changes include:
@@ -187,7 +187,7 @@ ADDITIONAL NOTES :
 
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Feb 15th 2017 :: rma_single_file merge changes Revision: 11136 
++ Feb 15th 2017 :: rma_single_file merge changes.   Revision: 11136 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Filter and PMO can now run with multiple cycles for low order models. The output
@@ -225,7 +225,7 @@ single_file_out       -- ADDED for low order models
 has_cycling           -- ADDED for low order models
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Feb 15th 2017 :: filter updates  Revision: 11160 
++ Feb 15th 2017 :: filter updates.   Revision: 11160 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 The postassim diagnostics file was being incorrectly written after
@@ -255,7 +255,7 @@ Changes to the perfect_model_obs_nml are :
 has_cycling           -- REMOVED for low order models
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ April 27th 2017 :: changes  Revision: 11545
++ April 27th 2017 :: diagnostic file changes.  Revision: 11545
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Two additional Diagnostic Files (forecast and analysis) in Filter 
@@ -293,7 +293,7 @@ which can be set with the namelist option (stages_to_write)
 
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ May 5th 2017 :: major changes to model_mod interfaces  Revision: 11615
++ May 5th 2017 :: major changes to model_mod interfaces.  Revision: 11615
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 A long-awaited overhaul of the model_mod interfaces. All models which are
@@ -389,7 +389,7 @@ sizes which were previously in final_full.XX files are included, and there
 is a tool to generate and append to the file any other ensemble size required.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Jun 2nd 2017 :: tutorial, DART_LAB, and various updates Revision: 11696
++ Jun 2nd 2017 :: tutorial, DART_LAB, and various updates.  Revision: 11696
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - bring the DART tutorial pdf slides up to date with the current release.
@@ -436,7 +436,7 @@ is a tool to generate and append to the file any other ensemble size required.
   DART it it should read and write variables all at once or variable-by-variable.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ June 27rd 2017 :: Revision: 11770 
++ June 27rd 2017 :: CICE 5, model_mod_check, tutorial.  Revision: 11770 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Updated support for CICE5.
@@ -457,7 +457,7 @@ deprecated for years, they have been removed. You must remove them from
 your existing namelists or obs_diag will error out right away.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ June 28th 2017 :: $Revision$
++ June 28th 2017 :: Put single in/out filenames in namelist.  Revision: 11780 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Now we are able to run 'single_file_in' and 'single_file_out' with MPI.
@@ -468,7 +468,16 @@ to direct_netcdf_mod.f90.
 single_file_io_mod.f90 has been removed from all of the path_names_* files.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ XXX MM 2017 :: $Revision$
++ July 7th 2017 :: CESM scripts, MPAS-ATM scripts.  $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+cam-fv:  scripts and model_mod.f90 updated for cesm2_0_beta05.
+
+models/mpas_atm - scripts completely revised for the Manhattan release.
+Many thanks to Soyoung Ha and Ryan Torn for the contributed code.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ XXX MM 2017 :: next update.  Revision: 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
