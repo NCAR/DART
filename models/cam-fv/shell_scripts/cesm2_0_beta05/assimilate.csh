@@ -562,7 +562,8 @@ ${REMOVE} cam_inflation_cookie
 # &filter_nml:           direct_netcdf_read      = .true.
 # &filter_nml:           direct_netcdf_write     = .true.
 # &filter_nml:           overwrite_state_input   = .true.
-# &filter_nml:           input_state_file_list       = 'restart_files.txt'
+# &filter_nml:           input_state_file_list   = 'cam_init_files'
+# &filter_nml:           output_state_file_list  = 'cam_init_files'
 # &filter_nml:           obs_sequence_in_name    = 'obs_seq.out'
 # &filter_nml:           obs_sequence_out_name   = 'obs_seq.final'
 # &filter_nml:           init_time_days          = -1,
@@ -728,7 +729,7 @@ while ( ${member} <= ${ensemble_size} )
 end
 
 # DEBUB st_archive by making a shadow copy of this directory.
-if ($case == $DATA_ASSIMILATION_CYCLES) then
+if ($cycle == $DATA_ASSIMILATION_CYCLES) then
    mkdir ../run_shadow
    foreach f (`ls`)
       ls -l $f > ../run_shadow/$f
@@ -746,4 +747,5 @@ exit 0
 # $URL$
 # $Revision$
 # $Date$
+
 

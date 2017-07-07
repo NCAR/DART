@@ -160,7 +160,6 @@
 # AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV (F_AMIP_CAM5) (FAMIPC5)
 
 setenv case             Test
-# setenv case            Tune_c.2_v1.5_dflt_dflt
 # F2000_DEV = 2000_CAM60_CLM50%BGC_CICE%PRES_DOCN%DOM_MOSART_CISM1%NOEVOLVE_SWAV
 #             defined in components/cam, not cime(!).
 setenv compset          F2000_DEV
@@ -169,7 +168,7 @@ setenv compset_args     "--compset $compset"
 setenv resolution       f09_d025
 setenv user_grid        "  --gridfile /glade/p/work/raeder/Exp/CAM6_clouds"
 setenv user_grid        "${user_grid}/config_grids+fv1+2deg_oi0.25_gland20.xml"
-setenv cesmtag          cesm2_0_beta05_cam5_4_101
+setenv cesmtag          cesm2_0_beta05
 setenv num_instances    3
 
 # ==============================================================================
@@ -178,7 +177,9 @@ setenv num_instances    3
 # mach            Computer name
 # cesmdata        Location of some supporting CESM data files.
 # cesmroot        Location of the CESM code base.  This version of the script
-#                 only supports version cesm1_5
+#                 only supports version cesm2_0_beta05.
+#                 You need to make your own local copy of this, so that this
+#                 setup script can modify (non-fortran) parts of it.
 # sourcemods      Location of sourcemods needed to make CESM work with DART.
 #                 If you have additional sourcemods, they will need to be merged 
 #                 into any DART mods and put into the $sourcemods location.
@@ -203,15 +204,13 @@ setenv num_instances    3
 
 setenv mach         cheyenne
 setenv cesmdata     /glade/p/cesm/cseg/inputdata
-# setenv cesmroot     /glade/p/cesm/cseg/collections/${cesmtag}
-# setenv cesmroot     /glade/p/cesmdata/cseg/.dev/${cesmtag}
 setenv cesmroot     /glade/p/work/${USER}/Models/${cesmtag}
 setenv sourcemods   ~/${cesmtag}/SourceMods
 setenv caseroot     /glade/p/work/${USER}/Exp/${case}
 setenv rundir       /glade/scratch/${USER}/${case}/run
 setenv exeroot      /glade/scratch/${USER}/${case}/bld
 setenv archdir      /glade/scratch/${USER}/${case}/archive
-# CESM1_5(?); configure (called by cesm_setup?) has a new argument, cimeroot, 
+# >= CESM1_5; configure (called by cesm_setup?) has a new argument, cimeroot, 
 # which either needs to be provided on the command line 
 # or env var CIMEROOT needs to be defined.
 setenv CIMEROOT     $cesmroot/cime
@@ -494,9 +493,14 @@ endif
 # $p/Models/cesm2_0_beta05_cam5_4_101/cime/utils/python/CIME/case_st_archive.py,
 # which is in this directory too.
 cd $CIMEROOT
+set case_run = `find [^\.]* -name case_run.py -print `
 set st_arch = `find [^\.]* -name case_st_archive.py -print`
 set ca_arch = `find [^\.]* -name config_archive.xml -print | grep cesm`
 cd -
+if (! -f $CIMEROOT/${case_run}.orig) then
+   $MOVE $CIMEROOT/${case_run} $CIMEROOT/${case_run}.orig
+   cp ./case_run.py $CIMEROOT/$case_run
+endif
 if (! -f $CIMEROOT/${st_arch}.orig) then
    $MOVE $CIMEROOT/${st_arch} $CIMEROOT/${st_arch}.orig
    cp ./case_st_archive.py $CIMEROOT/$st_arch
@@ -1122,7 +1126,7 @@ while ($inst <= $num_instances)
    echo " fincl1        = 'PHIS:I' "                      >> ${fname}
    echo " nhtfrq        = -$stop_n "                      >> ${fname}
    echo " mfilt         = 1 "                             >> ${fname}
-   # Was needed for 2 degree spinup CAM6_2deg_spinup_sst.25,
+   # Was needed for 2 degree spinup 
    # even though 1 degree worked with default 1 degree topo with a name similar to this.
    # echo "bnd_topo = '/glade/p/cesmdata/cseg/inputdata/atm/cam/topo/fv_1.9x2.5_nc3000_Nsw084_Nrs016_Co120_Fi001_ZR_061116.nc' " >> ${fname}
 
@@ -1175,7 +1179,7 @@ while ($inst <= $num_instances)
       # Prescribed aerosols on the timescales of interest to assimilation are acceptable.
       # WACCM5 should not have these set.
 
-      # CAM6_clouds wants prognostic aerosols.
+      # CAM6
       if (0) then
 #       if ($start_year <= 2010) then
 # 
@@ -1230,8 +1234,7 @@ while ($inst <= $num_instances)
          echo "WARNING; using default bndtvghg"
       endif
 
-      # CAM6_clouds
-      # Can't specify this file, when CAM prognostic aerosols apparently also specifies prescribed_strataero_file.
+      # Can't specify this file, when CAM6 prognostic aerosols apparently also specifies prescribed_strataero_file.
       if (0) then
       # if ($start_year <= 2013) then
          echo " prescribed_volcaero_datapath = '/glade/p/cesmdata/cseg/inputdata/atm/cam/volc'"       >> ${fname}
