@@ -4541,7 +4541,7 @@ select case (ztypeout)
    endif
 
    ! and finally, convert into scale height
-   where (surfp /= 0.0_r8)
+   where (surfp /= 0.0_r8 .and. fullp /= MISSING_R8)
       zout = -log(fullp / surfp)
    else where
       zout = MISSING_R8
@@ -4808,8 +4808,6 @@ fract(1:nc, :) = -1.0_r8
 !is_vertical: VERTISPRESSURE
 !is_vertical:   VERTISHEIGHT
 
-!ens_size = size(loco)
-
 ! unpack the location into local vars
 ! I think you can do this with the first ensemble member? 
 ! Because they are the same horizontally?
@@ -4884,7 +4882,7 @@ if(verttype == VERTISPRESSURE ) then
    call get_index_range(QTY_VAPOR_MIXING_RATIO, qv_base_offset)
 
    do i=1, nc
-      call find_pressure_bounds(state_handle, vert_array, ids(i), nVertLevels, &
+      call find_pressure_bounds(state_handle, ens_size, vert_array, ids(i), nVertLevels, &
             pt_base_offset, density_base_offset, qv_base_offset,  &
             lower(i, :), upper(i, :), fract(i, :), ier)
       !if(debug > 9) print '(A,5I5,F10.4)', &
@@ -4951,7 +4949,7 @@ end subroutine find_vert_level
 
 !------------------------------------------------------------------
 
-subroutine find_pressure_bounds(state_handle, p, cellid, nbounds, &
+subroutine find_pressure_bounds(state_handle, ens_size, p, cellid, nbounds, &
    pt_base_offset, density_base_offset, qv_base_offset, &
    lower, upper, fract, ier)
 
@@ -4962,7 +4960,8 @@ subroutine find_pressure_bounds(state_handle, p, cellid, nbounds, &
 ! and water vapor grids.
 
 type(ensemble_type), intent(in) :: state_handle
-real(r8),    intent(in)  :: p(:) ! ens_size
+integer,     intent(in)  :: ens_size
+real(r8),    intent(in)  :: p(ens_size)
 integer,     intent(in)  :: cellid
 integer,     intent(in)  :: nbounds ! number of vertical levels?
 integer(i8), intent(in)  :: pt_base_offset, density_base_offset, qv_base_offset
@@ -4972,14 +4971,11 @@ integer,     intent(out) :: ier(:) ! ens_size
 
 integer  :: i, ier2
 real(r8) :: pr
-real(r8), allocatable :: pressure(:, :)
-integer  :: ens_size, e
-integer, allocatable :: temp_ier(:)
-logical, allocatable :: found_level(:)
+real(r8) :: pressure(nbounds, ens_size)
+integer  ::  e
+integer  :: temp_ier(ens_size)
+logical  :: found_level(ens_size)
 
-ens_size = size(p)
-
-allocate(pressure(nbounds, ens_size), temp_ier(ens_size), found_level(ens_size))
 
 ! Initialize to bad values so unset returns will be caught.
 fract = -1.0_r8
@@ -4989,7 +4985,7 @@ upper = -1
 ier = 0
 
 ! Find the lowest pressure
-call get_interp_pressure(state_handle, pt_base_offset, density_base_offset, &
+call get_interp_pressure(state_handle, ens_size, pt_base_offset, density_base_offset, &
    qv_base_offset, cellid, 1, nbounds, pressure(1, :), temp_ier)
 if(debug > 11) print *, 'find_pressure_bounds: find the lowest p, ier at k=1 ', pressure(1,:), ier
 
@@ -4998,7 +4994,7 @@ do e = 1, ens_size
 enddo
 
 ! Get the highest pressure level
-call get_interp_pressure(state_handle, pt_base_offset, density_base_offset, &
+call get_interp_pressure(state_handle, ens_size, pt_base_offset, density_base_offset, &
    qv_base_offset, cellid, nbounds, nbounds, pressure(nbounds, :), temp_ier)
 
 if(debug > 11) print *, 'find_pressure_bounds: find the highest p, ier at k= ', nbounds, pressure(nbounds,:), ier
@@ -5018,7 +5014,7 @@ if(any(ier /= 0)) return
 found_level(:) = .false.
 
 do i = 2, nbounds ! You have already done nbounds?
-   call get_interp_pressure(state_handle, pt_base_offset, density_base_offset, &
+   call get_interp_pressure(state_handle, ens_size, pt_base_offset, density_base_offset, &
       qv_base_offset, cellid, i, nbounds, pressure(i, :), temp_ier)
    do e = 1, ens_size
       if(temp_ier(e) /= 0) ier(e) = temp_ier(e)
@@ -5085,7 +5081,6 @@ if(debug > 11) print *, 'find_pressure_bounds: find p, ier at k= ', i, pressure(
    enddo
 enddo
 
-deallocate(found_level)
 
 ! The following is no longer true with the ensemble version:
 ! should never get here because pressures above and below the column
@@ -5097,12 +5092,13 @@ end subroutine find_pressure_bounds
 
 !------------------------------------------------------------------
 
-subroutine get_interp_pressure(state_handle, pt_offset, density_offset, qv_offset, &
+subroutine get_interp_pressure(state_handle, ens_size, pt_offset, density_offset, qv_offset, &
    cellid, lev, nlevs, pressure, ier)
 
 ! Finds the value of pressure at a given point at model level lev
 
 type(ensemble_type), intent(in) :: state_handle
+integer,      intent(in)  :: ens_size
 integer(i8),  intent(in)  :: pt_offset, density_offset, qv_offset
 integer,      intent(in)  :: cellid
 integer,      intent(in)  :: lev, nlevs
@@ -5110,13 +5106,9 @@ real(r8),     intent(out) :: pressure(:)
 integer,      intent(out) :: ier(:)
 
 integer  :: offset
-!real(r8) :: pt, density, qv, tk
-real(r8), allocatable :: pt(:), density(:), qv(:), tk(:)
-integer :: ens_size, e
+real(r8) :: pt(ens_size), density(ens_size), qv(ens_size), tk(ens_size)
+integer :: e
 
-ens_size = size(pressure) 
-
-allocate(pt(ens_size), density(ens_size), qv(ens_size), tk(ens_size))
 if(debug > 11) print*, 'get_interp_pressure for k = ',lev
 
 ! Get the values of potential temperature, density, and vapor
@@ -5149,8 +5141,6 @@ if((debug > 11) .and. do_output()) then
     write(*,*) 'get_interp_pressure: cellid, lev', cellid, lev
     write(*,*) 'get_interp_pressure: pt,rho,qv,p,tk', pt, density, qv, pressure, tk
 endif
-
-deallocate(pt, density, qv, tk)
 
 end subroutine get_interp_pressure
 
@@ -5605,9 +5595,12 @@ endif
 ! velocitydata = U field
 
 do i = 1, nedges
-   if (edgelist(i) > size(xEdge)) then
+   !>@todo FIXME:
+   ! ryan has size(xEdge, 1) but this is a 1d array, so a dimension shouldn't be needed
+   ! was possibly required for ifort v17 on cheyenne
+   if (edgelist(i) > size(xEdge,1)) then
       write(string1, *) 'edgelist has index larger than edge count', &
-                          i, edgelist(i), size(xEdge)
+                          i, edgelist(i), size(xEdge,1)
       call error_handler(E_ERR, 'compute_u_with_rbf', 'internal error', &
                          source, revision, revdate, text2=string1)
    endif
