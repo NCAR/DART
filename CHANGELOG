@@ -457,7 +457,7 @@ deprecated for years, they have been removed. You must remove them from
 your existing namelists or obs_diag will error out right away.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ July 7th 2017 :: cam-fv, MPAS-ATM scripts, single file i/o.  $Revision$
++ July 7th 2017 :: cam-fv, MPAS-ATM scripts, single file i/o.  Revision: 11807
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 models/mpas_atm: scripts completely revised for the Manhattan release.
