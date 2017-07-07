@@ -457,27 +457,26 @@ deprecated for years, they have been removed. You must remove them from
 your existing namelists or obs_diag will error out right away.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ June 28th 2017 :: Put single in/out filenames in namelist.  Revision: 11780 
++ July 7th 2017 :: cam-fv, MPAS-ATM scripts, single file i/o.  $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-Now we are able to run 'single_file_in' and 'single_file_out' with MPI.
-
-single_file_io_mod.f90 has been removed and its functionality has been moved 
-to direct_netcdf_mod.f90.  
-
-single_file_io_mod.f90 has been removed from all of the path_names_* files.
-
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ July 7th 2017 :: CESM scripts, MPAS-ATM scripts.  $Revision$
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+models/mpas_atm: scripts completely revised for the Manhattan release.
+Many thanks to Soyoung Ha and Ryan Torn for the contributed code.
 
 cam-fv:  scripts and model_mod.f90 updated for cesm2_0_beta05.
 
-models/mpas_atm - scripts completely revised for the Manhattan release.
-Many thanks to Soyoung Ha and Ryan Torn for the contributed code.
+Single File I/O:
+
+  Now we are able to run 'single_file_in' and 'single_file_out' with MPI.
+
+  single_file_io_mod.f90 has been removed and its functionality has been moved 
+  to direct_netcdf_mod.f90.
+
+  single_file_io_mod.f90 has been removed from all of the path_names_* files
+  in the repository.  (Remove it from any private path_names_* files.)
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ XXX MM 2017 :: next update.  Revision: 
++ MMM DD 2017 :: next update.  Revision: 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
