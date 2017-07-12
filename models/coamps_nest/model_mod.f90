@@ -89,6 +89,12 @@ module model_mod
                                     nc_write_statearray_data, &
                                     nc_write_prognostic_data
 
+    use coamps_translate_mod, only : initialize_translator,   &
+                                     finalize_translator,     &
+                                     generate_coamps_filenames, &
+                                     get_coamps_filename,     &
+                                     get_coamps_filename_count
+
 !#!    use coamps_pert_mod,     only : perturb_state
 
     use location_mod,        only : get_close_type,                &
@@ -113,9 +119,11 @@ module model_mod
 
     use ensemble_manager_mod, only : ensemble_type
 
-    use time_manager_mod,    only : set_time,                      &
-                                    set_time_missing,              &
-                                    time_type
+    use time_manager_mod,    only : set_time, set_time_missing,    &
+                                    set_date, time_type,           &
+                                    set_calendar_type,             &
+                                    print_date, print_time,        &
+                                    operator(+), operator(-)
 
     use types_mod,           only : MISSING_R8, MISSING_I,         &
                                     DEG2RAD,                       &
@@ -129,14 +137,13 @@ module model_mod
                                     error_handler,                 &
                                     find_namelist_in_file,         &
                                     get_unit,                      &
-                                    register_module, string_to_real, string_to_logical, to_upper
+                                    register_module, string_to_real, &
+                                    string_to_logical, to_upper
 
-    use default_model_mod,  only :  init_conditions,               &
-                                    init_time,                     &
-                                    adv_1step
-
-    use dart_time_io_mod,   only :  read_model_time,               &
-                                    write_model_time
+    use default_model_mod,  only :  init_conditions,    &
+                                    init_time,          &
+                                    adv_1step,          &
+                                    nc_write_model_vars
 
     use state_structure_mod, only : add_domain, get_domain_size, state_structure_info
 
@@ -226,14 +233,13 @@ character(len=512) :: string1, string2
 logical, save :: module_initialized = .false.
 
 ! DART state vector contents are specified in the input.nml:&model_nml namelist.
-integer, parameter :: max_state_variables = 10
+integer, parameter :: max_state_variables = 40
 integer, parameter :: num_state_table_columns = 5
 
 character(len=NF90_MAX_NAME) :: var_names(MAX_STATE_VARIABLES) = ' '
 logical  ::                   update_list(MAX_STATE_VARIABLES) = .FALSE.
 integer  ::                     kind_list(MAX_STATE_VARIABLES) = MISSING_I
 real(r8) ::                    clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
-integer :: num_domains
 
     ! Main model_mod namelist - not too much here as we read most of
     ! the data we need in from the COAMPS files themselves
@@ -245,16 +251,13 @@ integer :: num_domains
     logical           :: need_mean            = .true.       ! Do we need the ensemble
                                                              ! mean for for forward
                                                              ! operator computation?
-    character(len=80) :: dsnrff               = './'         ! Path to data files
     logical           :: output_interpolation = .false. 
-    logical           :: output_state_vector  = .false.
     integer           :: debug                = 0            ! increase for debug messages
     integer           :: assimilation_period_days = 0
     integer           :: assimilation_period_seconds = 216000
 
-    namelist /model_nml/ cdtg, y_bound_skip, x_bound_skip, need_mean, dsnrff, &
-                         output_interpolation, output_state_vector, debug, &
-                         num_domains, &
+    namelist /model_nml/ cdtg, y_bound_skip, x_bound_skip, need_mean, &
+                         output_interpolation, debug, &
                          assimilation_period_days, assimilation_period_seconds
 
     ! Locations of state variables
@@ -294,7 +297,7 @@ contains
         character(len=*), parameter :: STATE_VEC_DEF_FILE = 'state.vars'
         character(len=*), parameter :: routine = 'static_init_model'
 
-integer :: ncid
+integer :: ncid, i, nvars
 integer(i8) :: model_size
 
         if (module_initialized) return ! only need to do this once
@@ -303,28 +306,54 @@ integer(i8) :: model_size
 
         module_initialized = .true.
 
+        call set_calendar_type('Gregorian')
         call read_model_namelist()
         call set_debug_level(debug)
 
+   write(*,*)'TJH current date-time-group is "',cdtg
+   write(*,*)'TJH before initialize_domain()'
         call initialize_domain(HDF5_FILE_NAME, cdtg, domain)
+
+   write(*,*)'TJH before set_interp_diag()'
         call set_interp_diag(output_interpolation)
 
+   write(*,*)'TJH before initialize_state_vector(state_definition ...)'
         call initialize_state_vector(state_definition, STATE_VEC_DEF_FILE, domain)
+
+   write(*,*)'TJH before initialize_state_vector(state_layour_3D ...)'
         call initialize_state_vector(state_layout_3D, STATE_VEC_DEF_FILE, domain, .true.)
 
+   write(*,*)'TJH before dump_state_vector()'
         if (do_output()) call dump_state_vector(state_layout_3D)
 
+   write(*,*)'TJH before dump_domain_info()'
         if (do_output()) call dump_domain_info(domain)
 
+   write(*,*)'TJH before allocate_metadata_arrays()'
         call allocate_metadata_arrays()
 
+   write(*,*)'TJH before populate_metadata_arrays()'
         call populate_metadata_arrays()
 
-write(*,*)'we think there are ', get_num_fields(state_definition),' variables of interest.'
+   write(*,*)'TJH before initialize_translator()'
+        call initialize_translator()
 
-        call construct_domain_info(state_definition, var_names, kind_list, clamp_vals, update_list)
+   write(*,*)'TJH before generate_coamps_filenames()'
+        call generate_coamps_filenames(writing_coamps = .false.)
+        
+        nvars = get_coamps_filename_count()
 
-domid = add_domain(HDF5_FILE_NAME, get_num_fields(state_definition), &
+        do i = 1,nvars
+          var_names(i) = get_coamps_filename(i)
+          write(*,*)'variable ',i,' is "'//trim(var_names(i))//'"'
+        enddo
+
+        call construct_domain_info(state_layout_3D, var_names, kind_list, clamp_vals, update_list, nvars)
+
+! TJH domid = add_domain(HDF5_FILE_NAME, get_num_fields(state_layout_3D), &
+! TJH                    var_names, kind_list, clamp_vals, update_list )
+
+domid = add_domain(HDF5_FILE_NAME, nvars, &
                    var_names, kind_list, clamp_vals, update_list )
 
 ! print information in the state structure
@@ -337,6 +366,7 @@ if (debug > 0 .and. do_output()) then
   write(string1, *)'static_init_model: model_size = ', model_size
   call error_handler(E_MSG, routine, string1)
 endif
+!TJH         call finalize_translator()
 
     end subroutine static_init_model
 
@@ -366,46 +396,15 @@ endif
         ! Error handling
         character(len=*), parameter :: routine = 'nc_write_model_atts'
 
-        !FIXME Add support for state vector output
-        !if ( output_state_vector ) then
-        !  call nc_write_statearray_atts( ncFileID, all_locs, all_types)
-        !else
-          call nc_write_prognostic_atts( ncFileID, state_layout_3D )
-        !endif
+  write(*,*)'TJH inside nc_write_model_atts()'
+  write(*,*)'TJH before nc_write_prognostic_atts(), ncFileID is ',ncFileID
+
+        !>@todo write the model_time to the file
+        !>@todo write the model name to the file
+
+        call nc_write_prognostic_atts( ncFileID, state_layout_3D)
 
     end subroutine nc_write_model_atts
-
-    ! nc_write_model_vars
-    ! -------------------
-    ! Writes the model variables (for now just the whole state vector)
-    ! to the NetCDF file
-    !  PARAMETERS
-    !   IN  ncFileID          numeric *open* NetCDF file ID
-    !   IN  statevec          large DART state vector
-    !   IN  copyindex         which 'copy' to write - this is used for
-    !                         indexing ensemble members
-    !   IN  timeindex         which time to write (as an index)
-    !   OUT ierr              0 if successful
-    function nc_write_model_vars(ncFileID, statevec, copyindex, timeindex ) result (ierr)          
-        integer,                intent(in) :: ncFileID
-        real(r8), dimension(:), intent(in) :: statevec
-        integer,                intent(in) :: copyindex
-        integer,                intent(in) :: timeindex
-        integer                            :: ierr   
-
-        ! Error handling
-        character(len=*), parameter :: routine = 'nc_write_model_vars'
-
-        ! Assume success - the function will abort if there is an error
-        ierr = 0
-
-        if ( output_state_vector ) then
-          call nc_write_statearray_data( ncFileID, statevec, copyindex, timeindex)
-        else
-          call nc_write_prognostic_data( ncFileID, state_layout_3D, statevec, copyindex, timeindex)
-        endif
-
-    end function nc_write_model_vars
 
     ! pert_model_state
     ! ----------------
@@ -910,6 +909,63 @@ endif
       type(coamps_domain) :: get_coamps_domain
       get_coamps_domain = domain
     end function get_coamps_domain
+
+
+!--------------------------------------------------------------------
+!>
+!> read the time from the cdtg character string in the model_nml namelist
+!> and add in the 'latest' forecast 'tau' (the forecast length is 'tau' - in hours)
+
+function read_model_time(filename)
+
+! cdtg = '2013011000'
+
+character(len=*), intent(in) :: filename
+type(time_type)              :: read_model_time
+
+! local variables
+integer :: ret   ! return code for netcdf
+integer :: ncid, VarID, numdims
+type(time_type) :: base_time
+integer, allocatable :: seconds(:)
+integer :: year, month, day, hour, minute, second
+
+if ( .not. module_initialized ) call static_init_model()
+
+read(cdtg,'(i4,i2,i2,i2)')year,month,day,hour
+second = 0
+minute = 0
+base_time = set_date(year, month, day, hour, minute, second)
+
+read_model_time = base_time + set_time(second, days=0)
+
+if (debug > 0 .and. do_output()) then
+   write(string1,*) 'read_model_time was called to get date/time from: '//trim(filename)
+!>@todo   call say(string1)
+   call print_date(base_time, 'read_model_time:simulation starting date')
+   call print_time(base_time, 'read_model_time:simulation starting time')
+   write(string1,*)'model offset is ',second ,' seconds.'
+!>@todo   call say(string1)
+   call print_date(read_model_time, 'read_model_time:current model date')
+   call print_time(read_model_time, 'read_model_time:current model time')
+endif
+
+end function read_model_time
+
+
+!-----------------------------------------------------------------------
+!>
+!> write model time to netCDF file when creating files from scratch
+!>
+!> CM1 uses units of 'seconds' since a start time that is defined
+!> as part of the global file attributes.
+
+subroutine write_model_time(ncid, dart_time)
+integer,         intent(in) :: ncid
+type(time_type), intent(in) :: dart_time
+
+
+end subroutine write_model_time
 
     !------------------------------
     ! END PUBLIC ROUTINES

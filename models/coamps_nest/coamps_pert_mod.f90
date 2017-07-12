@@ -3,9 +3,12 @@
 ! AUTHOR:       T. R. Whitcomb
 !               Naval Research Laboratory
 ! DART VERSION: Jamaica
+!               Manhattan (updated jun 2017)
 !
 ! Module for perturbing 
 !------------------------------ 
+! DART $Id$
+
 module coamps_pert_mod
 
     use coamps_domain_mod, only : coamps_domain, get_domain_nest
@@ -70,11 +73,11 @@ module coamps_pert_mod
     ! BEGIN MODULE VARIABLES
     !------------------------------
 
-    ! Modified automatically by Subversion
-    character(len=128), save :: &
-        source = "$URL$", &
-        revision = "$Revision$", &
-        revdate = "$Date$"
+    ! version controlled file description for error handling, do not edit
+    character(len=*), parameter :: source   = &
+       "$URL$"
+    character(len=*), parameter :: revision = "$Revision$"
+    character(len=*), parameter :: revdate  = "$Date$"
 
     logical, save :: module_initialized = .false.
 
@@ -147,8 +150,8 @@ contains
         real(kind=r8), dimension(:), pointer :: state_subsect
         real(kind=r8), dimension(:), pointer :: pert_state_subsect
 
-        state_subsect      => get_var_substate(var, state)
-        pert_state_subsect => get_var_substate(var, perturb_state)
+! TJH        state_subsect      => get_var_substate(var, state)
+! TJH        pert_state_subsect => get_var_substate(var, perturb_state)
 
         ! Need to reset the perturbation generator for each variable since it
         ! is using possibly a different perturbation magnitude
@@ -314,3 +317,9 @@ contains
     !------------------------------
 
 end module coamps_pert_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

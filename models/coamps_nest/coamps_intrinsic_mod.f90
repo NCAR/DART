@@ -4,12 +4,15 @@
 !               Naval Research Laboratory
 ! MODIFIED:     07 July 2008
 ! DART VERSION: Jamaica
+!               Manhattan (updated jun 2017)
 !
 ! Collect the routines taken directly from the COAMPS utility
 ! package that have been translated to Fortran 90 and patched
 ! to use real(kind=r8) instead of whatever was there before. 
 ! This module is automatically generated.
 !------------------------------
+! DART $Id: $
+
 module coamps_intrinsic_mod
   use types_mod, only : r8
 
@@ -1777,3 +1780,9 @@ end subroutine filt9
   end function compute_altimeter
 
 end module coamps_intrinsic_mod
+
+! <next few lines under version control, do not edit>
+! $URL: $
+! $Id: $
+! $Revision: $
+! $Date: $

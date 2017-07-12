@@ -10,3 +10,38 @@ The primary differences from the original coamps model code are:
  - I/O COAMPS data files 
  - extensive script updates to accommodate additional HPC environments
 
+
+June 2017 ... updating to the rma_trunk ... 
+
+When Tim H. (me) asked if the 
+
+Sasa: 
+ 
+They certainly do not contain EXBM and EXBW.
+Here is the way forward (assuming we have variables on sigma levels for DART to operate on):
+ 
+Exner:
+1) In `coamps_nest/shell_scripts' is a shell script `create_coamps_intrinsic_mod.sh'
+2) It will write Fortran code, `coamps_intrinsic_mod.f90'
+3) In this code, there is a subroutine that calculates mean Exner on sigma levels 
+   (`define_mean_exner'). Since sigma levels are thermodynamic levels (`M'), 
+   we now have base state Exner_M.
+4) One of the variables on sigma levels, `perprs' is Exner perturbation. 
+   If we add it to mean state Exner_M we get full Exner on M levels.
+5) Exner on W levels is linearly interpolated from values on M levels. 
+   Caveat, at the surface and TOA extrapolation must be used.
+ 
+Potential temperature:
+1) Just grab `pottmp' on sigma levels: it already contains full potential temperature.
+ 
+I hope it makes sense, please let me know if you need further clarifications or help.
+ 
+sa#a
+
+Sasa: Here's the scoop:
+ 
+1) A shell script (shell_scripts/populate_state_vars.sh) will write the file state.vars
+2) It needs a template to run (EXPERIMENTS_EXAMPLE/state.dat
+3) To run it, simply change directory to EXPERIMENTS_EXAMPLE, change the number of levels to reflect the actual number of levels (40->60 and 41->61, I believe), and run the script ../../shell_scripts/populate_state_vars.sh state.dat true
+4) You should end up with state.vars file
+ 

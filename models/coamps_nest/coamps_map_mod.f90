@@ -3,10 +3,13 @@
 ! AUTHOR:       T. R. Whitcomb
 !               Naval Research Laboratory
 ! DART VERSION: Jamaica
+!               Manhattan (updated jun 2017)
 !
 ! Module containing data structures and routines for dealing
 ! with the map component of a coamps domain
 !------------------------------ 
+! DART $Id$
+
 module coamps_map_mod
 
     use coamps_intrinsic_mod, only : ij2ll, ll2ij
@@ -99,11 +102,11 @@ module coamps_map_mod
     ! BEGIN MODULE VARIABLES
     !------------------------------
 
-    ! Modified automatically by Subversion
-    character(len=128) :: &
-        source = "$URL$", &
-        revision = "$Revision$", &
-        revdate = "$Date$"
+    ! version controlled file description for error handling, do not edit
+    character(len=*), parameter :: source   = &
+       "$URL$"
+    character(len=*), parameter :: revision = "$Revision$"
+    character(len=*), parameter :: revdate  = "$Date$"
 
     !------------------------------
     ! END MODULE VARIABLES
@@ -316,3 +319,9 @@ contains
     !------------------------------
 
 end module coamps_map_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

@@ -10,7 +10,7 @@ module assim_tools_mod
 !> \defgroup assim_tools assim_tools_mod
 !> 
 !> @{
-use      types_mod,       only : r8, i8, digits12, PI, missing_r8
+use      types_mod,       only : r8, i8, i4, digits12, PI, missing_r8
 use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_output,    &
                                  find_namelist_in_file, register_module, error_handler,   &
                                  E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term,     &
@@ -363,16 +363,16 @@ real(r8) :: diff_sd, outlier_ratio
 integer(i8) :: state_index
 integer(i8) :: my_state_indx(ens_handle%my_num_vars)
 integer(i8) :: my_obs_indx(obs_ens_handle%my_num_vars)
+integer(i8) :: num_close_obs, obs_index, num_close_states
+integer(i8) :: total_num_close_obs, last_num_close_obs, last_num_close_states
+integer(i8) :: close_obs_ind(obs_ens_handle%my_num_vars)
+integer(i8) :: close_state_ind(ens_handle%my_num_vars)
+integer(i8) :: last_close_obs_ind(obs_ens_handle%my_num_vars)
+integer(i8) :: last_close_state_ind(ens_handle%my_num_vars)
 
 integer  :: my_num_obs, i, j, owner, owners_index, my_num_state
 integer  :: this_obs_key, obs_mean_index, obs_var_index
 integer  :: grp_beg(num_groups), grp_end(num_groups), grp_size, grp_bot, grp_top, group
-integer  :: close_obs_ind(obs_ens_handle%my_num_vars)
-integer  :: close_state_ind(ens_handle%my_num_vars)
-integer  :: last_close_obs_ind(obs_ens_handle%my_num_vars)
-integer  :: last_close_state_ind(ens_handle%my_num_vars)
-integer  :: num_close_obs, obs_index, num_close_states
-integer  :: total_num_close_obs, last_num_close_obs, last_num_close_states
 integer  :: base_obs_kind, base_obs_type, my_obs_kind(obs_ens_handle%my_num_vars)
 integer  :: my_obs_type(obs_ens_handle%my_num_vars)
 integer  :: my_state_kind(ens_handle%my_num_vars), nth_obs
@@ -2699,7 +2699,7 @@ end function get_missing_ok_status
 
 function revised_distance(orig_dist, newcount, oldcount, base, cutfloor)
  real(r8),            intent(in) :: orig_dist
- integer,             intent(in) :: newcount, oldcount
+ integer(i8),         intent(in) :: newcount, oldcount
  type(location_type), intent(in) :: base
  real(r8),            intent(in) :: cutfloor
 
@@ -2774,8 +2774,9 @@ end function revised_distance
 !--------------------------------------------------------------------
 
 function count_close(num_close, index_list, my_types, dist, maxdist)
- integer, intent(in)  :: num_close, index_list(:), my_types(:)
- real(r8), intent(in) :: dist(:), maxdist
+ integer(i8), intent(in) :: num_close, index_list(:)
+ integer,     intent(in) :: my_types(:)
+ real(r8),    intent(in) :: dist(:), maxdist
  integer :: count_close
 
 ! return the total number of items from the index_list which
@@ -2784,7 +2785,8 @@ function count_close(num_close, index_list, my_types, dist, maxdist)
 ! items too far away.   this routine does a global communication
 ! so if any MPI tasks make this call, all must.
 
-integer :: k, thistype, local_count
+integer(i8) :: k, local_count
+integer :: thistype
 
 local_count = 0
 do k=1, num_close
@@ -2805,7 +2807,7 @@ do k=1, num_close
 end do
 
 ! broadcast sums from all tasks to compute new total
-call sum_across_tasks(local_count, count_close)
+call sum_across_tasks(int(local_count, i4), count_close)
 
 end function count_close
 

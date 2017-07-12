@@ -17,6 +17,10 @@
 !                           1: 2D  2: 3D  3: 3DW
 !   OUT var_record_num      the position of the variable in its
 !                           particular dimension
+! -------------
+! DART $Id: $
+
+
 subroutine get_name_info(DIM_TYPE_2D, DIM_TYPE_3D, DIM_TYPE_3DW,   &
                          SINGLEIO, MULTIIO, var_name, var_dim_type,&
                          var_record_num)
@@ -1482,3 +1486,9 @@ subroutine get_name_info(DIM_TYPE_2D, DIM_TYPE_3D, DIM_TYPE_3DW,   &
     write (*,*) "Can't match name " // var_name // "in restart"
   end select
 end subroutine get_name_info
+
+! <next few lines under version control, do not edit>
+! $URL: $
+! $Id: $
+! $Revision: $
+! $Date: $

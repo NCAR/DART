@@ -4,6 +4,9 @@
 ! the lat/lon point described by the last two lines of domain.dat is
 ! in the grid or not - this is for use with actual observations to
 ! pare down the list to points that are actually within our domain.
+
+! DART $Id$
+
 program check_in_grid
 
   use coamps_intrinsic_mod, only : ll2ij
@@ -39,4 +42,11 @@ program check_in_grid
   if (grid_i < 1)        in_grid = .false.
   if (grid_j < 1)        in_grid = .false.
   print *, in_grid
+
 end program check_in_grid
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

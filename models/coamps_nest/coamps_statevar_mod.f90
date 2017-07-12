@@ -986,21 +986,26 @@ contains
     subroutine dump_state_variable(var)
         type(state_variable), intent(in) :: var
 
-        write (*, '(A12,T15,A10)')   "VAR NAME:", trim(var%var_name)
-        write (*, '(A12,T15,I9.9,1x,I9.9)')   "STATE BNDRY:", var%state_begin, var%state_end
-        !write (*, '(A12,T15I8.8)') "DIM TYPE:", var%dim_type
-        !write (*, '(A12,T15I8.8)') "VAR RCRD:", var%var_record
-        write (*, '(A12,T15,I8.8)') "SGM RCRD:", var%sigma_record
-        write (*, '(A12,T15,F8.6)') "PTRB PCT:", var%pert_mag
-        write (*, '(A12,T15,I8.8)') "PTB TYPE:", var%pert_type
-        write (*, '(A12,T15,L1)')   "UPDATE??:", var%update_field
-        write (*, '(A12,T15,A32)')  "VAR TYPE:", get_name_for_quantity(var%var_kind)
-        write (*, '(A12,T15,I8.8)') "VAR NMBR:", var%var_kind
-        write (*, '(A12,T15,L1)')   "MASSLVL?:", var%mass_level
-        write (*, '(A12,T15,L1)')   "MEANFLD?:", var%mean_field
-        write (*, '(A12,T15,L1)')   "IS_2D_VAR?:", var%is_2d_variable
-        write (*, '(A12,T15,L1)')   "IO_FLAG?:", var%io_flag
-        !write (*, '(A12,T15,A1)')   "STAGGERING:", var%var_stagger
+        write (*, *) "VAR NAME    : ", trim(var%var_name)
+        write (*, *) "STATE BNDRY : ", var%state_begin, var%state_end
+        !write (*, *) "DIM TYPE    : ", var%dim_type
+        !write (*, *) "VAR RCRD    : ", var%var_record
+        write (*, *) "SGM RCRD    : ", var%sigma_record
+        write (*, *) "PTRB PCT    : ", var%pert_mag
+        write (*, *) "PTB TYPE    : ", var%pert_type
+        write (*, *) "UPDATE??    : ", var%update_field
+        write (*, *) "VAR TYPE    : ", get_name_for_quantity(var%var_kind)
+        write (*, *) "VAR NMBR    : ", var%var_kind
+        write (*, *) "MASSLVL?    : ", var%mass_level
+        write (*, *) "MEANFLD?    : ", var%mean_field
+        write (*, *) "IS_2D_VAR?  : ", var%is_2d_variable
+        write (*, *) "IO_FLAG?    : ", var%io_flag
+        !write (*, *) "STAGGERING  : ", var%var_stagger
+        write (*, *) "POS DEF?    : ", var%positive_definite
+        write (*, *) "nc_varid    : ", var%nc_varid
+        write (*, *) "vert_type   : ", var%vert_type
+        write (*, *) "vert_value  : ", var%vert_value
+        write (*, *) "nest_number : ", var%nest_number
         write (*, *) "-----------------------------------------"
 
     end subroutine dump_state_variable

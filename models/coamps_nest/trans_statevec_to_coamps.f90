@@ -5,6 +5,9 @@
 ! contained in the DART file is a target time for the integration,
 ! write out a file that can be read by the COAMPS run scripts so
 ! they can modify their namelist accordingly.
+! ------------------------
+! DART $Id$
+
 program trans_dart_to_coamps
 
   use coamps_translate_mod, only : initialize_translator,          &
@@ -18,18 +21,18 @@ program trans_dart_to_coamps
 
   implicit none
 
-  ! Modified automatically by Subversion 
-  character(len=128) :: &
-       source = "$URL$",&
-       revision = "$Revision$", &
-       revdate = "$Date$"
+  ! version controlled file description for error handling, do not edit
+  character(len=*), parameter :: source   = &
+     "$URL$"
+  character(len=*), parameter :: revision = "$Revision$"
+  character(len=*), parameter :: revdate  = "$Date$"
 
   ! The translation module uses internal flags for whether it's
   ! reading or writing - these are just aliases so it's clearer
   ! what the calls are saying
   logical, parameter :: READING_DART   = .false.
   logical, parameter :: WRITING_COAMPS = .true.
-  logical, parameter :: DONT_READ_TIME         = .true.
+  logical, parameter :: DONT_READ_TIME = .true.
 
   call initialize_translator()
 
@@ -49,3 +52,9 @@ program trans_dart_to_coamps
 
   call finalize_translator()
 end program trans_dart_to_coamps
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

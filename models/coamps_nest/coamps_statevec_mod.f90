@@ -359,32 +359,54 @@ contains
 
     ! construct_domain_info
     ! -----------------
-    subroutine construct_domain_info(state, varnames, kindlist, clampvals, updatelist)
+    subroutine construct_domain_info(state, varnames, kindlist, clampvals, updatelist, nvars)
         type(state_vector), intent(in)  :: state
-        character(len=*),   intent(out) :: varnames(:)
+        character(len=*),   intent(in)  :: varnames(:)
         integer,            intent(out) :: kindlist(:)
         real(r8),           intent(out) :: clampvals(:,:)
         logical,            intent(out) :: updatelist(:)
+        integer,            intent(out) :: nvars
 
         type(state_iterator) :: iterator
         type(state_variable) :: var
-        integer :: varindex
+        integer :: varindex, ivar
 
         clampvals(:,:) = MISSING_R8
 
-        varindex = 1
+        nvars = 0
         iterator = get_iterator(state)    
-        do while (has_next(iterator))
+ VARLOOP: do while (has_next(iterator))
 
             var = get_next(iterator)
 
-            varnames(  varindex) = get_var_name(var)
-            kindlist(  varindex) = get_var_kind(var)
-            updatelist(varindex) = gets_update( var)
-            if (is_nonnegative(var)) clampvals(varindex,1) = 0.0_r8
+            select case ( get_var_name(var) ) 
+                   case ( 'THBM', 'EXBM', 'EXBW' )
+        write(*,*)'TJH skipping ',get_var_name(var)
+                      cycle VARLOOP
+                   case default
+            end select
 
-            varindex = varindex + 1
+            nvars = nvars + 1
+!           varnames(  nvars) = get_var_name(var)
+            kindlist(  nvars) = get_var_kind(var)
+            updatelist(nvars) = gets_update( var)
+            if (is_nonnegative(var)) clampvals(nvars,1) = 0.0_r8
 
+    write(*,*)'construct_domain_info: ',nvars,'"'//trim(get_var_name(var))//'"'
+
+        enddo VARLOOP
+
+!>@todo somehow the THBM,EXBM,EXBW are part of the domain (they have iterators)
+! but they do not have 'filenames' aka variable names - generate_coamps_filenames()
+! does not create them.  Should they be part of the state?  The nvars here is 24,
+! the number of variable names is 18 ... matching up the variable name list and the
+! kind etc. from the get_*(var)  routines is now the problem.
+!>@todo the kindlist is not matching the variable list, for example
+
+        do ivar = 1,nvars
+           write(*,*)'variable ',ivar, ' is "'//trim(varnames(ivar))//'"', &
+                      kindlist(ivar), clampvals(ivar,:), updatelist(ivar), &
+                  trim(get_name_for_quantity(kindlist(ivar)))
         enddo
 
     end subroutine construct_domain_info

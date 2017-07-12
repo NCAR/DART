@@ -1,9 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! DART $Id$
 
 program trans_coamps_to_statevec
-
 
 ! trans_coamps_to_statevec
 ! ------------------------
@@ -12,6 +13,9 @@ program trans_coamps_to_statevec
 ! what DART is seeing for easier reading into programs like MATLAB
 ! or debugging.  This program is almost identical to the
 ! trans_coamps_to_dart program but does not output time.
+! ------------------------
+! DART $Id$
+
 
   use coamps_translate_mod, only : initialize_translator,         &
                                    generate_coamps_filenames,     &
@@ -24,11 +28,11 @@ program trans_coamps_to_statevec
 
   implicit none
 
-  ! Modified automatically by Subversion
-  character(len=128) :: &
-       source = "$URL$",&
-       revision = "$Revision$", &
-       revdate = "$Date$"
+  ! version controlled file description for error handling, do not edit
+  character(len=*), parameter :: source   = &
+     "$URL$"
+  character(len=*), parameter :: revision = "$Revision$"
+  character(len=*), parameter :: revdate  = "$Date$"
 
   ! The translation module uses internal flags for whether it's
   ! reading or writing - help me remember what they are
@@ -54,3 +58,9 @@ program trans_coamps_to_statevec
   ! Clean up
   call finalize_translator()
 end program trans_coamps_to_statevec
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

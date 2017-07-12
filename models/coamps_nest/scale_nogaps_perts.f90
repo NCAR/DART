@@ -4,6 +4,9 @@
 ! then assembles them into a state vector that can be used by DART.
 ! This includes two pieces of information - the current time and
 ! the actual state
+! --------------------
+! DART $Id$
+
 program scale_nogaps_perts
 
 
@@ -27,10 +30,11 @@ program scale_nogaps_perts
 
   implicit none
 
-  character(len=128) :: &
-       source   = " ",  &
-       revision = " ",  &
-       revdate  = " "
+  ! version controlled file description for error handling, do not edit
+  character(len=*), parameter :: source   = &
+     "$URL$"
+  character(len=*), parameter :: revision = "$Revision$"
+  character(len=*), parameter :: revdate  = "$Date$"
 
   character(len=*), parameter :: routine = 'scale_nogaps_perts'
   character(len=64)           :: nogaps_file_name
@@ -186,3 +190,9 @@ program scale_nogaps_perts
   call finalize_mpi_utilities()
 
 end program scale_nogaps_perts
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

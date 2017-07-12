@@ -3,16 +3,18 @@
 ! AUTHOR:       T. R. Whitcomb
 !               Naval Research Laboratory
 ! DART VERSION: Jamaica
+!               Manhattan (updated jun 2017)
 !
 ! Write COAMPS state vector to a NetCDF file
 !------------------------------ 
+! DART $Id$
+
 module coamps_netcdf_mod
 
     use netcdf
 
-    use location_mod,      only : location_type, get_location
-
-    use location_mod,      only : VERTISUNDEF, VERTISSURFACE, VERTISLEVEL,   &
+    use location_mod,      only : location_type, get_location, &
+                                  VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, &
                                   VERTISPRESSURE, VERTISHEIGHT
 
     use types_mod,         only : r8
@@ -119,13 +121,13 @@ module coamps_netcdf_mod
     ! BEGIN MODULE VARIABLES
     !------------------------------
 
-    ! Modified automatically by Subversion
-    character(len=128) :: &
-        source = "$URL$", &
-        revision = "$Revision$", &
-        revdate = "$Date$"
+    ! version controlled file description for error handling, do not edit
+    character(len=*), parameter :: source   = &
+       "$URL$"
+    character(len=*), parameter :: revision = "$Revision$"
+    character(len=*), parameter :: revdate  = "$Date$"
 
-    character(len=128) :: msgstring   ! general purpose string for printing
+    character(len=512) :: msgstring   ! general purpose string for printing
 
     logical, save :: module_initialized = .false.
 
@@ -459,6 +461,10 @@ contains
                    'Staggered Y Grid Points', '', cv_stagger = 0.5_r8, cv_dir = YDIR_COORD, &
                    cv_nest = n)
 
+
+  write(*,*)'TJH nc_write_prognostic_atts: coordinate string "',coord_str,'"'
+
+
       end do define_coord_vars
 
       coords(ncoord_total-1) = &
@@ -469,46 +475,46 @@ contains
                    new_coordinate_var(ncFileID, 'sigm',   nz, nf90_double, & 
                    'Mass Level Sigma', 'meters',  cv_stagger = 0.5_r8, cv_dir = ZDIR_COORD)
       
-      ! ------------------------------------------------------------------
-      ! Loop over all the variables in the state vector
-      ! ------------------------------------------------------------------
-      iterator = get_iterator(state_list)
-      define_atts:  do while(has_next(iterator))
-
-        cur_var => get_next(iterator)
-
-        select case (get_vert_type(cur_var))
-          case(VERTISHEIGHT)
-            write(var_name, 402) trim(get_var_name(cur_var)), 'Z', &
-                                 int(get_vert_value(cur_var)), get_nest_number(cur_var)
-          case(VERTISPRESSURE)
-            write(var_name, 402) trim(get_var_name(cur_var)), 'P', &
-                                 int(get_vert_value(cur_var)), get_nest_number(cur_var)
-          case(VERTISSURFACE, VERTISUNDEF)
-            write(var_name, 402) trim(get_var_name(cur_var)), 'S', &
-                                 get_vert_value(cur_var), get_nest_number(cur_var)
-          case default
-            write(var_name, 400) trim(get_var_name(cur_var)), get_nest_number(cur_var)
-        end select
-
-        ndims  = get_var_rank(cur_var, domain)
-
-        dimids = get_dimids(ndims        = ndims,                         &
-                            var_dims     = get_var_dims(cur_var, domain), & 
-                            nest_number  = get_nest_number(cur_var),      & 
-                            local_coords = coords) 
-
-        call set_nc_varid(cur_var,                             &
-                  new_variable(                                &
-                  ncFileID    = ncFileID,                      &
-                  var_name    = var_name,                      &
-                  var_type    = nf90_double,                   &
-                  dim_ids     = (/ dimids(1:ndims),            &
-                                 get_copy_dim_id(ncFileID),    &
-                                 get_time_dim_id(ncFileID) /), &
-                  var_stagger = get_var_stagger(cur_var)))
-
-      end do define_atts
+!TJH       ! ------------------------------------------------------------------
+!TJH       ! Loop over all the variables in the state vector
+!TJH       ! ------------------------------------------------------------------
+!TJH       iterator = get_iterator(state_list)
+!TJH       define_atts:  do while(has_next(iterator))
+!TJH 
+!TJH         cur_var => get_next(iterator)
+!TJH 
+!TJH         select case (get_vert_type(cur_var))
+!TJH           case(VERTISHEIGHT)
+!TJH             write(var_name, 402) trim(get_var_name(cur_var)), 'Z', &
+!TJH                                  int(get_vert_value(cur_var)), get_nest_number(cur_var)
+!TJH           case(VERTISPRESSURE)
+!TJH             write(var_name, 402) trim(get_var_name(cur_var)), 'P', &
+!TJH                                  int(get_vert_value(cur_var)), get_nest_number(cur_var)
+!TJH           case(VERTISSURFACE, VERTISUNDEF)
+!TJH             write(var_name, 402) trim(get_var_name(cur_var)), 'S', &
+!TJH                                  get_vert_value(cur_var), get_nest_number(cur_var)
+!TJH           case default
+!TJH             write(var_name, 400) trim(get_var_name(cur_var)), get_nest_number(cur_var)
+!TJH         end select
+!TJH 
+!TJH         ndims  = get_var_rank(cur_var, domain)
+!TJH 
+!TJH         dimids = get_dimids(ndims        = ndims,                         &
+!TJH                             var_dims     = get_var_dims(cur_var, domain), & 
+!TJH                             nest_number  = get_nest_number(cur_var),      & 
+!TJH                             local_coords = coords) 
+!TJH 
+!TJH         call set_nc_varid(cur_var,                             &
+!TJH                   new_variable(                                &
+!TJH                   ncFileID    = ncFileID,                      &
+!TJH                   var_name    = var_name,                      &
+!TJH                   var_type    = nf90_double,                   &
+!TJH                   dim_ids     = (/ dimids(1:ndims),            &
+!TJH                                  get_copy_dim_id(ncFileID),    &
+!TJH                                  get_time_dim_id(ncFileID) /), &
+!TJH                   var_stagger = get_var_stagger(cur_var)))
+!TJH 
+!TJH       end do define_atts
 
       ! ------------------------------------------------------------------
       ! Need to get out of define mode to fill the coordinate variables 
@@ -1033,7 +1039,7 @@ contains
     dimloop: do j=1,size(local_coords)
         if(var_dims(i)   == get_dim_length(local_coords(j)) .and. &
            COORD_DIRS(i) == get_coord_dir(local_coords(j))  .and. &
-           (nest_number  == get_coord_nest(local_coords(j)) .or.  COORD_DIRS(i) == ZDIR_COORD) &                           &
+           (nest_number  == get_coord_nest(local_coords(j)) .or.  COORD_DIRS(i) == ZDIR_COORD) &
           ) then
              mydims(i) = get_dim_id(local_coords(j))
              exit dimloop
@@ -1098,3 +1104,9 @@ contains
     !------------------------------
 
 end module coamps_netcdf_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

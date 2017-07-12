@@ -1,6 +1,7 @@
 ! innov_to_obs_seq
 ! --------------------
-! 
+! DART $Id$
+
 program innov_to_obs_seq
 
    use navdas_innov_mod, only : seq,                         &
@@ -24,10 +25,11 @@ program innov_to_obs_seq
 
   implicit none
 
-  character(len=128) :: &
-       source   = " ",  &
-       revision = " ",  &
-       revdate  = " "
+  ! version controlled file description for error handling, do not edit
+  character(len=*), parameter :: source   = &
+     "$URL$"
+  character(len=*), parameter :: revision = "$Revision$"
+  character(len=*), parameter :: revdate  = "$Date$"
 
   character(len=*), parameter :: routine = 'innov_to_obs_seq'
 
@@ -55,3 +57,9 @@ program innov_to_obs_seq
   call terminate_navdas_innov_mod()
 
 end program innov_to_obs_seq
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

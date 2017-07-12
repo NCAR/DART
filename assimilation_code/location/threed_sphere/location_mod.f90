@@ -1396,7 +1396,7 @@ subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
 type(get_close_type),          intent(in)  :: gc
 type(location_type),           intent(inout) :: base_loc, locs(:)
 integer,                       intent(in)  :: base_type, loc_qtys(:), loc_types(:)
-integer,                       intent(out) :: num_close, close_ind(:)
+integer(i8),                   intent(out) :: num_close, close_ind(:)
 real(r8),            optional, intent(out) :: dist(:)
 type(ensemble_type), optional, intent(in)  :: ens_handle
 
@@ -1418,7 +1418,7 @@ type(get_close_type),          intent(in)  :: gc
 type(location_type),           intent(inout)  :: base_loc, locs(:)
 integer,                       intent(in)  :: base_type, loc_qtys(:)
 integer(i8),                   intent(in)  :: loc_indx(:)
-integer,                       intent(out) :: num_close, close_ind(:)
+integer(i8),                   intent(out) :: num_close, close_ind(:)
 real(r8),            optional, intent(out) :: dist(:)
 type(ensemble_type), optional, intent(in)  :: ens_handle
 
@@ -1439,7 +1439,7 @@ subroutine get_close(gc, base_loc, base_type, locs, loc_qtys, &
 type(get_close_type),          intent(in)  :: gc
 type(location_type),           intent(inout)  :: base_loc, locs(:)
 integer,                       intent(in)  :: base_type, loc_qtys(:)
-integer,                       intent(out) :: num_close, close_ind(:)
+integer(i8),                   intent(out) :: num_close, close_ind(:)
 real(r8),            optional, intent(out) :: dist(:)
 type(ensemble_type), optional, intent(in)  :: ens_handle
 

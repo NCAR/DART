@@ -4,6 +4,9 @@
 ! then assembles them into a state vector that can be used by DART.
 ! This includes two pieces of information - the current time and
 ! the actual state
+! --------------------
+! DART $Id$
+
 program recntr_bndyperts
 
 
@@ -27,10 +30,11 @@ program recntr_bndyperts
 
   implicit none
 
-  character(len=128) :: &
-       source   = " ",  &
-       revision = " ",  &
-       revdate  = " "
+  ! version controlled file description for error handling, do not edit
+  character(len=*), parameter :: source   = &
+     "$URL$"
+  character(len=*), parameter :: revision = "$Revision$"
+  character(len=*), parameter :: revdate  = "$Date$"
 
   character(len=*), parameter :: routine = 'recntr_bndyperts'
   character(len=64)           :: coamps_file_name
@@ -206,3 +210,9 @@ program recntr_bndyperts
   call finalize_mpi_utilities()
 
 end program recntr_bndyperts
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

@@ -28,8 +28,7 @@ module coamps_translate_mod
   use coamps_statevec_mod,  only : state_vector, get_total_size,              &
                                    state_iterator, get_next, has_next,        &
                                    get_iterator, get_file_type,               &
-                                   get_num_fields, initialize_state_vector,   &
-                                   dump_state_vector 
+                                   get_num_fields, initialize_state_vector
 
   use coamps_statevar_mod,  only : state_variable, gets_update,               &
                                    get_nest_number, get_var_substate,         &
@@ -121,6 +120,10 @@ module coamps_translate_mod
   public :: write_pickup_file
 
   public :: print_dart_diagnostics
+
+  !>@todo these are needed for model_mod to generate the hdf5 variable names
+  public :: get_coamps_filename_count
+  public :: get_coamps_filename
 
   !FIX ONLY FOR TESTING
   public :: dart_state
@@ -955,6 +958,25 @@ contains
 300 format( 5(I3,","),I3 )
   end subroutine write_pickup_file
 
+
+  function get_coamps_filename_count()
+  integer :: get_coamps_filename_count
+
+     get_coamps_filename_count = total_coamps_files
+
+  end function get_coamps_filename_count
+
+
+  function get_coamps_filename(myindex)
+  integer, intent(in) :: myindex
+  character(len=64) :: get_coamps_filename
+
+  get_coamps_filename = coamps_file_names(myindex)
+
+  end function get_coamps_filename
+
+
+
   !------------------------------
   ! END PUBLIC ROUTINES
   !------------------------------
@@ -987,11 +1009,11 @@ contains
                             'Reading ' // nml_file // ' convert')
        close(nml_unit)
     else
-       call error_handler(E_ERR, routine, 'Convert name ' // &
-                          'namelist read failed - target file not found',  &
-                          source, revision, revdate)
+       call error_handler(E_ERR, routine, 'namelist open failed',  &
+                 source, revision, revdate, text2='"'//trim(nml_file)//'" not found.')
     end if
     write (*, nml=convert)
+
   end subroutine read_convert_namelist
 
   ! allocate_state
