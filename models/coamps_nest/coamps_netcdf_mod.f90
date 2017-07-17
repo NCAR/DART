@@ -466,10 +466,6 @@ contains
                    'Staggered Y Grid Points', '', cv_stagger = 0.5_r8, cv_dir = YDIR_COORD, &
                    cv_nest = n)
 
-
-  write(*,*)'TJH nc_write_prognostic_atts: coordinate string "',coord_str,'"'
-
-
       end do define_coord_vars
 
       coords(ncoord_total-1) = &

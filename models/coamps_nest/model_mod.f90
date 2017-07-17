@@ -396,12 +396,6 @@ endif
         ! Error handling
         character(len=*), parameter :: routine = 'nc_write_model_atts'
 
-  write(*,*)'TJH inside nc_write_model_atts()'
-  write(*,*)'TJH before nc_write_prognostic_atts(), ncFileID is ',ncFileID
-
-        !>@todo write the model_time to the file
-        !>@todo write the model name to the file
-
         call nc_write_prognostic_atts( ncFileID, state_layout_3D)
 
     end subroutine nc_write_model_atts
@@ -915,6 +909,8 @@ endif
 !>
 !> read the time from the cdtg character string in the model_nml namelist
 !> and add in the 'latest' forecast 'tau' (the forecast length is 'tau' - in hours)
+!> This is a required interface that has a mandatory argument. In this case,
+!> the mandatory argument is not needed.
 
 function read_model_time(filename)
 
@@ -956,14 +952,17 @@ end function read_model_time
 !-----------------------------------------------------------------------
 !>
 !> write model time to netCDF file when creating files from scratch
-!>
-!> CM1 uses units of 'seconds' since a start time that is defined
-!> as part of the global file attributes.
 
 subroutine write_model_time(ncid, dart_time)
 integer,         intent(in) :: ncid
 type(time_type), intent(in) :: dart_time
 
+call nc_check(nf90_redef(ncid), "write_model_time", "redef")
+
+call nc_add_global_attribute(ncid, 'date-time-group', cdtg, &
+                       context='model_mod:write_model_time')
+
+call nc_check(nf90_enddef(ncid),"write_model_time", "Enddef" )
 
 end subroutine write_model_time
 
