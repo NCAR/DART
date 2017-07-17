@@ -494,7 +494,7 @@ integer :: icopy, ivar, domain
 integer :: ens_size, extra_size, time_size, var_size, elm_count, ndims
 integer :: my_pe, recv_pe, recv_start, recv_end, start_rank
 integer :: start_pos, end_pos, send_start, send_end, start_point
-logical :: do_perturb, is_sender, is_receiver, is_member_copy, is_extra_copy
+logical :: do_perturb, is_sender, is_receiver, is_extra_copy
 
 real(r8), allocatable :: var_block(:)
 
@@ -545,6 +545,8 @@ is_sender  = (my_pe == SINGLE_IO_TASK_ID)
 ! recv_* and send_* are PE's that variables are sent and received
 call get_pe_loops(ens_size, recv_start, recv_end, send_start, send_end)
 
+call check_singlefile_member_info(my_ncid, fname, ens_size, do_perturb)
+
 COPY_LOOP: do icopy = 1, ens_size+extra_size
 
    ! only SINGLE_IO_TASK_ID reads and distributes data 
@@ -553,16 +555,14 @@ COPY_LOOP: do icopy = 1, ens_size+extra_size
    !   {variable}_priorinf_{mean,sd}
    !   {variable}_postinf_{mean,sd}
 
+   if ( file_handle%stage_metadata%io_flag(icopy) /= READ_COPY ) cycle
+
    is_extra_copy  = (icopy >  ens_size)
-   is_member_copy = (icopy <= ens_size)
 
    ! check that copy infomation is valid
-   if ( is_member_copy ) call check_singlefile_member_info(my_ncid, fname, ens_size, do_perturb)
 
    ! starting position in the copies array
    start_pos  = 1
-
-   if ( file_handle%stage_metadata%io_flag(icopy) /= READ_COPY ) cycle
 
    VAR_LOOP: do ivar = 1, get_num_variables(domain)
 
@@ -2539,11 +2539,17 @@ if( ret == 0 ) then ! has member id
    ret = nf90_inquire_dimension(ncid, MemDimID, len=member_size) 
    call nc_check(ret, 'check_singlefile_member_info', 'inq_varid member : '//trim(fname))
 
-   !>@todo FIXME : if there is a single file with a member dimension but only one member
-   !> it is ok if we are perturbing.
+   ! are there enough members to start from this file?  if you're perturbing a single member
+   ! to generate an ensemble it's ok to have 1.  otherwise you have to have at least
+   ! 'ens_size' members (more is ok).
+   if (do_pert) then
+      if (member_size < 1) then
+         write(msgstring,  *) 'input file contains ', member_size, ' ensemble members; '
+         write(msgstring2, *) 'requires at least 1 member to perturb'
+         call error_handler(E_ERR, 'check_singlefile_member_info: ', msgstring, source, revision, revdate)
+      endif
 
-   ! not enough members to start from this file 
-   if ( member_size < ens_size ) then 
+   else if (member_size < ens_size) then
       write(msgstring,  *) 'input file only contains ', member_size, ' ensemble members; '
       write(msgstring2, *) 'requested ensemble size is ', ens_size
       call error_handler(E_ERR, 'check_singlefile_member_info: ', msgstring, source, revision, revdate)
@@ -2551,7 +2557,8 @@ if( ret == 0 ) then ! has member id
    endif
 
 else
-
+   ! if you don't have a member dimension, it's only ok if you're reading in a single
+   ! array and not an ensemble.  
    if ( .not. do_pert ) then
       write(msgstring,  *) 'input file does not contain a "member" dimension; '
       write(msgstring2, *) 'cannot read in an ensemble of values'

@@ -347,7 +347,7 @@ integer :: index1, index2
 
 index1 = get_index_for_type_of_obs(typename)
 index2 = get_index_for_quantity(qtyname)
-!print *, 'in set_impact, index values are: ', index1, index2
+!print *, 'in set_impact, type, qty index values are: ', index1, index2
 
 if (index1 < 0) then
    call error_handler(E_ERR, 'obs_impact', &
@@ -1484,7 +1484,6 @@ integer,          intent(in)           :: tocindex1
 character(len=*), intent(in), optional :: label
 
 integer :: i, typeid(toc%type_count), typesfound
-integer :: qtyid
 
 ! expand tableindex1 if type here and loop over list
 if (get_toc_type(tocindex1, toc) == ENTRY_DARTQTY) then
@@ -1493,8 +1492,7 @@ if (get_toc_type(tocindex1, toc) == ENTRY_DARTQTY) then
    ! and qtys array; not the indices in the table of contents.  the values
    ! returned can be used directly to set the table entries.
 
-   qtyid = tableindex1 - 1   ! qtys must be offset down by one, 0:num_qtys
-   call find_all_types_for_qty(qtyid, toc%type_count, typesfound, typeid)
+   call find_all_types_for_qty(tableindex1, toc%type_count, typesfound, typeid)
  
    do i=1, typesfound
       call set_impact_table_values(table, typeid(i), tableindex2, rvalue, toc, label)
