@@ -2195,9 +2195,9 @@ end function count_state_ens_copies
 
 !------------------------------------------------------------------
 !> Set file name information.  For members restarts can be read from
-!> a restart_file_list.txt or constructed using a stage name and
+!> an input_state_file_list or constructed using a stage name and
 !> num_ens.  The file_info handle knows whether or not there is an
-!> associated restart_file_list.txt. If no list is provided member
+!> associated input_state_file_list. If no list is provided member
 !> filenames are written as :
 !>    stage_member_####.nc (ex. preassim_member_0001.nc)
 !> extra copies are stored as :
