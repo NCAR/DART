@@ -287,8 +287,8 @@
    loc_of_interest      =  90.0,  41.00, 0.35
 
 &model_mod_check_nml
-   restart_in_file_name  = 'cice.r'
-   restart_out_file_name = 'cice_mm_out.r'
+   input_state_files     = 'cice.r'
+   output_state_files    = 'cice_mm_out.r'
    verbose               = .false.
    test1thru             = 5
    x_ind                 = 3210

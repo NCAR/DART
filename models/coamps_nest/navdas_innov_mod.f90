@@ -1,3 +1,8 @@
+! This code may (or may not) be part of the COAMPS distribution,
+! So it is not protected by the DART copyright agreement.
+!
+! DART $Id$
+
 module navdas_innov_mod
 
 !------------------------------
@@ -8,7 +13,6 @@ module navdas_innov_mod
 ! Module containing routines to process a navdas generate ascii
 ! innovation file
 !------------------------------ 
-! DART $Id$
 
   use location_mod,    only : location_type,    &
                               set_location,     &
@@ -227,11 +231,10 @@ contains
       call check_io_status(io_status, routine, source, revision, revdate,   &
                            'Opening ' // trim(innov_file_name))
     else
-      call error_handler(E_ERR, 'innov_to_obs_seq',  &
-                         trim(innov_file_name) // ' not found', &
-                         source, revision, revdate)
       call terminate_navdas_innov_mod()
-      stop
+      call error_handler(E_ERR, routine,  &
+                         '"'//trim(innov_file_name)//'" not found', &
+                         source, revision, revdate)
     end if
   end subroutine open_innov_file
 
@@ -245,11 +248,11 @@ contains
     if (file_exist(trim(ngt_file_name))) then
       open(ngt_unit, file=trim(ngt_file_name), status='old', iostat=io_status)
       call check_io_status(io_status, routine, source, revision, revdate,   &
-                           'Opening ' // trim(ngt_file_name))
+                           'Opening "'//trim(ngt_file_name)//'"')
       ngt_exists = .true.
     else
       call error_handler(E_MSG, 'innov_to_obs_seq',  &
-                         trim(ngt_file_name) // ' not found', &
+                         '"'//trim(ngt_file_name)//'" not found', &
                          source, revision, revdate)
       ngt_exists = .false.
     end if

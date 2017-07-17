@@ -1,10 +1,26 @@
-&model_mod_check 
-   input_file           = "dart_ics",        
-   output_file          = "check_me",
-   advance_time_present = .FALSE.,
-   x_ind                = -1,
-   loc_of_interest      = -1.0, -1.0, -1.0,
-   kind_of_interest     = 'ANY'
-   verbose              = .FALSE.,
-   /
+
+&model_mod_check_nml
+   num_ens               = 1
+   single_file           = .FALSE.
+   input_state_files     = 'input.nc'
+   output_state_files    = 'output.nc'
+   x_ind                 = -1
+   loc_of_interest       = -1.0, -1.0, -1.0
+   kind_of_interest      = 'ANY'
+   interp_test_dlon      = -1.0
+   interp_test_dlat      = -1.0
+   interp_test_dvert     = -1.0
+   interp_test_lonrange  = -1.0, -1.0
+   interp_test_latrange  = -1.0, -1.0
+   interp_test_vertrange = -1.0, -1.0
+   interp_test_dx        = -1.0
+   interp_test_dy        = -1.0
+   interp_test_dz        = -1.0
+   interp_test_xrange    = -1.0, -1.0
+   interp_test_yrange    = -1.0, -1.0
+   interp_test_zrange    = -1.0, -1.0
+   interp_test_vertcoord = ANY'
+   test1thru             = 1
+   verbose               = .FALSE.
+  /
 

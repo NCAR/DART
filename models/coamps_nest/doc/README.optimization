@@ -1,3 +1,7 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
 # DART $Id$
 
 Optimization hints for DART/COAMPS
@@ -31,3 +35,8 @@ COAMPS documentation suggests that about 30 points per processor in
 each direction is optimal - this will of course depend on the particular
 configuration.  For example, a user with a 90x60 model domain would do
 well to choose 3x2 domain decomposition.  
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

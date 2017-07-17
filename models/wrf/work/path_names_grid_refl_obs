@@ -7,7 +7,6 @@ assimilation_code/modules/assimilation/quality_control_mod.f90
 assimilation_code/modules/io/dart_time_io_mod.f90
 assimilation_code/modules/io/direct_netcdf_mod.f90
 assimilation_code/modules/io/io_filenames_mod.f90
-assimilation_code/modules/io/single_file_io_mod.f90
 assimilation_code/modules/io/state_structure_mod.f90
 assimilation_code/modules/io/state_vector_io_mod.f90
 assimilation_code/modules/observations/obs_kind_mod.f90

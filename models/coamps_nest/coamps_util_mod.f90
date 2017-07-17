@@ -15,7 +15,6 @@ module coamps_util_mod
 ! Module with various COAMPS utility routines to handle things
 ! like error checking
 !------------------------------ 
-! DART $Id$
   
   use types_mod,     only : r4, r8
   use utilities_mod, only : E_ERR,         &
@@ -608,7 +607,7 @@ contains
     write(unit=datahd_unit, fmt='(5e13.6)', iostat=io_status)   &
         (datahd(ii), ii=1,size(datahd))
     call check_io_status(io_status, routine, source, revision, &
-                         revdate, 'Reading datahd file')
+                         revdate, 'Writing datahd file')
 
     close(datahd_unit)
   end subroutine write_datahd_file

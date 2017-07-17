@@ -1,15 +1,11 @@
 % Plot 2-dimensional field maps of the analysis error for either
 % the prior or posterior diagnostic NetCDF file.  
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
-% $Id$
-% $Revision$
-% $Date$
+% DART $Id$
 
 clear all;
 close all;
@@ -22,9 +18,9 @@ xdim = 92;
 ydim = 55;
 
 % Open up the NetCDF files - need the ensemble mean and truth
-diag_filename='Posterior_Diag.nc';
+diag_filename='analysis.nc';
 diag_nc = netcdf(sprintf('%s/%s',path,diag_filename));
-true_filename='True_State.nc';
+true_filename='true_state.nc';
 true_nc = netcdf(sprintf('%s/%s',path,true_filename));
 
 % Grab the entire set of times
@@ -79,3 +75,8 @@ for tt=1:length(times)
 end
 
 saveas(analerr_fig,sprintf('anal_error_%s_%d',var_name,sigma_level),'png');
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$

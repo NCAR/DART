@@ -1,3 +1,9 @@
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! DART $Id$
+
 !------------------------------
 ! MODULE:       coamps_netcdf_mod
 ! AUTHOR:       T. R. Whitcomb
@@ -7,7 +13,6 @@
 !
 ! Write COAMPS state vector to a NetCDF file
 !------------------------------ 
-! DART $Id$
 
 module coamps_netcdf_mod
 

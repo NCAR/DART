@@ -1,5 +1,12 @@
 #!/bin/bash
 #
+# This code may (or may not) be part of the COAMPS distribution,
+# So it is not protected by the DART copyright agreement.
+#
+# DART $Id$
+#
+########################################################################
+#
 # SCRIPT:   convert_coamps_to_dart.sh
 # AUTHOR:   T. R. Whitcomb
 #           Naval Research Laboratory
@@ -122,3 +129,11 @@ rm -rf ${CONVERT_TEMP}
 # everything!!!! 
 #rm *.bak
 echo "Finished!"
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

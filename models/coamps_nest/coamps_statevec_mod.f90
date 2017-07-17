@@ -1,3 +1,8 @@
+! This code may (or may not) be part of the COAMPS distribution,
+! So it is not protected by the DART copyright agreement.
+!
+! DART $Id$
+
 !------------------------------
 ! MODULE:       coamps_statevec_mod
 ! AUTHOR:       T. R. Whitcomb
@@ -8,7 +13,6 @@
 ! Module containing the data structure and routines for dealing with
 ! a COAMPS state vector (a collection of COAMPS state variables)
 !------------------------------ 
-! DART $Id$
 
 module coamps_statevec_mod
 
@@ -370,6 +374,7 @@ contains
         type(state_iterator) :: iterator
         type(state_variable) :: var
         integer :: varindex, ivar
+        character(len=*), parameter :: routine = 'construct_domain_info'
 
         clampvals(:,:) = MISSING_R8
 
@@ -379,15 +384,18 @@ contains
 
             var = get_next(iterator)
 
+            !>@todo figure out what to do with mean variables
             select case ( get_var_name(var) ) 
                    case ( 'THBM', 'EXBM', 'EXBW' )
-        write(*,*)'TJH skipping ',get_var_name(var)
+                      call error_handler(E_WARN,routine, &
+                                 'skipping "'//get_var_name(var)//'"', &
+                                 source, revision, revdate, &
+                                 text2='need to add to state some other way.')
                       cycle VARLOOP
                    case default
             end select
 
             nvars = nvars + 1
-!           varnames(  nvars) = get_var_name(var)
             kindlist(  nvars) = get_var_kind(var)
             updatelist(nvars) = gets_update( var)
             if (is_nonnegative(var)) clampvals(nvars,1) = 0.0_r8

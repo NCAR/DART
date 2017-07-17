@@ -1,14 +1,15 @@
-! scale_nogaps_perts
-! --------------------
-! This program pulls pieces out of the large COAMPS restart file,
-! then assembles them into a state vector that can be used by DART.
-! This includes two pieces of information - the current time and
-! the actual state
-! --------------------
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
 ! DART $Id$
 
 program scale_nogaps_perts
 
+! This program pulls pieces out of the large COAMPS restart file,
+! then assembles them into a state vector that can be used by DART.
+! This includes two pieces of information - the current time and
+! the actual state
 
   use coamps_util_mod,      only : check_alloc_status,           &
                                    check_dealloc_status,         &

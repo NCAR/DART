@@ -1,6 +1,8 @@
 assimilation_code/location/threed_sphere/location_mod.f90
 assimilation_code/modules/assimilation/assim_model_mod.f90
 assimilation_code/modules/io/dart_time_io_mod.f90
+assimilation_code/modules/io/direct_netcdf_mod.f90
+assimilation_code/modules/io/io_filenames_mod.f90
 assimilation_code/modules/io/state_structure_mod.f90
 assimilation_code/modules/observations/obs_kind_mod.f90
 assimilation_code/modules/observations/obs_sequence_mod.f90
@@ -25,6 +27,7 @@ models/coamps_nest/coamps_netcdf_mod.f90
 models/coamps_nest/coamps_pert_mod.f90
 models/coamps_nest/coamps_statevar_mod.f90
 models/coamps_nest/coamps_statevec_mod.f90
+models/coamps_nest/coamps_translate_mod.f90
 models/coamps_nest/coamps_util_mod.f90
 models/coamps_nest/coamps_vertical_mod.f90
 models/coamps_nest/get_name_info.f90

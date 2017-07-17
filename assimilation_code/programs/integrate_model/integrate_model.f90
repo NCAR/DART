@@ -53,9 +53,6 @@ integer(i8)         :: model_size
 
 type(file_info_type) :: input_file_info, output_file_info
 
-! to overwrite the target time, set these to something >= 0
-integer :: target_days = -1, target_seconds = -1
-
 ! dummy args for the advance_state call.  presumably this 
 ! executable was invoked by a script that was originally 
 ! called by advance_state() in filter, so no need to get 
@@ -66,26 +63,30 @@ integer :: target_days = -1, target_seconds = -1
 !integer             :: async = 0
 !integer             :: tasks_per_model_advance = 1
 
+!----------------------------------------------------------------
+!>@todo either use the namelist or take it out. 
+
+! to enable the use of the namelist, change this to .true. and recompile.
+logical :: use_namelist = .false.
+
 ! for use outside dart, or to call after dart finishes and
 ! writes a restart file (without a target time), set this
 ! to .false. and supply a target time with target_days, secs
 logical :: is_model_advance_file = .true.
 
 ! for debugging, status
+character(len=256) :: ic_file_name = "temp_ic.nc"
+character(len=256) :: ud_file_name = "temp_ud.nc"
 logical             :: trace_execution = .false.
-character(len=128)  :: errstring
+character(len=512)  :: errstring
 
-! Input and output filenames are hardcoded at this point.
-character(len = 132) :: ic_file_name = "temp_ic.nc", ud_file_name = "temp_ud.nc"
-
-! to enable the use of the namelist, change this to .true. and recompile.
-logical :: use_namelist = .false.
+! to overwrite the target time, set these to something >= 0
+integer :: target_days = -1, target_seconds = -1
 
 ! only read in if use_namelist is .true. -- ignored otherwise.
 namelist /integrate_model_nml/ &
    ic_file_name, ud_file_name, &
    trace_execution, is_model_advance_file, target_days, target_seconds
-
 
 !----------------------------------------------------------------
 

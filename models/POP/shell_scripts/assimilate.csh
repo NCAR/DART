@@ -302,8 +302,8 @@ ${REMOVE} pop_inflation_cookie latestfile
 # DART namelist settings required:
 # &filter_nml:           async                    = 0,
 # &filter_nml:           adv_ens_command          = "no_CESM_advance_script",
-# &filter_nml:           input_restart_file_list  = "restarts_in.txt"
-# &filter_nml:           output_restart_file_list = "restarts_out.txt"
+# &filter_nml:           input_state_file_list    = "restarts_in.txt"
+# &filter_nml:           output_state_file_list   = "restarts_out.txt"
 # &filter_nml:           stages_to_write          = 'preassim', 'output'
 # &filter_nml:           output_restarts          = .true.
 # &filter_nml:           output_mean              = .true.

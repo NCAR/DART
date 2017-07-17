@@ -182,9 +182,8 @@
    /
 
 &model_mod_check_nml
-   input_file            = 'allones.ics'
-   output_file           = 'check_me'
-   advance_time_present  = .false.
+   input_state_files     = 'allones.nc'
+   output_state_files    = 'check_me.nc'
    x_ind                 = 1
    loc_of_interest       = 0.42
    kind_of_interest      = 'ANY'
@@ -199,9 +198,9 @@
    init_skip_seconds     = 0,
    trusted_obs           = 'null',
    Nregions              = 3,
-   lonlim1               = 0.00, 0.00, 0.50, -1.0,
-   lonlim2               = 1.01, 0.50, 1.01, -1.0,
-   reg_names             = 'whole', 'yin', 'yang', 'bogus',
+   lonlim1               = 0.00, 0.00, 0.50
+   lonlim2               = 1.01, 0.50, 1.01
+   reg_names             = 'whole', 'yin', 'yang'
    create_rank_histogram = .true.,
    outliers_in_histogram = .true.,
    use_zero_error_obs    = .false.,

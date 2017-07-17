@@ -1,6 +1,8 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! DART $Id$
 
 module coamps_interp_mod
 !------------------------------
@@ -231,11 +233,11 @@ module coamps_interp_mod
     ! BEGIN MODULE VARIABLES
     !------------------------------
   
-    ! Modified automatically by Subversion
-    character(len=128) :: &
-         source = "$URL$", &
-         revision = "$Revision$", &
-         revdate = "$Date$"
+    ! version controlled file description for error handling, do not edit
+    character(len=*), parameter :: source   = &
+       "$URL$"
+    character(len=*), parameter :: revision = "$Revision$"
+    character(len=*), parameter :: revdate  = "$Date$"
   
     integer, save :: NUM_MODEL_LEVELS
   
@@ -1299,15 +1301,21 @@ contains
 
         select case (var_kind)
         case (QTY_U_WIND_COMPONENT)
-write(*,*) 'utom call removed, cannot continue'
-stop
+
+            call error_handler(E_ERR,routine,'utom call removed, cannot continue', &
+                 source, revision, revdate, text2='needs to be updated')
+
             !call utom(var_field, get_nest_i_width(nest),     &
             !          get_nest_j_width(nest), NUM_VERT_LEVELS, .true.)
+
         case (QTY_V_WIND_COMPONENT)
-write(*,*) 'vtom call removed, cannot continue'
-stop
+
+            call error_handler(E_ERR,routine,'vtom call removed, cannot continue', &
+                 source, revision, revdate, text2='needs to be updated')
+
             !call vtom(var_field, get_nest_i_width(nest),     &
             !          get_nest_j_width(nest), NUM_VERT_LEVELS, .true.)
+
         case default
             var_field(:) = var_values(:)
         end select
@@ -1862,3 +1870,8 @@ stop
 
 end module coamps_interp_mod
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

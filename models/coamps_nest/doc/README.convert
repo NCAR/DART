@@ -1,3 +1,7 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
 # DART $Id$
 
 In order to use the COAMPS files with DART in an asynchronous run, we
@@ -66,3 +70,8 @@ differ substantially from others (e.g. perturbation Exner function vs.
 potential temperature).  Note that it looks like
 most of the 2D variables are calculated values not used by the model
 itself, and are therefore useless to perturb. 
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

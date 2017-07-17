@@ -1,14 +1,16 @@
-! create_mean_nogaps
-! --------------------
+! This code may (or may not) be part of the COAMPS distribution,
+! So it is not protected by the DART copyright agreement.
+!
+! DART $Id$
+
+!>@todo is this the right program name ... does not match file name
+
+program create_mean_std
+
 ! This program pulls pieces out of the large COAMPS restart file,
 ! then assembles them into a state vector that can be used by DART.
 ! This includes two pieces of information - the current time and
 ! the actual state
-! --------------------
-! DART $Id$
-
-program create_mean_std
-
 
   use coamps_util_mod,      only : check_alloc_status,           &
                                    check_dealloc_status,         &

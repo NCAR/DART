@@ -17,20 +17,14 @@ module io_filenames_mod
 !> A file_info_type is created with a call to file_info_type = io_filenames_init()
 !>
 !> The file_info_type is public and contains:
-!>   * file_options_type (private)
-!>   * 3 restart_names_types (private):
-!>        - restart_files_in
-!>        - restart_files_out_prior (see single_file_io_mod.f90 for where this is used.)
-!>        - restart_files_out
-!>
-!> The file_options_type contains all the read/write options that typically
-!> come from the filter or perfect_model_obs namelist. These options are passed from
-!> the calling routine to io_file_namesames_init()
+!>   * IO file names
+!>   * IO metadata such as units, copy number, description, ...
 !>
 !> The restart_names_types contain a 2D array of filenames (num files, num_domains).
 !>
 !> The file_info_type is passed to the state IO routines: read_state, write_state,
 !> and filter_state_space_diagnostics (diagnostic file)
+!> 
 !> The internals of the file_info_type are accessed through the accessor functions
 !> listed below. assert_file_info_initialized() and assert_restart_names_initialized()
 !> should be used to check that the file_info_type has been initialized before
@@ -264,10 +258,10 @@ end function get_single_file
 !> Initialize file_info type
 
 
-subroutine io_filenames_init(file_info, num_copies, cycling, single_file, restart_list, root_name, &
-                           check_output_compatibility)
+subroutine io_filenames_init(file_info, num_copies, cycling, single_file, &
+                             restart_list, root_name, check_output_compatibility)
 
-type(file_info_type),       intent(out):: file_info  !< structure with expanded list of filenames
+type(file_info_type),       intent(out):: file_info        !< structure with expanded list of filenames
 integer,                    intent(in) :: num_copies       !< number of ensemble copies
 logical,                    intent(in) :: cycling          !< model will cycle
 logical,                    intent(in) :: single_file      !< all copies read from one file
@@ -488,8 +482,8 @@ file_info%stage_metadata%copy_name(     cnum) = trim(basename)
 
 ! check that the number of domains matches the size of file names provided
 if (get_num_domains() /= size(fnames(:),1)) then
-   write(msgstring,'(A,I2,A,I2)') 'num domains ', get_num_domains(), &
-                                  ' /= size(fnames) : ', size(fnames(:),1)
+   write(msgstring,'(A,I2,A,I2)') 'The number of domains, ', get_num_domains(), &
+                                  ', does not match the number of filenames, ', size(fnames(:),1)
    call error_handler(E_ERR, 'set_explicit_file_metadata', msgstring, &
                       source, revision, revdate)
 endif
@@ -1050,33 +1044,33 @@ end subroutine set_io_copy_flag_range
 
 !-------------------------------------------------------
 !> Set whether a copy should be read/written for a single
-!> copy c.  Optional argument to set if the
+!> copy cnum.  Optional argument to set if the
 !> copy could have units and if the variables should be
 !> clamped.  If this information is available it grabs
 !> it from the state structure and stores it in files
 !> created from scratch.
 
 
-subroutine set_io_copy_flag_single(file_info, c, io_flag, inherit_units, &
+subroutine set_io_copy_flag_single(file_info, cnum, io_flag, inherit_units, &
                                    clamp_vars, force_copy_back)
 
 type(file_info_type),      intent(inout) :: file_info     !< stage name handle
-integer,                   intent(in)    :: c             !< start copy to read
+integer,                   intent(in)    :: cnum          !< start copy to read
 integer,                   intent(in)    :: io_flag       !< read = 1, write = 2, read/write = 3
 logical, optional,         intent(in)    :: inherit_units !< inherit units from state structure
 logical, optional,         intent(in)    :: clamp_vars
 logical, optional,         intent(in)    :: force_copy_back
 
-if (c <=0) return
+if (cnum <=0) return
 
-file_info%stage_metadata%io_flag(c)   = io_flag
+file_info%stage_metadata%io_flag(cnum)   = io_flag
 
 if(present(inherit_units)  ) &
-   file_info%stage_metadata%inherit_units( c) = inherit_units
+   file_info%stage_metadata%inherit_units(   cnum ) = inherit_units
 if(present(clamp_vars) ) &
-   file_info%stage_metadata%clamp_vars(c) = clamp_vars
+   file_info%stage_metadata%clamp_vars(      cnum ) = clamp_vars
 if(present(force_copy_back) ) &
-   file_info%stage_metadata%force_copy_back(c) = force_copy_back
+   file_info%stage_metadata%force_copy_back( cnum ) = force_copy_back
 
 end subroutine set_io_copy_flag_single
 

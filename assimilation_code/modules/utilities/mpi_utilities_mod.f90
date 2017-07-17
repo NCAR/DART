@@ -34,7 +34,7 @@ use time_manager_mod, only : time_type, get_time, set_time
 ! Use one but not both.   The 'use' line must be before the 'implicit none' 
 ! and 'private' lines, 'include' must come after.  Go figure.
 ! For more help on compiling a module which uses MPI see the 
-! $DART/doc/mpi directory. 
+! $DART/developer_tests/mpi_utilities/tests/README
 
 use mpi
 
@@ -72,16 +72,16 @@ private
 ! this directory.  It is a sed script that comments in and out the interface
 ! block below.  Please leave the BLOCK comment lines unchanged.
 
- !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
- ! interface block for getting return code back from system() routine
- interface
-  function system(string)
-   character(len=*) :: string
-   integer :: system
-  end function system
- end interface
- ! end block
- !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
+! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
+! ! interface block for getting return code back from system() routine
+! interface
+!  function system(string)
+!   character(len=*) :: string
+!   integer :: system
+!  end function system
+! end interface
+! ! end block
+! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
 
 
 ! allow global sum to be computed for integers, r4, and r8s
@@ -161,7 +161,7 @@ logical :: all_tasks_print      = .false.   ! by default only msgs from 0 print
 
 ! make local copy for send/recv.  was needed on an old, buggy version
 ! of the mpi libs but seems unneeded now. 
-logical :: make_copy_before_sendrecv = .false.   ! should not be needed
+logical :: make_copy_before_sendrecv = .false.   ! should not be needed; .true. is very slow
 
 ! NAMELIST: change the following from .false. to .true. to enable
 ! the reading of this namelist.  This is the only place you need

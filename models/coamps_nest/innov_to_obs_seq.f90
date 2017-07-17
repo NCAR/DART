@@ -1,5 +1,6 @@
-! innov_to_obs_seq
-! --------------------
+! This code may (or may not) be part of the COAMPS distribution,
+! So it is not protected by the DART copyright agreement.
+!
 ! DART $Id$
 
 program innov_to_obs_seq

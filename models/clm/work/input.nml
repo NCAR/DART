@@ -289,6 +289,8 @@
    loc_of_interest      =  90.0,  41.00, 0.35
 
 &model_mod_check_nml
+   input_state_files     = clm_restart.nc
+   output_state_files    = check_me.nc
    verbose               = .false.
    test1thru             = 5
    x_ind                 = 720

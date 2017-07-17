@@ -1,11 +1,14 @@
+! This code may (or may not) be part of the COAMPS distribution,
+! So it is not protected by the DART copyright agreement.
+!
+! DART $Id$
+
 ! Program wrapper for ll2ij that takes its input from the file
 ! domain.dat - this allows us to quickly cal ll2ij many times for a
 ! single grid.  This is written to print out either a "T" or "F" if
 ! the lat/lon point described by the last two lines of domain.dat is
 ! in the grid or not - this is for use with actual observations to
 ! pare down the list to points that are actually within our domain.
-
-! DART $Id$
 
 program check_in_grid
 

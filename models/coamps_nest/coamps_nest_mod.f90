@@ -1,3 +1,9 @@
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! DART $Id$
+
 !------------------------------
 ! MODULE:       coamps_nest_mod
 ! AUTHOR:       T. R. Whitcomb
@@ -8,7 +14,6 @@
 ! Module containing data structures and routines for dealing
 ! with the nest component of a coamps domain
 !------------------------------ 
-! DART $Id$
 
 module coamps_nest_mod
 

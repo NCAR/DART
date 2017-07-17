@@ -1,3 +1,8 @@
+! This code may (or may not) be part of the COAMPS distribution,
+! So it is not protected by the DART copyright agreement.
+!
+! DART $Id$
+
 !------------------------------
 ! MODULE:       coamps_vertical_mod
 ! AUTHOR:       T. R. Whitcomb
@@ -8,7 +13,6 @@
 ! Module containing data structures and routines for dealing
 ! with the vertical component of a coamps domain
 !------------------------------ 
-! DART $Id$
 
 module coamps_vertical_mod
 

@@ -1,3 +1,8 @@
+! This code may (or may not) be part of the COAMPS distribution,
+! So it is not protected by the DART copyright agreement.
+!
+! DART $Id$
+
 !------------------------------
 ! MODULE:       coamps_statevar_mod
 ! AUTHOR:       T. R. Whitcomb
@@ -6,7 +11,8 @@
 !
 ! Module containing the data structure and routines for dealing with
 ! a COAMPS state variable
-!------------------------------ 
+!------------------------------
+
 module coamps_statevar_mod
 
     use coamps_domain_mod, only : coamps_domain, &
@@ -130,12 +136,12 @@ module coamps_statevar_mod
     !------------------------------
     ! END EXTERNAL INTERFACE
     !------------------------------
-  
+
     !------------------------------
     ! BEGIN TYPES AND CONSTANTS
     !------------------------------
 
-    ! Dimension information - w levels include the surface so there are 
+    ! Dimension information - w levels include the surface so there are
     ! kka+1 levels there
     integer, parameter :: DIM_TYPE_2D  = 1
     integer, parameter :: DIM_TYPE_3D  = 2
@@ -143,7 +149,7 @@ module coamps_statevar_mod
 
     ! Length of string variables
     integer, parameter :: VAR_NAME_LEN  = 10
-    integer, parameter :: VAR_KIND_LEN  = 32
+    integer, parameter :: VAR_QTY_LEN   = 32
     integer, parameter :: PERT_TYPE_LEN = 7
 
     ! Perturbation types - don't perturb at all, perturb whole sigma
@@ -151,7 +157,7 @@ module coamps_statevar_mod
     integer,          parameter :: PERT_TYPE_NOPERTS = 0
     integer,          parameter :: PERT_TYPE_UNIFORM = 1
     integer,          parameter :: PERT_TYPE_INDIVID = 2
-    character(len=*), parameter :: NOPERTS_NAME      = 'NOPERTS' 
+    character(len=*), parameter :: NOPERTS_NAME      = 'NOPERTS'
     character(len=*), parameter :: UNIFORM_NAME      = 'UNIFORM'
     character(len=*), parameter :: INDIVID_NAME      = 'INDIVID'
 
@@ -197,7 +203,7 @@ module coamps_statevar_mod
     ! Whether or not we actually assimilate the field (e.g. mean
     ! fields are needed in here to do interpolation but should
     ! not have their assimilated alterations written back to the
-    ! COAMPS restart file):  
+    ! COAMPS restart file):
     !   update_field
     ! Help find specific variables for interpolation:
     !   mean_field, mass_level
@@ -205,7 +211,7 @@ module coamps_statevar_mod
     ! zero (e.g. for mixing ratios):
     !   positive_definite
     type :: state_variable
-        private  
+        private
 
         ! Bounds of this variable within the DART state vector
         integer                     :: state_begin
@@ -228,10 +234,10 @@ module coamps_statevar_mod
         logical                     :: positive_definite    ! IN
         integer                     :: nc_varid             ! IN
         character(len=1)            :: var_stagger          ! IN
-        integer                     :: vert_type            ! IN 
-        real(kind=r8)               :: vert_value           ! IN  
+        integer                     :: vert_type            ! IN
+        real(kind=r8)               :: vert_value           ! IN
     end type state_variable
-  
+
     !------------------------------
     ! END TYPES AND CONSTANTS
     !------------------------------
@@ -239,13 +245,13 @@ module coamps_statevar_mod
     !------------------------------
     ! BEGIN MODULE VARIABLES
     !------------------------------
-  
-    ! Modified automatically by Subversion
-    character(len=128) :: &
-        source   = "$URL$", &
-        revision = "$Revision$", &
-        revdate  = "$Date$"
-  
+
+    ! version controlled file description for error handling, do not edit
+    character(len=*), parameter :: source   = &
+       "$URL$"
+    character(len=*), parameter :: revision = "$Revision$"
+    character(len=*), parameter :: revdate  = "$Date$"
+
     !------------------------------
     ! END MODULE VARIABLES
     !------------------------------
@@ -258,8 +264,8 @@ contains
 
     ! new_state_variable
     ! ------------------
-    ! Given initial parameters for a state variable, consolidates them into a 
-    ! "state_variable" structure and returns it.  The non-optional parameters 
+    ! Given initial parameters for a state variable, consolidates them into a
+    ! "state_variable" structure and returns it.  The non-optional parameters
     ! are what makes the state variable unique (i.e. only need to check these
     ! for equality tests)
     function new_state_variable(nest_num, var_kind, is_mean_var,            &
@@ -325,7 +331,7 @@ contains
             if (present(is_flat_file)) then
               if(.not.is_flat_file) then
                 call get_name_info(DIM_TYPE_2D, DIM_TYPE_3D, DIM_TYPE_3DW, &
-                                   SINGLEIO, MULTIIO, var_name,            & 
+                                   SINGLEIO, MULTIIO, var_name,            &
                                    new_state_variable%dim_type,            &
                                    new_state_variable%var_record)
               end if
@@ -353,7 +359,7 @@ contains
         character(len=PERT_TYPE_LEN)     :: pert_type_name
         real(kind=r8)                    :: pert_magnitude
         character                        :: level_type
-        character(len=VAR_KIND_LEN)      :: var_kind_name
+        character(len=VAR_QTY_LEN)       :: var_kind_name
         character(len=FIELD_UPDATE_LEN)  :: update_type
         logical                          :: is_mean_field
         character(len=POS_DEF_LEN)       :: positive_type_name
@@ -390,7 +396,7 @@ contains
              else
                vert_value = missing_r8
              end if
-               
+
           case (QTY_TEMPERATURE)
              if(vert_type_from_level_type(level_type) == VERTISHEIGHT) then
                vert_value = 10.0_r8
@@ -425,17 +431,17 @@ contains
 
     ! define_mean_var
     ! -------------------
-    ! Definitions for mean state variables. 
+    ! Definitions for mean state variables.
     !  PARAMETERS
-    ! IN variable_name   
+    ! IN variable_name
     ! IN nest_number
     ! IN current sigma level
     function define_mean_var(variable_name, nest_number, cur_level) result(var)
-      character(len=*),  intent(in) :: variable_name 
+      character(len=*),  intent(in) :: variable_name
       integer,           intent(in) :: nest_number
       integer, optional, intent(in) :: cur_level
       type(state_variable)          :: var
-       
+
       logical,       parameter :: is_mean_field  = .true.
       real(kind=r8), parameter :: pert_magnitude = 0.0
       integer                  :: cur_level_local
@@ -444,19 +450,19 @@ contains
 
       if(present(cur_level)) then
         cur_level_local = cur_level
-      else 
+      else
         cur_level_local = 0
       end if
 
       select case (trim(uppercase(variable_name)))
         case ('EXBM')
-          level_type      = 'M' 
+          level_type      = 'M'
           var_kind_name = 'QTY_EXNER_FUNCTION'
         case ('THBM')
-          level_type      = 'M' 
+          level_type      = 'M'
           var_kind_name = 'QTY_POTENTIAL_TEMPERATURE'
         case ('EXBW')
-          level_type      = 'W' 
+          level_type      = 'W'
           var_kind_name = 'QTY_EXNER_FUNCTION'
       end select
 
@@ -487,7 +493,7 @@ contains
 
     ! get_var_substate_r8
     ! ---------------------
-    ! Return a pointer to the subsection of a kind(r8) vector corresponding 
+    ! Return a pointer to the subsection of a kind(r8) vector corresponding
     ! to a given state variable.
     !  PARAMETERS
     !   IN  vector          The vector to take the section from
@@ -496,13 +502,13 @@ contains
         type(state_variable),                 intent(in)  :: var
         real(kind=r8), dimension(:), target,  intent(in)  :: vector
         real(kind=r8), dimension(:), pointer              :: var_substate
-    
+
         var_substate => vector(var%state_begin:var%state_end)
     end function get_var_substate_r8
 
     ! get_var_substate_r4
     ! -----------------------
-    ! Return a pointer to the subsection of a kind(r4) vector 
+    ! Return a pointer to the subsection of a kind(r4) vector
     ! corresponding to a given state variable
     !  PARAMETERS
     !   IN  vector          The vector to take the section from
@@ -511,7 +517,7 @@ contains
         type(state_variable),                     intent(in)  :: var
         real(kind=r4), dimension(:), target,  intent(in)      :: vector
         real(kind=r4), dimension(:), pointer                  :: var_substate
-    
+
         var_substate => vector(var%state_begin:var%state_end)
     end function get_var_substate_r4
 
@@ -611,9 +617,9 @@ contains
 
         ! No surface types for now
         if (var%mass_level) then
-            get_vert_loc = get_domain_msigma(domain, kk) 
+            get_vert_loc = get_domain_msigma(domain, kk)
         else
-            get_vert_loc = get_domain_wsigma(domain, kk) 
+            get_vert_loc = get_domain_wsigma(domain, kk)
         end if
     end function get_vert_loc
 
@@ -626,7 +632,7 @@ contains
         type(state_variable), intent(in)  :: var
         integer                           :: get_vert_type
 
-        get_vert_type = var%vert_type 
+        get_vert_type = var%vert_type
     end function get_vert_type
 
     ! get_vert_value
@@ -638,7 +644,7 @@ contains
         type(state_variable), intent(in)  :: var
         real(kind=r8)                     :: get_vert_value
 
-        get_vert_value = var%vert_value 
+        get_vert_value = var%vert_value
     end function get_vert_value
 
     ! get_var_min_level
@@ -650,7 +656,7 @@ contains
     function get_var_min_level(var, domain) result(level)
         type(state_variable), intent(in)  :: var
         type(coamps_domain),  intent(in)  :: domain
-        real(kind=r8)                     :: level 
+        real(kind=r8)                     :: level
 
         if (var%mass_level) then
           level = get_domain_msigma(domain, get_domain_num_levels(domain))
@@ -668,7 +674,7 @@ contains
     function get_var_max_level(var, domain) result(level)
         type(state_variable), intent(in)  :: var
         type(coamps_domain),  intent(in)  :: domain
-        real(kind=r8)                     :: level 
+        real(kind=r8)                     :: level
 
         if (var%mass_level) then
             level = get_domain_msigma(domain, 1)
@@ -686,7 +692,7 @@ contains
         type(state_variable), intent(in)  :: var
         character(len=VAR_NAME_LEN)       :: var_name
 
-        var_name = var%var_name 
+        var_name = var%var_name
     end function get_var_name
 
     ! get_mass_level_flag
@@ -698,7 +704,7 @@ contains
         type(state_variable), intent(in)  :: var
         logical                           :: mass_level
 
-        mass_level = var%mass_level 
+        mass_level = var%mass_level
     end function get_mass_level_flag
 
     ! get_var_kind
@@ -710,7 +716,7 @@ contains
         type(state_variable), intent(in)  :: var
         integer                           :: get_var_kind
 
-        get_var_kind = var%var_kind 
+        get_var_kind = var%var_kind
     end function get_var_kind
 
     ! get_pert_magnitude
@@ -764,7 +770,7 @@ contains
     ! get_record_in_nest
     ! -------------------
     ! Queries the given variable and returns the record number of a
-    ! particular sigma level within its particular nest in the large 
+    ! particular sigma level within its particular nest in the large
     ! COAMPS restart file
     !  PARAMETERS
     !   IN  var                 state variable to pull compute position of
@@ -814,9 +820,9 @@ contains
             n = var%var_record(MULTIIO)
         end if
 
-        ! Take into account the number of variables that occur before the 
-        ! target variable and all their associated sigma levels, then all 
-        ! the sigma levels of THIS variable that have occured before the 
+        ! Take into account the number of variables that occur before the
+        ! target variable and all their associated sigma levels, then all
+        ! the sigma levels of THIS variable that have occured before the
         ! target level.
         select case (var%dim_type)
         case (DIM_TYPE_2D)
@@ -836,8 +842,8 @@ contains
     ! set_position
     ! ------------
     ! Figure the points in the state vector that correspond to this state
-    ! variable based on its corresponding nest size.  Store the limits in 
-    ! the state variable structure and return the location of this 
+    ! variable based on its corresponding nest size.  Store the limits in
+    ! the state variable structure and return the location of this
     ! variable's last point
     !  PARAMETERS
     ! INOUT var                 State variable to calculate the region for
@@ -913,7 +919,7 @@ contains
     ! Sets the staggering properties of a variable
     subroutine set_var_stagger(var)
       type(state_variable), intent(inout) :: var
-    
+
             if(var%is_2d_variable) then
               var%var_stagger = 'T'
             else
@@ -982,7 +988,7 @@ contains
     ! -------------------
     ! Writes out the contents of a state variable
     !  PARAMETERS
-    !   IN  var               state variable to dump 
+    !   IN  var               state variable to dump
     subroutine dump_state_variable(var)
         type(state_variable), intent(in) :: var
 
@@ -1009,7 +1015,7 @@ contains
         write (*, *) "-----------------------------------------"
 
     end subroutine dump_state_variable
-    
+
     !------------------------------
     ! END PUBLIC ROUTINES
     !------------------------------
@@ -1028,7 +1034,7 @@ contains
         type(coamps_domain),  intent(in) :: domain
         integer                          :: nlevels
 
-        if(var%is_2d_variable) then 
+        if(var%is_2d_variable) then
           nlevels = 1
         else
           nlevels = get_domain_num_levels(domain)
@@ -1052,7 +1058,7 @@ contains
         if (var_kind_num_from_name .lt. 0) then
             call error_handler(E_ERR, 'var_kind_num_from_name',           &
                                'Error in locating numeric equivalent ' // &
-                               'to raw observation kind' // var_kind_name,& 
+                               'to raw observation kind' // var_kind_name,&
                                source, revision, revdate)
         end if
     end function var_kind_num_from_name
@@ -1103,7 +1109,7 @@ contains
     ! mass_flag_from_level_type
     ! -------------------------
     ! Convert character representation of [M]ass or [W] velocity level
-    ! type to an internal logical type 
+    ! type to an internal logical type
     function mass_flag_from_level_type(level_type_char)
         character, intent(in)  :: level_type_char
         logical                :: mass_flag_from_level_type
@@ -1121,7 +1127,7 @@ contains
     ! vert_type_from_level_type
     ! -------------------------
     ! Convert character representation of [M]ass or [W] velocity level
-    ! type to an internal logical type 
+    ! type to an internal logical type
     function vert_type_from_level_type(level_type_char)
         character, intent(in)  :: level_type_char
         integer                :: vert_type_from_level_type
@@ -1148,7 +1154,7 @@ contains
     ! ---------------------
     ! Converts a character string describing whether the entire field
     ! is positive definite (ISPOSDEF) or not (NOPOSDEF) to the internal
-    ! logical representation 
+    ! logical representation
     function posdef_flag_from_name(posdef_string)
         character(len=*), intent(in)  :: posdef_string
         logical                       :: posdef_flag_from_name
@@ -1168,7 +1174,7 @@ contains
     ! is_same_variable
     ! ----------------
     ! Return true if the variables are the "same" - i.e. they are describing
-    ! identical entries.  
+    ! identical entries.
     function is_same_variable(var1, var2) result(is_same)
         type(state_variable), intent(in)  :: var1
         type(state_variable), intent(in)  :: var2
@@ -1181,7 +1187,7 @@ contains
                   is_same_sigma_index(var1, var2) .and. &
                   is_same_vert_type_and_value(var1, var2)
     end function is_same_variable
-    
+
     ! is_same_vert_type_and_value
     ! ----------------
     ! Return true if the variables are the "same" - i.e. they are describing
@@ -1192,7 +1198,7 @@ contains
         type(state_variable), intent(in)  :: var2
         logical                           :: is_same
         real(kind=r8), parameter :: ERR_TOL = 0.001_r8
-    
+
         is_same = var1%vert_type .eq. var2%vert_type
         if( (var1%vert_type .eq. VERTISLEVEL) .or. &
             (var1%vert_type .eq. VERTISUNDEF) .or. &
@@ -1206,15 +1212,15 @@ contains
     ! is_same_kind_and_nest
     ! ----------------
     ! Return true if the variables are the "same" - i.e. they are describing
-    ! entries with the same kind and nest.  
+    ! entries with the same kind and nest.
     function is_same_kind_and_nest(var1, var2) result(is_same)
         type(state_variable), intent(in)  :: var1
         type(state_variable), intent(in)  :: var2
         logical                           :: is_same
-    
+
         is_same = is_same_kind(var1, var2) .and.  is_same_nest(var1, var2)
     end function is_same_kind_and_nest
-    
+
     ! is_same_kind
     ! -------------
     ! Returns true if the variables have the same kind
@@ -1256,9 +1262,9 @@ contains
         type(state_variable), intent(in)  :: var1
         type(state_variable), intent(in)  :: var2
         logical                           :: is_same_sigma_index
-    
+
         is_same_sigma_index = var1%sigma_record .eq. var2%sigma_record
-    end function is_same_sigma_index 
+    end function is_same_sigma_index
 
     ! is_same_nest
     ! -------------------
@@ -1267,7 +1273,7 @@ contains
         type(state_variable), intent(in)  :: var1
         type(state_variable), intent(in)  :: var2
         logical                           :: is_same_nest
-    
+
         is_same_nest = var1%nest_number .eq. var2%nest_number
     end function is_same_nest
 
@@ -1277,3 +1283,8 @@ contains
 
 end module coamps_statevar_mod
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

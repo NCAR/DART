@@ -100,15 +100,11 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;ensemble_manager_nml
-   single_restart_file_in  = .true.,
-   single_restart_file_out = .true.,
-   perturbation_amplitude  = 0.2,
-   layout = 1,
-   tasks_per_node = 1,
-   communication_configuration = 1,
-   flag_unneeded_transposes = .false.,
-   debug = .false.
- /
+   layout                      = 1
+   tasks_per_node              = 1
+   communication_configuration = 1
+   debug                       = .false.
+  /
 </pre>
 </div>
 
@@ -124,39 +120,6 @@ prematurely terminating the namelist.
 </THEAD>
 
 <TBODY valign=top>
-
-<TR><TD>single_restart_file_in</TD>
-    <TD>logical</TD>
-    <TD>True if all copies read from a single file.
-      False for one file per copy.
-</TD></TR>
-
-<TR><TD>single_restart_file_out</TD>
-    <TD>logical</TD>
-    <TD>True if all copies written to a single file.
-      False for one file per copy.
-</TD></TR>
-
-<TR><TD>perturbation_amplitude</TD>
-    <TD>real(r8)</TD>
-    <TD>Perturbation standard deviation for generating 
-      ensemble member initial conditions if the model's model_mod does 
-      not provide code in a pert_model_state() routine to generate them
-      another way.
-      <br />Random noise values drawn from a gaussian distribution with this 
-      standard deviation will be added to the data in a single initial 
-      ensemble member to generate the rest of the members.
-      <br />This option is more frequently used in the low order models 
-      and less frequently used in large models.  This is in part due
-      to the different scales of real geophysical variable values, and the
-      resulting inconsistencies between related field values.  
-      A more successful initial condition generation
-      strategy is to generate climatological distributions from long model
-      runs which have internally consistent structures and values and then
-      use observations with a 'spin-up' period of assimilation to shape
-      the initial states into a set of members with enough spread and which
-      match the current set of observations.
-</TD></TR>
 
 <TR><TD>layout</TD>
     <TD>integer</TD>
@@ -180,12 +143,6 @@ prematurely terminating the namelist.
      patterns (see *Note below).  Values from 
      1 to 4 select different options; try the various options to see if one might
      be faster than the others.  
-</TD></TR>
-
-<TR><TD>flag_unneeded_transposes</TD>
-    <TD>logical</TD>
-    <TD>If true, print out when unnecessary transposes are executed.
-     This is generally used only during debugging and should be .false. in most cases.
 </TD></TR>
 
 <TR><TD>debug</TD>
@@ -471,7 +428,8 @@ logical, optional,         intent(in)    :: <em class=optionalcode>force_single_
 <!-- Description -->
 
 <P>
-Read in a set of copies of a vector from file file_name. The copies read are
+Read in a set of copies of a vector from file <em class=code>file_name</em>.
+The copies read are
 place into global copies start_copy:end_copy in the ens_handle. 
 If start_from_restart is false, then only a single copy of the vector is
 read from the file and then it is perturbed using routines in assim_model_mod
@@ -2256,7 +2214,7 @@ Return my_pe corresponding to the physical task
     <!-- comment --><TD VALIGN=top>Doesn't make sense to specify both of these options.</TD>
 </TR>
 <TR><!-- routine --><TD VALIGN=top>get_copy</TD>
-    <!-- message --><TD VALIGN=top>Requested copy is > maximum_copy</TD>
+    <!-- message --><TD VALIGN=top>Requested copy is &gt; maximum_copy</TD>
     <!-- comment --><TD VALIGN=top>Can't ask for a copy that is greater than the maximum.</TD>
 </TR>
 <TR><!-- routine --><TD VALIGN=top>get_copy</TD>
@@ -2265,7 +2223,7 @@ Return my_pe corresponding to the physical task
                 copy of the vector.</TD>
 </TR>
 <TR><!-- routine --><TD VALIGN=top>put_copy</TD>
-    <!-- message --><TD VALIGN=top>Requested copy: ### is > maximum_copy: ###</TD>
+    <!-- message --><TD VALIGN=top>Requested copy: ### is &gt; maximum_copy: ###</TD>
     <!-- comment --><TD VALIGN=top>Can't ask for a copy that is greater than maximum.</TD>
 </TR>
 <TR><!-- routine --><TD VALIGN=top>put_copy</TD>

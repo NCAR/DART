@@ -1,3 +1,9 @@
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! DART $Id$
+
 !------------------------------
 ! MODULE:       coamps_translate_mod
 ! AUTHOR:       T. R. Whitcomb
@@ -15,7 +21,6 @@
 ! the time to hours/minutes/seconds with no respect to dates 
 ! (since we're restricting to a single date-time group).
 !------------------------------ 
-! DART $Id$
 
 module coamps_translate_mod
 
@@ -1102,12 +1107,12 @@ contains
 
     type(state_variable)      :: cur_var
     type(state_iterator)      :: iterator
-
     integer :: cur_file       ! Which file is being read
-
     logical :: write_field    ! Allow us to not write a field even if
                               ! it's in the DART state vector
     real(kind=C_REAL), dimension(:), pointer :: var_state
+
+    character(len=*), parameter :: routine = 'coamps_process_all_flat_files'
 
     cur_file = 0
     iterator = get_iterator(file_layout)
@@ -1117,6 +1122,7 @@ contains
       if( .not. get_io_flag(cur_var)) cycle flat_file_loop
 
 !TJH      var_state => get_var_substate(cur_var, coamps_state)
+      call error_handler(E_ERR, routine, 'not updated, not needed?', source, revision, revdate)
 
       cur_file = cur_file + 1
 

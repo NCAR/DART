@@ -1,3 +1,8 @@
+! This code may (or may not) be part of the COAMPS distribution,
+! So it is not protected by the DART copyright agreement.
+!
+! DART $Id$
+
 !------------------------------
 ! MODULE:       coamps_domain_mod
 ! AUTHOR:       T. R. Whitcomb
@@ -8,8 +13,6 @@
 ! which is an amalgamation of a grid (a map projection and how the domain
 ! connects to it), an arbitrary number of nests, and vertical structure.
 !------------------------------ 
-! DART $Id$
-
 module coamps_domain_mod
 
     use coamps_intrinsic_mod, only : uvg2uv   

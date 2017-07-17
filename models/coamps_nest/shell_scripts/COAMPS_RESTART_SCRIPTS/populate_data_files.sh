@@ -1,5 +1,12 @@
 #!/bin/bash
 #
+# This code may (or may not) be part of the COAMPS distribution,
+# So it is not protected by the DART copyright agreement.
+#
+# DART $Id$
+#
+########################################################################
+#
 # SCRIPT:   populate_data_files.sh
 # AUTHOR:   T. R. Whitcomb
 #           Naval Research Laboratory
@@ -72,4 +79,9 @@ cp -f ${DATA_PATH}/terrht* .
 cp -f ${DART_HOME}/convert.vars ./convert.vars
 echo "  State vector definition"
 ${DART_HOME}/shell_scripts/populate_restart_vars.pl ${RESTART_DAT} > restart.log
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

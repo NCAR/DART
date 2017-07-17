@@ -10,6 +10,9 @@
 !> layout when only part of a state vector is on a single task.
 !> would have to do a reduce to add up the total differences.
 
+!>@todo FIXME the html needs to be made consistent with the namelist once the namelist
+!> is fleshed out.
+
 program closest_member_tool
 
 ! Program to overwrite the time on each ensemble in a restart file.

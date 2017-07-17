@@ -13,9 +13,6 @@ program trans_dart_to_coamps
 ! contained in the DART file is a target time for the integration,
 ! write out a file that can be read by the COAMPS run scripts so
 ! they can modify their namelist accordingly.
-! --------------------
-! DART $Id$
-
 
   use coamps_translate_mod, only : initialize_translator,          &
                                    open_dart_file, dart_read,      &

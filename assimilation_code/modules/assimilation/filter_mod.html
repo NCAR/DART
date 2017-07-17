@@ -208,9 +208,23 @@ and the second controls the posterior inflation.
 <TR><TD>perturbation_amplitude</TD>
     <TD>real(r8)</TD>
     <TD>Standard deviation for the gaussian noise added when generating
-        perturbed ensemble members.  Ignored if 'perturb_from_single_instance' is false
+        perturbed ensemble members.  Ignored if 
+        <em class=code>perturb_from_single_instance&nbsp;=&nbsp;.false.</em>
         or the perturbed ensemble is created in model_mod.
- </TD></TR>
+      <br />Random noise values drawn from a gaussian distribution with this
+      standard deviation will be added to the data in a single initial
+      ensemble member to generate the rest of the members.
+      <br />This option is more frequently used in the low order models
+      and less frequently used in large models.  This is in part due
+      to the different scales of real geophysical variable values, and the
+      resulting inconsistencies between related field values.
+      A more successful initial condition generation
+      strategy is to generate climatological distributions from long model
+      runs which have internally consistent structures and values and then
+      use observations with a 'spin-up' period of assimilation to shape
+      the initial states into a set of members with enough spread and which
+      match the current set of observations.
+</TD></TR>
 
 <TR><TD>stages_to_write</TD>
     <TD>character(len=10) dimension(4)</TD>

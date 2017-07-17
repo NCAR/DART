@@ -5,7 +5,7 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
-#
+
 # usage: mkmf_filter [ -mpi | -nompi ]
 #
 # without any args, builds filter without mpi libraries, and it will run
@@ -37,14 +37,24 @@ if ( $usingmpi ) then
 
   echo "Making Makefile with MPI"
   touch using_mpi_for_filter
-  sed -e 's;/null_mpi_util;/mpi_util;' path_names_filter.back >! path_names_filter
+  sed -e 's#/null_mpi_util#/mpi_util#' \
+      -e 's#/null_win_mod#/no_cray_win_mod#' path_names_filter.back >! path_names_filter
+
   setenv wrapper_arg -w
 
 else
 
   echo "Making Makefile without MPI"
   rm -f using_mpi_for_filter
-  sed -e 's;/mpi_util;/null_mpi_util;' path_names_filter.back >! path_names_filter
+  sed -e 's#/mpi_util#/null_mpi_util#' \
+      -e '\#no_cray_win_mod.f90#d' \
+      -e '\#cray_win_mod.f90#d' path_names_filter.back >! path_names_filter
+
+  set p=`grep null_win_mod.f90 path_names_filter | wc -w`
+  if ( $p == 0) then
+     echo assimilation_code/modules/utilities/null_win_mod.f90 >> path_names_filter
+  endif
+
   setenv wrapper_arg ""
 
 endif

@@ -13,9 +13,6 @@ program trans_coamps_to_statevec
 ! what DART is seeing for easier reading into programs like MATLAB
 ! or debugging.  This program is almost identical to the
 ! trans_coamps_to_dart program but does not output time.
-! ------------------------
-! DART $Id$
-
 
   use coamps_translate_mod, only : initialize_translator,         &
                                    generate_coamps_filenames,     &

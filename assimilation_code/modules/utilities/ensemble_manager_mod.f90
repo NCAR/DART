@@ -54,8 +54,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 
 type ensemble_type
 
-!>@todo Extra argument to init_ensemble_manager so you could set up an ensemble handle
-!>that allowed transposes (e.g. state, fwd_op) or not allow tranposes( e.g. static data)
+!>@todo update documentation with regard to 'single_restart_file_[in,out]'
 
 !>@todo FIXME the rule here should be that we only access %copies and %vars for efficiency
 !>but every other part of this structure should go through accessor routines.

@@ -133,7 +133,7 @@ real(r8) :: lonlim2 = MISSING_R8
 real(r8) :: latlim1 = MISSING_R8
 real(r8) :: latlim2 = MISSING_R8
 logical  :: verbose = .false.
-logical  :: debug   = .false.   ! undocumented ... on purpose
+logical  :: debug   = .false.  
 
 namelist /obs_seq_coverage_nml/ obs_sequences, obs_sequence_list, &
               obs_of_interest, textfile_out, netcdf_out, calendar, &

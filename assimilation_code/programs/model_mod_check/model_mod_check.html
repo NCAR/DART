@@ -67,13 +67,35 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;model_mod_check 
-   input_file           = "dart_ics",        
-   output_file          = "check_me",
-   advance_time_present = .FALSE.,
-   x_ind                = -1,
-   loc_of_interest      = -1.0, -1.0, -1.0,
-   kind_of_interest     = 'ANY'
-   verbose              = .FALSE.,
+   single_file           = .FALSE.
+   input_state_files     = 'input.nc'
+   output_state_files    = 'output.nc'
+   num_ens               = 1
+
+   x_ind                 = -1
+   loc_of_interest       = -1.0, -1.0, -1.0
+   kind_of_interest      = 'ANY'
+
+   interp_test_dlon      = -1.0
+   interp_test_dlat      = -1.0
+   interp_test_dvert     = -1.0
+
+   interp_test_lonrange  = -1.0, -1.0
+   interp_test_latrange  = -1.0, -1.0
+   interp_test_vertrange = -1.0, -1.0
+
+   interp_test_dx        = -1.0
+   interp_test_dy        = -1.0
+   interp_test_dz        = -1.0
+
+   interp_test_xrange    = -1.0, -1.0
+   interp_test_yrange    = -1.0, -1.0
+   interp_test_zrange    = -1.0, -1.0
+
+   interp_test_vertcoord = ANY'
+
+   test1thru             = 1
+   verbose               = .FALSE.
    /
 </pre>
 </div>
@@ -91,43 +113,116 @@ prematurely terminating the namelist.
 
 <TBODY valign=top>
 
-<TR><TD> input_file </TD>
-    <TD> character(len=129) </TD>
-    <TD>Name of a file containing DART initial conditions for the model.
+<TR><TD> num_ens </TD>
+    <TD> integer(i8) </TD>
+    <TD> The number of ensemble members you would like to read in for testing.
 </TD></TR>  
 
-<TR><TD> output_file  </TD>
-    <TD> character(len=129) </TD>
-    <TD>base portion of the name of the test netCDF file that will exercise the
-DART routines that create the <em class="file">true_state.nc</em>, 
-<em class="file">preassim.nc</em>, and <em class="file">analysis.nc</em>
-files. The proper file extension will be added.
+<TR><TD> singl_file </TD>
+    <TD> logical(len=129) </TD>
+    <TD> If .TRUE. all members are stored in a single restart file
 </TD></TR>  
 
-<TR><TD> advance_time_present </TD>
-    <TD> logical </TD>
-    <TD>Flag to indicate if the DART restart file has the 
-<em class="option">advance time</em> present in the file.
+<TR><TD> input_state_files  </TD>
+    <TD> character(len=256) </TD>
+    <TD> The name of a NetCDF file containing DART initial conditions for the model.
+         If num_ens > 1 then you need to specify a file for each ensemble.  
+</TD></TR>  
+
+<TR><TD> output_state_files  </TD>
+    <TD> character(len=256) </TD>
+    <TD> The name of a NetCDF DART output file for testing IO.
+         If num_ens > 1 then you need to specify a file for each ensemble.  
 </TD></TR>  
 
 <TR><TD> x_ind </TD>
-    <TD> integer </TD>
-    <TD>integer index into the DART state vector.  This will be used to test the
-metadata routines.  Answers questions about location, what variable type is
-stored there, etc.
+    <TD> integer(i8) </TD>
+    <TD> An integer index into the DART state vector.  This will be used to test the
+         metadata routines.  Answers questions about location, what variable type is
+         stored there, etc.
 </TD></TR>  
 
 <TR><TD> loc_of_interest </TD>
     <TD> real(r8), dimension(3) </TD>
-    <TD>The lat/lon/level for a particular location.  Tests the routine to find
-the closest gridpoint.
+    <TD> The lat/lon/level for a <b>particular</b> location.  Tests the routine to find
+         the closest gridpoint.
 </TD></TR>  
 
 <TR><TD> kind_of_interest </TD>
     <TD> character(len=32) </TD>
-    <TD>Since there are usually many state variables on the same grid, it may be
-useful to restrict the search for a location of interest to include a
-particular kind of state variable.
+    <TD> useful to restrict the search for a location of interest to include a
+         particular kind of state variable.
+</TD></TR>  
+
+<TR><TD> interp_test_dlon </TD>
+    <TD> real(r8) </TD>
+    <TD> The distance (measured in degrees) on the longitude interpolation grid. This
+         is used when using models with threed_sphere locaions.
+</TD></TR>  
+
+<TR><TD> interp_test_dlat </TD>
+    <TD> real(r8) </TD>
+    <TD> The distance (measured in degrees) on the latitude interpolation grid. This
+         is used when using models with threed_sphere locaions.
+</TD></TR>  
+
+<TR><TD> interp_test_dvert </TD>
+    <TD> real(r8) </TD>
+    <TD> The distance (measured in interp_vertcoord) on the vertical interpolation grid. This
+         is used when using models with threed_sphere locaions.
+</TD></TR>  
+
+<TR><TD> interp_test_dx </TD>
+    <TD> real(r8) </TD>
+    <TD> The interval on the z axis of the interpolation grid. This
+         is used when using models with threed_cartesian locaions.
+</TD></TR>  
+
+<TR><TD> interp_test_dy </TD>
+    <TD> real(r8) </TD>
+    <TD> The interval on the y axis of the interpolation grid. This
+         is used when using models with threed_cartesian locaions.
+</TD></TR>  
+
+<TR><TD> interp_test_dz </TD>
+    <TD> real(r8) </TD>
+    <TD> The interval on the z axis of the interpolation grid. This
+         is used when using models with threed_cartesian locaions.
+</TD></TR>  
+
+<TR><TD> interp_test_xrange </TD>
+    <TD> real(r8) </TD>
+    <TD> The range of y to be tested with model_interpolate, with spacing
+         interp_test_dx.
+</TD></TR>  
+
+<TR><TD> interp_test_yrange </TD>
+    <TD> real(r8) </TD>
+    <TD> The range of y to be tested with model_interpolate, with spacing
+         interp_test_dy.
+</TD></TR>  
+
+<TR><TD> interp_test_zrange </TD>
+    <TD> real(r8) </TD>
+    <TD> The range in the vertical direction to be tested with model_interpolate, with spacing
+         interp_test_dz.
+</TD></TR>  
+
+<TR><TD> inperp_test_vertcoord </TD>
+    <TD> character(len=32) </TD>
+    <TD> Since there are usually many state variables on the same grid, it may be useful to
+         restrict the search for a location of interest to include a particular kind of state 
+         variable.
+</TD></TR>  
+
+<TR><TD> test1thru </TD>
+    <TD> integer </TD>
+    <TD> <ul> <li>Test 1 - Test static_init_model to get the grid.</li>
+              <li>Test 2 - Reads and Writes a trivial restart file.</li>
+              <li>Test 3 - Takes an x_ind into the state vector and returns its location and quantity.</li>
+              <li>Test 4 - Tests model_interpolate for a single point.</li>
+              <li>Test 5 - Tests model_interpolate for a range of interpolation points.</li>
+         </ul>
 </TD></TR>  
 
 <TR><TD>   verbose   </TD>
@@ -150,15 +245,19 @@ particular kind of state variable.
 <H2>OTHER MODULES USED</H2>
 <PRE>
 assim_model_mod
-types_mod
+distributed_state_mod
+ensemble_manager_mod
+io_filenames_mod
 location_mod
 model_mod
-null_mpi_utilities_mod
-obs_def_mod
+mpi_utilities_mod
 obs_kind_mod
-random_seq_mod
+obs_sequence_mod
+state_structure_mod
+state_vector_io_mod
+test_interpolate_mod
 time_manager_mod
-model_mod_check
+types_mod
 utilities_mod
 </PRE>
 
@@ -172,16 +271,13 @@ utilities_mod
 <UL><LI><em class="file">input.nml</em> is used for 
         <em class="code">model_mod_check_nml</em></LI>
 
-    <LI><em class="file">the "input_file" </em> can either be a
-        DART "ics" file - in which case there is a single time associated
-        with the state, or a DART "ud" file - which has an additional
-        "advance_to" time record.</LI>
-    <LI><em class="file">the "output_file"</em> is a netCDF file that
-        exercises the model_mod netcdf routines. Check the attributes, 
+    <LI>The<em class="file">"input_state_files" </em> can either be a
+        single file containing multiple restart files, or a single
+        NetCDF restart file.
+        </LI>
+    <LI>The<em class="file">"output_state_files"</em> is the output netCDF 
+        files that exercises the model_mod routines. Check the attributes, 
         values, etc.</LI>
-    <LI><em class="file">allones.ics</em> is a DART initial conditions 
-        file that contains all 1's (ones). This gets created by 
-        <em class="program">model_mod_check</em>.
         </LI>
 </UL>
 
@@ -231,12 +327,11 @@ to modify <em class="file">model_mod_check.f90</em> to suit your needs as
 you develop your <em class="program">model_mod</em>. The code is roughly 
 divided into the following categories:
 </P>
-<ol><li>Check the geometry information,</li>
-    <li>write a trivial restart file,</li>
-    <li>read either a restart file,</li>
-    <li>check the netCDF routines used to create the diagnostic output files,</li>
-    <li>check the metadata, and</li>
-    <li>[optionally] run a test of the model interpolation routine.</li>
+<ol><li>Check the geometry information, </li>
+    <li>Read/Write a trivial restart file, </li>
+    <li>Check the metadata, </li>
+    <li>Interpolate on a single point, </li>
+    <li>Interpolate on a range of points.</li>
 </ol>
 
 <H3 class=indent1>Checking the Geometry Information:</H3>
@@ -249,114 +344,92 @@ Virtually everything requires knowledge of the grid and state vector,
 so this block should never be skipped.
 </P>
 <pre>
-call initialize_utilities(progname='model_mod_check', output_flag=verbose)
+call initialize_modules_used()
 
 call find_namelist_in_file("input.nml", "model_mod_check_nml", iunit)
 read(iunit, nml = model_mod_check_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_mod_check_nml")
 
+...
+
 call static_init_model() ! Exercise the initialization process
 
-call get_gridsize(numlons, numlats, numlevs)
-write(*,'(''nlons, nlats, nlevs'',3(1x,i10))') numlons,numlats,numlevs
-
-x_size = get_model_size()
-write(*,'(''state vector has length'',i10)') x_size
-allocate(statevector(x_size))
+model_size = get_model_size()
+write(*,'(''state vector has length'',i10)') model_size
 </pre>
 
-<H3 class=indent1>Writing a trivial restart file:</H3>
+<H3 class=indent1>Read/Writing a trivial restart file:</H3>
 <P>
-It's almost inconceivable that this cannot work, but sometimes it is
-just a nice sanity check to see how big a DART restart file for one
-ensemble member should be.
+This directly reads and write state variables from your restart file. This
+is a nice sanity check to make sure that the DART state vector is being read
+in properly.
 </P>
 <pre>
-statevector = 1.0_r8;
-model_time  = set_time(21600, 149446)   ! 06Z 4 March 2010 in the Gregorian calendar
+! Reading the model state variables
+write(*,'(2A)') '- Reading File : ', trim(get_restart_filename(input_restart_files, imem, domain=idom))
+call read_state(ens_handle, file_info_input, read_time_from_file, model_time)
+      
 
-iunit = open_restart_write('allones.ics')
-call awrite_state_restart(model_time, statevector, iunit)
-call close_restart(iunit)
+! Writting the model state variables
+write(*,'(2A)') '- Writing File : ', trim(get_restart_filename(output_restart_files, imem, domain=idom))
+call write_state(ens_handle, file_info_output)
 </pre>
 
-<H3 class=indent1>Reading a restart file:</H3>
-<P>
-I generally take the <em class="file">allones.ics</em> file into Matlab
-and stuff something interesting into the appropriate slots and write it
-out again so I can read it in for a more rigorous test of 
-<em class="program">model_mod:aread_state_restart()</em>. 
-Generally, I'll try to fill up what I *intend* to be the
-locations of the first variable with some constant value or some nice field
-from Matlab. The second variable gets its own field, etc. That way, when
-it's read it in, I know what I'm supposed to find in the output. 
-<em class="program">aread_state_restart()</em> is used to read restart files
-as well as the intermediate files created by DART right before the model advance.
-Those files (created internally by DART) have an additional data record specifying
-the "advance_to_time" of the model state. Common practice has the 
-<em class="program">dart_to_model</em> program reading this intermediate file and 
-communicating the advance_to_time to the model control mechanism and then parsing 
-the DART state vector into a form compatible with the model. <strong>TIP:</strong>
-if you write the restart files in ASCII, you can trivially add another DART time
-record in the first line to test the case in which the "advance_to_time" is present.
-</P>
-<pre>
-iunit = open_restart_read(input_file)
-if ( advance_time_present ) then
-   call aread_state_restart(model_time, statevector, iunit, adv_to_time)
-else
-   call aread_state_restart(model_time, statevector, iunit)
-endif
-
-call close_restart(iunit)
-call print_date( model_time,'model_mod_check:model date')
-call print_time( model_time,'model_mod_check:model time')
-</pre>
-
-<H3 class=indent1>Checking the diagnostic output netCDF routines:</H3>
-<P>This block happens after a call to 
-<em class="program">aread_state_restart()</em>, so, depending on 
-what was in the restart file (presumably, once you get 
-<em class="program">model_to_dart</em> working, you have converted
-a real model state to a DART restart and are using <em>that</em>), 
-you can fine-tune what gets put into the DART 
-<em class="file">true_state.nc</em>, 
-<em class="file">preassim.nc</em>, and
-<em class="file">analysis.nc</em> diagnostic files. Only one
-ensemble member is needed to test the routines (hence the hardcoded 1
-in the test block).
-</P>
-<pre>
-state_meta(1) = 'restart test'
-ncFileID = init_diag_output(trim(output_file),'just testing a restart', 1, state_meta)
-call aoutput_diagnostics(ncFileID, model_time, statevector, 1)
-call nc_check( finalize_diag_output(ncFileID), 'model_mod_check:main', 'finalize')
-</pre>
-
-<H3 class=indent1>Check the metadata, and ... </H3>
+<H3 class=indent1>Check the metadata:</H3>
 <P>It is critical to return the correct metadata for any given index into
 the DART state vector. This code block tests the two most common features of
 the metadata. As a bonus, this routine is also quite useful to determine
 EXACTLY where to place your first test observation. If you test precisely at
 a grid location, you should be able to really get a handle on debugging your
 <em class="program">model_interpolate()</em> routine. 
+<!---
 The <em class="program">find_closest_gridpoint()</em> routine is designed to
 ensure that your variable layout is as you expect. "closest" in this context
 is close in the horizontal only - all vertical levels will be reported.
+-->
 </P>
 <pre>
 call check_meta_data( x_ind )
+<!---
 call find_closest_gridpoint( loc_of_interest )
+-->
 </pre>
 
-<H3 class=indent1>... [optionally] run a test of the model interpolation routine.</H3>
+<H3 class=indent1>Test interpolation on a single point.</H3>
 <P>
-If you like, and you have a <em class="program">test_interpolate</em> subroutine,
-this would be the place to run it.
+This tests your model's interpolation routine on a single point and
+returns the interpolated value.
 </P>
 <pre>
-call test_interpolate(statevector, test_pressure = 500.0_r8, &amp;
-                                   start_lon = 142.5_r8)
+num_failed = test_interpolate_single( ens_handle,            &
+                                      num_ens,               &
+                                      interp_test_vertcoord, &
+                                      loc_of_interest(1),    &
+                                      loc_of_interest(2),    &
+                                      loc_of_interest(3),    &
+                                      mykindindex,           &
+                                      interp_vals,           &
+                                      ios_out )
+</pre>
+
+<H3 class=indent1>Test interpolation on a range of values.</H3>
+<P>
+This tests your model's interpolation routine on a range of values
+returns the interpolated grid in check_me_interptest.nc and 
+check_me_interptest.m which can be read in MatLab.
+</P>
+<pre>
+num_failed = test_interpolate_range( ens_handle,            &
+                                     num_ens,               &
+                                     interp_test_dlon,      &
+                                     interp_test_dlat,      &
+                                     interp_test_dvert,     &
+                                     interp_test_vertcoord, &
+                                     interp_test_lonrange,  &
+                                     interp_test_latrange,  &
+                                     interp_test_vertrange, &
+                                     mykindindex,           &
+                                     verbose )
 </pre>
 
 <!--==================================================================-->

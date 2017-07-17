@@ -1,3 +1,9 @@
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! DART $Id$
+
 !------------------------------
 ! MODULE:       coamps_pert_mod
 ! AUTHOR:       T. R. Whitcomb
@@ -7,7 +13,6 @@
 !
 ! Module for perturbing 
 !------------------------------ 
-! DART $Id$
 
 module coamps_pert_mod
 
@@ -36,6 +41,8 @@ module coamps_pert_mod
     use random_seq_mod, only: random_seq_type, &
                               init_random_seq, &
                               random_gaussian
+
+    use utilities_mod, only : E_ERR, error_handler
 
     use types_mod, only : r8
 
@@ -149,6 +156,10 @@ contains
 
         real(kind=r8), dimension(:), pointer :: state_subsect
         real(kind=r8), dimension(:), pointer :: pert_state_subsect
+        character(len=*), parameter :: routine = 'perturb_var'
+
+        call error_handler(E_ERR, routine, 'needs to be updated', &
+                  source, revision, revdate)
 
 ! TJH        state_subsect      => get_var_substate(var, state)
 ! TJH        pert_state_subsect => get_var_substate(var, perturb_state)

@@ -63,8 +63,10 @@ integer, parameter :: DARTQC_FAILED_VERT_CONVERT   = 4   ! change this to 8 afte
 
 !------------------------------------------------------------------------------
 ! namelist parameters
+!>@todo ... in the (upcoming) html ... mention that outlier_threshold = 3.0 is a good value
+
 real(r8) :: input_qc_threshold = 3.0_r8  ! values larger than input_qc_threshold will be rejected
-real(r8) :: outlier_threshold  = -1.0_r8 ! threshold when enable_special_outlier_code is true
+real(r8) :: outlier_threshold  = -1.0_r8
 
 logical  :: enable_special_outlier_code = .false. ! user defined outlier threshold code
 

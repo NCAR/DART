@@ -9,22 +9,23 @@ program update_mpas_states
 !----------------------------------------------------------------------
 ! purpose: interface between DART and the model model
 !
-! method: Read DART state vector in netcdf and overwrite values in an mpas file
-!         to advance model for each ensemble member after running this program.
+! method: Read DART analysis vector in netcdf and replace the corresponding
+!         field in the mpas file to advance model after running this program.
+!         Updated to process all ensemble members.
 !
-!         The update_mpas_states_nml namelist setting for dart_analysis_filename
-!         (e.g., the name of the output netcdf file from filter) should be matched
-!         with restart_out_file_name in &filter_nml (for each member).
-!         An input mpas (background) filename comes from model_analysis_filename 
-!         in model_nml, thus no need to define it again.
+!         The update_mpas_states_nml namelist defines the input and output file
+!         name lists for all ensemble members.
+!         The input list should be matched with output_state_file_list in &filter_nml.
 !         
 ! author: Soyoung Ha 23 Aug 16
+!         Updated in 4 May 2017 for the Manhatten release
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8
 use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
-                             logfileunit, open_file, close_file, nc_check
+                             logfileunit, open_file, close_file, nc_check, &
+                             get_next_filename
 use time_manager_mod, only : time_type, print_time, print_date, operator(-), &
                              get_time, get_date
 use direct_netcdf_mod,only : read_transpose, read_variables
@@ -47,19 +48,20 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! The namelist variables
 !------------------------------------------------------------------
 
-character(len=256)  :: dart_analysis_filename = 'filter_restart.nc'
+character(len=256)  ::  update_input_file_list = 'filter_out.txt'
+character(len=256)  :: update_output_file_list = 'filter_in.txt'
 logical             :: print_data_ranges        = .true.
-integer             :: dom_id                   = 1           ! Not needed now, but MPAS can be run in a regional mode later.
+integer             :: dom_id                   = 1        ! Not needed now, but MPAS can be run in a regional mode later.
 
-namelist /update_mpas_states_nml/ dart_analysis_filename, dom_id,   &
+namelist /update_mpas_states_nml/ update_input_file_list, update_output_file_list, dom_id,   &
                                   print_data_ranges
-
 !----------------------------------------------------------------------
-
+character (len=256)   :: next_infile, next_outfile
+character (len=256)   :: model_analysis_filename
 integer               :: iunit, io, x_size, nvars
 integer               :: ncAnlID, ncBckID, istatus
+integer               :: filenum
 real(r8), allocatable :: statevector(:)
-character(len=256)    :: model_analysis_filename
 type(time_type)       :: model_time
 !----------------------------------------------------------------------
 
@@ -75,6 +77,8 @@ call check_namelist_read(iunit, io, "update_mpas_states_nml")
 !----------------------------------------------------------------------
 ! Call model_mod:static_init_model() which reads the model namelists
 ! to set grid sizes, etc.
+! Let us keep model_analysis_filename for now until model_mod.f90
+! is updated not to use it any more (e.g. for consistency).
 !----------------------------------------------------------------------
 
 call static_init_model()
@@ -89,48 +93,63 @@ write(*,*) 'update_mpas_states: Updating ',nvars,' variables in ',&
             trim(model_analysis_filename)
 
 !----------------------------------------------------------------------
-! Reads input mpas (prior) and filter (analysis) files 
+! Reads lists of input mpas (prior) and filter (analysis) files 
 !----------------------------------------------------------------------
+filenum = 1
+fileloop: do        ! until out of files
 
-call nc_check(nf90_open(trim(dart_analysis_filename), NF90_NOWRITE, ncAnlID), &
-             'update_mpas_states','open '//trim(dart_analysis_filename))
+  ! get a file name from the list, one at a time.
+  next_infile  = get_next_filename( update_input_file_list, filenum)
+  next_outfile = get_next_filename(update_output_file_list, filenum)
+  if (next_infile == '' .or. next_outfile == '') exit fileloop
 
-! Overwrite this mpas file for state vector later
-call nc_check(nf90_open(trim(model_analysis_filename), NF90_NOWRITE, ncBckID), &
-             'update_mpas_states','open '//trim(model_analysis_filename))
+  call nc_check(nf90_open(trim(next_infile), NF90_NOWRITE, ncAnlID), &
+             'update_mpas_states','open '//trim(next_infile))
 
-!----------------------------------------------------------------------
-! Read the model time
-!----------------------------------------------------------------------
-model_time = get_analysis_time(ncBckID, trim(model_analysis_filename))
+  ! Overwrite this mpas file for state vector later
+  call nc_check(nf90_open(trim(next_outfile), NF90_NOWRITE, ncBckID), &
+             'update_mpas_states','open '//trim(next_outfile))
 
-!----------------------------------------------------------------------
-! Read analysis state vector (assuming to be available at the model time)
-!----------------------------------------------------------------------
-call read_variables(ncAnlID, statevector, 1, nvars, dom_id)
+  !----------------------------------------------------------------------
+  ! Read the model time
+  !----------------------------------------------------------------------
+  model_time = get_analysis_time(ncBckID, trim(next_outfile))
 
-!----------------------------------------------------------------------
-! if requested, print out the data ranges variable by variable
-! (note if we are clamping data values, that happens in the conversion
-! routine below and these values are before the clamping happens.)
-!----------------------------------------------------------------------
-if (print_data_ranges) then
-    call print_variable_ranges(statevector, 'Analysis states')
-endif
+  !----------------------------------------------------------------------
+  ! Read analysis state vector (assuming to be available at the model time)
+  !----------------------------------------------------------------------
+  !call read_transpose(state_ens_handle, name_handle, domain, dart_index, limit_mem)
+  call read_variables(ncAnlID, statevector, 1, nvars, dom_id)
 
-!----------------------------------------------------------------------
-! update the current model state vector
-!----------------------------------------------------------------------
-call statevector_to_analysis_file(statevector, model_analysis_filename, model_time)
+  !----------------------------------------------------------------------
+  ! if requested, print out the data ranges variable by variable
+  ! (note if we are clamping data values, that happens in the conversion
+  ! routine below and these values are before the clamping happens.)
+  !----------------------------------------------------------------------
+  if (print_data_ranges) then
+      write(*,*) 
+      write(*,*) ' Input: ', trim(next_infile) 
+      write(*,*) 'Output: ', trim(next_outfile)
+      call print_variable_ranges(statevector, 'Analysis states')
+  endif
 
-!----------------------------------------------------------------------
-! Log what we think we're doing, and exit.
-!----------------------------------------------------------------------
+  !----------------------------------------------------------------------
+  ! update the current model state vector
+  !----------------------------------------------------------------------
+  call statevector_to_analysis_file(statevector, next_outfile, model_time)
 
-call print_date( model_time,'update_mpas_states:model date')
-call print_time( model_time,'update_mpas_states:model time')
-call print_date( model_time,'update_mpas_states:model date',logfileunit)
-call print_time( model_time,'update_mpas_states:model time',logfileunit)
+  !----------------------------------------------------------------------
+  ! Log what we think we're doing, and exit.
+  !----------------------------------------------------------------------
+
+  call print_date( model_time,'update_mpas_states:model date')
+  call print_time( model_time,'update_mpas_states:model time')
+  call print_date( model_time,'update_mpas_states:model date',logfileunit)
+  call print_time( model_time,'update_mpas_states:model time',logfileunit)
+
+  filenum = filenum + 1
+
+end do fileloop
 
 call finalize_utilities()
 

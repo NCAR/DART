@@ -1,5 +1,12 @@
 #!/usr/bin/perl
 #
+# This code may (or may not) be part of the COAMPS distribution,
+# So it is not protected by the DART copyright agreement.
+#
+# DART $Id$
+#
+########################################################################
+#
 # SCRIPT:	preprocessed_innovation_to_obs.pl
 # AUTHOR:	T. R. Whitcomb
 #
@@ -123,3 +130,9 @@ sub build_type_array
   $types[15] = 'SPECIFIC_HUMIDITY';
   $types[16] = 'POTENTIAL_TEMPERATURE';
 }
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

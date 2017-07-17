@@ -162,8 +162,6 @@ logical  :: allow_missing_in_clm = .false.
 
 ! False by default; if true, expect to read in an ascii table
 ! to adjust the impact of obs on other state vector and obs values.
-! for now, remove the 'allow_any_impact_values' flag from the namelist.
-! only 0 and 1 are valid values with the defaults. 
 logical            :: adjust_obs_impact  = .false.
 character(len=256) :: obs_impact_filename = ''
 logical            :: allow_any_impact_values = .false.
@@ -363,16 +361,16 @@ real(r8) :: diff_sd, outlier_ratio
 integer(i8) :: state_index
 integer(i8) :: my_state_indx(ens_handle%my_num_vars)
 integer(i8) :: my_obs_indx(obs_ens_handle%my_num_vars)
-integer(i8) :: num_close_obs, obs_index, num_close_states
-integer(i8) :: total_num_close_obs, last_num_close_obs, last_num_close_states
-integer(i8) :: close_obs_ind(obs_ens_handle%my_num_vars)
-integer(i8) :: close_state_ind(ens_handle%my_num_vars)
-integer(i8) :: last_close_obs_ind(obs_ens_handle%my_num_vars)
-integer(i8) :: last_close_state_ind(ens_handle%my_num_vars)
 
 integer  :: my_num_obs, i, j, owner, owners_index, my_num_state
 integer  :: this_obs_key, obs_mean_index, obs_var_index
 integer  :: grp_beg(num_groups), grp_end(num_groups), grp_size, grp_bot, grp_top, group
+integer(i8) :: close_obs_ind(obs_ens_handle%my_num_vars)
+integer(i8) :: close_state_ind(ens_handle%my_num_vars)
+integer(i8) :: last_close_obs_ind(obs_ens_handle%my_num_vars)
+integer(i8) :: last_close_state_ind(ens_handle%my_num_vars)
+integer(i8) :: num_close_obs, obs_index, num_close_states
+integer(i8) :: total_num_close_obs, last_num_close_obs, last_num_close_states
 integer  :: base_obs_kind, base_obs_type, my_obs_kind(obs_ens_handle%my_num_vars)
 integer  :: my_obs_type(obs_ens_handle%my_num_vars)
 integer  :: my_state_kind(ens_handle%my_num_vars), nth_obs

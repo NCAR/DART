@@ -343,8 +343,10 @@
    kind_of_interest = 'QTY_VAPOR_MIXING_RATIO'
 
 &model_mod_check_nml
+   input_state_files     = 'mpas_restart.nc'
+   output_state_files    = 'check_me.nc'
    verbose               = .FALSE.
-   test1thru             = 11
+   test1thru             = 5
    x_ind                 = 300
    loc_of_interest       = 240.0, 0.0, 10000.0
    kind_of_interest      = 'QTY_U_WIND_COMPONENT'

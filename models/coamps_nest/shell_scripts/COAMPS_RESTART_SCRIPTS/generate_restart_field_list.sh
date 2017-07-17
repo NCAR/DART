@@ -1,5 +1,12 @@
 #!/bin/bash
 #
+# This code may (or may not) be part of the COAMPS distribution,
+# So it is not protected by the DART copyright agreement.
+#
+# DART $Id$
+#
+########################################################################
+#
 # SCRIPT:   generate_restart_field_list.sh
 # AUTHOR:   T. R. Whitcomb
 #           Naval Research Laboratory
@@ -41,4 +48,9 @@ ${PARSER} 'anca' 'cond' 'aalhs' 'wbs' SINGLEIO field_list_single_io > fields_sin
 cat fields_*_io > fields_master_list
 rm field_list_*_io
 rm fields_*_io
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

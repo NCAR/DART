@@ -1,3 +1,9 @@
+<!-- This code may (or may not) be part of the CESM distribution,
+     So it is not protected by the DART copyright agreement. 
+
+! DART $Id$
+-->
+
 <components>
 
   <comp_archive_spec compname="cam" compclass="atm">
@@ -166,3 +172,7 @@
 
 </components>
 
+<!-- <next few lines under version control, do not edit>
+     $URL$
+     $Revision$
+     $Date$ -->

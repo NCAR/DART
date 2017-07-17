@@ -176,6 +176,10 @@ integer, parameter, dimension(4) ::    good_prior_qcs = (/ 0, 1, 2, 3 /)
 integer, parameter, dimension(2) ::    good_poste_qcs = (/ 0, 1       /)
 integer :: numqcvals
 
+!>@todo  moving these out of the namelist, should remove from code
+real(r8):: rat_cri               = 5000.0_r8 ! QC ratio
+real(r8):: input_qc_threshold    = 3.0_r8    ! maximum NCEP QC factor
+
 !-----------------------------------------------------------------------
 ! Namelist with (some scalar) default values
 !-----------------------------------------------------------------------
@@ -204,8 +208,6 @@ type(location_type), dimension(MaxRegions) :: min_loc, max_loc
 
 character(len=stringlength), dimension(MaxTrusted) :: trusted_obs = 'null'
 
-real(r8):: rat_cri               = 5000.0_r8 ! QC ratio
-real(r8):: input_qc_threshold    = 3.0_r8    ! maximum NCEP QC factor
 logical :: print_mismatched_locs = .false.
 logical :: print_obs_locations   = .false.
 logical :: verbose               = .false.
@@ -216,7 +218,7 @@ logical :: use_zero_error_obs    = .false.
 namelist /obs_diag_nml/ obs_sequence_name, obs_sequence_list,                 &
                        first_bin_center, last_bin_center,                     &
                        bin_separation, bin_width, time_to_skip, max_num_bins, &
-                       plevel, hlevel, mlevel, rat_cri, input_qc_threshold,   &
+                       plevel, hlevel, mlevel, &
                        Nregions, lonlim1, lonlim2, latlim1, latlim2,          &
                        reg_names, print_mismatched_locs, print_obs_locations, &
                        create_rank_histogram, outliers_in_histogram,          &

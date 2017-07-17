@@ -30,34 +30,32 @@ module state_vector_io_mod
 !> is then called in filter to generate the ensemble.
 
 use adaptive_inflate_mod, only : adaptive_inflate_type, mean_from_restart, sd_from_restart, &
-                                 do_single_ss_inflate, do_varying_ss_inflate, &
+                                 do_single_ss_inflate, &
                                  get_inflate_mean, get_inflate_sd, do_ss_inflate, &
                                  get_is_prior, get_is_posterior, get_inflation_mean_copy, &
                                  get_inflation_sd_copy
 
-use direct_netcdf_mod,    only : read_transpose, transpose_write
+use direct_netcdf_mod,    only : read_transpose, transpose_write, write_single_file, &
+                                 read_single_file, write_augmented_state, &
+                                 initialize_single_file_io, finalize_single_file_io
 
-use types_mod,            only : r8, MISSING_R8, i4, i8
 
-use mpi_utilities_mod,    only : task_count, send_to, receive_from, my_task_id, &
+use types_mod,            only : r8, i4, i8, MISSING_R8
+
+use mpi_utilities_mod,    only : my_task_id, &
                                  broadcast_send, broadcast_recv
 
 use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, &
                                  map_task_to_pe, &
-                                 get_copy_owner_index, put_copy, get_allow_transpose, &
+                                 get_allow_transpose, &
                                  all_copies_to_all_vars, all_vars_to_all_copies, &
-                                 prepare_to_write_to_vars, get_var_owner_index
-                                 
+                                 get_var_owner_index
 
 use utilities_mod,        only : error_handler, nc_check, check_namelist_read, &
-                                 find_namelist_in_file, nmlfileunit,           &
-                                 do_nml_file, do_nml_term,          &
-                                 E_MSG, E_ERR, E_DBG, get_unit, ascii_file_format, &
-                                 close_file, dump_unit_attributes, &
-                                 register_module, set_output, to_upper
+                                 find_namelist_in_file, nmlfileunit, do_nml_file, &
+                                 do_nml_term, register_module, to_upper,  E_MSG, E_ERR
 
-use time_manager_mod,     only : time_type, read_time, write_time, &
-                                 get_time
+use time_manager_mod,     only : time_type, get_time
 
 use io_filenames_mod,     only : get_restart_filename, file_info_type, &
                                  get_single_file, get_cycling, get_stage_metadata, &
@@ -69,9 +67,6 @@ use io_filenames_mod,     only : get_restart_filename, file_info_type, &
 use model_mod,            only : read_model_time
 
 use state_structure_mod,  only : get_num_domains
-
-use single_file_io_mod, only : init_singlefile_output, write_singlefile, &
-                                 read_singlefile
 
 use netcdf
 
@@ -222,7 +217,7 @@ endif
 
 if (get_single_file(file_info)) then
    ! NOTE: single file is set only in filter, and pmo
-   call read_singlefile(state_ens_handle, file_info, read_time_from_file, time, perturb_from_single_copy)
+   call read_single_file(state_ens_handle, file_info, read_time_from_file, time, perturb_from_single_copy)
 else
    call read_restart_direct(state_ens_handle, file_info, read_time_from_file, time)
 endif
@@ -255,10 +250,10 @@ output_files = get_stage_metadata(file_info)
 
 if ( get_single_file(file_info) ) then
    if (.not. single_file_initialized(file_info)) then
-      call init_singlefile_output(state_ens_handle, file_info)
+      call initialize_single_file_io(state_ens_handle, file_info)
    endif
 
-   call write_singlefile(state_ens_handle, file_info)
+   call write_single_file(state_ens_handle, file_info)
 
 else ! multiple files
    if ( get_cycling(file_info) ) then

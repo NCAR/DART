@@ -12,7 +12,7 @@
 
 &obs_seq_coverage_nml
    obs_sequences     = ''
-   obs_sequence_list = 'obs_coverage_list.txt'
+   obs_sequence_list = ''
    obs_of_interest   = ''
    textfile_out      = 'obsdef_mask.txt'
    netcdf_out        = 'obsdef_mask.nc'
@@ -30,4 +30,3 @@
    verbose    = .false.
    debug      = .false.
    /
-

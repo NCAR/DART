@@ -16,25 +16,27 @@
 # in both lists, the same number of items
 
 &assim_tools_nml
-   filter_kind                     = 1,
-   cutoff                          = 0.2,
-   distribute_mean                 = .false.
-   sort_obs_inc                    = .false.,
-   spread_restoration              = .false.,
-   sampling_error_correction       = .false.,
-   adaptive_localization_threshold = -1,
-   adaptive_cutoff_floor           = 0.0,
-   output_localization_diagnostics = .false.,
-   localization_diagnostics_file   = "localization_diagnostics",
-   print_every_nth_obs             = 0,
-   rectangular_quadrature          = .true.,
-   gaussian_likelihood_tails       = .false.,
-   close_obs_caching               = .true.,
-   allow_missing_in_clm            = .false.
-   adjust_obs_impact               = .false.
-   obs_impact_filename             = ""
+   filter_kind                       = 1
+   cutoff                            = 0.2
+   distribute_mean                   = .false.
+   sort_obs_inc                      = .false.
+   spread_restoration                = .false.
+   sampling_error_correction         = .false.
+   adaptive_localization_threshold   = -1
+   adaptive_cutoff_floor             = 0.0
+   output_localization_diagnostics   = .false.
+   localization_diagnostics_file     = 'localization_diagnostics'
+   print_every_nth_obs               = 0
+   rectangular_quadrature            = .true.
+   gaussian_likelihood_tails         = .false.
+   close_obs_caching                 = .true.
+   allow_missing_in_clm              = .false.
+   adjust_obs_impact                 = .false.
+   obs_impact_filename               = ""
+   allow_any_impact_values           = .false.
    convert_all_obs_verticals_first   = .true.
    convert_all_state_verticals_first = .false.
-   special_localization_obs_types  = "",
-   special_localization_cutoffs    = -1.0,
-/
+   special_localization_obs_types    = 'null'
+   special_localization_cutoffs      = -888888.0
+  /
+

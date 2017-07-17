@@ -1,14 +1,16 @@
-! trans_statevec_to_coamps
-! ------------------------
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
+
+program trans_statevec_to_coamps
+
 ! This program disassembles the DART state vector (without the time) then
 ! inserts the fields into a pre-existing COAMPS restart file.  Since 
 ! contained in the DART file is a target time for the integration,
 ! write out a file that can be read by the COAMPS run scripts so
 ! they can modify their namelist accordingly.
-! ------------------------
-! DART $Id$
-
-program trans_dart_to_coamps
 
   use coamps_translate_mod, only : initialize_translator,          &
                                    open_dart_file, dart_read,      &
@@ -51,7 +53,7 @@ program trans_dart_to_coamps
   call coamps_write_all_fields()
 
   call finalize_translator()
-end program trans_dart_to_coamps
+end program trans_statevec_to_coamps
 
 ! <next few lines under version control, do not edit>
 ! $URL$

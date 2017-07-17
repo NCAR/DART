@@ -1,3 +1,8 @@
+! This code may (or may not) be part of the COAMPS distribution,
+! So it is not protected by the DART copyright agreement.
+!
+! DART $Id: $
+
 ! get_name_info
 ! -------------
 ! Given the value of module-specific constant values and a name of 
@@ -18,8 +23,6 @@
 !   OUT var_record_num      the position of the variable in its
 !                           particular dimension
 ! -------------
-! DART $Id: $
-
 
 subroutine get_name_info(DIM_TYPE_2D, DIM_TYPE_3D, DIM_TYPE_3DW,   &
                          SINGLEIO, MULTIIO, var_name, var_dim_type,&

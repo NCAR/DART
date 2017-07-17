@@ -430,10 +430,10 @@ echo "`date` -- END CREATING SAFETY FILES for all ${ensemble_size} members."
 # &filter_nml:           last_obs_days           = -1,
 # &filter_nml:           last_obs_seconds        = -1,
 #
-# &filter_nml: input_restart_file_list  = "cice_restarts.txt"
-# &filter_nml: output_restart_file_list = "cice_restarts.txt"
-# &filter_nml: output_restarts          = .true.
-# &filter_nml: stages_to_write          = 'output'
+# &filter_nml: input_state_file_list  = "cice_restarts.txt"
+# &filter_nml: output_state_file_list = "cice_restarts.txt"
+# &filter_nml: output_restarts        = .true.
+# &filter_nml: stages_to_write        = 'output'
 #=========================================================================
 
 # The cice model_mod.f90:static_init_model() has a hardcoded 'cice.r.nc'

@@ -9,7 +9,7 @@
 !
 ! PLEASE READ
 !
-! https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/cam/model_mod.html
+! https://svn-dares-dart.cgd.ucar.edu/DART/trunk/models/cam/model_mod.html
 !
 ! for recommendations on namlist settings for CAM. It has examples on configurations
 ! for taking a single state and creating an ensemble, differences between using

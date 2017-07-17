@@ -1,13 +1,14 @@
-! perturb_init
-! --------------------
+! This code may (or may not) be part of the COAMPS distribution,
+! So it is not protected by the DART copyright agreement.
+!
+! DART $Id$
+
+program perturb_init
+
 ! This program pulls pieces out of the large COAMPS restart file,
 ! then assembles them into a state vector that can be used by DART.
 ! This includes two pieces of information - the current time and
 ! the actual state
-! --------------------
-! DART $Id$
-
-program perturb_init
 
   use coamps_nest_mod,      only : coamps_nest,                  &
                                    initialize_nest,              &

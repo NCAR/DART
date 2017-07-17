@@ -1,3 +1,7 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
 # DART $Id$
 
 COAMPS DART import TODO list:
@@ -57,3 +61,8 @@ _ Add resilience to read_restart_vars
     _ Resize the restart_vars array to be the number of elements
       successfully processed, not the number at the top of the file
 _ Modify the converter to process the model mean state separately
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
