@@ -52,7 +52,7 @@ that are used by
 <br>
 <br>
 There are no code segments in this module, only definitions of observation types
-that map specific observation types to generic observation kinds. DART contains
+that map specific observation types to generic observation quantities. DART contains
 logic that supports a limited inheritance of attributes. If you need to interpolate 
 observations of 'FLOAT_TEMPERATURE', DART will check to see if a specific routine 
 is provided for that type, if none exists, the interpolation routine for the
@@ -62,7 +62,7 @@ support many observation types.
 <br>
 The mandatory header line is followed by lines
 that have the observation type name (an all caps Fortran 90 identifier) and
-their associated generic kind identifier from the obs_kind module.
+their associated generic quantity identifier from the obs_kind module.
 If there is no special processing needed for an observation type,
 and no additional data needed beyond the standard contents of an observation,
 then a third word on the line, the <em class="unix">COMMON_CODE</em> will
@@ -74,7 +74,7 @@ be to support acoustic tomographic observations, which will
 necessitate specific support routines.
 </P>
 
-<H3 class="indent1">ocean variable types and their corresponding kinds</H3>
+<H3 class="indent1">ocean variable types and their corresponding quantities</H3>
 
 <pre class="indent1">
 ! BEGIN DART PREPROCESS KIND LIST
