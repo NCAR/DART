@@ -95,9 +95,9 @@ The seven sections and their specific instances for the 1d_raw_state_mod are:
 <OL>
 <li>
 A list of all observation types defined by this module and their associated
-generic kinds (see obs_kind module). The header line is followed by lines
+generic quantities (see obs_kind module). The header line is followed by lines
 that have the observation type name (an all caps Fortran 90 identifier) and
-their associated generic kind identifier from the obs_kind module.
+their associated generic quantity identifier from the obs_kind module.
 If there is no special processing needed for an observation type
 and no additional data needed beyond the standard contents of an observation
 then a third word on the line, <em class="unix">COMMON_CODE</em>, will
@@ -269,7 +269,7 @@ character(len=*), intent(in) :: <em class=code>fform</em>
 
 <P>
 Writes out the extra information for observation with unique identifier
-key for a 1d_integral observation kind.  This includes the half-width,
+key for a 1d_integral observation type.  This includes the half-width,
 localization type and number of quadrature points for this observation.
 </P>
 
@@ -310,7 +310,7 @@ character(len=*), intent(in)  :: <em class=code>fform</em>
 
 <P>
 Reads the extra information for observation with unique identifier
-key for a 1d_integral observation kind. This information includes the
+key for a 1d_integral observation type. This information includes the
 half-width, localization type and number of quadrature points for
 this observation.
 The key that is returned is uniquely associated with the definition
@@ -350,7 +350,7 @@ integer, intent(out) :: <em class=code>igrkey</em>
 Uses input from standard in to define the characteristics of a 1D integral
 observation. The key that is returned is uniquely associated with the definition
 that has been created and can be used by this module to keep track of the
-associated parameters (half_width, localization kind, number of quadrature 
+associated parameters (half_width, localization option, number of quadrature 
 points) for this key.
 </P>
 

@@ -58,7 +58,7 @@ provided by DEFAULT_obs_def_mod. If no special obs_def files are included in
 the preprocessor namelist, a minimal 
 <em class="file">obs_def_mod.f90</em> is created which can only
 support identity forward observation operators.  Any identity observations on
-the obs_seq.out file will be assimilated, regardless of the kinds specified in
+the obs_seq.out file will be assimilated, regardless of the obs types specified in
 assimilate_these_obs_types.  
 <br>
 <br> 
@@ -87,8 +87,8 @@ so this statement must preceed the rest of the other comment lines.<br><br>
 <li>
 ! DART PREPROCESS USE FOR OBS_QTY_MOD INSERTED HERE <BR>
 Integer identifiers with a unique integer value corresponding to each
-available observation kind are defined in a table in the obs_kind_mod which is
-also created by the preprocessor. The use statements for these entries are
+available observation quantity are defined in a table in the obs_kind_mod which 
+is also created by the preprocessor. The use statements for these entries are
 inserted here.<br><br>
 </li>
 <li>
@@ -104,14 +104,14 @@ observation definition modules are inserted here.<br><br>
 <li>
 ! DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF INSERTED HERE <BR>
 Special observation definition modules must contain case statement code saying
-what to do to evaluate a forward observation operator for each observation kind
+what to do to evaluate a forward observation operator for each observation type
 that they define.
 This code is inserted here.<br><br>
 </li>
 <li>
 ! DART PREPROCESS READ_OBS_DEF INSERTED HERE <BR>
 Special observation definition modules must contain case statement code saying
-what to do to read any additional information required for each observation kind
+what to do to read any additional information required for each observation type
 that they define from an observation sequence file.
 This code is inserted here.<br><br>
 </li>
@@ -119,14 +119,14 @@ This code is inserted here.<br><br>
 ! DART PREPROCESS WRITE_OBS_DEF INSERTED HERE <BR>
 Special observation definition modules must contain case statement code saying
 what to do to write any additional information required for each observation
-kind that they define to an observation sequence file.
+type that they define to an observation sequence file.
 This code is inserted here.<br><br>
 </li>
 <li>
 ! DART PREPROCESS INTERACTIVE_OBS_DEF INSERTED HERE <BR>
 Special observation definition modules must contain case statement code saying
 what to do to interactively create any additional information required for each 
-observation kind that they define.
+observation type that they define.
 This code is inserted here.<br><br>
 </li>
 </ol>

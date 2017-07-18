@@ -9,9 +9,9 @@ module model_mod
 ! This is a non-divergent barotropic model on the sphere.
 ! use the 2d sphere locations mod to compile
 
-use types_mod, only : r8
+use    types_mod, only : r8
 use location_mod, only : location_type, set_location, get_location
-use kinds_mod, only : QTY_VERTICAL_VORTICITY
+use obs_kind_mod, only : QTY_VERTICAL_VORTICITY
 
 ! FIXME: we don't have these in the repos
 use transforms_mod

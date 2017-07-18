@@ -132,20 +132,19 @@ POSSIBLY MANY OTHERS DEPENDING ON MODEL DETAILS
 <TR><TD>&nbsp;</TD><TD><A HREF="#adv_1step">adv_1step</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_state_meta_data">get_state_meta_data</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#model_interpolate">model_interpolate</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_model_time_step">get_model_time_step</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#shortest_time_between_assimilations">shortest_time_between_assimilations</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#static_init_model">static_init_model</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#init_time">init_time</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#init_conditions">init_conditions</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_atts">nc_write_model_atts</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_vars">nc_write_model_vars</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#pert_model_copies">pert_model_copies</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_state_init">get_close_state_init</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_state">get_close_state</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#query_vert_localization_coord">query_vert_localization_coord</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#vert_convert">vert_convert</A></TD></TR>
+
+<TR><TD>&nbsp;</TD><TD><A HREF="#convert_vertical_obs">convert_vertical_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#convert_vertical_state">convert_vertical_state</A></TD></TR>
+
 <TR><TD>&nbsp;</TD><TD><A HREF="#read_model_time">read_model_time</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#write_model_time">write_model_time</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#end_model">end_model</A></TD></TR>
@@ -246,10 +245,9 @@ code and it will not be called.)
 <A NAME="get_state_meta_data"></A>
 <br>
 <div class=routine>
-<em class=call>call get_state_meta_data (state_handle, index_in, location, 
+<em class=call>call get_state_meta_data (index_in, location, 
                           <em class=optionalcode>[,&nbsp;var_type]</em> )</em>
 <pre>
-type(ensemble_type), intent(in)  :: <em class=code>state_handle</em>
 integer,             intent(in)  :: <em class=code>index_in</em>
 type(location_type), intent(out) :: <em class=code>location</em>
 integer, optional,   intent(out) :: <em class=optionalcode> var_type </em>
@@ -260,18 +258,14 @@ integer, optional,   intent(out) :: <em class=optionalcode> var_type </em>
 <!-- Description -->
 
 <P>
-Given a handle to a state structure and an integer index into the state vector, returns the
-associated location. A second intent(out) optional argument 
+Given an integer index into the state vector, returns the
+associated location. An optional argument 
 returns the generic quantity of this item, e.g. QTY_TEMPERATURE,
 QTY_DENSITY, QTY_SALINITY, QTY_U_WIND_COMPONENT. 
 This interface is required to be functional for all applications.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>state_handle&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>The handle to the state structure containing the state vector
-        about which information is requested.</TD></TR>
 
 <TR><TD valign=top><em class=code>index_in</em></TD>
     <TD>Index of state vector element about which information is requested.</TD></TR>
@@ -353,12 +347,12 @@ Otherwise it is required (which is the most common case).
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="get_model_time_step"></A>
+<A NAME="shortest_time_between_assimilations"></A>
 <br>
 <div class=routine>
-<em class=call>var = get_model_time_step()</em>
+<em class=call>var = shortest_time_between_assimilations()</em>
 <pre>
-type(time_type) :: <em class=code>get_model_time_step</em>
+type(time_type) :: <em class=code>shortest_time_between_assimilations</em>
 </pre>
 </div>
 
@@ -638,162 +632,6 @@ must be returned as <em class=code>.true.</em>
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="get_close_maxdist_init"></A>
-<br>
-<div class=routine>
-<em class=call>call get_close_maxdist_init(gc, maxdist 
-   <em class=optionalcode>[,&nbsp;maxdist_list]</em>)</em>
-<pre>
-type(get_close_type), intent(inout) :: <em class=code>gc</em>
-real(r8),             intent(in)    :: <em class=code>maxdist</em>
-real(r8), optional,   intent(in)    :: <em class=optionalcode>maxdist_list(:)</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-In distance computations any two locations closer than the
-given <em class=code>maxdist</em> will be considered close
-by the <em class=code>get_close_obs()</em> routine.
-In general this is a PASS-THROUGH ROUTINE.
-It is listed on the use line for the locations_mod, and in the 
-public list for this module, but has no subroutine declaration 
-and no other code in this module:
-</P>
-<pre>
-use location_mod, only: get_close_maxdist_init
-
-public :: get_close_maxdist_init
-</pre>
-<P>
-The location module has code which stores maxdist in the gc derived type.
-However, if the model needs to alter the value or wants
-to supply an alternative implementation it can
-intercept the call like so:
-</P>
-<pre>
-use location_mod, only: &amp;
-        lm_get_close_maxdist_init =&#62; get_close_maxdist_init
-
-public :: get_close_maxdist_init
-</pre>
-<P>
-In this case a local <em class=code>get_close_maxdist_init()</em> 
-routine must be supplied.  To call the original code in the location
-module use:
-</P>
-<pre>
-call lm_get_close_maxdist_init(gc, mymaxdist)
-</pre>
-<P>
-This subroutine will be called before <em class=code>get_close_obs_init</em> 
-and <em class=code>get_close_obs</em>.
-</P>
-<P>
-In most cases the PASS-THROUGH ROUTINE will be used.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>gc</em></TD>
-    <TD>The get_close_type which stores precomputed information
-        about the locations to speed up searching</TD></TR>
-
-<TR><TD valign=top><em class=code>maxdist</em></TD>
-    <TD>Anything closer than this will be considered close.</TD></TR>
-
-<TR><TD valign=top><em class=code>maxdist_list(:)&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>An array of distances - one for each specific type. This allows
-        different types to have different localization behavior.</TD></TR>
-
-</TABLE>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_close_obs_init"></A>
-<br>
-<div class=routine>
-<em class=call>call get_close_obs_init(gc, num, obs)</em>
-<pre>
-type(get_close_type), intent(inout) :: <em class=code>gc</em>
-integer,              intent(in)    :: <em class=code>num</em>
-type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-In general this is a PASS-THROUGH ROUTINE.  The default routine
-in the location module precomputes information to accelerate
-the distance computations done by <em class=code>get_close_obs()</em>.
-Like the other PASS-THROUGH ROUTINES it is listed on
-the use line for the locations_mod, and in the public list
-for this module, but has no subroutine declaration and
-no other code in this module:
-</P>
-<pre>
-use location_mod, only: get_close_obs_init
-
-public :: get_close_obs_init
-</pre>  
-<P>
-The location module code bins the list of locations and
-precomputes maximum possible distances between bins.
-However, if the model needs to alter the values or wants
-to supply an alternative implementation it can 
-intercept the call like so:
-</P>
-<pre>
-use location_mod, only: &amp;
-        lm_get_close_obs_init =&#62; get_close_obs_init
-        
-public :: get_close_obs_init
-</pre>
-<P>
-In this case a local <em class=code>get_close_obs_init()</em>
-routine must be supplied.  To call the original code in the location
-module use:
-</P>
-<pre>
-call lm_get_close_obs_init(gc, num, obs)
-</pre>
-<P>
-This subroutine will be called after <em class=code>get_close_maxdist_init</em> 
-and before <em class=code>get_close_obs</em>.
-</P>
-<P>
-In most cases the PASS-THROUGH ROUTINE will be used.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>gc</em></TD>
-    <TD>The get_close_type which stores precomputed information
-        about the locations to speed up searching</TD></TR>
-
-<TR><TD valign=top><em class=code>num</em></TD>
-    <TD>The number of items in the third argument</TD></TR>
-
-<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>A list of locations which will be part
-        of the subsequent distance computations</TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
 <A NAME="get_close_obs"></A>
 <br>
 <div class=routine>
@@ -906,83 +744,6 @@ for examples of this use.
 <TR><TD valign=top><em class=code>state_handle&nbsp;&nbsp;&nbsp;</em></TD>
     <TD>The handle to the state structure containing information about 
         the state vector about which information is requested.</TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_close_state_init"></A>
-<br>
-<div class=routine>
-<em class=call>call get_close_state_init(gc, num, obs)</em>
-<pre>
-type(get_close_type), intent(inout) :: <em class=code>gc</em>
-integer,              intent(in)    :: <em class=code>num</em>
-type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-In general this is a PASS-THROUGH ROUTINE.  The default routine
-in the location module precomputes information to accelerate
-the distance computations done by <em class=code>get_close_state()</em>.
-Like the other PASS-THROUGH ROUTINES it is listed on
-the use line for the locations_mod, and in the public list
-for this module, but has no subroutine declaration and
-no other code in this module:
-</P>
-<pre>
-use location_mod, only: get_close_state_init
-
-public :: get_close_state_init
-</pre>  
-<P>
-The location module code bins the list of locations and
-precomputes maximum possible distances between bins.
-However, if the model needs to alter the values or wants
-to supply an alternative implementation it can 
-intercept the call like so:
-</P>
-<pre>
-use location_mod, only: &amp;
-        loc_get_close_state_init =&#62; get_close_state_init
-        
-public :: get_close_state_init
-</pre>
-<P>
-In this case a local <em class=code>get_close_state_init()</em>
-routine must be supplied.  To call the original code in the location
-module use:
-</P>
-<pre>
-call loc_get_close_state_init(gc, num, obs)
-</pre>
-<P>
-This subroutine will be called after <em class=code>get_close_maxdist_init</em> 
-and before <em class=code>get_close_state</em>.
-</P>
-<P>
-In most cases the PASS-THROUGH ROUTINE will be used.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>gc</em></TD>
-    <TD>The get_close_type which stores precomputed information
-        about the locations to speed up searching</TD></TR>
-
-<TR><TD valign=top><em class=code>num</em></TD>
-    <TD>The number of items in the third argument</TD></TR>
-
-<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>A list of locations which will be part
-        of the subsequent distance computations</TD></TR>
 
 </TABLE>
 
@@ -1111,38 +872,82 @@ for examples of this use.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="query_vert_localization_coord"></A>
+<A NAME="convert_vertical_obs"></A>
 <br>
 <div class=routine>
-<em class=call>ivert = query_vert_localization_coord()</em>
+<em class=call>call convert_vertical_obs(state_handle, num, locs, loc_qtys, loc_types, which_vert, status)</em>
+<pre>
+type(ensemble_type), intent(in)  :: <em class=code>state_handle</em>
+integer,             intent(in)  :: <em class=code>num</em>
+type(location_type), intent(in)  :: <em class=code>locs(:)</em>
+integer,             intent(in)  :: <em class=code>loc_qtys(:)</em>
+integer,             intent(in)  :: <em class=code>loc_types(:)</em>
+integer,             intent(in)  :: <em class=code>which_vert</em>
+integer,             intent(out) :: <em class=code>status(:)</em>
+</pre>
 </div>
 
 <div class=indent1><!-- Description -->
 
 <P>
-Returns the integer code for the vertical coordinate system used for localization. 
+Converts the observations to the desired vertical localization coordinate system.
+Some models (toy models with no 'real' observations) will not need this. 
+Most (real) models have observations in one or more coordinate systems 
+(pressure, height) and the model is generally represented in only one 
+coordinate system. To be able to interpolate the model state to the 
+observation location, or to compute the true distance between the state 
+and the observation, it is necessary to convert everything to one 
+coodinate system.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ivert</em></TD>
-    <TD>The integer code for the vertical coordinate system. </TD></TR>
+
+<TR><TD valign=top><em class=code>state_handle&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The handle to the state.</TD></TR>
+
+<TR><TD valign=top><em class=code>num</em></TD>
+    <TD>the number of observation locations</TD></TR>
+
+<TR><TD valign=top><em class=code>locs</em></TD>
+    <TD>the array of observation locations</TD></TR>
+
+<TR><TD valign=top><em class=code>loc_qtys</em></TD>
+    <TD>the array of observation quantities.</TD></TR>
+
+<TR><TD valign=top><em class=code>loc_types</em></TD>
+    <TD>the array of observation types.</TD></TR>
+
+<TR><TD valign=top><em class=code>which_vert</em></TD>
+    <TD>the desired vertical coordinate system. There is a table
+        in the <em class=file>location_mod.f90</em> that relates
+        integers to vertical coordinate systems.</TD></TR>
+
+<TR><TD valign=top><em class=code>status</em></TD>
+    <TD>Specifies the success or failure of the vertical conversion.
+        If <em class=code>istatus&nbsp;=&nbsp;0</em>, the conversion was
+        a sucess. Any other value is a failure.
+    </TD></TR>
+
 </TABLE>
+
 </div>
 <br>
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 
-
-<A NAME="vert_convert"></A>
+<A NAME="convert_vertical_state"></A>
 <br>
 <div class=routine>
-<em class=call>call vert_convert(state_handle, location, obs_kind, istatus)</em>
+<em class=call>call convert_vertical_state(state_handle, num, locs, loc_qtys, loc_types, which_vert, status)</em>
 <pre>
 type(ensemble_type), intent(in)  :: <em class=code>state_handle</em>
-type(location_type), intent(in)  :: <em class=code>location</em>
-integer,             intent(in)  :: <em class=code>obs_kind</em>
-integer,             intent(out) :: <em class=code>istatus</em>
+integer,             intent(in)  :: <em class=code>num</em>
+type(location_type), intent(in)  :: <em class=code>locs(:)</em>
+integer,             intent(in)  :: <em class=code>loc_qtys(:)</em>
+integer,             intent(in)  :: <em class=code>loc_types(:)</em>
+integer,             intent(in)  :: <em class=code>which_vert</em>
+integer,             intent(out) :: <em class=code>status(:)</em>
 </pre>
 </div>
 
@@ -1162,15 +967,26 @@ coodinate system.
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
 <TR><TD valign=top><em class=code>state_handle&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>The handle to that state.</TD></TR>
+    <TD>The handle to the state.</TD></TR>
 
-<TR><TD valign=top><em class=code>location</em></TD>
-    <TD>the desired location</TD></TR>
+<TR><TD valign=top><em class=code>num</em></TD>
+    <TD>the number of state locations</TD></TR>
 
-<TR><TD valign=top><em class=code>obs_kind</em></TD>
-    <TD>the quantity defining the part of state to convert.</TD></TR>
+<TR><TD valign=top><em class=code>locs</em></TD>
+    <TD>the array of state locations</TD></TR>
 
-<TR><TD valign=top><em class=code>istatus</em></TD>
+<TR><TD valign=top><em class=code>loc_qtys</em></TD>
+    <TD>the array of state quantities.</TD></TR>
+
+<TR><TD valign=top><em class=code>loc_types</em></TD>
+    <TD>the array of state types.</TD></TR>
+
+<TR><TD valign=top><em class=code>which_vert</em></TD>
+    <TD>the desired vertical coordinate system. There is a table
+        in the <em class=file>location_mod.f90</em> that relates
+        integers to vertical coordinate systems.</TD></TR>
+
+<TR><TD valign=top><em class=code>status</em></TD>
     <TD>Specifies the success or failure of the vertical conversion.
         If <em class=code>istatus&nbsp;=&nbsp;0</em>, the conversion was
         a sucess. Any other value is a failure.
