@@ -487,6 +487,9 @@ Single File I/O:
 
 - updates to HTML documentation especially for types/quantities (replacing kinds)
 
+- updates to input.nml namelists, code comments, and shell scripts where
+  names changed from 'restart' to 'state' for input and output files.
+
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + MMMM DD 2017 :: next revision summary.  Revision: 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
