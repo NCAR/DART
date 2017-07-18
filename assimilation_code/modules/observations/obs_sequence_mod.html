@@ -1025,9 +1025,8 @@ The format of the file (<tt>formatted</tt> vs. <tt>unformatted</tt>) has been
 automatically detected since the I release.
 The obs_sequence
 file format with I and later releases has a header that associates
-observation kind strings with an integer which was not present in 
-previous versions. The default definitions from earlier
-releases are assumed when an old format sequence file is detected.
+observation type strings with an integer which was not present in 
+previous versions. I format files are no longer supported.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -1999,18 +1998,21 @@ assignment(=).
 <A NAME="get_expected_obs"></A>
 <br>
 <div class=routine>
-<em class=call> call get_expected_obs(seq, keys, ens_index, state, 
-      state_time, obs_vals, istatus, assimilate_this_ob, evaluate_this_ob) </em>
+<em class=call> call get_expected_obs_from_def_distrib_state(state_handle, ens_size, copy_indices, key, &amp;
+                obs_def, obs_kind_ind, state_time, isprior, assimilate_this_ob, evaluate_this_ob, expected_obs, &amp;
+                istatus)</em>
 <pre>
-type(obs_sequence_type), intent(in)  :: <em class=code>seq</em>
-integer, dimension(:),   intent(in)  :: <em class=code>keys</em>
-integer,                 intent(in)  :: <em class=code>ens_index</em>
-real(r8), dimension(:),  intent(in)  :: <em class=code>state</em>
-type(time_type),         intent(in)  :: <em class=code>state_time</em>
-real(r8), dimension(:),  intent(out) :: <em class=code>obs_vals</em>
-integer,                 intent(out) :: <em class=code>istatus</em>
-logical,                 intent(out) :: <em class=code>assimilate_this_ob</em>
-logical,                 intent(out) :: <em class=code>evaluate_this_ob</em>
+type(ensemble_type), intent(in)  :: <em class=code>state_handle</em>
+integer,             intent(in)  :: <em class=code>ens_size</em>
+integer,             intent(in)  :: <em class=code>copy_indices(ens_size)</em>
+integer,             intent(in)  :: <em class=code>key</em>
+type(obs_def_type),  intent(in)  :: <em class=code>obs_def</em>
+integer,             intent(in)  :: <em class=code>obs_kind_ind</em>
+type(time_type),     intent(in)  :: <em class=code>state_time</em>
+logical,             intent(in)  :: <em class=code>isprior</em>
+integer,             intent(out) :: <em class=code>istatus(ens_size)</em>
+logical,             intent(out) :: <em class=code>assimilate_this_ob, evaluate_this_ob</em>
+real(r8),            intent(out) :: <em class=code>expected_obs(ens_size)</em>
 </pre>
 </div>
 
@@ -2021,30 +2023,30 @@ logical,                 intent(out) :: <em class=code>evaluate_this_ob</em>
 Used to compute the expected value of a set of observations in an
 observation sequence given a model state vector. Also returns a
 status variable that reports on problems taking forward operators.
-This is normally applied to a single observation at a time but
-can also be a list for computational efficiency.
+This version returns forward operator values for the entire ensemble
+in a single call.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>state_handle</em></TD>
     <TD>An observation sequence</TD></TR>
-<TR><TD valign=top><em class=code>keys&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>keys</em></TD>
     <TD>List of integer keys that specify observations in seq</TD></TR>
-<TR><TD valign=top><em class=code>ens_index&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>ens_index</em></TD>
     <TD>The ensemble number for this state vector</TD></TR>
-<TR><TD valign=top><em class=code>state&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>state</em></TD>
     <TD>Model state vector</TD></TR>
-<TR><TD valign=top><em class=code>state_time&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>state_time</em></TD>
     <TD>The time of the state data</TD></TR>
-<TR><TD valign=top><em class=code>obs_vals&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>obs_vals</em></TD>
     <TD>Returned expected values of the observations</TD></TR>
-<TR><TD valign=top><em class=code>istatus&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>istatus</em></TD>
     <TD>Integer error code for use in quality control
         (0 means no error)</TD></TR>
-<TR><TD valign=top><em class=code>assimilate_this_ob&nbsp;&nbsp;</em></TD>
-    <TD>Returns true if this observation kind is being assimilated</TD></TR>
-<TR><TD valign=top><em class=code>evaluate_this_ob&nbsp;&nbsp;</em></TD>
-    <TD>Returns true if this observation kind is being 
+<TR><TD valign=top><em class=code>assimilate_this_ob</em></TD>
+    <TD>Returns true if this observation type is being assimilated</TD></TR>
+<TR><TD valign=top><em class=code>evaluate_this_ob</em></TD>
+    <TD>Returns true if this observation type is being 
            evaluated but not assimilated</TD></TR>
 </TABLE>
 
