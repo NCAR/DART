@@ -476,9 +476,20 @@ Single File I/O:
   in the repository.  (Remove it from any private path_names_* files.)
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ MMM DD 2017 :: next update.  Revision: 
++ July 18 2017 :: bug fixes, documentation updates.  $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+- fixed bug in obs_impact_tool when generating the run-time table.  specifying
+  a generic quantity resulted in selecting the wrong specific obs types.
+
+- fixed a bug that would not allow filter to start from a single ensemble member
+  if single_file_in was true.
+
+- updates to HTML documentation especially for types/quantities (replacing kinds)
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ MMMM DD 2017 :: next revision summary.  Revision: 
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # <next few lines under version control, do not edit>
 # $URL$
