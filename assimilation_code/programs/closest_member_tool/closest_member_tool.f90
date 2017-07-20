@@ -17,32 +17,34 @@ program closest_member_tool
 
 ! Program to overwrite the time on each ensemble in a restart file.
 
-use types_mod,         only : r8, i8, obstypelength, MAX_NUM_DOMS
+use types_mod,            only : r8, i8, obstypelength, MAX_NUM_DOMS, MAX_FILES
 
-use time_manager_mod,  only : time_type, set_time_missing,               &
-                              operator(/=), print_time
+use time_manager_mod,     only : time_type, set_time_missing,               &
+                                 operator(/=), print_time
  
-use utilities_mod,     only : register_module, find_namelist_in_file,        &
-                              error_handler, nmlfileunit, E_MSG, E_ERR,      &
-                              check_namelist_read, do_nml_file, do_nml_term, &
-                              open_file, close_file
+use utilities_mod,        only : register_module, find_namelist_in_file,        &
+                                 error_handler, nmlfileunit, E_MSG, E_ERR,      &
+                                 check_namelist_read, do_nml_file, do_nml_term, &
+                                 open_file, close_file, set_multiple_filename_lists
 
-use  location_mod,     only : location_type
+use  location_mod,        only : location_type
 
-use  obs_kind_mod,     only : get_num_quantities, get_index_for_quantity, &
-                              get_name_for_quantity
+use  obs_kind_mod,        only : get_num_quantities, get_index_for_quantity, &
+                                 get_name_for_quantity
 
-use  sort_mod,         only : index_sort
+use  sort_mod,            only : index_sort
 
-use assim_model_mod,   only : static_init_assim_model, get_model_size,   &
-                              get_state_meta_data
+use assim_model_mod,      only : static_init_assim_model, get_model_size,   &
+                                 get_state_meta_data
 
-use state_vector_io_mod, only : read_state, write_state
+use state_vector_io_mod,  only : read_state, write_state
 
-use io_filenames_mod,    only : file_info_type, io_filenames_init
+use io_filenames_mod,     only : file_info_type, io_filenames_init
 
-use mpi_utilities_mod, only : initialize_mpi_utilities, task_count,     &
-                              finalize_mpi_utilities
+use state_structure_mod,  only : get_num_domains
+
+use mpi_utilities_mod,    only : initialize_mpi_utilities, task_count,     &
+                                finalize_mpi_utilities
 
 use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager
 !>@todo needs to destroy ensemble before the end of the program
@@ -106,7 +108,10 @@ namelist /closest_member_tool_nml/  &
    use_only_kinds         
 
 
-type(ensemble_type) :: ens_handle, mean_ens_handle
+type(ensemble_type)             :: ens_handle, mean_ens_handle
+character(len=256), allocatable :: file_array_input(:,:), file_array_output(:,:)
+character(len=256)              :: input_state_files(MAX_FILES) = '' 
+integer                         :: ndomains
 
 !> @todo seems like you are using get_state_meta_data just so you can get the kinds.
 !> WRF and MPAS will be doing the vertical conversion also.
@@ -204,8 +209,25 @@ member_time       = set_time_missing()
 mean_advance_time = set_time_missing()
 mean_advance_time = set_time_missing()
 
+ndomains = get_num_domains()
+
+! Given either a vector of in/output_state_files or a text file containing
+! a list of files, return a vector of files containing the filenames.
+call set_multiple_filename_lists(input_state_files(:), &
+                                 input_restart_file_list(:), &
+                                 ndomains, &
+                                 ens_size, &
+                                 'filter','input_state_files','input_state_file_list')
+
+! Allocate space for file arrays.  contains a matrix of files (num_ens x num_domains)
+! If perturbing from a single instance the number of input files does not have to
+! be ens_size but rather a single file (or multiple files if more than one domain)
+allocate(file_array_input(ens_size, ndomains), file_array_output(ens_size, ndomains))
+
+file_array_input  = RESHAPE(input_state_files,  (/ens_size,  ndomains/))
+
 ! read in the ensemble and the mean - always in a separate file
-call io_filenames_init(ens_file_info, ens_size, .false., .false., restart_list=input_restart_file_list)
+call io_filenames_init(ens_file_info, ens_size, .false., .false., restart_files=file_array_input)
 call io_filenames_init(mean_file_info, 1, .false., .false., root_name='input')
 
 call read_state(ens_handle, ens_file_info, .false., member_time)

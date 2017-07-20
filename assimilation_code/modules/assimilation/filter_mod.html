@@ -80,8 +80,8 @@ prematurely terminating the namelist.
 <pre>
 &amp;filter_nml
    single_file_in               = .false.,
-   input_state_files            = 'null',
-   input_state_file_list        = 'null',
+   input_state_files            = '',
+   input_state_file_list        = '',
    init_time_days               = 0,
    init_time_seconds            = 0,
    perturb_from_single_instance = .false.,
@@ -90,8 +90,8 @@ prematurely terminating the namelist.
    stages_to_write              = 'output'
 
    single_file_out              = .false.,
-   output_state_files           = 'null',
-   output_state_file_list       = 'null',
+   output_state_files           = '',
+   output_state_file_list       = '',
    output_interval              = 1,
    output_members               = .true.,
    num_output_state_members     = 0,
@@ -538,7 +538,6 @@ state_vector_io_mod
 io_filenames_mod
 forward_operator_mod
 quality_control_mod
-single_file_io_mod
 </PRE>
 
 <P><!-- make sure the 'top' is aligned correctly --></P>

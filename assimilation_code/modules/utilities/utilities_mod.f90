@@ -160,15 +160,49 @@ logical :: module_initialized = .false.
 integer :: logfileunit = -1
 integer :: nmlfileunit = -1
 
-public :: file_exist, get_unit, open_file, close_file, timestamp,           &
-          register_module, error_handler, to_upper, nc_check, next_file,    &
-          logfileunit, nmlfileunit, find_textfile_dims, file_to_text,       &
-          initialize_utilities, finalize_utilities, dump_unit_attributes,   &
-          find_namelist_in_file, check_namelist_read, do_nml_term,          &
-          set_tasknum, set_output, do_output, set_nml_output, do_nml_file,  &
-          E_DBG, E_MSG, E_ALLMSG, E_WARN, E_ERR, DEBUG, MESSAGE, WARNING, FATAL,      &
-          is_longitude_between, get_next_filename, ascii_file_format,       &
-          set_filename_list, scalar, string_to_real, string_to_integer,     &
+public :: file_exist, &
+          get_unit, &
+          open_file, &
+          close_file, &
+          timestamp, &
+          register_module, &
+          error_handler, &
+          to_upper, &
+          squeeze_out_blanks, &
+          nc_check, &
+          next_file, &
+          logfileunit, &
+          nmlfileunit, &
+          find_textfile_dims, &
+          file_to_text, &
+          initialize_utilities, &
+          finalize_utilities, &
+          dump_unit_attributes, &
+          find_namelist_in_file, &
+          check_namelist_read, &
+          do_nml_term, &
+          set_tasknum, &
+          set_output, &
+          do_output, &
+          set_nml_output, &
+          do_nml_file, &
+          E_DBG, &
+          E_MSG, &
+          E_ALLMSG, &
+          E_WARN, &
+          E_ERR, &
+          DEBUG, &
+          MESSAGE, &
+          WARNING, &
+          FATAL, &
+          is_longitude_between, &
+          get_next_filename, &
+          ascii_file_format, &
+          set_filename_list, &
+          set_multiple_filename_lists, &
+          scalar, &
+          string_to_real, &
+          string_to_integer, &
           string_to_logical
 
 ! this routine is either in the null_mpi_utilities_mod.f90, or in
@@ -1560,6 +1594,29 @@ end subroutine to_upper
 
 !#######################################################################
 
+!> copy instring to outstring, omitting all internal blanks
+!> outstring must be at least as long as instring
+
+subroutine squeeze_out_blanks(instring, outstring)
+character(len=*), intent(in)  :: instring
+character(len=*), intent(out) :: outstring
+
+integer :: i, o
+
+outstring = ''
+
+o = 1
+do i = 1,len_trim(instring)
+   if (instring(i:i) == ' ') cycle
+   outstring(o:o) = instring(i:i)
+   o = o + 1
+enddo
+
+end subroutine squeeze_out_blanks
+
+
+!#######################################################################
+
 
 subroutine find_textfile_dims( fname, nlines, linelen )
 ! Determines the number of lines and maximum line length
@@ -1710,6 +1767,29 @@ end function get_next_filename
 
 !#######################################################################
 
+!> this function is intended to be used when there are 2 ways to specify 
+!> an unknown number of input files, most likely in a namelist.
+!>
+!> e.g. to specify 3 input files named 'file1', 'file2', 'file3' you can
+!> either give:
+!>   input_files = 'file1', 'file2', 'file3' 
+!>     OR
+!>   input_file_list = 'flist'  
+!>
+!>   and the contents of text file 'flist' are (e.g. 'cat flist' gives)
+!>          file1
+!>          file2
+!>          file3
+!>   each filename is on a separate line with no quotes
+!>
+!> you pass both those variables into this function and when it returns
+!> the 'name_array' will have all the filenames as an array of strings.
+!> it will have opened the text files, if given, and read in the contents.
+!> it returns the number of filenames it found.
+!>
+!> contrast this with the following function where you tell it how many
+!> names and/or indirect files you expect, and how many filenames you
+!> expect to have at the end.
 
 function set_filename_list(name_array, listname, caller_name)
 
@@ -1805,6 +1885,143 @@ endif
 set_filename_list = max_num_input_files
 
 end function set_filename_list
+
+!#######################################################################
+
+!> this function is intended to be used when there are 2 ways to specify 
+!> a KNOWN number of input files, most likely in a namelist.
+!>
+!> e.g. to specify 6 input files named 'file1a', 'file2a', 'file3a', 
+!>                                     'file1b', 'file2b', 'file3b', 
+!> either give:
+!>   input_files = 'file1a', 'file2a', 'file3a', 'file1b', 'file2b', 'file3b', 
+!>     OR
+!>   input_file_list = 'flistA', 'flistB'
+!>
+!>   and the contents of text file 'flistA' are (e.g. 'cat flistA' gives)
+!>          file1a
+!>          file2a
+!>          file3a
+!>   and the contents of text file 'flistB' are (e.g. 'cat flistB' gives)
+!>          file1b
+!>          file2b
+!>          file3b
+!>
+!>   each filename is on a separate line with no quotes, and the result
+!>   is all of the contents of list1 followed by list2, or the files in
+!>   order as they're given explicitly in the first string array.
+!>
+!> you pass both those variables into this function and when it returns
+!> the 'name_array' will have all the filenames as an array of strings.
+!> it will have opened the text files, if given, and read in the contents.
+!> it dies with a fatal error if it can't construct a list of the right length.
+!> (the 'right length' is nlists * nentries)
+!>
+!> contrast this with the previous function where you don't know (or care)
+!> how many filenames are specified, and there's only a single listlist option.
+
+subroutine set_multiple_filename_lists(name_array, listname, nlists, nentries, &
+                                       caller_name, origin, origin_list)
+
+! when this routine returns, name_array() contains (nlists * nentries) of names,
+! either because they started out there or because we've opened up 'nlists'
+! listname files and read in 'nentries' from each.  it's a fatal error not to
+! have enough files. caller_name is used for error messages.
+
+character(len=*), intent(inout) :: name_array(:)
+character(len=*), intent(in)    :: listname(:)
+integer,          intent(in)    :: nlists
+integer,          intent(in)    :: nentries
+character(len=*), intent(in)    :: caller_name
+character(len=*), intent(in)    :: origin
+character(len=*), intent(in)    :: origin_list
+
+integer :: fileindex, max_num_input_files
+logical :: from_file
+character(len=64) :: fsource
+integer :: nl, ne, num_lists
+
+! here's the logic:
+! if the user specifies neither name_array nor listname, error
+! if the user specifies both, error.
+! if the user gives a listname, make sure there are nlists of them
+!   and each contains at least nentries
+! when this routine returns the names are in name_array()
+
+if (name_array(1) == '' .and. listname(1) == '') then
+   call error_handler(E_ERR, caller_name, &
+          'missing filenames',source,revision,revdate, &
+          text2='must specify either "'//trim(origin)//'" in the namelist,', &
+          text3='or a "'//trim(origin_list)//'" file containing a list of names')
+endif
+   
+! make sure the namelist specifies one or the other but not both
+if (name_array(1) /= '' .and. listname(1) /= '') then
+   call error_handler(E_ERR, caller_name, &
+          'can not specify both an array of files and a list of files', &
+          source,revision,revdate, &
+          text2='must specify either "'//trim(origin)//'" in the namelist,', &
+          text3='or a "'//trim(origin_list)//'" file containing a list of names')
+endif
+
+! if they have specified a file which contains a list, read it into
+! the name_array array and set the count.
+if (listname(1) /= '') then
+   fsource = ' contained in a list file'
+   from_file = .true.
+else
+   fsource = ' in the namelist'
+   from_file = .false.
+endif
+
+! this version of the code knows how many files should be in the listname
+if (from_file) then
+   num_lists = size(listname)
+   if (num_lists < nlists) then
+      write(msgstring1, *) 'expecting ', nlists, ' filenames in "'//trim(origin_list)//'", got ', num_lists
+      call error_handler(E_ERR, caller_name, msgstring1, source,revision,revdate)
+   endif
+endif
+   
+! the max number of names allowed in a list file is the 
+! size of the name_array passed in by the user.
+max_num_input_files = size(name_array)
+if (max_num_input_files < nlists * nentries) then
+   write(msgstring1, *) 'list length = ', max_num_input_files, '  needs room for ', nlists * nentries
+   call error_handler(E_ERR, caller_name, 'internal error: name_array not long enough to hold lists', &
+       source,revision,revdate, text2=msgstring1)
+endif
+
+! loop over the inputs.  if the names were already specified in the
+! name_array leave them there.  if they were in the listname file,
+! read them into the name_array.
+
+do nl = 1, nlists
+   do ne = 1, nentries
+      fileindex = (nl-1) * nentries + ne
+
+      if (from_file) &
+         name_array(fileindex) = get_next_filename(listname(nl), ne)
+   
+      if (name_array(fileindex) == '') then
+         write(msgstring1, *) 'Missing filename'
+
+         if (from_file) then
+            write(msgstring2,*)'reading entry # ', nl, ' from "'//trim(origin_list)//'"'
+            write(msgstring3,*)'expecting ', nentries, ' files, have ', ne-1
+         else
+            write(msgstring2,*)'required entry # ', fileindex, ' from "'//trim(origin)//'"'
+            write(msgstring3,*)'expecting ', nlists*nentries, ' filenames, have ', fileindex-1
+         endif
+
+         call error_handler(E_ERR, caller_name, trim(msgstring1)//trim(fsource), &
+            source,revision,revdate,text2=msgstring2,text3=msgstring3)
+   
+      endif
+   enddo
+enddo
+
+end subroutine set_multiple_filename_lists
 
 !#######################################################################
 

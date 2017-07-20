@@ -175,13 +175,12 @@ type file_info_type
    logical            :: cycling                    = .false. ! model will cycle
    logical            :: single_file                = .false. ! all copies read from 1 file
    character(len=32)  :: root_name                  = 'null'
-   character(len=512) :: restart_list(MAX_NUM_DOMS) = 'null' ! list of output restarts 1 file per domain
 
    type(stage_metadata_type) :: stage_metadata
 
 end type
 
-character(len=512) :: msgstring ! message handler
+character(len=512) :: msgstring, msgstring2, msgstring3 ! message handler
 
 contains
 
@@ -258,38 +257,33 @@ end function get_single_file
 !> Initialize file_info type
 
 
-subroutine io_filenames_init(file_info, num_copies, cycling, single_file, &
-                             restart_list, root_name, check_output_compatibility)
+subroutine io_filenames_init(file_info, ncopies, cycling, single_file, &
+                             restart_files, root_name, check_output_compatibility)
 
-type(file_info_type),       intent(out):: file_info        !< structure with expanded list of filenames
-integer,                    intent(in) :: num_copies       !< number of ensemble copies
-logical,                    intent(in) :: cycling          !< model will cycle
-logical,                    intent(in) :: single_file      !< all copies read from one file
-character(len=*), optional, intent(in) :: restart_list(:)  !< list of restarts one for each domain
-character(len=*), optional, intent(in) :: root_name        !< base if restart_list not given
+type(file_info_type),       intent(out):: file_info          !< structure with expanded list of filenames
+integer,                    intent(in) :: ncopies            !< number of ensemble copies
+logical,                    intent(in) :: cycling            !< model will cycle
+logical,                    intent(in) :: single_file        !< all copies read from one file
+character(len=*), optional, intent(in) :: restart_files(:,:) !< list of restarts one for each domain
+character(len=*), optional, intent(in) :: root_name          !< base if restart_files not given
 logical,          optional, intent(in) :: check_output_compatibility !< ensure netCDF variables exist in output BEFORE spending a ton of core hours
 
-integer :: num_domains
+integer :: ndomains, idom, esize
 
 file_info%single_file = single_file
 file_info%cycling     = cycling
 
-!>@todo FIXME JPH : Should these be required interfaces?
-if(present(restart_list)) file_info%restart_list = restart_list
-if(present(root_name))    file_info%root_name    = root_name
-if(present(check_output_compatibility)) file_info%check_output_compatibility = check_output_compatibility
+ndomains = get_num_domains()
 
-num_domains = get_num_domains()
-
-allocate(file_info%stage_metadata%force_copy_back(num_copies))
-allocate(file_info%stage_metadata%clamp_vars(     num_copies))
-allocate(file_info%stage_metadata%inherit_units(  num_copies))
-allocate(file_info%stage_metadata%io_flag(        num_copies))
-allocate(file_info%stage_metadata%my_copy_number( num_copies))
-allocate(file_info%stage_metadata%copy_name(      num_copies))
-allocate(file_info%stage_metadata%long_name(      num_copies))
-allocate(file_info%stage_metadata%filenames(      num_copies , num_domains))
-allocate(file_info%stage_metadata%file_description(num_copies , num_domains))
+allocate(file_info%stage_metadata%force_copy_back( ncopies))
+allocate(file_info%stage_metadata%clamp_vars(      ncopies))
+allocate(file_info%stage_metadata%inherit_units(   ncopies))
+allocate(file_info%stage_metadata%io_flag(         ncopies))
+allocate(file_info%stage_metadata%my_copy_number(  ncopies))
+allocate(file_info%stage_metadata%copy_name(       ncopies))
+allocate(file_info%stage_metadata%long_name(       ncopies))
+allocate(file_info%stage_metadata%filenames(       ncopies , ndomains))
+allocate(file_info%stage_metadata%file_description(ncopies , ndomains))
 
 file_info%stage_metadata%force_copy_back  = .false.
 file_info%stage_metadata%clamp_vars       = .false.
@@ -297,12 +291,20 @@ file_info%stage_metadata%inherit_units    = .true.
 file_info%stage_metadata%io_flag          = NO_IO
 file_info%stage_metadata%my_copy_number   = -1
 file_info%stage_metadata%noutput_ens      = 0
-file_info%stage_metadata%num_copies       = num_copies
+file_info%stage_metadata%num_copies       = ncopies
 file_info%stage_metadata%copy_name        = 'copy_name_not_set'
 file_info%stage_metadata%long_name        = 'long_name_not_set'
 file_info%stage_metadata%filenames        = 'null'
 file_info%stage_metadata%file_description = 'null'
 
+!>@todo FIXME JPH : Should these be required interfaces?
+if(present(restart_files)) then
+   ! restart files are expected to be (ens_size x dom_size) arrays
+   esize = SIZE(restart_files,1)
+   file_info%stage_metadata%filenames(1:esize,:) = restart_files(:,:)
+endif
+if(present(root_name))                  file_info%root_name                     = root_name
+if(present(check_output_compatibility)) file_info%check_output_compatibility    = check_output_compatibility
 file_info%initialized = .true.
 
 end subroutine io_filenames_init
@@ -318,20 +320,18 @@ subroutine check_file_info_variable_shape(file_info, ens_handle)
 type(file_info_type),  intent(inout) :: file_info
 type(ensemble_type),   intent(in)    :: ens_handle
 
-integer :: num_domains
-integer :: idom, i ! loop variables
-
-integer :: copy
+integer :: num_domains, idom, icopy, my_copy
+character(len=256) :: filename
 
 num_domains = get_num_domains()
 
 ! check that the netcdf files match the variables for this domain
 ! to prevent overwriting unwanted files.
-do i = 1, ens_handle%my_num_copies ! just have owners check
-   copy = ens_handle%my_copies(i)
+do icopy = 1, ens_handle%my_num_copies ! just have owners check
+   my_copy = ens_handle%my_copies(icopy)
    do idom = 1, num_domains
-      if(file_exist(file_info%stage_metadata%filenames(copy,idom))) &
-         call check_correct_variables(file_info%stage_metadata%filenames(copy,idom),idom)
+      if(file_exist(file_info%stage_metadata%filenames(my_copy,idom))) &
+         call check_correct_variables(file_info%stage_metadata%filenames(my_copy,idom),idom)
    enddo
 enddo
 
@@ -357,101 +357,52 @@ offset = my_copy_start - 1
 
 if (my_copy_start <= 0)    return
 
-! Is it sufficient to check if the first file exists? JPH
-if (file_info%restart_list(1) == 'null' .or. &
-    file_info%restart_list(1) == '') then
+!>@todo FIXME : Is it sufficient to check if the first file exists? JPH
+! construct filenames if they do not exist, using the root name as a base
+if (file_info%stage_metadata%filenames(1,1) == 'null' .or. &
+    file_info%stage_metadata%filenames(1,1) == '') then
 
-  if (file_info%root_name == 'null') then
-     write(msgstring,*) 'Unable to construct file names.', &
-                        ' No stage name or file list given'
-     call error_handler(E_ERR,'set_member_file_metadata', &
-                 msgstring, source, revision, revdate)
-  endif
+   if (file_info%root_name == 'null') then
+      write(msgstring,*) 'Unable to construct file names.', &
+                         ' No stage name or file list given'
+      call error_handler(E_ERR,'set_member_file_metadata', &
+                  msgstring, source, revision, revdate)
+   endif
 
-  ! Construct file names
-  call error_handler(E_MSG,'set_member_file_metadata', &
-            'no file list given for stage "'//trim(file_info%root_name)//'" so using default names', &
-             source, revision, revdate)
+   ! Construct file names
+   call error_handler(E_MSG,'set_member_file_metadata', &
+             'no file list given for stage "'//trim(file_info%root_name)//'" so using default names', &
+              source, revision, revdate)
 
-  stage_name = file_info%root_name
-  if (file_info%single_file) then
-     if (get_num_domains() > 1) then
-        write(msgstring,*) 'single file input is currently only supported for 1 domain models'
-        call error_handler(E_ERR,'set_member_file_metadata', &
-                           msgstring, source, revision, revdate)
-     endif
-     write(fname,'(2A)') trim(stage_name),'.nc'
-     write(desc, '(A)') 'ensemble member single file'
-     call set_explicit_file_metadata(file_info, 1, (/fname/), stage_name, desc)
-  else
-     do icopy = 1, ens_size
-        write(basename,'(A,I4.4)')  'member_', icopy
-        write(desc,'(A,I4)') 'ensemble member ', icopy
-        call set_file_metadata(file_info, icopy, stage_name, basename, desc, offset)
-     enddo
-  endif
-else
+   stage_name = file_info%root_name
+   if (file_info%single_file) then
+      if (get_num_domains() > 1) then
+         write(msgstring,*) 'single file input is currently only supported for 1 domain models'
+         call error_handler(E_ERR,'set_member_file_metadata', &
+                            msgstring, source, revision, revdate)
+      endif
+      write(fname,'(2A)') trim(stage_name),'.nc'
+      write(desc, '(A)') 'ensemble member single file'
+      call set_explicit_file_metadata(file_info, 1, (/fname/), stage_name, desc)
+   else
+      do icopy = 1, ens_size
+         write(basename,'(A,I4.4)')  'member_', icopy
+         write(desc,'(A,I4)') 'ensemble member ', icopy
+         call set_file_metadata(file_info, icopy, stage_name, basename, desc, offset)
+      enddo
+   endif
+
+else ! ensemble member files have been defined, just set metadata
 
    do idom = 1, get_num_domains()
-      ! read files from restart file list
-      fname = file_info%restart_list(idom)
-      if ( .not. file_exist(fname) ) then
-         write(msgstring,*) 'io_filenames_mod: restart_file "', &
-                            trim(fname)//'" not found'
-         call error_handler(E_ERR,'set_member_file_metadata', msgstring, &
-                            source, revision, revdate)
-      endif
-
-      write(msgstring,*) 'files from : "'//trim(fname)//'"'
-      call error_handler(E_MSG,'set_member_file_metadata', &
-                         msgstring, source, revision, revdate)
-
-      ! Check the dimensions of the pointer file
-      call find_textfile_dims(trim(fname), nlines)
-      if( file_info%single_file ) then
-         if( nlines < 1 ) then
-            write(msgstring,*) 'io_filenames_mod: expecting 1 ', &
-                               'files in "', trim(fname), &
-                               '" and found ', nlines
-            call error_handler(E_ERR,'set_member_file_metadata', msgstring, &
-                               source, revision, revdate)
-         endif
-       else
-         if( nlines < ens_size) then
-            write(msgstring,*) 'io_filenames_mod: expecting ',ens_size, &
-                               'files in "', trim(fname), &
-                               '" and only found ', nlines
-            call error_handler(E_ERR,'set_member_file_metadata', msgstring, &
-                               source, revision, revdate)
-         endif
-      endif
-
-      ! Read filenames in
-      iunit = open_file(trim(fname),action = 'read')
-
       do icopy = 1, ens_size
-         if ( file_info%single_file ) then
-            if ( icopy == 1 ) then
-               read(iunit,'(A)',iostat=ios) file_info%stage_metadata%filenames(offset+icopy, idom)
-            endif
-         else
-            read(iunit,'(A)',iostat=ios) file_info%stage_metadata%filenames(offset+icopy, idom)
-         endif
 
          write(desc,'(2A,I4)') trim(file_info%root_name), ' ensemble member ', icopy
          file_info%stage_metadata%file_description(offset+icopy,idom) = trim(desc)
-         file_info%stage_metadata%my_copy_number(  offset+icopy) = offset + icopy
-         file_info%stage_metadata%copy_name(       offset+icopy) = trim(desc)
+         file_info%stage_metadata%my_copy_number(  offset+icopy)      = offset + icopy
+         file_info%stage_metadata%copy_name(       offset+icopy)      = trim(desc)
 
-         if ( ios /= 0 ) then
-            write(msgstring,*)'Unable to read filename # ',icopy, &
-                  ' from "'//trim(file_info%stage_metadata%filenames(icopy, idom))//'"'
-            call error_handler(E_ERR,'set_member_file_metadata', msgstring, &
-                            source, revision, revdate)
-         endif
       enddo
-
-      call close_file(iunit)
    enddo
 endif
 
@@ -934,10 +885,6 @@ if (present(context)) then
    write(*,*)'file_info%root_name                  ', file_info%root_name
    write(*,*)'file_info%stage_metadata%initialized ', file_info%stage_metadata%initialized
 endif
-
-do i = 1,MAX_NUM_DOMS
-   write(*,'(A,I4,2A)')'file_info%restart_list(',i,') ', trim(file_info%restart_list(i))
-enddo
 
 do i = 1,size(file_info%stage_metadata%filenames,1)
    do j = 1,size(file_info%stage_metadata%filenames,2)
