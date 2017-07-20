@@ -89,14 +89,14 @@ directly.</LI>
 <em class="code">QTY_POWER_WEIGHTED_FALL_SPEED</em> and
 <em class="code">QTY_RADAR_REFLECTIVITY</em> values.
 If they are not available then the code calls the model
-interpolate routines for several other kinds and computes
+interpolate routines for several other quantities and computes
 these quantities.  However, this requires that the model_mod interpolate
-code returns gracefully if the kind is unknown or unsupported.  
+code returns gracefully if the quantity is unknown or unsupported.  
 The previous version of the WRF model_mod code used to print an 
-error message and stop if the kind was unknown.  
+error message and stop if the quantity was unknown.  
 The updated version in the repository which went in with
 this radar code has been changed to return an error status code but continue
-if the kind is unknown.</LI>
+if the quantity is unknown.</LI>
 <LI>The value for gravity is currently hardcoded in this module.  Previous
 versions of this code used the gravity constant in the DART types_mod.f90
 code, but in reality the code should be using whatever value of gravity is

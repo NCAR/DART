@@ -48,13 +48,10 @@ from/to a file, and a capability to do a standard input driven interactive
 definition of the observation definition.
 <br>
 <br>
-Beginning with the I-release of DART, a more flexible, powerful (and
-complicated) mechanism for incorporating new types of observations is part
-of DART. 
-DART now makes a distinction between specific 
+DART makes a distinction between specific 
 <em class="unix">observation types</em> and generic
-<em class="unix">observation kinds</em>.  The role of the various
-obs_def input files is to define the mapping between the types and kinds,
+<em class="unix">observation quantities</em>.  The role of the various
+obs_def input files is to define the mapping between the types and quantities,
 and optionally to provide type-specific processing routines.
 <br>
 <br>
@@ -100,7 +97,7 @@ observation, then the entire contents of the new file is:
 </P>
 <pre>
 ! BEGIN DART PREPROCESS KIND LIST
-! <em>type</em>, <em>kind</em>, COMMON_CODE
+! <em>type</em>, <em>quantity</em>, COMMON_CODE
 ! <em>(repeat lines for each type)</em>
 ! END DART PREPROCESS KIND LIST
 </pre>
@@ -121,11 +118,11 @@ For example, here is a real list:
 <P>
 The first column is the specific observation
 <em class="unix">type</em> and should be unique.  The second column
-is the generic observation <em class="unix">kind</em> and must match
-the list of known kinds in the
-<em class="file">obs_kind_mod.f90</em>.  (To add a new kind, the
+is the generic observation <em class="unix">quantity</em> and must match
+the list of known quantities in the
+<em class="file">obs_kind_mod.f90</em>.  (To add a new quantity, the
 <em class="file">assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90</em> file must be edited
-to include a unique integer identifier for the kind.)
+to include a unique integer identifier for the quantity.)
 The third column must be the keyword
 <em class="unix">COMMON_CODE</em> which tells the
 <em class="unix">preprocess</em> program to automatically generate
@@ -136,14 +133,14 @@ all necessary interface code for this type.
 
 <P>
 For observation types which have observation-specific routines,
-must interpolate using a combination of other generic KINDs, or
-require additional observation-specific data to be stored, the
+must interpolate using a combination of other generic quantities, 
+or require additional observation-specific data to be stored, the
 following format is used:
 </P>
 <pre>
 ! BEGIN DART PREPROCESS KIND LIST
-! <em>type</em>, <em>kind</em>
-! <em>(repeat lines for each type/kind pair)</em>
+! <em>type</em>, <em>quantity</em>
+! <em>(repeat lines for each type/quantity pair)</em>
 ! END DART PREPROCESS KIND LIST
 </pre>
 <P>
@@ -171,13 +168,19 @@ variables from other modules should be placed between
 these lines, with comment characters in the first column.
 <br><br>
 For example, if the forward operator code includes a module
-then a use statement like:
+with public routines then a "use" statement like:
 <pre>
 use obs_def_1d_state_mod, only : write_1d_integral, read_1d_integral, &amp;
                                  interactive_1d_integral, get_expected_1d_integral
 </pre>
 needs to be added to the obs_def_mod so the listed subroutines
-are available to be called.
+are available to be called.  This would look like:
+<pre>
+! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
+! use obs_def_1d_state_mod, only : write_1d_integral, read_1d_integral, &amp;
+!                                  interactive_1d_integral, get_expected_1d_integral
+! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
+</pre> 
 </li>
 
 <li><pre>
@@ -502,7 +505,7 @@ end type obs_def_type
 
 <P>
 Models all that is known about an observation except for actual values.
-Includes a location, kind, time and error variance.
+Includes a location, type, time and error variance.
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
@@ -512,13 +515,13 @@ Includes a location, kind, time and error variance.
 <TR><TD valign=top> location              </TD>
     <TD>Location of the observation.      </TD></TR>
 <TR><TD valign=top> kind                  </TD>
-    <TD>The kind of the observation.      </TD></TR>
+    <TD>Despite the name, the specific type of the observation.      </TD></TR>
 <TR><TD valign=top> time                  </TD>
     <TD>Time of the observation.          </TD></TR>
 <TR><TD valign=top> error_variance        </TD>
     <TD>Error variance of the observation.</TD></TR>
 <TR><TD valign=top> key                   </TD>
-    <TD>Unique identifier for observations of a particular kind.</TD></TR>
+    <TD>Unique identifier for observations of a particular type.</TD></TR>
 </TABLE>
 
 </div>
@@ -543,7 +546,7 @@ real(r8),            intent(in)  :: <em class=code>error_variance</em>
 <!-- Description -->
 
 <P>
-Creates an obs_def type with location, kind, time and error_variance
+Creates an obs_def type with location, type, time and error_variance
 specified. 
 </P>
 
@@ -553,7 +556,7 @@ specified.
 <TR><TD valign=top><em class=code>location&nbsp;&nbsp;</em></TD>
     <TD>Location for this obs_def</TD></TR>
 <TR><TD valign=top><em class=code>kind&nbsp;&nbsp;</em></TD>
-    <TD>Observation kind for obs_def</TD></TR>
+    <TD>Observation type for obs_def</TD></TR>
 <TR><TD valign=top><em class=code>time&nbsp;&nbsp;</em></TD>
     <TD>Time for obs_def</TD></TR>
 <TR><TD valign=top><em class=code>error_variance&nbsp;&nbsp;</em></TD>
@@ -696,12 +699,12 @@ type(obs_def_type),  intent(in) :: <em class=code>obs_def</em>
 <!-- Description -->
 
 <P>
-Returns an observation kind from an observation definition.
+Returns an observation type from an observation definition.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
-    <TD>Returns the observation kind from an obs_def</TD></TR>
+    <TD>Returns the observation type from an obs_def</TD></TR>
 <TR><TD valign=top><em class=code>obs_def&nbsp;&nbsp;</em></TD>
     <TD>An obs_def</TD></TR>
 </TABLE>
@@ -754,14 +757,14 @@ integer, intent(in)            :: <em class=code>obs_kind_ind</em>
 <!-- Description -->
 
 <P>
-Returns an observation name from an observation kind.
+Returns an observation name from an observation type.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
-    <TD>Returns name from an observation kind</TD></TR>
+    <TD>Returns name from an observation type</TD></TR>
 <TR><TD valign=top><em class=code>obs_kind_ind&nbsp;&nbsp;</em></TD>
-    <TD>An observation kind</TD></TR>
+    <TD>An observation type</TD></TR>
 </TABLE>
 
 </div>
@@ -870,14 +873,14 @@ integer,            intent(in)    :: <em class=code>kind</em>
 <!-- Description -->
 
 <P>
-Set the kind of observation in an observation definition.
+Set the type of observation in an observation definition.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>obs_def&nbsp;&nbsp;</em></TD>
     <TD>An obs_def</TD></TR>
 <TR><TD valign=top><em class=code>kind&nbsp;&nbsp;</em></TD>
-    <TD>An integer observation kind</TD></TR>
+    <TD>An integer observation type</TD></TR>
 </TABLE>
 
 </div>
@@ -947,7 +950,7 @@ Compute the observation (forward) operator for a particular obs definition.
 <TR><TD valign=top><em class=code>obs_def&nbsp;&nbsp;</em></TD>
     <TD>The input obs_def</TD></TR>
 <TR><TD valign=top><em class=code>obs_kind_ind&nbsp;&nbsp;</em></TD>
-    <TD>The obs kind</TD></TR>
+    <TD>The obs type</TD></TR>
 <TR><TD valign=top><em class=code>ens_index&nbsp;&nbsp;</em></TD>
     <TD>The ensemble member number of this state vector</TD></TR>
 <TR><TD valign=top><em class=code>state&nbsp;&nbsp;</em></TD>
@@ -996,7 +999,7 @@ in fform or FORMATTED if fform is not present.
 <TR><TD valign=top><em class=code>obs_def&nbsp;&nbsp;</em></TD>
     <TD>Observation definition to be read</TD></TR>
 <TR><TD valign=top><em class=code>key&nbsp;&nbsp;</em></TD>
-    <TD>Present if unique identifier key is needed by some obs kind.  
+    <TD>Present if unique identifier key is needed by some obs type.  
         Unused by default code.</TD></TR>
 <TR><TD valign=top><em class=code>obs_val&nbsp;&nbsp;</em></TD>
     <TD>Present if needed to perform operations based on value.
@@ -1033,7 +1036,7 @@ Creates an obs_def via input from standard in.
 <TR><TD valign=top><em class=code>obs_def&nbsp;&nbsp;</em></TD>
     <TD>An obs_def to be created</TD></TR>
 <TR><TD valign=top><em class=code>key&nbsp;&nbsp;</em></TD>
-    <TD>Present if unique identifier key is needed by some obs kind.
+    <TD>Present if unique identifier key is needed by some obs type.
         Unused by default code.</TD></TR>
 </TABLE>
 
@@ -1069,7 +1072,7 @@ in fform or FORMATTED if fform is not present.
 <TR><TD valign=top><em class=code>obs_def&nbsp;&nbsp;</em></TD>
     <TD>Observation definition to be written</TD></TR>
 <TR><TD valign=top><em class=code>key&nbsp;&nbsp;</em></TD>
-    <TD>Present if unique identifier key is needed by some obs kind.
+    <TD>Present if unique identifier key is needed by some obs type.
         Unused by default code.</TD></TR>
 <TR><TD valign=top><em class=code>fform&nbsp;&nbsp;</em></TD>
     <TD>File format specifier: FORMATTED or UNFORMATTED; default FORMATTED</TD>
@@ -1140,8 +1143,8 @@ and read to or write from it.
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
 <TR><!-- routine --><TD VALIGN=top>get_expected_obs_from_def</TD>
-    <!-- message --><TD VALIGN=top>Attempt to evaluate undefined observation kind</TD>
-    <!-- comment --><TD VALIGN=top>An observation kind for which
+    <!-- message --><TD VALIGN=top>Attempt to evaluate undefined observation type</TD>
+    <!-- comment --><TD VALIGN=top>An observation type for which
      no forward operator has been defined is an error.</TD>
 </TR>
 
@@ -1157,19 +1160,19 @@ and read to or write from it.
 
 <TR><!-- routine --><TD VALIGN=top>read_obs_def</TD>
     <!-- message --><TD VALIGN=top>Attempt to read for undefined obs_kind index</TD>
-    <!-- comment --><TD VALIGN=top>Reading for an observation kind for which
+    <!-- comment --><TD VALIGN=top>Reading for an observation type for which
      no forward operator has been defined is an error.</TD>
 </TR>
 
 <TR><!-- routine --><TD VALIGN=top>write_obs_def</TD>
     <!-- message --><TD VALIGN=top>Attempt to write for undefined obs_kind index</TD>
-    <!-- comment --><TD VALIGN=top>Writing for an observation kind for which
+    <!-- comment --><TD VALIGN=top>Writing for an observation type for which
      no forward operator has been defined is an error.</TD>
 </TR>
 
 <TR><!-- routine --><TD VALIGN=top>interactive_obs_def</TD>
     <!-- message --><TD VALIGN=top>Attempt to  interactively create undefined obs_kind index</TD>
-    <!-- comment --><TD VALIGN=top>Creating an observation kind for which
+    <!-- comment --><TD VALIGN=top>Creating an observation type for which
      no forward operator has been defined is an error.</TD>
 </TR>
 
