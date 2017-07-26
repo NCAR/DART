@@ -1,5 +1,7 @@
 # This code may (or may not) be part of the CESM distribution,
 # So it is not protected by the DART copyright agreement. 
+# This file is a variation of 
+# cesm2_0_beta05/cime/utils/python/CIME/case_st_archive.py
 
 # DART $Id$
 
