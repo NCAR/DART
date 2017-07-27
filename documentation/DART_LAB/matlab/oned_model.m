@@ -678,10 +678,14 @@ reset_button_Callback()
             h_evolution.prior = plot(handles.time_step - 0.1, ens_new, '*', ...
                 'MarkerSize', 6, 'Color', atts.green);
 
-            for i = 1:handles.ens_size
-                plot([handles.time_step - 1 + 0.1, handles.time_step - 0.1], ...
-                    [handles.ens(i), ens_new(i)], 'Color', atts.green);
-            end
+            % Load up to plot all segments at once, more time efficient than previous loop
+            bx(1:2, 1:handles.ens_size) = 0;
+            by(1:2, 1:handles.ens_size) = 0;
+            bx(1, :) = handles.time_step - 1 + 0.1;
+            bx(2, :) = handles.time_step - 0.1;
+            by(1, :) = handles.ens;
+            by(2, :) = ens_new;
+            plot(bx, by, 'Color', atts.green);
 
             %% Plot the segment for the prior error and spread
             % Want the lower y limit to stay 0 for error spread
@@ -731,6 +735,7 @@ reset_button_Callback()
             temp_rank(:, 2)        = 0;
             temp_rank(ens_rank, 2) = 1;
 
+            hold off
             bar(temp_rank,'stacked');
 
             %% Plot the figure window for this update
@@ -819,26 +824,31 @@ reset_button_Callback()
             set(handles.ui_button_advance_model, 'String', 'Advance Model');
 
             % Adjust the horizontal range of the plot windows as needed
-            if( mod(handles.time_step, 5) == 0)
+            % Have moved to fixed 10-step wide windows rather than earlier shifting for speed
+            % Using cla clears out plot buffers and avoids slowdown with time
+            if( mod(handles.time_step, 10) == 0)
                 axes(handles.h_state_evolution);
+                cla
                 axlims    = axis;
-                axlims(1) = handles.time_step - 4;
-                axlims(2) = handles.time_step + 6;
+                axlims(1) = handles.time_step;
+                axlims(2) = handles.time_step + 10;
                 axis(axlims)
 
                 % Want the lower y limit to stay 0 for error spread
                 axes(handles.h_err_spread_evolution);
+                cla
                 axlims    = axis;
-                axlims(1) = handles.time_step - 4;
-                axlims(2) = handles.time_step + 6;
+                axlims(1) = handles.time_step;
+                axlims(2) = handles.time_step + 10;
                 axlims(3) = 0.0;
                 axis(axlims)
 
                 % Want the lower y limit to stay 0 for kurtosis
                 axes(handles.h_kurtosis_evolution);
+                cla
                 axlims    = axis;
-                axlims(1) = handles.time_step - 4;
-                axlims(2) = handles.time_step + 6;
+                axlims(1) = handles.time_step;
+                axlims(2) = handles.time_step + 10;
                 axlims(3) = 0.0;
                 axis(axlims)
 
@@ -879,7 +889,7 @@ reset_button_Callback()
             temp_rank(:, 1)        = handles.post_rank(1:handles.ens_size + 1);
             temp_rank(:, 2)        = 0;
             temp_rank(ens_rank, 2) = 1;
-
+            hold off
             bar(temp_rank, 'stacked');
 
             % Update the permanent storage of the rank values
