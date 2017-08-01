@@ -5,8 +5,8 @@
 
 # DART $Id$
 
-short term archiving
 """
+short term archiving
 """
 
 import shutil, glob, re, os
