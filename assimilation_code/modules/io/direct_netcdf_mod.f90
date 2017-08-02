@@ -854,7 +854,6 @@ do i = start_var, end_var
    allocate(dims(get_io_num_dims(domain, i)))
 
    dims = get_io_dim_lengths(domain, i)
-
    ret = nf90_inq_varid(ncfile_in, get_variable_name(domain, i), var_id)
    call nc_check(ret, 'read_variables: nf90_inq_varid',trim(get_variable_name(domain,i)) )
 

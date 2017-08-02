@@ -83,91 +83,38 @@ if (calendar_name /= 'NO_CALENDAR') call print_date(state_time, 'is start date')
 
 ! -----
 
-fname = 'uniform_baseline'
-open(unit=unitnum, file=fname, action='write')
-call test1(nsamples, .true., state_time, 66)
-close(unitnum)
+call test1(nsamples, .true., state_time, fname = 'uniform_baseline')
 
-fname = 'gaussian_baseline'
-open(unit=unitnum, file=fname, action='write')
-call test1(nsamples, .false., state_time, 66)
-close(unitnum)
+call test1(nsamples, .false., state_time, fname = 'gaussian_baseline')
 
 ! -----
 
-hours = 1
-reseed = 1
+! these all call test2() with various intervals
 
-call dohourstest(reseed, hours)
+call dohourstest(reseed=1, hours=1)
 
-! -----
+call dohourstest(reseed=10, hours=1)
 
-hours = 1
-reseed = 10
+call dohourstest(reseed=10, hours=6)
 
-call dohourstest(reseed, hours)
+call dohourstest(reseed=10, hours=12)
 
-! -----
+call dohourstest(reseed=100, hours=6)
 
-hours = 6
-reseed = 10
+call dohourstest(reseed=100, hours=12)
 
-call dohourstest(reseed, hours)
+call dohourstest(reseed=100, hours=24)
 
-! -----
+call dohourstest(reseed=1000, hours=24)
 
-hours = 12
-reseed = 10
+call doyearstest(reseed=1, years=1)
 
-call dohourstest(reseed, hours)
-
-! -----
-
-hours = 6
-reseed = 100
-
-call dohourstest(reseed, hours)
-
-! -----
-
-hours = 12
-reseed = 100
-
-call dohourstest(reseed, hours)
-
-! -----
-
-hours = 24
-reseed = 100
-
-call dohourstest(reseed, hours)
-
-! -----
-
-hours = 24
-reseed = 1000
-
-call dohourstest(reseed, hours)
+call doyearstest(reseed=100, years=10)
 
 
 ! -----
 
-years = 1
-reseed = 1
-
-call doyearstest(reseed, years)
-
-! -----
-
-years = 10
-reseed = 100
-
-call doyearstest(reseed, years)
-
-
-! -----
-
-call test3
+call test3()
 
 ! -----
 
@@ -178,14 +125,18 @@ contains
 
 !-------------------------------------------------------------------------
 
-subroutine test1(nreps, unif, start_time, unit)
-! output uniform distribution.  seeds gen with a single time
- integer,               intent(in)    :: nreps, unit
- logical,               intent(in)    :: unif
- type(time_type),       intent(in)    :: start_time
+! output uniform distribution.  seed generator once at the start.
 
-integer :: i, seed
+subroutine test1(nreps, unif, start_time, fname)
+ integer,               intent(in) :: nreps
+ logical,               intent(in) :: unif
+ type(time_type),       intent(in) :: start_time
+ character(len=*),      intent(in) :: fname
+
+integer :: i, seed, unitnum
 type (random_seq_type) :: seq1
+
+open(unit=unitnum, file=fname, action='write')
 
 seed = generate_seed(start_time)
 call init_random_seq(seq1, seed)
@@ -200,26 +151,32 @@ print *, ' '
 
 do i=1, nreps
    if (unif) then
-      write(unit, *) random_uniform(seq1)
+      write(unitnum, *) random_uniform(seq1)
    else
-      write(unit, *) random_gaussian(seq1, 0.0_r8, 1.0_r8)
+      write(unitnum, *) random_gaussian(seq1, 0.0_r8, 1.0_r8)
    endif 
 end do
+
+close(unitnum)
 
 end subroutine test1
 
 !-------------------------------------------------------------------------
 
-subroutine test2(nreps, per, start_time, delta_time, unif, unit)
 ! output uniform distribution.  generates nrep numbers, reseeding
 ! the generator each 'per' times.
- integer,               intent(in)    :: nreps, per, unit
- type(time_type),       intent(in)    :: start_time, delta_time
- logical,               intent(in)    :: unif
+
+subroutine test2(nreps, per, start_time, delta_time, unif, fname)
+ integer,               intent(in) :: nreps, per
+ type(time_type),       intent(in) :: start_time, delta_time
+ logical,               intent(in) :: unif
+ character(len=*),      intent(in) :: fname
 
 integer :: i, j, nextseed
 type(time_type) :: t
 type(random_seq_type) :: seq1
+
+open(unit=unitnum, file=fname, action='write')
 
 t = start_time
 nextseed = generate_seed(t)
@@ -237,9 +194,9 @@ print *, 'reseeding every ', per, ' times through the loop'
 j = 1
 do i=1, nreps
    if (unif) then
-      write(unit, *) random_uniform(seq1)
+      write(unitnum, *) random_uniform(seq1)
    else
-      write(unit, *) random_gaussian(seq1, 0.0_r8, 1.0_r8)
+      write(unitnum, *) random_gaussian(seq1, 0.0_r8, 1.0_r8)
    endif
    if (j == per) then
       t = t + delta_time
@@ -258,11 +215,16 @@ else
 endif
 print *, ' '
 
+close(unitnum)
+
 end subroutine test2
 
 !-------------------------------------------------------------------------
 
-subroutine test3
+! search to see if reseeding the sequence causes it to repeat
+! sequences from other seeds
+
+subroutine test3()
 
 real(r8), allocatable :: history(:)
 real(r8) :: next_val
@@ -335,16 +297,14 @@ subroutine dohourstest(reseed, hours)
 type(time_type) :: delta_time
 
 write(fname, '(A,I4.4,A,I2.2,A)') 'uniform_', reseed, 'dt_', hours, 'h'
-open(unit=unitnum, file=fname, action='write')
 delta_time = set_time(hours*3600, 0)
-call test2(nsamples, reseed, state_time, delta_time, .true., unitnum)
-close(unitnum)
+
+call test2(nsamples, reseed, state_time, delta_time, .true., fname)
 
 write(fname, '(A,I4.4,A,I2.2,A)') 'gaussian_', reseed, 'dt_', hours, 'h'
-open(unit=unitnum, file=fname, action='write')
 delta_time = set_time(hours*3600, 0)
-call test2(nsamples, reseed, state_time, delta_time, .false., unitnum)
-close(unitnum)
+
+call test2(nsamples, reseed, state_time, delta_time, .false., fname)
 
 end subroutine dohourstest
 
@@ -356,74 +316,17 @@ subroutine doyearstest(reseed, years)
 type(time_type) :: delta_time
 
 write(fname, '(A,I4.4,A,I4.4,A)') 'uniform_', reseed, 'dt_', years, 'y'
-open(unit=unitnum, file=fname, action='write')
 delta_time = set_time(21600, nint(years*365.25))
-call test2(nsamples, reseed, state_time, delta_time, .true., unitnum)
-close(unitnum)
+
+call test2(nsamples, reseed, state_time, delta_time, .true., fname)
 
 write(fname, '(A,I4.4,A,I4.4,A)') 'gaussian_', reseed, 'dt_', years, 'y'
-open(unit=unitnum, file=fname, action='write')
 delta_time = set_time(21600, nint(years*265.25))
-call test2(nsamples, reseed, state_time, delta_time, .false., unitnum)
-close(unitnum)
+
+call test2(nsamples, reseed, state_time, delta_time, .false., fname)
 
 end subroutine doyearstest
 
-!-------------------------------------------------------------------------
-!%! 
-!%! function generate_seed(state_time, ensembleid, taskid)
-!%! ! use the state time to set the seed for the (repeatable) random sequence 
-!%! 
-!%! type(time_type),   intent(in) :: state_time
-!%! integer, optional, intent(in) :: ensembleid, taskid
-!%! integer                       :: generate_seed
-!%! 
-!%! integer     :: days,seconds,bigint,bigtwo
-!%! integer(i8) :: bigtime,bigone
-!%! integer(i8), parameter :: secs_day = 86400_i8
-!%! 
-!%! call get_time(state_time, seconds, days)
-!%! 
-!%! ! option 1: add days & secs, old gen needs negative seed,
-!%! ! new one doesn't care. 
-!%! !generate_seed = days + seconds
-!%! !return
-!%! 
-!%! ! option 2: compute total seconds in an i8 then use the lower
-!%! ! 32 bits (which is all the init routine will take to stay
-!%! ! portable across different platforms). 
-!%! 
-!%! ! if generate_seed was i8, or if this routine was combined with
-!%! ! the real init routine, we could avoid the bitwise and below.
-!%! ! it's going to get repeated in the set seed routine.
-!%! generate_seed = iand((secs_day * days) + seconds, z'FFFFFFFF')
-!%! !write(*,*)'TJH DEBUG generate_seed ',days,seconds,(secs_day*days)+seconds,generate_seed
-!%! return
-!%! 
-!%! ! option 3: works with old generator but maybe overkill?
-!%! ! for the old generator, it has to be < 0 and apparently > something
-!%! ! like 50,000 more than the largest negative int.
-!%! 
-!%! !bigtime       = int(days,i8)*100000_i8 + int(seconds,i8)
-!%! !bigint        = huge(seconds)        ! biggest 32bit integer
-!%! !bigone        = int(bigint,i8)       ! coerce to 64bit integer
-!%! !bigtwo        = int(mod(bigtime,bigone)) ! modulo arith on 64bit integers, then 32bit
-!%! !generate_seed = -1 * int(bigtwo)     ! coerce back to 32bit integer
-!%! 
-!%! ! arb choices if the seed is going to cause an error
-!%! !if (generate_seed >= 0) generate_seed = -1234
-!%! !if (generate_seed < -2147432706) generate_seed = -4376
-!%! !return
-!%! 
-!%! ! option 4: positive number instead of negative
-!%! !generate_seed = bigtwo
-!%! !return
-!%! 
-!%! ! not reached anymore:
-!%! !write(*,*)'TJH DEBUG generate_seed ',bigtime,bigint,generate_seed
-!%! 
-!%! end function generate_seed
-!%! 
 !-------------------------------------------------------------------------
 
 end program test_reseed

@@ -34,13 +34,13 @@ setenv CASEROOT $1
 # In CESM1_4 xmlquery must be executed in $CASEROOT.
 cd ${CASEROOT}
 setenv CASE           $CASEROOT:t
-setenv ensemble_size  `./xmlquery NINST_ATM   -value`
-setenv CAM_DYCORE     `./xmlquery CAM_DYCORE  -value`
-setenv EXEROOT        `./xmlquery EXEROOT     -value`
-setenv RUNDIR         `./xmlquery RUNDIR      -value`
-setenv archive        `./xmlquery DOUT_S_ROOT -value`
-setenv TOTALPES       `./xmlquery TOTALPES    -value`
-setenv DATA_ASSIMILATION_CYCLES        `./xmlquery DATA_ASSIMILATION_CYCLES -value`
+setenv ensemble_size  `./xmlquery NINST_ATM   --value`
+setenv CAM_DYCORE     `./xmlquery CAM_DYCORE  --value`
+setenv EXEROOT        `./xmlquery EXEROOT     --value`
+setenv RUNDIR         `./xmlquery RUNDIR      --value`
+setenv archive        `./xmlquery DOUT_S_ROOT --value`
+setenv TOTALPES       `./xmlquery TOTALPES    --value`
+setenv DATA_ASSIMILATION_CYCLES        `./xmlquery DATA_ASSIMILATION_CYCLES --value`
 cd $RUNDIR
 
 setenv save_all_inf TRUE

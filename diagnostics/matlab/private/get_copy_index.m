@@ -1,7 +1,8 @@
-function copy_index = get_copy_index(fname, copystring)
-%% GET_COPY_INDEX  Gets an index corresponding to copy meta_data string
-% Retrieves index associated with a given copy meta_data string in
-% file fname. If string is not found in meta_data list, a -1 is returned.
+function copy_index = get_copy_index(fname, copystring, context)
+%% GET_COPY_INDEX  Gets an index corresponding to copy metadata string
+% Retrieves index associated with a given string in the 
+% CopyMetaData netCDF variable in the given file. If the string
+% does not exist - a fatal error is thrown.
 %
 % Example:
 % fname = 'obs_diag_output.nc';
@@ -13,6 +14,15 @@ function copy_index = get_copy_index(fname, copystring)
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
+
+errorstring = sprintf('\nERROR: "%s" is not a valid CopyMetaData value for file %s\n', ...
+              strtrim(copystring), fname);
+
+if (nargin == 3)
+   msgstring = sprintf('valid values for "%s" are', context);
+else
+   msgstring = 'valid values for CopyMetaData are';
+end
 
 if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
@@ -42,13 +52,10 @@ end
 % Provide modest error support
 
 if (copy_index < 0)
-   fprintf('ERROR: %s is not a valid metadata string for file %s\n', ...
-                strtrim(copystring), fname)
-   disp('valid metadata strings are: ')
    for i = 1:num_copies,
-      fprintf('%s\n',deblank(copy_meta_data(i,:)))
+      msgstring = sprintf('%s\n%s',msgstring,deblank(copy_meta_data(i,:)));
    end
-   error('Thats all. Start over')
+   error(sprintf('%s\n%s',errorstring,msgstring))
 end
 
 

@@ -129,8 +129,10 @@ character(len=*),           intent(in) :: varname     ! name of location variabl
 character(len=*), optional, intent(in) :: fname       ! file name (for error printing purposes)
 
 integer :: VarID
-integer :: rc
+integer :: rc, ndims
 character(len=32) :: context = 'nc_add_location_atts'
+
+integer :: dimids(NF90_MAX_VAR_DIMS)
 
 ! find the id of the given variable name
 rc = nf90_inq_varid(ncFileID, varname, varid=VarID)
@@ -151,11 +153,18 @@ call nc_check(rc, context, 'put_att:storage_order', fname)
 rc = nf90_put_att(ncFileID, VarID, 'units', trim(LocationUnits))
 call nc_check(rc, context, 'put_att:units', fname)
 
-! if there is more than a single option for the vertical,
-! create a variable to store the vert choice
+! Some of the locations types need another variable to define
+! the vertical coordinate system being used. If you are writing
+! an array of locations, you also need to write an array of the vertical
+! coordinate system. That array must be the same length as the location
+! array being written.
 
 if (has_vertical_choice()) then
-   call nc_write_location_vert(ncFileID, VarID, fname)
+
+   rc = nf90_inquire_variable(ncFileID, VarID, ndims=ndims, dimids=dimids)
+   call nc_check(rc, context, 'inquire_variable:'//trim(varname), fname)
+   call nc_write_location_vert(ncFileID, dimids(ndims), fname)
+
 endif
 
 end subroutine nc_add_location_atts
@@ -229,7 +238,7 @@ integer,          optional, intent(out) :: WhichVertVarID
 character(len=*), optional, intent(in)  :: fname      ! file name (for printing purposes)
 
 integer :: rc
-character(len=32) :: context = 'nc_write_location_vert'
+character(len=32) :: context = 'nc_write_location_varids'
 
 rc = nf90_inq_varid(ncFileID, 'location', varid=LocationVarID)
 call nc_check(rc, context, 'inq_varid:location ', fname)
@@ -264,8 +273,12 @@ logical :: write_vert
 integer :: rc
 character(len=32) :: context = 'nc_write_single_location'
 
+! only let the user choose to write the vertical coordinate info
+! if the location module has a vertical choice
 write_vert = .false.
-if (present(do_vert)) write_vert = do_vert
+if (present(do_vert)) then
+   if (has_vertical_choice()) write_vert = do_vert
+endif
 
 rc = nf90_inq_varid(ncFileID, 'location', varid=LocationVarID)
 call nc_check(rc, context, 'location', fname)
@@ -315,8 +328,12 @@ logical :: write_vert
 integer :: rc, i, starthere
 character(len=32) :: context = 'nc_write_single_location'
 
+! only let the user choose to write the vertical coordinate info
+! if the location module has a vertical choice
 write_vert = .false.
-if (present(do_vert)) write_vert = do_vert
+if (present(do_vert)) then
+   if (has_vertical_choice()) write_vert = do_vert
+endif
 
 starthere = 1
 if (present(startlocindex)) starthere = startlocindex
