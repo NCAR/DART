@@ -83,8 +83,8 @@ c     outfile = 'prepqm.littleendian'
 c
 c liu 03/16/2005
 C
-      PRINT*,'INPUT FILE',infile
-      PRINT*,'OUTPUT FILE',outfile
+      PRINT*,'INPUT FILE: ',infile
+      PRINT*,'OUTPUT FILE: ',outfile
 
 C
 C  Use STAT function to get size of input BUFR file
@@ -96,7 +96,7 @@ c  as the compiler. but changing it so the return code was assigned to
 c  an integer variable before being tested seemed to fix the problem.
       rc = STAT(infile,JSTAT)
       IF (rc.NE.0) THEN
-         PRINT *,'ERROR IN FUNCTION STAT GETTING FILE STATS'
+         PRINT*,'ERROR IN FUNCTION STAT GETTING FILE INFO, RC = ',rc
          CALL EXIT(99)
       ELSE
 c        If this program has an error, or if the output files are missing data
@@ -119,7 +119,7 @@ C  Allocate array cbuf to store input file in memory.
 C
       allocate(cbuf(kbytes),stat=istat)
       IF (istat.ne.0) THEN
-        PRINT *,' ERROR Allocating ',kbytes,' bytes to read in file ',
+        PRINT*,' ERROR Allocating ',kbytes,' bytes to read in file ',
      &          infile
         CALL EXIT(4)
       ENDIF
