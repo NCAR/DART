@@ -1019,7 +1019,7 @@ AdvanceTime : do
    endif  ! if doing state space posterior inflate
 
    ! Write out analysis diagnostic files if requested.  This contains the 
-   ! posterior infalted ensemble and updated {prior,posterior} inflation values
+   ! posterior inflated ensemble and updated {prior,posterior} inflation values
    if (get_stage_to_write('analysis')) then
       if ((output_interval > 0) .and. &
           (time_step_number / output_interval * output_interval == time_step_number)) then
