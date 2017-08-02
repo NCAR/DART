@@ -513,6 +513,8 @@ Single File I/O:
 - added QTY_CWP_PATH and QTY_CWP_PATH_ZERO to the default quantities list for
   the obs_def_cwp_mod.f90 forward operator.
 
+- improved some error messages in the diagnostic matlab scripts
+
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + MMM DD 2017 :: next revision summary.  Revision: 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
