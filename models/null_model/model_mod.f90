@@ -83,7 +83,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 
 ! Namelist with default values
 ! Model size can be as small as 1 here.
-integer  :: model_size        = 1
+integer  :: model_size        = 2
 real(r8) :: delta_t           = 0.05_r8
 integer  :: time_step_days    = 0
 integer  :: time_step_seconds = 3600
