@@ -92,7 +92,7 @@
    /
 
 &assim_tools_nml
-   filter_kind                     = 10,
+   filter_kind                     = 1,
    cutoff                          = 1000000.0,
    sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
