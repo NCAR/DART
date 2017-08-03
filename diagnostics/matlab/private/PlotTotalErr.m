@@ -30,7 +30,7 @@ function PlotTotalErr( pinfo )
 
 switch lower(pinfo.model)
 
-   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04','ikeda'}
+   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04','ikeda', 'null'}
 
       %% Get the appropriate netcdf variables
 

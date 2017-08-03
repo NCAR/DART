@@ -49,7 +49,7 @@ switch lower(model)
 
       vars.fname = fname;
 
-   case {'lorenz_96', 'lorenz_04'}
+   case {'lorenz_96', 'lorenz_04', 'null'}
 
       num_vars = dim_length(fname,'location'); % determine # of state varbls
 

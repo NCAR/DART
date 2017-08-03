@@ -58,7 +58,7 @@ pinfo = CheckModel(fname);   % also gets default values for this model.
 
 switch lower(pinfo.model)
 
-   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04','forced_lorenz_96'}
+   case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04','forced_lorenz_96', 'null'}
 
       if (ishold), clear var1 var2 var3 ens_mem ltype; end
 

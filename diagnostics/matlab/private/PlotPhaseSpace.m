@@ -113,7 +113,7 @@ switch lower(pinfo.model)
       legend boxoff
 
    case {'9var', 'lorenz_63', 'lorenz_84', 'lorenz_96', 'lorenz_96_2scale', ...
-	 'lorenz_04', 'forced_lorenz_96', 'simple_advection'}
+	 'lorenz_04', 'forced_lorenz_96', 'simple_advection', 'null'}
 
       BulletProof(pinfo, X, Y, Z)          % rudimentary bulletproofing
 
