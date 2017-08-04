@@ -44,6 +44,10 @@
 # Each model component has their own number of instances.
 # ==============================================================================
 
+echo "==================="
+echo "Starting DART_config"
+echo "==================="
+
 if ( ! -e ./xmlquery ) then
    echo "ERROR: $0 must be run from a CASEROOT directory".
    exit -1
@@ -223,6 +227,7 @@ chmod 0755 stage_dart_files
 
 # multi_cplr: Can't use NINST_ATM because it has been set to the number of 
 #             instances per coupler, 1 for now.
+
 cat << EndOfText >! update_dart_namelists
 #!/bin/sh
 
@@ -241,18 +246,23 @@ g;num_output_obs_members ;s;= .*;= ${NINST_ATM};
 wq
 ex_end
 
-# If we are using WACCM (i.e. WCCM or WACCM) we have preferred values
-echo "${COMPSET}" | grep CCM
-if [[ \$? == 0 ]]; then 
-   sed -e "/ vert_normalization_scale_height /c\ vert_normalization_scale_height = 2.5" \
-       -e "/ highest_obs_pressure_Pa /c\ highest_obs_pressure_Pa = 0.0001" \
-       -e "/ highest_state_pressure_Pa /c\ highest_state_pressure_Pa = 0.01" \
-       -e "/ vert_coord /c\ vert_coord = 'log_invP'" \
-       input.nml > input.nml.waccm || exit 1
-   mv input.nml.waccm input.nml || exit 1
+# If we are using WACCM{-X} (i.e. WCxx or WXxx) we have preferred values
+# $waccm comes from setup*
+if [[ "\$waccm" = "true" ]]; then 
+   list=\`grep '^[ ]*vert_coord' input.nml | sed -e "s#[=,]##g"\`
+   if [[ "\$list[3]" = "log_invP" ]]; then
+      list=`grep '^[ ]*vert_normalization_scale_height' input.nml | sed -e "s#[=,]##g"`
+      if [[ "\$list[2]" != "1.5" ]]; then
+         echo "WARNING!  input.nml is not using 1.5 for vert_normalization_scale_height."
+         echo "          Use a different value only if you definitely want to. "
+      fi
+   else
+      echo "WARNING!  input.nml is not using log_invP for vert_coord."
+      echo "          log_invP is highly recommended for WACCM{-X}"
+   fi
 else
    echo "Apparently not configured for WACCM"
-   echo "COMPSET is $COMPSET"
+   echo "COMPSET is \$COMPSET"
 fi
 
 exit 0

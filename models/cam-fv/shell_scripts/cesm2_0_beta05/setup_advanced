@@ -237,11 +237,10 @@ setenv baseobsdir   /glade/p/image/Observations/NCEP+ACARS+GPS
 # ==============================================================================
 
 # /glade/scratch/raeder/CAM6_spinup_sst.25/archive/rest/2013-06-15-00000
-# setenv refcase     CAM6_spinup2
 setenv refcase     CAM6_spinup_sst.25
 setenv refyear     2013
 setenv refmon      06
-setenv refday      15
+setenv refday      01
 setenv reftod      00000
 
 # useful combinations of time that we use below
@@ -265,6 +264,8 @@ setenv stagedir /glade/scratch/${USER}/${refcase}/archive/rest/${reftimestamp}
 # start_tod
 #
 # short_term_archiver  Copies the files from each job step to a 'rest' directory.
+#                      WARNING; if this is true, inflation restart files
+#                               may not end up in $rundir.  Look in $arch_dir/esp/{hist,rest}
 # long_term_archiver   Puts the files from all completed steps on tape storage.
 #
 # stop_option   Units for determining the forecast length between assimilations
@@ -533,22 +534,16 @@ ex ${caseroot}/env_archive.xml <<"ex_end"
 .,/obs_seq/d
 insert
     <comp_archive_spec compclass="esp" compname="cam">
-      <file_extension suffix="da\.log\..+">
-        <subdir>logs</subdir>
-        <keep_last_in_rundir>false</keep_last_in_rundir>
-      </file_extension> 
-      <file_extension suffix="dart_log\..+">
-        <subdir>logs</subdir>
-        <keep_last_in_rundir>false</keep_last_in_rundir>
-      </file_extension>
-      <rest_file_extension>\..*?inf_.*?\.</rest_file_extension>
+      <rest_file_extension>\.output.*?inf_.*?\.</rest_file_extension>
       <hist_file_extension>\..*?[^f]_mean\..*?\.nc$</hist_file_extension>
       <hist_file_extension>\..*?[^f]_sd\..*?\.nc$</hist_file_extension>
       <hist_file_extension>\.input\..*?\.nc$</hist_file_extension>
+      <hist_file_extension>\.forecast\..*?\.nc$</hist_file_extension>
       <hist_file_extension>\.preassim\..*?\.nc$</hist_file_extension>
       <hist_file_extension>\.postassim\..*?\.nc$</hist_file_extension>
+      <hist_file_extension>\.analysis\..*?\.nc$</hist_file_extension>
       <hist_file_extension>\.output\..*?\.nc$</hist_file_extension>
-      <hist_file_extension>cam_obs_seq\..*</hist_file_extension>
+      <hist_file_extension>\.obs_seq_final\..*</hist_file_extension>
 .
 wq
 "ex_end"
@@ -561,7 +556,7 @@ wq
 # s/\.h\\w*/.*.h.*/
 
 # Need \\ because '\' actually appears in the file and we need to escape it and '.'
-grep  'da\\\.log' ${caseroot}/env_archive.xml  || exit 30
+grep  'inf_' ${caseroot}/env_archive.xml  || exit 30
 
 # ==============================================================================
 # Configure the case.
@@ -653,7 +648,7 @@ end
 #       BUT, do arrange it so that each member(instance) spans complete nodes:
 #       modulo(total pe count / number of instances, 15) == 0.
 
-@ nodes_per_instance = 1
+@ nodes_per_instance = 3
 
 # cesm2; is num_instances still needed here, with ninst being a create_newcase argument?
 #        Try it as it is.  Fix as necessary.
@@ -839,11 +834,6 @@ endif
 # instead of letting the compset choose it.
 # ./xmlchange CAM_CONFIG_OPTS="-phys cam4 "
 
-# These are archiving options that may be used.
-# You can turn the short/long term archivers on or off ({short,long}_term_archiver),
-# but these settings should be made in either event.
-
-./xmlchange DOUT_S_ROOT=${archdir}
 # Reduce the amount of stuff that's st_archived.
 #  > Fewer restart sets saved to         $archive/rest and/or to HPSS,
 #       CESM's DOUT_S_SAVE_INTERIM_RESTART_FILES only saves restart sets within a single
@@ -924,16 +914,17 @@ while ($iarg <= $#clm_opts)
 end
 
 # Need to know if we are using WACCM (aka WCCM or WXIE) for several reasons.
-# CESM2; maybe not needed anymore?
 # Mostly file managment issues.
+# CESM2; maybe not needed anymore?
+#        DART_config needs it to set input.nml values.
 # WARNING:   Check your $COMPSET to see whether the grep pattern below will detect your WACCM ! !
 set comps = `echo $COMPSET | sed -e "s#_# #"`
 set atm = `echo $comps[2] | sed -e "s#%# #"`
-echo $atm[2] | grep WC 
-if ($status == 0) then
-   set waccm = true
+if ($#atm > 1) then
+   echo $atm[2] | grep 'W[CX]' 
+   if ($status == 0) setenv waccm true
 else
-   set waccm = false
+   setenv waccm false
    # WACCM benefits from a modified cd_core.F90, but none of the
    # other configurations do.
    # Manhattan; I think cd_core.F90 (doubled div2 diffusion) is no longer needed or useful.
@@ -1054,12 +1045,12 @@ if ($?LSB_JOBNAME) then
    ${MOVE} temp.$$ case.st_archive
    ./xmlchange -file env_batch.xml -subgroup case.st_archive -id JOB_QUEUE -val caldera
    
-   sed -e "/BSUB[ ]*-o/c\#BSUB  -o cesm_lt_arch.stdout.%J " \
-       -e "/BSUB[ ]*-e/c\#BSUB  -e cesm_lt_arch.stderr.%J " \
-       -e "/BSUB[ ]*-J/c\#BSUB  -J ${case}.lt_arch        " \
-       -e '/ptile/c/#BSUB  -R "span[ptile=1]"'  case.lt_archive >! temp.$$  || exit 56
-   ${MOVE} temp.$$ case.lt_archive
-   ./xmlchange -file env_batch.xml -subgroup case.lt_archive -id JOB_QUEUE -val caldera
+#    sed -e "/BSUB[ ]*-o/c\#BSUB  -o cesm_lt_arch.stdout.%J " \
+#        -e "/BSUB[ ]*-e/c\#BSUB  -e cesm_lt_arch.stderr.%J " \
+#        -e "/BSUB[ ]*-J/c\#BSUB  -J ${case}.lt_arch        " \
+#        -e '/ptile/c/#BSUB  -R "span[ptile=1]"'  case.lt_archive >! temp.$$  || exit 56
+#    ${MOVE} temp.$$ case.lt_archive
+#    ./xmlchange -file env_batch.xml -subgroup case.lt_archive -id JOB_QUEUE -val caldera
 
 else if ($?PBS_JOBNAME) then
    sed -e  "/PBS[ ]*-N/c\#PBS  -N ${case}.st_arch"     \
