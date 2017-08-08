@@ -1,0 +1,29 @@
+flist = { ...
+'random_100' ...
+'random_500' ...
+'random_1000' ...
+'random_5000' ...
+'random_10000' ...
+'random_50000' ...
+'random_100000' ...
+'random_500000' ...
+'random_1000000' };
+
+% it takes too long to load and display
+% for the really large counts.  only make
+% a histogram off the first N entries.
+limit=1000000;
+
+for i = 1:length(flist)
+
+  doit=sprintf('head -n %d < %s > temp', limit, flist{i});
+  system(doit);
+  x=load('temp');
+  histogram(x, 100);
+  titlestr=sprintf('%s (first %d if > %d)', flist{i}, limit, limit);
+  title(titlestr,'Interpreter','none');
+  disp('hit enter to continue')
+  pause; 
+
+end
+

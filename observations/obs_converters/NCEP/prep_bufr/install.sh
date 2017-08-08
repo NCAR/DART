@@ -27,36 +27,59 @@
 set -eua
  
 #  ------------------------------------------------------------------------
-#  CPLAT - platform type (linux, sgi, aix, sun, macosx)
+#  CCOMP, FCOMP - select the compiler combination to use
 #  ------------------------------------------------------------------------
  
-# this choice here should really be compiler, i.e. ifort, pgi, gfortran
-#CPLAT=macosx
-CPLAT=linux
-#CPLAT=aix
+CCOMP=gnu
+#CCOMP=intel
+#CCOMP=pgi
+#CCOMP=default
 
-#  set up the compilers to use
+FCOMP=gnu
+#FCOMP=intel
+#FCOMP=pgi
+#FCOMP=f77
+
+#  ------------------------------------------------------------------------
+#  UNDERSCORE - if needed to link the C and fortran subroutine names
+#  ------------------------------------------------------------------------
+
+#UNDERSCORE=none
+UNDERSCORE=add
+
 #  -----------------------------------------------------
  
-if [ $CPLAT = sgi ]
-then
-   cc=cc; ff=f77
-elif [ $CPLAT = linux ]
-then
-# possible different compiler choices
-#   cc='cc -O'; ff='pgf90 -O'
-#   cc='icc -O'; ff='ifort -O'
-    cc='gcc -DUNDERSCORE -O'; ff='ifort -O'
-elif [ $CPLAT = aix ]
-then
-   cc='cc -O'; ff='f77 -O'
-elif [ $CPLAT = sun ]
-then
-   cc=cc; ff=f77
-elif [ $CPLAT = macosx ]
-then
-   cc='gcc -DUNDERSCORE'; ff=gfortran
+if   [ $CCOMP = gnu ] ; then
+   cc=gcc ;
+elif [ $CCOMP = intel ] ; then
+   cc=icc ;
+elif [ $CCOMP = pgi ] ;  then
+   cc=pgcc ;
+else
+   cc=cc ;
 fi
+
+if   [ $FCOMP = intel ] ; then
+   ff=ifort 
+elif [ $FCOMP = gnu ] ; then
+   ff=gfortran 
+elif [ $FCOMP = pgi ] ; then
+   ff=pgf90 
+elif [ $FCOMP = f77 ] ; then
+   ff=f77 
+else
+   echo error: unrecognized FCOMP name
+   exit 1
+fi
+
+if [ $UNDERSCORE = add ] ; then
+   cc="$cc -DUNDERSCORE"
+fi
+
+# in any case, add -O for optimized code
+cc="$cc -O"
+ff="$ff -O"
+
 
 
 #  Compile and archive the Bufr Library

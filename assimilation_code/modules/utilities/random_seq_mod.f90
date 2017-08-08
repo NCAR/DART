@@ -4,6 +4,10 @@
 !
 ! $Id$
 
+!> Random number and random sequence routines.  Can generate random draws 
+!> from a uniform distribution or random draws from differently shaped
+!> distributions (e.g. gaussian, gamma, exponential)
+
 module random_seq_mod
 
 ! This module now contains both the original contents and the routines
@@ -15,8 +19,15 @@ use utilities_mod, only : register_module, error_handler, E_ERR
 implicit none
 private
 
-public :: random_seq_type, init_random_seq, random_gaussian, &
-   several_random_gaussians, random_uniform, twod_gaussians
+public :: random_seq_type, &
+          init_random_seq, &
+          random_uniform, &
+          random_gaussian, &
+          several_random_gaussians, & 
+          twod_gaussians, &
+          random_gamma, & 
+          random_inverse_gamma, & 
+          random_exponential
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -35,7 +46,8 @@ character(len=128), parameter :: revdate  = "$Date$"
 integer :: seq_number = -1
 
 ! the following routines were transcribed from C to F90, originally
-! from the GNU scientific library:  init_ran, ran_unif, ran_gauss
+! from the GNU scientific library:  init_ran, ran_unif, ran_gauss,
+! ran_gamma
 
 integer, parameter :: N = 624   ! period parameters
 integer, parameter :: M = 397
@@ -51,7 +63,7 @@ integer(i8), parameter :: C2          = z'00000000EFC60000'
 type random_seq_type
    private
    integer     :: mti
-   integer(i8) :: mt(0:N-1)   ! FIXME: move this to 1:N once its working
+   integer(i8) :: mt(0:N-1)
    real(r8)    :: lastg
    logical     :: gset
 end type random_seq_type
@@ -62,19 +74,20 @@ character(len=128) :: errstring
 
 contains
 
-
-
+!========================================================================
+! Public entry points
 !========================================================================
 
-subroutine init_random_seq(r, seed)
-!----------------------------------------------------------------------
-! An integer seed can be used to get a particular repeatable sequence.
+!------------------------------------------------------------------------
 
-!
-implicit none
+!> An integer seed can be used to get a particular repeatable sequence.
+
+subroutine init_random_seq(r, seed)
 
 type(random_seq_type), intent(inout) :: r
 integer, optional,     intent(in)    :: seed
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Initialize the generator; use given seed if present, else sequence
 if(present(seed)) then
@@ -86,45 +99,55 @@ endif
 
 end subroutine init_random_seq
 
-!========================================================================
+!------------------------------------------------------------------------
+
+!> return a random draw from a uniform distribution
+!> between 0.0 and 1.0
 
 function random_uniform(r)
 
-implicit none
-
 type(random_seq_type), intent(inout) :: r
-real(r8) :: random_uniform
+real(r8)                             :: random_uniform
+
+if ( .not. module_initialized ) call initialize_module
 
 random_uniform = ran_unif(r)
 
 end function random_uniform
 
-!========================================================================
+!------------------------------------------------------------------------
+
+!> return a random draw from a gaussian distribution
+!> with the specified mean and standard deviation.
 
 function random_gaussian(r, mean, standard_deviation) 
 
-implicit none
-
 type(random_seq_type), intent(inout) :: r
-real(r8), intent(in) :: mean, standard_deviation
-real(r8) :: random_gaussian
+real(r8),              intent(in)    :: mean, standard_deviation
+real(r8)                             :: random_gaussian
+
+if ( .not. module_initialized ) call initialize_module
 
 random_gaussian = ran_gauss(r) * standard_deviation + mean
 
 end function random_gaussian
 
-!========================================================================
+!------------------------------------------------------------------------
+
+!> return multiple random draws from a gaussian distribution
+!> with the specified mean and standard deviation.
 
 subroutine several_random_gaussians(r, mean, standard_deviation, n, rnum)
 
-implicit none
-
 type(random_seq_type), intent(inout) :: r
-real(r8), intent(in) :: mean, standard_deviation
-integer, intent(in) :: n
-real(r8), intent(out) :: rnum(n)
+real(r8),              intent(in)    :: mean
+real(r8),              intent(in)    :: standard_deviation
+integer,               intent(in)    :: n
+real(r8),              intent(out)   :: rnum(n)
 
 integer :: i
+
+if ( .not. module_initialized ) call initialize_module
 
 do i = 1, n
    rnum(i) = ran_gauss(r) * standard_deviation + mean
@@ -132,17 +155,21 @@ end do
 
 end subroutine several_random_gaussians
 
-!========================================================================
+!------------------------------------------------------------------------
+
+!> return a random draw from a 2D multivariate gaussian distribution
+!> with the specified 2 means and covariances.  
 
 subroutine twod_gaussians(r, mean, cov, rnum)
 
-implicit none
-
 type(random_seq_type), intent(inout) :: r
-real(r8), intent(in) :: mean(2), cov(2, 2)
-real(r8), intent(out) :: rnum(2)
+real(r8),              intent(in)    :: mean(2)
+real(r8),              intent(in)    :: cov(2, 2)
+real(r8),              intent(out)   :: rnum(2)
 
 real(r8) :: a11, a21, a22, x1, x2
+
+if ( .not. module_initialized ) call initialize_module
 
 ! Use method from Knuth, exercise 13, section 3.4.1 to generate random
 ! numbers with this mean and covariance
@@ -161,8 +188,112 @@ rnum(2) = mean(2) + a21 * x1 + a22 * x2
 
 end subroutine twod_gaussians
 
-!========================================================================
+!------------------------------------------------------------------------
 
+!> return a random draw from a gamma distribution 
+!> with the specified shape and scale parameter, often
+!> denoted with the symbols kappa and theta.
+!>
+!> note that there are multiple common formulations of
+!> the second parameter to this function.  if you have
+!> 'rate' instead of 'scale' specify:  1.0 / rate  
+!> for the scale parameter.  shape and rate are often 
+!> denoted with the symbols alpha and beta.
+!>
+!> The distribution mean should be: shape * rate, 
+!> and the variance: shape * (rate^2).
+
+
+function random_gamma(r, shape, scale)
+
+type(random_seq_type), intent(inout) :: r
+real(r8),              intent(in)    :: shape 
+real(r8),              intent(in)    :: scale 
+real(r8)                             :: random_gamma
+
+if ( .not. module_initialized ) call initialize_module
+
+if (shape <= 0.0_r8) then
+   write(errstring, *) 'Shape parameter must be positive, was ', shape
+   call error_handler(E_ERR, 'random_gamma', errstring, source, revision, revdate)
+endif
+
+if (scale <= 0.0_r8) then
+   write(errstring, *) 'Scale parameter (scale=1/rate) must be positive, was ', scale
+   call error_handler(E_ERR, 'random_gamma', errstring, source, revision, revdate)
+endif
+
+! internal routine uses shape, scale
+random_gamma = ran_gamma(r, shape, scale)
+
+end function random_gamma
+
+!------------------------------------------------------------------------
+
+!> return a random draw from an inverse gamma distribution 
+!> with the specified shape and scale parameter.
+!> NOTE THIS IS DIFFERENT FROM THE RANDOM GAMMA FORUMULATION.
+!> gamma uses a rate parameter, inverse gamma uses scale.
+!> if you have 'rate' instead of 'scale', specify 1.0 / rate
+
+function random_inverse_gamma(r, shape, scale)
+
+type(random_seq_type), intent(inout) :: r
+real(r8),              intent(in)    :: shape
+real(r8),              intent(in)    :: scale 
+real(r8)                             :: random_inverse_gamma
+
+real(r8) :: g
+
+if ( .not. module_initialized ) call initialize_module
+
+if (shape <= 0.0_r8) then
+   write(errstring, *) 'Shape parameter must be positive, was ', shape
+   call error_handler(E_ERR, 'random_inverse_gamma', errstring, source, revision, revdate)
+endif
+
+if (scale <= 0.0_r8) then
+   write(errstring, *) 'Scale parameter (scale=1/rate) must be positive, was ', scale
+   call error_handler(E_ERR, 'random_inverse_gamma', errstring, source, revision, revdate)
+endif
+
+g = ran_gamma(r, shape, scale)
+
+! ran_gamma can't return 0 so its safe to divide by it
+random_inverse_gamma = 1.0_r8/g
+
+end function random_inverse_gamma
+
+!------------------------------------------------------------------------
+
+!> return a random draw from an exponential distribution with
+!> the specified rate parameter lambda.  if you have a scale parameter,
+!> also called the mean, standard deviation, or survival parameter,
+!> specify 1.0 / scale for rate.
+
+function random_exponential(r, rate)
+
+type(random_seq_type), intent(inout) :: r
+real(r8),              intent(in)    :: rate 
+real(r8)                             :: random_exponential
+
+if ( .not. module_initialized ) call initialize_module
+
+if (rate <= 0.0_r8) then
+   write(errstring, *) 'Rate parameter (rate=1/scale) must be positive, was ', rate
+   call error_handler(E_ERR, 'random_exponential', errstring, source, revision, revdate)
+endif
+
+! internal routine uses shape, scale
+random_exponential = ran_gamma(r, 1.0_r8, 1.0_r8/rate)
+
+end function random_exponential
+
+!-------------------------------------------------------------------
+
+!========================================================================
+! Private, internal routines below here
+!========================================================================
 
 !-------------------------------------------------------------------
 
@@ -177,16 +308,14 @@ end subroutine initialize_module
 
 !-------------------------------------------------------------------
 
-! A random congruential random number generator of the Mersenne Twister type
-! See GNU Scientific Library code.
+!> A random congruential random number generator of the Mersenne Twister type
+!> See GNU Scientific Library code.
 
 subroutine init_ran(s, seed)
  integer, intent(in) :: seed
  type(random_seq_type), intent(out) :: s
 
  integer :: i, sd
-
-if ( .not. module_initialized ) call initialize_module
 
 ! Initialize the generator for use with
 ! repeatable sequences
@@ -213,8 +342,8 @@ end subroutine init_ran
 
 !-----------------------------------------------------------------
 
-!  A random congruential random number generator from
-! the GNU Scientific Library (The Mersenne Twister MT19937 varient.)
+!> A random congruential random number generator from
+!> the GNU Scientific Library (The Mersenne Twister MT19937 varient.)
 
 function ran_unif(s)
  type(random_seq_type), intent(inout) :: s
@@ -222,9 +351,6 @@ function ran_unif(s)
 
 integer :: kk
 integer(i8) :: k, y, m1
-
-if ( .not. module_initialized ) call initialize_module
-
 
 ! original c code:
 !  define MAGIC(y) (((y)&0x1) ? 0x9908b0dfUL : 0)
@@ -303,19 +429,16 @@ end function ran_unif
 
 !------------------------------------------------------------------------
 
+!> Polar (Box-Mueller) method; See Knuth v2, 3rd ed, p122 
+!> Returns a N(-1, 1) random number draw from a gaussian distribution
+
 function ran_gauss(s)
-
-! Polar (Box-Mueller) method; See Knuth v2, 3rd ed, p122 
-
-! Returns a N(-1, 1) random number draw from a gaussian distribution
 
 type(random_seq_type), intent(inout) :: s
 real(r8) :: ran_gauss
 
 real(digits12) :: x, y, r2, t
 integer :: lc
-
-if ( .not. module_initialized ) call initialize_module
 
 ! each pass through this code generates 2 values.  if we have one
 ! saved from a previous call, return it without doing any new work.
@@ -354,6 +477,69 @@ else
 endif
 
 end function ran_gauss
+
+!-------------------------------------------------------------------
+
+!> Gamma(a,b) generator from the GNU Scientific library.
+!>
+!> There are three different parameterizations in common use:
+!>  1. With a shape parameter k and a scale parameter θ.
+!>  2. With a shape parameter α = k and an inverse scale parameter β = 1/θ, called a rate parameter.
+!>  3. With a shape parameter k and a mean parameter μ = k/β.
+!>
+!> warning!
+!> this is the private, internal interface and it uses the first
+!> parameterization, kappa and theta, like the original GSL code.
+!> our public interfaces use the words 'shape', 'scale' and 'rate'
+!> to try to be more clear about which parameterization we're using.
+!>
+!> this internal routine assumes the caller has already verified that
+!> the shape and scale are positive.
+
+recursive function ran_gamma (r, shape, scale) result(g)
+
+type(random_seq_type), intent(inout) :: r
+real(r8), intent(in) :: shape
+real(r8), intent(in) :: scale
+real(r8) :: g
+
+real(r8) :: x, v, u
+real(r8) :: c, d
+
+
+! we chose the public interface to take 'rate' since that 
+! seems to be more common in the kalman world.  but the original
+! code is based on a scale parameter, so that's what we use here.
+
+if (shape < 1.0) then
+   u = random_uniform (r)
+   g = ran_gamma (r, 1.0_r8 + shape, scale) * u ** (1.0_r8 / shape)
+   return
+endif
+
+d = shape - 1.0_r8 / 3.0_r8
+c = (1.0_r8 / 3.0_r8) / sqrt (d)
+v = -1.0_r8
+
+OUTER: do while (.true.)
+    v = -1.0_r8
+    do while (v <= 0.0_r8)
+       x = random_gaussian(r, 0.0_r8, 1.0_r8)
+       v = 1.0_r8 + c * x
+    enddo
+
+    v = v * v * v;
+    u = random_uniform (r);
+
+    if (u < 1 - 0.0331_r8 * x * x * x * x) exit OUTER
+
+    if (log (u) < 0.5_r8 * x * x + d * (1 - v + log (v))) exit OUTER
+
+enddo OUTER
+
+g = scale * d * v
+
+end function ran_gamma
 
 !------------------------------------------------------------------------
 

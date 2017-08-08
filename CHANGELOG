@@ -476,7 +476,7 @@ Single File I/O:
   in the repository.  (Remove it from any private path_names_* files.)
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ July 18 2017 :: bug fixes, documentation updates.  $Revision$
++ July 18 2017 :: bug fixes, documentation updates.  Revision: 11830 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - fixed bug in obs_impact_tool when generating the run-time table.  specifying
@@ -491,8 +491,34 @@ Single File I/O:
   names changed from 'restart' to 'state' for input and output files.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ MMMM DD 2017 :: next revision summary.  Revision: 
++ Aug 2 2017 :: single filenames, random distributions, bug fixes.  $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- added code to support listing input and output filenames directly in the
+  namelist instead of having to go through an indirect text file.  most useful
+  for programs that take a single input and output file, but works for all cases.
+
+- bug fix in location_io_mod.f90 that affected obs_seq_to_netcdf (error in adding
+  vertical location types to output file).
+
+- fix to convert_gpsro_bufr.f90 converter (GPS obs from BUFR files) that failed
+  if r8 defined to be r4.
+
+- added draws from gamma, inverse gamma, and exponential distributions to the
+  random sequence module.
+
+- various updates to the CAM scripts to work more smoothly with the most
+  recent CIME changes and DART Manhattan updates.
+
+- added QTY_CWP_PATH and QTY_CWP_PATH_ZERO to the default quantities list for
+  the obs_def_cwp_mod.f90 forward operator.
+
+- improved some error messages in the diagnostic matlab scripts
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ MMM DD 2017 :: next revision summary.  Revision: 
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 # <next few lines under version control, do not edit>
 # $URL$

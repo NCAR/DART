@@ -88,7 +88,7 @@ c  to have fixed it.  also, for all the recent compilers i have
 c  tested the right offset seems to be 8
       rc = STAT(infile,JSTAT)
       IF (rc.NE.0) THEN
-         PRINT *,'ERROR IN FUNCTION STAT GETTING FILE INFO'
+         PRINT*,'ERROR IN FUNCTION STAT GETTING FILE INFO, RC = ',rc
          CALL EXIT(99)
       ELSE
 c        Use the following print and find the index into JSTAT which is 

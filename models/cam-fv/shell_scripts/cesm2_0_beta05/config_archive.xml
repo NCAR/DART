@@ -1,5 +1,7 @@
 <!-- This code may (or may not) be part of the CESM distribution,
      So it is not protected by the DART copyright agreement. 
+     It is a variation of 
+     cesm2_0_beta05/cime/cime_config/cesm/config_archive.xml
 
 ! DART $Id$
 -->
@@ -51,7 +53,7 @@
     <hist_file_extension>\.h.*.nc$</hist_file_extension>
     <rest_history_varname>unset</rest_history_varname>
     <rpointer>
-      <rpointer_file>rpointer.rof$NINST_STRING</rpointer_file> -->
+      <rpointer_file>rpointer.rof$NINST_STRING</rpointer_file> 
       <rpointer_content>$CASE.rtm.r.$DATENAME.nc</rpointer_content>
     </rpointer>
   </comp_archive_spec>

@@ -278,7 +278,7 @@ handles.ui_edit_adap_inf_Damp = uicontrol(handles.ui_Inflate_Panel, ...
     'Style'               , 'edit', ...
     'Units'               , 'Normalized', ...
     'Position'            , [0.425 0.30 0.20 0.15], ...
-    'String'              , '0.9', ...
+    'String'              , '1.0', ...
     'BackgroundColor'     , 'White', ...
     'FontName'            , atts.fontname, ...
     'FontUnits'           , 'Normalized', ...
@@ -303,7 +303,7 @@ handles.ui_edit_adap_inf_Max = uicontrol(handles.ui_Inflate_Panel, ...
     'Style'               , 'edit', ...
     'Units'               , 'Normalized', ...
     'Position'            , [0.795 0.30 0.20 0.15], ...
-    'String'              , '3.0', ...
+    'String'              , '100.0', ...
     'BackgroundColor'     , 'White', ...
     'FontName'            , atts.fontname, ...
     'FontUnits'           , 'Normalized', ...
@@ -353,7 +353,7 @@ handles.ui_edit_adap_inf_Std_Min = uicontrol(handles.ui_Inflate_Panel, ...
     'Style'               , 'edit', ...
     'Units'               , 'Normalized', ...
     'Position'            , [0.61 0.00 0.20 0.15], ...
-    'String'              , '0.3', ...
+    'String'              , '0.6', ...
     'BackgroundColor'     , 'White', ...
     'FontName'            , atts.fontname, ...
     'FontUnits'           , 'Normalized', ...
@@ -952,10 +952,10 @@ reset_button_Callback()
         handles.model_bias       = 0.0;
         handles.inflation        = 1.02;
         handles.adap_inf_Min     = 1.0;
-        handles.adap_inf_Damp    = 0.9;
-        handles.adap_inf_Max     = 3.0;
+        handles.adap_inf_Damp    = 1.0;
+        handles.adap_inf_Max     = 100.0;
         handles.adap_inf_Std     = 0.6;
-        handles.adap_inf_Std_Min = 0.3;
+        handles.adap_inf_Std_Min = 0.6;
 
         handles.time_step        = 1;
         handles.ready_to_advance = true;
@@ -1085,10 +1085,14 @@ reset_button_Callback()
             h_evolution.prior = plot(handles.time_step - 0.1, ens_new, '*', ...
                 'MarkerSize', 6, 'Color', atts.green);
 
-            for i = 1:handles.ens_size
-                plot([handles.time_step - 1 + 0.1, handles.time_step - 0.1], ...
-                    [handles.ens(i), ens_new(i)], 'Color', atts.green);
-            end
+            % Load up to plot all segments at once, more time efficient than previous loop
+            bx(1:2, 1:handles.ens_size) = 0;
+            by(1:2, 1:handles.ens_size) = 0;
+            bx(1, :) = handles.time_step - 1 + 0.1;
+            bx(2, :) = handles.time_step - 0.1;
+            by(1, :) = handles.ens;
+            by(2, :) = ens_new;
+            plot(bx, by, 'Color', atts.green);
 
             %% Plot the segment for the prior error and spread
             % Want the lower y limit to stay 0 for error spread
@@ -1118,6 +1122,7 @@ reset_button_Callback()
             temp_rank(:, 2)        = 0;
             temp_rank(ens_rank, 2) = 1;
 
+            hold off
             bar(temp_rank,'stacked');
 
             % Plot the figure window for this update
@@ -1193,26 +1198,31 @@ reset_button_Callback()
             set(handles.ui_button_advance_model, 'String', 'Advance Model');
 
             % Adjust the horizontal range of the plot windows as needed
-            if( mod(handles.time_step, 5) == 0)
+            % Have moved to fixed 10-step wide windows rather than earlier shifting for speed
+            % Using cla clears out plot buffers and avoids slowdown with time
+            if( mod(handles.time_step, 10) == 0)
                 axes(handles.h_state_evolution);
+                cla
                 axlims    = axis;
-                axlims(1) = handles.time_step - 4;
-                axlims(2) = handles.time_step + 6;
+                axlims(1) = handles.time_step;
+                axlims(2) = handles.time_step + 10;
                 axis(axlims)
 
                 % Want the lower y limit to stay 0 for error spread
                 axes(handles.h_err_spread_evolution);
+                cla
                 axlims    = axis;
-                axlims(1) = handles.time_step - 4;
-                axlims(2) = handles.time_step + 6;
+                axlims(1) = handles.time_step;
+                axlims(2) = handles.time_step + 10;
                 axlims(3) = 0.0;
                 axis(axlims)
 
                 % Want the lower y limit to stay 0 for inflation
                 axes(handles.h_inflation_evolution);
+                cla
                 axlims    = axis;
-                axlims(1) = handles.time_step - 4;
-                axlims(2) = handles.time_step + 6;
+                axlims(1) = handles.time_step;
+                axlims(2) = handles.time_step + 10;
                 axis(axlims)
 
             end
@@ -1271,6 +1281,8 @@ reset_button_Callback()
             temp_rank(:, 2)        = 0;
             temp_rank(ens_rank, 2) = 1;
 
+            
+            hold off
             bar(temp_rank, 'stacked');
 
             % Update the permanent storage of the rank values

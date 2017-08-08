@@ -158,7 +158,7 @@ switch lower(pinfo.model)
       legend boxoff
 
    case {'lorenz_96', 'lorenz_96_2scale', 'forced_lorenz_96', 'lorenz_04', ...
-         'ikeda', 'simple_advection'}
+         'ikeda', 'simple_advection', 'null'}
 
       %% Plot all variables in own subplot ... might get cluttered.
       figure(1); clf; iplot = 0;

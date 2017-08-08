@@ -9,7 +9,8 @@
 # this script builds and  runs the location test code for each of the
 # possible location modules.
 
-set LOCLIST = 'annulus column oned threed_sphere twod twod_sphere threed threed_cartesian'
+set LOCLIST = 'annulus channel column oned threed threed_cartesian threed_sphere twod twod_annulus twod_sphere'
+
 
 # clean up from before
 foreach i ( $LOCLIST )

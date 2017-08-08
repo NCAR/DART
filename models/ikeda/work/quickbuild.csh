@@ -11,6 +11,22 @@
 #
 # usage: [ -mpi | -nompi ]
 #----------------------------------------------------------------------
+# The input model states for both perfect_model_obs and filter come
+# from netCDF files and must be built from the source .cdl files.
+#----------------------------------------------------------------------
+
+which ncgen > /dev/null
+if ($status != 0) then
+  echo "The required input netCDF files must be build using 'ncgen'"
+  echo "'ncgen' is not currently available. It comes with every"
+  echo "netCDF installation and is needed by DART. Stopping."
+  exit 1
+endif
+
+if ( ! -e perfect_input.nc ) ncgen -o perfect_input.nc perfect_input.cdl
+if ( ! -e  filter_input.nc ) ncgen -o  filter_input.nc  filter_input.cdl
+
+#----------------------------------------------------------------------
 # 'preprocess' is a program that culls the appropriate sections of the
 # observation module for the observations types in 'input.nml'; the
 # resulting source file is used by all the remaining programs,

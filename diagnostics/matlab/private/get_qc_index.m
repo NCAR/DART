@@ -1,7 +1,7 @@
-function copy_index = get_qc_index(fname, copystring)
-%% get_qc_index  Gets an index corresponding to QC meta_data string
-% Retrieves index associated with a given QC meta_data string in
-% file fname. If string is not found in meta_data list, a -1 is returned.
+function copy_index = get_qc_index(fname, copystring, context)
+%% get_qc_index  Gets an index corresponding to QCMetaData string
+% Retrieves index associated with a given QCMetaData string in fname.
+% If string does not match any, a fatal error is thrown. 
 %
 % Example:
 % fname = 'obs_epoch_001.nc';
@@ -14,8 +14,17 @@ function copy_index = get_qc_index(fname, copystring)
 %
 % DART $Id$
 
-% Need to get the QC MetaData (strings with the names)
+% Need to get the QCMetaData (strings with the names)
 % We then search the metadata for each copy for the appropriate copies.
+
+errorstring = sprintf('\nERROR: "%s" is not a valid QCMetaData value for file %s\n', ...
+              strtrim(copystring), fname);
+
+if (nargin == 3)
+   msgstring = sprintf('valid values for "%s" are', context);
+else
+   msgstring = 'valid values for QCMetaData are';
+end
 
 if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
@@ -45,13 +54,10 @@ end
 % Provide modest error support
 
 if (copy_index < 0)
-   fprintf('ERROR: %s is not a valid metadata string for file %s\n', ...
-                copystring, fname)
-   disp('valid metadata strings are: ')
    for i = 1:num_copies,
-      disp(sprintf('%s',deblank(qc_meta_data(i,:))))
+      msgstring = sprintf('%s\n%s',msgstring,deblank(qc_meta_data(i,:)));
    end
-   error('please try again')
+   error(sprintf('%s\n%s',errorstring,msgstring))
 end
 
 function str2 = dewhite(str1)

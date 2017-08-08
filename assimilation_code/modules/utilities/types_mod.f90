@@ -21,7 +21,7 @@ public :: SECPERDAY
 public :: t_kelvin, es_alpha, es_beta, es_gamma, gas_constant_v, gas_constant
 public :: L_over_Rv, ps0, earth_radius, gravity
 public :: metadatalength, obstypelength, varnamelength, vtablenamelength
-public :: MAX_NUM_DOMS
+public :: MAX_NUM_DOMS, MAX_FILES
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -33,15 +33,17 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! constants that need to be shared - really has nothing to do with types ...
 !----------------------------------------------------------------------------
 
-integer, parameter :: metadatalength   = 64 ! 75 is max w/out wrapping in ncdump
-integer, parameter :: varnamelength    = 31 ! max name of any fortran variable
-                                            ! in F90/95. increased to 63 in F2003
-integer, parameter :: obstypelength    = 31 ! because of variable name limits.
-                                            ! use this for obs types/kinds
-integer, parameter :: vtablenamelength = 64 ! use this for the model_mod variable table items
+integer, parameter :: metadatalength   = 64   ! 75 is max w/out wrapping in ncdump
+integer, parameter :: varnamelength    = 31   ! max name of any fortran variable
+                                              ! in F90/95. increased to 63 in F2003
+integer, parameter :: obstypelength    = 31   ! because of variable name limits.
+                                              ! use this for obs types/kinds
+integer, parameter :: vtablenamelength = 64   ! use this for the model_mod variable table items
                                            
-integer, parameter :: MAX_NUM_DOMS     = 10 ! max num domains. this is arbitrarily 
-                                            ! based on WRF's maximum number of domains
+integer, parameter :: MAX_NUM_DOMS     = 10   ! max num domains. this is arbitrarily 
+                                              ! based on WRF's maximum number of domains
+
+integer, parameter :: MAX_FILES        = 1000 ! maximum number of files
 
 !----------------------------------------------------------------------------
 ! Attributes for variable kinds -- declaring sizes explicitly means we know

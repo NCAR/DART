@@ -24,7 +24,7 @@ program convert_gpsro_bufr
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-use          types_mod, only : r8
+use          types_mod, only : r8,r4,digits12
 use   time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time,&
                                increment_time, get_time, set_date, operator(-),  &
                                operator(>=), operator(<), operator(>), operator(<=), &
@@ -39,14 +39,13 @@ use   obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,       
                                write_obs_seq, init_obs_sequence, get_num_obs,   &
                                insert_obs_in_seq, destroy_obs_sequence,         &
                                set_copy_meta_data, set_qc_meta_data, set_qc,    & 
-                               set_obs_values, set_obs_def
+                               set_obs_values, set_obs_def, read_obs_seq_header
 use   obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_type_of_obs, &
                                set_obs_def_error_variance, set_obs_def_location, &
                                set_obs_def_key
 use    obs_def_gps_mod, only : set_gpsro_ref
 use       obs_kind_mod, only : GPSRO_REFRACTIVITY
 use  obs_utilities_mod, only : add_obs_to_seq
-
 
 implicit none
 
@@ -56,22 +55,27 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
+! routines used from the bufrlib.a library:
+!    openbf, datelen, readmg,  ireadmg, ireadsb
+!    ufbint, ireadsb, ireadmg, closbf
+!    upftbv, ufbint,  ufbseq
+! be careful about passing real values across to these routines.
+! they are compiled without using our r4 and r8 kinds.  if r8=r4
+! you must use digits12 when passing real arrays.
 
 integer, parameter ::   num_copies = 1,   &   ! number of copies in sequence
                         num_qc     = 1        ! number of QC entries
 
-character (len=129) :: msgstring, next_infile
+character (len=512) :: msgstring
+character (len=256) :: next_infile
 character (len=80)  :: name
 character (len=6)   :: subset
 integer :: nlevels, nfiles, num_new_obs, oday, osec, &
-           iyear, imonth, iday, ihour, imin, isec, obs_num, &
+           iyear, imonth, iday, ihour, imin, isec, obs_count, gps_obs_num, obs_num_byfile, &
            io, iunit, filenum, dummy
-logical :: file_exist, first_obs, did_obs, from_list = .false.
+logical :: file_exist, first_obs, from_list = .false.
 real(r8) :: oerr, qc, nx, ny, nz, &
             rfict, obsval, obs_val(1), qc_val(1)
-
-!real(r8), allocatable :: lat(:), lon(:), hght(:), refr(:), azim(:), & 
-!                         hghtp(:), refrp(:)
 
 type(obs_def_type)      :: obs_def
 type(obs_sequence_type) :: obs_seq
@@ -80,49 +84,62 @@ type(time_type)         :: obs_time, prev_time
 type(time_type)         :: anal_time, window_min, window_max
 
 integer :: gday, gsec, dsec, bsec, bday, esec, eday, num_excluded_bytime
+integer :: existing_obs
 logical :: use_bending_angle = .false.      ! Reserve for later.
+
+! unused vars required by an interface that doesn't allow optional args
+integer :: dummy_a, dummy_b, dummy_c, dummy_d
+logical :: dummy_tf
+character(len=32) :: dummy_str
+
 !------------------------------------------------------------------------
 ! Array for bufr data
 !------------------------------------------------------------------------
- character(len=80)  hdr1a
- character(len=10)  nemo
- character(len=8)   subsetb
- character(len=1)   cflg
- character(len=7)   obstype
- character(len=120) crecord
+character(len=80)  hdr1a
+character(len=10)  nemo
+character(len=8)   subsetb
+character(len=1)   cflg
+character(len=7)   obstype
+character(len=120) crecord
 
- integer, parameter:: unit_in=91
- integer, parameter:: unit_aux=92
- integer, parameter:: n1ahdr=10
- integer, parameter:: maxlevs=500    ! max number of observation levels (no longer namelist parameter)
- integer, parameter:: maxinfo=16
- integer, parameter:: mxib=31
- integer, dimension(50):: isats
+integer, parameter:: unit_in=91
+integer, parameter:: unit_aux=92
+integer, parameter:: n1ahdr=10
+integer, parameter:: maxlevs=500    ! max number of observation levels (no longer namelist parameter)
+integer, parameter:: maxinfo=16
+integer, parameter:: mxib=31
+integer, dimension(50):: isats
 
- integer :: num_satid, nk
- integer :: ireadmg,ireadsb
- integer :: idate,iret,num_message,num_subset
- integer :: ikx, nlevs, nreps_ROSEQ1
- integer :: i,k,m,said,ptid
- integer :: nread,ndata,nprof_gps
- integer :: ibit(mxib),nib
- integer :: nsatid,nlines,istat
- integer :: isatid,isub,iuse
+integer :: ireadmg,ireadsb   ! functions from bufr routines that return integers
+integer :: num_satid, nk
+integer :: idate,iret,num_message,num_subset
+integer :: ikx, nlevs, nreps_ROSEQ1
+integer :: i,k,m,said,ptid
+integer :: nread,ndata,nprof_gps,nprof_bytime,nprof_bad
+integer :: nprof_nosat,nprof_cdaac_bad,nprof_gras_bad,nprof_levs_bad
+integer :: ibit(mxib),nib
+integer :: nsatid,nlines,istat
+integer :: isatid,isub,iuse
 
- real(r8) :: qfro, pcc, roc, impact, geopot
- real(r8) :: height,rlat,rlon,ref,referr,ref_pccf
- real(r8) :: freq_chk,freq,bend,bend_error,bend_pccf
- real(r8), dimension(n1ahdr):: hdr
- real(r8), dimension(50,maxlevs):: data1b
- real(r8), dimension(50,maxlevs):: data2a
- real(r8), dimension(maxlevs):: nreps_this_ROSEQ2
+real(r8) :: pcc, roc, impact, geopot
+real(r8) :: height,rlat,rlon,ref,referr,ref_pccf
+real(r8) :: freq_chk,freq,bend,bend_error,bend_pccf
 
- integer, allocatable, dimension(:):: gps_satid
- !real(r8), allocatable, dimension(:,:):: cdata_all
+! these are passed to the bufr library and must be 8 bytes even
+! if this converter is compiled with reals = r4
+real(digits12), dimension(n1ahdr):: hdr
+real(digits12), dimension(1)     :: qfro
+real(digits12), dimension(maxlevs):: nreps_this_ROSEQ2
+real(digits12), dimension(50,maxlevs):: data1b
+real(digits12), dimension(50,maxlevs):: data2a
 
- integer, parameter:: max_num_obs=200000    ! max number of observations 
+integer, allocatable, dimension(:):: gps_satid
 
- logical  lone, good
+! not in namelist anymore?  doesn't have to be a parameter;
+! could be added back to namelist if needed.
+integer, parameter:: max_num_obs=200000    ! max number of observations / input file
+
+logical :: lone, good
 
 !------------------------------------------------------------------------
 !  Declare namelist parameters
@@ -146,13 +163,17 @@ namelist /convert_gpsro_bufr_nml/ ray_htop, ray_hbot, obs_window_hr, if_global, 
                                   gsi_error_inv_factor, &
                                   gpsro_bufr_file, gpsro_bufr_filelist, &
                                   gpsro_out_file,  gpsro_aux_file, debug
+
 !------------------------------------------------------------------------
+! start of executable code
+!------------------------------------------------------------------------
+
+ ! these are unused with the local operator, but would be required if
+ ! you wanted to do the computation for the non-local operator.
  nx        = 0.0_r8
  ny        = 0.0_r8
  nz        = 0.0_r8
  rfict     = 0.0_r8
- nprof_gps = 0
-
  data hdr1a / 'YEAR MNTH DAYS HOUR MINU PCCF ELRC SAID PTID GEODU' /
  data nemo /'QFRO'/
 
@@ -178,19 +199,20 @@ namelist /convert_gpsro_bufr_nml/ ray_htop, ray_hbot, obs_window_hr, if_global, 
  1030 format(a1,a7,2x,a120)
  1130 continue
  if (istat>0) then
-    write(*,*) '***ERROR*** error reading convinfo, istat=',istat
-    stop
+    write(msgstring,*) 'error reading convinfo from file "'//trim(gpsro_aux_file)//'"', ' istat=',istat
+    call error_handler(E_ERR, 'convert_gpsro_bufr', msgstring, &
+                       source, revision, revdate)
  endif
 
  num_satid=nsatid
  allocate(gps_satid(num_satid))
  gps_satid(1:num_satid)=isats(1:num_satid)
- write(*,'(A,20I5)') 'convert_gpsro_bufr: satellite id:',gps_satid
+ if (debug) write(*,'(A,20I5)') 'convert_gpsro_bufr: satellite id:',gps_satid
 
 !------------------------------------------------------------------------
 ! initialize some values
 !------------------------------------------------------------------------
-obs_num = 1
+obs_count = 0
 qc = 0.0_r8
 first_obs = .true.
 call set_calendar_type(GREGORIAN)
@@ -254,28 +276,47 @@ call static_init_obs_sequence()
 call init_obs(obs, num_copies, num_qc)
 call init_obs(prev_obs, num_copies, num_qc)
 inquire(file=gpsro_out_file, exist=file_exist)
+
+! blank line for readability
+call error_handler(E_MSG, '', '', source, revision, revdate)
+
 if ( file_exist ) then
 
-   print *, "found existing obs_seq file, appending to ", trim(gpsro_out_file)
+   write(msgstring, *) 'Found existing obs_seq file, will append obs to "'//trim(gpsro_out_file)//'"'
+   call error_handler(E_MSG, 'convert_gpsro_bufr', msgstring, source, revision, revdate)
+
+   ! open the file and figure out how many obs are already there
+   call read_obs_seq_header(gpsro_out_file, dummy_a, dummy_b, existing_obs, &
+      dummy_c, dummy_d, dummy_str, dummy_tf, close_the_file = .true.)
+
+   write(msgstring, *) "Existing file already contains ", existing_obs, " observations."
+   call error_handler(E_MSG, 'convert_gpsro_bufr', msgstring, source, revision, revdate)
+
+   ! blank line
+   call error_handler(E_MSG, '', '', source, revision, revdate)
+
+   ! reopen the file and tell it how many obs we potentially will be adding
    call read_obs_seq(gpsro_out_file, 0, 0, num_new_obs, obs_seq)
 
 else
 
-  print *, "no existing obs_seq file, creating ", trim(gpsro_out_file)
-  print *, "max entries = ", num_new_obs
-  call init_obs_sequence(obs_seq, num_copies, num_qc, num_new_obs)
+   write(msgstring, *) 'Creating new obs_seq file "'//trim(gpsro_out_file)//'"'
+   call error_handler(E_MSG, 'convert_gpsro_bufr', msgstring, source, revision, revdate)
 
-  do k = 1, num_copies
-    call set_copy_meta_data(obs_seq, k, 'COSMIC GPS observation')
-  end do
-  do k = 1, num_qc
-    call set_qc_meta_data(obs_seq, k, 'COSMIC QC')
-  end do
+   write(msgstring, *) 'Maximum observation count to be added is ', num_new_obs
+   call error_handler(E_MSG, 'convert_gpsro_bufr', msgstring, source, revision, revdate)
+ 
+   ! blank line
+   call error_handler(E_MSG, '', '', source, revision, revdate)
+
+   ! create the new obs sequence here
+   call init_obs_sequence(obs_seq, num_copies, num_qc, num_new_obs)
+
+   call set_copy_meta_data(obs_seq, 1, 'COSMIC GPS observation')
+   call set_qc_meta_data(obs_seq, 1, 'COSMIC QC')
 
 end if
 
-
-did_obs = .false.
 
 !------------------------------------------------------------------------
 ! main loop that does either a single file or a list of files
@@ -283,6 +324,19 @@ did_obs = .false.
 
 filenum = 1
 fileloop: do      ! until out of files
+
+   ! do some bookkeeping to see how many scans are ignored and for what reason.
+   ! the print for these is inside the fileloop so the reset has to be inside
+   ! as well.  if you want totals for the entire run (including multiple files)
+   ! take these out of the loop and move the prints out of the loop at the bottom
+    
+   obs_num_byfile = 0
+   nprof_gps = 0
+   nprof_bytime = 0
+   nprof_cdaac_bad = 0
+   nprof_gras_bad = 0
+   nprof_levs_bad = 0
+   nprof_nosat = 0
 
    ! get the single name, or the next name from a list
    if (from_list) then 
@@ -301,24 +355,24 @@ fileloop: do      ! until out of files
    !------------------------------------------------------------------------
    ! Reading bufr data
    !------------------------------------------------------------------------
-   call openbf(unit_in,'IN',unit_in)
-   call datelen(10)
-   call readmg(unit_in,subsetb,idate,iret)
+   call openbf(unit_in,'IN',unit_in)          ! BUFRLIB
+   call datelen(10)                           ! BUFRLIB
+   call readmg(unit_in,subsetb,idate,iret)    ! BUFRLIB
    if (iret /= 0) goto 1010
 
    ! Big loop over the bufr file
    num_message=0
-   msg_report: do while (ireadmg(unit_in,subsetb,idate) == 0)
+   msg_report: do while (ireadmg(unit_in,subsetb,idate) == 0)   ! BUFRLIB
      num_message = num_message + 1
      num_subset = 0
-     write(*,'(I10,I5,a10)') idate,num_message,subsetb
+     if (debug) write(*,'(I10,I5,a10)') idate,num_message,subsetb
 
-     read_loop: do while (ireadsb(unit_in) == 0)
+     read_loop: do while (ireadsb(unit_in) == 0)                ! BUFRLIB
        num_subset = num_subset+1
 
        ! Extract header information
-       call ufbint(unit_in,hdr,n1ahdr,1,iret,hdr1a)
-       call ufbint(unit_in,qfro,1,1,iret,nemo)
+       call ufbint(unit_in,hdr,n1ahdr,1,iret,hdr1a)             ! BUFRLIB
+       call ufbint(unit_in,qfro,1,1,iret,nemo)                  ! BUFRLIB
 
        ! observation time in minutes
        iyear  = hdr(1) ! year
@@ -331,11 +385,11 @@ fileloop: do      ! until out of files
        said=hdr(8)        ! Satellite identifier (receiver)
        ptid=hdr(9)        ! Platform transmitter ID number
 
-       write(*,*) iyear, imonth, iday, ihour, imin
+       if (debug) write(*,*) iyear, imonth, iday, ihour, imin
        obs_time = set_date(iyear, imonth, iday, ihour, imin, 0)
        call get_time(obs_time,  osec, oday)
 
-       ! Check the sateliite list in convinfo
+       ! Check the satellite list in convinfo
        ikx = 0
        find_loop: do i = 1, num_satid
           if ( said == gps_satid(i) ) then
@@ -344,21 +398,23 @@ fileloop: do      ! until out of files
           endif
        enddo find_loop
        if (ikx==0) then
+           nprof_nosat = nprof_nosat + 1
            cycle read_loop
        endif
 
        ! Check profile quality flags
        if ( ((said > 739).and.(said < 746)).or.(said == 820).or.(said == 786)) then  !CDAAC processing
            if(pcc==0.0) then
-              write(*,*)'convert_gpsro_bufr: 1 bad profile said=',said,'ptid=',ptid,&
-                  ' SKIP this report'
+              if (debug) write(*,*)'convert_gpsro_bufr: 1 bad profile said=',said,'ptid=',ptid,&
+                                   ' SKIP this report'
+              nprof_cdaac_bad = nprof_cdaac_bad + 1
               cycle read_loop
            endif
         endif
 
         if ((said == 4).or.(said == 3).or.(said == 421).or.(said == 440).or.&
             (said == 821)) then ! GRAS SAF processing
-           call upftbv(unit_in,nemo,qfro,mxib,ibit,nib)
+           call upftbv(unit_in,nemo,qfro,mxib,ibit,nib)         ! BUFRLIB
            lone = .false.
            if(nib > 0) then
               do i=1,nib
@@ -369,21 +425,23 @@ fileloop: do      ! until out of files
               enddo
            endif
            if(lone) then
-              write(*,*) 'convert_gpsro_bufr: 2 bad profile said=',said,'ptid=',ptid,&
-                         ' SKIP this report'
+              if (debug) write(*,*) 'convert_gpsro_bufr: 2 bad profile said=',said,'ptid=',ptid,&
+                                    ' SKIP this report'
+              nprof_gras_bad = nprof_gras_bad + 1
               cycle read_loop
            endif
         endif
 
        ! Read observations
-       call ufbint(unit_in,nreps_this_ROSEQ2,1,maxlevs,nreps_ROSEQ1,'{ROSEQ2}')
-       call ufbseq(unit_in,data1b,50,maxlevs,  nlevs,'ROSEQ1')    ! bending angle
-       call ufbseq(unit_in,data2a,50,maxlevs,nlevels,'ROSEQ3')    ! refractivity
-       if(nlevs/=nlevels) then
-          write(*,'(A,2I5,2(A,I5),A)') 'convert_gpsro_bufr:  *WARNING* said,ptid=',said,ptid,&
-                     ' with gps_bnd nlevs=', nlevs,&
-                     ' and gps_ref nlevels=',nlevels,&
-                     ' SKIP this report'
+       call ufbint(unit_in,nreps_this_ROSEQ2,1,maxlevs,nreps_ROSEQ1,'{ROSEQ2}')        ! BUFRLIB
+       call ufbseq(unit_in,data1b,50,maxlevs,  nlevs,'ROSEQ1')    ! bending angle      ! BUFRLIB
+       call ufbseq(unit_in,data2a,50,maxlevs,nlevels,'ROSEQ3')    ! refractivity       ! BUFRLIB
+       if (nlevs/=nlevels) then
+          if (debug) write(*,'(A,2I5,2(A,I5),A)') 'convert_gpsro_bufr:  *WARNING* said,ptid=',said,ptid,&
+                                                  ' with gps_bnd nlevs=', nlevs,&
+                                                  ' and gps_ref nlevels=',nlevels,&
+                                                  ' SKIP this report'
+          nprof_levs_bad = nprof_levs_bad + 1
           cycle read_loop
        endif
 
@@ -391,16 +449,15 @@ fileloop: do      ! until out of files
        if ( obs_window_hr > 0.0 ) then
           if (obs_time <= window_min .or. obs_time > window_max ) then
               num_excluded_bytime = num_excluded_bytime + nlevels
+              nprof_bytime = nprof_bytime + 1
               cycle read_loop
           end if
        end if
    
        ! Increment report counters
        nprof_gps = nprof_gps + 1      ! count reports in bufr file
-       write(*,'(5(A8,I5))') ' nprof =',nprof_gps,' said =',said,' ptid=',ptid,&
-                             ' nlevs =',nlevs,' nlevels =',nlevels
-
-       !first_obs = .true.
+       if (debug) write(*,'(5(A8,I5))') ' nprof =',nprof_gps,' said =',said,' ptid=',ptid,&
+                                        ' nlevs =',nlevs,' nlevels =',nlevels
 
        ! Loop over nlevels in profile
        obsloop2: do k = 1, nlevels
@@ -449,7 +506,6 @@ fileloop: do      ! until out of files
 
             obsval = ref    ! unit "N"
 
-            !if(convert_to_geopotential_height) &
             geopot = compute_geopotential_height(height,rlat)
           
             if(obs_error_in_gsi) then
@@ -474,19 +530,21 @@ fileloop: do      ! until out of files
 
             if(debug.and.(k.lt.10)) then
                if(use_bending_angle) then
-               write(*,'(A2,I5,4f9.2,f20.3)') 'k=',k,rlat,rlon,height,bend,oerr
+                  write(*,'(A2,I5,4f9.2,f20.3)') 'k=',k,rlat,rlon,height,bend,oerr
                else
-               write(*,'(A2,I5,6f9.2)') 'k=',k,rlat,rlon,height,ref,oerr,referr
+                  write(*,'(A2,I5,6f9.2)') 'k=',k,rlat,rlon,height,ref,oerr,referr
                endif
             endif
 
             if(convert_to_geopotential_height) height = geopot
-            call set_gpsro_ref(obs_num, nx, ny, nz, rfict, ray_ds, ray_htop, subset)
+
+            ! the first arg here is intent(out), and is passed back in to set_obs_def_key()
+            call set_gpsro_ref(gps_obs_num, nx, ny, nz, rfict, ray_ds, ray_htop, subset)
             call set_obs_def_location(obs_def,set_location(rlon,rlat,height,VERTISHEIGHT))
             call set_obs_def_type_of_obs(obs_def, GPSRO_REFRACTIVITY)
             call set_obs_def_time(obs_def, set_time(osec, oday))
             call set_obs_def_error_variance(obs_def, oerr * oerr)
-            call set_obs_def_key(obs_def, obs_num)
+            call set_obs_def_key(obs_def, gps_obs_num)
             call set_obs_def(obs, obs_def)
    
             obs_val(1) = obsval
@@ -496,50 +554,92 @@ fileloop: do      ! until out of files
        
             call add_obs_to_seq(obs_seq, obs, obs_time, prev_obs, prev_time, first_obs)
        
-            obs_num = obs_num+1
+            obs_count = obs_count+1
+            obs_num_byfile = obs_num_byfile + 1
 
-            if (.not. did_obs) did_obs = .true.
-   
           endif    !(good) then
        end do obsloop2                   ! End of k loop over nlevels
 
-       write(*,*)
+       if (debug) write(*,*)
      enddo read_loop            ! subsets
    enddo msg_report             ! messages
 
 1010 continue
 
    !------------------------------------------------------------------------
-   ! Close unit to input file
+   ! Close unit to input file and write out some summary statistics for
+   ! this file.
    !------------------------------------------------------------------------
-   call closbf(unit_in)
-   write(6,1020)'convert_gpsro_bufr:  nprof_gps = ',nprof_gps,' obs_num=',obs_num
-   if ( obs_window_hr > 0.0 ) write(6,*) 'num_excluded_bytime=', num_excluded_bytime
-1020 format(2(A,i8))
+   call closbf(unit_in)     ! BUFRLIB
 
-  filenum = filenum + 1
+   ! blank line
+   call error_handler(E_MSG, '', '', source, revision, revdate)
+
+   write(msgstring, *) 'Processed input file "'//trim(next_infile)//'", summary:'
+   call error_handler(E_MSG, 'convert_gpsro_bufr', msgstring, source, revision, revdate)
+
+   write(msgstring, *) '  Number of obs created = ',obs_num_byfile
+   call error_handler(E_MSG, 'convert_gpsro_bufr', msgstring, source, revision, revdate)
+
+   write(msgstring, *) '  Total number of profiles = ', nprof_gps
+   call error_handler(E_MSG, 'convert_gpsro_bufr', msgstring, source, revision, revdate)
+
+   nprof_bad = nprof_cdaac_bad + nprof_gras_bad + nprof_levs_bad + nprof_bytime + nprof_nosat
+   write(msgstring, *) '  Total number of skipped profiles = ', nprof_bad
+   call error_handler(E_MSG, 'convert_gpsro_bufr', msgstring, source, revision, revdate)
+
+   write(msgstring, *) 'Skipped profile summary:'
+   call error_handler(E_MSG, 'convert_gpsro_bufr', msgstring, source, revision, revdate)
+
+   write(msgstring, *) '  Bad CDAAC code: ', nprof_cdaac_bad
+   call error_handler(E_MSG, 'convert_gpsro_bufr', msgstring, source, revision, revdate)
+   
+   write(msgstring, *) '  Bad GRAS code: ', nprof_gras_bad
+   call error_handler(E_MSG, 'convert_gpsro_bufr', msgstring, source, revision, revdate)
+   
+   write(msgstring, *) '  Bad level counts: ', nprof_levs_bad
+   call error_handler(E_MSG, 'convert_gpsro_bufr', msgstring, source, revision, revdate)
+   
+   write(msgstring, *) '  Excluded by time: ', nprof_bytime
+   call error_handler(E_MSG, 'convert_gpsro_bufr', msgstring, source, revision, revdate)
+
+   write(msgstring, *) '  Excluded by satellite id: ', nprof_nosat
+   call error_handler(E_MSG, 'convert_gpsro_bufr', msgstring, source, revision, revdate)
+   
+   call error_handler(E_MSG, '', '', source, revision, revdate)
+   
+   
+   ! move on to the next file
+   filenum = filenum + 1
 
 end do fileloop
 
-! clean up and loop if there is another input file
-deallocate(gps_satid)
+! done with main loop.  if we added any new obs to the sequence, write it out.
+if (obs_count > 0) then
+   call write_obs_seq(obs_seq, gpsro_out_file)
 
-! done with main loop.  if we added any obs to the sequence, write it out.
-if (did_obs) then
-!print *, 'ready to write, nobs = ', get_num_obs(obs_seq)
-   if (get_num_obs(obs_seq) > 0) &
-      call write_obs_seq(obs_seq, gpsro_out_file)
+   if (file_exist) then
+      write(msgstring, *) obs_count, ' observations added to obs_seq file "'//trim(gpsro_out_file)//'"'
+      call error_handler(E_MSG, 'convert_gpsro_bufr', msgstring, source, revision, revdate)
 
-   ! minor stab at cleanup, in the off chance this will someday get turned
-   ! into a subroutine in a module.  probably not all that needs to be done,
-   ! but a start.
-   call destroy_obs(obs)
-! if obs == prev_obs then you can't delete the same obs twice.
-! buf if they differ, then it's a leak.  for now, don't delete prev
-! since the program is exiting here anyway.
-   !call destroy_obs(prev_obs)
-   if (get_num_obs(obs_seq) > 0) call destroy_obs_sequence(obs_seq)
+      write(msgstring, *) 'File should now contain ', obs_count + existing_obs, ' observations.'
+      call error_handler(E_MSG, 'convert_gpsro_bufr', msgstring, source, revision, revdate)
+   else
+      write(msgstring, *) obs_count, ' observations written to obs_seq file "'//trim(gpsro_out_file)//'"'
+      call error_handler(E_MSG, 'convert_gpsro_bufr', msgstring, source, revision, revdate)
+   endif
+else
+   write(msgstring, *) 'No observations found. None written to obs_seq file "'//trim(gpsro_out_file)//'"'
+   call error_handler(E_MSG, 'convert_gpsro_bufr', msgstring, source, revision, revdate)
 endif
+
+! blank line
+call error_handler(E_MSG, '', '', source, revision, revdate)
+
+! cleanup memory
+call destroy_obs_sequence(obs_seq)
+call destroy_obs(obs)   ! do not destroy prev_obs, which is same as obs
+deallocate(gps_satid)
 
 ! END OF MAIN ROUTINE
 

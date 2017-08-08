@@ -63,7 +63,7 @@ obsstruct.region        = region;
 %%
 switch lower(CopyString)
    case 'all'
-      obsstruct.CopyString = cellstr(ncread(fname,'CopyMetaData'));
+      obsstruct.CopyString = cellstr(ncread(fname,'CopyMetaData')');
    otherwise
       obsstruct.CopyString = CopyString;
 end
@@ -130,7 +130,7 @@ switch lower(CopyString)
    case 'all'
       mytypeind = 1:ncopies;
    otherwise
-      mytypeind = get_copy_index(fname, CopyString);
+      mytypeind = get_copy_index(fname, CopyString, 'CopyString');
 end
 
 %% Find observations of the correct type.
@@ -161,7 +161,7 @@ mytime =        t(inds);
 %% Find desired QC values of those observations
 
 if ~ isempty(QCString)
-   myQCind = get_qc_index(fname,  QCString);
+   myQCind = get_qc_index(fname,  QCString, 'QCString');
    myqc    = qc(inds,myQCind);
 else
    myqc    = [];

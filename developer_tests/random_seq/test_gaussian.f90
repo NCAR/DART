@@ -11,7 +11,9 @@ program test_gaussian
 
 use      types_mod, only : r8
 use  utilities_mod, only : register_module, &
-                           initialize_utilities, finalize_utilities
+                           open_file, close_file, &
+                           initialize_utilities, finalize_utilities, &
+                           squeeze_out_blanks
 use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
 implicit none
@@ -23,11 +25,14 @@ character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
 type (random_seq_type) :: r
-integer :: i, j, n
+integer :: i, j, n, f
 real(r8) :: r1, sqdist, mean_sqdist
 real(r8) :: mean, sd, var, compvar, compsd, compdiff
-
+logical  :: write_this_one
+character(len=256) :: fname, temp
 character(len=50) :: formf = '(I12,2(F14.6),1(F24.16),2(F12.6))'
+logical :: write_me = .true.       ! if true, write each distribution into a file for later diagnostics
+integer :: write_limit = 1000000   ! but only if rep count is not greater than this limit
 
 type t_inputs
  real(r8) :: t_mean
@@ -64,12 +69,13 @@ type(t_inputs) :: t(ntests) = (/ &
     t_inputs(  6.0_r8, 33.5_r8,   1000000)  /)
 
 
-call initialize_utilities('test_random')
+call initialize_utilities('test_gaussian')
 call register_module(source,revision,revdate)
 
 write(*, *) ''
 write(*, *) 'sample size       input mean & std dev        computed std dev       diff       % diff '
 write(*, *) ''
+
 do j=1, ntests
 
    call init_random_seq(r, 5)
@@ -78,17 +84,35 @@ do j=1, ntests
    sd = t(j)%t_stddev
    n = t(j)%t_nreps
 
+   ! save all values in a file for post-plotting?
+   write_this_one = (write_me .and. n <= write_limit)
+
+   if (write_this_one) then
+      write(temp, "(A,F8.3,A,F8.3,A,I10)"), "gauss_", mean, "_", sd, "_", n
+      call squeeze_out_blanks(temp, fname)
+      f = open_file(fname)
+   endif
+
+   ! analytical values:
    mean_sqdist = 0.0_r8
 
    do i = 1, n
+
       r1 = random_gaussian(r, mean, sd)
+
+      if (write_this_one) write(f,*) r1
+
       sqdist = (mean-r1)**2
       mean_sqdist = mean_sqdist + sqdist
    end do
 
+   if (write_this_one) call close_file(f)
+
+   ! computed values:
    compvar = mean_sqdist / n
    compsd = sqrt(compvar)
    compdiff = compsd - sd
+
    write(*, formf) n, mean, sd, compsd, compdiff, abs(compdiff/sd) * 100._r8
    
 enddo

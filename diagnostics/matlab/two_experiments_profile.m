@@ -252,7 +252,7 @@ for i = 1:nexp
     
     commondata{i}.times        = ncread(filenames{i}, 'time');
     commondata{i}.time_bnds    = ncread(filenames{i}, 'time_bounds');
-    commondata{i}.copyindex    = get_copy_index(filenames{i},copystring);
+    commondata{i}.copyindex    = get_copy_index(filenames{i},copystring,'copy');
     commondata{i}.nobstypes    = nc_dim_info(filenames{i}, 'obstypes');
     commondata{i}.nregions     = nc_dim_info(filenames{i}, 'region');
     commondata{i}.time_to_skip = nc_read_att(filenames{i}, '/','time_to_skip');

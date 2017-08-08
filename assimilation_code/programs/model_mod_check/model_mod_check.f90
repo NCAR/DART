@@ -119,7 +119,8 @@ integer :: idom, imem, num_failed, num_domains
 logical :: cartesian = .false.
 
 ! error handler strings
-character(len=512) :: my_base, my_desc, my_location
+character(len=512)              :: my_base, my_desc, my_location
+character(len=256), allocatable :: file_array_input(:,:), file_array_output(:,:)
 
 !----------------------------------------------------------------------
 ! This portion checks the geometry information.
@@ -176,12 +177,22 @@ call print_test_message('RUNNING TEST 2', &
 ! Set up the ensemble storage and read in the restart file
 call init_ensemble_manager(ens_handle, num_ens, model_size)
 
+! Allocate space for file arrays.  contains a matrix of files (num_ens x num_domains)
+! If perturbing from a single instance the number of input files does not have to
+! be ens_size but rather a single file (or multiple files if more than one domain)
+
+num_domains = get_num_domains()
+allocate(file_array_input(num_ens, num_domains), file_array_output(num_ens, num_domains))
+
+file_array_input  = RESHAPE(input_state_files,  (/num_ens,  num_domains/))
+file_array_output = RESHAPE(output_state_files, (/num_ens,  num_domains/))
+
 ! Initialize input file info
 call io_filenames_init(file_info_input,             &
-                       num_copies   = num_ens,      &
+                       ncopies      = num_ens,      &
                        cycling      = single_file,  &
                        single_file  = single_file,  & 
-                       restart_list = input_state_files)
+                       restart_files = file_array_input)
 
 do imem = 1, num_ens
    write(my_base,'(A,I2)') 'inens_',    imem
@@ -199,10 +210,10 @@ enddo
 
 ! Initialize output file info
 call io_filenames_init(file_info_output,           &
-                       num_copies   = num_ens,     &
+                       ncopies      = num_ens,     &
                        cycling      = single_file, &
                        single_file  = single_file, &
-                       restart_list = output_state_files)
+                       restart_files = file_array_output)
       
 do imem = 1, num_ens
    write(my_base,'(A,I2)') 'outens_',    imem
@@ -224,7 +235,6 @@ enddo
 ! Open a test netcdf initial conditions file.
 !----------------------------------------------------------------------
 input_restart_files = get_stage_metadata(file_info_input)
-num_domains         = get_num_domains()
 
 do idom = 1, num_domains
 do imem = 1, num_ens
