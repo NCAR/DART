@@ -30,7 +30,7 @@ To create html pages from the DART source:
 
 To use the documentation:
 
-- Open $DART/doc/doxygen/model_name/index.html in a browser and click
+- Open $DART/documentation/doxygen/model_name/index.html in a browser and click
   on any executable name.
 
 - Click on the triangle in front of 'Data Types List' to open the list.
