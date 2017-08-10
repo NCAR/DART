@@ -1222,7 +1222,6 @@ contains
         type(coamps_grid), intent(in)    :: grid
 
         type(nest_point) :: coarse_point
-        real(kind=r8)    :: lat, lon
         integer          :: ii, jj
 
         character(len=*), parameter :: routine = 'initialize_nest_latlon'

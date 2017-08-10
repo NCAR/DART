@@ -414,8 +414,6 @@ contains
     integer                     :: i_width
     integer                     :: j_width
 
-    integer                     :: num_lvls
-
     aotype      = 'a'
 
     ! Assert that the restart file names are already allocated
@@ -1641,8 +1639,6 @@ contains
   subroutine print_dart_diagnostics()
     real(kind=r8)               :: max_value, min_value
     integer, dimension(1)       :: max_location, min_location
-    integer                     :: level
-    character(len=5)            :: var_name
     integer :: ii
 
     real(kind=r8), dimension(:), pointer :: var_state

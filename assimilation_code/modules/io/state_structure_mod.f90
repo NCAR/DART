@@ -1157,13 +1157,14 @@ end function get_unlimited_dimid
 !-------------------------------------------------------------------------------
 !> Adding space for an unlimited dimension in the dimesion arrays
 !> The unlimited dimension needs to be last in the list for def_var
+!>@todo this is a terrible name. The unlimited dimension can be for anything, not just time.
 
 
 subroutine add_time_unlimited(unlimited_dimId)
 
 integer, intent(in)  :: unlimited_dimId
 
-call error_handler(E_ERR, 'add_time_unlimited', 'does not exist')
+call error_handler(E_ERR, 'add_time_unlimited', 'routine does not exist')
 
 end subroutine add_time_unlimited
 

@@ -358,7 +358,6 @@ contains
     real(kind=r8), dimension(:,:) :: array
 
     integer :: cur_row
-    integer :: cur_col
     integer :: num_rows
     integer :: num_cols
 
@@ -480,7 +479,6 @@ contains
     integer                                       :: alloc_status
     integer                                       :: dealloc_status
     integer                                       :: field_size
-    integer                                       :: i
 
     field_size=size(flat_array)
     allocate(flat_array_tmp(field_size), stat=alloc_status)
@@ -590,7 +588,6 @@ contains
     integer                              :: datahd_unit
 
     ! Error checking
-    logical :: is_opened
     character(len=*), parameter :: routine = 'write_datahd_file'
     integer :: io_status, alloc_status
 

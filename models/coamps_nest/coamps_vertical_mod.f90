@@ -196,8 +196,6 @@ contains
         type(coamps_vertical),       intent(in)  :: vertical
         real(kind=r8), dimension(:), pointer     :: get_msigma_array
 
-        integer :: cur_level_num
-
         ! Don't attempt a copy if the data in the vertical won't fit
         !if ( size(vertical%msigma) > size(get_msigma_array) ) then
         !    call error_handler(E_ERR, 'get_msigma_array', 'msigma ' // &
@@ -230,8 +228,6 @@ contains
     function get_wsigma_array(vertical)
         type(coamps_vertical),       intent(in)  :: vertical
         real(kind=r8), dimension(:), pointer     :: get_wsigma_array
-
-        integer :: kkw
 
         ! Bail if the data in the vertical won't fit
         !if ( size(vertical%wsigma) > size(get_wsigma_array) ) then
@@ -266,8 +262,6 @@ contains
     function get_dsigmaw(vertical)
         type(coamps_vertical),       intent(in)  :: vertical
         real(kind=r8), dimension(:), pointer     :: get_dsigmaw
-
-        integer :: kkw
 
         ! Bail if the data in the vertical won't fit
         !if ( size(vertical%dsigmaw) > size(get_dsigmaw) ) then

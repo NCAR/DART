@@ -33,16 +33,16 @@ module coamps_interp_mod
 
     use coamps_statevec_mod,  only : state_vector, find_state_variable
 
-    use coamps_intrinsic_mod, only : s2pint,                         &
-                                     sfcp,                           &
-                                     utom,                           &
-                                     vtom,                           &
-                                     vor,                            &
+    use coamps_intrinsic_mod, only : s2pint,  &
+                                     sfcp,    &
+                                     utom,    &
+                                     vtom,    &
+                                     vor,     &
                                      z2zint
 
-    use coamps_util_mod,      only : check_alloc_status,             &
-                                     check_dealloc_status,           &
-                                     trace_message,           &
+    use coamps_util_mod,      only : check_alloc_status,   &
+                                     check_dealloc_status, &
+                                     trace_message,        &
                                      print_label_name
   
     use location_mod,         only : location_type,    &
@@ -89,11 +89,11 @@ module coamps_interp_mod
     ! BEGIN TYPES AND CONSTANTS 
     !------------------------------
   
-  ! Atmospheric constants - specific heat, gas constant (dry air),
-  ! and the initial pressure for calculating the Exner function
-  real(kind=r8), parameter :: R   = real(287.0,  kind=r8)
-  real(kind=r8), parameter :: Cp  = real(1004.0, kind=r8)
-  real(kind=r8), parameter :: P00 = real(1000.0, kind=r8)
+    ! Atmospheric constants - specific heat, gas constant (dry air),
+    ! and the initial pressure for calculating the Exner function
+    real(kind=r8), parameter :: R   = real(287.0,  kind=r8)
+    real(kind=r8), parameter :: Cp  = real(1004.0, kind=r8)
+    real(kind=r8), parameter :: P00 = real(1000.0, kind=r8)
 
     ! Set below-ground levels as "missing" in the vertical interpolation
     integer, parameter :: USE_MISSING_VALUE = 1
@@ -247,6 +247,8 @@ module coamps_interp_mod
     integer :: cur_availability_index
   
     logical, save :: module_initialized = .false.
+
+    character(len=512) :: message
   
     !------------------------------
     ! END MODULE VARIABLES
@@ -285,7 +287,6 @@ contains
         logical, optional,           intent(out) :: interp_worked
 
         type(coamps_interpolator) :: interpolator
-        integer :: ii,k
         logical :: is_success
 
         if (.not. module_initialized) call initialize_module(domain)
@@ -828,7 +829,7 @@ contains
         logical, parameter :: IS_M_LEVEL   = .true.
         logical, parameter :: IS_W_LEVEL   = .false.
 
-        integer :: n, k, e
+        integer :: n
 
         character(len=*), parameter :: routine = 'calculate_surface_pressure'
         integer                     :: alloc_status
@@ -903,10 +904,8 @@ contains
         logical,                   intent(out)    :: is_succes
 
         real(kind=r8), dimension(:), allocatable :: matching_values ! (NUM_NEIGHBORS)
-        logical,       dimension(NUM_NEIGHBORS)   :: is_available_var
 
         character(len=*), parameter :: LEVEL_TYPE = 'U'
-        integer :: n
 
         character(len=*), parameter :: routine = 'calculate_undef_level_var'
         integer                     :: alloc_status
@@ -945,10 +944,8 @@ contains
         logical,                   intent(out)    :: is_succes
 
         real(kind=r8), dimension(:), allocatable :: matching_values ! maybe becomes (ens_size, NUM_NEIGHBORS)?
-        logical,       dimension(NUM_NEIGHBORS)   :: is_available_var
 
         character(len=*), parameter :: LEVEL_TYPE = 'Z'
-        integer :: n
 
         character(len=*), parameter :: routine = 'calculate_height_level_var'
         integer                     :: alloc_status
@@ -1188,7 +1185,6 @@ contains
         integer                       :: num_levels, cur_level_num
         type(state_variable), pointer :: matching_var
         real(kind=r8), allocatable, dimension(:)   :: neighbors  ! fixed size now, perhaps (ens_size, neighbors)?
-        real(kind=r8), allocatable, dimension(:)   :: var_field
 
         character(len=*), parameter :: MASS_LEVEL = 'M'
         character(len=*), parameter :: W_LEVEL    = 'W'
@@ -1289,8 +1285,6 @@ contains
         integer, parameter :: NUM_VERT_LEVELS = 1
 
         character(len=*), parameter :: routine = 'destagger_variable'
-        integer                     :: alloc_status
-        integer                     :: dealloc_status
 
         nest = get_nest(interpolator%interp_point)
 
@@ -1583,14 +1577,12 @@ contains
         num_levels = interpolator%num_levels_available
         ens_size   = interpolator%ensemble_size
 
-        allocate(interpolator%available_target_values(NUM_NEIGHBORS, &
-                                                      num_levels),   &
+        allocate(interpolator%available_target_values(NUM_NEIGHBORS,num_levels), &
                  stat=alloc_status)
         call check_alloc_status(alloc_status, routine, source, revision, &
                                 revdate, 'available_target_values')
 
-        allocate(interpolator%available_vcoord_values(NUM_NEIGHBORS, &
-                                                      num_levels),   &
+        allocate(interpolator%available_vcoord_values(NUM_NEIGHBORS,num_levels), &
                  stat=alloc_status)
         call check_alloc_status(alloc_status, routine, source, revision, &
                                 revdate, 'available_vcoord_vals')
@@ -1607,7 +1599,7 @@ contains
                                   interpolator%available_target_values)
 
         call get_available_values(interpolator, interpolator%vcoord_values,  &
-                                  interpolator%available_vcoord_values )
+                                  interpolator%available_vcoord_values)
 
     end subroutine collect_available_values
 
@@ -1714,8 +1706,6 @@ contains
         integer, intent(in)  :: interp_level_type
         logical              :: is_valid_level_type
 
-        character(len=128) :: message
-
         if (interp_level_type .eq. INTERPOLATE_TO_PRESSURE .or.&
             interp_level_type .eq. INTERPOLATE_TO_HEIGHT   .or.&
             interp_level_type .eq. INTERPOLATE_TO_SURFACE  .or.&
@@ -1725,8 +1715,8 @@ contains
         else
             write (message, '(A,I2,1x,A)') 'Level type ', interp_level_type, &
                                'is not supported.'
-            call error_handler(E_MSG, 'is_valid_level_type', trim(message),&
-                               source, revision, revdate)
+            call error_handler(E_MSG, 'is_valid_level_type', &
+                               message, source, revision, revdate)
             is_valid_level_type = .false.
         end if
     end function is_valid_level_type
@@ -1740,15 +1730,13 @@ contains
         type(coamps_interpolator), intent(in)  :: interpolator
         logical                                :: enough_levels_available
 
-        character(len=128) :: message
-
         if (interpolator%num_levels_available < MIN_LEVELS_NEEDED) then
             write (message,'(3(A,1x,I2,1x))') 'There are only',            &
                               interpolator%num_levels_available,          &
                               'levels available, which is less than the', &
                               MIN_LEVELS_NEEDED, 'needed to interpolate.'
             call error_handler(E_MSG, 'enough_levels_available', &
-                               trim(message), source, revision, revdate)
+                               message, source, revision, revdate)
             enough_levels_available = .false.
         else
             enough_levels_available = .true.
@@ -1763,8 +1751,6 @@ contains
     function interp_level_in_available_range(interpolator)
         type(coamps_interpolator), intent(in) :: interpolator
         logical                               :: interp_level_in_available_range
-
-        character(len=256) :: message
 
         real(kind=r8) :: min_maxlevel_available, max_minlevel_available
         real(kind=r8) :: scaled_level
@@ -1790,7 +1776,7 @@ contains
             !                  scaled_level, 'but the available range is', &
             !                  max_minlevel_available, 'to', min_maxlevel_available
             !call error_handler(E_MSG, 'level_is_in_available_range',      &
-            !                   trim(message), source, revision, revdate)
+            !                   message, source, revision, revdate)
             interp_level_in_available_range = .false.
         end if
 
@@ -1804,8 +1790,6 @@ contains
         type(coamps_interpolator), intent(in)  :: interpolator
         logical                                :: no_missing_values
 
-        character(len=128) :: message
-
         integer :: num_missing_values
 
         ! Yes, I know I'm using an equality operator with floating points...
@@ -1817,7 +1801,7 @@ contains
             write (message,*) 'Missing values were found after level ', &
                               'interpolation'
             call error_handler(E_WARN, 'no_missing_values',             &
-                               trim(message), source, revision, revdate)
+                               message, source, revision, revdate)
             no_missing_values = .false.
         end if
     end function no_missing_values
@@ -1833,10 +1817,10 @@ contains
         integer,                   intent(in) :: obs_kind
         real(kind=r8),             intent(in) :: obs_value
 
-        real(kind=r8)       :: lat, lon
-        integer :: i
+        real(kind=r8) :: lat, lon
 
-        call nest_point_to_latlon(interpolator%model_domain, interpolator%interp_point, lat, lon)
+        call nest_point_to_latlon(interpolator%model_domain, &
+                                  interpolator%interp_point, lat, lon)
 
         if (do_output()) then
             call print_label_name('Interpolation Results')

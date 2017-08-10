@@ -373,7 +373,7 @@ contains
 
         type(state_iterator) :: iterator
         type(state_variable) :: var
-        integer :: varindex, ivar
+        integer :: ivar
         character(len=*), parameter :: routine = 'construct_domain_info'
 
         clampvals(:,:) = MISSING_R8
@@ -436,7 +436,6 @@ contains
     subroutine add_to_list(var, list)
       type(state_variable),  intent(in)    :: var
       type(state_vector),    intent(inout) :: list
-      integer                              :: cur_index
 
       list%cur_fld_cnt = list%cur_fld_cnt + 1
       list%vars(list%cur_fld_cnt) = var
@@ -458,7 +457,6 @@ contains
 
         integer :: state_definition_unit
 
-        type(state_iterator) :: vars_iterator
         type(state_variable) :: cur_var
 
         character(len=*), parameter     :: routine = 'read_state_vector'
@@ -466,7 +464,6 @@ contains
         integer                         :: alloc_status
 
         integer                         :: num_lvls
-        integer                         :: num_flds
         integer                         :: num_nests
         integer                         :: num_recs
 

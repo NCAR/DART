@@ -605,7 +605,6 @@ contains
 
       real(kind=r8)               :: u_tmp(SINGLE_POINT, SINGLE_POINT)
       real(kind=r8)               :: v_tmp(SINGLE_POINT, SINGLE_POINT)
-      character(len=90)           :: uvstr
 
       u_tmp(SINGLE_POINT, SINGLE_POINT) = u_wind
       v_tmp(SINGLE_POINT, SINGLE_POINT) = v_wind

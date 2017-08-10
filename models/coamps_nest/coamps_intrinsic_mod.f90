@@ -1410,7 +1410,6 @@ subroutine vor(u,v,m,n,kk,delx,dely,hxm,hym,fm,sigmma,sigmwa&
 
       real(kind=r8) delx
       real(kind=r8) dely
-      real(kind=r8) scale
       real(kind=r8) dvdx
       real(kind=r8) dudy
 

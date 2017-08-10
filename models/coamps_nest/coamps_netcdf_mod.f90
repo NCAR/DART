@@ -207,7 +207,6 @@ contains
        real(kind=r8), dimension(:), intent(in)      :: statevec
        integer,                     intent(in)      :: copy_index
        integer,                     intent(in)      :: time_index
-       integer                                      :: ierr   
 
        type(state_iterator)                         :: iterator
        type(state_variable)                         :: cur_var
@@ -845,7 +844,6 @@ contains
         type(coordinate_var),               intent(in) :: vert_coord
         type(location_type),  dimension(:), intent(in) :: locations
 
-        type(location_type)         :: loc        
         real(kind=r8), dimension(3) :: loc3d      ! lon/lat/hgt
         real(kind=r8), allocatable  :: lon_location(:)
         real(kind=r8), allocatable  :: lat_location(:)
