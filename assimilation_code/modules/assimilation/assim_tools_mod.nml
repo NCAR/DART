@@ -30,7 +30,6 @@
    rectangular_quadrature            = .true.
    gaussian_likelihood_tails         = .false.
    close_obs_caching                 = .true.
-   allow_missing_in_clm              = .false.
    adjust_obs_impact                 = .false.
    obs_impact_filename               = ""
    allow_any_impact_values           = .false.

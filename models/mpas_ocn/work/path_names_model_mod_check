@@ -12,6 +12,7 @@ assimilation_code/modules/utilities/distributed_state_mod.f90
 assimilation_code/modules/utilities/ensemble_manager_mod.f90
 assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
 assimilation_code/modules/utilities/null_win_mod.f90
+assimilation_code/modules/utilities/options_mod.f90
 assimilation_code/modules/utilities/random_seq_mod.f90
 assimilation_code/modules/utilities/time_manager_mod.f90
 assimilation_code/modules/utilities/types_mod.f90
@@ -19,6 +20,7 @@ assimilation_code/modules/utilities/utilities_mod.f90
 models/mpas_ocn/get_coeff_mod.f90
 models/mpas_ocn/get_geometry_mod.f90
 models/mpas_ocn/get_reconstruct_mod.f90
-models/mpas_ocn/model_mod.f90
 models/mpas_ocn/model_mod_check.f90
+models/mpas_ocn/model_mod.f90
 observations/forward_operators/obs_def_mod.f90
+observations/forward_operators/obs_def_utilities_mod.f90

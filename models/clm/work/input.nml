@@ -68,6 +68,18 @@
    inf_sd_lower_bound          = 0.6,                     0.6
    /
 
+&quality_control_nml
+   input_qc_threshold       = 1.0
+   outlier_threshold        = 3.0
+/
+
+&clm_to_dart_nml
+   clm_to_dart_output_file = 'clm_missing_r8.nc'
+   /
+
+&dart_to_clm_nml
+   dart_to_clm_input_file  = 'model_restart.nc'
+   /
 
 &smoother_nml
    num_lags              = 0
@@ -307,7 +319,10 @@
 &state_vector_io_nml
 /
 
-&quality_control_nml
-   input_qc_threshold       = 1.0
-   outlier_threshold        = 3.0
-/
+&compare_states_nml
+   debug                   = .false.
+   fail_on_missing_field   = .false.
+   do_all_numeric_fields   = .true.
+   only_report_differences = .true.
+   /
+

@@ -11,11 +11,16 @@ module assim_tools_mod
 !> 
 !> @{
 use      types_mod,       only : r8, i8, digits12, PI, missing_r8
+
+use    options_mod,       only : get_missing_ok_status
+
 use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_output,    &
                                  find_namelist_in_file, register_module, error_handler,   &
                                  E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term,     &
                                  open_file, close_file, timestamp
+
 use       sort_mod,       only : index_sort 
+
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq,       &
                                  random_uniform
 
@@ -74,7 +79,6 @@ private
 
 public :: filter_assim, &
           set_assim_tools_trace, &
-          get_missing_ok_status, &
           test_state_copies, &
           update_ens_from_weights  ! Jeff thinks this routine is in the wild.
 
@@ -151,15 +155,6 @@ character(len = 129) :: localization_diagnostics_file = "localization_diagnostic
 logical  :: rectangular_quadrature          = .true.
 logical  :: gaussian_likelihood_tails       = .false.
 
-! Some models are allowed to have MISSING_R8 values in the DART state vector.
-! If they are encountered, it is not necessarily a FATAL error.
-! Most of the time, if a MISSING_R8 is encountered, DART should die.
-! CLM should have allow_missing_in_clm = .true.
-! maybe POP - but in POP the missing values are land and all ensemble members
-! have the same missing values.  CLM is different in that only some ensemble members may
-! have missing values and so we have a deficient ensemble size at those state locations.
-logical  :: allow_missing_in_clm = .false.
-
 ! False by default; if true, expect to read in an ascii table
 ! to adjust the impact of obs on other state vector and obs values.
 logical            :: adjust_obs_impact  = .false.
@@ -208,7 +203,7 @@ namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
    print_every_nth_obs, rectangular_quadrature, gaussian_likelihood_tails, &
    output_localization_diagnostics, localization_diagnostics_file,         &
    special_localization_obs_types, special_localization_cutoffs,           &
-   allow_missing_in_clm, distribute_mean, close_obs_caching,               &
+   distribute_mean, close_obs_caching,                                     &
    adjust_obs_impact, obs_impact_filename, allow_any_impact_values,        &
    convert_all_state_verticals_first, convert_all_obs_verticals_first,     &
    lanai_bitwise ! don't document this one -- only used for regression tests
@@ -389,7 +384,7 @@ type(obs_def_type)   :: obs_def
 type(time_type)      :: obs_time, this_obs_time
 
 logical :: do_adapt_inf_update
-logical :: missing_in_state
+logical :: missing_in_state, allow_missing_in_state
 ! for performance, local copies 
 logical :: local_single_ss_inflate
 logical :: local_varying_ss_inflate
@@ -411,7 +406,6 @@ real(digits12), allocatable :: elapse_array(:)
 
 integer :: istatus 
 integer :: vstatus(obs_ens_handle%my_num_vars) !< for vertical conversion status.
-
 
 ! we are going to read/write the copies array
 call prepare_to_update_copies(ens_handle)
@@ -596,6 +590,8 @@ if (close_obs_caching) then
    num_close_obs_calls_made    = 0
    num_close_states_calls_made = 0
 endif
+
+allow_missing_in_state = get_missing_ok_status()
 
 ! timing
 if (my_task_id() == 0 .and. timing) allocate(elapse_array(obs_ens_handle%num_vars))
@@ -976,7 +972,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    STATE_UPDATE: do j = 1, num_close_states
       state_index = close_state_ind(j)
 
-      if ( allow_missing_in_clm ) then
+      if ( allow_missing_in_state ) then
          ! Some models can take evasive action if one or more of the ensembles have
          ! a missing value. Generally means 'do nothing' (as opposed to DIE)
          missing_in_state = any(ens_handle%copies(1:ens_size, state_index) == MISSING_R8)
@@ -2677,21 +2673,6 @@ print_trace_details = execution_level
 print_timestamps    = timestamp_level
 
 end subroutine set_assim_tools_trace
-
-!------------------------------------------------------------------------
-
-function get_missing_ok_status()
- logical :: get_missing_ok_status
-
-! see if the namelist variable allows missing values in the
-! model state or not.
-
-! Initialize assim_tools_module if needed
-if (.not. module_initialized) call assim_tools_init()
-
-get_missing_ok_status = allow_missing_in_clm
-
-end function get_missing_ok_status
 
 !--------------------------------------------------------------------
 

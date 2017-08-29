@@ -15,6 +15,7 @@ assimilation_code/modules/utilities/ensemble_manager_mod.f90
 assimilation_code/modules/utilities/netcdf_utilities_mod.f90
 assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
 assimilation_code/modules/utilities/null_win_mod.f90
+assimilation_code/modules/utilities/options_mod.f90
 assimilation_code/modules/utilities/random_seq_mod.f90
 assimilation_code/modules/utilities/sort_mod.f90
 assimilation_code/modules/utilities/time_manager_mod.f90
@@ -24,3 +25,4 @@ assimilation_code/programs/create_fixed_network_seq/create_fixed_network_seq.f90
 models/cm1/model_mod.f90
 models/utilities/default_model_mod.f90
 observations/forward_operators/obs_def_mod.f90
+observations/forward_operators/obs_def_utilities_mod.f90
