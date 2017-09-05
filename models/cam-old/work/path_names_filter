@@ -23,6 +23,7 @@ assimilation_code/modules/utilities/ensemble_manager_mod.f90
 assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
 assimilation_code/modules/utilities/null_win_mod.f90
 assimilation_code/modules/utilities/obs_impact_mod.f90
+assimilation_code/modules/utilities/options_mod.f90
 assimilation_code/modules/utilities/parse_args_mod.f90
 assimilation_code/modules/utilities/random_seq_mod.f90
 assimilation_code/modules/utilities/sort_mod.f90
@@ -32,3 +33,4 @@ assimilation_code/modules/utilities/utilities_mod.f90
 assimilation_code/programs/filter/filter.f90
 models/cam/model_mod.f90
 observations/forward_operators/obs_def_mod.f90
+observations/forward_operators/obs_def_utilities_mod.f90

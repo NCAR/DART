@@ -567,11 +567,11 @@ fieldloop : do i=1, 100000
      if (nitems > 0) then
         write(msgstring, *) 'arrays differ in ', nitems, ' places'
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
-        write(msgstring, *) 'min/max file1: ', min1, max1
+        write(msgstring, '(A,2(G25.16,1X))') 'Min/Max file1: ', min1, max1
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
-        write(msgstring, *) 'min/max file2: ', min2, max2
+        write(msgstring, '(A,2(G25.16,1X))') 'Min/Max file2: ', min2, max2
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
-        write(msgstring, *) 'delta min/max: ', delmin, delmax
+        write(msgstring, '(A,2(G25.16,1X))') 'delta Min/Max: ', delmin, delmax
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
      else if (.not. only_report_differences) then
         write(msgstring, *) 'arrays same'

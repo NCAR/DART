@@ -11,11 +11,6 @@ set clobber
 
 set startdir=`pwd`
 
-# the NCEP bufr libs are needed and they build differently.
-# do them first.
-
-cd NCEP/prep_bufr
-
 echo 
 echo 
 echo "=================================================================="
@@ -25,6 +20,40 @@ echo "=================================================================="
 echo "=================================================================="
 echo 
 echo 
+
+# the NCEP bufr libs are needed by at least one other converter
+# (the gps bufr one) and they build differently with their own
+# install.sh script.  we do most of our testing with intel and
+# gfortran, so try to figure out from our mkmf.template file
+# which one is being used and set env vars so the install script
+# will use the right one.  this doesn't cover every compiler
+# we support but it will get 80% of the cases with 20% of the work.
+
+if ( -f ../../build_templates/mkmf.template ) then
+   set fcomp=`grep '^FC' ../../build_templates/mkmf.template | sed -s 's/FC *= *\([A-Za-z][^ ]*\)/\1/' `
+   if ( "$fcomp" == "ifort" ) then
+      setenv CCOMP intel
+      setenv FCOMP intel
+      setenv UNDERSCORE add
+      echo setting the BUFR lib to build using the intel compilers
+   else if ( "$fcomp" == "gfortran" ) then
+      setenv CCOMP gnu
+      setenv FCOMP gnu
+      setenv UNDERSCORE add
+      echo setting the BUFR lib to build using the gnu compilers
+   else if ( "$fcomp" == "pgf90" ) then
+      setenv CCOMP pgi
+      setenv FCOMP pgi
+      setenv UNDERSCORE add
+      echo setting the BUFR lib to build using the pgi compilers
+   else
+      echo unrecognized compiler in ../../build_templates/mkmf.template
+      echo set NCEP BUFR library compiler choice in NCEP/prep_bufr/install.sh
+      echo this script will use whatever compiler is selected there
+   endif
+endif
+
+cd NCEP/prep_bufr
 
 ./install.sh
 

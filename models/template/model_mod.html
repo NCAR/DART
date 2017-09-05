@@ -99,10 +99,8 @@ Models are free to include a model namelist which can be read when
 A good example can be found in the lorenz_96 <em class=file>model_mod.f90</em>.
 </P>
 
-<br />
-<br />
-
 <!--==================================================================-->
+<P><!-- useless spacer to make the top behave correctly --></P>
 
 <A NAME="Interface"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
@@ -172,7 +170,7 @@ The details of the namelist are always model-specific
 <div class=routine>
 <em class=call>model_size = get_model_size( )</em>
 <pre>
-integer :: <em class=code>get_model_size</em>
+integer(i8) :: <em class=code>get_model_size</em>
 </pre>
 </div>
 
@@ -274,7 +272,7 @@ This interface is required to be functional for all applications.
     <TD>The location of state variable element.</TD></TR>
 
 <TR><TD valign=top><em class=optionalcode>var_type</em></TD>
-    <TD>The generic kind of the state variable element.</TD></TR>
+    <TD>The generic quantity of the state variable element.</TD></TR>
 
 </TABLE>
 
@@ -308,9 +306,9 @@ the value in <em class=code>obs_val</em>. The <em class=code>istatus</em>
 variable should be returned as 0 unless there is some problem in 
 computing the interpolation in which case a positive value should be 
 returned. The <em class=code>itype</em> variable
-is one of the KIND parameters defined in the
+is one of the quantity (QTY) parameters defined in the
 <a href="../../assimilation_code/modules/observations/obs_kind_mod.html">obs_kind_mod.f90</a> file
-and defines which generic kind of item is being interpolated.
+and maps the quantity to a model variable for the interpolation.
 In low-order models that have no notion of kinds of variables this argument may
 be ignored. For applications in which only perfect model experiments
 with identity observations (i.e. only the value of a particular
@@ -473,11 +471,10 @@ calling this routine should issue a fatal error.
 <A NAME="nc_write_model_atts"></A>
 <br>
 <div class=routine>
-<em class=call>ierr = nc_write_model_atts(ncFileID)</em>
+<em class=call>call nc_write_model_atts(ncFileID, domain_id)</em>
 <pre>
-integer, intent(in)  :: <em class=code>ncFileID</em>
-logical, intent(out) :: <em class=code>model_mod_writes_state_variables</em>
-integer              :: <em class=code>nc_write_model_atts</em>
+integer, intent(in) :: <em class=code>ncFileID</em>
+integer, intent(in) :: <em class=code>domain_id</em>
 </pre>
 </div>
 
@@ -510,13 +507,12 @@ NF90_CLOSE            ! close: save updated netCDF dataset
 <TR><TD valign=top><em class=code>ncFileID</em></TD>
     <TD>Integer file descriptor to previously-opened netCDF file.</TD></TR>
 
-<TR><TD valign=top><em class=code>model_mod_writes_state_variables&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>logical descriptor to flag whether or not the <em class=code>model_mod</em>
-        will write the actual state variables or the DART-intrinsic routines will write them.
-    </TD></TR>
-
-<TR><TD valign=top><em class=code>ierr</em></TD>
-    <TD>Returns a 0 for successful completion.</TD></TR>
+<TR><TD valign=top><em class=code>domain_id</em></TD>
+        <TD>integer describing the domain (which can be a nesting level, a component 
+        model ...) Models with nested grids are decomposed into 'domains' in DART.
+        The concept is extended to refer to 'coupled' models where one model component
+        may be the atmosphere, another component may be the ocean, or land, or 
+        ionosphere ... these would be referenced as different domains. </TD></TR>
 
 </TABLE>
 
@@ -528,13 +524,15 @@ NF90_CLOSE            ! close: save updated netCDF dataset
 <A NAME="nc_write_model_vars"></A>
 <br>
 <div class=routine>
-<em class=call>ierr = nc_write_model_vars(ncFileID, statevec, copyindex, timeindex)</em>
+<em class=call>call nc_write_model_vars(ncFileID, domain_id, state_ens_handle 
+  <em class=optionalcode>[,&nbsp;memberindex]</em>
+  <em class=optionalcode>[,&nbsp;timeindex]</em>)</em>
 <pre>
-integer                            :: <em class=code>nc_write_model_vars</em>
-integer,                intent(in) :: <em class=code>ncFileID</em>
-real(r8), dimension(:), intent(in) :: <em class=code>statevec</em>
-integer,                intent(in) :: <em class=code>copyindex</em>
-integer,                intent(in) :: <em class=code>timeindex</em>
+integer,             intent(in) :: <em class=code>ncFileID</em>
+integer,             intent(in) :: <em class=code>domain_id</em>
+type(ensemble_type), intent(in) :: <em class=code>state_ens_handle</em>
+integer, optional,   intent(in) :: <em class=optionalcode>memberindex</em>
+integer, optional,   intent(in) :: <em class=optionalcode>timeindex</em>
 </pre>
 </div>
 
@@ -565,17 +563,19 @@ NF90_CLOSE            ! close: save updated netCDF dataset
 <TR><TD valign=top><em class=code>ncFileID</em></TD>
     <TD>file descriptor to previously-opened netCDF file.</TD></TR>
 
-<TR><TD valign=top><em class=code>statevec</em></TD>
-    <TD>A model state vector.</TD></TR>
+<TR><TD valign=top><em class=code>domain_id</em></TD>
+        <TD>integer describing the domain (which can be a nesting level, 
+        a component model ...)</TD></TR>
 
-<TR><TD valign=top><em class=code>copyindex&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD> Integer index of copy to be written.</TD></TR>
+<TR><TD valign=top><em class=code>state_ens_handle</em></TD>
+    <TD>The handle to the state structure containing information about
+        the state vector about which information is requested.</TD></TR>
+
+<TR><TD valign=top><em class=code>memberindex</em></TD>
+    <TD> Integer index of ensemble member to be written.</TD></TR>
 
 <TR><TD valign=top><em class=code>timeindex</em></TD>
     <TD>The timestep counter for the given state.</TD></TR>
-
-<TR><TD valign=top><em class=code>ierr</em></TD>
-    <TD>Returns 0 for normal completion.</TD></TR>
 
 </TABLE>
 
@@ -612,10 +612,10 @@ must be returned as <em class=code>.true.</em>
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
 <TR><TD valign=top><em class=code>state_ens_handle</em></TD>
-    <TD>handle containing and ensemble of state vectors to be perturbed.</TD></TR>
+    <TD>The handle containing an ensemble of state vectors to be perturbed.</TD></TR>
 
 <TR><TD valign=top><em class=code>ens_size</em></TD>
-    <TD>the number of ensemble members to perturb.</TD></TR>
+    <TD>The number of ensemble members to perturb.</TD></TR>
 
 <TR><TD valign=top><em class=code>pert_amp</em></TD>
     <TD>the amplitude of the perturbations. The interpretation is based
@@ -632,21 +632,24 @@ must be returned as <em class=code>.true.</em>
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
+<!-- these definitions came from the threed_sphere/location_mod.f90 -->
+
 <A NAME="get_close_obs"></A>
 <br>
 <div class=routine>
-<em class=call>call get_close_obs(gc, base_obs_loc, base_obs_kind,
-  obs_loc, obs_kind, num_close, close_ind, dist, state_handle</em>) </em>
+<em class=call>call get_close_obs(gc, base_loc, base_type,
+  locs, loc_qtys, loc_types, num_close, close_ind <em class=optionalcode>[,&nbsp;dist] [,&nbsp;state_handle</em>) </em>
 <pre>
-type(get_close_type), intent(in)  :: <em class=code>gc</em>
-type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
-integer,              intent(in)  :: <em class=code>base_obs_kind</em>
-type(location_type),  intent(in)  :: <em class=code>obs_loc(:)</em>
-integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
-integer,              intent(out) :: <em class=code>num_close</em>
-integer,              intent(out) :: <em class=code>close_ind(:)</em>
-real(r8),             intent(out) :: <em class=code>dist(:)</em>
-type(ensemble_type),  intent(in)  :: <em class=code>state_handle</em>
+type(get_close_type),          intent(in)  :: <em class=code>gc</em>
+type(location_type),           intent(in)  :: <em class=code>base_loc</em>
+integer,                       intent(in)  :: <em class=code>base_type</em>
+type(location_type),           intent(in)  :: <em class=code>locs(:)</em>
+integer,                       intent(in)  :: <em class=code>loc_qtys(:)</em>
+integer,                       intent(in)  :: <em class=code>loc_types(:)</em>
+integer,                       intent(out) :: <em class=code>num_close</em>
+integer,                       intent(out) :: <em class=code>close_ind(:)</em>
+real(r8),            optional, intent(out) :: <em class=optionalcode>dist(:)</em>
+type(ensemble_type), optional, intent(in)  :: <em class=optionalcode>state_handle</em>
 </pre>
 </div>
 
@@ -687,7 +690,7 @@ routine must be supplied.  To call the original code in the location
 module use:
 </P>
 <pre>
-call lm_get_close_obs(gc, base_obs_loc, ...)
+call lm_get_close_obs(gc, base_loc, ...)
 </pre>
 <P>
 This subroutine will be called after <em class=code>get_close_maxdist_init</em> 
@@ -712,26 +715,31 @@ for examples of this use.
     <TD>The get_close_type which stores precomputed information
         about the locations to speed up searching</TD></TR>
 
-<TR><TD valign=top><em class=code>base_obs_loc</em></TD>
+<TR><TD valign=top><em class=code>base_loc</em></TD>
     <TD>Reference location.  The distances will be computed
         between this location and every other location in the obs list</TD></TR>
 
-<TR><TD valign=top><em class=code>base_obs_kind&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>The kind of base_obs_loc</TD></TR>
+<TR><TD valign=top><em class=code>base_type&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The DART quantity at the <em class=code>base_loc</em></TD></TR>
 
-<TR><TD valign=top><em class=code>obs_loc(:)</em></TD>
-    <TD>Compute the distance between the base_obs_loc and each
+<TR><TD valign=top><em class=code>locs(:)</em></TD>
+    <TD>Compute the distance between the <em class=code>base_loc</em> and each
         of the locations in this list</TD></TR>
 
-<TR><TD valign=top><em class=code>obs_kind(:)</em></TD>
-    <TD>The corresponding kind of each item in the obs list</TD></TR>
+<TR><TD valign=top><em class=code>loc_qtys(:)</em></TD>
+    <TD>The corresponding quantity of each item in the <em class=code>locs</em> list</TD></TR>
+
+<TR><TD valign=top><em class=code>loc_types(:)</em></TD>
+    <TD>The corresponding type of each item in the <em class=code>locs</em> list.
+        This is not available in the default implementation but may be used in 
+        custom implementations.</TD></TR>
 
 <TR><TD valign=top><em class=code>num_close</em></TD>
-    <TD>The number of items from the obs list
+    <TD>The number of items from the <em class=code>locs</em> list
         which are within maxdist of the base location</TD></TR>
 
 <TR><TD valign=top><em class=code>close_ind(:)</em></TD>
-    <TD>The list of index numbers from the obs list 
+    <TD>The list of index numbers from the <em class=code>locs</em> list 
         which are within maxdist of the base location</TD></TR>
 
 <TR><TD valign=top><em class=code>dist(:)</em></TD>
@@ -755,18 +763,19 @@ for examples of this use.
 <A NAME="get_close_state"></A>
 <br>
 <div class=routine>
-<em class=call>call get_close_state(gc, base_obs_loc, base_obs_kind,
-  state_loc, state_kind, num_close, close_ind, dist, state_handle</em>) </em>
+<em class=call>call get_close_state(gc, base_loc, base_type,
+  state_loc, state_qtys, state_indx, num_close, close_ind, dist, state_handle</em>) </em>
 <pre>
-type(get_close_type), intent(in)  :: <em class=code>gc</em>
-type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
-integer,              intent(in)  :: <em class=code>base_obs_kind</em>
-type(location_type),  intent(in)  :: <em class=code>state_loc(:)</em>
-integer,              intent(in)  :: <em class=code>state_kind(:)</em>
-integer,              intent(out) :: <em class=code>num_close</em>
-integer,              intent(out) :: <em class=code>close_ind(:)</em>
-real(r8),             intent(out) :: <em class=code>dist(:)</em>
-type(ensemble_type),  intent(in)  :: <em class=code>state_handle</em>
+type(get_close_type), intent(in)    :: <em class=code>gc</em>
+type(location_type),  intent(inout) :: <em class=code>base_loc</em>
+integer,              intent(in)    :: <em class=code>base_type</em>
+type(location_type),  intent(inout) :: <em class=code>state_loc(:)</em>
+integer,              intent(in)    :: <em class=code>state_qtys(:)</em>
+integer(i8),          intent(in)    :: <em class=code>state_indx(:)</em>
+integer,              intent(out)   :: <em class=code>num_close</em>
+integer,              intent(out)   :: <em class=code>close_ind(:)</em>
+real(r8),             intent(out)   :: <em class=code>dist(:)</em>
+type(ensemble_type),  intent(in)    :: <em class=code>state_handle</em>
 </pre>
 </div>
 
@@ -807,7 +816,7 @@ routine must be supplied.  To call the original code in the location
 module use:
 </P>
 <pre>
-call loc_get_close_state(gc, base_obs_loc, ...)
+call loc_get_close_state(gc, base_loc, ...)
 </pre>
 <P>
 This subroutine will be called after <em class=code>get_close_maxdist_init</em> 
@@ -832,32 +841,37 @@ for examples of this use.
     <TD>The get_close_type which stores precomputed information
         about the locations to speed up searching</TD></TR>
 
-<TR><TD valign=top><em class=code>base_obs_loc</em></TD>
+<TR><TD valign=top><em class=code>base_loc</em></TD>
     <TD>Reference location.  The distances will be computed
         between this location and every other location in the obs list</TD></TR>
 
-<TR><TD valign=top><em class=code>base_obs_kind&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>The kind of base_obs_loc</TD></TR>
+<TR><TD valign=top><em class=code>base_type&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The DART quantity at the  <em class=code>base_loc</em></TD></TR>
 
 <TR><TD valign=top><em class=code>state_loc(:)</em></TD>
-    <TD>Compute the distance between the base_obs_loc and each
+    <TD>Compute the distance between the <em class=code>base_loc</em> and each
         of the locations in this list</TD></TR>
 
-<TR><TD valign=top><em class=code>state_kind(:)</em></TD>
-    <TD>The corresponding kind of each item in the state_loc list</TD></TR>
+<TR><TD valign=top><em class=code>state_qtys(:)</em></TD>
+    <TD>The corresponding quantity of each item in the <em class=code>state_loc</em> list</TD></TR>
+
+<TR><TD valign=top><em class=code>state_indx(:)</em></TD>
+    <TD>The corresponding DART index of each item in the <em class=code>state_loc</em> list.
+        This is not available in the default implementation but may be used in
+        custom implementations.</TD></TR>
 
 <TR><TD valign=top><em class=code>num_close</em></TD>
-    <TD>The number of items from the state_loc list
+    <TD>The number of items from the <em class=code>state_loc</em> list
         which are within maxdist of the base location</TD></TR>
 
 <TR><TD valign=top><em class=code>close_ind(:)</em></TD>
-    <TD>The list of index numbers from the state_loc list 
+    <TD>The list of index numbers from the <em class=code>state_loc</em> list 
         which are within maxdist of the base location</TD></TR>
 
 <TR><TD valign=top><em class=code>dist(:)</em></TD>
     <TD>If present, return the distance between each entry
-        in the close_ind list and the base location.  If not
-        present, all items in the state_loc list which are closer
+        in the <em class=code>close_ind</em> list and the base location.  If not
+        present, all items in the <em class=code>state_loc</em> list which are closer
         than maxdist will be added to the list but the overhead
         of computing the exact distances will be skipped.</TD></TR>
 
@@ -1091,14 +1105,14 @@ Can be a NULL INTERFACE if the model has no need to clean up storage, etc.
 <TABLE width=100% border=0 summary="" cellpadding=3>
 </TABLE>
 </div>
-<br>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
+<P><!-- useless spacer to make the top behave correctly --></P>
+<div class="top">[<a href="#">top</a>]</div><hr />
 
 <A NAME="FilesUsed"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL>
    <LI>Models are free to read and write files as they see fit.

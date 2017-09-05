@@ -15,6 +15,7 @@ assimilation_code/modules/utilities/ensemble_manager_mod.f90
 assimilation_code/modules/utilities/netcdf_utilities_mod.f90
 assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
 assimilation_code/modules/utilities/null_win_mod.f90
+assimilation_code/modules/utilities/options_mod.f90
 assimilation_code/modules/utilities/random_seq_mod.f90
 assimilation_code/modules/utilities/sort_mod.f90
 assimilation_code/modules/utilities/time_manager_mod.f90
@@ -24,8 +25,8 @@ assimilation_code/programs/create_fixed_network_seq/create_fixed_network_seq.f90
 models/bgrid_solo/fms_src/atmos_bgrid/driver/solo/atmosphere.f90
 models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_advection.f90
 models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_conserve_energy.f90
-models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_core.f90
 models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_core_driver.f90
+models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_core.f90
 models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_horiz_adjust.f90
 models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_horiz_diff.f90
 models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_sponge.f90
@@ -48,8 +49,8 @@ models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_tracer_driver.f90
 models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_tracer_utilities.f90
 models/bgrid_solo/fms_src/atmos_shared/vert_advection/vert_advection.f90
 models/bgrid_solo/fms_src/shared/constants/constants.f90
-models/bgrid_solo/fms_src/shared/fft/fft.F90
 models/bgrid_solo/fms_src/shared/fft/fft99.f90
+models/bgrid_solo/fms_src/shared/fft/fft.F90
 models/bgrid_solo/fms_src/shared/field_manager/field_manager.F90
 models/bgrid_solo/fms_src/shared/field_manager/parse.inc
 models/bgrid_solo/fms_src/shared/fms/fms.f90
@@ -61,3 +62,4 @@ models/bgrid_solo/fms_src/shared/tracer_manager/tracer_manager.F90
 models/bgrid_solo/model_mod.f90
 models/utilities/default_model_mod.f90
 observations/forward_operators/obs_def_mod.f90
+observations/forward_operators/obs_def_utilities_mod.f90

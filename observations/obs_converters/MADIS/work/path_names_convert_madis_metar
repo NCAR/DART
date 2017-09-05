@@ -17,6 +17,7 @@ assimilation_code/modules/utilities/ensemble_manager_mod.f90
 assimilation_code/modules/utilities/netcdf_utilities_mod.f90
 assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
 assimilation_code/modules/utilities/null_win_mod.f90
+assimilation_code/modules/utilities/options_mod.f90
 assimilation_code/modules/utilities/random_seq_mod.f90
 assimilation_code/modules/utilities/sort_mod.f90
 assimilation_code/modules/utilities/time_manager_mod.f90
@@ -25,6 +26,7 @@ assimilation_code/modules/utilities/utilities_mod.f90
 models/template/model_mod.f90
 models/utilities/default_model_mod.f90
 observations/forward_operators/obs_def_mod.f90
+observations/forward_operators/obs_def_utilities_mod.f90
 observations/obs_converters/MADIS/convert_madis_metar.f90
 observations/obs_converters/MADIS/meteor_mod.f90
 observations/obs_converters/obs_error/dewpoint_obs_err_mod.f90
