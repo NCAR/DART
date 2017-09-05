@@ -297,7 +297,7 @@ contains
         character(len=*), parameter :: STATE_VEC_DEF_FILE = 'state.vars'
         character(len=*), parameter :: routine = 'static_init_model'
 
-integer :: ncid, i, nvars
+integer :: i, nvars
 integer(i8) :: model_size
 
         if (module_initialized) return ! only need to do this once
@@ -480,7 +480,6 @@ endif
         real(r8),               intent(out) :: expected_obs(ens_size)
         integer,                intent(out) :: interp_status(ens_size)
 
-        integer :: which_vert
         logical :: interp_worked(ens_size)
         logical :: in_domain
 
@@ -860,7 +859,6 @@ endif
 
         type(state_variable)           :: cur_var
         type(coamps_nest)              :: cur_nest
-        type(nest_point)               :: cur_point
         integer, dimension(3)          :: ijk
         integer                        :: index_loc
         real(kind=r8)                  :: lat, lon
@@ -920,8 +918,6 @@ character(len=*), intent(in) :: filename
 type(time_type)              :: read_model_time
 
 ! local variables
-integer :: ret   ! return code for netcdf
-integer :: ncid, VarID, numdims
 type(time_type) :: base_time
 integer, allocatable :: seconds(:)
 integer :: year, month, day, hour, minute, second
@@ -999,8 +995,6 @@ end subroutine write_model_time
 
         character(len=*), parameter :: routine = 'allocate_metadata_arrays'
         integer                     :: alloc_status
-
-        integer                     :: nvars
 
         allocate( all_vars(get_model_size()), stat=alloc_status )
         call check_alloc_status(alloc_status, routine, source, revision, &
