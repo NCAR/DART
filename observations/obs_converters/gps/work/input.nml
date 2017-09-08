@@ -43,8 +43,8 @@
    input_file               = ''
    input_file_list          = 'file_list.txt'
    output_file              = 'obs_seq.iondens'
-   observation_error_file   = 'f3coeff.dat'
-   observation_error_method = 'scled_height'
+   observation_error_file   = '../f3coerr.nc'
+   observation_error_method = 'scaled'
    locations_only           = .false.
    obs_error_factor         = 0.01
    verbose                  = 0
@@ -55,6 +55,7 @@
                 360.0, 370.0, 380.0, 390.0, 400.0,
                 410.0, 420.0, 430.0, 440.0, 450.0
  /
+
 &convert_gpsro_bufr_nml
    gpsro_bufr_file     = 'gdas.gpsro.bufr'
    gpsro_bufr_filelist = ''

@@ -140,8 +140,8 @@ do this data conversion.
 <br />
 <br />
 The shell_scripts directory contains several example scripts, including one 
-which downloads the raw data files a day at a time (download_script.csh), 
-and one which executes the conversion program (convert_script.csh).  
+which downloads the raw data files a day at a time (<em class=program>download_script.csh</em>), 
+and one which executes the conversion program (<em class=program>convert_script.csh</em>).  
 These scripts make 6 hour files by default, but have options for other times.  
 Each profile is stored in a separate netcdf file and there are usually
 between 1000-3000 files/day, so the download process can be
@@ -224,10 +224,38 @@ variable <em class=code>observation_error_method</em>.
 <tr><td>'scaled_lookup'<td>
     <td>the lookup table value is multiplied by a scalar value and the electron density value</td>
 </tr>
-<tr><td>'scaled_height'<td>
-    <td>the height is multiplied by a scalar and is used to modify a base value of 30000</td>
-</tr>
 </TABLE>
+
+<blockquote>
+I-Te Lee: " ... the original idea for error of ionospheric observation is 1%. Thus, I 
+put the code as "oerr = 0.01_r8 * obsval". Liu et. al and Yue et al investigated 
+the Abel inversion error of COSMIC ionosphere profile, both of them figure out 
+the large error would appear at the lower altitude and push model toward wrong 
+direction at the lower ionosphere while assimilating these profiles.
+On the other hand, the Abel inversion error depends on the ionospheric electron 
+density structure, which is a function of local time, altitude and geomagnetic latitude.
+To simplify the procedure to define observation error of profiles, Xinan Yue help 
+me to estimate an error matrix and saved in the file which named 'f3coerr.nc'. 
+...
+The number in the matrix is error percentage (%), which calculated by OSSE.  
+Here are two reference papers.  In the end, the observation error consists of 
+instrumentation error (10%) and Abel error."
+
+<ul><li>X.&nbsp;Yue, W.S.&nbsp;Schreiner, J.&nbsp;Lei, S.V.&nbsp;Sokolovskiy, C.&nbsp;Rocken, D.C.&nbsp;Hunt, and Y.-H.&nbsp;Kuo (2010),<br />
+<a href="https://www.ann-geophys.net/28/217/2010/"
+>Error analysis of Abel retrieved electron density profiles from radio occultation measurements.</a><br />
+<i>Annales Geophysicae: Atmospheres, Hydrospheres and Space Sciences</i>. <b>28</b> No. 1, pp 217-222,
+doi:10.5194/angeo-28-217-2010
+</li>
+
+<li> J.Y.&nbsp;Liu, C.Y.&nbsp;Lin, C.H.&nbsp;Lin, H.F.&nbsp;Tsai, S.C.&nbsp;Solomon, Y.Y.&nbsp;Sun, I.T.&nbsp;Lee, W.S.&nbsp;Schreiner, and Y.H.&nbsp;Kuo (2010), <br>
+<a href="http://dx.doi.org/10.1029/2009JA015079"
+>Artificial plasma cave in the low-latitude ionosphere results from the radio occultation inversion of the FORMOSAT-3/COSMIC}</a>,
+<i>Journal of Geophysical Research: Space Physics</i>. <b>115</b> No. A7, pp 2156-2202,
+doi:10.1029/2009JA015079
+</li>
+</ul>
+</blockquote>
 
 <P>
 It is possible to create observation sequence files for perfect model 
@@ -434,10 +462,8 @@ the new data will be appended to that file.
 
 <TR><TD> observation_error_file </TD>
     <TD> character(len=256) </TD> 
-    <TD>This is a lookup table that I-Te Lee created from
-        a paper by Liu and Yue. I (TJH) am searching for the reference
-        and a better description of the algorithm. I do not have copy
-        of this file.
+    <TD>This specifies a lookup table. The table created by I-Te Lee and 
+        Xinan Yue is called <em class=file>f3coerr.nc</em>.
 </TD></TR>
 
 <TR><TD> observation_error_method </TD>
@@ -445,7 +471,7 @@ the new data will be appended to that file.
     <TD> There are multiple ways of specifying the observation error
          variance. This character string allows you to select the method.
          The selection is not case-sensitive.  Allowable values are: 
-         'constant', 'scaled', 'lookup', 'scaled_lookup', or 'scaled_height'.
+         'constant', 'scaled', 'lookup', or 'scaled_lookup'.
          Anything else will result in an error. Look in the 
          <em class=code>electron_density_error()</em> routine for specifics.
 </TD></TR>
@@ -493,7 +519,7 @@ the new data will be appended to that file.
    input_file_list          = 'file_list.txt'
    output_file              = 'obs_seq.out'
    observation_error_file   = 'f3coeff.dat'
-   observation_error_method = 'scaled_height'
+   observation_error_method = 'scaled'
    locations_only           = .false.
    obs_error_factor         = 0.01
    verbose                  = 1
