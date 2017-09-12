@@ -152,13 +152,9 @@ contains
     !  PARAMETERS
     !   IN  ncFileID      NetCDF file to write to
     !   IN  state           model state vector
-    !   IN  copy_index      Which copy (i.e. member) this is 
-    !   IN  time_index      Which time this is
-    subroutine nc_write_statearray_data(ncFileID, state, copy_index, time_index)
+    subroutine nc_write_statearray_data(ncFileID, state)
         integer, intent(in)                     :: ncFileID
         real(kind=r8), dimension(:), intent(in) :: state
-        integer, intent(in)                     :: copy_index
-        integer, intent(in)                     :: time_index
 
         integer :: state_var_id
 
@@ -183,7 +179,7 @@ contains
         ! ------------------------------------------------------------------
         call nc_check(nf90_inq_varid(ncFileID, 'state', state_var_id), routine) 
         call nc_check(nf90_put_var(ncFileID, state_var_id, state,       &
-                      start=(/ 1, copy_index, time_index /)), routine)
+                      start=(/ 1 /)), routine)
      
         ! ------------------------------------------------------------------
         ! Flush the buffer to disk                                       
@@ -193,93 +189,87 @@ contains
 
     end subroutine nc_write_statearray_data
 
-    ! nc_write_prognostic_data
-    ! ----------------------------
-    ! Writes the models prognostic variables to the supplied NetCDF file
-    !  PARAMETERS
-    !   IN  ncFileID      NetCDF file to write to
-    !   IN  state           model state vector
-    !   IN  copy_index      Which copy (i.e. member) this is 
-    !   IN  time_index      Which time this is
-    subroutine nc_write_prognostic_data(ncFileID, state_list, statevec, copy_index, time_index)
-       integer,                     intent(in)      :: ncFileID
-       type(state_vector),          intent(in)      :: state_list
-       real(kind=r8), dimension(:), intent(in)      :: statevec
-       integer,                     intent(in)      :: copy_index
-       integer,                     intent(in)      :: time_index
+! ----------------------------
+!> Writes the prognostic variables to the supplied NetCDF file
 
-       type(state_iterator)                         :: iterator
-       type(state_variable)                         :: cur_var
-       type(coamps_nest)                            :: nest
-       type(coamps_domain)                          :: domain
-       integer, dimension(3)                        :: var_dims
-       character(len=NF90_MAX_NAME)                 :: var_name
-       integer                                      :: alloc_status
-       integer                                      :: varid 
-       integer                                      :: nx, ny
+subroutine nc_write_prognostic_data(ncFileID, state_list, statevec)
+integer,                     intent(in) :: ncFileID
+type(state_vector),          intent(in) :: state_list
+real(kind=r8), dimension(:), intent(in) :: statevec
 
-       real(kind=r8), allocatable, dimension(:,:,:) :: var3d
-       real(kind=r8), allocatable, dimension(:,:)   :: var2d
-       real(kind=r8), pointer,     dimension(:)     :: var_substate
+type(state_iterator)                         :: iterator
+type(state_variable)                         :: cur_var
+type(coamps_nest)                            :: nest
+type(coamps_domain)                          :: domain
+integer, dimension(3)                        :: var_dims
+character(len=NF90_MAX_NAME)                 :: var_name
+integer                                      :: alloc_status
+integer                                      :: varid 
+integer                                      :: nx, ny
 
-       character(len=*), parameter :: routine = 'nc_write_prognostic_data'
+real(kind=r8), allocatable, dimension(:,:,:) :: var3d
+real(kind=r8), allocatable, dimension(:,:)   :: var2d
+real(kind=r8), pointer,     dimension(:)     :: var_substate
 
-       domain   = get_domain(state_list)
-       iterator = get_iterator(state_list)
-       output_vars:  do while(has_next(iterator))
+character(len=*), parameter :: routine = 'nc_write_prognostic_data'
 
-          cur_var  = get_next(iterator)
-          var_name = get_var_name(cur_var)
-          var_dims = get_var_dims(cur_var, domain)
-          varid    = get_nc_varid(cur_var)
+domain   = get_domain(state_list)
+iterator = get_iterator(state_list)
 
-          nest = get_domain_nest(domain, get_nest_number(cur_var))
-          nx   = get_nest_i_width(nest)
-          ny   = get_nest_j_width(nest)
+output_vars:  do while(has_next(iterator))
 
-          var_substate => get_var_substate(cur_var, statevec)
+   cur_var  = get_next(iterator)
+   var_name = get_var_name(cur_var)
+   var_dims = get_var_dims(cur_var, domain)
+   varid    = get_nc_varid(cur_var)
 
-          select case(get_var_rank(cur_var, domain))
-             case(2) ! Two dimensional variables         
+   nest = get_domain_nest(domain, get_nest_number(cur_var))
+   nx   = get_nest_i_width(nest)
+   ny   = get_nest_j_width(nest)
 
-               allocate(var2d(nx,ny), stat=alloc_status)
-               call check_alloc_status(alloc_status, routine, source, revision,   &
-                                       revdate, '2D allocate '//trim(var_name))
+   var_substate => get_var_substate(cur_var, statevec)
 
-               var2d = reshape(var_substate, (/nx, ny/))
-               call nc_check(nf90_put_var(ncFileID, varid, var2d,                 &
-                             start=(/ 1, 1, copy_index, time_index /)),           &
-                             routine, 'put_var '//trim(var_name))
-             
-               deallocate(var2d, stat=alloc_status)
-               call check_dealloc_status(alloc_status, routine, source, revision, &
-                                         revdate, '2D deallocate '//trim(var_name))
+   select case(get_var_rank(cur_var, domain))
+      case(2) ! Two dimensional variables         
 
-             case(3)  ! Three dimensional variables
+        allocate(var2d(nx,ny), stat=alloc_status)
+        call check_alloc_status(alloc_status, routine, source, revision,   &
+                                revdate, '2D allocate '//trim(var_name))
 
-               allocate(var3d(nx, ny, var_dims(3)), stat=alloc_status)
-               call check_alloc_status(alloc_status, routine, source, revision,   &
-                                       revdate, '3D allocate '//trim(var_name))
+        var2d = reshape(var_substate, (/nx, ny/))
+        call nc_check(nf90_put_var(ncFileID, varid, var2d,                 &
+                      start=(/ 1, 1 /)),                                   &
+                      routine, 'put_var '//trim(var_name))
+      
+        deallocate(var2d, stat=alloc_status)
+        call check_dealloc_status(alloc_status, routine, source, revision, &
+                                  revdate, '2D deallocate '//trim(var_name))
 
-               var3d = reshape(var_substate, (/nx, ny, var_dims(3)/))
-               call nc_check(nf90_put_var(ncFileID, varid,                 &
-                             var3d(1:var_dims(1), 1:var_dims(2), :),       &
-                             start=(/ 1, 1, 1, copy_index, time_index /)), &
-                             routine, 'put_var '//trim(var_name))
+      case(3)  ! Three dimensional variables
 
-             deallocate(var3d, stat=alloc_status)
-             call check_dealloc_status(alloc_status, routine, source, revision, &
-                              revdate, '3D deallocate '//trim(var_name))
+        allocate(var3d(nx, ny, var_dims(3)), stat=alloc_status)
+        call check_alloc_status(alloc_status, routine, source, revision,   &
+                                revdate, '3D allocate '//trim(var_name))
 
-           case default
+        var3d = reshape(var_substate, (/nx, ny, var_dims(3)/))
+        call nc_check(nf90_put_var(ncFileID, varid,                 &
+                      var3d(1:var_dims(1), 1:var_dims(2), :),       &
+                      start=(/ 1, 1, 1 /)),                         &
+                      routine, 'put_var '//trim(var_name))
 
-             write(msgstring,*) 'not built to handle ndims == ', get_var_rank(cur_var, domain)
-             call error_handler(E_ERR, routine, msgstring, source, revision, revdate) 
-          end select
+      deallocate(var3d, stat=alloc_status)
+      call check_dealloc_status(alloc_status, routine, source, revision, &
+                       revdate, '3D deallocate '//trim(var_name))
 
-      end do output_vars
+    case default
 
-    end subroutine nc_write_prognostic_data
+      write(msgstring,*) 'not built to handle ndims == ', get_var_rank(cur_var, domain)
+      call error_handler(E_ERR, routine, msgstring, source, revision, revdate) 
+   end select
+
+end do output_vars
+
+end subroutine nc_write_prognostic_data
 
     ! nc_write_statearray_atts
     ! --------------------------
@@ -334,9 +324,7 @@ contains
 
         ! Data variables
         state_var_id = new_variable(ncFileID, 'state', NF90_DOUBLE,   &
-                                    (/ get_dim_id(state_coord),       &
-                                       get_copy_dim_id(ncFileID),     &
-                                       get_time_dim_id(ncFileID) /),  &
+                                    (/ get_dim_id(state_coord) /),  &
                                     var_long_name = 'Model State') 
 
         type_var_id = new_variable(ncFileID, 'type', NF90_INT,       &
@@ -417,11 +405,6 @@ contains
       integer, parameter :: Y_COORD_INDEX   = 2
       integer, parameter :: YM1_COORD_INDEX = 3
 
-
-      ! Make sure we have the most recent additions to the file before adding more
-      call nc_check(nf90_sync(ncFileID), routine) 
-      call nc_check(nf90_redef(ncFileID), routine) 
-
       domain = get_domain(state_list)
 
       ! Total number of coordinate variables 
@@ -475,46 +458,44 @@ contains
                    new_coordinate_var(ncFileID, 'sigm',   nz, nf90_double, & 
                    'Mass Level Sigma', 'meters',  cv_stagger = 0.5_r8, cv_dir = ZDIR_COORD)
       
-!TJH       ! ------------------------------------------------------------------
-!TJH       ! Loop over all the variables in the state vector
-!TJH       ! ------------------------------------------------------------------
-!TJH       iterator = get_iterator(state_list)
-!TJH       define_atts:  do while(has_next(iterator))
-!TJH 
-!TJH         cur_var => get_next(iterator)
-!TJH 
-!TJH         select case (get_vert_type(cur_var))
-!TJH           case(VERTISHEIGHT)
-!TJH             write(var_name, 402) trim(get_var_name(cur_var)), 'Z', &
-!TJH                                  int(get_vert_value(cur_var)), get_nest_number(cur_var)
-!TJH           case(VERTISPRESSURE)
-!TJH             write(var_name, 402) trim(get_var_name(cur_var)), 'P', &
-!TJH                                  int(get_vert_value(cur_var)), get_nest_number(cur_var)
-!TJH           case(VERTISSURFACE, VERTISUNDEF)
-!TJH             write(var_name, 402) trim(get_var_name(cur_var)), 'S', &
-!TJH                                  get_vert_value(cur_var), get_nest_number(cur_var)
-!TJH           case default
-!TJH             write(var_name, 400) trim(get_var_name(cur_var)), get_nest_number(cur_var)
-!TJH         end select
-!TJH 
-!TJH         ndims  = get_var_rank(cur_var, domain)
-!TJH 
-!TJH         dimids = get_dimids(ndims        = ndims,                         &
-!TJH                             var_dims     = get_var_dims(cur_var, domain), & 
-!TJH                             nest_number  = get_nest_number(cur_var),      & 
-!TJH                             local_coords = coords) 
-!TJH 
-!TJH         call set_nc_varid(cur_var,                             &
-!TJH                   new_variable(                                &
-!TJH                   ncFileID    = ncFileID,                      &
-!TJH                   var_name    = var_name,                      &
-!TJH                   var_type    = nf90_double,                   &
-!TJH                   dim_ids     = (/ dimids(1:ndims),            &
-!TJH                                  get_copy_dim_id(ncFileID),    &
-!TJH                                  get_time_dim_id(ncFileID) /), &
-!TJH                   var_stagger = get_var_stagger(cur_var)))
-!TJH 
-!TJH       end do define_atts
+      ! ------------------------------------------------------------------
+      ! Loop over all the variables in the state vector
+      ! ------------------------------------------------------------------
+      iterator = get_iterator(state_list)
+      define_atts:  do while(has_next(iterator))
+
+        cur_var => get_next(iterator)
+
+        select case (get_vert_type(cur_var))
+          case(VERTISHEIGHT)
+            write(var_name, 402) trim(get_var_name(cur_var)), 'Z', &
+                                 int(get_vert_value(cur_var)), get_nest_number(cur_var)
+          case(VERTISPRESSURE)
+            write(var_name, 402) trim(get_var_name(cur_var)), 'P', &
+                                 int(get_vert_value(cur_var)), get_nest_number(cur_var)
+          case(VERTISSURFACE, VERTISUNDEF)
+            write(var_name, 402) trim(get_var_name(cur_var)), 'S', &
+                                 get_vert_value(cur_var), get_nest_number(cur_var)
+          case default
+            write(var_name, 400) trim(get_var_name(cur_var)), get_nest_number(cur_var)
+        end select
+
+        ndims  = get_var_rank(cur_var, domain)
+
+        dimids = get_dimids(ndims        = ndims,                         &
+                            var_dims     = get_var_dims(cur_var, domain), & 
+                            nest_number  = get_nest_number(cur_var),      & 
+                            local_coords = coords) 
+
+        call set_nc_varid(cur_var,                             &
+                  new_variable(                                &
+                  ncFileID    = ncFileID,                      &
+                  var_name    = var_name,                      &
+                  var_type    = nf90_double,                   &
+                  dim_ids     = (/ dimids(1:ndims) /),         &
+                  var_stagger = get_var_stagger(cur_var)))
+
+      end do define_atts
 
       ! ------------------------------------------------------------------
       ! Need to get out of define mode to fill the coordinate variables 
@@ -990,26 +971,6 @@ contains
 
         get_coord_stagger = coord_var%stagger
     end function get_coord_stagger
-
-    ! get_copy_dim_id
-    ! ---------------
-    ! Get the "copy" dimension from a NetCDF file
-    function get_copy_dim_id(ncFileID)
-        integer, intent(in) :: ncFileID
-        integer             :: get_copy_dim_id
-
-        call nc_check(nf90_inq_dimid(ncFileID, 'copy', dimid=get_copy_dim_id), 'get_copy_dim_id') 
-    end function get_copy_dim_id
-
-    ! get_time_dim_id
-    ! ---------------
-    ! Get the "time" dimension from a NetCDF file
-    function get_time_dim_id(ncFileID)
-        integer, intent(in) :: ncFileID
-        integer             :: get_time_dim_id
-
-        call nc_check(nf90_inq_dimid(ncFileID, 'time', dimid=get_time_dim_id), 'get_time_dim_id') 
-    end function get_time_dim_id
 
   ! get_dimids
   ! -------------------

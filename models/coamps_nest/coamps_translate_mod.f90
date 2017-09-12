@@ -63,6 +63,9 @@ module coamps_translate_mod
                                    read_flat_file, write_flat_file,           &
                                    HDF5_FILE_NAME, read_hdf5_variable
 
+  use coamps_netcdf_mod,    only : nc_write_prognostic_atts, &
+                                   nc_write_prognostic_data
+
   use time_manager_mod,     only : get_date,                                  &
                                    get_time,                                  &
                                    GREGORIAN,                                 &
@@ -243,8 +246,8 @@ module coamps_translate_mod
   character(len=64) :: coamps_file_names_foo
 
   ! DART restart file
-  character(len=11), parameter :: DART_FILENAME = 'dart_vector'
-  integer                      :: dart_unit              
+  character(len=*), parameter :: DART_FILENAME = 'dart_vector.nc'
+  integer                     :: dart_unit              
 
   character(len=10)  :: cdtgm1
   character(len=180) :: dsnrff1
@@ -760,35 +763,46 @@ contains
     end if
   end subroutine coamps_write_all_fields
 
-  ! open_dart_file
-  ! -----------------
-  ! Opens the DART restart file for reading or writing
-  !  PARAMETERS
-  !   IN  writing_dart      True if we are opening the DART file
-  !                         for write access
-  subroutine open_dart_file(writing_dart)
-    logical, intent(in) :: writing_dart
+! -----------------
+!> Opens a netCDF file for reading
+!> creates a netCDF file for writing
+!>  PARAMETERS
+!>   IN  writing_dart      .true. if we are opening the DART file
+!>                         for write access
 
-    character(len=5) :: fileaction
-    character(len=7) :: filestatus
+subroutine open_dart_file(writing_dart)
 
-    character(len=*), parameter :: routine = 'open_dart_file'
-    integer :: io_status
+logical, intent(in) :: writing_dart
 
-    if (writing_dart) then
-       fileaction = 'write'
-       filestatus = 'replace'
-    else
-       fileaction = 'read'
-       filestatus = 'old'
-    end if
+character(len=5) :: fileaction
+character(len=7) :: filestatus
 
-    dart_unit = get_unit()
-    open( unit=dart_unit, file=DART_FILENAME, status=filestatus,        & 
-          action=fileaction, form='unformatted', iostat=io_status)
-    call check_io_status(io_status, routine, source, revision, revdate, &
-                         'Opening ' // DART_FILENAME)
-  end subroutine open_dart_file
+character(len=*), parameter :: routine = 'open_dart_file'
+integer :: io_status
+
+if (writing_dart) then
+   fileaction = 'write'
+   filestatus = 'replace'
+
+   io_status = nf90_create(DART_FILENAME, NF90_CLOBBER, dart_unit)
+   call nc_check(io_status, routine, context='opening ', filename=DART_FILENAME)
+   call nc_write_prognostic_atts(dart_unit, file_layout)
+
+else
+   fileaction = 'read'
+   filestatus = 'old'
+
+   call error_handler(E_ERR,'open_dart_file','not ready for reading', &
+        source, revision, revdate)
+   dart_unit = get_unit()
+   open( unit=dart_unit, file=DART_FILENAME, status=filestatus,        & 
+         action=fileaction, form='unformatted', iostat=io_status)
+   call check_io_status(io_status, routine, source, revision, revdate, &
+                        'Opening ' // DART_FILENAME)
+end if
+
+end subroutine open_dart_file
+
 
   ! convert_dart_state_to_coamps
   ! ----------------------------
@@ -877,8 +891,6 @@ contains
        write_times = .true.
     end if
 
-    rewind(dart_unit)
-
     if (write_times) then
        call write_time(dart_unit, dart_time(DART_CURRENT_TIME), 'unformatted')
        call get_time(dart_time(DART_CURRENT_TIME), dart_time_seconds, dart_time_days)
@@ -886,8 +898,10 @@ contains
                    " days and ", dart_time_seconds, " seconds."
     end if
 
-    write(dart_unit) dart_state
+    call nc_write_prognostic_data(dart_unit, file_layout, dart_state) 
+
     call print_dart_diagnostics()
+
   end subroutine dart_write
 
   ! set_dart_current_time

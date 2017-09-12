@@ -84,9 +84,7 @@ module model_mod
                                     check_dealloc_status,     &
                                     HDF5_FILE_NAME
 
-    use coamps_netcdf_mod,   only : nc_write_statearray_atts, &
-                                    nc_write_prognostic_atts, &
-                                    nc_write_statearray_data, &
+    use coamps_netcdf_mod,   only : nc_write_prognostic_atts, &
                                     nc_write_prognostic_data
 
     use coamps_translate_mod, only : initialize_translator,   &
