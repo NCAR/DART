@@ -40,6 +40,7 @@ module coamps_statevec_mod
     use obs_kind_mod
 
     use utilities_mod,       only : do_output,     &
+                                    E_MSG,         &
                                     E_WARN,        &
                                     E_ERR,         &
                                     error_handler, &
@@ -137,7 +138,9 @@ module coamps_statevec_mod
        "$URL$"
     character(len=*), parameter :: revision = "$Revision$"
     character(len=*), parameter :: revdate  = "$Date$"
-  
+ 
+    character(len=512) :: string1
+
     !------------------------------
     ! END MODULE VARIABLES
     !------------------------------
@@ -391,7 +394,7 @@ contains
                                  'skipping "'//get_var_name(var)//'"', &
                                  source, revision, revdate, &
                                  text2='need to add to state some other way.')
-                      cycle VARLOOP
+!TJH                      cycle VARLOOP
                    case default
             end select
 
@@ -400,7 +403,8 @@ contains
             updatelist(nvars) = gets_update( var)
             if (is_nonnegative(var)) clampvals(nvars,1) = 0.0_r8
 
-    write(*,*)'construct_domain_info: ',nvars,'"'//trim(get_var_name(var))//'"'
+            write(string1,*)'TJH: ',nvars,' "'//trim(get_var_name(var))//'"'
+            call error_handler(E_MSG,routine,string1)
 
         enddo VARLOOP
 
@@ -475,8 +479,8 @@ contains
         logical                         :: list_only_local
 
         ! variables to deal with special case mean fields
-        integer, parameter                                       :: NUM_DEFAULT_VARS = 3
-        integer, parameter                                       :: VAR_NAME_LEN     = 4
+        integer, parameter              :: NUM_DEFAULT_VARS = 3
+        integer, parameter              :: VAR_NAME_LEN     = 4
         character(len=VAR_NAME_LEN), dimension(NUM_DEFAULT_VARS), parameter :: &
                   default_vars = (/'THBM','EXBM','EXBW'/)
 

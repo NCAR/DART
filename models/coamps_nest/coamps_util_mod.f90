@@ -25,7 +25,9 @@ module coamps_util_mod
                             timestamp,     &
                             register_module
 
-  use netcdf_utilities_mod, only : nc_check
+  use netcdf_utilities_mod, only : nc_check, &
+                                   nc_get_variable, &
+                                   nc_get_variable_info
 
   use typesizes
   use netcdf
@@ -61,6 +63,7 @@ module coamps_util_mod
 
   ! Working with HDF5 files
   public :: HDF5_FILE_NAME
+  public :: read_hdf5_variable
 
   ! Variable type
   public :: C_REAL
@@ -141,6 +144,7 @@ module coamps_util_mod
   integer :: debug_level = 0
 
   character(len=28), dimension(NUM_ERROR_TYPES) :: error_msgs
+  character(len=512) :: string1, string2
 
   !------------------------------
   ! END MODULE VARIABLES
@@ -531,6 +535,62 @@ contains
                               revdate, 'flat_array_tmp')
   end subroutine read_flat_file
 
+
+  !----------------
+  !> Given the unit number of an *open* COAMPS HDF5 file
+  ! and variable, read the variable into an array. 
+  !  PARAMETERS
+  !   IN  hdf5_unit      unit number of an open flat file
+  !   IN  variable_name  string defining the variable to read
+  !   OUT flat_array     coamps_grid structure to be filled
+
+  subroutine read_hdf5_variable(hdf5_unit, variable_name, flat_array)
+
+    integer,          intent(in)    :: hdf5_unit
+    character(len=*), intent(in)    :: variable_name
+    real(kind=r8),    intent(inout) :: flat_array(:)
+
+    character(len=*), parameter :: routine = 'read_hdf5_variable'
+
+    integer :: xtype
+    integer :: ndims
+    integer :: nAtts
+    integer :: dimlens(NF90_MAX_VAR_DIMS)
+    character(len=NF90_MAX_NAME) :: dimnames(NF90_MAX_VAR_DIMS)
+
+    real(r8), allocatable :: chunk2D(:,:)
+    real(r8), allocatable :: chunk3D(:,:,:)
+
+    call nc_get_variable_info(hdf5_unit, variable_name, xtype=xtype, ndims=ndims,&
+                 dimlens=dimlens, dimnames=dimnames, nAtts=nAtts, context=routine)
+
+    if ( ndims == 1) then
+
+       call nc_get_variable(hdf5_unit, variable_name, flat_array, context='read_hdf_variable:1D') 
+
+    elseif (ndims == 2) then
+
+       allocate( chunk2D( dimlens(1), dimlens(2) ) )
+       call nc_get_variable(hdf5_unit, variable_name, chunk2D, context='read_hdf_variable:2D') 
+       flat_array = reshape(chunk2D, (/ dimlens(1)*dimlens(2) /))
+       deallocate(chunk2D)
+
+    elseif (ndims == 3) then
+
+       allocate( chunk3D( dimlens(1), dimlens(2), dimlens(3) ) )
+       call nc_get_variable(hdf5_unit, variable_name, chunk3D, context='read_hdf_variable:3D') 
+       flat_array = reshape(chunk3D, (/ dimlens(1)*dimlens(2)*dimlens(3) /))
+       deallocate(chunk3D)
+
+    else
+       write(string1,*)'can only read 1D, 2D, or 3D variables for now'
+       write(string2,*)'variable "',trim(variable_name),'" has shape ', dimlens(1:ndims)
+       call error_handler(E_ERR, routine, string1, source, revision, revdate, text2=string2)
+    endif
+
+  end subroutine read_hdf5_variable
+
+
   ! read_datahd_file
   ! ----------------
   ! Given the dtg of a COAMPS domain information file, read the domain 
@@ -589,7 +649,7 @@ contains
 
     ! Error checking
     character(len=*), parameter :: routine = 'write_datahd_file'
-    integer :: io_status, alloc_status
+    integer :: io_status
 
     integer :: ii
 

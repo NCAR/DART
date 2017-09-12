@@ -528,8 +528,8 @@ do ivar = 1, num_vars
    ret = nf90_inq_varid(ncfile, domain%variable(ivar)%varname,    &
                                 domain%variable(ivar)%io_info%netcdf_id)
 
-   call nc_check(ret, 'load_variable_ids, nf90_inq_var_id', &
-                 trim(domain%variable(ivar)%varname))
+   write(string1,*)'domain variable number ',ivar,' "'//trim(domain%variable(ivar)%varname)//'" from file "'//trim(domain%info_file)//'"'
+   call nc_check(ret, 'load_variable_ids, nf90_inq_var_id', string1) 
 
 enddo
 

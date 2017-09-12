@@ -15,43 +15,44 @@ program trans_coamps_to_dart
 ! --------------------
 ! DART $Id$
 
-  use coamps_translate_mod, only : initialize_translator,         &
-                                   generate_coamps_filenames,     &
-                                   open_coamps_files,             &
-                                   coamps_read_all_fields,        &
-                                   convert_coamps_state_to_dart,  &
-                                   set_dart_current_time,         &
-                                   open_dart_file, dart_write,    &
-                                   finalize_translator
+use coamps_translate_mod, only : initialize_translator,         &
+                                 generate_coamps_filenames,     &
+                                 open_coamps_files,             &
+                                 coamps_read_all_fields,        &
+                                 convert_coamps_state_to_dart,  &
+                                 set_dart_current_time,         &
+                                 open_dart_file, dart_write,    &
+                                 finalize_translator
 
-  implicit none
+implicit none
 
-  ! version controlled file description for error handling, do not edit
-  character(len=*), parameter :: source   = &
-     "$URL$"
-  character(len=*), parameter :: revision = "$Revision$"
-  character(len=*), parameter :: revdate  = "$Date$"
- 
-  ! The translation module uses internal flags for whether it's
-  ! reading or writing - these are just aliases so it's clearer
-  ! what the calls are saying
-  logical, parameter :: READING_COAMPS = .false.
-  logical, parameter :: WRITING_DART   = .true.
+! version controlled file description for error handling, do not edit
+character(len=*), parameter :: source   = &
+   "$URL$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
-  call initialize_translator()
+! The translation module uses internal flags for whether it's
+! reading or writing - these are just aliases so it's clearer
+! what the calls are saying
+logical, parameter :: READING_COAMPS = .false.
+logical, parameter :: WRITING_DART   = .true.
 
-  call generate_coamps_filenames(READING_COAMPS)
-  call open_coamps_files(READING_COAMPS)
+call initialize_translator()
 
-  call coamps_read_all_fields()
-  call convert_coamps_state_to_dart()
+call generate_coamps_filenames(READING_COAMPS)
+call open_coamps_files(READING_COAMPS)
 
-  call set_dart_current_time()
+call coamps_read_all_fields()
+call convert_coamps_state_to_dart()
 
-  call open_dart_file(WRITING_DART)
-  call dart_write()
+call set_dart_current_time()
 
-  call finalize_translator()
+call open_dart_file(WRITING_DART)
+call dart_write()
+
+call finalize_translator()
+
 end program trans_coamps_to_dart
 
 ! <next few lines under version control, do not edit>

@@ -56,14 +56,12 @@ module coamps_translate_mod
                                    define_mean_exner
 
   use coamps_util_mod,      only : C_REAL,                                    &
-                                   check_alloc_status,                        &
-                                   check_dealloc_status,                      &
+                                   check_alloc_status, check_dealloc_status,  &
                                    check_io_status,                           &
                                    fix_for_platform,                          &
                                    generate_flat_file_name,                   &
-                                   read_flat_file,                            &
-                                   write_flat_file,                           &
-                                   HDF5_FILE_NAME
+                                   read_flat_file, write_flat_file,           &
+                                   HDF5_FILE_NAME, read_hdf5_variable
 
   use time_manager_mod,     only : get_date,                                  &
                                    get_time,                                  &
@@ -89,6 +87,10 @@ module coamps_translate_mod
 
   use location_mod,         only : VERTISUNDEF, VERTISSURFACE, VERTISLEVEL,   &
                                    VERTISPRESSURE, VERTISHEIGHT
+
+  use netcdf_utilities_mod, only : nc_check
+
+  use netcdf
 
   implicit none
 
@@ -236,6 +238,7 @@ module coamps_translate_mod
   ! Arrays allow reading/writing multiple COAMPS files 
   integer                                      :: total_coamps_files
   character(len=64), dimension(:), allocatable :: coamps_file_names
+  character(len=64), dimension(:), allocatable :: coamps_variable_names
   integer, dimension(:), allocatable           :: coamps_file_units
   character(len=64) :: coamps_file_names_foo
 
@@ -347,6 +350,11 @@ contains
     deallocate(coamps_file_names, stat=dealloc_status)
     call check_dealloc_status(dealloc_status, routine, source,       &
                               revision, revdate, 'coamps_file_names' )
+
+    deallocate(coamps_variable_names, stat=dealloc_status)
+    call check_dealloc_status(dealloc_status, routine, source,       &
+                              revision, revdate, 'coamps_variable_names' )
+
     deallocate(coamps_file_units, stat=dealloc_status)
     call check_dealloc_status(dealloc_status, routine, source,       &
                               revision, revdate, 'coamps_file_units' )
@@ -366,12 +374,18 @@ contains
   !   IN  writing_coamps    True if we are going to be writing the
   !                         COAMPS files, false if reading files
   subroutine generate_coamps_filenames(writing_coamps)
+
     logical, intent(in)         :: writing_coamps
+
     if(FLAT_FILE_IO) then
       call generate_all_flat_filenames(writing_coamps)
     else
       call generate_restart_filenames(writing_coamps)
     end if
+
+    ! TJH the hdf5 variable names are the same as the previous filenames
+    coamps_variable_names(:) = coamps_file_names(:)
+
   end subroutine generate_coamps_filenames
 
   ! open_coamps_files
@@ -383,12 +397,13 @@ contains
   subroutine open_coamps_files(writing_coamps)
     logical, intent(in) :: writing_coamps
     if(FLAT_FILE_IO) then
-      call open_coamps_flat_files(writing_coamps)
+!      call open_coamps_flat_files(writing_coamps)
+      call open_coamps_hdf5_files(writing_coamps)
     else
       call open_coamps_restart_files(writing_coamps)
     end if
   end subroutine open_coamps_files
-  
+ 
   ! generate_all_flat_filenames
   ! --------------------------
   ! Generate the COAMPS restart file names based on information from
@@ -414,7 +429,7 @@ contains
     integer                     :: i_width
     integer                     :: j_width
 
-    aotype      = 'a'
+    aotype = 'a'
 
     ! Assert that the restart file names are already allocated
     if (.not. allocated(coamps_file_names)) then
@@ -487,7 +502,9 @@ contains
       write (*,'(I2.2,2x,A)') coamps_file_index,                      &
                   trim(dsnrff1)//coamps_file_names(coamps_file_index)
 
+
     end do flat_file_loop
+
     print *,"-------------------------------------------------"
 
     !FIXME Test pressure level output
@@ -578,7 +595,55 @@ contains
       coamps_file_units(cur_file_index) = cur_file_unit
     end do flat_file_loop
   end subroutine open_coamps_flat_files
-  
+
+  !-----------------------------------------------------------------------
+  !> Uses the list of COAMPS flat file names to populate the vector of
+  !> opened COAMPS flat file units
+  !> PARAMETERS
+  !>  IN  writing_coamps     True if we're opening the files for
+  !>                         write access
+
+  subroutine open_coamps_hdf5_files(writing_coamps)
+    logical, intent(in) :: writing_coamps
+
+    type(state_variable)        :: cur_var
+    type(state_iterator)        :: iterator
+    integer                     :: cur_file_index
+    integer :: io, ncid, mode
+
+    character(len=*), parameter :: routine = 'open_coamps_hdf5_files'
+
+    character(len=5)            :: fileaction
+    character(len=7)            :: filestatus
+
+    if (writing_coamps) then
+       fileaction = 'write'
+       filestatus = 'replace'
+       mode       = NF90_WRITE
+    else
+       fileaction = 'read'
+       filestatus = 'old'
+       mode       = NF90_NOWRITE
+    end if
+
+    io = nf90_open(path=HDF5_FILE_NAME, mode=mode, ncid=ncid)
+    call nc_check(io, routine, context='opening ', filename=HDF5_FILE_NAME)
+
+    ! Only putting the ID in the files we use ...
+    cur_file_index = 0
+    iterator = get_iterator(file_layout)
+    flat_file_loop: do while (has_next(iterator))
+      cur_var = get_next(iterator)
+
+      if( .not. get_io_flag(cur_var) ) cycle flat_file_loop
+      cur_file_index = cur_file_index + 1
+
+      coamps_file_units(cur_file_index) = ncid
+
+    enddo flat_file_loop
+  end subroutine open_coamps_hdf5_files
+ 
+ 
   ! generate_restart_filenames
   ! --------------------------
   ! Generate the COAMPS restart file names based on information from
@@ -1061,6 +1126,10 @@ contains
        total_coamps_files = get_num_subdomains(domain)
     end if
 
+    allocate(coamps_variable_names(total_coamps_files), stat=alloc_status)
+    call check_alloc_status(alloc_status, routine, source, revision, &
+                            revdate, 'coamps_variable_names')
+
     allocate(coamps_file_names(total_coamps_files), stat=alloc_status)
     call check_alloc_status(alloc_status, routine, source, revision, &
                             revdate, 'coamps_file_names')
@@ -1084,6 +1153,10 @@ contains
     integer :: alloc_status
     
     total_coamps_files = get_num_fields(file_layout) 
+    
+    allocate(coamps_variable_names(total_coamps_files), stat=alloc_status)
+    call check_alloc_status(alloc_status, routine, source, revision, &
+                            revdate, 'coamps_variable_names')
 
     allocate(coamps_file_names(total_coamps_files), stat=alloc_status)
     call check_alloc_status(alloc_status, routine, source, revision, &
@@ -1094,12 +1167,14 @@ contains
                             revdate, 'coamps_file_units')
   end subroutine allocate_coamps_flat_file_info
 
- ! coamps_process_all_flat_files
+
+  ! coamps_process_all_flat_files
   ! ---------------------------------
   ! Reads/writes all fields in the DART restart vector to/from their
   ! proper places in the COAMPS restart file(s)
   !  PARAMETERS
   !   IN  write_coamps      True if we're writing to COAMPS files
+
   subroutine coamps_process_all_flat_files(write_coamps) 
     logical, intent(in)       :: write_coamps
 
@@ -1119,8 +1194,7 @@ contains
       cur_var  = get_next(iterator)
       if( .not. get_io_flag(cur_var)) cycle flat_file_loop
 
-!TJH      var_state => get_var_substate(cur_var, coamps_state)
-      call error_handler(E_ERR, routine, 'not updated, not needed?', source, revision, revdate)
+      var_state => get_var_substate(cur_var, coamps_state)
 
       cur_file = cur_file + 1
 
@@ -1135,11 +1209,16 @@ contains
         end if
 
       else
-        call read_flat_file(coamps_file_units(cur_file), var_state)
+
+! TJH   call read_flat_file(coamps_file_units(cur_file), var_state)
+        call read_hdf5_variable(coamps_file_units(cur_file), &
+                            coamps_variable_names(cur_file), &
+                            var_state)
       end if
     end do flat_file_loop
 
   end subroutine coamps_process_all_flat_files
+
 
   !coamps_process_default_vars
   ! ---------------------------------
@@ -1157,7 +1236,7 @@ contains
       cur_var   = get_next(iterator)
       if(.not. get_mean_flag(cur_var)) cycle mean_fld_loop
 
-!TJH      var_state => get_var_substate(cur_var, coamps_state)
+      var_state => get_var_substate(cur_var, coamps_state)
 
       call calculate_mean_var(cur_var, var_state)
     end do mean_fld_loop
@@ -1360,7 +1439,7 @@ contains
     end if 
 
     var_nest  =  get_domain_nest(domain, get_nest_number(var_to_process))
-!TJH    var_state => get_var_substate(var_to_process, coamps_state)
+    var_state => get_var_substate(var_to_process, coamps_state)
 
     ! The "subfield" boundaries for the single-processor I/O case
     ! is just the i/j limits for the entire field - multi-processor
@@ -1526,7 +1605,7 @@ contains
        cur_var = get_next(var_iterator)
 
        if (is_nonnegative(cur_var)) then
-!TJH         state_subsect => get_var_substate(cur_var, dart_state)
+         state_subsect => get_var_substate(cur_var, dart_state)
          where (state_subsect < 0) state_subsect = 0     
        end if
     end do
@@ -1654,7 +1733,7 @@ contains
     do while(has_next(iterator))
 
       cur_var = get_next(iterator)
-!TJH      var_state => get_var_substate(cur_var, dart_state)
+      var_state => get_var_substate(cur_var, dart_state)
       max_value = maxval(var_state)
       min_value = minval(var_state)
 
