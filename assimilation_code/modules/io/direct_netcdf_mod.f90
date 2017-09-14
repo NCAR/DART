@@ -1580,6 +1580,8 @@ type(time_type),           intent(in) :: dart_time
 logical,                   intent(in) :: single_precision_output
 integer :: ncfile_out
 
+character(len=*), parameter :: routine = 'create_and_open_state_output'
+
 integer :: ret !> netcdf return code
 integer :: create_mode
 integer :: i, j ! loop variables
@@ -1594,41 +1596,42 @@ character(len=NF90_MAX_NAME) :: filename
 filename = get_restart_filename(name_handle, copy_number, dom_id)
 
 write(msgstring,*) 'Creating output file ', trim(filename)
-call error_handler(E_ALLMSG,'create_and_open_state_output:', msgstring)
+call error_handler(E_ALLMSG, routine, msgstring)
 
 ! What file options do you want?
 create_mode = ior(NF90_CLOBBER, NF90_64BIT_OFFSET)
 ret = nf90_create(filename, create_mode, ncfile_out)
-call nc_check(ret, 'create_and_open_state_output: creating', trim(filename))
+call nc_check(ret, routine, 'nf90_create "'//trim(filename)//'"')
 
 ret = nf90_enddef(ncfile_out)
-call nc_check(ret, 'create_and_open_state_output', 'end define mode')
+call nc_check(ret, routine, 'end define mode')
 
 ! write grid information
 call nc_write_model_atts(ncfile_out, dom_id)
-call nc_check(nf90_Redef(ncfile_out),'create_and_open_state_output',   'redef ')
+call nc_check(nf90_Redef(ncfile_out), routine, 'redef ')
 
 ! filename discription
-call nc_write_file_information(ncfile_out, filename, get_file_description(name_handle, copy_number, dom_id))
-
+call nc_write_file_information(ncfile_out, filename, &
+          get_file_description(name_handle, copy_number, dom_id))
 
 ! revision information
 call nc_write_revision_info(ncfile_out)
 
 ! clamping information
-call nc_write_global_att_clamping(ncfile_out, copy_number, dom_id, from_scratch=.true.)
-
+call nc_write_global_att_clamping(ncfile_out, copy_number, dom_id, &
+          from_scratch=.true.)
 
 ! define dimensions, loop around unique dimensions
 do i = 1, get_io_num_unique_dims(dom_id)
    if ( trim(get_io_unique_dim_name(dom_id, i)) == 'time' ) then
       ret = nf90_def_dim(ncfile_out, 'time', NF90_UNLIMITED, new_dimid)
    else
-      ret = nf90_def_dim(ncfile_out, get_io_unique_dim_name(dom_id, i), get_io_unique_dim_length(dom_id, i), new_dimid)
+      ret = nf90_def_dim(ncfile_out, get_io_unique_dim_name(dom_id, i), &
+                       get_io_unique_dim_length(dom_id, i), new_dimid)
    endif
    !>@todo if we already have a unique names we can take this test out
    if(ret /= NF90_NOERR .and. ret /= NF90_ENAMEINUSE) then
-      call nc_check(ret, 'create_and_open_state_output', &
+      call nc_check(ret, routine, &
               'defining dimensions'//trim(get_io_unique_dim_name(dom_id, i)))
    endif
 enddo
@@ -1651,13 +1654,14 @@ do i = 1, get_num_variables(dom_id) ! loop around state variables
       ! query the dimension ids
       do j = 1, ndims
          ret = nf90_inq_dimid(ncfile_out, get_dim_name(dom_id, i, j), dimids(j))
-         call nc_check(ret, 'create_and_open_state_output', 'querying dimensions')
+         call nc_check(ret, routine, 'querying dimensions')
       enddo
   
       ! define variable name and attributes
+      write(msgstring,*) '"'//trim(get_variable_name(dom_id, i))//'"'
       ret = nf90_def_var(ncfile_out, trim(get_variable_name(dom_id, i)), &
                          xtype=xtype, dimids=dimids(1:ndims), varid=new_varid)
-      call nc_check(ret, 'create_and_open_state_output', 'defining variable')
+      call nc_check(ret, routine, 'defining variable '//trim(msgstring))
   
       call set_var_id(dom_id, i, new_varid)
   
@@ -1668,10 +1672,9 @@ do i = 1, get_num_variables(dom_id) ! loop around state variables
 enddo
 
 ret = nf90_enddef(ncfile_out)
-call nc_check(ret, 'create_and_open_state_output', 'end define mode')
+call nc_check(ret, routine, 'nf90_enddef end define mode')
 
 call write_model_time(ncfile_out, dart_time)
-
 
 end function create_and_open_state_output
 

@@ -371,10 +371,12 @@ end subroutine static_init_model
         integer, intent(in)         :: ncFileID
         integer, intent(in)         :: domain_id
 
-        ! Error handling
         character(len=*), parameter :: routine = 'nc_write_model_atts'
 
-        call nc_write_prognostic_atts( ncFileID, state_layout_3D)
+        call nc_check(nf90_sync(ncFileID), routine, 'nf90_sync')
+        call nc_check(nf90_redef(ncFileID), routine, 'nf90_redef')
+
+        call nc_write_prognostic_atts(ncFileID,state_layout_3D,define_vars=.false.)
 
     end subroutine nc_write_model_atts
 

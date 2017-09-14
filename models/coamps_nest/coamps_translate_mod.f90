@@ -789,7 +789,7 @@ if (writing_dart) then
 
    io_status = nf90_create(DART_FILENAME, NF90_CLOBBER, dart_unit)
    call nc_check(io_status, routine, context='opening ', filename=DART_FILENAME)
-   call nc_write_prognostic_atts(dart_unit, file_layout)
+   call nc_write_prognostic_atts(dart_unit, file_layout, define_vars=.true.)
 
 else
    fileaction = 'read'

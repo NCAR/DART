@@ -357,10 +357,7 @@ end subroutine nc_write_prognostic_data
 
     ! nc_write_prognostic_atts
     ! -------------------
-    ! Write model-specific global attributes to a NetCDF file.
-    !  PARAMETERS
-    !   IN  ncFileID          numeric ID of an *open* NetCDF file
-    !   OUT ierr              0 if writing was successful
+    ! Write model-specific attributes to a NetCDF file.
     !
     ! If the dimension of the domain is specified to by nx, ny, nx ...
     ! then var_stagger is related to var_dims in the following way: 
@@ -371,9 +368,12 @@ end subroutine nc_write_prognostic_data
     ! V-stagger has dimensions (nx,ny-1,nz) 
     ! (COAMPS is on a C-grid with p-u-p ordering in the horizontal).
  
-    subroutine nc_write_prognostic_atts( ncFileID, state_list)
-      integer,            intent(in)      :: ncFileID      ! netCDF file 
-      type(state_vector), intent(in)      :: state_list
+    subroutine nc_write_prognostic_atts( ncFileID, state_list, define_vars)
+      integer,            intent(in) :: ncFileID      ! netCDF file 
+      type(state_vector), intent(in) :: state_list
+      logical,            intent(in) :: define_vars
+
+      character(len=*), parameter  :: routine = 'nc_write_prognostic_atts'
 
       integer                        :: nx, ny, nz
       integer                        :: ii, jj, n
@@ -394,7 +394,6 @@ end subroutine nc_write_prognostic_data
       type(coordinate_var), dimension(2) :: latlon_coord
 
       ! Error handling
-      character(len=*), parameter  :: routine = 'nc_write_prognostic_atts'
       integer                      :: alloc_status
       integer                      :: dealloc_status
  
@@ -461,35 +460,37 @@ end subroutine nc_write_prognostic_data
       ! ------------------------------------------------------------------
       ! Loop over all the variables in the state vector
       ! ------------------------------------------------------------------
-      iterator = get_iterator(state_list)
-      define_atts:  do while(has_next(iterator))
-
-        cur_var => get_next(iterator)
-
-        ! use the hdf variable name if possible
-        var_name = get_hdf_name(cur_var)
-
-        if (var_name == 'nohdfname') then
-           write(var_name, 400) trim(get_var_name(cur_var)), &
-                                     get_nest_number(cur_var)
-        endif
-
-        ndims  = get_var_rank(cur_var, domain)
-
-        dimids = get_dimids(ndims        = ndims,                         &
-                            var_dims     = get_var_dims(cur_var, domain), & 
-                            nest_number  = get_nest_number(cur_var),      & 
-                            local_coords = coords) 
-
-        call set_nc_varid(cur_var,                             &
-                  new_variable(                                &
-                  ncFileID    = ncFileID,                      &
-                  var_name    = var_name,                      &
-                  var_type    = nf90_double,                   &
-                  dim_ids     = (/ dimids(1:ndims) /),         &
-                  var_stagger = get_var_stagger(cur_var)))
-
-      end do define_atts
+      if (define_vars) then
+         iterator = get_iterator(state_list)
+         define_atts:  do while(has_next(iterator))
+   
+           cur_var => get_next(iterator)
+   
+           ! use the hdf variable name if possible
+           var_name = get_hdf_name(cur_var)
+   
+           if (var_name == 'nohdfname') then
+              write(var_name, 400) trim(get_var_name(cur_var)), &
+                                        get_nest_number(cur_var)
+           endif
+   
+           ndims  = get_var_rank(cur_var, domain)
+   
+           dimids = get_dimids(ndims        = ndims,                         &
+                               var_dims     = get_var_dims(cur_var, domain), & 
+                               nest_number  = get_nest_number(cur_var),      & 
+                               local_coords = coords) 
+   
+           call set_nc_varid(cur_var,                             &
+                     new_variable(                                &
+                     ncFileID    = ncFileID,                      &
+                     var_name    = var_name,                      &
+                     var_type    = nf90_double,                   &
+                     dim_ids     = (/ dimids(1:ndims) /),         &
+                     var_stagger = get_var_stagger(cur_var)))
+   
+         enddo define_atts
+      endif
 
       ! ------------------------------------------------------------------
       ! Need to get out of define mode to fill the coordinate variables 
@@ -507,7 +508,6 @@ end subroutine nc_write_prognostic_data
 
       call nc_check(nf90_put_var(ncFileID, get_var_id(coords(ncoord_total-1)),  & 
                     get_domain_wsigma(domain)), routine//': put_var wsigma') 
-
 
       ! ------------------------------------------------------------------
       ! Define and fill the lat/lon grid at mass and momentum points
@@ -541,6 +541,8 @@ end subroutine nc_write_prognostic_data
       deallocate(coords, stat=dealloc_status)
       call check_dealloc_status(dealloc_status, routine, source, revision,   &
                               revdate, 'coords')
+
+      call nc_check(nf90_sync(ncFileID),  routine//': sync') 
 
     end subroutine nc_write_prognostic_atts
 
