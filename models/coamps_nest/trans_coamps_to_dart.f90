@@ -22,7 +22,8 @@ use coamps_translate_mod, only : initialize_translator,         &
                                  convert_coamps_state_to_dart,  &
                                  set_dart_current_time,         &
                                  open_dart_file, dart_write,    &
-                                 finalize_translator
+                                 finalize_translator,           &
+                                 record_variable_names
 
 implicit none
 
@@ -42,6 +43,7 @@ call initialize_translator()
 
 call generate_coamps_filenames(READING_COAMPS)
 call open_coamps_files(READING_COAMPS)
+call record_variable_names()
 
 call coamps_read_all_fields()
 call convert_coamps_state_to_dart()

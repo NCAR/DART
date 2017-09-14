@@ -110,6 +110,7 @@ module coamps_translate_mod
   ! COAMPS restart file tools
   public :: generate_coamps_filenames
   public :: open_coamps_files
+  public :: record_variable_names
 
   public :: coamps_read_all_fields
   public :: coamps_write_all_fields
@@ -1217,8 +1218,6 @@ end subroutine open_dart_file
 
       cur_file = cur_file + 1
 
-      call set_hdf_name(cur_var, coamps_variable_names(cur_file))
-
       if(write_coamps) then
         write_field = gets_update(cur_var)
         if(write_field) then
@@ -1232,7 +1231,6 @@ end subroutine open_dart_file
 
       else
 
-! TJH   call read_flat_file(coamps_file_units(cur_file), var_state)
         call read_hdf5_variable(coamps_file_units(cur_file), &
                             coamps_variable_names(cur_file), &
                             var_state)
@@ -1242,10 +1240,50 @@ end subroutine open_dart_file
   end subroutine coamps_process_all_flat_files
 
 
+! ---------------------------------
+!> Records the hdf variable name in the state variable structure.
+!> The nuisance variables inherit the default name 'nohdfname'.
+
+subroutine record_variable_names(statevector) 
+type(state_vector), intent(inout), optional :: statevector
+
+character(len=*), parameter :: routine = 'record_variable_names'
+
+type(state_variable), pointer :: cur_var  ! use actual variable, not local
+type(state_iterator) :: iterator
+integer :: cur_file
+
+if (.not. allocated(coamps_variable_names)) then
+   call error_handler(E_ERR, routine, 'coamps variable names are'&
+                               // ' not allocated!', source, revision, revdate)
+endif 
+
+cur_file = 0
+
+if (present(statevector) ) then
+   iterator = get_iterator(statevector)
+else
+   iterator = get_iterator(file_layout)
+endif
+
+hdf_var_loop: do while (has_next(iterator))
+
+  cur_var  => get_next(iterator)
+  if( .not. get_io_flag(cur_var)) cycle hdf_var_loop
+
+  cur_file = cur_file + 1
+
+  call set_hdf_name(cur_var, coamps_variable_names(cur_file))
+
+enddo hdf_var_loop
+
+end subroutine record_variable_names
+
+
   !coamps_process_default_vars
   ! ---------------------------------
   ! adds variables to state vector that are
-  ! defined internally
+  ! defined internally (these are 'nuisance' variables)
   ! 
   subroutine coamps_process_default_vars()
     type(state_variable)        :: cur_var

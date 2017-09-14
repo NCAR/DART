@@ -47,14 +47,14 @@ module model_mod
 
 
     use coamps_statevar_mod, only : state_variable,           &
-                                    get_var_substate,             &
+                                    get_var_substate,         &
                                     get_nest_number,          &
                                     get_vert_type,            &
                                     get_vert_loc,             &
                                     get_state_begin,          &
                                     get_state_end,            &
                                     is_var_at_index,          &
-                                    dump_state_variable,          &
+                                    dump_state_variable,      &
                                     get_var_kind
 
     use coamps_nest_mod,     only : coamps_nest,              &
@@ -87,11 +87,11 @@ module model_mod
     use coamps_netcdf_mod,   only : nc_write_prognostic_atts, &
                                     nc_write_prognostic_data
 
-    use coamps_translate_mod, only : initialize_translator,   &
-                                     finalize_translator,     &
-                                     generate_coamps_filenames, &
-                                     get_coamps_filename,     &
-                                     get_coamps_filename_count
+use coamps_translate_mod, only : initialize_translator,            &
+           finalize_translator, record_variable_names,             &
+           generate_coamps_varnames => generate_coamps_filenames,  &
+           get_coamps_variable_count => get_coamps_filename_count, &
+           get_coamps_varname => get_coamps_filename
 
 !#!    use coamps_pert_mod,     only : perturb_state
 
@@ -263,8 +263,8 @@ real(r8) ::                    clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
 
     ! Grid information structure
     type(coamps_domain) :: domain
-    type(state_vector)  :: state_definition
-    type(state_vector)  :: state_layout_3D
+    type(state_vector)  :: state_definition   ! ENTIRE COAMP_NEST STATE
+    type(state_vector)  :: state_layout_3D    ! Just the variables for DART
 
     ! Ensemble mean
     real(kind=r8), dimension(:), allocatable :: ensemble_mean
@@ -282,77 +282,57 @@ contains
     ! BEGIN PUBLIC ROUTINES
     !------------------------------
 
-    ! static_init_model
-    ! -----------------
-    ! One-time initialization of the model.  For COAMPS, this:
-    !  1. Reads in the model_mod namelist
-    !  2. Initializes the pressure levels for the state vector
-    !  3. Generate the location data for each member of the state
-    !  PARAMETERS
-    !   [none]
-    subroutine static_init_model()
+! -----------------
+!> One-time initialization of the model.  For COAMPS, this:
+!>  1. Reads in the model_mod namelist
+!>  2. Initializes the pressure levels for the state vector
+!>  3. Generate the location data for each member of the state
+!>  PARAMETERS
+!>   [none]
+subroutine static_init_model()
 
-        character(len=*), parameter :: STATE_VEC_DEF_FILE = 'state.vars'
-        character(len=*), parameter :: routine = 'static_init_model'
+character(len=*), parameter :: STATE_VEC_DEF_FILE = 'state.vars'
+character(len=*), parameter :: routine = 'static_init_model'
 
 integer :: i, nvars
 integer(i8) :: model_size
 
-        if (module_initialized) return ! only need to do this once
+if (module_initialized) return ! only need to do this once
 
-        call register_module(source, revision, revdate)
+call register_module(source, revision, revdate)
 
-        module_initialized = .true.
+module_initialized = .true.
 
-        call set_calendar_type('Gregorian')
-        call read_model_namelist()
-        call set_debug_level(debug)
+call set_calendar_type('Gregorian')
+call read_model_namelist()
+call set_debug_level(debug)
 
-   write(*,*)'TJH current date-time-group is "',cdtg
-   write(*,*)'TJH before initialize_domain()'
-        call initialize_domain(HDF5_FILE_NAME, cdtg, domain)
+! the domain information is reported upon initialization
+call initialize_domain(HDF5_FILE_NAME, cdtg, domain)
 
-   write(*,*)'TJH before set_interp_diag()'
-        call set_interp_diag(output_interpolation)
+call set_interp_diag(output_interpolation)
 
-   write(*,*)'TJH before initialize_state_vector(state_definition ...)'
-        call initialize_state_vector(state_definition, STATE_VEC_DEF_FILE, domain)
+! 'state_definition' contains state vector necessary for entire coamps_nest
+call initialize_state_vector(state_definition, STATE_VEC_DEF_FILE, domain)
 
-   write(*,*)'TJH before initialize_state_vector(state_layour_3D ...)'
-        call initialize_state_vector(state_layout_3D, STATE_VEC_DEF_FILE, domain, .true.)
+! 'state_layout_3D' contains state vector necessary for DART
+call initialize_state_vector(state_layout_3D, STATE_VEC_DEF_FILE, domain, .true.)
 
-   write(*,*)'TJH before dump_state_vector()'
-        if (do_output()) call dump_state_vector(state_layout_3D)
+call allocate_metadata_arrays()
 
-   write(*,*)'TJH before dump_domain_info()'
-        if (do_output()) call dump_domain_info(domain)
+call populate_metadata_arrays()
 
-   write(*,*)'TJH before allocate_metadata_arrays()'
-        call allocate_metadata_arrays()
+call initialize_translator()
+call generate_coamps_varnames(writing_coamps = .false.)
+call record_variable_names(state_layout_3D)
 
-   write(*,*)'TJH before populate_metadata_arrays()'
-        call populate_metadata_arrays()
+if (debug > 99 .and. do_output()) call dump_state_vector(state_layout_3D)
 
-   write(*,*)'TJH before initialize_translator()'
-        call initialize_translator()
+nvars = get_coamps_variable_count()
 
-   write(*,*)'TJH before generate_coamps_filenames()'
-        call generate_coamps_filenames(writing_coamps = .false.)
-        
-        nvars = get_coamps_filename_count()
+call construct_domain_info(state_layout_3D, var_names, kind_list, clamp_vals, update_list, nvars)
 
-        do i = 1,nvars
-          var_names(i) = get_coamps_filename(i)
-          write(*,*)'variable ',i,' is "'//trim(var_names(i))//'"'
-        enddo
-
-        call construct_domain_info(state_layout_3D, var_names, kind_list, clamp_vals, update_list, nvars)
-
-! TJH domid = add_domain(HDF5_FILE_NAME, get_num_fields(state_layout_3D), &
-! TJH                    var_names, kind_list, clamp_vals, update_list )
-
-domid = add_domain(HDF5_FILE_NAME, nvars, &
-                   var_names, kind_list, clamp_vals, update_list )
+domid = add_domain('dart_vector.nc', nvars, var_names, kind_list, clamp_vals, update_list )
 
 ! print information in the state structure
 
@@ -361,12 +341,12 @@ if (debug > 0 .and. do_output()) call state_structure_info(domid)
 model_size = get_domain_size(domid)
 
 if (debug > 0 .and. do_output()) then
-  write(string1, *)'static_init_model: model_size = ', model_size
-  call error_handler(E_MSG, routine, string1)
+write(string1, *)'static_init_model: model_size = ', model_size
+call error_handler(E_MSG, routine, string1)
 endif
-!TJH         call finalize_translator()
+call finalize_translator()
 
-    end subroutine static_init_model
+end subroutine static_init_model
 
     ! end_model
     ! ---------

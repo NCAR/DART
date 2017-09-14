@@ -16,16 +16,17 @@
 
 module coamps_statevec_mod
 
-    use coamps_statevar_mod, only : state_variable, new_state_variable,    &
-                                    read_state_variable, set_position,     &
-                                    set_2d_flag, dump_state_variable,      &
-                                    set_var_stagger, set_hdf_name,         &
-                                    get_mean_flag, define_mean_var,        &
-                                    get_sigma_record, set_sigma_record,    &
-                                    get_mass_level_flag,                   &
-                                    operator(==), &
-                                    get_var_name, get_var_kind, &
-                                    gets_update, is_nonnegative
+    use coamps_statevar_mod, only : state_variable, new_state_variable, &
+                                    read_state_variable, set_position,  &
+                                    set_2d_flag, dump_state_variable,   &
+                                    set_var_stagger, set_hdf_name,      &
+                                    get_mean_flag, define_mean_var,     &
+                                    get_sigma_record, set_sigma_record, &
+                                    get_mass_level_flag,                &
+                                    operator(==),                       &
+                                    get_var_name, get_var_kind,         &
+                                    gets_update, is_nonnegative,        &
+                                    get_hdf_name, get_nest_number
 
     use coamps_domain_mod,   only : coamps_domain, get_domain_num_levels, &
                                     get_nest_count
@@ -366,54 +367,58 @@ contains
         get_var_by_index => state%vars(index_in)
     end function get_var_by_index
 
-    ! construct_domain_info
-    ! -----------------
-    subroutine construct_domain_info(state, varnames, kindlist, clampvals, updatelist, nvars)
-        type(state_vector), intent(in)  :: state
-        character(len=*),   intent(out) :: varnames(:)
-        integer,            intent(out) :: kindlist(:)
-        real(r8),           intent(out) :: clampvals(:,:)
-        logical,            intent(out) :: updatelist(:)
-        integer,            intent(out) :: nvars
+!-------------------------------------------------------------------------------
+!> generates the component arrays needed for the DART add_domain() routine
+subroutine construct_domain_info(state, varnames, kindlist, clampvals, updatelist, nvars)
 
-        type(state_iterator) :: iterator
-        type(state_variable) :: var
-        integer :: varindex, ivar
-        character(len=*), parameter :: routine = 'construct_domain_info'
+type(state_vector), intent(in)  :: state
+character(len=*),   intent(out) :: varnames(:)
+integer,            intent(out) :: kindlist(:)
+real(r8),           intent(out) :: clampvals(:,:)
+logical,            intent(out) :: updatelist(:)
+integer,            intent(out) :: nvars
 
-        clampvals(:,:) = MISSING_R8
+character(len=*), parameter :: routine = 'construct_domain_info'
 
-        varindex = 1
-        iterator = get_iterator(state)    
- VARLOOP: do while (has_next(iterator))
+type(state_iterator) :: iterator
+type(state_variable) :: var
+integer :: varindex, ivar
 
-            var = get_next(iterator)
+clampvals(:,:) = MISSING_R8
 
-            varnames(  varindex) = get_var_name(var)
-            kindlist(  varindex) = get_var_kind(var)
-            updatelist(varindex) = gets_update( var)
-            if (is_nonnegative(var)) clampvals(varindex,1) = 0.0_r8
+varindex = 1
+iterator = get_iterator(state)    
+VARLOOP: do while (has_next(iterator))
 
-            varindex = varindex + 1
+    var = get_next(iterator)
 
-        enddo VARLOOP
+    if (get_hdf_name(var) == 'nohdfname') then
+       !>@todo this should probably go in record_variable_names()
+       write(varnames(varindex),400)   &
+             trim(get_var_name(var)), get_nest_number(var)
+    else
+       varnames(varindex) = get_hdf_name(var)
+    endif
 
-        nvars = varindex -1
+    kindlist(  varindex) = get_var_kind(var)
+    updatelist(varindex) = gets_update( var)
+    if (is_nonnegative(var)) clampvals(varindex,1) = 0.0_r8
 
-!>@todo somehow the THBM,EXBM,EXBW are part of the domain (they have iterators)
-! but they do not have 'filenames' aka variable names - generate_coamps_filenames()
-! does not create them.  Should they be part of the state?  The nvars here is 24,
-! the number of variable names is 18 ... matching up the variable name list and the
-! kind etc. from the get_*(var)  routines is now the problem.
-!>@todo the kindlist is not matching the variable list, for example
+    varindex = varindex + 1
 
-        do ivar = 1,nvars
-           write(*,*)trim(routine)//' var',ivar, ' is "'//trim(varnames(ivar))//'"', &
-                      kindlist(ivar), clampvals(ivar,:), updatelist(ivar), &
-                  trim(get_name_for_quantity(kindlist(ivar)))
-        enddo
+enddo VARLOOP
 
-    end subroutine construct_domain_info
+400 format(A,'_g',I2.2)  ! must be same as coamps_netcdf_mod.f90: 400 format
+
+nvars = varindex - 1
+
+do ivar = 1,nvars
+   write(*,*)trim(routine)//' var',ivar, ' is "'//trim(varnames(ivar))//'"', &
+              kindlist(ivar), clampvals(ivar,:), updatelist(ivar), &
+          trim(get_name_for_quantity(kindlist(ivar)))
+enddo
+
+end subroutine construct_domain_info
 
     !------------------------------
     ! END PUBLIC ROUTINES

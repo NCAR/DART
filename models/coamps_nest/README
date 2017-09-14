@@ -18,9 +18,8 @@ The primary differences from the original coamps model code are:
 
 June 2017 ... updating to the rma_trunk ... 
 
-When Tim H. (me) asked if the 
-
-Sasa: 
+When Tim H. (me) asked if the hdf5 files contain three nuisance variables :
+'THBM','EXBM', and 'EXBW'  Sasa replied: 
  
 They certainly do not contain EXBM and EXBW.
 Here is the way forward (assuming we have variables on sigma levels for DART to operate on):
@@ -43,14 +42,28 @@ I hope it makes sense, please let me know if you need further clarifications or 
  
 sa#a
 
+
 Sasa: Here's the scoop:
  
 1) A shell script (shell_scripts/populate_state_vars.sh) will write the file state.vars
 2) It needs a template to run (EXPERIMENTS_EXAMPLE/state.dat
 3) To run it, simply change directory to EXPERIMENTS_EXAMPLE, change the number of levels to reflect the actual number of levels (40->60 and 41->61, I believe), and run the script ../../shell_scripts/populate_state_vars.sh state.dat true
 4) You should end up with state.vars file
- 
+
+
+Thu Sep 14 15:31:00 MDT 2017 $Revision$:
+ The problem I (Tim H) was having was with the DART add_domain() call, 
+it expects the variables to exist in the source file. They do not. 
+I spent a lot of time trying to work around the problem to no avail. 
+I resurrected the trans_coamps_to_dart.f90 and modified it to read 
+an HDF file, calculate the nuisance variables and write them to 
+a netCDF file.  There are two instances of the state_vector structure 
+- one for the DART state, and one for the entire COAMPS state.  The 
+coamps structure does not actually allocate any space for the state, 
+but does have the variable names we want - except for the nuisance variables.
+
 # <next few lines under version control, do not edit>
 # $URL$
 # $Revision$
 # $Date$
+
