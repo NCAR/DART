@@ -41,7 +41,7 @@ module coamps_netcdf_mod
 
     use coamps_statevar_mod, only : state_variable,             &
                                   get_var_substate,             &
-                                  get_var_name,                 &
+                                  get_var_name, get_hdf_name,   &
                                   get_nc_varid,                 &
                                   set_nc_varid,                 &
                                   get_vert_value,               &
@@ -466,19 +466,13 @@ end subroutine nc_write_prognostic_data
 
         cur_var => get_next(iterator)
 
-        select case (get_vert_type(cur_var))
-          case(VERTISHEIGHT)
-            write(var_name, 402) trim(get_var_name(cur_var)), 'Z', &
-                                 int(get_vert_value(cur_var)), get_nest_number(cur_var)
-          case(VERTISPRESSURE)
-            write(var_name, 402) trim(get_var_name(cur_var)), 'P', &
-                                 int(get_vert_value(cur_var)), get_nest_number(cur_var)
-          case(VERTISSURFACE, VERTISUNDEF)
-            write(var_name, 402) trim(get_var_name(cur_var)), 'S', &
-                                 get_vert_value(cur_var), get_nest_number(cur_var)
-          case default
-            write(var_name, 400) trim(get_var_name(cur_var)), get_nest_number(cur_var)
-        end select
+        ! use the hdf variable name if possible
+        var_name = get_hdf_name(cur_var)
+
+        if (var_name == 'nohdfname') then
+           write(var_name, 400) trim(get_var_name(cur_var)), &
+                                     get_nest_number(cur_var)
+        endif
 
         ndims  = get_var_rank(cur_var, domain)
 

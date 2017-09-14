@@ -41,7 +41,8 @@ module coamps_translate_mod
                                    get_var_name, get_var_max_level,           &
                                    get_var_min_level, get_mean_flag,          &
                                    get_io_flag, get_vert_type, get_vert_value,&
-                                   get_sigma_record, get_mass_level_flag
+                                   get_sigma_record, get_mass_level_flag,     &
+                                   set_hdf_name
 
   use coamps_nest_mod,      only : coamps_nest, get_nest_i_width,             &
                                    get_nest_j_width, get_subnest_iminf,       &
@@ -163,6 +164,7 @@ module coamps_translate_mod
 
   integer, parameter :: ONE = 1
 
+  integer, parameter :: NAME_LEN = 64
 
   ! Conversion parameters
   integer, parameter :: MIN_TO_SEC = 60
@@ -240,10 +242,10 @@ module coamps_translate_mod
 
   ! Arrays allow reading/writing multiple COAMPS files 
   integer                                      :: total_coamps_files
-  character(len=64), dimension(:), allocatable :: coamps_file_names
-  character(len=64), dimension(:), allocatable :: coamps_variable_names
+  character(len=NAME_LEN), dimension(:), allocatable :: coamps_file_names
+  character(len=NAME_LEN), dimension(:), allocatable :: coamps_variable_names
   integer, dimension(:), allocatable           :: coamps_file_units
-  character(len=64) :: coamps_file_names_foo
+  character(len=NAME_LEN) :: coamps_file_names_foo
 
   ! DART restart file
   character(len=*), parameter :: DART_FILENAME = 'dart_vector.nc'
@@ -1048,10 +1050,12 @@ end subroutine open_dart_file
 
   end function get_coamps_filename_count
 
+  !-----------------------------------------------------------------------
+  !> this is also the (very long) name of the HDF5 variable
 
   function get_coamps_filename(myindex)
   integer, intent(in) :: myindex
-  character(len=64) :: get_coamps_filename
+  character(len=NAME_LEN) :: get_coamps_filename
 
   get_coamps_filename = coamps_file_names(myindex)
 
@@ -1190,9 +1194,10 @@ end subroutine open_dart_file
   !   IN  write_coamps      True if we're writing to COAMPS files
 
   subroutine coamps_process_all_flat_files(write_coamps) 
+
     logical, intent(in)       :: write_coamps
 
-    type(state_variable)      :: cur_var
+    type(state_variable), pointer :: cur_var  ! use actual variable, not local
     type(state_iterator)      :: iterator
     integer :: cur_file       ! Which file is being read
     logical :: write_field    ! Allow us to not write a field even if
@@ -1205,16 +1210,19 @@ end subroutine open_dart_file
     iterator = get_iterator(file_layout)
     flat_file_loop: do while (has_next(iterator))
 
-      cur_var  = get_next(iterator)
+      cur_var  => get_next(iterator)
       if( .not. get_io_flag(cur_var)) cycle flat_file_loop
 
       var_state => get_var_substate(cur_var, coamps_state)
 
       cur_file = cur_file + 1
 
+      call set_hdf_name(cur_var, coamps_variable_names(cur_file))
+
       if(write_coamps) then
         write_field = gets_update(cur_var)
         if(write_field) then
+          !>@todo TJH suspect this will need to be modified
           call write_flat_file(coamps_file_units(cur_file), var_state)
 
           !FIXME Write pressure level data here

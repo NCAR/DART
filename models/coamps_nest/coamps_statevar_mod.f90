@@ -72,17 +72,15 @@ module coamps_statevar_mod
     public :: get_mean_flag
     public :: get_io_flag
     public :: get_mass_level_flag
-    public :: get_sigma_record
     public :: get_var_max_level
     public :: get_var_min_level
-    public :: get_nc_varid
-    public :: get_var_stagger
+    public :: get_sigma_record, set_sigma_record
+    public :: get_nc_varid,     set_nc_varid
+    public :: get_var_stagger,  set_var_stagger
+    public :: get_hdf_name,     set_hdf_name
 
-    public :: set_sigma_record
     public :: set_2d_flag
     public :: set_position
-    public :: set_nc_varid
-    public :: set_var_stagger
     public :: define_mean_var
 
     ! Logical array sectioning
@@ -151,6 +149,7 @@ module coamps_statevar_mod
     integer, parameter :: VAR_NAME_LEN  = 10
     integer, parameter :: VAR_QTY_LEN   = 32
     integer, parameter :: PERT_TYPE_LEN = 7
+    integer, parameter :: HDF_NAME_LEN  = 64 ! seems to be preferred length
 
     ! Perturbation types - don't perturb at all, perturb whole sigma
     ! level field uniformly, or perturb each grid point individually.
@@ -236,6 +235,7 @@ module coamps_statevar_mod
         character(len=1)            :: var_stagger          ! IN
         integer                     :: vert_type            ! IN
         real(kind=r8)               :: vert_value           ! IN
+        character(len=HDF_NAME_LEN) :: hdf_name = 'nohdfname'
     end type state_variable
 
     !------------------------------
@@ -868,6 +868,28 @@ contains
         set_position = var%state_end
     end function set_position
 
+    ! set_hdf_name
+    !  PARAMETERS
+    !  INOUT var        State variable to modify
+    !  IN    varid      netcdf variable id
+    subroutine set_hdf_name(var, hdf_name)
+        type(state_variable), intent(inout) :: var
+        character(len=*),     intent(in)    :: hdf_name
+
+        var%hdf_name = trim(hdf_name)
+    end subroutine set_hdf_name
+
+    ! get_hdf_name
+    !  PARAMETERS
+    !  IN var        State variable to modify
+    !  IN    varid      netcdf variable id
+    function get_hdf_name(var)
+        type(state_variable), intent(in) :: var
+        character(len=128)               :: get_hdf_name
+
+        get_hdf_name = var%hdf_name
+    end function get_hdf_name
+
     ! set_nc_varid
     !  PARAMETERS
     !  INOUT var        State variable to modify
@@ -994,8 +1016,8 @@ contains
 
         write (*, *) "VAR NAME    : ", trim(var%var_name)
         write (*, *) "STATE BNDRY : ", var%state_begin, var%state_end
-        !write (*, *) "DIM TYPE    : ", var%dim_type
-        !write (*, *) "VAR RCRD    : ", var%var_record
+        write (*, *) "DIM TYPE    : ", var%dim_type
+        write (*, *) "VAR RCRD    : ", var%var_record
         write (*, *) "SGM RCRD    : ", var%sigma_record
         write (*, *) "PTRB PCT    : ", var%pert_mag
         write (*, *) "PTB TYPE    : ", var%pert_type
@@ -1006,12 +1028,13 @@ contains
         write (*, *) "MEANFLD?    : ", var%mean_field
         write (*, *) "IS_2D_VAR?  : ", var%is_2d_variable
         write (*, *) "IO_FLAG?    : ", var%io_flag
-        !write (*, *) "STAGGERING  : ", var%var_stagger
+        write (*, *) "STAGGERING  : ", var%var_stagger
         write (*, *) "POS DEF?    : ", var%positive_definite
         write (*, *) "nc_varid    : ", var%nc_varid
         write (*, *) "vert_type   : ", var%vert_type
         write (*, *) "vert_value  : ", var%vert_value
         write (*, *) "nest_number : ", var%nest_number
+        write (*, *) 'hdf_name    : "'//trim(var%hdf_name)//'"'
         write (*, *) "-----------------------------------------"
 
     end subroutine dump_state_variable

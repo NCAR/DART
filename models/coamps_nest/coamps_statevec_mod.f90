@@ -19,7 +19,7 @@ module coamps_statevec_mod
     use coamps_statevar_mod, only : state_variable, new_state_variable,    &
                                     read_state_variable, set_position,     &
                                     set_2d_flag, dump_state_variable,      &
-                                    set_var_stagger,                       &
+                                    set_var_stagger, set_hdf_name,         &
                                     get_mean_flag, define_mean_var,        &
                                     get_sigma_record, set_sigma_record,    &
                                     get_mass_level_flag,                   &
@@ -271,6 +271,8 @@ contains
         write (message,'(3A,A1,A,I3,L1)') "Could not find  ",    &
                           trim(get_name_for_quantity(var_kind)), &
                           " on ", level_type,"-level.", sigma_index, is_mean
+        call error_handler(E_MSG, routine, message, source, revision, revdate)
+
     end function find_state_variable
 
     ! get_num_fields
@@ -368,7 +370,7 @@ contains
     ! -----------------
     subroutine construct_domain_info(state, varnames, kindlist, clampvals, updatelist, nvars)
         type(state_vector), intent(in)  :: state
-        character(len=*),   intent(in)  :: varnames(:)
+        character(len=*),   intent(out) :: varnames(:)
         integer,            intent(out) :: kindlist(:)
         real(r8),           intent(out) :: clampvals(:,:)
         logical,            intent(out) :: updatelist(:)
@@ -376,37 +378,27 @@ contains
 
         type(state_iterator) :: iterator
         type(state_variable) :: var
-        integer :: ivar
+        integer :: varindex, ivar
         character(len=*), parameter :: routine = 'construct_domain_info'
 
         clampvals(:,:) = MISSING_R8
 
-        nvars = 0
+        varindex = 1
         iterator = get_iterator(state)    
  VARLOOP: do while (has_next(iterator))
 
             var = get_next(iterator)
 
-            !>@todo figure out what to do with mean variables
-            select case ( get_var_name(var) ) 
-                   case ( 'THBM', 'EXBM', 'EXBW' )
-                      call error_handler(E_WARN,routine, &
-                                 'skipping "'//get_var_name(var)//'"', &
-                                 source, revision, revdate, &
-                                 text2='need to add to state some other way.')
-!TJH                      cycle VARLOOP
-                   case default
-            end select
+            varnames(  varindex) = get_var_name(var)
+            kindlist(  varindex) = get_var_kind(var)
+            updatelist(varindex) = gets_update( var)
+            if (is_nonnegative(var)) clampvals(varindex,1) = 0.0_r8
 
-            nvars = nvars + 1
-            kindlist(  nvars) = get_var_kind(var)
-            updatelist(nvars) = gets_update( var)
-            if (is_nonnegative(var)) clampvals(nvars,1) = 0.0_r8
-
-            write(string1,*)'TJH: ',nvars,' "'//trim(get_var_name(var))//'"'
-            call error_handler(E_MSG,routine,string1)
+            varindex = varindex + 1
 
         enddo VARLOOP
+
+        nvars = varindex -1
 
 !>@todo somehow the THBM,EXBM,EXBW are part of the domain (they have iterators)
 ! but they do not have 'filenames' aka variable names - generate_coamps_filenames()
@@ -416,7 +408,7 @@ contains
 !>@todo the kindlist is not matching the variable list, for example
 
         do ivar = 1,nvars
-           write(*,*)'variable ',ivar, ' is "'//trim(varnames(ivar))//'"', &
+           write(*,*)trim(routine)//' var',ivar, ' is "'//trim(varnames(ivar))//'"', &
                       kindlist(ivar), clampvals(ivar,:), updatelist(ivar), &
                   trim(get_name_for_quantity(kindlist(ivar)))
         enddo
