@@ -161,8 +161,8 @@ contains
         call error_handler(E_ERR, routine, 'needs to be updated', &
                   source, revision, revdate)
 
-! TJH        state_subsect      => get_var_substate(var, state)
-! TJH        pert_state_subsect => get_var_substate(var, perturb_state)
+        state_subsect      => get_var_substate(var, state)
+        pert_state_subsect => get_var_substate(var, perturb_state)
 
         ! Need to reset the perturbation generator for each variable since it
         ! is using possibly a different perturbation magnitude

@@ -871,7 +871,7 @@ contains
     ! set_hdf_name
     !  PARAMETERS
     !  INOUT var        State variable to modify
-    !  IN    varid      netcdf variable id
+    !  IN    name       hdf variable name
     subroutine set_hdf_name(var, hdf_name)
         type(state_variable), intent(inout) :: var
         character(len=*),     intent(in)    :: hdf_name
@@ -881,11 +881,10 @@ contains
 
     ! get_hdf_name
     !  PARAMETERS
-    !  IN var        State variable to modify
-    !  IN    varid      netcdf variable id
+    !  IN var        State variable of interest
     function get_hdf_name(var)
         type(state_variable), intent(in) :: var
-        character(len=128)               :: get_hdf_name
+        character(len=HDF_NAME_LEN)      :: get_hdf_name
 
         get_hdf_name = var%hdf_name
     end function get_hdf_name
@@ -1075,7 +1074,6 @@ contains
         character(len=*), intent(in)  :: var_kind_name
         integer                       :: var_kind_num_from_name
 
-!       var_kind_num_from_name = get_raw_obs_kind_index(var_kind_name)
         var_kind_num_from_name = get_index_for_quantity(var_kind_name)
 
         if (var_kind_num_from_name .lt. 0) then

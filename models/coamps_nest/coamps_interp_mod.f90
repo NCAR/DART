@@ -322,18 +322,22 @@ contains
 
         case default
            
+          is_success = .true.  ! unless proven otherwise
+
           ! Try to find if the state variable is defined on the same level 
           ! as the observation.  If it is not, interpolate in the vertical. 
-          if( is_vertical(obs_loc, 'height') ) then
+          if( is_vertical(obs_loc, 'HEIGHT') ) then
              call calculate_height_level_var(interpolator, obs_kind, &
                      query_location(obs_loc, 'VLOC'), is_success)
 
-          !elseif( is_vertical(obs_loc, 'pressure') ) then
-          !elseif( is_vertical(obs_loc, 'surface') ) then
-          elseif( is_vertical(obs_loc, 'undefined') ) then
+          !elseif( is_vertical(obs_loc, 'PRESSURE') ) then
+          !elseif( is_vertical(obs_loc, 'SURFACE') ) then
+          elseif( is_vertical(obs_loc, 'LEVEL') ) then
+             is_success = .true.
+          elseif( is_vertical(obs_loc, 'UNDEFINED') ) then
              call calculate_undef_level_var(interpolator, obs_kind, &
                      query_location(obs_loc, 'VLOC'), is_success)
-          end if 
+          endif 
 
           if(.not. is_success) then
 
@@ -699,15 +703,15 @@ contains
 
         ! Note that the DART vertical location type of "model level" is
         ! a sigma level in COAMPS
-        if      ( is_vertical(obs_loc, 'pressure') ) then
+        if      ( is_vertical(obs_loc, 'PRESSURE') ) then
             interpolator%interp_level_type = INTERPOLATE_TO_PRESSURE
-        else if ( is_vertical(obs_loc, 'height')   ) then
+        else if ( is_vertical(obs_loc, 'HEIGHT')   ) then
             interpolator%interp_level_type = INTERPOLATE_TO_HEIGHT
-        else if ( is_vertical(obs_loc, 'level')    ) then
+        else if ( is_vertical(obs_loc, 'LEVEL')    ) then
             interpolator%interp_level_type = INTERPOLATE_TO_SIGMA
-        else if ( is_vertical(obs_loc, 'surface')  ) then
+        else if ( is_vertical(obs_loc, 'SURFACE')  ) then
             interpolator%interp_level_type = INTERPOLATE_TO_SURFACE
-        else if ( is_vertical(obs_loc, 'undefined')  ) then
+        else if ( is_vertical(obs_loc, 'UNDEFINED')  ) then
             interpolator%interp_level_type = INTERPOLATE_TO_UNDEF
         else
             interpolator%interp_level_type = INTERPOLATE_TO_OTHER

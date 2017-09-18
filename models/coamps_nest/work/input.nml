@@ -21,8 +21,8 @@
    last_obs_days              = -1
    last_obs_seconds           = -1
 
-   trace_execution            = .false.
-   output_timestamps          = .false.
+   trace_execution            = .true.
+   output_timestamps          = .true.
    print_every_nth_obs        = -1
    output_forward_op_errors   = .false.
    silence                    = .false.
@@ -98,7 +98,7 @@
    assimilation_period_seconds = 21600
    need_mean                   = .true.
    output_interpolation        = .false.
-   debug                       = 10
+   debug                       = 1
   /
 
 
@@ -167,8 +167,8 @@
    assimilate_these_obs_types = 'EVAL_POT_TEMPERATURE', 'P_SFC_LAND'
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'EVAL_POT_TEMPERATURE'
-   evaluate_these_obs_types   = 'RADIOSONDE_LOG_SPECIFIC_HUMIDITY'
+   assimilate_these_obs_types = 'RADIOSONDE_U_WIND_COMPONENT'
+   evaluate_these_obs_types   = 'RADIOSONDE_LOG_SPECIFIC_HUMIDITY', 'EVAL_POT_TEMPERATURE', 'P_SFC_LAND'
   /
 
 # Notes for obs_def_radar_mod_nml:
@@ -337,4 +337,31 @@
    obs_window = 1800
    /
 
+
+&model_mod_check_nml
+   input_state_files     = 'dart_vector.nc'
+   output_state_files    = 'check_me.nc'
+   verbose               = .TRUE.
+   test1thru             = 5
+   loc_of_interest       = 224.284904588274, 38.2991002368272, 30.0
+   x_ind                 = 2102
+   kind_of_interest      = 'QTY_U_WIND_COMPONENT'
+   interp_test_lonrange  = 0.0, 359.0
+   interp_test_dlon      = 1.0
+   interp_test_latrange  = -89.0, 89.0
+   interp_test_dlat      = 1.0
+   interp_test_vertrange = 1000.0,  1005.0
+   interp_test_dvert     = 2000.0
+   interp_test_vertcoord = 'VERTISLEVEL'
+  /
+
+ncdump -f F -v lonT_g02 dart_vector.nc | grep 108,108
+    224.197416429748,   // lonT_g02(108,108)    3.912983091163933 radians
+ncdump -f F -v latT_g02 dart_vector.nc | grep 108,108
+    38.2898181388769,   // latT_g02(108,108)    0.668283396513249 radians
+
+ncdump -f F -v latU_g02 dart_vector.nc | grep 108,108
+    38.2991002368272,   // latU_g02(108,108)   0.668445399683975 radians
+ncdump -f F -v lonU_g02 dart_vector.nc | grep 108,108
+    224.284904588274,   // lonU_g02(108,108)   3.914510047586718 radians
 

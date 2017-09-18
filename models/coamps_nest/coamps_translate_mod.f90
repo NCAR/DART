@@ -62,7 +62,8 @@ module coamps_translate_mod
                                    fix_for_platform,                          &
                                    generate_flat_file_name,                   &
                                    read_flat_file, write_flat_file,           &
-                                   HDF5_FILE_NAME, read_hdf5_variable
+                                   HDF5_FILE_NAME,                            &
+                                   read_hdf5_variable, copy_netCDF_to_hdf       
 
   use coamps_netcdf_mod,    only : nc_write_prognostic_atts, &
                                    nc_write_prognostic_data
@@ -84,7 +85,7 @@ module coamps_translate_mod
 
   use types_mod,            only : r4, r8
 
-  use utilities_mod,        only : E_ERR,                                     &
+  use utilities_mod,        only : E_ERR, E_MSG, E_WARN,                      &
                                    error_handler,                             &
                                    file_exist,                                &
                                    get_unit
@@ -110,7 +111,7 @@ module coamps_translate_mod
   ! COAMPS restart file tools
   public :: generate_coamps_filenames
   public :: open_coamps_files
-  public :: record_variable_names
+  public :: record_hdf_varnames
 
   public :: coamps_read_all_fields
   public :: coamps_write_all_fields
@@ -444,6 +445,10 @@ contains
                          source, revision, revdate)
     end if
 
+    ! the variable names change from reading (fcstfld) to writing (analfld)
+    ! will do that when we read the netCDF file and write to the hdf variable
+    ! coamps_util_mod.f90:copy_netCDF_to_hdf()
+    !
     ! Need to decide the time and the type of file.
     ! If we are going from COAMPS -> DART, we need the COAMPS fcstfld files at the DA interval.  
     ! If we are going 
@@ -451,8 +456,11 @@ contains
     ! DART restart file.
     if (writing_coamps) then
        working_time = (/ 0,0,0 /)
-       field_type = 'analfld'
-       dsnrff1 = trim(dsnrff)//'analyses/'
+       ! field_type = 'analfld'
+       ! dsnrff1 = trim(dsnrff)//'analyses/'
+       ! the variable name is ALWAYS 'fcstfld' (replaced in copy_netCDF_to_hdf())
+       field_type = 'fcstfld'
+       dsnrff1 = dsnrff
     else
        if(is_pmo) then
          working_time = ktauf(:,ONE)
@@ -604,7 +612,11 @@ contains
 
   !-----------------------------------------------------------------------
   !> Uses the list of COAMPS flat file names to populate the vector of
-  !> opened COAMPS flat file units
+  !> opened COAMPS flat file units. We are still maintaining the relationship
+  !> established with the flat_file stragegy of one variable per file unit.
+  !> When other file formats are deprecated we could use a single unit.
+  !> We are intentionally setting the same unit number for all variables.
+  !>
   !> PARAMETERS
   !>  IN  writing_coamps     True if we're opening the files for
   !>                         write access
@@ -612,24 +624,17 @@ contains
   subroutine open_coamps_hdf5_files(writing_coamps)
     logical, intent(in) :: writing_coamps
 
+    character(len=*), parameter :: routine = 'open_coamps_hdf5_files'
+
     type(state_variable)        :: cur_var
     type(state_iterator)        :: iterator
     integer                     :: cur_file_index
     integer :: io, ncid, mode
 
-    character(len=*), parameter :: routine = 'open_coamps_hdf5_files'
-
-    character(len=5)            :: fileaction
-    character(len=7)            :: filestatus
-
     if (writing_coamps) then
-       fileaction = 'write'
-       filestatus = 'replace'
-       mode       = NF90_WRITE
+       mode = NF90_SHARE
     else
-       fileaction = 'read'
-       filestatus = 'old'
-       mode       = NF90_NOWRITE
+       mode = NF90_NOWRITE
     end if
 
     io = nf90_open(path=HDF5_FILE_NAME, mode=mode, ncid=ncid)
@@ -767,41 +772,28 @@ contains
   end subroutine coamps_write_all_fields
 
 ! -----------------
-!> Opens a netCDF file for reading
-!> creates a netCDF file for writing
+!> Opens a netCDF file for reading or creates a netCDF file for writing
 !>  PARAMETERS
-!>   IN  writing_dart      .true. if we are opening the DART file
-!>                         for write access
+!>   IN  writing_dart     .true. if opening the DART file for write access
 
 subroutine open_dart_file(writing_dart)
 
 logical, intent(in) :: writing_dart
 
-character(len=5) :: fileaction
-character(len=7) :: filestatus
-
 character(len=*), parameter :: routine = 'open_dart_file'
 integer :: io_status
 
 if (writing_dart) then
-   fileaction = 'write'
-   filestatus = 'replace'
 
    io_status = nf90_create(DART_FILENAME, NF90_CLOBBER, dart_unit)
-   call nc_check(io_status, routine, context='opening ', filename=DART_FILENAME)
+   call nc_check(io_status, routine, context='creating ', filename=DART_FILENAME)
    call nc_write_prognostic_atts(dart_unit, file_layout, define_vars=.true.)
 
 else
-   fileaction = 'read'
-   filestatus = 'old'
 
-   call error_handler(E_ERR,'open_dart_file','not ready for reading', &
-        source, revision, revdate)
-   dart_unit = get_unit()
-   open( unit=dart_unit, file=DART_FILENAME, status=filestatus,        & 
-         action=fileaction, form='unformatted', iostat=io_status)
-   call check_io_status(io_status, routine, source, revision, revdate, &
-                        'Opening ' // DART_FILENAME)
+   io_status = nf90_open(DART_FILENAME, NF90_NOWRITE, dart_unit)
+   call nc_check(io_status, routine, context='opening ', filename=DART_FILENAME)
+  
 end if
 
 end subroutine open_dart_file
@@ -907,110 +899,146 @@ end subroutine open_dart_file
 
   end subroutine dart_write
 
-  ! set_dart_current_time
-  ! ---------------------
-  ! When converting from COAMPS to DART, the forecast is finished
-  ! and the current time is the final forecast time of the model
-  ! run - take that hours/minutes/seconds time and convert it to 
-  ! the DART days/seconds format.
-  !  PARAMETERS
-  !   [none]
-  subroutine set_dart_current_time()
 
-    integer :: tau_hour
-    integer :: tau_minute
-    integer :: tau_second
-    integer :: dart_second
-    integer :: dart_day
-    integer :: ccyy, mm, dd, hh, dt_sec
-    type(time_type) :: t0, dt
+!-------------------------------------------------------------------------------
+!> When converting from COAMPS to DART, the forecast is finished
+!> and the current time is the final forecast time of the model
+!> run - take that hours/minutes/seconds time and convert it to 
+!> the DART days/seconds format.
+!>  PARAMETERS
+!>   [none]
 
-    if(FLAT_FILE_IO) then
-      ! convert coamps time to dart time
-      read(cdtg,100) ccyy,mm,dd,hh
-      t0 = set_date(ccyy, mm, dd, hh)
-      if(is_pmo) then
-        dt_sec = ktauf(COAMPS_HOUR,ONE)*3600 + ktauf(COAMPS_MINUTE,ONE)*60 + ktauf(COAMPS_SECOND,ONE)
-      else
-        dt_sec = icycle*3600
-      end if
-      dt = set_time(dt_sec)
-      dart_time(DART_CURRENT_TIME) = t0 + dt
-    else
-      ! Get this information from the namelist
-      tau_hour   = ktauf(COAMPS_HOUR,ONE)
-      tau_minute = ktauf(COAMPS_MINUTE,ONE)
-      tau_second = ktauf(COAMPS_SECOND,ONE)
+subroutine set_dart_current_time()
 
-      call hms_to_sd(tau_hour, tau_minute, tau_second, dart_day,&
-           & dart_second)
+character(len=*), parameter :: routine = 'set_dart_current_time'
 
-      !  When writing a DART file, only have one time entry to worry
-      ! about.
-      dart_time(DART_CURRENT_TIME) = set_time(dart_second, dart_day)
-    end if
-100 format((I4.4),3(I2.2))
-  end subroutine set_dart_current_time
+integer :: io_status
+integer :: tau_hour
+integer :: tau_minute
+integer :: tau_second
+integer :: dart_second
+integer :: dart_day
+integer :: ccyy, mm, dd, hh, dt_sec
+type(time_type) :: t0, dt
 
-  ! get_dart_current_time
-  ! ---------------------
-  ! When converting from DART to COAMPS, we get *two* times - the
-  ! current time and the target time that it wants the model to
-  ! advance to - take the current time in DART days/seconds format
-  ! and convert it to the COAMPS hour/minute/second format.
-  !  PARAMETERS
-  !   [none]
-  subroutine get_dart_current_time()
-    integer :: dart_days
-    integer :: dart_seconds
-    integer :: ccyy, mm, dd, hh
-    type(time_type) :: t0, dt
+character(len=256) :: dtg_string
 
-    if(FLAT_FILE_IO) then
-      read(cdtg,100) ccyy,mm,dd,hh
+call error_handler(E_MSG,routine,'FIXME - not written yet - must complete')
+return
 
-      t0 = set_date(ccyy, mm, dd, hh)
-      dt = dart_time(DART_CURRENT_TIME) - t0
+io_status = nf90_get_att(dart_unit,NF90_GLOBAL,'date-time-group',dtg_string)
+call nc_check(io_status, routine, context='reading date-time-group ', &
+                                  filename=DART_FILENAME)
 
-      call get_time(dt, dart_seconds, dart_days)
-    else
-      call get_time(dart_time(DART_CURRENT_TIME), dart_seconds, dart_days)
-    end if
+read(dtg_string,100) ccyy,mm,dd,hh
 
-    call sd_to_hms(dart_days, dart_seconds, ktaust(COAMPS_HOUR), &
-                   ktaust(COAMPS_MINUTE), ktaust(COAMPS_SECOND)) 
+t0 = set_date(ccyy, mm, dd, hh) ! convert coamps time to dart time
+
+  if(is_pmo) then
+    dt_sec = ktauf(COAMPS_HOUR,ONE)*3600 + ktauf(COAMPS_MINUTE,ONE)*60 + ktauf(COAMPS_SECOND,ONE)
+  else
+    dt_sec = icycle*3600
+  end if
+
+dt = set_time(dt_sec)
+dart_time(DART_CURRENT_TIME) = t0 + dt
+
+!  ! Get this information from the namelist
+!  tau_hour   = ktauf(COAMPS_HOUR,ONE)
+!  tau_minute = ktauf(COAMPS_MINUTE,ONE)
+!  tau_second = ktauf(COAMPS_SECOND,ONE)
+!
+!  call hms_to_sd(tau_hour, tau_minute, tau_second, dart_day,&
+!       & dart_second)
+!
+!  !  When writing a DART file, only have one time entry to worry
+!  ! about.
+!  dart_time(DART_CURRENT_TIME) = set_time(dart_second, dart_day)
 
 100 format((I4.4),3(I2.2))
-  end subroutine get_dart_current_time
+end subroutine set_dart_current_time
 
-  ! get_dart_target_time
-  ! ---------------------
-  ! When converting from DART to COAMPS, we get *two* times - the
-  ! current time and the target time that it wants the model to
-  ! advance to - take the target time in DART days/seconds format
-  ! and convert it to the COAMPS hour/minute/second format
-  !  PARAMETERS
-  !   [none]
-  subroutine get_dart_target_time()
-    integer :: dart_days
-    integer :: dart_seconds
-    integer :: ccyy, mm, dd, hh
-    type(time_type) :: t0, dt
+!-------------------------------------------------------------------------------
+!> When converting from DART to COAMPS, we get *two* times - the
+!> current time and the target time that it wants the model to
+!> advance to - take the current time in DART days/seconds format
+!> and convert it to the COAMPS hour/minute/second format.
+!>  PARAMETERS
+!>   [none]
 
-    if(FLAT_FILE_IO) then
-      read(cdtg,100) ccyy,mm,dd,hh
+subroutine get_dart_current_time()
 
-      t0 = set_date(ccyy, mm, dd, hh)
-      dt = dart_time(DART_TARGET_TIME) - t0
+character(len=*), parameter :: routine = 'get_dart_current_time'
 
-      call get_time(dt, dart_seconds, dart_days)
-    else
-      call get_time(dart_time(DART_TARGET_TIME), dart_seconds, dart_days)
-    end if
-      call sd_to_hms(dart_days, dart_seconds, ktauf(COAMPS_HOUR,ONE), &
-                     ktauf(COAMPS_MINUTE,ONE), ktauf(COAMPS_SECOND,ONE)) 
+integer :: io_status
+integer :: dart_days
+integer :: dart_seconds
+integer :: ccyy, mm, dd, hh
+type(time_type) :: t0, dt
+
+character(len=256) :: dtg_string
+
+call error_handler(E_MSG,routine,'FIXME - not written yet - must complete')
+return
+
+io_status = nf90_get_att(dart_unit,NF90_GLOBAL,'date-time-group',dtg_string)
+call nc_check(io_status, routine, context='reading date-time-group ', &
+                                  filename=DART_FILENAME)
+
+read(dtg_string,100) ccyy,mm,dd,hh
+
+  t0 = set_date(ccyy, mm, dd, hh)
+  dt = dart_time(DART_CURRENT_TIME) - t0
+
+  call get_time(dt, dart_seconds, dart_days)
+
+
+
+  call get_time(dart_time(DART_CURRENT_TIME), dart_seconds, dart_days)
+
+call sd_to_hms(dart_days, dart_seconds, ktaust(COAMPS_HOUR), &
+               ktaust(COAMPS_MINUTE), ktaust(COAMPS_SECOND)) 
+
 100 format((I4.4),3(I2.2))
-  end subroutine get_dart_target_time
+
+end subroutine get_dart_current_time
+
+!-------------------------------------------------------------------------------
+! When converting from DART to COAMPS, we get *two* times - the
+! current time and the target time that it wants the model to
+! advance to - take the target time in DART days/seconds format
+! and convert it to the COAMPS hour/minute/second format
+!  PARAMETERS
+!   [none]
+
+subroutine get_dart_target_time()
+
+character(len=*), parameter :: routine = 'get_dart_target_time'
+
+integer :: dart_days
+integer :: dart_seconds
+integer :: ccyy, mm, dd, hh
+type(time_type) :: t0, dt
+
+call error_handler(E_MSG,routine,'FIXME - not written yet - must complete')
+return
+
+if(FLAT_FILE_IO) then
+  read(cdtg,100) ccyy,mm,dd,hh
+
+  t0 = set_date(ccyy, mm, dd, hh)
+  dt = dart_time(DART_TARGET_TIME) - t0
+
+  call get_time(dt, dart_seconds, dart_days)
+else
+  call get_time(dart_time(DART_TARGET_TIME), dart_seconds, dart_days)
+end if
+  call sd_to_hms(dart_days, dart_seconds, ktauf(COAMPS_HOUR,ONE), &
+                 ktauf(COAMPS_MINUTE,ONE), ktauf(COAMPS_SECOND,ONE)) 
+
+100 format((I4.4),3(I2.2))
+
+end subroutine get_dart_target_time
 
   ! write_pickup_file
   ! -----------------
@@ -1187,67 +1215,70 @@ end subroutine open_dart_file
   end subroutine allocate_coamps_flat_file_info
 
 
-  ! coamps_process_all_flat_files
-  ! ---------------------------------
-  ! Reads/writes all fields in the DART restart vector to/from their
-  ! proper places in the COAMPS restart file(s)
-  !  PARAMETERS
-  !   IN  write_coamps      True if we're writing to COAMPS files
+! coamps_process_all_flat_files
+! ---------------------------------
+! Reads/writes all fields in the DART restart vector to/from their
+! proper places in the COAMPS restart file(s)
+!  PARAMETERS
+!   IN  write_coamps      True if we're writing to COAMPS files
 
-  subroutine coamps_process_all_flat_files(write_coamps) 
+subroutine coamps_process_all_flat_files(write_coamps) 
 
-    logical, intent(in)       :: write_coamps
+logical, intent(in) :: write_coamps
 
-    type(state_variable), pointer :: cur_var  ! use actual variable, not local
-    type(state_iterator)      :: iterator
-    integer :: cur_file       ! Which file is being read
-    logical :: write_field    ! Allow us to not write a field even if
-                              ! it's in the DART state vector
-    real(kind=C_REAL), dimension(:), pointer :: var_state
+character(len=*), parameter :: routine = 'coamps_process_all_flat_files'
 
-    character(len=*), parameter :: routine = 'coamps_process_all_flat_files'
+type(state_variable) :: cur_var
+type(state_iterator) :: iterator
+integer              :: cur_file      ! Which file is being read
+logical              :: write_field   ! Allow us to not write a field even if
+                                      ! it's in the DART state vector
+real(kind=C_REAL), dimension(:), pointer :: var_state
 
-    cur_file = 0
-    iterator = get_iterator(file_layout)
-    flat_file_loop: do while (has_next(iterator))
+cur_file = 0
+iterator = get_iterator(file_layout)
+flat_file_loop: do while (has_next(iterator))
 
-      cur_var  => get_next(iterator)
-      if( .not. get_io_flag(cur_var)) cycle flat_file_loop
+   cur_var = get_next(iterator)
+   if( .not. get_io_flag(cur_var)) cycle flat_file_loop
+
+   cur_file = cur_file + 1
+
+   if(write_coamps) then
+      write_field = gets_update(cur_var)
+      if(write_field) then
+         ! just read from netcdf, write to hdf - no need for var_state
+         call copy_netCDF_to_hdf(dart_unit, &
+                                 coamps_variable_names(cur_file), &
+                                 coamps_file_units(cur_file))
+
+        !>@todo FIXME Write pressure level data here
+        ! Need to write out data on specified pressure levels here.
+        ! TJH: 2017 : is this still true
+
+     endif
+   else
 
       var_state => get_var_substate(cur_var, coamps_state)
 
-      cur_file = cur_file + 1
+      call read_hdf5_variable(coamps_file_units(cur_file), &
+                          coamps_variable_names(cur_file), &
+                          var_state)
+   endif
 
-      if(write_coamps) then
-        write_field = gets_update(cur_var)
-        if(write_field) then
-          !>@todo TJH suspect this will need to be modified
-          call write_flat_file(coamps_file_units(cur_file), var_state)
+enddo flat_file_loop
 
-          !FIXME Write pressure level data here
-          ! Need to write out data on specified pressure levels here.
-
-        end if
-
-      else
-
-        call read_hdf5_variable(coamps_file_units(cur_file), &
-                            coamps_variable_names(cur_file), &
-                            var_state)
-      end if
-    end do flat_file_loop
-
-  end subroutine coamps_process_all_flat_files
+end subroutine coamps_process_all_flat_files
 
 
 ! ---------------------------------
 !> Records the hdf variable name in the state variable structure.
-!> The nuisance variables inherit the default name 'nohdfname'.
+!> The derived variables inherit the default name 'nohdfname'.
 
-subroutine record_variable_names(statevector) 
+subroutine record_hdf_varnames(statevector) 
 type(state_vector), intent(inout), optional :: statevector
 
-character(len=*), parameter :: routine = 'record_variable_names'
+character(len=*), parameter :: routine = 'record_hdf_varnames'
 
 type(state_variable), pointer :: cur_var  ! use actual variable, not local
 type(state_iterator) :: iterator
@@ -1277,13 +1308,13 @@ hdf_var_loop: do while (has_next(iterator))
 
 enddo hdf_var_loop
 
-end subroutine record_variable_names
+end subroutine record_hdf_varnames
 
 
   !coamps_process_default_vars
   ! ---------------------------------
   ! adds variables to state vector that are
-  ! defined internally (these are 'nuisance' variables)
+  ! defined internally (these are 'derived' variables)
   ! 
   subroutine coamps_process_default_vars()
     type(state_variable)        :: cur_var
@@ -1818,12 +1849,6 @@ end subroutine record_variable_names
 1601 format(7x,A10,1x,F14.5,1x,A8,3(1x,I3))
 1602 format(A6,1x,A,1x,I1,1x,A1,1x,F18.5,1x,A,3(1x,I3),2A,F18.5,1x,A,3(1x,I3),A)
     
-
-    !open(76,file='state.dump', form='formatted')
-    !do ii=1,size(dart_state)
-    !  write (76,*) dart_state(ii), coamps_state(ii)
-    !end do
-    !close(76)
   end subroutine print_dart_diagnostics
     
   ! compute_nest_size_in_file

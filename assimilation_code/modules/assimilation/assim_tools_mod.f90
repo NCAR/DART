@@ -102,7 +102,7 @@ real(r8), parameter    :: small = epsilon(1.0_r8)   ! threshold for avoiding NaN
 ! (make it a local variable so we don't keep making subroutine calls)
 logical                :: is_doing_vertical_conversion = .false.
 
-character(len = 255)   :: msgstring, msgstring2, msgstring3
+character(len=512)     :: msgstring, msgstring2, msgstring3
 
 ! Need to read in table for off-line based sampling correction and store it
 integer                :: sec_table_size

@@ -26,8 +26,9 @@ module coamps_util_mod
                             register_module
 
   use netcdf_utilities_mod, only : nc_check, &
+                                   nc_get_variable_info, &
                                    nc_get_variable, &
-                                   nc_get_variable_info
+                                   nc_put_variable
 
   use typesizes
   use netcdf
@@ -64,6 +65,7 @@ module coamps_util_mod
   ! Working with HDF5 files
   public :: HDF5_FILE_NAME
   public :: read_hdf5_variable
+  public :: copy_netCDF_to_hdf
 
   ! Variable type
   public :: C_REAL
@@ -125,6 +127,7 @@ module coamps_util_mod
   ! or ensemble member number needed - just line the specific file
   ! to this static name
   character(len=*), parameter :: HDF5_FILE_NAME = 'coamps.hdf5'
+  integer, parameter :: HDF_VARNAME_LEN = 64
 
   !------------------------------
   ! END TYPES AND CONSTANTS 
@@ -144,7 +147,7 @@ module coamps_util_mod
   integer :: debug_level = 0
 
   character(len=28), dimension(NUM_ERROR_TYPES) :: error_msgs
-  character(len=512) :: string1, string2
+  character(len=512) :: string1, string2, string3
 
   !------------------------------
   ! END MODULE VARIABLES
@@ -455,7 +458,7 @@ contains
     integer,           intent(in)  :: tau_mm
     integer,           intent(in)  :: tau_ss
     character(len=7),  intent(in)  :: field_type
-    character(len=64), intent(out) :: file_name
+    character(len=HDF_VARNAME_LEN), intent(out) :: file_name
 
     write(file_name, 100) lowercase(var_name), level_type, level1, level2, &
          & gridnum, aoflag, xpts, ypts, dtg, tau_hh, tau_mm,    &
@@ -591,6 +594,86 @@ contains
   end subroutine read_hdf5_variable
 
 
+!-----------------------------------------------------------------------------
+!> Given the netCDF ID, a netCDF variable name, and a unit number of an *open* 
+!> COAMPS HDF5 file, construct the 'analfld' counterpart to the netCDF variable
+!> name and read the variable from the netCDF file and stuff it into the HDF5
+!> variable slot.
+!>
+!>  PARAMETERS
+!>   IN  hdf5unit      unit number of an open flat file
+!>   IN  variable_name  string defining the variable to read
+!>   OUT flat_array     coamps_grid structure to be filled
+
+subroutine copy_netCDF_to_hdf(ncFileID, variable_name, hdf5unit)
+
+integer,          intent(in) :: ncFileID
+character(len=*), intent(in) :: variable_name
+integer,          intent(in) :: hdf5unit
+
+character(len=*), parameter :: routine = 'copy_netCDF_to_hdf'
+
+integer :: ndims, istart
+integer :: dimlens(NF90_MAX_VAR_DIMS)
+
+real(r8), allocatable :: chunk1D(:)
+real(r8), allocatable :: chunk2D(:,:)
+real(r8), allocatable :: chunk3D(:,:,:)
+character(len=HDF_VARNAME_LEN) :: analysis_name
+
+call nc_get_variable_info(ncFileID, variable_name,   &
+                                    ndims=ndims,     &
+                                    dimlens=dimlens, &
+                                    context=routine  )
+
+istart = index(variable_name,'fcstfld')
+if (istart < 1) then
+   write(string1,*)'unable to construct analysis variable name from'
+   write(string2,*)'"'//trim(variable_name)//'"'
+   write(string3,*)'trying to replace "fcstfld" portion with "analfld"'
+   call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2,text3=string3)
+endif
+
+analysis_name = variable_name
+analysis_name(istart:istart+6) = 'analfld'
+
+if (.false. .and. do_output()) then
+   write(string1,*)'replacing "'//trim(variable_name)//'"'
+   write(string2,*)'with      "'//trim(analysis_name)//'"'
+   call error_handler(E_MSG,routine,string1,text2=string2)
+endif
+
+if ( ndims == 1) then
+
+   allocate( chunk1D(dimlens(1)) )
+   call nc_get_variable(ncFileID, variable_name, chunk1D, context=routine) 
+   call nc_put_variable(hdf5unit, analysis_name, chunk1D, context=routine) 
+   deallocate(chunk1D)
+
+elseif (ndims == 2) then
+
+   allocate( chunk2D( dimlens(1), dimlens(2) ) )
+   call nc_get_variable(ncFileID, variable_name, chunk2D, context=routine) 
+   call nc_put_variable(hdf5unit, analysis_name, chunk2D, context=routine) 
+   deallocate(chunk2D)
+
+elseif (ndims == 3) then
+
+   allocate( chunk3D( dimlens(1), dimlens(2), dimlens(3) ) )
+   call nc_get_variable(ncFileID, variable_name, chunk3D, context=routine) 
+   call nc_put_variable(hdf5unit, analysis_name, chunk3D, context=routine) 
+   deallocate(chunk3D)
+
+else
+   write(string1,*)'can only read 1D, 2D, or 3D variables for now'
+   write(string2,*)'variable "',trim(variable_name),'" has shape ', dimlens(1:ndims)
+   call error_handler(E_ERR, routine, string1, source, revision, revdate, text2=string2)
+endif
+
+end subroutine copy_netCDF_to_hdf
+
+
+
   ! read_datahd_file
   ! ----------------
   ! Given the dtg of a COAMPS domain information file, read the domain 
@@ -603,8 +686,8 @@ contains
     character(len=*),            intent(in)  :: dtg
     real(kind=r8), dimension(:), intent(out) :: datahd
 
-    character(len=64) :: datahd_filename
-    character(len=64) :: datahd_varname
+    character(len=HDF_VARNAME_LEN) :: datahd_filename
+    character(len=HDF_VARNAME_LEN) :: datahd_varname
     integer           :: datahd_unit
     integer           :: VarID
 
@@ -644,7 +727,7 @@ contains
     character(len=10),            intent(in) :: dtg
     real(kind=r8), dimension(:),  intent(in) :: datahd
 
-    character(len=64)                    :: datahd_filename
+    character(len=HDF_VARNAME_LEN)       :: datahd_filename
     integer                              :: datahd_unit
 
     ! Error checking
@@ -799,7 +882,7 @@ contains
   !   OUT datahd_filename   name of domain information file
   subroutine generate_datahd_filename(dtg, datahd_filename)
     character(len=10), intent(in)  :: dtg
-    character(len=64), intent(out) :: datahd_filename
+    character(len=HDF_VARNAME_LEN), intent(out) :: datahd_filename
 
     ! The format of the datahd filename is fixed except for the date
     ! -time group: mimics a 2000x1 flat file with no level

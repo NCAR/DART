@@ -13,7 +13,6 @@ program trans_coamps_to_dart
 ! This includes two pieces of information - the current time and
 ! the actual state
 ! --------------------
-! DART $Id$
 
 use coamps_translate_mod, only : initialize_translator,         &
                                  generate_coamps_filenames,     &
@@ -23,7 +22,7 @@ use coamps_translate_mod, only : initialize_translator,         &
                                  set_dart_current_time,         &
                                  open_dart_file, dart_write,    &
                                  finalize_translator,           &
-                                 record_variable_names
+                                 record_hdf_varnames
 
 implicit none
 
@@ -43,7 +42,7 @@ call initialize_translator()
 
 call generate_coamps_filenames(READING_COAMPS)
 call open_coamps_files(READING_COAMPS)
-call record_variable_names()
+call record_hdf_varnames()
 
 call coamps_read_all_fields()
 call convert_coamps_state_to_dart()

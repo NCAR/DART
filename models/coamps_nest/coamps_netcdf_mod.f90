@@ -369,7 +369,8 @@ end subroutine nc_write_prognostic_data
     ! (COAMPS is on a C-grid with p-u-p ordering in the horizontal).
  
     subroutine nc_write_prognostic_atts( ncFileID, state_list, define_vars)
-      integer,            intent(in) :: ncFileID      ! netCDF file 
+
+      integer,            intent(in) :: ncFileID
       type(state_vector), intent(in) :: state_list
       logical,            intent(in) :: define_vars
 
@@ -381,7 +382,7 @@ end subroutine nc_write_prognostic_data
       integer                        :: ncoord_total
       integer                        :: ncoord
       integer                        :: ndims
-      integer, dimension(3)          :: dimids
+      integer, dimension(NF90_MAX_VAR_DIMS) :: dimids
       type(state_iterator)           :: iterator
       type(state_variable), pointer  :: cur_var
       type(coamps_domain)            :: domain
@@ -468,7 +469,7 @@ end subroutine nc_write_prognostic_data
    
            ! use the hdf variable name if possible
            var_name = get_hdf_name(cur_var)
-   
+
            if (var_name == 'nohdfname') then
               write(var_name, 400) trim(get_var_name(cur_var)), &
                                         get_nest_number(cur_var)

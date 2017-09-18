@@ -19,214 +19,216 @@ module model_mod
 ! Research Laboratory.
 !------------------------------ 
 
-    use coamps_domain_mod,   only : coamps_domain,            &
-                                    initialize_domain,        &
-                                    dump_domain_info,         &
-                                    get_domain_nest,          &
-                                    get_nest_count,           &
-                                    get_domain_num_levels,    &
-                                    get_domain_wsigma,        &
-                                    get_domain_msigma,        &
-                                    get_domain_dsigmaw,       &
-                                    latlon_to_nest_point,     &
-                                    nest_point_to_latlon
+use coamps_domain_mod,   only : coamps_domain,            &
+                                initialize_domain,        &
+                                dump_domain_info,         &
+                                get_domain_nest,          &
+                                get_nest_count,           &
+                                get_domain_num_levels,    &
+                                get_domain_wsigma,        &
+                                get_domain_msigma,        &
+                                get_domain_dsigmaw,       &
+                                latlon_to_nest_point,     &
+                                nest_point_to_latlon
 
 
-    use coamps_statevec_mod, only : state_vector,             &
-                                    state_iterator,           &
-                                    get_iterator,             &
-                                    has_next,                 &
-                                    get_next,                 &
-                                    initialize_state_vector,  &
-                                    find_state_variable,      &
-                                    get_num_fields,           &
-                                    get_var_by_index,         &
-                                    dump_state_vector,        &
-                                    get_total_size,           &
-                                    construct_domain_info
+use coamps_statevec_mod, only : state_vector,             &
+                                state_iterator,           &
+                                get_iterator,             &
+                                has_next,                 &
+                                get_next,                 &
+                                initialize_state_vector,  &
+                                find_state_variable,      &
+                                get_num_fields,           &
+                                get_var_by_index,         &
+                                dump_state_vector,        &
+                                get_total_size,           &
+                                construct_domain_info
 
 
-    use coamps_statevar_mod, only : state_variable,           &
-                                    get_var_substate,         &
-                                    get_nest_number,          &
-                                    get_vert_type,            &
-                                    get_vert_loc,             &
-                                    get_state_begin,          &
-                                    get_state_end,            &
-                                    is_var_at_index,          &
-                                    dump_state_variable,      &
-                                    get_var_kind
+use coamps_statevar_mod, only : state_variable,           &
+                                get_var_substate,         &
+                                get_nest_number,          &
+                                get_vert_type,            &
+                                get_vert_loc,             &
+                                get_state_begin,          &
+                                get_state_end,            &
+                                is_var_at_index,          &
+                                dump_state_variable,      &
+                                get_var_kind
 
-    use coamps_nest_mod,     only : coamps_nest,              &
-                                    get_terrain,              &
-                                    get_terrain_height_at_points, &
-                                    get_nest_i_width,         &
-                                    get_nest_j_width,         &
-                                    get_nest_delta_x,         &
-                                    get_nest_delta_y,         &
-                                    get_nest,                 &
-                                    make_nest_point,          &
-                                    nest_point,               &
-                                    get_nest_latlon,          &
-                                    dump_nest_info,          &
-                                    nest_index_1d_to_3d
+use coamps_nest_mod,     only : coamps_nest,              &
+                                get_terrain,              &
+                                get_terrain_height_at_points, &
+                                get_nest_i_width,         &
+                                get_nest_j_width,         &
+                                get_nest_delta_x,         &
+                                get_nest_delta_y,         &
+                                get_nest,                 &
+                                make_nest_point,          &
+                                nest_point,               &
+                                get_nest_latlon,          &
+                                dump_nest_info,          &
+                                nest_index_1d_to_3d
 
-    use coamps_intrinsic_mod, only : vor,              &
-                                     z2zint
+use coamps_intrinsic_mod, only : vor,              &
+                                 z2zint
 
-    use coamps_interp_mod,   only : interpolate,              &
-                                    set_interp_diag
+use coamps_interp_mod,   only : interpolate,              &
+                                set_interp_diag
 
-    use coamps_util_mod,     only : check_alloc_status,       &
-                                    set_debug_level,          &
-                                    timestamp_message,        &
-                                    dump_data_file,           &
-                                    check_dealloc_status,     &
-                                    HDF5_FILE_NAME
+use coamps_util_mod,     only : check_alloc_status,       &
+                                set_debug_level,          &
+                                timestamp_message,        &
+                                dump_data_file,           &
+                                check_dealloc_status,     &
+                                HDF5_FILE_NAME
 
-    use coamps_netcdf_mod,   only : nc_write_prognostic_atts, &
-                                    nc_write_prognostic_data
+use coamps_netcdf_mod,   only : nc_write_prognostic_atts, &
+                                nc_write_prognostic_data
 
-use coamps_translate_mod, only : initialize_translator,            &
-           finalize_translator, record_variable_names,             &
-           generate_coamps_varnames => generate_coamps_filenames,  &
-           get_coamps_variable_count => get_coamps_filename_count, &
-           get_coamps_varname => get_coamps_filename
+use coamps_translate_mod, only : initialize_translator,        &
+                                 finalize_translator,          &
+                                 record_hdf_varnames,        &
+       generate_coamps_varnames => generate_coamps_filenames,  &
+       get_coamps_variable_count => get_coamps_filename_count, &
+       get_coamps_varname => get_coamps_filename
 
 !#!    use coamps_pert_mod,     only : perturb_state
 
-    use location_mod,        only : get_close_type,                &
-                                    get_dist,                      &
-                                    get_location,                  &
-                                    location_type,                 &
-                                    loc_get_close_state         => &
-                                        get_close_state,           &
-                                    loc_get_close_obs           => &
-                                        get_close_obs,             &
-                                    set_location,                  &
-                                  vertical_localization_on,        &
-                                  query_location,                  &
-                                  convert_vertical_obs,            &
-                                  convert_vertical_state,          &
-                                  VERTISLEVEL,                     &
-                                  VERTISPRESSURE,                  &
-                                  VERTISHEIGHT,                    &
-                                  VERTISSURFACE,                   &
-                                  VERTISUNDEF
-    use obs_kind_mod
+use location_mod,        only : get_close_type,                &
+                                get_dist,                      &
+                                get_location,                  &
+                                location_type,                 &
+                       loc_get_close_state => get_close_state, &
+                       loc_get_close_obs   => get_close_obs,   &
+                                set_location,                  &
+                                vertical_localization_on,      &
+                                query_location,                &
+                                convert_vertical_obs,          &
+                                convert_vertical_state,        &
+                                VERTISLEVEL,                   &
+                                VERTISPRESSURE,                &
+                                VERTISHEIGHT,                  &
+                                VERTISSURFACE,                 &
+                                VERTISUNDEF
 
-    use ensemble_manager_mod, only : ensemble_type
+use obs_kind_mod
 
-    use time_manager_mod,    only : set_time, set_time_missing,    &
-                                    set_date, time_type,           &
-                                    set_calendar_type,             &
-                                    print_date, print_time,        &
-                                    operator(+), operator(-)
+use ensemble_manager_mod, only : ensemble_type
 
-    use types_mod,           only : MISSING_R8, MISSING_I,         &
-                                    DEG2RAD,                       &
-                                    r8,                            &
-                                    i8
+use time_manager_mod,    only : set_time, set_time_missing,    &
+                                set_date, time_type,           &
+                                set_calendar_type,             &
+                                print_date, print_time,        &
+                                operator(+), operator(-)
 
-    use utilities_mod,       only : check_namelist_read,           &
-                                    do_output,                     &
-                                    E_ERR,                         &
-                                    E_MSG,                         &
-                                    error_handler,                 &
-                                    find_namelist_in_file,         &
-                                    get_unit,                      &
-                                    register_module, string_to_real, &
-                                    string_to_logical, to_upper
+use types_mod,           only : MISSING_R8, MISSING_I, DEG2RAD, &
+                                r8, i8
 
-    use default_model_mod,  only :  init_conditions,    &
-                                    init_time,          &
-                                    adv_1step,          &
-                                    nc_write_model_vars
+use utilities_mod,       only : check_namelist_read,           &
+                                do_output,                     &
+                                E_ERR,                         &
+                                E_MSG,                         &
+                                error_handler,                 &
+                                find_namelist_in_file,         &
+                                get_unit,                      &
+                                register_module,               &
+                                string_to_real,                &
+                                string_to_logical,             &
+                                to_upper
 
-    use state_structure_mod, only : add_domain, get_domain_size, state_structure_info
+use default_model_mod,  only :  init_conditions,               &
+                                init_time,                     &
+                                adv_1step,                     &
+                                nc_write_model_vars
 
-    use netcdf_utilities_mod, only : nc_add_global_attribute, nc_sync, nc_check, &
-                                 nc_add_global_creation_time, nc_redef, nc_enddef
+use state_structure_mod, only : add_domain,                    &
+                                get_domain_size,               &
+                                state_structure_info
 
-    use netcdf
-    use typesizes
+use netcdf_utilities_mod, only : nc_add_global_attribute,      &
+                                 nc_add_global_creation_time,  &
+                                 nc_check
 
-    implicit none
+use netcdf
+use typesizes
 
-    private
+implicit none
+private
 
-    !-------------------------------------------------------
-    ! BEGIN PUBLIC INTERFACE - updated for Manhattan release
-    !-------------------------------------------------------
+!-------------------------------------------------------
+! BEGIN PUBLIC INTERFACE - updated for Manhattan release
+!-------------------------------------------------------
 
-    ! Initialization/finalization
-    public :: static_init_model 
-    public :: end_model      
+! Initialization/finalization
+public :: static_init_model 
+public :: end_model      
 
-    ! NetCDF diagnostics
-    public :: nc_write_model_atts 
+! NetCDF diagnostics
+public :: nc_write_model_atts 
 
-    ! Ensemble generation
-    public :: pert_model_copies 
-    !public :: pert_model_state 
+! Ensemble generation
+public :: pert_model_copies 
+!public :: pert_model_state 
 
-    ! Forward operator
-    public :: model_interpolate
+! Forward operator
+public :: model_interpolate
 
-    ! Localization
-    public :: get_close_obs
-    public :: get_close_state
+! Localization
+public :: get_close_obs
+public :: get_close_state
 
-    ! Vertical conversion if multiple choices for vert coordinate
-    public :: convert_vertical_obs
-    public :: convert_vertical_state
+! Vertical conversion if multiple choices for vert coordinate
+public :: convert_vertical_obs
+public :: convert_vertical_state
 
-    ! Information about model setup
-    public :: get_model_size 
-    public :: get_state_meta_data 
-    public :: shortest_time_between_assimilations
-    public :: get_coamps_domain   ! not required by DART
+! Information about model setup
+public :: get_model_size 
+public :: get_state_meta_data 
+public :: shortest_time_between_assimilations
+public :: get_coamps_domain   ! not required by DART
 
-    ! Null interfaces - code in other modules
-    public :: init_conditions
-    public :: init_time      
-    public :: adv_1step 
-    public :: nc_write_model_vars
+! Null interfaces - code in other modules
+public :: init_conditions
+public :: init_time      
+public :: adv_1step 
+public :: nc_write_model_vars
 
-    ! Time management - must conform to COAMPS file format for time
-    public :: read_model_time
-    public :: write_model_time
+! Time management - must conform to COAMPS file format for time
+public :: read_model_time
+public :: write_model_time
 
-    !------------------------------
-    ! END PUBLIC INTERFACE
-    !------------------------------
+!------------------------------
+! END PUBLIC INTERFACE
+!------------------------------
 
-    !------------------------------
-    ! BEGIN EXTERNAL INTERFACE
-    !------------------------------
+!------------------------------
+! BEGIN EXTERNAL INTERFACE
+!------------------------------
   !  [none]
-    !------------------------------
-    ! END EXTERNAL INTERFACE
-    !------------------------------
+!------------------------------
+! END EXTERNAL INTERFACE
+!------------------------------
 
-    !------------------------------
-    ! BEGIN TYPES AND CONSTANTS
-    !------------------------------
-    !  [none]
-    !------------------------------
-    ! END TYPES AND CONSTANTS
-    !------------------------------
+!------------------------------
+! BEGIN TYPES AND CONSTANTS
+!------------------------------
+!  [none]
+!------------------------------
+! END TYPES AND CONSTANTS
+!------------------------------
 
-    !------------------------------
-    ! BEGIN MODULE VARIABLES
-    !------------------------------
+!------------------------------
+! BEGIN MODULE VARIABLES
+!------------------------------
 
-    ! version controlled file description for error handling, do not edit
-    character(len=*), parameter :: source   = &
-       "$URL$"
-    character(len=*), parameter :: revision = "$Revision$"
-    character(len=*), parameter :: revdate  = "$Date$"
-          
+! version controlled file description for error handling, do not edit
+character(len=*), parameter :: source   = &
+   "$URL$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
+      
 character(len=512) :: string1, string2
 logical, save :: module_initialized = .false.
 
@@ -239,56 +241,58 @@ logical  ::                   update_list(MAX_STATE_VARIABLES) = .FALSE.
 integer  ::                     kind_list(MAX_STATE_VARIABLES) = MISSING_I
 real(r8) ::                    clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
 
-    ! Main model_mod namelist - not too much here as we read most of
-    ! the data we need in from the COAMPS files themselves
-    character(len=10) :: cdtg                 = '1999083100' ! Date-time group
-    integer           :: y_bound_skip         = 3            ! How many x and y boundary
-    integer           :: x_bound_skip         = 3            ! points to skip when
-                                                             ! perturbing the model
-                                                             ! state
-    logical           :: need_mean            = .true.       ! Do we need the ensemble
-                                                             ! mean for for forward
-                                                             ! operator computation?
-    logical           :: output_interpolation = .false. 
-    integer           :: debug                = 0            ! increase for debug messages
-    integer           :: assimilation_period_days = 0
-    integer           :: assimilation_period_seconds = 216000
+! Main model_mod namelist - not too much here as we read most of
+! the data we need in from the COAMPS files themselves
+character(len=10) :: cdtg                 = '1999083100' ! Date-time group
+integer           :: y_bound_skip         = 3            ! How many x and y boundary
+integer           :: x_bound_skip         = 3            ! points to skip when
+                                                         ! perturbing the model
+                                                         ! state
+logical           :: need_mean            = .true.       ! Do we need the ensemble
+                                                         ! mean for for forward
+                                                         ! operator computation?
+logical           :: output_interpolation = .false. 
+integer           :: debug                = 0            ! increase for debug messages
+integer           :: assimilation_period_days = 0
+integer           :: assimilation_period_seconds = 216000
 
-    namelist /model_nml/ cdtg, y_bound_skip, x_bound_skip, need_mean, &
-                         output_interpolation, debug, &
-                         assimilation_period_days, assimilation_period_seconds
+namelist /model_nml/ cdtg, y_bound_skip, x_bound_skip, need_mean, &
+                     output_interpolation, debug, &
+                     assimilation_period_days, assimilation_period_seconds
 
-    ! Locations of state variables
-    integer, dimension(:), allocatable :: all_vars
+! Locations of state variables
+integer, dimension(:), allocatable :: all_vars
 
-    ! Grid information structure
-    type(coamps_domain) :: domain
-    type(state_vector)  :: state_definition   ! ENTIRE COAMP_NEST STATE
-    type(state_vector)  :: state_layout_3D    ! Just the variables for DART
+! Grid information structure
+type(coamps_domain) :: domain
+type(state_vector)  :: state_definition   ! ENTIRE COAMP_NEST STATE
+type(state_vector)  :: state_layout_3D    ! Just the variables for DART
 
-    ! Ensemble mean
-    real(kind=r8), dimension(:), allocatable :: ensemble_mean
+! Ensemble mean
+real(kind=r8), dimension(:), allocatable :: ensemble_mean
 
 integer :: nfields
 integer :: domid
 
-    !------------------------------
-    ! END MODULE VARIABLES
-    !------------------------------
+!------------------------------
+! END MODULE VARIABLES
+!------------------------------
 
 contains
 
-    !------------------------------
-    ! BEGIN PUBLIC ROUTINES
-    !------------------------------
+!------------------------------
+! BEGIN PUBLIC ROUTINES
+!------------------------------
 
-! -----------------
+!-------------------------------------------------------------------------------
 !> One-time initialization of the model.  For COAMPS, this:
 !>  1. Reads in the model_mod namelist
 !>  2. Initializes the pressure levels for the state vector
 !>  3. Generate the location data for each member of the state
+!>  4. Queries the template file 'dart_vector.nc' to glean variable sizes
 !>  PARAMETERS
 !>   [none]
+
 subroutine static_init_model()
 
 character(len=*), parameter :: STATE_VEC_DEF_FILE = 'state.vars'
@@ -324,7 +328,7 @@ call populate_metadata_arrays()
 
 call initialize_translator()
 call generate_coamps_varnames(writing_coamps = .false.)
-call record_variable_names(state_layout_3D)
+call record_hdf_varnames(state_layout_3D)
 
 if (debug > 99 .and. do_output()) call dump_state_vector(state_layout_3D)
 
@@ -348,66 +352,63 @@ call finalize_translator()
 
 end subroutine static_init_model
 
-    ! end_model
-    ! ---------
-    ! Clean up the workspace once the program is ending
-    !  PARAMETERS
-    !   [none]
-    subroutine end_model()
-        real(kind=r8) x
 
-        x = MISSING_R8
+!-------------------------------------------------------------------------------
+!> Clean up the workspace once the program is ending
+!>  PARAMETERS
+!>   [none]
 
-        call deallocate_metadata_arrays()
-    end subroutine end_model
+subroutine end_model()
+    real(kind=r8) x
 
-    ! nc_write_model_atts
-    ! -------------------
-    ! Write model-specific global attributes to a NetCDF file.
-    !  PARAMETERS
-    !   IN  ncFileID          numeric ID of an *open* NetCDF file
-    !   OUT ierr              0 if writing was successful
-    subroutine nc_write_model_atts( ncFileID, domain_id ) 
-        integer, intent(in)         :: ncFileID
-        integer, intent(in)         :: domain_id
+    x = MISSING_R8
 
-        character(len=*), parameter :: routine = 'nc_write_model_atts'
+    call deallocate_metadata_arrays()
+end subroutine end_model
 
-        call nc_check(nf90_sync(ncFileID), routine, 'nf90_sync')
-        call nc_check(nf90_redef(ncFileID), routine, 'nf90_redef')
 
-        call nc_write_prognostic_atts(ncFileID,state_layout_3D,define_vars=.false.)
+!-------------------------------------------------------------------------------
+!> Write model-specific global attributes to a NetCDF file.
+!>  PARAMETERS
+!>   IN  ncFileID          numeric ID of an *open* NetCDF file
+!>   OUT ierr              0 if writing was successful
 
-    end subroutine nc_write_model_atts
+subroutine nc_write_model_atts( ncFileID, domain_id ) 
+integer, intent(in) :: ncFileID
+integer, intent(in) :: domain_id
 
-    ! pert_model_state
-    ! ----------------
-    ! Perturb the model state, field by field.  This can be done 3
-    ! different ways:
-    !  1. No perturbation
-    !  2. Uniform perturbation - each element of the field has the
-    !                            same additive perturbation
-    !  3. Individual perturbation - each element of the field has a 
-    !                               different additive perturbation
-    ! The perturbation magnitude and option are supplied out of the
-    ! dynamic restart vector definition - this allows us to supply a
-    ! variance appropriate for each type of variable at each level.
-    !  PARAMETERS
-    !   IN  state             DART state vector
-    !   OUT pert_state        state vector after perturbations
-    !   OUT interf_provided   true if this routine did the perturbation
+call nc_write_prognostic_atts(ncFileID, state_layout_3D, define_vars=.false.)
 
-    subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
-    
-    type(ensemble_type), intent(inout) :: state_ens_handle
-    integer,   intent(in) :: ens_size
-    real(r8),  intent(in) :: pert_amp
-    logical,  intent(out) :: interf_provided
-    
-    interf_provided = .false.
-    
-    end subroutine pert_model_copies
-    
+end subroutine nc_write_model_atts
+
+
+!-------------------------------------------------------------------------------
+!> Perturb the model state, field by field.  This can be done 3
+!> different ways:
+!>  1. No perturbation
+!>  2. Uniform perturbation - each element of the field has the
+!>                            same additive perturbation
+!>  3. Individual perturbation - each element of the field has a 
+!>                               different additive perturbation
+!> The perturbation magnitude and option are supplied out of the
+!> dynamic restart vector definition - this allows us to supply a
+!> variance appropriate for each type of variable at each level.
+!>  PARAMETERS
+!>   IN  state             DART state vector
+!>   OUT pert_state        state vector after perturbations
+!>   OUT interf_provided   true if this routine did the perturbation
+
+subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
+
+type(ensemble_type), intent(inout) :: state_ens_handle
+integer,   intent(in) :: ens_size
+real(r8),  intent(in) :: pert_amp
+logical,  intent(out) :: interf_provided
+
+interf_provided = .false.
+
+end subroutine pert_model_copies
+
 
 !#!    subroutine pert_model_state(state, pert_state, interf_provided)
 !#!        real(kind=r8), dimension(:), intent(in)  :: state

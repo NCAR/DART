@@ -19,7 +19,7 @@ module coamps_statevec_mod
     use coamps_statevar_mod, only : state_variable, new_state_variable, &
                                     read_state_variable, set_position,  &
                                     set_2d_flag, dump_state_variable,   &
-                                    set_var_stagger, set_hdf_name,      &
+                                    set_var_stagger,                    &
                                     get_mean_flag, define_mean_var,     &
                                     get_sigma_record, set_sigma_record, &
                                     get_mass_level_flag,                &
@@ -393,7 +393,6 @@ VARLOOP: do while (has_next(iterator))
     var = get_next(iterator)
 
     if (get_hdf_name(var) == 'nohdfname') then
-       !>@todo this should probably go in record_variable_names()
        write(varnames(varindex),400)   &
              trim(get_var_name(var)), get_nest_number(var)
     else
@@ -412,11 +411,13 @@ enddo VARLOOP
 
 nvars = varindex - 1
 
+if (.false. .and. do_output()) then
 do ivar = 1,nvars
    write(*,*)trim(routine)//' var',ivar, ' is "'//trim(varnames(ivar))//'"', &
               kindlist(ivar), clampvals(ivar,:), updatelist(ivar), &
           trim(get_name_for_quantity(kindlist(ivar)))
 enddo
+endif
 
 end subroutine construct_domain_info
 

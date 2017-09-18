@@ -157,8 +157,6 @@ program perturb_bndy
 ! Read data header file and set sizes
 !------------------------------------------------------------------------------
 
-!>@todo  should this be coamps_file_name instead of HDF5_FILE_NAME
-
   call read_datahd_file(HDF5_FILE_NAME, cdtg, coamps_datahd)
   call initialize_vertical(coamps_datahd, static_vgrid)
 

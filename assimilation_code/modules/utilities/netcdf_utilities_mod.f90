@@ -853,7 +853,7 @@ end subroutine nc_get_real_3d
 !> Optionally returns the type of variable, the number of dimensions, 
 !> the dimension names and lengths, the number of attributes (but not the attribute values (yet))
 
-subroutine nc_get_variable_info(ncid, varname, xtype, ndims, dimlens, dimnames, nAtts, &
+subroutine nc_get_variable_info(ncid, varname, xtype, ndims, dimlens, dimnames, natts, &
                                 context, filename)
 
 integer,          intent(in)            :: ncid
@@ -862,32 +862,33 @@ integer,          intent(out), optional :: xtype
 integer,          intent(out), optional :: ndims
 integer,          intent(out), optional :: dimlens(:)
 character(len=*), intent(out), optional :: dimnames(:)
-integer,          intent(out), optional :: nAtts
+integer,          intent(out), optional :: natts
 character(len=*), intent(in) , optional :: context
 character(len=*), intent(in) , optional :: filename
 
-character(len=*), parameter :: routine = 'nc_get_variable_shape'
+character(len=*), parameter :: routine = 'nc_get_variable_info'
 integer :: ret, varid, dimid, ii
 
 integer :: myxtype
 integer :: myndims
 integer :: mydimids(NF90_MAX_VAR_DIMS)
 integer :: mydimlens(NF90_MAX_VAR_DIMS)
-integer :: mynAtts
+integer :: mynatts
 character(len=NF90_MAX_NAME) :: mydimnames(NF90_MAX_VAR_DIMS)
+
 
 ret = nf90_inq_varid(ncid, varname, varid)
 call nc_check(ret, routine, 'inq_varid for '//trim(varname), context, filename)
 
 ret = nf90_inquire_variable(ncid, varid, xtype=myxtype, ndims=myndims, &
-                            dimids=mydimids, nAtts=mynAtts) 
+                            dimids=mydimids, natts=mynatts) 
 call nc_check(ret, routine, 'inquire_variable for '//trim(varname), context, filename)
 
 if (present(dimlens) .or. present(dimnames)) then  ! more work to do 
 
    !>@todo do we want to make sure dimlens, dimnames are long enough
-   dimlens  = 0
-   dimnames = ''
+   if (present(dimlens))  dimlens  = 0
+   if (present(dimnames)) dimnames = 'null'
 
    do ii = 1,myndims
 
@@ -902,7 +903,7 @@ endif
 
 if (present(   xtype)) xtype    = myxtype
 if (present(   ndims)) ndims    = myndims
-if (present(   nAtts)) nAtts    = mynAtts
+if (present(   natts)) natts    = mynatts
 if (present( dimlens)) dimlens(1:ndims)  = mydimlens(1:ndims)
 if (present(dimnames)) dimnames(1:ndims) = mydimnames(1:ndims)
 
