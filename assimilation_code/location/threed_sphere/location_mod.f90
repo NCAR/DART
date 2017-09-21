@@ -1578,27 +1578,26 @@ do j = 1, nlat
             ! Could avoid adding any that have nums lower than base_ob???
             t_ind = gc%gtt(bt)%loc_box(st - 1 + k)
 
-            ! Can compute total distance here if verts are the same
-            ! Only compute distance if dist is present
-            if(present(dist)) then
-               if(base_loc%which_vert == locs(t_ind)%which_vert) then
-                  this_dist = get_dist(base_loc, locs(t_ind), base_type, loc_qtys(t_ind))
-               else
-               ! Otherwise can just get horizontal distance
-                  this_dist = get_dist(base_loc, locs(t_ind), base_type, loc_qtys(t_ind), &
-                     no_vert = .true.)
-               endif
-            else
+            if(.not. present(dist)) then
                ! Dist isn't present; add this ob to list without computing distance
                num_close = num_close + 1
                close_ind(num_close) = t_ind
-            endif
+            else
+               if(base_loc%which_vert == locs(t_ind)%which_vert) then
+                  ! Can compute total distance here if verts are the same
+                  this_dist = get_dist(base_loc, locs(t_ind), base_type, loc_qtys(t_ind))
+               else 
+                  ! Otherwise can just get horizontal distance
+                  this_dist = get_dist(base_loc, locs(t_ind), base_type, loc_qtys(t_ind), &
+                     no_vert = .true.)
+               endif
 
-            ! If dist is present and this loc's distance is less than cutoff, add it in list
-            if(present(dist) .and. this_dist <= this_maxdist) then
-               num_close = num_close + 1
-               close_ind(num_close) = t_ind
-               dist(num_close) = this_dist
+               ! If this loc's distance is less than cutoff, add it to the list
+               if(this_dist <= this_maxdist) then
+                  num_close = num_close + 1
+                  close_ind(num_close) = t_ind
+                  dist(num_close) = this_dist
+               endif
             endif
          end do
       end do LON_OFFSET
