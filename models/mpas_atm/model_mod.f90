@@ -714,9 +714,9 @@ model_size = progvar(nfields)%indexN
 if ( debug > 0 .and. do_output()) then
   write(logfileunit,*)
   write(     *     ,*)
-  write(logfileunit,'(" static_init_model: nCells, nEdges, nVertices, nVertLevels =",4(1x,i6))') &
+  write(logfileunit,'(" static_init_model: nCells, nEdges, nVertices, nVertLevels =",4(1x,i9))') &
                                           nCells, nEdges, nVertices, nVertLevels
-  write(     *     ,'(" static_init_model: nCells, nEdges, nVertices, nVertLevels =",4(1x,i6))') &
+  write(     *     ,'(" static_init_model: nCells, nEdges, nVertices, nVertLevels =",4(1x,i9))') &
                                           nCells, nEdges, nVertices, nVertLevels
   write(logfileunit, *)'static_init_model: model_size = ', model_size
   write(     *     , *)'static_init_model: model_size = ', model_size
@@ -815,7 +815,7 @@ domid =  add_domain( trim(model_analysis_filename), nfields,    &
                      var_names  = variable_table (1:nfields,1), &
                      clamp_vals = variable_bounds(1:nfields,:) )
 
-if ( debug > 4 ) call state_structure_info(domid)
+if ( debug > 4 .and. do_output()) call state_structure_info(domid)
 
 ! tell the location module how we want to localize in the vertical
 call set_vertical_localization_coord(vert_localization_coord)
@@ -2993,7 +2993,7 @@ call nc_check(nf90_inquire_dimension(grid_id, dimid, len=nSoilLevels), &
 call nc_check(nf90_close(grid_id), &
          'read_grid_dims','close '//trim(grid_definition_filename) )
 
-if (debug > 4) then
+if (debug > 4 .and. do_output()) then
    write(*,*)
    write(*,*)'read_grid_dims: nCells        is ', nCells
    write(*,*)'read_grid_dims: nVertices     is ', nVertices
@@ -3160,7 +3160,7 @@ call nc_check(nf90_close(ncid), 'get_grid','close '//trim(grid_definition_filena
 
 ! A little sanity check
 
-if ( debug > 9 ) then
+if ( debug > 9 .and. do_output() ) then
 
    write(*,*)
    write(*,*)'latCell           range ',minval(latCell),           maxval(latCell)
@@ -4288,7 +4288,11 @@ integer,             intent(in)    :: loc_qtys(:), loc_types(:)
 integer,             intent(in)    :: which_vert
 integer,             intent(out)   :: status(:)
 
-call convert_vert_distrib(state_handle, num, locs, loc_qtys(1), which_vert, status)
+integer :: i
+
+do i=1, num
+   call convert_vert_distrib(state_handle, 1, locs(i:i), loc_qtys(i), which_vert, status(i:i))
+enddo
 
 end subroutine convert_vertical_obs
 
@@ -4305,15 +4309,16 @@ integer(i8),         intent(in)    :: loc_indx(:)
 integer,             intent(in)    :: which_vert
 integer,             intent(out)   :: istatus
 
-integer :: status(num)
+integer :: i, status(1)
 
-call convert_vert_distrib(state_handle, num, locs, loc_qtys(1), which_vert, status)
+do i=1, num
+   call convert_vert_distrib(state_handle, 1, locs(i:i), loc_qtys(i), which_vert, status)
+   if (status(1) /= 0) then
+      istatus = status(1)
+      return
+   endif
+enddo
 
-if (any(status /= 0)) then 
-   istatus = 1
-else
-   istatus = 0
-endif
 
 end subroutine convert_vertical_state
 
@@ -4413,9 +4418,14 @@ zout(:)    = missing_r8
 do e = 1, ens_size
    if (zin(e) == missing_r8) then
       location(e) = set_location(llv_loc(1, e),llv_loc(2, e),missing_r8,ztypeout)
-      !return ! you can't return yet?
    endif
 enddo
+! if the entire ensemble has missing vertical values we can return now.
+! otherwise we need to continue to convert the members with good vertical values.
+if (all(zin == missing_r8)) then
+   istatus(:) = 0
+   return
+endif
 
 ! Convert the incoming vertical type (ztypein) into the vertical
 ! localization coordinate given in the namelist (ztypeout).
@@ -4473,7 +4483,7 @@ select case (ztypeout)
    ! Convert theta, rho, qv into pressure
    call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), zout(:), tk(:), istatus(:))
    if (debug > 10) then
-      write(string2,'("zout_in_p, theta, rho, qv, ier:",3F10.2,F15.10,I3)') zout(1), values(1:3,1),istatus(1)
+      write(string2,'("zout_in_p, theta, rho, qv, ier:",3F10.2,F18.8,I3)') zout(1), values(1:3,1),istatus(1)
       call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
    endif
 
@@ -4504,6 +4514,12 @@ select case (ztypeout)
       endif
    enddo
 
+   if (debug > 9) then
+      write(string2,'("zout_in_height:",F10.2)') zout
+      call error_handler(E_MSG, 'vert_convert',string2,source, revision, revdate)
+   endif
+
+
    ! ------------------------------------------------------------
    ! outgoing vertical coordinate should be 'scale height' (a ratio)
    ! ------------------------------------------------------------
@@ -4524,7 +4540,7 @@ select case (ztypeout)
    ! Convert theta, rho, qv into pressure
    call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), fullp(:), tk(:), istatus(:))
    if (debug > 9) then
-      write(string2,'("zout_full_pressure, theta, rho, qv:",3F10.2,F15.10)') fullp, values(1:3,1)
+      write(string2,'("zout_full_pressure, theta, rho, qv:",3F10.2,F18.8)') fullp, values(1:3,1)
       call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
    endif
 
@@ -4536,7 +4552,7 @@ select case (ztypeout)
    ! Convert surface theta, rho, qv into pressure
    call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), surfp(:), tk(:), istatus(:))
    if (debug > 9) then
-      write(string2,'("zout_surf_pressure, theta, rho, qv:",3F10.2,F15.10)') surfp, values(1:3,1)
+      write(string2,'("zout_surf_pressure, theta, rho, qv:",3F10.2,F18.8)') surfp, values(1:3,1)
       call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
    endif
 
@@ -4548,7 +4564,7 @@ select case (ztypeout)
    end where
 
    if (debug > 9) then
-      write(string2,'("zout_in_pressure:",F10.2)') zout
+      write(string2,'("zout_in_scaleheight:",F10.2)') zout
       call error_handler(E_MSG, 'vert_convert',string2,source, revision, revdate)
    endif
 
