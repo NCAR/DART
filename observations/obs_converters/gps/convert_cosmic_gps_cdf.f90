@@ -483,57 +483,6 @@ end subroutine excess
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!   excess_obserr_percent - function that computes the observation 
-!                           error percentage for a given height.
-!
-!    hght - height of excess observation (km)
-!
-!     created Hui Liu NCAR/MMM
-!     updated June 2008, Ryan Torn NCAR/MMM
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-function excess_obserr_percent(hght)
-
-use types_mod, only : r8
-
-implicit none
-
-integer, parameter :: nobs_level = 18
-
-real(r8), intent(in) :: hght
-
-integer  :: k, k0
-real(r8) :: hght0, exc_err(nobs_level), obs_ht(nobs_level), excess_obserr_percent
-
-!-------------------------------------------------------------------------------
-! obs height in km
-data obs_ht/17.0_r8, 16.0_r8, 15.0_r8, 14.0_r8, 13.0_r8, 12.0_r8, & 
-            11.0_r8, 10.0_r8,  9.0_r8,  8.0_r8,  7.0_r8,  6.0_r8, &
-             5.0_r8,  4.0_r8,  3.0_r8,  2.0_r8,  1.0_r8,  0.0_r8/
-
-data exc_err/0.2_r8,  0.2_r8,  0.2_r8,  0.2_r8,  0.2_r8,  0.2_r8, & 
-             0.2_r8,  0.3_r8,  0.4_r8,  0.5_r8,  0.6_r8,  0.7_r8, &
-             0.8_r8,  0.9_r8,  1.0_r8,  1.1_r8,  1.2_r8,  1.3_r8/
-
-!-------------------------------------------------------------------------------
-
-hght0 = max(hght,0.0_r8)
-
-do k = 1, nobs_level
-  if ( hght >= obs_ht(k) ) then
-    k0 = k
-    exit
-  end if
-end do
-
-excess_obserr_percent = exc_err(k0) + (exc_err(k0) - exc_err(k0-1)) / & 
-                        (obs_ht(k0) - obs_ht(k0-1)) * (hght - obs_ht(k0))
-
-return
-end function excess_obserr_percent
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
 !   car2geo - subroutine that converts cartesian coordinates to
 !             geodetical.
 !
@@ -739,62 +688,6 @@ end subroutine ref_int
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!   ref_obserr_kuo_percent - function that computes the observation 
-!                            error for a refractivity observation.
-!                            These numbers are taken from a Kuo paper.
-!
-!    hght - height of refractivity observation
-!
-!     created Hui Liu NCAR/MMM
-!     modified June 2008, Ryan Torn NCAR/MMM
-!     modified August 2015, Soyoung Ha NCAR/MMM
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-function ref_obserr_kuo_percent(hght)
-
-use   types_mod, only : r8
-
-implicit none
-
-integer, parameter :: nobs_level = 22  !  maximum number of obs levels
-
-real(r8), intent(in)  :: hght
-
-integer  :: k, k0
-real(r8) :: hght0, ref_err(nobs_level), obs_ht(nobs_level), ref_obserr_kuo_percent
-
-!   observation error heights (km) and errors
-data obs_ht/17.98_r8, 16.39_r8, 14.97_r8, 13.65_r8, 12.39_r8, 11.15_r8, &
-             9.95_r8,  8.82_r8,  7.82_r8,  6.94_r8,  6.15_r8,  5.45_r8, & 
-             4.83_r8,  4.27_r8,  3.78_r8,  3.34_r8,  2.94_r8,  2.59_r8, & 
-             2.28_r8,  1.99_r8,  1.00_r8,  0.00_r8/
-
-data ref_err/0.48_r8,  0.56_r8,  0.36_r8,  0.28_r8,  0.33_r8,  0.41_r8, & 
-             0.57_r8,  0.73_r8,  0.90_r8,  1.11_r8,  1.18_r8,  1.26_r8, & 
-             1.53_r8,  1.85_r8,  1.81_r8,  2.08_r8,  2.34_r8,  2.43_r8, & 
-             2.43_r8,  2.43_r8,  2.43_r8,  2.43_r8/
-
-hght0 = max(hght, 0.0_r8)
-
-do k = 1, nobs_level
-  
-  k0 = k
-  if ( hght0 >= obs_ht(k) )  exit
-
-end do 
-
-if(k0.eq.1) then    ! HA
-   ref_obserr_kuo_percent = ref_err(k0)
-else
-   ref_obserr_kuo_percent = ref_err(k0) + (ref_err(k0) - ref_err(k0-1)) / &
-                           (obs_ht(k0)-obs_ht(k0-1)) * (hght0-obs_ht(k0))
-endif
-
-return
-end function ref_obserr_kuo_percent
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
 !   tanvec01 - subroutine that computes the unit vector tangent of the 
 !              ray at the perigee.
 !
@@ -979,13 +872,121 @@ compute_lon_wrap = lono
 
 end function compute_lon_wrap
 
+! three different error options:
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!   excess_obserr_percent - function that computes the observation 
+!                           error percentage for a given height.
+!
+!    hght - height of excess observation (km)
+!
+!     created Hui Liu NCAR/MMM
+!     updated June 2008, Ryan Torn NCAR/MMM
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+function excess_obserr_percent(hght)
+
+use types_mod, only : r8
+
+implicit none
+
+integer, parameter :: nobs_level = 18
+
+real(r8), intent(in) :: hght
+
+integer  :: k, k0
+real(r8) :: hght0, exc_err(nobs_level), obs_ht(nobs_level), excess_obserr_percent
+
+!-------------------------------------------------------------------------------
+! obs height in km
+data obs_ht/17.0_r8, 16.0_r8, 15.0_r8, 14.0_r8, 13.0_r8, 12.0_r8, & 
+            11.0_r8, 10.0_r8,  9.0_r8,  8.0_r8,  7.0_r8,  6.0_r8, &
+             5.0_r8,  4.0_r8,  3.0_r8,  2.0_r8,  1.0_r8,  0.0_r8/
+
+data exc_err/0.2_r8,  0.2_r8,  0.2_r8,  0.2_r8,  0.2_r8,  0.2_r8, & 
+             0.2_r8,  0.3_r8,  0.4_r8,  0.5_r8,  0.6_r8,  0.7_r8, &
+             0.8_r8,  0.9_r8,  1.0_r8,  1.1_r8,  1.2_r8,  1.3_r8/
+
+!-------------------------------------------------------------------------------
+
+hght0 = max(hght,0.0_r8)
+
+do k = 1, nobs_level
+  if ( hght >= obs_ht(k) ) then
+    k0 = k
+    exit
+  end if
+end do
+
+excess_obserr_percent = exc_err(k0) + (exc_err(k0) - exc_err(k0-1)) / & 
+                        (obs_ht(k0) - obs_ht(k0-1)) * (hght - obs_ht(k0))
+
+return
+end function excess_obserr_percent
 
 ! routines below here were lifted from soyoung ha's version of
 ! the ncep bufr format converter for gps obs, including lidia's error spec
 
-! soyoung says the error spec from bill is only 1 of 5 possible profiles
+! soyoung says the error spec from Bill Kuo is only 1 of 5 possible profiles
 ! and most appropriate for the CONUS domain.  if used for global obs, it
 ! should be updated to include the other functions.  nsc jan 2016
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!   ref_obserr_kuo_percent - function that computes the observation 
+!                            error for a refractivity observation.
+!                            These numbers are taken from a Kuo paper.
+!
+!    hght - height of refractivity observation
+!
+!     created Hui Liu NCAR/MMM
+!     modified June 2008, Ryan Torn NCAR/MMM
+!     modified August 2015, Soyoung Ha NCAR/MMM
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+function ref_obserr_kuo_percent(hght)
+
+use   types_mod, only : r8
+
+implicit none
+
+integer, parameter :: nobs_level = 22  !  maximum number of obs levels
+
+real(r8), intent(in)  :: hght
+
+integer  :: k, k0
+real(r8) :: hght0, ref_err(nobs_level), obs_ht(nobs_level), ref_obserr_kuo_percent
+
+!   observation error heights (km) and errors
+data obs_ht/17.98_r8, 16.39_r8, 14.97_r8, 13.65_r8, 12.39_r8, 11.15_r8, &
+             9.95_r8,  8.82_r8,  7.82_r8,  6.94_r8,  6.15_r8,  5.45_r8, & 
+             4.83_r8,  4.27_r8,  3.78_r8,  3.34_r8,  2.94_r8,  2.59_r8, & 
+             2.28_r8,  1.99_r8,  1.00_r8,  0.00_r8/
+
+data ref_err/0.48_r8,  0.56_r8,  0.36_r8,  0.28_r8,  0.33_r8,  0.41_r8, & 
+             0.57_r8,  0.73_r8,  0.90_r8,  1.11_r8,  1.18_r8,  1.26_r8, & 
+             1.53_r8,  1.85_r8,  1.81_r8,  2.08_r8,  2.34_r8,  2.43_r8, & 
+             2.43_r8,  2.43_r8,  2.43_r8,  2.43_r8/
+
+hght0 = max(hght, 0.0_r8)
+
+do k = 1, nobs_level
+  
+  k0 = k
+  if ( hght0 >= obs_ht(k) )  exit
+
+end do 
+
+if(k0.eq.1) then    ! HA
+   ref_obserr_kuo_percent = ref_err(k0)
+else
+   ref_obserr_kuo_percent = ref_err(k0) + (ref_err(k0) - ref_err(k0-1)) / &
+                           (obs_ht(k0)-obs_ht(k0-1)) * (hght0-obs_ht(k0))
+endif
+
+return
+end function ref_obserr_kuo_percent
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
