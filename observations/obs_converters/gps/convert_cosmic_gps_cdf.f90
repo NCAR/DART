@@ -35,7 +35,7 @@ use   obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_type_
                                set_obs_def_error_variance, set_obs_def_location, &
                                set_obs_def_key
 use    obs_def_gps_mod, only : set_gpsro_ref
-use       obs_kind_mod, only : GPSRO_REFRACTIVITY
+use       obs_kind_mod, only : GPSRO_REFRACTIVITY     ! GPSRO_BENDING_ANGLE
 use  obs_utilities_mod, only : add_obs_to_seq
 
 use           netcdf
@@ -60,12 +60,12 @@ integer :: ncid, varid, nlevels, k, nfiles, num_new_obs, oday, osec, &
            io, iunit, nobs, filenum, dummy, numrejected
 character (len=1) :: badqc
 logical :: file_exist, first_obs, from_list = .false.
-real(r8) :: hght_miss, refr_miss, azim_miss, oerr,               & 
+real(r8) :: hght_miss, refr_miss, azim_miss, benda_miss, oerr,   & 
             qc, lato, lono, hghto, refro, azimo, wght, nx, ny,   & 
             nz, rfict, obsval, phs, obs_val(1), qc_val(1)
 
 real(r8), allocatable :: lat(:), lon(:), hght(:), refr(:), azim(:), & 
-                         hghtp(:), refrp(:)
+                         hghtp(:), refrp(:), benda(:)
 
 type(obs_def_type)      :: obs_def
 type(obs_sequence_type) :: obs_seq
@@ -79,16 +79,18 @@ type(time_type)         :: time_obs, prev_time
 integer, parameter :: NMAXLEVELS = 200   !  max number of observation levels
 
 logical  :: local_operator         = .true.   ! see html file for more on non/local
+logical  :: use_original_kuo_error = .false.  ! alternative is use lidia c's version
 real(r8) :: obs_levels(NMAXLEVELS) = -1.0_r8
 real(r8) :: ray_ds                 = 5000.0_r8    ! delta stepsize (m) along ray, nonlocal op
 real(r8) :: ray_htop               = 15000.0_r8 ! max height (m) for nonlocal op
 character(len=256) :: gpsro_netcdf_file     = 'cosmic_gps_input.nc'
-character(len=256) :: gpsro_netcdf_filelist = 'cosmic_gps_input_list'
+character(len=256) :: gpsro_netcdf_filelist = ''
 character(len=256) :: gpsro_out_file        = 'obs_seq.gpsro'
 
 namelist /convert_cosmic_gps_nml/ obs_levels, local_operator, ray_ds,   &
                                   ray_htop, gpsro_netcdf_file,          &
-                                  gpsro_netcdf_filelist, gpsro_out_file
+                                  gpsro_netcdf_filelist, gpsro_out_file, &
+                                  use_original_kuo_error
 
 ! initialize some values
 obs_num = 1
@@ -108,6 +110,11 @@ if (do_nml_file()) write(nmlfileunit, nml=convert_cosmic_gps_nml)
 if (do_nml_term()) write(     *     , nml=convert_cosmic_gps_nml)
 
 ! namelist checks for sanity
+if (.not. use_original_kuo_error .and. .not. local_operator) then
+  call error_handler(E_ERR, 'convert_cosmic_gps_cdf',                     &
+                     'New error values only implemented for local operator', &
+                     source, revision, revdate)
+endif
 
 !  count observation levels, make sure observation levels increase from 0
 nlevels = 0
@@ -161,7 +168,7 @@ else
                       source, revision, revdate, text2=msgstring2)
 
    call init_obs_sequence(obs_seq, num_copies, num_qc, num_new_obs)
-   call set_copy_meta_data(obs_seq, 1, 'COSMIC GPS observation')
+   call set_copy_meta_data(obs_seq, 1, 'COSMIC GPS Observation')
    call set_qc_meta_data(obs_seq, 1, 'COSMIC QC')
 
 end if
@@ -224,7 +231,7 @@ fileloop: do      ! until out of files
    allocate(hghtp(nobs)) ;  allocate(refrp(nobs))
    allocate( lat(nobs))  ;  allocate( lon(nobs))
    allocate(hght(nobs))  ;  allocate(refr(nobs))
-   allocate(azim(nobs))
+   allocate(azim(nobs))  ;  allocate(benda(nobs))
    
    ! read the latitude array
    call nc_check( nf90_inq_varid(ncid, "Lat", varid) ,'inq varid Lat', next_infile)
@@ -244,13 +251,31 @@ fileloop: do      ! until out of files
    call nc_check( nf90_get_var(ncid, varid, refr)    ,'get var   Ref', next_infile)
    call nc_check( nf90_get_att(ncid, varid, '_FillValue', refr_miss) ,'get_att _FillValue Ref', next_infile)
    
-   ! read the dew-point temperature array
+   ! read the bending angle
+   call nc_check( nf90_inq_varid(ncid, "Bend_ang", varid) ,'inq varid Bend_ang', next_infile)
+   call nc_check( nf90_get_var(ncid, varid, benda)    ,'get var   Bend_ang', next_infile)
+   call nc_check( nf90_get_att(ncid, varid, '_FillValue', benda_miss) ,'get_att _FillValue benda', next_infile)
+   
+   ! read the azimuth of occultation plane - only used for non-local operator
    call nc_check( nf90_inq_varid(ncid, "Azim", varid) ,'inq varid Azim', next_infile)
    call nc_check( nf90_get_var(ncid, varid, azim)     ,'get var   Azim', next_infile)
    call nc_check( nf90_get_att(ncid, varid, '_FillValue', azim_miss) ,'get_att _FillValue Azim', next_infile)
    
    call nc_check( nf90_close(ncid) , 'close file', next_infile)
    
+   !where(hght(1: < -998)) then
+   !   write(*,*) 'height array:'
+   !   write(*,*) hght
+   !endwhere
+   !where (any(refr < -998)) then
+   !  write(*,*) 'refractivity array:'
+   !  write(*,*) refr
+   !endwhere
+   !where (any(benda < -998)) then
+   !  write(*,*) 'bending angle array:'
+   !  write(*,*) benda
+   !endwhere
+
    ! convert units here.
    hghtp(:) = hght(:) * 1000.0_r8
    refrp(:) = refr(:) * 1.0e-6_r8
@@ -279,7 +304,11 @@ fileloop: do      ! until out of files
         rfict     = 0.0_r8
    
         obsval = refro
-        oerr   = 0.01_r8 * ref_obserr_kuo_percent(hghto * 0.001_r8) * obsval
+        if (use_original_kuo_error) then
+           oerr   = 0.01_r8 * ref_obserr_kuo_percent(hghto * 0.001_r8) * obsval
+        else
+           oerr   = gsi_refractivity_error(hghto, lato, is_it_global=.true., factor=1.0_r8)
+        endif
         subset = 'GPSREF'
    
      else
@@ -322,7 +351,7 @@ fileloop: do      ! until out of files
    end do obsloop2
 
   ! clean up and loop if there is another input file
-  deallocate( lat, lon, hght, refr, azim, hghtp, refrp)
+  deallocate( lat, lon, hght, refr, azim, benda, hghtp, refrp)
 
   filenum = filenum + 1
 
@@ -718,6 +747,7 @@ end subroutine ref_int
 !
 !     created Hui Liu NCAR/MMM
 !     modified June 2008, Ryan Torn NCAR/MMM
+!     modified August 2015, Soyoung Ha NCAR/MMM
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 function ref_obserr_kuo_percent(hght)
@@ -753,8 +783,12 @@ do k = 1, nobs_level
 
 end do 
 
-ref_obserr_kuo_percent = ref_err(k0) + (ref_err(k0) - ref_err(k0-1)) / &
-                             (obs_ht(k0)-obs_ht(k0-1)) * (hght0-obs_ht(k0))
+if(k0.eq.1) then    ! HA
+   ref_obserr_kuo_percent = ref_err(k0)
+else
+   ref_obserr_kuo_percent = ref_err(k0) + (ref_err(k0) - ref_err(k0-1)) / &
+                           (obs_ht(k0)-obs_ht(k0-1)) * (hght0-obs_ht(k0))
+endif
 
 return
 end function ref_obserr_kuo_percent
@@ -944,6 +978,142 @@ if (lono < 0.0_r8) lono = lono + 360.0_r8
 compute_lon_wrap = lono
 
 end function compute_lon_wrap
+
+
+! routines below here were lifted from soyoung ha's version of
+! the ncep bufr format converter for gps obs, including lidia's error spec
+
+! soyoung says the error spec from bill is only 1 of 5 possible profiles
+! and most appropriate for the CONUS domain.  if used for global obs, it
+! should be updated to include the other functions.  nsc jan 2016
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!   gsi_refractivity_error - function that computes the observation 
+!                            error as in GSI
+!
+!    Input:
+!    H   -- input real value geometric height [m]
+!    lat -- latitude in degree 
+!    is_it_global -- is your forecast model regional or global? (T or F)
+!    factor -- quick way to scale all the errors up or down for testing
+!
+!    Output:
+!    gsi_refractivity_error -- output refractivity observation error [N]
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+function gsi_refractivity_error(H, lat, is_it_global, factor)
+ real(r8), intent(in)  :: H
+ real(r8), intent(in)  :: lat
+ logical,  intent(in)  :: is_it_global
+ real(r8), intent(in)  :: factor
+ real(r8)              :: gsi_refractivity_error
+
+ real(r8) :: zkm, rerr
+ integer  :: kk
+ 
+ zkm = H * 0.001       ! height in km
+ rerr = 1.0_r8
+
+ if(is_it_global) then    ! for global
+
+ if((lat >= 20.0_r8) .or. (lat <= -20.0_r8)) then
+    rerr = -1.321_r8 + 0.341_r8 * zkm - 0.005_r8 * zkm ** 2
+ else
+    if(zkm > 10.0_r8) then
+       rerr = 2.013_r8 - 0.060_r8 * zkm + 0.0045_r8 * zkm ** 2
+    else
+       rerr = -1.18_r8 + 0.058_r8 * zkm + 0.025_r8 * zkm ** 2
+    endif
+ endif
+
+ else     ! for regional 
+
+ if((lat >= 20.0_r8) .or. (lat <= -20.0_r8)) then
+    if(zkm > 10.0_r8) then
+       rerr = -1.321_r8 + 0.341_r8 * zkm - 0.005_r8 * zkm ** 2
+    else
+       rerr = -1.2_r8 + 0.065_r8 * zkm + 0.021_r8 * zkm ** 2
+    endif
+ endif
+
+ endif    ! if(is_it_global) then
+
+ if (factor /= 1.0_r8) then
+    gsi_refractivity_error = 1./(abs(exp(rerr))*factor)
+ else
+    gsi_refractivity_error = 1./abs(exp(rerr))
+ endif
+
+ return
+end function gsi_refractivity_error
+
+! end error options
+
+! next function is currently unused in this converter:
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!    compute_geopotential_height 
+!    subroutine converts geometric height to geopotential height
+!
+!    Input:
+!    H   -- input real value geometric height [m]
+!    lat -- latitude in degree 
+!
+!    Output:
+!    Z -- output real value geopotential height [m]
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+function compute_geopotential_height(H, lat)
+ real(r8), intent(in)  :: H 
+ real(r8), intent(in)  :: lat
+ real(r8)              :: compute_geopotential_height
+
+! -----------------------------------------------------------------------*/
+   real(r8) :: pi2, latr
+   real(r8) :: semi_major_axis, semi_minor_axis, grav_polar, grav_equator
+   real(r8) :: earth_omega, grav_constant, flattening, somigliana
+   real(r8) :: grav_ratio, sin2, termg, termr, grav, eccentricity
+
+!  Parameters below from WGS-84 model software inside GPS receivers.
+   parameter(semi_major_axis = 6378.1370d3)    ! (m)
+   parameter(semi_minor_axis = 6356.7523142d3) ! (m)
+   parameter(grav_polar = 9.8321849378)        ! (m/s2)
+   parameter(grav_equator = 9.7803253359)      ! (m/s2)
+   parameter(earth_omega = 7.292115d-5)        ! (rad/s)
+   parameter(grav_constant = 3.986004418d14)   ! (m3/s2)
+   parameter(grav = 9.80665d0)                 ! (m/s2) WMO std g at 45 deg lat
+   parameter(eccentricity = 0.081819d0)        ! unitless
+   parameter(pi2 = 3.14159265358979d0/180.d0)
+
+!  Derived geophysical constants
+   parameter(flattening = (semi_major_axis-semi_minor_axis) / semi_major_axis)
+
+   parameter(somigliana = (semi_minor_axis/semi_major_axis)*(grav_polar/grav_equator)-1.d0)
+
+   parameter(grav_ratio = (earth_omega*earth_omega * &
+                semi_major_axis*semi_major_axis * semi_minor_axis)/grav_constant)
+
+!  Sanity Check
+   if(lat.gt.90 .or. lat.lt.-90) then
+      print*, 'compute_geopotential_height: Latitude is not between -90 and 90 degrees: ',lat
+      return
+   endif
+
+   latr = lat * (pi2)        ! in radians
+   sin2  = sin(latr) * sin(latr)
+   termg = grav_equator * ( (1.d0+somigliana*sin2) / &
+           sqrt(1.d0-eccentricity*eccentricity*sin2) )
+   termr = semi_major_axis / (1.d0 + flattening + grav_ratio - 2.d0*flattening*sin2)
+
+   compute_geopotential_height = (termg/grav)*((termr*H)/(termr+H))
+   !print '(A,3f15.5)','compute_geopotential_height:',&
+   !                   H,compute_geopotential_height,H-compute_geopotential_height
+
+end function compute_geopotential_height
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 end program
 
