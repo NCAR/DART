@@ -63,7 +63,7 @@ endif
 rm -f path_names_perfect_model_obs.back
 
 ../../../build_templates/mkmf -p perfect_model_obs -t ../../../build_templates/mkmf.template \
-        -a "../../.." ${wrapper_arg} path_names_perfect_model_obs
+       -c"-DHDF5"  -a "../../.." ${wrapper_arg} path_names_perfect_model_obs
 
 exit $status
 

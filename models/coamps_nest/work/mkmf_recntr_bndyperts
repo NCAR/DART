@@ -53,7 +53,7 @@ endif
 rm -f ${path_name}.back
 
 ../../../build_templates/mkmf -p recntr_bndyperts -t ../../../build_templates/mkmf.template \
-        -a "../../.." ${wrapper_arg} ${path_name}
+       -c"-DHDF5"  -a "../../.." ${wrapper_arg} ${path_name}
 
 exit $status
 

@@ -7,7 +7,7 @@
 # DART $Id$
 
 ../../../build_templates/mkmf -p create_fixed_network_seq -t ../../../build_templates/mkmf.template \
- -a "../../.." path_names_create_fixed_network_seq
+ -c"-DHDF5" -a "../../.." path_names_create_fixed_network_seq
 
 exit $status
 

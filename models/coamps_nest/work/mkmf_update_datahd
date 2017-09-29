@@ -7,7 +7,7 @@
 # DART $Id$
 
 ../../../build_templates/mkmf -p update_datahd_file -t ../../../build_templates/mkmf.template \
- -a "../../.." path_names_update_datahd_file
+ -c"-DHDF5" -a "../../.." path_names_update_datahd_file
 
 exit $status
 

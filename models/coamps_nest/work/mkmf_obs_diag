@@ -7,7 +7,7 @@
 # DART $Id$
 
 ../../../build_templates/mkmf -p obs_diag -t ../../../build_templates/mkmf.template \
- -a "../../.." path_names_obs_diag
+ -c"-DHDF5" -a "../../.." path_names_obs_diag
 
 exit $status
 

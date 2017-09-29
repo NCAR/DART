@@ -35,6 +35,7 @@ assimilation_code/modules/utilities/utilities_mod.f90
 assimilation_code/programs/filter/filter.f90
 models/coamps_nest/byteswap.c
 models/coamps_nest/coamps_domain_mod.f90
+models/coamps_nest/coamps_hdf5_mod.F90
 models/coamps_nest/coamps_interp_mod.f90
 models/coamps_nest/coamps_intrinsic_mod.f90
 models/coamps_nest/coamps_map_mod.f90

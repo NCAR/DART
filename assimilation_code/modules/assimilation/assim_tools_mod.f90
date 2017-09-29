@@ -139,7 +139,7 @@ real(r8) :: cutoff                          = 0.2_r8
 logical  :: sort_obs_inc                    = .false.
 logical  :: spread_restoration              = .false.
 logical  :: sampling_error_correction       = .false.
-integer  :: adaptive_localization_threshold = -1
+integer(i8) :: adaptive_localization_threshold = -1
 real(r8) :: adaptive_cutoff_floor           = 0.0_r8
 integer  :: print_every_nth_obs             = 0
 

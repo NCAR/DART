@@ -7,7 +7,7 @@
 # DART $Id$
 
 ../../../build_templates/mkmf -p innov_to_obs_seq -t ../../../build_templates/mkmf.template \
- -a "../../.." path_names_innov_to_obs_seq 
+ -c"-DHDF5" -a "../../.." path_names_innov_to_obs_seq 
 
 exit $status
 

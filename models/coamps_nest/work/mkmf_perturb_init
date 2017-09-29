@@ -7,7 +7,7 @@
 # DART $Id$
 
 ../../../build_templates/mkmf -p perturb_init -t ../../../build_templates/mkmf.template \
- -a "../../.." path_names_perturb_init
+ -c"-DHDF5" -a "../../.." path_names_perturb_init
 
 exit $status
 

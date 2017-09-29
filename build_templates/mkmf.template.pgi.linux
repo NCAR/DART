@@ -71,13 +71,21 @@ LD = pgf90
 #
 # NETCDF = /opt/local
 
-INCS = -I$(NETCDF)/include
-LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
+# same thing is true for your HDF5 environment variable.
+# Pick one that works with the netCDF installation you have.
+
+HDF5 = /auto/soft/hdf5/CentOS_6_pgi
+
+INCS = -I$(NETCDF)/include -I$(HDF5)/include
+LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf -lhdf5hl_fortran -lhdf5_fortran
+
 FFLAGS  = -O $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
 # for development or debugging, use this for flags:
-#FFLAGS = -g -C -Ktrap=fp -pc 64 $(INCS)
+FFLAGS = -g -gopt -Mbounds -Mchkfpstk -Mchkptr -Mchkstk -Mpgicoff  \
+        -Mdclchk -Meh_frame -traceback -Minform=inform \
+        -Mflushz -Ktrap=fp -pc 64 $(INCS)
 
 # <next few lines under version control, do not edit>
 # $URL$

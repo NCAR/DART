@@ -4,10 +4,10 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id$
+# DART $Id$
 
 ../../../build_templates/mkmf -p trans_coamps_to_dart -t ../../../build_templates/mkmf.template \
- -a "../../.." path_names_coamps_to_dart
+ -c"-DHDF5" -a "../../.." path_names_coamps_to_dart
 
 exit $status
 

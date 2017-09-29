@@ -63,7 +63,7 @@ endif
 rm -f path_names_filter.back
 
 ../../../build_templates/mkmf -p filter -t ../../../build_templates/mkmf.template \
-        -a "../../.." ${wrapper_arg} path_names_filter
+       -c"-DHDF5"  -a "../../.." ${wrapper_arg} path_names_filter
 
 exit $status
 
