@@ -60,6 +60,10 @@ use     obs_kind_mod, only : get_index_for_quantity,  &
                              get_name_for_quantity,   &
                              QTY_SURFACE_ELEVATION,  &
                              QTY_SURFACE_PRESSURE,   &
+                             QTY_10M_U_WIND_COMPONENT, &
+                             QTY_10M_V_WIND_COMPONENT, &
+                             QTY_2M_TEMPERATURE,  &
+                             QTY_2M_SPECIFIC_HUMIDITY,  &
                              QTY_VERTICAL_VELOCITY,  &
                              QTY_POTENTIAL_TEMPERATURE, &
                              QTY_EDGE_NORMAL_SPEED,  &
@@ -1046,6 +1050,14 @@ else
          goodkind = .true.
       case (QTY_PRECIPITABLE_WATER) 
          goodkind = .true.
+      case (QTY_10M_U_WIND_COMPONENT)
+         goodkind = .true.
+      case (QTY_10M_V_WIND_COMPONENT)
+         goodkind = .true.
+      case (QTY_2M_TEMPERATURE)
+         goodkind = .true.
+      case (QTY_2M_SPECIFIC_HUMIDITY)
+         goodkind = .true.
       case (QTY_U_WIND_COMPONENT,QTY_V_WIND_COMPONENT)
          ! if the reconstructed winds at the cell centers aren't there,
          ! we can use the edge normal winds, if the user allows it.
@@ -1154,21 +1166,16 @@ else if (obs_kind == QTY_SPECIFIC_HUMIDITY) then
       print *, 'model_interpolate: SH ', istatus, expected_obs, trim(locstring)
 
 else if (obs_kind == QTY_SURFACE_ELEVATION) then
-   do e = 1, ens_size
-      location_tmp(e) = set_location(llv(1),llv(2),1.0_r8,VERTISLEVEL)
-   enddo
-   ! why do you have to call vert_convert for surface?
-   call convert_vert_distrib(state_handle, ens_size, location_tmp, QTY_SURFACE_ELEVATION, VERTISHEIGHT, istatus)
-   where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
-   if ( all(istatus /= 0 ) ) goto 100
 
-   do e = 1, ens_size
-      if (istatus(e) /= 0) then
-         expected_obs(e) = MISSING_R8
-      else
-         expected_obs(e) = query_location(location_tmp(e), 'VLOC')
-      endif
-   enddo
+   call compute_elevation_with_barycentric(location, expected_obs(1), istatus(1))
+   istatus(2:ens_size) = istatus(1)
+   if (istatus(1) /= 0) then
+      expected_obs = missing_r8
+      goto 100
+   endif
+
+   expected_obs(2:ens_size) = expected_obs(1)
+
    if (debug > 10) &
       print *, 'model_interpolate: SURFACE_ELEVATION', istatus, expected_obs, trim(locstring)
 
@@ -1181,16 +1188,6 @@ else if (obs_kind == QTY_PRECIPITABLE_WATER) then
    where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
    if ( all(istatus /= 0) ) goto 100
 
-else if (obs_kind == QTY_SURFACE_PRESSURE) then
-   tvars(1) = ivar
-   location_tmp(1) = set_location(llv(1),llv(2),1.0_r8,VERTISSURFACE)
-   call compute_scalar_with_barycentric(state_handle, ens_size, location_tmp(1), 1, tvars, values, istatus)
-   expected_obs = values(1, :)
-   where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
-   if ( all(istatus /= 0) ) goto 100
-   if (debug > 10) &
-      print *, 'model_interpolate: SURFACE_PRESSURE', istatus, expected_obs, trim(locstring)
-  
 else
    ! direct interpolation, kind is in the state vector
 
@@ -1230,6 +1227,7 @@ endif
 ! returning consistent values and rc codes, both these tests can
 ! be removed for speed.  FIXME.
 do e = 1, ens_size
+
    if ((istatus(e) /= 0 .and. expected_obs(e) /= MISSING_R8) .or. &
        (istatus(e) == 0 .and. expected_obs(e) == MISSING_R8)) then
 
@@ -4247,19 +4245,34 @@ else if(is_vertical(location, "HEIGHT") .or. is_vertical(location, "LEVEL")) the
    enddo
 
 else if(is_vertical(location, "SURFACE")) then
-   new_location(1) = set_location(llv(1), llv(2), 1.0_r8, VERTISLEVEL)
 
-   ! Need to get base offsets for the potential temperature, density, and water
-   ! vapor mixing fields in the state vector
-   ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
-   ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
-   ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
+   ivars(1) = get_progvar_index_from_kind(QTY_SURFACE_PRESSURE)
 
-   call compute_scalar_with_barycentric (state_handle, ens_size, new_location(1), 3, ivars, values, istatus)
-   if ( all(istatus/= 0) ) return
+   if ( ivars(1) >= 0 ) then
 
-   ! Convert surface theta, rho, qv into pressure
-   call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), ploc(:), tk(:), istatus(:) )
+     call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, ivars, values, istatus)
+     if ( all(istatus/= 0) ) return
+     do e = 1, ens_size
+       ploc(e) = values(1,e)
+     enddo
+
+   else
+
+     new_location(1) = set_location(llv(1), llv(2), 1.0_r8, VERTISLEVEL)
+
+     ! Need to get base offsets for the potential temperature, density, and water
+     ! vapor mixing fields in the state vector
+     ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
+     ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
+     ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
+
+     call compute_scalar_with_barycentric (state_handle, ens_size, new_location(1), 3, ivars, values, istatus)
+     if ( all(istatus/= 0) ) return
+
+     ! Convert surface theta, rho, qv into pressure
+     call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), ploc(:), tk(:), istatus(:) )
+
+   endif
 
 else if(is_vertical(location, "UNDEFINED")) then    ! not error, but no exact vert loc either
    ploc(:) = 200100.0_r8    ! this is an unrealistic pressure value to indicate no known pressure.
@@ -4525,48 +4538,57 @@ select case (ztypeout)
    ! ------------------------------------------------------------
    case (VERTISSCALEHEIGHT)
 
-   ! Scale Height is defined here as: -log(pressure / surface_pressure)
+     if ( ztypein /= VERTISSURFACE ) then
 
-   ! Need to get base offsets for the potential temperature, density, and water
-   ! vapor mixing fields in the state vector
-   ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
-   ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
-   ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
+       ! Scale Height is defined here as: -log(pressure / surface_pressure)
 
-   ! Get theta, rho, qv at the interpolated location
-   call compute_scalar_with_barycentric (state_handle, ens_size, location(1), 3, ivars, values, istatus)
-   !if (istatus /= 0) return
+       ! Need to get base offsets for the potential temperature, density, and water
+       ! vapor mixing fields in the state vector
+       ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
+       ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
+       ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
 
-   ! Convert theta, rho, qv into pressure
-   call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), fullp(:), tk(:), istatus(:))
-   if (debug > 9) then
-      write(string2,'("zout_full_pressure, theta, rho, qv:",3F10.2,F18.8)') fullp, values(1:3,1)
-      call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
-   endif
+       ! Get theta, rho, qv at the interpolated location
+       call compute_scalar_with_barycentric (state_handle, ens_size, location(1), 3, ivars, values, istatus)
+       !if (istatus /= 0) return
 
-   ! Get theta, rho, qv at the surface corresponding to the interpolated location
-   surfloc(1) = set_location(llv_loc(1, 1), llv_loc(2, 1), 1.0_r8, VERTISLEVEL)
-   call compute_scalar_with_barycentric (state_handle, ens_size, surfloc(1), 3, ivars, values, istatus)
-   if( all(istatus /= 0) ) return
+       ! Convert theta, rho, qv into pressure
+       call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), fullp(:), tk(:), istatus(:))
+       if (debug > 9) then
+         write(string2,'("zout_full_pressure, theta, rho, qv:",3F10.2,F18.8)') fullp, values(1:3,1)
+         call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
+       endif
 
-   ! Convert surface theta, rho, qv into pressure
-   call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), surfp(:), tk(:), istatus(:))
-   if (debug > 9) then
-      write(string2,'("zout_surf_pressure, theta, rho, qv:",3F10.2,F18.8)') surfp, values(1:3,1)
-      call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
-   endif
+       ! Get theta, rho, qv at the surface corresponding to the interpolated location
+       surfloc(1) = set_location(llv_loc(1, 1), llv_loc(2, 1), 1.0_r8, VERTISLEVEL)
+       call compute_scalar_with_barycentric (state_handle, ens_size, surfloc(1), 3, ivars, values, istatus)
+       if( all(istatus /= 0) ) return
 
-   ! and finally, convert into scale height
-   where (surfp /= 0.0_r8 .and. fullp /= MISSING_R8)
-      zout = -log(fullp / surfp)
-   else where
-      zout = MISSING_R8
-   end where
+       ! Convert surface theta, rho, qv into pressure
+       call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), surfp(:), tk(:), istatus(:))
+       if (debug > 9) then
+         write(string2,'("zout_surf_pressure, theta, rho, qv:",3F10.2,F18.8)') surfp, values(1:3,1)
+         call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
+       endif
 
-   if (debug > 9) then
-      write(string2,'("zout_in_scaleheight:",F10.2)') zout
-      call error_handler(E_MSG, 'vert_convert',string2,source, revision, revdate)
-   endif
+       ! and finally, convert into scale height
+       where (surfp /= 0.0_r8 .and. fullp /= MISSING_R8)
+         zout = -log(fullp / surfp)
+       else where
+         zout = MISSING_R8
+       end where
+
+     else
+
+       zout = -log(1.0_r8)
+       istatus(:) = 0
+
+     endif
+
+     if (debug > 9) then
+       write(string2,'("zout_in_scaleheight:",F10.2)') zout
+       call error_handler(E_MSG, 'vert_convert',string2,source, revision, revdate)
+     endif
 
    ! -------------------------------------------------------
    ! outgoing vertical coordinate is unrecognized
@@ -4845,11 +4867,15 @@ if (verttype == VERTISUNDEF) then
    return
 endif
 
-! vertical is defined to be on the surface (level 1 here)
+! vertical is defined to be on the surface (level 1 here).
+! for 2d fields there is no level 2, so since we are not
+! computing the fraction but setting it here and returning
+! we can set upper to be 1 as well and avoid a reference to
+! a non-existent level 1 for 2d fields in the calling code.
 if(verttype == VERTISSURFACE) then  ! same across the ensemble
    lower(1:nc, :) = 1
-   upper(1:nc, :) = 2
-   fract(1:nc, :) = 0.0_r8
+   upper(1:nc, :) = 1
+   fract(1:nc, :) = 0.0_r8 
    ier = 0
    return
 endif
@@ -5319,6 +5345,35 @@ do k=1, n
 enddo
 
 end subroutine compute_scalar_with_barycentric
+
+!------------------------------------------------------------
+
+subroutine compute_elevation_with_barycentric(loc, dval, ier)
+
+type(location_type), intent(in)  :: loc
+real(r8),            intent(out) :: dval
+integer,             intent(out) :: ier
+
+real(r8)    :: weights(3), fdata(3)
+integer     :: c(3), i, nc
+
+! assume failure
+dval = MISSING_R8
+
+call find_triangle (loc, nc, c, weights, ier)
+if(ier /= 0) return
+
+do i = 1, nc
+   fdata(i) = zGridFace(1, c(i))    ! level 1, selected cell number
+enddo
+
+! use weights to compute value at interp point.
+dval = sum(weights(1:nc) * fdata(1:nc))
+
+if(debug > 9 .and. do_output()) &
+   print '(A,7f12.5)','compute_elevation_with_barycentric: corner vals, weights, result: ',fdata(:),weights(:),dval
+
+end subroutine compute_elevation_with_barycentric
 
 !------------------------------------------------------------
 
