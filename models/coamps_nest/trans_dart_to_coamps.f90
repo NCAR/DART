@@ -18,13 +18,25 @@ use coamps_translate_mod, only : initialize_translator,     &
                                  open_dart_file,            &
                                  get_dart_current_time,     &
                                  get_dart_target_time,      &
+                                 get_current_dtg,           &
                                  generate_coamps_filenames, &
                                  open_coamps_files,         &
                                  coamps_write_all_fields,   &
                                  write_pickup_file,         &
                                  finalize_translator
 
+use coamps_hdf5_mod, only : initialize_hdf5, &
+                            initialize_hdf5_wfile, &
+                            finalize_hdf5, &
+                            open_hdf5_file, &
+                            close_hdf5_file, &
+                            hdf5_file_write
+
+use utilities_mod, only : E_ERR, error_handler
+
 implicit none
+
+character(len=512) :: string1
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = &
@@ -32,26 +44,43 @@ character(len=*), parameter :: source   = &
 character(len=*), parameter :: revision = "$Revision$"
 character(len=*), parameter :: revdate  = "$Date$"
 
+character(len=*), parameter :: routine = 'trans_dart_to_coamps'
+
 ! The translation module uses internal flags for whether it's
 ! reading or writing - these are just aliases so it's clearer
 ! what the calls are saying
 logical, parameter :: READING_DART = .false.     ! false means read dart
 logical, parameter :: WRITING_COAMPS  = .true.   ! true means write coamps
 
+integer :: ierr
+character(len=10) :: cdtg
+
 call initialize_translator()
+!call initalize_hdf5()
 
 call open_dart_file(READING_DART)
 call get_dart_current_time()  ! needs to be finished
 call get_dart_target_time()   ! needs to be finished
+cdtg = get_current_dtg()
 
 call generate_coamps_filenames(WRITING_COAMPS)
 call open_coamps_files(WRITING_COAMPS)
 
-! NOT NEEDED call dart_read()
-! NOT NEEDED call fix_negative_values()
-! NOT NEEDED call convert_dart_state_to_coamps()
+call initialize_hdf5_wfile(hdf5_file_write, cdtg=cdtg, h5_prefix='CoampsUpdate')
+call open_hdf5_file(hdf5_file_write, ierr)
+
+if (ierr /= 0) then
+   write(string1,*)'open_hdf_file error code ',ierr
+   call error_handler(E_ERR,routine,string1,source,revision,revdate)
+endif
 
 call coamps_write_all_fields()
+
+call close_hdf5_file(hdf5_file_write, ierr)
+if (ierr /= 0) then
+   write(string1,*)'close_hdf_file error code ',ierr
+   call error_handler(E_ERR,routine,string1,source,revision,revdate)
+endif
 
 ! Script uses a file to get the start/target time
 call write_pickup_file()

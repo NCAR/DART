@@ -377,6 +377,8 @@ subroutine nc_write_model_atts( ncFileID, domain_id )
 integer, intent(in) :: ncFileID
 integer, intent(in) :: domain_id
 
+call nc_check(nf90_redef(ncFileID),'nc_write_model_atts', 'redef')
+
 call nc_write_prognostic_atts(ncFileID, state_layout_3D, define_vars=.false.)
 
 end subroutine nc_write_model_atts

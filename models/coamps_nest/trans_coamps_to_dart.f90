@@ -18,7 +18,6 @@ use coamps_translate_mod, only : initialize_translator,         &
                                  generate_coamps_filenames,     &
                                  open_coamps_files,             &
                                  coamps_read_all_fields,        &
-                                 convert_coamps_state_to_dart,  &
                                  set_dart_current_time,         &
                                  open_dart_file, dart_write,    &
                                  finalize_translator,           &
@@ -45,7 +44,6 @@ call open_coamps_files(READING_COAMPS)
 call record_hdf_varnames()
 
 call coamps_read_all_fields()
-call convert_coamps_state_to_dart()
 
 call set_dart_current_time()
 

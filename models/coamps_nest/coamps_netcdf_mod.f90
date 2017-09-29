@@ -24,6 +24,7 @@ module coamps_netcdf_mod
 
     use types_mod,         only : r8
 
+    !>@todo should use nc_check from the DART netcdf_utilities_mod (not utilities_mod)
     use utilities_mod,     only : nc_check,                     &
                                   do_output,                    &
                                   error_handler,                &
@@ -598,8 +599,9 @@ end subroutine nc_write_prognostic_data
         
         character(len=*), parameter :: routine = 'new_dimension'
 
+        write(msgstring,*) trim(routine)//' adding dimension "'//trim(dim_name)//'"'
         call nc_check(nf90_def_dim(ncid=ncFileID, name=dim_name,   &
-                                   len=length, dimid=new_dimension), routine)  
+                                   len=length, dimid=new_dimension), msgstring)  
     end function new_dimension
 
     ! new_variable

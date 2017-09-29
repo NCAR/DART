@@ -30,6 +30,8 @@ module coamps_util_mod
                                    nc_get_variable, &
                                    nc_put_variable
 
+  use coamps_hdf5_mod, only : hdf5_file_write, write_hdf5_data
+
   use typesizes
   use netcdf
 
@@ -605,15 +607,14 @@ contains
 !>   IN  variable_name  string defining the variable to read
 !>   OUT flat_array     coamps_grid structure to be filled
 
-subroutine copy_netCDF_to_hdf(ncFileID, variable_name, hdf5unit)
+subroutine copy_netCDF_to_hdf(ncFileID, variable_name)
 
 integer,          intent(in) :: ncFileID
 character(len=*), intent(in) :: variable_name
-integer,          intent(in) :: hdf5unit
 
 character(len=*), parameter :: routine = 'copy_netCDF_to_hdf'
 
-integer :: ndims, istart
+integer :: ndims, istart, ierr
 integer :: dimlens(NF90_MAX_VAR_DIMS)
 
 real(r8), allocatable :: chunk1D(:)
@@ -647,21 +648,46 @@ if ( ndims == 1) then
 
    allocate( chunk1D(dimlens(1)) )
    call nc_get_variable(ncFileID, variable_name, chunk1D, context=routine) 
-   call nc_put_variable(hdf5unit, analysis_name, chunk1D, context=routine) 
+!  call nc_put_variable(hdf5unit, analysis_name, chunk1D, context=routine)
+
+   call write_hdf5_data(real(chunk1D, kind=4), analysis_name, hdf5_file_write, ierr)
+   if (ierr /= 0) then
+      write(string1,*)'1D write_hdf5_data error code ',ierr
+      write(string2,*)'variable "'//trim(analysis_name)//'"'
+      call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
+   endif
+
    deallocate(chunk1D)
 
 elseif (ndims == 2) then
 
    allocate( chunk2D( dimlens(1), dimlens(2) ) )
    call nc_get_variable(ncFileID, variable_name, chunk2D, context=routine) 
-   call nc_put_variable(hdf5unit, analysis_name, chunk2D, context=routine) 
+!  call nc_put_variable(hdf5unit, analysis_name, chunk2D, context=routine) 
+
+   call write_hdf5_data(real(chunk2D, kind=4), analysis_name, hdf5_file_write, ierr)
+   if (ierr /= 0) then
+      write(string1,*)'2D write_hdf5_data error code ',ierr
+      write(string2,*)'variable "'//trim(analysis_name)//'"'
+      call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
+   endif
    deallocate(chunk2D)
 
 elseif (ndims == 3) then
 
    allocate( chunk3D( dimlens(1), dimlens(2), dimlens(3) ) )
    call nc_get_variable(ncFileID, variable_name, chunk3D, context=routine) 
-   call nc_put_variable(hdf5unit, analysis_name, chunk3D, context=routine) 
+
+   chunk3D = 42.0_r8 ! TJH DEBUG
+   
+!  call nc_put_variable(hdf5unit, analysis_name, chunk3D, context=routine) 
+
+   call write_hdf5_data(real(chunk3D, kind=4), analysis_name, hdf5_file_write, ierr)
+   if (ierr /= 0) then
+      write(string1,*)'3D write_hdf5_data error code ',ierr
+      write(string2,*)'variable "'//trim(analysis_name)//'"'
+      call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
+   endif
    deallocate(chunk3D)
 
 else
@@ -902,6 +928,78 @@ end subroutine copy_netCDF_to_hdf
                                   field_type = 'infofld',     &
                                   file_name  = datahd_filename )
   end subroutine generate_datahd_filename
+
+! hdf_update() loosely based on 
+! https://support.hdfgroup.org/ftp/HDF5/examples/misc-examples/editcf.c
+
+subroutine hdf_update()
+
+use hdf5
+
+character(len=*), parameter :: FILE     = "cfld.h5"
+character(len=*), parameter ::FIELDNAME = "ArrayofStructures"
+integer, parameter :: LENGTH =   5 
+integer, parameter :: ALEN   =   10
+integer, parameter :: RANK   =   1
+integer, parameter :: NMAX   =   100
+
+integer(HID_T) :: fid, array_dt
+integer(HID_T) :: dataset
+integer(HID_T) :: type
+integer(HSIZE_T) :: dima(1) = ALEN
+integer :: istat
+
+
+call error_handler(E_ERR,'hdf_update','routine only stubbed out', &
+    source, revision, revdate)
+
+    call H5Fopen_f(FILE, H5F_ACC_RDWR_F, H5P_DEFAULT_F, fid, istat)
+    write(*,*)"status, File ID returned by H5Fopen() : ", istat, fid
+
+    call H5Dopen_f(fid, FIELDNAME, dataset, istat)
+    write(*,*)"The Dataset ID returned by H5Dopen() : ", dataset
+    
+!   call H5Tcreate_f(H5T_COMPOUND_F, sizeof(fld_t), type)
+!   write(*,*)"H5Tcreate returns: ", type
+
+!   call H5Tarray_create_f(H5F_FLOAT, 1, dima, array_dt, istat)
+!   write(*,*)"H5Tarray_create() returns : ", array_dt, istat
+
+!   call H5Tinsert_f(type, "Two", HOFFSET_F(fld_t, b), array_dt, istat)
+!   write(*,*)"Status returned by H5Tinsert() : ", istat
+
+!   for (i=0; i< LENGTH; i++)
+!   for (j = 0; j < ALEN; j++)
+!   {
+!     fld[i].b[j] = 1.313
+!   }
+!   call H5Dwrite_f(dataset, type, H5S_ALL_F, H5S_ALL_F, H5P_DEFAULT_F, fld, istat)
+!   write(*,*) "Status returned by H5Dwrite() : ", istat
+
+!   call H5Dread_f(dataset, type, H5S_ALL_F, H5S_ALL_F, H5P_DEFAULT_F, fldr, istat)
+!   write(*,*) "H5Dread returns: %i\n", istat
+   
+!   for (i=0; i< LENGTH; i++)
+!   {
+!     for (j = 0; j < ALEN; j++)
+!       write(*,*) fldr[i].b[j]
+!   }
+    
+    call H5Dclose_f(dataset, istat)
+    write(*,*)"Status returned by H5Dclose() : ", istat
+
+    call H5Tclose_f(type, istat)
+    write(*,*)"Status returned by H5Tclose() : ", istat
+  
+    call H5Tclose_f(array_dt, istat)
+    write(*,*)"Status returned by H5Tclose() : ", istat
+
+    call H5Fclose_f(fid, istat)
+    write(*,*)"Status returned by H5Fclose() : ", istat
+
+    return
+
+end subroutine hdf_update
 
   !------------------------------
   ! END PRIVATE ROUTINES

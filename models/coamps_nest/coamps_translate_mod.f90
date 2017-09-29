@@ -122,8 +122,15 @@ module coamps_translate_mod
   public :: dart_write
 
   ! Conversion tools
-  public :: convert_dart_state_to_coamps
-  public :: convert_coamps_state_to_dart
+  ! before the use of hdf files, it was necessary to have a coamps_state
+  ! and a dart_state that could differ in endianness and real type. With
+  ! the use of hdf and netCDF, both of those issues are moot. Consequently,
+  ! convert_dart_state_to_coamps and convert_coamps_state_to_dart are gone.
+  ! They were both wrappers around an internal routine 'convert_state' that
+  ! is also no longer needed.
+  !  public :: convert_dart_state_to_coamps  NOT NEEDED, REMOVED
+  !  public :: convert_coamps_state_to_dart  NOT NEEDED, REMOVED
+
   public :: fix_negative_values
 
   ! Time handling tools
@@ -131,6 +138,7 @@ module coamps_translate_mod
   public :: get_dart_current_time
   public :: get_dart_target_time
   public :: write_pickup_file
+  public :: get_current_dtg
 
   public :: print_dart_diagnostics
 
@@ -237,11 +245,6 @@ module coamps_translate_mod
   type(time_type), dimension(2)                      :: dart_time
   real(kind=r8),   dimension(:), allocatable, target :: dart_state
 
-  ! Contents of COAMPS state vector - this is not the full restart
-  ! file - only the fields that we have defined in the dynamic
-  ! state vector definition 
-  real(kind=C_REAL), dimension(:), allocatable, target :: coamps_state
-
   ! Arrays allow reading/writing multiple COAMPS files 
   integer                                      :: total_coamps_files
   character(len=NAME_LEN), dimension(:), allocatable :: coamps_file_names
@@ -345,9 +348,6 @@ contains
     deallocate(dart_state,   stat=dealloc_status)
     call check_dealloc_status(dealloc_status, routine, source, &
                               revision, revdate, 'dart_state'  )
-    deallocate(coamps_state, stat=dealloc_status)
-    call check_dealloc_status(dealloc_status, routine, source, &
-                              revision, revdate, 'coamps_state')
 
     do cur_file = 1, total_coamps_files
        close(coamps_file_units(cur_file))
@@ -515,8 +515,6 @@ contains
 
       write (*,'(I2.2,2x,A)') coamps_file_index,                      &
                   trim(dsnrff1)//coamps_file_names(coamps_file_index)
-
-
     end do flat_file_loop
 
     print *,"-------------------------------------------------"
@@ -799,26 +797,6 @@ end if
 end subroutine open_dart_file
 
 
-  ! convert_dart_state_to_coamps
-  ! ----------------------------
-  ! Wrapper for DART -> COAMPS convert_state
-  !  PARAMETERS
-  !   [none]
-  subroutine convert_dart_state_to_coamps()
-    logical, parameter :: CONVERT_TO_COAMPS = .false.
-    call convert_state(CONVERT_TO_COAMPS)
-  end subroutine convert_dart_state_to_coamps
-
-  ! convert_coamps_state_to_dart
-  ! ----------------------------
-  ! Wrapper for COAMPS -> DART convert_state
-  !  PARAMETERS
-  !   [none]
-  subroutine convert_coamps_state_to_dart()
-    logical, parameter :: CONVERT_TO_DART  = .true.
-    call convert_state(CONVERT_TO_DART)
-  end subroutine convert_coamps_state_to_dart
-
   ! dart_read
   ! ---------
   ! Reads two times and the DART state vector from the DART restart
@@ -1040,6 +1018,22 @@ end if
 
 end subroutine get_dart_target_time
 
+!-------------------------------------------------------------------------------
+!> When converting from DART to COAMPS, we get *two* times - the
+!> current time and the target time that it wants the model to
+!> advance to - take the current time in DART days/seconds format
+!> and convert it to the COAMPS hour/minute/second format.
+!>  PARAMETERS
+!>   [none]
+
+function get_current_dtg()
+character(len=10) :: get_current_dtg
+
+get_current_dtg = cdtg
+
+end function get_current_dtg
+
+
   ! write_pickup_file
   ! -----------------
   ! Writes a file to disk containing the values of the DART-based
@@ -1146,10 +1140,6 @@ end subroutine get_dart_target_time
     call check_alloc_status(alloc_status, routine, source, revision, &
                             revdate, 'dart_state')
 
-    ! COAMPS
-    allocate(coamps_state(get_total_size(state_layout)), stat=alloc_status)
-    call check_alloc_status(alloc_status, routine, source, revision, &
-                            revdate, 'coamps_state')
   end subroutine allocate_state
 
   ! allocate_coamps_restart_file_info
@@ -1249,8 +1239,7 @@ flat_file_loop: do while (has_next(iterator))
       if(write_field) then
          ! just read from netcdf, write to hdf - no need for var_state
          call copy_netCDF_to_hdf(dart_unit, &
-                                 coamps_variable_names(cur_file), &
-                                 coamps_file_units(cur_file))
+                                 coamps_variable_names(cur_file))
 
         !>@todo FIXME Write pressure level data here
         ! Need to write out data on specified pressure levels here.
@@ -1259,7 +1248,7 @@ flat_file_loop: do while (has_next(iterator))
      endif
    else
 
-      var_state => get_var_substate(cur_var, coamps_state)
+      var_state => get_var_substate(cur_var, dart_state)
 
       call read_hdf5_variable(coamps_file_units(cur_file), &
                           coamps_variable_names(cur_file), &
@@ -1327,7 +1316,7 @@ end subroutine record_hdf_varnames
       cur_var   = get_next(iterator)
       if(.not. get_mean_flag(cur_var)) cycle mean_fld_loop
 
-      var_state => get_var_substate(cur_var, coamps_state)
+      var_state => get_var_substate(cur_var, dart_state)
 
       call calculate_mean_var(cur_var, var_state)
     end do mean_fld_loop
@@ -1530,7 +1519,7 @@ end subroutine record_hdf_varnames
     end if 
 
     var_nest  =  get_domain_nest(domain, get_nest_number(var_to_process))
-    var_state => get_var_substate(var_to_process, coamps_state)
+    var_state => get_var_substate(var_to_process, dart_state)
 
     ! The "subfield" boundaries for the single-processor I/O case
     ! is just the i/j limits for the entire field - multi-processor
@@ -1651,32 +1640,6 @@ end subroutine record_hdf_varnames
 
   end subroutine calculate_mean_var
 
-  ! convert_state
-  ! -------------
-  ! Converts a state vector to or from the DART numeric format to or
-  ! from the COAMPS format.  The state vectors are stored as module
-  ! variables so no need to pass them in as parameters 
-  ! PARAMETERS
-  !  IN  to_dart            True if we're converting to DART format
-  subroutine convert_state(to_dart)
-    logical, intent(in) :: to_dart
-
-    ! If COAMPS used an I/O processor, then the restart file written
-    ! out and read in should be big-endian.
-
-    if (to_dart) then
-      ! big_endian -> little-endian
-      if (coamps_used_io_proc .and. .not. FLAT_FILE_IO) call change_coamps_endian()
-      !if (coamps_used_io_proc) call change_coamps_endian()
-      dart_state = real(coamps_state,kind=r8)
-    else
-      coamps_state = real(dart_state,kind=C_REAL)
-      ! little-endian -> big_endian
-      !if (coamps_used_io_proc) call change_coamps_endian()
-      if (coamps_used_io_proc .and. .not. FLAT_FILE_IO) call change_coamps_endian()
-    endif
-  end subroutine convert_state
-
   ! fix_negative_values
   ! -------------------
   ! Sets values in the state vector that are less than zero to zero
@@ -1701,17 +1664,6 @@ end subroutine record_hdf_varnames
        end if
     end do
   end subroutine fix_negative_values
-
-  ! change_coamps_endian
-  ! --------------------
-  ! Switch the byte ordering of the COAMPS state vector - note
-  ! that fix_for_platform just returns the state vector untouched
-  ! if we happen to be on a big-endian platform already
-  !  PARAMETERS
-  !   [none]
-  subroutine change_coamps_endian()
-    call fix_for_platform(coamps_state, size(coamps_state))
-  end subroutine change_coamps_endian
 
   ! sd_to_hms
   ! ---------
