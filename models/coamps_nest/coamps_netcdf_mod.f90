@@ -221,7 +221,7 @@ output_vars:  do while(has_next(iterator))
 
    cur_var  = get_next(iterator)
    var_name = get_var_name(cur_var)
-   var_dims = get_var_dims(cur_var, domain)
+   var_dims = get_var_dims(cur_var, domain, full=.true.)
    varid    = get_nc_varid(cur_var)
 
    nest = get_domain_nest(domain, get_nest_number(cur_var))
@@ -368,6 +368,10 @@ end subroutine nc_write_prognostic_data
     ! U-stagger has dimensions (nx-1,ny,nz); and 
     ! V-stagger has dimensions (nx,ny-1,nz) 
     ! (COAMPS is on a C-grid with p-u-p ordering in the horizontal).
+    !
+    ! TJH 5 Oct 2017: This routine is now being used to write the netCDF file
+    ! that has variables exactly the same shape as in the HDF5 file, i.e.
+    ! with no stagger.
  
     subroutine nc_write_prognostic_atts( ncFileID, state_list, define_vars)
 
@@ -475,11 +479,12 @@ end subroutine nc_write_prognostic_data
               write(var_name, 400) trim(get_var_name(cur_var)), &
                                         get_nest_number(cur_var)
            endif
-   
+  
            ndims  = get_var_rank(cur_var, domain)
    
+           ! avoiding the staggering to reflect shape in hdf5
            dimids = get_dimids(ndims        = ndims,                         &
-                               var_dims     = get_var_dims(cur_var, domain), & 
+                               var_dims     = get_var_dims(cur_var, domain, full=.true.), & 
                                nest_number  = get_nest_number(cur_var),      & 
                                local_coords = coords) 
    
@@ -1018,16 +1023,22 @@ end subroutine nc_write_prognostic_data
   ! Gets flag indicating if var is mean field
   !  PARAMETERS
   !   IN     var               state variable
-  function get_var_dims(var, domain)
+  function get_var_dims(var, domain, full)
     type(state_variable), intent(in) :: var
     type(coamps_domain),  intent(in) :: domain
+    logical, optional,    intent(in) :: full
     integer, dimension(3)            :: get_var_dims
 
-    integer           :: nx, ny, nz
+    integer :: nx, ny, nz
 
     nx = get_nest_i_width(get_domain_nest(domain, get_nest_number(var)))
     ny = get_nest_j_width(get_domain_nest(domain, get_nest_number(var)))
     nz = get_var_nlevs(var, domain)
+
+    if (present(full)) then
+       get_var_dims = (/nx, ny, nz/)
+       return
+    endif
      
     select case (get_var_stagger(var))
       case ('U')

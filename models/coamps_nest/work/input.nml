@@ -1,3 +1,4 @@
+# DART $Id: $
 
 &perfect_model_obs_nml
    read_input_state_from_file  = .true.
@@ -12,7 +13,7 @@
    async                      = 4
    adv_ens_command            = "../shell_scripts/advance_model.csh"
 
-   obs_seq_in_file_name       = "obs_seq.in"
+   obs_seq_in_file_name       = "obs_seq.2obs.in"
    obs_seq_out_file_name      = "obs_seq.out"
    init_time_days             = -1
    init_time_seconds          = -1
@@ -338,30 +339,43 @@
    /
 
 
+#  all_metadata_file     = 'metadata_file.txt'
+#  all_metadata_file     = 'null'
 &model_mod_check_nml
    input_state_files     = 'dart_vector.nc'
    output_state_files    = 'check_me.nc'
+   all_metadata_file     = 'null'
    verbose               = .TRUE.
-   test1thru             = 5
-   loc_of_interest       = 224.284904588274, 38.2991002368272, 30.0
-   x_ind                 = 2102
-   kind_of_interest      = 'QTY_U_WIND_COMPONENT'
-   interp_test_lonrange  = 0.0, 359.0
+   test1thru             = 4
+   loc_of_interest       = 234.600585937500, 18.5735168457031, 60.0
+   x_ind                 = 1
+   kind_of_interest      = 'QTY_POTENTIAL_TEMPERATURE'
+   interp_test_lonrange  = 144.0, 326.0
    interp_test_dlon      = 1.0
-   interp_test_latrange  = -89.0, 89.0
+   interp_test_latrange  = -5.0, 80.0
    interp_test_dlat      = 1.0
-   interp_test_vertrange = 1000.0,  1005.0
-   interp_test_dvert     = 2000.0
+   interp_test_vertrange = 58.0, 60.0
+   interp_test_dvert     = 0.25
    interp_test_vertcoord = 'VERTISLEVEL'
   /
 
-ncdump -f F -v lonT_g02 dart_vector.nc | grep 108,108
-    224.197416429748,   // lonT_g02(108,108)    3.912983091163933 radians
-ncdump -f F -v latT_g02 dart_vector.nc | grep 108,108
-    38.2898181388769,   // latT_g02(108,108)    0.668283396513249 radians
-
-ncdump -f F -v latU_g02 dart_vector.nc | grep 108,108
-    38.2991002368272,   // latU_g02(108,108)   0.668445399683975 radians
-ncdump -f F -v lonU_g02 dart_vector.nc | grep 108,108
-    224.284904588274,   // lonU_g02(108,108)   3.914510047586718 radians
+# These are just notes to help use model_mod_check
+# The mass points are defined (in Fortran) as nx-ny-nz, with nx (longitude)
+# varying fastest.  
+# x= 1, y= 1 is the southwest
+# x=nx, y=ny is the northeast
+# z=1 is the top of atmosphere
+#
+# ncdump -f F -v lonT_g02 dart_vector.nc | grep '100,50'
+# ncdump -f F -v latT_g02 dart_vector.nc | grep '100,50'
+#
+# ncdump -f F -v lonT_g02 dart_vector.nc | grep 108,108
+#     224.197416429748,   // lonT_g02(108,108)    3.912983091163933 radians
+# ncdump -f F -v latT_g02 dart_vector.nc | grep 108,108
+#     38.2898181388769,   // latT_g02(108,108)    0.668283396513249 radians
+# 
+# ncdump -f F -v latU_g02 dart_vector.nc | grep 108,108
+#     38.2991002368272,   // latU_g02(108,108)   0.668445399683975 radians
+# ncdump -f F -v lonU_g02 dart_vector.nc | grep 108,108
+#     224.284904588274,   // lonU_g02(108,108)   3.914510047586718 radians
 

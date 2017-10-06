@@ -30,7 +30,7 @@ module coamps_util_mod
                                    nc_get_variable, &
                                    nc_put_variable
 
-  use coamps_hdf5_mod, only : hdf5_file_write, write_hdf5_data
+  use coamps_hdf5_mod, only : hdf5_file_write, write_hdf5_data, hdf5_r4
 
   use typesizes
   use netcdf
@@ -397,9 +397,9 @@ contains
     real(kind=r4),      dimension(:), intent(inout) :: array
     integer,                          intent(in)    :: array_size
 
-    if (LITTLE_ENDIAN_PLATFORM) then
-      call c_byteswap_array(array, array_size, r4)
-    end if
+!TJH   if (LITTLE_ENDIAN_PLATFORM) then
+!TJH     call c_byteswap_array(array, array_size, r4)
+!TJH   end if
   end subroutine fix_for_platform4
 
   ! fix_for_platform8
@@ -416,9 +416,9 @@ contains
     real(kind=r8),      dimension(:), intent(inout) :: array
     integer,                          intent(in)    :: array_size
 
-    if (LITTLE_ENDIAN_PLATFORM) then
-      call c_byteswap_array(array, array_size, r8)
-    end if
+!TJH    if (LITTLE_ENDIAN_PLATFORM) then
+!TJH      call c_byteswap_array(array, array_size, r8)
+!TJH    end if
   end subroutine fix_for_platform8
 
   ! generate_flat_file_name
@@ -607,10 +607,11 @@ contains
 !>   IN  variable_name  string defining the variable to read
 !>   OUT flat_array     coamps_grid structure to be filled
 
-subroutine copy_netCDF_to_hdf(ncFileID, variable_name)
+subroutine copy_netCDF_to_hdf(ncFileID, variable_name, hdf5unit)
 
 integer,          intent(in) :: ncFileID
 character(len=*), intent(in) :: variable_name
+integer,          intent(in) :: hdf5unit
 
 character(len=*), parameter :: routine = 'copy_netCDF_to_hdf'
 
@@ -656,7 +657,6 @@ if ( ndims == 1) then
       write(string2,*)'variable "'//trim(analysis_name)//'"'
       call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
    endif
-
    deallocate(chunk1D)
 
 elseif (ndims == 2) then
@@ -682,7 +682,7 @@ elseif (ndims == 3) then
    
 !  call nc_put_variable(hdf5unit, analysis_name, chunk3D, context=routine) 
 
-   call write_hdf5_data(real(chunk3D, kind=4), analysis_name, hdf5_file_write, ierr)
+   call write_hdf5_data(real(chunk3D, kind=hdf5_r4), analysis_name, hdf5_file_write, ierr)
    if (ierr /= 0) then
       write(string1,*)'3D write_hdf5_data error code ',ierr
       write(string2,*)'variable "'//trim(analysis_name)//'"'

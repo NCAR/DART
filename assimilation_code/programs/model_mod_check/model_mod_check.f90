@@ -35,7 +35,7 @@ use  ensemble_manager_mod, only : init_ensemble_manager, ensemble_type
 
 use   state_vector_io_mod, only : state_vector_io_init, read_state, write_state
 
-use   state_structure_mod, only : get_num_domains
+use   state_structure_mod, only : get_num_domains, get_model_variable_indices
 
 use      io_filenames_mod, only : io_filenames_init, file_info_type,       &
                                   stage_metadata_type, get_stage_metadata, &
@@ -60,6 +60,8 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
+character(len=512) :: string1, string2, string3
+
 !------------------------------------------------------------------
 ! The namelist variables
 !------------------------------------------------------------------
@@ -68,6 +70,7 @@ logical                       :: single_file = .false.
 integer                       :: num_ens = 1
 character(len=256)            :: input_state_files(MAX_NUM_DOMS)  = 'null'
 character(len=256)            :: output_state_files(MAX_NUM_DOMS) = 'null'
+character(len=256)            :: all_metadata_file = 'null'
 
 integer(i8)                   :: x_ind   = -1
 real(r8), dimension(3)        :: loc_of_interest = -1.0_r8
@@ -97,7 +100,8 @@ namelist /model_mod_check_nml/ x_ind, num_ens,                             &
                                interp_test_dy,     interp_test_yrange,     &
                                interp_test_dz,     interp_test_zrange,     &
                                verbose, test1thru, interp_test_vertcoord,  &
-                               single_file, input_state_files, output_state_files
+                               single_file, input_state_files, output_state_files, &
+                               all_metadata_file
 
 ! io variables
 integer                   :: iunit, io
@@ -229,7 +233,8 @@ do imem = 1, num_ens
                          io_flag = WRITE_COPY)  
 enddo
 
-!call file_info_dump(file_info_input, 'mmc')
+! call file_info_dump(file_info_input, 'mmc input')
+! call file_info_dump(file_info_output,'mmc output')
 
 !----------------------------------------------------------------------
 ! Open a test netcdf initial conditions file.
@@ -294,14 +299,20 @@ else
    endif
 endif
 
+if (all_metadata_file .ne. 'null') call check_all_meta_data()
+
 call print_test_message('FINISHED TEST 3')
 write(*,'(A)') 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 write(*,'(A)') 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 
 if ( test1thru == 3 ) call exit(0)
 
+
+!>@todo possibly add a check to find the i,j,k of the gridcell closest
+!> to the location of interest.
+
 !----------------------------------------------------------------------
-! Check the interpolation - print initially to STDOUT
+! Check interpolation at a single point
 !----------------------------------------------------------------------
 
 call print_test_message('RUNNING TEST 4', &
@@ -328,6 +339,10 @@ write(*,'(A)') 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 write(*,'(A)') 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 
 if ( test1thru == 4 ) call exit(0)
+
+!----------------------------------------------------------------------
+! Check interpolation for every point in a regular grid
+!----------------------------------------------------------------------
 
 call print_test_message('RUNNING TEST 5', &
                         'Testing range of data for model_interpolate')
@@ -381,6 +396,56 @@ if ( do_output() ) then
 endif 
 
 end subroutine check_meta_data
+
+!----------------------------------------------------------------------
+
+subroutine check_all_meta_data()
+
+integer(i8)         :: iloc
+type(location_type) :: loc
+integer             :: ix, iy, iz, dom_id, qty_index, var_type, fid
+character(len=256)  :: qty_string, metadata_qty_string
+
+write(string1,*)'Exhaustive test of get_state_meta_data - please be patient.'
+write(string2,*)'There are ',get_model_size(),' items in the state vector.'
+call print_test_message('RUNNING TEST 3.1', msg1=string1, msg2=string2) 
+
+fid = open_file(all_metadata_file)
+
+do iloc = 1,get_model_size()
+
+   call get_model_variable_indices(iloc, ix, iy, iz, &
+                                   dom_id=dom_id, &
+                                   kind_index=qty_index, &
+                                   kind_string=qty_string)
+
+   write(string1,'(i11,1x,''i,j,k'',3(1x,i4),'' domain '',i2)') iloc,ix,iy,iz,dom_id
+
+   call get_state_meta_data(iloc, loc, var_type)
+   metadata_qty_string = trim(get_name_for_quantity(var_type))
+
+   if (trim(qty_string) /= trim(metadata_qty_string) ) then
+      write(string2,*)' expected quantity of "'//trim(qty_string)//'"'
+      write(string3,*)' got      quantity of "'//trim(metadata_qty_string)//'"'
+      call error_handler(E_ERR, 'check_all_meta_data', string1, source, &
+                         revision, revdate, text2=string2, text3=string3)
+   endif
+
+   call write_location(0,loc,charstring=string2)
+
+   write(string3,'(A,1x,I4,1x,A33,1x,A)') &
+         trim(string1), var_type, trim(qty_string), trim(string2)
+
+   if ( do_output()                            ) write(fid,'(A)') trim(string3)
+   if ( do_output() .and. mod(iloc,100000) == 0) write( * ,'(A)') trim(string3)
+
+enddo
+
+call close_file(fid)
+
+call print_test_message('FINISHED TEST 3.1')
+
+end subroutine check_all_meta_data
 
 !----------------------------------------------------------------------
 

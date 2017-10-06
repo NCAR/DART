@@ -20,7 +20,6 @@ module coamps_domain_mod
     use coamps_nest_mod,     only : coamps_nest,                 &
                                     nest_point,                  &
                                     initialize_nest,             &
-                                    initialize_nest_latlon,      &
                                     dump_nest_info,              &
                                     decompose_nest,              &
                                     get_num_subnests,            &
@@ -31,6 +30,7 @@ module coamps_domain_mod
                                     get_parent_nest_id,          &
                                     register_child_nest,         &
                                     register_parent_nest
+                                  ! initialize_nest_latlon,      & removal candidate
 
     use coamps_vertical_mod, only : coamps_vertical,             &
                                     get_msigma,                  &
@@ -212,7 +212,7 @@ contains
 
         call initialize_vertical(coamps_datahd, domain%vertical)
 
-        call dump_domain_info(domain, .true.)
+    !   call dump_domain_info(domain, .true.)
 
         domain%is_initialized = .true.
     end subroutine initialize_domain
@@ -792,9 +792,10 @@ contains
                                  parent_nest = domain%nests(parent_nest_id))
     end do
 
-    do cur_nest_id = 1, domain%nest_count
-        call initialize_nest_latlon(domain%nests(cur_nest_id), domain%static_grid)
-    end do
+! TJH not needed now that initialize_nest() reads latlon from hdf5 file
+! TJH    do cur_nest_id = 1, domain%nest_count
+! TJH       call initialize_nest_latlon(domain%nests(cur_nest_id), domain%static_grid)
+! TJH    end do
 
   end subroutine initialize_nests
 

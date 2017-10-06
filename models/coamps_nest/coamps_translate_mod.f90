@@ -59,9 +59,7 @@ module coamps_translate_mod
   use coamps_util_mod,      only : C_REAL,                                    &
                                    check_alloc_status, check_dealloc_status,  &
                                    check_io_status,                           &
-                                   fix_for_platform,                          &
                                    generate_flat_file_name,                   &
-                                   read_flat_file, write_flat_file,           &
                                    HDF5_FILE_NAME,                            &
                                    read_hdf5_variable, copy_netCDF_to_hdf       
 
@@ -118,7 +116,7 @@ module coamps_translate_mod
 
   ! DART restart file tools
   public :: open_dart_file
-  public :: dart_read
+! public :: dart_read  obsolete now that DART reads netCDF directly
   public :: dart_write
 
   ! Conversion tools
@@ -796,86 +794,22 @@ end if
 
 end subroutine open_dart_file
 
+!-------------------------------------------------------------------------------
+!> Writes the DART state to a netCDF file.
+!> The dart_(read|write) routines are separate unlike the
+!> COAMPS since these involve no offset math at all.
+!>  PARAMETERS
+!>   [none]
 
-  ! dart_read
-  ! ---------
-  ! Reads two times and the DART state vector from the DART restart
-  ! file.  The dart_(read|write) routines are separate unlike the
-  ! COAMPS routines since this involves no offset math at all.
-  !  PARAMETERS
-  !   IN  test_read         OPTIONAL: True if we just want to read
-  !                                   the state vector, not the 
-  !                                   times (useful for tests) 
-  subroutine dart_read(test_read)
-    logical, optional, intent(in) :: test_read
+subroutine dart_write()
 
-    logical :: read_times
+integer :: dart_time_days, dart_time_seconds
 
-    integer :: dart_time_days, dart_time_seconds
+call nc_write_prognostic_data(dart_unit, file_layout, dart_state) 
 
-    ! Performing a test read means not reading the times
-    if (present(test_read)) then
-       read_times = .not. test_read
-    else
-       read_times = .true. 
-    end if
+call print_dart_diagnostics()
 
-    if (read_times) then
-       ! DART will output a restart file containing the current time
-       ! and the time it wants the model to integrate to
-       dart_time(DART_TARGET_TIME) = read_time(dart_unit, 'unformatted')
-       call get_time(dart_time(DART_TARGET_TIME), dart_time_seconds, dart_time_days)
-       write (*,*) "DART target time read is ", dart_time_days, &
-                   " days and ", dart_time_seconds, " seconds."
-
-      if(is_dart_async) then
-       dart_time(DART_CURRENT_TIME) = read_time(dart_unit, 'unformatted')
-       call get_time(dart_time(DART_CURRENT_TIME), dart_time_seconds, dart_time_days)
-       write (*,*) "DART current time read is ", dart_time_days, &
-                   " days and ", dart_time_seconds, " seconds."
-      end if
-    end if
-
-    read(dart_unit) dart_state
-
-    call print_dart_diagnostics()
-  end subroutine dart_read
-
-  ! dart_write
-  ! ---------
-  ! Writes the time and the DART state vector to the DART restart
-  ! file.  The dart_(read|write) routines are separate unlike the
-  ! COAMPS since these involve no offset math at all.
-  !  PARAMETERS
-  !   IN  test_write        OPTIONAL: True if we just want to write
-  !                                   out the state vector, not the
-  !                                   time (useful for tests)
-  subroutine dart_write(test_write)
-    logical, optional, intent(in) :: test_write
-
-    logical :: write_times
-
-    integer :: dart_time_days, dart_time_seconds
-
-    ! Performing a test write means not writing the time
-    if (present(test_write)) then
-       write_times = .not. test_write
-    else
-       write_times = .true.
-    end if
-
-    if (write_times) then
-       call write_time(dart_unit, dart_time(DART_CURRENT_TIME), 'unformatted')
-       call get_time(dart_time(DART_CURRENT_TIME), dart_time_seconds, dart_time_days)
-       write (*,*) "DART time written is ", dart_time_days, &
-                   " days and ", dart_time_seconds, " seconds."
-    end if
-
-    call nc_write_prognostic_data(dart_unit, file_layout, dart_state) 
-
-    call print_dart_diagnostics()
-
-  end subroutine dart_write
+end subroutine dart_write
 
 
 !-------------------------------------------------------------------------------
@@ -1239,7 +1173,8 @@ flat_file_loop: do while (has_next(iterator))
       if(write_field) then
          ! just read from netcdf, write to hdf - no need for var_state
          call copy_netCDF_to_hdf(dart_unit, &
-                                 coamps_variable_names(cur_file))
+                                 coamps_variable_names(cur_file), &
+                                 coamps_file_units(cur_file))
 
         !>@todo FIXME Write pressure level data here
         ! Need to write out data on specified pressure levels here.

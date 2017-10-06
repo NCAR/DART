@@ -44,7 +44,7 @@ module coamps_nest_mod
     public :: coamps_nest
 
     public :: initialize_nest
-    public :: initialize_nest_latlon
+!    public :: initialize_nest_latlon   candidate for removal
 
     public :: register_child_nest
     public :: register_parent_nest
@@ -235,44 +235,47 @@ contains
     ! BEGIN PUBLIC ROUTINES
     !------------------------------
 
-    ! initialize_nest
-    ! ---------------
-    ! Populates a COAMPS nest based on the given nest number and datahd
-    ! record
-    ! INOUT nest              COAMPS nest to initialize
-    !   IN  dtg               COAMPS date-time-group
-    !   IN  datahd            datahd record to source
-    subroutine initialize_nest(filename, nest, dtg, datahd)
-        character(len=*),            intent(in)    :: filename
-        type(coamps_nest),           intent(inout) :: nest
-        character(len=*),            intent(in)    :: dtg
-        real(kind=r8), dimension(:), intent(in)    :: datahd
+!-----------------------------------------------------------------------
+!> Populates a COAMPS nest based on the given nest number and datahd record
+!> 
+!>   IN  filename          HDF5 file to read from
+!> INOUT nest              COAMPS nest to initialize
+!>   IN  dtg               COAMPS date-time-group
+!>   IN  datahd            datahd record to source
 
-        integer :: nest_offset
+subroutine initialize_nest(filename, nest, dtg, datahd)
 
-        nest_offset = nest%id * DATAHD_NEST_OFFSET
+character(len=*),            intent(in)    :: filename
+type(coamps_nest),           intent(inout) :: nest
+character(len=*),            intent(in)    :: dtg
+real(kind=r8), dimension(:), intent(in)    :: datahd
 
-        nest%pts_x = int(datahd(DATAHD_NUM_X_POINTS + nest_offset))
-        nest%pts_y = int(datahd(DATAHD_NUM_Y_POINTS + nest_offset))
+integer :: nest_offset
 
-        nest%delta_x = datahd(DATAHD_DELTA_X + nest_offset)
-        nest%delta_y = datahd(DATAHD_DELTA_Y + nest_offset)
+nest_offset = nest%id * DATAHD_NEST_OFFSET
 
-        nest%anchor_i = int(datahd(DATAHD_ANCHOR_POINT_I + nest_offset))
-        nest%anchor_j = int(datahd(DATAHD_ANCHOR_POINT_J + nest_offset))
+nest%pts_x = int(datahd(DATAHD_NUM_X_POINTS + nest_offset))
+nest%pts_y = int(datahd(DATAHD_NUM_Y_POINTS + nest_offset))
 
-        nest%parent_nest_id = int(datahd(DATAHD_PARENT_NEST + nest_offset))
+nest%delta_x = datahd(DATAHD_DELTA_X + nest_offset)
+nest%delta_y = datahd(DATAHD_DELTA_Y + nest_offset)
 
-        nest%nest_level = int(datahd(DATAHD_NEST_LEVEL + nest_offset))
+nest%anchor_i = int(datahd(DATAHD_ANCHOR_POINT_I + nest_offset))
+nest%anchor_j = int(datahd(DATAHD_ANCHOR_POINT_J + nest_offset))
 
-        call initialize_list(nest%child_nests)
-        call read_terrain_height(filename, nest, dtg)
+nest%parent_nest_id = int(datahd(DATAHD_PARENT_NEST + nest_offset))
 
-        nullify(nest%iminf)
-        nullify(nest%imaxf)
-        nullify(nest%jminf)
-        nullify(nest%jmaxf)
-    end subroutine initialize_nest
+nest%nest_level = int(datahd(DATAHD_NEST_LEVEL + nest_offset))
+
+call initialize_list(nest%child_nests)
+call read_geographic_data(filename, nest, dtg)
+
+nullify(nest%iminf)
+nullify(nest%imaxf)
+nullify(nest%jminf)
+nullify(nest%jmaxf)
+
+end subroutine initialize_nest
 
     ! register_parent_nest
     ! --------------------
@@ -1112,111 +1115,147 @@ contains
                                 revdate, 'nest%jmaxf')
     end subroutine initialize_decomposition
 
-    ! generate_terrht_filename
-    ! ------------------------
-    ! Generates the COAMPS terrain height flat file name for a particular
-    ! nest of a grid at a given date-time group.  This does *not* 
-    ! generate any path information - it only returns the file name.
-    !
-    ! Assumes that the coamps_nest structure has already been populated
-    ! with the domain information, since we need the number of x and y
-    ! grid points to generate the file name
-    !  PARAMETERS
-    !   IN  nest              nest that we need terrain info for
-    !   IN  dtg               base date-time group for model run 
-    !   OUT terrht_filename   name of terrain height flat file
-    subroutine generate_terrht_filename(nest, dtg, terrht_filename)
-        type(coamps_nest),   intent(in)  :: nest
-        character(len=10),   intent(in)  :: dtg
-        character(len=64),   intent(out) :: terrht_filename
+!-----------------------------------------------------------------------
+!> Generates the COAMPS hdf5 variable name for a particular
+!> nest of a grid at a given date-time group.
+!>
+!> Assumes that the coamps_nest structure has already been populated
+!> with the domain information, since we need the number of x and y
+!> grid points to generate the file name
+!>  PARAMETERS
+!>   IN  nest              nest that we need terrain info for
+!>   IN  dtg               base date-time group for model run 
+!>   OUT hdf5_varname   name of terrain height flat file
 
-        ! The format of the terrain height file is fixed except for
-        ! the horizontal grid size and date-time group
-        call generate_flat_file_name( var_name   = 'terrht',      &
-                                      level_type = 'sfc',         &
-                                      level1     = 0,             &
-                                      level2     = 0,             &
-                                      gridnum    = nest%id,       &
-                                      aoflag     = 'a',           &
-                                      xpts       = nest%pts_x,    &
-                                      ypts       = nest%pts_y,    &
-                                      dtg        = dtg,           &
-                                      tau_hh     = 0,             &
-                                      tau_mm     = 0,             &
-                                      tau_ss     = 0,             &
-                                      field_type = 'fcstfld',     &
-                                      file_name  = terrht_filename )
-    end subroutine generate_terrht_filename
+subroutine generate_sfc_varname(nest, dtg, varbase, hdf5_varname)
 
-    ! read_terrain_height
-    ! -------------------
-    ! Reads the terrain height for a given nest and date-time group
-    !  PARAMETERS
-    ! INOUT nest              The nest to add terrain data to
-    !   IN  dtg               COAMPS date-time group
+type(coamps_nest),  intent(in)  :: nest
+character(len=*),   intent(in)  :: dtg
+character(len=*),   intent(in)  :: varbase
+character(len=*),   intent(out) :: hdf5_varname
 
-    subroutine read_terrain_height(filename, nest, dtg)
+! The format of the terrain height file is fixed except for
+! the horizontal grid size and date-time group
 
-        character(len=*),  intent(in)    :: filename
-        type(coamps_nest), intent(inout) :: nest
-        character(len=*),  intent(in)    :: dtg
+call generate_flat_file_name( var_name   = trim(varbase), &
+                              level_type = 'sfc',         &
+                              level1     = 0,             &
+                              level2     = 0,             &
+                              gridnum    = nest%id,       &
+                              aoflag     = 'a',           &
+                              xpts       = nest%pts_x,    &
+                              ypts       = nest%pts_y,    &
+                              dtg        = dtg,           &
+                              tau_hh     = 0,             &
+                              tau_mm     = 0,             &
+                              tau_ss     = 0,             &
+                              field_type = 'fcstfld',     &
+                              file_name  = hdf5_varname )
 
-        character(len=*), parameter :: routine = 'read_terrain_height'
+end subroutine generate_sfc_varname
 
-        character(len=64) :: terrht_name
-        integer           :: terrht_unit, VarID
-        integer           :: io
-        integer           :: alloc_status
-        integer           :: dealloc_status
 
-        ! Terrain data is stored in a flat file, so it uses the COAMPS real
-        ! number size.  Storing it as a single dimension instead of 2-D makes
-        ! (possible) byteswapping easier 
-        real(kind=r8), dimension(:), pointer :: temp_terrain 
+!-----------------------------------------------------------------------
+!>  Reads the terrain height for a given nest and date-time group
+!>   PARAMETERS
+!>  INOUT nest              The nest to add terrain data to
+!>    IN  dtg               COAMPS date-time group
 
-        ! Temporary storage
-        allocate(temp_terrain(nest%pts_x * nest%pts_y), stat=alloc_status)
-        call check_alloc_status(alloc_status, routine, source, revision, &
-                                revdate, 'temporary terrain')
+subroutine read_geographic_data(filename, nest, dtg)
 
-        ! Permanent storage
-        nullify(nest%terrain)
-        allocate(nest%terrain(nest%pts_x, nest%pts_y), stat = alloc_status)
-        call check_alloc_status(alloc_status, routine, source, revision,  &
+character(len=*),  intent(in)    :: filename
+type(coamps_nest), intent(inout) :: nest
+character(len=*),  intent(in)    :: dtg
+
+character(len=*), parameter :: routine = 'read_geographic_data'
+
+character(len=64) :: terrht_name
+character(len=64) :: longitude_name
+character(len=64) :: latitude_name
+integer           :: terrht_unit, VarID
+integer           :: io
+integer           :: alloc_status
+integer           :: dealloc_status
+character(len=512) :: string1
+
+! Permanent storage
+nullify(nest%terrain)
+allocate(nest%terrain(nest%pts_x, nest%pts_y), stat = alloc_status)
+call check_alloc_status(alloc_status, routine, source, revision,  &
                                 revdate, 'nest terrain')
 
-  ! actually generate the VARIABLE name in the HDF5 file.
-  call generate_terrht_filename(nest, dtg, terrht_name)
+nullify(nest%lat)
+allocate(nest%lat(nest%pts_x, nest%pts_y), stat = alloc_status)
+call check_alloc_status(alloc_status, routine, source, revision, &
+                                revdate, 'lat')
 
-!TJH  write(*,*)'terrht_varname is "'//trim(terrht_name)//'"'
-!TJH  write(*,*)'desired size is ',nest%pts_x, nest%pts_y
-!>@todo check the storage order is correct, remove temporary variable
+nullify(nest%lon)
+allocate(nest%lon(nest%pts_x, nest%pts_y), stat = alloc_status)
+call check_alloc_status(alloc_status, routine, source, revision, &
+                                revdate, 'lon')
 
-  io = nf90_open(filename, NF90_NOWRITE, terrht_unit)
-  call nc_check(io, routine, 'opening "',trim(filename),'"')
+! actually generate the VARIABLE name in the HDF5 file.
+call generate_sfc_varname(nest, dtg, 'terrht', terrht_name)
+call generate_sfc_varname(nest, dtg, 'latitu', latitude_name)
+call generate_sfc_varname(nest, dtg, 'longit', longitude_name)
 
-  io = nf90_inq_varid(terrht_unit, terrht_name, VarID)
-  call nc_check(io, routine, 'inquire "'//trim(terrht_name)//'"')
+! write(*,*)'TJH terrht_varname is "'//trim(terrht_name)//'"'
+! write(*,*)'TJH latitu_varname is "'//trim(latitude_name)//'"'
+! write(*,*)'TJH longit_varname is "'//trim(longitude_name)//'"'
 
-  !>@todo make sure temp_terrain is declared to be proper length
-  io = nf90_get_var(terrht_unit, VarID, nest%terrain)
-  call nc_check(io, routine, 'get_var "terrht+" from "'//trim(filename)//'"')
+io = nf90_open(filename, NF90_NOWRITE, terrht_unit)
+call nc_check(io, routine, 'opening "',trim(filename),'"')
 
-  io = nf90_close(terrht_unit)
-  call nc_check(io, routine, 'closing "'//trim(filename)//'"')
+write(string1,'(A)')'"'//trim(terrht_name)//'" from "'//trim(filename)//'"'
 
-    !    nest%terrain = reshape(temp_terrain, (/ nest%pts_x, nest%pts_y /))
+io = nf90_inq_varid(terrht_unit, terrht_name, VarID)
+call nc_check(io, routine, 'inquire "'//trim(terrht_name)//'"')
+io = nf90_get_var(terrht_unit, VarID, nest%terrain)
+call nc_check(io, routine, 'get_var '//trim(string1))
 
-        deallocate(temp_terrain, stat=dealloc_status)
-        call check_dealloc_status(dealloc_status, routine, source, revision, &
-                                  revdate, 'temporary terrain')
-    end subroutine read_terrain_height
+write(string1,'(A)')'"'//trim(latitude_name)//'" from "'//trim(filename)//'"'
+
+io = nf90_inq_varid(terrht_unit, latitude_name, VarID)
+call nc_check(io, routine, 'inquire "'//trim(latitude_name)//'"')
+io = nf90_get_var(terrht_unit, VarID, nest%lat)
+call nc_check(io, routine, 'get_var "terrht+" from "'//trim(filename)//'"')
+
+write(string1,'(A)')'"'//trim(longitude_name)//'" from "'//trim(filename)//'"'
+
+io = nf90_inq_varid(terrht_unit, longitude_name, VarID)
+call nc_check(io, routine, 'inquire "'//trim(longitude_name)//'"')
+io = nf90_get_var(terrht_unit, VarID, nest%lon)
+call nc_check(io, routine, 'get_var "terrht+" from "'//trim(filename)//'"')
+
+io = nf90_close(terrht_unit)
+call nc_check(io, routine, 'closing "'//trim(filename)//'"')
+
+if ( .true. ) then
+   write(*,*)routine,' nest id ', nest%id
+   write(*,*)routine,' range of   terrain is ',minval(nest%terrain), maxval(nest%terrain)
+   write(*,*)routine,' range of  latitude is ',minval(nest%lat),     maxval(nest%lat)
+   write(*,*)routine,' range of longitude is ',minval(nest%lon),     maxval(nest%lon)
+
+   write(*,*)routine,' lon/lat (  1,  1) is ',nest%lon(  1, 1), nest%lat(  1, 1)
+   write(*,*)routine,' lon/lat (200,  1) is ',nest%lon(200, 1), nest%lat(200, 1)
+   write(*,*)routine,' lon/lat (  1,  2) is ',nest%lon(  1, 2), nest%lat(  1, 2)
+   write(*,*)routine,' lon/lat (100, 50) is ',nest%lon(100,50), nest%lat(100,50)
+   write(*,*)routine,' lon/lat ( nx, ny) is ',nest%lon(nest%pts_x,nest%pts_y), &
+                                              nest%lat(nest%pts_x,nest%pts_y)
+
+endif
+
+end subroutine read_geographic_data
+
 
     ! initialize_nest_latlon
     ! -------------------
-    ! Initialize the lat/lon arrays for the nest
-    ! INOUT nest              The nest to add terrain data to
+    ! Compute the lat/lon arrays for the nest
+    ! INOUT nest              The nest to add geographic data to
     !   IN  dtg               COAMPS date-time group
+
+! TJH initialize_nest_latlon not needed now that we can read from a file
+
     subroutine initialize_nest_latlon(nest, grid)
         type(coamps_nest), intent(inout) :: nest
         type(coamps_grid), intent(in)    :: grid
