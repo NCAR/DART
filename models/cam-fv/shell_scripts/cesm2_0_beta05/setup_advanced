@@ -832,7 +832,9 @@ endif
 
 # CAM physics (etc.) selection.  (Eaton said?) It's safer to always specify the physics,
 # instead of letting the compset choose it.
-# ./xmlchange CAM_CONFIG_OPTS="-phys cam4 "
+set CAM_CONFIG_OPTS=""
+# set CAM_CONFIG_OPTS="-phys cam4 "
+./xmlchange CAM_CONFIG_OPTS="$CAM_CONFIG_OPTS"
 
 # Reduce the amount of stuff that's st_archived.
 #  > Fewer restart sets saved to         $archive/rest and/or to HPSS,
@@ -1095,6 +1097,15 @@ chmod 755 case.lt_archive
 # MAKE SURE THE STAGING SECTION OF THIS SCRIPT MATCHES THESE VALUES.
 # ==============================================================================
 
+# Check whether (or decide to) interpolation of the CLM restart file will be done.
+# If so, each CLM namelist needs it's own finidat_interp_dest
+set do_clm_interp = "true"
+set line = `grep use_init_interp user_nl_clm_0001`
+if ($status == 0) then
+   set words = `echo $line | sed -e "s#[=\.]# #g`
+   if ($words[2] == true ) set do_clm_interp = "true"
+endif
+
 @ inst = 1
 while ($inst <= $num_instances)
 
@@ -1128,7 +1139,8 @@ while ($inst <= $num_instances)
    # Was needed for 2 degree spinup 
    # even though 1 degree worked with default 1 degree topo with a name similar to this.
    # echo "bnd_topo = '/glade/p/cesmdata/cseg/inputdata/atm/cam/topo/fv_1.9x2.5_nc3000_Nsw084_Nrs016_Co120_Fi001_ZR_061116.nc' " >> ${fname}
-
+   echo $CAM_CONFIG_OPTS | grep 'cam4'
+   if ($status == 0) echo " fv_div24del2_flag = 4 "       >> ${fname}
 
    # CESM2.0, CAM6
    # I've removed the section which defined the WACCM timestep and 
@@ -1219,22 +1231,25 @@ while ($inst <= $num_instances)
    # echo "hist_mfilt  = 1"              >> ${fname}
    # echo "hist_nhtfrq = 0"              >> ${fname}
 
-   echo "check_finidat_year_consistency = .false."   >> ${fname}
    echo "hist_empty_htapes = .true."   >> ${fname}
    echo "hist_fincl1 = 'TSA'"          >> ${fname}
    echo "hist_nhtfrq = -$stop_n"       >> ${fname}
    echo "hist_mfilt  = 1"              >> ${fname}
    echo "hist_avgflag_pertape = 'I'"   >> ${fname}
-   # This was needed to allow the interpolation of the default CLM restart file.
-   # It may not be needed in runs that start from a somewhat spun up ensemble,
-   # but we don't particularly want or need this bit of physics.
-   echo "urban_hac = 'OFF'"            >> ${fname}
-   echo "building_temp_method = 0 "    >> ${fname}
 
    # Probably never want, but if I need to start from a not spun up CLM file,
    # specified in finidat, use this
-   # echo "user_init_interp = .true. "   >> ${fname}
-   # echo "finidat = '$cesmdata/lnd/clm2/initdata_map/clmi.ICRUCLM45BGCCROP.78pfts.levis_reinterp.1.9x2.5_g1v6_simyr2000_c160127.nc '" >> ${fname}
+   if ($do_clm_interp == true) then
+      echo "use_init_interp = .true. "   >> ${fname}
+      echo "finidat_interp_dest = 'finidat_interp_dest$inst_string.nc' "   >> ${fname}
+      # echo "finidat = '$cesmdata/lnd/clm2/initdata_map/clmi.ICRUCLM45BGCCROP.78pfts.levis_reinterp.1.9x2.5_g1v6_simyr2000_c160127.nc '" >> ${fname}
+      # This was needed to allow the interpolation of the default CLM restart file.
+      # It may not be needed in runs that start from a somewhat spun up ensemble,
+      # but we don't particularly want or need this bit of physics.
+      # echo "check_finidat_year_consistency = .false."   >> ${fname}
+      # echo "urban_hac = 'OFF'"            >> ${fname}
+      # echo "building_temp_method = 0 "    >> ${fname}
+   endif
 
    # ===========================================================================
    set fname = "user_nl_cice${inst_string}"
