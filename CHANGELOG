@@ -516,7 +516,7 @@ Single File I/O:
 - improved some error messages in the diagnostic matlab scripts
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Oct 13 2017 :: next revision summary.  $Revision$
++ Oct 16 2017 :: next revision summary.  $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - fix a bug in the MPAS-ATM model mod that affected surface observations,
@@ -555,7 +555,7 @@ Single File I/O:
 - updated the channel and column location modules to be compatible with
   the current required interfaces.
 
-- updated the model_mod_check.f90 program (move often used when porting
+- updated the model_mod_check.f90 program (most often used when porting
   DART to a new model).  there is now more control over exactly which
   tests are being run.
 
