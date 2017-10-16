@@ -491,7 +491,7 @@ Single File I/O:
   names changed from 'restart' to 'state' for input and output files.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Aug 2 2017 :: single filenames, random distributions, bug fixes.  $Revision$
++ Aug 2 2017 :: single filenames, random distributions, bug fixes.  Revision: 11864
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - added code to support listing input and output filenames directly in the
@@ -516,9 +516,56 @@ Single File I/O:
 - improved some error messages in the diagnostic matlab scripts
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ MMM DD 2017 :: next revision summary.  Revision: 
++ Oct 13 2017 :: next revision summary.  $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+- fix a bug in the MPAS-ATM model mod that affected surface observations,
+  in particular altimeter obs.  also fixed a bug in the vertical conversion
+  if using 'scale height' as the vertical localization type.
+
+- updated and improved the observation converter for ionospheric observations
+  from the COSMIC GPS satellite.
+
+- updates to the cam-fv scripts for cesm2_0_beta05.
+
+- updates to the Matlab diagnostics documentation.  'help DART' or 'doc DART'
+  will give an overview of the available Matlab diagnostics shipped with the
+  dart distribution.
+
+- added two new modules: options_mod.f90 and obs_def_utilities_mod.f90 
+  this was required so we didn't have circular dependencies in our modules
+  as we reused common code in more places.
+                   
+  we have updated all the path_names* files which are in the repository.
+  if you have your own path_names files you may need to add these new modules
+  to your path lists.
+
+    assimilation_code/modules/utilities/options_mod.f90
+    observations/forward_operators/obs_def_utilities_mod.f90
+
+- removed QTY_SURFACE_TEMPERATURE from the default obs quantities list
+  and added QTY_2M_SPECIFIC_HUMIDITY.  QTY_2M_TEMPERATURE exists for
+  atmospheric models, and QTY_SKIN_TEMPERATURE and QTY_SOIL_TEMPERATURE
+  exist for other models.  if you were using QTY_SURFACE_TEMPERATURE
+  please replace it with the corresponding other temperature quantity.
+
+- dart_to_clm and clm_to_dart were resurrected to correctly handle the
+  SWE (snow water equivalent) field.
+
+- updated the channel and column location modules to be compatible with
+  the current required interfaces.
+
+- updated the model_mod_check.f90 program (move often used when porting
+  DART to a new model).  there is now more control over exactly which
+  tests are being run.
+
+- fixed a misleading status message in the obs_sequence_tool when all obs
+  are excluded by the min/max lon/lat box namelist items.  the incorrect
+  message blamed it on observation height instead of the bounding box.
+
+- added some additional debugging options to the mpi utilities module.
+  if you have problems that appear to be MPI related, contact us for
+  more help in enabling them.
 
 # <next few lines under version control, do not edit>
 # $URL$
