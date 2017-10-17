@@ -518,7 +518,7 @@ Single File I/O:
 - improved some error messages in the diagnostic matlab scripts
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Oct 17 2017 :: MPAS ATM bug fix, various other updates.     Revision: 12001 
++ Oct 17 2017 :: MPAS ATM bug fix, various other updates.     Revision: 12002 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - Fixed a bug in the MPAS-ATM model_mod that affected surface observations,
@@ -527,7 +527,8 @@ Single File I/O:
 
 - Fixed a bug in the CAM-FV model_mod which might have excluded observations 
   with a vertical coordinate of height (meters) which were in fact below the 
-  highest_obs_height_m namelist setting.  also fixed a possible memory leak.
+  equivalent highest_obs_pressure_Pa namelist setting.  also fixed a possible 
+  memory leak.
 
 - Added two new modules: options_mod.f90 and obs_def_utilities_mod.f90 
   this was required so we didn't have circular dependencies in our modules
