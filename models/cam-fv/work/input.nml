@@ -25,7 +25,7 @@
 !    inf_sd_initial_from_restart = .true.,                 .false.,
 ! Also search for 'single model state' to make changes in model_nml.
 
-! Changes for DART2.0 ("RMA")
+! Changes for DART2.0 ("RMA" "Manhattan")
 !    To be removed:
 !       restart_in_file_name     = 'no_restart_in'
 !       restart_out_file_name    = 'no_restart_out'
@@ -36,6 +36,15 @@
 !                                                   perturbation routine
 !       perturbation_amplitude       = 0.2,         Will be ignored because the amplitude is 
 !                                                   provided in model_nml.
+!       stages_to_write          = Controls diagnostic and restart output.  Valid values are 
+!                                 'input', 'forecast','preassim', 'postassim', 'analysis', and 'output'.
+!                                 If only prior inflation is used, then 'postassim' and 'analysis'
+!                                 are redundant with 'output'.  
+!                                 If only posterior inflation is used, 'analysis' and 'preassim'
+!                                 are redundant with 'input'.
+!                                 If you want input_mean and input_sd, you'll 
+!                                 need to set output_mean and output_sd = .true. 
+!                                 (and include 'input' in stages_to_write).
 
 ! Removed from the filter_nml in $rma_trunk
 !    direct_netcdf_read       = .true.
