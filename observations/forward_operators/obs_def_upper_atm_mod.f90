@@ -46,6 +46,7 @@
 ! SAT_F107,                        QTY_1D_PARAMETER,               COMMON_CODE
 ! SAT_RHO,                         QTY_DENSITY
 ! GPS_PROFILE,                     QTY_ELECTRON_DENSITY,           COMMON_CODE
+! COSMIC_ELECTRON_DENSITY,         QTY_ELECTRON_DENSITY,           COMMON_CODE
 ! GND_GPS_VTEC,		           QTY_GND_GPS_VTEC
 ! CHAMP_DENSITY,                   QTY_DENSITY
 ! MIDAS_TEC,                       QTY_VERTICAL_TEC

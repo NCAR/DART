@@ -516,56 +516,69 @@ Single File I/O:
 - improved some error messages in the diagnostic matlab scripts
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Oct 17 2017 :: MPAS Atm bug fix, various other updates.  $Revision$
++ Oct 17 2017 :: MPAS ATM bug fix, various other updates.  Revision: 11996 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-- fix a bug in the MPAS-ATM model mod that affected surface observations,
+- Fixed a bug in the MPAS-ATM model_mod that affected surface observations,
   in particular altimeter obs.  also fixed a bug in the vertical conversion
   if using 'scale height' as the vertical localization type.
 
-- updated and improved the observation converter for ionospheric observations
-  from the COSMIC GPS satellite.
+- Fixed a bug in the CAM-FV model_mod which might have excluded observations 
+  with a vertical coordinate of height (meters) which were in fact below the 
+  highest_obs_height_m namelist setting.  also fixed a possible memory leak.
 
-- updates to the cam-fv scripts for cesm2_0_beta05.
-
-- updates to the Matlab diagnostics documentation.  'help DART' or 'doc DART'
-  will give an overview of the available Matlab diagnostics shipped with the
-  dart distribution.
-
-- added two new modules: options_mod.f90 and obs_def_utilities_mod.f90 
+- Added two new modules: options_mod.f90 and obs_def_utilities_mod.f90 
   this was required so we didn't have circular dependencies in our modules
   as we reused common code in more places.
                    
-  we have updated all the path_names* files which are in the repository.
+  We have updated all the path_names* files which are in the repository.
   if you have your own path_names files you may need to add these new modules
   to your path lists.
 
     assimilation_code/modules/utilities/options_mod.f90
     observations/forward_operators/obs_def_utilities_mod.f90
 
-- removed QTY_SURFACE_TEMPERATURE from the default obs quantities list
+- Removed QTY_SURFACE_TEMPERATURE from the default obs quantities list
   and added QTY_2M_SPECIFIC_HUMIDITY.  QTY_2M_TEMPERATURE exists for
   atmospheric models, and QTY_SKIN_TEMPERATURE and QTY_SOIL_TEMPERATURE
   exist for other models.  if you were using QTY_SURFACE_TEMPERATURE
   please replace it with the corresponding other temperature quantity.
 
-- dart_to_clm and clm_to_dart were resurrected to correctly handle the
-  SWE (snow water equivalent) field.
+- Updated and improved the observation converter for ionospheric observations
+  from the COSMIC GPS satellite.
 
-- updated the channel and column location modules to be compatible with
+- Updated the CAM-FV scripts for cesm2_0_beta05.
+
+- Updated the Matlab diagnostics documentation.  'help DART' or 'doc DART'
+  will give an overview of the available Matlab diagnostics shipped with the
+  dart distribution.
+
+- Added the observation type COSMIC_ELECTRON_DENSITY to the obs_def_upper_atm_mod
+
+- dart_to_clm and clm_to_dart were resurrected to correctly handle conversions
+  for the SWE (snow water equivalent) field.
+
+- Updated the channel and column location modules to be compatible with
   the current required interfaces.
 
-- updated the model_mod_check.f90 program (most often used when porting
+- Updated the model_mod_check.f90 program (most often used when porting
   DART to a new model).  there is now more control over exactly which
-  tests are being run.
+  tests are being run.  updated the nml and html documentation files to
+  match the current code and describe the tests in more detail.
 
-- fixed a misleading status message in the obs_sequence_tool when all obs
+- Fixed a misleading status message in the obs_sequence_tool when all obs
   are excluded by the min/max lon/lat box namelist items.  the incorrect
   message blamed it on observation height instead of the bounding box.
 
-- added some additional debugging options to the mpi utilities module.
+- Added some additional debugging options to the mpi utilities module.
   if you have problems that appear to be MPI related, contact us for
   more help in enabling them.
+
+- Improved some error messages in location_io_mod and state_structure_mod
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ MMM DD YYYY :: summary of changes                        $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # <next few lines under version control, do not edit>
 # $URL$

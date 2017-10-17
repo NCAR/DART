@@ -970,58 +970,28 @@ WriteObs : do iobs = 1,ngood
    istart(1) = obsindex
    icount(1) = 1
    
-   !----------------------------------------------------------------------------
    ! Fill the unlimited dimension coordinate variable 
-   !
-   ! call nc_check(nf90_def_var(ncid=ncid, name='ObsIndex', xtype=nf90_int, &
-   !          dimids=(/ ObsNumDimID /), varid=VarID), &
-   !----------------------------------------------------------------------------
+
    intval = obsindex 
    call nc_check(nf90_put_var(ncid, ObsIndexVarId, intval, &
                 start=istart, count=icount), 'WriteNetCDF', 'put_var:ObsIndex')
    
-   !----------------------------------------------------------------------------
-   ! call nc_check(nf90_def_var(ncid=ncid, name='time', xtype=nf90_double, &
-   !           dimids=(/ ObsNumDimID /), varid=VarID), &
-   !----------------------------------------------------------------------------
-   
    call nc_check(nf90_put_var(ncid, TimeVarId, (/ obs_times(iobs) /), &
                  start=istart, count=icount), 'WriteNetCDF', 'put_var:time')
    
-   !----------------------------------------------------------------------------
-   ! call nc_check(nf90_def_var(ncid=ncid, name='obs_types', xtype=nf90_int, &
-   !           dimids=(/ ObsNumDimID /), varid=VarID), &
-   !----------------------------------------------------------------------------
    intval = obs_types(iobs) 
    call nc_check(nf90_put_var(ncid, ObsTypeVarId, intval, &
                  start=istart, count=icount), 'WriteNetCDF', 'put_var:obs_type')
    
-   !----------------------------------------------------------------------------
-   ! call nc_check(nf90_def_var(ncid=ncid, name='obs_keys', xtype=nf90_int, &
-   !           dimids=(/ ObsNumDimID /), varid=VarID), &
-   !----------------------------------------------------------------------------
    intval = obs_keys(iobs) 
    call nc_check(nf90_put_var(ncid, ObsKeyVarId, intval, &
                  start=istart, count=icount), 'WriteNetCDF', 'put_var:obs_keys')
 
-   !----------------------------------------------------------------------------
-   ! Using the location_mod:nc_write_location() routine.
-   !----------------------------------------------------------------------------
    call nc_write_location(ncid, locations(iobs), obsindex, do_vert=.true.)
 
-   !----------------------------------------------------------------------------
-   ! call nc_check(nf90_def_var(ncid=ncid, name='observations', xtype=nf90_double, &
-   !           dimids=(/ ObsCopyDimID, ObsNumDimID /), varid=VarID), &
-   !----------------------------------------------------------------------------
-   
    call nc_check(nf90_put_var(ncid, ObsVarId, obs_copies(:,iobs), &
             start=(/ 1, obsindex /), count=(/ obsldimlen, 1 /) ), &
               'WriteNetCDF', 'put_var:observations')
-   
-   !----------------------------------------------------------------------------
-   ! call nc_check(nf90_def_var(ncid=ncid, name='qc_values', xtype=nf90_int, &
-   !           dimids=(/ QCCopyDimID, ObsNumDimID /), varid=VarID), &
-   !----------------------------------------------------------------------------
    
    call nc_check(nf90_put_var(ncid, QCVarID,  qc_copies(:,iobs), &
             start=(/ 1, obsindex /), count=(/ qcldimlen, 1 /) ), &
