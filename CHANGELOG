@@ -4,6 +4,8 @@
 #
 # DART $Id$
 
+SEE THE BOTTOM OF THIS FILE FOR THE MOST RECENT CHANGES!
+
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + Jan 13th 2017 :: rma_fixed_filenames merge changes.  Revision: 10902
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -516,7 +518,7 @@ Single File I/O:
 - improved some error messages in the diagnostic matlab scripts
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Oct 17 2017 :: MPAS ATM bug fix, various other updates.  Revision: 11999 
++ Oct 17 2017 :: MPAS ATM bug fix, various other updates.     Revision: 12001 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - Fixed a bug in the MPAS-ATM model_mod that affected surface observations,
@@ -577,7 +579,7 @@ Single File I/O:
 - Improved some error messages in location_io_mod and state_structure_mod
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ MMM DD YYYY :: summary of changes                        $Revision$
++ MMM DD YYYY :: summary of next changes                    $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # <next few lines under version control, do not edit>
