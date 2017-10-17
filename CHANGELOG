@@ -516,7 +516,7 @@ Single File I/O:
 - improved some error messages in the diagnostic matlab scripts
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Oct 17 2017 :: MPAS ATM bug fix, various other updates.  Revision: 11996 
++ Oct 17 2017 :: MPAS ATM bug fix, various other updates.  Revision: 11998 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - Fixed a bug in the MPAS-ATM model_mod that affected surface observations,
