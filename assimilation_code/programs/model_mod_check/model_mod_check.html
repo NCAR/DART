@@ -42,8 +42,8 @@
    This is intended to be used when adding a new model to DART - 
    test the pieces as they are written.  As such, this program is
    meant to be hacked up and customized to your own purpose. Right now,
-   it reads in a DART ics file and writes out restart files, netCDF files,
-   queries the metdata, etc. It also exercises 
+   it reads in model netCDF file(s) - one per domain/nest/whatever -  
+   and writes out files, queries the metdata, etc. It also exercises 
    <em class="program">static_init_model()</em>, which is the first routine
    to get right ...
 </P>
@@ -67,34 +67,36 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;model_mod_check 
-   single_file           = .FALSE.
-   input_state_files     = 'input.nc'
-   output_state_files    = 'output.nc'
    num_ens               = 1
+   single_file           = .FALSE.
+   input_state_files     = 'null'
+   output_state_files    = 'null'
+   all_metadata_file     = 'metadata.txt'
 
    x_ind                 = -1
    loc_of_interest       = -1.0, -1.0, -1.0
    kind_of_interest      = 'ANY'
 
-   interp_test_dlon      = -1.0
-   interp_test_dlat      = -1.0
-   interp_test_dvert     = -1.0
+   interp_test_dlon      = 10.0
+   interp_test_dlat      = 10.0
+   interp_test_dvert     = 10.0
 
-   interp_test_lonrange  = -1.0, -1.0
-   interp_test_latrange  = -1.0, -1.0
-   interp_test_vertrange = -1.0, -1.0
+   interp_test_lonrange  = 0.0, 120.0
+   interp_test_latrange  = 0.0, 120.0
+   interp_test_vertrange = 0.0, 100.0
 
-   interp_test_dx        = -1.0
-   interp_test_dy        = -1.0
-   interp_test_dz        = -1.0
+   interp_test_dx        = -888888.0
+   interp_test_dy        = -888888.0
+   interp_test_dz        = -888888.0
 
-   interp_test_xrange    = -1.0, -1.0
-   interp_test_yrange    = -1.0, -1.0
-   interp_test_zrange    = -1.0, -1.0
+   interp_test_xrange    = -888888.0, -888888.0
+   interp_test_yrange    = -888888.0, -888888.0
+   interp_test_zrange    = -888888.0, -888888.0
 
-   interp_test_vertcoord = ANY'
+   interp_test_vertcoord = 'VERTISHEIGHT'
 
-   test1thru             = 1
+   test1thru             = 15
+   run_tests             = -1
    verbose               = .FALSE.
    /
 </pre>
@@ -114,25 +116,32 @@ prematurely terminating the namelist.
 <TBODY valign=top>
 
 <TR><TD> num_ens </TD>
-    <TD> integer(i8) </TD>
-    <TD> The number of ensemble members you would like to read in for testing.
+    <TD> integer </TD>
+    <TD> Provided for future use. Must be 1. Ultimately, The number of 
+         ensemble members you would like to read in for testing.
 </TD></TR>  
 
-<TR><TD> singl_file </TD>
-    <TD> logical(len=129) </TD>
-    <TD> If .TRUE. all members are stored in a single restart file
+<TR><TD> single_file </TD>
+    <TD> logical </TD>
+    <TD> If .TRUE. all members are stored in a single restart file.
 </TD></TR>  
 
-<TR><TD> input_state_files  </TD>
+<TR><TD> input_state_files(:)  </TD>
     <TD> character(len=256) </TD>
-    <TD> The name of a NetCDF file containing DART initial conditions for the model.
-         If num_ens > 1 then you need to specify a file for each ensemble.  
+    <TD> The name(s) of the NetCDF file(s) containing the model states, one per domain.
+      <!--  If num_ens &gt; 1 then you need to specify a file for each ensemble.  -->
 </TD></TR>  
 
-<TR><TD> output_state_files  </TD>
+<TR><TD> output_state_files(:)  </TD>
     <TD> character(len=256) </TD>
-    <TD> The name of a NetCDF DART output file for testing IO.
-         If num_ens > 1 then you need to specify a file for each ensemble.  
+    <TD> The name(s) of the output NetCDF file(s) for testing IO, one per domain.
+      <!--   If num_ens &gt; 1 then you need to specify a file for each ensemble. -->
+</TD></TR>  
+
+<TR><TD> all_metadata_file  </TD>
+    <TD> character(len=256) </TD>
+    <TD> Test 6 produces an exhaustive list of metadata for EVERY element in 
+         the DART state vector. The metadata get written to this file name.
 </TD></TR>  
 
 <TR><TD> x_ind </TD>
@@ -144,90 +153,118 @@ prematurely terminating the namelist.
 
 <TR><TD> loc_of_interest </TD>
     <TD> real(r8), dimension(3) </TD>
-    <TD> The lat/lon/level for a <b>particular</b> location.  Tests the routine to find
-         the closest gridpoint.
+    <TD> The lat/lon/level for a <b>particular</b> location.  
+         Used in Test 4, the single-point interpolation test.
+         Indirectly tests the routine to find the closest gridpoint.
 </TD></TR>  
 
 <TR><TD> kind_of_interest </TD>
     <TD> character(len=32) </TD>
-    <TD> useful to restrict the search for a location of interest to include a
-         particular kind of state variable.
+    <TD> Specifies the QUANTITY of the model state to use in Test 4. 
 </TD></TR>  
 
 <TR><TD> interp_test_dlon </TD>
     <TD> real(r8) </TD>
-    <TD> The distance (measured in degrees) on the longitude interpolation grid. This
-         is used when using models with threed_sphere locaions.
+    <TD> The distance (measured in degrees) on the longitude interpolation grid.
+         Ignored if interpolating with cartesian coordinates. Used in Test 5.
 </TD></TR>  
 
 <TR><TD> interp_test_dlat </TD>
     <TD> real(r8) </TD>
-    <TD> The distance (measured in degrees) on the latitude interpolation grid. This
-         is used when using models with threed_sphere locaions.
+    <TD> The distance (measured in degrees) on the latitude interpolation grid.
+         Ignored if interpolating with cartesian coordinates. Used in Test 5.
 </TD></TR>  
 
 <TR><TD> interp_test_dvert </TD>
     <TD> real(r8) </TD>
-    <TD> The distance (measured in interp_vertcoord) on the vertical interpolation grid. This
-         is used when using models with threed_sphere locaions.
+    <TD> The distance (measured in interp_vertcoord) on the vertical interpolation grid.
+         Ignored if interpolating with cartesian coordinates. Used in Test 5.
+</TD></TR>  
+
+<TR><TD> interp_test_lonrange </TD>
+    <TD> real(r8) </TD>
+    <TD> The range of y to be tested with model_interpolate, with spacing
+         <em class=code>interp_test_dlon</em>. Ignored if interpolating with cartesian coordinates. Used in Test 5.
+</TD></TR>  
+
+<TR><TD> interp_test_latrange </TD>
+    <TD> real(r8) </TD>
+    <TD> The range of y to be tested with model_interpolate, with spacing
+         <em class=code>interp_test_dlat</em>. Ignored if interpolating with cartesian coordinates. Used in Test 5.
+</TD></TR>  
+
+<TR><TD> interp_test_vertrange </TD>
+    <TD> real(r8) </TD>
+    <TD> The range in the vertical direction to be tested with model_interpolate, with spacing
+         <em class=code>interp_test_dvert</em>. Ignored if interpolating with cartesian coordinates. Used in Test 5.
 </TD></TR>  
 
 <TR><TD> interp_test_dx </TD>
     <TD> real(r8) </TD>
-    <TD> The interval on the z axis of the interpolation grid. This
-         is used when using models with threed_cartesian locaions.
+    <TD> The interval on the x axis of the interpolation grid.
+         This is used in Test 5 for models with threed_cartesian coordinates.
 </TD></TR>  
 
 <TR><TD> interp_test_dy </TD>
     <TD> real(r8) </TD>
-    <TD> The interval on the y axis of the interpolation grid. This
-         is used when using models with threed_cartesian locaions.
+    <TD> The interval on the y axis of the interpolation grid.
+         This is used in Test 5 for models with threed_cartesian coordinates.
 </TD></TR>  
 
 <TR><TD> interp_test_dz </TD>
     <TD> real(r8) </TD>
-    <TD> The interval on the z axis of the interpolation grid. This
-         is used when using models with threed_cartesian locaions.
+    <TD> The interval on the z axis of the interpolation grid.
+         This is used in Test 5 for models with threed_cartesian coordinates.
 </TD></TR>  
 
 <TR><TD> interp_test_xrange </TD>
     <TD> real(r8) </TD>
-    <TD> The range of y to be tested with model_interpolate, with spacing
-         interp_test_dx.
+    <TD> The range of x to be tested with model_interpolate in Test 5, with spacing <em class=code>interp_test_dx</em>.
 </TD></TR>  
 
 <TR><TD> interp_test_yrange </TD>
     <TD> real(r8) </TD>
-    <TD> The range of y to be tested with model_interpolate, with spacing
-         interp_test_dy.
+    <TD> The range of y to be tested with model_interpolate in Test 5, with spacing <em class=code>interp_test_dy</em>.
 </TD></TR>  
 
 <TR><TD> interp_test_zrange </TD>
     <TD> real(r8) </TD>
-    <TD> The range in the vertical direction to be tested with model_interpolate, with spacing
-         interp_test_dz.
-</TD></TR>  
+    <TD> The range in the vertical direction to be tested with model_interpolate in Test 5, with spacing <em class=code>interp_test_dz</em>.
+</TD></TR>
 
-<TR><TD> inperp_test_vertcoord </TD>
+<TR><TD> interp_test_vertcoord </TD>
     <TD> character(len=32) </TD>
-    <TD> Since there are usually many state variables on the same grid, it may be useful to
-         restrict the search for a location of interest to include a particular kind of state 
-         variable.
+    <TD> Specifies the vertical coordinate system to use during the interpolation tests.
+         Valid values are: 'VERTISHEIGHT','VERTISPRESSURE','VERTISLEVEL', and 'VERTISSCALEHEIGHT'.
 </TD></TR>  
 
 <TR><TD> test1thru </TD>
     <TD> integer </TD>
-    <TD> <ul> <li>Test 1 - Test static_init_model to get the grid.</li>
-              <li>Test 2 - Reads and Writes a trivial restart file.</li>
-              <li>Test 3 - Takes an x_ind into the state vector and returns its location and quantity.</li>
-              <li>Test 4 - Tests model_interpolate for a single point.</li>
-              <li>Test 5 - Tests model_interpolate for a range of interpolation points.</li>
-         </ul>
+    <TD> If <em class=code>test1thru &gt; 0</em>, specifies the last test to be performed.
+         All tests get performed sequentially. If <em class=code>test1thru &lt; 0</em>,
+         <em class=code>run_tests</em> is used to specify the tests to perform.
+         <ol> <!-- 1 --><li>Test static_init_model() by calling get_model_size().</li>
+              <!-- 2 --><li>Reads and writes a restart file.</li>
+              <!-- 3 --><li>Tests get_state_meta_data() for a single index into the DART state.
+                            Helps determine if the state vector is constructed correctly.</li>
+              <!-- 4 --><li>Tests model_interpolate for a single point.</li>
+              <!-- 5 --><li>Tests model_interpolate for a range of interpolation points.</li>
+              <!-- 6 --><li>Long, expensive test to return the metadata for every element of the state vector.
+                            May be useful to decide on known locations for subsequent testing.</li>
+         </ol>
+</TD></TR>  
+
+<TR><TD> run_tests(:) </TD>
+    <TD> integer </TD>
+    <TD> Specifies a list of tests to be performed. Same test numbers as described in test1thru.
+         There are some dependencies. Tests 4 and 5 require a valid model state - which is read by Test 2.
+         If a required test is not specified, the required test is enabled and run.
+         A value of -1 means that <em class=code>test1thru</em> will be used.
 </TD></TR>  
 
 <TR><TD>   verbose   </TD>
     <TD>   logical   </TD>
-    <TD>Print extra info about the model_mod_check run.
+    <TD>Print extra info about the <em class=program>model_mod_check</em> run.
 </TD></TR>  
 
 
@@ -235,8 +272,32 @@ prematurely terminating the namelist.
 </TABLE>
 </div>
 
-<br />
-<br />
+<P>A more typical namelist for a single ensemble member for a model with an outer grid and a 
+   single nested grid is shown below.</P>
+<div class=namelist>
+<pre>
+&amp;model_mod_check_nml
+   input_state_files     = 'dart_vector1.nc','dart_vector2.nc'
+   output_state_files    = 'check_me1.nc', 'check_me2.nc'
+   all_metadata_file     = 'metadata.txt'
+   verbose               = .TRUE.
+   test1thru             = 5
+   run_tests             = -1
+   loc_of_interest       = 243.72386169, 52.78578186, 10.0
+   x_ind                 = 12666739
+   kind_of_interest      = 'QTY_POTENTIAL_TEMPERATURE'
+   interp_test_lonrange  = 144.0, 326.0
+   interp_test_dlon      = 1.0
+   interp_test_latrange  = -5.0, 80.0
+   interp_test_dlat      = 1.0
+   interp_test_vertrange = 100.0, 11000.0
+   interp_test_dvert     = 200.0
+   interp_test_vertcoord = 'VERTISHEIGHT'
+  /
+</pre>
+</div>
+
+<P><!-- simple divider for 'top' --></P>
 
 <!--==================================================================-->
 
@@ -244,22 +305,48 @@ prematurely terminating the namelist.
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
-assim_model_mod
-distributed_state_mod
-ensemble_manager_mod
-io_filenames_mod
-location_mod
-model_mod
-mpi_utilities_mod
-obs_kind_mod
-obs_sequence_mod
-state_structure_mod
-state_vector_io_mod
-test_interpolate_mod
-time_manager_mod
-types_mod
-utilities_mod
+assimilation_code/location/threed_sphere/location_mod.f90
+assimilation_code/location/utilities/default_location_mod.f90
+assimilation_code/location/utilities/location_io_mod.f90
+assimilation_code/modules/assimilation/adaptive_inflate_mod.f90
+assimilation_code/modules/assimilation/assim_model_mod.f90
+assimilation_code/modules/assimilation/assim_tools_mod.f90
+assimilation_code/modules/assimilation/cov_cutoff_mod.f90
+assimilation_code/modules/assimilation/filter_mod.f90
+assimilation_code/modules/assimilation/obs_model_mod.f90
+assimilation_code/modules/assimilation/quality_control_mod.f90
+assimilation_code/modules/assimilation/reg_factor_mod.f90
+assimilation_code/modules/assimilation/sampling_error_correction_mod.f90
+assimilation_code/modules/assimilation/smoother_mod.f90
+assimilation_code/modules/io/dart_time_io_mod.f90
+assimilation_code/modules/io/direct_netcdf_mod.f90
+assimilation_code/modules/io/io_filenames_mod.f90
+assimilation_code/modules/io/state_structure_mod.f90
+assimilation_code/modules/io/state_vector_io_mod.f90
+assimilation_code/modules/observations/forward_operator_mod.f90
+assimilation_code/modules/observations/obs_kind_mod.f90
+assimilation_code/modules/observations/obs_sequence_mod.f90
+assimilation_code/modules/utilities/distributed_state_mod.f90
+assimilation_code/modules/utilities/ensemble_manager_mod.f90
+assimilation_code/modules/utilities/netcdf_utilities_mod.f90
+assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
+assimilation_code/modules/utilities/null_win_mod.f90
+assimilation_code/modules/utilities/obs_impact_mod.f90
+assimilation_code/modules/utilities/options_mod.f90
+assimilation_code/modules/utilities/parse_args_mod.f90
+assimilation_code/modules/utilities/random_seq_mod.f90
+assimilation_code/modules/utilities/sort_mod.f90
+assimilation_code/modules/utilities/time_manager_mod.f90
+assimilation_code/modules/utilities/types_mod.f90
+assimilation_code/modules/utilities/utilities_mod.f90
+assimilation_code/programs/model_mod_check/model_mod_check.f90
+models/<em class=input>your_model_here</em>/model_mod.f90
+models/model_mod_tools/<em class=input>test_interpolate_threed_sphere.f90</em>
+models/utilities/default_model_mod.f90
+observations/forward_operators/obs_def_mod.f90
+observations/forward_operators/obs_def_utilities_mod.f90
 </PRE>
+<P>Items highlighted may change based on which model is being tested.</P>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -297,16 +384,45 @@ file with the following contents:
 </P>
 <pre>
 assimilation_code/location/threed_sphere/location_mod.f90
+assimilation_code/location/utilities/default_location_mod.f90
+assimilation_code/location/utilities/location_io_mod.f90
+assimilation_code/modules/assimilation/adaptive_inflate_mod.f90
 assimilation_code/modules/assimilation/assim_model_mod.f90
-models/<em class="input">your_model</em>/model_mod.f90
-assimilation_code/modules/observationsobs_kind_mod.f90
+assimilation_code/modules/assimilation/assim_tools_mod.f90
+assimilation_code/modules/assimilation/cov_cutoff_mod.f90
+assimilation_code/modules/assimilation/filter_mod.f90
+assimilation_code/modules/assimilation/obs_model_mod.f90
+assimilation_code/modules/assimilation/quality_control_mod.f90
+assimilation_code/modules/assimilation/reg_factor_mod.f90
+assimilation_code/modules/assimilation/sampling_error_correction_mod.f90
+assimilation_code/modules/assimilation/smoother_mod.f90
+assimilation_code/modules/io/dart_time_io_mod.f90
+assimilation_code/modules/io/direct_netcdf_mod.f90
+assimilation_code/modules/io/io_filenames_mod.f90
+assimilation_code/modules/io/state_structure_mod.f90
+assimilation_code/modules/io/state_vector_io_mod.f90
+assimilation_code/modules/observations/forward_operator_mod.f90
+assimilation_code/modules/observations/obs_kind_mod.f90
+assimilation_code/modules/observations/obs_sequence_mod.f90
+assimilation_code/modules/utilities/distributed_state_mod.f90
+assimilation_code/modules/utilities/ensemble_manager_mod.f90
+assimilation_code/modules/utilities/netcdf_utilities_mod.f90
 assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
-assimilation_code/modules/utilities/types_mod.f90
+assimilation_code/modules/utilities/null_win_mod.f90
+assimilation_code/modules/utilities/obs_impact_mod.f90
+assimilation_code/modules/utilities/options_mod.f90
+assimilation_code/modules/utilities/parse_args_mod.f90
 assimilation_code/modules/utilities/random_seq_mod.f90
+assimilation_code/modules/utilities/sort_mod.f90
 assimilation_code/modules/utilities/time_manager_mod.f90
+assimilation_code/modules/utilities/types_mod.f90
 assimilation_code/modules/utilities/utilities_mod.f90
 assimilation_code/programs/model_mod_check/model_mod_check.f90
+models/<em class=input>your_model_here</em>/model_mod.f90
+models/model_mod_tools/<em class=input>test_interpolate_threed_sphere.f90</em>
+models/utilities/default_model_mod.f90
 observations/forward_operators/obs_def_mod.f90
+observations/forward_operators/obs_def_utilities_mod.f90
 </pre>
 as well as a <em class="file">mkmf_model_mod_check</em> script.
 You should be able to look at any other <em class="file">mkmf_xxxx</em> 
@@ -328,13 +444,13 @@ you develop your <em class="program">model_mod</em>. The code is roughly
 divided into the following categories:
 </P>
 <ol><li>Check the geometry information, </li>
-    <li>Read/Write a trivial restart file, </li>
-    <li>Check the metadata, </li>
-    <li>Interpolate on a single point, </li>
-    <li>Interpolate on a range of points.</li>
+    <li>Read/write a restart file, </li>
+    <li>Check the construction of the state vector ... i.e. the metadata, </li>
+    <li>Interpolate at a single point, </li>
+    <li>Interpolate for a range of points.</li>
 </ol>
 
-<H3 class=indent1>Checking the Geometry Information:</H3>
+<H3 class=indent1>1. Checking the Geometry Information:</H3>
 <P>
 The first block of code in <em class="program">model_mod_check</em>
 is intended to test some of the most basic routines, especially
@@ -343,94 +459,46 @@ geometry of the grid, the number of state variables and their shape, etc.
 Virtually everything requires knowledge of the grid and state vector,
 so this block should never be skipped.
 </P>
-<pre>
-call initialize_modules_used()
 
-call find_namelist_in_file("input.nml", "model_mod_check_nml", iunit)
-read(iunit, nml = model_mod_check_nml, iostat = io)
-call check_namelist_read(iunit, io, "model_mod_check_nml")
-
-...
-
-call static_init_model() ! Exercise the initialization process
-
-model_size = get_model_size()
-write(*,'(''state vector has length'',i10)') model_size
-</pre>
-
-<H3 class=indent1>Read/Writing a trivial restart file:</H3>
+<H3 class=indent1>2. Read/writing a restart file:</H3>
 <P>
-This directly reads and write state variables from your restart file. This
+This directly reads and write state variables from the model netCDF file. This
 is a nice sanity check to make sure that the DART state vector is being read
 in properly.
 </P>
-<pre>
-! Reading the model state variables
-write(*,'(2A)') '- Reading File : ', trim(get_restart_filename(input_restart_files, imem, domain=idom))
-call read_state(ens_handle, file_info_input, read_time_from_file, model_time)
-      
 
-! Writting the model state variables
-write(*,'(2A)') '- Writing File : ', trim(get_restart_filename(output_restart_files, imem, domain=idom))
-call write_state(ens_handle, file_info_output)
-</pre>
-
-<H3 class=indent1>Check the metadata:</H3>
+<H3 class=indent1>3. Check the construction of the state vector:</H3>
 <P>It is critical to return the correct metadata for any given index into
 the DART state vector. This code block tests the two most common features of
 the metadata. As a bonus, this routine is also quite useful to determine
 EXACTLY where to place your first test observation. If you test precisely at
 a grid location, you should be able to really get a handle on debugging your
 <em class="program">model_interpolate()</em> routine. 
-<!---
-The <em class="program">find_closest_gridpoint()</em> routine is designed to
-ensure that your variable layout is as you expect. "closest" in this context
-is close in the horizontal only - all vertical levels will be reported.
--->
 </P>
-<pre>
-call check_meta_data( x_ind )
-<!---
-call find_closest_gridpoint( loc_of_interest )
--->
-</pre>
 
-<H3 class=indent1>Test interpolation on a single point.</H3>
+<H3 class=indent1>4. Test interpolation on a single point.</H3>
 <P>
 This tests your model's interpolation routine on a single point and
-returns the interpolated value.
+returns the interpolated value. This requires that Test 2 works - it needs
+a valid model state with data.
 </P>
-<pre>
-num_failed = test_interpolate_single( ens_handle,            &
-                                      num_ens,               &
-                                      interp_test_vertcoord, &
-                                      loc_of_interest(1),    &
-                                      loc_of_interest(2),    &
-                                      loc_of_interest(3),    &
-                                      mykindindex,           &
-                                      interp_vals,           &
-                                      ios_out )
-</pre>
 
-<H3 class=indent1>Test interpolation on a range of values.</H3>
+<H3 class=indent1>5. Test interpolation on a range of values.</H3>
 <P>
 This tests your model's interpolation routine on a range of values
-returns the interpolated grid in check_me_interptest.nc and 
-check_me_interptest.m which can be read in MatLab.
+returns the interpolated grid in <em class=file>check_me_interptest.nc</em>
+and <em class=file>check_me_interptest.m</em> which can be read in Matlab
+and used to visualize the result.
 </P>
-<pre>
-num_failed = test_interpolate_range( ens_handle,            &
-                                     num_ens,               &
-                                     interp_test_dlon,      &
-                                     interp_test_dlat,      &
-                                     interp_test_dvert,     &
-                                     interp_test_vertcoord, &
-                                     interp_test_lonrange,  &
-                                     interp_test_latrange,  &
-                                     interp_test_vertrange, &
-                                     mykindindex,           &
-                                     verbose )
-</pre>
+
+<H3 class=indent1>6. Exhaustively test the construction of the state vector.</H3>
+<P>
+This can be a long test, depending on the size of your state vector.
+This returns the same data as in Test 3 - <em class=strong> for every element </em>
+in the state vector. The metadata are written to a file specified by <em class=file>all_metadata_file</em>
+and <em class=file>check_me_interptest.m</em> which can be read in Matlab
+and used to visualize the result.
+</P>
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
