@@ -6,11 +6,17 @@
 #
 # DART $Id$
 
-rm -f ../enkf/kinds.f90
-/usr/bin/cpp -C -P -D_REAL8_ -traditional-cpp ../enkf/kinds.F90 > ../enkf/kinds.f90
+# we need to preprocess kinds.F90.   the following works on gfortran
+# 
+
+# but if it doesn't, you can try this to explicitly preprocess F90 -> f90 first,
+# and change the path_names file to include the .f90 file instead of .F90:
+#
+# rm -f ../enkf/kinds.f90
+# /usr/bin/cpp -C -P -D_REAL8_ -traditional-cpp ../enkf/kinds.F90 > ../enkf/kinds.f90
 
 ../../../../build_templates/mkmf -p gsi_to_dart -t ../../../../build_templates/mkmf.template   \
- -a "../../../.." -w path_names_gsi_to_dart  # Note the "-w" for MPI build
+ -c " -D_REAL8_" -a "../../../.." -w path_names_gsi_to_dart  # Note the "-w" for MPI build
 
 exit $status
 
