@@ -26,7 +26,7 @@ model=`pwd | sed -e 's;/work;;' -e 's;^.*/;;' `
 umodel=`echo $model | tr '[a-z]' '[A-Z]' `
 toppath=`cd ../../../; pwd`
 
-destdir=$toppath/doc/doxygen/$model
+destdir=$toppath/documentation/doxygen/$model
 
 echo Generating documentation for all executables in the current directory
 echo for the model ${model}.   All html files will be located under the directory

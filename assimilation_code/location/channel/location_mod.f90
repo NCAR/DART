@@ -11,7 +11,7 @@ module location_mod
 ! Implements location interfaces for a 3d channel in X,Y,Z where X is periodic,
 ! Y has walls (limited domain), and Z is infinite
 
-use      types_mod, only : r8, MISSING_R8, MISSING_I, PI, RAD2DEG, DEG2RAD
+use      types_mod, only : r8, i8, MISSING_R8, MISSING_I, PI, RAD2DEG, DEG2RAD
 use  utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format, &
                            nc_check, E_MSG, open_file, close_file, set_output,       &
                            logfileunit, nmlfileunit, find_namelist_in_file,          &
@@ -20,6 +20,11 @@ use  utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_for
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 use   obs_kind_mod, only : get_num_types_of_obs, get_name_for_type_of_obs
 use mpi_utilities_mod, only : my_task_id, task_count
+use ensemble_manager_mod, only : ensemble_type
+use default_location_mod, only : has_vertical_choice, vertical_localization_on, &
+                                 get_vertical_localization_coord, &
+                                 set_vertical_localization_coord
+
 
 implicit none
 private
@@ -27,15 +32,12 @@ private
 public :: location_type, get_location, set_location, &
           set_location_missing, is_location_in_region, &
           write_location, read_location, interactive_location, query_location, &
-          LocationDims, LocationName, LocationLName, get_close_obs, &
-          get_close_maxdist_init, get_close_obs_init, get_close_type, &
-          operator(==), operator(/=), get_dist, get_close_obs_destroy, &
-          nc_write_location_atts, nc_get_location_varids, nc_write_location, &
-          vert_is_height, vert_is_pressure, vert_is_undef, vert_is_level, &
-          vert_is_surface, vert_is_scale_height, has_vertical_localization, &
-          print_get_close_type, find_nearest, &
-          set_vert, get_vert, set_which_vert
-
+          LocationDims, LocationName, LocationLName, LocationStorageOrder, LocationUnits, &
+          get_close_type, get_close_init, get_close_obs, get_close_state, get_close_destroy, &
+          operator(==), operator(/=), get_dist, has_vertical_choice, vertical_localization_on, &
+          set_vertical, is_vertical, get_vertical_localization_coord, &
+          set_vertical_localization_coord, convert_vertical_obs, convert_vertical_state, &
+          print_get_close_type, find_nearest
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -48,43 +50,10 @@ type location_type
    real(r8) :: x, y, z
 end type location_type
 
-! This version supports both regularly spaced boxes, and octree division
-! of the space.  for octrees, divide each dim in half until N numbers of filled 
-! boxes, or octree reaches some depth?  give some threshold where you don't
-! divide a box with less than N points in it?
-
-! contrast with kD-trees (divide along dimensions, not points), and there are
-! two types of octrees - PR (point region) where the regions split at an
-! explicit point, vs MX tree where the split is defined to be at the center
-! of the region.
-
-! if the underlying geometry is spherical, there will be many many empty boxes 
-! if we uniformly divide up space, and worse, existing locations will be 
-! clustered in a few boxes.
-
-
-! fortran doesn't let you make arrays of pointers, but you can make a
-! derived type containing a pointer, and then make arrays of that derived type.
-! i'm sure if i think about this hard enough i'll figure out why this is so,
-! but for now i'll just believe the great google which tells me it's this way.
-type octree_ptr
+type get_close_type
    private
-   type(octree_type), pointer :: p
-end type octree_ptr
-
-type octree_type
-   private
-   integer             :: count    ! count in this cube, -1 for non-terminal cube
-   integer, pointer    :: index(:) ! list of indices in this cube, count long
-   type(octree_ptr), allocatable :: children(:,:,:)  ! subcubes
-   type(octree_type), pointer    :: parent           ! who made you
-   type(location_type) :: llb      ! xyz of lower left bottom
-   type(location_type) :: split    ! xyz of split point
-   type(location_type) :: urt      ! xyz of upper right top
-end type octree_type
-
-type box_type
-   private
+   integer           :: num
+   real(r8)          :: maxdist
    integer, pointer  :: loc_box(:)           ! (nloc); List of loc indices in boxes
    integer, pointer  :: count(:, :, :)       ! (nx, ny, nz); # of locs in each box
    integer, pointer  :: start(:, :, :)       ! (nx, ny, nz); Start of list of locs in this box
@@ -93,15 +62,6 @@ type box_type
    real(r8)          :: bot_z, top_z 
    real(r8)          :: x_width, y_width, z_width    ! widths of boxes in x,y,z
    real(r8)          :: nboxes_x, nboxes_y, nboxes_z ! based on maxdist how far to search
-end type box_type
-
-! Type to facilitate efficient computation of observations close to a given location
-type get_close_type
-   private
-   integer           :: num
-   real(r8)          :: maxdist
-   type(box_type)    :: box
-   type(octree_type) :: root
 end type get_close_type
 
 type(random_seq_type) :: ran_seq
@@ -112,6 +72,8 @@ integer,              parameter :: LocationDims = 3
 character(len = 129), parameter :: LocationName = "loc3Dchan"
 character(len = 129), parameter :: LocationLName = &
                                    "threed channel locations: x, y, z"
+character(len = 129), parameter :: LocationStorageOrder = "X Y Z"
+character(len = 129), parameter :: LocationUnits = "none none none"
 
 character(len = 512) :: errstring
 
@@ -130,18 +92,14 @@ integer :: nz               = 10
 logical :: output_box_info  = .false.
 integer :: print_box_level  = 0
 ! tuning options
-integer :: nboxes           = 1000 ! suggestion for max number of nodes
-integer :: maxdepth         = 4    ! suggestion for max tree depth
-integer :: filled           = 10   ! threshold at which you quit splitting
-logical :: use_octree       = .false.  ! if false, use regular boxes, true = octree
+integer :: nboxes           = 1000 ! compute nx/ny/nz based on cube root of this #
 
 ! Option for verification using exhaustive search
 ! .true. means recompute everything - expensive
 logical :: compare_to_correct = .false.
 
-namelist /location_nml/ &
-   filled, nboxes, maxdepth, use_octree, &
-   compare_to_correct, output_box_info, print_box_level
+namelist /location_nml/ nboxes, compare_to_correct, &
+                        output_box_info, print_box_level
 
 !-----------------------------------------------------------------
 
@@ -162,7 +120,6 @@ subroutine initialize_module
 ! things which need doing exactly once.
 
 integer :: iunit, io, i
-character(len=129) :: str1
 
 if (module_initialized) return
 
@@ -178,11 +135,6 @@ call check_namelist_read(iunit, io, "location_nml")
 
 if(do_nml_file()) write(nmlfileunit, nml=location_nml)
 if(do_nml_term()) write(     *     , nml=location_nml)
-
-if (filled < 1) then
-   write(errstring,*)'filled sets limit for number of points per box.  must be >= 1'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
-endif
 
 end subroutine initialize_module
 
@@ -433,12 +385,12 @@ integer, intent(in)                      :: locfile
 character(len = *), intent(in), optional :: fform
 type(location_type)                      :: read_location
 
-character(len=8) :: header
+character(len=9) :: header
 
 if ( .not. module_initialized ) call initialize_module
 
 if (ascii_file_format(fform)) then
-   read(locfile, '(A8)' ) header
+   read(locfile, '(A9)' ) header
    if(header /= 'loc3Dchan') then
          write(errstring,*)'Expected location header "loc3Dchan" in input file, got ', header
       call error_handler(E_ERR, 'read_location', errstring, source, revision, revdate)
@@ -634,31 +586,15 @@ end subroutine nc_write_location
 
 !----------------------------------------------------------------------------
 
-subroutine get_close_obs_init(gc, num, obs)
+subroutine get_close_init(gc, num, maxdist, locs, maxdist_list)
  
 ! Initializes part of get_close accelerator that depends on the particular obs
 
 type(get_close_type), intent(inout) :: gc
 integer,              intent(in)    :: num
-type(location_type),  intent(in)    :: obs(num)
-
-if (use_octree) then
-   call get_close_init_otree(gc, num, obs)
-else
-   call get_close_init_boxes(gc, num, obs)
-endif
-
-end subroutine get_close_obs_init
-
-!----------------------------------------------------------------------------
-
-subroutine get_close_init_boxes(gc, num, locs)
- 
-! Initializes part of get_close accelerator that depends on the particular loc
-
-type(get_close_type), intent(inout) :: gc
-integer,              intent(in)    :: num
-type(location_type),  intent(in)    :: locs(num)
+real(r8),             intent(in)    :: maxdist
+type(location_type),  intent(in)    :: locs(:)
+real(r8), intent(in), optional      :: maxdist_list(:)
 
 integer :: i, j, k, cum_start, l
 integer :: x_box(num), y_box(num), z_box(num)
@@ -666,9 +602,22 @@ integer :: tstart(nx, ny, nz)
 
 if ( .not. module_initialized ) call initialize_module
 
-! Allocate storage for obs number dependent part
-allocate(gc%box%loc_box(num))
-gc%box%loc_box(:) = -1
+! Set the maximum localization distance
+gc%maxdist = maxdist
+
+! Allocate storage for number dependent part
+allocate(gc%loc_box(num))
+gc%loc_box(:) = -1
+
+! FIXME: compute nx, ny, nz from nboxes?  or put in namelist
+nx = nint(real(nboxes, r8)**0.33333)   ! roughly cube root
+ny = nint(real(nboxes, r8)**0.33333)   ! roughly cube root
+nz = nint(real(nboxes, r8) / real(nx * ny, r8))  ! whatever is left
+
+! Allocate the storage for the grid dependent boxes
+allocate(gc%count(nx,ny,nz), gc%start(nx,ny,nz))
+gc%count  = -1
+gc%start  = -1
 
 ! Set the value of num_locs in the structure
 gc%num = num
@@ -676,34 +625,34 @@ gc%num = num
 ! If num == 0, no point in going any further.
 if (num == 0) return
 
-! FIXME: compute nx, ny, nz from nboxes?  or put in namelist
-nx = nint(real(nboxes, r8)**0.33333)   ! roughly cube root
-ny = nint(real(nboxes, r8)**0.33333)   ! roughly cube root
-nz = nint(real(nboxes, r8) / real(nx * ny, r8))  ! whatever is left
+
+! Allocate storage for obs number dependent part
+allocate(gc%loc_box(num))
+gc%loc_box(:) = -1
 
 ! Determine where the boxes should be for this set of locs and maxdist
 call find_box_ranges(gc, locs, num)
 
 ! Begin by computing the number of locations in each box in x,y,z
-gc%box%count = 0
+gc%count = 0
 do i = 1, num
 
 !print *, i, locs(i)%x, locs(i)%y, locs(i)%z
-   x_box(i) = floor((locs(i)%x - gc%box%bot_x) / gc%box%x_width) + 1
+   x_box(i) = floor((locs(i)%x - gc%bot_x) / gc%x_width) + 1
    if(x_box(i) > nx) x_box(i) = nx
    if(x_box(i) < 1)  x_box(i) = 1
 
-   y_box(i) = floor((locs(i)%y - gc%box%bot_y) / gc%box%y_width) + 1
+   y_box(i) = floor((locs(i)%y - gc%bot_y) / gc%y_width) + 1
    if(y_box(i) > ny) y_box(i) = ny
    if(y_box(i) < 1)  y_box(i) = 1
 
-   z_box(i) = floor((locs(i)%z - gc%box%bot_z) / gc%box%z_width) + 1
+   z_box(i) = floor((locs(i)%z - gc%bot_z) / gc%z_width) + 1
    if(z_box(i) > nz) z_box(i) = nz
    if(z_box(i) < 1)  z_box(i) = 1
 
-   gc%box%count(x_box(i), y_box(i), z_box(i)) = gc%box%count(x_box(i), y_box(i), z_box(i)) + 1
+   gc%count(x_box(i), y_box(i), z_box(i)) = gc%count(x_box(i), y_box(i), z_box(i)) + 1
 !print *, 'adding count to box ', x_box(i), y_box(i), z_box(i), &
-!                                 gc%box%count(x_box(i), y_box(i), z_box(i))
+!                                 gc%count(x_box(i), y_box(i), z_box(i))
 end do
 
 ! Figure out where storage for each boxes members should begin
@@ -711,25 +660,25 @@ cum_start = 1
 do i = 1, nx
    do j = 1, ny
       do k = 1, nz
-         gc%box%start(i, j, k) = cum_start
-         cum_start = cum_start + gc%box%count(i, j, k)
+         gc%start(i, j, k) = cum_start
+         cum_start = cum_start + gc%count(i, j, k)
       end do
    end do
 end do
 
 ! Now we know how many are in each box, get a list of which are in each box
-tstart = gc%box%start
+tstart = gc%start
 do i = 1, num
-   gc%box%loc_box(tstart(x_box(i), y_box(i), z_box(i))) = i
+   gc%loc_box(tstart(x_box(i), y_box(i), z_box(i))) = i
    tstart(x_box(i), y_box(i), z_box(i)) = tstart(x_box(i), y_box(i), z_box(i)) + 1
 end do
 
 do i = 1, nx
    do j = 1, ny
       do k = 1, nz
-if (gc%box%count(i,j,k) > 0) print *, i,j,k, gc%box%count(i,j,k), gc%box%start(i,j,k)
-         do l=1, gc%box%count(i,j,k)
-!print *, l, gc%box%loc_box(l)
+if (gc%count(i,j,k) > 0) print *, i,j,k, gc%count(i,j,k), gc%start(i,j,k)
+         do l=1, gc%count(i,j,k)
+!print *, l, gc%loc_box(l)
          enddo
       end do
    end do
@@ -755,178 +704,72 @@ if (output_box_info) then
    endif
 endif
 
-end subroutine get_close_init_boxes
+end subroutine get_close_init
 
 !----------------------------------------------------------------------------
 
-subroutine get_close_init_otree(gc, num, locs)
- 
-! Octree version
-
-! Initializes part of get_close accelerator that depends on the particular locs
-
-type(get_close_type), intent(inout), target :: gc
-integer,              intent(in)    :: num
-type(location_type),  intent(in)    :: locs(num)
-
-integer :: i, j, k, n
-
-type(octree_type), pointer :: r, c
-real(r8) :: xl, xu, yl, yu, zl, zu
-
-if ( .not. module_initialized ) call initialize_module
-
-r => gc%root
-
-! Set the value of num_locs in the structure
-gc%num = num
-
-! If num == 0, no point in going any further.
-if (num == 0) return
-
-r%count = num
-
-! need to include space outside the limits of the initialization set,
-! so points outside boundary but closer than maxdist will still match.
-r%llb = set_location(minval(locs(:)%x)-gc%maxdist, &
-                     minval(locs(:)%y)-gc%maxdist, &
-                     minval(locs(:)%z)-gc%maxdist)
-r%urt = set_location(maxval(locs(:)%x)+gc%maxdist, &
-                     maxval(locs(:)%y)+gc%maxdist, &
-                     maxval(locs(:)%z)+gc%maxdist)
-! for now, split is midpoint in each dim.  this does NOT have to be the case.
-r%split = set_location((r%urt%x + r%llb%x) / 2.0_r8, &
-                       (r%urt%y + r%llb%y) / 2.0_r8, &
-                       (r%urt%z + r%llb%z) / 2.0_r8)
-
-! initially everyone is in the original list
-allocate(r%index(num))
-do i=1,num
-   r%index(i) = i
-enddo
-
-! recursion starts here
-if (r%count > filled) then
-   call split_tree(r)
-   call move_to_children(r, locs)
-endif
-
-! info on how well the boxes are working.  by default print nothing.
-! set print_box_level to higher values to get more and more detail.
-! user info should be level 1; 2 and 3 should be for debug only.
-! special for grid-decomposition debugging; set print level to -8.
-if (output_box_info) then
-   ! if this task normally prints, call the print routine.
-   ! if print level > 2, set all tasks to print and call print.
-   ! then reset the status to off again.
-   if (do_output()) then
-      call print_get_close_type(gc, print_box_level)
-   else if (print_box_level >= 2 .or. print_box_level < 0) then
-      ! print status was false, but turn on temporarily
-      ! to output box info from all tasks.
-      call set_output(.true.)
-      call print_get_close_type(gc, print_box_level)
-      call set_output(.false.)
-   endif
-endif
-
-end subroutine get_close_init_otree
-
-!----------------------------------------------------------------------------
-
-subroutine get_close_obs_destroy(gc)
+subroutine get_close_destroy(gc)
 
 type(get_close_type), intent(inout) :: gc
 
-if (use_octree) then
-   call get_close_destroy_otree(gc)
-else
-   call get_close_destroy_boxes(gc)
-endif
+deallocate(gc%loc_box, gc%count, gc%start)
 
-end subroutine get_close_obs_destroy
+end subroutine get_close_destroy
 
 !----------------------------------------------------------------------------
 
-subroutine get_close_destroy_boxes(gc)
+subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
+                         num_close, close_ind, dist, ens_handle)
 
-type(get_close_type), intent(inout) :: gc
+! The specific type of the base observation, plus the generic kinds list
+! for either the state or obs lists are available if a more sophisticated
+! distance computation is needed.
 
-deallocate(gc%box%loc_box, gc%box%count, gc%box%start)
+type(get_close_type),          intent(in)  :: gc
+type(location_type),           intent(in)  :: base_loc, locs(:)
+integer,                       intent(in)  :: base_type, loc_qtys(:), loc_types(:)
+integer,                       intent(out) :: num_close, close_ind(:)
+real(r8),            optional, intent(out) :: dist(:)
+type(ensemble_type), optional, intent(in)  :: ens_handle
 
-end subroutine get_close_destroy_boxes
-
-!----------------------------------------------------------------------------
-
-subroutine get_close_destroy_otree(gc)
-
-type(get_close_type), intent(inout) :: gc
-
-! FIXME: do a depth-first search and deallocate
-! the index() arrays, then deallocate the octree structs
-! one by one.
-
-! gc%root -> children until unallocated
-
-end subroutine get_close_destroy_otree
-
-!----------------------------------------------------------------------------
-
-subroutine get_close_maxdist_init(gc, maxdist)
-
-type(get_close_type), intent(inout) :: gc
-real(r8),             intent(in)    :: maxdist
-
-character(len=129) :: str1
-integer :: i
-
-! set the default value.
-gc%maxdist = maxdist
-!print *, 'setting maxdist to ', maxdist
-
-if (.not. use_octree) then
-   ! Allocate the storage for the grid dependent boxes
-   allocate(gc%box%count(nx,ny,nz), gc%box%start(nx,ny,nz))
-   gc%box%count  = -1
-   gc%box%start  = -1
-endif
-
-end subroutine get_close_maxdist_init
-
-!----------------------------------------------------------------------------
-
-subroutine get_close_obs(gc, base_obs_loc, base_obs_type, obs, obs_kind, &
-   num_close, close_ind, dist)
-
-! FIXME: these work on any locations. the names of these args should be:  
-!   gc, base_loc, base_type, locs, locs_kinds, ... 
-
-type(get_close_type), intent(in)  :: gc
-type(location_type),  intent(in)  :: base_obs_loc,  obs(:)
-integer,              intent(in)  :: base_obs_type, obs_kind(:)
-integer,              intent(out) :: num_close, close_ind(:)
-real(r8), optional,   intent(out) :: dist(:)
-
-if (use_octree) then
-   call get_close_otree(gc, base_obs_loc, base_obs_type, obs, obs_kind, &
-                        num_close, close_ind, dist)
-else
-   call get_close_boxes(gc, base_obs_loc, base_obs_type, obs, obs_kind, &
-                        num_close, close_ind, dist)
-endif
+call get_close(gc, base_loc, base_type, locs, loc_qtys, &
+               num_close, close_ind, dist, ens_handle)
 
 end subroutine get_close_obs
 
 !----------------------------------------------------------------------------
 
-subroutine get_close_boxes(gc, base_loc, base_type, loc, loc_kind, &
-   num_close, close_ind, dist)
+subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
+                           num_close, close_ind, dist, ens_handle)
+
+! The specific type of the base observation, plus the generic kinds list
+! for either the state or obs lists are available if a more sophisticated
+! distance computation is needed.
+
+type(get_close_type),          intent(in)  :: gc
+type(location_type),           intent(in)  :: base_loc, locs(:)
+integer,                       intent(in)  :: base_type, loc_qtys(:)
+integer(i8),                   intent(in)  :: loc_indx(:)
+integer,                       intent(out) :: num_close, close_ind(:)
+real(r8),            optional, intent(out) :: dist(:)
+type(ensemble_type), optional, intent(in)  :: ens_handle
+
+call get_close(gc, base_loc, base_type, locs, loc_qtys, &
+               num_close, close_ind, dist, ens_handle)
+
+end subroutine get_close_state
+
+!----------------------------------------------------------------------------
+
+subroutine get_close(gc, base_loc, base_type, locs, loc_qtys, &
+                     num_close, close_ind, dist, ens_handle)
 
 type(get_close_type), intent(in)  :: gc
-type(location_type),  intent(in)  :: base_loc,  loc(:)
-integer,              intent(in)  :: base_type, loc_kind(:)
+type(location_type),  intent(in)  :: base_loc,  locs(:)
+integer,              intent(in)  :: base_type, loc_qtys(:)
 integer,              intent(out) :: num_close, close_ind(:)
 real(r8), optional,   intent(out) :: dist(:)
+type(ensemble_type),  intent(in)  :: ens_handle
 
 ! If dist is NOT present, just find everybody in a box, put them in the list,
 ! but don't compute any distances
@@ -949,13 +792,13 @@ close_ind = -99
 if(present(dist)) dist = -1e38_r8  ! big but negative
 this_dist = 1e38_r8                ! something big and positive.
 
-! the list of locations in the loc() argument must be the same
-! as the list of locations passed into get_close_obs_init(), so
-! gc%num and size(loc) better be the same.   if the list changes,
+! the list of locations in the locs() argument must be the same
+! as the list of locations passed into get_close_init(), so
+! gc%num and size(locs) better be the same.   if the list changes,
 ! you have to destroy the old gc and init a new one.
-if (size(loc) /= gc%num) then
-   write(errstring,*)'loc() array must match one passed to get_close_obs_init()'
-   call error_handler(E_ERR, 'get_close_boxes', errstring, source, revision, revdate)
+if (size(locs) /= gc%num) then
+   write(errstring,*)'locs() array must match one passed to get_close_init()'
+   call error_handler(E_ERR, 'get_close', errstring, source, revision, revdate)
 endif
 
 ! If num == 0, no point in going any further. 
@@ -967,15 +810,15 @@ this_maxdist = gc%maxdist
 ! For validation, it is useful to be able to compare against exact
 ! exhaustive search
 if(compare_to_correct) then
-   call exhaustive_collect(gc, base_loc, loc, &
+   call exhaustive_collect(gc, base_loc, locs, &
                            cnum_close, cclose_ind, cdist)
 endif
 
 
-! Begin by figuring out which box the base loc is in
-x_box = floor((base_loc%x - gc%box%bot_x) / gc%box%x_width) + 1
-y_box = floor((base_loc%y - gc%box%bot_y) / gc%box%y_width) + 1
-z_box = floor((base_loc%z - gc%box%bot_z) / gc%box%z_width) + 1
+! Begin by figuring out which box the base locs is in
+x_box = floor((base_loc%x - gc%bot_x) / gc%x_width) + 1
+y_box = floor((base_loc%y - gc%bot_y) / gc%y_width) + 1
+z_box = floor((base_loc%z - gc%bot_z) / gc%z_width) + 1
 
 ! If it is not in any box, then it is more than the maxdist away from everybody
 if(x_box > nx .or. x_box < 1 .or. x_box < 0) return
@@ -985,22 +828,22 @@ if(z_box > nz .or. z_box < 1 .or. z_box < 0) return
 ! figure out how many boxes need searching
 ! FIXME: if we support a variable maxdist, nboxes_X will need to
 ! be computed on the fly here instead of precomputed at init time.
-!print *, 'nboxes x, y, z = ', gc%box%nboxes_x, gc%box%nboxes_y, gc%box%nboxes_z
+!print *, 'nboxes x, y, z = ', gc%nboxes_x, gc%nboxes_y, gc%nboxes_z
 !print *, 'base_loc in box ', x_box, y_box, z_box
 
-start_x = x_box - gc%box%nboxes_x
+start_x = x_box - gc%nboxes_x
 if (start_x < 1) start_x = 1
-end_x = x_box + gc%box%nboxes_x
+end_x = x_box + gc%nboxes_x
 if (end_x > nx) end_x = nx
 
-start_y = y_box - gc%box%nboxes_y
+start_y = y_box - gc%nboxes_y
 if (start_y < 1) start_y = 1
-end_y = y_box + gc%box%nboxes_y
+end_y = y_box + gc%nboxes_y
 if (end_y > ny) end_y = ny
 
-start_z = z_box - gc%box%nboxes_z
+start_z = z_box - gc%nboxes_z
 if (start_z < 1) start_z = 1
-end_z = z_box + gc%box%nboxes_z
+end_z = z_box + gc%nboxes_z
 if (end_z > nz) end_z = nz
 
 !print *, 'looping from '
@@ -1014,19 +857,19 @@ do i = start_x, end_x
       do k = start_z, end_z
 
          ! Box to search is i,j,k
-         n_in_box = gc%box%count(i, j, k)
-         st = gc%box%start(i,j,k)
+         n_in_box = gc%count(i, j, k)
+         st = gc%start(i,j,k)
 
 
          ! Loop to check how close all loc in the box are; add those that are close
          do l = 1, n_in_box
 
-            t_ind = gc%box%loc_box(st - 1 + l)
+            t_ind = gc%loc_box(st - 1 + l)
 !print *, 'l, t_ind = ', l, t_ind
 
             ! Only compute distance if dist is present
             if(present(dist)) then
-               this_dist = get_dist(base_loc, loc(t_ind))
+               this_dist = get_dist(base_loc, locs(t_ind))
 !print *, 'this_dist = ', this_dist
                ! If this loc's distance is less than cutoff, add it in list
                if(this_dist <= this_maxdist) then
@@ -1052,80 +895,7 @@ if(compare_to_correct) then
 endif
 
 
-end subroutine get_close_boxes
-
-!----------------------------------------------------------------------------
-
-subroutine get_close_otree(gc, base_loc, base_type, loc, loc_kind, &
-   num_close, close_ind, dist)
-
-type(get_close_type), intent(in), target  :: gc
-type(location_type),  intent(in)  :: base_loc,  loc(:)
-integer,              intent(in)  :: base_type, loc_kind(:)
-integer,              intent(out) :: num_close, close_ind(:)
-real(r8), optional,   intent(out) :: dist(:)
-
-! If dist is NOT present, just find everybody in a box, put them in the list,
-! but don't compute any distances
-
-type(octree_type), pointer :: r, c
-
-integer :: x_box, y_box, z_box, i, j, k, l, n
-integer :: start_x, end_x, start_y, end_y, start_z, end_z
-integer ::  n_in_box, st, t_ind
-real(r8) :: this_dist
-
-! Variables needed for comparing against correct case.
-! these could be large - make them allocatable
-! and only allocate them if needed.
-integer :: cnum_close
-integer, allocatable :: cclose_ind(:)
-real(r8), allocatable :: cdist(:)
-
-! First, set the intent out arguments to a missing value
-num_close = 0
-close_ind = -99
-if(present(dist)) dist = -1e38_r8  ! big but negative
-this_dist = 1e38_r8                ! something big and positive.
-
-! the list of locations in the loc() argument must be the same
-! as the list of locations passed into get_close_obs_init(), so
-! gc%num and size(loc) better be the same.   if the list changes,
-! you have to destroy the old gc and init a new one.
-if (size(loc) /= gc%num) then
-   write(errstring,*)'loc() array must match one passed to get_close_obs_init()'
-   call error_handler(E_ERR, 'get_close_otree', errstring, source, revision, revdate)
-endif
-
-! If num == 0, no point in going any further. 
-if (gc%num == 0) return
-
-
-! For validation, it is useful to be able to compare against exact
-! exhaustive search
-if(compare_to_correct) then
-   call exhaustive_collect(gc, base_loc, loc, &
-                           cnum_close, cclose_ind, cdist)
-endif
-
-
-! revised plan:
-! find min/max extents in each dim, +/- maxdist from base
-! and only descend lower in a branch if the region intersects
-! the range that this branch covers.  maxdist doesn't have to
-! be a constant in this case - it can be specified per search.
-
-call collect_nearby(gc%root, base_loc, gc%maxdist, loc, base_type, loc_kind, &
-                    num_close, close_ind, dist)
-
-
-! Verify by comparing to exhaustive search
-if(compare_to_correct) then
-   call exhaustive_report(cnum_close, num_close, cclose_ind, close_ind, cdist, dist)
-endif
-
-
-end subroutine get_close_otree
+end subroutine get_close
 
 !--------------------------------------------------------------------------
 
@@ -1147,33 +917,33 @@ logical :: old_out
 
 ! FIXME: this space could be very sparse
 
-gc%box%bot_x = minval(locs(:)%x)
-gc%box%bot_y = minval(locs(:)%y)
-gc%box%bot_z = minval(locs(:)%z)
+gc%bot_x = minval(locs(:)%x)
+gc%bot_y = minval(locs(:)%y)
+gc%bot_z = minval(locs(:)%z)
 
-gc%box%top_x = maxval(locs(:)%x)
-gc%box%top_y = maxval(locs(:)%y)
-gc%box%top_z = maxval(locs(:)%z)
+gc%top_x = maxval(locs(:)%x)
+gc%top_y = maxval(locs(:)%y)
+gc%top_z = maxval(locs(:)%z)
 
-gc%box%x_width = (gc%box%top_x - gc%box%bot_x) / nx
-gc%box%y_width = (gc%box%top_y - gc%box%bot_y) / ny 
-gc%box%z_width = (gc%box%top_z - gc%box%bot_z) / nz
+gc%x_width = (gc%top_x - gc%bot_x) / nx
+gc%y_width = (gc%top_y - gc%bot_y) / ny 
+gc%z_width = (gc%top_z - gc%bot_z) / nz
 
 ! FIXME:  compute a sphere of radius maxdist and see how
 ! many boxes in x, y, z that would include.
-gc%box%nboxes_x = aint((gc%maxdist + (gc%box%x_width-1)) / gc%box%x_width) 
-gc%box%nboxes_y = aint((gc%maxdist + (gc%box%y_width-1)) / gc%box%y_width) 
-gc%box%nboxes_z = aint((gc%maxdist + (gc%box%z_width-1)) / gc%box%z_width) 
+gc%nboxes_x = aint((gc%maxdist + (gc%x_width-1)) / gc%x_width) 
+gc%nboxes_y = aint((gc%maxdist + (gc%y_width-1)) / gc%y_width) 
+gc%nboxes_z = aint((gc%maxdist + (gc%z_width-1)) / gc%z_width) 
 
 
 !if(compare_to_correct) then
 !   old_out = do_output()
 !   call set_output(.true.)
-!   write(errstring, *) 'x bot, top, width, nboxes ', gc%box%bot_x, gc%box%top_x, gc%box%x_width, gc%box%nboxes_x
+!   write(errstring, *) 'x bot, top, width, nboxes ', gc%bot_x, gc%top_x, gc%x_width, gc%nboxes_x
 !   call error_handler(E_MSG, 'find_box_ranges', errstring)
-!   write(errstring, *) 'y bot, top, width, nboxes ', gc%box%bot_y, gc%box%top_y, gc%box%y_width, gc%box%nboxes_y
+!   write(errstring, *) 'y bot, top, width, nboxes ', gc%bot_y, gc%top_y, gc%y_width, gc%nboxes_y
 !   call error_handler(E_MSG, 'find_box_ranges', errstring)
-!   write(errstring, *) 'z bot, top, width, nboxes ', gc%box%bot_z, gc%box%top_z, gc%box%z_width, gc%box%nboxes_z
+!   write(errstring, *) 'z bot, top, width, nboxes ', gc%bot_z, gc%top_z, gc%z_width, gc%nboxes_z
 !   call error_handler(E_MSG, 'find_box_ranges', errstring)
 !   call set_output(old_out)
 !endif
@@ -1182,206 +952,7 @@ end subroutine find_box_ranges
 
 !----------------------------------------------------------------------------
 
-recursive subroutine split_tree(r)
- type(octree_type), pointer :: r
-
-integer :: i, j, k
-real(r8) :: xl, xu, yl, yu, zl, zu
-type(octree_type), pointer :: c
-
-
-allocate(r%children(2,2,2))
-
-do i=1,2
-   if (i == 1) then
-      xl = r%llb%x
-      xu = r%split%x
-   else
-      xl = r%split%x
-      xu = r%urt%x
-   endif
-   do j=1,2
-      if (j == 1) then
-         yl = r%llb%y
-         yu = r%split%y
-      else
-         yl = r%split%y
-         yu = r%urt%y
-      endif
-      do k=1,2
-         if (k == 1) then
-            zl = r%llb%z
-            zu = r%split%z
-         else
-            zl = r%split%z
-            zu = r%urt%z
-         endif
-
-         allocate(r%children(i,j,k)%p)
-         c => r%children(i,j,k)%p
-         c%count = 0
-         nullify(c%index)
-         c%llb = set_location(xl, yl, zl)
-         c%urt = set_location(xu, yu, zu)
-         c%split = set_location((c%urt%x + c%llb%x) / 2.0_r8, &
-                                (c%urt%y + c%llb%y) / 2.0_r8, &
-                                (c%urt%z + c%llb%z) / 2.0_r8)
-
-      enddo
-   enddo
-enddo
-
-end subroutine split_tree
-
-!----------------------------------------------------------------------------
-
-recursive subroutine move_to_children(r, locs)
- type(octree_type),   pointer    :: r
- type(location_type), intent(in) :: locs(:)
-
-integer :: n, i, j, k
-type(octree_type), pointer :: c
-
-! child counts need to be allocated to a reasonable size
-do i=1,2
-   do j=1,2
-      do k=1,2
-         c => r%children(i,j,k)%p
-         ! FIXME: this is too big now
-         allocate(c%index(r%count))
-      enddo
-   enddo
-enddo
-
-do n=1, r%count
-   if (locs(r%index(n))%x < r%split%x) then
-      i = 1
-   else
-      i = 2
-   endif
-
-   if (locs(r%index(n))%y < r%split%y) then
-      j = 1
-   else
-      j = 2
-   endif
-
-   if (locs(r%index(n))%z < r%split%z) then
-      k = 1
-   else
-      k = 2
-   endif
-
-   c => r%children(i,j,k)%p
-   c%count = c%count + 1
-   c%index(c%count) = r%index(n)
-
-enddo
-
-r%count = -1
-deallocate(r%index)
-nullify(r%index)
-
-do i=1,2
-   do j=1,2
-      do k=1,2
-         c => r%children(i,j,k)%p
-         c%parent => r
-         if (c%count > filled) then
-            call split_tree(c)
-            call move_to_children(c, locs)
-         endif
-      enddo
-   enddo
-enddo
-
-
-end subroutine move_to_children
-
-!----------------------------------------------------------------------------
-
 subroutine find_nearest(gc, base_loc, loc_list, nearest, rc)
- type(get_close_type), intent(in), target  :: gc
- type(location_type),  intent(in)  :: base_loc
- type(location_type),  intent(in)  :: loc_list(:)
- integer,              intent(out) :: nearest
- integer,              intent(out) :: rc
-
-! find the nearest point in the get close list to the specified point
-
-if (use_octree) then
-   call find_nearest_otree(gc, base_loc, loc_list, nearest, rc)
-else
-   call find_nearest_boxes(gc, base_loc, loc_list, nearest, rc)
-endif
-
-end subroutine find_nearest
-
-!----------------------------------------------------------------------------
-
-subroutine find_nearest_otree(gc, base_loc, loc_list, nearest, rc)
- type(get_close_type), intent(in), target  :: gc
- type(location_type),  intent(in)  :: base_loc
- type(location_type),  intent(in)  :: loc_list(:)
- integer,              intent(out) :: nearest
- integer,              intent(out) :: rc
-
-! find the nearest point in the get close list to the specified point
-
-integer :: n, i, j, k, nindex
-real(r8) :: ndist, dist
-type(octree_type), pointer :: r, c
-
-! until children is null, descend based on the side of the split point
-! the base loc is on
-
-! arrgghh - what do we do about points outside the original cube?
-! there is still a closest point defined somewhere...  do we use
-! maxdist here at all?  (i'm thinking no.)
-
-! FIXME: we cannot reject points outside the cube if we're just
-! looking for any nearest point.  if we say nearest has to be
-! within maxdist, and if we define the root cube to have +/- maxdist
-! around all edges, then this is ok.
-
-! FIXME: we must add maxdist and search that region for the
-! closest point - the closest point might be in the neighboring block.
-! (maybe maxdist isn't the value to use?)
-
-r => gc%root
-if (.not. is_location_in_region(base_loc, r%llb, r%urt)) then
-   nearest = -1
-   rc = -1
-   return
-endif
-
-r = find_child(r, base_loc)
-
-ndist = 1e38_r8
-nindex = -1
-do i=1, r%count
-   n = r%index(i)
-   dist =  get_dist(base_loc, loc_list(n))
-   if (dist < ndist) then
-      nindex = n
-      ndist = dist
-   endif
-enddo
-
-if (nindex < 0) then 
-   nearest = -1
-   rc = -1
-   return
-endif
-   
-nearest = nindex
-rc = 0
-
-end subroutine find_nearest_otree
-
-!----------------------------------------------------------------------------
-
-subroutine find_nearest_boxes(gc, base_loc, loc_list, nearest, rc)
  type(get_close_type), intent(in), target  :: gc
  type(location_type),  intent(in)  :: base_loc
  type(location_type),  intent(in)  :: loc_list(:)
@@ -1401,11 +972,11 @@ rc = -1
 dist = 1e38_r8                ! something big and positive.
 
 ! the list of locations in the loc() argument must be the same
-! as the list of locations passed into get_close_obs_init(), so
+! as the list of locations passed into get_close_init(), so
 ! gc%num and size(loc) better be the same.   if the list changes,
 ! you have to destroy the old gc and init a new one.
 if (size(loc_list) /= gc%num) then
-   write(errstring,*)'loc() array must match one passed to get_close_obs_init()'
+   write(errstring,*)'loc() array must match one passed to get_close_init()'
    call error_handler(E_ERR, 'find_nearest_boxes', errstring, source, revision, revdate)
 endif
 
@@ -1415,9 +986,9 @@ if (gc%num == 0) return
 !--------------------------------------------------------------
 
 ! Begin by figuring out which box the base loc is in
-x_box = floor((base_loc%x - gc%box%bot_x) / gc%box%x_width) + 1
-y_box = floor((base_loc%y - gc%box%bot_y) / gc%box%y_width) + 1
-z_box = floor((base_loc%z - gc%box%bot_z) / gc%box%z_width) + 1
+x_box = floor((base_loc%x - gc%bot_x) / gc%x_width) + 1
+y_box = floor((base_loc%y - gc%bot_y) / gc%y_width) + 1
+z_box = floor((base_loc%z - gc%bot_z) / gc%z_width) + 1
 
 ! If it is not in any box, then it is more than the maxdist away from everybody
 if(x_box > nx .or. x_box < 1 .or. x_box < 0) return
@@ -1427,22 +998,22 @@ if(z_box > nz .or. z_box < 1 .or. z_box < 0) return
 ! figure out how many boxes need searching
 ! FIXME: if we support a variable maxdist, nboxes_X will need to
 ! be computed on the fly here instead of precomputed at init time.
-!print *, 'nboxes x, y, z = ', gc%box%nboxes_x, gc%box%nboxes_y, gc%box%nboxes_z
+!print *, 'nboxes x, y, z = ', gc%nboxes_x, gc%nboxes_y, gc%nboxes_z
 !print *, 'base_loc in box ', x_box, y_box, z_box
 
-start_x = x_box - gc%box%nboxes_x
+start_x = x_box - gc%nboxes_x
 if (start_x < 1) start_x = 1
-end_x = x_box + gc%box%nboxes_x
+end_x = x_box + gc%nboxes_x
 if (end_x > nx) end_x = nx
 
-start_y = y_box - gc%box%nboxes_y
+start_y = y_box - gc%nboxes_y
 if (start_y < 1) start_y = 1
-end_y = y_box + gc%box%nboxes_y
+end_y = y_box + gc%nboxes_y
 if (end_y > ny) end_y = ny
 
-start_z = z_box - gc%box%nboxes_z
+start_z = z_box - gc%nboxes_z
 if (start_z < 1) start_z = 1
-end_z = z_box + gc%box%nboxes_z
+end_z = z_box + gc%nboxes_z
 if (end_z > nz) end_z = nz
 
 !print *, 'looping from '
@@ -1456,14 +1027,14 @@ do i = start_x, end_x
       do k = start_z, end_z
 
          ! Box to search is i,j,k
-         n_in_box = gc%box%count(i, j, k)
-         st = gc%box%start(i,j,k)
+         n_in_box = gc%count(i, j, k)
+         st = gc%start(i,j,k)
 
 
          ! Loop to check how close all loc in the box are; add those that are close
          do l = 1, n_in_box
 
-            t_ind = gc%box%loc_box(st - 1 + l)
+            t_ind = gc%loc_box(st - 1 + l)
 !print *, 'l, t_ind = ', l, t_ind
 
             this_dist = get_dist(base_loc, loc_list(t_ind))
@@ -1479,90 +1050,11 @@ do i = start_x, end_x
    end do
 end do
 
-end subroutine find_nearest_boxes
-
-!----------------------------------------------------------------------------
-
-function find_child(r, base_loc)
- type(octree_type), pointer :: r
- type(location_type)        :: base_loc
- type(octree_type), pointer :: find_child
-
-integer :: i, j, k
-
-! until we get to the leaves, descend.
-do while(r%count < 0)
-! print *, 'rcount = ', r%count
-! print *, 'llb = ', r%llb%x, r%llb%y, r%llb%z
-! print *, 'spl = ', r%split%x, r%split%y, r%split%z
-! print *, 'urt = ', r%urt%x, r%urt%y, r%urt%z
-! print *, 'loc = ', base_loc%x, base_loc%y, base_loc%z
-   if (base_loc%x < r%split%x) then
-      i = 1;
-   else
-      i = 2;
-   endif
-   if (base_loc%y < r%split%y) then
-      j = 1;
-   else
-      j = 2;
-   endif
-   if (base_loc%z < r%split%z) then
-      k = 1;
-   else
-      k = 2;
-   endif
-! print *, 'ijk= ', i,j,k
-
-   if (.not. allocated(r%children)) then
- print *, 'children array not allocated, stop'
- stop
-   endif
-   r => r%children(i,j,k)%p
-enddo
-
-find_child => r
-
-end function find_child
+end subroutine find_nearest
 
 !----------------------------------------------------------------------------
 
 subroutine print_get_close_type(gc, amount)
- 
-! print out debugging statistics, or optionally print out a full
-! dump from all mpi tasks in a format that can be plotted with matlab.
-
-type(get_close_type), intent(in), target :: gc
-integer, intent(in), optional            :: amount
-
-if (use_octree) then
-   call print_get_close_otree(gc, amount)
-else
-   call print_get_close_boxes(gc, amount)
-endif
-
-end subroutine print_get_close_type
-
-!----------------------------------------------------------------------------
-
-subroutine print_get_close_otree(gc, amount)
- 
-! print out debugging statistics, or optionally print out a full
-! dump from all mpi tasks in a format that can be plotted with matlab.
-
-type(get_close_type), intent(in), target :: gc
-integer, intent(in), optional            :: amount
-
-type(octree_type), pointer :: r
-
-r => gc%root
-call print_tree(r, 0)
-
-end subroutine print_get_close_otree
-
-!----------------------------------------------------------------------------
-
-subroutine print_get_close_boxes(gc, amount)
  
 ! print out debugging statistics, or optionally print out a full
 ! dump from all mpi tasks in a format that can be plotted with matlab.
@@ -1630,11 +1122,11 @@ if (howmuch /= 0 .and. iam0) then
 
    write(errstring,"(A,F12.6)") ' maxdist = ', gc%maxdist
    call error_handler(E_MSG, 'loc', errstring)
-   write(errstring, "(A,3(F12.6))") ' x_box: bot, top, width = ', gc%box%bot_x, gc%box%top_x, gc%box%x_width
+   write(errstring, "(A,3(F12.6))") ' x_box: bot, top, width = ', gc%bot_x, gc%top_x, gc%x_width
    call error_handler(E_MSG, 'loc', errstring)
-   write(errstring, "(A,3(F12.6))") ' y_box: bot, top, width = ', gc%box%bot_y, gc%box%top_y, gc%box%y_width
+   write(errstring, "(A,3(F12.6))") ' y_box: bot, top, width = ', gc%bot_y, gc%top_y, gc%y_width
    call error_handler(E_MSG, 'loc', errstring)
-   write(errstring, "(A,3(F12.6))") ' z_box: bot, top, width = ', gc%box%bot_z, gc%box%top_z, gc%box%z_width
+   write(errstring, "(A,3(F12.6))") ' z_box: bot, top, width = ', gc%bot_z, gc%top_z, gc%z_width
    call error_handler(E_MSG, 'loc', errstring)
 
 endif
@@ -1642,19 +1134,19 @@ endif
 ! this one can be very large.   print only the first nth unless
 ! instructed otherwise.  (print n+1 because 1 more value fits on
 ! the line because it prints ( i ) and not ( i, j ) like the others.)
-if (associated(gc%box%loc_box)) then
-   i = size(gc%box%loc_box,1)
+if (associated(gc%loc_box)) then
+   i = size(gc%loc_box,1)
    if (i/= gc%num) then
       write(errstring,*) ' warning: size of loc_box incorrect, nlocs, i =', gc%num, i
       call error_handler(E_MSG, 'locations_mod', errstring)
    endif
    if (howmuch > 1) then
       ! DEBUG
-      write(errstring,"(A,I8,A,36(I8,1X))") ' loc_box(',i,') =', gc%box%loc_box(1:min(i,36))  ! (nlocs)
-      !write(errstring,*) ' loc_box(',i,') =', gc%box%loc_box    ! (nlocs)
+      write(errstring,"(A,I8,A,36(I8,1X))") ' loc_box(',i,') =', gc%loc_box(1:min(i,36))  ! (nlocs)
+      !write(errstring,*) ' loc_box(',i,') =', gc%loc_box    ! (nlocs)
       call error_handler(E_MSG, 'locations_mod', errstring)
    else if(howmuch > 0) then
-      write(errstring,*) ' loc_box(',i,') =', gc%box%loc_box(1:min(i,sample+1))
+      write(errstring,*) ' loc_box(',i,') =', gc%loc_box(1:min(i,sample+1))
       call error_handler(E_MSG, 'locations_mod', errstring)
       write(errstring,*) '  <rest of loc_box omitted>'
       call error_handler(E_MSG, 'locations_mod', errstring)
@@ -1668,10 +1160,10 @@ endif
 
 ! like loc_box, this one can be very large.   print only the first nth unless
 ! instructed otherwise
-if (associated(gc%box%start)) then
-   i = size(gc%box%start,1)
-   j = size(gc%box%start,2)
-   k = size(gc%box%start,3)
+if (associated(gc%start)) then
+   i = size(gc%start,1)
+   j = size(gc%start,2)
+   k = size(gc%start,3)
    if ((i /= nx) .or. (j /= ny) .or. (k /= nz)) then
       write(errstring,*) ' warning: size of start incorrect, nx, ny, nz, i, j, k =', nx, ny, nz, i, j, k
       call error_handler(E_MSG, 'locations_mod', errstring)
@@ -1680,11 +1172,11 @@ if (associated(gc%box%start)) then
       write(errstring,*) ' start(',i,j,k,') ='              ! (nx, ny, nz)
       call error_handler(E_MSG, 'locations_mod', errstring)
       do l=1, j
-         write(errstring,"(36(I8,1X))") gc%box%start(1:min(i,36), l, 1)
+         write(errstring,"(36(I8,1X))") gc%start(1:min(i,36), l, 1)
          call error_handler(E_MSG, 'locations_mod', errstring)
       enddo
    else if (howmuch > 0) then
-      write(errstring,*) ' start(',i,j,k,') =', gc%box%start(1:min(i,sample), 1, 1)
+      write(errstring,*) ' start(',i,j,k,') =', gc%start(1:min(i,sample), 1, 1)
       call error_handler(E_MSG, 'locations_mod', errstring)
       write(errstring,*) '  <rest of start omitted>'
       call error_handler(E_MSG, 'locations_mod', errstring)
@@ -1697,10 +1189,10 @@ else
 endif
 
 ! as above, print only first n unless second arg is .true.
-if (associated(gc%box%count)) then
-   i = size(gc%box%count,1)
-   j = size(gc%box%count,2)
-   k = size(gc%box%count,3)
+if (associated(gc%count)) then
+   i = size(gc%count,1)
+   j = size(gc%count,2)
+   k = size(gc%count,3)
    if ((i /= nx) .or. (j /= ny) .or. (k /= nz)) then
       write(errstring,*) ' warning: size of count incorrect, nx, ny, nz, i, j, k =', nx, ny, nz, i, j, k
       call error_handler(E_MSG, 'locations_mod', errstring)
@@ -1709,11 +1201,11 @@ if (associated(gc%box%count)) then
       write(errstring,*) ' count(',i,j,k,') ='              ! (nx, ny, nz)
       call error_handler(E_MSG, 'locations_mod', errstring)
       do l=1, j
-         write(errstring,"(36(I8,1X))") gc%box%count(1:min(i,36), l, 1) 
+         write(errstring,"(36(I8,1X))") gc%count(1:min(i,36), l, 1) 
          call error_handler(E_MSG, 'locations_mod', errstring)
       enddo
    else if (howmuch > 0) then
-      write(errstring,*) ' count(',i,j,k,') =', gc%box%count(1:min(i,sample), 1, 1)
+      write(errstring,*) ' count(',i,j,k,') =', gc%count(1:min(i,sample), 1, 1)
       call error_handler(E_MSG, 'locations_mod', errstring)
       write(errstring,*) '  <rest of count omitted>'
       call error_handler(E_MSG, 'locations_mod', errstring)
@@ -1737,8 +1229,8 @@ tickmark = .FALSE.
 do i=1, nx
    do j=1, ny
       do k=1, nz
-         first = gc%box%start(i, j, k)
-         do l=1, gc%box%count(i, j, k)
+         first = gc%start(i, j, k)
+         do l=1, gc%count(i, j, k)
             index = first + l - 1
             if ((index < 1) .or. (index > gc%num)) then
                write(errstring, *) 'exiting at first bad value; could be more'
@@ -1792,24 +1284,24 @@ endif
 
 do i=1, nx
    if (howmuch == -8) then
-      x_cen = gc%box%bot_x + ((i-1)*gc%box%x_width) + (gc%box%x_width/2.0)
+      x_cen = gc%bot_x + ((i-1)*gc%x_width) + (gc%x_width/2.0)
       write(funit, '(A,I2,A,I4,A,F12.9,A)') 'xlocs(', i, ',', mytask+1, ') = ',  x_cen, ';'
    endif
    do j=1, ny
       if (howmuch == -8 .and. i==1) then
-         y_cen = gc%box%bot_y + ((j-1)*gc%box%y_width) + (gc%box%y_width/2.0)
+         y_cen = gc%bot_y + ((j-1)*gc%y_width) + (gc%y_width/2.0)
          write(funit, '(A,I2,A,I4,A,F12.9,A)') 'ylocs(', j, ',', mytask+1, ') = ',  y_cen, ';'
       endif
       do k=1, nz
          if (howmuch == -8 .and. i==1) then
-            z_cen = gc%box%bot_z + ((j-1)*gc%box%z_width) + (gc%box%z_width/2.0)
+            z_cen = gc%bot_z + ((j-1)*gc%z_width) + (gc%z_width/2.0)
             write(funit, '(A,I2,A,I4,A,F12.9,A)') 'zlocs(', k, ',', mytask+1, ') = ',  z_cen, ';'
          endif
-         if (gc%box%count(i, j, k) > 0) then
+         if (gc%count(i, j, k) > 0) then
             nfull = nfull + 1
-            total = total + gc%box%count(i, j, k)
-            if (gc%box%count(i, j, k) > maxcount) then
-               maxcount = gc%box%count(i, j, k)
+            total = total + gc%count(i, j, k)
+            if (gc%count(i, j, k) > maxcount) then
+               maxcount = gc%count(i, j, k)
                maxi = i
                maxj = j
                maxk = k
@@ -1820,7 +1312,7 @@ do i=1, nx
          ! output for grid boxes; in matlab-friendly format
          if (howmuch == -8) then
             write(funit, '(3(A,I2),A,I4,A,I8,A)') 'boxes(', i, ', ', j, ', ', k, &
-                                   ',', mytask+1, ') = ', gc%box%count(i, j, k), ';'
+                                   ',', mytask+1, ') = ', gc%count(i, j, k), ';'
          endif
       enddo
    enddo
@@ -1862,151 +1354,7 @@ if (maxcount > 0) then
 !   endif
 endif
 
-end subroutine print_get_close_boxes
-
-!----------------------------------------------------------------------------
-
-recursive subroutine print_tree(r, l)
- type(octree_type), pointer :: r
- integer, intent(in) :: l
-
-integer :: i, j, k
-   
-   print *, '--start of block--'
-   print *, 'level = ', l
-   print *, 'count = ', r%count
-   print *, 'llb   = ', r%llb%x, r%llb%y, r%llb%z
-   print *, 'split = ', r%split%x, r%split%y, r%split%z
-   print *, 'urt   = ', r%urt%x, r%urt%y, r%urt%z
-   if (associated(r%index)) then
-      do i=1, r%count
-         print *, i, r%index(i)
-      enddo
-   endif
-   print *, 'parent associated = ', associated(r%parent)
-   print *, 'child allocated = ', allocated(r%children)
-   if (allocated(r%children)) then
-      do i=1,2
-         do j=1,2
-            do k=1,2
-               print *, i,j,k
-               call print_tree(r%children(i,j,k)%p, l+1)
-            enddo
-         enddo
-      enddo
-   endif
-   print *, '--end of block--'
-
-end subroutine print_tree
-
-!----------------------------------------------------------------------------
-
-function region_intersects_block(loc, maxdist, r)
-
-! Returns true if the base location +/- maxdist in each dime
-! intersects any part of the region defined by block r.
-
-logical                          :: region_intersects_block
-type(location_type), intent(in)  :: loc
-real(r8),            intent(in)  :: maxdist
-type(octree_type),   intent(in)  :: r
-
-type(location_type) :: llb, urt
-
-region_intersects_block = .false.
-
-llb = set_location(loc%x-maxdist, loc%y-maxdist, loc%z-maxdist)
-urt = set_location(loc%x+maxdist, loc%y+maxdist, loc%z+maxdist)
-
-if (r%urt%x < llb%x) return
-if (r%llb%x > urt%x) return
-
-if (r%urt%y < llb%y) return
-if (r%llb%y > urt%y) return
-
-if (r%urt%z < llb%z) return
-if (r%llb%z > urt%z) return
-
-region_intersects_block = .true.
-
-end function region_intersects_block
-
-!----------------------------------------------------------------------------
-
-recursive subroutine collect_nearby(r, base_loc, maxdist, loc_list, base_type, kind_list, &
-                                   num_close, close_ind, dist)
-
-type(octree_type), intent(in) :: r
-type(location_type), intent(in)    :: base_loc, loc_list(:)
-integer,             intent(in)    :: base_type, kind_list(:)
-real(r8),            intent(in)    :: maxdist
-integer,             intent(inout) :: num_close, close_ind(:)
-real(r8), optional,  intent(inout) :: dist(:)
-
-integer  :: i, j, k, t_ind
-real(r8) :: this_dist
-
-! revised plan:
-! find min/max extents in each dim, +/- maxdist from base
-! and only descend lower in a branch if the region intersects
-! the range that this branch covers.  maxdist doesn't have to
-! be a constant in this case - it can be specified per search.
-
-! if this block does not intersect the region around the point,
-! head back up.
-if (.not. region_intersects_block(base_loc, maxdist, r)) return
-!print *, 'location in/near region'
-
-! FIXME: cannot go all the way down to child here in one routine.
-! have to make a recursive routine to test each child one by one 
-! and descend if possible intersection.
-
-! if child node isn't a terminal node, test and either descend
-! or skip.  if terminal node, search for nearby points and add
-! them to the list if 'close enough'.
-
-if (r%count < 0) then
-
-   do i=1,2
-    do j=1,2
-     do k=1,2      
-        call collect_nearby(r%children(i,j,k)%p, base_loc, maxdist, loc_list, base_type, kind_list, &
-                                   num_close, close_ind, dist)
-     enddo
-    enddo
-   enddo
-
-else
-
-   do i=1, r%count
-      t_ind = r%index(i)
-!print *, i, 'next index = ', t_ind
-
-      ! Only compute distance if dist is present
-      if(present(dist)) then
-         this_dist = get_dist(base_loc, loc_list(t_ind), base_type, kind_list(t_ind))
-!print *, 'this_dist = ', this_dist
-         ! If dist is present and this loc's distance is less than cutoff, add it in list
-         if(this_dist <= maxdist) then
-            num_close = num_close + 1
-            close_ind(num_close) = t_ind
-            dist(num_close) = this_dist
-!print *, 'adding loc to list'
-         else
-!print *, 'not adding loc to list, dist > maxdist', this_dist, maxdist
-         endif
-      else
-         ! Dist isn't present; add this ob to list without computing distance
-         num_close = num_close + 1
-         close_ind(num_close) = t_ind
-!print *, 'adding loc to list, dist not present'
-      endif
-
-   enddo
-
-endif
-
-end subroutine collect_nearby
+end subroutine print_get_close_type
 
 !----------------------------------------------------------------------------
 
@@ -2079,12 +1427,12 @@ real(r8),              optional, intent(in)    :: close_dist(:)
 ! Do comparisons against full search
 if((num_close /= cnum_close) .and. present(close_dist)) then
    write(errstring, *) 'get_close (', num_close, ') should equal exhaustive search (', cnum_close, ')'
-   call error_handler(E_ERR, 'get_close_obs', errstring, source, revision, revdate, &
+   call error_handler(E_ERR, 'get_close', errstring, source, revision, revdate, &
                       text2='optional arg "dist" is present; we are computing exact distances', &
                       text3='the exhaustive search should find an identical number of locations')
 else if (num_close < cnum_close) then
    write(errstring, *) 'get_close (', num_close, ') should not be smaller than exhaustive search (', cnum_close, ')'
-   call error_handler(E_ERR, 'get_close_obs', errstring, source, revision, revdate, &
+   call error_handler(E_ERR, 'get_close', errstring, source, revision, revdate, &
                       text2='optional arg "dist" not present; we are returning a superset of close locations', &
                       text3='the exhaustive search should find an equal or lesser number of locations')
 endif
@@ -2096,140 +1444,63 @@ deallocate(cclose_ind, cclose_dist)
 
 end subroutine exhaustive_report
 
-!---------------------------------------------------------------------------
-
-function vert_is_undef(loc)
- 
-! Given a location, return true if vertical coordinate is undefined, else false
-
-logical                          :: vert_is_undef
-type(location_type), intent(in)  :: loc
-
-if ( .not. module_initialized ) call initialize_module
-
-vert_is_undef = .false.
-
-end function vert_is_undef
-
-!---------------------------------------------------------------------------
-
-function vert_is_surface(loc)
- 
-! Given a location, return true if vertical coordinate is surface, else false
-
-logical                          :: vert_is_surface
-type(location_type), intent(in)  :: loc
-
-if ( .not. module_initialized ) call initialize_module
-
-vert_is_surface = .false.
-
-end function vert_is_surface
-
-!---------------------------------------------------------------------------
-
-function vert_is_pressure(loc)
- 
-! Given a location, return true if vertical coordinate is pressure, else false
-
-logical                          :: vert_is_pressure
-type(location_type), intent(in)  :: loc
-
-if ( .not. module_initialized ) call initialize_module
-
-vert_is_pressure = .false.
-
-end function vert_is_pressure
-
-!---------------------------------------------------------------------------
-
-function vert_is_height(loc)
- 
-! Given a location, return true if vertical coordinate is height, else false
-
-logical                          :: vert_is_height
-type(location_type), intent(in)  :: loc
-
-if ( .not. module_initialized ) call initialize_module
-
-vert_is_height = .false.
-
-end function vert_is_height
-
-!---------------------------------------------------------------------------
-
-function vert_is_level(loc)
- 
-! Given a location, return true if vertical coordinate is level, else false
-
-logical                          :: vert_is_level
-type(location_type), intent(in)  :: loc
-
-if ( .not. module_initialized ) call initialize_module
-
-vert_is_level = .false.
-
-end function vert_is_level
-
-!---------------------------------------------------------------------------
-
-function vert_is_scale_height(loc)
-
-! Given a location, return true if vertical coordinate is scale height, else false
-
-logical                          :: vert_is_scale_height
-type(location_type), intent(in)  :: loc
-
-if ( .not. module_initialized ) call initialize_module
-
-vert_is_scale_height = .false.
-
-end function vert_is_scale_height
-
-!---------------------------------------------------------------------------
-
-function has_vertical_localization()
- 
-! Return the (opposite) namelist setting for horiz_dist_only.
-
-logical :: has_vertical_localization
-
-if ( .not. module_initialized ) call initialize_module
-
-has_vertical_localization = .true.
-
-end function has_vertical_localization
-
-!--------------------------------------------------------------------
-!> dummy routine for models that don't have a vertical location
-function get_vert(loc)
-
-type(location_type), intent(in) :: loc
-real(r8) :: get_vert
-
-get_vert = 1 ! any old value
-
-end function get_vert
-
-!--------------------------------------------------------------------
-!> dummy routine for models that don't have a vertical location
-subroutine set_vert(loc, vloc)
-
-type(location_type), intent(inout) :: loc
-real(r8), intent(in) :: vloc
-
-
-end subroutine set_vert
-
 !----------------------------------------------------------------------------
-!> set the which vert
-subroutine set_which_vert(loc, which_vert)
+! stubs - here only because they have a location type as one of the arguments
+!----------------------------------------------------------------------------
+
+function is_vertical(loc, which_vert)
+
+logical                          :: is_vertical
+type(location_type), intent(in)  :: loc
+character(len=*),    intent(in)  :: which_vert
+
+is_vertical = .false.
+
+end function is_vertical
+
+!--------------------------------------------------------------------
+
+subroutine set_vertical(loc, vloc, which_vert)
 
 type(location_type), intent(inout) :: loc
-integer,                intent(in) :: which_vert !< vertical coordinate type
+real(r8), optional,  intent(in)    :: vloc
+integer,  optional,  intent(in)    :: which_vert
 
 
-end subroutine set_which_vert
+end subroutine set_vertical
+
+!--------------------------------------------------------------------
+
+subroutine convert_vertical_obs(ens_handle, num, locs, loc_kinds, loc_types, &
+                                which_vert, status)
+
+type(ensemble_type), intent(in)    :: ens_handle
+integer,             intent(in)    :: num
+type(location_type), intent(inout) :: locs(:)
+integer,             intent(in)    :: loc_kinds(:), loc_types(:)
+integer,             intent(in)    :: which_vert
+integer,             intent(out)   :: status(:)
+
+status(:) = 0
+
+end subroutine convert_vertical_obs
+
+!--------------------------------------------------------------------
+
+subroutine convert_vertical_state(ens_handle, num, locs, loc_kinds, loc_indx, &
+                                  which_vert, istatus)
+
+type(ensemble_type), intent(in)    :: ens_handle
+integer,             intent(in)    :: num
+type(location_type), intent(inout) :: locs(:)
+integer,             intent(in)    :: loc_kinds(:)
+integer(i8),         intent(in)    :: loc_indx(:)
+integer,             intent(in)    :: which_vert
+integer,             intent(out)   :: istatus
+
+istatus = 0
+
+end subroutine convert_vertical_state
 
 
 !----------------------------------------------------------------------------

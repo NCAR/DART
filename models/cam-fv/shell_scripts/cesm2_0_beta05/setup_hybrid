@@ -264,6 +264,8 @@ setenv stagedir /glade/scratch/${USER}/${refcase}/archive/rest/${reftimestamp}
 # start_tod
 #
 # short_term_archiver  Copies the files from each job step to a 'rest' directory.
+#                      WARNING; if this is true, inflation restart files
+#                               may not end up in $rundir.  Look in $arch_dir/esp/{hist,rest}
 # long_term_archiver   Puts the files from all completed steps on tape storage.
 #
 # stop_option   Units for determining the forecast length between assimilations
@@ -476,8 +478,8 @@ endif
 # which is in this directory too.
 cd $CIMEROOT
 set case_run = `find [^\.]* -name case_run.py -print `
-set st_arch  = `find [^\.]* -name case_st_archive.py -print`
-set ca_arch  = `find [^\.]* -name config_archive.xml -print | grep cesm`
+set st_arch = `find [^\.]* -name case_st_archive.py -print`
+set ca_arch = `find [^\.]* -name config_archive.xml -print | grep cesm`
 cd -
 if (! -f $CIMEROOT/${case_run}.orig) then
    $MOVE $CIMEROOT/${case_run} $CIMEROOT/${case_run}.orig
@@ -507,22 +509,16 @@ ex ${caseroot}/env_archive.xml <<"ex_end"
 .,/obs_seq/d
 insert
     <comp_archive_spec compclass="esp" compname="cam">
-      <file_extension suffix="da\.log\..+">
-        <subdir>logs</subdir>
-        <keep_last_in_rundir>false</keep_last_in_rundir>
-      </file_extension> 
-      <file_extension suffix="dart_log\..+">
-        <subdir>logs</subdir>
-        <keep_last_in_rundir>false</keep_last_in_rundir>
-      </file_extension>
-      <rest_file_extension>\..*?inf_.*?\.</rest_file_extension>
+      <rest_file_extension>\.output.*?inf_.*?\.</rest_file_extension>
       <hist_file_extension>\..*?[^f]_mean\..*?\.nc$</hist_file_extension>
       <hist_file_extension>\..*?[^f]_sd\..*?\.nc$</hist_file_extension>
       <hist_file_extension>\.input\..*?\.nc$</hist_file_extension>
+      <hist_file_extension>\.forecast\..*?\.nc$</hist_file_extension>
       <hist_file_extension>\.preassim\..*?\.nc$</hist_file_extension>
       <hist_file_extension>\.postassim\..*?\.nc$</hist_file_extension>
+      <hist_file_extension>\.analysis\..*?\.nc$</hist_file_extension>
       <hist_file_extension>\.output\..*?\.nc$</hist_file_extension>
-      <hist_file_extension>cam_obs_seq\..*</hist_file_extension>
+      <hist_file_extension>\.obs_seq_final\..*</hist_file_extension>
 .
 wq
 "ex_end"
@@ -535,7 +531,7 @@ wq
 # s/\.h\\w*/.*.h.*/
 
 # Need \\ because '\' actually appears in the file and we need to escape it and '.'
-grep  'da\\\.log' ${caseroot}/env_archive.xml  || exit 30
+grep  'inf_' ${caseroot}/env_archive.xml  || exit 30
 
 # ==============================================================================
 # Configure the case.
@@ -791,7 +787,8 @@ endif
 
 # CAM physics (etc.) selection.  (Eaton said?) It's safer to always specify the physics,
 # instead of letting the compset choose it.
-./xmlchange CAM_CONFIG_OPTS="-phys cam4 "
+set CAM_CONFIG_OPTS="-phys cam4 "
+./xmlchange CAM_CONFIG_OPTS="$CAM_CONFIG_OPTS"
 
 # Reduce the amount of stuff that's st_archived.
 #  > Fewer restart sets saved to         $archive/rest and/or to HPSS,
@@ -873,16 +870,17 @@ while ($iarg <= $#clm_opts)
 end
 
 # Need to know if we are using WACCM (aka WCCM or WXIE) for several reasons.
-# CESM2; maybe not needed anymore?
 # Mostly file managment issues.
+# CESM2; maybe not needed anymore?
+#        DART_config needs it to set input.nml values.
 # WARNING:   Check your $COMPSET to see whether the grep pattern below will detect your WACCM ! !
 set comps = `echo $COMPSET | sed -e "s#_# #"`
 set atm = `echo $comps[2] | sed -e "s#%# #"`
-echo $atm[2] | grep WC 
-if ($status == 0) then
-   set waccm = true
+if ($#atm > 1) then
+   echo $atm[2] | grep 'W[CX]' 
+   if ($status == 0) setenv waccm true
 else
-   set waccm = false
+   setenv waccm false
    # WACCM benefits from a modified cd_core.F90, but none of the
    # other configurations do.
    # Manhattan; I think cd_core.F90 (doubled div2 diffusion) is no longer needed or useful.
@@ -1003,12 +1001,12 @@ if ($?LSB_JOBNAME) then
    ${MOVE} temp.$$ case.st_archive
    ./xmlchange -file env_batch.xml -subgroup case.st_archive -id JOB_QUEUE -val caldera
    
-   sed -e "/BSUB[ ]*-o/c\#BSUB  -o cesm_lt_arch.stdout.%J " \
-       -e "/BSUB[ ]*-e/c\#BSUB  -e cesm_lt_arch.stderr.%J " \
-       -e "/BSUB[ ]*-J/c\#BSUB  -J ${case}.lt_arch        " \
-       -e '/ptile/c/#BSUB  -R "span[ptile=1]"'  case.lt_archive >! temp.$$  || exit 56
-   ${MOVE} temp.$$ case.lt_archive
-   ./xmlchange -file env_batch.xml -subgroup case.lt_archive -id JOB_QUEUE -val caldera
+#    sed -e "/BSUB[ ]*-o/c\#BSUB  -o cesm_lt_arch.stdout.%J " \
+#        -e "/BSUB[ ]*-e/c\#BSUB  -e cesm_lt_arch.stderr.%J " \
+#        -e "/BSUB[ ]*-J/c\#BSUB  -J ${case}.lt_arch        " \
+#        -e '/ptile/c/#BSUB  -R "span[ptile=1]"'  case.lt_archive >! temp.$$  || exit 56
+#    ${MOVE} temp.$$ case.lt_archive
+#    ./xmlchange -file env_batch.xml -subgroup case.lt_archive -id JOB_QUEUE -val caldera
 
 else if ($?PBS_JOBNAME) then
    sed -e  "/PBS[ ]*-N/c\#PBS  -N ${case}.st_arch"     \
@@ -1020,7 +1018,6 @@ else if ($?PBS_JOBNAME) then
    # on 36 processors.  Ugh.
    # But I ran a manual st_archive in CAM6_test2_adv with 1 task in 'share' and it worked.
    
-# Is PBS_JOBID appearing literally?
    sed -e  "/PBS[ ]*-N/c\#PBS  -N ${case}.lt_arch"      \
        -e "/\-l select/c\#PBS  -l select=1:ncpus=1:mpiprocs=1:ompthreads=1" \
        case.lt_archive >! temp.$$  || exit 56
@@ -1084,115 +1081,61 @@ while ($inst <= $num_instances)
    echo " fincl1        = 'PHIS:I' "                      >> ${fname}
    echo " nhtfrq        = -$stop_n "                      >> ${fname}
    echo " mfilt         = 1 "                             >> ${fname}
+   echo $CAM_CONFIG_OPTS | grep 'cam4'
+   if ($status == 0) echo " fv_div24del2_flag = 4 "       >> ${fname}
 
 
-   # Settings that differ between regular CAM and the WACCM version:
+   # CESM2.0, CAM6
+   # I've removed the section which defined the WACCM timestep and 
+   # prescribed aerosols, green house gasses, # ozone, etc., 
+   # since they were not working in CAM6.
+   # They were originally specified to reduce forecast time.
+   # Some of the files were specified because the default files only
+   # contain data through 2005 and we are interested in timeframes after that.
+   # set chem_datapath = "${cesmdata}/atm/cam/chem/trop_mozart_aero"
 
-   if ($waccm == true ) then
-
-    # WACCM requires a reduced time step for stability.
-    # The default is 900
-    # echo "dtime = 900"                                    >> ${fname}
-
-   else
-
-      # CAM forcing files.
-      # Some of the files specified here are because the default files only
-      # contain data through 2005 and we are interested in timeframes after that.
-
-      set chem_datapath = "${cesmdata}/atm/cam/chem/trop_mozart_aero"
-
-      # CAM5 does prognostic aerosols by default (which is expensive).
-      # Specifying the following causes CAM to use prescribed aerosols, which is cheaper.
-      # Prescribed aerosols on the timescales of interest to assimilation are acceptable.
-      # WACCM5 should not have these set.
-
-
-      if ($start_year <= 2015) then
-
-         # This might be better (30 levels): ozone_1.9x2.5_L30_2005-2099_c130313.nc
-         # No, it doesn't have PS on it.
-         echo "prescribed_ozone_type = 'INTERP_MISSING_MONTHS'"                                          >> ${fname}
-         echo "prescribed_ozone_datapath = '/glade/p/cesmdata/cseg/inputdata/atm/cam/ozone'"             >> ${fname}
-         echo "prescribed_ozone_file = 'ozone_1.9x2.5_L26_1850-2015_rcp45_c101108.nc'"                   >> ${fname}
-         echo "prescribed_ozone_name = 'O3'"                                                             >> ${fname}
-
-         # Don't specify tracer_cnst_cycle_yr if _type is SERIAL or INTERP_MISSING_MONTH
-         # echo "tracer_cnst_cycle_yr = 2010 "                                                             >> ${fname}
-         echo "tracer_cnst_type      =  'INTERP_MISSING_MONTHS'"                                              >> ${fname}
-         echo "tracer_cnst_datapath  = '/glade/p/cesmdata/cseg/inputdata/atm/cam/chem/trop_mozart_aero/oxid'" >> ${fname}
-         echo "tracer_cnst_file      =  'oxid_1.9x2.5_L26_1850-2015_rcp45_c101108.nc'"                        >> ${fname}
-         echo "tracer_cnst_filelist  = 'oxid_1.9x2.5_L26_clim_list.c090805.txt'"                              >> ${fname}
-         echo "tracer_cnst_specifier = 'O3','OH','NO3','HO2'"                                                 >> ${fname}
-
-      else 
-         echo 'WARNING; using default ozone and tracer_cnst forcing files'
-      endif
-# 
-# 
-      if ($start_year <= 2010) then
-# 
-#          # As of April 2015, the default files only run through 2005.
-#          # Specify non-default files for assimilation for years 2006-2010.
-#          # Update as needed and newer files become available.
-#          # ? Use CYCLICAL for years later than 2010?
-# 
-# These are from the transient  compset FPIPDC5L45BGC,  case FV1deg_PItoPD
-# except, there's no 1850-2010 file for num_a4.  # There is an 1850-2005 (which actually ends with 2006, 
-# and 2006 appears to be identical to 2000, so maybe I can kluge a 2010 date in there.  
-# Old;  echo " 'num_a4 -> ${chem_datapath}/emis/ar5_mam4_num_a4_surf_2000_c120716.nc',"             >> ${fname}
-# This worked, so I'll use it for now (2015-9-18).
-
-# > > > WARNING! this will only work on yellowstone, where 'raeder' files are, as of 2015-12.
-#                Check whether CESM's file collection has been updated to provide better forcing file sets.
-
-         echo " ext_frc_type = 'INTERP_MISSING_MONTHS' "                                              >> ${fname}
-         # echo " ext_frc_cycle_yr      = 2010 "                                                        >> ${fname}
-         echo " ext_frc_specifier     = "                                                             >> ${fname}
-         echo " 'SO2    -> ${chem_datapath}/emis/ar5_mam3_so2_elev_1850-2010_c20100902_v12.nc',"      >> ${fname}
-         echo " 'bc_a4  -> ${chem_datapath}/emis/ar5_mam3_bc_elev_1850-2010_c20100902_v12.nc',"       >> ${fname}
-         echo " 'num_a1 -> ${chem_datapath}/emis/ar5_mam3_num_a1_elev_1850-2010_c20100902_v12.nc',"   >> ${fname}
-         echo " 'num_a2 -> ${chem_datapath}/emis/ar5_mam3_num_a2_elev_1850-2010_c20100902_v12.nc',"   >> ${fname}
-         echo " 'num_a4 -> /glade/p/work/raeder/Exp/ATM_forcXX/ar5_mam4_num_a4_elev_1850-2010_c150205.nc'," >> ${fname}
-         echo " 'pom_a4 -> ${chem_datapath}/emis/ar5_mam3_pom_elev_1850-2010_c20140421_v12.nc',"      >> ${fname}
-         echo " 'so4_a1 -> ${chem_datapath}/emis/ar5_mam3_so4_a1_elev_1850-2010_c20100902_v12.nc',"   >> ${fname}
-         echo " 'so4_a2 -> ${chem_datapath}/emis/ar5_mam3_so4_a2_elev_1850-2010_c20100902_v12.nc'"    >> ${fname}
-
-         echo " srf_emis_type = 'INTERP_MISSING_MONTHS' "                                             >> ${fname}
-         # echo " srf_emis_cycle_yr     = 2010 "                                                        >> ${fname}
-         echo " srf_emis_specifier    = "                                                             >> ${fname}
-         echo " 'DMS    -> ${chem_datapath}/emis/aerocom_mam3_dms_surf_1849-2010_c20100902.nc',"      >> ${fname}
-         echo " 'SO2    -> ${chem_datapath}/emis/ar5_mam3_so2_surf_1850-2010_c20100902_v12.nc',"      >> ${fname}
-         echo " 'SOAG   -> ${chem_datapath}/emis/ar5_mam3_soag_1.5_surf_1850-2010_c20100902_v12.nc'," >> ${fname}
-         echo " 'bc_a4  -> ${chem_datapath}/emis/ar5_mam3_bc_surf_1850-2010_c20100902_v12.nc',"       >> ${fname}
-         echo " 'num_a1 -> ${chem_datapath}/emis/ar5_mam3_num_a1_surf_1850-2010_c20100902_v12.nc',"   >> ${fname}
-         echo " 'num_a2 -> ${chem_datapath}/emis/ar5_mam3_num_a2_surf_1850-2010_c20100902_v12.nc',"   >> ${fname}
-         echo " 'num_a4 -> /glade/p/work/raeder/Exp/ATM_forcXX/ar5_mam4_num_a4_surf_1850-2010_c150205.nc'," >> ${fname}
-         echo " 'pom_a4 -> ${chem_datapath}/emis/ar5_mam3_pom_surf_1850-2010_c20140421_v12.nc',"      >> ${fname}
-         echo " 'so4_a1 -> ${chem_datapath}/emis/ar5_mam3_so4_a1_surf_1850-2010_c20100902_v12.nc',"   >> ${fname}
-         echo " 'so4_a2 -> ${chem_datapath}/emis/ar5_mam3_so4_a2_surf_1850-2010_c20100902_v12.nc'"    >> ${fname}
-      else 
-         echo 'WARNING; using default srf_emis_* and ext_frc_*'
-      endif
-
-      if ($start_year <= 2012) then
-         # WACCM loads a file given by namelist(?) variable flbc_file,
-         # which means that bndtvghg should not be specified outside of this CAM block.
-         echo " bndtvghg        = '${cesmdata}/atm/cam/ggas/ghg_hist_1765-2012_c130501.nc'"           >> ${fname}
-      else 
-         echo "WARNING; using default bndtvghg"
-      endif
-
-      # Can't specify this file, when CAM6 prognostic aerosols apparently also specifies prescribed_strataero_file.
-      if (0) then
-      # if ($start_year <= 2013) then
-         echo " prescribed_volcaero_datapath = '/glade/p/cesmdata/cseg/inputdata/atm/cam/volc'"       >> ${fname}
-         echo " prescribed_volcaero_file      = 'CCSM4_volcanic_1850-2013_prototype1_c130430.nc'"     >> ${fname}
-      else 
-         echo "WARNING; using default volcaero"
-      endif
-   # End of 'not waccm' test
-   endif
+   #
+   # This section should/can be rebuilt from scratch by
+   # > looking at a run/atm_in file for file names which have '-20' in their names
+   #   to see which might need to be updated for recent years' forecasts (2012, 2016,...)
+   # > Ask people what prognostic physics can/should be turned off for short forecasts.
+   #   or read https://ncar.github.io/CAM/doc/build/html/users_guide and
+   #           https://ncar.github.io/CAM/doc/build/html/cam6_scientific_guide/index.html
+   # Add code which correctly sets 
+   # XXX_{type,cycle_yr,fixed_*,specifier,...?}  where we want 
+   #   type = INTERP_MISSING_MONTHS (SERIAL) or
+   #          CYCLICAL (with cycle_yr available and close to year of interest)
+   #   XXX  = {solar_data}         Physics
+   #          {prescribed_aero,    Chemistry - CAM-CHEM and WACCM.
+   #           prescribed_ghg,
+   #           prescribed_ozone,
+   #           prescribed_volcaero,
+   #           surf_emis,
+   #           tracer_cnst,
+   #           tracer_srcs,
+   #           aerodep_flux,
+   #           ext_frc,
+   #           flbc(?)}
+   #          {?}                  WACCM Simple GHG Mode = 
+   #          {?}                  WACCM Physics
+   #          (The categories here (Physics,...) are for convenience in the namelist.
+   #           There's no barrier to using them in CAM):
+   #
+   #   Species - Greenhouse Gases - Prescribed (CAM version)
+   #    if ($start_year <= 2012) then
+   #       # WACCM loads a file given by namelist(?) variable flbc_file,
+   #       # which means that bndtvghg should not be specified outside of this CAM block.
+   #       echo " bndtvghg        = '${cesmdata}/atm/cam/ggas/ghg_hist_1765-2012_c130501.nc'"           >> ${fname}
+   #    else 
+   #       echo "WARNING; using default bndtvghg"
+   #    endif
+# # 
+         if ($inst == 1) then
+            echo 'WARNING; using default ozone and tracer_cnst forcing files'
+            echo 'WARNING; using default srf_emis_* and ext_frc_*'
+            echo "WARNING; using default volcaero"
+         endif
+  
 
    if ($start_year > 2008) then
       # The default as of April 2015 is
@@ -1231,6 +1174,7 @@ while ($inst <= $num_instances)
    # echo "hist_mfilt  = 1"              >> ${fname}
    # echo "hist_nhtfrq = 0"              >> ${fname}
 
+   echo "check_finidat_year_consistency = .false."   >> ${fname}
    echo "hist_empty_htapes = .true."   >> ${fname}
    echo "hist_fincl1 = 'TSA'"          >> ${fname}
    echo "hist_nhtfrq = -$stop_n"       >> ${fname}

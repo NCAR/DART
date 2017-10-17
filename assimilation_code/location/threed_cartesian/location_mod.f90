@@ -72,7 +72,7 @@ type periodic_info_type
 end type periodic_info_type
 
 ! This version supports only regularly spaced boxes (the non-working octree code
-! was removed.)  i'm in the process of adding support for periodic boundaries.
+! was removed.) 
 
 type box_type
    private
@@ -90,7 +90,6 @@ end type box_type
 type get_close_type
    private
    integer           :: num
-   integer           :: num_distances = -1
    real(r8)          :: maxdist
    type(box_type)    :: box
 end type get_close_type
@@ -960,32 +959,6 @@ type(get_close_type), intent(inout) :: gc
 deallocate(gc%box%loc_box, gc%box%count, gc%box%start)
 
 end subroutine get_close_destroy
-
-!----------------------------------------------------------------------------
-
-subroutine get_close_maxdist_init(gc, maxdist, maxdist2)
-
-type(get_close_type), intent(inout) :: gc
-real(r8),             intent(in)    :: maxdist
-real(r8), optional,   intent(in)    :: maxdist2(:)
-
-character(len=129) :: str1
-integer :: i
-
-! set the default value.
-gc%maxdist = maxdist
-!write(0,*)  'setting maxdist to ', maxdist
-! FIXME:
-if (present(maxdist2)) then
-   write(0,*)  'get_close_maxdist_init: ignoring maxdist2 for now'
-endif
-
-! Allocate the storage for the grid dependent boxes
-allocate(gc%box%count(nx,ny,nz), gc%box%start(nx,ny,nz))
-gc%box%count  = -1
-gc%box%start  = -1
-
-end subroutine get_close_maxdist_init
 
 !----------------------------------------------------------------------------
 

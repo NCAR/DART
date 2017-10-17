@@ -24,7 +24,7 @@ module location_mod
 
 use      types_mod, only : r8, MISSING_R8, MISSING_I, PI, RAD2DEG, DEG2RAD, OBSTYPELENGTH, i8
 use  utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format, &
-                           nc_check, E_MSG, open_file, close_file, set_output,       &
+                           E_MSG, open_file, close_file, set_output,                 &
                            logfileunit, nmlfileunit, find_namelist_in_file,          &
                            check_namelist_read, do_output, do_nml_file,              &
                            do_nml_term, is_longitude_between
@@ -1181,7 +1181,7 @@ if (present(maxdist_list)) then
    if (size(maxdist_list) .ne. typecount) then
       write(msgstring,'(A,I8,A,I8)')'maxdist_list len must equal number of specific types, ', &
                                     size(maxdist_list), ' /= ', typecount
-      call error_handler(E_ERR, 'get_close_maxdist_init', msgstring, source, revision, revdate)
+      call error_handler(E_ERR, 'get_close_init', msgstring, source, revision, revdate)
    endif
  
    allocate(distlist(typecount))
@@ -1189,7 +1189,7 @@ if (present(maxdist_list)) then
    gc%nt = distcount
    if (gc%nt <= 0) then
       write(msgstring,'(A)')'error getting count of distinct cutoff dists; should not happen'
-      call error_handler(E_ERR, 'get_close_maxdist_init', msgstring, source, revision, revdate)
+      call error_handler(E_ERR, 'get_close_init', msgstring, source, revision, revdate)
    endif
 else
    gc%nt = 1
@@ -1578,27 +1578,26 @@ do j = 1, nlat
             ! Could avoid adding any that have nums lower than base_ob???
             t_ind = gc%gtt(bt)%loc_box(st - 1 + k)
 
-            ! Can compute total distance here if verts are the same
-            ! Only compute distance if dist is present
-            if(present(dist)) then
-               if(base_loc%which_vert == locs(t_ind)%which_vert) then
-                  this_dist = get_dist(base_loc, locs(t_ind), base_type, loc_qtys(t_ind))
-               else
-               ! Otherwise can just get horizontal distance
-                  this_dist = get_dist(base_loc, locs(t_ind), base_type, loc_qtys(t_ind), &
-                     no_vert = .true.)
-               endif
-            else
+            if(.not. present(dist)) then
                ! Dist isn't present; add this ob to list without computing distance
                num_close = num_close + 1
                close_ind(num_close) = t_ind
-            endif
+            else
+               if(base_loc%which_vert == locs(t_ind)%which_vert) then
+                  ! Can compute total distance here if verts are the same
+                  this_dist = get_dist(base_loc, locs(t_ind), base_type, loc_qtys(t_ind))
+               else 
+                  ! Otherwise can just get horizontal distance
+                  this_dist = get_dist(base_loc, locs(t_ind), base_type, loc_qtys(t_ind), &
+                     no_vert = .true.)
+               endif
 
-            ! If dist is present and this loc's distance is less than cutoff, add it in list
-            if(present(dist) .and. this_dist <= this_maxdist) then
-               num_close = num_close + 1
-               close_ind(num_close) = t_ind
-               dist(num_close) = this_dist
+               ! If this loc's distance is less than cutoff, add it to the list
+               if(this_dist <= this_maxdist) then
+                  num_close = num_close + 1
+                  close_ind(num_close) = t_ind
+                  dist(num_close) = this_dist
+               endif
             endif
          end do
       end do LON_OFFSET
@@ -1618,7 +1617,7 @@ if(COMPARE_TO_CORRECT) then
       call error_handler(E_ERR, 'get_close', msgstring, source, revision, revdate, &
                          text2='optional arg "dist" not present; we are returning a superset of close locations', &
                          text3='the exhaustive search should find an equal or lesser number of locations')
-endif
+   endif
 endif
 !--------------------End of verify by comparing to exhaustive search --------------
 

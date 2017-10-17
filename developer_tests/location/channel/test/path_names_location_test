@@ -1,5 +1,6 @@
 assimilation_code/location/channel/location_mod.f90
 assimilation_code/location/utilities/default_location_mod.f90
+assimilation_code/modules/observations/obs_kind_mod.f90
 assimilation_code/modules/utilities/ensemble_manager_mod.f90
 assimilation_code/modules/utilities/null_mpi_utilities_mod.f90
 assimilation_code/modules/utilities/sort_mod.f90

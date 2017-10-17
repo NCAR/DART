@@ -21,6 +21,10 @@
    max_gpsro_obs = 10000
    /
 
+&create_sphere_obs_nml
+   number_of_locations = 25
+/
+
 &utilities_nml
    module_details = .false.,
    termlevel      = 2

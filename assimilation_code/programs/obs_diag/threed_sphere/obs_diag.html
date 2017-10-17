@@ -1175,7 +1175,13 @@ Use log(p) instead of pressure for binning/plotting.
 <br />
 Hope to have a separate DART QC flag for observations outside the model state.
 Right now, all observations that have a DARt forward operator fail (extrapolate, mainly)
-get counted as observations that are rejected. Logically, these observations are not possible because most (all?) DART observation operators cannot extrapolate.
+get counted as observations that are rejected. Logically, these observations 
+are not possible because most (all?) DART observation operators cannot extrapolate.
+<br />
+<br />
+If the specified levels are not in the proper range for the observations, no vertical profile is built.
+The 'verbose' option should highlight the fact there are no observations in the specified vertical bins - 
+AND provide some sort of guidance about the min and max values of the vertical values. 
 </P>
 
 <!--==================================================================-->

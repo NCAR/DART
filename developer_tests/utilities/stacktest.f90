@@ -6,34 +6,45 @@
 
 program stacktest
 
-! FIXME: what is the 'right' size?  this is 16 Mb.
-integer*8 :: count = 1000*1000* 16
-integer   :: rc
+! FIXME: what is the 'right' size?  start with 1 Mb and see where
+! it dies.  it seems like 128 Mb to 256 Mb should be sufficient.
+integer*8, parameter :: meg = 1000 * 1000
+integer*8 :: count = 1 * meg
+integer   :: reps = 16
 
-print *, 'If this program crashes, use the "limit" command to raise stacksize.'
-print *, 'If successful, a message will print out starting "Test passed:" '
-
-! call a subroutine that has large local variables on the stack,
-! and make sure the stacksize limits aren't too small.  in this
-! little test it's easy to see what's going on, but when you run
-! filter, it tends to die in random places if you've got stack
-! limit problems, and isn't easy to diagnose.
-
-call orange_moose()
-
+print *, 'This program tests how large an array can be put on the stack.'
+print *, 'It will eventually crash.  If it crashes before printing out 256'
+print *, 'you may need to use the "limit" command to increase the stacksize.'
 print *, ''
-print *, 'Test passed: stack size appears sufficient to run filter.'
 
-! end main program
+! call a subroutine that has large local variables on the stack
+! to make sure the stacksize limits aren't too small.  in this
+! little test it's easy to see what's going on, but when you run
+! filter it tends to die in random places if you've got stack
+! limit problems and isn't easy to diagnose.
+
+do n = 1, reps
+
+   print *, ' Testing stacksize with array size of: ', count/meg, ' megabytes'
+
+   call orange_moose(count)
+
+   count = count * 2
+
+enddo
+
+! not expected to reach here
 
 contains
 
 
-subroutine orange_moose()
+subroutine orange_moose(count)
+ integer*8, intent(in) :: count
 
 ! large local variable:
 integer       :: godzilla(count)
 character(32) :: junkbuf
+integer       :: bob
 
 ! access the array contents to be sure we have enough stack space.
 ! in some of my tests the program did not crash on either of the
@@ -55,12 +66,13 @@ godzilla(count) = 789
 ! than the assignments above -- and it's an integer array so it's not 
 ! a random illegal bit pattern causing a floating point trap - any bit 
 ! string is a valid integer value.  
-write(junkbuf, "(2(I4))") godzilla(1), godzilla(count)
+write(junkbuf, "(2I4)") godzilla(1), godzilla(count)
 
 ! now take the local var and explicitly pass it as an argument.
 ! some compilers can be told to put large local variables on the heap.
 ! but i believe that subroutine arguments have to be on the stack.
-call deeper(godzilla)
+bob = deeper(godzilla)
+write(junkbuf, "(I4)") bob
 
 ! if you get here, it is as good a test as i can devise.
 ! seems like the stack size is going to be ok.
@@ -68,19 +80,21 @@ call deeper(godzilla)
 end subroutine
 
 
-subroutine deeper(bigone)
+function deeper(bigone)
  integer, intent(inout) :: bigone(:)
+ integer :: deeper
 
-integer :: asize, val
+integer :: asize
 
 ! again, make sure to read the start and end of the array to be sure
-! both parts are accessible.
+! both parts are accessible.  and make sure that the optimizer
+! doesn't skip executing the lines because the results aren't used.
+
 asize = size(bigone)
 
-val = bigone(1) 
-val = bigone(asize)
+deeper = bigone(1) + bigone(asize)
 
-end subroutine
+end function
 
 
 end program 

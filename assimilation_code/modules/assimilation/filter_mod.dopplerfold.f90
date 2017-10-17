@@ -8,6 +8,9 @@ module filter_mod
 
 !------------------------------------------------------------------------------
 use types_mod,             only : r8, i8, missing_r8, metadatalength, MAX_NUM_DOMS, MAX_FILES
+
+use options_mod,           only : get_missing_ok_status, set_missing_ok_status
+
 use obs_sequence_mod,      only : read_obs_seq, obs_type, obs_sequence_type,                  &
                                   get_obs_from_key, set_copy_meta_data, get_copy_meta_data,   &
                                   get_obs_def, get_time_range_keys, set_obs_values, set_obs,  &
@@ -36,8 +39,7 @@ use utilities_mod,         only : register_module,  error_handler, E_ERR, E_MSG,
 use assim_model_mod,       only : static_init_assim_model, get_model_size,                    &
                                   end_assim_model,  pert_model_copies
 
-use assim_tools_mod,       only : filter_assim, set_assim_tools_trace, get_missing_ok_status, &
-                                  test_state_copies
+use assim_tools_mod,       only : filter_assim, set_assim_tools_trace, test_state_copies
 use obs_model_mod,         only : move_ahead, advance_state, set_obs_model_trace
 
 use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,                &
@@ -241,26 +243,60 @@ real(r8) :: inf_lower_bound(2)             = 1.0_r8
 real(r8) :: inf_upper_bound(2)             = 1000000.0_r8
 real(r8) :: inf_sd_lower_bound(2)          = 0.0_r8
 
-namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance, &
-   output_members, obs_sequence_in_name, obs_sequence_out_name, &
-   init_time_days, init_time_seconds, &
-   first_obs_days, first_obs_seconds, last_obs_days, last_obs_seconds, &
-   obs_window_days, obs_window_seconds, &
-   num_output_state_members, num_output_obs_members, &
-   output_interval, num_groups, trace_execution, &
-   output_forward_op_errors, output_timestamps, &
-   inf_flavor, inf_initial_from_restart, inf_sd_initial_from_restart, &
-   inf_deterministic, inf_damping, &
-   inf_initial, inf_sd_initial, &
-   inf_lower_bound, inf_upper_bound, inf_sd_lower_bound, &
-   silence, &
-   distributed_state, &
-   single_file_in, single_file_out, &
-   perturb_from_single_instance, perturbation_amplitude, &
-   stages_to_write, &
-   input_state_files, output_state_files, &
-   output_state_file_list, input_state_file_list, &
-   output_mean, output_sd, write_all_stages_at_end
+! Some models are allowed to have MISSING_R8 values in the DART state vector.
+! If they are encountered, it is not necessarily a FATAL error.
+! Most of the time, if a MISSING_R8 is encountered, DART should die.
+! CLM should have allow_missing_clm = .true.
+logical  :: allow_missing_clm = .false.
+
+
+namelist /filter_nml/ async,     &
+   adv_ens_command,              &
+   ens_size,                     &
+   tasks_per_model_advance,      &
+   output_members,               &
+   obs_sequence_in_name,         &
+   obs_sequence_out_name,        &
+   init_time_days,               &
+   init_time_seconds,            &
+   first_obs_days,               &
+   first_obs_seconds,            &
+   last_obs_days,                &
+   last_obs_seconds,             &
+   obs_window_days,              &
+   obs_window_seconds,           &
+   num_output_state_members,     &
+   num_output_obs_members,       &
+   output_interval,              &
+   num_groups,                   &
+   trace_execution,              &
+   output_forward_op_errors,     &
+   output_timestamps,            &
+   inf_flavor,                   &
+   inf_initial_from_restart,     &
+   inf_sd_initial_from_restart,  &
+   inf_deterministic,            &
+   inf_damping,                  &
+   inf_initial,                  &
+   inf_sd_initial,               &
+   inf_lower_bound,              &
+   inf_upper_bound,              &
+   inf_sd_lower_bound,           &
+   silence,                      &
+   distributed_state,            &
+   single_file_in,               &
+   single_file_out,              &
+   perturb_from_single_instance, &
+   perturbation_amplitude,       &
+   stages_to_write,              &
+   input_state_files,            &
+   output_state_files,           &
+   output_state_file_list,       &
+   input_state_file_list,        &
+   output_mean,                  &
+   output_sd,                    &
+   write_all_stages_at_end,      &
+   allow_missing_clm
 
 ! Are any of the observation types subject to being updated
 ! during the computation?  e.g. Folded doppler intensities.
@@ -395,6 +431,8 @@ if ( inf_flavor(2) == 4 ) then
    inf_damping(2) = 1.0_r8  ! no damping
 endif
 
+call set_missing_ok_status(allow_missing_clm)
+allow_missing = get_missing_ok_status()
 
 call trace_message('Before initializing inflation')
 
@@ -1022,7 +1060,7 @@ AdvanceTime : do
    endif  ! if doing state space posterior inflate
 
    ! Write out analysis diagnostic files if requested.  This contains the 
-   ! posterior infalted ensemble and updated {prior,posterior} inflation values
+   ! posterior inflated ensemble and updated {prior,posterior} inflation values
    if (get_stage_to_write('analysis')) then
       if ((output_interval > 0) .and. &
           (time_step_number / output_interval * output_interval == time_step_number)) then
@@ -2438,7 +2476,7 @@ call set_multiple_filename_lists(output_state_files(:), &
 ! be ens_size but rather a single file (or multiple files if more than one domain)
 allocate(file_array_input(ninput_files, ndomains), file_array_output(noutput_files, ndomains))
 
-   file_array_input  = RESHAPE(input_state_files,  (/ninput_files, ndomains/))
+file_array_input  = RESHAPE(input_state_files,  (/ninput_files,  ndomains/))
 file_array_output = RESHAPE(output_state_files, (/noutput_files, ndomains/))
 
 
@@ -2469,7 +2507,7 @@ call io_filenames_init(file_info_output,                       &
 
 ! Set filename metadata information
 !   Input Files
-call set_filename_info(file_info_input,    'input',        ens_size,          CURRENT_COPIES )
+call set_filename_info(file_info_input,       'input',     ens_size,          CURRENT_COPIES )
 
 !   Output Files
 if (get_stage_to_write('input')) &
@@ -2483,11 +2521,11 @@ if (get_stage_to_write('postassim')) &
 if (get_stage_to_write('analysis')) &
    call set_filename_info(file_info_analysis, 'analysis',  noutput_members,  ANALYSIS_COPIES )
 
-call set_filename_info(file_info_output,   'output',    ens_size,                 CURRENT_COPIES )
+call set_filename_info(file_info_output,      'output',    ens_size,          CURRENT_COPIES )
 
 ! Set file IO information
 !   Input Files
-call set_input_file_info(  file_info_input, ens_size, CURRENT_COPIES ) 
+call set_input_file_info( file_info_input, ens_size, CURRENT_COPIES ) 
 
 !   Output Files
 call set_output_file_info( file_info_mean_sd,           & 

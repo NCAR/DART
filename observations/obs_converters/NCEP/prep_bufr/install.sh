@@ -24,28 +24,36 @@
 #
 #  ------------------------------------------------------------------------
 
-set -eua
+set -ea
  
 #  ------------------------------------------------------------------------
 #  CCOMP, FCOMP - select the compiler combination to use
+#    either set in the environment before calling, or set here.
 #  ------------------------------------------------------------------------
  
-CCOMP=gnu
-#CCOMP=intel
-#CCOMP=pgi
-#CCOMP=default
+if [ "$CCOMP" == "" ]; then
+ CCOMP=gnu
+ #CCOMP=intel
+ #CCOMP=pgi
+ #CCOMP=default
+fi
 
-FCOMP=gnu
-#FCOMP=intel
-#FCOMP=pgi
-#FCOMP=f77
+if [ "$FCOMP" == "" ]; then
+ FCOMP=gnu
+ #FCOMP=intel
+ #FCOMP=pgi
+ #FCOMP=f77
+fi
 
 #  ------------------------------------------------------------------------
 #  UNDERSCORE - if needed to link the C and fortran subroutine names
+#    either set in the environment before calling, or set here.
 #  ------------------------------------------------------------------------
 
-#UNDERSCORE=none
-UNDERSCORE=add
+if [ "$UNDERSCORE" == "" ]; then
+ #UNDERSCORE=none
+ UNDERSCORE=add
+fi
 
 #  -----------------------------------------------------
  

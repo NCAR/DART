@@ -74,7 +74,7 @@ switch lower(pinfo.model)
          end
       end
 
-   case {'lorenz_63','lorenz_84','lorenz_96','lorenz_04','forced_lorenz_96','ikeda'}
+   case {'lorenz_63','lorenz_84','lorenz_96','lorenz_04','forced_lorenz_96','ikeda', 'null'}
 
       clf; iplot = 0;
       for ivar = pinfo.var_inds,

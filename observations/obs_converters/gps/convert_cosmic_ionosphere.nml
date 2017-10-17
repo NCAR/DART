@@ -1,6 +1,11 @@
-&convert_cosmic_ion_nml
-  obs_levels          = -1.0_r8
-  ion_netcdf_file     = 'cosmic_ion_input.nc'
-  ion_netcdf_filelist = 'cosmic_ion_input_list'
-  ion_out_file        = 'obs_seq.iondens'
-/
+&convert_cosmic_ionosphere_nml
+  input_file               = ''
+  input_file_list          = 'input_file_list.txt'
+  output_file              = 'obs_seq.out'
+  observation_error_file   = 'none'
+  observation_error_method = 'scaled_lookup'
+  locations_only           = .false.
+  obs_error_factor         = 1.0
+  verbose                  = 0
+  obs_levels               = -1.0
+ /

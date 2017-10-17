@@ -4,7 +4,7 @@
    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90',
    input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
   output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90',
-  input_files = '../../../observations/forward_operators/obs_def_1d_state_mod.f90',
+               input_files = '../../../observations/forward_operators/obs_def_1d_state_mod.f90',
 /
 
 &assim_model_nml

@@ -100,7 +100,7 @@ switch lower(vars.model)
          varid.var_inds = vrbl_inds;
       end
 
-   case {'lorenz_96','lorenz_04'}
+   case {'lorenz_96','lorenz_04', 'null'}
 
       % query to see if these are OK, if not ...
 

@@ -11,11 +11,16 @@ module assim_tools_mod
 !> 
 !> @{
 use      types_mod,       only : r8, i8, digits12, PI, missing_r8
+
+use    options_mod,       only : get_missing_ok_status
+
 use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_output,    &
                                  find_namelist_in_file, register_module, error_handler,   &
                                  E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term,     &
                                  open_file, close_file, timestamp
+
 use       sort_mod,       only : index_sort 
+
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq,       &
                                  random_uniform
 
@@ -38,10 +43,12 @@ use       obs_impact_mod, only : allocate_impact_table, read_impact_table, free_
 use sampling_error_correction_mod, only : get_sampling_error_table_size, &
                                           read_sampling_error_correction
 
-use         location_mod, only : location_type, get_close_type, get_close_obs_destroy,    &
+use         location_mod, only : location_type, get_close_type, query_location,           &
                                  operator(==), set_location_missing, write_location,      &
-                                 LocationDims, vert_is_surface, has_vertical_localization,&
-                                 get_vert, set_vert, set_which_vert
+                                 LocationDims, is_vertical, vertical_localization_on,     &
+                                 set_vertical, has_vertical_choice, get_close_init,       &
+                                 get_vertical_localization_coord, get_close_destroy,      &
+                                 set_vertical_localization_coord
 
 use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars,             & 
                                  compute_copy_mean_var, get_var_owner_index,              &
@@ -59,13 +66,9 @@ use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate,         
 
 use time_manager_mod,     only : time_type, get_time
 
-use assim_model_mod,      only : get_state_meta_data, get_close_maxdist_init,             &
-                                 get_close_obs_init, get_close_state_init,                &
-                                 get_close_obs, get_close_state,                          &
-                                 query_vert_localization_coord, vert_convert
-
-!>@todo FIXME would like to separate vert_convert into these:
-!                                 convert_vert_obs, convert_vert_state
+use assim_model_mod,      only : get_state_meta_data,                                     &
+                                 get_close_obs,         get_close_state,                  &
+                                 convert_vertical_obs,  convert_vertical_state
 
 use distributed_state_mod, only : create_mean_window, free_mean_window
 
@@ -76,7 +79,6 @@ private
 
 public :: filter_assim, &
           set_assim_tools_trace, &
-          get_missing_ok_status, &
           test_state_copies, &
           update_ens_from_weights  ! Jeff thinks this routine is in the wild.
 
@@ -95,6 +97,10 @@ real(r8), allocatable  :: cutoff_list(:)
 logical                :: has_special_cutoffs
 logical                :: close_obs_caching = .true.
 real(r8), parameter    :: small = epsilon(1.0_r8)   ! threshold for avoiding NaNs/Inf
+
+! true if we have multiple vert choices and we're doing vertical localization
+! (make it a local variable so we don't keep making subroutine calls)
+logical                :: is_doing_vertical_conversion = .false.
 
 character(len = 255)   :: msgstring, msgstring2, msgstring3
 
@@ -155,18 +161,30 @@ character(len = 129) :: localization_diagnostics_file = "localization_diagnostic
 logical  :: rectangular_quadrature          = .true.
 logical  :: gaussian_likelihood_tails       = .false.
 
-! Some models are allowed to have MISSING_R8 values in the DART state vector.
-! If they are encountered, it is not necessarily a FATAL error.
-! Most of the time, if a MISSING_R8 is encountered, DART should die.
-! CLM and POP (more?) should have allow_missing_in_clm = .true.
-logical  :: allow_missing_in_clm = .false.
-
 ! False by default; if true, expect to read in an ascii table
 ! to adjust the impact of obs on other state vector and obs values.
 logical            :: adjust_obs_impact  = .false.
 character(len=256) :: obs_impact_filename = ''
 logical            :: allow_any_impact_values = .false.
 
+! These next two only affect models with multiple options
+! for vertical localization:
+!
+! "convert_state" is false by default; it depends on the model
+! what is faster - do the entire state up front and possibly
+! do unneeded work, or do the conversion during the assimilation
+! loop. we think this depends heavily on how much of the state
+! is going to be adjusted by the obs.  for a global model
+! we think false may be better; for a regional model with
+! a lot of obs and full coverage true may be better.
+!
+! "convert_obs" is true by default; in general it seems to
+! be better for each task to convert the obs vertical before
+! going into the loop but again this depends on how many
+! obs per task and whether the mean is distributed or 
+! replicated on each task.
+logical :: convert_all_state_verticals_first = .false.
+logical :: convert_all_obs_verticals_first   = .true.
 
 ! Not in the namelist; this var disables the experimental
 ! linear and spherical case code in the adaptive localization 
@@ -193,9 +211,10 @@ namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
    pf_kddm, frac_neff, pf_alpha,                                           &
    output_localization_diagnostics, localization_diagnostics_file,         &
    special_localization_obs_types, special_localization_cutoffs,           &
-   allow_missing_in_clm, distribute_mean, close_obs_caching,               &
-   adjust_obs_impact, obs_impact_filename,                                 &  
-   allow_any_impact_values, lanai_bitwise ! don't document these last two for now
+   distribute_mean, close_obs_caching,                                     &
+   adjust_obs_impact, obs_impact_filename, allow_any_impact_values,        &
+   convert_all_state_verticals_first, convert_all_obs_verticals_first,     &
+   lanai_bitwise ! don't document this one -- only used for regression tests
 
 !============================================================================
 
@@ -293,100 +312,10 @@ if(sampling_error_correction) then
    ! we can't read the table here because we don't have access to the ens_size
 endif
 
-! log what the user has selected via the namelist choices
-! E_MSG only prints from PE0 by default, but go ahead and only
-! construct the messages on PE0 as well.
-if (do_output()) then 
+is_doing_vertical_conversion = (has_vertical_choice() .and. vertical_localization_on() .and. &
+                                .not. lanai_bitwise)
 
-   select case (filter_kind)
-    case (1)
-      msgstring = 'Ensemble Adjustment Kalman Filter (EAKF)'
-    case (2)
-      msgstring = 'Ensemble Kalman Filter (ENKF)'
-    case (3)
-      msgstring = 'Kernel filter'
-    case (4)
-      msgstring = 'observation space particle filter'
-    case (5)
-      msgstring = 'random draw from posterior'
-    case (6)
-      msgstring = 'deterministic draw from posterior with fixed kurtosis'
-    case (7)
-      msgstring = 'Boxcar'
-    case (8)
-      msgstring = 'Rank Histogram Filter'
-    case (9)
-      msgstring = 'Particle Filter (Poterjoy)'
-    case default 
-      call error_handler(E_ERR, 'assim_tools_init:', 'illegal filter_kind value, valid values are 1-9', &
-                         source, revision, revdate)
-   end select
-   call error_handler(E_MSG, 'assim_tools_init:', 'Selected filter type is '//trim(msgstring))
-
-   if (adjust_obs_impact) then
-      call allocate_impact_table(obs_impact_table)
-      call read_impact_table(obs_impact_filename, obs_impact_table, allow_any_impact_values)
-      call error_handler(E_MSG, 'assim_tools_init:', &
-                         'Using observation impact table from file "'//trim(obs_impact_filename)//'"')
-   endif
-
-   write(msgstring,  '(A,F18.6)') 'The cutoff namelist value is ', cutoff
-   write(msgstring2, '(A)') 'cutoff is the localization half-width parameter,'
-   write(msgstring3, '(A,F18.6)') 'so the effective localization radius is ', cutoff*2.0_r8
-   call error_handler(E_MSG,'assim_tools_init:', msgstring, text2=msgstring2, text3=msgstring3)
-
-   if (has_special_cutoffs) then
-      call error_handler(E_MSG, '', '')
-      call error_handler(E_MSG,'assim_tools_init:','Observations with special localization treatment:')
-      call error_handler(E_MSG,'assim_tools_init:','(type name, specified cutoff distance, effective localization radius)') 
-   
-      do i = 1, num_special_cutoff
-         write(msgstring, '(A32,F18.6,F18.6)') special_localization_obs_types(i), &
-               special_localization_cutoffs(i), special_localization_cutoffs(i)*2.0_r8                     
-         call error_handler(E_MSG,'assim_tools_init:', msgstring)
-      end do
-      call error_handler(E_MSG,'assim_tools_init:','all other observation types will use the default cutoff distance')
-      call error_handler(E_MSG, '', '')
-   endif
-
-   if (cache_override) then
-      call error_handler(E_MSG,'assim_tools_init:','Disabling the close obs caching because specialized localization')
-      call error_handler(E_MSG,'assim_tools_init:','distances are enabled. ')
-   endif
-
-   if(adaptive_localization_threshold > 0) then
-      write(msgstring, '(A,I10,A)') 'Using adaptive localization, threshold ', &
-                                     adaptive_localization_threshold, ' obs'
-      call error_handler(E_MSG,'assim_tools_init:', msgstring)
-      if(adaptive_cutoff_floor > 0.0_r8) then
-         write(msgstring, '(A,F18.6)') 'Minimum cutoff will not go below ', &
-                                        adaptive_cutoff_floor
-         call error_handler(E_MSG,'assim_tools_init:', 'Using adaptive localization cutoff floor.', &
-                            text2=msgstring)
-      endif
-   endif
-
-   if(output_localization_diagnostics) then
-      call error_handler(E_MSG,'assim_tools_init:', 'Writing localization diagnostics to file:')
-      call error_handler(E_MSG,'assim_tools_init:', trim(localization_diagnostics_file))
-   endif
-
-   if(sampling_error_correction) then
-      call error_handler(E_MSG,'assim_tools_init:', 'Using Sampling Error Correction')
-   endif
-
-   if (task_count() > 1) then
-       if(distribute_mean) then
-          call error_handler(E_MSG,'assim_tools_init:', 'Distributing one copy of the ensemble mean across all tasks', &
-                             text2='uses less memory per task but may run slower if doing vertical ', &
-                             text3='coordinate conversion; controlled by namelist item "distribute_mean"')
-       else
-          call error_handler(E_MSG,'assim_tools_init:', 'Replicating a copy of the ensemble mean on every task', &
-                             text2='(uses more memory per task but may run faster if doing vertical ', &
-                             text3='coordinate conversion; controlled by namelist item "distribute_mean"')
-       endif
-   endif
-endif
+call log_namelist_selections(num_special_cutoff, cache_override)
 
 end subroutine assim_tools_init
 
@@ -409,6 +338,12 @@ integer,                     intent(in)    :: OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
 integer,                     intent(in)    :: OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END
 integer,                     intent(in)    :: OBS_PRIOR_VAR_START, OBS_PRIOR_VAR_END
 logical,                     intent(in)    :: inflate_only
+
+!>@todo FIXME this routine has a huge amount of local/stack storage.
+!>at some point does it need to be allocated instead?  this routine isn't
+!>called frequently so doing allocate/deallocate isn't a timing issue.  
+!>putting arrays on the stack is fast, but risks running out of stack space 
+!>and dying with strange errors.
 
 real(r8) :: obs_prior(ens_size), obs_inc(ens_size), increment(ens_size)
 real(r8) :: reg_factor, impact_factor
@@ -456,7 +391,7 @@ integer  :: num_close_obs_cached, num_close_states_cached
 integer  :: num_close_obs_calls_made, num_close_states_calls_made
 ! GSR add new count for only the 'assimilate' type close obs in the tile
 integer  :: localization_unit, secs, days, rev_num_close_obs
-character(len = 102)  :: base_loc_text   ! longest location formatting possible
+character(len = 200)  :: base_loc_text   ! longer than longest location formatting possible
 
 type(location_type)  :: my_obs_loc(obs_ens_handle%my_num_vars)
 type(location_type)  :: base_obs_loc, last_base_obs_loc, last_base_states_loc
@@ -467,14 +402,18 @@ type(obs_def_type)   :: obs_def
 type(time_type)      :: obs_time, this_obs_time
 
 logical :: do_adapt_inf_update
-logical :: missing_in_state
+logical :: allow_missing_in_state
 ! for performance, local copies 
 logical :: local_single_ss_inflate
 logical :: local_varying_ss_inflate
 logical :: local_obs_inflate
 
 ! HK observation location conversion
-real(r8) :: vert_obs_loc_in_localization_coord
+real(r8) :: vertvalue_obs_in_localization_coord
+integer  :: whichvert_obs_in_localization_coord
+real(r8) :: whichvert_real
+type(location_type) :: lc(1)
+integer             :: kd(1)
 
 ! timing - set one or both of the parameters to true
 ! to get timing info printed out.
@@ -483,7 +422,8 @@ logical, parameter :: timing = .false.
 logical, parameter :: timing1 = .false.
 real(digits12), allocatable :: elapse_array(:)
 
-integer :: vstatus !< for vertical conversion status. Can we just smash the dart qc instead?
+integer :: istatus 
+integer :: vstatus(obs_ens_handle%my_num_vars) !< for vertical conversion status.
 
 
 ! we are going to read/write the copies array
@@ -576,20 +516,23 @@ call init_obs(observation, get_num_copies(obs_seq), get_num_qc(obs_seq))
 ! do the forward operator calculation
 call get_my_obs_loc(ens_handle, obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type, obs_time)
 
-if (.not. lanai_bitwise) then
-   ! convert the verical of all my observations to the localization coordinate
+if (convert_all_obs_verticals_first .and. is_doing_vertical_conversion) then
+   ! convert the vertical of all my observations to the localization coordinate
    ! this may not be bitwise with Lanai because of a different number of set_location calls
    if (timing) call start_mpi_timer(base)
-   do i = 1, obs_ens_handle%my_num_vars
-      call vert_convert(ens_handle, my_obs_loc(i), my_obs_kind(i), vstatus)
-      if (good_dart_qc(nint(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i)))) then
-         !> @todo Can I just use the OBS_GLOBAL_QC_COPY? Is it ok to skip the loop?
-         if (vstatus /= 0) obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i) = DARTQC_FAILED_VERT_CONVERT
-      endif
-   enddo
+   if (obs_ens_handle%my_num_vars > 0) then
+      call convert_vertical_obs(ens_handle, obs_ens_handle%my_num_vars, my_obs_loc, &
+                                my_obs_kind, my_obs_type, get_vertical_localization_coord(), vstatus)
+      do i = 1, obs_ens_handle%my_num_vars
+         if (good_dart_qc(nint(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i)))) then
+            !> @todo Can I just use the OBS_GLOBAL_QC_COPY? Is it ok to skip the loop?
+            if (vstatus(i) /= 0) obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i) = DARTQC_FAILED_VERT_CONVERT
+         endif
+      enddo
+   endif 
    if (timing) then
       elapsed = read_mpi_timer(base)
-      print*, 'vert_convert time :', elapsed, 'rank ', my_task_id()
+      print*, 'convert_vertical_obs time :', elapsed, 'rank ', my_task_id()
    endif
 endif
 
@@ -600,7 +543,7 @@ call get_my_vars(ens_handle, my_state_indx)
 ! Get the location and kind of all my state variables
 if (timing) call start_mpi_timer(base)
 do i = 1, ens_handle%my_num_vars
-   call get_state_meta_data(ens_handle, my_state_indx(i), my_state_loc(i), my_state_kind(i))
+   call get_state_meta_data(my_state_indx(i), my_state_loc(i), my_state_kind(i))
 end do
 if (timing) then
    elapsed = read_mpi_timer(base)
@@ -608,6 +551,19 @@ if (timing) then
 endif
 
 !call test_get_state_meta_data(my_state_loc, ens_handle%my_num_vars)
+
+!> optionally convert all state location verticals
+if (convert_all_state_verticals_first .and. is_doing_vertical_conversion) then
+   if (timing) call start_mpi_timer(base)
+   if (ens_handle%my_num_vars > 0) then
+      call convert_vertical_state(ens_handle, ens_handle%my_num_vars, my_state_loc, my_state_kind,  &
+                                  my_state_indx, get_vertical_localization_coord(), istatus)
+   endif
+   if (timing) then
+      elapsed = read_mpi_timer(base)
+      print*, 'convert_vertical_state time :', elapsed, 'rank ', my_task_id()
+   endif
+endif
 
 ! PAR: MIGHT BE BETTER TO HAVE ONE PE DEDICATED TO COMPUTING 
 ! INCREMENTS. OWNING PE WOULD SHIP IT'S PRIOR TO THIS ONE
@@ -624,31 +580,21 @@ if(local_varying_ss_inflate .or. local_single_ss_inflate) then
    end do
 endif
 
-! the get_close_maxdist_init() call is quick - it just allocates space.
-! it's the get_close_obs_init() call that takes time.  correct me if
-! i'm confused but the obs list is different each time, so it can't 
-! be skipped.  i guess the state space obs_init is redundant and we 
-! could just do it once the first time - but knowing when to 
-! deallocate the space is a question.
-
-! NOTE THESE COULD ONLY BE DONE ONCE PER RUN!!! FIGURE THIS OUT.
 ! The computations in the two get_close_maxdist_init are redundant
 
 ! Initialize the method for getting state variables close to a given ob on my process
 if (has_special_cutoffs) then
-   call get_close_maxdist_init(gc_state, 2.0_r8*cutoff, 2.0_r8*cutoff_list)
+   call get_close_init(gc_state, my_num_state, 2.0_r8*cutoff, my_state_loc, 2.0_r8*cutoff_list)
 else
-   call get_close_maxdist_init(gc_state, 2.0_r8*cutoff)
+   call get_close_init(gc_state, my_num_state, 2.0_r8*cutoff, my_state_loc)
 endif
-call get_close_state_init(gc_state, my_num_state, my_state_loc)
 
 ! Initialize the method for getting obs close to a given ob on my process
 if (has_special_cutoffs) then
-   call get_close_maxdist_init(gc_obs, 2.0_r8*cutoff, 2.0_r8*cutoff_list)
+   call get_close_init(gc_obs, my_num_obs, 2.0_r8*cutoff, my_obs_loc, 2.0_r8*cutoff_list)
 else
-   call get_close_maxdist_init(gc_obs, 2.0_r8*cutoff)
+   call get_close_init(gc_obs, my_num_obs, 2.0_r8*cutoff, my_obs_loc)
 endif
-call get_close_obs_init(gc_obs, my_num_obs, my_obs_loc)
 
 if (close_obs_caching) then
    ! Initialize last obs and state get_close lookups, to take advantage below 
@@ -668,6 +614,8 @@ if (close_obs_caching) then
    num_close_states_calls_made = 0
 endif
 
+allow_missing_in_state = get_missing_ok_status()
+
 ! JPOTERJOY: observation error inflation for PF
 obs_err_infl = 1.0_r8
 if (filter_kind == 9) then
@@ -681,11 +629,15 @@ if (filter_kind == 9) then
    hwo = 1.0_r8 / ens_size
    pf_infl = 1.0_r8
 
+   ! this may not have enough resolution.  if you really want accurate
+   ! timing, set 'timing' to be true in the code and run again.  each task
+   ! will print out very accurate times.
    if (my_task_id() == 0) then
       call date_and_time( date, time )
       write(msgstring,*) 'Obs error inflation begin time: ',time(1:2),':',time(3:4),':',time(5:6)
       call error_handler(E_MSG,'',msgstring)
    endif
+   if (timing) call start_mpi_timer(base)
 
    ! Find observation error inflation coefficients for given effective ensemble size 
    OBS_INF: do i = 1, obs_ens_handle%num_vars
@@ -699,7 +651,7 @@ if (filter_kind == 9) then
       if (base_obs_type > 0) then
          base_obs_kind = get_quantity_for_type_of_obs(base_obs_type)
       else
-         call get_state_meta_data(ens_handle, -1 * int(base_obs_type,i8), dummyloc, base_obs_kind)
+         call get_state_meta_data(-1 * int(base_obs_type,i8), dummyloc, base_obs_kind)
       endif
    
       ! Get the value of the observation
@@ -711,7 +663,6 @@ if (filter_kind == 9) then
       ! Owner calculates first-guess inflation for current ob
       if(ens_handle%my_pe == owner) then
    
-         vert_obs_loc_in_localization_coord = get_vert(my_obs_loc(owners_index))
          obs_qc = obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, owners_index)
          orig_obs_prior = obs_ens_init(1:ens_size, owners_index)
   
@@ -730,31 +681,17 @@ if (filter_kind == 9) then
 
          end if
 
-         ob_info(1) = vert_obs_loc_in_localization_coord
-         ob_info(2) = obs_qc
-         ob_info(3) = obs_err_infl
+         ob_info(1) = obs_qc
+         ob_info(2) = obs_err_infl
 
          call broadcast_send(map_pe_to_task(ens_handle, owner), ob_info)
 
-         if (.not. lanai_bitwise) then
-            ! use converted vertical coordinate from owner
-            call set_vert(base_obs_loc, vert_obs_loc_in_localization_coord)
-            call set_which_vert(base_obs_loc,query_vert_localization_coord())
-         endif
-                                
       else
 
          call broadcast_recv(map_pe_to_task(ens_handle, owner), ob_info)
 
-         vert_obs_loc_in_localization_coord = ob_info(1)
-         obs_qc = ob_info(2)
-         obs_err_infl = ob_info(3)
-
-         if (.not. lanai_bitwise) then
-            ! use converted vertical coordinate from owner
-            call set_vert(base_obs_loc, vert_obs_loc_in_localization_coord)
-            call set_which_vert(base_obs_loc,query_vert_localization_coord())
-         endif
+         obs_qc = ob_info(1)
+         obs_err_infl = ob_info(2)
 
       end if
 
@@ -764,8 +701,9 @@ if (filter_kind == 9) then
       if(nint(obs_qc) /= 0) cycle OBS_INF
    
       ! Locate neighboring observations
-      call get_close_obs(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, &
-            num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
+      call get_close_obs(gc_obs, base_obs_loc, base_obs_type, &
+                         my_obs_loc, my_obs_kind, my_obs_type, &
+                         num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
    
       if (base_obs_type > 0) then
          cutoff_orig = cutoff_list(base_obs_type)
@@ -795,13 +733,19 @@ if (filter_kind == 9) then
 
    end do OBS_INF
 
+   if (timing) then
+      elapsed = read_mpi_timer(base)
+      print*, 'obs_error_inflation time :', elapsed, 'rank ', my_task_id()
+   endif
+
    if (my_task_id() == 0) then
       call date_and_time( date, time )
       write(msgstring,*) 'Obs error inflation end time: ',time(1:2),':',time(3:4),':',time(5:6)
       call error_handler(E_MSG,'',msgstring)
    endif
 
-endif
+endif  ! local PF
+
 ! timing
 if (my_task_id() == 0 .and. timing) allocate(elapse_array(obs_ens_handle%num_vars))
 
@@ -835,7 +779,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    if (base_obs_type > 0) then
       base_obs_kind = get_quantity_for_type_of_obs(base_obs_type)
    else
-      call get_state_meta_data(ens_handle, -1 * int(base_obs_type,i8), dummyloc, base_obs_kind)  ! identity obs
+      call get_state_meta_data(-1 * int(base_obs_type,i8), dummyloc, base_obs_kind)  ! identity obs
    endif
    ! Get the value of the observation
    call get_obs_values(observation, obs, obs_val_index)
@@ -846,8 +790,16 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Following block is done only by the owner of this observation
    !-----------------------------------------------------------------------
    if(ens_handle%my_pe == owner) then
-      ! need to convert global to local obs number
-      vert_obs_loc_in_localization_coord = get_vert(my_obs_loc(owners_index))
+      ! each task has its own subset of all obs.  if they were converted in the
+      ! vertical up above, then we need to broadcast the new values to all the other
+      ! tasks so they're computing the right distances when applying the increments.
+      if (is_doing_vertical_conversion) then
+         vertvalue_obs_in_localization_coord = query_location(base_obs_loc, "VLOC")
+         whichvert_obs_in_localization_coord = query_location(base_obs_loc, "WHICH_VERT")
+      else
+         vertvalue_obs_in_localization_coord = 0.0_r8
+         whichvert_obs_in_localization_coord = 0
+      endif
 
       obs_qc = obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, owners_index)
       ! Only value of 0 for DART QC field should be assimilated
@@ -895,20 +847,20 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
          else
 
-         ! Compute the prior mean and variance for this observation
-         orig_obs_prior_mean = obs_ens_handle%copies(OBS_PRIOR_MEAN_START: &
-            OBS_PRIOR_MEAN_END, owners_index)
-         orig_obs_prior_var  = obs_ens_handle%copies(OBS_PRIOR_VAR_START:  &
-            OBS_PRIOR_VAR_END, owners_index)
-
-         ! Compute observation space increments for each group
-         do group = 1, num_groups
-            grp_bot = grp_beg(group)
-            grp_top = grp_end(group)
-            call obs_increment(obs_prior(grp_bot:grp_top), grp_size, obs(1), &
-               obs_err_var, obs_inc(grp_bot:grp_top), inflate, my_inflate,   &
-               my_inflate_sd, net_a(group))
-         end do
+            ! Compute the prior mean and variance for this observation
+            orig_obs_prior_mean = obs_ens_handle%copies(OBS_PRIOR_MEAN_START: &
+               OBS_PRIOR_MEAN_END, owners_index)
+            orig_obs_prior_var  = obs_ens_handle%copies(OBS_PRIOR_VAR_START:  &
+               OBS_PRIOR_VAR_END, owners_index)
+   
+            ! Compute observation space increments for each group
+            do group = 1, num_groups
+               grp_bot = grp_beg(group)
+               grp_top = grp_end(group)
+               call obs_increment(obs_prior(grp_bot:grp_top), grp_size, obs(1), &
+                  obs_err_var, obs_inc(grp_bot:grp_top), inflate, my_inflate,   &
+                  my_inflate_sd, net_a(group))
+            end do
 
          endif
 
@@ -957,6 +909,12 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
       !Broadcast the info from this obs to all other processes
       ! What gets broadcast depends on what kind of inflation is being done
+      !>@todo it should also depend on if vertical is being converted.  the last
+      !>two values aren't needed unless vertical conversion is happening.
+      !>@todo FIXME: this is messy, but should we have 6 different broadcasts,
+      !>the three below and three more which omit the 2 localization values?
+      !>how much does this cost in time? time this and see.
+      whichvert_real = real(whichvert_obs_in_localization_coord, r8)
 
       if (filter_kind == 9) then
          ! JPOTERJOY
@@ -965,30 +923,27 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
          if(local_varying_ss_inflate) then
             call broadcast_send(map_pe_to_task(ens_handle, owner), orig_obs_prior, obs_prior, &
-               orig_obs_prior_mean, orig_obs_prior_var, scalar1=obs_qc, scalar2=obs_err_infl, &
-               scalar3=vert_obs_loc_in_localization_coord)
+                   orig_obs_prior_mean, orig_obs_prior_var, scalar1=obs_qc, scalar2=obs_err_infl, &
+                   scalar3=vertvalue_obs_in_localization_coord, scalar4=whichvert_real)
          else
             call broadcast_send(map_pe_to_task(ens_handle, owner), orig_obs_prior, obs_prior, scalar1=obs_qc, &
-               scalar2=obs_err_infl, scalar3=vert_obs_loc_in_localization_coord)
+                   scalar2=obs_err_infl, scalar3=vertvalue_obs_in_localization_coord, scalar4=whichvert_real)
          endif
       else
-      if(local_varying_ss_inflate) then
-         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, orig_obs_prior_mean, &
-            orig_obs_prior_var, net_a, scalar1=obs_qc, scalar2=vert_obs_loc_in_localization_coord)
-
-      else if(local_single_ss_inflate .or. local_obs_inflate) then
-         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, &
-           scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, scalar4=vert_obs_loc_in_localization_coord)
-      else
-         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, scalar1=obs_qc, scalar2=vert_obs_loc_in_localization_coord)
-      endif
-
-      endif
-
-      if (.not. lanai_bitwise) then 
-         ! use converted vertical coordinate from owner
-         call set_vert(base_obs_loc, get_vert(my_obs_loc(owners_index))) 
-         call set_which_vert(base_obs_loc, query_vert_localization_coord())
+         if(local_varying_ss_inflate) then
+            call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
+               orig_obs_prior_mean, orig_obs_prior_var, net_a, scalar1=obs_qc, &
+               scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
+   
+         else if(local_single_ss_inflate .or. local_obs_inflate) then
+            call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
+              net_a, scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, &
+              scalar4=vertvalue_obs_in_localization_coord, scalar5=whichvert_real)
+         else
+            call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
+              net_a, scalar1=obs_qc, &
+              scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
+         endif
       endif
 
    ! Next block is done by processes that do NOT own this observation
@@ -996,6 +951,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    else
       ! I don't store this obs; receive the obs prior and increment from broadcast
       ! Also get qc and inflation information if needed
+      ! also a converted vertical coordinate if needed
+      !>@todo FIXME see the comment in the broadcast_send() section about
+      !>the cost of sending unneeded values 
 
       ! JPOTERJOY
       if (filter_kind == 9) then
@@ -1006,29 +964,31 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          if(local_varying_ss_inflate) then
             call broadcast_recv(map_pe_to_task(ens_handle, owner), orig_obs_prior, obs_prior, &
                orig_obs_prior_mean, orig_obs_prior_var, scalar1=obs_qc, scalar2=obs_err_infl, &
-               scalar3=vert_obs_loc_in_localization_coord)
+               scalar3=vertvalue_obs_in_localization_coord, scalar4=whichvert_real)
          else
             call broadcast_recv(map_pe_to_task(ens_handle, owner), orig_obs_prior, obs_prior, scalar1=obs_qc, &
-               scalar2=obs_err_infl, scalar3=vert_obs_loc_in_localization_coord)
+               scalar2=obs_err_infl, scalar3=vertvalue_obs_in_localization_coord, scalar4=whichvert_real)
          endif
       else
-      if(local_varying_ss_inflate) then
-         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, orig_obs_prior_mean, &
-            orig_obs_prior_var, net_a, scalar1=obs_qc, scalar2=vert_obs_loc_in_localization_coord)
-      else if(local_single_ss_inflate .or. local_obs_inflate) then
-         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, &
-            scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, scalar4=vert_obs_loc_in_localization_coord)
-      else
-         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, scalar1=obs_qc, scalar2=vert_obs_loc_in_localization_coord)
+         if(local_varying_ss_inflate) then
+            call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
+               orig_obs_prior_mean, orig_obs_prior_var, net_a, scalar1=obs_qc, &
+               scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
+         else if(local_single_ss_inflate .or. local_obs_inflate) then
+            call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
+               net_a, scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, &
+               scalar4=vertvalue_obs_in_localization_coord, scalar5=whichvert_real)
+         else
+            call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, &
+              net_a, scalar1=obs_qc, &
+              scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
+         endif
       endif
-
-      endif
-
-      if (.not. lanai_bitwise) then
-         ! use converted vertical coordinate from owner
-         call set_vert(base_obs_loc, vert_obs_loc_in_localization_coord)
-         call set_which_vert(base_obs_loc,query_vert_localization_coord())
-
+      whichvert_obs_in_localization_coord = nint(whichvert_real)
+   
+      if (is_doing_vertical_conversion) then
+         ! use converted vertical coordinate value and type from owner
+         call set_vertical(base_obs_loc, vertvalue_obs_in_localization_coord, whichvert_obs_in_localization_coord)
       endif
    endif
    !-----------------------------------------------------------------------
@@ -1064,8 +1024,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    !> @todo This is very messy. 
 
    !--------------------------------------------------------
-   !> @todo have to set location so you are bitwise with Lanai for WRF. There is a bitwise creep with get and set location.
-   ! I beleive this is messing up CAM_SE because you get a different % saved for close_obs_caching
+   !> @todo have to set location so you are bitwise with Lanai for WRF. There is a bitwise creep with 
+   !> get and set location.
+   ! I believe this is messing up CAM_SE because you get a different % saved for close_obs_caching
    !  The base_obs_loc are different for cam if you do this set.
    !--------------------------------------------------------
 
@@ -1074,7 +1035,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
    if (.not. close_obs_caching) then
       if (timing) call start_mpi_timer(base)
-      call get_close_obs(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
+      call get_close_obs(gc_obs, base_obs_loc, base_obs_type, &
+                         my_obs_loc, my_obs_kind, my_obs_type, &
+                         num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
       if (timing) then
          elapsed = read_mpi_timer(base)
          print*, 'get_close_obs1 time :', elapsed, 'rank ', my_task_id()
@@ -1089,7 +1052,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          num_close_obs_cached = num_close_obs_cached + 1
       else
          if (timing .and. i < 100) call start_mpi_timer(base)
-         call get_close_obs(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
+         call get_close_obs(gc_obs, base_obs_loc, base_obs_type, &
+                            my_obs_loc, my_obs_kind, my_obs_type, &
+                            num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
          if (timing .and. i < 100) then
             elapsed = read_mpi_timer(base)
             print*, 'get_close_obs2 time :', elapsed, 'rank ', my_task_id()
@@ -1125,6 +1090,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! this does a cross-task sum, so all tasks must make this call.
       total_num_close_obs = count_close(num_close_obs, close_obs_ind, my_obs_type, &
                                         close_obs_dist, cutoff_rev*2.0_r8)
+      if (timing) then
+         elapsed = read_mpi_timer(base)
+         print*, 'count_close time :', elapsed, 'rank ', my_task_id()
+      endif
+
 
       ! Want expected number of close observations to be reduced to some threshold;
       ! accomplish this by cutting the size of the cutoff distance.
@@ -1161,7 +1131,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                call get_time(this_obs_time,secs,days)
                call write_location(-1, base_obs_loc, charstring=base_loc_text)
 
-               write(localization_unit,'(i8,1x,i5,1x,i8,1x,A,2(f14.5,1x,i10))') i, secs, days, &
+               write(localization_unit,'(i12,1x,i5,1x,i8,1x,A,2(f14.5,1x,i12))') i, secs, days, &
                      trim(base_loc_text), cutoff_orig, total_num_close_obs, cutoff_rev, rev_num_close_obs
             endif
          endif
@@ -1183,7 +1153,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          call get_time(this_obs_time,secs,days)
          call write_location(-1, base_obs_loc, charstring=base_loc_text)
 
-         write(localization_unit,'(i8,1x,i5,1x,i8,1x,A,f14.5,1x,i10)') i, secs, days, &
+         write(localization_unit,'(i12,1x,i5,1x,i8,1x,A,f14.5,1x,i12)') i, secs, days, &
                trim(base_loc_text), cutoff_rev, total_num_close_obs
       endif
    endif
@@ -1192,8 +1162,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Find state variables on my process that are close to observation being assimilated
    if (.not. close_obs_caching) then
       if (timing .and. i < 100) call start_mpi_timer(base)
-      call get_close_state(gc_state, base_obs_loc, base_obs_type, my_state_loc, my_state_kind, &
-         num_close_states, close_state_ind, close_state_dist, ens_handle)
+      call get_close_state(gc_state, base_obs_loc, base_obs_type, &
+                           my_state_loc, my_state_kind, my_state_indx, &
+                           num_close_states, close_state_ind, close_state_dist, ens_handle)
       if (timing .and. i < 100) then
          elapsed = read_mpi_timer(base)
          print*, 'get_close_state1 time :', elapsed, 'rank ', my_task_id()
@@ -1206,8 +1177,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          num_close_states_cached = num_close_states_cached + 1
       else
          if (timing .and. i < 100) call start_mpi_timer(base)
-         call get_close_state(gc_state, base_obs_loc, base_obs_type, my_state_loc, my_state_kind, &
-            num_close_states, close_state_ind, close_state_dist, ens_handle)
+         call get_close_state(gc_state, base_obs_loc, base_obs_type, &
+                              my_state_loc, my_state_kind, my_state_indx, &
+                              num_close_states, close_state_ind, close_state_dist, ens_handle)
          if (timing .and. i < 100) then
             elapsed = read_mpi_timer(base)
             print*, 'get_close_state2 time :', elapsed, 'rank ', my_task_id()
@@ -1234,11 +1206,12 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    STATE_UPDATE: do j = 1, num_close_states
       state_index = close_state_ind(j)
 
-      if ( allow_missing_in_clm ) then
+      ! the "any" is an expensive test when you do it for every ob.  don't test
+      ! if we know there aren't going to be missing values in the state.
+      if ( allow_missing_in_state ) then
          ! Some models can take evasive action if one or more of the ensembles have
          ! a missing value. Generally means 'do nothing' (as opposed to DIE)
-         missing_in_state = any(ens_handle%copies(1:ens_size, state_index) == MISSING_R8)
-         if ( missing_in_state ) cycle STATE_UPDATE
+         if (any(ens_handle%copies(1:ens_size, state_index) == MISSING_R8)) cycle STATE_UPDATE
       endif
 
       ! Get the initial values of inflation for this variable if state varying inflation
@@ -1396,8 +1369,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                ! IS A TABLE LOOKUP POSSIBLE TO ACCELERATE THIS?
                ! Update the inflation values
                if ( obs_err_infl < max_infl ) then
-               call update_inflation(inflate, varying_ss_inflate, varying_ss_inflate_sd, &
-                  r_mean, r_var, obs(1), obs_err_var, gamma)
+                  call update_inflation(inflate, varying_ss_inflate, varying_ss_inflate_sd, &
+                     r_mean, r_var, obs(1), obs_err_var, gamma)
                endif
             else
                ! if we don't go into the previous if block, make sure these
@@ -1437,6 +1410,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    if (timing .and. i < 1000) call start_mpi_timer(base)
    OBS_UPDATE: do j = 1, num_close_obs
       obs_index = close_obs_ind(j)
+
+      if (my_obs_indx(obs_index) <= i) cycle OBS_UPDATE
 
       ! Only have to update obs that have not yet been used
       if(my_obs_indx(obs_index) > i) then
@@ -1502,30 +1477,30 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
          else
 
-         ! Loop through and update ensemble members in each group
-         do group = 1, num_groups
-            grp_bot = grp_beg(group)
-            grp_top = grp_end(group)
-            call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
-               obs_prior_var(group), obs_inc(grp_bot:grp_top), &
-                obs_ens_handle%copies(grp_bot:grp_top, obs_index), grp_size, &
-                increment(grp_bot:grp_top), reg_coef(group), net_a(group))
-         end do
-
-         ! FIXME: could we move the if test for inflate only to here?
-
-         ! Compute an information factor for impact of this observation on this state
-         if(num_groups == 1) then
-             reg_factor = 1.0_r8
-         else
-            ! Pass the time along with the index for possible diagnostic output
-            ! Compute regression factor for this obs-state pair
-            ! Negative indicates that this is an observation index
-            reg_factor = comp_reg_factor(num_groups, reg_coef, obs_time, i, -1*my_obs_indx(obs_index))
-         endif
-
-         ! Final weight is min of group and localization factors
-         reg_factor = min(reg_factor, cov_factor)
+            ! Loop through and update ensemble members in each group
+            do group = 1, num_groups
+               grp_bot = grp_beg(group)
+               grp_top = grp_end(group)
+               call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
+                  obs_prior_var(group), obs_inc(grp_bot:grp_top), &
+                   obs_ens_handle%copies(grp_bot:grp_top, obs_index), grp_size, &
+                   increment(grp_bot:grp_top), reg_coef(group), net_a(group))
+            end do
+   
+            ! FIXME: could we move the if test for inflate only to here?
+   
+            ! Compute an information factor for impact of this observation on this state
+            if(num_groups == 1) then
+                reg_factor = 1.0_r8
+            else
+               ! Pass the time along with the index for possible diagnostic output
+               ! Compute regression factor for this obs-state pair
+               ! Negative indicates that this is an observation index
+               reg_factor = comp_reg_factor(num_groups, reg_coef, obs_time, i, -1*my_obs_indx(obs_index))
+            endif
+   
+            ! Final weight is min of group and localization factors
+            reg_factor = min(reg_factor, cov_factor)
 
          endif ! PF or other filter
 
@@ -1542,7 +1517,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    endif
 
    !call test_state_copies(ens_handle, 'after_obs_updates')
-
 
    if (my_task_id() == 0 .and. timing) then
       elapse_array(i) = read_mpi_timer(base2)
@@ -1600,8 +1574,8 @@ end if
 
 ! Free up the storage
 call destroy_obs(observation)
-call get_close_obs_destroy(gc_state)
-call get_close_obs_destroy(gc_obs)
+call get_close_destroy(gc_state)
+call get_close_destroy(gc_obs)
 
 ! print some stats about the assimilation
 if (my_task_id() == 0 .and. timing) then
@@ -2730,24 +2704,6 @@ real(r8) :: obs_state_cov, intermed
 real(r8) :: restoration_inc(ens_size), state_mean, state_var, correl
 real(r8) :: factor, exp_true_correl, mean_factor
 
-logical :: missing_in_state = .false.
-logical :: missing_in_obs   = .false.
-logical :: missing_in_incs  = .false.
-
-! FIXME if there are some missing values in the state or obs
-! we cannot just include them in the math ... not sure if this
-! routine can be called in these situations ... but ...
-
-if (2 == 1) then ! DEBUG VERBOSE 
-   missing_in_state = any(state   == MISSING_R8)
-   missing_in_obs   = any(obs     == MISSING_R8)
-   missing_in_incs  = any(obs_inc == MISSING_R8)
-
-   if ( missing_in_state .or. missing_in_obs .or. missing_in_incs ) then
-      write(msgstring,*) 'Should not have missing values at this point'
-      call error_handler(E_ERR,'update_from_obs_inc',msgstring,source,revision,revdate)
-   endif
-endif
 
 ! For efficiency, just compute regression coefficient here unless correl is needed
 
@@ -2807,8 +2763,18 @@ endif
 ! Then compute the increment as product of reg_coef and observation space increment
 state_inc = reg_coef * obs_inc
 
+!
+! FIXME: craig schwartz has a degenerate case involving externally computed
+! forward operators in which the obs prior variance is in fact exactly 0.
+! adding this test allowed him to continue to  use spread restoration
+! without numerical problems.  we don't know if this is sufficient;
+! for now we'll leave the original code but it needs to be revisited.
+!
+! Spread restoration algorithm option.
+!if(spread_restoration .and. obs_prior_var > 0.0_r8) then
+!
 
-! Spread restoration algorithm option
+! Spread restoration algorithm option.
 if(spread_restoration) then
    ! Don't use this to reduce spread at present (should revisit this line)
    if(net_a > 1.0_r8) net_a = 1.0_r8
@@ -3624,21 +3590,6 @@ print_timestamps    = timestamp_level
 
 end subroutine set_assim_tools_trace
 
-!------------------------------------------------------------------------
-
-function get_missing_ok_status()
- logical :: get_missing_ok_status
-
-! see if the namelist variable allows missing values in the
-! model state or not.
-
-! Initialize assim_tools_module if needed
-if (.not. module_initialized) call assim_tools_init()
-
-get_missing_ok_status = allow_missing_in_clm
-
-end function get_missing_ok_status
-
 !--------------------------------------------------------------------
 
 function revised_distance(orig_dist, newcount, oldcount, base, cutfloor)
@@ -3684,13 +3635,13 @@ else if (LocationDims == 3) then
    ! localizing in the vertical or not.)   if surface obs, assume a hemisphere
    ! and shrink more.
 
-   if (has_vertical_localization()) then
+   if (vertical_localization_on()) then
       ! cube root for volume
       revised_distance = orig_dist * ((real(newcount, r8) / oldcount) &
                                       ** 0.33333333333333333333_r8)
 
       ! Cut the adaptive localization threshold in half again for 'surface' obs
-      if (vert_is_surface(base)) then
+      if (is_vertical(base, "SURFACE")) then
          revised_distance = revised_distance * (0.5_r8 ** 0.33333333333333333333_r8)
       endif
    else
@@ -3781,12 +3732,7 @@ Get_Obs_Locations: do i = 1, obs_ens_handle%my_num_vars
    if (my_obs_type(i) > 0) then
          my_obs_kind(i) = get_quantity_for_type_of_obs(my_obs_type(i))
    else
-      !call get_state_meta_data(ens_handle, win, -1 * my_obs_type(i), dummyloc, my_obs_kind(i))    ! identity obs
-      ! This is just to get the kind.  WRF needs state_ensemble_handle because it converts the state
-      ! element to the required vertical coordinate.  Should this be allowed anyway?
-      ! With dummy loc you are going to end up converting the vertical twice for identity obs. FIXME use
-      ! actual ob location so you can store the converted vertical?
-      call get_state_meta_data(state_ens_handle, -1 * int(my_obs_type(i),i8), dummyloc, my_obs_kind(i))
+      call get_state_meta_data(-1 * int(my_obs_type(i),i8), dummyloc, my_obs_kind(i))
    endif
 end do Get_Obs_Locations
 
@@ -3796,7 +3742,125 @@ my_obs_time = get_obs_def_time(obs_def)
 end subroutine get_my_obs_loc
 
 !--------------------------------------------------------------------
+!> log what the user has selected via the namelist choices
 
+subroutine log_namelist_selections(num_special_cutoff, cache_override)
+
+integer, intent(in) :: num_special_cutoff
+logical, intent(in) :: cache_override
+
+integer :: i
+
+select case (filter_kind)
+ case (1)
+   msgstring = 'Ensemble Adjustment Kalman Filter (EAKF)'
+ case (2)
+   msgstring = 'Ensemble Kalman Filter (ENKF)'
+ case (3)
+   msgstring = 'Kernel filter'
+ case (4)
+   msgstring = 'observation space particle filter'
+ case (5)
+   msgstring = 'random draw from posterior'
+ case (6)
+   msgstring = 'deterministic draw from posterior with fixed kurtosis'
+ case (7)
+   msgstring = 'Boxcar'
+ case (8)
+   msgstring = 'Rank Histogram Filter'
+ case (9) 
+   msgstring = 'Local Particle Filter (Poterjoy)'
+ case default 
+   call error_handler(E_ERR, 'assim_tools_init:', 'illegal filter_kind value, valid values are 1-9', &
+                      source, revision, revdate)
+end select
+call error_handler(E_MSG, 'assim_tools_init:', 'Selected filter type is '//trim(msgstring))
+
+if (adjust_obs_impact) then
+   call allocate_impact_table(obs_impact_table)
+   call read_impact_table(obs_impact_filename, obs_impact_table, allow_any_impact_values)
+   call error_handler(E_MSG, 'assim_tools_init:', &
+                      'Using observation impact table from file "'//trim(obs_impact_filename)//'"')
+endif
+
+write(msgstring,  '(A,F18.6)') 'The cutoff namelist value is ', cutoff
+write(msgstring2, '(A)') 'cutoff is the localization half-width parameter,'
+write(msgstring3, '(A,F18.6)') 'so the effective localization radius is ', cutoff*2.0_r8
+call error_handler(E_MSG,'assim_tools_init:', msgstring, text2=msgstring2, text3=msgstring3)
+
+if (has_special_cutoffs) then
+   call error_handler(E_MSG, '', '')
+   call error_handler(E_MSG,'assim_tools_init:','Observations with special localization treatment:')
+   call error_handler(E_MSG,'assim_tools_init:','(type name, specified cutoff distance, effective localization radius)') 
+
+   do i = 1, num_special_cutoff
+      write(msgstring, '(A32,F18.6,F18.6)') special_localization_obs_types(i), &
+            special_localization_cutoffs(i), special_localization_cutoffs(i)*2.0_r8                     
+      call error_handler(E_MSG,'assim_tools_init:', msgstring)
+   end do
+   call error_handler(E_MSG,'assim_tools_init:','all other observation types will use the default cutoff distance')
+   call error_handler(E_MSG, '', '')
+endif
+
+if (cache_override) then
+   call error_handler(E_MSG,'assim_tools_init:','Disabling the close obs caching because specialized localization')
+   call error_handler(E_MSG,'assim_tools_init:','distances are enabled. ')
+endif
+
+if(adaptive_localization_threshold > 0) then
+   write(msgstring, '(A,I10,A)') 'Using adaptive localization, threshold ', &
+                                  adaptive_localization_threshold, ' obs'
+   call error_handler(E_MSG,'assim_tools_init:', msgstring)
+   if(adaptive_cutoff_floor > 0.0_r8) then
+      write(msgstring, '(A,F18.6)') 'Minimum cutoff will not go below ', &
+                                     adaptive_cutoff_floor
+      call error_handler(E_MSG,'assim_tools_init:', 'Using adaptive localization cutoff floor.', &
+                         text2=msgstring)
+   endif
+endif
+
+if(output_localization_diagnostics) then
+   call error_handler(E_MSG,'assim_tools_init:', 'Writing localization diagnostics to file:')
+   call error_handler(E_MSG,'assim_tools_init:', trim(localization_diagnostics_file))
+endif
+
+if(sampling_error_correction) then
+   call error_handler(E_MSG,'assim_tools_init:', 'Using Sampling Error Correction')
+endif
+
+if (task_count() > 1) then
+    if(distribute_mean) then
+       msgstring  = 'Distributing one copy of the ensemble mean across all tasks'
+       msgstring2 = 'uses less memory per task but may run slower if doing vertical '
+    else
+       msgstring  = 'Replicating a copy of the ensemble mean on every task'
+       msgstring2 = 'uses more memory per task but may run faster if doing vertical '
+    endif
+    call error_handler(E_MSG,'assim_tools_init:', msgstring, text2=msgstring2, &
+                       text3='coordinate conversion; controlled by namelist item "distribute_mean"')
+endif
+
+if (has_vertical_choice()) then
+   if (.not. vertical_localization_on()) then
+      msgstring = 'Not doing vertical localization, no vertical coordinate conversion required'
+      call error_handler(E_MSG,'assim_tools_init:', msgstring)
+   else
+      msgstring = 'Doing vertical localization, vertical coordinate conversion may be required'
+      if (convert_all_state_verticals_first) then
+         msgstring2 = 'Converting all state vector verticals to localization coordinate first.'
+      else
+         msgstring2 = 'Converting all state vector verticals only as needed.'
+      endif
+      if (convert_all_obs_verticals_first) then
+         msgstring3 = 'Converting all observation verticals to localization coordinate first.'
+      else
+         msgstring3 = 'Converting all observation verticals only as needed.'
+      endif
+      call error_handler(E_MSG,'assim_tools_init:', msgstring, text2=msgstring2, text3=msgstring3)
+   endif
+endif
+
+end subroutine log_namelist_selections
 
 !===========================================================
 ! TEST FUNCTIONS BELOW THIS POINT

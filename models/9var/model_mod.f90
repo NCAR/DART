@@ -205,7 +205,7 @@ end if
 
 ! ADDITION OF SOME NOISE AT 1/10 the amplitude of DT
 if (add_noise) then
-   call several_random_gaussians(ran_seq, dble(0.0), dxxx(i) / 10.0, 9, rnum)
+   call several_random_gaussians(ran_seq, 0.0_r8, dxxx(i) / 10.0_r8, 9, rnum)
    do i = 1, 9
       dxxx(i) = dxxx(i) + rnum(i)
    end do

@@ -20,7 +20,8 @@ use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, all_vars_
 use time_manager_mod,     only : time_type, operator(==), print_time
 
 
-use assim_tools_mod,      only : filter_assim, get_missing_ok_status
+use options_mod,          only : get_missing_ok_status
+use assim_tools_mod,      only : filter_assim
 use obs_sequence_mod,     only : obs_sequence_type
 use adaptive_inflate_mod, only : adaptive_inflate_type, adaptive_inflate_init, &
                                  do_varying_ss_inflate, do_single_ss_inflate

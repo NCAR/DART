@@ -1055,7 +1055,7 @@ subroutine trim_seq(seq, trim_first, first_time, trim_last, last_time, &
       if(all_gone) then
          if (print_msg) then
             msgstring1 = 'Skipping: no obs in ' // trim(seqfilename) // &
-                        ' are above the given height'
+                        ' are within the given min/max location bounding box'
             call error_handler(E_MSG,'obs_sequence_tool',msgstring1)
          endif
          remaining_obs_count = 0

@@ -663,6 +663,9 @@ set(h,'Visible','off') % make the dots invisible
 function annotate(ax1, ax2, plotobj, figdata, xscale)
 
 %% One figure ... everything gets annotated.
+%>@todo FIXME evaluate_only observations should be annotated as 'evaluated',
+%> not 'assimilated' - in ALL matlab scripts.
+
 set(get(ax1,'Ylabel'),'String',plotobj.level_units, ...
     'Interpreter','none','FontSize',figdata.fontsize)
 set(get(ax1,'Xlabel'),'String',{plotobj.xlabel,plotobj.timespan}, ...
