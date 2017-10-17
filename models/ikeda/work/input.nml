@@ -9,10 +9,10 @@
    output_interval            = 1,
 
    async                 = 0,
-   adv_ens_command            = "./advance_model.csh",
+   adv_ens_command       = "./advance_model.csh",
 
-   obs_seq_in_file_name       = "obs_seq.in",
-   obs_seq_out_file_name      = "obs_seq.out",
+   obs_seq_in_file_name  = "obs_seq.in",
+   obs_seq_out_file_name = "obs_seq.out",
    init_time_days        = 0,
    init_time_seconds     = 0,
    first_obs_days        = -1,
@@ -20,11 +20,11 @@
    last_obs_days         = -1,
    last_obs_seconds      = -1,
 
-   trace_execution       = .false.,
+   trace_execution            = .false.,
    output_timestamps          = .false.,
-   print_every_nth_obs   = -1,
+   print_every_nth_obs        = -1,
    output_forward_op_errors   = .false.,
-   silence               = .false.,
+   silence                    = .false.,
    /
 
 &filter_nml
