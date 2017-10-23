@@ -1099,7 +1099,7 @@ chmod 755 case.lt_archive
 
 # Check whether (or decide to) interpolation of the CLM restart file will be done.
 # If so, each CLM namelist needs it's own finidat_interp_dest
-set do_clm_interp = "true"
+set do_clm_interp = "false"
 set line = `grep use_init_interp user_nl_clm_0001`
 if ($status == 0) then
    set words = `echo $line | sed -e "s#[=\.]# #g`
