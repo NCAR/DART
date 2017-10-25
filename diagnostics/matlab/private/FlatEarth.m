@@ -55,7 +55,8 @@ y    = lats(lat_ind1:lat_ind2);
 % Augment the colormap and the CLim so that the lowest color index can be
 % forced to a light gray without compromising the data range.
 
-clim = add_gray_color;
+[clim, ~] = add_gray_color;
+cmin = double(clim(1)); % corresponds to the bogus data value
 
 %%--------------------------------------------------------------------------
 % Contour the "subset" - and give the whole thing an appropriate zlevel
@@ -74,13 +75,15 @@ elseif (plotstruct.Ztype ==  2)  %    zunits = 'pressure';
     zlevel = ax(6);               % maximum pressure
     set(gca,'Zdir','reverse')
 elseif (plotstruct.Ztype ==  3)  %    zunits = 'height';
-    zlevel = ax(5);               % minimum depth
-    set(gca,'Zdir','reverse')
 end
 
+% This translates to the right zlevel (no x,y translations)
 htrans = hgtransform;
 htrans.Matrix = makehgtform('translate',[0 0 zlevel]);
-[c,h] = contourf(x,y,elev,[0.0 0.0],'k-','Parent',htrans);
+
+% to set the color of the contours to the lowest color in the colormap
+% add in the value that maps to the lowest color.
+[c,h] = contourf(x,y,elev+cmin,[cmin cmin],'k-','Parent',htrans);
 set(gca,'CLim',clim)
 
 if (orgholdstate == 0), hold off; end;
