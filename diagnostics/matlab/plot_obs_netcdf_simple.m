@@ -1,53 +1,21 @@
-function obsstruct = plot_obs_netcdf_diffs(fname, ObsTypeString, region,  ...
-    CopyString1, CopyString2, QCString, maxQC, verbose, twoup)
-%% plot_obs_netcdf_diffs will plot the difference between any two 'copies' of an observation-style netcdf file.
+function obsstruct = plot_obs_netcdf_simple(fname, varargin)
+
+%% plot_obs_netcdf_simple(fname) will plot the locations and values of the observations in a DART netcdf file.
+%     There are several [PARAM,VALUE] optional arguments for more control over what gets plotted.
 %
-% bob = plot_obs_netcdf_diffs(fname, ObsTypeString, region, CopyString1, CopyString2, ...
-%                             QCString, maxQC, verbose, twoup);
+% plot_obs_netcdf_simple(fname,'region',[180 200 0 90 -Inf Inf]); % will restrict the region of what is plotted.
 %
-% fname			the name of the netCDF file (from obs_seq_to_netcdf)
+% a list of PARAM,VALUE pairs and their defaults follows:
 %
-% ObsTypeString		the variable of interest (from ObsTypesMetaData variable)
-%
-% region		region of interest [lonmin lonmax latmin latmax zmin zmax]
-%
-% CopyString1		the difference is taken 'CopyString2 - CopyString1'
-% CopyString2
-%
-% QCString		There are multiple QC copies
-% maxQC			The highest QC value of interest. Anything more than this
-%			will not be differenced. The locations will be plotted on
-%			a separate axis.
-% verbose		logical flag ... if 'true', a table listing the possible
-%			observation types and observation counts is displayed.
-%
-% twoup			logical flag indicating that both the plot of the rejected
-%			observations and the plot of the differences is
-%			created on the same figure window.
-%
-% The 'copies' are recorded in the netCDF 'CopyMetaData' variable -
-% the observation types are recorded in the 'ObsTypesMetaData' variable,
-% and the QC strings of interest are recorded in QCMetaData - so
-% ncdump -v CopyMetaData,ObsTypesMetaData,QCMetaData obs_epoch_001.nc
-% is a useful endeavor.
-%
-%--------------------------------------------------
-% EXAMPLE : plot the difference between the ensemble mean of the prior
-% and the actual observation value - while rejecting any obs that had
-% a DART QC greater than 3 ( prior forward operator failed ... or worse)
-%--------------------------------------------------
-% fname         = 'obs_epoch_001.nc';
-% ObsTypeString = 'RADIOSONDE_U_WIND_COMPONENT';
+% ObsTypeString = 'ALL';
 % region        = [0 360 -90 90 -Inf Inf];
-% CopyString1   = 'NCEP BUFR observation';
-% CopyString2   = 'prior ensemble mean';
+% CopyString    = 'NCEP BUFR observation';
 % QCString      = 'DART quality control';
-% maxQC         = 1;   % max QC to consider when taking differences.
-% verbose       = 1;   % anything > 0 == 'true'
-% twoup         = 1;   % anything > 0 == 'true'
+% maxgoodQC     = 0;   % in this context, anything with a DART QC > 0 is plotted in a separate axes
+% verbose       = 0;   % anything > 0 == 'true'
+% twoup         = 0;   % anything > 0 means plot both axes on same figure
 %
-% bob = plot_obs_netcdf_diffs(fname, ObsTypeString, region, CopyString1, CopyString2, ...
-%                             QCString, maxQC, verbose, twoup);
+% todo ... if there is only one copy or one qc string - just use it regardless of what has been input
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -55,11 +23,55 @@ function obsstruct = plot_obs_netcdf_diffs(fname, ObsTypeString, region,  ...
 %
 % DART $Id$
 
+%%--------------------------------------------------------------------
+% Provide defaults, Decode, Parse, Check the input
+%---------------------------------------------------------------------
+
+default_ObsTypeString = 'ALL';
+default_region        = [0 360 -90 90 -Inf Inf];
+default_CopyString    = 'NCEP BUFR observation';
+default_QCString      = 'DART quality control';
+default_maxgoodQC     = 0;
+default_verbose       = 0;
+default_twoup         = 0;
+p = inputParser;
+
+addRequired(p,'fname',@ischar);
+% addParameter or addParamValue depend on version of matlab - support both
+if (exist('inputParser/addParameter','file') == 2)
+    addParameter( p,'ObsTypeString',default_ObsTypeString,@ischar);
+    addParameter( p,'region',       default_region       ,@isnumeric);
+    addParameter( p,'CopyString',   default_CopyString   ,@ischar);
+    addParameter( p,'QCString',     default_QCString     ,@ischar);
+    addParameter( p,'maxgoodQC',    default_maxgoodQC    ,@isnumeric);
+    addParameter( p,'verbose',      default_verbose      ,@isnumeric);
+    addParameter( p,'twoup',        default_twoup        ,@isnumeric);
+else
+    addParamValue(p,'ObsTypeString',default_ObsTypeString,@ischar);
+    addParamValue(p,'region',       default_region       ,@isnumeric);
+    addParamValue(p,'CopyString',   default_CopyString   ,@ischar);
+    addParamValue(p,'QCString',     default_QCString     ,@ischar);
+    addParamValue(p,'maxgoodQC',    default_maxgoodQC    ,@isnumeric);
+    addParamValue(p,'verbose',      default_verbose      ,@isnumeric);
+    addParamValue(p,'twoup',        default_twoup        ,@isnumeric);
+end
+
+p.parse(fname, varargin{:});
+
+% if you want to echo the input
+% disp(['fname         : ', p.Results.fname])
+% disp(['p.Results.ObsTypeString : ', p.Results.p.Results.ObsTypeString])
+
+if ~isempty(fieldnames(p.Unmatched))
+    disp('Extra inputs:')
+    disp(p.Unmatched)
+end
+
 if (exist(fname,'file') ~= 2)
     error('%s does not exist.',fname)
 end
 
-if ( twoup > 0 )
+if ( p.Results.twoup > 0 )
     clf; orient tall
     positions = [0.1, 0.55, 0.8, 0.35 ; ...
         0.1, 0.10, 0.8, 0.35 ; ...
@@ -73,24 +85,17 @@ end
 
 %% Read the observation sequence
 
-obsstruct  = read_obs_netcdf(fname, ObsTypeString, region, ...
-    CopyString1, QCString, verbose);
-
-obsstruct2 = read_obs_netcdf(fname, ObsTypeString, region, ...
-    CopyString2, QCString, verbose);
-
-xdat = obsstruct2.obs - obsstruct.obs;
-obsstruct.obs = xdat;
-clear obsstruct2 xdat
+obsstruct = read_obs_netcdf(p.Results.fname, p.Results.ObsTypeString, p.Results.region, ...
+    p.Results.CopyString, p.Results.QCString, p.Results.verbose);
 
 % subset based on qc value
 
-if ( (~ isempty(obsstruct.qc)) && (~ isempty(maxQC)) )
+if ( (~ isempty(obsstruct.qc)) && (~ isempty(p.Results.maxgoodQC)) )
 
-    inds = find(obsstruct.qc > maxQC);
+    inds = find(obsstruct.qc > p.Results.maxgoodQC);
     obsstruct.numflagged = length(inds);
     fprintf('%d obs have a %s value greater than %f (i.e. "bad")\n', ...
-        obsstruct.numflagged, QCString, maxQC)
+        obsstruct.numflagged, p.Results.QCString, p.Results.maxgoodQC)
 
     if (~isempty(inds))
         flaggedobs.lons = obsstruct.lons(inds);
@@ -101,10 +106,10 @@ if ( (~ isempty(obsstruct.qc)) && (~ isempty(maxQC)) )
         flaggedobs.qc   = obsstruct.qc(  inds);
     end
 
-    inds = find(obsstruct.qc <= maxQC);
+    inds = find(obsstruct.qc <= p.Results.maxgoodQC);
     obsstruct.numgood = length(inds);
     fprintf('%d obs have a %s value less than or equal to %f (i.e. "good")\n', ...
-        obsstruct.numgood, QCString, maxQC)
+        obsstruct.numgood, p.Results.QCString, p.Results.maxgoodQC)
 
     bob = obsstruct.lons(inds); obsstruct.lons = bob;
     bob = obsstruct.lats(inds); obsstruct.lats = bob;
@@ -163,15 +168,15 @@ end
 %% Create graphic with area-weighted symbols for the good observations.
 %  It has happened that there have been zero good observations in a file.
 
-xmin = min(region(1:2));
-xmax = max(region(1:2));
-ymin = min(region(3:4));
-ymax = max(region(3:4));
+xmin = min(p.Results.region(1:2));
+xmax = max(p.Results.region(1:2));
+ymin = min(p.Results.region(3:4));
+ymax = max(p.Results.region(3:4));
 zmin = min(obsstruct.z);
 zmax = max(obsstruct.z);
 
-pstruct.colorbarstring = sprintf('%s - %s',CopyString2,CopyString1);
-pstruct.region = region;
+pstruct.colorbarstring = obsstruct.ObsTypeString;
+pstruct.p.Results.region = p.Results.region;
 pstruct.str1   = sprintf('%s',obsstruct.ObsTypeString);
 pstruct.str3   = sprintf('%s - %s',obsstruct.timestring(1,:),obsstruct.timestring(2,:));
 
@@ -183,7 +188,7 @@ if ( length(obsstruct.obs) < 1 )
     str1 = sprintf('There are no ''good'' observations to plot.\n');
     text(0.5,0.67,str1,'HorizontalAlignment','center')
     text(0.5,0.33,nanobs.string,'HorizontalAlignment','center')
-    title( {pstruct.str1, pstruct.colorbarstring, pstruct.str3}, 'Interpreter','none','FontSize',14);
+    title( {pstruct.str1, obsstruct.CopyString, pstruct.str3}, 'Interpreter','none','FontSize',14);
 else
 
     pstruct.Ztype  = obsstruct.Ztyp(1);
@@ -251,7 +256,7 @@ if (obsstruct.numflagged > 0 ) % if there are flagged observation to plot ... ca
 
     pstruct.Ztype  = flaggedobs.Ztyp(1);
 
-    if (twoup <= 0)
+    if (p.Results.twoup <= 0)
         figure; clf
     end
 
@@ -270,8 +275,8 @@ if (obsstruct.numflagged > 0 ) % if there are flagged observation to plot ... ca
         pstruct.scalearray = 30.0 * ones(size(flaggedobs.obs));
     end
 
-    pstruct.colorbarstring = QCString;
-    pstruct.clim = [min(flaggedobs.qc)-1.0 max(flaggedobs.qc)+1.0];
+    pstruct.colorbarstring = p.Results.QCString;
+    pstruct.clim = [min(flaggedobs.qc) max(flaggedobs.qc)];
     pstruct.str1 = sprintf('%s level (%.2f - %.2f)',obsstruct.ObsTypeString,zmin,zmax);
     pstruct.str2 = sprintf('%s (%d ''good'', %d ''flagged'' -- %.2f %%)', obsstruct.CopyString, ...
         length(obsstruct.obs), length(flaggedobs.obs), prej);
@@ -296,7 +301,7 @@ if (obsstruct.numflagged > 0 ) % if there are flagged observation to plot ... ca
 
     %% If the QC is a DART QC, we know how to interpret them.
 
-    switch lower(strtrim(QCString))
+    switch lower(strtrim(p.Results.QCString))
         case 'dart quality control',
 
             qcvals  = unique(flaggedobs.qc);
@@ -314,7 +319,7 @@ if (obsstruct.numflagged > 0 ) % if there are flagged observation to plot ... ca
             end
 
         otherwise,
-            str = sprintf('no way to interpret values of %s',strtrim(QCString));
+            str = sprintf('no way to interpret values of %s',strtrim(p.Results.QCString));
             text(0.0, 0.0, str)
     end
 end
@@ -343,7 +348,7 @@ h1 = gca;
 
 axis(pstruct.axis)
 
-title( {pstruct.str1, pstruct.str3, pstruct.colorbarstring}, 'Interpreter','none','FontSize',14);
+title( {pstruct.str1, pstruct.str3, pstruct.str2}, 'Interpreter','none','FontSize',14);
 xlabel('longitude')
 ylabel('latitude')
 

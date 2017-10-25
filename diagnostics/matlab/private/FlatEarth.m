@@ -1,8 +1,8 @@
 function FlatEarth(plotstruct)
 %%
-% plotstruct.region  [xmin xmax ymin ymax zmin zmax] - all finite
+% plotstruct.axis    [xmin xmax ymin ymax zmin zmax] - all finite
 % plotstruct.clim    [minimum data value, maximum data value]
-% plotstruct.Ztype    a DART integer describing the vertical coordinate system
+% plotstruct.Ztype   a DART integer describing the vertical coordinate system
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -55,13 +55,15 @@ y    = lats(lat_ind1:lat_ind2);
 % Augment the colormap and the CLim so that the lowest color index can be
 % forced to a light gray without compromising the data range.
 
-[clim, ~] = add_gray_color;
+[clim, ~] = add_gray_color(plotstruct.clim);
 cmin = double(clim(1)); % corresponds to the bogus data value
 
 %%--------------------------------------------------------------------------
 % Contour the "subset" - and give the whole thing an appropriate zlevel
 % so the continents are either at the top of the plot (for depth), or
 % the bottom (for just about everything else).
+%@>todo FIXME ... observations AT the zlevel can be hidden under the landmasses
+% when rotated to perfect overhead view.
 
 orgholdstate = ishold; hold on;
 

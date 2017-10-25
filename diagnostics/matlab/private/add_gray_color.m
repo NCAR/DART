@@ -1,4 +1,4 @@
-function [clim, datarange] = add_gray_color
+function [clim, datarange] = add_gray_color(datarange)
 %% Augment the colormap and the CLim so that the lowest color index can be forced to a light gray without compromising the data range.
 
 %% DART software - Copyright UCAR. This open source software is provided
@@ -12,7 +12,9 @@ ncolors  = length(bob);
 bob(1,:) = 0.7; % set lowest color to be light gray.
 colormap(bob);
 
-datarange = get(gca,'CLim');
+if (nargin < 1) 
+   datarange = get(gca,'CLim');
+end
 cmin = datarange(1);
 cmax = datarange(2);
 
