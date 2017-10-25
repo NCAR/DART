@@ -169,6 +169,7 @@ pstruct.colorbarstring = obsstruct.ObsTypeString;
 pstruct.region = region;
 pstruct.str1   = sprintf('%s',obsstruct.ObsTypeString);
 pstruct.str3   = sprintf('%s - %s',obsstruct.timestring(1,:),obsstruct.timestring(2,:));
+pstruct.Ztype  = obsstruct.Ztyp(1);
 
 subplot('position',positions(1,:))
 
@@ -188,14 +189,14 @@ else
    else
       pstruct.scalearray = 30.0 * ones(size(obsstruct.obs));
    end
-   pstruct.clim   = [min(obsstruct.obs) max(obsstruct.obs)];
+   pstruct.clim   = [min(obsstruct.obs)-0.5 max(obsstruct.obs)+0.5];
    pstruct.str2   = sprintf('%s (%d locations)',obsstruct.CopyString,length(obsstruct.obs));
 
    % If all the observations live on the same level ... make a 2D plot.
 
    if ( zmin == zmax )
 
-      pstruct.axis = [xmin xmax ymin ymax];
+      pstruct.axis = [xmin xmax ymin ymax zmin-0.5 zmax+0.5];
 
       plot_2D(obsstruct, pstruct);
 
@@ -256,7 +257,7 @@ if (obsstruct.numflagged > 0 ) % if there are flagged observation to plot ... ca
          (length(flaggedobs.obs) + length(obsstruct.obs));
    pstruct.scalearray = 30 * ones(size(flaggedobs.obs));
    pstruct.colorbarstring = QCString;
-   pstruct.clim = [min(flaggedobs.qc) max(flaggedobs.qc)];
+   pstruct.clim = [min(flaggedobs.qc)-1.0 max(flaggedobs.qc)+1.0];
    pstruct.str1 = sprintf('%s level (%.2f - %.2f)',obsstruct.ObsTypeString,zmin,zmax);
    pstruct.str2 = sprintf('%s (%d ''good'', %d ''flagged'' -- %.2f %%)', obsstruct.CopyString, ...
                       length(obsstruct.obs), length(flaggedobs.obs), prej);
@@ -270,7 +271,7 @@ if (obsstruct.numflagged > 0 ) % if there are flagged observation to plot ... ca
 
    else
 
-      pstruct.axis = [xmin xmax ymin ymax];
+      pstruct.axis = [xmin xmax ymin ymax zmin-0.5 zmin+0.5];
 
       plot_2D(flaggedobs, pstruct);
 
@@ -306,90 +307,6 @@ end
 
 
 
-function h = myworldmap
-
-%%--------------------------------------------------------------------------
-% GET THE ELEVATION DATA AND SET UP THE ASSOCIATED COORDINATE DATA
-%---------------------------------------------------------------------------
-
-load topo;               % GET Matlab-native [180x360] ELEVATION DATASET
-lats = -89.5:89.5;       % CREATE LAT ARRAY FOR TOPO MATRIX
-lons = 0.5:359.5;        % CREATE LON ARRAY FOR TOPO MATRIX
-nlon = length(lons);
-nlat = length(lats);
-
-%%--------------------------------------------------------------------------
-% IF WE NEED TO SWAP HEMISPHERES, DO SO NOW.
-% If we didn't explicitly tell it, make a guess.
-%---------------------------------------------------------------------------
-
-ax   = axis;
-
-if (ax(1) < -2)
-   lons = lons - 180.0;
-   topo = [ topo(:,nlon/2+1:nlon) topo(:,1:nlon/2) ];
-end
-
-%%--------------------------------------------------------------------------
-% We need to determine the geographic subset of the elevation matrix.
-%---------------------------------------------------------------------------
-
-lon_ind1 = find(ax(1) <= lons, 1);
-lon_ind2 = find(ax(2) <= lons, 1);
-lat_ind1 = find(ax(3) <= lats, 1);
-lat_ind2 = find(ax(4) <= lats, 1);
-
-if (isempty(lon_ind1)), lon_ind1 = 1;    end;
-if (isempty(lon_ind2)), lon_ind2 = nlon; end;
-if (isempty(lat_ind1)), lat_ind1 = 1;    end;
-if (isempty(lat_ind2)), lat_ind2 = nlat; end;
-
-elev = topo(lat_ind1:lat_ind2,lon_ind1:lon_ind2);
-x    = lons(lon_ind1:lon_ind2);
-y    = lats(lat_ind1:lat_ind2);
-
-%%--------------------------------------------------------------------------
-% Contour the "subset"
-% There are differences between 6.5 and 7.0 that make changing the colors
-% of the filled contours a real pain.
-%---------------------------------------------------------------------------
-
-orgholdstate = ishold;
-hold on;
-
-if ( length(ax) > 4)
-   switch  get(gca,'ZDir')
-      case 'reverse'
-         zlevel = max(ax(5:6));
-      otherwise
-         zlevel = min(ax(5:6));
-   end
-end
-
-fcolor = [0.7 0.7 0.7];    % light grey
-
-myclim = get(gca,'CLim');
-[~,h] = contourf(x,y,elev,[0.0 0.0],'k-');
-set(gca,'CLim',myclim)
-
-h_patch   = get(h, 'Children');
-
-for i = 1:numel(h_patch)
-    y = get(h_patch(i), 'YData');
-    s = size(y);
-    if ( exist('zlevel','var') )
-       set(h_patch(i), 'ZData', zlevel*ones(s));
-    end
-    set(h_patch(i),'FaceColor',fcolor);
-    set(h_patch(i),'AlphaDataMapping','none','FaceVertexAlphaData',0.3)
-    set(h_patch(i),'FaceAlpha',0.3)
-end
-
-if (orgholdstate == 0), hold off; end;
-
-
-
-
 function s = scaleme(x,minsize)
 % scaleme returns a uniformly scaled array the same size as the input
 % array where the maximum is 10 times the minimum
@@ -407,14 +324,13 @@ function h1 = plot_3D(obsstruct, pstruct)
 
 if (pstruct.clim(1) == pstruct.clim(2))
    % If all the observations have the same value, setting the
-   % colorbar limits is a real pain. Fundamentally, I am
-   % forcing the plot symbols to be the lowest color of the
-   % colormap and setting the colorbar to have some more
-   % colors 'on top' - that are never used.
+   % colorbar limits is a pain. Fundamentally, I am forcing the
+   % plot symbols to be the middle color of the colormap.
    cmap = colormap;
+   midcolor = size(cmap,1)/2;
    h = plot3(obsstruct.lons, obsstruct.lats, obsstruct.z, 'bd');
-   set(h,'MarkerFaceColor',cmap(1,:),'MarkerEdgeColor',cmap(1,:))
-   set(gca,'Clim',[pstruct.clim(1) pstruct.clim(2)+1])
+   set(h,'MarkerFaceColor',cmap(midcolor,:),'MarkerEdgeColor',cmap(midcolor,:))
+   set(gca,'Clim',[pstruct.clim(1)-0.5 pstruct.clim(2)+0.5])
    set(gca,'XGrid','on','YGrid','on','ZGrid','on')
 
 else
@@ -430,21 +346,7 @@ title( {pstruct.str1, pstruct.str3, pstruct.str2}, 'Interpreter','none','FontSiz
 xlabel('longitude')
 ylabel('latitude')
 
-if     (obsstruct.Ztyp(1) == -2) % VERTISUNDEF     = -2
-   zlabel('unspecified')
-elseif (obsstruct.Ztyp(1) == -1) % VERTISSURFACE   = -1
-   zlabel('surface')
-elseif (obsstruct.Ztyp(1) ==  1) % VERTISLEVEL     =  1
-   zlabel('level')
-elseif (obsstruct.Ztyp(1) ==  2) % VERTISPRESSURE  =  2
-   set(gca,'ZDir','reverse')
-   zlabel('pressure')
-elseif (obsstruct.Ztyp(1) ==  3) % VERTISHEIGHT    =  3
-   zlabel('height')
-end
-
-myworldmap;
-set(gca,'CLim',clim)
+FlatEarth(pstruct);
 hb = colorbar;
 set(get(hb,'YLabel'),'String',pstruct.colorbarstring,'Interpreter','none')
 
@@ -455,14 +357,13 @@ function h1 = plot_2D(obsstruct, pstruct)
 
 if (pstruct.clim(1) == pstruct.clim(2))
     % If all the observations have the same value, setting the
-    % colorbar limits is a real pain. Fundamentally, I am
-    % forcing the plot symbols to be the lowest color of the
-    % colormap and setting the colorbar to have some more
-    % colors 'on top' - that are never used.
+    % colorbar limits is a pain. Fundamentally, I am forcing the
+    % plot symbols to be the middle color of the colormap.
     cmap = colormap;
+    midcolor = size(cmap,1)/2;
     h = plot(obsstruct.lons, obsstruct.lats, 'bd');
-    set(h,'MarkerFaceColor',cmap(1,:),'MarkerEdgeColor',cmap(1,:))
-    set(gca,'Clim',[pstruct.clim(1) pstruct.clim(2)+1])
+    set(h,'MarkerFaceColor',cmap(midcolor,:),'MarkerEdgeColor',cmap(midcolor,:))
+    set(gca,'Clim',[pstruct.clim(1)-0.5 pstruct.clim(2)+0.5])
     set(gca,'XGrid','on','YGrid','on')
     
 else
@@ -470,7 +371,6 @@ else
         scatter3(obsstruct.lons, obsstruct.lats, obsstruct.z, ...
             pstruct.scalearray, obsstruct.obs, 'd', 'filled');
     else
-        
         scatter3(obsstruct.lons, obsstruct.lats, zeros(size(obsstruct.lons)), ...
             pstruct.scalearray, obsstruct.obs, 'd', 'filled');
     end
@@ -484,8 +384,7 @@ title( {pstruct.str1, pstruct.str3, pstruct.str2}, 'Interpreter','none','FontSiz
 xlabel('longitude')
 ylabel('latitude')
 
-myworldmap;
-set(gca,'CLim',clim)
+FlatEarth(pstruct);
 hb = colorbar;
 set(get(hb,'YLabel'),'String',pstruct.colorbarstring,'Interpreter','none')
 view(0,90)
