@@ -77,15 +77,24 @@ elseif (plotstruct.Ztype ==  2)  %    zunits = 'pressure';
 elseif (plotstruct.Ztype ==  3)  %    zunits = 'height';
 end
 
-% This translates to the right zlevel (no x,y translations)
-htrans = hgtransform;
-htrans.Matrix = makehgtform('translate',[0 0 zlevel]);
+% This translates to the right zlevel (no x,y translations).
+% To set the color of the contours to the lowest color in the colormap
+% add in the value that maps to the lowest color - the bogus data value.
 
-% to set the color of the contours to the lowest color in the colormap
-% add in the value that maps to the lowest color.
-[c,h] = contourf(x,y,elev+cmin,[cmin cmin],'k-','Parent',htrans);
-set(gca,'CLim',clim)
-
+if ( verLessThan('matlab','8.4') )
+    [~,h] = contourf(x,y,elev+cmin,[cmin cmin],'k-');
+    set(gca,'CLim',clim)
+    t1    = hgtransform('Parent',gca);
+    set(h,'Parent',t1);
+    m     = makehgtform('translate',[0 0 zlevel]);
+    set(t1,'Matrix',m)
+else
+    htrans = hgtransform;
+    htrans.Matrix = makehgtform('translate',[0 0 zlevel]);
+    [~,h] = contourf(x,y,elev+cmin,[cmin cmin],'k-','Parent',htrans);
+    set(gca,'CLim',clim)
+end
+    
 if (orgholdstate == 0), hold off; end;
 
 % <next few lines under version control, do not edit>
