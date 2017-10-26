@@ -75,7 +75,7 @@ character(len=*), optional, intent(in) :: fname       ! file name (for error pri
 
 integer :: LocDimID, LDimID, VarID
 integer :: rc
-character(len=32) :: context = 'nc_write_location_atts'
+character(len=*), parameter :: context = 'location_io_mod:nc_write_location_atts'
 
 ! get an id for the location dimension:  
 !  if the user passes us in a dimension id, 
@@ -130,7 +130,7 @@ character(len=*), optional, intent(in) :: fname       ! file name (for error pri
 
 integer :: VarID
 integer :: rc, ndims
-character(len=32) :: context = 'nc_add_location_atts'
+character(len=*), parameter :: context = 'location_io_mod:nc_add_location_atts'
 
 integer :: dimids(NF90_MAX_VAR_DIMS)
 
@@ -179,7 +179,7 @@ integer,          optional,  intent(in) :: use_dimID   ! dimension to use
 character(len=*), optional,  intent(in) :: fname       ! file name (for printing purposes)
 
 integer :: VarID, dimID, rc
-character(len=32) :: context = 'nc_write_location_vert'
+character(len=*), parameter :: context = 'location_io_mod:nc_write_location_vert'
 
 ! if they give us the dimension the 'locations' array is using,
 ! use that.  otherwise default to the unlimited dimension for this variable.

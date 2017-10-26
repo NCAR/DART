@@ -39,7 +39,7 @@
 !>
 !>  The RMA model_mod does not refer to TYPE_s, since they were replaced by association
 !>  with CAM variables and use of find_name. 
-!>  In the future, DART KINDs will be associated with CAM variables by the ${comp}_variables
+!>  In the future, DART QTYs will be associated with CAM variables by the ${comp}_variables
 !>  mechanism as in models/clm.
 !>  If a user wants to add new CAM variables to the state vector,
 !>  then more QTY_s may be needed in the 'use obs_kind_mod' statement and maybe the obs_kind_mod.
@@ -309,6 +309,7 @@ type grid_1d_type
    character(len=NF90_MAX_NAME), allocatable :: atts_vals(:)  
 end type grid_1d_type
 
+integer, parameter :: no_lev = MISSING_I  ! constant to tell get_val_level there are no levels.
 integer :: iii
 ! integer :: grid_num_0d = 0              ! # of grid scalars to read from file
 ! P0 now a "coordinate",  and may be removed entirely
@@ -400,7 +401,7 @@ real(r8) :: adv_mass(chemical_list) =  &
   12.011_r8,      12.011_r8,      12.011_r8,    12.011_r8       &
 /)
 
-! 2 unit conversion arrays derived from adv_mass will be filled in map_kinds.
+! 2 unit conversion arrays derived from adv_mass will be filled in map_qtys.
 real(r8), parameter :: molar_mass_dry_air = 28.9644_r8
 
 ! CAM-chem end
@@ -554,17 +555,17 @@ character(len=8), allocatable :: cflds(:)
 character(len=nf90_max_name), allocatable :: state_long_names(:)
 character(len=nf90_max_name), allocatable :: state_units(:)
 
-! Arrays for linking obs_kinds(QTY_) and model variable names are filled in map_kinds.
+! Arrays for linking obs_qtys(QTY_) and model variable names are filled in map_qtys.
 ! The max size of QTY_ should come from obs_kind_mod
 ! These should be dimensioned the same size as the total of state_names_Nd.
 character(len=8) :: dart_to_cam_types(300) = ''
-integer          :: cam_to_dart_kinds(300) = MISSING_I
+integer          :: cam_to_dart_qtys(300) = MISSING_I
 ! Strategy; array elements are only changed for conversion factors that are != 1.0.
 !           Then convert_mmr2vmr = MISSING_R8 triggers a convert_units of 1.0 in interp_lonlat.
 ! So far, the conversion from obs units back to state units is no needed.
 ! If it becomes needed: 
 ! 1) define array convert_vmr2mmr(MAX_STATE_NAMES) = MISSING_R8 
-! 2) Add lines to function map_kinds similar to the convert_mm42vmr lines:
+! 2) Add lines to function map_qtys similar to the convert_mmr2vmr lines:
 !       convert_vmr2mmr(i) = 1.0_r8/convert_mmr2vmr(i)
 real(r8)         :: convert_mmr2vmr(MAX_STATE_NAMES) = MISSING_R8
 
@@ -755,8 +756,8 @@ if (ilev%label /= '') max_levs = max(ilev%length, lev%length)
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! RMA-KR; 
 !    p_col is now a local variable, allocated when/where it's needed.
-! Fills arrays for the linking of obs_kinds (QTY_) to model field names
-call map_kinds()
+! Fills arrays for the linking of obs_qtys (QTY_) to model field names
+call map_qtys()
 
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! If restricting impact of a particular kind to only obs and state vars
@@ -1562,7 +1563,7 @@ end subroutine order_state_fields
 
 !-----------------------------------------------------------------------
 
-subroutine map_kinds()
+subroutine map_qtys()
 
 ! ? Should this be a function instead; removes need to dimension obs_loc_in arbitrarily
 !   and wastefully.  But then it's called millions of times, instead of accessing a small
@@ -1582,115 +1583,116 @@ subroutine map_kinds()
 integer :: i
 
 ! Physically 2D fields
+
 i = find_name('PS',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_SURFACE_PRESSURE) = 'PS'
-   cam_to_dart_kinds(i) = QTY_SURFACE_PRESSURE
+   dart_to_cam_types(    QTY_SURFACE_PRESSURE) = 'PS'
+   cam_to_dart_qtys(i) = QTY_SURFACE_PRESSURE
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('AEROD_v',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_AOD) = 'AEROD_v'
-   cam_to_dart_kinds(i) = QTY_AOD
+   dart_to_cam_types(    QTY_AOD) = 'AEROD_v'
+   cam_to_dart_qtys(i) = QTY_AOD
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('SFCO',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_SFCO) = 'SFCO'
-   cam_to_dart_kinds(i) = QTY_SFCO
+   dart_to_cam_types(    QTY_SFCO) = 'SFCO'
+   cam_to_dart_qtys(i) = QTY_SFCO
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('SFCO01',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_SFCO01) = 'SFCO01'
-   cam_to_dart_kinds(i) = QTY_SFCO01
+   dart_to_cam_types(    QTY_SFCO01) = 'SFCO01'
+   cam_to_dart_qtys(i) = QTY_SFCO01
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('SFCO02',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_SFCO02) = 'SFCO02'
-   cam_to_dart_kinds(i) = QTY_SFCO02
+   dart_to_cam_types(    QTY_SFCO02) = 'SFCO02'
+   cam_to_dart_qtys(i) = QTY_SFCO02
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('SFCO03',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_SFCO03) = 'SFCO03'
-   cam_to_dart_kinds(i) = QTY_SFCO03
+   dart_to_cam_types(    QTY_SFCO03) = 'SFCO03'
+   cam_to_dart_qtys(i) = QTY_SFCO03
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('SFOC1',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_SFOC1) = 'SFOC1'
-   cam_to_dart_kinds(i) = QTY_SFOC1
+   dart_to_cam_types(    QTY_SFOC1) = 'SFOC1'
+   cam_to_dart_qtys(i) = QTY_SFOC1
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('SFOC2',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_SFOC2) = 'SFOC2'
-   cam_to_dart_kinds(i) = QTY_SFOC2
+   dart_to_cam_types(    QTY_SFOC2) = 'SFOC2'
+   cam_to_dart_qtys(i) = QTY_SFOC2
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('SFCB1',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_SFCB1) = 'SFCB1'
-   cam_to_dart_kinds(i) = QTY_SFCB1
+   dart_to_cam_types(    QTY_SFCB1) = 'SFCB1'
+   cam_to_dart_qtys(i) = QTY_SFCB1
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('SFCB2',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_SFCB2) = 'SFCB2'
-   cam_to_dart_kinds(i) = QTY_SFCB2
+   dart_to_cam_types(    QTY_SFCB2) = 'SFCB2'
+   cam_to_dart_qtys(i) = QTY_SFCB2
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('SFOC102',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_SFOC102) = 'SFOC102'
-   cam_to_dart_kinds(i) = QTY_SFOC102
+   dart_to_cam_types(    QTY_SFOC102) = 'SFOC102'
+   cam_to_dart_qtys(i) = QTY_SFOC102
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('SFOC202',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_SFOC202) = 'SFOC202'
-   cam_to_dart_kinds(i) = QTY_SFOC202
+   dart_to_cam_types(    QTY_SFOC202) = 'SFOC202'
+   cam_to_dart_qtys(i) = QTY_SFOC202
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('SFCB102',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_SFCB102) = 'SFCB102'
-   cam_to_dart_kinds(i) = QTY_SFCB102
+   dart_to_cam_types(    QTY_SFCB102) = 'SFCB102'
+   cam_to_dart_qtys(i) = QTY_SFCB102
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('SFCB202',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_SFCB202) = 'SFCB202'
-   cam_to_dart_kinds(i) = QTY_SFCB202
+   dart_to_cam_types(    QTY_SFCB202) = 'SFCB202'
+   cam_to_dart_qtys(i) = QTY_SFCB202
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
-i = find_name('EFGWORO ',cflds)
+i = find_name('EFGWORO',cflds)
 if (i/= MISSING_I) then
-   dart_to_cam_types(QTY_GRAV_WAVE_DRAG_EFFIC) = 'EFGWORO'
-   cam_to_dart_kinds(i) = QTY_GRAV_WAVE_DRAG_EFFIC
+   dart_to_cam_types(    QTY_GRAV_WAVE_DRAG_EFFIC) = 'EFGWORO'
+   cam_to_dart_qtys(i) = QTY_GRAV_WAVE_DRAG_EFFIC
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('FRACLDV',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_GRAV_WAVE_STRESS_FRACTION) = 'FRACLDV'
-   cam_to_dart_kinds(i) = QTY_GRAV_WAVE_STRESS_FRACTION
+   dart_to_cam_types(    QTY_GRAV_WAVE_STRESS_FRACTION) = 'FRACLDV'
+   cam_to_dart_qtys(i) = QTY_GRAV_WAVE_STRESS_FRACTION
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
@@ -1698,198 +1700,197 @@ endif
 ! dart_to_cam_types(QTY_SEA_SURFACE_TEMPERATURE  ?  ) = TYPE_TSOCN
 !    convert_mmr2vmr(i) = mmr2vmr(i)
 
-
 ! Physically 3D fields
 i = find_name('T',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_TEMPERATURE)        = 'T'
-   cam_to_dart_kinds(i)      = QTY_TEMPERATURE
+   dart_to_cam_types(    QTY_TEMPERATURE)        = 'T'
+   cam_to_dart_qtys(i)      = QTY_TEMPERATURE
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('US',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_U_WIND_COMPONENT)   = 'US'
-   cam_to_dart_kinds(i)      = QTY_U_WIND_COMPONENT
+   dart_to_cam_types(    QTY_U_WIND_COMPONENT)   = 'US'
+   cam_to_dart_qtys(i)      = QTY_U_WIND_COMPONENT
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('VS',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_V_WIND_COMPONENT)   = 'VS'
-   cam_to_dart_kinds(i)      = QTY_V_WIND_COMPONENT
+   dart_to_cam_types(    QTY_V_WIND_COMPONENT)   = 'VS'
+   cam_to_dart_qtys(i)      = QTY_V_WIND_COMPONENT
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('Q',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_SPECIFIC_HUMIDITY)  = 'Q'
-   cam_to_dart_kinds(i)      = QTY_SPECIFIC_HUMIDITY
+   dart_to_cam_types(    QTY_SPECIFIC_HUMIDITY)  = 'Q'
+   cam_to_dart_qtys(i)      = QTY_SPECIFIC_HUMIDITY
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('CLDLIQ',cflds)
 if (i /= MISSING_I)  then
-   dart_to_cam_types(QTY_CLOUD_LIQUID_WATER) = 'CLDLIQ'
-  cam_to_dart_kinds(i) = QTY_CLOUD_LIQUID_WATER
+   dart_to_cam_types(    QTY_CLOUD_LIQUID_WATER) = 'CLDLIQ'
+  cam_to_dart_qtys(i) = QTY_CLOUD_LIQUID_WATER
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('CLDICE',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_CLOUD_ICE)          = 'CLDICE'
-   cam_to_dart_kinds(i) = QTY_CLOUD_ICE
+   dart_to_cam_types(    QTY_CLOUD_ICE)          = 'CLDICE'
+   cam_to_dart_qtys(i) = QTY_CLOUD_ICE
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 !    dart_to_cam_types(QTY_CLOUD_WATER  ?  ) = 'LCWAT'
-! cam_to_dart_kinds(i) = QTY_CLOUD_WATER  ?
+! cam_to_dart_qtys(i) = QTY_CLOUD_WATER  ?
 !    convert_mmr2vmr(i) = mmr2vmr(i)
 
 i = find_name('CO',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_CO)  = 'CO'
-   cam_to_dart_kinds(i)  = QTY_CO
+   dart_to_cam_types(    QTY_CO)  = 'CO'
+   cam_to_dart_qtys(i) = QTY_CO
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('CO01',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_CO01)  = 'CO01'
-   cam_to_dart_kinds(i)  = QTY_CO01
+   dart_to_cam_types(    QTY_CO01)  = 'CO01'
+   cam_to_dart_qtys(i) = QTY_CO01
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('CO02',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_CO02)  = 'CO02'
-   cam_to_dart_kinds(i)  = QTY_CO02
+   dart_to_cam_types(    QTY_CO02)  = 'CO02'
+   cam_to_dart_qtys(i) = QTY_CO02
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('CO03',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_CO03)  = 'CO03'
-   cam_to_dart_kinds(i)  = QTY_CO03
+   dart_to_cam_types(    QTY_CO03)  = 'CO03'
+   cam_to_dart_qtys(i) = QTY_CO03
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('OC1',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_OC1)  = 'OC1'
-   cam_to_dart_kinds(i)  = QTY_OC1
+   dart_to_cam_types(    QTY_OC1)  = 'OC1'
+   cam_to_dart_qtys(i) = QTY_OC1
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('OC2',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_OC2)  = 'OC2'
-   cam_to_dart_kinds(i)  = QTY_OC2
+   dart_to_cam_types(    QTY_OC2)  = 'OC2'
+   cam_to_dart_qtys(i) = QTY_OC2
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('CB1',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_CB1)  = 'CB1'
-   cam_to_dart_kinds(i)  = QTY_CB1
+   dart_to_cam_types(    QTY_CB1)  = 'CB1'
+   cam_to_dart_qtys(i) = QTY_CB1
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('CB2',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_CB2)  = 'CB2'
-   cam_to_dart_kinds(i)  = QTY_CB2
+   dart_to_cam_types(    QTY_CB2)  = 'CB2'
+   cam_to_dart_qtys(i) = QTY_CB2
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('OC102',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_OC102)  = 'OC102'
-   cam_to_dart_kinds(i)  = QTY_OC102
+   dart_to_cam_types(    QTY_OC102)  = 'OC102'
+   cam_to_dart_qtys(i) = QTY_OC102
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('OC202',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_OC202)  = 'OC202'
-   cam_to_dart_kinds(i)  = QTY_OC202
+   dart_to_cam_types(    QTY_OC202)  = 'OC202'
+   cam_to_dart_qtys(i) = QTY_OC202
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('CB102',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_CB102)  = 'CB102'
-   cam_to_dart_kinds(i)  = QTY_CB102
+   dart_to_cam_types(    QTY_CB102)  = 'CB102'
+   cam_to_dart_qtys(i) = QTY_CB102
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('CB202',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_CB202)  = 'CB202'
-   cam_to_dart_kinds(i)  = QTY_CB202
+   dart_to_cam_types(    QTY_CB202)  = 'CB202'
+   cam_to_dart_qtys(i) = QTY_CB202
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('CO2',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_CO2) = 'CO2'
-   cam_to_dart_kinds(i) = QTY_CO2
+   dart_to_cam_types(    QTY_CO2) = 'CO2'
+   cam_to_dart_qtys(i) = QTY_CO2
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('NO',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_NO)  = 'NO'
-   cam_to_dart_kinds(i)  = QTY_NO
+   dart_to_cam_types(    QTY_NO)  = 'NO'
+   cam_to_dart_qtys(i) = QTY_NO
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('NO2',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_NO2) = 'NO2'
-   cam_to_dart_kinds(i) = QTY_NO2
+   dart_to_cam_types(    QTY_NO2) = 'NO2'
+   cam_to_dart_qtys(i) = QTY_NO2
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('CH4',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_CH4) = 'CH4'
-   cam_to_dart_kinds(i) = QTY_CH4
+   dart_to_cam_types(    QTY_CH4) = 'CH4'
+   cam_to_dart_qtys(i) = QTY_CH4
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 i = find_name('NH3',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_NH3) = 'NH3'
-   cam_to_dart_kinds(i) = QTY_NH3
+   dart_to_cam_types(    QTY_NH3) = 'NH3'
+   cam_to_dart_qtys(i) = QTY_NH3
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 ! i = find_name('O',cflds)
 ! if (i /= MISSING_I) then
-!    dart_to_cam_types(QTY_O)   = 'O'
-!    cam_to_dart_kinds(i)   = QTY_O
+!    dart_to_cam_types(   QTY_O)   = 'O'
+!    cam_to_dart_qtys(i) = QTY_O
 ! endif
 
 i = find_name('O3',cflds)
 if (i /= MISSING_I) then
-   dart_to_cam_types(QTY_O3)  = 'O3'
-   cam_to_dart_kinds(i)  = QTY_O3
+   dart_to_cam_types(    QTY_O3)  = 'O3'
+   cam_to_dart_qtys(i) = QTY_O3
    convert_mmr2vmr(i) = mmr2vmr(i)
 endif
 
 
 if (print_details .and. output_task0) then
-   write(string1,*) 'OBS_KIND   FIELD_TYPE'
-   call error_handler(E_MSG, 'map_kinds', string1,source,revision,revdate)
+   write(string1,*) 'OBS_QTY   FIELD_TYPE'
+   call error_handler(E_MSG, 'map_qtys', string1,source,revision,revdate)
    do i=1,300
       if (dart_to_cam_types(i) /= '') then
          write(string1,'(I8,A)') i, dart_to_cam_types(i)
-         call error_handler(E_MSG, 'map_kinds', string1,source,revision,revdate)
+         call error_handler(E_MSG, 'map_qtys', string1,source,revision,revdate)
       end if
    end do
 end if
 
-end subroutine map_kinds
+end subroutine map_qtys
 
 !-----------------------------------------------------------------------
 ! CAM-chem 3))
@@ -2392,7 +2393,7 @@ end subroutine write_cam_times
 !> Subroutine get_state_meta_data 
 !> Given an integer index into the state vector structure, 
 !> returns the associated location and vertical location type 'which_vert'.
-!> Optionally returns the DART KIND of the variable.
+!> Optionally returns the DART QTY of the variable.
 !> 
 !> @param[in]    index_in
 !> The 'index' of a variable in the state vector, whose physical location 
@@ -2402,7 +2403,7 @@ end subroutine write_cam_times
 !> The DART location_type location of the variable denoted by 'index'
 !> 
 !> @param[out]   var_kind
-!> The optional argument which can return the DART KIND of the variable.
+!> The optional argument which can return the DART QTY of the variable.
 
 
 subroutine get_state_meta_data(index_in, location, var_kind)
@@ -2467,7 +2468,7 @@ endif
 ! If the type is wanted, return it
 if (present(var_kind)) then
    ! used by call from assim_tools_mod:filter_assim, which wants the DART QTY_
-   var_kind = cam_to_dart_kinds(nfld)
+   var_kind = cam_to_dart_qtys(nfld)
 endif
 
 end subroutine get_state_meta_data
@@ -2747,7 +2748,7 @@ end subroutine nc_write_model_atts
 !> The DART location_type 'location' of the desired state estimate.
 !> 
 !> @param[in] :: obs_kind
-!> The DART KIND of the variable being estimated.
+!> The DART QTY of the variable being estimated.
 !> 
 !> @param[out] :: expected_obs
 !> The ensemble state estimate of the 'obs_kind' at 'location'.
@@ -2761,7 +2762,7 @@ subroutine model_interpolate(state_handle, ens_size, location, obs_kind, expecte
 ! This subroutine is now a short routine that calls
 ! either a rectangular grid version for eul/FV
 ! or non-rectangular for cubed-sphere code.
-! This does get KINDs from filter, not specific obs TYPEs.
+! This does get QTYs from filter, not specific obs TYPEs.
 
 ! Model_interpolate must return a positive value for istatus for a failure.
 ! 0 means success, negative values are reserved for DART internal use.
@@ -2769,11 +2770,11 @@ subroutine model_interpolate(state_handle, ens_size, location, obs_kind, expecte
 type(ensemble_type),   intent(in)  :: state_handle
 integer,               intent(in)  :: ens_size
 type(location_type),   intent(in)  :: location ! The DART location_type 'location' of the desired state estimate.
-integer,               intent(in)  :: obs_kind ! The DART KIND of the variable being estimated.
+integer,               intent(in)  :: obs_kind ! The DART QTY of the variable being estimated.
 real(r8),              intent(out) :: expected_obs(ens_size) ! The state estimate of the 'obs_kind' at 'location'
 integer,               intent(out) :: istatus(ens_size) ! A flag to signal the success of the interpolation.
 
-! FIXME; In future DARTs it may be useful to return the DART KIND too.
+! FIXME; In future DARTs it may be useful to return the DART QTY too.
 !        also convert to a field name (DART subroutine (get_raw_...?)).
 
 if (.not. module_initialized) call static_init_model()
@@ -2821,7 +2822,7 @@ integer,               intent(in)  :: obs_kind
 real(r8),              intent(out) :: interp_val(ens_size)
 integer,               intent(out) :: istatus(ens_size)
 
-! FIXME; In future DARTs it may be useful to return the DART KIND too.
+! FIXME; In future DARTs it may be useful to return the DART QTY too.
 !        also convert to a field name (DART subroutine (get_raw_...?)).
 
 integer  :: i, vstatus(ens_size), cur_vstatus(ens_size)
@@ -2860,14 +2861,14 @@ lon_lat_lev = get_location(obs_loc)
 ! Check whether model_mod can interpolate the requested variable.
 ! Pressure (3d) can't be specified as a state vector field (so s_type will = MISSING_I),
 ! but can be calculated for CAM, so obs_kind = QTY_PRESSURE is acceptable.
-! obs_kind truly is a DART KIND variable, generally passed from
+! obs_kind truly is a DART QTY variable, generally passed from
 ! obs_def/obs_def_XXX.f90: call interpolate.
 ! HK I think s_type is the index in cflds
 ! RMA-KR; use a new mechanism to define s_type (as in 'clm_variables')
 !   > > > Just loop through cflds until I find it.
 !            Need the state_name of this obs_kind
-!         CLM uses obs_kind.  Is there a 1 to 1 match of CAM variables and DART KINDS?
-!    > > >It requires hard-wiring all of the potential KINDs in the 'select case (obs_kind)' structure.
+!         CLM uses obs_kind.  Is there a 1 to 1 match of CAM variables and DART QTYs?
+!    > > >It requires hard-wiring all of the potential QTYs in the 'select case (obs_kind)' structure.
 !         Could still have dart_to_cam?
 !         Does paradigm of separating vars into 0d, 1d, 2d, and 3d make sense?
 s_type = find_name(dart_to_cam_types(obs_kind),cflds)
@@ -2881,7 +2882,7 @@ if (s_type == MISSING_I) then
       ! CAM-chem 5))
       !          This will be used when interp_val is calculated,
       !          but define it here, as soon as it can be.
-      ! Define for the non-chemical, state KINDs.
+      ! Define for the non-chemical, non-state QTYs.
       convert_units = 1.0_r8
    endif
 else
@@ -2900,6 +2901,8 @@ if (obs_kind == QTY_SURFACE_ELEVATION) then
    lev_name = 'none'
 elseif (obs_kind == QTY_PRESSURE) then
    lev_name = 'lev'
+! else
+!    set below
 endif
 
 ! Need to get lon, lat, lev dimension names for this field
@@ -3048,7 +3051,6 @@ elseif (is_vertical(obs_loc, "LEVEL")) then
    call get_val_level(state_handle, ens_size, lon_ind_above, lat_ind_above, nint(lon_lat_lev(3)), obs_kind, val_22, cur_vstatus)
    call update_vstatus(ens_size, cur_vstatus, vstatus)
 
-   ! Pobs end
 
 elseif (is_vertical(obs_loc, "PRESSURE")) then
    call get_val_pressure(state_handle, ens_size,lon_ind_below,lat_ind_below,lon_lat_lev(3),obs_kind,val_11,cur_vstatus)
@@ -3086,7 +3088,6 @@ elseif (is_vertical(obs_loc, "SURFACE")) then
 ! which asks for pressures on heights.
 ! elseif (obs_kind == QTY_PRESSURE) then
 !    ! Calculate pressures from surface pressures and A and B coeffs.
-!    ! Pobs
 !     write(string1,'(A)') 'No code available yet for obs_kind = QTY_PRESSURE '
 !     call error_handler(E_ERR, 'interp_lon_lat', string1)
 
@@ -3163,7 +3164,7 @@ integer,             intent(in)  :: obs_kind
 real(r8),            intent(out) :: val(ens_size)
 integer,             intent(out) :: istatus(ens_size)
 
-integer  :: vstatus(ens_size), num_levs, i, lowest_ok
+integer  :: vstatus(ens_size), i, indx
 real(r8) :: p_surf(ens_size), threshold
 integer  :: imem
 real(r8), allocatable :: p_col(:)
@@ -3174,11 +3175,10 @@ vstatus(:) = 1
 val(:) = MISSING_R8
 
 ! This assumes that all variables are defined on model levels, not on interface levels.
-num_levs = dim_sizes(find_name('lev',dim_names))
-allocate(p_col(num_levs))
-
-! Exclude obs below the model's lowest level and above the highest level
-if (level > num_levs .or. level < 1) return
+! Exclude obs below the model's lowest level and above the highest level,
+! but go ahead with surface fields (level = no_lev).
+if (level /= no_lev .and. (level > lev%length .or. level < 1)) return
+allocate(p_col(lev%length))
 
 ! Interpolate in vertical to get two bounding levels, but treat pressure
 ! specially since it has to be computed from PS instead of interpolated.
@@ -3186,11 +3186,11 @@ if (level > num_levs .or. level < 1) return
 if (obs_kind == QTY_PRESSURE) then
 
    ! p_surf is returned in pascals, which is the right units for plevs_cam() below.
-   ! RMA-KR; level = -1 is irrelevant for PS, and should not cause a failure even now that 
+   ! RMA-KR; level is irrelevant for PS, and should not cause a failure even now that 
    !         io/state_structure_mod.f90:get_dart_vector_index is the eventual recipient of that index.
    !         Only lon and lat dimensions will be used to find the index into the state vector;
    !         'level' will not be used.  Same for the pre-RMA trunk version.
-   call get_val(state_handle, ens_size, lon_index, lat_index, -1, QTY_SURFACE_PRESSURE, p_surf, vstatus)
+   call get_val(state_handle, ens_size, lon_index, lat_index, no_lev, QTY_SURFACE_PRESSURE, p_surf, vstatus)
    if (all(vstatus /= 0)) then
       deallocate(p_col)
       return
@@ -3198,7 +3198,7 @@ if (obs_kind == QTY_PRESSURE) then
    ! Next, get the values on the levels for this PS.
    do imem = 1, ens_size
       if (vstatus(imem) == 0) then
-         call plevs_cam (p_surf(imem), num_levs, p_col)
+         call plevs_cam (p_surf(imem), lev%length, p_col)
          val(imem) = p_col(level)
       endif
    enddo
@@ -3223,13 +3223,12 @@ endif
 deallocate(p_col)
 
 end subroutine get_val_level
-! Pobs end
 
 !-----------------------------------------------------------------------
 
-subroutine get_val_pressure(state_handle, ens_size, lon_index, lat_index, pressure, obs_kind, val, istatus)
+subroutine get_val_pressure(state_handle, ens_size, lon_index, lat_index, pressure, obs_qty, val, istatus)
 
-! Gets the vertically interpolated value on pressure for variable obs_kind
+! Gets the vertically interpolated value on pressure for variable obs_qty
 ! at lon_index, lat_index horizontal grid point
 !
 ! This routine indicates things with the return code:
@@ -3245,7 +3244,7 @@ integer,             intent(in)  :: ens_size
 real(r8),            intent(in)  :: pressure
 integer,             intent(in)  :: lon_index
 integer,             intent(in)  :: lat_index
-integer,             intent(in)  :: obs_kind
+integer,             intent(in)  :: obs_qty
 real(r8),            intent(out) :: val(ens_size)
 integer,             intent(out) :: istatus(ens_size)
 
@@ -3253,7 +3252,6 @@ real(r8), dimension(ens_size) :: bot_val, top_val, p_surf, frac
 real(r8), dimension(ens_size) :: ps_local(ens_size, 2)
 integer,  dimension(ens_size) :: top_lev, bot_lev, vstatus, cur_vstatus
 ! RMA-KR; cur_vstatus was explicitly dimensioned (ens_size), which was redundant.
-integer               :: num_levs
 integer               :: fld_index
 integer(i8)           :: i, imem
 real(r8), allocatable :: p_col(:,:)
@@ -3274,14 +3272,14 @@ fld_index   = find_name('PS',cflds)
 i = index_from_grid(1,lon_index,lat_index,  fld_index)
 ps_local(:, 1) = get_state(i, state_handle)
 
-if (obs_kind == QTY_U_WIND_COMPONENT .and. find_name('US', cflds) /= 0) then
+if (obs_qty == QTY_U_WIND_COMPONENT .and. find_name('US', cflds) /= 0) then
    ! ps defined on lat grid (-90...90, nlat = nslat + 1),
    !    need it on staggered lat grid, which starts half a grid spacing north.
 
    i = index_from_grid(1,lon_index,lat_index+1,fld_index)
    ps_local(:, 2) = get_state(i, state_handle)
    p_surf(:)      = (ps_local(:, 1) + ps_local(:, 2))* 0.5_r8
-elseif (obs_kind == QTY_V_WIND_COMPONENT .and. find_name('VS', cflds) /= 0) then
+elseif (obs_qty == QTY_V_WIND_COMPONENT .and. find_name('VS', cflds) /= 0) then
    ! lon =     0...     255 (for 5 degree grid)
    !slon = -2.5 ... 252.5
    if (lon_index == slon%length) then
@@ -3299,20 +3297,19 @@ endif
 
 ! Next, get the pressures on the levels for this ps
 ! Assuming we'll only need pressures on model mid-point levels, not interface levels.
-! This pressure column will be for the correct grid for obs_kind, since p_surf was taken
+! This pressure column will be for the correct grid for obs_qty, since p_surf was taken
 !     from the grid-correct ps[_stagr] grid
-num_levs = dim_sizes(find_name('lev',dim_names))
-allocate(p_col(num_levs, ens_size))
+allocate(p_col(lev%length, ens_size))
 p_col(:,:) = MISSING_R8
 do imem = 1, ens_size
-   call plevs_cam(p_surf(imem), num_levs, p_col(:, imem))
+   call plevs_cam(p_surf(imem), lev%length, p_col(:, imem))
 enddo
 
 do imem = 1, ens_size
-   if (pressure <= p_col(1, imem) .or. pressure >= p_col(num_levs, imem)) then
+   if (pressure <= p_col(1, imem) .or. pressure >= p_col(lev%length, imem)) then
       vstatus(imem) = 1
       ! Exclude obs below the model's lowest level and above the highest level
-      ! We *could* possibly use ps and p(num_levs) to interpolate for points below the lowest level.
+      ! We *could* possibly use ps and p(lev%length) to interpolate for points below the lowest level.
       !return
    endif
 enddo
@@ -3322,7 +3319,7 @@ enddo
 ! Search down through pressures for each ensemble member
 do imem = 1, ens_size
    if (vstatus(imem) == 0) then
-      levloop: do i = 2, num_levs
+      levloop: do i = 2, lev%length
          if (pressure < p_col(i, imem)) then
             top_lev(imem) = i -1
             bot_lev(imem) = i
@@ -3338,21 +3335,19 @@ do imem = 1, ens_size
    endif
 enddo
 
-! Pobs
-if (obs_kind == QTY_PRESSURE) then
+if (obs_qty == QTY_PRESSURE) then
    ! can't get pressure on levels from state vector; get it from p_col instead
    do imem = 1, ens_size
       bot_val(imem) = p_col(bot_lev(imem), imem)
       top_val(imem) = p_col(top_lev(imem), imem)
    enddo
 else
-   call get_val_array_of_levels(state_handle, ens_size, lon_index, lat_index, bot_lev, obs_kind, bot_val, cur_vstatus)
+   call get_val_array_of_levels(state_handle, ens_size, lon_index, lat_index, bot_lev, obs_qty, bot_val, cur_vstatus)
    call update_vstatus(ens_size, cur_vstatus, vstatus)
-   call get_val_array_of_levels(state_handle, ens_size, lon_index, lat_index, top_lev, obs_kind, top_val, cur_vstatus)
+   call get_val_array_of_levels(state_handle, ens_size, lon_index, lat_index, top_lev, obs_qty, top_val, cur_vstatus)
    call update_vstatus(ens_size, cur_vstatus, vstatus)
 endif
 
-! Pobs
 
 ! Failed to get value for interpolation; return istatus = 1
 where (vstatus == 0)
@@ -3400,13 +3395,13 @@ integer,             intent(in)  :: obs_kind
 real(r8),            intent(out) :: val(ens_size)
 integer,             intent(out) :: istatus(ens_size)
 
-integer     :: i, num_levs, fld_index
+integer     :: i, fld_index
 integer,  dimension(ens_size) :: top_lev, bot_lev, vstatus, cur_vstatus
 real(r8), dimension(ens_size) :: bot_val, top_val, frac
 integer(i8) :: ind
 real(r8)    :: p_surf(ens_size), ps_local(ens_size, 2)
 logical     :: stagr_lon, stagr_lat
-real(r8), allocatable :: p_col(:, :), model_h(:, :) !(num_levs, ens_size)
+real(r8), allocatable :: p_col(:, :), model_h(:, :) !(lev%length, ens_size)
 integer :: imem
 
 ! Start with error condition.
@@ -3420,9 +3415,8 @@ stagr_lon = .false.
 stagr_lat = .false.
 
 ! Assuming we'll only need pressures on model mid-point levels, not interface levels.
-num_levs = dim_sizes(find_name('lev',dim_names))
-allocate(p_col(num_levs, ens_size))
-allocate(model_h(num_levs, ens_size))
+allocate(p_col(lev%length, ens_size))
+allocate(model_h(lev%length, ens_size))
 ! Need to get the surface pressure at this point.
 ! Check whether the state vector has wind components on staggered grids, i.e. whether CAM is FV.
 ! See get_val_pressure for more documentation.
@@ -3455,17 +3449,17 @@ endif
 ! for all previous obs, and we want to use the most up to date state to get the best location.
 ! The above comment is untrue - the state is not updated, either it is the forward operator
 ! before assimilation, or it is the mean (not updated during assimilation)
-call model_heights(state_handle, ens_size, num_levs, p_surf, location, model_h, vstatus)
+call model_heights(state_handle, ens_size, lev%length, p_surf, location, model_h, vstatus)
 if (all(vstatus == 1)) return    ! Failed to get model heights; return istatus = 1
 
 ! Exclude obs below the model's lowest level and above the highest level
 do imem = 1, ens_size
-  if (height >= model_h(1, imem) .or. height <= model_h(num_levs, imem)) vstatus(imem) = 1 ! Fail 
+  if (height >= model_h(1, imem) .or. height <= model_h(lev%length, imem)) vstatus(imem) = 1 ! Fail 
 enddo
 
 ! ? Implement 3Dp here?  or should/can it not use the ens mean PS field?
 do imem = 1, ens_size
-   call plevs_cam(p_surf(imem), num_levs, p_col(:, imem))
+   call plevs_cam(p_surf(imem), lev%length, p_col(:, imem))
 enddo
 
 ! The highest_obs_pressure_Pa has already been checked to ensure it's a valid value.
@@ -3487,14 +3481,15 @@ if (highest_obs_height_m == MISSING_R8) then
    ! Search until we find a good member
    memloop: do imem = 1, ens_size 
       if (vstatus(imem) == 0) then
-         levloop: do i=2,num_levs
+         levloop: do i=2,lev%length
             if (p_col(i, imem) > highest_obs_pressure_Pa) then
                ! highest_obs_height_m = model_h(i)
-               highest_obs_height_m = model_h(i, imem) + (model_h(i, imem)-model_h(i-1, imem))*  &
+               highest_obs_height_m = model_h(i, imem) + (model_h(i-1, imem)-model_h(i, imem))*  &
                                              ((p_col(i, imem)-highest_obs_pressure_Pa) / &
                                               (p_col(i, imem)-p_col(i-1, imem)))
-! only want this to happen once, but may need to search for a good member. 
-!                exit levloop
+               write(string1, *) 'highest_obs_height_m = ',highest_obs_height_m
+               call error_handler(E_MSG,'get_val_height', string1, &
+                                  source, revision, revdate)
                exit memloop
             endif
          enddo levloop
@@ -3510,7 +3505,7 @@ endif
 ! exactly equal to the limits), so this will always succeed.
 do imem = 1, ens_size
    if (vstatus(imem) == 0) then
-      lev2loop: do i = 2, num_levs
+      lev2loop: do i = 2, lev%length
          if (height > model_h(i, imem)) then
             top_lev(imem) = i -1
             bot_lev(imem) = i
@@ -3642,12 +3637,11 @@ subroutine set_highest_obs_limit()
 ! Sets the module global variable 'highest_obs_level', and references
 ! the hybm array.
 
-integer  :: num_levs, i, lowest_ok
-real(r8) :: p_surf
+integer  :: i, lowest_ok
+real(r8) :: p_surf, top
 real(r8), allocatable :: p_col(:)
 ! This assumes that all variables are defined on model levels, not on interface levels.
-num_levs = dim_sizes(find_name('lev',dim_names))
-allocate(p_col(num_levs))
+allocate(p_col(lev%length))
 
 ! This code determines the model level that is below but closest to the
 ! 'highest obs pressure' limit that was set in the namelist.  It is counting
@@ -3661,26 +3655,36 @@ allocate(p_col(num_levs))
 ! Then we can use this single level value for any lat/lon/ensemble member.
 
 ! Compute a pressure column based on a 1000 mb (*100 = pascals) surface pressure
+call plevs_cam(P0%vals(1), lev%length, p_col)
 
-call plevs_cam(P0%vals(1), num_levs, p_col)
-
-! Loop downwards through pressure values (1 = model top, num_levs = bottom).
+! Loop downwards through pressure values (1 = model top, lev%length = bottom).
 ! The level is set to the highest level which is below the given threshold.
 
-! RMA-KR; this num_levs condition was added to ensure that highest_obs_level
-!         doesn't end up with value num_levs+1 due to the loop running all the way through.
-High: do highest_obs_level=1,num_levs
+
+! RMA-KR; this lev%length condition was added to ensure that highest_obs_level
+!         doesn't end up with value lev%length+1 due to the loop running all the way through.
+High: do highest_obs_level=1,lev%length
    if (p_col(highest_obs_level) > highest_obs_pressure_Pa .or. &
-       highest_obs_level == num_levs) exit High
+       highest_obs_level == lev%length) exit High
 enddo High
+
+! Test whether user has set highest_obs_pressure_Pa to be uselessly small (high),
+! which causes problems for setting highest_obs_height_m.
+! highest model level (mid-layer) pressure:
+top = hyam%vals(1)*P0%vals(1)
+if (highest_obs_pressure_Pa < top) then
+   write(string1, '(2A)') 'Namelist variable "highest_obs_pressure_Pa" is too small', &
+                          ' (located above the model atmosphere)'
+   write(string2, '(A,1pe15.5)') '   Reset to at least ',top
+   call error_handler(E_ERR, 'set_highest_obs_limit', string1, source, revision, revdate, text2=string2)
+endif
 
 ! Test to be sure user hasn't set level so low that contributions from
 ! terrain are going to be an issue.  If they do, tell them in the error
 ! message what the valid limit is.
-
 if (hybm%vals(highest_obs_level) > 0.0_r8) then
    lowest_ok = 1
-   findzero: do i=2, num_levs
+   findzero: do i=2, lev%length
       if (hybm%vals(i) > 0.0_r8) then
          lowest_ok = i-1
          exit findzero
@@ -3843,8 +3847,8 @@ end subroutine vector_to_prog_var
 !>
 !> Subroutine get_close_obs
 !> 
-!> get_close_obs takes as input an "observation" location, a DART TYPE (not KIND),
-!> and a list of all potentially close locations and KINDS on this task.
+!> get_close_obs takes as input an "observation" location, a DART TYPE (not QTY),
+!> and a list of all potentially close locations and QTYs on this task.
 !>
 !> get_close_obs
 !>    *) converts vertical coordinates as needed to vert_coord,
@@ -3862,13 +3866,13 @@ end subroutine vector_to_prog_var
 !> The DART location_type location of the observation, which is the target of *get_close_obs*
 !> 
 !> @param[in]    base_type 
-!> The DART TYPE (not KIND) of the observation
+!> The DART TYPE (not QTY) of the observation
 !> 
 !> @param[inout] locs(:)
 !> The DART location_type locations of the potentially close state variables
 !> 
 !> @param[in]    kinds(:)
-!> The DART KINDs of the potentially close state variables
+!> The DART QTYs of the potentially close state variables
 !> 
 !> @param[out]   num_close
 !> The number of state variables which are deemed to be close to the observation
@@ -3928,8 +3932,8 @@ end subroutine get_close_state
 subroutine get_close(filt_gc, base_loc, base_type, locs, loc_qtys, &
                      num_close, close_indices, distances, state_handle)
 
-! get_close_obs takes as input an "observation" location, a DART TYPE (not KIND),
-! and a list of all potentially close locations and KINDS on this task.
+! get_close_obs takes as input an "observation" location, a DART TYPE (not QTY),
+! and a list of all potentially close locations and QTYs on this task.
 !
 ! get_close_obs
 !    *) converts vertical coordinates as needed to vert_coord,
@@ -4100,20 +4104,20 @@ end subroutine get_close
 !> The DART location_type location of the observation.
 !> 
 !> @param[in]    obs_kind 
-!> The DART KIND of the observation.
+!> The DART QTY of the observation.
 !>
 !> @param[out]   vstatus 
 !> The status of the conversion from one vertical location to another.
 !>
 !--------------------------------------------------------------------
 
-subroutine convert_vertical_obs(state_handle, num, locs, loc_kinds, loc_types, &
+subroutine convert_vertical_obs(state_handle, num, locs, loc_qtys, loc_types, &
                                 which_vert, status)
 
 type(ensemble_type), intent(in)    :: state_handle
 integer,             intent(in)    :: num
 type(location_type), intent(inout) :: locs(:)
-integer,             intent(in)    :: loc_kinds(:), loc_types(:)
+integer,             intent(in)    :: loc_qtys(:), loc_types(:)
 integer,             intent(in)    :: which_vert
 integer,             intent(out)   :: status(:)
 
@@ -4135,7 +4139,7 @@ do i=1, num
    old_loc = locs(i)
    old_array = get_location(locs(i))
 
-   call convert_vert(state_handle, old_array, old_which, old_loc, loc_kinds(i), new_array, new_which)
+   call convert_vert(state_handle, old_array, old_which, old_loc, loc_qtys(i), new_array, new_which)
 
    if(new_which == MISSING_I) then
       status(i) = 1
@@ -4151,13 +4155,13 @@ end subroutine convert_vertical_obs
 !>@todo FIXME there should be a more efficient way to convert
 !>state locations - no interpolation in the horizontal is needed.
 
-subroutine convert_vertical_state(state_handle, num, locs, loc_kinds, loc_indx, &
+subroutine convert_vertical_state(state_handle, num, locs, loc_qtys, loc_indx, &
                                   which_vert, istatus)
 
 type(ensemble_type), intent(in)    :: state_handle
 integer,             intent(in)    :: num
 type(location_type), intent(inout) :: locs(:)
-integer,             intent(in)    :: loc_kinds(:)
+integer,             intent(in)    :: loc_qtys(:)
 integer(i8),         intent(in)    :: loc_indx(:)
 integer,             intent(in)    :: which_vert
 integer,             intent(out)   :: istatus
@@ -4181,7 +4185,7 @@ do i=1, num
    old_which = query_location(locs(i), 'which_vert')
    if (old_which == wanted_vert) cycle
 
-   call convert_vert(state_handle, old_array, old_which, old_loc, loc_kinds(i), new_array, new_which)
+   call convert_vert(state_handle, old_array, old_which, old_loc, loc_qtys(i), new_array, new_which)
 
    ! this is converting state locations.  it shouldn't fail.
    if(new_which == MISSING_I) then
@@ -4215,7 +4219,7 @@ integer,             intent(in)    :: old_kind
 real(r8),            intent(inout) :: new_array(3)
 integer,             intent(out)   :: new_which
 
-integer  :: num_levs, top_lev, bot_lev
+integer  :: top_lev, bot_lev
 integer  :: istatus(1), closest
 integer  :: lon_ind, lat_ind, cam_type
 ! p_surf dimensioned (1) because it's input to interp_lonlat, 
@@ -4242,8 +4246,7 @@ new_array(2) = old_array(2)
 ! these should be set by the code below; it's an error if not.
 new_which    = MISSING_I
 new_array(3) = MISSING_R8
-num_levs     = lev%length   ! HK not concered about ilev here?
-allocate(p_col(num_levs))
+allocate(p_col(lev%length))
 
 if (.not. (old_which == VERTISPRESSURE .or. old_which == VERTISHEIGHT  .or. &
            old_which == VERTISLEVEL    .or. old_which == VERTISSURFACE .or. &
@@ -4287,7 +4290,7 @@ if (old_which == VERTISLEVEL ) then
                     get_surface_pressure(state_handle, ens_size, lon_ind, lat_ind +1) )
       ! WHAT ABOUT FIELDS THAT MIGHT COME ON ilevS ?   have lev_which_dimid from above;
       !     test = ilev%dim_id or lev%dim_id
-      call plevs_cam(p_surf(1), num_levs, p_col)
+      call plevs_cam(p_surf(1), lev%length, p_col)
    elseif (cam_varname == 'VS') then
       call coord_index('slon', old_array(1), lon_ind)
       call coord_index('lat', old_array(2), lat_ind)
@@ -4299,13 +4302,13 @@ if (old_which == VERTISLEVEL ) then
          p_surf = 0.5*(get_surface_pressure(state_handle, ens_size, lon_ind -1, lat_ind) + &
                        get_surface_pressure(state_handle, ens_size, lon_ind,    lat_ind) )
       endif
-      call plevs_cam(p_surf(1), num_levs, p_col)
+      call plevs_cam(p_surf(1), lev%length, p_col)
    else
       call coord_index('lon', old_array(1), lon_ind)
       call coord_index('lat', old_array(2), lat_ind)
       !p_surf = ps(lon_ind,lat_ind)
       p_surf = get_surface_pressure(state_handle, ens_size, lon_ind, lat_ind)
-      call plevs_cam(p_surf(1), num_levs, p_col)
+      call plevs_cam(p_surf(1), lev%length, p_col)
    endif
 else
    ! Make a vertical location that has a vert type of surface.
@@ -4321,7 +4324,7 @@ else
       call error_handler(E_ERR, 'convert_vert', string1,source,revision,revdate, text2=string2)
    endif
 
-   call plevs_cam(p_surf(1), num_levs, p_col)
+   call plevs_cam(p_surf(1), lev%length, p_col)
 
 endif
 
@@ -4384,8 +4387,8 @@ elseif (old_which == VERTISLEVEL) then
 
 elseif (old_which == VERTISHEIGHT) then
 
-   allocate(model_h(num_levs))
-   call model_heights(state_handle, ens_size, num_levs, p_surf(1), old_loc,  model_h, istatus(1))
+   allocate(model_h(lev%length))
+   call model_heights(state_handle, ens_size, lev%length, p_surf(1), old_loc,  model_h, istatus(1))
    if (istatus(1) == 1) then
       write(string1, *) 'model_heights failed'
       call error_handler(E_ERR, 'convert_vert', string1)
@@ -4396,15 +4399,14 @@ elseif (old_which == VERTISHEIGHT) then
    ! This assumes linear relationship of pressure to height over each model layer,
    ! when really it's exponential.  How bad is that?
 !   bot_lev = 2
-!   do while (old_array(3) <= model_h(bot_lev) .and. bot_lev <= num_levs)
+!   do while (old_array(3) <= model_h(bot_lev) .and. bot_lev <= lev%length)
 !      bot_lev = bot_lev + 1
 !   end do
-   Bottom: do bot_lev = 2,num_levs
-      if (old_array(3) > model_h(bot_lev) .or. bot_lev == num_levs) exit Bottom
+   Bottom: do bot_lev = 2,lev%length
+      if (old_array(3) > model_h(bot_lev) .or. bot_lev == lev%length) exit Bottom
    end do Bottom
-   if (bot_lev > num_levs) bot_lev = num_levs
+   if (bot_lev > lev%length) bot_lev = lev%length
    top_lev = bot_lev - 1
-
 
    ! Write warning message if not found within model level heights.
    ! Maybe this should return failure somehow?
@@ -4414,7 +4416,7 @@ elseif (old_which == VERTISHEIGHT) then
       write(string1, *) 'ob height ',old_array(3),' above CAM levels at ' &
                           ,old_array(1) ,old_array(2) ,' for kind',old_kind
       call error_handler(E_MSG, 'convert_vert', string1,source,revision,revdate)
-   elseif (bot_lev <= num_levs) then
+   elseif (bot_lev <= lev%length) then
       ! within model levels
       frac = (old_array(3) - model_h(bot_lev)) / (model_h(top_lev) - model_h(bot_lev))
    else
@@ -4834,20 +4836,20 @@ end function scale_height
 
 !-----------------------------------------------------------------------
 
-subroutine plevs_cam (p_surf, num_levs, pmid )
+subroutine plevs_cam (p_surf, n_levels, pmid )
 
 ! Define the pressures of the layer midpoints from the
 ! coordinate definitions and the surface pressure.
 
 real(r8), intent(in)  :: p_surf    ! Surface pressure (pascals)
-integer,  intent(in)  :: num_levs
-real(r8), intent(out) :: pmid(num_levs)   ! Pressure at model levels
+integer,  intent(in)  :: n_levels
+real(r8), intent(out) :: pmid(lev%length)   ! Pressure at model levels
 
 integer :: k
 
 ! Set midpoint pressures and layer thicknesses
 
-do k=1,num_levs
+do k=1,n_levels
    pmid(k) = hyam%vals(k)*P0%vals(1) + hybm%vals(k)*p_surf
 enddo
 
@@ -4855,13 +4857,13 @@ end subroutine plevs_cam
 
 !-----------------------------------------------------------------------
 
-subroutine model_heights(state_handle, ens_size, num_levs, p_surf, base_obs_loc, model_h, istatus)
+subroutine model_heights(state_handle, ens_size, n_levels, p_surf, base_obs_loc, model_h, istatus)
 
 ! This routine calculates geometrical height (m) at mid-layers of the CAM model
 !
 ! was Hui's dcz2ccm1
 !    has globally defined inputs:
-!          hyam(num_levs),hybm(num_levs),hyai(num_levs),hybi(num_levs) =
+!          hyam(lev%length),hybm(lev%length),hyai(lev%length),hybi(lev%length) =
 !          hybrid vertical coefficients, top to bottom.
 !          (P = P0*hyam + ps*hybm)
 !          P0 - Hybrid base pressure (pascals)
@@ -4869,22 +4871,22 @@ subroutine model_heights(state_handle, ens_size, num_levs, p_surf, base_obs_loc,
 ! Kevin Raeder converted to single column version 4/28/2006
 !              removed longitude dimension entirely and extra arrays 10/2006
 !   5/31/2013; Rewritten to adapt to convert_vert handling obs TYPEs,
-!              not obs KINDS, and to handle lonlat and cubed sphere
+!              not obs QTYs, and to handle lonlat and cubed sphere
 !              grids/interpolations.
 
 type(ensemble_type), intent(in) :: state_handle
 integer,             intent(in) :: ens_size
-integer,             intent(in) :: num_levs
+integer,             intent(in) :: n_levels
 real(r8),            intent(in) :: p_surf(ens_size)
 type(location_type), intent(in) :: base_obs_loc
 
-real(r8), intent(out) :: model_h(num_levs, ens_size)
+real(r8), intent(out) :: model_h(n_levels, ens_size)
 integer,  intent(out) :: istatus(ens_size)
 
-! local variables; pterm must be dimensioned as an array because dcz2 has it that way
-real(r8), dimension(ens_size, num_levs) :: phi, tv, q, t, pterm
-real(r8) ::hybrid_As(num_levs+1,2), hybrid_Bs(num_levs+1,2)
-real(r8), dimension(ens_size) :: h_surf, ht_tmp
+! local variables; 
+real(r8), dimension(ens_size, n_levels) :: phi, tv, q, t, mmr_o1, mmr_o2, mmr_h1, mmr_n2
+real(r8), dimension(ens_size)           :: h_surf, ht_tmp
+real(r8), dimension(n_levels+1,2)       :: hybrid_As, hybrid_Bs
 
 ! CS Should these come from common_mod?
 ! That might be inconsistent with how levels, etc were defined in CAM originally.
@@ -4914,11 +4916,11 @@ lon_lat_lev = get_location(base_obs_loc)
 
 ! The 'interface' levels have an 'extra' level at model bottom, compared to the midpoint levels.
 ! Initialize this extra level, before filling the rest in a loop.
-k = num_levs +1
+k = n_levels +1
 hybrid_As(1,1) = hyai%vals(k)
 hybrid_Bs(1,1) = hybi%vals(k)
 
-!   hyam(num_levs) = 0 -> hybrid_As(2,2) = 0, so it
+!   hyam(n_levels) = 0 -> hybrid_As(2,2) = 0, so it
 !   would be safe to set  hybrid_As(1,2) = 0.
 !   It's safe because this element is used to set pmln in dcz2, but that element of pmln is never used.
 hybrid_As(1,2) = 0.0_r8
@@ -4929,15 +4931,14 @@ hybrid_As(1,2) = 0.0_r8
 hybrid_Bs(1,2) = 1.0_r8
 
 ! mid-points: 2nd dimension of hybrid_[AB]s = 2
-! note that hyXm(num_levs + 1) is not defined (= MISSING_R8)
-do k = 2,num_levs +1
-   i = num_levs +2 - k
+! note that hyXm(n_levels + 1) is not defined (= MISSING_R8)
+do k = 2,n_levels +1
+   i = n_levels +2 - k
    hybrid_As(k,1) = hyai%vals(i)
    hybrid_Bs(k,1) = hybi%vals(i)
    hybrid_As(k,2) = hyam%vals(i)
    hybrid_Bs(k,2) = hybm%vals(i)
 enddo
-!*****
 
 ! Calculate h_surf and tv for this column, for use by dcz2.
 call interp_lonlat(state_handle, ens_size, base_obs_loc, QTY_SURFACE_ELEVATION, h_surf, vstatus)
@@ -4953,7 +4954,7 @@ endif
 ! above the 'highest obs' threshold but we don't care about that here.
 ! error out for other return code values, but continue if vstatus is
 ! either 0 (all ok) or 2 (too high)
-do k = 1, num_levs
+do k = 1, n_levels
    ! construct a location with the same lat/lon but cycle though the model levels
    temp_obs_loc = set_location(lon_lat_lev(1), lon_lat_lev(2), real(k,r8), VERTISLEVEL)
 
@@ -4976,19 +4977,16 @@ do k = 1, num_levs
 enddo
 
 do imem = 1, ens_size
-! HK pmln, pterm are not used so there is no need to store one for each
-! ensemble member
-   call dcz2(num_levs, p_surf(imem), h_surf(imem), tv(imem, :), P0%vals(1) , &
-             hybrid_As, hybrid_Bs, pterm, phi(imem, :))
-!              hybrid_As, hybrid_Bs, pmln, pterm, phi(imem, :))
+   call dcz2(n_levels, p_surf(imem), h_surf(imem), tv(imem,:), P0%vals(1) , &
+             hybrid_As, hybrid_Bs, phi(imem,:))
 enddo
 
 ! used; hybrid_Bs, hybrid_As, hprb
-! output from dcz2;  pmln, pterm , phi
+! output from dcz2;  phi
 
 ! Conversion from geopotential height to geometric height depends on latitude
 ! Convert to kilometers for gph2gmh call, then back to meters for return value.
-do k = 1,num_levs
+do k = 1,n_levels
    ht_tmp(:) = phi(:, k) * 0.001_r8        ! convert to km for following call only
    do imem = 1, ens_size
       model_h(k, imem) = gph2gmh(ht_tmp(imem), lon_lat_lev(2)) * 1000.0_r8
@@ -5007,8 +5005,7 @@ end subroutine  model_heights
 
 !-----------------------------------------------------------------------
 
-! subroutine dcz2(kmax,p_surf,h_surf,tv,hprb,hybrid_As,hybrid_Bs,pmln,pterm,z2)
-subroutine dcz2(kmax,p_surf,h_surf,tv,hprb,hybrid_As,hybrid_Bs,pterm,z2)
+subroutine dcz2(kmax,p_surf,h_surf,tv,hprb,hybrid_As,hybrid_Bs,z2)
 
 ! Compute geopotential height for a CESM hybrid coordinate column.
 ! All arrays except hybrid_As, hybrid_Bs are oriented top to bottom.
@@ -5025,17 +5022,17 @@ real(r8), intent(in)  :: tv(kmax)            ! Virtual temperature, top to botto
 real(r8), intent(in)  :: hprb                ! Hybrid base pressure       (pascals)
 real(r8), intent(in)  :: hybrid_As(kmax+1,2)
 real(r8), intent(in)  :: hybrid_Bs(kmax+1,2)
-real(r8), intent(out) :: pterm(kmax)         ! pressure profile
 real(r8), intent(out) :: z2(kmax)            ! Geopotential height, top to bottom
 
 ! Local variables
 real(r8), parameter :: r = 287.04_r8    ! Different than model_heights !
 real(r8), parameter :: g0 = 9.80616_r8  ! Different than model_heights:gph2gmh:G !
 real(r8), parameter :: rbyg=r/g0
+real(r8) :: pterm(kmax)         ! pressure profile
+real(r8) :: pmln(kmax+1)        ! logs of midpoint pressures
 
 integer  :: i,k,l
 real(r8) :: ARG
-real(r8) :: pmln(kmax+1)        ! logs of midpoint pressures
 
 ! Compute intermediate quantities using scratch space
 

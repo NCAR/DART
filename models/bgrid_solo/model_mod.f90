@@ -324,7 +324,7 @@ if(noise_sd > 0.0_r8) then
       do j = lbound(Var_dt%t, 2), ubound(Var_dt%t, 2)
          do k = lbound(Var_dt%t, 3), ubound(Var_dt%t, 3)
             Var_dt%t(i, j, k) = &
-               (1.0_r8 + random_gaussian(randnoise, 0.0_r8, dble(noise_sd))) * Var_dt%t(i, j, k)
+               (1.0_r8 + random_gaussian(randnoise, 0.0_r8, noise_sd)) * Var_dt%t(i, j, k)
          end do
       end do
    end do

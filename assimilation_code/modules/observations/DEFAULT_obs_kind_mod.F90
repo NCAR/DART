@@ -181,7 +181,7 @@ integer, parameter, public :: &
 
 ! kinds for surface fields
 integer, parameter, public :: &
-    QTY_SURFACE_TEMPERATURE         = 66, &
+    QTY_2M_SPECIFIC_HUMIDITY        = 66, &
     QTY_2M_TEMPERATURE              = 67, &
     QTY_10M_U_WIND_COMPONENT        = 68, &
     QTY_10M_V_WIND_COMPONENT        = 69
@@ -649,7 +649,7 @@ obs_kind_names(62) = obs_kind_type(QTY_LANDMASK, 'QTY_LANDMASK')
 obs_kind_names(63) = obs_kind_type(QTY_EDGE_NORMAL_SPEED, 'QTY_EDGE_NORMAL_SPEED')
 obs_kind_names(64) = obs_kind_type(QTY_CLW_PATH, 'QTY_CLW_PATH')
 obs_kind_names(65) = obs_kind_type(QTY_WIND_TURBINE_POWER, 'QTY_WIND_TURBINE_POWER')
-obs_kind_names(66) = obs_kind_type(QTY_SURFACE_TEMPERATURE, 'QTY_SURFACE_TEMPERATURE')
+obs_kind_names(66) = obs_kind_type(QTY_2M_SPECIFIC_HUMIDITY, 'QTY_2M_SPECIFIC_HUMIDITY')
 obs_kind_names(67) = obs_kind_type(QTY_2M_TEMPERATURE, 'QTY_2M_TEMPERATURE')
 obs_kind_names(68) = obs_kind_type(QTY_10M_U_WIND_COMPONENT, 'QTY_10M_U_WIND_COMPONENT')
 obs_kind_names(69) = obs_kind_type(QTY_10M_V_WIND_COMPONENT, 'QTY_10M_V_WIND_COMPONENT')

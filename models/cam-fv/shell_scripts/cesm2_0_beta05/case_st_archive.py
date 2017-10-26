@@ -95,22 +95,22 @@ def _archive_rpointer_files(case, archive, archive_entry, archive_restdir,
                 if rpointer_content is not 'unset':
                     if not ninst_strings:
                         ninst_strings = ["empty"]
-                for ninst_string in ninst_strings:
-                    if ninst_string == 'empty':
-                        ninst_string = ""
-                    for key, value in [('$CASE', casename),
-                                       ('$DATENAME', datename),
-                                       ('$NINST_STRING', ninst_string)]:
-                        rpointer_file = rpointer_file.replace(key, value)
-                        rpointer_content = rpointer_content.replace(key, value)
-
-                    # write out the respect files with the correct contents
-                    rpointer_file = os.path.join(archive_restdir, rpointer_file)
-                    logger.info("writing rpointer_file %s" % rpointer_file)
-                    f = open(rpointer_file, 'w')
-                    for output in rpointer_content.split(','):
-                        f.write("%s \n" %output)
-                    f.close()
+                    for ninst_string in ninst_strings:
+                        if ninst_string == 'empty':
+                            ninst_string = ""
+                        for key, value in [('$CASE', casename),
+                                           ('$DATENAME', datename),
+                                           ('$NINST_STRING', ninst_string)]:
+                            rpointer_file = rpointer_file.replace(key, value)
+                            rpointer_content = rpointer_content.replace(key, value)
+    
+                        # write out the respect files with the correct contents
+                        rpointer_file = os.path.join(archive_restdir, rpointer_file)
+                        logger.info("writing rpointer_file %s" % rpointer_file)
+                        f = open(rpointer_file, 'w')
+                        for output in rpointer_content.split(','):
+                            f.write("%s \n" %output)
+                        f.close()
 
 
 ###############################################################################

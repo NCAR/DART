@@ -14,5 +14,7 @@
    print_every_nth_cast =  -1,
    temperature_error    =  0.5,
    salinity_error       =  0.5, 
+   start_month          = 1
+   end_month            = 12
  /
 

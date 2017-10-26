@@ -48,8 +48,6 @@ fig1ax1 = axes('Parent',figure1,'OuterPosition',[0 0 1 0.90]);
 view(fig1ax1,[-37.5 30]);
 grid(fig1ax1,'on');
 
-myworldmap(obs); hold on;
-
 xstring = sprintf('obsmat(:,%d)',obs.lonindex);
 ystring = sprintf('obsmat(:,%d)',obs.latindex);
 zstring = sprintf('obsmat(:,%d)',obs.zindex  );
@@ -72,6 +70,14 @@ zlabel(obs.colnames{obs.zindex});
 
 tmin = min(obs.time);
 tmax = max(obs.time);
+
+pstruct = struct('axis', obs.region, ...
+                 'clim', [min(obs.obs) max(obs.obs)], ...
+                 'Ztype', obs.Ztyp(1));
+FlatEarth(pstruct);
+
+hb = colorbar;
+set(get(hb,'YLabel'),'String',obs.ObsTypeString,'Interpreter','none')
 
 h = title({obs.ObsTypeString, ...
       sprintf('"%s"',obs.ObsCopyString), ...
@@ -261,103 +267,6 @@ switch lower(strtrim(QCString))
       end
 end
 
-
-
-function myworldmap(obs)
-
-%%--------------------------------------------------------------------------
-% GET THE ELEVATION DATA AND SET UP THE ASSOCIATED COORDINATE DATA
-%---------------------------------------------------------------------------
-
-topo = load('topo');     % GET Matlab-native [180x360] ELEVATION DATASET
-lats = -89.5:89.5;       % CREATE LAT ARRAY FOR TOPO MATRIX
-lons = 0.5:359.5;        % CREATE LON ARRAY FOR TOPO MATRIX
-nlon = length(lons);
-nlat = length(lats);
-
-%%--------------------------------------------------------------------------
-% IF WE NEED TO SWAP HEMISPHERES, DO SO NOW.
-% If we didn't explicitly tell it, make a guess.
-%---------------------------------------------------------------------------
-
-axis(obs.region);
-ax = obs.region;
-
-if (ax(1) < 0)
-   lons = lons - 180.0;
-   topo.topo = [ topo.topo(:,nlon/2+1:nlon) topo.topo(:,1:nlon/2) ];
-end
-
-%%--------------------------------------------------------------------------
-% We need to determine the geographic subset of the elevation matrix.
-%---------------------------------------------------------------------------
-
-lon_ind1 = find(ax(1) <= lons, 1);
-lon_ind2 = find(ax(2) <= lons, 1);
-lat_ind1 = find(ax(3) <= lats, 1);
-lat_ind2 = find(ax(4) <= lats, 1);
-
-if (isempty(lon_ind1)), lon_ind1 = 1;    end;
-if (isempty(lon_ind2)), lon_ind2 = nlon; end;
-if (isempty(lat_ind1)), lat_ind1 = 1;    end;
-if (isempty(lat_ind2)), lat_ind2 = nlat; end;
-
-elev = topo.topo(lat_ind1:lat_ind2,lon_ind1:lon_ind2);
-x    = lons(lon_ind1:lon_ind2);
-y    = lats(lat_ind1:lat_ind2);
-
-%%--------------------------------------------------------------------------
-% Augment the colormap and the CLim so that the lowest color index can be
-% forced to a light gray without compromising the data range.
-
-bob      = colormap;
-ncolors  = length(bob);
-bob(1,:) = 0.7; % set lowest color to be light gray.
-colormap(bob);
-
-cmin    = min(obs.obs);
-cmax    = max(obs.obs);
-dz      = linspace(cmin,cmax,ncolors-1); % desired dynamic range
-dclim   = dz(2) - dz(1);
-newcmin = cmin - dclim;
-clim    = [newcmin cmax]; % add extra bin at bottom that no data will use.
-set(gca,'CLim',clim)
-colorbar
-
-%%--------------------------------------------------------------------------
-% Contour the "subset" - and give the whole thing an appropriate zlevel
-% so the continents are either at the top of the plot (for depth), or
-% the bottom (for just about everything else.
-
-orgholdstate = ishold;
-hold on;
-
-cmd = '[~,h] = contourf(x,y,elev+newcmin,[newcmin newcmin],''k-'');';
-
-switch  lower(obs.Zunits)
-    case 'surface'
-        set(gca,'Zdir','normal')
-        zlevel = ax(5);
-    case 'depth'
-        set(gca,'Zdir','reverse')
-        zlevel = ax(5); % minimum depth
-        cmd = '[~,h] = contour(x,y,elev+newcmin,[newcmin newcmin],''k-'');';
-    case 'pressure'
-        set(gca,'Zdir','reverse')
-        zlevel = ax(6); % maximum pressure
-    otherwise
-        set(gca,'Zdir','normal')
-        zlevel = ax(5); % minimum height
-end
-
-eval(cmd)
-
-t1    = hgtransform('Parent',gca);
-set(h,'Parent',t1);
-m     = makehgtform('translate',[0 0 zlevel]);
-set(t1,'Matrix',m)
-
-if (orgholdstate == 0), hold off; end;
 
 
 

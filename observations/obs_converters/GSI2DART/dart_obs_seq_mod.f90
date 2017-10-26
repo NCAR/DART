@@ -368,7 +368,7 @@ subroutine radiance_to_dart_obs_kind(obtype, channel, obs_kind, which_vert, obs_
 
 
    ! Make a string containing satellite,sensor,and channel to match obs_def_radiance_mod.f90 entries
-   write(str_channel,fmt='(i)') channel
+   write(str_channel,fmt='(i8)') channel
    this_string = trim(adjustl(obtype))//'_ch'//trim(adjustl(str_channel))
    call to_upper(this_string) ! Make uppercase to match the case in obs_def_radiance_mod.f90
    call replace_hyphen(this_string)  ! Bad things will happen in DART preprocess "obs_def" files if there are hyphens in names. Replace with underscores

@@ -24,7 +24,7 @@ observations/forward_operators/obs_def_mod.f90
 observations/forward_operators/obs_def_utilities_mod.f90
 observations/obs_converters/GSI2DART/dart_obs_seq_mod.f90
 observations/obs_converters/GSI2DART/enkf/constants.f90
-observations/obs_converters/GSI2DART/enkf/kinds.f90
+observations/obs_converters/GSI2DART/enkf/kinds.F90
 observations/obs_converters/GSI2DART/enkf/mpi_readobs.f90
 observations/obs_converters/GSI2DART/enkf/readconvobs.f90
 observations/obs_converters/GSI2DART/enkf/read_diag.f90

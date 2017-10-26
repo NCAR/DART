@@ -46,7 +46,7 @@ use   time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time
 use      utilities_mod, only : initialize_utilities, find_namelist_in_file,      &
                                check_namelist_read, nmlfileunit, do_nml_file,    &
                                get_next_filename, error_handler, E_ERR, E_MSG,   &
-                               nc_check, find_textfile_dims, do_nml_term,        &
+                               find_textfile_dims, do_nml_term,                  &
                                to_upper, open_file, finalize_utilities
 use       location_mod, only : VERTISHEIGHT, set_location
 use   obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,        &
@@ -61,6 +61,8 @@ use        obs_def_mod, only : obs_def_type, set_obs_def_time, set_obs_def_type_
                                set_obs_def_key
 use  obs_utilities_mod, only : add_obs_to_seq
 use       obs_kind_mod, only : COSMIC_ELECTRON_DENSITY
+
+use netcdf_utilities_mod, only : nc_check, nc_get_variable
 
 use netcdf
 
@@ -77,7 +79,6 @@ integer, parameter :: METHOD_CONSTANT      = 1   !> = 'constant'
 integer, parameter :: METHOD_SCALED        = 2   !> = 'scaled'
 integer, parameter :: METHOD_LOOKUP        = 3   !> = 'lookup'
 integer, parameter :: METHOD_SCALED_LOOKUP = 4   !> = 'scaled_lookup'
-integer, parameter :: METHOD_SCALED_HEIGHT = 5   !> = 'scaled_height'
 integer            :: method
 
 character (len=512) :: string1, string2, string3
@@ -102,6 +103,8 @@ integer :: num_copies = 1  ! number of copies in sequence
 integer :: num_qc     = 1  ! number of QC entries
 integer :: existing_num_copies  ! number of copies in existing sequence
 integer :: existing_num_qc      ! number of QC entries in existing sequence
+
+character(len=512) :: hght_units  ! should be long enough
 
 !------------------------------------------------------------------------
 !  Declare namelist parameters
@@ -280,10 +283,11 @@ fileloop: do      ! until out of files
    call nc_check( nf90_inq_varid(ncid, "GEO_lon", varid) ,'inq varid GEO_lon', next_infile)
    call nc_check( nf90_get_var(ncid, varid, lon)         ,'get var   GEO_lon', next_infile)
    
-   ! read the altitude array
+   ! read the altitude array  - could check that units are 'km'
    call nc_check( nf90_inq_varid(ncid, "MSL_alt", varid) ,'inq varid MSL_alt', next_infile)
    call nc_check( nf90_get_var(ncid, varid, hght)        ,'get_var   MSL_alt', next_infile)
    call nc_check( nf90_get_att(ncid, varid, '_FillValue', hght_miss) ,'get_att _FillValue MSL_alt', next_infile)
+   call nc_check( nf90_get_att(ncid, varid, 'units', hght_units) ,'get_att units MSL_alt', next_infile)
    
    ! read the electron density
    call nc_check( nf90_inq_varid(ncid, "ELEC_dens", varid) ,'inq varid ELEC_dens', next_infile)
@@ -490,17 +494,16 @@ end function compute_lon_wrap
 !-----------------------------------------------------------------------
 !> computes the observation error given a variety of algorithms
 !>
-!> METHOD_CONSTANT          oerr = factor
-!> METHOD_SCALED            oerr = factor * obsval
-!> METHOD_LOOKUP            oerr = f(solar local time, magnetic equator latitude ...)
-!> METHOD_SCALED_LOOKUP     oerr = factor * f(solar local time, ...) * obsval
-!> METHOD_SCALED_HEIGHT     oerr = 30000 - abs(factor*hghto - 30000)
+!> METHOD_CONSTANT          percent = factor
+!> METHOD_SCALED            percent = factor * obsval
+!> METHOD_LOOKUP            percent = f(solar local time, magnetic equator latitude ...)
+!> METHOD_SCALED_LOOKUP     percent = factor * f(solar local time, ...) * obsval
 
 function electron_density_error(lon, lat, hght, ihour, imin, method, factor, obsval)
 
 real(r8), intent(in)  :: lon     !> input real value geometric height [km]
 real(r8), intent(in)  :: lat     !> latitude in degrees
-real(r8), intent(in)  :: hght    !> is model global or regional?
+real(r8), intent(in)  :: hght    !> height of observation
 integer,  intent(in)  :: ihour   !> hour of day ... UTC
 integer,  intent(in)  :: imin    !> minute of day ... UTC
 integer,  intent(in)  :: method  !> integer describing algorithm
@@ -517,12 +520,6 @@ endif
 
 if (method == METHOD_SCALED) then
    electron_density_error = factor * obsval
-   return
-endif
-
-if (method == METHOD_SCALED_HEIGHT) then
-   ! TJH - I have no idea where this comes from
-   electron_density_error = 30000.0_r8 - abs(hght*0.105_r8 - 30000.0_r8)
    return
 endif
 
@@ -554,21 +551,23 @@ function ionprf_obserr_percent(lone, late, hghte, houre, mine)
 
 real(r8), intent(in) ::  lone  !> longitude of electron density observation
 real(r8), intent(in) ::  late  !> latitude of electron density observation
-real(r8), intent(in) :: hghte  !> height of electron density observation
+real(r8), intent(in) :: hghte  !> height of electron density observation (in km)
 integer,  intent(in) :: houre  !> UTC hour of day
 integer,  intent(in) ::  mine  !> UTC minute of hour
+
+character(len=*), parameter :: routine = 'ionprf_obserr_percent'
 
 !add F3/C ionprf observation error /add by ITL 2011.01.31
 integer, parameter :: NUMZ   = 15
 integer, parameter :: NUMLAT = 37
-integer, parameter :: NUMLON = 25
-real(r8), save :: oerr(NUMZ,NUMLAT,NUMLON)
+integer, parameter :: NUMTIME = 25
+real(r8), save :: percent(NUMZ,NUMLAT,NUMTIME)
 logical,  save :: read_file = .true.
 
 real(r8) :: mag_eq(73), slt, ionprf_obserr_percent, mq, nlat
 real(r8) :: err_top1, err_bottom1, err_obs1, err_top2, err_bottom2, err_obs2, err_obs
 integer  :: altc, latc, ltc, lonc
-integer  :: funit, ios
+integer  :: ios, ncid
 
 !Calculate the magnetic equator latitude (refer to IGRF output in 2008)
 data mag_eq/ 11.37_r8, 11.24_r8, 11.06_r8, 10.83_r8, 10.50_r8, 10.03_r8, &
@@ -586,14 +585,15 @@ data mag_eq/ 11.37_r8, 11.24_r8, 11.06_r8, 10.83_r8, 10.50_r8, 10.03_r8, &
              11.38_r8/
 
 ! read the lookup table once.
+! BTW: if the variable is the wrong shape, nc_get_variable() fails
+! with no information about the expected vs actual shape
 
 if (read_file) then
-   funit = open_file(observation_error_file, action='read')
-   read(funit,*,iostat=ios) oerr
-   if (ios /= 0) then
-      write(string1,*)'error reading "',trim(observation_error_file),'"'
-      call error_handler(E_ERR,'ionprf_obserr_percent', string1, source, revision, revdate)
-   endif
+   ios = nf90_open(observation_error_file, NF90_NOWRITE, ncid)
+   call nc_check(ios, routine, 'opening file "'//trim(observation_error_file)//'"')
+   call nc_get_variable(ncid,'percent', percent, routine, observation_error_file)
+   call nc_check(nf90_close(ncid), routine, observation_error_file)
+
    read_file = .false.
 endif
 
@@ -617,21 +617,28 @@ endif
 
 !Linear interpolation the error percentage
 latc = INT((nlat+90)/5+1)
-altc = INT((hghte-100000)/50000+1)
+altc = INT((hghte-100)/50+1)   ! table is (100 + i*50)  in km-space
  ltc = INT(NINT(slt/10)+1)
 
-! err_top    = oerr(altc+1,latc,ltc)+(oerr(altc+1,latc+1,ltc)-oerr(altc,latc,ltc))/5*(nlat+95-latc*5)
-! err_bottom = oerr(altc,latc,ltc)+(oerr(altc,latc+1,ltc)-oerr(altc+1,latc,ltc))/5*(nlat+95-latc*5)
-! err_obs    = err_bottom+ (err_top-err_bottom)/50000*(hghte-50000-altc*50000)
+if (verbose > 2) then
+   ! TJH for debug purposes only
+   write(*,*)'hghte  is ',hghte, ';',   'nlat is ',nlat,  ';',   'slt is ',slt,  ';'
+   write(*,*)'altc   is ',altc,  ';',   'latc is ',latc,  ';',   'ltc is ',ltc,  ';'
+   write(*,*)'altc+1 is ',altc+1,';', 'latc+1 is ',latc+1,';', 'ltc+1 is ',ltc+1,';'
+endif
+
+! err_top    = percent(altc+1,latc,ltc)+(percent(altc+1,latc+1,ltc)-percent(altc,latc,ltc))/5*(nlat+95-latc*5)
+! err_bottom = percent(altc,latc,ltc)+(percent(altc,latc+1,ltc)-percent(altc+1,latc,ltc))/5*(nlat+95-latc*5)
+! err_obs    = err_bottom+ (err_top-err_bottom)/50*(hghte-50-altc*50)
 
 !!3-Dimensional Linear interpolation of the observation error percentage
-err_top1    = oerr(altc+1,latc,ltc)+(oerr(altc+1,latc+1,ltc)-oerr(altc,latc,ltc))/5*(nlat+95-latc*5)
-err_bottom1 = oerr(altc,latc,ltc)+(oerr(altc,latc+1,ltc)-oerr(altc+1,latc,ltc))/5*(nlat+95-latc*5)
-err_obs1    = err_bottom1 + (err_top1-err_bottom1)/50000*(hghte-50000-altc*50000)
+err_top1    = percent(altc+1,latc,ltc)+(percent(altc+1,latc+1,ltc)-percent(altc,latc,ltc))/5*(nlat+95-latc*5)
+err_bottom1 = percent(altc,latc,ltc)+(percent(altc,latc+1,ltc)-percent(altc+1,latc,ltc))/5*(nlat+95-latc*5)
+err_obs1    = err_bottom1 + (err_top1-err_bottom1)/50*(hghte-50-altc*50)
 
-err_top2    = oerr(altc+1,latc,ltc+1)+(oerr(altc+1,latc+1,ltc+1)-oerr(altc,latc,ltc+1))/5*(nlat+95-latc*5)
-err_bottom2 = oerr(altc,latc,ltc+1)+(oerr(altc,latc+1,ltc+1)-oerr(altc+1,latc,ltc+1))/5*(nlat+95-latc*5)
-err_obs2    = err_bottom2 + (err_top2-err_bottom2)/50000*(hghte-50000-altc*50000)
+err_top2    = percent(altc+1,latc,ltc+1)+(percent(altc+1,latc+1,ltc+1)-percent(altc,latc,ltc+1))/5*(nlat+95-latc*5)
+err_bottom2 = percent(altc,latc,ltc+1)+(percent(altc,latc+1,ltc+1)-percent(altc+1,latc,ltc+1))/5*(nlat+95-latc*5)
+err_obs2    = err_bottom2 + (err_top2-err_bottom2)/50*(hghte-50-altc*50)
 
 err_obs     = 10.0_r8 + err_obs1 + (err_obs2-err_obs1)/10 * (slt+10-ltc*10)
 
@@ -648,7 +655,6 @@ end function ionprf_obserr_percent
 !> METHOD_SCALED            = 2 = 'scaled'
 !> METHOD_LOOKUP            = 3 = 'lookup'
 !> METHOD_SCALED_LOOKUP     = 4 = 'scaled_lookup'
-!> METHOD_SCALED_HEIGHT     = 5 = 'scaled_height'
 
 integer function check_error_method()
 
@@ -666,12 +672,10 @@ select case(trim(mystring))
       check_error_method = METHOD_LOOKUP
    case ('SCALED_LOOKUP')
       check_error_method = METHOD_SCALED_LOOKUP
-   case ('SCALED_HEIGHT')
-      check_error_method = METHOD_SCALED_HEIGHT
    case default
       write(string1,*)'unknown method "'//trim(observation_error_method)//'"' 
       write(string2,*)'valid values are "constant", "scaled", "lookup", &
-                          &"scaled_lookup", or "scaled_height"'
+                          & or "scaled_lookup"'
       write(string3,*)'this is specified by "observation_error_method"'
       call error_handler(E_ERR,'check_error_method',string1, &
                  source, revision, revdate, text2=string2, text3=string3)

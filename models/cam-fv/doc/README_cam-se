@@ -1,0 +1,31 @@
+Tasks from 2017-8-activities:
+
+        CESM2 uses ne0 for var res CAM-SE assim setup.
+           There are 4 predefined resolutions, like
+           <sname>ne0np4_conus_x4v1_lowcon_ne0np4_conus_x4v1_lowcon</sname>
+>       I can't ask for lon-lat and PHIS fields to be written from CAM-SE to the same file,
+           or PHIS won't be usable by model_mod.  Can lon-lat be written to h1, or the last h#?
+           Or what standard is being adopted by Karspeck/multi-component?
+        Test xyz_location; find closest 2
+           Much slower than the single-closest xyz_location.
+           2nd test with more boxes even slower; handed off to Nancy.
+           Need seems to be reduced; choosing correct compiler options makes speed
+              comparable to FV core, and minimal compared to file I/O and archiving.
+        Script to make cross sections of CAM-SE output?
+           Interpolated to a lon,lat grid?
+        Work on scripts for automating some of the processing of CAM-SE+DART output,
+           so that there aren't so many manual steps in dealing with the cubed-sphere fields.
+
+CAM-SE as of 2017-9 needs new/different initial files according to Lauritzen
+because of a new vertical coordinate.
+
+The last committed model_mod which handles CAM-SE is
+   Working Copy Root Path: /glade/u/home/raeder/DART/Trunk
+   URL: https://subversion.ucar.edu/DAReS/DART/trunk/models/cam
+   Relative URL: ^/DART/trunk/models/cam
+   Repository Root: https://subversion.ucar.edu/DAReS
+   Repository UUID: acad1b26-7d42-44b9-9cec-aac8293558f5
+So it's not RMAized or Manhattanized.
+Now that the cam-fv has been rewritten (2017-10) this model_mod
+will only be useful as a source of subroutines and how to use them.
+The subroutines will probably need to be updated for RMA.

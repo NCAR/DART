@@ -25,7 +25,7 @@
 !    inf_sd_initial_from_restart = .true.,                 .false.,
 ! Also search for 'single model state' to make changes in model_nml.
 
-! Changes for DART2.0 ("RMA")
+! Changes for DART2.0 ("RMA" "Manhattan")
 !    To be removed:
 !       restart_in_file_name     = 'no_restart_in'
 !       restart_out_file_name    = 'no_restart_out'
@@ -36,6 +36,15 @@
 !                                                   perturbation routine
 !       perturbation_amplitude       = 0.2,         Will be ignored because the amplitude is 
 !                                                   provided in model_nml.
+!       stages_to_write          = Controls diagnostic and restart output.  Valid values are 
+!                                 'input', 'forecast','preassim', 'postassim', 'analysis', and 'output'.
+!                                 If only prior inflation is used, then 'postassim' and 'analysis'
+!                                 are redundant with 'output'.  
+!                                 If only posterior inflation is used, 'analysis' and 'preassim'
+!                                 are redundant with 'input'.
+!                                 If you want input_mean and input_sd, you'll 
+!                                 need to set output_mean and output_sd = .true. 
+!                                 (and include 'input' in stages_to_write).
 
 ! Removed from the filter_nml in $rma_trunk
 !    direct_netcdf_read       = .true.
@@ -53,29 +62,33 @@
 ! These vars are in the filter_nml as of r10786
 
 &filter_nml
-   adv_ens_command          = 'no_CESM_advance_script'
-   async                    = 0
-   tasks_per_model_advance  = 1
-   stages_to_write          = 'preassim','postassim'
-   write_all_stages_at_end  = .true.
-   distributed_state        = .true.
-   ens_size                 = 3
-   num_groups               = 1
+   input_state_files            = '',
+   input_state_file_list        = 'cam_init_files',
+   init_time_days               = -1
+   init_time_seconds            = -1
+   single_file_in               = .false.,
+   perturb_from_single_instance = .false.
    
-   single_file_in           = .false.,
-   input_state_files        = '',
-   input_state_file_list    = 'cam_init_files',
-   init_time_days           = -1
-   init_time_seconds        = -1
-   perturb_from_single_instance = .true.
-   perturbation_amplitude       = 0.1,
+   stages_to_write              = 'preassim','output'
    
+   output_state_files           = '',
+   output_state_file_list       = 'cam_init_files',
+   output_mean                  = .true.
+   output_sd                    = .true.
+   output_members               = .true.
+   num_output_state_members     = 3
+   single_file_out              = .false.,
+   write_all_stages_at_end      = .false.
+   
+   ens_size                     = 3
+   num_groups                   = 1
+
    inf_flavor                  = 2,                       0
-   inf_initial_from_restart    = .false.,                  .true.
+   inf_initial_from_restart    = .false.,                  .false.
    inf_initial                 = 1.0,                     1.0
    inf_lower_bound             = 1.0,                     1.0
    inf_upper_bound             = 100.0,                   100.0
-   inf_sd_initial_from_restart = .false.,                  .true.
+   inf_sd_initial_from_restart = .false.,                  .false.
    inf_sd_initial              = 0.6,                     0.6
    inf_sd_lower_bound          = 0.6,                     0.6
    inf_damping                 = 0.9,                     0.9
@@ -88,51 +101,40 @@
    first_obs_seconds        = -1
    last_obs_days            = -1
    last_obs_seconds         = -1
-   obs_window_days          = -1
-   obs_window_seconds       = -1
    
-   single_file_out          = .false.,
-   output_state_files       = '',
-   output_state_file_list   = 'cam_init_files',
-   output_mean              = .true.
-   output_sd                = .true.
-   output_members           = .true.
-   num_output_state_members = 3
-   output_interval          = 1
-   output_timestamps        = .false.
+   adv_ens_command          = 'no_CESM_advance_script'
+   trace_execution          = .true.
+   output_timestamps        = .true.
    output_forward_op_errors = .false.
-   
    silence                  = .false.
-   trace_execution          = .false.
-     /
-     
-&state_vector_io_nml
-  /
-!  limit_mem
-!  single_precision_output
-
-&perfect_model_obs_nml
-  start_from_restart       = .true.
-  output_restart           = .true.
-  async                    = 0
-  init_time_days           = -1
-  init_time_seconds        = -1
-  first_obs_days           = -1
-  first_obs_seconds        = -1
-  last_obs_days            = -1
-  last_obs_seconds         = -1
-  output_timestamps        = .true.
-  trace_execution          = .true.
-  output_forward_op_errors = .false.
-  print_every_nth_obs      = 100
-  silence                  = .false.
-  output_interval          = 1
-  restart_in_file_name     = "perfect_ics"
-  restart_out_file_name    = "perfect_restart"
-  obs_seq_in_file_name     = "obs_seq.in"
-  obs_seq_out_file_name    = "obs_seq.perfect"
-  adv_ens_command          = "no_model_advance"
    /
+     
+&perfect_model_obs_nml
+   read_input_state_from_file = .true.,
+   input_state_files          = "perfect_ics.nc",
+   init_time_days             = -1,
+   init_time_seconds          = -1,
+
+   write_output_state_to_file = .true.,
+   output_state_files         = "perfect_restart.nc",
+
+   obs_seq_in_file_name       = "obs_seq.in",
+   obs_seq_out_file_name      = "obs_seq.out",
+   first_obs_days             = -1,
+   first_obs_seconds          = -1,
+   last_obs_days              = -1,
+   last_obs_seconds           = -1,
+
+   trace_execution            = .true.,
+   output_timestamps          = .true.,
+   print_every_nth_obs        = 0,
+   output_forward_op_errors   = .false.,
+   /
+
+&state_vector_io_nml
+  buffer_state_io         = .false.
+  single_precision_output = .false.
+  /
 
 &smoother_nml
    num_lags              = 0

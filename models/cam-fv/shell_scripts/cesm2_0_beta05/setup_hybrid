@@ -787,7 +787,8 @@ endif
 
 # CAM physics (etc.) selection.  (Eaton said?) It's safer to always specify the physics,
 # instead of letting the compset choose it.
-./xmlchange CAM_CONFIG_OPTS="-phys cam4 "
+set CAM_CONFIG_OPTS="-phys cam4 "
+./xmlchange CAM_CONFIG_OPTS="$CAM_CONFIG_OPTS"
 
 # Reduce the amount of stuff that's st_archived.
 #  > Fewer restart sets saved to         $archive/rest and/or to HPSS,
@@ -1080,6 +1081,8 @@ while ($inst <= $num_instances)
    echo " fincl1        = 'PHIS:I' "                      >> ${fname}
    echo " nhtfrq        = -$stop_n "                      >> ${fname}
    echo " mfilt         = 1 "                             >> ${fname}
+   echo $CAM_CONFIG_OPTS | grep 'cam4'
+   if ($status == 0) echo " fv_div24del2_flag = 4 "       >> ${fname}
 
 
    # CESM2.0, CAM6
