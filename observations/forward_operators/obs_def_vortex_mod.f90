@@ -4,6 +4,12 @@
 !
 ! $Id$
 
+!>@todo  make a namelist-defined grid (lower left corner, nx, ny, dx, dy)
+!> allocate, call interp for t, u, v, p and fill it.  store the location
+!> of the obs being interpolated.  compute the values.  wait for subsequent
+!> calls for this same location.
+!>
+
 ! BEGIN DART PREPROCESS KIND LIST
 ! VORTEX_LAT, QTY_VORTEX_LAT
 ! VORTEX_LON, QTY_VORTEX_LON

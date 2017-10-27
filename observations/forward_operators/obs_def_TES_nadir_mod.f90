@@ -782,14 +782,16 @@ if(return_now) return
 !   coordinate fashion where we have N_layers evenly spaced in log pressure
 !   over the pressure difference between p_surf and p_top.
 ! p([0:N]) = psfc * exp( -( log(psfc/ptop)/N ) * [0:N] )
-where (istatus == 0) then
-   ret_p(1:N_layers, :) = 0.0_r8
-   ret_p(0, :) = psfc(:)
-   delz(:) = log( psfc(:) / ptop ) / real(N_layers,r8)
-elsewhere
-   ret_p(1:N_layers, :) = missing_r8
-   delz(:) = missing_r8
-endwhere
+do imem=1, ens_size
+   if (istatus(imem) == 0) then
+      ret_p(1:N_layers, imem) = 0.0_r8
+      ret_p(0, imem) = psfc(imem)
+      delz(imem) = log( psfc(imem) / ptop ) / real(N_layers,r8)
+   else
+      ret_p(1:N_layers, imem) = missing_r8
+      delz(imem) = missing_r8
+   endif
+enddo
 
 where (istatus == 0)
       ret_p(k, :) = psfc * exp( -delz * real(k,r8) )
