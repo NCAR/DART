@@ -82,6 +82,7 @@ set DO_THESE_MODELS = ( \
   mpas_atm \
   null_model \
   simple_advection \
+  template \
   wrf \
 )
 
