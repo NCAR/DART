@@ -27,7 +27,7 @@ module coamps_interp_mod
                                      nest_point, nest_index_2d_to_1d,           &
                                      get_nest_i_width, get_nest_j_width,        &
                                      get_nest_size, get_nest_level,             &
-                                     in_this_nest
+                                     in_this_nest, get_nest_id
 
     use coamps_statevar_mod,  only : state_variable, get_var_start, is_sigma_level
 
@@ -49,17 +49,21 @@ module coamps_interp_mod
                                      query_location,   &
                                      is_vertical
     use obs_kind_mod
+
     use types_mod,            only : MISSING_I,        &
                                      MISSING_R8,       &
                                      r8,               &
                                      i8
+
     use utilities_mod,        only : do_output,        &
                                      E_ERR,            &
                                      E_MSG,            &
                                      E_WARN,           &
                                      error_handler,    &
                                      register_module 
+
     use ensemble_manager_mod, only : ensemble_type
+
     use distributed_state_mod, only : get_state
   
     implicit none
@@ -321,8 +325,8 @@ contains
           call calculate_surface_heights(interpolator)
 
         case default
-           
-          is_success = .true.  ! unless proven otherwise
+         
+          is_success = .false.  ! unless proven otherwise
 
           ! Try to find if the state variable is defined on the same level 
           ! as the observation.  If it is not, interpolate in the vertical. 
@@ -332,45 +336,45 @@ contains
 
           !elseif( is_vertical(obs_loc, 'PRESSURE') ) then
           !elseif( is_vertical(obs_loc, 'SURFACE') ) then
-          elseif( is_vertical(obs_loc, 'LEVEL') ) then
-             is_success = .true.
+          !elseif( is_vertical(obs_loc, 'LEVEL') ) then
+
           elseif( is_vertical(obs_loc, 'UNDEFINED') ) then
              call calculate_undef_level_var(interpolator, obs_kind, &
                      query_location(obs_loc, 'VLOC'), is_success)
           endif 
 
-          if(.not. is_success) then
+          if( .not. is_success) then
 
-          call get_target_var(interpolator, obs_kind)
-          call get_coordinate_vars(interpolator)
+             call get_target_var(interpolator, obs_kind)
+             call get_coordinate_vars(interpolator)
 
-          ! Interpolation is spotty if there aren't enough vertical levels,
-          ! so declare failure rather than returning a (probably bad) result
-          call calculate_available_levels(interpolator)
-          if (.not. enough_levels_available(interpolator)) then
-            interp_worked = .false.
-            call finalize_interpolator(interpolator)
-            return
-          end if
+             ! Interpolation is spotty if there aren't enough vertical levels,
+             ! so declare failure rather than returning a (probably bad) result
+             call calculate_available_levels(interpolator)
+             if (.not. enough_levels_available(interpolator)) then
+               interp_worked = .false.
+               call finalize_interpolator(interpolator)
+               return
+             end if
 
-          call initialize_available_values(interpolator)
-          call collect_available_values(interpolator)
+             call initialize_available_values(interpolator)
+             call collect_available_values(interpolator)
 
-          ! Avoid extrapolation and only interpolate values at vertical levels
-          ! bounded by the available levels
-          if (.not. interp_level_in_available_range(interpolator)) then
-            interp_worked = .false.
-            call finalize_interpolator(interpolator)
-            return
-          end if
+             ! Avoid extrapolation and only interpolate values at vertical levels
+             ! bounded by the available levels
+             if (.not. interp_level_in_available_range(interpolator)) then
+               interp_worked = .false.
+               call finalize_interpolator(interpolator)
+               return
+             end if
 
-          ! Interpolate everything to a single level...
-          call interpolate_to_level(interpolator)
-          if (.not. no_missing_values(interpolator)) then
-            interp_worked = .false.
-            call finalize_interpolator(interpolator)
-            return
-          end if
+             ! Interpolate everything to a single level...
+             call interpolate_to_level(interpolator)
+             if (.not. no_missing_values(interpolator)) then
+               interp_worked = .false.
+               call finalize_interpolator(interpolator)
+               return
+             end if
           end if
 
         end select
@@ -415,10 +419,12 @@ contains
                                     obs_location,              &
                                     interpolator%interp_point, &
                                     interpolator%interp_level)
+
         call set_interpolation_level_type(interpolator, obs_location)
 
         ! Save an alias - this will eliminate a lot of calls to "get_nest"
         interpolator%interp_nest => get_nest(interpolator%interp_point)
+
     end subroutine set_interpolation_location
 
     ! has_valid_location
@@ -449,9 +455,9 @@ contains
         integer :: jj_lower, jj_upper
         integer :: ii_left, ii_right
 
-        ii_left  = floor(get_i_coord(interpolator%interp_point))
+        ii_left  = floor(  get_i_coord(interpolator%interp_point))
         ii_right = ceiling(get_i_coord(interpolator%interp_point))
-        jj_lower = floor(get_j_coord(interpolator%interp_point))
+        jj_lower = floor(  get_j_coord(interpolator%interp_point))
         jj_upper = ceiling(get_j_coord(interpolator%interp_point))
 
         ! Ordering goes clockwise starting at lower left 
@@ -466,6 +472,14 @@ contains
 
         interpolator%neighbors_i(NEIGHBOR_LOWER_RIGHT) = ii_right
         interpolator%neighbors_j(NEIGHBOR_LOWER_RIGHT) = jj_lower
+
+        if (.false.) then  ! debug statement only
+           write(*,*)'get_nearest_neighbors lower  left',ii_left,  jj_lower
+           write(*,*)'get_nearest_neighbors upper  left',ii_left,  jj_upper
+           write(*,*)'get_nearest_neighbors upper right',ii_right, jj_upper
+           write(*,*)'get_nearest_neighbors lower right',ii_right, jj_lower
+        endif
+
     end subroutine get_nearest_neighbors
 
     ! calculate_interp_weights
@@ -498,6 +512,14 @@ contains
 
         interpolator%interp_weights(NEIGHBOR_LOWER_RIGHT) = (    frac_x) * &
                                                             (1 - frac_y)
+
+        if (.false.) then  ! debug statement only
+           write(*,*)'calculate_interp_weights lower  left', interpolator%interp_weights(NEIGHBOR_LOWER_LEFT)
+           write(*,*)'calculate_interp_weights upper  left', interpolator%interp_weights(NEIGHBOR_UPPER_LEFT)
+           write(*,*)'calculate_interp_weights upper right', interpolator%interp_weights(NEIGHBOR_UPPER_RIGHT)
+           write(*,*)'calculate_interp_weights lower right', interpolator%interp_weights(NEIGHBOR_LOWER_RIGHT)
+        endif
+
     end subroutine calculate_interp_weights
 
     ! initialize_module
@@ -629,9 +651,11 @@ contains
         deallocate(interpolator%available_target_values, stat=dealloc_status)
         call check_dealloc_status(dealloc_status, routine, source, revision, &
                                   revdate, 'available_target_values')
+
         deallocate(interpolator%available_vcoord_values, stat=dealloc_status)
         call check_dealloc_status(dealloc_status, routine, source, revision, &
                                   revdate, 'available_vcoord_values')
+
     end subroutine deallocate_available_values
   
     ! initialize_availability_data
@@ -662,7 +686,8 @@ contains
         case (INTERPOLATE_TO_UNDEF)
             num_vars_needed = SINGLE_LEVEL
         !case (INTERPOLATE_TO_OTHER)
-        !case default
+        case default
+        !  write(*,*)'TJH WHAT HAPPENS HERE'
         end select
 
         allocate(interpolator%vars_available(num_model_levels, num_vars_needed),   &
@@ -1443,7 +1468,8 @@ contains
         integer,                        intent(in)  :: var_start
         real(kind=r8), dimension(:),    intent(out) :: neighbors
 
-        integer :: cur_neighbor
+        integer :: cur_neighbor, partialindex
+        integer(kind=i8) :: totalindex
 
         real(kind=r8), allocatable :: ens_data1(:), ens_data2(:)
 
@@ -1467,12 +1493,22 @@ contains
             !    var_values(nest_index_2d_to_1d(interpolator%interp_nest, &
             !                    interpolator%neighbors_i(cur_neighbor),  &
             !                    interpolator%neighbors_j(cur_neighbor)))
-            ens_data1 = get_state(int(var_start + &
+            ens_data1 = get_state(int(var_start - 1_i8 + &
                                       nest_index_2d_to_1d(interpolator%interp_nest, &
                                                           interpolator%neighbors_i(cur_neighbor),  &
                                                           interpolator%neighbors_j(cur_neighbor)), i8), &
                                     interpolator%state_handle)
             neighbors(cur_neighbor) = ens_data1(interpolator%ensemble_number)
+
+!           partialindex =            nest_index_2d_to_1d(interpolator%interp_nest, &
+!                                                         interpolator%neighbors_i(cur_neighbor),  &
+!                                                         interpolator%neighbors_j(cur_neighbor))
+!           totalindex =          int(var_start + partialindex, i8)
+!           write(*,*)'TJH extract_neighbors_tstag i ', interpolator%neighbors_i(cur_neighbor)
+!           write(*,*)'TJH extract_neighbors_tstag j ', interpolator%neighbors_j(cur_neighbor)
+!           write(*,*)'TJH extract_neighbors_tstag var_start ',  var_start
+!           write(*,*)'TJH extract_neighbors_tstag 1d ', partialindex
+!           write(*,*)'TJH extract_neighbors_tstag ', totalindex
         end do                                           
 
         deallocate(ens_data1, ens_data2, stat=dealloc_status)
@@ -1652,6 +1688,7 @@ contains
                         num_levels_in, num_levels_out, NUM_NEIGHBORS, &
                         USE_MISSING_VALUE, MISSING_R8)
         end select
+
     end subroutine interpolate_to_level
 
     ! interpolate_to_point
@@ -1667,7 +1704,7 @@ contains
         ! Need to remove the singleton dimension of vinterp_values since 
         ! dot_product wants a 1-d vector for both arguments
         interpolate_to_point = dot_product(interpolator%interp_weights,      &
-                                           pack(interpolator%vinterp_values(:,:), &
+                                      pack(interpolator%vinterp_values(:,:), &
                                                 .true.))
     end function interpolate_to_point
 
@@ -1818,8 +1855,8 @@ contains
     !   IN  obs_value         Result of the interpolation
     subroutine print_interpolation_diagnostics(interpolator, obs_kind, obs_value)
         type(coamps_interpolator), intent(in) :: interpolator
-        integer,                   intent(in) :: obs_kind
-        real(kind=r8),             intent(in) :: obs_value
+        integer,       optional,   intent(in) :: obs_kind
+        real(kind=r8), optional,   intent(in) :: obs_value
 
         real(kind=r8) :: lat, lon
 
@@ -1839,7 +1876,9 @@ contains
                 interpolator%interp_level_type
             write (*,'(A15,T25,I10)'  ) 'On Nest Level :', &
                 get_nest_level(interpolator%interp_point)
+            if (present(obs_kind)) &
             write (*,'(A15,T25,A30)'  ) 'Variable Type :', trim(get_name_for_quantity(obs_kind))
+            if (present(obs_value)) &
             write (*,'(A15,T25,F15.6)') 'Value         :', obs_value
             write (*,*)
         end if

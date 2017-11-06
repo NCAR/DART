@@ -369,9 +369,10 @@ contains
 
 !-------------------------------------------------------------------------------
 !> generates the component arrays needed for the DART add_domain() routine
-subroutine construct_domain_info(state, varnames, kindlist, clampvals, updatelist, nvars)
+subroutine construct_domain_info(state, nestnumber, varnames, kindlist, clampvals, updatelist, nvars)
 
 type(state_vector), intent(in)  :: state
+integer,            intent(in)  :: nestnumber
 character(len=*),   intent(out) :: varnames(:)
 integer,            intent(out) :: kindlist(:)
 real(r8),           intent(out) :: clampvals(:,:)
@@ -391,6 +392,8 @@ iterator = get_iterator(state)
 VARLOOP: do while (has_next(iterator))
 
     var = get_next(iterator)
+
+    if (get_nest_number(var) /= nestnumber) cycle VARLOOP
 
     if (get_hdf_name(var) == 'nohdfname') then
        write(varnames(varindex),400)   &

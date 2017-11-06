@@ -44,7 +44,7 @@ module coamps_nest_mod
     public :: coamps_nest
 
     public :: initialize_nest
-!    public :: initialize_nest_latlon   candidate for removal
+    public :: initialize_nest_latlon   ! candidate for removal
 
     public :: register_child_nest
     public :: register_parent_nest
@@ -92,6 +92,7 @@ module coamps_nest_mod
     public :: parent_to_child
 
     public :: dump_nest_info
+    public :: dump_nest_point_info
 
     public :: assignment(=)
 
@@ -635,7 +636,7 @@ end subroutine initialize_nest
         type(nest_point),    intent(in)  :: test_pt
         logical                          :: in_this_nest
 
-        !FIXME fixed for now, should vary with the coamps parameter.
+        !>@todo FIXME fixed for now, should vary with the coamps parameter.
         integer, parameter :: nbdypt = 5 
 
         real(kind=r8) :: i_min
@@ -835,6 +836,17 @@ end subroutine initialize_nest
         
     end subroutine dump_nest_info
 
+    ! --------------
+    ! Dumps the nest point information
+    !  PARAMETERS
+    !   IN  nest_pt         COAMPS nest to dump
+    subroutine dump_nest_point_info(nest_pt)
+        type(nest_point), intent(in) :: nest_pt
+
+        call dump_nest_info(nest_pt%nest)
+        write (*,*) "  Nest Id, ii, jj:", nest_pt%nest%id, nest_pt%ii, nest_pt%jj
+    end subroutine dump_nest_point_info
+
     ! nest_point_to_coarse_point
     ! --------------------------
     ! Converts an i/j point on a COAMPS nest to the corresponding i/j
@@ -923,6 +935,7 @@ end subroutine initialize_nest
                 finest_pt         = trial_pt
             end if
         end do
+
     end subroutine coarse_point_to_nest_point
 
     ! get_subnest_i_width
@@ -1199,10 +1212,6 @@ call generate_sfc_varname(nest, dtg, 'terrht', terrht_name)
 call generate_sfc_varname(nest, dtg, 'latitu', latitude_name)
 call generate_sfc_varname(nest, dtg, 'longit', longitude_name)
 
-! write(*,*)'TJH terrht_varname is "'//trim(terrht_name)//'"'
-! write(*,*)'TJH latitu_varname is "'//trim(latitude_name)//'"'
-! write(*,*)'TJH longit_varname is "'//trim(longitude_name)//'"'
-
 io = nf90_open(filename, NF90_NOWRITE, terrht_unit)
 call nc_check(io, routine, 'opening "',trim(filename),'"')
 
@@ -1254,7 +1263,7 @@ end subroutine read_geographic_data
     ! INOUT nest              The nest to add geographic data to
     !   IN  dtg               COAMPS date-time group
 
-! TJH initialize_nest_latlon not needed now that we can read from a file
+! TJH initialize_nest_latlon probably not needed now that we can read from a file
 
     subroutine initialize_nest_latlon(nest, grid)
         type(coamps_nest), intent(inout) :: nest

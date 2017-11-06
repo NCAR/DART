@@ -33,7 +33,6 @@ assimilation_code/modules/utilities/time_manager_mod.f90
 assimilation_code/modules/utilities/types_mod.f90
 assimilation_code/modules/utilities/utilities_mod.f90
 assimilation_code/programs/perfect_model_obs/perfect_model_obs.f90
-models/coamps_nest/byteswap.c
 models/coamps_nest/coamps_domain_mod.f90
 models/coamps_nest/coamps_hdf5_mod.F90
 models/coamps_nest/coamps_interp_mod.f90

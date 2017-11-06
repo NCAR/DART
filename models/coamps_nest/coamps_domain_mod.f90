@@ -21,6 +21,7 @@ module coamps_domain_mod
                                     nest_point,                  &
                                     initialize_nest,             &
                                     dump_nest_info,              &
+                                    dump_nest_point_info,        &
                                     decompose_nest,              &
                                     get_num_subnests,            &
                                     get_nest_id,                 &
@@ -29,8 +30,8 @@ module coamps_domain_mod
                                     coarse_point_to_nest_point,  &
                                     get_parent_nest_id,          &
                                     register_child_nest,         &
-                                    register_parent_nest
-                                  ! initialize_nest_latlon,      & removal candidate
+                                    register_parent_nest,        &
+                                    initialize_nest_latlon       
 
     use coamps_vertical_mod, only : coamps_vertical,             &
                                     get_msigma,                  &
@@ -345,7 +346,10 @@ contains
 
         call coarse_point_to_nest_point(coarse_pt, nest_pt, in_domain)
 
+!       call dump_nest_point_info(nest_pt) ! TJH this could be too verbose 
+
         if (present(within_domain)) within_domain = in_domain
+
     end subroutine latlon_to_nest_point
 
     ! nest_point_to_latlon
@@ -412,6 +416,7 @@ contains
                                   in_domain) 
 
         if (present(is_within_domain)) is_within_domain = in_domain
+
     end subroutine location_to_nest_point
 
     ! decompose_domain
@@ -792,10 +797,10 @@ contains
                                  parent_nest = domain%nests(parent_nest_id))
     end do
 
-! TJH not needed now that initialize_nest() reads latlon from hdf5 file
-! TJH    do cur_nest_id = 1, domain%nest_count
-! TJH       call initialize_nest_latlon(domain%nests(cur_nest_id), domain%static_grid)
-! TJH    end do
+!>@todo TJH not needed now that initialize_nest() reads latlon from hdf5 file
+         do cur_nest_id = 1, domain%nest_count
+            call initialize_nest_latlon(domain%nests(cur_nest_id), domain%static_grid)
+         end do
 
   end subroutine initialize_nests
 

@@ -232,13 +232,12 @@ character(len=*), parameter :: revdate  = "$Date$"
 character(len=512) :: string1, string2
 logical, save :: module_initialized = .false.
 
-! DART state vector contents are specified in the input.nml:&model_nml namelist.
-integer, parameter :: max_state_variables = 40
-integer, parameter :: num_state_table_columns = 5
+! DART state vector contents are computed from coamps_statevec_mod and state.vars
+integer, parameter :: MAX_STATE_VARIABLES = 40
 
-character(len=NF90_MAX_NAME) :: var_names(MAX_STATE_VARIABLES) = ' '
-logical  ::                   update_list(MAX_STATE_VARIABLES) = .FALSE.
-integer  ::                     kind_list(MAX_STATE_VARIABLES) = MISSING_I
+character(len=NF90_MAX_NAME) :: var_names(MAX_STATE_VARIABLES)   = ' '
+logical  ::                   update_list(MAX_STATE_VARIABLES)   = .FALSE.
+integer  ::                     kind_list(MAX_STATE_VARIABLES)   = MISSING_I
 real(r8) ::                    clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
 
 ! Main model_mod namelist - not too much here as we read most of
@@ -292,13 +291,17 @@ contains
 !>  4. Queries the template file 'dart_vector.nc' to glean variable sizes
 !>  PARAMETERS
 !>   [none]
+!>
+!> latitu_sfc_000000_000000_1a0201x0204_2013011000_00000000_fcstfld
+!> longit_sfc_000000_000000_1a0201x0204_2013011000_00000000_fcstfld
 
 subroutine static_init_model()
 
 character(len=*), parameter :: STATE_VEC_DEF_FILE = 'state.vars'
 character(len=*), parameter :: routine = 'static_init_model'
 
-integer :: i, nvars
+integer :: ivar, nvars
+integer :: inest, numnests
 integer(i8) :: model_size
 
 if (module_initialized) return ! only need to do this once
@@ -321,28 +324,30 @@ call initialize_state_vector(state_definition, STATE_VEC_DEF_FILE, domain)
 
 ! 'state_layout_3D' contains state vector necessary for DART
 call initialize_state_vector(state_layout_3D, STATE_VEC_DEF_FILE, domain, .true.)
-
 call allocate_metadata_arrays()
-
 call populate_metadata_arrays()
-
 call initialize_translator()
 call generate_coamps_varnames(writing_coamps = .false.)
 call record_hdf_varnames(state_layout_3D)
 
-if (debug > 99 .and. do_output()) call dump_state_vector(state_layout_3D)
+if (debug > 0 .and. do_output()) call dump_state_vector(state_layout_3D)
 
-nvars = get_coamps_variable_count()
+numnests = get_nest_count(domain)  ! DART 'domain' is a COAMPS 'nest'
 
-call construct_domain_info(state_layout_3D, var_names, kind_list, clamp_vals, update_list, nvars)
+model_size = 0_i8
+NESTLOOP : do inest = 1,numnests
 
-domid = add_domain('dart_vector.nc', nvars, var_names, kind_list, clamp_vals, update_list )
+   call construct_domain_info(state_layout_3D, inest, var_names, kind_list, clamp_vals, update_list, nvars)
 
-! print information in the state structure
+   domid = add_domain('dart_vector.nc', nvars, var_names, kind_list, clamp_vals, update_list )
 
-if (debug > 0 .and. do_output()) call state_structure_info(domid)
+   ! print information in the state structure
 
-model_size = get_domain_size(domid)
+   if (debug > 0 .and. do_output()) call state_structure_info(domid)
+
+   model_size = model_size + get_domain_size(domid)
+
+enddo NESTLOOP
 
 if (debug > 0 .and. do_output()) then
 write(string1, *)'static_init_model: model_size = ', model_size

@@ -3,11 +3,11 @@
 &perfect_model_obs_nml
    read_input_state_from_file  = .true.
    single_file_in              = .false.
-   input_state_files           = "perfect_input.nc"
+   input_state_files           = "perfect_input.nc", "perfect_input.nc"
 
    write_output_state_to_file = .true.
    single_file_out            = .false.
-   output_state_files         = "perfect_output.nc"
+   output_state_files         = "perfect_output.nc", "perfect_output.nc"
    output_interval            = 1
 
    async                      = 4
@@ -342,22 +342,45 @@
 #  all_metadata_file     = 'metadata_file.txt'
 #  all_metadata_file     = 'null'
 &model_mod_check_nml
-   input_state_files     = 'dart_vector.nc'
-   output_state_files    = 'check_me.nc'
+   input_state_files     = 'dart_vector1.nc','dart_vector2.nc'
+   output_state_files    = 'check_me1.nc', 'check_me2.nc'
    all_metadata_file     = 'null'
    verbose               = .TRUE.
-   test1thru             = 4
-   loc_of_interest       = 234.600585937500, 18.5735168457031, 60.0
-   x_ind                 = 1
-   kind_of_interest      = 'QTY_POTENTIAL_TEMPERATURE'
-   interp_test_lonrange  = 144.0, 326.0
+   test1thru             = 0
+   run_tests             = 1, 2, 3, 4, 5
+   loc_of_interest       = 243.72386169, 52.78578186, 10.0
+   x_ind                 = 12666739
+   quantity_of_interest  = 'QTY_POTENTIAL_TEMPERATURE'
+   interp_test_lonrange  = 220.0, 260.0
    interp_test_dlon      = 1.0
-   interp_test_latrange  = -5.0, 80.0
+   interp_test_latrange  = 30.0, 40.0
    interp_test_dlat      = 1.0
    interp_test_vertrange = 58.0, 60.0
    interp_test_dvert     = 0.25
    interp_test_vertcoord = 'VERTISLEVEL'
   /
+
+   loc_of_interest       = 260.0, 30.0, 10.0 clearly in domain 1
+   loc_of_interest       = 230.0, 40.0, 10.0 clearly in domain 2
+
+#  QTY_POTENTIAL_TEMPERATURE at  100   50   60 domain  1
+   loc_of_interest       = 234.600585937500, 18.5735168457031, 10.0
+   x_ind                 = 2429185
+
+#  QTY_POTENTIAL_TEMPERATURE at 200  203   60 domain  1
+   loc_of_interest       = 324.97738647, 55.56023407, 10.0
+   x_ind                 = 4920278
+
+#  QTY_POTENTIAL_TEMPERATURE at 210  210   60 domain  2
+   loc_of_interest       = 244.40650940, 52.73881912, 10.0
+   x_ind                 = 12666742 
+
+#  QTY_POTENTIAL_TEMPERATURE at 212  216   60 domain  2
+   loc_of_interest       = 245.03234863, 53.52990341, 10.
+   x_ind                 = 12668028
+
+ read_geographic_data lon/lat (  1,  1) is    204.473480224609       -4.56199932098389
+ read_geographic_data lon/lat ( nx, ny) is    325.946136474609        55.3632431030273
 
 # These are just notes to help use model_mod_check
 # The mass points are defined (in Fortran) as nx-ny-nz, with nx (longitude)
@@ -365,17 +388,10 @@
 # x= 1, y= 1 is the southwest
 # x=nx, y=ny is the northeast
 # z=1 is the top of atmosphere
-#
-# ncdump -f F -v lonT_g02 dart_vector.nc | grep '100,50'
-# ncdump -f F -v latT_g02 dart_vector.nc | grep '100,50'
-#
-# ncdump -f F -v lonT_g02 dart_vector.nc | grep 108,108
-#     224.197416429748,   // lonT_g02(108,108)    3.912983091163933 radians
-# ncdump -f F -v latT_g02 dart_vector.nc | grep 108,108
-#     38.2898181388769,   // latT_g02(108,108)    0.668283396513249 radians
-# 
-# ncdump -f F -v latU_g02 dart_vector.nc | grep 108,108
-#     38.2991002368272,   // latU_g02(108,108)   0.668445399683975 radians
-# ncdump -f F -v lonU_g02 dart_vector.nc | grep 108,108
-#     224.284904588274,   // lonU_g02(108,108)   3.914510047586718 radians
+
+#  4920278 i,j,k  200  203   60 domain  1  QTY_POTENTIAL_TEMPERATURE Lon/Lat(deg): 324.97738647  55.56023407  10.   ! simply fails
+# 12666742 i,j,k  210  210   60 domain  2  QTY_POTENTIAL_TEMPERATURE Lon/Lat(deg): 244.40650940  52.73881912  10.   ! in wrong domain
+# 12668028 i,j,k  212  216   60 domain  2  QTY_POTENTIAL_TEMPERATURE Lon/Lat(deg): 245.03234863  53.52990341  10.
+
+   12666739 i,j,k  207  210   60 domain  2   23         QTY_POTENTIAL_TEMPERATURE Lon/Lat(deg): 243.72386169  52.78578186  Vert:   10.        level
 

@@ -544,9 +544,11 @@ integer,           intent(in)    :: ncfile ! netdcf file id - should this be par
 type(domain_type), intent(inout) :: domain
 
 integer :: ivar, jdim, num_vars, num_dims !< loop variables
-integer :: variable_size
+integer :: variable_size, dimlen
 integer :: ret ! netcdf return value
 integer(i8) :: index_start, domain_size
+
+character(len=NF90_MAX_NAME) :: dimname
 
 domain_size = 0
 num_vars    = domain%num_variables
@@ -564,17 +566,19 @@ do ivar = 1, num_vars
                  trim(domain%variable(ivar)%varname))
 
    variable_size = 1
-   num_dims      = domain%variable(ivar)%io_info%io_numdims
+   num_dims      = 0
 
-   do jdim = 1, num_dims
+   do jdim = 1, domain%variable(ivar)%io_info%io_numdims
 
       ! load dimension names and lengths
       ret = nf90_inquire_dimension(ncfile, domain%variable(ivar)%io_info%io_dimIds(jdim),  &
-                                    name = domain%variable(ivar)%dimname(jdim), &
-                                     len = domain%variable(ivar)%dimlens(jdim))
+                                    name = dimname, &
+                                     len = dimlen)
+                            !       name = domain%variable(ivar)%dimname(jdim), &
+                            !        len = domain%variable(ivar)%dimlens(jdim))
 
       call nc_check(ret, 'load_variable_sizes, inq_dimension', &
-                    trim(domain%variable(ivar)%dimname(jdim)))
+                    trim(dimname))  ! TJH the dimension ID ... variable ...
       
       !>@todo FIXME we'll have to document that no user can have a 'member' dimension
       !>in their own netcdf files.  it's more reasonable to indicate 'time' is special
@@ -582,13 +586,19 @@ do ivar = 1, num_vars
       !>skipping these dimensions you get the wrong variable size because it includes
       !>all times and all members in the size.  this needs to be revisited later.
 
-      if ((domain%variable(ivar)%dimname(jdim) == 'time') .or. &
-          (domain%variable(ivar)%dimname(jdim) == 'member')) cycle
+      !>@todo is there a more robust way to skip the non-spatial dimensions
+      !>@todo more variations of 'time', 'Time', 'TIME' ...
 
-      variable_size = variable_size * domain%variable(ivar)%dimlens(jdim)
+      if (dimname == 'time' .or.  dimname == 'member') cycle
+
+      num_dims = num_dims + 1   ! count up the spatial dimensions
+
+      domain%variable(ivar)%dimname(num_dims) = dimname
+      domain%variable(ivar)%dimlens(num_dims) = dimlen
+
+      variable_size = variable_size * dimlen
 
    enddo
-
 
    ! to be consistent this needs to ignore both 'time' and 'member' for
    ! files we write, and newer netcdf libs support multiple unlimited dims
@@ -600,19 +610,19 @@ do ivar = 1, num_vars
    !>         is the slowest varying dimension.  For now am assuming that
    !>         there can only be one unlimited dimension. Just subtract 
    !>         to get 'spatial' dimensions.
-   if ( any(domain%variable(ivar)%io_info%io_dimIds(:) == domain%unlimDimId) ) then
-      domain%variable(ivar)%numdims = num_dims - 1 
-      domain%variable(ivar)%var_has_unlim = .TRUE.
-   else
+!  if ( any(domain%variable(ivar)%io_info%io_dimIds(:) == domain%unlimDimId) ) then
+!     domain%variable(ivar)%numdims = num_dims - 1 
+!     domain%variable(ivar)%var_has_unlim = .TRUE.
+!  else
       domain%variable(ivar)%numdims = num_dims
-   endif
+!  endif
 
    ! member is not a spatial domain but could be included in a single file
-   do jdim = 1, num_dims
-      if ( domain%variable(ivar)%dimname(jdim) == 'member') then
-         domain%variable(ivar)%numdims = domain%variable(ivar)%numdims - 1 
-      endif
-   enddo
+!  do jdim = 1, num_dims
+!     if ( domain%variable(ivar)%dimname(jdim) == 'member') then
+!        domain%variable(ivar)%numdims = domain%variable(ivar)%numdims - 1 
+!     endif
+!  enddo
 
    domain%variable(ivar)%var_size = variable_size
 
