@@ -601,19 +601,19 @@ end function loc_ne
 
 !---------------------------------------------------------------------------
 
-function get_location(loc)
+function get_location(location)
  
 ! Given a location type (in radians), 
 ! return the longitude, latitude (in degrees) and vertical value
 
-type(location_type), intent(in) :: loc
+type(location_type), intent(in) :: location
 real(r8), dimension(3) :: get_location
 
 if ( .not. module_initialized ) call initialize_module()
 
-get_location(1) = loc%lon * RAD2DEG                 
-get_location(2) = loc%lat * RAD2DEG                 
-get_location(3) = loc%vloc     
+get_location(1) = location%lon * RAD2DEG                 
+get_location(2) = location%lat * RAD2DEG                 
+get_location(3) = location%vloc     
 
 end function get_location
 
@@ -695,11 +695,11 @@ end function set_location_missing
 
 !---------------------------------------------------------------------------
 
-function query_location(loc, attr)
+function query_location(location, attr)
  
 ! Returns the value of the attribute
 
-type(location_type),        intent(in) :: loc
+type(location_type),        intent(in) :: location
 character(len=*), optional, intent(in) :: attr
 real(r8)                               :: query_location
 
@@ -722,17 +722,17 @@ if ( .not. module_initialized ) call initialize_module()
 ! set the default here, and then only overwrite it if we
 ! recognize one of the other valid queries.
 
-query_location = real(loc%which_vert, r8)  ! this is really an int
+query_location = real(location%which_vert, r8)  ! this is really an int
 
 if (.not. present(attr)) return
 
 select case(attr)
    case ('lat','LAT')
-      query_location = loc%lat
+      query_location = location%lat
    case ('lon','LON')
-      query_location = loc%lon
+      query_location = location%lon
    case ('vloc','VLOC')
-      query_location = loc%vloc
+      query_location = location%vloc
    case ('which_vert','WHICH_VERT')
       ! already set
    case default
@@ -745,7 +745,7 @@ end function query_location
 
 !----------------------------------------------------------------------------
 
-subroutine write_location(locfile, loc, fform, charstring)
+subroutine write_location(locfile, location, fform, charstring)
  
 ! Writes a location to a file.
 ! most recent change: adding the optional charstring option.  if present,
@@ -754,7 +754,7 @@ subroutine write_location(locfile, loc, fform, charstring)
 ! common units (e.g. hPa, km, etc)
 
 integer, intent(in)                        :: locfile
-type(location_type), intent(in)            :: loc
+type(location_type), intent(in)            :: location
 character(len = *),  intent(in),  optional :: fform
 character(len = *),  intent(out), optional :: charstring
 
@@ -774,9 +774,9 @@ writebuf = present(charstring)
 if (.not. writebuf) then
    if (ascii_file_format(fform)) then
       write(locfile, '(''loc3d'')' ) 
-      write(locfile, 10) loc%lon, loc%lat, loc%vloc, loc%which_vert
+      write(locfile, 10) location%lon, location%lat, location%vloc, location%which_vert
    else
-      write(locfile) loc%lon, loc%lat, loc%vloc, loc%which_vert
+      write(locfile) location%lon, location%lat, location%vloc, location%which_vert
    endif
    return
 endif
@@ -802,28 +802,28 @@ if (len(charstring) < charlength) then
 endif
 
 ! format the horizontal into a temp string
-write(string1, '(A,F12.8,1X,F12.8,1X,A)') 'Lon/Lat(deg): ',  loc%lon*RAD2DEG, &
-   loc%lat*RAD2DEG, ' Vert:'
+write(string1, '(A,F12.8,1X,F12.8,1X,A)') 'Lon/Lat(deg): ',  location%lon*RAD2DEG, &
+   location%lat*RAD2DEG, ' Vert:'
 
 ! then pretty up the vertical choices, trying to get them to line up in
 ! case the caller is listing out locations with different vert units.
 ! concatinate the vertical on the end of the horizontal and put it all
 ! into the return string. 
-select case  (loc%which_vert)
+select case  (location%which_vert)
    case (VERTISUNDEF)
       write(charstring, '(A,A)')       trim(string1), '              Undefined'
    case (VERTISSURFACE)
-      write(charstring, '(A,F13.5,A)') trim(string1), loc%vloc, ' surface (m)'
+      write(charstring, '(A,F13.5,A)') trim(string1), location%vloc, ' surface (m)'
    case (VERTISLEVEL)
-      write(charstring, '(A,F13.6,A)') trim(string1), loc%vloc, '        level'
+      write(charstring, '(A,F13.6,A)') trim(string1), location%vloc, '        level'
    case (VERTISPRESSURE)
-      write(charstring, '(A,F13.7,A)') trim(string1), loc%vloc / 100.0_r8, ' hPa'
+      write(charstring, '(A,F13.7,A)') trim(string1), location%vloc / 100.0_r8, ' hPa'
    case (VERTISHEIGHT)
-      write(charstring, '(A,F13.7,A)') trim(string1), loc%vloc / 1000.0_r8, ' km'
+      write(charstring, '(A,F13.7,A)') trim(string1), location%vloc / 1000.0_r8, ' km'
    case (VERTISSCALEHEIGHT)
-      write(charstring, '(A,F13.7,A)') trim(string1), loc%vloc, ' scale ht'
+      write(charstring, '(A,F13.7,A)') trim(string1), location%vloc, ' scale ht'
    case default
-      write(msgstring, *) 'unrecognized key for vertical type: ', loc%which_vert
+      write(msgstring, *) 'unrecognized key for vertical type: ', location%which_vert
       call error_handler(E_ERR, 'write_location', msgstring, source, revision, revdate)
 end select
 
@@ -986,7 +986,7 @@ end subroutine interactive_location
 
 !----------------------------------------------------------------------------
 
-function is_location_in_region(loc, minl, maxl)
+function is_location_in_region(location, minl, maxl)
  
 ! Returns true if the given location is inside the rectangular
 ! region defined by minl as the lower left, maxl the upper right.
@@ -994,15 +994,15 @@ function is_location_in_region(loc, minl, maxl)
 ! Periodic in longitude (box can cross the 2PI -> 0 line)
 
 logical                          :: is_location_in_region
-type(location_type), intent(in)  :: loc, minl, maxl
+type(location_type), intent(in)  :: location, minl, maxl
 
 if ( .not. module_initialized ) call initialize_module()
 
 ! maybe could use VERTISUNDEF in the minl and maxl args to indicate
 ! we want to test only in horizontal?  and if not, vtypes must match?
 !if ( (minl%which_vert /= maxl%which_vert) .or. &
-! ((minl%which_vert /= loc%which_vert).and.(minl%which_vert /= VERTISUNDEF))) then
-!   write(msgstring,*)'which_vert (',loc%which_vert,') must be same in all args'
+! ((minl%which_vert /= location%which_vert).and.(minl%which_vert /= VERTISUNDEF))) then
+!   write(msgstring,*)'which_vert (',location%which_vert,') must be same in all args'
 !   call error_handler(E_ERR, 'is_location_in_region', msgstring, source, revision, revdate)
 !endif
 
@@ -1011,14 +1011,14 @@ if ( .not. module_initialized ) call initialize_module()
 is_location_in_region = .false.
 
 ! latitude: we do not allow wrap of rectangular regions over the poles.
-if ((loc%lat < minl%lat) .or. (loc%lat > maxl%lat)) return
+if ((location%lat < minl%lat) .or. (location%lat > maxl%lat)) return
 
 ! use common routine in utilities module to do all the wrapping
-if (.not. is_longitude_between(loc%lon, minl%lon, maxl%lon, doradians=.TRUE.)) return
+if (.not. is_longitude_between(location%lon, minl%lon, maxl%lon, doradians=.TRUE.)) return
 
 ! once we decide what to do about diff vert units, this is the test.
 !if ((minl%which_vert .ne. VERTISUNDEF) .and. 
-!    (loc%vloc < minl%vloc) .or. (loc%vloc > maxl%vloc)) return
+!    (location%vloc < minl%vloc) .or. (location%vloc > maxl%vloc)) return
  
 is_location_in_region = .true.
 
@@ -1075,27 +1075,27 @@ end function vertical_localization_on
 !----------------------------------------------------------------------------
 !> use a string so caller doesn't have to have access to VERTISxxx values
 
-function is_vertical(loc, which_vert)
+function is_vertical(location, which_vert)
 
 logical                          :: is_vertical
-type(location_type), intent(in)  :: loc
+type(location_type), intent(in)  :: location
 character(len=*),    intent(in)  :: which_vert
 
 select case  (which_vert)
    case ("UNDEFINED")
-      is_vertical = (VERTISUNDEF == loc%which_vert)
+      is_vertical = (VERTISUNDEF == location%which_vert)
    case ("SURFACE")
-      is_vertical = (VERTISSURFACE == loc%which_vert)
+      is_vertical = (VERTISSURFACE == location%which_vert)
    case ("LEVEL")
-      is_vertical = (VERTISLEVEL == loc%which_vert)
+      is_vertical = (VERTISLEVEL == location%which_vert)
    case ("PRESSURE")
-      is_vertical = (VERTISPRESSURE == loc%which_vert)
+      is_vertical = (VERTISPRESSURE == location%which_vert)
    case ("HEIGHT")
-      is_vertical = (VERTISHEIGHT == loc%which_vert)
+      is_vertical = (VERTISHEIGHT == location%which_vert)
    case ("SCALE_HEIGHT")
-      is_vertical = (VERTISSCALEHEIGHT == loc%which_vert)
+      is_vertical = (VERTISSCALEHEIGHT == location%which_vert)
    case default
-      write(msgstring, *) 'unrecognized key for vertical type: ', which_vert, loc%which_vert
+      write(msgstring, *) 'unrecognized key for vertical type: ', which_vert, location%which_vert
       call error_handler(E_ERR, 'is_vertical', msgstring, source, revision, revdate)
 end select
 
@@ -1103,14 +1103,14 @@ end function is_vertical
 
 !--------------------------------------------------------------------
 
-subroutine set_vertical(loc, vloc, which_vert)
+subroutine set_vertical(location, vloc, which_vert)
 
-type(location_type), intent(inout) :: loc
+type(location_type), intent(inout) :: location
 real(r8), optional,  intent(in)    :: vloc
 integer,  optional,  intent(in)    :: which_vert
 
-if (present(vloc)) loc%vloc = vloc
-if (present(which_vert)) loc%which_vert = which_vert
+if (present(vloc)) location%vloc = vloc
+if (present(which_vert)) location%which_vert = which_vert
 
 end subroutine set_vertical
 
@@ -1155,7 +1155,8 @@ end subroutine convert_vertical_state
 
 subroutine get_close_init(gc, num, maxdist, locs, maxdist_list)
  
-! Initializes part of get_close accelerator that depends on the particular loc
+! Initializes part of get_close accelerator that depends on the particular
+! location
 
 type(get_close_type), intent(inout) :: gc
 integer,              intent(in)    :: num
@@ -1304,7 +1305,7 @@ do n=1, gc%nt
       if(lon_box(i) < 0 .or. lon_box(i) > nlon) then
          write(msgstring, *) 'Contact Dart Developers: this error should not happen'
          call error_handler(E_MSG, 'get_close_init', msgstring, source, revision, revdate)
-         write(msgstring, *) 'loc outside grid boxes, index value:',  lon_box(i)
+         write(msgstring, *) 'location outside grid boxes, index value:',  lon_box(i)
          call error_handler(E_ERR, 'get_close_init', msgstring, source, revision, revdate)
       endif
    
@@ -1517,7 +1518,7 @@ if(COMPARE_TO_CORRECT) then
          this_dist = get_dist(base_loc, locs(i), base_type, loc_qtys(i))
       endif
       if(this_dist <= this_maxdist) then
-         ! Add this loc to correct list
+         ! Add this location to correct list
          cnum_close = cnum_close + 1
          cclose_ind(cnum_close) = i
          cdist(cnum_close) = this_dist
@@ -1592,7 +1593,7 @@ do j = 1, nlat
                      no_vert = .true.)
                endif
 
-               ! If this loc's distance is less than cutoff, add it to the list
+               ! If this location's distance is less than cutoff, add it to the list
                if(this_dist <= this_maxdist) then
                   num_close = num_close + 1
                   close_ind(num_close) = t_ind
@@ -1707,7 +1708,7 @@ if (.not. gtt%lon_cyclic) then
       ! Add on the extra distance needed for the boxes
       ! To avoid any hard thinking about wraparound with sub-domain boxes
       ! Must span less than 180 degrees to get smaller boxes
-      ! If addition of halos for close loc fills more than half of space 
+      ! If addition of halos for close location fills more than half of space 
       ! things go 0 to 2PI
 
       ! other places we are computing in radians.  here we are computing in
@@ -2011,7 +2012,7 @@ end function find_del_lon
 
 !----------------------------------------------------------------------------
 
-subroutine distinct_values(in_list, count, values, map)
+subroutine distinct_values(in_list, mycount, values, map)
 
 !> parse an input list of values and return:
 !>  1) the count of distinct values
@@ -2021,7 +2022,7 @@ subroutine distinct_values(in_list, count, values, map)
 !> length as the incoming list length.
 
 real(r8), intent(in)    :: in_list(:)   !< incoming list of all values
-integer,  intent(out)   :: count        !< count of distinct values
+integer,  intent(out)   :: mycount      !< count of distinct values
 real(r8), intent(inout) :: values(:)    !< list of distinct values
 integer,  intent(inout) :: map(:)       !< mapping of in_list to values
 
@@ -2031,7 +2032,7 @@ real(r8) :: newval
 
 ! set return values now; if we error out then we can
 ! just return.
-count = 0
+mycount = 0
 values(:) = -1.0_r8
 map(:) = -1
 
@@ -2058,7 +2059,7 @@ OUTER: do i=1, listsize
   if (foundnew) then
      values(nextslot) = newval
      map(i) = nextslot
-     count = nextslot
+     mycount = nextslot
   endif
 enddo OUTER
 
@@ -2080,7 +2081,7 @@ type(get_close_type), intent(in) :: gc
 integer, intent(in), optional    :: tt
 integer, intent(in), optional    :: amount
 
-integer :: i, j, k, first, index, mytask, alltasks, whichtt
+integer :: i, j, k, first, myindex, mytask, alltasks, whichtt
 integer :: sample, nfull, nempty, howmuch, total, maxcount, maxi, maxj
 logical :: tickmark(gc%gtt(1)%num), iam0
 real(r8) :: lon_cen, lat_cen
@@ -2290,21 +2291,21 @@ do i=1, nlon
    do j=1, nlat
       first = gc%gtt(whichtt)%start(i, j)
       do k=1, gc%gtt(whichtt)%count(i, j)
-         index = first + k - 1
-         if ((index < 1) .or. (index > gc%gtt(whichtt)%num)) then
+         myindex = first + k - 1
+         if ((myindex < 1) .or. (myindex > gc%gtt(whichtt)%num)) then
             write(msgstring, *) 'exiting at first bad value; could be more'
             call error_handler(E_MSG, 'locations_mod', msgstring)
-            write(msgstring, *) 'bad loc list index, in box: ', index, i, j
+            write(msgstring, *) 'bad loc list index, in box: ', myindex, i, j
             call error_handler(E_ERR, 'locations_mod', msgstring)
          endif
-         if (tickmark(index)) then
+         if (tickmark(myindex)) then
             write(msgstring, *) 'exiting at first bad value; could be more'
             call error_handler(E_MSG, 'locations_mod', msgstring)
             write(msgstring, *) 'error: locs found in more than one box list.  index, box: ', &
-                         index, i, j
+                         myindex, i, j
             call error_handler(E_ERR, 'locations_mod', msgstring)
          endif
-         tickmark(index) = .TRUE.
+         tickmark(myindex) = .TRUE.
       enddo
    enddo
 enddo

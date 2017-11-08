@@ -112,7 +112,7 @@ endif
 # Build the MPI-enabled target(s) 
 #----------------------------------------------------------------------
 
-\rm -f filter wakeup_filter create_mean_std create_increment
+\rm -f filter create_mean_std create_increment
 
 @ n = $n + 1
 echo
@@ -142,13 +142,6 @@ if ($status != 0) then
    echo
    exit $n
 endif
-
-@ n = $n + 1
-echo
-echo "---------------------------------------------------"
-echo "build number $n is mkmf_wakeup_filter"
-csh  mkmf_wakeup_filter -mpi
-make || exit $n
 
 \rm -f *.o *.mod input.nml*_default
 

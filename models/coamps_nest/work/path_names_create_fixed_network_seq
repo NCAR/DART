@@ -18,7 +18,6 @@ assimilation_code/modules/utilities/time_manager_mod.f90
 assimilation_code/modules/utilities/types_mod.f90
 assimilation_code/modules/utilities/utilities_mod.f90
 assimilation_code/programs/create_fixed_network_seq/create_fixed_network_seq.f90
-models/coamps_nest/byteswap.c
 models/coamps_nest/coamps_domain_mod.f90
 models/coamps_nest/coamps_hdf5_mod.F90
 models/coamps_nest/coamps_interp_mod.f90

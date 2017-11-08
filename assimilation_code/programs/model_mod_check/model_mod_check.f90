@@ -200,12 +200,12 @@ if (tests_to_run(2)) then
    ! be ens_size but rather a single file (or multiple files if more than one domain)
 
    num_domains = get_num_domains()
-   allocate(file_array_input(num_ens, num_domains), file_array_output(num_ens, num_domains))
 
+   ! Test the read portion.
+
+   allocate(file_array_input(num_ens, num_domains))
    file_array_input  = RESHAPE(input_state_files,  (/num_ens,  num_domains/))
-   file_array_output = RESHAPE(output_state_files, (/num_ens,  num_domains/))
 
-   ! Initialize input file info
    call io_filenames_init(file_info_input,             &
                           ncopies      = num_ens,      &
                           cycling      = single_file,  &
@@ -226,7 +226,22 @@ if (tests_to_run(2)) then
                             io_flag = READ_COPY)
    enddo
 
-   ! Initialize output file info
+   input_restart_files = get_stage_metadata(file_info_input)
+
+   do idom = 1, num_domains
+      do imem = 1, num_ens
+         write(string1, *) '- Reading File : ', trim(get_restart_filename(input_restart_files, imem, domain=idom))
+         call print_info_message('TEST 2',string1)
+      enddo
+   enddo
+
+   call read_state(ens_handle, file_info_input, read_time_from_file, model_time)
+
+   ! Test the write portion.
+
+   allocate(file_array_output(num_ens, num_domains))
+   file_array_output = RESHAPE(output_state_files, (/num_ens,  num_domains/))
+
    call io_filenames_init(file_info_output,           &
                           ncopies      = num_ens,     &
                           cycling      = single_file, &
@@ -247,19 +262,8 @@ if (tests_to_run(2)) then
                             io_flag = WRITE_COPY)
    enddo
 
-   ! Open a test netcdf initial conditions file.
-   input_restart_files = get_stage_metadata(file_info_input)
-
-   do idom = 1, num_domains
-      do imem = 1, num_ens
-         write(string1, *) '- Reading File : ', trim(get_restart_filename(input_restart_files, imem, domain=idom))
-         call print_info_message('TEST 2',string1)
-      enddo
-   enddo
-
-   call read_state(ens_handle, file_info_input, read_time_from_file, model_time)
-
    output_restart_files = get_stage_metadata(file_info_output)
+
    do idom = 1, num_domains
       do imem = 1, num_ens
          write(string1, *) '- Writing File : ', trim(get_restart_filename(output_restart_files, imem, domain=idom))

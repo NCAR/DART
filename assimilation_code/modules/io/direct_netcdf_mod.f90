@@ -478,12 +478,12 @@ end subroutine finalize_single_file_io
 !> read a single netcdf file containing all of the members
 !> and possibly inflation information
 
-subroutine read_single_file(state_ens_handle, file_handle, use_time_from_file, time, pert_from_single_copy)
+subroutine read_single_file(state_ens_handle, file_handle, use_time_from_file, mtime, pert_from_single_copy)
 
 type(ensemble_type),  intent(inout) :: state_ens_handle      !> ensemble handle to store data
 type(file_info_type), intent(in)    :: file_handle           !> file handle for file names
 logical,              intent(in)    :: use_time_from_file    !> read time from file
-type(time_type),      intent(inout) :: time                  !> external time
+type(time_type),      intent(inout) :: mtime                  !> external time
 logical, optional,    intent(in)    :: pert_from_single_copy !> reading single file and perturbing
 
 ! NetCDF IO variables
@@ -520,9 +520,9 @@ fname = get_restart_filename(file_handle%stage_metadata, 1, domain)
 
 !>@todo Check time consistency across files? This is assuming they are consistent.
 ! read time from input file if time not set in namelist
-if( use_time_from_file ) time = read_model_time(fname)
+if( use_time_from_file ) mtime = read_model_time(fname)
 
-state_ens_handle%time = time
+state_ens_handle%time = mtime
 
 ret = nf90_open(fname, NF90_NOWRITE, my_ncid)
 call nc_check(ret, 'read_single_file: nf90_open', fname)
@@ -2465,12 +2465,12 @@ end subroutine write_extra_attributes
 !------------------------------------------------------------------
 !> helper function to return the netcdf dimension id's and lenghts
 
-subroutine get_dimension_info(copy, dom_id, var_id, time, is_extra, numdims, start, lengths)
+subroutine get_dimension_info(copy, dom_id, var_id, timestep, is_extra, numdims, start, lengths)
 
 integer, intent(in)  :: copy 
 integer, intent(in)  :: dom_id 
 integer, intent(in)  :: var_id 
-integer, intent(in)  :: time
+integer, intent(in)  :: timestep
 logical, intent(in)  :: is_extra
 integer, intent(out) :: numdims
 integer, intent(out) :: start  (NF90_MAX_VAR_DIMS)
@@ -2497,9 +2497,9 @@ do jdim = 1, numdims
       if ( is_extra ) then 
          ! extra copies have time but it might not be the jdim dimension
          dcount        = dcount + 1
-         start(dcount) = time! time
+         start(dcount) = timestep
       else
-         start(jdim)   = time 
+         start(jdim)   = timestep 
       endif
 
    else if ( dimname == 'member') then
@@ -2756,11 +2756,11 @@ end function nc_get_tindex
 !> This REQUIRES that "time" is a coordinate variable AND it is the
 !> unlimited dimension. If not ... bad things happen.
 
-function nc_append_time(ncFileID, time) result(lngth)
+function nc_append_time(ncFileID, dart_time) result(lngth)
 
 type(netcdf_file_type), intent(inout) :: ncFileID
-type(time_type), intent(in) :: time
-integer                     :: lngth
+type(time_type),        intent(in)    :: dart_time
+integer                               :: lngth
 
 integer  :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer  :: TimeVarID
@@ -2824,7 +2824,7 @@ if ( lngth == ncFileID%NtimesMAX ) then
 
 endif
 
-call get_time(time, secs, days)         ! get time components to append
+call get_time(dart_time, secs, days)    ! get time components to append
 realtime = days + secs/86400.0_digits12 ! time base is "days since ..."
 lngth           = lngth + 1             ! index of new time 
 ncFileID%Ntimes = lngth                 ! new working length of time mirror
@@ -2832,11 +2832,11 @@ ncFileID%Ntimes = lngth                 ! new working length of time mirror
 call nc_check(nf90_put_var(my_ncid, TimeVarID, realtime, start=(/ lngth /) ), &
            'nc_append_time', 'put_var time')
 
-ncFileID%times( lngth) = time
+ncFileID%times( lngth) = dart_time
 ncFileID%rtimes(lngth) = realtime
 
-write(msgstring,*)'ncFileID (',my_ncid,') : ',trim(adjustl(varname)), &
-         ' (should be "time") has length ',lngth, ' appending t= ',realtime
+write(msgstring,*)'ncFileID (',my_ncid,') : "',trim(varname), &
+         '" (should be "time") has length ',lngth, ' appending t= ',realtime
 call error_handler(E_DBG,'nc_append_time',msgstring,source,revision,revdate)
 
 end function nc_append_time

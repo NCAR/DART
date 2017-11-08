@@ -1484,17 +1484,17 @@ end function get_blank_qc_index
 
 !-------------------------------------------------------------------------
 
-subroutine filter_set_initial_time(days, seconds, time, read_time_from_file)
+subroutine filter_set_initial_time(days, seconds, dart_time, read_time_from_file)
 
 integer,         intent(in)  :: days, seconds
-type(time_type), intent(out) :: time
+type(time_type), intent(out) :: dart_time
 logical,         intent(out) :: read_time_from_file
 
 if(days >= 0) then
-   time = set_time(seconds, days)
+   dart_time = set_time(seconds, days)
    read_time_from_file = .false.
 else
-   time = set_time(0, 0)
+   dart_time = set_time(0, 0)
    read_time_from_file = .true.
 endif
 
@@ -1502,15 +1502,15 @@ end subroutine filter_set_initial_time
 
 !-------------------------------------------------------------------------
 
-subroutine filter_set_window_time(time)
+subroutine filter_set_window_time(dart_time)
 
-type(time_type), intent(out) :: time
+type(time_type), intent(out) :: dart_time
 
 
 if(obs_window_days >= 0) then
-   time = set_time(obs_window_seconds, obs_window_days)
+   dart_time = set_time(obs_window_seconds, obs_window_days)
 else
-   time = set_time(0, 0)
+   dart_time = set_time(0, 0)
 endif
 
 end subroutine filter_set_window_time
@@ -1963,7 +1963,7 @@ type(ensemble_type), intent(inout) :: ens_handle
 
 integer               :: i, j ! loop variables
 type(random_seq_type) :: r(ens_size)
-real(r8)              :: random_number(ens_size) ! array of random numbers
+real(r8)              :: random_array(ens_size) ! array of random numbers
 integer               :: local_index
 
 ! Need ens_size random number sequences.
@@ -1979,11 +1979,11 @@ do i = 1, ens_handle%num_vars
    do j = 1, ens_size
      ! Can use %copies here because the random number
      ! is only relevant to the task than owns element i.
-     random_number(j)  =  random_gaussian(r(j), ens_handle%copies(j, local_index), perturbation_amplitude)
+     random_array(j)  =  random_gaussian(r(j), ens_handle%copies(j, local_index), perturbation_amplitude)
    enddo
 
    if (ens_handle%my_vars(local_index) == i) then
-      ens_handle%copies(1:ens_size, local_index) = random_number(:)
+      ens_handle%copies(1:ens_size, local_index) = random_array(:)
       local_index = local_index + 1 ! task is ready for the next random number
       local_index = min(local_index, ens_handle%my_num_vars)
    endif

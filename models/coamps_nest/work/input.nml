@@ -347,7 +347,7 @@
    all_metadata_file     = 'null'
    verbose               = .TRUE.
    test1thru             = 0
-   run_tests             = 1, 2, 3, 4, 5
+   run_tests             = 1, 2
    loc_of_interest       = 243.72386169, 52.78578186, 10.0
    x_ind                 = 12666739
    quantity_of_interest  = 'QTY_POTENTIAL_TEMPERATURE'

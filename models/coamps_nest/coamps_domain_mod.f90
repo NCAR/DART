@@ -389,10 +389,10 @@ contains
     !   OUT vert_loc          point's vertical location
     !   OUT is_within_domain  (Optional) True if the converted point is
     !                         within the domain boundaries
-    subroutine location_to_nest_point(domain, loc, nest_pt, vert_loc, &
+    subroutine location_to_nest_point(domain, location, nest_pt, vert_loc, &
                                       is_within_domain)
         type(coamps_domain), intent(in)  :: domain
-        type(location_type), intent(in)  :: loc
+        type(location_type), intent(in)  :: location
         type(nest_point),    intent(out) :: nest_pt
         real(kind=r8),       intent(out) :: vert_loc
         logical, optional,   intent(out) :: is_within_domain
@@ -406,7 +406,7 @@ contains
 
         logical :: in_domain
 
-        loc_array = get_location(loc)
+        loc_array = get_location(location)
 
         ! All nests share the same vertical coordinates
         vert_loc = loc_array(DART_LOC_VERT)
