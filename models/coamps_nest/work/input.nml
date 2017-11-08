@@ -342,7 +342,7 @@
 #  all_metadata_file     = 'metadata_file.txt'
 #  all_metadata_file     = 'null'
 &model_mod_check_nml
-   input_state_files     = 'dart_vector1.nc','dart_vector2.nc'
+   input_state_files     = 'dart_vector.nc','dart_vector.nc'
    output_state_files    = 'check_me1.nc', 'check_me2.nc'
    all_metadata_file     = 'null'
    verbose               = .TRUE.
