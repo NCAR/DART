@@ -3,7 +3,7 @@
 &perfect_model_obs_nml
    read_input_state_from_file  = .true.
    single_file_in              = .false.
-   input_state_files           = "perfect_input.nc", "perfect_input.nc"
+   input_state_files           = "dart_vector.nc", "dart_vector.nc"
 
    write_output_state_to_file = .true.
    single_file_out            = .false.

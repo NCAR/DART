@@ -506,3 +506,21 @@
 
 &compare_states_nml
 /
+
+&model_mod_check_nml
+   input_state_files     = 'wrfinput_d01'
+   output_state_files    = 'wrf_mmc_output.nc'
+   test1thru             = 0
+   run_tests             = 1,2,3,4,5,7
+   x_ind                 = 87370
+   loc_of_interest       = 231.0, 40.0, 10.0
+   quantity_of_interest  = 'QTY_U_WIND_COMPONENT'
+   interp_test_dlon      = 0.1
+   interp_test_dlat      = 0.1
+   interp_test_dvert     = 5.0
+   interp_test_lonrange  = 205.0,  226.0
+   interp_test_latrange  =  30.0,   47.0
+   interp_test_vertrange =  0.0,    10.0
+   interp_test_vertcoord = 'VERTISHEIGHT'
+  /
+

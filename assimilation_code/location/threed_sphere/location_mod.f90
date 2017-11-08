@@ -815,7 +815,7 @@ select case  (loc%which_vert)
    case (VERTISSURFACE)
       write(charstring, '(A,F13.5,A)') trim(string1), loc%vloc, ' surface (m)'
    case (VERTISLEVEL)
-      write(charstring, '(A,F6.0,A)')  trim(string1), loc%vloc, '        level'
+      write(charstring, '(A,F13.6,A)') trim(string1), loc%vloc, '        level'
    case (VERTISPRESSURE)
       write(charstring, '(A,F13.7,A)') trim(string1), loc%vloc / 100.0_r8, ' hPa'
    case (VERTISHEIGHT)

@@ -303,12 +303,12 @@
 
 &model_mod_check_nml
    input_state_files     = 'pop.r.nc'
-   output_state_files    = 'check_me.nc'
-   verbose               = .FALSE.
-   test1thru             = 5
-   loc_of_interest       = 320.0, 18.0, 5.0
+   output_state_files    = 'mmc_output.nc'
+   test1thru             = 0
+   run_tests             = 1, 2, 3, 4, 5, 7
    x_ind                 = 10
-   kind_of_interest      = 'QTY_U_CURRENT_COMPONENT'
+   loc_of_interest       = 320.0, 18.0, 5.0
+   quantity_of_interest  = 'QTY_U_CURRENT_COMPONENT'
    interp_test_lonrange  = 0.0, 359.0
    interp_test_dlon      = 1.0
    interp_test_latrange  = -89.0, 89.0

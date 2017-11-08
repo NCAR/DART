@@ -23,7 +23,7 @@ use time_manager_mod,      only : time_type, set_time
 
 use distributed_state_mod, only : get_state
 
-use state_structure_mod,   only : add_domain
+use state_structure_mod,   only : add_domain, state_structure_info
 
 use     location_mod,      only : location_type, set_location, get_location, &
                                   get_close_obs, get_close_state, &
@@ -134,6 +134,9 @@ time_step = set_time(time_step_seconds, time_step_days)
 ! Tell the DART I/O routines how large the model data is so they
 ! can read/write it.
 dom_id = add_domain(model_size)
+
+call state_structure_info(dom_id)
+
 
 end subroutine static_init_model
 

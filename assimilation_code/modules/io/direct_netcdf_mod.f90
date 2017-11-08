@@ -966,7 +966,7 @@ allocate(vector(get_domain_size(domain)))
 istart = dart_index ! position in state_ens_handle%vars
 block_size = 0
 
-! need to read into a tempory array, then fill up copies
+! need to read into a temporary array, then fill up copies
 
 COPIES: do copy = 1, state_ens_handle%my_num_copies
 
@@ -994,7 +994,10 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
          call get_ensemble_time(state_ens_handle, time_owner_index, dart_time)
          ncfile_out = create_and_open_state_output(name_handle, domain, copy, &
                                                    dart_time, write_single_precision)
-
+         !>@todo if multiple domains exist in the same file, only the variables
+         !>      from the first domain are created by create_and_open_state_output()
+         !>      and since the file exists, the variables for the additional domains
+         !>      never get defined in the netCDF file.
       endif
    endif
 
@@ -1541,12 +1544,12 @@ do i = start_var, end_var
       allocate(dims(get_io_num_dims(domain, i)))
 
       dims = get_io_dim_lengths(domain, i)
-
+!>@todo FIXME, the first variable in the second domain is not found when using coamps_nest.
       ret = nf90_inq_varid(ncid, trim(get_variable_name(domain, i)), var_id)
-      call nc_check(ret, 'write_variables:', 'getting variable "'//trim(get_variable_name(domain,i))//'"')
+      call nc_check(ret, 'write_variables:', 'nf90_inq_varid "'//trim(get_variable_name(domain,i))//'"')
 
       ret = nf90_put_var(ncid, var_id, var_block(istart:iend), count=dims)
-      call nc_check(ret, 'write_variables:', 'writing "'//trim(get_variable_name(domain,i))//'"')
+      call nc_check(ret, 'write_variables:', 'nf90_put_var "'//trim(get_variable_name(domain,i))//'"')
 
       deallocate(dims)
    endif
