@@ -26,7 +26,7 @@ module coamps_nest_mod
 
     use types_mod, only : r4, r8
 
-    use utilities_mod, only: E_ERR, error_handler, get_unit
+    use utilities_mod, only: E_MSG, E_ERR, error_handler, get_unit
 
     use netcdf_utilities_mod, only : nc_check
 
@@ -1189,7 +1189,7 @@ integer           :: terrht_unit, VarID
 integer           :: io
 integer           :: alloc_status
 integer           :: dealloc_status
-character(len=512) :: string1
+character(len=512) :: string0, string1, string2, string3
 
 ! Permanent storage
 nullify(nest%terrain)
@@ -1239,20 +1239,22 @@ call nc_check(io, routine, 'get_var "terrht+" from "'//trim(filename)//'"')
 io = nf90_close(terrht_unit)
 call nc_check(io, routine, 'closing "'//trim(filename)//'"')
 
-if ( .true. ) then
-   write(*,*)routine,' nest id ', nest%id
-   write(*,*)routine,' range of   terrain is ',minval(nest%terrain), maxval(nest%terrain)
-   write(*,*)routine,' range of  latitude is ',minval(nest%lat),     maxval(nest%lat)
-   write(*,*)routine,' range of longitude is ',minval(nest%lon),     maxval(nest%lon)
+! String1 has to be different to print nicely, given error_handler() nuances.
+write(string1,100)'... nest',nest%id,'  terrain range',minval(nest%terrain), maxval(nest%terrain)
+write(string2,100)'nest',nest%id,' latitude range',minval(nest%lat),     maxval(nest%lat)
+write(string3,100)'nest',nest%id,'longitude range',minval(nest%lon),     maxval(nest%lon)
+call error_handler(E_MSG,routine,string1,text2=string2,text3=string3)
 
+if ( .false. ) then
    write(*,*)routine,' lon/lat (  1,  1) is ',nest%lon(  1, 1), nest%lat(  1, 1)
    write(*,*)routine,' lon/lat (200,  1) is ',nest%lon(200, 1), nest%lat(200, 1)
    write(*,*)routine,' lon/lat (  1,  2) is ',nest%lon(  1, 2), nest%lat(  1, 2)
    write(*,*)routine,' lon/lat (100, 50) is ',nest%lon(100,50), nest%lat(100,50)
    write(*,*)routine,' lon/lat ( nx, ny) is ',nest%lon(nest%pts_x,nest%pts_y), &
                                               nest%lat(nest%pts_x,nest%pts_y)
-
 endif
+
+100 format(A,1x,I2,1x,A,2(1x,f12.4))
 
 end subroutine read_geographic_data
 

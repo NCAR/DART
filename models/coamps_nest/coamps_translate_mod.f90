@@ -338,17 +338,23 @@ contains
   !  PARAMETERS
   !   [none] 
   subroutine finalize_translator()
-    integer :: cur_file 
 
     character(len=*), parameter :: routine = 'finalize_translator'
-    integer                     :: dealloc_status
+    integer :: cur_file, iunit
+    integer :: io_status, dealloc_status
+    logical :: lopen
 
     deallocate(dart_state,   stat=dealloc_status)
     call check_dealloc_status(dealloc_status, routine, source, &
                               revision, revdate, 'dart_state'  )
 
+    ! Since one file has mutiple variables, you can only close it once.
     do cur_file = 1, total_coamps_files
-       close(coamps_file_units(cur_file))
+       iunit = coamps_file_units(cur_file)
+       inquire (unit=iunit, opened=lopen, iostat=io_status)
+       call check_io_status(io_status, routine, source, revision,    &
+               revdate, 'Closing "'//coamps_file_names(cur_file)//'"')
+       if (lopen) close(iunit)
     end do
     close(dart_unit)
 
