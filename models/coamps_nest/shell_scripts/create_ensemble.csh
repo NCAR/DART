@@ -91,7 +91,7 @@ ln -sf /home/thoar/DART/coamps/models/coamps_nest/work/filter               .   
 cp     /home/thoar/DART/coamps/models/coamps_nest/work/input.nml            .   || exit 1
 cp     /home/thoar/DART/coamps/models/coamps_nest/work/convert.nml          .   || exit 1
 cp     /home/thoar/DART/coamps/models/coamps_nest/work/state.vars.full      state.vars   || exit 1
-cp     /home/thoar/DART/coamps/assimilation_code/programs/get_sampling_err_table/work/sampling_error_correction_table.nc .
+cp     /home/thoar/DART/coamps/assimilation_code/programs/gen_sampling_err_table/work/sampling_error_correction_table.nc .
 
 # enforce the assumptions
 
@@ -101,8 +101,11 @@ g;input_state_file_list ;s;= .*;= '', '';
 g;output_state_file_list ;s;= .*;= 'output_list_domain_1.txt', 'output_list_domain_1.txt';
 g;ens_size ;s;= .*;= ${ENSEMBLE_SIZE};
 g;num_output_obs_members ;s;= .*;= ${ENSEMBLE_SIZE};
-g;num_output_state_members ;s;= .*;= ${ENSEMBLE_SIZE};
-g;perturb_from_single_instance ;s;= .*;= .true.;
+g;num_output_state_members ;s;= .*;= 0;
+g;output_mean ;s;= .*;= .FALSE.;
+g;output_sd ;s;= .*;= .FALSE.;
+g;perturb_from_single_instance ;s;= .*;= .TRUE.;
+g;sampling_error_correction ;s;= .*;= .FALSE.;
 wq
 ex_end
 
@@ -114,7 +117,7 @@ ex_end
 cp   ${ORIGIN}/${TEMPLATE} .
 ln -s          ${TEMPLATE} coamps.hdf5
 
-./trans_coamps_to_dart
+./trans_coamps_to_dart  || exit 2
 
 # create an observation sequence file (needed for filter)
 # obs_seq.2obs.in has precisely 2 observations - one is identically
@@ -129,7 +132,7 @@ ln -s          ${TEMPLATE} coamps.hdf5
 cp /home/thoar/DART/coamps/models/coamps_nest/work/obs_seq.2obs.in      obs_seq.in
 cp dart_vector.nc perfect_output.nc
 
-./perfect_model_obs
+./perfect_model_obs || exit 3
 
 # we need an output ensemble that will get updated with the perturbed states.
 
@@ -145,7 +148,7 @@ end
 ls -1 dart_???_output.nc > output_list_domain_1.txt
 ls -1 dart_???_output.nc > output_list_domain_2.txt
 
-${LAUNCHCMD} ./filter
+${LAUNCHCMD} ./filter || exit 4
 
 # We now have an ensemble of netCDF files. We need an ensemble of HDF5 files.
 # At present, the best way to do this is to copy the input file to a bunch
@@ -165,17 +168,30 @@ while ( $instance <= ${ENSEMBLE_SIZE} )
    ln -sf ${INFILE}  dart_vector.nc
    ln -sf ${OUTFILE} CoampsUpdate_2013011000.hdf5
 
-   ./trans_dart_to_coamps
+   ./trans_dart_to_coamps || exit 5
 
    @ instance ++
 
 end
 
 #===============================================================================
+
+cat << README >! README.txt
+The original file that was perturbed: ${ORIGIN}/${TEMPLATE}
+README
+
+#===============================================================================
 echo
 echo "${JOBNAME} ($JOBID) ended   at "`date`
 echo
 #===============================================================================
+
+# optional cleanup block
+
+# rm *.nc dart_log.* output_list*txt filter perfect_model_obs 
+# rm trans_dart_to_coamps trans_coamps_to_dart dart.kstart
+# rm coamps.hdf5 CoampsUpdate_2013011000.hdf5
+# rm ${TEMPLATE}
 
 exit 0
 
