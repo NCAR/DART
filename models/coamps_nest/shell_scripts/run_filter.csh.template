@@ -1,0 +1,263 @@
+#!/bin/tcsh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id: run_filter.csh.template 11611 2017-05-05 23:10:55Z thoar@ucar.edu $
+#
+#===============================================================================
+# This block of directives constitutes the preamble for the LSF queuing system
+#
+# the normal way to submit to the queue is:    bsub < run_filter.csh
+#
+# an explanation of the most common directives follows:
+# -J Job_name
+# -o STDOUT_filename
+# -e STDERR_filename
+# -P account_code_number
+# -q queue    cheapest == [standby, economy, (regular,debug), premium] == $$$$
+# -n number of MPI processes (not nodes)
+# -W hh:mm  wallclock time (required on some systems)
+#
+#BSUB -J coamps_filter
+#BSUB -o coamps_filter.%J.log
+#BSUB -P P86850054
+#BSUB -q regular
+#BSUB -n 48
+#BSUB -R "span[ptile=16]"
+#BSUB -W 1:00
+#BSUB -N -u ${USER}@ucar.edu
+#
+#===============================================================================
+# This block of directives constitutes the preamble for the SLURM queuing system.
+# the normal way to submit with slurm:  sbatch run_filter.csh
+#
+#SBATCH --job-name=filter
+#SBATCH --output=filter-%A.log
+#SBATCH --error=filter-%A.err
+#SBATCH --ntasks=16
+#SBATCH --time=00:30:00
+#SBATCH --error=filter-%A.err
+#SBATCH --output=filter-%A.log
+#SXXXXX --dependency=afterok:ADVANCEJOBID
+#
+#===============================================================================
+
+if ($?LS_SUBCWD) then
+
+   set ORIGINALDIR = $LS_SUBCWD
+   set     JOBNAME = $LSB_JOBNAME
+   set       JOBID = $LSB_JOBID
+   set     MYQUEUE = $LSB_QUEUE
+   set      MYHOST = $LSB_SUB_HOST
+   set    NODELIST = $LSB_SUB_HOST
+   #>@todo NODELIST wrong for LSF ...
+   set   LAUNCHCMD = "mpirun.lsf"
+
+else if ($?SLURM_JOB_ID) then
+
+   set ORIGINALDIR = $SLURM_SUBMIT_DIR
+   set     JOBNAME = $SLURM_JOB_NAME
+   set       JOBID = $SLURM_JOBID
+   set     MYQUEUE = $SLURM_JOB_PARTITION
+   set      MYHOST = $SLURM_SUBMIT_HOST
+   set    NODELIST = $SLURM_NODELIST
+   set   LAUNCHCMD = "mpirun -np $SLURM_NTASKS -bind-to core"
+
+else if ($?PBS_O_WORKDIR) then
+
+else
+
+   set ORIGINALDIR = `pwd`
+   set     JOBNAME = coamps_filter
+   set       JOBID = $$
+   set     MYQUEUE = Interactive
+   set      MYHOST = $host
+   set    NODELIST = $host
+   set   LAUNCHCMD = ""
+
+endif
+
+#----------------------------------------------------------------------
+# Just an echo of job attributes
+#----------------------------------------------------------------------
+
+echo
+echo "${JOBNAME} ($JOBID) submit directory ${ORIGINALDIR}"
+echo "${JOBNAME} ($JOBID) submit      host ${MYHOST}"
+echo "${JOBNAME} ($JOBID) running in queue ${MYQUEUE}"
+echo "${JOBNAME} ($JOBID) running       on ${NODELIST}"
+echo "${JOBNAME} ($JOBID) started at "`date`
+echo
+
+cd EXPERIMENT_DIRECTORY
+
+#=========================================================================
+# STEP 1: prepare for DART INFLATION
+# This stages the files that contain the inflation values.
+# The inflation values change through time and should be archived.
+# The strategy is to use the LATEST (last) inflation file.
+#
+# This file is only relevant if 'inflation' is turned on -
+# i.e. if inf_flavor(:) /= 0 AND inf_initial_from_restart = .TRUE.
+#
+# filter_nml
+# inf_flavor                  = 2,                 0,
+# inf_initial_from_restart    = .true.,            .false.,
+#
+# 'create_ensemble.csh' creates inflation files with decent starting values.
+# Consequently, we can always set 'inf_initial_from_restart' to .true.
+#=========================================================================
+
+# These are used to determine IF we are doing inflation.
+
+set  MYSTRING = `grep 'inf_flavor' input.nml`
+set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,'\.]# #g"`
+set  PRIOR_INF = $MYSTRING[2]
+set  POSTE_INF = $MYSTRING[3]
+
+# IFF we want PRIOR inflation:
+
+if ( $PRIOR_INF > 0 ) then
+      # Using prior inflation mean files from the previous assimilation.
+      # One per nest (aka DART 'domain')
+      mv output_priorinf_mean_d01.nc input_priorinf_mean_d01.nc || exit 1
+      mv output_priorinf_mean_d02.nc input_priorinf_mean_d02.nc || exit 1
+      mv output_priorinf_sd_d01.nc   input_priorinf_sd_d01.nc   || exit 1
+      mv output_priorinf_sd_d02.nc   input_priorinf_sd_d02.nc   || exit 1
+else
+   echo "Prior Inflation           not requested for this assimilation."
+endif
+
+# IFF we want POSTERIOR inflation:
+
+if ( $POSTE_INF > 0 ) then
+      # Using posterior inflation mean files from the previous assimilation.
+      # One per nest (aka DART 'domain')
+      mv output_postinf_mean_d01.nc input_postinf_mean_d01.nc || exit 1
+      mv output_postinf_mean_d02.nc input_postinf_mean_d02.nc || exit 1
+      mv output_postinf_sd_d01.nc   input_postinf_sd_d01.nc   || exit 1
+      mv output_postinf_sd_d02.nc   input_postinf_sd_d02.nc   || exit 1
+else
+   echo "Posterior Inflation       not requested for this assimilation."
+endif
+
+#==============================================================================
+# STEP 2:  Consolidate all of the coamps precomputed forward observations into
+#          a DART observation sequence file.
+#==============================================================================
+
+exit
+
+# Remove the last set of DART run-time logs - if they exist.
+\rm -f dart_log.out dart_log.nml
+
+# grab the DSTART from someplace
+set DSTARTSTRING = `grep 'DSTART =' instance_0001/Mycoamps_STDIN | grep -oE '[[:digit:]]+'`
+set DSTART = $DSTARTSTRING[1]
+
+# grab the base MODname from someplace. The advance_ensemble.csh script tags
+# each of these with the instance number to keep them unique.
+set  MODname = MyMODname
+set OBS_ROOT = $MODname:r
+
+# Because convert_coamps_obs and filter need bits from the coamps model_mod,
+# a (single) coamps input file is required to satisfy 'static_init_model()'.
+# Any one will do.
+
+#ln -sf instance_0001/coamps_posterior_????_${OCEAN_TIME}.nc MyDAINAME
+ln -sf instance_0001/coamps_posterior_????_${DSTART}.nc MyDAINAME
+
+#ls -1 instance_*/${OBS_ROOT}*_${OCEAN_TIME}.nc  >! precomputed_files.txt
+ls -1 instance_*/${OBS_ROOT}*_${DSTART}.nc  >! precomputed_files.txt
+
+./convert_coamps_obs  || exit 2
+
+#==============================================================================
+# STEP 3:  Then we run DART on the ensemble of new states
+#==============================================================================
+# 2) collect all the coamps_RESTARTs into a list of input files for filter
+#    The io module will error out if the file_list.txt is too short.
+#    (make sure all instances of coamps advanced successfully)
+#    DART (filter) will modify these files in-place.
+
+#ls -1 instance_*/coamps_posterior_????_${OCEAN_TIME}.nc  >! restart_files.txt
+ls -1 instance_*/coamps_posterior_????_${DSTART}.nc  >! restart_files.txt
+
+${LAUNCHCMD} ./filter || exit 3
+
+# Tag the output with the valid time of the model state.
+
+foreach FILE ( input_*mean.nc     input_*sd.nc \
+            preassim_*mean.nc  preassim_*sd.nc \
+           postassim_*mean.nc postassim_*sd.nc \
+            analysis_*mean.nc  analysis_*sd.nc \
+              output_*mean.nc    output_*sd.nc \
+           preassim_member_????.nc \
+           postassim_member_????.nc )
+
+   if (  -e $FILE ) then
+      set FEXT  = $FILE:e
+      set FBASE = $FILE:r
+#     \mv -v $FILE ${FBASE}.${OCEAN_TIME}.${FEXT}
+      \mv -v $FILE ${FBASE}.${DSTART}.${FEXT}
+   else
+      echo "$FILE does not exist, no need to take action."
+   endif
+
+end
+
+# Tag the observation file with the valid time of the model state.
+
+#\mv -v obs_seq.final             obs_seq.final.${OCEAN_TIME}
+\mv -v obs_seq.final             obs_seq.final.${DSTART}
+
+#==============================================================================
+# STEP 4: Prepare for the next model advance
+#==============================================================================
+# Rename the existing files to have their future names.
+# Sometime soon, the base filenames will not need to be changed.
+
+# 1) filter creates a 'new_dstart.txt' file with the new DSTART
+#    that must be inserted into the CENTRALDIR/ocean.in
+
+set DSTART = `grep DSTART new_dstart.txt | sed -e 's/[A-Z, ]//g'`
+
+# 2) the input.nml:&filter_nml:restart_out_file_name specifies the base
+#    filename for the updated (the posterior) model state. This base gets
+#    appended with a 4-digit instance number and then ".nc"
+#    This file must be pushed back into the appropriate directory.
+
+@ instance = 0
+foreach INSTANCE_DIRECTORY ( instance_???? )
+   @ instance++
+
+   cd ${INSTANCE_DIRECTORY}
+
+   set posterior = `head -n $instance ../restart_files.txt | tail -n 1`
+   set coamps_INI = $posterior:t
+
+   # use new state as starting point for next advance.
+   # We want to preserve the unique posterior but want coamps
+   # to read from the (single) filename in ocean.in INIFILE
+
+   # Update the ocean.in file with the new DSTART value
+
+   \cp ../ocean.in.template ocean.in
+
+   MySUBSTITUTE ocean.in MyDSTART   $DSTART
+   MySUBSTITUTE ocean.in MyININAME  $coamps_INI
+
+   cd ..
+
+end
+
+echo "${JOBNAME} ($JOBID) finished at "`date`
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/coamps/models/coamps/shell_scripts/run_filter.csh.template $
+# $Revision: 11611 $
+# $Date: 2017-05-05 16:10:55 -0700 (Fri, 05 May 2017) $
