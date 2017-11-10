@@ -270,19 +270,28 @@ contains
 
   ! get_expected_altimeter
   ! ----------------------------
-  ! Forward operator for altimeter
+  ! Forward operator for altimeter settings - has units of Pa.
+  ! 
+  ! The obs_def_altimeter_mod.f90 routine returns units of hPa.
+  ! Both require pressure in Pa. So I suppose which one to use
+  ! depends on the units of the incoming observation.
+
   subroutine get_expected_altimeter(state_handle, ens_size, location, altimeter, istatus)
+
     type(ensemble_type), intent(in)  :: state_handle
     integer,             intent(in)  :: ens_size
     type(location_type), intent(in)  :: location
-    real(r8),            intent(out) :: altimeter(ens_size)
+    real(r8),            intent(out) :: altimeter(ens_size)  ! altimeter (Pa)
     integer,             intent(out) :: istatus(ens_size)
 
-    real(r8) :: sfc_pres(ens_size)
-    real(r8) :: sfc_elev(ens_size)
+    real(r8) :: sfc_pres(ens_size)         ! surface pressure  (Pa)
+    real(r8) :: sfc_elev(ens_size)         ! surface elevation (m above SL) 
     integer  :: this_istatus(ens_size)
     logical  :: return_now
-    integer  :: i
+    integer  :: imem
+
+    real(r8), parameter :: MIN_REALISTIC_ALTIMETER = 88000.0_r8
+    real(r8), parameter :: MAX_REALISTIC_ALTIMETER = 110000.0_r8
 
     ! start out with all set to success.  as each call to interpolate() is made
     ! accumulate those who fail.  
@@ -298,12 +307,12 @@ contains
     call track_status(ens_size, this_istatus, altimeter, istatus, return_now)
     if (return_now) return
 
-    do i = 1, ens_size
-       altimeter(i) = compute_altimeter(sfc_pres(i), sfc_elev(i))
+    do imem = 1, ens_size
+       altimeter(imem) = compute_altimeter(sfc_pres(imem), sfc_elev(imem))
     enddo
 
-    !>@todo check to see if these are reasonable limits for altimeter
-    where (altimeter < 88000.0_r8 .or. altimeter >= 110000.0_r8)
+    where (altimeter <  MIN_REALISTIC_ALTIMETER .or. &
+           altimeter >= MAX_REALISTIC_ALTIMETER)
        altimeter = missing_r8
        istatus = 15
     endwhere

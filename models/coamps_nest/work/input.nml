@@ -1,4 +1,4 @@
-# DART $Id: $
+# DART $Id$
 
 &perfect_model_obs_nml
    read_input_state_from_file  = .true.
@@ -13,7 +13,7 @@
    async                      = 4
    adv_ens_command            = "../shell_scripts/advance_model.csh"
 
-   obs_seq_in_file_name       = "obs_seq.2obs.in"
+   obs_seq_in_file_name       = "obs_seq.in"
    obs_seq_out_file_name      = "obs_seq.out"
    init_time_days             = -1
    init_time_seconds          = -1
@@ -47,7 +47,7 @@
    output_sd                    = .true.
    write_all_stages_at_end      = .false.
 
-   ens_size                     = 16
+   ens_size                     = 40
    num_groups                   = 1
    perturb_from_single_instance = .false.
    perturbation_amplitude       = 0.2
@@ -58,7 +58,7 @@
 
    obs_sequence_in_name         = "obs_seq.out"
    obs_sequence_out_name        = "obs_seq.final"
-   num_output_obs_members       = 16
+   num_output_obs_members       = 40
    init_time_days               = -1
    init_time_seconds            = -1
    first_obs_days               = -1
@@ -67,8 +67,8 @@
    last_obs_seconds             = -1
 
    inf_flavor                  = 0,                       0
-   inf_initial_from_restart    = .false.,                 .false.
-   inf_sd_initial_from_restart = .false.,                 .false.
+   inf_initial_from_restart    = .true.,                 .false.
+   inf_sd_initial_from_restart = .true.,                 .false.
    inf_deterministic           = .true.,                  .true.
    inf_initial                 = 1.0,                     1.0
    inf_sd_initial              = 0.6,                     0.6

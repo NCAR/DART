@@ -101,6 +101,7 @@ module coamps_netcdf_mod
     type :: coordinate_var
         private
 
+        character(len=NF90_MAX_NAME) :: name
         integer          :: dim_id
         integer          :: var_id
         integer          :: nest_number
@@ -268,7 +269,7 @@ output_vars:  do while(has_next(iterator))
       call error_handler(E_ERR, routine, msgstring, source, revision, revdate) 
    end select
 
-end do output_vars
+enddo output_vars
 
 end subroutine nc_write_prognostic_data
 
@@ -453,7 +454,7 @@ end subroutine nc_write_prognostic_data
                    'Staggered Y Grid Points', '', cv_stagger = 0.5_r8, cv_dir = YDIR_COORD, &
                    cv_nest = n)
 
-      end do define_coord_vars
+      enddo define_coord_vars
 
       coords(ncoord_total-1) = &
                    new_coordinate_var(ncFileID, 'sigw', nz+1, nf90_double, &
@@ -505,16 +506,18 @@ end subroutine nc_write_prognostic_data
       call nc_check(nf90_enddef(ncFileID), routine//': nf_enddef') 
 
       fill_coords: do ii=1,ncoord_total-2
-        call nc_check(nf90_put_var(ncFileID, get_var_id(coords(ii)),       &
+        write(msgstring,*) 'nf90_put_var ',ii,get_coord_var_id(coords(ii)), \
+                                       trim(get_coord_var_name(coords(ii)))
+        call nc_check(nf90_put_var(ncFileID, get_coord_var_id(coords(ii)),       &
                      (/ (real(jj-1,kind=r8)+get_coord_stagger(coords(ii)), &
-                        jj=1,get_dim_length(coords(ii))) /) ), routine) 
-      end do fill_coords
+                        jj=1,get_dim_length(coords(ii))) /) ), routine, msgstring) 
+      enddo fill_coords
 
-      call nc_check(nf90_put_var(ncFileID, get_var_id(coords(ncoord_total)),  & 
-                    get_domain_msigma(domain)), routine//': put_var msigma') 
+      call nc_check(nf90_put_var(ncFileID, get_coord_var_id(coords(ncoord_total)),  & 
+                    get_domain_msigma(domain)), routine, 'put_var msigma') 
 
-      call nc_check(nf90_put_var(ncFileID, get_var_id(coords(ncoord_total-1)),  & 
-                    get_domain_wsigma(domain)), routine//': put_var wsigma') 
+      call nc_check(nf90_put_var(ncFileID, get_coord_var_id(coords(ncoord_total-1)),  & 
+                    get_domain_wsigma(domain)), routine, 'put_var wsigma') 
 
       ! ------------------------------------------------------------------
       ! Define and fill the lat/lon grid at mass and momentum points
@@ -543,7 +546,7 @@ end subroutine nc_write_prognostic_data
         latlon_coord(LON_DIM) = coords(ncoord + X_COORD_INDEX)
         call fill_nc_latlon(ncFileID, domain, n, varidV, latlon_coord)
 
-      end do fill_latlon
+      enddo fill_latlon
 
       deallocate(coords, stat=dealloc_status)
       call check_dealloc_status(dealloc_status, routine, source, revision,   &
@@ -671,10 +674,9 @@ end subroutine nc_write_prognostic_data
         integer,                     optional, intent(in)  :: cv_nest
         type(coordinate_var)                               :: new_coordinate_var
 
-
         call set_dim_id(new_coordinate_var, new_dimension(ncFileID, cv_name, cv_length))
-
         call set_dim_length(new_coordinate_var, cv_length)
+        call set_dim_name(  new_coordinate_var, cv_name)
 
         if (present(cv_range)) then
             call set_var_id(new_coordinate_var,                           &
@@ -773,8 +775,8 @@ end subroutine nc_write_prognostic_data
                   (real(ii,kind=r8) + lon_stagger),  &
                   (real(jj,kind=r8) + lat_stagger)), &
                lat = lat(ii,jj), lon = lon(ii,jj) )
-        end do
-      end do
+        enddo
+      enddo
 
       call nc_check(nf90_put_var(ncFileID, latlon_varid(LON_DIM), lon), routine)
       call nc_check(nf90_put_var(ncFileID, latlon_varid(LAT_DIM), lat), routine)
@@ -845,12 +847,12 @@ end subroutine nc_write_prognostic_data
           lon_location(ii)  = loc3d(1)
           lat_location(ii)  = loc3d(2)
           vert_location(ii) = loc3d(3)
-        end do
+        enddo
 
-        call populate_variable(ncFileID, get_var_id(state_coord), (/(ii,ii=1,size(locations))/) )
-        call populate_variable(ncFileID, get_var_id(lon_coord),   lon_location)
-        call populate_variable(ncFileID, get_var_id(lat_coord),   lat_location)
-        call populate_variable(ncFileID, get_var_id(vert_coord), vert_location)
+        call populate_variable(ncFileID, get_coord_var_id(state_coord), (/(ii,ii=1,size(locations))/) )
+        call populate_variable(ncFileID, get_coord_var_id(lon_coord),   lon_location)
+        call populate_variable(ncFileID, get_coord_var_id(lat_coord),   lat_location)
+        call populate_variable(ncFileID, get_coord_var_id(vert_coord), vert_location)
 
         deallocate(lon_location)
         deallocate(lat_location)
@@ -898,6 +900,16 @@ end subroutine nc_write_prognostic_data
         coord_var%dim_length = new_dim_length
     end subroutine set_dim_length
 
+    ! set_dim_name
+    ! -------------
+    ! Sets the dimension length of a coordinate variable
+    subroutine set_dim_name(coord_var, dimension_name)
+        type(coordinate_var), intent(inout) :: coord_var
+        character(len=*),     intent(in)    :: dimension_name
+
+        coord_var%name = dimension_name
+    end subroutine set_dim_name
+
     ! set_var_id
     ! -------------
     ! Sets the variable ID of a coordinate variable
@@ -944,6 +956,7 @@ end subroutine nc_write_prognostic_data
     function get_coord_nest(coord_var)
         type(coordinate_var), intent(in) :: coord_var
         integer                          :: get_coord_nest
+
         get_coord_nest=coord_var%nest_number
     end function get_coord_nest
 
@@ -953,18 +966,29 @@ end subroutine nc_write_prognostic_data
     function get_coord_dir(coord_var)
         type(coordinate_var), intent(in) :: coord_var
         integer                          :: get_coord_dir
+
         get_coord_dir=coord_var%coordinate_direction
     end function get_coord_dir
 
-    ! get_var_id
+    ! get_coord_var_id
     ! -------------
     ! Returns the variable ID of a coordinate variable
-    function get_var_id(coord_var)
+    function get_coord_var_id(coord_var)
         type(coordinate_var), intent(in)  :: coord_var
-        integer                           :: get_var_id
+        integer                           :: get_coord_var_id
 
-        get_var_id = coord_var%var_id
-    end function get_var_id
+        get_coord_var_id = coord_var%var_id
+    end function get_coord_var_id
+
+    ! get_coord_var_name
+    ! -------------
+    ! Returns the variable ID of a coordinate variable
+    function get_coord_var_name(coord_var)
+        type(coordinate_var), intent(in)  :: coord_var
+        character(len=NF90_MAX_NAME)      :: get_coord_var_name
+
+        get_coord_var_name = coord_var%name
+    end function get_coord_var_name
 
     ! get_coord_stagger
     ! -------------

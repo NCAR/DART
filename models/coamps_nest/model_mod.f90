@@ -840,16 +840,25 @@ end subroutine pert_model_copies
     !   IN  index_in          position in state vector to query
     !   OUT location          DART location_type for that index
     !   OUT var_type          OPTIONAL numeric variable type
+
+    !>@todo FIXME at present, the grid is being read in from the hdf5 file,
+    !> but a lot of the interpolation routines etc depend on grid parameters
+    !> from a the datahd structure ... To be consistent, should revert to 
+    !> earlier form where the grid is computed from the datahd info. 
+    !> The interplation takes care of the stagger but the locations are 
+    !> ONLY for the mass points, so the localization distances are off by
+    !> some amount.
+
     subroutine get_state_meta_data(index_in, location, var_type)
         integer(i8),                   intent(in)  :: index_in
         type(location_type), optional, intent(out) :: location
         integer,             optional, intent(out) :: var_type
 
-        type(state_variable)           :: cur_var
-        type(coamps_nest)              :: cur_nest
-        integer, dimension(3)          :: ijk
-        integer                        :: index_loc
-        real(kind=r8)                  :: lat, lon
+        type(state_variable)  :: cur_var
+        type(coamps_nest)     :: cur_nest
+        integer, dimension(3) :: ijk
+        integer               :: index_loc
+        real(kind=r8)         :: lat, lon
 
         cur_var = get_var_by_index(state_layout_3D, all_vars(index_in))
 
@@ -859,6 +868,7 @@ end subroutine pert_model_copies
             index_loc = index_in - get_state_begin(cur_var) + 1
             ijk = nest_index_1d_to_3d(cur_nest, index_loc)
 
+            ! note there is nothing here that could account for stagger.
             call get_nest_latlon(cur_nest, ijk(1), ijk(2), lat, lon)        
 
             location = set_location(lon, lat, &

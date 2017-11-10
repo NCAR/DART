@@ -71,10 +71,12 @@ echo "${JOBNAME} ($JOBID) running       on ${NODELIST}"
 echo "${JOBNAME} ($JOBID) started at "`date`
 echo
 
+set DARTDIR = /home/thoar/DART/coamps
 set ORIGIN = /home/nopp/COAMPS_hdf5_files
 set DESTINATION = /home/thoar/COAMPS_hdf5_files/Ensemble2
 set ENSEMBLE_SIZE = 4
-set TEMPLATE = coamps_2013011000.hdf5
+set DTG = 2013011000
+set TEMPLATE = coamps_${DTG}.hdf5
 
 #==============================================================================
 # Must convert a single state to a netcdf file for filter, perturb it,
@@ -85,24 +87,26 @@ mkdir -p ${DESTINATION}
 cd ${DESTINATION}
 \rm -f dart_log.out dart_log.nml
 
-ln -sf /home/thoar/DART/coamps/models/coamps_nest/work/trans_coamps_to_dart .   || exit 1
-ln -sf /home/thoar/DART/coamps/models/coamps_nest/work/trans_dart_to_coamps .   || exit 1
-ln -sf /home/thoar/DART/coamps/models/coamps_nest/work/perfect_model_obs    .   || exit 1
-ln -sf /home/thoar/DART/coamps/models/coamps_nest/work/filter               .   || exit 1
-cp     /home/thoar/DART/coamps/models/coamps_nest/work/input.nml            .   || exit 1
-cp     /home/thoar/DART/coamps/models/coamps_nest/work/convert.nml          .   || exit 1
-cp     /home/thoar/DART/coamps/models/coamps_nest/work/state.vars.full      state.vars   || exit 1
-cp     /home/thoar/DART/coamps/assimilation_code/programs/gen_sampling_err_table/work/sampling_error_correction_table.nc .
+ln -sf ${DARTDIR}/models/coamps_nest/work/trans_coamps_to_dart .   || exit 1
+ln -sf ${DARTDIR}/models/coamps_nest/work/trans_dart_to_coamps .   || exit 1
+ln -sf ${DARTDIR}/models/coamps_nest/work/perfect_model_obs    .   || exit 1
+ln -sf ${DARTDIR}/models/coamps_nest/work/filter               .   || exit 1
+\cp    ${DARTDIR}/models/coamps_nest/work/input.nml            .   || exit 1
+\cp    ${DARTDIR}/models/coamps_nest/work/convert.nml          .   || exit 1
+\cp    ${DARTDIR}/models/coamps_nest/work/state.vars.full      state.vars   || exit 1
+\cp    ${DARTDIR}/models/coamps_nest/work/obs_seq.2obs.in      obs_seq.in   || exit 1
+\cp    ${DARTDIR}/assimilation_code/programs/gen_sampling_err_table/work/sampling_error_correction_table.nc .
 
-# enforce the assumptions
+# Enforce the assumptions.
 
 ex input.nml <<ex_end
 g;input_state_files ;s;= .*;= 'dart_vector.nc', 'dart_vector.nc';
 g;input_state_file_list ;s;= .*;= '', '';
-g;output_state_file_list ;s;= .*;= 'output_list_domain_1.txt', 'output_list_domain_1.txt';
+g;output_state_file_list ;s;= .*;= 'output_list_domain_1.txt', 'output_list_domain_2.txt';
 g;ens_size ;s;= .*;= ${ENSEMBLE_SIZE};
 g;num_output_obs_members ;s;= .*;= ${ENSEMBLE_SIZE};
 g;num_output_state_members ;s;= .*;= 0;
+g;stages_to_write ;s;= .*;= 'preassim', 'output';
 g;output_mean ;s;= .*;= .FALSE.;
 g;output_sd ;s;= .*;= .FALSE.;
 g;perturb_from_single_instance ;s;= .*;= .TRUE.;
@@ -110,6 +114,7 @@ g;sampling_error_correction ;s;= .*;= .FALSE.;
 g;inf_flavor ;s;= .*;= 2, 0;
 g;inf_initial_from_restart ;s;= .*;= .FALSE., .FALSE.;
 g;inf_sd_initial_from_restart ;s;= .*;= .FALSE., .FALSE.;
+g;debug ;s;= .*;= 0;
 wq
 ex_end
 
@@ -118,12 +123,12 @@ ex_end
 # file called 'coamps.hdf5' but the actual input data files are specified 
 # via namelist mechanisms.
 
-cp   ${ORIGIN}/${TEMPLATE} .
+\cp  ${ORIGIN}/${TEMPLATE} .
 ln -s          ${TEMPLATE} coamps.hdf5
 
 ./trans_coamps_to_dart  || exit 2
 
-# create an observation sequence file (needed for filter)
+# Create an observation sequence file (needed for filter)
 # obs_seq.2obs.in has precisely 2 observations - one is identically
 # part of the COAMPS state (at whatever index 2101 happens to be)
 # and the other is a potential temperature on LEVEL 50.0 (wherever that is)
@@ -133,50 +138,49 @@ ln -s          ${TEMPLATE} coamps.hdf5
 # file from scratch, but will happily write to an existing file - so we copy
 # the input file to an output file and let pmo overwrite it.
 
-cp /home/thoar/DART/coamps/models/coamps_nest/work/obs_seq.2obs.in      obs_seq.in
-cp dart_vector.nc perfect_output.nc
+\cp dart_vector.nc perfect_output.nc
 
 ./perfect_model_obs || exit 3
 
-# we need an output ensemble that will get updated with the perturbed states.
+#  Create the list of output files for DART - one list per domain. In this case
+#  they are both the same since both domains exist in the same input file.
+\rm -f output_list_domain_?.txt
 
 set instance = 1
 while ( $instance <= ${ENSEMBLE_SIZE} )
-   set OUTFILE = `printf dart_%03d_output.nc $instance`
-   cp -v dart_vector.nc  ${OUTFILE}
+   set OUTFILE = `printf dart_%04d_output.nc $instance`
+   \cp dart_vector.nc ${OUTFILE}
+   echo ${OUTFILE} >> output_list_domain_1.txt
+   echo ${OUTFILE} >> output_list_domain_2.txt
    @ instance ++
 end
-
-#  create the list of output files for DART - one per domain. In this case
-#  they are both the same since both domains exist in the same input file.
-ls -1 dart_???_output.nc > output_list_domain_1.txt
-ls -1 dart_???_output.nc > output_list_domain_2.txt
 
 ${LAUNCHCMD} ./filter || exit 4
 
 # We now have an ensemble of netCDF files. We need an ensemble of HDF5 files.
-# At present, the best way to do this is to copy the input file to a bunch
-# of output files and let 'trans_dart_to_coamps' update the HDF5 files.
+# At present, the best way to do this is to copy the template HDF5 file to a 
+# bunch of output files and let 'trans_dart_to_coamps' update them.
 # 'trans_dart_to_coamps' uses COAMPS write routines that expect a DTG in
 # the file name, the dart call provides the base filename of 'CoampsUpdate'
-# Yes, I know the DTG is hardcoded here. My bad.
 
 set instance = 1
 while ( $instance <= ${ENSEMBLE_SIZE} )
 
-   set  INFILE = `printf dart_%03d_output.nc         $instance`
-   set OUTFILE = `printf coamps_%03d_2013011000.hdf5 $instance`
+   set  INFILE = `printf dart_%04d_output.nc     $instance`
+   set OUTFILE = `printf coamps_%04d_${DTG}.hdf5 $instance`
 
    cp ${TEMPLATE} ${OUTFILE}
 
    ln -sf ${INFILE}  dart_vector.nc
-   ln -sf ${OUTFILE} CoampsUpdate_2013011000.hdf5
+   ln -sf ${OUTFILE} CoampsUpdate_${DTG}.hdf5
 
    ./trans_dart_to_coamps || exit 5
 
    @ instance ++
 
 end
+
+mv obs_seq.out obs_seq_${DTG}.out
 
 #===============================================================================
 # The inflation files have a lot of extra cruft that should not be there.
@@ -204,6 +208,8 @@ ncap2 -s 'EXBM_g01(:,:,:)=0.0;EXBW_g01(:,:,:)=0.0;THBM_g01(:,:,:)=0.0' \
 ncap2 -s 'EXBM_g02(:,:,:)=0.0;EXBW_g02(:,:,:)=0.0;THBM_g02(:,:,:)=0.0' \
    preassim_priorinf_sd_d02.nc input_priorinf_sd_d02.nc
 
+\rm preassim_priorinf_sd_d01.nc preassim_priorinf_sd_d02.nc
+
 #===============================================================================
 
 cat << README >! README.txt
@@ -224,9 +230,9 @@ echo
 
 # rm dart*.nc dart_log.* output_list*txt filter perfect_model_obs 
 # rm trans_dart_to_coamps trans_coamps_to_dart dart.kstart
-# rm coamps.hdf5 CoampsUpdate_2013011000.hdf5
-# rm ${TEMPLATE} 
-# rm preassim*.nc analysis*.nc output*.nc perfect*.nc
+# rm coamps.hdf5 CoampsUpdate_${DTG}.hdf5
+# rm ${TEMPLATE} sampling_error_correction_table.nc obs_seq.in 
+# rm preassim*.nc output*.nc perfect*.nc obs_seq.final
 
 exit 0
 
