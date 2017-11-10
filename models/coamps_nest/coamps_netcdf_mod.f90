@@ -506,7 +506,7 @@ end subroutine nc_write_prognostic_data
       call nc_check(nf90_enddef(ncFileID), routine//': nf_enddef') 
 
       fill_coords: do ii=1,ncoord_total-2
-        write(msgstring,*) 'nf90_put_var ',ii,get_coord_var_id(coords(ii)), \
+        write(msgstring,*) 'nf90_put_var ',ii,get_coord_var_id(coords(ii)), &
                                        trim(get_coord_var_name(coords(ii)))
         call nc_check(nf90_put_var(ncFileID, get_coord_var_id(coords(ii)),       &
                      (/ (real(jj-1,kind=r8)+get_coord_stagger(coords(ii)), &
