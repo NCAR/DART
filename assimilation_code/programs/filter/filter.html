@@ -592,8 +592,8 @@ a problem with the assimilation.
 
 <P>
 It is possible to set inflation values in an existing netCDF file by
-using one of the standard NCO utilities like "ncap2" on a
-copy of a restart file.  Inflation mean and sd values
+using one of the standard NCO utilities like "<em class=program>ncap2</em>"
+on a copy of a restart file.  Inflation mean and sd values
 look exactly like restart values, arranged by variable type like T, U, V, etc.
 </P>
 
@@ -605,14 +605,16 @@ Here's an example of using ncap2 to set the T,U and V inf values:
 <PRE>
   ncap2 -s 'T=1.0;U=1.0;V=1.0' wrfinput_d01 input_priorinf_mean.nc
   ncap2 -s 'T=0.6;U=0.6;V=0.6' wrfinput_d01 input_priorinf_sd.nc
+  -or-
+  ncap2 -s 'T(:,:,:)=1.0;U(:,:,:)=1.0;V(:,:,:)=1.0' wrfinput_d01 input_priorinf_mean.nc
+  ncap2 -s 'T(:,:,:)=0.6;U(:,:,:)=0.6;V(:,:,:)=0.6' wrfinput_d01 input_priorinf_sd.nc
 </PRE>
 </div>
 
 <P>
-This requires at least version 4.4.2 of the NCO utilities.
-Some earlier versions change the full 3d arrays into a single scalar
-with this syntax.  If that's your result (check with <tt>ncdump -h</tt>)
-use a more recent version of the NCO tools.
+Some versions of the NCO utilities change the full 3D arrays into a 
+single scalar.  If that's your result (check your output with <tt>ncdump -h</tt>)
+use the alternate syntax or a more recent version of the NCO tools.
 </P>
 
 <A NAME="WhereToModify"></A>
