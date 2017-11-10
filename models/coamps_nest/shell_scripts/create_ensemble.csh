@@ -25,7 +25,8 @@
 # 3) create an observation sequence file (required by filter) by running pmo
 # 4) create a bunch of output files that filter will update.
 # 5) convert all those output files into coamps hdf5 restart files
-# 6) clean up the garbage?
+# 6) while we are at it, create a file containing inflation values.
+# 7) clean up the garbage?
 #
 #===============================================================================
 # This block of directives constitutes the preamble for the SLURM queuing system.
@@ -106,6 +107,9 @@ g;output_mean ;s;= .*;= .FALSE.;
 g;output_sd ;s;= .*;= .FALSE.;
 g;perturb_from_single_instance ;s;= .*;= .TRUE.;
 g;sampling_error_correction ;s;= .*;= .FALSE.;
+g;inf_flavor ;s;= .*;= 2, 0;
+g;inf_initial_from_restart ;s;= .*;= .FALSE., .FALSE.;
+g;inf_sd_initial_from_restart ;s;= .*;= .FALSE., .FALSE.;
 wq
 ex_end
 
@@ -175,10 +179,40 @@ while ( $instance <= ${ENSEMBLE_SIZE} )
 end
 
 #===============================================================================
+# The inflation files have a lot of extra cruft that should not be there.
+# The cruft is written by nc_write_prognostic_atts. When it becomes a problem,
+# that routine should be rewritten. Until then, the files are a bit bigger
+# than necessary.
+
+foreach FILE ( preassim_priorinf_mean_d01.nc preassim_priorinf_sd_d01.nc \
+               preassim_priorinf_mean_d02.nc preassim_priorinf_sd_d02.nc )
+
+ncks -C -x -v nx_g01,nxm1_g01,ny_g01,nym1_g01,nx_g02,nxm1_g02,ny_g02,nym1_g02,sigw,sigm,latT_g01,lonT_g01,latU_g01,lonU_g01,latV_g01,lonV_g01,latT_g02,lonT_g02,latU_g02,lonU_g02,latV_g02,lonV_g02 \
+       $FILE bob.nc
+       \mv bob.nc $FILE
+end
+
+mv preassim_priorinf_mean_d01.nc input_priorinf_mean_d01.nc
+mv preassim_priorinf_mean_d02.nc input_priorinf_mean_d02.nc
+
+# The EXNER functions are static and should not be inflated, so the inflation
+# standard deviations should be set to zero.
+
+ncap2 -s 'EXBM_g01(:,:,:)=0.0;EXBW_g01(:,:,:)=0.0;THBM_g01(:,:,:)=0.0' \
+   preassim_priorinf_sd_d01.nc input_priorinf_sd_d01.nc
+
+ncap2 -s 'EXBM_g02(:,:,:)=0.0;EXBW_g02(:,:,:)=0.0;THBM_g02(:,:,:)=0.0' \
+   preassim_priorinf_sd_d02.nc input_priorinf_sd_d02.nc
+
+#===============================================================================
 
 cat << README >! README.txt
+
 The original file that was perturbed: ${ORIGIN}/${TEMPLATE}
+
 README
+
+cat README.txt
 
 #===============================================================================
 echo
@@ -188,10 +222,11 @@ echo
 
 # optional cleanup block
 
-# rm *.nc dart_log.* output_list*txt filter perfect_model_obs 
+# rm dart*.nc dart_log.* output_list*txt filter perfect_model_obs 
 # rm trans_dart_to_coamps trans_coamps_to_dart dart.kstart
 # rm coamps.hdf5 CoampsUpdate_2013011000.hdf5
-# rm ${TEMPLATE}
+# rm ${TEMPLATE} 
+# rm preassim*.nc analysis*.nc output*.nc perfect*.nc
 
 exit 0
 
