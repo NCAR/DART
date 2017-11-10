@@ -32,7 +32,9 @@ use coamps_hdf5_mod, only : initialize_hdf5, &
                             close_hdf5_file, &
                             hdf5_file_write
 
-use utilities_mod, only : E_ERR, error_handler
+use utilities_mod, only : E_ERR, error_handler, &
+                          initialize_utilities, &
+                          finalize_utilities
 
 implicit none
 
@@ -54,6 +56,8 @@ logical, parameter :: WRITING_COAMPS  = .true.   ! true means write coamps
 
 integer :: ierr
 character(len=10) :: cdtg
+
+call initialize_utilities(routine)
 
 call initialize_translator()
 !call initalize_hdf5()
@@ -86,6 +90,8 @@ endif
 call write_pickup_file()
 
 call finalize_translator()
+call finalize_utilities(routine)
+
 end program trans_dart_to_coamps
 
 ! <next few lines under version control, do not edit>

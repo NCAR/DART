@@ -83,10 +83,10 @@ module coamps_translate_mod
 
   use types_mod,            only : r4, r8
 
-  use utilities_mod,        only : E_ERR, E_MSG, E_WARN,                      &
-                                   error_handler,                             &
-                                   file_exist,                                &
-                                   get_unit
+  use utilities_mod,        only : E_ERR, E_MSG, E_WARN, error_handler,       &
+                                   file_exist, get_unit,                      &
+                                   do_nml_file, do_nml_term, nmlfileunit
+
 
   use location_mod,         only : VERTISUNDEF, VERTISSURFACE, VERTISLEVEL,   &
                                    VERTISPRESSURE, VERTISHEIGHT
@@ -1061,7 +1061,10 @@ end function get_current_dtg
        call error_handler(E_ERR, routine, 'namelist open failed',  &
                  source, revision, revdate, text2='"'//trim(nml_file)//'" not found.')
     end if
-    write (*, nml=convert)
+
+    ! Record the namelist values used for the run
+    if (do_nml_file()) write(nmlfileunit, nml=convert)
+    if (do_nml_term()) write(     *     , nml=convert)
 
   end subroutine read_convert_namelist
 

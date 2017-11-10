@@ -7,7 +7,7 @@
 # DART $Id$
 
 ../../../build_templates/mkmf -p trans_coamps_to_dart -t ../../../build_templates/mkmf.template \
- -c"-DHDF5" -a "../../.." path_names_coamps_to_dart
+ -c"-DHDF5" -a "../../.." path_names_trans_coamps_to_dart
 
 exit $status
 

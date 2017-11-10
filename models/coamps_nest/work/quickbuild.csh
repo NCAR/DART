@@ -118,22 +118,22 @@ endif
 echo
 echo "---------------------------------------------------"
 echo "build number $n is mkmf_create_mean_std"
-csh   mkmf_create_mean_std -mpi
-make
+csh   mkmf_create_mean_std -mpi || exit $n
+make || exit $n
 
 @ n = $n + 1
 echo
 echo "---------------------------------------------------"
 echo "build number $n is mkmf_create_increment"
-csh   mkmf_create_increment -mpi
-make
+csh   mkmf_create_increment -mpi || exit $n
+make || exit $n
 
 @ n = $n + 1
 echo
 echo "---------------------------------------------------"
 echo "build number $n is mkmf_filter"
-csh   mkmf_filter -mpi
-make
+csh   mkmf_filter -mpi || exit $n
+make || exit $n
 
 if ($status != 0) then
    echo

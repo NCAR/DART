@@ -136,7 +136,10 @@ use utilities_mod,       only : check_namelist_read,           &
                                 register_module,               &
                                 string_to_real,                &
                                 string_to_logical,             &
-                                to_upper
+                                to_upper,                      &
+                                do_nml_file,                   &
+                                do_nml_term,                   &
+                                nmlfileunit
 
 use default_model_mod,  only :  init_conditions,               &
                                 init_time,                     &
@@ -982,7 +985,11 @@ end subroutine write_model_time
         call find_namelist_in_file(NAMELIST_FILE, MODEL_NAMELIST, nml_unit)
         read (nml_unit,nml=model_nml,iostat=io_status)
         call check_namelist_read(nml_unit, io_status, MODEL_NAMELIST)
-        if (do_output()) write (*, model_nml)
+
+        ! Record the namelist values used for the run
+        if (do_nml_file()) write(nmlfileunit, nml=model_nml)
+        if (do_nml_term()) write(     *     , nml=model_nml)
+
     end subroutine read_model_namelist
 
     ! allocate_metadata_arrays

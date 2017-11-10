@@ -186,7 +186,10 @@ mv obs_seq.out obs_seq_${DTG}.out
 # The inflation files have a lot of extra cruft that should not be there.
 # The cruft is written by nc_write_prognostic_atts. When it becomes a problem,
 # that routine should be rewritten. Until then, the files are a bit bigger
-# than necessary.
+# than necessary. They are intentionally renamed to be output files to mimic
+# the behavior during a cycling experiment. Some scripting looks for the
+# output of the previous cycle and renames it to be the expected input names
+# for the current cycle.
 
 foreach FILE ( preassim_priorinf_mean_d01.nc preassim_priorinf_sd_d01.nc \
                preassim_priorinf_mean_d02.nc preassim_priorinf_sd_d02.nc )
@@ -196,25 +199,29 @@ ncks -C -x -v nx_g01,nxm1_g01,ny_g01,nym1_g01,nx_g02,nxm1_g02,ny_g02,nym1_g02,si
        \mv bob.nc $FILE
 end
 
-mv preassim_priorinf_mean_d01.nc input_priorinf_mean_d01.nc
-mv preassim_priorinf_mean_d02.nc input_priorinf_mean_d02.nc
+mv preassim_priorinf_mean_d01.nc output_priorinf_mean_d01.nc
+mv preassim_priorinf_mean_d02.nc output_priorinf_mean_d02.nc
 
 # The EXNER functions are static and should not be inflated, so the inflation
 # standard deviations should be set to zero.
 
-ncap2 -s 'EXBM_g01(:,:,:)=0.0;EXBW_g01(:,:,:)=0.0;THBM_g01(:,:,:)=0.0' \
-   preassim_priorinf_sd_d01.nc input_priorinf_sd_d01.nc
+ncap2 -O -s 'EXBM_g01(:,:,:)=0.0;EXBW_g01(:,:,:)=0.0;THBM_g01(:,:,:)=0.0' \
+   preassim_priorinf_sd_d01.nc output_priorinf_sd_d01.nc
 
-ncap2 -s 'EXBM_g02(:,:,:)=0.0;EXBW_g02(:,:,:)=0.0;THBM_g02(:,:,:)=0.0' \
-   preassim_priorinf_sd_d02.nc input_priorinf_sd_d02.nc
+ncap2 -O -s 'EXBM_g02(:,:,:)=0.0;EXBW_g02(:,:,:)=0.0;THBM_g02(:,:,:)=0.0' \
+   preassim_priorinf_sd_d02.nc output_priorinf_sd_d02.nc
 
-\rm preassim_priorinf_sd_d01.nc preassim_priorinf_sd_d02.nc
+# \rm preassim_priorinf_sd_d01.nc preassim_priorinf_sd_d02.nc
 
 #===============================================================================
 
 cat << README >! README.txt
 
 The original file that was perturbed: ${ORIGIN}/${TEMPLATE}
+
+The inflation files are intentionally called 'output_*' because of the logic in
+the run_filter.csh script. It looks for the output of the previous cycle and 
+renames it to be the input of the next cycle.
 
 README
 
@@ -232,7 +239,7 @@ echo
 # rm trans_dart_to_coamps trans_coamps_to_dart dart.kstart
 # rm coamps.hdf5 CoampsUpdate_${DTG}.hdf5
 # rm ${TEMPLATE} sampling_error_correction_table.nc obs_seq.in 
-# rm preassim*.nc output*.nc perfect*.nc obs_seq.final
+# rm preassim*.nc perfect*.nc obs_seq.final
 
 exit 0
 

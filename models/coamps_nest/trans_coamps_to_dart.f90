@@ -23,6 +23,9 @@ use coamps_translate_mod, only : initialize_translator,         &
                                  finalize_translator,           &
                                  record_hdf_varnames
 
+use utilities_mod, only : initialize_utilities, finalize_utilities
+
+
 implicit none
 
 ! version controlled file description for error handling, do not edit
@@ -37,6 +40,7 @@ character(len=*), parameter :: revdate  = "$Date$"
 logical, parameter :: READING_COAMPS = .false.
 logical, parameter :: WRITING_DART   = .true.
 
+call initialize_utilities('trans_coamps_to_dart')
 call initialize_translator()
 
 call generate_coamps_filenames(READING_COAMPS)
@@ -51,6 +55,7 @@ call open_dart_file(WRITING_DART)
 call dart_write()
 
 call finalize_translator()
+call finalize_utilities('trans_coamps_to_dart')
 
 end program trans_coamps_to_dart
 
