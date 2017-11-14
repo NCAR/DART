@@ -4,6 +4,16 @@
 #
 # DART $Id$
 
+ ease_grid_to_dart  .. Converting file           1  of           14
+ ease_grid_to_dart ... /glade2/scratch2/shimj/SMAP_DATA_L2SM/SAN/SMAP/SPL2SMP.002/2015.07.23/SMAP_L2_SM_P_02522_D_20150723T002821_R12170_001.h5
+ ERROR FROM:
+  routine: ease_grid_to_dart
+  message: inq_varid longitude: NetCDF: Variable not found
+  message: ... /glade2/scratch2/shimj/SMAP_DATA_L2SM/SAN/SMAP/SPL2SMP.002/2015.07.23/SMAP_L2_SM_P_02522_D_20150723T002821_R12170_001.h5
+  
+  source file: $URL$
+  file revision: $Revision$
+  revision date: $Date$
 
 
 # <next few lines under version control, do not edit>
