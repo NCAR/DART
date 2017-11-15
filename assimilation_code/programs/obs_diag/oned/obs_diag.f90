@@ -51,15 +51,15 @@ use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 !---------------------------------------------------------------------
 !---------------------------------------------------------------------
 
-integer, parameter :: MaxRegions = 3
+integer, parameter :: MaxRegions = 4
 integer, parameter :: MaxTrusted = 5
 integer, parameter :: stringlength = 32
 
@@ -161,11 +161,11 @@ logical :: use_zero_error_obs    = .false.
 ! index 3 == region 3 == [0.5, 1.0)
 
 integer :: Nregions = MaxRegions
-real(r8), dimension(MaxRegions) :: lonlim1 = (/ 0.0_r8, 0.0_r8, 0.5_r8 /)
-real(r8), dimension(MaxRegions) :: lonlim2 = (/ 1.0_r8, 0.5_r8, 1.0_r8 /)
+real(r8), dimension(MaxRegions) :: lonlim1 = (/ 0.0_r8, 0.0_r8, 0.5_r8, -1.0_r8 /)
+real(r8), dimension(MaxRegions) :: lonlim2 = (/ 1.0_r8, 0.5_r8, 1.0_r8, -1.0_r8 /)
 
 character(len=6), dimension(MaxRegions) :: reg_names = &
-                                   (/ 'whole ','yin   ','yang  '/)
+                                   (/ 'whole ','yin   ','yang  ','bogus '/)
 
 namelist /obs_diag_nml/ obs_sequence_name, obs_sequence_list,  &
                         bin_width_days, bin_width_seconds,     &
