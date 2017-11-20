@@ -580,6 +580,20 @@ Single File I/O:
 - Improved some error messages in location_io_mod and state_structure_mod
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Nov 20 2017 :: 1D obs_diag fix, 1D power forward operator $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- fixed a problem with tutorial section 18 - bad URL.
+
+- fixed a problem with the 1D version of the observation diagnostics program
+  when trying to run diagnostics on identity observations.
+
+- all models with a workshop_setup.csh now build the same set of programs.
+  (some/most did not build obs_diag - which is used in the tutorial)
+
+- added a 1D power forward operator.
+  
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + MMM DD YYYY :: summary of next changes                    $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

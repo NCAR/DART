@@ -67,6 +67,8 @@ cp -f input.workshop.nml input.nml
 #----------------------------------------------------------------------
 
 \rm -f preprocess *.o *.mod
+\rm -f ../../../obs_def/obs_def_mod.f90
+\rm -f ../../../obs_kind/obs_kind_mod.f90
 
 set MODEL = "lorenz_63"
 
@@ -91,6 +93,10 @@ make || exit 4
 echo 'building filter'
 csh mkmf_filter
 make || exit 5
+
+echo 'building obs_diag'
+csh mkmf_obs_diag
+make || exit 6
 
 echo 'removing the compilation leftovers'
 \rm -f *.o *.mod
