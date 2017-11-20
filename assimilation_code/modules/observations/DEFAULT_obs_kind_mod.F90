@@ -307,7 +307,8 @@ integer, parameter, public :: &
     QTY_SFCO                        = 170, &
     QTY_SFCO01                      = 171, &
     QTY_SFCO02                      = 172, &
-    QTY_SFCO03                      = 173
+    QTY_SFCO03                      = 173, &
+    QTY_STATE_VAR_POWER             = 174
 
 
 integer, parameter, public :: &
@@ -735,6 +736,7 @@ obs_kind_names(170) = obs_kind_type(QTY_SFCO,           'QTY_SFCO')
 obs_kind_names(171) = obs_kind_type(QTY_SFCO01,         'QTY_SFCO01')
 obs_kind_names(172) = obs_kind_type(QTY_SFCO02,         'QTY_SFCO02')
 obs_kind_names(173) = obs_kind_type(QTY_SFCO03,         'QTY_SFCO03')
+obs_kind_names(174) = obs_kind_type(QTY_STATE_VAR_POWER,'QTY_STATE_VAR_POWER')
 
 obs_kind_names(200) = obs_kind_type(QTY_AOD,            'QTY_AOD')
 obs_kind_names(201) = obs_kind_type(QTY_CB1,            'QTY_CB1')

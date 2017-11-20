@@ -126,6 +126,8 @@
 
 &obs_kind_nml
    assimilate_these_obs_types = 'RAW_STATE_VARIABLE',
+                                'RAW_STATE_1D_INTEGRAL',
+                                'RAW_STATE_VAR_POWER'
    /
 
 &model_nml
