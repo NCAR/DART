@@ -133,6 +133,8 @@
    hc                           = 250.0
    model_restart_filename       = 'roms_restart.nc'
    grid_definition_filename     = 'roms_grid.nc'
+   mdt_reference_file_name      = 'none'
+   mdt_reference_var_name       = 'zeta'
    vert_localization_coord      = 3
    debug     = 1
    variables = 'temp',   'KIND_TEMPERATURE',

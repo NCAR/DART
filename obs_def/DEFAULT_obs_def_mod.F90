@@ -366,6 +366,7 @@ type(location_type) :: location
 type(time_type)     :: obs_time
 integer             :: obs_key
 real(r8)            :: error_var
+character(len=64)   :: errstring
 
 ! Load up the assimilate and evaluate status for this observation kind
 assimilate_this_ob = assimilate_this_obs_kind(obs_kind_ind)
@@ -415,9 +416,10 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
       ! If the observation kind is not available, it is an error. The DART 
       ! preprocess program should provide code for all available kinds.
       case DEFAULT
+         write(errstring, *) 'unknown type number was ', obs_def%kind
          call error_handler(E_ERR, 'get_expected_obs_from_def', &
-            'Attempt to evaluate or assimilate undefined obs_kind type.', &
-             source, revision, revdate)
+            'Attempt to evaluate or assimilate undefined observation type.', &
+             source, revision, revdate, text2=errstring)
    end select
 else
    ! Not computing forward operator for this kind
@@ -452,6 +454,7 @@ character(len=5)  :: header
 integer           :: o_index
 logical           :: is_ascii
 character(len=32) :: fileformat   ! here for backwards compatibility only
+character(len=64) :: errstring
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -472,8 +475,10 @@ endif
 if (is_ascii) then
    read(ifile, '(a5)') header
    if(header /= 'obdef') then
+      write(errstring, *) 'read "'//header//'" instead'
       call error_handler(E_ERR,'read_obs_def', &
-         'Expected header "obdef" in input file', source, revision, revdate)
+         'Expected string "obdef" in input obs_seq file', &
+          source, revision, revdate, text2=errstring)
    endif
 endif
 
@@ -482,9 +487,10 @@ obs_def%location = read_location(ifile, fform)
 if (is_ascii) then
    read(ifile, '(a5)' ) header
    if(header /= 'kind ') then
+      write(errstring, *) 'read "'//header//'" instead'
       call error_handler(E_ERR,'read_kind', &
-         'Expected kind header "kind " in input file', &
-          source, revision, revdate)
+         'Expected string "kind " in input obs_seq file', &
+          source, revision, revdate, text2=errstring)
    endif
    read(ifile, *) o_index
 else
@@ -512,9 +518,10 @@ select case(obs_def%kind)
       continue
 
    case DEFAULT
+      write(errstring, *) 'unknown type number was ', obs_def%kind
       call error_handler(E_ERR, 'read_obs_def', &
-         'Attempt to read for undefined obs_kind type.', &
-         source, revision, revdate)
+         'Attempt to read observation for an undefined observation type.', &
+         source, revision, revdate, text2=errstring)
 end select
 
 ! Read the time for the observation
@@ -541,6 +548,7 @@ character(len=*), intent(in), optional :: fform
 
 logical           :: is_ascii
 character(len=32) :: fileformat   ! here for backwards compatibility only
+character(len=64) :: errstring
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -580,9 +588,10 @@ select case(obs_def%kind)
       continue
 
    case DEFAULT
+      write(errstring, *) 'unknown type number was ', obs_def%kind
       call error_handler(E_ERR, 'write_obs_def', &
-         'Attempt to write for undefined obs_kind type.', &
-         source, revision, revdate)
+         'Attempt to write observation for an undefined observation type.', &
+         source, revision, revdate, text2=errstring)
 end select
 
 call write_time(ifile, obs_def%time, fform)
@@ -604,6 +613,8 @@ subroutine interactive_obs_def(obs_def, key)
 type(obs_def_type), intent(inout) :: obs_def
 integer,               intent(in) :: key
 
+character(len=64) :: errstring
+
 if ( .not. module_initialized ) call initialize_module
 
 ! Get the observation kind WANT A STRING OPTION, TOO?
@@ -621,9 +632,10 @@ select case(obs_def%kind)
    case (:-1)
       continue
    case DEFAULT
+      write(errstring, *) 'unknown type number was ', obs_def%kind
       call error_handler(E_ERR, 'interactive_obs_def', &
-         'Attempt to interactively create undefined obs_kind type.', &
-         source, revision, revdate)
+         'Attempt to interactively create observation for an undefined observation type.', &
+         source, revision, revdate, text2=errstring)
 end select
 
 ! If the kind is an identity observation, don't need to call location

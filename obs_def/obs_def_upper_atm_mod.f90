@@ -46,6 +46,7 @@
 ! SAT_F107,                        KIND_1D_PARAMETER,               COMMON_CODE
 ! SAT_RHO,                         KIND_DENSITY
 ! GPS_PROFILE,                     KIND_ELECTRON_DENSITY,           COMMON_CODE
+! COSMIC_ELECTRON_DENSITY,         KIND_ELECTRON_DENSITY,           COMMON_CODE
 ! GND_GPS_VTEC,		           KIND_GND_GPS_VTEC
 ! CHAMP_DENSITY,                   KIND_DENSITY
 ! MIDAS_TEC,                       KIND_VERTICAL_TEC

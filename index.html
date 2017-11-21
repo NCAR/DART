@@ -25,6 +25,8 @@
 </tr>
 </table>
 
+<A HREF="#UserDocs">Documentation</A> /
+<A HREF="#Updates">Updates</A> /
 <A HREF="#Programs">Programs</A> /
 <A HREF="#Models">Models</A> /
 <A HREF="#Namelists">Namelist</A> /
@@ -85,22 +87,21 @@ reading the tutorial documents in the <a href="DART_LAB/DART_LAB.html">DART_LAB<
 and then the <a href="tutorial/index.html">DART/tutorial</a> directory.
 </P>
 <P>
-The latest official release is named "Lanai".  
+The latest official release is named "Manhattan" but it does not
+include support for all the previous models.  Also, after many years
+of maintaining full backwards compatibility with previous releases,
+the Manhattan release is NOT backwards compatible with previous versions.  
+If you cannot use the Manhattan release, this version is named 'Classic' 
+and will continue to be supported.  Serious bugs will be fixed but 
+no new features will be added.
+</P>
+<P>
+Most of the Lanai release information still applies to Classic.
 See the extensive release notes 
 <a href="doc/html/Lanai_release.html">Lanai_release</a>
 which include installation help, a walk-through of building and
 running a model, and then examples of how to use the diagnostics
 to evaluate the success of the assimilation.
-See <a href="doc/html/Lanai_diffs_from_Kodiak.html">Lanai_diffs_from_Kodiak</a>
-for a brief summary of changes since Kodiak, including new functionality,
-new models and tools, and any non-backwards-compatible changes 
-since the Kodiak release.
-</P>
-<P>
-Future releases of DART are expected to have substantial changes 
-and will be less backwards compatible than has been historically 
-true with DART releases.
-New development will continue on a separate subversion branch.
 </P>
 <P>
 Every source file in the DART system has a corresponding .html file that 
@@ -137,13 +138,6 @@ diagnostics, and non-backwards compatible changes.
 </P>
 
 <P>
-For a shorter summary document of only the changes since the last release
-see <a href="doc/html/Lanai_diffs_from_Kodiak.html">Lanai_diffs_from_Kodiak</a>.
-This may be more helpful for current DART users who are 
-looking for pointers to differences when they update.
-</P>
-
-<P>
 Three tutorials, in PDF format, are available.  The first
 is more introductory and interactive with
 <A HREF="DART_LAB/DART_LAB.html">PDF documents and Hands-On 
@@ -164,6 +158,117 @@ part of DART.  For introductory materials, see the links above.
 <P>
 
 <P><!-- make sure the 'top' is aligned correctly --></P>
+
+<!--==================================================================-->
+
+<A NAME="Updates"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Software Updates</H2>
+
+<P>
+Here are the subversion updates which have been
+committed since the original release of the Classic code.
+</P>
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Commit&nbsp;Date </TH>
+    <TH> SVN&nbsp;Revision </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<!-- The first line should be short and summarize
+ what kind of update this is: bug fix (serious or minor),
+ documentation update only, or code update.
+ Keep the summary short and as general as possible.
+ Gory details go in other html pages and the svn log.
+-->
+
+<!-- blank template for next update.
+<TR><TD>  </TD>
+    <TD>  </TD>
+    <TD>
+    </TD>
+</TR>
+-->
+
+<TR><TD> 21 Nov 2017 </TD>
+    <TD> 12139 </TD>
+    <TD> Added AVISO observation converter.  Added a forward operator
+for 1D models that raises observation values to powers.  
+Fixed some misleading error messages in the obs_sequence_tool.  
+Improved error messages when the wrong string or observation type is 
+read from an observation sequence file. 
+Updates to the Cosmic Ionosphere observation converter for
+electron density observations. Updates to the ROMS model_mod to support
+a Mean Dynamic Topography field.  Fix for CAM CESM 1.2.1 scripts
+when more than a single SourceMod file is present in a directory.
+    </TD>
+</TR>
+
+<TR><TD> 7 Aug 2017 </TD>
+    <TD> 11885 </TD>
+    <TD> Updates to the CESM 1.2.1 scripts for CAM.
+    </TD>
+</TR>
+
+<TR><TD> 2 Jun 2017 </TD>
+    <TD> 11695 </TD>
+    <TD> Updates to DART_LAB user interfaces and Matlab diagnostics.
+    </TD>
+</TR>
+
+<TR><TD> 22 Mar 2017 </TD>
+    <TD> 11388 </TD>
+    <TD> Adding Jon Poterjoy's particle filter version
+of the assim_tools module.
+    </TD>
+</TR>
+
+<TR><TD> 15 Mar 2017 </TD>
+    <TD> 11352 </TD>
+    <TD> Original Classic release.
+    </TD>
+</TR>
+
+</TABLE>
+</div>
+<br />
+
+<P>
+To update a checked-out version of DART to the most recent
+version of this release, cd into the top level directory and run:
+</P>
+<pre>
+  svn update
+</pre>
+<P>
+To see the commit log messages and the filenames of changed
+files from subversion, cd into the top level DART directory and run:
+</P>
+<pre>
+  svn log -v -r xxxx
+</pre>
+<P>
+where <i>xxxx</i> is the revision number.
+<br />
+<br />
+To see the code differences in a particular file, cd into
+the directory with the file you want to compare and run:
+</P>
+<pre>
+ svn diff -r xxxx filename
+</pre>
+<P>
+where <i>xxxx</i> is the revision number.
+</P>
+
+<P><!-- make sure the 'top' is aligned correctly --></P>
+
+
 
 <!--==================================================================-->
 
@@ -228,6 +333,7 @@ The executable programs that convert observations into DART format include:
 <LI>&nbsp;</LI>
 <LI><A href="observations/AIRS/AIRS.html">AIRS data</A></LI>
 <LI><A href="observations/Ameriflux/level4_to_obs.html">Ameriflux tower data</A></LI>
+<LI><A href="observations/AVISO/AVISO.html">Aviso+/CMEMS Observations (sea surface heights)</A></LI>
 <LI><A href="observations/COSMOS/COSMOS_development.html">COSMOS groundwater data</A> (development format)</LI>
 <LI><A href="observations/COSMOS/COSMOS_to_obs.html">COSMOS groundwater data</A></LI>
 <LI><A href="observations/gps/gps.html">GPS Radio Occultation data</A></LI>
@@ -382,6 +488,7 @@ We adhere to the F90 standard of starting a namelist with an ampersand
 
 <UL style="list-style: none;">
 <LI><A HREF="observations/AIRS/AIRS.html#Namelist">&amp;convert_airs_L2_nml</A></LI>
+<LI><A href="observations/AVISO/AVISO.html#Namelist">&amp;convert_aviso_nml</A></LI>
 <LI><A HREF="observations/quikscat/QuikSCAT.html#Namelist">&amp;convert_L2b_nml</A></LI>
 <LI><A HREF="observations/tpw/tpw.html#Namelist">&amp;convert_tpw_nml</A></LI>
 <LI><A HREF="observations/COSMOS/COSMOS_development.html#Namelist">&amp;COSMOS_development_nml</A></LI>
@@ -467,7 +574,7 @@ We adhere to the F90 standard of starting a namelist with an ampersand
 <LI>POP <A HREF="models/POP/dart_to_pop.nml#Namelist">&amp;dart_to_pop_nml</A></LI>
 <LI>POP <A HREF="models/POP/model_mod.nml#Namelist">&amp;model_nml</A></LI>
 <LI>POP <A HREF="models/POP/pop_to_dart.nml#Namelist">&amp;pop_to_dart_nml</A></LI>
-<LI>ROMS <A HREF="models/ROMS/dart_to_roms.nml#Namelist">&amp;dart_to_roms</A></LI>
+<LI>ROMS <A HREF="models/ROMS/dart_to_roms.nml#Namelist">&amp;dart_to_roms_nml</A></LI>
 <LI>ROMS <A HREF="models/ROMS/model_mod.nml#Namelist">&amp;model_nml</A></LI>
 <LI>ROMS <A HREF="models/ROMS/roms_to_dart.nml#Namelist">&amp;roms_to_dart_nml</A></LI>
 <LI>simple_advection <A HREF="models/simple_advection/model_mod.nml#Namelist">&amp;model_nml</A></LI>
@@ -538,7 +645,6 @@ the other categories.
 
 <UL style="list-style: none;">
 <LI><A HREF='doc/html/Lanai_release.html'>Lanai release notes</A></LI>
-<LI><A HREF='doc/html/Lanai_diffs_from_Kodiak.html'>Brief summary of Lanai differences from Kodiak</A></LI>
 <LI><A HREF='doc/html/mpi_intro.html'>MPI intro</A></LI>
 <LI><A HREF='doc/html/filter_async_modes.html'>Filter 'async' modes</A></LI>
 <LI><A HREF='doc/html/history/ASP_DART_exercise.html'>ASP DART exercises</A></LI>
@@ -578,7 +684,6 @@ all model_mod source files in the DART distribution tree:
 <LI><A href="doc/html/history/DART_ASP_Summer2003.html">doc/html/DART_ASP_Summer2003</A></LI>
 <LI><A href="doc/html/filter_async_modes.html">doc/html/filter_async_modes</A></LI>
 <LI><A href="doc/html/header.html">doc/html/header</A></LI>
-<LI><A href="doc/html/Lanai_diffs_from_Kodiak.html">doc/html/Lanai_diffs_from_Kodiak</A></LI>
 <LI><A href="doc/html/Lanai_release.html">doc/html/Lanai_release</A></LI>
 <LI><A href="doc/html/mpi_intro.html">doc/html/mpi_intro</A></LI>
 <LI><A href="ensemble_manager/ensemble_manager_mod.html">ensemble_manager/ensemble_manager_mod</A></LI>
@@ -699,6 +804,7 @@ all model_mod source files in the DART distribution tree:
 <LI><A href="obs_sequence/obs_sequence_tool.html">obs_sequence/obs_sequence_tool</A></LI>
 <LI><A href="observations/AIRS/AIRS.html">observations/AIRS/AIRS</A></LI>
 <LI><A href="observations/Ameriflux/level4_to_obs.html">observations/Ameriflux/level4_to_obs</A></LI>
+<LI><A href="observations/AVISO/AVISO.html">observations/AVISO/AVISO</A></LI>
 <LI><A href="observations/COSMOS/COSMOS_development.html">observations/COSMOS/COSMOS_development</A></LI>
 <LI><A href="observations/COSMOS/COSMOS_to_obs.html">observations/COSMOS/COSMOS_to_obs</A></LI>
 <LI><A href="observations/gps/gps.html">observations/gps/gps</A></LI>

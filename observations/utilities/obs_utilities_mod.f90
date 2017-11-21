@@ -7,7 +7,7 @@
 module obs_utilities_mod
 
 
-use        types_mod, only : r8, MISSING_R8, MISSING_I
+use        types_mod, only : i2, i4, r8, MISSING_R8, MISSING_I
 use    utilities_mod, only : nc_check, E_MSG, E_ERR, error_handler
 use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
                              set_obs_def_error_variance, set_obs_def_location, &
@@ -33,6 +33,8 @@ public :: create_3d_obs,    &
           getvarshape,      &
           getvar_real,      &
           getvar_int,       &
+          get_short_as_r8,  &
+          get_int_as_r8,    &
           get_or_fill_real, &
           get_or_fill_int,  &
           get_or_fill_QC,   &
@@ -57,43 +59,41 @@ character(len=128), parameter :: revdate  = "$Date$"
 
 contains
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   create_3d_obs - subroutine that is used to create an observation
-!                   type from observation data.  
-!
-!       NOTE: assumes the code is using the threed_sphere locations module, 
-!             that the observation has a single data value and a single
-!             qc value. there is a last optional argument now; if the obs
-!             has additional metadata associated with it, the calling code
-!             should get a unique 'key' from a set metadata routine, and
-!             pass that in as the last argument to this routine.  if present
-!             it will be set in the obs_def derived type.
-!
-!    lat   - latitude of observation
-!    lon   - longitude of observation
-!    vval  - vertical coordinate
-!    vkind - kind of vertical coordinate (pressure, level, etc)
-!    obsv  - observation value
-!    okind - observation kind
-!    oerr  - standard deviation of observation error
-!    day   - gregorian day
-!    sec   - gregorian second
-!    qc    - quality control value
-!    obs   - observation type
-!    key   - optional type-specific integer key from a set_metadata() routine
-!
-!     created Oct. 2007 Ryan Torn, NCAR/MMM
-!     adapted for more generic use 11 Mar 2010, nancy collins, ncar/image
-!     added optional metadata key 8 Nov 2013, nancy collins ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!--------------------------------------------------------------------
+!>  subroutine to create an observation type from observation data.  
+!>
+!>  NOTE: assumes the code is using the threed_sphere locations module, 
+!>        that the observation has a single data value and a single
+!>        qc value. there is a last optional argument now; if the obs
+!>        has additional metadata associated with it, the calling code
+!>        should get a unique 'key' from a set metadata routine, and
+!>        pass that in as the last argument to this routine.  if present
+!>         it will be set in the obs_def derived type.
+!>
+!>  lat   - latitude of observation
+!>  lon   - longitude of observation
+!>  vval  - vertical coordinate
+!>  vkind - kind of vertical coordinate (pressure, level, etc)
+!>  obsv  - observation value
+!>  okind - observation kind
+!>  oerr  - standard deviation of observation error
+!>  day   - gregorian day
+!>  sec   - gregorian second
+!>  qc    - quality control value
+!>  obs   - observation type
+!>  key   - optional type-specific integer key from a set_metadata() routine
+!>
+!>  created Oct. 2007 Ryan Torn, NCAR/MMM
+!>  adapted for more generic use 11 Mar 2010, nancy collins, ncar/image
+!>  added optional metadata key   8 Nov 2013, nancy collins, ncar/image
+
 subroutine create_3d_obs(lat, lon, vval, vkind, obsv, okind, oerr, day, sec, qc, &
                          obs, key)
- integer,           intent(in)    :: okind, vkind, day, sec
- real(r8),          intent(in)    :: lat, lon, vval, obsv, oerr, qc
- type(obs_type),    intent(inout) :: obs
- integer, optional, intent(in)    :: key
+
+integer,           intent(in)    :: okind, vkind, day, sec
+real(r8),          intent(in)    :: lat, lon, vval, obsv, oerr, qc
+type(obs_type),    intent(inout) :: obs
+integer, optional, intent(in)    :: key
 
 real(r8)              :: obs_val(1), qc_val(1)
 type(obs_def_type)    :: obs_def
@@ -115,32 +115,31 @@ call set_qc(obs, qc_val)
 end subroutine create_3d_obs
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   query_3d_obs - subroutine that takes an observation and extracts the
-!                   parts from it.
-!
-!       NOTE: assumes the code is using the threed_sphere locations module, 
-!             that the observation has a single data value and a single
-!             qc value, and that this obs type has no additional required
-!             data (e.g. gps and radar obs need additional data per obs)
-!
-!    obs   - observation type (in)
-!    lat   - latitude of observation (all the rest out)
-!    lon   - longitude of observation
-!    vval  - vertical coordinate
-!    vkind - kind of vertical coordinate (pressure, level, etc)
-!    obsv  - observation value
-!    okind - observation kind
-!    oerr  - observation error
-!    day   - gregorian day
-!    sec   - gregorian second
-!    qc    - quality control value
-!
-!     created Apr. 2010, nancy collins, ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!--------------------------------------------------------------------
+!> takes a DART observation type and extracts the constituent pieces
+!>
+!> NOTE: assumes the code is using the threed_sphere locations module, 
+!>       that the observation has a single data value and a single
+!>       qc value, and that this obs type has no additional required
+!>       data (e.g. gps and radar obs need additional data per obs)
+!>
+!> obs   - observation type (in)
+!> lat   - latitude of observation (all the rest out)
+!> lon   - longitude of observation
+!> vval  - vertical coordinate
+!> vkind - kind of vertical coordinate (pressure, level, etc)
+!> obsv  - observation value
+!> okind - observation kind
+!> oerr  - observation error
+!> day   - gregorian day
+!> sec   - gregorian second
+!> qc    - quality control value
+!>
+!> created Apr. 2010, nancy collins, ncar/image
+
+
 subroutine query_3d_obs(obs, lat, lon, vval, vkind, obsv, okind, oerr, day, sec, qc)
+
  type(obs_type), intent(in)  :: obs
  integer,        intent(out) :: okind, vkind, day, sec
  real(r8),       intent(out) :: lat, lon, vval, obsv, oerr, qc
@@ -174,26 +173,25 @@ qc = qc_val(1)
 end subroutine query_3d_obs
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   add_obs_to_seq -- adds an observation to a sequence.  inserts if first
-!           obs, inserts with a prev obs to save searching if that's possible.
-!
-!     seq - observation sequence to add obs to
-!     obs - observation, already filled in, ready to add
-!     obs_time - time of this observation, in dart time_type format
-!     prev_obs - the previous observation that was added to this sequence
-!                (will be updated by this routine)
-!     prev_time - the time of the previously added observation (will also
-!                be updated by this routine)
-!     first_obs - should be initialized to be .true., and then will be
-!                updated by this routine to be .false. after the first obs
-!                has been added to this sequence.
-!
-!     created Mar 8, 2010   nancy collins, ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!--------------------------------------------------------------------
+!> adds an observation to a sequence.  inserts if first obs, inserts 
+!> with a prev obs to save searching if that's possible.
+!>
+!> seq - observation sequence to add obs to
+!> obs - observation, already filled in, ready to add
+!> obs_time - time of this observation, in dart time_type format
+!> prev_obs - the previous observation that was added to this sequence
+!>            (will be updated by this routine)
+!> prev_time - the time of the previously added observation (will also
+!>            be updated by this routine)
+!> first_obs - should be initialized to be .true., and then will be
+!>            updated by this routine to be .false. after the first obs
+!>            has been added to this sequence.
+!>
+!> created Mar 8, 2010   nancy collins, ncar/image
+
 subroutine add_obs_to_seq(seq, obs, obs_time, prev_obs, prev_time, first_obs)
+
   type(obs_sequence_type), intent(inout) :: seq
   type(obs_type),          intent(inout) :: obs, prev_obs
   type(time_type),         intent(in)    :: obs_time
@@ -223,18 +221,17 @@ prev_time = obs_time
 end subroutine add_obs_to_seq
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   getdimlen - subroutine that inquires, gets the dimension size
-!
-!      ncid - open netcdf file handle
-!      dimname - string name of netcdf dimension
-!      dout - output value.  integer
-!
-!     created 11 Mar 2010,  nancy collins,  ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!--------------------------------------------------------------------
+!> given a netCDF file handle and a dimension name, return the dimension size
+!>
+!> ncid - open netcdf file handle
+!> dimname - string name of netcdf dimension
+!> dout - output value.  integer
+!>
+!> created 11 Mar 2010,  nancy collins,  ncar/image
+
 subroutine getdimlen(ncid, dimname, dout)
+
  integer,            intent(in)   :: ncid
  character(len = *), intent(in)   :: dimname
  integer,            intent(out)  :: dout
@@ -250,20 +247,18 @@ call nc_check( nf90_inquire_dimension(ncid, dimid, len=dout), &
 end subroutine getdimlen
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-! getvarshape - subroutine that returns an array of the size of the variable
-!
-!    ncid ....... open netcdf file handle
-!    varname .... string name of netcdf variable
-!    numdims .... the rank of the variable (untested on scalars)
-!    dimlengths . an array specifying the length of each dimension
-!
-! created 4 Mar 2015,  tim hoar,  ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!--------------------------------------------------------------------
+!> subroutine that returns an array of the size of the variable
+!>
+!> ncid ....... open netcdf file handle
+!> varname .... string name of netcdf variable
+!> numdims .... the rank of the variable (untested on scalars)
+!> dimlengths . an array specifying the length of each dimension
+!>
+!> created 4 Mar 2015,  tim hoar,  ncar/image
 
 subroutine getvarshape(ncid, varname, numdims, dimlengths)
+
 integer,          intent(in)   :: ncid
 character(len=*), intent(in)   :: varname
 integer,          intent(out)  :: numdims
@@ -292,18 +287,17 @@ enddo
 end subroutine getvarshape
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   set_missing_name - subroutine that sets the name of the attribute
-!            that describes missing values.  in some cases it is _FillValue
-!            but in others it is something nonstandard like 'missing_value'.
-!
-!      name - string name of attribute that holds the missing value
-!
-!     created 11 Mar 2010,  nancy collins,  ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!--------------------------------------------------------------------
+!> sets the name of the attribute that describes missing values.  
+!> in some cases it is _FillValue but in others it is something 
+!> nonstandard like 'missing_value'.
+!>
+!> name - string name of attribute that holds the missing value
+!>
+!> created 11 Mar 2010,  nancy collins,  ncar/image
+
 subroutine set_missing_name(name)
+
  character(len = *), intent(in)   :: name
 
    if (len(name) > NF90_MAX_NAME) then
@@ -316,21 +310,21 @@ subroutine set_missing_name(name)
 
 end subroutine set_missing_name
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   getvar_real - subroutine that inquires, gets the variable, and fills 
-!            in the missing value attribute if that arg is present.
-!            gets the entire array, no start or count specified.
-!
-!      ncid - open netcdf file handle
-!      varname - string name of netcdf variable
-!      darray - output array.  real(r8)
-!      dmiss - value that signals a missing value   real(r8), optional
-!
-!     created 11 Mar 2010,  nancy collins,  ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!--------------------------------------------------------------------
+!>inquires, gets the variable, and fills 
+!>            in the missing value attribute if that arg is present.
+!>            gets the entire array, no start or count specified.
+!>
+!>      ncid - open netcdf file handle
+!>      varname - string name of netcdf variable
+!>      darray - output array.  real(r8)
+!>      dmiss - value that signals a missing value   real(r8), optional
+!>
+!>     created 11 Mar 2010,  nancy collins,  ncar/image
+
 subroutine getvar_real(ncid, varname, darray, dmiss)
+
  integer,            intent(in)   :: ncid
  character(len = *), intent(in)   :: varname
  real(r8),           intent(out)  :: darray(:)
@@ -399,28 +393,158 @@ endif
 end subroutine getvar_real
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   getvar_int - subroutine that inquires, gets the variable, and fills 
-!            in the missing value attribute if that arg is present.
-!            gets the entire array, no start or count specified.
-!
-!      ncid - open netcdf file handle
-!      varname - string name of netcdf variable
-!      darray - output array.  integer
-!      dmiss - value that signals a missing value   integer, optional
-!
-!     created 11 Mar 2010,  nancy collins,  ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!--------------------------------------------------------------------
+!>   get_short_as_r8 - subroutine that inquires, gets the variable, and fills 
+!>            in the missing value attribute if that arg is present.
+!>            gets the entire array, no start or count specified.
+!>
+!>  ncid    - open netcdf file handle
+!>  varname - string name of netcdf variable
+!>  darray  - output array.  real(r8)
+!>  dmiss   - value that signals a missing value   real(r8), optional
+
+subroutine get_short_as_r8(ncid, varname, darray, dmiss)
+
+integer,            intent(in)  :: ncid
+character(len=*),   intent(in)  :: varname
+real(r8),           intent(out) :: darray(:)
+real(r8), optional, intent(out) :: dmiss
+
+integer     :: varid
+integer(i2) :: shortarray(size(darray))
+integer(i2) :: FillValue
+real(r8)    :: scale_factor, add_offset
+integer     :: offset_exists, scaling_exists, fill_exists
+
+! read the data for the requested array, and get the fill value
+call nc_check( nf90_inq_varid(ncid, varname, varid), &
+               'get_short_as_r8', 'inquire var "'// trim(varname)//'"')
+
+ offset_exists = nf90_get_att(ncid, varid, 'add_offset',   add_offset)
+scaling_exists = nf90_get_att(ncid, varid, 'scale_factor', scale_factor)
+   fill_exists = nf90_get_att(ncid, varid, '_FillValue',   FillValue)
+
+call nc_check( nf90_get_var(ncid, varid, shortarray), &
+               'get_short_as_r8', 'getting var '// trim(varname))
+
+darray = real(shortarray,r8)
+
+
+if (fill_exists == NF90_NOERR) then ! FillValue exists
+
+   if ( (offset_exists == NF90_NOERR) .and. (scaling_exists == NF90_NOERR) ) then
+      where (shortarray /= FillValue) darray = darray * scale_factor + add_offset
+   elseif (offset_exists == NF90_NOERR) then
+      where (darray /= FillValue) darray = darray * scale_factor
+   elseif (scaling_exists == NF90_NOERR) then
+      where (darray /= FillValue) darray = darray + add_offset
+   endif
+
+   if (present(dmiss)) dmiss = real(FillValue,r8)
+
+else
+
+   if ( (offset_exists == NF90_NOERR) .and. (scaling_exists == NF90_NOERR) ) then
+      darray = darray * scale_factor + add_offset
+   elseif (offset_exists == NF90_NOERR) then
+      darray = darray * scale_factor
+   elseif (scaling_exists == NF90_NOERR) then
+      darray = darray + add_offset
+   endif
+
+   if (present(dmiss)) dmiss = MISSING_R8
+
+endif
+
+end subroutine get_short_as_r8
+
+
+!--------------------------------------------------------------------
+!>   get_int_as_r8 - subroutine that inquires, gets the variable, and fills 
+!>            in the missing value attribute if that arg is present.
+!>            gets the entire array, no start or count specified.
+!>
+!>  ncid    - open netcdf file handle
+!>  varname - string name of netcdf variable
+!>  darray  - output array.  real(r8)
+!>  dmiss   - value that signals a missing value   real(r8), optional
+
+subroutine get_int_as_r8(ncid, varname, darray, dmiss)
+
+integer,            intent(in)  :: ncid
+character(len=*),   intent(in)  :: varname
+real(r8),           intent(out) :: darray(:)
+real(r8), optional, intent(out) :: dmiss
+
+integer     :: varid
+integer(i4) :: shortarray(size(darray))
+integer(i4) :: FillValue
+real(r8)    :: scale_factor, add_offset
+integer     :: offset_exists, scaling_exists, fill_exists
+
+! read the data for the requested array, and get the fill value
+call nc_check( nf90_inq_varid(ncid, varname, varid), &
+               'get_int_as_r8', 'inquire var "'// trim(varname)//'"')
+
+ offset_exists = nf90_get_att(ncid, varid, 'add_offset',   add_offset)
+scaling_exists = nf90_get_att(ncid, varid, 'scale_factor', scale_factor)
+   fill_exists = nf90_get_att(ncid, varid, '_FillValue',   FillValue)
+
+call nc_check( nf90_get_var(ncid, varid, shortarray), &
+               'get_int_as_r8', 'getting var '// trim(varname))
+
+darray = real(shortarray,r8)
+
+if (fill_exists == NF90_NOERR) then ! FillValue exists
+
+   if ( (offset_exists == NF90_NOERR) .and. (scaling_exists == NF90_NOERR) ) then
+      where (shortarray /= FillValue) darray = darray * scale_factor + add_offset
+   elseif (offset_exists == NF90_NOERR) then
+      where (darray /= FillValue) darray = darray * scale_factor
+   elseif (scaling_exists == NF90_NOERR) then
+      where (darray /= FillValue) darray = darray + add_offset
+   endif
+
+   if (present(dmiss)) dmiss = real(FillValue,r8)
+
+else
+
+   if ( (offset_exists == NF90_NOERR) .and. (scaling_exists == NF90_NOERR) ) then
+      darray = darray * scale_factor + add_offset
+   elseif (offset_exists == NF90_NOERR) then
+      darray = darray * scale_factor
+   elseif (scaling_exists == NF90_NOERR) then
+      darray = darray + add_offset
+   endif
+
+   if (present(dmiss)) dmiss = MISSING_R8
+
+endif
+
+end subroutine get_int_as_r8
+
+
+!--------------------------------------------------------------------
+!>   getvar_int - subroutine that inquires, gets the variable, and fills 
+!>            in the missing value attribute if that arg is present.
+!>            gets the entire array, no start or count specified.
+!>
+!>      ncid - open netcdf file handle
+!>      varname - string name of netcdf variable
+!>      darray - output array.  integer
+!>      dmiss - value that signals a missing value   integer, optional
+!>
+!>     created 11 Mar 2010,  nancy collins,  ncar/image
+
 subroutine getvar_int(ncid, varname, darray, dmiss)
+
  integer,            intent(in)   :: ncid
  character(len = *), intent(in)   :: varname
  integer,            intent(out)  :: darray(:)
  integer,  optional, intent(out)  :: dmiss
 
 integer  :: varid, nfrc
-real(r8) :: fill, miss
+integer  :: fill, miss
 logical  :: found_miss
 
 ! read the data for the requested array, and get the fill value
@@ -469,22 +593,21 @@ endif
 end subroutine getvar_int
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   get_or_fill_real - subroutine which gets the requested netcdf variable
-!           but if it isn't there, it fills the array with 0s.  not an
-!           error if it's not present.  assumes real(r8) data array
-!
-!      ncid - open netcdf file handle
-!      varname - string name of netcdf variable
-!      darray - output array.  real(r8)
-!      fillval - real(r8) to fill with if not present.  optional.
-!      did_fill - reports back if fill was done.  logical, optional.
-!
-!     created Mar 8, 2010    nancy collins, ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!--------------------------------------------------------------------
+!>   get_or_fill_real - subroutine which gets the requested netcdf variable
+!>           but if it isn't there, it fills the array with 0s.  not an
+!>           error if it's not present.  assumes real(r8) data array
+!>
+!>      ncid - open netcdf file handle
+!>      varname - string name of netcdf variable
+!>      darray - output array.  real(r8)
+!>      fillval - real(r8) to fill with if not present.  optional.
+!>      did_fill - reports back if fill was done.  logical, optional.
+!>
+!>     created Mar 8, 2010    nancy collins, ncar/image
+
 subroutine get_or_fill_real(ncid, varname, darray, fillval, did_fill)
+
  integer,             intent(in)    :: ncid
  character(len = *),  intent(in)    :: varname
  real(r8),            intent(inout) :: darray(:)
@@ -513,22 +636,21 @@ endif
 end subroutine get_or_fill_real
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   get_or_fill_int - subroutine which gets the requested netcdf variable
-!           but if it isn't there, it fills the array with 0s.  not an
-!           error if it's not present.  assumes integer data array
-!
-!      ncid - open netcdf file handle
-!      varname - string name of netcdf variable
-!      darray - output array.  integer
-!      fillval - integer to fill with if not present.  optional.
-!      did_fill - reports back if fill was done.  logical, optional.
-!
-!     created Mar 8, 2010    nancy collins, ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!--------------------------------------------------------------------
+!>   get_or_fill_int - subroutine which gets the requested netcdf variable
+!>           but if it isn't there, it fills the array with 0s.  not an
+!>           error if it's not present.  assumes integer data array
+!>
+!>      ncid - open netcdf file handle
+!>      varname - string name of netcdf variable
+!>      darray - output array.  integer
+!>      fillval - integer to fill with if not present.  optional.
+!>      did_fill - reports back if fill was done.  logical, optional.
+!>
+!>     created Mar 8, 2010    nancy collins, ncar/image
+
 subroutine get_or_fill_int(ncid, varname, darray, fillval, did_fill)
+
  integer,            intent(in)    :: ncid
  character(len = *), intent(in)    :: varname
  integer,            intent(inout) :: darray(:)
@@ -556,27 +678,27 @@ endif
    
 end subroutine get_or_fill_int
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-! get_or_fill_QC - get the expected QC netcdf variable.  if not found,
-!                  fill the array with 0s, and print out a message warning
-!                  that the input didn't have the expected array.
-!   
-!      minor tweak on the standard get_or_fill routine.  prints out a
-!      warning message, and don't return to the caller which one it did.
-!      would be more general if it didn't use 'QC' in the output string.
-!      if anyone else wants to use it, we could change 'QC' to 'warn' in
-!      the name, and remove the 'QC' from the output string, and make it
-!      slightly more general
-!
-!      ncid - open netcdf file handle
-!      varname - string name of netcdf variable
-!      darray - output array.  integer
-!
-!      created 17 mar 2010  nsc  ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!--------------------------------------------------------------------
+!> get_or_fill_QC - get the expected QC netcdf variable.  if not found,
+!>                  fill the array with 0s, and print out a message warning
+!>                  that the input didn't have the expected array.
+!>   
+!>      minor tweak on the standard get_or_fill routine.  prints out a
+!>      warning message, and don't return to the caller which one it did.
+!>      would be more general if it didn't use 'QC' in the output string.
+!>      if anyone else wants to use it, we could change 'QC' to 'warn' in
+!>      the name, and remove the 'QC' from the output string, and make it
+!>      slightly more general
+!>
+!>      ncid - open netcdf file handle
+!>      varname - string name of netcdf variable
+!>      darray - output array.  integer
+!>
+!>      created 17 mar 2010  nsc  ncar/image
+
 subroutine get_or_fill_QC(ncid, varname, darray)
+
  integer,            intent(in)    :: ncid
  character(len = *), intent(in)    :: varname
  integer,            intent(inout) :: darray(:)
@@ -592,23 +714,22 @@ if (did_fill) &
 end subroutine get_or_fill_QC
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   getvar_real_2d - subroutine that inquires, gets the variable, and fills 
-!            in the missing value attribute if that arg is present.
-!            gets the entire array, no start or count specified.
-!            this version assumes you are reading an entire 2d array.
-!            see the slice versions for reading 1d from a 2d array.
-!
-!      ncid - open netcdf file handle
-!      varname - string name of netcdf variable
-!      darray - 2d output array.  real(r8)
-!      dmiss - value that signals a missing value   real(r8), optional
-!
-!     created 11 Mar 2010,  nancy collins,  ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!--------------------------------------------------------------------
+!>   getvar_real_2d - subroutine that inquires, gets the variable, and fills 
+!>            in the missing value attribute if that arg is present.
+!>            gets the entire array, no start or count specified.
+!>            this version assumes you are reading an entire 2d array.
+!>            see the slice versions for reading 1d from a 2d array.
+!>
+!>      ncid - open netcdf file handle
+!>      varname - string name of netcdf variable
+!>      darray - 2d output array.  real(r8)
+!>      dmiss - value that signals a missing value   real(r8), optional
+!>
+!>     created 11 Mar 2010,  nancy collins,  ncar/image
+
 subroutine getvar_real_2d(ncid, varname, darray, dmiss)
+
  integer,            intent(in)   :: ncid
  character(len = *), intent(in)   :: varname
  real(r8),           intent(out)  :: darray(:,:)
@@ -677,30 +798,29 @@ endif
 end subroutine getvar_real_2d
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   getvar_int_2d - subroutine that inquires, gets the variable, and fills 
-!            in the missing value attribute if that arg is present.
-!            gets the entire array, no start or count specified.
-!            this version assumes you are reading an entire 2d array.
-!            see the slice versions for reading 1d from a 2d array.
-!
-!      ncid - open netcdf file handle
-!      varname - string name of netcdf variable
-!      darray - 2d output array.  integer
-!      dmiss - value that signals a missing value   integer, optional
-!
-!     created 11 Mar 2010,  nancy collins,  ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!--------------------------------------------------------------------
+!>   getvar_int_2d - subroutine that inquires, gets the variable, and fills 
+!>            in the missing value attribute if that arg is present.
+!>            gets the entire array, no start or count specified.
+!>            this version assumes you are reading an entire 2d array.
+!>            see the slice versions for reading 1d from a 2d array.
+!>
+!>      ncid - open netcdf file handle
+!>      varname - string name of netcdf variable
+!>      darray - 2d output array.  integer
+!>      dmiss - value that signals a missing value   integer, optional
+!>
+!>     created 11 Mar 2010,  nancy collins,  ncar/image
+
 subroutine getvar_int_2d(ncid, varname, darray, dmiss)
+
  integer,            intent(in)   :: ncid
  character(len = *), intent(in)   :: varname
  integer,            intent(out)  :: darray(:,:)
  integer,  optional, intent(out)  :: dmiss
 
 integer  :: varid, nfrc
-real(r8) :: fill, miss
+integer  :: fill, miss
 logical  :: found_miss
 
 ! read the data for the requested array, and get the fill value
@@ -748,29 +868,29 @@ endif
   
 end subroutine getvar_int_2d
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   getvar_real_1d_1val - subroutine that inquires, gets the variable, and fills 
-!            in the missing value attribute if that arg is present.
-!            takes a single start, uses count=1, returns a scalar
-!
-!      ncid - open netcdf file handle
-!      varname - string name of netcdf variable
-!      start - starting index in the 1d array
-!      dout - output value.  real(r8)
-!      dmiss - value that signals a missing value   real(r8), optional
-!
-!     created 11 Mar 2010,  nancy collins,  ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!--------------------------------------------------------------------
+!>  getvar_real_1d_1val - subroutine that inquires, gets the variable, and fills 
+!>            in the missing value attribute if that arg is present.
+!>            takes a single start, uses count=1, returns a scalar
+!>
+!>      ncid - open netcdf file handle
+!>      varname - string name of netcdf variable
+!>      start - starting index in the 1d array
+!>      dout - output value.  real(r8)
+!>      dmiss - value that signals a missing value   real(r8), optional
+!>
+!>     created 11 Mar 2010,  nancy collins,  ncar/image
+
 subroutine getvar_real_1d_1val(ncid, varname, start, dout, dmiss)
+
  integer,            intent(in)   :: ncid
  character(len = *), intent(in)   :: varname
  integer,            intent(in)   :: start
  real(r8),           intent(out)  :: dout
  real(r8), optional, intent(out)  :: dmiss
 
-integer :: varid
+integer :: varid, ret
 
 ! read the data for the requested array, and get the fill value
 call nc_check( nf90_inq_varid(ncid, varname, varid), &
@@ -778,35 +898,36 @@ call nc_check( nf90_inq_varid(ncid, varname, varid), &
 call nc_check( nf90_get_var(ncid, varid, dout, start = (/ start /) ), &
                'getvar_real_1d_val', 'getting var '// trim(varname))
 
-if (present(dmiss)) &
-   call nc_check( nf90_get_att(ncid, varid, '_FillValue', dmiss), &
-               'getvar_real_1d_val', 'getting attr "_FillValue" for '//trim(varname))
+if (present(dmiss)) then 
+   ret = nf90_get_att(ncid, varid, '_FillValue', dmiss)
+   if (ret /= NF90_NOERR) dmiss = MISSING_R8
+endif
 
 end subroutine getvar_real_1d_1val
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   getvar_int_1d_1val - subroutine that inquires, gets the variable, and fills 
-!            in the missing value attribute if that arg is present.
-!            takes a single start, uses count=1, returns a scalar
-!
-!      ncid - open netcdf file handle
-!      varname - string name of netcdf variable
-!      start - starting index in the 1d array
-!      dout - output value.  int
-!      dmiss - value that signals a missing value   int, optional
-!
-!     created 11 Mar 2010,  nancy collins,  ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!--------------------------------------------------------------------
+!>   getvar_int_1d_1val - subroutine that inquires, gets the variable, and fills 
+!>            in the missing value attribute if that arg is present.
+!>            takes a single start, uses count=1, returns a scalar
+!>
+!>      ncid - open netcdf file handle
+!>      varname - string name of netcdf variable
+!>      start - starting index in the 1d array
+!>      dout - output value.  int
+!>      dmiss - value that signals a missing value   int, optional
+!>
+!>     created 11 Mar 2010,  nancy collins,  ncar/image
+
 subroutine getvar_int_1d_1val(ncid, varname, start, dout, dmiss)
+
  integer,            intent(in)   :: ncid
  character(len = *), intent(in)   :: varname
  integer,            intent(in)   :: start
  integer,            intent(out)  :: dout
  integer,  optional, intent(out)  :: dmiss
 
-integer :: varid
+integer :: varid, ret
 
 ! read the data for the requested array, and get the fill value
 call nc_check( nf90_inq_varid(ncid, varname, varid), &
@@ -814,32 +935,32 @@ call nc_check( nf90_inq_varid(ncid, varname, varid), &
 call nc_check( nf90_get_var(ncid, varid, dout, start = (/ start /) ), &
                'getvar_int_1d_1val', 'getting var '// trim(varname))
 
-if (present(dmiss)) &
-   call nc_check( nf90_get_att(ncid, varid, '_FillValue', dmiss), &
-               'getvar_int_1d_1val', 'getting attr "_FillValue" for '//trim(varname))
+if (present(dmiss)) then
+   ret = nf90_get_att(ncid, varid, '_FillValue', dmiss)
+   if (ret /= NF90_NOERR) dmiss = MISSING_I
+endif
 
 end subroutine getvar_int_1d_1val
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   getvar_real_2d_slice - subroutine that inquires, gets the variable, 
-!           and fills in the missing value attribute if that arg is present.
-!           assumes start = (/ 1, n /) and count = (/ m, 1 /)
-!           so takes a scalar start, count, returns a 1d_array
-!
-!      ncid - open netcdf file handle
-!      varname - string name of 2d netcdf variable
-!      start - starting index in the 2d array.  integer
-!      count - nitems to get. integer
-!      darray - 1d output array.  real(r8)
-!      dmiss - value that signals a missing value   real(r8), optional
-!
-!     created 11 Mar 2010,  nancy collins,  ncar/image
-!     updated 14 Jul 2011,  nancy collins,  ncar/image
-!         routine renamed and moved to the utilities module
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!--------------------------------------------------------------------
+!>   getvar_real_2d_slice - subroutine that inquires, gets the variable, 
+!>           and fills in the missing value attribute if that arg is present.
+!>           assumes start = (/ 1, n /) and count = (/ m, 1 /)
+!>           so takes a scalar start, count, returns a 1d_array
+!>
+!>      ncid - open netcdf file handle
+!>      varname - string name of 2d netcdf variable
+!>      start - starting index in the 2d array.  integer
+!>      count - nitems to get. integer
+!>      darray - 1d output array.  real(r8)
+!>      dmiss - value that signals a missing value   real(r8), optional
+!>
+!>     created 11 Mar 2010,  nancy collins,  ncar/image
+!>     updated 14 Jul 2011,  nancy collins,  ncar/image
+!>         routine renamed and moved to the utilities module
+
 subroutine getvar_real_2d_slice(ncid, varname, start, count, darray, dmiss)
+
  integer,            intent(in)   :: ncid
  character(len = *), intent(in)   :: varname
  integer,            intent(in)   :: start
@@ -847,7 +968,7 @@ subroutine getvar_real_2d_slice(ncid, varname, start, count, darray, dmiss)
  real(r8),           intent(out)  :: darray(:)
  real(r8), optional, intent(out)  :: dmiss
 
-integer :: varid
+integer :: varid, ret
 
 ! read the data for the requested array, and get the fill value
 call nc_check( nf90_inq_varid(ncid, varname, varid), &
@@ -856,32 +977,32 @@ call nc_check( nf90_get_var(ncid, varid, darray, &
                 start=(/ 1, start /), count=(/ count, 1 /) ), &
                'getvar_real_2d_slice', 'getting var '// trim(varname))
 
-if (present(dmiss)) &
-   call nc_check( nf90_get_att(ncid, varid, '_FillValue', dmiss), &
-               'getvar_real_2d_slice', 'getting attr "_FillValue" for '//trim(varname))
+if (present(dmiss)) then
+   ret = nf90_get_att(ncid, varid, '_FillValue', dmiss)
+   if (ret /= NF90_NOERR) dmiss = MISSING_R8
+endif
 
 end subroutine getvar_real_2d_slice
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   get_or_fill_QC_2d_slice - subroutine which gets the requested netcdf variable
-!           but if it isn't there, it fills the array with 0s.  not an
-!           error if it's not present.  assumes integer data array
-!           assumes start = (/ 1, n /) and count = (/ m, 1 /)
-!           so takes a scalar start, count, returns a 1d_array
-!           also prints out a message if fill used.
-!
-!      ncid - open netcdf file handle
-!      varname - string name of 2d netcdf variable
-!      start - starting index in the 2d array.  integer
-!      count - nitems to get. integer
-!      darray - output array.  integer
-!
-!     created Mar 8, 2010    nancy collins, ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!--------------------------------------------------------------------
+!>   get_or_fill_QC_2d_slice - subroutine which gets the requested netcdf variable
+!>           but if it isn't there, it fills the array with 0s.  not an
+!>           error if it's not present.  assumes integer data array
+!>           assumes start = (/ 1, n /) and count = (/ m, 1 /)
+!>           so takes a scalar start, count, returns a 1d_array
+!>           also prints out a message if fill used.
+!>
+!>      ncid - open netcdf file handle
+!>      varname - string name of 2d netcdf variable
+!>      start - starting index in the 2d array.  integer
+!>      count - nitems to get. integer
+!>      darray - output array.  integer
+!>
+!>     created Mar 8, 2010    nancy collins, ncar/image
+
 subroutine get_or_fill_QC_2d_slice(ncid, varname, start, count, darray)
+
  integer,            intent(in)    :: ncid
  character(len = *), intent(in)    :: varname
  integer,            intent(in)    :: start
@@ -906,34 +1027,29 @@ endif
 
 end subroutine get_or_fill_QC_2d_slice
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   query_varname - given a list of variable names, check the netcdf file
-!           for their existence.  if none of the given names are in the
-!           file, return -1 for index.  otherwise return the index of
-!           the first name found. an optional arg can be used to force
-!           it to fail if a match is not found. 
-!
-!      ncid - open netcdf file handle
-!      nname - number of names in the namelist array
-!      namelist - string array of netcdf variable names to test
-!      index - index of first name which matched an array.  -1 if none.
-!      force - if true, one of the names must match or it is a fatal error.
-!
-!     created Mar 15, 2012    nancy collins, ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!--------------------------------------------------------------------
+!> given a list of variable names, check the netcdf file
+!> for their existence and return the first one found.  if none 
+!> of the given names are in the file, return -1 for index.
+!> an optional arg can be used to force it to fail if a match is not found. 
+!>
+!> ncid - open netcdf file handle
+!> nname - number of names in the namelist array
+!> namelist - string array of netcdf variable names to test
+!> index - index of first name which matched an array.  -1 if none.
+!> force - if true, one of the names must match or it is a fatal error.
+!>
+!> created Mar 15, 2012    nancy collins, ncar/image
+
 subroutine query_varname(ncid, nnames, namelist, index, force)
+
  integer,             intent(in)    :: ncid, nnames
  character(len = *),  intent(in)    :: namelist(:)
  integer,             intent(out)   :: index
  logical, optional,   intent(in)    :: force
 
 integer :: varid, nfrc, i
-character(128) :: msgstring
-
-! test to see if variable is present.  if yes, read it in.
-! otherwise, set to fill value, or 0 if none given.
+character(512) :: msgstring
 
 index = -1
 do i=1, nnames

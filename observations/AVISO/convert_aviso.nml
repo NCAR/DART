@@ -1,0 +1,4 @@
+&convert_aviso_nml
+   observation_error_std = 0.03  
+  /
+

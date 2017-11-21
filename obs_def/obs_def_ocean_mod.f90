@@ -60,6 +60,23 @@
 !SATELLITE_SSH,                 KIND_SEA_SURFACE_HEIGHT,    COMMON_CODE
 !SATELLITE_SSS,                 KIND_SALINITY,              COMMON_CODE
 !DRY_LAND,                      KIND_DRY_LAND,              COMMON_CODE
+!AltiKa_SEA_SURFACE_ANOMALY,    KIND_SEA_SURFACE_ANOMALY
+!Cryosat2_SEA_SURFACE_ANOMALY,  KIND_SEA_SURFACE_ANOMALY
+!Envisat_SEA_SURFACE_ANOMALY,   KIND_SEA_SURFACE_ANOMALY
+!Envisatn_SEA_SURFACE_ANOMALY,  KIND_SEA_SURFACE_ANOMALY
+!ERS1_SEA_SURFACE_ANOMALY,      KIND_SEA_SURFACE_ANOMALY
+!ERS2_SEA_SURFACE_ANOMALY,      KIND_SEA_SURFACE_ANOMALY
+!GFO_SEA_SURFACE_ANOMALY,       KIND_SEA_SURFACE_ANOMALY
+!Haiyang2A_SEA_SURFACE_ANOMALY, KIND_SEA_SURFACE_ANOMALY
+!J1_SEA_SURFACE_ANOMALY,        KIND_SEA_SURFACE_ANOMALY
+!J1g_SEA_SURFACE_ANOMALY,       KIND_SEA_SURFACE_ANOMALY
+!J1n_SEA_SURFACE_ANOMALY,       KIND_SEA_SURFACE_ANOMALY
+!J2_SEA_SURFACE_ANOMALY,        KIND_SEA_SURFACE_ANOMALY
+!TP_SEA_SURFACE_ANOMALY,        KIND_SEA_SURFACE_ANOMALY
+!TPn_SEA_SURFACE_ANOMALY,       KIND_SEA_SURFACE_ANOMALY
+!DRY_LAND,                      KIND_DRY_LAND,              COMMON_CODE
+!HFRADAR_U_CURRENT_COMPONENT,   KIND_U_CURRENT_COMPONENT,   COMMON_CODE
+!HFRADAR_V_CURRENT_COMPONENT,   KIND_V_CURRENT_COMPONENT,   COMMON_CODE
 !HFRADAR_RADIAL_VELOCITY,       KIND_VELOCITY
 ! END DART PREPROCESS KIND LIST
 
@@ -89,7 +106,8 @@
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !  use obs_def_ocean_mod, only : write_hf_radial_vel, read_hf_radial_vel,           &
-!                            interactive_hf_radial_vel, get_expected_hf_radial_vel
+!                            interactive_hf_radial_vel, get_expected_hf_radial_vel, &
+!                            get_sea_surface_anomaly
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !-----------------------------------------------------------------------------
 
@@ -97,6 +115,34 @@
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !  case(HFRADAR_RADIAL_VELOCITY)
 !     call get_expected_hf_radial_vel(state, location, obs_def%key, obs_val, istatus)
+!  case(AltiKa_SEA_SURFACE_ANOMALY)
+!     call get_sea_surface_anomaly(state, location, obs_val, istatus)
+!  case(Cryosat2_SEA_SURFACE_ANOMALY)
+!     call get_sea_surface_anomaly(state, location, obs_val, istatus)
+!  case(Envisat_SEA_SURFACE_ANOMALY)
+!     call get_sea_surface_anomaly(state, location, obs_val, istatus)
+!  case(Envisatn_SEA_SURFACE_ANOMALY)
+!     call get_sea_surface_anomaly(state, location, obs_val, istatus)
+!  case(ERS1_SEA_SURFACE_ANOMALY)
+!     call get_sea_surface_anomaly(state, location, obs_val, istatus)
+!  case(ERS2_SEA_SURFACE_ANOMALY)
+!     call get_sea_surface_anomaly(state, location, obs_val, istatus)
+!  case(GFO_SEA_SURFACE_ANOMALY)
+!     call get_sea_surface_anomaly(state, location, obs_val, istatus)
+!  case(Haiyang2A_SEA_SURFACE_ANOMALY)
+!     call get_sea_surface_anomaly(state, location, obs_val, istatus)
+!  case(J1_SEA_SURFACE_ANOMALY)
+!     call get_sea_surface_anomaly(state, location, obs_val, istatus)
+!  case(J1g_SEA_SURFACE_ANOMALY)
+!     call get_sea_surface_anomaly(state, location, obs_val, istatus)
+!  case(J1n_SEA_SURFACE_ANOMALY)
+!     call get_sea_surface_anomaly(state, location, obs_val, istatus)
+!  case(J2_SEA_SURFACE_ANOMALY)
+!     call get_sea_surface_anomaly(state, location, obs_val, istatus)
+!  case(TP_SEA_SURFACE_ANOMALY)
+!     call get_sea_surface_anomaly(state, location, obs_val, istatus)
+!  case(TPn_SEA_SURFACE_ANOMALY)
+!     call get_sea_surface_anomaly(state, location, obs_val, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !-----------------------------------------------------------------------------
 
@@ -104,6 +150,34 @@
 ! BEGIN DART PREPROCESS READ_OBS_DEF
 !   case(HFRADAR_RADIAL_VELOCITY)
 !      call read_hf_radial_vel(obs_def%key, ifile, fform)
+!  case(AltiKa_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(Cryosat2_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(Envisat_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(Envisatn_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(ERS1_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(ERS2_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(GFO_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(Haiyang2A_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(J1_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(J1g_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(J1n_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(J2_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(TP_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(TPn_SEA_SURFACE_ANOMALY)
+!     continue
 ! END DART PREPROCESS READ_OBS_DEF
 !-----------------------------------------------------------------------------
 
@@ -111,6 +185,34 @@
 ! BEGIN DART PREPROCESS WRITE_OBS_DEF
 !   case(HFRADAR_RADIAL_VELOCITY)
 !      call write_hf_radial_vel(obs_def%key, ifile, fform)
+!  case(AltiKa_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(Cryosat2_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(Envisat_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(Envisatn_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(ERS1_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(ERS2_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(GFO_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(Haiyang2A_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(J1_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(J1g_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(J1n_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(J2_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(TP_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(TPn_SEA_SURFACE_ANOMALY)
+!     continue
 ! END DART PREPROCESS WRITE_OBS_DEF
 !-----------------------------------------------------------------------------
 
@@ -118,6 +220,34 @@
 ! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
 !   case(HFRADAR_RADIAL_VELOCITY)
 !      call interactive_hf_radial_vel(obs_def%key)
+!  case(AltiKa_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(Cryosat2_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(Envisat_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(Envisatn_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(ERS1_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(ERS2_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(GFO_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(Haiyang2A_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(J1_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(J1g_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(J1n_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(J2_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(TP_SEA_SURFACE_ANOMALY)
+!     continue
+!  case(TPn_SEA_SURFACE_ANOMALY)
+!     continue
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 !-----------------------------------------------------------------------------
 
@@ -134,13 +264,16 @@ use     location_mod, only : location_type, write_location, read_location, &
                              interactive_location, get_location
 use  assim_model_mod, only : interpolate
 use     obs_kind_mod, only : KIND_U_CURRENT_COMPONENT, &
-                             KIND_V_CURRENT_COMPONENT
+                             KIND_V_CURRENT_COMPONENT, &
+                             KIND_MEAN_DYNAMIC_TOPOGRAPHY, &
+                             KIND_SEA_SURFACE_HEIGHT
 
 implicit none
 private
 
 public :: read_hf_radial_vel, write_hf_radial_vel, interactive_hf_radial_vel,       &
-          get_expected_hf_radial_vel, get_obs_def_hf_radial_vel, set_hf_radial_vel
+          get_expected_hf_radial_vel, get_obs_def_hf_radial_vel, set_hf_radial_vel, &
+          get_sea_surface_anomaly
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -682,6 +815,64 @@ call error_handler(E_ERR,'set_hf_radial_vel', &
           source, revision, revdate, text2=msgstring, text3=callingroutine)
 
 end subroutine velkey_out_of_range
+
+!----------------------------------------------------------------------
+
+!> Given a location and the state vector from one of the ensemble members, 
+!> compute the model-predicted sea surface anomaly that would be observed
+!> at that location.
+!>  The value is returned in 'anomaly'. 
+!> 'istatus' is the return code.  0 is success; any positive value signals an
+!> error (different values can be used to indicate different error types).
+!> Negative istatus values are reserved for internal use only by DART.
+
+subroutine get_sea_surface_anomaly(state_vector, location, anomaly, istatus)
+
+! This is the main forward operator routine for 
+
+real(r8),            intent(in)  :: state_vector(:)
+type(location_type), intent(in)  :: location
+real(r8),            intent(out) :: anomaly
+integer,             intent(out) :: istatus
+
+real(r8) :: mdt, ssh
+real(r8) :: debug_location(3) 
+
+if ( .not. module_initialized ) call initialize_module
+
+call interpolate(state_vector, location, KIND_MEAN_DYNAMIC_TOPOGRAPHY, mdt, istatus)
+if (istatus /= 0) then
+   anomaly = missing_r8
+   return
+endif
+
+call interpolate(state_vector, location, KIND_SEA_SURFACE_HEIGHT, ssh, istatus)
+if (istatus /= 0) then
+   anomaly = missing_r8
+   return
+endif
+
+anomaly = ssh - mdt
+
+! Good return code. 
+istatus = 0
+
+if (debug) then
+   debug_location = get_location(location)
+   print *
+   print *, 'obs location (deg): ', debug_location(1), &
+                                    debug_location(2), &
+                                    debug_location(3)
+   print *, 'obs location (rad): ', debug_location(1)*deg2rad, &
+                                    debug_location(2)*deg2rad, &
+                                    debug_location(3)
+   print *, 'interpolated mdt: ', mdt
+   print *, 'interpolated ssh: ', ssh
+   print *, 'final anomaly: ', anomaly
+   print *, 'istatus: ', istatus
+endif
+
+end subroutine get_sea_surface_anomaly
 
 !----------------------------------------------------------------------
 

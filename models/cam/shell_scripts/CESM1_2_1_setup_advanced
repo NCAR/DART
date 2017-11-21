@@ -679,7 +679,7 @@ else
 endif
 
 # Each CAM dynamical core has its own SourceMods
-ls SourceMods/src.cam/src/dynamics/${CAM_DYCORE}/*F90 
+ls SourceMods/src.cam/src/dynamics/${CAM_DYCORE}/*F90 >& /dev/null
 if ($status == 0) then
    cd      SourceMods/src.cam
    ${LINK} src/dynamics/${CAM_DYCORE}/*F90 .

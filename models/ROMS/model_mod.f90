@@ -50,12 +50,12 @@ use    utilities_mod, only : register_module, error_handler,                    
                              nc_check, do_output, to_upper,                     &
                              find_namelist_in_file, check_namelist_read,        &
                              open_file, file_exist, find_textfile_dims,         &
-                             file_to_text, do_output,close_file
+                             file_to_text, close_file
 
 use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_DRY_LAND,    &
-                             KIND_U_CURRENT_COMPONENT,                          &
-                             KIND_V_CURRENT_COMPONENT, KIND_SEA_SURFACE_HEIGHT, &
-                             KIND_SEA_SURFACE_PRESSURE,                         &
+                             KIND_U_CURRENT_COMPONENT, KIND_V_CURRENT_COMPONENT, &
+                             KIND_SEA_SURFACE_HEIGHT, KIND_SEA_SURFACE_PRESSURE, &
+                             KIND_MEAN_DYNAMIC_TOPOGRAPHY,                      &
                              KIND_POTENTIAL_TEMPERATURE,                        &
                              paramname_length,get_raw_obs_kind_index,           &
                              get_raw_obs_kind_name,get_obs_kind_var_type
@@ -120,6 +120,8 @@ integer  :: debug = 0   ! turn up for more and more debug messages
 character(len=32)  :: calendar = 'Gregorian'
 character(len=256) :: model_restart_filename = 'roms_restart.nc'
 character(len=256) :: grid_definition_filename = 'roms_grid.nc'
+character(len=256) :: mdt_reference_file_name = 'none'
+character(len=256) :: mdt_reference_var_name = 'none'
 real(r8) :: hc=50.0_r8
 
 namelist /model_nml/  &
@@ -131,6 +133,8 @@ namelist /model_nml/  &
    hc,                          &
    model_restart_filename,      &
    grid_definition_filename,    &
+   mdt_reference_file_name,     &
+   mdt_reference_var_name,      &
    vert_localization_coord,     &
    debug,                       &
    variables
@@ -203,7 +207,8 @@ real(r8), allocatable :: ULAT(:,:), ULON(:,:), &
                          TLAT(:,:), TLON(:,:), &
                          VLAT(:,:), VLON(:,:), &
                            PM(:,:),   PN(:,:), &
-                         ANGL(:,:),   HT(:,:), ZC(:,:,:)
+                         ANGL(:,:),   HT(:,:), &
+                          MDT(:),   ZC(:,:,:)
 
 integer, parameter :: i2 = SELECTED_INT_KIND(2) ! need something to coerce to NF90_SHORT
 integer(i2), allocatable :: mask_rho(:,:), &
@@ -486,6 +491,13 @@ else   ! if pressure or undefined, we don't know what to do
 endif
 
 obs_kind = obs_type
+
+if( obs_kind == KIND_MEAN_DYNAMIC_TOPOGRAPHY ) then
+   call lon_lat_interpolate(MDT, llon, llat, &
+      obs_type, Ns_rho, interp_val, istatus)
+   return
+endif
+
 ivar = get_progvar_index_from_kind(obs_kind)
 
 ! Do horizontal interpolations for the appropriate levels
@@ -658,6 +670,11 @@ call error_handler(E_MSG,'static_init_model:',string1,source,revision,revdate)
 ! Get the ROMS grid -- sizes and variables.
 call get_grid_dimensions()
 call get_grid()
+
+if (mdt_reference_file_name /= 'none') then
+   allocate( MDT(Nx*Ny))
+   call read_mean_dynamic_topography()
+endif
 
 call nc_check( nf90_open(trim(model_restart_filename), NF90_NOWRITE, ncid), &
                   'static_init_model', 'open '//trim(model_restart_filename))
@@ -837,6 +854,7 @@ if (allocated(HT))   deallocate(HT)
 if (allocated(PM))   deallocate(PM)
 if (allocated(PN))   deallocate(PN)
 if (allocated(ANGL)) deallocate(ANGL)
+if (allocated(MDT))  deallocate(MDT)
 if (allocated(ZC))   deallocate(ZC)
 
 end subroutine end_model
@@ -4559,6 +4577,127 @@ call nc_check(nf90_inquire_dimension(ncid, DimID, len=dimlen), &
               'get_grid', string2)
 
 end function get_dimension_length
+
+
+!------------------------------------------------------------------
+!> Open and read the mean dynamic sea surface topography
+!> There is an assumed name and the shape of the variable must
+!> match the (horizontal) ROMS grid being used. The hope is that 
+!> that actual locations MUST MATCH EXACTLY the ROMS grid.
+
+subroutine read_mean_dynamic_topography()
+
+integer  :: ncid, VarID, io, xtype, ii
+integer  :: numdims, dimIDs(NF90_MAX_DIMS), dimlen
+character(len=128) :: unitsstring
+real(r4) :: rmiss
+real(r8) :: dmiss, dmin, dmax
+character(len=NF90_MAX_NAME) :: varname
+character(len=256) :: fname
+
+MDT   = MISSING_R8
+dmiss = MISSING_R8
+
+fname   = trim(mdt_reference_file_name)
+varname = trim(mdt_reference_var_name)
+
+! Check to see that the netCDF file exists.
+
+if ( .not. file_exist(fname) ) then
+   string1 = 'Mean dynamic sea surface topography file not found.'
+   string2 = 'Looking for filename "'//trim(fname)//'"'
+   string3 = 'This filename is specified by input.nml:model_nml:mdt_reference_file_name'
+   call error_handler(E_ERR,'read_mean_dynamic_topography', &
+          string1, source, revision, revdate, text2=string2, text3=string3)
+endif
+
+io = nf90_open(trim(fname), NF90_NOWRITE, ncid)
+call nc_check(io, 'read_mean_dynamic_topography','open "'//trim(fname)//'"')
+
+io = nf90_inq_varid(ncid, varname, VarID)
+call nc_check(io, 'read_mean_dynamic_topography', &
+                  '"'//trim(varname)//'" not found but is required in "'//trim(fname)//'"')
+
+! check variable shape against assumed shape
+
+io = nf90_inquire_variable(ncid, VarId, dimids=dimIDs, ndims=numdims, xtype=xtype)
+call nc_check(io, 'read_mean_dynamic_topography', &
+                  'inquire_variable "'//trim(varname)//'" from "'//trim(fname)//'"')
+
+do ii = 1,numdims
+   write(string1,*)'inquire_dimension ',ii,'for "'//trim(varname)//'"'
+   io = nf90_inquire_dimension(ncid,dimIDs(ii),len=dimlen)
+   call nc_check(io, 'read_mean_dynamic_topography', string1)
+
+!>@todo add bombproofing
+!  if (dimlen /= size(MDT,ii)) then
+!     write(string1,*)trim(varname),' dimension mismatch'
+!     write(string2,*)trim(varname),' dimension ',ii,' in file is ',dimlen
+!     write(string3,*)trim(varname),' dimension ',ii,' in code is ',size(MDT,ii)
+!     call error_handler(E_ERR,'read_mean_dynamic_topography', &
+!         string1, source, revision, revdate, text2=string2, text3=string3)
+!  endif
+
+enddo
+
+io = nf90_get_var(ncid, VarID, MDT)
+call nc_check(io, 'read_mean_dynamic_topography', &
+                  'get_var "'//trim(varname)//'" from "'//trim(fname)//'"')
+
+! Replace _FillValue with something
+!>@todo CHECK ... does it xtype of the variable matter when getting a _FillValue attribute. 
+!> If it does not, these lines could collapse into something cleaner.
+
+if (xtype == NF90_REAL) then
+   io = nf90_get_att(ncid, VarId, '_FillValue', rmiss)
+   if (io == NF90_NOERR) then
+      dmiss=rmiss
+      where (MDT == dmiss) MDT = MISSING_R8
+   endif
+elseif (xtype == NF90_DOUBLE) then
+   io = nf90_get_att(ncid, VarId, '_FillValue', dmiss)
+   if (io == NF90_NOERR) then
+      where (MDT == dmiss) MDT = MISSING_R8
+   endif
+else
+   call error_handler(E_ERR,'read_mean_dynamic_topography', &
+        'unsupported variable type for "'//trim(varname)//'"', source, revision, revdate, &
+        text2 = 'must be "float" or "double"')
+endif
+
+! The observations are in meters, the mean dynamic topography should be in meters
+! and internally in the POP model_mod, the CGS units are converted to SI.
+
+io = nf90_get_att(ncid, VarId, 'units', unitsstring)
+call nc_check(io, 'read_mean_dynamic_topography', &
+                  'get_att "units" for "'//trim(varname)//'" from "'//trim(fname)//'"')
+
+if (unitsstring == 'centimeter' .or. unitsstring == 'cm') then
+   where(MDT /= MISSING_R8) MDT = MDT/100.0_r8
+elseif (unitsstring == 'm' .or. unitsstring == 'meters') then
+   continue
+else
+   call error_handler(E_ERR,'read_mean_dynamic_topography', &
+        'unsupported units for "'//trim(varname)//'"', source, revision, revdate, &
+        text2 = 'must be "centimeter", "cm", "meter", or "m"')
+endif
+
+call nc_check(nf90_close(ncid), &
+              'read_mean_dynamic_topography','close ' // trim(fname) )
+
+! Just something to do a basic check.
+
+if (debug > 0 ) then !>@todo change to 99 once its working
+   dmin = minval(MDT, MDT /= MISSING_R8)
+   dmax = maxval(MDT, MDT /= MISSING_R8)
+   write(string1,*)'..  "'//trim(varname)//'" sizes are ',Nx,Ny
+   write(string2,*)'_FillValue was ',dmiss,' original units "'//trim(unitsstring)//'"'
+   write(string3,*)'min,max (meters) ',dmin, dmax
+   call error_handler(E_MSG,'read_mean_dynamic_topography', &
+        string1, text2=string2, text3=string3)
+endif
+
+end subroutine read_mean_dynamic_topography
 
 
 !===================================================================

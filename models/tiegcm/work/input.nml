@@ -119,7 +119,7 @@
 #              'TI',    'KIND_TEMPERATURE_ION',           'NA',      'NA',      'restart',   'NO_COPY_BACK',
 #              'TE',    'KIND_TEMPERATURE_ELECTRON',      'NA',      'NA',      'restart',   'NO_COPY_BACK',
 #              'ZG',    'KIND_GEOMETRIC_HEIGHT',          'NA',      'NA',      'secondary', 'NO_COPY_BACK',
-#              'VTEC',  'KIND_VERTICAL_TEC',              'NA',      'NA',      'calculate'  'NO_COPY_BACK' 
+#              'VTEC',  'KIND_VERTICAL_TEC',              'NA',      'NA',      'calculate'  'NO_COPY_BACK'
 
 &model_nml
    debug                       = 1
@@ -138,9 +138,8 @@
                'O2',    'KIND_MOLEC_OXYGEN_MIXING_RATIO', '0.00001', '0.99999', 'restart',    'NO_COPY_BACK',
                'TN',    'KIND_TEMPERATURE',               '0.0',     '6000.0',  'restart',    'NO_COPY_BACK',
                'ZG',    'KIND_GEOMETRIC_HEIGHT',          'NA',      'NA',      'secondary',  'NO_COPY_BACK',
-               'VTEC',  'KIND_VERTICAL_TEC',              'NA',      'NA',      'calculate',  'NO_COPY_BACK' 
+               'VTEC',  'KIND_VERTICAL_TEC',              'NA',      'NA',      'calculate',  'NO_COPY_BACK'
    /
-
 
 &model_to_dart_nml
    file_out      = 'dart_ics'
@@ -168,8 +167,8 @@
    /
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'CHAMP_DENSITY', 'GPS_VTEC_EXTRAP', 'GPS_PROFILE'
-   evaluate_these_obs_types   = 'GND_GPS_VTEC'
+   assimilate_these_obs_types = 'GPS_PROFILE', 'COSMIC_ELECTRON_DENSITY'
+   evaluate_these_obs_types   = 'GND_GPS_VTEC', 'CHAMP_DENSITY', 'GPS_VTEC_EXTRAP'
    /
 
 &assim_model_nml
@@ -237,11 +236,11 @@
 &obs_diag_nml
    obs_sequence_name = 'obs_seq.final'
    obs_sequence_list = ''
-   first_bin_center =  2005, 9,  9, 0, 0, 0 
-   last_bin_center  =  2005, 9, 10, 0, 0, 0 
-   bin_separation   =     0, 0,  0, 1, 0, 0 
-   bin_width        =     0, 0,  0, 1, 0, 0 
-   time_to_skip     =     0, 0,  0, 1, 0, 0 
+   first_bin_center =  2005, 9,  9, 0, 0, 0
+   last_bin_center  =  2005, 9, 10, 0, 0, 0
+   bin_separation   =     0, 0,  0, 1, 0, 0
+   bin_width        =     0, 0,  0, 1, 0, 0
+   time_to_skip     =     0, 0,  0, 1, 0, 0
    max_num_bins     = 1000
    trusted_obs      = 'null'
    Nregions   = 4

@@ -84,7 +84,7 @@ real(r8) :: obs_levels(NMAXLEVELS) = -1.0_r8
 real(r8) :: ray_ds                 = 5000.0_r8    ! delta stepsize (m) along ray, nonlocal op
 real(r8) :: ray_htop               = 15000.0_r8 ! max height (m) for nonlocal op
 character(len=256) :: gpsro_netcdf_file     = 'cosmic_gps_input.nc'
-character(len=256) :: gpsro_netcdf_filelist = 'cosmic_gps_input_list'
+character(len=256) :: gpsro_netcdf_filelist = ''
 character(len=256) :: gpsro_out_file        = 'obs_seq.gpsro'
 
 namelist /convert_cosmic_gps_nml/ obs_levels, local_operator, ray_ds,   &
@@ -931,7 +931,7 @@ end function excess_obserr_percent
 ! routines below here were lifted from soyoung ha's version of
 ! the ncep bufr format converter for gps obs, including lidia's error spec
 
-! soyoung says this error spec from bill is only 1 of 5 possible profiles
+! soyoung says the error spec from Bill Kuo is only 1 of 5 possible profiles
 ! and most appropriate for the CONUS domain.  if used for global obs, it
 ! should be updated to include the other functions.  nsc jan 2016
 

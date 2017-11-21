@@ -142,7 +142,7 @@ while ((itime <= totaltimes)) ; do
    fi
 
    sed -e "s#OUTDIR#${OUTDIR}#g" \
-   sed -e "s#YYYY#${myear}#g"    \
+       -e "s#YYYY#${myear}#g"    \
        -e "s#MM#${mmonth}#g"     \
        -e "s#DD#${mday}#g"       \
        -e "s#SSSSS#${dartMs}#g"  \

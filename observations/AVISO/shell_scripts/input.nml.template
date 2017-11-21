@@ -1,0 +1,39 @@
+
+&obs_sequence_tool_nml
+   filename_seq_list  = 'olist'
+   filename_out       = '<FILENAMEOUT>'
+   print_only         = .false.
+   gregorian_cal      = .true.
+   first_obs_days     = <FIRSTDAY>
+   first_obs_seconds  = 43201
+   last_obs_days      = <LASTDAY>
+   last_obs_seconds   = 43200
+   edit_copy_metadata = .true.
+    new_copy_metadata = 'observation'
+   edit_qc_metadata   = .true.
+    new_qc_metadata   = 'original QC'
+   min_lon            = <LONGITUDE_WEST>
+   max_lon            = <LONGITUDE_EAST>
+   min_lat            = <LATITUDE_SOUTH>
+   max_lat            = <LATITUDE_NORTH>
+  /
+
+&utilities_nml
+   module_details = .false.
+   write_nml      = 'none'
+  /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.
+  /
+
+&obs_kind_nml
+  /
+
+&location_nml
+  /
+
+&convert_aviso_nml
+   observation_error_std = <OBS_ERR_STD>
+  /
+

@@ -10,7 +10,7 @@ MODULE types_mod
 implicit none
 private 
 
-public :: i4, i8, r4, c4, r8, c8, digits12
+public :: i2, i4, i8, r4, c4, r8, c8, digits12
 public :: PI, DEG2RAD, RAD2DEG, MISSING_R4, MISSING_R8
 public :: MISSING_I, MISSING_DATA
 public :: SECPERDAY
@@ -39,6 +39,7 @@ integer, parameter :: obstypelength  = 32 ! set by compiler/param limits
 ! all real variables are 64bit, ditto for all integer variables.
 !----------------------------------------------------------------------------
 ! These are TJH's favorites
+! integer, parameter :: i2 = SELECTED_INT_KIND(3)
 ! integer, parameter :: i4 = SELECTED_INT_KIND(8)
 ! integer, parameter :: i8 = SELECTED_INT_KIND(17)
 ! integer, parameter :: r4 = SELECTED_REAL_KIND(6,30)
@@ -48,8 +49,10 @@ integer, parameter :: obstypelength  = 32 ! set by compiler/param limits
 
 ! These comply with the CCM4 standard, as far as I can tell.
 
+  integer, parameter :: i2 = SELECTED_INT_KIND(3)
   integer, parameter :: i4 = SELECTED_INT_KIND(8)
   integer, parameter :: i8 = SELECTED_INT_KIND(13)
+
   integer, parameter :: r4 = SELECTED_REAL_KIND(6,30)
   integer, parameter :: c4 = SELECTED_REAL_KIND(6,30)
 ! comment in only one of the following lines, not both.   the first is the default.
