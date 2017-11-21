@@ -580,18 +580,18 @@ Single File I/O:
 - Improved some error messages in location_io_mod and state_structure_mod
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Nov 21 2017 :: 1D obs_diag fix, 1D power forward operator    Revision: 12123 
++ Nov 21 2017 :: 1D obs_diag fix, 1D power forward operator    Revision: 12138
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-- fixed a problem with tutorial section 18 - bad URL.
+- fixed a bad URL reference in tutorial section 18 
 
-- fixed a problem with the 1D version of the observation diagnostics program
-  when trying to run diagnostics on identity observations.
+- fixed a crash with the 1D version of the observation diagnostics program
+  when including identity observations.
 
 - all models with a workshop_setup.csh now build the same set of programs.
   (some/most did not build obs_diag - which is used in the tutorial)
 
-- added a 1D power forward operator.
+- added a 1D obs-to-a-power forward operator.
   
 - updates to the matlab plotting routines for NetCDF observation formats
 
