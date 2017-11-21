@@ -434,12 +434,12 @@ which also controls whether there's any inflation,
 <em>inf_initial_from_restart</em>, and <em>inf_initial</em>,
 as described below.
 Time variation is controlled by 
-<em>inf_sd_initial_from_restart </em>,
-<em>inf_sd_initial</em>,
-<em>inf_sd_lower_bound</em>,
-<em>inf_damping</em>,
-<em>inf_lower_bound</em> and
-<em>inf_upper_bound</em>.            
+<em class=code>inf_sd_initial_from_restart </em>,
+<em class=code>inf_sd_initial</em>,
+<em class=code>inf_sd_lower_bound</em>,
+<em class=code>inf_damping</em>,
+<em class=code>inf_lower_bound</em> and
+<em class=code>inf_upper_bound</em>.            
 
 
 </P> <P>
@@ -447,149 +447,138 @@ In the namelist each entry has two values.
 The first is for Prior inflation and the second is for Posterior inflation.
 </P>
 <dl>
-<dt>
-<em>&amp;filter_nml :: inf_flavor</em><br />
-valid values: 0, 2, 3, 4
-<dd>
-Set the type of Prior and Posterior inflation applied
-to the state vector.  Values mean:
-<table border=0 cellpadding=3 width=100% summary='types of inflation'>
-   <tr><td>0:</td><td> No inflation (Prior and/or Posterior) 
-                       and all other inflation variables are ignored</td></tr>
-   <tr><td>[1:</td><td> Deprecated: Observation space inflation] </td></tr>
-   <tr><td>2:</td><td> Spatially-varying state space inflation </td></tr>
-   <tr><td>3:</td><td> Spatially-uniform state space inflation </td></tr>
-   <tr><td>4:</td><td> Relaxation To Prior Spread (Posterior inflation only) </td></tr>
-</table>
-Spatially-varying state space inflation stores an array of inflation values,
-one for each item in the state vector.  
-If time-evolution is enabled each value can evolve independently.  
-Spatially-uniform state space inflation uses a single inflation value for 
-all items in the state vector.
-If time-evolution is enabled that single value can evolve.
-See <em>inf_sd_*</em> below for control of the time-evolution behavior.
-In practice we recommend starting with no inflation (both values 0).
-Then try inflation type 2 prior inflation and no inflation (0) for posterior.
-WARNING: even if inf_flavor is not 0, inflation can be turned off by
-setting <em>inf_damping</em> to 0.
-<br /> <br />
-<dt>
-<em>&amp;filter_nml :: inf_initial_from_restart</em><br />
-valid values: .true. or .false.
-<dd>
-If true, read the inflation values from an inflation restart file named
-<em class=file>input_{prior,post}inf_mean.nc.</em>
-An initial run could be done to let spatially-varying inflation values 
-evolve in a spinup phase, and then the saved values can be read back in
-and used as fixed values in further runs.  
-Or if time-varying inflation is used, then the restart file from the
-previous job step must be supplied as an input file for the next step.
-<br /> <br />
+   <dt><em class=code>&amp;filter_nml :: inf_flavor</em><br />
+       valid values: 0, 2, 3, 4</dt>
+   <dd>
+   Set the type of Prior and Posterior inflation applied
+   to the state vector.  Values mean:
+   <table border=0 cellpadding=3 width=100% summary='types of inflation'>
+      <tr><td>0:</td><td> No inflation (Prior and/or Posterior) 
+                          and all other inflation variables are ignored</td></tr>
+      <tr><td>[1:</td><td> Deprecated: Observation space inflation] </td></tr>
+      <tr><td>2:</td><td> Spatially-varying state space inflation </td></tr>
+      <tr><td>3:</td><td> Spatially-uniform state space inflation </td></tr>
+      <tr><td>4:</td><td> Relaxation To Prior Spread (Posterior inflation only) </td></tr>
+   </table>
+   Spatially-varying state space inflation stores an array of inflation values,
+   one for each item in the state vector.  
+   If time-evolution is enabled each value can evolve independently.  
+   Spatially-uniform state space inflation uses a single inflation value for 
+   all items in the state vector.
+   If time-evolution is enabled that single value can evolve.
+   See <em>inf_sd_*</em> below for control of the time-evolution behavior.
+   In practice we recommend starting with no inflation (both values 0).
+   Then try inflation type 2 prior inflation and no inflation (0) for posterior.
+   WARNING: even if inf_flavor is not 0, inflation can be turned off by
+   setting <em>inf_damping</em> to 0.</dd><br />
+   
+   <dt><em class=code>&amp;filter_nml :: inf_initial_from_restart</em><br />
+       valid values: .true. or .false.</dt>
+   <dd>
+   If true, read the inflation values from an inflation restart file named
+   <em class=file>input_{prior,post}inf_mean.nc.</em>
+   An initial run could be done to let spatially-varying inflation values 
+   evolve in a spinup phase, and then the saved values can be read back in
+   and used as fixed values in further runs.  
+   Or if time-varying inflation is used, then the restart file from the
+   previous job step must be supplied as an input file for the next step.</dd><br />
+   
+   <dt><em class=code>&amp;filter_nml :: inf_initial</em><br />
+       valid values: real numbers, usually 1.0 or slightly larger</dt>
+   <dd>
+   If not reading in inflation values from a restart file,
+   the initial value to set for the inflation.  Generally
+   we recommend starting with just slightly above 1.0, 
+   maybe 1.02, for a slight amount of initial inflation.</dd><br />
+   
+   <dt><em class=code>&amp;filter_nml :: inf_sd_initial_from_restart</em><br />
+       valid values: .true. or .false.</dt>
+   <dd>
+   If true, read the inflation standard deviation values from an restart file named
+   <em class=file>input_{prior,post}inf_sd.nc.</em>
+   See the comments above about <em class=code>inflation_initial_from_restart</em>.</dd><br />
+   
+   <dt><em class=code>&amp;filter_nml :: inf_sd_initial</em><br />
+       valid values: &le; 0.0 to disable evolution of inflation, &gt; 0.0 otherwise</dt>
+   <dd>
+   The initial value to set for the inflation standard deviation,  
+   IF not reading in inflation standard deviation values from a file.
+   This value (or these values) control whether the inflation values 
+   evolve with time or not.  A negative value or 0. prevents
+   the inflation values from being updated, so they are
+   constant throughout the run.  If positive, the inflation
+   values evolve through time.  
+   We have had good results setting this and <em class=code>inf_sd_lower_bound</em>
+   to 0.6 for large geophysical models.</dd><br />
+   
+   <dt><em class=code>&amp;filter_nml :: inf_sd_lower_bound</em><br />
+       valid values: &le; 0.0 to (eventually) disable evolution of inflation, &gt; 0.0 otherwise</dt>
+   <dd>
+   If the setting of <em class=code>inf_sd_initial</em> is &le; 0
+   (to disable time evolution of inflation) then set
+   this to the same value.  Otherwise, set a lower value
+   which the standard deviation of the inflation cannot fall
+   below.  As the width of the inflation distribution shrinks,
+   this sets a lower bound for the value.  Lower values will
+   let the inflation vary more slowly with time; larger values
+   will allow the inflation to adapt in time more quickly.
+   We have had good results setting this and <em class=code>inf_sd_initial</em>
+   to 0.6 for large geophysical models.
+   It is currently not supported to start with a spatially varying
+   standard deviation, allow the inflation mean to vary with time,
+   but prevent the standard deviation from evolving with time.
+   So in practice, time-varying inflation will result in the
+   inflation standard deviation shrinking to the lower bound
+   set here, and staying there, for all state variables.</dd><br />
+   
+   <dt><em class=code>&amp;filter_nml :: inf_damping</em><br />
+       valid values: 0.0 to 1.0</dt>
+   <dd>
+   Applies to all state-space inflation types, but most frequently
+   used with time-adaptive inflation variants.
+   The difference between the current inflation value and 1.0 
+   is multiplied by this factor before the next assimilation cycle. 
+   So the inflation values are pushed towards 1.0, from above or below
+   (if inf_lower_bound allows inflation values less than 1.0).
+   A value of 0.0 turns all inflation off by forcing the inflation value to 1.0.
+   A value of 1.0 turns damping off by leaving the original inflation value unchanged.
+   We have had good results in large geophysical models using 
+   time- and space-adaptive state-space inflation and setting the
+   damping to a value of 0.9, which damps slowly.</dd><br />
+   
+   <dt><em class=code>&amp;filter_nml :: inf_lower_bound</em><br />
+       valid values: real numbers, usually 1.0 or slightly larger</dt>
+   <dd>
+   If inflation is time-evolving (see <em class=code>inf_sd_*</em>, above),
+   then this sets the lowest value the inflation can evolve to.
+   Setting a number less than one allows for deflation but generally
+   in a well-observed system the ensemble needs more spread and not less.
+   We recommend a setting of 1.0.</dd><br />
+   <!-- KDR; Modify for Moha's improved algorithm -->
+   
+   <dt><em class=code>&amp;filter_nml :: inf_upper_bound</em><br />
+       valid values: real numbers, larger than 1.0 </dt>
+   <dd>
+   If inflation is time-evolving (see <em class=code>inf_sd_*</em>, above),
+   then this sets the largest value the inflation can evolve to.
+   We recommend a setting of 100.0, although if the inflation
+   values reach those levels there is probably a problem
+   with the assimilation.</dd><br />
+   
+   <dt><em class=code>&amp;filter_nml :: inf_deterministic</em><br />
+       valid values: .true. or .false.</dt>
+   <dd>
+   Recommend always using .true..</dd><br />
 </dl>
-<em>&amp;filter_nml :: inf_initial</em><br />
-valid values: real numbers, usually 1.0 or slightly larger
-<dd>
-If not reading in inflation values from a restart file,
-the initial value to set for the inflation.  Generally
-we recommend starting with just slightly above 1.0, 
-maybe 1.02, for a slight amount of initial inflation.
-<br /> <br />
-<dt>
-<em>&amp;filter_nml :: inf_sd_initial_from_restart</em><br />
-valid values: .true. or .false.
-<dd>
-If true, read the inflation standard deviation values from an restart file named
-<em class=file>input_{prior,post}inf_sd.nc.</em>
-See the comments above about <em>inflation_initial_from_restart</em>.
-<br /> <br />
-</dl>
-<dt>
-<em>&amp;filter_nml :: inf_sd_initial</em><br />
-valid values: &le; 0.0 to disable evolution of inflation, > 0.0 otherwise
-<dd>
-The initial value to set for the inflation standard deviation,  
-IF not reading in inflation standard deviation values from a file.
-This value (or these values) control whether the inflation values 
-evolve with time or not.  A negative value or 0. prevents
-the inflation values from being updated, so they are
-constant throughout the run.  If positive, the inflation
-values evolve through time.  
-We have had good results setting this and <em>inf_sd_lower_bound</em>
-to 0.6 for large geophysical models.
-<br /> <br />
-<dt>
-<em>&amp;filter_nml :: inf_sd_lower_bound</em><br />
-valid values: &le; 0.0 to (eventually) disable evolution of inflation, > 0.0 otherwise
-<dd>
-If the setting of <em>inf_sd_initial</em> is &le; 0
-(to disable time evolution of inflation) then set
-this to the same value.  Otherwise, set a lower value
-which the standard deviation of the inflation cannot fall
-below.  As the width of the inflation distribution shrinks,
-this sets a lower bound for the value.  Lower values will
-let the inflation vary more slowly with time; larger values
-will allow the inflation to adapt in time more quickly.
-We have had good results setting this and <em>inf_sd_initial</em>
-to 0.6 for large geophysical models.
-It is currently not supported to start with a spatially varying
-standard deviation, allow the inflation mean to vary with time,
-but prevent the standard deviation from evolving with time.
-So in practice, time-varying inflation will result in the
-inflation standard deviation shrinking to the lower bound
-set here, and staying there, for all state variables.
-<br /> <br />
-<dt>
-<em>&amp;filter_nml :: inf_damping</em><br />
-valid values: 0.0 to 1.0
-<dd>
-Applies to all state-space inflation types, but most frequently
-used with time-adaptive inflation variants.
-The difference between the current inflation value and 1.0 
-is multiplied by this factor before the next assimilation cycle. 
-So the inflation values are pushed towards 1.0, from above or below
-(if inf_lower_bound allows inflation values less than 1.0).
-A value of 0.0 turns all inflation off by forcing the inflation value to 1.0.
-A value of 1.0 turns damping off by leaving the original inflation value unchanged.
-We have had good results in large geophysical models using 
-time- and space-adaptive state-space inflation and setting the
-damping to a value of 0.9, which damps slowly.  
-<br /> <br />
-<dt>
-<em>&amp;filter_nml :: inf_lower_bound</em><br />
-valid values: real numbers, usually 1.0 or slightly larger
-<dd>
-If inflation is time-evolving (see <em>inf_sd_*</em>, above),
-then this sets the lowest value the inflation can evolve to.
-Setting a number less than one allows for deflation but generally
-in a well-observed system the ensemble needs more spread and not less.
-We recommend a setting of 1.0.
-<!-- KDR; Modify for Moha's improved algorithm -->
-<br /> <br />
-<dt>
-<em>&amp;filter_nml :: inf_upper_bound</em><br />
-valid values: real numbers, larger than 1.0 
-<dd>
-If inflation is time-evolving (see <em>inf_sd_*</em>, above),
-then this sets the largest value the inflation can evolve to.
-We recommend a setting of 100.0, although if the inflation
-values reach those levels there is probably a problem
-with the assimilation.
-<br /> <br />
-<dt>
-<em>&amp;filter_nml :: inf_deterministic</em><br />
-valid values: .true. or .false.
-<dd>
-Recommend always using .true..
-<br /> <br />
 
 <P>
 The suggested procedure for testing inflation options 
 is to start without
-any (both <em>inf_flavor</em> values set to 0 and <em>inf_damping</em> > 0.).  
+any (both <em class=code>inf_flavor</em> values set to 0 and <em class=code>inf_damping</em> &gt; 0.).  
 Then enable Prior state space, spatially-varying inflation, with no Posterior
-inflation (set <em>inf_flavor</em> to [2, 0]).  Then try damped
-inflation (set <em>inf_damping</em> to 0.9 and set <em>inf_sd_initial</em>
-and <em>inf_sd_lower_bound</em> to 0.6).  The inflation values and
+inflation (set <em class=code>inf_flavor</em> to [2, 0]).  Then try damped
+inflation (set <em class=code>inf_damping</em> to 0.9 and set <em class=code>inf_sd_initial</em>
+and <em class=code>inf_sd_lower_bound</em> to 0.6).  The inflation values and
 standard deviation are written out to files with 
 <em class=file>_{prior,post}inf_{mean,sd}</em> 
 in their names.
@@ -601,6 +590,32 @@ if values grow much larger than this it usually indicates
 a problem with the assimilation.
 </P> 
 
+<P>
+It is possible to set inflation values in an existing netCDF file by
+using one of the standard NCO utilities like "<em class=program>ncap2</em>"
+on a copy of a restart file.  Inflation mean and sd values
+look exactly like restart values, arranged by variable type like T, U, V, etc.
+</P>
+
+<P>
+Here's an example of using ncap2 to set the T,U and V inf values:
+</P>
+
+<div class=unix>
+<PRE>
+  ncap2 -s 'T=1.0;U=1.0;V=1.0' wrfinput_d01 input_priorinf_mean.nc
+  ncap2 -s 'T=0.6;U=0.6;V=0.6' wrfinput_d01 input_priorinf_sd.nc
+  -or-
+  ncap2 -s 'T(:,:,:)=1.0;U(:,:,:)=1.0;V(:,:,:)=1.0' wrfinput_d01 input_priorinf_mean.nc
+  ncap2 -s 'T(:,:,:)=0.6;U(:,:,:)=0.6;V(:,:,:)=0.6' wrfinput_d01 input_priorinf_sd.nc
+</PRE>
+</div>
+
+<P>
+Some versions of the NCO utilities change the full 3D arrays into a 
+single scalar.  If that's your result (check your output with <tt>ncdump -h</tt>)
+use the alternate syntax or a more recent version of the NCO tools.
+</P>
 
 <A NAME="WhereToModify"></A>
 <H4>Directories expected to be Modified</H4>

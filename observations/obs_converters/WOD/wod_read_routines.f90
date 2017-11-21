@@ -322,7 +322,8 @@ private
 
       read(nf,'(a80)',end=500) xchar
 
-      if ( xchar(1:1) .ne. 'B' .and. xchar(1:1) .ne. 'A' ) then
+      if ( xchar(1:1) .ne. 'B' .and. xchar(1:1) .ne. 'A' .and. &
+           xchar(1:1) .ne. 'C' ) then
 
          !iVERSflag = 1 !- not WOD-2005 format, must be WOD-1998
          write(6, *) 'file not in WOD-2005 format; cannot be read'
@@ -330,7 +331,11 @@ private
          !return
 
       else
-         !iVERSflag = 0 !- WOD-2005 format
+         if ( xchar(1:1) .eq. 'C' ) then
+          !iVERSflag=2   !- WOD-2013 format
+         else
+          !iVERSflag = 0 !- WOD-2005 format
+         endif
       endif
       
 !print *, 'read record'

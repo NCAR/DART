@@ -159,12 +159,15 @@ logical            :: no_output_file     = .false.
 integer            :: print_every_nth_cast = -1
 real(r8)           :: temperature_error  = 0.5  ! degrees C
 real(r8)           :: salinity_error     = 0.5  ! g/kg
+integer            :: start_month        = 1
+integer            :: end_month          = 12
 
 namelist /wod_to_obs_nml/ &
    wod_input_file, wod_input_filelist, wod_out_file,   &
    avg_obs_per_file, debug, max_casts, no_output_file, &
    print_every_nth_cast, print_qc_summary,             &
-   temperature_error, salinity_error, timedebug
+   temperature_error, salinity_error, timedebug,       &
+   start_month, end_month
 
 ! start of executable code
 
@@ -349,6 +352,10 @@ print *, 'opening file ', trim(next_infile)
    if (lono < 0.0_r8) lono = lono + 360.0_r8
    obslon = lono 
    obslat = lato
+   if((obslon < 0.0_r8 .or. obslon > 360.0_r8) .or. (obslat < -90.0_r8 .or. obslat > 90.0_r8)) then
+      print *, 'FSC: longitude (',obslon,') or latitude (',obslat,') is not within range. cycle castloop'
+      goto 20 ! inc counter, cycle castloop
+   endif
 
    if (have_temp) then
       if (ierror(1) == 0) then
@@ -371,6 +378,12 @@ print *, 'opening file ', trim(next_infile)
    if (debug) then
       if (ierror(1) /= 0) print *, 'whole temp cast discarded, ierror == ', ierror(1)
       if (ierror(2) /= 0) print *, 'whole salt cast discarded, ierror == ', ierror(2)
+   endif
+
+   ! the incoming files are yearly collections.  allow this converter to create
+   ! output files which are only partial years by only processing selected months.
+   if (obsmonth < start_month .or. obsmonth > end_month) then
+      goto 20 ! inc counter, cycle castloop
    endif
 
    obsloop: do k = 1, levels

@@ -28,7 +28,7 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
 use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
                              get_obs_def_location, get_obs_def_type_of_obs
 use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs, &
-                             QTY_STATE_VARIABLE
+                             RAW_STATE_VARIABLE
 use     location_mod, only : location_type, get_location, operator(/=), LocationDims
 use time_manager_mod, only : time_type, set_time, get_time, print_time, &
                              print_date, set_calendar_type, get_date, &
@@ -41,7 +41,6 @@ use    utilities_mod, only : open_file, register_module, &
                              find_namelist_in_file, check_namelist_read,       &
                              nc_check, do_nml_file, do_nml_term, finalize_utilities, &
                              next_file, get_next_filename
-                             
 use         sort_mod, only : sort
 use   random_seq_mod, only : random_seq_type, init_random_seq, several_random_gaussians
 
@@ -564,13 +563,15 @@ ObsFileLoop : do ifile=1, Nfiles
          endif
 
          ! Check to see if it is an identity observation.
-         ! Redefine identity observations as flavor = QTY_STATE_VARIABLE
-         !>@todo use get_state_meta_data() to determine exactly. Could then
+         ! Redefine identity observations as flavor = RAW_STATE_VARIABLE
+         !>@todo use get_state_meta_data() to determine state quantity at the index.
+         !> Still have a problem determining what state type best relates
+         !> to the observation kind - but it would allow us to
          !> do this for all models, regardless of dimensionality.
 
          if ( flavor < 0 ) then
             Nidentity = Nidentity + 1
-            flavor = QTY_STATE_VARIABLE
+            flavor = RAW_STATE_VARIABLE
          endif
 
          !--------------------------------------------------------------

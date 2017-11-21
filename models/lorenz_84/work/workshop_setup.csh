@@ -94,6 +94,10 @@ echo 'building filter'
 csh mkmf_filter
 make || exit 5
 
+echo 'building obs_diag'
+csh mkmf_obs_diag
+make || exit 6
+
 echo 'removing the compilation leftovers'
 \rm -f *.o *.mod
 
