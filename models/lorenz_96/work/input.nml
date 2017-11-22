@@ -27,10 +27,6 @@
    silence                    = .false.,
    /
 
-# these don't work yet, but will soon:
-#    input_state_files            = 'filter_input.nc'
-#   output_state_files            = 'filter_output.nc'
-
 &filter_nml
    single_file_in               = .true.,
    input_state_files            = ''
@@ -181,7 +177,7 @@
    trusted_obs           = 'null',
    lonlim1               = 0.00, 0.00, 0.50
    lonlim2               = 1.01, 0.50, 1.01
-   reg_names             = 'whole', 'yin', 'yang'
+   reg_names             = 'whole', 'lower', 'upper'
    create_rank_histogram = .true.,
    outliers_in_histogram = .true.,
    use_zero_error_obs    = .false.,

@@ -599,6 +599,14 @@ Single File I/O:
   and 2013 file formats.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Nov 22 2017 :: minor updates for DA challenge files          Revision: 12144
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- added obs_seq.in.power to the Lorenz 96 directory
+
+- added new obs types to the workshop version of the input.nml assimilation list
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + MMM DD YYYY :: summary of next changes                    $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
