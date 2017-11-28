@@ -333,7 +333,7 @@
 
 &navdas_innov_nml
    innov_file_name   = 'innov.out'
-   ngt_file_name     = ''
+   ngt_file_name     = 'ngt.out'
    obs_seq_in_name   = 'obs_seq.out'
    obs_window = 1800
    /

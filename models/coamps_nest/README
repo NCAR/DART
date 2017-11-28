@@ -62,6 +62,71 @@ a netCDF file.  There are two instances of the state_vector structure
 coamps structure does not actually allocate any space for the state, 
 but does have the variable names we want - except for the nuisance variables.
 
+
+-------------------------------------------------------------------------------
+Mon Nov 13 12:51:13 PST 2017 - conf call with Sasa, Sergey
+
+*) What fields in the HDF5 file are used for restarting - hop test material?
+    which tau do we use comes from ktauf
+
+*) Where do the observations come from? 'Innovations' ... from what?
+
+*) Do you want to use the DART forward operators or the ones defined in obs_def_navdas_mod.f90 - they use non-standard observation types - and there is a clash with the get_expected_altimeter() function
+
+*) time ... what is going on with the 'model_mod: get_dart_time' ... is cdtg always from the convert.nml
+
+*) the default perturb routine needs to be swapped out for the coamps_pert_mod:perturb_state routine
+
+*) go over scripting
+
+*) exner functions ... inflation/perturbation nomenclature ... are these 'mean variables' seems like coamps_intrinsic_mod.f90 defines them based on the standard atmosphere - so they are never changing - is that true?
+
+*) what are assumptions about what needs to be staged to advance coamps till next observation time
+
+*) Meeting with Tim W. indicated the fields in the hdf5 file may be 'unstaggered'.
+   if we update the 'fcstfld' or 'analfld' ... what does coamps use to restart?
+   Do we use the variables in the hdf5 file or do we use the routines based on
+   the input parameters (which are alread in use for the model_interpolate code
+   that takes into account the variable stagger - but get_state_meta_data does not,
+   so the localization distances are off).
+   coamps_interp_mod:extract_neighbors() 
+U(1) is EAST of first mass point, V(1) is NORTH first mass point
+
+*) the coamps_netcdf_mod:nc_write_prognostic_atts() routine writes out stuff I do not believe 
+   to be correct given the staggering uncertainty ... I will remove this as soon as the scripting is done
+
+*) model_mod_check on eddy with PG compiler: -- TEST 2 -- Read and write restart file
+0: DEALLOCATE: memory at (nil) not allocated
+
+
+-------------------------------------------------------------------------------
+Tue Nov 28 09:55:48 PST 2017
+
+Frolov, Dr. Sergey
+Nov 15 (13 days ago)
+
+"Tim,
+In case you want to see an example of the innovation file for this DTG and domain.
+Eddy in /home/nopp/COAMPS_hdf5_files
+ 
+Innovation file innov_a_2013011000
+Some description of this format is in “Innovation Vector Description.pdf”
+However, it is not the exact description. This document is actually for a related system that produces this innovation vector. You can pretty much ignore all the stuff about the radiances.
+ 
+Matlab program to read the file is in rd_ainv.m
+In matlab
+[n ob bk t_bk iv err etc lat lon p vty ity nvp chk dt pf org idp rh_bk] = rd_ainv(fn);"
+
+Tim: updated the instru_list_coamps.inc based on new table (Sergey got me one from Pat Pauley)
+and was able to read the innov_a_2013011000 file. It had instruments not in the .inc file
+and highlighted a problem in the navdas_innov_mod.f90
+I also replaced the calls to 'insert_obs_in_sequence()' with 'add_obs_to_seq()' which
+does not do an exhaustive search through the sequence to insert at proper time. The (optimized) run-time
+went from almost 700 seconds to 14 seconds. Also added the 'ngt' filename to the input.nml.
+'ngt' appears to be something related to vortex locations - should get a much better name ...
+
+
+
 # <next few lines under version control, do not edit>
 # $URL$
 # $Revision$
