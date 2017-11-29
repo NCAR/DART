@@ -7,9 +7,9 @@
       integer, parameter :: mx_nm_instru=126
       integer :: nc(mx_nm_instru)
       integer :: nsat(mx_nm_instru)   !  set to 1 for satellite platforms
-      character(len=16) :: c_label(mx_nm_instru) ,c_rec(mx_nm_instru)
+      character(len=16) :: c_label(mx_nm_instru), c_rec(mx_nm_instru)
       integer :: ival(mx_nm_instru)
-      integer :: m
+      integer :: n
       integer, parameter :: INVALID=999
 
       data(nc(n),c_rec(n),  nsat(n),c_label(n),  ival(n),n=1,mx_nm_instru) &
