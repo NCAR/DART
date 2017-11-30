@@ -21,18 +21,18 @@ use   time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time
                                increment_time, get_time, set_date, operator(-),  &
                                print_date
 use      utilities_mod, only : initialize_utilities, find_namelist_in_file,    &
-                               check_namelist_read, nmlfileunit, do_nml_file,   &
+                               check_namelist_read, nmlfileunit, do_nml_file,  &
                                get_next_filename, error_handler, E_ERR, E_MSG, &
-                               nc_check, find_textfile_dims, do_nml_term, finalize_utilities
+                               nc_check, find_textfile_dims, do_nml_term,      &
+                               finalize_utilities
 use       location_mod, only : VERTISHEIGHT, set_location
-use   obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,       &
-                               static_init_obs_sequence, init_obs, destroy_obs, &
-                               write_obs_seq, init_obs_sequence, get_num_obs,   &
-                               insert_obs_in_seq, destroy_obs_sequence,         &
-                               set_copy_meta_data, set_qc_meta_data, set_qc,    & 
-                               set_obs_values, set_obs_def, insert_obs_in_seq
+use   obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,         &
+                               static_init_obs_sequence, init_obs, destroy_obs,   &
+                               write_obs_seq, init_obs_sequence,                  &
+                               destroy_obs_sequence, set_obs_values, set_obs_def, &
+                               set_copy_meta_data, set_qc, set_qc_meta_data
 use   obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_type_of_obs, &
-                               set_obs_def_error_variance, set_obs_def_location, &
+                               set_obs_def_error_variance, set_obs_def_location,        &
                                set_obs_def_key
 use    obs_def_gps_mod, only : set_gpsro_ref
 use       obs_kind_mod, only : GPSRO_REFRACTIVITY     ! GPSRO_BENDING_ANGLE
@@ -43,10 +43,10 @@ use           netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 
 integer, parameter ::   num_copies = 1,   &   ! number of copies in sequence
