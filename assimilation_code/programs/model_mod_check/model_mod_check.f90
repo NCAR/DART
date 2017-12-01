@@ -340,6 +340,9 @@ if (tests_to_run(5)) then
                                         verbose )
 
    ! test_interpolate_range internally reports interpolation metrics.
+   write(string1, *)'output values on interpolation grid are in'
+   write(string2, *)'check_me_interptest.nc (netcdf) and check_me_interptest.m (matlab)'
+   call print_info_message(string1, string2)
 
    call print_test_message('TEST 5', ending=.true.)
 endif

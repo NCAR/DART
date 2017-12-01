@@ -187,6 +187,7 @@ integer  :: num_groups          = 1
 logical  :: output_forward_op_errors = .false.
 logical  :: output_timestamps        = .false.
 logical  :: trace_execution          = .false.
+logical  :: write_obs_every_cycle    = .false.  ! debug only
 logical  :: silence                  = .false.
 logical  :: distributed_state = .true. ! Default to do state complete forward operators.
 
@@ -296,6 +297,7 @@ namelist /filter_nml/ async,     &
    output_mean,                  &
    output_sd,                    &
    write_all_stages_at_end,      &
+   write_obs_every_cycle,        & 
    allow_missing_clm
 
 ! Are any of the observation types subject to being updated
@@ -1084,6 +1086,16 @@ AdvanceTime : do
          call     trace_message('After  analysis state space output')
 
       endif
+   endif
+
+   ! only intended for debugging when cycling inside filter.
+   ! writing the obs_seq file can be slow - but if filter crashes
+   ! you can get partial results by enabling this flag.
+   if (write_obs_every_cycle) then
+      call trace_message('Before writing in-progress output sequence file')
+      ! Only pe 0 outputs the observation space diagnostic file
+      if(my_task_id() == 0) call write_obs_seq(seq, obs_sequence_out_name)
+      call trace_message('After  writing in-progress output sequence file')
    endif
 
    call trace_message('Near bottom of main loop, cleaning up obs space')
