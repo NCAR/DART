@@ -76,6 +76,7 @@
    trace_execution              = .false.,
    output_timestamps            = .false.,
    output_forward_op_errors     = .false.,
+   write_obs_every_cycle        = .false.,
    silence                      = .false.,
    /
 
