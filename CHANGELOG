@@ -607,6 +607,23 @@ Single File I/O:
 - added new obs types to the workshop version of the input.nml assimilation list
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Dec 01 2017 :: ROMS scripting, debugging aids                Revision: 12166  
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- Added an option to the ROMS model scripting to advance the model ensemble
+members in parallel using a job array.
+
+- Updated the DART_LAB Matlab GUIs to log a history of the settings and
+results.
+
+- Added a debug option to the filter namelist, 'write_obs_every_cycle', 
+to output the full obs_seq.final during each cycle of filter.  
+(Very slow - use only when debugging a filter crash.)
+
+- Allow the test grid in model_mod_check to cross the prime meridian for testing
+longitude interpolation in grids that cross the 360/0 line.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + MMM DD YYYY :: summary of next changes                    $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

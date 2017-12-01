@@ -80,6 +80,7 @@ character(len=metadatalength) :: kind_of_interest
 
 real(r8), allocatable :: lon(:), lat(:), vert(:)
 real(r8), allocatable :: field(:,:,:,:)
+real(r8) :: lonrange_top
 integer :: nlon, nlat, nvert
 integer :: ilon, jlat, kvert, nfailed
 character(len=128) :: ncfilename, txtfilename
@@ -120,10 +121,15 @@ vertcoord = get_location_index(interp_test_vertcoord)
 write( ncfilename,'(a,a)')trim(output_file),'_interptest.nc'
 write(txtfilename,'(a,a)')trim(output_file),'_interptest.m'
 
+! for longitude, allow wrap.
+lonrange_top = interp_test_lonrange(2)
+if (interp_test_lonrange(2) < interp_test_lonrange(1)) &
+   lonrange_top = interp_test_lonrange(2) + 360.0_r8
+
 ! round down to avoid exceeding the specified range
-nlat  = aint(( interp_test_latrange(2) -  interp_test_latrange(1))/interp_test_dlat) + 1
-nlon  = aint(( interp_test_lonrange(2) -  interp_test_lonrange(1))/interp_test_dlon) + 1
-nvert = aint((interp_test_vertrange(2) -  interp_test_vertrange(1))/interp_test_dvert) + 1
+nlat  = aint(( interp_test_latrange(2) - interp_test_latrange(1))  / interp_test_dlat) + 1
+nlon  = aint((            lonrange_top - interp_test_lonrange(1))  / interp_test_dlon) + 1
+nvert = aint((interp_test_vertrange(2) - interp_test_vertrange(1)) / interp_test_dvert) + 1
 
 iunit = open_file(trim(txtfilename), action='write')
 write(iunit,'(''missingvals = '',f12.4,'';'')')MISSING_R8
@@ -139,6 +145,8 @@ nfailed = 0
 
 do ilon = 1, nlon
    lon(ilon) = interp_test_lonrange(1) + real(ilon-1,r8) * interp_test_dlon
+   if (lon(ilon) >= 360.0_r8) lon(ilon) = lon(ilon) - 360.0_r8
+   if (lon(ilon) < 0.0_r8)   lon(ilon) = lon(ilon) + 360.0_r8
    do jlat = 1, nlat
       lat(jlat) = interp_test_latrange(1) + real(jlat-1,r8) * interp_test_dlat
       do kvert = 1, nvert

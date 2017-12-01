@@ -44,12 +44,14 @@ global FORCING;
 global MODEL_SIZE;
 global DELTA_T;
 
+LOG_FILE = strcat(mfilename, '.log');
+
 first_call_to_reset = true;
 
 atts = stylesheet; % get the default fonts and colors
 
-figWidth  = 900;   % in pixels
-figHeight = 800;    % in pixels
+figWidth  = 990;   % in pixels
+figHeight = 820;    % in pixels
 
 %% Create figure Layout
 figure('position', [400 100 figWidth figHeight], ...
@@ -78,6 +80,7 @@ handles.ui_button_Single_Step = uicontrol('Style', 'pushbutton', ...
     'String', 'Advance Model', ...
     'FontName', atts.fontname, ...
     'FontUnits', 'normalized', ...
+    'FontWeight', 'bold', ...
     'FontSize', 0.37, ...
     'Callback', @SingleStep_Callback);
 
@@ -89,6 +92,7 @@ handles.ui_button_Auto_Run = uicontrol('Style', 'pushbutton', ...
     'String', 'Start Auto Run', ...
     'FontName', atts.fontname, ...
     'FontUnits', 'normalized', ...
+    'FontWeight', 'bold', ...
     'FontSize', 0.37, ...
     'Callback', @AutoRun_Callback);
 
@@ -274,7 +278,7 @@ handles.InfPanel = uipanel('Units','Normalized', ...
 handles.ui_text_inflation = uicontrol(handles.InfPanel, ...
     'Style', 'text', ...
     'Units', 'Normalized', ...
-    'Position', [0.12 0.729 0.800 0.270], ...
+    'Position', [0.12 0.8 0.800 0.270], ...
     'String', 'Adaptive Inflation', ...
     'HorizontalAlignment', 'center', ...
     'BackgroundColor', atts.background, ...
@@ -368,16 +372,16 @@ handles.ResetButton = uicontrol('Style', 'pushbutton', ...
 
 %% Button to reset the histograms
 
-handles.ClearHistograms = uicontrol('Style', 'pushbutton', ...
+handles.ClearStats = uicontrol('Style', 'pushbutton', ...
     'Units', 'Normalized', ...
     'Position', [0.55 0.02 0.18 0.070], ...
-    'String', 'Clear Histograms', ...
+    'String', 'Clear Statistics', ...
     'BackgroundColor', 'White', ...
     'FontName', atts.fontname, ...
     'FontUnits', 'normalized', ...
     'FontSize', 0.3, ...
     'FontWeight', 'bold', ...
-    'Callback', @ClearHistograms_Callback);
+    'Callback', @ClearStats_Callback);
 
 %% -----------------------------------------------------------------------------
 %  These appear to be error messages that can be turned on or off.
@@ -484,10 +488,12 @@ h_prior_spread     = plot(handles.prior_spread    , '-.', 'LineWidth',2.0, 'Colo
 h_posterior_spread = plot(handles.posterior_spread, '-.', 'LineWidth',2.0, 'Color', atts.blue );
 
 h = legend('Prior RMSE', 'Posterior RMSE', 'Prior Spread', 'Posterior Spread');
-set(h, 'FontSize', atts.fontsize, 'Position',[0.51 0.601 0.118 0.148], 'EdgeColor', 'w'); % Sadly, these dont seem to scale - even when normalized.
+set(h, 'FontSize', atts.fontsize, 'Position',[0.46 0.62 0.118 0.148], 'EdgeColor', 'w'); % Sadly, these dont seem to scale - even when normalized.
 
 ylabel('RMSE & Spread', 'FontSize', atts.fontsize);
 xlabel('Time',          'FontSize', atts.fontsize);
+
+rms_time = 1;
 
 set(h_prior_rms,        'Visible', 'on')
 set(h_posterior_rms,    'Visible', 'on')
@@ -543,11 +549,41 @@ set(        h_obs  , 'linewidth', 1, 'Color', atts.red, 'Visible', 'off');
 
 h_leg = legend( [handles.h_truth, handles.h_ens, h_obs], 'True State', ...
                 'Ensemble', 'Observations', 'Location', 'NorthEast');
-pos   = get(h_leg, 'Position') + [0.046 0.050 0.021 0.012];
+pos   = get(h_leg, 'Position') + [0.09 0.01 0.021 0.012];
 set(h_leg, 'Position', pos, 'FontSize', atts.fontsize, 'EdgeColor', 'w');
 
 % Plot the localization width
 plot_localization;
+
+
+%% -----------------------------------------------------------------------------
+%  Initiate log file 
+if exist(LOG_FILE, 'file') == 2  
+    logfileid = fopen(LOG_FILE, 'a');
+else
+    logfileid = fopen(LOG_FILE, 'w');
+    fprintf(logfileid, '---------------------------------------------------------------\n');
+    fprintf(logfileid, '-------------------------- DART_LAB ---------------------------\n');
+    fprintf(logfileid, '---------------------------------------------------------------\n\n');
+    fprintf(logfileid, '*********************** %s ************************\n\n', mfilename);
+end
+
+fprintf(logfileid, '\n\nNEW RUN: Starting date and time %s\n', datetime);
+fprintf(logfileid, '========\n\n');
+
+fprintf(logfileid, '# Time step: %.2f (Initial configuration)\n', DELTA_T);
+fprintf(logfileid, '  - Forcing `F` parameter = %.2f\n', TRUE_FORCING);
+fprintf(logfileid, '  - Assimilation type is `%s`\n', handles.filter_type_string);
+fprintf(logfileid, '  - Ensemble size = %d\n', handles.ens_size);
+fprintf(logfileid, '  - Localization = %.2f\n', handles.localization);
+fprintf(logfileid, '  - Adaptive inflation lower bound = %.2f\n', handles.inflation_Min);
+fprintf(logfileid, '  - Adaptive inflation upper bound = %.2f\n', handles.inflation_Max);
+fprintf(logfileid, '  - Adaptive inflation damping factor = %.2f\n', handles.inflation_Damp);
+fprintf(logfileid, '  - Adaptive inflation standard deviation = %.2f\n', handles.inflation_Std);
+fprintf(logfileid, '  - Adaptive inflation standard deviation lower bound = %.2f\n\n', handles.inflation_Std_Min);
+
+fclose(logfileid);
+
 
 %% ----------------------------------------------------------------------
 %  All function below can use the variables defined above.
@@ -619,7 +655,8 @@ plot_localization;
     function Forcing_Callback(~, ~)
         %Called when the slider has been changed
 
-        err = get(handles.ui_slider_error, 'Value');
+        err         = get(handles.ui_slider_error, 'Value');
+        old_forcing = FORCING;
 
         % Round the Value of the slider to the nearest integer
         % Set the Value of the slider to the rounded number. This will
@@ -628,16 +665,24 @@ plot_localization;
         FORCING = round(err);
         set(handles.ui_slider_error, 'Value' , FORCING);
         set(handles.ui_edit_forcing, 'String' , sprintf('%d',FORCING));
+        
+        % Update log file
+        Update_log_file(rms_time, handles.time, handles.prior_rms, handles.prior_spread, ...
+            'Forcing (F)', old_forcing, FORCING);
     end
 
 %% ----------------------------------------------------------------------
 
     function edit_inflation_Std_Callback(~, ~)
         % Is called when the edit_inflation field is changed
+        
+        inflate_std_new = str2double(get(handles.ui_edit_inflation_Std, 'String'));
+        old_inflate_std = handles.inflation_Std;
 
         % Set the inflation value to the update
-        handles.inflation_Std     = str2double(get(handles.ui_edit_inflation_Std, 'String'));
+        handles.inflation_Std     = inflate_std_new;
         handles.inflation_Std_Min = handles.inflation_Std;
+        
         if(not(isfinite(handles.inflation_Std)) || handles.inflation_Std <= 0)
             % After this, only this edit box will work
             turn_off_controls();
@@ -651,6 +696,10 @@ plot_localization;
 
             return
         end
+        
+        % Update log file
+        Update_log_file(rms_time, handles.time, handles.prior_rms, handles.prior_spread, ...
+            'Inflation Std', old_inflate_std, handles.inflation_Std);
 
         % Enable all controls
         turn_on_controls();
@@ -663,9 +712,12 @@ plot_localization;
         % Is called when the edit_inflation field is changed
 
         set(handles.ui_text_inf_damp_warn_print, 'Visible','Off')
+        
+        inflate_damp_new = str2double(get(handles.ui_edit_inflation_Damp, 'String'));
+        old_damping      = handles.inflation_Damp; 
 
         % Set the inflation value to the update
-        handles.inflation_Damp = str2double(get(handles.ui_edit_inflation_Damp, 'String'));
+        handles.inflation_Damp = inflate_damp_new;
 
         if( not(isfinite(handles.inflation_Damp)) || handles.inflation_Damp > 1. )
             % After this, only this edit box will work
@@ -681,6 +733,10 @@ plot_localization;
             return
 
         end
+        
+        % Update log file
+        Update_log_file(rms_time, handles.time, handles.prior_rms, handles.prior_spread, ...
+            'Inflation Damping', old_damping, handles.inflation_Damp);
 
         % Enable all controls
         turn_on_controls();
@@ -691,9 +747,13 @@ plot_localization;
 
     function edit_inflation_Min_Callback(~, ~)
         % Is called when the edit_inflation field is changed
+        
+        inflate_Min_new = str2double(get(handles.ui_edit_inflation_Min, 'String'));
+        old_if_min      = handles.inflation_Min;
 
         % Set the inflation value to the update
-        handles.inflation_Min = str2double(get(handles.ui_edit_inflation_Min, 'String'));
+        handles.inflation_Min = inflate_Min_new;
+        
         if(not(isfinite(handles.inflation_Min)) || handles.inflation_Min < 0. )
             % After this, only this edit box will work
             turn_off_controls();
@@ -707,6 +767,10 @@ plot_localization;
 
             return
         end
+        
+        % Update log file
+        Update_log_file(rms_time, handles.time, handles.prior_rms, handles.prior_spread, ...
+            'Inflation Min', old_if_min, handles.inflation_Min);
 
         % Enable all controls
         turn_on_controls();
@@ -717,9 +781,12 @@ plot_localization;
 
     function edit_localization_Callback(~, ~)
         % Specifies the action for the 'Localization' text box
+        
+        localization_new = str2double(get(handles.ui_edit_localization, 'String'));
+        old_localization = handles.localization;
 
         % Set the localization value to the update
-        handles.localization= str2double(get(handles.ui_edit_localization, 'String'));
+        handles.localization= localization_new;
 
         if(not(isfinite(handles.localization)) || handles.localization <= 0)
 
@@ -734,6 +801,10 @@ plot_localization;
 
             return
         end
+        
+        % Update log file
+        Update_log_file(rms_time, handles.time, handles.prior_rms, handles.prior_spread, ...
+            'Localization', old_localization, handles.localization);
 
         % Enable all controls
         turn_on_controls();
@@ -751,6 +822,7 @@ plot_localization;
 
         % Check to see if the new ensemble size is valid
         new_ens_size = str2double(get(handles.ui_edit_ens_size, 'String'));
+        old_ens_size = handles.ens_size;
 
         if(not(isfinite(new_ens_size)) || new_ens_size < 2 || new_ens_size > 40)
 
@@ -767,7 +839,7 @@ plot_localization;
             return
 
         end
-
+        
         % Enable all controls
         turn_on_controls();
 
@@ -782,6 +854,10 @@ plot_localization;
 
         % Set the ensemble size global value to the update
         handles.ens_size = new_ens_size;
+        
+        % Update log file
+        Update_log_file(rms_time, handles.time, handles.prior_rms, handles.prior_spread, ...
+            'Ensemble size', old_ens_size, handles.ens_size);
 
         % Need to reset the ensemble and the time
         clear handles.true_state
@@ -814,6 +890,9 @@ plot_localization;
 
         %Reset the time text
         set(handles.ui_text_time,'String', 'Time = 1');
+        
+        %Reset the text annotation for RMS
+        rms_time = 1;
 
     end
 
@@ -913,12 +992,33 @@ plot_localization;
            plot_localization;
         end
 
+        % Reset the RMS avaregaing:
+        rms_time = 1;
+        subplot(handles.timeseries); title( ' ' );
+        
+        % Update log file
+        if handles.time > 1
+            Update_log_file(rms_time, handles.time, handles.prior_rms, handles.prior_spread, 'RESET');
+        end
     end
 
 %% ----------------------------------------------------------------------
 
-    function ClearHistograms_Callback(~, ~)
-
+    function ClearStats_Callback(~, ~)
+        
+        % Update log file
+        Update_log_file(rms_time, handles.time, handles.prior_rms, handles.prior_spread, 'Statistics cleared');
+        
+        % Reset to current time step
+        rms_time = handles.time;
+        
+        % Clear title where RMS and Spread are displayed
+        subplot(handles.timeseries)
+        str1 = ['Averaging over steps: (' num2str(rms_time) ':n)'];
+        str2 = 'Prior: error = ---, spread = ---';
+        
+        title({str1, str2});
+        
         % An array to keep track of rank histograms
         handles.prior_rank(    1 : handles.ens_size + 1) = 0;
         handles.posterior_rank(1 : handles.ens_size + 1) = 0;
@@ -927,6 +1027,44 @@ plot_localization;
         cla(handles.prior_rank_histogram)
         cla(handles.post_rank_histogram)
 
+    end
+
+
+%% -----------------------------------------------------------------------------
+
+    function Update_log_file(t1, t2, RMS, AES, info, p1, p2)
+        
+        logfileid = fopen(LOG_FILE, 'a');
+        
+        fprintf(logfileid, '# Time step: %d\n', t2); 
+        fprintf(logfileid, '  >> Statistics over period (%d:%d): avg. Prior RMSE = %.2f, avg. Prior Spread = %.2f\n', ...
+                           t1, t2, mean(RMS(t1:t2)), mean(AES(t1:t2)));
+        
+        if strcmp(info, 'Ensemble size') == 1
+            fprintf(logfileid, '  $$ User input: %s has been changed from %d to %d\n\n', info, p1, p2);
+        elseif strcmp(info, 'Statistics cleared') == 1
+            fprintf(logfileid, '  $$ User input: %s; Histograms, RMS and Spread values have been reset\n\n', info);
+        elseif strcmp(info, 'RESET') == 1
+            fprintf(logfileid, '  $$ User input: %s; Everything has been reset to initial configuration\n\n', info);
+        elseif strcmp(info, 'Assimilation Type') == 1
+            fprintf(logfileid, '  $$ User input: %s has been changed from `%s` to `%s`\n\n', info, p1, p2);
+        else
+            fprintf(logfileid, '  $$ User input: %s has been changed from %.2f to %.2f\n\n', info, p1, p2);
+        end
+
+        fprintf(logfileid, '     Current values of the parameters:\n');
+        fprintf(logfileid, '     - Forcing `F` parameter = %.2f\n', TRUE_FORCING);
+        fprintf(logfileid, '     - Assimilation type is `%s`\n', handles.filter_type_string);
+        fprintf(logfileid, '     - Ensemble size = %d\n', handles.ens_size);
+        fprintf(logfileid, '     - Localization = %.2f\n', handles.localization);
+        fprintf(logfileid, '     - Adaptive inflation lower bound = %.2f\n', handles.inflation_Min);
+        fprintf(logfileid, '     - Adaptive inflation upper bound = %.2f\n', handles.inflation_Max);
+        fprintf(logfileid, '     - Adaptive inflation damping factor = %.2f\n', handles.inflation_Damp);
+        fprintf(logfileid, '     - Adaptive inflation standard deviation = %.2f\n', handles.inflation_Std);
+        fprintf(logfileid, '     - Adaptive inflation standard deviation lower bound = %.2f\n\n', handles.inflation_Std_Min);
+        
+        fclose(logfileid);
+        
     end
 
 %% ----------------------------------------------------------------------
@@ -1018,6 +1156,9 @@ plot_localization;
             plot(handles.prior_rms,    '-' ,'Color',atts.green,'LineWidth',2.0);
             plot(handles.prior_spread, '-.','Color',atts.green,'LineWidth',2.0);
             set (handles.timeseries,'YGrid','on')
+            
+            % Display average RMS of previous run!
+            show_rms_on_plot(handles.prior_rms, handles.prior_spread, [ rms_time, handles.time ]);
 
             % Plot inflation
             subplot(handles.infseries)
@@ -1032,8 +1173,8 @@ plot_localization;
             % Plot the rank histogram for the prior
             subplot(handles.prior_rank_histogram);
             B = bar(temp_rank, 0.7, 'stacked');
-            B(1).FaceColor= atts.blue ; B(1).EdgeColor= 'k';
-            B(2).FaceColor= atts.red  ; B(2).EdgeColor= 'k';
+            B(1).FaceColor= atts.blue   ; B(1).EdgeColor= 'k';
+            B(2).FaceColor= atts.yellow ; B(2).EdgeColor= 'k';
             axis tight
 
         else % We need to do an assimilation.
@@ -1131,8 +1272,8 @@ plot_localization;
             % Plot the rank histogram for the prior
             subplot(handles.post_rank_histogram);
             B = bar(temp_rank, 0.7, 'stacked');
-            B(1).FaceColor= atts.blue ; B(1).EdgeColor= 'k';
-            B(2).FaceColor= atts.red  ; B(2).EdgeColor= 'k';
+            B(1).FaceColor= atts.blue   ; B(1).EdgeColor= 'k';
+            B(2).FaceColor= atts.yellow ; B(2).EdgeColor= 'k';
             axis tight
 
             % Set semaphore to indicate that next step is a model advance
@@ -1170,6 +1311,24 @@ plot_localization;
 
 %% ----------------------------------------------------------------------
 
+    function show_rms_on_plot(prior_rms_vals, prior_aes_vals, ranges)
+        
+        subplot(handles.timeseries)
+        
+        prior_rms_vals_new = prior_rms_vals(ranges(1): ranges(2));
+        prior_aes_vals_new = prior_aes_vals(ranges(2): ranges(2));
+
+        str1 = ['Averaging over steps: (' num2str(ranges(1)) ':' num2str(ranges(2)) ')'];
+        str2 = ['Prior: error = ' ...
+                       sprintf('%.2f', mean(prior_rms_vals_new) ) ', spread = ' ...
+                       sprintf('%.2f', mean(prior_aes_vals_new) )];
+        
+        show_old_rms = title( {str1, str2});
+        set(show_old_rms, 'FontSize', 16)
+    end
+
+%% ----------------------------------------------------------------------
+
     function turn_off_controls()
         % Disables all the buttons,menus, and edit fields
 
@@ -1194,7 +1353,7 @@ plot_localization;
         set(handles.ui_edit_inflation_Min,      'Enable', 'Off');
 
         set(handles.ResetButton,                'Enable', 'Off');
-        set(handles.ClearHistograms,            'Enable', 'Off');
+        set(handles.ClearStats,            'Enable', 'Off');
     end
 
 %% ----------------------------------------------------------------------
@@ -1223,7 +1382,7 @@ plot_localization;
         set(handles.ui_edit_inflation_Min,      'Enable', 'On');
 
         set(handles.ResetButton,                'Enable', 'On');
-        set(handles.ClearHistograms,            'Enable', 'On');
+        set(handles.ClearStats,            'Enable', 'On');
     end
 
 %% -----------------------------------------------------------------------
@@ -1232,7 +1391,15 @@ plot_localization;
         %eventdata refers to the data in the GUI when a radio button in the
         %group is changed
         %Set the filter_type_string to newest radiobutton Value
-        handles.filter_type_string = get(eventdata.NewValue,'String');
+        
+        filter_new = get(eventdata.NewValue,'String');
+        old_filter = handles.filter_type_string; 
+        
+        handles.filter_type_string = filter_new;
+
+        % Update log file
+        Update_log_file(rms_time, handles.time, handles.prior_rms, handles.prior_spread, ...
+            'Assimilation Type', old_filter, handles.filter_type_string);
     end
 
 %% -----------------------------------------------------------------------

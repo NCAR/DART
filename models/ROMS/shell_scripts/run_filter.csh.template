@@ -285,10 +285,8 @@ set OBS_ROOT = $MODname:r
 # a (single) ROMS input file is required to satisfy 'static_init_model()'.
 # Any one will do.
 
-#ln -sf instance_0001/roms_posterior_????_${OCEAN_TIME}.nc MyDAINAME
 ln -sf instance_0001/roms_posterior_????_${DSTART}.nc MyDAINAME
 
-#ls -1 instance_*/${OBS_ROOT}*_${OCEAN_TIME}.nc  >! precomputed_files.txt
 ls -1 instance_*/${OBS_ROOT}*_${DSTART}.nc  >! precomputed_files.txt
 
 ./convert_roms_obs  || exit 2
@@ -301,7 +299,6 @@ ls -1 instance_*/${OBS_ROOT}*_${DSTART}.nc  >! precomputed_files.txt
 #    (make sure all instances of ROMS advanced successfully)
 #    DART (filter) will modify these files in-place.
 
-#ls -1 instance_*/roms_posterior_????_${OCEAN_TIME}.nc  >! restart_files.txt
 ls -1 instance_*/roms_posterior_????_${DSTART}.nc  >! restart_files.txt
 
 ${LAUNCHCMD} ./filter || exit 3
@@ -319,7 +316,6 @@ foreach FILE ( input_*mean.nc     input_*sd.nc \
    if (  -e $FILE ) then
       set FEXT  = $FILE:e
       set FBASE = $FILE:r
-#     \mv -v $FILE ${FBASE}.${OCEAN_TIME}.${FEXT}
       \mv -v $FILE ${FBASE}.${DSTART}.${FEXT}
    else
       echo "$FILE does not exist, no need to take action."
@@ -329,7 +325,6 @@ end
 
 # Tag the observation file with the valid time of the model state.
 
-#\mv -v obs_seq.final             obs_seq.final.${OCEAN_TIME}
 \mv -v obs_seq.final             obs_seq.final.${DSTART}
 
 #==============================================================================

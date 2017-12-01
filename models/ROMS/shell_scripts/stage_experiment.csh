@@ -51,10 +51,9 @@ switch ( $host )
    case eddy
       set DARTDIR = /home/${USER}/DART/rma_trunk
       set ROMSDIR = /home/${USER}/WC12_DART
-      set EXPERIMENTDIR = /proj/thoar_eddy1/roms_cycling_test
-      set EXPERIMENTDIR = /home/thoar/thoar_eddy1/roms_cycling_test
+      set EXPERIMENTDIR = /home/${USER}/thoar_eddy1/roms_cycling_test
       set SRCDIR = /home/amm/ROMS/TRUNK_JAN17/ROMS
-      set SUBSTITUTE = /home/amm/ROMS/TRUNK_JAN17/ROMS/Bin/substitute
+      set SUBSTITUTE = ${SRCDIR}/Bin/substitute
       breaksw
    case ys*
       set DARTDIR = /glade/p/work/${USER}/DART/rma_trunk
@@ -65,7 +64,6 @@ switch ( $host )
    default
       breaksw
 endsw
-
 
 if (-e ${EXPERIMENTDIR} ) then
    echo "ERROR: ${EXPERIMENTDIR} already exists."
@@ -87,14 +85,18 @@ rsync -Cavz ${ROMSDIR}/Ensemble/      ${EXPERIMENTDIR}/      || exit 1
 \cp ${SRCDIR}/External/varinfo.dat    ${EXPERIMENTDIR}/.     || exit 1
 \cp ${ROMSDIR}/oceanM                 ${EXPERIMENTDIR}/.     || exit 1
 
-\cp ${DARTDIR}/observations/obs_converters/ROMS/work/convert_roms_obs  ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/work/input.nml.template                     ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/work/filter                                 ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/shell_scripts/run_multiple_jobs.csh         ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/shell_scripts/cycle.csh.template            ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/shell_scripts/run_filter.csh.template       ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/shell_scripts/advance_ensemble.csh.template ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/assimilation_code/programs/system_simulation/work/sampling_error_correction_table.Lanai.nc sampling_error_correction_table.nc
+\cp ${DARTDIR}/observations/obs_converters/ROMS/work/convert_roms_obs     ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/work/input.nml.template                        ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/work/filter                                    ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/shell_scripts/cycle.csh.template               ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/shell_scripts/submit_multiple_cycles_lsf.csh   ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/shell_scripts/advance_ensemble.csh.template    ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/shell_scripts/run_filter.csh.template          ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/shell_scripts/submit_multiple_jobs_slurm.csh   ${EXPERIMENTDIR}/. || exit 2
+
+set SAMPDIR = assimilation_code/programs/system_simulation/work
+set SAMPFILE = sampling_error_correction_table.Lanai.nc 
+\cp ${DARTDIR}/${SAMPDIR}/${SAMPFILE} sampling_error_correction_table.nc
 
 echo "no preexisting inflation files" >! ${EXPERIMENTDIR}/roms_inflation_cookie
 
@@ -160,7 +162,25 @@ $SUBSTITUTE  s4dvar.in.template  MyMODname   $ROMS_MOD
 $SUBSTITUTE  input.nml.template  Myens_size  $ENSEMBLE_SIZE
 $SUBSTITUTE  input.nml.template  MyDAINAME   $ROMS_DAI
 
-# run_filter.csh and advance_ensemble.csh go together
+# submit_multiple_cycles_lsf.csh and cycle.csh go together.
+
+$SUBSTITUTE  submit_multiple_cycles_lsf.csh  EXPERIMENT_DIRECTORY  $EXPERIMENTDIR
+chmod u+x submit_multiple_cycles_lsf.csh
+
+$SUBSTITUTE  cycle.csh.template  MySUBSTITUTE          $SUBSTITUTE
+$SUBSTITUTE  cycle.csh.template  EXPERIMENT_DIRECTORY  $EXPERIMENTDIR
+$SUBSTITUTE  cycle.csh.template  MyROMS_EXE            $ROMS_EXE
+$SUBSTITUTE  cycle.csh.template  MyROMS_STDIN          $ROMS_STDIN
+$SUBSTITUTE  cycle.csh.template  MyMODname             $ROMS_MOD
+$SUBSTITUTE  cycle.csh.template  MyRSTNAME             $ROMS_RST
+$SUBSTITUTE  cycle.csh.template  MyDAINAME             $ROMS_DAI
+\mv cycle.csh.template cycle.csh
+chmod u+x cycle.csh
+
+# submit_multiple_jobs_slurm.csh, advance_ensemble.csh and run_filter.csh go together.
+
+$SUBSTITUTE  submit_multiple_jobs_slurm.csh  EXPERIMENT_DIRECTORY  $EXPERIMENTDIR
+chmod u+x submit_multiple_jobs_slurm.csh
 
 $SUBSTITUTE  advance_ensemble.csh.template  Myens_size            $ENSEMBLE_SIZE
 $SUBSTITUTE  advance_ensemble.csh.template  MySUBSTITUTE          $SUBSTITUTE
@@ -182,21 +202,6 @@ $SUBSTITUTE  run_filter.csh.template  MyMODname             $ROMS_MOD
 $SUBSTITUTE  run_filter.csh.template  MyROMS_STDIN          $ROMS_STDIN
 \mv run_filter.csh.template run_filter.csh
 chmod u+x run_filter.csh
-
-# cycle.csh and  run_multiple_jobs.csh go together
-
-$SUBSTITUTE  cycle.csh.template  MySUBSTITUTE          $SUBSTITUTE
-$SUBSTITUTE  cycle.csh.template  EXPERIMENT_DIRECTORY  $EXPERIMENTDIR
-$SUBSTITUTE  cycle.csh.template  MyROMS_EXE            $ROMS_EXE
-$SUBSTITUTE  cycle.csh.template  MyROMS_STDIN          $ROMS_STDIN
-$SUBSTITUTE  cycle.csh.template  MyMODname             $ROMS_MOD
-$SUBSTITUTE  cycle.csh.template  MyRSTNAME             $ROMS_RST
-$SUBSTITUTE  cycle.csh.template  MyDAINAME             $ROMS_DAI
-\mv cycle.csh.template cycle.csh
-chmod u+x cycle.csh
-
-$SUBSTITUTE  run_multiple_jobs.csh  EXPERIMENT_DIRECTORY  $EXPERIMENTDIR
-chmod u+x run_multiple_jobs.csh
 
 set member = 1
 while ( ${member} <= ${ENSEMBLE_SIZE} )
@@ -272,7 +277,11 @@ to change or set to impact the performance of the assimilation.
 #--------------------------------------------------------------------------
 
 After these files are confirmed, it should be possible to
-run the ${EXPERIMENTDIR}/cycle.csh script.
+run any of these scripts in ${EXPERIMENTDIR} :
+   cycle.csh
+   run_filter.csh
+   submit_multiple_jobs_slurm.csh
+.
 
 ENDOFFILE
 
