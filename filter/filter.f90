@@ -103,6 +103,7 @@ real(r8) :: input_qc_threshold  = 3.0_r8
 logical  :: output_forward_op_errors = .false.
 logical  :: output_timestamps        = .false.
 logical  :: trace_execution          = .false.
+logical  :: write_obs_every_cycle = .false.  ! debug only
 logical  :: silence                  = .false.
 
 character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
@@ -143,7 +144,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
    inf_output_restart, inf_deterministic, inf_in_file_name, inf_damping,            &
    inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial,              &
    inf_lower_bound, inf_upper_bound, inf_sd_lower_bound, output_inflation,          &
-   silence
+   write_obs_every_cycle, silence
 
 
 !----------------------------------------------------------------
@@ -736,6 +737,16 @@ AdvanceTime : do
    ! If observation space inflation, output the diagnostics
    if(do_obs_inflate(prior_inflate) .and. my_task_id() == 0) &
       call output_inflate_diagnostics(prior_inflate, curr_ens_time)
+
+   ! only intended for debugging when cycling inside filter.
+   ! writing the obs_seq file can be slow - but if filter crashes
+   ! you can get partial results by enabling this flag.
+   if (write_obs_every_cycle) then
+      call trace_message('Before writing in-progress output sequence file')
+      ! Only pe 0 outputs the observation space diagnostic file
+      if(my_task_id() == 0) call write_obs_seq(seq, obs_sequence_out_name)
+      call trace_message('After  writing in-progress output sequence file')
+   endif
 
    call trace_message('Near bottom of main loop, cleaning up obs space')
    ! Deallocate storage used for keys for each set

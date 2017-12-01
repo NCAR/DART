@@ -10,25 +10,22 @@ program filter
 use types_mod,            only : r8, missing_r8, metadatalength
 use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,                  &
                                  get_obs_from_key, set_copy_meta_data, get_copy_meta_data,   &
-                                 get_obs_def, get_time_range_keys, set_obs_values, set_obs,  &
-                                 write_obs_seq, get_num_obs, get_obs_values, init_obs,       &
-                                 assignment(=), get_num_copies, get_qc, get_num_qc, set_qc,  &
+                                 get_obs_def, get_time_range_keys, write_obs_seq,            &
+                                 get_obs_values, init_obs, set_qc_meta_data, get_expected_obs,&
+                                 assignment(=), get_num_copies, get_qc, get_num_qc,          &
                                  static_init_obs_sequence, destroy_obs, read_obs_seq_header, &
-                                 set_qc_meta_data, get_expected_obs, get_first_obs,          &
-                                 get_obs_time_range, delete_obs_from_seq, delete_seq_head,   &
-                                 delete_seq_tail, replace_obs_values, replace_qc,            &
-                                 destroy_obs_sequence, get_qc_meta_data, add_qc
-use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
-                                 get_obs_kind
+                                 delete_seq_head, delete_seq_tail, replace_obs_values, add_qc,&
+                                 destroy_obs_sequence, get_qc_meta_data, replace_qc
+use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance, get_obs_def_time
 use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), operator(>),   &
                                  operator(-), print_time
 use utilities_mod,        only : register_module,  error_handler, E_ERR, E_MSG, E_DBG,       &
-                                 initialize_utilities, logfileunit, nmlfileunit, timestamp,  &
+                                 logfileunit, nmlfileunit, timestamp,                        &
                                  do_output, find_namelist_in_file, check_namelist_read,      &
                                  open_file, close_file, do_nml_file, do_nml_term
 use assim_model_mod,      only : static_init_assim_model, get_model_size,                    &
                                  netcdf_file_type, init_diag_output, finalize_diag_output,   & 
-                                 aoutput_diagnostics, ens_mean_for_model, end_assim_model
+                                 ens_mean_for_model, end_assim_model
 use assim_tools_mod,      only : filter_assim, set_assim_tools_trace, get_missing_ok_status
 use obs_model_mod,        only : move_ahead, advance_state, set_obs_model_trace
 use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager,                &
@@ -36,10 +33,10 @@ use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager,   
                                  all_vars_to_all_copies, all_copies_to_all_vars,             &
                                  read_ensemble_restart, write_ensemble_restart,              &
                                  compute_copy_mean, compute_copy_mean_sd,                    &
-                                 compute_copy_mean_var, duplicate_ens, get_copy_owner_index, &
+                                 compute_copy_mean_var, get_copy_owner_index,                &
                                  get_ensemble_time, set_ensemble_time, broadcast_copy,       &
-                                 prepare_to_read_from_vars, prepare_to_write_to_vars, prepare_to_read_from_copies,    &
-                                 prepare_to_write_to_copies, get_ensemble_time, set_ensemble_time,    &
+                                 prepare_to_read_from_vars, prepare_to_write_to_vars,        &
+                                 prepare_to_read_from_copies, get_ensemble_time, set_ensemble_time,&
                                  map_task_to_pe,  map_pe_to_task, prepare_to_update_copies
 use adaptive_inflate_mod, only : adaptive_inflate_end, do_varying_ss_inflate,                &
                                  do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
@@ -106,6 +103,7 @@ real(r8) :: input_qc_threshold  = 3.0_r8
 logical  :: output_forward_op_errors = .false.
 logical  :: output_timestamps        = .false.
 logical  :: trace_execution          = .false.
+logical  :: write_obs_every_cycle = .false.  ! debug only
 logical  :: silence                  = .false.
 
 character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
@@ -146,7 +144,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
    inf_output_restart, inf_deterministic, inf_in_file_name, inf_damping,            &
    inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial,              &
    inf_lower_bound, inf_upper_bound, inf_sd_lower_bound, output_inflation,          &
-   silence
+   write_obs_every_cycle, silence
 
 ! FIXME: this belongs someplace else.
 ! Are any of the observation types subject to being updated
@@ -744,6 +742,16 @@ AdvanceTime : do
    if(do_obs_inflate(prior_inflate) .and. my_task_id() == 0) &
       call output_inflate_diagnostics(prior_inflate, curr_ens_time)
 
+   ! only intended for debugging when cycling inside filter.
+   ! writing the obs_seq file can be slow - but if filter crashes
+   ! you can get partial results by enabling this flag.
+   if (write_obs_every_cycle) then
+      call trace_message('Before writing in-progress output sequence file')
+      ! Only pe 0 outputs the observation space diagnostic file
+      if(my_task_id() == 0) call write_obs_seq(seq, obs_sequence_out_name)
+      call trace_message('After  writing in-progress output sequence file')
+   endif
+
    call trace_message('Near bottom of main loop, cleaning up obs space')
    ! Deallocate storage used for keys for each set
    deallocate(keys)
@@ -1231,7 +1239,7 @@ if (do_output()) then
          'Reading in initial condition/restart data for all ensemble members from file(s)')
    else
       call error_handler(E_MSG,'filter_read_restart:', &
-         'Reading in a single ensemble and perturbing data for the other ensemble members')
+         'Reading in a single member and perturbing data for the other ensemble members')
    endif
 endif
 

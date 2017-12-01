@@ -48,6 +48,7 @@
    output_inflation         = .true.,
    output_timestamps        = .false.,
    trace_execution          = .false.,
+   write_obs_every_cycle    = .false.,
    silence                  = .false.,
 
    inf_flavor                  = 2,                       0,

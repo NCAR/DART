@@ -26,6 +26,7 @@
    output_timestamps        = .false.,
    output_inflation         = .true.,
    trace_execution          = .false.,
+   write_obs_every_cycle    = .false.,
    silence                  = .false.,
 
    inf_flavor                  = 0,                       0,
