@@ -43,6 +43,9 @@ else if ($?SLURM_JOB_ID) then
    set    NODELIST = $SLURM_NODELIST
    set   LAUNCHCMD = "mpirun -np $SLURM_NTASKS -bind-to core"
 else if ($?PBS_O_WORKDIR) then
+   set     JOBNAME = 
+   set       JOBID = 
+   set    NODELIST = 
    set   LAUNCHCMD = "mpirun -np $SLURM_NTASKS -bind-to core"
 else
    set     JOBNAME = roms_filter

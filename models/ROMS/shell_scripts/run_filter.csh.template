@@ -67,6 +67,8 @@ else if ($?SLURM_JOB_ID) then
 
 else if ($?PBS_O_WORKDIR) then
 
+put something in here 
+
 else
 
    set ORIGINALDIR = `pwd`

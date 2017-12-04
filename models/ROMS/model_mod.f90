@@ -140,6 +140,7 @@ character(len=512) :: string1, string2, string3
 logical, save :: module_initialized = .false.
 
 ! things which can/should be in the model_nml
+!>@todo FIXME ... replace remaining references to VERTISHEIGHT with vert_localization_coord
 logical  :: output_state_vector          = .false.
 integer  :: assimilation_period_days     = 1
 integer  :: assimilation_period_seconds  = 0
@@ -300,19 +301,19 @@ end subroutine get_state_meta_data
 !> @param istatus interpolation status ... 0 == success, /=0 is a failure
 !>
 
-subroutine model_interpolate(state_handle, ens_size, location, obs_type, interp_val, istatus)
+subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
 
- type(ensemble_type), intent(in) :: state_handle
- integer,             intent(in) :: ens_size
- type(location_type), intent(in) :: location
- integer,             intent(in) :: obs_type
- integer,            intent(out) :: istatus(ens_size)
- real(r8),           intent(out) :: interp_val(ens_size) !< array of interpolated values
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
+type(location_type), intent(in)  :: location
+integer,             intent(in)  :: obs_type
+real(r8),            intent(out) :: expected_obs(:)
+integer,             intent(out) :: istatus(:)
 
 if ( .not. module_initialized ) call static_init_model
 
 ! Successful istatus is 0
-interp_val = MISSING_R8
+expected_obs = MISSING_R8
 istatus = 99
 
 write(string1,*)'model_interpolate should not be called.'
@@ -1009,7 +1010,7 @@ MyLoop : do i = 1, MAX_STATE_VARIABLES
    ! Make sure DART kind is valid
 
    if( get_index_for_quantity(dartstr) < 0 ) then
-      write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
+      write(string1,'(''there is no quantity <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
       call error_handler(E_ERR,'parse_variable_input:',string1,source,revision,revdate)
    endif
 

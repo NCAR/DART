@@ -87,6 +87,8 @@ if ($?LS_SUBCWD) then
 
 else if ($?PBS_O_WORKDIR) then
 
+   put something in here
+
 else if ($?SLURM_JOB_ID) then
 
    set ORIGINALDIR = $SLURM_SUBMIT_DIR
@@ -109,7 +111,6 @@ else
    set       JOBID = $$
    set     MYQUEUE = Interactive
    set      MYHOST = $host
-   set      TASKID = 1
    set      NTASKS = 1
    set   LAUNCHCMD = "aprun -n $NTASKS"
 
