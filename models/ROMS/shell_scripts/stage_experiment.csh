@@ -47,20 +47,27 @@
 #         because that's where I built my ROMS and I'm using the
 #         default forcing/data files.
 
-switch ( $host )
+switch ("`hostname`")
    case eddy
       set DARTDIR = /home/${USER}/DART/rma_trunk
       set ROMSDIR = /home/${USER}/WC12_DART
-      set EXPERIMENTDIR = /home/${USER}/thoar_eddy1/roms_cycling_test
-      set SRCDIR = /home/amm/ROMS/TRUNK_JAN17/ROMS
+      set  SRCDIR = /home/amm/ROMS/TRUNK_JAN17/ROMS
       set SUBSTITUTE = ${SRCDIR}/Bin/substitute
+      set EXPERIMENTDIR = /home/${USER}/thoar_eddy1/roms_cycling_test
+      breaksw
+   case ch*
+      set DARTDIR = /glade/p/work/${USER}/DART/rma_trunk
+      set ROMSDIR = /glade/p/work/${USER}/roms/WC12
+      set  SRCDIR = /glade/p/work/${USER}/roms/trunk/ROMS
+      set SUBSTITUTE = ${SRCDIR}/Bin/substitute
+      set EXPERIMENTDIR = /glade/scratch/${USER}/roms_cheyenne_test
       breaksw
    case ys*
       set DARTDIR = /glade/p/work/${USER}/DART/rma_trunk
-      set ROMSDIR = /glade/p/work/${USER}/roms/test
+      set ROMSDIR = /glade/p/work/${USER}/roms/WC12
+      set  SRCDIR = /glade/p/work/${USER}/roms/trunk/ROMS
+      set SUBSTITUTE = ${SRCDIR}/Bin/substitute
       set EXPERIMENTDIR = /glade/scratch/${USER}/roms_cycling_test
-      set SRCDIR = 
-      set SUBSTITUTE = /glade/p/work/${USER}/roms/trunk/ROMS/Bin/substitute
       breaksw
    default
       breaksw

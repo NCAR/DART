@@ -1097,14 +1097,20 @@ if (present(myvarid)) myvarid = VarID
 ! assume gregorian calendar unless there's a calendar attribute saying elsewise
 rc = nf90_get_att(ncid, VarID, 'calendar', calendarstring)
 if (rc /= nf90_noerr) calendarstring = 'gregorian'
-if (present(calendar)) calendar = trim(calendarstring)
 
-if (trim(calendarstring) /= 'gregorian') then
+if (index(calendarstring,'gregorian') == 0) then
    write(string1,*)'expecting '//trim(var_name)//' calendar of "gregorian"'
    write(string2,*)'got '//trim(calendarstring)
+   write(string3,*)'from file "'//trim(filename)//'"'
    call error_handler(E_MSG,'get_time_information:', string1, &
              source, revision, revdate, text2=string2, text3=string3)
+else
+   ! coerce all forms of gregorian to the one DART supports
+   ! 'gregorian_proleptic' needs to be changed, for example.
+   calendarstring = 'gregorian'
 endif
+
+if (present(calendar)) calendar = trim(calendarstring)
 
 if (present(last_time) .or. present(origin_time) .or. present(all_times)) then
 
@@ -1113,6 +1119,7 @@ if (present(last_time) .or. present(origin_time) .or. present(all_times)) then
 
    ! We need to set the calendar to interpret the time values
    ! do we need to preserve the original calendar setting if there is one?
+
    call set_calendar_type( trim(calendarstring) )
 
    ! Make sure the calendar is expected form

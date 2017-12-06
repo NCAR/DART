@@ -7,19 +7,36 @@
 # $Id$
 #
 #=============================================================================
-# This block of directives constitutes the preamble for the LSF queuing system
 #
-# the normal way to submit to the queue is:    bsub < cycle.csh
 #
-# an explanation of the most common directives follows:
-# -J Job_name
-# -o STDOUT_filename
-# -e STDERR_filename
-# -P account_code_number
-# -q queue    cheapest == [standby, economy, (regular,debug), premium] == $$$$
-# -n number of MPI processes (not nodes)
-# -W hh:mm  wallclock time (required on some systems)
+#SBATCH --ignore-pbs
+#SBATCH -l nodes=1:ppn=16
+#SBATCH --ntasks=1
+#SBATCH --ntasks-per-node=16
+#SBATCH --time=00:01:00
+#SBATCH -A P86850054
+#SBATCH -p dav
+#SBATCH -e testslurm.%j.err
+#SBATCH -o testslurm.%j.out
+#SBATCH --mail-type=END
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-user=$USER@ucar.edu
+#
 #=============================================================================
+#
+#
+#PBS -N roms_cycle
+#PBS -e roms_cycle.err
+#PBS -o roms_cycle.log
+#PBS -l select=1:ncpus=16:mpiprocs=16
+#PBS -l walltime=00:10:00
+#PBS -A P86850054
+#PBS -q economy
+#PBS -r n
+#
+#=============================================================================
+#
+#
 #BSUB -J roms_cycle
 #BSUB -o roms_cycle.%J.log
 #BSUB -P P86850054
@@ -28,68 +45,12 @@
 #BSUB -R "span[ptile=16]"
 #BSUB -W 1:00
 #BSUB -N -u ${USER}@ucar.edu
-#
-#=============================================================================
-# This block of directives constitutes the preamble for the PBS queuing system
-# Turns out SLURM (in particular 'sbatch') recognizes PBS directives, so we
-# don't need two sets of directives.
-# the normal way to submit with pbs:    qsub   cycle.csh
-# the normal way to submit with slurm:  sbatch cycle.csh
-#
-# an explanation of the most common directives follows:
-# -N     Job name
-# -r n   Declare job non-rerunable
-# -e <arg>  filename for standard error
-# -o <arg>  filename for standard out
-# -q <arg>   Queue name (small, medium, long, verylong)
-# -l nodes=xx:ppn=2   requests BOTH processors on the node. On both bangkok
-#                     and calgary, there is no way to 'share' the processors
-#                     on the node with another job, so you might as well use
-#                     them both. (ppn == Processors Per Node)
-#=============================================================================
-#PBS -N roms_cycle
-#PBS -e roms_cycle.err
-#PBS -o roms_cycle.log
-#PBS -l nodes=1:ppn=16
-#PBS -r n
-#
-#=============================================================================
-# Important things to know about slurm:
-#
-# sinfo     information about the whole slurm system
-# squeue    information about running jobs
-# sbatch    submitting a job
-# scancel   killing a job
-#
-# specifying the run-time limit with slurm:
-# --time=10                10 minutes
-# --time=10:00             10 minutes and no seconds - really
-# --time=2:00:00           2 hours
-# --time=3-1:23:45         3 days, 1 hour, 23 minutes and 45 seconds
-#==========================================================================
-#SBATCH --time=01:00:00
-
-cd EXPERIMENT_DIRECTORY
 
 #=========================================================================
 # STEP 0: figure out the platform-specific nuances.
 #=========================================================================
 
-if ($?LS_SUBCWD) then
-
-   set  ORIGINALDIR = $LS_SUBCWD
-   set      JOBNAME = $LSB_JOBNAME
-   set        JOBID = $LSB_JOBID
-   set      MYQUEUE = $LSB_QUEUE
-   set       MYHOST = $LSB_SUB_HOST
-   set       NTASKS = 
-   set    LAUNCHCMD = "mpirun.lsf"
-
-else if ($?PBS_O_WORKDIR) then
-
-   put something in here
-
-else if ($?SLURM_JOB_ID) then
+if ($?SLURM_JOB_ID) then
 
    set ORIGINALDIR = $SLURM_SUBMIT_DIR
    set     JOBNAME = $SLURM_JOB_NAME
@@ -99,10 +60,25 @@ else if ($?SLURM_JOB_ID) then
    set      NTASKS = $SLURM_NTASKS
    set   LAUNCHCMD = "mpirun -np $NTASKS -bind-to core"
 
-   echo "SLURM_JOB_NUM_NODES = ${SLURM_JOB_NUM_NODES}"
-   echo "SLURM_JOB_NODELIST  = ${SLURM_JOB_NODELIST}"
-   echo "SLURM_NNODES        = ${SLURM_NNODES}"
-   echo "SLURM_NODELIST      = ${SLURM_NODELIST}"
+else if ($?PBS_O_WORKDIR) then
+
+   set ORIGINALDIR = $PBS_O_WORKDIR
+   set     JOBNAME = $PBS_JOBNAME
+   set       JOBID = $PBS_JOBID
+   set     MYQUEUE = $PBS_QUEUE
+   set    NUMNODES = `cat ${PBS_NODEFILE} | wc -l`
+   set      NTASKS = `echo "${NCPUS} * ${NUMNODES}" | bc`
+   set   LAUNCHCMD = "mpiexec_mpt"
+
+else if ($?LS_SUBCWD) then
+
+   set  ORIGINALDIR = $LS_SUBCWD
+   set      JOBNAME = $LSB_JOBNAME
+   set        JOBID = $LSB_JOBID
+   set      MYQUEUE = $LSB_QUEUE
+   set       MYHOST = $LSB_SUB_HOST
+   set       NTASKS = 
+   set    LAUNCHCMD = "mpirun.lsf"
 
 else
 
@@ -116,11 +92,11 @@ else
 
 endif
 
+cd EXPERIMENT_DIRECTORY
+
 #=========================================================================
 # STEP 1: Advance the ocean ensemble ... one after another.
 #=========================================================================
-
-set DSTART = 37623
 
 @ instance = 0
 foreach INSTANCE_DIRECTORY ( instance_???? )
@@ -133,12 +109,19 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
 
    echo "advancing instance $instance at ..."`date`
 
+   # get the DSTART time so we can get the right observation file 
+   set OCEAN_TIME = `ncdump -v ocean_time *ini_????.nc | grep "ocean_time =" | tail -1`
+   set TIME_SEC = `echo $OCEAN_TIME | grep -oE '[[:digit:]]+'`
+   set DSTART_FLOAT = `echo "scale=6; $TIME_SEC / 86400.0" | bc `
+   set DSTART = `echo "scale=0; $DSTART_FLOAT / 1" | bc `
+
    \cp ../s4dvar.in.template s4dvar.in
    set OBS_PREF = ../Obs/obs
    set NEW_OBS     = `printf %s_%d.nc ${OBS_PREF} $DSTART`
    MySUBSTITUTE s4dvar.in MyOBSname   $NEW_OBS
 
-   ${LAUNCHCMD} ../MyROMS_EXE MyROMS_STDIN >& log_$instance.txt
+   # Advance the model
+   ${LAUNCHCMD} ../MyROMS_EXE MyROMS_STDIN >& log_$instance.txt || exit 1
 
    # Check for successful completion - log file should NOT have something like:
    # Blowing-up: Saving latest model state into  RESTART file
@@ -160,10 +143,12 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
 
    # The ROMS restart file will be treated as the DART prior.
    # Create a ROMS POSTERIOR file that will be updated by DART and
-   # tag the output with the model time.
+   # tag the output with the (new) model time.
 
-   set DSTART_STRING = `ncdump -v dstart ${DAI_FILE} | grep '^ dstart = '`
-   set DSTART = `echo $DSTART_STRING | sed -e "s#[=;a-z_ ]##g"`
+   set OCEAN_TIME = `ncdump -v ocean_time ${DAI_FILE} | grep "ocean_time =" | tail -1`
+   set TIME_SEC = `echo $OCEAN_TIME | grep -oE '[[:digit:]]+'`
+   set DSTART_FLOAT = `echo "scale=6; $TIME_SEC / 86400.0" | bc `
+   set DSTART = `echo "scale=0; $DSTART_FLOAT / 1" | bc `
 
    set ROMS_PRIOR     = `printf %s_%04d_%d.nc ${RST_ROOT} $instance $DSTART`
    set ROMS_POSTERIOR = `printf roms_posterior_%04d_%d.nc $instance $DSTART`
