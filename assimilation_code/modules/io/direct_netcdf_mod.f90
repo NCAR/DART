@@ -1114,11 +1114,17 @@ COPIES: do c = 1, ens_size
 
    endif
 
-   ! Reading of the state variables is broken up into
-   VARIABLE_LOOP: do dummy_loop = 1, num_state_variables
-      if (start_var > num_state_variables) exit ! instead of using do while loop
+   ! Read the state variables into a buffer to distribute.
+   ! If possible, reading all the variables into a single buffer 
+   ! (i.e. a large block_size) is preferable to reading variables
+   ! into multiple buffers. Huge DART states may require using
+   ! the same buffer multiple times.
 
-      ! calculate how many variables will be read
+   VARIABLE_LOOP: do dummy_loop = 1, num_state_variables
+
+      if (start_var > num_state_variables) exit VARIABLE_LOOP
+
+      ! calculate how many variables will be read into one buffer
       if (read_var_by_var) then 
          end_var = start_var
       else
