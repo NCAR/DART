@@ -31,9 +31,9 @@
 #SBATCH --ntasks=16
 #SBATCH --time=10:00
 #SBATCH --exclude=node04
-#SBATCH --job-name=roms_filter
-#SBATCH --output=roms_filter-%A-%a.out
-#SBATCH --error=roms_filter-%A-%a.err
+#SBATCH --job-name=roms_advance
+#SBATCH --output=roms_advance-%A-%a.out
+#SBATCH --error=roms_advance-%A-%a.err
 #
 #==========================================================================
 # PBS directives                	qsub test_batch.csh
@@ -44,14 +44,14 @@
 #PBS -q economy
 #PBS -l select=1:ncpus=16:mpiprocs=16
 #PBS -A P86850054
-#PBS -N roms_filter
+#PBS -N roms_advance
 #
 #==========================================================================
 # LSF directives 			bsub < advance_ensemble.csh
 # 					bjobs
 # 					bkill <jobnumber>
-#BSUB -J roms_filter[1-Myens_size]
-#BSUB -o roms_filter.%J.%I.log
+#BSUB -J roms_advance[1-Myens_size]
+#BSUB -o roms_advance.%J.%I.log
 #BSUB -N -u ${USER}@ucar.edu
 #BSUB -q small
 #BSUB -n 1

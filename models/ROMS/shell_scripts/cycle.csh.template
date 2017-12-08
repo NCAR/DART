@@ -16,8 +16,8 @@
 #SBATCH --time=00:10:00
 #SBATCH -A P86850054
 #SXXXXX -p dav
-#SBATCH -e testslurm.%j.err
-#SBATCH -o testslurm.%j.out
+#SBATCH -e roms_cycle.%j.err
+#SBATCH -o roms_cycle.%j.out
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=$USER@ucar.edu
@@ -38,8 +38,6 @@
 # LSF directives 			bsub < advance_ensemble.csh
 # 					bjobs
 # 					bkill <jobnumber>
-#
-#
 #BSUB -J roms_cycle
 #BSUB -o roms_cycle.%J.log
 #BSUB -P P86850054
