@@ -99,29 +99,22 @@ cd ${EXPERIMENTDIR}
 
 rsync -Cavz ${ROMSDIR}/Obs/                 ${EXPERIMENTDIR}/Obs/  || exit 1
 
-\cp ${SRCDIR}/External/varinfo.dat          ${EXPERIMENTDIR}/.     || exit 1
-\cp ${ROMSDIR}/oceanM                       ${EXPERIMENTDIR}/.     || exit 1
-\cp ${ROMSDIR}/Ensemble/ocean.in.template   ${EXPERIMENTDIR}/.     || exit 1
-\cp ${ROMSDIR}/Ensemble/s4dvar.in.template  ${EXPERIMENTDIR}/.     || exit 1
-
-\cp ${DARTDIR}/observations/obs_converters/ROMS/work/convert_roms_obs     \
-    ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/work/input.nml.template                        \
-    ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/work/filter                                    \
-    ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/shell_scripts/get_ocean_time.csh               \
-    ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/shell_scripts/cycle.csh.template               \
-    ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/shell_scripts/submit_multiple_cycles_lsf.csh   \
-    ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/shell_scripts/advance_ensemble.csh.template    \
-    ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/shell_scripts/run_filter.csh.template          \
-    ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/shell_scripts/submit_multiple_jobs_slurm.csh   \
-    ${EXPERIMENTDIR}/. || exit 2
+foreach FILE ( \
+    ${ROMSDIR}/oceanM                                                     \
+    ${ROMSDIR}/Ensemble/ocean.in.template                                 \
+    ${ROMSDIR}/Ensemble/s4dvar.in.template                                \
+    ${SRCDIR}/External/varinfo.dat                                        \
+    ${DARTDIR}/observations/obs_converters/ROMS/work/convert_roms_obs     \
+    ${DARTDIR}/models/ROMS/work/input.nml.template                        \
+    ${DARTDIR}/models/ROMS/work/filter                                    \
+    ${DARTDIR}/models/ROMS/shell_scripts/get_ocean_time.csh               \
+    ${DARTDIR}/models/ROMS/shell_scripts/cycle.csh.template               \
+    ${DARTDIR}/models/ROMS/shell_scripts/submit_multiple_cycles_lsf.csh   \
+    ${DARTDIR}/models/ROMS/shell_scripts/advance_ensemble.csh.template    \
+    ${DARTDIR}/models/ROMS/shell_scripts/run_filter.csh.template          \
+    ${DARTDIR}/models/ROMS/shell_scripts/submit_multiple_jobs_slurm.csh   )
+    \cp ${FILE} ${EXPERIMENTDIR}/. || exit 2
+end
 
 set SAMPDIR = assimilation_code/programs/system_simulation/work
 set SAMPFILE = sampling_error_correction_table.Lanai.nc
@@ -242,9 +235,6 @@ while ( ${member} <= ${ENSEMBLE_SIZE} )
 
    @ member++
 end
-
-# remove any leftover ensemble members
-\rm wc12_ini_*.nc
 
 #--------------------------------------------------------------------------
 # put some instructions in the experiment directory and echo to screen

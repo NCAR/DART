@@ -76,8 +76,31 @@ observation location.
 </P>
 
 <P>
-The procedure to perform an assimilation experiment is outlined in the following steps:
+<strong>A note about file names:</strong> During the course of an experiment, many files
+are created. To make them unique, the <em class=code>ocean_time</em> is converted from
+<blockquote>"seconds&nbsp;since&nbsp;1900-01-01&nbsp;00:00:00"</blockquote> to the equivalent
+number of DAYS. An <em class=it>integer</em> number of days. The intent is to tag the 
+filename to reflect the valid time of the model state. This could be used as the DSTART 
+for the next cycle, so it makes sense to me.
+<br />
+<br />
+The confusion comes when applied to the observation files.
+The input observation files for the ROMS 4DVAR system typically have a DSTART that 
+designates the start of the forecast cycle and the file must contain observation from DSTART
+to the end of the forecast. Makes sense. The model runs to the end of the forecast,
+harvesting the verification observations along the way.
+<br />
+<br />
+So then DART converts all those verification observations and tags that file ... with the same
+time tag as all the other output files ... which reflects the <em class=code>ocean_time</em>
+(converted to days). The input observation file to ROMS will have a different DSTART time
+in the filename than the corresponding verification files. Ugh. You are free to come up
+with a better plan. These are just examples, after all. Hopefully good examples.
+</P>
+
 <P>
+The procedure to perform an assimilation experiment is outlined in the following steps:
+</P>
 
 <ol><li>Compile ROMS (as per the ROMS instructions).</li>
     <li>Compile all the DART executables (in the normal fashion).</li>

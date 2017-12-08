@@ -37,7 +37,7 @@
 #PBS -o filter.log
 #PBS -l select=3:ncpus=16:mpiprocs=16
 #PBS -l walltime=00:10:00
-#PBS -A P86850054
+#PBS -A P8685nnnn
 #PBS -q economy
 #PBS -r n
 #
@@ -47,7 +47,7 @@
 #                                       bkill <jobnumber>
 #BSUB -J filter
 #BSUB -o filter.%J.log
-#BSUB -P P86850054
+#BSUB -P P8685nnnn
 #BSUB -q regular
 #BSUB -n 48
 #BSUB -R "span[ptile=16]"
@@ -307,12 +307,12 @@ ls -1 instance_*/${OBS_ROOT}*_${DSTART}.nc  >! precomputed_files.txt
 ./convert_roms_obs  || exit 2
 
 #==========================================================================
-# STEP 3:  Then we run DART on the ensemble of new states
+# STEP 3: Run DART on the ensemble of new states.
+#         Collect all the ROMS_RESTARTs into a list of input files. 
+#         The io module will error out if restart_files.txt is too short.
+#         (make sure all instances of ROMS advanced successfully)
+#         DART (filter) will modify these files in-place.
 #==========================================================================
-# 2) collect all the ROMS_RESTARTs into a list of input files for filter
-#    The io module will error out if the file_list.txt is too short.
-#    (make sure all instances of ROMS advanced successfully)
-#    DART (filter) will modify these files in-place.
 
 ls -1 instance_*/roms_posterior_????_${DSTART}.nc  >! restart_files.txt
 
@@ -338,7 +338,7 @@ foreach FILE ( input_*mean.nc     input_*sd.nc \
 
 end
 
-# Tag the observation file with the valid time of the model state.
+# Tag the DART observation file with the valid time of the model state.
 
 \mv -v obs_seq.final obs_seq.final.${DSTART}
 
@@ -352,3 +352,4 @@ exit 0
 # $URL$
 # $Revision$
 # $Date$
+

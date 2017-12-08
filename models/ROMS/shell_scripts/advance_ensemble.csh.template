@@ -43,7 +43,7 @@
 #PBS -l walltime=00:10:00
 #PBS -q economy
 #PBS -l select=1:ncpus=16:mpiprocs=16
-#PBS -A P86850054
+#PBS -A P8685nnnn
 #PBS -N roms_advance
 #
 #==========================================================================
@@ -54,12 +54,12 @@
 #BSUB -o roms_advance.%J.%I.log
 #BSUB -N -u ${USER}@ucar.edu
 #BSUB -q small
-#BSUB -n 1
+#BSUB -n 16
 #BSUB -W 0:10
-#BSUB -P P86850054
+#BSUB -P P8685nnnn
 
 #==========================================================================
-# STEP 0: figure out the platform-specific nuances.
+# Figure out the platform-specific nuances.
 #==========================================================================
 if ($?SLURM_JOB_ID) then
 

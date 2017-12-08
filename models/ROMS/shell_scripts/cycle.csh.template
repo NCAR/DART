@@ -14,7 +14,7 @@
 #SBATCH --ntasks=16
 #SBATCH --ntasks-per-node=16
 #SBATCH --time=00:10:00
-#SBATCH -A P86850054
+#SBATCH -A P8685nnnn
 #SXXXXX -p dav
 #SBATCH -e roms_cycle.%j.err
 #SBATCH -o roms_cycle.%j.out
@@ -30,7 +30,7 @@
 #PBS -o roms_cycle.log
 #PBS -l select=1:ncpus=16:mpiprocs=16
 #PBS -l walltime=00:10:00
-#PBS -A P86850054
+#PBS -A P8685nnnn
 #PBS -q economy
 #PBS -r n
 #
@@ -40,7 +40,7 @@
 # 					bkill <jobnumber>
 #BSUB -J roms_cycle
 #BSUB -o roms_cycle.%J.log
-#BSUB -P P86850054
+#BSUB -P P8685nnnn
 #BSUB -q small
 #BSUB -n 16
 #BSUB -R "span[ptile=16]"
@@ -48,7 +48,7 @@
 #BSUB -N -u ${USER}@ucar.edu
 
 #=========================================================================
-# STEP 0: figure out the platform-specific nuances.
+# Figure out the platform-specific nuances.
 #=========================================================================
 
 if ($?SLURM_JOB_ID) then
@@ -403,13 +403,6 @@ end
 #==========================================================================
 # STEP 4: Prepare for the next model advance
 #==========================================================================
-# Rename the existing files to have their future names.
-# Sometime soon, the base filenames will not need to be changed.
-
-# 2) the input.nml:&filter_nml:restart_out_file_name specifies the base
-#    filename for the updated (the posterior) model state. This base gets
-#    appended with a 4-digit instance number and then ".nc"
-#    This file must be pushed back into the appropriate directory.
 
 @ instance = 0
 foreach INSTANCE_DIRECTORY ( instance_???? )
@@ -432,10 +425,8 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
    MySUBSTITUTE MyROMS_STDIN MyININAME  ${ROMS_POSTERIOR}
 
    cd ..
-
 end
 
-#==========================================================================
 # <next few lines under version control, do not edit>
 # $URL$
 # $Revision$

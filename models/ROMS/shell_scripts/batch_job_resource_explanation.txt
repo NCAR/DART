@@ -28,7 +28,7 @@
 #SBATCH --ntasks-per-node=1		only put N tasks on each node
 #SBATCH --array=1-Myens_size		job array syntax
 #SBATCH --time=00:01:00
-#SBATCH --account P86850054
+#SBATCH --account P8685nnnn
 #SBATCH --partition dav			queue
 #SBATCH --exclude=node04		do not run on this node(list)
 #SBATCH --error  testslurm.%j.err
@@ -48,7 +48,7 @@
 #PBS -J 1-Myens_size			job aray syntax
 #PBS -l select=1:ncpus=16:mpiprocs=16	want 1 node with at least 16 cpus, use N of them
 #PBS -l walltime=00:10:00
-#PBS -A P86850054
+#PBS -A P8685nnnn
 #PBS -q economy
 #PBS -r n				job is not rerunable
 #
@@ -63,7 +63,7 @@
 #BSUB -J roms_cycle[1-Myens_size]	Job array syntax
 #BSUB -o roms_cycle.%J.log		output filename with unique job index
 #BSUB -o roms_cycle.%J.%I.log		output filename with job index and array index
-#BSUB -P P86850054
+#BSUB -P P8685nnnn
 #BSUB -q small				queue
 #BSUB -n 16				need at least this many tasks
 #BSUB -R "span[ptile=16]"		only put this many tasks on each node
