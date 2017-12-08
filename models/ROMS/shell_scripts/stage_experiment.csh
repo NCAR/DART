@@ -84,26 +84,47 @@ endif
 # stage everything in the experiment directory
 #--------------------------------------------------------------------------
 
+set ENSEMBLE_SIZE = 5
+set ROMS_STDIN = ocean.in
+set ROMS_DAPAR = s4dvar.in
+set ROMS_DAI = roms_dai.nc
+set ROMS_MOD = roms_mod_obs.nc
+set ROMS_RST = roms_rst.nc
+set ROMS_EXE = oceanM
+set ROMS_OBS = Obs/obs_37623.nc
+set ROMS_INIBASE = wc12_ini
+
 mkdir -p ${EXPERIMENTDIR}
 cd ${EXPERIMENTDIR}
 
-rsync -Cavz ${ROMSDIR}/Obs/           ${EXPERIMENTDIR}/Obs/  || exit 1
-rsync -Cavz ${ROMSDIR}/Ensemble/      ${EXPERIMENTDIR}/      || exit 1
+rsync -Cavz ${ROMSDIR}/Obs/                 ${EXPERIMENTDIR}/Obs/  || exit 1
 
-\cp ${SRCDIR}/External/varinfo.dat    ${EXPERIMENTDIR}/.     || exit 1
-\cp ${ROMSDIR}/oceanM                 ${EXPERIMENTDIR}/.     || exit 1
+\cp ${SRCDIR}/External/varinfo.dat          ${EXPERIMENTDIR}/.     || exit 1
+\cp ${ROMSDIR}/oceanM                       ${EXPERIMENTDIR}/.     || exit 1
+\cp ${ROMSDIR}/Ensemble/ocean.in.template   ${EXPERIMENTDIR}/.     || exit 1
+\cp ${ROMSDIR}/Ensemble/s4dvar.in.template  ${EXPERIMENTDIR}/.     || exit 1
 
-\cp ${DARTDIR}/observations/obs_converters/ROMS/work/convert_roms_obs     ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/work/input.nml.template                        ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/work/filter                                    ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/shell_scripts/cycle.csh.template               ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/shell_scripts/submit_multiple_cycles_lsf.csh   ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/shell_scripts/advance_ensemble.csh.template    ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/shell_scripts/run_filter.csh.template          ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/shell_scripts/submit_multiple_jobs_slurm.csh   ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/observations/obs_converters/ROMS/work/convert_roms_obs     \
+    ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/work/input.nml.template                        \
+    ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/work/filter                                    \
+    ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/shell_scripts/get_ocean_time.csh               \
+    ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/shell_scripts/cycle.csh.template               \
+    ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/shell_scripts/submit_multiple_cycles_lsf.csh   \
+    ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/shell_scripts/advance_ensemble.csh.template    \
+    ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/shell_scripts/run_filter.csh.template          \
+    ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/shell_scripts/submit_multiple_jobs_slurm.csh   \
+    ${EXPERIMENTDIR}/. || exit 2
 
 set SAMPDIR = assimilation_code/programs/system_simulation/work
-set SAMPFILE = sampling_error_correction_table.Lanai.nc 
+set SAMPFILE = sampling_error_correction_table.Lanai.nc
 \cp ${DARTDIR}/${SAMPDIR}/${SAMPFILE} sampling_error_correction_table.nc
 
 echo "no preexisting inflation files" >! ${EXPERIMENTDIR}/roms_inflation_cookie
@@ -138,15 +159,6 @@ foreach FILE ( ocean.in.template s4dvar.in.template )
    endif
 end
 
-set ENSEMBLE_SIZE = 50
-set ROMS_STDIN = ocean.in
-set ROMS_DAPAR = s4dvar.in
-set ROMS_DAI = roms_dai.nc
-set ROMS_MOD = roms_mod_obs.nc
-set ROMS_RST = roms_rst.nc
-set ROMS_EXE = oceanM
-set ROMS_OBS = Obs/obs_37623.nc
-set ROMS_INIBASE = wc12_ini
 
 # Set DART and ROMS (static) input values.
 # There are some replacement strings left in the templates
@@ -220,9 +232,9 @@ while ( ${member} <= ${ENSEMBLE_SIZE} )
 
    set ROMS_INI = `printf %s_%04d.nc $ROMS_INIBASE $member`
 
-   \cp ../ocean.in.template    $ROMS_STDIN || exit 4
-   \cp ../s4dvar.in.template   $ROMS_DAPAR || exit 4
-   \mv ../$ROMS_INI            .           || exit 4
+   \cp ../ocean.in.template           $ROMS_STDIN || exit 4
+   \cp ../s4dvar.in.template          $ROMS_DAPAR || exit 4
+   \cp ${ROMSDIR}/Ensemble/$ROMS_INI       .      || exit 4
 
    $SUBSTITUTE $ROMS_STDIN MyININAME  $ROMS_INI
 

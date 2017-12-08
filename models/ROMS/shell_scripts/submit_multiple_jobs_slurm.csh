@@ -8,12 +8,12 @@
 #
 #==========================================================================
 #
-# This utility launches a series of dependent jobs for the PBS/SLURM scheduler to
+# This utility launches a series of dependent jobs for the SLURM scheduler to
 # accomodate a cycling experiment. Multiple jobs get queued, but only run if
 # the previous job completes successfully.
 #
-# The first dependent job is a job array where each model advance is run in 
-# a separate job. When ALL of those jobs (i.e. the entire job array) is 
+# The first dependent job is a job array where each model advance is run in
+# a separate job. When ALL of those jobs (i.e. the entire job array) is
 # successfully complete, the assimilation job starts. When that job finishes,
 # the next job array of advances starts ... and so on.
 #
@@ -32,7 +32,7 @@ set rundir = EXPERIMENT_DIRECTORY
 #--------------------------------------------------------------------------
 # Overall strategy is to fire off a series of dependent jobs.
 # Successful completion of the first filter job will free the queued model
-# advances. That successful completion of that job array will free the 
+# advances. That successful completion of that job array will free the
 # next filter job ... and so on.
 #--------------------------------------------------------------------------
 

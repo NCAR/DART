@@ -6,9 +6,10 @@
 #
 # $Id$
 #
-#=============================================================================
-#
-#
+#==========================================================================
+# SLURM directives 			sbatch advance_ensemble.csh
+# 					squeue -u $USER
+# 					scancel <jobnumber>
 #SBATCH --ignore-pbs
 #SBATCH -l nodes=1:ppn=16
 #SBATCH --ntasks=1
@@ -22,10 +23,10 @@
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=$USER@ucar.edu
 #
-#=============================================================================
-#
-#
-#PBS -N roms_cycle
+#==========================================================================
+# PBS directives                	qsub test_batch.csh
+# 					qstat -u $USER
+# 					qdel <jobnumber>
 #PBS -e roms_cycle.err
 #PBS -o roms_cycle.log
 #PBS -l select=1:ncpus=16:mpiprocs=16
@@ -34,7 +35,10 @@
 #PBS -q economy
 #PBS -r n
 #
-#=============================================================================
+#==========================================================================
+# LSF directives 			bsub < advance_ensemble.csh
+# 					bjobs
+# 					bkill <jobnumber>
 #
 #
 #BSUB -J roms_cycle
@@ -77,7 +81,6 @@ else if ($?LS_SUBCWD) then
    set        JOBID = $LSB_JOBID
    set      MYQUEUE = $LSB_QUEUE
    set       MYHOST = $LSB_SUB_HOST
-   set       NTASKS = 
    set    LAUNCHCMD = "mpirun.lsf"
 
 else
@@ -94,9 +97,9 @@ endif
 
 cd EXPERIMENT_DIRECTORY
 
-#=========================================================================
+#==========================================================================
 # STEP 1: Advance the ocean ensemble ... one after another.
-#=========================================================================
+#==========================================================================
 
 @ instance = 0
 foreach INSTANCE_DIRECTORY ( instance_???? )
@@ -105,19 +108,25 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
 
    cd ${INSTANCE_DIRECTORY}
 
-   rm -f log_$instance.txt
+   \rm -f log_$instance.txt
 
    echo "advancing instance $instance at ..."`date`
 
-   # get the DSTART time so we can get the right observation file 
-   set OCEAN_TIME = `ncdump -v ocean_time *ini_????.nc | grep "ocean_time =" | tail -1`
-   set TIME_SEC = `echo $OCEAN_TIME | grep -oE '[[:digit:]]+'`
-   set DSTART_FLOAT = `echo "scale=6; $TIME_SEC / 86400.0" | bc `
-   set DSTART = `echo "scale=0; $DSTART_FLOAT / 1" | bc `
+   # sometimes we need the full name, sometimes we need it without the extension
+   set RST_FILE = MyRSTNAME
+   set DAI_FILE = MyDAINAME
+   set OBS_FILE = MyMODname
+   set RST_ROOT = $RST_FILE:r
+   set DAI_ROOT = $DAI_FILE:r
+   set OBS_ROOT = $OBS_FILE:r
+
+   # get the DSTART time so we can get the right observation file
+   set INPUT_FILE = `sed -n -e '/ININAME/s/.*== *//p' MyROMS_STDIN` || exit 2
+   set     DSTART = `../get_ocean_time.csh ${INPUT_FILE}`       || exit 2
 
    \cp ../s4dvar.in.template s4dvar.in
    set OBS_PREF = ../Obs/obs
-   set NEW_OBS     = `printf %s_%d.nc ${OBS_PREF} $DSTART`
+   set NEW_OBS  = `printf %s_%d.nc ${OBS_PREF} $DSTART`
    MySUBSTITUTE s4dvar.in MyOBSname   $NEW_OBS
 
    # Advance the model
@@ -133,22 +142,11 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
       exit 1
    endif
 
-   # sometimes we need the full name, sometimes we need it without the extension
-   set RST_FILE = MyRSTNAME
-   set DAI_FILE = MyDAINAME
-   set OBS_FILE = MyMODname
-   set RST_ROOT = $RST_FILE:r
-   set DAI_ROOT = $DAI_FILE:r
-   set OBS_ROOT = $OBS_FILE:r
-
    # The ROMS restart file will be treated as the DART prior.
    # Create a ROMS POSTERIOR file that will be updated by DART and
    # tag the output with the (new) model time.
 
-   set OCEAN_TIME = `ncdump -v ocean_time ${DAI_FILE} | grep "ocean_time =" | tail -1`
-   set TIME_SEC = `echo $OCEAN_TIME | grep -oE '[[:digit:]]+'`
-   set DSTART_FLOAT = `echo "scale=6; $TIME_SEC / 86400.0" | bc `
-   set DSTART = `echo "scale=0; $DSTART_FLOAT / 1" | bc `
+   set DSTART = `../get_ocean_time.csh ${DAI_FILE}` || exit 2
 
    set ROMS_PRIOR     = `printf %s_%04d_%d.nc ${RST_ROOT} $instance $DSTART`
    set ROMS_POSTERIOR = `printf roms_posterior_%04d_%d.nc $instance $DSTART`
@@ -172,7 +170,7 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
 
 end
 
-#=========================================================================
+#==========================================================================
 # STEP 2: prepare for DART INFLATION
 # This stages the files that contain the inflation values.
 # The inflation values change through time and should be archived.
@@ -210,7 +208,7 @@ end
 #    file to support this option.
 #
 # The strategy is to use the LATEST (last) inflation file.
-#=========================================================================
+#==========================================================================
 
 # The input.nml may be modified differently for each assimilation cycle.
 # (for example, inflation files for the first cycle)
@@ -351,9 +349,9 @@ endif
 # Eat the cookie regardless
 \rm -f roms_inflation_cookie
 
-#==============================================================================
+#==========================================================================
 # STEP 3:  Then we run DART on the ensemble of new states
-#==============================================================================
+#==========================================================================
 
 # Remove the last set of DART run-time logs - if they exist.
 
@@ -405,16 +403,11 @@ end
 
 \mv -v obs_seq.final             obs_seq.final.${DSTART}
 
-#==============================================================================
+#==========================================================================
 # STEP 4: Prepare for the next model advance
-#==============================================================================
+#==========================================================================
 # Rename the existing files to have their future names.
 # Sometime soon, the base filenames will not need to be changed.
-
-# 1) filter creates a 'new_dstart.txt' file with the new DSTART
-#    that must be inserted into the CENTRALDIR/ocean.in
-
-set DSTART = `grep DSTART new_dstart.txt | sed -e 's/[A-Z, ]//g'`
 
 # 2) the input.nml:&filter_nml:restart_out_file_name specifies the base
 #    filename for the updated (the posterior) model state. This base gets
@@ -428,7 +421,7 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
    cd ${INSTANCE_DIRECTORY}
 
    set posterior = `head -n $instance ../restart_files.txt | tail -n 1`
-   set ROMS_INI = $posterior:t
+   set ROMS_POSTERIOR = $posterior:t
 
    # use new state as starting point for next advance.
    # We want to preserve the unique posterior but want ROMS
@@ -436,16 +429,16 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
 
    # Update the ocean.in file with the new DSTART value
 
-   \cp ../ocean.in.template ocean.in
+   \cp ../ocean.in.template MyROMS_STDIN
 
-   MySUBSTITUTE ocean.in MyDSTART   $DSTART
-   MySUBSTITUTE ocean.in MyININAME  $ROMS_INI
+   MySUBSTITUTE MyROMS_STDIN MyDSTART   ${DSTART}
+   MySUBSTITUTE MyROMS_STDIN MyININAME  ${ROMS_POSTERIOR}
 
    cd ..
 
 end
 
-#==============================================================================
+#==========================================================================
 # <next few lines under version control, do not edit>
 # $URL$
 # $Revision$
