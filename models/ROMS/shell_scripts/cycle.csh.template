@@ -11,12 +11,11 @@
 # 					squeue -u $USER
 # 					scancel <jobnumber>
 #SBATCH --ignore-pbs
-#SBATCH -l nodes=1:ppn=16
-#SBATCH --ntasks=1
+#SBATCH --ntasks=16
 #SBATCH --ntasks-per-node=16
-#SBATCH --time=00:01:00
+#SBATCH --time=00:10:00
 #SBATCH -A P86850054
-#SBATCH -p dav
+#SXXXXX -p dav
 #SBATCH -e testslurm.%j.err
 #SBATCH -o testslurm.%j.out
 #SBATCH --mail-type=END

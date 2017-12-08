@@ -22,9 +22,8 @@
 #SBATCH --job-name=filter
 #SBATCH --output=filter-%A.log
 #SBATCH --error=filter-%A.err
-#SBATCH -N 3
 #SBATCH --ntasks=48
-#SBATCH --cpu_per_task=16
+#SBATCH --ntasks-per-node=16
 #SBATCH --time=00:30:00
 #SBATCH --error=filter-%A.err
 #SBATCH --output=filter-%A.log
@@ -64,7 +63,7 @@ if ($?SLURM_JOB_ID) then
    set       JOBID = $SLURM_JOBID
    set     MYQUEUE = $SLURM_JOB_PARTITION
    set      MYHOST = $SLURM_SUBMIT_HOST
-   set   LAUNCHCMD = "mpirun -np $NTASKS -bind-to core"
+   set   LAUNCHCMD = "mpirun -np $SLURM_NTASKS -bind-to core"
 
 else if ($?PBS_O_WORKDIR) then
 

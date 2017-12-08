@@ -27,7 +27,7 @@
 set NCYCLES = 11
 set rundir = EXPERIMENT_DIRECTORY
 
-\cd $rundir || exit 1
+cd $rundir || exit 1
 
 #--------------------------------------------------------------------------
 # Overall strategy is to fire off a series of dependent jobs.
