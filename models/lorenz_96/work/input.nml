@@ -27,10 +27,6 @@
    silence                    = .false.,
    /
 
-# these don't work yet, but will soon:
-#    input_state_files            = 'filter_input.nc'
-#   output_state_files            = 'filter_output.nc'
-
 &filter_nml
    single_file_in               = .true.,
    input_state_files            = ''
@@ -80,6 +76,7 @@
    trace_execution              = .false.,
    output_timestamps            = .false.,
    output_forward_op_errors     = .false.,
+   write_obs_every_cycle        = .false.,
    silence                      = .false.,
    /
 
@@ -126,6 +123,8 @@
 
 &obs_kind_nml
    assimilate_these_obs_types = 'RAW_STATE_VARIABLE',
+                                'RAW_STATE_1D_INTEGRAL',
+                                'RAW_STATE_VAR_POWER'
    /
 
 &model_nml
@@ -179,7 +178,7 @@
    trusted_obs           = 'null',
    lonlim1               = 0.00, 0.00, 0.50
    lonlim2               = 1.01, 0.50, 1.01
-   reg_names             = 'whole', 'yin', 'yang'
+   reg_names             = 'whole', 'lower', 'upper'
    create_rank_histogram = .true.,
    outliers_in_histogram = .true.,
    use_zero_error_obs    = .false.,

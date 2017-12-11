@@ -77,6 +77,7 @@ handles.ui_button_Single_Step = uicontrol('Style', 'pushbutton', ...
     'String', 'Advance Model', ...
     'FontName', atts.fontname, ...
     'FontUnits', 'normalized', ...
+    'FontWeight', 'bold', ...
     'FontSize', 0.40, ...
     'Callback', @SingleStep_Callback);
 
@@ -88,6 +89,7 @@ handles.ui_button_Auto_Run = uicontrol('Style', 'pushbutton', ...
     'String', 'Start Auto Run', ...
     'FontName', atts.fontname, ...
     'FontUnits', 'normalized', ...
+    'FontWeight', 'bold', ...
     'FontSize', 0.40, ...
     'Callback', @AutoRun_Callback);
 
@@ -845,8 +847,10 @@ set(h_obs, 'Visible', 'Off');
 
             % Plot the rank histogram for the prior
             subplot(handles.prior_rank_histogram);
-            bar(temp_rank, 'stacked');
-            axis tight;
+            B = bar(temp_rank, 'stacked');
+            B(1).FaceColor= atts.blue   ; B(1).EdgeColor= 'k';
+            B(2).FaceColor= atts.yellow ; B(2).EdgeColor= 'k';
+            axis tight
 
         else % We need to do an assimilation.
 
@@ -933,8 +937,10 @@ set(h_obs, 'Visible', 'Off');
 
             % Plot the rank histogram for the prior
             subplot(handles.post_rank_histogram);
-            bar(temp_rank, 'stacked');
-            axis tight;
+            B = bar(temp_rank, 'stacked');
+            B(1).FaceColor= atts.blue   ; B(1).EdgeColor= 'k';
+            B(2).FaceColor= atts.yellow ; B(2).EdgeColor= 'k';
+            axis tight
 
             % Set semaphore to indicate that next step is a model advance
             handles.ready_to_advance = true;

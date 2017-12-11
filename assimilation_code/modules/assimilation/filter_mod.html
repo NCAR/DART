@@ -131,6 +131,7 @@ prematurely terminating the namelist.
    trace_execution              = .false.,
    output_timestamps            = .false.,
    output_forward_op_errors     = .false.,
+   write_obs_every_cycle        = .false.,
    silence                      = .false.,
  /
 </pre>
@@ -493,6 +494,17 @@ unchanged.
          observation sequence file and a small number of ensemble members to diagnose
          forward operator problems.
     </TD></TR>
+
+<TR><TD>write_obs_every_cycle</TD>
+    <TD>logical</TD>
+    <TD>For debug use; this option can significantly slow the execution of filter.
+        True means to write the entire output observation sequence diagnostic file 
+        each time through the main filter loop even though only observations with times
+        up to and including the current model time will have been assimilated.
+        Unassimilated observations have the value -888888.0 (the DART "missing value").  
+        If filter crashes before finishing it may help to see the forward operator values 
+        of observations that have been assimilated so far.
+ </TD></TR>
 
 <TR><TD>silence</TD>
     <TD>logical</TD>

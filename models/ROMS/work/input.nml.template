@@ -66,7 +66,7 @@
 
 
 &state_vector_io_nml
-   limit_mem               = 2100000000
+   buffer_state_io = .false.
    single_precision_output = .false.
   /
 
@@ -345,8 +345,8 @@
    interp_test_vertrange =  0.0,    10.0
    interp_test_vertcoord = 'VERTISHEIGHT'
    test1thru             = 4
-   restart_in_file_name  = 'Data/wc13_ini.nc'
-   restart_out_file_name = 'roms_output'
+   input_state_files     = 'Data/wc13_ini.nc'
+   output_state_files    = 'roms_output.nc'
    verbose               = .true.
   /
 

@@ -140,9 +140,9 @@ end subroutine create_3d_obs
 
 subroutine query_3d_obs(obs, lat, lon, vval, vkind, obsv, okind, oerr, day, sec, qc)
 
-type(obs_type), intent(in)  :: obs
-integer,        intent(out) :: okind, vkind, day, sec
-real(r8),       intent(out) :: lat, lon, vval, obsv, oerr, qc
+ type(obs_type), intent(in)  :: obs
+ integer,        intent(out) :: okind, vkind, day, sec
+ real(r8),       intent(out) :: lat, lon, vval, obsv, oerr, qc
 
 real(r8)              :: obs_val(1), qc_val(1), locvals(3)
 type(obs_def_type)    :: obs_def
@@ -192,11 +192,11 @@ end subroutine query_3d_obs
 
 subroutine add_obs_to_seq(seq, obs, obs_time, prev_obs, prev_time, first_obs)
 
-type(obs_sequence_type), intent(inout) :: seq
-type(obs_type),          intent(inout) :: obs, prev_obs
-type(time_type),         intent(in)    :: obs_time
-type(time_type),         intent(inout) :: prev_time
-logical,                 intent(inout) :: first_obs
+  type(obs_sequence_type), intent(inout) :: seq
+  type(obs_type),          intent(inout) :: obs, prev_obs
+  type(time_type),         intent(in)    :: obs_time
+  type(time_type),         intent(inout) :: prev_time
+  logical,                 intent(inout) :: first_obs
 
 ! insert(seq,obs) always works (i.e. it inserts the obs in
 ! proper time format) but it can be slow with a long file.
@@ -231,6 +231,7 @@ end subroutine add_obs_to_seq
 !> created 11 Mar 2010,  nancy collins,  ncar/image
 
 subroutine getdimlen(ncid, dimname, dout)
+
  integer,            intent(in)   :: ncid
  character(len = *), intent(in)   :: dimname
  integer,            intent(out)  :: dout
@@ -297,17 +298,17 @@ end subroutine getvarshape
 
 subroutine set_missing_name(name)
 
-character(len = *), intent(in)   :: name
+ character(len = *), intent(in)   :: name
 
-if (len(name) > NF90_MAX_NAME) then
-   print *, 'set_missing_name: name must be less than ', NF90_MAX_NAME, ' chars long'
-   print *, 'set_missing_name: name is ', len(name), ' long'
-   stop
-endif
+   if (len(name) > NF90_MAX_NAME) then
+      print *, 'set_missing_name: name must be less than ', NF90_MAX_NAME, ' chars long'
+      print *, 'set_missing_name: name is ', len(name), ' long'
+      stop
+   endif
 
 !>@todo fixme ... remove 'stop' use error_handler
 
-missing_name = name
+   missing_name = name
 
 end subroutine set_missing_name
 
@@ -326,10 +327,10 @@ end subroutine set_missing_name
 
 subroutine getvar_real(ncid, varname, darray, dmiss)
 
-integer,            intent(in)   :: ncid
-character(len = *), intent(in)   :: varname
-real(r8),           intent(out)  :: darray(:)
-real(r8), optional, intent(out)  :: dmiss
+ integer,            intent(in)   :: ncid
+ character(len = *), intent(in)   :: varname
+ real(r8),           intent(out)  :: darray(:)
+ real(r8), optional, intent(out)  :: dmiss
 
 integer  :: varid, nfrc
 real(r8) :: fill, miss
@@ -430,6 +431,7 @@ call nc_check( nf90_get_var(ncid, varid, shortarray), &
 
 darray = real(shortarray,r8)
 
+
 if (fill_exists == NF90_NOERR) then ! FillValue exists
 
    if ( (offset_exists == NF90_NOERR) .and. (scaling_exists == NF90_NOERR) ) then
@@ -451,6 +453,8 @@ else
    elseif (scaling_exists == NF90_NOERR) then
       darray = darray + add_offset
    endif
+
+   if (present(dmiss)) dmiss = MISSING_R8
 
 endif
 
@@ -515,6 +519,8 @@ else
       darray = darray + add_offset
    endif
 
+   if (present(dmiss)) dmiss = MISSING_R8
+
 endif
 
 end subroutine get_int_as_r8
@@ -534,10 +540,10 @@ end subroutine get_int_as_r8
 
 subroutine getvar_int(ncid, varname, darray, dmiss)
 
-integer,            intent(in)   :: ncid
-character(len = *), intent(in)   :: varname
-integer,            intent(out)  :: darray(:)
-integer,  optional, intent(out)  :: dmiss
+ integer,            intent(in)   :: ncid
+ character(len = *), intent(in)   :: varname
+ integer,            intent(out)  :: darray(:)
+ integer,  optional, intent(out)  :: dmiss
 
 integer  :: varid, nfrc
 integer  :: fill, miss
@@ -564,9 +570,9 @@ if (present(dmiss)) then
       endif
    endif
 
-   ! this would make it a fatal error if not found
-   !call nc_check( nf90_get_att(ncid, varid, missing_name', miss), &
-   !     'getvar_real', 'getting attr "//trim(missing_name)//" for '//trim(varname))
+      ! this would make it a fatal error if not found
+      !call nc_check( nf90_get_att(ncid, varid, missing_name', miss), &
+      !         'getvar_real', 'getting attr "//trim(missing_name)//" for '//trim(varname))
 
    ! the predefined netcdf fill value.
    nfrc = nf90_get_att(ncid, varid, '_FillValue', fill)
@@ -604,11 +610,11 @@ end subroutine getvar_int
 
 subroutine get_or_fill_real(ncid, varname, darray, fillval, did_fill)
 
-integer,             intent(in)    :: ncid
-character(len = *),  intent(in)    :: varname
-real(r8),            intent(inout) :: darray(:)
-real(r8), optional,  intent(in)    :: fillval
-logical,  optional,  intent(out)   :: did_fill
+ integer,             intent(in)    :: ncid
+ character(len = *),  intent(in)    :: varname
+ real(r8),            intent(inout) :: darray(:)
+ real(r8), optional,  intent(in)    :: fillval
+ logical,  optional,  intent(out)   :: did_fill
 
 integer :: varid, nfrc
 
@@ -647,11 +653,11 @@ end subroutine get_or_fill_real
 
 subroutine get_or_fill_int(ncid, varname, darray, fillval, did_fill)
 
-integer,            intent(in)    :: ncid
-character(len = *), intent(in)    :: varname
-integer,            intent(inout) :: darray(:)
-integer, optional,  intent(in)    :: fillval
-logical, optional,  intent(out)   :: did_fill
+ integer,            intent(in)    :: ncid
+ character(len = *), intent(in)    :: varname
+ integer,            intent(inout) :: darray(:)
+ integer, optional,  intent(in)    :: fillval
+ logical, optional,  intent(out)   :: did_fill
 
 integer :: varid, nfrc
 
@@ -695,11 +701,12 @@ end subroutine get_or_fill_int
 
 subroutine get_or_fill_QC(ncid, varname, darray)
 
-integer,            intent(in)    :: ncid
-character(len = *), intent(in)    :: varname
-integer,            intent(inout) :: darray(:)
+ integer,            intent(in)    :: ncid
+ character(len = *), intent(in)    :: varname
+ integer,            intent(inout) :: darray(:)
 
 logical :: did_fill
+
 
 call get_or_fill_int(ncid, varname, darray, 0, did_fill)
 
@@ -725,10 +732,10 @@ end subroutine get_or_fill_QC
 
 subroutine getvar_real_2d(ncid, varname, darray, dmiss)
 
-integer,            intent(in)   :: ncid
-character(len = *), intent(in)   :: varname
-real(r8),           intent(out)  :: darray(:,:)
-real(r8), optional, intent(out)  :: dmiss
+ integer,            intent(in)   :: ncid
+ character(len = *), intent(in)   :: varname
+ real(r8),           intent(out)  :: darray(:,:)
+ real(r8), optional, intent(out)  :: dmiss
 
 integer  :: varid, nfrc
 real(r8) :: fill, miss
@@ -809,10 +816,10 @@ end subroutine getvar_real_2d
 
 subroutine getvar_int_2d(ncid, varname, darray, dmiss)
 
-integer,            intent(in)   :: ncid
-character(len = *), intent(in)   :: varname
-integer,            intent(out)  :: darray(:,:)
-integer,  optional, intent(out)  :: dmiss
+ integer,            intent(in)   :: ncid
+ character(len = *), intent(in)   :: varname
+ integer,            intent(out)  :: darray(:,:)
+ integer,  optional, intent(out)  :: dmiss
 
 integer  :: varid, nfrc
 integer  :: fill, miss
@@ -879,13 +886,13 @@ end subroutine getvar_int_2d
 
 subroutine getvar_real_1d_1val(ncid, varname, start, dout, dmiss)
 
-integer,            intent(in)   :: ncid
-character(len = *), intent(in)   :: varname
-integer,            intent(in)   :: start
-real(r8),           intent(out)  :: dout
-real(r8), optional, intent(out)  :: dmiss
+ integer,            intent(in)   :: ncid
+ character(len = *), intent(in)   :: varname
+ integer,            intent(in)   :: start
+ real(r8),           intent(out)  :: dout
+ real(r8), optional, intent(out)  :: dmiss
 
-integer :: varid
+integer :: varid, ret
 
 ! read the data for the requested array, and get the fill value
 call nc_check( nf90_inq_varid(ncid, varname, varid), &
@@ -893,9 +900,10 @@ call nc_check( nf90_inq_varid(ncid, varname, varid), &
 call nc_check( nf90_get_var(ncid, varid, dout, start = (/ start /) ), &
                'getvar_real_1d_val', 'getting var '// trim(varname))
 
-if (present(dmiss)) &
-   call nc_check( nf90_get_att(ncid, varid, '_FillValue', dmiss), &
-               'getvar_real_1d_val', 'getting attr "_FillValue" for '//trim(varname))
+if (present(dmiss)) then 
+   ret = nf90_get_att(ncid, varid, '_FillValue', dmiss)
+   if (ret /= NF90_NOERR) dmiss = MISSING_R8
+endif
 
 end subroutine getvar_real_1d_1val
 
@@ -915,13 +923,13 @@ end subroutine getvar_real_1d_1val
 
 subroutine getvar_int_1d_1val(ncid, varname, start, dout, dmiss)
 
-integer,            intent(in)   :: ncid
-character(len = *), intent(in)   :: varname
-integer,            intent(in)   :: start
-integer,            intent(out)  :: dout
-integer,  optional, intent(out)  :: dmiss
+ integer,            intent(in)   :: ncid
+ character(len = *), intent(in)   :: varname
+ integer,            intent(in)   :: start
+ integer,            intent(out)  :: dout
+ integer,  optional, intent(out)  :: dmiss
 
-integer :: varid
+integer :: varid, ret
 
 ! read the data for the requested array, and get the fill value
 call nc_check( nf90_inq_varid(ncid, varname, varid), &
@@ -929,9 +937,10 @@ call nc_check( nf90_inq_varid(ncid, varname, varid), &
 call nc_check( nf90_get_var(ncid, varid, dout, start = (/ start /) ), &
                'getvar_int_1d_1val', 'getting var '// trim(varname))
 
-if (present(dmiss)) &
-   call nc_check( nf90_get_att(ncid, varid, '_FillValue', dmiss), &
-               'getvar_int_1d_1val', 'getting attr "_FillValue" for '//trim(varname))
+if (present(dmiss)) then
+   ret = nf90_get_att(ncid, varid, '_FillValue', dmiss)
+   if (ret /= NF90_NOERR) dmiss = MISSING_I
+endif
 
 end subroutine getvar_int_1d_1val
 
@@ -954,14 +963,14 @@ end subroutine getvar_int_1d_1val
 
 subroutine getvar_real_2d_slice(ncid, varname, start, count, darray, dmiss)
 
-integer,            intent(in)   :: ncid
-character(len = *), intent(in)   :: varname
-integer,            intent(in)   :: start
-integer,            intent(in)   :: count
-real(r8),           intent(out)  :: darray(:)
-real(r8), optional, intent(out)  :: dmiss
+ integer,            intent(in)   :: ncid
+ character(len = *), intent(in)   :: varname
+ integer,            intent(in)   :: start
+ integer,            intent(in)   :: count
+ real(r8),           intent(out)  :: darray(:)
+ real(r8), optional, intent(out)  :: dmiss
 
-integer :: varid
+integer :: varid, ret
 
 ! read the data for the requested array, and get the fill value
 call nc_check( nf90_inq_varid(ncid, varname, varid), &
@@ -970,9 +979,10 @@ call nc_check( nf90_get_var(ncid, varid, darray, &
                 start=(/ 1, start /), count=(/ count, 1 /) ), &
                'getvar_real_2d_slice', 'getting var '// trim(varname))
 
-if (present(dmiss)) &
-   call nc_check( nf90_get_att(ncid, varid, '_FillValue', dmiss), &
-               'getvar_real_2d_slice', 'getting attr "_FillValue" for '//trim(varname))
+if (present(dmiss)) then
+   ret = nf90_get_att(ncid, varid, '_FillValue', dmiss)
+   if (ret /= NF90_NOERR) dmiss = MISSING_R8
+endif
 
 end subroutine getvar_real_2d_slice
 
@@ -995,11 +1005,11 @@ end subroutine getvar_real_2d_slice
 
 subroutine get_or_fill_QC_2d_slice(ncid, varname, start, count, darray)
 
-integer,            intent(in)    :: ncid
-character(len = *), intent(in)    :: varname
-integer,            intent(in)    :: start
-integer,            intent(in)    :: count
-integer,            intent(inout) :: darray(:)
+ integer,            intent(in)    :: ncid
+ character(len = *), intent(in)    :: varname
+ integer,            intent(in)    :: start
+ integer,            intent(in)    :: count
+ integer,            intent(inout) :: darray(:)
 
 integer :: varid, nfrc
 
@@ -1035,10 +1045,10 @@ end subroutine get_or_fill_QC_2d_slice
 
 subroutine query_varname(ncid, nnames, namelist, index, force)
 
-integer,             intent(in)    :: ncid, nnames
-character(len = *),  intent(in)    :: namelist(:)
-integer,             intent(out)   :: index
-logical, optional,   intent(in)    :: force
+ integer,             intent(in)    :: ncid, nnames
+ character(len = *),  intent(in)    :: namelist(:)
+ integer,             intent(out)   :: index
+ logical, optional,   intent(in)    :: force
 
 integer :: varid, nfrc, i
 character(512) :: msgstring

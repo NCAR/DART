@@ -50,7 +50,6 @@ character(len=512) :: string1, string2, string3
 
 contains
 
-
 !-------------------------------------------------------------------------------
 !> Interpolate over a range of lat, lon, and vert values.
 !> Returns the number of failures.
@@ -89,10 +88,10 @@ character(len=*), parameter :: routine = 'test_interpolate_range'
 
 real(r8), allocatable :: lon(:), lat(:), vert(:)
 real(r8), allocatable :: field(:,:,:,:)
-integer,  allocatable :: all_ios_out(:,:)
-integer               :: nlon, nlat, nvert
-integer               :: ilon, jlat, kvert, nfailed
-character(len=128)    :: ncfilename, txtfilename
+real(r8) :: lonrange_top
+integer :: nlon, nlat, nvert
+integer :: ilon, jlat, kvert, nfailed
+character(len=128) :: ncfilename, txtfilename
 
 character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
@@ -107,6 +106,7 @@ character(len=32)   :: field_name
 type(location_type) :: loc
 integer :: iunit, ios_out(ens_size), imem
 integer :: quantity_index, vertcoord
+integer,  allocatable :: all_ios_out(:,:)
 
 test_interpolate_range = 0
 
@@ -127,10 +127,15 @@ quantity_index = get_index_for_quantity(quantity_string)
 write( ncfilename,'(a,a)')trim(output_file),'_interptest.nc'
 write(txtfilename,'(a,a)')trim(output_file),'_interptest.m'
 
+! for longitude, allow wrap.
+lonrange_top = interp_test_lonrange(2)
+if (interp_test_lonrange(2) < interp_test_lonrange(1)) &
+   lonrange_top = interp_test_lonrange(2) + 360.0_r8
+
 ! round down to avoid exceeding the specified range
-nlat  = aint(( interp_test_latrange(2) - interp_test_latrange(1))/interp_test_dlat) + 1
-nlon  = aint(( interp_test_lonrange(2) - interp_test_lonrange(1))/interp_test_dlon) + 1
-nvert = aint((interp_test_vertrange(2) - interp_test_vertrange(1))/interp_test_dvert) + 1
+nlat  = aint(( interp_test_latrange(2) - interp_test_latrange(1))  / interp_test_dlat) + 1
+nlon  = aint((            lonrange_top - interp_test_lonrange(1))  / interp_test_dlon) + 1
+nvert = aint((interp_test_vertrange(2) - interp_test_vertrange(1)) / interp_test_dvert) + 1
 
 iunit = open_file(trim(txtfilename), action='write')
 write(iunit,'(''missingvals = '',f12.4,'';'')')MISSING_R8
@@ -146,11 +151,15 @@ nfailed = 0
 
 do ilon = 1, nlon
    lon(ilon) = interp_test_lonrange(1) + real(ilon-1,r8) * interp_test_dlon
+   if (lon(ilon) >= 360.0_r8) lon(ilon) = lon(ilon) - 360.0_r8
+   if (lon(ilon) < 0.0_r8)   lon(ilon) = lon(ilon) + 360.0_r8
    do jlat = 1, nlat
       lat(jlat) = interp_test_latrange(1) + real(jlat-1,r8) * interp_test_dlat
       do kvert = 1, nvert
          vert(kvert) = interp_test_vertrange(1) + real(kvert-1,r8) * interp_test_dvert
+
          loc = set_location(lon(ilon), lat(jlat), vert(kvert), vertcoord)
+
          call model_interpolate(ens_handle, ens_size, loc, quantity_index, &
                                 field(ilon,jlat,kvert,:), ios_out)
          write(iunit,*) field(ilon,jlat,kvert,:)
@@ -165,6 +174,7 @@ do ilon = 1, nlon
             nfailed = nfailed + 1
             all_ios_out(nfailed,:) = ios_out
          endif
+
       enddo
    enddo
 enddo
@@ -183,6 +193,7 @@ if ( do_output() ) then
 endif
 
 call count_error_codes(all_ios_out, nfailed)
+
 
 ! Write out the netCDF file for easy exploration.
 
@@ -215,6 +226,7 @@ call nc_check(nf90_put_att(ncid, lonVarID, 'range', interp_test_lonrange), &
            routine, 'put_att lonrange '//trim(ncfilename))
 call nc_check(nf90_put_att(ncid, lonVarID, 'cartesian_axis', 'X'),   &
            routine, 'lon cartesian_axis '//trim(ncfilename))
+
 
 call nc_check(nf90_def_var(ncid=ncid, name='lat', xtype=nf90_double, &
         dimids=nlatDimID, varid=latVarID), routine, &

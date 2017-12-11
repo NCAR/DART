@@ -580,6 +580,39 @@ Single File I/O:
 - Improved some error messages in location_io_mod and state_structure_mod
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Nov 21 2017 :: 1D obs_diag fix, 1D power forward operator    Revision: 12138
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- fixed a bad URL reference in tutorial section 18 
+
+- fixed a crash with the 1D version of the observation diagnostics program
+  when including identity observations.
+
+- all models with a workshop_setup.csh now build the same set of programs.
+  (some/most did not build obs_diag - which is used in the tutorial)
+
+- added a 1D obs-to-a-power forward operator.
+  
+- updates to the matlab plotting routines for NetCDF observation formats
+
+- World Ocean Database (WOD) converter supports partial year conversions
+  and 2013 file formats.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Dec 01 2017 :: ROMS scripting, debugging aids              Revision: 12162  
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- Added an option to the ROMS model scripting to advance the model ensemble
+members in parallel using a job array.
+
+- Added a debug option to the filter namelist, 'write_obs_every_cycle', 
+to output the full obs_seq.final during each cycle of filter.  
+(Very slow - use only when debugging a filter crash.)
+
+- Allow the test grid in model_mod_check to cross the prime meridian for testing
+longitude interpolation in grids that cross the 360/0 line.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + MMM DD YYYY :: summary of next changes                    $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

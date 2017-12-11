@@ -46,6 +46,8 @@ function oned_model_inf
 
 help oned_model_inf
 
+LOG_FILE = strcat(mfilename, '.log');
+
 atts = stylesheet; % get the default fonts and colors
 
 %% -----------------------------------------------------------------------------
@@ -85,7 +87,7 @@ handles.ui_button_advance_model = uicontrol('Style', 'pushbutton', ...
     'FontName'            , atts.fontname, ...
     'FontUnits'           , 'Normalized', ...
     'FontSize'            , scaled_fontsize, ...
-    'FontWeight'          , 'normal', ...
+    'FontWeight'          , 'bold', ...
     'Callback'            , @step_ahead);
 
 handles.ui_button_start_auto_run = uicontrol('Style', 'pushbutton', ...
@@ -96,7 +98,7 @@ handles.ui_button_start_auto_run = uicontrol('Style', 'pushbutton', ...
     'FontName'            , atts.fontname, ...
     'FontUnits'           , 'Normalized', ...
     'FontSize'            , scaled_fontsize, ...
-    'FontWeight'          , 'normal', ...
+    'FontWeight'          , 'bold', ...
     'Callback'            , @auto_run_Callback);
 
 %% -------------------------t---------------------------------------------------
@@ -426,19 +428,19 @@ handles.ui_button_reset = uicontrol('Style', 'pushbutton', ...
     'FontName'            , atts.fontname, ...
     'FontUnits'           , 'Normalized', ...
     'FontSize'            , scaled_fontsize, ...
-    'FontWeight'          , 'normal', ...
+    'FontWeight'          , 'bold', ...
     'Callback'            , @reset_button_Callback);
 
-handles.ClearHistograms = uicontrol('Style', 'pushbutton', ...
+handles.ClearStats = uicontrol('Style', 'pushbutton', ...
     'Units'               , 'Normalized', ...
-    'Position'            , [0.800 0.05 0.075 0.063], ...
-    'String'              , 'Clear Hist', ...
+    'Position'            , [0.795 0.05 0.088 0.063], ...
+    'String'              , 'Clear Stats', ...
     'BackgroundColor'     , 'White', ...
     'FontName'            , atts.fontname, ...
     'FontUnits'           , 'Normalized', ...
     'FontSize'            , scaled_fontsize, ...
-    'FontWeight'          , 'normal', ...
-    'Callback'            , @ClearHistograms_Callback);
+    'FontWeight'          , 'bold', ...
+    'Callback'            , @ClearStats_Callback);
 
 %% -----------------------------------------------------------------------------
 %  These appear to be error messages that can be turned on or off.
@@ -548,12 +550,42 @@ handles.ui_text_inf_std_min_err_print = uicontrol('Style', 'text', ...
 
 reset_button_Callback()
 
+
+%% -----------------------------------------------------------------------------
+%  Initiate log file 
+if exist(LOG_FILE, 'file') == 2  
+    logfileid = fopen(LOG_FILE, 'a');
+else
+    logfileid = fopen(LOG_FILE, 'w');
+    fprintf(logfileid, '---------------------------------------------------------------\n');
+    fprintf(logfileid, '-------------------------- DART_LAB ---------------------------\n');
+    fprintf(logfileid, '---------------------------------------------------------------\n\n');
+    fprintf(logfileid, '*********************** %s ************************\n\n', mfilename);
+end
+
+fprintf(logfileid, '\n\nNEW RUN: Starting date and time %s\n', datetime);
+fprintf(logfileid, '========\n\n');
+
+fprintf(logfileid, '# Time step: %d (Initial configuration)\n', handles.time_step);
+fprintf(logfileid, '  - Ensemble size = %d\n', handles.ens_size);
+fprintf(logfileid, '  - Model bias = %.2f\n', handles.model_bias);
+fprintf(logfileid, '  - Nonlinear `a` parameter = %.2f\n', handles.alpha);
+fprintf(logfileid, '  - Inflation value = %.2f\n', handles.inflation);
+fprintf(logfileid, '  - (Adaptive) Inflation lower bound = %.2f\n', handles.adap_inf_Min);
+fprintf(logfileid, '  - (Adaptive) Inflation upper bound = %.2f\n', handles.adap_inf_Max);
+fprintf(logfileid, '  - (Adaptive) Inflation damping factor = %.2f\n', handles.adap_inf_Damp);
+fprintf(logfileid, '  - (Adaptive) Inflation standard deviation = %.2f\n', handles.adap_inf_Std);
+fprintf(logfileid, '  - (Adaptive) Inflation standard deviation lower bound = %.2f\n\n', handles.adap_inf_Std_Min);
+
+fclose(logfileid);
+
 %% -----------------------------------------------------------------------------
 
     function ens_size_Callback(~, ~)
 
         new_ens_size = str2double(get(handles.ui_edit_ens_size, 'String'));
-
+        old_ens_size = handles.ens_size;
+        
         % Get a new ensemble size if not valid value
         if( ~ isfinite(new_ens_size) || (new_ens_size < 2) )
 
@@ -594,6 +626,10 @@ reset_button_Callback()
             handles.ens_size = new_ens_size;
 
         end
+        
+        % Update log file
+        Update_log_file(handles.time_last_change, handles.time_step, handles.error_hist, handles.spread_hist, ...
+                            'Ensemble size', old_ens_size, handles.ens_size);
 
         % Update moments
         handles.error    = calculate_rmse(handles.ens, 0.0);
@@ -614,13 +650,19 @@ reset_button_Callback()
     function model_bias_Callback(~, ~)
 
         % Check to make sure the input is a valid number
-        model_bias_value = str2double(get(handles.ui_edit_model_bias, 'String'));
-
+        model_bias_value     = str2double(get(handles.ui_edit_model_bias, 'String'));
+        old_model_bias_value = handles.model_bias; 
+         
         if(isfinite(model_bias_value) && (model_bias_value >= 0))
 
             % If valid, update the value of the model bias.
             handles.model_bias = model_bias_value;
             turn_on_controls;
+            
+            % Update log file
+            Update_log_file(handles.time_last_change, handles.time_step, handles.error_hist, handles.spread_hist, ...
+                            'Model bias', old_model_bias_value, handles.model_bias);
+            
             set(handles.ui_text_model_bias_err_print,'Visible','Off')
             set(handles.ui_edit_model_bias, 'Enable', 'On', ...
                 'BackgroundColor', 'White');
@@ -646,14 +688,18 @@ reset_button_Callback()
     function fixed_inflation_Callback(~, ~)
 
         % Get the value of the inflation
-        inflation_value = str2double(get(handles.ui_edit_fixed_inflation, 'String'));
-
+        inflation_value     = str2double(get(handles.ui_edit_fixed_inflation, 'String'));
+        old_inflation_value = handles.inflation; 
+                        
         if(isfinite(inflation_value) && (inflation_value >= 1) && (inflation_value <= 5))
 
             handles.inflation = inflation_value;
-
             turn_on_controls;
 
+            % Update log file
+            Update_log_file(handles.time_last_change, handles.time_step, handles.error_hist, handles.spread_hist, ...
+                            'Fixed inflation value', old_inflation_value, handles.inflation);
+            
             set(handles.ui_edit_fixed_inflation, 'Enable', 'On', 'BackgroundColor', 'White');
             set(handles.ui_text_inf_err_print,'Visible','Off')
 
@@ -681,13 +727,17 @@ reset_button_Callback()
     function adap_inf_Damp_Callback(~, ~)
 
         % Get the value of the inflation
-        inf_Damp_value = str2double(get(handles.ui_edit_adap_inf_Damp, 'String'));
+        inf_Damp_value     = str2double(get(handles.ui_edit_adap_inf_Damp, 'String'));
+        old_inf_Damp_value = handles.adap_inf_Damp; 
 
         if(isfinite(inf_Damp_value) && (inf_Damp_value >= .1) && (inf_Damp_value <= 1) )
 
             handles.adap_inf_Damp = inf_Damp_value;
-
             turn_on_controls;
+            
+            % Update log file
+            Update_log_file(handles.time_last_change, handles.time_step, handles.error_hist, handles.spread_hist, ...
+                            'Inflation damping factor', old_inf_Damp_value, handles.adap_inf_Damp);
 
             set(handles.ui_edit_adap_inf_Damp, 'Enable', 'On', 'BackgroundColor', 'White');
             set(handles.ui_text_inf_damp_err_print,'Visible','Off')
@@ -716,13 +766,17 @@ reset_button_Callback()
     function adap_inf_Min_Callback(~, ~)
 
         % Get the value of the inflation
-        inf_Min_value = str2double(get(handles.ui_edit_adap_inf_Min, 'String'));
+        inf_Min_value     = str2double(get(handles.ui_edit_adap_inf_Min, 'String'));
+        old_inf_Min_value = handles.adap_inf_Min;
 
         if(isfinite(inf_Min_value) && (inf_Min_value >= 0.) )
 
             handles.adap_inf_Min = inf_Min_value;
-
             turn_on_controls;
+            
+            % Update log file
+            Update_log_file(handles.time_last_change, handles.time_step, handles.error_hist, handles.spread_hist, ...
+                            'Inflation lower bound', old_inf_Min_value, handles.adap_inf_Min);
 
             set(handles.ui_edit_adap_inf_Min, 'Enable', 'On', 'BackgroundColor', 'White');
             set(handles.ui_text_inf_min_err_print,'Visible','Off')
@@ -751,15 +805,19 @@ reset_button_Callback()
     function adap_inf_Max_Callback(~, ~)
 
         % Get the value of the inflation
-        inf_Max_value = str2double(get(handles.ui_edit_adap_inf_Max, 'String'));
-        inf_Min_tmpor = str2double(get(handles.ui_edit_adap_inf_Min, 'String'));
+        inf_Max_value     = str2double(get(handles.ui_edit_adap_inf_Max, 'String'));
+        inf_Min_tmpor     = str2double(get(handles.ui_edit_adap_inf_Min, 'String'));
+        old_inf_Max_value = handles.adap_inf_Max;
 
         if(isfinite(inf_Max_value) && (inf_Max_value >= inf_Min_tmpor) && (inf_Max_value <= 5.) )
 
             handles.adap_inf_Max = inf_Max_value;
-
             turn_on_controls;
 
+            % Update log file
+            Update_log_file(handles.time_last_change, handles.time_step, handles.error_hist, handles.spread_hist, ...
+                            'Inflation upper bound', old_inf_Max_value, handles.adap_inf_Max);
+            
             set(handles.ui_edit_adap_inf_Max, 'Enable', 'On', 'BackgroundColor', 'White');
             set(handles.ui_text_inf_max_err_print,'Visible','Off')
 
@@ -787,14 +845,18 @@ reset_button_Callback()
     function adap_inf_Std_Callback(~, ~)
 
         % Get the value of the inflation
-        inf_Std_value   = str2double(get(handles.ui_edit_adap_inf_Std, 'String'));
-        int_std_min_val = str2double(get(handles.ui_edit_adap_inf_Std_Min, 'String'));
+        inf_Std_value     = str2double(get(handles.ui_edit_adap_inf_Std, 'String'));
+        int_std_min_val   = str2double(get(handles.ui_edit_adap_inf_Std_Min, 'String'));
+        old_inf_Std_value = handles.adap_inf_Std;  
 
         if(isfinite(inf_Std_value) && (inf_Std_value > 0) && (inf_Std_value >= int_std_min_val))
 
             handles.adap_inf_Std = inf_Std_value;
-
             turn_on_controls;
+            
+            % Update log file
+            Update_log_file(handles.time_last_change, handles.time_step, handles.error_hist, handles.spread_hist, ...
+                            'Inflation S.D.', old_inf_Std_value, handles.adap_inf_Std);
 
             set(handles.ui_edit_adap_inf_Std, 'Enable', 'On', 'BackgroundColor', 'White');
             set(handles.ui_text_inf_std_err_print,'Visible','Off')
@@ -838,20 +900,24 @@ reset_button_Callback()
     function adap_inf_Std_Min_Callback(~, ~)
 
         % Get the value of the inflation
-        inf_Std_Min_value = str2double(get(handles.ui_edit_adap_inf_Std_Min, 'String'));
+        inf_Std_Min_value     = str2double(get(handles.ui_edit_adap_inf_Std_Min, 'String'));
+        old_inf_Std_Min_value = handles.adap_inf_Std_Min;
 
         if(isfinite(inf_Std_Min_value) && (inf_Std_Min_value > 0) && (inf_Std_Min_value < handles.adap_inf_Std))
 
             handles.adap_inf_Std_Min = inf_Std_Min_value;
-
             turn_on_controls;
+            
+            % Update log file
+            Update_log_file(handles.time_last_change, handles.time_step, handles.error_hist, handles.spread_hist, ...
+                            'Inflation S.D. lower bound', old_inf_Std_Min_value, handles.adap_inf_Std_Min);
 
             set(handles.ui_edit_adap_inf_Std_Min, 'Enable', 'On', 'BackgroundColor', 'White');
             set(handles.ui_text_inf_std_min_err_print,'Visible','Off')
 
         elseif (inf_Std_Min_value > handles.adap_inf_Std)
             % if the new value for the lower-bound is larger than the
-            % current SD, set the current SD value to teh new Minimum.
+            % current SD, set the current SD value to the new Minimum.
             handles.adap_inf_Std = inf_Std_Min_value;
 
         else
@@ -876,15 +942,19 @@ reset_button_Callback()
 %% -----------------------------------------------------------------------------
 
     function nonlin_a_Callback(~, ~)
-
+        
         % Get the value of the model nonlinearity parameter 'alpha'
-
         nonlin_value = str2double(get(handles.ui_edit_nonlin_a, 'String'));
+        old_nonlin_value = handles.alpha;
 
         if(isfinite(nonlin_value) && (nonlin_value >= 0))
 
             handles.alpha = nonlin_value;
             turn_on_controls;
+            
+            % Update log file
+            Update_log_file(handles.time_last_change, handles.time_step, handles.error_hist, handles.spread_hist, ...
+                            'Nonlinear `a` parameter', old_nonlin_value, handles.alpha);
 
             set(handles.ui_edit_nonlin_a, 'Enable', 'On', 'BackgroundColor', 'White');
             set(handles.ui_text_nonlin_err_print, 'Visible', 'Off')
@@ -908,10 +978,52 @@ reset_button_Callback()
 
     end
 
+
+%% -----------------------------------------------------------------------------
+
+    function Update_log_file(t1, t2, RMS, AES, info, p1, p2)
+        
+        logfileid = fopen(LOG_FILE, 'a');
+        
+        fprintf(logfileid, '# Time step: %d\n', t2); 
+        fprintf(logfileid, '  >> Statistics over period (%d:%d): avg. RMSE = %.2f, avg. Spread = %.2f\n', ...
+                           t1, t2, mean(RMS(t1:t2)), mean(AES(t1:t2)));
+        
+        if strcmp(info, 'Ensemble size') == 1
+            fprintf(logfileid, '  $$ User input: %s has been changed from %d to %d\n\n', info, p1, p2);
+        elseif strcmp(info, 'Statistics cleared') == 1
+            fprintf(logfileid, '  $$ User input: %s; Histograms, RMS and Spread values have been reset\n\n', info);
+        elseif strcmp(info, 'RESET') == 1
+            fprintf(logfileid, '  $$ User input: %s; Everything has been reset to initial configuration\n\n', info);
+        elseif strcmp(info, 'Assimilation Type') == 1
+            fprintf(logfileid, '  $$ User input: %s has been changed from `%s` to `%s`\n\n', info, p1, p2);
+        else
+            fprintf(logfileid, '  $$ User input: %s has been changed from %.2f to %.2f\n\n', info, p1, p2);
+        end
+        
+        fprintf(logfileid, '     Current values of the parameters:\n');
+        fprintf(logfileid, '     - Ensemble size = %d\n', handles.ens_size);
+        fprintf(logfileid, '     - Model bias = %.2f\n', handles.model_bias);
+        fprintf(logfileid, '     - Nonlinear `a` parameter = %.2f\n', handles.alpha);
+        fprintf(logfileid, '     - Inflation value = %.2f\n', handles.inflation);
+        fprintf(logfileid, '     - (Adaptive) Inflation lower bound = %.2f\n', handles.adap_inf_Min);
+        fprintf(logfileid, '     - (Adaptive) Inflation upper bound = %.2f\n', handles.adap_inf_Max);
+        fprintf(logfileid, '     - (Adaptive) Inflation damping factor = %.2f\n', handles.adap_inf_Damp);
+        fprintf(logfileid, '     - (Adaptive) Inflation standard deviation = %.2f\n', handles.adap_inf_Std);
+        fprintf(logfileid, '     - (Adaptive) Inflation standard deviation lower bound = %.2f\n\n', handles.adap_inf_Std_Min);
+        
+        fclose(logfileid);
+        
+    end
+
+
 %% -----------------------------------------------------------------------------
 
 
-    function ClearHistograms_Callback(~, ~)
+    function ClearStats_Callback(~, ~)
+        
+        % Update log file
+        Update_log_file(handles.time_last_change, handles.time_step, handles.error_hist, handles.spread_hist, 'Statistics cleared');
 
         % An array to keep track of rank histograms
         handles.prior_rank(    1 : handles.ens_size + 1) = 0;
@@ -920,6 +1032,19 @@ reset_button_Callback()
         % Clear out the old graphics. The legends remain, which is nice.
         cla(handles.h_prior_rank_histogram)
         cla(handles.h_post_rank_histogram)
+        
+        % Cearing Error/Spread Stats
+        handles.time_last_change = handles.time_step;
+        
+        axes(handles.h_err_spread_evolution);
+
+        L = legend('Error','Spread','Location', 'NorthWest');
+        
+        L_title = get(L, 'Title');
+        set(L_title, 'String', [ 'Averaging Over Steps (' num2str(handles.time_last_change) ':n)' ], ...
+                     'FontSize', atts.fontsize, 'FontWeight', 'normal')
+       
+        set(L,'FontName', atts.fontname, 'FontSize', atts.fontsize, 'EdgeColor', 'w');
 
     end
 
@@ -931,6 +1056,10 @@ reset_button_Callback()
         initialize_data();
         reset_graphics();
 
+        % Update log file
+        if handles.time_step > 1
+            Update_log_file(handles.time_last_change, handles.time_step, handles.error_hist, handles.spread_hist, 'RESET');
+        end
     end
 
 %% -----------------------------------------------------------------------------
@@ -962,6 +1091,9 @@ reset_button_Callback()
         handles.alpha            = 0.0;   % aka nonlin a
         handles.obs_error_sd     = 1;
         handles.observation      = 0;
+        handles.error_hist       = 0;
+        handles.spread_hist      = 0;
+        handles.time_last_change = 1;
 
         %  Compute the initial error (truth is 0.0) and spread (standard deviation)
         handles.error    = calculate_rmse(handles.ens, 0.0);
@@ -1111,6 +1243,9 @@ reset_button_Callback()
 
             handles.error  = prior_error;
             handles.spread = prior_spread;
+            
+            handles.error_hist(handles.time_step)  = handles.error;
+            handles.spread_hist(handles.time_step) = handles.spread;
 
             % Update the prior rank histogram figure
             axes(handles.h_prior_rank_histogram);
@@ -1123,7 +1258,12 @@ reset_button_Callback()
             temp_rank(ens_rank, 2) = 1;
 
             hold off
-            bar(temp_rank,'stacked');
+            B = bar(temp_rank,'stacked');
+            B(1).FaceColor= atts.blue   ; B(1).EdgeColor= 'k';
+            B(2).FaceColor= atts.yellow ; B(2).EdgeColor= 'k';
+            ylabel('Frequency'           ,'FontName', atts.fontname,'FontSize', atts.fontsize);
+            xlabel('Rank'                ,'FontName', atts.fontname,'FontSize', atts.fontsize);
+            title ('Prior Rank Histogram','FontName', atts.fontname,'FontSize', atts.fontsize);
 
             % Plot the figure window for this update
             axes(handles.axes);
@@ -1139,9 +1279,9 @@ reset_button_Callback()
 
             % Put on a black axis line using data limits
             plot([xmin xmax], [0, 0], 'k', 'Linewidth', 2);
-            hold on;
+            hold on
             ens_axis = [xmin xmax -0.2 y_max + 0.02];
-            grid on;
+            grid on
 
             % Plot the prior ensemble members in green
             % Plotting ticks instead of asterisks makes bins clearer
@@ -1281,15 +1421,18 @@ reset_button_Callback()
             temp_rank(:, 2)        = 0;
             temp_rank(ens_rank, 2) = 1;
 
-            
             hold off
-            bar(temp_rank, 'stacked');
+            B = bar(temp_rank, 'stacked');
+            B(1).FaceColor= atts.blue   ; B(1).EdgeColor= 'k';
+            B(2).FaceColor= atts.yellow ; B(2).EdgeColor= 'k';
+            ylabel('Frequency'           ,'FontName', atts.fontname,'FontSize', atts.fontsize);
+            xlabel('Rank'                ,'FontName', atts.fontname,'FontSize', atts.fontsize);
+            title ('Posterior Rank Histogram','FontName', atts.fontname,'FontSize', atts.fontsize);
 
             % Update the permanent storage of the rank values
             handles.post_rank(ens_rank) = handles.post_rank(ens_rank) + 1;
 
             %% Plot the segment for the updated error
-
             axes(handles.h_err_spread_evolution);
 
             post_error = calculate_rmse(new_ens, 0.0);
@@ -1310,7 +1453,11 @@ reset_button_Callback()
             set(h, 'Color', atts.red, 'LineWidth', 2.0);
 
             handles.spread = post_spread;
-
+            
+            time_range = [ handles.time_last_change, handles.time_step ];
+            show_rms_on_plot(handles.error_hist, handles.spread_hist, time_range);
+            
+            
             %% Plot the segment for the updated inflation
             axes(handles.h_inflation_evolution);
 
@@ -1336,7 +1483,7 @@ reset_button_Callback()
             % Plot the observation likelihood
             [hg_like, ~, ylims] = plot_gaussian(observation, obs_error_sd, 1.0);
             set(hg_like, 'Color', atts.red, 'LineWidth', 2, 'LineStyle', '--');
-            hold on;
+            hold on
 
             % Want axes to encompass likely values for plotted obs_likelihood
             % The observed value will be between -4 and 4 with very high probability,
@@ -1400,7 +1547,7 @@ reset_button_Callback()
             set(gca, 'YTick', [0 0.1 0.2 0.3 0.4], ...
                      'XLim' , [def_axis(1) def_axis(2)], ...
                      'YLim' , [def_axis(3) def_axis(4)]);
-            grid on;
+            grid on
 
             % Plot an additional axis
             plot(ens_axis(1:2), [-0.1 -0.1], 'k', 'LineWidth', 2);
@@ -1439,7 +1586,7 @@ reset_button_Callback()
         set(handles.ui_radio_button_eakf,               'Enable', 'Off');
         set(handles.ui_radio_button_enkf,               'Enable', 'Off');
         set(handles.ui_radio_button_rhf,                'Enable', 'Off');
-        set(handles.ClearHistograms,                    'Enable', 'Off');
+        set(handles.ClearStats,                         'Enable', 'Off');
 
     end
 
@@ -1471,7 +1618,7 @@ reset_button_Callback()
         set(handles.ui_radio_button_eakf,               'Enable', 'On');
         set(handles.ui_radio_button_enkf,               'Enable', 'On');
         set(handles.ui_radio_button_rhf,                'Enable', 'On');
-        set(handles.ClearHistograms,                    'Enable', 'On');
+        set(handles.ClearStats,                         'Enable', 'On');
 
     end
 
@@ -1482,6 +1629,30 @@ reset_button_Callback()
         squared_error = (x - truth).^2;
         y = sqrt(mean(squared_error));
 
+    end
+
+
+%% ----------------------------------------------------------------------
+
+    function show_rms_on_plot(prior_rms_vals, prior_aes_vals, ranges)
+        
+        axes(handles.h_err_spread_evolution);
+        
+        prior_rms_vals_new = prior_rms_vals(ranges(1) : ranges(2));
+        prior_aes_vals_new = prior_aes_vals(ranges(1) : ranges(2));
+
+        str1 = sprintf('%.2f', mean(prior_rms_vals_new) );
+        str2 = sprintf('%.2f', mean(prior_aes_vals_new) );
+        
+        str3 = [ 'Averaging Over Steps (' num2str(ranges(1)) ':' num2str(ranges(2)) ')' ];
+        
+        L = legend( [ 'Error: ' str1 ], [ 'Spread: ', str2 ] );
+        
+        L_title = get(L, 'Title');
+        set(L_title, 'String', str3, 'FontSize', atts.fontsize, 'FontWeight', 'normal')
+        
+        set(L, 'EdgeColor', 'w', 'FontSize', atts.fontsize)
+        
     end
 
 
@@ -1601,14 +1772,17 @@ reset_button_Callback()
         h_s  = line([0 0], [0 0]);
         set(h_s, 'LineWidth', 2, 'Color', atts.red, 'Visible', 'on');
 
-        L = legend([h_e h_s],'Error','Spread','Location', 'NorthEast');
-        set(L,'FontName', atts.fontname, 'FontSize', atts.fontsize);
-        legend boxon
+        L = legend([h_e h_s],'Error','Spread','Location', 'NorthWest');
+        
+        L_title = get(L, 'Title');
+        set(L_title, 'String', 'Averaging Over Steps (1:n)', 'FontSize', atts.fontsize, 'FontWeight', 'normal')
+       
+        set(L,'FontName', atts.fontname, 'FontSize', atts.fontsize, 'EdgeColor', 'w');
         
         ylabel('Error, Spread','FontName', atts.fontname,'FontSize', atts.fontsize);
         axis([1 10 0 10]);
         set(gca,'XTickLabel',[],'XGrid','on')
-        hold on;
+        hold on
 
     end
 
@@ -1629,7 +1803,8 @@ reset_button_Callback()
         end
 
         plot([1 100000], [1 1], 'k:');
-        axis([1 10 0. 3]);
+        axis([1 10 0. 3]); 
+        
         ylabel('Inflation', 'FontName', atts.fontname, 'FontSize', atts.fontsize);
         xlabel('Timestep', 'FontName', atts.fontname, 'FontSize', atts.fontsize);
         set(gca,'XGrid', 'on')
@@ -1677,7 +1852,7 @@ reset_button_Callback()
         title ('Posterior Rank Histogram','FontName', atts.fontname,'FontSize', atts.fontsize);
         axis([0 handles.ens_size+2 -Inf Inf])
         set(handles.h_post_rank_histogram,'XTick',1:(handles.ens_size+1));
-        hold on;
+        hold on
 
     end
 

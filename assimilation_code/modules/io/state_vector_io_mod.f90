@@ -116,11 +116,11 @@ logical :: module_initialized = .false.
 
 ! namelist variables with default values
 ! Aim: to have the regular transpose as the default
-logical :: buffer_state_io         = .false. !< Write one variable at a time. This is for models
-                                             !< whose entire model state can not fit into a single array on
-                                             !< a given node
-logical :: single_precision_output = .false. !< Allows you to write r4 netcdf files 
-                                             !< even if filter is double precision
+logical :: buffer_state_io         = .false. !< .false. puts the  entire model state 
+                                             !< into a single array on a given node
+                                             !< (desirable if possible).
+logical :: single_precision_output = .false. !< .true. writes 32 bit netcdf variables
+                                             !< even if filter uses 64 bit 
 
 namelist /  state_vector_io_nml / buffer_state_io, single_precision_output
 

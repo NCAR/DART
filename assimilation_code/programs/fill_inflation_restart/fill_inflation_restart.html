@@ -37,22 +37,26 @@
 
 <P>
 This program is now OBSOLETE since DART inflation files are now in
-NetCDF format.  Use one of the standard NCO utilities like "ncap2" on a
-copy of another restart file to set the initial inflation mean, and another
+NetCDF format.  Use one of the standard NCO utilities like "<em class=program>ncap2</em>"
+ on a copy of another restart file to set the initial inflation mean, and another
 for the initial inflation standard deviation.  Inflation mean and sd values
 look exactly like restart values, arranged by variable type like T, U, V, etc.
 </P>
 <P>
-Here's an example of using ncap2 to set the T,U and V inf values:
+Depending on your version of the NCO utilities, you can 
+use <em class=program>ncap2</em> to set the T,U and V inf values using one of two syntaxes:
+</P>
 <PRE>
-  ncap2 -s 'T=1.0;U=1.0;V=1.0' wrfinput_d01 prior_inf.nc
-  ncap2 -s 'T=0.6;U=0.6;V=0.6' wrfinput_d01 prior_sd.nc
+  ncap2 -s 'T=1.0;U=1.0;V=1.0' wrfinput_d01 input_priorinf_mean.nc
+  ncap2 -s 'T=0.6;U=0.6;V=0.6' wrfinput_d01 input_priorinf_sd.nc
+  -or-
+  ncap2 -s 'T(:,:,:)=1.0;U(:,:,:)=1.0;V(:,:,:)=1.0' wrfinput_d01 input_priorinf_mean.nc
+  ncap2 -s 'T(:,:,:)=0.6;U(:,:,:)=0.6;V(:,:,:)=0.6' wrfinput_d01 input_priorinf_sd.nc
 </PRE>
-
-This works as long as you have at least version 4.4.2 of the NCO utils.
-Some earlier versions change the full 3d arrays into a single scalar
-with this syntax.  If that's your result (check with <tt>ncdump -h</tt>)
-use a more recent version of the NCO tools.
+<P>
+Some versions of the NCO utilities change the full 3D arrays into a 
+single scalar.  If that's your result (check your output with <tt>ncdump -h</tt>)
+use the alternate syntax or a more recent version of the NCO tools.
 </P>
 
 

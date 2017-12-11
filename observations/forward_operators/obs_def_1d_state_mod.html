@@ -59,14 +59,19 @@ developing more complicated specialized observation definition modules.
 This is an extended format Fortran 90 module that provides the definition
 for observation types designed for use with idealized low-order models
 that use the 1D location module and can be thought of as having a state
-vector that is equally spaced on a 1D cyclic domain. The two observation types
+vector that is equally spaced on a 1D cyclic domain. The three observation types
 are: a straight linear interpolation to a point on a [0,1] domain called
-a RAW_STATE_VARIABLE; and an area-weighted 'integral' of the state variable
-over some part of the cyclic 1D domain. The second type can be used to
+a RAW_STATE_VARIABLE; the RAW_STATE_VAR_POWER is the interpolated
+RAW_STATE_VARIABLE raised to a real-valued power; 
+an area-weighted 'integral' of the state variable
+over some part of the cyclic 1D domain called RAW_STATE_1D_INTEGRAL. 
+The second type is convenient for studying non-gaussian, non-linear
+assimilation problems.
+The third type can be used to
 do idealized studies related to remote sensing observations that are
 best thought of as weighted integrals of some quantity over a finite volume.
 <br /><br />
-The second observation type is referred to as a RAW_STATE_1D_INTEGRAL. It
+The RAW_STATE_1D_INTEGRAL 
 has an associated half_width and localization type (see the
 <a href="../../assimilation_code/modules/assimilation/cov_cutoff_mod.html">cov_cutoff module</a>
 documentation)
@@ -249,6 +254,11 @@ cov_cutoff_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#interactive_1d_integral">interactive_1d_integral</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_expected_1d_integral">get_expected_1d_integral</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_1d_integral">set_1d_integral</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#write_power">write_power</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#read_power">read_power</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#interactive_power">interactive_power</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_expected_power">get_expected_power</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_power">set_power</A></TD></TR>
 </TABLE>
 
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
@@ -450,6 +460,201 @@ this type.
     <TD>Integer localization type: 1=Gaspari-Cohn; 2=Boxcar; 3=Ramped Boxcar
     </TD></TR>
 <TR><TD valign=top><em class=code>igrkey&nbsp;&nbsp;</em></TD>
+    <TD>Unique integer key associated with the observation being 
+       processed.</TD></TR>
+<TR><TD valign=top><em class=code>istatus&nbsp;&nbsp;</em></TD>
+    <TD>Return code.  0 means success, any other value is an error</TD></TR>
+</TABLE>
+
+</div>
+<br />
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+
+<A NAME="write_power"></A>
+<br />
+<div class=routine>
+<em class=call> call write_power(powkey, ifile, fform) </em>
+<pre>
+integer,          intent(in) :: <em class=code>powkey</em>
+integer,          intent(in) :: <em class=code>ifile</em>
+character(len=*), intent(in) :: <em class=code>fform</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Writes out the extra information, the power,  for observation with unique identifier
+key for a power observation type.  
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>powkey&nbsp;&nbsp;</em></TD>
+    <TD>Unique integer key associated with the power 
+        observation being processed.  This is not the same as
+        the key that all types of observations have and uniquely
+        distinguishes all observations from each other; this 
+        is a key that is only set and retrieved by this code
+        for power observations.  It is stored in the obs_def
+        derived type, not in the main obs_type definition.</TD></TR>
+<TR><TD valign=top><em class=code>ifile&nbsp;&nbsp;</em></TD>
+    <TD>Unit number on which observation sequence file is open</TD></TR>
+<TR><TD valign=top><em class=code>fform&nbsp;&nbsp;</em></TD>
+    <TD>String noting whether file is opened for 'formatted' 
+        or 'unformatted' IO.</TD></TR>
+</TABLE>
+
+</div>
+<br />
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+
+<A NAME="read_power"></A>
+<br />
+<div class=routine>
+<em class=call> call read_power(powkey, ifile, fform) </em>
+<pre>
+integer,          intent(out) :: <em class=code>powkey</em>
+integer,          intent(in)  :: <em class=code>ifile</em>
+character(len=*), intent(in)  :: <em class=code>fform</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Reads the extra information, the power,  for observation with unique identifier
+key for a power observation type.
+The key that is returned is uniquely associated with the definition
+that has been created and is used by this module to keep track
+of the associated parameters for this observation.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>powkey&nbsp;&nbsp;</em></TD>
+    <TD>Unique integer key associated with the observation being 
+       processed.</TD></TR>
+<TR><TD valign=top><em class=code>ifile&nbsp;&nbsp;</em></TD>
+    <TD>Unit number on which observation sequence file is open</TD></TR>
+<TR><TD valign=top><em class=code>fform&nbsp;&nbsp;</em></TD>
+    <TD>String noting whether file is opened for 'formatted' or 
+        'unformatted' IO.</TD></TR>
+</TABLE>
+
+</div>
+<br />
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+
+<A NAME="interactive_power"></A>
+<br />
+<div class=routine>
+<em class=call> call interactive_power(powkey) </em>
+<pre>
+integer, intent(out) :: <em class=code>powkey</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Uses input from standard in to define the characteristics of a power
+observation. The key that is returned is uniquely associated with the definition
+that has been created and can be used by this module to keep track of the
+associated parameter, the power, for this key.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>powkey&nbsp;&nbsp;</em></TD>
+    <TD>Unique identifier associated with the created observation definition 
+        in the obs sequence.</TD></TR>
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_expected_power"></A>
+<br />
+<div class=routine>
+<em class=call> call get_expected_power(state, location, powkey, val, istatus) </em>
+<pre>
+real(r8), intent(in)            :: <em class=code>state</em>
+type(location_type), intent(in) :: <em class=code>location</em>
+integer, intent(in)             :: <em class=code>powkey</em>
+real(r8), intent(out)           :: <em class=code>val</em>
+integer, intent(out)            :: <em class=code>istatus</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Computes the forward observation operator for a power observation.
+Calls the <em class="code">interpolate()</em> routine 
+to invoke the forward operator code in whatever model this has been 
+compiled with, then raises the result to the specified power associated with this powkey.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>state&nbsp;&nbsp;</em></TD>
+    <TD>Model state vector (or extended state vector).</TD></TR>
+<TR><TD valign=top><em class=code>location&nbsp;&nbsp;</em></TD>
+    <TD>Location of this observation.</TD></TR>
+<TR><TD valign=top><em class=code>powkey&nbsp;&nbsp;</em></TD>
+    <TD>Unique integer key associated with this observation.</TD></TR>
+<TR><TD valign=top><em class=code>val&nbsp;&nbsp;</em></TD>
+    <TD>Returned value of forward observation operator.</TD></TR>
+<TR><TD valign=top><em class=code>istatus&nbsp;&nbsp;</em></TD>
+    <TD>Returns 0 if forward operator was successfully computed, 
+        else returns a positive value.  (Negative values are
+        reserved for system use.)</TD></TR>
+</TABLE>
+
+</div>
+<br />
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+
+<A NAME="set_power"></A>
+<br />
+<div class=routine>
+<em class=call>call set_power(power_in, powkey, istatus) </em>
+<pre>
+real(r8), intent(in)  :: <em class=code>power_in</em>
+integer,  intent(out) :: <em class=code>powkey</em>
+integer,  intent(out) :: <em class=code>istatus</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Available for use by programs that create observations to set
+the additional metadata for these observation types.  This 
+information includes the power to which to raise the state variable.
+The key that is returned is uniquely associated with the definition
+that has been created and should be set in the obs_def structure
+by calling <em class=code>set_obs_def_key()</em>.
+This key is different from the main observation key which all
+observation types have.  This key is unique to this observation
+type and is used when reading in the observation sequence to
+match the corresponding metadata with each observation of
+this type.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>power_in&nbsp;&nbsp;</em></TD>
+    <TD>Real value setting the power.
+    </TD></TR>
+<TR><TD valign=top><em class=code>powkey&nbsp;&nbsp;</em></TD>
     <TD>Unique integer key associated with the observation being 
        processed.</TD></TR>
 <TR><TD valign=top><em class=code>istatus&nbsp;&nbsp;</em></TD>
