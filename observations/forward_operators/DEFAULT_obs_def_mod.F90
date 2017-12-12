@@ -158,22 +158,22 @@ end subroutine initialize_module
 
 !----------------------------------------------------------------------------
 
-subroutine init_obs_def(obs_def, location, kind, time, error_variance)
+subroutine init_obs_def(obs_def, location, obkind, obtime, error_variance)
 ! Need to add additional component arguments as optionals as needed
 
 ! Constructor for an obs_def
 
 type(obs_def_type), intent(out) :: obs_def
 type(location_type), intent(in) :: location
-integer,             intent(in) :: kind
-type(time_type),     intent(in) :: time
+integer,             intent(in) :: obkind
+type(time_type),     intent(in) :: obtime
 real(r8),            intent(in) :: error_variance
 
 if ( .not. module_initialized ) call initialize_module
 
 obs_def%location = location
-obs_def%kind = kind
-obs_def%time = time
+obs_def%kind = obkind
+obs_def%time = obtime
 obs_def%error_variance = error_variance
 ! No key assigned for standard observation defs
 obs_def%key = -1

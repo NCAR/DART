@@ -777,16 +777,16 @@ call destroy_obs(obs)
 end subroutine print_obs_time
 
 !-------------------------------------------------------------------------
+!>@todo this routine is not called anywhere - candidate for removal.
 
-subroutine perfect_set_initial_time(time)
+subroutine perfect_set_initial_time(initial_time)
 
-type(time_type), intent(out) :: time
-
+type(time_type), intent(out) :: initial_time
 
 if(init_time_days >= 0) then
-   time = set_time(init_time_seconds, init_time_days)
+   initial_time = set_time(init_time_seconds, init_time_days)
 else
-   time = set_time(0, 0)
+   initial_time = set_time(0, 0)
 endif
 
 end subroutine perfect_set_initial_time
