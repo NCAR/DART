@@ -544,14 +544,12 @@ contains
     ! Set up the interpolator object
     subroutine initialize_interpolator(interpolator, state_handle, ens_size, ens_num, domain, state_def)
         type(coamps_interpolator),           intent(inout) :: interpolator
-        !real(kind=r8), dimension(:), target, intent(in)    :: state
         type(ensemble_type),         target, intent(in)    :: state_handle
         integer,                             intent(in)    :: ens_size
         integer,                             intent(in)    :: ens_num
         type(coamps_domain),         target, intent(in)    :: domain
         type(state_vector),          target, intent(in)    :: state_def
 
-        !!!!interpolator%model_state     => state
         interpolator%state_handle     => state_handle
         interpolator%ensemble_size    =  ens_size
         interpolator%ensemble_number  =  ens_num

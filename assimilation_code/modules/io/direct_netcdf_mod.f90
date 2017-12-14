@@ -461,15 +461,15 @@ ncFileID = file_handle%stage_metadata%ncFileID
 if (my_task_id()==0) then
    ierr = nf90_close(ncFileID%ncid)
    call nc_check(ierr, 'finalize_single_file_io: nf90_close', ncFileID%fname)
+   if(associated(ncFileID%rtimes)) deallocate(ncFileID%rtimes, ncFileID%times )
 endif
-
-call end_diagnostic_structure()
 
 ncFileID%fname     = "notinuse"
 ncFileID%ncid      = -1
 ncFileID%Ntimes    = -1
 ncFileID%NtimesMax = -1
-if(associated(ncFileID%rtimes)) deallocate(ncFileID%rtimes, ncFileID%times )
+
+call end_diagnostic_structure()
 
 end subroutine finalize_single_file_io
 

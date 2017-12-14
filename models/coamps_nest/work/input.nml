@@ -79,7 +79,7 @@
 
    trace_execution              = .true
    output_timestamps            = .false.
-   output_forward_op_errors     = .false.
+   output_forward_op_errors     = .true.
    silence                      = .false.
   /
 
@@ -165,11 +165,13 @@
    input_files              = '../externals/obs_def/obs_def_navdas_mod.f90'
   /
 
-   assimilate_these_obs_types = 'EVAL_POT_TEMPERATURE', 'P_SFC_LAND'
 
+   assimilate_these_obs_types = ''
 &obs_kind_nml
-   assimilate_these_obs_types = 'RADIOSONDE_U_WIND_COMPONENT'
-   evaluate_these_obs_types   = 'RADIOSONDE_LOG_SPECIFIC_HUMIDITY', 'EVAL_POT_TEMPERATURE', 'P_SFC_LAND'
+   assimilate_these_obs_types = 'EVAL_POT_TEMPERATURE'
+   evaluate_these_obs_types   = 'RADIOSONDE_U_WIND_COMPONENT',
+                                'RADIOSONDE_LOG_SPECIFIC_HUMIDITY', 
+                                'P_SFC_LAND',
   /
 
 # Notes for obs_def_radar_mod_nml:
@@ -246,7 +248,7 @@
 
 
 &state_vector_io_nml
-   single_precision_output    = .false.
+   single_precision_output    = .true.
    /
 
 

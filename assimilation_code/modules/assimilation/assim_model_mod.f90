@@ -51,6 +51,8 @@ public :: static_init_assim_model, &
           read_model_time, &
           write_model_time
 
+!>@todo FIXME ... the documentation for this module is out of date.
+
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
    "$URL$"
@@ -91,7 +93,7 @@ call static_init_model()
 end subroutine static_init_assim_model
 
 
-function get_closest_state_time_to(model_time, time)
+function get_closest_state_time_to(model_time, given_time)
 !----------------------------------------------------------------------
 !
 ! Returns the time closest to the given time that the model can reach
@@ -100,7 +102,7 @@ function get_closest_state_time_to(model_time, time)
 ! from the underlying model in the long run.
 
 type(time_type) :: get_closest_state_time_to
-type(time_type), intent(in) :: model_time, time
+type(time_type), intent(in) :: model_time, given_time
 
 type(time_type) :: time_step
 
@@ -109,7 +111,7 @@ type(time_type) :: time_step
 ! to advance the state
 time_step = shortest_time_between_assimilations()
 
-if(model_time > time) then
+if(model_time > given_time) then
    ! If model_time is past start of obs window, don't advance it
    get_closest_state_time_to = model_time
    return
@@ -117,23 +119,23 @@ endif
 
 get_closest_state_time_to = model_time
 
-do while((time_step + 2*get_closest_state_time_to) < 2*time)
+do while((time_step + 2*get_closest_state_time_to) < 2*given_time)
    get_closest_state_time_to = get_closest_state_time_to + time_step
 enddo
 
 end function get_closest_state_time_to
 
 
-subroutine get_initial_condition(time, x)
+subroutine get_initial_condition(initial_time, x)
 !----------------------------------------------------------------------
 !
 
-type(time_type), intent(out) :: time
+type(time_type), intent(out) :: initial_time
 real(r8),        intent(out) :: x(:)
 
 call init_conditions(x)
 
-call init_time(time)
+call init_time(initial_time)
 
 end subroutine get_initial_condition
 

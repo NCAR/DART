@@ -52,9 +52,6 @@ module coamps_util_mod
   public :: print_label_name
   public :: print_2d_real8_array
 
-  ! Icky platform-specific details
-  public :: fix_for_platform
-
   ! Working with flat files
   public :: generate_flat_file_name
   public :: read_flat_file
@@ -85,16 +82,6 @@ module coamps_util_mod
 
   !------------------------------
   ! END PUBLIC INTERFACE
-  !------------------------------
-
-  !------------------------------
-  ! BEGIN EXTERNAL INTERFACES
-  !------------------------------
-  interface fix_for_platform
-    module procedure fix_for_platform4, fix_for_platform8
-  end interface fix_for_platform
-  !------------------------------
-  ! END EXTERNAL INTERFACES
   !------------------------------
 
   !------------------------------
@@ -383,43 +370,6 @@ contains
     end do
   end subroutine print_2d_real8_array
 
-  ! fix_for_platform4
-  ! ----------------
-  ! Performs any platform-specific fixes necessary on an array of r4's
-  ! Currently these are:
-  !  - Little-endian platform:  COAMPS writes big-endian files, so
-  !                             need to byteswap 
-  !  PARAMETERS
-  ! INOUT array             array containing values byteswap
-  !   IN  array_size        length of the array
-  !   IN  element_size      length (in bytes) of each array entry 
-  subroutine fix_for_platform4(array, array_size)
-    real(kind=r4),      dimension(:), intent(inout) :: array
-    integer,                          intent(in)    :: array_size
-
-!TJH   if (LITTLE_ENDIAN_PLATFORM) then
-!TJH     call c_byteswap_array(array, array_size, r4)
-!TJH   end if
-  end subroutine fix_for_platform4
-
-  ! fix_for_platform8
-  ! ----------------
-  ! Performs any platform-specific fixes necessary on an array of r8's
-  ! Currently these are:
-  !  - Little-endian platform:  COAMPS writes big-endian files, so
-  !                             need to byteswap 
-  !  PARAMETERS
-  ! INOUT array             array containing values byteswap
-  !   IN  array_size        length of the array
-  !   IN  element_size      length (in bytes) of each array entry 
-  subroutine fix_for_platform8(array, array_size)
-    real(kind=r8),      dimension(:), intent(inout) :: array
-    integer,                          intent(in)    :: array_size
-
-!TJH    if (LITTLE_ENDIAN_PLATFORM) then
-!TJH      call c_byteswap_array(array, array_size, r8)
-!TJH    end if
-  end subroutine fix_for_platform8
 
   ! generate_flat_file_name
   ! -----------------------
@@ -496,7 +446,6 @@ contains
 
     ! COAMPS flat files are real(kind=r4)
     flat_array_tmp(:)=real(flat_array(:) , kind=r4)
-    call fix_for_platform(flat_array_tmp, field_size)
 
     write(unit=flat_unit, rec=1, iostat=io_status) flat_array_tmp
     call check_io_status(io_status, routine, source, revision, &
@@ -532,7 +481,6 @@ contains
     read(unit=flat_unit, rec=1, iostat=io_status) flat_array_tmp
     call check_io_status(io_status, routine, source, revision, &
                          revdate, 'Reading flat file')
-    call fix_for_platform(flat_array_tmp, field_size)
     flat_array(:)=real(flat_array_tmp(:) , kind=r8)
 
     deallocate(flat_array_tmp, stat=dealloc_status)
@@ -639,7 +587,7 @@ endif
 analysis_name = variable_name
 analysis_name(istart:istart+6) = 'analfld'
 
-if (.false. .and. do_output()) then
+if (.true. .and. do_output()) then
    write(string1,*)'replacing "'//trim(variable_name)//'"'
    write(string2,*)'with      "'//trim(analysis_name)//'"'
    call error_handler(E_MSG,routine,string1,text2=string2)
@@ -678,7 +626,7 @@ elseif (ndims == 3) then
    allocate( chunk3D( dimlens(1), dimlens(2), dimlens(3) ) )
    call nc_get_variable(ncFileID, variable_name, chunk3D, context=routine) 
 
-   chunk3D = 42.0_r8 ! TJH DEBUG
+!  chunk3D = 42.0_r8 ! TJH DEBUG
    
 !  call nc_put_variable(hdf5unit, analysis_name, chunk3D, context=routine) 
 

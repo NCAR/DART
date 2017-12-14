@@ -118,7 +118,7 @@ use obs_kind_mod
 use ensemble_manager_mod, only : ensemble_type
 
 use time_manager_mod,    only : set_time, set_time_missing,    &
-                                set_date, time_type,           &
+                                set_date, get_date, time_type, &
                                 set_calendar_type,             &
                                 print_date, print_time,        &
                                 operator(+), operator(-)
@@ -173,7 +173,6 @@ public :: nc_write_model_atts
 
 ! Ensemble generation
 public :: pert_model_copies 
-!public :: pert_model_state 
 
 ! Forward operator
 public :: model_interpolate
@@ -906,14 +905,12 @@ end subroutine pert_model_copies
 
 !--------------------------------------------------------------------
 !>
-!> read the time from the cdtg character string in the model_nml namelist
+!> read the time from the cdtg character string in the model_nml namelist.
 !> and add in the 'latest' forecast 'tau' (the forecast length is 'tau' - in hours)
-!> This is a required interface that has a mandatory argument. In this case,
-!> the mandatory argument is not needed.
+!> This is a required interface that has a mandatory argument.
+!> In this case, the mandatory argument is not needed.
 
 function read_model_time(filename)
-
-! cdtg = '2013011000'
 
 character(len=*), intent(in) :: filename
 type(time_type)              :: read_model_time
@@ -921,24 +918,23 @@ type(time_type)              :: read_model_time
 ! local variables
 type(time_type) :: base_time
 integer, allocatable :: seconds(:)
-integer :: year, month, day, hour, minute, second
+integer :: year, month, day, hour
+integer :: forecast_hours
 
 if ( .not. module_initialized ) call static_init_model()
 
-read(cdtg,'(i4,i2,i2,i2)')year,month,day,hour
-second = 0
-minute = 0
-base_time = set_date(year, month, day, hour, minute, second)
+! cdtg has the format '2013011000'
 
-read_model_time = base_time + set_time(second, days=0)
+read(cdtg,'(i4,i2,i2,i2)')year,month,day,hour
+base_time = set_date(year, month, day, hour)
+
+!>@todo Get the forecast tau from someplace
+forecast_hours = 0
+read_model_time = base_time + set_time(forecast_hours*3600, days=0)
 
 if (debug > 0 .and. do_output()) then
-   write(string1,*) 'read_model_time was called to get date/time from: '//trim(filename)
-!>@todo   call say(string1)
    call print_date(base_time, 'read_model_time:simulation starting date')
    call print_time(base_time, 'read_model_time:simulation starting time')
-   write(string1,*)'model offset is ',second ,' seconds.'
-!>@todo   call say(string1)
    call print_date(read_model_time, 'read_model_time:current model date')
    call print_time(read_model_time, 'read_model_time:current model time')
 endif
@@ -954,9 +950,19 @@ subroutine write_model_time(ncid, dart_time)
 integer,         intent(in) :: ncid
 type(time_type), intent(in) :: dart_time
 
+integer :: iyear, imonth, iday, ihour, iminute, isecond
+
 call nc_check(nf90_redef(ncid), "write_model_time", "redef")
 
 call nc_add_global_attribute(ncid, 'date-time-group', cdtg, &
+                       context='model_mod:write_model_time:dtg')
+
+call get_date(dart_time, iyear, imonth, iday, ihour, iminute, isecond)
+
+write(string1,'(I4,"-",I2.2,"-",I2.2,1x,2(I2.2,":"),I2.2)') &
+                         iyear, imonth, iday, ihour, iminute, isecond
+
+call nc_add_global_attribute(ncid, 'model_valid_time', trim(string1), &
                        context='model_mod:write_model_time')
 
 call nc_check(nf90_enddef(ncid),"write_model_time", "Enddef" )

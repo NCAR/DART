@@ -25,7 +25,6 @@ use coamps_translate_mod, only : initialize_translator,         &
 
 use utilities_mod, only : initialize_utilities, finalize_utilities
 
-
 implicit none
 
 ! version controlled file description for error handling, do not edit
@@ -42,6 +41,11 @@ logical, parameter :: WRITING_DART   = .true.
 
 call initialize_utilities('trans_coamps_to_dart')
 call initialize_translator()
+
+! The &convert namelist has information that is used by set_dart_current_time()
+! and generate_coamps_filenames(). Basically, the cdtg is used as a starting 
+! point and either the ktauf information is used (is_pmo = .true.) or the
+! cycle information
 
 call generate_coamps_filenames(READING_COAMPS)
 call open_coamps_files(READING_COAMPS)

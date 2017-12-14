@@ -201,11 +201,12 @@ if (tests_to_run(2)) then
 
    num_domains = get_num_domains()
 
-   ! Test the read portion.
-
-   allocate(file_array_input(num_ens, num_domains))
+   allocate(file_array_input( num_ens, num_domains))
+   allocate(file_array_output(num_ens, num_domains))
    file_array_input  = RESHAPE(input_state_files,  (/num_ens,  num_domains/))
+   file_array_output = RESHAPE(output_state_files, (/num_ens,  num_domains/))
 
+   ! Test the read portion.
    call io_filenames_init(file_info_input,             &
                           ncopies      = num_ens,      &
                           cycling      = single_file,  &
@@ -215,13 +216,13 @@ if (tests_to_run(2)) then
    do imem = 1, num_ens
       write(my_base,'(A,I2)') 'inens_',    imem
       write(my_desc,'(A,I2)') 'input ens', imem
-      call set_file_metadata(file_info_input,                          &
-                             cnum     = imem,                          &
-                             fnames   = (/file_array_input(imem,:)/),  &
-                             basename = my_base,                       &
+      call set_file_metadata(file_info_input,                      &
+                             cnum     = imem,                      &
+                             fnames   = file_array_input(imem,:),  &
+                             basename = my_base,                   &
                              desc     = my_desc)
 
-      call set_io_copy_flag(file_info_input, &
+      call set_io_copy_flag(file_info_input,    &
                             cnum    = imem,     &
                             io_flag = READ_COPY)
    enddo
@@ -238,10 +239,6 @@ if (tests_to_run(2)) then
    call read_state(ens_handle, file_info_input, read_time_from_file, model_time)
 
    ! Test the write portion.
-
-   allocate(file_array_output(num_ens, num_domains))
-   file_array_output = RESHAPE(output_state_files, (/num_ens,  num_domains/))
-
    call io_filenames_init(file_info_output,           &
                           ncopies      = num_ens,     &
                           cycling      = single_file, &
@@ -251,10 +248,10 @@ if (tests_to_run(2)) then
    do imem = 1, num_ens
       write(my_base,'(A,I2)') 'outens_',    imem
       write(my_desc,'(A,I2)') 'output ens', imem
-      call set_file_metadata(file_info_output,                          &
-                             cnum     = imem,                           &
-                             fnames   = (/file_array_output(imem,:)/),  &
-                             basename = my_base,                        &
+      call set_file_metadata(file_info_output,                      &
+                             cnum     = imem,                       &
+                             fnames   = file_array_output(imem,:),  &
+                             basename = my_base,                    &
                              desc     = my_desc)
 
       call set_io_copy_flag(file_info_output,    &
@@ -285,6 +282,8 @@ if (tests_to_run(2)) then
    write(*,'(A)') ''
 
    call print_test_message('TEST 2', ending=.true.)
+
+   deallocate(file_array_input, file_array_output)
 
 endif
 
@@ -343,7 +342,11 @@ if (tests_to_run(4)) then
       call print_info_message('TEST 4',string1)
    endif
 
+   call free_state_window(ens_handle)
+
    call print_test_message('TEST 4', ending=.true.)
+
+    deallocate(interp_vals, ios_out)
 endif
 
 !----------------------------------------------------------------------
@@ -353,6 +356,8 @@ endif
 if (tests_to_run(5)) then
    call print_test_message('TEST 5', &
                            'Testing range of data for model_interpolate', starting=.true.)
+
+   call create_state_window(ens_handle)
 
    num_failed = test_interpolate_range( ens_handle,            &
                                         num_ens,               &
@@ -370,6 +375,8 @@ if (tests_to_run(5)) then
    write(string1, *)'output values on interpolation grid are in'
    write(string2, *)'check_me_interptest.nc (netcdf) and check_me_interptest.m (matlab)'
    call print_info_message(string1, string2)
+
+   call free_state_window(ens_handle)
 
    call print_test_message('TEST 5', ending=.true.)
 endif
@@ -419,7 +426,7 @@ endif
 write(string1,*) '- model_mod_check Finished successfully'
 call print_info_message(string1)
 
-call finalize_mpi_utilities()
+call finalize_modules_used()
 
 !======================================================================
 contains
@@ -438,6 +445,17 @@ call static_init_obs_sequence()
 call state_vector_io_init()
 
 end subroutine initialize_modules_used
+
+!----------------------------------------------------------------------
+!> clean up before exiting
+
+subroutine finalize_modules_used()
+
+! this must be last, and you can't print/write anything
+! after this is called.
+call finalize_mpi_utilities()
+
+end subroutine finalize_modules_used
 
 !----------------------------------------------------------------------
 !> print the results of get_state_meta_data() at a single location

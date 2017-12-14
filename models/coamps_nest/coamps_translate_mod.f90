@@ -84,7 +84,7 @@ module coamps_translate_mod
   use types_mod,            only : r4, r8
 
   use utilities_mod,        only : E_ERR, E_MSG, E_WARN, error_handler,       &
-                                   file_exist, get_unit,                      &
+                                   file_exist, get_unit, do_output,           &
                                    do_nml_file, do_nml_term, nmlfileunit
 
 
@@ -292,15 +292,6 @@ contains
 
     ! Get the data we can't read from pre-exiting COAMPS files
     call read_convert_namelist()
-    if(is_pmo) then
-      cdtgm1 = cdtg
-    else
-      if(is_first) then
-        cdtgm1 = cdtg
-      else
-        cdtgm1 = previous_dtg(cdtg, icycle)
-      end if
-    end if
 
     if (npr0nam > 0) then
       coamps_used_io_proc = .true.
@@ -475,8 +466,10 @@ contains
        dsnrff1 = dsnrff
     end if
 
+    if (do_output()) then
     print *,"COAMPS flat files in use:"
     print *,"-------------------------------------------------"
+    endif
 
     coamps_file_index = 0
     iterator = get_iterator(file_layout)
@@ -516,11 +509,13 @@ contains
            i_width, j_width, cdtg, working_time(COAMPS_HOUR),         &
            working_time(COAMPS_MINUTE), working_time(COAMPS_SECOND),  &
            field_type, coamps_file_names(coamps_file_index) )
-
+    
+      if (do_output()) &
       write (*,'(I2.2,2x,A)') coamps_file_index,                      &
                   trim(dsnrff1)//coamps_file_names(coamps_file_index)
     end do flat_file_loop
 
+    if (do_output()) &
     print *,"-------------------------------------------------"
 
     !FIXME Test pressure level output
@@ -688,8 +683,10 @@ contains
        working_time = ktauf(:,ONE)
     end if
 
+    if (do_output()) then
     print *,"COAMPS restart files in use:"
     print *,"-------------------------------------------------"
+    endif
     do coamps_file_index = 1,total_coamps_files
        if (coamps_used_io_proc) then
           write (coamps_file_names(coamps_file_index), 100) &
@@ -700,7 +697,10 @@ contains
        end if
        write(*,*) coamps_file_index, coamps_file_names(coamps_file_index)
     end do
+
+    if (do_output()) &
     print *,"-------------------------------------------------"
+
 100 format( 'restarta1p001',A10,I3.3,I2.2,I2.2,'.nest',I1)
 200 format( 'restarta1p',I3.3,A10,I3.3,I2.2,I2.2)
   end subroutine generate_restart_filenames
@@ -813,7 +813,7 @@ integer :: dart_time_days, dart_time_seconds
 
 call nc_write_prognostic_data(dart_unit, file_layout, dart_state) 
 
-call print_dart_diagnostics()
+if (do_output()) call print_dart_diagnostics()
 
 end subroutine dart_write
 
@@ -830,7 +830,6 @@ subroutine set_dart_current_time()
 
 character(len=*), parameter :: routine = 'set_dart_current_time'
 
-integer :: io_status
 integer :: tau_hour
 integer :: tau_minute
 integer :: tau_second
@@ -839,87 +838,38 @@ integer :: dart_day
 integer :: ccyy, mm, dd, hh, dt_sec
 type(time_type) :: t0, dt
 
-character(len=256) :: dtg_string
+read(cdtg,100) ccyy,mm,dd,hh
 
-call error_handler(E_MSG,routine,'FIXME - not written yet - must complete')
-return
+t0 = set_date(ccyy, mm, dd, hh) ! convert date-time-group to dart time_type
 
-io_status = nf90_get_att(dart_unit,NF90_GLOBAL,'date-time-group',dtg_string)
-call nc_check(io_status, routine, context='reading date-time-group ', &
-                                  filename=DART_FILENAME)
-
-read(dtg_string,100) ccyy,mm,dd,hh
-
-t0 = set_date(ccyy, mm, dd, hh) ! convert coamps time to dart time
-
-  if(is_pmo) then
-    dt_sec = ktauf(COAMPS_HOUR,ONE)*3600 + ktauf(COAMPS_MINUTE,ONE)*60 + ktauf(COAMPS_SECOND,ONE)
-  else
-    dt_sec = icycle*3600
-  end if
+if(is_pmo) then
+  dt_sec = ktauf(COAMPS_HOUR,  ONE)*3600 + &
+           ktauf(COAMPS_MINUTE,ONE)*60 + &
+           ktauf(COAMPS_SECOND,ONE)
+else
+  dt_sec = icycle*3600
+end if
 
 dt = set_time(dt_sec)
 dart_time(DART_CURRENT_TIME) = t0 + dt
-
-!  ! Get this information from the namelist
-!  tau_hour   = ktauf(COAMPS_HOUR,ONE)
-!  tau_minute = ktauf(COAMPS_MINUTE,ONE)
-!  tau_second = ktauf(COAMPS_SECOND,ONE)
-!
-!  call hms_to_sd(tau_hour, tau_minute, tau_second, dart_day,&
-!       & dart_second)
-!
-!  !  When writing a DART file, only have one time entry to worry
-!  ! about.
-!  dart_time(DART_CURRENT_TIME) = set_time(dart_second, dart_day)
 
 100 format((I4.4),3(I2.2))
 end subroutine set_dart_current_time
 
 !-------------------------------------------------------------------------------
-!> When converting from DART to COAMPS, we get *two* times - the
-!> current time and the target time that it wants the model to
-!> advance to - take the current time in DART days/seconds format
-!> and convert it to the COAMPS hour/minute/second format.
+!> return the current model time in DART format
 !>  PARAMETERS
 !>   [none]
 
-subroutine get_dart_current_time()
+function get_dart_current_time()
 
 character(len=*), parameter :: routine = 'get_dart_current_time'
 
-integer :: io_status
-integer :: dart_days
-integer :: dart_seconds
-integer :: ccyy, mm, dd, hh
-type(time_type) :: t0, dt
+type(time_type) :: get_dart_current_time
 
-character(len=256) :: dtg_string
+get_dart_current_time = dart_time(DART_CURRENT_TIME)
 
-call error_handler(E_MSG,routine,'FIXME - not written yet - must complete')
-return
-
-io_status = nf90_get_att(dart_unit,NF90_GLOBAL,'date-time-group',dtg_string)
-call nc_check(io_status, routine, context='reading date-time-group ', &
-                                  filename=DART_FILENAME)
-
-read(dtg_string,100) ccyy,mm,dd,hh
-
-  t0 = set_date(ccyy, mm, dd, hh)
-  dt = dart_time(DART_CURRENT_TIME) - t0
-
-  call get_time(dt, dart_seconds, dart_days)
-
-
-
-  call get_time(dart_time(DART_CURRENT_TIME), dart_seconds, dart_days)
-
-call sd_to_hms(dart_days, dart_seconds, ktaust(COAMPS_HOUR), &
-               ktaust(COAMPS_MINUTE), ktaust(COAMPS_SECOND)) 
-
-100 format((I4.4),3(I2.2))
-
-end subroutine get_dart_current_time
+end function get_dart_current_time
 
 !-------------------------------------------------------------------------------
 ! When converting from DART to COAMPS, we get *two* times - the
@@ -987,9 +937,13 @@ end function get_current_dtg
     integer                     :: pickup_unit
 
     character(len=*), parameter :: routine = 'write_pickup_file' 
-    integer                     :: io_status
+    integer :: io_status
+    integer :: year, month, day, hour, minute, second
 
     if(.not.is_dart_async) return
+
+    call get_date(dart_time(DART_CURRENT_TIME), &
+                  year, month, day, hour, minute, second)
 
     pickup_unit = get_unit()
 
@@ -999,11 +953,17 @@ end function get_current_dtg
                          'Opening file ' // PICKUP_NAME)
 
     write(pickup_unit, fmt=300) ktaust, ktauf(:,ONE)
-
+    write(pickup_unit, *) year, month, day, hour, minute, second
+    write(pickup_unit, *)'cdtg  =', cdtg
+    write(pickup_unit, *)'cdtgm1=', cdtgm1
     close(pickup_unit)
 
 300 format( 5(I3,","),I3 )
   end subroutine write_pickup_file
+
+
+  !-----------------------------------------------------------------------
+  !>
 
 
   function get_coamps_filename_count()
@@ -1013,8 +973,10 @@ end function get_current_dtg
 
   end function get_coamps_filename_count
 
+
   !-----------------------------------------------------------------------
   !> this is also the (very long) name of the HDF5 variable
+
 
   function get_coamps_filename(myindex)
   integer, intent(in) :: myindex
@@ -1023,7 +985,6 @@ end function get_current_dtg
   get_coamps_filename = coamps_file_names(myindex)
 
   end function get_coamps_filename
-
 
 
   !------------------------------
@@ -1065,6 +1026,16 @@ end function get_current_dtg
     ! Record the namelist values used for the run
     if (do_nml_file()) write(nmlfileunit, nml=convert)
     if (do_nml_term()) write(     *     , nml=convert)
+
+    if(is_pmo) then
+      cdtgm1 = cdtg
+    else
+      if(is_first) then
+        cdtgm1 = cdtg
+      else
+        cdtgm1 = previous_dtg(cdtg, icycle)
+      end if
+    end if
 
   end subroutine read_convert_namelist
 
@@ -1178,7 +1149,9 @@ flat_file_loop: do while (has_next(iterator))
    cur_file = cur_file + 1
 
    if(write_coamps) then
+
       write_field = gets_update(cur_var)
+
       if(write_field) then
          ! just read from netcdf, write to hdf - no need for var_state
          call copy_netCDF_to_hdf(dart_unit, &
@@ -1448,10 +1421,12 @@ end subroutine record_hdf_varnames
     ! in its own restart file. 
     if (coamps_used_io_proc) then
       restart_unit = coamps_file_units(get_nest_number(var_to_process))
+      if (do_output()) &
       print *, restart_unit, &
                coamps_file_names(get_nest_number(var_to_process)) 
     else
       restart_unit = coamps_file_units(file_index) 
+      if (do_output()) &
       print *, restart_unit, coamps_file_names(file_index) 
     end if
 
@@ -1491,6 +1466,7 @@ end subroutine record_hdf_varnames
     ! middle of the file
     field_nest_record = get_record_in_nest(var_to_process, domain,    &
                                                coamps_used_io_proc, ldigit)
+    if (do_output()) &
     print *, "Record in nest is", field_nest_record
     restart_pos = (iubound - ilbound + 1) * (jubound - jlbound + 1) * &
                   (field_nest_record - 1) + 1 +                       &
@@ -1503,6 +1479,7 @@ end subroutine record_hdf_varnames
 
         ! If the point is outside the domain, just skip it and move on
         if ( .not. in_this_nest(make_nest_point(var_nest,ii,jj))) then
+          if (do_output()) &
           print *, "skipping point", ii, jj
           restart_pos = restart_pos + 1
           cycle
@@ -1714,6 +1691,7 @@ end subroutine record_hdf_varnames
     type(state_variable)                 :: cur_var
     type(coamps_nest)                    :: cur_nest
 
+    if (do_output()) &
     print *, "Values in DART State Vector"
 
     iterator  = get_iterator(file_layout)

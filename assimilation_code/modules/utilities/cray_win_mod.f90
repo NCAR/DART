@@ -173,14 +173,16 @@ end subroutine create_mean_window
 subroutine free_state_window(state_ens_handle, fwd_op_ens_handle, qc_ens_handle)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
-type(ensemble_type), intent(inout) :: fwd_op_ens_handle
-type(ensemble_type), intent(inout) :: qc_ens_handle
+type(ensemble_type), intent(inout), optional :: fwd_op_ens_handle
+type(ensemble_type), intent(inout), optional :: qc_ens_handle
 
 integer :: ierr
 
 if(get_allow_transpose(state_ens_handle)) then ! the forward operators were done var complete
-   !transpose back
+   !transpose back if allowing transposes
+   if (present(fwd_op_ens_handle)) &
    call all_vars_to_all_copies(fwd_op_ens_handle)
+   if (present(qc_ens_handle)) &
    call all_vars_to_all_copies(qc_ens_handle)
 else
    ! close mpi window
@@ -194,7 +196,8 @@ end subroutine free_state_window
 
 !---------------------------------------------------------
 !> Free the mpi window
-subroutine free_mean_window
+subroutine free_mean_window()
+
 integer :: ierr
 
 if(get_allow_transpose(mean_ens_handle)) then

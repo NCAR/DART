@@ -125,7 +125,7 @@ write(iunit,'(''nens = '',i8,'';'')')ens_size
 write(iunit,'(''interptest = [ ... '')')
 
 allocate(X(nx), field(nx,ens_size))
-allocate(all_ios_out(nx,ens_size))
+allocate( all_ios_out(nx,ens_size))
 nfailed = 0
 
 do i = 1, nx
@@ -221,11 +221,11 @@ enddo
 call nc_check(nf90_close(ncid), routine,'close '//trim(ncfilename))
 
 deallocate(X, field)
+deallocate(all_ios_out)
 
 test_interpolate_range = nfailed
 
 end function test_interpolate_range
-
 
 !-------------------------------------------------------------------------------
 !> Do a single interpolation on a given location and kind.

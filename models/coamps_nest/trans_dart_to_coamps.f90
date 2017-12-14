@@ -16,8 +16,7 @@ program trans_dart_to_coamps
 
 use coamps_translate_mod, only : initialize_translator,     &
                                  open_dart_file,            &
-                                 get_dart_current_time,     &
-                                 get_dart_target_time,      &
+                                 set_dart_current_time,     &
                                  get_current_dtg,           &
                                  generate_coamps_filenames, &
                                  open_coamps_files,         &
@@ -25,9 +24,7 @@ use coamps_translate_mod, only : initialize_translator,     &
                                  write_pickup_file,         &
                                  finalize_translator
 
-use coamps_hdf5_mod, only : initialize_hdf5, &
-                            initialize_hdf5_wfile, &
-                            finalize_hdf5, &
+use coamps_hdf5_mod, only : initialize_hdf5_wfile, &
                             open_hdf5_file, &
                             close_hdf5_file, &
                             hdf5_file_write
@@ -63,8 +60,7 @@ call initialize_translator()
 !call initalize_hdf5()
 
 call open_dart_file(READING_DART)
-call get_dart_current_time()  ! needs to be finished
-call get_dart_target_time()   ! needs to be finished
+call set_dart_current_time()
 cdtg = get_current_dtg()
 
 call generate_coamps_filenames(WRITING_COAMPS)

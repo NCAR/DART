@@ -52,18 +52,20 @@
 #         because that's where I built my COAMPS and I'm using the
 #         default forcing/data files.
 
-switch ( $host )
+switch ("`hostname`")
    case eddy
       set DARTDIR = /home/${USER}/DART/coamps
       set COAMPSDIR = /home/${USER}/COAMPS
       set ENSEMBLEDIR = /home/${USER}/COAMPS_hdf5_files/Ensemble
-      set EXPERIMENTDIR = /home/${USER}/thoar_eddy1/COAMPS_cycling_test
+      set EXPERIMENTDIR = /home/${USER}/${USER}_eddy1/COAMPS_cycling_test
+      set COPY = '/bin/cp --preserve=timestamps'
       breaksw
-   case ys*
+   case ch*
       set DARTDIR = /glade/p/work/${USER}/DART/rma_coamps
       set COAMPSDIR = /glade/p/work/${USER}/COAMPS
       set ENSEMBLEDIR = /glade/p/work/${USER}/COAMPS_hdf5_files/Ensemble
       set EXPERIMENTDIR = /glade/scratch/${USER}/COAMPS_cycling_test
+      set COPY = '/bin/cp --preserve=timestamps'
       breaksw
    default
       breaksw
@@ -86,16 +88,27 @@ endif
 mkdir -p ${EXPERIMENTDIR}
 cd ${EXPERIMENTDIR}
 
-rsync -Cavz ${ENSEMBLEDIR}/    ${EXPERIMENTDIR}/      || exit 1
+# TJH ${COPY} ${COAMPSDIR}/coamps.exe    ${EXPERIMENTDIR}/.     || exit 1
 
-# TJH \cp ${COAMPSDIR}/coamps.exe    ${EXPERIMENTDIR}/.     || exit 1
+foreach FILE ( \
+         ${ENSEMBLEDIR}/README.txt \
+         ${ENSEMBLEDIR}/state.vars \
+         ${ENSEMBLEDIR}/convert.nml \
+         ${ENSEMBLEDIR}/obs_seq_${CDTG}.out \
+         ${ENSEMBLEDIR}/output_priorinf*nc \
+         ${DARTDIR}/models/coamps_nest/work/input.nml \
+         ${DARTDIR}/models/coamps_nest/work/innov_to_obs_seq \
+         ${DARTDIR}/models/coamps_nest/work/filter \
+         ${DARTDIR}/models/coamps_nest/work/trans_dart_to_coamps \
+         ${DARTDIR}/models/coamps_nest/work/trans_coamps_to_dart \
+         ${DARTDIR}/models/coamps_nest/shell_scripts/run_filter.csh.template )
 
-\cp ${DARTDIR}/models/coamps_nest/work/input.nml                         ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/coamps_nest/work/filter                            ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/coamps_nest/work/trans_dart_to_coamps              ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/coamps_nest/work/trans_coamps_to_dart              ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/coamps_nest/shell_scripts/run_filter.csh.template  ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/assimilation_code/programs/gen_sampling_err_table/work/sampling_error_correction_table.nc .
+         ${COPY} ${FILE} . || exit 2
+end
+
+set SAMPDIR = assimilation_code/programs/gen_sampling_err_table/work
+set SAMPFILE = sampling_error_correction_table.nc
+${COPY}  ${DARTDIR}/${SAMPDIR}/${SAMPFILE}  .
 
 #--------------------------------------------------------------------------
 # customize the user input templates with things that will remain constant
@@ -103,33 +116,23 @@ rsync -Cavz ${ENSEMBLEDIR}/    ${EXPERIMENTDIR}/      || exit 1
 # items that will change with each assimilation cycle.
 #--------------------------------------------------------------------------
 
-foreach FILE ( state.vars convert.nml )
-   if ( ! -e $FILE ) then
-      echo "ERROR: $FILE must exist."
-      echo "ERROR: $FILE expected to come from $ENSEMBLEDIR ."
-      exit 1
-   endif
-end
-
-set ENSEMBLE_SIZE = 4
-
 # Enforce some assumptions.
 # There are two nests (DART calls a nest a 'domain' - following WRF nomenclature)
-# each nest/domain is read from a separate list of (netCDF) files. 
+# each nest/domain is read from a separate list of (netCDF) files.
 # DART will simply update the netCDF files in-place, so the same lists can be used
 # for both input and output.
 
 ex input.nml <<ex_end
 g;input_state_files ;s;= .*;= '', '';
-g;input_state_file_list ;s;= .*;= 'input_list_domain_1.txt', 'input_list_domain_2.txt';
-g;output_state_file_list ;s;= .*;= 'input_list_domain_1.txt', 'input_list_domain_2.txt';
+g;input_state_file_list ;s;= .*;= 'file_list_domain_1.txt', 'file_list_domain_2.txt';
+g;output_state_file_list ;s;= .*;= 'file_list_domain_1.txt', 'file_list_domain_2.txt';
 g;ens_size ;s;= .*;= ${ENSEMBLE_SIZE};
 g;num_output_obs_members ;s;= .*;= ${ENSEMBLE_SIZE};
 g;num_output_state_members ;s;= .*;= ${ENSEMBLE_SIZE};
 g;output_mean ;s;= .*;= .TRUE.;
 g;output_sd ;s;= .*;= .TRUE.;
 g;perturb_from_single_instance ;s;= .*;= .FALSE.;
-g;cdtg ;s;= .*;= ${CDTG};
+g;cdtg ;s;= .*;= "${CDTG}";
 wq
 ex_end
 
@@ -140,14 +143,14 @@ ex_end
 # Things like DSTART and the ININAME ...
 #--------------------------------------------------------------------------
 
-# prepare run_filter.csh 
+# prepare run_filter.csh
 
 sed -e "s#EXPERIMENT_DIRECTORY#${EXPERIMENTDIR}#" run_filter.csh.template >! run_filter.csh
 chmod u+x run_filter.csh
 
 #--------------------------------------------------------------------------
 # Prepare a set of directories - one for each instance of coamps.
-# Usually, everything needed to advance coamps gets copied or linked into 
+# Usually, everything needed to advance coamps gets copied or linked into
 # each of these directories.
 #--------------------------------------------------------------------------
 
@@ -160,9 +163,10 @@ while ( ${member} <= ${ENSEMBLE_SIZE} )
 
    set COAMPS_RESTART = `printf coamps_%04d_%s.hdf5 $member $CDTG`
 
-   \cp ../state.vars        . || exit 4
-   \cp ../convert.nml       . || exit 4
-   \mv ../${COAMPS_RESTART} . || exit 4
+   ${COPY} ../input.nml                      . || exit 4
+   ${COPY} ../state.vars                     . || exit 4
+   ${COPY} ../convert.nml                    . || exit 4
+   ${COPY} ${ENSEMBLEDIR}/${COAMPS_RESTART}  . || exit 4
 
    cd ..
 
@@ -183,12 +187,12 @@ The COAMPS parts came from  ${COAMPSDIR}
 
 #--------------------------------------------------------------------------
 The following settings MUST be made to input.nml.template for the logic
-in cycle.csh to work correctly.  There are many more that you _may_ want
+in run_filter.csh to work correctly. There are many more that you _may_ want
 to change or set to impact the performance of the assimilation.
 
 &filter_nml:
-   input_state_file_list        = 'input_list_domain_1.txt', 'input_list_domain_2.txt'
-   output_state_file_list       = 'input_list_domain_1.txt', 'input_list_domain_2.txt'
+   input_state_file_list        = 'file_list_domain_1.txt', 'file_list_domain_2.txt'
+   output_state_file_list       = 'file_list_domain_1.txt', 'file_list_domain_2.txt'
    obs_sequence_in_name         = 'obs_seq.out'
    obs_sequence_out_name        = 'obs_seq.final'
 
@@ -196,7 +200,7 @@ to change or set to impact the performance of the assimilation.
    assimilation_period_days     = <WHATEVER YOU WANT>
    assimilation_period_seconds  = 0
    vert_localization_coord      = 3
-   cdtg                        = <WHATEVER IS CORRECT>
+   cdtg                         = <WHATEVER IS CORRECT>
 
 &ensemble_manager_nml
    layout         = 2
@@ -205,7 +209,7 @@ to change or set to impact the performance of the assimilation.
 #--------------------------------------------------------------------------
 
 After these files are confirmed, it should be possible to
-run the ${EXPERIMENTDIR}/cycle.csh script.
+run the ${EXPERIMENTDIR}/run_filter.csh script.
 
 ENDOFFILE
 

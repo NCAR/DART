@@ -619,6 +619,9 @@ endif
 call trace_message('After  writing state restart file if requested')
 call trace_message('Before ensemble and obs memory cleanup')
 
+! Close the windows
+call free_state_window(ens_handle)
+
 !  Release storage for ensemble
 call end_ensemble_manager(ens_handle)
 
