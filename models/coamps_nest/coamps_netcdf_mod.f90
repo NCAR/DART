@@ -437,32 +437,32 @@ end subroutine nc_write_prognostic_data
                    cv_nest = n)
 
         write(coord_str, 400) 'nxm1', n
-        coords(ncoord + XM1_COORD_INDEX)   =                                                &
-                   new_coordinate_var(ncFileID,   trim(coord_str),   nx-1, nf90_double,     &
-                   'Staggered X Grid Points', '', cv_stagger = 0.5_r8, cv_dir = XDIR_COORD, &
-                   cv_nest = n)
+        coords(ncoord + XM1_COORD_INDEX)   =                                           &
+              new_coordinate_var(ncFileID,   trim(coord_str),   nx-1, nf90_double,     &
+              'Staggered X Grid Points', '', cv_stagger = 0.5_r8, cv_dir = XDIR_COORD, &
+              cv_nest = n)
 
         write(coord_str, 400) 'ny', n
-        coords(ncoord + Y_COORD_INDEX)   =                                          &
-                   new_coordinate_var(ncFileID, trim(coord_str), ny, nf90_double,     &
-                   'Y Grid Points', '', cv_stagger = 0.0_r8, cv_dir = YDIR_COORD,   &
-                   cv_nest = n)
+        coords(ncoord + Y_COORD_INDEX)   =                                     &
+              new_coordinate_var(ncFileID, trim(coord_str), ny, nf90_double,   &
+              'Y Grid Points', '', cv_stagger = 0.0_r8, cv_dir = YDIR_COORD,   &
+              cv_nest = n)
 
         write(coord_str, 400) 'nym1', n
-        coords(ncoord + YM1_COORD_INDEX)   =                                                &
-                   new_coordinate_var(ncFileID, trim(coord_str), ny-1, nf90_double,         &
-                   'Staggered Y Grid Points', '', cv_stagger = 0.5_r8, cv_dir = YDIR_COORD, &
-                   cv_nest = n)
+        coords(ncoord + YM1_COORD_INDEX)   =                                           &
+              new_coordinate_var(ncFileID, trim(coord_str), ny-1, nf90_double,         &
+              'Staggered Y Grid Points', '', cv_stagger = 0.5_r8, cv_dir = YDIR_COORD, &
+              cv_nest = n)
 
       enddo define_coord_vars
 
       coords(ncoord_total-1) = &
-                   new_coordinate_var(ncFileID, 'sigw', nz+1, nf90_double, &
-                   'W Level Sigma', 'meters', cv_stagger = 0.0_r8, cv_dir = ZDIR_COORD)
+              new_coordinate_var(ncFileID, 'sigw', nz+1, nf90_double, &
+              'W Level Sigma', 'meters', cv_stagger = 0.0_r8, cv_dir = ZDIR_COORD)
 
       coords(ncoord_total)   = &
-                   new_coordinate_var(ncFileID, 'sigm',   nz, nf90_double, & 
-                   'Mass Level Sigma', 'meters',  cv_stagger = 0.5_r8, cv_dir = ZDIR_COORD)
+              new_coordinate_var(ncFileID, 'sigm',   nz, nf90_double, & 
+              'Mass Level Sigma', 'meters',  cv_stagger = 0.5_r8, cv_dir = ZDIR_COORD)
       
       ! ------------------------------------------------------------------
       ! Loop over all the variables in the state vector
@@ -485,7 +485,7 @@ end subroutine nc_write_prognostic_data
    
            ! avoiding the staggering to reflect shape in hdf5
            dimids = get_dimids(ndims        = ndims,                         &
-                               var_dims     = get_var_dims(cur_var, domain, full=.true.), & 
+                               var_dims     = get_var_dims(cur_var,domain,full=.true.), & 
                                nest_number  = get_nest_number(cur_var),      & 
                                local_coords = coords) 
    
@@ -506,10 +506,14 @@ end subroutine nc_write_prognostic_data
       call nc_check(nf90_enddef(ncFileID), routine//': nf_enddef') 
 
       fill_coords: do ii=1,ncoord_total-2
+
+        ! ignore staggered coordinate variables
+        if (index(get_coord_var_name(coords(ii)),'m1') > 1) cycle fill_coords
+
         write(msgstring,*) 'nf90_put_var ',ii,get_coord_var_id(coords(ii)), &
                                        trim(get_coord_var_name(coords(ii)))
-        call nc_check(nf90_put_var(ncFileID, get_coord_var_id(coords(ii)),       &
-                     (/ (real(jj-1,kind=r8)+get_coord_stagger(coords(ii)), &
+        call nc_check(nf90_put_var(ncFileID, get_coord_var_id(coords(ii)),  &
+                     (/ (real(jj-1,kind=r8)+get_coord_stagger(coords(ii)),  &
                         jj=1,get_dim_length(coords(ii))) /) ), routine, msgstring) 
       enddo fill_coords
 
@@ -530,21 +534,21 @@ end subroutine nc_write_prognostic_data
 
         call nc_check(nf90_redef(ncFileID), routine//': nf_redef(fill_latlon)') 
         varidT = define_latlon_vars(ncFileID, 'T', (/nx,   ny/),   n, coords)
-        varidU = define_latlon_vars(ncFileID, 'U', (/nx-1, ny/),   n, coords)
-        varidV = define_latlon_vars(ncFileID, 'V', (/nx,   ny-1/), n, coords)
+!       varidU = define_latlon_vars(ncFileID, 'U', (/nx-1, ny/),   n, coords)
+!       varidV = define_latlon_vars(ncFileID, 'V', (/nx,   ny-1/), n, coords)
 
         call nc_check(nf90_enddef(ncFileID), routine//': nf_enddef(fill_latlon)') 
         latlon_coord(LAT_DIM) = coords(ncoord + Y_COORD_INDEX)
         latlon_coord(LON_DIM) = coords(ncoord + X_COORD_INDEX)
         call fill_nc_latlon(ncFileID, domain, n, varidT, latlon_coord)
 
-        latlon_coord(LAT_DIM) = coords(ncoord + Y_COORD_INDEX)
-        latlon_coord(LON_DIM) = coords(ncoord + XM1_COORD_INDEX)
-        call fill_nc_latlon(ncFileID, domain, n, varidU, latlon_coord)
+!       latlon_coord(LAT_DIM) = coords(ncoord + Y_COORD_INDEX)
+!       latlon_coord(LON_DIM) = coords(ncoord + XM1_COORD_INDEX)
+!       call fill_nc_latlon(ncFileID, domain, n, varidU, latlon_coord)
 
-        latlon_coord(LAT_DIM) = coords(ncoord + YM1_COORD_INDEX)
-        latlon_coord(LON_DIM) = coords(ncoord + X_COORD_INDEX)
-        call fill_nc_latlon(ncFileID, domain, n, varidV, latlon_coord)
+!       latlon_coord(LAT_DIM) = coords(ncoord + YM1_COORD_INDEX)
+!       latlon_coord(LON_DIM) = coords(ncoord + X_COORD_INDEX)
+!       call fill_nc_latlon(ncFileID, domain, n, varidV, latlon_coord)
 
       enddo fill_latlon
 
@@ -677,6 +681,9 @@ end subroutine nc_write_prognostic_data
         call set_dim_id(new_coordinate_var, new_dimension(ncFileID, cv_name, cv_length))
         call set_dim_length(new_coordinate_var, cv_length)
         call set_dim_name(  new_coordinate_var, cv_name)
+
+        ! ignore creating staggered anything
+        if ( index(cv_name,'m1') > 0) return
 
         if (present(cv_range)) then
             call set_var_id(new_coordinate_var,                           &
