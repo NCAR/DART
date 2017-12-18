@@ -125,6 +125,29 @@ does not do an exhaustive search through the sequence to insert at proper time. 
 went from almost 700 seconds to 14 seconds. Also added the 'ngt' filename to the input.nml.
 'ngt' appears to be something related to vortex locations - should get a much better name ...
 
+-------------------------------------------------------------------------------
+Mon Dec 18 09:42:42 PST 2017
+
+conference call today ...
+
+0) assimilation of two simple synthetic observations works as expected.
+1) innovation observation file conversion supported. Have not run it through filter.
+   those forward operators are appropriate for the existing obs_def_navdas_mod.f90,
+   apparently has potential temperature as part of the state. Do we want to convert
+   potential temperature to sensible temperature up-front - so we can use any/all other
+   DART observation converters? Would require converting back after assimilation.
+2) creating an initial ensemble ... TBD ... Tim W. had several ideas on how to perturb
+   a single state to generate an ensemble.  ball is in NRL's hands.
+3) Not sure how to test vertical conversion ... (re-engage Nancy?)
+4) Firm up the mechanism to convey the fcstfld being read and then updating the analfld 
+   to be used as the starting point for the next forecast cycle.  Sergey indicated an
+   entirely new hdf5 file is appropriate ... 
+5) scripting is updated as far as I can take it without actually being able to advance
+   coamps ...
+
+
+
+
 
 
 # <next few lines under version control, do not edit>
