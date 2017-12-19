@@ -10,7 +10,8 @@ program location_test3
 
 use location_mod
 use types_mod,      only : r8
-use utilities_mod,  only : get_unit, error_handler, E_ERR
+use utilities_mod,  only : get_unit, error_handler, E_ERR, &
+                           initialize_utilities, finalize_utilities
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 
@@ -33,6 +34,7 @@ type(get_close_type) :: cc_gc
 character(len=100) :: buf
 
 
+call initialize_utilities('location_test3')
 
 ! Open an output file
 iunit = get_unit()
@@ -151,6 +153,8 @@ do i = 1, nl
 enddo
 
 close(iunit)
+
+call finalize_utilities()
 
 end program location_test3
 

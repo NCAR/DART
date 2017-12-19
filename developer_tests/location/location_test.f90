@@ -9,7 +9,8 @@ program location_test
 ! Simple test program to exercise annulus location module.
 
 use     types_mod, only : r8
-use utilities_mod, only : open_file, close_file
+use utilities_mod, only : open_file, close_file, initialize_utilities, &
+                          finalize_utilities
 use  location_mod
 
 implicit none
@@ -24,6 +25,8 @@ type(location_type) :: loc0(6), loc1, loc2, loc3, loc4, locA(7), locB(5)
 integer             :: iunit, iunit1, iunit2, i
 real(r8)            :: loc2_val, lon, lat
 character(len=102)  :: testbuf
+
+call initialize_utilities('location_test')
 
 print *, ''
 print *, 'reading in 6 locations to use in distance tests:'
@@ -168,6 +171,8 @@ enddo
 
 call close_file(iunit1)
 call close_file(iunit2)
+
+call finalize_utilities()
 
 end program location_test
 
