@@ -166,12 +166,31 @@
   /
 
 
-   assimilate_these_obs_types = ''
+#        'Z_RAOB'      ,
+#        'T_RAOB'      ,
+#        'T_AMDAR'     ,
+#        'T_MDCRS'     ,
+#        'T_TOVS_T'    ,
+#        'P_SFC_LAND'  , 'P_SFC_SHIP',
+#        'WS_SSMI_FF1'
+#  evaluate_these_obs_types   = 'EVAL_POT_TEMPERATURE',
+#                               'RADIOSONDE_U_WIND_COMPONENT',
+#                               'RADIOSONDE_LOG_SPECIFIC_HUMIDITY', 
+#                               'P_SFC_LAND' 
+
 &obs_kind_nml
-   assimilate_these_obs_types = 'EVAL_POT_TEMPERATURE'
-   evaluate_these_obs_types   = 'RADIOSONDE_U_WIND_COMPONENT',
-                                'RADIOSONDE_LOG_SPECIFIC_HUMIDITY', 
-                                'P_SFC_LAND',
+   assimilate_these_obs_types = 'U_RAOB'      , 'V_RAOB',
+                                'U_AIREP'     , 'V_AIREP',
+                                'U_AMDAR'     , 'V_AMDAR',
+                                'U_MDCRS'     , 'V_MDCRS',
+                                'U_CLD_WNDS2' , 'V_CLD_WNDS2',
+                                'U_METEO'     , 'V_METEO',
+                                'U_GOES'      , 'V_GOES',
+                                'U_SFC_SHIP'  , 'V_SFC_SHIP',
+                                'U_WSAT_WIND' , 'V_WSAT_WIND',
+                                'U_ASCAT_WIND', 'V_ASCAT_WIND',
+                                'U_TERRA_WIND', 'V_TERRA_WIND',
+   evaluate_these_obs_types   = ''
   /
 
 # Notes for obs_def_radar_mod_nml:
@@ -312,7 +331,7 @@
    bin_interval_seconds = 0
    max_num_bins         = 1000
    print_table          = .true.
-   /
+  /
 
 &obs_seq_to_netcdf_nml
    obs_sequence_name = 'obs_seq.final'
@@ -334,11 +353,12 @@
   /
 
 &navdas_innov_nml
-   innov_file_name   = 'innov.out'
-   ngt_file_name     = 'ngt.out'
-   obs_seq_in_name   = 'obs_seq.out'
-   obs_window = 1800
-   /
+   innov_file_name = 'innov.out'
+   ngt_file_name   = 'ngt.out'
+   obs_seq_in_name = 'obs_seq.out'
+   obs_window      = 3600
+   verbose         = .true.
+  /
 
 
 #  all_metadata_file     = 'metadata_file.txt'

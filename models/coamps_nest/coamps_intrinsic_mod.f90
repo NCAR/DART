@@ -36,26 +36,27 @@ module coamps_intrinsic_mod
   !------------------------------
   ! END EXTERNAL INTERFACES
   !------------------------------
+
   !------------------------------
   ! BEGIN TYPES AND CONSTANTS 
   !------------------------------
-      real(kind=r8), parameter :: cp   = 1004.64
-      real(kind=r8), parameter :: g    = 9.80616
-      real(kind=r8), parameter :: rgas = 287.04
-      real(kind=r8), parameter :: cv   = cp-rgas
-      real(kind=r8), parameter :: rocp = rgas/cp
-      real(kind=r8), parameter :: cpor = cp/rgas
-      real(kind=r8), parameter :: p00  = 1.e5
-      real(kind=r8), parameter :: pi   = 3.141592741012573
-      real(kind=r8), parameter :: c27=2.5e6/1004.
-      real(kind=r8), parameter :: eps=0.622
-      real(kind=r8), parameter :: e0=6.11
-      real(kind=r8), parameter :: xl=2.5e6
-      real(kind=r8), parameter :: gamma=6.5e-3
-      real(kind=r8), parameter :: heatlv=597.3*4186.0
-      real(kind=r8), parameter :: heatls=677.0*4186.0
-      real(kind=r8), parameter :: hlvocp=heatlv/cp
-      real(kind=r8), parameter :: hlsocp=heatls/cp
+  real(kind=r8), parameter :: cp     = 1004.64_r8
+  real(kind=r8), parameter :: g      = 9.80616_r8
+  real(kind=r8), parameter :: rgas   = 287.04_r8
+  real(kind=r8), parameter :: cv     = cp-rgas
+  real(kind=r8), parameter :: rocp   = rgas/cp
+  real(kind=r8), parameter :: cpor   = cp/rgas
+  real(kind=r8), parameter :: p00    = 1.e5
+  real(kind=r8), parameter :: pi     = 3.141592741012573_r8
+  real(kind=r8), parameter :: c27    = 2.5e6/1004.0_r8
+  real(kind=r8), parameter :: eps    = 0.622_r8
+  real(kind=r8), parameter :: e0     = 6.11_r8
+  real(kind=r8), parameter :: xl     = 2.5e6
+  real(kind=r8), parameter :: gamma  = 6.5e-3
+  real(kind=r8), parameter :: heatlv = 597.3_r8*4186.0_r8
+  real(kind=r8), parameter :: heatls = 677.0_r8*4186.0_r8
+  real(kind=r8), parameter :: hlvocp = heatlv/cp
+  real(kind=r8), parameter :: hlsocp = heatls/cp
   !------------------------------
   ! END TYPES AND CONSTANTS 
   !------------------------------
@@ -696,24 +697,24 @@ subroutine sfcp(th,p,thbm,exbw,dsigw,sigmwa,zsfc,m,n,kk,ps)
       real(kind=r8) sigmwa(kk+1)
       real(kind=r8) zsfc(m,n)
 
+!TJH If n /= 1, I don't see how this works ...
 
       kkp1=kk+1
       mn=m*n
 !
 !  compute surface pressure (mb)
 !
-      do i=1,mn
+      do i=1,mn   !>@todo ps(m,n) and mn loop ps(mn,1)
         aoz=sigmwa(1)/(sigmwa(1)-zsfc(i,1))
         ppsfc=p(i,1,kk)&
              -dsigw(kkp1)*g*(th(i,1,kk)-thbm(i,1,kk))&
             /(aoz*cp*thbm(i,1,kk)*thbm(i,1,kk))
-        ps(i,1)=(exbw(i,1,kkp1)+ppsfc)**(cp/rgas)*1000.0
-        if(i.eq.1) then
-           print *,'aoz,ppsfc,ps= ',aoz,ppsfc,ps(1,1)
-        endif
+
+        print*,    exbw(i,1,kkp1),ppsfc,   cpor, i, m, n, kk, kkp1
+        ps(i,1) = ((exbw(i,1,kkp1)+ppsfc)**cpor)*1000.0_r8
+        print*,    ps(i,1)
       enddo
 
-      print *,'ps(10,10)= ',ps(10,10)
       return
 end subroutine sfcp
 

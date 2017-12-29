@@ -47,7 +47,8 @@ module coamps_interp_mod
   
     use location_mod,         only : location_type,    &
                                      query_location,   &
-                                     is_vertical
+                                     is_vertical,      &
+                                     write_location
     use obs_kind_mod
 
     use types_mod,            only : MISSING_I,        &
@@ -67,7 +68,6 @@ module coamps_interp_mod
     use distributed_state_mod, only : get_state
   
     implicit none
-  
     private
   
     !------------------------------
@@ -345,6 +345,9 @@ contains
 
           if( .not. is_success) then
 
+!            call write_location(0,obs_loc,charstring=message)
+!            print*,'TJH obs_kind is ',obs_kind,' ',trim(message)
+
              call get_target_var(interpolator, obs_kind)
              call get_coordinate_vars(interpolator)
 
@@ -619,18 +622,27 @@ contains
         character(len=*), parameter :: routine = 'deallocate_raw_values'
         integer                     :: dealloc_status
 
-        deallocate(interpolator%target_values, stat=dealloc_status)
-        call check_dealloc_status(dealloc_status, routine, source, revision, &
+ 
+        if (associated(interpolator%target_values)) then
+            deallocate(interpolator%target_values, stat=dealloc_status)
+            call check_dealloc_status(dealloc_status, routine, source, revision, &
                                 revdate, 'target_values')
-        deallocate(interpolator%vcoord_values, stat=dealloc_status)
-        call check_dealloc_status(dealloc_status, routine, source, revision, &
+        endif
+
+        if (associated(interpolator%vcoord_values)) then
+            deallocate(interpolator%vcoord_values, stat=dealloc_status)
+            call check_dealloc_status(dealloc_status, routine, source, revision, &
                                 revdate, 'vcoord_values')
+        endif
 
         ! After the vertical interpolation to a single level we will have one
         ! value for each neighboring point
-        deallocate(interpolator%vinterp_values, stat=dealloc_status)
-        call check_dealloc_status(dealloc_status, routine, source, revision, &
+     
+        if (associated(interpolator%vinterp_values)) then
+            deallocate(interpolator%vinterp_values, stat=dealloc_status)
+            call check_dealloc_status(dealloc_status, routine, source, revision, &
                                 revdate, 'vinterp_values')
+        endif
 
     end subroutine deallocate_raw_values
 
@@ -638,21 +650,27 @@ contains
     ! ---------------------------
     ! Clean up the dynamic storage for the target variable and vertical
     ! coordinate variable - need to do this after each call to the
-    ! interpolation driver since these will potentially change every
-    ! time
+    ! interpolation driver since these will potentially change every time
+
+    !>@todo when running in an mpi environment - should only one task do this?
+
     subroutine deallocate_available_values(interpolator)
         type(coamps_interpolator), intent(inout) :: interpolator
 
         character(len=*), parameter :: routine = 'deallocate_available_values'
         integer :: dealloc_status
 
-        deallocate(interpolator%available_target_values, stat=dealloc_status)
-        call check_dealloc_status(dealloc_status, routine, source, revision, &
-                                  revdate, 'available_target_values')
+        if (associated(interpolator%available_target_values)) then
+            deallocate(interpolator%available_target_values, stat=dealloc_status)
+            call check_dealloc_status(dealloc_status, routine, source, revision, &
+                                     revdate, 'available_target_values')
+        endif
 
-        deallocate(interpolator%available_vcoord_values, stat=dealloc_status)
-        call check_dealloc_status(dealloc_status, routine, source, revision, &
+        if (associated(interpolator%available_vcoord_values)) then
+            deallocate(interpolator%available_vcoord_values, stat=dealloc_status)
+            call check_dealloc_status(dealloc_status, routine, source, revision, &
                                   revdate, 'available_vcoord_values')
+        endif
 
     end subroutine deallocate_available_values
   
@@ -685,16 +703,18 @@ contains
             num_vars_needed = SINGLE_LEVEL
         !case (INTERPOLATE_TO_OTHER)
         case default
-        !  write(*,*)'TJH WHAT HAPPENS HERE'
+           write(*,*)'TJH WHAT HAPPENS HERE'
         end select
 
         allocate(interpolator%vars_available(num_model_levels, num_vars_needed),   &
                  stat=alloc_status)
         call check_alloc_status(alloc_status, routine, source, revision,           &
                                 revdate, 'vars_available')
+
         allocate(interpolator%levels_available(num_model_levels), stat=alloc_status)
         call check_alloc_status(alloc_status, routine, source, revision, &
                                 revdate, 'levels_available')
+
     end subroutine initialize_availability_data
 
     ! deallocate_availability_data
@@ -708,12 +728,17 @@ contains
         character(len=*), parameter :: routine = 'deallocate_availability_data'
         integer :: dealloc_status
 
-        deallocate(interpolator%vars_available, stat=dealloc_status)
-        call check_dealloc_status(dealloc_status, routine, source,     &
+        if (associated(interpolator%vars_available)) then
+            deallocate(interpolator%vars_available, stat=dealloc_status)
+            call check_dealloc_status(dealloc_status, routine, source,     &
                                   revision, revdate, 'vars_available')
-        deallocate(interpolator%levels_available, stat=dealloc_status)
-        call check_dealloc_status(dealloc_status, routine, source,     &
+        endif
+
+        if (associated(interpolator%levels_available)) then
+            deallocate(interpolator%levels_available, stat=dealloc_status)
+            call check_dealloc_status(dealloc_status, routine, source,     &
                                   revision, revdate, 'levels_available')
+        endif
     end subroutine deallocate_availability_data
 
     ! set_interpolation_level_type
@@ -894,10 +919,10 @@ contains
 
         do n=1,NUM_NEIGHBORS
 
-          call sfcp(theta_values(n,:), exner_values(n,:),               &
+          call sfcp(     theta_values(n,:),      exner_values(n,:),     &
                     mean_theta_values(n,:), mean_exner_values(n,:),     &
                     get_domain_dsigmaw(interpolator%model_domain),      &
-                    get_domain_wsigma(interpolator%model_domain),       &
+                    get_domain_wsigma( interpolator%model_domain),      &
                     zsfc(n), SINGLE_POINT, SINGLE_POINT,                &
                     num_model_levels, sfc_pres)
 
@@ -938,8 +963,7 @@ contains
         integer                     :: alloc_status
         integer                     :: dealloc_status
 
-        allocate(matching_values(NUM_NEIGHBORS), &
-                 stat=alloc_status)
+        allocate(matching_values(NUM_NEIGHBORS), stat=alloc_status)
         call check_alloc_status(alloc_status, routine, source, revision,     &
                                 revdate, 'matching_values')
 
@@ -1178,11 +1202,19 @@ contains
         integer,                         intent(in)    :: pert_availability_index
         real(kind=r8), dimension(:,:),   intent(out)   :: pressure
 
+
+        integer, save :: ncalls = 0
+
         ! Atmospheric constants - specific heat, gas constant (dry air),
         ! and the initial pressure for calculating the Exner function
-        real(kind=r8), parameter :: R   = real(287.0,  kind=r8)
+        real(kind=r8), parameter :: R   = real( 287.0, kind=r8)
         real(kind=r8), parameter :: Cp  = real(1004.0, kind=r8)
         real(kind=r8), parameter :: P00 = real(1000.0, kind=r8)
+
+        ncalls = ncalls + 1
+        print*, 'TJH ',ncalls, size(mean_exner_values), &
+                             minval(mean_exner_values), &
+                             minval(pert_exner_values)
 
         pressure = ((mean_exner_values + pert_exner_values) ** (Cp/R)) * P00
 

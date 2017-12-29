@@ -1,4 +1,4 @@
-! This code may (or may not) be part of the COAMPS distribution,
+! Parts of this code may be part of the COAMPS distribution,
 ! So it is not protected by the DART copyright agreement.
 !
 ! DART $Id$
@@ -10,7 +10,7 @@ module navdas_innov_mod
 ! AUTHOR:       P. A. Reinecke
 !               Naval Research Laboratory
 !
-! Module containing routines to process a navdas generate ascii
+! Module containing routines to process a navdas generated ascii
 ! innovation file
 !------------------------------ 
 
@@ -22,11 +22,11 @@ module navdas_innov_mod
                               VERTISPRESSURE,   &
                               VERTISHEIGHT 
 
-  use time_manager_mod,only : time_type,                                   &
-                              operator(==),                                &
-                              increment_time,                              &
-                              decrement_time,                              &
-                              set_date,                                    &
+  use time_manager_mod,only : time_type, operator(<), operator(>),         &
+                              operator(==), operator(+), operator(-),      &
+                              increment_time, decrement_time,              &
+                              set_time, set_date,                          &
+                              print_time, print_date,                      &
                               time_manager_init,                           &
                               set_calendar_type
 
@@ -44,7 +44,9 @@ module navdas_innov_mod
                               destroy_obs,                                 &
                               set_obs_def,                                 &
                               get_obs_def,                                 &
-                              set_obs_values
+                              set_obs_values,                              &
+                              get_first_obs,                               &
+                              get_last_obs
 
   use obs_utilities_mod, only : add_obs_to_seq
 
@@ -146,7 +148,7 @@ module navdas_innov_mod
 
   integer, parameter :: SECONDS_PER_HOUR=3600
 
-  type(time_type)         :: time_base
+  type(time_type)         :: time_base, first_time, last_time
   type(obs_def_type)      :: obs_def
   type(obs_sequence_type) :: seq
   type(obs_type)          :: obs
@@ -167,9 +169,14 @@ module navdas_innov_mod
   character(len=256) :: innov_file_name   = 'innov.out'
   character(len=256) :: ngt_file_name     = 'ngt.out'
   character(len=256) :: obs_seq_in_name   = 'obs_seq.out'
-  integer            :: obs_window = 1800
-  namelist /navdas_innov_nml/ innov_file_name, obs_seq_in_name, obs_window, ngt_file_name
+  integer            :: obs_window        = -1
+  logical            :: verbose           = .false.
 
+  namelist /navdas_innov_nml/ innov_file_name, &
+                              ngt_file_name,   &
+                              obs_seq_in_name, &
+                              obs_window,      &
+                              verbose
 
   !------------------------------
   ! END MODULE VARIABLES
@@ -180,12 +187,14 @@ contains
   !------------------------------
   ! BEGIN PUBLIC ROUTINES
   !------------------------------
-  
-  ! init_navdas_innov_mod
-  ! -------------------
-  ! initializes this module.
-  !  PARAMETERS [NONE]
+
+  !-----------------------------------------------------------------------  
+  !> initializes this module.
+  !>  PARAMETERS [NONE]
+
   subroutine init_navdas_innov_mod()
+
+    character(len=*), parameter :: routine='init_navdas_innov_mod'
     integer :: nml_unit
 
     is_initialized = .true.
@@ -204,13 +213,27 @@ contains
     call set_variable_list()
     call set_instrument_list()
 
+    if (obs_window < 0) then
+       ! no temporal subsetting
+       continue
+    elseif (obs_window > 1) then
+       ! we use +/- half the window
+       obs_window = obs_window/2
+    else
+       call error_handler(E_ERR, routine, '"obs_window" must be > 1 or < 0', &
+                         source, revision, revdate)
+    endif
+
+
   end subroutine init_navdas_innov_mod
 
-  ! terminate_navdas_innov_mod
-  ! -------------------
-  ! terminates this module.
-  !  PARAMETERS [NONE]
+
+  !-----------------------------------------------------------------------  
+  !> terminates this module.
+  !>  PARAMETERS [NONE]
+
   subroutine terminate_navdas_innov_mod()
+
     character(len=*), parameter :: routine='terminate_navdas_innov_mod'
     is_initialized = .false.
 
@@ -234,10 +257,13 @@ contains
                               revdate, 'instrument_key')
   end subroutine terminate_navdas_innov_mod
 
-  ! open_innov_file
-  ! -------------------
-  ! Opens an innovation file
+
+  !-----------------------------------------------------------------------  
+  !> Opens an innovation file
+  !> PARAMETERS  [NONE]
+
   subroutine open_innov_file()
+
     character(len=*), parameter :: routine='open_innov_file'
     if(.not.is_initialized) call init_navdas_innov_mod()
     innov_unit = get_unit()
@@ -253,10 +279,13 @@ contains
     end if
   end subroutine open_innov_file
 
-  ! open_ngt_file
-  ! -------------------
-  ! Opens an ngt file
+
+  !-----------------------------------------------------------------------  
+  !> Opens an ngt file
+  !> PARAMETERS  [NONE]
+
   subroutine open_ngt_file()
+
     character(len=*), parameter :: routine='open_ngt_file'
     if(.not.is_initialized) call init_navdas_innov_mod()
     ngt_unit = get_unit()
@@ -269,16 +298,18 @@ contains
       call error_handler(E_MSG, routine,  &
                          '"'//trim(ngt_file_name)//'" not found', &
                          source, revision, revdate, &
-                         text2='No vortext observations will be converted.' )
+                         text2='No vortex observations will be converted.' )
       ngt_exists = .false.
     end if
   end subroutine open_ngt_file
 
-  ! read_innov_data
-  ! -------------------
-  ! reads the full innovatios file and fill the module level obs_seq variable
-  !  PARAMETERS  [NONE]
+
+  !-----------------------------------------------------------------------  
+  !> reads the full innovations file and fill the module level obs_seq variable
+  !> PARAMETERS  [NONE]
+
   subroutine read_innov_data()
+
     integer :: n
     logical :: is_last, is_ob_defined
 
@@ -290,7 +321,7 @@ contains
 
       call read_innov_line(is_ob_defined,is_last)
 
-      if(is_ob_defined)  then
+      if (is_ob_defined) then
 
          if (mod(n,10000) == 0) &
          write(*,*)'adding observation ',n,' of ',max_num_obs, '(',n*100.0/max_num_obs, '%)'
@@ -301,14 +332,33 @@ contains
       endif
 
     end do
+
+    if (verbose) then
+       first_obs = get_first_obs(seq, obs)
+       call get_obs_def(obs, obs_def)
+       time_obs = get_obs_def_time(obs_def)
+
+       call print_time(time_obs,'time of first obs is ')
+       call print_date(time_obs,'date of first obs is ')
+
+       first_obs = get_last_obs(seq, obs)
+       call get_obs_def(obs, obs_def)
+       time_obs = get_obs_def_time(obs_def)
+
+       call print_time(time_obs,'time of  last obs is ')
+       call print_date(time_obs,'date of  last obs is ')
+    endif
+
   end subroutine 
 
-  ! read_innov_header
-  ! -------------------
-  ! reads the header of the innovation file sets the module level variables
-  ! max_num_obs and time_base .
-  !  PARAMETERS  [NONE]
+
+  !-----------------------------------------------------------------------  
+  !> reads the header of the innovation file sets the module level variables
+  !> max_num_obs and time_base .
+  !> PARAMETERS  [NONE]
+
   subroutine read_innov_header()
+
     character(len=*), parameter :: routine='read_innov_header'
 
     integer, parameter :: num_in=20, str_len=20
@@ -344,18 +394,32 @@ contains
     time_base = set_date(yyyy, mm, dd, hh)
     time_base = increment_time(time_base,tau*SECONDS_PER_HOUR) 
 
+    ! set the first and last times of interest
+    if (obs_window > 0) then
+       first_time = time_base - set_time(obs_window-1,0)
+       last_time  = time_base + set_time(obs_window  ,0)
+    else
+       first_time = set_date(1601,1,1)
+       last_time  = set_date(2999,1,1)
+    endif
+
     deallocate(pressure,stat=dealloc_status)
     call check_dealloc_status(dealloc_status, routine, source, revision, &
                               revdate, 'pressure')
     return
   end subroutine
-  ! get_max_obs
-  ! -------------------
-  ! returns the number of observations in the innovation file
+
+
+  !-----------------------------------------------------------------------  
+  !> returns the number of observations in the innovation file
+  !> PARAMETERS  [NONE]
+
   function get_max_obs() result(max_obs)
+
     integer :: max_obs
     max_obs=max_num_obs+100
     return
+
   end function get_max_obs
 
   !------------------------------
@@ -456,10 +520,10 @@ contains
 
     character(len=32) :: ob_type
 
-    real(kind=r8)      :: ob_value(1), ob_bk, t_bk, iv, ob_err, etc, &
+    real(kind=r8)     :: ob_value(1), ob_bk, t_bk, iv, ob_err, etc, &
                          ob_lat, ob_lon, ob_lev, q_bk
     integer           :: nn, vtype, itype, nvp, ob_qc(1), ob_dt, idp
-    integer           :: vert_level, ob_kind_indx, ob_type_indx
+    integer           :: vert_level, ob_type_indx
     character(len=11) :: ob_database
     character(len=17) :: ob_platform
 
@@ -512,25 +576,29 @@ contains
         end if
 
       case(60,61,70,71,72,73,80,81,82,83,84,85,86,87) ! ssmi winds, wind sat, and scat winds
-        ob_lev = 10.0_r8 ! sattelite winds are supposed to be 10-m winds
+        ob_lev = 10.0_r8 ! satellite winds are supposed to be 10-m winds
 
       case(250, 251) ! ssmi and nrl windsat TPW
         ob_lev = 0.0_r8 ! Does this matter?
 
     end select
 
-    ob_err=ob_err**2
-
-    ! Since dart currently doesn't support a finite-time window
-    ! around the observations, fudge it here.
-    if(abs(ob_dt) .le. obs_window) ob_dt=0
+    ! If the observation type is not supported, return before doing any more work
 
     call set_ob_type(vtype, itype, ob_platform, ob_type)
+    ob_type_indx = get_index_for_type_of_obs(ob_type) 
+    if(ob_type_indx <= 0) return
+
+    ! If the observation is outside the timeframe of interest, skip it;
+    ! there is no reason to change the time (as was done previously).
+
     if(ob_dt .lt. 0) then
       time_ob = decrement_time(time_base,abs(ob_dt)) 
     else
       time_ob = increment_time(time_base,abs(ob_dt)) 
     end if
+    if (time_ob < first_time) return
+    if (time_ob >  last_time) return
 
     vert_level = get_vert_level_type(itype, vtype) 
     
@@ -538,11 +606,7 @@ contains
     if(vert_level == VERTISPRESSURE) ob_lev = ob_lev*CONVERT_MB_TO_PA
 
     ob_loc  = set_location(ob_lon, ob_lat, ob_lev, vert_level)
-    ob_type_indx = get_index_for_type_of_obs(ob_type) 
-
-    if(ob_type_indx <= 0) return
-
-    ob_kind_indx=get_quantity_for_type_of_obs(ob_type_indx)
+    ob_err  = ob_err**2
 
     call init_obs_def(obs_def, ob_loc, ob_type_indx, time_ob, ob_err) 
     call set_obs_def(obs, obs_def) 

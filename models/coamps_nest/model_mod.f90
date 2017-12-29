@@ -882,17 +882,22 @@ end subroutine pert_model_copies
 
     end subroutine get_state_meta_data
 
-    ! shortest_time_between_assimilations
-    ! -------------------
-    ! Returns the smallest increment in time that the model is capable
-    ! of advancing the state - just call it a minute for now
-    !  PARAMETERS
-    !   OUT shortest_time_between_assimilations  model time step as a DART time_type
-    function shortest_time_between_assimilations()
-        type(time_type) :: shortest_time_between_assimilations
+!--------------------------------------------------------------------
+!> Returns the smallest increment in time that the model is capable
+!> of advancing the state.
+!>  PARAMETERS
+!>   OUT shortest_time_between_assimilations  model timestep as a DART time_type
 
-        shortest_time_between_assimilations = set_time(60,0)
-    end function shortest_time_between_assimilations
+function shortest_time_between_assimilations()
+
+type(time_type) :: shortest_time_between_assimilations !> model forecast length
+
+shortest_time_between_assimilations = &
+     set_time(assimilation_period_seconds,assimilation_period_days)
+
+end function shortest_time_between_assimilations
+
+
 
     ! get_coamps_domain
     ! ---------
