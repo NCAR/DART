@@ -704,15 +704,12 @@ subroutine sfcp(th,p,thbm,exbw,dsigw,sigmwa,zsfc,m,n,kk,ps)
 !
 !  compute surface pressure (mb)
 !
-      do i=1,mn   !>@todo ps(m,n) and mn loop ps(mn,1)
+      do i=1,mn
         aoz=sigmwa(1)/(sigmwa(1)-zsfc(i,1))
         ppsfc=p(i,1,kk)&
              -dsigw(kkp1)*g*(th(i,1,kk)-thbm(i,1,kk))&
             /(aoz*cp*thbm(i,1,kk)*thbm(i,1,kk))
-
-        print*,    exbw(i,1,kkp1),ppsfc,   cpor, i, m, n, kk, kkp1
-        ps(i,1) = ((exbw(i,1,kkp1)+ppsfc)**cpor)*1000.0_r8
-        print*,    ps(i,1)
+        ps(i,1) = (exbw(i,1,kkp1)+ppsfc)**cpor * 1000.0_r8
       enddo
 
       return

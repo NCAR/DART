@@ -158,7 +158,9 @@
                        'U_WSAT_WIND' , 'V_WSAT_WIND',
                        'U_ASCAT_WIND', 'V_ASCAT_WIND',
                        'U_TERRA_WIND', 'V_TERRA_WIND',
-                       'T_RAOB', 'T_AMDAR', 'T_MDCRS'
+                       'T_RAOB', 'T_AMDAR', 'T_MDCRS', 
+                       'WS_SSMI_FF1' , 'T_TOVS_T',
+                       'P_SFC_LAND'  , 'P_SFC_SHIP'
    keep_types        = .true.
    print_only        = .false.
    min_lat           = -90.0
@@ -167,7 +169,7 @@
    max_lon           = 360.0
    /
 
-# 'T_AMDAR', 'T_MDCRS', 'Z_RAOB' , 'P_SFC_LAND'  , 'P_SFC_SHIP', 'WS_SSMI_FF1' , 'T_TOVS_T'
+# 'Z_RAOB', 'WS_SSMI_FF1'
 
 &preprocess_nml
     input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
@@ -314,9 +316,9 @@
    Nregions   = 1
    lonlim1    =   0.0,   0.0,   0.0, 235.0
    lonlim2    = 360.0, 360.0, 360.0, 295.0
-   latlim1    =  20.0, -80.0, -20.0,  25.0
-   latlim2    =  80.0, -20.0,  20.0,  55.0
-   reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America'
+   latlim1    = -90.0, -80.0, -20.0,  25.0
+   latlim2    =  90.0, -20.0,  20.0,  55.0
+   reg_names  = 'Earth', 'Southern Hemisphere', 'Tropics', 'North America'
    print_mismatched_locs = .false.
    create_rank_histogram = .true.
    outliers_in_histogram = .true.
@@ -358,7 +360,7 @@
    innov_file_name = 'innov.out'
    ngt_file_name   = 'ngt.out'
    obs_seq_in_name = 'obs_seq.out'
-   obs_window      = 240
+   obs_window      = 60
    verbose         = .true.
   /
 
