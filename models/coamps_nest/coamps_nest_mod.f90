@@ -44,7 +44,7 @@ module coamps_nest_mod
     public :: coamps_nest
 
     public :: initialize_nest
-    public :: initialize_nest_latlon   ! candidate for removal
+    public :: initialize_nest_latlon
 
     public :: register_child_nest
     public :: register_parent_nest
@@ -1264,8 +1264,6 @@ end subroutine read_geographic_data
     ! Compute the lat/lon arrays for the nest
     ! INOUT nest              The nest to add geographic data to
     !   IN  dtg               COAMPS date-time group
-
-! TJH initialize_nest_latlon probably not needed now that we can read from a file
 
     subroutine initialize_nest_latlon(nest, grid)
         type(coamps_nest), intent(inout) :: nest

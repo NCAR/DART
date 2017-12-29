@@ -625,9 +625,6 @@ elseif (ndims == 3) then
 
    allocate( chunk3D( dimlens(1), dimlens(2), dimlens(3) ) )
    call nc_get_variable(ncFileID, variable_name, chunk3D, context=routine) 
-
-!  chunk3D = 42.0_r8 ! TJH DEBUG
-   
 !  call nc_put_variable(hdf5unit, analysis_name, chunk3D, context=routine) 
 
    call write_hdf5_data(real(chunk3D, kind=hdf5_r4), analysis_name, hdf5_file_write, ierr)

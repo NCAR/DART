@@ -346,8 +346,6 @@ contains
 
         call coarse_point_to_nest_point(coarse_pt, nest_pt, in_domain)
 
-!       call dump_nest_point_info(nest_pt) ! TJH this could be too verbose 
-
         if (present(within_domain)) within_domain = in_domain
 
     end subroutine latlon_to_nest_point
@@ -797,10 +795,9 @@ contains
                                  parent_nest = domain%nests(parent_nest_id))
     end do
 
-!>@todo TJH not needed now that initialize_nest() reads latlon from hdf5 file
-         do cur_nest_id = 1, domain%nest_count
-            call initialize_nest_latlon(domain%nests(cur_nest_id), domain%static_grid)
-         end do
+    do cur_nest_id = 1, domain%nest_count
+       call initialize_nest_latlon(domain%nests(cur_nest_id), domain%static_grid)
+    end do
 
   end subroutine initialize_nests
 
