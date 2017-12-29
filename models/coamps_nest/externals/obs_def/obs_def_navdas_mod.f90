@@ -255,7 +255,7 @@ contains
     ! Pressure - for now, assume that we are working in pressure
     ! coordinates only.  Once we add other capabilities, change this
     ! to call model_interpolate for QTY_PRESSURE
-    if (.not. is_vertical(location, 'pressure')) then
+    if (.not. is_vertical(location, 'PRESSURE')) then
        t(:) = missing_r8
        istatus(:) = 11
        return
