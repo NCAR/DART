@@ -142,13 +142,24 @@
 &obs_sequence_tool_nml
    num_input_files   = 1
    filename_seq      = 'obs_seq.out'
-   filename_out      = 'obs_seq.processed'
+   filename_out      = 'obs_seq.subset'
    first_obs_days    = -1
    first_obs_seconds = -1
    last_obs_days     = -1
    last_obs_seconds  = -1
-   obs_types         = ''
-   keep_types        = .false.
+   obs_types         = 'U_RAOB'      , 'V_RAOB', 
+                       'U_AIREP'     , 'V_AIREP',
+                       'U_AMDAR'     , 'V_AMDAR',
+                       'U_MDCRS'     , 'V_MDCRS',
+                       'U_CLD_WNDS2' , 'V_CLD_WNDS2',
+                       'U_METEO'     , 'V_METEO',
+                       'U_GOES'      , 'V_GOES',
+                       'U_SFC_SHIP'  , 'V_SFC_SHIP',
+                       'U_WSAT_WIND' , 'V_WSAT_WIND',
+                       'U_ASCAT_WIND', 'V_ASCAT_WIND',
+                       'U_TERRA_WIND', 'V_TERRA_WIND',
+                       'T_RAOB'
+   keep_types        = .true.
    print_only        = .false.
    min_lat           = -90.0
    max_lat           =  90.0
@@ -156,6 +167,7 @@
    max_lon           = 360.0
    /
 
+# 'T_AMDAR', 'T_MDCRS', 'Z_RAOB' , 'P_SFC_LAND'  , 'P_SFC_SHIP', 'WS_SSMI_FF1' , 'T_TOVS_T'
 
 &preprocess_nml
     input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
@@ -166,23 +178,16 @@
   /
 
 
-#        'Z_RAOB'      ,
-#        'T_RAOB'      ,
-#        'T_AMDAR'     ,
-#        'T_MDCRS'     ,
-#        'T_TOVS_T'    ,
-#        'P_SFC_LAND'  , 'P_SFC_SHIP',
-#        'WS_SSMI_FF1'
 #  evaluate_these_obs_types   = 'EVAL_POT_TEMPERATURE',
 #                               'RADIOSONDE_U_WIND_COMPONENT',
 #                               'RADIOSONDE_LOG_SPECIFIC_HUMIDITY', 
 #                               'P_SFC_LAND' 
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'U_RAOB'      , 'V_RAOB',
+   assimilate_these_obs_types = 'U_RAOB'      , 'V_RAOB', 'Z_RAOB' , 'T_RAOB' ,
                                 'U_AIREP'     , 'V_AIREP',
-                                'U_AMDAR'     , 'V_AMDAR',
-                                'U_MDCRS'     , 'V_MDCRS',
+                                'U_AMDAR'     , 'V_AMDAR', 'T_AMDAR',
+                                'U_MDCRS'     , 'V_MDCRS', 'T_MDCRS',
                                 'U_CLD_WNDS2' , 'V_CLD_WNDS2',
                                 'U_METEO'     , 'V_METEO',
                                 'U_GOES'      , 'V_GOES',
@@ -190,6 +195,8 @@
                                 'U_WSAT_WIND' , 'V_WSAT_WIND',
                                 'U_ASCAT_WIND', 'V_ASCAT_WIND',
                                 'U_TERRA_WIND', 'V_TERRA_WIND',
+                                'P_SFC_LAND'  , 'P_SFC_SHIP',
+                                'WS_SSMI_FF1' , 'T_TOVS_T'
    evaluate_these_obs_types   = ''
   /
 
@@ -356,7 +363,7 @@
    innov_file_name = 'innov.out'
    ngt_file_name   = 'ngt.out'
    obs_seq_in_name = 'obs_seq.out'
-   obs_window      = 3600
+   obs_window      = 60
    verbose         = .true.
   /
 
