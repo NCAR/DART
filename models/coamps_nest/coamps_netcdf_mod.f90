@@ -18,9 +18,7 @@ module coamps_netcdf_mod
 
     use netcdf
 
-    use location_mod,      only : location_type, get_location, &
-                                  VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, &
-                                  VERTISPRESSURE, VERTISHEIGHT
+    use location_mod,      only : location_type, get_location
 
     use types_mod,         only : r8
 
