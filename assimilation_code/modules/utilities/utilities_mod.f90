@@ -980,9 +980,9 @@ end subroutine error_handler
    integer,          intent(out), optional :: return_rc
    integer  :: iunit
 
-   integer           :: nc, rc, rlen
+   integer           :: rc, rlen
    logical           :: open, use_recl
-   character(len=32) :: format, pos, act, stat, acc, conversion, recl, del
+   character(len=32) :: format, pos, act, stat, acc, conversion, del
 
    if ( .not. module_initialized ) call initialize_utilities
 

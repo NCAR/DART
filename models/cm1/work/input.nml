@@ -59,15 +59,15 @@
                     'v10'  , 'QTY_10M_V_WIND_COMPONENT'  , 'NULL', 'NULL', 'UPDATE',
                     't2'   , 'QTY_2M_TEMPERATURE'        , 0.0000, 'NULL', 'UPDATE',
                     'th2'  , 'QTY_POTENTIAL_TEMPERATURE' , 0.0000, 'NULL', 'UPDATE',
-                    'tsk'  , 'QTY_SURFACE_TEMPERATURE'   , 0.0000, 'NULL', 'UPDATE',
+                    'tsk'  , 'QTY_SKIN_TEMPERATURE'      , 0.0000, 'NULL', 'UPDATE',
                     'q2'   , 'QTY_SPECIFIC_HUMIDITY'     , 0.0000, 'NULL', 'UPDATE',
-                    'psfc' , 'QTY_SURFACE_PRESSURE'      , 0.0000, 'NULL', 'UPDATE',
                     'qv'   , 'QTY_VAPOR_MIXING_RATIO'    , 0.0000, 'NULL', 'UPDATE',
                     'qc'   , 'QTY_CLOUD_LIQUID_WATER'    , 0.0000, 'NULL', 'UPDATE',
                     'qr'   , 'QTY_RAINWATER_MIXING_RATIO', 0.0000, 'NULL', 'UPDATE',
                     'qi'   , 'QTY_CLOUD_ICE'             , 0.0000, 'NULL', 'UPDATE',
                     'qs'   , 'QTY_SNOW_MIXING_RATIO'     , 0.0000, 'NULL', 'UPDATE',
-                    'qg'   , 'QTY_GRAUPEL_MIXING_RATIO'  , 0.0000, 'NULL', 'UPDATE' 
+                    'qg'   , 'QTY_GRAUPEL_MIXING_RATIO'  , 0.0000, 'NULL', 'UPDATE',
+                    'psfc' , 'QTY_SURFACE_PRESSURE'      , 0.0000, 'NULL', 'UPDATE' 
 /
 
 
@@ -273,20 +273,19 @@
 
 
 &model_mod_check_nml
+  input_state_files     = 'cm1out_rst_000001.nc'
+  output_state_files    = 'mmc_output.nc'
+  test1thru             = 0
+  run_tests             = 1,2,3,4,5,7
+  x_ind                 = 1000000
+  quantity_of_interest  = 'QTY_U_WIND_COMPONENT'
+  loc_of_interest       = 1000.0, 500.0, 120.0
+  interp_test_vertcoord = 'VERTISHEIGHT'
   interp_test_dx        = 10.0
   interp_test_dy        = 10.0
   interp_test_dz        = 1.0
-  interp_test_vertcoord = 'VERTISHEIGHT'
   interp_test_xrange    = 500.0, 1000.0
   interp_test_yrange    = 500.0, 1000.0
   interp_test_zrange    = 100.0,  101.0
-  kind_of_interest      = 'QTY_TEMPERATURE'
-  loc_of_interest       = 1000.0, 500.0, 120.0
-  num_ens               = 1
-  input_state_files     = 'dart_ics.nc'
-  output_state_files    = 'cm1_output.nc'
-  test1thru             = 4
-  verbose               = .true.
-  verbose               = .true.
-  x_ind                 = 1000000
+  verbose               = .false.
 /

@@ -71,14 +71,13 @@
   /
 
 &model_mod_check_nml
-   dart_input_file       = 'dart_ics'
-   output_file           = 'check_me'
-   advance_time_present  = .FALSE.
-   verbose               = .FALSE.
-   test1thru             = 8
+   input_state_files     = 'naaps_input.nc'
+   output_state_files    = 'mmc_output.nc'
+   test1thru             = 0
+   run_tests             = 1,2,3,4,5,7
    x_ind                 = 100000
    loc_of_interest       = 179.5, 89.5, 10000.0
-   kind_of_interest      = 'QTY_INTEGRATED_DUST'
+   quantity_of_interest  = 'QTY_INTEGRATED_DUST'
    interp_test_lonrange  = 0.5, 359.5
    interp_test_dlon      = 1.0
    interp_test_latrange  = -89.5, 89.5
@@ -86,6 +85,7 @@
    interp_test_vertrange = 100.0,  100.0
    interp_test_dvert     = 2000.0
    interp_test_vertcoord = 'VERTISUNDEF'
+   verbose               = .false.
   /
 
 

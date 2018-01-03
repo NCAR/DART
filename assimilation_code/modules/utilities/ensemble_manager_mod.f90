@@ -47,10 +47,10 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           deallocate_single_copy
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 type ensemble_type
 
@@ -1675,32 +1675,32 @@ subroutine round_robin(ens_handle)
 ! place to start. Test with the smoother. 
 
 type(ensemble_type), intent(inout)   :: ens_handle
+
 integer                              :: last_node_task_number, num_nodes
 integer                              :: i, j
-integer, allocatable                 :: count(:)
-
+integer, allocatable                 :: mycount(:)
 
 ! Find number of nodes and find number of tasks on last node
 call calc_tasks_on_each_node(num_nodes, last_node_task_number)
 
-allocate(count(num_nodes))
+allocate(mycount(num_nodes))
 
-count(:) = 1  ! keep track of the pes assigned to each node
+mycount(:) = 1  ! keep track of the pes assigned to each node
 i = 0         ! keep track of the # of pes assigned
 
 do while (i < num_pes)   ! until you run out of processors
    do j = 1, num_nodes   ! loop around the nodes
 
       if(j == num_nodes) then  ! special case for the last node - it could have fewer tasks than the other nodes
-         if(count(j) <= last_node_task_number) then
-            ens_handle%task_to_pe_list(tasks_per_node*(j-1) + count(j)) = i
-            count(j) = count(j) + 1
+         if(mycount(j) <= last_node_task_number) then
+            ens_handle%task_to_pe_list(tasks_per_node*(j-1) + mycount(j)) = i
+            mycount(j) = mycount(j) + 1
             i = i + 1
          endif
       else
-         if(count(j) <= tasks_per_node) then
-            ens_handle%task_to_pe_list(tasks_per_node*(j-1) + count(j)) = i
-            count(j) = count(j) + 1
+         if(mycount(j) <= tasks_per_node) then
+            ens_handle%task_to_pe_list(tasks_per_node*(j-1) + mycount(j)) = i
+            mycount(j) = mycount(j) + 1
             i = i + 1
          endif
       endif
@@ -1708,7 +1708,7 @@ do while (i < num_pes)   ! until you run out of processors
    enddo
 enddo
 
-deallocate(count)
+deallocate(mycount)
 
 call create_pe_to_task_list(ens_handle)
 

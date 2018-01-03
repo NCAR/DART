@@ -8,6 +8,7 @@
 !> add capabilities needed by the standard assimilation methods.
 !>
 !>@todo FIXME explore redundant routines , especially 'diagnostic' ones
+!>@todo the documentation for this module is out-of-date.
 
 module assim_model_mod
 

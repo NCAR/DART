@@ -163,7 +163,7 @@
    assimilation_period_seconds  = -1
    model_perturbation_amplitude = 0.2
    binary_grid_file_format      = 'big_endian'
-   mdt_reference_file_name      = '/glade/p/image/DART_test_cases/pop/pop_gx1v6/mdt_f09_g16.nc'
+   mdt_reference_file_name      = 'mdt_f09_g16.nc'
    debug                        = 0
    model_state_variables        = 'SALT_CUR ', 'QTY_SALINITY             ', 'UPDATE',
                                   'TEMP_CUR ', 'QTY_POTENTIAL_TEMPERATURE', 'UPDATE',
@@ -303,12 +303,12 @@
 
 &model_mod_check_nml
    input_state_files     = 'pop.r.nc'
-   output_state_files    = 'check_me.nc'
-   verbose               = .FALSE.
-   test1thru             = 5
-   loc_of_interest       = 320.0, 18.0, 5.0
+   output_state_files    = 'mmc_output.nc'
+   test1thru             = 0
+   run_tests             = 1, 2, 3, 4, 5, 7
    x_ind                 = 10
-   kind_of_interest      = 'QTY_U_CURRENT_COMPONENT'
+   loc_of_interest       = 320.0, 18.0, 5.0
+   quantity_of_interest  = 'QTY_U_CURRENT_COMPONENT'
    interp_test_lonrange  = 0.0, 359.0
    interp_test_dlon      = 1.0
    interp_test_latrange  = -89.0, 89.0
@@ -316,4 +316,5 @@
    interp_test_vertrange = 1000.0,  1005.0
    interp_test_dvert     = 2000.0
    interp_test_vertcoord = 'VERTISHEIGHT'
+   verbose               = .false.
   /

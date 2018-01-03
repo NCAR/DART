@@ -1,4 +1,4 @@
-assimilation_code/location/threed_sphere/location_mod.f90
+assimilation_code/location/oned/location_mod.f90
 assimilation_code/location/utilities/default_location_mod.f90
 assimilation_code/location/utilities/location_io_mod.f90
 assimilation_code/modules/assimilation/adaptive_inflate_mod.f90
@@ -33,10 +33,9 @@ assimilation_code/modules/utilities/time_manager_mod.f90
 assimilation_code/modules/utilities/types_mod.f90
 assimilation_code/modules/utilities/utilities_mod.f90
 assimilation_code/programs/model_mod_check/model_mod_check.f90
-models/cice/dart_cice_mod.f90
-models/cice/model_mod.f90
+models/lorenz_96_2scale/model_mod.f90
 models/model_mod_tools/model_check_utilities_mod.f90
-models/model_mod_tools/test_interpolate_threed_sphere.f90
+models/model_mod_tools/test_interpolate_oned.f90
 models/utilities/default_model_mod.f90
 observations/forward_operators/obs_def_mod.f90
 observations/forward_operators/obs_def_utilities_mod.f90

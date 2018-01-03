@@ -619,6 +619,9 @@ endif
 call trace_message('After  writing state restart file if requested')
 call trace_message('Before ensemble and obs memory cleanup')
 
+! Close the windows
+call free_state_window(ens_handle)
+
 !  Release storage for ensemble
 call end_ensemble_manager(ens_handle)
 
@@ -775,21 +778,6 @@ call print_time(mtime, ' p_m_o trace: '//msg)
 call destroy_obs(obs)
 
 end subroutine print_obs_time
-
-!-------------------------------------------------------------------------
-
-subroutine perfect_set_initial_time(time)
-
-type(time_type), intent(out) :: time
-
-
-if(init_time_days >= 0) then
-   time = set_time(init_time_seconds, init_time_days)
-else
-   time = set_time(0, 0)
-endif
-
-end subroutine perfect_set_initial_time
 
 !-------------------------------------------------------------------------
 

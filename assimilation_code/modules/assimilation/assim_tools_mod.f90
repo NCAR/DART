@@ -100,7 +100,7 @@ real(r8), parameter    :: small = epsilon(1.0_r8)   ! threshold for avoiding NaN
 ! (make it a local variable so we don't keep making subroutine calls)
 logical                :: is_doing_vertical_conversion = .false.
 
-character(len = 255)   :: msgstring, msgstring2, msgstring3
+character(len=512)     :: msgstring, msgstring2, msgstring3
 
 ! Need to read in table for off-line based sampling correction and store it
 integer                :: sec_table_size
@@ -111,10 +111,10 @@ real(r8), allocatable  :: exp_true_correl(:), alpha(:)
 real(r8), allocatable  :: obs_impact_table(:,:)
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 !============================================================================
 

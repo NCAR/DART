@@ -21,7 +21,7 @@ use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, 
 
 use     mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities
 
-use          location_mod, only : location_type, write_location
+use          location_mod, only : location_type, set_location, write_location
 
 use          obs_kind_mod, only : get_index_for_quantity, get_name_for_quantity
 
@@ -36,7 +36,8 @@ use  ensemble_manager_mod, only : init_ensemble_manager, ensemble_type
 
 use   state_vector_io_mod, only : state_vector_io_init, read_state, write_state
 
-use   state_structure_mod, only : get_num_domains, get_model_variable_indices
+use   state_structure_mod, only : get_num_domains, get_model_variable_indices, &
+                                  state_structure_info
 
 use      io_filenames_mod, only : io_filenames_init, file_info_type,       &
                                   stage_metadata_type, get_stage_metadata, &
@@ -49,7 +50,9 @@ use distributed_state_mod, only : create_state_window, free_state_window
 use             model_mod, only : static_init_model, get_model_size,       &
                                   get_state_meta_data, model_interpolate
 
-use  test_interpolate_mod, only : test_interpolate_single, test_interpolate_range
+use  test_interpolate_mod, only : test_interpolate_single, &
+                                  test_interpolate_range, &
+                                  find_closest_gridpoint
 
 use netcdf
 
@@ -61,7 +64,7 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-integer, parameter :: MAX_TESTS = 15
+integer, parameter :: MAX_TESTS = 7
 
 !------------------------------------------------------------------
 ! The namelist variables
@@ -74,7 +77,7 @@ character(len=256)            :: output_state_files(MAX_NUM_DOMS) = 'null'
 character(len=256)            :: all_metadata_file = 'metadata.txt'
 integer(i8)                   :: x_ind   = -1
 real(r8), dimension(3)        :: loc_of_interest = -1.0_r8
-character(len=metadatalength) :: kind_of_interest = 'ANY'
+character(len=metadatalength) :: quantity_of_interest = 'NONE'
 character(len=metadatalength) :: interp_test_vertcoord = 'VERTISHEIGHT'
 logical                       :: verbose = .FALSE.
 integer                       :: test1thru = MAX_TESTS
@@ -93,7 +96,7 @@ real(r8), dimension(2) :: interp_test_yrange = (/ missing_r8, missing_r8 /)
 real(r8), dimension(2) :: interp_test_zrange = (/ missing_r8, missing_r8 /)
 
 namelist /model_mod_check_nml/ x_ind, num_ens,                             &
-                               loc_of_interest,    kind_of_interest,       &
+                               loc_of_interest,    quantity_of_interest,   &
                                interp_test_dlat,   interp_test_lonrange,   &
                                interp_test_dlon,   interp_test_latrange,   &
                                interp_test_dvert,  interp_test_vertrange,  &
@@ -116,12 +119,11 @@ logical :: tests_to_run(MAX_TESTS) = .false.
 type(ensemble_type)   :: ens_handle
 
 type(time_type)       :: model_time
-integer               :: mykindindex
 integer(i8)           :: model_size
 real(r8), allocatable :: interp_vals(:)
 
 ! misc. variables
-integer :: idom, imem, num_passed, num_failed, num_domains
+integer :: idom, imem, num_passed, num_failed, num_domains, idomain
 logical :: cartesian = .false.
 
 ! message strings
@@ -142,7 +144,21 @@ call check_namelist_read(iunit, io, "model_mod_check_nml")
 
 call setup_run_array()
 call setup_interp_grid()
-call static_init_assim_model() ! must be done for all tests
+
+!----------------------------------------------------------------------
+! Calling static_init_assim_model() is required for all tests.
+! It also calls static_init_model(), so there is no need to explicitly call
+! that. Furthermore, the low-order models have no check in them to prevent
+! static_init_model() from being called twice, so it BOMBS if you call both.
+!----------------------------------------------------------------------
+
+call print_test_message('TEST 0', &
+         'Reading the model_mod namelist and implicitly running static_init_model', &
+         starting=.true.)
+
+call static_init_assim_model()
+
+call print_test_message('TEST 0', ending=.true.)
 
 !----------------------------------------------------------------------
 ! initialization code, model size
@@ -151,8 +167,22 @@ call static_init_assim_model() ! must be done for all tests
 if (tests_to_run(1)) then
 
    call print_test_message('TEST 1', &
-                           'Reading the namelist and running static_init_model', &
-                           'calling get_model_size()', starting=.true.)
+            'Verifying composition of the state and calling get_model_size()', &
+            starting=.true.)
+
+   if (verbose) then
+      string1 = 'To suppress the detailed list of the variables that comprise the DART state'
+      string2 = 'set "verbose = .FALSE." in the model_mod_check_nml namelist.'
+      call print_info_message('TEST 1',string1, string2)
+
+      do idomain = 1,get_num_domains()
+         call state_structure_info(idomain)
+      enddo
+   else
+      string1 = 'To print a detailed list of the variables that comprise the DART state'
+      string2 = 'set "verbose = .TRUE." in the model_mod_check_nml namelist.'
+      call print_info_message('TEST 1',string1, string2)
+   endif
 
    model_size = get_model_size()
 
@@ -180,12 +210,13 @@ if (tests_to_run(2)) then
    ! be ens_size but rather a single file (or multiple files if more than one domain)
 
    num_domains = get_num_domains()
-   allocate(file_array_input(num_ens, num_domains), file_array_output(num_ens, num_domains))
 
+   allocate(file_array_input( num_ens, num_domains))
+   allocate(file_array_output(num_ens, num_domains))
    file_array_input  = RESHAPE(input_state_files,  (/num_ens,  num_domains/))
    file_array_output = RESHAPE(output_state_files, (/num_ens,  num_domains/))
 
-   ! Initialize input file info
+   ! Test the read portion.
    call io_filenames_init(file_info_input,             &
                           ncopies      = num_ens,      &
                           cycling      = single_file,  &
@@ -195,39 +226,17 @@ if (tests_to_run(2)) then
    do imem = 1, num_ens
       write(my_base,'(A,I2)') 'inens_',    imem
       write(my_desc,'(A,I2)') 'input ens', imem
-      call set_file_metadata(file_info_input,                          &
-                             cnum     = imem,                          &
-                             fnames   = (/file_array_input(imem,:)/),  &
-                             basename = my_base,                       &
+      call set_file_metadata(file_info_input,                      &
+                             cnum     = imem,                      &
+                             fnames   = file_array_input(imem,:),  &
+                             basename = my_base,                   &
                              desc     = my_desc)
 
-      call set_io_copy_flag(file_info_input, &
+      call set_io_copy_flag(file_info_input,    &
                             cnum    = imem,     &
                             io_flag = READ_COPY)
    enddo
 
-   ! Initialize output file info
-   call io_filenames_init(file_info_output,           &
-                          ncopies      = num_ens,     &
-                          cycling      = single_file, &
-                          single_file  = single_file, &
-                          restart_files = file_array_output)
-
-   do imem = 1, num_ens
-      write(my_base,'(A,I2)') 'outens_',    imem
-      write(my_desc,'(A,I2)') 'output ens', imem
-      call set_file_metadata(file_info_output,                          &
-                             cnum     = imem,                           &
-                             fnames   = (/file_array_output(imem,:)/),  &
-                             basename = my_base,                        &
-                             desc     = my_desc)
-
-      call set_io_copy_flag(file_info_output,    &
-                            cnum    = imem,      &
-                            io_flag = WRITE_COPY)
-   enddo
-
-   ! Open a test netcdf initial conditions file.
    input_restart_files = get_stage_metadata(file_info_input)
 
    do idom = 1, num_domains
@@ -239,7 +248,29 @@ if (tests_to_run(2)) then
 
    call read_state(ens_handle, file_info_input, read_time_from_file, model_time)
 
+   ! Test the write portion.
+   call io_filenames_init(file_info_output,           &
+                          ncopies      = num_ens,     &
+                          cycling      = single_file, &
+                          single_file  = single_file, &
+                          restart_files = file_array_output)
+
+   do imem = 1, num_ens
+      write(my_base,'(A,I2)') 'outens_',    imem
+      write(my_desc,'(A,I2)') 'output ens', imem
+      call set_file_metadata(file_info_output,                      &
+                             cnum     = imem,                       &
+                             fnames   = file_array_output(imem,:),  &
+                             basename = my_base,                    &
+                             desc     = my_desc)
+
+      call set_io_copy_flag(file_info_output,    &
+                            cnum    = imem,      &
+                            io_flag = WRITE_COPY)
+   enddo
+
    output_restart_files = get_stage_metadata(file_info_output)
+
    do idom = 1, num_domains
       do imem = 1, num_ens
          write(string1, *) '- Writing File : ', trim(get_restart_filename(output_restart_files, imem, domain=idom))
@@ -258,9 +289,10 @@ if (tests_to_run(2)) then
    write(*,'(A)') '-- printing model time --------------------------------------'
    call print_time( model_time,' model_mod_check:model time')
    write(*,'(A)') '-------------------------------------------------------------'
-   write(*,'(A)') ''
 
    call print_test_message('TEST 2', ending=.true.)
+
+   deallocate(file_array_input, file_array_output)
 
 endif
 
@@ -271,7 +303,8 @@ endif
 if (tests_to_run(3)) then
 
    call print_test_message('TEST 3', &
-                           'Testing get_state_meta_data', starting=.true.)
+                           'Testing get_state_meta_data()', &
+                           starting=.true.)
 
    if ( x_ind >= 1 .and. x_ind <= model_size ) then
       call check_meta_data( x_ind )
@@ -288,15 +321,14 @@ endif
 ! Check the interpolation - interpolate a single point
 !----------------------------------------------------------------------
 
-!>@todo requires ensemble from test 2
-
 if (tests_to_run(4)) then
+
    call print_test_message('TEST 4', &
-                           'Testing loc_of_interest for model_interpolate', starting=.true.)
+             'Testing model_interpolate() with "loc_of_interest"', &
+             'for '//trim(quantity_of_interest)//' variables.', &
+             starting=.true.)
 
    call create_state_window(ens_handle)
-
-   mykindindex = get_index_for_quantity(kind_of_interest)
 
    allocate(interp_vals(num_ens), ios_out(num_ens))
 
@@ -306,7 +338,7 @@ if (tests_to_run(4)) then
                                          loc_of_interest(1),    &
                                          loc_of_interest(2),    &
                                          loc_of_interest(3),    &
-                                         mykindindex,           &
+                                         quantity_of_interest,  &
                                          interp_vals,           &
                                          ios_out )
 
@@ -316,7 +348,11 @@ if (tests_to_run(4)) then
       call print_info_message('TEST 4',string1)
    endif
 
+   call free_state_window(ens_handle)
+
    call print_test_message('TEST 4', ending=.true.)
+
+    deallocate(interp_vals, ios_out)
 endif
 
 !----------------------------------------------------------------------
@@ -325,7 +361,9 @@ endif
 
 if (tests_to_run(5)) then
    call print_test_message('TEST 5', &
-                           'Testing range of data for model_interpolate', starting=.true.)
+                           'Testing model_interpolate() with a mesh of locations.', starting=.true.)
+
+   call create_state_window(ens_handle)
 
    num_failed = test_interpolate_range( ens_handle,            &
                                         num_ens,               &
@@ -336,13 +374,15 @@ if (tests_to_run(5)) then
                                         interp_test_lonrange,  &
                                         interp_test_latrange,  &
                                         interp_test_vertrange, &
-                                        mykindindex,           &
+                                        quantity_of_interest,  &
                                         verbose )
 
    ! test_interpolate_range internally reports interpolation metrics.
    write(string1, *)'output values on interpolation grid are in'
    write(string2, *)'check_me_interptest.nc (netcdf) and check_me_interptest.m (matlab)'
    call print_info_message(string1, string2)
+
+   call free_state_window(ens_handle)
 
    call print_test_message('TEST 5', ending=.true.)
 endif
@@ -359,22 +399,42 @@ if (tests_to_run(6)) then
 
    call check_all_meta_data()
 
+   call print_info_message('TEST 6', &
+              'The table of metadata was written to '//trim(all_metadata_file))
+
    call print_test_message('TEST 6', ending=.true.)
+endif
+
+!----------------------------------------------------------------------
+! Find the index closest to a location
+!----------------------------------------------------------------------
+
+if (tests_to_run(7)) then
+
+   write(string1,*)'Finding the state vector index closest to a given location.'
+   call print_test_message('TEST 7', string1, starting=.true.)
+
+   call find_closest_gridpoint(loc_of_interest, &
+                               interp_test_vertcoord, &
+                               quantity_of_interest)
+
+   call print_test_message('TEST 7', ending=.true.)
 endif
 
 !----------------------------------------------------------------------
 ! add more tests here
 !----------------------------------------------------------------------
 
-!>@todo possibly add a check to find the i,j,k of the gridcell closest
-!> to the location of interest.
+! whatever you want
 
+!----------------------------------------------------------------------
 ! finalize model_mod_check
+!----------------------------------------------------------------------
 
 write(string1,*) '- model_mod_check Finished successfully'
 call print_info_message(string1)
 
-call finalize_mpi_utilities()
+call finalize_modules_used()
 
 !======================================================================
 contains
@@ -395,6 +455,17 @@ call state_vector_io_init()
 end subroutine initialize_modules_used
 
 !----------------------------------------------------------------------
+!> clean up before exiting
+
+subroutine finalize_modules_used()
+
+! this must be last, and you can't print/write anything
+! after this is called.
+call finalize_mpi_utilities()
+
+end subroutine finalize_modules_used
+
+!----------------------------------------------------------------------
 !> print the results of get_state_meta_data() at a single location
 
 subroutine check_meta_data( iloc )
@@ -411,9 +482,9 @@ call get_model_variable_indices(iloc, ix, iy, iz, &
                                    kind_index=qty_index, &
                                    kind_string=qty_string)
 
-write(string1,'(i11,'' is i,j,k'',3(1x,i4),'' and is in domain '',i2)') &
+write(string1,'("index ",i11," is i,j,k",3(1x,i4)," and is in domain ",i2)') &
                   iloc, ix, iy, iz, dom_id
-write(string2,'(''is quantity '', I4,'', '',A)') var_type, trim(qty_string)
+write(string2,'("is quantity ", I4,", ",A)') var_type, trim(qty_string)//' at location'
 call write_location(0,loc,charstring=string3)
 
 call print_info_message(string1, string2, string3)
@@ -575,6 +646,7 @@ integer :: i
 tests_to_run(:) = .false.
 
 ! be backwards compatible - set this to -1 to disable.
+
 if (test1thru > 0) then
    if (test1thru > MAX_TESTS) then
       write(string1, *) 'test1thru must be between 1 and ', MAX_TESTS, '; found value ', test1thru
@@ -602,6 +674,7 @@ do i=1, MAX_TESTS
 enddo
 
 ! Make sure they are running something
+
 if (run_tests(1) == -1) then
       write(string1, *) 'No tests selected from the namelist.'
       write(string2, *) 'Either specify "test1thru" to be a positive number - or -'
@@ -610,7 +683,7 @@ if (run_tests(1) == -1) then
                          source, revision, revdate, text2=string2, text3=string3)
 endif
 
-!>@todo enforce or report on unfulfilled dependencies
+! enforce and report on unfulfilled dependencies
 
 if ((tests_to_run(4) .or. tests_to_run(5)) .and. .not. tests_to_run(2)) then
    write(string1, *) 'The interpolation tests (Test 4, Test 5) need a model state,'
@@ -664,7 +737,8 @@ do iloc = 1,get_model_size()
                                    kind_index=qty_index, &
                                    kind_string=qty_string)
 
-   write(string1,'(i11,1x,''i,j,k'',3(1x,i4),'' domain '',i2)') &
+   ! CLM has (potentially many) columns and needs i7 ish precision
+   write(string1,'(i11,1x,''i,j,k'',3(1x,i7),'' domain '',i2)') &
                   iloc, ix, iy, iz, dom_id
 
    call get_state_meta_data(iloc, loc, var_type)

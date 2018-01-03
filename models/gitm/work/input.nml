@@ -352,12 +352,20 @@
 
 
 &model_mod_check_nml
-   input_file           = "dart_ics",
-   output_file          = "check_me_out",
-   advance_time_present = .FALSE.,
-   verbose              = .TRUE.,
-   x_ind                = 720,
-   kind_of_interest     = 'temperature',
-   loc_of_interest      = 287.5, -82.48, 350000.,
+   input_state_files     = 'gitm_input.nc'
+   output_state_files    = 'mmc_output.nc'
+   test1thru             = 0
+   run_tests             = 1,2,3,4,5,7
+   x_ind                 = 720
+   loc_of_interest       = 287.5, -82.48, 350000.
+   quantity_of_interest  = 'TEMPERATURE'
+   interp_test_dlon      = 0.1
+   interp_test_dlat      = 0.1
+   interp_test_dvert     = 5.0
+   interp_test_lonrange  = 205.0,  226.0
+   interp_test_latrange  =  30.0,   47.0
+   interp_test_vertrange =  0.0,    10.0
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   verbose               = .false.
    /
 

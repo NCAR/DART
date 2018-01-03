@@ -23,16 +23,14 @@ public :: has_vertical_choice, vertical_localization_on, &
           get_vertical_localization_coord, set_vertical_localization_coord
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 integer :: location_vertical_localization_coord = 0
 
 logical, save :: module_initialized = .false.
-
-character(len = 129) :: errstring
 
 contains
 

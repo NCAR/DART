@@ -506,3 +506,24 @@
 
 &compare_states_nml
 /
+
+# To test both domains, you must change 'model_nml:num_domains = 2'
+
+&model_mod_check_nml
+   input_state_files     = 'wrfinput_d01', 'wrfinput_d02'
+   output_state_files    = 'mmc_output1.nc', 'mmc_output2.nc'
+   test1thru             = 0
+   run_tests             = 1,2,3,4,5
+   x_ind                 = 87370
+   loc_of_interest       = 231.0, 40.0, 10.0
+   quantity_of_interest  = 'QTY_U_WIND_COMPONENT'
+   interp_test_dlon      = 0.1
+   interp_test_dlat      = 0.1
+   interp_test_dvert     = 1000.0
+   interp_test_lonrange  = 250.0,  260.0
+   interp_test_latrange  =  30.0,   45.0
+   interp_test_vertrange = 2000.0, 4000.0
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   verbose               = .false.
+  /
+

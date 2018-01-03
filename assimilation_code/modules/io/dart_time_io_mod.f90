@@ -234,7 +234,7 @@ if (ios /= NF90_NOERR) then
    endif
 
    !>@todo NF90_UNLIMITED
-   ios = nf90_def_var(ncid, name="time", xtype=nf90_int, varid=VarID)
+   ios = nf90_def_var(ncid, name="time", xtype=nf90_double, varid=VarID)
    call nc_check(ios, "write_model_time", "time def_var")
 
    ! define time attributes consistent with CF convention

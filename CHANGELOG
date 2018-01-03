@@ -613,12 +613,63 @@ to output the full obs_seq.final during each cycle of filter.
 longitude interpolation in grids that cross the 360/0 line.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ MMM DD YYYY :: summary of next changes                    $Revision$
++ Jan 03 2018 :: MPAS_ATM bugfix                             Revision: 12256
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - Fixed an error in the mpas_atm model_mod for a debug print that failed with
 large ensemble sizes.
 
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Jan 03 2018 :: reintegration of mmc branch                $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- several model_mod_check programs were combined into a single 
+  assimilation_code/programs/model_mod_check/model_mod_check.f90
+  that allows for selection of individual tests.
+
+- bugfix: threed_sphere/location_mod.f90 
+          print format wider for fractional levels
+
+- bugfix: dart_time_io_mod.f90 
+          fixed variable type for 'time' variables we create.
+
+- bugfix: direct_netcdf_mod.f90 
+          only task 0 deallocates the arrays that task 0 allocates
+
+- bugfix: cam-fv/model_mod.f90 calculating the U_WIND observations on height.
+          indexing was wrong in a block of code that is seldom (if ever) used.
+          U_WIND observations usually use pressure for the vertical.
+
+- bugfix: test_interpolate_threed_cartesian.f90 fixed grid creation in 
+          test_interpolate_range(). Now uses correct spacing for grids 
+          in the x,y coordinates.
+
+- bugfix: model_mod_tools/test_interpolate*90  ensure that all versions
+          allocate and initialize the array of error codes
+
+- feature: utilities/*_win_mod.f90: free_state_window()
+           make observation ensemble handles optional
+
+- feature: clm/model_mod.f90 
+           the DART QTYs are now available via the state structure
+
+- feature: wrf/model_mod.f90 
+           the DART QTYs are now available via the state structure
+
+- cleanup: the PGI compiler warns against variables that have the same
+           name as Fortran intrinsics. _some_ of those have been renamed.
+
+- cleanup: some unused variables were removed in modules that were involved.
+
+- cleanup: assim_model_mod.html 
+           removed two unused routines, fixed documentation for 
+           get_closest_state_time_to and get_initial_condition
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ MMM DD YYYY :: summary of next changes                    $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- next ...
 
 # <next few lines under version control, do not edit>
 # $URL$

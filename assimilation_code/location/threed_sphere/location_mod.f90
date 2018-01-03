@@ -815,7 +815,7 @@ select case  (loc%which_vert)
    case (VERTISSURFACE)
       write(charstring, '(A,F13.5,A)') trim(string1), loc%vloc, ' surface (m)'
    case (VERTISLEVEL)
-      write(charstring, '(A,F6.0,A)')  trim(string1), loc%vloc, '        level'
+      write(charstring, '(A,F13.6,A)') trim(string1), loc%vloc, '  level'
    case (VERTISPRESSURE)
       write(charstring, '(A,F13.7,A)') trim(string1), loc%vloc / 100.0_r8, ' hPa'
    case (VERTISHEIGHT)
@@ -1155,7 +1155,7 @@ end subroutine convert_vertical_state
 
 subroutine get_close_init(gc, num, maxdist, locs, maxdist_list)
  
-! Initializes part of get_close accelerator that depends on the particular loc
+! Initializes part of get_close accelerator dependent on the particular location
 
 type(get_close_type), intent(inout) :: gc
 integer,              intent(in)    :: num
@@ -1304,7 +1304,7 @@ do n=1, gc%nt
       if(lon_box(i) < 0 .or. lon_box(i) > nlon) then
          write(msgstring, *) 'Contact Dart Developers: this error should not happen'
          call error_handler(E_MSG, 'get_close_init', msgstring, source, revision, revdate)
-         write(msgstring, *) 'loc outside grid boxes, index value:',  lon_box(i)
+         write(msgstring, *) 'location outside grid boxes, index value:',  lon_box(i)
          call error_handler(E_ERR, 'get_close_init', msgstring, source, revision, revdate)
       endif
    
@@ -1517,7 +1517,7 @@ if(COMPARE_TO_CORRECT) then
          this_dist = get_dist(base_loc, locs(i), base_type, loc_qtys(i))
       endif
       if(this_dist <= this_maxdist) then
-         ! Add this loc to correct list
+         ! Add this location to correct list
          cnum_close = cnum_close + 1
          cclose_ind(cnum_close) = i
          cdist(cnum_close) = this_dist
@@ -1592,7 +1592,7 @@ do j = 1, nlat
                      no_vert = .true.)
                endif
 
-               ! If this loc's distance is less than cutoff, add it to the list
+               ! If this locations distance is less than cutoff, add it to the list
                if(this_dist <= this_maxdist) then
                   num_close = num_close + 1
                   close_ind(num_close) = t_ind
@@ -1707,7 +1707,7 @@ if (.not. gtt%lon_cyclic) then
       ! Add on the extra distance needed for the boxes
       ! To avoid any hard thinking about wraparound with sub-domain boxes
       ! Must span less than 180 degrees to get smaller boxes
-      ! If addition of halos for close loc fills more than half of space 
+      ! If addition of halos for close location fills more than half of space 
       ! things go 0 to 2PI
 
       ! other places we are computing in radians.  here we are computing in
@@ -2080,7 +2080,7 @@ type(get_close_type), intent(in) :: gc
 integer, intent(in), optional    :: tt
 integer, intent(in), optional    :: amount
 
-integer :: i, j, k, first, index, mytask, alltasks, whichtt
+integer :: i, j, k, first, myindex, mytask, alltasks, whichtt
 integer :: sample, nfull, nempty, howmuch, total, maxcount, maxi, maxj
 logical :: tickmark(gc%gtt(1)%num), iam0
 real(r8) :: lon_cen, lat_cen
@@ -2290,21 +2290,21 @@ do i=1, nlon
    do j=1, nlat
       first = gc%gtt(whichtt)%start(i, j)
       do k=1, gc%gtt(whichtt)%count(i, j)
-         index = first + k - 1
-         if ((index < 1) .or. (index > gc%gtt(whichtt)%num)) then
+         myindex = first + k - 1
+         if ((myindex < 1) .or. (myindex > gc%gtt(whichtt)%num)) then
             write(msgstring, *) 'exiting at first bad value; could be more'
             call error_handler(E_MSG, 'locations_mod', msgstring)
-            write(msgstring, *) 'bad loc list index, in box: ', index, i, j
+            write(msgstring, *) 'bad loc list index, in box: ', myindex, i, j
             call error_handler(E_ERR, 'locations_mod', msgstring)
          endif
-         if (tickmark(index)) then
+         if (tickmark(myindex)) then
             write(msgstring, *) 'exiting at first bad value; could be more'
             call error_handler(E_MSG, 'locations_mod', msgstring)
             write(msgstring, *) 'error: locs found in more than one box list.  index, box: ', &
-                         index, i, j
+                         myindex, i, j
             call error_handler(E_ERR, 'locations_mod', msgstring)
          endif
-         tickmark(index) = .TRUE.
+         tickmark(myindex) = .TRUE.
       enddo
    enddo
 enddo

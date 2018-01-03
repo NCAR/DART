@@ -476,10 +476,11 @@ integer  :: spvalINT
 real(r4) :: spvalR4
 real(r8) :: spvalR8
 
+integer :: nvars
 character(len=obstypelength) :: var_names(max_state_variables)
 real(r8) :: var_ranges(max_state_variables,2)
-integer :: nvars
-logical :: var_update(max_state_variables)
+logical  :: var_update(max_state_variables)
+integer  :: var_qtys(  max_state_variables)
 
 if ( module_initialized ) return ! only need to do this once.
 
@@ -689,16 +690,19 @@ endif
 !> @TODO FIXME ... io_filenames_nml:rpointer_file order must somehow match 
 !> - or be insensitive to - the add_domain() calls below (if nvars == 0) ...
 
-call cluster_variables(clm_restart_filename, nvars, var_names, var_ranges, var_update)
-dom_restart = add_domain(clm_restart_filename, nvars, var_names, clamp_vals=var_ranges, update_list=var_update)
-!call state_structure_info(dom_restart)
+call cluster_variables(clm_restart_filename, nvars, var_names, var_qtys, var_ranges, var_update)
+dom_restart = add_domain(clm_restart_filename, nvars, var_names,  &
+                         kind_list=var_qtys, clamp_vals=var_ranges, update_list=var_update )
+! call state_structure_info(dom_restart)
 
-call cluster_variables(clm_history_filename, nvars, var_names, var_ranges, var_update)
-dom_history = add_domain(clm_history_filename, nvars, var_names, clamp_vals=var_ranges, update_list=var_update)
-!call state_structure_info(dom_history)
+call cluster_variables(clm_history_filename, nvars, var_names, var_qtys, var_ranges, var_update)
+dom_history = add_domain(clm_history_filename, nvars, var_names, &
+                         kind_list=var_qtys, clamp_vals=var_ranges, update_list=var_update)
+! call state_structure_info(dom_history)
 
-call cluster_variables(clm_vector_history_filename, nvars, var_names, var_ranges, var_update)
-dom_vector_history = add_domain(clm_vector_history_filename, nvars, var_names, clamp_vals=var_ranges, update_list=var_update)
+call cluster_variables(clm_vector_history_filename, nvars, var_names, var_qtys, var_ranges, var_update)
+dom_vector_history = add_domain(clm_vector_history_filename, nvars, var_names, &
+                         kind_list=var_qtys, clamp_vals=var_ranges, update_list=var_update)
 ! call state_structure_info(dom_vector_history)
 
 !---------------------------------------------------------------
@@ -4507,14 +4511,21 @@ endif
 end function FindDesiredTimeIndx
 
 
+!-----------------------------------------------------------------------
+!> Collect all the variables that are from the specific file.
+!> Some variables come from the restart file, some from the history file, ...
+!> Each file specifies a new 'domain'.
 
-subroutine cluster_variables(filename, nvars, var_names, var_ranges, var_update)
+subroutine cluster_variables(filename, nvars, var_names, var_qtys, var_ranges, var_update)
+
 character(len=*), intent(in)  :: filename
 integer,          intent(out) :: nvars
 character(len=*), intent(out) :: var_names(:)
+integer,          intent(out) :: var_qtys(:)
 real(r8),         intent(out) :: var_ranges(:,:)
 logical,          intent(out) :: var_update(:)
 
+character(len=*), parameter :: routine = 'cluster_variables'
 integer :: ivar
 
 nvars      = 0
@@ -4523,26 +4534,27 @@ var_ranges = MISSING_R8
 
 domain_count = domain_count + 1
 
-do ivar = 1,nfields
+VARLOOP : do ivar = 1,nfields
 
-   if (trim(progvar(ivar)%origin) == trim(filename)) then
-      nvars = nvars + 1
-      var_names(nvars)    = progvar(ivar)%varname
-      var_ranges(nvars,1) = progvar(ivar)%minvalue
-      var_ranges(nvars,2) = progvar(ivar)%maxvalue
-      var_update(nvars)   = progvar(ivar)%update
-      progvar(ivar)%domain = domain_count
+   ! Check to see if the variable belongs to this domain
+   if (progvar(ivar)%origin /= filename) cycle VARLOOP
+
+   nvars = nvars + 1
+   var_names( nvars)    = progvar(ivar)%varname
+   var_qtys(  nvars)    = progvar(ivar)%dart_kind
+   var_ranges(nvars,1)  = progvar(ivar)%minvalue
+   var_ranges(nvars,2)  = progvar(ivar)%maxvalue
+   var_update(nvars)    = progvar(ivar)%update
+   progvar(ivar)%domain = domain_count
+
+   if (do_output() .and. debug > 99) then
+      write(string1,*)trim(filename),' defines domain ',progvar(ivar)%domain,' var "',trim(var_names(ivar)),'"'
+      write(string2,*)'variable has dynamic range ',var_ranges(ivar,1),var_ranges(ivar,2)
+      write(string3,*)'and quantity index ',var_qtys(ivar), '. Is var on update list:',var_update(ivar)
+      call error_handler(E_MSG,routine,string1,text2=string2,text3=string3)
    endif
 
-enddo
-
-!>@todo FIXME ... this summary message is not finished
-if (do_output() .and. debug > 99) then
-   do ivar = 1,nvars
-      write(string1,*)trim(filename),' has ',trim(var_names(ivar)),var_ranges(ivar,1),var_ranges(ivar,2), progvar(ivar)%domain
-      call error_handler(E_MSG,'cluster_variables',string1)
-   enddo
-endif
+enddo VARLOOP
 
 end subroutine cluster_variables
 

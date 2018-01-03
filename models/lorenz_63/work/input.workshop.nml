@@ -179,16 +179,6 @@
 &state_vector_io_nml
    /
 
-&model_mod_check_nml
-   verbose               = .false.
-   test1thru             = 5
-   x_ind                 = 3
-   kind_of_interest      = 'QTY_STATE_VARIABLE'
-   loc_of_interest       = 0.4
-   interp_test_xrange    = 0.0, 1.0 
-   interp_test_dx        = 0.1
-   /
- 
 &quality_control_nml
    input_qc_threshold       =  3.0,
    outlier_threshold        = -1.0,

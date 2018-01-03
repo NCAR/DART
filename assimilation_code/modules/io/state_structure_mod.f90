@@ -146,7 +146,7 @@ type io_information
    private
 
    ! netcdf variable id 
-   integer :: netcdf_id ! HK Do you want one for reading, one for writing?
+   integer :: varid ! HK Do you want one for reading, one for writing?
    integer :: xtype     ! netCDF variable type (NF90_double, etc.)
 
    ! clamping variables
@@ -219,10 +219,11 @@ type domain_type
    integer :: num_variables
    type(variable_type), allocatable :: variable(:) 
    
-   ! dimension informaion for domain
+   ! dimension information for domain
    integer :: num_unique_dims
    character(len=NF90_MAX_NAME), allocatable :: unique_dim_names(:)
    integer,                      allocatable :: unique_dim_length(:)
+   integer,                      allocatable :: original_dim_IDs(:)
    integer :: unlimDimId = -1 ! initialize to no unlimited dimension
    logical :: has_unlimited = .false.
 
@@ -404,7 +405,6 @@ end function add_domain_from_spec
 !-------------------------------------------------------------------------------
 !> Add a blank domain - one variable called state, length = domain_size
 
-
 function add_domain_blank(domain_size) result(dom_id)
 
 integer(i8), intent(in) :: domain_size
@@ -418,41 +418,20 @@ call assert_below_max_num_domains()
 state%num_domains = state%num_domains + 1
 dom_id = state%num_domains
 
+if (state%num_domains > 1 ) then
+   domain_offset = get_index_end(dom_id-1,get_num_variables(dom_id-1))
+else
+   domain_offset = 0
+endif
+
 ! domain
 state%domain(dom_id)%method        = 'blank'
 state%domain(dom_id)%num_variables = 1
 state%domain(dom_id)%dom_size      = domain_size
-state%model_size = state%model_size + domain_size
+state%model_size                   = state%model_size + domain_size
 
-! variable
-allocate(state%domain(dom_id)%variable(1))
-state%domain(dom_id)%variable(1)%varname            = 'state'
-state%domain(dom_id)%variable(1)%io_info%units      = 'none'
-state%domain(dom_id)%variable(1)%numdims            = 1
-state%domain(dom_id)%variable(1)%io_info%io_numdims = 3
-state%domain(dom_id)%variable(1)%var_size           = domain_size
-
-domain_offset = 0
-if (state%num_domains > 1 ) domain_offset = get_index_end(dom_id-1,get_num_variables(dom_id-1))
-state%domain(dom_id)%variable(1)%index_start = domain_offset + 1
-state%domain(dom_id)%variable(1)%index_end   = domain_offset + domain_size
-!>@todo FIXME : should this be raw state variable or -1?, optional argument
-!>              for kind??
-state%domain(dom_id)%variable(1)%kind_string = 'QTY_STATE_VARIABLE'
-state%domain(dom_id)%variable(1)%dart_kind   = &
-       get_index_for_quantity(state%domain(dom_id)%variable(1)%kind_string)
-
-! dimension
-state%domain(dom_id)%variable(1)%dimname(1) = 'location'
-state%domain(dom_id)%variable(1)%dimname(2) = 'member'
-state%domain(dom_id)%variable(1)%dimname(3) = 'time'
-
-state%domain(dom_id)%variable(1)%dimlens(1) =  domain_size
-state%domain(dom_id)%variable(1)%dimlens(2) =  1
-state%domain(dom_id)%variable(1)%dimlens(3) =  1
-
-! load up the domain unique dimension info
 state%domain(dom_id)%num_unique_dims = 3
+allocate(state%domain(dom_id)%original_dim_IDs(3))
 allocate(state%domain(dom_id)%unique_dim_names(3))
 allocate(state%domain(dom_id)%unique_dim_length(3))
 
@@ -463,6 +442,35 @@ state%domain(dom_id)%unique_dim_names(3)  = 'time'
 state%domain(dom_id)%unique_dim_length(1) =  domain_size
 state%domain(dom_id)%unique_dim_length(2) =  1
 state%domain(dom_id)%unique_dim_length(3) =  1
+
+state%domain(dom_id)%original_dim_IDs(1)    =  1
+state%domain(dom_id)%original_dim_IDs(2)    =  2
+state%domain(dom_id)%original_dim_IDs(3)    =  NF90_UNLIMITED
+
+! variable
+allocate(state%domain(dom_id)%variable(1))
+
+state%domain(dom_id)%variable(1)%varname            = 'state'
+state%domain(dom_id)%variable(1)%io_info%units      = 'none'
+state%domain(dom_id)%variable(1)%numdims            = 1
+state%domain(dom_id)%variable(1)%io_info%io_numdims = 3
+state%domain(dom_id)%variable(1)%var_size           = domain_size
+
+state%domain(dom_id)%variable(1)%index_start = domain_offset + 1
+state%domain(dom_id)%variable(1)%index_end   = domain_offset + domain_size
+
+!>@todo FIXME : what is a good default for kind_string
+state%domain(dom_id)%variable(1)%kind_string = 'QTY_STATE_VARIABLE'
+state%domain(dom_id)%variable(1)%dart_kind   = &
+       get_index_for_quantity(state%domain(dom_id)%variable(1)%kind_string)
+
+state%domain(dom_id)%variable(1)%dimname(1) = 'location'
+state%domain(dom_id)%variable(1)%dimname(2) = 'member'
+state%domain(dom_id)%variable(1)%dimname(3) = 'time'
+
+state%domain(dom_id)%variable(1)%dimlens(1) =  domain_size
+state%domain(dom_id)%variable(1)%dimlens(2) =  1
+state%domain(dom_id)%variable(1)%dimlens(3) =  1
 
 state%domain(dom_id)%variable(1)%io_info%io_dimids(1) = 1
 state%domain(dom_id)%variable(1)%io_info%io_dimids(2) = 2
@@ -526,7 +534,7 @@ num_vars = domain%num_variables
 do ivar = 1, num_vars
    ! load netcdf id from variable name
    ret = nf90_inq_varid(ncfile, domain%variable(ivar)%varname,    &
-                                domain%variable(ivar)%io_info%netcdf_id)
+                                domain%variable(ivar)%io_info%varid)
 
    write(string1,*)'domain variable number ',ivar,' "'//trim(domain%variable(ivar)%varname)//'" from file "'//trim(domain%info_file)//'"'
    call nc_check(ret, 'load_variable_ids, nf90_inq_var_id', string1) 
@@ -555,7 +563,7 @@ index_start = state%model_size + 1
 do ivar = 1, num_vars
 
    ! from netcdf id load variable dimension and ids
-   ret = nf90_inquire_variable(ncfile,  domain%variable(ivar)%io_info%netcdf_id,  &
+   ret = nf90_inquire_variable(ncfile,  domain%variable(ivar)%io_info%varid,  &
                                 ndims = domain%variable(ivar)%io_info%io_numdims, &
                                dimids = domain%variable(ivar)%io_info%io_dimIds,  &
                                 xtype = domain%variable(ivar)%io_info%xtype)
@@ -692,13 +700,15 @@ state%domain(dom_id)%num_unique_dims = count_dims
 
 allocate(state%domain(dom_id)%unique_dim_names(count_dims))
 allocate(state%domain(dom_id)%unique_dim_length(count_dims))
+allocate(state%domain(dom_id)%original_dim_IDs(count_dims))
 
 count_dims = 1
 
 do jdim_dom = 1, ndims_dom
    if(unique(jdim_dom)) then
-      state%domain(dom_id)%unique_dim_names(count_dims)  = array_of_names(array_of_indices(jdim_dom))
+      state%domain(dom_id)%unique_dim_names( count_dims) = array_of_names(  array_of_indices(jdim_dom))
       state%domain(dom_id)%unique_dim_length(count_dims) = array_of_lengths(array_of_indices(jdim_dom))
+      state%domain(dom_id)%original_dim_IDs(   count_dims) = array_of_dimids( array_of_indices(jdim_dom))
       count_dims = count_dims + 1
    endif
 enddo
@@ -967,7 +977,7 @@ integer, intent(in) :: dom_id ! domain
 integer, intent(in) :: ivar ! variable
 integer, intent(in) :: new_varid
 
-state%domain(dom_id)%variable(ivar)%io_info%netcdf_id = new_varid
+state%domain(dom_id)%variable(ivar)%io_info%varid = new_varid
 
 end subroutine set_var_id
 
@@ -1070,6 +1080,22 @@ integer :: get_io_unique_dim_length
 get_io_unique_dim_length = state%domain(dom_id)%unique_dim_length(jdim)
 
 end function get_io_unique_dim_length
+
+
+!-------------------------------------------------------------------------------
+!> Return the original dimension ID from the source (blank,file, or spec)
+!> This is intentionally not a public routine and is intended to be used
+!> to summarize what is being used from the source (state_structure_info).
+
+function get_original_dim_ID(dom_id, jdim)
+
+integer, intent(in) :: dom_id
+integer, intent(in) :: jdim
+integer :: get_original_dim_ID
+
+get_original_dim_ID = state%domain(dom_id)%original_dim_IDs(jdim)
+
+end function get_original_dim_ID
 
 
 !-------------------------------------------------------------------------------
@@ -1568,12 +1594,33 @@ if ( .not. do_output() ) return
 call check_domain_id(dom_id,'state_structure_info')
 
 write(*,*) ' '
-write(*,*) 'Reporting on domain # ',dom_id, &
-           ' created by method ', trim(state%domain(dom_id)%method)
+write(*,*) 'Reporting on domain # ',dom_id
+write(*,*) 'Created by method "', trim(state%domain(dom_id)%method),'"'
+if ( state%domain(dom_id)%info_file /= 'NULL' ) &
+write(*,*) 'Origin file "', trim(state%domain(dom_id)%info_file), '"'
+
+! summarize all the dimensions used by this domain
+
+num_dims = get_io_num_unique_dims(dom_id)
+write(*,'('' Number of dimensions  : '',I2)') num_dims
+write(*,'('' unlimdimid            : '',I2)') get_unlimited_dimid(dom_id)
+do jdim = 1, num_dims
+   write(*,200) jdim, &
+             get_original_dim_ID(     dom_id,jdim), &
+             get_io_unique_dim_length(dom_id,jdim), &
+        trim(get_io_unique_dim_name(  dom_id,jdim))
+enddo
+write(*,*)
+
+200 format(4x,i2,': dim_id =',I2,', length = ',I8,', name = "',A,'"')
+201 format(4x,i2,':         ',2x,'  length = ',I8,', name = "',A,'"')
+
+! report on each variable in this domain
+
 num_vars = get_num_variables(dom_id)
 
 do ivar = 1, num_vars
-   write(*,*)         'varname     : ', trim(get_variable_name(dom_id,ivar))
+   write(*,*)         'VARNAME     : ', trim(get_variable_name(dom_id,ivar))
    write(*,*)         'var_size    : ', get_variable_size(dom_id,ivar)
    write(*,*)         'index_start : ', get_index_start(dom_id,ivar)
    write(*,*)         'index_end   : ', get_index_end(dom_id,ivar)
@@ -1591,10 +1638,10 @@ do ivar = 1, num_vars
    array_lengths(1:num_dims) = get_dim_lengths(dom_id,ivar)
    do jdim = 1, num_dims
        dim_name = get_dim_name(dom_id, ivar, jdim)
-       write(*,'("       state   dim_id[",I2,"] ",A15,", length = ",I8)') jdim, &
-                                                                          trim(dim_name), &
-                                                                          array_lengths(jdim)
+       write(*,201) jdim, array_lengths(jdim), trim(dim_name)
    enddo
+
+   ! Report on the native dimensions in the original netCDF file
 
    num_dims = get_io_num_dims(dom_id,ivar)
    write(*,'('' io_numdims  : '',I1)') num_dims
@@ -1603,17 +1650,9 @@ do ivar = 1, num_vars
    array_lengths(1:num_dims) = get_io_dim_lengths(dom_id,ivar)
    do jdim = 1, num_dims
        dim_name = get_dim_name(dom_id, ivar, jdim)
-       write(*,'("       netCDF  dim_id[",I2,"] ",A15,", length = ",I8)') array_ids(jdim), &
-                                                                          trim(dim_name), &
-                                                                          array_lengths(jdim)
+       write(*,200) jdim, array_ids(jdim), array_lengths(jdim), trim(dim_name)
    enddo
 
-   num_dims = get_io_num_unique_dims(dom_id)
-   write(*,'('' io_unique_numdims     : '',I2)') num_dims
-   do jdim = 1, num_dims
-      write(*,'('' io_unique_dimname     : '',5A)' ) trim(get_io_unique_dim_name(dom_id,jdim))
-      write(*,'('' io_unique_dim_length  : '',I8)' ) get_io_unique_dim_length(dom_id,jdim)
-   enddo
 
    if ( state%domain(dom_id)%info_file /= 'NULL' ) then
       write(*,*) 'CF-Conventions that exist in : ', trim(state%domain(dom_id)%info_file)
@@ -1653,7 +1692,7 @@ do ivar = 1, num_vars
       write(*,*) 'scale_factor      : ', get_scale_factor(dom_id,ivar)
    endif
 
-   write(*,*) ' '
+   write(*,*)
    
 enddo
 

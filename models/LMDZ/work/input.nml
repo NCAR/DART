@@ -317,11 +317,21 @@
    single_restart_file_in = .true.,
    difference_method      = 4,
  /
-&model_mod_check_nml 
-   input_state_files    = "dart_ics.nc",        
-   output_state_files   = "check_me.nc",
-   x_ind                = 10000,
-   loc_of_interest      = -1.0, -1.0, -1.0,
-   kind_of_interest     = 'ANY'
-   verbose              = .TRUE.,
-   /
+
+&model_mod_check_nml
+   input_state_files     = 'lmdz_input.nc'
+   output_state_files    = 'mmc_output.nc'
+   test1thru             = 0
+   run_tests             = 1,2,3,4,5,7
+   x_ind                 = 10000
+   loc_of_interest       = 231.0, 40.0, 10.0
+   quantity_of_interest  = 'ALL'
+   interp_test_dlon      = 0.1
+   interp_test_dlat      = 0.1
+   interp_test_dvert     = 5.0
+   interp_test_lonrange  = 205.0,  226.0
+   interp_test_latrange  =  30.0,   47.0
+   interp_test_vertrange =  0.0,    10.0
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   verbose               = .false.
+  /

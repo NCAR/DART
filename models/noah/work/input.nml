@@ -216,13 +216,20 @@
   /
 
 &model_mod_check_nml
-   input_file           = "dart_ics",
-   output_file          = "check_me_out",
-   advance_time_present = .FALSE.,
-   verbose              = .TRUE.,
-   test1thru            = 10,
-   x_ind                = 4,
-   kind_of_interest     = 'QTY_SOIL_MOISTURE',
-   loc_of_interest      = 287.5, 82.48, -2.00,
+   input_file            = "noah_restart.nc"
+   output_file           = "mmc_output.nc"
+   test1thru             = 0
+   run_tests             = 1,2,3,4,5,7
+   x_ind                 = 4
+   quantity_of_interest  = 'QTY_SOIL_MOISTURE'
+   loc_of_interest       = 287.5, 82.48, -2.00
+   interp_test_dlon      = 0.1
+   interp_test_dlat      = 0.1
+   interp_test_dvert     = 0.50
+   interp_test_lonrange  = 285.0,  290.0
+   interp_test_latrange  =  30.0,   47.0
+   interp_test_vertrange =  -2.0,   0.0
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   verbose               = .false.
    /
 

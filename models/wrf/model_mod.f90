@@ -53,7 +53,7 @@ use      location_mod,   only : location_type, get_location, set_location, &
 
 use     utilities_mod,  only  : file_exist, open_file, close_file, &
                                 register_module, error_handler, E_ERR, E_WARN, &
-                                E_MSG, nmlfileunit, do_output, &
+                                E_MSG, nmlfileunit, logfileunit, do_output, &
                                 find_namelist_in_file, check_namelist_read, &
                                 find_textfile_dims, file_to_text, &
                                 do_nml_file, do_nml_term, scalar
@@ -418,7 +418,6 @@ if ( default_state_variables ) then
   call error_handler(E_MSG, 'static_init_model:', &
                   'Using predefined wrf variable list for dart state vector.', &
                    text2=msgstring2, text3=msgstring3)
-
 endif
 
 if ( debug ) then
@@ -473,9 +472,12 @@ WRFDomains : do id=1,num_domains
 
    ! only print this once, no matter how many parallel tasks are running
    if (do_output()) then
-      write(*,*) '******************'
-      write(*,*) '**  DOMAIN # ',idom,'  **'
-      write(*,*) '******************'
+      write(     *     ,*) '******************'
+      write(     *     ,*) '**  DOMAIN # ',idom,'  **'
+      write(     *     ,*) '******************'
+      write(logfileunit,*) '******************'
+      write(logfileunit,*) '**  DOMAIN # ',idom,'  **'
+      write(logfileunit,*) '******************'
    endif
 
    if(file_exist('wrfinput_d0'//idom)) then
@@ -615,6 +617,11 @@ WRFDomains : do id=1,num_domains
       call error_handler(E_MSG, 'static_init_model: ', errstring)
    enddo
 
+   if (do_output()) then
+      write(     *     ,*)
+      write(logfileunit,*)
+   endif
+
 ! close data file, we have all we need
 
    call nc_check(nf90_close(ncid),'static_init_model','close wrfinput_d0'//idom)
@@ -738,6 +745,7 @@ WRFDomains : do id=1,num_domains
    domain_id(id) = add_domain( 'wrfinput_d0'//idom, &
                            wrf%dom(id)%number_of_wrf_variables, &
                            var_names   = netcdf_variable_names(1:wrf%dom(id)%number_of_wrf_variables), &
+                           kind_list   = wrf%dom(id)%dart_kind, &
                            clamp_vals  = var_bounds_table(1:wrf%dom(id)%number_of_wrf_variables,:), &
                            update_list = var_update_list(1:wrf%dom(id)%number_of_wrf_variables) )
 
@@ -1010,26 +1018,7 @@ integer(i8) :: z1d_ind1, z1d_ind2, t1d_ind, qv1d_ind
 
 id = 1
 
-! HK printing out sizes of wrf_static_data_for_dart
-!print*, '******** wrf_static_data_for_dart'
-!print*, 'znu, dn, dnw, zs, znw ', size(wrf%dom(id)%znu), size(wrf%dom(id)%dn), size(wrf%dom(id)%dnw), size(wrf%dom(id)%zs), size(wrf%dom(id)%znw)
-!print*, 'mub, hgt ', size(wrf%dom(id)%mub), size(wrf%dom(id)%hgt)
-!print*, 'latitude, latitude_u, latitude_v ', size(wrf%dom(id)%latitude), size(wrf%dom(id)%latitude_u), size(wrf%dom(id)%latitude_v)
-!print*, 'longitude, longitude_u, longitude_v ', size(wrf%dom(id)%longitude), size(wrf%dom(id)%longitude_u), size(wrf%dom(id)%longitude_v)
-!print*, 'phb ', size(wrf%dom(id)%phb)
-
-!print*, 'var_index ', size(wrf%dom(id)%var_index)
-!print*, 'var_size ', size(wrf%dom(id)%var_size)
-!print*, 'var_type ', size(wrf%dom(id)%var_type)
-!print*, 'var_index_list ', size(wrf%dom(id)%var_index_list)
-!print*, 'var_update_list ', size(wrf%dom(id)%var_update_list)
-!print*, 'dart_kind ', size(wrf%dom(id)%dart_kind)
-!print*, 'land ', size(wrf%dom(id)%land)
-!print*, 'lower_bound,upper_bound ', size(wrf%dom(id)%lower_bound), size(wrf%dom(id)%upper_bound)
-!print*, 'clamp_or_fail ', size(wrf%dom(id)%clamp_or_fail)
-!print*, 'description, units, stagger, coordinates ', size(wrf%dom(id)%description), size(wrf%dom(id)%units), size(wrf%dom(id)%stagger), size(wrf%dom(id)%coordinates)
-!print*, 'dart_ind ', size(wrf%dom(id)%dart_ind)
-
+! call static_data_sizes(domain=id)
 
 ! Initialize stuff
 istatus(:) = 0
@@ -8499,6 +8488,53 @@ call nc_check( nf90_put_var(ncid, var_id, timestring), &
                'write_model_time', 'put_var Times' )
 
 end subroutine write_model_time
+
+!--------------------------------------------------------------------
+
+subroutine static_data_sizes(domain)
+integer, intent(in) :: domain
+
+print*
+print*, '******** wrf_static_data_for_dart domain ',domain
+print*, 'znu, dn, dnw, zs, znw ', size(wrf%dom(domain)%znu), &
+                                  size(wrf%dom(domain)%dn ), &
+                                  size(wrf%dom(domain)%dnw), &
+                                  size(wrf%dom(domain)%zs ), &
+                                  size(wrf%dom(domain)%znw)
+
+print*, 'mub, hgt ', size(wrf%dom(domain)%mub), size(wrf%dom(domain)%hgt)
+
+print*, 'latitude, latitude_u, latitude_v ', size(wrf%dom(domain)%latitude), &
+                                             size(wrf%dom(domain)%latitude_u), &
+                                             size(wrf%dom(domain)%latitude_v)
+
+print*, 'longitude, longitude_u, longitude_v ', size(wrf%dom(domain)%longitude), &
+                                                size(wrf%dom(domain)%longitude_u), &
+                                                size(wrf%dom(domain)%longitude_v)
+
+print*, 'phb             ', size(wrf%dom(domain)%phb)
+print*, 'var_index       ', size(wrf%dom(domain)%var_index)
+print*, 'var_size        ', size(wrf%dom(domain)%var_size)
+print*, 'var_type        ', size(wrf%dom(domain)%var_type)
+print*, 'var_index_list  ', size(wrf%dom(domain)%var_index_list)
+print*, 'var_update_list ', size(wrf%dom(domain)%var_update_list)
+print*, 'dart_kind       ', size(wrf%dom(domain)%dart_kind)
+print*, 'land            ', size(wrf%dom(domain)%land)
+
+print*, 'lower_bound,upper_bound ', size(wrf%dom(domain)%lower_bound), &
+                                    size(wrf%dom(domain)%upper_bound)
+
+print*, 'clamp_or_fail   ', size(wrf%dom(domain)%clamp_or_fail)
+
+print*, 'description, units, stagger, coordinates ', size(wrf%dom(domain)%description), &
+                                                     size(wrf%dom(domain)%units), &
+                                                     size(wrf%dom(domain)%stagger), &
+                                                     size(wrf%dom(domain)%coordinates)
+
+print*, 'dart_ind ', size(wrf%dom(domain)%dart_ind)
+print*
+
+end subroutine static_data_sizes
 
 !--------------------------------------------------------------------
 
