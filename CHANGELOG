@@ -616,6 +616,10 @@ longitude interpolation in grids that cross the 360/0 line.
 + MMM DD YYYY :: summary of next changes                    $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+- Fixed an error in the mpas_atm model_mod for a debug print that failed with
+large ensemble sizes.
+
+
 # <next few lines under version control, do not edit>
 # $URL$
 # $Revision$
