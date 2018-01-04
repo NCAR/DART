@@ -139,13 +139,15 @@ public :: get_gridsize,                 &
           DART_get_var
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
-character(len=256) :: string1, string2, string3
+character(len=512) :: string1, string2, string3
+
 logical, save :: module_initialized = .false.
+
 ! 'Handles' for the different domains.
 integer :: dom_restart, dom_history, dom_vector_history
 
@@ -1509,14 +1511,17 @@ if ( .not. module_initialized ) call static_init_model
 end subroutine get_gridsize
 
 
-subroutine mark_missing_r8_values(clm_file, restart_time)
 !------------------------------------------------------------------
-! Reads the current time and state variables from a clm restart
-! file and packs them into a dart state vector. This better happen
-! in the same fashion as the metadata arrays are built.
+!> Reads the current time and state variables from a clm restart
+!> file and packs them into a dart state vector. This better happen
+!> in the same fashion as the metadata arrays are built.
+
+subroutine mark_missing_r8_values(clm_file, restart_time)
 
 character(len=*), intent(in)  :: clm_file
 type(time_type),  intent(out) :: restart_time
+
+character(len=*), parameter :: routine = 'mark_missing_r8_values'
 
 ! temp space to hold data while we are reading it
 integer  :: i, j, ni, nj, ivar, indx, numsnowlevels
@@ -1528,7 +1533,6 @@ real(r8), allocatable, dimension(:,:,:)     :: data_3d_array
 integer :: io, ncid_clm, ncid_dart, var_id_out, TimeDimID, VarID, ncNdims, dimlen, numvars
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character     (len=NF90_MAX_NAME)     :: varname
-character     (len=256)               :: myerrorstring
 
 if ( .not. module_initialized ) call static_init_model()
 
@@ -1552,23 +1556,23 @@ if ( .not. module_initialized ) call static_init_model()
 
 allocate(snlsno(ncolumn))
 call nc_check(nf90_open(trim(clm_restart_filename), NF90_NOWRITE, ncid_clm), &
-              'mark_missing_r8_values', 'open SNLSNO'//clm_restart_filename)
+              routine, 'open SNLSNO'//clm_restart_filename)
 call nc_check(nf90_inq_varid(ncid_clm,'SNLSNO', VarID), &
-              'mark_missing_r8_values', 'inq_varid SNLSNO'//clm_restart_filename)
+              routine, 'inq_varid SNLSNO'//clm_restart_filename)
 call nc_check(nf90_get_var(ncid_clm, VarID, snlsno), &
-              'mark_missing_r8_values', 'get_var SNLSNO'//clm_restart_filename)
+              routine, 'get_var SNLSNO'//clm_restart_filename)
 
 restart_time = get_state_time(ncid_clm)
 
 if (do_output()) call print_time(restart_time,'time in restart file '//clm_restart_filename)
 if (do_output()) call print_date(restart_time,'date in restart file '//clm_restart_filename)
 
-call nc_check(nf90_close(ncid_clm),'mark_missing_r8_values','close '//clm_restart_filename)
+call nc_check(nf90_close(ncid_clm),routine,'close '//clm_restart_filename)
 
 ! open an existing netcdf file that has is a copy of clm_restart_filename
 ! to fill in missing_r8 values.
 call nc_check(nf90_open(trim(clm_file), NF90_WRITE, ncid_dart), &
-              'mark_missing_r8_values', 'open clm_file file "'//trim(clm_file)//'"')
+              routine, 'open clm_file file "'//trim(clm_file)//'"')
 
 ! Start counting and filling the state vector one item at a time,
 ! repacking the Nd arrays into a single 1d list of numbers.
@@ -1581,30 +1585,30 @@ numvars = get_num_variables(dom_restart)
 do ivar=1, numvars
 
    varname = trim(progvar(ivar)%varname)
-   myerrorstring = trim(progvar(ivar)%origin)//' '//trim(progvar(ivar)%varname)
+   string3 = trim(progvar(ivar)%origin)//' '//trim(progvar(ivar)%varname)
    call nc_check(nf90_open(trim(clm_restart_filename), NF90_NOWRITE, ncid_clm), &
-              'mark_missing_r8_values','open '//trim(myerrorstring))
+              routine,'open '//trim(string3))
 
    ! File is not required to have a time dimension
    io = nf90_inq_dimid(ncid_clm, 'time', TimeDimID)
    if (io /= NF90_NOERR) TimeDimID = MISSING_I
 
    call nc_check(nf90_inq_varid(ncid_clm,   varname, VarID), &
-            'mark_missing_r8_values', 'inq_varid input '//trim(myerrorstring))
+            routine, 'inq_varid input '//trim(string3))
    call nc_check(nf90_inquire_variable( ncid_clm, VarID, dimids=dimIDs, ndims=ncNdims), &
-                 'mark_missing_r8_values', 'inquire_variable '//trim(myerrorstring))
+                 routine, 'inquire_variable '//trim(string3))
 
    call nc_check(nf90_inq_varid(ncid_dart,   varname, var_id_out), &
-            'mark_missing_r8_values', 'inq_varid output '//trim(myerrorstring))
+            routine, 'inq_varid output '//trim(string3))
    call nc_check(nf90_inquire_variable( ncid_dart, var_id_out), &
-                 'mark_missing_r8_values', 'inquire_variable '//trim(myerrorstring))
+                 routine, 'inquire_variable '//trim(string3))
 
    ! Check the rank of the variable
 
    if ( ncNdims /= progvar(ivar)%numdims ) then
       write(string1, *) 'netCDF rank of '//trim(varname)//' does not match derived type knowledge'
       write(string2, *) 'netCDF rank is ',ncNdims,' expected ',progvar(ivar)%numdims
-      call error_handler(E_ERR,'mark_missing_r8_values', string1, &
+      call error_handler(E_ERR,routine, string1, &
                         source,revision,revdate,text2=string2)
    endif
 
@@ -1612,9 +1616,9 @@ do ivar=1, numvars
 
    do i = 1,progvar(ivar)%numdims
 
-      write(string1,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
+      write(string1,'(''inquire dimension'',i2,A)') i,trim(string3)
       call nc_check(nf90_inquire_dimension(ncid_clm, dimIDs(i), len=dimlen), &
-            'mark_missing_r8_values', string1)
+            routine, string1)
 
       ! Time dimension will be 1 in progvar, but not necessarily
       ! in origin file. We only want a single matching time.
@@ -1623,9 +1627,9 @@ do ivar=1, numvars
       if ( dimIDs(i) == TimeDimID ) dimlen = 1
           
       if ( dimlen /= progvar(ivar)%dimlens(i) ) then
-         write(string1,*) trim(myerrorstring),' dim/dimlen ',i,dimlen, &
+         write(string1,*) trim(string3),' dim/dimlen ',i,dimlen, &
                               ' not ',progvar(ivar)%dimlens(i)
-         call error_handler(E_ERR,'mark_missing_r8_values',string1,source,revision,revdate)
+         call error_handler(E_ERR,routine,string1,source,revision,revdate)
       endif
 
    enddo
@@ -1751,7 +1755,7 @@ do ivar=1, numvars
          write(string1, *) '3D variable unexpected shape -- only support nlon, nlat, time(=1)'
          write(string2, *) 'variable [',trim(progvar(ivar)%varname),']'
          write(string3, *) 'file [',trim(progvar(ivar)%origin),']'
-         call error_handler(E_ERR,'mark_missing_r8_values', string1, &
+         call error_handler(E_ERR,routine, string1, &
                            source, revision, revdate, text2=string2, text3=string3)
 
       endif
@@ -1761,26 +1765,26 @@ do ivar=1, numvars
       write(string1, *) 'no support for data array of dimension ', ncNdims
       write(string2, *) 'variable [',trim(progvar(ivar)%varname),']'
       write(string3, *) 'file [',trim(progvar(ivar)%origin),']'
-      call error_handler(E_ERR,'mark_missing_r8_values', string1, &
+      call error_handler(E_ERR,routine, string1, &
                         source, revision, revdate, text2=string2, text3=string3)
    endif
 
    indx = indx - 1
-   ! if ( indx /= progvar(ivar)%indexN ) then
-   !    write(string1, *)'Variable '//trim(varname)//' filled wrong.'
-   !    write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',indx
-   !    call error_handler(E_ERR,'mark_missing_r8_values', string1, &
-   !                      source,revision,revdate,text2=string2)
-   ! endif
+   if ( indx /= progvar(ivar)%indexN ) then
+      write(string1, *)'Variable '//trim(varname)//' filled wrong.'
+      write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',indx
+      call error_handler(E_ERR,routine, string1, &
+                        source,revision,revdate,text2=string2)
+   endif
 
-   call nc_check(nf90_close(ncid_clm),'mark_missing_r8_values','close in'//progvar(ivar)%origin)
+   call nc_check(nf90_close(ncid_clm),routine,'close in'//progvar(ivar)%origin)
    ncid_clm = 0
 
 enddo
 
 deallocate(snlsno)
 
-call nc_check(nf90_close(ncid_dart),'mark_missing_r8_values','close out'//progvar(ivar)%origin)
+call nc_check(nf90_close(ncid_dart),routine,'close out'//progvar(ivar)%origin)
 
 end subroutine mark_missing_r8_values
 
@@ -1924,15 +1928,12 @@ end subroutine fill_missing_r8_with_orig
 ! The remaining interfaces come last
 !==================================================================
 
+!-----------------------------------------------------------------------
+!> Interpolate any QUANTITY of the model state to any arbitrary location.
+!> A status of 0 indicates a successful interpolation.
 
 subroutine model_interpolate(state_handle, ens_size, location, obs_kind, expected_obs, istatus)
 
-
-! PURPOSE:
-!
-! For a given lat, lon, and height, interpolate the correct state value
-! to that location for the filter from the clm state vectors
-!
 ! Reconstructing the vertical profile of the gridcell is complicated.
 ! Each land unit/column can have a different number of vertical levels.
 ! Do I just try to recontruct the whole profile and then interpolate?
@@ -1940,16 +1941,11 @@ subroutine model_interpolate(state_handle, ens_size, location, obs_kind, expecte
 ! finding all the elements in the first place. The vertical information
 ! is in the levels() array for each state vector component.
 
-! Passed variables
-
 ! Interpolates from state vector x to the location. It's not particularly
 ! happy dumping all of this straight into the model. Eventually some
 ! concept of a grid underlying models but above locations is going to
 ! be more general. May want to wait on external infrastructure projects
 ! for this?
-
-! Argument itype is not used here because there is only one type of variable.
-! Type is needed to allow swap consistency with more complex models.
 
 type(ensemble_type),    intent(in)  :: state_handle
 integer,                intent(in)  :: ens_size
@@ -1957,7 +1953,6 @@ type(location_type),    intent(in)  :: location
 integer,                intent(in)  :: obs_kind
 real(r8),               intent(out) :: expected_obs(ens_size)
 integer,                intent(out) :: istatus(ens_size)
-
 
 ! Local storage
 
@@ -2112,6 +2107,11 @@ loc_lat    = loc(2)
 
 ! determine the portion of interest of the state vector
 ivar   = findKindIndex(kind_index, 'compute_gridcell_value')
+if (ivar < 1) then
+   istatus = 11
+   return
+endif
+
 index1 = get_index_start(progvar(ivar)%domain, progvar(ivar)%varname) ! in the DART state vector, start looking here
 indexN = get_index_end(progvar(ivar)%domain, progvar(ivar)%varname) ! in the DART state vector, stop  looking here
 
@@ -2212,15 +2212,11 @@ end subroutine compute_gridcell_value
 
 
 !------------------------------------------------------------------
-
+!> Calculate the expected vertical value for the gridcell.
+!> Each gridcell value is an area-weighted value of an unknown number of
+!> column-based quantities.
 
 subroutine get_grid_vertval(state_handle, ens_size, location, kind_index, interp_val, istatus)
-
-! Calculate the expected vertical value for the gridcell.
-! Each gridcell value is an area-weighted value of an unknown number of
-! column-based quantities.
-
-! Passed variables
 
 type(ensemble_type), intent(in)  :: state_handle ! state vector
 integer,             intent(in)  :: ens_size
@@ -2228,6 +2224,8 @@ type(location_type), intent(in)  :: location     ! location somewhere in a grid 
 integer,             intent(in)  :: kind_index   ! KIND in DART state needed for interpolation
 real(r8),            intent(out) :: interp_val(ens_size)   ! area-weighted result
 integer,             intent(out) :: istatus(ens_size)      ! error code (0 == good)
+
+character(len=*), parameter :: routine = 'get_grid_vertval'
 
 ! Local storage
 
@@ -2249,13 +2247,16 @@ integer :: imem
 real(r8) :: state(ens_size)
 character(len=obstypelength) :: varstring
 
+call error_handler(E_ERR,routine,'currently unsupported - needs to be tested.', &
+                    source, revision, revdate)
+
 if ( .not. module_initialized ) call static_init_model
 
 ! Let's assume failure.  Set return val to missing, then the code can
 ! just set istatus to something indicating why it failed, and return.
 ! If the interpolation is good, the interp_val will be set to the
 ! good value, and the last line here sets istatus to 0.
-! make any error codes set here be in the 10s
+! make any error codes set here be in the 20s
 
 interp_val = MISSING_R8  ! the DART bad value flag
 istatus    = 99          ! unknown error
@@ -2269,14 +2270,19 @@ if ( loc_lev < 0.0_r8 ) then
    write(string1,*)'Cannot support above-ground vertical interpolation.'
    write(string2,*)'requested a value at a depth of ',loc_lev
    write(string3,*)'CLM has negative depths to indicate above-ground values.'
-   call error_handler(E_ERR,'get_grid_vertval', string1, &
+   call error_handler(E_ERR,routine, string1, &
       source, revision, revdate, text2=string2, text3=string3)
 endif
 
 ! determine the portion of interest of the state vector
-ivar   = findKindIndex(kind_index, 'get_grid_vertval')
+ivar   = findKindIndex(kind_index, routine)
+if (ivar < 1) then
+   istatus = 20
+   return
+endif
+
 index1 = get_index_start(progvar(ivar)%domain, progvar(ivar)%varname) ! in the DART state vector, start looking here
-indexN = get_index_end(progvar(ivar)%domain, progvar(ivar)%varname) ! in the DART state vector, stop  looking here
+indexN = get_index_end(  progvar(ivar)%domain, progvar(ivar)%varname) ! in the DART state vector, stop  looking here
 
 varstring = progvar(ivar)%varname ! used in a lot of error messages
 
@@ -2284,7 +2290,7 @@ varstring = progvar(ivar)%varname ! used in a lot of error messages
 if (progvar(ivar)%maxlevels < 2) then
    write(string1, *)'Variable '//trim(varstring)//' should not use this routine.'
    write(string2, *)'use compute_gridcell_value() instead.'
-   call error_handler(E_ERR,'get_grid_vertval', string1, &
+   call error_handler(E_ERR,routine, string1, &
                   source, revision, revdate, text2=string2)
 endif
 
@@ -2341,11 +2347,8 @@ counter1 = 0
 counter2 = 0
 GRIDCELL : do indexi = index1, indexN
 
-
    if ( lonixy(indexi) /=  gridloni )  cycle GRIDCELL
    if ( latjxy(indexi) /=  gridlatj )  cycle GRIDCELL
-   ! state = get_state(indexi, state_handle)
-   ! if ( any( state == MISSING_R8 )  )  cycle GRIDCELL
 
    if (levels(indexi) == depthabove) counter1 = counter1 + 1
    if (levels(indexi) == depthbelow) counter2 = counter2 + 1
@@ -2356,15 +2359,19 @@ counter = max(counter1, counter2)
 
 if ( counter == 0 ) then
    if ((debug > 0) .and. do_output()) then
+
+      !>@todo use write_location(location) ... will report units 
+      !> E_ALLMSG for each task ...
+
       write(string1, *)'statevector variable '//trim(varstring)//' had no viable data'
       write(string2, *)'at gridcell lon/lat = (',gridloni,',',gridlatj,')'
       write(string3, *)'obs lon/lat/lev (',loc_lon,',',loc_lat,',',loc_lev,')'
-      call error_handler(E_MSG,'get_grid_vertval', string1, &
+      call error_handler(E_MSG,routine, string1, &
                      text2=string2,text3=string3)
    endif
+   istatus = 21
    return
 endif
-
 
 allocate(above(ens_size, counter),&
          below(ens_size, counter),&
@@ -2383,42 +2390,39 @@ ELEMENTS : do indexi = index1, indexN
    if ( lonixy(indexi) /=  gridloni )  cycle ELEMENTS
    if ( latjxy(indexi) /=  gridlatj )  cycle ELEMENTS
 
-!  write(*,*)'level ',indexi,' is ',levels(indexi),' location depth is ',loc_lev
    state = get_state(indexi, state_handle)
 
    if (levels(indexi) == depthabove) then
-
       counter_above           = counter_above + 1
       where(state /= MISSING_R8) 
-         above(:, counter_above) = state
+         above(     :, counter_above) = state
          area_above(:, counter_above) = landarea(indexi)
       elsewhere
-         istatus = 21
+         istatus = 22
       endwhere
    endif
 
    if(levels(indexi) == depthbelow) then
-
       counter_below            = counter_below + 1
       where(state /= MISSING_R8) 
-         below(:, counter_below)  =  state
+         below(     :, counter_below) = state
          area_below(:, counter_below) = landarea(indexi)
       elsewhere
-         istatus = 22
+         istatus = 23
       endwhere
 
    endif
 
    if ((debug > 4) .and. do_output()) then
-   write(*,*)
-   write(*,*)'gridcell location match at statevector index',indexi
-   !write(*,*)'statevector value is (',state,')'
-   write(*,*)'area is          (',landarea(indexi),')'
-   write(*,*)'LON index is     (',lonixy(indexi),')'
-   write(*,*)'LAT index is     (',latjxy(indexi),')'
-   write(*,*)'gridcell LON is  (',LON(gridloni),')'
-   write(*,*)'gridcell LAT is  (',LAT(gridlatj),')'
-   write(*,*)'depth        is  (',levels(indexi),')'
+      write(*,*)
+      write(*,*)'gridcell location match at statevector index',indexi
+      !write(*,*)'statevector value is (',state,')'
+      write(*,*)'area is          (',landarea(indexi),')'
+      write(*,*)'LON index is     (',lonixy(indexi),')'
+      write(*,*)'LAT index is     (',latjxy(indexi),')'
+      write(*,*)'gridcell LON is  (',LON(gridloni),')'
+      write(*,*)'gridcell LAT is  (',LAT(gridlatj),')'
+      write(*,*)'depth        is  (',levels(indexi),')'
    endif
 
 enddo ELEMENTS
@@ -2429,7 +2433,7 @@ if ( counter_above /= counter_below ) then
    write(string1, *)'Variable '//trim(varstring)//' has peculiar interpolation problems.'
    write(string2, *)'uneven number of values "above" and "below"'
    write(string3, *)'counter_above == ',counter_above,' /= ',counter_below,' == counter_below'
-   call error_handler(E_MSG,'get_grid_vertval', string1, &
+   call error_handler(E_MSG,routine, string1, &
                   text2=string2,text3=string3)
    return
 endif
@@ -2448,7 +2452,7 @@ do imem = 1, ens_size
       write(string1, *)'Variable '//trim(varstring)//' had no viable data above'
       write(string2, *)'at gridcell lon/lat/lev = (',gridloni,',',gridlatj,',',depthabove,')'
       write(string3, *)'obs lon/lat/lev (',loc_lon,',',loc_lat,',',loc_lev,')'
-      call error_handler(E_ERR,'get_grid_vertval', string1, &
+      call error_handler(E_ERR,routine, string1, &
                   source, revision, revdate, text2=string2,text3=string3)
    endif
 
@@ -2463,7 +2467,7 @@ do imem = 1, ens_size
       write(string1, *)'Variable '//trim(varstring)//' had no viable data below'
       write(string2, *)'at gridcell lon/lat/lev = (',gridloni,',',gridlatj,',',depthbelow,')'
       write(string3, *)'obs lon/lat/lev (',loc_lon,',',loc_lat,',',loc_lev,')'
-      call error_handler(E_ERR,'get_grid_vertval', string1, &
+      call error_handler(E_ERR,routine, string1, &
                   source, revision, revdate, text2=string2,text3=string3)
    endif
 
@@ -4193,11 +4197,11 @@ VARTYPES : do i = 1,nfields
     endif
 enddo VARTYPES
 
-if (findKindIndex < 1) then
+if (findKindIndex < 1 .and. debug > 0) then
    kind_string = get_name_for_quantity( kind_index )
    write(string1,*) trim(caller)//' cannot find "'//trim(kind_string)//'" in list of DART state variables.'
    write(string2,*) trim(caller)//' looking for DART KIND (index) ', kind_index
-   call error_handler(E_ERR,'findKindIndex',string1,source,revision,revdate, text2=string2)
+   call error_handler(E_WARN,'findKindIndex',string1,source,revision,revdate, text2=string2)
 endif
 
 end function findKindIndex

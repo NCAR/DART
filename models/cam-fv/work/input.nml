@@ -111,7 +111,7 @@
      
 &perfect_model_obs_nml
    read_input_state_from_file = .true.,
-   input_state_files          = "perfect_ics.nc",
+   input_state_files          = "caminput.nc",
    init_time_days             = -1,
    init_time_seconds          = -1,
 
@@ -357,11 +357,8 @@
 &obs_kind_nml
    assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
                                 'RADIOSONDE_U_WIND_COMPONENT',
-                                'GPSRO_REFRACTIVITY', 
-
-   evaluate_these_obs_types = 'RADIOSONDE_SPECIFIC_HUMIDITY',
-   /
                                 'RADIOSONDE_V_WIND_COMPONENT',
+                                'GPSRO_REFRACTIVITY', 
                                 'AIRCRAFT_TEMPERATURE',
                                 'ACARS_TEMPERATURE',
                                 'AIRCRAFT_U_WIND_COMPONENT',
@@ -370,6 +367,8 @@
                                 'ACARS_V_WIND_COMPONENT',
                                 'SAT_U_WIND_COMPONENT',
                                 'SAT_V_WIND_COMPONENT',
+   evaluate_these_obs_types = 'RADIOSONDE_SPECIFIC_HUMIDITY',
+   /
 
 
 !  : error codes >= TERMLEVEL will cause termination

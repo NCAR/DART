@@ -25,7 +25,6 @@
    silence                    = .false.
    distributed_state          = .true.
    tasks_per_model_advance    = 1
-   has_cycling                = .false.
   /
 
 &filter_nml

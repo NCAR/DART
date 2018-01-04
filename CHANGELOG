@@ -620,7 +620,7 @@ longitude interpolation in grids that cross the 360/0 line.
 large ensemble sizes.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Jan 03 2018 :: reintegration of mmc branch                $Revision$
++ Jan 03 2018 :: reintegration of mmc branch                 Revision: 12272  
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - several model_mod_check programs were combined into a single 
@@ -666,10 +666,17 @@ large ensemble sizes.
            get_closest_state_time_to and get_initial_condition
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Jan 04 2018 :: test_dart.csh enhancements                 $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- developer_tests/test_dart.csh can run pmo for more models.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + MMM DD YYYY :: summary of next changes                    $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - next ...
+
 
 # <next few lines under version control, do not edit>
 # $URL$
