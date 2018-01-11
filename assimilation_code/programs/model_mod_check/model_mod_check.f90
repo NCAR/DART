@@ -21,7 +21,7 @@ use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, 
 
 use     mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities
 
-use          location_mod, only : location_type, write_location
+use          location_mod, only : location_type, set_location, write_location
 
 use          obs_kind_mod, only : get_index_for_quantity, get_name_for_quantity
 
@@ -64,7 +64,7 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-integer, parameter :: MAX_TESTS = 15
+integer, parameter :: MAX_TESTS = 7
 
 !------------------------------------------------------------------
 ! The namelist variables
@@ -77,7 +77,7 @@ character(len=256)            :: output_state_files(MAX_NUM_DOMS) = 'null'
 character(len=256)            :: all_metadata_file = 'metadata.txt'
 integer(i8)                   :: x_ind   = -1
 real(r8), dimension(3)        :: loc_of_interest = -1.0_r8
-character(len=metadatalength) :: quantity_of_interest = 'ANY'
+character(len=metadatalength) :: quantity_of_interest = 'NONE'
 character(len=metadatalength) :: interp_test_vertcoord = 'VERTISHEIGHT'
 logical                       :: verbose = .FALSE.
 integer                       :: test1thru = MAX_TESTS
@@ -96,7 +96,7 @@ real(r8), dimension(2) :: interp_test_yrange = (/ missing_r8, missing_r8 /)
 real(r8), dimension(2) :: interp_test_zrange = (/ missing_r8, missing_r8 /)
 
 namelist /model_mod_check_nml/ x_ind, num_ens,                             &
-                               loc_of_interest,    quantity_of_interest,       &
+                               loc_of_interest,    quantity_of_interest,   &
                                interp_test_dlat,   interp_test_lonrange,   &
                                interp_test_dlon,   interp_test_latrange,   &
                                interp_test_dvert,  interp_test_vertrange,  &
@@ -170,9 +170,19 @@ if (tests_to_run(1)) then
             'Verifying composition of the state and calling get_model_size()', &
             starting=.true.)
 
-   do idomain = 1,get_num_domains()
-      call state_structure_info(idomain)
-   enddo
+   if (verbose) then
+      string1 = 'To suppress the detailed list of the variables that comprise the DART state'
+      string2 = 'set "verbose = .FALSE." in the model_mod_check_nml namelist.'
+      call print_info_message('TEST 1',string1, string2)
+
+      do idomain = 1,get_num_domains()
+         call state_structure_info(idomain)
+      enddo
+   else
+      string1 = 'To print a detailed list of the variables that comprise the DART state'
+      string2 = 'set "verbose = .TRUE." in the model_mod_check_nml namelist.'
+      call print_info_message('TEST 1',string1, string2)
+   endif
 
    model_size = get_model_size()
 
@@ -279,7 +289,6 @@ if (tests_to_run(2)) then
    write(*,'(A)') '-- printing model time --------------------------------------'
    call print_time( model_time,' model_mod_check:model time')
    write(*,'(A)') '-------------------------------------------------------------'
-   write(*,'(A)') ''
 
    call print_test_message('TEST 2', ending=.true.)
 
@@ -293,11 +302,8 @@ endif
 
 if (tests_to_run(3)) then
 
-   write(string1,*)'for state index ',x_ind
-
    call print_test_message('TEST 3', &
                            'Testing get_state_meta_data()', &
-                           adjustl(string1), &
                            starting=.true.)
 
    if ( x_ind >= 1 .and. x_ind <= model_size ) then
@@ -355,7 +361,7 @@ endif
 
 if (tests_to_run(5)) then
    call print_test_message('TEST 5', &
-                           'Testing range of data for model_interpolate', starting=.true.)
+                           'Testing model_interpolate() with a mesh of locations.', starting=.true.)
 
    call create_state_window(ens_handle)
 
@@ -408,7 +414,9 @@ if (tests_to_run(7)) then
    write(string1,*)'Finding the state vector index closest to a given location.'
    call print_test_message('TEST 7', string1, starting=.true.)
 
-   call find_closest_gridpoint(loc_of_interest, quantity_of_interest)
+   call find_closest_gridpoint(loc_of_interest, &
+                               interp_test_vertcoord, &
+                               quantity_of_interest)
 
    call print_test_message('TEST 7', ending=.true.)
 endif
@@ -729,7 +737,8 @@ do iloc = 1,get_model_size()
                                    kind_index=qty_index, &
                                    kind_string=qty_string)
 
-   write(string1,'(i11,1x,''i,j,k'',3(1x,i4),'' domain '',i2)') &
+   ! CLM has (potentially many) columns and needs i7 ish precision
+   write(string1,'(i11,1x,''i,j,k'',3(1x,i7),'' domain '',i2)') &
                   iloc, ix, iy, iz, dom_id
 
    call get_state_meta_data(iloc, loc, var_type)

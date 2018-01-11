@@ -1,7 +1,7 @@
  obs_sequence
 obs_kind_definitions
            1
-           1 SAT_SEAICE_AGREG_CONCENTR       
+           1 SAT_SEAICE_AGREG_CONCENTR      
   num_copies:            2  num_qc:            1
   num_obs:            1  max_num_obs:            1
 observations                                                    
@@ -9,14 +9,14 @@ truth
 Quality Control                                                 
   first:            1  last:            1
  OBS            1
-  0.835170742712443     
-  0.849667532146896     
-  0.000000000000000E+000
+  0.81029306812277313     
+  0.82853802243329699     
+   0.0000000000000000     
           -1          -1          -1
 obdef
 loc3d
      5.759586531581287        -1.291543646475804         1.000000000000000      1
 kind
            1
-     0     145732
-  2.000000000000000E-003
+     0     146128
+   2.0000000000000000E-003

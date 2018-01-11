@@ -311,5 +311,6 @@
    interp_test_latrange  = 30.0,   47.0
    interp_test_vertrange = 200000.0, 300000.0
    interp_test_vertcoord = 'VERTISHEIGHT'
+   verbose               = .false.
    /
 

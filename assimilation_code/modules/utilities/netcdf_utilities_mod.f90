@@ -105,7 +105,7 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-character(len=512) :: msgstring1, msgstring2, msgstring3
+character(len=512) :: msgstring1
 
 ! do we need one of these?
 !namelist /netcdf_utilities_nml/ 
@@ -869,19 +869,17 @@ character(len=*), intent(in) , optional :: filename
 character(len=*), parameter :: routine = 'nc_get_variable_info'
 integer :: ret, varid, dimid, ii
 
-integer :: myxtype
 integer :: myndims
 integer :: mydimids(NF90_MAX_VAR_DIMS)
 integer :: mydimlens(NF90_MAX_VAR_DIMS)
-integer :: mynatts
 character(len=NF90_MAX_NAME) :: mydimnames(NF90_MAX_VAR_DIMS)
 
 
 ret = nf90_inq_varid(ncid, varname, varid)
 call nc_check(ret, routine, 'inq_varid for '//trim(varname), context, filename)
 
-ret = nf90_inquire_variable(ncid, varid, xtype=myxtype, ndims=myndims, &
-                            dimids=mydimids, natts=mynatts) 
+ret = nf90_inquire_variable(ncid, varid, xtype=xtype, ndims=myndims, &
+                            dimids=mydimids, natts=natts) 
 call nc_check(ret, routine, 'inquire_variable for '//trim(varname), context, filename)
 
 if (present(dimlens) .or. present(dimnames)) then  ! more work to do 
@@ -901,9 +899,7 @@ if (present(dimlens) .or. present(dimnames)) then  ! more work to do
    enddo
 endif
 
-if (present(   xtype)) xtype    = myxtype
-if (present(   ndims)) ndims    = myndims
-if (present(   natts)) natts    = mynatts
+if (present(   ndims)) ndims             = myndims
 if (present( dimlens)) dimlens(1:ndims)  = mydimlens(1:ndims)
 if (present(dimnames)) dimnames(1:ndims) = mydimnames(1:ndims)
 

@@ -47,10 +47,10 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           deallocate_single_copy
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 type ensemble_type
 
@@ -1675,10 +1675,10 @@ subroutine round_robin(ens_handle)
 ! place to start. Test with the smoother. 
 
 type(ensemble_type), intent(inout)   :: ens_handle
+
 integer                              :: last_node_task_number, num_nodes
 integer                              :: i, j
 integer, allocatable                 :: mycount(:)
-
 
 ! Find number of nodes and find number of tasks on last node
 call calc_tasks_on_each_node(num_nodes, last_node_task_number)

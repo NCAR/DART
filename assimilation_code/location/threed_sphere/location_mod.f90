@@ -815,7 +815,7 @@ select case  (location%which_vert)
    case (VERTISSURFACE)
       write(charstring, '(A,F13.5,A)') trim(string1), location%vloc, ' surface (m)'
    case (VERTISLEVEL)
-      write(charstring, '(A,F13.6,A)') trim(string1), location%vloc, '        level'
+      write(charstring, '(A,F13.6,A)') trim(string1), location%vloc, ' level'
    case (VERTISPRESSURE)
       write(charstring, '(A,F13.7,A)') trim(string1), location%vloc / 100.0_r8, ' hPa'
    case (VERTISHEIGHT)
@@ -1155,8 +1155,7 @@ end subroutine convert_vertical_state
 
 subroutine get_close_init(gc, num, maxdist, locs, maxdist_list)
  
-! Initializes part of get_close accelerator that depends on the particular
-! location
+! Initializes part of get_close accelerator dependent on the particular location
 
 type(get_close_type), intent(inout) :: gc
 integer,              intent(in)    :: num
@@ -1593,7 +1592,7 @@ do j = 1, nlat
                      no_vert = .true.)
                endif
 
-               ! If this location's distance is less than cutoff, add it to the list
+               ! If this locations distance is less than cutoff, add it to the list
                if(this_dist <= this_maxdist) then
                   num_close = num_close + 1
                   close_ind(num_close) = t_ind

@@ -327,11 +327,11 @@ integer :: <em class=code>get_model_size </em>
 <A NAME="get_closest_state_time_to"></A>
 <br>
 <div class=routine>
-<em class=call> var = get_closest_state_time_to(model_time, given_time) </em>
+<em class=call> var = get_closest_state_time_to(model_time, time) </em>
 <pre>
 type(time_type)              :: <em class=code> get_closest_state_time_to </em>
 type(time_type), intent(in)  :: <em class=code> model_time </em>
-type(time_type), intent(in)  :: <em class=code> given_time</em>
+type(time_type), intent(in)  :: <em class=code> time</em>
 </pre>
 </div>
 
@@ -353,7 +353,7 @@ type(time_type), intent(in)  :: <em class=code> given_time</em>
 <TR><TD valign=top><em class=code>model_time&nbsp;&nbsp;&nbsp;</em></TD>
     <TD>The time of a model state vector.</TD></TR>
 
-<TR><TD valign=top><em class=code>given_time</em></TD>
+<TR><TD valign=top><em class=code>time</em></TD>
     <TD>A time that one would like to get close to with the model.</TD></TR>
 
 </TABLE>
@@ -1219,9 +1219,10 @@ See model_mod documentation for arguments and details.
 <A NAME="get_initial_conditions"></A>
 <br>
 <div class=routine>
-<em class=call> call get_initial_condition(x) </em>
+<em class=call> call get_initial_condition(time, x) </em>
 <pre>
-type(assim_model_type), intent(out) :: <em class=code>x</em>
+type(time_type), intent(out) :: <em class=code>time</em>
+real(r8),        intent(out) :: <em class=code>x</em>
 </pre>
 </div>
 
@@ -1233,8 +1234,10 @@ Obtains an initial condition from models that support this option.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>x&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>assim_model into which an initial model state can be written.</TD></TR>
+<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>the valid time of the model state</TD></TR>
+<TR><TD valign=top><em class=code>x</em></TD>
+    <TD>the initial model state</TD></TR>
 </TABLE>
 
 </div>

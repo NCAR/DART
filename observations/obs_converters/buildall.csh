@@ -30,7 +30,7 @@ echo
 # we support but it will get 80% of the cases with 20% of the work.
 
 if ( -f ../../build_templates/mkmf.template ) then
-   set fcomp=`grep '^FC' ../../build_templates/mkmf.template | sed -s 's/FC *= *\([A-Za-z][^ ]*\)/\1/' `
+   set fcomp=`grep '^FC' ../../build_templates/mkmf.template | sed -e 's/FC *= *\([A-Za-z][^ ]*\)/\1/' `
    if ( "$fcomp" == "ifort" ) then
       setenv CCOMP intel
       setenv FCOMP intel

@@ -602,7 +602,7 @@ COPY_LOOP: do icopy = 1, ens_size+extra_size
       !>              Should probably do this in a block?
       !start_rank = get_start_rank(start_var, domain)
 
-      ! this is where we left off writting variables in the case of multiple tasks
+      ! this is where we left off writing variables in the case of multiple tasks
       start_rank = get_start_rank(ivar, domain)
       
       RECEIVING_PE_LOOP: do recv_pe = 0, task_count()-1
@@ -1600,7 +1600,7 @@ integer :: ndims
 integer :: xtype ! precision for netcdf file
 integer :: dimids(NF90_MAX_VAR_DIMS)
 
-character(len=NF90_MAX_NAME) :: filename
+character(len=256) :: filename
 
 filename = get_restart_filename(name_handle, copy_number, dom_id)
 
@@ -2469,7 +2469,7 @@ end subroutine write_extra_attributes
 
 
 !------------------------------------------------------------------
-!> helper function to return the netcdf dimension id's and lenghts
+!> helper function to return the netcdf dimension id's and lengths
 
 subroutine get_dimension_info(copy, dom_id, var_id, timestep, is_extra, numdims, start, lengths)
 

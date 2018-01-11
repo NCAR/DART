@@ -496,8 +496,8 @@
    test1thru             = 0
    run_tests             = 1,2,3,4,5,7
    x_ind                 = 10
-   loc_of_interest       = 320.0, 18.0, 5.0
-   quantity_of_interest  = 'QTY_U_CURRENT_COMPONENT'
+   loc_of_interest       = 254.727854, 39.9768545, 6184.0
+   quantity_of_interest  = 'QTY_U_WIND_COMPONENT'
    interp_test_lonrange  = 0.0, 359.0
    interp_test_dlon      = 1.0
    interp_test_latrange  = -89.0, 89.0
@@ -505,4 +505,5 @@
    interp_test_vertrange = 1000.0,  1005.0
    interp_test_dvert     = 2000.0
    interp_test_vertcoord = 'VERTISHEIGHT'
+   verbose               = .false.
   /

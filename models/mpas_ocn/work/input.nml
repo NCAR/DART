@@ -305,8 +305,8 @@
 # VERTISUNDEF VERTISSURFACE VERTISLEVEL VERTISPRESSURE VERTISHEIGHT VERTISSCALEHEIGHT
    quantity_of_interest = 'QTY_TEMPERATURE',
    quantity_of_interest = 'QTY_SALINITY',
-   quantity_of_interest = 'QTY_U_CURRENT',
-   quantity_of_interest = 'QTY_V_CURRENT',
+   quantity_of_interest = 'QTY_U_CURRENT_COMPONENT',
+   quantity_of_interest = 'QTY_V_CURRENT_COMPONENT',
    quantity_of_interest = 'QTY_DENSITY',
 
 &model_mod_check_nml
@@ -324,4 +324,5 @@
    interp_test_vertrange = 100.0,  300.0
    interp_test_dvert     = 200.0
    interp_test_vertcoord = 'VERTISHEIGHT'
+   verbose               = .false.
    /

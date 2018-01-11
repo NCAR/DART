@@ -50,8 +50,8 @@ use     location_mod, only : location_type, set_location, get_location,         
                              VERTISHEIGHT, VERTISSURFACE
 
 use    utilities_mod, only : register_module, error_handler, do_nml_term,       &
-                             E_ERR, E_WARN, E_MSG, logfileunit, get_unit,       &
-                             do_output, to_upper, do_nml_file,                  &
+                             E_ERR, E_WARN, E_MSG, logfileunit, nmlfileunit,    &
+                             get_unit, do_output, to_upper, do_nml_file,        &
                              find_namelist_in_file, check_namelist_read,        &
                              open_file, file_exist, find_textfile_dims,         &
                              file_to_text, do_output, close_file,               &
@@ -383,7 +383,7 @@ read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, 'model_nml')
 
 ! Record the namelist values used for the run
-if (do_nml_file()) write(logfileunit, nml=model_nml)
+if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
 
 model_timestep = set_model_time_step()

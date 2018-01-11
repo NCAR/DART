@@ -24,8 +24,8 @@ use     location_mod, only : location_type, get_dist, query_location,          &
                              set_periodic
 
 use    utilities_mod, only : register_module, error_handler,                   &
-                             E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
-                             do_output, to_upper,                              &
+                             E_ERR, E_WARN, E_MSG, logfileunit, nmlfileunit,   &
+                             get_unit, do_output, to_upper,                    &
                              find_namelist_in_file, check_namelist_read,       &
                              open_file, file_exist, find_textfile_dims,        &
                              file_to_text, close_file, do_nml_file,            &
@@ -252,7 +252,7 @@ read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, 'model_nml')
 
 ! Record the namelist values used for the run
-if (do_nml_file()) write(logfileunit, nml=model_nml)
+if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
 
 if ( periodic_z ) then

@@ -333,10 +333,13 @@
 
 
 &model_mod_check_nml
+   input_state_files     = 'roms_input.nc'
+   output_state_files    = 'mmc_output.nc'
+   test1thru             = 0
+   run_tests             = 1,2,3,4,5,7
    x_ind                 = 87370
-   num_ens               = 1
    loc_of_interest       = 231.0, 40.0, 10.0
-   kind_of_interest      = 'QTY_SEA_SURFACE_HEIGHT'
+   quantity_of_interest  = 'QTY_U_CURRENT_COMPONENT'
    interp_test_dlon      = 0.1
    interp_test_dlat      = 0.1
    interp_test_dvert     = 5.0
@@ -344,10 +347,7 @@
    interp_test_latrange  =  30.0,   47.0
    interp_test_vertrange =  0.0,    10.0
    interp_test_vertcoord = 'VERTISHEIGHT'
-   test1thru             = 4
-   input_state_files     = 'Data/wc13_ini.nc'
-   output_state_files    = 'roms_output.nc'
-   verbose               = .true.
+   verbose               = .false.
   /
 
 

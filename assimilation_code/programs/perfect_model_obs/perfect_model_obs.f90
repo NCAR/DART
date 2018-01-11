@@ -780,21 +780,6 @@ call destroy_obs(obs)
 end subroutine print_obs_time
 
 !-------------------------------------------------------------------------
-!>@todo this routine is not called anywhere - candidate for removal.
-
-subroutine perfect_set_initial_time(initial_time)
-
-type(time_type), intent(out) :: initial_time
-
-if(init_time_days >= 0) then
-   initial_time = set_time(init_time_seconds, init_time_days)
-else
-   initial_time = set_time(0, 0)
-endif
-
-end subroutine perfect_set_initial_time
-
-!-------------------------------------------------------------------------
 
 subroutine parse_filenames(file_array, files_out, nfiles)
 character(len=*), intent(in)  :: file_array(:)

@@ -21,11 +21,14 @@ use          location_mod, only : location_type, set_location, write_location,  
                                   get_dist, get_location, LocationDims, &
                                   VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, &
                                   VERTISPRESSURE, VERTISHEIGHT, VERTISSCALEHEIGHT, &
-                                  query_location, LocationDims
+                                  query_location
 
 use          obs_kind_mod, only : get_name_for_quantity, get_index_for_quantity
 
 use  ensemble_manager_mod, only : ensemble_type
+
+use model_check_utilities_mod, only : test_single_interpolation, &
+                                      count_error_codes
 
 use             model_mod, only : get_model_size, &
                                   get_state_meta_data, &
@@ -34,6 +37,7 @@ use             model_mod, only : get_model_size, &
 use netcdf
 
 implicit none
+private
 
 public :: test_interpolate_single, &
           test_interpolate_range, &
@@ -88,6 +92,7 @@ character(len=*), parameter :: routine = 'test_interpolate_range'
 
 real(r8), allocatable :: lon(:), lat(:), vert(:)
 real(r8), allocatable :: field(:,:,:,:)
+integer,  allocatable :: all_ios_out(:,:)
 real(r8) :: lonrange_top
 integer :: nlon, nlat, nvert
 integer :: ilon, jlat, kvert, nfailed
@@ -106,7 +111,6 @@ character(len=32)   :: field_name
 type(location_type) :: loc
 integer :: iunit, ios_out(ens_size), imem
 integer :: quantity_index, vertcoord
-integer,  allocatable :: all_ios_out(:,:)
 
 test_interpolate_range = 0
 
@@ -147,23 +151,29 @@ write(iunit,'(''interptest = [ ... '')')
 
 allocate(lon(nlon), lat(nlat), vert(nvert), field(nlon,nlat,nvert,ens_size))
 allocate(all_ios_out(nlon*nlat*nvert,ens_size))
+
+all_ios_out = 0 ! assume successful interpolation for every grid location, all members.
 nfailed = 0
 
 do ilon = 1, nlon
    lon(ilon) = interp_test_lonrange(1) + real(ilon-1,r8) * interp_test_dlon
    if (lon(ilon) >= 360.0_r8) lon(ilon) = lon(ilon) - 360.0_r8
-   if (lon(ilon) < 0.0_r8)   lon(ilon) = lon(ilon) + 360.0_r8
+   if (lon(ilon) <    0.0_r8) lon(ilon) = lon(ilon) + 360.0_r8
    do jlat = 1, nlat
       lat(jlat) = interp_test_latrange(1) + real(jlat-1,r8) * interp_test_dlat
       do kvert = 1, nvert
          vert(kvert) = interp_test_vertrange(1) + real(kvert-1,r8) * interp_test_dvert
-
          loc = set_location(lon(ilon), lat(jlat), vert(kvert), vertcoord)
 
          call model_interpolate(ens_handle, ens_size, loc, quantity_index, &
                                 field(ilon,jlat,kvert,:), ios_out)
          write(iunit,*) field(ilon,jlat,kvert,:)
          if (any(ios_out /= 0)) then
+
+            nfailed    = nfailed + 1
+            ! don't really care which location was causing the failure
+            all_ios_out(nfailed,:) = ios_out
+
             if (verbose) then
                write(string1,*) 'interpolation return code was', ios_out
                write(string2,'(''ilon,jlat,kvert,lon,lat,vert'',3(1x,i6),3(1x,f14.6))') &
@@ -171,10 +181,8 @@ do ilon = 1, nlon
                call error_handler(E_MSG, routine, string1, &
                                   source, revision, revdate, text2=string2)
             endif
-            nfailed = nfailed + 1
-            all_ios_out(nfailed,:) = ios_out
+ 
          endif
-
       enddo
    enddo
 enddo
@@ -192,8 +200,7 @@ if ( do_output() ) then
    write(*,'(A)')     '-------------------------------------------------------------'
 endif
 
-call count_error_codes(all_ios_out, nfailed)
-
+call count_error_codes(all_ios_out(1:nfailed,:))
 
 ! Write out the netCDF file for easy exploration.
 
@@ -226,7 +233,6 @@ call nc_check(nf90_put_att(ncid, lonVarID, 'range', interp_test_lonrange), &
            routine, 'put_att lonrange '//trim(ncfilename))
 call nc_check(nf90_put_att(ncid, lonVarID, 'cartesian_axis', 'X'),   &
            routine, 'lon cartesian_axis '//trim(ncfilename))
-
 
 call nc_check(nf90_def_var(ncid=ncid, name='lat', xtype=nf90_double, &
         dimids=nlatDimID, varid=latVarID), routine, &
@@ -307,88 +313,30 @@ function test_interpolate_single( ens_handle,       &
                                   interp_vals,      &
                                   ios_out)
 
-type(ensemble_type)   , intent(inout) :: ens_handle
-integer               , intent(in)    :: ens_size
-character(len=*)      , intent(in)    :: vertcoord_string
-real(r8)              , intent(in)    :: lonval
-real(r8)              , intent(in)    :: latval
-real(r8)              , intent(in)    :: vertval
-character(len=*)      , intent(in)    :: quantity_string
-real(r8)              , intent(out)   :: interp_vals(ens_size)
-integer               , intent(out)   :: ios_out(ens_size)
+type(ensemble_type),intent(inout) :: ens_handle
+integer            ,intent(in)    :: ens_size
+character(len=*)   ,intent(in)    :: vertcoord_string
+real(r8)           ,intent(in)    :: lonval
+real(r8)           ,intent(in)    :: latval
+real(r8)           ,intent(in)    :: vertval
+character(len=*)   ,intent(in)    :: quantity_string
+real(r8)           ,intent(out)   :: interp_vals(ens_size)
+integer            ,intent(out)   :: ios_out(ens_size)
 
 integer :: test_interpolate_single
 
-type(location_type) :: loc
-integer :: imem, num_passed, vertcoord
-character(len=128) :: my_location
-integer :: quantity_index
+type(location_type) :: location
+integer :: vertcoord
 
-quantity_index = get_index_for_quantity(quantity_string)
 vertcoord = get_location_index(vertcoord_string)
+location = set_location(lonval, latval, vertval, vertcoord)
 
-loc = set_location(lonval, latval, vertval, vertcoord)
-
-if ( do_output() ) then
-   call write_location(0, loc, charstring=my_location)
-   write(*,'(A)') ''
-   write(*,'(A)') '-------------------------------------------------------------'
-   write(*,'("interpolating at ",A)') trim(my_location)//' for "'//trim(quantity_string)//'"'
-   write(*,'(A)') '-------------------------------------------------------------'
-   write(*,'(A)') ''
-endif
-
-call model_interpolate(ens_handle, ens_size, loc, quantity_index, interp_vals, ios_out)
-
-num_passed = 0
-do imem = 1, ens_size
-   if (ios_out(imem) == 0 ) then
-      if (do_output()) then
-         write(string1,*)'model_interpolate SUCCESS with value    :: ', interp_vals(imem)
-         write(*,'(A,I5,A,A)')'member ',imem,',',trim(string1)
-         num_passed = num_passed + 1
-      endif
-   else
-      if (do_output()) then
-         write(string1,*)'model_interpolate ERROR with error code :: ', ios_out(imem)
-         write(*,'(A,I5,A,A)')'member ',imem,',',trim(string1)
-      endif
-   endif
-enddo
-
-if ( do_output() ) write(*,'(A)') ''
-
-test_interpolate_single = num_passed
+test_interpolate_single = test_single_interpolation(ens_handle, ens_size, &
+                               location, vertcoord_string, &
+                               quantity_string, interp_vals, ios_out)
 
 end function test_interpolate_single
 
-
-!-------------------------------------------------------------------------------
-!> Count the number of different error codes and output the results.
-!> This is just a helper function for test_interpolate_range.
-!> Only sums error codes for the first ensemble member.
-
-subroutine count_error_codes(error_codes, num_failed)
-
-integer, intent(in) :: error_codes(:,:)
-integer, intent(in) :: num_failed
-
-integer :: i, count_errors, results
-
-count_errors = 1
-
-i = 1
-do while (count_errors < num_failed)
-   results = count(error_codes(:,1) == i)
-   if (results /= 0) then
-      if ( do_output() ) &
-         write(*,'(i10, a, i3)') results + 1, " failed with ios_out ", i
-      count_errors = count_errors + results
-   endif
-   i = i+1
-enddo
-
-end subroutine count_error_codes
 
 !-------------------------------------------------------------------------------
 !> need to convert the character string for the test vertical coordinate into
@@ -425,15 +373,21 @@ end function  get_location_index
 !> single variable - could be extended to identify the closest location
 !> for every variable in each domain. This could help ensure grid
 !> staggering is being handled correctly.
+!> This differs from model_mod_tools:find_closest_gridpoint in that
+!> this version has to do something with the vertical coordinate system.
+!> Right now it is not perfect because it will indicate that something
+!> at the same horizontal location and pressure = 1000 is at exactly
+!> the same location as something with height = 1000 ... ugh.
 
-subroutine find_closest_gridpoint(loc_of_interest, quantity_string)
+subroutine find_closest_gridpoint(loc_of_interest, vertcoord_string, quantity_string)
 
 real(r8),         intent(in) :: loc_of_interest(:)
+character(len=*), intent(in) :: vertcoord_string
 character(len=*), intent(in) :: quantity_string
 
-character(len=*), parameter :: routine = 'find_closest_gridpoint'
+character(len=*), parameter :: routine = ''   ! name not important in context
 
-type(location_type)   :: loc0, loc1
+type(location_type)   :: location, loc0, loc1
 integer(i8)           :: i
 integer               :: quantity_index, var_type, vert_type
 real(r8)              :: closest, rlon, rlat, rvert
@@ -445,6 +399,9 @@ character(len=metadatalength) :: myquantity
 !>@todo there should be arrays of length state_structure_mod:get_num_variables(domid)
 !>      get_num_domains(), get_num_variables() ...
 
+vert_type = get_location_index(vertcoord_string)
+location  = set_location((/ loc_of_interest, real(vert_type,r8) /))
+
 allocate( thisdist(get_model_size()) )
 thisdist  = FARAWAY
 matched   = .false.
@@ -453,15 +410,16 @@ matched   = .false.
 ! With staggered grids, the closest gridpoint might not be of the quantity
 ! of interest.
 
-quantity_index = get_index_for_quantity(quantity_string)
+quantity_index  = get_index_for_quantity(quantity_string)
 rlon  = loc_of_interest(1)
 rlat  = loc_of_interest(2)
 rvert = loc_of_interest(3)
 
 write(string1,'("Checking for the indices into the state vector that are close to")')
-write(string2,'("lon/lat/vert",3(1x,f14.5))')loc_of_interest(1:LocationDims)
+call write_location(0, location, charstring=string2)
 write(string3,'("for (",A,") variables.")')trim(quantity_string)
 call error_handler(E_MSG,routine,string1,text2=string2,text3=string3)
+call error_handler(E_MSG,routine,'')
 
 ! Since there can be/will be multiple variables with
 ! identical distances, we will just cruise once through
@@ -504,9 +462,9 @@ REPORT: do i = 1,get_model_size()
       call get_state_meta_data(i, loc1, var_type)
       myquantity = get_name_for_quantity(var_type)
 
-      call write_location(0, loc1, charstring=string2)
-      write(string1,'(A,I12,A)')trim(string2)//' is index ',i,' ('//trim(myquantity)//')'
-      call error_handler(E_MSG, routine, string1)
+      call write_location(0, loc1, charstring=string1)
+      write(string2,'(A,I12,A)')' is index ',i,' ('//trim(myquantity)//')'
+      call error_handler(E_MSG, routine, string1,text2=string2)
    endif
 
 enddo REPORT

@@ -20,9 +20,9 @@ use     location_mod, only : location_type, get_dist, set_location, get_location
                              VERTISHEIGHT, is_vertical, get_close_obs,      &
                              loc_get_close_state => get_close_state, get_close_type,  &
                              convert_vertical_obs, convert_vertical_state
-use    utilities_mod, only : register_module, error_handler,                   &
-                             E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
-                             do_output, to_upper,                              &
+use    utilities_mod, only : register_module, error_handler, get_unit,         &
+                             E_ERR, E_WARN, E_MSG, logfileunit, nmlfileunit,   &
+                             do_output, to_upper, do_nml_file, do_nml_term,    &
                              find_namelist_in_file, check_namelist_read,       &
                              file_exist, find_textfile_dims, file_to_text
 use netcdf_utilities_mod, only : nc_add_global_attribute, nc_check, nc_sync, &
@@ -290,8 +290,8 @@ call check_namelist_read(iunit, io, 'model_nml')
 
 ! Record the namelist values used for the run
 call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
-if (do_output()) write(logfileunit, nml=model_nml)
-if (do_output()) write(     *     , nml=model_nml)
+if (do_nml_file()) write(nmlfileunit, nml=model_nml)
+if (do_nml_term()) write(     *     , nml=model_nml)
 
 ! Set the time step ... causes POP namelists to be read.
 ! Ensures model_timestep is multiple of 'ocean_dynamics_timestep'

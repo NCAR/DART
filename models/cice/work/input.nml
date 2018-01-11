@@ -287,12 +287,12 @@
    loc_of_interest      =  90.0,  41.00, 0.35
 
 &model_mod_check_nml
-   input_state_files     = 'cice_restart.nc'
+   input_state_files     = 'cice.r.nc'
    output_state_files    = 'mmc_output.nc'
    test1thru             = 0
    run_tests             = 1,2,3,4,5,7
    x_ind                 = 3210
-   loc_of_interest       = 287.5, 82.48, 1
+   loc_of_interest       = 45.0, 82.48, 1
    quantity_of_interest  = 'QTY_SEAICE_CONCENTR'
    interp_test_lonrange  = 0.0, 359.0
    interp_test_dlon      = 1.0
@@ -300,5 +300,6 @@
    interp_test_dlat      = 1.0
    interp_test_vertrange = 1.0, 2.0
    interp_test_dvert     = 1.0
+   verbose               = .false.
    /
 

@@ -85,6 +85,7 @@
    interp_test_vertrange = 100.0,  100.0
    interp_test_dvert     = 2000.0
    interp_test_vertcoord = 'VERTISUNDEF'
+   verbose               = .false.
   /
 
 

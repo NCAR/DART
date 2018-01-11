@@ -73,7 +73,7 @@ prematurely terminating the namelist.
    output_state_files    = 'null'
    all_metadata_file     = 'metadata.txt'
 
-   test1thru             = 15
+   test1thru             = 7
    run_tests             = -1
 
    x_ind                 = -1
@@ -351,6 +351,7 @@ assimilation_code/modules/utilities/utilities_mod.f90
 assimilation_code/programs/model_mod_check/model_mod_check.f90
 models/<em class=input>your_model_here</em>/model_mod.f90
 models/model_mod_tools/<em class=input>test_interpolate_threed_sphere.f90</em>
+models/model_mod_tools/model_check_utilities_mod.f90
 models/utilities/default_model_mod.f90
 observations/forward_operators/obs_def_mod.f90
 observations/forward_operators/obs_def_utilities_mod.f90
@@ -367,13 +368,20 @@ observations/forward_operators/obs_def_utilities_mod.f90
 <UL><LI><em class="file">input.nml</em> is used for
         <em class="code">model_mod_check_nml</em></LI>
 
-    <LI>The <em class="file">"input_state_files" </em> can either be a
+    <LI>The <em class="code">"input_state_files" </em> can either be a
         single file containing multiple restart files, or a single
-        NetCDF restart file.</LI>
-    <LI>The <em class="file">"output_state_files"</em> is the output netCDF
-        files that exercises the model_mod routines. Check the attributes,
-        values, etc.</LI>
+        NetCDF restart file. One file per domain.</LI>
+
+    <LI>The <em class="code">"output_state_files"</em> is the output netCDF
+        files from Test 2. Check the attributes, values, etc.</LI>
+
+    <LI><em class="file">check_me_interptest.nc </em> and
+        <em class="file">check_me_interptest.m </em> are the result of
+        Test 5.
+        </LI>
+
     <LI><em class=file>"all_metadata_file"</em> is the run-time output of Test 6.</LI>
+
 </UL>
 
 <!--==================================================================-->
@@ -498,7 +506,7 @@ a grid location, you should be able to really get a handle on debugging your
 This tests your model's interpolation routine on a single point and
 returns the interpolated value.
 This requires that Test 2 works - it needs a valid model state with data.
-Test 2 is automtically run if this test is selected.
+Test 2 is automatically run if this test is selected.
 </P>
 
 <H3 class=indent1>Test 5. Test interpolation on a range of values.</H3>
@@ -508,7 +516,7 @@ returns the interpolated grid in <em class=file>check_me_interptest.nc</em>
 and <em class=file>check_me_interptest.m</em> which can be read in Matlab
 and used to visualize the result.
 This requires that Test 2 works - it needs a valid model state with data.
-Test 2 is automtically run if this test is selected.
+Test 2 is automatically run if this test is selected.
 </P>
 
 <H3 class=indent1>Test 6. Exhaustively test the construction of the state vector.</H3>
@@ -522,9 +530,9 @@ and used to visualize the result.
 
 <H3 class=indent1>Test 7. Find the closest gridpoint to a test location.</H3>
 <P>
-This is a good test to verify that <em class=progtram>get_state_meta_data()</em> 
-and the grid information are correct. Typically, one would put in a location that 
-is actually <strong>on</strong> the grid and see if the correct gridpoint index 
+This is a good test to verify that <em class=progtram>get_state_meta_data()</em>
+and the grid information are correct. Typically, one would put in a location that
+is actually <strong>on</strong> the grid and see if the correct gridpoint index
 is returned. Repeat the test with slightly different locations until
 the next gridpoint is closer. Repeat ...
 </P>
