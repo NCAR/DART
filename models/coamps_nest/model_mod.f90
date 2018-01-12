@@ -460,8 +460,15 @@ end subroutine pert_model_copies
     !                         target location
     !   IN  obs_kind          raw variable quantity
     !   OUT obs_val           interpolated value (now ens_size array)
-    !   OUT interp_status     status of interpolations (all 0s is success)
-    !
+    !   OUT interp_status     all 0s if interpolation was successful
+    !                         900 unspecified failure
+    !                         901 where the location is not in domain or on an unsupported level type
+    !                         902 where there are not enough vertical levels
+    !                         903 where the location is too high or too low (extrapolation)
+    !                         904 where unable to interpolate to a single level
+    !                         915 where altimeter is unrealistic
+    !                         999 vortex obs ... untested at this point, skipping
+
     subroutine model_interpolate(state_handle, ens_size, location, obs_kind, expected_obs, interp_status)
         type(ensemble_type),    intent(in)  :: state_handle
         integer,                intent(in)  :: ens_size
@@ -470,7 +477,7 @@ end subroutine pert_model_copies
         real(r8),               intent(out) :: expected_obs(ens_size)
         integer,                intent(out) :: interp_status(ens_size)
 
-        logical :: interp_worked(ens_size)
+!       logical :: interp_worked(ens_size)
         logical :: in_domain
 
         type(coamps_nest)      :: nest
@@ -506,11 +513,13 @@ end subroutine pert_model_copies
         character(len=*), parameter :: routine = 'model_interpolate'
         integer                     :: alloc_status, dealloc_status
 
+        expected_obs(:) = MISSING_R8
+        interp_status(:) = 900
+
         select case (obs_kind)    
         case (QTY_VORTEX_LAT, QTY_VORTEX_LON)
 
           ! this currently HAS NOT BEEN CONVERTED
-          expected_obs(:) = MISSING_R8
           interp_status(:) = 999
           return
          
@@ -670,21 +679,16 @@ end subroutine pert_model_copies
 
         case default 
 
-          expected_obs(:) = MISSING_R8
-          interp_status(:) = 999
-
           ! ORIGINAL:
           !call interpolate(x, domain, state_definition, location, &
           !                 obs_kind, obs_val, interp_worked)
           ! NEW:
           do i = 1, ens_size
              call interpolate(state_handle, ens_size, i, domain, state_definition, location, &
-                              obs_kind, expected_obs(i), interp_worked(i))
+                              obs_kind, expected_obs(i), interp_status(i))
           enddo
 
         end select
-
-        where (interp_worked) interp_status = 0
 
         return
     end subroutine model_interpolate

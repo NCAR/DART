@@ -56,7 +56,7 @@
    async                        = 4
    adv_ens_command              = "./advance_wrapper.csh"
 
-   obs_sequence_in_name         = "obs_seq.processed"
+   obs_sequence_in_name         = "obs_seq.subset"
    obs_sequence_out_name        = "obs_seq.final"
    num_output_obs_members       = 40
    init_time_days               = -1
@@ -147,7 +147,7 @@
    first_obs_seconds = -1
    last_obs_days     = -1
    last_obs_seconds  = -1
-   obs_types         = 'U_RAOB'      , 'V_RAOB', 
+   obs_types         = 'U_RAOB'      , 'V_RAOB', 'Z_RAOB',
                        'U_AIREP'     , 'V_AIREP',
                        'U_AMDAR'     , 'V_AMDAR',
                        'U_MDCRS'     , 'V_MDCRS',
@@ -158,18 +158,19 @@
                        'U_WSAT_WIND' , 'V_WSAT_WIND',
                        'U_ASCAT_WIND', 'V_ASCAT_WIND',
                        'U_TERRA_WIND', 'V_TERRA_WIND',
-                       'T_RAOB', 'T_AMDAR', 'T_MDCRS', 
+                       'T_RAOB', 'T_AMDAR', 'T_MDCRS',
                        'WS_SSMI_FF1' , 'T_TOVS_T',
                        'P_SFC_LAND'  , 'P_SFC_SHIP'
    keep_types        = .true.
    print_only        = .false.
-   min_lat           = -90.0
-   max_lat           =  90.0
-   min_lon           =   0.0
-   max_lon           = 360.0
+   min_lat           = 20.0
+   max_lat           = 60.0
+   min_lon           = 200.0
+   max_lon           = 260.0
    /
 
-# 'Z_RAOB', 'WS_SSMI_FF1'
+# P_SFC_* observations generate forward op errors of 915 (see get_expected_altimeter())
+
 
 &preprocess_nml
     input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
@@ -225,7 +226,7 @@
 #WRF VALUES :    lowest_reflectivity_fwd_op  =  -10.0
 #WRF VALUES :    max_radial_vel_obs          =   1000000
 #WRF VALUES :    allow_wet_graupel           =   .false.
-#WRF VALUES :    microphysics_type           =       2  
+#WRF VALUES :    microphysics_type           =       2
 #WRF VALUES :    allow_dbztowt_conv          =   .false.
 #WRF VALUES :    dielectric_factor           =  0.224
 #WRF VALUES :    n0_rain                     =  8.0e6
@@ -360,7 +361,7 @@
    innov_file_name = 'innov.out'
    ngt_file_name   = 'ngt.out'
    obs_seq_in_name = 'obs_seq.out'
-   obs_window      = 60
+   obs_window      = 21600
    verbose         = .true.
   /
 
@@ -399,7 +400,7 @@
 
 #  QTY_POTENTIAL_TEMPERATURE at 210  210   60 domain  2
    loc_of_interest       = 244.40650940, 52.73881912, 10.0
-   x_ind                 = 12666742 
+   x_ind                 = 12666742
 
 #  QTY_POTENTIAL_TEMPERATURE at 212  216   60 domain  2
    loc_of_interest       = 245.03234863, 53.52990341, 10.
@@ -410,7 +411,7 @@
 
 # These are just notes to help use model_mod_check
 # The mass points are defined (in Fortran) as nx-ny-nz, with nx (longitude)
-# varying fastest.  
+# varying fastest.
 # x= 1, y= 1 is the southwest
 # x=nx, y=ny is the northeast
 # z=1 is the top of atmosphere
@@ -420,4 +421,14 @@
 # 12668028 i,j,k  212  216   60 domain  2  QTY_POTENTIAL_TEMPERATURE Lon/Lat(deg): 245.03234863  53.52990341  10.
 
    12666739 i,j,k  207  210   60 domain  2   23         QTY_POTENTIAL_TEMPERATURE Lon/Lat(deg): 243.72386169  52.78578186  Vert:   10.        level
+
+
+&obs_keep_a_few_nml
+   filename_in     = 'obs_seq.processed'
+   filename_out    = 'obs_seq.subset'
+   keep_N_of_each  = 20
+   max_all_obs_out = -1
+   print_only      = .false.
+   calendar        = 'Gregorian'
+   /
 

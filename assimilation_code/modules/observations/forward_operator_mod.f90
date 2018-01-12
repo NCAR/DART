@@ -59,15 +59,15 @@ public :: get_obs_ens_distrib_state, get_expected_obs_distrib_state
 
 !------------------------------------------------------------------------------
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 !------------------------------------------------------------------------------
 
 
 ! Module storage for writing error messages
-character(len = 255) :: msgstring
+character(len=512) :: msgstring
 
 contains
 
@@ -132,6 +132,9 @@ num_copies_to_calc = copies_in_window(ens_handle)
 allocate(istatus(num_copies_to_calc))
 allocate(expected_obs(num_copies_to_calc))
 allocate(my_copy_indices(num_copies_to_calc))
+
+istatus = 999123
+expected_obs = MISSING_R8
 
 ! FIXME: these no longer do anything?
 ! call prepare_to_write_to_vars(obs_fwd_op_ens_handle)
@@ -213,6 +216,8 @@ if(get_allow_transpose(ens_handle)) then ! giant if for transpose or distribtued
             obs_fwd_op_ens_handle%vars(j, 1:num_copies_to_calc) = expected_obs
       else ! need to know whether it was assimilate or evaluate this ob.
 
+         ! TJH istatus is not set in here, yet it is in the other half of the if statement.
+         ! TJH Consequently, initializing it after it gets allocated.
          call assim_or_eval(seq, thiskey(1), ens_handle%num_vars, assimilate_this_ob, evaluate_this_ob)
 
       endif
@@ -233,6 +238,7 @@ if(get_allow_transpose(ens_handle)) then ! giant if for transpose or distribtued
          endif
       enddo
 
+      ! TJH if qc_ens_handle%my_num_copies <= 0) istatus was not defined
       qc_ens_handle%vars(j, 1:num_copies_to_calc) = istatus(:)
 
       call check_forward_operator_istatus(num_copies_to_calc, assimilate_this_ob, &

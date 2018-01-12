@@ -1891,7 +1891,7 @@ integer,             intent(in)    :: prior_post
 integer,             intent(in)    :: ens_size
 integer,             intent(in)    :: keys(:) ! I think this is still var size
 
-character*12 :: task
+character(len=12) :: task
 integer :: j, i
 integer :: forward_unit
 

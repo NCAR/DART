@@ -1095,7 +1095,7 @@ select case  (which_vert)
    case ("SCALE_HEIGHT")
       is_vertical = (VERTISSCALEHEIGHT == location%which_vert)
    case default
-      write(msgstring, *) 'unrecognized key for vertical type: ', which_vert, location%which_vert
+      write(msgstring, *) 'unrecognized key for vertical type: "', trim(which_vert)//'"', location%which_vert
       call error_handler(E_ERR, 'is_vertical', msgstring, source, revision, revdate)
 end select
 

@@ -141,7 +141,7 @@ module obs_def_navdas_mod
 
   use        types_mod, only : r8, missing_r8, t_kelvin, gas_constant,ps0
 
-  use    utilities_mod, only : register_module
+  use    utilities_mod, only : register_module, do_output
 
   use     location_mod, only : location_type, is_vertical,&
                                query_location 
@@ -309,12 +309,18 @@ contains
 
     do imem = 1, ens_size
        altimeter(imem) = compute_altimeter(sfc_pres(imem), sfc_elev(imem))
+     ! if (altimeter(imem) <  MIN_REALISTIC_ALTIMETER .or.  &
+     !     altimeter(imem) >= MAX_REALISTIC_ALTIMETER) then
+     !    ! TJH the surface pressures here were outrageous ... 3.128330297201787E+134
+     !    if (do_output()) write(*,*)'TJH ens_mem,sfc_pres,sfc_elev,altimeter ',&
+     !                           imem,sfc_pres(imem),sfc_elev(imem),altimeter(imem)
+     ! endif
     enddo
 
     where (altimeter <  MIN_REALISTIC_ALTIMETER .or. &
            altimeter >= MAX_REALISTIC_ALTIMETER)
        altimeter = missing_r8
-       istatus = 15
+       istatus = 915
     endwhere
 
   end subroutine get_expected_altimeter

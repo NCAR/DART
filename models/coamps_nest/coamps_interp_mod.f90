@@ -277,7 +277,11 @@ contains
     !   IN  obs_loc           DART location structure to interpolate to
     !   IN  obs_kind          integer version of raw variable type
     !   OUT obs_value         result of interpolation
-    !   OUT interp_worked     true if interpolation was successful
+    !   OUT interp_worked       0 if interpolation was successful
+    !                         901 if the location is not in domain or on an unsupported level type
+    !                         902 if there are not enough vertical levels
+    !                         903 if the location is too high or too low (extrapolation)
+    !                         904 unable to interpolate to a single level
     subroutine interpolate(state_handle, ens_size, ens_num, domain, state_def, obs_loc, obs_kind, &
                            obs_value, interp_worked)
         type(ensemble_type),         intent(in)  :: state_handle
@@ -288,7 +292,7 @@ contains
         type(location_type),         intent(in)  :: obs_loc
         integer,                     intent(in)  :: obs_kind
         real(kind=r8),               intent(out) :: obs_value
-        logical, optional,           intent(out) :: interp_worked
+        integer,                     intent(out) :: interp_worked
 
         type(coamps_interpolator) :: interpolator
         logical :: is_success
@@ -299,8 +303,11 @@ contains
 
         call set_interpolation_location(interpolator, obs_loc)
 
+        obs_value = MISSING_R8   ! failure until proven otherwise
+        interp_worked = 800
+
         if (.not. has_valid_location(interpolator)) then
-            interp_worked = .false.
+            interp_worked = 901
             call finalize_interpolator(interpolator)
             return
         end if
@@ -345,9 +352,6 @@ contains
 
           if( .not. is_success) then
 
-!            call write_location(0,obs_loc,charstring=message)
-!            print*,'TJH obs_kind is ',obs_kind,' ',trim(message)
-
              call get_target_var(interpolator, obs_kind)
              call get_coordinate_vars(interpolator)
 
@@ -355,7 +359,7 @@ contains
              ! so declare failure rather than returning a (probably bad) result
              call calculate_available_levels(interpolator)
              if (.not. enough_levels_available(interpolator)) then
-               interp_worked = .false.
+               interp_worked = 902
                call finalize_interpolator(interpolator)
                return
              end if
@@ -366,7 +370,7 @@ contains
              ! Avoid extrapolation and only interpolate values at vertical levels
              ! bounded by the available levels
              if (.not. interp_level_in_available_range(interpolator)) then
-               interp_worked = .false.
+               interp_worked = 903
                call finalize_interpolator(interpolator)
                return
              end if
@@ -374,7 +378,7 @@ contains
              ! Interpolate everything to a single level...
              call interpolate_to_level(interpolator)
              if (.not. no_missing_values(interpolator)) then
-               interp_worked = .false.
+               interp_worked = 904
                call finalize_interpolator(interpolator)
                return
              end if
@@ -385,7 +389,7 @@ contains
         ! ... then interpolate neighbors to an array of single points
         obs_value = interpolate_to_point(interpolator)
 
-        interp_worked = .true.
+        interp_worked = 0 ! finally - success ...
 
         if(output_interpolation) &
         call print_interpolation_diagnostics(interpolator, obs_kind, obs_value)
@@ -1202,7 +1206,7 @@ contains
         integer,                         intent(in)    :: pert_availability_index
         real(kind=r8), dimension(:,:),   intent(out)   :: pressure
 
-
+        character(len=*), parameter :: routine = 'convert_exner_to_pressure'
         integer, save :: ncalls = 0
 
         ! Atmospheric constants - specific heat, gas constant (dry air),
@@ -1212,9 +1216,10 @@ contains
         real(kind=r8), parameter :: P00 = real(1000.0, kind=r8)
 
         ncalls = ncalls + 1
-        print*, 'TJH ',ncalls, size(mean_exner_values), &
-                             minval(mean_exner_values), &
-                             minval(pert_exner_values)
+!TJH    write(message,*) ncalls, shape(mean_exner_values), &
+!TJH                             minval(mean_exner_values), &
+!TJH                             minval(pert_exner_values)
+!TJH    call error_handler(E_MSG, routine, message)
 
         pressure = ((mean_exner_values + pert_exner_values) ** (Cp/R)) * P00
 
