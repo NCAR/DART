@@ -22,6 +22,10 @@ DART modifications:
    Added   ../../../obs_def/obs_def_radiance_mod.f90 which has radiance observation types
 
 
+For the Intel compiler you may need to add the compile flag "-nostdinc"
+to avoid inserting the standard C include files which have incompatible
+comment characters for fortran.  Do this in the work/mkmf_gsi_to_dart file
+by adding it to the "-c" string contents.
 
 
 ISSUES:
