@@ -228,7 +228,7 @@ and a state vector type for the requested item in the state vector.
 <em class=call>call model_interpolate(state_handle, ens_size, location, obs_quantity, expected_obs, istatus)</em>
 <pre>
 type(ensemble_type),    intent(in)  :: <em class=code>state_handle</em>
-inteter,                intent(in)  :: <em class=code>ens_size</em>
+integer,                intent(in)  :: <em class=code>ens_size</em>
 type(location_type),    intent(in)  :: <em class=code>location</em>
 integer,                intent(in)  :: <em class=code>obs_quantity</em>
 real(r8),               intent(out) :: <em class=code>expected_obs(ens_size)</em>
