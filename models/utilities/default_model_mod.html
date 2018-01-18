@@ -37,12 +37,16 @@
 <H2>Overview</H2>
 
 <P>
-Every model that is DART compliant must provide an interface as documented
-here. The file <em class=file>models/utilities/model_mod.f90</em> 
-provides the fortran interfaces for a minimal implementation meeting
-these requirements. 
-The supplied interface must match these descriptions exactly; 
-no details of the underlying model can impact the interface.
+Every model that is DART compliant must provide an set of interfaces
+that will be called by DART code.  For models which have no special
+code for some of these routines, they can pass through the call to this
+default module, which satisfies the call but does no work.
+To use these routines in a <em class=file>model_mod.f90</em>,
+add at the top:<br>
+<pre>
+use default_model_mod, only : xxx, yyy
+</pre>
+and then leave them in the public list.
 </P>
 
 <!--=====================================================================-->
@@ -65,9 +69,11 @@ The default routines have no namelist.
 <PRE>
 types_mod
 time_manager_mod
-location_mod (multiple choices here)
+location_mod
 utilities_mod
-POSSIBLY MANY OTHERS DEPENDING ON MODEL DETAILS
+netcdf_utilities_mod
+ensemble_manager_mod
+dart_time_io_mod
 </PRE>
 
 <!--==================================================================-->
@@ -126,8 +132,9 @@ integer(i8) :: <em class=code>get_model_size</em>
 <!-- Description -->
 
 <P>
-Returns the length of the model state vector.
-Required.
+Returns the length of the model state vector as 1.
+Probably not what you want.  The model_mod should
+set this to the right size and not use this routine.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -156,21 +163,9 @@ type(time_type),        intent(in)    :: <em class=code>time</em>
 <!-- Description -->
 
 <P>
-Does a single timestep advance of the model. The input value of
-the vector x is the starting condition and x must be updated to reflect
-the changed state after a timestep. The time argument is intent
-in and is used for models that need to know the date/time to
-compute a timestep, for instance for radiation computations.
-This interface is only called if the namelist parameter
-async is set to 0 in <em class=program>perfect_model_obs</em> or 
-<em class=program>filter</em> or if the program 
-<em class=program>integrate_model</em> is to be used to 
-advance the model state as a separate executable.
-If one of these options is not going to be used 
-(the model will <em>only</em> be advanced as a separate 
-model-specific executable), this can be a NULL INTERFACE.  
-(The subroutine name must still exist, but it can contain no 
-code and it will not be called.)
+Throws a fatal error.  If the model_mod can advance the model it
+should provide a real routine.  This default routine is intended
+for use by models which cannot advance themselves from inside filter.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -178,8 +173,8 @@ code and it will not be called.)
 <TR><TD valign=top><em class=code>x</em></TD>
     <TD>State vector of length model_size.</TD></TR>
 
-<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Specifies time of the initial model state.</TD></TR>
+<TR><TD valign=top><em class=code>time</em></TD>
+    <TD>Current time of model state.</TD></TR>
 
 </TABLE>
 
@@ -204,11 +199,9 @@ integer, optional,   intent(out) :: <em class=optionalcode> var_type </em>
 <!-- Description -->
 
 <P>
-Given an integer index into the state vector, returns the
-associated location. An optional argument 
-returns the generic quantity of this item, e.g. QTY_TEMPERATURE,
-QTY_DENSITY, QTY_SALINITY, QTY_U_WIND_COMPONENT. 
-This interface is required to be functional for all applications.
+Sets the location to missing and the variable type to 0.
+The model_mod should provide a routine that sets a real location
+and a state vector type for the requested item in the state vector.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -232,14 +225,14 @@ This interface is required to be functional for all applications.
 <A NAME="model_interpolate"></A>
 <br>
 <div class=routine>
-<em class=call>call model_interpolate(state_handle, x, location, itype, obs_val, istatus)</em>
+<em class=call>call model_interpolate(state_handle, ens_size, location, obs_quantity, expected_obs, istatus)</em>
 <pre>
 type(ensemble_type),    intent(in)  :: <em class=code>state_handle</em>
-real(r8), dimension(:), intent(in)  :: <em class=code>x</em>
+inteter,                intent(in)  :: <em class=code>ens_size</em>
 type(location_type),    intent(in)  :: <em class=code>location</em>
-integer,                intent(in)  :: <em class=code>itype</em>
-real(r8),               intent(out) :: <em class=code>obs_val</em>
-integer,                intent(out) :: <em class=code>istatus</em>
+integer,                intent(in)  :: <em class=code>obs_quantity</em>
+real(r8),               intent(out) :: <em class=code>expected_obs(ens_size)</em>
+integer,                intent(out) :: <em class=code>istatus(ens_size)</em>
 </pre>
 </div>
 
@@ -247,44 +240,31 @@ integer,                intent(out) :: <em class=code>istatus</em>
 <!-- Description -->
 
 <P>
-Given a handle containing information for a state vector, a state vector, 
-a location, and a model state variable kind
-interpolates the state variable field to that location and returns 
-the value in <em class=code>obs_val</em>. The <em class=code>istatus</em> 
-variable should be returned as 0 unless there is some problem in 
-computing the interpolation in which case a positive value should be 
-returned. The <em class=code>itype</em> variable
-is one of the quantity (QTY) parameters defined in the
-<a href="../../assimilation_code/modules/observations/obs_kind_mod.html">obs_kind_mod.f90</a> file
-and maps the quantity to a model variable for the interpolation.
-In low-order models that have no notion of kinds of variables this argument may
-be ignored. For applications in which only perfect model experiments
-with identity observations (i.e. only the value of a particular
-state variable is observed), this can be a NULL INTERFACE.
-Otherwise it is required (which is the most common case).
+Sets the expected obs to missing and returns an error code
+for all obs.  This routine should be supplied by the model_mod.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>state_handle&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>state_handle</em></TD>
     <TD>The handle to the state structure containing information about 
         the state vector about which information is requested.</TD></TR>
 
-<TR><TD valign=top><em class=code>x</em></TD>
-    <TD>A model state vector.</TD></TR>
+<TR><TD valign=top><em class=code>ens_size</em></TD>
+    <TD>The ensemble size.</TD></TR>
 
-<TR><TD valign=top><em class=code>location&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>location</em></TD>
     <TD>Location to which to interpolate.</TD></TR>
 
-<TR><TD valign=top><em class=code>itype</em></TD>
+<TR><TD valign=top><em class=code>obs_quantity</em></TD>
     <TD>Quantity of state field to be interpolated.</TD></TR>
 
-<TR><TD valign=top><em class=code>obs_val</em></TD>
-    <TD>The interpolated value from the model.</TD></TR>
+<TR><TD valign=top><em class=code>expected_obs</em></TD>
+    <TD>The interpolated values from the model.</TD></TR>
 
 <TR><TD valign=top><em class=code>istatus</em></TD>
-    <TD>Integer value returning 0 for success.
-        Other values can be defined for various failures.</TD></TR>
+    <TD>Integer values return 0 for success.
+        Other positive values can be defined for various failures.</TD></TR>
 
 </TABLE>
 
@@ -306,17 +286,13 @@ type(time_type) :: <em class=code>shortest_time_between_assimilations</em>
 <!-- Description -->
 
 <P>
-Returns the time step (forecast length) of the model;
-the smallest increment in time that the model is capable of 
-advancing the state in a given implementation.
-The actual value may be set by the model_mod namelist (depends on the model).
-This interface is required for all applications. 
+Returns 1 day.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>var&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Smallest time step of model.</TD></TR>
+<TR><TD valign=top><em class=code>var</em></TD>
+    <TD>Smallest advance time of the model.</TD></TR>
 
 </TABLE>
 
@@ -335,11 +311,7 @@ This interface is required for all applications.
 <!-- Description -->
 
 <P>
-Called to do one time initialization of the model. As examples,
-might define information about the model size or model timestep.
-In models that require pre-computed static data, for instance
-spherical harmonic weights, these would also be computed here.
-Can be a NULL INTERFACE for the simplest models. 
+Does nothing.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -363,17 +335,12 @@ type(time_type), intent(out) :: <em class=code>time</em>
 <!-- Description -->
 
 <P>
-Companion interface to init_conditions. Returns a time that is somehow
-appropriate for starting up a long integration of the model.
-At present, this is only used if the <em class=program>perfect_model_obs</em> 
-namelist parameter <em class=code>read_input_state_from_file&nbsp;=&nbsp;.false.</em>
-If this option should not be used in <em class=program>perfect_model_obs</em>, 
-calling this routine should issue a fatal error.
+Returns a time of 0.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>time</em></TD>
     <TD>Initial model time.</TD></TR>
 
 </TABLE>
@@ -396,17 +363,12 @@ real(r8), dimension(:), intent(out) :: <em class=code>x</em>
 <!-- Description -->
 
 <P>
-Returns a model state vector, x, that is some sort of appropriate
-initial condition for starting up a long integration of the model.
-At present, this is only used if the <em class=program>perfect_model_obs</em> 
-namelist parameter <em class=code>read_input_state_from_file&nbsp;=&nbsp;.false.</em>
-If this option should not be used in <em class=program>perfect_model_obs</em>, 
-calling this routine should issue a fatal error.
+Returns x(:) = 0.0
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>x&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>x</em></TD>
     <TD>Initial conditions for state vector.</TD></TR>
 
 </TABLE>
@@ -430,25 +392,8 @@ integer, intent(in) :: <em class=code>domain_id</em>
 <!-- Description -->
 
 <P>
-This routine writes the model-specific attributes to netCDF files
-that DART creates.  This includes coordinate variables and any 
-metadata, but NOT the actual model state vector.
-<em class=code>models/template/model_mod.f90</em> contains code that 
-can be used for any model as-is.
-<br><br>
-The typical sequence for adding new dimensions, variables, attributes:  
+Does nothing.
 </P>
-
-<pre>
-NF90_OPEN             ! open existing netCDF dataset               
-   NF90_redef         ! put into define mode                       
-   NF90_def_dim       ! define additional dimensions (if any)     
-   NF90_def_var       ! define variables: from name, kind, and dims
-   NF90_put_att       ! assign attribute values                    
-NF90_ENDDEF           ! end definitions: leave define mode         
-   NF90_put_var       ! provide values for variable                
-NF90_CLOSE            ! close: save updated netCDF dataset        
-</pre>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
@@ -488,23 +433,8 @@ integer, optional,   intent(in) :: <em class=optionalcode>timeindex</em>
 <!-- Description -->
 
 <P>
-This routine may be used to write the model-specific state vector (data) to a 
-netCDF file. Only used if 
-<em class=code>model_mod_writes_state_variables&nbsp;=&nbsp;.true.</em>
-<br><br>
-Typical sequence for adding new dimensions,variables,attributes:   
+Does nothing
 </P>
-
-<pre>
-NF90_OPEN             ! open existing netCDF dataset               
-   NF90_redef         ! put into define mode                       
-   NF90_def_dim       ! define additional dimensions (if any)      
-   NF90_def_var       ! define variables: from name, kind, and dims
-   NF90_put_att       ! assign attribute values                    
-NF90_ENDDEF           ! end definitions: leave define mode         
-   NF90_put_var       ! provide values for variable                
-NF90_CLOSE            ! close: save updated netCDF dataset         
-</pre>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
@@ -548,13 +478,9 @@ logical,             intent(out)   :: <em class=code>interf_provided</em>
 <!-- Description -->
 
 <P>
-Given an ensemble handle, the ensemble size, and a perturbation amplitude; 
-perturb the ensemble. Used to generate initial conditions for spinning up 
-ensembles. If the <em class=code>model_mod</em> does not want to do this, 
-instead allowing the default algorithms in <em class=program>filter</em> 
-to take effect, <em class=code>interf_provided&nbsp=&nbps;.false.</em> 
-and the routine can be trivial.  Otherwise, <em class=code>interf_provided</em> 
-must be returned as <em class=code>.true.</em>
+Returns 'interface provided' flag as false, so the default
+perturb routine in DART will add small amounts of gaussian noise
+to all parts of the state vector.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -570,7 +496,7 @@ must be returned as <em class=code>.true.</em>
         on the model-specific implementation.
     </TD></TR>
 
-<TR><TD valign=top><em class=code>interf_provided&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>interf_provided</em></TD>
     <TD>Returns false if model_mod cannot do this, else true.</TD></TR>
 
 </TABLE>
@@ -605,56 +531,7 @@ type(ensemble_type), optional, intent(in)  :: <em class=optionalcode>state_handl
 <!-- Description -->
 
 <P>
-Given a location and kind, compute the distances to all other locations 
-in the <em class=code>obs</em> list.  The return values are the number
-of items which are within maxdist of the base, the index numbers in the 
-original obs list, and optionally the distances.  The <em class=code>gc</em>
-contains precomputed information to speed the computations.
-<br><br>
-In general this is a PASS-THROUGH ROUTINE.  It is listed on
-the use line for the locations_mod, and in the public list
-for this module, but has no subroutine declaration and
-no other code in this module:
-</P>
-<pre>
-use location_mod, only: get_close_obs
-
-public :: get_close_obs
-</pre>  
-<P>
-However, if the model needs to alter the values or wants
-to supply an alternative implementation it can 
-intercept the call like so:
-</P>
-<pre>
-use location_mod, only: &amp;
-        lm_get_close_obs =&#62; get_close_obs
-        
-public :: get_close_obs
-</pre>
-<P>
-In this case a local <em class=code>get_close_obs()</em>
-routine must be supplied.  To call the original code in the location
-module use:
-</P>
-<pre>
-call lm_get_close_obs(gc, base_loc, ...)
-</pre>
-<P>
-This subroutine will be called after <em class=code>get_close_maxdist_init</em> 
-and <em class=code>get_close_obs_init</em>.
-<br><br>
-In most cases the PASS-THROUGH ROUTINE will be used, but some models need
-to alter the actual distances depending on the observation or state vector kind,
-or based on the observation or state vector location.
-It is reasonable in this case to leave 
-<em class=code>get_close_maxdist_init()</em>
-and <em class=code>get_close_obs_init()</em> as pass-through routines and 
-intercept only <em class=code>get_close_obs()</em>.  The local
-<em class=code>get_close_obs()</em> can first call the location mod routine
-and let it return a list of values, and then inspect the list and alter
-or remove any entries as needed.  See the CAM and WRF model_mod files
-for examples of this use.
+Passes the call through to the location module code.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -667,7 +544,7 @@ for examples of this use.
     <TD>Reference location.  The distances will be computed
         between this location and every other location in the obs list</TD></TR>
 
-<TR><TD valign=top><em class=code>base_type&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>base_type</em></TD>
     <TD>The DART quantity at the <em class=code>base_loc</em></TD></TR>
 
 <TR><TD valign=top><em class=code>locs(:)</em></TD>
@@ -697,7 +574,7 @@ for examples of this use.
         than maxdist will be added to the list but the overhead
         of computing the exact distances will be skipped.</TD></TR>
 
-<TR><TD valign=top><em class=code>state_handle&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>state_handle</em></TD>
     <TD>The handle to the state structure containing information about 
         the state vector about which information is requested.</TD></TR>
 
@@ -731,56 +608,7 @@ type(ensemble_type),  intent(in)    :: <em class=code>state_handle</em>
 <!-- Description -->
 
 <P>
-Given a location and kind, compute the distances to all other locations 
-in the <em class=code>state_loc</em> list.  The return values are the number
-of items which are within maxdist of the base, the index numbers in the 
-original state_loc list, and optionally the distances.  The <em class=code>gc</em>
-contains precomputed information to speed the computations.
-<br><br>
-In general this is a PASS-THROUGH ROUTINE.  It is listed on
-the use line for the locations_mod, and in the public list
-for this module, but has no subroutine declaration and
-no other code in this module:
-</P>
-<pre>
-use location_mod, only: get_close_state
-
-public :: get_close_state
-</pre>  
-<P>
-However, if the model needs to alter the values or wants
-to supply an alternative implementation it can 
-intercept the call like so:
-</P>
-<pre>
-use location_mod, only: &amp;
-        lm_get_close_state =&#62; get_close_state
-        
-public :: get_close_state
-</pre>
-<P>
-In this case a local <em class=code>get_close_state()</em>
-routine must be supplied.  To call the original code in the location
-module use:
-</P>
-<pre>
-call loc_get_close_state(gc, base_loc, ...)
-</pre>
-<P>
-This subroutine will be called after <em class=code>get_close_maxdist_init</em> 
-and <em class=code>get_close_state_init</em>.
-<br><br>
-In most cases the PASS-THROUGH ROUTINE will be used, but some models need
-to alter the actual distances depending on the observation or state vector kind,
-or based on the observation or state vector location.
-It is reasonable in this case to leave 
-<em class=code>get_close_maxdist_init()</em>
-and <em class=code>get_close_state_init()</em> as pass-through routines and 
-intercept only <em class=code>get_close_state()</em>.  The local
-<em class=code>get_close_state()</em> can first call the location mod routine
-and let it return a list of values, and then inspect the list and alter
-or remove any entries as needed.  See the CAM and WRF model_mod files
-for examples of this use.
+Passes the call through to the location module code.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -793,7 +621,7 @@ for examples of this use.
     <TD>Reference location.  The distances will be computed
         between this location and every other location in the obs list</TD></TR>
 
-<TR><TD valign=top><em class=code>base_type&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>base_type</em></TD>
     <TD>The DART quantity at the  <em class=code>base_loc</em></TD></TR>
 
 <TR><TD valign=top><em class=code>state_loc(:)</em></TD>
@@ -823,7 +651,7 @@ for examples of this use.
         than maxdist will be added to the list but the overhead
         of computing the exact distances will be skipped.</TD></TR>
 
-<TR><TD valign=top><em class=code>state_handle&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>state_handle</em></TD>
     <TD>The handle to the state structure containing information about 
         the state vector about which information is requested.</TD></TR>
 
@@ -852,19 +680,12 @@ integer,             intent(out) :: <em class=code>status(:)</em>
 <div class=indent1><!-- Description -->
 
 <P>
-Converts the observations to the desired vertical localization coordinate system.
-Some models (toy models with no 'real' observations) will not need this. 
-Most (real) models have observations in one or more coordinate systems 
-(pressure, height) and the model is generally represented in only one 
-coordinate system. To be able to interpolate the model state to the 
-observation location, or to compute the true distance between the state 
-and the observation, it is necessary to convert everything to one 
-coodinate system.
+Passes the call through to the location module code.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>state_handle&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>state_handle</em></TD>
     <TD>The handle to the state.</TD></TR>
 
 <TR><TD valign=top><em class=code>num</em></TD>
@@ -885,9 +706,9 @@ coodinate system.
         integers to vertical coordinate systems.</TD></TR>
 
 <TR><TD valign=top><em class=code>status</em></TD>
-    <TD>Specifies the success or failure of the vertical conversion.
+    <TD>Success or failure of the vertical conversion.
         If <em class=code>istatus&nbsp;=&nbsp;0</em>, the conversion was
-        a sucess. Any other value is a failure.
+        a success. Any other value is a failure.
     </TD></TR>
 
 </TABLE>
@@ -916,19 +737,12 @@ integer,             intent(out) :: <em class=code>status(:)</em>
 <div class=indent1><!-- Description -->
 
 <P>
-Converts the state to the desired vertical localization coordinate system.
-Some models (toy models with no 'real' observations) will not need this. 
-Most (real) models have observations in one or more coordinate systems 
-(pressure, height) and the model is generally represented in only one 
-coordinate system. To be able to interpolate the model state to the 
-observation location, or to compute the true distance between the state 
-and the observation, it is necessary to convert everything to one 
-coodinate system.
+Passes the call through to the location module code.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>state_handle&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>state_handle</em></TD>
     <TD>The handle to the state.</TD></TR>
 
 <TR><TD valign=top><em class=code>num</em></TD>
@@ -949,9 +763,9 @@ coodinate system.
         integers to vertical coordinate systems.</TD></TR>
 
 <TR><TD valign=top><em class=code>status</em></TD>
-    <TD>Specifies the success or failure of the vertical conversion.
+    <TD>Success or failure of the vertical conversion.
         If <em class=code>istatus&nbsp;=&nbsp;0</em>, the conversion was
-        a sucess. Any other value is a failure.
+        a success. Any other value is a failure.
     </TD></TR>
 
 </TABLE>
@@ -974,14 +788,7 @@ type(time_type)              :: <em class=code>model_time</em>
 <div class=indent1><!-- Description -->
 
 <P>
-Reads the valid time of the model state in a netCDF file. 
-There is a default routine in 
-<em class=file>assimilation_code/modules/io/dart_time_io_mod.f90</em>
-that can be used as a pass-through. That routine will read the <strong>last</strong>
-timestep of a 'time' variable - which is the same strategy used for reading
-netCDF files that have multiple timesteps in them.
-If your model has some other representation of time (i.e. it does not
-use a netCDF variable named 'time') - you will have to write this routine.
+Passes the call through to the dart_time_io module code.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -989,8 +796,8 @@ use a netCDF variable named 'time') - you will have to write this routine.
 <TR><TD valign=top><em class=code>ncid</em></TD>
     <TD>handle to an open netCDF file</TD></TR>
 
-<TR><TD valign=top><em class=code>dart_time&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Specifies the (last) time of the model state.</TD></TR>
+<TR><TD valign=top><em class=code>dart_time</em></TD>
+    <TD>The current time of the model state.</TD></TR>
 
 </TABLE>
 
@@ -1012,12 +819,7 @@ type(time_type),  intent(in) :: <em class=code>dart_time</em>
 <div class=indent1><!-- Description -->
 
 <P>
-Writes the assimilation time to a netCDF file. 
-There is a default routine in 
-<em class=file>assimilation_code/modules/io/dart_time_io_mod.f90</em>
-that can be used as a pass-through.
-If your model has some other representation of time (i.e. it does not
-use a netCDF variable named 'time') - you will have to write this routine.
+Passes the call through to the dart_time_io module code.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -1025,8 +827,8 @@ use a netCDF variable named 'time') - you will have to write this routine.
 <TR><TD valign=top><em class=code>ncid</em></TD>
     <TD>handle to an open netCDF file</TD></TR>
 
-<TR><TD valign=top><em class=code>dart_time&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Specifies the time of the assimilation (the current time step).</TD></TR>
+<TR><TD valign=top><em class=code>dart_time</em></TD>
+    <TD>The current time of the model state.</TD></TR>
 
 </TABLE>
 
@@ -1046,8 +848,7 @@ use a netCDF variable named 'time') - you will have to write this routine.
 <!-- Description -->
 
 <P>
-Does any shutdown and clean-up needed for model.
-Can be a NULL INTERFACE if the model has no need to clean up storage, etc. 
+Does nothing.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -1062,9 +863,10 @@ Can be a NULL INTERFACE if the model has no need to clean up storage, etc.
 
 <A NAME="FilesUsed"></A>
 <H2>FILES</H2>
-<UL>
-   <LI>Models are free to read and write files as they see fit.
-</UL>
+
+<P>
+none
+</P>
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
@@ -1085,9 +887,9 @@ Can be a NULL INTERFACE if the model has no need to clean up storage, etc.
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 
-<UL><LI>Models are free to issue calls to the error handler as they see fit. 
-        No standard error handler calls are mandated.</LI>
-</UL>
+<P>
+Standard errors.
+</P>
 
 <H2>KNOWN BUGS</H2>
 <P>
@@ -1102,13 +904,7 @@ none at this time
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
-It is likely that a number of additional optional interfaces will be
-added to the model_mod structure. For instance, hints about how to 
-divide the state vector into regions for parallel assimilation will
-need to be obtained from the model. It is planned that the interf_provided
-mechanism used in pert_model_copies will allow those who do not wish
-to support enhanced interfaces to add NULL interfaces by simply 
-pasting in an interface block.
+none at this time.
 </P>
 
 <!--==================================================================-->
@@ -1142,7 +938,7 @@ http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 <TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
 <TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
 <TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+<TR><TD valign=top>Change history: </TD><TD> try "svn log" or "svn diff" </TD></TR>
 </TABLE>
 
 <!--==================================================================-->
