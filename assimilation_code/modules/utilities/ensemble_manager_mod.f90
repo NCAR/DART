@@ -196,7 +196,7 @@ endif
 
 ! Optional transpose type:
 ! 1 not transposable - always copy complete
-! 2 tranposable - has a vars array
+! 2 transposable - has a vars array
 ! 3 duplicatable - really only 1 copy, but this gets duplicated as vars array on every task during a transpose
 if (.not. present(transpose_type_in)) then
    transpose_type = 1
