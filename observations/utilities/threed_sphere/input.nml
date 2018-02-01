@@ -149,3 +149,12 @@
    max_lon = 360.0
    /
 
+&obs_loop_nml
+   filename_in  = 'obs_seq.out'
+   filename_out = 'obs_seq.loop' 
+   print_only   = .false.
+   calendar     = 'Gregorian'
+   /
+
+
+
