@@ -1,0 +1,485 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>module quality_control_mod</TITLE>
+<link rel="stylesheet" type="text/css" href="../../../documentation/html/doc.css" />
+<link href="../../../documentation/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>MODULE quality_control_mod</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../../documentation/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../../documentation/index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Usage Notes">USAGE</A> /
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Discussion">DISCUSSION</A> /
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+Routines in this module deal with two different types
+of quality control (QC) related functions.  The first is
+to support interpretation of the <em>incoming</em> data
+quality, to reject observations at assimilation time
+which are marked as poor quality.  The second is to
+document how DART disposed of each observation; whether
+it was successfully assimilated or rejected, and if
+rejected, for which reason.  
+</P>
+
+<!--=====================================================================-->
+<!--===================== USAGE NOTES ===================================-->
+<!--=====================================================================-->
+
+<A NAME="Usage Notes"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Usage</H2>
+
+<H4>Incoming Data Quality Control</H4>
+<P>
+DART currently supports a single incoming quality control
+scheme compatible with NCEP usage.  Lower values are considered
+better and higher values are considered poorer.
+A single namelist item, <em class=code>input_qc_threshold</em>
+sets the boundary between accepted and rejected observations.
+Values <em>larger</em> than this value are rejected; values
+equal to or lower are accepted.  Note that observations could
+be subsequently rejected for other reasons, including failing
+the outlier threshold test or all observations of this type
+being excluded by namelist control.  See the
+<a href="../observations/obs_kind_mod.html#Namelist">obs_kind_mod</a>
+namelist documentation for more details on how to enable or
+disable assimilation by observation type at runtime.
+</P>
+<P>
+The incoming quality control value is set when an observation 
+sequence file is created.  If the data provider user a different
+scheme the values must be translated into NCEP-consistent values.
+Generally we use the value 3 for most runs.
+</P>
+<P>
+Observations can also be rejected by the assimilation if the
+observation value is too far from the mean of the ensemble
+of expected values (the forward operator results).
+This is controlled by the <em class=code>outlier_threshold</em>
+namelist item.  
+</P>
+<P>
+Specifically, the outlier test computes the difference between the observation value
+and the prior ensemble mean.  It then computes a standard deviation by
+taking the square root of the sum of the observation error variance and
+the prior ensemble variance for the observation.  If the difference
+between the ensemble mean and the observation value is more than the
+specified number of standard deviations then the observation is not used.
+This can be an effective way to discard clearly erroneous observation values.
+A commonly used value is 3.  -1 disables this check.
+</P>
+<P>
+There is an option to add code to this module to specialize the
+outlier threshold routine.  For example, it is possible to allow
+all observations of one type to be assimilated regardless of
+the outlier value, and enforce the outlier threshold only on
+other types of observations.  To enable this capability requires
+two actions: setting the <em class=code>enable_special_outlier_code</em>
+namelist to <em class=code>.TRUE.</em>, and adding your custom code
+to the <em class=code>failed_outlier()</em> subroutine in this module.
+</P>
+
+<H4>DART Outgoing Quality Control</H4>
+<P>
+As DART assimilates each observation it adds a <em>DART Quality Control</em>
+value to the output observation sequence (frequently written to a file named
+<em class=file>obs_seq.final)</em>.  This flag indicates how the observation
+was used during the assimilation.  The flag is a numeric value with the
+following meanings:
+</P>
+<TABLE border=0 cellpadding=3 width=100% summary='dart quality control flags'>
+   <TR><TD>0:</TD><TD> Observation was assimilated successfully </TD></TR>
+   <TR><TD>1:</TD><TD> Observation was evaluated only so not
+      used in the assimilation </TD></TR>
+   <TR><TD>2:</TD><TD> The observation was used but one or more of
+      the posterior forward observation operators failed </TD></TR>
+   <TR><TD>3:</TD><TD> The observation
+      was evaluated only so not used AND one or more of the posterior
+      forward observation operators failed </TD></TR>
+   <TR><TD>4:</TD><TD> One or more prior forward observation
+      operators failed so the observation was not used </TD></TR>
+   <TR><TD>5:</TD><TD> The observation was
+      not used because it was not selected in the namelist to be assimilated
+      or evaluated </TD></TR>
+   <TR><TD>6:</TD><TD> The incoming quality control value was larger than the
+      threshold so the observation was not used </TD></TR>
+   <TR><TD>7:</TD><TD> Outlier threshold test failed (as described above) </TD></TR>
+   <TR><TD>8:</TD><TD> The location conversion to the vertical localization unit failed
+       so the observation was not used </TD></TR>
+</TABLE>
+
+<br /><br />
+
+<!--=====================================================================-->
+<!--===================== DESCRIPTION OF A NAMELIST =====================-->
+<!--=====================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Namelist</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;quality_control_nml
+   input_qc_threshold          = 3
+   outlier_threshold           = -1
+   enable_special_outlier_code = .false.
+  /
+</pre>
+</div>
+
+<br />
+<br />
+
+<P>
+Items in this namelist control whether an observation
+is assimilated or not.
+</P>
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD>input_qc_threshold</TD>
+    <TD>integer</TD>
+    <TD>Numeric value indicating whether this observation
+is considered "good quality" and should be assimilated, or whether
+it is suspect because of previous quality control processes.
+This value would have been set when the observation was created
+and added to the observation sequence file.  Observations with
+an incoming QC value larger than this threshold are rejected and
+not assimilated.
+</TD></TR>
+
+<TR><TD>outlier threshold</TD>
+    <TD>integer</TD>
+    <TD>This numeric value defines the maximum number of 
+standard deviations an observation value can be away from
+the ensemble forward operator mean and still be assimilated.
+Setting it to the value -1 disables this check.
+</P>
+</TD></TR>
+
+<TR><TD>enable_special_outlier_code</TD>
+    <TD>logical</TD>
+    <TD>Setting this value to .TRUE. will call a subroutine
+<em class=code>failed_outlier()</em> instead of using the
+default code.  The user can then customize the tests in
+this subroutine, for example to accept all observations of
+a particular type, or use different numerical thresholds
+for different observation types or locations.
+</TD></TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br /> <br />
+
+
+<!--=====================================================================-->
+<!--===================== DISCUSSION ====================================-->
+<!--=====================================================================-->
+
+<A NAME="Discussion"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Discussion</H2>
+
+<H4>Small ensemble spread</H4>
+<P>
+If an ensemble is spun up from a single state the ensemble spread may be
+very small to begin and many observations may be rejected by the
+<em class=code>outlier_threshold</em>. But as the ensemble spread increases
+the assimilation should be able to assimilate more and more observations
+as the model trajectory becomes consistent with those observations.
+</P>
+
+<!--==================================================================-->
+
+<!--=====================================================================-->
+<!--===================== INTERFACES ====================================-->
+<!--=====================================================================-->
+
+<!-- this section should be replaced by doxygen-generated code. -->
+
+<A NAME="Interface"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>OTHER MODULES USED</H2>
+<PRE>
+types_mod
+utilities_mod
+random_seq_mod
+</PRE>
+
+<!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
+
+<HR>
+<H2>Public Interfaces</H2>
+
+<TABLE>
+<TR><TD><em class=code>use quality_control_mod, only : </em></TD>
+                   <TD><A HREF="#initialize_qc">initialize_qc</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#input_qc_ok">input_qc_ok</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_dart_qc">get_dart_qc</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#check_outlier_threshold">check_outlier_threshold</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#good_dart_qc">good_dart_qc</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_input_qc">set_input_qc</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#dart_flags">dart_flags</A></TD></TR>
+</TABLE>
+
+<P>
+   A note about documentation style. 
+   Optional arguments are enclosed in brackets 
+   <em class=optionalcode>[like this]</em>.
+</P>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="check_outlier_threshold"></A>
+<br>
+<div class=routine>
+<em class=call> call check_outlier_threshold(obs_prior_mean, obs_prior_var, obs_val, obs_err_var, &
+                                             obs_seq, this_obs_key, dart_qc)</em>
+<pre>
+real(r8),                intent(in)    :: obs_prior_mean !>  prior observation mean
+real(r8),                intent(in)    :: obs_prior_var  !>  prior observation variance
+real(r8),                intent(in)    :: obs_val        !>  observation value
+real(r8),                intent(in)    :: obs_err_var    !>  observation error variance
+type(obs_sequence_type), intent(in)    :: obs_seq        !>  observation sequence
+integer,                 intent(in)    :: this_obs_key   !>  index for this observation
+integer,                 intent(inout) :: dart_qc        !>  possibly modified DART QC
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Computes whether this observation failed the outlier threshold test
+and if so, updates the DART QC.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="input_qc_ok"></A>
+<br>
+<div class=routine>
+<em class=call>var = input_qc_ok(input_qc, qc_to_use)</em>
+<pre>
+real(r8), intent(in)  :: input_qc    !> incoming QC data value
+integer,  intent(out) :: qc_to_use   !> resulting DART QC
+logical               :: input_qc_ok !> true if input_qc is good
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+ Returns true if the input qc indicates this observation
+ is good to use.
+</P>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
+
+<A NAME="DART QC VALUES"></A>
+<br>
+<div class=routine>
+<pre>
+! Dart quality control variables
+integer, parameter :: DARTQC_ASSIM_GOOD_FOP        = 0
+integer, parameter :: DARTQC_EVAL_GOOD_FOP         = 1
+integer, parameter :: DARTQC_ASSIM_FAILED_POST_FOP = 2
+integer, parameter :: DARTQC_EVAL_FAILED_POST_FOP  = 3
+integer, parameter :: DARTQC_FAILED_FOP            = 4
+integer, parameter :: DARTQC_NOT_IN_NAMELIST       = 5
+integer, parameter :: DARTQC_BAD_INCOMING_QC       = 6
+integer, parameter :: DARTQC_FAILED_OUTLIER_TEST   = 7
+integer, parameter :: DARTQC_FAILED_VERT_CONVERT   = 8
+!!integer, parameter :: DARTQC_OUTSIDE_DOMAIN        = 9  ! we have no way (yet) for the model_mod to signal this
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+These are public constants for use in other parts 
+of the DART code.
+</P>
+
+</div>
+<br>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Files</H2>
+<TABLE border=0 >
+<TR><TH>filename</TH>
+    <TH>purpose</TH></TR>
+<TR><TD>input.nml</TD>
+    <TD>to read the quality_control_mod namelist</TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>References</H2>
+<ol>
+<li> none </li>
+</ol>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Error Codes and Conditions</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>routine name</TD>
+    <!-- message --><TD VALIGN=top>output string</TD>
+    <!-- comment --><TD VALIGN=top>description or comment</TD>
+</TR>
+
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none at this time.
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Future Plans</H2>
+<P>
+Should support different incoming data QC schemes.
+</P>
+<P>
+It would be nice to have a different DART QC flag for observations
+which fail the forward operator because they are simply outside the
+model domain.  The diagnosic routines may indicate a large number
+of failed forward operators which make it confusing to identify
+observations where the forward operator should have been computed
+and can skew the statistics.  Unfortunately, this requires adding
+an additional requirement on the model-dependent 
+<em classs=file>model_mod.f90</em> code in the 
+<em class=code>model_interpolate()</em> routine.  The current
+interface defines a return status code of 0 as success, any positive
+value as failure, and negative numbers are reserved for other uses.
+To identify obs outside the domain would require reserving another
+value that the interpolate routine could return.
+</P>
+<P>
+At this time the best suggestion is to cull out-of-domain obs from 
+the input observation sequence file by a preprocessing program before
+assimilation.
+</P>
+
+<!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Private Components</H2>
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright UCAR. This open source software is provided
+by UCAR, "as is", without charge, subject to all terms of use at
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>
