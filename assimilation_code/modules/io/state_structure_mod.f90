@@ -1584,7 +1584,7 @@ integer :: num_vars
 integer :: num_dims
 integer :: array_ids(NF90_MAX_VAR_DIMS)
 integer :: array_lengths(NF90_MAX_VAR_DIMS)
-character(len=NF90_MAX_VAR_DIMS) :: dim_name
+character(len=NF90_MAX_NAME) :: dim_name
 integer  :: missingINT, spval_int
 real(r4) :: missingR4,  spval_r4
 real(r8) :: missingR8,  spval_r8
