@@ -707,8 +707,8 @@ if(inflation_handle%deterministic) then
 else
   det = 'random-noise,'
 endif
-if (inflation_handle%sd_lower_bound > inflation_handle%inf_lower_bound) then
-   det = trim(det) // ' covariance adaptive,'
+if (inflation_handle%minmax_sd(2) > inflation_handle%sd_lower_bound) then
+   det = trim(det) // ' variance adaptive,'
 endif
 if (inflation_handle%inf_lower_bound < 1.0_r8) then
    det = trim(det) // ' deflation permitted,'
