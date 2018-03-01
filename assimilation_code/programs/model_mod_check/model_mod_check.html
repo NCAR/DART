@@ -73,9 +73,12 @@ prematurely terminating the namelist.
    output_state_files    = 'null'
    all_metadata_file     = 'metadata.txt'
 
+   test1thru             = 7
+   run_tests             = -1
+
    x_ind                 = -1
    loc_of_interest       = -1.0, -1.0, -1.0
-   kind_of_interest      = 'ANY'
+   quantity_of_interest  = 'NONE'
 
    interp_test_dlon      = 10.0
    interp_test_dlat      = 10.0
@@ -94,9 +97,6 @@ prematurely terminating the namelist.
    interp_test_zrange    = -888888.0, -888888.0
 
    interp_test_vertcoord = 'VERTISHEIGHT'
-
-   test1thru             = 15
-   run_tests             = -1
    verbose               = .FALSE.
    /
 </pre>
@@ -129,13 +129,19 @@ prematurely terminating the namelist.
 <TR><TD> input_state_files(:)  </TD>
     <TD> character(len=256) </TD>
     <TD> The name(s) of the NetCDF file(s) containing the model states, one per domain.
-      <!--  If num_ens &gt; 1 then you need to specify a file for each ensemble.  -->
+         If num_ens &gt; 1 and not single_file, specify a filename for each 
+         ensemble member (num_ens). If you have both multiple ensemble members in separate
+         files AND multiple domains, specify all the ensemble member filenames for domain 1, 
+         then all the ensemble member filenames for domain 2, etc.
 </TD></TR>  
 
 <TR><TD> output_state_files(:)  </TD>
     <TD> character(len=256) </TD>
     <TD> The name(s) of the output NetCDF file(s) for testing IO, one per domain.
-      <!--   If num_ens &gt; 1 then you need to specify a file for each ensemble. -->
+         If num_ens &gt; 1 and not single_file, specify a filename for each 
+         ensemble member (num_ens). If you have both multiple ensemble members in separate
+         files AND multiple domains, specify all the ensemble member filenames for domain 1, 
+         then all the ensemble member filenames for domain 2, etc.
 </TD></TR>  
 
 <TR><TD> all_metadata_file  </TD>
@@ -158,10 +164,10 @@ prematurely terminating the namelist.
          Indirectly tests the routine to find the closest gridpoint.
 </TD></TR>  
 
-<TR><TD> kind_of_interest </TD>
+<TR><TD> quantity_of_interest </TD>
     <TD> character(len=32) </TD>
-    <TD> Specifies the QUANTITY of the model state to use in Test 4. 
-</TD></TR>  
+    <TD> Specifies the QUANTITY of the model state to use in Tests 4, 5, and 7.
+</TD></TR>
 
 <TR><TD> interp_test_dlon </TD>
     <TD> real(r8) </TD>
@@ -243,16 +249,23 @@ prematurely terminating the namelist.
     <TD> If <em class=code>test1thru &gt; 0</em>, specifies the last test to be performed.
          All tests get performed sequentially. If <em class=code>test1thru &lt; 0</em>,
          <em class=code>run_tests</em> is used to specify the tests to perform.
-         <ol> <!-- 1 --><li>Test static_init_model() by calling get_model_size().</li>
-              <!-- 2 --><li>Reads and writes a restart file.</li>
-              <!-- 3 --><li>Tests get_state_meta_data() for a single index into the DART state.
-                            Helps determine if the state vector is constructed correctly.</li>
-              <!-- 4 --><li>Tests model_interpolate for a single point.</li>
-              <!-- 5 --><li>Tests model_interpolate for a range of interpolation points.</li>
-              <!-- 6 --><li>Long, expensive test to return the metadata for every element of the state vector.
-                            May be useful to decide on known locations for subsequent testing.</li>
-         </ol>
-</TD></TR>  
+        <table><tr><th>test&nbsp;</th><th align=left>summary</th></tr>
+        <tr><td>0 </td><td>Mandatory. Tests <em class=program>static_init_model()</em> by calling
+                           <em class=program>static_init_assim_model()</em>. Reads
+                    <em class=file>input.nml</em> <em class=code>&amp;model_nml</em> </td></tr>
+        <tr><td>1 </td><td>Tests <em class=program>get_model_size()</em> and reports on the makeup
+                           of the DART state vector.</td></tr>
+        <tr><td>2 </td><td>Reads and writes a restart file.</td></tr>
+        <tr><td>3 </td><td>Tests <em class=program>get_state_meta_data()</em>
+                          for a single index into the DART state.
+                           Helps determine if the state vector is constructed correctly.</td></tr>
+        <tr><td>4 </td><td>Tests <em class=program>model_interpolate()</em> for a single point.</td></tr>
+        <tr><td>5 </td><td>Tests <em class=program>model_interpolate()</em> for a range of interpolation points.</td></tr>
+        <tr><td>6 </td><td>Long, expensive test to return the metadata for every element of the state vector.
+                            May be useful to decide on known locations for subsequent testing.</td></tr>
+        <tr><td>7 </td><td>Find the closest gridpoint to a known location.</td></tr>
+         </table>
+</TD></TR>
 
 <TR><TD> run_tests(:) </TD>
     <TD> integer </TD>
@@ -265,7 +278,9 @@ prematurely terminating the namelist.
 <TR><TD>   verbose   </TD>
     <TD>   logical   </TD>
     <TD>Print extra info about the <em class=program>model_mod_check</em> run.
-</TD></TR>  
+        This is only used for more reporting during Test 5. Be warned - it will generate
+        several lines of output for each point in the test!
+</TD></TR>
 
 
 </TBODY> 
@@ -285,7 +300,7 @@ prematurely terminating the namelist.
    run_tests             = -1
    loc_of_interest       = 243.72386169, 52.78578186, 10.0
    x_ind                 = 12666739
-   kind_of_interest      = 'QTY_POTENTIAL_TEMPERATURE'
+   quantity_of_interest  = 'QTY_POTENTIAL_TEMPERATURE'
    interp_test_lonrange  = 144.0, 326.0
    interp_test_dlon      = 1.0
    interp_test_latrange  = -5.0, 80.0
@@ -342,6 +357,7 @@ assimilation_code/modules/utilities/utilities_mod.f90
 assimilation_code/programs/model_mod_check/model_mod_check.f90
 models/<em class=input>your_model_here</em>/model_mod.f90
 models/model_mod_tools/<em class=input>test_interpolate_threed_sphere.f90</em>
+models/model_mod_tools/model_check_utilities_mod.f90
 models/utilities/default_model_mod.f90
 observations/forward_operators/obs_def_mod.f90
 observations/forward_operators/obs_def_utilities_mod.f90
@@ -358,14 +374,20 @@ observations/forward_operators/obs_def_utilities_mod.f90
 <UL><LI><em class="file">input.nml</em> is used for 
         <em class="code">model_mod_check_nml</em></LI>
 
-    <LI>The<em class="file">"input_state_files" </em> can either be a
+    <LI>The <em class="code">"input_state_files" </em> can either be a
         single file containing multiple restart files, or a single
-        NetCDF restart file.
+        NetCDF restart file. One file per domain.</LI>
+
+    <LI>The <em class="code">"output_state_files"</em> is the output netCDF
+        files from Test 2. Check the attributes, values, etc.</LI>
+
+    <LI><em class="file">check_me_interptest.nc </em> and
+        <em class="file">check_me_interptest.m </em> are the result of
+        Test 5.
         </LI>
-    <LI>The<em class="file">"output_state_files"</em> is the output netCDF 
-        files that exercises the model_mod routines. Check the attributes, 
-        values, etc.</LI>
-        </LI>
+
+    <LI><em class=file>"all_metadata_file"</em> is the run-time output of Test 6.</LI>
+
 </UL>
 
 <!--==================================================================-->
@@ -450,24 +472,33 @@ divided into the following categories:
     <li>Interpolate for a range of points.</li>
 </ol>
 
-<H3 class=indent1>1. Checking the Geometry Information:</H3>
+<H3 class=indent1>Test 0. Mandatory.</H3>
 <P>
-The first block of code in <em class="program">model_mod_check</em>
-is intended to test some of the most basic routines, especially
+The first test in <em class="program">model_mod_check</em>
+reads the namelist and runs
 <em class="program">static_init_model</em> - which generally sets the
-geometry of the grid, the number of state variables and their shape, etc. 
+geometry of the grid, the number of state variables and their shape, etc.
 Virtually everything requires knowledge of the grid and state vector,
-so this block should never be skipped.
+so this block cannot be skipped.
 </P>
 
-<H3 class=indent1>2. Read/writing a restart file:</H3>
+<H3 class=indent1>Test 1. Checking the Geometry Information:</H3>
 <P>
-This directly reads and write state variables from the model netCDF file. This
-is a nice sanity check to make sure that the DART state vector is being read
-in properly.
+The first test in <em class="program">model_mod_check</em> exercises
+a basic required interface <em class="program">get_model_size()</em>.
+This also generates a report on the geometry of the grid, the number of
+state variables and their shape, etc. as well as the total number of
+elements in the DART state vector.
 </P>
 
-<H3 class=indent1>3. Check the construction of the state vector:</H3>
+<H3 class=indent1>Test 2. Read/writing a restart file:</H3>
+<P>
+This directly reads and write state variables from the model netCDF file.
+This is a nice sanity check to make sure that the DART state vector is
+being read in properly.
+</P>
+
+<H3 class=indent1>Test 3. Check the construction of the state vector:</H3>
 <P>It is critical to return the correct metadata for any given index into
 the DART state vector. This code block tests the two most common features of
 the metadata. As a bonus, this routine is also quite useful to determine
@@ -476,28 +507,40 @@ a grid location, you should be able to really get a handle on debugging your
 <em class="program">model_interpolate()</em> routine. 
 </P>
 
-<H3 class=indent1>4. Test interpolation on a single point.</H3>
+<H3 class=indent1>Test 4. Test interpolation on a single point.</H3>
 <P>
 This tests your model's interpolation routine on a single point and
-returns the interpolated value. This requires that Test 2 works - it needs
-a valid model state with data.
+returns the interpolated value.
+This requires that Test 2 works - it needs a valid model state with data.
+Test 2 is automatically run if this test is selected.
 </P>
 
-<H3 class=indent1>5. Test interpolation on a range of values.</H3>
+<H3 class=indent1>Test 5. Test interpolation on a range of values.</H3>
 <P>
 This tests your model's interpolation routine on a range of values
 returns the interpolated grid in <em class=file>check_me_interptest.nc</em>
 and <em class=file>check_me_interptest.m</em> which can be read in Matlab
 and used to visualize the result.
+This requires that Test 2 works - it needs a valid model state with data.
+Test 2 is automatically run if this test is selected.
 </P>
 
-<H3 class=indent1>6. Exhaustively test the construction of the state vector.</H3>
+<H3 class=indent1>Test 6. Exhaustively test the construction of the state vector.</H3>
 <P>
 This can be a long test, depending on the size of your state vector.
-This returns the same data as in Test 3 - <em class=strong> for every element </em>
-in the state vector. The metadata are written to a file specified by <em class=file>all_metadata_file</em>
+This returns the same data as in Test 3 - but <em class=strong> for every element </em>
+in the state vector. The metadata are written to a file specified by <em class=code>all_metadata_file</em>
 and <em class=file>check_me_interptest.m</em> which can be read in Matlab
 and used to visualize the result.
+</P>
+
+<H3 class=indent1>Test 7. Find the closest gridpoint to a test location.</H3>
+<P>
+This is a good test to verify that <em class=progtram>get_state_meta_data()</em> 
+and the grid information are correct. Typically, one would put in a location that 
+is actually <strong>on</strong> the grid and see if the correct gridpoint index 
+is returned. Repeat the test with slightly different locations until
+the next gridpoint is closer. Repeat ...
 </P>
 
 <!--==================================================================-->

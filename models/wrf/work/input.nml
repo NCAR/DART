@@ -1,26 +1,30 @@
 &perfect_model_obs_nml
-   read_input_state_from_file = .true.,
-   write_output_state_to_file = .true.,
-   async                      = 0,
-   init_time_days             = -1,
-   init_time_seconds          = -1,
-   first_obs_days             = -1,
-   first_obs_seconds          = -1,
-   last_obs_days              = -1,
-   last_obs_seconds           = -1,
-   output_interval            = 1,
+   read_input_state_from_file = .true.
    single_file_in             = .false.
-   single_file_out            = .false.
    input_state_files          = 'wrfinput_d01'
+   init_time_days             = -1
+   init_time_seconds          = -1
+
+   write_output_state_to_file = .false.
+   single_file_out            = .false.
    output_state_files         = 'perfect_output_d01.nc'
-   obs_seq_in_file_name       = "obs_seq.in",
-   obs_seq_out_file_name      = "obs_seq.out",
-   adv_ens_command            = "../shell_scripts/advance_model.csh",
-   output_timestamps          = .false.,
-   trace_execution            = .true.,
-   output_forward_op_errors   = .false.,
-   print_every_nth_obs        = -1,
-   silence                    = .false.,
+   output_interval            = 1
+
+   obs_seq_in_file_name       = "obs_seq.in"
+   obs_seq_out_file_name      = "obs_seq.out"
+   first_obs_days             = -1
+   first_obs_seconds          = -1
+   last_obs_days              = -1
+   last_obs_seconds           = -1
+
+   async                      = 0
+   adv_ens_command            = "../shell_scripts/advance_model.csh"
+
+   trace_execution            = .true.
+   output_timestamps          = .false.
+   print_every_nth_obs        = -1
+   output_forward_op_errors   = .true.
+   silence                    = .false.
    /
 
 &filter_nml
@@ -126,6 +130,14 @@
                                 'RADIOSONDE_V_WIND_COMPONENT',
                                 'SAT_U_WIND_COMPONENT',
                                 'SAT_V_WIND_COMPONENT',
+                                'AIRCRAFT_U_WIND_COMPONENT',
+                                'AIRCRAFT_V_WIND_COMPONENT',
+                                'AIRCRAFT_TEMPERATURE',
+                                'ACARS_U_WIND_COMPONENT',
+                                'ACARS_V_WIND_COMPONENT',
+                                'ACARS_TEMPERATURE',
+                                'GPSRO_REFRACTIVITY',
+                                'LAND_SFC_ALTIMETER' 
    evaluate_these_obs_types   = 'RADIOSONDE_SPECIFIC_HUMIDITY',
    /
 
@@ -172,13 +184,14 @@
 
 &model_nml
    default_state_variables = .false.,
-   wrf_state_variables = 'U',     'QTY_U_WIND_COMPONENT',     'TYPE_U', 'UPDATE','999',
-                         'V',     'QTY_V_WIND_COMPONENT',     'TYPE_V', 'UPDATE','999',
-                         'W',     'QTY_VERTICAL_VELOCITY',    'TYPE_W', 'UPDATE','999',
-                         'PH',    'QTY_GEOPOTENTIAL_HEIGHT',  'TYPE_GZ','UPDATE','999',
-                         'T',     'QTY_POTENTIAL_TEMPERATURE','TYPE_T', 'UPDATE','999',
-                         'MU',    'QTY_PRESSURE',             'TYPE_MU','UPDATE','999',
-                         'QVAPOR','QTY_VAPOR_MIXING_RATIO',   'TYPE_QV','UPDATE','999',
+   wrf_state_variables = 'U',     'QTY_U_WIND_COMPONENT',     'TYPE_U',    'UPDATE','999',
+                         'V',     'QTY_V_WIND_COMPONENT',     'TYPE_V',    'UPDATE','999',
+                         'W',     'QTY_VERTICAL_VELOCITY',    'TYPE_W',    'UPDATE','999',
+                         'PH',    'QTY_GEOPOTENTIAL_HEIGHT',  'TYPE_GZ',   'UPDATE','999',
+                         'T',     'QTY_POTENTIAL_TEMPERATURE','TYPE_T',    'UPDATE','999',
+                         'MU',    'QTY_PRESSURE',             'TYPE_MU',   'UPDATE','999',
+                         'QVAPOR','QTY_VAPOR_MIXING_RATIO',   'TYPE_QV',   'UPDATE','999',
+                         'PSFC',  'QTY_SURFACE_PRESSURE',     'TYPE_PSFC', 'UPDATE','999',
    wrf_state_bounds    = 'QVAPOR','0.0','NULL','CLAMP',
                          'QRAIN', '0.0','NULL','CLAMP',
                          'QCLOUD','0.0','NULL','CLAMP',
@@ -191,6 +204,7 @@
    sfc_elev_max_diff           = -1.0,
    circulation_pres_level      = 80000.0,
    circulation_radius          = 108000.0,
+   allow_obs_below_vol         = .false.
    /
 
 &closest_member_tool_nml 
@@ -506,3 +520,24 @@
 
 &compare_states_nml
 /
+
+# To test both domains, you must change 'model_nml:num_domains = 2'
+
+&model_mod_check_nml
+   input_state_files     = 'wrfinput_d01', 'wrfinput_d02'
+   output_state_files    = 'mmc_output1.nc', 'mmc_output2.nc'
+   test1thru             = 0
+   run_tests             = 1,2,3,4,5
+   x_ind                 = 87370
+   loc_of_interest       = 231.0, 40.0, 10.0
+   quantity_of_interest  = 'QTY_U_WIND_COMPONENT'
+   interp_test_dlon      = 0.1
+   interp_test_dlat      = 0.1
+   interp_test_dvert     = 1000.0
+   interp_test_lonrange  = 250.0,  260.0
+   interp_test_latrange  =  30.0,   45.0
+   interp_test_vertrange = 2000.0, 4000.0
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   verbose               = .false.
+  /
+

@@ -894,39 +894,57 @@ else
    end do
 endif
 
-if (do_output() .and. (num_kind_assimilate > 0 .or. num_kind_evaluate > 0 .or.  &
+if (do_output() .and. (num_kind_assimilate          > 0 .or. &
+                       num_kind_evaluate            > 0 .or.  &
                        num_kind_use_precomputed_FOs > 0 )) then  
-   write(*, *) '------------------------------------------------------'
-   write(*, *)
 
-   write(logfileunit, *) 'Assimilate_these_obs_types'
    write(*, *)
+   write(*, *) '--------------------------------------------------------'
    write(*, *) '-------------- ASSIMILATE_THESE_OBS_TYPES --------------'
+   write(logfileunit, *)
+   write(logfileunit, *) 'Assimilate_these_obs_types:'
 
-   do i = 1, num_kind_assimilate
-      write(logfileunit, *) trim(assimilate_these_obs_types(i))
-      write(     *     , *) trim(assimilate_these_obs_types(i))
-   end do
+   if (num_kind_assimilate < 1) then
+         write(logfileunit, *) '   none'
+         write(     *     , *) '   none'
+   else
+      do i = 1, num_kind_assimilate
+         write(logfileunit, *) '   '//trim(assimilate_these_obs_types(i))
+         write(     *     , *) '   '//trim(assimilate_these_obs_types(i))
+      enddo
+   endif
 
-   write(logfileunit, *) 'Evaluate_these_obs_types'
-   write(*, *) '-------------- EVALUATE_THESE_OBS_TYPES --------------'
+   write(*, *) '--------------------------------------------------------'
+   write(*, *) '-------------- EVALUATE_THESE_OBS_TYPES   --------------'
+   write(logfileunit, *) 'Evaluate_these_obs_types:'
 
-   do i = 1, num_kind_evaluate
-      write(logfileunit, *) trim(evaluate_these_obs_types(i))
-      write(     *     , *) trim(evaluate_these_obs_types(i))
-   end do
-   write(*, *) '------------------------------------------------------'
+   if (num_kind_evaluate <1) then
+         write(logfileunit, *) '   none'
+         write(     *     , *) '   none'
+   else
+      do i = 1, num_kind_evaluate
+         write(logfileunit, *) '   '//trim(evaluate_these_obs_types(i))
+         write(     *     , *) '   '//trim(evaluate_these_obs_types(i))
+      enddo
+   endif
+
+   write(*, *) '--------------------------------------------------------'
+   write(*, *) '---------- USE_PRECOMPUTED_FO_OBS_TYPES   --------------'
+   write(logfileunit, *) 'Use the precomputed Prior Forward Operators for these obs types:'
+
+   if (num_kind_use_precomputed_FOs <1) then
+         write(logfileunit, *) '   none'
+         write(     *     , *) '   none'
+   else
+      do i = 1, num_kind_use_precomputed_FOs
+         write(logfileunit, *) trim(use_precomputed_FOs_these_obs_types(i))
+         write(     *     , *) trim(use_precomputed_FOs_these_obs_types(i))
+      enddo
+   endif
+
+   write(*, *) '--------------------------------------------------------'
    write(*, *)
-
-   write(logfileunit, *) 'Use the precomputed Prior Forward Operators for these obs types'
-   write(*, *) '---------- USE_PRECOMPUTED_FO_OBS_TYPES --------------'
-
-   do i = 1, num_kind_use_precomputed_FOs
-      write(logfileunit, *) trim(use_precomputed_FOs_these_obs_types(i))
-      write(     *     , *) trim(use_precomputed_FOs_these_obs_types(i))
-   end do
-   write(*, *) '------------------------------------------------------'
-   write(*, *)
+   write(logfileunit, *)
 
 endif
 

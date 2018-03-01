@@ -2875,8 +2875,9 @@ s_type = find_name(dart_to_cam_types(obs_kind),cflds)
 
 if (s_type == MISSING_I) then
    if (obs_kind /= QTY_PRESSURE .and. obs_kind /= QTY_SURFACE_ELEVATION) then
-      write(string1,*) 'Wrong type of obs = ', obs_kind
-      call error_handler(E_WARN, 'interp_lonlat', string1,source,revision,revdate)
+      write(string1,*) 'Wrong type of obs = ', obs_kind,' "',trim(get_name_for_quantity(obs_kind)),'"'
+      write(string2,*) 'Only QTY_PRESSURE and QTY_SURFACE_ELEVATION are supported.'
+      call error_handler(E_WARN, 'interp_lonlat', string1,source,revision,revdate, text2=string2)
       return
    else
       ! CAM-chem 5))
@@ -3428,8 +3429,8 @@ ps_local(:, 1) = get_state(ind, state_handle)
 if (obs_kind == QTY_U_WIND_COMPONENT .and. find_name('US', cflds) /= 0) then
    stagr_lat = .true.
    ind = index_from_grid(1,lon_index,lat_index+1,fld_index)
-   ps_local(2, :) = get_state(ind, state_handle)
-   p_surf(:) = (ps_local(1, :) + ps_local(2, :))* 0.5_r8
+   ps_local(:,2) = get_state(ind, state_handle)
+   p_surf(:) = (ps_local(:,1) + ps_local(:,2))* 0.5_r8
 elseif (obs_kind == QTY_V_WIND_COMPONENT .and. find_name('VS', cflds) /= 0) then
    stagr_lon = .true.
    if (lon_index == slon%length) then

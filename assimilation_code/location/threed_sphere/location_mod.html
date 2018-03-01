@@ -25,7 +25,9 @@
 </tr>
 </table>
 
+<A HREF="#Usage Notes">USAGE</A> /
 <A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Discussion">DISCUSSION</A> /
 <A HREF="#Interface">INTERFACES</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
@@ -53,10 +55,377 @@ on a 3-D spherical shell, using latitude and longitude plus a vertical
 component with choices of vertical coordinate type such as pressure or 
 height in meters.
 A type that abstracts the location is provided along
-with operators to set, get, read, write, and compute distances between 
-locations. This is a member of a class of similar location modules that 
-provide the same abstraction for different represenations of physical space.
+with operators to set, get, read, write, and compute great circle
+distances between locations. This is a member of a class of similar 
+location modules that provide the same abstraction for different represenations 
+of physical space.
 </P>
+
+<!--=====================================================================-->
+<!--===================== USAGE NOTES ===================================-->
+<!--=====================================================================-->
+
+<A NAME="Usage Notes"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Usage</H2>
+
+<P>
+The location routines are general purpose code that can be used
+for a variety of utilities.  The following discussion is specifically
+restricted to how the location namelist settings affect the
+execution of the <em class=file>filter</em> assimilation program.
+</P>
+
+<P>
+Issues related to changing the results of an assimilation based on the location
+module settings:<br />
+<UL>
+<LI>Whether and how to treat the vertical separation when computing distances 
+between two locations.</LI>
+<LI>Whether to use different distances in the vertical for different
+observation types.</LI>
+</UL>
+</P>
+
+<P>
+Issues related to changing the results of an assimilation based on 
+code in the model-specific <em class=code>model_mod.f90</em> module:<br />
+<UL>
+<LI>Whether the model-specific code needs to convert vertical coordinates.</LI>
+<LI>Whether the model-specific code alters the distances in some other way.</LI>
+</UL>
+</P>
+
+<P>
+Issues related to the speed/efficiency of an assimilation based on the location
+module settings:<br />
+<UL>
+<LI>Whether to use a faster but less precise distance computation.</LI>
+<LI>Whether to change the number of internal bins used to
+more quickly find nearby locations.</LI>
+</UL>
+</P>
+
+<H4>Vertical Issues</H4>
+<P>
+The localization distance during an assimilation -- the maximum separation
+between an observation and a state vector item potentially affected by
+the assimilation -- is set in the
+<a href="../../modules/assimilation/assim_tools_mod.html">&amp;assim_tools_nml</a>
+namelist (the <em class=code>cutoff</em> item).
+</P>
+<P>
+Setting <em class=code>horiz_dist_only&nbsp;=&nbsp;.TRUE.</em> in the
+namelist means the great circle distances will be computed using only
+the latitude and longitudes of the two locations, ignoring
+the vertical components of the locations.  The cutoff is specified in
+radians to be independent of the radius of the sphere.  For
+the Earth the radius is nominally 6,371 Km.  To compute the horizontal
+only localization distance, multiply 6,371 Km by the cutoff to get the 
+distance in Km.  The cutoff is by definition 1/2 the distance to where
+the increments go to 0, so multiply that result by 2 to get the maximum
+distance at which an observation can alter the state.
+</P>
+<P>
+Setting <em class=code>horiz_dist_only&nbsp;=&nbsp;.FALSE.</em> in the
+namelist means the code will compute a 3D distance, including the
+vertical separation.  In this case, the <em class=code>vert_normalization_xxx</em>
+namelist values will be used to convert from pressure, height, model level,
+or scale heights into radians so the distances are computed in a consistent
+unit system.  In practice, multiply the cutoff by the normalization factor
+(and then again by 2) to get the maximum vertical separation in each of
+the given units.  
+</P>
+<P>
+When including vertical separation the potential area
+of influence of an assimilated observation is an ellipsoid with the
+observation at the center.  The horizontal radius is defined by the
+cutoff and the vertical radius is defined by the normalization factors.
+</P>
+
+<H4>Different vertical factors per observation type</H4>
+<P>
+Generally a single cutoff value and a single set of normalization
+factors are sufficient for most assimilations.  The localization distances
+define the maximum range of impact of an observation, but there still
+must be a positive or negative correlation between the state ensemble
+and the forward operator/expected obs ensemble for the values to change.
+</P>
+<P>
+However, the
+<a href="../../modules/assimilation/assim_tools_mod.html">&amp;assim_tools_nml</a>
+namelist includes the option to set a different cutoff on a per-observation-type
+basis.  There are corresponding items in the location module namelist to similiarly
+control the vertical distance contribution on a per-observation, per-vertical-type basis.
+</P>
+
+<H4>Model-dependent Vertical Conversion Issues</H4>
+<P>
+If the model supports either a different vertical coordinate than
+the vertical coordinate of the observations, or if the user wants to
+localize in a different vertical coordinate than the observations
+or state vector items, the model-specific <em class=code>model_mod.f90</em> 
+code will have to provide a conversion between different vertical coordinates.
+This cannot be done by the location module since most vertical
+conversions require additional model-specific information such
+as temperature, moisture, depth, surface elevation, model levels, etc.  
+</P>
+
+<P>
+Once the locations have the same vertical units the location module code
+can compute the distances between them.
+It is an error 
+to ask for the distance between two locations with different vertical
+coordinates unless you have set the namelist to horizontal distances only.
+</P>
+
+<P>
+There is a vertical type
+of VERTISUNDEF (Vertical is Undefined).  This is used to describe observations
+where there is no specific single vertical location, for example the position
+of a hurricane or a column integrated quantity.  In this case the location
+code computes only horizontal distances between any pair of observations in
+which one or both have an undefined vertical location.  
+</P>
+
+<H4>Model-dependent Distance Adjustments</H4>
+<P>
+The calls to routines that collect the distances between locations
+for the assimilation code pass through
+the model-specific <em class=code>model_mod.f90</em> code.  This allows
+the code to alter the actual distances to either increase or decrease the
+effect of an observation on the state or on other observations.
+</P>
+
+<P>
+For example, if the top of a model is externally constrained then modifications
+by the assimilation code may lead to bad results.  The model-specific code
+can compute the actual distances between two locations and then increase it
+artificially as you reach the top of the model, so observations have smaller
+and smaller impacts.  For ocean models, the distances to points on land
+can be set to a very large value and those points will be unaffected by
+the assimilation.
+</P>
+
+<H4>Approximate distances</H4>
+<P>
+For regional models this should usually be <em class=code>.FALSE.</em> 
+in the namelist.  
+</P>
+<P>
+For global models this is usually set to <em class=code>.TRUE.</em> which 
+allows the code to run slightly faster by precomputing tables of sines, 
+cosines, and arc cosines used in the distance computations.
+Values are linearly interpolated between entries in the table
+which leads to minor roundoff errors.  These are negligible in 
+a global model but may be significant in models that over a 
+small region of the globe.
+</P>
+
+<H4>Internal bin counts</H4>
+<P>
+The default settings for <em class=code>nlon</em> and
+<em class=code>nlat</em> are usually sufficient.  However if this is a
+high resolution model with a large state vector the assimilation
+may run faster by doubling these values or multiplying them by 4.
+(The <em class=code>nlon</em> item must be odd; compute the value
+and subtract 1.)  These values set the number of internal bins
+used inside the code to pre-sort locations and make it faster to
+retrieve all locations close to another location.  A larger bin
+count uses more memory but shortens the linear part of the
+location search.
+</P>
+
+<br /><br />
+
+<!--=====================================================================-->
+<!--===================== DESCRIPTION OF A NAMELIST =====================-->
+<!--=====================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Namelist</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;location_nml
+    horiz_dist_only                          = .true.
+    vert_normalization_pressure              = 100000.0
+    vert_normalization_height                = 10000.0
+    vert_normalization_level                 = 20.0
+    vert_normalization_scale_height          = 5.0
+    approximate_distance                     = .false.
+    nlon                                     = 71
+    nlat                                     = 36
+    output_box_info                          = .false.
+    print_box_level                          = 0
+    special_vert_normalization_obs_types     = 'null'
+    special_vert_normalization_pressures     = -888888.0
+    special_vert_normalization_heights       = -888888.0
+    special_vert_normalization_levels        = -888888.0
+    special_vert_normalization_scale_heights = -888888.0
+  /
+</pre>
+</div>
+
+<br />
+<br />
+
+<P>
+Items in this namelist either control the way in which distances 
+are computed and/or influence the code performance.
+</P>
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD>horiz_dist_only</TD>
+    <TD>logical</TD>
+    <TD>If .TRUE. compute great-circle distance using the horizontal distance component only.
+If .FALSE. compute distances by including the vertical and horizontal separation.
+All distances are computed in radians; the corresponding vertical normalization
+factors are used to compute the vertical distance.<br>
+The vertical coordinate system must be the same for both locations in order
+to compute a distance.  However, if either location is VERTISUNDEF, or both are
+VERTISSURFACE, only a horizontal distance is computed.  For any other combination
+of vertical coordinate systems this routine will fail because it cannot convert
+between vertical coordinate systems without model-specific information.
+The model_mod interface code may supply a get_close_obs() routine to intercept 
+and convert the vertical coordinates before calling this get_close_obs() routine.
+</TD></TR>
+
+<TR><TD>vert_normalization_pressure</TD>
+    <TD>real(r8)</TD>
+    <TD>The number of pascals equivalent to a horizontal
+distance of one radian.
+</TD></TR>
+
+<TR><TD>vert_normalization_height</TD>
+    <TD>real(r8)</TD>
+    <TD>The number of meters equivalent to a horizontal
+distance of one radian.
+</TD></TR>
+
+<TR><TD>vert_normalization_level</TD>
+    <TD>real(r8)</TD>
+    <TD>The number of model levels equivalent to a horizontal
+distance of one radian.
+</TD></TR>
+
+<TR><TD>vert_normalization_scale_height</TD>
+    <TD>real(r8)</TD>
+    <TD>The number of scale heights equivalent to a horizontal
+distance of one radian.
+</TD></TR>
+
+<TR><TD>approximate_distance</TD>
+    <TD>logical</TD>
+    <TD> If true, uses a table lookup for fast approximate
+computation of distances on sphere. Distance computation can be
+a first order cost for some spherical problems so this can increase
+speed significantly at a loss of some precision. WARNING: This should
+be set to .FALSE. if you need to compute small distances accurately
+or you have a regional model.
+</TD></TR>
+
+<TR><TD>nlon</TD>
+    <TD>integer</TD>
+    <TD> Used internally by the search code to speed the search for
+nearby locations.  Number of boxes (bins) created in the longitude direction.  
+Must be an odd number.   (See discussion above for more information about this item.)
+</TD></TR>
+
+<TR><TD>nlat</TD>
+    <TD>integer</TD>
+    <TD> Used internally by the search code to speed the search for
+nearby locations. Number of boxes (bins) created in the latitude direction.  (See
+discussion above for more information about this item.)
+</TD></TR>
+
+<TR><TD>output_box_info</TD>
+    <TD>logical</TD>
+    <TD> If true, print details about the distribution of locations across
+the array of boxes. <em class=code>print_box_level</em> controls how much detail is printed.
+</TD></TR>
+
+
+<TR><TD>print_box_level</TD>
+    <TD>integer</TD>
+    <TD>If <em class=code>output_box_info&nbsp;=&nbsp;.true.</em>, <em class=code>print_box_level</em>
+       controls how much detail is printed. 0&nbsp;=&nbsp;no detail. 1,2,3 are progressively 
+       more and more detail.
+</TD></TR>
+
+
+<TR><TD>special_vert_normalization_obs_types</TD>
+    <TD>character(len=32), dimension(500)</TD>
+    <TD>If specified, must be a string array of observation specific types
+(e.g. RADIOSONDE_TEMPERATURE, AIRCRAFT_TEMPERATURE, etc).  For each type
+listed here a vertical normalization value must be given which overrides
+the default vertical normalization values.  Even if only one is going to
+be used, all 4 normalization values must be specified for each special type. 
+</TD></TR>
+
+<TR><TD>special_vert_normalization_pressure</TD>
+    <TD>real(r8), dimension(500)</TD>
+    <TD>The number of pascals equivalent to a horizontal
+distance of one radian, one value for each special observation type
+listed in the 'special_vert_normalization_obs_types' list. 
+</TD></TR>
+
+<TR><TD>special_vert_normalization_height</TD>
+    <TD>real(r8), dimension(500)</TD>
+    <TD>The number of geopotential meters equivalent to a horizontal
+distance of one radian, one value for each special observation type
+listed in the 'special_vert_normalization_obs_types' list. 
+</TD></TR>
+
+<TR><TD>special_vert_normalization_scale_height</TD>
+    <TD>real(r8), dimension(500)</TD>
+    <TD>The number of scale heights equivalent to a horizontal
+distance of one radian, one value for each special observation type
+listed in the 'special_vert_normalization_obs_types' list. 
+</TD></TR>
+
+<TR><TD>special_vert_normalization_level</TD>
+    <TD>real(r8), dimension(500)</TD>
+    <TD>The number of model levels equivalent to a horizontal
+distance of one radian, one value for each special observation type
+listed in the 'special_vert_normalization_obs_types' list. 
+</TD></TR>
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
+
+<!--=====================================================================-->
+<!--===================== DISCUSSION ====================================-->
+<!--=====================================================================-->
+
+<A NAME="Discussion"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Discussion</H2>
+
+
+<!--==================================================================-->
 <H4>Location-independent code</H4>
 <P>
 All types of location modules define the same module name 
@@ -322,185 +691,6 @@ or equal to the central angle, all longitude differences will occur
 as the pole is approached.
 </P>
 
-<!--=====================================================================-->
-<!--===================== DESCRIPTION OF A NAMELIST =====================-->
-<!--=====================================================================-->
-
-<A NAME="Namelist"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>NAMELIST</H2>
-<P>
-This namelist is read from the file <em class=file>input.nml</em>.
-Namelists start with an ampersand
-'&amp;' and terminate with a slash '/'.
-Character strings that contain a '/' must be
-enclosed in quotes to prevent them from 
-prematurely terminating the namelist.
-</P>
-
-<div class=namelist>
-<pre>
-&amp;location_nml
-    horiz_dist_only                          = .true.
-    vert_normalization_pressure              = 100000.0
-    vert_normalization_height                = 10000.0
-    vert_normalization_level                 = 20.0
-    vert_normalization_scale_height          = 5.0
-    approximate_distance                     = .false.
-    nlon                                     = 71
-    nlat                                     = 36
-    output_box_info                          = .false.
-    print_box_level                          = 0
-    special_vert_normalization_obs_types     = 'null'
-    special_vert_normalization_pressures     = -888888.0
-    special_vert_normalization_heights       = -888888.0
-    special_vert_normalization_levels        = -888888.0
-    special_vert_normalization_scale_heights = -888888.0
-  /
-</pre>
-</div>
-
-<br />
-<br />
-
-<P>
-Items in this namelist either control the way in which distances 
-are computed and/or influence the code performance.
-</P>
-
-<div>
-<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
-<THEAD align=left>
-<TR><TH> Item </TH>
-    <TH> Type </TH>
-    <TH> Description </TH> </TR>
-</THEAD>
-
-<TBODY valign=top>
-
-<TR><TD>horiz_dist_only</TD>
-    <TD>logical</TD>
-    <TD>If .TRUE. compute great-circle distance using the horizontal distance component only.
-If .FALSE. compute distances by including the vertical and horizontal separation.
-All distances are computed in radians; the corresponding vertical normalization
-factors are used to compute the vertical distance.<br>
-The vertical coordinate system must be the same for both locations in order
-to compute a distance.  However, if either location is VERTISUNDEF, or both are
-VERTISSURFACE, only a horizontal distance is computed.  For any other combination
-of vertical coordinate systems this routine will fail because it cannot convert
-between vertical coordinate systems without model-specific information.
-The model_mod interface code may supply a get_close_obs() routine to intercept 
-and convert the vertical coordinates before calling this get_close_obs() routine.
-</TD></TR>
-
-<TR><TD>vert_normalization_pressure</TD>
-    <TD>real(r8)</TD>
-    <TD>The number of pascals equivalent to a horizontal
-distance of one radian.
-</TD></TR>
-
-<TR><TD>vert_normalization_height</TD>
-    <TD>real(r8)</TD>
-    <TD>The number of meters equivalent to a horizontal
-distance of one radian.
-</TD></TR>
-
-<TR><TD>vert_normalization_level</TD>
-    <TD>real(r8)</TD>
-    <TD>The number of model levels equivalent to a horizontal
-distance of one radian.
-</TD></TR>
-
-<TR><TD>vert_normalization_scale_height</TD>
-    <TD>real(r8)</TD>
-    <TD>The number of scale heights equivalent to a horizontal
-distance of one radian.
-</TD></TR>
-
-<TR><TD>approximate_distance</TD>
-    <TD>logical</TD>
-    <TD> If true, uses a table lookup for fast approximate
-computation of distances on sphere. Distance computation can be
-a first order cost for some spherical problems so this can increase
-speed significantly at a loss of some precision. WARNING: This should
-be set to .FALSE. if you need to compute small distances accurately
-or you have a regional model.
-</TD></TR>
-
-<TR><TD>nlon</TD>
-    <TD>integer</TD>
-    <TD> Used internally by the search code to speed the search for
-nearby locations.  Number of boxes (bins) created in the longitude direction.  
-Must be an odd number.   (See discussion above for more information about this item.)
-</TD></TR>
-
-<TR><TD>nlat</TD>
-    <TD>integer</TD>
-    <TD> Used internally by the search code to speed the search for
-nearby locations. Number of boxes (bins) created in the latitude direction.  (See
-discussion above for more information about this item.)
-</TD></TR>
-
-<TR><TD>output_box_info</TD>
-    <TD>logical</TD>
-    <TD> If true, print details about the distribution of locations across
-the array of boxes. <em class=code>print_box_level</em> controls how much detail is printed.
-</TD></TR>
-
-
-<TR><TD>print_box_level</TD>
-    <TD>integer</TD>
-    <TD>If <em class=code>output_box_info&nbsp;=&nbsp;.true.</em>, <em class=code>print_box_level</em>
-       controls how much detail is printed. 0&nbsp;=&nbsp;no detail. 1,2,3 are progressively 
-       more and more detail.
-</TD></TR>
-
-
-<TR><TD>special_vert_normalization_obs_types</TD>
-    <TD>character(len=32), dimension(500)</TD>
-    <TD>If specified, must be a string array of observation specific types
-(e.g. RADIOSONDE_TEMPERATURE, AIRCRAFT_TEMPERATURE, etc).  For each type
-listed here a vertical normalization value must be given which overrides
-the default vertical normalization values.  Even if only one is going to
-be used, all 4 normalization values must be specified for each special type. 
-</TD></TR>
-
-<TR><TD>special_vert_normalization_pressure</TD>
-    <TD>real(r8), dimension(500)</TD>
-    <TD>The number of pascals equivalent to a horizontal
-distance of one radian, one value for each special observation type
-listed in the 'special_vert_normalization_obs_types' list. 
-</TD></TR>
-
-<TR><TD>special_vert_normalization_height</TD>
-    <TD>real(r8), dimension(500)</TD>
-    <TD>The number of geopotential meters equivalent to a horizontal
-distance of one radian, one value for each special observation type
-listed in the 'special_vert_normalization_obs_types' list. 
-</TD></TR>
-
-<TR><TD>special_vert_normalization_scale_height</TD>
-    <TD>real(r8), dimension(500)</TD>
-    <TD>The number of scale heights equivalent to a horizontal
-distance of one radian, one value for each special observation type
-listed in the 'special_vert_normalization_obs_types' list. 
-</TD></TR>
-
-<TR><TD>special_vert_normalization_level</TD>
-    <TD>real(r8), dimension(500)</TD>
-    <TD>The number of model levels equivalent to a horizontal
-distance of one radian, one value for each special observation type
-listed in the 'special_vert_normalization_obs_types' list. 
-</TD></TR>
-</TBODY> 
-</TABLE>
-</div>
-
-<br />
-<br />
-
-
-<!--==================================================================-->
 
 <A NAME="Interface"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
@@ -520,7 +710,7 @@ random_seq_mod
 <!--==================================================================-->
 
 <HR>
-<H2>PUBLIC INTERFACES</H2>
+<H2>Public Interfaces</H2>
 
 <TABLE>
 <TR><TD><em class=code>use location_mod, only : </em></TD>
@@ -1530,7 +1720,7 @@ to identify this location module in output long name metadata.
 
 <A NAME="FilesUsed"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FILES</H2>
+<H2>Files</H2>
 <TABLE border=0 >
 <TR><TH>filename</TH>
     <TH>purpose</TH></TR>
@@ -1544,7 +1734,7 @@ to identify this location module in output long name metadata.
 
 <A NAME="References"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
-<H2>REFERENCES</H2>
+<H2>References</H2>
 <ol>
 <li> none </li>
 </ol>
@@ -1555,7 +1745,7 @@ to identify this location module in output long name metadata.
 
 <A NAME="Errors"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
-<H2>ERROR CODES and CONDITIONS</H2>
+<H2>Error Codes and Conditions</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
@@ -1618,7 +1808,7 @@ problem only occurred for locations very near the pole.
 
 <A NAME="FuturePlans"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FUTURE PLANS</H2>
+<H2>Future Plans</H2>
 <P>
 Need to provide more efficient algorithms for getting close locations
 and document the nlon and nlat choices and their impact on cost.
@@ -1651,7 +1841,7 @@ so it's misleading to always call them 'obs'.
 
 <A NAME="PrivateComponents"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
-<H2>PRIVATE COMPONENTS</H2>
+<H2>Private Components</H2>
 <P>
 N/A
 </P>

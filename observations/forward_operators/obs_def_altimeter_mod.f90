@@ -93,12 +93,16 @@ integer :: hsfc_istatus(ens_size)
 logical :: return_now
 integer :: imem
 
+real(r8), parameter :: MIN_REALISTIC_ALTIMETER = 880.0_r8      ! (hPa)
+real(r8), parameter :: MAX_REALISTIC_ALTIMETER = 1100.0_r8     ! (hPa)
+
 if ( .not. module_initialized ) call initialize_module
 
 istatus = 0 ! Need to initialize this to zero for track_status.
 altimeter_setting = missing_r8
 
-!  interpolate the surface pressure to the desired location
+! interpolate the surface pressure to the desired location. 
+! The implicit units of pressure here are Pascals.
 call interpolate(state_handle, ens_size, location, QTY_SURFACE_PRESSURE, psfc, psfc_istatus)
 call track_status(ens_size, psfc_istatus, altimeter_setting, istatus, return_now)
 if (return_now) return
@@ -108,17 +112,13 @@ call interpolate(state_handle, ens_size, location, QTY_SURFACE_ELEVATION, hsfc, 
 call track_status(ens_size, hsfc_istatus, altimeter_setting, istatus, return_now)
 if (return_now) return
 
-
-!  Compute the altimeter setting given surface pressure and height, altimeter is hPa
-
+!  Compute the altimeter setting given surface pressure (hPa) and height (m), altimeter is hPa
 do imem = 1, ens_size
    if(istatus(imem) == 0) altimeter_setting(imem) = compute_altimeter(psfc(imem) * 0.01_r8, hsfc(imem))
 enddo
 
-!> @todo remove magic numbers, and jeff says boulder altimeter may be
-!> less than 880.  consult ryan or glen?
-
-where (altimeter_setting < 880.0_r8 .or. altimeter_setting >= 1100.0_r8)
+where (altimeter_setting <  MIN_REALISTIC_ALTIMETER .or. &
+       altimeter_setting >= MAX_REALISTIC_ALTIMETER)
    altimeter_setting = MISSING_R8
    istatus = 1
 endwhere

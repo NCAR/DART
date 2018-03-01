@@ -97,9 +97,6 @@
    restart_out_file_name = 'smoother_restart'
    /
 
-&ensemble_manager_nml
-   /
-
 &assim_tools_nml
    filter_kind                     = 1,
    cutoff                          = 0.20,
@@ -351,22 +348,22 @@
    verbose    = .false.
    /
 
+# another test could be interp_test_vertcoord = 'VERTISLEVEL'  ... 0.35
 &model_mod_check_nml
-   num_ens               = 1
-   single_file           = .true.
    input_state_files     = 'filter_input.nc'
-   output_state_files    = 'check_me.nc'
-   verbose               = .false.
-   test1thru             = 5
+   output_state_files    = 'mmc_output.nc'
+   test1thru             = 7
+   run_tests             = 1, 2, 3, 4, 5, 7
    x_ind                 = 720
-   kind_of_interest      = 'QTY_TEMPERATURE'
-   loc_of_interest       = 287.5, 82.48, 0.35
+   quantity_of_interest  = 'QTY_TEMPERATURE'
+   loc_of_interest       = 254.727854, 39.9768545, 70000.0
+   interp_test_vertcoord = 'VERTISPRESSURE'
    interp_test_lonrange  = 0.0, 359.0
    interp_test_dlon      = 1.0
    interp_test_latrange  = -89.0, 89.0
    interp_test_dlat      = 1.0
    interp_test_vertrange = 1.0, 5.0
    interp_test_dvert     = 0.5
-   interp_test_vertcoord = 'VERTISLEVEL'
+   verbose               = .false.
    /
 

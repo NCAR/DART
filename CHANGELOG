@@ -624,8 +624,84 @@ to output the full obs_seq.final during each cycle of filter.
 longitude interpolation in grids that cross the 360/0 line.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Mar 01 2018 :: ROMS, MMC, PMO, MPAS_ATM debug, etc           Revision: 12167 
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- Fix a debug message in the MPAS ATM model which might have caused a buffer
+overflow crash when formatting a message for a larger ensemble size.
+
+- Update the ROMS shell scripts to support PBS, SLURM, as well as LSF.
+Update the ROMS model_mod html documentation.
+
+- Update the default CAM-FV input.nml to have more realistic values
+for the highest observation assimilated, and for where the ramp starts
+that decreases the increments at the model top. If running with a higher
+model top than the default check these items carefully.
+
+- Fixed variable type for 'time' variables we create in diagnostic files
+
+- Miscellaneous minor Bug fixes: 
+   - Print format wider for fractional levels in threed_sphere locations
+   - Fixed a deallocate call at program shutdown time
+   - Fixed an indexing problem computing cam-fv U_WIND observations if the
+     observation used HEIGHT as the vertical coordinate (very unusual).
+   - Fixed grid creation bug in a test program used with model_mod_check.
+     Now uses correct spacing for grids in the x,y coordinates.
+   - Fixed an allocate problem in a test interpolate routine.
+
+- Add surface pressure to the default state list in the wrf work/input.nml
+
+- developer_tests/test_dart.csh can run PMO for more models. required
+updates to the work/input.nml in several directories (wrf, cm1, POP,
+mpas_atm) to match the current namelist.
+
+- several model_mod_check programs were combined into a single version
+that allows for selection of individual tests.  many of the input.nml
+models/xxx/work/input.nml files have either had a &model_mod_check_nml
+section added or updated to match the updated interface.
+
+- the DART QTYs are now available via the state structure in the wrf 
+and clm model_mods.
+
+- support the NAG compiler better.  (contact dart@ucar.edu for more
+help if you want to use this compiler.  some hand work is still needed.)
+
+- streamlined the debug output from the state_structure_info() call to
+avoid replicating information that was the same for all variables.
+
+- minor formatting change to the dart log file output for the list of
+observation types being assimilated, evaluated, and using precomputed
+forward operators.
+
+- fixed an uninitialized variable in the BGRID model code in a routine
+that isn't normally used.
+
+- Updated the threed_sphere location module documentation with some usage
+notes about issues commonly encountered.
+
+- Fixed an incorrect test when printing out a log message describing if the
+inflation would be variance-adaptive or not.
+
+- Change the location of the POP MDT reference file to be relative to the 
+current run directory and not an absolute file location on cheyenne.
+
+- Make the ROMS, CM1, and POP model_mod log namelist information to the 
+namelist log file and not the main DART log file.
+
+- Updated several html documentation files, including the template/model_mod.html
+which describes the current model_mod required interfaces.
+
+- Updated the instructions for the GSI to DART obs converter to suggest some
+needed compiler flags in certain cases.
+
+- Updated the location module test programs.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + MMM DD YYYY :: summary of next changes                    $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- next ...
+
 
 # <next few lines under version control, do not edit>
 # $URL$

@@ -429,8 +429,10 @@ endif
 
  ! special case for one level model
    if (size(dpde,3) == 1) then
-       cew(:,:,k) = 0.0
-       cns(:,:,k) = 0.0
+       call error_mesg ('compute_grad_pres', &
+                 'single level untested - contact DART developers', FATAL)
+       cew(:,:,k) = 0.0  ! DART ... k is unset at this point ... ?value?
+       cns(:,:,k) = 0.0  ! DART ... k is unset at this point ... ?value?
        return
    endif
 

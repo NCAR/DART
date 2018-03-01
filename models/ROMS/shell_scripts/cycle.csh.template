@@ -6,88 +6,52 @@
 #
 # $Id$
 #
-#=============================================================================
-# This block of directives constitutes the preamble for the LSF queuing system
+#==========================================================================
+# SLURM directives 			sbatch advance_ensemble.csh
+# 					squeue -u $USER
+# 					scancel <jobnumber>
+#SBATCH --ignore-pbs
+#SBATCH --ntasks=16
+#SBATCH --ntasks-per-node=16
+#SBATCH --time=00:10:00
+#SBATCH -A P8685nnnn
+#SXXXXX -p dav
+#SBATCH -e roms_cycle.%j.err
+#SBATCH -o roms_cycle.%j.out
+#SBATCH --mail-type=END
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-user=$USER@ucar.edu
 #
-# the normal way to submit to the queue is:    bsub < cycle.csh
+#==========================================================================
+# PBS directives                	qsub test_batch.csh
+# 					qstat -u $USER
+# 					qdel <jobnumber>
+#PBS -e roms_cycle.err
+#PBS -o roms_cycle.log
+#PBS -l select=1:ncpus=16:mpiprocs=16
+#PBS -l walltime=00:10:00
+#PBS -A P8685nnnn
+#PBS -q economy
+#PBS -r n
 #
-# an explanation of the most common directives follows:
-# -J Job_name
-# -o STDOUT_filename
-# -e STDERR_filename
-# -P account_code_number
-# -q queue    cheapest == [standby, economy, (regular,debug), premium] == $$$$
-# -n number of MPI processes (not nodes)
-# -W hh:mm  wallclock time (required on some systems)
-#=============================================================================
+#==========================================================================
+# LSF directives 			bsub < advance_ensemble.csh
+# 					bjobs
+# 					bkill <jobnumber>
 #BSUB -J roms_cycle
 #BSUB -o roms_cycle.%J.log
-#BSUB -P P86850054
+#BSUB -P P8685nnnn
 #BSUB -q small
 #BSUB -n 16
 #BSUB -R "span[ptile=16]"
 #BSUB -W 1:00
 #BSUB -N -u ${USER}@ucar.edu
-#
-#=============================================================================
-# This block of directives constitutes the preamble for the PBS queuing system
-# Turns out SLURM (in particular 'sbatch') recognizes PBS directives, so we
-# don't need two sets of directives.
-# the normal way to submit with pbs:    qsub   cycle.csh
-# the normal way to submit with slurm:  sbatch cycle.csh
-#
-# an explanation of the most common directives follows:
-# -N     Job name
-# -r n   Declare job non-rerunable
-# -e <arg>  filename for standard error
-# -o <arg>  filename for standard out
-# -q <arg>   Queue name (small, medium, long, verylong)
-# -l nodes=xx:ppn=2   requests BOTH processors on the node. On both bangkok
-#                     and calgary, there is no way to 'share' the processors
-#                     on the node with another job, so you might as well use
-#                     them both. (ppn == Processors Per Node)
-#=============================================================================
-#PBS -N roms_cycle
-#PBS -e roms_cycle.err
-#PBS -o roms_cycle.log
-#PBS -l nodes=1:ppn=16
-#PBS -r n
-#
-#=============================================================================
-# Important things to know about slurm:
-#
-# sinfo     information about the whole slurm system
-# squeue    information about running jobs
-# sbatch    submitting a job
-# scancel   killing a job
-#
-# specifying the run-time limit with slurm:
-# --time=10                10 minutes
-# --time=10:00             10 minutes and no seconds - really
-# --time=2:00:00           2 hours
-# --time=3-1:23:45         3 days, 1 hour, 23 minutes and 45 seconds
-#==========================================================================
-#SBATCH --time=01:00:00
-
-cd EXPERIMENT_DIRECTORY
 
 #=========================================================================
-# STEP 0: figure out the platform-specific nuances.
+# Figure out the platform-specific nuances.
 #=========================================================================
 
-if ($?LS_SUBCWD) then
-
-   set  ORIGINALDIR = $LS_SUBCWD
-   set      JOBNAME = $LSB_JOBNAME
-   set        JOBID = $LSB_JOBID
-   set      MYQUEUE = $LSB_QUEUE
-   set       MYHOST = $LSB_SUB_HOST
-   set       NTASKS = 
-   set    LAUNCHCMD = "mpirun.lsf"
-
-else if ($?PBS_O_WORKDIR) then
-
-else if ($?SLURM_JOB_ID) then
+if ($?SLURM_JOB_ID) then
 
    set ORIGINALDIR = $SLURM_SUBMIT_DIR
    set     JOBNAME = $SLURM_JOB_NAME
@@ -97,10 +61,24 @@ else if ($?SLURM_JOB_ID) then
    set      NTASKS = $SLURM_NTASKS
    set   LAUNCHCMD = "mpirun -np $NTASKS -bind-to core"
 
-   echo "SLURM_JOB_NUM_NODES = ${SLURM_JOB_NUM_NODES}"
-   echo "SLURM_JOB_NODELIST  = ${SLURM_JOB_NODELIST}"
-   echo "SLURM_NNODES        = ${SLURM_NNODES}"
-   echo "SLURM_NODELIST      = ${SLURM_NODELIST}"
+else if ($?PBS_O_WORKDIR) then
+
+   set ORIGINALDIR = $PBS_O_WORKDIR
+   set     JOBNAME = $PBS_JOBNAME
+   set       JOBID = $PBS_JOBID
+   set     MYQUEUE = $PBS_QUEUE
+   set    NUMNODES = `cat ${PBS_NODEFILE} | wc -l`
+   set      NTASKS = `echo "${NCPUS} * ${NUMNODES}" | bc`
+   set   LAUNCHCMD = "mpiexec_mpt"
+
+else if ($?LS_SUBCWD) then
+
+   set  ORIGINALDIR = $LS_SUBCWD
+   set      JOBNAME = $LSB_JOBNAME
+   set        JOBID = $LSB_JOBID
+   set      MYQUEUE = $LSB_QUEUE
+   set       MYHOST = $LSB_SUB_HOST
+   set    LAUNCHCMD = "mpirun.lsf"
 
 else
 
@@ -109,17 +87,16 @@ else
    set       JOBID = $$
    set     MYQUEUE = Interactive
    set      MYHOST = $host
-   set      TASKID = 1
    set      NTASKS = 1
    set   LAUNCHCMD = "aprun -n $NTASKS"
 
 endif
 
-#=========================================================================
-# STEP 1: Advance the ocean ensemble ... one after another.
-#=========================================================================
+cd EXPERIMENT_DIRECTORY
 
-set DSTART = 37623
+#==========================================================================
+# STEP 1: Advance the ocean ensemble ... one after another.
+#==========================================================================
 
 @ instance = 0
 foreach INSTANCE_DIRECTORY ( instance_???? )
@@ -128,16 +105,29 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
 
    cd ${INSTANCE_DIRECTORY}
 
-   rm -f log_$instance.txt
+   \rm -f log_$instance.txt
 
    echo "advancing instance $instance at ..."`date`
 
+   # sometimes we need the full name, sometimes we need it without the extension
+   set RST_FILE = MyRSTNAME
+   set DAI_FILE = MyDAINAME
+   set OBS_FILE = MyMODname
+   set RST_ROOT = $RST_FILE:r
+   set DAI_ROOT = $DAI_FILE:r
+   set OBS_ROOT = $OBS_FILE:r
+
+   # get the DSTART time so we can get the right observation file
+   set INPUT_FILE = `sed -n -e '/ININAME/s/.*== *//p' MyROMS_STDIN` || exit 2
+   set     DSTART = `../get_ocean_time.csh ${INPUT_FILE}`       || exit 2
+
    \cp ../s4dvar.in.template s4dvar.in
    set OBS_PREF = ../Obs/obs
-   set NEW_OBS     = `printf %s_%d.nc ${OBS_PREF} $DSTART`
+   set NEW_OBS  = `printf %s_%d.nc ${OBS_PREF} $DSTART`
    MySUBSTITUTE s4dvar.in MyOBSname   $NEW_OBS
 
-   ${LAUNCHCMD} ../MyROMS_EXE MyROMS_STDIN >& log_$instance.txt
+   # Advance the model
+   ${LAUNCHCMD} ../MyROMS_EXE MyROMS_STDIN >& log_$instance.txt || exit 1
 
    # Check for successful completion - log file should NOT have something like:
    # Blowing-up: Saving latest model state into  RESTART file
@@ -149,20 +139,11 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
       exit 1
    endif
 
-   # sometimes we need the full name, sometimes we need it without the extension
-   set RST_FILE = MyRSTNAME
-   set DAI_FILE = MyDAINAME
-   set OBS_FILE = MyMODname
-   set RST_ROOT = $RST_FILE:r
-   set DAI_ROOT = $DAI_FILE:r
-   set OBS_ROOT = $OBS_FILE:r
-
    # The ROMS restart file will be treated as the DART prior.
    # Create a ROMS POSTERIOR file that will be updated by DART and
-   # tag the output with the model time.
+   # tag the output with the (new) model time.
 
-   set DSTART_STRING = `ncdump -v dstart ${DAI_FILE} | grep '^ dstart = '`
-   set DSTART = `echo $DSTART_STRING | sed -e "s#[=;a-z_ ]##g"`
+   set DSTART = `../get_ocean_time.csh ${DAI_FILE}` || exit 2
 
    set ROMS_PRIOR     = `printf %s_%04d_%d.nc ${RST_ROOT} $instance $DSTART`
    set ROMS_POSTERIOR = `printf roms_posterior_%04d_%d.nc $instance $DSTART`
@@ -186,7 +167,7 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
 
 end
 
-#=========================================================================
+#==========================================================================
 # STEP 2: prepare for DART INFLATION
 # This stages the files that contain the inflation values.
 # The inflation values change through time and should be archived.
@@ -224,7 +205,7 @@ end
 #    file to support this option.
 #
 # The strategy is to use the LATEST (last) inflation file.
-#=========================================================================
+#==========================================================================
 
 # The input.nml may be modified differently for each assimilation cycle.
 # (for example, inflation files for the first cycle)
@@ -365,9 +346,9 @@ endif
 # Eat the cookie regardless
 \rm -f roms_inflation_cookie
 
-#==============================================================================
+#==========================================================================
 # STEP 3:  Then we run DART on the ensemble of new states
-#==============================================================================
+#==========================================================================
 
 # Remove the last set of DART run-time logs - if they exist.
 
@@ -419,21 +400,9 @@ end
 
 \mv -v obs_seq.final             obs_seq.final.${DSTART}
 
-#==============================================================================
+#==========================================================================
 # STEP 4: Prepare for the next model advance
-#==============================================================================
-# Rename the existing files to have their future names.
-# Sometime soon, the base filenames will not need to be changed.
-
-# 1) filter creates a 'new_dstart.txt' file with the new DSTART
-#    that must be inserted into the CENTRALDIR/ocean.in
-
-set DSTART = `grep DSTART new_dstart.txt | sed -e 's/[A-Z, ]//g'`
-
-# 2) the input.nml:&filter_nml:restart_out_file_name specifies the base
-#    filename for the updated (the posterior) model state. This base gets
-#    appended with a 4-digit instance number and then ".nc"
-#    This file must be pushed back into the appropriate directory.
+#==========================================================================
 
 @ instance = 0
 foreach INSTANCE_DIRECTORY ( instance_???? )
@@ -442,7 +411,7 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
    cd ${INSTANCE_DIRECTORY}
 
    set posterior = `head -n $instance ../restart_files.txt | tail -n 1`
-   set ROMS_INI = $posterior:t
+   set ROMS_POSTERIOR = $posterior:t
 
    # use new state as starting point for next advance.
    # We want to preserve the unique posterior but want ROMS
@@ -450,16 +419,14 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
 
    # Update the ocean.in file with the new DSTART value
 
-   \cp ../ocean.in.template ocean.in
+   \cp ../ocean.in.template MyROMS_STDIN
 
-   MySUBSTITUTE ocean.in MyDSTART   $DSTART
-   MySUBSTITUTE ocean.in MyININAME  $ROMS_INI
+   MySUBSTITUTE MyROMS_STDIN MyDSTART   ${DSTART}
+   MySUBSTITUTE MyROMS_STDIN MyININAME  ${ROMS_POSTERIOR}
 
    cd ..
-
 end
 
-#==============================================================================
 # <next few lines under version control, do not edit>
 # $URL$
 # $Revision$

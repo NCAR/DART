@@ -85,8 +85,8 @@ end subroutine create_mean_window
 subroutine free_state_window(state_ens_handle, fwd_op_ens_handle, qc_ens_handle)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
-type(ensemble_type), intent(inout) :: fwd_op_ens_handle
-type(ensemble_type), intent(inout) :: qc_ens_handle
+type(ensemble_type), intent(inout), optional :: fwd_op_ens_handle
+type(ensemble_type), intent(inout), optional :: qc_ens_handle
 
 current_win = NO_WINDOW
 
@@ -94,7 +94,7 @@ end subroutine free_state_window
 
 !---------------------------------------------------------
 !> Free the mpi window
-subroutine free_mean_window
+subroutine free_mean_window()
 
 call end_ensemble_manager(mean_ens_handle)
 

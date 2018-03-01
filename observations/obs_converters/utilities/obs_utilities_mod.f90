@@ -47,6 +47,7 @@ public :: create_3d_obs,    &
           query_varname,    &
           set_missing_name
 
+!>@todo FIXME there is no documentation for this module
 
 ! module global storage
 character(len=NF90_MAX_NAME) :: missing_name = ''
@@ -146,18 +147,18 @@ subroutine query_3d_obs(obs, lat, lon, vval, vkind, obsv, okind, oerr, day, sec,
 
 real(r8)              :: obs_val(1), qc_val(1), locvals(3)
 type(obs_def_type)    :: obs_def
-type(location_type)   :: loc
+type(location_type)   :: location
 
 ! get the obs_def out of the obs.  it has the location, time, kind;
 ! basically everything except the actual obs value and qc.
 call get_obs_def(obs, obs_def)
 
-loc = get_obs_def_location(obs_def)
-locvals = get_location(loc)
+location = get_obs_def_location(obs_def)
+locvals = get_location(location)
 lon  = locvals(1)
 lat  = locvals(2)
 vval = locvals(3)
-vkind = query_location(loc)
+vkind = query_location(location)
 
 okind = get_obs_def_type_of_obs(obs_def)
 call get_time(get_obs_def_time(obs_def), sec, day)
@@ -886,11 +887,11 @@ end subroutine getvar_int_2d
 
 subroutine getvar_real_1d_1val(ncid, varname, start, dout, dmiss)
 
- integer,            intent(in)   :: ncid
- character(len = *), intent(in)   :: varname
- integer,            intent(in)   :: start
- real(r8),           intent(out)  :: dout
- real(r8), optional, intent(out)  :: dmiss
+integer,            intent(in)   :: ncid
+character(len = *), intent(in)   :: varname
+integer,            intent(in)   :: start
+real(r8),           intent(out)  :: dout
+real(r8), optional, intent(out)  :: dmiss
 
 integer :: varid, ret
 
@@ -923,11 +924,11 @@ end subroutine getvar_real_1d_1val
 
 subroutine getvar_int_1d_1val(ncid, varname, start, dout, dmiss)
 
- integer,            intent(in)   :: ncid
- character(len = *), intent(in)   :: varname
- integer,            intent(in)   :: start
- integer,            intent(out)  :: dout
- integer,  optional, intent(out)  :: dmiss
+integer,            intent(in)   :: ncid
+character(len = *), intent(in)   :: varname
+integer,            intent(in)   :: start
+integer,            intent(out)  :: dout
+integer,  optional, intent(out)  :: dmiss
 
 integer :: varid, ret
 
@@ -963,12 +964,12 @@ end subroutine getvar_int_1d_1val
 
 subroutine getvar_real_2d_slice(ncid, varname, start, count, darray, dmiss)
 
- integer,            intent(in)   :: ncid
- character(len = *), intent(in)   :: varname
- integer,            intent(in)   :: start
- integer,            intent(in)   :: count
- real(r8),           intent(out)  :: darray(:)
- real(r8), optional, intent(out)  :: dmiss
+integer,            intent(in)   :: ncid
+character(len = *), intent(in)   :: varname
+integer,            intent(in)   :: start
+integer,            intent(in)   :: count
+real(r8),           intent(out)  :: darray(:)
+real(r8), optional, intent(out)  :: dmiss
 
 integer :: varid, ret
 
@@ -1005,11 +1006,11 @@ end subroutine getvar_real_2d_slice
 
 subroutine get_or_fill_QC_2d_slice(ncid, varname, start, count, darray)
 
- integer,            intent(in)    :: ncid
- character(len = *), intent(in)    :: varname
- integer,            intent(in)    :: start
- integer,            intent(in)    :: count
- integer,            intent(inout) :: darray(:)
+integer,            intent(in)    :: ncid
+character(len = *), intent(in)    :: varname
+integer,            intent(in)    :: start
+integer,            intent(in)    :: count
+integer,            intent(inout) :: darray(:)
 
 integer :: varid, nfrc
 

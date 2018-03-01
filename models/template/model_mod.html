@@ -230,8 +230,8 @@ code and it will not be called.)
 <TR><TD valign=top><em class=code>x</em></TD>
     <TD>State vector of length model_size.</TD></TR>
 
-<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Specifies time of the initial model state.</TD></TR>
+<TR><TD valign=top><em class=code>time</em></TD>
+    <TD>Current time of the model state.</TD></TR>
 
 </TABLE>
 
@@ -284,14 +284,14 @@ This interface is required to be functional for all applications.
 <A NAME="model_interpolate"></A>
 <br>
 <div class=routine>
-<em class=call>call model_interpolate(state_handle, x, location, itype, obs_val, istatus)</em>
+<em class=call>call model_interpolate(state_handle, ens_size, location, obs_quantity, expected_obs, istatus)</em>
 <pre>
 type(ensemble_type),    intent(in)  :: <em class=code>state_handle</em>
-real(r8), dimension(:), intent(in)  :: <em class=code>x</em>
+integer,                intent(in)  :: <em class=code>ens_size</em>
 type(location_type),    intent(in)  :: <em class=code>location</em>
-integer,                intent(in)  :: <em class=code>itype</em>
-real(r8),               intent(out) :: <em class=code>obs_val</em>
-integer,                intent(out) :: <em class=code>istatus</em>
+integer,                intent(in)  :: <em class=code>obs_quantity</em>
+real(r8),               intent(out) :: <em class=code>expected_obs(ens_size)</em>
+integer,                intent(out) :: <em class=code>istatus(ens_size)</em>
 </pre>
 </div>
 
@@ -299,16 +299,16 @@ integer,                intent(out) :: <em class=code>istatus</em>
 <!-- Description -->
 
 <P>
-Given a handle containing information for a state vector, a state vector, 
-a location, and a model state variable kind
-interpolates the state variable field to that location and returns 
-the value in <em class=code>obs_val</em>. The <em class=code>istatus</em> 
-variable should be returned as 0 unless there is some problem in 
-computing the interpolation in which case a positive value should be 
-returned. The <em class=code>itype</em> variable
+Given a handle containing information for a state vector, an ensemble size,
+a location, and a model state variable quantity
+interpolates the state variable field to that location and returns an 
+ensemble-sized array of values in <em class=code>expected_obs(:)</em>. 
+The <em class=code>istatus(:)</em> array should be 0 for successful
+ensemble members and a positive value for failures.
+The <em class=code>obs_quantity</em> variable
 is one of the quantity (QTY) parameters defined in the
 <a href="../../assimilation_code/modules/observations/obs_kind_mod.html">obs_kind_mod.f90</a> file
-and maps the quantity to a model variable for the interpolation.
+and defines the quantity to interpolate.
 In low-order models that have no notion of kinds of variables this argument may
 be ignored. For applications in which only perfect model experiments
 with identity observations (i.e. only the value of a particular
@@ -318,25 +318,25 @@ Otherwise it is required (which is the most common case).
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>state_handle&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>state_handle</em></TD>
     <TD>The handle to the state structure containing information about 
         the state vector about which information is requested.</TD></TR>
 
-<TR><TD valign=top><em class=code>x</em></TD>
-    <TD>A model state vector.</TD></TR>
+<TR><TD valign=top><em class=code>ens_size</em></TD>
+    <TD>The ensemble size.</TD></TR>
 
-<TR><TD valign=top><em class=code>location&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>location</em></TD>
     <TD>Location to which to interpolate.</TD></TR>
 
-<TR><TD valign=top><em class=code>itype</em></TD>
+<TR><TD valign=top><em class=code>obs_quantity</em></TD>
     <TD>Quantity of state field to be interpolated.</TD></TR>
 
-<TR><TD valign=top><em class=code>obs_val</em></TD>
-    <TD>The interpolated value from the model.</TD></TR>
+<TR><TD valign=top><em class=code>expected_obs</em></TD>
+    <TD>The interpolated values from the model.</TD></TR>
 
 <TR><TD valign=top><em class=code>istatus</em></TD>
-    <TD>Integer value returning 0 for success.
-        Other values can be defined for various failures.</TD></TR>
+    <TD>Integer values return 0 for success.
+        Other positive values can be defined for various failures.</TD></TR>
 
 </TABLE>
 
@@ -358,8 +358,7 @@ type(time_type) :: <em class=code>shortest_time_between_assimilations</em>
 <!-- Description -->
 
 <P>
-Returns the time step (forecast length) of the model;
-the smallest increment in time that the model is capable of 
+Returns the smallest increment in time that the model is capable of 
 advancing the state in a given implementation.
 The actual value may be set by the model_mod namelist (depends on the model).
 This interface is required for all applications. 
@@ -367,8 +366,8 @@ This interface is required for all applications.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>var&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Smallest time step of model.</TD></TR>
+<TR><TD valign=top><em class=code>var</em></TD>
+    <TD>Smallest advance time of the model.</TD></TR>
 
 </TABLE>
 
@@ -388,7 +387,8 @@ This interface is required for all applications.
 
 <P>
 Called to do one time initialization of the model. As examples,
-might define information about the model size or model timestep.
+might define information about the model size or model timestep,
+read in grid information, read a namelist, set options, etc.
 In models that require pre-computed static data, for instance
 spherical harmonic weights, these would also be computed here.
 Can be a NULL INTERFACE for the simplest models. 
@@ -425,7 +425,7 @@ calling this routine should issue a fatal error.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>time</em></TD>
     <TD>Initial model time.</TD></TR>
 
 </TABLE>
@@ -458,7 +458,7 @@ calling this routine should issue a fatal error.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>x&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>x</em></TD>
     <TD>Initial conditions for state vector.</TD></TR>
 
 </TABLE>
@@ -622,7 +622,7 @@ must be returned as <em class=code>.true.</em>
         on the model-specific implementation.
     </TD></TR>
 
-<TR><TD valign=top><em class=code>interf_provided&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>interf_provided</em></TD>
     <TD>Returns false if model_mod cannot do this, else true.</TD></TR>
 
 </TABLE>
@@ -657,7 +657,7 @@ type(ensemble_type), optional, intent(in)  :: <em class=optionalcode>state_handl
 <!-- Description -->
 
 <P>
-Given a location and kind, compute the distances to all other locations 
+Given a location and quantity, compute the distances to all other locations 
 in the <em class=code>obs</em> list.  The return values are the number
 of items which are within maxdist of the base, the index numbers in the 
 original obs list, and optionally the distances.  The <em class=code>gc</em>
@@ -719,7 +719,7 @@ for examples of this use.
     <TD>Reference location.  The distances will be computed
         between this location and every other location in the obs list</TD></TR>
 
-<TR><TD valign=top><em class=code>base_type&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>base_type</em></TD>
     <TD>The DART quantity at the <em class=code>base_loc</em></TD></TR>
 
 <TR><TD valign=top><em class=code>locs(:)</em></TD>
@@ -749,7 +749,7 @@ for examples of this use.
         than maxdist will be added to the list but the overhead
         of computing the exact distances will be skipped.</TD></TR>
 
-<TR><TD valign=top><em class=code>state_handle&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>state_handle</em></TD>
     <TD>The handle to the state structure containing information about 
         the state vector about which information is requested.</TD></TR>
 
@@ -845,7 +845,7 @@ for examples of this use.
     <TD>Reference location.  The distances will be computed
         between this location and every other location in the obs list</TD></TR>
 
-<TR><TD valign=top><em class=code>base_type&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>base_type</em></TD>
     <TD>The DART quantity at the  <em class=code>base_loc</em></TD></TR>
 
 <TR><TD valign=top><em class=code>state_loc(:)</em></TD>
@@ -875,7 +875,7 @@ for examples of this use.
         than maxdist will be added to the list but the overhead
         of computing the exact distances will be skipped.</TD></TR>
 
-<TR><TD valign=top><em class=code>state_handle&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>state_handle</em></TD>
     <TD>The handle to the state structure containing information about 
         the state vector about which information is requested.</TD></TR>
 
@@ -916,7 +916,7 @@ coodinate system.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>state_handle&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>state_handle</em></TD>
     <TD>The handle to the state.</TD></TR>
 
 <TR><TD valign=top><em class=code>num</em></TD>
@@ -937,9 +937,9 @@ coodinate system.
         integers to vertical coordinate systems.</TD></TR>
 
 <TR><TD valign=top><em class=code>status</em></TD>
-    <TD>Specifies the success or failure of the vertical conversion.
+    <TD>Success or failure of the vertical conversion.
         If <em class=code>istatus&nbsp;=&nbsp;0</em>, the conversion was
-        a sucess. Any other value is a failure.
+        a success. Any other value is a failure.
     </TD></TR>
 
 </TABLE>
@@ -980,7 +980,7 @@ coodinate system.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>state_handle&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>state_handle</em></TD>
     <TD>The handle to the state.</TD></TR>
 
 <TR><TD valign=top><em class=code>num</em></TD>
@@ -1001,9 +1001,9 @@ coodinate system.
         integers to vertical coordinate systems.</TD></TR>
 
 <TR><TD valign=top><em class=code>status</em></TD>
-    <TD>Specifies the success or failure of the vertical conversion.
+    <TD>Success or failure of the vertical conversion.
         If <em class=code>istatus&nbsp;=&nbsp;0</em>, the conversion was
-        a sucess. Any other value is a failure.
+        a success. Any other value is a failure.
     </TD></TR>
 
 </TABLE>
@@ -1041,8 +1041,8 @@ use a netCDF variable named 'time') - you will have to write this routine.
 <TR><TD valign=top><em class=code>ncid</em></TD>
     <TD>handle to an open netCDF file</TD></TR>
 
-<TR><TD valign=top><em class=code>dart_time&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Specifies the (last) time of the model state.</TD></TR>
+<TR><TD valign=top><em class=code>dart_time</em></TD>
+    <TD>The current time of the model state.</TD></TR>
 
 </TABLE>
 
@@ -1077,8 +1077,8 @@ use a netCDF variable named 'time') - you will have to write this routine.
 <TR><TD valign=top><em class=code>ncid</em></TD>
     <TD>handle to an open netCDF file</TD></TR>
 
-<TR><TD valign=top><em class=code>dart_time&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Specifies the time of the assimilation (the current time step).</TD></TR>
+<TR><TD valign=top><em class=code>dart_time</em></TD>
+    <TD>The current time of the model state.</TD></TR>
 
 </TABLE>
 
@@ -1115,7 +1115,7 @@ Can be a NULL INTERFACE if the model has no need to clean up storage, etc.
 <A NAME="FilesUsed"></A>
 <H2>FILES</H2>
 <UL>
-   <LI>Models are free to read and write files as they see fit.
+   <LI>Models are free to read and write files as they see fit.</LI>
 </UL>
 
 <!--==================================================================-->
@@ -1194,7 +1194,7 @@ http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 <TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
 <TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
 <TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+<TR><TD valign=top>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
 </TABLE>
 
 <!--==================================================================-->

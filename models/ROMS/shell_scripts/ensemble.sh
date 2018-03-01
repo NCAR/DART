@@ -7,11 +7,11 @@
 #   See License_ROMS.txt                                              #
 #######################################################################
 #                                                                     #
-# Script to set-up ROMS ensemble runs for data assimilation.          # 
+# Script to set-up ROMS ensemble runs for data assimilation.          #
 #                                                                     #
 # Usage:                                                              #
 #                                                                     #
-#   ensemble.csh <Esize>
+#   ensemble.csh <Esize>                                              #
 #                                                                     #
 #######################################################################
 
@@ -74,7 +74,7 @@ while ( $i <= $Esize )
 
   echo "Processing Ensemble Run: ${MyRun}"
 
-  if ( ! -d ${MyDir} ) then 
+  if ( ! -d ${MyDir} ) then
     mkdir ${MyDir}
   endif
 
@@ -95,7 +95,7 @@ while ( $i <= $Esize )
 
   mv -f ${ROMS_INI} ${MyDir}
 
-# Go to ensemble working directory. 
+# Go to ensemble working directory.
 
   cd ${MyDir}
 

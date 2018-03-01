@@ -1,0 +1,71 @@
+#!/bin/tcsh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
+#=============================================================================
+# This block of directives constitutes the preamble for the slurm queuing system
+# Important things to know about slurm:
+# slurm will interpret PBS directives unless you explicitly direct it not to.
+#
+# sinfo     				information about the whole slurm system
+# squeue -u ${USER}			information about running jobs
+# sbatch #jobscript#			submitting a job
+# scancel nnnnnn			killing a job
+#
+# specifying the run-time limit with slurm:
+# --time=10                10 minutes
+# --time=10:00             10 minutes and no seconds - really
+# --time=2:00:00           2 hours
+# --time=3-1:23:45         3 days, 1 hour, 23 minutes and 45 seconds
+#==========================================================================
+#SBATCH --ignore-pbs			ignore
+#SBATCH -l nodes=1:ppn=16		want 1 node with at least 16 procs
+#SBATCH --ntasks=1			want 1 task
+#SBATCH --ntasks-per-node=1		only put N tasks on each node
+#SBATCH --array=1-Myens_size		job array syntax
+#SBATCH --time=00:01:00
+#SBATCH --account P8685nnnn
+#SBATCH --partition dav			queue
+#SBATCH --exclude=node04		do not run on this node(list)
+#SBATCH --error  testslurm.%j.err
+#SBATCH --output testslurm.%j.out
+#SBATCH --mail-type=END
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-user=$USER@ucar.edu
+#
+#=============================================================================
+# This block of directives constitutes the preamble for the PBS queuing system
+#
+# qstat -u ${USER}			information about running jobs
+# qsub #jobscript#			submitting a job
+# qdel nnnnnn				killing a job
+#=============================================================================
+#PBS -N roms_cycle			Job name  (also used for output,error files)
+#PBS -J 1-Myens_size			job aray syntax
+#PBS -l select=1:ncpus=16:mpiprocs=16	want 1 node with at least 16 cpus, use N of them
+#PBS -l walltime=00:10:00
+#PBS -A P8685nnnn
+#PBS -q economy
+#PBS -r n				job is not rerunable
+#
+#=============================================================================
+# This block of directives constitutes the preamble for the LSF queuing system
+#
+# bjobs					information about running jobs
+# bsub < #jobscript#			submitting a job
+# bkill nnnnnn 				killing a job
+#=============================================================================
+#BSUB -J roms_cycle			Job name
+#BSUB -J roms_cycle[1-Myens_size]	Job array syntax
+#BSUB -o roms_cycle.%J.log		output filename with unique job index
+#BSUB -o roms_cycle.%J.%I.log		output filename with job index and array index
+#BSUB -P P8685nnnn
+#BSUB -q small				queue
+#BSUB -n 16				need at least this many tasks
+#BSUB -R "span[ptile=16]"		only put this many tasks on each node
+#BSUB -W 1:00				hh:mm  wallclock time required
+#BSUB -N -u ${USER}@ucar.edu		send mail at end of job to this addr

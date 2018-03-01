@@ -303,26 +303,26 @@
 
 # possible vertical coordinate systems are:
 # VERTISUNDEF VERTISSURFACE VERTISLEVEL VERTISPRESSURE VERTISHEIGHT VERTISSCALEHEIGHT
-   kind_of_interest = 'QTY_TEMPERATURE',
-   kind_of_interest = 'QTY_SALINITY',
-   kind_of_interest = 'QTY_U_CURRENT',
-   kind_of_interest = 'QTY_V_CURRENT',
-   kind_of_interest = 'QTY_DENSITY',
+   quantity_of_interest = 'QTY_TEMPERATURE',
+   quantity_of_interest = 'QTY_SALINITY',
+   quantity_of_interest = 'QTY_U_CURRENT_COMPONENT',
+   quantity_of_interest = 'QTY_V_CURRENT_COMPONENT',
+   quantity_of_interest = 'QTY_DENSITY',
 
 &model_mod_check_nml
    input_state_files     = 'mpas_restart.nc'
    output_state_files    = 'check_me.nc'
-   advance_time_present  = .FALSE.,
-   verbose               = .FALSE.,
-   test1thru             = 10,
-   x_ind                 = 300 ,
-   loc_of_interest       = 240.0, 0.0, 10000.0,
-   kind_of_interest      = 'QTY_TEMPERATURE',
-   interp_test_lonrange  = 0.0, 359.0,
-   interp_test_dlon      = 1.0,
-   interp_test_latrange  = -89.0, 89.0,
-   interp_test_dlat      = 1.0,
-   interp_test_vertrange = 100.0,  300.0,
-   interp_test_dvert     = 200.0,
+   test1thru             = 10
+   run_tests             = 0
+   x_ind                 = 300
+   loc_of_interest       = 240.0, 0.0, 10000.0
+   quantity_of_interest  = 'QTY_TEMPERATURE'
+   interp_test_lonrange  = 0.0, 359.0
+   interp_test_dlon      = 1.0
+   interp_test_latrange  = -89.0, 89.0
+   interp_test_dlat      = 1.0
+   interp_test_vertrange = 100.0,  300.0
+   interp_test_dvert     = 200.0
    interp_test_vertcoord = 'VERTISHEIGHT'
+   verbose               = .false.
    /

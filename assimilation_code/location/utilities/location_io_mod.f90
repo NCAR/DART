@@ -15,6 +15,8 @@
 !>will have to replicate the VERTISxxx in the location modules because
 !>fortran doesn't allow circular 'use's between modules.  ugh.
 
+!>@todo There is no documentation for this module.
+
 module location_io_mod
 
 use            types_mod, only : r8, MISSING_I

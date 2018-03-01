@@ -35,7 +35,7 @@ while ( $n <= $njobs )
   echo '#\!/bin/csh'                   >! $scriptname
   echo "#BSUB -J $thisjobname"        >> $scriptname
   echo "#BSUB -o $thisjobname.%J.log" >> $scriptname
-  echo "#BSUB -P P86850054"           >> $scriptname
+  echo "#BSUB -P P8685nnnn"           >> $scriptname
   echo "#BSUB -q small"               >> $scriptname
   echo "#BSUB -n 16"                  >> $scriptname
   echo "#BSUB -R 'span[ptile=16]'"    >> $scriptname

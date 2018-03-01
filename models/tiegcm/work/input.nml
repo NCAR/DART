@@ -297,10 +297,20 @@
    /
 
 &model_mod_check_nml
-   input_state_files    = "dart_ics.nc"
-   output_state_files   = "check_me_out.nc"
-   verbose              = .true.
-   x_ind                = 36288
-   loc_of_interest      = 240.0, 12.49, 200000.0
+   input_state_files     = "tiegcm_restart_p.nc"
+   output_state_files    = "mmc_output.nc"
+   test1thru             = 0
+   run_tests             = 1,2,3,4,5,7
+   x_ind                 = 36288
+   loc_of_interest       = 240.0, 12.49, 200000.0
+   quantity_of_interest  = 'QTY_ELECTRON_DENSITY'
+   interp_test_dlon      = 0.1
+   interp_test_dlat      = 0.1
+   interp_test_dvert     = 50000.0
+   interp_test_lonrange  = 205.0,  226.0
+   interp_test_latrange  = 30.0,   47.0
+   interp_test_vertrange = 200000.0, 300000.0
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   verbose               = .false.
    /
 

@@ -111,7 +111,7 @@
      
 &perfect_model_obs_nml
    read_input_state_from_file = .true.,
-   input_state_files          = "perfect_ics.nc",
+   input_state_files          = "caminput.nc",
    init_time_days             = -1,
    init_time_seconds          = -1,
 
@@ -242,7 +242,7 @@
 #========================================================================
 
 &model_nml
-   model_version       = 'cam5.4.101',
+   model_version       = '4.0',
    model_config_file   = 'caminput.nc' 
    cam_phis            = 'cam_phis.nc'
    state_num_0d        = 0,
@@ -258,8 +258,8 @@
    pert_names          = 'T'
    pert_sd             = 0.1,
    pert_base_vals      = -888888.0d0,
-   highest_obs_pressure_Pa   = 0.001,
-   highest_state_pressure_Pa = 0.0,
+   highest_obs_pressure_Pa   = 1000.0,
+   highest_state_pressure_Pa = 9400.0,
    max_obs_lat_degree        = 90.0,
    Time_step_seconds         = 21600,
    Time_step_days            = 0,
@@ -357,11 +357,8 @@
 &obs_kind_nml
    assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
                                 'RADIOSONDE_U_WIND_COMPONENT',
-                                'GPSRO_REFRACTIVITY', 
-
-   evaluate_these_obs_types = 'RADIOSONDE_SPECIFIC_HUMIDITY',
-   /
                                 'RADIOSONDE_V_WIND_COMPONENT',
+                                'GPSRO_REFRACTIVITY', 
                                 'AIRCRAFT_TEMPERATURE',
                                 'ACARS_TEMPERATURE',
                                 'AIRCRAFT_U_WIND_COMPONENT',
@@ -370,6 +367,8 @@
                                 'ACARS_V_WIND_COMPONENT',
                                 'SAT_U_WIND_COMPONENT',
                                 'SAT_V_WIND_COMPONENT',
+   evaluate_these_obs_types = 'RADIOSONDE_SPECIFIC_HUMIDITY',
+   /
 
 
 !  : error codes >= TERMLEVEL will cause termination
@@ -530,18 +529,21 @@
   /
 
 &model_mod_check_nml
-   verbose               = .FALSE.
-   test1thru             = 5
-   loc_of_interest       = 320.0, 18.0, 5.0
+   input_state_files     = 'caminput.nc'
+   output_state_files    = 'mmc_output.nc'
+   test1thru             = 0
+   run_tests             = 1,2,3,4,5,7
    x_ind                 = 10
-   kind_of_interest      = 'QTY_U_CURRENT_COMPONENT'
+   quantity_of_interest  = 'QTY_U_WIND_COMPONENT'
+   loc_of_interest       = 254.727854, 39.9768545, 50000.0
+   interp_test_vertcoord = 'VERTISPRESSURE'
    interp_test_lonrange  = 0.0, 359.0
    interp_test_dlon      = 1.0
    interp_test_latrange  = -89.0, 89.0
    interp_test_dlat      = 1.0
    interp_test_vertrange = 1000.0,  1005.0
    interp_test_dvert     = 2000.0
-   interp_test_vertcoord = 'VERTISHEIGHT'
+   verbose               = .false.
   /
 
 &obs_impact_tool_nml

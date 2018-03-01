@@ -21,7 +21,7 @@
    interp_test_yrange    = -888888.0, -888888.0
    interp_test_zrange    = -888888.0, -888888.0
    interp_test_vertcoord = 'VERTISHEIGHT'
-   test1thru             = 15
+   test1thru             = 7
    run_tests             = -1
    verbose               = .FALSE.
   /
