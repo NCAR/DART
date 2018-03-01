@@ -129,13 +129,19 @@ prematurely terminating the namelist.
 <TR><TD> input_state_files(:)  </TD>
     <TD> character(len=256) </TD>
     <TD> The name(s) of the NetCDF file(s) containing the model states, one per domain.
-      <!--  If num_ens &gt; 1 then you need to specify a file for each ensemble.  -->
+         If num_ens &gt; 1 and not single_file, specify a filename for each 
+         ensemble member (num_ens). If you have both multiple ensemble members in separate
+         files AND multiple domains, specify all the ensemble member filenames for domain 1, 
+         then all the ensemble member filenames for domain 2, etc.
 </TD></TR>  
 
 <TR><TD> output_state_files(:)  </TD>
     <TD> character(len=256) </TD>
     <TD> The name(s) of the output NetCDF file(s) for testing IO, one per domain.
-      <!--   If num_ens &gt; 1 then you need to specify a file for each ensemble. -->
+         If num_ens &gt; 1 and not single_file, specify a filename for each 
+         ensemble member (num_ens). If you have both multiple ensemble members in separate
+         files AND multiple domains, specify all the ensemble member filenames for domain 1, 
+         then all the ensemble member filenames for domain 2, etc.
 </TD></TR>  
 
 <TR><TD> all_metadata_file  </TD>
