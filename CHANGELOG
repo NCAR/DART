@@ -599,11 +599,22 @@ Single File I/O:
   and 2013 file formats.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Dec 01 2017 :: ROMS scripting, debugging aids              Revision: 12162  
++ Nov 22 2017 :: minor updates for DA challenge files          Revision: 12144
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- added obs_seq.in.power to the Lorenz 96 directory
+
+- added new obs types to the workshop version of the input.nml assimilation list
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Dec 01 2017 :: ROMS scripting, debugging aids                Revision: 12166  
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - Added an option to the ROMS model scripting to advance the model ensemble
 members in parallel using a job array.
+
+- Updated the DART_LAB Matlab GUIs to log a history of the settings and
+results.
 
 - Added a debug option to the filter namelist, 'write_obs_every_cycle', 
 to output the full obs_seq.final during each cycle of filter.  
@@ -613,10 +624,8 @@ to output the full obs_seq.final during each cycle of filter.
 longitude interpolation in grids that cross the 360/0 line.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Mar 01 2018 :: MPAS_ATM debug, model_mod_check upgrade, etc $Revision$
++ Mar 01 2018 :: ROMS, MMC, PMO, MPAS_ATM debug, etc           Revision: 12167 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-- developer_tests/test_dart.csh can run PMO for more models.
 
 - Fix a debug message in the MPAS ATM model which might have caused a buffer
 overflow crash when formatting a message for a larger ensemble size.
@@ -629,11 +638,6 @@ for the highest observation assimilated, and for where the ramp starts
 that decreases the increments at the model top. If running with a higher
 model top than the default check these items carefully.
 
-- several model_mod_check programs were combined into a single version
-that allows for selection of individual tests.  many of the input.nml
-models/xxx/work/input.nml files have either had a &model_mod_check_nml
-section added or updated to match the updated interface.
-
 - Fixed variable type for 'time' variables we create in diagnostic files
 
 - Miscellaneous minor Bug fixes: 
@@ -644,6 +648,17 @@ section added or updated to match the updated interface.
    - Fixed grid creation bug in a test program used with model_mod_check.
      Now uses correct spacing for grids in the x,y coordinates.
    - Fixed an allocate problem in a test interpolate routine.
+
+- Add surface pressure to the default state list in the wrf work/input.nml
+
+- developer_tests/test_dart.csh can run PMO for more models. required
+updates to the work/input.nml in several directories (wrf, cm1, POP,
+mpas_atm) to match the current namelist.
+
+- several model_mod_check programs were combined into a single version
+that allows for selection of individual tests.  many of the input.nml
+models/xxx/work/input.nml files have either had a &model_mod_check_nml
+section added or updated to match the updated interface.
 
 - the DART QTYs are now available via the state structure in the wrf 
 and clm model_mods.
@@ -667,13 +682,8 @@ notes about issues commonly encountered.
 - Fixed an incorrect test when printing out a log message describing if the
 inflation would be variance-adaptive or not.
 
-- Add surface pressure to the default state list in the wrf work/input.nml
-
 - Change the location of the POP MDT reference file to be relative to the 
 current run directory and not an absolute file location on cheyenne.
-
-- Update the PMO section of the wrf, CM1, POP, and mpas_atm work/input.nml 
-to match the current namelist.
 
 - Make the ROMS, CM1, and POP model_mod log namelist information to the 
 namelist log file and not the main DART log file.
