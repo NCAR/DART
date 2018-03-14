@@ -576,6 +576,9 @@ call nc_get_variable_info(ncFileID, forecast_name,   &
                                     dimlens=dimlens, &
                                     context=routine  )
 
+!>@todo ... must clamp if needed ... coamps_statevar_mod:is_nonnegative works
+!> on type(state_variable) ... which we don't have here.
+
 if ( ndims == 1) then
 
    allocate( chunk1D(dimlens(1)) )

@@ -88,7 +88,6 @@ module coamps_translate_mod
                                    file_exist, get_unit, do_output,           &
                                    do_nml_file, do_nml_term, nmlfileunit
 
-
   use location_mod,         only : VERTISUNDEF, VERTISSURFACE, VERTISLEVEL,   &
                                    VERTISPRESSURE, VERTISHEIGHT
 
@@ -117,7 +116,6 @@ module coamps_translate_mod
 
   ! DART restart file tools
   public :: open_dart_file
-! public :: dart_read  obsolete now that DART reads netCDF directly
   public :: dart_write
 
   ! Conversion tools
@@ -137,18 +135,7 @@ module coamps_translate_mod
   public :: get_dart_current_time
   public :: get_dart_target_time
   public :: write_pickup_file
-  public :: get_current_dtg
-
-  public :: print_dart_diagnostics
-
-  !>@todo these are needed for model_mod to generate the hdf5 variable names
-  public :: get_coamps_filename_count
-  public :: get_coamps_filename
-
-  !FIX ONLY FOR TESTING
-  public :: dart_state
-
-  public :: previous_dtg
+  public :: get_dtg
 
   !------------------------------
   ! END PUBLIC INTERFACE
@@ -207,6 +194,8 @@ module coamps_translate_mod
   character(len=*), parameter :: revision = "$Revision$"
   character(len=*), parameter :: revdate  = "$Date$"
 
+  character(len=11) :: nml_file = 'convert.nml'
+
   ! Namelist containing the date time group and lead time information
   ! Also include information about the domain decomposition: number
   ! of processors in x and y, the number of I/O processors, and the
@@ -223,13 +212,13 @@ module coamps_translate_mod
   integer                      :: nbdypt   = 7
   logical                      :: ldigit   = .false.
   character(len=10)            :: cdtg     = '1999083100'
-  character(len=11)            :: nml_file = 'convert.nml'
   logical                      :: is_pmo   = .false.
   logical                      :: is_first = .false.
   character(len=180)           :: dsnrff   = './'
+  integer                      :: verbosity = 0
 
   namelist /convert/ ktauf, ktaust, ndxnam, ndynam, npr0nam, nbnam,&
-       & cdtg, icycle, is_pmo, dsnrff, is_first, nbdypt, ldigit
+       & cdtg, icycle, is_pmo, dsnrff, is_first, nbdypt, ldigit, verbosity
 
   logical  :: FLAT_FILE_IO = .true.
   logical  :: is_dart_async
@@ -257,7 +246,7 @@ module coamps_translate_mod
   character(len=*), parameter :: DART_FILENAME = 'dart_vector.nc'
   integer                     :: dart_unit              
 
-  character(len=10)  :: cdtgm1
+  character(len=10)  :: cdtgm1, cdtgp1
   character(len=180) :: dsnrff1
 
   ! The COAMPS domain and the contents of the DART state vector
@@ -293,7 +282,7 @@ contains
     if (module_initialized) return
     call set_calendar_type(GREGORIAN)
 
-    ! Get the data we can't read from pre-exiting COAMPS files
+    ! Get the data we can't read from pre-existing COAMPS files
     call read_convert_namelist()
 
     if (npr0nam > 0) then
@@ -473,8 +462,8 @@ contains
       forecast_time = (/icycle,0,0/)
     end if
     forecast_type = 'fcstfld'
-    dsnrff1 = dsnrff
 
+    dsnrff1 = dsnrff
 
     coamps_file_index = 0
     iterator = get_iterator(file_layout)
@@ -524,7 +513,7 @@ contains
 
     end do flat_file_loop
 
-    if (do_output()) then
+    if (do_output() .and. verbosity > 0) then
        print *,"-------------------------------------------------"
        print *,"COAMPS reading :"
        do i = 1,coamps_file_index
@@ -718,7 +707,7 @@ contains
        working_time = ktauf(:,ONE)
     end if
 
-    if (do_output()) then
+    if (do_output() .and. verbosity > 0) then
     print *,"COAMPS restart files in use:"
     print *,"-------------------------------------------------"
     endif
@@ -733,7 +722,7 @@ contains
        write(*,*) coamps_file_index, coamps_forecast_filenames(coamps_file_index)
     end do
 
-    if (do_output()) &
+    if (do_output() .and. verbosity > 0) &
     print *,"-------------------------------------------------"
 
 100 format( 'restarta1p001',A10,I3.3,I2.2,I2.2,'.nest',I1)
@@ -848,7 +837,7 @@ integer :: dart_time_days, dart_time_seconds
 
 call nc_write_prognostic_data(dart_unit, file_layout, dart_state) 
 
-if (do_output()) call print_dart_diagnostics()
+if (do_output() .and. verbosity > 1) call print_dart_diagnostics()
 
 end subroutine dart_write
 
@@ -944,19 +933,23 @@ end if
 end subroutine get_dart_target_time
 
 !-------------------------------------------------------------------------------
-!> When converting from DART to COAMPS, we get *two* times - the
-!> current time and the target time that it wants the model to
-!> advance to - take the current time in DART days/seconds format
-!> and convert it to the COAMPS hour/minute/second format.
-!>  PARAMETERS
-!>   [none]
+!> Simple accessor to get a date-time-group for the previous, current, or next
+!> time based on the 'cdtg' and 'icycle' in the &convert namelist. 
 
-function get_current_dtg()
-character(len=10) :: get_current_dtg
+function get_dtg(when)
+character(len=*), intent(in) :: when
+character(len=10) :: get_dtg
 
-get_current_dtg = cdtg
+select case (when)
+case ('previous')
+   get_dtg = cdtgm1
+case ('next')
+   get_dtg = cdtgp1
+case default
+   get_dtg = cdtg
+end select
 
-end function get_current_dtg
+end function get_dtg
 
 
   ! write_pickup_file
@@ -1071,6 +1064,8 @@ end function get_current_dtg
         cdtgm1 = previous_dtg(cdtg, icycle)
       end if
     end if
+
+    cdtgp1 = next_dtg(cdtg, icycle)
 
   end subroutine read_convert_namelist
 
@@ -1467,12 +1462,12 @@ end subroutine record_hdf_varnames
     ! in its own restart file. 
     if (coamps_used_io_proc) then
       restart_unit = coamps_forecast_units(get_nest_number(var_to_process))
-      if (do_output()) &
+      if (do_output() .and. verbosity > 2) &
       print *, restart_unit, &
                coamps_forecast_filenames(get_nest_number(var_to_process)) 
     else
       restart_unit = coamps_forecast_units(file_index) 
-      if (do_output()) &
+      if (do_output() .and. verbosity > 2) &
       print *, restart_unit, coamps_forecast_filenames(file_index) 
     end if
 
@@ -1512,7 +1507,7 @@ end subroutine record_hdf_varnames
     ! middle of the file
     field_nest_record = get_record_in_nest(var_to_process, domain,    &
                                                coamps_used_io_proc, ldigit)
-    if (do_output()) &
+    if (do_output() .and. verbosity > 2) &
     print *, "Record in nest is", field_nest_record
     restart_pos = (iubound - ilbound + 1) * (jubound - jlbound + 1) * &
                   (field_nest_record - 1) + 1 +                       &
@@ -1525,7 +1520,7 @@ end subroutine record_hdf_varnames
 
         ! If the point is outside the domain, just skip it and move on
         if ( .not. in_this_nest(make_nest_point(var_nest,ii,jj))) then
-          if (do_output()) &
+          if (do_output() .and. verbosity > 2) &
           print *, "skipping point", ii, jj
           restart_pos = restart_pos + 1
           cycle
@@ -1718,6 +1713,35 @@ end subroutine record_hdf_varnames
 100 format((I4.4),3(I2.2))
     end function previous_dtg
 
+  ! next_dtg
+  ! ---------
+  ! Increments the current date time group by one DA cycle
+  !  PARAMETERS
+  !   IN  cdtg         current date time group
+  function next_dtg(dtg, icycle_loc) result(dtgp1)
+    character(len=10), intent(in) :: dtg  
+    integer,           intent(in) :: icycle_loc
+    character(len=10)             :: dtgp1
+
+    type(time_type)               :: t0, tp1, dt
+    integer                       :: ccyy, mm, dd, hh, nn, ss
+
+    ! convert coamps time to dart time
+    read(dtg,100) ccyy,mm,dd,hh
+    t0 = set_date(ccyy, mm, dd, hh)
+
+    ! decrement the time by one DA cycle
+    ss = 3600*icycle_loc
+    dt = set_time(ss) 
+    tp1 = t0 + dt
+  
+    ! convert decremented time back to ccyymmddhh form
+    call get_date(tp1, ccyy, mm, dd, hh, nn, ss)
+    write(dtgp1,100) ccyy,mm,dd,hh
+
+100 format((I4.4),3(I2.2))
+    end function next_dtg
+
   ! print_dart_diagnostics
   ! ----------------------
   ! Print out information about the maximum and minimum values
@@ -1737,7 +1761,7 @@ end subroutine record_hdf_varnames
     type(state_variable)                 :: cur_var
     type(coamps_nest)                    :: cur_nest
 
-    if (do_output()) &
+    if (do_output() .and. verbosity > 1) &
     print *, "Values in DART State Vector"
 
     iterator  = get_iterator(file_layout)

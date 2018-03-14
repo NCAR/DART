@@ -90,7 +90,8 @@ use coamps_netcdf_mod,   only : nc_write_prognostic_atts, &
 use coamps_translate_mod, only : initialize_translator,        &
                                  finalize_translator,          &
                                  record_hdf_varnames,          &
-       generate_coamps_varnames => generate_coamps_filenames
+       generate_coamps_varnames => generate_coamps_filenames,  &
+                                 get_dtg
 
 !#!    use coamps_pert_mod,     only : perturb_state
 

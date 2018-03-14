@@ -17,7 +17,7 @@ program trans_dart_to_coamps
 use coamps_translate_mod, only : initialize_translator,     &
                                  open_dart_file,            &
                                  set_dart_current_time,     &
-                                 get_current_dtg,           &
+                                 get_dtg,                   &
                                  generate_coamps_filenames, &
                                  open_coamps_files,         &
                                  coamps_write_all_fields,   &
@@ -52,7 +52,7 @@ logical, parameter :: READING_DART = .false.     ! false means read dart
 logical, parameter :: WRITING_COAMPS  = .true.   ! true means write coamps
 
 integer :: ierr
-character(len=10) :: cdtg
+character(len=10) :: cdtgp1
 
 call initialize_utilities(routine)
 
@@ -61,18 +61,20 @@ call initialize_translator()
 
 call open_dart_file(READING_DART)
 call set_dart_current_time()
-cdtg = get_current_dtg()
 
 call generate_coamps_filenames(WRITING_COAMPS)
 call open_coamps_files(WRITING_COAMPS)
 
-call initialize_hdf5_wfile(hdf5_file_write, cdtg=cdtg, h5_prefix='CoampsUpdate')
+cdtgp1 = get_dtg('next')
+call initialize_hdf5_wfile(hdf5_file_write, cdtg=cdtgp1, h5_prefix='CoampsUpdate')
 call open_hdf5_file(hdf5_file_write, ierr)
 
 if (ierr /= 0) then
    write(string1,*)'open_hdf_file error code ',ierr
    call error_handler(E_ERR,routine,string1,source,revision,revdate)
 endif
+
+!>@todo still have to apply clamping
 
 call coamps_write_all_fields()
 
