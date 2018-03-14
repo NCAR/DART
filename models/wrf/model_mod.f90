@@ -58,8 +58,9 @@ use     utilities_mod,  only  : file_exist, open_file, close_file, &
                                 find_textfile_dims, file_to_text, &
                                 do_nml_file, do_nml_term, scalar
 
-use netcdf_utilities_mod, only : nc_add_global_attribute, nc_check, nc_sync, &
-                                 nc_add_global_creation_time, nc_redef, nc_enddef
+use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
+                                 nc_add_global_creation_time, nc_check, &
+                                 nc_begin_define_mode, nc_end_define_mode
 
 use  mpi_utilities_mod,  only : my_task_id, task_count
 
@@ -3074,19 +3075,6 @@ if ( .not. boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%t
    return
 endif
 
-!HK Note the result is not bitwise 
-!if(my_task_id() == 0) then
-!  write(10, *) '------'
-!  write(10, *) 'xyz_loc      ', xyz_loc
-!  location = set_location(xyz_loc(1),xyz_loc(2),xyz_loc(3),ztypeout)
-!  write(10, *) 'set_location ', location%lon, location%lat, location%vloc
-!  xyz_loc =  get_location(location)
-!  write(10, *) 'get_location ', xyz_loc
-!  location = set_location(xyz_loc(1),xyz_loc(2),xyz_loc(3),ztypeout)
-!  write(10, *) 'set_location ', location%lon, location%lat, location%vloc
-!endif
-
-
 ! Get indices of corners (i,i+1,j,j+1), which depend on periodicities.
 ! since the boundsCheck routines succeeded, this call should never fail
 ! so make it a fatal error if it does return an error code.
@@ -3752,7 +3740,7 @@ write(filename,*) 'ncid', ncid
 ! Put file into define mode and
 ! Write Global Attributes 
 !-------------------------------------------------------------------------------
-call nc_redef(ncid)
+call nc_begin_define_mode(ncid)
 
 call nc_add_global_creation_time(ncid)
 
@@ -4220,7 +4208,7 @@ call nc_check(nf90_put_att(ncid, hgtVarId(id), 'units_long_name', 'meters'), &
                  'nc_write_model_atts','put_att HGT'//' units_long_name')
 
 ! Leave define mode so we can actually fill the variables.
-call nc_enddef(ncid)
+call nc_end_define_mode(ncid)
 
 !-----------------------------------------------------------------
 ! Fill the variables we can
@@ -4306,7 +4294,7 @@ call nc_check(nf90_put_var(ncid,      hgtVarID(id), wrf%dom(id)%hgt), &
 ! Flush the buffer and leave netCDF file open
 !-----------------------------------------------------------------
 
-call nc_sync(ncid)
+call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts
 
@@ -5760,13 +5748,11 @@ real(r8)              :: minv, maxv, temp
 type(random_seq_type) :: random_seq
 integer               :: id, i, j, s, e
 logical, allocatable  :: within_range(:)
-integer(i8), allocatable :: var_list(:)
 integer               :: num_variables
 real(r8), allocatable :: min_var(:), max_var(:)
-integer               :: start_ind, end_ind
-integer :: copy
-integer :: count
-logical :: bitwise_lanai
+integer(i8)           :: start_ind, end_ind
+integer(i8), allocatable :: var_list(:)
+integer               :: count, copy
 
 ! generally you do not want to just perturb a single state to begin an
 ! experiment, especially for a regional weather model, because the 
@@ -5805,258 +5791,100 @@ endif
 ! start of pert code
 interf_provided = .true.
 
-! Get min and max of each variable in each domain
-allocate(var_list(ens_handle%my_num_vars))
+! Make space for the state vector index numbers that are
+! physically located on my task and get the global numbers.
 
+allocate(var_list(ens_handle%my_num_vars))
+call get_my_vars(ens_handle, var_list)
+
+! count up the total number of variables across all domains.
 num_variables = 0
 do id = 1, num_domains
   num_variables = num_variables + wrf%dom(id)%number_of_wrf_variables
 enddo
 
+! get the global min/max on a variable by variable basis
 allocate(min_var(num_variables), max_var(num_variables))
 allocate(within_range(ens_handle%my_num_vars))
 
+count = 1
+do id = 1, num_domains
+   do i = 1, wrf%dom(id)%number_of_wrf_variables
+  
+      start_ind = get_index_start(domain_id(id), i)
+      end_ind   = get_index_end(domain_id(id), i)
+
+      ! at this point we only have 1 ensemble
+      within_range = (var_list >= start_ind .and. var_list <= end_ind)
+      min_var(count) = minval(ens_handle%copies(1,:), MASK=within_range)
+      max_var(count) = maxval(ens_handle%copies(1,:), MASK=within_range)
+
+      count = count + 1
+   enddo
+enddo
+
+! find the global min/max values across all tasks.
+call all_reduce_min_max(min_var, max_var, num_variables)
+
+deallocate(within_range)
+
+! Now do the perturbing
+
+! using task id as the seed for the random number generator is ok
+! because pert_model_copies() is only called once on any single task.  
+! it perturbs all ensemble members for the items in the state vector 
+! that it owns. because the decomposition will be different with a
+! different task count, you will NOT get the same result if you change
+! the number of tasks.
+
+call init_random_seq(random_seq, my_task_id()+1)
+
+count = 1 ! min and max are numbered 1 to n, where n is the total number of variables (all domains)
 do id = 1, num_domains
    do i = 1, wrf%dom(id)%number_of_wrf_variables
 
       start_ind = get_index_start(domain_id(id), i)
       end_ind = get_index_end(domain_id(id), i)
 
-      call get_my_vars(ens_handle, var_list)
-      within_range =      var_list >= start_ind .and. var_list <= end_ind  ! &
-                    !.and. var_list >= start_domain .and. var_list <= end_domain
-      min_var(i) = minval(ens_handle%copies(1,:), MASK=within_range)
-      max_var(i) = maxval(ens_handle%copies(1,:), MASK=within_range)
+      !! Option 1:
+      !! make the perturbation amplitude N% of the total
+      !! range of this variable.  values could vary a lot
+      !! over some of the types, like pressure
+      range = max_var(count) - min_var(count)
+      pert_ampl = pert_amount * range
+
+      do j=1, ens_handle%my_num_vars
+         ! is this state variable index the current variable type we're perturbing?
+         if (var_list(j) >= start_ind .and. var_list(j) <= end_ind) then
+            do copy = 1, ens_size
+               !! Option 2: perturb each value individually
+               !! make the perturbation amplitude N% of this value
+               !pert_ampl = pert_amount * ens_handle%copies(copy, j)
+               ens_handle%copies(copy, j) = random_gaussian(random_seq, ens_handle%copies(copy, j), pert_ampl)
+            enddo
+
+            ! keep variable from exceeding the original range
+            ens_handle%copies(1:ens_size,j) = max(min_var(count), ens_handle%copies(1:ens_size,j))
+            ens_handle%copies(1:ens_size,j) = min(max_var(count), ens_handle%copies(1:ens_size,j))
+
+         endif
+      enddo
+
+      count = count + 1
 
    enddo
 enddo
 
-call all_reduce_min_max(min_var, max_var, num_variables)
-
-bitwise_lanai = .true.
-if (bitwise_lanai) then
-
-   call pert_copies_lanai_bitwise(ens_handle, ens_size, pert_amount, min_var, max_var)
-
-else
-
-   call init_random_seq(random_seq, my_task_id())
-
-   count = 1 ! min and max are numbered 1 to n, where n is the total number of variables (all domains)
-   do id = 1, num_domains
-      do i = 1, num_variables
-
-         start_ind = get_index_start(domain_id(id), i)
-         end_ind = get_index_end(domain_id(id), i)
-
-         !! Option 1:
-         !! make the perturbation amplitude N% of the total
-         !! range of this variable.  values could vary a lot
-         !! over some of the types, like pressure
-         !range = max_var(count) - min_var(count)
-         !pert_ampl = pert_amount * range
-
-         do j=1, ens_handle%my_num_vars
-            if (ens_handle%my_vars(j) >= start_ind .and. ens_handle%my_vars(j) <= end_ind) then
-               do copy = 1, ens_size
-                  ! once you change pert_state, state is changed as well
-                  ! since they are the same storage as called from filter.
-                  ! you have to save it if you want to use it again.
-                  ! Option 2: perturb each value individually
-                  !! make the perturbation amplitude N% of this value
-                  pert_ampl = pert_amount * ens_handle%copies(copy, j)
-                  ens_handle%copies(copy, j) = random_gaussian(random_seq, ens_handle%copies(copy, j), pert_ampl)
-               enddo
-
-               ! keep variable from exceeding the original range
-               ens_handle%copies(1:ens_size,j) = max(min_var(count), ens_handle%copies(1:ens_size,j))
-               ens_handle%copies(1:ens_size,j) = min(max_var(count), ens_handle%copies(1:ens_size,j))
-
-            endif
-         enddo
-
-         count = count + 1
-
-      enddo
-   enddo
-
-endif
+deallocate(var_list, min_var, max_var)
 
 end subroutine pert_model_copies
 
-!#######################################################
-!> Perturb copies such that the result is bitwise
-!> with Lanai
-!> Note that (like Lanai) this is not bitwise with itself across tasks
-!> for task_count < ens_size
-subroutine pert_copies_lanai_bitwise(ens_handle, ens_size, pert_amount, min_var, max_var)
-
-type(ensemble_type), intent(inout) :: ens_handle
-integer,             intent(in)    :: ens_size
-real(r8),            intent(in)    :: pert_amount
-real(r8),             intent(in)    :: min_var(:)
-real(r8),             intent(in)    :: max_var(:)
-
-
-integer :: start_ind ! start index variable in state
-integer :: end_ind ! end index variable in state
-integer :: owner ! pe that owns the state element
-integer :: owner_index ! local index on pe
-integer :: copy_owner
-integer :: copy, id, i ! loop index
-integer(i8) :: j ! loop index
-integer :: count ! keep track of which variable you are perturbing
-real(r8) :: pert_ampl
-type(random_seq_type) :: random_seq(ens_size)
-integer :: sequence_to_use
-integer, allocatable :: counter(:)
-real(r8) :: random_number
-
-! the first time through get the task id (0:N-1) and set a unique seed 
-! per task.  this should reproduce from run to run if you keep the number
-! of MPI tasks the same.  it WILL NOT reproduce if the number of tasks changes.
-! if this routine could at some point get the global ensemble member number
-! as an argument, that would be unique and the right thing to use as a seed.
-!
-! the line below only executes the first time since counter gets incremented 
-! after the first use and the value is saved between calls.  it is trying to 
-! generate a unique base number, and then just increments by 1 each subsequent 
-! time it is called (which only happens if there are multiple ensemble 
-! members/task).  it is assuming there are no more than 1000 ensembles/task,
-! which seems safe given the current sizes of state vecs and hardware memory.
-
-!if (counter == 0) counter = ((my_task_id()+1) * 1000) ! this is the code in Lanai
-allocate(counter(task_count()))
-
-! initialize ens_size random number sequences
-counter(:) = 0
-
-
-do copy = 1, ens_size
-
-   call get_copy_owner_index(copy, owner, owner_index)
-   if (counter(owner+1)==0) counter(owner+1) = ((map_pe_to_task(ens_handle, owner)+1) * 1000)
-   call init_random_seq(random_seq(copy), counter(owner+1))
-   counter(owner+1) = counter(owner+1) + 1
-
-
-   count = 1 ! min_var and max_var are numbered 1 to n, where n is the total number of variables (all domains)
-
-   do id = 1, num_domains
-      do i = 1, wrf%dom(id)%number_of_wrf_variables
-
-         start_ind = get_index_start(domain_id(id), i)
-         end_ind = get_index_end(domain_id(id), i)
-
-         !! Option 1:
-         !! make the perturbation amplitude N% of the total
-         !! range of this variable.  values could vary a lot
-         !! over some of the types, like pressure
-         !range = max_var(count) - min_var(count)
-         !pert_ampl = pert_amount * range
-
-         do j = start_ind, end_ind
-
-            call get_var_owner_index(j, owner, owner_index)
-
-               ! once you change pert_state, state is changed as well
-               ! since they are the same storage as called from filter.
-               ! you have to save it if you want to use it again.
-               ! Option 2: perturb each value individually
-               !! make the perturbation amplitude N% of this value
-
-            ! pert_ampl is only important on the task that uses it, but need to keep
-            ! the random number sequence in the same order on each task (call the same amount of times)
-            pert_ampl = pert_amount * ens_handle%copies(copy, min(owner_index, ens_handle%my_num_vars))
-            random_number = random_gaussian(random_seq(copy), 0.0_r8, pert_ampl)
-
-            if (ens_handle%my_pe == owner) then
-
-               ens_handle%copies(copy, owner_index) = ens_handle%copies(copy, owner_index) + random_number
-
-               ! keep variable from exceeding the original range
-               ens_handle%copies(copy,owner_index) = max(min_var(count), ens_handle%copies(copy,owner_index))
-               ens_handle%copies(copy,owner_index) = min(max_var(count), ens_handle%copies(copy,owner_index))
-
-            endif
-         enddo
-
-
-         count = count + 1
-
-      enddo
-   enddo
-
-enddo
-
-deallocate(counter)
-
-end subroutine pert_copies_lanai_bitwise
-
-!#######################################################
-! !WARNING:: at the moment, this code is *not* called
-! !so there is no requirement to have a wrf namelist in
-! !the current directory.  the only thing it was extracting
-! !was the dt, and that exists in the wrf input netcdf file
-! !and is now read from there.
-! 
-! subroutine read_dt_from_wrf_nml()
-! 
-! real(r8) :: dt
-! 
-! integer :: time_step, time_step_fract_num, time_step_fract_den
-! integer :: max_dom, feedback, smooth_option
-! integer, dimension(3) :: s_we, e_we, s_sn, e_sn, s_vert, e_vert
-! integer, dimension(3) :: dx, dy, ztop, grid_id, parent_id
-! integer, dimension(3) :: i_parent_start, j_parent_start, parent_grid_ratio
-! integer, dimension(3) :: parent_time_step_ratio
-! integer :: io, iunit, id
-! integer :: num_metgrid_levels, p_top_requested, nproc_x, nproc_y
-! 
-! !nc -- we added "num_metgrid_levels" to the domains nml to make all well with the
-! !        namelist.input file belonging to global WRF,
-! !        also "p_top_requested" in domains nml
-! !        also "nproc_x" & "nproc_y"
-! !nc -- we notice that "ztop" is unused in code -- perhaps get rid of later?
-! namelist /domains/ time_step, time_step_fract_num, time_step_fract_den
-! namelist /domains/ max_dom
-! namelist /domains/ s_we, e_we, s_sn, e_sn, s_vert, e_vert
-! namelist /domains/ dx, dy, ztop, grid_id, parent_id
-! namelist /domains/ i_parent_start, j_parent_start, parent_grid_ratio
-! namelist /domains/ parent_time_step_ratio
-! namelist /domains/ feedback, smooth_option
-! namelist /domains/ num_metgrid_levels, p_top_requested, nproc_x, nproc_y
-! 
-! ! Begin by reading the namelist input
-! call find_namelist_in_file("namelist.input", "domains", iunit)
-! read(iunit, nml = domains, iostat = io)
-! call check_namelist_read(iunit, io, "domains")
-! 
-! ! Record the namelist values used for the run ...
-! if (do_nml_file()) write(nmlfileunit, nml=domains)
-! if (do_nml_term()) write(     *     , nml=domains)
-! 
-! if (max_dom /= num_domains) then
-! 
-!    write(*,*) 'max_dom in namelist.input = ',max_dom
-!    write(*,*) 'num_domains in input.nml  = ',num_domains
-!    call error_handler(E_ERR,'read_dt_from_wrf_nml', &
-!         'Make them consistent.', source, revision,revdate)
-! 
-! endif
-! 
-! if (time_step_fract_den /= 0) then
-!    dt = real(time_step) + real(time_step_fract_num) / real(time_step_fract_den)
-! else
-!    dt = real(time_step)
-! endif
-! 
-! do id=1,num_domains
-!    wrf%dom(id)%dt = dt / real(parent_time_step_ratio(id))
-! enddo
-! 
-! end subroutine read_dt_from_wrf_nml
-
+!-------------------------------------------------------------------------
+!>@todo FIXME:
+! these routines are only called from the vortex interpolation code, 
+! which should be moved to a separate forward operator module.  the forward 
+! operator code should define a grid, call model_interpolate() on each
+! point of that grid, and then do the same computation it is doing now.
 
 
 subroutine compute_seaprs ( nz, z, t, p , q ,          &
@@ -8456,7 +8284,7 @@ character(len=19) :: timestring
 call get_date(dart_time, year, month, day, hour, minute, second)
 call set_wrf_date(timestring, year, month, day, hour, minute, second)
 
-call nc_redef(ncid)
+call nc_begin_define_mode(ncid)
 
 ! Define Times variable if it does not exist
 ret = nf90_inq_varid(ncid, "Times", var_id)
@@ -8482,7 +8310,7 @@ if (ret /= NF90_NOERR) then
       dimids=dim_ids, varid=var_id), "write_model_time def_var Times")
 endif
 
-call nc_enddef(ncid)
+call nc_end_define_mode(ncid)
 
 call nc_check( nf90_put_var(ncid, var_id, timestring), &
                'write_model_time', 'put_var Times' )

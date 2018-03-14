@@ -34,8 +34,9 @@ use    utilities_mod, only : register_module, error_handler,                   &
 use     obs_kind_mod, only : get_index_for_quantity,  &
                              get_name_for_quantity
 
-use netcdf_utilities_mod, only : nc_add_global_attribute, nc_sync, nc_check, &
-                                 nc_add_global_creation_time, nc_redef, nc_enddef
+use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, nc_check, &
+                                 nc_add_global_creation_time, nc_begin_define_mode, &
+                                 nc_end_define_mode, nc_open_file_readonly, nc_close_file
 
 use mpi_utilities_mod, only : my_task_id
 
@@ -260,8 +261,7 @@ if ( periodic_z ) then
    call error_handler(E_ERR,'static_init_model',string1,source,revision,revdate)
 endif
 
-call nc_check( nf90_open(trim(cm1_template_file), NF90_NOWRITE, ncid), &
-                  'static_init_model', 'open '//trim(cm1_template_file))
+ncid = nc_open_file_readonly(cm1_template_file, 'static_init_model')
 
 ! 1) get grid dimensions
 ! 2) allocate space for the grid
@@ -283,8 +283,7 @@ call get_grid(ncid)
 if (periodic_x) call set_periodic('x', xf(1), xf(nip1))
 if (periodic_y) call set_periodic('y', yf(1), yf(njp1))
 
-call nc_check( nf90_close(ncid), &
-                  'static_init_model', 'close '//trim(cm1_template_file))
+call nc_close_file(ncid, 'static_init_model')
 
 ! HK This comment block implies that model_mod is taking care of this
 ! Really everything is done in state_structure_mod.
@@ -591,7 +590,7 @@ write(filename,*) 'ncid', ncid
 
 
 ! Write Global Attributes 
-call nc_redef(ncid)
+call nc_begin_define_mode(ncid)
 
 call nc_add_global_creation_time(ncid)
 
@@ -620,6 +619,8 @@ if (has_model_namelist) then
    allocate(textblock(nlines))
    textblock = ''
 
+   !>@todo FIXME this code should be moved to routine in the netcdf utilities mod.
+
    io = nf90_inq_dimid(ncid, name='NMLlinelen', dimid=LineLenDimID)
    if ( io == NF90_NOERR ) then
       continue
@@ -642,7 +643,7 @@ if (has_model_namelist) then
 endif
 
 ! Leave define mode so we can write the static data
-call nc_enddef(ncid)
+call nc_end_define_mode(ncid)
 
 ! write the namelist contents.  could also write grid information
 ! if desired.
@@ -656,7 +657,7 @@ endif
 
 ! Flush the buffer and leave netCDF file open
 
-call nc_sync(ncid)
+call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts
 

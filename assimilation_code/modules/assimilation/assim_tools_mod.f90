@@ -191,10 +191,6 @@ logical  :: only_area_adapt  = .true.
 ! compared to previous versions of this namelist item.
 logical  :: distribute_mean  = .false.
 
-! Lanai bitwise. This is for unit testing and runs much slower.
-! Only use for when testing against the non-rma trunk.
-logical  :: lanai_bitwise = .false.
-
 namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
    spread_restoration, sampling_error_correction,                          & 
    adaptive_localization_threshold, adaptive_cutoff_floor,                 &
@@ -203,8 +199,7 @@ namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
    special_localization_obs_types, special_localization_cutoffs,           &
    distribute_mean, close_obs_caching,                                     &
    adjust_obs_impact, obs_impact_filename, allow_any_impact_values,        &
-   convert_all_state_verticals_first, convert_all_obs_verticals_first,     &
-   lanai_bitwise ! don't document this one -- only used for regression tests
+   convert_all_state_verticals_first, convert_all_obs_verticals_first
 
 !============================================================================
 
@@ -302,8 +297,7 @@ if(sampling_error_correction) then
    ! we can't read the table here because we don't have access to the ens_size
 endif
 
-is_doing_vertical_conversion = (has_vertical_choice() .and. vertical_localization_on() .and. &
-                                .not. lanai_bitwise)
+is_doing_vertical_conversion = (has_vertical_choice() .and. vertical_localization_on())
 
 call log_namelist_selections(num_special_cutoff, cache_override)
 
@@ -498,7 +492,6 @@ call get_my_obs_loc(ens_handle, obs_ens_handle, obs_seq, keys, my_obs_loc, my_ob
 
 if (convert_all_obs_verticals_first .and. is_doing_vertical_conversion) then
    ! convert the vertical of all my observations to the localization coordinate
-   ! this may not be bitwise with Lanai because of a different number of set_location calls
    if (timing) call start_mpi_timer(base)
    if (obs_ens_handle%my_num_vars > 0) then
       call convert_vertical_obs(ens_handle, obs_ens_handle%my_num_vars, my_obs_loc, &
@@ -737,15 +730,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
            scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
       endif
 
-      !>@todo FIXME it should be ok to remove this, right? 
-      !>  i'm the owner - i should not have to set anything here because
-      !>  this obs was already converted
-      !if (is_doing_vertical_conversion) then
-      !   ! use converted vertical coordinate from owner
-     !    call set_vertical(base_obs_loc, query_location(my_obs_loc(owners_index), 'VLOC'), &
-     !                                    int(query_location(my_obs_loc(owners_index), 'WHICH_VERT')))
-      !endif
-
    ! Next block is done by processes that do NOT own this observation
    !-----------------------------------------------------------------------
    else
@@ -794,19 +778,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! to shrink it, and so we need to know this before doing get_close() for the
    ! state space (even though the state space increments will be computed and
    ! applied first).
-
-   ! ***** REMOVED THIS SECTION FOR NOW ******
-   ! HK set converted location of observation
-   ! The owner of the observation has done the conversion to the localization coordinate, so 
-   ! every task does not have to do the same calculation ( and communication )
-   !> @todo This is very messy. 
-
-   !--------------------------------------------------------
-   !> @todo have to set location so you are bitwise with Lanai for WRF. There is a bitwise creep with 
-   !> get and set location.
-   ! I believe this is messing up CAM_SE because you get a different % saved for close_obs_caching
-   !  The base_obs_loc are different for cam if you do this set.
-   !--------------------------------------------------------
 
    !******************************************
 
