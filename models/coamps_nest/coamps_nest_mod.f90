@@ -226,6 +226,8 @@ module coamps_nest_mod
     character(len=*), parameter :: revision = "$Revision$"
     character(len=*), parameter :: revdate  = "$Date$"
 
+    character(len=512) :: string1, string2, string3
+
     !------------------------------
     ! END MODULE VARIABLES
     !------------------------------
@@ -269,7 +271,7 @@ nest%parent_nest_id = int(datahd(DATAHD_PARENT_NEST + nest_offset))
 nest%nest_level = int(datahd(DATAHD_NEST_LEVEL + nest_offset))
 
 call initialize_list(nest%child_nests)
-call read_geographic_data(filename, nest, dtg)
+call read_terrain_height(filename, nest, dtg)
 
 nullify(nest%iminf)
 nullify(nest%imaxf)
@@ -1174,6 +1176,59 @@ end subroutine generate_sfc_varname
 !>  INOUT nest              The nest to add terrain data to
 !>    IN  dtg               COAMPS date-time group
 
+subroutine read_terrain_height(filename, nest, dtg)
+
+character(len=*),  intent(in)    :: filename
+type(coamps_nest), intent(inout) :: nest
+character(len=*),  intent(in)    :: dtg
+
+character(len=*), parameter :: routine = 'read_terrain_height'
+
+character(len=64) :: terrht_name
+character(len=64) :: longitude_name
+character(len=64) :: latitude_name
+integer           :: terrht_unit, VarID
+integer           :: io
+integer           :: alloc_status
+integer           :: dealloc_status
+
+! Permanent storage
+nullify(nest%terrain)
+allocate(nest%terrain(nest%pts_x, nest%pts_y), stat = alloc_status)
+call check_alloc_status(alloc_status, routine, source, revision,  &
+                                revdate, 'nest terrain')
+
+! actually generate the VARIABLE name in the HDF5 file.
+call generate_sfc_varname(nest, dtg, 'terrht', terrht_name)
+
+io = nf90_open(filename, NF90_NOWRITE, terrht_unit)
+call nc_check(io, routine, 'opening "',trim(filename),'"')
+
+write(string1,'(A)')'"'//trim(terrht_name)//'" from "'//trim(filename)//'"'
+
+io = nf90_inq_varid(terrht_unit, terrht_name, VarID)
+call nc_check(io, routine, 'inquire "'//trim(terrht_name)//'"')
+io = nf90_get_var(terrht_unit, VarID, nest%terrain)
+call nc_check(io, routine, 'get_var '//trim(string1))
+
+io = nf90_close(terrht_unit)
+call nc_check(io, routine, 'closing "'//trim(filename)//'"')
+
+! String1 has to be different to print nicely, given error_handler() nuances.
+write(string1,100)'... nest',nest%id,'  terrain range',minval(nest%terrain), maxval(nest%terrain)
+call error_handler(E_MSG,routine,string1)
+
+100 format(A,1x,I2,1x,A,2(1x,f12.4))
+
+end subroutine read_terrain_height
+
+!-----------------------------------------------------------------------
+!>  Reads the terrain height, latitude and longitude for a given nest 
+!>  and date-time group.
+!>   PARAMETERS
+!>  INOUT nest              The nest to add terrain data to
+!>    IN  dtg               COAMPS date-time group
+
 subroutine read_geographic_data(filename, nest, dtg)
 
 character(len=*),  intent(in)    :: filename
@@ -1189,7 +1244,6 @@ integer           :: terrht_unit, VarID
 integer           :: io
 integer           :: alloc_status
 integer           :: dealloc_status
-character(len=512) :: string0, string1, string2, string3
 
 ! Permanent storage
 nullify(nest%terrain)
@@ -1290,6 +1344,14 @@ end subroutine read_geographic_data
                                       nest%lat(ii,jj), nest%lon(ii,jj))
           end do
         end do
+
+! String1 has to be different to print nicely, given error_handler() nuances.
+write(string1,100)'... nest',nest%id,'  terrain range',minval(nest%terrain), maxval(nest%terrain)
+write(string2,100)'nest',nest%id,' latitude range',minval(nest%lat),     maxval(nest%lat)
+write(string3,100)'nest',nest%id,'longitude range',minval(nest%lon),     maxval(nest%lon)
+call error_handler(E_MSG,routine,string1,text2=string2,text3=string3)
+
+100 format(A,1x,I2,1x,A,2(1x,f12.4))
 
     end subroutine initialize_nest_latlon
 

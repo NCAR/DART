@@ -61,7 +61,8 @@ module coamps_translate_mod
                                    check_io_status,                           &
                                    generate_flat_file_name,                   &
                                    HDF5_FILE_NAME,                            &
-                                   read_hdf5_variable, copy_netCDF_to_hdf       
+                                   read_hdf5_variable,                        &
+                                   copy_netCDF_to_hdf       
 
   use coamps_netcdf_mod,    only : nc_write_prognostic_atts, &
                                    nc_write_prognostic_data
@@ -83,7 +84,7 @@ module coamps_translate_mod
 
   use types_mod,            only : r4, r8
 
-  use utilities_mod,        only : E_ERR, E_MSG, E_WARN, error_handler,       &
+  use utilities_mod,        only : E_ERR, error_handler,       &
                                    file_exist, get_unit, do_output,           &
                                    do_nml_file, do_nml_term, nmlfileunit
 
@@ -244,11 +245,13 @@ module coamps_translate_mod
   real(kind=r8),   dimension(:), allocatable, target :: dart_state
 
   ! Arrays allow reading/writing multiple COAMPS files 
-  integer                                      :: total_coamps_files
-  character(len=NAME_LEN), dimension(:), allocatable :: coamps_file_names
-  character(len=NAME_LEN), dimension(:), allocatable :: coamps_variable_names
-  integer, dimension(:), allocatable           :: coamps_file_units
-  character(len=NAME_LEN) :: coamps_file_names_foo
+  integer :: total_coamps_files
+  character(len=NAME_LEN), dimension(:), allocatable :: coamps_forecast_filenames
+  character(len=NAME_LEN), dimension(:), allocatable :: coamps_analysis_filenames
+  integer,                 dimension(:), allocatable :: coamps_forecast_units
+  integer,                 dimension(:), allocatable :: coamps_analysis_units
+
+  character(len=NAME_LEN) :: coamps_forecast_filenames_foo
 
   ! DART restart file
   character(len=*), parameter :: DART_FILENAME = 'dart_vector.nc'
@@ -341,25 +344,38 @@ contains
 
     ! Since one file has mutiple variables, you can only close it once.
     do cur_file = 1, total_coamps_files
-       iunit = coamps_file_units(cur_file)
+       iunit = coamps_forecast_units(cur_file)
        inquire (unit=iunit, opened=lopen, iostat=io_status)
        call check_io_status(io_status, routine, source, revision,    &
-               revdate, 'Closing "'//coamps_file_names(cur_file)//'"')
+               revdate, 'Closing "'//coamps_forecast_filenames(cur_file)//'"')
        if (lopen) close(iunit)
     end do
+
+    do cur_file = 1, total_coamps_files
+       iunit = coamps_analysis_units(cur_file)
+       inquire (unit=iunit, opened=lopen, iostat=io_status)
+       call check_io_status(io_status, routine, source, revision,    &
+               revdate, 'Closing "'//coamps_analysis_filenames(cur_file)//'"')
+       if (lopen) close(iunit)
+    end do
+
     close(dart_unit)
 
-    deallocate(coamps_file_names, stat=dealloc_status)
+    deallocate(coamps_forecast_filenames, stat=dealloc_status)
     call check_dealloc_status(dealloc_status, routine, source,       &
-                              revision, revdate, 'coamps_file_names' )
+                              revision, revdate, 'coamps_forecast_filenames' )
 
-    deallocate(coamps_variable_names, stat=dealloc_status)
+    deallocate(coamps_forecast_units, stat=dealloc_status)
     call check_dealloc_status(dealloc_status, routine, source,       &
-                              revision, revdate, 'coamps_variable_names' )
+                              revision, revdate, 'coamps_forecast_units' )
 
-    deallocate(coamps_file_units, stat=dealloc_status)
+    deallocate(coamps_analysis_filenames, stat=dealloc_status)
     call check_dealloc_status(dealloc_status, routine, source,       &
-                              revision, revdate, 'coamps_file_units' )
+                              revision, revdate, 'coamps_analysis_filenames' )
+
+    deallocate(coamps_analysis_units, stat=dealloc_status)
+    call check_dealloc_status(dealloc_status, routine, source,       &
+                              revision, revdate, 'coamps_analysis_units' )
 
     if(.not.FLAT_FILE_IO) then
       deallocate(restart_nest_offsets, stat=dealloc_status)
@@ -370,23 +386,20 @@ contains
 
   ! generate_file_names
   ! --------------------------
-  ! Wraper to generate the a list of either COAMPS flat file names 
-  ! or restart file names 
+  ! Wrapper to generate the list of COAMPS flat file names 
+  ! and restart file names 
   !  PARAMETERS
   !   IN  writing_coamps    True if we are going to be writing the
   !                         COAMPS files, false if reading files
   subroutine generate_coamps_filenames(writing_coamps)
 
-    logical, intent(in)         :: writing_coamps
+    logical, optional,intent(in) :: writing_coamps
 
     if(FLAT_FILE_IO) then
-      call generate_all_flat_filenames(writing_coamps)
+      call generate_all_flat_filenames()
     else
       call generate_restart_filenames(writing_coamps)
     end if
-
-    ! TJH the hdf5 variable names are the same as the previous filenames
-    coamps_variable_names(:) = coamps_file_names(:)
 
   end subroutine generate_coamps_filenames
 
@@ -408,13 +421,14 @@ contains
  
   ! generate_all_flat_filenames
   ! --------------------------
-  ! Generate the COAMPS restart file names based on information from
-  ! the convert namelist.
-  !  PARAMETERS
-  !   IN  writing_coamps    True if we are going to be writing the
-  !                         COAMPS restart file, false if reading it
-  subroutine generate_all_flat_filenames(writing_coamps)
-    logical, intent(in)         :: writing_coamps
+  !> Generate the COAMPS file names based on information from
+  !> the convert namelist. We will generate both the forecast and
+  !> analysis file names since trans_dart_to_coamps needs both.
+  !>  PARAMETERS
+  !>   IN  writing_coamps    True if we are going to be writing the
+  !>                         COAMPS restart file, false if reading it
+
+  subroutine generate_all_flat_filenames()
 
     !  Variables needed to define the flat file name
     type(state_variable)        :: cur_var
@@ -423,53 +437,44 @@ contains
     integer                     :: nest_number
     integer                     :: level1
     integer                     :: level2
-    integer, dimension(3)       :: working_time
+    integer, dimension(3)       :: forecast_time, analysis_time
     character(len=1)            :: aotype
-    character(len=7)            :: field_type
+    character(len=7)            :: forecast_type, analysis_type
     character(len=3)            :: level_type
     character(len=6)            :: var_name
     integer                     :: i_width
     integer                     :: j_width
 
+    character(len=*), parameter :: routine = 'generate_flat_filenames'
+    integer                     :: i
+
     aotype = 'a'
 
-    ! Assert that the restart file names are already allocated
-    if (.not. allocated(coamps_file_names)) then
-       call error_handler(E_ERR, 'generate_flat_filenames', &
-                         'COAMPS file names unallocated',      &
+    ! Assert that the file names are already allocated
+    if (.not. allocated(coamps_forecast_filenames)) then
+       call error_handler(E_ERR, routine, 'COAMPS forecast names unallocated', &
                          source, revision, revdate)
-    end if
-
-    ! the variable names change from reading (fcstfld) to writing (analfld)
-    ! will do that when we read the netCDF file and write to the hdf variable
-    ! coamps_util_mod.f90:copy_netCDF_to_hdf()
-    !
-    ! Need to decide the time and the type of file.
-    ! If we are going from COAMPS -> DART, we need the COAMPS fcstfld files at the DA interval.  
-    ! If we are going 
-    ! from DART -> COAMPS, we need the time to be zero and the files to be analfld
-    ! DART restart file.
-    if (writing_coamps) then
-       working_time = (/ 0,0,0 /)
-       ! field_type = 'analfld'
-       ! dsnrff1 = trim(dsnrff)//'analyses/'
-       ! the variable name is ALWAYS 'fcstfld' (replaced in copy_netCDF_to_hdf())
-       field_type = 'fcstfld'
-       dsnrff1 = dsnrff
-    else
-       if(is_pmo) then
-         working_time = ktauf(:,ONE)
-       else
-         working_time = (/icycle,0,0/)
-       end if
-       field_type = 'fcstfld'
-       dsnrff1 = dsnrff
-    end if
-
-    if (do_output()) then
-    print *,"COAMPS flat files in use:"
-    print *,"-------------------------------------------------"
     endif
+    if (.not. allocated(coamps_analysis_filenames)) then
+       call error_handler(E_ERR, routine, 'COAMPS analysis names unallocated', &
+                         source, revision, revdate)
+    endif
+
+    ! Need to decide the time and the type of file.
+    ! COAMPS -> DART, we need the COAMPS fcstfld files at the DA interval.  
+    ! DART -> COAMPS, we need the time to be zero and the files to be analfld
+
+    analysis_time = (/ 0,0,0 /)
+    analysis_type = 'analfld'
+
+    if(is_pmo) then
+      forecast_time = ktauf(:,ONE)
+    else
+      forecast_time = (/icycle,0,0/)
+    end if
+    forecast_type = 'fcstfld'
+    dsnrff1 = dsnrff
+
 
     coamps_file_index = 0
     iterator = get_iterator(file_layout)
@@ -504,19 +509,36 @@ contains
       j_width = get_nest_j_width(get_domain_nest(domain, nest_number))
 
       coamps_file_index = coamps_file_index + 1
-      call generate_flat_file_name(                                   &
-           var_name, level_type, level1, level2, nest_number, aotype, &
-           i_width, j_width, cdtg, working_time(COAMPS_HOUR),         &
-           working_time(COAMPS_MINUTE), working_time(COAMPS_SECOND),  &
-           field_type, coamps_file_names(coamps_file_index) )
+
+      call generate_flat_file_name(                                    &
+           var_name, level_type, level1, level2, nest_number, aotype,  &
+           i_width, j_width, cdtg, forecast_time(COAMPS_HOUR),         &
+           forecast_time(COAMPS_MINUTE), forecast_time(COAMPS_SECOND), &
+           forecast_type, coamps_forecast_filenames(coamps_file_index) )
     
-      if (do_output()) &
-      write (*,'(I2.2,2x,A)') coamps_file_index,                      &
-                  trim(dsnrff1)//coamps_file_names(coamps_file_index)
+      call generate_flat_file_name(                                    &
+           var_name, level_type, level1, level2, nest_number, aotype,  &
+           i_width, j_width, cdtg, analysis_time(COAMPS_HOUR),         &
+           analysis_time(COAMPS_MINUTE), analysis_time(COAMPS_SECOND), &
+           analysis_type, coamps_analysis_filenames(coamps_file_index) )
+
     end do flat_file_loop
 
-    if (do_output()) &
-    print *,"-------------------------------------------------"
+    if (do_output()) then
+       print *,"-------------------------------------------------"
+       print *,"COAMPS reading :"
+       do i = 1,coamps_file_index
+          write (*,'(I2.2,2x,A)') i, &
+                  trim(dsnrff1)//coamps_forecast_filenames(i)
+       enddo
+       print *
+       print *,"COAMPS updating :"
+       do i = 1,coamps_file_index
+          write (*,'(I2.2,2x,A)') i, &
+                  trim(dsnrff1)//coamps_analysis_filenames(i)
+       enddo
+       print *,"-------------------------------------------------"
+    endif
 
     !FIXME Test pressure level output
 !    if(.not.writing_coamps) then
@@ -537,11 +559,11 @@ contains
 
 !        call generate_flat_file_name(                                   &
 !             var_name, level_type, level1, level2, nest_number, aotype, &
-!             i_width, j_width, cdtg, working_time(COAMPS_HOUR),         &
-!             working_time(COAMPS_MINUTE), working_time(COAMPS_SECOND),  &
-!             field_type, coamps_file_names_foo )
+!             i_width, j_width, cdtg, forecast_time(COAMPS_HOUR),         &
+!             forecast_time(COAMPS_MINUTE), forecast_time(COAMPS_SECOND),  &
+!             forecast_type, coamps_forecast_filenames_foo )
 
-!        write (*,'(4x,A)') trim(dsnrff1)//coamps_file_names_foo
+!        write (*,'(4x,A)') trim(dsnrff1)//coamps_forecast_filenames_foo
 
 !      end do flat_file_loop_plev
 !    print *,"-------------------------------------------------"
@@ -596,14 +618,24 @@ contains
 
       cur_file_unit = get_unit()
       open( unit=cur_file_unit,                                     &
-            file=trim(dsnrff1)//coamps_file_names(cur_file_index),  &
+            file=trim(dsnrff1)//coamps_forecast_filenames(cur_file_index),  &
             status=filestatus, access='direct', action=fileaction,  &
             form='unformatted', recl=rec_len, iostat=io_status)
       call check_io_status(io_status, routine, source, revision,    &
                            revdate, 'Opening ' //                   &
-                           coamps_file_names(cur_file_index))
+                           coamps_forecast_filenames(cur_file_index))
+      coamps_forecast_units(cur_file_index) = cur_file_unit
 
-      coamps_file_units(cur_file_index) = cur_file_unit
+      cur_file_unit = get_unit()
+      open( unit=cur_file_unit,                                     &
+            file=trim(dsnrff1)//coamps_analysis_filenames(cur_file_index),  &
+            status=filestatus, access='direct', action=fileaction,  &
+            form='unformatted', recl=rec_len, iostat=io_status)
+      call check_io_status(io_status, routine, source, revision,    &
+                           revdate, 'Opening ' //                   &
+                           coamps_analysis_filenames(cur_file_index))
+      coamps_analysis_units(cur_file_index) = cur_file_unit
+
     end do flat_file_loop
   end subroutine open_coamps_flat_files
 
@@ -646,7 +678,7 @@ contains
       if( .not. get_io_flag(cur_var) ) cycle flat_file_loop
       cur_file_index = cur_file_index + 1
 
-      coamps_file_units(cur_file_index) = ncid
+      coamps_forecast_units(cur_file_index) = ncid
 
     enddo flat_file_loop
   end subroutine open_coamps_hdf5_files
@@ -662,13 +694,16 @@ contains
   subroutine generate_restart_filenames(writing_coamps)
     logical, intent(in) :: writing_coamps
 
+    character(len=*), parameter :: routine = 'generate_restart_filenames'
     integer               :: coamps_file_index
     integer, dimension(3) :: working_time
 
+    call error_handler(E_ERR, routine, 'routine untested', &
+                         source, revision, revdate)
+
     ! Assert that the restart file names are already allocated
-    if (.not. allocated(coamps_file_names)) then
-       call error_handler(E_ERR, 'generate_restart_filenames', &
-                         'COAMPS file names unallocated',      &
+    if (.not. allocated(coamps_forecast_filenames)) then
+       call error_handler(E_ERR, routine, 'COAMPS file names unallocated', &
                          source, revision, revdate)
     end if
 
@@ -689,13 +724,13 @@ contains
     endif
     do coamps_file_index = 1,total_coamps_files
        if (coamps_used_io_proc) then
-          write (coamps_file_names(coamps_file_index), 100) &
+          write (coamps_forecast_filenames(coamps_file_index), 100) &
                  cdtg, working_time, coamps_file_index
        else
-          write (coamps_file_names(coamps_file_index), 200) &
+          write (coamps_forecast_filenames(coamps_file_index), 200) &
                 (coamps_file_index-1), cdtg, working_time
        end if
-       write(*,*) coamps_file_index, coamps_file_names(coamps_file_index)
+       write(*,*) coamps_file_index, coamps_forecast_filenames(coamps_file_index)
     end do
 
     if (do_output()) &
@@ -731,14 +766,14 @@ contains
     do cur_file_index = 1, total_coamps_files
        cur_file_unit = get_unit()
        open( unit=cur_file_unit,                                  &
-             file=coamps_file_names(cur_file_index),              &
+             file=coamps_forecast_filenames(cur_file_index),              &
              status='old', access='direct', action=fileaction,    &
              form='unformatted', recl=C_REAL, iostat=io_status)
        call check_io_status(io_status, routine, source, revision, &
                             revdate, 'Opening ' //                &
-                            coamps_file_names(cur_file_index))
+                            coamps_forecast_filenames(cur_file_index))
 
-       coamps_file_units(cur_file_index) = cur_file_unit
+       coamps_forecast_units(cur_file_index) = cur_file_unit
     end do
   end subroutine open_coamps_restart_files
 
@@ -888,7 +923,7 @@ integer :: dart_seconds
 integer :: ccyy, mm, dd, hh
 type(time_type) :: t0, dt
 
-call error_handler(E_MSG,routine,'FIXME - not written yet - must complete')
+call error_handler(E_ERR,routine,'FIXME - not written yet - must complete')
 return
 
 if(FLAT_FILE_IO) then
@@ -982,7 +1017,7 @@ end function get_current_dtg
   integer, intent(in) :: myindex
   character(len=NAME_LEN) :: get_coamps_filename
 
-  get_coamps_filename = coamps_file_names(myindex)
+  get_coamps_filename = coamps_forecast_filenames(myindex)
 
   end function get_coamps_filename
 
@@ -1016,7 +1051,7 @@ end function get_current_dtg
 
        read(nml_unit, nml=convert, iostat=io_status)
        call check_io_status(io_status, routine, source, revision, revdate, &
-                            'Reading ' // nml_file // ' convert')
+                            'Reading ' // nml_file // ' namelist  "convert"')
        close(nml_unit)
     else
        call error_handler(E_ERR, routine, 'namelist open failed',  &
@@ -1077,17 +1112,22 @@ end function get_current_dtg
        total_coamps_files = get_num_subdomains(domain)
     end if
 
-    allocate(coamps_variable_names(total_coamps_files), stat=alloc_status)
+    allocate(coamps_forecast_filenames(total_coamps_files), stat=alloc_status)
     call check_alloc_status(alloc_status, routine, source, revision, &
-                            revdate, 'coamps_variable_names')
+                            revdate, 'coamps_forecast_filenames')
 
-    allocate(coamps_file_names(total_coamps_files), stat=alloc_status)
+    allocate(coamps_forecast_units(total_coamps_files), stat=alloc_status)
     call check_alloc_status(alloc_status, routine, source, revision, &
-                            revdate, 'coamps_file_names')
+                            revdate, 'coamps_forecast_units')
 
-    allocate( coamps_file_units(total_coamps_files), stat=alloc_status )
+    allocate(coamps_analysis_filenames(total_coamps_files), stat=alloc_status)
     call check_alloc_status(alloc_status, routine, source, revision, &
-                            revdate, 'coamps_file_units')
+                            revdate, 'coamps_analysis_filenames')
+
+    allocate(coamps_analysis_units(total_coamps_files), stat=alloc_status)
+    call check_alloc_status(alloc_status, routine, source, revision, &
+                            revdate, 'coamps_analysis_units')
+
   end subroutine allocate_coamps_restart_file_info
 
   ! allocate_coamps_flat_file_info
@@ -1105,17 +1145,22 @@ end function get_current_dtg
     
     total_coamps_files = get_num_fields(file_layout) 
     
-    allocate(coamps_variable_names(total_coamps_files), stat=alloc_status)
+    allocate(coamps_forecast_filenames(total_coamps_files), stat=alloc_status)
     call check_alloc_status(alloc_status, routine, source, revision, &
-                            revdate, 'coamps_variable_names')
-
-    allocate(coamps_file_names(total_coamps_files), stat=alloc_status)
-    call check_alloc_status(alloc_status, routine, source, revision, &
-                            revdate, 'coamps_file_names')
+                            revdate, 'coamps_forecast_filenames')
     
-    allocate( coamps_file_units(total_coamps_files), stat=alloc_status )
+    allocate(coamps_forecast_units(total_coamps_files), stat=alloc_status)
     call check_alloc_status(alloc_status, routine, source, revision, &
-                            revdate, 'coamps_file_units')
+                            revdate, 'coamps_forecast_units')
+
+    allocate(coamps_analysis_filenames(total_coamps_files), stat=alloc_status)
+    call check_alloc_status(alloc_status, routine, source, revision, &
+                            revdate, 'coamps_analysis_filenames')
+    
+    allocate(coamps_analysis_units(total_coamps_files), stat=alloc_status)
+    call check_alloc_status(alloc_status, routine, source, revision, &
+                            revdate, 'coamps_analysis_units')
+
   end subroutine allocate_coamps_flat_file_info
 
 
@@ -1155,8 +1200,9 @@ flat_file_loop: do while (has_next(iterator))
       if(write_field) then
          ! just read from netcdf, write to hdf - no need for var_state
          call copy_netCDF_to_hdf(dart_unit, &
-                                 coamps_variable_names(cur_file), &
-                                 coamps_file_units(cur_file))
+                                 coamps_forecast_filenames(cur_file), &
+                                 coamps_analysis_filenames(cur_file), &
+                                 coamps_analysis_units(cur_file))
 
         !>@todo FIXME Write pressure level data here
         ! Need to write out data on specified pressure levels here.
@@ -1167,8 +1213,8 @@ flat_file_loop: do while (has_next(iterator))
 
       var_state => get_var_substate(cur_var, dart_state)
 
-      call read_hdf5_variable(coamps_file_units(cur_file), &
-                          coamps_variable_names(cur_file), &
+      call read_hdf5_variable(coamps_forecast_units(cur_file), &
+                          coamps_forecast_filenames(cur_file), &
                           var_state)
    endif
 
@@ -1190,7 +1236,7 @@ type(state_variable), pointer :: cur_var  ! use actual variable, not local
 type(state_iterator) :: iterator
 integer :: cur_file
 
-if (.not. allocated(coamps_variable_names)) then
+if (.not. allocated(coamps_forecast_filenames)) then
    call error_handler(E_ERR, routine, 'coamps variable names are'&
                                // ' not allocated!', source, revision, revdate)
 endif 
@@ -1210,7 +1256,7 @@ hdf_var_loop: do while (has_next(iterator))
 
   cur_file = cur_file + 1
 
-  call set_hdf_name(cur_var, coamps_variable_names(cur_file))
+  call set_hdf_name(cur_var, coamps_forecast_filenames(cur_file))
 
 enddo hdf_var_loop
 
@@ -1420,14 +1466,14 @@ end subroutine record_hdf_varnames
     ! Recall that for single-process I/O restart files, each nest is
     ! in its own restart file. 
     if (coamps_used_io_proc) then
-      restart_unit = coamps_file_units(get_nest_number(var_to_process))
+      restart_unit = coamps_forecast_units(get_nest_number(var_to_process))
       if (do_output()) &
       print *, restart_unit, &
-               coamps_file_names(get_nest_number(var_to_process)) 
+               coamps_forecast_filenames(get_nest_number(var_to_process)) 
     else
-      restart_unit = coamps_file_units(file_index) 
+      restart_unit = coamps_forecast_units(file_index) 
       if (do_output()) &
-      print *, restart_unit, coamps_file_names(file_index) 
+      print *, restart_unit, coamps_forecast_filenames(file_index) 
     end if
 
     ! Assert

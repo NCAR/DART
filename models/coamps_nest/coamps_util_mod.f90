@@ -555,10 +555,11 @@ contains
 !>   IN  variable_name  string defining the variable to read
 !>   OUT flat_array     coamps_grid structure to be filled
 
-subroutine copy_netCDF_to_hdf(ncFileID, variable_name, hdf5unit)
+subroutine copy_netCDF_to_hdf(ncFileID, forecast_name, analysis_name, hdf5unit)
 
 integer,          intent(in) :: ncFileID
-character(len=*), intent(in) :: variable_name
+character(len=*), intent(in) :: forecast_name
+character(len=*), intent(in) :: analysis_name
 integer,          intent(in) :: hdf5unit
 
 character(len=*), parameter :: routine = 'copy_netCDF_to_hdf'
@@ -569,34 +570,16 @@ integer :: dimlens(NF90_MAX_VAR_DIMS)
 real(r8), allocatable :: chunk1D(:)
 real(r8), allocatable :: chunk2D(:,:)
 real(r8), allocatable :: chunk3D(:,:,:)
-character(len=HDF_VARNAME_LEN) :: analysis_name
 
-call nc_get_variable_info(ncFileID, variable_name,   &
+call nc_get_variable_info(ncFileID, forecast_name,   &
                                     ndims=ndims,     &
                                     dimlens=dimlens, &
                                     context=routine  )
 
-istart = index(variable_name,'fcstfld')
-if (istart < 1) then
-   write(string1,*)'unable to construct analysis variable name from'
-   write(string2,*)'"'//trim(variable_name)//'"'
-   write(string3,*)'trying to replace "fcstfld" portion with "analfld"'
-   call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2,text3=string3)
-endif
-
-analysis_name = variable_name
-analysis_name(istart:istart+6) = 'analfld'
-
-if (.true. .and. do_output()) then
-   write(string1,*)'replacing "'//trim(variable_name)//'"'
-   write(string2,*)'with      "'//trim(analysis_name)//'"'
-   call error_handler(E_MSG,routine,string1,text2=string2)
-endif
-
 if ( ndims == 1) then
 
    allocate( chunk1D(dimlens(1)) )
-   call nc_get_variable(ncFileID, variable_name, chunk1D, context=routine) 
+   call nc_get_variable(ncFileID, forecast_name, chunk1D, context=routine) 
 !  call nc_put_variable(hdf5unit, analysis_name, chunk1D, context=routine)
 
    call write_hdf5_data(real(chunk1D, kind=4), analysis_name, hdf5_file_write, ierr)
@@ -610,7 +593,7 @@ if ( ndims == 1) then
 elseif (ndims == 2) then
 
    allocate( chunk2D( dimlens(1), dimlens(2) ) )
-   call nc_get_variable(ncFileID, variable_name, chunk2D, context=routine) 
+   call nc_get_variable(ncFileID, forecast_name, chunk2D, context=routine) 
 !  call nc_put_variable(hdf5unit, analysis_name, chunk2D, context=routine) 
 
    call write_hdf5_data(real(chunk2D, kind=4), analysis_name, hdf5_file_write, ierr)
@@ -624,7 +607,7 @@ elseif (ndims == 2) then
 elseif (ndims == 3) then
 
    allocate( chunk3D( dimlens(1), dimlens(2), dimlens(3) ) )
-   call nc_get_variable(ncFileID, variable_name, chunk3D, context=routine) 
+   call nc_get_variable(ncFileID, forecast_name, chunk3D, context=routine) 
 !  call nc_put_variable(hdf5unit, analysis_name, chunk3D, context=routine) 
 
    call write_hdf5_data(real(chunk3D, kind=hdf5_r4), analysis_name, hdf5_file_write, ierr)
@@ -637,7 +620,7 @@ elseif (ndims == 3) then
 
 else
    write(string1,*)'can only read 1D, 2D, or 3D variables for now'
-   write(string2,*)'variable "',trim(variable_name),'" has shape ', dimlens(1:ndims)
+   write(string2,*)'variable "',trim(forecast_name),'" has shape ', dimlens(1:ndims)
    call error_handler(E_ERR, routine, string1, source, revision, revdate, text2=string2)
 endif
 
@@ -657,20 +640,19 @@ end subroutine copy_netCDF_to_hdf
     character(len=*),            intent(in)  :: dtg
     real(kind=r8), dimension(:), intent(out) :: datahd
 
-    character(len=HDF_VARNAME_LEN) :: datahd_filename
     character(len=HDF_VARNAME_LEN) :: datahd_varname
-    integer           :: datahd_unit
-    integer           :: VarID
+    integer :: datahd_unit
+    integer :: VarID
+    integer :: ndims, dimids(NF90_MAX_DIMS), dimlens(NF90_MAX_DIMS)
+    real(r8), allocatable :: datmat(:,:)
 
     ! Error checking
     character(len=*), parameter :: routine = 'read_datahd_file'
     integer :: io
 
-    ! Actually generates the appropriate variable name in the HDF5 file
+    ! Generate the appropriate variable name in the HDF5 file
     ! using existing routine for the old file name.
-    call generate_datahd_filename(dtg, datahd_filename)
-
-    datahd_varname = datahd_filename
+    call generate_datahd_filename(dtg, datahd_varname)
 
     io = nf90_open(trim(filename), NF90_NOWRITE, datahd_unit)
     call nc_check(io, routine, 'open "'//trim(filename)//'"')
@@ -678,9 +660,38 @@ end subroutine copy_netCDF_to_hdf
     io = nf90_inq_varid(datahd_unit, datahd_varname, VarID)
     call nc_check(io, routine, 'inquire "'//trim(datahd_varname)//'"')
 
-    !>@todo make sure datahd is declared to be proper length
-    io = nf90_get_var(datahd_unit, VarID, datahd)
+    io = nf90_inquire_variable(datahd_unit, VarID, ndims=ndims, dimids=dimids)
+    call nc_check(io, routine, 'inquire variable "'//trim(datahd_varname)//'"')
+
+    if (ndims /= 2) then
+       write(string1,*)'Unsupported number of dimensions for '//trim(datahd_varname)
+       write(string2,*)'Expected  2 dimensions, got ',ndims
+       write(string3,*)'dimension IDs are ',dimids(1:ndims)
+       call error_handler(E_ERR, routine, string1, &
+                  source, revision, revdate, text2=string2, text3=string3)
+    endif
+
+    io = nf90_inquire_dimension( datahd_unit, dimids(1), len=dimlens(1))
+    call nc_check(io, routine, 'inquire dimlen 1 from "'//trim(filename)//'"')
+     
+    io = nf90_inquire_dimension( datahd_unit, dimids(2), len=dimlens(2))
+    call nc_check(io, routine, 'inquire dimlen 2 from "'//trim(filename)//'"')
+
+    if ( DATAHD_LEN /= dimlens(1)*dimlens(2) ) then
+       write(string1,*)'Unsupported size of '//trim(datahd_varname)
+       write(string2,*)'Expected ',DATAHD_LEN, ' got ', dimlens(1)*dimlens(2)
+       call error_handler(E_ERR, routine, string1, &
+                  source, revision, revdate, text2=string2)
+    endif
+
+    allocate( datmat(dimlens(1),dimlens(2)) )
+
+    io = nf90_get_var(datahd_unit, VarID, datmat)
     call nc_check(io, routine, 'get_var datahd from "'//trim(filename)//'"')
+
+    datahd = reshape(datmat,(/ DATAHD_LEN /))
+
+    deallocate(datmat)
 
     io = nf90_close(datahd_unit)
     call nc_check(io, routine, 'closing "'//trim(filename)//'"')

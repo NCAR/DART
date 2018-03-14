@@ -89,10 +89,8 @@ use coamps_netcdf_mod,   only : nc_write_prognostic_atts, &
 
 use coamps_translate_mod, only : initialize_translator,        &
                                  finalize_translator,          &
-                                 record_hdf_varnames,        &
-       generate_coamps_varnames => generate_coamps_filenames,  &
-       get_coamps_variable_count => get_coamps_filename_count, &
-       get_coamps_varname => get_coamps_filename
+                                 record_hdf_varnames,          &
+       generate_coamps_varnames => generate_coamps_filenames
 
 !#!    use coamps_pert_mod,     only : perturb_state
 
@@ -329,7 +327,7 @@ call initialize_state_vector(state_layout_3D, STATE_VEC_DEF_FILE, domain, .true.
 call allocate_metadata_arrays()
 call populate_metadata_arrays()
 call initialize_translator()
-call generate_coamps_varnames(writing_coamps = .false.)
+call generate_coamps_varnames()
 call record_hdf_varnames(state_layout_3D)
 
 if (debug > 0 .and. do_output()) call dump_state_vector(state_layout_3D)
