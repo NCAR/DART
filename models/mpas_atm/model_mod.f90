@@ -244,6 +244,11 @@ logical :: use_increments_for_u_update = .true.
 real(r8) :: outside_grid_level_tolerance = -1.0_r8
 logical  :: extrapolate = .false.
 
+! in converting to scale height for the vertical, set this to .false. to
+! use simply the log of the pressure.  to normalize by the surface pressure
+! (backwards compatible with previous code), set this to .true.
+logical :: normalize_scale_height_by_surface_pressure = .true. 
+
 namelist /model_nml/             &
    model_analysis_filename,      &
    grid_definition_filename,     &
@@ -262,7 +267,8 @@ namelist /model_nml/             &
    highest_obs_pressure_mb,      &
    outside_grid_level_tolerance, &
    extrapolate,                  &
-   sfc_elev_max_diff
+   sfc_elev_max_diff,            &
+   normalize_scale_height_by_surface_pressure
 
 ! DART state vector contents are specified in the input.nml:&mpas_vars_nml namelist.
 integer, parameter :: max_state_variables = 80
@@ -4284,6 +4290,7 @@ real(r8), dimension(3,ens_size)  :: zk_mid, values, fract, fdata
 integer,  dimension(3,ens_size)  :: k_low, k_up
 real(r8), dimension(ens_size)    :: zin, zout
 real(r8), dimension(ens_size)    :: tk, fullp, surfp
+logical :: at_surf, do_norm
 type(location_type), dimension(ens_size) :: surfloc
 
 real(r8) :: weights(3)
@@ -4301,10 +4308,8 @@ weights = 0.0_r8
 ! first off, check if ob is identity ob.  if so get_state_meta_data() will
 ! have returned location information already in the requested vertical type.
 if (obs_kind < 0) then
-   call get_state_meta_data(int(obs_kind,i8),location(1)) ! will be the same across the ensemble
+   call get_state_meta_data(-int(obs_kind,i8),location(1)) ! will be the same across the ensemble
    location(:) = location(1)
-   istatus(:) = 0
-   return
 endif
 
 ! if the existing coord is already in the requested vertical units
@@ -4445,52 +4450,89 @@ select case (ztypeout)
    ! ------------------------------------------------------------
    case (VERTISSCALEHEIGHT)
 
-     if ( ztypein /= VERTISSURFACE ) then
+     ! Scale Height is defined as:  log(pressure)  UNLESS the namelist item
+     ! normalize_scale_height_by_surface_pressure = .true. in which case 
+     ! it is defined as: -log(pressure / surface_pressure)
 
-       ! Scale Height is defined here as: -log(pressure / surface_pressure)
+     ! set logicals here so we can do the minimum amount of work.
+     ! finding gridcells and computing pressure is expensive in this model.
+     ! logic table is:
+     !  surf T, norm T:  return 0.0 by definition
+     !  surf T, norm F:  need surfp only
+     !  surf F, norm F:  need fullp only
+     !  surf F, norm T:  need both surfp and fullp
 
-       ! Need to get base offsets for the potential temperature, density, and water
-       ! vapor mixing fields in the state vector
-       ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
-       ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
-       ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
+     at_surf = (ztypein == VERTISSURFACE)
+     do_norm = normalize_scale_height_by_surface_pressure
 
-       ! Get theta, rho, qv at the interpolated location
-       call compute_scalar_with_barycentric (state_handle, ens_size, location(1), 3, ivars, values, istatus)
-       !if (istatus /= 0) return
+     ! if normalizing pressure and we're on the surface, by definition scale height 
+     ! is log(1.0) so skip the rest of these computations.
+     if (at_surf .and. do_norm) then
+        zout = 0.0_r8  
+        istatus(:) = 0
+        goto 101
+     endif
 
-       ! Convert theta, rho, qv into pressure
-       call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), fullp(:), tk(:), istatus(:))
-       if (debug > 9) then
-         write(string2,'("zout_full_pressure, theta, rho, qv:",3F10.2,F18.8)') fullp, values(1:3,1)
-         call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
-       endif
+     ! Base offsets for the potential temperature, density, and water
+     ! vapor mixing fields in the state vector.
+     ivars(1) = get_progvar_index_from_kind(QTY_POTENTIAL_TEMPERATURE)
+     ivars(2) = get_progvar_index_from_kind(QTY_DENSITY)
+     ivars(3) = get_progvar_index_from_kind(QTY_VAPOR_MIXING_RATIO)
 
-       ! Get theta, rho, qv at the surface corresponding to the interpolated location
-       surfloc(1) = set_location(llv_loc(1, 1), llv_loc(2, 1), 1.0_r8, VERTISLEVEL)
-       call compute_scalar_with_barycentric (state_handle, ens_size, surfloc(1), 3, ivars, values, istatus)
-       if( all(istatus /= 0) ) return
+     if (at_surf .or. do_norm) then  ! we will need surface pressure
 
-       ! Convert surface theta, rho, qv into pressure
-       call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), surfp(:), tk(:), istatus(:))
-       if (debug > 9) then
-         write(string2,'("zout_surf_pressure, theta, rho, qv:",3F10.2,F18.8)') surfp, values(1:3,1)
-         call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
-       endif
-
-       ! and finally, convert into scale height
-       where (surfp /= 0.0_r8 .and. fullp /= MISSING_R8)
-         zout = -log(fullp / surfp)
-       else where
-         zout = MISSING_R8
-       end where
-
-     else
-
-       zout = -log(1.0_r8)
-       istatus(:) = 0
+        ! Get theta, rho, qv at the surface corresponding to the interpolated location
+        surfloc(1) = set_location(llv_loc(1, 1), llv_loc(2, 1), 1.0_r8, VERTISLEVEL)
+        call compute_scalar_with_barycentric (state_handle, ens_size, surfloc(1), 3, ivars, values, istatus)
+   
+        ! Convert surface theta, rho, qv into pressure
+        call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), surfp(:), tk(:), istatus(:))
+        if (debug > 9) then
+            write(string2,'("zout_surf_pressure, theta, rho, qv:",3F10.2,F18.8)') surfp, values(1:3,1)
+            call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
+         endif
 
      endif
+
+     if (.not. at_surf) then   ! we will need full pressure
+
+        ! Get theta, rho, qv at the interpolated location
+        call compute_scalar_with_barycentric (state_handle, ens_size, location(1), 3, ivars, values, istatus)
+
+        ! Convert theta, rho, qv into pressure
+        call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), fullp(:), tk(:), istatus(:))
+        if (debug > 9) then
+          write(string2,'("zout_full_pressure, theta, rho, qv:",3F10.2,F18.8)') fullp, values(1:3,1)
+          call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
+        endif
+     endif
+
+     ! we have what we need now.  figure out the case and set zout to the right values.
+     ! we've already taken care of the (at_surf .and. do_norm) case, so that simplifies
+     ! the tests here.
+     if (at_surf) then
+        where (surfp /= MISSING_R8)
+           zout = log(surfp)
+        else where
+           zout = MISSING_R8
+        end where
+
+     else if (.not. do_norm) then
+        where (fullp /= MISSING_R8)
+           zout = log(fullp)
+        else where
+           zout = MISSING_R8
+        end where
+
+     else  ! not at surface, and normalizing by surface pressure
+        where (surfp /= MISSING_R8 .and. surfp > 0.0_r8 .and. fullp /= MISSING_R8)   
+           zout = -log(fullp / surfp)
+        else where
+           zout = MISSING_R8
+        end where
+     endif
+
+101 continue
 
      if (debug > 9) then
        write(string2,'("zout_in_scaleheight:",F10.2)') zout

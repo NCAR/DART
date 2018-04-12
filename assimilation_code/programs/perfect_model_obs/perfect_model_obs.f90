@@ -553,7 +553,7 @@ AdvanceTime: do
             obs_value(1) = random_gaussian(random_seq, true_obs(1), &
                sqrt(get_obs_def_error_variance(obs_def)))
 
-            ! FIX ME SPINT: if the foward operater passed can we directly set the
+            ! FIX ME SPINT: if the forward operater passed can we directly set the
             ! qc status?
 
             ! Set qc to 0 if none existed before

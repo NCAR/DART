@@ -2,35 +2,37 @@
    read_input_state_from_file = .true.,
    single_file_in             = .true.
    input_state_files          = "perfect_input.nc"
+   init_time_days             = 0,
+   init_time_seconds          = 0,
 
    write_output_state_to_file = .true.,
    single_file_out            = .true.
    output_state_files         = "perfect_output.nc"
    output_interval            = 1,
 
-   async                 = 0,
+   async                      = 0,
    adv_ens_command            = "./advance_model.csh",
 
    obs_seq_in_file_name       = "obs_seq.in",
    obs_seq_out_file_name      = "obs_seq.out",
-   init_time_days        = 0,
-   init_time_seconds     = 0,
-   first_obs_days        = -1,
-   first_obs_seconds     = -1,
-   last_obs_days         = -1,
-   last_obs_seconds      = -1,
+   first_obs_days             = -1,
+   first_obs_seconds          = -1,
+   last_obs_days              = -1,
+   last_obs_seconds           = -1,
 
-   trace_execution       = .false.,
+   trace_execution            = .false.,
    output_timestamps          = .false.,
-   print_every_nth_obs   = -1,
+   print_every_nth_obs        = -1,
    output_forward_op_errors   = .false.,
-   silence               = .false.,
+   silence                    = .false.,
    /
 
 &filter_nml
    single_file_in               = .true.,
    input_state_files            = ''
    input_state_file_list        = 'filter_input_list.txt'
+   init_time_days               = 0,
+   init_time_seconds            = 0,
 
    stages_to_write  = 'preassim', 'analysis', 'output'
 
@@ -55,9 +57,7 @@
 
    obs_sequence_in_name     = "obs_seq.out",
    obs_sequence_out_name    = "obs_seq.final",
-   num_output_obs_members       = 20,
-   init_time_days           = 0,
-   init_time_seconds        = 0,
+   num_output_obs_members   = 20,
    first_obs_days           = -1,
    first_obs_seconds        = -1,
    last_obs_days            = -1,
@@ -80,15 +80,19 @@
    silence                      = .false.,
    /
 
-&smoother_nml
-   num_lags              = 0,
-   start_from_restart    = .false.,
-   output_restart        = .false.,
-   restart_in_file_name  = 'smoother_ics',
-   restart_out_file_name = 'smoother_restart'
+&model_nml
+   model_size           = 2,
+   delta_t              = 0.05,
+   time_step_days       = 0,
+   time_step_seconds    = 3600
+   noise_amplitude      = 0.0
+   advance_method       = 'simple'
+   interpolation_method = 'standard'
    /
 
-&ensemble_manager_nml
+&obs_kind_nml
+   assimilate_these_obs_types = 'RAW_STATE_VARIABLE'
+   evaluate_these_obs_types   = ''
    /
 
 &assim_tools_nml
@@ -102,6 +106,11 @@
    output_localization_diagnostics = .false.,
    localization_diagnostics_file   = 'localization_diagnostics',
    print_every_nth_obs             = 0
+   /
+
+&quality_control_nml
+   input_qc_threshold =  3.0,
+   outlier_threshold  = -1.0,
    /
 
 &cov_cutoff_nml
@@ -129,11 +138,9 @@
    delta_t           = 0.05,
    time_step_days    = 0,
    time_step_seconds = 3600
-   noise             = 1.0
-   noise_mult_factor = 1.0
-   advance_method    = 'rk'
-/
-
+   noise_amplitude      = 0.0
+   advance_method       = 'simple'
+   interpolation_method = 'rk'
    /
 
 &utilities_nml
@@ -180,7 +187,13 @@
    verbose               = .false.
    /
 
+&smoother_nml
+   /
+
 &state_vector_io_nml
+   /
+
+&ensemble_manager_nml
    /
 
 &model_mod_check_nml
@@ -193,8 +206,3 @@
    interp_test_dx        = 0.1
    /
  
-&quality_control_nml
-   input_qc_threshold       =  3.0,
-   outlier_threshold        = -1.0,
-/
-

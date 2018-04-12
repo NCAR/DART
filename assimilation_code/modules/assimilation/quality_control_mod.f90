@@ -133,7 +133,7 @@ integer              :: set_input_qc  !>  return value
 if(input_qc == 0 .and. (assimilate_this_ob .or. evaluate_this_ob)) then
    set_input_qc = 0.0_r8
 else
-   set_input_qc = 1000.0_r8
+   set_input_qc = 1000.0_r8 + input_qc
 endif
 
 end function set_input_qc

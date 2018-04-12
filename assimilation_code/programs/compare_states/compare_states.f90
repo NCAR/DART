@@ -47,24 +47,12 @@ integer :: nin2Dimensions, nin2Variables, nin2Attributes, in2unlimitedDimID
 real(r8) ::  min1,  min2,  max1,  max2,  delmin,  delmax
 integer  :: imin1, imin2, imax1, imax2, idelmin, idelmax
 
-! arrays for all possible dimensions, real and int
-real(r8)          ::  zerod1,                 zerod2
-real(r8), pointer ::   oned1(:),               oned2(:)       
-real(r8), pointer ::   twod1(:,:),             twod2(:,:)
-real(r8), pointer :: threed1(:,:,:),         threed2(:,:,:)
-real(r8), pointer ::  fourd1(:,:,:,:),        fourd2(:,:,:,:)
-real(r8), pointer ::  fived1(:,:,:,:,:),      fived2(:,:,:,:,:)
-real(r8), pointer ::   sixd1(:,:,:,:,:,:),     sixd2(:,:,:,:,:,:)
-real(r8), pointer :: sevend1(:,:,:,:,:,:,:), sevend2(:,:,:,:,:,:,:)
+! arrays and scalars for real and int
+real(r8)              ::  zerod1,    zerod2
+real(r8), allocatable ::  oned1(:),  oned2(:)       
 
-integer           ::  izerod1,                 izerod2
-integer,  pointer ::   ioned1(:),               ioned2(:)       
-integer,  pointer ::   itwod1(:,:),             itwod2(:,:)
-integer,  pointer :: ithreed1(:,:,:),         ithreed2(:,:,:)
-integer,  pointer ::  ifourd1(:,:,:,:),        ifourd2(:,:,:,:)
-integer,  pointer ::  ifived1(:,:,:,:,:),      ifived2(:,:,:,:,:)
-integer,  pointer ::   isixd1(:,:,:,:,:,:),     isixd2(:,:,:,:,:,:)
-integer,  pointer :: isevend1(:,:,:,:,:,:,:), isevend2(:,:,:,:,:,:,:)
+integer               ::  izerod1,   izerod2
+integer,  allocatable ::  ioned1(:), ioned2(:)       
 
 logical, save :: module_initialized = .false.
 
@@ -256,6 +244,7 @@ fieldloop : do i=1, 100000
       call error_handler(E_ERR, 'compare_states', msgstring, source, revision, revdate)
    endif
    
+   dimlen(:) = 1
    do j=1,ndims
       call nc_check( nf90_inquire_dimension(ncinid1,  dimid(j),  dimname(j),  dimlen(j)), &
                    'nf90_inquire_dimension', 'infile1/'//trim( dimname(j)) )
@@ -287,32 +276,16 @@ fieldloop : do i=1, 100000
    enddo
 
 
-   select case(ndims)
-      case (0)
-         write(tmpstring, '(2A)')       trim(nextfield), ' [scalar value]'
-      case (1)
-         write(tmpstring, '(2A,1I8,A)') trim(nextfield), '(', dimlen(1),   ')'
-      case (2)
-         write(tmpstring, '(2A,2I8,A)') trim(nextfield), '(', dimlen(1:2), ')'
-      case (3)
-         write(tmpstring, '(2A,3I8,A)') trim(nextfield), '(', dimlen(1:3), ')'
-      case (4)
-         write(tmpstring, '(2A,4I8,A)') trim(nextfield), '(', dimlen(1:4), ')'
-      case (5)
-         write(tmpstring, '(2A,5I8,A)') trim(nextfield), '(', dimlen(1:5), ')'
-      case (6)
-         write(tmpstring, '(2A,6I8,A)') trim(nextfield), '(', dimlen(1:6), ')'
-      case (7)
-         write(tmpstring, '(2A,7I8,A)') trim(nextfield), '(', dimlen(1:7), ')'
-      case default
-         ! "can't happen"
-         write(msgstring, *) 'array dimension is illegal value: ', ndims
-         call error_handler(E_ERR, 'compare_states', msgstring, source, revision, revdate)
-   end select
+   if (ndims == 0) then
+      write(tmpstring, '(2A)') trim(nextfield), ' [scalar value]'
+   else
+      write(tmpstring, '(2A,1I8)') trim(nextfield), '(', dimlen(1)
+      do j=2, ndims
+         write(tmpstring, '(2A,2I8)') trim(tmpstring), ',', dimlen(j)
+      enddo
+      write(tmpstring, '(2A)') trim(tmpstring), ')'
+   endif
 
-   ! announce what we're about to do
-   write(msgstring, *) 'checking equality of: ', trim(tmpstring)
-   call error_handler(E_MSG, 'compare_states', msgstring)
 
    ! allocate right dim array
    ! read/write and then deallocate
@@ -337,11 +310,10 @@ fieldloop : do i=1, 100000
          else
             nitems = 0
          endif
-      case (1)
-         allocate(ioned1(dimlen(1)))
-         allocate(ioned2(dimlen(1)))
-         call nc_check(nf90_get_var(ncinid1, invarid1, ioned1), 'nf90_get_var', 'infile1')
-         call nc_check(nf90_get_var(ncinid2, invarid2, ioned2), 'nf90_get_var', 'infile2')
+      case (1:7)
+         allocate(ioned1(product(dimlen)), ioned2(product(dimlen)))
+         call nc_check(nf90_get_var(ncinid1, invarid1, ioned1, count=dimlen), 'nf90_get_var', 'infile1')
+         call nc_check(nf90_get_var(ncinid2, invarid2, ioned2, count=dimlen), 'nf90_get_var', 'infile2')
          imin1 = minval(ioned1)
          imax1 = maxval(ioned1)
          imin2 = minval(ioned2)
@@ -350,90 +322,12 @@ fieldloop : do i=1, 100000
          idelmax = maxval(abs(ioned1-ioned2))
          nitems = count(ioned1 .ne. ioned2)
          deallocate(ioned1, ioned2)
-      case (2)
-         allocate(itwod1(dimlen(1),dimlen(2)))
-         allocate(itwod2(dimlen(1),dimlen(2)))
-         call nc_check(nf90_get_var(ncinid1, invarid1, itwod1), 'nf90_get_var', 'infile1')
-         call nc_check(nf90_get_var(ncinid2, invarid2, itwod2), 'nf90_get_var', 'infile2')
-         imin1 = minval(itwod1)
-         imax1 = maxval(itwod1)
-         imin2 = minval(itwod2)
-         imax2 = maxval(itwod2)
-         idelmin = minval(abs(itwod1-itwod2))
-         idelmax = maxval(abs(itwod1-itwod2))
-         nitems = count(itwod1 .ne. itwod2)
-         deallocate(itwod1, itwod2)
-      case (3)
-         allocate(ithreed1(dimlen(1),dimlen(2),dimlen(3)))
-         allocate(ithreed2(dimlen(1),dimlen(2),dimlen(3)))
-         call nc_check(nf90_get_var(ncinid1, invarid1, ithreed1), 'nf90_get_var', 'infile1')
-         call nc_check(nf90_get_var(ncinid2, invarid2, ithreed2), 'nf90_get_var', 'infile2')
-         imin1 = minval(ithreed1)
-         imax1 = maxval(ithreed1)
-         imin2 = minval(ithreed2)
-         imax2 = maxval(ithreed2)
-         idelmin = minval(abs(ithreed1-ithreed2))
-         idelmax = maxval(abs(ithreed1-ithreed2))
-         nitems = count(ithreed1 .ne. ithreed2)
-         deallocate(ithreed1, ithreed2)
-      case (4)
-         allocate(ifourd1(dimlen(1),dimlen(2),dimlen(3),dimlen(4)))
-         allocate(ifourd2(dimlen(1),dimlen(2),dimlen(3),dimlen(4)))
-         call nc_check(nf90_get_var(ncinid1, invarid1, ifourd1), 'nf90_get_var', 'infile1')
-         call nc_check(nf90_get_var(ncinid2, invarid2, ifourd2), 'nf90_get_var', 'infile2')
-         imin1 = minval(ifourd1)
-         imax1 = maxval(ifourd1)
-         imin2 = minval(ifourd2)
-         imax2 = maxval(ifourd2)
-         idelmin = minval(abs(ifourd1-ifourd2))
-         idelmax = maxval(abs(ifourd1-ifourd2))
-         nitems = count(ifourd1 .ne. ifourd2)
-         deallocate(ifourd1, ifourd2)
-      case (5)
-         allocate(ifived1(dimlen(1),dimlen(2),dimlen(3),dimlen(4),dimlen(5)))
-         allocate(ifived2(dimlen(1),dimlen(2),dimlen(3),dimlen(4),dimlen(5)))
-         call nc_check(nf90_get_var(ncinid1, invarid1, ifived1), 'nf90_get_var', 'infile1')
-         call nc_check(nf90_get_var(ncinid2, invarid2, ifived2), 'nf90_get_var', 'infile2')
-         imin1 = minval(ifived1)
-         imax1 = maxval(ifived1)
-         imin2 = minval(ifived2)
-         imax2 = maxval(ifived2)
-         idelmin = minval(abs(ifived1-ifived2))
-         idelmax = maxval(abs(ifived1-ifived2))
-         nitems = count(ifived1 .ne. ifived2)
-         deallocate(ifived1, ifived2)
-      case (6)
-         allocate(isixd1(dimlen(1),dimlen(2),dimlen(3),dimlen(4),dimlen(5),dimlen(6)))
-         allocate(isixd2(dimlen(1),dimlen(2),dimlen(3),dimlen(4),dimlen(5),dimlen(6)))
-         call nc_check(nf90_get_var(ncinid1, invarid1, isixd1), 'nf90_get_var', 'infile1')
-         call nc_check(nf90_get_var(ncinid2, invarid2, isixd2), 'nf90_get_var', 'infile2')
-         imin1 = minval(isixd1)
-         imax1 = maxval(isixd1)
-         imin2 = minval(isixd2)
-         imax2 = maxval(isixd2)
-         idelmin = minval(abs(isixd1-isixd2))
-         idelmax = maxval(abs(isixd1-isixd2))
-         nitems = count(isixd1 .ne. isixd2)
-         deallocate(isixd1, isixd2)
-      case (7)
-         allocate(isevend1(dimlen(1),dimlen(2),dimlen(3),dimlen(4),dimlen(5),dimlen(6),dimlen(7)))
-         allocate(isevend2(dimlen(1),dimlen(2),dimlen(3),dimlen(4),dimlen(5),dimlen(6),dimlen(7)))
-         call nc_check(nf90_get_var(ncinid1, invarid1, isevend1), 'nf90_get_var', 'infile1')
-         call nc_check(nf90_get_var(ncinid2, invarid2, isevend2), 'nf90_get_var', 'infile2')
-         imin1 = minval(isevend1)
-         imax1 = maxval(isevend1)
-         imin2 = minval(isevend2)
-         imax2 = maxval(isevend2)
-         idelmin = minval(abs(isevend1-isevend2))
-         idelmax = maxval(abs(isevend1-isevend2))
-         nitems = count(isevend1 .ne. isevend2)
-         deallocate(isevend1, isevend2)
-      case default
-         ! "really can't happen"
-         write(msgstring, *) 'array dimension is illegal value: ', ndims
-         call error_handler(E_ERR, 'compare_states', msgstring, source, revision, revdate)
      end select
      ! common reporting code for integers
+     if (nitems > 0 .or. .not. only_report_differences) then
+        write(msgstring, *) 'checking equality of: ', trim(tmpstring)
+        call error_handler(E_MSG, 'compare_states', msgstring)
+     endif
      if (nitems > 0) then
         write(msgstring, *) 'arrays differ in ', nitems, ' places'
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
@@ -444,8 +338,6 @@ fieldloop : do i=1, 100000
         write(msgstring, *) 'delta min/max: ', idelmin, idelmax
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
      else if (.not. only_report_differences) then
-        write(msgstring, *) 'arrays same'
-        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
         write(msgstring, *) 'min/max value: ', imin1, imax1
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
      endif
@@ -466,11 +358,10 @@ fieldloop : do i=1, 100000
          else
             nitems = 0
          endif
-      case (1)
-         allocate(oned1(dimlen(1)))
-         allocate(oned2(dimlen(1)))
-         call nc_check(nf90_get_var(ncinid1, invarid1, oned1), 'nf90_get_var', 'infile1')
-         call nc_check(nf90_get_var(ncinid2, invarid2, oned2), 'nf90_get_var', 'infile2')
+      case (1:7)
+         allocate(oned1(product(dimlen)), oned2(product(dimlen)))
+         call nc_check(nf90_get_var(ncinid1, invarid1, oned1, count=dimlen), 'nf90_get_var', 'infile1')
+         call nc_check(nf90_get_var(ncinid2, invarid2, oned2, count=dimlen), 'nf90_get_var', 'infile2')
          min1 = minval(oned1)
          max1 = maxval(oned1)
          min2 = minval(oned2)
@@ -479,91 +370,13 @@ fieldloop : do i=1, 100000
          delmax = maxval(abs(oned1-oned2))
          nitems = count(oned1 .ne. oned2)
          deallocate(oned1, oned2)
-      case (2)
-         allocate(twod1(dimlen(1),dimlen(2)))
-         allocate(twod2(dimlen(1),dimlen(2)))
-         call nc_check(nf90_get_var(ncinid1, invarid1, twod1), 'nf90_get_var', 'infile1')
-         call nc_check(nf90_get_var(ncinid2, invarid2, twod2), 'nf90_get_var', 'infile2')
-         min1 = minval(twod1)
-         max1 = maxval(twod1)
-         min2 = minval(twod2)
-         max2 = maxval(twod2)
-         delmin = minval(abs(twod1-twod2))
-         delmax = maxval(abs(twod1-twod2))
-         nitems = count(twod1 .ne. twod2)
-         deallocate(twod1, twod2)
-      case (3)
-         allocate(threed1(dimlen(1),dimlen(2),dimlen(3)))
-         allocate(threed2(dimlen(1),dimlen(2),dimlen(3)))
-         call nc_check(nf90_get_var(ncinid1, invarid1, threed1), 'nf90_get_var', 'infile1')
-         call nc_check(nf90_get_var(ncinid2, invarid2, threed2), 'nf90_get_var', 'infile2')
-         min1 = minval(threed1)
-         max1 = maxval(threed1)
-         min2 = minval(threed2)
-         max2 = maxval(threed2)
-         delmin = minval(abs(threed1-threed2))
-         delmax = maxval(abs(threed1-threed2))
-         nitems = count(threed1 .ne. threed2)
-         deallocate(threed1, threed2)
-      case (4)
-         allocate(fourd1(dimlen(1),dimlen(2),dimlen(3),dimlen(4)))
-         allocate(fourd2(dimlen(1),dimlen(2),dimlen(3),dimlen(4)))
-         call nc_check(nf90_get_var(ncinid1, invarid1, fourd1), 'nf90_get_var', 'infile1')
-         call nc_check(nf90_get_var(ncinid2, invarid2, fourd2), 'nf90_get_var', 'infile2')
-         min1 = minval(fourd1)
-         max1 = maxval(fourd1)
-         min2 = minval(fourd2)
-         max2 = maxval(fourd2)
-         delmin = minval(abs(fourd1-fourd2))
-         delmax = maxval(abs(fourd1-fourd2))
-         nitems = count(fourd1 .ne. fourd2)
-         deallocate(fourd1, fourd2)
-      case (5)
-         allocate(fived1(dimlen(1),dimlen(2),dimlen(3),dimlen(4),dimlen(5)))
-         allocate(fived2(dimlen(1),dimlen(2),dimlen(3),dimlen(4),dimlen(5)))
-         call nc_check(nf90_get_var(ncinid1, invarid1, fived1), 'nf90_get_var', 'infile1')
-         call nc_check(nf90_get_var(ncinid2, invarid2, fived2), 'nf90_get_var', 'infile2')
-         min1 = minval(fived1)
-         max1 = maxval(fived1)
-         min2 = minval(fived2)
-         max2 = maxval(fived2)
-         delmin = minval(abs(fived1-fived2))
-         delmax = maxval(abs(fived1-fived2))
-         nitems = count(fived1 .ne. fived2)
-         deallocate(fived1, fived2)
-      case (6)
-         allocate(sixd1(dimlen(1),dimlen(2),dimlen(3),dimlen(4),dimlen(5),dimlen(6)))
-         allocate(sixd2(dimlen(1),dimlen(2),dimlen(3),dimlen(4),dimlen(5),dimlen(6)))
-         call nc_check(nf90_get_var(ncinid1, invarid1, sixd1), 'nf90_get_var', 'infile1')
-         call nc_check(nf90_get_var(ncinid2, invarid2, sixd2), 'nf90_get_var', 'infile2')
-         min1 = minval(sixd1)
-         max1 = maxval(sixd1)
-         min2 = minval(sixd2)
-         max2 = maxval(sixd2)
-         delmin = minval(abs(sixd1-sixd2))
-         delmax = maxval(abs(sixd1-sixd2))
-         nitems = count(sixd1 .ne. sixd2)
-         deallocate(sixd1, sixd2)
-      case (7)
-         allocate(sevend1(dimlen(1),dimlen(2),dimlen(3),dimlen(4),dimlen(5),dimlen(6),dimlen(7)))
-         allocate(sevend2(dimlen(1),dimlen(2),dimlen(3),dimlen(4),dimlen(5),dimlen(6),dimlen(7)))
-         call nc_check(nf90_get_var(ncinid1, invarid1, sevend1), 'nf90_get_var', 'infile1')
-         call nc_check(nf90_get_var(ncinid2, invarid2, sevend2), 'nf90_get_var', 'infile2')
-         min1 = minval(sevend1)
-         max1 = maxval(sevend1)
-         min2 = minval(sevend2)
-         max2 = maxval(sevend2)
-         delmin = minval(abs(sevend1-sevend2))
-         delmax = maxval(abs(sevend1-sevend2))
-         nitems = count(sevend1 .ne. sevend2)
-         deallocate(sevend1, sevend2)
-      case default
-         ! "really can't happen"
-         write(msgstring, *) 'array dimension is illegal value: ', ndims
-         call error_handler(E_ERR, 'compare_states', msgstring, source, revision, revdate)
      end select
 
      ! common reporting code for reals
+     if (nitems > 0 .or. .not. only_report_differences) then
+        write(msgstring, *) 'checking equality of: ', trim(tmpstring)
+        call error_handler(E_MSG, 'compare_states', msgstring)
+     endif
      if (nitems > 0) then
         write(msgstring, *) 'arrays differ in ', nitems, ' places'
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
