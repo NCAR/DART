@@ -1,5 +1,5 @@
 &perfect_model_obs_nml
-   read_input_state_from_file = .false.,
+   read_input_state_from_file = .true.,
    single_file_in             = .true.
    input_state_files          = "perfect_input.nc"
 
@@ -29,14 +29,14 @@
 
 &filter_nml
    single_file_in               = .true.,
-   input_state_files            = 'filter_input.nc'
-   input_state_file_list        = ''
+   input_state_files            = ''
+   input_state_file_list        = 'filter_input_list.txt'
 
    stages_to_write  = 'preassim', 'analysis', 'output'
 
    single_file_out              = .true.,
-   output_state_files           = 'filter_output.nc'
-   output_state_file_list       = ''
+   output_state_files           = ''
+   output_state_file_list       = 'filter_output_list.txt'
    output_interval              = 1,
    output_members               = .true.
    num_output_state_members     = 20,
@@ -46,7 +46,7 @@
 
    ens_size                     = 20,
    num_groups                   = 1,
-   perturb_from_single_instance = .true.,
+   perturb_from_single_instance = .false.,
    perturbation_amplitude       = 0.2,
    distributed_state            = .true.
 
@@ -129,11 +129,12 @@
    delta_t           = 0.05,
    time_step_days    = 0,
    time_step_seconds = 3600
-   noise_amplitude      = 0.0
-   advance_method       = 'simple'
-   interpolation_method = 'rk'
-   /
+   noise             = 1.0
+   noise_mult_factor = 1.0
+   advance_method    = 'rk'
+/
 
+   /
 
 &utilities_nml
    TERMLEVEL = 1,
@@ -170,9 +171,9 @@
    init_skip_seconds     = 0,
    Nregions              = 3,
    trusted_obs           = 'null',
-   lonlim1               = 0.00, 0.00, 0.50
-   lonlim2               = 1.01, 0.50, 1.01
-   reg_names             = 'whole', 'yin', 'yang'
+   lonlim1               = 0.00, 0.00, 0.50, -1.0,
+   lonlim2               = 1.01, 0.50, 1.01, -1.0,
+   reg_names             = 'whole', 'yin', 'yang', 'bogus',
    create_rank_histogram = .true.,
    outliers_in_histogram = .true.,
    use_zero_error_obs    = .false.,
@@ -182,6 +183,16 @@
 &state_vector_io_nml
    /
 
+&model_mod_check_nml
+   verbose               = .false.
+   test1thru             = 5
+   x_ind                 = 3
+   kind_of_interest      = 'QTY_RAW_STATE_VARIABLE'
+   loc_of_interest       = 0.4
+   interp_test_xrange    = 0.0, 1.0 
+   interp_test_dx        = 0.1
+   /
+ 
 &quality_control_nml
    input_qc_threshold       =  3.0,
    outlier_threshold        = -1.0,

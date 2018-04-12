@@ -1,10 +1,10 @@
 &model_nml
-   model_size           = 2,
-   delta_t              = 0.05,
-   time_step_days       = 0,
-   time_step_seconds    = 3600  
-   noise_amplitude      = 0.0_r8
-   advance_method       = 'simple'
-   interpolation_method = 'standard'
+   model_size        = 2,
+   delta_t           = 0.05,
+   time_step_days    = 0,
+   time_step_seconds = 3600  
+   noise             = 1.0
+   noise_mult_factor = 1.0
+   advance_method    = 'rk'
 /
 

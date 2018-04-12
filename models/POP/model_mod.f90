@@ -32,6 +32,7 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_get_global_attribut
                                  nc_define_real_variable, nc_define_integer_variable, &
                                  nc_put_variable, nc_open_file_readonly,              &
                                  nc_create_file, nc_close_file
+
 use     obs_kind_mod, only : QTY_TEMPERATURE, QTY_SALINITY, QTY_DRY_LAND,      &
                              QTY_U_CURRENT_COMPONENT,QTY_V_CURRENT_COMPONENT,  &
                              QTY_SEA_SURFACE_HEIGHT, QTY_SEA_SURFACE_PRESSURE, &
@@ -1885,7 +1886,19 @@ integer, intent(in) :: domain_id
 
 character(len=*), parameter :: routine = 'nc_write_model_atts'
 
-if ( .not. module_initialized ) call static_init_model
+!----------------------------------------------------------------------
+! local variables 
+!----------------------------------------------------------------------
+
+character(len=*), parameter :: routine = 'nc_write_model_atts'
+integer     :: i
+
+!--------------------------------------------------------------------
+! we only have a netcdf handle here so we do not know the filename
+! or the fortran unit number.  but construct a string with at least
+! the netcdf handle, so in case of error we can trace back to see
+! which netcdf file is involved.
+!--------------------------------------------------------------------
 
 ! Write Global Attributes 
 call nc_begin_define_mode(ncid)

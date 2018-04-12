@@ -32,7 +32,7 @@
    input_state_files            = ''
    input_state_file_list        = 'filter_input_list.txt'
 
-   stages_to_write  = 'preassim', 'analysis', 'output'
+   stages_to_write  = 'forecast', 'analysis', 'output'
 
    single_file_out              = .true.,
    output_state_files           = ''

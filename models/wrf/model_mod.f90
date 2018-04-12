@@ -53,14 +53,13 @@ use      location_mod,   only : location_type, get_location, set_location, &
 
 use     utilities_mod,  only  : file_exist, open_file, close_file, &
                                 register_module, error_handler, E_ERR, E_WARN, &
-                                E_MSG, nmlfileunit, logfileunit, do_output, &
+                                E_MSG, nmlfileunit, do_output, &
                                 find_namelist_in_file, check_namelist_read, &
                                 find_textfile_dims, file_to_text, &
                                 do_nml_file, do_nml_term, scalar
 
-use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
-                                 nc_add_global_creation_time, nc_check, &
-                                 nc_begin_define_mode, nc_end_define_mode
+use netcdf_utilities_mod, only : nc_add_global_attribute, nc_check, nc_sync, &
+                                 nc_add_global_creation_time, nc_redef, nc_enddef
 
 use  mpi_utilities_mod,  only : my_task_id, task_count
 
@@ -104,7 +103,7 @@ use state_structure_mod, only : add_domain, get_model_variable_indices, &
                                 get_index_start, get_index_end, &
                                 get_dart_vector_index
 
-use mpi_utilities_mod,   only : all_reduce_min_max
+use mpi_utilities_mod,   only : broadcast_minmax
 
 ! FIXME:
 ! the kinds QTY_CLOUD_LIQUID_WATER should be QTY_CLOUDWATER_MIXING_RATIO, 
@@ -240,6 +239,9 @@ logical :: periodic_y = .false.    ! used for single column model, wrap in y
 !JPH -- single column model flag 
 logical :: scm        = .false.    ! using the single column model
 logical :: allow_perturbed_ics = .false.  ! should spin the model up for a while after
+! i believe the new code is more correct, but make it easy to
+! compare to the original code which built pressure profiles.
+logical :: orig_pressure_profile_code  = .false.  
 
 ! obsolete items; ignored by this code. 
 ! non-backwards-compatible change. should be removed, 
@@ -262,7 +264,8 @@ namelist /model_nml/ num_moist_vars, &
                      allow_obs_below_vol, vert_localization_coord, &
                      center_search_half_length, center_spline_grid_scale, &
                      circulation_pres_level, circulation_radius, polar, &
-                     periodic_x, periodic_y, scm, allow_perturbed_ics
+                     periodic_x, periodic_y, scm, allow_perturbed_ics, &
+                     orig_pressure_profile_code
 
 ! if you need to check backwards compatibility, set this to .true.
 ! otherwise, leave it as false to use the more correct geometric height
@@ -419,6 +422,7 @@ if ( default_state_variables ) then
   call error_handler(E_MSG, 'static_init_model:', &
                   'Using predefined wrf variable list for dart state vector.', &
                    text2=msgstring2, text3=msgstring3)
+
 endif
 
 if ( debug ) then
@@ -473,12 +477,9 @@ WRFDomains : do id=1,num_domains
 
    ! only print this once, no matter how many parallel tasks are running
    if (do_output()) then
-      write(     *     ,*) '******************'
-      write(     *     ,*) '**  DOMAIN # ',idom,'  **'
-      write(     *     ,*) '******************'
-      write(logfileunit,*) '******************'
-      write(logfileunit,*) '**  DOMAIN # ',idom,'  **'
-      write(logfileunit,*) '******************'
+      write(*,*) '******************'
+      write(*,*) '**  DOMAIN # ',idom,'  **'
+      write(*,*) '******************'
    endif
 
    if(file_exist('wrfinput_d0'//idom)) then
@@ -618,11 +619,6 @@ WRFDomains : do id=1,num_domains
       call error_handler(E_MSG, 'static_init_model: ', errstring)
    enddo
 
-   if (do_output()) then
-      write(     *     ,*)
-      write(logfileunit,*)
-   endif
-
 ! close data file, we have all we need
 
    call nc_check(nf90_close(ncid),'static_init_model','close wrfinput_d0'//idom)
@@ -746,7 +742,6 @@ WRFDomains : do id=1,num_domains
    domain_id(id) = add_domain( 'wrfinput_d0'//idom, &
                            wrf%dom(id)%number_of_wrf_variables, &
                            var_names   = netcdf_variable_names(1:wrf%dom(id)%number_of_wrf_variables), &
-                           kind_list   = wrf%dom(id)%dart_kind, &
                            clamp_vals  = var_bounds_table(1:wrf%dom(id)%number_of_wrf_variables,:), &
                            update_list = var_update_list(1:wrf%dom(id)%number_of_wrf_variables) )
 
@@ -1009,7 +1004,7 @@ real(r8)            :: mod_sfc_elevation
 real(r8) :: x_ill(ens_size), x_iul(ens_size), x_ilr(ens_size), x_iur(ens_size), ugrid(ens_size), vgrid(ens_size)
 real(r8) :: x_ugrid_1(ens_size), x_ugrid_2(ens_size), x_ugrid_3(ens_size), x_ugrid_4(ens_size)
 real(r8) :: x_vgrid_1(ens_size), x_vgrid_2(ens_size), x_vgrid_3(ens_size), x_vgrid_4(ens_size)
-integer  :: e, count, uk !< index varibles for loop
+integer  :: e, kcount, uk !< index variables for loop
 real(r8) :: failedcopies(ens_size)
 integer, allocatable  :: uniquek(:)
 integer  :: ksort(ens_size)
@@ -1019,7 +1014,26 @@ integer(i8) :: z1d_ind1, z1d_ind2, t1d_ind, qv1d_ind
 
 id = 1
 
-! call static_data_sizes(domain=id)
+! HK printing out sizes of wrf_static_data_for_dart
+!print*, '******** wrf_static_data_for_dart'
+!print*, 'znu, dn, dnw, zs, znw ', size(wrf%dom(id)%znu), size(wrf%dom(id)%dn), size(wrf%dom(id)%dnw), size(wrf%dom(id)%zs), size(wrf%dom(id)%znw)
+!print*, 'mub, hgt ', size(wrf%dom(id)%mub), size(wrf%dom(id)%hgt)
+!print*, 'latitude, latitude_u, latitude_v ', size(wrf%dom(id)%latitude), size(wrf%dom(id)%latitude_u), size(wrf%dom(id)%latitude_v)
+!print*, 'longitude, longitude_u, longitude_v ', size(wrf%dom(id)%longitude), size(wrf%dom(id)%longitude_u), size(wrf%dom(id)%longitude_v)
+!print*, 'phb ', size(wrf%dom(id)%phb)
+
+!print*, 'var_index ', size(wrf%dom(id)%var_index)
+!print*, 'var_size ', size(wrf%dom(id)%var_size)
+!print*, 'var_type ', size(wrf%dom(id)%var_type)
+!print*, 'var_index_list ', size(wrf%dom(id)%var_index_list)
+!print*, 'var_update_list ', size(wrf%dom(id)%var_update_list)
+!print*, 'dart_kind ', size(wrf%dom(id)%dart_kind)
+!print*, 'land ', size(wrf%dom(id)%land)
+!print*, 'lower_bound,upper_bound ', size(wrf%dom(id)%lower_bound), size(wrf%dom(id)%upper_bound)
+!print*, 'clamp_or_fail ', size(wrf%dom(id)%clamp_or_fail)
+!print*, 'description, units, stagger, coordinates ', size(wrf%dom(id)%description), size(wrf%dom(id)%units), size(wrf%dom(id)%stagger), size(wrf%dom(id)%coordinates)
+!print*, 'dart_ind ', size(wrf%dom(id)%dart_ind)
+
 
 ! Initialize stuff
 istatus(:) = 0
@@ -1284,26 +1298,11 @@ else
    enddo
 
    ! Set a working integer k value -- if (int(zloc) < 1), then k = 1
-   k = max(1,int(zloc)) !HK k is now ensemble size
-
-
-   ! Find the unique k values
-   ksort = sort(k)
-
-   count = 1
-   do e = 2, ens_size
-       if ( ksort(e) /= ksort(e-1) ) count = count + 1
-   enddo
-
-   allocate(uniquek(count))
+   k = max(1,int(zloc))  ! k is an ensemble-sized array 
  
-   uk = 1
-   do e = 1, ens_size
-      if ( all(uniquek /= k(e)) ) then
-         uniquek(uk) = k(e)
-         uk = uk + 1
-      endif
-   enddo
+   kcount = count_unique_vals(k)
+   allocate(uniquek(kcount))
+   call keep_unique_vals(k, uniquek)
 
    ! The big horizontal interp loop below computes the data values in the level
    ! below and above the actual location, and then does a separate vertical
@@ -1438,7 +1437,7 @@ else
             call toGrid(xloc_u,i_u,dx_u,dxm_u)
             call toGrid(yloc_v,j_v,dy_v,dym_v)
 
-            do uk = 1, count ! for the different ks
+            do uk = 1, kcount ! for the different ks
 
                ! Check to make sure retrieved integer gridpoints are in valid range
                if ( boundsCheck( i_u, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_u) .and. &
@@ -1593,7 +1592,7 @@ else
 
          if ( wrf%dom(id)%type_t >= 0 ) then
 
-            do uk = 1, count ! for the different ks
+            do uk = 1, kcount ! for the different ks
 
                ! Check to make sure retrieved integer gridpoints are in valid range
                if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
@@ -1687,7 +1686,7 @@ else
 
          if ( wrf%dom(id)%type_t >= 0 ) then
 
-            do uk = 1, count
+            do uk = 1, kcount
 
             ! Check to make sure retrieved integer gridpoints are in valid range
             if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
@@ -1750,7 +1749,7 @@ else
    ! 1.d Density (Rho)
    elseif (obs_kind == QTY_DENSITY) then
 
-      do uk = 1, count ! for the different ks
+      do uk = 1, kcount ! for the different ks
 
       ! Check to make sure retrieved integer gridpoints are in valid range
       if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
@@ -1802,31 +1801,21 @@ else
    elseif ( obs_kind == QTY_VERTICAL_VELOCITY ) then
 
       ! Adjust zloc for staggered ZNW grid (or W-grid, as compared to ZNU or M-grid)
+      ! and recompute unique K values.
       zloc = zloc + 0.5_r8
-      k = max(1,int(zloc))  !> @todo what should you do with this?
 
-      deallocate(uniquek)
+      ! Reset a working integer k value -- if (int(zloc) < 1), then k = 1
+      k = max(1,int(zloc))  ! k is an ensemble-sized array 
 
-      ! Re-find the unique k values
-      ksort = sort(k)
-   
-      count = 1
-      do e = 2, ens_size
-          if ( ksort(e) /= ksort(e-1) ) count = count + 1
-      enddo
-   
-      allocate(uniquek(count))
-    
-      uk = 1
-      do e = 1, ens_size
-         if ( all(uniquek /= k(e)) ) then
-            uniquek(uk) = k(e)
-            uk = uk + 1
-         endif
-      enddo
+      kcount = count_unique_vals(k)
+      if (kcount /= size(uniquek)) then
+         deallocate(uniquek)
+         allocate(uniquek(kcount))
+      endif
+      call keep_unique_vals(k, uniquek)
 
-      call simple_interp_distrib(fld, wrf, id, i, j, k, obs_kind, dxm, dx, dy, dym, uniquek, ens_size, state_handle )
-      if (all(fld == missing_r8)) goto 200
+     call simple_interp_distrib(fld, wrf, id, i, j, k, obs_kind, dxm, dx, dy, dym, uniquek, ens_size, state_handle )
+     if (all(fld == missing_r8)) goto 200
 
     !-----------------------------------------------------
    ! 1.f Specific Humidity (SH, SH2)
@@ -1840,7 +1829,7 @@ else
          ! First confirm that vapor mixing ratio is in the DART state vector
          if ( wrf%dom(id)%type_qv >= 0 ) then
 
-            UNIQUEK_LOOP: do uk = 1, count ! for the different ks
+            UNIQUEK_LOOP: do uk = 1, kcount ! for the different ks
 
                ! Check to make sure retrieved integer gridpoints are in valid range
                if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
@@ -1950,7 +1939,7 @@ else
             ! This is for the 3D pressure field -- surface pressure later
       if(.not. surf_var) then
 
-         do uk = 1, count
+         do uk = 1, kcount
 
          ! Check to make sure retrieved integer gridpoints are in valid range
          if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
@@ -2041,7 +2030,7 @@ else
    else if ( obs_kind == QTY_VORTEX_LAT  .or. obs_kind == QTY_VORTEX_LON .or. &
              obs_kind == QTY_VORTEX_PMIN .or. obs_kind == QTY_VORTEX_WMAX ) then
 
-      do uk = 1, count ! for the different ks
+      do uk = 1, kcount ! for the different ks
 
       ! Check to make sure retrieved integer gridpoints are in valid range
       if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
@@ -2608,67 +2597,40 @@ else
          zloc = zloc + 0.5_r8
          k = max(1,int(zloc))  ! Only 1 value of k across the ensemble?
 
-         deallocate(uniquek)
-         ! Re-find the unique k values
-         ksort = sort(k)
-      
-         count = 1
-         do e = 2, ens_size
-             if ( ksort(e) /= ksort(e-1) ) count = count + 1
-         enddo
-      
-         allocate(uniquek(count))
-       
-         uk = 1
-         do e = 1, ens_size
-            if ( all(uniquek /= k(e)) ) then
-               uniquek(uk) = k(e)
-               uk = uk + 1
-            endif
-         enddo
+         kcount = count_unique_vals(k)
+         if (kcount /= size(uniquek)) then
+            deallocate(uniquek)
+            allocate(uniquek(kcount))
+         endif
+         call keep_unique_vals(k, uniquek)
 
-         ! Check to make sure retrieved integer gridpoints are in valid range
          if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_gz ) .and. &
               boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_gz ) .and. &
-              boundsCheck( k(1), .false.,                id, dim=3, type=wrf%dom(id)%type_gz ) ) then
+              boundsCheck( k(1), .false.,             id, dim=3, type=wrf%dom(id)%type_gz ) ) then
             
             call getCorners(i, j, id, wrf%dom(id)%type_gz, ll, ul, lr, ur, rc )
             if ( rc .ne. 0 ) &
                  print*, 'model_mod.f90 :: model_interpolate :: getCorners GZ rc = ', rc
             
-            ! Interpolation for GZ field at level k
-            ill = get_dart_vector_index(ll(1), ll(2), k(1), domain_id(id), wrf%dom(id)%type_gz)
-            iul = get_dart_vector_index(ul(1), ul(2), k(1), domain_id(id), wrf%dom(id)%type_gz)
-            ilr = get_dart_vector_index(lr(1), lr(2), k(1), domain_id(id), wrf%dom(id)%type_gz)
-            iur = get_dart_vector_index(ur(1), ur(2), k(1), domain_id(id), wrf%dom(id)%type_gz)
+            ! Interpolation for GZ field at level k and k+1
+            call simple_interp_distrib(fld, wrf, id, i, j, k, obs_kind, dxm, dx, dy, dym, uniquek, ens_size, state_handle)
+            if (all(fld == missing_r8)) goto 200
 
-            x_ill = get_state(ill, state_handle)
-            x_iul = get_state(iul, state_handle)
-            x_iur = get_state(iur, state_handle)
-            x_ilr = get_state(ilr, state_handle)
-
-            fld(1,:) = ( dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur ) + &
+            ! now add in phb values
+            fld(1,:) = fld(1,:) + &
                        dym*( dxm*wrf%dom(id)%phb(ll(1), ll(2), k)   + &
                              dx *wrf%dom(id)%phb(lr(1), lr(2), k) ) + &
                        dy *( dxm*wrf%dom(id)%phb(ul(1), ul(2), k)   + &
-                             dx *wrf%dom(id)%phb(ur(1), ur(2), k) ) )  / gravity
+                             dx *wrf%dom(id)%phb(ur(1), ur(2), k) ) 
             
-            ! Interpolation for GZ field at level k+1
-            ill = get_dart_vector_index(ll(1), ll(2), k(1)+1, domain_id(id), wrf%dom(id)%type_gz)
-            iul = get_dart_vector_index(ul(1), ul(2), k(1)+1, domain_id(id), wrf%dom(id)%type_gz)
-            ilr = get_dart_vector_index(lr(1), lr(2), k(1)+1, domain_id(id), wrf%dom(id)%type_gz)
-            iur = get_dart_vector_index(ur(1), ur(2), k(1)+1, domain_id(id), wrf%dom(id)%type_gz)
-
-            x_ill = get_state(ill, state_handle)
-            x_iul = get_state(iul, state_handle)
-            x_iur = get_state(iur, state_handle)
-            x_ilr = get_state(ilr, state_handle)
-
-            fld(2, :) = ( dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur ) + &
+            fld(2, :) = fld(2, :) + &
                        dym*( dxm*wrf%dom(id)%phb(ll(1), ll(2), k(1)+1)   + &
                              dx *wrf%dom(id)%phb(lr(1), lr(2), k(1)+1) ) + &
                        dy *( dxm*wrf%dom(id)%phb(ul(1), ul(2), k(1)+1)   + &
-                             dx *wrf%dom(id)%phb(ur(1), ur(2), k(1)+1) ) )  / gravity
+                             dx *wrf%dom(id)%phb(ur(1), ur(2), k(1)+1) ) 
+
+            ! divide values by gravity to get height
+            fld(:,:) = fld(:,:) / gravity
    
          endif
       endif
@@ -2693,9 +2655,9 @@ else
          ! Interpolation for the HGT field -- HGT is NOT part of state vector x, but rather
          !   in the associated domain meta data
          fld(1, :) = dym*( dxm*wrf%dom(id)%hgt(ll(1), ll(2)) + &
-                         dx*wrf%dom(id)%hgt(lr(1), lr(2)) ) + &
-                   dy*( dxm*wrf%dom(id)%hgt(ul(1), ul(2)) + &
-                         dx*wrf%dom(id)%hgt(ur(1), ur(2)) )
+                            dx*wrf%dom(id)%hgt(lr(1), lr(2)) ) + &
+                      dy*( dxm*wrf%dom(id)%hgt(ul(1), ul(2)) + &
+                            dx*wrf%dom(id)%hgt(ur(1), ur(2)) )
 
       endif
 
@@ -2731,9 +2693,9 @@ else
          ! Interpolation for the XLAND field -- XLAND is NOT part of state vector x, but rather
          !   in the associated domain meta data
          fld(1, :) = dym*( dxm*real(wrf%dom(id)%land(ll(1), ll(2))) + &
-                         dx*real(wrf%dom(id)%land(lr(1), lr(2))) ) + &
-                   dy*( dxm*real(wrf%dom(id)%land(ul(1), ul(2))) + &
-                         dx*real(wrf%dom(id)%land(ur(1), ur(2))) )
+                            dx*real(wrf%dom(id)%land(lr(1), lr(2))) ) + &
+                      dy*( dxm*real(wrf%dom(id)%land(ul(1), ul(2))) + &
+                            dx*real(wrf%dom(id)%land(ur(1), ur(2))) )
 
       endif
 
@@ -3074,6 +3036,19 @@ if ( .not. boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%t
 
    return
 endif
+
+!HK Note the result is not bitwise 
+!if(my_task_id() == 0) then
+!  write(10, *) '------'
+!  write(10, *) 'xyz_loc      ', xyz_loc
+!  location = set_location(xyz_loc(1),xyz_loc(2),xyz_loc(3),ztypeout)
+!  write(10, *) 'set_location ', location%lon, location%lat, location%vloc
+!  xyz_loc =  get_location(location)
+!  write(10, *) 'get_location ', xyz_loc
+!  location = set_location(xyz_loc(1),xyz_loc(2),xyz_loc(3),ztypeout)
+!  write(10, *) 'set_location ', location%lon, location%lat, location%vloc
+!endif
+
 
 ! Get indices of corners (i,i+1,j,j+1), which depend on periodicities.
 ! since the boundsCheck routines succeeded, this call should never fail
@@ -3740,7 +3715,7 @@ write(filename,*) 'ncid', ncid
 ! Put file into define mode and
 ! Write Global Attributes 
 !-------------------------------------------------------------------------------
-call nc_begin_define_mode(ncid)
+call nc_redef(ncid)
 
 call nc_add_global_creation_time(ncid)
 
@@ -4208,7 +4183,7 @@ call nc_check(nf90_put_att(ncid, hgtVarId(id), 'units_long_name', 'meters'), &
                  'nc_write_model_atts','put_att HGT'//' units_long_name')
 
 ! Leave define mode so we can actually fill the variables.
-call nc_end_define_mode(ncid)
+call nc_enddef(ncid)
 
 !-----------------------------------------------------------------
 ! Fill the variables we can
@@ -4294,7 +4269,7 @@ call nc_check(nf90_put_var(ncid,      hgtVarID(id), wrf%dom(id)%hgt), &
 ! Flush the buffer and leave netCDF file open
 !-----------------------------------------------------------------
 
-call nc_synchronize_file(ncid)
+call nc_sync(ncid)
 
 end subroutine nc_write_model_atts
 
@@ -4490,8 +4465,31 @@ subroutine height_to_zk(obs_v, mdl_v, n3, zk, lev0)
 end subroutine height_to_zk
 
 !#######################################################
+!#######################################################
 
 subroutine get_model_pressure_profile_distrib(i,j,dx,dy,dxm,dym,n,id,v_p, state_handle, ens_size)
+
+! Calculate the full model pressure profile on half (mass) levels,
+! horizontally interpolated at the observation location.
+
+integer,  intent(in)  :: i,j,n,id
+real(r8), intent(in)  :: dx,dy,dxm,dym
+integer, intent(in)   :: ens_size
+real(r8), intent(out) :: v_p(0:n, ens_size)
+type(ensemble_type), intent(in)  :: state_handle
+
+if (orig_pressure_profile_code) then
+   call get_model_pressure_profile_orig(i,j,dx,dy,dxm,dym,n,id,v_p, state_handle, ens_size)
+else
+   call get_model_pressure_profile_proposed(i,j,dx,dy,dxm,dym,n,id,v_p, state_handle, ens_size)
+endif
+
+end subroutine get_model_pressure_profile_distrib
+
+!#######################################################
+!#######################################################
+
+subroutine get_model_pressure_profile_orig(i,j,dx,dy,dxm,dym,n,id,v_p, state_handle, ens_size)
 
 ! Calculate the full model pressure profile on half (mass) levels,
 ! horizontally interpolated at the observation location.
@@ -4596,7 +4594,112 @@ endif
 
 deallocate(pres1, pres2, pres3, pres4, x_ill, x_ilr, x_iul, x_iur)
 
-end subroutine get_model_pressure_profile_distrib
+end subroutine get_model_pressure_profile_orig
+
+!#######################################################
+
+subroutine get_model_pressure_profile_proposed(i,j,dx,dy,dxm,dym,n,id,v_p, state_handle, ens_size)
+
+! Calculate the full model pressure profile on half (mass) levels,
+! horizontally interpolated at the observation location.
+
+integer,  intent(in)  :: i,j,n,id
+real(r8), intent(in)  :: dx,dy,dxm,dym
+integer, intent(in)   :: ens_size
+real(r8), intent(out) :: v_p(0:n, ens_size)
+type(ensemble_type), intent(in)  :: state_handle
+
+integer     :: e !< for ensemble loop
+integer     :: ll(2), lr(2), ul(2), ur(2)
+integer(i8)           :: ill, ilr, iul, iur
+integer               :: k, rc
+real(r8)    :: pres1(ens_size), pres2(ens_size), pres3(ens_size), pres4(ens_size)
+real(r8)    :: x_ill(ens_size), x_ilr(ens_size), x_iul(ens_size), x_iur(ens_size)
+real(r8)    :: lev2_ill(ens_size), lev2_ilr(ens_size), lev2_iul(ens_size), lev2_iur(ens_size)
+logical  :: debug = .false.
+logical     :: need_level_2
+
+if ( .not. boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .or. &
+     .not. boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) ) then
+   v_p(:,:) = missing_r8
+   return
+endif
+
+
+   call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+   if ( rc .ne. 0 ) &
+        print*, 'model_mod.f90 :: get_model_pressure_profile :: getCorners rc = ', rc
+
+! if we don't have the surface pressure in the state, we need
+! level 2 of the pressure to extrapolate below level 1.
+need_level_2 = (wrf%dom(id)%type_ps < 0)
+
+! compute the pressure profile from levels 1 to N
+   do k=1,n
+      pres1 = model_pressure_t_distrib(ll(1), ll(2), k,id,state_handle, ens_size)
+      pres2 = model_pressure_t_distrib(lr(1), lr(2), k,id,state_handle, ens_size)
+      pres3 = model_pressure_t_distrib(ul(1), ul(2), k,id,state_handle, ens_size)
+      pres4 = model_pressure_t_distrib(ur(1), ur(2), k,id,state_handle, ens_size)
+
+      ! if we need to extrapolate later, save level 2 corners since we have them now.
+      if (k==2 .and. need_level_2) then
+         lev2_ill(:) = pres1(:)
+         lev2_ilr(:) = pres2(:)
+         lev2_iul(:) = pres3(:)
+         lev2_iur(:) = pres4(:)
+      endif
+
+      v_p(k, :) = interp_4pressure_distrib(pres1, pres2, pres3, pres4, dx, dxm, dy, dym, ens_size)
+   enddo
+
+
+   if (debug) &
+        print*, 'model_mod.f90 :: get_model_pressure_profile :: n, v_p() ', n, v_p(1:n, :)
+
+! interpolate surface pressure for the first entry (index 0) in the v_p() array.
+! if the surface pressure field (ps) is in the state vector, use it.
+! otherwise try to extrapolate down from pressure levels 1 and 2.
+
+   if ( wrf%dom(id)%type_ps >= 0 ) then
+
+      ill = get_dart_vector_index(ll(1), ll(2), 1, domain_id(id), wrf%dom(id)%type_ps)
+      ilr = get_dart_vector_index(lr(1), lr(2), 1, domain_id(id), wrf%dom(id)%type_ps)
+      iul = get_dart_vector_index(ul(1), ul(2), 1, domain_id(id), wrf%dom(id)%type_ps)
+      iur = get_dart_vector_index(ur(1), ur(2), 1, domain_id(id), wrf%dom(id)%type_ps)
+
+      x_ill = get_state(ill, state_handle)
+      x_ilr = get_state(ilr, state_handle)
+      x_iul = get_state(iul, state_handle)
+      x_iur = get_state(iur, state_handle)
+
+      ! we could check minval at the start and if 0, die then.
+      ! this test could be expensive.
+      if ( any(x_ill(:) == 0.0_r8) .or. &
+           any(x_ilr(:) == 0.0_r8) .or. &
+           any(x_iul(:) == 0.0_r8) .or. &
+           any(x_iur(:) == 0.0_r8) ) then
+   
+         call error_handler(E_ERR, 'get_model_pressure_profile_distrib:', &
+               "unexpectedly found 0s in the surface pressure field", &
+                source, revision, revdate)
+   
+      endif
+
+      v_p(0,:) = interp_4pressure_distrib(x_ill(:), x_ilr(:), x_iul(:), x_iur(:), dx, dxm, dy, dym, 1)
+
+   else
+
+      ! surface pressure is not in the state vector.  extrapolate from levels 1 and 2 of the MU field.
+
+      v_p(0,:) = interp_4pressure_distrib(lev2_ill(:), lev2_ilr(:), lev2_iul(:), lev2_iur(:), dx, dxm, dy, dym, 1, &
+                                          extrapolate=.true., edgep=v_p(1,:))
+
+   endif
+
+   if (debug) &
+        print*, 'model_mod.f90 :: get_model_pressure_profile :: v_p(0) ', v_p(0, :)
+
+end subroutine get_model_pressure_profile_proposed
 
 !#######################################################
 !> Only for the mean value.
@@ -5748,11 +5851,13 @@ real(r8)              :: minv, maxv, temp
 type(random_seq_type) :: random_seq
 integer               :: id, i, j, s, e
 logical, allocatable  :: within_range(:)
+integer(i8), allocatable :: var_list(:)
 integer               :: num_variables
 real(r8), allocatable :: min_var(:), max_var(:)
-integer(i8)           :: start_ind, end_ind
-integer(i8), allocatable :: var_list(:)
-integer               :: count, copy
+integer               :: start_ind, end_ind
+integer :: copy
+integer :: count
+logical :: bitwise_lanai
 
 ! generally you do not want to just perturb a single state to begin an
 ! experiment, especially for a regional weather model, because the 
@@ -5791,100 +5896,258 @@ endif
 ! start of pert code
 interf_provided = .true.
 
-! Make space for the state vector index numbers that are
-! physically located on my task and get the global numbers.
-
+! Get min and max of each variable in each domain
 allocate(var_list(ens_handle%my_num_vars))
-call get_my_vars(ens_handle, var_list)
 
-! count up the total number of variables across all domains.
 num_variables = 0
 do id = 1, num_domains
   num_variables = num_variables + wrf%dom(id)%number_of_wrf_variables
 enddo
 
-! get the global min/max on a variable by variable basis
 allocate(min_var(num_variables), max_var(num_variables))
 allocate(within_range(ens_handle%my_num_vars))
 
-count = 1
-do id = 1, num_domains
-   do i = 1, wrf%dom(id)%number_of_wrf_variables
-  
-      start_ind = get_index_start(domain_id(id), i)
-      end_ind   = get_index_end(domain_id(id), i)
-
-      ! at this point we only have 1 ensemble
-      within_range = (var_list >= start_ind .and. var_list <= end_ind)
-      min_var(count) = minval(ens_handle%copies(1,:), MASK=within_range)
-      max_var(count) = maxval(ens_handle%copies(1,:), MASK=within_range)
-
-      count = count + 1
-   enddo
-enddo
-
-! find the global min/max values across all tasks.
-call all_reduce_min_max(min_var, max_var, num_variables)
-
-deallocate(within_range)
-
-! Now do the perturbing
-
-! using task id as the seed for the random number generator is ok
-! because pert_model_copies() is only called once on any single task.  
-! it perturbs all ensemble members for the items in the state vector 
-! that it owns. because the decomposition will be different with a
-! different task count, you will NOT get the same result if you change
-! the number of tasks.
-
-call init_random_seq(random_seq, my_task_id()+1)
-
-count = 1 ! min and max are numbered 1 to n, where n is the total number of variables (all domains)
 do id = 1, num_domains
    do i = 1, wrf%dom(id)%number_of_wrf_variables
 
       start_ind = get_index_start(domain_id(id), i)
       end_ind = get_index_end(domain_id(id), i)
 
-      !! Option 1:
-      !! make the perturbation amplitude N% of the total
-      !! range of this variable.  values could vary a lot
-      !! over some of the types, like pressure
-      range = max_var(count) - min_var(count)
-      pert_ampl = pert_amount * range
-
-      do j=1, ens_handle%my_num_vars
-         ! is this state variable index the current variable type we're perturbing?
-         if (var_list(j) >= start_ind .and. var_list(j) <= end_ind) then
-            do copy = 1, ens_size
-               !! Option 2: perturb each value individually
-               !! make the perturbation amplitude N% of this value
-               !pert_ampl = pert_amount * ens_handle%copies(copy, j)
-               ens_handle%copies(copy, j) = random_gaussian(random_seq, ens_handle%copies(copy, j), pert_ampl)
-            enddo
-
-            ! keep variable from exceeding the original range
-            ens_handle%copies(1:ens_size,j) = max(min_var(count), ens_handle%copies(1:ens_size,j))
-            ens_handle%copies(1:ens_size,j) = min(max_var(count), ens_handle%copies(1:ens_size,j))
-
-         endif
-      enddo
-
-      count = count + 1
+      call get_my_vars(ens_handle, var_list)
+      within_range =      var_list >= start_ind .and. var_list <= end_ind  ! &
+                    !.and. var_list >= start_domain .and. var_list <= end_domain
+      min_var(i) = minval(ens_handle%copies(1,:), MASK=within_range)
+      max_var(i) = maxval(ens_handle%copies(1,:), MASK=within_range)
 
    enddo
 enddo
 
-deallocate(var_list, min_var, max_var)
+call broadcast_minmax(min_var, max_var, num_variables)
+
+bitwise_lanai = .true.
+if (bitwise_lanai) then
+
+   call pert_copies_lanai_bitwise(ens_handle, ens_size, pert_amount, min_var, max_var)
+
+else
+
+   call init_random_seq(random_seq, my_task_id())
+
+   count = 1 ! min and max are numbered 1 to n, where n is the total number of variables (all domains)
+   do id = 1, num_domains
+      do i = 1, num_variables
+
+         start_ind = get_index_start(domain_id(id), i)
+         end_ind = get_index_end(domain_id(id), i)
+
+         !! Option 1:
+         !! make the perturbation amplitude N% of the total
+         !! range of this variable.  values could vary a lot
+         !! over some of the types, like pressure
+         !range = max_var(count) - min_var(count)
+         !pert_ampl = pert_amount * range
+
+         do j=1, ens_handle%my_num_vars
+            if (ens_handle%my_vars(j) >= start_ind .and. ens_handle%my_vars(j) <= end_ind) then
+               do copy = 1, ens_size
+                  ! once you change pert_state, state is changed as well
+                  ! since they are the same storage as called from filter.
+                  ! you have to save it if you want to use it again.
+                  ! Option 2: perturb each value individually
+                  !! make the perturbation amplitude N% of this value
+                  pert_ampl = pert_amount * ens_handle%copies(copy, j)
+                  ens_handle%copies(copy, j) = random_gaussian(random_seq, ens_handle%copies(copy, j), pert_ampl)
+               enddo
+
+               ! keep variable from exceeding the original range
+               ens_handle%copies(1:ens_size,j) = max(min_var(count), ens_handle%copies(1:ens_size,j))
+               ens_handle%copies(1:ens_size,j) = min(max_var(count), ens_handle%copies(1:ens_size,j))
+
+            endif
+         enddo
+
+         count = count + 1
+
+      enddo
+   enddo
+
+endif
 
 end subroutine pert_model_copies
 
-!-------------------------------------------------------------------------
-!>@todo FIXME:
-! these routines are only called from the vortex interpolation code, 
-! which should be moved to a separate forward operator module.  the forward 
-! operator code should define a grid, call model_interpolate() on each
-! point of that grid, and then do the same computation it is doing now.
+!#######################################################
+!> Perturb copies such that the result is bitwise
+!> with Lanai
+!> Note that (like Lanai) this is not bitwise with itself across tasks
+!> for task_count < ens_size
+subroutine pert_copies_lanai_bitwise(ens_handle, ens_size, pert_amount, min_var, max_var)
+
+type(ensemble_type), intent(inout) :: ens_handle
+integer,             intent(in)    :: ens_size
+real(r8),            intent(in)    :: pert_amount
+real(r8),             intent(in)    :: min_var(:)
+real(r8),             intent(in)    :: max_var(:)
+
+
+integer :: start_ind ! start index variable in state
+integer :: end_ind ! end index variable in state
+integer :: owner ! pe that owns the state element
+integer :: owner_index ! local index on pe
+integer :: copy_owner
+integer :: copy, id, i ! loop index
+integer(i8) :: j ! loop index
+integer :: count ! keep track of which variable you are perturbing
+real(r8) :: pert_ampl
+type(random_seq_type) :: random_seq(ens_size)
+integer :: sequence_to_use
+integer, allocatable :: counter(:)
+real(r8) :: random_number
+
+! the first time through get the task id (0:N-1) and set a unique seed 
+! per task.  this should reproduce from run to run if you keep the number
+! of MPI tasks the same.  it WILL NOT reproduce if the number of tasks changes.
+! if this routine could at some point get the global ensemble member number
+! as an argument, that would be unique and the right thing to use as a seed.
+!
+! the line below only executes the first time since counter gets incremented 
+! after the first use and the value is saved between calls.  it is trying to 
+! generate a unique base number, and then just increments by 1 each subsequent 
+! time it is called (which only happens if there are multiple ensemble 
+! members/task).  it is assuming there are no more than 1000 ensembles/task,
+! which seems safe given the current sizes of state vecs and hardware memory.
+
+!if (counter == 0) counter = ((my_task_id()+1) * 1000) ! this is the code in Lanai
+allocate(counter(task_count()))
+
+! initialize ens_size random number sequences
+counter(:) = 0
+
+
+do copy = 1, ens_size
+
+   call get_copy_owner_index(copy, owner, owner_index)
+   if (counter(owner+1)==0) counter(owner+1) = ((map_pe_to_task(ens_handle, owner)+1) * 1000)
+   call init_random_seq(random_seq(copy), counter(owner+1))
+   counter(owner+1) = counter(owner+1) + 1
+
+
+   count = 1 ! min_var and max_var are numbered 1 to n, where n is the total number of variables (all domains)
+
+   do id = 1, num_domains
+      do i = 1, wrf%dom(id)%number_of_wrf_variables
+
+         start_ind = get_index_start(domain_id(id), i)
+         end_ind = get_index_end(domain_id(id), i)
+
+         !! Option 1:
+         !! make the perturbation amplitude N% of the total
+         !! range of this variable.  values could vary a lot
+         !! over some of the types, like pressure
+         !range = max_var(count) - min_var(count)
+         !pert_ampl = pert_amount * range
+
+         do j = start_ind, end_ind
+
+            call get_var_owner_index(j, owner, owner_index)
+
+               ! once you change pert_state, state is changed as well
+               ! since they are the same storage as called from filter.
+               ! you have to save it if you want to use it again.
+               ! Option 2: perturb each value individually
+               !! make the perturbation amplitude N% of this value
+
+            ! pert_ampl is only important on the task that uses it, but need to keep
+            ! the random number sequence in the same order on each task (call the same amount of times)
+            pert_ampl = pert_amount * ens_handle%copies(copy, min(owner_index, ens_handle%my_num_vars))
+            random_number = random_gaussian(random_seq(copy), 0.0_r8, pert_ampl)
+
+            if (ens_handle%my_pe == owner) then
+
+               ens_handle%copies(copy, owner_index) = ens_handle%copies(copy, owner_index) + random_number
+
+               ! keep variable from exceeding the original range
+               ens_handle%copies(copy,owner_index) = max(min_var(count), ens_handle%copies(copy,owner_index))
+               ens_handle%copies(copy,owner_index) = min(max_var(count), ens_handle%copies(copy,owner_index))
+
+            endif
+         enddo
+
+
+         count = count + 1
+
+      enddo
+   enddo
+
+enddo
+
+deallocate(counter)
+
+end subroutine pert_copies_lanai_bitwise
+
+!#######################################################
+! !WARNING:: at the moment, this code is *not* called
+! !so there is no requirement to have a wrf namelist in
+! !the current directory.  the only thing it was extracting
+! !was the dt, and that exists in the wrf input netcdf file
+! !and is now read from there.
+! 
+! subroutine read_dt_from_wrf_nml()
+! 
+! real(r8) :: dt
+! 
+! integer :: time_step, time_step_fract_num, time_step_fract_den
+! integer :: max_dom, feedback, smooth_option
+! integer, dimension(3) :: s_we, e_we, s_sn, e_sn, s_vert, e_vert
+! integer, dimension(3) :: dx, dy, ztop, grid_id, parent_id
+! integer, dimension(3) :: i_parent_start, j_parent_start, parent_grid_ratio
+! integer, dimension(3) :: parent_time_step_ratio
+! integer :: io, iunit, id
+! integer :: num_metgrid_levels, p_top_requested, nproc_x, nproc_y
+! 
+! !nc -- we added "num_metgrid_levels" to the domains nml to make all well with the
+! !        namelist.input file belonging to global WRF,
+! !        also "p_top_requested" in domains nml
+! !        also "nproc_x" & "nproc_y"
+! !nc -- we notice that "ztop" is unused in code -- perhaps get rid of later?
+! namelist /domains/ time_step, time_step_fract_num, time_step_fract_den
+! namelist /domains/ max_dom
+! namelist /domains/ s_we, e_we, s_sn, e_sn, s_vert, e_vert
+! namelist /domains/ dx, dy, ztop, grid_id, parent_id
+! namelist /domains/ i_parent_start, j_parent_start, parent_grid_ratio
+! namelist /domains/ parent_time_step_ratio
+! namelist /domains/ feedback, smooth_option
+! namelist /domains/ num_metgrid_levels, p_top_requested, nproc_x, nproc_y
+! 
+! ! Begin by reading the namelist input
+! call find_namelist_in_file("namelist.input", "domains", iunit)
+! read(iunit, nml = domains, iostat = io)
+! call check_namelist_read(iunit, io, "domains")
+! 
+! ! Record the namelist values used for the run ...
+! if (do_nml_file()) write(nmlfileunit, nml=domains)
+! if (do_nml_term()) write(     *     , nml=domains)
+! 
+! if (max_dom /= num_domains) then
+! 
+!    write(*,*) 'max_dom in namelist.input = ',max_dom
+!    write(*,*) 'num_domains in input.nml  = ',num_domains
+!    call error_handler(E_ERR,'read_dt_from_wrf_nml', &
+!         'Make them consistent.', source, revision,revdate)
+! 
+! endif
+! 
+! if (time_step_fract_den /= 0) then
+!    dt = real(time_step) + real(time_step_fract_num) / real(time_step_fract_den)
+! else
+!    dt = real(time_step)
+! endif
+! 
+! do id=1,num_domains
+!    wrf%dom(id)%dt = dt / real(parent_time_step_ratio(id))
+! enddo
+! 
+! end subroutine read_dt_from_wrf_nml
+
 
 
 subroutine compute_seaprs ( nz, z, t, p , q ,          &
@@ -7353,6 +7616,14 @@ default_table(:,row) = (/ 'MU                        ', &
                           'UPDATE                    ', &
                           '999                       '  /)
 
+!>@todo FIXME:  should PS be in the default state or not?
+!row = row+1
+!default_table(:,row) = (/ 'PS                        ', &
+!                          'QTY_SURFACE_PRESSURE      ', &
+!                          'TYPE_PS                   ', &
+!                          'UPDATE                    ', &
+!                          '999                       '  /)
+
 row = row+1
 default_table(:,row) = (/ 'QVAPOR                    ', &
                           'QTY_VAPOR_MIXING_RATIO    ', &
@@ -8284,7 +8555,7 @@ character(len=19) :: timestring
 call get_date(dart_time, year, month, day, hour, minute, second)
 call set_wrf_date(timestring, year, month, day, hour, minute, second)
 
-call nc_begin_define_mode(ncid)
+call nc_redef(ncid)
 
 ! Define Times variable if it does not exist
 ret = nf90_inq_varid(ncid, "Times", var_id)
@@ -8310,7 +8581,7 @@ if (ret /= NF90_NOERR) then
       dimids=dim_ids, varid=var_id), "write_model_time def_var Times")
 endif
 
-call nc_end_define_mode(ncid)
+call nc_enddef(ncid)
 
 call nc_check( nf90_put_var(ncid, var_id, timestring), &
                'write_model_time', 'put_var Times' )
@@ -8319,50 +8590,73 @@ end subroutine write_model_time
 
 !--------------------------------------------------------------------
 
-subroutine static_data_sizes(domain)
-integer, intent(in) :: domain
+!> this routine computes the number of unique values in arrayin
 
-print*
-print*, '******** wrf_static_data_for_dart domain ',domain
-print*, 'znu, dn, dnw, zs, znw ', size(wrf%dom(domain)%znu), &
-                                  size(wrf%dom(domain)%dn ), &
-                                  size(wrf%dom(domain)%dnw), &
-                                  size(wrf%dom(domain)%zs ), &
-                                  size(wrf%dom(domain)%znw)
+function count_unique_vals(arrayin)
 
-print*, 'mub, hgt ', size(wrf%dom(domain)%mub), size(wrf%dom(domain)%hgt)
+integer, intent(in)  :: arrayin(:)
+integer              :: count_unique_vals
 
-print*, 'latitude, latitude_u, latitude_v ', size(wrf%dom(domain)%latitude), &
-                                             size(wrf%dom(domain)%latitude_u), &
-                                             size(wrf%dom(domain)%latitude_v)
+integer :: insize, sorted(size(arrayin))
+integer :: i, sizeout
 
-print*, 'longitude, longitude_u, longitude_v ', size(wrf%dom(domain)%longitude), &
-                                                size(wrf%dom(domain)%longitude_u), &
-                                                size(wrf%dom(domain)%longitude_v)
+! count the unique values and sort them
+insize = size(arrayin)
 
-print*, 'phb             ', size(wrf%dom(domain)%phb)
-print*, 'var_index       ', size(wrf%dom(domain)%var_index)
-print*, 'var_size        ', size(wrf%dom(domain)%var_size)
-print*, 'var_type        ', size(wrf%dom(domain)%var_type)
-print*, 'var_index_list  ', size(wrf%dom(domain)%var_index_list)
-print*, 'var_update_list ', size(wrf%dom(domain)%var_update_list)
-print*, 'dart_kind       ', size(wrf%dom(domain)%dart_kind)
-print*, 'land            ', size(wrf%dom(domain)%land)
+sorted = sort(arrayin)
 
-print*, 'lower_bound,upper_bound ', size(wrf%dom(domain)%lower_bound), &
-                                    size(wrf%dom(domain)%upper_bound)
+sizeout = 1
+do i = 2, insize
+   if ( sorted(i) /= sorted(i-1) ) sizeout = sizeout + 1
+enddo
 
-print*, 'clamp_or_fail   ', size(wrf%dom(domain)%clamp_or_fail)
+count_unique_vals = sizeout
 
-print*, 'description, units, stagger, coordinates ', size(wrf%dom(domain)%description), &
-                                                     size(wrf%dom(domain)%units), &
-                                                     size(wrf%dom(domain)%stagger), &
-                                                     size(wrf%dom(domain)%coordinates)
+end function count_unique_vals
 
-print*, 'dart_ind ', size(wrf%dom(domain)%dart_ind)
-print*
+!--------------------------------------------------------------------
 
-end subroutine static_data_sizes
+!> caller must allocate the right size (see count_unique_vals())
+!> and then this routine returns the unique items from the arrayin
+!> in arrayout, sorted if that's useful.
+
+subroutine keep_unique_vals(arrayin, arrayout)
+
+integer, intent(in)  :: arrayin(:)
+integer, intent(out) :: arrayout(:)
+
+integer :: insize, sorted(size(arrayin))
+integer :: i, nextu, itemcount
+integer :: outsize, numuniq
+
+! count the unique values and sort them
+insize = size(arrayin)
+outsize = size(arrayout)
+
+sorted = sort(arrayin)
+
+numuniq = 1
+do i = 2, insize
+   if ( sorted(i) /= sorted(i-1) ) numuniq = numuniq + 1
+enddo
+
+if(numuniq /= outsize) then
+   call error_handler(E_ERR, 'keep_unique_vals:', &
+          'output array must match number of unique values in input array', &
+          source, revision, revdate)
+endif
+
+arrayout(1) = sorted(1)
+
+nextu = 2
+do i = 2, insize
+   if ( sorted(i) /= sorted(i-1) ) then
+      arrayout(nextu) = sorted(i)
+      nextu = nextu + 1
+   endif
+enddo
+
+end subroutine keep_unique_vals
 
 !--------------------------------------------------------------------
 

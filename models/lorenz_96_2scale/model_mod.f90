@@ -25,8 +25,8 @@ use utilities_mod,         only : register_module, do_nml_file, do_nml_term,    
                                   nmlfileunit, find_namelist_in_file,           &
                                   check_namelist_read, E_ERR, error_handler
 use location_io_mod,       only : nc_add_location_atts
-use netcdf_utilities_mod,  only : nc_add_global_attribute, nc_synchronize_file, nc_put_variable, &
-                                  nc_add_global_creation_time, nc_begin_define_mode, nc_end_define_mode, &
+use netcdf_utilities_mod,  only : nc_add_global_attribute, nc_sync, nc_put_variable, &
+                                  nc_add_global_creation_time, nc_redef, nc_enddef, &
                                   nc_add_attribute_to_variable, nc_define_dimension, &
                                   nc_define_real_variable, nc_define_integer_variable
 use         obs_kind_mod,  only : QTY_LARGE_SCALE_STATE, QTY_SMALL_SCALE_STATE
@@ -228,7 +228,7 @@ if ( local_y ) then
          jm1 = j - 1
          if(jm1 < 1) jm1 = y_per_x
          tmp_dt(j) = c1 * tmp_Y(jp1) * (tmp_Y(jm1)-tmp_Y(jp2)) - c2 * tmp_Y(j) &
-             + c3 * x(idint(real(jk+j-1-ys,r8)/real(y_per_x,r8))+1)
+             + c3 * x(idint(dble(jk+j-1-ys)/dble(y_per_x))+1)
       enddo
       dt(jk:jk+y_per_x-1) = tmp_dt
    enddo
@@ -246,7 +246,7 @@ else
       jm1 = j - 1
       if(jm1 < ys) jm1 = ye
       dt(j) = c1 * x(jp1) * (x(jm1)-x(jp2)) - c2 * x(j) &
-           + c3 * x(idint(real(j-ys,r8)/real(y_per_x,r8))+1)
+           + c3 * x(idint(dble(j-ys)/dble(y_per_x))+1)
    enddo
 endif
 
@@ -329,7 +329,7 @@ end subroutine adv_1step
 
 function get_model_size()
 
-integer(i8) :: get_model_size
+integer :: get_model_size
 
 get_model_size = l96%model_size
 
@@ -441,7 +441,7 @@ real(r8) :: loc
 character(len=128)  :: filename
 
 
-call nc_begin_define_mode(ncid)
+call nc_redef(ncid)
 
 call nc_add_global_creation_time(ncid)
 
@@ -469,7 +469,7 @@ call nc_define_real_variable(ncid, "Ylocation", "Ylocation")
 call nc_add_location_atts   (ncid, "Ylocation")
 
 ! Leave define mode so we can fill
-call nc_end_define_mode(ncid)
+call nc_enddef(ncid)
 
 ! The starting and ending indices of the X vars and Y vars
 ! in the state vector
@@ -493,7 +493,7 @@ do i = ys, ye
    call nc_put_variable(ncid, "Ylocation", i - ys + 1, loc)
 enddo
 
-call nc_synchronize_file(ncid)
+call nc_sync(ncid)
 
 end subroutine nc_write_model_atts
 

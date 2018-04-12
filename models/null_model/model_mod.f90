@@ -8,8 +8,8 @@ module model_mod
 
 ! This module provides very simple models for evaluating filtering algorithms.
 ! It can provide simple linear growth around a fixed point, a random draw from
-! a Gaussian, or combinations of the two. Several options are selectable via
-! the namelist for interpolation options, amount of noise, and model advance types.
+! a Gaussian, or combinations of the two. Select the model advance method by
+! the namelist item 'advance_method'.
 
 use        types_mod,      only : r8, i8, i4
 
@@ -17,9 +17,8 @@ use    utilities_mod,      only : register_module, error_handler, E_ERR, E_MSG, 
                                   nmlfileunit, do_output, find_namelist_in_file, &
                                   check_namelist_read, do_nml_file, do_nml_term
 
-use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
-                                 nc_add_global_creation_time, &
-                                 nc_begin_define_mode, nc_end_define_mode
+use netcdf_utilities_mod, only : nc_add_global_attribute, nc_sync, &
+                                 nc_add_global_creation_time, nc_redef, nc_enddef
 
 use time_manager_mod, only : time_type, set_time
 
@@ -80,7 +79,7 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-! Basic model parameters controlled by namelist; have defaults
+! Basic model parameters controlled by nameslist; have defaults
 
 ! Namelist with default values
 ! Model size can be as small as 1 here.
@@ -88,19 +87,14 @@ integer  :: model_size        = 2
 real(r8) :: delta_t           = 0.05_r8
 integer  :: time_step_days    = 0
 integer  :: time_step_seconds = 3600
+real(r8) :: noise             = 1.0_r8
+real(r8) :: noise_mult_factor = 1.0_r8
+character(len=64) :: advance_method = 'rk'
 
-real(r8) :: noise_amplitude   = 0.0_r8
-character(len=64) :: advance_method = 'simple'
-character(len=64) :: interpolation_method = 'standard'
-
-! if > 0, noise_amplitude is the std dev of the added gaussian noise
-! valid options for advance_method are: 'simple' (the default) and 'rk'
-! valid options for interpolation_method are: 'standard' (the default), 'average', 
-!                                             'square' and 'opposite_side'
-
+! valid options for advance_method are: rk, simple, random
 namelist /model_nml/ model_size, delta_t, time_step_days, &
                      time_step_seconds, advance_method, &
-                     noise_amplitude, interpolation_method
+                     noise, noise_mult_factor
 
 
 ! Define the location of the state variables in module storage
@@ -133,7 +127,6 @@ call check_namelist_read(iunit, io, "model_nml")
 if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
 
-! Create storage for locations
 allocate(state_loc(model_size))
 
 ! Define the locations of the model state variables
@@ -168,11 +161,11 @@ if(first_ens_seq) then
 end if
 
 do j = 1, model_size
-   if (noise_amplitude <= 0.0_r8) then
+   if (noise <= 0.0_r8) then
       dt(j) =  x(j)
    else
-      ! noise_amplitude is the standard deviation of the gaussian
-      dt(j) = random_gaussian(ens_seq, 0.0_r8, noise_amplitude)
+      ! add noise
+      dt(j) = noise_mult_factor * random_gaussian(ens_seq, 0.0_r8, noise)
    endif
 end do
 
@@ -181,10 +174,9 @@ end subroutine comp_dt
 
 
 !------------------------------------------------------------------
-!> does single time step advance for null model.  
-!> default is simple timestepping, but optionally can use
-!> using four step runga kutta. set method by namelist.
-!> valid values for 'advance_method' are:  simple, rk
+!> does single time step advance for null model
+!> using four step rk time step.  set method by namelist.
+!> valid values for 'advance_method' are:  rk, simple, random
 
 subroutine adv_1step(x, time)
 
@@ -193,13 +185,7 @@ type(time_type), intent(in) :: time
 
 real(r8), dimension(size(x)) :: x1, x2, x3, x4, dx, inter
 
-if (advance_method == 'simple') then
-
-   ! simple timestepping
-   call comp_dt(x, dx)
-   x = x + delta_t * dx
-
-else if (advance_method == 'rk') then
+if (advance_method == 'rk') then
 
    call comp_dt(x, dx)        !  Compute the first intermediate step
    x1    = delta_t * dx
@@ -219,32 +205,43 @@ else if (advance_method == 'rk') then
    !  Compute new value for x
    x = x + x1/6.0_r8 + x2/3.0_r8 + x3/3.0_r8 + x4/6.0_r8
    
+else if (advance_method == 'simple') then
+
+   ! simple timestepping
+   call comp_dt(x, dx)
+   x = x + delta_t * dx
+
+else if (advance_method == 'random') then
+
+   ! IDEALIZED DISTRIBUTION TEST: Just draw from a random distribution
+   call comp_dt(x, dx)
+   x = dx
+
 else
+
    call error_handler(E_ERR, 'adv_1step', 'unrecognized advance_method: "'//trim(advance_method)//'"', &
-                      source, revision, revdate, text2='valid strings are: simple, rk')
+                      source, revision, revdate, text2='valid strings are: rk, simple, random')
 endif
+
 
 end subroutine adv_1step
 
 
 !------------------------------------------------------------------
 !> Interpolates an ensemble of expected values at the given location.
-!> Can use different methods to compute expected values.  Valid strings
-!> for the interpolation method include: 'standard', 'average', 'square'
-!> and 'opposite_side'.
 !>
 !> Argument itype is not used here because there is only one type of variable.
 
 subroutine model_interpolate(state_handle, ens_size, location, itype, expected_obs, istatus)
 
-type(ensemble_type), intent(in)  :: state_handle
-integer,             intent(in)  :: ens_size
-type(location_type), intent(in)  :: location
-integer,             intent(in)  :: itype
+type(ensemble_type),  intent(in) :: state_handle
+integer,              intent(in) :: ens_size
+type(location_type), intent(in) :: location
+integer,             intent(in) :: itype
 real(r8),            intent(out) :: expected_obs(ens_size)
 integer,             intent(out) :: istatus(ens_size)
 
-integer(i8)  :: lower_index, upper_index, i
+integer(i8)  :: lower_index, upper_index
 real(r8) :: lctn, lctnfrac
 
 ! All obs okay for now
@@ -255,59 +252,13 @@ lctn = get_location(location)
 ! Multiply by model size assuming domain is [0, 1] cyclic
 lctn = model_size * lctn
 
-! 'standard' interpolation method: find the two locations which
-! enclose the observation location and do a linear interpolation.
-
 lower_index = int(lctn) + 1
 upper_index = lower_index + 1
 if(lower_index > model_size) lower_index = lower_index - model_size
 if(upper_index > model_size) upper_index = upper_index - model_size
-   
+
 lctnfrac = lctn - int(lctn)
-expected_obs = (1.0_r8 - lctnfrac) * get_state(lower_index, state_handle) + &
-                         lctnfrac  * get_state(upper_index, state_handle)
-
-if (interpolation_method == 'standard') return
-
-if (interpolation_method == 'square') then
-   expected_obs(:) = expected_obs(:) ** 2
-   return
-endif
-
-if (interpolation_method == 'opposite_side') then
-   ! Add on an observation from the other side of the domain, too
-   lower_index = lower_index + model_size / 2
-   if(lower_index > model_size) lower_index = lower_index - model_size
-   upper_index = upper_index + model_size / 2
-   if(upper_index > model_size) upper_index = upper_index - model_size
-   expected_obs(:) = expected_obs(:) + &
-                                lctnfrac  * get_state(lower_index, state_handle) + &
-                      (1.0_r8 - lctnfrac) * get_state(upper_index, state_handle)
-   return
-endif
-
-if (interpolation_method == 'average') then
-   ! Do an average over a range of points
-   expected_obs = 0.0_r8
-   lower_index = lower_index - 7
-   upper_index = upper_index - 7
-   if(lower_index < 1) lower_index = lower_index + model_size
-   if(upper_index < 1) upper_index = upper_index + model_size
-   
-   do i = 1, 15
-      if(lower_index > model_size) lower_index = lower_index - model_size
-      if(upper_index > model_size) upper_index = upper_index - model_size
-      expected_obs(:) = expected_obs(:) + &
-                     (1.0_r8 - lctnfrac) * get_state(lower_index, state_handle) + &
-                               lctnfrac  * get_state(upper_index, state_handle)
-      lower_index = lower_index + 1
-      upper_index = upper_index + 1
-   end do
-   return
-endif
-
-call error_handler(E_ERR, 'model_interpolate', 'unrecognized interpolation_method: "'//trim(interpolation_method)//'"', &
-                   source, revision, revdate, text2='valid strings are: standard, average, square, opposite_side')
+expected_obs = (1.0_r8 - lctnfrac) * get_state(lower_index, state_handle) + lctnfrac * get_state(upper_index, state_handle)
 
 end subroutine model_interpolate
 
@@ -376,7 +327,7 @@ integer, intent(in) :: domain_id
 
 ! Write Global Attributes 
 
-call nc_begin_define_mode(ncid)
+call nc_redef(ncid)
 
 call nc_add_global_creation_time(ncid)
 
@@ -386,15 +337,15 @@ call nc_add_global_attribute(ncid, "model_revdate", revdate )
 
 call nc_add_global_attribute(ncid, "model", "null")
 call nc_add_global_attribute(ncid, "model_delta_t", delta_t )
-call nc_add_global_attribute(ncid, "model_noise_amplitude", noise_amplitude )
-call nc_add_global_attribute(ncid, "model_advance_method", advance_method )
-call nc_add_global_attribute(ncid, "model_interpolation_method", interpolation_method )
+
+!>@todo FIXME: if we keep noise, noise_mult_factor, and advance_method,
+!> add them to the attributes on the diagnostic file.
 
 call nc_write_location_atts(ncid, model_size)
-call nc_end_define_mode(ncid)
+call nc_enddef(ncid)
 call nc_write_location(ncid, state_loc, model_size)
 
-call nc_synchronize_file(ncid)
+call nc_sync(ncid)
 
 end subroutine nc_write_model_atts
 
