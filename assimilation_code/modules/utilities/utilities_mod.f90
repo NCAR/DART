@@ -266,6 +266,7 @@ contains
    character(len=*), intent(in), optional :: progname
    character(len=*), intent(in), optional :: alternatename
    logical, intent(in), optional          :: output_flag
+   ! integer :: logfileunit -- public module variable
    integer :: iunit, io
 
    character(len=256) :: lname
@@ -394,7 +395,8 @@ contains
          ! Record the values used for variable types:
          if (do_output_flag .and. print_debug) then
         
-            call say('') ! a little whitespace is nice
+            write(     *     ,*)  ! a little whitespace is nice
+            write(logfileunit,*)  ! a little whitespace is nice
 
             write(string1,*)'..  digits12 is ',digits12
             write(string2,*)'r8       is ',r8
@@ -509,13 +511,21 @@ contains
       if ( .not. module_details) return
 
 
-      call say('')
-      call say('Registering module :')
-      call say(src)
-      call say(rev)
-      call say(rdate)
-      call say('Registration complete.')
-      call say('')
+      write(logfileunit,*)
+      write(logfileunit,*)'Registering module :'
+      write(logfileunit,*)trim(src)
+      write(logfileunit,*)trim(rev)
+      write(logfileunit,*)trim(rdate)
+      write(logfileunit,*)'Registration complete.'
+      write(logfileunit,*)
+
+      write(     *     ,*)
+      write(     *     ,*)'Registering module :'
+      write(     *     ,*)trim(src)
+      write(     *     ,*)trim(rev)
+      write(     *     ,*)trim(rdate)
+      write(     *     ,*)'Registration complete.'
+      write(     *     ,*)
 
    end subroutine register_module
 
@@ -781,33 +791,9 @@ integer, intent(in) :: level
 character(len=*), intent(in) :: routine, text
 character(len=*), intent(in), optional :: src, rev, rdate, aut, text2, text3
 
-character(len=16) :: taskstr, msgtype
+character(len=8) :: taskstr
 
 if ( .not. module_initialized ) call initialize_utilities
-
-! early returns:
-
-! messages only print if the 'do_output_flag' is on, which by default
-! is only task 0.  debug messages only print if enabled.
-
-if (level == E_MSG .and. .not. do_output_flag) return
-if (level == E_DBG .and. .not. print_debug)    return
-
-! if we get here, we're printing something.  set up some strings
-! to make the code below simpler.
-
-if (single_task) then
-   taskstr = ''
-else
-   if (task_number == 0) then
-      write(taskstr, '(a)' ) "PE 0: "
-   else
-      write(taskstr, '(a,i5,a)' ) "PE ", task_number, ": "
-   endif
-endif
-
-if (level == E_ERR)  msgtype = 'ERROR FROM:'
-if (level == E_WARN) msgtype = 'WARNING FROM:'
 
 ! current choice is to log all errors and warnings regardless
 ! of setting of output flag.  messages only print from those
@@ -815,49 +801,170 @@ if (level == E_WARN) msgtype = 'WARNING FROM:'
 
 select case(level)
    case (E_MSG)
-      call say(trim(taskstr)//trim(routine)//' '//trim(text))
-      if (present(text2)) call say(trim(taskstr)//trim(routine)//' ... '//trim(text2))
-      if (present(text3)) call say(trim(taskstr)//trim(routine)//' ... '//trim(text3))
+
+      if ( .not. do_output_flag) return
+      if ( single_task ) then
+        write(     *     , *) trim(routine),' ', trim(text)
+        write(logfileunit, *) trim(routine),' ', trim(text)
+        if ( present(text2)) then
+           write(     *     , *) trim(routine),' ... ', trim(text2)
+           write(logfileunit, *) trim(routine),' ... ', trim(text2)
+        endif
+        if ( present(text3)) then
+           write(     *     , *) trim(routine),' ... ', trim(text3)
+           write(logfileunit, *) trim(routine),' ... ', trim(text3)
+        endif
+      else
+        ! FIXME: should they just all use i5? but most common case is only
+        ! messages from PE0, so it's tempting not to waste all those columns.
+        if (task_number == 0) then
+            write(taskstr, '(a)' ) "PE 0"
+        else
+            write(taskstr, '(a,i5)' ) "PE ", task_number
+        endif
+        write(     *     , *) trim(taskstr),': ',trim(routine),' ', trim(text)
+        write(logfileunit, *) trim(taskstr),': ',trim(routine),' ', trim(text)
+        if ( present(text2)) then
+           write(     *     , *) trim(taskstr),': ',trim(routine),' ... ', trim(text2)
+           write(logfileunit, *) trim(taskstr),': ',trim(routine),' ... ', trim(text2)
+        endif
+        if ( present(text3)) then
+           write(     *     , *) trim(taskstr),': ',trim(routine),' ... ', trim(text3)
+           write(logfileunit, *) trim(taskstr),': ',trim(routine),' ... ', trim(text3)
+        endif
+      endif
 
    case (E_ALLMSG)
 
-      if (single_task) then
-        call say(trim(routine)//' '//trim(text))
-        if (present(text2)) call say(trim(routine)//' ... '//trim(text2))
-        if (present(text3)) call say(trim(routine)//' ... '//trim(text3))
+      if ( single_task ) then
+        write(     *     , *) trim(routine),' ', trim(text)
+        write(logfileunit, *) trim(routine),' ', trim(text)
+        if ( present(text2)) then
+           write(     *     , *) trim(routine),' ... ', trim(text2)
+           write(logfileunit, *) trim(routine),' ... ', trim(text2)
+        endif
+        if ( present(text3)) then
+           write(     *     , *) trim(routine),' ... ', trim(text3)
+           write(logfileunit, *) trim(routine),' ... ', trim(text3)
+        endif
       else
-        ! this has a problem that multiple tasks are writing to the same logfile.
-        ! it's overwriting existing content.  short fix is to NOT write ALLMSGs
-        ! to the log file, only stdout.
-        write(*,*) trim(taskstr)//trim(routine)//' '//trim(text)
-        if (present(text2)) write(*,*) trim(taskstr)//trim(routine)//' ... '//trim(text2)
-        if (present(text3)) write(*,*) trim(taskstr)//trim(routine)//' ... '//trim(text3)
+        write(taskstr, '(a,i5)' ) "PE ", task_number
+        write(     *     , *) trim(taskstr),': ',trim(routine),' ', trim(text)
+        if ( present(text2)) then
+           write(     *     , *) trim(taskstr),': ',trim(routine),' ... ', trim(text2)
+        endif
+        if ( present(text3)) then
+           write(     *     , *) trim(taskstr),': ',trim(routine),' ... ', trim(text3)
+        endif
       endif
 
    case (E_DBG)
-      call say(trim(taskstr)//'DEBUG FROM: '//trim(routine)//' '//trim(text))
-      if (present(text2)) call say(trim(taskstr)//'DEBUG FROM: '//trim(routine)//' ... '//trim(text2))
-      if (present(text3)) call say(trim(taskstr)//'DEBUG FROM: '//trim(routine)//' ... '//trim(text3))
+      if (print_debug) then
 
-   case (E_WARN, E_ERR)
+         ! what about do_output_flag?  want messages from all procs or just PE0?
 
-      call say(msgtype)
-      write(taskstr, '(a,i5)') ' task id: ', task_number
-      call say(taskstr)
-      call say(' routine: '//routine)
-      call say(' message: '//text)
-      if (present(text2)) call say(' message: ... '//text2)
-      if (present(text3)) call say(' message: ... '//text3)
-      call say('')
-      call say(' source file: '//src)
-      call say(' file revision: '//rev)
-      call say(' revision date: '//rdate)
-      if(present(aut)) call say(' last editor: '//aut)
+         if ( single_task ) then
+           write(     *     , *) 'DEBUG FROM: ', trim(routine),' ', trim(text)
+           write(logfileunit, *) 'DEBUG FROM: ', trim(routine),' ', trim(text)
+           if ( present(text2)) then
+              write(     *     , *) 'DEBUG FROM: ', trim(routine),' ... ', trim(text2)
+              write(logfileunit, *) 'DEBUG FROM: ', trim(routine),' ... ', trim(text2)
+           endif
+           if ( present(text3)) then
+              write(     *     , *) 'DEBUG FROM: ', trim(routine),' ... ', trim(text3)
+              write(logfileunit, *) 'DEBUG FROM: ', trim(routine),' ... ', trim(text3)
+           endif
+         else
+           if (task_number == 0) then
+               write(taskstr, '(a)' ) "PE 0"
+           else
+               write(taskstr, '(a,i5)' ) "PE ", task_number
+           endif
+           write(     *     , *) trim(taskstr),': DEBUG FROM: ',trim(routine),' ', trim(text)
+           write(logfileunit, *) trim(taskstr),': DEBUG FROM: ',trim(routine),' ', trim(text)
+           if ( present(text2)) then
+              write(     *     , *) trim(taskstr),': DEBUG FROM: ',trim(routine),' ... ', trim(text2)
+              write(logfileunit, *) trim(taskstr),': DEBUG FROM: ',trim(routine),' ... ', trim(text2)
+           endif
+           if ( present(text3)) then
+              write(     *     , *) trim(taskstr),': DEBUG FROM: ',trim(routine),' ... ', trim(text3)
+              write(logfileunit, *) trim(taskstr),': DEBUG FROM: ',trim(routine),' ... ', trim(text3)
+           endif
+         endif
+      endif
+
+   case (E_WARN)
+
+      write(     *     , *) 'WARNING FROM:'
+      if ( .not. single_task ) &
+      write(     *     , *) ' task id: ', task_number
+      write(     *     , *) ' routine: ', trim(routine)
+      write(     *     , *) ' message: ', trim(text)
+      if ( present(text2)) &
+      write(     *     , *) ' message: ... ', trim(text2)
+      if ( present(text3)) &
+      write(     *     , *) ' message: ... ', trim(text3)
+      write(     *     , *) ' '
+      write(     *     , *) ' source file: ', trim(src)
+      write(     *     , *) ' file revision: ', trim(rev)
+      write(     *     , *) ' revision date: ', trim(rdate)
+      if(present(aut)) &
+      write(     *     , *) ' last editor: ', trim(aut)
+
+      write(logfileunit, *) 'WARNING FROM:'
+      if ( .not. single_task ) &
+      write(logfileunit, *) ' task id: ', task_number
+      write(logfileunit, *) ' routine: ', trim(routine)
+      write(logfileunit, *) ' message: ', trim(text)
+      if ( present(text2)) &
+      write(logfileunit, *) ' message: ... ', trim(text2)
+      if ( present(text3)) &
+      write(logfileunit, *) ' message: ... ', trim(text3)
+      write(logfileunit, *) ' '
+      write(logfileunit, *) ' source file: ', trim(src)
+      write(logfileunit, *) ' file revision: ', trim(rev)
+      write(logfileunit, *) ' revision date: ', trim(rdate)
+      if(present(aut)) &
+      write(logfileunit, *) ' last editor: ', trim(aut)
+
+   case(E_ERR)
+
+      write(     *     , *) 'ERROR FROM:'
+      if ( .not. single_task ) &
+      write(     *     , *) ' task id: ', task_number
+      write(     *     , *) ' routine: ', trim(routine)
+      write(     *     , *) ' message: ', trim(text)
+      if ( present(text2)) &
+      write(     *     , *) ' message: ... ', trim(text2)
+      if ( present(text3)) &
+      write(     *     , *) ' message: ... ', trim(text3)
+      write(     *     , *) ' '
+      write(     *     , *) ' source file: ', trim(src)
+      write(     *     , *) ' file revision: ', trim(rev)
+      write(     *     , *) ' revision date: ', trim(rdate)
+      if(present(aut)) &
+      write(     *     , *) ' last editor: ', trim(aut)
+
+      write(logfileunit, *) 'ERROR FROM:'
+      if ( .not. single_task ) &
+      write(logfileunit, *) ' task id: ', task_number
+      write(logfileunit, *) ' routine: ', trim(routine)
+      write(logfileunit, *) ' message: ', trim(text)
+      if ( present(text2)) &
+      write(logfileunit, *) ' message: ... ', trim(text2)
+      if ( present(text3)) &
+      write(logfileunit, *) ' message: ... ', trim(text3)
+      write(logfileunit, *) ' '
+      write(logfileunit, *) ' source file: ', trim(src)
+      write(logfileunit, *) ' file revision: ', trim(rev)
+      write(logfileunit, *) ' revision date: ', trim(rdate)
+      if(present(aut)) &
+      write(logfileunit, *) ' last editor: ', trim(aut)
 
 end select
 
 ! TERMLEVEL gets set in the namelist
-if (level >= TERMLEVEL) call exit_all(99) 
+if( level >= TERMLEVEL ) call exit_all( 99 ) 
 
 end subroutine error_handler
 
@@ -873,9 +980,9 @@ end subroutine error_handler
    integer,          intent(out), optional :: return_rc
    integer  :: iunit
 
-   integer           :: nc, rc, rlen
+   integer           :: rc, rlen
    logical           :: open, use_recl
-   character(len=32) :: format, pos, act, stat, acc, conversion, recl, del
+   character(len=32) :: format, pos, act, stat, acc, conversion, del
 
    if ( .not. module_initialized ) call initialize_utilities
 
@@ -1246,12 +1353,16 @@ end subroutine error_handler
    end subroutine set_tasknum
 
 
-!-----------------------------------------------------------------------
-!> Closes the given unit_number if that unit is open.
-!> Not an error to call on an already closed unit.
-!> Will print a message if the status of the unit cannot be determined.
+!#######################################################################
+
 
 subroutine close_file(iunit)
+!-----------------------------------------------------------------------
+!
+! Closes the given unit_number if that unit is open.
+! Not an error to call on an already closed unit.
+! Will print a message if the status of the unit cannot be determined.
+!
 
 integer, intent(in) :: iunit
 
@@ -1269,30 +1380,6 @@ endif
 if (open) close(iunit)
 
 end subroutine close_file
-
-
-!-----------------------------------------------------------------------
-!> Function that returns .true. if this unit number refers to an open file.
-
-function is_file_open(iunit)
-
-integer, intent(in) :: iunit
-logical :: is_file_open
-
-integer :: ios
-logical :: open
-
-if ( .not. module_initialized ) call initialize_utilities
-
-inquire (unit=iunit, opened=open, iostat=ios)
-if ( ios /= 0 ) then
-   write(msgstring1,*)'Unable to determine status of file unit ', iunit
-   call error_handler(E_MSG, 'is_file_open: ', msgstring1, source, revision, revdate)
-endif
-
-is_file_open = open
-
-end function is_file_open
 
 
 !#######################################################################
@@ -2291,20 +2378,6 @@ end select
 
 end function string_to_logical
 
-
-!-----------------------------------------------------------------------
-!> if trying to write an unformatted string, like "write(*,*)" 
-!> to both standard output and the logfile, call this routine instead.
-!> it prevents you from having to maintain two copies of the same
-!> output message.
-
-subroutine say(message)
- character(len=*), intent(in) :: message
-
-write(     *     , *) trim(message)
-write(logfileunit, *) trim(message)
-
-end subroutine say
 
 !=======================================================================
 ! End of utilities_mod

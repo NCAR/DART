@@ -28,7 +28,7 @@ end
 
 switch lower(model)
 
-   case {'9var','lorenz_63','lorenz_84','ikeda','null'}
+   case {'9var','lorenz_63','lorenz_84','ikeda'}
 
       num_vars      = dim_length(fname,'location'); % determine # of state varbls
 

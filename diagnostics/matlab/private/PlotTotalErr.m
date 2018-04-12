@@ -128,16 +128,8 @@ switch lower(pinfo.model)
       string2 = sprintf('time-mean Ensemble Spread = %f',spreadTotal);
 
       clf;
-<<<<<<< .working
       plot(pinfo.time,err, 'b', pinfo.time ,err_spread, 'r');
       legend(string1,string2,'Location','NorthEast')
-||||||| .merge-left.r11681
-      plot(pinfo.time,err, 'b', pinfo.time,err_spread, 'r');
-      legend(string1,string2,0)
-=======
-      plot(pinfo.time,err, 'b', pinfo.time ,err_spread, 'r');
-      legend(string1,string2,0)
->>>>>>> .merge-right.r12492
       legend boxoff
       s1 = sprintf('%s Total Error over all %d variables', pinfo.model, num_vars);
       title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')

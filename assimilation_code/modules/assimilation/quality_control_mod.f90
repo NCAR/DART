@@ -57,8 +57,9 @@ integer, parameter :: DARTQC_FAILED_FOP            = 4
 integer, parameter :: DARTQC_NOT_IN_NAMELIST       = 5
 integer, parameter :: DARTQC_BAD_INCOMING_QC       = 6
 integer, parameter :: DARTQC_FAILED_OUTLIER_TEST   = 7
-integer, parameter :: DARTQC_FAILED_VERT_CONVERT   = 8
-integer, parameter :: DARTQC_OUTSIDE_DOMAIN        = 9  ! we have no way (yet) for the model_mod to signal this
+integer, parameter :: DARTQC_FAILED_VERT_CONVERT   = 4   ! change this to 8 after we test more
+!integer, parameter :: DARTQC_FAILED_VERT_CONVERT   = 8
+!integer, parameter :: DARTQC_OUTSIDE_DOMAIN        = 9  ! we have no way (yet) for the model_mod to signal this
 
 !------------------------------------------------------------------------------
 ! namelist parameters
@@ -133,7 +134,7 @@ integer              :: set_input_qc  !>  return value
 if(input_qc == 0 .and. (assimilate_this_ob .or. evaluate_this_ob)) then
    set_input_qc = 0.0_r8
 else
-   set_input_qc = 1000.0_r8 + input_qc
+   set_input_qc = 1000.0_r8
 endif
 
 end function set_input_qc

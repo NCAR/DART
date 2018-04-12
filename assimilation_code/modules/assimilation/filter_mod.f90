@@ -189,7 +189,7 @@ logical  :: output_timestamps        = .false.
 logical  :: trace_execution          = .false.
 logical  :: write_obs_every_cycle    = .false.  ! debug only
 logical  :: silence                  = .false.
-logical  :: distributed_state        = .true. ! Default is RMA mode: state complete FOs
+logical  :: distributed_state = .true. ! Default to do state complete forward operators.
 
 ! IO options
 !>@todo FIXME - how does this work for multiple domains?  ens1d1, ens2d1, ... ens1d2 or
@@ -871,7 +871,8 @@ AdvanceTime : do
 
    call trace_message('Before observation space diagnostics')
 
-   ! This is where the mean obs copy ( + others ) is moved to task 0 so it can update seq.
+   ! This is where the mean obs
+   ! copy ( + others ) is moved to task 0 so task 0 can update seq.
    ! There is a transpose (all_copies_to_all_vars(obs_fwd_op_ens_handle)) in obs_space_diagnostics
    ! Do prior observation space diagnostics and associated quality control
    call obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size, &
@@ -1016,7 +1017,7 @@ AdvanceTime : do
 
    call trace_message('Before posterior obs space diagnostics')
 
-   ! This is where the mean obs copy ( + others ) is moved to task 0 so it can update seq.
+   ! Write posterior observation space diagnostics
    ! There is a transpose (all_copies_to_all_vars(obs_fwd_op_ens_handle)) in obs_space_diagnostics
    call obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size, &
       seq, keys, POSTERIOR_DIAG, num_output_obs_members, in_obs_copy+2, &
