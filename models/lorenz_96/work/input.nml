@@ -36,7 +36,7 @@
    input_state_files            = ''
    input_state_file_list        = 'filter_input_list.txt'
 
-   stages_to_write  = 'preassim', 'analysis', 'output'
+   stages_to_write  = 'preassim', 'output'
 
    single_file_out              = .true.,
    output_state_files           = ''
@@ -49,7 +49,7 @@
 
    ens_size                     = 20,
    num_groups                   = 1,
-   perturb_from_single_instance = .false.,
+   perturb_from_single_instance = .true.,
    perturbation_amplitude       = 0.2,
    distributed_state            = .true.
 
@@ -126,8 +126,6 @@
 
 &obs_kind_nml
    assimilate_these_obs_types = 'RAW_STATE_VARIABLE',
-                                'RAW_STATE_1D_INTEGRAL',
-                                'RAW_STATE_VAR_POWER'
    /
 
 &model_nml
@@ -154,9 +152,10 @@
           overwrite_output = .true.,
     input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90',
-   input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
-  output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90',
-               input_files = '../../../observations/forward_operators/obs_def_1d_state_mod.f90',
+    input_obs_qty_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
+   output_obs_qty_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90',
+            obs_type_files = '../../../observations/forward_operators/obs_def_1d_state_mod.f90',
+            quantity_files = '../../../assimilation_code/modules/observations/oned_quantities.f90'
    /
 
 &obs_sequence_tool_nml

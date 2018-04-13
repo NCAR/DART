@@ -203,7 +203,8 @@ public :: file_exist, &
           scalar, &
           string_to_real, &
           string_to_integer, &
-          string_to_logical
+          string_to_logical, &
+          log_it
 
 ! this routine is either in the null_mpi_utilities_mod.f90, or in
 ! the mpi_utilities_mod.f90 file, but it is not a module subroutine.
@@ -2377,6 +2378,24 @@ select case (ucase_instring)
 end select
 
 end function string_to_logical
+
+
+!-----------------------------------------------------------------------
+!> if trying to write an unformatted string, like "write(*,*)"
+!> to both standard output and the logfile, call this routine instead.
+!> it prevents you from having to maintain two copies of the same
+!> output message.
+
+subroutine log_it(message)
+ character(len=*), intent(in) :: message
+
+                      write(     *     , *) trim(message)
+if (logfileunit >= 0) write(logfileunit, *) trim(message)
+
+end subroutine log_it
+
+
+!-----------------------------------------------------------------------
 
 
 !=======================================================================
