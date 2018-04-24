@@ -1007,7 +1007,7 @@ if(is_vertical(location, "SURFACE").and. sfc_elev_max_diff >= 0) then
    endif
    if(abs(llv(3) - zGridFace(1,cellid)) > sfc_elev_max_diff) then
       !Soyoung: No threshold for surface altimeter 
-      !if(obs_kind == KIND_SURFACE_PRESSURE .or. obs_kind == KIND_SURFACE_ELEVATION) then
+      !if(obs_kind == QTY_SURFACE_PRESSURE .or. obs_kind == QTY_SURFACE_ELEVATION) then
       !   istatus = 0
       !else
          istatus = 12

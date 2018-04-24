@@ -9,17 +9,17 @@
 
 rad2deg = 45/atan(1);
 
-KIND_U   =   1;
-KIND_V   =   2;
-KIND_PS  =   3;
-KIND_T   =   4;
-KIND_VR  = 100;
-KIND_REF = 101;
-KIND_U10 = 200;
-KIND_V10 = 201;
-KIND_T2  = 202;
-KIND_Q2  = 203;
-KIND_TD2 = 204;
+QTY_U   =   1;
+QTY_V   =   2;
+QTY_PS  =   3;
+QTY_T   =   4;
+QTY_VR  = 100;
+QTY_REF = 101;
+QTY_U10 = 200;
+QTY_V10 = 201;
+QTY_T2  = 202;
+QTY_Q2  = 203;
+QTY_TD2 = 204;
 
 map_proj = {'lambert', 'ups', 'mercator'};
 
@@ -81,59 +81,59 @@ for i = 1:a.num_obs,
    lon = rad2deg*a.loc(i,1);
    lat = rad2deg*a.loc(i,2);
 
-   if ( a.kind(i) == KIND_U )
+   if ( a.kind(i) == QTY_U )
 
      iu = iu + 1;
 
    scatterm(lat,lon,'xb')
 
-   elseif ( a.kind(i) == KIND_V )
+   elseif ( a.kind(i) == QTY_V )
 
      iv = iv + 1;
 
-   elseif ( a.kind(i) == KIND_T )
+   elseif ( a.kind(i) == QTY_T )
 
      it = it + 1;
 
    scatterm(lat,lon,'+r')
 
-   elseif ( a.kind(i) == KIND_U10 )
+   elseif ( a.kind(i) == QTY_U10 )
 
      iu10 = iu10 + 1;
 
    scatterm(lat,lon,'xg')
 
-   elseif ( a.kind(i) == KIND_V10 )
+   elseif ( a.kind(i) == QTY_V10 )
 
      iv10 = iv10 + 1;
 
    scatterm(lat,lon,'xg')
 
-   elseif ( a.kind(i) == KIND_T2 )
+   elseif ( a.kind(i) == QTY_T2 )
 
      it2 = it2 + 1;
 
    scatterm(lat,lon,'xg')
 
-   elseif ( a.kind(i) == KIND_TD2 )
+   elseif ( a.kind(i) == QTY_TD2 )
 
      itd2 = itd2 + 1;
 
    scatterm(lat,lon,'xg')
 
-   elseif ( a.kind(i) == KIND_PS )
+   elseif ( a.kind(i) == QTY_PS )
 
      ips = ips + 1;
 
    scatterm(lat,lon,'xg')
 
-   elseif ( a.kind(i) == KIND_VR )
+   elseif ( a.kind(i) == QTY_VR )
 
      ivr = ivr + 1;
 
    scatterm(lat,lon,'ob')
 
-   elseif ( a.kind(i) == KIND_REF )
+   elseif ( a.kind(i) == QTY_REF )
 
      iref = iref + 1;
 

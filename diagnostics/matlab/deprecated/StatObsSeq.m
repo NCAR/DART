@@ -8,9 +8,9 @@
 %
 % DART $Id$
 
-KIND_U = 1;
-KIND_V = 2;
-KIND_T = 4;
+QTY_U = 1;
+QTY_V = 2;
+QTY_T = 4;
 
 a = ReadObsSeq('obs_seq.final');
 
@@ -50,7 +50,7 @@ for i = 1:a.num_obs,
      x(2*itime)   = days*86400 + secs;
    end
 
-   if ( a.kind(i) == KIND_U )
+   if ( a.kind(i) == QTY_U )
 
      if (a.obs(1,i) == -888888.0)
 
@@ -75,7 +75,7 @@ for i = 1:a.num_obs,
 
      end
 
-   elseif ( a.kind(i) == KIND_V )
+   elseif ( a.kind(i) == QTY_V )
 
      if (a.obs(1,i) == -888888.0)
 
@@ -100,7 +100,7 @@ for i = 1:a.num_obs,
 
      end
 
-   elseif ( a.kind(i) == KIND_T )
+   elseif ( a.kind(i) == QTY_T )
 
      if (a.obs(1,i) == -888888.0)
 

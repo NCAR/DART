@@ -10,17 +10,17 @@
 
 rad2deg = 45/atan(1);
 
-KIND_U   =  1;
-KIND_V   =  2;
-KIND_PS  =  3;
-KIND_T   =  4;
-KIND_VR  = 12;
-KIND_REF = 13;
-KIND_U10 = 14;
-KIND_V10 = 15;
-KIND_T2  = 16;
-KIND_Q2  = 17;
-KIND_TD2 = 18;
+QTY_U   =  1;
+QTY_V   =  2;
+QTY_PS  =  3;
+QTY_T   =  4;
+QTY_VR  = 12;
+QTY_REF = 13;
+QTY_U10 = 14;
+QTY_V10 = 15;
+QTY_T2  = 16;
+QTY_Q2  = 17;
+QTY_TD2 = 18;
 
 var = input('Input obs to plot (VR, REF): ');
 if strcmp(var,'REF')
@@ -163,29 +163,29 @@ for i = beg(j):min([(beg(j+1)-1) a.num_obs]),
    lat = rad2deg*a.loc(i,2);
    hei = a.loc(i,3);
 
-   if ( a.kind(i) == KIND_U )
+   if ( a.kind(i) == QTY_U )
 
      iu = iu + 1;
 
    scatterm(lat,lon,'xb')
 
-   elseif ( a.kind(i) == KIND_V )
+   elseif ( a.kind(i) == QTY_V )
 
      iv = iv + 1;
 
-   elseif ( a.kind(i) == KIND_T )
+   elseif ( a.kind(i) == QTY_T )
 
      it = it + 1;
 
    scatterm(lat,lon,'+r')
 
-   elseif ( a.kind(i) == KIND_U10 )
+   elseif ( a.kind(i) == QTY_U10 )
 
      iu10 = iu10 + 1;
 
      uwind = a.obs(pane,i);
 
-   elseif ( a.kind(i) == KIND_V10 )
+   elseif ( a.kind(i) == QTY_V10 )
 
      iv10 = iv10 + 1;
 
@@ -193,7 +193,7 @@ for i = beg(j):min([(beg(j+1)-1) a.num_obs]),
 %        quiverm(lat,lon,a.obs(pane,i),uwind)
      end
 
-   elseif ( a.kind(i) == KIND_T2 )
+   elseif ( a.kind(i) == QTY_T2 )
 
      if (a.obs(pane,i) ~= -888888.0)
        textm(lat,lon,[num2str(round(a.obs(pane,i)-273.15)),' '],...
@@ -205,7 +205,7 @@ for i = beg(j):min([(beg(j+1)-1) a.num_obs]),
 
    scatterm(lat,lon,'og')
 
-   elseif ( a.kind(i) == KIND_TD2 )
+   elseif ( a.kind(i) == QTY_TD2 )
 
      if (a.obs(pane,i) ~= -888888.0)
        textm(lat,lon,[num2str(round(a.obs(pane,i)-273.15)),' '],...
@@ -217,7 +217,7 @@ for i = beg(j):min([(beg(j+1)-1) a.num_obs]),
 
    scatterm(lat,lon,'og')
 
-   elseif ( a.kind(i) == KIND_PS )
+   elseif ( a.kind(i) == QTY_PS )
 
      if (a.obs(pane,i) ~= -888888.0)
        textm(lat,lon,[' ',num2str(round(a.obs(pane,i)/100))],...
@@ -229,7 +229,7 @@ for i = beg(j):min([(beg(j+1)-1) a.num_obs]),
 
    scatterm(lat,lon,'og')
 
-   elseif ( a.kind(i) == KIND_VR )
+   elseif ( a.kind(i) == QTY_VR )
 
      ivr = ivr + 1;
 
@@ -239,7 +239,7 @@ for i = beg(j):min([(beg(j+1)-1) a.num_obs]),
         end
      end
 
-   elseif ( a.kind(i) == KIND_REF )
+   elseif ( a.kind(i) == QTY_REF )
 
      iref = iref + 1;
 

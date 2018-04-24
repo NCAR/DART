@@ -168,24 +168,24 @@
    output_state_vector          = .false.,
    calendar                     = 'Gregorian',
    debug                        = 0,
-   clm_state_variables          = 'frac_sno',    'KIND_SNOWCOVER_FRAC',
-                                  'H2OSNO',      'KIND_SNOW_WATER',
-                                  'H2OSOI_LIQ',  'KIND_SOIL_MOISTURE',
-                                  'H2OSOI_ICE',  'KIND_ICE',
-                                  'T_SOISNO',    'KIND_SOIL_TEMPERATURE',
-                                  'cpool',       'KIND_CARBON',
-                                  'frootc',      'KIND_ROOT_CARBON',
-                                  'leafc',       'KIND_LEAF_CARBON',
-                                  'leafn',       'KIND_LEAF_NITROGEN',
+   clm_state_variables          = 'frac_sno',    'QTY_SNOWCOVER_FRAC',
+                                  'H2OSNO',      'QTY_SNOW_WATER',
+                                  'H2OSOI_LIQ',  'QTY_SOIL_MOISTURE',
+                                  'H2OSOI_ICE',  'QTY_ICE',
+                                  'T_SOISNO',    'QTY_SOIL_TEMPERATURE',
+                                  'cpool',       'QTY_CARBON',
+                                  'frootc',      'QTY_ROOT_CARBON',
+                                  'leafc',       'QTY_LEAF_CARBON',
+                                  'leafn',       'QTY_LEAF_NITROGEN',
    /
 
   frac_sno  is needed for the forward operator
   H2OSNO is updated by the filter,
   update_snow() takes H2OSNO* and updates the four following:
-                                  'SNOWDP',      'KIND_SNOW_THICKNESS',
-                                  'H2OSOI_LIQ',  'KIND_LIQUID_WATER',
-                                  'H2OSOI_ICE',  'KIND_ICE',
-                                  'T_SOISNO',    'KIND_SOIL_TEMPERATURE',
+                                  'SNOWDP',      'QTY_SNOW_THICKNESS',
+                                  'H2OSOI_LIQ',  'QTY_LIQUID_WATER',
+                                  'H2OSOI_ICE',  'QTY_ICE',
+                                  'T_SOISNO',    'QTY_SOIL_TEMPERATURE',
 
 
 &clm_to_dart_nml

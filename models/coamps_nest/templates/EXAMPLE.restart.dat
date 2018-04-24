@@ -35,36 +35,36 @@
 # |  |  |       4
 # |  |  |       |     5 
 # |  |  |       |     | 6
-# |  |  |       |     | |                     7
-# |  |  |       |     | |                     |      8
-# |  |  |       |     | |                     |      |     9
-# |  |  |       |     | |                     |      |     |
-# u2 45 NOPERTS 1.000 M KIND_U_WIND_COMPONENT UPDATE FALSE NOPOSDEF
+# |  |  |       |     | |                    7
+# |  |  |       |     | |                    |      8
+# |  |  |       |     | |                    |      |     9
+# |  |  |       |     | |                    |      |     |
+# u2 45 NOPERTS 1.000 M QTY_U_WIND_COMPONENT UPDATE FALSE NOPOSDEF
 
 ############################################################
 #### BEGIN ACTUAL DATA DEFINITION
 
 # Momentum variables
-u2   45 UNIFORM 2.000 M KIND_U_WIND_COMPONENT         UPDATE FALSE NOPOSDEF
-v2   45 UNIFORM 2.000 M KIND_V_WIND_COMPONENT         UPDATE FALSE NOPOSDEF
-w2   46 NOPERTS 0.000 W KIND_VERTICAL_VELOCITY        UPDATE FALSE NOPOSDEF
+u2   45 UNIFORM 2.000 M QTY_U_WIND_COMPONENT         UPDATE FALSE NOPOSDEF
+v2   45 UNIFORM 2.000 M QTY_V_WIND_COMPONENT         UPDATE FALSE NOPOSDEF
+w2   46 NOPERTS 0.000 W QTY_VERTICAL_VELOCITY        UPDATE FALSE NOPOSDEF
 
 # Temperature variables
-th2  45 NOPERTS 0.000 M KIND_POTENTIAL_TEMPERATURE    UPDATE FALSE NOPOSDEF
-thbm 45 NOPERTS 0.000 M KIND_POTENTIAL_TEMPERATURE    FREEZE TRUE  NOPOSDEF
+th2  45 NOPERTS 0.000 M QTY_POTENTIAL_TEMPERATURE    UPDATE FALSE NOPOSDEF
+thbm 45 NOPERTS 0.000 M QTY_POTENTIAL_TEMPERATURE    FREEZE TRUE  NOPOSDEF
 
 # "Pressure" variables - COAMPS uses mean/perturbation Exner function
-p2   45 NOPERTS 0.000 M KIND_EXNER_FUNCTION           UPDATE FALSE NOPOSDEF
-exbm 45 NOPERTS 0.000 M KIND_EXNER_FUNCTION           FREEZE TRUE  NOPOSDEF
-exbw 46 NOPERTS 0.000 W KIND_EXNER_FUNCTION           FREEZE TRUE  NOPOSDEF
+p2   45 NOPERTS 0.000 M QTY_EXNER_FUNCTION           UPDATE FALSE NOPOSDEF
+exbm 45 NOPERTS 0.000 M QTY_EXNER_FUNCTION           FREEZE TRUE  NOPOSDEF
+exbw 46 NOPERTS 0.000 W QTY_EXNER_FUNCTION           FREEZE TRUE  NOPOSDEF
 
 # Microphysical variables - vapor, cloud water, rain, ice, snow
 # These are mixing ratios, so they should be positive (semi)definite
-qv2  45 NOPERTS 0.000 M KIND_SPECIFIC_HUMIDITY	      UPDATE FALSE ISPOSDEF
-qc2  45 NOPERTS 0.000 M KIND_CLOUD_LIQUID_WATER       UPDATE FALSE ISPOSDEF
-qr2  45 NOPERTS 0.000 M KIND_RAINWATER_MIXING_RATIO   UPDATE FALSE ISPOSDEF
-qi2  45 NOPERTS 0.000 M KIND_CLOUD_ICE                UPDATE FALSE ISPOSDEF
-qs2  45 NOPERTS 0.000 M KIND_SNOW_MIXING_RATIO        UPDATE FALSE ISPOSDEF
+qv2  45 NOPERTS 0.000 M QTY_SPECIFIC_HUMIDITY        UPDATE FALSE ISPOSDEF
+qc2  45 NOPERTS 0.000 M QTY_CLOUD_LIQUID_WATER       UPDATE FALSE ISPOSDEF
+qr2  45 NOPERTS 0.000 M QTY_RAINWATER_MIXING_RATIO   UPDATE FALSE ISPOSDEF
+qi2  45 NOPERTS 0.000 M QTY_CLOUD_ICE                UPDATE FALSE ISPOSDEF
+qs2  45 NOPERTS 0.000 M QTY_SNOW_MIXING_RATIO        UPDATE FALSE ISPOSDEF
 
 #### END ACTUAL DATA DEFINITION
 ############################################################

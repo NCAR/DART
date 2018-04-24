@@ -191,9 +191,9 @@ proc goFinish {} {
     if { $useMeanState == 1 } {
         puts $datFile "\n### Model mean state"
         foreach {coampsName levelType dartKind} {
-            "exbm" "M" "KIND_EXNER_FUNCTION"
-            "exbw" "W" "KIND_EXNER_FUNCTION"
-            "thbm" "M" "KIND_POTENTIAL_TEMPERATURE"
+            "exbm" "M" "QTY_EXNER_FUNCTION"
+            "exbw" "W" "QTY_EXNER_FUNCTION"
+            "thbm" "M" "QTY_POTENTIAL_TEMPERATURE"
         } {
             writeRestartData $datFile $coampsName $numModelLevels 0 0.00 $levelType $dartKind \
                              "FREEZE" "TRUE" 1
@@ -496,16 +496,16 @@ pack $modelHeightFrame -side right -padx 5 -pady 5 -expand y
 # Variable setup
 ##########
 foreach {varName defaultPertType defaultPertMag defaultNeg levelType coampsName dartKind} {
-    "Zonal Wind"                  1 2.00 1 "M" "u2"  "KIND_U_WIND_COMPONENT"
-    "Meridional Wind"             1 2.00 1 "M" "v2"  "KIND_V_WIND_COMPONENT"
-    "Vertical Velocity"           0 0.00 1 "W" "w2"  "KIND_VERTICAL_VELOCITY"
-    "Potential Temperature"       0 0.00 1 "M" "th2" "KIND_POTENTIAL_TEMPERATURE"
-    "Specific Humidity"           0 0.00 0 "M" "qv2" "KIND_SPECIFIC_HUMIDITY"
-    "Cloud Ice"                   0 0.00 0 "M" "qi2" "KIND_CLOUD_ICE"
-    "Cloud Liquid Water"          0 0.00 0 "M" "qc2" "KIND_CLOUD_LIQUID_WATER"
-    "Rainwater Mixing Ratio"      0 0.00 0 "M" "qr2" "KIND_RAINWATER_MIXING_RATIO"
-    "Snow Mixing Ratio"           0 0.00 0 "M" "qs2" "KIND_SNOW_MIXING_RATIO"
-    "Pert. Exner Function"        0 0.00 1 "M" "p2"  "KIND_EXNER_FUNCTION"
+    "Zonal Wind"                  1 2.00 1 "M" "u2"  "QTY_U_WIND_COMPONENT"
+    "Meridional Wind"             1 2.00 1 "M" "v2"  "QTY_V_WIND_COMPONENT"
+    "Vertical Velocity"           0 0.00 1 "W" "w2"  "QTY_VERTICAL_VELOCITY"
+    "Potential Temperature"       0 0.00 1 "M" "th2" "QTY_POTENTIAL_TEMPERATURE"
+    "Specific Humidity"           0 0.00 0 "M" "qv2" "QTY_SPECIFIC_HUMIDITY"
+    "Cloud Ice"                   0 0.00 0 "M" "qi2" "QTY_CLOUD_ICE"
+    "Cloud Liquid Water"          0 0.00 0 "M" "qc2" "QTY_CLOUD_LIQUID_WATER"
+    "Rainwater Mixing Ratio"      0 0.00 0 "M" "qr2" "QTY_RAINWATER_MIXING_RATIO"
+    "Snow Mixing Ratio"           0 0.00 0 "M" "qs2" "QTY_SNOW_MIXING_RATIO"
+    "Pert. Exner Function"        0 0.00 1 "M" "p2"  "QTY_EXNER_FUNCTION"
 } {
     lappend listAvail $varName
     set varData($varName-pertType)   $defaultPertType
