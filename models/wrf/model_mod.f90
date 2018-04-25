@@ -62,7 +62,7 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_add_global_creation_time, nc_check, &
                                  nc_begin_define_mode, nc_end_define_mode
 
-use  mpi_utilities_mod,  only : my_task_id, task_count
+use  mpi_utilities_mod,  only : my_task_id, task_count, all_reduce_min_max
 
 use     random_seq_mod,  only : random_seq_type, init_random_seq, random_gaussian
 
@@ -97,14 +97,14 @@ use sort_mod,              only : sort
 
 use distributed_state_mod, only : get_state
 
-use default_model_mod,   only : adv_1step, init_conditions, init_time, nc_write_model_vars
+use default_model_mod,   only : adv_1step, nc_write_model_vars, &
+                                init_conditions => fail_init_conditions, &
+                                init_time => fail_init_time
 
 use state_structure_mod, only : add_domain, get_model_variable_indices, &
                                 state_structure_info, &
                                 get_index_start, get_index_end, &
                                 get_dart_vector_index
-
-use mpi_utilities_mod,   only : all_reduce_min_max
 
 ! FIXME:
 ! the kinds QTY_CLOUD_LIQUID_WATER should be QTY_CLOUDWATER_MIXING_RATIO, 

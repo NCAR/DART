@@ -47,16 +47,14 @@ for running a WRF/DART assimilation on this web page:
 http://www.image.ucar.edu/wrfdart/tutorial</a>
 </P>
 <P>
-The WRF model_mod code reads the state data from a filter initial condition/restart
-file, typically called <em class=file>filter_ics</em> or <em class=file>filter_restart</em>.
-It also requires a NetCDF file named <em class=file>wrfinput_d01</em> in the
-current directory (and <em class=file>d02</em>, etc. for multiple domain cases).
-This file must be at the same resolution and have the same surface elevation
+The <em class=program>model_mod</em> reads WRF netCDF files directly to acquire
+the model state data. The <em class=program>wrf_to_dart</em> and <em class=program>dart_to_wrf</em> programs are no longer necessary. 
+<br />
+<br />
+A netCDF file named <em class=file>wrfinput_d01</em> is required 
+and must be at the same resolution and have the same surface elevation
 data as the files converted to create the DART initial conditions.  No data
 will be read from this file, but the grid information must match exactly.
-See the <a href="WRF_DART_utilities/dart_to_wrf.html">wrf_to_dart</a>
-documentation for more information on how to generate DART IC/restart files
-given WRF NetCDF files.
 </P>
 <P>
 The model interface code supports WRF configurations with multiple domains.  
@@ -93,7 +91,7 @@ in the <em class=file>models/wrf</em> directory for a list of
 fields that are often included in the DART state.
 </P>
 <P>
-The 16 public interfaces
+The 18 public interfaces
 are standardized for all DART compliant models. These interfaces allow
 DART to advance the model, get the model state and metadata describing 
 this state, find state variables that are close to a given location, 
@@ -118,25 +116,25 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;model_nml
-   default_state_variables     = .true.,
-   wrf_state_variables         = 'NULL',
-   wrf_state_bounds            = 'NULL',
-   num_domains                 = 1,
-   output_state_vector         = .false.,
-   calendar_type               = 3,
-   assimilation_period_seconds = 21600,
-   allow_obs_below_vol         = .false.,
-   vert_localization_coord     = 3,
-   center_search_half_length   = 500000.,
-   center_spline_grid_scale    = 10,
-   circulation_pres_level      = 80000.0,
-   circulation_radius          = 108000.0,
-   sfc_elev_max_diff           = -1.0,
-   polar                       = .false.,
-   periodic_x                  = .false.,
-   periodic_y                  = .false.,
+   default_state_variables     = .true.
+   wrf_state_variables         = 'NULL'
+   wrf_state_bounds            = 'NULL'
+   num_domains                 = 1
+   calendar_type               = 3
+   assimilation_period_seconds = 21600
+   allow_obs_below_vol         = .false.
+   vert_localization_coord     = 3
+   center_search_half_length   = 500000.
+   center_spline_grid_scale    = 10
+   circulation_pres_level      = 80000.0
+   circulation_radius          = 108000.0
+   sfc_elev_max_diff           = -1.0
+   polar                       = .false.
+   periodic_x                  = .false.
+   periodic_y                  = .false.
    scm                         = .false.  
-/
+   allow_perturbed_ics         = .false.   <strong># testing purposes only</strong>
+ /
 
 # Notes for model_nml:
 # (1) vert_localization_coord must be one of:
@@ -212,18 +210,19 @@ prematurely terminating the namelist.
 
 <TR><TD> default_state_variables </TD>
     <TD> logical </TD>
-    <TD>If .true., the dart state vector contains the fields U, V, W, PH, T, MU,
-in that order, and only those.  Any values listed in the wrf_state_variables
-namelist item will be ignored.
+    <TD>If <em class=code>.true.</em>, the dart state vector contains the fields 
+        U, V, W, PH, T, MU, in that order, and only those.
+        Any values listed in the <em class=code>wrf_state_variables</em>
+        namelist item will be ignored.
 </TD></TR>
 
 <TR><TD> wrf_state_variables </TD>
     <TD>character(:, 5) </TD>
-    <TD>A 2D array of strings, 5 per wrf array
-to be added to the dart state vector.  If default_state_variables
-is .true., this is ignored.  When .false., this list of array
-names controls which arrays and the order that they are added
-to the state vector.  The 5 strings are:  
+    <TD>A 2D array of strings, 5 per wrf array to be added to the dart state vector.
+        If <em class=code>default_state_variables</em> is <em class=code>.true.</em>,
+        this is ignored.  When <em class=code>.false.</em>, this list of array names 
+        controls which arrays and the order that they are added to the state vector.
+        The 5 strings are:  
 <OL><LI>WRF field name - must match netcdf name exactly</LI>
     <LI>DART KIND name - must match a valid DART QTY_xxx exactly</LI>
     <LI>TYPE_NN - will hopefully be obsolete, but for now NN 
@@ -253,13 +252,6 @@ values enforced.  The 4 strings are:
 </OL>
 </TD></TR>
 
-<TR><TD> output_state_vector </TD>
-    <TD> logical </TD>
-    <TD>Controls the output to netCDF files. If .true., output the raw dart state
-vector. If .false., output the prognostic flavor (gridded data) for easier
-plotting (recommended).
-</TD></TR>
-
 <TR><TD> num_domains </TD>
     <TD> integer </TD>
     <TD>Total number of WRF domains, including nested domains.
@@ -279,10 +271,11 @@ multiple of the underlying model timestep.
     
 <TR><TD> periodic_x </TD>
     <TD> logical </TD>
-    <TD>If .true., the grid is periodic in longitude, and points above the last
-grid cell and points below the first grid cell are wrapped.  Note this is not
-the same as a grid which crosses the prime meridian.  WRF handles that with an
-offset in longitude and points beyond the last grid index are outside the domain.
+    <TD>If <em class=code>.true.</em>, the grid is periodic in longitude, and 
+        points above the last grid cell and points below the first grid cell are 
+        wrapped.  Note this is not the same as a grid which crosses the prime 
+        meridian.  WRF handles that with an offset in longitude and points beyond 
+        the last grid index are outside the domain.
 </TD></TR>
 
 <TR><TD> periodic_y </TD>
@@ -293,21 +286,23 @@ below).  This is NOT the same as wrapping in latitude (see polar below).
 
 <TR><TD> polar </TD>
     <TD> logical </TD>
-<TD>If .true., points at the poles are wrapped across the grid. It is not
-clear this is a good idea since the grid is degnerate here.
+    <TD>If <em class=code>.true.</em>, points at the poles are wrapped across 
+        the grid. It is not clear this is a good idea since the grid is degnerate here.
 </TD></TR>
 
 <TR><TD> scm </TD>
     <TD> logical </TD>
-    <TD>If .true. the Single Column Model is assumed.  The grid is a single
-vertical column, and there are 9 cells arranged in a 3x3 grid.  See the WRF
-documentation for more information on this configuration.  periodic_x and
-periodic_y should also be .true. in this case.
+    <TD>If <em class=code>.true.</em> the Single Column Model is assumed.  
+        The grid is a single vertical column, and there are 9 cells arranged 
+        in a 3x3 grid.  See the WRF documentation for more information on this 
+        configuration.  <em class=code>periodic_x</em> and
+        <em class=code>periodic_y</em> should also be <em class=code>.true.</em> 
+        in this case.
 </TD></TR>
 
 <TR><TD> sfc_elev_max_diff </TD>
     <TD> real(r8) </TD>
-    <TD>If > 0, the maximum difference, in meters, between an observation marked
+    <TD>If &gt; 0, the maximum difference, in meters, between an observation marked
 as a 'surface obs' as the vertical type (with the surface elevation, in
 meters, as the numerical vertical location), and the surface elevation as
 defined by the model.  Observations further away from the surface than this
@@ -317,12 +312,13 @@ test is skipped.
 
 <TR><TD> allow_obs_below_vol </TD>
     <TD> logical </TD>
-    <TD>If .false. then if an observation with a vertical coordinate 
-of pressure or height (i.e. not a surface observation) is below the lowest 3d
-sigma level, it is outside the field volume and the interpolation routine rejects
-it.  If this is set to .true. and the observation is above the surface
-elevation but below the lowest field volume level, the code will extrapolate
-downward from data values at levels 1 and 2.
+    <TD>If <em class=code>.false.</em> then if an observation with a vertical 
+        coordinate of pressure or height (i.e. not a surface observation) is 
+        below the lowest 3d sigma level, it is outside the field volume and the 
+        interpolation routine rejects it.  If this is set to 
+        <em class=code>.true.</em> and the observation is above the surface
+        elevation but below the lowest field volume level, the code will 
+        extrapolate downward from data values at levels 1 and 2.
 </TD></TR>
 
 <TR><TD> center_search_half_length </TD>
@@ -371,7 +367,15 @@ circulation calculation is done when searching for the vortex center.
            <LI>4 = scale height (unitless)</LI>
        </UL>
 </TD></TR>
-    
+
+<TR><TD> allow_perturbed_ics </TD>
+    <TD> logical </TD>
+    <TD> <em class=code>allow_perturbed_ics</em> should not be used in most cases. 
+        It is provided only as a means to create a tiny ensemble for non-advancing tests.
+        Creating an initial ensemble is covered in the 
+        <a href="http://www.image.ucar.edu/wrfdart/tutorial">WRF-DART tutorial</a>.
+</TD></TR>
+
 </TBODY> 
 </TABLE>
 </div>
@@ -397,31 +401,29 @@ Remove them from your namelist to avoid errors.
 
 <TBODY valign=top>
 
-<TR><TD> surf_obs </TD>
+<TR><TD><em class=removed>surf_obs</em></TD>
     <TD> logical </TD>
     <TD>OBSOLETE -- now an error to specify this.
 </TD></TR>
 
-<TR><TD> soil_data </TD>
+<TR><TD><em class=removed>soil_data</em> </TD>
     <TD> logical </TD>
     <TD>OBSOLETE -- now an error to specify this.
 </TD></TR>
 
-<TR><TD> h_diab </TD>
+<TR><TD><em class=removed>h_diab</em> </TD>
     <TD> logical </TD>
     <TD>OBSOLETE -- now an error to specify this.
 </TD></TR>
 
-<TR><TD> num_moist_vars </TD>
+<TR><TD><em class=removed>num_moist_vars</em> </TD>
     <TD> integer </TD>
     <TD>OBSOLETE -- now an error to specify this.
 </TD></TR>
 
-<TR><TD> adv_mod_command </TD>
+<TR><TD><em class=removed>adv_mod_command</em> </TD>
     <TD> character(len=32) </TD>
-    <TD>OBSOLETE -- This variable was moved to the 
-<a href="WRF_DART_utilities/dart_to_wrf.html#Namelist">&amp;dart_to_wrf_nml</a>
-namelist. Now an error to specify this here.
+    <TD>OBSOLETE -- now an error to specify this.
 </TD></TR>
 
 </TBODY> 
@@ -431,6 +433,7 @@ namelist. Now an error to specify this here.
 <br />
 <br />
 
+<P><!-- stupid top --></P>
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
@@ -441,8 +444,17 @@ types_mod
 time_manager_mod
 threed_sphere/location_mod
 utilities_mod
+netcdf_utilities_mod
+mpi_utilities_mod
+random_seq_mod
 obs_kind_mod
+ensemble_manager_mod
+sort_mod
+distributed_state_mod
+default_model_mod
+state_structure_mod
 map_utils
+misc_definitions_module
 netcdf
 typesizes
 </PRE>
@@ -458,40 +470,65 @@ typesizes
 <hr />
 <H2>PUBLIC INTERFACES</H2>
 
+<P>These interfaces are <strong>required</strong> DART interfaces and are
+used by many core routines. The argument lists to these routines should
+not be modified.
+</p>
+
 <TABLE>
 <TR><TD><em class=call>use model_mod, only : </em></TD>
                    <TD><A HREF="#get_model_size">get_model_size</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#static_init_model">static_init_model</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_state_meta_data">get_state_meta_data</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#model_interpolate">model_interpolate</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_model_time_step">get_model_time_step</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#static_init_model">static_init_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#shortest_time_between_assimilations">shortest_time_between_assimilations</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_atts">nc_write_model_atts</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_vars">nc_write_model_vars</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#pert_model_state">pert_model_state</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#pert_model_copies">pert_model_copies</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#adv_1step">adv_1step</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_state">get_close_state</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#convert_vertical_obs">convert_vertical_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#convert_vertical_state">convert_vertical_state</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#read_model_time">read_model_time</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#write_model_time">write_model_time</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#end_model">end_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#adv_1step">adv_1step</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#init_time">init_time</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#init_conditions">init_conditions</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_vars">nc_write_model_vars</A></TD></TR>
 </TABLE>
 
 <P>
-The last 4 interfaces are only required for low-order models where advancing
-the model can be done by a call to a subroutine. The WRF model only advances by
-executing the program wrf.exe. Thus the last 4 interfaces only appear as stubs
-in the wrf module.
-<br><br>
-The interface pert_model_state is presently not provided for WRF. The initial
-ensemble has to be generated off-line. If coherent structures are not required,
-the filter can generate an ensemble with uncorrelated random Gaussian noise of
-0.002. This is of course not appropriate for a model like WRF which has
-variables expressed in a wide range of scales. It is thus recommended to
-generate the initial ensemble off-line, perhaps with the tools provided in
-models/wrf/PERTURB/3DVAR-COVAR.
+The rest of these public interfaces are unique to the WRF model_mod and are not
+documented ... yet.
 </P>
+
+<TABLE>
+<TR><TD><em class=call>use model_mod, only : </em></TD>
+                   <TD><A HREF="#get_number_domains">get_number_domains</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_wrf_static_data">get_wrf_static_data</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#model_pressure_distrib">model_pressure_distrib</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#model_height_distrib">model_height_distrib</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#pres_to_zk">pres_to_zk</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#height_to_zk">height_to_zk</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_domain_info">get_domain_info</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_wrf_state_variables">get_wrf_state_variables</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#fill_default_state_table">fill_default_state_table</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#read_wrf_dimensions">read_wrf_dimensions</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_number_of_wrf_variables">get_number_of_wrf_variables</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_variable_bounds">get_variable_bounds</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_variable_bound_defaults">set_variable_bound_defaults</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_variable_size_from_file">get_variable_size_from_file</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_wrf_date">get_wrf_date</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_wrf_date">set_wrf_date</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#vert_convert">vert_convert</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#height_diff_check">height_diff_check</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#max_state_variables">max_state_variables</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#num_state_table_columns">num_state_table_columns</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#num_bounds_table_columns">num_bounds_table_columns</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#wrf_dom">wrf_dom</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#wrf_static_data_for_dart">wrf_static_data_for_dart</A></TD></TR>
+</TABLE>
+
 
 <P>
    A note about documentation style.
@@ -530,13 +567,42 @@ This includes all nested domains.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
+<A NAME="static_init_model"></A>
+<br>
+<div class=routine>
+<em class=call>call static_init_model()</em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Used for runtime initialization of the model. This is the first call 
+made to the model by any DART compliant assimilation routine. It reads the
+model
+namelist parameters, set the calendar type (the GREGORIAN calendar is used with
+the WRF model), and determine the dart vector length. This subroutine requires
+that wrfinput_d01, wrfinput_d02, ... (one file for each domain) be present in
+the
+working directory to retrieve model information (grid dimensions and spacing,
+time step, pressure at the top of the model, map projection parameters, etc).
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="get_state_meta_data"></A>
 <br>
 <div class=routine>
 <em class=call>call get_state_meta_data (index_in, location 
                           <em class=optionalcode>[,&nbsp;var_type_out,&nbsp;id_out]</em> )</em>
 <pre>
-integer,             intent(in)  :: <em class=code>index_in</em>
+integer(i8),         intent(in)  :: <em class=code>index_in</em>
 type(location_type), intent(out) :: <em class=code>location</em>
 integer, optional,   intent(out) :: <em class=optionalcode>var_type_out</em>
 integer, optional,   intent(out) :: <em class=optionalcode>id_out</em>
@@ -588,14 +654,14 @@ of ways is provided. </TD></TR>
 <A NAME="model_interpolate"></A>
 <br>
 <div class=routine>
-<em class=call> call model_interpolate(x, location, obs_kind, obs_val,
-istatus)</em>
+<em class=call>call model_interpolate(state_handle, ens_size, location, obs_quantity, expected_obs, istatus)</em>
 <pre>
-real(r8), dimension(:), intent(in)  :: <em class=code>x</em>
+type(ensemble_type),    intent(in)  :: <em class=code>state_handle</em>
+integer,                intent(in)  :: <em class=code>ens_size</em>
 type(location_type),    intent(in)  :: <em class=code>location</em>
-integer,                intent(in)  :: <em class=code>obs_kind</em>
-real(r8),               intent(out) :: <em class=code>obs_val</em>
-integer,                intent(out) :: <em class=code>istatus</em>
+integer,                intent(in)  :: <em class=code>obs_quantity</em>
+real(r8),               intent(out) :: <em class=code>expected_obs(ens_size)</em>
+integer,                intent(out) :: <em class=code>istatus(ens_size)</em>
 </pre>
 </div>
 
@@ -603,32 +669,43 @@ integer,                intent(out) :: <em class=code>istatus</em>
 <!-- Description -->
 
 <P>
-Given model state, returns the value of observation type interpolated to a given 
-location by a method of the model's choosing. All observation kinds defined in
-obs_kind_mod are supported. In the case where the observational operator is not
+Given a handle containing information for a state vector, an ensemble size,
+a location, and a model state variable quantity;
+interpolates the state variable field to that location and returns an
+ensemble-sized array of values in <em class=code>expected_obs(:)</em>.
+The <em class=code>obs_quantity</em> variable
+is one of the quantity (QTY) parameters defined in the
+<a href="../../assimilation_code/modules/observations/obs_kind_mod.html">obs_kind_mod.f90</a>
+file and defines the quantity to interpolate.
+In the case where the observational operator is not
 defined at the given location (e.g. the observation is below the model surface
-or outside the domain), obs_val is returned as -888888.0 and istatus =
-1. Otherwise, istatus = 0. The interpolation is performed in the domain with
+or outside the domain), obs_val is returned as -888888.0 and a positive istatus.
+A successful interpolation results in an istatus = 0.
+The interpolation is performed in the domain with
 the highest resolution containing the observation.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>x</em></TD>
-    <TD>A model state vector.</TD></TR>
+<TR><TD valign=top><em class=code>state_handle</em></TD>
+    <TD>The handle to the state structure containing information about
+        the state vector about which information is requested.</TD></TR>
+
+<TR><TD valign=top><em class=code>ens_size</em></TD>
+    <TD>The ensemble size.</TD></TR>
 
 <TR><TD valign=top><em class=code>location&nbsp;&nbsp;&nbsp;</em></TD>
     <TD>Location to which to interpolate.</TD></TR>
 
-<TR><TD valign=top><em class=code>obs_kind</em></TD>
-    <TD>Integer indexing which type of observation is to be
-    interpolated.</TD></TR>
+<TR><TD valign=top><em class=code>obs_quantity</em></TD>
+    <TD>Quantity of state field to be interpolated.</TD></TR>
 
-<TR><TD valign=top><em class=code>obs_val</em></TD>
-    <TD> The interpolated value from the model.</TD></TR>
+<TR><TD valign=top><em class=code>expected_obs</em></TD>
+    <TD> The interpolated values from the model.</TD></TR>
 
 <TR><TD valign=top><em class=code>istatus</em></TD>
-    <TD>Integer flag indicating the result of the interpolation.</TD></TR>
+    <TD>Integer values return 0 for success.
+        Other positive values can be defined for various failures.</TD></TR>
 
 </TABLE>
 
@@ -637,12 +714,12 @@ the highest resolution containing the observation.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="get_model_time_step"></A>
+<A NAME="shortest_time_between_assimilations"></A>
 <br>
 <div class=routine>
-<em class=call>var = get_model_time_step()</em>
+<em class=call>var = shortest_time_between_assimilations()</em>
 <pre>
-type(time_type) :: <em class=code>get_model_time_step</em>
+type(time_type) :: <em class=code>shortest_time_between_assimilations</em>
 </pre>
 </div>
 
@@ -650,48 +727,21 @@ type(time_type) :: <em class=code>get_model_time_step</em>
 <!-- Description -->
 
 <P>
-Returns the model base time step as a time_type. For the model wrf, it returns
-the time step used for domain 1 (usually the largest time step among all
-domains because domain 1 is the coarser grid). The time step is read from
-the wrfinput_d01 file (used to be namelist.input). In the long run, 
-a more general extended interface may be required that specifies the models 
-range of time stepping possibilities.
+Sets the width of the assimilation window. 
+Observations outside this window will create a fatal error. 
+This is ensured to be 
+a multiple of the time step used for domain 1 (usually the largest 
+time step among all domains because domain 1 is the coarser grid).
+The time step is read from the <em class=file>wrfinput_d01</em>
+file and the nominal assimilation time is specified in the 
+<em class=code>assimilation_period_seconds</em> namelist item.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>var&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Smallest time step of model.</TD></TR>
+<TR><TD valign=top><em class=code>var</em></TD>
+    <TD>Width of assimilation window.</TD></TR>
 
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="static_init_model"></A>
-<br>
-<div class=routine>
-<em class=call>call static_init_model()</em>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Used for runtime initialization of the model. This is the first call 
-made to the model by any DART compliant assimilation routine. It reads the
-model
-namelist parameters, set the calendar type (the GREGORIAN calendar is used with
-the WRF model), and determine the dart vector length. This subroutine requires
-that wrfinput_d01, wrfinput_d02, ... (one file for each domain) be present in
-the
-working directory to retrieve model information (grid dimensions and spacing,
-time step, pressure at the top of the model, map projection parameters, etc).
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
 </TABLE>
 
 </div>
@@ -702,10 +752,10 @@ time step, pressure at the top of the model, map projection parameters, etc).
 <A NAME="nc_write_model_atts"></A>
 <br>
 <div class=routine>
-<em class=call>ierr = nc_write_model_atts(ncFileID)</em>
+<em class=call>call nc_write_model_atts(ncid, dom_id)</em>
 <pre>
-integer             :: <em class=code>nc_write_model_atts</em>
-integer, intent(in) :: <em class=code>ncFileID</em>
+integer, intent(in) :: <em class=code>ncid</em>
+integer, intent(in) :: <em class=code>dom_id</em>
 </pre>
 </div>
 
@@ -713,22 +763,544 @@ integer, intent(in) :: <em class=code>ncFileID</em>
 <!-- Description -->
 
 <P>
-Function to write model specific attributes to a netCDF file. At present, DART 
-is using the NetCDF format to output diagnostic information. This is not a 
-requirement, and models could choose to provide output in other formats. 
-This function writes the metadata associated with the model to a NetCDF file 
-opened to a file identified by ncFileID.
+Routine to write model-specific attributes and metadata to the output and diagnostic files.
+This includes the model grid information.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>ncFileID&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>ncid&nbsp;&nbsp;&nbsp;</em></TD>
     <TD>Integer file descriptor to previously-opened netCDF file.</TD></TR>
 
-<TR><TD valign=top><em class=code>ierr</em></TD>
-    <TD>Returns a 0 for successful completion.</TD></TR>
+<TR><TD valign=top><em class=code>dom_id</em></TD>
+        <TD>Domain number.</TD></TR>
 
 </TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="pert_model_copies"></A>
+<br>
+<div class=routine>
+<em class=call>call pert_model_copies(ens_handle, ens_size, dummy_pert_amp, interf_provided)</em>
+<pre>
+type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
+integer,             intent(in)    :: <em class=code>ens_size</em>
+real(r8),            intent(in)    :: <em class=code>dummy_pert_amp</em>
+logical,             intent(out)   :: <em class=code>interf_provided</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given a model state, produces an ensemble of model states that are somehow different.
+This is used to generate initial ensemble conditions perturbed around some control
+trajectory state when one is preparing to spin-up ensembles.
+<br />
+<br />
+<em class=program>pert_model_copies</em> is presently not encouraged for WRF.
+The initial ensemble has to be generated off-line. If coherent structures are 
+not required, the filter can generate an ensemble with uncorrelated random 
+Gaussian noise of 0.002. This is of course not appropriate for a model like 
+WRF which has variables expressed in a wide range of scales.
+It is thus recommended to generate the initial ensemble off-line, 
+perhaps with the tools provided in <em class=file>models/wrf/PERTURB/3DVAR-COVAR</em>.
+<br />
+<br />
+This topic is also covered in the 
+<a href="http://www.image.ucar.edu/wrfdart/tutorial">WRF-DART tutorial</a>.
+<br />
+<br />
+Generally you do not want to just perturb a single state to begin an
+experiment, especially for a regional weather model, because the 
+resulting fields will have spread but they won't have organized features.
+we have had good luck with some global atmosphere models where there is
+a lot of model divergence; after a few days of running they evolve into
+plausible conditions that allow assimilation of real obs.
+<br />
+<br />
+If you really need to start with a single state and proceed, the suggestion
+is to start with small magnitude perturbations and then get a good ensemble
+of boundary conditions and run the model for a while (many days) to let it
+evolve into plausible weather patterns.  Then start assimilating real obs.
+<br />
+<br />
+Using this routine requires you to set the new namelist item 
+<em class=code>allow_perturbed_ics = .true.</em> so you have to read the 
+warnings here or in the source code.
+<br />
+<br />
+This code will add random noise field by field (T, U, V, etc), and new values
+will not exceed the original max or min values for each field.  This means
+it will not generate illegal values (e.g. negatives for percentages or
+number concentrations) but it also means that if all values in a field are
+identical (e.g. all 0.0) this routine will not change those values.  The code
+can easily be modified to set allowed min and max values here instead of
+using the incoming field min and max values; but you will have to modify
+the code to enable that functionality.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>state_ens_handle</em></TD>
+    <TD>The handle containing an ensemble of state vectors to be perturbed.</TD></TR>
+
+<TR><TD valign=top><em class=code>ens_size</em></TD>
+    <TD>The number of ensemble members to perturb.</TD></TR>
+
+<TR><TD valign=top><em class=code>pert_amp</em></TD>
+    <TD>the amplitude of the perturbations. The interpretation is based
+        on the model-specific implementation.
+    </TD></TR>
+
+<TR><TD valign=top><em class=code>interf_provided</em></TD>
+    <TD>Returns false if model_mod cannot do this, else true.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_obs"></A>
+<br>
+<div class=routine>
+<em class=call>call get_close_obs(gc, base_loc, base_type,
+  locs, loc_qtys, loc_types, num_close, close_ind
+<em class=optionalcode>[,&nbsp;dist,&nbsp;state_handle]</em>) </em>
+<pre>
+type(get_close_type),          intent(in)  :: <em class=code>gc</em>
+type(location_type),           intent(in)  :: <em class=code>base_loc</em>
+integer,                       intent(in)  :: <em class=code>base_type</em>
+type(location_type),           intent(in)  :: <em class=code>locs(:)</em>
+integer,                       intent(in)  :: <em class=code>loc_qtys(:)</em>
+integer,                       intent(in)  :: <em class=code>loc_types(:)</em>
+integer,                       intent(out) :: <em class=code>num_close</em>
+integer,                       intent(out) :: <em class=code>close_ind(:)</em>
+real(r8),            optional, intent(out) :: <em class=optionalcode>dist(:)</em>
+type(ensemble_type), optional, intent(in)  :: <em class=optionalcode>state_handle</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given a location and quantity, compute the distances to all other locations
+in the <em class=code>obs</em> list.  The return values are the number
+of items which are within maxdist of the base, the index numbers in the
+original obs list, and optionally the distances.  The <em class=code>gc</em>
+contains precomputed information to speed the computations.
+<br />
+<br />
+Calls the 3-D sphere locations module to get a list of other close observations.
+See the <A HREF="../../assimilation_code/location/threed_sphere/location_mod.html#get_close_obs">
+threed_sphere:get_close_obs()</A> for the documentation of the locations module
+version of this code.  Then,
+if vertical localization is enabled, this code converts all vertical
+locations to the selected vertical type (&amp;model_nml::vert_localization_coord).
+It then computes a real 3D distance and returns it to the calling code.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>gc</em></TD>
+    <TD>The get_close_type which stores precomputed information
+        about the locations to speed up searching</TD></TR>
+
+<TR><TD valign=top><em class=code>base_loc</em></TD>
+    <TD>Reference location.  The distances will be computed
+        between this location and every other location in the obs list</TD></TR>
+
+<TR><TD valign=top><em class=code>base_type</em></TD>
+    <TD>The DART quantity at the <em class=code>base_loc</em></TD></TR>
+
+<TR><TD valign=top><em class=code>locs(:)</em></TD>
+    <TD>Compute the distance between the <em class=code>base_loc</em> and each
+        of the locations in this list</TD></TR>
+
+<TR><TD valign=top><em class=code>loc_qtys(:)</em></TD>
+    <TD>The corresponding quantity of each item in the <em class=code>locs</em> list</TD></TR>
+
+<TR><TD valign=top><em class=code>loc_types(:)</em></TD>
+    <TD>The corresponding type of each item in the <em class=code>locs</em> list.
+        This is not available in the default implementation but may be used in
+        custom implementations.</TD></TR>
+
+<TR><TD valign=top><em class=code>num_close</em></TD>
+    <TD>The number of items from the <em class=code>locs</em> list
+        which are within maxdist of the base location</TD></TR>
+
+<TR><TD valign=top><em class=code>close_ind(:)</em></TD>
+    <TD>The list of index numbers from the <em class=code>locs</em> list
+        which are within maxdist of the base location</TD></TR>
+
+<TR><TD valign=top><em class=optionalcode>dist(:)</em></TD>
+    <TD>If present, return the distance between each entry
+        in the close_ind list and the base location.  If not
+        present, all items in the obs list which are closer
+        than maxdist will be added to the list but the overhead
+        of computing the exact distances will be skipped.</TD></TR>
+
+<TR><TD valign=top><em class=optionalcode>state_handle</em></TD>
+    <TD>If present, the handle to the state structure containing information about
+        the state vector about which information is requested.</TD></TR>
+
+</TABLE>
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_state"></A>
+<br>
+<div class=routine>
+<em class=call>call get_close_state(gc, base_loc, base_type,
+  state_loc, state_qtys, state_indx, num_close, close_ind
+<em class=optionalcode>[,&nbsp;dist,&nbsp;state_handle]</em>) </em>
+<pre>
+type(get_close_type),           intent(in)    :: <em class=code>gc</em>
+type(location_type),            intent(inout) :: <em class=code>base_loc</em>
+integer,                        intent(in)    :: <em class=code>base_type</em>
+type(location_type),            intent(inout) :: <em class=code>state_loc(:)</em>
+integer,                        intent(in)    :: <em class=code>state_qtys(:)</em>
+integer(i8),                    intent(in)    :: <em class=code>state_indx(:)</em>
+integer,                        intent(out)   :: <em class=code>num_close</em>
+integer,                        intent(out)   :: <em class=code>close_ind(:)</em>
+real(r8),             optional, intent(out)   :: <em class=code>dist(:)</em>
+type(ensemble_type),  optional, intent(in)    :: <em class=code>state_handle</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+<P>
+Given a location and quantity, compute the distances to all other locations
+in the <em class=code>state_loc</em> list.  The return values are the number
+of items which are within maxdist of the base, the index numbers in the
+original state_loc list, and optionally the distances.  The <em class=code>gc</em>
+contains precomputed information to speed the computations.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>gc</em></TD>
+    <TD>The get_close_type which stores precomputed information
+        about the locations to speed up searching</TD></TR>
+
+<TR><TD valign=top><em class=code>base_loc</em></TD>
+    <TD>Reference location.  The distances will be computed
+        between this location and every other location in the list</TD></TR>
+
+<TR><TD valign=top><em class=code>base_type</em></TD>
+    <TD>The DART quantity at the  <em class=code>base_loc</em></TD></TR>
+
+<TR><TD valign=top><em class=code>state_loc(:)</em></TD>
+    <TD>Compute the distance between the <em class=code>base_loc</em> and each
+        of the locations in this list</TD></TR>
+
+<TR><TD valign=top><em class=code>state_qtys(:)</em></TD>
+    <TD>The corresponding quantity of each item in the <em class=code>state_loc</em> list</TD></TR>
+
+<TR><TD valign=top><em class=code>state_indx(:)</em></TD>
+    <TD>The corresponding DART index of each item in the <em class=code>state_loc</em> list.
+        This is not available in the default implementation but may be used in
+        custom implementations.</TD></TR>
+
+<TR><TD valign=top><em class=code>num_close</em></TD>
+    <TD>The number of items from the <em class=code>state_loc</em> list
+        which are within maxdist of the base location</TD></TR>
+
+<TR><TD valign=top><em class=code>close_ind(:)</em></TD>
+    <TD>The list of index numbers from the <em class=code>state_loc</em> list
+        which are within maxdist of the base location</TD></TR>
+
+<TR><TD valign=top><em class=optionalcode>dist(:)</em></TD>
+    <TD>If present, return the distance between each entry
+        in the <em class=code>close_ind</em> list and the base location.  If not
+        present, all items in the <em class=code>state_loc</em> list which are closer
+        than maxdist will be added to the list but the overhead
+        of computing the exact distances will be skipped.</TD></TR>
+
+<TR><TD valign=top><em class=optionalcode>state_handle</em></TD>
+    <TD>If present, the handle to the state structure containing information about
+        the state vector about which information is requested.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="convert_vertical_obs"></A>
+<br>
+<div class=routine>
+<em class=call>call convert_vertical_obs(state_handle, num, locs, loc_qtys, loc_types, which_vert, status)</em>
+<pre>
+type(ensemble_type), intent(in)  :: <em class=code>state_handle</em>
+integer,             intent(in)  :: <em class=code>num</em>
+type(location_type), intent(in)  :: <em class=code>locs(:)</em>
+integer,             intent(in)  :: <em class=code>loc_qtys(:)</em>
+integer,             intent(in)  :: <em class=code>loc_types(:)</em>
+integer,             intent(in)  :: <em class=code>which_vert</em>
+integer,             intent(out) :: <em class=code>status(:)</em>
+</pre>
+</div>
+
+<div class=indent1><!-- Description -->
+
+<P>
+Converts the observations to the desired vertical localization coordinate system.
+To be able to interpolate the model state to the
+observation location, or to compute the true distance between the state
+and the observation, it is necessary to convert everything to a single
+coordinate system.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>state_handle</em></TD>
+    <TD>The handle to the state.</TD></TR>
+
+<TR><TD valign=top><em class=code>num</em></TD>
+    <TD>the number of observation locations</TD></TR>
+
+<TR><TD valign=top><em class=code>locs</em></TD>
+    <TD>the array of observation locations</TD></TR>
+
+<TR><TD valign=top><em class=code>loc_qtys</em></TD>
+    <TD>the array of observation quantities.</TD></TR>
+
+<TR><TD valign=top><em class=code>loc_types</em></TD>
+    <TD>the array of observation types.</TD></TR>
+
+<TR><TD valign=top><em class=code>which_vert</em></TD>
+    <TD>the desired vertical coordinate system. There is a table
+        in the <em class=file>location_mod.f90</em> that relates
+        integers to vertical coordinate systems.</TD></TR>
+
+<TR><TD valign=top><em class=code>status</em></TD>
+    <TD>Success or failure of the vertical conversion.
+        If <em class=code>istatus&nbsp;=&nbsp;0</em>, the conversion was
+        a success. Any other value is a failure.
+    </TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="convert_vertical_state"></A>
+<br>
+<div class=routine>
+<em class=call>call convert_vertical_state(state_handle, num, locs, loc_qtys, loc_types, which_vert, status)</em>
+<pre>
+type(ensemble_type), intent(in)  :: <em class=code>state_handle</em>
+integer,             intent(in)  :: <em class=code>num</em>
+type(location_type), intent(in)  :: <em class=code>locs(:)</em>
+integer,             intent(in)  :: <em class=code>loc_qtys(:)</em>
+integer,             intent(in)  :: <em class=code>loc_types(:)</em>
+integer,             intent(in)  :: <em class=code>which_vert</em>
+integer,             intent(out) :: <em class=code>status(:)</em>
+</pre>
+</div>
+
+<div class=indent1><!-- Description -->
+
+<P>
+Converts the state to the desired vertical localization coordinate system.
+To compute the true distance between the state and the observation, 
+it is necessary to convert everything to a single coordinate system.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>state_handle</em></TD>
+    <TD>The handle to the state.</TD></TR>
+
+<TR><TD valign=top><em class=code>num</em></TD>
+    <TD>the number of state locations</TD></TR>
+
+<TR><TD valign=top><em class=code>locs</em></TD>
+    <TD>the array of state locations</TD></TR>
+
+<TR><TD valign=top><em class=code>loc_qtys</em></TD>
+    <TD>the array of state quantities.</TD></TR>
+
+<TR><TD valign=top><em class=code>loc_types</em></TD>
+    <TD>the array of state types.</TD></TR>
+
+<TR><TD valign=top><em class=code>which_vert</em></TD>
+    <TD>the desired vertical coordinate system. There is a table
+        in the <em class=file>location_mod.f90</em> that relates
+        integers to vertical coordinate systems.</TD></TR>
+
+<TR><TD valign=top><em class=code>status</em></TD>
+    <TD>Success or failure of the vertical conversion.
+        If <em class=code>istatus&nbsp;=&nbsp;0</em>, the conversion was
+        a success. Any other value is a failure.
+    </TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="read_model_time"></A>
+<br>
+<div class=routine>
+<em class=call>model_time = read_model_time(filename)</em>
+<pre>
+character(len=*), intent(in) :: <em class=code>filename</em>
+type(time_type)              :: <em class=code>model_time</em>
+</pre>
+</div>
+
+<div class=indent1><!-- Description -->
+
+<P>
+Reads the <em class=code>Times</em> variable in the WRF netCDF file
+and converts it to a DART time_type object.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>filename</em></TD>
+    <TD>netCDF file name</TD></TR>
+
+<TR><TD valign=top><em class=code>model_time</em></TD>
+    <TD>The current time of the model state.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="write_model_time"></A>
+<br>
+<div class=routine>
+<em class=call>call write_model_time(ncid, dart_time)</em>
+<pre>
+integer,          intent(in) :: <em class=code>ncid</em>
+type(time_type),  intent(in) :: <em class=code>dart_time</em>
+</pre>
+</div>
+
+<div class=indent1><!-- Description -->
+
+<P>
+Writes the DART time object to a netCDF file in a manner consistent with WRF,
+i.e. into a <em class=code>Times</em> character string variable.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>ncid</em></TD>
+    <TD>handle to an open netCDF file</TD></TR>
+
+<TR><TD valign=top><em class=code>dart_time</em></TD>
+    <TD>The current time of the model state.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="end_model"></A>
+<br>
+<div class=routine>
+<em class=call>call end_model( )</em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Called when use of a model is completed to clean up storage, etc. 
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="adv_1step"></A>
+<br>
+<div class=routine>
+<em class=call>call adv_1step(x, time)</em>
+<pre>
+real(r8), dimension(:),   intent(inout) :: <em class=code> x </em>
+type(time_type),          intent(in)    :: <em class=code> time </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Not supported for the WRF model.
+Will throw a fatal error if called.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="init_time"></A>
+<br>
+<div class=routine>
+<em class=call>call init_time(time) </em>
+<pre>
+type(time_type),        intent(in)  :: <em class=code> time </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Not supported for the WRF model.
+Will throw a fatal error if called.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="init_conditions"></A>
+<br>
+<div class=routine>
+<em class=call>call init_conditions( x )</em>
+<pre>
+real(r8), dimension(:), intent(out) :: <em class=code> x </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Not supported for the WRF model.
+Will throw a fatal error if called.
+</P>
 
 </div>
 <br>
@@ -752,300 +1324,17 @@ integer,                intent(in) :: <em class=code>timeindex</em>
 <!-- Description -->
 
 <P>
-Writes a copy of the state variables to a netCDF file. Multiple copies
-of the state for a given time are supported, allowing, for instance,
-a single file to include multiple ensemble estimates of the state.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>ncFileID</em></TD>
-    <TD>file descriptor to previously-opened netCDF file.</TD></TR>
-
-<TR><TD valign=top><em class=code>statevec</em></TD>
-    <TD>A model state vector.</TD></TR>
-
-<TR><TD valign=top><em class=code>copyindex&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD> Integer index of copy to be written.</TD></TR>
-
-<TR><TD valign=top><em class=code>timeindex</em></TD>
-    <TD>The timestep counter for the given state.</TD></TR>
-
-<TR><TD valign=top><em class=code>ierr</em></TD>
-    <TD>Returns 0 for normal completion.</TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="pert_model_state"></A>
-<br>
-<div class=routine>
-<em class=call>call pert_model_state(state, pert_state, interf_provided)</em>
-<pre>
-real(r8), dimension(:), intent(in)  :: <em class=code>state</em>
-real(r8), dimension(:), intent(out) :: <em class=code>pert_state</em>
-logical,                intent(out) :: <em class=code>interf_provided</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Given a model state, produces a perturbed model state. This is used to
-generate initial ensemble conditions perturbed around some control
-trajectory state when one is preparing to spin-up ensembles. A DART
-compliant model can choose not to provide an implementation of this
-algorithm and use the default mechanism in DART by simply returning .false.
-as a returned value for the interf_provided argument. In this case, DART
-perturbs the state to generate ensemble members by adding a random sample
-from a N(0.0, 0.002) distribution independently to each state variable.
-Models should override this if some structure is required for perturbations
-or if the magnitude of perturbations in DART is too large. It is thus
-recommended to generate the initial ensemble off-line, perhaps with the
-tools provided in models/wrf/PERTURB/3DVAR-COVAR.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>state</em></TD>
-    <TD>State vector to be perturbed.</TD></TR>
-
-<TR><TD valign=top><em class=code>pert_state</em></TD>
-    <TD>Perturbed state vector is returned. </TD></TR>
-
-<TR><TD valign=top><em class=code>interf_provided&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Return false to have DART perturb state .</TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_close_maxdist_init"></A>
-<br>
-<div class=routine>
-<em class=call>call get_close_maxdist_init(gc, maxdist)</em>
-<pre>
-type(get_close_type), intent(inout) :: <em class=code>gc</em>
-real(r8),             intent(in)    :: <em class=code>maxdist</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Pass-through to the 3-D sphere locations module. See
-<A HREF="../../assimilation_code/location/threed_sphere/location_mod.html#get_close_maxdist_init">
-get_close_maxdist_init()</A> for the documentation of this subroutine.
+This routine is not used and has been deprecated since the core DART routines 
+natively write netCDF.
 </P>
 
 </div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_close_obs_init"></A>
-<br>
-<div class=routine>
-<em class=call>call get_close_obs_init(gc, num, obs)</em>
-<pre>
-type(get_close_type), intent(inout) :: <em class=code>gc</em>
-integer,              intent(in)    :: <em class=code>num</em>
-type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Pass-through to the 3-D sphere locations module. See
-<A HREF="../../assimilation_code/location/threed_sphere/location_mod.html#get_close_obs_init">
-get_close_obs_init()</A> for the documentation of this subroutine.
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_close_obs"></A>
-<br>
-<div class=routine>
-<em class=call>call get_close_obs(gc, base_obs_loc, base_obs_kind,
-  obs, obs_kind, num_close, close_ind
-  <em class=optionalcode>[,&nbsp;dist]</em>) </em>
-<pre>
-type(get_close_type), intent(in)  :: <em class=code>gc</em>
-type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
-integer,              intent(in)  :: <em class=code>base_obs_kind</em>
-type(location_type),  intent(in)  :: <em class=code>obs(:)</em>
-integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
-integer,              intent(out) :: <em class=code>num_close</em>
-integer,              intent(out) :: <em class=code>close_ind(:)</em>
-real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Calls the 3-D sphere locations module to get a list of potentially
-close state vector points, and again for unassimilated observations.
-See <A HREF="../../assimilation_code/location/threed_sphere/location_mod.html#get_close_obs">
-get_close_obs()</A> for the documentation of the locations module
-version of this code.  Then,
-if vertical localization is enabled, this code converts all vertical
-locations to the selected vertical type (&amp;model_nml::vert_localization_coord).
-It then computes a real 3D distance and returns it to the calling code.
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="ens_mean_for_model"></A>
-<br>
-<div class=routine>
-<em class=call>call ens_mean_for_model(ens_mean)</em>
-<pre>
-real(r8), dimension(:), intent(in) :: <em class=code>ens_mean</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-A local copy is kept and used during other computations in the 
-model_mod code.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>ens_mean&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Ensemble mean state vector</TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="adv_1step"></A>
-<br>
-<div class=routine>
-<em class=call>call adv_1step(x, time)</em>
-<pre>
-real(r8), dimension(:),   intent(inout) :: <em class=code> x </em>
-type(time_type),          intent(in)    :: <em class=code> time </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-This operation is not defined for the WRF model. 
-If called it will throw a fatal error.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>x</em></TD>
-    <TD>State vector of length model_size.</TD></TR>
-
-<TR><TD valign=top><em class=code>time</em></TD>
-    <TD>Gives time of the initial model state.
-    </TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="end_model"></A>
-<br>
-<div class=routine>
-<em class=call>call end_model( )</em>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Called when use of a model is completed to clean up storage, etc. 
-A stub is provided for the WRF model.
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="init_time"></A>
-<br>
-<div class=routine>
-<em class=call>call init_time(i_time) </em>
-<pre>
-type(time_type),        intent(in)  :: <em class=code> i_time </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Not supported for the WRF model.
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="init_conditions"></A>
-<br>
-<div class=routine>
-<em class=call>call init_conditions( x )</em>
-<pre>
-real(r8), dimension(:), intent(out) :: <em class=code> x </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Not supported for the WRF model.  Will throw a fatal error if called.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>x</em></TD>
-    <TD>Model state vector.</TD></TR>
-
-</TABLE>
-
-</div>
-<br>
+<br />
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
+<P><!-- useless space to get 'top' to align --></P>
 
 <A NAME="FilesUsed"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
@@ -1058,6 +1347,7 @@ Not supported for the WRF model.  Will throw a fatal error if called.
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
 <!--==================================================================-->
+<P><!-- useless space to get 'top' to align --></P>
 
 <A NAME="References"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
@@ -1068,6 +1358,7 @@ http://www2.mmm.ucar.edu/wrf/users/docs/user_guide_V3/contents.html</a>
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
 <!--==================================================================-->
+<P><!-- useless space to get 'top' to align --></P>
 
 <A NAME="Errors"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
@@ -1075,8 +1366,7 @@ http://www2.mmm.ucar.edu/wrf/users/docs/user_guide_V3/contents.html</a>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
-<TR><!-- routine --><TD VALIGN=top>static_init_model <BR>
-                                   nc_write_model_vars</TD>
+<TR><!-- routine --><TD VALIGN=top>static_init_model</TD>
     <!-- message --><TD VALIGN=top>num_moist_vars is too large</TD>
     <!-- comment --><TD VALIGN=top>The maximum number of moist variable in
     WRFV2.1 is 7</TD>
@@ -1093,8 +1383,7 @@ http://www2.mmm.ucar.edu/wrf/users/docs/user_guide_V3/contents.html</a>
     PROJ_MERC(3)</TD>
 </TR>
 <TR><!-- routine --><TD VALIGN=top>static_init_model <BR>
-                                   nc_write_model_atts <BR>
-                                   nc_write_model_vars <BR></TD>
+                                   nc_write_model_atts<BR></TD>
     <!-- message --><TD VALIGN=top>Various NetCDF-f90 interface error
     messages</TD>
     <!-- comment --><TD VALIGN=top>From one of the NetCDF calls in the named
@@ -1158,6 +1447,7 @@ Only the Lambert projection (MAP_PROJ = 1) is working. Other map projections
 <!--==================================================================-->
 <!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
+<P><!-- useless space to get 'top' to align --></P>
 
 <A NAME="FuturePlans"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
@@ -1165,316 +1455,6 @@ Only the Lambert projection (MAP_PROJ = 1) is working. Other map projections
 <P>
 none at this time
 </P>
-
-<!--==================================================================-->
-<!-- PrivateComponents                                                -->
-<!--==================================================================-->
-
-<A NAME="PrivateComponents"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>PRIVATE COMPONENTS</H2>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br>
-<div class=routine>
-<em class=call> ind = get_wrf_index(i,j,k,var_type,id)</em>
-<pre>
-integer                               :: <em class=code>get_wrf_index </em>
-integer,                  intent(in)  :: <em class=code>i,j,k,var_type,id
-</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Given grid indices, variable type, and domain identification number, returns
-the index in the model state vector as an integer.
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br>
-<div class=routine>
-<em class=call> dist = get_dist_wrf( i, j, k, var_type, o_loc, id, x )</em>
-<pre>
-real(r8)                              :: <em class=code>get_dist_wrf </em>
-integer,                  intent(in)  :: <em class=code>i,j,k,var_type,id
-</em>
-type(location_type),      intent(in)  :: <em class=code>o_loc </em>
-real(r8), dimension(:),   intent(in)  :: <em class=code>x </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Given grid indices, variable type, and domain identification number, computes
-the distance to the observation at location o_loc.
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br>
-<div class=routine>
-<em class=call> call get_wrf_horizontal_location( i, j, var_type, id, long, lat
-)</em>
-<pre>
-integer,                  intent(in)  :: <em class=code>i,j,var_type,id </em>
-real(r8),                 intent(out) :: <em class=code>long, lat </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Given horizontal grid indices, variable type, and domain identification number,
-returns the longitude and latitude in degrees.
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br>
-<div class=routine>
-<em class=call> call toGrid (x, j, dx, dxm)</em>
-<pre>
-real(r8),                 intent(in)  :: <em class=code>x </em>
-real(r8),                 intent(out) :: <em class=code>dx, dxm </em>
-integer ,                 intent(out) :: <em class=code>j </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Given position x, find nearest grid point j (but smaller than or equal to x)
-and calculate its distance to grid j and j+1.
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br>
-<div class=routine>
-<em class=call> call pres_to_zk(pres, mdl_v, n3, zk)</em>
-<pre>
-real(r8),                  intent(in)  :: <em class=code>pres </em>
-integer                    intent(in)  :: <em class=code>n3 </em>
-real(r8), dimension(0:n3), intent(in)  :: <em class=code>mdl_v </em>
-real(r8),                  intent(out) :: <em class=code>zk </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Calculate the position zk on half (mass) levels in the profile mdl_v
-corresponding to pressure location pres.
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br>
-<div class=routine>
-<em class=call> call height_to_zk(obs_v, mdl_v, n3, zk)</em>
-<pre>
-real(r8),                  intent(in)  :: <em class=code>obs_v </em>
-integer                    intent(in)  :: <em class=code>n3 </em>
-real(r8), dimension(0:n3), intent(in)  :: <em class=code>mdl_v </em>
-real(r8),                  intent(out) :: <em class=code>zk </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Calculate the position zk on half (mass) levels in the profile mdl_v
-corresponding to height location obs_v.
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br>
-<div class=routine>
-<em class=call> call
-get_model_pressure_profile(i,j,dx,dy,dxm,dym,n,x,id,v_p)</em>
-<pre>
-integer                   intent(in)  :: <em class=code>i,j,n,id </em>
-real(r8),                 intent(in)  :: <em class=code>dx,dy,dxm,dym </em>
-real(r8), dimension(:),   intent(in)  :: <em class=code>x </em>
-real(r8), dimension(0:n), intent(out) :: <em class=code>v_p </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Extract the pressure profile at position (i+dx, j+dy) on the
-non-staggered vertical grid (half (mass) levels).
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br>
-<div class=routine>
-<em class=call> vloc = model_pressure(i,j,k,id,var_type,x)</em>
-<pre>
-real(r8),                             :: <em class=code>model_pressure </em>
-integer                   intent(in)  :: <em class=code>i,j,k,id,var_type
-</em>
-real(r8), dimension(:),   intent(in)  :: <em class=code>x </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Calculate the pressure at grid point (i,j,k), domain id. The grid is defined
-according to var_type.
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br>
-<div class=routine>
-<em class=call> pres = model_pressure_t(i,j,k,id,x)</em>
-<pre>
-real(r8)                              :: <em class=code>model_pressure_t </em>
-integer                   intent(in)  :: <em class=code>i,j,k,id </em>
-real(r8), dimension(:),   intent(in)  :: <em class=code>x </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Calculate the pressure at grid point (i,j,k), domain id, on mass point (half
-(mass) levels, T-point).
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br>
-<div class=routine>
-<em class=call> rho = model_rho_t(i,j,k,id,x)</em>
-<pre>
-real(r8)                              :: <em class=code>model_rho_t </em>
-integer                   intent(in)  :: <em class=code>i,j,k,id </em>
-real(r8), dimension(:),   intent(in)  :: <em class=code>x </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Calculate the total density at grid point (i,j,k), domain id, on mass point
-(half (mass) levels, T-point).
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br>
-<div class=routine>
-<em class=call> call
-get_model_height_profile(i,j,dx,dy,dxm,dym,n,x,id,fld)</em>
-<pre>
-integer                   intent(in)  :: <em class=code>i,j,n,id </em>
-real(r8),                 intent(in)  :: <em class=code>dx,dy,dxm,dym </em>
-real(r8), dimension(:),   intent(in)  :: <em class=code>x </em>
-real(r8), dimension(n),   intent(out) :: <em class=code>fld </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Extract the height profile at position (i+dx, j+dy) on the
-non-staggered vertical grid.
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br>
-<div class=routine>
-<em class=call> vloc = model_height(i,j,k,id,var_type,x)</em>
-<pre>
-real(r8)                              :: <em class=code>model_height</em>
-integer                   intent(in)  :: <em class=code>i,j,k,id,var_type</em>
-real(r8), dimension(:),   intent(in)  :: <em class=code>x</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Calculate the height at grid point (i,j,k), domain id. The grid is defined
-according to var_type.
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<br>
-<div class=routine>
-<em class=call> call read_dt_from_wrf_nml( )</em>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Read the wrf model time step from namelist.input for all domains.
-</P>
-
-</div>
-<br>
 
 <!--==================================================================-->
 <!-- Legalese & Metadata                                              -->
