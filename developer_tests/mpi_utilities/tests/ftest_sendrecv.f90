@@ -1,10 +1,10 @@
-! DART software - Copyright UCAR. This open source software is provided
-! by UCAR, "as is", without charge, subject to all terms of use at
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
 ! $Id$
 
-program ftest_mpi
+program ftest_sendrecv
 
 ! simple MPI fortran program.  use to test running interactively
 ! with MPI parallel communication libraries.  warning -- this program
@@ -27,6 +27,10 @@ program ftest_mpi
 ! file which defines constants.  Try to use the module if it is available.
 
 use mpi
+use types_mod
+use utilities_mod
+use time_manager_mod
+use mpi_utilities_mod
 
 implicit none
 
@@ -54,55 +58,40 @@ implicit none
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+integer, parameter :: BSIZE = 101
+
+real(r8) :: buf(BSIZE)
+integer :: i
 
 ! integer variables
 integer :: ierror, myrank, totalprocs, rc
 
-   print *, "program start"
+   call initialize_mpi_utilities('ftest_sendrecv')
 
-   ierror = -999
-   call MPI_Init(ierror)
-   if (ierror /= MPI_SUCCESS) then
-      print *, "MPI_Init() did not succeed, error code = ", ierror
-      print *, "If error code is -999, the most likely problem is that"
-      print *, "the right MPI libraries were not found at compile time."
-      stop
-   endif
-
-   print *, "MPI initialized successfully"
-
-   myrank = -1
-   call MPI_Comm_rank(MPI_COMM_WORLD, myrank, ierror)
-   if (ierror /= MPI_SUCCESS) then
-      print *, "MPI_Comm_rank() did not succeed, error code = ", ierror
-      stop
-   endif
+   myrank = my_task_id()
    print *, "My MPI rank is: ", myrank
 
-   totalprocs = -1
-   call MPI_Comm_size(MPI_COMM_WORLD, totalprocs, ierror)
-   if (ierror /= MPI_SUCCESS) then
-      print *, "MPI_Comm_size() did not succeed, error code = ", ierror
-      stop
-   endif
-   print *, "Total MPI tasks: ", totalprocs
+   totalprocs = task_count()
+   if (myrank == 0) print *, "Total MPI tasks: ", totalprocs
 
-   ! This is not really an MPI test, but we do use the system() function to
-   ! start model advances in async=2 and async=4 modes, and to get this
-   ! program to compile may involve editing the mpi_utilities module in dart.
-   rc = system("echo hello world " // char(0))
+   do i = 1, BSIZE-1, 1
+      if (myrank == 0) print *, "Exchanging ", i, " items between tasks 0 and 1"
+      if (myrank == 0) then
+         buf(:) = 1
+         call send_to(1, buf(1:i))
+      else if (myrank == 1) then
+         buf(:) = 0
+         call receive_from(0, buf(1:i))
+         if (any(buf(1:i) == 0)) then
+            print *, 'NOT EVERYTHING WAS SENT'
+            stop
+         endif
+      endif
+   enddo
 
-   ierror = -999
-   call MPI_Finalize(ierror)
-   if (ierror /= MPI_SUCCESS) then
-      print *, "MPI_Finalize() did not succeed, error code = ", ierror
-      stop
-   endif
+   call finalize_mpi_utilities()
 
-   print *, "All MPI calls succeeded, test passed."
-   print *, "program end"
-
-end program ftest_mpi
+end program ftest_sendrecv
 
 ! <next few lines under version control, do not edit>
 ! $URL$
