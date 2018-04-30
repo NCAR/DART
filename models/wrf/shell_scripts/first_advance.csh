@@ -1,4 +1,10 @@
 #!/bin/csh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
 
 set datea     = ${1}
 set emember   = ${2}
@@ -75,3 +81,10 @@ mv $RUN_DIR/prior_d01.${icnum} ${OUTPUT_DIR}/${datea}/PRIORS/prior_d01.${icnum}
 set end_time   = `date  +%s`
 @ length_time  = $end_time - $start_time
 echo "duration = $length_time"
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

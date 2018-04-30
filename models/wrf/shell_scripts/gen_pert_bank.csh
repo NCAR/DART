@@ -1,6 +1,12 @@
 #!/bin/csh
-###########################################################################
 #
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+
 # utility to save a set of perturbations generated from WRFDA CV3 option
 #
 # provide the following:
@@ -9,8 +15,6 @@
 # 	ensemble size
 # 	list of perturbed variables
 # 	wrfda executable and be.dat
-#
-###########################################################################
 
   set datea = 2017042700  # need to start from a known valid date matching the wrfinput_d01 date
 
@@ -97,6 +101,7 @@ set hh     = `echo $datea | cut -b9-10`
 EOF
    sed -f script.sed ${template_dir}/namelist.input.3dvar >! ${work_dir}/mem_${n}/namelist.input
 # make a run file for wrfvar
+
    cat >> ${work_dir}/mem_${n}/gen_pert_${n}.csh << EOF
 #!/bin/csh
 #=================================================================
@@ -121,10 +126,15 @@ EOF
    ncdiff pert_data.nc orig_data.nc pert_bank_mem_${n}.nc
    mv pert_bank_mem_${n}.nc ${save_dir}/pert_bank_mem_${n}.nc
 EOF
-#
+
     qsub ${work_dir}/mem_${n}/gen_pert_${n}.csh
     @ n++
   end
 
 # currently the script exits, but it could sleep and do cleanup once all the forecasts are complete.
 exit(0)
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

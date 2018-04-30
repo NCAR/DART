@@ -1,15 +1,18 @@
-#!/bin/csh -v
-########################################################################
+#!/bin/csh
 #
-#   diagnostics_obs.csh - shell script that computes observation
-#                         specific diagnostics.
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-#    $1 - analysis date
-#    $2 - parameter file
+# DART $Id$
+
+# diagnostics_obs.csh - shell script that computes observation
+#                       specific diagnostics.
+#
+# $1 - analysis date
+# $2 - parameter file
 #
 #     created Aug. 2009 Ryan Torn, U. Albany
-#
-########################################################################
 
   set datea     = ${1}
   set paramfile = ${2}
@@ -92,6 +95,8 @@
   /last_bin_end/c\
   last_bin_end       = ${lbe_yyyy1}, ${lbe_mm1}, ${lbe_dd1}, ${lbe_hh1}, 0, 0,
 EOF
+
+
   sed -f script.sed ${TEMPLATE_DIR}/input.nml.template >! input.nml
 
   ${DART_DIR}/models/wrf/work/obs_diag
@@ -110,10 +115,19 @@ EOF
   cd ${OUTPUT_DIR}/${datea}
   ${COPY} ${SHELL_SCRIPTS_DIR}/mean_increment.ncl .
   set cmd1 = "ncl ${OUTPUT_DIR}/${datea}/mean_increment.ncl"
+
   cat >! nclrun.out << EOF
   $cmd1 
 EOF
+
   chmod +x nclrun.out
   ./nclrun.out
 
   touch ${OUTPUT_DIR}/${datea}/obs_diags_done
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

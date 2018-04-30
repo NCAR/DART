@@ -1,14 +1,18 @@
-#! /bin/csh 
-########################################################################
+#!/bin/csh 
 #
-#   init_ensemble_var.csh - script that creates perturbed initial
-#                           conditions from the WRF-VAR system.
-#                           (perts are drawn from the perturbation bank)
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-#     created Nov. 2007, Ryan Torn NCAR/MMM
-#     modified by G. Romine 2011-2018
+# DART $Id$
+
+
+# init_ensemble_var.csh - script that creates perturbed initial
+#                         conditions from the WRF-VAR system.
+#                         (perts are drawn from the perturbation bank)
 #
-########################################################################
+# created Nov. 2007, Ryan Torn NCAR/MMM
+# modified by G. Romine 2011-2018
 
 set initial_date = ${1}
 set paramfile    = ${2} 
@@ -85,3 +89,10 @@ EOF
    @ n++
 
 end
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

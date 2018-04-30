@@ -1,6 +1,13 @@
 #!/bin/csh
-########################################################################
-  set paramfile = /glade2/scratch2/USERNAME/WORK_DIR/scripts/param.csh   # set this appropriately #%%%#
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+  # set paramfile appropriately #%%%#
+  set paramfile = /glade2/scratch2/USERNAME/WORK_DIR/scripts/param.csh
   source $paramfile
 
   if ( $#argv > 0 ) then 
@@ -47,3 +54,10 @@
   ncks -A -v ${cycle_str} ${OUTPUT_DIR}/${datep}/PRIORS/prior_d${dchar}.${ensstring} ${RUN_DIR}/advance_temp${n}/wrfinput_d${dchar}
 
   touch ${RUN_DIR}/ic_d${dchar}_${n}_ready
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
