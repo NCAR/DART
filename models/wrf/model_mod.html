@@ -91,9 +91,8 @@ in the <em class=file>models/wrf</em> directory for a list of
 fields that are often included in the DART state.
 </P>
 <P>
-The 18 public interfaces
-are standardized for all DART compliant models. These interfaces allow
-DART to advance the model, get the model state and metadata describing 
+The 18 public interfaces are standardized for all DART-compliant models.
+These interfaces allow DART to get the model state and metadata describing 
 this state, find state variables that are close to a given location, 
 and do spatial interpolation for a variety of variables required in
 observational operators.
@@ -1367,11 +1366,6 @@ http://www2.mmm.ucar.edu/wrf/users/docs/user_guide_V3/contents.html</a>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 <TR><!-- routine --><TD VALIGN=top>static_init_model</TD>
-    <!-- message --><TD VALIGN=top>num_moist_vars is too large</TD>
-    <!-- comment --><TD VALIGN=top>The maximum number of moist variable in
-    WRFV2.1 is 7</TD>
-</TR>
-<TR><!-- routine --><TD VALIGN=top>static_init_model</TD>
     <!-- message --><TD VALIGN=top>'Please put wrfinput_d0'//idom//' in the
     work directory.'</TD>
     <!-- comment --><TD VALIGN=top>One of the wrfinput_d0# is missing in the
@@ -1422,12 +1416,6 @@ http://www2.mmm.ucar.edu/wrf/users/docs/user_guide_V3/contents.html</a>
     <!-- comment --><TD VALIGN=top>NetCDF file writing error</TD>
 </TR>
 <TR><!-- routine --><TD VALIGN=top>read_dt_from_wrf_nml</TD>
-    <!-- message --><TD VALIGN=top>Please put namelist.input in the work
-    directory</TD>
-    <!-- comment --><TD VALIGN=top>The file namelist.input is missing in the
-    work directory</TD>
-</TR>
-<TR><!-- routine --><TD VALIGN=top>read_dt_from_wrf_nml</TD>
     <!-- message --><TD VALIGN=top>'max_dom in namelist.input =
     ',max_dom'num_domains in input.nml  = ',num_domains'Make them
     consistent.'</TD>
@@ -1440,8 +1428,7 @@ http://www2.mmm.ucar.edu/wrf/users/docs/user_guide_V3/contents.html</a>
 
 <H2>KNOWN BUGS</H2>
 <P>
-Only the Lambert projection (MAP_PROJ = 1) is working. Other map projections
-(0=none, 2=polar, 3=Mercator) are likely to break the code.
+None.
 </P>
 
 <!--==================================================================-->
@@ -1453,7 +1440,7 @@ Only the Lambert projection (MAP_PROJ = 1) is working. Other map projections
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
-none at this time
+Support for WRF hybrid coordinates.
 </P>
 
 <!--==================================================================-->
@@ -1472,7 +1459,7 @@ http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>
 
 <TABLE border=0 cellpadding=0 width=100% summary="">
-<TR><TD>Contact:       </TD><TD> Hui Liu, Glen Romine, Chris Synder, David Dowell </TD></TR>
+<TR><TD>Contact:       </TD><TD> dart@ucar.edu </TD></TR>
 <TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
 <TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
 <TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
