@@ -301,6 +301,7 @@ plotdat.NQC4index     = get_copy_index(fname, 'N_DARTqc_4');
 plotdat.NQC5index     = get_copy_index(fname, 'N_DARTqc_5');
 plotdat.NQC6index     = get_copy_index(fname, 'N_DARTqc_6');
 plotdat.NQC7index     = get_copy_index(fname, 'N_DARTqc_7');
+plotdat.NQC8index     = get_copy_index(fname, 'N_DARTqc_8');
 
 plotdat.priorvar      = sprintf('%s_guess',plotdat.varname);
 plotdat.postevar      = sprintf('%s_analy',plotdat.varname);

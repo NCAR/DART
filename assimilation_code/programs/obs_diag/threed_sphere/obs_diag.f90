@@ -13,7 +13,9 @@ program obs_diag
 ! All 'possible' obs_kinds are treated separately.
 !-----------------------------------------------------------------------
 
-! In Atmospheric Science, 'spread' has units of standard deviations ...
+! In Atmospheric Science, 'spread' has units of standard deviation ...
+! In filter:obs_space_diagnostics() the 'spread' copies are converted to
+! standard deviations.
 !
 ! I should rename some of the variables I use as variances to reflect this.
 ! 'priorspred' should really be 'priorvar' since you have to accumulate variances
@@ -148,7 +150,8 @@ logical :: out_of_range, keeper
 !         input.nml:obs_kind_nml:[assimilate,evaluate]_these_obs_types
 ! 6     prior QC rejected
 ! 7     outlier rejected
-! 8+    reserved for future use
+! 8     failed vertical conversion
+! 9+    reserved for future use
 !
 ! Some DART QC == 4 have meaningful posterior mean/spread (i.e. not MISSING)
 ! Anything with a DART QC == 5 has MISSING values for all DART copies
@@ -162,7 +165,7 @@ logical :: out_of_range, keeper
 
 integer             :: org_qc_index, dart_qc_index
 integer             :: qc_integer
-integer, parameter  :: QC_MAX = 8
+integer, parameter  :: QC_MAX = 9
 integer, parameter  :: QC_MAX_PRIOR     = 3
 integer, parameter  :: QC_MAX_POSTERIOR = 1
 integer, dimension(0:QC_MAX) :: qc_counter = 0
@@ -229,13 +232,15 @@ namelist /obs_diag_nml/ obs_sequence_name, obs_sequence_list,                 &
 ! Variables used to accumulate the statistics.
 !-----------------------------------------------------------------------
 
-integer, parameter :: Ncopies = 22
+!>@todo must be a more clever way to relate the copy_names to the components
+
+integer, parameter :: Ncopies = 23
 character(len=stringlength), dimension(Ncopies) :: copy_names =                  &
    (/ 'Nposs      ', 'Nused      ', 'NbigQC     ', 'NbadIZ     ', 'NbadUV     ', &
       'NbadLV     ', 'rmse       ', 'bias       ', 'spread     ', 'totalspread', &
-      'NbadDARTQC ', 'observation', 'ens_mean   ',                               &
-      'N_DARTqc_0 ', 'N_DARTqc_1 ', 'N_DARTqc_2 ', 'N_DARTqc_3 ',                &
-      'N_DARTqc_4 ', 'N_DARTqc_5 ', 'N_DARTqc_6 ', 'N_DARTqc_7 ', 'N_trusted  ' /)
+      'NbadDARTQC ', 'observation', 'ens_mean   ', 'N_trusted  ',                &
+      'N_DARTqc_0 ', 'N_DARTqc_1 ', 'N_DARTqc_2 ', 'N_DARTqc_3 ', 'N_DARTqc_4 ', &
+      'N_DARTqc_5 ', 'N_DARTqc_6 ', 'N_DARTqc_7 ', 'N_DARTqc_8'                 /)
 
 type TLRV_type
    ! statistics by time-level-region-variable
@@ -255,6 +260,7 @@ type TLRV_type
    real(r8), dimension(:,:,:,:), pointer :: observation, ens_mean
    integer,  dimension(:,:,:,:), pointer :: NDartQC_0, NDartQC_1, NDartQC_2, NDartQC_3
    integer,  dimension(:,:,:,:), pointer :: NDartQC_4, NDartQC_5, NDartQC_6, NDartQC_7
+   integer,  dimension(:,:,:,:), pointer :: NDartQC_8
    integer,  dimension(:,:,:,:,:), pointer :: hist_bin => NULL()
 end type TLRV_type
 
@@ -275,6 +281,7 @@ type LRV_type
    real(r8), dimension(:,:,:), pointer :: observation, ens_mean
    integer,  dimension(:,:,:), pointer :: NDartQC_0, NDartQC_1, NDartQC_2, NDartQC_3
    integer,  dimension(:,:,:), pointer :: NDartQC_4, NDartQC_5, NDartQC_6, NDartQC_7
+   integer,  dimension(:,:,:), pointer :: NDartQC_8
 end type LRV_type
 
 ! FIXME ... I have these things in global storage ... should not be passing as
@@ -774,8 +781,8 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          ! so I erred on the conservative side. TJH 24 Aug 2007
          !--------------------------------------------------------------
 
-         ! integer, parameter  :: QC_MAX_PRIOR     = 3
-         ! integer, parameter  :: QC_MAX_POSTERIOR = 1
+         ! REPEATED FOR REFERENCE integer, parameter  :: QC_MAX_PRIOR     = 3
+         ! REPEATED FOR REFERENCE integer, parameter  :: QC_MAX_POSTERIOR = 1
 
          ! debug section for strange looking observations:
          if ( 1 == 2 ) then
@@ -836,8 +843,8 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          obs(1)  = obs(1)             *scale_factor(flavor)
          pr_mean = prior_mean(1)      *scale_factor(flavor)
          po_mean = posterior_mean(1)  *scale_factor(flavor)
-         pr_sprd = prior_spread(1)    *scale_factor(flavor)
-         po_sprd = posterior_spread(1)*scale_factor(flavor)
+         pr_sprd = prior_spread(1)    *scale_factor(flavor)  ! standard deviations
+         po_sprd = posterior_spread(1)*scale_factor(flavor)  ! standard deviations
 
          !--------------------------------------------------------------
          ! (DEBUG) Summary of observation knowledge at this point
@@ -1185,6 +1192,7 @@ write(*,*) '# bad DART QC prior  : ',sum(prior%NbadDartQC)
 write(*,*) '# bad DART QC post   : ',sum(poste%NbadDartQC)
 write(*,*) '# priorQC 7 postQC 4 : ',num_ambiguous
 write(*,*)
+write(*,*) '# trusted prior   : ',sum(prior%Ntrusted)
 write(*,*) '# prior DART QC 0 : ',sum(prior%NDartQC_0)
 write(*,*) '# prior DART QC 1 : ',sum(prior%NDartQC_1)
 write(*,*) '# prior DART QC 2 : ',sum(prior%NDartQC_2)
@@ -1193,8 +1201,9 @@ write(*,*) '# prior DART QC 4 : ',sum(prior%NDartQC_4)
 write(*,*) '# prior DART QC 5 : ',sum(prior%NDartQC_5)
 write(*,*) '# prior DART QC 6 : ',sum(prior%NDartQC_6)
 write(*,*) '# prior DART QC 7 : ',sum(prior%NDartQC_7)
-write(*,*) '# trusted prior   : ',sum(prior%Ntrusted)
+write(*,*) '# prior DART QC 8 : ',sum(prior%NDartQC_8)
 write(*,*)
+write(*,*) '# trusted poste   : ',sum(poste%Ntrusted)
 write(*,*) '# poste DART QC 0 : ',sum(poste%NDartQC_0)
 write(*,*) '# poste DART QC 1 : ',sum(poste%NDartQC_1)
 write(*,*) '# poste DART QC 2 : ',sum(poste%NDartQC_2)
@@ -1203,7 +1212,7 @@ write(*,*) '# poste DART QC 4 : ',sum(poste%NDartQC_4)
 write(*,*) '# poste DART QC 5 : ',sum(poste%NDartQC_5)
 write(*,*) '# poste DART QC 6 : ',sum(poste%NDartQC_6)
 write(*,*) '# poste DART QC 7 : ',sum(poste%NDartQC_7)
-write(*,*) '# trusted poste   : ',sum(poste%Ntrusted)
+write(*,*) '# poste DART QC 8 : ',sum(poste%NDartQC_8)
 write(*,*)
 
 write(logfileunit,*)
@@ -1218,6 +1227,7 @@ write(logfileunit,*) '# bad DART QC prior  : ',sum(prior%NbadDartQC)
 write(logfileunit,*) '# bad DART QC post   : ',sum(poste%NbadDartQC)
 write(logfileunit,*) '# priorQC 7 postQC 4 : ',num_ambiguous
 write(logfileunit,*)
+write(logfileunit,*) '# trusted prior   : ',sum(prior%Ntrusted)
 write(logfileunit,*) '# prior DART QC 0 : ',sum(prior%NDartQC_0)
 write(logfileunit,*) '# prior DART QC 1 : ',sum(prior%NDartQC_1)
 write(logfileunit,*) '# prior DART QC 2 : ',sum(prior%NDartQC_2)
@@ -1226,8 +1236,9 @@ write(logfileunit,*) '# prior DART QC 4 : ',sum(prior%NDartQC_4)
 write(logfileunit,*) '# prior DART QC 5 : ',sum(prior%NDartQC_5)
 write(logfileunit,*) '# prior DART QC 6 : ',sum(prior%NDartQC_6)
 write(logfileunit,*) '# prior DART QC 7 : ',sum(prior%NDartQC_7)
-write(logfileunit,*) '# trusted prior   : ',sum(prior%Ntrusted)
+write(logfileunit,*) '# prior DART QC 8 : ',sum(prior%NDartQC_8)
 write(logfileunit,*)
+write(logfileunit,*) '# trusted poste   : ',sum(poste%Ntrusted)
 write(logfileunit,*) '# poste DART QC 0 : ',sum(poste%NDartQC_0)
 write(logfileunit,*) '# poste DART QC 1 : ',sum(poste%NDartQC_1)
 write(logfileunit,*) '# poste DART QC 2 : ',sum(poste%NDartQC_2)
@@ -1236,7 +1247,7 @@ write(logfileunit,*) '# poste DART QC 4 : ',sum(poste%NDartQC_4)
 write(logfileunit,*) '# poste DART QC 5 : ',sum(poste%NDartQC_5)
 write(logfileunit,*) '# poste DART QC 6 : ',sum(poste%NDartQC_6)
 write(logfileunit,*) '# poste DART QC 7 : ',sum(poste%NDartQC_7)
-write(logfileunit,*) '# trusted poste   : ',sum(poste%Ntrusted)
+write(logfileunit,*) '# poste DART QC 8 : ',sum(poste%NDartQC_8)
 write(logfileunit,*)
 
 if (Nidentity > 0) then
@@ -2036,6 +2047,7 @@ allocate(prior%rmse(       ntimes, nlevs, nareas, ntypes), &
          prior%NbadUV(     ntimes, nlevs, nareas, ntypes), &
          prior%NbadLV(     ntimes, nlevs, nareas, ntypes), &
          prior%NbadDartQC( ntimes, nlevs, nareas, ntypes), &
+         prior%Ntrusted(   ntimes, nlevs, nareas, ntypes), &
          prior%NDartQC_0(  ntimes, nlevs, nareas, ntypes), &
          prior%NDartQC_1(  ntimes, nlevs, nareas, ntypes), &
          prior%NDartQC_2(  ntimes, nlevs, nareas, ntypes), &
@@ -2044,7 +2056,7 @@ allocate(prior%rmse(       ntimes, nlevs, nareas, ntypes), &
          prior%NDartQC_5(  ntimes, nlevs, nareas, ntypes), &
          prior%NDartQC_6(  ntimes, nlevs, nareas, ntypes), &
          prior%NDartQC_7(  ntimes, nlevs, nareas, ntypes), &
-         prior%Ntrusted(   ntimes, nlevs, nareas, ntypes)  )
+         prior%NDartQC_8(  ntimes, nlevs, nareas, ntypes))
 
 prior%rmse        = 0.0_r8
 prior%bias        = 0.0_r8
@@ -2059,6 +2071,7 @@ prior%NbadIZ      = 0
 prior%NbadUV      = 0
 prior%NbadLV      = 0
 prior%NbadDartQC  = 0
+prior%Ntrusted    = 0
 prior%NDartQC_0   = 0
 prior%NDartQC_1   = 0
 prior%NDartQC_2   = 0
@@ -2067,7 +2080,7 @@ prior%NDartQC_4   = 0
 prior%NDartQC_5   = 0
 prior%NDartQC_6   = 0
 prior%NDartQC_7   = 0
-prior%Ntrusted    = 0
+prior%NDartQC_8   = 0
 
 prior%string        = 'guess'
 prior%num_times     = ntimes
@@ -2088,6 +2101,7 @@ allocate(poste%rmse(       ntimes, nlevs, nareas, ntypes), &
          poste%NbadUV(     ntimes, nlevs, nareas, ntypes), &
          poste%NbadLV(     ntimes, nlevs, nareas, ntypes), &
          poste%NbadDartQC( ntimes, nlevs, nareas, ntypes), &
+         poste%Ntrusted(   ntimes, nlevs, nareas, ntypes), &
          poste%NDartQC_0(  ntimes, nlevs, nareas, ntypes), &
          poste%NDartQC_1(  ntimes, nlevs, nareas, ntypes), &
          poste%NDartQC_2(  ntimes, nlevs, nareas, ntypes), &
@@ -2096,7 +2110,7 @@ allocate(poste%rmse(       ntimes, nlevs, nareas, ntypes), &
          poste%NDartQC_5(  ntimes, nlevs, nareas, ntypes), &
          poste%NDartQC_6(  ntimes, nlevs, nareas, ntypes), &
          poste%NDartQC_7(  ntimes, nlevs, nareas, ntypes), &
-         poste%Ntrusted(   ntimes, nlevs, nareas, ntypes)  )
+         poste%NDartQC_8(  ntimes, nlevs, nareas, ntypes))
 
 poste%rmse        = 0.0_r8
 poste%bias        = 0.0_r8
@@ -2111,6 +2125,7 @@ poste%NbadIZ      = 0
 poste%NbadUV      = 0
 poste%NbadLV      = 0
 poste%NbadDartQC  = 0
+poste%Ntrusted    = 0
 poste%NDartQC_0   = 0
 poste%NDartQC_1   = 0
 poste%NDartQC_2   = 0
@@ -2119,7 +2134,7 @@ poste%NDartQC_4   = 0
 poste%NDartQC_5   = 0
 poste%NDartQC_6   = 0
 poste%NDartQC_7   = 0
-poste%Ntrusted    = 0
+poste%NDartQC_8   = 0
 
 poste%string        = 'analy'
 poste%num_times     = ntimes
@@ -2140,6 +2155,7 @@ allocate(priorAVG%rmse(       nlevs, nareas, ntypes), &
          priorAVG%NbadUV(     nlevs, nareas, ntypes), &
          priorAVG%NbadLV(     nlevs, nareas, ntypes), &
          priorAVG%NbadDartQC( nlevs, nareas, ntypes), &
+         priorAVG%Ntrusted(   nlevs, nareas, ntypes), &
          priorAVG%NDartQC_0(  nlevs, nareas, ntypes), &
          priorAVG%NDartQC_1(  nlevs, nareas, ntypes), &
          priorAVG%NDartQC_2(  nlevs, nareas, ntypes), &
@@ -2148,7 +2164,7 @@ allocate(priorAVG%rmse(       nlevs, nareas, ntypes), &
          priorAVG%NDartQC_5(  nlevs, nareas, ntypes), &
          priorAVG%NDartQC_6(  nlevs, nareas, ntypes), &
          priorAVG%NDartQC_7(  nlevs, nareas, ntypes), &
-         priorAVG%Ntrusted(   nlevs, nareas, ntypes)  )
+         priorAVG%NDartQC_8(  nlevs, nareas, ntypes))
 
 priorAVG%rmse        = 0.0_r8
 priorAVG%bias        = 0.0_r8
@@ -2163,6 +2179,7 @@ priorAVG%NbadIZ      = 0
 priorAVG%NbadUV      = 0
 priorAVG%NbadLV      = 0
 priorAVG%NbadDartQC  = 0
+priorAVG%Ntrusted    = 0
 priorAVG%NDartQC_0   = 0
 priorAVG%NDartQC_1   = 0
 priorAVG%NDartQC_2   = 0
@@ -2171,7 +2188,7 @@ priorAVG%NDartQC_4   = 0
 priorAVG%NDartQC_5   = 0
 priorAVG%NDartQC_6   = 0
 priorAVG%NDartQC_7   = 0
-priorAVG%Ntrusted    = 0
+priorAVG%NDartQC_8   = 0
 
 priorAVG%string        = 'VPguess'
 priorAVG%num_levels    = nlevs
@@ -2191,6 +2208,7 @@ allocate(posteAVG%rmse(       nlevs, nareas, ntypes), &
          posteAVG%NbadUV(     nlevs, nareas, ntypes), &
          posteAVG%NbadLV(     nlevs, nareas, ntypes), &
          posteAVG%NbadDartQC( nlevs, nareas, ntypes), &
+         posteAVG%Ntrusted(   nlevs, nareas, ntypes), &
          posteAVG%NDartQC_0(  nlevs, nareas, ntypes), &
          posteAVG%NDartQC_1(  nlevs, nareas, ntypes), &
          posteAVG%NDartQC_2(  nlevs, nareas, ntypes), &
@@ -2199,7 +2217,7 @@ allocate(posteAVG%rmse(       nlevs, nareas, ntypes), &
          posteAVG%NDartQC_5(  nlevs, nareas, ntypes), &
          posteAVG%NDartQC_6(  nlevs, nareas, ntypes), &
          posteAVG%NDartQC_7(  nlevs, nareas, ntypes), &
-         posteAVG%Ntrusted(   nlevs, nareas, ntypes)  )
+         posteAVG%NDartQC_8(  nlevs, nareas, ntypes))
 
 posteAVG%rmse        = 0.0_r8
 posteAVG%bias        = 0.0_r8
@@ -2214,6 +2232,7 @@ posteAVG%NbadIZ      = 0
 posteAVG%NbadUV      = 0
 posteAVG%NbadLV      = 0
 posteAVG%NbadDartQC  = 0
+posteAVG%Ntrusted    = 0
 posteAVG%NDartQC_0   = 0
 posteAVG%NDartQC_1   = 0
 posteAVG%NDartQC_2   = 0
@@ -2222,7 +2241,7 @@ posteAVG%NDartQC_4   = 0
 posteAVG%NDartQC_5   = 0
 posteAVG%NDartQC_6   = 0
 posteAVG%NDartQC_7   = 0
-posteAVG%Ntrusted    = 0
+posteAVG%NDartQC_8   = 0
 
 posteAVG%string        = 'VPanaly'
 posteAVG%num_levels    = nlevs
@@ -2961,6 +2980,10 @@ elseif (    myqc == 7 ) then
       endif
    endif
 
+elseif (    myqc == 8 ) then
+   call IPE(prior%NDartQC_8(iepoch,ilevel,iregion,itype), 1)
+   call IPE(poste%NDartQC_8(iepoch,ilevel,iregion,itype), 1)
+
 endif
 
 end subroutine CountDartQC_4D
@@ -3028,31 +3051,30 @@ elseif (    myqc == 7 ) then
       endif
    endif
 
+elseif (    myqc == 8 ) then
+   call IPE(prior%NDartQC_8(ilevel,iregion,itype), 1)
+   call IPE(poste%NDartQC_8(ilevel,iregion,itype), 1)
+
 endif
 
 end subroutine CountDartQC_3D
 
 
-!======================================================================
-
+!----------------------------------------------------------------------
+!> This function simply accumulates the appropriate sums.
+!> The normalization occurrs after all the data has been read, naturally.
 
 subroutine Bin4D(iqc, iepoch, ilevel, iregion, flavor, trusted, &
              obsval,  obserrvar,  prmean,  prsprd,  pomean,  posprd, rank, &
                uobs, uobserrvar, uprmean, uprsprd, upomean, uposprd, uqc)
-!----------------------------------------------------------------------
+
 ! The 'prior' and 'poste' structures are globally scoped.
-! This function simply accumulates the appropriate sums.
-! The normalization occurrs after all the data has been read, naturally.
 !
 ! Wind measurements are vector quantities - so we are collapsing them to
 ! scalar speed for the bias. The optional arguments specify the U components
 ! while the mandatory arguments specify the V components.
 ! Its an 'all-or-nothing' optional argument situation.
-!----------------------------------------------------------------------
 
-! ... spread is computed via sqrt(ensemble_spread**2 + observation_error**2).
-! however, dart stores the variance, not the error, so we do not need
-! to square it here.
 ! If you are verifying the ensemble against imperfect (real) observations,
 ! it is necessary to account for the observation error when computing the
 ! spread.  Since the observation error is not included as output from
@@ -3067,12 +3089,13 @@ integer,  intent(in), optional :: uqc
 
 real(r8) :: priorsqerr      ! PRIOR     Squared Error
 real(r8) :: priorbias       ! PRIOR     simple bias
-real(r8) :: priorspred      ! PRIOR     (spread,variance)
-real(r8) :: priorspredplus  ! PRIOR     (spread,variance**)
 real(r8) :: postsqerr       ! POSTERIOR Squared Error
 real(r8) :: postbias        ! POSTERIOR simple bias
-real(r8) :: postspred       ! POSTERIOR (spread,variance)
-real(r8) :: postspredplus   ! POSTERIOR (spread,variance**)
+
+real(r8) :: prior_variance
+real(r8) :: prior_varianceplus
+real(r8) :: posterior_variance
+real(r8) :: posterior_varianceplus
 
 real(r8) :: priormean, postmean, obsmean
 integer  :: myrank, prior_qc, posterior_qc
@@ -3118,10 +3141,11 @@ if ( all(optionals) ) then
    priorbias      = priormean - obsmean
    postbias       = postmean  - obsmean
 
-   priorspred     = prsprd**2 + uprsprd**2
-   postspred      = posprd**2 + uposprd**2
-   priorspredplus = prsprd**2 + obserrvar + uprsprd**2 + uobserrvar
-   postspredplus  = posprd**2 + obserrvar + uposprd**2 + uobserrvar
+   ! convert standard deviations to variances and add
+   prior_variance          = prsprd**2 + uprsprd**2
+   posterior_variance      = posprd**2 + uposprd**2
+   prior_varianceplus      = prsprd**2 + obserrvar + uprsprd**2 + uobserrvar
+   posterior_varianceplus  = posprd**2 + obserrvar + uposprd**2 + uobserrvar
 
    ! If we are working with 'horizontal winds', we do not have enough
    ! information to recreate the appropriate rank histogram. We will
@@ -3133,17 +3157,21 @@ elseif ( any(optionals) ) then
    call error_handler(E_ERR,'Bin4D','wrong number of optional arguments', &
                       source,revision,revdate)
 else
+
    priorsqerr     = (prmean - obsval)**2
    postsqerr      = (pomean - obsval)**2
-   priorbias      =  prmean - obsval
-   postbias       =  pomean - obsval
-   priorspred     = prsprd**2
-   postspred      = posprd**2
-   priorspredplus = prsprd**2 + obserrvar
-   postspredplus  = posprd**2 + obserrvar
+
    obsmean        = obsval
    priormean      = prmean
    postmean       = pomean
+   priorbias      = prmean - obsval
+   postbias       = pomean - obsval
+
+   ! convert standard deviations to variances and add
+   prior_variance          = prsprd**2
+   posterior_variance      = posprd**2
+   prior_varianceplus      = prsprd**2 + obserrvar
+   posterior_varianceplus  = posprd**2 + obserrvar
 
    myrank = rank
 endif
@@ -3184,8 +3212,8 @@ if ((      trusted .and.  any(trusted_prior_qcs == prior_qc)) .or. &
    call RPE(prior%ens_mean(   iepoch,ilevel,iregion,flavor), priormean )
    call RPE(prior%bias(       iepoch,ilevel,iregion,flavor), priorbias )
    call RPE(prior%rmse(       iepoch,ilevel,iregion,flavor), priorsqerr)
-   call RPE(prior%spread(     iepoch,ilevel,iregion,flavor), priorspred)
-   call RPE(prior%totspread(  iepoch,ilevel,iregion,flavor), priorspredplus)
+   call RPE(prior%spread(     iepoch,ilevel,iregion,flavor), prior_variance)
+   call RPE(prior%totspread(  iepoch,ilevel,iregion,flavor), prior_varianceplus)
 else
    call IPE(prior%NbadDartQC(iepoch,ilevel,iregion,flavor),       1    )
 endif
@@ -3198,8 +3226,8 @@ if ((      trusted .and.  any(trusted_poste_qcs == posterior_qc)) .or. &
    call RPE(poste%ens_mean(   iepoch,ilevel,iregion,flavor), postmean )
    call RPE(poste%bias(       iepoch,ilevel,iregion,flavor), postbias )
    call RPE(poste%rmse(       iepoch,ilevel,iregion,flavor), postsqerr)
-   call RPE(poste%spread(     iepoch,ilevel,iregion,flavor), postspred)
-   call RPE(poste%totspread(  iepoch,ilevel,iregion,flavor), postspredplus)
+   call RPE(poste%spread(     iepoch,ilevel,iregion,flavor), posterior_variance)
+   call RPE(poste%totspread(  iepoch,ilevel,iregion,flavor), posterior_varianceplus)
 else
    call IPE(poste%NbadDartQC(iepoch,ilevel,iregion,flavor),       1    )
 endif
@@ -3207,22 +3235,21 @@ endif
 end subroutine Bin4D
 
 
-!======================================================================
-
+!----------------------------------------------------------------------
+!> This function simply accumulates the appropriate sums.
+!> The normalization occurrs after all the data has been read, naturally.
 
 subroutine Bin3D(iqc, ilevel, iregion, flavor, trusted, &
              obsval,  obserrvar,  prmean,  prsprd,  pomean,  posprd, &
                uobs, uobserrvar, uprmean, uprsprd, upomean, uposprd, uqc  )
-!----------------------------------------------------------------------
+
 ! The 'prior' and 'poste' structures are globally scoped.
-! This function simply accumulates the appropriate sums.
-! The normalization occurrs after all the data has been read, naturally.
 !
 ! Wind measurements are bivariate - so we are collapsing them to
 ! scalar speed. The optional arguments specify the U components
 ! while the mandatory arguments specify the V components.
 ! Its an 'all-or-nothing' optional argument situation.
-!----------------------------------------------------------------------
+
 integer,  intent(in)           :: iqc, ilevel, iregion, flavor
 logical,  intent(in)           :: trusted
 real(r8), intent(in)           :: obsval,  obserrvar,  prmean,  prsprd,  pomean,  posprd
@@ -3231,16 +3258,18 @@ integer,  intent(in), optional :: uqc
 
 real(r8) :: priorsqerr     ! PRIOR     Squared Error
 real(r8) :: priorbias      ! PRIOR     simple bias
-real(r8) :: priorspred     ! PRIOR     (spread,variance)
-real(r8) :: priorspredplus ! PRIOR     (spread,variance**)
 real(r8) :: postsqerr      ! POSTERIOR Squared Error
 real(r8) :: postbias       ! POSTERIOR simple bias
-real(r8) :: postspred      ! POSTERIOR (spread,variance)
-real(r8) :: postspredplus  ! POSTERIOR (spread,variance**)
-logical, dimension(7) :: optionals
+
+real(r8) :: prior_variance
+real(r8) :: prior_varianceplus
+real(r8) :: posterior_variance
+real(r8) :: posterior_varianceplus
 
 real(r8) :: priormean, postmean, obsmean
 integer  :: prior_qc, posterior_qc
+
+logical, dimension(7) :: optionals
 
 prior_qc     = iqc
 posterior_qc = iqc
@@ -3279,26 +3308,29 @@ if ( all(optionals) ) then
    priorbias      = priormean - obsmean
    postbias       = postmean  - obsmean
 
-   priorspred     = prsprd**2 + uprsprd**2
-   postspred      = posprd**2 + uposprd**2
-   priorspredplus = prsprd**2 + obserrvar + uprsprd**2 + uobserrvar
-   postspredplus  = posprd**2 + obserrvar + uposprd**2 + uobserrvar
+   prior_variance          = prsprd**2 + uprsprd**2
+   posterior_variance      = posprd**2 + uposprd**2
+   prior_varianceplus      = prsprd**2 + obserrvar + uprsprd**2 + uobserrvar
+   posterior_varianceplus  = posprd**2 + obserrvar + uposprd**2 + uobserrvar
 
 elseif ( any(optionals) ) then
    call error_handler(E_ERR,'Bin3D','wrong number of optional arguments', &
                       source,revision,revdate)
 else
+
    priorsqerr     = (prmean - obsval)**2
    postsqerr      = (pomean - obsval)**2
-   priorbias      =  prmean - obsval
-   postbias       =  pomean - obsval
-   priorspred     = prsprd**2
-   postspred      = posprd**2
-   priorspredplus = prsprd**2 + obserrvar
-   postspredplus  = posprd**2 + obserrvar
+
    obsmean        = obsval
    priormean      = prmean
    postmean       = pomean
+   priorbias      = prmean - obsval
+   postbias       = pomean - obsval
+
+   prior_variance          = prsprd**2
+   posterior_variance      = posprd**2
+   prior_varianceplus      = prsprd**2 + obserrvar
+   posterior_varianceplus  = posprd**2 + obserrvar
 endif
 
 !----------------------------------------------------------------------
@@ -3325,8 +3357,8 @@ if ((      trusted .and. any(trusted_prior_qcs == prior_qc)) .or. &
    call RPE(priorAVG%ens_mean(   ilevel,iregion,flavor), priormean )
    call RPE(priorAVG%bias(       ilevel,iregion,flavor), priorbias )
    call RPE(priorAVG%rmse(       ilevel,iregion,flavor), priorsqerr)
-   call RPE(priorAVG%spread(     ilevel,iregion,flavor), priorspred)
-   call RPE(priorAVG%totspread(  ilevel,iregion,flavor), priorspredplus)
+   call RPE(priorAVG%spread(     ilevel,iregion,flavor), prior_variance)
+   call RPE(priorAVG%totspread(  ilevel,iregion,flavor), prior_varianceplus)
 else
    call IPE(priorAVG%NbadDartQC(ilevel,iregion,flavor),      1     )
 endif
@@ -3339,8 +3371,8 @@ if ((      trusted .and. any(trusted_poste_qcs == posterior_qc)) .or. &
    call RPE(posteAVG%ens_mean(   ilevel,iregion,flavor), postmean )
    call RPE(posteAVG%bias(       ilevel,iregion,flavor), postbias )
    call RPE(posteAVG%rmse(       ilevel,iregion,flavor), postsqerr)
-   call RPE(posteAVG%spread(     ilevel,iregion,flavor), postspred)
-   call RPE(posteAVG%totspread(  ilevel,iregion,flavor), postspredplus)
+   call RPE(posteAVG%spread(     ilevel,iregion,flavor), posterior_variance)
+   call RPE(posteAVG%totspread(  ilevel,iregion,flavor), posterior_varianceplus)
 else
    call IPE(posteAVG%NbadDartQC(ilevel,iregion,flavor),      1    )
 endif
@@ -3366,6 +3398,8 @@ do iregion= 1,Nregions
 do ilev   = 1,Nlevels
 do iepoch = 1,Nepochs
 
+   ! Normalize the priors
+
    if (  prior%Nused(      iepoch, ilev, iregion, ivar) == 0) then
          prior%observation(iepoch, ilev, iregion, ivar) = MISSING_R4
          prior%ens_mean(   iepoch, ilev, iregion, ivar) = MISSING_R4
@@ -3390,15 +3424,19 @@ do iepoch = 1,Nepochs
     sqrt(prior%rmse(       iepoch, ilev, iregion, ivar) / &
          prior%Nused(      iepoch, ilev, iregion, ivar) )
 
+    ! convert the (pooled) variances back to standard deviations AKA 'spread'
          prior%spread(     iepoch, ilev, iregion, ivar) = &
     sqrt(prior%spread(     iepoch, ilev, iregion, ivar) / &
          prior%Nused(      iepoch, ilev, iregion, ivar) )
 
+    ! convert the (pooled) variances back to standard deviations AKA 'spread'
          prior%totspread(  iepoch, ilev, iregion, ivar) = &
     sqrt(prior%totspread(  iepoch, ilev, iregion, ivar) / &
          prior%Nused(      iepoch, ilev, iregion, ivar) )
 
    endif
+
+   ! Same thing for the posteriors
 
    if (  poste%Nused(      iepoch, ilev, iregion, ivar) == 0) then
          poste%observation(iepoch, ilev, iregion, ivar) = MISSING_R4
@@ -3424,10 +3462,12 @@ do iepoch = 1,Nepochs
     sqrt(poste%rmse(       iepoch, ilev, iregion, ivar) / &
          poste%Nused(      iepoch, ilev, iregion, ivar) )
 
+    ! convert the (pooled) variances back to standard deviations AKA 'spread'
          poste%spread(     iepoch, ilev, iregion, ivar) = &
     sqrt(poste%spread(     iepoch, ilev, iregion, ivar) / &
          poste%Nused(      iepoch, ilev, iregion, ivar) )
 
+    ! convert the (pooled) variances back to standard deviations AKA 'spread'
          poste%totspread(  iepoch, ilev, iregion, ivar) = &
     sqrt(poste%totspread(  iepoch, ilev, iregion, ivar) / &
          poste%Nused(      iepoch, ilev, iregion, ivar) )
@@ -3467,6 +3507,8 @@ do ivar=1,num_obs_types
 do iregion=1, Nregions
 do ilev=1, Nlevels
 
+   ! Normalize the priors
+
    if (    priorAVG%Nused(      ilev, iregion, ivar) == 0) then
            priorAVG%observation(ilev, iregion, ivar) = MISSING_R4
            priorAVG%ens_mean(   ilev, iregion, ivar) = MISSING_R4
@@ -3492,6 +3534,7 @@ do ilev=1, Nlevels
       sqrt(priorAVG%rmse(       ilev, iregion, ivar) / &
            priorAVG%Nused(      ilev, iregion, ivar) )
 
+    ! convert the (pooled) variances back to standard deviations AKA 'spread'
            priorAVG%spread(     ilev, iregion, ivar) = &
       sqrt(priorAVG%spread(     ilev, iregion, ivar) / &
            priorAVG%Nused(      ilev, iregion, ivar) )
@@ -3501,6 +3544,8 @@ do ilev=1, Nlevels
            priorAVG%Nused(      ilev, iregion, ivar) )
 
    endif
+
+   ! Same thing for the posteriors
 
    if (    posteAVG%Nused(      ilev, iregion, ivar) == 0) then
            posteAVG%observation(ilev, iregion, ivar) = MISSING_R4
@@ -3527,6 +3572,7 @@ do ilev=1, Nlevels
       sqrt(posteAVG%rmse(       ilev, iregion, ivar) / &
            posteAVG%Nused(      ilev, iregion, ivar) )
 
+    ! convert the (pooled) variances back to standard deviations AKA 'spread'
            posteAVG%spread(     ilev, iregion, ivar) = &
       sqrt(posteAVG%spread(     ilev, iregion, ivar) / &
            posteAVG%Nused(      ilev, iregion, ivar) )
@@ -4109,43 +4155,48 @@ end subroutine WriteNetCDF
 
 subroutine DestroyVariables()
 
+if (associated(prior%hist_bin)) deallocate(prior%hist_bin)
+if (allocated(ens_copy_index))  deallocate(ens_copy_index)
+
 deallocate(obs_seq_filenames)
 
 deallocate(prior%rmse,        prior%bias,      prior%spread,    prior%totspread, &
            prior%observation, prior%ens_mean,  prior%Nposs,     prior%Nused,     &
            prior%NbigQC,      prior%NbadIZ,    prior%NbadUV,    prior%NbadLV,    &
-           prior%NbadDartQC,  prior%Ntrusted,                                    &
-           prior%NDartQC_0,   prior%NDartQC_1, prior%NDartQC_2, prior%NDartQC_3, &
-           prior%NDartQC_4,   prior%NDartQC_5, prior%NDartQC_6, prior%NDartQC_7)
+           prior%NbadDartQC,  prior%Ntrusted)
 
-if (associated(prior%hist_bin)) deallocate(prior%hist_bin)
-
-if (allocated(ens_copy_index)) deallocate(ens_copy_index)
+deallocate(prior%NDartQC_0,   prior%NDartQC_1, prior%NDartQC_2, prior%NDartQC_3, &
+           prior%NDartQC_4,   prior%NDartQC_5, prior%NDartQC_6, prior%NDartQC_7, &
+           prior%NDartQC_8)
 
 deallocate(poste%rmse,        poste%bias,      poste%spread,    poste%totspread, &
            poste%observation, poste%ens_mean,  poste%Nposs,     poste%Nused,     &
            poste%NbigQC,      poste%NbadIZ,    poste%NbadUV,    poste%NbadLV,    &
-           poste%NbadDartQC,  poste%Ntrusted,                                    &
-           poste%NDartQC_0,   poste%NDartQC_1, poste%NDartQC_2, poste%NDartQC_3, &
-           poste%NDartQC_4,   poste%NDartQC_5, poste%NDartQC_6, poste%NDartQC_7)
+           poste%NbadDartQC,  poste%Ntrusted)
 
-deallocate(priorAVG%rmse,        priorAVG%bias,        priorAVG%spread,     &
-           priorAVG%totspread,   priorAVG%observation, priorAVG%ens_mean,   &
-           priorAVG%Nposs,       priorAVG%Nused,       priorAVG%NbigQC,     &
-           priorAVG%NbadIZ,      priorAVG%NbadUV,      priorAVG%NbadLV,     &
-           priorAVG%NbadDartQC,  priorAVG%NDartQC_0,   priorAVG%NDartQC_1,  &
-           priorAVG%NDartQC_2,   priorAVG%NDartQC_3,   priorAVG%NDartQC_4,  &
-           priorAVG%NDartQC_5,   priorAVG%NDartQC_6,   priorAVG%NDartQC_7,  &
-           priorAVG%Ntrusted )
+deallocate(poste%NDartQC_0,   poste%NDartQC_1, poste%NDartQC_2, poste%NDartQC_3, &
+           poste%NDartQC_4,   poste%NDartQC_5, poste%NDartQC_6, poste%NDartQC_7, &
+           poste%NDartQC_8)
 
-deallocate(posteAVG%rmse,        posteAVG%bias,        posteAVG%spread,     &
-           posteAVG%totspread,   posteAVG%observation, posteAVG%ens_mean,   &
-           posteAVG%Nposs,       posteAVG%Nused,       posteAVG%NbigQC,     &
-           posteAVG%NbadIZ,      posteAVG%NbadUV,      posteAVG%NbadLV,     &
-           posteAVG%NbadDartQC,  posteAVG%NDartQC_0,   posteAVG%NDartQC_1,  &
-           posteAVG%NDartQC_2,   posteAVG%NDartQC_3,   posteAVG%NDartQC_4,  &
-           posteAVG%NDartQC_5,   posteAVG%NDartQC_6,   posteAVG%NDartQC_7,  &
-           posteAVG%Ntrusted )
+deallocate(priorAVG%rmse,       priorAVG%bias,        priorAVG%spread,   &
+           priorAVG%totspread,  priorAVG%observation, priorAVG%ens_mean, &
+           priorAVG%Nposs,      priorAVG%Nused,       priorAVG%NbigQC,   &
+           priorAVG%NbadIZ,     priorAVG%NbadUV,      priorAVG%NbadLV,   &
+           priorAVG%NbadDartQC, priorAVG%Ntrusted)
+
+deallocate(priorAVG%NDartQC_0,  priorAVG%NDartQC_1,   priorAVG%NDartQC_2, &
+           priorAVG%NDartQC_3,  priorAVG%NDartQC_4,   priorAVG%NDartQC_5, &
+           priorAVG%NDartQC_6,  priorAVG%NDartQC_7,   priorAVG%NDartQC_8)
+
+deallocate(posteAVG%rmse,       posteAVG%bias,        posteAVG%spread,    &
+           posteAVG%totspread,  posteAVG%observation, posteAVG%ens_mean,  &
+           posteAVG%Nposs,      posteAVG%Nused,       posteAVG%NbigQC,    &
+           posteAVG%NbadIZ,     posteAVG%NbadUV,      posteAVG%NbadLV,    &
+           posteAVG%NbadDartQC, posteAVG%Ntrusted)
+
+deallocate(posteAVG%NDartQC_0,  posteAVG%NDartQC_1,   posteAVG%NDartQC_2, &
+           posteAVG%NDartQC_3,  posteAVG%NDartQC_4,   posteAVG%NDartQC_5, &
+           posteAVG%NDartQC_6,  posteAVG%NDartQC_7,   posteAVG%NDartQC_8)
 
 deallocate(epoch_center, epoch_edges, bincenter, obs_used_in_epoch)
 
@@ -4496,15 +4547,16 @@ FILL : do ivar = 1,num_obs_types
       rchunk(iregion,ilevel,11,itime) = vrbl%NbadDartQC( itime,ilevel,iregion,ivar)
       rchunk(iregion,ilevel,12,itime) = vrbl%observation(itime,ilevel,iregion,ivar)
       rchunk(iregion,ilevel,13,itime) = vrbl%ens_mean(   itime,ilevel,iregion,ivar)
-      rchunk(iregion,ilevel,14,itime) = vrbl%NDartQC_0(  itime,ilevel,iregion,ivar)
-      rchunk(iregion,ilevel,15,itime) = vrbl%NDartQC_1(  itime,ilevel,iregion,ivar)
-      rchunk(iregion,ilevel,16,itime) = vrbl%NDartQC_2(  itime,ilevel,iregion,ivar)
-      rchunk(iregion,ilevel,17,itime) = vrbl%NDartQC_3(  itime,ilevel,iregion,ivar)
-      rchunk(iregion,ilevel,18,itime) = vrbl%NDartQC_4(  itime,ilevel,iregion,ivar)
-      rchunk(iregion,ilevel,19,itime) = vrbl%NDartQC_5(  itime,ilevel,iregion,ivar)
-      rchunk(iregion,ilevel,20,itime) = vrbl%NDartQC_6(  itime,ilevel,iregion,ivar)
-      rchunk(iregion,ilevel,21,itime) = vrbl%NDartQC_7(  itime,ilevel,iregion,ivar)
-      rchunk(iregion,ilevel,22,itime) = vrbl%Ntrusted(   itime,ilevel,iregion,ivar)
+      rchunk(iregion,ilevel,14,itime) = vrbl%Ntrusted(   itime,ilevel,iregion,ivar)
+      rchunk(iregion,ilevel,15,itime) = vrbl%NDartQC_0(  itime,ilevel,iregion,ivar)
+      rchunk(iregion,ilevel,16,itime) = vrbl%NDartQC_1(  itime,ilevel,iregion,ivar)
+      rchunk(iregion,ilevel,17,itime) = vrbl%NDartQC_2(  itime,ilevel,iregion,ivar)
+      rchunk(iregion,ilevel,18,itime) = vrbl%NDartQC_3(  itime,ilevel,iregion,ivar)
+      rchunk(iregion,ilevel,19,itime) = vrbl%NDartQC_4(  itime,ilevel,iregion,ivar)
+      rchunk(iregion,ilevel,20,itime) = vrbl%NDartQC_5(  itime,ilevel,iregion,ivar)
+      rchunk(iregion,ilevel,21,itime) = vrbl%NDartQC_6(  itime,ilevel,iregion,ivar)
+      rchunk(iregion,ilevel,22,itime) = vrbl%NDartQC_7(  itime,ilevel,iregion,ivar)
+      rchunk(iregion,ilevel,23,itime) = vrbl%NDartQC_8(  itime,ilevel,iregion,ivar)
 
    enddo
    enddo
@@ -4649,15 +4701,16 @@ FILL : do ivar = 1,num_obs_types
       chunk(iregion,ilevel,11) = vrbl%NbadDartQC( ilevel,iregion,ivar)
       chunk(iregion,ilevel,12) = vrbl%observation(ilevel,iregion,ivar)
       chunk(iregion,ilevel,13) = vrbl%ens_mean(   ilevel,iregion,ivar)
-      chunk(iregion,ilevel,14) = vrbl%NDartQC_0(  ilevel,iregion,ivar)
-      chunk(iregion,ilevel,15) = vrbl%NDartQC_1(  ilevel,iregion,ivar)
-      chunk(iregion,ilevel,16) = vrbl%NDartQC_2(  ilevel,iregion,ivar)
-      chunk(iregion,ilevel,17) = vrbl%NDartQC_3(  ilevel,iregion,ivar)
-      chunk(iregion,ilevel,18) = vrbl%NDartQC_4(  ilevel,iregion,ivar)
-      chunk(iregion,ilevel,19) = vrbl%NDartQC_5(  ilevel,iregion,ivar)
-      chunk(iregion,ilevel,20) = vrbl%NDartQC_6(  ilevel,iregion,ivar)
-      chunk(iregion,ilevel,21) = vrbl%NDartQC_7(  ilevel,iregion,ivar)
-      chunk(iregion,ilevel,22) = vrbl%Ntrusted(   ilevel,iregion,ivar)
+      chunk(iregion,ilevel,14) = vrbl%Ntrusted(   ilevel,iregion,ivar)
+      chunk(iregion,ilevel,15) = vrbl%NDartQC_0(  ilevel,iregion,ivar)
+      chunk(iregion,ilevel,16) = vrbl%NDartQC_1(  ilevel,iregion,ivar)
+      chunk(iregion,ilevel,17) = vrbl%NDartQC_2(  ilevel,iregion,ivar)
+      chunk(iregion,ilevel,18) = vrbl%NDartQC_3(  ilevel,iregion,ivar)
+      chunk(iregion,ilevel,19) = vrbl%NDartQC_4(  ilevel,iregion,ivar)
+      chunk(iregion,ilevel,20) = vrbl%NDartQC_5(  ilevel,iregion,ivar)
+      chunk(iregion,ilevel,21) = vrbl%NDartQC_6(  ilevel,iregion,ivar)
+      chunk(iregion,ilevel,22) = vrbl%NDartQC_7(  ilevel,iregion,ivar)
+      chunk(iregion,ilevel,23) = vrbl%NDartQC_8(  ilevel,iregion,ivar)
 
    enddo
    enddo

@@ -139,8 +139,11 @@ plotdat.copyindex     = get_copy_index(fname,copy);
 plotdat.biasindex     = get_copy_index(fname,'bias');
 plotdat.Npossindex    = get_copy_index(fname,'Nposs');
 plotdat.Nusedindex    = get_copy_index(fname,'Nused');
+plotdat.NQC4index     = get_copy_index(fname,'N_DARTqc_4');
 plotdat.NQC5index     = get_copy_index(fname,'N_DARTqc_5');
 plotdat.NQC6index     = get_copy_index(fname,'N_DARTqc_6');
+plotdat.NQC7index     = get_copy_index(fname,'N_DARTqc_7');
+plotdat.NQC8index     = get_copy_index(fname,'N_DARTqc_8');
 
 figuredata = setfigure();
 
@@ -241,10 +244,17 @@ for ivar = varlist
     % The number possible is decreased by the number of observations
     % rejected by namelist control.
     
-    fprintf('%d %s observations had DART QC of 5 (all regions).\n', ...
+    fprintf('\n')
+    fprintf('%10d %s observations had DART QC of 4 (all regions).\n', ...
+        sum(sum(guess(plotdat.NQC4index, :,:))),plotdat.myvarname)
+    fprintf('%10d %s observations had DART QC of 5 (all regions).\n', ...
         sum(sum(guess(plotdat.NQC5index, :,:))),plotdat.myvarname)
-    fprintf('%d %s observations had DART QC of 6 (all regions).\n', ...
+    fprintf('%10d %s observations had DART QC of 6 (all regions).\n', ...
         sum(sum(guess(plotdat.NQC6index, :,:))),plotdat.myvarname)
+    fprintf('%10d %s observations had DART QC of 7 (all regions).\n', ...
+        sum(sum(guess(plotdat.NQC7index, :,:))),plotdat.myvarname)
+    fprintf('%10d %s observations had DART QC of 8 (all regions).\n', ...
+        sum(sum(guess(plotdat.NQC8index, :,:))),plotdat.myvarname)
     
     nposs = sum(guess(plotdat.Npossindex,:,:)) - ...
         sum(guess(plotdat.NQC5index ,:,:)) - ...
@@ -259,10 +269,17 @@ for ivar = varlist
     plotdat.anl_copy   = analy(plotdat.copyindex,  :, :);
     plotdat.ges_bias   = guess(plotdat.biasindex,  :, :);
     plotdat.anl_bias   = analy(plotdat.biasindex,  :, :);
+    plotdat.ges_Nqc4   = guess(plotdat.NQC4index,  :, :);
+    plotdat.anl_Nqc4   = analy(plotdat.NQC4index,  :, :);
     plotdat.ges_Nqc5   = guess(plotdat.NQC5index,  :, :);
     plotdat.anl_Nqc5   = analy(plotdat.NQC5index,  :, :);
     plotdat.ges_Nqc6   = guess(plotdat.NQC6index,  :, :);
     plotdat.anl_Nqc6   = analy(plotdat.NQC6index,  :, :);
+    plotdat.ges_Nqc7   = guess(plotdat.NQC7index,  :, :);
+    plotdat.anl_Nqc7   = analy(plotdat.NQC7index,  :, :);
+    plotdat.ges_Nqc8   = guess(plotdat.NQC8index,  :, :);
+    plotdat.anl_Nqc8   = analy(plotdat.NQC8index,  :, :);
+
     plotdat.ges_Nused  = guess(plotdat.Nusedindex, :, :);
     plotdat.anl_Nused  = guess(plotdat.Nusedindex, :, :);
     plotdat.ges_Nposs  = guess(plotdat.Npossindex, :, :) - ...

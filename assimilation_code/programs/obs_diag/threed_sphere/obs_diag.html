@@ -55,17 +55,17 @@
    copy called the 'truth' - the noise-free expected observation given 
    the true model state. Since this copy does not, in general, exist for
    the high-order models, all comparisons are made with the copy labelled
-   'observation'. <em class=changed>New! There is a namelist variable
+   'observation'. There is also a namelist variable
    (<em class=code>use_zero_error_obs</em>) to compare 
    against the 'truth' instead; the observation error variance is then 
-   automatically set to zero.</em>
+   automatically set to zero.
 </P>
 <P>
    Each ensemble member applies a forward observation operator to the state to compute
-   the "expected" value of an observation.  <em class=changed>Please note:
+   the "expected" value of an observation.  Please note:
    the forward observation operator is applied <strong>AFTER</strong> any prior inflation
    has taken place! Similarly, the forward observation operator is applied AFTER any posterior 
-   inflation. This has always been the case.</em> For a detailed 
+   inflation. This has always been the case. For a detailed 
    look at the relationship between the observation operators and inflation, please look at the
    <a href="../../filter/filter.html#DetailedProgramFlow">Detailed&nbsp;Program&nbsp;Execution Flow</a>
    section of <a href="../../filter/filter.html">filter.html</a>.<br /><br />
@@ -91,11 +91,15 @@
    The ensemble means are still used for many other calculations.
 </P>
    <table width="100%"><tr>
-   <td rowspan=2><a href="../../../../documentation/images/obs_diag_evolution_example.png"><img src="../../../../documentation/images/obs_diag_evolution_example.png" width="300"></a>
-   <td rowspan=2><a href="../../../../documentation/images/obs_diag_profile_example.png"><img src="../../../../documentation/images/obs_diag_profile_example.png" width="300"></a>
-   <td><a href="../../../../documentation/images/RankHistogram_ncview.png"><img src="../../../../documentation/images/RankHistogram_ncview.png" width="200"></a></td>
+   <td rowspan=2><a href="../../../../documentation/images/obs_diag_evolution_example.png"
+     ><img src="../../../../documentation/images/obs_diag_evolution_example.png" width="300"></a>
+   <td rowspan=2><a href="../../../../documentation/images/obs_diag_profile_example.png"
+     ><img src="../../../../documentation/images/obs_diag_profile_example.png" width="300"></a>
+   <td><a href="../../../../documentation/images/RankHistogram_ncview.png"
+     ><img src="../../../../documentation/images/RankHistogram_ncview.png" width="200"></a></td>
    </tr>
-   <tr><td><a href="../../../../documentation/images/RankHistogram_matlab.png"><img src="../../../../documentation/images/RankHistogram_matlab.png" width="200"></a></td>
+   <tr><td><a href="../../../../documentation/images/RankHistogram_matlab.png"
+     ><img src="../../../../documentation/images/RankHistogram_matlab.png" width="200"></a></td>
    </tr>
    </table>
 
@@ -108,9 +112,9 @@
    <em class=program>lorenz_96</em> model what part of North America you'd like
    to investigate. The low-order models write out similar 
    netCDF files and the Matlab scripts have been updated accordingly.
-   <em class=changed>The oned observations have locations conceptualized as being on
-   a unit sphere, so only the namelist input variables pertaining to longitude are
-   used.</em>
+   The oned observations have locations conceptualized as being on
+   a unit circle, so only the namelist input variables pertaining to longitude are
+   used.
 </P>
 <P>
    Identity observations (only possible from "perfect model experiments") 
@@ -126,28 +130,23 @@
    relative to the  rest of the ensemble?" (figures on the right).
    The figures on the left and center were created by several Matlab&#174; 
    scripts that query the <em class="file">obs_diag_output.nc</em> file: 
-   <em class="file">DART/diagnostics/matlab/<a href="../../../../diagnostics/matlab/plot_evolution.m">plot_evolution.m</a></em> and 
-   <a href="../../../../diagnostics/matlab/plot_profile.m">plot_profile.m</a>.
+   <em class="file">DART/diagnostics/matlab/<a href="../../../../diagnostics/matlab/plot_evolution.m">plot_evolution.m</a></em>
+   and <a href="../../../../diagnostics/matlab/plot_profile.m">plot_profile.m</a>.
    Both of these takes as input a 
    file name and a 'quantity' to plot ('rmse','spread','totalspread',&nbsp;...)
    and exhaustively plots the quantity (for every variable, every level, 
    every region) in a single matlab figure window  - and creates a series 
    of .ps files with multiple pages for each of the figures. 
    The directory gets cluttered with them.
-   The rank histogram information can easily be plotted with <a href="http://meteora.ucsd.edu/~pierce/ncview_home_page.html">ncview</a>,
+   The rank histogram information can easily be plotted with 
+   <a href="http://meteora.ucsd.edu/~pierce/ncview_home_page.html">ncview</a>,
    a free third-party piece of software or with 
    <a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/diagnostics/matlab/plot_rank_histogram.m">plot_rank_histogram.m</a>.
 </P>
 <P>
-   <em class=removed><em class="program">obs_diag</em>
-   is not explicitly designed to explore OSSE's.  In general, it is 
-   used for 'real' observations and looks through the metadata for
-   the observation sequence to identify which 'copy' is labeled 'observation'.
-   It is THAT copy that is used as the noisy estimate of the truth.</em>
    <em class="program">obs_diag</em> can be configured to compare the 
    ensemble estimates against the 'observation' copy or the 'truth' copy based
    on the setting of the <em class=code>use_zero_error_obs</em> namelist variable.
-   
 </P>
 <P>
    The observation sequence files contain only the time of the observation, 
@@ -173,11 +172,9 @@
    <tr><td valign="top"><b>Nused</b></td>
        <td>The number of observations that were assimilated.</td></tr>
    <tr><td valign="top"><b><em class=removed>NbigQC</em></b></td>
-       <td><em class=changed>Deprecated. the number of observations that had 'large' 
-           (original) QC values;</em></td></tr>
+       <td><em class=changed>Deprecated. Ignore.</em></td></tr>
    <tr><td valign="top"><b><em class=removed>NbadIZ</em></b></td>
-       <td><em class=changed>Deprecated. the number of observations that had 'large' 
-           Innovation&nbsp;Z scores (large distance between it and the ensemble);</em></td></tr>
+       <td><em class=changed>Deprecated. Ignore.</em></td></tr>
    <tr><td valign="top"><b>NbadUV</b></td>
        <td>the number of velocity observations that had a matching component 
            that was not assimilated;</td></tr>
@@ -207,6 +204,8 @@
        <td>the mean of the observation values</td></tr> 
    <tr><td valign="top"><b>ens_mean</b></td>
        <td>the ensemble mean of the model estimates of the observation values</td></tr> 
+   <tr><td valign="top"><b>N_trusted</b></td>
+       <td>the number of implicitly trusted observations</td></tr> 
    <tr><td valign="top"><b>N_DARTqc_0</b></td>
        <td>the number of observations that had a DART QC value of 0</td></tr> 
    <tr><td valign="top"><b>N_DARTqc_1</b></td>
@@ -223,6 +222,8 @@
        <td>the number of observations that had a DART QC value of 6</td></tr>
    <tr><td valign="top"><b>N_DARTqc_7</b></td>
        <td>the number of observations that had a DART QC value of 7</td></tr>
+   <tr><td valign="top"><b>N_DARTqc_8</b></td>
+       <td>the number of observations that had a DART QC value of 8</td></tr>
    </table>
 
 <P>
@@ -263,9 +264,10 @@
    <tr><td>5</td><td>not used because observation type not listed in namelist</td></tr>
    <tr><td>6</td><td>rejected because incoming observation QC too large</td></tr>
    <tr><td>7</td><td>rejected because failed outlier threshold test</td></tr>
-   <tr><td>8+</td><td>reserved for future use</td></tr>
+   <tr><td><em>8</em></td><td><em>failed vertical conversion</em></td></tr>
+   <tr><td>9+</td><td>reserved for future use</td></tr>
 </table>
-<P></P>
+<P><!-- spacer for top --></P>
 
 <!--==================================================================-->
 
@@ -275,6 +277,9 @@
 <ol><li>Removed <em class=code>rat_cri</em> and
         <em class=code>input_qc_threshold</em> from the namelists. They had been
         deprecated for quite some time.</li>
+    <li>Support for a DART QC == 8 : Failed vertical conversion. Some of the internal
+        variable names have been changed to make it easier to distinguish between
+        variances and standard deviations.</li>
 </ol>
 
 <H2>What is new in the Lanai Release.</H2>
