@@ -76,7 +76,7 @@
 #
 #   The option -q (quiet) suppresses the progress output which can fill
 #   your log files quickly if you're downloading lots of files.
-#   
+#
 #   The option -O file (direct output to given file) lets you rename the
 #   file or put it in a different location easily if you are only downloading
 #   a single file.
@@ -121,6 +121,7 @@ set gps_repository_path = 'http://cdaac-www.cosmic.ucar.edu/cdaac/rest/tarservic
 setenv DART_WORK_DIR  $DART_DIR/observations/obs_converters/gps/work
 setenv CONV_PROG      convert_cosmic_gps_cdf
 setenv DATE_PROG      advance_time
+setenv DOWNLOAD_DIR   rawdata
 
 # options on wget command:
 set wget_cmd = "wget -q --http-user=$cdaac_user --http-passwd=$cdaac_pw" 
@@ -183,7 +184,7 @@ endif
 
 if ( ! -d $datadir ) then
   echo 'creating data processing directory: ' $datadir
-  mkdir $datadir
+  mkdir -p $datadir
 endif
 if ( ! -e $datadir/input.nml ) then
   echo 'data processing directory does not contain an input.nml'
@@ -224,8 +225,11 @@ endif
 # the work dir to the data processing directory.
 cp -f ./$DATE_PROG ./$CONV_PROG $datadir
 
+########################################################################
+# DOWNLOAD SECTION
+########################################################################
+
 if ( $downld == 'yes' ) then
-   echo 'if not already there, changing dir to data proc directory'
    cd $datadir
    echo 'current dir now ' `pwd`
 
@@ -239,23 +243,21 @@ if ( $downld == 'yes' ) then
       echo 'starting raw file download at' `date`
    endif
    
-   set yyyy = `echo $datea | cut -b1-4`
-   
-   if ( ! -d $datea ) then
-     echo 'year/month/day directory not found: ' $datea
-     echo 'creating now.'
-     mkdir $datea
+   if ( ! -d $DOWNLOAD_DIR ) then
+     echo 'creating new download directory: ' $DOWNLOAD_DIR
+     mkdir -p $DOWNLOAD_DIR
    else
      echo 'existing directory found, cleaning up before new download'
-     rm -fr $datea
-     mkdir $datea
+     rm -fr $DOWNLOAD_DIR
+     mkdir -p $DOWNLOAD_DIR
    endif
    
-   cd $datea
+   cd $DOWNLOAD_DIR
    ln -sf $DART_WORK_DIR/input.nml .
    
    set jyyyydd = `echo $datea 0 -j | ../$DATE_PROG` 
-   set mday = `printf %03d $jyyyydd[2]`
+   set yyyy    = `echo $datea | cut -b1-4`
+   set mday    = `printf %03d $jyyyydd[2]`
    echo 'downloading tar file of obs for date: ' $datea ', which is julian day: ' $jyyyydd
 
    # do this loop once for each satellite source you've selected
@@ -271,7 +273,7 @@ if ( $downld == 'yes' ) then
          echo no data available/downloaded for satellite $sat on $yyyy $mday
          rm $day_file
       else
-      tar -xf $day_file --strip-components=3      # remove long path
+         tar -xf $day_file --strip-components=3    # remove long path
       endif
    end
    rm input.nml dart_log.*
@@ -291,8 +293,11 @@ else
    echo 'not downloading data; assume it is already on local disk'
 endif
 
+########################################################################
+# CONVERSION SECTION
+########################################################################
+
 if ( $convert == 'yes') then
-   echo 'if not already there, changing dir to data proc directory'
    cd $datadir
    echo 'current dir now ' `pwd`
    
@@ -300,13 +305,13 @@ if ( $convert == 'yes') then
       echo 'starting gpsro conversion at ' `date`
    endif
    
-   rm -f flist
-   set yyyy    = `echo $datea | cut -b1-4`
    set jyyyydd = `echo ${datea}00 0 -j | ./$DATE_PROG`
-   @ mday = $jyyyydd[2] + 1000  ;  set mday = `echo $mday | cut -b2-4`
+   set yyyy    = `echo $datea | cut -b1-4`
+   set mday    = `printf %03d $jyyyydd[2]`
    echo 'converting obs for date: ' $datea
    
-   /bin/ls -1 $datea/*.${yyyy}.${mday}.*_nc >! flist
+   rm -f flist
+   /bin/ls -1 $DOWNLOAD_DIR/*.${yyyy}.${mday}.*_nc >! flist
    
    set nfiles = `cat flist | wc -l`
    if ( $chatty == 'yes' ) then
@@ -333,28 +338,33 @@ else
    echo 'not converting data'
 endif
 
+########################################################################
+# FILE REMOVAL SECTION
+########################################################################
+
 if ( $cleanup == 'yes' ) then
-   echo 'if not already there, changing dir to data proc directory'
    cd $datadir
    echo 'current dir now ' `pwd`
    
    if ( $chatty == 'yes' ) then
-      echo 'cleaning up files at ' `date`
+      echo 'cleaning up files starting at ' `date`
    endif
 
    echo 'removing original gpsro data files for date: ' $datea
 
    # just remove the whole subdir here.  trying to list individual
    # files can cause problems with long command line lengths.
-   rm -fr $datea
+   rm -fr $DOWNLOAD_DIR
 
    cd $DART_WORK_DIR
 else
    echo 'not removing original gpsro data files'
 endif
 
+########################################################################
+
 if ( $chatty == 'yes' ) then
-   echo 'finished gps script run at ' `date`
+   echo 'finished gpsro script run at ' `date`
    echo ' '
 endif
 
