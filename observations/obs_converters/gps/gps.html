@@ -570,9 +570,10 @@ unless you are running on an NCAR superscomputer.
 </P>
 
 <P>
-<pre>
 <b>Making DART Observations from Radio Occultation atmPrf Profiles:</b>
+<br />
 
+<pre>
 Description of the scripts provided to process the COSMIC and 
 CHAMP GPS radio occultation data.
 
@@ -616,7 +617,7 @@ the advance_time executable, which should automatically be built
 in the ../work directory, but you may have to copy or link to a
 version from this dir.  you also need a minimal input.nml here:
 
-&utilities_nml
+&amp;utilities_nml
  /
 
 is all the contents it needs.
@@ -634,9 +635,10 @@ this allows you to keep the total disk usage lower.
 <br />
 
 <P>
-<pre>
 <b>Making DART Observations from Ionospheric ionPrf Profiles:</b>
+<br />
 
+<pre>
 0) run quickbuild.csh as described above
 
 1) iono_to_obsseq.csh
@@ -649,11 +651,123 @@ create a single obs_seq.ion.YYYYMMDD file per day.
 
 split the daily files into X minute/hour files - set the
 window times at the top of the file before running.
+</pre>
+</P>
 
+<br />
+<br />
+
+<P>
+<b>Notes on already converted observations on the NCAR supercomputers</b>
+<br />
+<br />
+
+<b>GPS Radio Occultation Data:</b>
+<br />
+<br />
+
+<pre>
+See /glade/p/image/Observations/GPS
+
+These are DART observation sequence files that contain
+radio-occultation measurements from the COSMIC
+(and other) satellites.  
+
+Uses temperature/moisture bending of the signals as they
+pass through the atmosphere between GPS source satellites
+and low-earth-orbit receiving satellites to compute the 
+delay in the arrival of data. the files also contain the
+bending angle data, but we are not using that currently.
+
+
+the subdirectories include:
+
+local -- original processed files, single obs at nadir
+local-cosmic2013 -- reprocessed by CDAAC in 2013
+local-test2013 -- 2013 data, denser in vertical, diff errors
+local-complete2013 - all satellites available for that time, 
+ new errors (from lydia c), 2013 cosmic reprocessed data
+nonlocal -- original processed files, ray-path integrated
+rawdata -- netcdf data files downloaded from the CDAAC
+
+local: the ob is at a single location (the tangent point
+of the ray and earth) and the entire effect is assumed 
+to be impacting the state at that point.
+
+non-local: computes the ob value by doing a line integral
+along the ray path to accumulate the total effect.
+
+(in our experiments we have compared both and did not see 
+a large difference between the two methods, and so have 
+mistly used the local version because it's faster to run.)
+
+
+some directories contain only the gps obs and must be
+merged (with the obs_sequence_tool) with the rest of
+the conventional obs before assimilation.
+
+some directories contain both the gps-only files and
+the obs merged with NCEP and ACARS data.
+
+
+if a directory exists but is empty, the files are
+likely archived on the HPSS.  see the README files
+in the next level directory down for more info on
+where they might be.
+
+nsc
+jan 2016
+
+</pre>
+
+<br />
+<br />
+
+<b>Ionosphere Data:</b>
+<br />
+<br />
+
+<pre>
+See /glade/p/image/Observation/ionosphere
+
+These are COSMIC 'ionPrf' ionospheric profile observations.
+
+They are downloaded from the CDAAC website as daily tar files
+and unpacked into the 'raw' directory.  They distribute these
+observations with one profile per netcdf file.  Each profile has 
+data at ~500-1000 different levels.
+
+Our converter has a fixed number of levels in the namelist
+and we interpolate between the two closest levels to get the
+data for that level.  If you give the converter a list of
+input netcdf files it will convert all of them into a 
+single output file.
+
+The 'daily' directory is a collection of all the profiles for
+that day.
+
+The 'convert' directory has the executables and scripting
+for breaking up the daily files into 10 minute files which
+are put in the '10min' directory.  Change the 'split_obs_seq.csh'
+script to change the width of this window, or the names of
+the output files.
+
+The 'verify.csh' script prints out any missing files, which
+happens if there are no profiles in the given window.
+
+Our convention is to make a 0 length file for missing intervals
+and we expect the filter run script to look at the file size
+and loop if there is a file but with no contents.  This will
+allow us to distinguish between a time where we haven't converted
+the observations and a time where there are no observations.
+In that case the script should add time to the next model
+advance request and loop to the next interval.
 
 </pre>
 </P>
 
+<br />
+<br />
 
 <P><!-- useless divider for 'top' --></P>
 
