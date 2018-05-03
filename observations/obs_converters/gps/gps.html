@@ -27,8 +27,9 @@
 
 <A HREF="#DataSources">DATA SOURCES</A> /
 <A HREF="#Programs">PROGRAMS</A> / 
-<A HREF="#Modules">MODULES</A> /
 <A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Workflow">WORKFLOW</A> / 
+<A HREF="#Modules">MODULES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">FUTURE PLANS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
@@ -93,18 +94,20 @@ the Level 2 data, Atmospheric Profiles (filenames include
 the string 'atmPrf').
 <br />
 <br />
-Currently each vertical profile is stored in a separate file,
+Each vertical profile is stored in a separate netCDF file,
 and there are between 1000-3000 profiles/day, so converting a day's
-worth of observations involves downloading many individual files.
-There are plans in place by the data providers to bundle these 
-profiles together in a tar file to make it simpler to download the raw data.
+worth of observations used to involve downloading many individual files.
+There are now daily tar files available which makes it simpler
+to download the raw data all in a single file and then untar it to
+get the individual profiles.
 <br />
 <br />
-The scripts in the <em class=file>shell_scripts</em> directory now
-by default try to download profiles from any of the available
+The scripts in the <em class=file>shell_scripts</em> directory can
+now download profiles from any of the available
 satellites that return GPS RO data to the CDAAC web site.  See the
-<em class=file>do_convert.csh</em> script for a list of what 
-satellites are checked by default.
+<em class=file>gpsro_to_obsseq.csh</em> or
+<em class=file>convert_many_gpsro.csh</em> script for where to 
+specify the satellites to be included.
 </P>
 
 <H3>Electron Density</H3>
@@ -115,8 +118,9 @@ the COSMIC 2013 Mission and have a data type of 'ionPrf'.
 <br />
 The file naming convention and file format are described by COSMIC 
 <a href=' http://cdaac-www.cosmic.ucar.edu/cdaac/cgi_bin/fileFormats.cgi?type=ionPrf'>here</a> 
-and there can be more than 1000 profiles/day, so converting a day's
-worth of observations involves downloading many individual files.
+and there can be more than 1000 profiles/day. Like the GPS radio
+occultation data, the profiles are now available in a single daily
+tar file which can be downloaded then be unpacked into the individual files.
 COSMIC has instructions on ways to download the data at<br />
 <a href='http://cdaac-www.cosmic.ucar.edu/cdaac/tar/rest.html'
 >http://cdaac-www.cosmic.ucar.edu/cdaac/tar/rest.html</a>
@@ -540,6 +544,116 @@ the new data will be appended to that file.
   /
 </pre>
 </div>
+
+<P><!-- useless divider for 'top' --></P>
+
+<!--==================================================================-->
+
+<A NAME="Workflow"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>WORKFLOW FOR BATCH CONVERSIONS</H2>
+
+<!-- THIS NEEDS MORE WORK.  IT'S BASICALLY THE CONTENTS OF
+     THE README DROPPED IN HERE WITH A </pre> PREPENDED.  
+     BUT IT'S BETTER THAN NOTHING.  -->
+
+<P>
+If you are converting only a day or two of observations
+you can download the files by hand and call the converter 
+programs from the command line.  However if you are going
+convert many days/months/years of data you need an automated
+script, possibly submitted to a batch queue on a large machine.
+The following instructions describe shell scripts we provide
+as a guide in the <em class=file>shell_scripts</em> directory.
+You will have to adapt them for your own system
+unless you are running on an NCAR superscomputer.
+</P>
+
+<P>
+<pre>
+<b>Making DART Observations from Radio Occultation atmPrf Profiles:</b>
+
+Description of the scripts provided to process the COSMIC and 
+CHAMP GPS radio occultation data.
+
+Summary of workflow:  
+1) cd to the ../work directory and run ./quickbuild.csh to compile everything.  
+2) Edit ./gpsro_to_obsseq.csh once to set the directory where the DART
+    code is installed, and your CDAAC web site user name and password.
+3) Edit ./convert_many_gpsro.csh to set the days of data to download/convert/remove.
+4) Run ./convert_many_gpsro.csh either on the command line or submit to a batch system.
+
+
+More details:
+
+1) quickbuild.csh:
+
+Make sure your $DART/mkmf/mkmf.template is one that matches the
+platform and compiler for your system.  It should be the same as
+how you have it set to build the other DART executables.
+
+Run quickbuild.csh and it should compile all the executables needed
+to do the GPS conversion into DART obs_sequence files.
+
+
+2) gpsro_to_obsseq.csh:
+
+Edit gpsro_to_obsseq.csh once to set the DART_DIR to where you have
+downloaded the DART distribution.  (There are a few additional options
+in this script, but the distribution version should be good for most users.)
+If you are downloading data from the CDAAC web site, set your
+web site user name and password.  After this you should be able to 
+ignore this script.
+
+
+3) convert_many_gpsro.csh:
+
+A wrapper script that calls the converter script a day at a time.
+Set the days of data you want to download/convert/remove.  See the
+comments at the top of this script for the various options to set.  
+Rerun this script for all data you need.  This script depends on
+the advance_time executable, which should automatically be built
+in the ../work directory, but you may have to copy or link to a
+version from this dir.  you also need a minimal input.nml here:
+
+&utilities_nml
+ /
+
+is all the contents it needs.
+
+
+It can be risky to use the automatic delete/cleanup option - if there are
+any errors in the script or conversion (file system full, bad file format,
+etc) and the script doesn't exit, it can delete the input files before 
+the conversion has succeeded.  But if you have file quota concerns
+this allows you to keep the total disk usage lower.
+</pre>
+</P>
+
+<br />
+<br />
+
+<P>
+<pre>
+<b>Making DART Observations from Ionospheric ionPrf Profiles:</b>
+
+0) run quickbuild.csh as described above
+
+1) iono_to_obsseq.csh
+
+set the start and stop days.  downloads from the CDAAC and
+untars into 100s of files per day.  runs the converter to
+create a single obs_seq.ion.YYYYMMDD file per day.
+
+2) split_obs_seq.csh
+
+split the daily files into X minute/hour files - set the
+window times at the top of the file before running.
+
+
+</pre>
+</P>
+
 
 <P><!-- useless divider for 'top' --></P>
 
