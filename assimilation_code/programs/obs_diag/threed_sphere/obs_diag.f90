@@ -240,7 +240,7 @@ character(len=stringlength), dimension(Ncopies) :: copy_names =                 
       'NbadLV     ', 'rmse       ', 'bias       ', 'spread     ', 'totalspread', &
       'NbadDARTQC ', 'observation', 'ens_mean   ', 'N_trusted  ',                &
       'N_DARTqc_0 ', 'N_DARTqc_1 ', 'N_DARTqc_2 ', 'N_DARTqc_3 ', 'N_DARTqc_4 ', &
-      'N_DARTqc_5 ', 'N_DARTqc_6 ', 'N_DARTqc_7 ', 'N_DARTqc_8'                 /)
+      'N_DARTqc_5 ', 'N_DARTqc_6 ', 'N_DARTqc_7 ', 'N_DARTqc_8 '                /)
 
 type TLRV_type
    ! statistics by time-level-region-variable
