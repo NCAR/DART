@@ -697,11 +697,48 @@ needed compiler flags in certain cases.
 - Updated the location module test programs.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ May DD 2018 :: enhanced inflation option, scripting       $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- enhanced inflation algorithm added
+
+- updated WRF scripts for the Manhattan release.
+
+- new parallel conversion scripts for GPS Radio Occultation observations and
+  NCEP prepbufr conversions.
+
+- obs_diag reports statistics on DART QC 8, observation failed vertical
+conversion.  matlab scripts also updated to support QC 8.
+
+- further updates to documentation files to change KIND to QTY or Quantity.
+
+- documented required changes when moving from the Lanai/Classic release to
+Manhattan in documentation/html/Manhattan_diffs_from_Lanai.html
+
+- expanded the routines in the netcdf_utilities_mod.f90
+
+- removed the option to try to bitwise reproduce Lanai results; due to the
+number of changes this is no longer possible.
+
+- minor bug fixes to the (seldom used) perturb routines in the WRF 
+and MPAS_ATM model_mod.f90 files.  (used to add gaussian noise to a
+single model state to generate an ensemble; this is never the recommended
+method of starting a new experiment but the code remains for testing 
+purposes.)
+
+- several remaining model-specific model_mod_check programs were 
+removed in favor of a single common program source file.
+
+- kept filter_mod.dopplerfold.f90 in sync with filter_mod.f90,
+and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
+
+- removed makefiles for the obsolete trans_time program.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + MMM DD YYYY :: summary of next changes                    $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-- next ...
-
+- obs_diag reports statistics on DART QC 8, observation failed vertical
 
 # <next few lines under version control, do not edit>
 # $URL$
