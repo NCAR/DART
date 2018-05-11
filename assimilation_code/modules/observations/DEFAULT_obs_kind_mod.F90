@@ -375,7 +375,19 @@ integer, parameter, public :: &
   QTY_VELOCITY_VERTICAL_N4S         = 283, &
   QTY_VELOCITY_VERTICAL_NO          = 284, &
   QTY_GND_GPS_VTEC                  = 285, &
-  QTY_DENSITY_ION_OP                = 286
+  QTY_DENSITY_ION_OP                = 286, &
+  QTY_TOTAL_ELECTRON_COUNT          = 287
+
+!! WRF_Hydro specific observations/states
+integer, parameter, public :: &
+  QTY_STREAM_FLOW                   = 290, &
+  QTY_SURFACE_HEAD                  = 291, &
+  QTY_DEEP_GROUNDWATER_LEVEL        = 292, &
+  QTY_STREAM_HEIGHT                 = 293, &
+  QTY_GROUND_SURF_TEMPERATURE       = 294, &
+  QTY_CANOPY_TEMPERATURE            = 295, &
+  QTY_BUCKET_MULTIPLIER             = 296, &
+  QTY_RUNOFF_MULTIPLIER             = 297
  
 ! more land kinds
 integer, parameter, public :: &
@@ -797,6 +809,16 @@ obs_kind_names(283) = obs_kind_type(QTY_VELOCITY_VERTICAL_N4S ,'QTY_VELOCITY_VER
 obs_kind_names(284) = obs_kind_type(QTY_VELOCITY_VERTICAL_NO  ,'QTY_VELOCITY_VERTICAL_NO')
 obs_kind_names(285) = obs_kind_type(QTY_GND_GPS_VTEC          ,'QTY_GND_GPS_VTEC')
 obs_kind_names(286) = obs_kind_type(QTY_DENSITY_ION_OP        ,'QTY_DENSITY_ION_OP')
+obs_kind_names(287) = obs_kind_type(QTY_TOTAL_ELECTRON_COUNT  ,'QTY_TOTAL_ELECTRON_COUNT')
+
+obs_kind_names(290) = obs_kind_type(QTY_STREAM_FLOW             ,'QTY_STREAM_FLOW')
+obs_kind_names(291) = obs_kind_type(QTY_SURFACE_HEAD            ,'QTY_SURFACE_HEAD')
+obs_kind_names(292) = obs_kind_type(QTY_DEEP_GROUNDWATER_LEVEL  ,'QTY_DEEP_GROUNDWATER_LEVEL')
+obs_kind_names(293) = obs_kind_type(QTY_STREAM_HEIGHT           ,'QTY_STREAM_HEIGHT')
+obs_kind_names(294) = obs_kind_type(QTY_GROUND_SURF_TEMPERATURE ,'QTY_GROUND_SURF_TEMPERATURE')
+obs_kind_names(295) = obs_kind_type(QTY_CANOPY_TEMPERATURE      ,'QTY_CANOPY_TEMPERATURE')
+obs_kind_names(296) = obs_kind_type(QTY_BUCKET_MULTIPLIER       ,'QTY_BUCKET_MULTIPLIER')
+obs_kind_names(297) = obs_kind_type(QTY_RUNOFF_MULTIPLIER       ,'QTY_RUNOFF_MULTIPLIER')
 
 obs_kind_names(300) = obs_kind_type(QTY_BRIGHTNESS_TEMPERATURE,'QTY_BRIGHTNESS_TEMPERATURE')
 obs_kind_names(301) = obs_kind_type(QTY_VEGETATION_TEMPERATURE,'QTY_VEGETATION_TEMPERATURE')

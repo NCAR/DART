@@ -19,9 +19,12 @@ use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, 
                                   find_namelist_in_file, check_namelist_read,   &
                                   nc_check, E_MSG, open_file, close_file, do_output
 
-use     mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities
+use     mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities, &
+                                  my_task_id
 
-use          location_mod, only : location_type, set_location, write_location
+use          location_mod, only : location_type, set_location, write_location, &
+                                  get_close_type, get_close_init, get_close_destroy, &
+                                  VERTISHEIGHT
 
 use          obs_kind_mod, only : get_index_for_quantity, get_name_for_quantity
 
@@ -32,7 +35,8 @@ use       assim_model_mod, only : static_init_assim_model
 use      time_manager_mod, only : time_type, set_time, print_time, print_date, operator(-), &
                                   get_calendar_type, NO_CALENDAR
 
-use  ensemble_manager_mod, only : init_ensemble_manager, ensemble_type
+use  ensemble_manager_mod, only : init_ensemble_manager, ensemble_type, get_my_num_vars, &
+                                  get_my_vars
 
 use   state_vector_io_mod, only : state_vector_io_init, read_state, write_state
 
@@ -47,8 +51,8 @@ use      io_filenames_mod, only : io_filenames_init, file_info_type,       &
 
 use distributed_state_mod, only : create_state_window, free_state_window
 
-use             model_mod, only : static_init_model, get_model_size,       &
-                                  get_state_meta_data, model_interpolate
+use             model_mod, only : static_init_model, get_model_size, get_close_state, &
+                                  get_state_meta_data, model_interpolate, end_model
 
 use  test_interpolate_mod, only : test_interpolate_single, &
                                   test_interpolate_range, &
@@ -64,7 +68,7 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-integer, parameter :: MAX_TESTS = 7
+integer, parameter :: MAX_TESTS = 8
 
 ! this is max number of domains times number of ensemble members
 ! if you have more than one domain and your ensemble members are
@@ -133,6 +137,19 @@ real(r8), allocatable :: interp_vals(:)
 ! misc. variables
 integer :: idom, imem, num_passed, num_failed, num_domains, idomain
 logical :: cartesian = .false.
+
+! get_close variables
+
+integer(i8), allocatable :: my_state_indx(:)
+integer,     allocatable :: my_state_kind(:)
+real(r8),    allocatable :: close_state_dist(:)
+integer,     allocatable :: close_state_ind(:)
+type(location_type), allocatable :: my_state_loc(:)
+type(get_close_type)     :: gc_state
+integer                  :: ivar
+integer                  :: my_num_state, num_close_states
+type(location_type) :: base_obs_loc
+integer :: base_obs_type
 
 ! message strings
 character(len=512) :: my_base, my_desc
@@ -265,7 +282,7 @@ if (tests_to_run(2)) then
 
    do imem = 1, num_ens
       write(my_base,'(A,I2)') 'outens_',    imem
-      write(my_desc,'(A,I2)') 'output ens', imem
+      write(my_desc,'(A,1x,I2)') 'output ens ', imem
       call set_file_metadata(file_info_output,                      &
                              cnum     = imem,                       &
                              fnames   = file_array_output(imem,:),  &
@@ -430,6 +447,52 @@ if (tests_to_run(7)) then
 endif
 
 !----------------------------------------------------------------------
+! Find the index closest to a location
+!----------------------------------------------------------------------
+
+if (tests_to_run(8)) then
+
+   write(string1,*)'testing get_close()'
+   call print_test_message('TEST 8', string1, starting=.true.)
+
+   ! Get info on my number and indices for state
+   my_num_state = get_my_num_vars(ens_handle)
+
+   allocate(my_state_indx(my_num_state), &
+            my_state_loc(my_num_state),  &
+            my_state_kind(my_num_state), &
+            close_state_ind(my_num_state), &
+            close_state_dist(my_num_state) )
+
+   base_obs_loc = set_location(loc_of_interest(1),loc_of_interest(2),loc_of_interest(3), VERTISHEIGHT)
+   base_obs_type = -1 * x_ind
+
+   call get_my_vars(ens_handle, my_state_indx)
+
+   do ivar = 1, ens_handle%my_num_vars
+       call get_state_meta_data(my_state_indx(ivar), my_state_loc(ivar), my_state_kind(ivar))
+   enddo
+
+   call get_close_init(gc_state, my_num_state, 2.0_r8, my_state_loc)
+
+   call get_close_state(gc_state, base_obs_loc, base_obs_type, &
+            my_state_loc, my_state_kind, my_state_indx, &
+            num_close_states, close_state_ind, close_state_dist, ens_handle)
+
+   write(string1,'("PE ",I3)') my_task_id()
+
+   write(*,*)trim(string1),' num_close_states is ',num_close_states
+   write(*,*)trim(string1),' close_state_ind  is ',close_state_ind(1:num_close_states)
+   write(*,*)trim(string1),' close_state_dist is ',close_state_dist(1:num_close_states)
+
+   call get_close_destroy(gc_state)
+
+   deallocate(my_state_indx, my_state_loc, my_state_kind, close_state_ind, close_state_dist) 
+
+   call print_test_message('TEST 8', ending=.true.)
+endif
+
+!----------------------------------------------------------------------
 ! add more tests here
 !----------------------------------------------------------------------
 
@@ -466,6 +529,8 @@ end subroutine initialize_modules_used
 !> clean up before exiting
 
 subroutine finalize_modules_used()
+
+call end_model()
 
 ! this must be last, and you can't print/write anything
 ! after this is called.
