@@ -608,7 +608,7 @@ do ivar = 1, num_vars
    !>         is the slowest varying dimension.  For now am assuming that
    !>         there can only be one unlimited dimension. Just subtract 
    !>         to get 'spatial' dimensions.
-   if ( any(domain%variable(ivar)%io_info%io_dimIds(:) == domain%unlimDimId) ) then
+   if ( any(domain%variable(ivar)%io_info%io_dimIds(1:num_dims) == domain%unlimDimId) ) then
       domain%variable(ivar)%numdims = num_dims - 1 
       domain%variable(ivar)%var_has_unlim = .TRUE.
    else

@@ -71,8 +71,7 @@ use     mpi_utilities_mod, only : my_task_id
 
 use        random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
-use  ensemble_manager_mod, only : ensemble_type, map_pe_to_task, get_copy_owner_index, &
-                                  get_var_owner_index
+use  ensemble_manager_mod, only : ensemble_type
 
 use distributed_state_mod, only : get_state
 

@@ -77,9 +77,7 @@ use          obs_kind_mod, only: QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT, &
 ! routines used by rma
 use mpi_utilities_mod,     only : my_task_id, task_count
 
-use ensemble_manager_mod,    only : ensemble_type, &
-                                    get_var_owner_index, map_pe_to_task, &
-                                    get_copy_owner_index
+use ensemble_manager_mod,    only : ensemble_type
 
 use distributed_state_mod, only : get_state, get_state_array
 

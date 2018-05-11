@@ -6,25 +6,26 @@
 #
 # DART $Id$
 #
-# Driver script for the parallel version.  Submit this script
-# to your batch system and it will invoke the 'prepbufr.csh'
-# script once for each conversion day.
+# Convert multiple days of prepbufr data into ascii intermediate files
+# in a loop.  
+#
+# WARNING WARNING WARNING: This script may not be what you want 
+# to use!!!  On most batch systems it does NOT in fact run
+# these jobs in parallel.  It also only loops over days within
+# a single month.  If you aren't running with a batch system this
+# script does try to start multiple conversions in the background.
+#
+# See the more complicated (but functionally correct) 
+# multi_parallel.batch script for how to use MPI to run
+# multiple serial jobs at the same time.  
 #
 #--------------------------------------------------------------
 # DESCRIPTION:
 #
-#  This script is used to generate daily (3:01Z to 3:00Z of next day) 
-#  decoded NCEP reanalysis PREPBUFR text/ascii data.
+#  This script is used to read PREPBUFR data files 
+#  and output ascii/text intermediate files.
 #
 #--------------------------------------------------------------
-
-#BSUB -o prep.out
-#BSUB -e prep.err
-#BSUB -J multiprep
-#BSUB -q regular
-#BSUB -W 0:10
-#BSUB -P xxxxxxx
-#BSUB -n 1
 
 # USER SETTINGS HERE
 

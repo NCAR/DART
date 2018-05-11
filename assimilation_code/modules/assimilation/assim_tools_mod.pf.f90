@@ -56,7 +56,7 @@ use mpi_utilities_mod,    only : my_task_id, broadcast_send, broadcast_recv,    
                                  sum_across_tasks, task_count, start_mpi_timer,           &
                                  read_mpi_timer
 
-use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate,                   &
+use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate, do_ss_inflate,    &
                                  do_varying_ss_inflate,                                   &
                                  update_inflation,                                        &
                                  inflate_ens, adaptive_inflate_type,                      &
@@ -398,6 +398,7 @@ logical :: allow_missing_in_state
 ! for performance, local copies 
 logical :: local_single_ss_inflate
 logical :: local_varying_ss_inflate
+logical :: local_ss_inflate
 logical :: local_obs_inflate
 
 ! HK observation location conversion
@@ -455,6 +456,7 @@ endif
 ! are really in the inflate derived type.
 local_single_ss_inflate  = do_single_ss_inflate(inflate)
 local_varying_ss_inflate = do_varying_ss_inflate(inflate)
+local_ss_inflate         = do_ss_inflate(inflate)
 local_obs_inflate        = do_obs_inflate(inflate)
 
 ! Default to printing nothing
@@ -562,7 +564,7 @@ endif
 
 ! Get mean and variance of each group's observation priors for adaptive inflation
 ! Important that these be from before any observations have been used
-if(local_varying_ss_inflate .or. local_single_ss_inflate) then
+if(local_ss_inflate) then
    do group = 1, num_groups
       obs_mean_index = OBS_PRIOR_MEAN_START + group - 1
       obs_var_index  = OBS_PRIOR_VAR_START  + group - 1
@@ -649,7 +651,7 @@ if (filter_kind == 9) then
       call get_obs_values(observation, obs, obs_val_index)
    
       ! Find out who has this observation and where it is
-      call get_var_owner_index(int(i,i8), owner, owners_index)
+      call get_var_owner_index(ens_handle, int(i,i8), owner, owners_index)
 
       ! Owner calculates first-guess inflation for current ob
       if(ens_handle%my_pe == owner) then
@@ -776,7 +778,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    call get_obs_values(observation, obs, obs_val_index)
 
    ! Find out who has this observation and where it is
-   call get_var_owner_index(int(i,i8), owner, owners_index)
+   call get_var_owner_index(ens_handle, int(i,i8), owner, owners_index)
 
    ! Following block is done only by the owner of this observation
    !-----------------------------------------------------------------------
@@ -891,7 +893,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
                   ! Update the inflation value
                   call update_inflation(inflate, my_inflate, my_inflate_sd, &
-                     r_mean, r_var, obs(1), obs_err_var, gamma)
+                     r_mean, r_var, grp_size, obs(1), obs_err_var, gamma)
                endif
             end do
          endif SINGLE_SS_INFLATE
@@ -1350,7 +1352,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                ! Update the inflation values
                if ( obs_err_infl < max_infl ) then
                call update_inflation(inflate, varying_ss_inflate, varying_ss_inflate_sd, &
-                  r_mean, r_var, obs(1), obs_err_var, gamma)
+                  r_mean, r_var, grp_size, obs(1), obs_err_var, gamma)
                endif
             else
                ! if we don't go into the previous if block, make sure these
@@ -1647,7 +1649,7 @@ if(do_obs_inflate(inflate)) then
    if(my_cov_inflate_sd > 0.0_r8) & 
       ! Gamma set to 1.0 because no distance for observation space
       call update_inflation(inflate, my_cov_inflate, my_cov_inflate_sd, prior_mean, &
-         prior_var, obs, obs_var, gamma = 1.0_r8)
+         prior_var, ens_size, obs, obs_var, gamma_corr = 1.0_r8)
 
    ! Now inflate the ensemble and compute a preliminary inflation increment
    call inflate_ens(inflate, ens, prior_mean, my_cov_inflate, prior_var)

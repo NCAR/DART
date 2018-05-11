@@ -44,8 +44,7 @@ use      dart_pop_mod, only: set_model_time_step,                              &
                              read_horiz_grid, read_topography, read_vert_grid, &
                              get_pop_restart_filename, set_binary_file_conversion, &
                              read_mean_dynamic_topography
-use ensemble_manager_mod,  only : ensemble_type, map_pe_to_task, get_copy_owner_index, &
-                                  get_var_owner_index
+use ensemble_manager_mod,  only : ensemble_type
 use distributed_state_mod, only : get_state
 use state_structure_mod,   only : add_domain, get_model_variable_indices, &
                                   get_num_variables, get_index_start, &

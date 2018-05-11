@@ -1,0 +1,47 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+
+This additional info will go into the ../prep_bufr.html file soon and
+be deleted from here. 
+
+All the programs in the prep_bufr directory read bufr format data files
+and output ascii intermediate files. These ascii files then need to be 
+  converted to obs_seq files by programs in the NCEP/ascii_to_obs dir.
+
+For my own sanity here is the story on the scripts here:
+
+multi_parallel.batch - new script that should be able to convert N days
+  at a time.  requires advance_time in this directory, thus the new
+  quickbuild.csh and mkmf files for the first time.
+
+run_one_prepbufr.csh - wrapper script that makes a unique directory for
+  each day and does the conversion there.  intended to be called by the
+  parallel batch script.
+
+prepbufr.csh - convert a single day of prepbufr files (4/day) at a time.
+  uses advance_time and can output either a single output (daily) ascii
+  file or 4 6-hour ascii files. 
+
+run_some_prepbufr.csh - simple loop program that does up to a month of
+  conversions at a time.  but does NOT run in parallel, in spite of
+  appearances, on batch nodes with MPI.  use multi_parallel.batch instead.
+
+
+
+building the executables:
+
+unlike the rest of the system, this still uses a lot of the prep_bufr
+distribution code.  you cd up one directory and run './install.sh' to
+build the bufr lib and the executables needed.  they all end up in
+the 'exe' subdir with an extension of .x
+
+the quickbuild.csh script builds advance_time now, and is also needed.
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

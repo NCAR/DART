@@ -26,8 +26,8 @@ use     location_mod, only : location_type, is_location_in_region
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
                              write_obs_def, destroy_obs_def, copy_obs_def, &
                              interactive_obs_def, get_obs_def_location, &
-                             get_obs_def_type_of_obs, &
-                             get_obs_def_key
+                             get_obs_def_type_of_obs, get_obs_def_key, &
+                             operator(/=), print_obs_def
 use     obs_kind_mod, only : write_type_of_obs_table, read_type_of_obs_table, max_defined_types_of_obs, &
                              get_index_for_type_of_obs
 use time_manager_mod, only : time_type, operator(>), operator(<), &
@@ -45,6 +45,15 @@ interface assignment(=)
    module procedure copy_obs
 end interface
 
+interface operator(==)
+   module procedure eq_obs
+end interface
+
+interface operator(/=)
+   module procedure ne_obs
+end interface
+
+
 ! Public interfaces for obs sequences
 public :: obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
    get_num_copies, get_num_qc, get_num_obs, get_max_num_obs, &
@@ -53,7 +62,7 @@ public :: obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
    set_qc_meta_data, get_first_obs, get_last_obs, add_copies, add_qc, &
    write_obs_seq, read_obs_seq, set_obs, append_obs_to_seq, &
    get_obs_from_key, get_obs_time_range, get_time_range_keys, &
-   get_num_times, get_num_key_range, &
+   get_num_times, get_num_key_range, operator(==), operator(/=), &
    static_init_obs_sequence, destroy_obs_sequence, read_obs_seq_header, &
    delete_seq_head, delete_seq_tail, &
    get_next_obs_from_key, get_prev_obs_from_key, delete_obs_by_typelist, &
@@ -63,7 +72,7 @@ public :: obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
 public :: obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
    get_obs_values, set_obs_values, replace_obs_values, get_qc, set_qc, &  
    read_obs, write_obs, replace_qc, interactive_obs, copy_obs, assignment(=), &
-   get_obs_key, copy_partial_obs
+   get_obs_key, copy_partial_obs, print_obs, eq_obs, ne_obs
 
 ! Public interfaces for obs covariance modeling
 public :: obs_cov_type
@@ -1291,9 +1300,9 @@ ios = check_obs_seq_header(file_id, read_format)
 if(ios /= 0) then
    call close_file(file_id)
 
-   read_format = 'unformatted'
+read_format = 'unformatted'
    file_id = open_file(file_name, form=read_format, action='read', convert=read_binary_file_format)
- 
+
    ios = check_obs_seq_header(file_id, read_format)
    if(ios /= 0) then
 
@@ -1302,7 +1311,7 @@ if(ios /= 0) then
       write(string1, *) 'File "', trim(file_name), '" is not recognized as a DART observation sequence file.'
       write(string2, *) 'Attempted to read both as a formatted (ascii) and unformatted (binary) file.'
       write(string3, *) 'For binary files, endian selection was "'//trim(read_binary_file_format)//'"' 
-      call error_handler(E_ERR, 'read_obs_seq_header', string1, &
+   call error_handler(E_ERR, 'read_obs_seq_header', string1, &
                          source, revision, revdate, text2=string2, text3=string3)
    endif
 endif
@@ -1315,10 +1324,10 @@ call read_type_of_obs_table(file_id, .false., read_format)
 
 ! Read in the rest of the header information
 if (read_format == 'formatted') then
-   read(file_id, *) label(1), num_copies, label(2), num_qc
-   read(file_id, *) label(1), num_obs, label(2), max_num_obs
+read(file_id, *) label(1), num_copies, label(2), num_qc
+read(file_id, *) label(1), num_obs, label(2), max_num_obs
 else
-   read(file_id) num_copies, num_qc, num_obs, max_num_obs
+read(file_id) num_copies, num_qc, num_obs, max_num_obs
 endif
 
 ! Close the file if requested by optional argument
@@ -1327,7 +1336,6 @@ if(present(close_the_file)) then
 endif
 
 end subroutine read_obs_seq_header
-
 !-------------------------------------------------
 
 ! ok, this needs some explanation.  for a binary formatted file,
@@ -2144,6 +2152,101 @@ obs1%cov_group = obs2%cov_group
 
 end subroutine copy_obs
 
+!-----------------------------------------------------
+
+subroutine print_obs(obs1)
+
+type(obs_type), intent(in) :: obs1
+
+character(len=256) :: string
+integer :: i
+
+write(string, *) obs1%key
+call error_handler(E_MSG, '', 'obs key: '//trim(string))
+
+call error_handler(E_MSG, '', 'obs def: ')
+call print_obs_def(obs1%def)
+
+if (associated(obs1%values)) then
+   call error_handler(E_MSG, '', 'obs_copies: ')
+   do i = 1, size(obs1%values)
+      write(string, *) i, obs1%values(i)
+      call error_handler(E_MSG, '', '  '//trim(string))
+   enddo
+else
+   call error_handler(E_MSG, '', 'no copies')
+endif
+
+if (associated(obs1%qc)) then
+   call error_handler(E_MSG, '', 'obs_QCs: ')
+   do i = 1, size(obs1%qc)
+      write(string, *) i, obs1%qc(i)
+      call error_handler(E_MSG, '', '  '//trim(string))
+   enddo
+else
+   call error_handler(E_MSG, '', 'no QCs')
+endif
+
+call error_handler(E_MSG, '', 'obs linked list info:')
+write(string, *) obs1%prev_time
+call error_handler(E_MSG, '', 'prev obs key: '//trim(string))
+write(string, *) obs1%next_time
+call error_handler(E_MSG, '', 'next obs key: '//trim(string))
+write(string, *) obs1%cov_group
+call error_handler(E_MSG, '', 'cov group (unused): '//trim(string))
+
+end subroutine print_obs
+
+!-----------------------------------------------------
+
+function eq_obs(obs1, obs2)
+
+! This routine could be overloaded with the == operator
+
+type(obs_type), intent(in) :: obs1
+type(obs_type), intent(in) :: obs2
+logical :: eq_obs
+
+integer :: i
+
+eq_obs = .false.
+
+if (obs1%def /= obs2%def) return
+
+if (associated(obs1%values) .and. .not. associated(obs2%values)) return
+if (associated(obs2%values) .and. .not. associated(obs1%values)) return
+if (size(obs1%values) /= size(obs2%values)) return
+   
+do i = 1, size(obs1%values)
+   if (obs1%values(i) /= obs2%values(i)) return
+enddo
+
+if (associated(obs1%qc) .and. .not. associated(obs2%qc)) return
+if (associated(obs2%qc) .and. .not. associated(obs1%qc)) return
+if (size(obs1%qc) /= size(obs2%qc)) return
+   
+do i = 1, size(obs1%qc)
+   if (obs1%qc(i) /= obs2%qc(i)) return
+enddo
+
+eq_obs = .true.
+
+end function eq_obs
+
+!-------------------------------------------------
+
+function ne_obs(obs1, obs2)
+
+! This routine could be overloaded with the /= operator
+
+type(obs_type), intent(in) :: obs1
+type(obs_type), intent(in) :: obs2
+logical :: ne_obs
+
+ne_obs = .not. eq_obs(obs1, obs2)
+
+end function ne_obs
+
 !-------------------------------------------------
 
 subroutine destroy_obs(obs)
@@ -2533,7 +2636,6 @@ end subroutine read_obs
 
 !------------------------------------------------------------------------------
 
-!subroutine interactive_obs(state_ens_handle, win, num_copies, num_qc, obs, key)
 subroutine interactive_obs(num_copies, num_qc, obs, key)
 
 integer,        intent(in)    :: num_copies, num_qc, key

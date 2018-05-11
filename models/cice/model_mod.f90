@@ -109,8 +109,7 @@ use         dart_cice_mod, only : set_model_time_step,               &
                                   get_cice_restart_filename,         &
                                   set_binary_file_conversion
 
-use  ensemble_manager_mod, only : ensemble_type, map_pe_to_task, get_copy_owner_index, &
-                                  get_var_owner_index
+use  ensemble_manager_mod, only : ensemble_type
 
 use distributed_state_mod, only : get_state
 
