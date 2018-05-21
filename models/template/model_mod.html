@@ -764,18 +764,19 @@ for examples of this use.
 <br>
 <div class=routine>
 <em class=call>call get_close_state(gc, base_loc, base_type,
-  state_loc, state_qtys, state_indx, num_close, close_ind, dist, state_handle</em>) </em>
+  state_loc, state_qtys, state_indx, num_close, close_ind
+  <em class=optionalcode>[,&nbsp;dist,&nbsp;state_handle]</em>) </em>
 <pre>
-type(get_close_type), intent(in)    :: <em class=code>gc</em>
-type(location_type),  intent(inout) :: <em class=code>base_loc</em>
-integer,              intent(in)    :: <em class=code>base_type</em>
-type(location_type),  intent(inout) :: <em class=code>state_loc(:)</em>
-integer,              intent(in)    :: <em class=code>state_qtys(:)</em>
-integer(i8),          intent(in)    :: <em class=code>state_indx(:)</em>
-integer,              intent(out)   :: <em class=code>num_close</em>
-integer,              intent(out)   :: <em class=code>close_ind(:)</em>
-real(r8),             intent(out)   :: <em class=code>dist(:)</em>
-type(ensemble_type),  intent(in)    :: <em class=code>state_handle</em>
+type(get_close_type),          intent(in)    :: <em class=code>gc</em>
+type(location_type),           intent(inout) :: <em class=code>base_loc</em>
+integer,                       intent(in)    :: <em class=code>base_type</em>
+type(location_type),           intent(inout) :: <em class=code>state_loc(:)</em>
+integer,                       intent(in)    :: <em class=code>state_qtys(:)</em>
+integer(i8),                   intent(in)    :: <em class=code>state_indx(:)</em>
+integer,                       intent(out)   :: <em class=code>num_close</em>
+integer,                       intent(out)   :: <em class=code>close_ind(:)</em>
+real(r8),            optional, intent(out)   :: <em class=code>dist(:)</em>
+type(ensemble_type), optional, intent(in)    :: <em class=code>state_handle</em>
 </pre>
 </div>
 
@@ -783,7 +784,7 @@ type(ensemble_type),  intent(in)    :: <em class=code>state_handle</em>
 <!-- Description -->
 
 <P>
-Given a location and kind, compute the distances to all other locations 
+Given a location and quantity, compute the distances to all other locations 
 in the <em class=code>state_loc</em> list.  The return values are the number
 of items which are within maxdist of the base, the index numbers in the 
 original state_loc list, and optionally the distances.  The <em class=code>gc</em>
@@ -843,7 +844,7 @@ for examples of this use.
 
 <TR><TD valign=top><em class=code>base_loc</em></TD>
     <TD>Reference location.  The distances will be computed
-        between this location and every other location in the obs list</TD></TR>
+        between this location and every other location in the list</TD></TR>
 
 <TR><TD valign=top><em class=code>base_type</em></TD>
     <TD>The DART quantity at the  <em class=code>base_loc</em></TD></TR>
@@ -910,7 +911,7 @@ Most (real) models have observations in one or more coordinate systems
 (pressure, height) and the model is generally represented in only one 
 coordinate system. To be able to interpolate the model state to the 
 observation location, or to compute the true distance between the state 
-and the observation, it is necessary to convert everything to one 
+and the observation, it is necessary to convert everything to a single 
 coodinate system.
 </P>
 
@@ -970,12 +971,8 @@ integer,             intent(out) :: <em class=code>status(:)</em>
 <P>
 Converts the state to the desired vertical localization coordinate system.
 Some models (toy models with no 'real' observations) will not need this. 
-Most (real) models have observations in one or more coordinate systems 
-(pressure, height) and the model is generally represented in only one 
-coordinate system. To be able to interpolate the model state to the 
-observation location, or to compute the true distance between the state 
-and the observation, it is necessary to convert everything to one 
-coodinate system.
+To compute the true distance between the state and the observation, 
+it is necessary to convert everything to a single coodinate system.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>

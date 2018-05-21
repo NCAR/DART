@@ -6,5 +6,9 @@
    fieldnames              = ''
    fieldlist_file          = ''
    only_report_differences = .true.
-
    /
+
+&utilities_nml
+   module_details = .false.
+   /
+

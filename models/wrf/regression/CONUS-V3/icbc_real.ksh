@@ -134,23 +134,23 @@ export      BE_file=$VAR_DIR/var/run/be.dat.cv3
 # parameter definitions - especially the moist variables related to the microphysics
 # of your choice.  Note that any states that you want to update with filter, or
 # monitor, needs to be on this list. Note the lists below are in double quotes.
-  export  my_state_variables="'U','KIND_U_WIND_COMPONENT','TYPE_U','UPDATE','999',
-                              'V','KIND_V_WIND_COMPONENT','TYPE_V','UPDATE','999',
-                              'W','KIND_VERTICAL_VELOCITY','TYPE_W','UPDATE','999',
-                              'PH','KIND_GEOPOTENTIAL_HEIGHT','TYPE_GZ','UPDATE','999',
-                              'T','KIND_POTENTIAL_TEMPERATURE','TYPE_T','UPDATE','999',
-                              'MU','KIND_PRESSURE','TYPE_MU','UPDATE','999',
-                              'QVAPOR','KIND_VAPOR_MIXING_RATIO','TYPE_QV','UPDATE','999',
-                              'QCLOUD','KIND_CLOUD_LIQUID_WATER','TYPE_QC','UPDATE','999',
-                              'QRAIN','KIND_RAINWATER_MIXING_RATIO','TYPE_QR','UPDATE','999',
-                              'QICE','KIND_CLOUD_ICE','TYPE_QI','UPDATE','999',
-                              'QSNOW','KIND_SNOW_MIXING_RATIO','TYPE_QS','UPDATE','999',
-                              'U10','KIND_U_WIND_COMPONENT','TYPE_U10','UPDATE','999',
-                              'V10','KIND_V_WIND_COMPONENT','TYPE_V10','UPDATE','999',
-                              'T2','KIND_TEMPERATURE','TYPE_T2','UPDATE','999',
-                              'TH2','KIND_POTENTIAL_TEMPERATURE','TYPE_TH2','UPDATE','999',
-                              'Q2','KIND_SPECIFIC_HUMIDITY','TYPE_Q2','UPDATE','999',
-                              'PSFC','KIND_PRESSURE','TYPE_PS','UPDATE','999',"
+  export  my_state_variables="'U','QTY_U_WIND_COMPONENT','TYPE_U','UPDATE','999',
+                              'V','QTY_V_WIND_COMPONENT','TYPE_V','UPDATE','999',
+                              'W','QTY_VERTICAL_VELOCITY','TYPE_W','UPDATE','999',
+                              'PH','QTY_GEOPOTENTIAL_HEIGHT','TYPE_GZ','UPDATE','999',
+                              'T','QTY_POTENTIAL_TEMPERATURE','TYPE_T','UPDATE','999',
+                              'MU','QTY_PRESSURE','TYPE_MU','UPDATE','999',
+                              'QVAPOR','QTY_VAPOR_MIXING_RATIO','TYPE_QV','UPDATE','999',
+                              'QCLOUD','QTY_CLOUD_LIQUID_WATER','TYPE_QC','UPDATE','999',
+                              'QRAIN','QTY_RAINWATER_MIXING_RATIO','TYPE_QR','UPDATE','999',
+                              'QICE','QTY_CLOUD_ICE','TYPE_QI','UPDATE','999',
+                              'QSNOW','QTY_SNOW_MIXING_RATIO','TYPE_QS','UPDATE','999',
+                              'U10','QTY_U_WIND_COMPONENT','TYPE_U10','UPDATE','999',
+                              'V10','QTY_V_WIND_COMPONENT','TYPE_V10','UPDATE','999',
+                              'T2','QTY_TEMPERATURE','TYPE_T2','UPDATE','999',
+                              'TH2','QTY_POTENTIAL_TEMPERATURE','TYPE_TH2','UPDATE','999',
+                              'Q2','QTY_SPECIFIC_HUMIDITY','TYPE_Q2','UPDATE','999',
+                              'PSFC','QTY_PRESSURE','TYPE_PS','UPDATE','999',"
 # List of state variables that should be 'positive definite' - where negative values that
 # emerge from filter are reset to the value indicated below (zero). Microphysical variables
 # are logically added here.

@@ -72,7 +72,7 @@ edit the model mod and fill in the routines in this order:
     corresponds to this item must be written.
 
 5. model_interpolate() - given a location (lon/lat/vert in 3d, x in 1d)
-   and a state KIND_xxx kind, return the interpolated value the field
+   and a state QTY_xxx kind, return the interpolated value the field
    has at that location.   this is probably one of the routines that
    will take the most code to write.
 

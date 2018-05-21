@@ -48,8 +48,8 @@ use    utilities_mod, only : register_module, error_handler,                   &
                              open_file, close_file, do_nml_file, do_nml_term,  &
                              nmlfileunit
 
-use netcdf_utilities_mod, only : nc_add_global_attribute, nc_sync, nc_check, &
-                                 nc_add_global_creation_time, nc_redef, nc_enddef
+use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, nc_check, &
+                                 nc_add_global_creation_time, nc_begin_define_mode, nc_end_define_mode
 
 use     obs_kind_mod, only : QTY_SOIL_TEMPERATURE,       &
                              QTY_SOIL_MOISTURE,          &
@@ -1153,7 +1153,7 @@ write(filename,*) 'ncid', ncid
 
 ! Write Global Attributes
 
-call nc_redef(ncid)
+call nc_begin_define_mode(ncid)
 
 call nc_add_global_creation_time(ncid)
 
@@ -1331,7 +1331,7 @@ call nc_check(nf90_put_att(ncid,  VarID, 'long_name', &
 ! Finished with dimension/variable definitions, must end 'define' mode to fill.
 !----------------------------------------------------------------------------
 
-call nc_enddef(ncid)
+call nc_end_define_mode(ncid)
 
 !----------------------------------------------------------------------------
 ! Fill the coordinate variables
@@ -1413,7 +1413,7 @@ call nc_check(nf90_put_var(ncid, VarID, pfts1d_wtxy ), &
 !-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
 !-------------------------------------------------------------------------------
-call nc_sync(ncid)
+call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts
 

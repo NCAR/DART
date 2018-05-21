@@ -181,6 +181,7 @@ plotdat.NQC4index   = get_copy_index(fname,'N_DARTqc_4');
 plotdat.NQC5index   = get_copy_index(fname,'N_DARTqc_5');
 plotdat.NQC6index   = get_copy_index(fname,'N_DARTqc_6');
 plotdat.NQC7index   = get_copy_index(fname,'N_DARTqc_7');
+plotdat.NQC8index   = get_copy_index(fname,'N_DARTqc_8');
 
 figuredata = setfigure();
 
@@ -262,9 +263,9 @@ for ivar = 1:plotdat.nvars
     nqc5 = guess(:,plotdat.NQC5index,:,:);
     nqc6 = guess(:,plotdat.NQC6index,:,:);
     
-    fprintf('%d %s observations had DART QC of 5 (all levels, all regions).\n', ...
+    fprintf('%10d %s observations had DART QC of 5 (all levels, all regions).\n', ...
         sum(nqc5(:)),plotdat.myvarname)
-    fprintf('%d %s observations had DART QC of 6 (all levels, all regions).\n', ...
+    fprintf('%10d %s observations had DART QC of 6 (all levels, all regions).\n', ...
         sum(nqc6(:)),plotdat.myvarname)
     
     nposs = sum(guess(:,plotdat.Npossindex,:,:)) - ...
@@ -283,7 +284,9 @@ for ivar = 1:plotdat.nvars
     end
     
     for ilevel = wantedlevels
-        
+
+        % summarize the observation counts in the log file   
+     
         fprintf(logfid,'\nlevel %d %f %s\n',ilevel,plotdat.level(ilevel),plotdat.level_units);
         plotdat.ges_Nqc4  = guess(:,plotdat.NQC4index  ,ilevel,:);
         plotdat.anl_Nqc4  = analy(:,plotdat.NQC4index  ,ilevel,:);
@@ -304,6 +307,11 @@ for ivar = 1:plotdat.nvars
         plotdat.anl_Nqc7  = analy(:,plotdat.NQC7index  ,ilevel,:);
         fprintf(logfid,'DART QC == 7, prior/post %d %d\n',sum(plotdat.ges_Nqc7(:)), ...
             sum(plotdat.anl_Nqc7(:)));
+        
+        plotdat.ges_Nqc8  = guess(:,plotdat.NQC8index  ,ilevel,:);
+        plotdat.anl_Nqc8  = analy(:,plotdat.NQC8index  ,ilevel,:);
+        fprintf(logfid,'DART QC == 8, prior/post %d %d\n',sum(plotdat.ges_Nqc8(:)), ...
+            sum(plotdat.anl_Nqc8(:)));
         
         plotdat.ges_Nposs = guess(:,plotdat.Npossindex, ilevel,:) - ...
             plotdat.ges_Nqc5 - plotdat.ges_Nqc6;

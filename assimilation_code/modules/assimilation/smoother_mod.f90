@@ -125,7 +125,7 @@ allow_missing = get_missing_ok_status()
 ! NOTE: Using ens_handle here (not lag_handle) so it doesn't die for 0 lag choice
 if(num_lags > 0) call adaptive_inflate_init(lag_inflate, 0, .false., .false., &
    .false. ,.true., 1.0_r8, 0.0_r8,       &
-   1.0_r8, 1.0_r8, 0.0_r8, ens_handle, allow_missing, "Lag")
+   1.0_r8, 1.0_r8, 0.0_r8, 1.0_r8, ens_handle, allow_missing, "Lag")
 
 end subroutine init_smoother
 

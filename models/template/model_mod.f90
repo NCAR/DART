@@ -23,8 +23,9 @@ use    utilities_mod, only : register_module, error_handler, &
                              E_ERR, E_MSG
                              ! nmlfileunit, do_output, do_nml_file, do_nml_term,  &
                              ! find_namelist_in_file, check_namelist_read
-use netcdf_utilities_mod, only : nc_add_global_attribute, nc_sync, &
-                                 nc_add_global_creation_time, nc_redef, nc_enddef
+use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
+                                 nc_add_global_creation_time, &
+                                 nc_begin_define_mode, nc_end_define_mode
 use state_structure_mod, only : add_domain
 use ensemble_manager_mod, only : ensemble_type
 use dart_time_io_mod, only  : read_model_time, write_model_time
@@ -64,15 +65,22 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-! EXAMPLE: define model parameters here
-integer, parameter               :: model_size = 3
-type(time_type)                  :: time_step
-type(location_type), allocatable :: state_loc(:)
 
-! EXAMPLE: perhaps a namelist here 
-integer  :: time_step_days      = 0
-integer  :: time_step_seconds   = 3600
-namelist /model_nml/ time_step_days, time_step_seconds
+type(location_type), allocatable :: state_loc(:)  ! state locations, compute once and store for speed
+
+type(time_type) :: assimilation_time_step 
+
+
+! EXAMPLE: perhaps a namelist here for anything you want to/can set at runtime.
+! this is optional!  only add things which can be changed at runtime.
+integer  :: model_size = 3   
+integer  :: assimilation_time_step_days      = 0 
+integer  :: assimilation_time_step_seconds   = 3600
+
+! uncomment this, the namelist related items in the 'use utilities' section above,
+! and the namelist related items below in static_init_model() to enable the 
+! run-time namelist settings.
+!namelist /model_nml/ model_size, assimilation_time_step_days, assimilation_time_step_seconds
 
 contains
 
@@ -116,8 +124,13 @@ do i = 1, model_size
    !state_loc(i) =  set_location(x_loc,y_loc,v_loc,v_type)
 end do
 
-! The time_step in terms of a time type must also be initialized.
-time_step = set_time(time_step_seconds, time_step_days)
+! This time is both the minimum time you can ask the model to advance
+! (for models that can be advanced by filter) and it sets the assimilation
+! window.  All observations within +/- 1/2 this interval from the current
+! model time will be assimilated. If this isn't settable at runtime 
+! feel free to hardcode it and not add it to a namelist.
+assimilation_time_step = set_time(assimilation_time_step_seconds, &
+                                  assimilation_time_step_days)
 
 ! tell dart the size of the model
 dom_id = add_domain(int(model_size,i8))
@@ -252,7 +265,7 @@ function shortest_time_between_assimilations()
 
 type(time_type) :: shortest_time_between_assimilations
 
-shortest_time_between_assimilations = time_step
+shortest_time_between_assimilations = assimilation_time_step
 
 end function shortest_time_between_assimilations
 
@@ -301,7 +314,7 @@ integer, intent(in) :: domain_id
 
 ! put file into define mode.
 
-call nc_redef(ncid)
+call nc_begin_define_mode(ncid)
 
 call nc_add_global_creation_time(ncid)
 
@@ -311,8 +324,10 @@ call nc_add_global_attribute(ncid, "model_revdate", revdate )
 
 call nc_add_global_attribute(ncid, "model", "template")
 
+call nc_end_define_mode(ncid)
+
 ! Flush the buffer and leave netCDF file open
-call nc_sync(ncid)
+call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts
 

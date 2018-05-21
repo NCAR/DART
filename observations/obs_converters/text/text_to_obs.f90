@@ -214,8 +214,8 @@ obsloop: do    ! no end limit - have the loop break when input ends
       ! check your data source; usually wind direction is specified as the 
       ! direction the wind is coming from, increasing degrees going in a 
       ! clockwise circle.  U and V wind components have the opposite sign.
-      uwnd = sin(wdir * DEG2RAD) * wspeed * -1.0_r8
-      vwnd = cos(wdir * DEG2RAD) * wspeed * -1.0_r8
+      uwnd = sin(wdir * DEG2RAD) * wspeed * (-1.0_r8)
+      vwnd = cos(wdir * DEG2RAD) * wspeed * (-1.0_r8)
       uerr = werr
       verr = werr
 

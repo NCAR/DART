@@ -48,20 +48,18 @@ use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,  
                                   compute_copy_mean, compute_copy_mean_sd,                    &
                                   compute_copy_mean_var, duplicate_ens, get_copy_owner_index, &
                                   get_ensemble_time, set_ensemble_time, broadcast_copy,       &
-                                  prepare_to_read_from_vars, prepare_to_write_to_vars,        &
-                                  prepare_to_read_from_copies,  get_my_num_vars,              &
-                                  prepare_to_write_to_copies, get_ensemble_time,              &
                                   map_task_to_pe,  map_pe_to_task, prepare_to_update_copies,  &
                                   copies_in_window, set_num_extra_copies, get_allow_transpose, &
                                   all_copies_to_all_vars, allocate_single_copy, allocate_vars, &
                                   get_single_copy, put_single_copy, deallocate_single_copy,   &
                                   print_ens_handle
 
-use adaptive_inflate_mod,  only : do_varying_ss_inflate, mean_from_restart, sd_from_restart,  &
-                                  do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
+use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_restart,  &
+                                  inflate_ens, adaptive_inflate_init,   &
                                   adaptive_inflate_type, set_inflation_mean_copy ,            &
                                   log_inflation_info, set_inflation_sd_copy,                  &
-                                  get_minmax_task_zero, do_rtps_inflate
+                                  get_minmax_task_zero, do_rtps_inflate,                      &
+                                  validate_inflate_options
 
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                   task_count
@@ -202,7 +200,7 @@ character(len=256) :: output_state_file_list(MAX_NUM_DOMS) = ''
 ! Read in a single file and perturb this to create an ensemble
 logical  :: perturb_from_single_instance = .false.
 real(r8) :: perturbation_amplitude       = 0.2_r8
-! File options.  Single vs. Multiple.
+! File options.  Single vs. Multiple.  really 'unified' or 'combination' vs 'individual'
 logical  :: single_file_in               = .false. ! all copies read  from 1 file
 logical  :: single_file_out              = .false. ! all copies written to 1 file
 
@@ -232,13 +230,14 @@ character(len=256) :: obs_sequence_in_name  = "obs_seq.out",    &
 
 ! Inflation namelist entries follow, first entry for prior, second for posterior
 ! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space,
-! 4 is rtps (relax to prior spread)
+! 4: rtps (relax to prior spread), 5: enhanced state space
 integer  :: inf_flavor(2)                  = 0
 logical  :: inf_initial_from_restart(2)    = .false.
 logical  :: inf_sd_initial_from_restart(2) = .false.
 logical  :: inf_deterministic(2)           = .true.
 real(r8) :: inf_initial(2)                 = 1.0_r8
 real(r8) :: inf_sd_initial(2)              = 0.0_r8
+real(r8) :: inf_sd_max_change(2)           = 1.05_r8
 real(r8) :: inf_damping(2)                 = 1.0_r8
 real(r8) :: inf_lower_bound(2)             = 1.0_r8
 real(r8) :: inf_upper_bound(2)             = 1000000.0_r8
@@ -276,6 +275,7 @@ namelist /filter_nml/ async,     &
    inf_flavor,                   &
    inf_initial_from_restart,     &
    inf_sd_initial_from_restart,  &
+   inf_sd_max_change,            & 
    inf_deterministic,            &
    inf_damping,                  &
    inf_initial,                  &
@@ -383,69 +383,26 @@ call error_handler(E_MSG,'filter_main:', msgstring, source, revision, revdate)
 ! See if smoothing is turned on
 ds = do_smoothing()
 
-! Make sure inflation options are legal - this should be in the inflation module
-! and not here.  FIXME!
-do i = 1, 2
-   if(inf_flavor(i) < 0 .or. inf_flavor(i) > 4) then
-      write(msgstring, *) 'inf_flavor=', inf_flavor(i), ' Must be 0, 1, 2, 3, or 4 '
-      call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
-   endif
-
-   if(inf_damping(i) < 0.0_r8 .or. inf_damping(i) > 1.0_r8) then
-      write(msgstring, *) 'inf_damping=', inf_damping(i), ' Must be 0.0 <= d <= 1.0'
-      call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
-   endif
-end do
-
-! Check to see if state space inflation is turned on
-if (inf_flavor(1) > 1 )                           do_prior_inflate     = .true.
-if (inf_flavor(2) > 1 )                           do_posterior_inflate = .true.
-if (do_prior_inflate .or. do_posterior_inflate)   output_inflation     = .true.
-
-! Observation space inflation not currently supported
-if(inf_flavor(1) == 1 .or. inf_flavor(2) == 1) call error_handler(E_ERR, 'filter_main', &
-   'observation space inflation (type 1) not currently supported', source, revision, revdate, &
-   text2='contact DART developers if you are interested in using it.')
-
-! Relaxation-to-prior-spread (RTPS) is only an option for posterior inflation
-if(inf_flavor(1) == 4) call error_handler(E_ERR, 'filter_main', &
-   'RTPS inflation (type 4) only supported for Posterior inflation', source, revision, revdate)
-
-! RTPS needs a single parameter from namelist: inf_initial(2).  
-! Do not read in any files.  Also, no damping.  but warn the user if they try to set different
-! values in the namelist.
-if ( inf_flavor(2) == 4 ) then
-   if (inf_initial_from_restart(2) .or. inf_sd_initial_from_restart(2)) &
-      call error_handler(E_MSG, 'filter_main:', 'RTPS inflation (type 4) overrides posterior inflation restart file with value in namelist', &
-         text2='posterior inflation standard deviation value not used in RTPS')
-   inf_initial_from_restart(2) = .false.    ! Get parameter from namelist inf_initial(2), not from file
-   inf_sd_initial_from_restart(2) = .false. ! inf_sd not used in this algorithm
-
-   if (.not. inf_deterministic(2)) &
-      call error_handler(E_MSG, 'filter_main:', 'RTPS inflation (type 4) overrides posterior inf_deterministic with .true.')
-   inf_deterministic(2) = .true.  ! this algorithm is deterministic
-
-   if (inf_damping(2) /= 1.0_r8) &
-      call error_handler(E_MSG, 'filter_main:', 'RTPS inflation (type 4) disables posterior inf_damping')
-   inf_damping(2) = 1.0_r8  ! no damping
-endif
-
 call set_missing_ok_status(allow_missing_clm)
 allow_missing = get_missing_ok_status()
 
 call trace_message('Before initializing inflation')
 
+call validate_inflate_options(inf_flavor, inf_damping, inf_initial_from_restart, &
+   inf_sd_initial_from_restart, inf_deterministic, inf_sd_max_change,            &
+   do_prior_inflate, do_posterior_inflate, output_inflation)
+
 ! Initialize the adaptive inflation module
 call adaptive_inflate_init(prior_inflate, inf_flavor(1), inf_initial_from_restart(1), &
    inf_sd_initial_from_restart(1), output_inflation, inf_deterministic(1),            &
    inf_initial(1), inf_sd_initial(1), inf_lower_bound(1), inf_upper_bound(1),         &
-   inf_sd_lower_bound(1), state_ens_handle,                                           &
+   inf_sd_lower_bound(1), inf_sd_max_change(1), state_ens_handle,                     &
    allow_missing, 'Prior')
 
 call adaptive_inflate_init(post_inflate, inf_flavor(2), inf_initial_from_restart(2),  &
    inf_sd_initial_from_restart(2), output_inflation, inf_deterministic(2),            &
    inf_initial(2),  inf_sd_initial(2), inf_lower_bound(2), inf_upper_bound(2),        &
-   inf_sd_lower_bound(2), state_ens_handle,                                           &
+   inf_sd_lower_bound(2), inf_sd_max_change(2), state_ens_handle,                     &
    allow_missing, 'Posterior')
 
 if (do_output()) then
@@ -562,9 +519,9 @@ call read_state(state_ens_handle, file_info_input, read_time_from_file, time1, &
 
 ! This must be after read_state
 call get_minmax_task_zero(prior_inflate, state_ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
-call log_inflation_info(prior_inflate, state_ens_handle%my_pe, 'Prior')
+call log_inflation_info(prior_inflate, state_ens_handle%my_pe, 'Prior', single_file_in)
 call get_minmax_task_zero(post_inflate, state_ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
-call log_inflation_info(post_inflate, state_ens_handle%my_pe, 'Posterior')
+call log_inflation_info(post_inflate, state_ens_handle%my_pe, 'Posterior', single_file_in)
 
 
 if (perturb_from_single_instance) then
@@ -808,7 +765,7 @@ AdvanceTime : do
       endif
    endif
 
-   if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
+   if(do_ss_inflate(prior_inflate)) then
       call trace_message('Before prior inflation damping and prep')
 
       if (inf_damping(1) /= 1.0_r8) then
@@ -927,7 +884,7 @@ AdvanceTime : do
 
    ! This block applies posterior inflation
 
-   if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
+   if(do_ss_inflate(post_inflate)) then
 
       call trace_message('Before posterior inflation damping')
 
@@ -971,8 +928,7 @@ AdvanceTime : do
 
    ! This block applies posterior inflation
 
-   if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate) .or. &
-      do_rtps_inflate(post_inflate)) then
+   if(do_ss_inflate(post_inflate)) then
 
       call trace_message('Before posterior inflation applied to state')
 
@@ -1033,7 +989,7 @@ AdvanceTime : do
    ! (it was applied earlier, this is computing the updated values for
    ! the next cycle.)
 
-   if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
+   if(do_ss_inflate(post_inflate)) then
 
       ! If not reading the sd values from a restart file and the namelist initial
       !  sd < 0, then bypass this entire code block altogether for speed.
@@ -1694,7 +1650,7 @@ real(r8) :: rtime(4)
 integer  :: days, secs
 integer  :: copy1_owner, owner_index
 
-call get_copy_owner_index(1, copy1_owner, owner_index)
+call get_copy_owner_index(ens_handle, 1, copy1_owner, owner_index)
 
 if( ens_handle%my_pe == copy1_owner) then
    rkey_bounds = key_bounds
@@ -1739,7 +1695,7 @@ integer  :: days, secs
 integer  :: copy1_owner, owner_index
 type(time_type) :: time_from_copy1
 
-call get_copy_owner_index(1, copy1_owner, owner_index)
+call get_copy_owner_index(ens_handle, 1, copy1_owner, owner_index)
 
 if( ens_handle%my_pe == copy1_owner) then
    call get_time(ens_time, secs, days)
@@ -2019,7 +1975,7 @@ ens_size = ens_handle%num_copies - ens_handle%num_extras
 
 do copy_num = ens_size + 1, ens_handle%num_copies
    ! Set time for a given copy of an ensemble
-   call get_copy_owner_index(copy_num, owner, owners_index)
+   call get_copy_owner_index(ens_handle, copy_num, owner, owners_index)
    if(ens_handle%my_pe == owner) then
       call set_ensemble_time(ens_handle, owners_index, ens_handle%current_time)
    endif

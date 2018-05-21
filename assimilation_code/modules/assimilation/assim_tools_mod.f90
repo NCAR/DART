@@ -56,7 +56,7 @@ use mpi_utilities_mod,    only : my_task_id, broadcast_send, broadcast_recv,    
                                  sum_across_tasks, task_count, start_mpi_timer,           &
                                  read_mpi_timer
 
-use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate,                   &
+use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate, do_ss_inflate,    &
                                  do_varying_ss_inflate,                                   &
                                  update_inflation,                                        &
                                  inflate_ens, adaptive_inflate_type,                      &
@@ -191,10 +191,6 @@ logical  :: only_area_adapt  = .true.
 ! compared to previous versions of this namelist item.
 logical  :: distribute_mean  = .false.
 
-! Lanai bitwise. This is for unit testing and runs much slower.
-! Only use for when testing against the non-rma trunk.
-logical  :: lanai_bitwise = .false.
-
 namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
    spread_restoration, sampling_error_correction,                          & 
    adaptive_localization_threshold, adaptive_cutoff_floor,                 &
@@ -203,8 +199,7 @@ namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
    special_localization_obs_types, special_localization_cutoffs,           &
    distribute_mean, close_obs_caching,                                     &
    adjust_obs_impact, obs_impact_filename, allow_any_impact_values,        &
-   convert_all_state_verticals_first, convert_all_obs_verticals_first,     &
-   lanai_bitwise ! don't document this one -- only used for regression tests
+   convert_all_state_verticals_first, convert_all_obs_verticals_first
 
 !============================================================================
 
@@ -302,8 +297,7 @@ if(sampling_error_correction) then
    ! we can't read the table here because we don't have access to the ens_size
 endif
 
-is_doing_vertical_conversion = (has_vertical_choice() .and. vertical_localization_on() .and. &
-                                .not. lanai_bitwise)
+is_doing_vertical_conversion = (has_vertical_choice() .and. vertical_localization_on())
 
 call log_namelist_selections(num_special_cutoff, cache_override)
 
@@ -386,6 +380,7 @@ logical :: allow_missing_in_state
 ! for performance, local copies 
 logical :: local_single_ss_inflate
 logical :: local_varying_ss_inflate
+logical :: local_ss_inflate
 logical :: local_obs_inflate
 
 ! HK observation location conversion
@@ -443,6 +438,7 @@ endif
 ! are really in the inflate derived type.
 local_single_ss_inflate  = do_single_ss_inflate(inflate)
 local_varying_ss_inflate = do_varying_ss_inflate(inflate)
+local_ss_inflate         = do_ss_inflate(inflate)
 local_obs_inflate        = do_obs_inflate(inflate)
 
 ! Default to printing nothing
@@ -498,7 +494,6 @@ call get_my_obs_loc(ens_handle, obs_ens_handle, obs_seq, keys, my_obs_loc, my_ob
 
 if (convert_all_obs_verticals_first .and. is_doing_vertical_conversion) then
    ! convert the vertical of all my observations to the localization coordinate
-   ! this may not be bitwise with Lanai because of a different number of set_location calls
    if (timing) call start_mpi_timer(base)
    if (obs_ens_handle%my_num_vars > 0) then
       call convert_vertical_obs(ens_handle, obs_ens_handle%my_num_vars, my_obs_loc, &
@@ -551,7 +546,7 @@ endif
 
 ! Get mean and variance of each group's observation priors for adaptive inflation
 ! Important that these be from before any observations have been used
-if(local_varying_ss_inflate .or. local_single_ss_inflate) then
+if(local_ss_inflate) then
    do group = 1, num_groups
       obs_mean_index = OBS_PRIOR_MEAN_START + group - 1
       obs_var_index  = OBS_PRIOR_VAR_START  + group - 1
@@ -635,7 +630,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    call get_obs_values(observation, obs, obs_val_index)
 
    ! Find out who has this observation and where it is
-   call get_var_owner_index(int(i,i8), owner, owners_index)
+   call get_var_owner_index(ens_handle, int(i,i8), owner, owners_index)
 
    ! Following block is done only by the owner of this observation
    !-----------------------------------------------------------------------
@@ -707,7 +702,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
                   ! Update the inflation value
                   call update_inflation(inflate, my_inflate, my_inflate_sd, &
-                     r_mean, r_var, obs(1), obs_err_var, gamma)
+                     r_mean, r_var, grp_size, obs(1), obs_err_var, gamma)
                endif
             end do
          endif SINGLE_SS_INFLATE
@@ -736,15 +731,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
            net_a, scalar1=obs_qc, &
            scalar2=vertvalue_obs_in_localization_coord, scalar3=whichvert_real)
       endif
-
-      !>@todo FIXME it should be ok to remove this, right? 
-      !>  i'm the owner - i should not have to set anything here because
-      !>  this obs was already converted
-      !if (is_doing_vertical_conversion) then
-      !   ! use converted vertical coordinate from owner
-     !    call set_vertical(base_obs_loc, query_location(my_obs_loc(owners_index), 'VLOC'), &
-     !                                    int(query_location(my_obs_loc(owners_index), 'WHICH_VERT')))
-      !endif
 
    ! Next block is done by processes that do NOT own this observation
    !-----------------------------------------------------------------------
@@ -794,19 +780,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! to shrink it, and so we need to know this before doing get_close() for the
    ! state space (even though the state space increments will be computed and
    ! applied first).
-
-   ! ***** REMOVED THIS SECTION FOR NOW ******
-   ! HK set converted location of observation
-   ! The owner of the observation has done the conversion to the localization coordinate, so 
-   ! every task does not have to do the same calculation ( and communication )
-   !> @todo This is very messy. 
-
-   !--------------------------------------------------------
-   !> @todo have to set location so you are bitwise with Lanai for WRF. There is a bitwise creep with 
-   !> get and set location.
-   ! I believe this is messing up CAM_SE because you get a different % saved for close_obs_caching
-   !  The base_obs_loc are different for cam if you do this set.
-   !--------------------------------------------------------
 
    !******************************************
 
@@ -1090,7 +1063,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                ! IS A TABLE LOOKUP POSSIBLE TO ACCELERATE THIS?
                ! Update the inflation values
                call update_inflation(inflate, varying_ss_inflate, varying_ss_inflate_sd, &
-                  r_mean, r_var, obs(1), obs_err_var, gamma)
+                  r_mean, r_var, grp_size, obs(1), obs_err_var, gamma)
             else
                ! if we don't go into the previous if block, make sure these
                ! have good values going out for the block below
@@ -1298,7 +1271,7 @@ if(do_obs_inflate(inflate)) then
    if(my_cov_inflate_sd > 0.0_r8) & 
       ! Gamma set to 1.0 because no distance for observation space
       call update_inflation(inflate, my_cov_inflate, my_cov_inflate_sd, prior_mean, &
-         prior_var, obs, obs_var, gamma = 1.0_r8)
+         prior_var, ens_size, obs, obs_var, gamma_corr = 1.0_r8)
 
    ! Now inflate the ensemble and compute a preliminary inflation increment
    call inflate_ens(inflate, ens, prior_mean, my_cov_inflate, prior_var)

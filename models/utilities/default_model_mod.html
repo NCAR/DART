@@ -96,7 +96,9 @@ dart_time_io_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#shortest_time_between_assimilations">shortest_time_between_assimilations</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#static_init_model">static_init_model</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#init_time">init_time</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#fail_init_time">fail_init_time</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#init_conditions">init_conditions</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#fail_init_conditions">fail_init_conditions</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_atts">nc_write_model_atts</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_vars">nc_write_model_vars</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#pert_model_copies">pert_model_copies</A></TD></TR>
@@ -350,6 +352,35 @@ Returns a time of 0.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
+<A NAME="fail_init_time"></A>
+<br>
+<div class=routine>
+<em class=call>call fail_init_time(time)</em>
+<pre>
+type(time_type), intent(out) :: <em class=code>time</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Throws a fatal error.
+This is appropriate for models that cannot start from arbitrary initial conditions.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>time</em></TD>
+    <TD>NOT SET. Initial model time.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="init_conditions"></A>
 <br>
 <div class=routine>
@@ -370,6 +401,35 @@ Returns x(:) = 0.0
 
 <TR><TD valign=top><em class=code>x</em></TD>
     <TD>Initial conditions for state vector.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="fail_init_conditions"></A>
+<br>
+<div class=routine>
+<em class=call>call fail_init_conditions(x)</em>
+<pre>
+real(r8), dimension(:), intent(out) :: <em class=code>x</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Throws a fatal error.
+This is appropriate for models that cannot start from arbitrary initial conditions.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>x</em></TD>
+    <TD>NOT SET: Initial conditions for state vector.</TD></TR>
 
 </TABLE>
 
@@ -793,10 +853,10 @@ Passes the call through to the dart_time_io module code.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>ncid</em></TD>
-    <TD>handle to an open netCDF file</TD></TR>
+<TR><TD valign=top><em class=code>filename</em></TD>
+    <TD>netCDF file name</TD></TR>
 
-<TR><TD valign=top><em class=code>dart_time</em></TD>
+<TR><TD valign=top><em class=code>model_time</em></TD>
     <TD>The current time of the model state.</TD></TR>
 
 </TABLE>

@@ -1,3 +1,5 @@
+! DART $Id$
+
 &prep_bufr_nml 
  obs_window     = 24.0,
  otype_use      = 120.0, 130.0, 131.0, 132.0, 133.0, 180.0,
@@ -32,4 +34,10 @@
 ! otype_use      = 120.0, 180.0, 181.0, 182.0,
 ! qctype_use     = 0, 1, 2, 4, 5, 6
 !
+
+
+&utilities_nml
+   module_details = .false.
+ /
+
 

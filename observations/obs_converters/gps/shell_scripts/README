@@ -4,62 +4,10 @@
 #
 # DART $Id$
 
-Description of the scripts provided to process the COSMIC and 
-CHAMP GPS radio occultation data.
+The instructions for how to do large numbers of file conversions
+have been moved to the gps.html file one directory up from here.
 
-Summary of workflow:  
-1) cd to the ../work directory and run ./quickbuild.csh to compile everything.  
-2) Edit ./gpsro_to_obsseq.csh once to set the directory where the DART
-    code is installed, and your CDAAC web site user name and password.
-3) Edit ./do_convert.csh to set the days of data to download/convert/remove.
-4) Run ./do_convert.csh
-5) For additional days repeat steps 3 and 4.
-
-
-More details:
-
-1) quickbuild.csh:
-
-Make sure your $DART/mkmf/mkmf.template is one that matches the
-platform and compiler for your system.  It should be the same as
-how you have it set to build the other DART executables.
-
-Run quickbuild.csh and it should compile all the executables needed
-to do the GPS conversion into DART obs_sequence files.
-
-
-2) gpsro_to_obsseq.csh:
-
-Edit gpsro_to_obsseq.csh once to set the DART_DIR to where you have
-downloaded the DART distribution.  (There are a few additional options
-in this script, but the distribution version should be good for most users.)
-If you are downloading data from the CDAAC web site, set your
-web site user name and password.  After this you should be able to 
-ignore this script.
-
-
-3) do_convert.csh:
-
-A wrapper script that calls the converter script a day at a time.
-Set the days of data you want to download/convert/remove.  See the
-comments at the top of this script for the various options to set.  
-Rerun this script for all data you need.  This script depends on
-the advance_time executable, which should automatically be built
-in the ../work directory, but you may have to copy or link to a
-version from this dir.  you also need a minimal input.nml here:
-
-&utilities_nml
- /
-
-is all the contents it needs.
-
-
-
-It can be risky to use the automatic delete/cleanup option - if there are
-any errors in the script or conversion (file system full, bad file format,
-etc) and the script doesn't exit, it can delete the input files before 
-the conversion has succeeded.  But if you have file quota concerns
-this allows you to keep the total disk usage lower.
+It describes the scripts here and how they are intended to be used.
 
 
 # <next few lines under version control, do not edit>

@@ -36,7 +36,9 @@ public :: get_model_size, &
           end_model, &
           static_init_model, &
           init_time, &
+          fail_init_time, &
           init_conditions, &
+          fail_init_conditions, &
           nc_write_model_atts, &
           nc_write_model_vars, &
           pert_model_copies, &
@@ -74,6 +76,19 @@ end subroutine init_conditions
 
 !------------------------------------------------------------------
 
+subroutine fail_init_conditions(x)
+real(r8), intent(out) :: x(:)
+
+call error_handler(E_ERR, 'init_conditions', 'this model cannot start from scratch', &
+                   source, revision, revdate)
+
+! default
+x = 0.0_r8
+
+end subroutine fail_init_conditions
+
+!------------------------------------------------------------------
+
 subroutine adv_1step(x, time)
 real(r8), intent(inout) :: x(:)
 type(time_type), intent(in) :: time
@@ -100,6 +115,18 @@ type(time_type), intent(out) :: time
 time = set_time(0, 0)
 
 end subroutine init_time
+
+!------------------------------------------------------------------
+
+subroutine fail_init_time(time)
+type(time_type), intent(out) :: time
+
+call error_handler(E_ERR, 'init_time', 'this model cannot start from scratch', &
+                   source, revision, revdate)
+
+time = set_time(0, 0)
+
+end subroutine fail_init_time
 
 !------------------------------------------------------------------
 

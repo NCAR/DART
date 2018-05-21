@@ -133,8 +133,9 @@ use utilities_mod,     only : open_file, close_file, find_namelist_in_file, chec
                               logfileunit, nmlfileunit, do_output, get_unit, do_nml_file, &
                               do_nml_term
 
-use netcdf_utilities_mod, only : nc_add_global_attribute, nc_sync, nc_check, &
-                                 nc_add_global_creation_time, nc_redef, nc_enddef
+use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, nc_check, &
+                                 nc_add_global_creation_time, nc_begin_define_mode, &
+                                 nc_end_define_mode
 
 use mpi_utilities_mod, only : my_task_id, task_count
 
@@ -2538,7 +2539,7 @@ if (.not. module_initialized) call static_init_model()
 
 ! Write Global Attributes
 
-call nc_redef(ncid)
+call nc_begin_define_mode(ncid)
 
 call nc_add_global_creation_time(ncid)
 
@@ -2673,7 +2674,7 @@ if (print_details .and. output_task0) then
 endif
 
 ! Leave define mode so we can fill variables
-call nc_enddef(ncid)
+call nc_end_define_mode(ncid)
 
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! Fill the coordinate variables
@@ -2722,7 +2723,7 @@ if (P0%label   /= ' ') &
 ! Flush the buffer and leave netCDF file open
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-call nc_sync(ncid)
+call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts
 
