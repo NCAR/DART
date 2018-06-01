@@ -19,8 +19,9 @@ use     location_mod,      only : location_type, set_location, get_location, &
                                   get_close_obs, get_close_state, &
                                   convert_vertical_obs, convert_vertical_state
 
-use netcdf_utilities_mod, only : nc_add_global_attribute, nc_sync, &
-                                 nc_add_global_creation_time, nc_redef, nc_enddef
+use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
+                                 nc_add_global_creation_time, &
+                                 nc_begin_define_mode, nc_end_define_mode
 
 use location_io_mod,      only :  nc_write_location_atts, nc_get_location_varids, &
                                   nc_write_location
@@ -592,7 +593,7 @@ msize = int(num_grid_points, i4)
 
 ! Write Global Attributes
 
-call nc_redef(ncid)
+call nc_begin_define_mode(ncid)
 
 call nc_add_global_creation_time(ncid)
 
@@ -612,10 +613,10 @@ call nc_add_global_attribute(ncid, "source_diurnal_rel_amp" , source_diurnal_rel
 call nc_add_global_attribute(ncid, "source_phase_noise"     , source_phase_noise )
 
 call nc_write_location_atts(ncid, msize)
-call nc_enddef(ncid)
+call nc_end_define_mode(ncid)
 call nc_write_location(ncid, state_loc, msize)
 
-call nc_sync(ncid)
+call nc_synchronize_file(ncid)
 
 
 end subroutine nc_write_model_atts

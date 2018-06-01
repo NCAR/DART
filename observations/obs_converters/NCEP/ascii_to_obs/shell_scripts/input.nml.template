@@ -1,0 +1,107 @@
+
+&prepbufr_to_obs_nml
+   startyear     = SYYYY,
+   startmonth    = SMM,
+   startday      = SDD,
+   starthour     = SHH
+   endyear       = EYYYY,
+   endmonth      = EMM,
+   endday        = EDD,
+   endhour       = EHH
+   windowdays    = 0,
+   windowhours   = 6
+   windowseconds = 0
+   midnight_24   = .true.
+   input_filename_base     = '/glade/p/image/Observations/bufr/prepout/temp_obs.',
+   input_filename_pattern  = '(A,I4.4,3(I2.2))'
+   output_filename_base    = '/glade/p/image/Observations/bufr/obs_seq/obs_seq',
+   output_filename_pattern = '(A,I4.4,3(I2.2))'
+   max_num_obs = 10000000,
+   select_obs = .false.,
+   ADPUPA = .false., 
+   AIRCAR = .false., 
+   AIRCFT = .false., 
+   SATEMP = .false., 
+   SFCSHP = .false., 
+   ADPSFC = .false., 
+   SATWND = .false.,
+   obs_U  = .false., 
+   obs_V  = .false., 
+   obs_T  = .false.,
+   obs_PS = .false.,
+   obs_QV = .false.,
+   include_specific_humidity = .true.,
+   include_relative_humidity = .false.,
+   include_dewpoint = .false.,
+   lon1   =   0.0,
+   lon2   = 360.0,
+   lat1   = -90.0,
+   lat2   =  90.0  
+   print_timestamps = .false., 
+   print_every_Nth = 200000, 
+   debug = .false.
+/
+
+# need a way to say hours vs seconds for the latter here
+#output_filename_pattern = '(A,I4.4,3(I2.2))'   works ok
+#output_filename_pattern = '(A,I4.4,"-",I2.2,"-",I2.2,"-",I5.5))'  prints hours instead of secs
+#input_filename_base = '/glade/p/image/Observations/bufr/raw/200408_6Hnew/temp_obs.',
+
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.  /
+
+&utilities_nml
+   TERMLEVEL = 1,
+   logfilename = 'dart_log.out'
+   nmlfilename = 'dart_log.nml'
+   module_details = .false.
+   write_nml = "file"
+   /
+
+&assim_model_nml
+   /
+
+&model_nml
+   /
+
+&location_nml
+   /
+
+&obs_kind_nml
+   /
+
+&obs_def_gps_nml
+  max_gpsro_obs = 100000,
+  / 
+
+&obs_selection_nml
+   filename_seq          = '200408/obs_seq20040803', 
+   filename_seq_list     = '', 
+   filename_out          = 'obs_seq.processed', 
+   selections_file       = 'obs_seq.20040803', 
+   selections_is_obs_seq = .true.,
+   print_only            = .false., 
+   calendar              = "Gregorian",
+/
+
+
+&obs_sequence_tool_nml
+   filename_seq = '',
+   filename_seq_list = 'olist'
+   print_only = .true.
+   filename_out = ''
+/
+
+&preprocess_nml
+    input_obs_kind_mod_file = '../../../../obs_kind/DEFAULT_obs_kind_mod.F90',
+   output_obs_kind_mod_file = '../../../../obs_kind/obs_kind_mod.f90',
+     input_obs_def_mod_file = '../../../../obs_def/DEFAULT_obs_def_mod.F90',
+    output_obs_def_mod_file = '../../../../obs_def/obs_def_mod.f90',
+   input_files              = '../../../../obs_def/obs_def_reanalysis_bufr_mod.f90',
+                              '../../../../obs_def/obs_def_altimeter_mod.f90',
+                              '../../../../obs_def/obs_def_gps_mod.f90'  
+                              '../../../../obs_def/obs_def_dew_point_mod.f90'  
+                              '../../../../obs_def/obs_def_rel_humidity_mod.f90'  
+   /
+

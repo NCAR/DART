@@ -16,7 +16,7 @@ use     dart_cice_mod, only: set_model_time_step,               &
 
 created ../../obs_def/obs_def_cice_mod.f90 to make new obs_kinds used in model_mod.f90 and input.nml. Flailed around only. Not sure what to do.
 
-not sure about KIND_TRACERARRAY_CATSp
+not sure about QTY_TRACERARRAY_CATSp
 
 edited ../obs_kind/obs_kind_mod.f90 but should not have. It is supposed to be rewritten anyway. removed edits but date changed
 

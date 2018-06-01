@@ -27,8 +27,9 @@
 
 <A HREF="#DataSources">DATA SOURCES</A> /
 <A HREF="#Programs">PROGRAMS</A> / 
-<A HREF="#Modules">MODULES</A> /
 <A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Workflow">WORKFLOW</A> / 
+<A HREF="#Modules">MODULES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">FUTURE PLANS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
@@ -93,18 +94,20 @@ the Level 2 data, Atmospheric Profiles (filenames include
 the string 'atmPrf').
 <br />
 <br />
-Currently each vertical profile is stored in a separate file,
+Each vertical profile is stored in a separate netCDF file,
 and there are between 1000-3000 profiles/day, so converting a day's
-worth of observations involves downloading many individual files.
-There are plans in place by the data providers to bundle these 
-profiles together in a tar file to make it simpler to download the raw data.
+worth of observations used to involve downloading many individual files.
+There are now daily tar files available which makes it simpler
+to download the raw data all in a single file and then untar it to
+get the individual profiles.
 <br />
 <br />
-The scripts in the <em class=file>shell_scripts</em> directory now
-by default try to download profiles from any of the available
+The scripts in the <em class=file>shell_scripts</em> directory can
+now download profiles from any of the available
 satellites that return GPS RO data to the CDAAC web site.  See the
-<em class=file>do_convert.csh</em> script for a list of what 
-satellites are checked by default.
+<em class=file>gpsro_to_obsseq.csh</em> or
+<em class=file>convert_many_gpsro.csh</em> script for where to 
+specify the satellites to be included.
 </P>
 
 <H3>Electron Density</H3>
@@ -115,8 +118,9 @@ the COSMIC 2013 Mission and have a data type of 'ionPrf'.
 <br />
 The file naming convention and file format are described by COSMIC 
 <a href=' http://cdaac-www.cosmic.ucar.edu/cdaac/cgi_bin/fileFormats.cgi?type=ionPrf'>here</a> 
-and there can be more than 1000 profiles/day, so converting a day's
-worth of observations involves downloading many individual files.
+and there can be more than 1000 profiles/day. Like the GPS radio
+occultation data, the profiles are now available in a single daily
+tar file which can be downloaded then be unpacked into the individual files.
 COSMIC has instructions on ways to download the data at<br />
 <a href='http://cdaac-www.cosmic.ucar.edu/cdaac/tar/rest.html'
 >http://cdaac-www.cosmic.ucar.edu/cdaac/tar/rest.html</a>
@@ -545,6 +549,230 @@ the new data will be appended to that file.
 
 <!--==================================================================-->
 
+<A NAME="Workflow"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>WORKFLOW FOR BATCH CONVERSIONS</H2>
+
+<!-- THIS NEEDS MORE WORK.  IT'S BASICALLY THE CONTENTS OF
+     THE README DROPPED IN HERE WITH A </pre> PREPENDED.  
+     BUT IT'S BETTER THAN NOTHING.  -->
+
+<P>
+If you are converting only a day or two of observations
+you can download the files by hand and call the converter 
+programs from the command line.  However if you are going
+convert many days/months/years of data you need an automated
+script, possibly submitted to a batch queue on a large machine.
+The following instructions describe shell scripts we provide
+as a guide in the <em class=file>shell_scripts</em> directory.
+You will have to adapt them for your own system
+unless you are running on an NCAR superscomputer.
+</P>
+
+<P>
+<b>Making DART Observations from Radio Occultation atmPrf Profiles:</b>
+<br />
+
+<pre>
+Description of the scripts provided to process the COSMIC and 
+CHAMP GPS radio occultation data.
+
+Summary of workflow:  
+1) cd to the ../work directory and run ./quickbuild.csh to compile everything.  
+2) Edit ./gpsro_to_obsseq.csh once to set the directory where the DART
+    code is installed, and your CDAAC web site user name and password.
+3) Edit ./convert_many_gpsro.csh to set the days of data to download/convert/remove.
+4) Run ./convert_many_gpsro.csh either on the command line or submit to a batch system.
+
+
+More details:
+
+1) quickbuild.csh:
+
+Make sure your $DART/mkmf/mkmf.template is one that matches the
+platform and compiler for your system.  It should be the same as
+how you have it set to build the other DART executables.
+
+Run quickbuild.csh and it should compile all the executables needed
+to do the GPS conversion into DART obs_sequence files.
+
+
+2) gpsro_to_obsseq.csh:
+
+Edit gpsro_to_obsseq.csh once to set the DART_DIR to where you have
+downloaded the DART distribution.  (There are a few additional options
+in this script, but the distribution version should be good for most users.)
+If you are downloading data from the CDAAC web site, set your
+web site user name and password.  After this you should be able to 
+ignore this script.
+
+
+3) convert_many_gpsro.csh:
+
+A wrapper script that calls the converter script a day at a time.
+Set the days of data you want to download/convert/remove.  See the
+comments at the top of this script for the various options to set.  
+Rerun this script for all data you need.  This script depends on
+the advance_time executable, which should automatically be built
+in the ../work directory, but you may have to copy or link to a
+version from this dir.  you also need a minimal input.nml here:
+
+&amp;utilities_nml
+ /
+
+is all the contents it needs.
+
+
+It can be risky to use the automatic delete/cleanup option - if there are
+any errors in the script or conversion (file system full, bad file format,
+etc) and the script doesn't exit, it can delete the input files before 
+the conversion has succeeded.  But if you have file quota concerns
+this allows you to keep the total disk usage lower.
+</pre>
+</P>
+
+<br />
+<br />
+
+<P>
+<b>Making DART Observations from Ionospheric ionPrf Profiles:</b>
+<br />
+
+<pre>
+0) run quickbuild.csh as described above
+
+1) iono_to_obsseq.csh
+
+set the start and stop days.  downloads from the CDAAC and
+untars into 100s of files per day.  runs the converter to
+create a single obs_seq.ion.YYYYMMDD file per day.
+
+2) split_obs_seq.csh
+
+split the daily files into X minute/hour files - set the
+window times at the top of the file before running.
+</pre>
+</P>
+
+<br />
+<br />
+
+<P>
+<b>Notes on already converted observations on the NCAR supercomputers</b>
+<br />
+<br />
+
+<b>GPS Radio Occultation Data:</b>
+<br />
+<br />
+
+<pre>
+See /glade/p/image/Observations/GPS
+
+These are DART observation sequence files that contain
+radio-occultation measurements from the COSMIC
+(and other) satellites.  
+
+Uses temperature/moisture bending of the signals as they
+pass through the atmosphere between GPS source satellites
+and low-earth-orbit receiving satellites to compute the 
+delay in the arrival of data. the files also contain the
+bending angle data, but we are not using that currently.
+
+
+the subdirectories include:
+
+local -- original processed files, single obs at nadir
+local-cosmic2013 -- reprocessed by CDAAC in 2013
+local-test2013 -- 2013 data, denser in vertical, diff errors
+local-complete2013 - all satellites available for that time, 
+ new errors (from lydia c), 2013 cosmic reprocessed data
+nonlocal -- original processed files, ray-path integrated
+rawdata -- netcdf data files downloaded from the CDAAC
+
+local: the ob is at a single location (the tangent point
+of the ray and earth) and the entire effect is assumed 
+to be impacting the state at that point.
+
+non-local: computes the ob value by doing a line integral
+along the ray path to accumulate the total effect.
+
+(in our experiments we have compared both and did not see 
+a large difference between the two methods, and so have 
+mistly used the local version because it's faster to run.)
+
+
+some directories contain only the gps obs and must be
+merged (with the obs_sequence_tool) with the rest of
+the conventional obs before assimilation.
+
+some directories contain both the gps-only files and
+the obs merged with NCEP and ACARS data.
+
+
+if a directory exists but is empty, the files are
+likely archived on the HPSS.  see the README files
+in the next level directory down for more info on
+where they might be.
+
+nsc
+jan 2016
+
+</pre>
+
+<br />
+<br />
+
+<b>Ionosphere Data:</b>
+<br />
+<br />
+
+<pre>
+See /glade/p/image/Observation/ionosphere
+
+These are COSMIC 'ionPrf' ionospheric profile observations.
+
+They are downloaded from the CDAAC website as daily tar files
+and unpacked into the 'raw' directory.  They distribute these
+observations with one profile per netcdf file.  Each profile has 
+data at ~500-1000 different levels.
+
+Our converter has a fixed number of levels in the namelist
+and we interpolate between the two closest levels to get the
+data for that level.  If you give the converter a list of
+input netcdf files it will convert all of them into a 
+single output file.
+
+The 'daily' directory is a collection of all the profiles for
+that day.
+
+The 'convert' directory has the executables and scripting
+for breaking up the daily files into 10 minute files which
+are put in the '10min' directory.  Change the 'split_obs_seq.csh'
+script to change the width of this window, or the names of
+the output files.
+
+The 'verify.csh' script prints out any missing files, which
+happens if there are no profiles in the given window.
+
+Our convention is to make a 0 length file for missing intervals
+and we expect the filter run script to look at the file size
+and loop if there is a file but with no contents.  This will
+allow us to distinguish between a time where we haven't converted
+the observations and a time where there are no observations.
+In that case the script should add time to the next model
+advance request and loop to the next interval.
+
+</pre>
+</P>
+
+<br />
+<br />
+
+<P><!-- useless divider for 'top' --></P>
+
+<!--==================================================================-->
+
 <A NAME="Modules"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES USED</H2>
@@ -627,20 +855,7 @@ last namelist item before the slash '/'
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
-<em class=program>convert_cosmic_gps_cdf</em> currently bins the data 
-into 200 vertical bins as a first step, and then reinterpolates again 
-onto the requested vertical heights.
-The original intent was to smooth out any noise in the dense profiles
-before interpolating onto the final heights, but plots have shown that
-the original data is smooth and can be used directly.  There are plans
-to remove the intermediate binning step.
-<br />
-<br />
-Write a script that will take a start date, an end date, an assimilation
-time step, and a desired time 'window' - and strip out the unwanted 
-observations from a series of observation sequence files. This will be
-useful for windowing the COSMIC_ELECTRON_DENSITY observations from
-<em class=program>convert_cosmic_ionosphere</em>.
+none
 </P>
 
 <!--==================================================================-->

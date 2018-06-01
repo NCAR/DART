@@ -12,7 +12,7 @@
 
 program model_mod_check
 
-use             types_mod, only : r8, i8, missing_r8, metadatalength, MAX_NUM_DOMS
+use             types_mod, only : r8, i8, missing_r8, metadatalength
 
 use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, &
                                   initialize_utilities, finalize_utilities,     &
@@ -66,14 +66,22 @@ character(len=128), parameter :: revdate  = "$Date$"
 
 integer, parameter :: MAX_TESTS = 7
 
+! this is max number of domains times number of ensemble members
+! if you have more than one domain and your ensemble members are
+! in separate files, the names should be listed in this order:
+!  all filenames for ensemble members for domain 1
+!  all filenames for ensemble members for domain 2, etc
+
+integer, parameter :: MAX_FILES = 1000
+
 !------------------------------------------------------------------
 ! The namelist variables
 !------------------------------------------------------------------
 
 logical                       :: single_file = .false.
 integer                       :: num_ens = 1
-character(len=256)            :: input_state_files(MAX_NUM_DOMS)  = 'null'
-character(len=256)            :: output_state_files(MAX_NUM_DOMS) = 'null'
+character(len=256)            :: input_state_files(MAX_FILES)  = 'null'
+character(len=256)            :: output_state_files(MAX_FILES) = 'null'
 character(len=256)            :: all_metadata_file = 'metadata.txt'
 integer(i8)                   :: x_ind   = -1
 real(r8), dimension(3)        :: loc_of_interest = -1.0_r8

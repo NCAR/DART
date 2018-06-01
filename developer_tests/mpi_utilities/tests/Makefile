@@ -14,24 +14,24 @@
 include ../../../build_templates/mkmf.template
 
 # the include defines the following makefile variables:
-# MPIFC = 
-# MPILD =
-# FC =
-# LD =
-# NETCDF =
-# INCS = 
-# FFLAGS += -I$(INCS)  
-# LIBS =
-# LDFLAGS += -L$(NETCDF)/lib -lnetcdf
+# MPIFC =    # mpi fortran wrapper
+# MPILD =    # mpi loader wrapper
+# FC =       # fortran compiler
+# LD =       # loader
+# NETCDF =   # directory where include and lib for netcdf are located
+# INCS =     # any additional include dirs needed
+# FFLAGS += -I$(INCS)    # extra fortran compile flags
+# LIBS =     # any additional libraries needed
+# LDFLAGS += $(FFLAGS) -L$(NETCDF)/lib -lnetcdf  # loader flags
 
 # ----------------------------------------------------------------------------
 
-SRC = ftest_f90.f90 ftest_mpi.f90 ftest_nc.f90 \
+SRC = ftest_f90.f90 ftest_mpi.f90 ftest_sendrecv.f90 ftest_nc.f90 \
       ftest_stop.f90 ftest_go.f90 ctest.c ctest_mpi.c ctest_nc.c
 
 ALLSRC = $(SRC) Makefile README runme_*
 
-EXE = ftest_f90 ftest_mpi ftest_nc
+EXE = ftest_f90 ftest_mpi ftest_nc ftest_sendrecv
 ALLEXE = $(EXE) ftest_stop ftest_go ctest ctest_mpi ctest_nc
 
 # ----------------------------------------------------------------------------
@@ -73,6 +73,24 @@ ftest_f90: ftest_f90.f90
 # f90 test program that calls MPI functions
 ftest_mpi: ftest_mpi.f90
 	$(MPIFC) ftest_mpi.f90 $(LDFLAGS) -o ftest_mpi
+
+# f90 test program that calls MPI functions
+ftest_sendrecv: ftest_sendrecv.f90 types_mod.o utilities_mod.o time_manager_mod.o mpi_utilities_mod.o
+	$(MPIFC) ftest_sendrecv.f90 types_mod.o utilities_mod.o time_manager_mod.o mpi_utilities_mod.o $(LDFLAGS) -o ftest_sendrecv
+
+UTILS_DIR = ../../../assimilation_code/modules/utilities
+
+types_mod.o: $(UTILS_DIR)/types_mod.f90
+	$(MPIFC) $(FFLAGS) -c $<
+
+utilities_mod.o: $(UTILS_DIR)/utilities_mod.f90
+	$(MPIFC) $(FFLAGS) -c $<
+
+time_manager_mod.o: $(UTILS_DIR)/time_manager_mod.f90
+	$(MPIFC) $(FFLAGS) -c $<
+
+mpi_utilities_mod.o: $(UTILS_DIR)/mpi_utilities_mod.f90
+	$(MPIFC) $(FFLAGS) -c $<
 
 # f90 test program that calls netCDF functions
 ftest_nc: ftest_nc.f90

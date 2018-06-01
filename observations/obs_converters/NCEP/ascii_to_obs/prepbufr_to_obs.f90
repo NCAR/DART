@@ -65,7 +65,7 @@ integer ::   endyear = 2003,   endmonth = 1,   endday = 1,   endhour = 6,   ends
 integer :: windowdays = 0, windowhours = 6, windowseconds = 0
 logical :: midnight_24 = .false.
 
-integer :: max_num_obs = 800000
+integer :: max_num_obs = 2000000
 character(len = 128) ::  input_filename_base    = 'temp_obs.'
 character(len = 128) ::  input_filename_pattern = '(A,I4.4,3(I2.2))'  ! temp_obs.YYYYMMDDHH
 character(len = 128) :: output_filename_base    = 'obs_seq.'
@@ -231,13 +231,11 @@ do while (window_start <= end_time)
    call set_copy_meta_data(seq, 1, 'NCEP BUFR observation')
    call set_qc_meta_data(seq, 1, 'NCEP QC index')
 
-   obs_unit  = get_unit()
-   open(unit = obs_unit, file = input_name, form='formatted', status='old')
-   write(*,*) ' main input file: '//trim(input_name)
-   rewind (obs_unit)
+   write(*,*) ' opening main input file: '//trim(input_name)
+   obs_unit = open_file (input_name, 'formatted', action='read')
    
    call construct_obs_sequence(seq, obs_unit, gdays, window_start, window_end, inc_midnight)
-   close(obs_unit)
+   call close_file(obs_unit)
 
    ! construct input and output filenames
    ! FIXME: make this consistent with prepbufr and the non-daily option:
@@ -250,18 +248,15 @@ do while (window_start <= end_time)
    else
       write( input_name,  input_filename_pattern) trim(input_filename_base), fyear, fmonth, fday, fhour
    endif
-   write(*,*) ' aux  input file: '//trim(input_name)
 
-   obs_unit  = get_unit()
-   open(unit = obs_unit, file = input_name, form='formatted', status='old')
-   rewind (obs_unit)
+   write(*,*) ' opening aux  input file: '//trim(input_name)
+   obs_unit = open_file (input_name, 'formatted', action='read')
    
    ! read the next available ascii intermediate file to collect any obs which are
    ! exactly equal to the ending timestamp.  this works for windows which are an even
    ! multiple of 6H (the times in the original prepbufr files).
    call construct_obs_sequence(seq, obs_unit, gdays, window_end, window_end, .false.)
-
-   close(obs_unit)
+   call close_file(obs_unit)
    
    ! output the sequence to a file
    call write_obs_seq(seq, output_name)
@@ -335,7 +330,7 @@ character(len=32) :: skip_reasons(num_fail_kinds) = (/ &
                      'unwanted moisture type          ' /)
 
 
-integer :: obs_unit, rday
+integer :: rday, read_counter, io
 integer :: obs_prof, obs_kind, obs_kind_gen, which_vert, iqc, obstype, pc
 real (r8) :: obs_err, lon, lat, lev, zob, time, rcount, zob2
 real (r8) :: vloc, obs_value
@@ -374,12 +369,20 @@ first_obs = .true.
 !  loop over all observations within the file
 !------------------------------------------------------------------------------
 
+read_counter = 1
+
 obsloop:  do
 
-   read(iunit,880,end=200) obs_err, lon, lat, lev, zob, zob2, rcount, time, &
-                              obstype, iqc, subset, pc
+   read(iunit,880,end=200,iostat=io) obs_err, lon, lat, lev, zob, zob2, rcount, time, &
+                                        obstype, iqc, subset, pc
+   if (io /= 0) then
+      write(msgstring1,*)'read error was ',io,' for line ',read_counter
+      call error_handler(E_ERR,'construct_obs_sequence', msgstring1, source, revision, revdate)
+   endif
 
- 880 format(f4.2,2f9.4,e12.5,f7.2,f7.2,f9.0,f7.3,i4,i2,1x,a6,i2)
+ 880 format(f5.2,2f9.4,e12.5,f7.2,f7.2,f9.0,f7.3,i4,i2,1x,a6,i2)
+
+   read_counter = read_counter + 1
 
    !write(*, 880) obs_err, lon, lat, lev, zob, zob2, rcount, time, &
    !                           obstype, iqc, subset, pc
@@ -484,7 +487,7 @@ obsloop:  do
 
    if(obs_prof == 3) then
      obs_kind_gen = QTY_SURFACE_PRESSURE
-     if(obstype == 120                    ) obs_kind = RADIOSONDE_SURFACE_ALTIMETER
+     if(obstype == 120 .or. obstype == 132) obs_kind = RADIOSONDE_SURFACE_ALTIMETER
      if(obstype == 180 .or. obstype == 182) obs_kind = MARINE_SFC_ALTIMETER
      if(obstype == 181                    ) obs_kind = LAND_SFC_ALTIMETER
    endif
@@ -586,7 +589,7 @@ obsloop:  do
    if(mod(obs_num, print_every_Nth) == 0) then
        write(label, *) 'obs count = ', obs_num
        if (print_timestamps) then
-          call timestamp(string1=label, pos='')
+          call timestamp(string1=label, pos='brief')
        else
           write(*,*) trim(label)
        endif

@@ -35,10 +35,10 @@
 # |  |  |       4
 # |  |  |       |     5 
 # |  |  |       |     | 6
-# |  |  |       |     | |                     7
-# |  |  |       |     | |                     |      8
-# |  |  |       |     | |                     |      |     9
-# |  |  |       |     | |                     |      |     |
+# |  |  |       |     | |                    7
+# |  |  |       |     | |                    |      8
+# |  |  |       |     | |                    |      |     9
+# |  |  |       |     | |                    |      |     |
 # u2 40 NOPERTS 1.000 M QTY_U_WIND_COMPONENT UPDATE FALSE NOPOSDEF
 
 ############################################################
@@ -61,7 +61,7 @@ PERPRS   40 NOPERTS 0.000 M QTY_EXNER_FUNCTION         UPDATE FALSE NOPOSDEF
 
 # Microphysical variables - vapor, cloud water, rain, ice, snow
 # These are mixing ratios, so they should be positive (semi)definite
-WVAPOR 40 NOPERTS 0.000 M QTY_SPECIFIC_HUMIDITY	       UPDATE FALSE ISPOSDEF
+WVAPOR 40 NOPERTS 0.000 M QTY_SPECIFIC_HUMIDITY        UPDATE FALSE ISPOSDEF
 CLDMIX 40 NOPERTS 0.000 M QTY_CLOUD_LIQUID_WATER       UPDATE FALSE ISPOSDEF
 RANMIX 40 NOPERTS 0.000 M QTY_RAINWATER_MIXING_RATIO   UPDATE FALSE ISPOSDEF
 ICEMIX 40 NOPERTS 0.000 M QTY_CLOUD_ICE                UPDATE FALSE ISPOSDEF

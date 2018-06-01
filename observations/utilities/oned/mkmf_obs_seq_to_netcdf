@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../build_templates/mkmf -p obs_seq_to_netcdf -t ../../../build_templates/mkmf.template   \
+../../../build_templates/mkmf -p obs_seq_to_netcdf -t ../../../build_templates/mkmf.template   \
  -a "../../.." path_names_obs_seq_to_netcdf
 
 exit $status

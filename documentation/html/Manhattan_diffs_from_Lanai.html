@@ -28,9 +28,11 @@
 <a href="#Overview">Overview</a> /
 <!-- <a href="#NewModels">New Models or Changes to Existing Models</a> / -->
 <a href="#NetcdfRestarts">NetCDF Restart Files</a> /
-<a href="#ForwardOps">Calculation of Forward Operators</a> /
-<a href="#ObsConvert">Vertical Conversion of Observations</a> /
+<a href="#ForwardOps">Forward Operators</a> /
+<a href="#ObsConvert">Vertical Conversion</a> /
 <a href="#Diagnostics">DART Diagnostics Changes</a> /
+<a href="#ModelMod">model_mod.f90 Interface Changes</a> /
+<a href="#ObsQuantity">Observation Quantities</a> /
 <a href="#NameListChanges">Additions/Changes to Existing Namelists</a> /
 <a href="#Perturbations">Perturbations</a> /
 <!-- <a href="#Misc">Tutorial, Scripting, Setup, Builds</a> / -->
@@ -46,10 +48,15 @@ system since the Lanai release.  For further details on any of
 these items look at the HTML documentation for that specific part
 of the system.
 </P>
-In the Manhattan version of DART, the state vector is not required to be stored 
-completely on any process. This is achieved using Remote Memory Access (RMA).  
-The RMA programing model allows processes to read (and write) memory on other 
-processors asynchronously.
+<P>
+The two most significant changes
+in the Manhattan version of DART are it 
+can support running models with a state
+vector larger than the memory of a single task, removing a limit from
+the Lanai version of DART.  It also reads and writes NetCDF files
+directly instead of requiring a conversion from one file to another.
+There are many other smaller changes, detailed below.
+</P>
 
 Manhattan supported models:
 <ul>
@@ -57,31 +64,45 @@ Manhattan supported models:
    <li> bgrid_solo 
    <li> cam-fv 
    <li> cice 
+   <li> clm
    <li> cm1 
    <li> forced_lorenz_96 
+   <li> ikeda
    <li> lorenz_63 
    <li> lorenz_84 
    <li> lorenz_96 
+   <li> lorenz_96_2scale
    <li> lorenz_04 
    <li> mpas_atm (NetCDF overwrite not supported for update_u_from_reconstruct = .true. )
+   <li> null_model
    <li> POP 
    <li> ROMS 
    <li> simple_advection
    <li> wrf
 </ul>
 
-There are six major differences between Lanai and RMA DART:
-<ul>
-<li> Read and write NetCDF restarts
-<li> Calculation of forward operators
-<li> Vertical conversion of observation locations
-<li> Diagnostic file changes
-<li> <a href="state_structure.html">State structure module </a>
-<li> Perturbation of the state
-</ul>
+<P>
+If your model of interest is not on the list consider checking
+out the 'Classic' release of DART, which is Lanai plus bug fixes
+and minor enhancements.  All models previously supported by Lanai
+are still in DART 'Classic'.
+</P>
 
-<p> Before bitwise testing with Lanai please read 
-<a href="bitwise_considerations.html">bitwise considerations</a>
+<P>
+These are the major differences between the Lanai/Classic 
+and Manhattan releases of DART:
+</P>
+
+<ul>
+  <li> Read and write NetCDF restarts
+  <li> Calculation of forward operators
+  <li> Vertical conversion of observation locations
+  <li> Diagnostic file changes
+  <li> <a href="state_structure.html">State structure module </a>
+  <li> model_mod interface changes
+  <li> Observation Quantity replaces Kind
+  <li> Perturbation of the state
+</ul>
 
 <!--==================================================================-->
 
@@ -89,10 +110,10 @@ There are six major differences between Lanai and RMA DART:
 <h2> NetCDF Restart Files </h2>
 
 The programs filter and perfect_model_obs now read/write directly from NetCDF 
-files, rather than having to run converters (<code>model_to_dart</code> and 
+files rather than having to run converters (<code>model_to_dart</code> and 
 <code>dart_to_model</code>).
 
-To facilitate this, there is a new required call <code>add_domain</code> 
+To facilitate this there is a new required call <code>add_domain</code> 
 which must be called during <code>static_init_model</code>.  It can be called 
 multiple times in static_model_mod, e.g. once for each NetCDF file that 
 contains state variables.  There are three ways to add a domain:
@@ -145,28 +166,61 @@ detail about distributed vs. non-distributed forward operators.
 
 In distributed mode the forward operators for all ensemble members are
 calculated in the same <code>model_interpolate</code> call.  In non-distributed
-mode, the forward oeprators for all ensemble members a task owns (1-ens_size) 
+mode, the forward operators for all ensemble members a task owns (1-ens_size) 
 are calculated at once.
 
 <!--==================================================================-->
 
 <A NAME="ObsConvert"></A>
-<h2> Vertical Conversion of Observations </h2>
+<h2> Vertical Conversion of Observation and State Locations </h2>
+<P>
 The vertical conversion of observation locations is done before the 
-assimilation. In Lanai this calculation is done in the assimilation as part
-of <code>get_close_obs</code> if a model_mod does vertical conversion. See 
-<a href="vertical_conversion.html">vertical conversion</a> for details about 
+assimilation by default.  This can be changed by namelist options.
+</P>
+<P>
+In Lanai this calculation is done in the assimilation as part
+of <code>get_close_obs</code> if a model_mod does vertical conversion. 
+See <a href="vertical_conversion.html">vertical conversion</a> for details about 
 this change.  Note that not all models do vertical conversion or even have a 
 concept of vertical location, but every model_mod must have the following 
 routines:
+</P>
+<pre>
+call set_vertical_localization_coord(vert_localization_coord)
 
+call convert_vertical_obs(ens_handle, num, locs, loc_qtys, loc_types, &
+                          which_vert, status)
+
+call convert_vertical_state(ens_handle, num, locs, loc_qtys, loc_indx, &
+                            which_vert, istatus)
+</pre>
+
+<P>
+If there are NOT multiple choices for a vertical coordinate (e.g. cartesian,
+one dimensional), all these routines can be no-ops.  
+</P>
+
+<P>
+If there are multiple types
+of vertical coordinates, the convert routines must be 
+able to convert between them.
+The 'set_vertical_localization_coord()' routine should be called
+from 'static_init_model()' to set what localization coordinate type
+is being requested.
+</P>
+
+<p>
+The three routines related to vertical coordinates/localization choices are:
 <ul>
 <li>
-<code>query_vert_localization_coord</code> - returns the vertical localization 
-coordiate (or does nothing if there is no vertical conversion)
+<code>set_vert_localization_coord</code> - sets the vertical localization 
+coordiate (not required if there is no vertical conversion)
 <li>
-<code>vert_convert</code> - converts location to required vertical (or does 
-nothing if there is no vertical conversion)
+<code>convert_vertical_obs</code> - converts observation location to 
+required vertical type (does nothing if there is no vertical conversion)
+<li>
+<code>convert_vertical_state</code> - converts state vector location to 
+required vertical type (does nothing if there is no vertical conversion)
 </ul>
 <p>
 
@@ -221,14 +275,210 @@ domain number, e.g. preassim_mean.nc becomes preassim_mean_d01.nc,
 preassim_mean_d02.nc, etc.
 
 <h5>Changes to nc_write_model_atts</h5>
-<code>nc_write_model_atts</code> has an new argument 
-'<code>model_mod_writes_state_variables</code>'. 
-This is used to communicate to DART whether the model will create and write
-state variables in Prior_Diag.nc and Posterior_Diag.nc.  If 
-<code>model_model_writes_state_variables = .false.</code> 
-DART will define and write state variables to the new diagnostic files.  If 
-<code>model_model_writes_state_variables = .true.,  nc_write_model_vars</code> 
-is called as normal.
+<P>
+<code>nc_write_model_atts</code> now has 2 arguments:
+</P>
+<ul>
+  <li>ncid - open netcdf file identifier
+  <li>domain_id - domain number being written
+</ul>
+<P>
+The calling code will write the model state, so this routine
+should only add attributes and optionally, non-state information
+like grid arrays.
+</P>
+<P>
+This routine will only be called if DART is creating an output
+NetCDF file from scratch. This may include any of the preassim,
+postassim, or output files.
+</P>
+
+<h5>Changes to nc_write_model_vars</h5>
+<P>
+<code>nc_write_model_vars</code> is currently unused
+(and in fact uncalled).  It remains for possible future expansion.
+
+<!--==================================================================-->
+
+<A NAME="ModelMod"></A>
+<H2> model_mod.f90 Interface Changes</H2>
+
+<P>
+The model_mod.f90 file contains all code that is specific to any
+particular model.  The code in this file is highly constrained since
+these routines are *called by* other code in the DART system. 
+All routine interfaces -- the names, number of arguments, and
+the names of those arguments -- must match the prescribed interfaces
+exactly.  Since not all required interfaces are needed for
+every model there are default routines provided that can be
+referenced from a 'use' statement and then the routine name
+can be put in the module 'public' list without any code for
+that routine having to be written in the model_mod.f90 file.
+</P>
+
+<P>
+The following 18 routines are required:
+<ul>
+  <li>static_init_model
+  <li>get_model_size
+  <li>get_state_meta_data
+  <li>shortest_time_between_assimilations
+  <li>model_interpolate
+  <li>end_model
+  <li>nc_write_model_atts
+  <li>nc_write_model_vars
+  <li>init_time
+  <li>init_conditions
+  <li>adv_1step
+  <li>pert_model_copies
+  <li>get_close_obs
+  <li>get_close_state
+  <li>convert_vertical_obs
+  <li>convert_vertical_state
+  <li>read_model_time
+  <li>write_model_time
+</ul>
+</P>
+
+<!-- FIXME:  add more info about  exactly what these routines
+need to do here. -->
+
+<P>
+Here is an example of code from the top of a model_mod file,
+including the modules where the default routines live and
+the required public list.
+
+<pre>
+
+use     location_mod, only : location_type, get_close_type, &
+                             get_close_obs, get_close_state, &
+                             convert_vertical_obs, convert_vertical_state, &
+                             set_location, set_location_missing, &
+                             set_vertical_localization_coord
+use    utilities_mod, only : register_module, error_handler, &
+                             E_ERR, E_MSG
+                             ! nmlfileunit, do_output, do_nml_file, do_nml_term,  &
+                             ! find_namelist_in_file, check_namelist_read
+use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
+                                 nc_add_global_creation_time, &
+                                 nc_begin_define_mode, nc_end_define_mode
+use state_structure_mod, only : add_domain
+use ensemble_manager_mod, only : ensemble_type
+use dart_time_io_mod, only  : read_model_time, write_model_time
+use default_model_mod, only : pert_model_copies, nc_write_model_vars
+
+implicit none
+private
+
+! required by DART code - will be called from filter and other
+! DART executables.  interfaces to these routines are fixed and
+! cannot be changed in any way.
+public :: static_init_model,      &
+          get_model_size,         &
+          get_state_meta_data,    &
+          shortest_time_between_assimilations, &
+          model_interpolate,      &
+          end_model,              &
+          nc_write_model_atts,    &
+          adv_1step,              &
+          init_time,              &
+          init_conditions
+
+! public but in another module
+public :: nc_write_model_vars,    &
+          pert_model_copies,      &
+          get_close_obs,          &
+          get_close_state,        &
+          convert_vertical_obs,   &
+          convert_vertical_state, &
+          read_model_time,        &
+          write_model_time
+
+</pre>
+
+<!--==================================================================-->
+
+<A NAME="ObsQuantity"></A>
+<H2> Observation Quantity replaces Kinds</H2>
+
+<P>
+Historically there has been confusion about the terms for
+specific observation types (which often include the name of
+the instrument collecting the data) and the generic quantity
+that is being measured (e.g. temperature).  The previous terms
+for these were 'types' and 'kinds', respectively.
+</P>
+
+<P>
+Starting with the Manhattan release we have tried to clarify the
+terminology and make the interfaces consistent.  The following table
+lists the original names from the Lanai/Classic release and the
+replacement routines in Manhattan.
+</P>
+
+<P>
+All code that is part of the DART code repository has been updated
+to use the replacment routines, but if you have your own utilities
+written using this code, you will need to update your code.
+Contact us (<a href="mailto:dart@ucar.edu"> dart@ucar.edu </a>) for
+help if you have any questions.
+</P>
+
+
+<!-- FIXME:  make this into a table and add some more info -->
+
+<pre>
+
+public subroutines, existing name on left, replacement on right:
+
+assimilate_this_obs_kind()     =>     assimilate_this_type_of_obs(type_index)
+evaluate_this_obs_kind()       =>       evaluate_this_type_of_obs(type_index)
+use_ext_prior_this_obs_kind()  =>  use_ext_prior_this_type_of_obs(type_index)
+
+get_num_obs_kinds()      =>  get_num_types_of_obs()
+get_num_raw_obs_kinds()  =>  get_num_quantities()
+
+get_obs_kind_index()     => get_index_for_type_of_obs(type_name)
+get_obs_kind_name()      => get_name_for_type_of_obs(type_index)
+
+get_raw_obs_kind_index()  =>  get_index_for_quantity(quant_name)
+get_raw_obs_kind_name()   =>  get_name_for_quantity(quant_index)
+
+get_obs_kind_var_type()  =>  get_quantity_for_type_of_obs(type_index)
+
+get_obs_kind()      =>  get_obs_def_type_of_obs(obs_def)
+set_obs_def_kind()  =>  set_obs_def_type_of_obs(obs_def)
+
+get_kind_from_menu()      =>  get_type_of_obs_from_menu()
+
+read_obs_kind()     =>   read_type_of_obs_table(file_unit, file_format)
+write_obs_kind()    =>  write_type_of_obs_table(file_unit, file_format)
+
+maps obs_seq nums to specific type nums, only used in read_obs_seq:
+map_def_index()  => map_type_of_obs_table()  
+
+removed.  apparently unused, and simply calls get_obs_kind_name():
+get_obs_name()
+
+apparently unused anywhere, removed:
+add_wind_names()
+do_obs_form_pair()
+
+public integer parameter constants and subroutine formal argument names,
+old on left, new on right:
+
+KIND_ => QTY_
+kind => quantity
+
+TYPE_ => TYPE_
+type => type_of_obs
+
+integer parameters:
+max_obs_generic  =>  max_defined_quantities  (not currently public, leave private)
+max_obs_kinds    =>  max_defined_types_of_obs 
+
+</pre>
+
 
 <!--==================================================================-->
 

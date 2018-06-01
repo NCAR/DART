@@ -1,18 +1,18 @@
 # comment test - single line
 
 GROUP bob
- KIND_U_CURRENT_COMPONENT KIND_DEWPOINT 
- KIND_SALINITY
- KIND_SOIL_TEMPERATURE KIND_SOIL_LIQUID_WATER
+ QTY_U_CURRENT_COMPONENT QTY_DEWPOINT 
+ QTY_SALINITY
+ QTY_SOIL_TEMPERATURE QTY_SOIL_LIQUID_WATER
 END GROUP
 
 GROUP sam
- KIND_TRACER_SOURCE   # xxx comment on kind line
- KIND_MEAN_SOURCE
+ QTY_TRACER_SOURCE   # xxx comment on kind line
+ QTY_MEAN_SOURCE
 END GROUP
 
 GROUP fred   # comment on keywordline
- ALLKINDS EXCEPT KIND_TEMPERATURE KIND_SPECIFIC_HUMIDITY
+ ALLKINDS EXCEPT QTY_TEMPERATURE QTY_SPECIFIC_HUMIDITY
 END GROUP
 
 #
@@ -26,7 +26,7 @@ GROUP george
 END GROUP
 
 #GROUP badgeorge  # cannot remove non-group member from group
-# ALLTYPES EXCEPT KIND_TEMPERATURE
+# ALLTYPES EXCEPT QTY_TEMPERATURE
 #END GROUP
 
 # actual table to define factors for impacts.
@@ -42,17 +42,17 @@ END GROUP
 # in column 2 can contain only kinds.
 
 IMPACT
- KIND_U_WIND_COMPONENT  KIND_TEMPERATURE       0.5
- KIND_V_WIND_COMPONENT  KIND_TEMPERATURE       0.5
- bob                    KIND_LIQUID_WATER      0.3
+ QTY_U_WIND_COMPONENT  QTY_TEMPERATURE       0.5
+ QTY_V_WIND_COMPONENT  QTY_TEMPERATURE       0.5
+ bob                    QTY_LIQUID_WATER      0.3
  bob                    sam                    0.1
- KIND_TEMPERATURE       fred                   0.9
- george                 KIND_SPECIFIC_HUMIDITY 0.8
+ QTY_TEMPERATURE       fred                   0.9
+ george                 QTY_SPECIFIC_HUMIDITY 0.8
 # AIRCRAFT_TEMPERATURE   george                 0.3    # cannot have groups with types on right
- RADIOSONDE_TEMPERATURE KIND_DEWPOINT          0.2
- LAND_SFC_ALTIMETER     KIND_TEMPERATURE       0.2
-# LAND_SFC_ALTIMETER     KIND_TEMPERATURE      -0.2   # dup setting
-# LAND_SFC_ALTIMETER     KIND_PRESSURE         -0.2   # requires namelist change to accept
-# KIND_TEMPERATURE      LAND_SFC_ALTIMETER     0.1    # cannot have token 2 be type
+ RADIOSONDE_TEMPERATURE QTY_DEWPOINT          0.2
+ LAND_SFC_ALTIMETER     QTY_TEMPERATURE       0.2
+# LAND_SFC_ALTIMETER     QTY_TEMPERATURE      -0.2   # dup setting
+# LAND_SFC_ALTIMETER     QTY_PRESSURE         -0.2   # requires namelist change to accept
+# QTY_TEMPERATURE      LAND_SFC_ALTIMETER     0.1    # cannot have token 2 be type
 END IMPACT
 

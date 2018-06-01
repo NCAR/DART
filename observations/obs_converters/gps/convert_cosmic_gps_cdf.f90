@@ -4,6 +4,12 @@
 !
 ! $Id$
 
+!>@todo FIXME we need to redefine GPSRO_REFRACTIVITY to be the non-local
+!>operator and define a new obs type that is the local operator.  in that
+!>case we don't need any additional metadata and can save time and space.
+!> (or redefine them both, and make GPSRO_REFRACTIVITY an alias for the
+!> non-local version)
+
 program convert_cosmic_gps_cdf
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -35,7 +41,7 @@ use   obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_type_
                                set_obs_def_error_variance, set_obs_def_location,        &
                                set_obs_def_key
 use    obs_def_gps_mod, only : set_gpsro_ref
-use       obs_kind_mod, only : GPSRO_REFRACTIVITY     ! GPSRO_BENDING_ANGLE
+use       obs_kind_mod, only : GPSRO_REFRACTIVITY     ! also GPSRO_BENDING_ANGLE
 use  obs_utilities_mod, only : add_obs_to_seq
 
 use           netcdf
@@ -251,6 +257,10 @@ fileloop: do      ! until out of files
    call nc_check( nf90_get_var(ncid, varid, refr)    ,'get var   Ref', next_infile)
    call nc_check( nf90_get_att(ncid, varid, '_FillValue', refr_miss) ,'get_att _FillValue Ref', next_infile)
    
+   ! note about bending angle:
+   !  it is currently unused but people are interested in trying to assimilate this 
+   !  instead of refractivity.  i don't think we have a forward operator for it yet.
+
    ! read the bending angle
    call nc_check( nf90_inq_varid(ncid, "Bend_ang", varid) ,'inq varid Bend_ang', next_infile)
    call nc_check( nf90_get_var(ncid, varid, benda)    ,'get var   Bend_ang', next_infile)

@@ -152,6 +152,7 @@ plotdat.NQC4index   = get_copy_index(fname,'N_DARTqc_4');
 plotdat.NQC5index   = get_copy_index(fname,'N_DARTqc_5');
 plotdat.NQC6index   = get_copy_index(fname,'N_DARTqc_6');
 plotdat.NQC7index   = get_copy_index(fname,'N_DARTqc_7');
+plotdat.NQC8index   = get_copy_index(fname,'N_DARTqc_8');
 
 figuredata = setfigure();
 
@@ -259,6 +260,9 @@ for ivar = 1:plotdat.nvars
         
         plotdat.ges_Nqc7  = squeeze(guess(plotdat.timeindex,plotdat.NQC7index  ,ilevel,:));
         fprintf(logfid,'DART QC == 7, prior %d\n',sum(plotdat.ges_Nqc7(:)));
+
+        plotdat.ges_Nqc8  = squeeze(guess(plotdat.timeindex,plotdat.NQC8index  ,ilevel,:));
+        fprintf(logfid,'DART QC == 8, prior %d\n',sum(plotdat.ges_Nqc8(:)));
         
         plotdat.ges_Nposs = squeeze(guess(plotdat.timeindex,plotdat.Npossindex, ilevel,:)) ...
             - plotdat.ges_Nqc5 - plotdat.ges_Nqc6;

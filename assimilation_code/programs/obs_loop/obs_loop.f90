@@ -58,8 +58,6 @@ integer                 :: size_seq_in, size_seq_out
 integer                 :: num_copies_in, num_qc_in
 integer                 :: num_inserted, iunit, io, i, j
 integer                 :: max_num_obs, file_id
-integer                 :: num_rejected_badqc, num_rejected_diffqc
-integer                 :: num_rejected_other
 character(len=129)      :: read_format
 logical                 :: pre_I_format, cal
 character(len=512)      :: msgstring, msgstring1, msgstring2, msgstring3
@@ -111,7 +109,7 @@ if (do_nml_term()) write(     *     , nml=obs_loop_nml)
 ! and last timestamps in the obs_seq files.
 call set_calendar_type(calendar)
 
-! set a logial to see if we have a calendar or not
+! set a logical to see if we have a calendar or not
 cal = (get_calendar_type() /= NO_CALENDAR)
 
 ! if you add anything to the namelist, you can process it here.
@@ -174,9 +172,6 @@ if (print_only) call print_obs_seq(seq_in, filename_in)
 !       Must pass a copy of incoming obs to insert_obs_in_seq.
 !--------------------------------------------------------------
 num_inserted = 0
-num_rejected_badqc = 0
-num_rejected_diffqc = 0
-num_rejected_other = 0
 
 if ( get_first_obs(seq_in, obs_in) )  then
 
@@ -203,28 +198,37 @@ if ( get_first_obs(seq_in, obs_in) )  then
       ! and you have to set it back if you change it
       !call set_obs_def(obs_out, this_obs_def)
 
+      ! if you do NOT want to insert this observation in the output
+      ! file, set a condition that skips the next block.  you *must*
+      ! still call get_next_obs() before looping.
+
       ! ----------- MODIFY HERE ----------------
 
+      if (.true.) then
 
-      ! Since the stride through the observation sequence file is always
-      ! guaranteed to be in temporally-ascending order, we can use the
-      ! 'previous' observation as the starting point to search for the
-      ! correct insertion point.  This speeds up the insert code a lot.
-
-      if (num_inserted > 0) then
-         call insert_obs_in_seq(seq_out, obs_out, prev_obs_out)
-      else
-         call insert_obs_in_seq(seq_out, obs_out)
-      endif
-
-      prev_obs_out = obs_out  ! update position in seq for next insert
-      num_inserted = num_inserted + 1
-
-      if (print_every > 0) then
-         if (mod(num_inserted,print_every) == 0) then
-            print*, 'inserted number ',num_inserted,' of ',size_seq_out
+         ! Since the stride through the observation sequence file is always
+         ! guaranteed to be in temporally-ascending order, we can use the
+         ! 'previous' observation as the starting point to search for the
+         ! correct insertion point.  This speeds up the insert code a lot.
+   
+         if (num_inserted > 0) then
+            call insert_obs_in_seq(seq_out, obs_out, prev_obs_out)
+         else
+            call insert_obs_in_seq(seq_out, obs_out)
          endif
+   
+         prev_obs_out = obs_out  ! update position in seq for next insert
+         num_inserted = num_inserted + 1
+   
+         if (print_every > 0) then
+            if (mod(num_inserted,print_every) == 0) then
+               print*, 'inserted number ',num_inserted,' of ',size_seq_out
+            endif
+         endif
+
       endif
+
+      ! ---- THIS MUST BE EXECUTED BEFORE THE NEXT LOOP ----
 
       call get_next_obs(seq_in, obs_in, next_obs_in, is_this_last)
 

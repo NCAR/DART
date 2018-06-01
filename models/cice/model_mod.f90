@@ -30,8 +30,9 @@ use          location_mod, only : location_type, get_dist, get_close_type,      
                                   convert_vertical_obs, convert_vertical_state, &
                                   VERTISLEVEL  ! treat cat as vert level
 
-use netcdf_utilities_mod, only : nc_add_global_attribute, nc_sync, nc_check, &
-                                 nc_add_global_creation_time, nc_redef, nc_enddef
+use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, nc_check, &
+                                 nc_add_global_creation_time, nc_begin_define_mode, &
+                                 nc_end_define_mode
 
 use location_io_mod,      only :  nc_write_location_atts, nc_get_location_varids, &
                                   nc_write_location
@@ -108,8 +109,7 @@ use         dart_cice_mod, only : set_model_time_step,               &
                                   get_cice_restart_filename,         &
                                   set_binary_file_conversion
 
-use  ensemble_manager_mod, only : ensemble_type, map_pe_to_task, get_copy_owner_index, &
-                                  get_var_owner_index
+use  ensemble_manager_mod, only : ensemble_type
 
 use distributed_state_mod, only : get_state
 
@@ -1964,7 +1964,7 @@ write(filename,*) 'ncid', ncid
 ! and then put into define mode.
 !-------------------------------------------------------------------------------
 
-call nc_redef(ncid)
+call nc_begin_define_mode(ncid)
 
 !-------------------------------------------------------------------------------
 ! Write Global Attributes 
@@ -2110,7 +2110,7 @@ call nc_check(nf90_put_att(ncid, KMUVarID, 'comment', &
 
 ! Finished with dimension/variable definitions, must end 'define' mode to fill.
 
-call nc_enddef(ncid)
+call nc_end_define_mode(ncid)
 
 !----------------------------------------------------------------------------
 ! Fill the coordinate variables
@@ -2143,7 +2143,7 @@ endif
 !-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
 !-------------------------------------------------------------------------------
-call nc_sync(ncid)
+call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts
 
@@ -2183,12 +2183,12 @@ call get_date(model_time, iyear, imonth, iday, ihour, imin, isec)
 
 seconds = (ihour*60 + imin)*60 + isec
 
-call nc_redef(ncid)
+call nc_begin_define_mode(ncid)
 call nc_add_global_attribute(ncid, 'nyr'   , iyear)
 call nc_add_global_attribute(ncid, 'month' , imonth)
 call nc_add_global_attribute(ncid, 'mday'  , iday)
 call nc_add_global_attribute(ncid, 'sec'   , seconds)
-call nc_enddef(ncid)
+call nc_end_define_mode(ncid)
 
 end subroutine write_model_time
 

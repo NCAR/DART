@@ -107,7 +107,7 @@ if (get_allow_transpose(state_ens_handle)) then
    x = state_ens_handle%vars(my_index, 1:data_count)
 else
 
-   call get_var_owner_index(my_index, owner_of_state, element_index) ! pe
+   call get_var_owner_index(state_ens_handle, my_index, owner_of_state, element_index) ! pe
 
    owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
 
@@ -140,7 +140,7 @@ if (get_allow_transpose(mean_ens_handle)) then
    x(1) = mean_ens_handle%vars(my_index, 1)
 else
 
-   call get_var_owner_index(my_index, owner_of_state, element_index) ! pe
+   call get_var_owner_index(state_ens_handle, my_index, owner_of_state, element_index) ! pe
 
    owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
 

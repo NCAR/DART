@@ -53,14 +53,14 @@ use        types_mod,      only : r8, i8, missing_i, missing_r8, obstypelength
 use    utilities_mod,      only : register_module, error_handler, E_ERR, E_MSG, &
                                   ascii_file_format
 use     location_mod,      only : location_type, read_location, write_location, &
-                                  interactive_location, set_location_missing
-use time_manager_mod,      only : time_type, read_time, write_time, &
-                                  set_time_missing, interactive_time, set_time
+                             interactive_location, set_location_missing, &
+                             operator(/=) 
+use time_manager_mod, only : time_type, read_time, write_time, operator(/=), &
+                             set_time_missing, interactive_time, set_time, print_time
 use  assim_model_mod,      only : get_state_meta_data, interpolate
 use     obs_kind_mod,      only : assimilate_this_type_of_obs, evaluate_this_type_of_obs, &
                                   get_name_for_type_of_obs, map_type_of_obs_table, &
-                                  get_type_of_obs_from_menu, &
-                                  use_ext_prior_this_type_of_obs
+                             get_type_of_obs_from_menu, use_ext_prior_this_type_of_obs
 use ensemble_manager_mod,  only : ensemble_type
 use obs_def_utilities_mod, only : track_status, set_debug_fwd_op
 
@@ -103,12 +103,21 @@ interface assignment(=)
    module procedure copy_obs_def
 end interface
 
+interface operator(==)
+   module procedure eq_obs_def
+end interface
+
+interface operator(/=)
+   module procedure ne_obs_def
+end interface
+
 public :: init_obs_def, get_obs_def_key, get_obs_def_location, get_obs_def_type_of_obs, &
    get_obs_def_time, get_obs_def_error_variance, set_obs_def_location, &
    set_obs_def_type_of_obs, set_obs_def_time, set_obs_def_error_variance, &
    set_obs_def_key, interactive_obs_def, write_obs_def, read_obs_def, &
    obs_def_type, get_expected_obs_from_def_distrib_state, destroy_obs_def, copy_obs_def, &
-   assignment(=), set_obs_def_external_FO, set_obs_def_write_external_FO
+   assignment(=), set_obs_def_external_FO, set_obs_def_write_external_FO, &
+   eq_obs_def, ne_obs_def, operator(==), operator(/=), print_obs_def
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -124,7 +133,7 @@ type obs_def_type
 ! identity obs kinds, too
    private
    type(location_type)   :: location   ! center of mass, so to speak
-   integer               :: kind
+   integer               :: kind       ! actually type
    type(time_type)       :: time
    real(r8)              :: error_variance
    integer               :: key        ! Used by specialized observation types
@@ -209,6 +218,74 @@ if ( obs_def1%has_external_FO ) then
 endif
 
 end subroutine copy_obs_def
+
+!---------------------------------------------------------------------
+
+subroutine print_obs_def(obs_def)
+
+type(obs_def_type), intent(in) :: obs_def
+
+character(len=256) :: string
+
+if ( .not. module_initialized ) call initialize_module
+
+call write_location(0, obs_def%location, charstring=string)
+call error_handler(E_MSG, '', 'location: '//trim(string))
+
+write(string, *) obs_def%kind, ', ', trim(get_name_for_type_of_obs(obs_def%kind))
+call error_handler(E_MSG, '', 'type: '//trim(string))
+
+call print_time(obs_def%time, ' time: ')
+
+write(string, *) obs_def%error_variance
+call error_handler(E_MSG, '', 'error variance: '//trim(string))
+
+write(string, *) obs_def%key
+call error_handler(E_MSG, '', 'private key: '//trim(string))
+
+end subroutine print_obs_def
+
+!---------------------------------------------------------------------
+
+function eq_obs_def(obs_def1, obs_def2)
+
+! Compare function to be overloaded with '=='
+
+type(obs_def_type), intent(in) :: obs_def1
+type(obs_def_type), intent(in) :: obs_def2
+logical :: eq_obs_def
+
+if ( .not. module_initialized ) call initialize_module
+
+eq_obs_def = .false.
+
+if (obs_def1%location       /= obs_def2%location) return
+if (obs_def1%kind           /= obs_def2%kind) return
+if (obs_def1%time           /= obs_def2%time) return
+if (obs_def1%error_variance /= obs_def2%error_variance) return
+
+! FIXME: should this be tested as well?  it could be different
+! for identical obs - it's the key target that needs testing
+! and that's type dependent.  for now, avoid testing it.
+!if (obs_def1%key            /= obs_def2%key) return
+
+eq_obs_def = .true.
+
+end function eq_obs_def
+
+!----------------------------------------------------------------------------
+
+function ne_obs_def(obs_def1, obs_def2)
+
+! Compare function to be overloaded with '/='
+
+type(obs_def_type), intent(in) :: obs_def1
+type(obs_def_type), intent(in) :: obs_def2
+logical :: ne_obs_def
+
+ne_obs_def = .not. eq_obs_def(obs_def1, obs_def2)
+
+end function ne_obs_def
 
 !----------------------------------------------------------------------------
 

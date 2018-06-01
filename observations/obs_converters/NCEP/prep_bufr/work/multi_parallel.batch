@@ -1,0 +1,223 @@
+#!/bin/tcsh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+#
+# Driver script for the parallel version.  Submit this script
+# to your batch system and it will invoke the 'prepbufr.csh'
+# script once for each conversion day.
+#
+# this one does N conversions in parallel from a command script.
+#
+#--------------------------------------------------------------
+# DESCRIPTION:
+#
+#  This script is used to generate daily (3:01Z to 3:00Z of next day) 
+#  decoded NCEP reanalysis PREPBUFR text/ascii data.
+#
+#--------------------------------------------------------------
+
+#==========================================================================
+# SLRUM directives             sbatch script.csh
+#
+# sinfo     information about the whole slurm system
+# squeue    information about running jobs
+# sbatch    submit a job
+# scancel   kill a job
+#
+#SBATCH --ignore-pbs
+#SBATCH --job-name=prepbuf1
+#SBATCH -n 8
+#SBATCH --ntasks-per-node=8
+#SBATCH --time=00:10:00
+#SBATCH -A project
+#SBATCH -p dav
+#SBATCH -C caldera
+#SBATCH -e gpsobs1.%j.err
+#SBATCH -o gpsobs1.%j.out
+#
+#==========================================================================
+# PBS directives                qsub script.csh
+#
+# qstat    information on running jobs
+# qsub     submit a job
+# qdel     kill a job
+# qpeek    see output from a running job
+#
+#PBS -N prepbuf1
+#PBS -l walltime=01:00:00
+#PBS -q regular
+#PBS -l select=1:ncpus=36:mpiprocs=36
+#PBS -A project
+#
+#==========================================================================
+# LSF directives                bsub < script.csh
+#
+# bstat    information on running jobs
+# bsub     submit a job
+# bdel     kill a job
+# bpeek    see output from a running job
+#
+#BSUB -J prepbuf1
+#BSUB -o prepbuf1.%J.log
+#BSUB -q small
+#BSUB -n 16
+#BSUB -W 0:10:00
+#BSUB -P project
+#
+#==========================================================================
+
+# USER SETTINGS HERE
+
+# Set year, month, days for to pass as args to prepbufr.csh
+set start_year  = 2017
+set start_month =    7
+set start_day   =   29
+
+set end_year    = 2017
+set end_month   =    8
+set end_day     =    3
+
+# should match the mpiprocs=X setting above
+set njobs = 36
+
+# where to put tmp files
+setenv TMPDIR /glade/scratch/$USER/temp
+
+# END USER SETTINGS
+
+
+# set things that vary between batch systems here.
+
+if ($?SLURM_JOB_ID) then
+  echo running SLURM
+  setenv SLURM true
+  source /glade/u/apps/opt/slurm_init/init.csh
+  setenv RUNCMD "srun --multi-prog"
+else if ($?PBS_NODEFILE) then
+  echo running PBS
+  setenv PBS true
+  setenv MPI_SHEPHERD true
+  setenv RUNCMD "mpiexec_mpt launch_cf.sh"
+else if ($?LSB_HOSTS) then
+  echo running LSF
+  setenv LSF true
+  setenv MP_PGMMODEL mpmd
+  setenv RUNCMD "mpirun.lsf -cmdfile"
+else
+  echo running without a batch system
+  setenv NOBATCH true
+  setenv RUNCMD "csh"
+endif
+
+mkdir -p $TMPDIR
+
+
+echo job started at `date`
+
+# convert the start and stop times to gregorian days, so we can
+# compute total number of days including rolling over month and
+# year boundaries.  make sure all values have leading 0s if they
+# are < 10.  do the end time first so we can use the same values
+# to set the initial day while we are doing the total day calc.
+
+# the output of advance time with the -g input is:
+#   gregorian_day_number  seconds
+# use $var[1] to return just the day number
+
+set mon2=`printf %02d $end_month`
+set day2=`printf %02d $end_day`
+set end_d=(`echo ${end_year}${mon2}${day2}00 0 -g | ./advance_time`)
+
+set mon2=`printf %02d $start_month`
+set day2=`printf %02d $start_day`
+set start_d=(`echo ${start_year}${mon2}${day2}00 0 -g | ./advance_time`)
+
+# the output of this call is a string YYYYMMDDHH
+# see below for help in how to easily parse this up into words
+set curday=`echo ${start_year}${mon2}${day2}00 0 | ./advance_time`
+
+# how many total days are going to be processed (for the loop counter)
+# note that the parens below are necessary; otherwise the computation
+# does total = end - (start+1), or total = end - start - 1, which is
+# not how elementary math usually works on a computer (left to right
+# evaluation of ops with equal priority is most common.)
+@ totaldays = ( $end_d[1] - $start_d[1] ) + 1
+
+# loop over each day
+set d=1
+while ( $d <= $totaldays )
+
+  rm -f mycmdfile
+
+  set j=1
+  while ( $j <= $njobs && $d <= $totaldays)
+
+    # parse out the parts from a string which is YYYYMMDDHH
+    # use cut with the byte option to pull out columns 1-4, 5-6, and 7-8
+    # then bc to strip off leading blanks
+    set  year=`echo $curday | cut -b1-4`
+    set month=`echo $curday | cut -b5-6`
+    set   day=`echo $curday | cut -b7-8`
+  
+    # numeric month/day (no leading 0)
+    set nmonth=`echo $month | bc`
+    set   nday=`echo $day | bc`
+  
+    # status/debug - comment in or out as desired.
+    echo starting processing for ${year} ${nmonth} ${nday}
+  
+    # Subdirectory base name.
+    set tdir = workdir_${year}_${month}_${day}
+  
+    # create a command file where each line calls a script with
+    # unique arguments, including a unique work directory name.
+    echo "csh run_one_prepbufr.csh $tdir $year $nmonth $nday" >> mycmdfile
+  
+    # advance the day; the output is YYYYMMDD00
+    set curday=`echo ${year}${month}${day}00 +1d | ./advance_time`
+  
+    # advance the loop counter
+    @ d += 1
+
+    # advance the concurrent job counter
+    @ j += 1
+  end
+
+  echo running jobs:
+  cat mycmdfile
+
+  # the system seems to want the same number of commands in each
+  # invocation of the command file as there are cpus on the node.
+  # if we aren't running an even multiple of real tasks compared
+  # to the cpu count, pad the rest of the script with a call to 'date'
+
+  # avoid echoing the filename by making wc read stdin
+  set j=`cat mycmdfile | wc -l`
+  while ( $j < $njobs )
+    echo "date " >> mycmdfile
+    @ j += 1
+  end
+
+  # actually launch the jobs here
+  $RUNCMD ./mycmdfile 
+
+end
+
+# there should not be any non-empty dirs if all went well
+# rmdir will fail if the dir isn't empty
+rmdir workdir_*
+ls -l workdir_*
+
+echo job ended at `date`
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

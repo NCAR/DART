@@ -122,11 +122,12 @@ prematurely terminating the namelist.
    inf_sd_initial_from_restart  = .false.,                 .false.,
    inf_deterministic            = .true.,                  .true.,
    inf_initial                  = 1.0,                     1.0,
-   inf_sd_initial               = 0.0,                     0.0,
-   inf_damping                  = 1.0,                     1.0,
    inf_lower_bound              = 1.0,                     1.0,
    inf_upper_bound              = 1000000.0,               1000000.0,
+   inf_damping                  = 1.0,                     1.0,
+   inf_sd_initial               = 0.0,                     0.0,
    inf_sd_lower_bound           = 0.0,                     0.0,
+   inf_sd_max_change            = 1.05,                    1.05,
 
    trace_execution              = .false.,
    output_timestamps            = .false.,
@@ -386,7 +387,7 @@ and the second controls the posterior inflation.
                   The first element controls the prior inflation, the second element 
                   controls the posterior inflation.
                   See <A href="../../programs/filter/filter.html#Inflation">filter.html</A>
-                  for a discussion of inflation and effective strategies for using it.
+                  for a discussion of inflation and effective strategies.
  </TD></TR>
 
 <TR><TD>inf_flavor</TD>
@@ -394,9 +395,10 @@ and the second controls the posterior inflation.
     <TD>Inflation flavor for [prior, posterior]
         <UL>
          <LI>0 = none</LI>
-         <LI>2 = spatially-varying state space</LI>
-         <LI>3 = spatially-fixed state space </LI>
+         <LI>2 = spatially-varying state-space (gaussian)</LI>
+         <LI>3 = spatially-fixed state-space  (gaussian)</LI>
          <LI>4 = Relaxation To Prior Spread (Posterior inflation only) </LI>
+         <LI>5 = enhanced spatially-varying state-space (inverse gamma)</LI>
         </UL>
         (See inf_sd_initial below for how to set the time evolution options.)
  </TD></TR>
@@ -426,12 +428,15 @@ and the second controls the posterior inflation.
     <TD>Initial value of inflation if not read from restart file. 
  </TD></TR>
 
-<TR><TD>inf_sd_initial</TD>
+
+<TR><TD>inf_lower_bound</TD>
     <TD>real(r8) dimension(2)</TD>
-    <TD>Initial value of inflation standard deviation if not read 
-        from restart file.  If &le; 0, do not update the inflation
-        values, so they are time-constant.  If positive, the inflation
-        values will adapt through time, so they are time-varying.
+    <TD>Lower bound for inflation value.
+ </TD></TR>
+
+<TR><TD>inf_upper_bound</TD>
+    <TD>real(r8) dimension(2)</TD>
+    <TD>Upper bound for inflation value.
  </TD></TR>
 
 <TR><TD>inf_damping</TD>
@@ -445,14 +450,12 @@ of 1.0 turns inflation damping off leaving the original inflation value
 unchanged.
  </TD></TR>
 
-<TR><TD>inf_lower_bound</TD>
+<TR><TD>inf_sd_initial</TD>
     <TD>real(r8) dimension(2)</TD>
-    <TD>Lower bound for inflation value.
- </TD></TR>
-
-<TR><TD>inf_upper_bound</TD>
-    <TD>real(r8) dimension(2)</TD>
-    <TD>Upper bound for inflation value.
+    <TD>Initial value of inflation standard deviation if not read 
+        from restart file.  If &le; 0, do not update the inflation
+        values, so they are time-constant.  If positive, the inflation
+        values will adapt through time, so they are time-varying.
  </TD></TR>
 
 <TR><TD>inf_sd_lower_bound</TD>
@@ -460,10 +463,22 @@ unchanged.
     <TD>Lower bound for inflation standard deviation. 
         If using a negative value for <em class=code>sd_initial</em> 
         this should also be negative to preserve the setting.
-        The inflation standard deviation is a non-increasing quantity,
-        so the sd value will eventually reach and keep this lower bound.
  </TD></TR>
  
+<TR><TD>inf_sd_max_change</TD>
+    <TD>real(r8) dimension(2)</TD>
+    <TD>For inflation type 5 (enhanced inflation), controls the maximum
+        change of the inflation standard deviation when adapting for the
+        next assimilation cycle.  The value should be between 1.0 and 2.0.
+        1.0 prevents any changes, while 2.0 allows 100% change.
+        For the enhanced inflation option, if the standard deviation 
+        initial value is equal to the standard deviation
+        lower bound the standard deviation will not adapt in time.
+        See <A href="../../programs/filter/filter.html#Inflation">this section</A>
+        for a discussion of how the standard deviation
+        adapts based on different types of inflation.
+ </TD></TR>
+
 <TR><TD>trace_execution</TD>
     <TD>logical</TD>
     <TD>True means output very detailed messages about what routines
@@ -519,8 +534,6 @@ unchanged.
 
 <br />
 <br />
-
-</div>
 
 <P><!-- make sure the 'top' is aligned correctly --></P>
 

@@ -599,11 +599,22 @@ Single File I/O:
   and 2013 file formats.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Dec 01 2017 :: ROMS scripting, debugging aids              Revision: 12162  
++ Nov 22 2017 :: minor updates for DA challenge files          Revision: 12144
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- added obs_seq.in.power to the Lorenz 96 directory
+
+- added new obs types to the workshop version of the input.nml assimilation list
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Dec 01 2017 :: ROMS scripting, debugging aids                Revision: 12166  
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - Added an option to the ROMS model scripting to advance the model ensemble
 members in parallel using a job array.
+
+- Updated the DART_LAB Matlab GUIs to log a history of the settings and
+results.
 
 - Added a debug option to the filter namelist, 'write_obs_every_cycle', 
 to output the full obs_seq.final during each cycle of filter.  
@@ -613,70 +624,131 @@ to output the full obs_seq.final during each cycle of filter.
 longitude interpolation in grids that cross the 360/0 line.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Jan 03 2018 :: MPAS_ATM bugfix                             Revision: 12256
++ Mar 01 2018 :: ROMS, MMC, PMO, MPAS_ATM debug, etc           Revision: 12419
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-- Fixed an error in the mpas_atm model_mod for a debug print that failed with
-large ensemble sizes.
+- Fix a debug message in the MPAS ATM model which might have caused a buffer
+overflow crash when formatting a message for a larger ensemble size.
+
+- Update the ROMS shell scripts to support PBS, SLURM, as well as LSF.
+Update the ROMS model_mod html documentation.
+
+- Update the default CAM-FV input.nml to have more realistic values
+for the highest observation assimilated, and for where the ramp starts
+that decreases the increments at the model top. If running with a higher
+model top than the default check these items carefully.
+
+- Fixed variable type for 'time' variables we create in diagnostic files
+
+- Miscellaneous minor Bug fixes: 
+   - Print format wider for fractional levels in threed_sphere locations
+   - Fixed a deallocate call at program shutdown time
+   - Fixed an indexing problem computing cam-fv U_WIND observations if the
+     observation used HEIGHT as the vertical coordinate (very unusual).
+   - Fixed grid creation bug in a test program used with model_mod_check.
+     Now uses correct spacing for grids in the x,y coordinates.
+   - Fixed an allocate problem in a test interpolate routine.
+
+- Add surface pressure to the default state list in the wrf work/input.nml
+
+- developer_tests/test_dart.csh can run PMO for more models. required
+updates to the work/input.nml in several directories (wrf, cm1, POP,
+mpas_atm) to match the current namelist.
+
+- several model_mod_check programs were combined into a single version
+that allows for selection of individual tests.  many of the input.nml
+models/xxx/work/input.nml files have either had a &model_mod_check_nml
+section added or updated to match the updated interface.
+
+- the DART QTYs are now available via the state structure in the wrf 
+and clm model_mods.
+
+- support the NAG compiler better.  (contact dart@ucar.edu for more
+help if you want to use this compiler.  some hand work is still needed.)
+
+- streamlined the debug output from the state_structure_info() call to
+avoid replicating information that was the same for all variables.
+
+- minor formatting change to the dart log file output for the list of
+observation types being assimilated, evaluated, and using precomputed
+forward operators.
+
+- fixed an uninitialized variable in the BGRID model code in a routine
+that isn't normally used.
+
+- Updated the threed_sphere location module documentation with some usage
+notes about issues commonly encountered.
+
+- Fixed an incorrect test when printing out a log message describing if the
+inflation would be variance-adaptive or not.
+
+- Change the location of the POP MDT reference file to be relative to the 
+current run directory and not an absolute file location on cheyenne.
+
+- Make the ROMS, CM1, and POP model_mod log namelist information to the 
+namelist log file and not the main DART log file.
+
+- Updated several html documentation files, including the template/model_mod.html
+which describes the current model_mod required interfaces.
+
+- Updated the instructions for the GSI to DART obs converter to suggest some
+needed compiler flags in certain cases.
+
+- Updated the location module test programs.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Jan 03 2018 :: reintegration of mmc branch                 Revision: 12272  
++ May DD 2018 :: enhanced inflation option, scripting       $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-- several model_mod_check programs were combined into a single 
-  assimilation_code/programs/model_mod_check/model_mod_check.f90
-  that allows for selection of individual tests.
+- Enhanced inflation algorithm added.  See the filter_mod.html for new
+documentation on this option.
 
-- bugfix: threed_sphere/location_mod.f90 
-          print format wider for fractional levels
+- Updated WRF scripts for the Manhattan release.
 
-- bugfix: dart_time_io_mod.f90 
-          fixed variable type for 'time' variables we create.
+- Obs_diag reports statistics on DART QC 8, observation failed vertical
+conversion.  Matlab scripts also updated to support QC 8.
 
-- bugfix: direct_netcdf_mod.f90 
-          only task 0 deallocates the arrays that task 0 allocates
+- New parallel conversion scripts for GPS Radio Occultation observations and
+  NCEP prepbufr conversions.
 
-- bugfix: cam-fv/model_mod.f90 calculating the U_WIND observations on height.
-          indexing was wrong in a block of code that is seldom (if ever) used.
-          U_WIND observations usually use pressure for the vertical.
+- Further updates to documentation files to change KIND to QTY or Quantity.
 
-- bugfix: test_interpolate_threed_cartesian.f90 fixed grid creation in 
-          test_interpolate_range(). Now uses correct spacing for grids 
-          in the x,y coordinates.
+- Documented required changes when moving from the Lanai/Classic release to
+Manhattan in documentation/html/Manhattan_diffs_from_Lanai.html
 
-- bugfix: model_mod_tools/test_interpolate*90  ensure that all versions
-          allocate and initialize the array of error codes
+- Expanded the routines in the netcdf_utilities_mod.f90
 
-- feature: utilities/*_win_mod.f90: free_state_window()
-           make observation ensemble handles optional
+- Add an ensemble handle parameter to the 6 ensemble manager routines 
+where it was missing.
 
-- feature: clm/model_mod.f90 
-           the DART QTYs are now available via the state structure
+- The advance_time program can read/generate CESM format time strings
+(YYYY-MM-DD-SSSSS).
 
-- feature: wrf/model_mod.f90 
-           the DART QTYs are now available via the state structure
+- Fixed a bug in the netcdf read routines that under certain circumstances
+could report an array was using the unlimited dimension incorrectly.
 
-- cleanup: the PGI compiler warns against variables that have the same
-           name as Fortran intrinsics. _some_ of those have been renamed.
+- Removed the option to try to bitwise reproduce Lanai results; due to the
+number of changes this is no longer possible.
 
-- cleanup: some unused variables were removed in modules that were involved.
+- Minor bug fixes to the (seldom used) perturb routines in the WRF 
+and MPAS_ATM model_mod.f90 files.  (used to add gaussian noise to a
+single model state to generate an ensemble; this is never the recommended
+method of starting a new experiment but the code remains for testing 
+purposes.)
 
-- cleanup: assim_model_mod.html 
-           removed two unused routines, fixed documentation for 
-           get_closest_state_time_to and get_initial_condition
+- Several remaining model-specific model_mod_check programs were 
+removed in favor of a single common program source file.
 
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Jan 04 2018 :: test_dart.csh enhancements                 $Revision$
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+- Keep filter_mod.dopplerfold.f90 in sync with filter_mod.f90,
+and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
 
-- developer_tests/test_dart.csh can run pmo for more models.
+- Removed makefiles for the obsolete trans_time program.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + MMM DD YYYY :: summary of next changes                    $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-- next ...
-
+- obs_diag reports statistics on DART QC 8, observation failed vertical
 
 # <next few lines under version control, do not edit>
 # $URL$
