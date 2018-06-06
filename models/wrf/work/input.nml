@@ -207,14 +207,6 @@
    allow_obs_below_vol         = .false.
    /
 
-&closest_member_tool_nml 
-   input_file_name        = 'filter_ic_new',
-   output_file_name       = 'closest_restart',
-   ens_size               = 50,
-   single_restart_file_in = .false.,
-   difference_method      = 4,
- /
-
 # vert_normalization_X is amount of X equiv to 1 radian in horiz.
 # vert localization is 'cutoff' times the pressure/height/levels,
 # only if horiz_dist_only is set to .false. in the namelist below.
@@ -520,6 +512,15 @@
 
 &compare_states_nml
 /
+
+&closest_member_tool_nml 
+   input_restart_file_list   = 'input_file_list_d01.txt',
+   output_file_name          = 'closest_results.txt'
+   ens_size                  = 3,
+   single_restart_file_in    = .false.,
+   difference_method         = 4,
+   use_only_qtys             = 'QTY_U_WIND_COMPONENT'
+ /
 
 # To test both domains, you must change 'model_nml:num_domains = 2'
 
