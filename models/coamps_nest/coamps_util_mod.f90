@@ -26,7 +26,8 @@ module coamps_util_mod
                             register_module
 
   use netcdf_utilities_mod, only : nc_check, &
-                                   nc_get_variable_info, &
+                                   nc_get_variable_num_dimensions, &
+                                   nc_get_variable_size, &
                                    nc_get_variable, &
                                    nc_put_variable
 
@@ -514,8 +515,8 @@ contains
     real(r8), allocatable :: chunk2D(:,:)
     real(r8), allocatable :: chunk3D(:,:,:)
 
-    call nc_get_variable_info(hdf5_unit, variable_name, xtype=xtype, ndims=ndims,&
-                 dimlens=dimlens, dimnames=dimnames, nAtts=nAtts, context=routine)
+    call nc_get_variable_num_dimensions(hdf5_unit, variable_name, ndims, context=routine)
+    call nc_get_variable_size(hdf5_unit, variable_name, dimlens(1:ndims), context=routine)
 
     if ( ndims == 1) then
 
@@ -571,10 +572,8 @@ real(r8), allocatable :: chunk1D(:)
 real(r8), allocatable :: chunk2D(:,:)
 real(r8), allocatable :: chunk3D(:,:,:)
 
-call nc_get_variable_info(ncFileID, forecast_name,   &
-                                    ndims=ndims,     &
-                                    dimlens=dimlens, &
-                                    context=routine  )
+call nc_get_variable_num_dimensions(ncFileID, forecast_name, ndims, context=routine)
+call nc_get_variable_size(ncFileID, forecast_name, dimlens(1:ndims), context=routine)
 
 !>@todo ... must clamp if needed ... coamps_statevar_mod:is_nonnegative works
 !> on type(state_variable) ... which we don't have here.
@@ -583,7 +582,6 @@ if ( ndims == 1) then
 
    allocate( chunk1D(dimlens(1)) )
    call nc_get_variable(ncFileID, forecast_name, chunk1D, context=routine) 
-!  call nc_put_variable(hdf5unit, analysis_name, chunk1D, context=routine)
 
    call write_hdf5_data(real(chunk1D, kind=4), analysis_name, hdf5_file_write, ierr)
    if (ierr /= 0) then
@@ -597,7 +595,6 @@ elseif (ndims == 2) then
 
    allocate( chunk2D( dimlens(1), dimlens(2) ) )
    call nc_get_variable(ncFileID, forecast_name, chunk2D, context=routine) 
-!  call nc_put_variable(hdf5unit, analysis_name, chunk2D, context=routine) 
 
    call write_hdf5_data(real(chunk2D, kind=4), analysis_name, hdf5_file_write, ierr)
    if (ierr /= 0) then
