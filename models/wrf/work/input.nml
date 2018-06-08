@@ -59,11 +59,12 @@
    inf_initial_from_restart    = .false.,                .false.,
    inf_sd_initial_from_restart = .false.,                .false.,
    inf_initial                 = 1.0,                     1.00,
-   inf_sd_initial              = 0.6,                     0.0,
-   inf_damping                 = 0.9,                     1.0,
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
+   inf_damping                 = 0.9,                     1.0,
+   inf_sd_initial              = 0.6,                     0.0,
    inf_sd_lower_bound          = 0.6,                     0.0,
+   inf_sd_max_change           = 1.05,                    1.05,
    /
 
 &quality_control_nml
