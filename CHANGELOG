@@ -761,6 +761,8 @@ and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
   for any other tools which need to process something for all ensemble
   members in parallel.
 
+- added more functions to the netcdf_utilities_mod.f90
+
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + MMM DD YYYY :: summary of next changes                    $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
