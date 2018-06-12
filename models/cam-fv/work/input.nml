@@ -568,3 +568,10 @@
    difference_method      = 4,
    /
 
+&fill_inflation_restart_nml
+   input_state_files  = 'caminput.nc'
+   write_prior_inf    = .true.
+   write_post_inf     = .false.
+   prior_inf_mean     = 1.3
+   prior_inf_sd       = 0.6
+/

@@ -1571,8 +1571,6 @@ end subroutine write_variables
 !> Create the output files
 !>
 !> A 'blank' domain is one variable called state, with dimension = model size.
-!> It is used when the model has not supplied any netcdf info but
-!>     direct_netcdf_write = .true.
 !> The file is intentionally left OPEN.
 !-------------------------------------------------------------------------------
 
