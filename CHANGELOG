@@ -697,7 +697,7 @@ needed compiler flags in certain cases.
 - Updated the location module test programs.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ May DD 2018 :: enhanced inflation option, WRF scripting      Revision: 12591 
++ May 21 2018 :: enhanced inflation option, scripting          Revision: 12591
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - Enhanced inflation algorithm added.  See the filter_mod.html for new
@@ -745,11 +745,27 @@ and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
 - Removed makefiles for the obsolete trans_time program.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ MMM DD YYYY :: summary of next changes                    $Revision$
++ Jun 12 2018 :: DART QC 8, closest_member_tool, WRF scripts   Revision: 12664
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-- note for next release
+- obs_diag and matlab scripts updated to report statistics on DART QC 8, 
+  observation failed vertical conversion
 
+- updates to fix minor problems with the new WRF scripts
+
+- added the 'inf_sd_max_change' namelist item to all input.nml files for
+  the enhanced inflation option
+
+- revival of the closest_member_tool, which now runs in parallel on
+  all ensemble members at one time.  this tool can be used as a template
+  for any other tools which need to process something for all ensemble
+  members in parallel.
+
+- added more functions to the netcdf_utilities_mod.f90
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ MMM DD YYYY :: summary of next changes                    $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # <next few lines under version control, do not edit>
 # $URL$

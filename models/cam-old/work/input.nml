@@ -70,6 +70,7 @@
    inf_damping                 = 0.9,                     0.9,
    inf_sd_initial              = 0.6,                     0.6,
    inf_sd_lower_bound          = 0.6,                     0.6,
+   inf_sd_max_change           = 1.05,                    1.05,
    /
 
 &state_vector_io_nml

@@ -41,7 +41,6 @@ while ( $n <= $NUM_ENS )
 
    set ensstring = `echo $n + 10000 | bc | cut -c2-5`
    mkdir -p ${RUN_DIR}/advance_temp${n}
-   ${COPY} ${SHELL_SCRIPTS_DIR}/patch_wrfin_hdiab.ncl ${RUN_DIR}/advance_temp${n}/patch_hdiab.ncl
 
    ${LINK} ${RUN_DIR}/WRF_RUN/* ${RUN_DIR}/advance_temp${n}/.
    ${LINK} ${TEMPLATE_DIR}/input.nml.template ${RUN_DIR}/advance_temp${n}/input.nml
