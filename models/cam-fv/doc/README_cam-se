@@ -1,3 +1,15 @@
+Status of the CAM-SE CESM/DART assimilation:
+
+DART supports assimilation using the CAM-SE model
+in the DART Classic release.  The scripting supports
+CESM release 1.2.1 and some support for release 1.5.
+
+Contact us at dart@ucar.edu for more information.
+
+
+
+Notes from the model developer:
+
 Tasks from 2017-8-activities:
 
         CESM2 uses ne0 for var res CAM-SE assim setup.
@@ -21,11 +33,8 @@ because of a new vertical coordinate.
 
 The last committed model_mod which handles CAM-SE is
    Working Copy Root Path: /glade/u/home/raeder/DART/Trunk
-   URL: https://subversion.ucar.edu/DAReS/DART/trunk/models/cam
    Relative URL: ^/DART/trunk/models/cam
-   Repository Root: https://subversion.ucar.edu/DAReS
-   Repository UUID: acad1b26-7d42-44b9-9cec-aac8293558f5
-So it's not RMAized or Manhattanized.
+It's not RMAized or Manhattanized.
 Now that the cam-fv has been rewritten (2017-10) this model_mod
 will only be useful as a source of subroutines and how to use them.
 The subroutines will probably need to be updated for RMA.
