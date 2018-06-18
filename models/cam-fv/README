@@ -1,1 +1,2 @@
-Please see ./doc/README_cam-fv.
+Please see doc/README_cam-fv for details on how to
+set up a CESM 2.0, CAM-FV, DART assimilation experiment.
