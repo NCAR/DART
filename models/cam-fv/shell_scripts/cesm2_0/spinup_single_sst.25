@@ -555,6 +555,9 @@ set fname = "user_nl_clm"
 # echo "finidat = '$cesmdata/lnd/clm2/initdata_map/clmi.I2000CLM45CRUBGC.2000-01-01.0.9x1.25_gx1v6_simyr2000_c141226.nc'" >> ${fname}
 # Guessing that the latest is the greatest:
 echo "finidat = '$cesmdata/lnd/clm2/initdata_map/clmi.ICRUCLM45BGCCROP.78pfts.levis_reinterp.1.9x2.5_g1v6_simyr2000_c160127.nc '" >> ${fname}
+# In CAM6_spinup_sst.25 I ended up using(?)
+# /glade/p/cgd/tss/people/oleson/CLM5_restarts/
+#   clm5n04r193phs_2deg_calibrateparams_v3_crop_fert10perc_medshrb_1850ADspin_cism2_1_23.clm2.r.0003-01-01-00000.nc
 echo "use_init_interp = .true. "    >> ${fname}
 echo "hist_empty_htapes = .true."   >> ${fname}
 echo "hist_fincl1 = 'TSA'"          >> ${fname}

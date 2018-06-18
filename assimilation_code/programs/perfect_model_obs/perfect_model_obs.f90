@@ -9,7 +9,7 @@ program perfect_model_obs
 ! Program to build an obs_sequence file from simulated observations.
 
 use        types_mod,     only : r8, i8, metadatalength, MAX_NUM_DOMS
-use    utilities_mod,     only : initialize_utilities, register_module, error_handler, &
+use    utilities_mod,     only : register_module, error_handler, &
                                  find_namelist_in_file, check_namelist_read,           &
                                  E_ERR, E_MSG, E_DBG, nmlfileunit, timestamp,          &
                                  do_nml_file, do_nml_term, logfileunit, &

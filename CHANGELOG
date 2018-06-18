@@ -745,26 +745,33 @@ and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
 - Removed makefiles for the obsolete trans_time program.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Jun 12 2018 :: DART QC 8, closest_member_tool, WRF scripts   Revision: 12664
++ Jun 18 2018 :: CAM/CESM 2.0, DART QC 8, closest_member_tool  Revision: 12682
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- Support for CAM-FV assimilations in the CESM 2.0 release.  See 
+  documentation in models/cam-fv/doc/README_cam-fv for details.
 
 - obs_diag and matlab scripts updated to report statistics on DART QC 8, 
   observation failed vertical conversion
 
-- updates to fix minor problems with the new WRF scripts
+- Updates to fix minor problems with the new WRF scripts
 
-- added the 'inf_sd_max_change' namelist item to all input.nml files for
+- Added the 'inf_sd_max_change' namelist item to all input.nml files for
   the enhanced inflation option
 
-- revival of the closest_member_tool, which now runs in parallel on
-  all ensemble members at one time.  this tool can be used as a template
+- Revival of the closest_member_tool, which now runs in parallel on
+  all ensemble members at one time.  This tool can be used as a template
   for any other tools which need to process something for all ensemble
   members in parallel.
 
-- added more functions to the netcdf_utilities_mod.f90
+- Revival of the fill_inflation_restart tool as a Fortran 90 program.
+  Using ncap2 is still possible, but if the correct version is not
+  installed or available this tool can be used.
+
+- Added more functions to the netcdf_utilities_mod.f90
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ MMM DD YYYY :: summary of next changes                    $Revision$
++ MMM DD YYYY :: summary of next changes                       Revision: XXXXX 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # <next few lines under version control, do not edit>
