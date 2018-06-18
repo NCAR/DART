@@ -12,14 +12,13 @@
 #
 # This script integrates DART with a pre-existing CESM multi-instance case.
 # It must be run from a valid CASEROOT directory and some environment variables
-# must be set (as in CESM#_#_setup_YYY). If the case was created
-# using one of the DART scripts, this script should be staged in the
-# CASEROOT directory automatically, and DARTROOT is set at that time.
+# must be set (as in cesm#_#/setup_XXX). 
 #
-# CAM is the only active model component.
+# CAM is the only model component used for assimilation.
 # CESM starts and stops to allow for CAM to assimilate every 6 hours.
 #
-# This script will build the DART executables if they are not found.
+# This script will try to build the DART executables if they are not found.
+# This might result in a preproc_nml being used, which is wrong for your observation set.
 #
 # There are many CESM binary files in big-endian format, and DART reads
 # some of them, so you MUST compile DART accordingly e.g.,
@@ -30,13 +29,17 @@
 # How to set up the script
 # ---------------------
 #
+# -- Copy and rename this script into the $CASEROOT directory.
+#    > cp DART_config.template $CASEROOT/DART_config
 # -- Ensure DARTROOT references a valid DART directory.
 # -- Examine the whole script to identify things to change for your experiments.
-# -- Provide any initial files needed by your run:
-#       inflation
-#       sampling error correction
+#    This includes choosing [no_]assimilate.csh.
+# -- Provide any initial inflation files needed by your run
 # -- Run this script.
-# -- Edit the DART input.nml that appears in the ${CASEROOT} directory.
+#    > ./DART_config | & tee DART_config.out1  
+# -- Edit the DART input.nml, that appears in the ${CASEROOT} directory,
+#    to replace default values with your preferred values.
+#
 # -- Submit the job using ${CASEROOT}/${CASE}.submit
 #
 # ==============================================================================
@@ -48,54 +51,80 @@ echo "==================="
 echo "Starting DART_config"
 echo "==================="
 
+# baseobsdir    Part of the directory name containing the obs_seq.out files to be used by the 
+#               assimilation.  Assimilate.csh looks for a directory with the year and month:
+#               $baseobsdir/YYYYMM_6H_CESM.
+#               Will be inherited by CESM#_#_DART_config and inserted into assimilate.csh
+# save_every_Mth_day_restarts       
+#               assimilate.csh uses this to remove extraneous restart sets in the DART context.  
+#               This permits more cycles per job and reduces the data volume that's st_archived.
+
+# DART_SCRIPTS_DIR should be set to the DART directory from which this script was copied,
+# and which contains the setup_ script used to build the CASE, 
+# and the assimilate.csh which will run the assimilation.
+
+setenv DARTROOT               your_dart_path
+setenv DART_SCRIPTS_DIR       $DARTROOT/models/cam-fv/shell_scripts/your_setup_script_dir
+echo "DART_SCRIPTS_DIR = $DART_SCRIPTS_DIR"
+
+# /glade/p/image/Observations/NCEP+ACARS
+setenv BASEOBSDIR             your_observation_path
+
+setenv SAVE_EVERY_MTH_RESTART days_between_archiving_restarts
+
+# The ensemble size can't be fetched from CESM's .xml files 
+# because in the multi-driver mode there's 1 instance per coupler, not num_instances.
+set list = `grep 'setenv num_instances' setup_* `
+setenv num_instances $list[3]
+
 if ( ! -e ./xmlquery ) then
    echo "ERROR: $0 must be run from a CASEROOT directory".
-   exit -1
+   exit 1
 endif
 
-setenv CASE          `./xmlquery CASE           -value`
-setenv CASEROOT      `./xmlquery CASEROOT       -value`
-# old; setenv CCSM_COMPSET  `./xmlquery CCSM_COMPSET   -value`
-setenv COMPSET       `./xmlquery COMPSET   -value`
-setenv EXEROOT       `./xmlquery EXEROOT        -value`
-setenv NINST_ATM     `./xmlquery NINST_ATM      -value`
-setenv RUNDIR        `./xmlquery RUNDIR         -value`
-
-set num_instances = $NINST_ATM
-
-# DARTROOT is set by the DART CESM_configure scripts. Under certain
-# situations, you may need to set this manually. It should reference the
-# base portion of the DART code tree.
-
-setenv DARTROOT  BOGUS_DART_ROOT_STRING
+setenv CASE          `./xmlquery CASE           --value`
+setenv CASEROOT      `./xmlquery CASEROOT       --value`
+setenv COMPSET       `./xmlquery COMPSET        --value`
+setenv EXEROOT       `./xmlquery EXEROOT        --value`
 
 # ==============================================================================
-# Some
+# Turn on the assimilation in CESM
+
+# The assimilation script to be run is determined by 
+# CESM's env_run.xml DATA_ASSIMILATION* variables.
+# If DATA_ASSIMILATION = false (default), then neither {no_}assimilate.csh will be run,
+# and CAM restart files (instead of initial) will be used after the first cycle.
+# So always set DATA_ASSIMILATION = TRUE.
+# DATA_ASSIMILATION_CYCLES says how many cycles to run in each job.  
+# It's wise to set to 1 for the first cycle, so that successfull completion can be
+# verified before using lots of resources.
+# When the job (not each cycle) is finished the short_term archiver may run 
+# as a separate job and, if RESUBMIT > 0, (re)submit a new case.run job.
+./xmlchange DATA_ASSIMILATION_ATM=TRUE
+./xmlchange DATA_ASSIMILATION_CYCLES=1
+
+# The default is to tell CESM to use no_assimilate.csh.
+# If this script is run by setup_advanced, use one of its environment variables 
+# to turn on assimilation.  
+# In any case, you can change the value of DATA_ASSIMILATION_SCRIPT in env_run.xml.
+./xmlchange                 DATA_ASSIMILATION_SCRIPT=${CASEROOT}/no_assimilate.csh
+if ($?CIMEROOT) ./xmlchange DATA_ASSIMILATION_SCRIPT=${CASEROOT}/assimilate.csh
+
+# ==============================================================================
+
+# ==============================================================================
+# Set the system commands to avoid user's aliases.
 # ==============================================================================
 
 set nonomatch       # suppress "rm" warnings if wildcard does not match anything
 
 # The FORCE options are not optional.
 # The VERBOSE options are useful for debugging though
-# some systems don't like the -v option to any of the following
-switch ("`hostname`")
-   case be*:
-      # NCAR "bluefire"
-      set   MOVE = '/usr/local/bin/mv -fv'
-      set   COPY = '/usr/local/bin/cp -fv --preserve=timestamps'
-      set   LINK = '/usr/local/bin/ln -fvs'
-      set REMOVE = '/usr/local/bin/rm -fr'
-
-   breaksw
-   default:
-      # NERSC "hopper", NWSC "yellowstone"
-      set   MOVE = '/bin/mv -fv'
-      set   COPY = '/bin/cp -fv --preserve=timestamps'
-      set   LINK = '/bin/ln -fvs'
-      set REMOVE = '/bin/rm -fr'
-
-   breaksw
-endsw
+# some systems don't like the -v option to any of the following.
+set   MOVE = '/bin/mv -f'
+set   COPY = '/bin/cp -f --preserve=timestamps'
+set   LINK = '/bin/ln -fs'
+set REMOVE = '/bin/rm -fr'
 
 echo ""
 
@@ -104,12 +133,18 @@ echo ""
 # VAR is the shell variable name, DIR is the value
 # ==============================================================================
 
-foreach VAR ( CASEROOT DARTROOT )
-   set DIR = `eval echo \${$VAR}`
+# Make a place to store inflation restarts to protect from purging until
+# st_archive can make a home for them.
+if (! -d ${EXEROOT}/archive/esp/hist) mkdir -p ${EXEROOT}/archive/esp/hist
+
+# foreach VAR ( CASEROOT DARTROOT )
+#    set DIR = `eval echo \${$VAR}`
+#    if ( ! -d $DIR ) then
+foreach DIR ( $CASEROOT $DART_SCRIPTS_DIR ${EXEROOT}/archive/esp/hist)
    if ( ! -d $DIR ) then
       echo "ERROR: directory '$DIR' not found"
       echo "       In the setup script check the setting of: $VAR"
-      exit -1
+      exit 10
    endif
 end
 
@@ -126,13 +161,14 @@ foreach MODEL ( cam-fv )
       echo "WARNING: executable file 'filter' not found."
       echo "         Looking for: $targetdir/filter "
       echo "         Trying to rebuild all executables for $MODEL now ..."
+      echo "         This will be incorrect, if input.nml:preprocess_nml is not correct."
       (cd $targetdir; ./quickbuild.csh -mpi)
       if ( ! -x $targetdir/filter ) then
          echo "ERROR: executable file 'filter' not found."
          echo "       Unsuccessfully tried to rebuild: $targetdir/filter "
          echo "       Required DART assimilation executables are not found."
          echo "       Stopping prematurely."
-         exit -1
+         exit 20
       endif
    endif
 end
@@ -141,34 +177,13 @@ end
 # Stage the required parts of DART in the CASEROOT directory.
 # ==============================================================================
 
-# The new case.st_archive job script calls st_archive.  It runs after the case.run job.
-# It submits the next case.run job, if RESUBMIT > 0.
-# Fix some pieces.
-# /X/ means search for lines with X in them.
-# 'c' means replace the line with the following.
-# This might want to have a conditional around it, to only execute if it's a bsub machine.
-sed -e "/BSUB[ ]*-o/c\#BSUB  -o cesm_st_arch.stdout.%J" \
-    -e "/BSUB[ ]*-e/c\#BSUB  -e cesm_st_arch.stderr.%J" \
-    -e "/BSUB[ ]*-J/c\#BSUB  -J ${CASE}.st_arch" case.st_archive >! temp.$$  || exit 20
-${MOVE} temp.$$ case.st_archive
-chmod 755       case.st_archive
+sed -e "s#BOGUSNUMINST#$num_instances#" \
+    ${DART_SCRIPTS_DIR}/no_assimilate.csh.template > no_assimilate.csh || exit 30
 
-# Same for lt_archive
-# queue and wall_clock can/should be modified via xmlchange in setup_{hybrid,advanced}
-# (see env_batch.xml)
-sed -e "/BSUB[ ]*-o/c\#BSUB  -o cesm_lt_arch.stdout.%J  \n" \
-    -e "/BSUB[ ]*-e/c\#BSUB  -e cesm_lt_arch.stderr.%J  \n" \
-    -e "/BSUB[ ]*-J/c\#BSUB  -J ${CASE}.lt_arch         \n" case.lt_archive >! temp.$$  || exit 21
-${MOVE} temp.$$ case.lt_archive
-chmod 755       case.lt_archive
+sed -e "s#BOGUSBASEOBSDIR#$BASEOBSDIR#"  \
+    -e "s#BOGUS_save_every_Mth#$SAVE_EVERY_MTH_RESTART#" \
+    ${DART_SCRIPTS_DIR}/assimilate.csh.template  > assimilate.csh  || exit 40
 
-# BOGUS*, save_every_Mth_day_restarts#, and CESM come from the calling script,
-# setup_{hybrid,advanced,...}.
-${COPY} ${DARTROOT}/models/cam-fv/shell_scripts/no_assimilate.csh > no_assimilate.csh  
-sed -e "s#BOGUSCASEROOT#$CASEROOT#" \
-    -e "s#BOGUSBASEOBSDIR#$baseobsdir#"  \
-    -e "s#BOGUS_save_every_Mth#$save_every_Mth_day_restarts#" \
-    ${DARTROOT}/models/cam-fv/shell_scripts/${CESM}/assimilate.csh    > assimilate.csh  || exit 23
 chmod 755 assimilate.csh
 chmod 755 no_assimilate.csh
 # chmod 755 perfect_model.csh
@@ -206,18 +221,19 @@ elif [[ -e ${DARTROOT}/models/cam-fv/work/input.nml ]]; then
    fi
 else
    echo "ERROR: stage_dart_files could not find an input.nml.  Aborting"
-   exit -99
+   exit 50
 fi
 
-${COPY} ${DARTROOT}/models/cam-fv/work/filter            ${EXEROOT}
-${COPY} ${DARTROOT}/models/cam-fv/work/perfect_model_obs ${EXEROOT}
+${COPY} ${DARTROOT}/models/cam-fv/work/filter                 ${EXEROOT}
+${COPY} ${DARTROOT}/models/cam-fv/work/perfect_model_obs      ${EXEROOT}
+${COPY} ${DARTROOT}/models/cam-fv/work/fill_inflation_restart ${EXEROOT}
 
 exit 0
 
 EndOfText
 chmod 0755 stage_dart_files
 
-./stage_dart_files  || exit -8
+./stage_dart_files  || exit 60
 
 # ==============================================================================
 # Ensure the DART namelists are consistent with the ensemble size,
@@ -225,44 +241,49 @@ chmod 0755 stage_dart_files
 # The user is free to update these after setup and before running.
 # ==============================================================================
 
-# multi_cplr: Can't use NINST_ATM because it has been set to the number of 
-#             instances per coupler, 1 for now.
+# If we are using WACCM{-X} (i.e. WCxx or WXxx) we have preferred namelist values.
+# Extract pieces of the COMPSET for choosing correct setup parameters.
+# E.g. "AMIP_CAM5_CLM50%BGC_CICE%PRES_DOCN%DOM_MOSART_CISM1%NOEVOLVE_SWAV"
+set comp_list = `echo $COMPSET   | sed -e "s/_/ /g"`
+set waccm = "false"
+set atm = `echo $comp_list[2] | sed -e "s#%# #"`
+if ($#atm > 1) then
+   echo $atm[2] | grep WC 
+   if ($status == 0) set waccm = "true"
+endif
 
 cat << EndOfText >! update_dart_namelists
 #!/bin/sh
 
-# this script makes certain namelist settings consistent with the number
+# This script makes certain namelist settings consistent with the number
 # of ensemble members built by the setup script.
-# this script was autogenerated by $0
-# using the variables set in that script
+# This script was autogenerated by $0 using the variables set in that script.
 
 # Ensure that the input.nml ensemble size matches the number of instances.
 # WARNING: the output files contain ALL ensemble members ==> BIG
 
 ex input.nml <<ex_end
-g;ens_size ;s;= .*;= ${NINST_ATM};
-g;num_output_state_members ;s;= .*;= ${NINST_ATM};
-g;num_output_obs_members ;s;= .*;= ${NINST_ATM};
+g;ens_size ;s;= .*;= ${num_instances};
+g;num_output_state_members ;s;= .*;= ${num_instances};
+g;num_output_obs_members ;s;= .*;= ${num_instances};
 wq
 ex_end
 
-# If we are using WACCM{-X} (i.e. WCxx or WXxx) we have preferred values
-# $waccm comes from setup*
-if [[ "\$waccm" = "true" ]]; then 
-   list=\`grep '^[ ]*vert_coord' input.nml | sed -e "s#[=,]##g"\`
-   if [[ "\$list[3]" = "log_invP" ]]; then
+if [[ "$waccm" = "true" ]]; then 
+   list=\`grep '^[ ]*vertical_localization_coord' input.nml | sed -e "s#[=,]##g"\`
+   if [[ "\$list[3]" = "SCALEHEIGHT" ]]; then
       list=`grep '^[ ]*vert_normalization_scale_height' input.nml | sed -e "s#[=,]##g"`
       if [[ "\$list[2]" != "1.5" ]]; then
          echo "WARNING!  input.nml is not using 1.5 for vert_normalization_scale_height."
          echo "          Use a different value only if you definitely want to. "
       fi
    else
-      echo "WARNING!  input.nml is not using log_invP for vert_coord."
-      echo "          log_invP is highly recommended for WACCM{-X}"
+      echo "WARNING!  input.nml is not using SCALEHEIGHT for vertical_localization_coord."
+      echo "          SCALEHEIGHT is highly recommended for WACCM{-X}"
    fi
 else
-   echo "Apparently not configured for WACCM"
-   echo "COMPSET is \$COMPSET"
+   echo "This model is not configured for WACCM"
+   echo "COMPSET is $COMPSET"
 fi
 
 exit 0
@@ -270,7 +291,7 @@ exit 0
 EndOfText
 chmod 0755 update_dart_namelists
 
-./update_dart_namelists || exit -9
+./update_dart_namelists || exit 70
 
 #=========================================================================
 # Stage the files needed for SAMPLING ERROR CORRECTION - even if not
@@ -278,49 +299,30 @@ chmod 0755 update_dart_namelists
 #
 # If it is requested and is not present ... it is an error.
 #
-# The sampling error correction is a lookup table.  Each ensemble size
-# has its own (static) file.  It is only needed if any
+# The sampling error correction is a lookup table.  A selection of common
+# ensemble sizes should be found in the file named below.
+# It is only needed if
 # input.nml:&assim_tools_nml:sampling_error_correction = .true.,
 #=========================================================================
 
 if ( $num_instances > 1 ) then
-   set SAMP_ERR_FILE = ${DARTROOT}/system_simulation/final_full_precomputed_tables/final_full.${num_instances}
-# RMA eventually use single comprehensive file:
-#   set SAMP_ERR_FILE = ${DARTROOT}/system_simulation/sampling_error_correction_table.nc
+   set SAMP_ERR_FILE = \
+       ${DARTROOT}/assimilation_code/programs/gen_sampling_err_table/work/sampling_error_correction_table.nc
 
    if (  -e   ${SAMP_ERR_FILE} ) then
       ${COPY} ${SAMP_ERR_FILE} .
    else
       echo ""
-      echo "WARNING: no final_full.xx file found for an ensemble size of ${num_instances}."
+      echo "WARNING: no sampling_error_correction_table.nc file found."
       echo "         This file is NOT needed unless you want to turn on the"
       echo "         sampling_error_correction feature in any of the models."
-      echo "         To use it, in addition to setting the namelist to .true., cd to:"
-      echo "         ${DARTROOT}/system_simulation"
-      echo "         and create a final_full.${num_instances} file"
-      echo "         one can be generated for any ensemble size; see docs."
-      echo "         Copy it into ${CASEROOT} before running."
       echo ""
+      
+      set list = `grep sampling_error_correction input.nml | sed -e "s/[=\.,]//g`
+      if ($list[2] == "true") exit 80
+
    endif
    
-   foreach N ( input.nml )
-      set  MYSTRING = `grep sampling_error_correction $N`
-      set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,'\.]# #g"`
-      set  MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
-      set SECSTRING = `echo $MYSTRING[2] | tr '[:upper:]' '[:lower:]'`
-   
-      if ( ${SECSTRING} == true ) then
-         if ( ! -e  ${SAMP_ERR_FILE} ) then
-            echo "ERROR: no sampling error correction file for this ensemble size."
-            echo "ERROR: looking for ${SAMP_ERR_FILE} in"
-            echo "ERROR: ${DARTROOT}/system_simulation/final_full_precomputed_tables"
-            echo "ERROR: one can be generated for any ensemble size; see docs."
-            exit -3
-         endif
-      endif
-   end
-else
-   # sampling error correction not used for perfect_model_obs
 endif
 
 # ==============================================================================
