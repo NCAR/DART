@@ -54,9 +54,9 @@ use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,  
                                   get_single_copy, put_single_copy, deallocate_single_copy,   &
                                   print_ens_handle
 
-use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_restart,  &
-                                  inflate_ens, adaptive_inflate_init,   &
-                                  adaptive_inflate_type, set_inflation_mean_copy ,            &
+use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_restart,          &
+                                  inflate_ens, adaptive_inflate_init,                         &
+                                  adaptive_inflate_type, set_inflation_mean_copy,             &
                                   log_inflation_info, set_inflation_sd_copy,                  &
                                   get_minmax_task_zero, do_rtps_inflate,                      &
                                   validate_inflate_options
