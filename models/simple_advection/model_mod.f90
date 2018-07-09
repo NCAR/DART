@@ -105,11 +105,6 @@ integer  :: grid_spacing_meters     = 100000
 integer  :: time_step_days          = 0
 integer  :: time_step_seconds       = 3600
 
-! if you have a template file, set the name here.
-! if you are not starting from a restart, leave this as ''
-! and the code should construct a domain from spec.
-character(len=256) :: template_file = ''
-
 ! Namelist parameters associated with wind
 ! Base velocity (expected value over time), in meters/second
 real(r8)  :: mean_wind              = 20.0_r8
@@ -145,8 +140,7 @@ namelist /model_nml/ num_grid_points, grid_spacing_meters, &
                      mean_wind, wind_random_amp, wind_damping_rate, &
                      lagrangian_for_wind, destruction_rate, &
                      source_random_amp_frac, source_damping_rate, &
-                     source_diurnal_rel_amp, source_phase_noise, &
-                     template_file
+                     source_diurnal_rel_amp, source_phase_noise
 
 
 ! Define the location of the state variables in module storage
@@ -222,29 +216,18 @@ if(.not. random_seq_init) then
    random_seq_init = .true.
 endif
 
-! Tell the DART I/O routines how large the model data is so they
-! can read/write it.
-if (template_file /= '') then
-   dom_id = add_domain(template_file, NVARS, &
-                       (/ 'concentration', &
-                          'source       ', &
-                          'wind         ', &
-                          'mean_source  ', &
-                          'source_phase ' /))
-else 
-   dom_id = add_domain(NVARS, (/ 'concentration', &
-                                 'source       ', &
-                                 'wind         ', &
-                                 'mean_source  ', &
-                                 'source_phase ' /))
+! Tell DART how many grid variables are in the model state
+dom_id = add_domain(NVARS, (/ 'concentration', &
+                              'source       ', &
+                              'wind         ', &
+                              'mean_source  ', &
+                              'source_phase ' /))
 
-   do var_id=1, NVARS
-      call add_dimension_to_variable(dom_id, var_id, 'location', int(num_grid_points, i4))
-   enddo
-   
-   call finished_adding_domain(dom_id)
-endif
+do var_id=1, NVARS
+   call add_dimension_to_variable(dom_id, var_id, 'location', int(num_grid_points, i4))
+enddo
 
+call finished_adding_domain(dom_id)
 
 end subroutine static_init_model
 

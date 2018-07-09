@@ -147,7 +147,6 @@
    source_damping_rate    = 0.000002777778
    source_diurnal_rel_amp = 0.0
    source_phase_noise     = 0.0
-   template_file          = 'perfect_input.nc'
    /
 
 &utilities_nml
