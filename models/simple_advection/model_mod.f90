@@ -28,6 +28,7 @@ use location_io_mod,      only :  nc_write_location_atts, nc_get_location_varids
 
 use default_model_mod,     only : end_model, nc_write_model_vars, init_time
 
+
 use     obs_kind_mod, only : QTY_VELOCITY, QTY_TRACER_CONCENTRATION, &
                              QTY_TRACER_SOURCE, QTY_MEAN_SOURCE, QTY_SOURCE_PHASE
 
@@ -231,11 +232,6 @@ if (template_file /= '') then
                           'mean_source  ', &
                           'source_phase ' /))
 else 
-   !>@todo FIXME : should not need a template file if initializing members from code
-
-   write(string1, *) 'template file is required for now'
-   call error_handler(E_ERR,'static_init_model',string1, source, revision, revdate)
-
    dom_id = add_domain(NVARS, (/ 'concentration', &
                                  'source       ', &
                                  'wind         ', &
@@ -243,8 +239,6 @@ else
                                  'source_phase ' /))
 
    do var_id=1, NVARS
-      call add_dimension_to_variable(dom_id, var_id, 'time', 1)
-      call add_dimension_to_variable(dom_id, var_id, 'member', my_ens_size)
       call add_dimension_to_variable(dom_id, var_id, 'location', int(num_grid_points, i4))
    enddo
    
@@ -552,6 +546,7 @@ integer,             intent(out), optional :: var_type
 
 integer :: var_type_index, var_loc_index
 
+!>@todo This should be using the state_structure routines
 ! Three variable types
 var_type_index = (index_in - 1) / num_grid_points + 1
 var_loc_index = index_in - (var_type_index - 1)*num_grid_points
