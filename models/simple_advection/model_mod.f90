@@ -28,7 +28,6 @@ use location_io_mod,      only :  nc_write_location_atts, nc_get_location_varids
 
 use default_model_mod,     only : end_model, nc_write_model_vars, init_time
 
-
 use     obs_kind_mod, only : QTY_VELOCITY, QTY_TRACER_CONCENTRATION, &
                              QTY_TRACER_SOURCE, QTY_MEAN_SOURCE, QTY_SOURCE_PHASE
 
@@ -105,6 +104,11 @@ integer  :: grid_spacing_meters     = 100000
 integer  :: time_step_days          = 0
 integer  :: time_step_seconds       = 3600
 
+! if you have a template file, set the name here.
+! if you are not starting from a restart, leave this as ''
+! and the code should construct a domain from spec.
+character(len=256) :: template_file = ''
+
 ! Namelist parameters associated with wind
 ! Base velocity (expected value over time), in meters/second
 real(r8)  :: mean_wind              = 20.0_r8
@@ -140,7 +144,8 @@ namelist /model_nml/ num_grid_points, grid_spacing_meters, &
                      mean_wind, wind_random_amp, wind_damping_rate, &
                      lagrangian_for_wind, destruction_rate, &
                      source_random_amp_frac, source_damping_rate, &
-                     source_diurnal_rel_amp, source_phase_noise
+                     source_diurnal_rel_amp, source_phase_noise, &
+                     template_file, my_ens_size
 
 
 ! Define the location of the state variables in module storage
@@ -216,18 +221,36 @@ if(.not. random_seq_init) then
    random_seq_init = .true.
 endif
 
-! Tell DART how many grid variables are in the model state
-dom_id = add_domain(NVARS, (/ 'concentration', &
-                              'source       ', &
-                              'wind         ', &
-                              'mean_source  ', &
-                              'source_phase ' /))
+! Tell the DART I/O routines how large the model data is so they
+! can read/write it.
+if (template_file /= '') then
+   dom_id = add_domain(template_file, NVARS, &
+                       (/ 'concentration', &
+                          'source       ', &
+                          'wind         ', &
+                          'mean_source  ', &
+                          'source_phase ' /))
+else 
+   !>@todo FIXME : should not need a template file if initializing members from code
 
-do var_id=1, NVARS
-   call add_dimension_to_variable(dom_id, var_id, 'location', int(num_grid_points, i4))
-enddo
+   write(string1, *) 'template file is required for now'
+   call error_handler(E_ERR,'static_init_model',string1, source, revision, revdate)
 
-call finished_adding_domain(dom_id)
+   dom_id = add_domain(NVARS, (/ 'concentration', &
+                                 'source       ', &
+                                 'wind         ', &
+                                 'mean_source  ', &
+                                 'source_phase ' /))
+
+   do var_id=1, NVARS
+      call add_dimension_to_variable(dom_id, var_id, 'time', 1)
+      call add_dimension_to_variable(dom_id, var_id, 'member', my_ens_size)
+      call add_dimension_to_variable(dom_id, var_id, 'location', int(num_grid_points, i4))
+   enddo
+   
+   call finished_adding_domain(dom_id)
+endif
+
 
 end subroutine static_init_model
 
@@ -529,7 +552,6 @@ integer,             intent(out), optional :: var_type
 
 integer :: var_type_index, var_loc_index
 
-!>@todo This should be using the state_structure routines
 ! Three variable types
 var_type_index = (index_in - 1) / num_grid_points + 1
 var_loc_index = index_in - (var_type_index - 1)*num_grid_points
