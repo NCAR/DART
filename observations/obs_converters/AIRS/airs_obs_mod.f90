@@ -72,9 +72,10 @@ real ::   Q_err(AIRS_RET_H2OPRESSURELAY, AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
 
 contains
 
+!-------------------------------------------------
 
 subroutine initialize_module
-!-------------------------------------------------
+
 call register_module(source, revision, revdate)
 
 call set_calendar_type(GREGORIAN)
@@ -83,16 +84,14 @@ module_initialized = .true.
 
 end subroutine initialize_module
 
-
-
-function real_obs_sequence ( granule, lon1, lon2, lat1, lat2, &
-                             min_MMR_threshold, top_pressure_level, &
-                             row_thin, col_thin)
 !------------------------------------------------------------------------------
 !  extract the temperature and humidity observations from a granule
 !  and convert to DART observation format.  allow caller to specify
 !  a bounding box and only extract data within that region.
 
+function real_obs_sequence ( granule, lon1, lon2, lat1, lat2, &
+                             min_MMR_threshold, top_pressure_level, &
+                             row_thin, col_thin)
 type(airs_granule_type), intent(in) :: granule
 real(r8), intent(in) :: lon1, lon2, lat1, lat2
 real(r8), intent(in) :: min_MMR_threshold, top_pressure_level
@@ -152,7 +151,7 @@ endif
 
 base_time = set_date(1993, 1, 1, 0, 0, 0)   ! reference date: jan 1st, 1993
 
-call debug_print_size_check(granule)
+if (DEBUG) call debug_print_size_check(granule)
 
 ! The file contains 'Retrieved Water Vapor Mass Mixing Ratio'.  Convert
 ! to specific humidity here.  Original units: gm/kg - scale to kg/kg first.
@@ -371,11 +370,10 @@ call error_handler(E_MSG, ' ', ' ')
 
 end function real_obs_sequence
 
-
+!------------------------------------------------------------------------------
 
 subroutine real_obs(num_copies, num_qc, obs, lon, lat, vloc, obs_value, &
                       var2, aqc, obs_kind, which_vert, seconds, days)
-!------------------------------------------------------------------------------
 integer,        intent(in)    :: num_copies, num_qc
 type(obs_type), intent(inout) :: obs
 real(r8),       intent(in)    :: lon, lat, vloc, obs_value, var2, aqc
@@ -405,11 +403,10 @@ end do
 
 end subroutine real_obs
 
-
+!----------------------------------------------------------------------
 
 subroutine real_obs_def(obs_def, lon, lat, vloc, &
                         var2, obs_kind, which_vert, seconds, days)
-!----------------------------------------------------------------------
 type(obs_def_type), intent(inout) :: obs_def
 real(r8),intent(in) :: lon, lat, vloc, var2
 integer, intent(in) :: obs_kind, which_vert, seconds, days
@@ -430,9 +427,9 @@ call set_obs_def_error_variance(obs_def, var2)
 
 end subroutine real_obs_def
 
+!----------------------------------------------------------------------
 
 subroutine check_size(size1, size2, varlabel, subrlabel)
-!----------------------------------------------------------------------
 integer,          intent(in) :: size1, size2
 character(len=*), intent(in) :: varlabel, subrlabel
 
@@ -444,12 +441,12 @@ endif
 
 end subroutine check_size
 
-
-subroutine create_output_filename(l2name, ofname)
 !-------------------------------------------------
 ! The L2 filenames have a very long extension that
 ! records when the data was published - not very interesting
 ! for our purposes. replace with something DART-y.
+
+subroutine create_output_filename(l2name, ofname)
 character(len=*), intent(IN)  :: l2name
 character(len=*), intent(OUT) :: ofname
 
@@ -477,11 +474,11 @@ if (DEBUG) print *, 'output filename = ', ofname
 
 end subroutine create_output_filename
 
-
-subroutine debug_print_size_check(granule)
 !-------------------------------------------------
 ! bit of sanity checking - before we loop over these arrays, make sure
 ! they are the size we expect them to be.
+
+subroutine debug_print_size_check(granule)
 type(airs_granule_type), intent(in) :: granule
 
 type(time_type) :: obs_time, base_time
