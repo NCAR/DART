@@ -1921,17 +1921,17 @@ end function set_filename_list
 !> contrast this with the previous function where you don't know (or care)
 !> how many filenames are specified, and there's only a single listlist option.
 
-subroutine set_multiple_filename_lists(name_array, listname, nlists, nentries, &
+subroutine set_multiple_filename_lists(name_array, listname, ndomains, nentries, &
                                        caller_name, origin, origin_list)
 
-! when this routine returns, name_array() contains (nlists * nentries) of names,
-! either because they started out there or because we've opened up 'nlists'
+! when this routine returns, name_array() contains (ndomains * nentries) of names,
+! either because they started out there or because we've opened up 'ndomains'
 ! listname files and read in 'nentries' from each.  it's a fatal error not to
 ! have enough files. caller_name is used for error messages.
 
 character(len=*), intent(inout) :: name_array(:)
 character(len=*), intent(in)    :: listname(:)
-integer,          intent(in)    :: nlists
+integer,          intent(in)    :: ndomains
 integer,          intent(in)    :: nentries
 character(len=*), intent(in)    :: caller_name
 character(len=*), intent(in)    :: origin
@@ -1940,12 +1940,12 @@ character(len=*), intent(in)    :: origin_list
 integer :: fileindex, max_num_input_files
 logical :: from_file
 character(len=64) :: fsource
-integer :: nl, ne, num_lists
+integer :: nl, ne, list_length
 
 ! here's the logic:
 ! if the user specifies neither name_array nor listname, error
 ! if the user specifies both, error.
-! if the user gives a listname, make sure there are nlists of them
+! if the user gives a listname, make sure there are ndomains of them
 !   and each contains at least nentries
 ! when this routine returns the names are in name_array()
 
@@ -1977,18 +1977,26 @@ endif
 
 ! this version of the code knows how many files should be in the listname
 if (from_file) then
-   num_lists = size(listname)
-   if (num_lists < nlists) then
-      write(msgstring1, *) 'expecting ', nlists, ' filenames in "'//trim(origin_list)//'", got ', num_lists
-      call error_handler(E_ERR, caller_name, msgstring1, source,revision,revdate)
+
+   list_length = 0
+   COUNT_FILES : do fileindex = 1,size(listname)
+      if (listname(fileindex) == '') exit COUNT_FILES
+      list_length = list_length + 1
+   enddo COUNT_FILES
+
+   if (list_length /= ndomains) then
+      write(msgstring1, *) '..  read     ', list_length, ' filename(s) in "'//trim(origin_list)//'"'
+      write(msgstring2, *) 'expected ',ndomains,' based on number of domains.'
+      call error_handler(E_ERR, caller_name, msgstring1, &
+                 source, revision, revdate, text2=msgstring2)
    endif
 endif
 
 ! the max number of names allowed in a list file is the 
 ! size of the name_array passed in by the user.
 max_num_input_files = size(name_array)
-if (max_num_input_files < nlists * nentries) then
-   write(msgstring1, *) 'list length = ', max_num_input_files, '  needs room for ', nlists * nentries
+if (max_num_input_files < ndomains * nentries) then
+   write(msgstring1, *) 'list length = ', max_num_input_files, '  needs room for ', ndomains * nentries
    call error_handler(E_ERR, caller_name, 'internal error: name_array not long enough to hold lists', &
        source,revision,revdate, text2=msgstring1)
 endif
@@ -1997,7 +2005,7 @@ endif
 ! name_array leave them there.  if they were in the listname file,
 ! read them into the name_array.
 
-do nl = 1, nlists
+do nl = 1, ndomains
    do ne = 1, nentries
       fileindex = (nl-1) * nentries + ne
 
@@ -2005,14 +2013,14 @@ do nl = 1, nlists
          name_array(fileindex) = get_next_filename(listname(nl), ne)
 
       if (name_array(fileindex) == '') then
-         write(msgstring1, *) 'Missing filename'
+         write(msgstring1, *) 'Missing filename for domain number ',nl,' file number ',ne
 
          if (from_file) then
             write(msgstring2,*)'reading entry # ', nl, ' from "'//trim(origin_list)//'"'
             write(msgstring3,*)'expecting ', nentries, ' files, have ', ne-1
          else
             write(msgstring2,*)'required entry # ', fileindex, ' from "'//trim(origin)//'"'
-            write(msgstring3,*)'expecting ', nlists*nentries, ' filenames, have ', fileindex-1
+            write(msgstring3,*)'expecting ', ndomains*nentries, ' filenames, have ', fileindex-1
          endif
 
          call error_handler(E_ERR, caller_name, trim(msgstring1)//trim(fsource), &

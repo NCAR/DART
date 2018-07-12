@@ -2399,7 +2399,6 @@ type(file_info_type), intent(out) :: file_info_analysis
 type(file_info_type), intent(out) :: file_info_output
 
 integer :: noutput_members, next_file, ninput_files, noutput_files, ndomains, idom
-character(len=64)  :: fsource
 character(len=256), allocatable :: file_array_input(:,:), file_array_output(:,:)
 
 ! local variable to shorten the name for function input

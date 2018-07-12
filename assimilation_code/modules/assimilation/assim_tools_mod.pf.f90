@@ -18,7 +18,9 @@ use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_o
                                  find_namelist_in_file, register_module, error_handler,   &
                                  E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term,     &
                                  open_file, close_file, timestamp
+
 use       sort_mod,       only : index_sort
+
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq,       &
                                  random_uniform
 
@@ -111,10 +113,10 @@ real(r8), allocatable  :: exp_true_correl(:), alpha(:)
 real(r8), allocatable  :: obs_impact_table(:,:)
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 !============================================================================
 
@@ -368,7 +370,7 @@ real(r8) :: w(ens_size), ens_mean, ens_var, ws, ob_info(3)
 integer  :: indx(ens_size)
 
 integer  :: my_num_obs, i, j, owner, owners_index, my_num_state
-integer  :: this_obs_key, obs_mean_index, obs_var_index
+integer  :: obs_mean_index, obs_var_index
 integer  :: grp_beg(num_groups), grp_end(num_groups), grp_size, grp_bot, grp_top, group
 integer  :: close_obs_ind(obs_ens_handle%my_num_vars)
 integer  :: close_state_ind(ens_handle%my_num_vars)
@@ -405,8 +407,6 @@ logical :: local_obs_inflate
 real(r8) :: vertvalue_obs_in_localization_coord
 integer  :: whichvert_obs_in_localization_coord
 real(r8) :: whichvert_real
-type(location_type) :: lc(1)
-integer             :: kd(1)
 
 ! timing - set one or both of the parameters to true
 ! to get timing info printed out.
@@ -2803,8 +2803,8 @@ integer,  intent(in)  :: ens_size
 
 ! Uses interpolation to get correction factor into the table
 
-integer             :: iunit, i, low_indx, high_indx
-real(r8)            :: temp, temp2, correl, fract, low_correl, low_exp_correl, low_alpha
+integer             :: low_indx, high_indx
+real(r8)            :: correl, fract, low_correl, low_exp_correl, low_alpha
 real(r8)            :: high_correl, high_exp_correl, high_alpha
 
 logical, save :: first_time = .true.

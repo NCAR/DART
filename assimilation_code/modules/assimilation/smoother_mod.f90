@@ -271,8 +271,8 @@ logical, intent(in) :: output_inflation
 
 ! The 4 is for ensemble mean and spread plus inflation mean and spread
 character(len = metadatalength) :: state_meta(num_output_state_members + 4)
-character(len = 14)  :: file_name
-character(len = 15)  :: meta_data_string
+!character(len = 14)  :: file_name
+!character(len = 15)  :: meta_data_string
 integer              :: i, ensemble_offset, num_state_copies
 
 ! must have called init_smoother() before using this routine
@@ -344,7 +344,7 @@ integer,             intent(in)    :: start_copy, end_copy
 character(len = 256) :: file_name
 integer              :: i, smoother_index
 
-type(file_info_type) :: file_info
+!type(file_info_type) :: file_info
 
 ! must have called init_smoother() before using this routine
 if ( .not. module_initialized ) then
