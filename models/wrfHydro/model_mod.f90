@@ -46,7 +46,9 @@ use     default_model_mod, only : adv_1step, nc_write_model_vars
 
 use        noah_hydro_mod, only : configure_lsm, configure_hydro, &
                                   n_link, linkLong, linkLat, linkAlt, get_link_tree, &
-                                  full_to_connection, get_downstream_links
+                                  full_to_connection, get_downstream_links, &
+                                  read_hydro_global_atts, write_hydro_global_atts, &
+                                  read_noah_global_atts, write_noah_global_atts
 
 use   state_structure_mod, only : add_domain,      get_domain_size,   &
                                   get_index_start, get_index_end,     &
@@ -122,6 +124,7 @@ integer :: idom, idom_hydro = -1, idom_parameters = -1, idom_lsm = -1
 integer             :: assimilation_period_days     = 0
 integer             :: assimilation_period_seconds  = 3600
 character(len=128)  :: lsm_model_choice             = 'noahMP'
+character(len=256)  :: domain_order(3)              = ''
 character(len=256)  :: domain_shapefiles(3)         = ''
 integer             :: debug                        = 0
 real(r8)            :: model_perturbation_amplitude = 0.002
@@ -136,6 +139,7 @@ character(len=obstypelength) :: &
 namelist /model_nml/ assimilation_period_days,     &
                      assimilation_period_seconds,  &
                      lsm_model_choice,             &
+                     domain_order,                 &
                      domain_shapefiles,            &
                      debug,                        & 
                      model_perturbation_amplitude, &
@@ -173,7 +177,7 @@ real(r8) :: var_ranges(MAX_STATE_VARIABLES,2)
 logical  :: var_update(MAX_STATE_VARIABLES)
 integer  :: var_qtys(  MAX_STATE_VARIABLES)
 
-character(len=256) :: filename
+character(len=256) :: domain_name
 
 if ( module_initialized ) return ! only need to do this once
 
@@ -196,7 +200,21 @@ if (do_nml_term()) write(     *     , nml=model_nml)
 call set_calendar_type('Gregorian')
 time_step  = set_time(assimilation_period_seconds, assimilation_period_days)
 
+! Determine the order of the domains contributing to the DART state vector.
+
+if ( len_trim(domain_order(1)) == 0 ) then 
+   write(string1,*) 'The domain_order is incorrectly specified.'
+   write(string2,*) 'The domain_order cannot be empty, it should be something like:'
+   write(string3,*) 'domain_order = "hydro", "parameters"'
+   call error_handler(E_ERR, routine, string1, &
+              source, revision, revdate, text2=string2, text3=string3)
+endif
+
 ! Determine the composition of the DART state vector.
+! If the domain_shapefiles are not listed in the same order as
+! the domain_order, the variables are not found. The error messages are like:
+! domain 1 variable # 1 "qlink1" from file "parameters.nc": NetCDF: Variable not found
+! The clue is that the domain number and the file are not as expected.
 
 if ( .not. file_exist(domain_shapefiles(1)) ) then 
    write(string1,*) 'Domain 1 shapefile "', trim(domain_shapefiles(1)),'" does not exist.'
@@ -204,12 +222,12 @@ if ( .not. file_exist(domain_shapefiles(1)) ) then
    call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
 endif
 
-DOMAINS: do domainID = 1,size(domain_shapefiles)
+DOMAINS: do domainID = 1,size(domain_order)
 
-   if (len_trim(domain_shapefiles(domainID)) == 0) exit DOMAINS
+   if (len_trim(domain_order(domainID)) == 0) exit DOMAINS
 
-   filename = domain_shapefiles(domainID)
-   call to_upper(filename)
+   domain_name = domain_order(domainID)
+   call to_upper(domain_name)
 
    if ( .not. file_exist(domain_shapefiles(domainID)) ) then 
       write(string1,'("Domain shapefile ",i3, A," does not exist.")')  &
@@ -217,9 +235,10 @@ DOMAINS: do domainID = 1,size(domain_shapefiles)
       call error_handler(E_ERR,routine,string1,source,revision,revdate)
    endif
 
-   if (index(filename,'HYDRO') > 0) then 
+   if (index(domain_name,'HYDRO') > 0) then 
 
       call configure_hydro()
+      call read_hydro_global_atts(domain_shapefiles(domainID))
       call verify_variables(hydro_variables, domain_shapefiles(domainID), n_hydro_fields, &
                        var_names, var_qtys, var_ranges, var_update)
       idom_hydro = add_domain(domain_shapefiles(domainID), n_hydro_fields, var_names, &
@@ -229,7 +248,7 @@ DOMAINS: do domainID = 1,size(domain_shapefiles)
 
       if (debug > 99) call state_structure_info(idom_hydro)
 
-   elseif (index(filename,'PARAMETER') > 0) then 
+   elseif (index(domain_name,'PARAMETER') > 0) then 
 
       call verify_variables(parameters, domain_shapefiles(domainID), n_parameters, &
                        var_names, var_qtys, var_ranges, var_update)
@@ -238,9 +257,10 @@ DOMAINS: do domainID = 1,size(domain_shapefiles)
                        update_list=var_update )
       if (debug > 99) call state_structure_info(idom_parameters)
 
-   elseif (index(filename,'LSM') > 0) then 
+   elseif (index(domain_name,'LSM') > 0) then 
 
-      call configure_lsm()
+      call configure_lsm(lsm_model_choice)
+      call read_noah_global_atts(domain_shapefiles(domainID))
       call verify_variables(lsm_variables, domain_shapefiles(domainID), n_lsm_fields, &
                        var_names, var_qtys, var_ranges, var_update)
       idom_lsm = add_domain(domain_shapefiles(domainID), n_lsm_fields, var_names, &
@@ -248,7 +268,16 @@ DOMAINS: do domainID = 1,size(domain_shapefiles)
                         clamp_vals=var_ranges(1:n_lsm_fields,:), &
                        update_list=var_update)
       if (debug > 99) call state_structure_info(idom_lsm)
+
+   else
+
+      write(string1,*)'domain_order ="',trim(domain_name),'" unsupported."'
+      write(string2,*)'Must be "hydro", "parameter", or "lsm"'
+      call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
+
    endif
+
+   
 enddo DOMAINS
 
 if (idom_parameters > 0 .and. idom_hydro < 1) then
@@ -471,8 +500,8 @@ if(isLsmFile) then ! Get the time from the LSM restart file
 
    ! TJH ... my preference is to read the dimension IDs for the Times variable
    ! and cycle over the dimension IDs to get the lengths and check compatibility
+   ! This has the assumption that Times(DateStrLen,Time)
 
-   ! TJH This has the assumption that Times(DateStrLen,Time)   
    ! Get the dimensions for the strings of times
    io = nf90_inq_dimid(ncid, 'Time', DimID)
    call nc_check(io, routine,'inq_dimid','Time',filename)
@@ -716,7 +745,8 @@ end subroutine get_close_obs
 
 !-----------------------------------------------------------------------
 !> Given a location, return the subset of close states that are local to
-!> the mpi task
+!> the mpi task. At present, this only works for the hydro domain - 
+!> the vector-based representation.
 
 subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
                          num_close, close_ind, dist, ens_handle)
@@ -732,18 +762,17 @@ integer,              intent(out)   :: close_ind(:) !< indices in the the locs a
 real(r8),             optional, intent(out) :: dist(:)      !< distances
 type(ensemble_type),  optional, intent(in)  :: ens_handle
 
-
-integer  :: nclose                         !< how many are close
-integer(i8) :: close_indices(size(close_ind)) !< indices in the the locs array
-real(r8) :: distances(size(close_ind))     !< distances
-
 character(len=*),parameter :: routine = 'get_close_state'
-integer :: t_ind, k, i
-integer :: depth
-logical :: in_list
+
+integer     :: nclose                         !< how many are close
+integer(i8) :: close_indices(size(close_ind)) !< indices in the the locs array
+real(r8)    :: distances(size(close_ind))     !< distances
+
+integer     :: k
+integer     :: depth
 integer(i8) :: full_index
-real(r8) :: reach_length
-integer :: connection_index
+real(r8)    :: reach_length
+integer     :: connection_index
 
 ! Initialize variables to missing status
 reach_length = 0.0_r8
@@ -755,7 +784,9 @@ if (present(dist)) dist = huge(1.0_r8)  !something far away
 if (base_type < 0) then ! we are working with identity observations
    full_index = abs(base_type)
 else
-   call error_handler(E_ERR,routine,'unexpected',source,revision,revdate)
+   call error_handler(E_ERR,routine,'unsupported base_type',source,revision,revdate)
+   ! TJH: Need to find the link 
+   ! full_index = locate_link(base_loc)
 endif
 
 connection_index = full_to_connection(full_index)
@@ -771,7 +802,7 @@ call get_link_tree(connection_index, max_link_distance, depth, &
 call get_downstream_links(connection_index, max_link_distance, depth, &
                    nclose, close_indices, distances)
 
-! Nancy: which indices are mine?
+! which indices are mine
 
 call get_my_close(nclose, close_indices, distances, loc_indx, &
             num_close, close_ind, dist)
@@ -788,28 +819,6 @@ if (debug > 99) then
    enddo
 endif
 
-! If distances are not needed, we are done.
-if (.not. present(dist)) return
-
-!do k = 1, num_close
-!
-!      t_ind = close_ind(k)
-!
-!      ! Specialized treatment of the global parameters.
-!      ! By definition, they are close to everything.
-!      !MOHA: Multipliers are made spatially variable, keeping this block for future use.
-!      !if (loc_qtys(t_ind) == QTY_BUCKET_MULTIPLIER .or. &
-!      !    loc_qtys(t_ind) == QTY_RUNOFF_MULTIPLIER) then
-!      !   dist(k) = 0.0_r8
-!      !else
-!         ! Compute real distance
-!
-!         dist(k) = get_dist(base_loc, locs(t_ind), base_type, loc_qtys(t_ind))
-!
-!      !endif
-!      
-!enddo
-
 end subroutine get_close_state
 
 
@@ -823,17 +832,24 @@ integer, intent(in) :: domain_id
 
 call nc_begin_define_mode(ncid) ! put file into define mode.
 
-call nc_add_global_creation_time(ncid)
-call nc_add_global_attribute(ncid, "model_source",   source )
-call nc_add_global_attribute(ncid, "model_revision", revision )
-call nc_add_global_attribute(ncid, "model_revdate",  revdate )
-call nc_add_global_attribute(ncid, "model",          "wrfHydro")
+if (domain_id == idom_lsm ) then
 
-!>@todo add the metadata for each domain ... lat/lon/alt etc.
+   call write_noah_global_atts(ncid)
+
+elseif (domain_id == idom_hydro ) then
+
+   call write_hydro_global_atts(ncid)
+
+elseif (domain_id == idom_parameters ) then
+
+   continue  ! no metadata for parameters.
+
+endif
 
 call nc_end_define_mode(ncid)
 
-call nc_synchronize_file(ncid) ! Flush the buffer and leave netCDF file open
+! Flush the buffer and leave netCDF file open
+call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts
 

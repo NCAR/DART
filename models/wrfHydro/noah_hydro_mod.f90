@@ -8,19 +8,27 @@ module noah_hydro_mod
 
 use            types_mod, only : r4, r8, i8, MISSING_R8, MISSING_I, MISSING_I8
 
-use        utilities_mod, only : register_module, error_handler, &
+use        utilities_mod, only : register_module, error_handler, to_upper, &
                                  E_ERR, E_MSG, file_exist, do_output, &
                                  nmlfileunit, do_nml_file, do_nml_term,  &
                                  find_namelist_in_file, check_namelist_read
 
+use             map_utils, only : proj_info, map_init, map_set
+
+use misc_definitions_module, only : PROJ_LATLON, PROJ_MERC, PROJ_LC, &
+                                    PROJ_PS, PROJ_CASSINI, PROJ_CYL
+
 use    mpi_utilities_mod, only : my_task_id 
 
-use netcdf_utilities_mod, only : nc_check
+use netcdf_utilities_mod, only : nc_check, nc_open_file_readonly, nc_close_file, &
+                                 nc_get_global_attribute, nc_add_global_attribute
 
 use netcdf
 
 implicit none
 private
+
+!>@todo check to make sure all public routines initialize the module ...
 
 public :: configure_lsm, &
           configure_hydro, &
@@ -30,7 +38,16 @@ public :: configure_lsm, &
           linkAlt, &
           get_link_tree, &
           full_to_connection, &
-          get_downstream_links
+          get_downstream_links, &
+          get_noah_timestepping, &
+          num_soil_layers, &
+          soil_layer_thickness, &
+          lsm_namelist_filename, &
+          get_lsm_domain_info, &
+          wrf_static_data, &
+          get_lsm_domain_filename, &
+          read_hydro_global_atts, write_hydro_global_atts , &
+          read_noah_global_atts, write_noah_global_atts 
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = "$URL$"
@@ -41,165 +58,81 @@ logical, save :: module_initialized = .false.
 
 character(len=512) :: string1, string2, string3
 
-integer :: debug = 99
+integer :: debug = 0
 
 !------------------------------------------------------------------
 ! From the models' namelists we get everything needed to recreate
 ! specify these (for restarts after DART filters).
 ! For both noah and noahMP the namelist is called namelist.hrldas
 
-character(len=*),parameter :: lsm_namelist_filename   = 'namelist.hrldas'
+character(len=*),parameter :: lsm_namelist_filename = 'namelist.hrldas'
 character(len=*),parameter :: hydro_namelist_filename = 'hydro.namelist'
-
-! The NSOLDX (number of soil layers) parameter comes from the NOAH source code. We need it
-! because we have to read the NOAH namelist for timestep information.
-integer, parameter :: NSOLDX = 100  !!jlm typically set to 4, this is an upper bound
-
-! jlm
-! Small conundrum of how to handle the noah and noahMp namelists.
-! They are both called NOAHLSM_OFFLINE but they have different variables.
-! Cannot rename them in namelist.hrldas b/c that would require rewriting HRLDAS
-! or noah/noahMP.
-! Seems like the best way is to specify agnostic defaults, then attempt to
-! read the union of their variables from the file. This should not change variables not
-! found in the file (which would remain to their default, agnostic values).
-
-!Variables in both noah and noahMP (spaces reflect the general grouping in our nml files)
-character(len=256) :: hrldas_setup_file = " "
-character(len=256) :: spatial_filename 
-character(len=256) :: indir = "."
-character(len=256) :: outdir = "."
-
-integer            :: start_year, start_month, start_day
-integer            :: start_hour, start_min
-
-character(len=256) :: restart_filename_requested = " "
-
-integer            :: kday  = 0
-integer            :: khour = 0
-
-integer            :: forcing_timestep = -999
-integer            :: noah_timestep = -999
-integer            :: output_timestep  = -999
-
-integer            :: restart_frequency_hours = -999
-integer            :: split_output_count = 1
-
-integer            :: nsoil ! number of soil layers in use.
-
-real(r8)           :: zlvl
-
-integer            :: iz0tlnd = 0
-integer            :: sfcdif_option = 0
-logical            :: update_snow_from_forcing = .true.
-
-!! wrfHydro specific ??
-integer            :: FORC_TYP = 3
-character(len=256) :: GEO_STATIC_FLNM = "DOMAIN/geo_em.d03.nc"
-integer            :: HRLDAS_ini_typ = 0
-integer            :: SNOW_assim = 0
-
-!! only Noah
-real(r8), dimension(NSOLDX) :: zsoil
-integer            :: subwindow_xstart = 1
-integer            :: subwindow_ystart = 1
-integer            :: subwindow_xend = 0
-integer            :: subwindow_yend = 0
-real(r8)           :: zlvl_wind
-
-!! only NoahMP
-character(len=256) :: MMF_RUNOFF_FILE = ""
-integer            :: DYNAMIC_VEG_OPTION                = 4
-integer            :: CANOPY_STOMATAL_RESISTANCE_OPTION = 1
-integer            :: BTR_OPTION                        = 4
-integer            :: RUNOFF_OPTION                     = 3
-integer            :: SURFACE_DRAG_OPTION               = 1
-integer            :: FROZEN_SOIL_OPTION                = 1
-integer            :: SUPERCOOLED_WATER_OPTION          = 1
-integer            :: RADIATIVE_TRANSFER_OPTION         = 3
-integer            :: SNOW_ALBEDO_OPTION                = 2
-integer            :: PCP_PARTITION_OPTION              = 1
-integer            :: TBOT_OPTION                       = 1
-integer            :: TEMP_TIME_SCHEME_OPTION           = 1
-integer            :: surface_resistance_option
-real(r8), dimension(NSOLDX) :: soil_thick_input         = MISSING_R8
-integer            :: glacier_option
-integer :: rst_bi_out, rst_bi_in !0: default netcdf format. 1: binary write/read by each core.
-
-!! Not in either of our noahlsm_offline nmls but in the earlier noah-DART model_mod
-!character(len=256) :: external_fpar_filename_template = " "
-!character(len=256) :: external_lai_filename_template = " "
-
-namelist /NOAHLSM_OFFLINE/ hrldas_setup_file, indir, spatial_filename, outdir, &
-     start_year, start_month, start_day, start_hour, start_min, &
-     restart_filename_requested, kday, khour, forcing_timestep, &
-     noah_timestep, output_timestep, restart_frequency_hours, split_output_count, &
-     nsoil, soil_thick_input, zlvl, & 
-     DYNAMIC_VEG_OPTION, CANOPY_STOMATAL_RESISTANCE_OPTION, BTR_OPTION, &
-     RUNOFF_OPTION, SURFACE_DRAG_OPTION, FROZEN_SOIL_OPTION, SUPERCOOLED_WATER_OPTION, &
-     RADIATIVE_TRANSFER_OPTION, SNOW_ALBEDO_OPTION, PCP_PARTITION_OPTION, TBOT_OPTION, &
-     TEMP_TIME_SCHEME_OPTION, glacier_option, surface_resistance_option,  &
-     rst_bi_in, rst_bi_out
-
-     !FORC_TYP, GEO_STATIC_FLNM, HRLDAS_ini_typ, SNOW_assim, zsoil, &
-     !iz0tlnd, sfcdif_option, update_snow_from_forcing, &
-     !subwindow_xstart, subwindow_ystart, subwindow_xend, subwindow_yend, zlvl_wind, &
-     !MMF_RUNOFF_FILE,  &
-
-!&URBAN_OFFLINE
-! This is in namelist.hrldas.
-integer  :: UCMCALL = 0
-real(r8) :: ZLVL_URBAN = 15.0
-namelist /URBAN_OFFLINE/ UCMCALL,  ZLVL_URBAN
+integer,         parameter :: NSOLDX = 100
 
 !! &HYDRO_nlist
 !! The noah and noahMP models have some same/repeated variables in their respective namelists.
 !! I note repeated varaibles and any related issues here.
 !! Note: These are default values in case a variable is not specified in the namelist.
-integer            :: sys_cpl = 1  !! this is hrldas, should be enforced
-!! character(len=256) :: GEO_STATIC_FLNM = "" !! repeated in the two namelists, but equal
-character(len=256) :: GEO_FINEGRID_FLNM = ""
-character(len=256)  :: hydrotbl_f   = ""
-character(len=1024) :: land_spatial_meta_flnm = ""
-character(len=256) :: RESTART_FILE  = ''
-integer            :: IGRID = 3
-integer            :: rst_dt = 1440
-integer            :: out_dt = 1440
-!! integer            :: SPLIT_OUTPUT_COUNT = 1  !! repeated but equal
-integer            :: rst_typ = 1
-integer            :: RSTRT_SWC = 0
-integer            :: order_to_write = 1
-integer            :: TERADJ_SOLAR = 0
-!! integer            :: NSOIL=4  !! repeated but equal
+integer             :: sys_cpl          = 1  !! this is hrldas, should be enforced
+character(len=256)  :: geo_static_flnm = ''
+character(len=256)  :: geo_finegrid_flnm = ''
+character(len=256)  :: hydrotbl_f   = ''
+character(len=1024) :: land_spatial_meta_flnm = ''
+character(len=256)  :: restart_file  = ''
+integer             :: igrid = 3
+integer             :: rst_dt = 1440
+integer             :: out_dt = 1440
+integer             :: split_output_count = 1  !! repeated but equal
+integer             :: rst_typ = 1
+integer             :: rstrt_swc = 0
+integer             :: order_to_write = 1
+integer             :: teradj_solar = 0
+integer             :: nsoil=4  !! repeated but equal
 real(r8), dimension(NSOLDX) :: zsoil8  !! this is for the hydro component (bad name)
-real(r8)           :: DXRT = -999.0_r8
-integer            :: AGGFACTRT = -999
-integer            :: DTRT_ter = 2
-integer            :: DTRT_ch = 2
-integer            :: SUBRTSWCRT = 1
-integer            :: OVRTSWCRT = 1
-integer            :: rt_option    = 1
-integer            :: CHANRTSWCRT = 1
-integer            :: channel_option = 3
-character(len=256) :: route_link_f = ""
-character(len=256) :: route_lake_f = ""
-integer            :: GWBASESWCRT = 2
-integer            :: GW_RESTART = 1
-character(len=256) :: gwbasmskfil = "DOMAIN/basn_msk1k_frng_ohd.txt"
-character(len=256) :: GWBUCKPARM_file = ""
-character(len=256) :: udmap_file =""
-integer            :: iocflag, nwmIo, t0OutputFlag, UDMP_OPT, output_channelBucket_influx
-integer            :: CHRTOUT_DOMAIN, CHRTOUT_GRID, LSMOUT_DOMAIN, RTOUT_DOMAIN, output_gw, outlake
+real(r8)            :: dxrt = -999.0_r8
+integer             :: aggfactrt = -999
+integer             :: dtrt_ter = 2
+integer             :: dtrt_ch = 2
+integer             :: subrtswcrt = 1
+integer             :: ovrtswcrt = 1
+integer             :: rt_option    = 1
+integer             :: chanrtswcrt = 1
+integer             :: channel_option = 3
+character(len=256)  :: route_link_f = ''
+character(len=256)  :: route_lake_f = ''
+integer             :: gwbaseswcrt = 2
+integer             :: gw_restart = 1
+character(len=256)  :: gwbasmskfil = 'DOMAIN/basn_msk1k_frng_ohd.txt'
+character(len=256)  :: gwbuckparm_file = ''
+character(len=256)  :: udmap_file =''
+integer             :: iocflag, nwmIo, t0OutputFlag, udmp_opt, output_channelBucket_influx
+integer             :: chrtout_domain, chrtout_grid, lsmout_domain, rtout_domain, output_gw, outlake
+integer             :: rst_bi_out
+integer             :: rst_bi_in
+integer             :: frxst_pts_out
+integer             :: chanobs_domain
+integer             :: io_config_outputs
+integer             :: io_form_outputs
 
-namelist /HYDRO_nlist/ sys_cpl, GEO_STATIC_FLNM, GEO_FINEGRID_FLNM,  &
-     HYDROTBL_F, land_spatial_meta_flnm, RESTART_FILE, &
-     IGRID, rst_dt, rst_typ, rst_bi_in, rst_bi_out, RSTRT_SWC, &
-     GW_RESTART, out_dt, SPLIT_OUTPUT_COUNT, order_to_write, nwmIo, iocflag, t0OutputFlag, &
-     output_channelBucket_influx, &
-     CHRTOUT_DOMAIN, CHRTOUT_GRID, LSMOUT_DOMAIN, RTOUT_DOMAIN, output_gw, outlake, &
-     TERADJ_SOLAR, NSOIL, zsoil8, DXRT, AGGFACTRT, DTRT_ter, dtrt_ch, SUBRTSWCRT, &
-     OVRTSWCRT, rt_option, CHANRTSWCRT, channel_option, route_link_f, route_lake_f, GWBASESWCRT, &
-     GWBUCKPARM_file, gwbasmskfil, UDMP_OPT, udmap_file
+
+namelist /HYDRO_nlist/ sys_cpl, geo_static_flnm, geo_finegrid_flnm,  &
+     hydrotbl_f, land_spatial_meta_flnm, restart_file, &
+     igrid, rst_dt, rst_typ, rst_bi_in, rst_bi_out, rstrt_swc, &
+     gw_restart, out_dt, split_output_count, order_to_write, nwmIo, iocflag, &
+     t0OutputFlag, output_channelBucket_influx, &
+     chrtout_domain, chrtout_grid, lsmout_domain, rtout_domain, output_gw, outlake, &
+     teradj_solar, nsoil, zsoil8, dxrt, aggfactrt, dtrt_ter, dtrt_ch, subrtswcrt, &
+     ovrtswcrt, rt_option, chanrtswcrt, channel_option, route_link_f, route_lake_f, &
+     gwbaseswcrt, gwbuckparm_file, gwbasmskfil, udmp_opt, udmap_file, &
+     frxst_pts_out, chanobs_domain, io_config_outputs, io_form_outputs
+
+
+!-----------------------------------------------------------------------
+!> variables accessed by public functions
+
+integer :: num_soil_layers = -1
+real(r8) :: soil_layer_thickness(NSOLDX)
+character(len=256) :: lsm_domain_file(1)   ! 1 domain in this application
 
 !-----------------------------------------------------------------------
 
@@ -240,64 +173,100 @@ type link_relations
    private
    character(len=IDSTRLEN) :: gageName           = ' '
    integer                 :: linkID             = MISSING_I
-   real(r4)                :: linkLength         = 0.0_r8     ! stream length (meters)
+   real(r4)                :: linkLength         = 0.0_r8      ! stream length (meters)
    integer(i8)             :: domain_offset      = MISSING_I8  ! into DART state vector
    integer                 :: downstream_linkID  = MISSING_I
    integer                 :: upstream_linkID(2) = MISSING_I
-   integer                 :: to_link_index      = MISSING_I       ! into link_type structure
-   integer                 :: from_link_index(2) = MISSING_I     ! into link_type structure
+   integer                 :: to_link_index      = MISSING_I   ! into link_type structure
+   integer                 :: from_link_index(2) = MISSING_I   ! into link_type structure
 end type link_relations
 type(link_relations), allocatable :: connections(:)
+
+
+type noah_dynamics
+   integer :: day       = 0
+   integer :: hour      = 0
+   integer :: dynamical = 0
+   integer :: output    = 0
+   integer :: forcing   = 0
+   integer :: restart   = 0
+end type noah_dynamics
+
+type(noah_dynamics) :: timestepping
+
+! Each WRF domain has its own geometry/metadata
+! This is used by NOAH
+
+type wrf_static_data
+   character(len=256) :: filename   = ''
+   character(len=256) :: title      = ''
+   character(len=256) :: start_date = ''
+   type(proj_info) :: proj
+   integer         :: map_proj    = -1
+   integer         :: sn          = 0
+   integer         :: we          = 0
+   logical         :: scm         = .false.
+   logical         :: periodic_x  = .false.
+   logical         :: periodic_y  = .false.
+   logical         :: polar       = .false.
+   real(r8)        :: lat1        = MISSING_R8
+   real(r8)        :: lon1        = MISSING_R8
+   real(r8)        :: dx          = MISSING_R8
+   real(r8)        :: dy          = MISSING_R8
+   real(r8)        :: truelat1    = MISSING_R8
+   real(r8)        :: truelat2    = MISSING_R8
+   real(r8)        :: stand_lon   = MISSING_R8
+   real(r8)        :: pole_lat    = 90.0_r8
+   real(r8)        :: pole_lon    =  0.0_r8
+end type wrf_static_data
+
+type(wrf_static_data) :: noah_global_atts
+
+type hydro_static_data
+   character(len=256) :: filename     = ''
+   character(len=256) :: Restart_Time = ''
+   character(len=256) :: Since_Date   = ''
+   real(r8)           :: DTCT
+   integer            :: channel_only
+   integer            :: channelBucket_only
+end type hydro_static_data
+
+type(hydro_static_data) :: hydro_global_atts
 
 contains
 
 !-----------------------------------------------------------------------
 !>
 
-subroutine configure_lsm()
+subroutine configure_lsm(model_choice)
+
+character(len=*), intent(in) :: model_choice
 
 character(len=*), parameter :: routine = 'configure_lsm'
-
-integer :: iunit, io
 logical, save :: lsm_namelist_read = .false.
 
+character(len=len_trim(model_choice)) :: version
+character(len=256) :: hrldas_setup_file
+ 
 if ( lsm_namelist_read ) return ! only need to read namelists once
+
+version = model_choice
+call to_upper(version)
+
+select case (version)
+   case ('NOAHMP_36')
+      call read_36_namelist(hrldas_setup_file)
+   case default
+      call read_noah_namelist(hrldas_setup_file)
+end select
 
 lsm_namelist_read = .true.
 
-if ( file_exist(lsm_namelist_filename) ) then
-   call find_namelist_in_file(lsm_namelist_filename, 'NOAHLSM_OFFLINE', iunit)
-   read(iunit, nml = NOAHLSM_OFFLINE, iostat = io)
-   call check_namelist_read(iunit, io, 'NOAHLSM_OFFLINE')
-else
-   write(string1,*) 'LSM namelist file "', trim(lsm_namelist_filename),'" does not exist.'
-   call error_handler(E_ERR,routine,string1,source,revision,revdate)
-endif
-
-! Check to make sure the hrldasconstants file exists
-if ( .not. file_exist(hrldas_setup_file) ) then
-   write(string1,*) 'NOAH constants file "',trim(hrldas_setup_file),'" does not exist.'
-   call error_handler(E_ERR,routine,string1,source,revision,revdate)
-endif
-
-! Check to make sure the required NOAH namelist items are set:
-if ( (kday             < 0    ) .or. &
-     (khour            < 0    ) .or. &
-     (forcing_timestep /= 3600) .or. &
-     (noah_timestep    /= 3600) .or. &
-     (output_timestep  /= 3600) .or. &
-     (restart_frequency_hours /= 1) ) then
-   write(string3,*)'the only configuration supported is for hourly timesteps &
-        &(kday, khour, forcing_timestep==3600, noah_timestep=3600, &
-        &output_timestep=3600, restart_frequency_hours=1)'
-   write(string2,*)'restart_frequency_hours must be equal to the noah_timestep'
-   write(string1,*)'unsupported noah namelist settings'
-   call error_handler(E_ERR,routine,string1,source,revision,revdate,&
-        text2=string2,text3=string3)
-endif
-
 ! This gets the LSM geospatial information for the module:
 !   south_north, west_east, xlong, xlat
+
+lsm_domain_file(1) = hrldas_setup_file
+
 call get_hrldas_constants(hrldas_setup_file)
 
 end subroutine configure_lsm
@@ -332,7 +301,7 @@ endif
 ! **** NOTE that all variables from this file (Fulldom) must  ****
 ! ****      be FLIPPED in y to match the noah/wrf model.      ****
 ! Note: get_hydro_constants gets gridded-channel information if gridded channel is selected. 
-call get_hydro_constants(GEO_FINEGRID_FLNM)
+call get_hydro_constants(geo_finegrid_flnm)
 
 end subroutine configure_hydro
 
@@ -353,14 +322,88 @@ character(len=*), intent(in) :: filename
 
 character(len=*), parameter :: routine = 'get_hrldas_constants'
 
-write(string1,*) 'not written yet.'
-call error_handler(E_ERR,routine,string1,source,revision,revdate)
+integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, ncstart, nccount
+character(len=NF90_MAX_NAME)          :: dimname
+
+integer :: io, ncid
+integer :: i, DimID, VarID, numdims, dimlen, xtype
+
+ncid = nc_open_file_readonly(filename,'get_hrldas_constants') 
+
+io = nf90_inq_dimid(ncid, 'south_north', DimID)
+call nc_check(io, routine, 'inq_dimid south_north',ncid=ncid)
+
+io = nf90_inquire_dimension(ncid, DimID, len=south_north)
+call nc_check(io, routine, 'inquire_dimension south_north',ncid=ncid)
+
+io = nf90_inq_dimid(ncid, 'west_east', DimID)
+call nc_check(io, routine, 'inq_dimid west_east',ncid=ncid)
+
+io = nf90_inquire_dimension(ncid, DimID, len=west_east)
+call nc_check(io, routine, 'inquire_dimension west_east',ncid=ncid)
+
+! Require that the xlong and xlat are the same shape.
+
+allocate(xlong(west_east,south_north), &
+          xlat(west_east,south_north))
+
+io = nf90_inq_varid(ncid, 'XLONG', VarID)
+call nc_check(io, routine, 'inq_varid XLONG',ncid=ncid)
+
+io = nf90_inquire_variable(ncid, VarID, dimids=dimIDs, ndims=numdims, xtype=xtype)
+call nc_check(io, routine, 'inquire_variable XLONG',ncid=ncid)
+
+! Form the start/count such that we always get the 'latest' time.
+
+ncstart(:) = 0
+nccount(:) = 0
+
+do i = 1,numdims
+
+   write(string1,'(''inquire dimension'',i2)') i
+   io = nf90_inquire_dimension(ncid, dimIDs(i), name=dimname, len=dimlen)
+   call nc_check(io, routine, string1, ncid=ncid)
+
+   ncstart(i) = 1
+   nccount(i) = dimlen
+
+   if ((trim(dimname) == 'Time') .or. (trim(dimname) == 'time')) then
+      ncstart(i) = dimlen
+      nccount(i) = 1
+   endif
+
+enddo
+
+if (debug > 99) then
+   write(*,*)'DEBUG get_hrldas_constants ncstart is',ncstart(1:numdims)
+   write(*,*)'DEBUG get_hrldas_constants nccount is',nccount(1:numdims)
+endif
+
+! get the longitudes
+
+io = nf90_get_var(ncid, VarID, xlong, start=ncstart(1:numdims), &
+                                      count=nccount(1:numdims))
+call nc_check(io, routine, 'get_var XLONG',ncid=ncid)
+
+where(xlong <    0.0_r8) xlong = xlong + 360.0_r8
+where(xlong == 360.0_r8) xlong = 0.0_r8
+
+! get the latitudes
+
+io = nf90_inq_varid(ncid, 'XLAT', VarID)
+call nc_check(io, routine,'inq_varid XLAT',ncid=ncid)
+
+io = nf90_get_var(ncid, VarID, xlat, start=ncstart(1:numdims), &
+                                     count=nccount(1:numdims))
+call nc_check(io, routine, 'get_var XLAT',ncid=ncid)
+
+call nc_close_file(ncid, routine)
 
 end subroutine get_hrldas_constants
 
 
 !-----------------------------------------------------------------------
-!> Read the 'GEO_FINEGRID_FLNM' netCDF file for grid information, etc.
+!> Read the 'geo_finegrid_flnm' netCDF file for grid information, etc.
 !> This is all time-invariant, so we can mostly ignore the Time coordinate.
 
 subroutine get_hydro_constants(filename)
@@ -444,7 +487,7 @@ enddo !i
 
 !>@todo ncstart, nccount are not needed if there is no time dimension 
 
-if ( do_output() ) then
+if (debug > 99) then
    write(*,*)'DEBUG get_hydro_constants ncstart is',ncstart(1:numdims)
    write(*,*)'DEBUG get_hydro_constants nccount is',nccount(1:numdims)
 endif
@@ -489,7 +532,7 @@ deallocate(hlongFlip, hlatFlip)
 ! Dont need to flip lat and lon in this (already done) but will flip other vars from Fulldom file.
 ! Specify channel routing option: 1=Muskingam-reach, 2=Musk.-Cunge-reach, 3=Diff.Wave-gridded
 
-if (CHANRTSWCRT == 1 .or. CHANRTSWCRT ==2 ) then 
+if (chanrtswcrt == 1 .or. chanrtswcrt ==2 ) then 
 
    if ( channel_option == 2) then
 
@@ -505,7 +548,7 @@ if (CHANRTSWCRT == 1 .or. CHANRTSWCRT ==2 ) then
 
    endif
 else
-   write(string1,'("CHANRTSWCRT ",i1," is not supported.")')CHANRTSWCRT
+   write(string1,'("CHANRTSWCRT ",i1," is not supported.")')chanrtswcrt
    write(string2,*)'This is specified in hydro.namelist'
    call error_handler(E_ERR,routine,string1,source,revision,revdate)
 endif
@@ -911,7 +954,7 @@ if (strlen /= IDSTRLEN) then
               revdate, text2=string2, text3=filename)
 endif
 
-!! get the upstream links dimensionality
+! get the upstream links dimensionality
 io = nf90_inq_dimid(iunit, 'localDim', DimID)
 call nc_check(io, routine,'inq_dimid','localDim', filename)
 io = nf90_inquire_dimension(iunit, DimID, len=n_upstream)
@@ -1055,7 +1098,7 @@ UP2 : do j = 1,n_link  ! loops over dimension to query
 enddo UP2
 enddo UP1
 
-if (debug > 2) then
+if (debug > 99) then
    write(string1,'("PE ",i7)') my_task_id()
    do i = 1,n_link
    write(*,*)''
@@ -1191,6 +1234,402 @@ enddo
 
 end subroutine get_downstream_links
 
+
+!-----------------------------------------------------------------------
+!> Routine 'specific' to what I think is being used in the wrfhydro full model run
+!> would be nice to know a version or something
+
+subroutine read_noah_namelist(setup_filename)
+
+character(len=*), intent(out) :: setup_filename
+
+character(len=*), parameter :: routine = 'read_noah_namelist'
+
+! namelist variables specific to this version.
+!>@todo now that we do not need to write a namelist, I am not sure
+!> we need anything more than a few variables.
+
+character(len=256) :: hrldas_setup_file = 'no_hrldas_setup_file'
+character(len=256) :: spatial_filename  = 'no_spatial_filename'
+character(len=256) :: indir             = ''
+character(len=256) :: outdir            = ''
+integer            :: start_year, start_month, start_day, start_hour, start_min
+character(len=256) :: restart_filename_requested        = 'no_restart_filename'
+integer            :: kday                              = 0
+integer            :: dynamic_veg_option                = 4
+integer            :: canopy_stomatal_resistance_option = 1
+integer            :: btr_option                        = 4
+integer            :: runoff_option                     = 3
+integer            :: surface_drag_option               = 1
+integer            :: frozen_soil_option                = 1
+integer            :: supercooled_water_option          = 1
+integer            :: radiative_transfer_option         = 3
+integer            :: snow_albedo_option                = 2
+integer            :: pcp_partition_option              = 1
+integer            :: tbot_option                       = 1
+integer            :: temp_time_scheme_option           = 1
+integer            :: glacier_option
+integer            :: surface_resistance_option
+integer            :: forcing_timestep                  = -999
+integer            :: noah_timestep                     = -999
+integer            :: output_timestep                   = -999
+integer            :: restart_frequency_hours           = -999
+integer            :: split_output_count                = 1
+integer            :: nsoil
+real(r8)           :: soil_thick_input(NSOLDX)          = MISSING_R8
+real(r8)           :: zlvl
+integer            :: rst_bi_out
+integer            :: rst_bi_in
+
+namelist / NOAHLSM_OFFLINE / hrldas_setup_file, spatial_filename, &
+   indir, outdir, start_year, start_month, start_day, start_hour, start_min, &
+   restart_filename_requested, kday, dynamic_veg_option, &
+   canopy_stomatal_resistance_option, btr_option, runoff_option, &
+   surface_drag_option, frozen_soil_option, supercooled_water_option, &
+   radiative_transfer_option, snow_albedo_option, pcp_partition_option, &
+   tbot_option, temp_time_scheme_option, glacier_option, &
+   surface_resistance_option, forcing_timestep, noah_timestep, output_timestep, &
+   restart_frequency_hours, split_output_count, nsoil, soil_thick_input, &
+   zlvl, rst_bi_out, rst_bi_in
+
+logical, save :: lsm_namelist_read = .false.
+integer :: iunit, io
+
+if ( lsm_namelist_read ) return ! only need to read namelists once
+
+lsm_namelist_read = .true.
+
+if ( file_exist(lsm_namelist_filename) ) then
+   call find_namelist_in_file(lsm_namelist_filename, 'NOAHLSM_OFFLINE', iunit)
+   read(iunit, nml = NOAHLSM_OFFLINE, iostat = io)
+   call check_namelist_read(iunit, io, 'NOAHLSM_OFFLINE')
+else
+   write(string1,*) 'LSM namelist file "', trim(lsm_namelist_filename),'" does not exist.'
+   call error_handler(E_ERR,routine,string1,source,revision,revdate)
+endif
+
+! Check to make sure the hrldas setup file exists
+if ( .not. file_exist(hrldas_setup_file) ) then
+   write(string1,*) 'NOAH hrldas_setup_file "',trim(hrldas_setup_file), &
+                    '" does not exist.'
+   call error_handler(E_ERR,routine,string1,source,revision,revdate)
+endif
+
+setup_filename       = hrldas_setup_file
+num_soil_layers      = nsoil
+soil_layer_thickness = soil_thick_input
+
+!>@todo I am not sure this has any relevance now that DART is not advancing NOAH
+! Check to make sure the required NOAH namelist items are set:
+if ( (kday             < 0    ) .or. &
+     (forcing_timestep /= 3600) .or. &
+     (noah_timestep    /= 3600) .or. &
+     (output_timestep  /= 3600) .or. &
+     (restart_frequency_hours /= 1) ) then
+   write(string3,*)'the only configuration supported is for hourly timesteps &
+        &(kday, forcing_timestep==3600, noah_timestep=3600, &
+        &output_timestep=3600, restart_frequency_hours=1)'
+   write(string2,*)'restart_frequency_hours must be equal to the noah_timestep'
+   write(string1,*)'unsupported noah namelist settings'
+   call error_handler(E_MSG,routine,string1,source,revision,revdate,&
+        text2=string2,text3=string3)
+endif
+
+timestepping%day       = kday
+timestepping%hour      = 0
+timestepping%forcing   = forcing_timestep
+timestepping%dynamical = noah_timestep
+timestepping%output    = output_timestep
+timestepping%restart   = restart_frequency_hours * 3600
+
+end subroutine read_noah_namelist
+
+
+!-----------------------------------------------------------------------
+!>
+
+subroutine read_36_namelist(setup_filename)
+
+character(len=*), intent(out) :: setup_filename
+
+character(len=*), parameter :: routine = 'read_36_namelist'
+
+character(len=256) :: hrldas_constants_file = ' '
+character(len=256) :: indir = ' '
+character(len=256) :: outdir = ' '
+integer            :: start_year, start_month, start_day, start_hour, start_min
+character(len=256) :: restart_filename_requested = ' '
+integer            :: kday  = 0
+integer            :: dynamic_veg_option                = 4
+integer            :: canopy_stomatal_resistance_option = 1
+integer            :: btr_option                        = 4
+integer            :: runoff_option                     = 3
+integer            :: surface_drag_option               = 1
+integer            :: frozen_soil_option                = 1
+integer            :: supercooled_water_option          = 1
+integer            :: radiative_transfer_option         = 3
+integer            :: snow_albedo_option                = 2
+integer            :: pcp_partition_option              = 1
+integer            :: tbot_option                       = 1
+integer            :: temp_time_scheme_option           = 1
+integer            :: soil_hydraulic_parameter_option   = 1
+integer            :: forcing_timestep                  = -999
+integer            :: noah_timestep                     = -999
+integer            :: output_timestep                   = -999
+integer            :: split_output_count                = 1
+integer            :: restart_frequency_hours           = -999
+integer            :: nsoil ! number of soil layers in use.
+real(r8)           :: soil_thick_input(NSOLDX)          = MISSING_R8
+real(r8)           :: zlvl
+
+namelist / NOAHLSM_OFFLINE / hrldas_constants_file, indir, outdir, &
+           start_year, start_month, start_day, start_hour, start_min, &
+           restart_filename_requested, kday, dynamic_veg_option, &
+           canopy_stomatal_resistance_option, btr_option, runoff_option, &
+           surface_drag_option, frozen_soil_option, supercooled_water_option, &
+           radiative_transfer_option, snow_albedo_option, pcp_partition_option, &
+           tbot_option, temp_time_scheme_option, soil_hydraulic_parameter_option, &
+           forcing_timestep, noah_timestep, output_timestep, split_output_count, &
+           restart_frequency_hours, nsoil, soil_thick_input, zlvl
+
+integer :: iunit, io
+logical, save :: lsm_namelist_read = .false.
+
+if ( lsm_namelist_read ) return ! only need to read namelists once
+
+lsm_namelist_read = .true.
+
+if ( file_exist(lsm_namelist_filename) ) then
+   call find_namelist_in_file(lsm_namelist_filename, 'NOAHLSM_OFFLINE', iunit)
+   read(iunit, nml = NOAHLSM_OFFLINE, iostat = io)
+   call check_namelist_read(iunit, io, 'NOAHLSM_OFFLINE')
+else
+   write(string1,*) 'LSM namelist file "', trim(lsm_namelist_filename), &
+                    '" does not exist.'
+   call error_handler(E_ERR,routine,string1,source,revision,revdate)
+endif
+
+! Check to make sure the hrldas constants file exists
+if ( .not. file_exist(hrldas_constants_file) ) then
+   write(string1,*) 'NOAH constants file "',trim(hrldas_constants_file), &
+                    '" does not exist.'
+   call error_handler(E_ERR,routine,string1,source,revision,revdate)
+endif
+
+setup_filename       = hrldas_constants_file
+num_soil_layers      = nsoil
+soil_layer_thickness = soil_thick_input
+
+!>@todo not sure any of this is needed because DART does not advance model ...
+!> Check to make sure the required NOAH namelist items are set:
+if ( (kday             < 0    ) .or. &
+     (forcing_timestep /= 3600) .or. &
+     (noah_timestep    /= 3600) .or. &
+     (output_timestep  /= 3600) .or. &
+     (restart_frequency_hours /= 1) ) then
+   write(string3,*)'the only configuration supported is for hourly timesteps &
+        &(kday, forcing_timestep==3600, noah_timestep=3600, &
+        &output_timestep=3600, restart_frequency_hours=1)'
+   write(string2,*)'restart_frequency_hours must be equal to the noah_timestep'
+   write(string1,*)'unsupported noah namelist settings'
+   call error_handler(E_MSG,routine,string1,source,revision,revdate,&
+        text2=string2,text3=string3)
+endif
+
+timestepping%day       = kday
+timestepping%hour      = 0
+timestepping%forcing   = forcing_timestep
+timestepping%dynamical = noah_timestep
+timestepping%output    = output_timestep
+timestepping%restart   = restart_frequency_hours * 3600
+
+end subroutine read_36_namelist
+
+
+!-----------------------------------------------------------------------
+!>@todo get_noah_timestepping might not be needed at all since DART does not advance
+
+
+subroutine get_noah_timestepping(day,hour,dynamical,output,forcing,restart)
+
+integer, intent(out) :: day
+integer, intent(out) :: hour
+integer, intent(out) :: dynamical
+integer, intent(out) :: output
+integer, intent(out) :: forcing
+integer, intent(out) :: restart
+
+character(len=*), parameter :: routine = 'get_noah_timestepping'
+
+call error_handler(E_MSG,routine,'routine not tested',source,revision,revdate)
+
+day       = timestepping%day
+hour      = timestepping%hour
+dynamical = timestepping%dynamical
+output    = timestepping%output
+forcing   = timestepping%forcing
+restart   = timestepping%restart
+
+end subroutine get_noah_timestepping
+
+
+!-----------------------------------------------------------------------
+!> get_lsm_domain_info  is definitely needed
+
+
+subroutine get_lsm_domain_info(nlongitudes,nlatitudes,longitudes,latitudes)
+
+integer,            intent(out) :: nlongitudes
+integer,            intent(out) :: nlatitudes
+real(r8), optional, intent(out) :: longitudes(:,:)
+real(r8), optional, intent(out) :: latitudes(:,:)
+
+character(len=*), parameter :: routine = 'get_lsm_domain_info'
+
+nlongitudes = west_east
+nlatitudes  = south_north
+if (present(longitudes)) longitudes = xlong
+if (present( latitudes))  latitudes = xlat
+
+end subroutine get_lsm_domain_info
+
+
+!-----------------------------------------------------------------------
+!> return the filename used to determine variable shapes for the lsm domain
+
+subroutine get_lsm_domain_filename(domain_id, filename)
+
+integer,          intent(in)  :: domain_id
+character(len=*), intent(out) :: filename
+character(len=*), parameter :: routine = 'get_lsm_domain_filename'
+
+if (domain_id /= 1) then
+   write(string1,*)'only configured for 1 lsm domain at present'
+   call error_handler(E_ERR, routine, string1, source, revision, revdate)
+endif
+
+filename = lsm_domain_file(1)
+
+end subroutine get_lsm_domain_filename
+
+
+
+!-----------------------------------------------------------------------
+!> read the global attributes from a hydro restart file
+
+subroutine read_hydro_global_atts(filename)
+character(len=*), intent(in) :: filename
+
+character(len=*), parameter :: routine = 'read_hydro_global_atts'
+
+integer :: ncid
+
+hydro_global_atts%filename = trim(filename)
+
+ncid = nc_open_file_readonly(filename, routine)
+call nc_get_global_attribute(ncid, 'Restart_Time', &
+                  hydro_global_atts%Restart_Time , routine)
+
+call nc_get_global_attribute(ncid, 'Since_Date', &
+                  hydro_global_atts%Since_Date , routine)
+
+call nc_get_global_attribute(ncid, 'DTCT', &
+                  hydro_global_atts%DTCT , routine)
+
+call nc_get_global_attribute(ncid, 'channel_only', &
+                  hydro_global_atts%channel_only , routine)
+
+call nc_get_global_attribute(ncid, 'channelBucket_only', &
+                  hydro_global_atts%channelBucket_only , routine)
+
+call nc_close_file(ncid, routine)
+
+end subroutine read_hydro_global_atts
+
+
+!-----------------------------------------------------------------------
+!> write the hydro global attributes to a DART output file for hydro domains
+!> this only applies when DART creates the file from scratch
+
+subroutine write_hydro_global_atts(ncid)
+
+integer,          intent(in)  :: ncid
+character(len=*), parameter :: routine = 'write_hydro_global_atts'
+
+call nc_add_global_attribute(ncid,'HYDRO_filename', &
+            trim(hydro_global_atts%filename), routine )
+call nc_add_global_attribute(ncid,'Restart_Time', &
+            trim(hydro_global_atts%Restart_Time), routine )
+call nc_add_global_attribute(ncid,'Since_Date', &
+            trim(hydro_global_atts%Since_Date), routine )
+call nc_add_global_attribute(ncid,'DTCT', &
+                 hydro_global_atts%DTCT, routine )
+call nc_add_global_attribute(ncid,'channel_only', &
+                 hydro_global_atts%channel_only, routine )
+call nc_add_global_attribute(ncid,'channelBucket_only', &
+                 hydro_global_atts%channelBucket_only, routine )
+
+end subroutine write_hydro_global_atts
+
+
+!-----------------------------------------------------------------------
+!> read the global attributes from a lsm restart file
+
+subroutine read_noah_global_atts(filename)
+character(len=*), intent(in) :: filename
+
+character(len=*), parameter :: routine = 'read_noah_global_atts'
+
+integer :: ncid
+
+noah_global_atts%filename = trim(filename)
+
+ncid = nc_open_file_readonly(filename, routine)
+call nc_get_global_attribute(ncid, 'TITLE',     noah_global_atts%title,      routine)
+call nc_get_global_attribute(ncid, 'START_DATE',noah_global_atts%start_date, routine)
+call nc_get_global_attribute(ncid, 'MAP_PROJ',  noah_global_atts%map_proj,   routine)
+call nc_get_global_attribute(ncid, 'LAT1',      noah_global_atts%lat1,       routine)
+call nc_get_global_attribute(ncid, 'LON1',      noah_global_atts%lon1,       routine)
+call nc_get_global_attribute(ncid, 'DX',        noah_global_atts%dx,         routine)
+call nc_get_global_attribute(ncid, 'DY',        noah_global_atts%dy,         routine)
+call nc_get_global_attribute(ncid, 'TRUELAT1',  noah_global_atts%truelat1,   routine) 
+call nc_get_global_attribute(ncid, 'TRUELAT2',  noah_global_atts%truelat2,   routine) 
+call nc_get_global_attribute(ncid, 'STAND_LON', noah_global_atts%stand_lon,  routine)
+call nc_close_file(ncid, routine)
+
+!>@todo there are a bunch of optional attributes that we may want ...
+!>      there seems to be quite a lot of variation ...
+
+end subroutine read_noah_global_atts
+
+
+!-----------------------------------------------------------------------
+!> write the noah global attributes to a DART output file for noah domains
+!> this only applies when DART creates the file from scratch
+
+subroutine write_noah_global_atts(ncid)
+
+integer,          intent(in)  :: ncid
+character(len=*), parameter :: routine = 'write_noah_global_atts'
+
+
+call nc_add_global_attribute(ncid,'noah_filename', &
+            trim(noah_global_atts%filename), routine )
+call nc_add_global_attribute(ncid, 'TITLE', &
+              trim(noah_global_atts%TITLE),      routine)
+call nc_add_global_attribute(ncid, 'START_DATE',&
+              trim(noah_global_atts%START_DATE), routine)
+
+call nc_add_global_attribute(ncid, 'MAP_PROJ',  noah_global_atts%map_proj,   routine)
+call nc_add_global_attribute(ncid, 'LAT1',      noah_global_atts%lat1,       routine)
+call nc_add_global_attribute(ncid, 'LON1',      noah_global_atts%lon1,       routine)
+call nc_add_global_attribute(ncid, 'DX',        noah_global_atts%dx,         routine)
+call nc_add_global_attribute(ncid, 'DY',        noah_global_atts%dy,         routine)
+call nc_add_global_attribute(ncid, 'TRUELAT1',  noah_global_atts%truelat1,   routine) 
+call nc_add_global_attribute(ncid, 'TRUELAT2',  noah_global_atts%truelat2,   routine) 
+call nc_add_global_attribute(ncid, 'STAND_LON', noah_global_atts%stand_lon,  routine)
+
+end subroutine write_noah_global_atts
 
 
 end module noah_hydro_mod

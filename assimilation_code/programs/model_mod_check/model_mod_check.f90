@@ -14,6 +14,8 @@ program model_mod_check
 
 use             types_mod, only : r8, i8, missing_r8, metadatalength
 
+use options_mod,           only : get_missing_ok_status, set_missing_ok_status
+
 use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, &
                                   initialize_utilities, finalize_utilities,     &
                                   find_namelist_in_file, check_namelist_read,   &
@@ -82,6 +84,7 @@ integer, parameter :: MAX_FILES = 1000
 ! The namelist variables
 !------------------------------------------------------------------
 
+logical                       :: allow_missing = .false.
 logical                       :: single_file = .false.
 integer                       :: num_ens = 1
 character(len=256)            :: input_state_files(MAX_FILES)  = 'null'
@@ -117,7 +120,7 @@ namelist /model_mod_check_nml/ x_ind, num_ens,                             &
                                interp_test_dz,     interp_test_zrange,     &
                                verbose, test1thru, run_tests, interp_test_vertcoord,  &
                                single_file, input_state_files, output_state_files, &
-                               all_metadata_file
+                               all_metadata_file, allow_missing
 
 ! io variables
 integer                   :: iunit, io
@@ -169,6 +172,7 @@ call check_namelist_read(iunit, io, "model_mod_check_nml")
 
 call setup_run_array()
 call setup_interp_grid()
+call set_missing_ok_status(allow_missing)
 
 !----------------------------------------------------------------------
 ! Calling static_init_assim_model() is required for all tests.

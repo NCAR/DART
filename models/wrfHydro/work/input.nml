@@ -1,29 +1,6 @@
 # WRF_Hydro model namelist
 
-#     !! LSM choices: 'noah' | 'noahMP', ''
-#     !! the null string deactivates the lsm model
-#     !! list for regular noah
-#     !assimOnly_netcdf_filename    = 'restart.assimOnly.nc'
-#     !lsm_state_variables          =  'SOIL_W',     'QTY_SOIL_MOISTURE'
-#     !                               'SNODEP',     'QTY_SNOW_THICKNESS',
-#     !                               'WEASD',      'QTY_SNOW_WATER'
-#     !! no SCA in Noah.				
-#     !! list for noahMP
-#     !! can be confusing that noahMP uses different names internally and in restart files.
-#     !! line 782 of module_NoahMP_hrldas_driver translates between these.
-#     !                               'SNOWH',     'QTY_SNOW_THICKNESS',
-#     !                               'SNEQV',     'QTY_SNOW_WATER',
-#     !                                !'SNOWC',    'QTY_SNOWCOVER_FRAC',  !diagnostic, not in restart
-#     !                               'LAI',       'QTY_LEAF_AREA_INDEX',
-#     !                               'WA',        'QTY_WATER_TABLE_DEPTH'
-#
-#     ! assimOnly_state_variables    = 'precipMult', 'QTY_1D_PARAMETER', !! really 1D?
-#
-#     ! hydro_state_variables        = 'qlink1',     'QTY_STREAM_FLOW'
-#                                    !'sh2ox',      'QTY_SOIL_MOISTURE',
-#                                    !'sfcheadrt',  'QTY_SURFACE_HEAD',
-# 				    !'z_gwsubbas', 'QTY_DEEP_GROUNDWATER_LEVEL'
-
+# LSM choices: 'noah' | 'noahMP' | 'noahMP_36'
 
 &model_nml
      assimilation_period_days     =    0
@@ -33,10 +10,11 @@
      perturb_distribution         = 'lognormal'
      max_link_distance            = 5000.0
      debug                        = 0
+     domain_order                 = 'hydro', 'parameters'
      domain_shapefiles            = 'restart.hydro.nc', 'parameters.nc'
-     lsm_variables    = 'SH2O',              'QTY_SOIL_LIQUID_WATER', '0.0',   'NA', 'NOUPDATE',
-                        'SUBSURFACE_FLUX',   'QTY_SUBSURFACE',        '0.0',   'NA', 'NOUPDATE',
-                        'OVERLAND_FLUX',     'QTY_OVERLAND_FLOW',     '0.0',   'NA', 'NOUPDATE'
+!     lsm_variables    = 'SH2O',              'QTY_SOIL_LIQUID_WATER', '0.0',   'NA', 'NOUPDATE',
+!                        'SUBSURFACE_FLUX',   'QTY_SUBSURFACE',        '0.0',   'NA', 'NOUPDATE',
+!                        'OVERLAND_FLUX',     'QTY_OVERLAND_FLOW',     '0.0',   'NA', 'NOUPDATE'
      hydro_variables  = 'qlink1',            'QTY_STREAM_FLOW',       '0.0',   'NA', 'UPDATE'
      parameters       = 'qBucketMult',       'QTY_BUCKET_MULTIPLIER', '0.001', '50', 'UPDATE',
                         'qSfcLatRunoffMult', 'QTY_RUNOFF_MULTIPLIER', '0.001', '50', 'UPDATE'
@@ -63,8 +41,6 @@
    last_obs_seconds           = -1
 
    async                      = 0
-   adv_ens_command            = '../shell_scripts/advance_model.csh'
-
    trace_execution            = .true.
    output_timestamps          = .false.
    print_every_nth_obs        = -1
@@ -259,13 +235,14 @@
 ! 0.002220036
 !  loc_of_interest       = 283.59907532, 42.46472931, 475.5100
 !  loc_of_interest       = 283.6, 42.5, 470.0
+
 &model_mod_check_nml
    input_state_files     = 'restart.hydro.nc', 'parameters.nc'
    output_state_files    = 'mmc_output1.nc', 'mmc_output2.nc'
    test1thru             = 0
-   run_tests             = 1,2,8
+   run_tests             = 1,2,3,4
    x_ind                 = 25
-   loc_of_interest       = 283.59907532, 42.46472931, 475.5100
+   loc_of_interest       = 283.60675049, 42.34368896, 296.8100
    quantity_of_interest  = 'QTY_STREAM_FLOW'
    interp_test_dlon      = 0.001
    interp_test_dlat      = 0.001

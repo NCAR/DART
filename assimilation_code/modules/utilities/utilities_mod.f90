@@ -1849,6 +1849,7 @@ max_num_input_files = size(name_array)
 ! name_array, just look for the '' to indicate the end of the list.
 ! if the names were specified in the listname file, read them in and
 ! fill in the name_array and then look for ''.
+
 do fileindex = 1, max_num_input_files
    if (from_file) &
       name_array(fileindex) = get_next_filename(listname, fileindex)
@@ -1982,7 +1983,7 @@ if (from_file) then
       call error_handler(E_ERR, caller_name, msgstring1, source,revision,revdate)
    endif
 endif
-   
+
 ! the max number of names allowed in a list file is the 
 ! size of the name_array passed in by the user.
 max_num_input_files = size(name_array)
@@ -2002,7 +2003,7 @@ do nl = 1, nlists
 
       if (from_file) &
          name_array(fileindex) = get_next_filename(listname(nl), ne)
-   
+
       if (name_array(fileindex) == '') then
          write(msgstring1, *) 'Missing filename'
 
@@ -2016,8 +2017,8 @@ do nl = 1, nlists
 
          call error_handler(E_ERR, caller_name, trim(msgstring1)//trim(fsource), &
             source,revision,revdate,text2=msgstring2,text3=msgstring3)
-   
       endif
+
    enddo
 enddo
 

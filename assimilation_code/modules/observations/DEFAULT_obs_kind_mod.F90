@@ -272,7 +272,8 @@ integer, parameter, public :: &
     QTY_LEAF_NITROGEN               = 127, &
     QTY_WATER_TABLE_DEPTH           = 128, &
     QTY_FPAR                        = 129, &
-    QTY_TOTAL_WATER_STORAGE         = 130
+    QTY_TOTAL_WATER_STORAGE         = 130, &
+    QTY_SNOW_TEMPERATURE            = 131
 
 ! kinds for NOAH  (Tim Hoar)
 integer, parameter, public :: &
@@ -728,6 +729,7 @@ obs_kind_names(127) = obs_kind_type(QTY_LEAF_NITROGEN         ,'QTY_LEAF_NITROGE
 obs_kind_names(128) = obs_kind_type(QTY_WATER_TABLE_DEPTH     ,'QTY_WATER_TABLE_DEPTH')
 obs_kind_names(129) = obs_kind_type(QTY_FPAR                  ,'QTY_FPAR')
 obs_kind_names(130) = obs_kind_type(QTY_TOTAL_WATER_STORAGE   ,'QTY_TOTAL_WATER_STORAGE')
+obs_kind_names(131) = obs_kind_type(QTY_SNOW_TEMPERATURE      ,'QTY_SNOW_TEMPERATURE')
 
 obs_kind_names(140) = obs_kind_type(QTY_NEUTRON_INTENSITY     ,'QTY_NEUTRON_INTENSITY')
 obs_kind_names(141) = obs_kind_type(QTY_CANOPY_WATER          ,'QTY_CANOPY_WATER')

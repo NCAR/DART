@@ -845,6 +845,10 @@ integer :: var_size
 integer, allocatable :: dims(:)
 integer :: ret, var_id
 
+logical :: missing_possible
+
+missing_possible = get_missing_ok_status()
+
 istart = 1
 
 do i = start_var, end_var
@@ -862,6 +866,8 @@ do i = start_var, end_var
 
    ret = nf90_get_var(ncfile_in, var_id, var_block(istart:iend), count=dims)
    call nc_check(ret, 'read_variables: nf90_get_var',trim(get_variable_name(domain,i)) )
+
+   if (missing_possible) call set_dart_missing_value(var_block(istart:iend), domain, i)
 
    istart = istart + var_size
 
@@ -1518,6 +1524,10 @@ integer :: istart, iend
 integer :: i, ret, var_id, var_size
 integer, allocatable :: dims(:)
 
+logical :: missing_possible
+
+missing_possible = get_missing_ok_status()
+
 !>@todo reduce output in log file?
 ! clamp_variable() currently prints out a line per variable per ensemble member.
 ! this results in a lot of output in the log file.  we may want to enable or
@@ -1550,6 +1560,8 @@ do i = start_var, end_var
 
       ret = nf90_inq_varid(ncid, trim(get_variable_name(domain, i)), var_id)
       call nc_check(ret, 'write_variables:', 'getting variable "'//trim(get_variable_name(domain,i))//'"')
+
+      if (missing_possible) call set_model_missing_value(var_block(istart:iend), domain, i)
 
       ret = nf90_put_var(ncid, var_id, var_block(istart:iend), count=dims)
       call nc_check(ret, 'write_variables:', 'writing "'//trim(get_variable_name(domain,i))//'"')
@@ -1966,7 +1978,7 @@ integer,          intent(in) :: ncVarID
 integer,          intent(in) :: domid
 integer,          intent(in) :: varid
 
-real(r8) :: missingValR8, spvalR8
+real(digits12) :: missingValR8, spvalR8
 
 call get_missing_value(domid, varid, missingValR8)
 if (missingValR8 /= MISSING_R8) then
@@ -2984,6 +2996,73 @@ endif
 end function find_start_point
 
 
+!--------------------------------------------------------
+!> replace the netCDF missing_value or _FillValue with
+!> the DART missing value.
+
+subroutine set_dart_missing_value(array, domain, variable)
+
+real(r8), intent(inout) :: array(:)
+integer,  intent(in)    :: domain
+integer,  intent(in)    :: variable
+
+integer        :: model_missing_valueINT
+real(r4)       :: model_missing_valueR4
+real(digits12) :: model_missing_valueR8
+
+! check to see if variable has missing value attributes
+if ( get_has_missing_value(domain, variable) ) then
+
+   select case ( get_xtype(domain, variable) )
+      case ( NF90_INT )
+         call get_missing_value(domain, variable, model_missing_valueINT)
+         where(array == model_missing_valueINT) array = MISSING_R8
+      case ( NF90_FLOAT )
+         call get_missing_value(domain, variable, model_missing_valueR4)
+         where(array == model_missing_valueR4) array = MISSING_R8
+      case ( NF90_DOUBLE )
+         call get_missing_value(domain, variable, model_missing_valueR8)
+         where(array == model_missing_valueR8) array = MISSING_R8
+   end select
+
+endif
+
+end subroutine set_dart_missing_value
+
+!--------------------------------------------------------
+!> replace the DART missing value code with the 
+!> original netCDF missing_value (or _FillValue) value.
+
+subroutine set_model_missing_value(array, domain, variable)
+
+real(r8), intent(inout) :: array(:)
+integer,  intent(in)    :: domain
+integer,  intent(in)    :: variable
+
+integer        :: model_missing_valueINT
+real(r4)       :: model_missing_valueR4
+real(digits12) :: model_missing_valueR8
+
+! check to see if variable has missing value attributes
+if ( get_has_missing_value(domain, variable) ) then
+
+   select case ( get_xtype(domain, variable) )
+      case ( NF90_INT )
+         call get_missing_value(domain, variable, model_missing_valueINT)
+         where(array == MISSING_R8) array = model_missing_valueINT
+      case ( NF90_FLOAT )
+         call get_missing_value(domain, variable, model_missing_valueR4)
+         where(array == MISSING_R8) array = model_missing_valueR4
+      case ( NF90_DOUBLE )
+         call get_missing_value(domain, variable, model_missing_valueR8)
+         where(array == MISSING_R8) array = model_missing_valueR8
+   end select
+
+endif
+
+end subroutine set_model_missing_value
+
+!--------------------------------------------------------
 !--------------------------------------------------------
 
 !> @}

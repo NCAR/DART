@@ -1927,8 +1927,13 @@ call nc_check(ret, routine, 'synchronize file contents', context, filename, ncid
 
 end subroutine nc_synchronize_file
 
-!------------------------------------------------------------------
-!------------------------------------------------------------------
+!--------------------------------------------------------------------
+! check for scale/offset attributes and for now, error out.  eventually
+! we could support in the _get_ routines to scale/offset them - but
+! the return type won't be the same as the input.  e.g. might compute a
+! real from input of short plus offset, scale factors.  maybe we don't
+! ever want to support these - just punt and make the caller drop down
+! into direct calls to the netcdf lib.
 
 !------------------------------------------------------------------
 !> check for the existence of either (or both) scale/offset attributes

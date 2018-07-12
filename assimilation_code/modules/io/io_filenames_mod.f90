@@ -180,7 +180,7 @@ type file_info_type
 
 end type
 
-character(len=512) :: msgstring, msgstring2, msgstring3 ! message handler
+character(len=512) :: msgstring ! message handler
 
 contains
 
@@ -268,7 +268,7 @@ character(len=*), optional, intent(in) :: restart_files(:,:) !< list of restarts
 character(len=*), optional, intent(in) :: root_name          !< base if restart_files not given
 logical,          optional, intent(in) :: check_output_compatibility !< ensure netCDF variables exist in output BEFORE spending a ton of core hours
 
-integer :: ndomains, idom, esize
+integer :: ndomains, esize
 
 file_info%single_file = single_file
 file_info%cycling     = cycling
@@ -327,11 +327,12 @@ num_domains = get_num_domains()
 
 ! check that the netcdf files match the variables for this domain
 ! to prevent overwriting unwanted files.
+
 do icopy = 1, ens_handle%my_num_copies ! just have owners check
    my_copy = ens_handle%my_copies(icopy)
    do idom = 1, num_domains
-      if(file_exist(file_info%stage_metadata%filenames(my_copy,idom))) &
-         call check_correct_variables(file_info%stage_metadata%filenames(my_copy,idom),idom)
+      filename = file_info%stage_metadata%filenames(my_copy,idom)
+      if(file_exist(filename)) call check_correct_variables(filename,idom)
    enddo
 enddo
 
@@ -350,7 +351,7 @@ integer,              intent(in)    :: my_copy_start
 
 character(len=256) :: fname, desc
 character(len=128) :: stage_name, basename
-integer :: nlines, icopy, iunit, ios, idom
+integer :: icopy, idom
 integer :: offset
 
 offset = my_copy_start - 1
@@ -441,7 +442,7 @@ endif
 
 do idom = 1, get_num_domains()
     if (get_num_domains() > 1) then
-        write(string1,'(2A,I4)') trim(desc), 'for domain ', idom
+        write(string1,'(A,1x,A,I4)') trim(desc), 'for domain ', idom
     else
         write(string1,*) trim(desc)
     endif

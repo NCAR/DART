@@ -1276,7 +1276,6 @@ logical,           intent(out) :: pre_I_format
 logical, optional, intent(in)  :: close_the_file
 
 character(len=16) :: label(2)
-character(len=12) :: header
 integer :: ios
 
 ! always false now, should be deprecated
@@ -1300,7 +1299,7 @@ ios = check_obs_seq_header(file_id, read_format)
 if(ios /= 0) then
    call close_file(file_id)
 
-read_format = 'unformatted'
+   read_format = 'unformatted'
    file_id = open_file(file_name, form=read_format, action='read', convert=read_binary_file_format)
 
    ios = check_obs_seq_header(file_id, read_format)
@@ -1311,7 +1310,7 @@ read_format = 'unformatted'
       write(string1, *) 'File "', trim(file_name), '" is not recognized as a DART observation sequence file.'
       write(string2, *) 'Attempted to read both as a formatted (ascii) and unformatted (binary) file.'
       write(string3, *) 'For binary files, endian selection was "'//trim(read_binary_file_format)//'"' 
-   call error_handler(E_ERR, 'read_obs_seq_header', string1, &
+      call error_handler(E_ERR, 'read_obs_seq_header', string1, &
                          source, revision, revdate, text2=string2, text3=string3)
    endif
 endif
@@ -1324,10 +1323,10 @@ call read_type_of_obs_table(file_id, .false., read_format)
 
 ! Read in the rest of the header information
 if (read_format == 'formatted') then
-read(file_id, *) label(1), num_copies, label(2), num_qc
-read(file_id, *) label(1), num_obs, label(2), max_num_obs
+   read(file_id, *) label(1), num_copies, label(2), num_qc
+   read(file_id, *) label(1), num_obs, label(2), max_num_obs
 else
-read(file_id) num_copies, num_qc, num_obs, max_num_obs
+   read(file_id) num_copies, num_qc, num_obs, max_num_obs
 endif
 
 ! Close the file if requested by optional argument
@@ -1336,6 +1335,7 @@ if(present(close_the_file)) then
 endif
 
 end subroutine read_obs_seq_header
+
 !-------------------------------------------------
 
 ! ok, this needs some explanation.  for a binary formatted file,
@@ -2019,7 +2019,7 @@ end subroutine set_used_kinds
 ! Follow the linked list entries to copy only the linked observations
 ! from one sequence to the other.
 
-!>@ todo ... test this routine and make public
+!>@ todo ... test this routine and make public or get rid of it
 
 subroutine copy_obs_seq(oldseq, newseq, time1, time2)
 

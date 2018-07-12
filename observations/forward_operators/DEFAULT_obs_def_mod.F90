@@ -49,19 +49,23 @@ module obs_def_mod
 ! program is used to add in extra observation kinds at the indicated spots in
 ! the code.
 
-use        types_mod,      only : r8, i8, missing_i, missing_r8, obstypelength
-use    utilities_mod,      only : register_module, error_handler, E_ERR, E_MSG, &
+use             types_mod, only : r8, i8, missing_i, missing_r8, obstypelength
+use         utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                                   ascii_file_format
-use     location_mod,      only : location_type, read_location, write_location, &
-                             interactive_location, set_location_missing, &
-                             operator(/=) 
-use time_manager_mod, only : time_type, read_time, write_time, operator(/=), &
-                             set_time_missing, interactive_time, set_time, print_time
-use  assim_model_mod,      only : get_state_meta_data, interpolate
-use     obs_kind_mod,      only : assimilate_this_type_of_obs, evaluate_this_type_of_obs, &
-                                  get_name_for_type_of_obs, map_type_of_obs_table, &
-                             get_type_of_obs_from_menu, use_ext_prior_this_type_of_obs
-use ensemble_manager_mod,  only : ensemble_type
+use          location_mod, only : location_type, read_location, write_location, &
+                                  interactive_location, set_location_missing, &
+                                  operator(/=) 
+use      time_manager_mod, only : time_type, read_time, write_time, operator(/=), &
+                                  set_time_missing, interactive_time, &
+                                  set_time, print_time
+use       assim_model_mod, only : get_state_meta_data, interpolate
+use          obs_kind_mod, only : assimilate_this_type_of_obs, &
+                                  evaluate_this_type_of_obs, &
+                                  get_name_for_type_of_obs, &
+                                  map_type_of_obs_table, &
+                                  get_type_of_obs_from_menu, &
+                                  use_ext_prior_this_type_of_obs
+use  ensemble_manager_mod, only : ensemble_type
 use obs_def_utilities_mod, only : track_status, set_debug_fwd_op
 
 !----------------------------------------------------------------------

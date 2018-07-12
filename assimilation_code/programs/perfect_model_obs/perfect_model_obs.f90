@@ -9,7 +9,10 @@ program perfect_model_obs
 ! Program to build an obs_sequence file from simulated observations.
 
 use        types_mod,     only : r8, i8, metadatalength, MAX_NUM_DOMS
-use    utilities_mod,     only : register_module, error_handler, &
+
+use      options_mod,     only : get_missing_ok_status, set_missing_ok_status
+
+use    utilities_mod,     only : initialize_utilities, register_module, error_handler, &
                                  find_namelist_in_file, check_namelist_read,           &
                                  E_ERR, E_MSG, E_DBG, nmlfileunit, timestamp,          &
                                  do_nml_file, do_nml_term, logfileunit, &
@@ -108,6 +111,12 @@ logical  :: has_cycling     = .false.
 logical  :: single_file_in  = .false.
 logical  :: single_file_out = .false.
 
+! Some models are allowed to have MISSING_R8 values in the DART state vector.
+! If they are encountered, it is not necessarily a FATAL error.
+! Most of the time, if a MISSING_R8 is encountered, DART should die.
+! CLM should have allow_missing_clm = .true.
+logical  :: allow_missing_clm = .false.
+
 character(len=256) :: input_state_files(MAX_NUM_DOMS)  = '',               &
                       output_state_files(MAX_NUM_DOMS) = '',                &
                       obs_seq_in_file_name            = 'obs_seq.in',      &
@@ -124,7 +133,8 @@ namelist /perfect_model_obs_nml/ read_input_state_from_file, write_output_state_
                                  trace_execution, output_timestamps,                &
                                  print_every_nth_obs, output_forward_op_errors,     &
                                  input_state_files, output_state_files,             &
-                                 single_file_in, single_file_out, distributed_state
+                                 single_file_in, single_file_out, distributed_state, &
+                                 allow_missing_clm
 
 !------------------------------------------------------------------------------
 
@@ -162,7 +172,7 @@ character(len=metadatalength) :: copy_meta_data(2), qc_meta_data, obs_seq_read_f
 character(len=metadatalength) :: state_meta(1)
 
 logical                 :: assimilate_this_ob, evaluate_this_ob, pre_I_format
-logical                 :: all_gone, read_time_from_file
+logical                 :: all_gone, read_time_from_file, allow_missing
 
 integer                 :: global_obs_num
 
@@ -196,6 +206,9 @@ call set_trace(trace_execution, output_timestamps, silence)
 
 call trace_message('Perfect_model start')
 call timestamp_message('Perfect_model start')
+
+call set_missing_ok_status(allow_missing_clm)
+allow_missing = get_missing_ok_status()
 
 ! Default to printing nothing
 nth_obs = -1

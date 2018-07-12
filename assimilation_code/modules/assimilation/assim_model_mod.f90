@@ -53,14 +53,10 @@ public :: static_init_assim_model, &
           write_model_time
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
-
-
-! Permanent class storage for model_size
-integer :: model_size
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 ! Ensure init code is called exactly once
 logical :: module_initialized = .false.
