@@ -107,7 +107,7 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
           sum_across_tasks, get_dart_mpi_comm, datasize, send_minmax_to,     &
           get_from_fwd, get_from_mean, broadcast_minmax, broadcast_flag,     &
-          start_mpi_timer, read_mpi_timer, &
+          start_mpi_timer, read_mpi_timer, send_sum_to,                      &
           all_reduce_min_max  ! deprecated, replace by broadcast_minmax
 
 ! version controlled file description for error handling, do not edit
@@ -1492,7 +1492,6 @@ sum = localsum(1)
 
 end subroutine sum_across_tasks_real
 
-
 !-----------------------------------------------------------------------------
 ! pipe-related utilities
 !-----------------------------------------------------------------------------
@@ -1882,6 +1881,27 @@ function get_dart_mpi_comm()
  get_dart_mpi_comm = my_local_comm
 
 end function get_dart_mpi_comm
+
+!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------
+! Collect sum across tasks for a given array.
+subroutine send_sum_to(local_val, task, global_val)
+
+real(r8), intent(in)  :: local_val(:) !> min max on each task
+integer,  intent(in)  :: task !> task to collect on
+real(r8), intent(out) :: global_val(:) !> only concerned with this on task collecting result
+
+integer :: errcode
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'send_sum_to', errstring, source, revision, revdate)
+endif
+
+! collect values on a single given task 
+call mpi_reduce(local_val(:), global_val(:), size(global_val), datasize, MPI_SUM, task, get_dart_mpi_comm(), errcode)
+
+end subroutine send_sum_to
 
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------

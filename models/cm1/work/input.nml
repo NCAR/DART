@@ -34,11 +34,12 @@
   inf_initial_from_restart    = .false.,           .false.
   inf_sd_initial_from_restart = .false.,           .false.
   inf_initial                 = 1.0,               1.0
-  inf_sd_initial              = 0.6,               0.6
-  inf_damping                 = 0.9,               0.9
   inf_lower_bound             = 1.0,               1.0
   inf_upper_bound             = 1000000.0,         1000000.0
+  inf_damping                 = 0.9,               0.9
+  inf_sd_initial              = 0.6,               0.6
   inf_sd_lower_bound          = 0.6,               0.6
+  inf_sd_max_change           = 1.05,              1.05
 /
 
 
@@ -172,23 +173,23 @@
 
 
 &obs_diag_nml
-  bin_separation        = 0, 0, 0, 0, 30, 0
-  bin_width             = 0, 0, 0, 0, 30, 0
-  create_rank_histogram = .false.
-  debug                 = 1
+  obs_sequence_name     = 'obs_seq.final'
   first_bin_center      = 2014, 8, 8, 14, 0, 0
-  hlevel_edges          = -1.0, 1000.0, 2000.0, 4000.0, 8000.0, 16000.0, 32000.0, 64000.0
   last_bin_center       = 2014, 8, 8, 14, 0, 0
-  nregions              = 1
-  obs_sequence_name     = '/glade/u/home/lmadaus/diag_test/obs_seq.diag'
-  outliers_in_histogram = .true.
-  reg_names             = 'whole'
-  time_to_skip          = 0, 0, 0, 0,  0, 0
+  bin_separation        =    0, 0, 0, 0, 30, 0
+  bin_width             =    0, 0, 0, 0, 30, 0
+  time_to_skip          =    0, 0, 0, 0,  0, 0
   trusted_obs           = 'null'
+  create_rank_histogram = .false.
+  outliers_in_histogram = .true.
+  hlevel_edges          = -1.0, 1000.0, 2000.0, 4000.0, 8000.0, 16000.0, 32000.0, 64000.0
+  nregions              = 1
+  reg_names             = 'whole'
   xlim1                 = -1.0
   xlim2                 = 1000000.0
   ylim1                 = -1.0
   ylim2                 = 1000000.0
+  verbose               = .false.
 /
 
 

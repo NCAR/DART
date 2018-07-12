@@ -576,7 +576,7 @@ AdvanceTime : do
    ! While we're here, make sure the timestamp on the actual ensemble copy
    ! for the mean has the current time.  If the user requests it be written
    ! out, it needs a valid timestamp.
-   call get_copy_owner_index(ENS_MEAN_COPY, mean_owner, mean_owners_index)
+   call get_copy_owner_index(ens_handle, ENS_MEAN_COPY, mean_owner, mean_owners_index)
    if(ens_handle%my_pe == mean_owner) then
       ! Make sure the timestamp for the mean is the current time.
       call set_ensemble_time(ens_handle, mean_owners_index, curr_ens_time)
@@ -1768,7 +1768,7 @@ real(r8) :: rtime(4)
 integer  :: days, secs
 integer  :: copy1_owner, owner_index
 
-call get_copy_owner_index(1, copy1_owner, owner_index)
+call get_copy_owner_index(ens_handle, 1, copy1_owner, owner_index)
 
 if( ens_handle%my_pe == copy1_owner) then
    rkey_bounds = key_bounds

@@ -87,8 +87,7 @@ use mpi_utilities_mod, only: my_task_id, all_reduce_min_max, task_count
 
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 
-use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, &
-                                 get_copy_owner_index, get_var_owner_index, get_my_vars
+use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars
 
 use distributed_state_mod
 
@@ -1713,7 +1712,7 @@ interf_provided = .true.
 num_variables = get_num_variables(domid)
 
 ! Get min and max of each variable in each domain
-allocate(var_list(ens_handle%my_num_vars))
+allocate(var_list(get_my_num_vars(ens_handle)))
 call get_my_vars(ens_handle, var_list)
 
 allocate(min_var(num_variables), max_var(num_variables))
@@ -5285,14 +5284,12 @@ end subroutine compute_elevation_with_barycentric
 !------------------------------------------------------------
 
 subroutine find_triangle(loc, nc, c, weights, ier)
-!find_triangle_vert_indices (state_handle, loc, nc, c, lower, upper, fract, weights, ier)
 
-!type(ensemble_type), intent(in)  :: state_handle
-type(location_type), intent(in)  :: loc !(:) ! ens_size
+type(location_type), intent(in)  :: loc 
 integer,             intent(out) :: nc
 integer,             intent(out) :: c(:) ! single value - cell id
 real(r8),            intent(out) :: weights(:)
-integer,             intent(out) :: ier !(:) ! ens_size
+integer,             intent(out) :: ier
 
 ! compute the values at the correct vertical level for each
 ! of the 3 cell centers defining a triangle that encloses the

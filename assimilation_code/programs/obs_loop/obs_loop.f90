@@ -14,7 +14,7 @@ use        types_mod, only : r8, missing_r8, metadatalength
 use    utilities_mod, only : register_module, initialize_utilities,            &
                              find_namelist_in_file, check_namelist_read,       &
                              error_handler, E_ERR, E_MSG, nmlfileunit,         &
-                             do_nml_file, do_nml_term, get_next_filename,      &
+                             do_nml_file, do_nml_term,                         &
                              open_file, close_file, finalize_utilities
 use     location_mod, only : location_type, get_location, set_location,        &
                              LocationName, read_location, operator(/=),        &

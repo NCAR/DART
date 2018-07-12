@@ -59,11 +59,12 @@
    inf_initial_from_restart    = .false.,                .false.,
    inf_sd_initial_from_restart = .false.,                .false.,
    inf_initial                 = 1.0,                     1.00,
-   inf_sd_initial              = 0.6,                     0.0,
-   inf_damping                 = 0.9,                     1.0,
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
+   inf_damping                 = 0.9,                     1.0,
+   inf_sd_initial              = 0.6,                     0.0,
    inf_sd_lower_bound          = 0.6,                     0.0,
+   inf_sd_max_change           = 1.05,                    1.05,
    /
 
 &quality_control_nml
@@ -206,14 +207,6 @@
    circulation_radius          = 108000.0,
    allow_obs_below_vol         = .false.
    /
-
-&closest_member_tool_nml 
-   input_file_name        = 'filter_ic_new',
-   output_file_name       = 'closest_restart',
-   ens_size               = 50,
-   single_restart_file_in = .false.,
-   difference_method      = 4,
- /
 
 # vert_normalization_X is amount of X equiv to 1 radian in horiz.
 # vert localization is 'cutoff' times the pressure/height/levels,
@@ -520,6 +513,15 @@
 
 &compare_states_nml
 /
+
+&closest_member_tool_nml 
+   input_restart_file_list   = 'input_file_list_d01.txt',
+   output_file_name          = 'closest_results.txt'
+   ens_size                  = 3,
+   single_restart_file_in    = .false.,
+   difference_method         = 4,
+   use_only_qtys             = 'QTY_U_WIND_COMPONENT'
+ /
 
 # To test both domains, you must change 'model_nml:num_domains = 2'
 

@@ -145,7 +145,7 @@ namelist /model_nml/ num_grid_points, grid_spacing_meters, &
                      lagrangian_for_wind, destruction_rate, &
                      source_random_amp_frac, source_damping_rate, &
                      source_diurnal_rel_amp, source_phase_noise, &
-                     template_file
+                     template_file, my_ens_size
 
 
 ! Define the location of the state variables in module storage
