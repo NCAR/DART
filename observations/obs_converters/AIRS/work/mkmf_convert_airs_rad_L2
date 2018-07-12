@@ -29,9 +29,9 @@ set MYLIBS = "-lhdfeos -lmfhdf -ldf -ljpeg -lz  -lm"
 set MYINCDIR = "-I${EOSDIR}/include -I${HDFDIR}/include -I${JPGDIR}/include"
 set MYLIBDIR = "-L${EOSDIR}/lib     -L${HDFDIR}/lib     -L${JPGDIR}/lib"
 
-../../../../build_templates/mkmf -p convert_airs_L2 -t ../../../../build_templates/mkmf.template \
- -o "${MYFLAGS}" -l "${MYFLAGS} ${MYINCDIR} ${MYLIBDIR} ${MYLIBS}" \
- -a "../../../.." path_names_convert_airs_L2
+../../../../build_templates/mkmf -p convert_airs_rad_L2 -t ../../../../build_templates/mkmf.template \
+ -o "${MYFLAGS}" -l "${MYINCDIR} ${MYLIBDIR} ${MYLIBS}" \
+ -a "../../../.." path_names_convert_airs_rad_L2
 
 exit $status
 
