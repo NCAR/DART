@@ -4,7 +4,8 @@
    output_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90',
      input_obs_def_mod_file = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
     output_obs_def_mod_file = '../../../../observations/forward_operators/obs_def_mod.f90',
-   input_files              = '../../../../observations/forward_operators/obs_def_AIRS_mod.f90'
+   input_files              = '../../../../observations/forward_operators/obs_def_rttov_mod.f90',
+                              '../../../../observations/forward_operators/obs_def_AIRS_mod.f90'
  /
 
 &convert_airs_L2_nml
@@ -14,6 +15,20 @@
    outputdir          = '../output',
    min_MMR_threshold  = 1.0e-30
    top_pressure_level = 0.0001,
+   along_track_thin   = 0,
+   cross_track_thin   = 0,
+   lon1               =   0.0, 
+   lon2               = 360.0, 
+   lat1               = -90.0, 
+   lat2               =  90.0
+ /
+
+&convert_airs_rad_L2_nml
+   datadir            = '../data',
+   l2_files           = 'AIRS.2009.07.01.090.L2.CC.v6.0.7.0.G13086084329.hdf',
+   l2_file_list       = '' ,
+   outputdir          = '../output',
+   channel_list       = 1000,
    along_track_thin   = 0,
    cross_track_thin   = 0,
    lon1               =   0.0, 
@@ -33,5 +48,6 @@
  /
 
 &utilities_nml
+  module_details = .false.
  /
 

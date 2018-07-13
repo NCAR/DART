@@ -15,13 +15,14 @@
 !    sat az/el
 !    sun az/el
 !    platform
+!    sat_id
 !    instrument
 !    channel
 !    <anything else useful>
 !----------------------------------------------------------------------
 
 ! BEGIN DART PREPROCESS KIND LIST
-! AIRS_AMSU_RADIANCE,    QTY_RADIANCE
+! AQUA_AIRS_AMSU_RADIANCE,    QTY_INFRARED_RADIANCE
 ! END DART PREPROCESS KIND LIST
 
 
@@ -34,25 +35,25 @@
 
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
-!      case(AIRS_AMSU_RADIANCE)
+!      case(AQUA_AIRS_AMSU_RADIANCE)
 !         call get_expected_radiance(state_handle, ens_size, location, obs_def%key, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
-!   case(AIRS_AMSU_RADIANCE)
+!   case(AQUA_AIRS_AMSU_RADIANCE)
 !      call read_rttov_metadata(obs_def%key, key, ifile, fform)
 ! END DART PREPROCESS READ_OBS_DEF
 
 
 ! BEGIN DART PREPROCESS WRITE_OBS_DEF
-!   case(AIRS_AMSU_RADIANCE)
+!   case(AQUA_AIRS_AMSU_RADIANCE)
 !      call write_rttov_metadata(obs_def%key, ifile, fform)
 ! END DART PREPROCESS WRITE_OBS_DEF
 
 
 ! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
-!   case(AIRS_AMSU_RADIANCE)
+!   case(AQUA_AIRS_AMSU_RADIANCE)
 !      call interactive_rttov_metadata(obs_def%key)
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 
@@ -60,20 +61,21 @@
 ! BEGIN DART PREPROCESS MODULE CODE
 module obs_def_rttov_mod
 
-use        types_mod, only : r8, PI, metadatalength, MISSING_R8
+use        types_mod, only : r8, PI, metadatalength, MISSING_R8, MISSING_I
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
                              logfileunit, get_unit, open_file, close_file, nc_check, &
                              file_exist, ascii_file_format
-use     location_mod, only : location_type, set_location, get_location, &
+use     location_mod, only : location_type, set_location, get_location, VERTISUNDEF, &
                              VERTISHEIGHT, VERTISLEVEL, set_location_missing
-use     obs_kind_mod, only : QTY_GEOPOTENTIAL_HEIGHT, QTY_SOIL_MOISTURE
+use     obs_kind_mod, only : QTY_GEOPOTENTIAL_HEIGHT, QTY_PRESSURE, QTY_TEMPERATURE, &
+                             QTY_SPECIFIC_HUMIDITY
 use  assim_model_mod, only : interpolate
 
 use obs_def_utilities_mod, only : track_status
 use ensemble_manager_mod,  only : ensemble_type
 
-use typesizes
-use netcdf
+!FIXME
+use rttov_interface_mod,   only : a, b, c
 
 implicit none
 private
@@ -96,23 +98,22 @@ logical, save      :: module_initialized = .false.
 
 ! Metadata for rttov observations.
 
+! AQUA and TERRA are platform 9 (EOS)
+! AQUA may be satellite id 2  ! FIXME, check this
+
 ! AIRS is sensor 11 w/ 1-2378 channels (visible/near infrared/infrared)
 ! AMSU-A is sensor 3 with 1-15 channels (infrared/microwave)
 
-!FIXME
+!FIXME - add additional fields here as needed
 type obs_metadata
    private
-!    sat az/el
-!    sun az/el
-!    platform
-!    instrument
-!    channel
    real(r8)            :: sat_az     ! azimuth of satellite position
    real(r8)            :: sat_ze     ! azimuth of satellite position
    real(r8)            :: sun_az     ! zenith of solar position
    real(r8)            :: sun_ze     ! zenith of solar position
-   integer             :: platform   ! see rttov user guide
-   integer             :: sensor     ! see rttov user guide
+   integer             :: platform   ! see rttov user guide, table 2
+   integer             :: sat_id     ! see rttov user guide, table 2
+   integer             :: sensor     ! see rttov user guide, table 3
    integer             :: channel    ! each channel is a different obs
    ! more here as we need it
 end type obs_metadata
@@ -141,6 +142,7 @@ missing_metadata%sat_ze   = MISSING_R8
 missing_metadata%sun_az   = MISSING_R8
 missing_metadata%sun_ze   = MISSING_R8
 missing_metadata%platform = MISSING_I
+missing_metadata%sat_id   = MISSING_I
 missing_metadata%sensor   = MISSING_I
 missing_metadata%channel  = MISSING_I
 
@@ -155,10 +157,10 @@ end subroutine initialize_module
 !----------------------------------------------------------------------
 ! Fill the module storage metadata for a particular observation.
 
-subroutine set_rttov_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform, sensor, channel)
+subroutine set_rttov_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform, sat_id, sensor, channel)
 integer,  intent(out) :: key
 real(r8), intent(in)  :: sat_az, sat_ze, sun_az, sun_ze
-integer,  intent(in)  :: platform, sensor, channel
+integer,  intent(in)  :: platform, sat_id, sensor, channel
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -174,6 +176,7 @@ observation_metadata(key)%sat_ze    = sat_ze
 observation_metadata(key)%sun_az    = sun_az
 observation_metadata(key)%sun_ze    = sun_ze
 observation_metadata(key)%platform  = platform
+observation_metadata(key)%sat_id    = sat_id
 observation_metadata(key)%sensor    = sensor
 observation_metadata(key)%channel   = channel
 
@@ -183,10 +186,10 @@ end subroutine set_rttov_metadata
 !----------------------------------------------------------------------
 ! Query the metadata in module storage for a particular observation.
 
-subroutine get_rttov_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform, sensor, channel)
+subroutine get_rttov_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform, sat_id, sensor, channel)
 integer,  intent(in)  :: key
 real(r8), intent(out) :: sat_az, sat_ze, sun_az, sun_ze
-integer,  intent(out) :: platform, sensor, channel
+integer,  intent(out) :: platform, sat_id, sensor, channel
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -198,6 +201,7 @@ sat_ze   = observation_metadata(key)%sat_ze
 sun_az   = observation_metadata(key)%sun_az
 sun_ze   = observation_metadata(key)%sun_ze
 platform = observation_metadata(key)%platform
+sat_id   = observation_metadata(key)%sat_id
 sensor   = observation_metadata(key)%sensor
 channel  = observation_metadata(key)%channel
 
@@ -219,7 +223,7 @@ integer           :: ierr
 character(len=5)  :: header
 integer           :: oldkey
 real(r8)          :: sat_az, sat_ze, sun_az, sun_ze
-integer           :: platform, sensor, channel
+integer           :: platform, sat_id, sensor, channel
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -236,8 +240,8 @@ if ( is_asciifile ) then
    endif
    read(ifile, *, iostat=ierr) sat_az, sat_ze, sun_az, sun_ze
    call check_iostat(ierr,'read_rttov_metadata','sat,sun az/ze',string2)
-   read(ifile, *, iostat=ierr) platform, sensor, channel
-   call check_iostat(ierr,'read_rttov_metadata','platform/sensor/channel',string2)
+   read(ifile, *, iostat=ierr) platform, sat_id, sensor, channel
+   call check_iostat(ierr,'read_rttov_metadata','platform/sat_id/sensor/channel',string2)
    read(ifile, *, iostat=ierr) oldkey
    call check_iostat(ierr,'read_rttov_metadata','oldkey',string2)
 else
@@ -249,8 +253,8 @@ else
    endif
    read(ifile, iostat=ierr) sat_az, sat_ze, sun_az, sun_ze
    call check_iostat(ierr,'read_rttov_metadata','sat,sun az/ze',string2)
-   read(ifile, iostat=ierr) platform, sensor, channel
-   call check_iostat(ierr,'read_rttov_metadata','platform/sensor/channel',string2)
+   read(ifile, iostat=ierr) platform, sat_id, sensor, channel
+   call check_iostat(ierr,'read_rttov_metadata','platform/sat_id/sensor/channel',string2)
    read(ifile, iostat=ierr) oldkey
    call check_iostat(ierr,'read_rttov_metadata','oldkey',string2)
 endif
@@ -258,7 +262,7 @@ endif
 ! The oldkey is thrown away.
 
 ! Store the metadata in module storage. The new key is returned.
-call set_rttov_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform, sensor, channel)
+call set_rttov_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform, sat_id, sensor, channel)
 
 end subroutine read_rttov_metadata
 
@@ -274,7 +278,7 @@ character(len=*),  intent(in), optional :: fform
 
 logical  :: is_asciifile
 real(r8) :: sat_az, sat_ze, sun_az, sun_ze
-integer  :: platform, sensor, channel
+integer  :: platform, sat_id, sensor, channel
 
 
 if ( .not. module_initialized ) call initialize_module
@@ -282,19 +286,19 @@ if ( .not. module_initialized ) call initialize_module
 ! given the index into the local metadata arrays - retrieve
 ! the metadata for this particular observation.
 
-call get_rttov_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform, sensor, channel)
+call get_rttov_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform, sat_id, sensor, channel)
 
 is_asciifile = ascii_file_format(fform)
 
 if (is_asciifile) then
    write(ifile, *) trim(rttovSTRING)
    write(ifile, *) sat_az, sat_ze, sun_az, sun_ze
-   write(ifile, *) platform, sensor, channel
+   write(ifile, *) platform, sat_id, sensor, channel
    write(ifile, *) key
 else
    write(ifile   ) trim(rttovSTRING)
    write(ifile   ) sat_az, sat_ze, sun_az, sun_ze
-   write(ifile   ) platform, sensor, channel
+   write(ifile   ) platform, sat_id, sensor, channel
    write(ifile   ) key
 endif
 
@@ -307,7 +311,7 @@ subroutine interactive_rttov_metadata(key)
 integer, intent(out) :: key
 
 real(r8)          :: sat_az, sat_ze, sun_az, sun_ze
-integer           :: platform, sensor, channel
+integer           :: platform, sat_id, sensor, channel
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -317,11 +321,12 @@ sat_az   = interactive_r('sat_az    satellite azimuth [degrees]', minvalue = 0.0
 sat_ze   = interactive_r('sat_ze    satellite zenith [degrees]',  minvalue = 0.0_r8, maxvalue = 90.0_r8)
 sun_az   = interactive_r('sun_az    solar azimuth [degrees]',     minvalue = 0.0_r8, maxvalue = 360.0_r8)
 sun_ze   = interactive_r('sun_ze    solar zenith [degrees]',      minvalue = 0.0_r8, maxvalue = 90.0_r8)
-platform = interactive_i('platform  RTTOV Platform number [see docs]',     minvalue = 1)
-sensor   = interactive_i('sensor    RTTOV Sensor number [see docs]',       minvalue = 1)
-channel  = interactive_i('channel   Instrument channel number [see docs]', minvalue = 1)
+platform = interactive_i('platform  RTTOV Platform number [see docs]',         minvalue = 1)
+sat_id   = interactive_i('satellite id  RTTOV Satellite ID number [see docs]', minvalue = 1)
+sensor   = interactive_i('sensor    RTTOV Sensor number [see docs]',           minvalue = 1)
+channel  = interactive_i('channel   Instrument channel number [see docs]',     minvalue = 1)
 
-call set_rttov_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform, sensor, channel)
+call set_rttov_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform, sat_id, sensor, channel)
 
 end subroutine interactive_rttov_metadata
 
@@ -336,17 +341,13 @@ character(len=*),   intent(in) :: str1
 real(r8), optional, intent(in) :: minvalue
 real(r8), optional, intent(in) :: maxvalue
 
-integer :: i
 
-interactive_r = MISSING_R8
-
-! Prompt with a minimum amount of error checking
+! Prompt and ensure value is in range if limits are specified
 
 if (present(minvalue) .and. present(maxvalue)) then
 
    interactive_r = minvalue - 1.0_r8
-   MINMAXLOOP : do i = 1
-      if ((interactive_r >= minvalue) .and. (interactive_r <= maxvalue)) exit MINMAXLOOP
+   MINMAXLOOP : do while ((interactive_r < minvalue) .or. (interactive_r > maxvalue))
       write(*, *) 'Enter '//str1
       read( *, *) interactive_r
    end do MINMAXLOOP
@@ -354,8 +355,7 @@ if (present(minvalue) .and. present(maxvalue)) then
 elseif (present(minvalue)) then
 
    interactive_r = minvalue - 1.0_r8
-   MINLOOP : do i=1
-      if (interactive_r >= minvalue) exit MINLOOP
+   MINLOOP : do while (interactive_r < minvalue)
       write(*, *) 'Enter '//str1
       read( *, *) interactive_r
    end do MINLOOP
@@ -363,8 +363,7 @@ elseif (present(minvalue)) then
 elseif (present(maxvalue)) then
 
    interactive_r = maxvalue + 1.0_r8
-   MAXLOOP : do i=1
-      if (interactive_r <= maxvalue) exit MAXLOOP
+   MAXLOOP : do while (interactive_r > maxvalue) 
       write(*, *) 'Enter '//str1
       read( *, *) interactive_r
    end do MAXLOOP
@@ -387,17 +386,12 @@ character(len=*),   intent(in) :: str1
 integer,  optional, intent(in) :: minvalue
 integer,  optional, intent(in) :: maxvalue
 
-integer :: i
-
-interactive_i = MISSING_I
-
 ! Prompt with a minimum amount of error checking
 
 if (present(minvalue) .and. present(maxvalue)) then
 
    interactive_i = minvalue - 1
-   MINMAXLOOP : do i = 1
-      if ((interactive_i >= minvalue) .and. (interactive_i <= maxvalue)) exit MINMAXLOOP
+   MINMAXLOOP : do while ((interactive_i < minvalue) .and. (interactive_i > maxvalue))
       write(*, *) 'Enter '//str1
       read( *, *) interactive_i
    end do MINMAXLOOP
@@ -405,8 +399,7 @@ if (present(minvalue) .and. present(maxvalue)) then
 elseif (present(minvalue)) then
 
    interactive_i = minvalue - 1
-   MINLOOP : do i=1
-      if (interactive_i >= minvalue) exit MINLOOP
+   MINLOOP : do while (interactive_i < minvalue)
       write(*, *) 'Enter '//str1
       read( *, *) interactive_i
    end do MINLOOP
@@ -414,8 +407,7 @@ elseif (present(minvalue)) then
 elseif (present(maxvalue)) then
 
    interactive_i = maxvalue + 1
-   MAXLOOP : do i=1
-      if (interactive_i <= maxvalue) exit MAXLOOP
+   MAXLOOP : do while (interactive_i > maxvalue)
       write(*, *) 'Enter '//str1
       read( *, *) interactive_i
    end do MAXLOOP
@@ -441,9 +433,8 @@ integer,             intent(out) :: istatus(ens_size) ! status of the calculatio
 
 !FIXME - this all gets replaced by code from the example program
 
-integer  :: key
 real(r8) :: sat_az, sat_ze, sun_az, sun_ze
-integer  :: platform, sensor, channel
+integer  :: platform, sat_id, sensor, channel
 
 real(r8), allocatable :: temperature(:,:), pressure(:,:), moisture(:,:)
 integer :: this_istatus(ens_size)
@@ -451,9 +442,9 @@ integer :: this_istatus(ens_size)
 integer  :: i, zi, nlevels
 real(r8) :: loc_array(3)
 real(r8) :: loc_lon, loc_lat
-real(r8) :: loc_value(ens_size)
+real(r8) :: loc_value(ens_size), radiance(ens_size)
 type(location_type) :: loc
-integer :: imem
+integer :: imem, maxlevels
 logical :: return_now
 character(len=*), parameter :: routine = 'get_expected_radiance'
 
@@ -466,7 +457,7 @@ val = 0.0_r8 ! set return value early
 ! Make sure the desired key is within the length of the metadata arrays.
 call key_within_range(key, routine)
 
-call get_rttov_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform, sensor, channel)
+call get_rttov_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform, sat_id, sensor, channel)
 
 !=================================================================================
 ! Determine the number of model levels 
@@ -479,14 +470,15 @@ loc_lat   = loc_array(2)
 
 !FIXME: these interp results are unused. make it a cheap quantity to ask for.
 nlevels = 0
-COUNTLEVELS : do i = 1,maxlayers
+maxlevels = 10000   ! something larger than we think will exist
+COUNTLEVELS : do i = 1,maxlevels
    loc = set_location(loc_lon, loc_lat, real(i,r8), VERTISLEVEL)
    call interpolate(state_handle, ens_size, loc, QTY_PRESSURE, loc_value, this_istatus)
    if ( any(this_istatus /= 0 ) ) exit COUNTLEVELS
    nlevels = nlevels + 1
 enddo COUNTLEVELS
 
-if ((nlevels == maxlayers) .or. (nlevels == 0)) then
+if ((nlevels == maxlevels) .or. (nlevels == 0)) then
    write(string1,*) 'FAILED to determine number of levels in model.'
    if (debug) call error_handler(E_MSG,routine,string1,source,revision,revdate)
    istatus = 1
@@ -525,8 +517,12 @@ GETLEVELDATA : do i = 1,nlevels
 enddo GETLEVELDATA
 
 
-!FIXME initialize the profile info here for call to rttov()
+!FIXME initialize the profile info here and make the call to rttov()
+! to compute radiances, once for each ensemble member
 
+do i=1, ens_size
+   radiance(i) = 0.0_r8
+enddo
 
 deallocate(temperature, pressure, moisture)
 

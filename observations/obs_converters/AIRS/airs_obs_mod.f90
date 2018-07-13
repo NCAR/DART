@@ -38,12 +38,16 @@ use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
                              set_qc_meta_data, set_obs_def, get_first_obs,   &
                              get_last_obs, get_obs_def
 
+use obs_utilities_mod, only : add_obs_to_seq, create_3d_obs
+
+use obs_seq_utilities_mod, only : print_obs_seq
+
 use airs_JPL_mod   ! need ', only' list here
 
 implicit none
 private
 
-public :: real_obs_sequence, create_output_filename
+public :: make_obs_sequence, create_output_filename
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -89,20 +93,20 @@ end subroutine initialize_module
 !  and convert to DART observation format.  allow caller to specify
 !  a bounding box and only extract data within that region.
 
-function real_obs_sequence ( granule, lon1, lon2, lat1, lat2, &
+function make_obs_sequence ( granule, lon1, lon2, lat1, lat2, &
                              min_MMR_threshold, top_pressure_level, &
                              row_thin, col_thin)
 type(airs_granule_type), intent(in) :: granule
 real(r8), intent(in) :: lon1, lon2, lat1, lat2
 real(r8), intent(in) :: min_MMR_threshold, top_pressure_level
 integer,  intent(in) :: row_thin, col_thin
+type(obs_sequence_type) :: make_obs_sequence
 
 ! max possible obs from this one granule.
 integer :: max_num =  &
    AIRS_RET_STDPRESSURELAY * AIRS_RET_GEOXTRACK * AIRS_RET_GEOTRACK + &
    AIRS_RET_H2OPRESSURELAY * AIRS_RET_GEOXTRACK * AIRS_RET_GEOTRACK 
 
-type(obs_sequence_type) :: real_obs_sequence
 type(obs_def_type)      :: obs_def
 type(obs_type)          :: obs, prev_obs
 type(location_type)     :: obs_loc
@@ -113,10 +117,11 @@ integer :: obs_num, temperature_top_index, humidity_top_index
 integer :: which_vert, tobstype, qobstype
 
 real(r8) :: olon, olat, vloc
-real(r8) :: obs_value, obs_var
+real(r8) :: obs_value, obs_err
 real(r8) :: tqc, qqc, latlon(3)
 real(r8) :: midpres, log_lower, log_upper
 
+logical :: is_first_obs
 type(time_type) :: obs_time, base_time, pre_time, time
 
 if ( .not. module_initialized ) call initialize_module
@@ -125,15 +130,15 @@ num_copies  = 1
 num_qc      = 1
 
 ! Initialize an obs_sequence 
-call init_obs_sequence(real_obs_sequence, num_copies, num_qc, max_num)
+call init_obs_sequence(make_obs_sequence, num_copies, num_qc, max_num)
 
 ! set meta data of obs_seq
 do i = 1, num_copies
-   call set_copy_meta_data(real_obs_sequence, i, 'observation')
+   call set_copy_meta_data(make_obs_sequence, i, 'observation')
 end do
 
 do i = 1, num_qc
-   call set_qc_meta_data(real_obs_sequence, i, 'AIRS QC')
+   call set_qc_meta_data(make_obs_sequence, i, 'AIRS QC')
 end do
 
 ! Initialize the obs variables
@@ -145,9 +150,8 @@ tobstype = get_index_for_type_of_obs('AIRS_TEMPERATURE')
 qobstype = get_index_for_type_of_obs('AIRS_SPECIFIC_HUMIDITY')
 if ((tobstype < 1) .or. (qobstype < 1)) then
    msgstring = 'unknown observation type [AIRS_TEMPERATURE, AIRS_SPECIFIC_HUMIDITY]'
-   call error_handler(E_ERR,'real_obs_sequence',msgstring,source,revision,revdate)
+   call error_handler(E_ERR,'make_obs_sequence',msgstring,source,revision,revdate)
 endif
-
 
 base_time = set_date(1993, 1, 1, 0, 0, 0)   ! reference date: jan 1st, 1993
 
@@ -197,7 +201,8 @@ if (DEBUG) print *, 'humd_top_index = ', humidity_top_index
 !  loop over all observations within the file
 !------------------------------------------------------------------------------
 
-obs_num    = 1
+is_first_obs = .true.
+obs_num = 1
 which_vert = VERTISPRESSURE
 
 ! rows are along-track, stepping in the direction the satellite is moving
@@ -245,35 +250,23 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
 
          tqc = 0   ! if we get here, the quality control is 'best' == 0
 
-         ! create the obs_def for this observation, add to sequence
-         !---------------------------------------------------------------
-      
+         ! create the temperature obs for this observation, add to sequence
 
          ! apparently -9999 is missing data, outside of qc mechanism
          obs_value = granule%TAirStd(ivert, icol, irow)
          if (obs_value == -9999.0_r8) cycle vert_T_loop
 
+         obs_err = granule%TAirStdErr(ivert, icol, irow) 
 
-         obs_var = granule%TAirStdErr(ivert, icol, irow) * &
-                   granule%TAirStdErr(ivert, icol, irow)
+print *, 'obs value, err, var = ', obs_value, obs_err, obs_err*obs_err
 
          ! temperature values are located directly at the pressure levels
          vloc = granule%pressStd(ivert) * mb_to_Pa
 
-         call real_obs(num_copies, num_qc, obs, olon, olat, vloc, obs_value, &
-                       obs_var, tqc, AIRS_TEMPERATURE, which_vert, seconds, days)
+         call create_3d_obs(olat, olon, vloc, which_vert, obs_value, AIRS_TEMPERATURE, obs_err, &
+                            days, seconds, tqc, obs)
       
-         if(obs_num == 1) then ! for the first observation 
-            call insert_obs_in_seq(real_obs_sequence, obs)
-         else  !  not the first observation 
-            if(time >= pre_time) then  ! same time or later than previous obs
-               call insert_obs_in_seq(real_obs_sequence, obs, prev_obs)
-            else  ! earlier
-               call insert_obs_in_seq(real_obs_sequence, obs)
-            endif
-         endif
-         prev_obs = obs
-         pre_time = time
+         call add_obs_to_seq(make_obs_sequence, obs, time, prev_obs, pre_time, is_first_obs)
    
          if ( DEBUG ) then
             write(*,*)irow, icol, ivert, olat, olon
@@ -295,14 +288,13 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
 
          qqc = 0   ! if we get here, the quality control is 'Best' == 0
 
-         ! create the obs_def for this observation, add to sequence
-         !---------------------------------------------------------------
+         ! create the moisture obs for this observation, add to sequence
    
          ! if original MMR data was -9999, that is apparently a missing val
          if (granule%H2OMMRStd(ivert, icol, irow) == -9999.0_r8) cycle vert_Q_loop
 
          obs_value = Q(ivert, icol, irow)
-         obs_var = Q_err(ivert, icol, irow) * Q_err(ivert, icol, irow)
+         obs_err = Q_err(ivert, icol, irow)
 
          ! moisture obs are the mean of the layer with the bottom at
          ! the given pressure.  compute the midpoint (in log space)
@@ -314,20 +306,10 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
          midpres = exp((log_lower + log_upper) / 2.0_r8)
          vloc = midpres * mb_to_Pa
 
-         call real_obs(num_copies, num_qc, obs, olon, olat, vloc, obs_value, &
-                       obs_var, qqc, AIRS_SPECIFIC_HUMIDITY, which_vert, seconds, days)
+         call create_3d_obs(olat, olon, vloc, which_vert, obs_value, AIRS_SPECIFIC_HUMIDITY, obs_err, &
+                            days, seconds, qqc, obs)
       
-         if(obs_num == 1) then ! for the first observation 
-            call insert_obs_in_seq(real_obs_sequence, obs)
-         else  !  not the first observation 
-            if(time >= pre_time) then  ! same time or later than previous obs
-               call insert_obs_in_seq(real_obs_sequence, obs, prev_obs)
-            else  ! earlier
-               call insert_obs_in_seq(real_obs_sequence, obs)
-            endif
-         endif
-         prev_obs = obs
-         pre_time = time
+         call add_obs_to_seq(make_obs_sequence, obs, time, prev_obs, pre_time, is_first_obs)
    
          if ( DEBUG ) then
             write(*,*)irow, icol, ivert, olat, olon
@@ -346,88 +328,11 @@ enddo rowloop
 write(msgstring,*) 'obs used = ', obs_num, ' obs skipped = ', max_num - obs_num
 call error_handler(E_MSG, ' ', msgstring)
 
-if ( get_first_obs(real_obs_sequence, obs) ) then
-   call get_obs_def(obs, obs_def)
-   pre_time = get_obs_def_time(obs_def)
-   call print_time(pre_time,' first time in sequence is ')
-   call print_date(pre_time,' which is gregorian date   ')
-   obs_loc = get_obs_def_location(obs_def)
-   latlon = get_location(obs_loc)
-   write(msgstring,*)'lat,lon,pres =', latlon(1), latlon(2), latlon(3)
-   call error_handler(E_MSG, 'location: ', msgstring)
-endif
-if( get_last_obs(real_obs_sequence, obs)) then
-   call get_obs_def(obs, obs_def)
-   time = get_obs_def_time(obs_def)
-   call print_time(time,' last  time in sequence is ')
-   call print_date(time,' which is gregorian date   ')
-   obs_loc = get_obs_def_location(obs_def)
-   latlon = get_location(obs_loc)
-   write(msgstring,*)'lat,lon,pres =', latlon(1), latlon(2), latlon(3)
-   call error_handler(E_MSG, 'location: ', msgstring)
-endif
-call error_handler(E_MSG, ' ', ' ')
+call print_obs_seq(make_obs_sequence, '')
 
-end function real_obs_sequence
+end function make_obs_sequence
 
 !------------------------------------------------------------------------------
-
-subroutine real_obs(num_copies, num_qc, obs, lon, lat, vloc, obs_value, &
-                      var2, aqc, obs_kind, which_vert, seconds, days)
-integer,        intent(in)    :: num_copies, num_qc
-type(obs_type), intent(inout) :: obs
-real(r8),       intent(in)    :: lon, lat, vloc, obs_value, var2, aqc
-integer,        intent(in)    :: obs_kind, which_vert, seconds, days
-
-integer            :: i
-real(r8)           :: aqc01(1), obs_value01(1)
-type(obs_def_type) :: obsdef0
-
-if ( .not. module_initialized ) call initialize_module
-
-! Does real initialization of an observation type
-
-call real_obs_def(obsdef0, lon, lat, vloc, &
-                    var2, obs_kind, which_vert, seconds, days)
-call set_obs_def(obs, obsdef0)
-
-do i = 1, num_copies
-   obs_value01(1) = obs_value
-   call set_obs_values(obs, obs_value01(1:1) )
-end do
-
-do i = 1, num_qc
-   aqc01(1) = aqc
-   call set_qc(obs, aqc01(1:1))
-end do
-
-end subroutine real_obs
-
-!----------------------------------------------------------------------
-
-subroutine real_obs_def(obs_def, lon, lat, vloc, &
-                        var2, obs_kind, which_vert, seconds, days)
-type(obs_def_type), intent(inout) :: obs_def
-real(r8),intent(in) :: lon, lat, vloc, var2
-integer, intent(in) :: obs_kind, which_vert, seconds, days
-
-type(location_type) :: loc0
-
-if ( .not. module_initialized ) call initialize_module
-
-! set obs location
-loc0 = set_location(lon, lat, vloc, which_vert )
-call set_obs_def_location(obs_def, loc0)
-
-! set obs kind
-call set_obs_def_type_of_obs(obs_def, obs_kind)
-
-call set_obs_def_time(obs_def, set_time(seconds, days) )
-call set_obs_def_error_variance(obs_def, var2)
-
-end subroutine real_obs_def
-
-!----------------------------------------------------------------------
 
 subroutine check_size(size1, size2, varlabel, subrlabel)
 integer,          intent(in) :: size1, size2
@@ -487,26 +392,26 @@ base_time = set_date(1993, 1, 1, 0, 0, 0)   ! reference date: jan 1st, 1993
 
 call check_size(size(granule%TAirStd),                           &
    AIRS_RET_STDPRESSURELAY*AIRS_RET_GEOXTRACK*AIRS_RET_GEOTRACK, &
-   'TAirStd (T)','real_obs_sequence')
+   'TAirStd (T)','make_obs_sequence')
 
 if (DEBUG) print *, 'first  row T', granule%TAirStd(:, 1, 1)
 if (DEBUG) print *, 'second row T', granule%TAirStd(:, 2, 1)
 if (DEBUG) print *, 'second col T', granule%TAirStd(:, 1, 2)
 
 call check_size(size(granule%TAirStdErr), size(granule%TAirStd), &
-   'TAirStdErr (T_err)','real_obs_sequence')
+   'TAirStdErr (T_err)','make_obs_sequence')
 
 if (DEBUG) print *, 'first  row T err', granule%TAirStdErr(:, 1, 1)
 
 ! First (lowest) good pressure level number
 call check_size(size(granule%nBestStd), AIRS_RET_GEOXTRACK*AIRS_RET_GEOTRACK, &
-   'nBestStd (T QC)','real_obs_sequence')
+   'nBestStd (T QC)','make_obs_sequence')
 
 if (DEBUG) print *, 'first  row nBestStd', granule%nBestStd(:, 1)
 
 call check_size(size(granule%H2OMMRStd),                         &
    AIRS_RET_H2OPRESSURELAY*AIRS_RET_GEOXTRACK*AIRS_RET_GEOTRACK, &
-   'H2OMMRStd (MMR)','real_obs_sequence')
+   'H2OMMRStd (MMR)','make_obs_sequence')
 
 if (DEBUG) print *, 'AIRS_RET_H2OPRESSURELEV = ', AIRS_RET_H2OPRESSURELEV
 if (DEBUG) print *, 'AIRS_RET_H2OPRESSURELAY = ', AIRS_RET_H2OPRESSURELAY
@@ -515,12 +420,12 @@ if (DEBUG) print *, 'second col MMR', granule%H2OMMRStd(:, 2, 1)
 if (DEBUG) print *, 'second col MMR', granule%H2OMMRStd(:, 1, 2)
 
 call check_size(size(granule%H2OMMRStdErr), size(granule%H2OMMRStd), &
-   'H2OMMRStdErr (MMR_err)','real_obs_sequence')
+   'H2OMMRStdErr (MMR_err)','make_obs_sequence')
 
 if (DEBUG) print *, 'first  row MMR err', granule%H2OMMRStdErr(:, 1, 1)
 
 call check_size(size(granule%Qual_H2O), AIRS_RET_GEOXTRACK*AIRS_RET_GEOTRACK, &
-   'Qual_H2O (Q QC)','real_obs_sequence')
+   'Qual_H2O (Q QC)','make_obs_sequence')
 
 if (DEBUG) print *, 'first  row qual_h2o', granule%Qual_H2O(:, 1)
 

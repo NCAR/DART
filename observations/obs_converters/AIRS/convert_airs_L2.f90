@@ -18,8 +18,7 @@ use    utilities_mod, only : initialize_utilities, register_module, &
                              find_namelist_in_file, check_namelist_read, &
                              do_nml_file, do_nml_term, &
                              logfileunit, nmlfileunit, get_next_filename
-
-use airs_obs_mod,     only : real_obs_sequence, create_output_filename
+use airs_obs_mod,     only : make_obs_sequence, create_output_filename
 
 implicit none
 
@@ -126,7 +125,7 @@ do
    call airs_ret_rdr(datafile, granule)   
 
    ! convert derived type information to DART sequence
-   seq = real_obs_sequence(granule, lon1, lon2, lat1, lat2, &
+   seq = make_obs_sequence(granule, lon1, lon2, lat1, lat2, &
                            min_MMR_threshold, top_pressure_level, &
                            along_track_thin, cross_track_thin) 
 
