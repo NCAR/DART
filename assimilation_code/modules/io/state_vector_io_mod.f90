@@ -469,7 +469,7 @@ type(ensemble_type),         intent(inout) :: ens_handle
 type(adaptive_inflate_type), intent(in)    :: inflate_handle
 
 character(len=32)  :: label
-character(len=128) :: nmread
+!character(len=128) :: nmread
 integer            :: INF_MEAN_COPY, INF_SD_COPY
 real(r8)           :: inf_initial, sd_initial
 

@@ -10,8 +10,8 @@ ReadASCIIObsSeq <- function(fname='obs_seq.final') {
   ## The file contains a linked list which we are reading sequentially.
   ## The resulting sequence "a.obs" is NOT guaranteed to be in a temporally ascending order.
 
-  ## DART software - Copyright 2004 - 2013 UCAR. This open source software is
-  ## provided by UCAR, "as is", without charge, subject to all terms of use at
+  ## DART software - Copyright UCAR. This open source software is provided
+  ## by UCAR, "as is", without charge, subject to all terms of use at
   ## http://www.image.ucar.edu/DAReS/DART/DART_download
   ##
   ## DART $Id$
