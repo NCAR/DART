@@ -6,41 +6,42 @@
 #
 # DART $Id$
 
-# if you are building this on yellowstone.ucar.edu you can changed 
+# if you are building this on yellowstone.ucar.edu you can change
 # each of the /opt/local build directories below to /glade/p/work/nancy
 # where i have built the jpg, hdf, and eos libraries.
 
-set XTRALIBS_BASE = /Users/nancy/eos
+set XTRALIBS_BASE = /Users/nancy
 
-set JPGDIR = ${XTRALIBS_BASE}
+set JPGDIR = ${XTRALIBS_BASE}/eos
+set HDFDIR = ${XTRALIBS_BASE}/eos
+set EOSDIR = ${XTRALIBS_BASE}/eos
+set RTTOV = ${XTRALIBS_BASE}/rttov
+
+
 set JPGINC = ${JPGDIR}/include
 set JPGLIB = ${JPGDIR}/lib
 
-set HDFDIR = ${XTRALIBS_BASE}
 set HDFINC = ${HDFDIR}/include
 set HDFLIB = ${HDFDIR}/lib
 
-set EOSDIR = ${XTRALIBS_BASE}
 set EOSINC = ${EOSDIR}/include
 set EOSLIB = ${EOSDIR}/lib
 
-set RTTOV = /Users/nancy/rttov
 set RTINC = "${RTTOV}/include"
 set RTMOD = "${RTTOV}/mod"
 set RTLIB = "${RTTOV}/lib"
 set RTLIBS = "-lrttov_main -lrttov_brdf_atlas -lrttov_coef_io -lrttov_emis_atlas -lrttov_mw_scatt -lrttov_mw_scatt_coef -lrttov_other"
 
-
-# leaving this out for now? rttov12_parallel
+# leaving this out for now: rttov_parallel
 
 set MYLIBS = "${RTLIBS} -lhdfeos -lmfhdf -ldf -ljpeg -lz  -lm"
 
 set MYINCDIRS = "-I${RTINC} -I${RTMOD} -I${EOSINC} -I${HDFINC} -I${JPGINC}"
 set MYLIBDIRS = "-L${RTLIB} -L${EOSLIB} -L${HDFLIB} -L${JPGLIB}"
 
-# this is gfortran specific.
+# is -cpp compiler specific?  on a mac with a case-insensitive filesystem
+# we have to tell it to call cpp to build files with #if and #include lines.
 
-#set MYFLAGS = "-fno-underscoring -cpp ${MYINCDIRS}"
 set MYFLAGS = "-cpp ${MYINCDIRS}"
 
 ../../../../build_templates/mkmf -p convert_airs_L2 -t ../../../../build_templates/mkmf.template \
