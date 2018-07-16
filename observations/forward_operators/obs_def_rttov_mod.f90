@@ -74,11 +74,22 @@ use  assim_model_mod, only : interpolate
 use obs_def_utilities_mod, only : track_status
 use ensemble_manager_mod,  only : ensemble_type
 
-!FIXME
-use rttov_interface_mod,   only : a, b, c
+use rttov_interface_mod,   only : dart_rttov_setup, &
+                                  dart_rttov_do_forward_model, &
+                                  dart_rttov_takedown   ! unused at present?
 
 implicit none
 private
+
+!FIXME: the converters only need the metadata routines.
+! filter needs them all.  but with a complicated forward
+! operator, the convert now needs to be built with the
+! entire rttov library even though it will never call it.
+! how can we exclude the get_expected code from the
+! converter?  preprocessor options?  split this file
+! into two separate ones?  forward operator vs obs metadata?  
+! then the converters just use the metadata and filter
+! uses both...  or something.
 
 public ::            set_rttov_metadata, &
                      get_rttov_metadata, &
@@ -108,9 +119,9 @@ logical, save      :: module_initialized = .false.
 type obs_metadata
    private
    real(r8)            :: sat_az     ! azimuth of satellite position
-   real(r8)            :: sat_ze     ! azimuth of satellite position
-   real(r8)            :: sun_az     ! zenith of solar position
-   real(r8)            :: sun_ze     ! zenith of solar position
+   real(r8)            :: sat_ze     ! zenith of satellite position
+   real(r8)            :: sun_az     ! azimuth of solar position
+   real(r8)            :: sun_ze     ! zenith of solar position 
    integer             :: platform   ! see rttov user guide, table 2
    integer             :: sat_id     ! see rttov user guide, table 2
    integer             :: sensor     ! see rttov user guide, table 3

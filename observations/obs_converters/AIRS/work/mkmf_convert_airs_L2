@@ -10,27 +10,41 @@
 # each of the /opt/local build directories below to /glade/p/work/nancy
 # where i have built the jpg, hdf, and eos libraries.
 
-set JPGDIR = /opt/local
-set JPGLIB = ${JPGDIR}/lib
+set XTRALIBS_BASE = /Users/nancy/eos
+
+set JPGDIR = ${XTRALIBS_BASE}
 set JPGINC = ${JPGDIR}/include
+set JPGLIB = ${JPGDIR}/lib
 
-set HDFDIR = /opt/local
-set HDFLIB = ${HDFDIR}/lib
+set HDFDIR = ${XTRALIBS_BASE}
 set HDFINC = ${HDFDIR}/include
+set HDFLIB = ${HDFDIR}/lib
 
-set EOSDIR = /opt/local
-set EOSLIB = ${EOSDIR}/lib
+set EOSDIR = ${XTRALIBS_BASE}
 set EOSINC = ${EOSDIR}/include
+set EOSLIB = ${EOSDIR}/lib
+
+set RTTOV = /Users/nancy/rttov
+set RTINC = "${RTTOV}/include"
+set RTMOD = "${RTTOV}/mod"
+set RTLIB = "${RTTOV}/lib"
+set RTLIBS = "-lrttov_main -lrttov_brdf_atlas -lrttov_coef_io -lrttov_emis_atlas -lrttov_mw_scatt -lrttov_mw_scatt_coef -lrttov_other"
+
+
+# leaving this out for now? rttov12_parallel
+
+set MYLIBS = "${RTLIBS} -lhdfeos -lmfhdf -ldf -ljpeg -lz  -lm"
+
+set MYINCDIRS = "-I${RTINC} -I${RTMOD} -I${EOSINC} -I${HDFINC} -I${JPGINC}"
+set MYLIBDIRS = "-L${RTLIB} -L${EOSLIB} -L${HDFLIB} -L${JPGLIB}"
 
 # this is gfortran specific.
-set MYFLAGS = "-fno-underscoring"
-set MYLIBS = "-lhdfeos -lmfhdf -ldf -ljpeg -lz  -lm"
 
-set MYINCDIR = "-I${EOSDIR}/include -I${HDFDIR}/include -I${JPGDIR}/include"
-set MYLIBDIR = "-L${EOSDIR}/lib     -L${HDFDIR}/lib     -L${JPGDIR}/lib"
+#set MYFLAGS = "-fno-underscoring -cpp ${MYINCDIRS}"
+set MYFLAGS = "-cpp ${MYINCDIRS}"
 
 ../../../../build_templates/mkmf -p convert_airs_L2 -t ../../../../build_templates/mkmf.template \
- -o "${MYFLAGS}" -l "${MYFLAGS} ${MYINCDIR} ${MYLIBDIR} ${MYLIBS}" \
+ -o "${MYFLAGS}" -l "${MYFLAGS} ${MYINCDIRS} ${MYLIBDIRS} ${MYLIBS}" \
  -a "../../../.." path_names_convert_airs_L2
 
 exit $status
