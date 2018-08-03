@@ -54,7 +54,7 @@ use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars,   
 
 use mpi_utilities_mod,    only : my_task_id, broadcast_send, broadcast_recv,              & 
                                  sum_across_tasks, task_count, start_mpi_timer,           &
-                                 read_mpi_timer
+                                 read_mpi_timer, task_sync
 
 use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate, do_ss_inflate,    &
                                  do_varying_ss_inflate,                                   &
@@ -323,11 +323,7 @@ integer,                     intent(in)    :: OBS_PRIOR_MEAN_START, OBS_PRIOR_ME
 integer,                     intent(in)    :: OBS_PRIOR_VAR_START, OBS_PRIOR_VAR_END
 logical,                     intent(in)    :: inflate_only
 
-!>@todo FIXME this routine has a huge amount of local/stack storage.
-!>at some point does it need to be allocated instead?  this routine isn't
-!>called frequently so doing allocate/deallocate isn't a timing issue.  
-!>putting arrays on the stack is fast, but risks running out of stack space 
-!>and dying with strange errors.
+! changed the ensemble sized things here to allocatable
 
 real(r8) :: obs_prior(ens_size), obs_inc(ens_size), increment(ens_size)
 real(r8) :: reg_factor, impact_factor
@@ -339,37 +335,44 @@ real(r8) :: gamma, ens_obs_mean, ens_obs_var, ens_var_deflate
 real(r8) :: r_mean, r_var
 real(r8) :: orig_obs_prior_mean(num_groups), orig_obs_prior_var(num_groups)
 real(r8) :: obs_prior_mean(num_groups), obs_prior_var(num_groups)
-real(r8) :: close_obs_dist(obs_ens_handle%my_num_vars)
-real(r8) :: close_state_dist(ens_handle%my_num_vars)
-real(r8) :: last_close_obs_dist(obs_ens_handle%my_num_vars)
-real(r8) :: last_close_state_dist(ens_handle%my_num_vars)
 real(r8) :: diff_sd, outlier_ratio
+real(r8) :: vertvalue_obs_in_localization_coord, whichvert_real
+real(r8), allocatable :: close_obs_dist(:)
+real(r8), allocatable :: close_state_dist(:)
+real(r8), allocatable :: last_close_obs_dist(:)
+real(r8), allocatable :: last_close_state_dist(:)
 
 integer(i8) :: state_index
-integer(i8) :: my_state_indx(ens_handle%my_num_vars)
-integer(i8) :: my_obs_indx(obs_ens_handle%my_num_vars)
+integer(i8), allocatable :: my_state_indx(:)
+integer(i8), allocatable :: my_obs_indx(:)
 
 integer  :: my_num_obs, i, j, owner, owners_index, my_num_state
-integer  :: this_obs_key, obs_mean_index, obs_var_index
+integer :: obs_mean_index, obs_var_index
 integer  :: grp_beg(num_groups), grp_end(num_groups), grp_size, grp_bot, grp_top, group
-integer  :: close_obs_ind(obs_ens_handle%my_num_vars)
-integer  :: close_state_ind(ens_handle%my_num_vars)
-integer  :: last_close_obs_ind(obs_ens_handle%my_num_vars)
-integer  :: last_close_state_ind(ens_handle%my_num_vars)
 integer  :: num_close_obs, obs_index, num_close_states
 integer  :: total_num_close_obs, last_num_close_obs, last_num_close_states
-integer  :: base_obs_kind, base_obs_type, my_obs_kind(obs_ens_handle%my_num_vars)
-integer  :: my_obs_type(obs_ens_handle%my_num_vars)
-integer  :: my_state_kind(ens_handle%my_num_vars), nth_obs
+integer :: base_obs_kind, base_obs_type, nth_obs
 integer  :: num_close_obs_cached, num_close_states_cached
 integer  :: num_close_obs_calls_made, num_close_states_calls_made
-! GSR add new count for only the 'assimilate' type close obs in the tile
 integer  :: localization_unit, secs, days, rev_num_close_obs
+integer :: whichvert_obs_in_localization_coord
+integer :: istatus
+integer, allocatable :: close_obs_ind(:)
+integer, allocatable :: close_state_ind(:)
+integer, allocatable :: last_close_obs_ind(:)
+integer, allocatable :: last_close_state_ind(:)
+integer, allocatable :: my_obs_kind(:)
+integer, allocatable :: my_obs_type(:)
+integer, allocatable :: my_state_kind(:)
+integer, allocatable :: vstatus(:)
+
 character(len = 200)  :: base_loc_text   ! longer than longest location formatting possible
 
-type(location_type)  :: my_obs_loc(obs_ens_handle%my_num_vars)
 type(location_type)  :: base_obs_loc, last_base_obs_loc, last_base_states_loc
-type(location_type)  :: my_state_loc(ens_handle%my_num_vars), dummyloc
+type(location_type) :: dummyloc
+type(location_type), allocatable :: my_obs_loc(:)
+type(location_type), allocatable :: my_state_loc(:)
+
 type(get_close_type) :: gc_obs, gc_state
 type(obs_type)       :: observation
 type(obs_def_type)   :: obs_def
@@ -377,29 +380,73 @@ type(time_type)      :: obs_time, this_obs_time
 
 logical :: do_adapt_inf_update
 logical :: allow_missing_in_state
-! for performance, local copies 
 logical :: local_single_ss_inflate
 logical :: local_varying_ss_inflate
 logical :: local_ss_inflate
 logical :: local_obs_inflate
 
-! HK observation location conversion
-real(r8) :: vertvalue_obs_in_localization_coord
-integer  :: whichvert_obs_in_localization_coord
-real(r8) :: whichvert_real
-type(location_type) :: lc(1)
-integer             :: kd(1)
-
-! timing - set one or both of the parameters to true
-! to get timing info printed out.
-real(digits12) :: base, elapsed, base2
-logical, parameter :: timing = .false.
-logical, parameter :: timing1 = .false.
+! timing related vars:
+! set timing(N) true to collect and print timing info
+integer, parameter :: Ntimers = 5
+integer, parameter :: MLOOP  = 1  ! main assimilation loop
+integer, parameter :: LG_GRN = 2  ! large section timings
+integer, parameter :: SM_GRN = 3  ! inner loops - use carefully!
+integer, parameter :: GC     = 4  ! get_close() related loops
+logical        :: timing(Ntimers)   ! enable or disable w/ this
+real(digits12) :: t_base(Ntimers)   ! storage for time info
+integer(i8)    :: t_items(Ntimers)  ! count of number of calls
+integer(i8)    :: t_limit(Ntimers)  ! limit on number printed
 real(digits12), allocatable :: elapse_array(:)
 
-integer :: istatus 
-integer :: vstatus(obs_ens_handle%my_num_vars) !< for vertical conversion status.
+integer, allocatable :: n_close_state_items(:), n_close_obs_items(:)
 
+! timing disabled by default
+timing(:)  = .false.
+t_base(:)  = 0.0_r8
+t_items(:) = 0_i8
+t_limit(:) = 0_i8
+
+! how about this?  look for imbalances in the tasks
+allocate(n_close_state_items(obs_ens_handle%num_vars), &
+         n_close_obs_items(  obs_ens_handle%num_vars))
+
+! turn these on carefully - they can generate a lot of output!
+! also, to be readable - at least with ifort:
+!  setenv FORT_FMT_RECL 1024
+! so output lines don't wrap.
+
+!timing(MLOOP)  = .true.
+!timing(LG_GRN) = .true.
+
+if (timing(MLOOP)) allocate(elapse_array(obs_ens_handle%num_vars))
+
+! use maxitems limit here or drown in output.
+!timing(SM_GRN) = .false.
+!t_limit(SM_GRN) = 4_i8
+
+!timing(GC) = .true.
+!t_limit(GC) = 4_i8
+
+
+! allocate rather than dump all this on the stack
+allocate(close_obs_dist(     obs_ens_handle%my_num_vars), &
+         last_close_obs_dist(obs_ens_handle%my_num_vars), &
+         close_obs_ind(      obs_ens_handle%my_num_vars), &
+         last_close_obs_ind( obs_ens_handle%my_num_vars), &
+         vstatus(            obs_ens_handle%my_num_vars), &
+         my_obs_indx(        obs_ens_handle%my_num_vars), &
+         my_obs_kind(        obs_ens_handle%my_num_vars), &
+         my_obs_type(        obs_ens_handle%my_num_vars), &
+         my_obs_loc(         obs_ens_handle%my_num_vars))
+
+allocate(close_state_dist(     ens_handle%my_num_vars), &
+         last_close_state_dist(ens_handle%my_num_vars), &
+         close_state_ind(      ens_handle%my_num_vars), &
+         last_close_state_ind( ens_handle%my_num_vars), &
+         my_state_indx(        ens_handle%my_num_vars), &
+         my_state_kind(        ens_handle%my_num_vars), &
+         my_state_loc(         ens_handle%my_num_vars))
+! end alloc
 
 ! we are going to read/write the copies array
 call prepare_to_update_copies(ens_handle)
@@ -490,11 +537,11 @@ call init_obs(observation, get_num_copies(obs_seq), get_num_qc(obs_seq))
 ! HK I would like to move this to before the calculation of the forward operator so you could
 ! overwrite the vertical location with the required localization vertical coordinate when you 
 ! do the forward operator calculation
-call get_my_obs_loc(ens_handle, obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type, obs_time)
+call get_my_obs_loc(obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type, obs_time)
 
 if (convert_all_obs_verticals_first .and. is_doing_vertical_conversion) then
    ! convert the vertical of all my observations to the localization coordinate
-   if (timing) call start_mpi_timer(base)
+   if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
    if (obs_ens_handle%my_num_vars > 0) then
       call convert_vertical_obs(ens_handle, obs_ens_handle%my_num_vars, my_obs_loc, &
                                 my_obs_kind, my_obs_type, get_vertical_localization_coord(), vstatus)
@@ -505,10 +552,7 @@ if (convert_all_obs_verticals_first .and. is_doing_vertical_conversion) then
          endif
       enddo
    endif 
-   if (timing) then
-      elapsed = read_mpi_timer(base)
-      print*, 'convert_vertical_obs time :', elapsed, 'rank ', my_task_id()
-   endif
+   if (timing(LG_GRN)) call read_timer(t_base(LG_GRN), 'convert_vertical_obs')
 endif
 
 ! Get info on my number and indices for state
@@ -516,28 +560,22 @@ my_num_state = get_my_num_vars(ens_handle)
 call get_my_vars(ens_handle, my_state_indx)
 
 ! Get the location and kind of all my state variables
-if (timing) call start_mpi_timer(base)
+if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
 do i = 1, ens_handle%my_num_vars
    call get_state_meta_data(my_state_indx(i), my_state_loc(i), my_state_kind(i))
 end do
-if (timing) then
-   elapsed = read_mpi_timer(base)
-   print*, 'get_state_meta_data time :', elapsed, 'rank ', my_task_id()
-endif
+if (timing(LG_GRN)) call read_timer(t_base(LG_GRN), 'get_state_meta_data')
 
 !call test_get_state_meta_data(my_state_loc, ens_handle%my_num_vars)
 
 !> optionally convert all state location verticals
 if (convert_all_state_verticals_first .and. is_doing_vertical_conversion) then
-   if (timing) call start_mpi_timer(base)
+   if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
    if (ens_handle%my_num_vars > 0) then
       call convert_vertical_state(ens_handle, ens_handle%my_num_vars, my_state_loc, my_state_kind,  &
                                   my_state_indx, get_vertical_localization_coord(), istatus)
    endif
-   if (timing) then
-      elapsed = read_mpi_timer(base)
-      print*, 'convert_vertical_state time :', elapsed, 'rank ', my_task_id()
-   endif
+   if (timing(LG_GRN)) call read_timer(t_base(LG_GRN), 'convert_vertical_state')
 endif
 
 ! PAR: MIGHT BE BETTER TO HAVE ONE PE DEDICATED TO COMPUTING 
@@ -591,13 +629,17 @@ endif
 
 allow_missing_in_state = get_missing_ok_status()
 
-! timing
-if (my_task_id() == 0 .and. timing) allocate(elapse_array(obs_ens_handle%num_vars))
+! use MLOOP for the overall outer loop times; LG_GRN is for
+! sections inside the overall loop, including the total time
+! for the state_update and obs_update loops.  use SM_GRN for
+! sections inside those last 2 loops and be careful - they will
+! be called nobs * nstate * ntasks.
 
 ! Loop through all the (global) observations sequentially
 SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
-   call start_mpi_timer(base2)
+   if (timing(MLOOP))  call start_timer(t_base(MLOOP))
+   if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
 
    ! Some compilers do not like mod by 0, so test first.
    if (print_every_nth_obs > 0) nth_obs = mod(i, print_every_nth_obs)
@@ -606,7 +648,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! to indicate progress is being made and to allow estimates 
    ! of how long the assim will take.
    if (nth_obs == 0) then
-      write(msgstring, '(A,1x,I8,1x,A,I8)') 'Processing observation ', i, &
+      write(msgstring, '(2(A,I8))') 'Processing observation ', i, &
                                          ' of ', obs_ens_handle%num_vars
       if (print_timestamps == 0) then
          call error_handler(E_MSG,'filter_assim',msgstring)
@@ -700,9 +742,12 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                      r_mean = ens_obs_mean
                   endif
 
+                  if (timing(SM_GRN)) call start_timer(t_base(SM_GRN), t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
                   ! Update the inflation value
                   call update_inflation(inflate, my_inflate, my_inflate_sd, &
                      r_mean, r_var, grp_size, obs(1), obs_err_var, gamma)
+                  if (timing(SM_GRN)) call read_timer(t_base(SM_GRN), 'update_inflation_C', &
+                                                      t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
                endif
             end do
          endif SINGLE_SS_INFLATE
@@ -759,7 +804,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    !-----------------------------------------------------------------------
 
    ! Everybody is doing this section, cycle if qc is bad
-   if(nint(obs_qc) /= 0) cycle SEQUENTIAL_OBS
+   if(nint(obs_qc) /= 0) then
+      if (timing(MLOOP)) then
+         write(msgstring, '(A32,I7)') 'sequential obs cycl: obs', keys(i)
+         call read_timer(t_base(MLOOP), msgstring, elapsed = elapse_array(i))
+      endif
+      cycle SEQUENTIAL_OBS
+   endif
 
    !> all tasks must set the converted vertical values into the 'base' version of this loc
    !> because that's what we pass into the get_close_xxx() routines below.
@@ -786,13 +837,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
 
    if (.not. close_obs_caching) then
-      if (timing) call start_mpi_timer(base)
+      if (timing(GC)) call start_timer(t_base(GC), t_items(GC), t_limit(GC), do_sync=.false.)
       call get_close_obs(gc_obs, base_obs_loc, base_obs_type, &
                          my_obs_loc, my_obs_kind, my_obs_type, &
                          num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
-      if (timing) then
-         elapsed = read_mpi_timer(base)
-         print*, 'get_close_obs1 time :', elapsed, 'rank ', my_task_id()
+      if (timing(GC)) then
+         write(msgstring, '(A32,3I7)') 'gc_ob_NC:nobs,tot,obs# ', num_close_obs, obs_ens_handle%my_num_vars, keys(i)
+         call read_timer(t_base(GC), msgstring, t_items(GC), t_limit(GC), do_sync=.false.)
       endif
 
    else
@@ -803,13 +854,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          close_obs_dist(:) = last_close_obs_dist(:)
          num_close_obs_cached = num_close_obs_cached + 1
       else
-         if (timing .and. i < 100) call start_mpi_timer(base)
+         if (timing(GC)) call start_timer(t_base(GC), t_items(GC), t_limit(GC), do_sync=.false.)
          call get_close_obs(gc_obs, base_obs_loc, base_obs_type, &
                             my_obs_loc, my_obs_kind, my_obs_type, &
                             num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
-         if (timing .and. i < 100) then
-            elapsed = read_mpi_timer(base)
-            print*, 'get_close_obs2 time :', elapsed, 'rank ', my_task_id()
+         if (timing(GC)) then
+            write(msgstring, '(A32,3I7)') 'gc_ob_C: nobs,tot,obs# ', num_close_obs, obs_ens_handle%my_num_vars, keys(i)
+            call read_timer(t_base(GC), msgstring, t_items(GC), t_limit(GC), do_sync=.false.)
          endif
 
          last_base_obs_loc      = base_obs_loc
@@ -820,6 +871,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
    endif
 
+   n_close_obs_items(i) = num_close_obs
     !print*, 'base_obs _oc', base_obs_loc, 'rank ', my_task_id()
     !call test_close_obs_dist(close_obs_dist, num_close_obs, i)
     !print*, 'num close ', num_close_obs
@@ -839,15 +891,12 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! For adaptive localization, need number of other obs close to the chosen observation
    if(adaptive_localization_threshold > 0) then
 
-      if (timing) call start_mpi_timer(base)
+      if (timing(GC)) call start_timer(t_base(GC), t_items(GC), t_limit(GC), do_sync=.false.)
 
       ! this does a cross-task sum, so all tasks must make this call.
       total_num_close_obs = count_close(num_close_obs, close_obs_ind, my_obs_type, &
                                         close_obs_dist, cutoff_rev*2.0_r8)
-      if (timing) then
-         elapsed = read_mpi_timer(base)
-         print*, 'count_close time :', elapsed, 'rank ', my_task_id()
-      endif
+      if (timing(GC)) call read_timer(t_base(GC), 'count_close', t_items(GC), t_limit(GC), do_sync=.false.)
 
 
       ! Want expected number of close observations to be reduced to some threshold;
@@ -915,13 +964,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Now everybody updates their close states
    ! Find state variables on my process that are close to observation being assimilated
    if (.not. close_obs_caching) then
-      if (timing .and. i < 100) call start_mpi_timer(base)
+      if (timing(GC)) call start_timer(t_base(GC), t_items(GC), t_limit(GC), do_sync=.false.)
       call get_close_state(gc_state, base_obs_loc, base_obs_type, &
                            my_state_loc, my_state_kind, my_state_indx, &
                            num_close_states, close_state_ind, close_state_dist, ens_handle)
-      if (timing .and. i < 100) then
-         elapsed = read_mpi_timer(base)
-         print*, 'get_close_state1 time :', elapsed, 'rank ', my_task_id()
+      if (timing(GC)) then
+         write(msgstring, '(A32,3I7)') 'gc_st_NC:nsts,tot,obs# ', num_close_states, ens_handle%my_num_vars, keys(i)
+         call read_timer(t_base(GC), msgstring, t_items(GC), t_limit(GC), do_sync=.false.)
       endif
    else
       if (base_obs_loc == last_base_states_loc) then
@@ -930,13 +979,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          close_state_dist(:) = last_close_state_dist(:)
          num_close_states_cached = num_close_states_cached + 1
       else
-         if (timing .and. i < 100) call start_mpi_timer(base)
+         if (timing(GC)) call start_timer(t_base(GC), t_items(GC), t_limit(GC), do_sync=.false.)
          call get_close_state(gc_state, base_obs_loc, base_obs_type, &
                               my_state_loc, my_state_kind, my_state_indx, &
                               num_close_states, close_state_ind, close_state_dist, ens_handle)
-         if (timing .and. i < 100) then
-            elapsed = read_mpi_timer(base)
-            print*, 'get_close_state2 time :', elapsed, 'rank ', my_task_id()
+         if (timing(GC)) then
+            write(msgstring, '(A32,3I7)') 'gc_st_C: nsts,tot,obs# ', num_close_states, ens_handle%my_num_vars, keys(i)
+            call read_timer(t_base(GC), msgstring, t_items(GC), t_limit(GC), do_sync=.false.)
          endif
 
          last_base_states_loc     = base_obs_loc
@@ -947,12 +996,18 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
    endif
 
+   n_close_state_items(i) = num_close_states
    !print*, 'num close state', num_close_states
    !call test_close_obs_dist(close_state_dist, num_close_states, i)
    !call test_state_copies(ens_handle, 'beforeupdates')
 
+   if (timing(LG_GRN)) then
+      write(msgstring, '(A32,I7)') 'before_state_update: obs', keys(i)
+      call read_timer(t_base(LG_GRN), msgstring)
+   endif
+
    ! Loop through to update each of my state variables that is potentially close
-   if (i < 1000) call start_mpi_timer(base)
+   if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
    STATE_UPDATE: do j = 1, num_close_states
       state_index = close_state_ind(j)
 
@@ -989,6 +1044,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! If no weight is indicated, no more to do with this state variable
       if(cov_factor <= 0.0_r8) cycle STATE_UPDATE
 
+      if (timing(SM_GRN)) call start_timer(t_base(SM_GRN), t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
       ! Loop through groups to update the state variable ensemble members
       do group = 1, num_groups
          grp_bot = grp_beg(group)
@@ -1007,6 +1063,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                increment(grp_bot:grp_top), reg_coef(group), net_a(group))
          endif
       end do
+      if (timing(SM_GRN)) call read_timer(t_base(SM_GRN), 'update_from_obs_inc_S', &
+                                          t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
 
       ! Compute an information factor for impact of this observation on this state
       if(num_groups == 1) then
@@ -1063,8 +1121,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
                ! IS A TABLE LOOKUP POSSIBLE TO ACCELERATE THIS?
                ! Update the inflation values
+               if (timing(SM_GRN)) call start_timer(t_base(SM_GRN), t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
                call update_inflation(inflate, varying_ss_inflate, varying_ss_inflate_sd, &
                   r_mean, r_var, grp_size, obs(1), obs_err_var, gamma)
+               if (timing(SM_GRN)) call read_timer(t_base(SM_GRN), 'update_inflation_V', &
+                                                   t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
             else
                ! if we don't go into the previous if block, make sure these
                ! have good values going out for the block below
@@ -1090,9 +1151,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
 
    end do STATE_UPDATE
-   if (timing .and. i < 1000) then
-      elapsed = read_mpi_timer(base)
-      print*, 'state_update time :', elapsed, 'rank ', my_task_id()
+   if (timing(LG_GRN)) then
+      write(msgstring, '(A32,I7)') 'state_update: obs', keys(i)
+      call read_timer(t_base(LG_GRN), msgstring)
    endif
 
    !call test_state_copies(ens_handle, 'after_state_updates')
@@ -1100,7 +1161,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    !------------------------------------------------------
 
    ! Now everybody updates their obs priors (only ones after this one)
-   if (timing .and. i < 1000) call start_mpi_timer(base)
+   if (timing(LG_GRN)) call start_timer(t_base(LG_GRN))
    OBS_UPDATE: do j = 1, num_close_obs
       obs_index = close_obs_ind(j)
 
@@ -1126,6 +1187,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
          if(cov_factor <= 0.0_r8) cycle OBS_UPDATE
 
+         if (timing(SM_GRN)) call start_timer(t_base(SM_GRN), t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
          ! Loop through and update ensemble members in each group
          do group = 1, num_groups
             grp_bot = grp_beg(group)
@@ -1135,6 +1197,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                 obs_ens_handle%copies(grp_bot:grp_top, obs_index), grp_size, &
                 increment(grp_bot:grp_top), reg_coef(group), net_a(group))
          end do
+         if (timing(SM_GRN)) call read_timer(t_base(SM_GRN), 'update_from_obs_inc_O', &
+                                             t_items(SM_GRN), t_limit(SM_GRN), do_sync=.false.)
 
          ! FIXME: could we move the if test for inflate only to here?
 
@@ -1158,17 +1222,16 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          endif
       endif
    end do OBS_UPDATE
-   if (timing .and. i < 1000) then
-      elapsed = read_mpi_timer(base)
-      print*, 'obs_update time :', elapsed, 'rank ', my_task_id()
+   if (timing(LG_GRN)) then
+      write(msgstring, '(A32,I7)') 'obs_update: obs', keys(i)
+      call read_timer(t_base(LG_GRN), msgstring)
    endif
 
    !call test_state_copies(ens_handle, 'after_obs_updates')
 
-
-   if (my_task_id() == 0 .and. timing) then
-      elapse_array(i) = read_mpi_timer(base2)
-      if (timing1) print*, 'outer sequential obs time :', elapsed, ' obs ', i, ' rank ', my_task_id()
+   if (timing(MLOOP)) then
+      write(msgstring, '(A32,I7)') 'sequential obs loop: obs', keys(i)
+      call read_timer(t_base(MLOOP), msgstring, elapsed = elapse_array(i))
    endif
 end do SEQUENTIAL_OBS
 
@@ -1184,7 +1247,8 @@ call get_close_destroy(gc_state)
 call get_close_destroy(gc_obs)
 
 ! print some stats about the assimilation
-if (my_task_id() == 0 .and. timing) then
+! (if interesting, could print exactly which obs # was fastest and slowest)
+if (my_task_id() == 0 .and. timing(MLOOP)) then
    write(msgstring, *) 'average assim time: ', sum(elapse_array) / size(elapse_array)
    call error_handler(E_MSG,'filter_assim:',msgstring)
 
@@ -1195,12 +1259,33 @@ if (my_task_id() == 0 .and. timing) then
    call error_handler(E_MSG,'filter_assim:',msgstring)
 endif
 
-if (my_task_id() == 0 .and. timing) deallocate(elapse_array)
+if (timing(MLOOP)) deallocate(elapse_array)
+
+! do some stats - being aware that unless we do a reduce() operation
+! this is going to be per-task.  so only print if something interesting
+! shows up in the stats?  maybe it would be worth a reduce() call here?
+
+!>@todo FIXME:  
+!  we have n_close_obs_items and n_close_state_items for each assimilated
+!  observation.  what we really want to know is across the tasks is there
+!  a big difference in counts?  so that means communication.  maybe just
+!  the largest value?  and the number of 0 values?  and if the largest val
+!  is way off compared to the other tasks, warn the user?
+!  we don't have space or time to do all the obs * tasks but could we
+!  send enough info to make a histogram?  compute N bin counts and then
+!  reduce that across all the tasks and have task 0 print out?
+! still thinking on this idea.
+!   write(msgstring, *) 'max state items per observation: ', maxval(n_close_state_items)
+!   call error_handler(E_MSG, 'filter_assim:', msgstring)
+! if i come up with something i like, can we use the same idea
+! for the threed_sphere locations boxes?
 
 ! Assure user we have done something
+if (print_trace_details >= 0) then
 write(msgstring, '(A,I8,A)') &
    'Processed', obs_ens_handle%num_vars, ' total observations'
-if (print_trace_details >= 0) call error_handler(E_MSG,'filter_assim:',msgstring)
+   call error_handler(E_MSG,'filter_assim:',msgstring)
+endif
 
 ! diagnostics for stats on saving calls by remembering obs at the same location.
 ! change .true. to .false. in the line below to remove the output completely.
@@ -1229,6 +1314,29 @@ end if
 
 ! get rid of mpi window
 call free_mean_window()
+
+! deallocate space
+deallocate(close_obs_dist,      &
+           last_close_obs_dist, &
+           my_obs_indx,         &
+           my_obs_kind,         &
+           my_obs_type,         &
+           close_obs_ind,       &
+           last_close_obs_ind,  &
+           vstatus,             &
+           my_obs_loc)
+
+deallocate(close_state_dist,      &
+           last_close_state_dist, &
+           my_state_indx,         &
+           close_state_ind,       &
+           last_close_state_ind,  &
+           my_state_kind,         &
+           my_state_loc)
+
+deallocate(n_close_state_items, &
+           n_close_obs_items)
+! end dealloc
 
 end subroutine filter_assim
 
@@ -1881,8 +1989,8 @@ integer,  intent(in)  :: ens_size
 
 ! Uses interpolation to get correction factor into the table
 
-integer             :: iunit, i, low_indx, high_indx
-real(r8)            :: temp, temp2, correl, fract, low_correl, low_exp_correl, low_alpha
+integer             :: low_indx, high_indx
+real(r8)            :: correl, fract, low_correl, low_exp_correl, low_alpha
 real(r8)            :: high_correl, high_exp_correl, high_alpha
 
 logical, save :: first_time = .true.
@@ -2767,9 +2875,8 @@ end function count_close
 
 !----------------------------------------------------------------------
 !> gets the location of of all my observations
-subroutine get_my_obs_loc(state_ens_handle, obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type, my_obs_time)
+subroutine get_my_obs_loc(obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type, my_obs_time)
 
-type(ensemble_type),      intent(in)  :: state_ens_handle
 type(ensemble_type),      intent(in)  :: obs_ens_handle
 type(obs_sequence_type),  intent(in)  :: obs_seq
 integer,                  intent(in)  :: keys(:)
@@ -2801,6 +2908,111 @@ end do Get_Obs_Locations
 my_obs_time = get_obs_def_time(obs_def)
 
 end subroutine get_my_obs_loc
+
+!--------------------------------------------------------------------
+!> wrappers for timers
+!>
+!> t_space is where we store the time information 
+!> itemcount is the running count of how many times we've been called
+!> maxitems is a limit on the number of times we want this timer to print.
+!> do_sync overrides the default for whether we want to do a task sync
+!> or not.  right now this code defaults to yes, sync before getting
+!> the time.  for very large processor counts this increases overhead.
+
+subroutine start_timer(t_space, itemcount, maxitems, do_sync)
+ real(digits12), intent(out) :: t_space
+ integer(i8),    intent(inout), optional :: itemcount
+ integer(i8),    intent(in),    optional :: maxitems
+ logical,        intent(in),    optional :: do_sync
+
+logical :: sync_me
+
+if (present(itemcount) .and. present(maxitems)) then
+  itemcount = itemcount + 1
+  if (itemcount > maxitems) then
+     ! if called enough, this can roll over the integer limit.  
+     ! set itemcount to maxitems+1 here to avoid this.
+     ! also, go ahead and set the time because there is
+     ! an option to print large time values even if over the
+     ! number of calls limit in read_timer()
+
+     itemcount = maxitems + 1
+     call start_mpi_timer(t_space)
+     return
+  endif
+endif
+
+sync_me = .true.
+if (present(do_sync)) sync_me = do_sync
+
+if (sync_me) call task_sync()
+call start_mpi_timer(t_space)
+
+end subroutine start_timer
+
+!--------------------------------------------------------------------
+!>
+!> t_space is where we store the time information 
+!> label is the string to print out with the time.  limited to ~60 chars.
+!> itemcount is the running count of how many times we've been called
+!> maxitems is a limit on the number of times we want this timer to print.
+!> do_sync overrides the default for whether we want to do a task sync
+!> or not.  right now this code defaults to yes, sync before getting
+!> the time.  for very large processor counts this increases overhead.
+!> elapsed is an optional return of the value instead of only printing here
+
+subroutine read_timer(t_space, label, itemcount, maxitems, do_sync, elapsed)
+ real(digits12),   intent(in) :: t_space
+ character(len=*), intent(in) :: label
+ integer(i8),      intent(inout), optional :: itemcount
+ integer(i8),      intent(in),    optional :: maxitems
+ logical,          intent(in),    optional :: do_sync
+ real(digits12),   intent(out),   optional :: elapsed
+
+real(digits12) :: interval
+logical :: sync_me
+character(len=132) :: buffer
+
+! if interval time (in seconds) is > this, go ahead and
+! print even if item count is over limit.
+integer(i8), parameter :: T_ALWAYS_PRINT = 1.0_r8
+
+! get the time first and then figure out what we're doing
+
+interval = read_mpi_timer(t_space)
+
+sync_me = .true.
+if (present(do_sync)) sync_me = do_sync
+
+! if there's a limit on number of prints don't allow sync 
+! because if we return early we could hang everyone else.
+if (present(maxitems)) sync_me = .false.
+
+! print out large values no matter what
+! (large is defined above locally in this routine)
+if (present(itemcount) .and. present(maxitems)) then
+  if (interval < T_ALWAYS_PRINT .and. itemcount > maxitems) return
+endif
+
+! if syncing, wait and read the timer again
+if (sync_me) then
+   call task_sync()
+   interval = read_mpi_timer(t_space)
+endif
+
+if (sync_me) then
+   if (my_task_id() == 0) then
+      write(buffer,'(A75,F15.8)') "timer: "//trim(label)//" time ", interval
+      write(*,*) buffer
+   endif
+else
+   write(buffer,'(A75,F15.8,A6,I7)') "timer: "//trim(label)//" time ", interval, " rank ", my_task_id()
+   write(*,*) buffer
+endif
+
+if (present(elapsed)) elapsed = interval
+
+end subroutine read_timer
 
 !--------------------------------------------------------------------
 !> log what the user has selected via the namelist choices
