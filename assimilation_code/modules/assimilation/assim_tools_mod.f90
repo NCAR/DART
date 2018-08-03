@@ -639,8 +639,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! vertical up above, then we need to broadcast the new values to all the other
       ! tasks so they're computing the right distances when applying the increments.
       if (is_doing_vertical_conversion) then
-         vertvalue_obs_in_localization_coord = query_location(base_obs_loc, "VLOC")
-         whichvert_obs_in_localization_coord = query_location(base_obs_loc, "WHICH_VERT")
+         vertvalue_obs_in_localization_coord = query_location(my_obs_loc(owners_index), "VLOC")
+         whichvert_obs_in_localization_coord = query_location(my_obs_loc(owners_index), "WHICH_VERT")
       else
          vertvalue_obs_in_localization_coord = 0.0_r8
          whichvert_obs_in_localization_coord = 0
@@ -755,16 +755,17 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
       whichvert_obs_in_localization_coord = nint(whichvert_real)
 
-      if (is_doing_vertical_conversion) then
-         ! use converted vertical coordinate value and type from owner
-         call set_vertical(base_obs_loc, vertvalue_obs_in_localization_coord, whichvert_obs_in_localization_coord)
-      endif
    endif
    !-----------------------------------------------------------------------
 
    ! Everybody is doing this section, cycle if qc is bad
    if(nint(obs_qc) /= 0) cycle SEQUENTIAL_OBS
 
+   !> all tasks must set the converted vertical values into the 'base' version of this loc
+   !> because that's what we pass into the get_close_xxx() routines below.
+   if (is_doing_vertical_conversion) &
+      call set_vertical(base_obs_loc, vertvalue_obs_in_localization_coord, whichvert_obs_in_localization_coord)
+   
    ! Can compute prior mean and variance of obs for each group just once here
    do group = 1, num_groups
       grp_bot = grp_beg(group)
