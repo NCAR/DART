@@ -771,6 +771,21 @@ and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
 - Added more functions to the netcdf_utilities_mod.f90
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Aug 03 2018 :: performance fix for distributed mean          Revision: 12758
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- Important performance fix if model does vertical conversion for localization.
+Results were not wrong but performance was poor if 'distribute_mean = .true.'
+was selected in the &assim_tools_nml namelist.
+Now distributing the mean runs in close to the non-distributed time and uses
+much less memory for large models. This only impacts models which do a vertical
+conversion of either the observation or state vertical coordinate for localization
+AND which set &assim_tools_nml :: distribute_mean = .true. to use less memory.
+When using a distributed mean "convert_all_obs_verticals_first = .true." should
+be set.  If your observations will impact most of the model state, then
+"convert_all_state_verticals_first = .true.' can also be set.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + MMM DD YYYY :: summary of next changes                    $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -778,8 +793,10 @@ and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
   map projection.  Thanks to Kevin Manning for the fix.
 
 - removed 'allow_missing_in_clm' flag from the &assim_tools_nml namelist in
-  the CICE work directory.  the flag moved to a different namelist but the
+  the CICE work directory.  The flag moved to a different namelist and the
   CICE model doesn't care about it.
+
+- increased the maximum number of input files to obs_diag from 100 to 10000.
 
 # <next few lines under version control, do not edit>
 # $URL$
