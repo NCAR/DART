@@ -77,7 +77,6 @@
 &assim_tools_nml
    filter_kind                     = 1
    cutoff                          = 0.05
-   allow_missing_in_clm            = .false.
    sort_obs_inc                    = .false.
    spread_restoration              = .false.
    sampling_error_correction       = .false.
