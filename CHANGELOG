@@ -774,6 +774,13 @@ and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
 + MMM DD YYYY :: summary of next changes                    $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+- fix for WRF's wind direction vectors when using the Polar Stereographic 
+  map projection.  Thanks to Kevin Manning for the fix.
+
+- removed 'allow_missing_in_clm' flag from the &assim_tools_nml namelist in
+  the CICE work directory.  the flag moved to a different namelist but the
+  CICE model doesn't care about it.
+
 # <next few lines under version control, do not edit>
 # $URL$
 # $Revision$
