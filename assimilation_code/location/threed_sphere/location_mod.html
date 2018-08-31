@@ -143,6 +143,11 @@ observation at the center.  The horizontal radius is defined by the
 cutoff and the vertical radius is defined by the normalization factors.
 </P>
 
+<P>
+See <a href="#Example">examples below</a> for specific examples that 
+highlight some vertical localization issues.
+</P>
+
 <H4>Different vertical factors per observation type</H4>
 <P>
 Generally a single cutoff value and a single set of normalization
@@ -234,6 +239,61 @@ used inside the code to pre-sort locations and make it faster to
 retrieve all locations close to another location.  A larger bin
 count uses more memory but shortens the linear part of the
 location search.
+</P>
+
+<A NAME="Example"></A>
+<H4>Examples and Questions involving vertical issues</H4>
+<H5>Example of specifying a cutoff based on a distance in kilometers</H5>
+<P>
+The Earth radius is nominally 6,371 Km.  If you want the
+maximum horizontal distance that an observation can possibly
+influence something in the model state to be X km, then set
+the cutoff to be (X / 6,371) / 2.  Remember the actual impact will
+depend on a combination of this distance and the regression
+coefficient computed from the distribution of forward operator values 
+and the ensemble of values in the model state.
+</P>
+<H5>Cutoff and half-widths</H5>
+<P>
+Q: Why is the cutoff specified as half the distance to where
+the impact goes to 0, and why is it called 'cutoff'?<br />
+A: Because the original paper by Gaspari & Cohn used that
+definition in this paper which our localization function is 
+based on.<br />
+Gaspari, G. and Cohn, S. E. (1999), Construction of correlation 
+functions in two and three dimensions. Q.J.R. Meteorol. Soc., 125: 723-757. 
+<a href="doi:10.1002/qj.49712555417">doi:10.1002/qj.49712555417</a>
+</P>
+<H5>Computing vertical normalization values</H5>
+<P>
+Because distances are computed in radians, the vertical distances
+have to be translated to radians.  To get a maximum vertical separation
+of X meters (if localizing in height), specify the vert_normalization_height
+of X / cutoff.  If localizing in pressure, specify vert_normalization_pressure
+as X pascals / cutoff, etc.
+</P>
+<H5>Single vertical coordinate type</H5>
+<P>
+Vertical distances can only be computed between two locations that have
+the same vertical type.  In practice this means
+if vertical localization is enabled all observations which have a
+vertical location need to be converted to a single vertical coordinate
+type, which matches the desired localization unit.  The model state must
+also be able to be converted to the same vertical coordinate type.
+</P>
+<P>
+For example, if some observations come with a vertical coordinate type of
+pressure and some with height, and you want to localize in height, the
+pressure coordinates need to be converted to an equivalant height.
+This usually requires information only available to the model interface
+code in the model_mod.f90 file, so a convert_vertical_obs() routine
+is called to do the conversion.
+</P>
+<P>
+The locations of the model state are returned by the get_state_meta_data()
+routine in the model_mod.f90 file.  If the vertical coordinate used in
+the state is not the same as the desired vertical localization type,
+they must also be converted using a convert_vertical_state() routine.
 </P>
 
 <br /><br />
