@@ -799,7 +799,7 @@ be set.  If your observations will impact most of the model state, then
 - increased the maximum number of input files to obs_diag from 100 to 10000.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Aug 31 2018 :: reintegrate CICE branch (yz-cice)          $Revision$
++ Aug 31 2018 :: reintegrate CICE branch (yz-cice)             Revision: 12806
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - Yongfei Zhang and Cecilia Bitz had improvements to the CICE model and 
