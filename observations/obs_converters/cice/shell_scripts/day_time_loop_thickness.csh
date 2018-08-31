@@ -39,13 +39,13 @@ if ($command_line_args == 'true') then
   set end_day=$argv[7]
   set end_hour=$argv[8]
 else
-  set start_year=2001
-  set start_month=01
+  set start_year=2005
+  set start_month=04
   set start_day=01
   set start_hour=0
   
-  set end_year=2003
-  set end_month=12
+  set end_year=2005
+  set end_month=10
   set end_day=31
   set end_hour=0
 endif
@@ -90,8 +90,8 @@ endif
 
 # loop over each day
 
-set obsindir = "$WORK/observations/syn/cice5/member10/ZeroObs/"
-set obsoutdir = "/$WORK/observations/syn/cice5/member10/ZeroObs/aggre/hice"
+set obsindir = "$WORK/observations/syn/cesm2/free_rsnw_2005to2010/t30/"
+set obsoutdir = "$obsindir/obs_seqs/hice/err0.4/"
 
 set d = 1
 while ( $d <= $totaldays )
@@ -136,7 +136,7 @@ set m = 1
   sed "/doy/ c\   doy = $doy_add" input.nml > temp
     mv temp input.nml
 
-    set filein  = "synthetic_obs.hice.${year}-${month}-${day}.nc"
+    set filein  = "synthetic_obs.hice.err0.4.${year}-${month}-${day}.nc"
     set fileout = "obs_seq.${year}-${month}-${day}-00000"
     echo $obsindir/$filein
     echo $obsoutdir/$fileout

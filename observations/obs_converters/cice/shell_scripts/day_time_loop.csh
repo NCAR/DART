@@ -90,8 +90,8 @@ endif
 
 # loop over each day
 
-set obsindir  = "$WORK/observations/syn/cice5/member10/err5/"
-set obsoutdir = "$WORK/observations/syn/cice5/member10/err5/cat/"
+set obsindir  = "$WORK/observations/syn/cesm2/ice-bridge/cice5_free_2005to2010/"
+set obsoutdir = "$obsindir/obs_seqs/aicen/err0.1"
 
 set d = 1
 while ( $d <= $totaldays )
@@ -140,9 +140,9 @@ set m = 1
 
   while ( $icat <= 5 ) 
     
-    set cat = `printf %03d $icat`
+    set cat = `printf %01d $icat`
 
-    set filein  = "synthetic_obs.aice${cat}.${year}-${month}-${day}.nc"
+    set filein  = "synthetic_ice_bridge.aice${cat}.err0.1.${year}-${month}-${day}.nc"
     set fileout = "obs_seq.aice${cat}.$year-$month-$day-00000"
     echo $filein
     echo $fileout
@@ -158,7 +158,7 @@ set m = 1
         input.nml > temp
     mv temp input.nml
     
-    ../work/seaice_syn_to_obs_netcdf
+    ../work/seaice_fraction_icebridge_to_obs_netcdf
 
     @ icat = $icat + 1
   

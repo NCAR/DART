@@ -72,7 +72,6 @@
 # {input,forecast,preassim,postassim,analysis,output}_postinf_mean[_dom].nc
 # {input,forecast,preassim,postassim,analysis,output}_postinf_sd[_dom].nc
 
-
 # cutoff of 0.03 (radians) is about 200km
 &assim_tools_nml
    filter_kind                     = 1
@@ -155,11 +154,19 @@
    debug                        = 1
    model_state_variables  =       'aicen', 'QTY_SEAICE_CONCENTR'        , 'UPDATE',
                                   'vicen', 'QTY_SEAICE_VOLUME'          , 'UPDATE',
-				  'vsnon', 'QTY_SEAICE_SNOWVOLUME'      , 'UPDATE'
+				  'vsnon', 'QTY_SEAICE_SNOWVOLUME'      , 'UPDATE',
+                                  'r_snw', 'QTY_2D_PARAMETER'           , 'UPDATE',
    /
+
 
 # See the cice model_mod.html for a larger listing of CICE variables and their
 # associated DART quantities (QTYs). The list is by no means complete.
+
+&cice_parameter_nml
+   cice_restart_input_file = 'cice_restart.nc'
+   parameter_input_file    = 'parameter_prior.nc'
+   cice_parameters         = 'r_snw'
+   /
 
 
 &dart_to_cice_nml
@@ -167,6 +174,7 @@
    original_cice_input_file  = 'cice_restart.nc'
    previous_cice_input_file  = 'pre_restart.nc'
    balance_method            = 'simple_squeeze'
+   r_snw_name                = 'r_snw_vary'
    /
 
 
@@ -204,8 +212,8 @@
 &obs_common_subset_nml
    num_to_compare_at_once = 3
    filename_seq      = ''
-   filename_seq_list = 'list1.txt','list2.txt','list3.txt'
-   filename_out      = '/glade/p/work/yfzhang/observations/syn/cice5/member10/aggre/aice_hice_fy_tsfc/obs_seq.2003-12-31-00000'
+   filename_seq_list = 'cat.list'
+   filename_out      = 'obs_seq.2005-04-02-00000'
    print_only        = .false.
    calendar          = 'Gregorian'
   /
@@ -222,9 +230,9 @@
 
 &obs_diag_nml
    obs_sequence_name     = ''
-   obs_sequence_list     = 'obs_seq_files.txt'
-   first_bin_center      =  2004, 1,  1, 0, 0, 0
-   last_bin_center       =  2004, 1,  8, 0, 0, 0
+   obs_sequence_list     = 'cat.list'
+   first_bin_center      =  2001, 1,  1, 0, 0, 0
+   last_bin_center       =  2001, 1,  2, 0, 0, 0
    bin_separation        =     0, 0,  1, 0, 0, 0
    bin_width             =     0, 0,  1, 0, 0, 0
    time_to_skip          =     0, 0,  0, 0, 0, 0
@@ -247,8 +255,8 @@
 
 &obs_sequence_tool_nml
    filename_seq       = ''
-   filename_seq_list  = 'pieces.txt'
-   filename_out       = 'obs_seq.combined'
+   filename_seq_list  = 'cat.list'
+   filename_out       = 'obs_seq.2005-04-02-00000'
    print_only         = .false.
    gregorian_cal      = .true.
    synonymous_qc_list = 'COSMOS QC','Ameriflux QC'

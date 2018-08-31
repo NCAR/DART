@@ -22,10 +22,18 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN,  &
 implicit none
 private
 
-public :: get_name_for_type_of_obs, assimilate_this_type_of_obs, &
-          evaluate_this_type_of_obs, get_quantity_for_type_of_obs, get_index_for_type_of_obs, &
-          write_type_of_obs_table, read_type_of_obs_table, get_type_of_obs_from_menu, map_type_of_obs_table,  &
-          use_ext_prior_this_type_of_obs, get_name_for_quantity, get_index_for_quantity
+public :: get_name_for_type_of_obs,       &
+          assimilate_this_type_of_obs,    &
+          evaluate_this_type_of_obs,      &
+          get_quantity_for_type_of_obs,   &
+          get_index_for_type_of_obs,      &
+          write_type_of_obs_table,        &
+          read_type_of_obs_table,         &
+          get_type_of_obs_from_menu,      &
+          map_type_of_obs_table,          &
+          use_ext_prior_this_type_of_obs, &
+          get_name_for_quantity,          &
+          get_index_for_quantity
 
 ! Added by nsc to try to limit the number of global vars exported from
 ! this program.  i do not like this terminology, but since we are still
@@ -438,7 +446,9 @@ integer, parameter, public :: &
   QTY_SOM_TEMPERATURE               = 353, &
   QTY_SEAICE_FY                     = 354, &
   QTY_SEAICE_AGREG_FY               = 355, &
-  QTY_SEAICE_AGREG_SURFACETEMP      = 356 
+  QTY_SEAICE_AGREG_SURFACETEMP      = 356, &
+  QTY_SEAICE_AGREG_FREEBOARD        = 357, &
+  QTY_SEAICE_CATEGORY               = 358
 
 integer, parameter, public :: &
   QTY_SEA_SURFACE_ANOMALY           = 360
@@ -473,10 +483,10 @@ integer, parameter :: max_defined_quantities = 364
 !----------------------------------------------------------------------------
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
 
@@ -856,6 +866,8 @@ obs_kind_names(353) = obs_kind_type(QTY_SOM_TEMPERATURE,       'QTY_SOM_TEMPERAT
 obs_kind_names(354) = obs_kind_type(QTY_SEAICE_FY,             'QTY_SEAICE_FY')
 obs_kind_names(355) = obs_kind_type(QTY_SEAICE_AGREG_FY,       'QTY_SEAICE_AGREG_FY')
 obs_kind_names(356) = obs_kind_type(QTY_SEAICE_AGREG_SURFACETEMP,'QTY_SEAICE_AGREG_SURFACETEMP')
+obs_kind_names(357) = obs_kind_type(QTY_SEAICE_AGREG_FREEBOARD,'QTY_SEAICE_AGREG_FREEBOARD')
+obs_kind_names(358) = obs_kind_type(QTY_SEAICE_CATEGORY,       'QTY_SEAICE_CATEGORY')
 
 obs_kind_names(360) = obs_kind_type(QTY_SEA_SURFACE_ANOMALY,   'QTY_SEA_SURFACE_ANOMALY')
 obs_kind_names(361) = obs_kind_type(QTY_LARGE_SCALE_STATE,     'QTY_LARGE_SCALE_STATE')

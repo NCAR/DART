@@ -1,0 +1,40 @@
+
+<dataSource>
+   GENERIC
+</dataSource>
+<domainInfo>
+  <variableNames>
+     time    time
+        xc      lon
+        yc      lat
+        area    area
+        mask    mask
+  </variableNames>
+  <filePath>
+     /glade/p/work/yfzhang/dataset/SOM
+  </filePath>
+  <fileNames>
+     pop_frc.bc.15.1x1d.090130.nc
+  </fileNames>
+</domainInfo>
+<fieldInfo>
+   <variableNames>
+     T     t
+        S     s
+        U     u
+        V     v
+        dhdx  dhdx
+        dhdy  dhdy
+        hblt  h
+        qdp   qbot
+   </variableNames>
+   <filePath>
+     /glade/p/work/yfzhang/dataset/SOM
+   </filePath>
+   <fileNames>
+    pop_frc.bc.15.1x1d.090130.nc
+   </fileNames>
+   <offset>
+      0
+   </offset>
+</fieldInfo>

@@ -1,0 +1,11 @@
+
+&seaice_aggre_to_obs_nc_nml
+   year              = 2000
+   doy               = 1
+   terr              = 0.15
+   seaice_input_file = 'seaicedata.input'
+   obs_out_file      = 'obs_seq.out'
+   maskfile          = 'cice_hist.nc'
+   debug             = .false.
+   /
+

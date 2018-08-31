@@ -1,0 +1,59 @@
+<streamstemplate>
+      <general_comment>
+         streams template for datm in CESM1_5
+      </general_comment>
+<stream>
+      <comment>
+         Stream description file for CPL history 3-hourly Solar data
+      </comment>
+      <dataSource>
+         Raeder et al. 80 member FV 2 deg CAM/DART reanalysis
+      </dataSource>
+      <domainInfo>
+         <variableNames>
+            time          time
+            doma_lon      lon
+            doma_lat      lat
+            doma_area     area
+            doma_mask     mask
+         </variableNames>
+         <filePath>
+            /glade/collections/rda/data/ds199.1
+         </filePath>
+         <fileNames>
+          CAM_DATM.cpl_NINST.ha2x1dx6h.RUNYEAR.nc
+         </fileNames>
+      </domainInfo>
+      <fieldInfo>
+         <variableNames>
+            a2x6h_Faxa_swndr     swndr
+            a2x6h_Faxa_swvdr     swvdr
+            a2x6h_Faxa_swndf     swndf
+            a2x6h_Faxa_swvdf     swvdf
+         </variableNames>
+         <filePath>
+            /glade/collections/rda/data/ds199.1
+         </filePath>
+         <tInterpAlgo>
+            coszen
+         </tInterpAlgo>
+         <offset>
+            -21600
+         </offset>
+         <fileNames>
+          CAM_DATM.cpl_NINST.ha2x1dx6h.2001.nc
+          CAM_DATM.cpl_NINST.ha2x1dx6h.2002.nc
+          CAM_DATM.cpl_NINST.ha2x1dx6h.2003.nc
+          CAM_DATM.cpl_NINST.ha2x1dx6h.2004.nc
+          CAM_DATM.cpl_NINST.ha2x1dx6h.2005.nc
+          CAM_DATM.cpl_NINST.ha2x1dx6h.2006.nc
+          CAM_DATM.cpl_NINST.ha2x1dx6h.2007.nc
+          CAM_DATM.cpl_NINST.ha2x1dx6h.2008.nc
+          CAM_DATM.cpl_NINST.ha2x1dx6h.2009.nc
+          CAM_DATM.cpl_NINST.ha2x1dx6h.2010.nc
+         </fileNames>
+      </fieldInfo>
+      <build_streams_documentation>
+      </build_streams_documentation>
+</stream>
+</streamstemplate>

@@ -8,7 +8,6 @@ module model_mod
 
 ! This is the interface between the CICE ocean model and DART.
 ! author: C Bitz June 2016
-! borrowed heavily from ?
 
 ! Modules that are absolutely required for use are listed
 use              types_mod, only : r4, r8, i4, i8, SECPERDAY, MISSING_R8, rad2deg, &
@@ -53,6 +52,7 @@ use          obs_kind_mod, only : QTY_SEAICE_AGREG_CONCENTR  , &
                                   QTY_SEAICE_AGREG_SNOWVOLUME, &
                                   QTY_SEAICE_AGREG_THICKNESS , &
                                   QTY_SEAICE_AGREG_SNOWDEPTH , &
+                                  QTY_SEAICE_CATEGORY        , &
                                   QTY_U_SEAICE_COMPONENT     , &
                                   QTY_V_SEAICE_COMPONENT     , &
                                   QTY_SEAICE_ALBEDODIRVIZ    , &
@@ -149,14 +149,14 @@ public :: init_time,                     &
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
-! FIXME: we should no longer need restart_file_to_sv and sv_to_restart_file
+
 public :: get_cice_restart_filename, test_interpolation
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 ! message strings
 character(len=512) :: string1
@@ -271,9 +271,6 @@ type(time_type) :: model_time, model_timestep
 
 integer(i8) :: model_size    ! the state vector length
 
-
-!-------------------------- CMB did not touch from here -------------------
-
 ! NOTE (dipole/tripole grids): since both of the dipole and tripole
 ! grids are logically rectangular we can use the same interpolation
 ! scheme originally implemented for the dipole grid. Here we can 
@@ -332,13 +329,11 @@ logical :: dipole_grid
 integer :: domain_id
 
 
+!------------------------------------------------------------------
 contains
-
 !------------------------------------------------------------------
-!------------------------------------------------------------------
-!-------------------------- CMB did not touch to here ----------------
 
-! CMB edit to change vertical dimension to cat 
+
 subroutine static_init_model()
 
 ! Called to do one time initialization of the model. In this case,
@@ -354,7 +349,7 @@ integer :: ss, dd
 !  
 !   allocate space, and read in actual grid values
 !
-!   figure out model timestep.  FIXME: from where?
+!   figure out model timestep (not really used in cice)
 !
 !   Compute the model size.
 !
@@ -434,8 +429,9 @@ if (do_output()) write(     *     , *) 'Using grid : Nx, Ny, Ncat = ', &
 ! Initialize the interpolation routines
 call init_interp()
 
-!CMB I do not understand this next bit, maybe this is the dart restart file 
-!> @todo 'cice.r.nc' is hardcoded in dart_cice_mod.f90
+! Determine the shape of the variables from "cice.r.nc"
+! The assimilate.csh, perfect_model.csh must ensure the cice restart file
+! is linked to this filename.
 domain_id = add_domain('cice.r.nc', nfields, &
                        var_names = variable_table(1:nfields, VAR_NAME_INDEX), &
                        kind_list = state_kinds_list(1:nfields), &
@@ -450,7 +446,6 @@ end subroutine static_init_model
 
 !------------------------------------------------------------
 
-! CMB no change
 subroutine init_interp()
 
 ! Initializes data structures needed for cice interpolation for
@@ -477,8 +472,6 @@ end subroutine init_interp
 
 !------------------------------------------------------------
 
-!CMB change only QTY_X to QTY_SEAICE_X and took out 
-! height sent to all_corners_wet since no bathym in cice
 subroutine init_dipole_interp()
 
 ! Build the data structure for interpolation for a dipole grid.
@@ -631,7 +624,6 @@ end subroutine init_dipole_interp
 
 !------------------------------------------------------------
 
-!CMB no change
 subroutine get_reg_box_indices(lon, lat, x_ind, y_ind)
  real(r8), intent(in)  :: lon, lat
  integer,  intent(out) :: x_ind, y_ind
@@ -646,7 +638,6 @@ end subroutine get_reg_box_indices
 
 !------------------------------------------------------------
 
-!CMB no change
 subroutine get_reg_lon_box(lon, x_ind)
  real(r8), intent(in)  :: lon
  integer,  intent(out) :: x_ind
@@ -662,7 +653,6 @@ end subroutine get_reg_lon_box
 
 !------------------------------------------------------------
 
-!CMB no change
 subroutine get_reg_lat_box(lat, y_ind)
  real(r8), intent(in)  :: lat
  integer,  intent(out) :: y_ind
@@ -678,7 +668,6 @@ end subroutine get_reg_lat_box
 
 !------------------------------------------------------------
 
-!CMB no change
 subroutine reg_box_overlap(x_corners, y_corners, is_pole, reg_lon_ind, reg_lat_ind)
  real(r8), intent(in)  :: x_corners(4), y_corners(4)
  logical,  intent(in)  :: is_pole
@@ -751,7 +740,6 @@ end subroutine reg_box_overlap
 
 !------------------------------------------------------------
 
-!CMB no change
 subroutine get_quad_corners(x, i, j, corners)
  real(r8), intent(in)  :: x(:, :)
  integer,  intent(in)  :: i, j
@@ -775,7 +763,6 @@ end subroutine get_quad_corners
 
 !------------------------------------------------------------
 
-!CMB no change
 subroutine update_reg_list(reg_list_num, reg_list_lon, reg_list_lat, &
                            reg_lon_ind, reg_lat_ind, dipole_lon_index, dipole_lat_index)
 
@@ -815,7 +802,6 @@ end subroutine update_reg_list
 !------------------------------------------------------------------
 !> Returns the number of items in the state vector
 
-!CMB no change
 function get_model_size()
  integer(i8) :: get_model_size
 
@@ -827,7 +813,6 @@ end function get_model_size
 
 !------------------------------------------------------------------
 
-!CMB changed a lot (but do not change variables in call)
 subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
 
  type(ensemble_type), intent(in) :: state_handle
@@ -874,7 +859,20 @@ llon    = loc_array(1)
 llat    = loc_array(2)
 cat_index = int(loc_array(3))
 
-if (debug > 1) print *, 'requesting interpolation of ', obs_type, ' at ', llon, llat, cat_index
+! Special case. Only used when trying to determine the number of ice categories.
+! Note the early return. The actual lat/lon is unimportant.
+
+if (obs_type == QTY_SEAICE_CATEGORY) then
+   if (cat_index <= Ncat) then
+      istatus      = 0
+      expected_obs = cat_index
+      RETURN
+   endif
+endif
+
+if (debug > 1) then
+   print *, 'requesting interpolation of ', obs_type, ' at ', llon, llat, cat_index
+endif
 
 ! The base_offset is the index of state vector that corresponds to 
 ! a variable block without regard to level or location, so it can be 
@@ -978,6 +976,16 @@ if (cat_signal == -2) then
       call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal_interm, expected_fy, istatus)
    temp = temp + expected_conc * expected_fy  !sum(aicen*fyn) = FY % over ice
    temp1= temp1+ expected_conc                        !sum(aicen) = aice
+  
+      if (any(expected_conc<0.0) .or. any(expected_conc>1.0))then
+      print*,'obstype FY expected sicn:',expected_conc
+      print*,'FY sicn lat lon:',llat,llon
+      endif
+      if (any(expected_fy>1.0) .or. any(expected_fy<0.0)) then
+      print*,'obstype FY expected fyn:',expected_fy,llat,llon
+      print*,'FY fyn lat lon:',llat,llon
+      endif
+
    end do 
    expected_obs = temp/max(temp1,1.0e-8)  !sum(aicen*fyn)/aice = FY % in the gridcell
 else if (cat_signal == -3 ) then
@@ -994,16 +1002,35 @@ else if (cat_signal == -3 ) then
       base_offset = get_index_start(domain_id,get_varid_from_kind(QTY_SEAICE_SURFACETEMP))
       base_offset = base_offset + (icat-1) * Nx * Ny
       call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal_interm, expected_tsfc, istatus)
+      if (any(expected_conc<0.0) .or. any(expected_conc>1.0))then
+      print*,'obstype TSFC expected sicn:',expected_conc
+      print*,'TSFC sicn lat lon:',llat,llon
+      endif
       if (any(expected_tsfc>50.0) .or. any(expected_tsfc<-100.0)) then
-      print*,'expected value:',expected_tsfc
-      print*,'lat,lon:',llat,llon 
+      print*,'obstype TSFC expected tsfcn:',expected_tsfc
+      print*,'TSFC tsfcn lat lon:',llat,llon
       endif
       temp = temp + expected_conc * expected_tsfc  !sum(aicen*Tsfcn)
       temp1= temp1+ expected_conc                  !sum(aicen) = aice
    end do
    expected_obs = temp/max(temp1,1.0e-8)  !sum(aicen*Tsfcn)/aice = Tsfc ;averaged temperature over sea-ice covered portion
+   if (any(expected_obs>50.0) .or. any(expected_obs<-100.0)) then
+      print*,'obstype TSFC expected obs:',expected_obs
+      print*,'TSFC tsfc lat lon:' ,llat,llon
+      print*,'temp:',temp
+      print*,'temp1:',temp1
+   endif
+
 else
     call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal, expected_obs, istatus)
+      if (any(expected_obs<0.0))then
+      print*,'obstype SIC expected concs:',expected_obs
+      print*,'SIC sic negative lat lon:',llat,llon 
+      endif
+      if (any(expected_obs>1.0))then
+      print*,'obstype SIC expected concs:',expected_obs
+      print*,'SIC sic positive lat lon:',llat,llon 
+      endif
 endif
 
    
@@ -1013,6 +1040,12 @@ if (cat_signal == -1) then
       base_offset = get_index_start(domain_id, get_varid_from_kind(QTY_SEAICE_CONCENTR))  
       call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal, expected_aggr_conc, istatus)
       expected_obs = expected_obs/max(expected_aggr_conc,1.0e-8)  ! hope this is allowed so we never divide by zero
+      
+      if (any(expected_aggr_conc<0.0) .or. any(expected_aggr_conc>1.0))then
+      print*,'obstype SIT expected conc:',expected_aggr_conc
+      print*,'SIT sic lat lon:',llat,llon
+      endif
+    
 endif
 
 if (debug > 1) print *, 'interp val, istatus = ', expected_obs, istatus
@@ -1243,8 +1276,10 @@ end subroutine lon_lat_interpolate
 !------------------------------------------------------------
 ! CMB changed so bathymetry check is land check only, height was only used 
 ! for masking below bathymetry, not needed in sea ice so removed
+
 function get_val(lon_index, lat_index, nlon, state_handle, offset, &
                  ens_size, var_type, masked)
+
 ! Returns the index in state vecture structure of a variable at a single level 
 ! given the lat and lon indices. Used by lon_lat_interpolate only
 ! 'masked' returns true if this is NOT a valid grid location (e.g. land)
@@ -1268,7 +1303,7 @@ endif
 
 masked = .false.  ! cell is water
 
-! FIXME: this should call get_dart_vector_index() to convert from lat,lon,cat
+!>@todo FIXME: this should call get_dart_vector_index() to convert from lat,lon,cat
 ! to offset in the state vector.
 ! this code assumes it knows the layout (lons varying most rapidly)
 ! state index must be 8byte integer
@@ -1281,7 +1316,6 @@ end function get_val
 
 !------------------------------------------------------------
 
-! CMB no change
 subroutine get_irreg_box(lon, lat, lon_array, lat_array, &
                          found_x, found_y, lon_fract, lat_fract, istatus)
 
@@ -1317,7 +1351,6 @@ end subroutine get_irreg_box
 
 !------------------------------------------------------------
 
-! CMB no change
 subroutine lon_bounds(lon, nlons, lon_array, bot, top, fract)
  real(r8),    intent(in) :: lon
  integer,     intent(in) :: nlons
@@ -1362,7 +1395,6 @@ end subroutine lon_bounds
 
 !-------------------------------------------------------------
 
-! CMB no change
 subroutine lat_bounds(lat, nlats, lat_array, bot, top, fract, istatus)
  real(r8),   intent(in) :: lat
  integer,    intent(in) :: nlats
@@ -1413,7 +1445,6 @@ end subroutine lat_bounds
 
 !------------------------------------------------------------------
 
-! CMB no change
 function lon_dist(lon1, lon2)
  real(r8), intent(in) :: lon1, lon2
  real(r8)             :: lon_dist
@@ -1437,7 +1468,6 @@ end function lon_dist
 
 !------------------------------------------------------------
 
-! CMB no change
 subroutine get_dipole_quad(lon, lat, qlons, qlats, num_inds, start_ind, &
                            x_inds, y_inds, found_x, found_y, istatus)
 
@@ -1476,7 +1506,6 @@ end subroutine get_dipole_quad
 
 !------------------------------------------------------------
 
-! CMB no change
 function in_quad(lon, lat, x_corners, y_corners)
  real(r8), intent(in)  :: lon, lat, x_corners(4), y_corners(4)
  logical               :: in_quad
@@ -1538,7 +1567,6 @@ end function in_quad
 
 !------------------------------------------------------------
 
-! CMB no change
 subroutine line_intercept(side_x_in, side_y, x_point_in, y_point, &
                           cant_be_in_box, in_box, intercept_above, intercept_below)
 
@@ -1630,7 +1658,6 @@ end subroutine line_intercept
 
 !------------------------------------------------------------
 
-! CMB no change
 subroutine quad_bilinear_interp(lon_in, lat, x_corners_in, y_corners, &
                                 p, ens_size, expected_obs)
 
@@ -1732,7 +1759,6 @@ end subroutine quad_bilinear_interp
 
 !------------------------------------------------------------
 
-! CMB no change
 subroutine mat3x3(m, v, r)
  real(r8),  intent(in) :: m(3, 3), v(3)
  real(r8), intent(out) :: r(3)
@@ -1760,7 +1786,6 @@ end subroutine mat3x3
 
 !------------------------------------------------------------
 
-! CMB no change 
 function deter3(m)
  real(r8), intent(in) :: m(3, 3)
  real(r8)             :: deter3
@@ -1773,14 +1798,11 @@ deter3 = m(1,1)*m(2,2)*m(3,3) + m(1,2)*m(2,3)*m(3,1) + &
 
 end function deter3
 
-!------------------------------------------------------------
-! CMB removed height_bounds since unused
 !------------------------------------------------------------------
 !> Returns the the time step of the model; the smallest increment
 !> in time that the model is capable of advancing the state in a given
 !> implementation. This interface is required for all applications.
 
-! CMB no change
 function shortest_time_between_assimilations()
  type(time_type) :: shortest_time_between_assimilations
 
@@ -1791,28 +1813,25 @@ shortest_time_between_assimilations = model_timestep
 end function shortest_time_between_assimilations
 
 !------------------------------------------------------------------
+!> Given an integer index (index_in) to point in state vector structure, returns the
+!> associated location, which is an array of indices for lat, lon, and cat. 
+!> A second intent(out) optional argument kind
+!> can be returned if the model has more than one type of field (for
+!> instance temperature and zonal wind component). This interface is
+!> required for all filter applications as it is required for computing
+!> the distance between observations and state variables.
 
-! CMB changed extensively
 subroutine get_state_meta_data(index_in, location, var_type)
- integer(i8),         intent(in)  :: index_in  ! index of point in state vector
-                                               ! depends on variable, lat, lon, and cat 
- type(location_type), intent(out) :: location
- integer,             intent(out), optional :: var_type
 
-! Given an integer index (index_in) to point in state vector structure, returns the
-! associated location, which is an array of indices for lat, lon, and cat. 
-! A second intent(out) optional argument kind
-! can be returned if the model has more than one type of field (for
-! instance temperature and zonal wind component). This interface is
-! required for all filter applications as it is required for computing
-! the distance between observations and state variables.
+integer(i8),         intent(in)  :: index_in
+type(location_type), intent(out) :: location
+integer,             intent(out), optional :: var_type
 
 real(r8) :: lat, lon, rcat
-integer :: lon_index, lat_index, cat_index, local_var, var_id
+integer  :: lon_index, lat_index, cat_index, local_var, var_id
 
 if ( .not. module_initialized ) call static_init_model
 
-! get_model_variable_indices is in ../../io/state_structure_mod.f90
 call get_model_variable_indices(index_in, lon_index, lat_index, cat_index, var_id=var_id)
 call get_state_kind(var_id, local_var)
 
@@ -1825,10 +1844,10 @@ else
 endif
 
 if (debug > 5) print *, 'lon, lat, cat_index = ', lon, lat, cat_index
-rcat=cat_index*1.0  ! CMB verified needs to be a real though VERTISLEVEL is used
+rcat     = cat_index*1.0_r8
 location = set_location(lon, lat, rcat, VERTISLEVEL)
 
-if (present(var_type)) then   ! CMB hacked is_dry_land to ignore depth
+if (present(var_type)) then
    var_type = local_var
    if(is_dry_land(var_type, lon_index, lat_index)) then
       var_type = QTY_DRY_LAND  
@@ -1839,7 +1858,6 @@ end subroutine get_state_meta_data
 
 !--------------------------------------------------------------------
 
-! CMB no change
 function get_varid_from_kind(dart_kind)
 
 integer, intent(in) :: dart_kind
@@ -1870,7 +1888,6 @@ end function get_varid_from_kind
 
 !------------------------------------------------------------------
 
-! CMB no change
 subroutine get_state_kind(var_ind, var_type)
  integer, intent(in)  :: var_ind
  integer, intent(out) :: var_type
@@ -1887,7 +1904,6 @@ end subroutine get_state_kind
 
 !------------------------------------------------------------------
 
-! CMB changed to rip height out of is_dry_land call
 subroutine get_state_kind_inc_dry(index_in, var_type)
  integer(i8), intent(in)  :: index_in
  integer,     intent(out) :: var_type
@@ -2195,7 +2211,6 @@ end subroutine write_model_time
 
 !------------------------------------------------------------------
 
-! CMB no change
 subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
 
  type(ensemble_type), intent(inout) :: state_ens_handle
@@ -2247,6 +2262,7 @@ end subroutine pert_model_copies
 !------------------------------------------------------------------
 
 ! CMB took out bathymetry assuming KMU>0 and KMT>0 for ocn
+
 function is_dry_land(obs_type, lon_index, lat_index)  
  integer, intent(in)  :: obs_type
  integer, intent(in)  :: lon_index, lat_index
@@ -2271,10 +2287,10 @@ end function is_dry_land
 
 !------------------------------------------------------------------
 
-!CMB edited a bit
 function is_on_ugrid(obs_type)
- integer, intent(in) :: obs_type
- logical             :: is_on_ugrid
+
+integer, intent(in) :: obs_type
+logical             :: is_on_ugrid
 
 !  returns true if U, V -- everything else is on T grid
 
@@ -2289,13 +2305,12 @@ end function is_on_ugrid
 
 !------------------------------------------------------------------
 
-! CMB took out height in var list to is_dry_land 
 function all_corners_wet(obs_kind, lon_ind, lat_ind)  
 
- integer, intent(in)  :: obs_kind, lon_ind, lat_ind
- logical :: all_corners_wet
+integer, intent(in)  :: obs_kind, lon_ind, lat_ind
+logical :: all_corners_wet
 
- integer :: lon_ind_p1
+integer :: lon_ind_p1
 
 ! returns true only if all of the corners are land
  
@@ -2316,11 +2331,9 @@ all_corners_wet = .true.
 end function all_corners_wet
 
 !------------------------------------------------------------------
+!>  Write the grid to a netcdf file for checking.
 
-!CMB edited, change vert dim to cat
 subroutine write_grid_netcdf()
-
-! Write the grid to a netcdf file for checking.
 
 integer :: ncid, NlonDimID, NlatDimID, NcatDimID
 integer :: nlon, nlat
@@ -2381,7 +2394,6 @@ end subroutine write_grid_netcdf
 
 !------------------------------------------------------------------
 
-! CMB no change
 subroutine get_close_state(filt_gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
                          num_close, close_indices, distances, state_handle)
 
@@ -2435,7 +2447,7 @@ endif
 end subroutine get_close_state
 
 !------------------------------------------------------------------
-! CMB no change
+
 subroutine write_grid_interptest()
 
 ! Write the grid to an ascii file - in a format suitable for
@@ -2518,7 +2530,7 @@ close(unit=15)
 end subroutine write_grid_interptest
 
 !------------------------------------------------------------------
-! CMB no change
+
 subroutine test_interpolation(test_casenum)
  integer, intent(in) :: test_casenum
 
@@ -2526,19 +2538,14 @@ subroutine test_interpolation(test_casenum)
 
 end subroutine test_interpolation
 
-!------------------------------------------------------------------
-!CMB eliminated compute_temperature, insitu_temp, dpth2pres, and do_interp
-! which are not needed for cice
-!------------------------------------------------------------------
-
 !--------------------------------------------------------------------
-!CMB changed heavily
+
 function read_model_time(filename)
 
 character(len=256) :: filename
 type(time_type) :: read_model_time
 
-integer :: ncid !< netcdf file id
+integer :: ncid         !< netcdf file id
 integer :: nyr      , & ! year number, in cice restart
            month    , & ! month number, 1 to 12, in cice restart
            mday     , & ! day of the month, in cice restart
@@ -2573,13 +2580,10 @@ if (nyr == 0) then
   nyr = 1
 endif
 
-hour = int(sec/3600) 
-minute=int((sec-hour*3600)/60)
-secthismin=int(sec-hour*3600-minute*60) 
+hour       = int(sec/3600) 
+minute     = int((sec-hour*3600)/60)
+secthismin = int(sec-hour*3600-minute*60) 
 
-!CMB looked at set_date in ../../time_manager/time_manager_mod.f90
-! and it wants inputs with seconds between 0 and 60
-! it has another variable that is totseconds, which is seconds in a day
 read_model_time = set_date(nyr, month, mday, hour, minute, secthismin)
 
 end function read_model_time
@@ -2591,7 +2595,7 @@ end function read_model_time
 !>
 !>    netcdf_variable_name ; dart_kind_string ; update_string
 !>
-! CMB changedd as needed
+
 subroutine verify_state_variables( state_variables, ngood, table, kind_list, update_var )
 
 character(len=*),  intent(inout) :: state_variables(:)
@@ -2608,6 +2612,9 @@ if ( .not. module_initialized ) call static_init_model
 nrows = size(table,1)
 
 ngood = 0
+
+!>@todo deprecate. Remove a hidden 'default' set of variables.
+!>@     The default is provided in the input namelist.
 
 if ( state_variables(1) == ' ' ) then ! no model_state_variables namelist provided
    call use_default_state_variables( state_variables )
@@ -2627,7 +2634,7 @@ MyLoop : do i = 1, nrows
    table(i,2) = trim(dartstr)
    table(i,3) = trim(update)
 
-   if ( table(i,1) == ' ' .and. table(i,2) == ' ' .and. table(i,3) == ' ') exit MyLoop ! Found end of list.
+   if ( table(i,1) == ' ' .and. table(i,2) == ' ' .and. table(i,3) == ' ') exit MyLoop
 
    if ( table(i,1) == ' ' .or. table(i,2) == ' ' .or. table(i,3) == ' ' ) then
       string1 = 'model_nml:model_state_variables not fully specified'
@@ -2670,9 +2677,9 @@ enddo MyLoop
 end subroutine verify_state_variables
 
 !------------------------------------------------------------------
-!> Default state_variables from model_mod. CMB following POP code
-!> which says: Must keep in the same order to be consistent with previous versions.
-! CMB changed kinds
+!> Default state_variables from model_mod.
+!>@todo DEPRECATE
+
 subroutine use_default_state_variables( state_variables )
 
 character(len=*),  intent(inout) :: state_variables(:)

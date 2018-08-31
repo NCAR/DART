@@ -11,17 +11,31 @@
 !>     converts it into a seaice coverage obs_seq file.
 !>
 !>     Credits: Yongfei Zhang - University of Washington.
+!-----------------------------------------------------------------------
+!>
+!> TJH Thu Aug 30 13:29:37 MDT 2018
+!> As near as I can tell, the intent of this program is to create an obs_seq.out
+!> file that has a synthetic observation at every grid location in the netCDF file.
+!> I believe 'make_obs_aggre.ncl' was used to add noise to a cice state and then
+!> that state is used as input to this program.
+!> This could also be done by creating an obs_seq.in for the location and then
+!> running perfect_model_obs. The obs_seq.in _could_ have all kinds of desired
+!> observations with their own error variances.
+!> This may be able to replace all of the converters
+!> in this directory that end in ****_to_obs_netcdf.f90
+
+!>@todo replace the utilities_mod:nc_check with the netcdf_utilities_mod:nc_check
 
 program seaice_temperature_to_obs_netcdf
 
-use         types_mod, only : r8, PI, DEG2RAD
+use         types_mod, only : r8
 use     utilities_mod, only : initialize_utilities, finalize_utilities,      &
-                              open_file, close_file, find_namelist_in_file,  &
+                              find_namelist_in_file,  &
                               check_namelist_read, nmlfileunit, do_nml_file, &
                               do_nml_term, nc_check
-use  time_manager_mod, only : time_type, set_calendar_type, set_date, set_time, &
-                              operator(>=), increment_time, get_time, &
-                              operator(-), GREGORIAN, operator(+), print_date
+use  time_manager_mod, only : time_type, set_calendar_type, &
+                              set_date, set_time, get_time, GREGORIAN, &
+                              operator(>=), operator(-), operator(+)
 use      location_mod, only : VERTISSURFACE
 use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,     &
                               static_init_obs_sequence, init_obs,            &
@@ -34,7 +48,7 @@ use netcdf
 
 implicit none
 
-character(len=32), parameter :: routine = 'seaice_temperature_to_obs_netcdf'
+character(len=*), parameter :: routine = 'seaice_temperature_to_obs_netcdf'
 
 integer :: n, i, j, oday, osec, rcio, iunit, otype, io
 integer :: num_copies, num_qc, max_obs, iacc, ialo, ncid, varid
@@ -183,35 +197,37 @@ qc = 0.0_r8     ! we will reject anything with a bad qc
 qc_array = 0    ! making synthetic observations so assume every observation is good
 
 alongloop:  do j = 1, aydim
-
    acrossloop: do i = 1, axdim
 
-if (debug) print *, 'start of main loop, ', iacc, ialo
+      if (debug) print *, 'start of main loop, ', iacc, ialo
 
       !! check the lat/lon values to see if they are ok
-      if ( lat(i,j) >  90.0_r8 .or. lat(i,j) <  40.0_r8 ) cycle acrossloop
+      if ( lat(i,j) >  90.0_r8 .or. lat(i,j) <   40.0_r8 ) cycle acrossloop
       if ( lon(i,j) <   0.0_r8 .or. lon(i,j) >  360.0_r8 ) cycle acrossloop
 
       ! the actual data values are denser, so inner loop here
 
-            if ( qc_array(i,j) /= 0) cycle acrossloop  !reserve for future quality control
-            if (    tmask(i,j) <  0.5_r8) cycle acrossloop  !do not convert if it's a land grid
-            if (seaice_temperature(i,j).gt.100_r8) cycle acrossloop   !FIXME temporary do not assimilate
-                                                                    !when observed sea ice is 0 coverage
-            ! compute the lat/lon for this obs  FIXME: this isn't right
+      if ( qc_array(i,j) /= 0)      cycle acrossloop  !reserve for future quality control
+      if (    tmask(i,j) <  0.5_r8) cycle acrossloop  !do not convert if it's a land grid
 
-            thislat = lat(i,j)
+      !>@todo possibly use a higher QC value for suspicious observations
+      ! One strategy would be to assign suspicious observations a higher
+      ! QC value - this would allow the "input_qc_threshold" namelist to control
+      ! whether or not the observation would be assimilated as opposed to having
+      ! to modify source code and create multiple versions of the obs_seq file.
 
-            thislon = lon(i,j)
+      if (seaice_temperature(i,j) > 100.0_r8) cycle acrossloop !FIXME temporary do not assimilate
 
-            thiserr = terr
+      thislat = lat(i,j)
+      thislon = lon(i,j)
+      thiserr = terr
 
-            ! make an obs derived type, and then add it to the sequence
-            call create_3d_obs(thislat, thislon, 0.0_r8, VERTISSURFACE, seaice_temperature(i,j), &
-                               SAT_SEAICE_AGREG_SURFACETEMP, thiserr, oday, osec, qc, obs)
-            call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+      ! make an obs derived type, and then add it to the sequence
+      call create_3d_obs(thislat, thislon, 0.0_r8, VERTISSURFACE, seaice_temperature(i,j), &
+                         SAT_SEAICE_AGREG_SURFACETEMP, thiserr, oday, osec, qc, obs)
+      call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
 
-            if (debug) print *, 'added seaice obs to output seq'
+      if (debug) print *, 'added seaice obs to output seq'
 
    end do acrossloop
 end do alongloop
@@ -221,6 +237,8 @@ if ( get_num_obs(obs_seq) > 0 ) then
    if (debug) print *, 'writing obs_seq, obs_count = ', get_num_obs(obs_seq)
    call write_obs_seq(obs_seq, obs_out_file)
 endif
+
+deallocate(seaice_temperature, lon, lat, qc_array, tmask)
 
 ! end of main program
 call finalize_utilities()

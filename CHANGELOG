@@ -745,7 +745,7 @@ and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
 - Removed makefiles for the obsolete trans_time program.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Jun 18 2018 :: CAM/CESM 2.0, DART QC 8, closest_member_tool  Revision: XXXXX 
++ Jun 18 2018 :: CAM/CESM 2.0, DART QC 8, closest_member_tool  Revision: 12681 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - Support for CAM assimilations in the CESM 2.0 release.  See 
@@ -786,7 +786,7 @@ be set.  If your observations will impact most of the model state, then
 "convert_all_state_verticals_first = .true.' can also be set.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ MMM DD YYYY :: summary of next changes                    $Revision$
++ Aug 14 2018 :: WRF Polar, obs_diag files                     Revision: 12778
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - fix for WRF's wind direction vectors when using the Polar Stereographic 
@@ -797,6 +797,20 @@ be set.  If your observations will impact most of the model state, then
   CICE model doesn't care about it.
 
 - increased the maximum number of input files to obs_diag from 100 to 10000.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Aug 31 2018 :: reintegrate CICE branch (yz-cice)          $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- Yongfei Zhang and Cecilia Bitz had improvements to the CICE model and 
+  observation converters and forward operators. These changes also use the
+  locations of the 'new' glade filesystem. They used CESM tag: cesm2_0_alpha06n
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ MMM DD YYYY :: summary of next changes                    $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
 
 # <next few lines under version control, do not edit>
 # $URL$

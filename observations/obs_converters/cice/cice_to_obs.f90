@@ -28,6 +28,8 @@ program cice_to_obs
 ! ; *uint8
 ! ;=====================================================================================
 
+!>@todo replace the utilities_mod:nc_check with the netcdf_utilities_mod:nc_check
+
 use         types_mod, only : r8, i2, i4, missing_r8
 use     utilities_mod, only : initialize_utilities, finalize_utilities, &
                               open_file, close_file, error_handler, E_ERR, &
@@ -35,8 +37,8 @@ use     utilities_mod, only : initialize_utilities, finalize_utilities, &
                               find_namelist_in_file, check_namelist_read, &
                               nc_check, get_unit
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, set_time, &
-                              operator(>=), increment_time, get_date, get_time, &
-                              operator(-), GREGORIAN, operator(+), print_date
+                              get_date, get_time, GREGORIAN, &
+                              operator(>=), operator(-), operator(+)
 use      location_mod, only : VERTISLEVEL, VERTISUNDEF
 use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                               static_init_obs_sequence, init_obs, write_obs_seq, & 
@@ -55,7 +57,7 @@ use      obs_kind_mod, only : SAT_SEAICE_AGREG_CONCENTR, &
                               SAT_SEAICE_SNOWVOLUME
 
 
-!> @todo FIXME - originally i thought we needed to read the netcdf file
+!>@todo FIXME - originally i thought we needed to read the netcdf file
 !> which contained the model land mask.  but creating observations from
 !> the binary files is unrelated to the model grid so this code is
 !> currently commented out and probably should be removed. BUT: it could 
@@ -69,25 +71,26 @@ use      obs_kind_mod, only : SAT_SEAICE_AGREG_CONCENTR, &
 
 implicit none
 
-character(len=11), parameter :: routine ='cice_to_obs'
+character(len=*), parameter :: routine ='cice_to_obs'
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 ! this is based on the model, not on the satellite grid.
 ! ignore this for now. LANDMASK
 !character(len=256) :: land_mask_file  = 'cice_hist.nc'
 
-character(len=256) :: input_line, input_filename, next_file, out_file
+character(len=256) :: next_file
 character(len=512) :: msgstring, msgstring1
 
-integer :: oday, osec, rcio, iunit, otype, io, rc
+integer :: oday, osec, iunit, io, rc
 integer :: year, month, day, hour, minute, second
-integer :: num_copies, num_qc, max_obs, ilon, ilat, i, j
-integer :: start_index, ncid, varid
+integer :: num_copies, num_qc, max_obs, ilon, ilat
+integer :: start_index
+! integer :: ncid, varid
            
 logical  :: file_exist, first_obs
 
@@ -102,12 +105,8 @@ type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
 type(time_type)         :: time_obs, prev_time, curr_time, end_time, one_day
 
-!   land_mask_file,    &
-!> namelist items
-!> @todo : check that these defaults are reasonable
-
-!> these are determined by the format of the binary data files
-!> and probably shouldn't be changed.
+! these are determined by the format of the binary data files
+! and probably shouldn't be changed.
 character(len=256) :: cice_lat_file   = 'psn25lats_v3.dat'
 character(len=256) :: cice_lon_file   = 'psn25lons_v3.dat'
 integer            :: num_latitudes   = 448
@@ -315,7 +314,7 @@ if (file_exist) then
    if (append_to_existing_file .and. .not. use_obsseq_filename_pattern) then
       call read_obs_seq(obsseq_out_file, 0, 0, max_obs, obs_seq)
    else
-      !> @todo FIXME tell user we are ignoring existing file and why
+      !>@todo FIXME tell user we are ignoring existing file and why
    endif
 endif
 
@@ -329,7 +328,7 @@ obsloop: do    ! no end limit - have the loop break when end time exceeded
       call fix_filename(data_filename_pattern, next_file, year, month, day)
    else
       next_file = cice_data_file
-      !> @todo make sure start_time = end_time if you aren't
+      !>@todo make sure start_time = end_time if you aren't
       !> generating the filenames by pattern.
       curr_time = end_time
    endif
@@ -337,7 +336,7 @@ obsloop: do    ! no end limit - have the loop break when end time exceeded
    if (use_obsseq_filename_pattern) then
       call fix_filename(obsseq_filename_pattern, obsseq_out_file, year, month, day)
   
-      !> @todo FIXME open the new output file?
+      !>@todo FIXME open the new output file?
 
       ! create a new, empty obs_seq.  you must give a max limit
       ! on number of obs.  increase the size if too small.
@@ -348,12 +347,11 @@ obsloop: do    ! no end limit - have the loop break when end time exceeded
       ! second needs the string 'QC'.
       call set_copy_meta_data(obs_seq, 1, 'observation')
       call set_qc_meta_data(obs_seq, 1, 'Data QC')
-
       
    else
       ! the obsseq_out_file already has the right value
       !obsseq_out_file = obsseq_data_file
-      !> @todo make sure start_time = end_time if you aren't
+      !>@todo make sure start_time = end_time if you aren't
       !> generating the filenames by pattern.
       curr_time = end_time
    endif
@@ -361,15 +359,7 @@ obsloop: do    ! no end limit - have the loop break when end time exceeded
    ! read in concentration data
    !> see comment in cice_lat_file section
    iunit = open_file(next_file, 'unformatted', 'read', 'stream')
-   !iunit = get_unit()
-   !open (iunit, file=trim(next_file), form='unformatted', action='read', &
-   !            position='rewind', access='stream', status='old', iostat=rc)
-   if (rc /= 0) then
-      write(msgstring,*)'Cannot open file "'//trim(next_file)//'" for reading'
-      write(msgstring1,*)'Error code was ', rc
-      call error_handler(E_ERR, 'open_file: ', msgstring, source, revision, revdate, &
-                         text2=msgstring1)
-   endif
+   
    if (debug) print *, 'opened data file ' // trim(next_file)
    read(iunit) rawdata_i2
    percent(:,:) = reshape(real(rawdata_i2, r8) / data_scale_factor, (/ num_latitudes, num_longitudes /) )
@@ -425,7 +415,7 @@ obsloop: do    ! no end limit - have the loop break when end time exceeded
    ! here is where we decide to loop again for another day or exit if
    ! we have converted the last day's file.
   
-   !> @todo FIXME: here if we're looping over the output, write the
+   !>@todo FIXME: here if we're looping over the output, write the
    !> obs_seq file and open a new one
 
    ! if we added any obs to the sequence, write it out to a file now.
@@ -434,7 +424,7 @@ obsloop: do    ! no end limit - have the loop break when end time exceeded
       call write_obs_seq(obs_seq, obsseq_out_file)
    endif
 
-   !> destroy the obs_seq so we don't have a mem leak
+   ! destroy the obs_seq so we don't have a mem leak
    call destroy_obs_sequence(obs_seq)
 
    if (curr_time >= end_time) exit obsloop
@@ -450,7 +440,7 @@ if ( .not. use_obsseq_filename_pattern .and. get_num_obs(obs_seq) > 0 ) then
    call write_obs_seq(obs_seq, obsseq_out_file)
 endif
 
-!> clean up
+! clean up
 call destroy_obs_sequence(obs_seq)
 
 ! LANDMASK
@@ -463,6 +453,7 @@ call finalize_utilities()
 
 contains
 
+!-----------------------------------------------------------------------
 !> take a character string which must contain YYYY, MM, and DD
 !> and substitute the year, month and day.  it is an error to
 !> have a pattern without all 3 items.
@@ -479,8 +470,8 @@ character(len=32)  :: buf
 
 outstring = inpattern
 
-!> substitute year for YYYY, month for MM, day for DD
-!> @todo add error handling
+! substitute year for YYYY, month for MM, day for DD
+!>@todo add error handling
 
 start_index = index(outstring, 'YYYY')
 if (start_index < 0) then

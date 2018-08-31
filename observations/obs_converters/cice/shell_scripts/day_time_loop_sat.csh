@@ -39,12 +39,12 @@ if ($command_line_args == 'true') then
   set end_day=$argv[7]
   set end_hour=$argv[8]
 else
-  set start_year=2001
-  set start_month=01
+  set start_year=2005
+  set start_month=04
   set start_day=01
   set start_hour=0
   
-  set end_year=2001
+  set end_year=2005
   set end_month=10
   set end_day=31
   set end_hour=0
@@ -90,8 +90,8 @@ endif
 
 # loop over each day
 
-set obsindir = "$WORK/observations/syn/cice5/dfltpar/err5"
-set obsoutdir = "/$WORK/observations/syn/cice5/dfltpar/err5"
+set obsindir = "/glade/work/USER/observations/"
+set obsoutdir = "${obsindir}/obs_seqs/"
 
 set d = 1
 while ( $d <= $totaldays )
@@ -131,7 +131,7 @@ set m = 1
   @ doy = $doy + `printf $day | sed 's/^0//'`
   @ doy_add = $doy - 1
 
-  sed "/year/ c\   year = $year" ../work/input.nml >! temp
+  sed "/year/ c\   year = $year" input.nml >! temp
     mv temp input.nml 
   sed "/doy/ c\   doy = $doy_add" input.nml > temp
     mv temp input.nml
