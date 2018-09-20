@@ -1,0 +1,62 @@
+
+we got the rttov files by starting at this web page:
+
+https://www.nwpsaf.eu/site/software/rttov
+
+you have to register for a free account before you
+download the code.
+
+
+the forward operator code, as it is so far, is in
+this directory:
+
+observations/forward_operators
+
+look at these files:
+
+radiance_fwd_example.F90  - a standalone example from
+   the rttov distribution showing how to use their code
+
+rtcoef_eos_2_amsua.dat - a data file of coefficients that 
+   are needed by the rttov code
+
+obs_def_rttov_mod.f90  - a first stab at a forward operator
+
+rttov_interface_mod.f90  - support routines that interface
+   to the rttov code.  these aren't finished - they are mostly
+   the example program code dropped into a module with a lot
+   of comments about how we need to alter things to run.
+
+
+the observation converter is here:
+
+observations/obs_converters/AIRS
+
+documentation is in the 2 pdf files.
+
+in the work directory you want to make/run:
+
+convert_airs_rad_L2
+
+this requires the JPL EOS libraries.  see
+the BUILDME script for help in building this
+for your mac.  on cheyenne i have the files
+in my home dir already.
+
+example EOS reader code is in the readers directory.
+unpack the tar file.
+
+
+
+we haven't tried running this FO with any of 
+the models because we aren't that far along yet.
+
+it requires a model that uses the threed_sphere
+locations, and can return interpolated values for:
+
+QTY_PRESSURE, QTY_TEMPERATURE, and QTY_SPECIFIC_HUMIDITY
+
+
+
+nsc 
+20 sept 2018
