@@ -4,12 +4,15 @@
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: CESM1_5_setup_ensemble 10422 2016-06-28 22:22:06Z thoar $
+# DART $Id$
 
-#-----------------------------------------------------------------------
-# Modified to accomondate changes in CESM2
-# YZhang
-#-----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# Script to help configure, build, and stage a CESM multi-instance experiment.
+# The experiment initially does not perform any data assimilation. After
+# initial trials are confirmed to be working correctly, the experiment can
+# be restarted with data assimilation enabled. This two-step approach has
+# been shown to have better results than trying to do everything at once.
+# ------------------------------------------------------------------------------
 
 # ==============================================================================
 # Options defining the experiment:
@@ -73,8 +76,9 @@ setenv baseobsdir  /glade/u/home/${USER}/PWS2018/day4/obs_seqs
 # ==============================================================================
 # runtime control namelists
 # ==============================================================================
+
 setenv runtype branch          #set refcase and refdate if runtype is branch
-                                 #will be ignored if runtype is startup
+                               #will be ignored if runtype is startup
 setenv refcase  free_ens10
 setenv refdate  2005-04-01
 
@@ -160,6 +164,7 @@ ${cesmroot}/cime/scripts/create_newcase  --res  ${resolution} \
                                          -project ${project} \
                                          --output-root /glade/scratch/$USER/$cesmtag \
                                          --run-unsupported || exit 1
+
 # ==============================================================================
 # Preserve a copy of this script as it was run.
 # Copy the DART setup script (CESM_DART_config) to CASEROOT.
@@ -237,7 +242,6 @@ setenv MAX_TASKS_PER_NODE `./xmlquery MAX_TASKS_PER_NODE -value`
 ./xmlchange RUN_REFDATE=${refdate}
 ./xmlchange RUN_STARTDATE=${startdate}
 
-#netcdf
 ./xmlchange PIO_TYPENAME=netcdf
 
 @ nodes_per_instance = 1
@@ -296,18 +300,18 @@ echo "case setup finished"
 # you can perturb the parameters you're interested in
 #===========================================================
 
-set r_snw = (  -0.8346421  -0.8321888  -0.2238045  -0.9605725  -0.7291763 \
-              -1.445741  0.03836016  0.9545915  -0.8282194  -0.7757131 \
-              1.222636  -0.788242  -0.9739172  -0.1878285  0.7847106 \
-              -1.923835  -1.866753  -0.9538506  -1.690121  0.6913126 \
-              -0.7059948  -1.250739  -1.712841  -1.467445  0.5493592 \
-              -0.5763934  0.7519119  0.3253862  -0.2969795  1.094377 )
+set r_snw = ( -0.8346421  -0.8321888  -0.2238045  -0.9605725  -0.7291763 \
+              -1.445741    0.03836016  0.9545915  -0.8282194  -0.7757131 \
+               1.222636   -0.788242   -0.9739172  -0.1878285   0.7847106 \
+              -1.923835   -1.866753   -0.9538506  -1.690121    0.6913126 \
+              -0.7059948  -1.250739   -1.712841   -1.467445    0.5493592 \
+              -0.5763934   0.7519119   0.3253862  -0.2969795   1.094377 )
 
 set Cf = ( 45.2172   4.77717  22.83    13.4244  26.1557  12.5715 \
             5.45581 11.9083   31.6812  45.0404   8.36396 46.4757 \
-            45.6548  29.6026   25.856   38.746   20.8352  41.8975 \
-            35.9006   9.72523  42.139    7.36385  1.38402  2.0052 \
-            49.101   29.1324    1.09503 31.06    20.8142   6.37866 )
+           45.6548  29.6026   25.856   38.746   20.8352  41.8975 \
+           35.9006   9.72523  42.139    7.36385  1.38402  2.0052 \
+           49.101   29.1324    1.09503 31.06    20.8142   6.37866 )
 
 @ inst = 1
 while ( $inst <= $num_instances )
@@ -319,10 +323,10 @@ while ( $inst <= $num_instances )
     # ===========================================================================
     # DATM namelist
 
-    echo "streams  = 'datm.streams.txt.CPLHISTForcing.Solar_$inst_string             $stream_year_align $stream_year_first $stream_year_last'," >> ${fname}
-    echo "           'datm.streams.txt.CPLHISTForcing.nonSolarFlux_$inst_string            $stream_year_align $stream_year_first $stream_year_last'," >> ${fname}
-    echo "           'datm.streams.txt.CPLHISTForcing.State1hr_$inst_string $stream_year_align $stream_year_first $stream_year_last'"  >> ${fname}
-    echo "            'datm.streams.txt.CPLHISTForcing.State3hr_$inst_string $stream_year_align $stream_year_first $stream_year_last'"  >> ${fname}
+    echo "streams  = 'datm.streams.txt.CPLHISTForcing.Solar_$inst_string        $stream_year_align $stream_year_first $stream_year_last'," >> ${fname}
+    echo "           'datm.streams.txt.CPLHISTForcing.nonSolarFlux_$inst_string $stream_year_align $stream_year_first $stream_year_last'," >> ${fname}
+    echo "           'datm.streams.txt.CPLHISTForcing.State1hr_$inst_string     $stream_year_align $stream_year_first $stream_year_last'," >> ${fname}
+    echo "           'datm.streams.txt.CPLHISTForcing.State3hr_$inst_string     $stream_year_align $stream_year_first $stream_year_last'," >> ${fname}
     echo "           'datm.streams.txt.presaero.clim_2000_$inst_string 1 1 1'"  >> ${fname}
     echo "vectors  = 'u:v' "     >> ${fname}
     echo "mapmask  = 'nomask', " >> ${fname}
@@ -369,16 +373,16 @@ while ( $inst <= $num_instances )
     echo "f_aicen = 'dmxxx' "                   >> $fname
     echo "f_vicen = 'dmxxx' "                   >> $fname
     echo "f_vsnon = 'dmxxx' "                   >> $fname
-    echo "f_hi = 'dmxxx' "                   >> $fname
-    echo "f_hs = 'dmxxx' "                   >> $fname
-    echo "f_aice = 'dmxxx' "                   >> $fname
-    echo "f_snowfrac = 'dmxxx' "                   >> $fname
-    echo "f_albsni = 'dmxxx' "                   >> $fname
-    echo "f_albsno = 'dmxxx' "                   >> $fname
-    echo "f_albice = 'dmxxx' "                   >> $fname
-    echo "f_albpnd = 'dmxxx' "                   >> $fname
-    echo "Cf   =  ${Cf[$inst]} " >>$fname
-    echo "r_snw   =  ${r_snw[$inst]} " >>$fname
+    echo "f_hi = 'dmxxx' "                      >> $fname
+    echo "f_hs = 'dmxxx' "                      >> $fname
+    echo "f_aice = 'dmxxx' "                    >> $fname
+    echo "f_snowfrac = 'dmxxx' "                >> $fname
+    echo "f_albsni = 'dmxxx' "                  >> $fname
+    echo "f_albsno = 'dmxxx' "                  >> $fname
+    echo "f_albice = 'dmxxx' "                  >> $fname
+    echo "f_albpnd = 'dmxxx' "                  >> $fname
+    echo "Cf   =  ${Cf[$inst]} "                >> $fname
+    echo "r_snw   =  ${r_snw[$inst]} "          >> $fname
     echo "highfreq = .false. "                  >> $fname
    
     @ inst = $inst + 1
@@ -389,6 +393,7 @@ end
 # ==============================================================================
 # Copy the restart files and pointers to the run directory if runtype is branch
 # ==============================================================================
+
 if ( $runtype == "branch" ) then
    cp /glade/scratch/yfzhang/inputdata_cam/ice/cice/$startdate/$refcase/* $rundir/
 endif 
@@ -408,10 +413,48 @@ endif
 # 2. Submit the job as usual: ./case.submit
 # 3. Checkout the results!
 
+cat << EndOfText >! CESM_instructions.txt
+
+-------------------------------------------------------------------------
+Time to check the case.
+
+1) cd ${rundir}
+   and check the compatibility between the namelists/pointer files
+   and the files that were staged.
+
+2) cd ${caseroot}
+
+3) check things
+
+4) run a single day, verify that it works without assimilation
+   ./case.submit
+
+5) IF NEEDED, compile all the DART executables by
+   cd  ${dartroot}/models/cice/work
+   ./quickbuild.csh -mpi
+
+5) configure the case to be able to DART by executing
+   cd ${caseroot}
+   ./CESM_DART_config
+
+6) Make sure the DART-related parts are appropriate. 
+   Check the input.nml
+   Check the assimilate.csh
+   ./case.submit
+
+7) If that works 
+   ./xmlchange CONTINUE_RUN=TRUE
+   that sort of thing
+-------------------------------------------------------------------------
+
+EndOfText
+
+cat CESM_instructions.txt
+
 
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_trunk/models/cice/shell_scripts/CESM1_5_setup_ensemble $
-# $Revision: 10422 $
-# $Date: 2016-06-28 16:22:06 -0600 (Tue, 28 Jun 2016) $
+# $URL$
+# $Revision$
+# $Date$
