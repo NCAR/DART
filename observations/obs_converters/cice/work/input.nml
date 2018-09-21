@@ -45,61 +45,13 @@
    module_details = .false.
   /
 
-&seaice_sat_to_obs_nc_nml
-   year      = 2005
-   doy       = 303
-   terr      = 0.1
-   maskfile  = 'cice_hist.nc'
-   debug     = .false.
-   seaice_input_file = 'synthetic_obs.hice.err0.4.2005-10-31.nc'
-   obs_out_file      = 'obs_seq.2005-10-31-00000'
-  /
-
-&seaice_thickness_to_obs_nc_nml
-   year      = 2005
-   doy       = 303
-   terr      = 0.4
-   maskfile  = 'cice_hist.nc'
-   debug     = .false.
-   seaice_input_file = 'synthetic_obs.hice.err0.4.2005-10-31.nc'
-   obs_out_file      = 'obs_seq.2005-10-31-00000'
-  /
-
-&seaice_thickness_icebridge_to_obs_nc_nml
-   year      = 2005
-   doy       = 303
-   terr      = 0.2
-   debug     = .false.
-   seaice_input_file = 'synthetic_obs.hice.err0.4.2005-10-31.nc'
-   obs_out_file      = 'obs_seq.2005-10-31-00000'
-  /
-
-&seaice_freeboard_icesat2_to_obs_nc_nml
+&seaice_aggre_to_obs_nc_nml
    year      = 2005
    doy       = 303
    terr      = 0.15
-   debug     = .false.
-   seaice_input_file = 'synthetic_obs.hice.err0.4.2005-10-31.nc'
-   obs_out_file      = 'obs_seq.2005-10-31-00000'
-  /
-
-&seaice_fraction_icebridge_to_obs_nc_nml
-   year      = 2005
-   doy       = 303
-   cat       = 1
-   terr      = 0.1
-   debug     = .false.
-   seaice_input_file = 'synthetic_obs.hice.err0.4.2005-10-31.nc'
-   obs_out_file      = 'obs_seq.2005-10-31-00000'
-  /
-
-&seaice_temperature_to_obs_nc_nml
-   year      = 2005
-   doy       = 303
-   terr      = 3
    maskfile  = 'cice_hist.nc'
    debug     = .false.
-   seaice_input_file = 'synthetic_obs.hice.err0.4.2005-10-31.nc'
+   seaice_input_file = 'synthetic_seaicedata.nc'
    obs_out_file      = 'obs_seq.2005-10-31-00000'
   /
 
@@ -108,28 +60,7 @@
    doy       = 303
    terr      = 3
    debug     = .false.
-   seaice_input_file = 'synthetic_obs.hice.err0.4.2005-10-31.nc'
-   obs_out_file      = 'obs_seq.2005-10-31-00000'
-  /
-
-&seaice_fy_to_obs_nc_nml
-   year      = 2005
-   doy       = 303
-   terr      = 0.15
-   maskfile  = 'cice_hist.nc'
-   debug     = .false.
-   seaice_input_file = 'synthetic_obs.hice.err0.4.2005-10-31.nc'
-   obs_out_file      = 'obs_seq.2005-10-31-00000'
-  /
-
-&seaice_syn_to_obs_nc_nml
-   year      = 2005
-   doy       = 303
-   cat       = 1
-   terr      = 0.15
-   maskfile  = 'cice_hist.nc'
-   debug     = .false.
-   seaice_input_file = 'synthetic_obs.hice.err0.4.2005-10-31.nc'
+   seaice_input_file = 'modis_seaice_temperatures.nc'
    obs_out_file      = 'obs_seq.2005-10-31-00000'
   /
 

@@ -5,7 +5,6 @@
    terr              = 3.0
    seaice_input_file = 'seaicedata.input'
    obs_out_file      = 'obs_seq.out'
-   maskfile          = 'cice_hist.nc'
    debug             = .false.
    /
 

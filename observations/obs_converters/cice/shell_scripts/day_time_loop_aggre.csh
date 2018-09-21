@@ -6,14 +6,13 @@
 #
 # DART $Id$
 #
-# this is a template for a shell script that can loop
-# over multiple hours and can roll over day, month, and
-# even year boundaries.  see the section inside the loop
-# for the 'your code goes here' part. look for the string ADDME.
+# This is shell script to create many synthetic observation sequence files
+# by looping over multiple hours and can roll over day, month, and
+# even year boundaries.
+# 
 # this script requires the executable 'advance_time' to be
 # built and exist in the current directory, and advance_time
 # requires an input.nml namelist file.
-
 
 # set this to true if you're planning to pass the start & end times
 # in as command line args.  set it to false if you're planning to set
@@ -33,7 +32,7 @@ if ($command_line_args == 'true') then
   set start_month=$argv[2]
   set start_day=$argv[3]
   set start_hour=$argv[4]
-  
+
   set end_year=$argv[5]
   set end_month=$argv[6]
   set end_day=$argv[7]
@@ -43,7 +42,7 @@ else
   set start_month=01
   set start_day=01
   set start_hour=0
-  
+
   set end_year=2006
   set end_month=06
   set end_day=30
@@ -86,77 +85,76 @@ if ( $start_t[2] > $end_t[2]) then
    @ end_t[2] += 86400
    @ end_t[1] -= 1
 endif
-@ totaldays = ( $end_t[1] - $start_t[1] + 1 ) 
+@ totaldays = ( $end_t[1] - $start_t[1] + 1 )
 
 # loop over each day
 
-set obsindir = "cice5_free_2005to2010/t25/"
-set obsoutdir = "${obsindir}/obs_seqs/aice/"
+set obsindir = "cice5_free_2005to2010/t25"
+set obsoutdir = "${obsindir}/obs_seqs/aice"
 
 set d = 1
 while ( $d <= $totaldays )
 
-  # parse out the parts from a string which is YYYYMMDDHH
-  # use cut with the byte option to pull out columns 1-4, 5-6, 7-8, 9-10
-  set  year=`echo $curhr | cut -b1-4`
-  set month=`echo $curhr | cut -b5-6`
-  set   day=`echo $curhr | cut -b7-8`
-  set  hour=`echo $curhr | cut -b9-10`
+   # parse out the parts from a string which is YYYYMMDDHH
+   # use cut with the byte option to pull out columns 1-4, 5-6, 7-8, 9-10
+   set  year=`echo $curhr | cut -b1-4`
+   set month=`echo $curhr | cut -b5-6`
+   set   day=`echo $curhr | cut -b7-8`
+   set  hour=`echo $curhr | cut -b9-10`
 
-  # compute the equivalent gregorian day here.
-  set g=(`echo ${year}${month}${day}${hour} 0 -g | ../work/advance_time`)
-  set gregday=$g[1]
-  set gregsec=$g[2]
+   # compute the equivalent gregorian day here.
+   set g=(`echo ${year}${month}${day}${hour} 0 -g | ../work/advance_time`)
+   set gregday=$g[1]
+   set gregsec=$g[2]
 
-  # status/debug - comment in or out as desired.
-  echo starting processing for ${year} ${month} ${day} ${hour}
-  echo which is gregorian day: $gregday, $gregsec
+   # status/debug - comment in or out as desired.
+   echo starting processing for ${year} ${month} ${day} ${hour}
+   echo which is gregorian day: $gregday, $gregsec
 
+   # <ADDME> your code goes here.
+   # use $year, $month, $day, $hour, and $gregday, $gregsec as needed.
 
-  # <ADDME> your code goes here.  
-  # use $year, $month, $day, $hour, and $gregday, $gregsec as needed.
-  
-  # change the namelist to convert the MODIS ascii file to obs seq file
+   # @todo CHECKME ... TJH thinks there is something disconnected here.
+   # the 'doy' calculated here does not include leap years, but the
+   # gregday from advance_time DOES include leap years.
+   # If this should include leap years, check out day_time_loop_modis_ist.csh
+   # I suppose it all depends on how seaice_aggre_to_obs_netcdf was written.
 
-set month_days = (31 28 31 30 31 30 31 31 30 31 30 31)    
-echo $month_days
+   set month_days = (31 28 31 30 31 30 31 31 30 31 30 31)
 
-set doy = 0
-set m = 1
-@ month_index = `printf $month | sed 's/^0//'`
-  while ( $m < $month_index )
-  @ doy = $doy + $month_days[$m]
-  @ m = $m + 1
-  end 
-  @ doy = $doy + `printf $day | sed 's/^0//'`
-  @ doy_add = $doy - 1
+   set doy = 0
+   set m = 1
+   @ month_index = `printf $month | sed 's/^0//'`
 
-  sed "/year/ c\   year = $year" input.nml >! temp
-    mv temp input.nml 
-  sed "/doy/ c\   doy = $doy_add" input.nml > temp
-    mv temp input.nml
+   while ( $m < $month_index )
+      @ doy = $doy + $month_days[$m]
+      @ m = $m + 1
+   end
 
-    set filein  = "synthetic_obs.aice.${year}-${month}-${day}.nc" #"bt_${year}${month}${day}_modelgrid.nc"
-    set fileout = "obs_seq.${year}-${month}-${day}-00000"
-    echo $obsindir/$filein
-    echo $obsoutdir/$fileout
+   @ doy = $doy + `printf $day | sed 's/^0//'`
+   @ doy_add = $doy - 1
 
-    sed "/seaice_input_file/ c\  seaice_input_file = '${obsindir}/$filein'" \
-        input.nml > temp
-    mv temp input.nml
+   # change the namelist to create a uniquely-named observation sequence file
 
-    sed "/obs_out_file/ c\  obs_out_file = '${obsoutdir}/$fileout'" \
-        input.nml > temp
-    mv temp input.nml
-    
-    ../work/seaice_sat_to_obs_netcdf
+   set filein  = "synthetic_obs.aice.${year}-${month}-${day}.nc"
+   set fileout = "obs_seq.${year}-${month}-${day}-00000"
+   echo $obsindir/$filein
+   echo $obsoutdir/$fileout
 
-  # advance the hour; the output is YYYYMMDDHH
-  set curhr=`echo ${year}${month}${day}${hour} +1d | ../work/advance_time`
+   sed -e "/year/ c\   year = $year"  \
+       -e "/doy/ c\   doy = $doy_add"  \
+       -e "/seaice_input_file/ c\   seaice_input_file = '${obsindir}/$filein'" \
+       -e "/obs_out_file/ c\   obs_out_file = '${obsoutdir}/$fileout'" input.nml > temp
+   mv temp input.nml
 
-  # advance the loop counter
-  @ d += 1
- 
+   ../work/seaice_aggre_to_obs_netcdf
+
+   # advance the time by a day; the output is YYYYMMDDHH
+   set curhr=`echo ${year}${month}${day}${hour} +1d | ../work/advance_time`
+
+   # advance the loop counter
+   @ d += 1
+
 end
 
 exit 0
@@ -164,27 +162,27 @@ exit 0
 
 #%# # example of using sed and lists of obs files to automate
 #%# # calling the obs_sequence_tool to split or combine obs_seq files:
-#%# 
+#%#
 #%# # put a list of filenames into 'obstemp' somehow
-#%# 
+#%#
 #%# # remove duplicate filenames
 #%# sort obstemp | uniq > infilelist
 #%# echo 'using input files:'
 #%# cat infilelist
-#%# 
+#%#
 #%# # if the start and stop times are in gregorian format,
 #%# # in $start and $stop, use sed to set the input.nml
 #%# sed -e "s/BDAY/$start[1]/" \
 #%#     -e "s/BSEC/$start[2]/" \
 #%#     -e "s/ASEC/$stop[2]/"   \
 #%#     -e "s/ASEC/$stop[2]/"    input.nml.template >! input.nml
-#%# 
+#%#
 #%# # run obs_seq_tool
 #%# ./obs_sequence_tool
-#%# 
+#%#
 #%# # move the output someplace
 #%# mv obs_seq.combined obs_seq.$curhr
-#%# 
+#%#
 
 # <next few lines under version control, do not edit>
 # $URL$

@@ -807,6 +807,13 @@ be set.  If your observations will impact most of the model state, then
   locations of the 'new' glade filesystem. They used CESM tag: cesm2_0_alpha06n
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Sep 21 2018 :: pruned CICE branch (yz-cice)               $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- Worked with Yongfei Zhang to remove prototype codes and more completely
+  document observation converters and data sources for cice assimilation.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + MMM DD YYYY :: summary of next changes                    $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

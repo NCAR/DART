@@ -5,26 +5,20 @@
 ! DART $Id$
 
 !-----------------------------------------------------------------------
-!> seaice_aggre_to_obs_netcdf - input is a seaice-coverage file that has been
-!>     converted from HDF to netCDF with an automated tool.  this
-!>     program then takes the unsigned byte/integer(1) data and
-!>     converts it into a seaice coverage obs_seq file.
+!> seaice_aggre_to_obs_netcdf
+!> This program creates an observation sequence file that has a synthetic
+!> observation at every location in the netCDF file.
+!> 'make_obs_aggre.ncl' was used to add noise to a cice state which is
+!> then used as input to this program.
+!>
+!> An alternative method would be to use this program to create an
+!> observation sequence file with dummy values at each location and use the
+!> resulting 'obs_seq.in' as input for running 'perfect_model_obs'.
+!> This method would not require the use of ncl, but would require running
+!> 'perfect_model_obs'.
 !>
 !>     Credits: Yongfei Zhang - University of Washington.
 !-----------------------------------------------------------------------
-!>
-!> TJH Thu Aug 30 13:29:37 MDT 2018
-!> As near as I can tell, the intent of this program is to create an obs_seq.out
-!> file that has a synthetic observation at every grid location in the netCDF file.
-!> I believe 'make_obs_aggre.ncl' was used to add noise to a cice state and then
-!> that state is used as input to this program.
-!> This could also be done by creating an obs_seq.in for the location and then
-!> running perfect_model_obs. The obs_seq.in _could_ have all kinds of desired
-!> observations with their own error variances.
-!> This may be able to replace all of the converters
-!> in this directory that end in ****_to_obs_netcdf.f90
-
-!>@todo replace the utilities_mod:nc_check with the netcdf_utilities_mod:nc_check
 
 program seaice_aggre_to_obs_netcdf
 
@@ -32,7 +26,7 @@ use         types_mod, only : r8
 use     utilities_mod, only : initialize_utilities, finalize_utilities,      &
                               find_namelist_in_file,  &
                               check_namelist_read, nmlfileunit, do_nml_file, &
-                              do_nml_term, nc_check
+                              do_nml_term
 use  time_manager_mod, only : time_type, set_calendar_type, &
                               set_date, set_time, get_time, GREGORIAN, &
                               operator(>=), operator(-), operator(+)
@@ -43,6 +37,8 @@ use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,     &
                               set_copy_meta_data, set_qc_meta_data
 use obs_utilities_mod, only : create_3d_obs, add_obs_to_seq, getdimlen
 use      obs_kind_mod, only : SAT_SEAICE_AGREG_CONCENTR
+
+use netcdf_utilities_mod, only : nc_open_file_readonly, nc_close_file, nc_check
 
 use netcdf
 
@@ -70,6 +66,8 @@ type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
 type(time_type)         :: comp_day0, time_obs, prev_time
 
+! namelist with default values
+
 integer  :: year  = 2000
 integer  :: doy   = 1
 real(r8) :: terr = 0.15_r8
@@ -96,49 +94,51 @@ call check_namelist_read(iunit, io, 'seaice_aggre_to_obs_nc_nml')
 if (do_nml_file()) write(nmlfileunit, nml=seaice_aggre_to_obs_nc_nml)
 if (do_nml_term()) write(     *     , nml=seaice_aggre_to_obs_nc_nml)
 
-! open netcdf file here.
-call nc_check( nf90_open(seaice_input_file, nf90_nowrite, ncid), &
-               routine, 'opening file '//trim(seaice_input_file))
+ncid = nc_open_file_readonly(seaice_input_file, routine)
 
-! get dims along the swath path, and across the swath path.  the rest of
-! the data arrays use these for their dimensions
+! get dims along and across the swath path
 call getdimlen(ncid, 'ni', axdim)
 call getdimlen(ncid, 'nj', aydim)
 
 ! remember that when you ncdump the netcdf file, the dimensions are
 ! listed in C order.  when you allocate them for fortran, reverse the order.
 allocate(seaice_concentr(axdim, aydim))
-allocate(lon(axdim,aydim), lat(axdim,aydim))
-allocate(qc_array(axdim,aydim))
-allocate(tmask(axdim,aydim))
+allocate(            lat(axdim, aydim))
+allocate(            lon(axdim, aydim))
+allocate(          tmask(axdim, aydim))
+allocate(       qc_array(axdim, aydim))
 
 varname = 'aice'
-call nc_check( nf90_inq_varid(ncid, varname, varid), &
-               routine, 'inquire var '// trim(varname))
-call nc_check( nf90_get_var(ncid, varid, seaice_concentr), &
-               routine, 'getting var '// trim(varname))
+io = nf90_inq_varid(ncid, varname, varid)
+call nc_check(io, routine, 'nf90_inq_varid "'//trim(varname)//'"')
+io = nf90_get_var(ncid, varid, seaice_concentr)
+call nc_check(io, routine, 'nf90_get_var "'//trim(varname)//'"')
 
 !! obtain lat and lon
 varname = 'lat'
-call nc_check( nf90_inq_varid(ncid, varname, varid), &
-               routine, 'inquire var '// trim(varname))
-call nc_check( nf90_get_var(ncid, varid, lat), &
-               routine, 'getting var '// trim(varname))
+io = nf90_inq_varid(ncid, varname, varid)
+call nc_check(io, routine, 'nf90_inq_varid "'//trim(varname)//'"')
+io = nf90_get_var(ncid, varid, lat)
+call nc_check(io, routine, 'nf90_get_var "'//trim(varname)//'"')
 
 varname = 'lon'
-call nc_check( nf90_inq_varid(ncid, varname, varid), &
-               routine, 'inquire var '// trim(varname))
-call nc_check( nf90_get_var(ncid, varid, lon), &
-               routine, 'getting var '// trim(varname))
+io = nf90_inq_varid(ncid, varname, varid)
+call nc_check(io, routine, 'nf90_inq_varid "'//trim(varname)//'"')
+io = nf90_get_var(ncid, varid, lon)
+call nc_check(io, routine, 'nf90_get_var "'//trim(varname)//'"')
 
-! read in ocean/land mask
+call nc_close_file(ncid, routine, 'data file')
+
+! read in ocean/land mask from a different file.
+ncid = nc_open_file_readonly(maskfile, routine)
+
 varname = 'tmask'
-call nc_check( nf90_open(maskfile,nf90_nowrite,ncid), &
-               routine,'opening file'//trim(maskfile))
-call nc_check( nf90_inq_varid(ncid, varname, varid), &
-               routine, 'inquire var '// trim(varname))
-call nc_check( nf90_get_var(ncid, varid, tmask), &
-               routine, 'getting var '// trim(varname))
+io = nf90_inq_varid(ncid, varname, varid)
+call nc_check(io, routine, 'nf90_inq_varid "'//trim(varname)//'"')
+io = nf90_get_var(ncid, varid, tmask)
+call nc_check(io, routine, 'nf90_get_var "'//trim(varname)//'"')
+
+call nc_close_file(ncid, routine, 'mask file')
 
 ! convert -180/180 to 0/360
 where (lon < 0.0_r8) lon = lon + 360.0_r8
