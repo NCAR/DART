@@ -37,7 +37,7 @@ use  sort_mod,            only : index_sort
 use assim_model_mod,      only : static_init_assim_model, get_model_size, &
                                  get_state_meta_data
 
-use state_vector_io_mod,  only : read_state, write_state
+use state_vector_io_mod,  only : read_state
 
 use io_filenames_mod,     only : file_info_type, io_filenames_init,        &
                                  set_io_copy_flag, set_file_metadata,      &
@@ -160,7 +160,7 @@ call init_ensemble_manager(ens_handle, ens_size+1, model_size)
 
 num_domains = get_num_domains()
 
-! Given either a vector of in/output_state_files or a text file containing
+! Given either a vector of input_state_files or a text file containing
 ! a list of files, return a vector of files containing the filenames.
 call set_multiple_filename_lists(input_restart_files(:), &
                                  input_restart_file_list(:), &
@@ -176,10 +176,11 @@ allocate(file_array_input(ens_size, num_domains))
 file_array_input  = RESHAPE(input_restart_files,  (/ens_size,  num_domains/))
 
 ! read in the ensemble and the mean - always in a separate file
-call io_filenames_init(ens_file_info, ens_size, &
-                       cycling=single_restart_file_in, &
-                       single_file=single_restart_file_in, &
-                       restart_files=file_array_input)
+call io_filenames_init(ens_file_info, &
+                       ncopies       = ens_size, &
+                       cycling       = single_restart_file_in, &
+                       single_file   = single_restart_file_in, &
+                       restart_files = file_array_input)
 
 do imem = 1, ens_size
    write(my_base,'(A,I0.2)') 'inens_',                 imem

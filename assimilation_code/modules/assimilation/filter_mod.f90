@@ -2340,7 +2340,7 @@ nstages = size(stages,1)
 do i = 1, nstages
    my_stage = stages(i)
    call to_upper(my_stage)
-   if (trim(my_stage) /= trim('NULL')) then
+   if (my_stage /= 'NULL' .and. my_stage /= '') then
    SELECT CASE (my_stage)
       CASE ('INPUT', 'FORECAST', 'PREASSIM', 'POSTASSIM', 'ANALYSIS', 'OUTPUT')
          call set_stage_to_write(stages(i),.true.)

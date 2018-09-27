@@ -575,3 +575,11 @@
    prior_inf_mean     = 1.3
    prior_inf_sd       = 0.6
 /
+
+&perturb_single_instance_nml
+   ens_size               = 3
+   input_files            = 'caminput.nc'
+   output_files           = 'cam_pert1.nc','cam_pert2.nc','cam_pert3.nc'
+   output_file_list       = ''
+   perturbation_amplitude = 0.2
+/

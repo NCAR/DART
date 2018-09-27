@@ -4,10 +4,10 @@
       </general_comment>
 <stream>
       <comment>
-         Stream description file for CPL history 3-hourly Solar data at 0.9x1.25 resolution
+         Stream description file for CPL history 3-hourly Solar data
       </comment>
       <dataSource>
-         Raeder et al. 80 member CAM/DART reanalysis
+         Raeder et al. 80 member FV 2 deg CAM/DART reanalysis
       </dataSource>
       <domainInfo>
          <variableNames>
@@ -18,7 +18,7 @@
             doma_mask     mask
          </variableNames>
          <filePath>
-            /glade/p/rda/data/ds199.1
+            /glade/collections/rda/data/ds199.1
          </filePath>
          <fileNames>
           CAM_DATM.cpl_NINST.ha2x1dx6h.RUNYEAR.nc
@@ -38,7 +38,7 @@
             a2x6h_Sa_pslv        pslv
          </variableNames>
          <filePath>
-            /glade/p/rda/data/ds199.1
+            /glade/collections/rda/data/ds199.1
          </filePath>
          <tInterpAlgo>
             linear

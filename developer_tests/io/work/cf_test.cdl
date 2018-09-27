@@ -25,8 +25,6 @@ C:long_name = "variable C" ;
 C:short_name = "short C" ;
 C:missing_value = -88888.88888 ;
 C:_FillValue = -88888.88888 ;
-C:scale_factor = 0.2 ;
-C:add_offset = 2.0 ;
 
 double D(level);
 

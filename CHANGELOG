@@ -745,7 +745,7 @@ and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
 - Removed makefiles for the obsolete trans_time program.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Jun 18 2018 :: CAM/CESM 2.0, DART QC 8, closest_member_tool  Revision: XXXXX 
++ Jun 18 2018 :: CAM/CESM 2.0, DART QC 8, closest_member_tool  Revision: 12681 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - Support for CAM assimilations in the CESM 2.0 release.  See 
@@ -771,8 +771,53 @@ and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
 - Added more functions to the netcdf_utilities_mod.f90
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Aug 03 2018 :: performance fix for distributed mean          Revision: 12758
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- Important performance fix if model does vertical conversion for localization.
+Results were not wrong but performance was poor if 'distribute_mean = .true.'
+was selected in the &assim_tools_nml namelist.
+Now distributing the mean runs in close to the non-distributed time and uses
+much less memory for large models. This only impacts models which do a vertical
+conversion of either the observation or state vertical coordinate for localization
+AND which set &assim_tools_nml :: distribute_mean = .true. to use less memory.
+When using a distributed mean "convert_all_obs_verticals_first = .true." should
+be set.  If your observations will impact most of the model state, then
+"convert_all_state_verticals_first = .true.' can also be set.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Aug 14 2018 :: WRF Polar, obs_diag files                     Revision: 12778
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- fix for WRF's wind direction vectors when using the Polar Stereographic 
+  map projection.  Thanks to Kevin Manning for the fix.
+
+- removed 'allow_missing_in_clm' flag from the &assim_tools_nml namelist in
+  the CICE work directory.  The flag moved to a different namelist and the
+  CICE model doesn't care about it.
+
+- increased the maximum number of input files to obs_diag from 100 to 10000.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Aug 31 2018 :: reintegrate CICE branch (yz-cice)             Revision: 12806
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- Yongfei Zhang and Cecilia Bitz had improvements to the CICE model and 
+  observation converters and forward operators. These changes also use the
+  locations of the 'new' glade filesystem. They used CESM tag: cesm2_0_alpha06n
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Sep 21 2018 :: pruned CICE branch (yz-cice)               $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- Worked with Yongfei Zhang to remove prototype codes and more completely
+  document observation converters and data sources for cice assimilation.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + MMM DD YYYY :: summary of next changes                    $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
 
 # <next few lines under version control, do not edit>
 # $URL$

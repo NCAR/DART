@@ -303,6 +303,7 @@ if(present(restart_files)) then
    esize = SIZE(restart_files,1)
    file_info%stage_metadata%filenames(1:esize,:) = restart_files(:,:)
 endif
+
 if(present(root_name))                  file_info%root_name                     = root_name
 if(present(check_output_compatibility)) file_info%check_output_compatibility    = check_output_compatibility
 file_info%initialized = .true.

@@ -32,7 +32,8 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
                              get_last_obs, destroy_obs, get_num_qc, get_qc_meta_data
 use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
                              get_obs_def_location,  get_obs_def_type_of_obs
-use     obs_kind_mod, only : max_defined_types_of_obs, get_quantity_for_type_of_obs, get_name_for_type_of_obs, &
+use     obs_kind_mod, only : max_defined_types_of_obs, get_quantity_for_type_of_obs, &
+                             get_name_for_type_of_obs, &
                              QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT
 use     location_mod, only : location_type, get_location, set_location_missing,   &
                              write_location, operator(/=), is_location_in_region, &
@@ -171,7 +172,7 @@ integer, parameter, dimension(4) ::    good_prior_qcs = (/ 0, 1, 2, 3 /)
 integer, parameter, dimension(2) ::    good_poste_qcs = (/ 0, 1       /)
 integer :: numqcvals
 
-integer, parameter :: max_num_input_files = 100
+integer, parameter :: max_num_input_files = 10000
 
 !>@todo remove after verifying NbiqQC, NbadIZ not used in plotting scripts
 real(r8):: rat_cri               = 5000.0_r8 ! QC ratio
@@ -3528,9 +3529,10 @@ end subroutine Normalize3Dvars
 
 
 subroutine WriteNetCDF(fname)
+
 character(len=*), intent(in) :: fname
 
-integer :: ncid, i, nobs, typesdimlen
+integer :: ncid, i, nobs, typesdimlen, io
 integer ::  RegionDimID,  RegionVarID
 integer ::  MlevelDimID,  MlevelVarID
 integer ::  PlevelDimID,  PlevelVarID
@@ -3657,15 +3659,14 @@ enddo
 
 FILEloop : do i = 1, num_input_files
 
-  write(string1,'(''obs_seq_file_'',i3.3)')i
-  call nc_check(nf90_put_att(ncid, NF90_GLOBAL, &
-         trim(string1), trim(obs_sequence_name(i)) ), &
-         'WriteNetCDF', 'region_names:obs_kinds')
+  write(string1,'(''obs_seq_file_'',i5.5)')i
+  io = nf90_put_att(ncid, NF90_GLOBAL, trim(string1), trim(obs_sequence_name(i)))
+  call nc_check(io, 'WriteNetCDF', 'put_att input file names')
 
 enddo FILEloop
 
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'NumIdentityObs', Nidentity ), &
-           'WriteNetCDF', 'put_att identity '//trim(fname))
+io = nf90_put_att(ncid, NF90_GLOBAL, 'NumIdentityObs', Nidentity)
+call nc_check(io, 'WriteNetCDF', 'put_att identity '//trim(fname))
 
 !----------------------------------------------------------------------------
 ! Write all observation types that are used. Requires counting how many
