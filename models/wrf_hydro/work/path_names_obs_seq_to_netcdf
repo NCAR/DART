@@ -25,7 +25,7 @@ assimilation_code/modules/utilities/utilities_mod.f90
 assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.f90
 models/utilities/default_model_mod.f90
 models/wrf/module_map_utils.f90
-models/wrfHydro/model_mod.f90
-models/wrfHydro/noah_hydro_mod.f90
+models/wrf_hydro/model_mod.f90
+models/wrf_hydro/noah_hydro_mod.f90
 observations/forward_operators/obs_def_mod.f90
 observations/forward_operators/obs_def_utilities_mod.f90

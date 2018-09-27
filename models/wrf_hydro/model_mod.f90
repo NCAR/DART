@@ -6,7 +6,7 @@
 
 module model_mod
 
-!> This is the interface for wrfHydro and the DART data assimilation infrastructure. 
+!> This is the interface for wrf_hydro and the DART data assimilation infrastructure. 
 
 use              types_mod, only : r8, i8, MISSING_R8, obstypelength
 

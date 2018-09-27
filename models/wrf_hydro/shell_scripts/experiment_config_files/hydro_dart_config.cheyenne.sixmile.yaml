@@ -93,7 +93,7 @@ initial_ens:
           # Here, only specify the /path/to/restart file for each. The list file is
           # handled internally.
           restart_file_list.txt:
-          # If blank: the restarts in the wrfhydro config/domain are used.
+          # If blank: the restarts in the wrf_hydro config/domain are used.
           hydro_file_list.txt:
           # For now, must match param_restart_file: out_file. TODO(JLM)
           param_file_list.txt:
@@ -148,9 +148,9 @@ run_experiment:
   perturb_forcing:
     perturb: True
     # Absolute path required
-    noise_function_files: [/glade/u/home/jamesmcc/WRF_Hydro/wrf_hydro_dart/models/wrfHydro/python/perturb_channel_only_forcing.py,
-    /glade/u/home/jamesmcc/WRF_Hydro/wrf_hydro_dart/models/wrfHydro/python/noise_qBucket_additive.py,
-    /glade/u/home/jamesmcc/WRF_Hydro/wrf_hydro_dart/models/wrfHydro/python/noise_qSfcLatRunoff_additive.py]
+    noise_function_files: [/glade/u/home/jamesmcc/WRF_Hydro/wrf_hydro_dart/models/wrf_hydro/python/perturb_channel_only_forcing.py,
+    /glade/u/home/jamesmcc/WRF_Hydro/wrf_hydro_dart/models/wrf_hydro/python/noise_qBucket_additive.py,
+    /glade/u/home/jamesmcc/WRF_Hydro/wrf_hydro_dart/models/wrf_hydro/python/noise_qSfcLatRunoff_additive.py]
     noise_cmd: '/glade/u/home/jamesmcc/anaconda3/bin/python perturb_channel_only_forcing.py --perturb_forcing_dir FORCING_perturbed --qsfclat_perturb_func noise_qSfcLatRunoff_additive.py --qbucket_perturb_func noise_qBucket_additive.py'
 
   dart:

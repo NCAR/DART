@@ -43,7 +43,7 @@ echo 'dartDir =' $dartDir
 #==============================================================================
 # copy this script, why not?
 
-set setupFilterSource = ${dartDir}/models/wrfHydro/shell_scripts/cheyenne/setup_experiment.csh 
+set setupFilterSource = ${dartDir}/models/wrf_hydro/shell_scripts/cheyenne/setup_experiment.csh 
 set setupFilterTarget = setup_experiment.csh
 if ( -e $setupFilterTarget ) then 
     if ( `diff -q $setupFilterSource $setupFilterTarget` !~ '' ) then 
@@ -99,11 +99,11 @@ foreach FILE ( filter perfect_model_obs input.nml )
     if ( -e ${FILE} && ! $forceCopyDartBuilds )  then
 	echo "Using existing $FILE"
     else
-	if(! -e ${dartDir}/models/wrfHydro/work/${FILE} ) then 
-	    echo "MISSING file: ${dartDir}/models/wrfHydro/work/${FILE}"
+	if(! -e ${dartDir}/models/wrf_hydro/work/${FILE} ) then 
+	    echo "MISSING file: ${dartDir}/models/wrf_hydro/work/${FILE}"
 	    exit 6
 	endif
-	${COPY} ${dartDir}/models/wrfHydro/work/${FILE} . || exit 6
+	${COPY} ${dartDir}/models/wrf_hydro/work/${FILE} . || exit 6
    endif
 end
 
@@ -116,7 +116,7 @@ foreach FILE ( advance_ensemble.csh.template \
    if ( -e ${FILE} && ! $forceCopyDartScripts )  then
       echo "Using existing $FILE"
    else
-      set FULLPATH = ${dartDir}/models/wrfHydro/shell_scripts/cheyenne/${FILE}
+      set FULLPATH = ${dartDir}/models/wrf_hydro/shell_scripts/cheyenne/${FILE}
 	if (! -e ${FULLPATH}) then
 	    echo "MISSING: ${FULLPATH}"
 	    exit 7

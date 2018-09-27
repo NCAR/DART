@@ -36,10 +36,10 @@
 # 1) creates a clean, temporary directory in which to run a model instance
 #      and copies the necessary files into the temporary directory
 # 2) copies/converts the DART state vector to something the model can ingest
-#      (dart_to_wrfHydro)
-# 3) runs the model (wrfHydro)
+#      (dart_to_wrf_hydro)
+# 3) runs the model (wrf_hydro)
 # 4) copies/converts the model output to input expected by DART
-#      (wrfHydro_to_dart)
+#      (wrf_hydro_to_dart)
 
 set      process = $1
 set   num_states = $2
@@ -147,11 +147,11 @@ while($state_copy <= $num_states)
     set instance        = `printf "%04d" $ensemble_member`
 
     #-------------------------------------------------------------------
-    # Block 2: dart_to_wrfHydro
+    # Block 2: dart_to_wrf_hydro
     #          * remove scraps from previous advances
     #          * copy/link ensemble-member-specific files
     #          * convey the advance-to-time to the model
-    #          * dart_to_wrfHydro: convert the DART state vector to model format
+    #          * dart_to_wrf_hydro: convert the DART state vector to model format
     #-------------------------------------------------------------------
 
     if ($debug > 2) echo "advance_model.csh: block 2, converting ensemble member $instance"
@@ -159,14 +159,14 @@ while($state_copy <= $num_states)
     # clean up from last advance
     # some of these must be copied at some point?? for diagnostics?
     \rm -f  restart.nc  restart.hydro.nc  dart_restart  restart.assimOnly.nc
-    \rm -f  wrfHydro_advance_information.txt
+    \rm -f  wrf_hydro_advance_information.txt
     \rm -f  HYDRO_RST.*  RESTART.* 
     # if perturbed forcings are used, there will be *LDASIN_DOMAIN* here. see below.
     \rm -f  *.LDASOUT_DOMAIN*  *LDASIN_DOMAIN*
     \rm -f  *.LSMOUT_DOMAIN*  *.RTOUT_DOMAIN*  *.CHRTOUT*  *.CHANOBS*  frxst_pts_out.txt
     \rm -f  qstrmvol*  diag_hydro.*  stderr.txt stdout.txt  GW_*.txt  *.GW_DOMAIN*
 
-    # need the wrfHydro restart files for the output of dart_to_wrfHydro
+    # need the wrf_hydro restart files for the output of dart_to_wrf_hydro
     if ($lsm_model_active > 0) \
         \ln -sv ${loginDir}/restart.$instance.nc  restart.nc   || exit 2
     if ($hydro_model_active > 0) \
@@ -201,9 +201,9 @@ while($state_copy <= $num_states)
     # restart.hydro.nc -> ${loginDir}/restart.hydro.$instance.nc
     # restart.assimOnly.nc -> ${loginDir}/restart.assimOnly.$instance.nc
     echo `pwd`
-    ${loginDir}/dart_to_wrfHydro                          || exit 2
+    ${loginDir}/dart_to_wrf_hydro                          || exit 2
 
-    if ( ! -e wrfHydro_advance_information.txt ) then
+    if ( ! -e wrf_hydro_advance_information.txt ) then
 	echo "ERROR: dart_to_noah failed for member $ensemble_member"
 	echo "ERROR: dart_to_noah failed for member $ensemble_member"
 	echo "ERROR: dart_to_noah failed for member $ensemble_member"
@@ -213,10 +213,10 @@ while($state_copy <= $num_states)
     # This next two parts are based on using one-hour forcing files
     # since the minimum time to advance the model seems to be 1 hour.
     # (kday, khour, but no kminute, for example)
-    # dart_to_wrfHydro provides the setting for namelist.hrldas:khour
+    # dart_to_wrf_hydro provides the setting for namelist.hrldas:khour
     # we need to put that value in the local copy of namelist.hrldas
 
-    set numadvancestr = `\grep -i khour wrfHydro_advance_information.txt`
+    set numadvancestr = `\grep -i khour wrf_hydro_advance_information.txt`
     set numadvancestr = `echo $numadvancestr | sed -e "s#[=,']# #g"`
     set numadvancestr = `echo $numadvancestr | sed -e 's#"# #g'`
     set numadvances   = `echo $numadvancestr[$#numadvancestr]`
@@ -252,11 +252,11 @@ ex_end
     echo '******************************************************************************'
 
     # The forcing has to be for the NEXT "FORCING_TIMESTEP", apparently.
-    # FORCING_TIMESTEP is defined in namelist.input At this point, dart_to_wrfHydro
+    # FORCING_TIMESTEP is defined in namelist.input At this point, dart_to_wrf_hydro
     # has assumptions that the forcing_timestep is one hour.
 
     # grep -n identifies the (line number): in the outupt, this becomes skipNlines
-    set numfilestring = `\grep -ni nfiles wrfHydro_advance_information.txt`
+    set numfilestring = `\grep -ni nfiles wrf_hydro_advance_information.txt`
     set numfilestring = `echo $numfilestring | sed -e "s#[=,':]# #g"`
     set numfilestring = `echo $numfilestring | sed -e 's#"# #g'`
     set numfiles      = `echo $numfilestring[$#numfilestring]`
@@ -293,32 +293,32 @@ ex_end
     if ($lsm_model_active) then
         @ lsm_status = `\ls -1 RESTART*DOMAIN* | wc -l`
         if ( $lsm_status < 1 )  then
-            echo "ERROR: wrfHydro died without RESTART files."
+            echo "ERROR: wrf_hydro died without RESTART files."
             \ls -l
             exit 23
         endif 
 	if ( $lsm_status > $numadvancesNum ) then 
 	    \ls -l RESTART*DOMAIN*
-	    echo "WARNING: wrfHydro created the above RESTART files. only expected # $numadvances" 
+	    echo "WARNING: wrf_hydro created the above RESTART files. only expected # $numadvances" 
 	endif 
     endif
 
     if ($hydro_model_active) then
         @ hydro_status = `\ls -1 HYDRO_RST* | wc -l`
         if ( $hydro_model_active > 0 && $hydro_status < 1 )  then
-            echo "ERROR: wrfHydro died without HYDRO_RST files."
+            echo "ERROR: wrf_hydro died without HYDRO_RST files."
             \ls -l
             exit 23
         endif
         if ( $hydro_status > $numadvances ) then 
 	    \ls -l HYDRO_RST*
-	    echo "WARNING: wrfHydro created the above HYDRO_RST files. Only expected # $numadvances" 
+	    echo "WARNING: wrf_hydro created the above HYDRO_RST files. Only expected # $numadvances" 
 	endif 
     endif
 
 
     #-------------------------------------------------------------------
-    # Block 4: wrfHydro_to_dart and managing output files. 
+    # Block 4: wrf_hydro_to_dart and managing output files. 
     #          rename files to reflect the ensemble member ID
     #-------------------------------------------------------------------
     if ($debug > 2) echo "advance_model.csh: block 4, manage/rename output files"
@@ -349,7 +349,7 @@ ex_end
     \mkdir $integDirCurrent
 
     # Fixed HRLDAS to do restarts at the end of the loop, after time advance,  
-    # with/after wrfHydro. So I dont have to clean up a bunch of files.
+    # with/after wrf_hydro. So I dont have to clean up a bunch of files.
 
     # Move the output files (*not* restarts)
     # Arezoo: Have removed these since it is not generated at this verison, and cause the script to fail ....
@@ -375,7 +375,7 @@ ex_end
         \ln -sf $RESTARThydro  restart.hydro.nc  || exit 4
     endif
 
-    ${loginDir}/wrfHydro_to_dart              || exit 4
+    ${loginDir}/wrf_hydro_to_dart              || exit 4
 
     \mv -v  dart_ics  ${loginDir}/$output_file          || exit 5
     # this breaks the restart.nc and restart.hydro.nc symlinks
@@ -391,7 +391,7 @@ ex_end
     endif
     
     # the linking (vs. cp ing) in these last two lines implies that the model-created 
-    # restart files are not sacred, they will be overwritten by dart_to_wrfHydro
+    # restart files are not sacred, they will be overwritten by dart_to_wrf_hydro
 
     ## increment
     @ state_copy++

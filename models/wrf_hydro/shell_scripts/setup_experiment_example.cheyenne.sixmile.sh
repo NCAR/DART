@@ -9,7 +9,7 @@
 # This example is for the setup. 
 
 
-# The HydroDart Experiment Setup is invoked from the wrf_hydro_dart/models/wrfHydro/shell_scripts dir:
+# The HydroDart Experiment Setup is invoked from the wrf_hydro_dart/models/wrf_hydro/shell_scripts dir:
 #
 #   python setup_experiment.py experiment_config_files/hydro_dart_config.cheyenne.sixmile.yaml
 #

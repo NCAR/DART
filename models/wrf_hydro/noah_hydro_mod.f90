@@ -524,7 +524,7 @@ hlat  = hlatFlip
 deallocate(hlongFlip, hlatFlip)
 
 !get the channelgrid
-! i'm doing this exactly to match how it's done in the wrfHydro code 
+! i'm doing this exactly to match how it's done in the wrf_hydro code 
 ! (line 1044 of /home/jamesmcc/WRF_Hydro/ndhms_wrf_hydro/trunk/NDHMS/Routing/module_HYDRO_io.F)
 ! so that the output set of indices correspond to the grid in the Fulldom file 
 ! and therefore these can be used to grab other channel attributes in that file. 
@@ -617,7 +617,7 @@ end subroutine get_hydro_constants
 
 !===============================================================================
 !> Painful amount of code for getting the channel lat/lon/ele which matches
-!> the wrfHydro state variable
+!> the wrf_hydro state variable
 
 subroutine getChannelGridCoords(filename, iunit, numdims, ncstart, nccount)
 
@@ -675,7 +675,7 @@ call nc_check(nf90_get_var(iunit, VarID, ELRT_in, &
 ixrt = n_hlong
 jxrt = n_hlat
 
-! wrfHydro flips the y dimension of the variables from the Fulldom file
+! wrf_hydro flips the y dimension of the variables from the Fulldom file
 do i=1,ixrt  !>@TJH reverse order of operations here?
    do j=1,jxrt
       channelGrid(i,j) = channelGrid_in(i,jxrt-j+1)
@@ -689,7 +689,7 @@ deallocate(channelGrid_in, LAKE_MSKRT_in, DIRECTION_in, ELRT_in)
 ! subset to the 1D channel network as presented in the hydro restart file.
 n_link = sum(channelGrid_in*0+1, mask = channelGrid <= 0)
 
-! allocate the necessary wrfHydro variables with module scope 
+! allocate the necessary wrf_hydro variables with module scope 
 allocate(channelIndsX(n_link), channelIndsY(n_link))
 allocate(    linkLong(n_link),      linkLat(n_link))
 
@@ -1236,7 +1236,7 @@ end subroutine get_downstream_links
 
 
 !-----------------------------------------------------------------------
-!> Routine 'specific' to what I think is being used in the wrfhydro full model run
+!> Routine 'specific' to what I think is being used in the wrf_hydro full model run
 !> would be nice to know a version or something
 
 subroutine read_noah_namelist(setup_filename)

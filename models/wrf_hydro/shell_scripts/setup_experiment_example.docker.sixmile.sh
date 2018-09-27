@@ -87,7 +87,7 @@ cd ~/wrf_hydro_py/
 pip uninstall -y wrfhydropy
 python setup.py develop
 # Run the script
-cd ~/wrf_hydro_dart/models/wrfHydro/shell_scripts
+cd ~/wrf_hydro_dart/models/wrf_hydro/shell_scripts
 python setup_experiment.py hydro_dart_config.yaml
 
 

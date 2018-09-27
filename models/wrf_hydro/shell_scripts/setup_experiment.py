@@ -530,13 +530,13 @@ hydro_dart_run.pickle()
 # ###################################
 # Place scripts into the run dir.
 # Should it be checke that this file (setup_experiment.py) is in
-# wrf_hydro_dart/models/wrfHydro/shell_scripts?
+# wrf_hydro_dart/models/wrf_hydro/shell_scripts?
 print("Staging scripts.")
 
 # Various scripts (tied to run_filter)
 script_list = ['advance_ensemble.py', 'get_ensemble_time.py', 'set_obs_seq_times.py']
 for ss in script_list:
-    adv_ens_script_src = config['dart']['dart_src'] / ('models/wrfHydro/shell_scripts/' + ss)
+    adv_ens_script_src = config['dart']['dart_src'] / ('models/wrf_hydro/shell_scripts/' + ss)
     adv_ens_script_link = config['experiment']['run_dir'] / ss
     adv_ens_script_link.symlink_to(adv_ens_script_src)
 
@@ -607,7 +607,7 @@ input_nml.write(dart_input_nml_copy)
 # Setup run_filter.csh_template
 # Copy to run_dir then preprocess the template.
 run_filter_template = \
-    config['dart']['dart_src'] / 'models/wrfHydro/shell_scripts/run_filter.csh.template'
+    config['dart']['dart_src'] / 'models/wrf_hydro/shell_scripts/run_filter.csh.template'
 run_filter_specific = config['experiment']['run_dir'] / 'run_filter.csh'
 shutil.copy(str(run_filter_template), str(run_filter_specific))
 

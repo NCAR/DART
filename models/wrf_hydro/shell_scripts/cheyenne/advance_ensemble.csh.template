@@ -123,7 +123,7 @@ echo "advancing member $member at ..."`date`
 # clean up from last advance
 # some of these must be copied at some point?? for diagnostics?
 rm -f  restart.nc  restart.hydro.nc  dart_restart  restart.assimOnly.nc
-rm -f  wrfHydro_advance_information.txt
+rm -f  wrf_hydro_advance_information.txt
 rm -f  HYDRO_RST.*  RESTART.*
 # if perturbed forcings are used, there will be *LDASIN_DOMAIN* here. see below.
 rm -f  *.LDASOUT_DOMAIN*  *LDASIN_DOMAIN*
