@@ -33,6 +33,7 @@ private
 public :: configure_lsm, &
           configure_hydro, &
           n_link, &
+          n_lake, &
           linkLong, &
           linkLat, &
           linkAlt, &
@@ -46,6 +47,7 @@ public :: configure_lsm, &
           get_lsm_domain_info, &
           wrf_static_data, &
           get_lsm_domain_filename, &
+          get_hydro_domain_filename, &
           read_hydro_global_atts, write_hydro_global_atts , &
           read_noah_global_atts, write_noah_global_atts 
 
@@ -98,6 +100,7 @@ integer             :: ovrtswcrt = 1
 integer             :: rt_option    = 1
 integer             :: chanrtswcrt = 1
 integer             :: channel_option = 3
+logical             :: compound_channel = .false.
 character(len=256)  :: route_link_f = ''
 character(len=256)  :: route_lake_f = ''
 integer             :: gwbaseswcrt = 2
@@ -122,8 +125,8 @@ namelist /HYDRO_nlist/ sys_cpl, geo_static_flnm, geo_finegrid_flnm,  &
      t0OutputFlag, output_channelBucket_influx, &
      chrtout_domain, chrtout_grid, lsmout_domain, rtout_domain, output_gw, outlake, &
      teradj_solar, nsoil, zsoil8, dxrt, aggfactrt, dtrt_ter, dtrt_ch, subrtswcrt, &
-     ovrtswcrt, rt_option, chanrtswcrt, channel_option, route_link_f, route_lake_f, &
-     gwbaseswcrt, gwbuckparm_file, gwbasmskfil, udmp_opt, udmap_file, &
+     ovrtswcrt, rt_option, chanrtswcrt, channel_option, compound_channel, route_link_f, &
+     route_lake_f, gwbaseswcrt, gwbuckparm_file, gwbasmskfil, udmp_opt, udmap_file, &
      frxst_pts_out, chanobs_domain, io_config_outputs, io_form_outputs
 
 
@@ -153,6 +156,7 @@ integer, parameter :: IDSTRLEN = 15 ! must match declaration in netCDF file
 character(len=IDSTRLEN), allocatable, dimension(:) :: gageID ! NHD Gage Event ID from SOURCE_FEA field in Gages feature class
 
 integer :: south_north, west_east, n_hlong, n_hlat, n_link, n_basn, n_upstream
+integer :: soil_layers_stag, snow_layers, sosn_layers, n_lake
 
 integer, dimension(2)               :: fine2dShape, coarse2dShape
 integer, dimension(3)               :: fine3dShape, coarse3dShape
@@ -238,9 +242,10 @@ contains
 !-----------------------------------------------------------------------
 !>
 
-subroutine configure_lsm(model_choice)
+subroutine configure_lsm(model_choice, shapefile)
 
-character(len=*), intent(in) :: model_choice
+character(len=*),           intent(in) :: model_choice
+character(len=*), optional, intent(in) :: shapefile
 
 character(len=*), parameter :: routine = 'configure_lsm'
 logical, save :: lsm_namelist_read = .false.
@@ -267,7 +272,7 @@ lsm_namelist_read = .true.
 
 lsm_domain_file(1) = hrldas_setup_file
 
-call get_hrldas_constants(hrldas_setup_file)
+call get_hrldas_constants(hrldas_setup_file,shapefile)
 
 end subroutine configure_lsm
 
@@ -309,26 +314,38 @@ end subroutine configure_hydro
 !-----------------------------------------------------------------------
 !> Read the 'wrfinput' netCDF file for grid information, etc.
 !> This is all time-invariant, so we can mostly ignore the Time coordinate.
+!> Some versions of NOAH have the information in the shapefile as opposed
+!> to the wrfinput file.
 
-subroutine get_hrldas_constants(filename)
+subroutine get_hrldas_constants(filename, shapefile)
 
 ! MODULE variables set by this routine:
 !    south_north
 !    west_east
+!    soil_layers_stag
+!    snow_layers
+!    sosn_layers
 !    xlong
 !    xlat
 
-character(len=*), intent(in) :: filename
+character(len=*),           intent(in) :: filename
+character(len=*), optional, intent(in) :: shapefile
 
 character(len=*), parameter :: routine = 'get_hrldas_constants'
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, ncstart, nccount
 character(len=NF90_MAX_NAME)          :: dimname
 
-integer :: io, ncid
+integer :: io, ncid, ncid2
 integer :: i, DimID, VarID, numdims, dimlen, xtype
 
-ncid = nc_open_file_readonly(filename,'get_hrldas_constants') 
+ncid = nc_open_file_readonly(filename,routine) 
+
+if (present(shapefile)) then
+   ncid2 = nc_open_file_readonly(shapefile,routine) 
+else
+   ncid2 = MISSING_R8
+endif
 
 io = nf90_inq_dimid(ncid, 'south_north', DimID)
 call nc_check(io, routine, 'inq_dimid south_north',ncid=ncid)
@@ -341,6 +358,12 @@ call nc_check(io, routine, 'inq_dimid west_east',ncid=ncid)
 
 io = nf90_inquire_dimension(ncid, DimID, len=west_east)
 call nc_check(io, routine, 'inquire_dimension west_east',ncid=ncid)
+
+! These variables may come from the wrfinput file or the restart file 
+
+soil_layers_stag = get_dimension('soil_layers_stag', ncid, ncid2, routine)
+snow_layers      = get_dimension('snow_layers',      ncid, ncid2, routine)
+sosn_layers      = get_dimension('sosn_layers',      ncid, ncid2, routine)
 
 ! Require that the xlong and xlat are the same shape.
 
@@ -399,6 +422,14 @@ call nc_check(io, routine, 'get_var XLAT',ncid=ncid)
 
 call nc_close_file(ncid, routine)
 
+if (debug > 99) then
+   write(*,*)routine,' south_north      is ', south_north
+   write(*,*)routine,' west_east        is ', west_east
+   write(*,*)routine,' soil_layers_stag is ', soil_layers_stag
+   write(*,*)routine,' snow_layers      is ', snow_layers
+   write(*,*)routine,' sosn_layers      is ', sosn_layers
+endif
+
 end subroutine get_hrldas_constants
 
 
@@ -409,7 +440,7 @@ end subroutine get_hrldas_constants
 subroutine get_hydro_constants(filename)
 
 ! MODULE variables set by this routine:
-!    n_hlat, n_hlong, n_link, n_basn, basnMask
+!    n_hlat, n_hlong, n_link, n_lake, n_basn, basnMask
 !    hlong, hlat, linkLat, linkLong
 
 ! **** NOTE that all variables from this file (Fulldom) must  ****
@@ -420,32 +451,27 @@ character(len=*), parameter :: routine = 'get_hydro_constants'
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, ncstart, nccount
 character(len=NF90_MAX_NAME)          :: dimname
-integer,  allocatable, dimension(:,:) :: basnGrid
 real(r8), allocatable, dimension(:,:) :: hlongFlip ! local dummies
 real(r8), allocatable, dimension(:,:) :: hlatFlip  ! local dummies
-real(r8), allocatable, dimension(:)   :: channelLon1D, channelLat1D
-integer,  allocatable, dimension(:)   :: basnMaskTmp
 
 integer :: i, ii, jj, io
-integer :: iunit, DimID, VarID, numdims, dimlen, xtype
-integer :: indx, indx1, indx2, indx3, indx4, dumSum
-logical :: nBasnWasZero
+integer :: ncid, DimID, VarID, numdims, dimlen, xtype
 
-io = nf90_open(filename, NF90_NOWRITE, iunit)
+io = nf90_open(filename, NF90_NOWRITE, ncid)
 call nc_check(io, routine, 'open', filename)
 
 ! The number of latitudes is dimension 'y'
-io = nf90_inq_dimid(iunit, 'y', DimID)
+io = nf90_inq_dimid(ncid, 'y', DimID)
 call nc_check(io, routine, 'inq_dimid y', filename)
 
-io = nf90_inquire_dimension(iunit, DimID, len=n_hlat)
+io = nf90_inquire_dimension(ncid, DimID, len=n_hlat)
 call nc_check(io, routine,'inquire_dimension y',filename)
 
 ! The number of longitudes is dimension 'x'
-io = nf90_inq_dimid(iunit, 'x', DimID)
+io = nf90_inq_dimid(ncid, 'x', DimID)
 call nc_check(io, routine,'inq_dimid x',filename)
 
-io = nf90_inquire_dimension(iunit, DimID, len=n_hlong)
+io = nf90_inquire_dimension(ncid, DimID, len=n_hlong)
 call nc_check(io, routine,'inquire_dimension x',filename)
 
 !>@todo could just check the dimension lengths for LONGITUDE
@@ -457,15 +483,14 @@ allocate(hlong(n_hlong, n_hlat))
 allocate( hlat(n_hlong, n_hlat)) 
 
 !! local allocation
-allocate( basnGrid(n_hlong, n_hlat))
 allocate(hlongFlip(n_hlong, n_hlat))
 allocate( hlatFlip(n_hlong, n_hlat))
 
 ! Require that the xlong and xlat are the same shape.??
-io = nf90_inq_varid(iunit, 'LONGITUDE', VarID)
+io = nf90_inq_varid(ncid, 'LONGITUDE', VarID)
 call nc_check(io, routine,'inq_varid LONGITUDE',filename)
 
-io = nf90_inquire_variable(iunit, VarID, dimids=dimIDs, &
+io = nf90_inquire_variable(ncid, VarID, dimids=dimIDs, &
                             ndims=numdims, xtype=xtype)
 call nc_check(io, routine, 'inquire_variable LONGITUDE',filename)
 
@@ -475,7 +500,7 @@ ncstart(:) = 0
 nccount(:) = 0
 do i = 1,numdims
    write(string1,'(''LONGITUDE inquire dimension '',i2,A)') i,trim(filename)
-   io = nf90_inquire_dimension(iunit, dimIDs(i), name=dimname, len=dimlen)
+   io = nf90_inquire_dimension(ncid, dimIDs(i), name=dimname, len=dimlen)
    call nc_check(io, routine, string1)
    ncstart(i) = 1
    nccount(i) = dimlen
@@ -483,9 +508,7 @@ do i = 1,numdims
       ncstart(i) = dimlen
       nccount(i) = 1
    endif
-enddo !i
-
-!>@todo ncstart, nccount are not needed if there is no time dimension 
+enddo
 
 if (debug > 99) then
    write(*,*)'DEBUG get_hydro_constants ncstart is',ncstart(1:numdims)
@@ -493,20 +516,18 @@ if (debug > 99) then
 endif
 
 !get the longitudes
-io = nf90_get_var(iunit, VarID, hlong, &
-                  start=ncstart(1:numdims), &
-                  count=nccount(1:numdims))
+io = nf90_get_var(ncid, VarID, hlong, start=ncstart(1:numdims), &
+                                      count=nccount(1:numdims))
 call nc_check(io, routine, 'get_var LONGITUDE',filename)
 
 where(hlong <    0.0_r8) hlong = hlong + 360.0_r8
 where(hlong == 360.0_r8) hlong = 0.0_r8
 
 !get the latitudes
-io = nf90_inq_varid(iunit, 'LATITUDE', VarID)
+io = nf90_inq_varid(ncid, 'LATITUDE', VarID)
 call nc_check(io, routine,'inq_varid LATITUDE',filename)
-io = nf90_get_var(iunit, VarID, hlat, &
-                  start=ncstart(1:numdims), &
-                  count=nccount(1:numdims))
+io = nf90_get_var(ncid, VarID, hlat, start=ncstart(1:numdims), &
+                                     count=nccount(1:numdims))
 call nc_check(io, routine, 'get_var LATITUDE',filename)
 
 where (hlat < -90.0_r8) hlat = -90.0_r8
@@ -524,7 +545,7 @@ hlat  = hlatFlip
 deallocate(hlongFlip, hlatFlip)
 
 !get the channelgrid
-! i'm doing this exactly to match how it's done in the wrf_hydro code 
+! i'm doing this exactly to match how it's done in the wrfHydro code 
 ! (line 1044 of /home/jamesmcc/WRF_Hydro/ndhms_wrf_hydro/trunk/NDHMS/Routing/module_HYDRO_io.F)
 ! so that the output set of indices correspond to the grid in the Fulldom file 
 ! and therefore these can be used to grab other channel attributes in that file. 
@@ -532,7 +553,7 @@ deallocate(hlongFlip, hlatFlip)
 ! Dont need to flip lat and lon in this (already done) but will flip other vars from Fulldom file.
 ! Specify channel routing option: 1=Muskingam-reach, 2=Musk.-Cunge-reach, 3=Diff.Wave-gridded
 
-if (chanrtswcrt == 1 .or. chanrtswcrt ==2 ) then 
+if ( chanrtswcrt == 1 ) then 
 
    if ( channel_option == 2) then
 
@@ -540,7 +561,8 @@ if (chanrtswcrt == 1 .or. chanrtswcrt ==2 ) then
 
    else if ( channel_option == 3) then
 
-      call getChannelGridCoords(filename, iunit, numdims, ncstart, nccount)
+      call getChannelGridCoords(filename, ncid, numdims, ncstart, nccount)
+      call get_basn_msk(        filename, ncid, numdims, ncstart, nccount, n_hlong, n_hlat)
 
    else
        write(string1,'("channel_option ",i1," is not supported.")')channel_option
@@ -553,63 +575,7 @@ else
    call error_handler(E_ERR,routine,string1,source,revision,revdate)
 endif
 
-!>@todo the basn_msk variable looks hosed ... does not match its own missing_value
-!> if the rest of this code is enabled
-
-call error_handler(E_MSG,routine,'basn_msk variable is hosed, skipping')
-
-!TJH basn_msk issue ! get the basin grid - this wont need to be flipped as unique values
-!TJH basn_msk issue ! are packed in to a 1D array without geolocation information.
-!TJH basn_msk issue io = nf90_inq_varid(iunit, 'basn_msk', VarID)
-!TJH basn_msk issue call nc_check(io, routine,'inq_varid basn_msk',filename)
-!TJH basn_msk issue io = nf90_get_var(iunit, VarID, basnGrid, &
-!TJH basn_msk issue                   start=ncstart(1:numdims), &
-!TJH basn_msk issue                   count=nccount(1:numdims))
-!TJH basn_msk issue call nc_check(io, routine, 'get_var basn_msk',filename)
-!TJH basn_msk issue 
-!TJH basn_msk issue write(*,*)'TJH debug maxval(basnGrid) is',maxval(basnGrid)
-!TJH basn_msk issue 
-!TJH basn_msk issue ! make it a 1D array of single values
-!TJH basn_msk issue ! question is how to localize this, since it has no coordinates.
-!TJH basn_msk issue ! for now going to use the average lat and lon of each basin
-!TJH basn_msk issue allocate(basnMaskTmp(maxval(basnGrid)))  !local
-!TJH basn_msk issue 
-!TJH basn_msk issue basnMaskTmp(:) = -9999
-!TJH basn_msk issue indx2=0
-!TJH basn_msk issue do indx = 1,maxval(basnGrid)
-!TJH basn_msk issue    if(any(basnGrid == indx)) then
-!TJH basn_msk issue       indx2=indx2+1
-!TJH basn_msk issue       basnMaskTmp(indx2) = indx
-!TJH basn_msk issue    end if
-!TJH basn_msk issue enddo
-!TJH basn_msk issue n_basn = indx2
-!TJH basn_msk issue 
-!TJH basn_msk issue nBasnWasZero = .FALSE.
-!TJH basn_msk issue if(n_basn == 0) then
-!TJH basn_msk issue    nBasnWasZero = .true.
-!TJH basn_msk issue    n_basn=1
-!TJH basn_msk issue end if
-!TJH basn_msk issue 
-!TJH basn_msk issue allocate(basnMask(n_basn),basnLon(n_basn),basnLat(n_basn))
-!TJH basn_msk issue 
-!TJH basn_msk issue where(basnMaskTmp /= -9999) basnMask(:) = basnMaskTmp(1:n_basn)
-!TJH basn_msk issue 
-!TJH basn_msk issue deallocate(basnMaskTmp)
-!TJH basn_msk issue 
-!TJH basn_msk issue ! geolocate the basins
-!TJH basn_msk issue do indx = 1, n_basn
-!TJH basn_msk issue    basnLon = sum(hlong, basnGrid == indx) / count(basnGrid == indx)
-!TJH basn_msk issue    basnLat = sum( hlat, basnGrid == indx) / count(basnGrid == indx)
-!TJH basn_msk issue enddo
-!TJH basn_msk issue 
-!TJH basn_msk issue if(nBasnWasZero) then
-!TJH basn_msk issue    basnLon = 0 !sum(hlong) / size(hlong)
-!TJH basn_msk issue    basnLat = 0 !sum( hlat) / size( hlat)
-!TJH basn_msk issue end if
-!TJH basn_msk issue 
-!TJH basn_msk issue deallocate(basnGrid)
-
-io = nf90_close(iunit)
+io = nf90_close(ncid)
 call nc_check(io, routine, filename)
 
 end subroutine get_hydro_constants
@@ -617,7 +583,7 @@ end subroutine get_hydro_constants
 
 !===============================================================================
 !> Painful amount of code for getting the channel lat/lon/ele which matches
-!> the wrf_hydro state variable
+!> the wrfHydro state variable
 
 subroutine getChannelGridCoords(filename, iunit, numdims, ncstart, nccount)
 
@@ -629,28 +595,29 @@ integer, dimension(:), intent(in) :: nccount
 
 integer                               :: IXRT,JXRT
 real(r8), allocatable, dimension(:,:) :: ELRT, ELRT_in
-integer,  allocatable, dimension(:,:) :: DIRECTION, LAKE_MSKRT, channelGrid
-integer,  allocatable, dimension(:,:) :: DIRECTION_in, LAKE_MSKRT_in, channelGrid_in
+integer,  allocatable, dimension(:,:) :: DIRECTION, LAKE_MSKRT, CH_NETRT, CH_NETLNK
+integer,  allocatable, dimension(:,:) :: DIRECTION_in, LAKE_MSKRT_in, CH_NETRT_in
 
-integer :: VarID, tmp, cnt, i, j, jj
-character(len=155) :: header
-
-!integer                                  :: NLAKES
-!real(r4), allocatable, dimension(NLAKES) :: HRZAREA, LAKEMAXH, WEIRC, WEIRL
-!real(r4), allocatable, dimension(NLAKES) :: ORIFICEC, ORIFICEA, ORIFICEE
-!real(r4), allocatable, dimension(NLAKES) :: LATLAKE,LONLAKE,ELEVLAKE
+integer :: VarID, cnt, i, j
 
 ! allocate the local variables
 ! these grid ones have to be flipped on y.
 
-allocate(channelGrid_in(n_hlong,n_hlat), LAKE_MSKRT_in(n_hlong,n_hlat), &
-           DIRECTION_in(n_hlong,n_hlat),       ELRT_in(n_hlong,n_hlat) )
-allocate(   channelGrid(n_hlong,n_hlat),    LAKE_MSKRT(n_hlong,n_hlat), &
-              DIRECTION(n_hlong,n_hlat),          ELRT(n_hlong,n_hlat) )
+allocate(  CH_NETRT(n_hlong,n_hlat),   CH_NETRT_in(n_hlong,n_hlat))
+allocate(LAKE_MSKRT(n_hlong,n_hlat), LAKE_MSKRT_in(n_hlong,n_hlat))
+allocate( DIRECTION(n_hlong,n_hlat),  DIRECTION_in(n_hlong,n_hlat)) 
+allocate(      ELRT(n_hlong,n_hlat),       ELRT_in(n_hlong,n_hlat))
+allocate( CH_NETLNK(n_hlong,n_hlat))
+
+CH_NETRT(  n_hlong,n_hlat) = MISSING_R8
+LAKE_MSKRT(n_hlong,n_hlat) = MISSING_R8
+DIRECTION( n_hlong,n_hlat) = MISSING_R8
+ELRT(      n_hlong,n_hlat) = MISSING_R8
+CH_NETLNK( n_hlong,n_hlat) = MISSING_R8
 
 call nc_check(nf90_inq_varid(iunit, 'CHANNELGRID', VarID), &
      'getChannelGridCoords','inq_varid CHANNELGRID '//trim(filename))
-call nc_check(nf90_get_var(iunit, VarID, channelGrid_in, &
+call nc_check(nf90_get_var(iunit, VarID, CH_NETRT_in, &
      start=ncstart(1:numdims), count=nccount(1:numdims)), &
      'getChannelGridCoords', 'get_var CHANNELGRID '//trim(filename))
 
@@ -675,207 +642,230 @@ call nc_check(nf90_get_var(iunit, VarID, ELRT_in, &
 ixrt = n_hlong
 jxrt = n_hlat
 
-! wrf_hydro flips the y dimension of the variables from the Fulldom file
-do i=1,ixrt  !>@TJH reverse order of operations here?
-   do j=1,jxrt
-      channelGrid(i,j) = channelGrid_in(i,jxrt-j+1)
-      LAKE_MSKRT(i,j)  =  LAKE_MSKRT_in(i,jxrt-j+1)
-      DIRECTION(i,j)   =   DIRECTION_in(i,jxrt-j+1)
-      ELRT(i,j)        =        ELRT_in(i,jxrt-j+1)
-   end do
-end do
-deallocate(channelGrid_in, LAKE_MSKRT_in, DIRECTION_in, ELRT_in)
-
-! subset to the 1D channel network as presented in the hydro restart file.
-n_link = sum(channelGrid_in*0+1, mask = channelGrid <= 0)
-
-! allocate the necessary wrf_hydro variables with module scope 
-allocate(channelIndsX(n_link), channelIndsY(n_link))
-allocate(    linkLong(n_link),      linkLat(n_link))
-
-! temp fix for buggy Arc export...
+! wrfHydro flips the y dimension of the variables from the Fulldom file
+! hlon and hlat are already flipped, module variables.
 do j=1,jxrt
    do i=1,ixrt
-      if(DIRECTION(i,j).eq.-128) DIRECTION(i,j)=128
+      CH_NETRT(i,j)   =   CH_NETRT_in(i,jxrt-j+1)
+      LAKE_MSKRT(i,j) = LAKE_MSKRT_in(i,jxrt-j+1)
+      DIRECTION(i,j)  =  DIRECTION_in(i,jxrt-j+1)
+      ELRT(i,j)       =       ELRT_in(i,jxrt-j+1)
    end do
 end do
+deallocate(CH_NETRT_in, LAKE_MSKRT_in, DIRECTION_in, ELRT_in)
 
-cnt = 0
+! This replaces a double for loop that counts NLINKS which can be removed from the
+! code inserted below.
+! subset to the 1D channel network as presented in the hydro restart file.
+n_link = sum(CH_NETRT*0+1, mask = CH_NETRT >= 0)
 
-!! Looks like all of the if-else statements could be removed because they all result
-!! in the same action. But because this code needs to match the WRF-Hydro topology
-!! setup exactly, it seems convenient to keep the overall structure identical. 
-!! This topology should really be calculated off line
-do j = 1, JXRT  !rows
+! allocate the necessary wrfHydro variables with module scope 
+allocate(channelIndsX(n_link), channelIndsY(n_link))
+allocate(    linkLong(n_link),      linkLat(n_link), linkAlt(n_link))
+
+! In the copy, the variable name changes are:
+! wrf_hydro -> DART
+! NLINKS -> n_link
+! NLAKES -> n_lake
+! lon    -> hlong
+! lat    -> hlat
+
+! All #ifdef HYDRO_D are accepted and removed (verbose).
+! Some write statements changed to print*,
+! Copy WRF-Hydro code below:
+! Routing/module_HYDRO_io.F
+!        SUBROUTINE READ_ROUTEDIM, approx line 821
+! -------------------------------------------------------
+cnt=0
+do j = 1,JXRT  !rows
    do i = 1 ,IXRT   !colsumns
-      if (CHANNELGRID(i, j) .ge. 0) then !get its direction and assign its elevation and order
-         if ((DIRECTION(i, j) .eq. 64) .and. &
-             (j + 1 .le. JXRT)         .and. &
-             (CHANNELGRID(i,j+1).ge.0) ) then !North
-            cnt = cnt + 1
-            linkLat(cnt) = hlat(i,j)
-            linkLong(cnt) = hlong(i,j)
-            channelIndsX(cnt) = i
-            channelIndsY(cnt) = j  !! again have to match the flip
-         else if ((DIRECTION(i, j) .eq. 128) .and. &
-                            (i + 1 .le. IXRT) .and. &
-                            (j + 1 .le. JXRT) .and. &
-                  (CHANNELGRID(i+1,j+1).ge.0) ) then !North East
-            cnt = cnt + 1
-            linkLat(cnt) = hlat(i,j)
-            linkLong(cnt) = hlong(i,j)
-            channelIndsX(cnt) = i
-            channelIndsY(cnt) = j
-         else if ((DIRECTION(i, j) .eq. 1) .and. &
-                            (i + 1 .le. IXRT) .and. &
-                (CHANNELGRID(i+1,j).ge.0) ) then !East
-            cnt = cnt + 1
-            linkLat(cnt) = hlat(i,j)
-            linkLong(cnt) = hlong(i,j)
-            channelIndsX(cnt) = i
-            channelIndsY(cnt) = j
-         else if ((DIRECTION(i, j) .eq. 2) .and. &
-                            (i + 1 .le. IXRT) .and. &
-                            (j - 1 .ne. 0) .and. &
-              (CHANNELGRID(i+1,j-1).ge.0) ) then !south east
-            cnt = cnt + 1
-            linkLat(cnt) = hlat(i,j)
-            linkLong(cnt) = hlong(i,j)
-            channelIndsX(cnt) = i
-            channelIndsY(cnt) = j
-         else if ((DIRECTION(i, j) .eq. 4) .and. (j - 1 .ne. 0).and.(CHANNELGRID(i,j-1).ge.0) ) then !due south
-            cnt = cnt + 1
-            linkLat(cnt) = hlat(i,j)
-            linkLong(cnt) = hlong(i,j)
-            channelIndsX(cnt) = i
-            channelIndsY(cnt) = j
+      if (CH_NETRT(i, j) .ge. 0) then !get its direction
+         if ((DIRECTION(i, j) .eq. 64) .and. (j+1 .le. JXRT) ) then !North
+            if(CH_NETRT(i,j+1) .ge.0) then 
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt
+            endif
+         else if ((DIRECTION(i, j) .eq. 128) .and. (i + 1 .le. IXRT) &
+              .and. (j + 1 .le. JXRT) ) then !North East
+            if(CH_NETRT(i+1,j+1) .ge.0) then
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt
+            endif
+         else if ((DIRECTION(i, j) .eq. 1) .and. (i + 1 .le. IXRT)) then !East
+            if(CH_NETRT(i+1,j) .ge. 0) then
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt 
+            endif
+         else if ((DIRECTION(i, j) .eq. 2) .and. (i + 1 .le. IXRT) &
+              .and. (j - 1 .ne. 0)) then !south east
+            if(CH_NETRT(i+1,j-1).ge.0) then
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt
+            endif
+         else if ((DIRECTION(i, j) .eq. 4).and.(j - 1 .ne. 0)) then !due south
+            if(CH_NETRT(i,j-1).ge.0) then
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt
+            endif
          else if ((DIRECTION(i, j) .eq. 8) .and. (i - 1 .gt. 0) &
-              .and. (j - 1 .ne. 0) .and. (CHANNELGRID(i-1,j-1).ge.0)) then !south west
-            cnt = cnt + 1
-            linkLat(cnt) = hlat(i,j)
-            linkLong(cnt) = hlong(i,j)
-            channelIndsX(cnt) = i
-            channelIndsY(cnt) = j
-         else if ((DIRECTION(i, j) .eq. 16) .and. (i - 1 .gt. 0).and.(CHANNELGRID(i-1,j).ge.0) ) then !West
-            cnt = cnt + 1
-            linkLat(cnt) = hlat(i,j)
-            linkLong(cnt) = hlong(i,j)
-            channelIndsX(cnt) = i
-            channelIndsY(cnt) = j
+              .and. (j - 1 .ne. 0)  ) then !south west
+            if(CH_NETRT(i-1,j-1).ge.0) then
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt
+            endif
+         else if ((DIRECTION(i, j) .eq. 16) .and. (i - 1 .gt. 0)) then !West
+            if(CH_NETRT(i-1,j).ge.0) then
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt
+            endif
          else if ((DIRECTION(i, j) .eq. 32) .and. (i - 1 .gt. 0) &
-              .and. (j + 1 .le. JXRT) .and. (CHANNELGRID(i-1,j+1).ge.0) ) then !North West
-            cnt = cnt + 1
-            linkLat(cnt) = hlat(i,j)
-            linkLong(cnt) = hlong(i,j)
-            channelIndsX(cnt) = i
-            channelIndsY(cnt) = j
+              .and. (j + 1 .le. JXRT) ) then !North West
+            if(CH_NETRT(i-1,j+1).ge.0) then
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt 
+            endif
          else
-            write(string1,*)"NO MATCH", i,j
-            call error_handler(E_MSG,'getChannelGridCoords',string1)
+            
+            write(*,135) "PrPt/LkIn", CH_NETRT(i,j), DIRECTION(i,j), hLONg(i,j), hLAT(i,j),i,j 
+135         format(A9,1X,I3,1X,I3,1X,F10.5,1X,F9.5,1X,I4,1X,I4)
+            if (DIRECTION(i,j) .eq. 0) then
+               print *, "Direction i,j ",i,j," of point ", cnt, "is invalid"
+            endif
+            
          end if
-
-      end if !CHANNELGRID check for this node
-
+      end if !CH_NETRT check for this node
    end do
 end do
 
-!   print *, "after exiting the channel, this many nodes", cnt
-!   write(*,*) " "
-
-!Find out if the boundaries are on an edge
+print *, "found type 0 nodes", cnt
+!Find out if the boundaries are on an edge or flow into a lake
 do j = 1,JXRT
    do i = 1 ,IXRT
-      if (CHANNELGRID(i, j) .ge. 0) then !get its direction
-         !-- 64's can only flow north
-         if (((DIRECTION(i, j).eq. 64) .and. (j + 1 .gt. JXRT)) .or. &
-              ((DIRECTION(i, j).eq. 64) .and. (j < jxrt) .and.  &
-              (CHANNELGRID(i,j+1) .lt. 0))) then !North
-            cnt = cnt + 1
-            linkLat(cnt) = hlat(i,j)
-            linkLong(cnt) = hlong(i,j)
-            channelIndsX(cnt) = i
-            channelIndsY(cnt) = j
-            !               print *, "Pour Point N"
-         else if ( ((DIRECTION(i, j) .eq. 128) .and. (i + 1 .gt. IXRT))  &
-                                !-- 128's can flow out of the North or East edge
-              .or.  ((DIRECTION(i, j) .eq. 128) .and. (j + 1 .gt. JXRT))  &
-                                !   this is due north edge
-              .or.  ((DIRECTION(i, j) .eq. 128) .and. (i<ixrt .and. j<jxrt) .and. &
-              (CHANNELGRID(i + 1, j + 1).lt.0))) then !North East
-            cnt = cnt + 1
-            linkLat(cnt) = hlat(i,j)
-            linkLong(cnt) = hlong(i,j)
-            channelIndsX(cnt) = i
-            channelIndsY(cnt) = j
-            !               print *, "Pour Point NE"
-         else if (((DIRECTION(i, j) .eq. 1) .and. (i + 1 .gt. IXRT)) .or. &    !-- 1's can only flow due east
-              ((DIRECTION(i, j) .eq. 1) .and. (i<ixrt) .and. (CHANNELGRID(i + 1, j) .lt. 0))) then !East
-            cnt = cnt + 1
-            linkLat(cnt) = hlat(i,j)
-            linkLong(cnt) = hlong(i,j)
-            channelIndsX(cnt) = i
-            channelIndsY(cnt) = j
-            !               print *, "Pour Point E"
-         else if ( ((DIRECTION(i, j) .eq. 2) .and. (i + 1 .gt. IXRT))    &      !-- 2's can flow out of east or south edge
-              .or. ((DIRECTION(i, j) .eq. 2) .and. (j - 1 .eq. 0))       &      !-- this is the south edge
-              .or. ((DIRECTION(i, j) .eq. 2) .and. (i<ixrt .and. j>1) .and.(CHANNELGRID(i + 1, j - 1) .lt.0))) then !south east
-            cnt = cnt + 1
-            linkLat(cnt) = hlat(i,j)
-            linkLong(cnt) = hlong(i,j)
-            channelIndsX(cnt) = i
-            channelIndsY(cnt) = j
-            !               print *, "Pour Point SE"
-         else if (((DIRECTION(i, j) .eq. 4) .and. (j - 1 .eq. 0)) .or. &       !-- 4's can only flow due south
-              ((DIRECTION(i, j) .eq. 4) .and. (j>1) .and.(CHANNELGRID(i, j - 1) .lt. 0))) then !due south
-            cnt = cnt + 1
-            !ZELEV(cnt) = ELRT(i,j)
-            linkLat(cnt) = hlat(i,j)
-            linkLong(cnt) = hlong(i,j)
-            channelIndsX(cnt) = i
-            channelIndsY(cnt) = j
-            !               print *, "Pour Point S"
-         else if ( ((DIRECTION(i, j) .eq. 8) .and. (i - 1 .le. 0))      &      !-- 8's can flow south or west
-              .or.  ((DIRECTION(i, j) .eq. 8) .and. (j - 1 .eq. 0))      &      !-- this is the south edge
-              .or.  ((DIRECTION(i, j).eq.8).and. (i>1 .and. j>1) .and.(CHANNELGRID(i - 1, j - 1).lt.0))) then !south west
-            cnt = cnt + 1
-            !ZELEV(cnt) = ELRT(i,j)
-            linkLat(cnt) = hlat(i,j)
-            linkLong(cnt) = hlong(i,j)
-            channelIndsX(cnt) = i
-            channelIndsY(cnt) = j
-            !               print *, "Pour Point SW"
-         else if (((DIRECTION(i, j) .eq. 16) .and. (i - 1 .le.0) ) &                  !16's can only flow due west
-              .or.((DIRECTION(i, j).eq.16) .and. (i>1) .and.(CHANNELGRID(i - 1, j).lt.0))) then !West
-            cnt = cnt + 1
-            !ZELEV(cnt) = ELRT(i,j)
-            linkLat(cnt) = hlat(i,j)
-            linkLong(cnt) = hlong(i,j)
-            channelIndsX(cnt) = i
-            channelIndsY(cnt) = j
-            !               print *, "Pour Point W"
-         else if ( ((DIRECTION(i, j) .eq. 32) .and. (i - 1 .le. 0))      &      !-- 32's can flow either west or north
-              .or.  ((DIRECTION(i, j) .eq. 32) .and. (j + 1 .gt. JXRT))   &      !-- this is the north edge
-              .or.  ((DIRECTION(i, j).eq.32) .and. (i>1 .and. j<jxrt) .and.(CHANNELGRID(i - 1, j + 1).lt.0))) then !North West
-            cnt = cnt + 1
-            !ZELEV(cnt) = ELRT(i,j)
-            linkLat(cnt) = hlat(i,j)
-            linkLong(cnt) = hlong(i,j)
-            channelIndsX(cnt) = i
-            channelIndsY(cnt) = j
-            !               print *, "Pour Point NW"
+      if (CH_NETRT(i, j) .ge. 0) then !get its direction
+         
+         if ( (DIRECTION(i, j).eq. 64) )then 
+            if( j + 1 .gt. JXRT) then           !-- 64's can only flow north
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt
+            elseif(CH_NETRT(i,j+1) .lt. 0) then !North
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt
+               print *, "Boundary Pour Point N", cnt,CH_NETRT(i,j), i,j
+            endif
+         else if ( DIRECTION(i, j) .eq. 128) then
+            if ((i + 1 .gt. IXRT) .or. (j + 1 .gt. JXRT))  then    !-- 128's can flow out of the North or East edge
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt
+               !   this is due north edge     
+            elseif(CH_NETRT(i + 1, j + 1).lt.0) then !North East
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt
+               print *, "Boundary Pour Point NE", cnt, CH_NETRT(i,j),i,j
+            endif
+         else if (DIRECTION(i, j) .eq. 1) then 
+            if (i + 1 .gt. IXRT) then      !-- 1's can only flow due east
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt
+            elseif(CH_NETRT(i + 1, j) .lt. 0) then !East
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt
+               print *, "Boundary Pour Point E", cnt,CH_NETRT(i,j), i,j
+            endif
+         else if (DIRECTION(i, j) .eq. 2) then
+            !-- 2's can flow out of east or south edge
+            if( (i + 1 .gt. IXRT) .or.  (j - 1 .eq. 0)) then            !-- this is the south edge
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt
+            elseif(CH_NETRT(i + 1, j - 1) .lt.0) then !south east
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt
+               print *, "Boundary Pour Point SE", cnt,CH_NETRT(i,j), i,j
+            endif
+         else if ( DIRECTION(i, j) .eq. 4) then 
+            if( (j - 1 .eq. 0))  then            !-- 4's can only flow due south
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt
+            elseif (CH_NETRT(i, j - 1) .lt. 0) then !due south
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt
+               print *, "Boundary Pour Point S", cnt,CH_NETRT(i,j), i,j
+            endif
+         else if ( DIRECTION(i, j) .eq. 8) then
+            !-- 8's can flow south or west
+            if( (i - 1 .eq. 0) .or. ( j - 1 .eq. 0)) then             !-- this is the south edge
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt
+            elseif  (CH_NETRT(i - 1, j - 1).lt.0) then !south west
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt
+               print *, "Boundary Pour Point SW", cnt,CH_NETRT(i,j), i,j
+            endif
+         else if ( DIRECTION(i, j) .eq. 16) then 
+            if(i - 1 .eq. 0) then              !-- 16's can only flow due west 
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt              
+            elseif (CH_NETRT(i - 1, j).lt.0) then !West
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt              
+               print *, "Boundary Pour Point W", cnt,CH_NETRT(i,j), i,j
+            endif
+         else if ( DIRECTION(i, j) .eq. 32)  then
+            if ( (i - 1 .eq. 0)      &      !-- 32's can flow either west or north
+                 .or.   (j .eq. JXRT))  then         !-- this is the north edge
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt
+            elseif (CH_NETRT(i - 1, j + 1).lt.0) then !North West
+               cnt = cnt + 1
+               CH_NETLNK(i,j) = cnt
+               print *, "Boundary Pour Point NW", cnt, CH_NETRT(i,j), i, j
+            endif
          endif
-      endif !CHANNELGRID check for this node
+      endif !CH_NETRT check for this node
    end do
 end do
 
-!close(79)
+print *, "total number of channel elements: ", cnt
+print *, "total number of links           : ", n_link
+if (cnt .ne. n_link) then 
+   print *, "Apparent error in network topology", cnt, n_link
+   print* , "ixrt =", ixrt, "jxrt =", jxrt
+endif
 
-deallocate(channelGrid, LAKE_MSKRT, DIRECTION, ELRT)
+n_lake = 0
+do j=1,jxrt
+   do i = 1,ixrt
+      if (LAKE_MSKRT(i,j) .gt. n_lake) then
+         n_lake = LAKE_MSKRT(i,j)
+      endif
+   end do
+end do
+print *, "Total Number of Lakes in Domain: ", n_lake
+
+! -------------------------------------------------------
+! WRF-Hydro Code above
 
 if (cnt .ne. n_link) then
    write(string1,*) 'Error with number of links in the channel grid.'
-   call error_handler(E_ERR,'getChannelGridCoords',string1,source,revision,revdate)
+   call error_handler(E_ERR, 'getChannelGridCoords', string1, source, revision, revdate)
 endif
+
+! Now that we have the matrix version of the indices, put them into the
+! sparse array (aka "link") representation.
+
+do j = 1, JXRT  !rows
+   do i = 1 ,IXRT   !colsumns
+      if (CH_NETLNK(i,j) > 0)  then
+          cnt               = CH_NETLNK(i,j)
+          linkLat(cnt)      = hlat(i,j)
+          linkLong(cnt)     = hlong(i,j)
+          linkAlt(cnt)      = ELRT(i,j)
+          channelIndsX(cnt) = i
+          channelIndsY(cnt) = j
+      endif
+   enddo
+enddo
+
+deallocate(CH_NETRT, LAKE_MSKRT, DIRECTION, ELRT)
 
 end subroutine getChannelGridCoords
 
@@ -885,42 +875,87 @@ end subroutine getChannelGridCoords
 
 subroutine get_routelink_constants(filename)
 
-! char  gages(linkDim, IDLength) ;
-!       gages:long_name = "NHD Gage Event ID from SOURCE_FEA field in Gages feature class" ;
-!       gages:coordinates = "lat lon" ;
-! int   link(linkDim) ;
-!       link:long_name = "Link ID (NHDFlowline_network COMID)" ;
-!       link:cf_role = "timeseries_id" ;
-!       link:coordinates = "lat lon" ;
-! float lat(linkDim) ;
-!       lat:long_name = "latitude of the start node" ;
-!       lat:units = "degrees_north" ;
-!       lat:standard_name = "latitude" ;
-!       lat:coordinates = "lat lon" ;
-! float lon(linkDim) ;
-!       lon:long_name = "longitude of the start node" ;
-!       lon:units = "degrees_east" ;
-!       lon:standard_name = "longitude" ;
-!       lon:coordinates = "lat lon" ;
-!float alt(linkDim) ;
-!	alt:long_name = "Elevation in meters from the North American Vertical Datum 1988 (NADV88) at start node (MaxElevSmo)" ;
-!	alt:standard_name = "height" ;
-!	alt:units = "m" ;
-!	alt:positive = "up" ;
-!	alt:axis = "Z" ;
-!	alt:coordinates = "lat lon" ;
-!float Length(linkDim) ;
-!       Length:long_name = "Stream length (m)" ;
-!       Length:coordinates = "lat lon" ;
-!int to(linkDim) ;
-!       to:long_name = "To Link ID (PlusFlow table TOCOMID for every FROMCOMID)" ;
-!       to:coordinates = "lat lon" ;
-!int upstreamLinks(linkDim, localDim) ;
-!       localLinks:units = " " ;
-!       localLinks:_FillValue = -9999 ;
-!float n(linkDim) ;
-!	n:long_name = "Manning\'s roughness" ;
-!	n:coordinates = "lat lon" ;
+! (base) jamesmcc@cheyenne4[1037]:/glade/work/jamesmcc/domains/public/sixmile/NWM/DOMAIN> \
+! ncdump -h RouteLink.localLinks.v2.nc 
+! netcdf RouteLink.localLinks.v2 {
+! dimensions:
+! 	IDLength = 15 ;
+! 	localDim = 2 ;
+! 	feature_id = 157 ;
+! variables:
+! 	float BtmWdth(feature_id) ;
+! 		BtmWdth:long_name = "Bottom width of channel" ;
+! 		BtmWdth:coordinates = "lat lon" ;
+! 	float ChSlp(feature_id) ;
+! 		ChSlp:long_name = "Channel side slope" ;
+! 		ChSlp:coordinates = "lat lon" ;
+! 	short Kchan(feature_id) ;
+! 		Kchan:long_name = "channel conductivity" ;
+! 		Kchan:units = "mm h-1" ;
+! 		Kchan:coordinates = "lat lon" ;
+! 	float Length(feature_id) ;
+! 		Length:long_name = "Stream length (m)" ;
+! 		Length:coordinates = "lat lon" ;
+! 	float MusK(feature_id) ;
+! 		MusK:long_name = "Muskingum routing time (s)" ;
+! 		MusK:coordinates = "lat lon" ;
+! 	float MusX(feature_id) ;
+! 		MusX:long_name = "Muskingum weighting coefficient" ;
+! 		MusX:coordinates = "lat lon" ;
+! 	int NHDWaterbodyComID(feature_id) ;
+! 		NHDWaterbodyComID:coordinates = "lat lon" ;
+! 		NHDWaterbodyComID:long_name = "ComID of NHDWaterbody feature associated using spatial join (intersection) between NHDFlowline_network and Waterbodies" ;
+! 	float Qi(feature_id) ;
+! 		Qi:long_name = "Initial flow in link (CMS)" ;
+! 		Qi:coordinates = "lat lon" ;
+! 	float So(feature_id) ;
+! 		So:long_name = "Slope (meters/meters from NHDFlowline_network.SLOPE)" ;
+! 		So:coordinates = "lat lon" ;
+! 	float alt(feature_id) ;
+! 		alt:long_name = "Elevation in meters from the North American Vertical Datum 1988 (NADV88) at start node (MaxElevSmo)" ;
+! 		alt:standard_name = "height" ;
+! 		alt:units = "m" ;
+! 		alt:positive = "up" ;
+! 		alt:axis = "Z" ;
+! 		alt:coordinates = "lat lon" ;
+! 	int ascendingIndex(feature_id) ;
+! 		ascendingIndex:long_name = "Index to use for sorting IDs (ascending)" ;
+! 	int from(feature_id) ;
+! 		from:long_name = "From Link ID (PlusFlow table FROMCOMID for every TOCOMID)" ;
+! 		from:coordinates = "lat lon" ;
+! 	char gages(feature_id, IDLength) ;
+! 		gages:long_name = "NHD Gage Event ID from SOURCE_FEA field in Gages feature class" ;
+! 		gages:coordinates = "lat lon" ;
+! 	float lat(feature_id) ;
+! 		lat:long_name = "latitude of the start node" ;
+! 		lat:units = "degrees_north" ;
+! 		lat:standard_name = "latitude" ;
+! 		lat:coordinates = "lat lon" ;
+! 	int link(feature_id) ;
+! 		link:long_name = "Link ID (NHDFlowline_network COMID)" ;
+! 		link:cf_role = "timeseries_id" ;
+! 		link:coordinates = "lat lon" ;
+! 	float lon(feature_id) ;
+! 		lon:long_name = "longitude of the start node" ;
+! 		lon:units = "degrees_east" ;
+! 		lon:standard_name = "longitude" ;
+! 		lon:coordinates = "lat lon" ;
+! 	float n(feature_id) ;
+! 		n:long_name = "Manning\'s roughness" ;
+! 		n:coordinates = "lat lon" ;
+! 	int order(feature_id) ;
+! 		order:long_name = "Stream order (Strahler)" ;
+! 		order:coordinates = "lat lon" ;
+! 	float time ;
+! 		time:standard_name = "time" ;
+! 		time:long_name = "time of measurement" ;
+! 		time:units = "days since 2000-01-01 00:00:00" ;
+! 	int to(feature_id) ;
+! 		to:long_name = "To Link ID (PlusFlow table TOCOMID for every FROMCOMID)" ;
+! 		to:coordinates = "lat lon" ;
+! 	int localLinks(feature_id, localDim) ;
+! 		localLinks:units = " " ;
+! 		localLinks:_FillValue = -9999 ;
 
 ! module variables set: n_link, linkLong, linkLat, linkAlt, roughness, linkID, gageID
 ! module variables set: channelIndsX, channelIndsY
@@ -936,10 +971,10 @@ io = nf90_open(filename, NF90_NOWRITE, iunit)
 call nc_check(io, routine, 'open', filename)
 
 !! get the linkDim ID and its length ... n_link
-io = nf90_inq_dimid(iunit, 'linkDim', DimID)
-call nc_check(io, routine,'inq_dimid','linkDim', filename)
+io = nf90_inq_dimid(iunit, 'feature_id', DimID)
+call nc_check(io, routine,'inq_dimid','feature_id', filename)
 io = nf90_inquire_dimension(iunit, DimID, len=n_link)
-call nc_check(io, routine,'inquire_dimension','linkDim',filename)
+call nc_check(io, routine,'inquire_dimension','feature_id',filename)
 
 !! Need to test the character string length for the linkID
 io = nf90_inq_dimid(iunit, 'IDLength', DimID)
@@ -1099,7 +1134,7 @@ enddo UP2
 enddo UP1
 
 if (debug > 99) then
-   write(string1,'("PE ",i7)') my_task_id()
+   write(string1,'("PE ",i3)') my_task_id()
    do i = 1,n_link
    write(*,*)''
    write(*,*)trim(string1),' connectivity for link : ',i
@@ -1141,7 +1176,7 @@ direct_length = reach_length
 if (depth > 1) direct_length = direct_length + connections(my_index)%linkLength
 
 if (debug > 99) then
-   write(string1,'("PE ",i7)') my_task_id()
+   write(string1,'("PE ",i3)') my_task_id()
    write(*,*)trim(string1)
    write(*,*)trim(string1),' glt:my_index      ', my_index
    write(*,*)trim(string1),' glt:depth         ', depth
@@ -1222,7 +1257,7 @@ do while( direct_length < reach_cutoff .and. &
    distances(nclose)     = direct_length
 
    if (debug > 99) then
-   write(string1,'("PE ",I7)') my_task_id()
+   write(string1,'("PE ",I3)') my_task_id()
    write(*,*)trim(string1)
    write(*,*)trim(string1), ' gdl: my_index, nclose, direct_length ', &
                               idown, nclose, direct_length
@@ -1236,7 +1271,7 @@ end subroutine get_downstream_links
 
 
 !-----------------------------------------------------------------------
-!> Routine 'specific' to what I think is being used in the wrf_hydro full model run
+!> Routine 'specific' to what I think is being used in the wrfhydro full model run
 !> would be nice to know a version or something
 
 subroutine read_noah_namelist(setup_filename)
@@ -1513,6 +1548,17 @@ filename = lsm_domain_file(1)
 end subroutine get_lsm_domain_filename
 
 
+!-----------------------------------------------------------------------
+!> return the filename used to determine variable shapes for the hydro domain
+
+function get_hydro_domain_filename() result(filename)
+
+character(len=len_trim(geo_finegrid_flnm)) :: filename
+
+filename = geo_finegrid_flnm
+
+end function get_hydro_domain_filename
+
 
 !-----------------------------------------------------------------------
 !> read the global attributes from a hydro restart file
@@ -1630,6 +1676,114 @@ call nc_add_global_attribute(ncid, 'TRUELAT2',  noah_global_atts%truelat2,   rou
 call nc_add_global_attribute(ncid, 'STAND_LON', noah_global_atts%stand_lon,  routine)
 
 end subroutine write_noah_global_atts
+
+
+
+function get_dimension(dimname, ncid1, ncid2, context) result(dimlen)
+
+integer                      :: dimlen
+character(len=*), intent(in) :: dimname
+integer,          intent(in) :: ncid1, ncid2
+character(len=*), intent(in) :: context
+
+integer :: io, ncid, DimID
+
+ncid = ncid1
+
+write(string1,*)'inq_dimid "'//trim(dimname)//'"'
+io = nf90_inq_dimid(ncid, dimname, DimID)
+if (io /= NF90_NOERR .and. ncid2 /= MISSING_R8) then
+   io = nf90_inq_dimid(ncid2, dimname, DimID)
+   ncid = ncid2
+endif
+call nc_check(io, context, string1, ncid=ncid)
+
+write(string1,*)'inquire_dimension "'//trim(dimname)//'"'
+io = nf90_inquire_dimension(ncid, DimID, len=dimlen)
+call nc_check(io, context, string1, ncid=ncid)
+
+end function get_dimension
+
+!===============================================================================
+!> This routine calculates the 'average' location of the basin to aid in
+!> localization for quantities/parameters that may be georeferenced to a basin.
+!> This is only called if the gridded FullDom.nc is being used
+!> (as opposed to the channel-only configuration).
+
+subroutine get_basn_msk(filename, iunit, numdims, ncstart, nccount, nlon, nlat)
+
+character(len=*), intent(in) :: filename
+integer,          intent(in) :: iunit
+integer,          intent(in) :: numdims
+integer,          intent(in) :: ncstart(:)
+integer,          intent(in) :: nccount(:)
+integer,          intent(in) :: nlon
+integer,          intent(in) :: nlat
+
+! routine sets module variables: basnMask, basnLon, basnLat
+
+character(len=*), parameter :: routine = 'get_basn_msk'
+integer, parameter :: MYMISSING = -9999
+integer :: io, VarID, indx, indx2, n_basn
+logical :: nBasnWasZero
+
+integer,  allocatable, dimension(:,:) :: basnGrid
+integer,  allocatable, dimension(:)   :: basnMaskTmp
+
+! get the basin grid - this wont need to be flipped as unique values
+! are packed in to a 1D array without geolocation information.
+
+allocate( basnGrid(nlon, nlat))
+
+io = nf90_inq_varid(iunit, 'basn_msk', VarID)
+call nc_check(io, routine,'inq_varid basn_msk',filename)
+
+io = nf90_get_var(iunit, VarID, basnGrid, start=ncstart(1:numdims), &
+                                          count=nccount(1:numdims))
+call nc_check(io, routine, 'get_var basn_msk',filename)
+
+! make it a 1D array of single values
+! question is how to localize this, since it has no coordinates.
+! for now going to use the average lat and lon of each basin
+allocate(basnMaskTmp(maxval(basnGrid)))
+basnMaskTmp(:) = MYMISSING
+
+indx2 = 0
+do indx = 1,maxval(basnGrid)
+   if(any(basnGrid == indx)) then
+      indx2 = indx2 + 1
+      basnMaskTmp(indx2) = indx
+   endif
+enddo
+n_basn = indx2
+
+nBasnWasZero = .FALSE.
+if(n_basn == 0) then
+   nBasnWasZero = .true.
+   n_basn = 1
+endif
+
+allocate(basnMask(n_basn),basnLon(n_basn),basnLat(n_basn))
+
+where(basnMaskTmp /= MYMISSING) basnMask(:) = basnMaskTmp(1:n_basn)
+
+deallocate(basnMaskTmp)
+
+if(nBasnWasZero) then
+   ! no idea where to locate them ... give them a dummy value
+   basnLon = 0.0_r8
+   basnLat = 0.0_r8
+else
+   ! calculate the 'average' location of the basin
+   do indx = 1, n_basn
+      basnLon(indx) = sum(hlong, basnGrid == indx) / count(basnGrid == indx)
+      basnLat(indx) = sum( hlat, basnGrid == indx) / count(basnGrid == indx)
+   enddo
+end if
+
+deallocate(basnGrid)
+
+end subroutine get_basn_msk
 
 
 end module noah_hydro_mod

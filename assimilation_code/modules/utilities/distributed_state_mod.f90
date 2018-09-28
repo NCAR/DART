@@ -33,10 +33,10 @@ public :: get_state_array, get_state, create_state_window, &
           free_state_window, create_mean_window, free_mean_window
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 contains
 
@@ -44,6 +44,7 @@ contains
 !> Gets all copies of an element of the state vector from the process who owns it
 !> Assumes ensemble complete. This differes from get_state as it now works on an
 !> array of state indices rather than a single index.
+
 subroutine get_state_array(x, my_index, state_ens_handle)
 
 real(r8),            intent(out) :: x(data_count) !> all copies of an element of the state vector
@@ -71,9 +72,11 @@ enddo
 
 end subroutine get_state_array
 
+
 !---------------------------------------------------------
 !> Gets all copies of an element of the state vector from the process who owns it
 !> Assumes ensemble complete
+
 function get_state(my_index, ens_handle) result (x)
 
 real(r8) :: x(data_count) !> all copies of an element of the state vector
@@ -86,14 +89,17 @@ if (current_win == MEAN_WINDOW) then
 else if (current_win == STATE_WINDOW) then
    call get_fwd(x, my_index, ens_handle)
 else
-   call error_handler(E_ERR, 'get_state',' No window currently open')
+   call error_handler(E_ERR, 'get_state', 'No window currently open', &
+              source, revision, revdate)
 endif
 
 end function get_state
 
+
 !---------------------------------------------------------
 !> Gets all copies of an element of the state vector from the process who owns it
 !> Assumes ensemble complete
+
 subroutine get_fwd(x, my_index, state_ens_handle)
 
 real(r8),            intent(out) :: x(data_count) !> all copies of an element of the state vector
@@ -124,9 +130,11 @@ endif
 
 end subroutine get_fwd
 
+
 !---------------------------------------------------------
 !> Gets all copies of an element of the state vector from the process who owns it
 !> Assumes ensemble complete
+
 subroutine get_mean(x, my_index, state_ens_handle)
 
 real(r8),            intent(out) :: x(1) !> only grabing the mean

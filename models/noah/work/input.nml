@@ -9,21 +9,24 @@
    perturb_distribution         = 'gaussian'
    debug                        = 0
    lsm_variables = 'SOIL_T',   'QTY_SOIL_TEMPERATURE',   '0.0',  'NA', 'UPDATE',
-                   'SMC',      'QTY_SOIL_MOISTURE',      '0.0',  'NA', 'UPDATE',
+                   'SMC',      'QTY_SOIL_MOISTURE',      '0.0', '1.0', 'UPDATE',
+                   'WA',       'QTY_AQUIFER_WATER',      '0.0',  'NA', 'UPDATE',
+                   'SNEQV',    'QTY_SNOW_WATER',         '0.0',  'NA', 'UPDATE' 
   /
+                   'ZSNSO',    'QTY_NUM_SNOW_LAYERS',    'NA',   'NA', 'NOUPDATE',
+                   'SNOW_T',   'QTY_SNOW_TEMPERATURE',   '0.0',  'NA', 'UPDATE',
                    'SOIL_W',   'QTY_SOIL_LIQUID_WATER',  '0.0',  'NA', 'UPDATE',
                    'SKINTEMP', 'QTY_SKIN_TEMPERATURE',   '0.0',  'NA', 'UPDATE',
-                   'QFX',      'QTY_LATENT_HEAT_FLUX',   '0.0',  'NA', 'UPDATE',
-                   'HFX',      'QTY_SENSIBLE_HEAT_FLUX', '0.0',  'NA', 'UPDATE',
                    'GRDFLX',   'QTY_GROUND_HEAT_FLUX'    '0.0',  'NA', 'UPDATE',
                    'SNODEP',   'QTY_SNOW_THICKNESS',     '0.0',  'NA', 'UPDATE',
                    'WEASD',    'QTY_SNOW_WATER',         '0.0',  'NA', 'UPDATE',
                    'CANWAT',   'QTY_CANOPY_WATER',       '0.0',  'NA', 'UPDATE',
 
+
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
    single_file_in             = .false.
-   input_state_files          = 'restart.nc'
+   input_state_files          = '/scratch/04270/l_jing/DART_NoahMP/output/outfiles/rest/RESTART.2001013100_DOMAIN1_01'
    init_time_days             = -1
    init_time_seconds          = -1
    allow_missing_clm          = .true.
@@ -32,8 +35,8 @@
    output_state_files         = 'perfect_out.nc'
    output_interval            = 1
 
-   obs_seq_in_file_name       = 'obs_seq.in'
-   obs_seq_out_file_name      = 'obs_seq.out'
+   obs_seq_in_file_name       = '/work/04270/l_jing/lonestar/DART_data/st/obs_seq.0Z.20030131'
+   obs_seq_out_file_name      =  'obs_seq.out_20010131'
    first_obs_days             = -1
    first_obs_seconds          = -1
    last_obs_days              = -1
@@ -57,23 +60,23 @@
    init_time_days               = -1
    init_time_seconds            = -1
 
-   stages_to_write              = 'preassim', 'analysis', 'output'
+   stages_to_write              = 'preassim', 'analysis','output'
 
    output_state_file_list       = 'output_file_list.txt'
    output_members               = .true.
-   num_output_state_members     = 20
+   num_output_state_members     = 1
    output_mean                  = .true.
    output_sd                    = .true.
    write_all_stages_at_end      = .false.
 
-   ens_size                     = 20
+   ens_size                     = 40
 
    async                        = 0
    adv_ens_command              = 'not possible'
 
    obs_sequence_in_name         = 'obs_seq.out'
    obs_sequence_out_name        = 'obs_seq.final'
-   num_output_obs_members       = 20
+   num_output_obs_members       = 40
    first_obs_days               = -1
    first_obs_seconds            = -1
    last_obs_days                = -1
@@ -99,15 +102,28 @@
    silence                      = .false.
    /
 
+
+&dart_to_noah_nml
+   dart_analysis_file = 'analysis_member_0001.nc'
+   noah_restart_file  = '/work/04270/l_jing/lonestar/DART_CAM/RESTART.2003010100_DOMAIN1_0001'
+  /
+   noah_restart_file  = '/work/04270/l_jing/lonestar/DART_CAM/RESTART.2003010100_DOMAIN1_01'
+
+
 &quality_control_nml
    input_qc_threshold          = 3
-   outlier_threshold           = -1
+   outlier_threshold           = 3
    enable_special_outlier_code = .false.
   /
 
+
+# cutoff = 0.03 (radians) is about 200 km
+# cutoff = 0.05 (radians) is about 300 km
+# cutoff = 0.06 (radians) is about 400 km
+
 &assim_tools_nml
    filter_kind                     = 1
-   cutoff                          = 0.20
+   cutoff                          = 0.05
    sort_obs_inc                    = .false.
    spread_restoration              = .false.
    sampling_error_correction       = .false.
@@ -117,6 +133,7 @@
    print_every_nth_obs             = 0
    close_obs_caching               = .true.
   /
+
 
 # layout = 2 spreads the IO tasks across the nodes.
 # This can greatly improve the performance in IO if
@@ -128,32 +145,39 @@
    tasks_per_node = 1
   /
 
+
 &obs_sequence_nml
    write_binary_obs_sequence = .false.
   /
 
+
 &obs_kind_nml
-   assimilate_these_obs_types = 'SOIL_TEMPERATURE',
-   evaluate_these_obs_types   = 'SOIL_MOISTURE',
-                                'LAYER_LIQUID_WATER',
-                                'SNOW_THICKNESS'
+   assimilate_these_obs_types = 'GRACE_TWS','MODIS_SNOWCOVER_FRAC'
+   evaluate_these_obs_types   = 'LAYER_LIQUID_WATER', 'SNOW_THICKNESS'
   /
+
 
 &preprocess_nml
     input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
    output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
      input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
     output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
-   input_files              = '../../../observations/forward_operators/obs_def_tower_mod.f90'
+   input_files              = '../../../observations/forward_operators/obs_def_tower_mod.f90',
+                              '../../../observations/forward_operators/obs_def_GRACE_mod.f90'
+  /
+
+&obs_def_grace_nml
+   max_grace_obs = 10000
+   debug         = .false.
   /
 
 &state_vector_io_nml
    single_precision_output    = .true.
-   /
+  /
 
 &location_nml
-   horiz_dist_only             = .true.
-   vert_normalization_height   = 10000.0
+   horiz_dist_only             = .false.
+   vert_normalization_height   = 7.0
    approximate_distance        = .false.
    output_box_info             = .false.
   /
@@ -182,14 +206,14 @@
   /
 
 &obs_diag_nml
-   obs_sequence_name = 'obs_seq.final'
-   obs_sequence_list = ''
-   first_bin_center =  2009, 1, 1, 0, 0, 0
-   last_bin_center  =  2009, 1, 1,12, 0, 0
-   bin_separation   =     0, 0, 0, 1, 0, 0
-   bin_width        =     0, 0, 0, 1, 0, 0
+   obs_sequence_name = ''
+   obs_sequence_list = 'obs_seq.final_file_list'
+   first_bin_center =  2003, 11, 1, 0, 0, 0
+   last_bin_center  =  2003, 11, 2, 0, 0, 0
+   bin_separation   =     0, 0, 1, 0, 0, 0
+   bin_width        =     0, 0, 1, 0, 0, 0
    time_to_skip     =     0, 0, 0, 0, 0, 0
-   max_num_bins     = 1000
+   max_num_bins     = 2
    trusted_obs      = 'null'
    Nregions   = 1
    lonlim1    =   0.0
@@ -202,41 +226,83 @@
    outliers_in_histogram = .true.
    use_zero_error_obs    = .false.
    verbose               = .false.
-   hlevel = 0.0, -0.25, -0.7, -1.5, -10.0
+   hlevel = 0.05, 0.25, 0.7, 1.5
   /
 
-   loc_of_interest       = 86.375, 20.125, 0.7
-   loc_of_interest       = 98.375, 38.125, 0.7  has soil temperature 262.644
+
+#  loc_of_interest       = 86.375, 20.125, 0.7
+#  loc_of_interest       = 98.375, 38.125, 0.7  has soil temperature 262.644
+
 &model_mod_check_nml
    input_state_files     = 'restart.nc'
    output_state_files    = 'mmc_output.nc'
    test1thru             = 0
-   run_tests             = 1,2,3,4,5,6,7
+   run_tests             = 1,2,3,4,6,7
    x_ind                 = 5170
    loc_of_interest       = 98.375, 38.125, 0.7
-   quantity_of_interest  = 'QTY_SOIL_TEMPERATURE'
+   quantity_of_interest  = 'QTY_SOIL_MOISTURE'
    interp_test_dlon      = 0.1
    interp_test_dlat      = 0.1
    interp_test_dvert     = 0.50
-   interp_test_lonrange  = 73.0,  135.0
-   interp_test_latrange  = 18.0,   54.0
-   interp_test_vertrange =  0.0015,   0.0015
+   interp_test_lonrange  = 73.375,  134.875
+   interp_test_latrange  = 18.125,  53.625
+   interp_test_vertrange =  0.05,   1.5
    interp_test_vertcoord = 'VERTISHEIGHT'
    verbose               = .false.
    allow_missing         = .true.
   /
 
+
 &smoother_nml
   /
+
 
 &cov_cutoff_nml
    select_localization = 1
   /
+
 
 &reg_factor_nml
    select_regression    = 1
    input_reg_file       = 'time_mean_reg'
    save_reg_diagnostics = .false.
    reg_diagnostics_file = 'reg_diagnostics'
+  /
+
+
+&obs_common_subset_nml
+   num_to_compare_at_once = 2
+   filename_seq           = ''
+   filename_seq_list      = 'OLlist','Simlist'
+   filename_out_suffix    = '.common' 
+   print_every            = -1
+   dart_qc_threshold      = 3
+   calendar               = 'Gregorian'
+   print_only             = .false.
+   eval_and_assim_can_match = .true.
+  /
+
+
+&obs_seq_to_netcdf_nml
+   obs_sequence_name = ''
+   obs_sequence_list = 'obs_to_netcdf'
+   append_to_netcdf  = .false.
+   lonlim1    =    0.0
+   lonlim2    =  300.0
+   latlim1    =    0.0
+   latlim2    =   90.0
+   verbose    = .false.
+  /
+
+
+&schedule_nml
+   calendar        = 'Gregorian'
+   first_bin_start =  2003, 11, 24, 0, 0, 0 
+   first_bin_end   =  2003, 11, 25, 0, 0, 0 
+   last_bin_end    =  2003, 11, 25, 0, 0, 0 
+   bin_interval_days    = 1
+   bin_interval_seconds = 0
+   max_num_bins         = 1
+   print_table          = .false.
   /
 

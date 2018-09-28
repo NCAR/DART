@@ -6,7 +6,7 @@
 
 module sort_mod
 
-use     types_mod, only : r8
+use     types_mod, only : r4, r8, i8, digits12
 use utilities_mod, only : register_module
 
 implicit none
@@ -29,7 +29,9 @@ end interface sort
 
 interface index_sort
    module procedure index_sort_real
+   module procedure index_sort_digits12
    module procedure index_sort_int
+   module procedure index_sort_i8
 end interface
 
 contains
@@ -259,7 +261,6 @@ integer,  intent(out) :: index(num)
 integer  :: ind, i, j, l_val_index, level
 real(r8) :: l_val
 
-
 if ( .not. module_initialized ) call initialize_module
 
 !  INITIALIZE THE INDEX ARRAY TO INPUT ORDER
@@ -317,6 +318,76 @@ end subroutine index_sort_real
 
 
 !=========================================================================
+!> Uses a heap sort alogrithm on x, returns array of sorted indices
+
+subroutine index_sort_digits12(x, myindex, num)
+
+implicit none
+
+integer(i8),    intent(in)  :: num
+real(digits12), intent(in)  :: x(num)
+integer(i8),    intent(out) :: myindex(num)
+
+integer(i8) :: ind, i, j, l_val_myindex, level
+real(digits12) :: l_val
+
+if ( .not. module_initialized ) call initialize_module
+
+!  INITIALIZE THE myindex ARRAY TO INPUT ORDER
+do i = 1, num
+   myindex(i) = i
+end do
+
+! Only one element, just send it back
+if(num <= 1) return
+
+level = num / 2 + 1
+ind = num
+
+! Keep looping until finished
+do
+   ! Keep going down levels until bottom
+   if(level > 1) then
+      level = level - 1
+      l_val = x(myindex(level))
+      l_val_myindex = myindex(level)
+   else
+      l_val = x(myindex(ind))
+      l_val_myindex = myindex(ind)
+
+
+      myindex(ind) = myindex(1)
+      ind = ind - 1
+      if(ind == 1) then
+         myindex(1) = l_val_myindex
+         return
+      endif
+   endif
+
+   i = level
+   j = 2 * level
+
+   do while(j <= ind)
+      if(j < ind) then
+         if(x(myindex(j)) < x(myindex(j + 1))) j = j + 1
+      endif
+      if(l_val < x(myindex(j))) then
+         myindex(i) = myindex(j)
+         i = j
+         j = 2 * j
+      else
+         j = ind + 1
+      endif
+
+   end do
+   myindex(i) = l_val_myindex
+
+end do
+
+end subroutine index_sort_digits12
+
+
+!=========================================================================
 
 
 subroutine index_sort_int(x, index, num)
@@ -326,7 +397,7 @@ subroutine index_sort_int(x, index, num)
 implicit none
 
 integer,  intent(in)  :: num
-integer, intent(in)  :: x(num)
+integer,  intent(in)  :: x(num)
 integer,  intent(out) :: index(num)
 
 integer  :: ind, i, j, l_val_index, level
@@ -387,6 +458,79 @@ do
 end do
 
 end subroutine index_sort_int
+
+!=========================================================================
+
+
+subroutine index_sort_i8(x, myindex, num)
+
+! Uses a heap sort alogrithm on x (an array of long integers)
+!  returns array of sorted indices and the sorted array
+implicit none
+
+integer(i8), intent(in)  :: num
+integer(i8), intent(in)  :: x(num)
+integer(i8), intent(out) :: myindex(num)
+
+integer(i8) :: ind, i, j, l_val_myindex, level
+integer(i8) :: l_val
+
+if ( .not. module_initialized ) call initialize_module
+
+!  INITIALIZE THE myindex ARRAY TO INPUT ORDER
+do i = 1, num
+  myindex(i) = i
+end do
+
+! Only one element, just send it back
+if(num <= 1) return
+
+level = num / 2 + 1
+ind = num
+
+! Keep looping until finished
+do
+  ! Keep going down levels until bottom
+  if(level > 1) then
+    level = level - 1
+    l_val = x(myindex(level))
+    l_val_myindex = myindex(level)
+   else
+     l_val = x(myindex(ind))
+     l_val_myindex = myindex(ind)
+
+
+  myindex(ind) = myindex(1)
+  ind = ind - 1
+    if(ind == 1) then
+      myindex(1) = l_val_myindex
+    return
+    endif
+  endif
+
+  i = level
+  j = 2 * level
+
+  do while(j <= ind)
+    if(j < ind) then
+      if(x(myindex(j)) < x(myindex(j + 1))) j = j + 1
+    endif
+    if(l_val < x(myindex(j))) then
+      myindex(i) = myindex(j)
+      i = j
+      j = 2 * j
+    else
+     j = ind + 1
+    endif
+
+   end do
+
+   myindex(i) = l_val_myindex
+
+end do
+
+end subroutine index_sort_i8
+
 
 
 !=========================================================================

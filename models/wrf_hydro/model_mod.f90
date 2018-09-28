@@ -6,9 +6,9 @@
 
 module model_mod
 
-!> This is the interface for wrf_hydro and the DART data assimilation infrastructure. 
+!> This is the interface for wrfHydro and the DART data assimilation infrastructure.
 
-use              types_mod, only : r8, i8, MISSING_R8, obstypelength
+use              types_mod, only : r8, i8, MISSING_R8, obstypelength, earth_radius
 
 use      time_manager_mod, only : time_type, set_time, get_time, set_time_missing, &
                                   set_date, print_time, print_date, set_calendar_type
@@ -32,9 +32,12 @@ use  netcdf_utilities_mod, only : nc_check, nc_add_global_attribute, &
 
 use obs_def_utilities_mod, only : track_status
 
-use         obs_kind_mod,  only : get_index_for_quantity, get_name_for_quantity, &
-                                  QTY_BUCKET_MULTIPLIER, QTY_RUNOFF_MULTIPLIER, &
-                                  SOIL_MOISTURE
+use         obs_kind_mod,  only : get_index_for_quantity, &
+                                  get_name_for_quantity, &
+                                  get_quantity_for_type_of_obs, &
+                                  QTY_BUCKET_MULTIPLIER, &
+                                  QTY_RUNOFF_MULTIPLIER, &
+                                  QTY_STREAM_FLOW
 
 use  ensemble_manager_mod, only : ensemble_type
 
@@ -48,7 +51,8 @@ use        noah_hydro_mod, only : configure_lsm, configure_hydro, &
                                   n_link, linkLong, linkLat, linkAlt, get_link_tree, &
                                   full_to_connection, get_downstream_links, &
                                   read_hydro_global_atts, write_hydro_global_atts, &
-                                  read_noah_global_atts, write_noah_global_atts
+                                  read_noah_global_atts, write_noah_global_atts, &
+                                  get_hydro_domain_filename
 
 use   state_structure_mod, only : add_domain,      get_domain_size,   &
                                   get_index_start, get_index_end,     &
@@ -95,6 +99,10 @@ public :: nc_write_model_vars,    &
           convert_vertical_state, &
           write_model_time
 
+! Not required, but useful
+
+public :: get_number_of_links
+
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = &
    "$URL$"
@@ -120,33 +128,35 @@ integer, parameter :: NUM_STATE_TABLE_COLUMNS = 5
 integer :: domain_count
 integer :: idom, idom_hydro = -1, idom_parameters = -1, idom_lsm = -1
 
-! Model namelist declarations with defaults 
-integer             :: assimilation_period_days     = 0
-integer             :: assimilation_period_seconds  = 3600
-character(len=128)  :: lsm_model_choice             = 'noahMP'
-character(len=256)  :: domain_order(3)              = ''
-character(len=256)  :: domain_shapefiles(3)         = ''
-integer             :: debug                        = 0
-real(r8)            :: model_perturbation_amplitude = 0.002
-real(r8)            :: max_link_distance            = 10000.0   ! 10 km
-character(len=256)  :: perturb_distribution         = 'lognormal'
+! Model namelist declarations with defaults
+integer             :: assimilation_period_days       = 0
+integer             :: assimilation_period_seconds    = 3600
+character(len=128)  :: lsm_model_choice               = 'noahMP'
+character(len=256)  :: domain_order(3)                = ''
+character(len=256)  :: domain_shapefiles(3)           = ''
+integer             :: debug                          = 0
+real(r8)            :: model_perturbation_amplitude   = 0.002
+real(r8)            :: max_link_distance              = 10000.0   ! 10 km
+real(r8)            :: streamflow_4_local_multipliers = 1.0e-5
+character(len=256)  :: perturb_distribution           = 'lognormal'
 
 character(len=obstypelength) :: &
     lsm_variables(  NUM_STATE_TABLE_COLUMNS,MAX_STATE_VARIABLES) = '', &
     hydro_variables(NUM_STATE_TABLE_COLUMNS,MAX_STATE_VARIABLES) = '', &
     parameters(     NUM_STATE_TABLE_COLUMNS,MAX_STATE_VARIABLES) = ''
 
-namelist /model_nml/ assimilation_period_days,     &
-                     assimilation_period_seconds,  &
-                     lsm_model_choice,             &
-                     domain_order,                 &
-                     domain_shapefiles,            &
-                     debug,                        & 
-                     model_perturbation_amplitude, &
-                     perturb_distribution,         &
-                     max_link_distance,            &
-                     lsm_variables,                &
-                     hydro_variables,              &
+namelist /model_nml/ assimilation_period_days,       &
+                     assimilation_period_seconds,    &
+                     lsm_model_choice,               &
+                     domain_order,                   &
+                     domain_shapefiles,              &
+                     debug,                          &
+                     model_perturbation_amplitude,   &
+                     perturb_distribution,           &
+                     max_link_distance,              &
+                     streamflow_4_local_multipliers, &
+                     lsm_variables,                  &
+                     hydro_variables,                &
                      parameters
 
 type domain_locations
@@ -202,7 +212,7 @@ time_step  = set_time(assimilation_period_seconds, assimilation_period_days)
 
 ! Determine the order of the domains contributing to the DART state vector.
 
-if ( len_trim(domain_order(1)) == 0 ) then 
+if ( len_trim(domain_order(1)) == 0 ) then
    write(string1,*) 'The domain_order is incorrectly specified.'
    write(string2,*) 'The domain_order cannot be empty, it should be something like:'
    write(string3,*) 'domain_order = "hydro", "parameters"'
@@ -216,8 +226,9 @@ endif
 ! domain 1 variable # 1 "qlink1" from file "parameters.nc": NetCDF: Variable not found
 ! The clue is that the domain number and the file are not as expected.
 
-if ( .not. file_exist(domain_shapefiles(1)) ) then 
-   write(string1,*) 'Domain 1 shapefile "', trim(domain_shapefiles(1)),'" does not exist.'
+if ( .not. file_exist(domain_shapefiles(1)) ) then
+   write(string1,*) 'Domain 1 shapefile "', trim(domain_shapefiles(1)), &
+                    '" does not exist.'
    write(string2,*) 'There must be a domain 1.'
    call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
 endif
@@ -229,41 +240,59 @@ DOMAINS: do domainID = 1,size(domain_order)
    domain_name = domain_order(domainID)
    call to_upper(domain_name)
 
-   if ( .not. file_exist(domain_shapefiles(domainID)) ) then 
+   if ( .not. file_exist(domain_shapefiles(domainID)) ) then
       write(string1,'("Domain shapefile ",i3, A," does not exist.")')  &
                      domainID, '"'//trim(domain_shapefiles(domainID))//'"'
       call error_handler(E_ERR,routine,string1,source,revision,revdate)
    endif
 
-   if (index(domain_name,'HYDRO') > 0) then 
+   if (index(domain_name,'HYDRO') > 0) then
 
       call configure_hydro()
       call read_hydro_global_atts(domain_shapefiles(domainID))
-      call verify_variables(hydro_variables, domain_shapefiles(domainID), n_hydro_fields, &
-                       var_names, var_qtys, var_ranges, var_update)
-      idom_hydro = add_domain(domain_shapefiles(domainID), n_hydro_fields, var_names, &
+      call verify_variables(hydro_variables, domain_shapefiles(domainID), &
+                  n_hydro_fields, var_names, var_qtys, var_ranges, var_update)
+      idom_hydro = add_domain(domain_shapefiles(domainID), &
+                       n_hydro_fields, var_names, &
                          kind_list=var_qtys, &
                         clamp_vals=var_ranges(1:n_hydro_fields,:), &
                        update_list=var_update)
 
       if (debug > 99) call state_structure_info(idom_hydro)
 
-   elseif (index(domain_name,'PARAMETER') > 0) then 
+      !>@todo if there is ever more than 1 variable in the hydro domain
+      !> this test will fail. Should find a more robust way to get the size
+      !> of the variables in the domain, rather than the whole domain.
+      if ( get_domain_size(idom_hydro) /= n_link ) then
+         write(string1,*)'restart file, domain file not consistent.'
+         write(string2,*)'number of links ',get_domain_size(idom_hydro), &
+                         ' from "'//trim(domain_shapefiles(domainID))//'"'
+         write(string3,*)'number of links ',int(n_link,i8), &
+                         ' from "'//get_hydro_domain_filename()//'"'
+         call error_handler(E_ERR, routine, string1, &
+                    source, revision, revdate, text2=string2, text3=string3)
+      endif
+
+
+   elseif (index(domain_name,'PARAMETER') > 0) then
 
       call verify_variables(parameters, domain_shapefiles(domainID), n_parameters, &
                        var_names, var_qtys, var_ranges, var_update)
-      idom_parameters = add_domain(domain_shapefiles(domainID), n_parameters, &
-                       var_names, kind_list=var_qtys, clamp_vals=var_ranges(1:n_parameters,:), &
-                       update_list=var_update )
+      idom_parameters = add_domain(domain_shapefiles(domainID), &
+                            n_parameters, var_names, &
+                              kind_list=var_qtys, &
+                             clamp_vals=var_ranges(1:n_parameters,:), &
+                            update_list=var_update )
       if (debug > 99) call state_structure_info(idom_parameters)
 
-   elseif (index(domain_name,'LSM') > 0) then 
+   elseif (index(domain_name,'LSM') > 0) then
 
       call configure_lsm(lsm_model_choice)
       call read_noah_global_atts(domain_shapefiles(domainID))
       call verify_variables(lsm_variables, domain_shapefiles(domainID), n_lsm_fields, &
                        var_names, var_qtys, var_ranges, var_update)
-      idom_lsm = add_domain(domain_shapefiles(domainID), n_lsm_fields, var_names, &
+      idom_lsm = add_domain(domain_shapefiles(domainID), &
+                     n_lsm_fields, var_names, &
                          kind_list=var_qtys, &
                         clamp_vals=var_ranges(1:n_lsm_fields,:), &
                        update_list=var_update)
@@ -277,13 +306,13 @@ DOMAINS: do domainID = 1,size(domain_order)
 
    endif
 
-   
+
 enddo DOMAINS
 
 if (idom_parameters > 0 .and. idom_hydro < 1) then
-   write(string1,*) 'Since we are getting the parameter locations from the hydro domain'
+   write(string1,*) 'Since we are getting parameter locations from the hydro domain'
    write(string2,*) 'the hydro shapefile must exist.'
-   call error_handler(E_ERR,'init_time',string1,source,revision,revdate,text2=string2)
+   call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
 endif
 
 ! Now that we know the composition of the DART state, determine the model size.
@@ -294,7 +323,7 @@ do idom = 1,domain_count
    model_size = model_size + get_domain_size(idom)
 enddo
 
-! Each domain has its own array of locations. 
+! Each domain has its own array of locations.
 
 allocate(domain_info(domain_count))
 call configure_domains()
@@ -304,7 +333,7 @@ end subroutine static_init_model
 
 !------------------------------------------------------------------
 !> Returns a time that is somehow appropriate for starting up a new
-!> instance of the model. This is only used if the namelist parameter 
+!> instance of the model. This is only used if the namelist parameter
 !> start_from_restart is set to .false. in the program perfect_model_obs.
 
 subroutine init_time(time)
@@ -323,7 +352,7 @@ end subroutine init_time
 !------------------------------------------------------------------
 !> Companion to init_time(). Returns a model state vector, x, that is
 !> an appropriate initial condition for starting an integration of the model.
-!> At present, this is only used if the namelist parameter 
+!> At present, this is only used if the namelist parameter
 !> start_from_restart is set to .false. in the program perfect_model_obs.
 
 subroutine init_conditions(x)
@@ -379,7 +408,7 @@ endif
 
 interf_provided = .true.   ! .true. means we have our own way of perturbing
 
-! Generate a unique (but repeatable - if task count is same) 
+! Generate a unique (but repeatable - if task count is same)
 ! seed for each ensemble member
 if (seed_unset) then
    seed = (my_task_id()+1) * 1000
@@ -412,30 +441,36 @@ DOMAIN : do idom = 1, domain_count
       do j = 1, state_ens_handle%my_num_vars
 
          if (state_ens_handle%my_vars(j) >= start_ind .and. &
-             state_ens_handle%my_vars(j) <= end_ind   ) then 
+             state_ens_handle%my_vars(j) <= end_ind   ) then
 
             do copy = 1, ens_size
-               if (trim(perturb_distribution) == 'lognormal') then 
+               if (trim(perturb_distribution) == 'lognormal') then
                   rng = random_gaussian(random_seq, 0.0_r8, 1.0_r8)
-                  state_ens_handle%copies(copy,j) = state_ens_handle%copies(copy,j)*exp(stddev*rng)
-              else 
-               !MOHA: if it's not lognormal, then the only 
-               !current other option is Gaussian. We can add more later. 
+                  state_ens_handle%copies(copy,j) = &
+                  state_ens_handle%copies(copy,j)*exp(stddev*rng)
+               else
+
+                  !MOHA: if it's not lognormal, then the only
+                  !current other option is Gaussian. We can add more later.
 
                   positive = .false.
 
-                 !>@todo might want to make sure it is within the variable bounds from the namelist
+                  !>@todo might want to make sure it is also within the
+                  !> variable bounds from the namelist
                   POSDEF : do k=1,NTRIES ! prevent runoff from being negative
-                     new_state = random_gaussian(random_seq, state_ens_handle%copies(copy,j), stddev)
+                     new_state = random_gaussian(random_seq, &
+                                        state_ens_handle%copies(copy,j), stddev)
                      if ( new_state >= 0.0_r8 ) then
-                       positive = .true.
-                       state_ens_handle%copies(copy,j) = new_state
-                       exit POSDEF
+                        positive = .true.
+                        state_ens_handle%copies(copy,j) = new_state
+                        exit POSDEF
                      endif
                   enddo POSDEF
+
                   if (.not. positive) then
-                     write(string1,*)'tried ',NTRIES,' times to get something >= 0.0_r8 and failed'
-                     write(string2,*)'state value ',state_ens_handle%copies(copy,j)
+                     write(string1,*)'tried ',NTRIES, &
+                                     ' times to get something >= 0.0_r8 and failed'
+                     write(string2,*)'state value = ',state_ens_handle%copies(copy,j)
                      call error_handler(E_ERR, routine, string1, &
                                 source, revision, revdate, text2=string2)
                   endif
@@ -450,7 +485,7 @@ end subroutine pert_model_copies
 
 
 !------------------------------------------------------------------
-!> Returns the number of items in the state vector as an integer. 
+!> Returns the number of items in the state vector as an integer.
 
 function get_model_size()
 
@@ -464,30 +499,23 @@ end function get_model_size
 !-----------------------------------------------------------------------
 !> The LSM restart files have "time".
 !> We are always using the 'most recent' which is, by defn, the last one.
-!> The time in the restart file USED to DIFFER from time at which the state was valid.
-!> And therefore we used to shift the time one time step back
-!> But in the recent development of the model, this has been fixed
-!> Therefore, the time of the restart file is the valid time now.
-!> Example:
-!> the noah_timestep = 3600 seconds &
-!> restart_frequency_hours = 1
-!> LSM restart filename is RESTART.2004010102_DOMAIN1 has
+!> LSM restart filename "RESTART.2004010102_DOMAIN1" has
 !>     Times = '2004-01-01_02:00:00' ;
 !> The data is valid @ 2004-01-01_02:00:00
 
 function read_model_time(filename)
 
 type(time_type) :: read_model_time
-character(len=*),  intent(in)  :: filename    !! the file name
+character(len=*),  intent(in)  :: filename
 
 character(len=*), parameter :: routine = 'read_model_time'
 
 integer, parameter :: STRINGLENGTH = 19
 character(len=STRINGLENGTH), allocatable, dimension(:) :: datestring
 character(len=STRINGLENGTH)                            :: datestring_scalar
-integer               :: year, month, day, hour, minute, second
-integer               :: DimID, VarID, strlen, ntimes
-logical               :: isLsmFile 
+integer :: year, month, day, hour, minute, second
+integer :: DimID, VarID, strlen, ntimes
+logical :: isLsmFile
 integer :: ncid, io
 
 io = nf90_open(filename, NF90_NOWRITE, ncid)
@@ -508,24 +536,24 @@ if(isLsmFile) then ! Get the time from the LSM restart file
 
    io = nf90_inquire_dimension(ncid, DimID, len=ntimes)
    call nc_check(io, routine,'inquire_dimension','Time',filename)
-   
+
    io = nf90_inq_dimid(ncid, 'DateStrLen', DimID)
    call nc_check(io, routine,'inq_dimid','DateStrLen',filename)
 
    io = nf90_inquire_dimension(ncid, DimID, len=strlen)
    call nc_check(io, routine,'inquire_dimension','DateStrLen',filename)
-   
+
    if (strlen /= STRINGLENGTH) then
       write(string1,*)'DatStrLen string length ',strlen,' /= ',STRINGLENGTH
       call error_handler(E_ERR,routine, string1, source, revision, revdate)
    endif
-   
+
    ! Get all the Time strings, use the last one.
    io = nf90_inq_varid(ncid, 'Times', VarID)
    call nc_check(io, routine, 'inq_varid','Times',filename)
-   
+
    allocate(datestring(ntimes))
-   
+
    io = nf90_get_var(ncid, VarID, datestring)
    call nc_check(io, routine, 'get_var','Times',filename)
 
@@ -533,19 +561,19 @@ else ! Get the time from the hydro or parameter file
 
    io = nf90_inquire_attribute(ncid, NF90_GLOBAL, 'Restart_Time', len=strlen)
    call nc_check(io, routine, 'inquire_attribute','Restart_Time', filename)
-   
+
    io = nf90_get_att(ncid, NF90_GLOBAL, 'Restart_Time', datestring_scalar)
    call nc_check(io, routine, 'get_att','Restart_Time', filename)
 
    ntimes = 1
    allocate(datestring(ntimes))
    datestring(1) = datestring_scalar
-   
+
 endif
 
 io = nf90_close(ncid)
 call nc_check(io, routine, 'close', filename)
- 
+
 read(datestring(ntimes),'(i4,5(1x,i2))') year, month, day, hour, minute, second
 
 read_model_time = set_date(year, month, day, hour, minute, second)
@@ -554,11 +582,11 @@ if ( do_output() .and. debug > 0 ) write(*,*)'routine: Last time string is '//tr
 if ( do_output() .and. debug > 0 ) call print_date(read_model_time,' valid time is ')
 
 deallocate(datestring)
-      
+
 end function read_model_time
-   
+
 !------------------------------------------------------------------
-!> Returns the smallest increment in time that the model is capable 
+!> Returns the smallest increment in time that the model is capable
 !> of advancing the state in a given implementation, or the shortest
 !> time you want the model to advance between assimilations.
 !> This interface is required for all applications.
@@ -574,7 +602,7 @@ end function shortest_time_between_assimilations
 
 !------------------------------------------------------------------
 !> Given an integer index into the state vector structure, returns the
-!> associated location. A second intent(out) optional argument 
+!> associated location. A second intent(out) optional argument
 !> returns the DART 'QUANTITY' (i.e. QTY_STREAM_FLOW) for this index.
 !> This interface is required for computing distances.
 
@@ -603,11 +631,14 @@ end subroutine get_state_meta_data
 !> return the expected estimate of the model state quantity at that location.
 !> This function returns the estimates for the entire ensemble in a single call.
 !>
-!> The return code for successful return must be 0, any positive number is 
+!> The return code for successful return must be 0, any positive number is
 !> an error, and the expected_obs array contains unreliable values.
 !> Negative values are reserved for use by the DART framework.
 !> Distinct positive values for different types of errors are used
 !> to aid in diagnosing problems.
+!>
+!> Since the initial implementation is for identity observations of
+!> streamflow, this routine is not being used.
 
 subroutine model_interpolate(state_handle, ens_size, location, obs_type, &
                              expected_obs, istatus)
@@ -629,7 +660,7 @@ integer(i8) :: closest_index
 expected_obs(:) = MISSING_R8
 istatus(:)      = 1  ! presume failure
 
-varid = -1 
+varid = -1
 domid = -1
 ! Use the obs_type to figure out which variable we need, and in what domain.
 DOMLOOP : do idom = 1,domain_count
@@ -680,73 +711,137 @@ end subroutine model_interpolate
 
 !-----------------------------------------------------------------------
 !> Given an observation and its TYPE (the 'base') and a list of observations
-!> and their TYPEs, returns the subset close to the base, 
-!> their indices, and their distances.
+!> and their TYPEs, returns the subset close to the base,
+!> their local indices (on each task), and their distances.
+!>
+!> Normally, the definition of 'close' is a simple distance, however
+!> identity streamflow observations allow us to determine the close
+!> upstream/downstream streamflow observations by exploiting the
+!> available wrfHydro metadata.
+!>
+!> All other observations impact ALL observations (even identity streamflow)
+!> in the cutoff radius without upstream/downstream consideration.
 
 subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
                          num_close, close_ind, dist, ens_handle)
 
 type(get_close_type), intent(in)    :: gc           !< handle to a get_close structure
 type(location_type),  intent(inout) :: base_loc     !< location of interest
-type(location_type),  intent(inout) :: locs(:)      !< all possible locations
+type(location_type),  intent(inout) :: locs(:)      !< all locations on my task
 integer,              intent(in)    :: base_type    !< observation TYPE
 integer,              intent(in)    :: loc_qtys(:)  !< QTYs for all locations
 integer,              intent(in)    :: loc_types(:) !< TYPEs for all locations
 integer,              intent(out)   :: num_close    !< how many are close
-integer,              intent(out)   :: close_ind(:) !< indices in the the locs array
-real(r8),             optional, intent(out) :: dist(:)      !< distances
+integer,              intent(out)   :: close_ind(:) !< index on task of close locs
+real(r8),             optional, intent(out) :: dist(:)      !< distances (in radians)
 type(ensemble_type),  optional, intent(in)  :: ens_handle
 
-integer :: t_ind, k
+character(len=*), parameter :: routine = 'get_close_obs'
 
-! Initialize variables to missing status
+! vars for determining stream connectivity - the length of these arrays has
+! an upper bound determined by the stream network size
 
-num_close = 0
-close_ind = -99
-if (present(dist)) dist = huge(1.0_r8)  !something big and positive (far away)
+integer     :: stream_nclose
+integer(i8) :: stream_indices(n_link)
+real(r8)    :: stream_dists(n_link)
 
-! Get all the potentially close obs but no dist (optional argument dist(:)
-! is not present) This way, we are decreasing the number of distance
-! computations that will follow.  This is a horizontal-distance operation and
-! we don't need to have the relevant vertical coordinate information yet
-! (for obs).
+! vars for determining who is on my task -
+! these are the same size as the intent(out) variables
 
-! TJH When called with state; subset based on HUC, watershed, link ID, ... whatever ...
+integer     :: obs_nclose
+integer     :: obs_indices(size(close_ind))
+real(r8)    :: obs_dists(size(close_ind))
+integer(i8) :: loc_indx(size(close_ind))
 
-! this calls the 'traditional' get_close routine but does not calculate the distances
+integer     :: iloc, base_qty
+integer(i8) :: full_index
+type(location_type) :: location
+
+integer :: iunit
+
+iunit = my_task_id() + 200
+
+if (present(dist)) dist = huge(1.0_r8)  !something far away
+
+! Get the traditional list of ALL observations that are close.
+
 call loc_get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
-                         num_close, close_ind)
+                       obs_nclose, obs_indices, obs_dists, ens_handle)
 
-! Loop over potentially close subset of obs priors 
+! Check to see if we can return early (i.e. observation is not an identity obs).
+! This could include streamflow observations that have not been georeferenced
+! to the channel network.
 
-if ( .false. ) then ! this block demonstrates how to do something new
-   if (present(dist)) then
-      do k = 1, num_close
-
-         t_ind = close_ind(k)
-         ! if something, leave original HUGE value.  otherwise, compute real dist.
-         if (loc_qtys(t_ind) /= SOIL_MOISTURE) then
-            dist(k) = get_dist(base_loc, locs(t_ind), base_type, loc_qtys(t_ind))
-         endif
-
-      enddo
-   endif
-else  ! repeat default behavior
-   if (present(dist)) then
-      do k = 1, num_close
-         t_ind   = close_ind(k)
-         dist(k) = get_dist(base_loc, locs(t_ind), base_type, loc_qtys(t_ind))
-      enddo
-   endif
+if (base_type > 0) then
+   num_close = obs_nclose
+   close_ind(1:num_close) = obs_indices(1:obs_nclose)
+   if (present(dist)) dist(1:num_close) = obs_dists(1:obs_nclose)
+   RETURN
 endif
+
+! Everything below here only pertains to identity observations.
+
+full_index = abs(base_type)
+call get_state_meta_data(full_index, location, base_qty)
+
+if (base_qty /= QTY_STREAM_FLOW) then
+   num_close = obs_nclose
+   close_ind(1:num_close) = obs_indices(1:obs_nclose)
+   if (present(dist)) dist(1:num_close) = obs_dists(1:obs_nclose)
+   RETURN
+endif
+
+! Everything below here only pertains to identity STREAMFLOW observations.
+
+loc_indx = abs(loc_types) ! convert identity type to absolute state vector index
+
+if (debug > 99) then
+   write(string1,'("PE ",I3)') my_task_id()
+   write(iunit,*)trim(string1), ' loc_qtys ', loc_qtys
+   write(iunit,*)trim(string1), ' loc_types', loc_types
+   write(iunit,*)'                     iloc,  obs_indices, obs_dists, loc_indx'
+   do iloc = 1,obs_nclose
+      write(iunit,*)trim(string1),' lgco: ',iloc, &
+                    obs_indices(iloc), &
+                    obs_dists(iloc), &
+                    loc_indx(iloc)
+   enddo
+endif
+
+! Only the upstream/downstream streamflow obs are close.
+! 'stream_indices' contains the GLOBAL indices into the DART state vector.
+! These may or may not be on my task.
+
+call get_close_streamflows(base_qty, base_type, &
+                           stream_nclose, stream_indices, stream_dists)
+
+! determine which of the global indices are mine
+
+call get_my_close(stream_nclose, stream_indices, stream_dists, loc_indx, &
+            num_close, close_ind, dist)
+
+if (debug > 99) then
+   write(string1,'("PE ",I3)') my_task_id()
+   do iloc = 1,num_close
+      write(iunit,*)trim(string1),' gco: ', iloc, close_ind(iloc), dist(iloc)
+   enddo
+endif
+
+if (debug > 99) then
+   write(string1,'("PE ",I3)') my_task_id()
+   write(iunit,*)trim(string1),' gco: ',num_close, close_ind(1:num_close), dist(1:num_close)
+endif
+
+!>@todo what if the first close_ind list is based on a cutoff that is not wholly
+!> compatible with the max_link_distance? i.e. what if stream_indices has some
+!> that are not in the close_ind list?
 
 end subroutine get_close_obs
 
 
 !-----------------------------------------------------------------------
 !> Given a location, return the subset of close states that are local to
-!> the mpi task. At present, this only works for the hydro domain - 
-!> the vector-based representation.
+!> the mpi task.
 
 subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
                          num_close, close_ind, dist, ens_handle)
@@ -754,9 +849,9 @@ subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
 type(get_close_type), intent(in)    :: gc           !< handle to a get_close structure
 type(location_type),  intent(inout) :: base_loc     !< location of interest
 integer,              intent(in)    :: base_type    !< observation TYPE
-type(location_type),  intent(inout) :: locs(:)      !< all possible locations
-integer,              intent(in)    :: loc_qtys(:)  !< QTYs for all locations
-integer(i8),          intent(in)    :: loc_indx(:)  !< index into DART state
+type(location_type),  intent(inout) :: locs(:)      !< locations on my task
+integer,              intent(in)    :: loc_qtys(:)  !< QTYs for locations on my task
+integer(i8),          intent(in)    :: loc_indx(:)  !< indices into DART state on my task
 integer,              intent(out)   :: num_close    !< how many are close
 integer,              intent(out)   :: close_ind(:) !< indices in the the locs array
 real(r8),             optional, intent(out) :: dist(:)      !< distances
@@ -764,62 +859,266 @@ type(ensemble_type),  optional, intent(in)  :: ens_handle
 
 character(len=*),parameter :: routine = 'get_close_state'
 
-integer     :: nclose                         !< how many are close
-integer(i8) :: close_indices(size(close_ind)) !< indices in the the locs array
-real(r8)    :: distances(size(close_ind))     !< distances
+! vars for determining stream ... Must be 3*n_link
+! if the subsurface or surface parameters are part of the state.
+integer     :: stream_nclose
+integer(i8) :: stream_indices(3*n_link)
+real(r8)    :: stream_dists(3*n_link)
 
-integer     :: k
+! vars for determining who is on my task
+integer     :: state_nclose
+integer     :: state_indices(size(close_ind))
+real(r8)    :: state_dists(size(close_ind))
+real(r8)    :: stream_ens_mean(1)
+
+integer :: iclose, iparam, start_indx, num_close_tmp
+
+!integer     :: istream
+integer     :: iloc, base_qty
+integer(i8) :: full_index
+type(location_type) :: location ! required argument to get_state_meta_data()
+
+integer :: iunit
+
+iunit = my_task_id() + 100
+
+if (present(dist)) dist = huge(1.0_r8)  !something far away
+
+! Get the traditional list of ALL state locations that are close.
+!>@todo state_indices is not being used ... when we have a more complicated state
+
+call loc_get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
+                         state_nclose, state_indices, state_dists, ens_handle)
+
+if (debug > 99) then
+   call write_location(iunit,base_loc)
+   write(string1,'("PE ",I3)') my_task_id()
+   do iloc = 1,state_nclose
+
+      write(iunit,*)trim(string1),' loc_get_close_state: ',iloc, &
+                state_dists(iloc), &
+                state_indices(iloc), &
+                loc_indx(state_indices(iloc))
+   enddo
+   write(iunit,*)''
+endif
+
+! Now we have to figure out how to make parts of the state that are
+! not in the same huc far away
+
+! Initialize variables
+stream_nclose  = 0
+stream_indices = 0
+stream_dists   = huge(1.0_r8)
+
+!>@todo If the variable is on the same link geometry, we can get the
+!> upstream/downstream links
+
+! If the observation is a traditional (i.e. non-identity) observation
+! there is nothing more to do and simply return.
+
+if (base_type > 0) then
+   num_close = state_nclose
+   close_ind(1:num_close) = state_indices(1:num_close)
+   if (present(dist)) dist(1:num_close) = state_dists(1:num_close)
+   RETURN
+endif
+
+! Everything below here only pertains to identity observations.
+
+full_index = abs(base_type)
+call get_state_meta_data(full_index, location, base_qty)
+
+! identity observations that are not streamflows need no further consideration
+
+if (base_qty /= QTY_STREAM_FLOW) then
+   num_close = state_nclose
+   close_ind(1:num_close) = state_indices(1:num_close)
+   if (present(dist)) dist(1:num_close) = state_dists(1:num_close)
+   RETURN
+endif
+
+! Everything below here only pertains to identity STREAMFLOW observations.
+
+! 'stream_indices' contains the GLOBAL indices into the DART state vector.
+! These may or may not be on my task.
+
+call get_close_streamflows(base_qty, base_type, &
+                           stream_nclose, stream_indices, stream_dists)
+
+if (debug > 3) then
+   write(string1,'("PE ",I3)') my_task_id()
+   do iloc = 1,stream_nclose
+      write(iunit,*)trim(string1),' gcs: after gc_streamflows: ', &
+                iloc, stream_dists(iloc), stream_indices(iloc)
+   enddo
+endif
+
+! Localize the parameters:
+! If the ensemble mean streamflow is "near" zero then the next block is ignored.
+! This is not great, but at this stage we do not have access to the individual
+! state values.
+
+stream_ens_mean = get_state(full_index, ens_handle)
+
+! Since the parameter domain has exactly the same geometry/connectivity as the
+! streamflow, we can add the domain offset (start_indx) to the close streamflow
+! indices to determine the DART state location of the matching close parameters.
+! With two parameters, the list of close indices is triple that of the list of
+! close streamflow indices. The corresponding parameters may be on other tasks
+
+if (idom_parameters > 0 .and. &
+    stream_ens_mean(1) > streamflow_4_local_multipliers) then
+
+   num_close_tmp = stream_nclose
+   do iparam = 1, get_num_variables(idom_parameters)
+
+      start_indx = get_index_start(idom_parameters, iparam)
+
+      !>@todo  should check to make sure that stream_nclose is < 3*n_link
+
+      do iclose = 1, num_close_tmp
+         stream_nclose                 = stream_nclose + 1
+         stream_indices(stream_nclose) = start_indx - 1 + stream_indices(iclose)
+         stream_dists(  stream_nclose) = stream_dists(iclose)
+      enddo
+   enddo
+endif
+
+if (debug > 99) then
+   do iloc = 1,stream_nclose
+      write(iunit,*)trim(string1),' augmented: ', &
+                    iloc, stream_indices(iloc), stream_dists(iloc)
+   enddo
+endif
+
+! determine which of the global indices are mine
+
+call get_my_close(stream_nclose, stream_indices, stream_dists, loc_indx, &
+            num_close, close_ind, dist)
+
+if (debug > 99) then
+   write(string1,'("PE ",I3)') my_task_id()
+   do iloc = 1,num_close
+      write(iunit,*)trim(string1),' gmc: ', iloc, close_ind(iloc), &
+                        loc_indx(close_ind(iloc)), dist(iloc)
+   enddo
+endif
+
+!>@todo Have to consolidate the stream_indices and the state_indices.
+!> The identity streamflow observations can be close to (other) traditional states.
+
+!TJH STATELOOP: do iloc = 1,state_nclose
+!TJH
+!TJH    if (loc_qtys(iloc) /= QTY_STREAM_FLOW) cycle STATELOOP
+!TJH
+!TJH    ! All streamflow states are far away until proven otherwise
+!TJH    dist(iloc) = huge(1.0_r8)
+!TJH
+!TJH    STREAMLOOP : do istream = 1,stream_nclose
+!TJH       if ( close_ind(iloc) == stream_indices(istream) ) then
+!TJH          dist(iloc) = stream_dists(istream)
+!TJH          EXIT STREAMLOOP
+!TJH       endif
+!TJH    enddo STREAMLOOP
+!TJH
+!TJH enddo STATELOOP
+
+if (debug > 99) then
+   write(string1,'("PE ",I3)') my_task_id()
+   write(iunit,*) trim(string1),' get_close_state:num_close ',num_close
+   write(iunit,*) trim(string1),' get_close_state:close_ind ',close_ind(1:num_close)
+   write(iunit,*) trim(string1),' get_close_state:dist      ',dist(1:num_close)
+endif
+
+end subroutine get_close_state
+
+
+!-----------------------------------------------------------------------
+!> Given an streamflow, return the subset of streamflows that are
+!> in the same  HUC or watershed or ... The subset is a list of
+!> absolute indices into the DART state vector.
+
+subroutine get_close_streamflows(base_qty, identity_index, &
+                                 num_close, close_indices, distances)
+
+integer,     intent(in)  :: base_qty         !< observation TYPE
+integer,     intent(in)  :: identity_index   !< identity observation
+integer,     intent(out) :: num_close
+integer(i8), intent(out) :: close_indices(:) !< full DART indices
+real(r8),    intent(out) :: distances(:)     !< in radians
+
+!   X radians      2PI radians
+!   --------- as  -------------
+!   distance      circumference
+!
+!   X *         circumference = 2PI * distance
+!   X * PI * 2 * earth_radius = 2PI * distance
+!   X (radians)               = distance/earth_radius
+
+character(len=*),parameter :: routine = 'get_close_streamflows'
+
+integer     :: stream_nclose
+integer(i8) :: stream_indices(n_link)
+real(r8)    :: stream_distances(n_link)
+
 integer     :: depth
 integer(i8) :: full_index
 real(r8)    :: reach_length
 integer     :: connection_index
 
-! Initialize variables to missing status
-reach_length = 0.0_r8
-nclose       = 0
-depth        = 1
+integer :: iunit
 
-if (present(dist)) dist = huge(1.0_r8)  !something far away
+iunit = my_task_id() + 100
 
-if (base_type < 0) then ! we are working with identity observations
-   full_index = abs(base_type)
-else
-   call error_handler(E_ERR,routine,'unsupported base_type',source,revision,revdate)
-   ! TJH: Need to find the link 
-   ! full_index = locate_link(base_loc)
+! make sure the base_qty translates to a streamflow
+
+if (base_qty /= QTY_STREAM_FLOW) then
+   write(string1,*)'Only identity observation of stream flow are allowed.'
+   write(string2,*)'stream flow observations are QTY ',QTY_STREAM_FLOW
+   write(string3,*)'routine called with observation QTY of ',base_qty, identity_index
+   call error_handler(E_ERR, routine, string1, &
+              source, revision, revdate, text2=string2, text3=string3)
 endif
+
+! Initialize variables
+depth         = 1             ! starting value for recursive routine
+reach_length  = 0.0_r8        ! starting value for recursive routine
+stream_nclose = 0
+distances     = huge(1.0_r8)  !something far away
+
+! we are working with identity observations - streamflow observations
+! These can only impact states on the vector-based network.
+full_index = abs(identity_index)
 
 connection_index = full_to_connection(full_index)
 if (connection_index < 0) then
    call error_handler(E_ERR,routine,'unable to relate',source,revision,revdate)
 endif
 
-call get_link_tree(connection_index, max_link_distance, depth, &
-                   reach_length, nclose, close_indices, distances)
+! determine the upstream close bits
 
-! get the downstream close bits and augment the list
+call get_link_tree(connection_index, max_link_distance, depth, &
+                   reach_length, stream_nclose, stream_indices, stream_distances)
+
+! augment the list with the downstream close bits
 
 call get_downstream_links(connection_index, max_link_distance, depth, &
-                   nclose, close_indices, distances)
+                   stream_nclose, stream_indices, stream_distances)
 
-! which indices are mine
-
-call get_my_close(nclose, close_indices, distances, loc_indx, &
-            num_close, close_ind, dist)
+num_close                  = stream_nclose
+close_indices(1:num_close) = stream_indices(1:stream_nclose)
+distances(1:num_close)     = stream_distances(1:stream_nclose) / 1000.0_r8  ! to km
+distances(1:num_close)     = distances(1:num_close) / earth_radius          ! to radians
 
 if (debug > 99) then
-   write(string1,'("PE ",I7)') my_task_id()
-   write(*,*)trim(string1),' get_close_state:num_close ',num_close
-   write(*,*)trim(string1),' get_close_state:close_ind ',close_ind(1:num_close)
-   write(*,*)trim(string1),' get_close_state:dist      ',dist(1:num_close)
-
-   do k = 1,num_close
-      write(*,*)trim(string1),' get_close_state: state_vector_index ',k, &
-                ' is ',loc_indx(close_ind(k))
-   enddo
+   write(string1,'("PE ",I3)') my_task_id()
+   write(iunit,*)trim(string1),' gc_streamflows:num_close     ',num_close
+   write(iunit,*)trim(string1),' gc_streamflows:close_indices ',close_indices(1:num_close)
+   write(iunit,*)trim(string1),' gc_streamflows:distances     ',distances(1:num_close)
 endif
 
-end subroutine get_close_state
+end subroutine get_close_streamflows
 
 
 !------------------------------------------------------------------
@@ -936,7 +1235,7 @@ MyLoop : do i = 1, size(variable_table,2)
    ! convert the [min,max]valstrings to numeric values if possible
    read(minvalstring,*,iostat=io) minvalue
    if (io == 0) var_ranges(ngood,1) = minvalue
-   
+
    read(maxvalstring,*,iostat=io) maxvalue
    if (io == 0) var_ranges(ngood,2) = maxvalue
 
@@ -967,19 +1266,23 @@ integer :: i,j,k, var_size, num_vars, ivar
 
 do idom = 1,domain_count
 
-   if (idom == idom_hydro) then 
+   if (idom == idom_hydro) then
       j = 1
       k = 1
       allocate( domain_info(idom)%location(n_link,j,k) )
       do i = 1,n_link
-         domain_info(idom)%location(i,j,k) = set_location(linkLong(i),linkLat(i),linkAlt(i),VERTISHEIGHT)
+         domain_info(idom)%location(i,j,k) = &
+                set_location(linkLong(i),linkLat(i),linkAlt(i),VERTISHEIGHT)
       enddo
 
    elseif (idom == idom_lsm) then
-      call error_handler(E_ERR,routine,'LSM locations unsupported for now',source,revision,revdate)
 
-   !MOHA: checking the shape of the parameters to decide on the location array.
+      string1 = 'LSM locations unsupported for now'
+      call error_handler(E_ERR, routine, string1, source, revision, revdate)
+
+
    elseif (idom == idom_parameters) then
+
       num_vars = get_num_variables(idom)
       var_size = 0
       do ivar = 1, num_vars
@@ -991,8 +1294,8 @@ do idom = 1,domain_count
          allocate( domain_info(idom)%location(n_link,j,k) )
          do i = 1,n_link
             domain_info(idom)%location(i,j,k) = set_location(linkLong(i),linkLat(i),linkAlt(i),VERTISHEIGHT)
-         enddo              
-      else ! global parameters case  
+         enddo
+      else ! global parameters case   !>@todo do we support this now
          i = 1
          j = 1
          k = 1
@@ -1006,36 +1309,57 @@ end subroutine configure_domains
 
 
 !-----------------------------------------------------------------------
-!> determine which indices are on this task, return the ...
+!> determine the indices of the objects that are on this task
+!>
+!> num_superset		length of the superset of desired indices
+!> superset_indices	superset of desired indices
+!> superset_distances	superset of desired distances
+!> my_task_indices      all possible indices ON MY TASK (i.e. a local subset)
+!> num_close		length of desired elements ON MY TASK (i.e. intersection)
+!> close_ind(:)		the list of desired indices ON MY TASK
+!> dist(:)		the corresponding distances of the desired indices
 
-subroutine get_my_close(nclose, close_indices, distances, state_indices, &
-            num_close, close_ind, dist)
+subroutine get_my_close(num_superset, superset_indices, superset_distances, &
+                        my_task_indices, num_close, close_ind, dist)
 
-integer,          intent(in)  :: nclose
-integer(i8),      intent(in)  :: close_indices(:)
-real(r8),         intent(in)  :: distances(:)
-integer(i8),      intent(in)  :: state_indices(:)
+integer,          intent(in)  :: num_superset
+integer(i8),      intent(in)  :: superset_indices(:)
+real(r8),         intent(in)  :: superset_distances(:)
+integer(i8),      intent(in)  :: my_task_indices(:)
 integer,          intent(out) :: num_close
 integer,          intent(out) :: close_ind(:)
 real(r8),         intent(out) :: dist(:)
 
-integer :: imine, iclose
+integer :: itask, isuper
 
 num_close = 0
 
-ALLPOSSIBLE : do imine = 1,size(state_indices)
-   CLOSE : do iclose = 1,nclose
+do itask = 1,size(my_task_indices)
+   do isuper = 1,num_superset
 
-      if ( close_indices(iclose) == state_indices(imine) ) then
+      ! if stuff on my task ... equals ... global stuff I want ...
+      if ( my_task_indices(itask) == superset_indices(isuper) ) then
           num_close            = num_close + 1
-          close_ind(num_close) = imine
-          dist(num_close)      = distances(iclose)
+          close_ind(num_close) = itask
+          dist(num_close)      = superset_distances(isuper)
       endif
 
-   enddo CLOSE
-enddo ALLPOSSIBLE
+   enddo
+enddo
 
 end subroutine get_my_close
+
+
+!------------------------------------------------------------------
+!> Returns the number of links in the state vector
+
+function get_number_of_links()
+
+integer(i8) :: get_number_of_links
+
+get_number_of_links = n_link
+
+end function get_number_of_links
 
 
 !===================================================================

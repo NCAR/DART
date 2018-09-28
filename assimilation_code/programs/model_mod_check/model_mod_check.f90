@@ -34,11 +34,11 @@ use      obs_sequence_mod, only : static_init_obs_sequence
 
 use       assim_model_mod, only : static_init_assim_model
 
-use      time_manager_mod, only : time_type, set_time, print_time, print_date, operator(-), &
-                                  get_calendar_type, NO_CALENDAR
+use      time_manager_mod, only : time_type, set_time, print_time, print_date, &
+                                  operator(-), get_calendar_type, NO_CALENDAR
 
-use  ensemble_manager_mod, only : init_ensemble_manager, ensemble_type, get_my_num_vars, &
-                                  get_my_vars
+use  ensemble_manager_mod, only : init_ensemble_manager, ensemble_type, &
+                                  get_my_num_vars, get_my_vars
 
 use   state_vector_io_mod, only : state_vector_io_init, read_state, write_state
 
@@ -53,8 +53,9 @@ use      io_filenames_mod, only : io_filenames_init, file_info_type,       &
 
 use distributed_state_mod, only : create_state_window, free_state_window
 
-use             model_mod, only : static_init_model, get_model_size, get_close_state, &
-                                  get_state_meta_data, model_interpolate, end_model
+use             model_mod, only : static_init_model, get_model_size, &
+                                  get_close_state, get_state_meta_data, &
+                                  model_interpolate, end_model
 
 use  test_interpolate_mod, only : test_interpolate_single, &
                                   test_interpolate_range, &
@@ -65,10 +66,10 @@ use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 integer, parameter :: MAX_TESTS = 8
 
@@ -451,12 +452,15 @@ if (tests_to_run(7)) then
 endif
 
 !----------------------------------------------------------------------
-! Find the index closest to a location
+! Find the state indices closest to a location
+! The local index of the states is the correct return value.
+! With 1 task ... this is obvious.
+! With 2 (or more) tasks, the task has a subset of the states.
 !----------------------------------------------------------------------
 
 if (tests_to_run(8)) then
 
-   write(string1,*)'testing get_close()'
+   write(string1,*)'testing get_close_state()'
    call print_test_message('TEST 8', string1, starting=.true.)
 
    ! Get info on my number and indices for state
@@ -491,7 +495,8 @@ if (tests_to_run(8)) then
 
    call get_close_destroy(gc_state)
 
-   deallocate(my_state_indx, my_state_loc, my_state_kind, close_state_ind, close_state_dist) 
+   deallocate(my_state_indx, my_state_loc, my_state_kind, &
+              close_state_ind, close_state_dist) 
 
    call print_test_message('TEST 8', ending=.true.)
 endif

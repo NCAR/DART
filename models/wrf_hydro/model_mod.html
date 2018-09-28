@@ -36,6 +36,13 @@
 
 <H2>Overview</H2>
 
+The gridded version of the model has bits/bobs in:
+/gpfs/fs1/work/jamesmcc/domains/public/croton_NY/Gridded/DOMAIN
+/gpfs/fs1/work/jamesmcc/domains/public/croton_NY/Gridded/RESTART
+Only the gridcells with flow are retained in the qlink[1,2],hlink variables - 
+so they must be unpacked in EXACTLY the same way as wrfHydo packs them from the grid to their 'sparse' representation.
+
+
 <P>The <strong><a href="http://www.ral.ucar.edu/research/land/technology/lsm.php">NOAH</a>
    Land Surface Model</strong> and <strong>Data Assimilation Research Testbed (DART)</strong> 
    may now be used for assimilation experiments.

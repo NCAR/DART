@@ -9,17 +9,17 @@ FORCING_FILE_DIRECTORY = "/home1/04270/l_jing/git/mygitresp/wrf_hydro_dart/model
  INDIR = '/work/04270/l_jing/lonestar/gldas/2000_2014_forcing'
  OUTDIR = '/scratch/04270/l_jing/hrldas_old_sai_unlimited'
 
- START_YEAR  = 2000
+ START_YEAR  = 2001
  START_MONTH = 01
- START_DAY   = 02
+ START_DAY   = 01
  START_HOUR  = 0
  START_MIN   = 0
 
  RESTART_FILENAME_REQUESTED = 'restart.nc'
 
- KDAY = 40
+ KDAY = 1
 
- DYNAMIC_VEG_OPTION                = 2
+ DYNAMIC_VEG_OPTION                = 1
  CANOPY_STOMATAL_RESISTANCE_OPTION = 1
  BTR_OPTION                        = 1
  RUNOFF_OPTION                     = 1
@@ -33,9 +33,9 @@ FORCING_FILE_DIRECTORY = "/home1/04270/l_jing/git/mygitresp/wrf_hydro_dart/model
  TEMP_TIME_SCHEME_OPTION           = 1
  SOIL_HYDRAULIC_PARAMETER_OPTION   = 1
 
- FORCING_TIMESTEP = 10800
- NOAH_TIMESTEP    = 3600
- OUTPUT_TIMESTEP  = 10800
+ FORCING_TIMESTEP = 21600
+ NOAH_TIMESTEP    = 10800
+ OUTPUT_TIMESTEP  = 21600
 
  SPLIT_OUTPUT_COUNT = 1
  RESTART_FREQUENCY_HOURS = 24

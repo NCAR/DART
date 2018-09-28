@@ -279,7 +279,7 @@ DOMAINS: do domainID = 1,size(domain_shapefiles)
                      domainID, '"'//trim(domain_shapefiles(domainID))//'"'
       call error_handler(E_ERR,routine,string1,source,revision,revdate)
    else
-      call configure_lsm(lsm_model_choice)
+      call configure_lsm(lsm_model_choice,domain_shapefiles(domainID))
       call read_noah_global_atts(domain_shapefiles(domainID))
       call verify_variables(lsm_variables, domain_shapefiles(domainID), n_lsm_fields, &
                        var_names, var_qtys, var_ranges, var_update)
@@ -390,7 +390,7 @@ end function get_model_size
 !-----------------------------------------------------------------------
 !> The LSM restart files have "time".
 !> We are always using the 'most recent' which is, by defn, the last one.
-!> 
+!>
 !> LSM restart filename is RESTART.2004010102_DOMAIN1 has
 !>     Times = '2004-01-01_02:00:00' ;
 !> The data is valid @ 2004-01-01_02:00:00
@@ -609,6 +609,7 @@ logical  :: is_lev0
 integer, dimension(2) :: ll, lr, ul, ur
 integer            :: rc
 integer(i8)        :: ill, ilr, iul, iur
+
 real(r8) :: fld(2,ens_size)
 real(r8) :: x_iul(ens_size) ,x_iur(ens_size)
 real(r8) :: x_ill(ens_size), x_ilr(ens_size)
@@ -688,7 +689,7 @@ endif
 if( debug > 99 ) then
    i = xloc
    j = yloc
-   
+
    write(*,*)'domain found is ',domid
    write(*,*)'loc(1),loc(2),xloc,yloc,i,j',loc(1), loc(2), xloc,yloc,i,j
    write(*,*)'corners of lat:'
@@ -717,16 +718,22 @@ if(zloc == missing_r8) istatus = 2
 !----------------------------------
 
 ! Strategy is to do the horizontal interpolation on two different levels
-! and then to do the vertical interpolation afterwards. 
+! and then to do the vertical interpolation afterwards.
 
 call getCorners(i, j, domid, ll, ul, lr, ur, rc )
 
 ! Interpolation at level k
-
-ill = get_dart_vector_index(ll(1), int(zloc), ll(2), domid, varid)
-iul = get_dart_vector_index(ul(1), int(zloc), ul(2), domid, varid)
-ilr = get_dart_vector_index(lr(1), int(zloc), lr(2), domid, varid)
-iur = get_dart_vector_index(ur(1), int(zloc), ur(2), domid, varid)
+if (get_num_dims(domid, varid)==3) then
+   ill = get_dart_vector_index(ll(1), int(zloc), ll(2), domid, varid)
+   iul = get_dart_vector_index(ul(1), int(zloc), ul(2), domid, varid)
+   ilr = get_dart_vector_index(lr(1), int(zloc), lr(2), domid, varid)
+   iur = get_dart_vector_index(ur(1), int(zloc), ur(2), domid, varid)
+else
+   ill = get_dart_vector_index(ll(1), ll(2), int(zloc), domid, varid)
+   iul = get_dart_vector_index(ul(1), ul(2), int(zloc), domid, varid)
+   ilr = get_dart_vector_index(lr(1), lr(2), int(zloc), domid, varid)
+   iur = get_dart_vector_index(ur(1), ur(2), int(zloc), domid, varid)
+endif
 
 x_ill = get_state(ill, state_handle)
 x_iul = get_state(iul, state_handle)
@@ -757,10 +764,17 @@ where(x_iur == missing_r8) fld(1,:) = missing_r8
 
 ! Interpolation at level k+1
 
-ill = get_dart_vector_index(ll(1), int(zloc+1), ll(2), domid, varid)
-iul = get_dart_vector_index(ul(1), int(zloc+1), ul(2), domid, varid)
-ilr = get_dart_vector_index(lr(1), int(zloc+1), lr(2), domid, varid)
-iur = get_dart_vector_index(ur(1), int(zloc+1), ur(2), domid, varid)
+if (get_num_dims(domid, varid)==3) then
+   ill = get_dart_vector_index(ll(1), int(zloc), ll(2), domid, varid)
+   iul = get_dart_vector_index(ul(1), int(zloc), ul(2), domid, varid)
+   ilr = get_dart_vector_index(lr(1), int(zloc), lr(2), domid, varid)
+   iur = get_dart_vector_index(ur(1), int(zloc), ur(2), domid, varid)
+else
+   ill = get_dart_vector_index(ll(1), ll(2), int(zloc+1), domid, varid)
+   iul = get_dart_vector_index(ul(1), ul(2), int(zloc+1), domid, varid)
+   ilr = get_dart_vector_index(lr(1), lr(2), int(zloc+1), domid, varid)
+   iur = get_dart_vector_index(ur(1), ur(2), int(zloc+1), domid, varid)
+endif
 
 x_ill = get_state(ill, state_handle)
 x_ilr = get_state(ilr, state_handle)
@@ -781,9 +795,9 @@ where(x_iur == missing_r8) fld(2,:) = missing_r8
 ! 2. Vertical Interpolation
 !----------------------------------
 
-! The previous section (1. Horizontal Interpolation) has produced a variable 
-! called "fld", which nominally has two entries in it. 3D fields have 
-! hopefully produced 2 non-zero entries, whereas surface fields only have 
+! The previous section (1. Horizontal Interpolation) has produced a variable
+! called "fld", which nominally has two entries in it. 3D fields have
+! hopefully produced 2 non-zero entries, whereas surface fields only have
 ! filled the first entry.  If a full 3D field, then do vertical interpolation
 ! between encompassing model levels (k and k+1).
 
@@ -792,6 +806,7 @@ where(x_iur == missing_r8) fld(2,:) = missing_r8
 do e = 1,ens_size
    if ( fld(1,e) == missing_r8 ) then
      expected_obs(e) = missing_r8
+     istatus(e) = 12
    else
       call toGrid(zloc, k, dz, dzm)
       if (debug > 4) print*, 'zloc, k, dz, dzm = ', zloc, k, dz, dzm
@@ -846,10 +861,15 @@ call get_model_variable_indices(index_in, ilon, ivert, ilat, varid, domid, &
 !>@todo Support more than just soil layers.
 !> Different vertical dimensions will have different ways of specifying depth.
 
-location = set_location(xlong(ilon,ilat), &
-                        xlat(ilon,ilat),  &
-                        soil_depth(ivert), VERTISHEIGHT)
-
+if(get_num_dims(domid,varid)==3) then
+   location = set_location(xlong(ilon,ilat), &
+                           xlat(ilon,ilat),  &
+                           soil_depth(ivert), VERTISHEIGHT)
+else
+   location = set_location(xlong(ilon,ivert), &
+                           xlat(ilon,ivert),  &
+                           soil_depth(ilat), VERTISHEIGHT)
+endif
 if (present(var_type)) var_type = qtyid
 
 end subroutine get_state_meta_data
@@ -932,14 +952,14 @@ endif
 !TJH if (has_lsm_namelist) then
 !TJH    allocate(textblock(nlines))
 !TJH    textblock = ''
-!TJH 
+!TJH
 !TJH    io= nf90_def_dim(ncid, name='noahNMLnlines', len = nlines, dimid = nlinesDimID)
 !TJH    call nc_check(io, routine, 'def_dim noahNMLnlines')
-!TJH 
+!TJH
 !TJH    io = nf90_def_var(ncid,name=trim(lsm_namelist_filename), xtype=nf90_char, &
 !TJH           dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID)
 !TJH    call nc_check(io, routine, 'def_var noah_namelist')
-!TJH 
+!TJH
 !TJH    io= nf90_put_att(ncid, nmlVarID, 'long_name', &
 !TJH           'contents of '//trim(lsm_namelist_filename))
 !TJH    call nc_check(io, routine, 'put_att noah_namelist')
@@ -1083,7 +1103,7 @@ call error_handler(E_MSG,routine, &
 
 interf_provided = .true.
 
-! Generate a unique (but repeatable - if task count is same) 
+! Generate a unique (but repeatable - if task count is same)
 ! seed for each ensemble member
 if (seed_unset) then
    seed = (my_task_id()+1) * 1000

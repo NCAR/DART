@@ -123,10 +123,10 @@ public :: read_transpose,            &
           nc_get_num_times
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 ! only a single MPI Task reads and writes reads the state variable,
 ! when using single_file_{input,output} = .true.
@@ -1478,9 +1478,9 @@ if ( minclamp /= missing_r8 ) then ! missing_r8 is flag for no clamping
           variable = max(minclamp, variable)
        endif
    
-      write(msgstring, *) trim(varname)// ' lower bound ', minclamp, ' min value ', my_minmax(1)
-      call error_handler(E_ALLMSG, 'clamp_variable', msgstring, &
-                         source,revision,revdate)
+! TJH TOO VERBOSE      write(msgstring, *) trim(varname)// ' lower bound ', minclamp, ' min value ', my_minmax(1)
+! TJH TOO VERBOSE      call error_handler(E_ALLMSG, 'clamp_variable', msgstring, &
+! TJH TOO VERBOSE                         source,revision,revdate)
    endif
 endif ! min range set
 
@@ -1494,9 +1494,9 @@ if ( maxclamp /= missing_r8 ) then ! missing_r8 is flag for no clamping
          variable = min(maxclamp, variable)
       endif
 
-      write(msgstring, *) trim(varname)// ' upper bound ', maxclamp, ' max value ', my_minmax(2)
-      call error_handler(E_ALLMSG, 'clamp_variable', msgstring, &
-                         source,revision,revdate)
+! TJH TOO VERBOSE      write(msgstring, *) trim(varname)// ' upper bound ', maxclamp, ' max value ', my_minmax(2)
+! TJH TOO VERBOSE      call error_handler(E_ALLMSG, 'clamp_variable', msgstring, &
+! TJH TOO VERBOSE                         source,revision,revdate)
    endif
 
 endif ! max range set
