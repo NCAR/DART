@@ -395,7 +395,7 @@ end function get_model_size
 !>     Times = '2004-01-01_02:00:00' ;
 !> The data is valid @ 2004-01-01_02:00:00
 !>
-!> This routine is identical to the wrfHydro:model_mod:read_model_time()
+!> This routine is identical to the wrf_hydro:model_mod:read_model_time()
 
 function read_model_time(filename)
 

@@ -26,7 +26,7 @@ fi
 function doTest {
     ## This function performs the test
 
-    ## check that we are in models/wrfHydro/work before doing anything.
+    ## check that we are in models/wrf_hydro/work before doing anything.
     curDir=`pwd`
     inWork=`echo $curDir | grep 'models/wrf_hydro/work'`
     if [[ ! "$inWork" ]]; then 

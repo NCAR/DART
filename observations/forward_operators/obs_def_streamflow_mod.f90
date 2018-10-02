@@ -85,7 +85,9 @@ public ::      set_streamflow_metadata, &
                get_streamflow_metadata, &
               read_streamflow_metadata, &
              write_streamflow_metadata, &
-       interactive_streamflow_metadata
+       interactive_streamflow_metadata, &
+                       missing_gage_ID, &
+                       missing_link_ID
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = "obs_def_streamflow_mod.f90 $"
@@ -109,6 +111,9 @@ type(gage_metadata), allocatable, dimension(:) :: observation_metadata
 type(gage_metadata) :: missing_metadata
 character(len=*), parameter :: STREAMFLOWSTRING = 'gageID_linkID'
 
+integer(i4) :: missing_link_ID = -1_i4
+character(len=15) :: missing_gage_ID = 'UNKNOWN'
+
 logical :: debug = .TRUE.
 integer :: MAXstreamkey = 24*366  ! one year of hourly data - to start
 integer ::    streamkey = 0       ! useful length of metadata arrays
@@ -127,8 +132,8 @@ call register_module(source, revision, revdate)
 
 module_initialized = .true.
 
-missing_metadata%gage_ID = ''
-missing_metadata%link_ID = -1_i4
+missing_metadata%gage_ID = missing_gage_ID
+missing_metadata%link_ID = missing_link_ID
 
 allocate(observation_metadata(MAXstreamkey))
 

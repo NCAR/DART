@@ -358,8 +358,17 @@ endif
 
 #==============================================================================
 # DA inflation files
+#
+# A bit dodgy ... grab the variables that will be part of the DART state
 
-echo "TJH fill in inflation section ... ncap2 commands ..."
+set templateFile = `head -n 1 hydro_file_list.txt`
+ncks -v qlink1 $templateFile temporary.nc
+ncap2 -s 'qlink1(:)=1.2' temporary.nc input_priorinf_mean_d01.nc
+ncap2 -s 'qlink1(:)=0.6' temporary.nc input_priorinf_sd_d01.nc
+
+
+
+
 
 #==============================================================================
 

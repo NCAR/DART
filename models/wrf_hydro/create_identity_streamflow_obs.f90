@@ -4,23 +4,25 @@
 !
 ! DART $Id$
 
-program convert_streamflow
+program create_identity_streamflow_obs
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!-------------------------------------------------------------------------------
 !
-! convert_streamflow - reads streamflow data and writes a DART 
-!                      obs_seq file using the DART library routines.
+! create_identity_streamflow_obs - reads streamflow data and a
+!     channel-only model and writes a DART obs_seq file where the
+!     observations are actually identity observations.
 !
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!-------------------------------------------------------------------------------
 
-use         types_mod, only : r8, missing_r8
+use         types_mod, only : r8, missing_r8, i8
 
-use      location_mod, only : VERTISHEIGHT
+use      location_mod, only : VERTISHEIGHT, location_type, get_location
 
-use     utilities_mod, only : nc_check, initialize_utilities, finalize_utilities, &
-                              nmlfileunit, do_nml_file, do_nml_term, &
+use     utilities_mod, only : nc_check, nmlfileunit, do_nml_file, do_nml_term, &
+                              initialize_utilities, finalize_utilities, &
                               find_namelist_in_file, check_namelist_read, &
-                              error_handler, E_ERR, E_MSG, find_textfile_dims, &
+                              error_handler, E_ERR, E_MSG, &
+                              find_textfile_dims, &
                               open_file, close_file
 
 use  time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, &
@@ -28,17 +30,23 @@ use  time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, &
                               operator(>=)
 
 use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
-                              static_init_obs_sequence, init_obs, write_obs_seq, &
-                              init_obs_sequence, get_num_obs, &
+                              static_init_obs_sequence, write_obs_seq, &
+                              init_obs, init_obs_sequence, get_num_obs, &
                               set_copy_meta_data, set_qc_meta_data, &
                               get_num_copies, get_num_qc
 
-use      obs_kind_mod, only : STREAM_FLOW
+use      obs_kind_mod, only : QTY_STREAM_FLOW
 
 use obs_def_streamflow_mod, only : set_streamflow_metadata
 
-use obs_utilities_mod, only : getvar_real, getvar_int, get_or_fill_QC, add_obs_to_seq, &
-                              create_3d_obs, getvar_int, getdimlen, set_missing_name
+use obs_utilities_mod, only : getvar_real, getvar_int, get_or_fill_QC, &
+                              add_obs_to_seq, create_3d_obs, getvar_int, &
+                              getdimlen, set_missing_name
+
+use         model_mod, only : static_init_model, get_state_meta_data, &
+                              get_number_of_links
+
+use          sort_mod, only : index_sort
 
 use netcdf
 
@@ -49,7 +57,7 @@ character(len=*), parameter :: source   = &
    "$URL$"
 character(len=*), parameter :: revision = "$Revision$"
 character(len=*), parameter :: revdate  = "$Date$"
-character(len=*), parameter :: routine  = 'convert_streamflow:'
+character(len=*), parameter :: routine  = 'create_identity_streamflow_obs'
 
 character(len=512) :: string1, string2, string3 ! strings for messages
 
@@ -57,6 +65,7 @@ character(len=512) :: string1, string2, string3 ! strings for messages
 
 integer,  parameter :: NUM_COPIES      = 1      ! number of copies in sequence
 integer,  parameter :: NUM_QC          = 1      ! number of QC entries
+real(r8), parameter :: MIN_OBS_ERR_STD = 0.5_r8 ! m^3/sec
 
 integer :: existing_num_copies, existing_num_qc
 
@@ -68,6 +77,7 @@ integer, parameter :: stationIdStrLen = 15
 integer, parameter :: timeStrLen = 19
 
 integer :: num_new_obs, nobs, n, i, nlinks, indx, key
+integer :: dart_index                 ! matching state vector index
 integer :: ifile, iunit, io, nfiles
 integer :: ncid, varid
 logical :: file_exist, first_obs
@@ -96,52 +106,71 @@ real(r8)        :: oerr, qc
 integer         :: oday, osec
 type(obs_type)  :: obs
 
+! structure to hold the lat/lon/depth/indexing information
+! for the DART state vector
+type database
+   integer(i8)              :: nlinks
+   real(r8),    allocatable :: latitude(:)
+   real(r8),    allocatable :: longitude(:)
+   real(r8),    allocatable :: depth(:)
+   integer(i8), allocatable :: sortedindex(:)
+end type database
+type(database) :: lookup_table
+
+
 ! namelist variables
 character(len=256) :: input_files     = 'inputs.txt'
 character(len=256) :: output_file     = 'obs_seq.out'
 character(len=256) :: location_file   = 'location.nc'
 character(len=256) :: gages_list_file = ''
-real(r8)           :: obs_fraction_for_error = 0.01_r8
-real(r8)           :: obs_min_err_std = 0.5_r8
-integer            :: verbose = 0
+real(r8)           :: obs_fraction_for_error = 0.01
+integer            :: debug = 0
 
-namelist / convert_streamflow_nml / &
-     input_files, output_file, location_file, &
-     obs_fraction_for_error, obs_min_err_std, &
-     verbose, gages_list_file
+namelist / create_identity_streamflow_obs_nml / &
+               input_files, &
+               output_file, &
+               location_file, &
+               gages_list_file, &
+               obs_fraction_for_error, &
+               debug
 
-!*****************************************************************************************
+!-------------------------------------------------------------------------------
 
 call initialize_utilities(routine)
 
 ! Read the DART namelist
-call find_namelist_in_file('input.nml', 'convert_streamflow_nml', iunit)
-read(iunit, nml = convert_streamflow_nml, iostat = io)
-call check_namelist_read(iunit, io, 'convert_streamflow_nml')
+call find_namelist_in_file('input.nml', 'create_identity_streamflow_obs_nml', iunit)
+read(iunit, nml = create_identity_streamflow_obs_nml, iostat = io)
+call check_namelist_read(iunit, io, 'create_identity_streamflow_obs_nml')
 
-! print the content of the namelist for clarification 
+! print the content of the namelist for clarification
 print*, 'list of input files is in : "'//trim(input_files)//'"'
 print*, 'output_file               : "'//trim(output_file)//'"'
 print*, 'location_file             : "'//trim(location_file)//'"'
 print*, 'obs_fraction_for_error    : ', obs_fraction_for_error
-print*, 'verbose                   : ', verbose
+print*, 'debug                     : ', debug
 print*, 'gages_list_file           : "'//trim(gages_list_file)//'"'
 
 ! Record the DART namelist values used for the run ...
-if (do_nml_file()) write(nmlfileunit, nml=convert_streamflow_nml)
-if (do_nml_term()) write(     *     , nml=convert_streamflow_nml)
+if (do_nml_file()) write(nmlfileunit, nml=create_identity_streamflow_obs_nml)
+if (do_nml_term()) write(     *     , nml=create_identity_streamflow_obs_nml)
 
 ! put the reference date into DART format
 call set_calendar_type(GREGORIAN)
 
-!*****************************************************************************************
-! READ the file with the location information 
-!*****************************************************************************************
+! Initialize the DART state vector so we can relate the observation location
+! to the location in the DART state vector.
+
+call static_init_model()
+
+!-------------------------------------------------------------------------------
+! READ the file with the location information
+!-------------------------------------------------------------------------------
 
 io =  nf90_open(location_file, nf90_nowrite, ncid)
 call nc_check(io, routine, 'opening location file "'//trim(location_file)//'"' )
 
-call getdimlen(ncid, 'linkDim', nlinks)
+call getdimlen(ncid, 'feature_id', nlinks)
 
 write(string1,*)'number of links is ',nlinks
 call error_handler(E_MSG, routine, string1)
@@ -169,7 +198,9 @@ where (lon <   0.0_r8) lon = lon + 360.0_r8
 
 call nc_check(nf90_close(ncid), routine, 'closing file '//trim(location_file))
 
-!*****************************************************************************************
+!-------------------------------------------------------------------------------
+! prepare output observation sequence - append or creating new ...
+!-------------------------------------------------------------------------------
 
 call static_init_obs_sequence()
 call init_obs(obs,      num_copies=NUM_COPIES, num_qc=NUM_QC)
@@ -184,8 +215,10 @@ inquire(file=output_file, exist=file_exist)
 
 if ( file_exist ) then ! existing file found, append to it
 
-   write(string1,*) "found existing obs_seq file, appending to ", trim(output_file)
-   write(string2,*) "adding up to a maximum of ", num_new_obs, " new observations"
+   write(string1,*) "found existing obs_seq file, appending to ", &
+                    trim(output_file)
+   write(string2,*) "adding up to a maximum of ", num_new_obs, &
+                    " new observations"
    call error_handler(E_MSG, routine, string1, &
                       source, revision, revdate, text2=string2)
 
@@ -205,7 +238,7 @@ if ( file_exist ) then ! existing file found, append to it
                   source, revision, revdate, text2=string2, text3=string3)
    endif
 
-else ! create a new one ... 
+else ! create a new one ...
 
    call init_obs_sequence(obs_seq, NUM_COPIES, NUM_QC, num_new_obs)
 
@@ -223,10 +256,10 @@ else ! create a new one ...
 
 endif
 
-!*****************************************************************************************
-!   Loop through the time slices and adding the data to obs_seq.out 
-!   if the gage is in the gage_strings
-!*****************************************************************************************
+!-------------------------------------------------------------------------------
+! Loop through the time slices and adding the data to obs_seq.out
+! if the gage is in the gage_strings
+!-------------------------------------------------------------------------------
 
 iunit = open_file(input_files,form='formatted',action='read')
 
@@ -235,10 +268,10 @@ first_obs = .true.
 FILELOOP : do ifile=1,nfiles
 
    read(iunit,'(A)', iostat=io) input_file
-   if (io /= 0 ) then 
+   if (io /= 0 ) then
      write(string1,*) 'Unable to read input file from "'//trim(input_files)//'"'
      write(string2,*) 'file ',ifile
-     call error_handler(E_ERR,'convert_streamflow',string1, &
+     call error_handler(E_ERR,'create_identity_streamflow_obs',string1, &
                 source, revision, revdate, text2=string2)
    endif
 
@@ -274,14 +307,19 @@ FILELOOP : do ifile=1,nfiles
 
       if ( discharge(n) < 0.0_r8 ) cycle OBSLOOP
 
-      ! relate the TimeSlice:station to the RouteLink:gage
+      ! relate the TimeSlice:station to the RouteLink:gage so we can
+      ! determine the location
       indx = find_matching_gage_index(n)
       if (indx == 0) cycle OBSLOOP
+
+      ! relate the physical location to the state vector index
+
+      dart_index = linkloc_to_dart(lat(indx), lon(indx))
 
       ! oerr is the observation error standard deviation in this application.
       ! The observation error variance encoded in the observation file
       ! will be oerr*oerr
-      oerr = max(discharge(n)*obs_fraction_for_error, obs_min_err_std)
+      oerr = max(discharge(n)*obs_fraction_for_error, MIN_OBS_ERR_STD)
 
       call convert_time_string(time_string(n),oday,osec,n)
       time_obs = set_time(osec,oday)  ! yes, seconds then days
@@ -289,9 +327,9 @@ FILELOOP : do ifile=1,nfiles
       call set_streamflow_metadata(key, station_strings(n), link(indx))
 
       call create_3d_obs(lat(indx), lon(indx), altitude(indx), VERTISHEIGHT, &
-                         discharge(n), STREAM_FLOW, oerr, oday, osec, qc, obs, key)
+                  discharge(n), dart_index, oerr, oday, osec, qc, obs, key)
       call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
- 
+
     enddo OBSLOOP
 
    deallocate(discharge, discharge_quality)
@@ -304,7 +342,7 @@ nobs = get_num_obs(obs_seq)
 ! If we added any obs to the sequence, write it now.
 if ( nobs > 0 )  call write_obs_seq(obs_seq, output_file)
 
-if (verbose > 0) then
+if (debug > 0) then
    write(string1,*)'Writing ',nobs,' observations to file.'
    call error_handler(E_MSG, routine, string1)
 endif
@@ -319,11 +357,15 @@ call finalize_utilities()
 
 contains
 
-!-----------------------------------------------------------------------
-!> Match the observation stationId string to the RouteLink gage string to 
+!-------------------------------------------------------------------------------
+!> Match the observation stationId string to the RouteLink gage string to
 !> determine which gage has the location matching the stationId.
 !>
 !> If the gage is not one we desire, set the id to 0 to just skip it.
+!>
+!>@todo There are probably faster ways to do this with index sorting, etc.
+!>      as the list of observations or the number of links increases, this
+!>      will become more important.
 
 function find_matching_gage_index(counter) result(id)
 
@@ -336,7 +378,7 @@ id = 0  ! Indicate the station has no matching gage or is not wanted.
 
 LINKS : do i = 1,nlinks
    if (station_strings(counter) == gage_strings(i)) then
-      if (verbose > 0) then
+      if (debug > 0) then
          write(string1,*)'identified station "',station_strings(counter),'"'
          call error_handler(E_MSG, 'find_matching_gage_index:', string1)
       endif
@@ -345,9 +387,11 @@ LINKS : do i = 1,nlinks
    endif
 enddo LINKS
 
-if (id == 0 .and. verbose > 1) then
-   write(string1,*)'Unable to match station id for obs #',counter,' "',station_strings(counter),'"'
-   call error_handler(E_MSG, 'find_matching_gage_index', string1, source, revision, revdate)
+if (id == 0 .and. debug > 1) then
+   write(string1,*)'Unable to match station id for obs #',counter, &
+                   ' "',station_strings(counter),'"'
+   call error_handler(E_MSG, 'find_matching_gage_index', string1, &
+              source, revision, revdate)
 endif
 
 if (id == 0) return  ! unable to find location information
@@ -362,12 +406,12 @@ else if( ANY(desired_gages == station_strings(counter)) ) then
 else
    ! We do not want the gage
    id = 0
-endif   
+endif
 
 end function find_matching_gage_index
 
 
-!-----------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 !> read the character matrix from the netCDF file and parse into
 !> useable strings
 
@@ -383,7 +427,7 @@ type(time_type) :: darttime
 
 read(string,'(i4,5(1x,i2.2))') year, month, day, hour, minute, second
 
-if (verbose > 1) then
+if (debug > 1) then
    if ( present(n) ) then
       write(string1,*) ' ..  read "',trim(string)," from observation ",n
    else
@@ -399,7 +443,7 @@ call get_time(darttime, seconds, days)
 end subroutine convert_time_string
 
 
-!-----------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 !> read the character matrix of UTC times from the data netCDF file and
 !> parse into an array of strings.
 !> dimensions:
@@ -425,7 +469,7 @@ call nc_check(io, 'get_time_strings', 'inq_varid "'//varname//'"')
 io = nf90_get_var(ncid,varid,time_string)
 call nc_check(io, 'get_time_strings', 'get_var "'//varname//'"')
 
-if (verbose > 2) then
+if (debug > 2) then
    do i = 1,nobs
       write(string1,*) 'time ',i,' is "'//time_string(i)//'"'
       call error_handler(E_MSG, 'get_time_strings:', string1)
@@ -435,7 +479,7 @@ endif
 end subroutine  get_time_strings
 
 
-!-----------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 !> read the character matrix of USGS station identifiers from the data
 !> netCDF file and parse into an array of strings.
 !> dimensions:
@@ -465,7 +509,7 @@ do i = 1,nobs
    station_strings(i) = adjustl(station_strings(i))
 enddo
 
-if (verbose > 2) then
+if (debug > 2) then
    do i = 1,nobs
       write(string1,*) 'station ',i,' is "'//station_strings(i)//'"'
       call error_handler(E_MSG, 'get_station_strings:', string1)
@@ -475,16 +519,16 @@ endif
 end subroutine  get_station_strings
 
 
-!-----------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 !> read the character matrix of NHD Gage Event IDs  from the metadata
 !> netCDF file and parse into an array of strings.
 !> dimensions:
-!>        linkDim = 157 ;
-!>        IDLength = 15 ;
+!>     feature_id = 157 ;
+!>     IDLength = 15 ;
 !> variables:
-!>        char gages(linkDim, IDLength) ;
-!>             gages:long_name = "NHD Gage Event ID from SOURCE_FEA field in Gages feature class" ;
-!>             gages:coordinates = "lat lon" ;
+!>     char gages(feature_id, IDLength) ;
+!>          gages:long_name = "NHD Gage Event ID from SOURCE_FEA field in Gages feature class" ;
+!>          gages:coordinates = "lat lon" ;
 
 subroutine get_gage_strings(ncid, varname, gagelist)
 
@@ -494,7 +538,7 @@ character(len=*), intent(out) :: gagelist(:)
 
 integer :: io, dim1
 
-call getdimlen(ncid, 'linkDim', dim1)
+call getdimlen(ncid, 'feature_id', dim1)
 
 io = nf90_inq_varid(ncid,varname,varid)
 call nc_check(io, 'get_gage_strings', 'inq_varid "'//varname//'"')
@@ -506,7 +550,7 @@ do i = 1,nlinks
    gagelist(i) = adjustl(gagelist(i))
 enddo
 
-if (verbose > 2) then
+if (debug > 2) then
    do i = 1,nlinks
       write(string1,*) 'gage_strings ',i,' is "'//gagelist(i)//'"'
       call error_handler(E_MSG, 'get_gage_strings:', string1)
@@ -516,7 +560,7 @@ endif
 end subroutine get_gage_strings
 
 
-!-----------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 !> Read the list of the gages to process.
 !> If the filename is empty, use all the gages.
 !> the list of desired gages is globally scoped:  desired_gages()
@@ -555,7 +599,7 @@ do i = 1, nlines
 enddo
 call close_file(iunit)
 
-if (verbose > 1) then
+if (debug > 1) then
    print*, 'List of the gages to process:'
    do i = 1,nlines
       print*, i, desired_gages(i)
@@ -567,8 +611,8 @@ ngages = nlines
 end function set_desired_gages
 
 
-!-----------------------------------------------------------------------
-!> 
+!-------------------------------------------------------------------------------
+!>
 
 function estimate_total_obs_count(file_list,nfiles) result (num_obs)
 
@@ -582,7 +626,7 @@ character(len=256) :: input_file
 
 iunit = open_file(file_list,form='formatted',action='read')
 read(iunit,'(A)', iostat=io) input_file
-if (io /= 0 ) then 
+if (io /= 0 ) then
   write(string1,*) 'Unable to read input file from "'//trim(file_list)//'"'
   call error_handler(E_ERR,routine,string1,source,revision,revdate)
 endif
@@ -597,14 +641,124 @@ call nc_check(io, routine, 'closing file "'//trim(input_file)//'"' )
 
 ! We need to know how many observations there may be.
 ! Specifying too many is not really a problem.
-! I am adding 20% 
+! I am adding 20%
 
 num_obs = 1.2_r8 * nobs * nfiles
 
 end function estimate_total_obs_count
 
 
-end program convert_streamflow
+!-------------------------------------------------------------------------------
+!>
+
+function linkloc_to_dart(lat, lon) result (dartindx)
+
+real(r8), intent(in) :: lat
+real(r8), intent(in) :: lon
+integer(i8)          :: dartindx
+
+integer(i8) :: sorted_index, n
+
+logical, save :: sorted = .false.
+
+if ( .not. sorted ) then
+   call create_fast_lookup_table()
+   sorted = .true.
+endif
+
+! Find the first longitude that matches
+
+dartindx = 0
+LONLOOP : do n = 1,lookup_table%nlinks
+
+   sorted_index = lookup_table%sortedindex(n)
+
+   if (lon == lookup_table%longitude(sorted_index) .and. &
+       lat == lookup_table%latitude( sorted_index)) then
+      dartindx = sorted_index
+      exit LONLOOP
+   endif
+
+enddo LONLOOP
+
+if (dartindx == 0) then
+   write(string2,*)'longitude is ',lon
+   write(string3,*)'latitude  is ',lat
+   call error_handler(E_ERR,'linkloc_to_dart','no matching location', &
+              source, revision, revdate, text2=string2, text3=string3)
+endif
+
+! to make it an identity observation, it has to be negative
+
+dartindx = -1 * dartindx
+
+if (debug > 99) then
+   write(string1,*)'lon, lat ',lon,lat
+   write(string2,*)'matched at DART location ',dartindx
+   call error_handler(E_MSG,'linkloc_to_dart',string1, &
+              source, revision, revdate, text2=string2)
+endif
+
+end function linkloc_to_dart
+
+
+!-------------------------------------------------------------------------------
+!>
+
+subroutine create_fast_lookup_table()
+
+integer(i8)         :: indx, n
+type(location_type) :: location
+real(r8)            :: loc_array(3)
+integer             :: var_type
+
+n = get_number_of_links()
+
+lookup_table%nlinks = n
+
+allocate(lookup_table%latitude(n), &
+         lookup_table%longitude(n), &
+         lookup_table%depth(n), &
+         lookup_table%sortedindex(n))
+
+TABLE : do indx = 1,lookup_table%nlinks
+
+   call get_state_meta_data(indx, location, var_type)
+
+   ! The thought is that the links are the first domain
+   if (var_type /= QTY_STREAM_FLOW ) then
+      write(string1,*)'model size is ',lookup_table%nlinks, &
+                      'working on index', indx
+      write(string2,*)'var_type   is ',var_type, ' not ', QTY_STREAM_FLOW
+      call error_handler(E_ERR, 'create_fast_lookup_table', string1, &
+                 source, revision, revdate, text2=string2)
+   endif
+
+   loc_array                    = get_location(location)
+   lookup_table%longitude(indx) = loc_array(1)
+   lookup_table%latitude( indx) = loc_array(2)
+   lookup_table%depth(    indx) = loc_array(3)
+
+enddo TABLE
+
+!  do the index sort on lookup_table%longitude
+call index_sort(lookup_table%longitude, &
+                lookup_table%sortedindex, &
+                lookup_table%nlinks )
+
+if (debug > 99) then
+   write(*,*)'In original, then sorted order:'
+   do indx = 1,n
+      write(*,*) indx, lookup_table%sortedindex(indx), &
+                       lookup_table%longitude(indx), &
+                       lookup_table%longitude(lookup_table%sortedindex(indx))
+   enddo
+endif
+
+end subroutine create_fast_lookup_table
+
+
+end program create_identity_streamflow_obs
 
 ! <next few lines under version control, do not edit>
 ! $URL$
