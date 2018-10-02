@@ -4,8 +4,10 @@ import f90nml
 import os
 import pathlib
 import pickle
+import pickle
 import sys
-from wrfhydropy.core.dartclasses import get_ens_last_restart_datetime
+import yaml
+from wrfhydropy.core.ensemble_tools import get_ens_dotfile_end_datetime
 
 parser = argparse.ArgumentParser(
     description='Get the time of a HydroDartRun Ensemble'
@@ -23,16 +25,19 @@ parser.add_argument(
 args = parser.parse_args()
 run_dir = pathlib.PosixPath(args.run_dir)
 
-ens_run = pickle.load(open(run_dir / 'WrfHydroEnsembleRun.pkl', 'rb'))
-hydro_dart_run = pickle.load(open(run_dir / 'experiment_dir/HydroDartRun.pkl', 'rb'))
-ens_run.collect_ensemble_runs() # inlieu of a sweeper job # this is printing the annoying 0
+valid_time = get_ens_dotfile_end_datetime(run_dir)
 
-valid_time = get_ens_last_restart_datetime(ens_run)
+# Read the YAML config file.
+experiment_dir = run_dir / 'experiment_dir'
+config_file = sorted(experiment_dir.glob("*.original.*.yaml"))[0]
+with open(config_file) as ff:
+    config = yaml.safe_load(ff)
 
 timedelta = datetime.timedelta
-config_run_time = hydro_dart_run.config['run_experiment']['time']
+config_run_time = config['run_experiment']['time']
 assim_window_hr = int(config_run_time['assim_window']['assim_window_size_hours'])
 assim_half_window_sec = timedelta(seconds=(60*60/2)*assim_window_hr)
+
 start_window = valid_time - assim_half_window_sec + timedelta(seconds=1)
 end_window = valid_time + assim_half_window_sec
 

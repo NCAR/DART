@@ -1,9 +1,10 @@
 import argparse
+import datetime
 import pathlib
 import xarray as xa
 
 # python3 create_parameter_restart_file.py \
-#    /Users/jamesmcc/Downloads/test_param_restart_file.nc \
+#    /Users/jamesmcc/Downloads/ \
 #    --hydro_rst /Users/jamesmcc/Downloads/croton_NY/NWM/RESTART/HYDRO_RST.2011-08-26_00_00_DOMAIN1 \
 #    --restart /Users/jamesmcc/Downloads/croton_NY/NWM/RESTART/RESTART.2011082600_DOMAIN1 \
 #    --existing_variables qlink1 qlink1 SNEQV \
@@ -81,7 +82,7 @@ import xarray as xa
 # TODO(JLM): make either of the restart files optional, right now both are required even if not used.
 
 def create_parameter_restart_file(
-    out_file: str=None,
+    out_path: str=None,
     out_mode: str='r',
     hydro_rst_file: str=None,
     restart_file: str=None,
@@ -90,18 +91,36 @@ def create_parameter_restart_file(
     values: list=None
 ):
 
+    hydro_rst_time = None
+    restart_time = None
+    
     if hydro_rst_file is not None:
         hydro_rst = xa.open_dataset(hydro_rst_file)
+        hydro_rst_time = datetime.datetime.strptime(hydro_rst.Restart_Time, '%Y-%m-%d_%H:%M:%S')
 
     if restart_file is not None:
         restart = xa.open_dataset(restart_file)
+        restart_time_raw = restart.data_vars.get('Times').data[0].decode('utf-8')
+        restart_time = datetime.datetime.strptime(restart_time_raw, '%Y-%m-%d_%H:%M:%S')
 
-    # create new file?
+    if hydro_rst_time is not None and restart_time is not None:
+        if hydro_rst_time != restart_time:
+            raise ValueError('Times of the supplied restart files do not match.')
 
+    the_date = hydro_rst_time if hydro_rst_time is not None else restart_time
+    the_date_str = the_date.strftime('%Y-%m-%d_%H:%M')  # drop the seconds
+    out_file = pathlib.Path(out_path) / ('parameter_restart.' + the_date_str + '.nc')
+
+    if out_file.exists() and out_mode != 'w':
+        raise FileExistsError(
+            'The out_mode=' + out_mode +
+            '  argument precludes overwriting/clobbering the existing file: ' +
+            str(out_file)
+        )
+    
     new_dataset = None
 
     for new, exst, val in zip(new_variables, existing_variables, values):
-    #    break
 
         src = None
         if hydro_rst_file is not None and exst in hydro_rst.keys():
@@ -114,7 +133,7 @@ def create_parameter_restart_file(
 
         tmp_dataset = src[[exst]]
         tmp_dataset = tmp_dataset.rename({exst:new})
-        tmp_dataset[new] = tmp_dataset[new]*0.0 + float(val)
+        tmp_dataset[new] = tmp_dataset[new]*float(0.0) + float(val)
         tmp_dataset[new].encoding.update({'_FillValue': -9999})
 
         if new_dataset is None:
@@ -126,17 +145,19 @@ def create_parameter_restart_file(
 
     new_dataset.to_netcdf(out_file)
 
+    return(out_file)
+    
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Create a WRF-Hydro parameter assimilation file.')
 
     parser.add_argument(
-        'out_file',
-        metavar='/path/to/param_restart.nc',
+        'out_path',
+        metavar='/path/to/',
         type=str,
         nargs=1,
-        help='A Hydro Restart file for hydro dimensions.'
+        help='A path to write the parameter file to.'
     )
 
     parser.add_argument(
@@ -174,7 +195,7 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    out_file = pathlib.PosixPath(args.out_file[0])
+    out_path = pathlib.PosixPath(args.out_path[0])
 
     hydro_rst_file = args.hydro_rst
     if hydro_rst_file is not None:
@@ -188,7 +209,7 @@ if __name__ == "__main__":
     new_variables = args.new_variables
     values = args.values
 
-    # out_file = '/Users/jamesmcc/Downloads/test_param_restart_file.nc'
+    # out_path = '/Users/jamesmcc/Downloads/'
     # hydro_rst_file = pathlib.PosixPath('/Users/jamesmcc/Downloads/croton_NY/NWM/RESTART/HYDRO_RST.2011-08-26_00_00_DOMAIN1')
     # restart_file = '/Users/jamesmcc/Downloads/croton_NY/NWM/RESTART/RESTART.2011082600_DOMAIN1'
     # new_variables = ['mult_qSfcLatRunoff', 'mult_qBucket']
@@ -196,7 +217,7 @@ if __name__ == "__main__":
     # values = [1, 5]
 
     create_parameter_restart_file(
-        out_file=out_file,
+        out_path=out_path,
         hydro_rst_file=hydro_rst_file,
         restart_file=restart_file,
         existing_variables=existing_variables,

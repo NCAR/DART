@@ -11,11 +11,9 @@ def noise_model():
     # 4) size: number of samples,
     # 5) Closure takes a single value argument.
 
-    def close_trunc_gauss_sd_pct_value(min: float=0.0):
-        def the_closure(x, seed: int=None):
-            if seed is not None:
-                np.random.seed(seed)
-            return np.maximum(x+np.random.normal(0.0, .2, 1), min)
+    def close_trunc_gauss_sd_pct_value(frac, min):
+        def the_closure(x):
+            return np.maximum(x+np.random.normal(0.0, frac*x, 1), min)
         return the_closure
 
-    return np.vectorize(close_trunc_gauss_sd_pct_value(min=0.0))
+    return np.vectorize(close_trunc_gauss_sd_pct_value(.2, 0))

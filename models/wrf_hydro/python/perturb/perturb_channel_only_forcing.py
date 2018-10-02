@@ -5,14 +5,14 @@ import os
 import pathlib
 import pickle
 import sys
-from wrfhydropy import job_tools
 import xarray as xa
 
 def perturb_channel_only_forcing(
     chrtout_file,
     qsfclat_perturb_func,
     qbucket_perturb_func,
-    out_dir
+    out_dir,
+    seed: int=None
 ):
 
     # Input.
@@ -21,8 +21,9 @@ def perturb_channel_only_forcing(
     chrtout = xa.open_dataset(chrtout_file, drop_variables=drop_list)
 
     # Apply the perturbations. This set maintains metadata.
-    chrtout.qSfcLatRunoff.values = qsfclat_perturb_func(chrtout.qSfcLatRunoff.values)
-    chrtout.qBucket.values = qbucket_perturb_func(chrtout.qBucket.values)
+    
+    chrtout.qSfcLatRunoff.values = qsfclat_perturb_func(chrtout.qSfcLatRunoff.values, seed=seed)
+    chrtout.qBucket.values = qbucket_perturb_func(chrtout.qBucket.values, seed=seed)
 
     # Output.
     # Annoyingly, xarray wants to force NaN on you for _FillValue.
@@ -50,6 +51,14 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        '--source_forcing_dir',
+        metavar='source_forcing_dir',
+        type=str,
+        nargs=1,
+        help='This dir should exist in the run_dir.'
+    )
+
+    parser.add_argument(
         '--perturb_forcing_dir',
         metavar='perturb_forcing_dir',
         type=str,
@@ -74,6 +83,15 @@ if __name__ == "__main__":
         help='As for qsfclat_perturb_func.'
     )
 
+    parser.add_argument(
+        '--seed',
+        metavar='seed_for_np.random',
+        type=int,
+        nargs=1,
+        help='seed to control random variables.',
+        default=None
+    )
+
     args = parser.parse_args()
 
     run_dir = args.run_dir
@@ -81,14 +99,21 @@ if __name__ == "__main__":
         run_dir = os.getcwd() #os.path.dirname(__file__)
     else:
         run_dir = run_dir[0]
+
+    source_forcing_dir = args.source_forcing_dir[0]
     perturb_forcing_dir = args.perturb_forcing_dir[0]
     qsfclat_perturb_func = args.qsfclat_perturb_func[0]
     qbucket_perturb_func = args.qbucket_perturb_func[0]
 
-    run_obj = pickle.load(open(run_dir + "/WrfHydroRun.pkl", 'rb'))
+    seed = args.seed
+    if seed is not None:
+        seed = seed[0]
 
     # Note: Use the generic namelists in the run dir not from the object.
-    namelist_hrldas = f90nml.read(run_dir + '/namelist.hrldas')
+    # Now that wrfhydropy only stages the namelists on run, I resort to this hack
+    # which relies on using the last job_* dir
+    job_dir = sorted(pathlib.Path(run_dir).glob('job_*'))[-1]
+    namelist_hrldas = f90nml.read(str(job_dir) + '/namelist.hrldas')
 
     # How many forcing files for the duration?
     # Kday or khour?
@@ -128,7 +153,7 @@ if __name__ == "__main__":
 
     # Current forcing directory
     # Take this from the domain object NOT the namelist
-    forcing_dir_existing = pathlib.PosixPath(run_dir) / run_obj.setup.domain.forcing_dir
+    forcing_dir_existing = pathlib.PosixPath(run_dir) / source_forcing_dir
 
     # Create new forcing dir if it does not exist.
     forcing_dir_perturbed = pathlib.PosixPath(run_dir) / perturb_forcing_dir
@@ -147,10 +172,11 @@ if __name__ == "__main__":
             forcing_dir_existing / bb,
             qsfclat_perturb_func,
             qbucket_perturb_func,
-            forcing_dir_perturbed
+            forcing_dir_perturbed,
+            seed
         )
 
     # replace with the new/perturbed forcing dir
     # DO NOT change the run_obj.setup.domain.forcing_dir
     namelist_hrldas['noahlsm_offline']['indir'] = perturb_forcing_dir
-    namelist_hrldas.write(run_dir + '/namelist.hrldas', force=True)
+    namelist_hrldas.write(str(job_dir) + '/namelist.hrldas', force=True)
