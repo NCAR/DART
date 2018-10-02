@@ -7,9 +7,10 @@
 module dart_time_io_mod
 
 !> \defgroup dart_time_io_mod dart_time_io_mod
-!> Netcdf reading and writing dart model time.
-!> Temporary module for dart time.
-!>@todo should this go in state_vector_io_mod or io_filename_mod?
+!> Default routines for netCDF reading and writing dart model time.
+!> If your model uses a different name for the time dimension
+!> or has a different way of handing/storing time, it must provide 
+!> a custom read_model_time() and write_model_time() routine.
 !> @{
 
 use types_mod,        only : r8, digits12
@@ -233,8 +234,10 @@ if (ios /= NF90_NOERR) then
         "write_model_time def_var dimension time")
    endif
 
-   !>@todo NF90_UNLIMITED
-   ios = nf90_def_var(ncid, name="time", xtype=nf90_double, varid=VarID)
+   ! make the time variable be dimensioned time(time) which is the
+   ! netCDF convention for coordinate variables (variables with the
+   ! same name as a dimension).
+   ios = nf90_def_var(ncid, name="time", xtype=nf90_double, dimids=dimIds(1), varid=VarID)
    call nc_check(ios, "write_model_time", "time def_var")
 
    ! define time attributes consistent with CF convention
