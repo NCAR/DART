@@ -124,10 +124,10 @@ public :: init_obs_def, get_obs_def_key, get_obs_def_location, get_obs_def_type_
    eq_obs_def, ne_obs_def, operator(==), operator(/=), print_obs_def
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 ! FIXME: should write_external_FO be some kind of global instead of
 ! being per-obs?
@@ -607,16 +607,16 @@ integer,                    intent(in)    :: key
 real(r8),                   intent(inout) :: obs_val
 character(len=*), optional, intent(in)    :: fform
 
-character(len=5)  :: header
-integer           :: o_index
-logical           :: is_ascii
-character(len=32) :: fileformat   ! here for backwards compatibility only
-character(len=256) :: errstring
-character(len=11) :: header_external_FO 
-integer           :: ii, secs,days 
+character(len=5)   :: header
+integer            :: o_index
+logical            :: is_ascii
+character(len=32)  :: fileformat   ! here for backwards compatibility only
+character(len=512) :: errstring
+character(len=11)  :: header_external_FO 
+integer            :: ii, secs,days 
 character(len=128) :: string 
-logical           :: time_set
-integer, save     :: counter = 0
+logical            :: time_set
+integer, save      :: counter = 0
 
 if ( .not. module_initialized ) call initialize_module
 
