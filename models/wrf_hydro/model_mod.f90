@@ -6,7 +6,7 @@
 
 module model_mod
 
-!> This is the interface for wrfHydro and the DART data assimilation infrastructure.
+!> This is the interface for wrf_hydro and the DART data assimilation infrastructure.
 
 use              types_mod, only : r8, i8, MISSING_R8, obstypelength, earth_radius
 
@@ -717,7 +717,7 @@ end subroutine model_interpolate
 !> Normally, the definition of 'close' is a simple distance, however
 !> identity streamflow observations allow us to determine the close
 !> upstream/downstream streamflow observations by exploiting the
-!> available wrfHydro metadata.
+!> available wrf_hydro metadata.
 !>
 !> All other observations impact ALL observations (even identity streamflow)
 !> in the cutoff radius without upstream/downstream consideration.
