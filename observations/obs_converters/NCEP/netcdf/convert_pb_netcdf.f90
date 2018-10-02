@@ -399,7 +399,7 @@ select case (msg_typ)
   case ('QKSWND')
     obstype = 'QKSWND'
   case default
-    var_type = 'UNKNOWN'
+    obstype = 'UNKNOWN'
 end select
 
 end subroutine look_up_message_type
@@ -409,8 +409,8 @@ subroutine look_up_obs_type(msg_type, grib_type, dart_obs_type)
  integer,          intent(in)  :: grib_type
  integer,          intent(out) :: dart_obs_type
 
-select case (msgtype)
-  case 'ADPUPA'
+select case (msg_type)
+  case ('ADPUPA')
      ! t, q, p, u, v, sst
      select case(grib_type)
         case (11)
@@ -419,25 +419,25 @@ select case (msgtype)
            dart_obs_type = RADIOSONDE_TEMPERATURE
         case default
       end select
-  case 'AIRCAR'
-  case 'AIRCFT'
-  case 'SATWND'
-  case 'PROFLR'
-  case 'VADWND'
-  case 'SATEMP'
-  case 'ADPSFC'
-  case 'SFCSHP'
-  case 'SFCBOG'
-  case 'SPSSMI'
-  case 'SYNDAT'
-  case 'ERS1DA'
-  case 'GOESND'
-  case 'QKSWND'
-  case 'MSONET'
-  case 'GPSIPW'
-  case 'RASSDA'
-  case 'WDSATR'
-  case 'ASCATW'
+  case ('AIRCAR')
+  case ('AIRCFT')
+  case ('SATWND')
+  case ('PROFLR')
+  case ('VADWND')
+  case ('SATEMP')
+  case ('ADPSFC')
+  case ('SFCSHP')
+  case ('SFCBOG')
+  case ('SPSSMI')
+  case ('SYNDAT')
+  case ('ERS1DA')
+  case ('GOESND')
+  case ('QKSWND')
+  case ('MSONET')
+  case ('GPSIPW')
+  case ('RASSDA')
+  case ('WDSATR')
+  case ('ASCATW')
   case default
      print *, 'unknown message type: '//trim(msg_type)
 end select
