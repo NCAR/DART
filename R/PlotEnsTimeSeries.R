@@ -25,7 +25,7 @@ PlotEnsTimeSeries <- function(pinfo) {
     pinfo <- list()
     pinfo$truth_file  = 'True_State.nc'
     pinfo$diagn_file  = 'Prior_Diag.nc'
-    pinfo$model       = 'wrfHydro'      ## not really necessary currently
+    pinfo$model       = 'wrf_hydro'      ## not really necessary currently
 
     pinfo$var         = 'qlink1'
     ##pinfo$var_inds  = which(trimws(ncdump("../DOMAIN/RouteLink.nc",'gages', q=TRUE))!='')
