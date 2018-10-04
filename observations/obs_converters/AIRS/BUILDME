@@ -15,18 +15,18 @@ if ( `false` ); then
   ftp edhs1.gsfc.nasa.gov
   # (log in as 'anonymous' and your email as the password)
   cd /edhs/hdfeos/latest_release
-  mget *
+  mget * # select a for all
   quit
    
   # mar 2013, the dir contents:
   # 
-  # hdf-4.2.6.tar.gz
-  # HDF-EOS2.18v1.00.tar.Z
-  # HDF-EOS2.18v1.00_TestDriver.tar.Z
-  # HDF_EOS_REF.pdf
-  # HDF_EOS_UG.pdf
-  # jpegsrc.v6b.tar.gz
-  # zlib-1.2.5.tar.gz
+  # HDF-EOS2.20v1.00.tar.Z
+  # HDF-EOS2.20v1.00_TestDriver.tar.Z
+  # HDF-EOS_REF.pdf
+  # HDF-EOS_UG.pdf
+  # hdf-4.2.13.tar.gz
+  # jpegsrc.v9b.tar.gz
+  # zlib-1.2.11.tar.gz
   # 
   # (i skipped a 'windows' dir).
   # 
@@ -52,7 +52,7 @@ mkdir -p ${BASEDIR}/eos/{lib,bin,man,man/man1}
 
 echo zlib:
 
-cd zlib-1.2.5
+cd zlib-1.2.11
 ./configure --prefix=${BASEDIR}/eos
 make clean
 make
@@ -62,7 +62,7 @@ cd ..
 
 echo jpeg:
 
-cd jpeg-6b
+cd jpeg-9b
 ./configure --prefix=${BASEDIR}/eos --with-zlib=${BASEDIR}/eos
 make clean
 make
@@ -71,9 +71,19 @@ make install
 make install-lib
 cd ..
 
-echo hdf:
+echo hdf4:
 
-cd hdf-4.2.6
+cd hdf-4.2.13
+./configure --prefix=${BASEDIR}/eos --with-zlib=${BASEDIR}/eos --with-jpeg=${BASEDIR}/eos
+make clean
+make
+# (there is apparently no 'make test')
+make install
+cd ..
+
+echo hdf5:
+
+cd hdf5-1.10.1
 ./configure --prefix=${BASEDIR}/eos --with-zlib=${BASEDIR}/eos --with-jpeg=${BASEDIR}/eos
 make clean
 make

@@ -116,6 +116,7 @@
     output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90',
    input_files              = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
                               '../../../observations/forward_operators/obs_def_radar_mod.f90',
+                              '../../../observations/forward_operators/obs_def_rttov_mod.f90',
                               '../../../observations/forward_operators/obs_def_metar_mod.f90',
                               '../../../observations/forward_operators/obs_def_dew_point_mod.f90',
                               '../../../observations/forward_operators/obs_def_rel_humidity_mod.f90',
@@ -126,6 +127,9 @@
    /
 
 &obs_kind_nml
+   assimilate_these_obs_types = 'AQUA_AIRS_AMSU_RADIANCE',
+   /
+
    assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
                                 'RADIOSONDE_U_WIND_COMPONENT',
                                 'RADIOSONDE_V_WIND_COMPONENT',
@@ -140,7 +144,6 @@
                                 'GPSRO_REFRACTIVITY',
                                 'LAND_SFC_ALTIMETER' 
    evaluate_these_obs_types   = 'RADIOSONDE_SPECIFIC_HUMIDITY',
-   /
 
 # Notes for obs_def_radar_mod_nml:
 # (1) Reflectivity limit can be applied to observations and/or forward operator.

@@ -72,7 +72,10 @@ module rttov_interface_mod
   ! jpim, jprb and jplm are the RTTOV integer, real and logical KINDs
   USE parkind1, ONLY : jpim, jprb, jplm
   ! are these I4, R8, ?  what's a logical kind?
-
+  !
+  ! (JPH) INTEGER, PARAMETER :: JPIM = SELECTED_INT_KIND(9) !< Standard integer type
+  ! (JPH) INTEGER, PARAMETER :: JPRB = SELECTED_REAL_KIND(13,300) !< Standard real type
+  ! (JPH) INTEGER, PARAMETER :: JPLM = KIND(.TRUE.)               !< Standard logical type
   IMPLICIT NONE
 
 #include "rttov_direct.interface"
@@ -122,7 +125,8 @@ module rttov_interface_mod
   INTEGER(KIND=jpim) :: nprof
   INTEGER(KIND=jpim) :: nchannels
   INTEGER(KIND=jpim) :: nchanprof
-  INTEGER(KIND=jpim), ALLOCATABLE :: channel_list(:)
+  !INTEGER(KIND=jpim), ALLOCATABLE :: channel_list(:)
+  INTEGER(KIND=jpim) :: channel_list(1)
   REAL(KIND=jprb)    :: trans_out(10)
   ! loop variables
   INTEGER(KIND=jpim) :: j, jch
@@ -138,7 +142,7 @@ module rttov_interface_mod
   !   2. Read coefficients
   !   3. Allocate RTTOV input and output structures
   !   4. Set up the chanprof array with the channels/profiles to simulate
-  !   5. Read input profile(s)
+  !   5. Read input profile(s) [[ get these from the model ]]
   !   6. Set up surface emissivity and/or reflectance
   !   7. Call rttov_direct and store results
   !   8. Deallocate all structures and arrays
@@ -195,7 +199,7 @@ integer, intent(out) :: error_status  ! 0 is good, anything else is bad
   dosolar = 0
   nthreads = 1
 
-
+  !allocate(channel_list(1))
   ! --------------------------------------------------------------------------
   ! 1. Initialise RTTOV options structure
   ! --------------------------------------------------------------------------
@@ -207,6 +211,11 @@ integer, intent(out) :: error_status  ! 0 is good, anything else is bad
   ENDIF
   opts % interpolation % addinterp   = .TRUE.  ! Allow interpolation of input profile
   opts % interpolation % interp_mode = 1       ! Set interpolation method    ! FIXME = what are options?
+  ! (JPH) : interp_mode 1 = Rachon     on optical depths
+  ! (JPH) : interp_mode 2 = Log-linear on optical depths
+  ! (JPH) : interp_mode 3 = Log-linear on optical depths
+  ! (JPH) : interp_mode 4 = Rachon     on weighting function
+  ! (JPH) : interp_mode 5 = Log-linear on weighting function
   opts % rt_all % addrefrac          = .TRUE.  ! Include refraction in path calc
   opts % rt_ir % addclouds           = .FALSE. ! Don't include cloud effects
   opts % rt_ir % addaerosl           = .FALSE. ! Don't include aerosol effects
@@ -234,7 +243,8 @@ integer, intent(out) :: error_status  ! 0 is good, anything else is bad
     error_status = errorstatus
     return
   ENDIF
-
+  
+  !print*, 'coefs % coef % fmv_chn', errorstatus, coefs % coef % fmv_chn, nchannels
   ! Ensure input number of channels is not higher than number stored in coefficient file
   IF (nchannels > coefs % coef % fmv_chn) THEN
     WRITE(*,*) 'n requested channels too large'
@@ -298,6 +308,8 @@ integer, intent(out) :: error_status  ! 0 is good, anything else is bad
       chanprof(nch)%chan = channel_list(jch)
     ENDDO
   ENDDO
+
+  call dart_rttov_dump_results(nprof, nchannels)
 
 end subroutine
 
@@ -366,6 +378,7 @@ integer :: imem, iprof
                 profiles(iprof) % skin % watertype
 
 !FIXME - ok, these we understand.  verify elevation is in meters (km?)
+! (JPH) : pg.11 users_guide_rttov12_v1.2.pdf profiles(i)%elevation [km]
     ! Elevation, latitude and longitude
     READ(iup,*) profiles(iprof) % elevation, &
                 profiles(iprof) % latitude,  &
@@ -548,10 +561,10 @@ integer :: alloc_status
   ! --------------------------------------------------------------------------
   ! 8. Deallocate all RTTOV arrays and structures
   ! --------------------------------------------------------------------------
-  DEALLOCATE (channel_list, stat=alloc_status)
-  IF (alloc_status /= 0) THEN
-    WRITE(*,*) 'mem dellocation error'
-  ENDIF
+  !DEALLOCATE (channel_list, stat=alloc_status)
+  !IF (alloc_status /= 0) THEN
+  !  WRITE(*,*) 'mem dellocation error'
+  !ENDIF
 
   ! Deallocate structures for rttov_direct
   CALL rttov_alloc_direct( &

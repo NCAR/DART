@@ -91,6 +91,9 @@ private
 ! then the converters just use the metadata and filter
 ! uses both...  or something.
 
+! JPH, namelist for which channels to use and how many model levels there are
+! see GPS module
+
 public ::            set_rttov_metadata, &
                      get_rttov_metadata, &
                     read_rttov_metadata, &
@@ -144,6 +147,9 @@ contains
 
 subroutine initialize_module
 
+integer :: istatus
+integer :: local_channel_list(1)
+
 call register_module(source, revision, revdate)
 
 module_initialized = .true.
@@ -161,7 +167,11 @@ allocate(observation_metadata(MAXrttovkey))
 
 observation_metadata(:) = missing_metadata
 
-!FIXME call an init routine for rttov here
+!FIXME : do we need to pass in all of the potential channels here
+local_channel_list(1) = 1
+
+call dart_rttov_setup(nprofiles=1, nchannels=1, channel_list=local_channel_list, &
+                      nlevels=1, level_list=1, error_status=istatus)
 
 end subroutine initialize_module
 
@@ -456,8 +466,10 @@ real(r8) :: loc_lon, loc_lat
 real(r8) :: loc_value(ens_size), radiance(ens_size)
 type(location_type) :: loc
 integer :: imem, maxlevels
+integer :: error_status
 logical :: return_now
 character(len=*), parameter :: routine = 'get_expected_radiance'
+integer, allocatable :: channel_list(:)
 
 !=================================================================================
 
@@ -479,8 +491,7 @@ loc_array = get_location(location) ! loc is in DEGREES
 loc_lon   = loc_array(1)
 loc_lat   = loc_array(2)
 
-!FIXME: these interp results are unused. make it a cheap quantity to ask for.
-nlevels = 0
+
 maxlevels = 10000   ! something larger than we think will exist
 COUNTLEVELS : do i = 1,maxlevels
    loc = set_location(loc_lon, loc_lat, real(i,r8), VERTISLEVEL)
@@ -496,9 +507,11 @@ if ((nlevels == maxlevels) .or. (nlevels == 0)) then
    val     = MISSING_R8
    return
 else
-!   if (debug) write(*,*)routine // 'we have ',nlevels,' model levels'
+    if (debug) write(*,*)routine // 'we have ',nlevels,' model levels'
 endif
 
+
+!dart_rttov_takedown   ! unused at present?nlevels = 0
 ! now get needed info - t,p,q for starters
 
 allocate(temperature(ens_size, nlevels), &
@@ -527,13 +540,17 @@ GETLEVELDATA : do i = 1,nlevels
 
 enddo GETLEVELDATA
 
+!FIXME: these interp results are unused. make it a cheap quantity to ask for.
+call dart_rttov_do_forward_model(ens_size=ens_size, nlevels=nlevels, &
+                                 t=temperature, p=pressure, q=moisture, &
+                                 radiances=radiance, error_status=this_istatus) 
 
 !FIXME initialize the profile info here and make the call to rttov()
 ! to compute radiances, once for each ensemble member
 
-do i=1, ens_size
-   radiance(i) = 0.0_r8
-enddo
+!do i=1, ens_size
+!   radiance(i) = -32.0_r8
+!enddo
 
 deallocate(temperature, pressure, moisture)
 

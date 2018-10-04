@@ -42,7 +42,7 @@ use obs_utilities_mod, only : add_obs_to_seq, create_3d_obs
 
 use obs_seq_utilities_mod, only : print_obs_seq
 
-use airs_JPL_mod   ! need ', only' list here
+use airs_JPL_mod, only : AIRS_RET_H2OPRESSURELAY !need ', only' list here
 
 implicit none
 private
