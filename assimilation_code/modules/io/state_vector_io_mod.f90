@@ -178,7 +178,9 @@ type(adaptive_inflate_type), optional, intent(in) :: prior_inflate_handle
 type(adaptive_inflate_type), optional, intent(in) :: post_inflate_handle
 logical,                     optional, intent(in) :: perturb_from_single_copy
 
-logical :: inflation_handles = .false.
+logical :: inflation_handles 
+
+inflation_handles = .false.
 
 if ( .not. module_initialized ) call state_vector_io_init() ! to read the namelist
 
