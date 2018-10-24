@@ -4,6 +4,14 @@
 !
 ! $Id$
 
+
+!! THIS PROGRAM IS NOT FINISHED!  there are observations available in
+!! netcdf format, but there were some missing fields that made completing
+!! this program impossible.  We believe that now the missing data might
+!! be added to the netcdf format files, so this could be finished.
+!! It's in the release as-is so if someone wants to try to complete it
+!! they have something to start from.
+
 program convert_pb_netcdf
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -371,13 +379,13 @@ end select
 
 end subroutine look_up_grib_code
 
-subroutine look_up_message_type(msg_typ, obstype)
+subroutine look_up_message_type(msg_type, obstype)
 ! Find observation type from 
 ! http://www.emc.ncep.noaa.gov/mmb/data_processing/prepbufr.doc/table_4.htm
- character(len=6), intent(in)  :: msg_typ 
+ character(len=6), intent(in)  :: msg_type
  character(len=*), intent(out) :: obstype 
 
-select case (msg_typ)
+select case (msg_type)
   case ('ADPUPA')
     obstype = 'RADIOSONDE'   ! FIXME: DROPSONDE, too.
   case ('AIRCAR')
@@ -418,6 +426,7 @@ select case (msg_type)
         case (12)
            dart_obs_type = RADIOSONDE_TEMPERATURE
         case default
+           dart_obs_type = -1
       end select
   case ('AIRCAR')
   case ('AIRCFT')
