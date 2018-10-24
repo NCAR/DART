@@ -181,7 +181,7 @@ allocate(state_loc(NVARS*num_grid_points))
 ! Define the locations of the model state variables
 do i = 1, num_grid_points
    x_loc = (i - 1.0_r8) / num_grid_points
-   do j = 0, 4
+   do j = 0, NVARS - 1 
       state_loc(num_grid_points * j + i) = set_location(x_loc)
    enddo
 enddo
