@@ -669,44 +669,52 @@ if (inf_type == AND2009) then
    call linear_bayes(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd_2, gamma_corr, &
       new_cov_inflate)
 
-! Bail out to save cost when lower bound is reached on lambda standard deviation
-if(lambda_sd <= sd_lower_bound_in) then
-   new_cov_inflate_sd = lambda_sd
-else
-   ! Compute by forcing a Gaussian fit at one positive SD
-! First compute the new_max value for normalization purposes
-   new_max = compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, &
-                                    gamma_corr, new_cov_inflate)
-
-! Find value at a point one OLD sd above new mean value
+   ! Bail out to save cost when lower bound is reached on lambda standard deviation
+   ! The original test to see if lambda_sd was less than the lower bound
+   ! would sometimes return false because of roundoff error and the computation
+   ! would go through the expensive part of the code when the minimum was
+   ! really reached.  (sd_lower_bound comes from a namelist and precision
+   ! errors may be because of the conversion between ascii, single precision
+   ! and double precision.)  In any case, the test was changed to return if
+   ! the value is within TINY of the limit.
+   if(abs(lambda_sd - sd_lower_bound_in) <= TINY(0.0_r8)) then
+      new_cov_inflate_sd = lambda_sd
+      return
+   else
+      ! Compute by forcing a Gaussian fit at one positive SD
+      ! First compute the new_max value for normalization purposes
+      new_max = compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, &
+                                       gamma_corr, new_cov_inflate)
+   
+      ! Find value at a point one OLD sd above new mean value
       new_1_sd = compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, gamma_corr, &
       new_cov_inflate + lambda_sd)
-
-   ! If either the numerator or denominator of the following computation 
-   ! of 'ratio' is going to be zero (or almost so), return the original incoming
-   ! inflation value.  The computation would have resulted in either Inf or NaN.
-   if (abs(new_max) <= TINY(0.0_r8) .or. abs(new_1_sd) <= TINY(0.0_r8)) then
-      new_cov_inflate_sd = lambda_sd
-      return
-   endif
-
-   ratio = new_1_sd / new_max 
-
-   ! Another error for numerical issues; if ratio is larger than 0.99, bail out
-   if(ratio > 0.99) then
-      new_cov_inflate_sd = lambda_sd
-      return
-   endif
-
-   ! Can now compute the standard deviation consistent with this as
+   
+      ! If either the numerator or denominator of the following computation 
+      ! of 'ratio' is going to be zero (or almost so), return the original incoming
+      ! inflation value.  The computation would have resulted in either Inf or NaN.
+      if (abs(new_max) <= TINY(0.0_r8) .or. abs(new_1_sd) <= TINY(0.0_r8)) then
+         new_cov_inflate_sd = lambda_sd
+         return
+      endif
+   
+      ratio = new_1_sd / new_max 
+   
+      ! Another error for numerical issues; if ratio is larger than 0.99, bail out
+      if(ratio > 0.99) then
+         new_cov_inflate_sd = lambda_sd
+         return
+      endif
+   
+      ! Can now compute the standard deviation consistent with this as
       ! sigma = sqrt(-x^2 / (2 ln(r))  where r is ratio and x is lambda_sd (distance from mean)
-   new_cov_inflate_sd = sqrt( -1.0_r8 * lambda_sd_2 / (2.0_r8 * log(ratio)))
-
-   ! Prevent an increase in the sd of lambda???
-   ! For now, this is mostly countering numerical errors in this computation
-   if(new_cov_inflate_sd > lambda_sd) new_cov_inflate_sd = lambda_sd
-
-endif
+      new_cov_inflate_sd = sqrt( -1.0_r8 * lambda_sd_2 / (2.0_r8 * log(ratio)))
+   
+      ! Prevent an increase in the sd of lambda???
+      ! For now, this is mostly countering numerical errors in this computation
+      if(new_cov_inflate_sd > lambda_sd) new_cov_inflate_sd = lambda_sd
+   
+   endif
 
 else if (inf_type == GHA2017) then
 
@@ -718,9 +726,10 @@ else if (inf_type == GHA2017) then
                     gamma_corr, ens_size, rate, new_cov_inflate)
 
    ! Bail out to save cost when lower bound is reached on lambda standard deviation
-   if(lambda_sd <= sd_lower_bound_in) then
+   ! See comment in Anderson case for why we use abs and TINY for this comparison.
+   if(abs(lambda_sd - sd_lower_bound_in) <= TINY(0.0_r8)) then
       new_cov_inflate_sd = lambda_sd
-   
+      return 
    else
       ! Compute the shape parameter of the prior IG
       ! This comes from the assumption that the mode of the IG is the mean/mode of the input Gaussian
