@@ -106,6 +106,14 @@ if ( ! -e ${fgraph} ) then
       exit
    endif
 endif
+mv ${NML_MPAS} ${NML_MPAS}.tmp
+mv ${NML_INIT} ${NML_INIT}.tmp
+sed >! block.sed << EOF
+   /config_block_decomp_file_prefix /c\
+    config_block_decomp_file_prefix = '${MPAS_GRID}.graph.info.part.'
+EOF
+sed -f block.sed ${NML_MPAS}.tmp >! ${NML_MPAS}
+sed -f block.sed ${NML_INIT}.tmp >! ${NML_INIT}
 
 set n = 1
 while ( $n <= $ENS_SIZE )

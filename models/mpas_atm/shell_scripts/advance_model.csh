@@ -42,20 +42,28 @@
 set ensemble_member = $1
 set ensemble_max    = $2
 
+# Do you want to create lbc files?
+#-------------------------------------------------------------------
+set make_lbc  = true
+
 # Do you want to save horizontal winds in the analysis file?
 #-------------------------------------------------------------------
-set save_wind = true
+set save_wind = false
+
+# Do you want to save prior states before being overwritten at the next cycle?
+#-------------------------------------------------------------------
+set save_prior = true
 
 # mpi command
 #-------------------------------------------------------------------
 #set mpicmd = "mpi -n 4"			# Mac OS
 #set mpicmd = "mpirun.lsf"			# Yellowstone
-set mpicmd = "mpiexec_mpt dplace -s 1" 		# Cheyenne
+set mpicmd = "mpiexec_mpt"			# dplace -s 1"	# Cheyenne
 
 # Other commands
 #-------------------------------------------------------------------
 set  REMOVE = 'rm -rf'
-set    COPY = 'cp -p'
+set    COPY = 'cp -pf'
 set    MOVE = 'mv -f'
 set    LINK = 'ln -sf'
 unalias cd
@@ -148,14 +156,15 @@ while( $ensemble_member <= $ensemble_max )
    ${LINK} ${CENTRALDIR}/advance_time                  .         || exit 1
 
    # Get the files specific for this experiment
-   ${LINK} ${CENTRALDIR}/streams.atmosphere            .         || exit 1
    ${COPY} ${CENTRALDIR}/input.nml                     .         || exit 1
+   ${LINK} ${CENTRALDIR}/streams.atmosphere            .         || exit 1
    ${COPY} ${CENTRALDIR}/namelist.atmosphere           .         || exit 1
-   ${LINK} ${CENTRALDIR}/MPAS_RUN/${fs_grid}*          .	 || exit 1
+   ${LINK} ${CENTRALDIR}/${fs_grid}*                   .	 || exit 1
    if( $if_sfc_update == .true. || $if_sfc_update == true ) then
        ${LINK} ${CENTRALDIR}/${fsfc} .
        ls -lL $fsfc						 || exit 1
    endif
+   if($ensemble_member == 1) ${LINK} ${CENTRALDIR}/streams.atmosphere.tend streams.atmosphere || exit
 
    # Input analysis file
    set input_file = `head -n $ensemble_member ${CENTRALDIR}/${inlist}  | tail -1`
@@ -220,7 +229,7 @@ while( $ensemble_member <= $ensemble_max )
       @ assim_hour += ${thrs}
       set intv_utc = `echo $assim_days + 100 | bc | cut -b2-3`_`echo $assim_hour + 100 | bc | cut -b2-3`:`echo $assim_min + 100 | bc | cut -b2-3`:`echo $assim_secs + 100 | bc | cut -b2-3`
       set input_file  = ${fhead}`echo ${prev_utc} | sed -e 's/:/\./g'`
-      echo "With IAU, we run atmospher_model for ${assim_hour} hrs from ${prev_utc}."
+      echo "With IAU, we run atmosphere_model for ${assim_hour} hrs from ${prev_utc}."
 
       cat >! script.sed << EOF
    /config_start_time/c\
@@ -240,9 +249,36 @@ EOF
 
    endif	# if($is_iau_there == 1 && $is_iau_on == "'on'" ) then
 
+   echo  ${input_file}
    ls -l ${input_file}							|| exit
    if ( -e namelist.atmosphere )  ${REMOVE} namelist.atmosphere
    sed -f script.sed ${CENTRALDIR}/namelist.atmosphere >! namelist.atmosphere
+
+   # Prefix of a lateral boundary condition file if mpas is run in a limited-area mode
+   set fgrd = `grep init_template_filename input.nml | awk '{print $3}' | cut -d ',' -f1 | sed -e "s/'//g" | sed -e 's/"//g'`
+   set is_it_regional = `ncdump -h $fgrd | grep bdyMask | wc -l`
+   if ( $is_it_regional > 0 ) then
+        set fbdy = `sed -n '/<immutable_stream name=\"lbc_in\"/,/\/>/{/Scree/{p;n};/##/{q};p}' ${STREAM_ATM} | \
+                    grep filename_template | awk -F= '{print $2}' | awk -F$ '{print $1}' | sed -e 's/"//g'`
+        set flbc = ${fbdy}.`echo ${anal_utc} | sed -e 's/:/\./g'`.nc
+        ls -l ${flbc} 					|| exit
+
+        # update_bc with the analysis - even for edge winds
+        cat >! bc.sed << EOF
+        s/flbc/${flbc}/g
+        s/fanl/${input_file}/g
+        s/fini/${fgrd}/g
+EOF
+        sed -f bc.sed ${CENTRALDIR}/update_bc.ncl >! update_bc.ncl  	|| exit
+        ncl update_bc.ncl
+   #else
+   #FIXME: S. Ha - We may want to use the same streams.atmosphere in both global and regional modes.
+   #       This means that we would always have an lbc_in input stream.
+   #       In case of the global mode, all we need might be just to set input_interval as none.
+   #       Then should we update streams.atmosphere for that? Not sure yet if the global MPAS will
+   #       fail with this additional input stream or simply ignore it (as of Nov-29-2017).
+   #       For now, I am just testing the regional MPAS with this script.
+   endif
 
    # clean out any old log files
    if ( -e log.0000.out ) ${REMOVE} log.*
@@ -255,6 +291,7 @@ EOF
   
    # Model output at the target time
    set output_file = ${fhead}`echo ${targ_utc} | sed -e 's/:/\./g'`.nc
+   set   diag_file = ${fdiag}`echo ${targ_utc} | sed -e 's/:/\./g'`.nc
    set date_utc = `ncdump -v xtime ${output_file} | tail -2 | head -1 | cut -d";" -f1 | sed -e 's/"//g'`
 
    # Check if the model was succefully completed.
@@ -264,8 +301,35 @@ EOF
       exit 1
    endif
 
+   # Create lbc file at the target time.
+   #-------------------------------------------------------------------
+   if($make_lbc == true) then
+      set fini = `sed -n '/<immutable_stream name=\"input\"/,/\/>/{/Scree/{p;n};/##/{q};p}' streams.atmosphere | \
+                    grep filename_template | awk -F= '{print $2}' | awk -F$ '{print $1}' | sed -e 's/"//g'`
+      set g_lbc = `sed -n '/<stream name=\"mpas_lbcs\"/,/<\/stream>/{/Scree/{p;n};/##/{q};p}' streams.atmosphere | \
+                    grep filename_template | awk -F= '{print $2}' | awk -F$ '{print $1}' | sed -e 's/"//g'`
+      set tlbc = `echo $date_utc | cut -d : -f1` 
+      set glbc = ${g_lbc}${tlbc}.nc
+      set flbc = lbc.${tlbc}.nc
+      ls -lL ${glbc}					|| exit
+      ../create_lbc.csh $fini $glbc >&! create_lbc.${tlbc}.log
+      ls -lL ${flbc}         				|| exit
+      ${MOVE} ${glbc} ${g_lbc}${tlbc}.fcst${assim_hour}h.nc
+   endif
+   set ttnd = `echo ${date_utc} | sed -e 's/:/\./g'`
+   set tnd0 = tendencies.`echo ${anal_utc} | sed -e 's/:/\./g'`.nc
+   if( -e tendencies.${ttnd}.nc ) ${MOVE} tendencies.${ttnd}.nc tendencies.${tlbc}.fcst${assim_hour}h.nc
+   ${MOVE} $diag_file ${fdiag}${tlbc}.fcst${assim_hour}h.nc
+   ${REMOVE} ${tnd0}
+
    # Back up some fields and clean up.
    #-------------------------------------------------------------------
+   if($save_prior == true) then
+      set t_pr = `echo $date_utc | cut -d : -f1` 
+      ncks -O -v xtime,theta,rho,u,w,qv,qc,qr ${output_file} prior.${t_pr}.nc
+      ls -l prior.${t_pr}.nc
+   endif
+
    if($save_wind == true) then
  
    set if_u_used = `grep use_u_for_wind input.nml | awk '{print $3}' | cut -d ',' -f1`
@@ -278,8 +342,7 @@ EOF
    endif
 
    endif	#($save_wind == true) then
-
-   ${REMOVE} ${fdiag}*.nc
+   #${REMOVE} ${fdiag}*.nc
 
    # Change back to the top directory.
    #-------------------------------------------------------------------

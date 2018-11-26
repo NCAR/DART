@@ -1,4 +1,4 @@
-# Template for GNU gfortran on Linux or Mac OSX
+# Template for Intel ifort and Mac OSX
 #
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
@@ -9,57 +9,108 @@
 # typical use with mkmf
 # mkmf -t mkmf.template.xxxx ...
 #
-# Suggested (perhaps required) flags:
-# -ffree-line-length-none   handles "long" lines - i.e. longer than 72 chars
+# FFLAGS   useful for DEBUGGING. NOTE: The intel compiler can provide a lot more
+#          information if you LEAVE the object and module files intact.
+#          Do not remove the *.o and *.mod files when debugging code.
 #
-# Suggested debugging flags:
-#  -g                  add debugging information to executable
-#  -Wuninitialized     catch uninitialized variables
-#  -Wunused            issue warning for unused variables - keeps code clean
-#  -fbacktrace         runtime errors try to print out a stack backtrace
-#  -fbounds-check      add runtime-checking for out-of-range array indices
-#  -ffpe-trap=invalid,zero,overflow
-#                      stop on floating point errors
+#     -g       include debugging information.  these are all synonyms.
+#     -debug full
+#     -debug all
+#     -O0      setting -g will make this the default (no optimization).
+#              it is possible to set -g and then explicitly set -O2 if
+#              the behavior being debugged depends on optimization changes.
+#     -ftrapuv   traps if a local variable is used before being set
+#     -C       enables all runtime checks.  -C and -check all are synonyms.
+#     -check all
+#     -check <keywords>    enables/disables more specific runtime checks.
+#           keywords:  [arg_temp_created,bounds,overflow,format,pointers,uninit]
+#     -warn <keywords>  the level of warning messages issued.
+#           keywords:  [alignments, argument_checking, declarations,
+#                      errors, fileopt, general, ignore_loc,
+#                      stderrors, truncated_source, uncalled,
+#                      uninitialized, unused, usage, all]
+#     -fp-stack-check  catches conditions where the FP stack is not correct.
+#           Typically this is when a real function is called as if it were a
+#           subroutine, OR a subroutine is called as if it were a function (return
+#           values left of FP stack OR too much data is taken off the FP stack)
+#     -vec-reportN  controls how much diagnostic output is printed about
+#                   loops vectorized by the compiler. N = 0 is silent,
+#                   N can have values up to 5.
+#     -traceback    tells the compiler to generate extra information in the
+#                   object file to provide source file traceback information
+#                   when a severe error occurs at run time
 #
-#  earlier versions of this mkmf file listed 'precision' as one of the options on
-#  the fpe-trap line.  this is not recommended anymore as some of the gfortran internal
-#  routines will trap, as well as some perfectly valid DART computations.
+# FFLAGS   useful for bitwise reproducibility and accuracy control
+#          (these will slow down performance to various degrees)
+#     -fp-model precise    control how floating point roundoff is done so it is
+#                          reproducible from run to run.  in simple tests this
+#                          flag alone was enough to create bitwise reproducible
+#                          code but slowed execution significantly.
+#     -ftz        'flush to zero' underflows result in zero.  set by default if
+#                 any -O other than -O0 set, or if -fpe0 or -fpe1 set.
+#     -fpeN       controls floating point exception handling.  -fpe0 rounds underflow
+#                 to zero and traps on any other exception type.
+#     -pc80       set internal FPU precision to 64 bit significand
+#                 (default is -pc64 with 53 internal bits)
 #
-# Generally not needed but possibly useful for non-DART code:
+# FFLAGS   useful for production
+#     -O2        default.  optimize without too much unrepeatable numerical games
+#     -O3        more aggressive optimizations.  check numerical differences
+#                before using this indiscriminately.
+#     -O1        if you get compile-time errors about out of memory or unable to
+#                complete compilation because of complexity, try lowering the
+#                optimization level on the offending source files.
+#     -ipo       enable optimizations between routines in separate source files
+#     -heap-arrays 10    allocate large arrays from the heap instead of putting them
+#                on the stack.  the number is the limit in KB for when arrays
+#                move from the stack to the heap.  this can help if you get stack
+#                overflow errors and cannot increase the stack size more.
+#                allocating from the stack is faster, but it's usually a smaller
+#                size than the heap.
+#     -x, -m, -ax, -mcode, -march   all these flags tell the compiler to generate
+#                processor-specific or vector instructions.  either 'man ifort' or
+#                ifort --help to see what the current list of options are and
+#                which have priority over the others.
+#                (for those running on yellowstone, -axavx will enable the advanced
+#                vector instructions available on the sandy bridge processors.)
+#     -assume buffered_io  allows the runtime library to buffer up individual
+#                writes before calling the operating system.  in particular, we
+#                write our observation sequence files as a series of many individual
+#                calls to the write() routine.  when debugging you do not want to
+#                buffer so you can see the last output before the program dies.
+#                for production, however, you want to batch up writes into larger
+#                blocks before stopping to do i/o to disk.  an alternative at
+#                runtime is to set FORT_BUFFERED to 'true' in your environment.
+#                (e.g. csh family: setenv FORT_BUFFERED true    or
+#                ksh family: export FORT_BUFFERED=true).  
 #
-# -ffree-form          forces input file to be read as free format regardless
-#                      of what file extension it has.
 #
-# -fdefault-real-8     force all real variables to be real*8.  not needed for DART code
-#                      since all real variables in DART are declared with a size.
+# FFLAGS   possibly useful, not normally used by DART
+#     -fpp     run Fortran preprocessor on source files prior to compilation
+#     -free    interpret source as free-format, regardless of file extension
+#     -r8      specify default real size.  note that for DART we use explicit
+#              types on all our real values so this will not change anything
+#              inside DART.   see DART/common/types_mod.f90 if you must run
+#              with single precision reals.
+#     -convert big_endian         useful if you're on the wrong architecture.
+#              however this controls both reading and writing so you can't
+#              use it as a conversion mechanism unless you write files out
+#              in ascii format.  applies to all unformatted fortran i/o.
+#     -assume  byterecl ... more 'industry-standard' direct-access behavior
+#              controls what units the RECL (record length) specifier returns.
 #
-#    NOTE: Some previous versions of the gfortran compiler (including 4.1.2)
-#    changed the record marker size to 8 bytes, which made binary files written
-#    with the 'unformatted' option unreadable by programs compiled with other
-#    compilers.  Later versions of the compiler changed the default back to 4 bytes.
-#    If you have a version that defaults to 8 byte record markers, use this 
-#    compile time flag:
-#       -frecord-marker=4
-#    If you have files written by older versions of the gfortran compiler that
-#    cannot be read now, try this compile time flag:
-#       -frecord-marker=8 
+# Runtime environment variables that influence the compiler behavior:
 #
-# Convert big-endian or little-endian binary files at runtime:
+# Make output lines for fortran write statements longer without wrapping:
+#   setenv FORT_FMT_RECL 512  (or any length)
 #
-# setenv GFORTRAN_CONVERT_UNIT 'big_endian'
-#    Treats ALL units as big_endian
 #
-# setenv GFORTRAN_CONVERT_UNIT 'big_endian;native:10-20'
-#    Treats units 10-20 as big_endian but the rest are 'native' 
-#
-# for more information on unit conversions:
-# http://gcc.gnu.org/onlinedocs/gfortran/GFORTRAN_005fCONVERT_005fUNIT.html#GFORTRAN_005fCONVERT_005fUNIT
-#
+# IF YOU HAVE MORE CURRENT COMPILER INFORMATION, PLEASE SHARE IT WITH US.
 
 MPIFC = mpif90
 MPILD = mpif90
-FC = gfortran
-LD = gfortran
+FC = ifort
+LD = ifort
 
 # DISCUSSION ABOUT NETCDF. DART works with both V3 and V4 flavors of netCDF.
 # Some V4 installations also require the HDF5 libraries. Some don't.
@@ -70,7 +121,7 @@ LD = gfortran
 # LIBS = -L$(NETCDF)/lib -lnetcdf
 # LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
 # LIBS = -L$(NETCDF)/lib -lnetcdf           -lcurl -lhdf5_hl -lhdf5 -lz -lm
-# LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf -lcurl -lhdf5_hl -lhdf5 -lz -lm
+# LIBS = -L$(NETCDF)/lib -lnetcdf -lnetcdff -lcurl -lhdf5_hl -lhdf5 -lz -lm
 #
 # If you get an error "ld: library not found for -lnetcdff" (note 2 f's),
 # remove it from the LIBS line. The same is true for any library. If 'ld'
@@ -84,11 +135,22 @@ LD = gfortran
 
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
-FFLAGS  = -O2 -ffree-line-length-none $(INCS)
-LDFLAGS = $(FFLAGS) $(LIBS)
 
-# FFLAGS = -g -Wuninitialized -Wunused -ffree-line-length-none -fbounds-check \
-#          -fbacktrace -ffpe-trap=invalid,zero,overflow $(INCS)
+# for Intel 9.x:
+#FFLAGS  = $(INCS) -O2
+#LDFLAGS = $(INCS) -Wl,-stack_size,10000000 $(LIBS)
+
+# for Intel 10.x and beyond:
+#FFLAGS  = $(INCS) -O2 -m64 -heap-arrays -assume buffered_io
+LDFLAGS = $(INCS) $(LIBS)
+
+# for development or debugging, use this instead:
+ FFLAGS = -g -C -check noarg_temp_created -fpe0  \
+          -fp-model precise  -ftrapuv -traceback $(INCS) 
+#
+# If you get this error: libimf.so: warning: warning: feupdateenv is not implemented
+# try adding: -limf -lm to your LIBS line.
+
 
 # <next few lines under version control, do not edit>
 # $URL$

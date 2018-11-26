@@ -17,8 +17,8 @@ use utilities_mod, only    : register_module, error_handler,             &
 use time_manager_mod, only : time_type, set_time
 
 
-!#ifdef __NAG__
- !use F90_unix_proc, only : sleep, system, exit
+! !!NAG_BLOCK_EDIT START COMMENTED_OUT
+! use F90_unix_proc, only : sleep, system, exit
  !! block for NAG compiler
  !  PURE SUBROUTINE SLEEP(SECONDS,SECLEFT)
  !    INTEGER,INTENT(IN) :: SECONDS
@@ -32,7 +32,7 @@ use time_manager_mod, only : time_type, set_time
  !  SUBROUTINE EXIT(STATUS)
  !    INTEGER,OPTIONAL :: STATUS
  !! end block
-!#endif
+! !!NAG_BLOCK_EDIT END COMMENTED_OUT
 
 
 implicit none
@@ -46,16 +46,16 @@ private
 ! this directory.  It is a sed script that comments in and out the interface
 ! block below.  Please leave the BLOCK comment lines unchanged.
 
-! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
-! ! interface block for getting return code back from system() routine
-! interface
-!  function system(string)
-!   character(len=*) :: string
-!   integer :: system
-!  end function system
-! end interface
-! ! end block
-! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
+ !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
+ ! interface block for getting return code back from system() routine
+ interface
+  function system(string)
+   character(len=*) :: string
+   integer :: system
+  end function system
+ end interface
+ ! end block
+ !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
 
 
 interface sum_across_tasks
@@ -288,23 +288,6 @@ if (present(time)) time = set_time(0, 0)
 end subroutine receive_from
 
 
-
-!-----------------------------------------------------------------------------
-! TODO: do i need to overload this for both integer and real?
-!       do i need to handle 1D, 2D, 3D inputs?
-
-subroutine transpose_array
-
-! not implemented here yet.  will have arguments -- several of them.
-
-if ( .not. module_initialized ) call initialize_mpi_utilities()
-
-write(errstring, *) 'not implemented yet'
-call error_handler(E_ERR,'transpose_array', errstring, source, revision, revdate)
-
-end subroutine transpose_array
-
-
 !-----------------------------------------------------------------------------
 ! TODO: do i need to overload this for both integer and real?
 !       do i need to handle 2D inputs?
@@ -331,43 +314,6 @@ endif
 
 end subroutine array_broadcast
 
-
-!-----------------------------------------------------------------------------
-! TODO: do i need to overload this for both integer and real?
-!       do i need to handle 2D inputs?
-
-subroutine array_distribute(srcarray, root, dstarray, dstcount, how, which)
-real(r8), intent(in)  :: srcarray(:)
-integer,  intent(in)  :: root
-real(r8), intent(out) :: dstarray(:)
-integer,  intent(out) :: dstcount
-integer,  intent(in)  :: how
-integer,  intent(out) :: which(:)
-
-! 'srcarray' on the root task will be distributed across all the tasks
-! into 'dstarray'.  dstarray must be large enough to hold each task's share
-! of the data.  The actual number of values returned on each task will be
-! passed back in the 'count' argument.  'how' is a flag to select how to
-! distribute the data (round-robin, contiguous chunks, etc).  'which' is an
-! integer index array which lists which of the original values were selected
-! and put into 'dstarray'.
-
-integer :: i
-
-if ( .not. module_initialized ) call initialize_mpi_utilities()
-
-! simple idiotproofing
-if ((root < 0) .or. (root >= total_tasks)) then
-   write(errstring, '(a,i8,a,i8)') "root task id ", root, &
-                                   "must be >= 0 and < ", total_tasks
-   call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
-endif
-
-dstarray = srcarray
-dstcount = size(srcarray)
-which = (/ ((i), i=1,size(srcarray))  /)
-
-end subroutine array_distribute
 
 !-----------------------------------------------------------------------------
 ! DART-specific cover utilities
@@ -522,8 +468,14 @@ character(len=255) :: doit
    !print *, "about to run: ", trim(doit)
    !print *, "input string length = ", len(trim(doit))
 
-   shell_execute = system(doit)
-   print *, "execution returns, rc = ", shell_execute
+! !!NAG_BLOCK_EDIT START COMMENTED_OUT
+!   call system(doit, status=rc)
+!   shell_execute = rc
+! !!NAG_BLOCK_EDIT END COMMENTED_OUT
+  !!OTHER_BLOCK_EDIT START COMMENTED_IN
+    shell_execute = system(doit)
+  !!OTHER_BLOCK_EDIT END COMMENTED_IN
+   !print *, "execution returns, rc = ", shell_execute
 
 end function shell_execute
 
@@ -718,6 +670,9 @@ end module mpi_utilities_mod
 !-----------------------------------------------------------------------------
 
 subroutine exit_all(exit_code)
+! !!NAG_BLOCK_EDIT START COMMENTED_OUT
+! use F90_unix_proc, only : exit
+! !!NAG_BLOCK_EDIT END COMMENTED_OUT
  integer, intent(in) :: exit_code
 
 ! Call exit with the specified code.
