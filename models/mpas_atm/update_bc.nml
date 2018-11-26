@@ -1,0 +1,12 @@
+
+&update_bc_nml
+   input_restart_files     = ''
+   input_restart_file_list = '',
+   output_restart_files     = '',
+   output_restart_file_list = '',
+   ens_size                = 1
+   blending_method         = 1
+   use_only_qtys           = '',
+   single_restart_file_in  = .false.,
+ /
+

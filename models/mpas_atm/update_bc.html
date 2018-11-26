@@ -1,0 +1,346 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>program update_bc</TITLE>
+<link rel="stylesheet" type="text/css" href="../../../documentation/html/doc.css" />
+<link href="../../../documentation/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>PROGRAM <em class=program>update_bc</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../../documentation/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../../documentation/index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+Utility program to blend the boundary cells at the edge of
+a regional MPAS grid between the updated values after an
+assimilation and the original values?  the global grid values?
+what do boundary files look like?
+
+<br />FIXME BELOW HERE:
+
+Utility program to compare the ensemble mean to an ensemble of
+restart files, which can now be run in parallel.  
+The program prints out a sorted order of which
+members are 'closest' to the mean, where the method used to determine 
+'close' is selectable by namelist option.  It also creates a file with
+a single number or character string in it, for ease in scripting, which
+identifies the closest member.
+</P><P>
+The ensemble mean is computed from the input ensemble.
+The difference is computed point by point across the ensemble members.
+There is an option to restrict the computation to just a subset of the
+entire state vector by listing one or more generic quantities.
+In this case, only state vector items matching one of these quantities
+will contribute to the total difference value.
+</P><P>
+Available methods are:
+</P>
+<dl>
+<dt>1 - simple absolute difference:</dt>
+<dd>
+The absolute value of the difference between each item in the 
+mean vector and the corresponding item in each ensemble member, 
+accumulated over the entire state vector.
+</dd>
+<dt>2 - normalized absolute difference:</dt>
+<dd>
+The absolute value of the difference between each item in the 
+mean vector and the corresponding item in each ensemble member
+normalized by the mean value,
+accumulated over the entire state vector.
+</dd>
+<dt>3 - simple RMS difference:</dt>
+<dd>
+The square root of the accumulated sum of the 
+square of the difference between each item in the mean vector 
+and the corresponding item in each ensemble member.
+</dd>
+<dt>4 - normalized RMS difference:</dt>
+<dd>
+The square root of the accumulated sum of the 
+square of the normalized difference between each item in the mean 
+vector and the corresponding item in each ensemble member.
+</dd>
+</dl>
+<P>
+This program could be used to select one or more ensemble
+members to run a free model forecast forward in time after
+the assimilation is finished.  Each member is an equally likely
+representation of the model state.  Using the ensemble mean
+may not be the best choice since the mean may not have
+self-consistent fine-scale structures in the data.
+</P><P>
+In addition to printing out data about all members to both
+the console and to the dart log file, this program creates
+a single output file containing information about the closest member.
+If the input restart data is in a single file, the output
+file 'closest_restart' contains a single number which is
+the ensemble member number.  
+If the input restart data is in separate files, the output file
+contains the full filename of the closest member, e.g.
+'filter_restart.0004' if member 4 is closest.  For scripting
+the contents of this file can be used to copy the corresponding
+member data and convert it to the model input format for a 
+free forecast, for example.
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST ====================-->
+<!--==================================================================-->
+
+<P></P>
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;update_bc_nml
+   input_restart_files     = ''
+   input_restart_file_list = ''      
+   output_file_name        = 'closest_restart'
+   ens_size                = 1
+   difference_method       = 4      
+   use_only_qtys           = ''
+   single_restart_file_in  = .false.      
+  /
+</pre>
+</div>
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD>input_restart_files</TD>
+    <TD>character(len=256),dimension(ens_size x num_domains)</TD>
+<TD>An array of filenames each containing a list DART restart data.
+</TD></TR>
+
+<TR><TD>input_restart_file_list</TD>
+    <TD>character(len=256),dimension(num_domains)</TD>
+<TD>A file containing a list of filenames for DART restart data, one for each domain.
+</TD></TR>
+
+<TR><TD>output_file_name</TD>
+    <TD>character(len=256)</TD>
+    <TD> This is a file containing the member number that is closest to the ensemble mean.
+</TD></TR>
+
+<TR><TD>ens_size</TD>
+    <TD>integer</TD>
+    <TD>Total number of ensemble members.
+</TD></TR>
+
+<TR><TD>difference_method</TD>
+    <TD>integer</TD>
+    <TD>Select which method is used to compute 'distance' from mean:
+<UL style="list-style: none;">
+<LI>1 = simple absolute difference</LI>
+<LI>2 = absolute difference normalized by the mean</LI>
+<LI>3 = simple RMS difference</LI>
+<LI>4 = RMS of the normalized difference</LI>
+</UL>
+</TD></TR>
+
+<TR><TD>use_only_quantities</TD>
+    <TD>character(len=32)</TD>
+    <TD>If unspecified, all items in the state vector contribute to the total
+difference.  If one or more quantities are listed here, only items in the state
+vector of these quantities contribute to the total difference.  These are the
+generic quantities, such as QTY_TEMPERATURE, QTY_U_WIND_COMPONENT, QTY_DENSITY,
+etc. and not specific types like RADIOSONDE_TEMPERATURE.  Consult the model
+interface code to determine which possible quantities are returned by the 
+<a href="../../../models/template/model_mod.html#get_state_meta_data">get_state_meta_data()</a>
+routine.
+</TD></TR>
+
+<!--TR><TD>single_restart_file_in</TD> @>todo : not tested yet
+    <TD>logical</TD>
+    <TD>Not supported yet.  Contact dart@ucar.edu if you are
+        interested in using this tool with files that contain all
+        ensemble members in a single file.
+</TD></TR-->
+
+</TBODY> 
+</TABLE>
+</div>
+
+<P>
+Below is an example of a typical namelist for the
+update_bc.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;update_bc_nml
+   input_restart_files     = ''
+   input_restart_file_list = 'restart_list.txt'      
+   output_file_name        = 'closest_restart.txt'
+   ens_size                = 3
+   single_restart_file_in  = .false.      
+   difference_method       = 4      
+   use_only_qtys           = ''
+  /
+</pre>
+</div>
+
+<P>
+where restart_list.txt contains 
+</P>
+
+<pre>
+cam_restart_0001.nc
+cam_restart_0002.nc
+cam_restart_0003.nc
+</pre>
+
+
+<P>
+Currently single_restart_file_in is not supported.  This is
+typically used for simpler models that have built in model
+advances such as lorenz_96.
+</P>
+
+<br />
+<br />
+
+<br />
+<br />
+
+<!--==================================================================-->
+
+<!-- A NAME="Modules"></A> @>todo modules have too many dependencies to make this meaninful
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>MODULES USED</H2>
+<PRE>
+types_mod
+time_manager_mod
+utilities_mod
+sort_mod
+assim_model_mod
+mpi_utilities_mod
+</PRE-- >
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<UL><LI>inputfile.####.nc   (list of restarts to find closest member) or,
+    <LI>input_file_list.txt (a file containing a list of restart files) and,
+    <LI>update_bc.nml 
+</UL>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ul>
+<li> none </li>
+</ul>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>update_bc</TD>
+    <!-- message --><TD VALIGN=top>Invalid method number</TD>
+    <!-- comment --><TD VALIGN=top>Values 1-4 are supported</TD></TR>
+
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright UCAR. This open source software is provided
+by UCAR, "as is", without charge, subject to all terms of use at
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>
