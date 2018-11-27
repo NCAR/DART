@@ -520,12 +520,12 @@ do copy = 1, num_fwd_ops
    if(istatus(copy) == 0) then
       if ((assimilate_ob .or. evaluate_ob) .and. (expected_obs(copy) == missing_r8)) then
          write(msgstring, *) 'istatus was 0 (OK) but forward operator returned missing value.'
-         call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+         call error_handler(E_ERR,'check_forward_operator_istatus', msgstring, source, revision, revdate)
       endif
    ! Negative istatus
    else if (istatus(copy) < 0) then
       write(msgstring, *) 'istatus must not be <0 from forward operator. 0=OK, >0 for error'
-      call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+      call error_handler(E_ERR,'check_forward_operator_istatus', msgstring, source, revision, revdate)
    endif
 
 enddo
