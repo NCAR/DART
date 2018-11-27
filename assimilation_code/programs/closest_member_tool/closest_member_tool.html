@@ -36,8 +36,8 @@
 <H2>Overview</H2>
 
 <P>
-Utility program to compare the ensemble mean to an ensemble of
-restart files, which can now be run in parallel.  
+Utility program to compare the ensemble mean to a group of ensemble
+member restart files, which can now be run in parallel.  
 The program prints out a sorted order of which
 members are 'closest' to the mean, where the method used to determine 
 'close' is selectable by namelist option.  It also creates a file with
@@ -85,7 +85,7 @@ This program could be used to select one or more ensemble
 members to run a free model forecast forward in time after
 the assimilation is finished.  Each member is an equally likely
 representation of the model state.  Using the ensemble mean
-may not be the best choice since the mean may not have
+may not be the best since the mean may not have
 self-consistent fine-scale structures in the data.
 </P><P>
 In addition to printing out data about all members to both
@@ -93,8 +93,8 @@ the console and to the dart log file, this program creates
 a single output file containing information about the closest member.
 If the input restart data is in a single file, the output
 file 'closest_restart' contains a single number which is
-the ensemble member number.  
-If the input restart data is in separate files, the output file
+the ensemble member number.  If the
+input restart data is in separate files, the output file
 contains the full filename of the closest member, e.g.
 'filter_restart.0004' if member 4 is closest.  For scripting
 the contents of this file can be used to copy the corresponding

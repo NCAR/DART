@@ -39,9 +39,11 @@ use time_manager_mod, only : time_type, get_time, set_time
 use mpi
 
 ! the NAG compiler needs these special definitions enabled
+! but we don't preprocess this file (why?) so you have to
+! edit this by hand for NAG.
 
-! !!NAG_BLOCK_EDIT START COMMENTED_OUT
-! use F90_unix_proc, only : sleep, system, exit
+!#ifdef __NAG__
+ !use F90_unix_proc, only : sleep, system, exit
  !! block for NAG compiler
  !  PURE SUBROUTINE SLEEP(SECONDS,SECLEFT)
  !    INTEGER,INTENT(IN) :: SECONDS
@@ -55,7 +57,7 @@ use mpi
  !  SUBROUTINE EXIT(STATUS)
  !    INTEGER,OPTIONAL :: STATUS
  !! end block
-! !!NAG_BLOCK_EDIT END COMMENTED_OUT
+!#endif
 
 implicit none
 private
@@ -70,16 +72,16 @@ private
 ! this directory.  It is a sed script that comments in and out the interface
 ! block below.  Please leave the BLOCK comment lines unchanged.
 
- !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
- ! interface block for getting return code back from system() routine
- interface
-  function system(string)
-   character(len=*) :: string
-   integer :: system
-  end function system
- end interface
- ! end block
- !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
+! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
+! ! interface block for getting return code back from system() routine
+! interface
+!  function system(string)
+!   character(len=*) :: string
+!   integer :: system
+!  end function system
+! end interface
+! ! end block
+! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
 
 
 ! allow global sum to be computed for integers, r4, and r8s
@@ -753,6 +755,26 @@ if (verbose) write(*,*) "PE", myrank, ": end of receive_from "
 end subroutine receive_from
 
 
+
+!-----------------------------------------------------------------------------
+! TODO: do i need to overload this for both integer and real?
+!       do i need to handle 1D, 2D, 3D inputs?
+
+subroutine transpose_array
+
+! not implemented here yet.  will have arguments -- several of them.
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'transpose_array', errstring, source, revision, revdate)
+endif
+
+write(errstring, *) 'not implemented yet'
+call error_handler(E_ERR,'transpose_array', errstring, source, revision, revdate)
+
+end subroutine transpose_array
+
+
 !-----------------------------------------------------------------------------
 ! TODO: do i need to overload this for both integer and real?
 !       do i need to handle 2D inputs?
@@ -840,6 +862,123 @@ if (make_copy_before_broadcast) deallocate(tmpdata)
 
 end subroutine array_broadcast
 
+
+!-----------------------------------------------------------------------------
+! TODO: do i need to overload this for both integer and real?
+!       do i need to handle 2D inputs?
+
+subroutine array_distribute(srcarray, root, dstarray, dstcount, how, which)
+ real(r8), intent(in) :: srcarray(:)
+ integer, intent(in) :: root
+ real(r8), intent(out) :: dstarray(:)
+ integer, intent(out) :: dstcount
+ integer, intent(in) :: how
+ integer, intent(out) :: which(:)
+
+! 'srcarray' on the root task will be distributed across all the tasks
+! into 'dstarray'.  dstarray must be large enough to hold each task's share
+! of the data.  The actual number of values returned on each task will be
+! passed back in the 'count' argument.  'how' is a flag to select how to
+! distribute the data (round-robin, contiguous chunks, etc).  'which' is an
+! integer index array which lists which of the original values were selected
+! and put into 'dstarray'.
+
+real(r8), allocatable :: localchunk(:)
+integer :: srccount, leftover
+integer :: i, tag, errcode
+logical :: iamroot
+integer :: status(MPI_STATUS_SIZE)
+
+if ( .not. module_initialized ) then
+   write(errstring, *) 'initialize_mpi_utilities() must be called first'
+   call error_handler(E_ERR,'array_distribute', errstring, source, revision, revdate)
+endif
+
+! simple idiotproofing
+if ((root < 0) .or. (root >= total_tasks)) then
+   write(errstring, '(a,i8,a,i8)') "root task id ", root, &
+                                   "must be >= 0 and < ", total_tasks
+   call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+endif
+
+iamroot = (root == myrank)
+tag = 1
+
+srccount = size(srcarray)
+
+! TODO: right now this code does contig chunks only
+! TODO: it should select on the 'how' argument
+dstcount = srccount / total_tasks
+leftover = srccount - (dstcount * total_tasks)
+if (myrank == total_tasks-1) dstcount = dstcount + leftover
+
+
+! idiotproofing, continued...
+if (size(dstarray) < dstcount) then
+   write(errstring, '(a,i8,a,i8)') "size of dstarray is", size(dstarray), & 
+                      " but must be >= ", dstcount
+   call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+endif
+if (size(which) < dstcount) then
+   write(errstring, '(a,i8,a,i8)') "size of which is", size(which), & 
+                      " but must be >= ", dstcount
+   call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+endif
+
+! TODO: this code is separate from the 'dstcount' computation because we
+! need to test to be sure the user has passed us in arrays large enough to
+! hold the data, but then this section needs to have a select (how) and set
+! the corresponding index numbers accordingly.
+which(1:dstcount) = (/ (i, i= myrank *dstcount, (myrank+1)*dstcount - 1) /)
+if (size(which) > dstcount) which(dstcount+1:) = -1
+   
+
+if (.not.iamroot) then
+
+   ! my task is receiving data.
+   call MPI_Recv(dstarray, dstcount, datasize, root, MPI_ANY_TAG, &
+                 my_local_comm, status, errcode)
+   if (errcode /= MPI_SUCCESS) then
+      write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
+      call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+   endif
+
+else
+   ! my task must send to everyone else and copy to myself.
+   allocate(localchunk(dstcount), stat=errcode)  
+   if (errcode /= 0) then
+      write(errstring, *) 'allocation error of allocatable array'
+      call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+   endif
+
+   do i=0, total_tasks-1
+      ! copy correct data from srcarray to localchunk for each destination
+      if (i == myrank) then
+         ! this is my task, so do a copy from localchunk to dstarray
+         dstarray(1:dstcount) = localchunk(1:dstcount)
+      else
+         ! call MPI to send the data to the remote task
+         call MPI_Ssend(localchunk, dstcount, datasize, i, tag, &
+                        my_local_comm, errcode)
+         if (errcode /= MPI_SUCCESS) then
+            write(errstring, '(a,i8)') 'MPI_Ssend returned error code ', errcode
+            call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+         endif
+      endif
+      tag = tag + 1
+   enddo
+
+   deallocate(localchunk, stat=errcode)  
+   if (errcode /= 0) then
+      write(errstring, *) 'deallocation error of allocatable array'
+      call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+   endif
+endif
+   
+! set any additional space which wasn't filled with zeros.
+if (size(dstarray) > dstcount) dstarray(dstcount+1:) = 0.0
+
+end subroutine array_distribute
 
 !-----------------------------------------------------------------------------
 ! DART-specific cover utilities
@@ -1244,8 +1383,7 @@ end subroutine unpackscalar
 !-----------------------------------------------------------------------------
 ! overloaded global reduce routines
 
-! The external32 representations of the datatypes returned by 
-! MPI_TYPE_CREATE_F90_REAL/COMPLEX/INTEGER are given by the following rules.
+! The external32 representations of the datatypes returned by MPI_TYPE_CREATE_F90_REAL/COMPLEX/INTEGER are given by the following rules.
 ! For MPI_TYPE_CREATE_F90_REAL:
 ! 
 !    if      (p > 33) or (r > 4931) then  external32 representation 
@@ -1354,7 +1492,6 @@ sum = localsum(1)
 
 end subroutine sum_across_tasks_real
 
-
 !-----------------------------------------------------------------------------
 ! pipe-related utilities
 !-----------------------------------------------------------------------------
@@ -1401,12 +1538,12 @@ if ((myrank == head_task) .and. separate_node_sync) then
 
    if (async4_verbose) then
       write(*,*)  'checking master task host'
-      call do_system('echo master task running on host `hostname`', rc)
+      rc = system('echo master task running on host `hostname`'//' '//char(0))
       if (rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
    endif
 
    if (async4_verbose .or. print4status) write(*,*) 'MPI job telling script to advance model'
-   call do_system('echo advance > '//trim(non_pipe), rc)
+   rc = system('echo advance > '//trim(non_pipe)//' '//char(0))
    if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
 
 endif
@@ -1415,16 +1552,16 @@ if ((myrank == head_task) .and. .not. separate_node_sync) then
 
    if (async4_verbose) then
       write(*,*)  'checking master task host'
-      call do_system('echo master task running on host `hostname`', rc)
+      rc = system('echo master task running on host `hostname`'//' '//char(0))
       if (rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
    endif
 
    if (async4_verbose .or. print4status) write(*,*) 'MPI job telling script to advance model'
-   call do_system('echo advance > '//trim(filter_to_model), rc)
+   rc = system('echo advance > '//trim(filter_to_model)//' '//char(0))
    if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
 
    if (async4_verbose) write(*,*) 'MPI job now waiting to read from lock file'
-   call do_system('cat < '//trim(model_to_filter)//'> /dev/null', rc)
+   rc = system('cat < '//trim(model_to_filter)//'> /dev/null '//char(0))
    if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
 
 else
@@ -1436,24 +1573,24 @@ else
    
    if (async4_verbose) then
       write(*,*)  'checking slave task host'
-      call do_system('echo '//trim(fifo_name)//' accessed from host `hostname`', rc)
+      rc = system('echo '//trim(fifo_name)//' accessed from host `hostname`'//' '//char(0))
       if (rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
    endif
 
    if (async4_verbose) write(*,*) 'removing any previous lock file: '//trim(fifo_name)
-   call do_system('rm -f '//trim(fifo_name), rc)
+   rc = system('rm -f '//trim(fifo_name)//' '//char(0))
    if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
 
    if (async4_verbose) write(*,*) 'made fifo, named: '//trim(fifo_name)
-   call do_system('mkfifo '//trim(fifo_name), rc)
+   rc = system('mkfifo '//trim(fifo_name)//' '//char(0))
    if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
 
    if (async4_verbose) write(*,*) 'ready to read from lock file: '//trim(fifo_name)
-   call do_system('cat < '//trim(fifo_name)//'> /dev/null ', rc)
+   rc = system('cat < '//trim(fifo_name)//'> /dev/null '//char(0))
    if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
 
    if (async4_verbose) write(*,*) 'got response, removing lock file: '//trim(fifo_name)
-   call do_system('rm -f '//trim(fifo_name), rc)
+   rc = system('rm -f '//trim(fifo_name)//' '//char(0))
    if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
 
 endif
@@ -1501,12 +1638,12 @@ if (verbose) async4_verbose = .TRUE.
 if ((myrank == head_task) .and. .not. separate_node_sync) then
 
    if (async4_verbose) then
-      call do_system('echo master task running on host `hostname`', rc)
+      rc = system('echo master task running on host `hostname`'//' '//char(0))
       if (rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
    endif
 
    if (async4_verbose .or. print4status) write(*,*) 'script telling MPI job ok to restart'
-   call do_system('echo restart > '//trim(model_to_filter), rc)
+   rc = system('echo restart > '//trim(model_to_filter)//' '//char(0))
    if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
 
 else
@@ -1517,12 +1654,12 @@ else
    write(fifo_name,"(a,i5.5)") "filter_lock", myrank
 
    if (async4_verbose) then
-      call do_system('echo '//trim(fifo_name)//' accessed from host `hostname`', rc)
+      rc = system('echo '//trim(fifo_name)//' accessed from host `hostname`'//' '//char(0))
       if (rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
    endif
 
    if (async4_verbose) write(*,*) 'ready to write to lock file: '//trim(fifo_name)
-   call do_system('echo restart > '//trim(fifo_name), rc)
+   rc = system('echo restart > '//trim(fifo_name)//' '//char(0))
    if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
 
 endif
@@ -1554,9 +1691,9 @@ if (myrank == head_task) then
 
    if (print4status .or. verbose) write(*,*) 'MPI task telling script we are done'
    if (separate_node_sync) then
-      call do_system('echo finished > '//trim(non_pipe), rc)
+      rc = system('echo finished > '//trim(non_pipe)//' '//char(0))
    else
-      call do_system('echo finished > '//trim(filter_to_model), rc)
+      rc = system('echo finished > '//trim(filter_to_model)//' '//char(0))
    endif
 
    
@@ -1586,112 +1723,93 @@ logical :: all_at_once
 integer :: errcode, dummy(1)
 integer :: status(MPI_STATUS_SIZE)
 
-if (verbose) async2_verbose = .true.
+   if (verbose) async2_verbose = .true.
 
-! default to everyone running concurrently, but if set and not true,
-! serialize the calls to system() so they do not step on each other.
-if (present(serialize)) then
-   all_at_once = .not. serialize
-else
-   all_at_once = .TRUE.
-endif
+   ! default to everyone running concurrently, but if set and not true,
+   ! serialize the calls to system() so they do not step on each other.
+   if (present(serialize)) then
+      all_at_once = .not. serialize
+   else
+      all_at_once = .TRUE.
+   endif
 
-if (async2_verbose) write(*,*) "PE", myrank, ": system string is: ", trim(execute_string)
-shell_execute = -1
+   if (async2_verbose) write(*,*) "PE", myrank, ": system string is: ", trim(execute_string)
+   shell_execute = -1
 
-! this is the normal (default) case
-if (all_at_once) then
+   ! this is the normal (default) case
+   if (all_at_once) then
 
-   ! all tasks call system at the same time
-   call do_system(execute_string, shell_execute)
-   if (async2_verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
+      ! all tasks call system at the same time
+      !shell_execute = system(trim(execute_string)//' '//char(0))
+      shell_execute = system(trim(shell_name)//' '//trim(execute_string)//' '//char(0))
+      if (async2_verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
 
-   return
-endif
+      return
+   endif
 
-! only one task at a time calls system, and all wait their turn by
-! making each task wait for a message from the (N-1)th task.
+   ! only one task at a time calls system, and all wait their turn by
+   ! making each task wait for a message from the (N-1)th task.
+   
+   ! this is used only to signal; the value it contains is unused.
+   dummy = 0
 
-! this is used only to signal; the value it contains is unused.
-dummy = 0
+   if (myrank == 0) then
 
-if (myrank == 0) then
+      ! my turn to execute
+      shell_execute = system(trim(shell_name)//' '//trim(execute_string)//' '//char(0))
+      if (async2_verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
 
-   ! my turn to execute
-   call do_system(execute_string, shell_execute)
-   if (async2_verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
+      if (total_tasks > 1) then
+         ! tell next task it can continue
+         call MPI_Send(dummy, 1, MPI_INTEGER, 1, 1, my_local_comm, errcode)
+         if (errcode /= MPI_SUCCESS) then
+            write(errstring, '(a,i8)') 'MPI_Send returned error code ', &
+                                        errcode
+            call error_handler(E_ERR,'shell_execute', errstring, source, &
+                               revision, revdate)
+         endif
+      endif
 
-   if (total_tasks > 1) then
-      ! tell next task it can continue
-      call MPI_Send(dummy, 1, MPI_INTEGER, 1, 1, my_local_comm, errcode)
+   else if (myrank /= (total_tasks-1)) then
+      ! wait for (me-1) to tell me it is my turn
+      call MPI_Recv(dummy, 1, MPI_INTEGER, myrank-1, myrank, &
+                    my_local_comm, status, errcode)
+      if (errcode /= MPI_SUCCESS) then
+         write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
+         call error_handler(E_ERR,'shell_execute', errstring, source, &
+                            revision, revdate)
+      endif
+
+      ! my turn to execute
+      shell_execute = system(trim(shell_name)//' '//trim(execute_string)//' '//char(0))
+      if (async2_verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
+
+      ! and now tell (me+1) to go
+      call MPI_Send(dummy, 1, MPI_INTEGER, myrank+1, myrank+1, my_local_comm, errcode)
       if (errcode /= MPI_SUCCESS) then
          write(errstring, '(a,i8)') 'MPI_Send returned error code ', &
                                      errcode
          call error_handler(E_ERR,'shell_execute', errstring, source, &
                             revision, revdate)
       endif
+   else
+      ! last task, no one else to send to.
+      call MPI_Recv(dummy, 1, MPI_INTEGER, myrank-1, myrank, &
+                    my_local_comm, status, errcode)
+      if (errcode /= MPI_SUCCESS) then
+         write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
+         call error_handler(E_ERR,'shell_execute', errstring, source, &
+                            revision, revdate)
+      endif
+
+      ! my turn to execute
+      shell_execute = system(trim(shell_name)//' '//trim(execute_string)//' '//char(0))
+      if (async2_verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
+
    endif
-
-else if (myrank /= (total_tasks-1)) then
-   ! wait for (me-1) to tell me it is my turn
-   call MPI_Recv(dummy, 1, MPI_INTEGER, myrank-1, myrank, &
-                 my_local_comm, status, errcode)
-   if (errcode /= MPI_SUCCESS) then
-      write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
-      call error_handler(E_ERR,'shell_execute', errstring, source, &
-                         revision, revdate)
-   endif
-
-   ! my turn to execute
-   call do_system(execute_string, shell_execute)
-   if (async2_verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
-
-   ! and now tell (me+1) to go
-   call MPI_Send(dummy, 1, MPI_INTEGER, myrank+1, myrank+1, my_local_comm, errcode)
-   if (errcode /= MPI_SUCCESS) then
-      write(errstring, '(a,i8)') 'MPI_Send returned error code ', &
-                                  errcode
-      call error_handler(E_ERR,'shell_execute', errstring, source, &
-                         revision, revdate)
-   endif
-else
-   ! last task, no one else to send to.
-   call MPI_Recv(dummy, 1, MPI_INTEGER, myrank-1, myrank, &
-                 my_local_comm, status, errcode)
-   if (errcode /= MPI_SUCCESS) then
-      write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
-      call error_handler(E_ERR,'shell_execute', errstring, source, &
-                         revision, revdate)
-   endif
-
-   ! my turn to execute
-   call do_system(execute_string, shell_execute)
-   if (async2_verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
-endif
-
+       
 
 end function shell_execute
-
-!-----------------------------------------------------------------------------
-
-!> wrapper so you only have to make this work in a single place
-!> 'shell_name' is a namelist item and normally is the null string.
-!> on at least on cray system, the compute nodes only had one type
-!> of shell and you had to specify it.
-
-subroutine do_system(execute, rc)
-
-character(len=*), intent(in)  :: execute
-integer,          intent(out) :: rc
-
-! !!NAG_BLOCK_EDIT START COMMENTED_OUT
-!  call system(trim(shell_name)//' '//trim(execute)//' '//char(0), errno=rc)
-! !!NAG_BLOCK_EDIT END COMMENTED_OUT
-! !!OTHER_BLOCK_EDIT START COMMENTED_IN
-    rc = system(trim(shell_name)//' '//trim(execute)//' '//char(0))
-! !!OTHER_BLOCK_EDIT END COMMENTED_IN
-
-end subroutine do_system
 
 !-----------------------------------------------------------------------------
 subroutine sleep_seconds(naplength)
@@ -1873,8 +1991,8 @@ integer :: errcode
 ! => Don't do anything with x in between mpi_get and mpi_win_lock
 
 ! Note to programmer: openmpi 1.10.0 does not
-! allow scalars in mpi calls. openmpi 1.10.1 fixes this.
-
+! allow scalars in mpi calls. openmpi 1.10.1 fixes
+! this.
 target_disp = (mindex - 1)
 call mpi_win_lock(MPI_LOCK_SHARED, owner, 0, window, errcode)
 call mpi_get(x, 1, datasize, owner, target_disp, 1, datasize, window, errcode)
@@ -1898,6 +2016,7 @@ integer :: errcode
 ! Note to programmer: The data transfer is not guaranteed
 ! to have occured until the call to mpi_win_unlock. 
 ! => Don't do anything with x in between mpi_get and mpi_win_lock
+
 
 target_disp = (mindex - 1)*num_rows
 call mpi_win_lock(MPI_LOCK_SHARED, owner, 0, window, errcode)

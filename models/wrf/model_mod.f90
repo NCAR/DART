@@ -49,7 +49,7 @@ use      location_mod,   only : location_type, get_location, set_location, &
                                 VERTISSCALEHEIGHT, vertical_localization_on, &
                                 set_vertical_localization_coord, &
                                 get_close_type, get_dist, is_vertical, &
-                                loc_get_close => get_close
+                                loc_get_close => get_close_obs
 
 use     utilities_mod,  only  : file_exist, open_file, close_file, &
                                 register_module, error_handler, E_ERR, E_WARN, &
@@ -2885,25 +2885,21 @@ integer,             intent(in)    :: which_vert
 integer,             intent(out)   :: istatus
 
 integer :: i, istat
-integer     :: var_type, dart_type, vert_type, wanted_vert_type
+integer     :: var_type, dart_type
 integer(i8) :: index
 integer     :: ip, jp, kp
 integer     :: nz, ny, nx
 logical     :: var_found
-real(r8)    :: lon, lat, vloc
+real(r8)    :: lon, lat, lev
 character(len=129) :: string1
 
 integer :: id, var_id, state_id
 logical, parameter :: debug = .false.
 
 
-wanted_vert_type = wrf%dom(id)%localization_coord
 istatus = 0
 
 do i=1, num
- 
-   vert_type = nint(query_location(locs(i)))
-   if (vert_type == wanted_vert_type) cycle
 
    ! from the dart index get the local variables indices
    call get_model_variable_indices(loc_indx(i), ip, jp, kp, var_id=var_id, dom_id=state_id)
@@ -2926,21 +2922,21 @@ do i=1, num
    if (wrf%dom(id)%localization_coord == VERTISLEVEL) then
       ! here we need level index of mass grid
       if( (var_type == wrf%dom(id)%type_w ) .or. (var_type == wrf%dom(id)%type_gz) ) then
-         vloc = real(kp) - 0.5_r8
+         lev = real(kp) - 0.5_r8
       else
-         vloc = real(kp)
+         lev = real(kp)
       endif
    elseif (wrf%dom(id)%localization_coord == VERTISPRESSURE) then
       ! directly convert to pressure
-      vloc = model_pressure_distrib(ip, jp, kp, id, var_type, state_handle)
+      lev = model_pressure_distrib(ip, jp, kp, id, var_type, state_handle)
    elseif (wrf%dom(id)%localization_coord == VERTISHEIGHT) then
-      vloc = model_height_distrib(ip, jp, kp, id, var_type, state_handle)
+      lev = model_height_distrib(ip, jp, kp, id, var_type, state_handle)
    elseif (wrf%dom(id)%localization_coord == VERTISSCALEHEIGHT) then
-      vloc = -log(model_pressure_distrib(ip, jp, kp, id, var_type, state_handle) / &
-                  model_surface_pressure_distrib(ip, jp, id, var_type, state_handle))
+      lev = -log(model_pressure_distrib(ip, jp, kp, id, var_type, state_handle) / &
+                 model_surface_pressure_distrib(ip, jp, id, var_type, state_handle))
    endif
    
-   locs(i) = set_location(lon, lat, vloc, wrf%dom(id)%localization_coord)
+   locs(i) = set_location(lon, lat, lev, wrf%dom(id)%localization_coord)
    
 enddo
 
@@ -6331,7 +6327,9 @@ base_which = nint(query_location(base_loc))
 
 if (vertical_localization_on()) then
    if (base_which /= wrf%dom(1)%localization_coord) then
+      !print*, 'base_which ', base_which, 'loc coord ', wrf%dom(1)%localization_coord
       call vert_convert(state_handle, base_loc, base_type, istatus1)
+      !call error_handler(E_ERR, 'you should not call this ', 'get_close_obs')
    elseif (base_array(3) == missing_r8) then
       istatus1 = 1
    endif
@@ -6343,7 +6341,7 @@ if (istatus1 == 0) then
    ! This way, we are decreasing the number of distance computations that will follow.
    ! This is a horizontal-distance operation and we don't need to have the relevant vertical
    ! coordinate information yet (for obs_loc).
-   call loc_get_close(gc, base_loc, base_type, locs, loc_qtys, &
+   call loc_get_close(gc, base_loc, base_type, locs, loc_qtys, loc_qtys, &
                           num_close, close_ind)
 
    ! Loop over potentially close subset of obs priors or state variables

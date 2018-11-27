@@ -274,10 +274,6 @@ integer, parameter, public :: &
     QTY_FPAR                        = 129, &
     QTY_TOTAL_WATER_STORAGE         = 130
 
-! apparently we never had a surface vapor pressure quantity?
-integer, parameter, public :: &
-    QTY_2M_VAPOR_MIXING_RATIO       = 131
-
 ! kinds for NOAH  (Tim Hoar)
 integer, parameter, public :: &
     QTY_NEUTRON_INTENSITY           = 140, &
@@ -720,8 +716,6 @@ obs_kind_names(127) = obs_kind_type(QTY_LEAF_NITROGEN         ,'QTY_LEAF_NITROGE
 obs_kind_names(128) = obs_kind_type(QTY_WATER_TABLE_DEPTH     ,'QTY_WATER_TABLE_DEPTH')
 obs_kind_names(129) = obs_kind_type(QTY_FPAR                  ,'QTY_FPAR')
 obs_kind_names(130) = obs_kind_type(QTY_TOTAL_WATER_STORAGE   ,'QTY_TOTAL_WATER_STORAGE')
-
-obs_kind_names(131) = obs_kind_type(QTY_2M_VAPOR_MIXING_RATIO,'QTY_2M_VAPOR_MIXING_RATIO')
 
 obs_kind_names(140) = obs_kind_type(QTY_NEUTRON_INTENSITY     ,'QTY_NEUTRON_INTENSITY')
 obs_kind_names(141) = obs_kind_type(QTY_CANOPY_WATER          ,'QTY_CANOPY_WATER')

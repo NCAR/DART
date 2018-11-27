@@ -79,8 +79,8 @@ integer, parameter :: i8 = SELECTED_INT_KIND(13)
 ! TO RUN WITH REDUCED PRECISION REALS (and use correspondingly less memory)
 ! comment OUT the r8 definition below and use the second one:
 integer, parameter :: r4 = SELECTED_REAL_KIND(6,30)
-!integer, parameter :: r8 = SELECTED_REAL_KIND(12)   ! real r8
-integer, parameter :: r8 = r4                      ! alias r8 to r4
+integer, parameter :: r8 = SELECTED_REAL_KIND(12)   ! real r8
+!integer, parameter :: r8 = r4                      ! alias r8 to r4
 
 ! complex precision:
 integer, parameter :: c4 = SELECTED_REAL_KIND(6,30)

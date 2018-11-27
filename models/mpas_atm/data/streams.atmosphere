@@ -1,64 +1,55 @@
 <streams>
+
 <immutable_stream name="input"
                   type="input"
-                  filename_template="init.nc"
-                  input_interval="initial_only" />
+                  filename_template="x1.10242.init.nc"
+                  input_interval="initial_only"/>
 
 <immutable_stream name="restart"
                   type="input;output"
-                  filename_template="restart.$Y-$M-$D_$h.$m.$s.nc"
+                  filename_template="x1.10242.restart.$Y-$M-$D_$h.$m.$s.nc"
                   input_interval="initial_only"
-                  output_interval="0_03:00:00" />
+                  clobber_mode="truncate"
+                  output_interval="06:00:00"/>
 
 <stream name="output"
         type="output"
-        filename_template="history.$Y-$M-$D_$h.$m.$s.nc"
+        filename_template="x1.10242.output.$Y-$M-$D_$h.$m.$s.nc"
         clobber_mode="truncate"
-        output_interval="1_00:00:00" >
+        precision="single"
+        output_interval="none">
 
-	<file name="stream_list.atmosphere.output"/>
+    <file name="stream_list.atmosphere.output"/>
+
 </stream>
 
 <stream name="diagnostics"
         type="output"
-        filename_template="diag.$Y-$M-$D_$h.$m.$s.nc"
+        filename_template="x1.10242.diag.$Y-$M-$D_$h.$m.$s.nc"
         clobber_mode="truncate"
-        output_interval="03:00:00" >
+        precision="single"
+        output_interval="6:00:00">
 
-	<file name="stream_list.atmosphere.diagnostics"/>
+    <file name="stream_list.atmosphere.diagnostics"/>
+
 </stream>
 
 <stream name="surface"
         type="input"
-        filename_template="sfc_update.nc"
+        filename_template="x1.10242.sfc_update.nc"
         filename_interval="none"
-        input_interval="01_00:00:00" >
+        input_interval="01_00:00:00">
 
-	<file name="stream_list.atmosphere.surface"/>
+    <file name="stream_list.atmosphere.surface"/>
 </stream>
 
-<immutable_stream name="iau"
-                  type="input"
-                  filename_template="AmB.$Y-$M-$D_$h.$m.$s.nc"
-                  filename_interval="none"
-                  packages="iau"
-                  input_interval="initial_only" />
+<stream name="iau"
+        type="input"
+        filename_template="AmB.nc"
+        filename_interval="none"
+        input_interval="none" >
 
-<stream name="mpas_lbcs"
-        type="output"
-        filename_template="global_lbc.$Y-$M-$D_$h.nc"
-        clobber_mode="truncate"
-        output_interval="00_03:00:00" >
-
-        <var name="xtime"/>
-        <var_array name="scalars"/>
-        <var name="u"/>
-        <var name="w"/>
-        <var name="theta"/>
-        <var name="rho"/>
-        <var name="uReconstructZonal"/>
-        <var name="uReconstructMeridional"/>
-        <var name="pressure"/>
+    <file name="stream_list.atmosphere.iau"/>
 </stream>
 
 </streams>

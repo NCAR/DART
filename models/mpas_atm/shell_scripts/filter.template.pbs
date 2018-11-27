@@ -11,7 +11,7 @@
 #PBS -A PROJ_NUMBER
 #PBS -j oe
 #PBS -q QUEUE
-#PBS -l select=NODES:mpiprocs=NPROC:ncpus=36
+#PBS -l select=NODES:ncpus=NCPUS:mpiprocs=NPROC
 #PBS -l walltime=JOB_TIME
 ############################################
 if(! -e logs) mkdir logs
@@ -25,10 +25,7 @@ echo "host is " `hostname`
 
 echo $start_time >&! filter_started
 
-module load peak_memusage
-setenv MPI_SHEPHERD true
-
-mpiexec_mpt peak_memusage.exe ./filter     
+mpiexec_mpt dplace -s 1 ./filter     
 wait
 
 if ( -e obs_seq.final )  touch filter_done

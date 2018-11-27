@@ -11,7 +11,7 @@
 #PBS -o logs/JOB_NAME.log
 #PBS -j oe
 #PBS -q QUEUE
-#PBS -l select=NODES:mpiprocs=NPROC:ncpus=36
+#PBS -l select=NODES:ncpus=NCPUS:mpiprocs=NPROC
 #PBS -l walltime=JOB_TIME
 #==================================================================
  

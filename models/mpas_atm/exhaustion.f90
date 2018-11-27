@@ -39,7 +39,7 @@ use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, &
                              operator(-)
 use        model_mod, only : static_init_model, get_model_size, get_state_meta_data, &
                              model_interpolate, get_analysis_time, &
-                             get_init_template_filename, analysis_file_to_statevector, &
+                             get_model_analysis_filename, analysis_file_to_statevector, &
                              statevector_to_analysis_file, get_analysis_time,            &
                              write_model_time, get_grid_dims
 
@@ -108,7 +108,7 @@ type (random_seq_type) :: r
 type(time_type)        :: model_time, adv_to_time
 real(r8), allocatable  :: statevector(:)
 
-character(len=129)  :: mpas_input_file  ! set with get_init_template_filename() if needed
+character(len=129)  :: mpas_input_file  ! set with get_model_analysis_filename() if needed
 type(location_type) :: loc
 
 

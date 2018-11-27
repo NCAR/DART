@@ -31,16 +31,16 @@
   cd ${RUN_DIR}/${temp_dir}
 
   # Get the program and necessary files for the model
-  ${LINK} ${WPS_DIR}/ungrib.exe               	       .   || exit 1
-  ${LINK} ${WPS_DIR}/Vtable                            .   || exit 1
   ${COPY} ${RUN_DIR}/input.nml                         .   || exit 1                    
   ${LINK} ${RUN_DIR}/MPAS_RUN/atmosphere_model         .   || exit 1
   ${LINK} ${RUN_DIR}/MPAS_RUN/init_atmosphere_model    .   || exit 1
+  ${LINK} ${RUN_DIR}/MPAS_RUN/ungrib.exe               .   || exit 1
   ${LINK} ${RUN_DIR}/MPAS_RUN/stream*                  .   || exit 1
   ${LINK} ${RUN_DIR}/MPAS_RUN/*BL                      .   || exit 1
   ${LINK} ${RUN_DIR}/MPAS_RUN/*DATA                    .   || exit 1
   ${LINK} ${RUN_DIR}/advance_time                      .   || exit 1
-  ${LINK} ${RUN_DIR}/${MPAS_GRID}.graph*               .   || exit 1             
+  ${LINK} ${RUN_DIR}/*graph*                           .   || exit 1             
+  ${LINK} ${RUN_DIR}/Vtable                            .   || exit 1
 
   #  Determine the initial, final and run times for the MPAS integration
   set curr_utc = `echo $DATE_INI -${INIT_FORECAST_LENGTH}h -w | ./advance_time`
@@ -63,8 +63,7 @@
   /end_date/c\
   end_date   = '${curr_utc}',
 EOF
-  sed -f script.sed ${RUN_DIR}/${NML_WPS} >! ${NML_WPS}  
-  set fhead = `grep prefix ${NML_WPS} | awk '{print $3}' | cut -d , -f1 | sed -e "s/'//g"`
+  sed -f script.sed ${RUN_DIR}/namelist.wps >! namelist.wps
 
   ./ungrib.exe >& ungrib.out
 
@@ -74,8 +73,6 @@ EOF
   config_start_time = '$curr_utc'
   /config_stop_time/c\
   config_stop_time = '$curr_utc'
-  /config_met_prefix/c\
-  config_met_prefix = '${fhead}'
 EOF
   sed -f script.sed ${RUN_DIR}/MPAS_RUN/${NML_INIT} >! ${NML_INIT}
 
@@ -88,12 +85,12 @@ EOF
   set fs_grid = `grep config_block_decomp_file_prefix ${RUN_DIR}/${NML_MPAS} | awk '{print $3}' | sed -e "s/'//g"`
   ${LINK} ${RUN_DIR}/MPAS_RUN/${fs_grid}* .
   
-  ${LINK} ${RUN_DIR}/MPAS_RUN/${statfile} .	   || exit
+  ${LINK} ${RUN_DIR}/MPAS_RUN/${statfile} .
 
   #  Run init version of MPAS to create initial condition file
 #  mpirun.lsf ./init_atmosphere_model  || exit 2
   mpiexec_mpt dplace -s 1 ./init_atmosphere_model  || exit 2
-  ${REMOVE} ${fhead}:*
+  ${REMOVE} FILE:*
 
   #  Generate MPAS namelist file
   cat >! script.sed << EOF

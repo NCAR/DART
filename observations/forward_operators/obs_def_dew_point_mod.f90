@@ -142,10 +142,9 @@ integer  :: ipres
 real(r8) :: qv(ens_size)            ! water vapor mixing ratio (kg/kg)
 real(r8) :: e_mb(ens_size)          ! water vapor pressure (mb)
 real(r8),   PARAMETER :: e_min = 0.001_r8 ! threshold for minimum vapor pressure (mb),
-                                          !   to avoid problems near zero vapor pressure in Bolton's equation
+                                          !   to avoid problems near zero in Bolton's equation
 real(r8) :: p_Pa(ens_size)          ! pressure (Pa)
 real(r8) :: p_mb(ens_size)          ! pressure (mb)
-real(r8) :: log_term(ens_size)      ! Intermediate term in computation of dewpoint temperature
 !> @todo make strings longer
 character(len=129) :: errstring
 logical  :: return_now
@@ -194,21 +193,9 @@ where (istatus == 0 ) ! To avoid possible FPE with missing_r8
 
    !------------------------------------------------------------------------------
    !  Use Bolton's approximation to compute dewpoint.
-   !  Bolton, David, 1980: The Computation of Equivalent Potential Temperature. 
-   !  Monthly Weather Review. 108 (7): 1046-1053.
-   !  Bolton does not explicitly have this formula, but the pieces are there.
-   !  He uses the three constant values used here.
-   !  Other authors, and the Wikipedia page on dewpoint, provide this formula
-   !  explicitly and suggest 6.1121 instead of 6.112.
    !------------------------------------------------------------------------------
 
-   ! The following expression can fail numerically for dewpoints very close to 0 C
-   !td = t_kelvin + (243.5_r8 / ((17.67_r8 / log(e_mb/6.112_r8)) - 1.0_r8) )
-
-   ! A numerically robust formula that avoids the failure near dewpoints of 0 C
-   log_term = log(e_mb / 6.112_r8)
-   td = t_kelvin + 243.5_r8 * log_term / (17.67_r8 - log_term)
-
+   td = t_kelvin + (243.5_r8 / ((17.67_r8 / log(e_mb/6.112_r8)) - 1.0_r8) )
 elsewhere
    td = missing_r8
 end where

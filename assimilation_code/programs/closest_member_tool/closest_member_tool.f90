@@ -4,30 +4,28 @@
 !
 ! $Id$
 
-!> @mainpage
-!> @{
-!> @brief  this program selects the member closest to the ensemble mean.
-!>
-!>
-!>  this program has options to compute <em> distance </em> in several different ways
-!>  and returns the ensemble member which has the smallest total distance from
-!>  the ensemble mean.
-!> @}
-!>
-!>
+!>@todo FIXME changed so it compiles, but this IS NOT WORKING CODE YET
+!> it needs to read in an ensemble (perhaps become an mpi program)
+!> and do all ensemble members at the same time - also handle the
+!> layout when only part of a state vector is on a single task.
+!> would have to do a reduce to add up the total differences.
+
+!>@todo FIXME the html needs to be made consistent with the namelist once the namelist
+!> is fleshed out.
 
 program closest_member_tool
 
+! Program to overwrite the time on each ensemble in a restart file.
+
 use types_mod,            only : r8, i8, obstypelength, MAX_NUM_DOMS, MAX_FILES
 
-use time_manager_mod,     only : time_type, set_time_missing,               &
-                                 operator(/=), print_time
+use time_manager_mod,     only : time_type, set_time_missing, operator(/=), &
+                                 print_time
  
 use utilities_mod,        only : register_module, find_namelist_in_file,        &
                                  error_handler, nmlfileunit, E_MSG, E_ERR,      &
                                  check_namelist_read, do_nml_file, do_nml_term, &
-                                 open_file, close_file, set_multiple_filename_lists, &
-                                 get_next_filename
+                                 open_file, close_file, set_multiple_filename_lists
 
 use  location_mod,        only : location_type
 
@@ -39,7 +37,7 @@ use  sort_mod,            only : index_sort
 use assim_model_mod,      only : static_init_assim_model, get_model_size, &
                                  get_state_meta_data
 
-use state_vector_io_mod,  only : read_state
+use state_vector_io_mod,  only : read_state, write_state
 
 use io_filenames_mod,     only : file_info_type, io_filenames_init,        &
                                  set_io_copy_flag, set_file_metadata,      &
@@ -51,7 +49,7 @@ use state_structure_mod,  only : get_num_domains
 
 use mpi_utilities_mod,    only : initialize_mpi_utilities, task_count, &
                                  finalize_mpi_utilities, my_task_id,   &
-                                 send_sum_to, sum_across_tasks
+                                 send_sum_to
 
 use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, compute_copy_mean, &
                                  get_my_vars, get_my_num_vars, end_ensemble_manager
@@ -64,7 +62,7 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-integer               :: iunit, io, ens, i, j, total_j, qtyindex
+integer               :: iunit, io, ens, i, j, qtyindex
 integer               :: num_qtys, stype
 integer(i8)           :: ii, model_size
 integer, allocatable  :: index_list(:)
@@ -162,7 +160,7 @@ call init_ensemble_manager(ens_handle, ens_size+1, model_size)
 
 num_domains = get_num_domains()
 
-! Given either a vector of input_state_files or a text file containing
+! Given either a vector of in/output_state_files or a text file containing
 ! a list of files, return a vector of files containing the filenames.
 call set_multiple_filename_lists(input_restart_files(:), &
                                  input_restart_file_list(:), &
@@ -178,11 +176,10 @@ allocate(file_array_input(ens_size, num_domains))
 file_array_input  = RESHAPE(input_restart_files,  (/ens_size,  num_domains/))
 
 ! read in the ensemble and the mean - always in a separate file
-call io_filenames_init(ens_file_info, &
-                       ncopies       = ens_size, &
-                       cycling       = single_restart_file_in, &
-                       single_file   = single_restart_file_in, &
-                       restart_files = file_array_input)
+call io_filenames_init(ens_file_info, ens_size, &
+                       cycling=single_restart_file_in, &
+                       single_file=single_restart_file_in, &
+                       restart_files=file_array_input)
 
 do imem = 1, ens_size
    write(my_base,'(A,I0.2)') 'inens_',                 imem
@@ -285,9 +282,8 @@ if (.not. allqtys) then
       endif
    enddo
 
-   ! compute the total across all members
-   call sum_across_tasks(j, total_j)
-   write(msgstring, *) 'using ', total_j, ' of ', model_size, ' items in the state vector'
+   !>@todo JOHNNY should do a sum_all_variables then print
+   write(msgstring, *) 'using ', j, ' of ', model_size, ' items in the state vector'
    call error_handler(E_MSG,'closest_member_tool', msgstring)
 else
    ! use everything.
@@ -318,11 +314,9 @@ if (my_task_id() == 0) then
    iunit = open_file(output_file_name, 'formatted', 'write')
    
    if (single_restart_file_in) then
-      write(iunit, "(I6)") index_list(1)
+      write(iunit, "(I4)") index_list(1)
    else
-      !> @todo FIXME is this domain by domain?  if so, need to loop over domains?
-      msgstring = get_next_filename(input_restart_file_list(1), index_list(1))
-      write(iunit, "(A)") trim(msgstring)
+      write(iunit, "(A,A,I4.4)") trim(input_restart_file_list(1)), '.', index_list(1)
    endif
    
    call close_file(iunit)
@@ -340,7 +334,7 @@ deallocate(total_diff)
 if (.not. allqtys) deallocate(useqty)
 
 call end_ensemble_manager(ens_handle)
-call finalize_mpi_utilities()
+call finalize_mpi_utilities()   ! now closes log file, too
 
 !----------------------------------------------------------------
 !----------------------------------------------------------------

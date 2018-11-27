@@ -669,44 +669,44 @@ if (inf_type == AND2009) then
    call linear_bayes(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd_2, gamma_corr, &
       new_cov_inflate)
 
-   ! Bail out to save cost when lower bound is reached on lambda standard deviation
-   if(lambda_sd <= sd_lower_bound_in) then
-      new_cov_inflate_sd = lambda_sd
-   else
-      ! Compute by forcing a Gaussian fit at one positive SD
-      ! First compute the new_max value for normalization purposes
-      new_max = compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, &
-                                       gamma_corr, new_cov_inflate)
-   
-      ! Find value at a point one OLD sd above new mean value
+! Bail out to save cost when lower bound is reached on lambda standard deviation
+if(lambda_sd <= sd_lower_bound_in) then
+   new_cov_inflate_sd = lambda_sd
+else
+   ! Compute by forcing a Gaussian fit at one positive SD
+! First compute the new_max value for normalization purposes
+   new_max = compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, &
+                                    gamma_corr, new_cov_inflate)
+
+! Find value at a point one OLD sd above new mean value
       new_1_sd = compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, gamma_corr, &
       new_cov_inflate + lambda_sd)
-   
-      ! If either the numerator or denominator of the following computation 
-      ! of 'ratio' is going to be zero (or almost so), return the original incoming
-      ! inflation value.  The computation would have resulted in either Inf or NaN.
-      if (abs(new_max) <= TINY(0.0_r8) .or. abs(new_1_sd) <= TINY(0.0_r8)) then
-         new_cov_inflate_sd = lambda_sd
-         return
-      endif
-   
-      ratio = new_1_sd / new_max 
-   
-      ! Another error for numerical issues; if ratio is larger than 0.99, bail out
-      if(ratio > 0.99) then
-         new_cov_inflate_sd = lambda_sd
-         return
-      endif
-   
-      ! Can now compute the standard deviation consistent with this as
-      ! sigma = sqrt(-x^2 / (2 ln(r))  where r is ratio and x is lambda_sd (distance from mean)
-      new_cov_inflate_sd = sqrt( -1.0_r8 * lambda_sd_2 / (2.0_r8 * log(ratio)))
-   
-      ! Prevent an increase in the sd of lambda???
-      ! For now, this is mostly countering numerical errors in this computation
-      if(new_cov_inflate_sd > lambda_sd) new_cov_inflate_sd = lambda_sd
-   
+
+   ! If either the numerator or denominator of the following computation 
+   ! of 'ratio' is going to be zero (or almost so), return the original incoming
+   ! inflation value.  The computation would have resulted in either Inf or NaN.
+   if (abs(new_max) <= TINY(0.0_r8) .or. abs(new_1_sd) <= TINY(0.0_r8)) then
+      new_cov_inflate_sd = lambda_sd
+      return
    endif
+
+   ratio = new_1_sd / new_max 
+
+   ! Another error for numerical issues; if ratio is larger than 0.99, bail out
+   if(ratio > 0.99) then
+      new_cov_inflate_sd = lambda_sd
+      return
+   endif
+
+   ! Can now compute the standard deviation consistent with this as
+      ! sigma = sqrt(-x^2 / (2 ln(r))  where r is ratio and x is lambda_sd (distance from mean)
+   new_cov_inflate_sd = sqrt( -1.0_r8 * lambda_sd_2 / (2.0_r8 * log(ratio)))
+
+   ! Prevent an increase in the sd of lambda???
+   ! For now, this is mostly countering numerical errors in this computation
+   if(new_cov_inflate_sd > lambda_sd) new_cov_inflate_sd = lambda_sd
+
+endif
 
 else if (inf_type == GHA2017) then
 
