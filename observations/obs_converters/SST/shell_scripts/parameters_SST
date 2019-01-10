@@ -1,0 +1,55 @@
+#!/bin/bash
+#
+# This code was donated to DART by Romain Escudier, who was at Rutgers at the time.
+# It is not protected by the DART copyright agreement. Thanks Romain!
+#
+# DART $Id$
+
+######################################################################
+# Global parameters
+######################################################################
+
+# PERIOD
+STARTDATE=20101230
+ENDDATE=20101231
+
+# ERROR OF REPRESENTATIVITY
+ERROR_REP=3.0
+
+######################################################################
+# Select region
+######################################################################
+
+# AREA OF STUDY
+REGION=NWA
+
+######################################################################
+# Directories
+######################################################################
+
+FTP_ADDRESS=ftp://podaac-ftp.jpl.nasa.gov/allData/ghrsst/data/GDS2/L4/GLOB/NCEI/AVHRR_OI/v2
+
+# FILES DIRECTORY
+DIR_IN=../ObsData/SST/ncfile
+DIR_OUT=../ObsData/SST/nwaSST
+
+# FILES NAMES
+FILE_PREF=
+FILE_SUFF=120000-NCEI-L4_GHRSST-SSTblend-AVHRR_OI-GLOB-v02.0-fv02.0
+
+######################################################################
+# Transform to DART format
+######################################################################
+
+# FILES DIRECTORY
+DIR_OUT_DART=/glade/scratch/${USER}/ObsData/SST/obsSEQ/v2/Err30
+
+# FILES NAMES
+FILE_DART_PREF=obs_seq.sst.
+FILE_DART_SUFF=
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+
