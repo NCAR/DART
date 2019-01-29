@@ -10,7 +10,7 @@
 # each of the /opt/local build directories below to /glade/p/work/nancy
 # where i have built the jpg, hdf, and eos libraries.
 
-set XTRALIBS_BASE = /Users/hendric
+set XTRALIBS_BASE = /Users/${USER}
 
 set JPGDIR = ${XTRALIBS_BASE}/eos
 set HDFDIR = ${XTRALIBS_BASE}/eos
