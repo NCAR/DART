@@ -60,3 +60,34 @@ QTY_PRESSURE, QTY_TEMPERATURE, and QTY_SPECIFIC_HUMIDITY
 
 nsc 
 20 sept 2018
+
+jph (general notes)
+
+gas_units (water vapor mixing ratio)
+  * kg/kg
+  * interpolate QVAPOR
+  * moist air / dry air
+  * assume moist air
+are pressure on cell centers
+surface type [x-land, x-ice]
+  * land only interp if all 4 boxes are land
+  * longterm distingish land and ice
+skin temperature (duplicate 2m temp)
+  * soil temperature (TSBL
+  * sea surface temperature (SST)
+azumath, latitude
+elevation (get from observation)
+(:) levels
+elevation == surface elevation
+  * dont know what we are doing FIXME
+  * what is converter doing?
+  * ? initation surface elevation
+  * -> interpolatin to elevation of location
+use 'get_date'
+check weather instrument needs minimum amout of info (AQUA, AIRS)
+no cfp
+NCAR ensemble reanaysis (Glen)
+  * -> not very cloudy time (September)
+  * -> do a bunch of F.O.
+Robert Pinkus
+
