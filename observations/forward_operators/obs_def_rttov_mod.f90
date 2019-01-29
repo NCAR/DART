@@ -64,11 +64,12 @@ module obs_def_rttov_mod
 use        types_mod, only : r8, PI, metadatalength, MISSING_R8, MISSING_I
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
                              logfileunit, get_unit, open_file, close_file, nc_check, &
-                             file_exist, ascii_file_format
+                             file_exist, ascii_file_format, nmlfileunit, do_nml_file, &
+                             do_nml_term, check_namelist_read, find_namelist_in_file
 use     location_mod, only : location_type, set_location, get_location, VERTISUNDEF, &
                              VERTISHEIGHT, VERTISLEVEL, set_location_missing
 use     obs_kind_mod, only : QTY_GEOPOTENTIAL_HEIGHT, QTY_PRESSURE, QTY_TEMPERATURE, &
-                             QTY_SPECIFIC_HUMIDITY
+                             QTY_SPECIFIC_HUMIDITY, QTY_VAPOR_MIXING_RATIO
 use  assim_model_mod, only : interpolate
 
 use obs_def_utilities_mod, only : track_status
@@ -91,9 +92,6 @@ private
 ! then the converters just use the metadata and filter
 ! uses both...  or something.
 
-! JPH, namelist for which channels to use and how many model levels there are
-! see GPS module
-
 public ::            set_rttov_metadata, &
                      get_rttov_metadata, &
                     read_rttov_metadata, &
@@ -109,6 +107,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 
 character(len=512) :: string1, string2
 logical, save      :: module_initialized = .false.
+integer            :: iunit, rc
 
 ! Metadata for rttov observations.
 
@@ -136,9 +135,17 @@ type(obs_metadata), allocatable, dimension(:) :: observation_metadata
 type(obs_metadata) :: missing_metadata
 character(len=5), parameter :: RTTOVSTRING = 'rttov'
 
-logical :: debug = .FALSE.
+logical :: debug = .TRUE.
 integer :: MAXrttovkey = 100000  !FIXME - some initial number of obs
 integer ::    rttovkey = 0       ! useful length of metadata arrays
+
+! JPH, namelist for which channels to use and how many model levels there are
+! see GPS module
+
+integer :: model_levels
+integer :: channel_list(1) = 1
+
+namelist / obs_def_rttov_nml/ channel_list, model_levels
 
 contains
 
@@ -148,7 +155,6 @@ contains
 subroutine initialize_module
 
 integer :: istatus
-integer :: local_channel_list(1)
 
 call register_module(source, revision, revdate)
 
@@ -168,10 +174,20 @@ allocate(observation_metadata(MAXrttovkey))
 observation_metadata(:) = missing_metadata
 
 !FIXME : do we need to pass in all of the potential channels here
-local_channel_list(1) = 1
 
-call dart_rttov_setup(nprofiles=1, nchannels=1, channel_list=local_channel_list, &
-                      nlevels=1, level_list=1, error_status=istatus)
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "obs_def_rttov_nml", iunit)
+read(iunit, nml = obs_def_rttov_nml, iostat = rc)
+call check_namelist_read(iunit, rc, "obs_def_rttov_nml")
+
+! Record the namelist values used for the run ...
+if (do_nml_file()) write(nmlfileunit, nml=obs_def_rttov_nml)
+if (do_nml_term()) write(     *     , nml=obs_def_rttov_nml)
+
+print*, 'dart_rttov_setup'
+call dart_rttov_setup(nprofiles=2, nchannels=1, channel_list=channel_list, &
+                      nlevels=model_levels, level_list=1, error_status=istatus)
+!call exit(0)
 
 end subroutine initialize_module
 
@@ -246,11 +262,14 @@ integer           :: oldkey
 real(r8)          :: sat_az, sat_ze, sun_az, sun_ze
 integer           :: platform, sat_id, sensor, channel
 
+print*, 'read_rttov_metadata'
+
 if ( .not. module_initialized ) call initialize_module
 
 is_asciifile = ascii_file_format(fform)
 
 write(string2,*)'observation #',obsID
+write(   *   ,*)'observation #',obsID
 
 if ( is_asciifile ) then
    read(ifile, *, iostat=ierr) header
@@ -312,6 +331,10 @@ call get_rttov_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform, sat_id, s
 is_asciifile = ascii_file_format(fform)
 
 if (is_asciifile) then
+   write(*, *) 'rttovSTRING', trim(rttovSTRING)
+   write(*, *) 'sat_az, sat_ze, sun_az, sun_ze', sat_az, sat_ze, sun_az, sun_ze
+   write(*, *) 'platform, sat_id, sensor, channel', platform, sat_id, sensor, channel
+   write(*, *) 'key', key
    write(ifile, *) trim(rttovSTRING)
    write(ifile, *) sat_az, sat_ze, sun_az, sun_ze
    write(ifile, *) platform, sat_id, sensor, channel
@@ -457,7 +480,8 @@ integer,             intent(out) :: istatus(ens_size) ! status of the calculatio
 real(r8) :: sat_az, sat_ze, sun_az, sun_ze
 integer  :: platform, sat_id, sensor, channel
 
-real(r8), allocatable :: temperature(:,:), pressure(:,:), moisture(:,:)
+real(r8), allocatable :: temperature(:,:), pressure(:,:), &
+                         moisture(:,:), water_vapor_mr(:,:)
 integer :: this_istatus(ens_size)
 
 integer  :: i, zi, nlevels
@@ -516,7 +540,8 @@ endif
 
 allocate(temperature(ens_size, nlevels), &
             pressure(ens_size, nlevels), &
-            moisture(ens_size, nlevels))
+            moisture(ens_size, nlevels), &
+      water_vapor_mr(ens_size, nlevels))
 
 ! Set all of the istatuses back to zero for track_status
 istatus = 0
@@ -536,21 +561,26 @@ GETLEVELDATA : do i = 1,nlevels
    call track_status(ens_size, this_istatus, val, istatus, return_now)
    if (return_now) return
 
+   call interpolate(state_handle, ens_size, loc, QTY_VAPOR_MIXING_RATIO, water_vapor_mr(:, i), this_istatus)
+   call track_status(ens_size, this_istatus, val, istatus, return_now)
+   if (return_now) return
+
    ! FIXME: what else?
 
 enddo GETLEVELDATA
 
 !FIXME: these interp results are unused. make it a cheap quantity to ask for.
 call dart_rttov_do_forward_model(ens_size=ens_size, nlevels=nlevels, &
-                                 t=temperature, p=pressure, q=moisture, &
+                                 location=location, t=temperature, &
+                                 p=pressure, q=moisture, wvmr=water_vapor_mr, &
                                  radiances=radiance, error_status=this_istatus) 
 
 !FIXME initialize the profile info here and make the call to rttov()
 ! to compute radiances, once for each ensemble member
 
-!do i=1, ens_size
-!   radiance(i) = -32.0_r8
-!enddo
+do i=1, ens_size
+   radiance(i) = -32.0_r8
+enddo
 
 deallocate(temperature, pressure, moisture)
 
