@@ -5,9 +5,48 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
+#
+# if you are building this on yellowstone.ucar.edu you can change
+# each of the /opt/local build directories below to /glade/p/work/nancy
+# where i have built the jpg, hdf, and eos libraries.
 
-../../../../build_templates/mkmf -p obs_sequence_tool -t ../../../../build_templates/mkmf.template   \
- -a "../../../.." path_names_obs_sequence_tool
+set XTRALIBS_BASE = /Users/${USER}
+
+set JPGDIR = ${XTRALIBS_BASE}/eos
+set HDFDIR = ${XTRALIBS_BASE}/eos
+set EOSDIR = ${XTRALIBS_BASE}/eos
+set RTTOV = ${XTRALIBS_BASE}/rttov122
+
+
+set JPGINC = ${JPGDIR}/include
+set JPGLIB = ${JPGDIR}/lib
+
+set HDFINC = ${HDFDIR}/include
+set HDFLIB = ${HDFDIR}/lib
+
+set EOSINC = ${EOSDIR}/include
+set EOSLIB = ${EOSDIR}/lib
+
+set RTINC = "${RTTOV}/include"
+set RTMOD = "${RTTOV}/mod"
+set RTLIB = "${RTTOV}/lib"
+set RTLIBS = "-lrttov_main -lrttov_brdf_atlas -lrttov_coef_io -lrttov_emis_atlas -lrttov_mw_scatt -lrttov_mw_scatt_coef -lrttov_other"
+
+# leaving this out for now: rttov_parallel
+
+set MYLIBS = "${RTLIBS} -lhdfeos -lmfhdf -ldf -ljpeg -lz  -lm"
+
+set MYINCDIRS = "-I${RTINC} -I${RTMOD} -I${EOSINC} -I${HDFINC} -I${JPGINC}"
+set MYLIBDIRS = "-L${RTLIB} -L${EOSLIB} -L${HDFLIB} -L${JPGLIB}"
+
+# is -cpp compiler specific?  on a mac with a case-insensitive filesystem
+# we have to tell it to call cpp to build files with #if and #include lines.
+
+set MYFLAGS = "-cpp ${MYINCDIRS}"
+
+../../../../build_templates/mkmf -p obs_sequence_tool -t ../../../../build_templates/mkmf.template \
+ -o "${MYFLAGS}" -l "${MYFLAGS} ${MYINCDIRS} ${MYLIBDIRS} ${MYLIBS}" \
+ -a "../../../.." path_names_obs_sequence_tool 
 
 exit $status
 
