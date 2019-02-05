@@ -79,6 +79,8 @@ use rttov_interface_mod,   only : dart_rttov_setup, &
                                   dart_rttov_do_forward_model, &
                                   dart_rttov_takedown   ! unused at present?
 
+use parkind1,              only : jpim, jprb, jplm
+
 implicit none
 private
 
@@ -142,10 +144,27 @@ integer ::    rttovkey = 0       ! useful length of metadata arrays
 ! JPH, namelist for which channels to use and how many model levels there are
 ! see GPS module
 
-integer :: model_levels
-integer :: channel_list(1) = 1
+INTEGER(KIND=jpim), PARAMETER :: maxchannels = 3
 
-namelist / obs_def_rttov_nml/ channel_list, model_levels
+  ! variables for input
+  !====================
+CHARACTER(LEN=256)   :: coef_filename = 'rtcoef_eos_2_amsua.dat'
+CHARACTER(LEN=256)   :: prof_filename = 'prof.dat'
+INTEGER(KIND=jpim)   :: nprof = 1
+INTEGER(KIND=jpim)   :: dosolar = 0
+INTEGER(KIND=jpim)   :: nlevels = 51
+INTEGER(KIND=jpim)   :: nchannels = 3
+INTEGER(KIND=jpim)   :: channel_list(maxchannels)
+INTEGER(KIND=jpim)   :: nthreads = 1
+
+namelist / obs_def_rttov_nml/ coef_filename, &
+                              prof_filename, &
+                              nprof, &
+                              nlevels, &
+                              dosolar, &
+                              nchannels, &
+                              channel_list, &
+                              nthreads
 
 contains
 
@@ -155,6 +174,9 @@ contains
 subroutine initialize_module
 
 integer :: istatus
+integer :: ios
+
+print*, 'initialize_module'
 
 call register_module(source, revision, revdate)
 
@@ -184,10 +206,23 @@ call check_namelist_read(iunit, rc, "obs_def_rttov_nml")
 if (do_nml_file()) write(nmlfileunit, nml=obs_def_rttov_nml)
 if (do_nml_term()) write(     *     , nml=obs_def_rttov_nml)
 
-print*, 'dart_rttov_setup'
-call dart_rttov_setup(nprofiles=2, nchannels=1, channel_list=channel_list, &
-                      nlevels=model_levels, level_list=1, error_status=istatus)
-!call exit(0)
+print*, 'coef_filename - ', trim(coef_filename)
+print*, 'prof_filename - ', trim(prof_filename)
+print*, 'nprof         - ', nprof
+print*, 'nlevels       - ', nlevels
+print*, 'dosolar       - ', dosolar
+print*, 'nchannels     - ', nchannels
+print*, 'nthreads      - ', nthreads
+print*, '                '
+
+print*, 'initialize_module::dart_rttov_setup'
+call dart_rttov_setup(coef_file=coef_filename, &
+                      prof_file=prof_filename, &
+                      nprofs=nprof, &
+                      nlevs=nlevels, &
+                      nchans=nchannels, &
+                      chan_list=channel_list(1:nchannels), &
+                      error_status=istatus)
 
 end subroutine initialize_module
 
@@ -301,6 +336,7 @@ endif
 
 ! The oldkey is thrown away.
 
+print*, 'set_rttov_metadata', key, sat_az, sat_ze, sun_az, sun_ze, platform, sat_id, sensor, channel
 ! Store the metadata in module storage. The new key is returned.
 call set_rttov_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform, sat_id, sensor, channel)
 
@@ -331,10 +367,10 @@ call get_rttov_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform, sat_id, s
 is_asciifile = ascii_file_format(fform)
 
 if (is_asciifile) then
-   write(*, *) 'rttovSTRING', trim(rttovSTRING)
-   write(*, *) 'sat_az, sat_ze, sun_az, sun_ze', sat_az, sat_ze, sun_az, sun_ze
-   write(*, *) 'platform, sat_id, sensor, channel', platform, sat_id, sensor, channel
-   write(*, *) 'key', key
+   !write(*, *) 'rttovSTRING', trim(rttovSTRING)
+   !write(*, *) 'sat_az, sat_ze, sun_az, sun_ze', sat_az, sat_ze, sun_az, sun_ze
+   !write(*, *) 'platform, sat_id, sensor, channel', platform, sat_id, sensor, channel
+   !write(*, *) 'key', key
    write(ifile, *) trim(rttovSTRING)
    write(ifile, *) sat_az, sat_ze, sun_az, sun_ze
    write(ifile, *) platform, sat_id, sensor, channel
@@ -484,7 +520,7 @@ real(r8), allocatable :: temperature(:,:), pressure(:,:), &
                          moisture(:,:), water_vapor_mr(:,:)
 integer :: this_istatus(ens_size)
 
-integer  :: i, zi, nlevels
+integer  :: i, zi
 real(r8) :: loc_array(3)
 real(r8) :: loc_lon, loc_lat
 real(r8) :: loc_value(ens_size), radiance(ens_size)
@@ -493,7 +529,6 @@ integer :: imem, maxlevels
 integer :: error_status
 logical :: return_now
 character(len=*), parameter :: routine = 'get_expected_radiance'
-integer, allocatable :: channel_list(:)
 
 !=================================================================================
 
@@ -515,74 +550,79 @@ loc_array = get_location(location) ! loc is in DEGREES
 loc_lon   = loc_array(1)
 loc_lat   = loc_array(2)
 
-
-maxlevels = 10000   ! something larger than we think will exist
-COUNTLEVELS : do i = 1,maxlevels
-   loc = set_location(loc_lon, loc_lat, real(i,r8), VERTISLEVEL)
-   call interpolate(state_handle, ens_size, loc, QTY_PRESSURE, loc_value, this_istatus)
-   if ( any(this_istatus /= 0 ) ) exit COUNTLEVELS
-   nlevels = nlevels + 1
-enddo COUNTLEVELS
-
-if ((nlevels == maxlevels) .or. (nlevels == 0)) then
-   write(string1,*) 'FAILED to determine number of levels in model.'
-   if (debug) call error_handler(E_MSG,routine,string1,source,revision,revdate)
-   istatus = 1
-   val     = MISSING_R8
-   return
-else
-    if (debug) write(*,*)routine // 'we have ',nlevels,' model levels'
-endif
+!maxlevels = 10000   ! something larger than we think will exist
+!COUNTLEVELS : do i = 1,maxlevels
+!   loc = set_location(loc_lon, loc_lat, real(i,r8), VERTISLEVEL)
+!   call interpolate(state_handle, ens_size, loc, QTY_PRESSURE, loc_value, this_istatus)
+!   if ( any(this_istatus /= 0 ) ) exit COUNTLEVELS
+!   nlevels = nlevels + 1
+!enddo COUNTLEVELS
+!
+!if ((nlevels == maxlevels) .or. (nlevels == 0)) then
+!   write(string1,*) 'FAILED to determine number of levels in model.'
+!   if (debug) call error_handler(E_MSG,routine,string1,source,revision,revdate)
+!   istatus = 1
+!   val     = MISSING_R8
+!   return
+!else
+!    if (debug) write(*,*)routine // 'we have ',nlevels,' model levels'
+!endif
 
 
 !dart_rttov_takedown   ! unused at present?nlevels = 0
 ! now get needed info - t,p,q for starters
+!
+!allocate(temperature(ens_size, nlevels), &
+!            pressure(ens_size, nlevels), &
+!            moisture(ens_size, nlevels), &
+!      water_vapor_mr(ens_size, nlevels))
+!
+!! Set all of the istatuses back to zero for track_status
+!istatus = 0
+!
+!GETLEVELDATA : do i = 1,nlevels
+!   loc = set_location(loc_lon, loc_lat, real(i,r8), VERTISLEVEL)
+!
+!   call interpolate(state_handle, ens_size, loc, QTY_PRESSURE, temperature(:,i), this_istatus)
+!   call track_status(ens_size, this_istatus, val, istatus, return_now)
+!   if (return_now) return
+!
+!   call interpolate(state_handle, ens_size, loc, QTY_TEMPERATURE, pressure(:, i), this_istatus)
+!   call track_status(ens_size, this_istatus, val, istatus, return_now)
+!   if (return_now) return
+!
+!   call interpolate(state_handle, ens_size, loc, QTY_SPECIFIC_HUMIDITY, moisture(:, i), this_istatus)
+!   call track_status(ens_size, this_istatus, val, istatus, return_now)
+!   if (return_now) return
+!
+!   call interpolate(state_handle, ens_size, loc, QTY_VAPOR_MIXING_RATIO, water_vapor_mr(:, i), this_istatus)
+!   call track_status(ens_size, this_istatus, val, istatus, return_now)
+!   if (return_now) return
+!
+!   ! FIXME: what else?
+!
+!enddo GETLEVELDATA
 
-allocate(temperature(ens_size, nlevels), &
-            pressure(ens_size, nlevels), &
-            moisture(ens_size, nlevels), &
-      water_vapor_mr(ens_size, nlevels))
-
-! Set all of the istatuses back to zero for track_status
-istatus = 0
-
-GETLEVELDATA : do i = 1,nlevels
-   loc = set_location(loc_lon, loc_lat, real(i,r8), VERTISLEVEL)
-
-   call interpolate(state_handle, ens_size, loc, QTY_PRESSURE, temperature(:,i), this_istatus)
-   call track_status(ens_size, this_istatus, val, istatus, return_now)
-   if (return_now) return
-
-   call interpolate(state_handle, ens_size, loc, QTY_TEMPERATURE, pressure(:, i), this_istatus)
-   call track_status(ens_size, this_istatus, val, istatus, return_now)
-   if (return_now) return
-
-   call interpolate(state_handle, ens_size, loc, QTY_SPECIFIC_HUMIDITY, moisture(:, i), this_istatus)
-   call track_status(ens_size, this_istatus, val, istatus, return_now)
-   if (return_now) return
-
-   call interpolate(state_handle, ens_size, loc, QTY_VAPOR_MIXING_RATIO, water_vapor_mr(:, i), this_istatus)
-   call track_status(ens_size, this_istatus, val, istatus, return_now)
-   if (return_now) return
-
-   ! FIXME: what else?
-
-enddo GETLEVELDATA
-
+print*, 'get_expected_radiance::dart_rttov_do_forward_model'
 !FIXME: these interp results are unused. make it a cheap quantity to ask for.
-call dart_rttov_do_forward_model(ens_size=ens_size, nlevels=nlevels, &
-                                 location=location, t=temperature, &
-                                 p=pressure, q=moisture, wvmr=water_vapor_mr, &
-                                 radiances=radiance, error_status=this_istatus) 
+call dart_rttov_do_forward_model(ens_size=ens_size, &
+                                 nlevels=nlevels, &
+                                 location=location, &
+                                 t=temperature, &
+                                 p=pressure, &
+                                 q=moisture, &
+                                 wvmr=water_vapor_mr, &
+                                 radiances=radiance, &
+                                 error_status=this_istatus) 
 
 !FIXME initialize the profile info here and make the call to rttov()
 ! to compute radiances, once for each ensemble member
 
-do i=1, ens_size
-   radiance(i) = -32.0_r8
-enddo
+!do i=1, ens_size
+!   radiance(i) = -32.0_r8
+!enddo
 
-deallocate(temperature, pressure, moisture)
+!deallocate(temperature, pressure, moisture)
 
 !=================================================================================
 ! ... and finally set the return the radiance forward operator value

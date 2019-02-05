@@ -131,14 +131,16 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, &
   !====================
   CHARACTER(LEN=256) :: coef_filename
   CHARACTER(LEN=256) :: prof_filename
-  INTEGER(KIND=jpim) :: nthreads
-  INTEGER(KIND=jpim) :: dosolar
+  INTEGER(KIND=jpim) :: nthreads = 1
+  INTEGER(KIND=jpim) :: dosolar = 0
   INTEGER(KIND=jpim) :: nlevels
   INTEGER(KIND=jpim) :: nprof
   INTEGER(KIND=jpim) :: nchannels
   INTEGER(KIND=jpim) :: nchanprof
-  !INTEGER(KIND=jpim), ALLOCATABLE :: channel_list(:)
-  !INTEGER(KIND=jpim) :: channel_list(1)
+
+  ! These are now namelist variables in obs_def_rttov
+  INTEGER(KIND=jpim), ALLOCATABLE :: channel_list(:)
+
   REAL(KIND=jprb)    :: trans_out(10)
   ! loop variables
   INTEGER(KIND=jpim) :: j, jch
@@ -183,15 +185,16 @@ contains
 ! can be changed once we get this working.
 
 
-subroutine dart_rttov_setup(nprofiles, nchannels, channel_list, &
-                            nlevels, level_list, error_status)
+subroutine dart_rttov_setup(coef_file, prof_file, nprofs, nlevs, &
+                            nchans, chan_list, error_status)
 
-integer, intent(in)  :: nprofiles
-integer, intent(in)  :: nchannels
-integer, intent(in)  :: channel_list(:)
-integer, intent(in)  :: nlevels
-integer, intent(in)  :: level_list
-integer, intent(out) :: error_status  ! 0 is good, anything else is bad
+character(len=256), intent(in)  :: coef_file
+character(len=256), intent(in)  :: prof_file
+integer,   intent(in)  :: nprofs
+integer,   intent(in)  :: nlevs
+integer,   intent(in)  :: nchans
+integer,   intent(in)  :: chan_list(nchans)
+integer,   intent(out) :: error_status  ! 0 is good, anything else is bad
 
 !FIXME: things we need to set.
 !  coef_filename comes from the rttov distribution
@@ -203,15 +206,12 @@ integer, intent(out) :: error_status  ! 0 is good, anything else is bad
 !  channel number is part of metadata
 !  number of threads is 1 for now
 
-  ! FIXME - check this - i got it from rttov/rtcoef_rttov12/rttov7pred54L
-  ! and i have *no* idea if it's the right one to use.
-  coef_filename = 'rtcoef_eos_2_amsua.dat'
+coef_filename = coef_file
+prof_filename = prof_file
+nlevels       = nlevs
+nprof         = nprofs
+nchannels     = nchans
 
-  nprof = nprofiles
-  dosolar = 0
-  nthreads = 1
-
-  !allocate(channel_list(1))
   ! --------------------------------------------------------------------------
   ! 1. Initialise RTTOV options structure
   ! --------------------------------------------------------------------------
@@ -249,6 +249,7 @@ integer, intent(out) :: error_status  ! 0 is good, anything else is bad
   ! --------------------------------------------------------------------------
   ! 2. Read coefficients
   ! --------------------------------------------------------------------------
+  print*, 'dart_rttov_setup::rttov_read_coefs', coef_filename
   CALL rttov_read_coefs(errorstatus, coefs, opts, file_coef=coef_filename)
   IF (errorstatus /= errorstatus_success) THEN
     WRITE(*,*) 'fatal error reading coefficients'
@@ -256,7 +257,7 @@ integer, intent(out) :: error_status  ! 0 is good, anything else is bad
     return
   ENDIF
   
-  !print*, 'coefs % coef % fmv_chn', errorstatus, coefs % coef % fmv_chn, nchannels
+  print*, 'coefs % coef % fmv_chn', errorstatus, coefs % coef % fmv_chn, nchannels
   ! Ensure input number of channels is not higher than number stored in coefficient file
   IF (nchannels > coefs % coef % fmv_chn) THEN
     WRITE(*,*) 'n requested channels too large'
@@ -265,6 +266,7 @@ integer, intent(out) :: error_status  ! 0 is good, anything else is bad
   ENDIF
 
   ! Ensure the options and coefficients are consistent
+  print*, 'dart_rttov_setup::rttov_user_options_checkinput'
   CALL rttov_user_options_checkinput(errorstatus, opts, coefs)
   IF (errorstatus /= errorstatus_success) THEN
     WRITE(*,*) 'error in rttov options'
@@ -282,7 +284,8 @@ integer, intent(out) :: error_status  ! 0 is good, anything else is bad
   ! in general one can simulate a different number of channels for each profile.
 
   nchanprof = nchannels * nprof
-  !print*, 'nchanprof, nprof', nchanprof, nprof
+  print*, 'dart_rttov_setup::rttov_alloc_direct'
+  print*, 'nlevels = ', nlevels
   ! Allocate structures for rttov_direct
   CALL rttov_alloc_direct( &
         errorstatus,             &
@@ -317,11 +320,11 @@ integer, intent(out) :: error_status  ! 0 is good, anything else is bad
     DO jch = 1, nchannels
       nch = nch + 1_jpim
       chanprof(nch)%prof = j
-      chanprof(nch)%chan = channel_list(jch)
+      chanprof(nch)%chan = chan_list(jch)
     ENDDO
   ENDDO
 
-  call dart_rttov_dump_results(nprof, nchannels)
+  !call dart_rttov_dump_results(nprof, nchannels)
 
 end subroutine
 
@@ -339,10 +342,10 @@ subroutine dart_rttov_do_forward_model(ens_size, nlevels, location, t, p, q, wvm
 integer,             intent(in)  :: ens_size
 integer,             intent(in)  :: nlevels
 type(location_type), intent(in)  :: location
-real(r8),            intent(in)  :: t(:,:)   ! (ens_size, nlevels)
-real(r8),            intent(in)  :: p(:,:)   ! (ens_size, nlevels)
-real(r8),            intent(in)  :: q(:,:)   ! (ens_size, nlevels)
-real(r8),            intent(in)  :: wvmr(:,:)   ! (ens_size, nlevels)
+real(r8),            intent(in)  :: t(:,:)         ! (ens_size, nlevels)
+real(r8),            intent(in)  :: p(:,:)         ! (ens_size, nlevels)
+real(r8),            intent(in)  :: q(:,:)         ! (ens_size, nlevels)
+real(r8),            intent(in)  :: wvmr(:,:)      ! (ens_size, nlevels)
 real(r8),            intent(out) :: radiances(:)   ! (ens_size)
 integer,             intent(out) :: error_status(:)
 
@@ -354,91 +357,146 @@ integer :: imem, iprof
 real(r8) :: xo, yo, zo       ! perigee location in Cartesian coordinate
 real(r8) :: lon, lat, height, obsloc(3)
 
-!if ( .not. is_vertical(location, "HEIGHT")) then
-!   write(*, *) 'vertical location must be height;'
-!   !call error_handler(E_ERR,'get_expected_gpsro_ref', string1, &
-!   !                   source, revision, revdate)
-!endif
+  INTEGER(KIND=jpim), PARAMETER :: iup   = 20   ! unit for input profile file
 
-obsloc   = get_location(location)
+  ! --------------------------------------------------------------------------
+  ! 5. Read profile data
+  ! --------------------------------------------------------------------------
 
-lon      = obsloc(1) ! degree: 0 to 360
-lat      = obsloc(2) ! degree: -90 to 90
-height   = 100.0!obsloc(3) ! (m)
+  !===============================================
+  !========== Read profiles == start =============
 
-print*, 'height', height, 'lon', lon, 'lat', lat
-print*, 'pmin', pmin, 'pmax', pmax
-!FIXME - units for moisture, apparently ppmv or kg/kg
+  OPEN(iup, file=TRIM(prof_filename), status='old', iostat=ios)
+  IF (ios /= 0) THEN
+    WRITE(*,*) 'error opening profile file ios= ', ios
+    !CALL rttov_exit(errorstatus_fatal)
+  ENDIF
+  CALL rttov_skipcommentline(iup, errorstatus)
 
   ! Read gas units for profiles
-  profiles(:) % gas_units = 1 ! 1 = kg/kg (confirmed), 2 = ppmv moist
-
-  ! Loop over all ensemble_members
-  DO imem = 1, ens_size
+  READ(iup,*) profiles(1) % gas_units
+  profiles(:) % gas_units = profiles(1) % gas_units
+  CALL rttov_skipcommentline(iup, errorstatus)
 
   ! Loop over all profiles and read data for each one
   DO iprof = 1, nprof
 
-    !print*, 'size(profiles)', size(profiles)
-    !print*, 'iprof', iprof
-
-    ! pressure (hPa), temp (K), WV, O3 (gas units ppmv or kg/kg - as read above)
-    profiles(iprof) % p(:) = p(imem, :) ! FIXME : need to confirm on cell centers
-    profiles(iprof) % t(:) = t(imem, :)
-    profiles(iprof) % q(:) = q(imem, :)
-
-!FIXME - some models have surface t/q/p which are 2m
-! but typically winds are 10m, and wind fetch isn't available.
+    ! Read pressure (hPa), temp (K), WV, O3 (gas units ppmv or kg/kg - as read above)
+    READ(iup,*) profiles(iprof) % p(:)
+    CALL rttov_skipcommentline(iup, errorstatus)
+    READ(iup,*) profiles(iprof) % t(:)
+    CALL rttov_skipcommentline(iup, errorstatus)
+    READ(iup,*) profiles(iprof) % q(:)
+    CALL rttov_skipcommentline(iup, errorstatus)
+    ! Ozone profile is commented out in input profile data
+!     READ(iup,*) profiles(iprof) % o3(:)
+!     CALL rttov_skipcommentline(iup, errorstatus)
 
     ! 2 meter air variables
-    profiles(iprof) % s2m % t     = 1.0
-    !profiles(iprof) % s2m % q     = 1.0
-    profiles(iprof) % s2m % p     = 10000.0
-    !profiles(iprof) % s2m % u     = 1.0
-    !profiles(iprof) % s2m % v     = 1.0
-    !profiles(iprof) % s2m % wfetc = 1.0 !> do not need
+    READ(iup,*) profiles(iprof) % s2m % t, &
+                profiles(iprof) % s2m % q, &
+                profiles(iprof) % s2m % p, &
+                profiles(iprof) % s2m % u, &
+                profiles(iprof) % s2m % v, &
+                profiles(iprof) % s2m % wfetc
+    CALL rttov_skipcommentline(iup, errorstatus)
 
-!FIXME - might not have soil/water surface temp,
-! don't have salinity in atm models, nor fastem for
-! microwave emissivity models.
     ! Skin variables
-    profiles(iprof) % skin % t = 1.0
-    !profiles(iprof) % skin % salinity ! Salinity only applies to FASTEM over sea
-    !profiles(iprof) % skin % fastem      ! FASTEM only applies to MW instruments
+    READ(iup,*) profiles(iprof) % skin % t,        &
+                profiles(iprof) % skin % salinity, & ! Salinity only applies to FASTEM over sea
+                profiles(iprof) % skin % fastem      ! FASTEM only applies to MW instruments
+    CALL rttov_skipcommentline(iup, errorstatus)
 
-!FIXME - don't have, in general
-!only interpolate if all 4 boxes are over land
     ! Surface type and water type
-    profiles(iprof) % skin % surftype  = 1 ! (land = 0, sea = 1, seaice = 2)
-    ! profiles(iprof) % skin % watertype = 1 ! (fresh = 0, ocean = 1)
+    READ(iup,*) profiles(iprof) % skin % surftype, &
+                profiles(iprof) % skin % watertype
+    CALL rttov_skipcommentline(iup, errorstatus)
 
-!FIXME - ok, these we understand.  verify elevation is in meters (km?)
-! (JPH) : pg.11 users_guide_rttov12_v1.2.pdf profiles(i)%elevation [km]
     ! Elevation, latitude and longitude
-    profiles(iprof) % elevation = height*0.0001_r8
-    profiles(iprof) % latitude  = lat
-    profiles(iprof) % longitude = lon
+    READ(iup,*) profiles(iprof) % elevation, &
+                profiles(iprof) % latitude,  &
+                profiles(iprof) % longitude
+    CALL rttov_skipcommentline(iup, errorstatus)
 
-!FIXME - these will be part of metadata.  note we generally
-! have used azimuth/elevation instead of azimuth/zenith.
-! elevation = 90 - zenith, and zenith = 90 - elevation.
     ! Satellite and solar angles
-    !#! CALL get_rttov_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform, sat_id, sensor, channel)
-    profiles(iprof) % zenangle = 100.0 
-    !#! profiles(iprof) % azangle
-    !#! profiles(iprof) % sunzenangle
-    !#! profiles(iprof) % sunazangle ! do not need
+    READ(iup,*) profiles(iprof) % zenangle,    &
+                profiles(iprof) % azangle,     &
+                profiles(iprof) % sunzenangle, &
+                profiles(iprof) % sunazangle
+    CALL rttov_skipcommentline(iup, errorstatus)
 
-!FIXME - make sure cfraction is 0 here
     ! Cloud variables for simple cloud scheme, set cfraction to 0. to turn this off (VIS/IR only)
-    !#! READ(iup,*) profiles(iprof) % ctp, & (cloud top pressure)
-    !#!             profiles(iprof) % cfraction
+    READ(iup,*) profiles(iprof) % ctp, &
+                profiles(iprof) % cfraction
+    CALL rttov_skipcommentline(iup, errorstatus)
 
   ENDDO
-  !#! CLOSE(iup)
+  CLOSE(iup)
 
   !========== Read profiles == end =============
   !=============================================
+
+  ! --------------------------------------------------------------------------
+  ! 6. Specify surface emissivity and reflectance
+  ! --------------------------------------------------------------------------
+
+  ! In this example we have no values for input emissivities
+  emissivity(:) % emis_in = 0._jprb
+
+  ! Calculate emissivity within RTTOV where the input emissivity value is
+  ! zero or less (all channels in this case)
+  calcemis(:) = (emissivity(:) % emis_in <= 0._jprb)
+
+  ! In this example we have no values for input reflectances
+  reflectance(:) % refl_in = 0._jprb
+
+  ! Calculate BRDF within RTTOV where the input BRDF value is zero or less
+  ! (all channels in this case)
+  calcrefl(:) = (reflectance(:) % refl_in <= 0._jprb)
+
+  ! Use default cloud top BRDF for simple cloud in VIS/NIR channels
+  reflectance(:) % refl_cloud_top = 0._jprb
+
+
+  ! --------------------------------------------------------------------------
+  ! 7. Call RTTOV forward model
+  ! --------------------------------------------------------------------------
+  !IF (nthreads <= 1) THEN
+    CALL rttov_direct(                &
+            errorstatus,              &! out   error flag
+            chanprof,                 &! in    channel and profile index structure
+            opts,                     &! in    options structure
+            profiles,                 &! in    profile array
+            coefs,                    &! in    coefficients structure
+            transmission,             &! inout computed transmittances
+            radiance,                 &! inout computed radiances
+            calcemis    = calcemis,   &! in    flag for internal emissivity calcs
+            emissivity  = emissivity, &! inout input/output emissivities per channel
+            calcrefl    = calcrefl,   &! in    flag for internal BRDF calcs
+            reflectance = reflectance) ! inout input/output BRDFs per channel
+  !ELSE
+  !  CALL rttov_parallel_direct(     &
+  !          errorstatus,              &! out   error flag
+  !          chanprof,                 &! in    channel and profile index structure
+  !          opts,                     &! in    options structure
+  !          profiles,                 &! in    profile array
+  !          coefs,                    &! in    coefficients structure
+  !          transmission,             &! inout computed transmittances
+  !          radiance,                 &! inout computed radiances
+  !          calcemis    = calcemis,   &! in    flag for internal emissivity calcs
+  !          emissivity  = emissivity, &! inout input/output emissivities per channel
+  !          calcrefl    = calcrefl,   &! in    flag for internal BRDF calcs
+  !          reflectance = reflectance,&! inout input/output BRDFs per channel
+  !          nthreads    = nthreads)    ! in    number of threads to use
+  !ENDIF
+
+  IF (errorstatus /= errorstatus_success) THEN
+    WRITE (*,*) 'rttov_direct error'
+    !CALL rttov_exit(errorstatus)
+  ENDIF
+
+  !============== Output results == end ==============
+  !=====================================================
 
 
   ! --------------------------------------------------------------------------
@@ -462,10 +520,11 @@ print*, 'pmin', pmin, 'pmax', pmax
   ! Use default cloud top BRDF for simple cloud in VIS/NIR channels
   reflectance(:) % refl_cloud_top = 0._jprb
 
-  print*, 'CALL to rttov_direct'
+
   ! --------------------------------------------------------------------------
   ! 7. Call RTTOV forward model
   ! --------------------------------------------------------------------------
+  !IF (nthreads <= 1) THEN
     CALL rttov_direct(                &
             errorstatus,              &! out   error flag
             chanprof,                 &! in    channel and profile index structure
@@ -478,22 +537,34 @@ print*, 'pmin', pmin, 'pmax', pmax
             emissivity  = emissivity, &! inout input/output emissivities per channel
             calcrefl    = calcrefl,   &! in    flag for internal BRDF calcs
             reflectance = reflectance) ! inout input/output BRDFs per channel
-  print*, 'END CALL to rttov_direct'
+  !ELSE
+  !  CALL rttov_parallel_direct(     &
+  !          errorstatus,              &! out   error flag
+  !          chanprof,                 &! in    channel and profile index structure
+  !          opts,                     &! in    options structure
+  !          profiles,                 &! in    profile array
+  !          coefs,                    &! in    coefficients structure
+  !          transmission,             &! inout computed transmittances
+  !          radiance,                 &! inout computed radiances
+  !          calcemis    = calcemis,   &! in    flag for internal emissivity calcs
+  !          emissivity  = emissivity, &! inout input/output emissivities per channel
+  !          calcrefl    = calcrefl,   &! in    flag for internal BRDF calcs
+  !          reflectance = reflectance,&! inout input/output BRDFs per channel
+  !          nthreads    = nthreads)    ! in    number of threads to use
+  !ENDIF
 
   IF (errorstatus /= errorstatus_success) THEN
     WRITE (*,*) 'rttov_direct error'
-    error_status(imem) = errorstatus
-    return
+    !CALL rttov_exit(errorstatus)
   ENDIF
 
-  !FIXME - check this
-  radiances(imem) = radiance%total(iprof)
+  !============== Output results == end ==============
+  !=====================================================
 
-enddo ! ensemble size
-
+print*, 'dart_rttov_dump_results'
 call dart_rttov_dump_results(nprof, nchannels)
 
-end subroutine
+end subroutine dart_rttov_do_forward_model
 
 !--------------------------------------------------------------------------
 
@@ -606,6 +677,7 @@ integer :: alloc_status
   !ENDIF
 
   ! Deallocate structures for rttov_direct
+  print*, 'dart_rttov_takedown::rttov_alloc_direct'
   CALL rttov_alloc_direct( &
         errorstatus,             &
         0_jpim,                  &  ! 0 => deallocate
