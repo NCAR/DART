@@ -22,9 +22,26 @@ else
   template=doxygen-config-template
 fi
 
+# this assumes we are running from some work directory.
+# if you are building from some other named dir, change
+# 'work' to that dir name in the line below.
 model=`pwd | sed -e 's;/work;;' -e 's;^.*/;;' `
 umodel=`echo $model | tr '[a-z]' '[A-Z]' `
-toppath=`cd ../../../; pwd`
+
+# figure out how far down we are in the directory hierarchy.
+if [ -f        ../../../CHANGELOG ]; then
+   toppath=`cd ../../../; pwd`
+elif [ -f   ../../../../CHANGELOG ]; then
+   toppath=`cd ../../../../; pwd`
+elif [ -f   ../../CHANGELOG ]; then
+   toppath=`cd ../../; pwd`
+elif [ -f   ../../../../../CHANGELOG ]; then
+   toppath=`cd ../../../../../; pwd`
+elle
+   echo cannot find the top level DART directory
+   echo based on the current working directory.
+   exit -1
+fi
 
 destdir=$toppath/documentation/doxygen/$model
 
