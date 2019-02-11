@@ -364,6 +364,20 @@ real(r8) :: lon, lat, height, obsloc(3)
 
   INTEGER(KIND=jpim), PARAMETER :: iup   = 20   ! unit for input profile file
 
+obsloc   = get_location(location)
+
+!>@ todo : fixme check that the units are the same
+lon      = obsloc(1) ! degree: 0 to 360
+lat      = obsloc(2) ! degree: -90 to 90
+height   = 100.0!obsloc(3) ! (m)
+
+if ( .not. is_vertical(location, "HEIGHT")) then
+   write(*, *) 'vertical location must be height;'
+   !call error_handler(E_ERR,'get_expected_gpsro_ref', string1, &
+   !                   source, revision, revdate)
+endif
+
+
   ! --------------------------------------------------------------------------
   ! 5. Read profile data
   ! --------------------------------------------------------------------------
