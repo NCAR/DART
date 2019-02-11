@@ -206,6 +206,7 @@ call check_namelist_read(iunit, rc, "obs_def_rttov_nml")
 if (do_nml_file()) write(nmlfileunit, nml=obs_def_rttov_nml)
 if (do_nml_term()) write(     *     , nml=obs_def_rttov_nml)
 
+print*, '                '
 print*, 'coef_filename - ', trim(coef_filename)
 print*, 'prof_filename - ', trim(prof_filename)
 print*, 'nprof         - ', nprof
@@ -525,7 +526,7 @@ real(r8) :: loc_array(3)
 real(r8) :: loc_lon, loc_lat
 real(r8) :: loc_value(ens_size), radiance(ens_size)
 type(location_type) :: loc
-integer :: imem, maxlevels
+integer :: imem, maxlevels, numlevels
 integer :: error_status
 logical :: return_now
 character(len=*), parameter :: routine = 'get_expected_radiance'
@@ -550,63 +551,65 @@ loc_array = get_location(location) ! loc is in DEGREES
 loc_lon   = loc_array(1)
 loc_lat   = loc_array(2)
 
-!maxlevels = 10000   ! something larger than we think will exist
-!COUNTLEVELS : do i = 1,maxlevels
-!   loc = set_location(loc_lon, loc_lat, real(i,r8), VERTISLEVEL)
-!   call interpolate(state_handle, ens_size, loc, QTY_PRESSURE, loc_value, this_istatus)
-!   if ( any(this_istatus /= 0 ) ) exit COUNTLEVELS
-!   nlevels = nlevels + 1
-!enddo COUNTLEVELS
-!
-!if ((nlevels == maxlevels) .or. (nlevels == 0)) then
-!   write(string1,*) 'FAILED to determine number of levels in model.'
-!   if (debug) call error_handler(E_MSG,routine,string1,source,revision,revdate)
-!   istatus = 1
-!   val     = MISSING_R8
-!   return
-!else
-!    if (debug) write(*,*)routine // 'we have ',nlevels,' model levels'
-!endif
+maxlevels = 10000   ! something larger than we think will exist
+COUNTLEVELS : do i = 1,maxlevels
+   loc = set_location(loc_lon, loc_lat, real(i,r8), VERTISLEVEL)
+   call interpolate(state_handle, ens_size, loc, QTY_PRESSURE, loc_value, this_istatus)
+   if ( any(this_istatus /= 0 ) ) exit COUNTLEVELS
+   numlevels = numlevels + 1
+enddo COUNTLEVELS
+
+if ((numlevels == maxlevels) .or. (numlevels == 0)) then
+   write(string1,*) 'FAILED to determine number of levels in model.'
+   if (debug) call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   istatus = 1
+   val     = MISSING_R8
+   return
+else
+    if (debug) write(*,*)routine // ' we have ',numlevels,' model levels'
+endif
 
 
 !dart_rttov_takedown   ! unused at present?nlevels = 0
 ! now get needed info - t,p,q for starters
-!
-!allocate(temperature(ens_size, nlevels), &
-!            pressure(ens_size, nlevels), &
-!            moisture(ens_size, nlevels), &
-!      water_vapor_mr(ens_size, nlevels))
-!
-!! Set all of the istatuses back to zero for track_status
-!istatus = 0
-!
-!GETLEVELDATA : do i = 1,nlevels
-!   loc = set_location(loc_lon, loc_lat, real(i,r8), VERTISLEVEL)
-!
-!   call interpolate(state_handle, ens_size, loc, QTY_PRESSURE, temperature(:,i), this_istatus)
-!   call track_status(ens_size, this_istatus, val, istatus, return_now)
-!   if (return_now) return
-!
-!   call interpolate(state_handle, ens_size, loc, QTY_TEMPERATURE, pressure(:, i), this_istatus)
-!   call track_status(ens_size, this_istatus, val, istatus, return_now)
-!   if (return_now) return
-!
-!   call interpolate(state_handle, ens_size, loc, QTY_SPECIFIC_HUMIDITY, moisture(:, i), this_istatus)
-!   call track_status(ens_size, this_istatus, val, istatus, return_now)
-!   if (return_now) return
-!
-!   call interpolate(state_handle, ens_size, loc, QTY_VAPOR_MIXING_RATIO, water_vapor_mr(:, i), this_istatus)
-!   call track_status(ens_size, this_istatus, val, istatus, return_now)
-!   if (return_now) return
-!
-!   ! FIXME: what else?
-!
-!enddo GETLEVELDATA
 
+allocate(temperature(ens_size, numlevels), &
+            pressure(ens_size, numlevels), &
+            moisture(ens_size, numlevels), &
+      water_vapor_mr(ens_size, numlevels))
+
+! Set all of the istatuses back to zero for track_status
+istatus = 0
+
+GETLEVELDATA : do i = 1,numlevels
+   loc = set_location(loc_lon, loc_lat, real(i,r8), VERTISLEVEL)
+
+   call interpolate(state_handle, ens_size, loc, QTY_PRESSURE, pressure(:,i), this_istatus)
+   call track_status(ens_size, this_istatus, val, istatus, return_now)
+   if (return_now) return
+
+   call interpolate(state_handle, ens_size, loc, QTY_TEMPERATURE, temperature(:, i), this_istatus)
+   call track_status(ens_size, this_istatus, val, istatus, return_now)
+   if (return_now) return
+
+   call interpolate(state_handle, ens_size, loc, QTY_SPECIFIC_HUMIDITY, moisture(:, i), this_istatus)
+   call track_status(ens_size, this_istatus, val, istatus, return_now)
+   if (return_now) return
+
+   call interpolate(state_handle, ens_size, loc, QTY_VAPOR_MIXING_RATIO, water_vapor_mr(:, i), this_istatus)
+   call track_status(ens_size, this_istatus, val, istatus, return_now)
+   if (return_now) return
+
+   ! FIXME: what else?
+
+enddo GETLEVELDATA
+print*, 'interpolate pressure    = ', pressure(1,:)
+print*, 'interpolate temperature = ', temperature(1,:)
+print*, 'interpolate moisture    = ', moisture(1,:)
 print*, 'get_expected_radiance::dart_rttov_do_forward_model'
 !FIXME: these interp results are unused. make it a cheap quantity to ask for.
 call dart_rttov_do_forward_model(ens_size=ens_size, &
-                                 nlevels=nlevels, &
+                                 nlevels=numlevels, &
                                  location=location, &
                                  t=temperature, &
                                  p=pressure, &
@@ -622,7 +625,10 @@ call dart_rttov_do_forward_model(ens_size=ens_size, &
 !   radiance(i) = -32.0_r8
 !enddo
 
-!deallocate(temperature, pressure, moisture)
+
+print*, 'istatus  = ', istatus 
+print*, 'radiance = ', radiance
+deallocate(temperature, pressure, moisture)
 
 !=================================================================================
 ! ... and finally set the return the radiance forward operator value

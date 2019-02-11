@@ -212,6 +212,12 @@ nlevels       = nlevs
 nprof         = nprofs
 nchannels     = nchans
 
+print*, 'coef_filename = ', trim(coef_filename)
+print*, 'prof_filename = ', trim(prof_filename)
+print*, 'nlevels       = ', nlevels
+print*, 'nprof         = ', nprof
+print*, 'nchannels     = ', nchannels
+
   ! --------------------------------------------------------------------------
   ! 1. Initialise RTTOV options structure
   ! --------------------------------------------------------------------------
@@ -257,7 +263,6 @@ nchannels     = nchans
     return
   ENDIF
   
-  print*, 'coefs % coef % fmv_chn', errorstatus, coefs % coef % fmv_chn, nchannels
   ! Ensure input number of channels is not higher than number stored in coefficient file
   IF (nchannels > coefs % coef % fmv_chn) THEN
     WRITE(*,*) 'n requested channels too large'
@@ -369,66 +374,94 @@ real(r8) :: lon, lat, height, obsloc(3)
   OPEN(iup, file=TRIM(prof_filename), status='old', iostat=ios)
   IF (ios /= 0) THEN
     WRITE(*,*) 'error opening profile file ios= ', ios
-    !CALL rttov_exit(errorstatus_fatal)
   ENDIF
-  CALL rttov_skipcommentline(iup, errorstatus)
 
   ! Read gas units for profiles
-  READ(iup,*) profiles(1) % gas_units
-  profiles(:) % gas_units = profiles(1) % gas_units
-  CALL rttov_skipcommentline(iup, errorstatus)
+  !
+  ! Gas units (must be same for all profiles)
+  ! 0 => ppmv over dry air
+  ! 1 => kg/kg over moist air
+  ! 2 => ppmv over moist air
+  !
+  profiles(1) % gas_units = 2
 
   ! Loop over all profiles and read data for each one
   DO iprof = 1, nprof
 
-    ! Read pressure (hPa), temp (K), WV, O3 (gas units ppmv or kg/kg - as read above)
-    READ(iup,*) profiles(iprof) % p(:)
-    CALL rttov_skipcommentline(iup, errorstatus)
-    READ(iup,*) profiles(iprof) % t(:)
-    CALL rttov_skipcommentline(iup, errorstatus)
-    READ(iup,*) profiles(iprof) % q(:)
-    CALL rttov_skipcommentline(iup, errorstatus)
+    ! Assign pressure (hPa), temp (K), WV, O3 (gas units ppmv or kg/kg - as read above)
+    profiles(iprof) % p(:) = p(1,:)/100 ! WRF has units of pressure in Pa
+    profiles(iprof) % t(:) = t(1,:)
+    profiles(iprof) % q(:) = q(1,:)
+    print*, 'p = ', profiles(iprof) % p(1:28)
+    print*, 't = ', profiles(iprof) % t(1:28)
+    print*, 'q = ', profiles(iprof) % q(1:28)
+    profiles(iprof) % p(:) = (/ 3.5000, 4.2000, 5.0000, 6.9500, 10.3700, 14.8100, 20.4000, 27.2600, 35.5100, 45.2900, 56.7300, 69.9700, 85.1800, 102.0500, 122.0400, 143.8400, 167.9500, 194.3600, 222.9400, 253.7100, 286.6000, 321.5000, 358.2800, 396.8100, 436.9500, 478.5400, 521.4600, 565.5400/)
+    profiles(iprof) % t(:) = (/ 249.3151, 245.6677, 242.1214, 235.0510, 229.0762, 224.9674, 221.5840, 219.4585, 217.8626, 216.5165, 215.4023, 214.4902, 214.0050, 213.9146, 215.0473, 216.2036, 217.0188, 218.1449, 220.2589, 222.9655, 226.8116, 231.4954, 236.6371, 241.7931, 246.7149, 251.3410, 255.5765, 259.4841/)
+    profiles(iprof) % q(:) = (/ 5.4207, 5.3709, 5.3163, 5.1176, 4.9075, 4.6678, 4.5938, 4.6301, 4.4968, 4.2278, 4.0553, 3.8507, 3.5945, 3.6959, 6.6024, 10.9254, 18.2861, 28.8324, 43.6666, 65.4678, 94.3150, 157.1087, 263.4549, 430.7470, 663.7744, 952.9336, 1445.7529, 1942.0548/)
+    print*, 'p = ', profiles(iprof) % p(1:28)
+    print*, 't = ', profiles(iprof) % t(1:28)
+    print*, 'q = ', profiles(iprof) % q(1:28)
+
     ! Ozone profile is commented out in input profile data
 !     READ(iup,*) profiles(iprof) % o3(:)
 !     CALL rttov_skipcommentline(iup, errorstatus)
 
     ! 2 meter air variables
-    READ(iup,*) profiles(iprof) % s2m % t, &
-                profiles(iprof) % s2m % q, &
-                profiles(iprof) % s2m % p, &
-                profiles(iprof) % s2m % u, &
-                profiles(iprof) % s2m % v, &
-                profiles(iprof) % s2m % wfetc
-    CALL rttov_skipcommentline(iup, errorstatus)
+! Near-surface variables:
+!  2m T (K)    2m q (ppmv) 2m p (hPa) 10m wind u (m/s)  10m wind v (m/s)  wind fetch (m)
+!
+!   286.6682    15248.0550  1007.30      5.000             2.0000            100000.
+    profiles(iprof) % s2m % t     = 286.6682!t(1,1)
+    profiles(iprof) % s2m % q     = 15248.0550!q(1,1)
+    profiles(iprof) % s2m % p     = 1007.30!p(1,1)
+    profiles(iprof) % s2m % u     = 5.0!u(1,1)
+    profiles(iprof) % s2m % v     = 2.0!v(1,1)
+    profiles(iprof) % s2m % wfetc = 100000.0!wfetc(1,1)
 
     ! Skin variables
-    READ(iup,*) profiles(iprof) % skin % t,        &
-                profiles(iprof) % skin % salinity, & ! Salinity only applies to FASTEM over sea
-                profiles(iprof) % skin % fastem      ! FASTEM only applies to MW instruments
-    CALL rttov_skipcommentline(iup, errorstatus)
+!
+! Skin variables:
+!  Skin T (K)  Salinity   FASTEM parameters for land surfaces
+!
+!  286.6682    35.0       3.0 5.0 15.0 0.1 0.3
+    profiles(iprof) % skin % t        = 286.6682
+    profiles(iprof) % skin % salinity =  35.0! Salinity only applies to FASTEM over sea
+    profiles(iprof) % skin % fastem   =   3.0! FASTEM only applies to MW instruments
 
     ! Surface type and water type
-    READ(iup,*) profiles(iprof) % skin % surftype, &
-                profiles(iprof) % skin % watertype
-    CALL rttov_skipcommentline(iup, errorstatus)
+!
+! Surface type (0=land, 1=sea, 2=sea-ice) and water type (0=fresh, 1=ocean)
+!
+!  1         1
+    profiles(iprof) % skin % surftype  = 1
+    profiles(iprof) % skin % watertype = 1
 
     ! Elevation, latitude and longitude
-    READ(iup,*) profiles(iprof) % elevation, &
-                profiles(iprof) % latitude,  &
-                profiles(iprof) % longitude
-    CALL rttov_skipcommentline(iup, errorstatus)
+!
+! Elevation (km), latitude and longitude (degrees)
+!
+!  0.    0.   30.
+    profiles(iprof) % elevation =  0.0
+    profiles(iprof) % latitude  =  0.0
+    profiles(iprof) % longitude = 30.0
 
     ! Satellite and solar angles
-    READ(iup,*) profiles(iprof) % zenangle,    &
-                profiles(iprof) % azangle,     &
-                profiles(iprof) % sunzenangle, &
-                profiles(iprof) % sunazangle
-    CALL rttov_skipcommentline(iup, errorstatus)
+!
+! Sat. zenith and azimuth angles, solar zenith and azimuth angles (degrees)
+!
+!  0.     0.     45.     30.
+    profiles(iprof) % zenangle    =  0.0
+    profiles(iprof) % azangle     =  0.0
+    profiles(iprof) % sunzenangle = 45.0
+    profiles(iprof) % sunazangle  = 30.0
 
     ! Cloud variables for simple cloud scheme, set cfraction to 0. to turn this off (VIS/IR only)
-    READ(iup,*) profiles(iprof) % ctp, &
-                profiles(iprof) % cfraction
-    CALL rttov_skipcommentline(iup, errorstatus)
+!
+! Cloud top pressure (hPa) and cloud fraction for simple cloud scheme
+!
+!  500.00    0.0
+    profiles(iprof) % ctp       = 500.0
+    profiles(iprof) % cfraction =   0.0
 
   ENDDO
   CLOSE(iup)
@@ -563,6 +596,8 @@ real(r8) :: lon, lat, height, obsloc(3)
 
 print*, 'dart_rttov_dump_results'
 call dart_rttov_dump_results(nprof, nchannels)
+
+radiances(:) = radiance % total(1)
 
 end subroutine dart_rttov_do_forward_model
 
