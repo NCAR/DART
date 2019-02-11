@@ -385,22 +385,25 @@ real(r8) :: lon, lat, height, obsloc(3)
   !
   profiles(1) % gas_units = 2
 
+  ! Loop over all of the ensemble members
+  DO imem = 1, ens_size
+
   ! Loop over all profiles and read data for each one
   DO iprof = 1, nprof
 
-    ! Assign pressure (hPa), temp (K), WV, O3 (gas units ppmv or kg/kg - as read above)
-    profiles(iprof) % p(:) = p(1,:)/100 ! WRF has units of pressure in Pa
-    profiles(iprof) % t(:) = t(1,:)
-    profiles(iprof) % q(:) = q(1,:)
+    ! Assign pressure (hPa), temp (K), WV, O3 (gas units ppmv or kg/kg)
+    profiles(iprof) % p(:) = p(imem,28:1:-1)/100 ! WRF has units of pressure in Pa
+    profiles(iprof) % t(:) = t(imem,28:1:-1)
+    profiles(iprof) % q(:) = q(imem,28:1:-1)/1000
     print*, 'p = ', profiles(iprof) % p(1:28)
     print*, 't = ', profiles(iprof) % t(1:28)
     print*, 'q = ', profiles(iprof) % q(1:28)
-    profiles(iprof) % p(:) = (/ 3.5000, 4.2000, 5.0000, 6.9500, 10.3700, 14.8100, 20.4000, 27.2600, 35.5100, 45.2900, 56.7300, 69.9700, 85.1800, 102.0500, 122.0400, 143.8400, 167.9500, 194.3600, 222.9400, 253.7100, 286.6000, 321.5000, 358.2800, 396.8100, 436.9500, 478.5400, 521.4600, 565.5400/)
-    profiles(iprof) % t(:) = (/ 249.3151, 245.6677, 242.1214, 235.0510, 229.0762, 224.9674, 221.5840, 219.4585, 217.8626, 216.5165, 215.4023, 214.4902, 214.0050, 213.9146, 215.0473, 216.2036, 217.0188, 218.1449, 220.2589, 222.9655, 226.8116, 231.4954, 236.6371, 241.7931, 246.7149, 251.3410, 255.5765, 259.4841/)
-    profiles(iprof) % q(:) = (/ 5.4207, 5.3709, 5.3163, 5.1176, 4.9075, 4.6678, 4.5938, 4.6301, 4.4968, 4.2278, 4.0553, 3.8507, 3.5945, 3.6959, 6.6024, 10.9254, 18.2861, 28.8324, 43.6666, 65.4678, 94.3150, 157.1087, 263.4549, 430.7470, 663.7744, 952.9336, 1445.7529, 1942.0548/)
-    print*, 'p = ', profiles(iprof) % p(1:28)
-    print*, 't = ', profiles(iprof) % t(1:28)
-    print*, 'q = ', profiles(iprof) % q(1:28)
+    !profiles(iprof) % p(:) = (/ 3.5000, 4.2000, 5.0000, 6.9500, 10.3700, 14.8100, 20.4000, 27.2600, 35.5100, 45.2900, 56.7300, 69.9700, 85.1800, 102.0500, 122.0400, 143.8400, 167.9500, 194.3600, 222.9400, 253.7100, 286.6000, 321.5000, 358.2800, 396.8100, 436.9500, 478.5400, 521.4600, 565.5400/)
+    !profiles(iprof) % t(:) = (/ 249.3151, 245.6677, 242.1214, 235.0510, 229.0762, 224.9674, 221.5840, 219.4585, 217.8626, 216.5165, 215.4023, 214.4902, 214.0050, 213.9146, 215.0473, 216.2036, 217.0188, 218.1449, 220.2589, 222.9655, 226.8116, 231.4954, 236.6371, 241.7931, 246.7149, 251.3410, 255.5765, 259.4841/)
+    !profiles(iprof) % q(:) = (/ 5.4207, 5.3709, 5.3163, 5.1176, 4.9075, 4.6678, 4.5938, 4.6301, 4.4968, 4.2278, 4.0553, 3.8507, 3.5945, 3.6959, 6.6024, 10.9254, 18.2861, 28.8324, 43.6666, 65.4678, 94.3150, 157.1087, 263.4549, 430.7470, 663.7744, 952.9336, 1445.7529, 1942.0548/)
+    !print*, 'p = ', profiles(iprof) % p(1:28)
+    !print*, 't = ', profiles(iprof) % t(1:28)
+    !print*, 'q = ', profiles(iprof) % q(1:28)
 
     ! Ozone profile is commented out in input profile data
 !     READ(iup,*) profiles(iprof) % o3(:)
@@ -530,61 +533,9 @@ real(r8) :: lon, lat, height, obsloc(3)
 
   !============== Output results == end ==============
   !=====================================================
+  radiances(imem) = radiance % total(1)
+  ENDDO ! member loop
 
-
-  ! --------------------------------------------------------------------------
-  ! 6. Specify surface emissivity and reflectance
-  ! --------------------------------------------------------------------------
-
-  ! In this example we have no values for input emissivities
-  emissivity(:) % emis_in = 0._jprb
-
-  ! Calculate emissivity within RTTOV where the input emissivity value is
-  ! zero or less (all channels in this case)
-  calcemis(:) = (emissivity(:) % emis_in <= 0._jprb)
-
-  ! In this example we have no values for input reflectances
-  reflectance(:) % refl_in = 0._jprb
-
-  ! Calculate BRDF within RTTOV where the input BRDF value is zero or less
-  ! (all channels in this case)
-  calcrefl(:) = (reflectance(:) % refl_in <= 0._jprb)
-
-  ! Use default cloud top BRDF for simple cloud in VIS/NIR channels
-  reflectance(:) % refl_cloud_top = 0._jprb
-
-
-  ! --------------------------------------------------------------------------
-  ! 7. Call RTTOV forward model
-  ! --------------------------------------------------------------------------
-  !IF (nthreads <= 1) THEN
-    CALL rttov_direct(                &
-            errorstatus,              &! out   error flag
-            chanprof,                 &! in    channel and profile index structure
-            opts,                     &! in    options structure
-            profiles,                 &! in    profile array
-            coefs,                    &! in    coefficients structure
-            transmission,             &! inout computed transmittances
-            radiance,                 &! inout computed radiances
-            calcemis    = calcemis,   &! in    flag for internal emissivity calcs
-            emissivity  = emissivity, &! inout input/output emissivities per channel
-            calcrefl    = calcrefl,   &! in    flag for internal BRDF calcs
-            reflectance = reflectance) ! inout input/output BRDFs per channel
-  !ELSE
-  !  CALL rttov_parallel_direct(     &
-  !          errorstatus,              &! out   error flag
-  !          chanprof,                 &! in    channel and profile index structure
-  !          opts,                     &! in    options structure
-  !          profiles,                 &! in    profile array
-  !          coefs,                    &! in    coefficients structure
-  !          transmission,             &! inout computed transmittances
-  !          radiance,                 &! inout computed radiances
-  !          calcemis    = calcemis,   &! in    flag for internal emissivity calcs
-  !          emissivity  = emissivity, &! inout input/output emissivities per channel
-  !          calcrefl    = calcrefl,   &! in    flag for internal BRDF calcs
-  !          reflectance = reflectance,&! inout input/output BRDFs per channel
-  !          nthreads    = nthreads)    ! in    number of threads to use
-  !ENDIF
 
   IF (errorstatus /= errorstatus_success) THEN
     WRITE (*,*) 'rttov_direct error'
@@ -597,7 +548,6 @@ real(r8) :: lon, lat, height, obsloc(3)
 print*, 'dart_rttov_dump_results'
 call dart_rttov_dump_results(nprof, nchannels)
 
-radiances(:) = radiance % total(1)
 
 end subroutine dart_rttov_do_forward_model
 
