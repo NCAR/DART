@@ -69,7 +69,9 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MS
 use     location_mod, only : location_type, set_location, get_location, VERTISUNDEF, &
                              VERTISHEIGHT, VERTISLEVEL, set_location_missing
 use     obs_kind_mod, only : QTY_GEOPOTENTIAL_HEIGHT, QTY_PRESSURE, QTY_TEMPERATURE, &
-                             QTY_SPECIFIC_HUMIDITY, QTY_VAPOR_MIXING_RATIO
+                             QTY_SPECIFIC_HUMIDITY, QTY_VAPOR_MIXING_RATIO, &
+                             QTY_U_WIND_COMPONENT, QTY_V_WIND_COMPONENT
+
 use  assim_model_mod, only : interpolate
 
 use obs_def_utilities_mod, only : track_status
@@ -176,8 +178,6 @@ subroutine initialize_module
 integer :: istatus
 integer :: ios
 
-print*, 'initialize_module'
-
 call register_module(source, revision, revdate)
 
 module_initialized = .true.
@@ -216,7 +216,6 @@ print*, 'nchannels     - ', nchannels
 print*, 'nthreads      - ', nthreads
 print*, '                '
 
-print*, 'initialize_module::dart_rttov_setup'
 call dart_rttov_setup(coef_file=coef_filename, &
                       prof_file=prof_filename, &
                       nprofs=nprof, &
@@ -337,7 +336,6 @@ endif
 
 ! The oldkey is thrown away.
 
-print*, 'set_rttov_metadata', key, sat_az, sat_ze, sun_az, sun_ze, platform, sat_id, sensor, channel
 ! Store the metadata in module storage. The new key is returned.
 call set_rttov_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform, sat_id, sensor, channel)
 
@@ -514,7 +512,9 @@ real(r8) :: sat_az, sat_ze, sun_az, sun_ze
 integer  :: platform, sat_id, sensor, channel
 
 real(r8), allocatable :: temperature(:,:), pressure(:,:), &
-                         moisture(:,:), water_vapor_mr(:,:)
+                         moisture(:,:), water_vapor_mr(:,:), &
+                         u_wind(:,:), v_wind(:,:)
+
 integer :: this_istatus(ens_size)
 
 integer  :: i, zi
@@ -572,7 +572,9 @@ endif
 allocate(temperature(ens_size, numlevels), &
             pressure(ens_size, numlevels), &
             moisture(ens_size, numlevels), &
-      water_vapor_mr(ens_size, numlevels))
+      water_vapor_mr(ens_size, numlevels), &
+              u_wind(ens_size, numlevels), &
+              v_wind(ens_size, numlevels))
 
 ! Set all of the istatuses back to zero for track_status
 istatus = 0
@@ -596,13 +598,22 @@ GETLEVELDATA : do i = 1,numlevels
    call track_status(ens_size, this_istatus, val, istatus, return_now)
    if (return_now) return
 
+   call interpolate(state_handle, ens_size, loc, QTY_U_WIND_COMPONENT, u_wind(:, i), this_istatus)
+   call track_status(ens_size, this_istatus, val, istatus, return_now)
+   if (return_now) return
+
+   call interpolate(state_handle, ens_size, loc, QTY_V_WIND_COMPONENT, v_wind(:, i), this_istatus)
+   call track_status(ens_size, this_istatus, val, istatus, return_now)
+   if (return_now) return
+
    ! FIXME: what else?
 
 enddo GETLEVELDATA
-print*, 'interpolate pressure    = ', pressure(1,:)
-print*, 'interpolate temperature = ', temperature(1,:)
-print*, 'interpolate moisture    = ', moisture(1,:)
-print*, 'get_expected_radiance::dart_rttov_do_forward_model'
+
+print*, 'interpolate pressure    = ', pressure(1,1),    '...', pressure(1,numlevels)
+print*, 'interpolate temperature = ', temperature(1,1), '...', temperature(1,numlevels)
+print*, 'interpolate moisture    = ', moisture(1,1),    '...', moisture(1,numlevels)
+
 !FIXME: these interp results are unused. make it a cheap quantity to ask for.
 call dart_rttov_do_forward_model(ens_size=ens_size, &
                                  nlevels=numlevels, &
@@ -610,20 +621,15 @@ call dart_rttov_do_forward_model(ens_size=ens_size, &
                                  t=temperature, &
                                  p=pressure, &
                                  q=moisture, &
+                                 u=u_wind, &
+                                 v=v_wind, &
                                  wvmr=water_vapor_mr, &
                                  radiances=radiance, &
                                  error_status=this_istatus) 
 
-!FIXME initialize the profile info here and make the call to rttov()
-! to compute radiances, once for each ensemble member
-
-!do i=1, ens_size
-!   radiance(i) = -32.0_r8
-!enddo
-
-
 print*, 'istatus  = ', istatus 
 print*, 'radiance = ', radiance
+
 deallocate(temperature, pressure, moisture)
 
 !=================================================================================

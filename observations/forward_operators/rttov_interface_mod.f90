@@ -211,112 +211,112 @@ nlevels       = nlevs
 nprof         = nprofs
 nchannels     = nchans
 
+! --------------------------------------------------------------------------
+! 1. Initialise RTTOV options structure
+! --------------------------------------------------------------------------
 
-  ! --------------------------------------------------------------------------
-  ! 1. Initialise RTTOV options structure
-  ! --------------------------------------------------------------------------
+IF (dosolar == 1) THEN
+  opts % rt_ir % addsolar = .TRUE.           ! Include solar radiation
+ELSE
+  opts % rt_ir % addsolar = .FALSE.          ! Do not include solar radiation
+ENDIF
+opts % interpolation % addinterp   = .TRUE.  ! Allow interpolation of input profile
+opts % interpolation % interp_mode = 1       ! Set interpolation method
+! (JPH) : interp_mode 1 = Rachon     on optical depths
+! (JPH) : interp_mode 2 = Log-linear on optical depths
+! (JPH) : interp_mode 3 = Log-linear on optical depths
+! (JPH) : interp_mode 4 = Rachon     on weighting function
+! (JPH) : interp_mode 5 = Log-linear on weighting function
+opts % rt_all % addrefrac          = .TRUE.  ! Include refraction in path calc
+opts % rt_ir % addclouds           = .FALSE. ! Don't include cloud effects
+opts % rt_ir % addaerosl           = .FALSE. ! Don't include aerosol effects
 
-  IF (dosolar == 1) THEN
-    opts % rt_ir % addsolar = .TRUE.           ! Include solar radiation
-  ELSE
-    opts % rt_ir % addsolar = .FALSE.          ! Do not include solar radiation
-  ENDIF
-  opts % interpolation % addinterp   = .TRUE.  ! Allow interpolation of input profile
-  opts % interpolation % interp_mode = 1       ! Set interpolation method
-  ! (JPH) : interp_mode 1 = Rachon     on optical depths
-  ! (JPH) : interp_mode 2 = Log-linear on optical depths
-  ! (JPH) : interp_mode 3 = Log-linear on optical depths
-  ! (JPH) : interp_mode 4 = Rachon     on weighting function
-  ! (JPH) : interp_mode 5 = Log-linear on weighting function
-  opts % rt_all % addrefrac          = .TRUE.  ! Include refraction in path calc
-  opts % rt_ir % addclouds           = .FALSE. ! Don't include cloud effects
-  opts % rt_ir % addaerosl           = .FALSE. ! Don't include aerosol effects
+opts % rt_ir % ozone_data          = .FALSE. ! Set the relevant flag to .TRUE.
+opts % rt_ir % co2_data            = .FALSE. !   when supplying a profile of the
+opts % rt_ir % n2o_data            = .FALSE. !   given trace gas (ensure the
+opts % rt_ir % ch4_data            = .FALSE. !   coef file supports the gas)
+opts % rt_ir % co_data             = .FALSE. !
+opts % rt_ir % so2_data            = .FALSE. !
+opts % rt_mw % clw_data            = .FALSE. !
 
-  opts % rt_ir % ozone_data          = .FALSE. ! Set the relevant flag to .TRUE.
-  opts % rt_ir % co2_data            = .FALSE. !   when supplying a profile of the
-  opts % rt_ir % n2o_data            = .FALSE. !   given trace gas (ensure the
-  opts % rt_ir % ch4_data            = .FALSE. !   coef file supports the gas)
-  opts % rt_ir % co_data             = .FALSE. !
-  opts % rt_ir % so2_data            = .FALSE. !
-  opts % rt_mw % clw_data            = .FALSE. !
+opts % config % verbose            = .TRUE.  ! Enable printing of warnings
 
-  opts % config % verbose            = .TRUE.  ! Enable printing of warnings
+! --------------------------------------------------------------------------
+! 2. Read coefficients
+! --------------------------------------------------------------------------
+CALL rttov_read_coefs(errorstatus, coefs, opts, file_coef=coef_filename)
+IF (errorstatus /= errorstatus_success) THEN
+  WRITE(*,*) 'fatal error reading coefficients'
+  error_status = errorstatus
+  return
+ENDIF
 
-  ! --------------------------------------------------------------------------
-  ! 2. Read coefficients
-  ! --------------------------------------------------------------------------
-  CALL rttov_read_coefs(errorstatus, coefs, opts, file_coef=coef_filename)
-  IF (errorstatus /= errorstatus_success) THEN
-    WRITE(*,*) 'fatal error reading coefficients'
-    error_status = errorstatus
-    return
-  ENDIF
-  
-  ! Ensure input number of channels is not higher than number stored in coefficient file
-  IF (nchannels > coefs % coef % fmv_chn) THEN
-    WRITE(*,*) 'n requested channels too large'
-    error_status = errorstatus_fatal
-    return
-  ENDIF
+! Ensure input number of channels is not higher than number stored in coefficient file
+IF (nchannels > coefs % coef % fmv_chn) THEN
+  WRITE(*,*) 'n requested channels too large'
+  error_status = errorstatus_fatal
+  return
+ENDIF
 
-  ! Ensure the options and coefficients are consistent
-  print*, 'dart_rttov_setup::rttov_user_options_checkinput'
-  CALL rttov_user_options_checkinput(errorstatus, opts, coefs)
-  IF (errorstatus /= errorstatus_success) THEN
-    WRITE(*,*) 'error in rttov options'
-    error_status = errorstatus
-    return
-  ENDIF
-
-
-  ! --------------------------------------------------------------------------
-  ! 3. Allocate RTTOV input and output structures
-  ! --------------------------------------------------------------------------
-
-  ! Determine the total number of radiances to simulate (nchanprof).
-  ! In this example we simulate all specified channels for each profile, but
-  ! in general one can simulate a different number of channels for each profile.
-
-  nchanprof = nchannels * nprof
-  ! Allocate structures for rttov_direct
-  CALL rttov_alloc_direct( &
-        errorstatus,             &
-        1_jpim,                  &  ! 1 => allocate
-        nprof,                   &
-        nchanprof,               &
-        nlevels,                 &
-        chanprof,                &
-        opts,                    &
-        profiles,                &
-        coefs,                   &
-        transmission,            &
-        radiance,                &
-        calcemis=calcemis,       &
-        emissivity=emissivity,   &
-        calcrefl=calcrefl,       &
-        reflectance=reflectance, &
-        init=.TRUE._jplm)
-  IF (errorstatus /= errorstatus_success) THEN
-    WRITE(*,*) 'allocation error for rttov_direct structures'
-    error_status = errorstatus
-    return
-  ENDIF
+! Ensure the options and coefficients are consistent
+print*, 'dart_rttov_setup::rttov_user_options_checkinput'
+CALL rttov_user_options_checkinput(errorstatus, opts, coefs)
+IF (errorstatus /= errorstatus_success) THEN
+  WRITE(*,*) 'error in rttov options'
+  error_status = errorstatus
+  return
+ENDIF
 
 
-  ! --------------------------------------------------------------------------
-  ! 4. Build the list of profile/channel indices in chanprof
-  ! --------------------------------------------------------------------------
+! --------------------------------------------------------------------------
+! 3. Allocate RTTOV input and output structures
+! --------------------------------------------------------------------------
 
-  nch = 0_jpim
-  DO j = 1, nprof
-    DO jch = 1, nchannels
-      nch = nch + 1_jpim
-      chanprof(nch)%prof = j
-      chanprof(nch)%chan = chan_list(jch)
-    ENDDO
+! Determine the total number of radiances to simulate (nchanprof).
+! In this example we simulate all specified channels for each profile, but
+! in general one can simulate a different number of channels for each profile.
+
+nchanprof = nchannels * nprof
+! Allocate structures for rttov_direct
+CALL rttov_alloc_direct( &
+      errorstatus,             &
+      1_jpim,                  &  ! 1 => allocate
+      nprof,                   &
+      nchanprof,               &
+      nlevels,                 &
+      chanprof,                &
+      opts,                    &
+      profiles,                &
+      coefs,                   &
+      transmission,            &
+      radiance,                &
+      calcemis=calcemis,       &
+      emissivity=emissivity,   &
+      calcrefl=calcrefl,       &
+      reflectance=reflectance, &
+      init=.TRUE._jplm)
+
+IF (errorstatus /= errorstatus_success) THEN
+  WRITE(*,*) 'allocation error for rttov_direct structures'
+  error_status = errorstatus
+  return
+ENDIF
+
+
+! --------------------------------------------------------------------------
+! 4. Build the list of profile/channel indices in chanprof
+! --------------------------------------------------------------------------
+
+nch = 0_jpim
+DO j = 1, nprof
+  DO jch = 1, nchannels
+    nch = nch + 1_jpim
+    chanprof(nch)%prof = j
+    chanprof(nch)%chan = chan_list(jch)
   ENDDO
+ENDDO
 
-  !call dart_rttov_dump_results(nprof, nchannels)
+!call dart_rttov_dump_results(nprof, nchannels)
 
 end subroutine dart_rttov_setup
 
@@ -327,13 +327,15 @@ end subroutine dart_rttov_setup
 ! FIXME:  HERE WE use the profiles from our FORWARD OPERATOR calls
 ! --------------------------------------------------------------------------
 
-subroutine dart_rttov_do_forward_model(ens_size, nlevels, location, t, p, q, wvmr, radiances, error_status)
+subroutine dart_rttov_do_forward_model(ens_size, nlevels, location, t, p, q, u, v, wvmr, radiances, error_status)
 integer,             intent(in)  :: ens_size
 integer,             intent(in)  :: nlevels
 type(location_type), intent(in)  :: location
 real(r8),            intent(in)  :: t(ens_size,nlevels)
 real(r8),            intent(in)  :: p(ens_size,nlevels)
 real(r8),            intent(in)  :: q(ens_size,nlevels)
+real(r8),            intent(in)  :: u(ens_size,nlevels)
+real(r8),            intent(in)  :: v(ens_size,nlevels)
 real(r8),            intent(in)  :: wvmr(ens_size,nlevels)
 real(r8),            intent(out) :: radiances(ens_size)
 integer,             intent(out) :: error_status(ens_size)
@@ -374,7 +376,7 @@ endif
 ! 2 => ppmv over moist air
 !
 !FIXME - units for moisture, apparently ppmv or kg/kg
-profiles(1) % gas_units = 2
+profiles(1) % gas_units = 1 ! 1 = kg/kg (confirmed)
 
 ! Loop over all of the ensemble members
 DO imem = 1, ens_size
@@ -383,13 +385,13 @@ DO imem = 1, ens_size
    DO iprof = 1, nprof
    
      ! Assign pressure (hPa), temp (K), WV, O3 (gas units ppmv or kg/kg)
-     profiles(iprof) % p(:) = p(imem,28:1:-1)/100 ! WRF has units of pressure in Pa
-     profiles(iprof) % t(:) = t(imem,28:1:-1)     ! FIXME : need to confirm on cell centers
-     profiles(iprof) % q(:) = q(imem,28:1:-1)/1000
+     profiles(iprof) % p(:) = p(imem,nlevels:1:-1)/100  ! WRF has units of pressure in Pa
+     profiles(iprof) % t(:) = t(imem,nlevels:1:-1)      ! FIXME : need to confirm on cell centers
+     profiles(iprof) % q(:) = q(imem,nlevels:1:-1) ! WRF has units of kg/kg
    
-     print*, 'p = ', profiles(iprof) % p(1:28)
-     print*, 't = ', profiles(iprof) % t(1:28)
-     print*, 'q = ', profiles(iprof) % q(1:28)
+     print*, 'p = ', profiles(iprof) % p(1), '...', profiles(iprof) % p(nlevels)
+     print*, 't = ', profiles(iprof) % t(1), '...', profiles(iprof) % t(nlevels)
+     print*, 'q = ', profiles(iprof) % q(1), '...', profiles(iprof) % q(nlevels)
    
 !FIXME - some models have surface t/q/p which are 2m
 
@@ -400,12 +402,19 @@ DO imem = 1, ens_size
      !  2m T (K)    2m q (ppmv) 2m p (hPa) 10m wind u (m/s)  10m wind v (m/s)  wind fetch (m)
      !
      !   286.6682    15248.0550  1007.30      5.000             2.0000            100000.
-     profiles(iprof) % s2m % t     = 286.6682   ! t(1,1)
-     profiles(iprof) % s2m % q     = 15248.0550 ! q(1,1)
-     profiles(iprof) % s2m % p     = 1007.30    ! p(1,1)
-     profiles(iprof) % s2m % u     = 5.0        ! u(1,1)
-     profiles(iprof) % s2m % v     = 2.0        ! v(1,1)
+     profiles(iprof) % s2m % t     = t(imem,1)
+     profiles(iprof) % s2m % q     = q(imem,1)
+     profiles(iprof) % s2m % p     = p(imem,1)/100 ! 400 hPa < surface pressure < 1100hPa
+     profiles(iprof) % s2m % u     = u(imem,1)
+     profiles(iprof) % s2m % v     = v(imem,1)
      profiles(iprof) % s2m % wfetc = 100000.0   ! wfetc(1,1)
+     
+     print*, 'profiles(iprof) % s2m % t     = ', profiles(iprof) % s2m % t     
+     print*, 'profiles(iprof) % s2m % q     = ', profiles(iprof) % s2m % q     
+     print*, 'profiles(iprof) % s2m % p     = ', profiles(iprof) % s2m % p     
+     print*, 'profiles(iprof) % s2m % u     = ', profiles(iprof) % s2m % u     
+     print*, 'profiles(iprof) % s2m % v     = ', profiles(iprof) % s2m % v     
+     print*, 'profiles(iprof) % s2m % wfetc = ', profiles(iprof) % s2m % wfetc 
    
 !FIXME - some models have surface t/q/p which are 2m
 ! but typically winds are 10m, and wind fetch isn't available.
@@ -514,11 +523,11 @@ IF (errorstatus /= errorstatus_success) THEN
   !CALL rttov_exit(errorstatus)
 ENDIF
 
-!============== Output results == end ==============
-!=====================================================
-radiances(imem) = radiance % total(2)
+!FIXME - what do we want to use as an index to total()
+radiances(imem) = radiance % total(1)
 ENDDO ! member loop
 
+print*, 'RADIANCE % TOTAL = ', radiance % total(:)
 
 IF (errorstatus /= errorstatus_success) THEN
   WRITE (*,*) 'rttov_direct error'
@@ -540,80 +549,80 @@ subroutine dart_rttov_dump_results(nprof, nchannels)
 integer, intent(in) :: nprof
 integer, intent(in) :: nchannels
 
-  !=====================================================
-  !============== Output results == start ==============
+!=====================================================
+!============== Output results == start ==============
 
-  ! Open output file where results are written
+! Open output file where results are written
 
-  WRITE(ioout,*)' -----------------'
-  WRITE(ioout,*)' Instrument ', inst_name(coefs % coef % id_inst)
-  WRITE(ioout,*)' -----------------'
+WRITE(ioout,*)' -----------------'
+WRITE(ioout,*)' Instrument ', inst_name(coefs % coef % id_inst)
+WRITE(ioout,*)' -----------------'
+WRITE(ioout,*)' '
+CALL rttov_print_opts(opts, lu=ioout)
+
+DO iprof = 1, nprof
+
+  joff = (iprof-1_jpim) * nchannels
+
+  nprint = 1 + INT((nchannels-1)/10)
   WRITE(ioout,*)' '
-  CALL rttov_print_opts(opts, lu=ioout)
+  WRITE(ioout,*)' Profile ', iprof
 
-  DO iprof = 1, nprof
+  CALL rttov_print_profile(profiles(iprof), lu=ioout)
 
-    joff = (iprof-1_jpim) * nchannels
+  WRITE(ioout,777)'CHANNELS PROCESSED FOR SAT ', platform_name(coefs % coef % id_platform), coefs % coef % id_sat
+  WRITE(ioout,111) (chanprof(j) % chan, j = 1+joff, nchannels+joff)
+  WRITE(ioout,*)' '
+  WRITE(ioout,*)'CALCULATED BRIGHTNESS TEMPERATURES (K):'
+  WRITE(ioout,222) (radiance % bt(j), j = 1+joff, nchannels+joff)
+  IF (opts % rt_ir % addsolar) THEN
+    WRITE(ioout,*)' '
+    WRITE(ioout,*)'CALCULATED SATELLITE REFLECTANCES (BRF):'
+    WRITE(ioout,444) (radiance % refl(j), j = 1+joff, nchannels+joff)
+  ENDIF
+  WRITE(ioout,*)' '
+  WRITE(ioout,*)'CALCULATED RADIANCES (mW/m2/sr/cm-1):'
+  WRITE(ioout,222) (radiance % total(j), j = 1+joff, nchannels+joff)
+  WRITE(ioout,*)' '
+  WRITE(ioout,*)'CALCULATED OVERCAST RADIANCES:'
+  WRITE(ioout,222) (radiance % cloudy(j), j = 1+joff, nchannels+joff)
+  WRITE(ioout,*)' '
+  WRITE(ioout,*)'CALCULATED SURFACE TO SPACE TRANSMITTANCE:'
+  WRITE(ioout,4444) (transmission % tau_total(j), j = 1+joff, nchannels+joff)
+  WRITE(ioout,*)' '
+  WRITE(ioout,*)'CALCULATED SURFACE EMISSIVITIES:'
+  WRITE(ioout,444) (emissivity(j) % emis_out, j = 1+joff, nchannels+joff)
+  IF (opts % rt_ir % addsolar) THEN
+    WRITE(ioout,*)' '
+    WRITE(ioout,*)'CALCULATED SURFACE BRDF:'
+    WRITE(ioout,444) (reflectance(j) % refl_out, j = 1+joff, nchannels+joff)
+  ENDIF
 
-    nprint = 1 + INT((nchannels-1)/10)
-    WRITE(ioout,*)' '
-    WRITE(ioout,*)' Profile ', iprof
-
-    CALL rttov_print_profile(profiles(iprof), lu=ioout)
-
-    WRITE(ioout,777)'CHANNELS PROCESSED FOR SAT ', platform_name(coefs % coef % id_platform), coefs % coef % id_sat
-    WRITE(ioout,111) (chanprof(j) % chan, j = 1+joff, nchannels+joff)
-    WRITE(ioout,*)' '
-    WRITE(ioout,*)'CALCULATED BRIGHTNESS TEMPERATURES (K):'
-    WRITE(ioout,222) (radiance % bt(j), j = 1+joff, nchannels+joff)
-    IF (opts % rt_ir % addsolar) THEN
-      WRITE(ioout,*)' '
-      WRITE(ioout,*)'CALCULATED SATELLITE REFLECTANCES (BRF):'
-      WRITE(ioout,444) (radiance % refl(j), j = 1+joff, nchannels+joff)
-    ENDIF
-    WRITE(ioout,*)' '
-    WRITE(ioout,*)'CALCULATED RADIANCES (mW/m2/sr/cm-1):'
-    WRITE(ioout,222) (radiance % total(j), j = 1+joff, nchannels+joff)
-    WRITE(ioout,*)' '
-    WRITE(ioout,*)'CALCULATED OVERCAST RADIANCES:'
-    WRITE(ioout,222) (radiance % cloudy(j), j = 1+joff, nchannels+joff)
-    WRITE(ioout,*)' '
-    WRITE(ioout,*)'CALCULATED SURFACE TO SPACE TRANSMITTANCE:'
-    WRITE(ioout,4444) (transmission % tau_total(j), j = 1+joff, nchannels+joff)
-    WRITE(ioout,*)' '
-    WRITE(ioout,*)'CALCULATED SURFACE EMISSIVITIES:'
-    WRITE(ioout,444) (emissivity(j) % emis_out, j = 1+joff, nchannels+joff)
-    IF (opts % rt_ir % addsolar) THEN
-      WRITE(ioout,*)' '
-      WRITE(ioout,*)'CALCULATED SURFACE BRDF:'
-      WRITE(ioout,444) (reflectance(j) % refl_out, j = 1+joff, nchannels+joff)
-    ENDIF
-
-    IF (nchannels <= 20) THEN
-      DO np = 1, nprint
-          WRITE(ioout,*)' '
-          WRITE(ioout,*)'Level to space transmittances for channels'
-          WRITE(ioout,1115) (chanprof(j+joff) % chan, &
-                    j = 1+(np-1)*10, MIN(np*10, nchannels))
-          DO ilev = 1, nlevels
-            DO j = 1 + (np-1)*10, MIN(np*10, nchannels)
-              ! Select transmittance based on channel type (VIS/NIR or IR)
-              IF (coefs % coef % ss_val_chn(chanprof(j+joff) % chan) == 2) THEN
-                trans_out(j - (np-1)*10) = transmission % tausun_levels_path1(ilev,j+joff)
-              ELSE
-                trans_out(j - (np-1)*10) = transmission % tau_levels(ilev,j+joff)
-              ENDIF
-            ENDDO
-            WRITE(ioout,4445) ilev, trans_out(1:j-1-(np-1)*10)
+  IF (nchannels <= 20) THEN
+    DO np = 1, nprint
+        WRITE(ioout,*)' '
+        WRITE(ioout,*)'Level to space transmittances for channels'
+        WRITE(ioout,1115) (chanprof(j+joff) % chan, &
+                  j = 1+(np-1)*10, MIN(np*10, nchannels))
+        DO ilev = 1, nlevels
+          DO j = 1 + (np-1)*10, MIN(np*10, nchannels)
+            ! Select transmittance based on channel type (VIS/NIR or IR)
+            IF (coefs % coef % ss_val_chn(chanprof(j+joff) % chan) == 2) THEN
+              trans_out(j - (np-1)*10) = transmission % tausun_levels_path1(ilev,j+joff)
+            ELSE
+              trans_out(j - (np-1)*10) = transmission % tau_levels(ilev,j+joff)
+            ENDIF
           ENDDO
-          WRITE(ioout,1115) (chanprof(j+joff) % chan, &
-                    j = 1+(np-1)*10, MIN(np*10, nchannels))
-      ENDDO
-    ENDIF
-  ENDDO
+          WRITE(ioout,4445) ilev, trans_out(1:j-1-(np-1)*10)
+        ENDDO
+        WRITE(ioout,1115) (chanprof(j+joff) % chan, &
+                  j = 1+(np-1)*10, MIN(np*10, nchannels))
+    ENDDO
+  ENDIF
+ENDDO
 
-  !============== Output results == end ==============
-  !=====================================================
+!============== Output results == end ==============
+!=====================================================
 
 ! Format definitions for output
 111  FORMAT(1X,10I8)
@@ -624,7 +633,7 @@ integer, intent(in) :: nchannels
 4445 FORMAT(1X,I2,10F8.4)
 777  FORMAT(/,A,A9,I3)
 
-end subroutine
+end subroutine dart_rttov_dump_results
 
 !--------------------------------------------------------------------------
 
@@ -665,6 +674,7 @@ CALL rttov_alloc_direct( &
       emissivity=emissivity,   &
       calcrefl=calcrefl,       &
       reflectance=reflectance)
+
 IF (errorstatus /= errorstatus_success) THEN
   WRITE(*,*) 'deallocation error for rttov_direct structures'
   error_status = errorstatus
@@ -676,7 +686,7 @@ IF (errorstatus /= errorstatus_success) THEN
   WRITE(*,*) 'coefs deallocation error'
 ENDIF
 
-end subroutine
+end subroutine dart_rttov_takedown
 
 !--------------------------------------------------------------------------
 
