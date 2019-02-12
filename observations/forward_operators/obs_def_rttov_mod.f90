@@ -368,10 +368,6 @@ call get_rttov_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform, sat_id, s
 is_asciifile = ascii_file_format(fform)
 
 if (is_asciifile) then
-   !write(*, *) 'rttovSTRING', trim(rttovSTRING)
-   !write(*, *) 'sat_az, sat_ze, sun_az, sun_ze', sat_az, sat_ze, sun_az, sun_ze
-   !write(*, *) 'platform, sat_id, sensor, channel', platform, sat_id, sensor, channel
-   !write(*, *) 'key', key
    write(ifile, *) trim(rttovSTRING)
    write(ifile, *) sat_az, sat_ze, sun_az, sun_ze
    write(ifile, *) platform, sat_id, sensor, channel
