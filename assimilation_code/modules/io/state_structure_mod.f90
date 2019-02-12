@@ -343,7 +343,7 @@ do ivar = 1, num_vars
 enddo
 
 ! load up variable id's and sizes
-call load_state_variable_info(state%domain(dom_id))
+call load_state_variable_info(state%domain(dom_id),dom_id)
 
 ! load up the domain unique dimension info
 call load_unique_dim_info(dom_id)
@@ -485,9 +485,10 @@ end function add_domain_blank
 !> Load metadata from netcdf file info state_strucutre
 
 
-subroutine load_state_variable_info(domain)
+subroutine load_state_variable_info(domain, domain_index)
 
 type(domain_type), intent(inout) :: domain
+integer,           intent(in)    :: domain_index
 
 ! netcdf variables
 integer :: ret, ncfile
@@ -505,7 +506,7 @@ call nc_check(ret, 'load_state_variable_info, nf90_inquire')
 if ( domain%unlimDimID /= -1 ) domain%has_unlimited = .true.
 
 ! get variable ids
-call load_variable_ids(ncfile, domain)
+call load_variable_ids(ncfile, domain, domain_index)
 
 ! get all variable sizes, only readers store dimensions?
 call load_variable_sizes(ncfile, domain)
@@ -521,10 +522,11 @@ end subroutine load_state_variable_info
 !> Load netcdf variable ids
 
 
-subroutine load_variable_ids(ncfile, domain)
+subroutine load_variable_ids(ncfile, domain, domain_index)
 
 integer,           intent(in)    :: ncfile ! netdcf file id - should this be part of the domain handle?
 type(domain_type), intent(inout) :: domain
+integer,           intent(in)    :: domain_index
 
 integer :: ret  ! netcdf return value
 integer :: ivar, num_vars
@@ -536,7 +538,8 @@ do ivar = 1, num_vars
    ret = nf90_inq_varid(ncfile, domain%variable(ivar)%varname,    &
                                 domain%variable(ivar)%io_info%varid)
 
-   write(string1,*)'domain variable number ',ivar,' "'//trim(domain%variable(ivar)%varname)//'" from file "'//trim(domain%info_file)//'"'
+   write(string1,*)'domain ',domain_index,', variable #',ivar,' "', &
+       trim(domain%variable(ivar)%varname)//'" from file "'//trim(domain%info_file)//'"'
    call nc_check(ret, 'load_variable_ids, nf90_inq_var_id', string1) 
 
 enddo

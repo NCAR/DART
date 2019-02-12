@@ -49,23 +49,15 @@
 &state_vector_io_nml
 /
 
-&state_space_diag_nml
-   stages_to_write          = 'input','preassim','postassim','output'
-   num_output_state_members = 100
-   output_restarts          = .true.
-   output_mean              = .true.
-   output_sd                = .true.
-   output_inflation         = .true.
-/
-
 &test_state_structure_nml
    debug                    = .true.
-  /
+/
 
 &test_read_write_restarts_nml
-   restart_in_file_name  = 'filter_ics'
-   restart_out_file_name = 'filter_restart'
-   direct_netcdf_read    = .false.
-   direct_netcdf_write   = .false.
-  /
+   input_file      = 'cf_test.nc'
+   model_variables = 'A', 'QTY_STATE_VARIABLE',
+                     'B', 'QTY_U_WIND_COMPONENT',
+                     'C', 'QTY_V_WIND_COMPONENT',
+                     'D', 'QTY_SURFACE_PRESSURE' 
+/
 
