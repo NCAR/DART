@@ -85,7 +85,7 @@ use    utilities_mod,  only : register_module, error_handler, E_ERR, &
   USE parkind1, ONLY : jpim, jprb, jplm
   ! are these I4, R8, ?  what's a logical kind?
   !
-  ! (JPH) INTEGER, PARAMETER :: JPIM = SELECTED_INT_KIND(9) !< Standard integer type
+  ! (JPH) INTEGER, PARAMETER :: JPIM = SELECTED_INT_KIND(9)       !< Standard integer type
   ! (JPH) INTEGER, PARAMETER :: JPRB = SELECTED_REAL_KIND(13,300) !< Standard real type
   ! (JPH) INTEGER, PARAMETER :: JPLM = KIND(.TRUE.)               !< Standard logical type
   IMPLICIT NONE
@@ -108,61 +108,60 @@ use    utilities_mod,  only : register_module, error_handler, E_ERR, &
 ! the setup and returned?  larger single structure
 ! to collect these together in a single (opaque) type?
 
-  ! RTTOV variables/structures
-  !====================
-  TYPE(rttov_options)              :: opts                     ! Options structure
-  TYPE(rttov_coefs)                :: coefs                    ! Coefficients structure
-  TYPE(rttov_chanprof),    POINTER :: chanprof(:)    => NULL() ! Input channel/profile list
-  LOGICAL(KIND=jplm),      POINTER :: calcemis(:)    => NULL() ! Flag to indicate calculation of emissivity within RTTOV
-  TYPE(rttov_emissivity),  POINTER :: emissivity(:)  => NULL() ! Input/output surface emissivity
-  LOGICAL(KIND=jplm),      POINTER :: calcrefl(:)    => NULL() ! Flag to indicate calculation of BRDF within RTTOV
-  TYPE(rttov_reflectance), POINTER :: reflectance(:) => NULL() ! Input/output surface BRDF
-  TYPE(rttov_profile),     POINTER :: profiles(:)    => NULL() ! Input profiles
-  TYPE(rttov_transmission)         :: transmission             ! Output transmittances
-  TYPE(rttov_radiance)             :: radiance                 ! Output radiances
+! RTTOV variables/structures
+!====================
+TYPE(rttov_options)              :: opts                     ! Options structure
+TYPE(rttov_coefs)                :: coefs                    ! Coefficients structure
+TYPE(rttov_chanprof),    POINTER :: chanprof(:)    => NULL() ! Input channel/profile list
+LOGICAL(KIND=jplm),      POINTER :: calcemis(:)    => NULL() ! Flag to indicate calculation of emissivity within RTTOV
+TYPE(rttov_emissivity),  POINTER :: emissivity(:)  => NULL() ! Input/output surface emissivity
+LOGICAL(KIND=jplm),      POINTER :: calcrefl(:)    => NULL() ! Flag to indicate calculation of BRDF within RTTOV
+TYPE(rttov_reflectance), POINTER :: reflectance(:) => NULL() ! Input/output surface BRDF
+TYPE(rttov_profile),     POINTER :: profiles(:)    => NULL() ! Input profiles
+TYPE(rttov_transmission)         :: transmission             ! Output transmittances
+TYPE(rttov_radiance)             :: radiance                 ! Output radiances
 
-  INTEGER(KIND=jpim)               :: errorstatus              ! Return error status of RTTOV subroutine calls
+INTEGER(KIND=jpim)               :: errorstatus              ! Return error status of RTTOV subroutine calls
 
-  INTEGER(KIND=jpim) :: alloc_status
-  CHARACTER(LEN=*), parameter  :: NameOfRoutine = 'rttov_interfaces'   !FIXME unused
+INTEGER(KIND=jpim) :: alloc_status
+CHARACTER(LEN=*), parameter  :: NameOfRoutine = 'rttov_interfaces'   !FIXME unused
 
-  ! variables for input
-  !====================
-  CHARACTER(LEN=256) :: coef_filename
-  CHARACTER(LEN=256) :: prof_filename
-  INTEGER(KIND=jpim) :: nthreads = 1
-  INTEGER(KIND=jpim) :: dosolar = 0
-  INTEGER(KIND=jpim) :: nlevels
-  INTEGER(KIND=jpim) :: nprof
-  INTEGER(KIND=jpim) :: nchannels
-  INTEGER(KIND=jpim) :: nchanprof
+! variables for input
+!====================
+CHARACTER(LEN=256) :: coef_filename
+CHARACTER(LEN=256) :: prof_filename
+INTEGER(KIND=jpim) :: dosolar = 0
+INTEGER(KIND=jpim) :: nlevels
+INTEGER(KIND=jpim) :: nprof
+INTEGER(KIND=jpim) :: nchannels
+INTEGER(KIND=jpim) :: nchanprof
 
-  ! These are now namelist variables in obs_def_rttov
-  INTEGER(KIND=jpim), ALLOCATABLE :: channel_list(:)
+! These are now namelist variables in obs_def_rttov
+INTEGER(KIND=jpim), ALLOCATABLE :: channel_list(:)
 
-  REAL(KIND=jprb)    :: trans_out(10)
-  ! loop variables
-  INTEGER(KIND=jpim) :: j, jch
-  INTEGER(KIND=jpim) :: np, nch
-  INTEGER(KIND=jpim) :: ilev, nprint
-  INTEGER(KIND=jpim) :: iprof, joff
-  INTEGER            :: ios
+REAL(KIND=jprb)    :: trans_out(10)
+! loop variables
+INTEGER(KIND=jpim) :: j, jch
+INTEGER(KIND=jpim) :: np, nch
+INTEGER(KIND=jpim) :: ilev, nprint
+INTEGER(KIND=jpim) :: iprof, joff
+INTEGER            :: ios
 
-  !- End of header --------------------------------------------------------
+!- End of header --------------------------------------------------------
 
-  ! The usual steps to take when running RTTOV are as follows:
-  !   1. Specify required RTTOV options
-  !   2. Read coefficients
-  !   3. Allocate RTTOV input and output structures
-  !   4. Set up the chanprof array with the channels/profiles to simulate
-  !   5. Read input profile(s) [[ get these from the model ]]
-  !   6. Set up surface emissivity and/or reflectance
-  !   7. Call rttov_direct and store results
-  !   8. Deallocate all structures and arrays
+! The usual steps to take when running RTTOV are as follows:
+!   1. Specify required RTTOV options
+!   2. Read coefficients
+!   3. Allocate RTTOV input and output structures
+!   4. Set up the chanprof array with the channels/profiles to simulate
+!   5. Read input profile(s) [[ get these from the model ]]
+!   6. Set up surface emissivity and/or reflectance
+!   7. Call rttov_direct and store results
+!   8. Deallocate all structures and arrays
 
-  ! If nthreads is greater than 1 the parallel RTTOV interface is used.
-  ! To take advantage of multi-threaded execution you must have compiled
-  ! RTTOV with openmp enabled. See the user guide and the compiler flags.
+! If nthreads is greater than 1 the parallel RTTOV interface is used.
+! To take advantage of multi-threaded execution you must have compiled
+! RTTOV with openmp enabled. See the user guide and the compiler flags.
 
 public :: dart_rttov_setup, &
           dart_rttov_do_forward_model, &
@@ -247,6 +246,7 @@ opts % config % verbose            = .TRUE.  ! Enable printing of warnings
 CALL rttov_read_coefs(errorstatus, coefs, opts, file_coef=coef_filename)
 IF (errorstatus /= errorstatus_success) THEN
   WRITE(*,*) 'fatal error reading coefficients'
+  WRITE(*,*) 'errorstatus = ', errorstatus
   error_status = errorstatus
   return
 ENDIF
@@ -327,7 +327,7 @@ end subroutine dart_rttov_setup
 ! FIXME:  HERE WE use the profiles from our FORWARD OPERATOR calls
 ! --------------------------------------------------------------------------
 
-subroutine dart_rttov_do_forward_model(ens_size, nlevels, location, t, p, q, u, v, wvmr, radiances, error_status)
+subroutine dart_rttov_do_forward_model(ens_size, nlevels, location, t, p, q, u, v, wvmr, sat_az, sat_ze, sun_az, sun_ze, radiances, error_status)
 integer,             intent(in)  :: ens_size
 integer,             intent(in)  :: nlevels
 type(location_type), intent(in)  :: location
@@ -337,6 +337,7 @@ real(r8),            intent(in)  :: q(ens_size,nlevels)
 real(r8),            intent(in)  :: u(ens_size,nlevels)
 real(r8),            intent(in)  :: v(ens_size,nlevels)
 real(r8),            intent(in)  :: wvmr(ens_size,nlevels)
+real(r8),            intent(in)  :: sat_az, sat_ze, sun_az, sun_ze
 real(r8),            intent(out) :: radiances(ens_size)
 integer,             intent(out) :: error_status(ens_size)
 
@@ -348,9 +349,8 @@ integer :: imem, iprof
 ! observation location variables
 real(r8) :: lon, lat, height, obsloc(3)
 
-!real(r8) :: sat_az, sat_ze, sun_az, sun_ze
-!integer  :: platform, sat_id, sensor
-!integer  :: key = 1
+integer  :: platform, sat_id, sensor
+integer  :: key = 1
 
 obsloc   = get_location(location)
 
@@ -376,7 +376,7 @@ endif
 ! 2 => ppmv over moist air
 !
 !FIXME - units for moisture, apparently ppmv or kg/kg
-profiles(1) % gas_units = 1 ! 1 = kg/kg (confirmed)
+profiles(:) % gas_units = 1 ! 1 = kg/kg (confirmed)
 
 ! Loop over all of the ensemble members
 DO imem = 1, ens_size
@@ -423,7 +423,7 @@ DO imem = 1, ens_size
      !  Skin T (K)  Salinity   FASTEM parameters for land surfaces
      !
      !  286.6682    35.0       3.0 5.0 15.0 0.1 0.3
-       profiles(iprof) % skin % t        = 286.6682
+       profiles(iprof) % skin % t        = t(imem,1)
        profiles(iprof) % skin % salinity =  35.0! Salinity only applies to FASTEM over sea
        profiles(iprof) % skin % fastem   =   3.0! FASTEM only applies to MW instruments
    
@@ -435,7 +435,7 @@ DO imem = 1, ens_size
        ! Surface type (0=land, 1=sea, 2=sea-ice) and water type (0=fresh, 1=ocean)
        !
        !  1         1
-       profiles(iprof) % skin % surftype  = 1
+       profiles(iprof) % skin % surftype  = 0
        profiles(iprof) % skin % watertype = 1
    
 !FIXME - ok, these we understand.  verify elevation is in meters (km?)
@@ -459,14 +459,16 @@ DO imem = 1, ens_size
        ! Sat. zenith and azimuth angles, solar zenith and azimuth angles (degrees)
        !
        !  0.     0.     45.     30.
-!#! CALL get_rttov_metadata(key, sat_az, sat_ze, sun_az, sun_ze, platform, sat_id, sensor, channel)
-!#! write(*, *) 'sat_az, sat_ze, sun_az, sun_ze', sat_az, sat_ze, sun_az, sun_ze
-!#! write(*, *) 'platform, sat_id, sensor, channel', platform, sat_id, sensor, channel
-!#! write(*, *) 'key', key
-       profiles(iprof) % zenangle    =  0.0
-       profiles(iprof) % azangle     =  0.0
-       profiles(iprof) % sunzenangle = 45.0
-       profiles(iprof) % sunazangle  = 30.0
+       ! sat_az    sat_ze    sun_az     sun_ze
+       ! -74.7     55.4      -9999.0    111.6
+       ! platform  sat_id,   sensor,    channel
+       ! 9         2         11         1000
+       ! key
+       ! 1 
+       profiles(iprof) % zenangle    = sat_az + 90 
+       profiles(iprof) % azangle     = sat_ze
+       profiles(iprof) % sunzenangle = sun_az
+       profiles(iprof) % sunazangle  = sun_ze
    
 !FIXME - make sure cfraction is 0 here
 
@@ -534,10 +536,6 @@ IF (errorstatus /= errorstatus_success) THEN
   !CALL rttov_exit(errorstatus)
 ENDIF
 
-!============== Output results == end ==============
-!=====================================================
-
-print*, 'dart_rttov_dump_results'
 call dart_rttov_dump_results(nprof, nchannels)
 
 

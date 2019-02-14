@@ -124,14 +124,14 @@ integer            :: iunit, rc
 !FIXME - add additional fields here as needed
 type obs_metadata
    private
-   real(r8)            :: sat_az     ! azimuth of satellite position
-   real(r8)            :: sat_ze     ! zenith of satellite position
-   real(r8)            :: sun_az     ! azimuth of solar position
-   real(r8)            :: sun_ze     ! zenith of solar position 
-   integer             :: platform   ! see rttov user guide, table 2
-   integer             :: sat_id     ! see rttov user guide, table 2
-   integer             :: sensor     ! see rttov user guide, table 3
-   integer             :: channel    ! each channel is a different obs
+   real(r8) :: sat_az     ! azimuth of satellite position
+   real(r8) :: sat_ze     ! zenith of satellite position
+   real(r8) :: sun_az     ! azimuth of solar position
+   real(r8) :: sun_ze     ! zenith of solar position 
+   integer  :: platform   ! see rttov user guide, table 2
+   integer  :: sat_id     ! see rttov user guide, table 2
+   integer  :: sensor     ! see rttov user guide, table 3
+   integer  :: channel    ! each channel is a different obs
    ! more here as we need it
 end type obs_metadata
 
@@ -624,6 +624,10 @@ call dart_rttov_do_forward_model(ens_size=ens_size, &
                                  u=u_wind, &
                                  v=v_wind, &
                                  wvmr=water_vapor_mr, &
+                                 sat_az=sat_az, &
+                                 sat_ze=sat_ze, &
+                                 sun_az=sun_az, &
+                                 sun_ze=sun_ze, &
                                  radiances=radiance, &
                                  error_status=this_istatus) 
 
