@@ -156,7 +156,7 @@
 !
 ! WACCM can be used with either FV or SE
 !     vert_normalization_scale_height does not have extensive exploration available.
-!     Pedatella settled on 2.5.
+!     Pedatella settled on 1.5.
 !     The model top for WACCM is (naturally) much higher: 4.5e-4 Pa
 !     This has ramifications for the diffusion near the model top so
 !     changes to the highest_*_pressure_Pa are appropriate.
@@ -165,7 +165,7 @@
 !         4,24 = del2 -> 4 levels
 !
 ! WACCM settings that must be changed no matter what core is being used.
-!     vert_normalization_scale_height = 2.5
+!     vert_normalization_scale_height = 1.5
 !     vert_coord                      = 'log_invP'
 !     highest_obs_pressure_Pa         = .0001
 !     highest_state_pressure_Pa       = .01
@@ -214,18 +214,17 @@
 
 
 &location_nml
-   horiz_dist_only             = .false.
-   vert_normalization_pressure = 20000.0
-   vert_normalization_height   = 10000.0
-   vert_normalization_level    = 20.0
-   vert_normalization_scale_height    = 1.5
-   approximate_distance        = .true.
-   nlon                        = 141
-   nlat                        = 72
-   output_box_info             = .false.
-   print_box_level             = 0
+   horiz_dist_only                 = .false.
+   vert_normalization_pressure     = 20000.0
+   vert_normalization_height       = 10000.0
+   vert_normalization_level        = 20.0
+   vert_normalization_scale_height = 1.5
+   approximate_distance            = .true.
+   nlon                            = 141
+   nlat                            = 72
+   output_box_info                 = .false.
+   print_box_level                 = 0
    /
-
 
 #========================================================================
 # CAM-SE Section
@@ -319,38 +318,40 @@
                                 'ACARS_TEMPERATURE',
                                 'SAT_U_WIND_COMPONENT',
                                 'SAT_V_WIND_COMPONENT',
-                                'GPSRO_REFRACTIVITY',
+                                'GPSRO_REFRACTIVITY'
 
    evaluate_these_obs_types = 'RADIOSONDE_SPECIFIC_HUMIDITY',
    /
 
 
 &state_vector_io_nml
-  buffer_state_io         = .false.
-  single_precision_output = .false.
+   buffer_state_io         = .false.
+   single_precision_output = .false.
    /
 
+
 ! 'layout' and 'tasks_per_node' will be reset by the assimilate.csh script
-! to match the number ('ptile' for LSF) used when laying out the job.
+! to match the number used when laying out the job.
 
 &ensemble_manager_nml
-   layout                  = 2
-   tasks_per_node          = 16
+   layout         = 2
+   tasks_per_node = 16
    /
 
 
 &assim_tools_nml
-   filter_kind                     = 1
-   cutoff                          = 0.15
-   sort_obs_inc                    = .false.
-   spread_restoration              = .false.
-   sampling_error_correction       = .false.
-   adaptive_localization_threshold = -1
-   output_localization_diagnostics = .false.
-   localization_diagnostics_file   = 'localization_diagnostics'
-   print_every_nth_obs             = 10000
-   distribute_mean                 = .false.
+   filter_kind                       = 1
+   cutoff                            = 0.15
+   sort_obs_inc                      = .false.
+   spread_restoration                = .false.
+   sampling_error_correction         = .false.
+   adaptive_localization_threshold   = -1
+   output_localization_diagnostics   = .false.
+   localization_diagnostics_file     = 'localization_diagnostics'
+   print_every_nth_obs               = 10000
+   distribute_mean                   = .false.
    /
+
 
 &cov_cutoff_nml
    select_localization = 1
@@ -366,7 +367,7 @@
 
 
 &obs_sequence_nml
-   write_binary_obs_sequence = .true.
+   write_binary_obs_sequence = .false.
    /
 
 
@@ -384,10 +385,10 @@
 !  : error codes >= TERMLEVEL will cause termination
 !  E_DBG = -2,   E_MSG = -1,  E_ALLMSG = 0, E_WARN = 1, E_ERR = 2
 &utilities_nml
-   TERMLEVEL = 2
+   TERMLEVEL      = 2
    module_details = .false.
-   logfilename = 'dart_log.out'
-   nmlfilename = 'dart_log.nml'
+   logfilename    = 'dart_log.out'
+   nmlfilename    = 'dart_log.nml'
    /
 
 
@@ -427,6 +428,7 @@
 !   min_copy           = 250.0
 !   max_copy           = 300.0
 
+
 &obs_sequence_tool_nml
    num_input_files    = 2
    filename_seq       = 'obs_seq.one', 'obs_seq.two'
@@ -445,23 +447,23 @@
 
 
 &obs_common_subset_nml
-  num_to_compare_at_once  = 2
-  filename_seq            = ''
-  filename_seq_list       = ''
-  filename_out_suffix     = '.common'
-  print_only              = .false.
-  print_every              = 10000
-  calendar                 = 'Gregorian'
-  dart_qc_threshold        = 3
-  eval_and_assim_can_match = .false.
+   num_to_compare_at_once   = 2
+   filename_seq             = ''
+   filename_seq_list        = ''
+   filename_out_suffix      = '.common' 
+   print_only               = .false.
+   print_every              = 10000
+   calendar                 = 'Gregorian'
+   dart_qc_threshold        = 3
+   eval_and_assim_can_match = .false.
    /
 
 
 &obs_impact_tool_nml
-  input_filename         = 'cross_correlations.txt'
-  output_filename        = 'control_impact_runtime.txt'
-  allow_any_impact_value = .false.
-  debug                  = .false.
+   input_filename         = 'cross_correlations.txt'
+   output_filename        = 'control_impact_runtime.txt'
+   allow_any_impact_value = .false.
+   debug                  = .false.
    /
 
 
@@ -472,6 +474,7 @@
    restart_in_file_name  = 'smoother_ics'
    restart_out_file_name = 'smoother_restart'
    /
+
 
 #========================================================================
 # diagnostic tools
@@ -485,7 +488,7 @@
 !
 ! Acceptable latitudes range from  [-90,  90]
 ! Acceptable longitudes range from [  0, Inf]
-
+!
 ! Other available namelist variables, not in the default obs_diag.nml:
 !  hlevel
 !  mlevel
@@ -499,12 +502,11 @@
 !    +950(MetOffc)     -600(skipped in obs_diag.f90 defaults)   -70 and less skipped in obs_diag.f90
 ! Corresponding heights (assuming a standard atmosphere)
 ! 0,  650, 1350, 2900,4100,5480,7090,9080,10280,11700,13520,16100,18358,21060,24640,27480,32330
-
-
+!
 !    plevel = 1000.,925.,850.,700.,500.,400.,300.,250.,200.,150.,100.,50.,20.,10.
 !    hlevel = 1000., 2000., 3000., 4000., 5000., 6000., 7000., 8000., 9000., 10000.,11000.
 !             0, 1500, 2500, 3500, 4500, 5500, 6500, 7500, 9500, 11500, 13500, 15500
-
+!
 ! Defaults
 !    plevel = 1000.,850.,700.,500.,400.,300.,200.,150.,100.
 !    Nregions   = 4
@@ -513,7 +515,7 @@
 !    latlim1    =  20.0, -80.0, -20.0,  25.0
 !    latlim2    =  80.0, -20.0,  20.0,  55.0
 !    reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America'
-
+!
 ! for WACCM you will want to change the plevel to match
 ! the higher vertical range of the model.
 !   plevel = 1000.,850.,700.,500.,400.,300.,200.,150.,100.
@@ -546,10 +548,10 @@
 
 
 &schedule_nml
-   calendar        = 'Gregorian'
-   first_bin_start =  1601,  1,  1,  0,  0,  0
-   first_bin_end   =  2999,  1,  1,  0,  0,  0
-   last_bin_end    =  2999,  1,  1,  0,  0,  0
+   calendar             = 'Gregorian'
+   first_bin_start      =  1601,  1,  1,  0,  0,  0
+   first_bin_end        =  2999,  1,  1,  0,  0,  0
+   last_bin_end         =  2999,  1,  1,  0,  0,  0
    bin_interval_days    = 1000000
    bin_interval_seconds = 0
    max_num_bins         = 1000
@@ -574,16 +576,18 @@
    output_state_files    = 'mmc_output.nc'
    test1thru             = 0
    run_tests             = 1,2,3,4,5,7
-   x_ind                 = 10
+   x_ind                 = 175001
+
    quantity_of_interest  = 'QTY_U_WIND_COMPONENT'
    loc_of_interest       = 254.727854, 39.9768545, 50000.0
-   interp_test_vertcoord = 'VERTISPRESSURE'
-   interp_test_lonrange  = 0.0, 359.0
+
+   interp_test_lonrange  = 0.0, 360.0
    interp_test_dlon      = 1.0
-   interp_test_latrange  = -89.0, 89.0
+   interp_test_latrange  = -90.0, 90.0
    interp_test_dlat      = 1.0
-   interp_test_vertrange = 1000.0,  1005.0
-   interp_test_dvert     = 2000.0
+   interp_test_vertrange = 10000.0,  90000.0
+   interp_test_dvert     = 10000.0
+   interp_test_vertcoord = 'VERTISPRESSURE'
    verbose               = .false.
    /
 
