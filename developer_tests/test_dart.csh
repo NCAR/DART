@@ -5,7 +5,42 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
-
+#
+# test_dart.csh can be run from the command line or a batch system.
+#               This compiles many of the programs (but not all) and
+#               runs a limited number of tests.
+#
+#>@todo FIXME ... implement some method to run mpi executables. 
+#
+#==========================================================================
+# SLURM directives              sbatch test_batch.csh
+#
+# sinfo     information about the whole slurm system
+# squeue    information about running jobs
+# sbatch    submitting a job
+# scancel   killing a job
+#
+#SBATCH --ignore-pbs
+#SBATCH --job-name dart_test
+#SBATCH --ntasks-per-node=1
+#SBATCH -t 2:00:00
+#SBATCH -n 1
+#SBATCH -A P86850054
+#SBATCH -p dav
+#SBATCH -o dart_test.log
+#SBATCH --mail-type=END
+#SBATCH --mail-type=FAIL
+#
+#==========================================================================
+# PBS directives                qsub test_batch.csh
+#
+#PBS -N dart_test     
+#PBS -l walltime=02:00:00
+#PBS -q share 
+#PBS -l select=1:ncpus=1
+#PBS -A P86850054 
+#PBS -j oe
+#PBS -m abe
 
 set clobber
 setenv MPIFLAG '-nompi'
@@ -25,11 +60,22 @@ if ( $#argv > 0 ) then
   endif
 endif
 
+# Since this script does not launch the mpi executables with an mpirun etc.,
+# this whole script can only possibly test the serial implementation.
+# So - in batch mode, just force it to be nompi.
+#>@todo FIXME ... implement some method to run mpi executables. 
+
+if ($?SLURM_JOB_ID) then
+    setenv MPIFLAG '-nompi'
+else if ($?PBS_NODEFILE) then
+    setenv MPIFLAG '-nompi'
+endif
+
 # cd to the start of the DART directory
 cd ..
 
 if ( ! -d models ) then
-   echo "models does not exist. $0 must be run from the developer_tests"
+   echo "models directory does not exist. $0 must be run from the developer_tests"
    echo "directory -- please try again."
    exit 2
 else
@@ -47,11 +93,13 @@ echo "The top-level DART directory (DARTHOME) is $DARTHOME"
 if ( ! $?host) then
    setenv host `uname -n`
 endif
+echo "Running $0 on $host"
 
 #----------------------------------------------------------------------
 # Not all unix systems support the same subset of flags; try to figure
 # out what system we are running on and adjust accordingly.
 #----------------------------------------------------------------------
+
 set OSTYPE = `uname -s`
 switch ( ${OSTYPE} )
    case IRIX64:
@@ -73,12 +121,6 @@ endsw
 
 #----------------------------------------------------------------------
 
-echo "Running DART test on $host"
-
-#----------------------------------------------------------------------
-# Compile 'filter' for a wide range of models.
-#----------------------------------------------------------------------
-
 echo
 echo
 echo "=================================================================="
@@ -98,7 +140,7 @@ echo
 echo
 echo "=================================================================="
 echo "=================================================================="
-echo "Model testing complete at "`date`
+echo "Supported model testing complete at "`date`
 echo "=================================================================="
 echo "=================================================================="
 echo
@@ -141,7 +183,7 @@ echo
 echo
 echo "=================================================================="
 echo "=================================================================="
-echo "Building and testing supported programs starting at "`date`
+echo "Building and testing support programs starting at "`date`
 echo "=================================================================="
 echo "=================================================================="
 echo
@@ -156,7 +198,7 @@ echo
 echo
 echo "=================================================================="
 echo "=================================================================="
-echo "Program testing complete at "`date`
+echo "Support program testing complete at "`date`
 echo "=================================================================="
 echo "=================================================================="
 echo
@@ -168,48 +210,56 @@ echo
 echo
 echo "=================================================================="
 echo "=================================================================="
-echo "Testing location modules starting at "`date`
+echo "Running developer tests starting at "`date`
 echo "=================================================================="
 echo "=================================================================="
 echo
 echo
 
-cd ${DARTHOME}/developer_tests/location
+cd ${DARTHOME}/developer_tests
 if ( 1 == 1 ) then
-  ./testall.csh
+  ./run_dev_tests.csh
 endif
 
 echo
 echo
 echo "=================================================================="
 echo "=================================================================="
-echo "Location module testing complete at "`date`
+echo "Developer tests complete at "`date`
 echo "=================================================================="
 echo "=================================================================="
 echo
 echo
 
-echo "SKIPPING Testing single-threaded lorenz_96 (L96) at "`date`
-#echo "Testing single-threaded lorenz_96 (L96) at "`date`
-echo "=================================================================="
-echo
+#----------------------------------------------------------------------
 
-exit 0
+if ( $?MPI ) then
 
-echo "=================================================================="
-
-if ! ( $?MPI ) then
-
-   echo "MPI tests not enabled ... stopping."
-
-else
+   #echo
+   #echo
+   #echo "=================================================================="
+   #echo "=================================================================="
+   #echo "MPI testing complete  at "`date`
+   #echo "=================================================================="
+   #echo "=================================================================="
+   #echo
+   #echo
 
    echo "No MPI tests yet ... stopping."
 
+   #echo
+   #echo
    #echo "=================================================================="
-   #echo "testing MPI complete  at "`date`
+   #echo "=================================================================="
+   #echo "MPI testing complete  at "`date`
+   #echo "=================================================================="
    #echo "=================================================================="
    #echo
+   #echo
+
+else
+
+   echo "MPI tests not requested ... stopping."
 
 endif
 
