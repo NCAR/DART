@@ -168,7 +168,8 @@
 
 
 &model_nml
-   init_template_filename       = 'mpas_init.nc'
+   model_analysis_filename      = 'mpas_init.nc'
+   grid_definition_filename     = 'mpas_init.nc'
    vert_localization_coord      = 3
    assimilation_period_days     = 0
    assimilation_period_seconds  = 43200
