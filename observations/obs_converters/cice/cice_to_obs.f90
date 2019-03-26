@@ -28,14 +28,15 @@ program cice_to_obs
 ! ; *uint8
 ! ;=====================================================================================
 
-!>@todo replace the utilities_mod:nc_check with the netcdf_utilities_mod:nc_check
+!>@todo right now no code uses netcdf or nc_check, so it's commented out.
 
 use         types_mod, only : r8, i2, i4, missing_r8
 use     utilities_mod, only : initialize_utilities, finalize_utilities, &
                               open_file, close_file, error_handler, E_ERR, &
                               do_nml_file, do_nml_term, nmlfileunit, &
                               find_namelist_in_file, check_namelist_read, &
-                              nc_check, get_unit
+                              get_unit
+!use  netcdf_utilities_mod, only : nc_check
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, set_time, &
                               get_date, get_time, GREGORIAN, &
                               operator(>=), operator(-), operator(+)

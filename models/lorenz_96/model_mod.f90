@@ -135,15 +135,18 @@ subroutine comp_dt(x, dt)
 real(r8), intent(in)  ::  x(:)
 real(r8), intent(out) :: dt(:)
 
-integer :: j, jp1, jm1, jm2
+integer :: j, jp1, jm1, jm2, ms
 
-do j = 1, model_size
+! avoid compiler bugs with long integers
+! being used as loop indices.
+ms = model_size
+do j = 1, ms
    jp1 = j + 1
-   if(jp1 > model_size) jp1 = 1
+   if(jp1 > ms) jp1 = 1
    jm2 = j - 2
-   if(jm2 < 1) jm2 = model_size + jm2
+   if(jm2 < 1) jm2 = ms + jm2
    jm1 = j - 1
-   if(jm1 < 1) jm1 = model_size
+   if(jm1 < 1) jm1 = ms
    
    dt(j) = (x(jp1) - x(jm2)) * x(jm1) - x(j) + forcing
 end do

@@ -10,10 +10,10 @@ program perfect_model_obs
 
 use        types_mod,     only : r8, i8, metadatalength, MAX_NUM_DOMS
 use    utilities_mod,     only : register_module, error_handler, &
-                                 find_namelist_in_file, check_namelist_read,           &
-                                 E_ERR, E_MSG, E_DBG, nmlfileunit, timestamp,          &
+                                 find_namelist_in_file, check_namelist_read, &
+                                 E_ERR, E_MSG, E_DBG, nmlfileunit, timestamp, &
                                  do_nml_file, do_nml_term, logfileunit, &
-                                 open_file, close_file, finalize_utilities
+                                 open_file, close_file
 use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), print_time,   &
                                  generate_seed
 use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,                 &

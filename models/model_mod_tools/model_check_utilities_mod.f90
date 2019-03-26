@@ -10,7 +10,7 @@ module model_check_utilities_mod
 ! support routines for interpolation tests
 !-------------------------------------------------------------------------------
 
-use             types_mod, only : r8, i8, metadatalength
+use             types_mod, only : r8, i8, metadatalength, missing_r8
 
 use         utilities_mod, only : error_handler, E_MSG, do_output
 
@@ -28,14 +28,13 @@ use             model_mod, only : get_model_size, &
                                   get_state_meta_data, &
                                   model_interpolate
 
-use netcdf
-
 implicit none
 private
 
 public :: test_single_interpolation, &
           find_closest_gridpoint, &
-          count_error_codes
+          count_error_codes, &
+          verify_consistent_istatus
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = &
@@ -232,6 +231,40 @@ enddo REPORT
 deallocate( thisdist )
 
 end subroutine find_closest_gridpoint
+
+!-------------------------------------------------------------------------------
+
+subroutine verify_consistent_istatus(ens_size, field, ios_out)
+ integer,  intent(in) :: ens_size
+ real(r8), intent(in) :: field(ens_size)
+ integer,  intent(in) :: ios_out(ens_size)
+
+character(len=*), parameter :: routine = ''  ! name not important in context
+integer :: i
+
+do i = 1, ens_size
+   if (ios_out(i) < 0) then
+      write(string1, *) 'ensemble member ', i, &
+                        ' inconsistent return: istatus cannot be a negative value.'
+      call error_handler(E_MSG, routine, string1)
+   endif
+
+   if (ios_out(i) == 0  .and.  field(i) == missing_r8) then
+      write(string1, *) 'ensemble member ', i, &
+                        ' inconsistent return: istatus = ok but interpolation value = missing data.'
+      call error_handler(E_MSG, routine, string1)
+   endif
+
+   if (ios_out(i) > 0  .and.  field(i) /= missing_r8) then
+      write(string1, *) 'ensemble member ', i, &
+                        ' inconsistent return: istatus = error but interpolation value /= missing data.'
+      write(string2, *) '  istatus, interp_val = ', ios_out(i), field(i)
+      call error_handler(E_MSG, routine, string1, text2=string2)
+   endif
+enddo
+
+end subroutine verify_consistent_istatus
+
 
 !-------------------------------------------------------------------------------
 ! End of model_check_utilities_mod

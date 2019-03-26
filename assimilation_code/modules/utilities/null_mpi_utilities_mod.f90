@@ -16,9 +16,10 @@ use utilities_mod, only    : register_module, error_handler,             &
                              E_ERR, E_WARN, E_MSG, E_DBG, finalize_utilities
 use time_manager_mod, only : time_type, set_time
 
+! the NAG compiler needs these special definitions enabled
 
-!#ifdef __NAG__
- !use F90_unix_proc, only : sleep, system, exit
+! !!NAG_BLOCK_EDIT START COMMENTED_OUT
+! use F90_unix_proc, only : sleep, system, exit
  !! block for NAG compiler
  !  PURE SUBROUTINE SLEEP(SECONDS,SECLEFT)
  !    INTEGER,INTENT(IN) :: SECONDS
@@ -32,7 +33,7 @@ use time_manager_mod, only : time_type, set_time
  !  SUBROUTINE EXIT(STATUS)
  !    INTEGER,OPTIONAL :: STATUS
  !! end block
-!#endif
+! !!NAG_BLOCK_EDIT END COMMENTED_OUT
 
 
 implicit none
@@ -58,6 +59,7 @@ private
 ! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
 
 
+! allow global sum to be computed for integers, r4, and r8s
 interface sum_across_tasks
    module procedure sum_across_tasks_int4
    module procedure sum_across_tasks_int8
@@ -74,10 +76,10 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           task_count, my_task_id, block_task, restart_task,                  &
           task_sync, array_broadcast, send_to, receive_from, iam_task0,      &
           broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
-          sum_across_tasks, send_minmax_to, datasize,                        &
+          sum_across_tasks, get_dart_mpi_comm, datasize, send_minmax_to,     &
           get_from_fwd, get_from_mean, broadcast_minmax, broadcast_flag,     &
           start_mpi_timer, read_mpi_timer, send_sum_to,                      &
-          all_reduce_min_max   ! deprecated, replace with broadcast_minmax
+          all_reduce_min_max  ! deprecated, replace by broadcast_minmax
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -85,11 +87,11 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-logical, save :: module_initialized = .false.
+logical :: module_initialized   = .false.
 
-character(len = 129) :: saved_progname = ''
+character(len = 256) :: saved_progname = ''
 
-character(len = 129) :: errstring
+character(len = 256) :: errstring
 
 ! Namelist input - placeholder for now; no options yet in this module.
 !namelist /mpi_utilities_nml/ x
@@ -122,7 +124,7 @@ endif
 call initialize_utilities(progname, alternatename)
 
 if (present(progname)) then
-   if (len_trim(progname) < len(saved_progname)) then
+   if (len_trim(progname) <= len(saved_progname)) then
       saved_progname = trim(progname)
    else
       saved_progname = progname(1:len(saved_progname))
@@ -288,23 +290,6 @@ if (present(time)) time = set_time(0, 0)
 end subroutine receive_from
 
 
-
-!-----------------------------------------------------------------------------
-! TODO: do i need to overload this for both integer and real?
-!       do i need to handle 1D, 2D, 3D inputs?
-
-subroutine transpose_array
-
-! not implemented here yet.  will have arguments -- several of them.
-
-if ( .not. module_initialized ) call initialize_mpi_utilities()
-
-write(errstring, *) 'not implemented yet'
-call error_handler(E_ERR,'transpose_array', errstring, source, revision, revdate)
-
-end subroutine transpose_array
-
-
 !-----------------------------------------------------------------------------
 ! TODO: do i need to overload this for both integer and real?
 !       do i need to handle 2D inputs?
@@ -331,43 +316,6 @@ endif
 
 end subroutine array_broadcast
 
-
-!-----------------------------------------------------------------------------
-! TODO: do i need to overload this for both integer and real?
-!       do i need to handle 2D inputs?
-
-subroutine array_distribute(srcarray, root, dstarray, dstcount, how, which)
-real(r8), intent(in)  :: srcarray(:)
-integer,  intent(in)  :: root
-real(r8), intent(out) :: dstarray(:)
-integer,  intent(out) :: dstcount
-integer,  intent(in)  :: how
-integer,  intent(out) :: which(:)
-
-! 'srcarray' on the root task will be distributed across all the tasks
-! into 'dstarray'.  dstarray must be large enough to hold each task's share
-! of the data.  The actual number of values returned on each task will be
-! passed back in the 'count' argument.  'how' is a flag to select how to
-! distribute the data (round-robin, contiguous chunks, etc).  'which' is an
-! integer index array which lists which of the original values were selected
-! and put into 'dstarray'.
-
-integer :: i
-
-if ( .not. module_initialized ) call initialize_mpi_utilities()
-
-! simple idiotproofing
-if ((root < 0) .or. (root >= total_tasks)) then
-   write(errstring, '(a,i8,a,i8)') "root task id ", root, &
-                                   "must be >= 0 and < ", total_tasks
-   call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
-endif
-
-dstarray = srcarray
-dstcount = size(srcarray)
-which = (/ ((i), i=1,size(srcarray))  /)
-
-end subroutine array_distribute
 
 !-----------------------------------------------------------------------------
 ! DART-specific cover utilities
@@ -522,8 +470,14 @@ character(len=255) :: doit
    !print *, "about to run: ", trim(doit)
    !print *, "input string length = ", len(trim(doit))
 
-   shell_execute = system(doit)
-   print *, "execution returns, rc = ", shell_execute
+! !!NAG_BLOCK_EDIT START COMMENTED_OUT
+!   call system(doit, status=rc)
+!   shell_execute = rc
+! !!NAG_BLOCK_EDIT END COMMENTED_OUT
+  !!OTHER_BLOCK_EDIT START COMMENTED_IN
+    shell_execute = system(doit)
+  !!OTHER_BLOCK_EDIT END COMMENTED_IN
+   !print *, "execution returns, rc = ", shell_execute
 
 end function shell_execute
 
@@ -605,16 +559,14 @@ end function get_dart_mpi_comm
 
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
-! Collect sum across tasks for a given array.
+! Sum array items across all tasks and send
+! results in an array of same size to one task.
 subroutine send_sum_to(local_val, task, global_val)
 
-real(r8), intent(in)  :: local_val(:) !> min max on each task
-integer,  intent(in)  :: task !> task to collect on
-real(r8), intent(out) :: global_val(:) !> only concerned with this on task collecting result
+real(r8), intent(in)  :: local_val(:)  !> addend vals on each task
+integer,  intent(in)  :: task          !> task to collect on
+real(r8), intent(out) :: global_val(:) !> results returned only on given task
 
-integer :: errcode
-
-! collect values on a single given task 
 global_val(:) = local_val(:) ! only one task.
 
 end subroutine send_sum_to
@@ -622,12 +574,12 @@ end subroutine send_sum_to
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
-! Collect min and max on task. This is for adaptive_inflate_mod
+! Collect min and max on task.
 subroutine send_minmax_to(minmax, task, global_val)
 
-real(r8), intent(in)  :: minmax(2) ! min max on each task
-integer,  intent(in)  :: task ! task to collect on
-real(r8), intent(out) :: global_val(2) ! only concerned with this on task collecting result
+real(r8), intent(in)  :: minmax(2)     !> min max on each task
+integer,  intent(in)  :: task          !> task to collect on
+real(r8), intent(out) :: global_val(2) !> results returned only on given task
 
 global_val(:) = minmax(:) ! only one task.
 
@@ -718,6 +670,9 @@ end module mpi_utilities_mod
 !-----------------------------------------------------------------------------
 
 subroutine exit_all(exit_code)
+! !!NAG_BLOCK_EDIT START COMMENTED_OUT
+! use F90_unix_proc, only : exit
+! !!NAG_BLOCK_EDIT END COMMENTED_OUT
  integer, intent(in) :: exit_code
 
 ! Call exit with the specified code.

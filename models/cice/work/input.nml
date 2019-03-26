@@ -36,6 +36,8 @@
    num_output_obs_members   = 6
    output_interval          = 1
    num_groups               = 1
+   distributed_state        = .true.
+   compute_posterior        = .true.
    output_forward_op_errors = .false.
    output_timestamps        = .true.
    trace_execution          = .true.
@@ -155,8 +157,11 @@
    model_state_variables  =       'aicen', 'QTY_SEAICE_CONCENTR'        , 'UPDATE',
                                   'vicen', 'QTY_SEAICE_VOLUME'          , 'UPDATE',
 				  'vsnon', 'QTY_SEAICE_SNOWVOLUME'      , 'UPDATE',
-                                  'r_snw', 'QTY_2D_PARAMETER'           , 'UPDATE',
    /
+
+# r_snw is appended to the cice restart file by 'cice_to_dart.f90', which reads the
+# cice_parameter_nml   namelist. 
+                                  'r_snw', 'QTY_2D_PARAMETER'           , 'UPDATE',
 
 
 # See the cice model_mod.html for a larger listing of CICE variables and their

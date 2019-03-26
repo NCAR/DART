@@ -108,7 +108,7 @@ end
 
 %% set up all the stuff that is common.
 
-commondata = check_compatibility(files, obsnames, copy);
+commondata = check_compatibility(files, prpo, obsnames, copy);
 figuredata = setfigure(NumExp);
 
 %%--------------------------------------------------------------------
@@ -119,48 +119,48 @@ nvars = length(obsnames);
 
 for ivar = 1:nvars
     fprintf('Working on %s ...\n',obsnames{ivar})
-    
+
     %------------------------------------------------------------------------
     % Plot each region in a separate figure window.
     %------------------------------------------------------------------------
-    
+
     for iregion = 1:commondata.nregions
-        
+
         figure(iregion);
         clf(iregion);
         orient(figuredata.orientation);
-        wysiwyg;
-        
+
         %---------------------------------------------------------------------
         % 1) Get the data for each experiment
         % 2) plot the data
         % 3) annotate
         %---------------------------------------------------------------------
-        
+
         for iexp = 1:NumExp
-            
-            plotobj{iexp} = getvals(files{iexp}, obsnames{ivar}, copy, prpo, iregion, p.Results.level);
+
+            plotobj{iexp} = getvals(files{iexp}, commondata.targets{ivar}, copy, iregion, p.Results.level);
             plotobj{iexp}.title        = titles{iexp};
             plotobj{iexp}.nregions     = commondata.nregions;
             plotobj{iexp}.region_names = commondata.region_names;
-            
+            plotobj{iexp}.phase        = commondata.phase;
+
         end
-        
+
         myplot(plotobj, figuredata);
-        
+
         BottomAnnotation(plotobj)
-        
+
         psfname = sprintf('%s_%s_region%d_ilev%d_evolution_%dexp', ...
             obsnames{ivar}, plotobj{1}.copystring, iregion, p.Results.level, NumExp);
         print(iregion,'-dpdf',psfname)
-        
+
     end % of loop around regions
-    
+
     if ( ivar ~= nvars )
         disp('Pausing, hit any key to continue ...')
         pause
     end
-    
+
 end  % of loop around variable
 
 
@@ -171,7 +171,7 @@ end  % of loop around variable
 
 
 
-function common = check_compatibility(filenames, varnames, copystring)
+function common = check_compatibility(filenames, prpo, varnames, copystring)
 %% Trying to prevent the comparison of apples and oranges.
 % make sure the diagnostics were generated the same way.
 
@@ -182,18 +182,26 @@ function common = check_compatibility(filenames, varnames, copystring)
 mystat     = 0;
 nexp       = length(filenames);
 commondata = cell(1,nexp);
-priornames = struct([]);
-postenames = struct([]);
+targets    = struct([]);
 
 for i = 1:length(varnames)
-    priornames{i} = sprintf('%s_guess',varnames{i});
-    postenames{i} = sprintf('%s_analy',varnames{i});
+    switch lower(prpo)
+        case {'guess','forecast','prior'}
+            targets{i} = sprintf('%s_guess',varnames{i});
+            commondata{i}.phase = 'prior';
+        case {'analy','analysis','posterior'}
+            targets{i} = sprintf('%s_analy',varnames{i});
+            commondata{i}.phase = 'posterior';
+        otherwise
+            error('unknown prpo ... "%s"',prpo)
+    end
 end
 
 for i = 1:nexp
-    
-    varexist(filenames{i}, {priornames{:}, postenames{:}, 'time', 'time_bounds'})
-    
+
+    varexist(filenames{i}, {targets{:}, 'time', 'time_bounds'})
+
+    commondata{i}.targets      = targets;
     commondata{i}.region_names = strtrim(ncread(filenames{i},'region_names')');
     commondata{i}.times        = ncread(filenames{i}, 'time');
     commondata{i}.time_bnds    = ncread(filenames{i}, 'time_bounds');
@@ -209,32 +217,32 @@ end
 
 % error checking - compare everything to the first experiment
 for i = 2:nexp
-    
+
     if (any(commondata{i}.lonlim1 ~= commondata{1}.lonlim1))
         fprintf('The left longitudes of the regions (i.e. lonlim1) are not compatible.\n')
         mystat = 1;
     end
-    
+
     if (any(commondata{i}.lonlim2 ~= commondata{1}.lonlim2))
         fprintf('The right longitudes of the regions (i.e. lonlim2) are not compatible.\n')
         mystat = 1;
     end
-    
+
     if (any(commondata{i}.latlim1 ~= commondata{1}.latlim1))
         fprintf('The bottom latitudes of the regions (i.e. latlim1) are not compatible.\n')
         mystat = 1;
     end
-    
+
     if (any(commondata{i}.latlim2 ~= commondata{1}.latlim2))
         fprintf('The top latitudes of the regions (i.e. latlim2) are not compatible.\n')
         mystat = 1;
     end
-    
+
     if (any(commondata{i}.time_bnds ~= commondata{1}.time_bnds))
         fprintf('The time boundaries of the experiments (i.e. time_bnds) are not compatible.\n')
         mystat = 1;
     end
-    
+
 end
 
 if mystat > 0
@@ -247,7 +255,7 @@ common = commondata{1};
 %=====================================================================
 
 
-function plotdat = getvals(fname, varname, copystring, prpo, regionindex, levelindex )
+function plotdat = getvals(fname, varname, copystring, regionindex, levelindex )
 %% Get the data for each experiment
 if (exist(fname,'file') ~= 2)
     error('%s does not exist',fname)
@@ -297,16 +305,17 @@ plotdat.timespan      = sprintf('%s through %s', ...
 plotdat.copyindex     = get_copy_index(fname, copystring);
 plotdat.Npossindex    = get_copy_index(fname, 'Nposs');
 plotdat.Nusedindex    = get_copy_index(fname, 'Nused');
+plotdat.NQC0index     = get_copy_index(fname, 'N_DARTqc_0');
+plotdat.NQC1index     = get_copy_index(fname, 'N_DARTqc_1');
+plotdat.NQC2index     = get_copy_index(fname, 'N_DARTqc_2');
+plotdat.NQC3index     = get_copy_index(fname, 'N_DARTqc_3');
 plotdat.NQC4index     = get_copy_index(fname, 'N_DARTqc_4');
 plotdat.NQC5index     = get_copy_index(fname, 'N_DARTqc_5');
 plotdat.NQC6index     = get_copy_index(fname, 'N_DARTqc_6');
 plotdat.NQC7index     = get_copy_index(fname, 'N_DARTqc_7');
-plotdat.NQC8index     = get_copy_index(fname, 'N_DARTqc_8');
+plotdat.NQC8index     = get_copy_index(fname, 'N_DARTqc_8','fatal','no');
 
-plotdat.priorvar      = sprintf('%s_guess',plotdat.varname);
-plotdat.postevar      = sprintf('%s_analy',plotdat.varname);
-
-plotdat.trusted       = nc_read_att(fname, plotdat.priorvar, 'TRUSTED');
+plotdat.trusted       = nc_read_att(fname, plotdat.varname, 'TRUSTED');
 if (isempty(plotdat.trusted)), plotdat.trusted = 'NO'; end
 
 myinfo.diagn_file     = fname;
@@ -316,7 +325,7 @@ myinfo.levelindex     = plotdat.levelindex;
 
 % get appropriate vertical coordinate variable
 
-[dimnames, ~] = nc_var_dims(fname, plotdat.priorvar);
+[dimnames, ~] = nc_var_dims(fname, plotdat.varname);
 
 if ( dimensionality == 1 ) % observations on a unit circle, no level
     plotdat.level = 1;
@@ -335,44 +344,28 @@ else
     plotdat.level_edges = ncread(fname,sprintf('%s_edges',dimnames{2}));
 end
 
-[start, count] = GetNCindices(myinfo,'diagn',plotdat.priorvar);
-hyperslab      = ncread(fname, plotdat.priorvar, start, count);
-plotdat.prior  = squeeze(hyperslab);
+[start, count] = GetNCindices(myinfo,'diagn',plotdat.varname);
+hyperslab      = ncread(fname, plotdat.varname, start, count);
+plotdat.data  = squeeze(hyperslab);
 
-[start, count] = GetNCindices(myinfo,'diagn',plotdat.postevar);
-hyperslab      = ncread(fname, plotdat.postevar, start, count);
-plotdat.poste  = squeeze(hyperslab);
 
-%% Determine data limits - Do we use prior and/or posterior
+%% Determine data limits
 %  always make sure we have a zero bias line ...
-
-plotdat.useposterior = 0;
-plotdat.useprior     = 0;
-switch lower(prpo)
-    case {'analy','analysis','posterior'}
-        plotdat.useposterior = 1;
-        bob = plotdat.poste(:);
-    case {'guess','forecast','prior'}
-        plotdat.useprior = 1;
-        bob = plotdat.prior(:);
-    otherwise
-        plotdat.useposterior = 1;
-        plotdat.useprior = 1;
-        bob = [plotdat.prior(:) ; plotdat.poste(:)];   % one long array
-end
 
 switch copystring
     case {'bias'}
-        dmin = min( [ min(bob) 0.0 ] );
-        dmax = max( [ max(bob) 0.0 ] );
+        dmin = min( [ min(plotdat.data) 0.0 ] );
+        dmax = max( [ max(plotdat.data) 0.0 ] );
         plotdat.Drange = [ dmin dmax ];
         plotdat.ylabel = sprintf('%s (%s)',copystring, plotdat.biasconv);
     otherwise
-        plotdat.Drange = [min(bob) max(bob)];
+        plotdat.Drange = [min(plotdat.data) max(plotdat.data)];
         plotdat.ylabel = copystring;
 end
 
 %% Get the number of observations possible and the number used.
+%  N_DARTqc_1 is the number priors evaluated
+%  N_DARTqc_3 is the number posteriors evaluated
 %  N_DARTqc_5 is the number ignored because of namelist control.
 %  N_DARTqc_6 is the number ignored because of incoming QC values.
 %  It doesn't matter which prior/poste variable you get this information
@@ -381,27 +374,37 @@ end
 myinfo.diagn_file = fname;
 myinfo.copyindex  = plotdat.Npossindex;
 myinfo.levelindex = plotdat.levelindex;
-[start, count]    = GetNCindices(myinfo,'diagn',plotdat.priorvar);
-plotdat.nposs     = squeeze(ncread(fname, plotdat.priorvar, start, count));
+[start, count]    = GetNCindices(myinfo,'diagn',plotdat.varname);
+plotdat.nposs     = squeeze(ncread(fname, plotdat.varname, start, count));
+
+myinfo.copyindex  = plotdat.NQC1index;
+[start, count]    = GetNCindices(myinfo,'diagn',plotdat.varname);
+plotdat.Nqc1      = squeeze(ncread(fname, plotdat.varname, start, count));
+
+myinfo.copyindex  = plotdat.NQC3index;
+[start, count]    = GetNCindices(myinfo,'diagn',plotdat.varname);
+plotdat.Nqc3      = squeeze(ncread(fname, plotdat.varname, start, count));
 
 myinfo.copyindex  = plotdat.NQC5index;
-[start, count]    = GetNCindices(myinfo,'diagn',plotdat.priorvar);
-plotdat.Nqc5      = squeeze(ncread(fname, plotdat.priorvar, start, count));
+[start, count]    = GetNCindices(myinfo,'diagn',plotdat.varname);
+plotdat.Nqc5      = squeeze(ncread(fname, plotdat.varname, start, count));
 plotdat.nposs     = plotdat.nposs - plotdat.Nqc5;
 
 myinfo.copyindex  = plotdat.NQC6index;
-[start, count]    = GetNCindices(myinfo,'diagn',plotdat.priorvar);
-plotdat.Nqc6      = squeeze(ncread(fname, plotdat.priorvar, start, count));
+[start, count]    = GetNCindices(myinfo,'diagn',plotdat.varname);
+plotdat.Nqc6      = squeeze(ncread(fname, plotdat.varname, start, count));
 plotdat.nposs     = plotdat.nposs - plotdat.Nqc6;
 
-if ( plotdat.useprior )
-    myinfo.copyindex = plotdat.Nusedindex;
-    [start, count]   = GetNCindices(myinfo,'diagn',plotdat.priorvar);
-    plotdat.nused    = squeeze(ncread(fname, plotdat.priorvar, start, count));
+myinfo.copyindex = plotdat.Nusedindex;
+[start, count]   = GetNCindices(myinfo,'diagn',plotdat.varname);
+plotdat.nused    = squeeze(ncread(fname, plotdat.varname, start, count));
+
+plotdat.num_evaluated = plotdat.Nqc1 + plotdat.Nqc3;
+
+if (sum(plotdat.num_evaluated))
+    plotdat.assim_eval_string = 'evaluated';
 else
-    myinfo.copyindex = plotdat.Nusedindex;
-    [start, count]   = GetNCindices(myinfo,'diagn',plotdat.postevar);
-    plotdat.nused    = squeeze(ncread(fname, plotdat.postevar, start, count));
+    plotdat.assim_eval_string = 'assimilated';
 end
 
 %% Set the last of the ranges
@@ -429,25 +432,22 @@ hd     = [];   % handle to an unknown number of data lines
 legstr = {[]}; % strings for the legend
 
 for i = 1:Nexp
-    if ( plotobj{i}.useprior )
-        iexp         = iexp + 1;
-        hd(iexp)     = line(plotobj{i}.bincenters, plotobj{i}.prior, ...
-            'Color',    figdata.expcolors{i}, ...
-            'Marker',   figdata.expsymbols{i}, ...
-            'LineStyle',figdata.prpolines{1}, ...
-            'LineWidth', figdata.linewidth,'Parent',ax1);
-        legstr{iexp} = sprintf('%s Prior',plotobj{i}.title);
-    end
-    
-    if ( plotobj{i}.useposterior )
-        iexp         = iexp + 1;
-        hd(iexp)     = line(plotobj{i}.bincenters, plotobj{i}.poste, ...
-            'Color',    figdata.expcolors{i}, ...
-            'Marker',   figdata.expsymbols{i}, ...
-            'LineStyle',figdata.prpolines{2}, ...
-            'LineWidth',figdata.linewidth,'Parent',ax1);
-        legstr{iexp} = sprintf('%s Posterior',plotobj{i}.title);
-    end
+    iexp         = iexp + 1;
+    hd(iexp)     = line(plotobj{i}.bincenters, plotobj{i}.data, ...
+        'Color',    figdata.expcolors{i}, ...
+        'Marker',   figdata.expsymbols{i}, ...
+        'MarkerFaceColor', figdata.expcolors{i}, ...
+        'LineStyle', figdata.prpolines{1}, ...
+        'LineWidth', figdata.linewidth,'Parent',ax1);
+
+    % calculate the weighted mean for a summary. Each experiment
+    % may use different numbers of observations, so a simple mean
+    % may be misleading.
+
+    N = sum(plotobj{i}.nused,'omitnan');
+    X = sum(plotobj{i}.data .* plotobj{i}.nused,'omitnan')/N;
+
+    legstr{iexp} = sprintf('%s ... mean = %s',plotobj{i}.title,num2str(X));
 end
 
 % Plot a bias line.
@@ -464,14 +464,8 @@ ttot = plotobj{1}.bincenters(plotobj{1}.Nbins) - plotobj{1}.bincenters(1) + 1;
 
 if ((plotobj{1}.bincenters(1) > 1000) && (ttot > 5))
     datetick('x',6,'keeplimits','keepticks');
-    monstr = datestr(plotobj{1}.bincenters(1),21);
-    xlabelstring = sprintf('month/day - %s start',monstr);
 elseif (plotobj{1}.bincenters(1) > 1000)
     datetick('x',15,'keeplimits','keepticks')
-    monstr = datestr(plotobj{1}.bincenters(1),21);
-    xlabelstring = sprintf('%s start',monstr);
-else
-    xlabelstring = 'days';
 end
 
 % Create another axes to use for plotting the observation counts
@@ -525,16 +519,14 @@ function annotate(ax1, ax2, plotobj, figdata)
 set(get(ax1,'Xlabel'),'String',plotobj.timespan, ...
     'Interpreter','none','FontSize',figdata.fontsize)
 
-if ( plotobj.useprior )
-    ylabel = sprintf('forecast %s',plotobj.ylabel);
-else
-    ylabel = sprintf('analysis %s',plotobj.ylabel);
-end
+ylabel = sprintf('%s (%s)',plotobj.ylabel, plotobj.phase);
 
 set(get(ax1,'Ylabel'),'String',ylabel, ...
     'Interpreter','none','FontSize',figdata.fontsize)
-set(get(ax2,'Ylabel'),'String','# of obs (o=possible, \ast=assimilated)', ...
-    'FontSize',figdata.fontsize)
+
+string1 = sprintf('# of obs (o=possible, %s=%s)', '\ast', plotobj.assim_eval_string);
+
+set(get(ax2,'Ylabel'), 'String', string1, 'FontSize', figdata.fontsize)
 
 if ( isempty(plotobj.level_units) )
     th = title({deblank(plotobj.region_names(plotobj.region,:)), ...
@@ -562,7 +554,7 @@ axis off
 
 for ifile = 1:Nexp
     main = plotstruct{ifile}.fname;
-    
+
     fullname = which(main);   % Could be in MatlabPath
     if( isempty(fullname) )
         if ( main(1) == '/' )  % must be a absolute pathname
@@ -574,15 +566,15 @@ for ifile = 1:Nexp
     else
         string1 = sprintf('data file: %s',fullname);
     end
-    
+
     ty = 1.0 - (ifile+1)*dy;
     h = text(0.0, ty, string1);
     set(h, 'Interpreter', 'none', ...
         'HorizontalAlignment','left', ...
         'FontSize', 8);
-    
+
     % If the observation is trusted for this experiment, annotate as such.
-    
+
     switch lower(plotstruct{ifile}.trusted)
         case 'true'
             ty = 1.0 - Nexp*dy + ifile*dy*2;

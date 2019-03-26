@@ -46,6 +46,11 @@ if ( -f ../../build_templates/mkmf.template ) then
       setenv FCOMP pgi
       setenv UNDERSCORE add
       echo setting the BUFR lib to build using the pgi compilers
+   else if ( "$fcomp" == "nagfor" ) then
+      setenv CCOMP nag
+      setenv FCOMP nag
+      setenv UNDERSCORE add
+      echo setting the BUFR lib to build using the nag compilers
    else
       echo unrecognized compiler in ../../build_templates/mkmf.template
       echo set NCEP BUFR library compiler choice in NCEP/prep_bufr/install.sh
@@ -55,13 +60,20 @@ endif
 
 cd NCEP/prep_bufr
 
-./install.sh
+set FAILURE = 0
+
+./install.sh || set FAILURE = 1
 
 echo 
 echo 
 echo "=================================================================="
 echo "=================================================================="
 echo "Build of NCEP BUFR libs ended at "`date`
+if ( $FAILURE ) then
+      echo 
+      echo "ERROR - build was unsuccessful"
+      echo 
+endif
 echo "=================================================================="
 echo "=================================================================="
 echo 

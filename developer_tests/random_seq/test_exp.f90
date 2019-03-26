@@ -91,7 +91,7 @@ do j=1, ntests
    write_this_one = (write_me .and. n <= write_limit)
 
    if (write_this_one) then
-      write(temp, "(A,F8.3,A,I10)"), "exp_", rate, "_", n
+      write(temp, "(A,F8.3,A,I10)") "exp_", rate, "_", n
       call squeeze_out_blanks(temp, fname)
       f = open_file(fname)
    endif

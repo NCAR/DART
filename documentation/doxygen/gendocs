@@ -37,16 +37,21 @@ elif [ -f   ../../CHANGELOG ]; then
    toppath=`cd ../../; pwd`
 elif [ -f   ../../../../../CHANGELOG ]; then
    toppath=`cd ../../../../../; pwd`
-elle
+else
    echo cannot find the top level DART directory
    echo based on the current working directory.
    exit -1
 fi
 
-destdir=$toppath/documentation/doxygen/$model
+# the first option puts all docs under DART/documentation.
+# try putting them into models/bob/documentation instead?
+# (this script needs to be run from a work directory)
+#destdir=$toppath/documentation/doxygen/$model
+destdir=../documentation
+doxygen_dir=$toppath/documentation/doxygen
 
 echo Generating documentation for all executables in the current directory
-echo for the model ${model}.   All html files will be located under the directory
+echo for ${model}.   All html files will be located under the directory
 echo $destdir
 
 if [ ! -d $destdir ]; then mkdir -p $destdir; fi
@@ -67,7 +72,7 @@ do
   # flist -> multiline path_names_xx content with \ after every
   # line except the last one
 
-  sed -e "s;THISDESTDIR;${destdir};" -e "s/THISEXECUTABLE/$exename/" -e "s/THISMODEL/$model/" -e "/^INPUT  /r flist" $template > doxygen-$exename
+  sed -e "s;THISDESTDIR;${destdir};" -e "s/THISEXECUTABLE/$exename/" -e "s/THISMODEL/$model/" -e "/^INPUT  /r flist" $doxygen_dir/$template > doxygen-$exename
 
   doxygen doxygen-$exename
   

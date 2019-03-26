@@ -10,7 +10,7 @@
 
 module constants_module
 
-   use     types_mod, only : r8
+   use     types_mod, only : r8, digits12
 
    real (kind=r8), parameter :: PI = 3.141592653589793_r8
    real (kind=r8), parameter :: OMEGA_E = 0.00007292_r8 ! Angular rotation rate of the earth
@@ -227,7 +227,7 @@ MODULE map_utils
 !   use utilities_mod, only : register_module
 
    ! Define some private constants
-   INTEGER, PRIVATE, PARAMETER :: HIGH = 8
+   INTEGER, PRIVATE, PARAMETER :: HIGH = digits12
 
    TYPE proj_info
 

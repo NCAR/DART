@@ -810,7 +810,7 @@ be set.  If your observations will impact most of the model state, then
   conforms to the netCDF convention for coordinate dimensions.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Nov 01 2018 :: summary of changes in Manhattan update       $Revision$
++ Nov 01 2018 :: Adaptive Inflation, dewpoint, obs_diag        Revision: 13006
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - Updated dewpoint equation to avoid dividing by zero given a very unlikely
@@ -825,6 +825,51 @@ be set.  If your observations will impact most of the model state, then
 - Updated oned/obs_diag.f90 to support 'obs_seq.out' files.
 
 - Better error and informational messages in various routines.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Mar 25 2019 :: cam-fv refactor, posteriors optional, QC 8  $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- The CAM Finite Volume (cam-fv)  model_mod.f90 has undergone substantial 
+  refactoring to improve simplicity and remove code for unsupported CAM variants
+  while also supporting WACCM and WACCM-X
+
+- cam-fv setup and scripting support added for CESM 2_1, including advanced
+  archiving and compression
+
+- COSMIC_ELECTRON_DENSITY has been moved from obs_def_gps_mod.f90 to 
+  obs_def_upper_atm_mod.f90, which has new quantities for 
+  ION_O_MIXING_RATIO and ATOMIC_H_MIXING_RATIO
+
+- Namelist option to select whether or not to compute posterior estimates of
+  observations
+
+- added a DART QC of 8 for failed vertical conversions
+
+- obs_converters/gps/convert_cosmic_ionosphere.f90 has a test dataset
+
+- support for NAG compiler 
+
+- closest_member_tool should be compiled with other MPI targets
+
+- fixed Intel compiler bug in lorenz_96 comparing long integers to integer loop indices
+
+- sampling error correction table now has all ensemble sizes between 3 and 200
+
+- get_maxdist() now a required routine all location modules
+
+- dart_time_io_mod: read_model_time, write_model_time  more stable behavior 
+
+- obs_impact_tool handles a continuum of values, not just discrete 0 or 1.
+
+- fill_inflation_restart now produces files with names consistent with filter defaults. 
+
+- expanded functionality in xyz_location_mod.f90
+
+- Removed 'slow' sorting routines from sort_mod.f90
+
+- replacing some repeated native netCDF library calls with routines from
+  the netcdf_utilities_mod.f90 
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + MMM DD YYYY :: summary of changes in Manhattan update   $Revision$

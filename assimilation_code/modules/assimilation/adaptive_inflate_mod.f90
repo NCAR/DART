@@ -597,12 +597,9 @@ real(r8), intent(in)  :: x_p, sigma_p_2, y_o, sigma_o_2, lambda_mean, lambda_sd
 real(r8), intent(in)  :: gamma_corr, sd_lower_bound_in, sd_max_change_in
 real(r8), intent(out) :: new_cov_inflate, new_cov_inflate_sd
 
-integer  :: i, mlambda_index(1)
 real(r8) :: dist_2, rate, shape_old, shape_new, rate_new
 real(r8) :: lambda_sd_2, density_1, density_2, omega, ratio
 real(r8) :: new_1_sd, new_max
-real(r8) :: b, c, d, Q, R, disc, alpha, beta, cube_root_alpha, cube_root_beta, x
-real(r8) :: rrr, cube_root_rrr, angle, mx(3), sep(3), mlambda(3)
 
 ! If gamma is 0, nothing changes
 if(gamma_corr <= 0.0_r8) then
@@ -618,6 +615,10 @@ lambda_sd_2 = lambda_sd**2
 dist_2 = (y_o - x_p)**2
    
 ! this block of code no longer being used.  it's here for historical purposes.
+
+!integer  :: i, mlambda_index(1)
+!real(r8) :: b, c, d, Q, R, disc, alpha, beta, cube_root_alpha, cube_root_beta, x
+!real(r8) :: rrr, cube_root_rrr, angle, mx(3), sep(3), mlambda(3)
 
 !   ! Use ONLY the linear approximation, cubic solution below can be numerically
 !   ! unstable for extreme cases. Should look at this later.

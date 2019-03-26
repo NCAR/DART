@@ -30,7 +30,8 @@ program convert_madis_marine
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 use         types_mod, only : r8, missing_r8
-use     utilities_mod, only : nc_check, initialize_utilities, finalize_utilities
+use     utilities_mod, only : initialize_utilities, finalize_utilities
+use  netcdf_utilities_mod, only : nc_open_file_readonly, nc_close_file
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, &
                               increment_time, get_time, operator(-), GREGORIAN
 use      location_mod, only : VERTISSURFACE
@@ -55,8 +56,6 @@ use             sort_mod,  only : index_sort
 use obs_def_altimeter_mod, only : compute_altimeter
 use     obs_utilities_mod, only : getvar_real, get_or_fill_QC, add_obs_to_seq, &
                                   create_3d_obs, getvar_int, getdimlen, set_missing_name
-
-use netcdf
 
 implicit none
 
@@ -101,8 +100,7 @@ comp_day0 = set_date(1970, 1, 1, 0, 0, 0)
 first_obs = .true.
 
 
-call nc_check( nf90_open(marine_netcdf_file, nf90_nowrite, ncid), &
-             'convert_madis_marine', 'opening file '//trim(marine_netcdf_file) )
+ncid = nc_open_file_readonly(marine_netcdf_file, 'convert_madis_marine')
 
 call getdimlen(ncid, "recNum", nobs)
 call set_missing_name("missing_value")
@@ -151,8 +149,7 @@ else
    qc_wdir = 0 ;  qc_wspd = 0
 endif
 
-call nc_check( nf90_close(ncid), &
-             'convert_madis_marine', 'closing file '//trim(marine_netcdf_file) )
+call nc_close_file(ncid, 'convert_madis_marine')
 
 
 !  either read existing obs_seq or create a new one

@@ -8,29 +8,29 @@
 #
 # Script to manage the compilation of all components for this model;
 # executes a known "perfect model" experiment using an existing
-# observation sequence file (obs_seq.in) and initial conditions appropriate 
+# observation sequence file (obs_seq.in) and initial conditions appropriate
 # for both 'perfect_model_obs' (perfect_ics) and 'filter' (filter_ics).
 # There are enough initial conditions for 80 ensemble members in filter.
 # Use ens_size = 81 and it WILL bomb. Guaranteed.
 # The 'input.nml' file controls all facets of this execution.
 #
 # 'create_obs_sequence' and 'create_fixed_network_sequence' were used to
-# create the observation sequence file 'obs_seq.in' - this defines 
-# what/where/when we want observations. This script does not run these 
-# programs - intentionally. 
+# create the observation sequence file 'obs_seq.in' - this defines
+# what/where/when we want observations. This script does not run these
+# programs - intentionally.
 #
-# 'perfect_model_obs' results in a true_state.nc file that contains 
+# 'perfect_model_obs' results in a true_state.nc file that contains
 # the true state, and obs_seq.out - a file that contains the "observations"
 # that will be assimilated by 'filter'.
 #
-# 'filter' results in three files (depending on values in 'stages_to_write'): 
-# preassim.nc - all ensemble members prior to assimilation 
-#               i.e. the (potentially inflated) forecast, 
-# analysis.nc - all ensemble members after the assimilation (i.e. the analysis), and 
+# 'filter' results in three files (depending on values in 'stages_to_write'):
+# preassim.nc - all ensemble members prior to assimilation
+#               i.e. the (potentially inflated) forecast,
+# analysis.nc - all ensemble members after the assimilation (i.e. the analysis), and
 # obs_seq.final - the ensemble members' estimates of the observations
 #
-# Once 'perfect_model_obs' has advanced the model and harvested the 
-# observations for the assimilation experiment, 'filter' may be run 
+# Once 'perfect_model_obs' has advanced the model and harvested the
+# observations for the assimilation experiment, 'filter' may be run
 # over and over by simply changing the namelist parameters in input.nml.
 #
 # The result of each assimilation can be explored in model-space with
@@ -41,12 +41,12 @@
 
 #----------------------------------------------------------------------
 # 'preprocess' is a program that culls the appropriate sections of the
-# observation module for the observations types in 'input.nml'; the 
-# resulting source file is used by all the remaining programs, 
+# observation module for the observations types in 'input.nml'; the
+# resulting source file is used by all the remaining programs,
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
-\rm -f preprocess *.o *.mod
+\rm -f preprocess *.o *.mod Makefile .cppdefs
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
 
@@ -79,7 +79,7 @@ foreach TARGET ( mkmf_* )
       @ n = $n + 1
       echo
       echo "---------------------------------------------------"
-      echo "${MODEL} build number ${n} is ${PROG}" 
+      echo "${MODEL} build number ${n} is ${PROG}"
       \rm -f ${PROG}
       csh $TARGET || exit $n
       make        || exit $n
@@ -87,18 +87,18 @@ foreach TARGET ( mkmf_* )
    endsw
 end
 
-\rm -f *.o *.mod input.nml*_default
+\rm -f *.o *.mod input.nml*_default Makefile .cppdefs
 
 if ( $#argv == 1 && "$1" == "-mpi" ) then
-  echo "Success: All single task DART programs compiled."  
+  echo "Success: All single task DART programs compiled."
   echo "Script now compiling MPI parallel versions of the DART programs."
 else if ( $#argv == 1 && "$1" == "-nompi" ) then
-  echo "Success: All single task DART programs compiled."  
+  echo "Success: All single task DART programs compiled."
   echo "Script is exiting without building the MPI version of the DART programs."
   exit 0
 else
   echo ""
-  echo "Success: All single task DART programs compiled."  
+  echo "Success: All single task DART programs compiled."
   echo "Script now compiling MPI parallel versions of the DART programs."
   echo "Run the quickbuild.csh script with a -nompi argument or"
   echo "edit the quickbuild.csh script and add an exit line"
@@ -107,13 +107,13 @@ else
 endif
 
 #----------------------------------------------------------------------
-# to disable an MPI parallel version of filter for this model, 
+# to disable an MPI parallel version of filter for this model,
 # call this script with the -nompi argument, or if you are never going to
 # build with MPI, add an exit before the entire section above.
 #----------------------------------------------------------------------
 
 #----------------------------------------------------------------------
-# Build the MPI-enabled target(s) 
+# Build the MPI-enabled target(s)
 #----------------------------------------------------------------------
 
 \rm -f filter wakeup_filter
@@ -140,7 +140,7 @@ echo "build number $n is mkmf_wakeup_filter"
 csh  mkmf_wakeup_filter -mpi
 make || exit $n
 
-\rm -f *.o *.mod input.nml*_default
+\rm -f *.o *.mod input.nml*_default Makefile .cppdefs
 
 echo
 echo 'time to run filter here:'

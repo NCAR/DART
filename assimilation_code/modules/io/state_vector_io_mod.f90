@@ -51,7 +51,7 @@ use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, &
                                  all_copies_to_all_vars, all_vars_to_all_copies, &
                                  get_var_owner_index
 
-use utilities_mod,        only : error_handler, nc_check, check_namelist_read, &
+use utilities_mod,        only : error_handler, check_namelist_read, &
                                  find_namelist_in_file, nmlfileunit, do_nml_file, &
                                  do_nml_term, register_module, to_upper,  E_MSG, E_ERR
 
@@ -68,16 +68,14 @@ use model_mod,            only : read_model_time
 
 use state_structure_mod,  only : get_num_domains
 
-use netcdf
-
 
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 private
 
@@ -210,13 +208,13 @@ if (inflation_handles) then
    call print_inflation_source(file_info, post_inflate_handle,  'Posterior')
 
    ! If inflation is single state space read from a file, the copies array is filled here.
-   call fill_single_ss_inflate_from_read(state_ens_handle, prior_inflate_handle, post_inflate_handle)
+   call fill_single_inflate_val_from_read(state_ens_handle, prior_inflate_handle, post_inflate_handle)
 
    ! If inflation is from a namelist value it is set here.
    !>@todo FIXME: ditto here - the output should be from a routine
    !> in the adaptive_inflate_mod.f90 code
-   call fill_ss_from_nameslist_value(state_ens_handle, prior_inflate_handle)
-   call fill_ss_from_nameslist_value(state_ens_handle, post_inflate_handle)
+   call fill_inf_from_namelist_value(state_ens_handle, prior_inflate_handle)
+   call fill_inf_from_namelist_value(state_ens_handle, post_inflate_handle)
 
 endif
 
@@ -350,10 +348,10 @@ end subroutine write_restart_direct
 !> to all other tasks who then update their copies array.
 !> Note filling both mean and sd values if at least one of mean
 !> or sd is read from file.  If one is set from a namelist the copies 
-!> array is overwritten in fill_ss_from_namelist value
+!> array is overwritten in fill_inf_from_namelist_value()
 
 !>@todo We need to refactor this, not sure where it is being used
-subroutine fill_single_ss_inflate_from_read(ens_handle, &
+subroutine fill_single_inflate_val_from_read(ens_handle, &
                 prior_inflate_handle, post_inflate_handle)
 
 type(ensemble_type),         intent(inout) :: ens_handle
@@ -455,7 +453,7 @@ else
 
 endif
 
-end subroutine fill_single_ss_inflate_from_read
+end subroutine fill_single_inflate_val_from_read
 
 
 !-----------------------------------------------------------------------
@@ -463,13 +461,12 @@ end subroutine fill_single_ss_inflate_from_read
 !> fill copies array with namelist values for inflation if they do.
 
 
-subroutine fill_ss_from_nameslist_value(ens_handle, inflate_handle)
+subroutine fill_inf_from_namelist_value(ens_handle, inflate_handle)
 
 type(ensemble_type),         intent(inout) :: ens_handle
 type(adaptive_inflate_type), intent(in)    :: inflate_handle
 
 character(len=32)  :: label
-character(len=128) :: nmread
 integer            :: INF_MEAN_COPY, INF_SD_COPY
 real(r8)           :: inf_initial, sd_initial
 
@@ -490,29 +487,21 @@ else if (get_is_posterior(inflate_handle)) then
    label = "Posterior"
 else
    write(msgstring, *) "state space inflation but neither prior or posterior"
-   call error_handler(E_ERR, 'fill_ss_from_nameslist_value', msgstring, &
+   call error_handler(E_ERR, 'fill_inf_from_namelist_value', msgstring, &
       source, revision, revdate)
 endif
 
 if (.not. mean_from_restart(inflate_handle)) then
    inf_initial = get_inflate_mean(inflate_handle)
-   ! THIS IS NOW PRINTED OUT IN THE log_inflation_info() routine
-   !write(nmread, '(A, F12.6)') 'mean read from namelist as ', inf_initial
-   !call error_handler(E_MSG, trim(label) // ' inflation:', trim(nmread), &
-   !   source, revision, revdate)
    ens_handle%copies(INF_MEAN_COPY, :) = inf_initial
 endif
 
 if (.not. sd_from_restart(inflate_handle)) then
    sd_initial = get_inflate_sd(inflate_handle)
-   ! THIS IS NOW PRINTED OUT IN THE log_inflation_info() routine
-   !write(nmread, '(A, F12.6)') 'sd read from namelist as ', sd_initial
-   !call error_handler(E_MSG, trim(label) // ' inflation:', trim(nmread), &
-   !   source, revision, revdate)
    ens_handle%copies(INF_SD_COPY, :) = sd_initial
 endif
 
-end subroutine fill_ss_from_nameslist_value
+end subroutine fill_inf_from_namelist_value
 
 !-----------------------------------------------------------
 !> set stage names

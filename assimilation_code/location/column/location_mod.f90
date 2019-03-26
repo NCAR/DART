@@ -10,14 +10,13 @@ module location_mod
 
 use            types_mod, only : i8, r8, MISSING_R8, MISSING_I
 use ensemble_manager_mod, only : ensemble_type
-use        utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format, &
-                                 nc_check
+use        utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format
 
 implicit none
 private
 
 public :: location_type, get_location, set_location, &
-          set_location_missing, is_location_in_region, &
+          set_location_missing, is_location_in_region, get_maxdist, &
           write_location, read_location, interactive_location, query_location, &
           LocationDims, LocationName, LocationLName, LocationStorageOrder, LocationUnits, &
           get_close_type, get_close_init, get_close_obs, get_close_state, get_close_destroy, &
@@ -379,8 +378,6 @@ subroutine interactive_location(location, set_to_default)
 type(location_type), intent(out) :: location
 logical, intent(in), optional    :: set_to_default
 
-real(r8) :: x
-
 if ( .not. module_initialized ) call initialize_module
 
 ! If set_to_default is true, then just zero out and return
@@ -531,6 +528,17 @@ do i = 1, gc%num
 end do
 
 end subroutine get_close
+
+!---------------------------------------------------------------------------
+
+function get_maxdist(gc, obs_type)
+type(get_close_type), intent(in) :: gc
+integer, optional,    intent(in) :: obs_type
+real(r8) :: get_maxdist
+
+get_maxdist = gc%maxdist
+
+end function get_maxdist
 
 !----------------------------------------------------------------------------
 
@@ -685,6 +693,7 @@ integer,             intent(out)   :: istatus
 istatus = 0
 
 end subroutine convert_vertical_state
+
 
 !----------------------------------------------------------------------------
 ! end of location/column/location_mod.f90

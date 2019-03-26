@@ -24,7 +24,7 @@
 set BUILDING = "CAM FV"
 
 # programs which have the option of building with MPI:
-set MPI_TARGETS = "filter perfect_model_obs model_mod_check perturb_single_instance"
+set MPI_TARGETS = "filter perfect_model_obs model_mod_check perturb_single_instance closest_member_tool"
 
 # set default (override with -mpi or -nompi):
 #  0 = build without MPI, 1 = build with MPI
@@ -56,7 +56,8 @@ if ( $?DART_TEST ) then
    set tdebug = $DART_TEST
 endif
 
-\rm -f *.o *.mod 
+set nonomatch
+\rm -f *.o *.mod Makefile .cppdefs
 
 #----------------------------------------------------------------------
 # Build any NetCDF files from .cdl files
@@ -112,7 +113,7 @@ foreach TARGET ( mkmf_preprocess mkmf_* )
 
    if ( $tdebug ) then
       echo 'removing all files between builds'
-      \rm -f *.o *.mod
+      \rm -f *.o *.mod Makefile .cppdefs
    endif
 
    # preprocess creates module files that are required by
@@ -129,7 +130,7 @@ end
 if ( $cdebug ) then 
    echo 'preserving .o and .mod files for debugging'
 else
-   \rm -f *.o *.mod 
+   \rm -f *.o *.mod Makefile .cppdefs
 endif
 
 \rm -f input.nml*_default
@@ -143,7 +144,7 @@ else
   exit 0
 endif
 
-\rm -f *.o *.mod 
+\rm -f *.o *.mod Makefile .cppdefs
 
 #----------------------------------------------------------------------
 # Build the MPI-enabled target(s) 
@@ -163,7 +164,7 @@ foreach PROG ( $MPI_TARGETS )
 
    if ( $tdebug ) then
       echo 'removing all files between builds'
-      \rm -f *.o *.mod
+      \rm -f *.o *.mod Makefile .cppdefs
    endif
 
 end
@@ -171,7 +172,7 @@ end
 if ( $cdebug ) then 
    echo 'preserving .o and .mod files for debugging'
 else
-   \rm -f *.o *.mod 
+   \rm -f *.o *.mod Makefile .cppdefs
 endif
 \rm -f input.nml*_default
 

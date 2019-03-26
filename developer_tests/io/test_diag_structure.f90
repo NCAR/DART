@@ -21,6 +21,7 @@
 program test_diag_structure
 
 use types_mod,           only : i8
+use utilities_mod,       only : initialize_utilities, finalize_utilities
 use state_structure_mod, only : create_diagnostic_structure, end_diagnostic_structure, &
                                 add_domain, get_num_variables, get_num_dims, &
                                 get_num_domains, get_dim_name, get_variable_name, &
@@ -40,6 +41,9 @@ integer(i8) :: model_size, m
 integer :: i, j, n
 
 model_size = 44
+
+! init library
+call initialize_utilities()
 
 ! Add domain
 domain_id = add_domain(model_size)
@@ -138,6 +142,7 @@ call assert_not_equal(i, 21, 'not reached max_num_domains')
 ! This should die
 !print*, get_num_dims(diag_id, 1)
 
+call finalize_utilities()
 
 !-----------------------------------------------------------------------------
 

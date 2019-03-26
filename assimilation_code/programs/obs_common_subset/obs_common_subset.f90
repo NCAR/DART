@@ -770,10 +770,10 @@ call error_handler(E_MSG,'',' ')
 write(msgstring,*) 'Processing sequence file ', trim(filename)
 call error_handler(E_MSG,'',msgstring)
 
-!  for an obs_seq final file which has lots of ensemble members, this
-!  is really long and obscures useful data.  comment it out for now.
+!  for an obs_seq final file which has lots of ensemble members this
+!  is really long and obscures useful data.  disable it for now.
 !  at some point we could make a verbose option which could re-enable it.
-!call print_metadata(seq_in, filename)
+if (.false.) call print_metadata(seq_in, filename)
 
 
 ! Start to process obs from seq_in

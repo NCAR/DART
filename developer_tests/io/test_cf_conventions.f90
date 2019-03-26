@@ -65,6 +65,7 @@ blank_string = ' '
 ! initialize the dart libs
 call initialize_module()
 
+!>@todo FIXME ... add variable E when scale/offset are supported
 domid = add_domain(test_file(1), num_vars=4, var_names=(/'A', 'B', 'C', 'D'/))
 
 if (verbose) then

@@ -56,12 +56,11 @@ type(obs_type)          :: obs_out, prev_obs_out
 logical                 :: is_this_last
 integer                 :: size_seq_in, size_seq_out
 integer                 :: num_copies_in, num_qc_in
-integer                 :: num_inserted, iunit, io, i, j
+integer                 :: num_inserted, iunit, io, j
 integer                 :: max_num_obs, file_id
 character(len=129)      :: read_format
 logical                 :: pre_I_format, cal
 character(len=512)      :: msgstring, msgstring1, msgstring2, msgstring3
-type(obs_def_type)      :: this_obs_def
 
 character(len=metadatalength) :: meta_data
 

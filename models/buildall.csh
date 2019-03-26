@@ -32,13 +32,13 @@ endif
 # MPI builds and tests.  set the argument to the build scripts so it
 # knows which ones to build.
 if ( "$usingmpi" == "yes" ) then
-  echo "Will be building with MPI enabled"
+  echo "Building with MPI support."
   set QUICKBUILD_ARG='-mpi'
 else if ( "$usingmpi" == "default" ) then
-  echo "Will be building with the default MPI settings"
+  echo "Building with the default MPI settings"
   set QUICKBUILD_ARG=''
 else if ( "$usingmpi" == "no" ) then
-  echo "Will NOT be building with MPI enabled"
+  echo "Building WITHOUT MPI support."
   set QUICKBUILD_ARG='-nompi'
 else
   echo "Internal error: unrecognized value of usingmpi; should not happen"

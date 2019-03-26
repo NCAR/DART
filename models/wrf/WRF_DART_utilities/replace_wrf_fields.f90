@@ -8,10 +8,11 @@ program replace_wrf_fields
 
 use     types_mod, only : r8
 use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,       &
-                          open_file, close_file, nc_check, get_next_filename, &
+                          open_file, close_file, get_next_filename,           &
                           find_namelist_in_file, check_namelist_read,         &
                           do_nml_file, do_nml_term, nmlfileunit,              &
                           initialize_utilities, finalize_utilities
+use  netcdf_utilities_mod, only : nc_check
 use parse_args_mod, only : get_args_from_string
 
 use netcdf

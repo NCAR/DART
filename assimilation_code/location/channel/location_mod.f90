@@ -13,7 +13,7 @@ module location_mod
 
 use      types_mod, only : r8, i8, MISSING_R8, MISSING_I, PI, RAD2DEG, DEG2RAD
 use  utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format, &
-                           nc_check, E_MSG, open_file, close_file, set_output,       &
+                           E_MSG, open_file, close_file, set_output,                 &
                            logfileunit, nmlfileunit, find_namelist_in_file,          &
                            check_namelist_read, do_output, do_nml_file,              &
                            do_nml_term, is_longitude_between
@@ -30,7 +30,7 @@ implicit none
 private
 
 public :: location_type, get_location, set_location, &
-          set_location_missing, is_location_in_region, &
+          set_location_missing, is_location_in_region, get_maxdist, &
           write_location, read_location, interactive_location, query_location, &
           LocationDims, LocationName, LocationLName, LocationStorageOrder, LocationUnits, &
           get_close_type, get_close_init, get_close_obs, get_close_state, get_close_destroy, &
@@ -77,11 +77,6 @@ character(len = 129), parameter :: LocationUnits = "none none none"
 
 character(len = 512) :: errstring
 
-real(r8) :: radius     ! used only for converting points on a sphere into x,y,z and back
-
-! If maxdist stays the same, don't need to do box distance calculations
-integer :: last_maxdist = -1.0
-
 integer :: nx               = 10
 integer :: ny               = 10
 integer :: nz               = 10
@@ -119,7 +114,7 @@ subroutine initialize_module
  
 ! things which need doing exactly once.
 
-integer :: iunit, io, i
+integer :: iunit, io
 
 if (module_initialized) return
 
@@ -331,7 +326,6 @@ character(len = *),  intent(out), optional :: charstring
 
 integer             :: charlength
 logical             :: writebuf
-character(len=129)  :: string1
 
 10 format(1X,3(G25.16,1X))
 
@@ -481,108 +475,6 @@ location%y = v(2)
 location%z = v(3)
 
 end subroutine interactive_location
-
-!----------------------------------------------------------------------------
-
-function nc_write_location_atts( ncFileID, fname, ObsNumDimID ) result (ierr)
- 
-! Writes the "location module" -specific attributes to a netCDF file.
-
-use typeSizes
-use netcdf
-
-integer,          intent(in) :: ncFileID     ! handle to the netcdf file
-character(len=*), intent(in) :: fname        ! file name (for printing purposes)
-integer,          intent(in) :: ObsNumDimID  ! handle to the dimension that grows
-integer                      :: ierr
-
-integer :: LocDimID
-integer :: VarID
-
-if ( .not. module_initialized ) call initialize_module
-
-ierr = -1 ! assume things will fail ...
-
-! define the rank/dimension of the location information
-call nc_check(nf90_def_dim(ncid=ncFileID, name='location', len=LocationDims, &
-       dimid = LocDimID), 'nc_write_location_atts', 'def_dim:location '//trim(fname))
-
-! Define the location variable and attributes
-
-call nc_check(nf90_def_var(ncid=ncFileID, name='location', xtype=nf90_double, &
-          dimids=(/ LocDimID, ObsNumDimID /), varid=VarID), &
-            'nc_write_location_atts', 'location:def_var')
-
-call nc_check(nf90_put_att(ncFileID, VarID, 'description', &
-        'location coordinates'), 'nc_write_location_atts', 'location:description')
-call nc_check(nf90_put_att(ncFileID, VarID, 'location_type', &
-        trim(LocationName)), 'nc_write_location_atts', 'location:location_type')
-call nc_check(nf90_put_att(ncFileID, VarID, 'long_name', &
-        trim(LocationLName)), 'nc_write_location_atts', 'location:long_name')
-call nc_check(nf90_put_att(ncFileID, VarID, 'storage_order',     &
-        'X Y Z'), 'nc_write_location_atts', 'location:storage_order')
-call nc_check(nf90_put_att(ncFileID, VarID, 'units',     &
-        'X Y Z'), 'nc_write_location_atts', 'location:units')
-
-ierr = 0
-
-end function nc_write_location_atts
-
-!----------------------------------------------------------------------------
-
-subroutine nc_get_location_varids( ncFileID, fname, LocationVarID, WhichVertVarID )
-
-! Return the LocationVarID and WhichVertVarID variables from a given netCDF file.
-!
-! ncFileId         the netcdf file descriptor
-! fname            the name of the netcdf file (for error messages only)
-! LocationVarID    the integer ID of the 'location' variable in the netCDF file
-! WhichVertVarID   the integer ID of the 'which_vert' variable in the netCDF file
-
-use typeSizes
-use netcdf
-
-integer,          intent(in)  :: ncFileID   ! handle to the netcdf file
-character(len=*), intent(in)  :: fname      ! file name (for printing purposes)
-integer,          intent(out) :: LocationVarID, WhichVertVarID
-
-if ( .not. module_initialized ) call initialize_module
-
-call nc_check(nf90_inq_varid(ncFileID, 'location', varid=LocationVarID), &
-          'nc_get_location_varids', 'inq_varid:location '//trim(fname))
-
-WhichVertVarID = -1
-
-end subroutine nc_get_location_varids
-
-!----------------------------------------------------------------------------
-
-subroutine nc_write_location(ncFileID, LocationVarID, loc, obsindex, WhichVertVarID)
- 
-! Writes a SINGLE location to the specified netCDF variable and file.
-! The LocationVarID and WhichVertVarID must be the values returned from
-! the nc_get_location_varids call.
-
-use typeSizes
-use netcdf
-
-integer,             intent(in) :: ncFileID, LocationVarID
-type(location_type), intent(in) :: loc
-integer,             intent(in) :: obsindex
-integer,             intent(in) :: WhichVertVarID
-
-real(r8), dimension(LocationDims) :: locations
-integer,  dimension(1) :: intval
-
-if ( .not. module_initialized ) call initialize_module
-
-locations = get_location( loc )
-
-call nc_check(nf90_put_var(ncFileID, LocationVarId, locations, &
-          start=(/ 1, obsindex /), count=(/ LocationDims, 1 /) ), &
-            'nc_write_location', 'put_var:location')
-
-end subroutine nc_write_location
 
 !----------------------------------------------------------------------------
 
@@ -912,8 +804,6 @@ type(get_close_type), intent(inout) :: gc
 integer,              intent(in)    :: num
 type(location_type),  intent(in)    :: locs(num)
 
-logical :: old_out
-
 
 ! FIXME: this space could be very sparse
 
@@ -934,19 +824,6 @@ gc%z_width = (gc%top_z - gc%bot_z) / nz
 gc%nboxes_x = aint((gc%maxdist + (gc%x_width-1)) / gc%x_width) 
 gc%nboxes_y = aint((gc%maxdist + (gc%y_width-1)) / gc%y_width) 
 gc%nboxes_z = aint((gc%maxdist + (gc%z_width-1)) / gc%z_width) 
-
-
-!if(compare_to_correct) then
-!   old_out = do_output()
-!   call set_output(.true.)
-!   write(errstring, *) 'x bot, top, width, nboxes ', gc%bot_x, gc%top_x, gc%x_width, gc%nboxes_x
-!   call error_handler(E_MSG, 'find_box_ranges', errstring)
-!   write(errstring, *) 'y bot, top, width, nboxes ', gc%bot_y, gc%top_y, gc%y_width, gc%nboxes_y
-!   call error_handler(E_MSG, 'find_box_ranges', errstring)
-!   write(errstring, *) 'z bot, top, width, nboxes ', gc%bot_z, gc%top_z, gc%z_width, gc%nboxes_z
-!   call error_handler(E_MSG, 'find_box_ranges', errstring)
-!   call set_output(old_out)
-!endif
 
 end subroutine find_box_ranges
 
@@ -1051,6 +928,17 @@ do i = start_x, end_x
 end do
 
 end subroutine find_nearest
+
+!---------------------------------------------------------------------------
+
+function get_maxdist(gc, obs_type)
+type(get_close_type), intent(in) :: gc
+integer, optional,    intent(in) :: obs_type
+real(r8) :: get_maxdist
+
+get_maxdist = gc%maxdist
+
+end function get_maxdist
 
 !----------------------------------------------------------------------------
 

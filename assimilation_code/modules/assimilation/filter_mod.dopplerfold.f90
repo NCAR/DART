@@ -158,6 +158,12 @@ type(adaptive_inflate_type) :: prior_inflate, post_inflate
 
 logical :: has_cycling          = .false. ! filter will advance the model
 
+! parms for trace/timing messages
+integer, parameter :: T_BEFORE  = 1
+integer, parameter :: T_AFTER   = 2
+integer, parameter :: T_NEITHER = 3
+logical, parameter :: P_TIME    = .true.
+
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
@@ -327,7 +333,7 @@ type(time_type)             :: curr_ens_time, next_ens_time, window_time
 
 integer,    allocatable :: keys(:)
 integer(i8)             :: model_size
-integer                 :: i, iunit, io, time_step_number, num_obs_in_set, ntimes
+integer                 :: iunit, io, time_step_number, num_obs_in_set, ntimes
 integer                 :: last_key_used, key_bounds(2)
 integer                 :: in_obs_copy, obs_val_index
 integer                 :: prior_obs_mean_index, posterior_obs_mean_index
@@ -463,6 +469,22 @@ OBS_VAR_START        = OBS_MEAN_START + num_groups
 OBS_VAR_END          = OBS_VAR_START + num_groups - 1
 
 TOTAL_OBS_COPIES = ens_size + 5 + 2*num_groups
+
+!>@todo FIXME turn trace/timestamp calls into:  
+!>
+!> integer, parameter :: T_BEFORE = 1
+!> integer, parameter :: T_AFTER  = 2
+!> integer, parameter :: P_TIME   = 1
+!>
+!>  call progress(string, T_BEFORE)  ! simple trace msg
+!>  call progress(string, T_AFTER)
+!>
+!>  call progress(string, T_BEFORE, P_TIME)  ! trace plus timestamp
+!>  call progress(string, T_AFTER,  P_TIME)
+
+!> DO NOT timestamp every trace message because some are
+!> so quick that the timestamps don't impart any info.  
+!> we should be careful to timestamp logical *sections* instead.
 
 call     trace_message('Before setting up space for observations')
 call timestamp_message('Before setting up space for observations')
@@ -1867,6 +1889,67 @@ endif
 if (do_output()) call timestamp(' '//trim(msg), pos='brief')
 
 end subroutine timestamp_message
+
+!-------------------------------------------------------------------------
+!>  call progress(string, T_BEFORE, P_TIME, label, threshold, sync)  ! trace plus timestamp
+!-------------------------------------------------------------------------
+
+subroutine progress(msg, when, dotime, label, threshold, sync)  ! trace plus timestamp
+
+character(len=*), intent(in)           :: msg
+integer,          intent(in)           :: when
+logical,          intent(in)           :: dotime
+character(len=*), intent(in), optional :: label
+integer,          intent(in), optional :: threshold
+logical,          intent(in), optional :: sync
+
+! Write message to stdout and log file.
+! optionally write timestamp.
+integer :: t, lastchar
+character(len=40) :: label_to_use
+
+t = 0
+if (present(threshold)) t = threshold
+
+if (trace_level <= t) return
+
+if (.not. do_output()) return
+
+if (present(label)) then
+   lastchar = min(len_trim(label), len(label_to_use))
+   label_to_use = label(1:lastchar)
+else
+   label_to_use = ' filter_trace: '
+endif
+
+select case (when)
+  case (T_BEFORE)
+    call error_handler(E_MSG, trim(label_to_use)//' Before ', trim(msg))
+  case (T_AFTER)
+    call error_handler(E_MSG, trim(label_to_use)//' After  ', trim(msg))
+  case default
+    call error_handler(E_MSG, trim(label_to_use), trim(msg))
+end select
+
+if (timestamp_level <= 0) return
+
+! if sync is present and true, sync mpi jobs before printing time.
+if (present(sync)) then
+  if (sync) call task_sync()
+endif
+
+if (do_output()) then
+   select case (when)
+     case (T_BEFORE)
+      call timestamp(' Before '//trim(msg), pos='brief')
+     case (T_AFTER)
+      call timestamp(' After  '//trim(msg), pos='brief')
+     case default
+      call timestamp(' '//trim(msg), pos='brief')
+   end select
+endif
+
+end subroutine progress
 
 !-------------------------------------------------------------------------
 

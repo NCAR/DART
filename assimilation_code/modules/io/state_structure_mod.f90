@@ -59,12 +59,14 @@ module state_structure_mod
 !> variables after reading from a netcdf file.  There may be calculations in model_mod
 !> that are assuming a transformed order which no longer exists.
 
-use utilities_mod, only : E_ERR, error_handler, nc_check, do_output
+use utilities_mod, only : E_ERR, error_handler, do_output
 
 use  obs_kind_mod, only : get_name_for_quantity, get_index_for_quantity
 
 use     types_mod, only : r8, r4, i8, digits12, MISSING_R8, MISSING_R4, MISSING_I, &
                           obstypelength, MAX_NUM_DOMS
+
+use netcdf_utilities_mod, only : nc_check
 
 use      sort_mod, only : index_sort
 
@@ -1725,7 +1727,7 @@ end subroutine set_dart_kinds
 !-------------------------------------------------------------------------------
 !> Returns the variable dart kind index
 
-
+!>@todo need to switch all kinds to qty
 function get_kind_index(dom_id, var_id)
 
 integer, intent(in) :: dom_id ! domain

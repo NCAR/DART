@@ -72,8 +72,8 @@
 !               13.0, 14.0, 15.0, 16.0, 17.0
 
 &convert_cosmic_ionosphere_nml
-   input_file               = ''
-   input_file_list          = 'file_list.txt'
+   input_file               = '../ionPrf/ionPrf_C001.2013.213.00.08.G29_2013.3520_nc'
+   input_file_list          = ''
    output_file              = 'obs_seq.iondens'
    observation_error_file   = '../f3coerr.nc'
    observation_error_method = 'scaled'
@@ -107,7 +107,8 @@
    output_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90'
      input_obs_def_mod_file = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
     output_obs_def_mod_file = '../../../../observations/forward_operators/obs_def_mod.f90'
-   input_files              = '../../../../observations/forward_operators/obs_def_gps_mod.f90'
+   input_files              = '../../../../observations/forward_operators/obs_def_gps_mod.f90',
+                              '../../../../observations/forward_operators/obs_def_upper_atm_mod.f90'
  /
 
 &obs_kind_nml

@@ -25,6 +25,8 @@
   output_sd                   = .true.
   stages_to_write             = 'preassim', 'analysis', 'output'
   write_all_stages_at_end     = .true.
+  distributed_state           = .true.
+  compute_posterior           = .true.
   trace_execution             = .true.
   output_timestamps           = .true.
   num_groups                  = 1

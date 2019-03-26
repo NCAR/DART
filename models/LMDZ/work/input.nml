@@ -158,8 +158,8 @@
    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90',
   input_files              = '../../../observations/forward_operators/obs_def_gps_mod.f90',
                              '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
-                             '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90'
-                             '../../../observations/forward_operators/obs_def_AIRS_mod.f90'
+                             '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
+                             '../../../observations/forward_operators/obs_def_AIRS_mod.f90',
                              '../../../observations/forward_operators/obs_def_insat_mod.f90'
    /
 

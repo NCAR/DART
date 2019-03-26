@@ -4,18 +4,18 @@
 !
 ! $Id$
 
-!>@todo FIXME changed so it compiles, but this IS NOT WORKING CODE YET
-!> it needs to read in an ensemble (perhaps become an mpi program)
-!> and do all ensemble members at the same time - also handle the
-!> layout when only part of a state vector is on a single task.
-!> would have to do a reduce to add up the total differences.
-
-!>@todo FIXME the html needs to be made consistent with the namelist once the namelist
-!> is fleshed out.
+!> @mainpage
+!> @{
+!> @brief  Select the member closest to the ensemble mean.
+!>
+!>  This program has options to compute <em> distance </em> in several different ways
+!>  and returns the ensemble member which has the smallest total distance from
+!>  the ensemble mean.
+!> @}
+!>
+!>
 
 program closest_member_tool
-
-! Program to overwrite the time on each ensemble in a restart file.
 
 use types_mod,            only : r8, i8, obstypelength, MAX_NUM_DOMS, MAX_FILES
 
@@ -25,7 +25,8 @@ use time_manager_mod,     only : time_type, set_time_missing, operator(/=), &
 use utilities_mod,        only : register_module, find_namelist_in_file,        &
                                  error_handler, nmlfileunit, E_MSG, E_ERR,      &
                                  check_namelist_read, do_nml_file, do_nml_term, &
-                                 open_file, close_file, set_multiple_filename_lists
+                                 open_file, close_file, set_multiple_filename_lists, &
+                                 get_next_filename
 
 use  location_mod,        only : location_type
 
@@ -49,7 +50,7 @@ use state_structure_mod,  only : get_num_domains
 
 use mpi_utilities_mod,    only : initialize_mpi_utilities, task_count, &
                                  finalize_mpi_utilities, my_task_id,   &
-                                 send_sum_to
+                                 send_sum_to, sum_across_tasks
 
 use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, compute_copy_mean, &
                                  get_my_vars, get_my_num_vars, end_ensemble_manager
@@ -62,8 +63,9 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-integer               :: iunit, io, ens, i, j, qtyindex
+integer               :: iunit, io, ens, i, j, total_j, qtyindex
 integer               :: num_qtys, stype
+
 integer(i8)           :: ii, model_size
 integer, allocatable  :: index_list(:)
 integer, parameter    :: max_list_len = 500
@@ -71,7 +73,7 @@ character(len=512)    :: msgstring, msgstring1
 logical               :: allqtys, done
 logical, allocatable  :: useqty(:), useindex(:)
 type(location_type)   :: loc
-type(time_type)       :: mean_time, member_time
+type(time_type)       :: member_time
 type(file_info_type)  :: ens_file_info
 
 
@@ -116,7 +118,7 @@ character(len=256), allocatable :: file_array_input(:,:)
 character(len=256)              :: my_base, my_desc
 integer(i8), allocatable        :: vars_array(:)
 integer(i8)                     :: owners_index
-integer                         :: num_domains, idom, imem
+integer                         :: num_domains, imem
 integer                         :: ENS_MEAN_COPY 
 integer                         :: copies, my_num_vars, num_copies
 real(r8), allocatable           :: total_diff(:)
@@ -283,13 +285,16 @@ if (.not. allqtys) then
       endif
    enddo
 
-   !>@todo JOHNNY should do a sum_all_variables then print
-   write(msgstring, *) 'using ', j, ' of ', model_size, ' items in the state vector'
+   ! compute the total across all members
+   call sum_across_tasks(j, total_j)
+   write(msgstring, *) 'using ', total_j, ' of ', model_size, ' items in the state vector'
    call error_handler(E_MSG,'closest_member_tool', msgstring)
 else
    ! use everything.
    useindex(:) = .true.
 endif
+
+allocate(total_diff(ens_size))
 
 total_diff = compute_diff(ens_handle%copies(:,:), ens_handle%copies(ENS_MEAN_COPY,:))
 
@@ -315,9 +320,11 @@ if (my_task_id() == 0) then
    iunit = open_file(output_file_name, 'formatted', 'write')
    
    if (single_restart_file_in) then
-      write(iunit, "(I4)") index_list(1)
+      write(iunit, "(I6)") index_list(1)
    else
-      write(iunit, "(A,A,I4.4)") trim(input_restart_file_list(1)), '.', index_list(1)
+      !> @todo FIXME is this domain by domain?  if so, need to loop over domains?
+      msgstring = get_next_filename(input_restart_file_list(1), index_list(1))
+      write(iunit, "(A)") trim(msgstring)
    endif
    
    call close_file(iunit)
@@ -335,7 +342,7 @@ deallocate(total_diff)
 if (.not. allqtys) deallocate(useqty)
 
 call end_ensemble_manager(ens_handle)
-call finalize_mpi_utilities()   ! now closes log file, too
+call finalize_mpi_utilities()
 
 !----------------------------------------------------------------
 !----------------------------------------------------------------

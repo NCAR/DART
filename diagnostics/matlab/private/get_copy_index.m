@@ -1,4 +1,4 @@
-function copy_index = get_copy_index(fname, copystring, context)
+function copy_index = get_copy_index(fname, copystring, varargin)
 %% GET_COPY_INDEX  Gets an index corresponding to copy metadata string
 % Retrieves index associated with a given string in the 
 % CopyMetaData netCDF variable in the given file. If the string
@@ -8,6 +8,11 @@ function copy_index = get_copy_index(fname, copystring, context)
 % fname = 'obs_diag_output.nc';
 % copystring = 'N_DARTqc_5';
 % copy_index = get_copy_index(fname, copystring);
+%
+% If you prefer the error to be non-fatal, you can do that too.
+% If the index does not exist, the copy_index will be -1
+% Example:
+% copy_index = get_copy_index(fname, copystring, 'fatal', 'no');
 
 %% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
@@ -15,13 +20,41 @@ function copy_index = get_copy_index(fname, copystring, context)
 %
 % DART $Id$
 
-errorstring = sprintf('\nERROR: "%s" is not a valid CopyMetaData value for file %s\n', ...
-              strtrim(copystring), fname);
+defaultContext = [];
+defaultFatality = 'yes';
+defaultVerbose = 0;
 
-if (nargin == 3)
-   msgstring = sprintf('valid values for "%s" are', context);
+p = inputParser;
+addRequired(p,'fname',@ischar);
+addRequired(p,'copystring',@ischar);
+
+if (exist('inputParser/addParameter','file') == 2)
+    addParameter(p,'context',defaultContext, @ischar);
+    addParameter(p,'fatal',  defaultFatality,@ischar);
+    addParameter(p,'verbose',defaultVerbose, @isnumeric);
 else
+    addParamValue(p,'context',defaultContext, @ischar);
+    addParamValue(p,'fatal',  defaultFatality,@ischar);
+    addParamValue(p,'verbose',defaultVerbose, @isnumeric);
+end
+
+p.parse(fname, copystring, varargin{:});
+
+% if you want to echo the input
+if (p.Results.verbose)
+    disp(['fname      : ', p.Results.fname])
+    disp(['copystring : ', p.Results.copystring])
+    disp(['context    : ', p.Results.context])
+    disp(['fatal      : ', p.Results.fatal])
+end
+
+errorstring = sprintf('\nERROR: "%s" is not a valid CopyMetaData value for file %s\n', ...
+              strtrim(p.Results.copystring), p.Results.fname);
+
+if (isempty(p.Results.context)) 
    msgstring = 'valid values for CopyMetaData are';
+else
+   msgstring = sprintf('valid CopyMetaData values for "%s" are', p.Results.context);
 end
 
 if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
@@ -51,11 +84,11 @@ end
 
 % Provide modest error support
 
-if (copy_index < 0)
+if (copy_index < 0 && strncmpi(p.Results.fatal,'yes',1))
    for i = 1:num_copies,
       msgstring = sprintf('%s\n%s',msgstring,deblank(copy_meta_data(i,:)));
    end
-   error(sprintf('%s\n%s',errorstring,msgstring))
+   error('%s\n%s',errorstring,msgstring)
 end
 
 
