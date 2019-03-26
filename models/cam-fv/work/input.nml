@@ -248,6 +248,7 @@
                              '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
                              '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
                              '../../../observations/forward_operators/obs_def_upper_atm_mod.f90'
+   /
 
 ! Not usually assimilated.  No fundamental reason not to.
 !                               'RADIOSONDE_SPECIFIC_HUMIDITY',
