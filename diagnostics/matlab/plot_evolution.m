@@ -106,9 +106,9 @@ end
 
 global verbose
 if (strncmpi(p.Results.verbose,'y',1))
-   verbose = 1;
+    verbose = 1;
 else
-   verbose = 0;
+    verbose = 0;
 end
 
 if (numel(p.Results.range) ~= 2)
@@ -195,7 +195,7 @@ plotdat.NQC4index   = get_copy_index(fname,'N_DARTqc_4');
 plotdat.NQC5index   = get_copy_index(fname,'N_DARTqc_5');
 plotdat.NQC6index   = get_copy_index(fname,'N_DARTqc_6');
 plotdat.NQC7index   = get_copy_index(fname,'N_DARTqc_7');
-plotdat.NQC8index   = get_copy_index(fname,'N_DARTqc_8','fatal','no');
+plotdat.NQC8index   = get_copy_index(fname,'N_DARTqc_8','fatal',false);
 
 global figuredata
 figuredata = setfigure();
@@ -269,12 +269,12 @@ for ivar = 1:plotdat.nvars
 
     analy_raw = local_ncread(fname, plotdat.analyvar);
     if ( isempty(analy_raw) )
-       analy = guess;
-       analy(:) = NaN;
+        analy = guess;
+        analy(:) = NaN;
     else
-       analy_raw = permute(analy_raw,length(size(analy_raw)):-1:1);
-       analy = reshape(analy_raw, plotdat.Nbins,   plotdat.ncopies, ...
-           plotdat.nlevels, plotdat.nregions);
+        analy_raw = permute(analy_raw,length(size(analy_raw)):-1:1);
+        analy = reshape(analy_raw, plotdat.Nbins,   plotdat.ncopies, ...
+            plotdat.nlevels, plotdat.nregions);
     end
 
     % check to see if there is anything to plot
@@ -296,18 +296,18 @@ for ivar = 1:plotdat.nvars
     clear qc4 qc5 qc6 qc7 qnp
 
     if (verbose)
-       fprintf('\n')
-       fprintf('%10d %s observations had DART QC of 5 (all levels, all regions).\n', ...
-           nqc5, plotdat.myvarname)
-       fprintf('%10d %s observations had DART QC of 6 (all levels, all regions).\n', ...
-           nqc6, plotdat.myvarname)
-       fprintf('%10d %s observations remain  possible (all levels, all regions).\n', ...
-           nposs, plotdat.myvarname)
-       fprintf('%10d %s observations had DART QC of 4 (all levels, all regions).\n', ...
-           nqc4, plotdat.myvarname)
-       fprintf('%10d %s observations had DART QC of 7 (all levels, all regions).\n', ...
-           nqc7, plotdat.myvarname)
-       fprintf('\n')
+        fprintf('\n')
+        fprintf('%10d %s observations had DART QC of 5 (all levels, all regions).\n', ...
+            nqc5, plotdat.myvarname)
+        fprintf('%10d %s observations had DART QC of 6 (all levels, all regions).\n', ...
+            nqc6, plotdat.myvarname)
+        fprintf('%10d %s observations remain  possible (all levels, all regions).\n', ...
+            nposs, plotdat.myvarname)
+        fprintf('%10d %s observations had DART QC of 4 (all levels, all regions).\n', ...
+            nqc4, plotdat.myvarname)
+        fprintf('%10d %s observations had DART QC of 7 (all levels, all regions).\n', ...
+            nqc7, plotdat.myvarname)
+        fprintf('\n')
     end
 
     if ( sum(nposs(:)) < 1 )
@@ -324,7 +324,7 @@ for ivar = 1:plotdat.nvars
     for ilevel = wantedlevels
 
         plotdat.mylevel = ilevel;
-        
+
         % summarize the observation counts in the log file
 
         fprintf(logfid,'\nlevel %d %f %s\n',ilevel,plotdat.level(ilevel),plotdat.level_units);
@@ -369,10 +369,10 @@ for ivar = 1:plotdat.nvars
             sum(plotdat.anl_Nqc7(:)));
 
         if (plotdat.NQC8index > 0)
-           plotdat.ges_Nqc8  = guess(:,plotdat.NQC8index  ,ilevel,:);
-           plotdat.anl_Nqc8  = analy(:,plotdat.NQC8index  ,ilevel,:);
-           fprintf(logfid,'DART QC == 8, prior/post %d %d\n',sum(plotdat.ges_Nqc8(:)), ...
-               sum(plotdat.anl_Nqc8(:)));
+            plotdat.ges_Nqc8  = guess(:,plotdat.NQC8index  ,ilevel,:);
+            plotdat.anl_Nqc8  = analy(:,plotdat.NQC8index  ,ilevel,:);
+            fprintf(logfid,'DART QC == 8, prior/post %d %d\n',sum(plotdat.ges_Nqc8(:)), ...
+                sum(plotdat.anl_Nqc8(:)));
         end
 
         plotdat.ges_Nposs = guess(:,plotdat.Npossindex, ilevel,:) - ...
@@ -448,11 +448,11 @@ nobs_used_poste = plotdat.anl_Nused(:,:,:,plotdat.region);
 anl_Nposs       = sum(plotdat.anl_Nposs(:,:,:,plotdat.region));
 
 if (verbose)
-   fprintf('region %d %s level %d nobs_poss %d prior %d poste %d\n', ...
-            plotdat.region, plotdat.myvarname, plotdat.mylevel, ...
-            sum(nobs_poss), sum(nobs_used_prior), sum(nobs_used_poste))
-   fprintf('region %d %s level %d prior_legstr %s\n\n', ...
-            plotdat.region, plotdat.myvarname, plotdat.mylevel, prior_legstr)
+    fprintf('region %d %s level %d nobs_poss %d prior %d poste %d\n', ...
+        plotdat.region, plotdat.myvarname, plotdat.mylevel, ...
+        sum(nobs_poss), sum(nobs_used_prior), sum(nobs_used_poste))
+    fprintf('region %d %s level %d prior_legstr %s\n\n', ...
+        plotdat.region, plotdat.myvarname, plotdat.mylevel, prior_legstr)
 end
 
 if( isfinite(anl_Nposs) )
@@ -550,13 +550,13 @@ set(get(ax1,'Ylabel'), 'String', plotdat.ylabel, ...
 
 nevaluated = sum(plotdat.ges_Nqc1(:) + plotdat.ges_Nqc3(:));
 if (nevaluated > 0)
-   set(get(ax2,'Ylabel'), ...
-       'String','# of obs : o=possible, \ast,\diamondsuit=evaluated', ...
-       'FontSize', figuredata.fontsize)
+    set(get(ax2,'Ylabel'), ...
+        'String','# of obs : o=possible, \ast,\diamondsuit=evaluated', ...
+        'FontSize', figuredata.fontsize)
 else
-   set(get(ax2,'Ylabel'), ...
-       'String','# of obs : o=possible, \ast,\diamondsuit=assimilated', ...
-       'FontSize', figuredata.fontsize)
+    set(get(ax2,'Ylabel'), ...
+        'String','# of obs : o=possible, \ast,\diamondsuit=assimilated', ...
+        'FontSize', figuredata.fontsize)
 end
 
 
@@ -750,24 +750,24 @@ function [h, legstr] = plot_quantity(phase, plotdat)
 global figuredata
 
 switch lower(phase)
-case 'prior'
-   data      = plotdat.ges_copy( :,:,:,plotdat.region);
-   Nused     = plotdat.ges_Nused(:,:,:,plotdat.region);
-   color     = figuredata.ges_color;
-   marker    = figuredata.ges_marker;
-   linestyle = figuredata.ges_linestyle;
-   linewidth = figuredata.linewidth;
-   string1   = 'forecast:';
-case 'posterior'
-   data      = plotdat.anl_copy( :,:,:,plotdat.region);
-   Nused     = plotdat.anl_Nused(:,:,:,plotdat.region);
-   color     = figuredata.anl_color;
-   marker    = figuredata.anl_marker;
-   linestyle = figuredata.anl_linestyle;
-   linewidth = figuredata.linewidth;
-   string1   = 'analysis:';
-otherwise
-   error('phase (%s) not supported',phase)
+    case 'prior'
+        data      = plotdat.ges_copy( :,:,:,plotdat.region);
+        Nused     = plotdat.ges_Nused(:,:,:,plotdat.region);
+        color     = figuredata.ges_color;
+        marker    = figuredata.ges_marker;
+        linestyle = figuredata.ges_linestyle;
+        linewidth = figuredata.linewidth;
+        string1   = 'forecast:';
+    case 'posterior'
+        data      = plotdat.anl_copy( :,:,:,plotdat.region);
+        Nused     = plotdat.anl_Nused(:,:,:,plotdat.region);
+        color     = figuredata.anl_color;
+        marker    = figuredata.anl_marker;
+        linestyle = figuredata.anl_linestyle;
+        linewidth = figuredata.linewidth;
+        string1   = 'analysis:';
+    otherwise
+        error('phase (%s) not supported',phase)
 end
 
 % Determine legend text
@@ -781,10 +781,10 @@ end
 
 h = line(plotdat.bincenters,data);
 set(h, 'LineStyle',  linestyle, ...
-       'LineWidth',  linewidth, ...
-       'Color',      color, ...
-       'Marker',     marker,    ...
-       'MarkerSize', 2*linewidth);
+    'LineWidth',  linewidth, ...
+    'Color',      color, ...
+    'Marker',     marker,    ...
+    'MarkerSize', 2*linewidth);
 
 % <next few lines under version control, do not edit>
 % $URL$

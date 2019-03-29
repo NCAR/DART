@@ -147,7 +147,7 @@ plotdat.NQC4index     = get_copy_index(fname,'N_DARTqc_4');
 plotdat.NQC5index     = get_copy_index(fname,'N_DARTqc_5');
 plotdat.NQC6index     = get_copy_index(fname,'N_DARTqc_6');
 plotdat.NQC7index     = get_copy_index(fname,'N_DARTqc_7');
-plotdat.NQC8index     = get_copy_index(fname,'N_DARTqc_8','fatal','no');
+plotdat.NQC8index     = get_copy_index(fname,'N_DARTqc_8','fatal',false);
 
 figuredata = setfigure();
 
@@ -272,13 +272,13 @@ for ivar = varlist
         sum(sum(guess(plotdat.NQC7index, :,:))),plotdat.myvarname)
 
     if (plotdat.NQC8index > 0)
-       fprintf('%10d %s observations had DART QC of 8 (all regions).\n', ...
-           sum(sum(guess(plotdat.NQC8index, :,:))),plotdat.myvarname)
+        fprintf('%10d %s observations had DART QC of 8 (all regions).\n', ...
+            sum(sum(guess(plotdat.NQC8index, :,:))),plotdat.myvarname)
     end
 
     nposs = sum(guess(plotdat.Npossindex,:,:)) - ...
-            sum(guess(plotdat.NQC5index ,:,:)) - ...
-            sum(guess(plotdat.NQC6index ,:,:));
+        sum(guess(plotdat.NQC5index ,:,:)) - ...
+        sum(guess(plotdat.NQC6index ,:,:));
 
     if ( sum(nposs(:)) < 1 )
         fprintf('No obs for %s...  skipping\n', plotdat.varnames{ivar})
@@ -296,7 +296,7 @@ for ivar = varlist
     plotdat.ges_Nqc6   = guess(plotdat.NQC6index,  :, :);
     plotdat.ges_Nqc7   = guess(plotdat.NQC7index,  :, :);
     if (plotdat.NQC8index > 0)
-       plotdat.ges_Nqc8   = guess(plotdat.NQC8index,  :, :);
+        plotdat.ges_Nqc8   = guess(plotdat.NQC8index,  :, :);
     end
 
     plotdat.ges_Nused  = guess(plotdat.Nusedindex, :, :);
@@ -314,7 +314,7 @@ for ivar = varlist
     plotdat.anl_Nqc6   = analy(plotdat.NQC6index,  :, :);
     plotdat.anl_Nqc7   = analy(plotdat.NQC7index,  :, :);
     if (plotdat.NQC8index > 0)
-       plotdat.anl_Nqc8   = analy(plotdat.NQC8index,  :, :);
+        plotdat.anl_Nqc8   = analy(plotdat.NQC8index,  :, :);
     end
 
     plotdat.anl_Nused  = analy(plotdat.Nusedindex, :, :);
@@ -347,7 +347,7 @@ end
 
 function myplot(plotdat,figdata)
 
-global prior_green poste_blue obs_red
+global prior_green poste_blue
 
 ges_copy = plotdat.ges_copy(:,plotdat.indices,plotdat.region);
 anl_copy = plotdat.anl_copy(:,plotdat.indices,plotdat.region);
@@ -369,10 +369,10 @@ str_pr_other  = sprintf('%s pr=%.5g',plotdat.copystring,mean_pr_other);
 % If the posterior is available or not
 
 if (isfinite(sum(anl_Nused)))
-   mean_po_bias  = mean(anl_bias(isfinite(anl_bias)));
-   mean_po_other = mean(anl_copy(isfinite(anl_copy)));
-   str_po_bias   = sprintf('%s po=%.5g','bias',mean_po_bias);
-   str_po_other  = sprintf('%s po=%.5g',plotdat.copystring,mean_po_other);
+    mean_po_bias  = mean(anl_bias(isfinite(anl_bias)));
+    mean_po_other = mean(anl_copy(isfinite(anl_copy)));
+    str_po_bias   = sprintf('%s po=%.5g','bias',mean_po_bias);
+    str_po_other  = sprintf('%s po=%.5g',plotdat.copystring,mean_po_other);
 else
     mean_po_bias  = NaN;
     mean_po_other = NaN;
@@ -399,34 +399,34 @@ h1 = line(ges_bias,plotdat.level);
 h2 = line(ges_copy,plotdat.level);
 
 set(h1,'Color','k','Marker','o','LineStyle','-', ...
-       'LineWidth',figdata.linewidth, ...
-       'MarkerSize',figdata.markersize, ...
-       'MarkerFaceColor','k')
+    'LineWidth',figdata.linewidth, ...
+    'MarkerSize',figdata.markersize, ...
+    'MarkerFaceColor','k')
 
 set(h2,'Color','r','Marker','x','LineStyle','-', ...
-       'LineWidth',figdata.linewidth, ...
-       'MarkerSize',figdata.markersize, ...
-       'MarkerFaceColor','r')
+    'LineWidth',figdata.linewidth, ...
+    'MarkerSize',figdata.markersize, ...
+    'MarkerFaceColor','r')
 
 if (isfinite(sum(anl_Nposs)))
-   h3 = line(anl_bias,plotdat.level);
-   h4 = line(anl_copy,plotdat.level);
+    h3 = line(anl_bias,plotdat.level);
+    h4 = line(anl_copy,plotdat.level);
 
-   set(h3,'Color','k','Marker','o','LineStyle','--', ...
-          'LineWidth',figdata.linewidth, ...
-          'MarkerSize',figdata.markersize, ...
-          'MarkerFaceColor','k')
+    set(h3,'Color','k','Marker','o','LineStyle','--', ...
+        'LineWidth',figdata.linewidth, ...
+        'MarkerSize',figdata.markersize, ...
+        'MarkerFaceColor','k')
 
-   set(h4,'Color','r','Marker','x','LineStyle','--', ...
-          'LineWidth',figdata.linewidth, ...
-          'MarkerSize',figdata.markersize, ...
-          'MarkerFaceColor','r')
+    set(h4,'Color','r','Marker','x','LineStyle','--', ...
+        'LineWidth',figdata.linewidth, ...
+        'MarkerSize',figdata.markersize, ...
+        'MarkerFaceColor','r')
 
-   h = legend([h1,h3,h2,h4], str_pr_bias, str_po_bias, ...
-                             str_pr_other, str_po_other, 'Location', 'NorthWest');
+    h = legend([h1,h3,h2,h4], str_pr_bias, str_po_bias, ...
+        str_pr_other, str_po_other, 'Location', 'NorthWest');
 else
 
-   h = legend([h1,h2], str_pr_bias, str_pr_other, 'Location', 'NorthWest');
+    h = legend([h1,h2], str_pr_bias, str_pr_other, 'Location', 'NorthWest');
 end
 
 set(h,'Interpreter','none','Box','off')
@@ -469,8 +469,8 @@ set(ax2h1,'LineStyle','none','Marker','o');
 set(ax2h2,'LineStyle','none','Marker','*');
 
 if (isfinite(sum(anl_Nposs)))
-   ax2h3 = line(anl_Nused,plotdat.level,'Color',poste_blue,'Parent',ax2);
-   set(ax2h3,'LineStyle','none','Marker','*');
+    ax2h3 = line(anl_Nused,plotdat.level,'Color',poste_blue,'Parent',ax2);
+    set(ax2h3,'LineStyle','none','Marker','*');
 end
 
 % use same Y ticks - but no labels.

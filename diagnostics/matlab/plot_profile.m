@@ -89,9 +89,9 @@ end
 
 global verbose
 if (strncmpi(p.Results.verbose,'y',1))
-   verbose = 1;
+    verbose = 1;
 else
-   verbose = 0;
+    verbose = 0;
 end
 
 if (exist(fname,'file') ~= 2)
@@ -160,7 +160,7 @@ plotdat.NQC4index     = get_copy_index(fname,'N_DARTqc_4');
 plotdat.NQC5index     = get_copy_index(fname,'N_DARTqc_5');
 plotdat.NQC6index     = get_copy_index(fname,'N_DARTqc_6');
 plotdat.NQC7index     = get_copy_index(fname,'N_DARTqc_7');
-plotdat.NQC8index     = get_copy_index(fname,'N_DARTqc_8','fatal','no');
+plotdat.NQC8index     = get_copy_index(fname,'N_DARTqc_8','fatal',false);
 
 global figuredata
 figuredata = setfigure();
@@ -247,7 +247,7 @@ for ivar = varlist
     if (isempty(analy))
         plotdat.has_analysis = 0;
         analy = guess;  % make the variable the same shape as guess
-        analy(:) = NaN; % and fill it with nothing 
+        analy(:) = NaN; % and fill it with nothing
     else
         plotdat.has_analysis = 1;
     end
@@ -268,25 +268,25 @@ for ivar = varlist
     % check to see if there is anything to plot
     % The number possible is decreased by the number of observations
     % rejected by namelist control.
-   
+
     % todo write a function to print this information given a structure
-    % with the indices. Many of these are not needed, but a report is good 
+    % with the indices. Many of these are not needed, but a report is good
 
     if (verbose)
-       fprintf('\n')
-       fprintf('%10d %s observations had DART QC of 4 (all regions).\n', ...
-           sum(sum(guess(plotdat.NQC4index, :,:))),plotdat.myvarname)
-       fprintf('%10d %s observations had DART QC of 5 (all regions).\n', ...
-           sum(sum(guess(plotdat.NQC5index, :,:))),plotdat.myvarname)
-       fprintf('%10d %s observations had DART QC of 6 (all regions).\n', ...
-           sum(sum(guess(plotdat.NQC6index, :,:))),plotdat.myvarname)
-       fprintf('%10d %s observations had DART QC of 7 (all regions).\n', ...
-           sum(sum(guess(plotdat.NQC7index, :,:))),plotdat.myvarname)
-       if (plotdat.NQC8index > 0)
-          fprintf('%10d %s observations had DART QC of 8 (all regions).\n', ...
-              sum(sum(guess(plotdat.NQC8index, :,:))),plotdat.myvarname)
-       end
-       fprintf('\n')
+        fprintf('\n')
+        fprintf('%10d %s observations had DART QC of 4 (all regions).\n', ...
+            sum(sum(guess(plotdat.NQC4index, :,:))),plotdat.myvarname)
+        fprintf('%10d %s observations had DART QC of 5 (all regions).\n', ...
+            sum(sum(guess(plotdat.NQC5index, :,:))),plotdat.myvarname)
+        fprintf('%10d %s observations had DART QC of 6 (all regions).\n', ...
+            sum(sum(guess(plotdat.NQC6index, :,:))),plotdat.myvarname)
+        fprintf('%10d %s observations had DART QC of 7 (all regions).\n', ...
+            sum(sum(guess(plotdat.NQC7index, :,:))),plotdat.myvarname)
+        if (plotdat.NQC8index > 0)
+            fprintf('%10d %s observations had DART QC of 8 (all regions).\n', ...
+                sum(sum(guess(plotdat.NQC8index, :,:))),plotdat.myvarname)
+        end
+        fprintf('\n')
     end
 
     nposs = sum(guess(plotdat.Npossindex,:,:)) - ...
@@ -309,7 +309,7 @@ for ivar = varlist
     plotdat.ges_Nqc6   = guess(plotdat.NQC6index,  :, :);
     plotdat.ges_Nqc7   = guess(plotdat.NQC7index,  :, :);
     if (plotdat.NQC8index > 0)
-       plotdat.ges_Nqc8   = guess(plotdat.NQC8index,  :, :);
+        plotdat.ges_Nqc8   = guess(plotdat.NQC8index,  :, :);
     end
 
     plotdat.ges_Nused  = guess(plotdat.Nusedindex, :, :);
@@ -327,7 +327,7 @@ for ivar = varlist
     plotdat.anl_Nqc6   = analy(plotdat.NQC6index,  :, :);
     plotdat.anl_Nqc7   = analy(plotdat.NQC7index,  :, :);
     if (plotdat.NQC8index > 0)
-       plotdat.anl_Nqc8   = analy(plotdat.NQC8index,  :, :);
+        plotdat.anl_Nqc8   = analy(plotdat.NQC8index,  :, :);
     end
 
     plotdat.anl_Nused  = analy(plotdat.Nusedindex, :, :);
@@ -388,9 +388,9 @@ nobs_used_poste =     plotdat.anl_Nused(:,:,plotdat.region);
 anl_Nposs       = sum(plotdat.anl_Nposs(:,:,plotdat.region));
 
 if (verbose)
-   fprintf('region %d nobs_poss %d prior %d poste %d\n', plotdat.region, ...
-            sum(nobs_poss), sum(nobs_used_prior), sum(nobs_used_poste))
-   fprintf('region %d prior_legstr %s\n\n', plotdat.region, prior_legstr)
+    fprintf('region %d nobs_poss %d prior %d poste %d\n', plotdat.region, ...
+        sum(nobs_poss), sum(nobs_used_prior), sum(nobs_used_poste))
+    fprintf('region %d prior_legstr %s\n\n', plotdat.region, prior_legstr)
 end
 
 if ( isfinite(anl_Nposs) )
@@ -443,8 +443,8 @@ set(ax2h1,'LineStyle','none','Marker','o');
 set(ax2h2,'LineStyle','none','Marker',figuredata.ges_marker);
 
 if (isfinite(sum(anl_Nposs)))
-   ax2h3 = line(nobs_used_poste,plotdat.level,'Color',figuredata.anl_color,'Parent',ax2);
-   set(ax2h3,'LineStyle','none','Marker',figuredata.anl_marker);
+    ax2h3 = line(nobs_used_poste,plotdat.level,'Color',figuredata.anl_color,'Parent',ax2);
+    set(ax2h3,'LineStyle','none','Marker',figuredata.anl_marker);
 end
 
 % use same Y ticks - but no labels.
@@ -464,10 +464,10 @@ nevaluated = sum(plotdat.ges_Nqc1(:) + plotdat.ges_Nqc3(:));
 
 if (nevaluated > 0)
     string1 = sprintf('# of obs (o=possible; %s=evaluated) x %d', ...
-                      '\ast,\diamondsuit', uint32(xscale));
+        '\ast,\diamondsuit', uint32(xscale));
 else
     string1 = sprintf('# of obs (o=possible; %s=assimilated) x %d', ...
-                      '\ast,\diamondsuit', uint32(xscale));
+        '\ast,\diamondsuit', uint32(xscale));
 end
 
 set(get(ax2,'Xlabel'), 'String', string1, 'FontSize', figuredata.fontsize)
@@ -761,24 +761,24 @@ function [h, legstr] = plot_quantity(phase, plotdat)
 global figuredata
 
 switch lower(phase)
-case 'prior'
-   data      = plotdat.ges_copy( :,:,plotdat.region);
-   Nused     = plotdat.ges_Nused(:,:,plotdat.region);
-   color     = figuredata.ges_color;
-   marker    = figuredata.ges_marker;
-   linestyle = figuredata.ges_linestyle;
-   linewidth = figuredata.linewidth;
-   string1   = 'forecast:';
-case 'posterior'
-   data      = plotdat.anl_copy( :,:,plotdat.region);
-   Nused     = plotdat.anl_Nused(:,:,plotdat.region);
-   color     = figuredata.anl_color;
-   marker    = figuredata.anl_marker;
-   linestyle = figuredata.anl_linestyle;
-   linewidth = figuredata.linewidth;
-   string1   = 'analysis:';
-otherwise
-   error('phase (%s) not supported',phase)
+    case 'prior'
+        data      = plotdat.ges_copy( :,:,plotdat.region);
+        Nused     = plotdat.ges_Nused(:,:,plotdat.region);
+        color     = figuredata.ges_color;
+        marker    = figuredata.ges_marker;
+        linestyle = figuredata.ges_linestyle;
+        linewidth = figuredata.linewidth;
+        string1   = 'forecast:';
+    case 'posterior'
+        data      = plotdat.anl_copy( :,:,plotdat.region);
+        Nused     = plotdat.anl_Nused(:,:,plotdat.region);
+        color     = figuredata.anl_color;
+        marker    = figuredata.anl_marker;
+        linestyle = figuredata.anl_linestyle;
+        linewidth = figuredata.linewidth;
+        string1   = 'analysis:';
+    otherwise
+        error('phase (%s) not supported',phase)
 end
 
 % Determine legend text
@@ -792,10 +792,10 @@ end
 
 h = line(data, plotdat.level);
 set(h, 'LineStyle',  linestyle, ...
-       'LineWidth',  linewidth, ...
-       'Color',      color, ...
-       'Marker',     marker,    ...
-       'MarkerSize', 3*linewidth);
+    'LineWidth',  linewidth, ...
+    'Color',      color, ...
+    'Marker',     marker,    ...
+    'MarkerSize', 3*linewidth);
 
 % <next few lines under version control, do not edit>
 % $URL$

@@ -19,21 +19,23 @@ function plotdat = plot_rmse_xxx_evolution(fname, copy, varargin)
 %       For TRUSTED observations, this is different than the number used to calculate
 %       bias, rmse, spread, etc.
 %
-% USAGE: plotdat = plot_evolution(fname, copy);
+% USAGE: plotdat = plot_rmse_xxx_evolution(fname, copy [,varargin]);
 %
 % fname    :  netcdf file produced by 'obs_diag'
 %
 % copy     : string defining the metric of interest. 'rmse', 'spread', etc.
 %            Possible values are available in the netcdf 'CopyMetaData' variable.
-%            (ncdump -v CopyMetaData obs_diag_output.nc)%
+%            (ncdump -v CopyMetaData obs_diag_output.nc)
 %
-% obsname  : Optional. If present, The strings of each observation type to plot.
+% varargin: optional, parameter-value pairs. Supported parameters are described below.
+%
+% obsname  : The strings of each observation type to plot.
 %            Each observation type will be plotted in a separate graphic.
 %            Default is to plot all available observation types.
 %
-% level        : Optional. 'level' index. Default is to plot all levels.
+% level    :  'level' index. Default is to plot all levels.
 %
-% range        : Optional. 'range' of the value being plotted. Default is to
+% range    : 'range' of the value being plotted. Default is to
 %                automatically determine range based on the data values.
 %
 % OUTPUT: 'plotdat' is a structure containing what was last plotted.
@@ -71,33 +73,32 @@ function plotdat = plot_rmse_xxx_evolution(fname, copy, varargin)
 %
 % DART $Id$
 
-default_level = -1;
 default_obsname = 'none';
-default_verbosity = 'yes';
 default_range = [NaN NaN];
+default_level = -1;
+default_verbosity = 'yes';
+default_markersize = 8;
+default_pause = 'no';
 p = inputParser;
 
 addRequired(p,'fname',@ischar);
 addRequired(p,'copy',@ischar);
 if (exist('inputParser/addParameter','file') == 2)
-    addParameter(p,'obsname',default_obsname,@ischar);
-    addParameter(p,'range',default_range,@isnumeric);
-    addParameter(p,'level',default_level,@isnumeric);
-    addParameter(p,'verbose',default_verbosity,@ischar);
+    addParameter(p,'obsname',    default_obsname,    @ischar);
+    addParameter(p,'range',      default_range,      @isnumeric);
+    addParameter(p,'level',      default_level,      @isnumeric);
+    addParameter(p,'verbose',    default_verbosity,  @ischar);
+    addParameter(p,'MarkerSize', default_markersize, @isnumeric);
+    addParameter(p,'pause',      default_pause,      @ischar);
 else
-    addParamValue(p,'obsname',default_obsname,@ischar);
-    addParamValue(p,'range',default_range,@isnumeric);
-    addParamValue(p,'level',default_level,@isnumeric);
-    addParamValue(p,'verbose',default_verbosity,@ischar);
+    addParamValue(p,'obsname',   default_obsname,    @ischar);
+    addParamValue(p,'range',     default_range,      @isnumeric);
+    addParamValue(p,'level',     default_level,      @isnumeric);
+    addParamValue(p,'verbose',   default_verbosity,  @ischar);
+    addParamValue(p,'MarkerSize',default_markersize, @isnumeric);
+    addParamValue(p,'pause',     default_pause,      @ischar);
 end
 p.parse(fname, copy, varargin{:});
-
-% if you want to echo the input
-% fprintf('fname   : %s\n',     p.Results.fname)
-% fprintf('copy    : %s\n',     p.Results.copy)
-% fprintf('obsname : %s\n',     p.Results.obsname)
-% fprintf('level   : %d\n',     p.Results.level)
-% fprintf('range   : %f %f \n', p.Results.range)
 
 if ~isempty(fieldnames(p.Unmatched))
     disp('Extra inputs:')
@@ -106,9 +107,9 @@ end
 
 global verbose
 if (strncmpi(p.Results.verbose,'y',1))
-   verbose = 1;
+    verbose = 1;
 else
-   verbose = 0;
+    verbose = 0;
 end
 
 if (numel(p.Results.range) ~= 2)
@@ -196,10 +197,11 @@ plotdat.NQC4index   = get_copy_index(fname,'N_DARTqc_4');
 plotdat.NQC5index   = get_copy_index(fname,'N_DARTqc_5');
 plotdat.NQC6index   = get_copy_index(fname,'N_DARTqc_6');
 plotdat.NQC7index   = get_copy_index(fname,'N_DARTqc_7');
-plotdat.NQC8index   = get_copy_index(fname,'N_DARTqc_8','fatal','no');
+plotdat.NQC8index   = get_copy_index(fname,'N_DARTqc_8','fatal',false);
 
 global figuredata
-figuredata = setfigure('landscape');
+figuredata = setfigure();
+figuredata.MarkerSize = p.Results.MarkerSize;
 
 %%---------------------------------------------------------------------
 % Loop around (time-copy-level-region) observation types
@@ -269,9 +271,9 @@ for ivar = 1:plotdat.nvars
         analy = guess;
         analy(:) = NaN;
     else
-       analy_raw = permute(analy_raw,length(size(analy_raw)):-1:1);
-       analy = reshape(analy_raw, plotdat.Nbins,   plotdat.ncopies, ...
-           plotdat.nlevels, plotdat.nregions);
+        analy_raw = permute(analy_raw,length(size(analy_raw)):-1:1);
+        analy = reshape(analy_raw, plotdat.Nbins,   plotdat.ncopies, ...
+            plotdat.nlevels, plotdat.nregions);
     end
 
     % check to see if there is anything to plot
@@ -293,18 +295,18 @@ for ivar = 1:plotdat.nvars
     clear qc4 qc5 qc6 qc7 qnp
 
     if (verbose)
-       fprintf('\n')
-       fprintf('%10d %s observations had DART QC of 5 (all levels, all regions).\n', ...
-           nqc5, plotdat.myvarname)
-       fprintf('%10d %s observations had DART QC of 6 (all levels, all regions).\n', ...
-           nqc6, plotdat.myvarname)
-       fprintf('%10d %s observations remain  possible (all levels, all regions).\n', ...
-           nposs, plotdat.myvarname)
-       fprintf('%10d %s observations had DART QC of 4 (all levels, all regions).\n', ...
-           nqc4, plotdat.myvarname)
-       fprintf('%10d %s observations had DART QC of 7 (all levels, all regions).\n', ...
-           nqc7, plotdat.myvarname)
-       fprintf('\n')
+        fprintf('\n')
+        fprintf('%10d %s observations had DART QC of 5 (all levels, all regions).\n', ...
+            nqc5, plotdat.myvarname)
+        fprintf('%10d %s observations had DART QC of 6 (all levels, all regions).\n', ...
+            nqc6, plotdat.myvarname)
+        fprintf('%10d %s observations remain  possible (all levels, all regions).\n', ...
+            nposs, plotdat.myvarname)
+        fprintf('%10d %s observations had DART QC of 4 (all levels, all regions).\n', ...
+            nqc4, plotdat.myvarname)
+        fprintf('%10d %s observations had DART QC of 7 (all levels, all regions).\n', ...
+            nqc7, plotdat.myvarname)
+        fprintf('\n')
     end
 
     if ( sum(nposs(:)) < 1 )
@@ -321,7 +323,7 @@ for ivar = 1:plotdat.nvars
     for ilevel = wantedlevels
 
         plotdat.mylevel = ilevel;
-        
+
         % summarize the observation counts in the log file
 
         fprintf(logfid,'\nlevel %d %f %s\n',ilevel,plotdat.level(ilevel),plotdat.level_units);
@@ -366,10 +368,10 @@ for ivar = 1:plotdat.nvars
             sum(plotdat.anl_Nqc7(:)));
 
         if (plotdat.NQC8index > 0)
-           plotdat.ges_Nqc8  = guess(:,plotdat.NQC8index  ,ilevel,:);
-           plotdat.anl_Nqc8  = analy(:,plotdat.NQC8index  ,ilevel,:);
-           fprintf(logfid,'DART QC == 8, prior/post %d %d\n',sum(plotdat.ges_Nqc8(:)), ...
-               sum(plotdat.anl_Nqc8(:)));
+            plotdat.ges_Nqc8  = guess(:,plotdat.NQC8index  ,ilevel,:);
+            plotdat.anl_Nqc8  = analy(:,plotdat.NQC8index  ,ilevel,:);
+            fprintf(logfid,'DART QC == 8, prior/post %d %d\n',sum(plotdat.ges_Nqc8(:)), ...
+                sum(plotdat.anl_Nqc8(:)));
         end
 
         plotdat.ges_Nposs = guess(:,plotdat.Npossindex, ilevel,:) - ...
@@ -431,7 +433,7 @@ end
 
 function myplot(plotdat)
 
-global figuredata verbose
+global figuredata
 
 ax1 = subplot('position',figuredata.position);
 set(ax1,'YAxisLocation','left','FontSize',figuredata.fontsize)
@@ -457,24 +459,24 @@ mean_pr_other = mean(ges_copy(isfinite(ges_copy)));
 % By this point, the middle two dimensions are singletons.
 
 if (isfinite(sum(anl_Nposs)))
-   other     = reshape([ges_copy  anl_copy ]',2*plotdat.Nbins,1);
-   rmse      = reshape([ges_rmse  anl_rmse ]',2*plotdat.Nbins,1);
-   tt        = reshape([t         t        ]',2*plotdat.Nbins,1);
-   mean_po_rmse  = mean(anl_rmse(isfinite(anl_rmse)));
-   mean_po_other = mean(anl_copy(isfinite(anl_copy)));
-   string_rmse   = sprintf('%s pr=%.5g, po=%.5g','rmse', mean_pr_rmse, mean_po_rmse);
-   string_other  = sprintf('%s pr=%.5g, po=%.5g', plotdat.copystring, ...
-                                           mean_pr_other, mean_po_other);
-   plotdat.subtitle = sprintf('%s     %s',string_rmse, string_other);
-   legstr = '\ast,\diamondsuit';
+    other     = reshape([ges_copy  anl_copy ]',2*plotdat.Nbins,1);
+    rmse      = reshape([ges_rmse  anl_rmse ]',2*plotdat.Nbins,1);
+    tt        = reshape([t         t        ]',2*plotdat.Nbins,1);
+    mean_po_rmse  = mean(anl_rmse(isfinite(anl_rmse)));
+    mean_po_other = mean(anl_copy(isfinite(anl_copy)));
+    string_rmse   = sprintf('%s pr=%.5g, po=%.5g','rmse', mean_pr_rmse, mean_po_rmse);
+    string_other  = sprintf('%s pr=%.5g, po=%.5g', plotdat.copystring, ...
+        mean_pr_other, mean_po_other);
+    plotdat.subtitle = sprintf('%s     %s',string_rmse, string_other);
+    legstr = '\ast,\diamondsuit';
 else
-   other     = ges_copy;
-   rmse      = ges_rmse;
-   tt        = t;
-   string_rmse  = sprintf('%s pr=%.5g','rmse', mean_pr_rmse);
-   string_other = sprintf('%s pr=%.5g', plotdat.copystring, mean_pr_other);
-   plotdat.subtitle = sprintf('%s     %s',string_rmse, string_other);
-   legstr = '\ast';
+    other     = ges_copy;
+    rmse      = ges_rmse;
+    tt        = t;
+    string_rmse  = sprintf('%s pr=%.5g','rmse', mean_pr_rmse);
+    string_other = sprintf('%s pr=%.5g', plotdat.copystring, mean_pr_other);
+    plotdat.subtitle = sprintf('%s     %s',string_rmse, string_other);
+    legstr = '\ast';
 end
 
 % Plot the requested quantity on the left axis. This is the first
@@ -489,16 +491,16 @@ h1 = line(tt,rmse);
 h2 = line(tt,other);
 
 set(h1,'Color','k', ...
-       'LineWidth',figuredata.linewidth, ...
-       'Marker','o', ...
-       'MarkerSize',figuredata.markersize, ...
-       'MarkerFaceColor','k')
+    'LineWidth',figuredata.linewidth, ...
+    'Marker','o', ...
+    'MarkerSize',figuredata.MarkerSize, ...
+    'MarkerFaceColor','k')
 
-set(h2,'Color',figuredata.teal, ...
-       'LineWidth',figuredata.linewidth, ...
-       'Marker','x', ...
-       'MarkerSize',figuredata.markersize, ...
-       'MarkerFaceColor',figuredata.teal)
+set(h2,'Color',figuredata.copy_color, ...
+    'LineWidth',figuredata.linewidth, ...
+    'Marker','x', ...
+    'MarkerSize',figuredata.MarkerSize, ...
+    'MarkerFaceColor',figuredata.copy_color)
 
 h  = legend([h1,h2],'rmse', plotdat.copystring);
 set(h,'Interpreter','none','Box','off')
@@ -589,9 +591,9 @@ set(get(ax1,'Ylabel'), 'String', plotdat.ylabel, ...
 
 nevaluated = sum(plotdat.ges_Nqc1(:) + plotdat.ges_Nqc3(:));
 if (nevaluated > 0)
-   string1 = sprintf('# of obs : o=possible, %s =evaluated',legstr);
+    string1 = sprintf('# of obs : o=possible, %s =evaluated',legstr);
 else
-   string1 = sprintf('# of obs : o=possible, %s =assimilated',legstr);
+    string1 = sprintf('# of obs : o=possible, %s =assimilated',legstr);
 end
 set(get(ax2,'Ylabel'), 'String', string1, 'FontSize', figuredata.fontsize)
 
@@ -733,16 +735,37 @@ function figdata = setfigure()
 %  extra space at the bottom for the date/file annotation
 %  extra space at the top because the titles have multiple lines
 
-orientation = 'landscape';
-fontsize    = 16;
-position    = [0.10 0.15 0.8 0.7];
-linewidth   = 2.0;
+orientation   = 'landscape';
+position      = [0.10 0.15 0.8 0.7];
+fontsize      = 16;
+linewidth     = 2.5;
+obs_color     = [215/255  10/255  83/255]; % obs_red
+ges_color     = [  0/255 128/255   0/255]; % prior_green
+anl_color     = [  0/255   0/255 255/255]; % poste_blue
+rmse_color    = [  0/255   0/255   0/255]; % black
+copy_color    = [  0/255 128/255 128/255]; % teal
+ges_marker    = '*';
+anl_marker    = 'd';
+ges_linestyle = '-';
+anl_linestyle = '-';
 
-figdata = struct('expcolors',  {{'k','r','b','m','g','c','y'}}, ...
+figdata = struct( ...
+    'expcolors',  {{'k','r','b','m','g','c','y'}}, ...
     'expsymbols', {{'o','s','d','p','h','s','*'}}, ...
-    'prpolines',  {{'-','--'}}, 'position', position, ...
-    'fontsize',fontsize, 'orientation',orientation, ...
-    'linewidth',linewidth);
+    'prpolines',  {{'-','--'}}, ...
+    'position'     , position, ...
+    'fontsize'     , fontsize, ...
+    'orientation'  , orientation, ...
+    'linewidth'    , linewidth, ...
+    'obs_color'    , obs_color, ...
+    'ges_color'    , ges_color, ...
+    'anl_color'    , anl_color, ...
+    'rmse_color'   , rmse_color, ...
+    'copy_color'   , copy_color, ...
+    'ges_marker'   , ges_marker, ...
+    'anl_marker'   , anl_marker, ...
+    'ges_linestyle', ges_linestyle, ...
+    'anl_linestyle', anl_linestyle );
 
 
 %=====================================================================
@@ -767,24 +790,24 @@ function [h, legstr] = plot_quantity(phase, plotdat)
 global figuredata
 
 switch lower(phase)
-case 'prior'
-   data      = plotdat.ges_copy( :,:,:,plotdat.region);
-   Nused     = plotdat.ges_Nused(:,:,:,plotdat.region);
-   color     = figuredata.ges_color;
-   marker    = figuredata.ges_marker;
-   linestyle = figuredata.ges_linestyle;
-   linewidth = figuredata.linewidth;
-   string1   = 'forecast:';
-case 'posterior'
-   data      = plotdat.anl_copy( :,:,:,plotdat.region);
-   Nused     = plotdat.anl_Nused(:,:,:,plotdat.region);
-   color     = figuredata.anl_color;
-   marker    = figuredata.anl_marker;
-   linestyle = figuredata.anl_linestyle;
-   linewidth = figuredata.linewidth;
-   string1   = 'analysis:';
-otherwise
-   error('phase (%s) not supported',phase)
+    case 'prior'
+        data      = plotdat.ges_copy( :,:,:,plotdat.region);
+        Nused     = plotdat.ges_Nused(:,:,:,plotdat.region);
+        color     = figuredata.ges_color;
+        marker    = figuredata.ges_marker;
+        linestyle = figuredata.ges_linestyle;
+        linewidth = figuredata.linewidth;
+        string1   = 'forecast:';
+    case 'posterior'
+        data      = plotdat.anl_copy( :,:,:,plotdat.region);
+        Nused     = plotdat.anl_Nused(:,:,:,plotdat.region);
+        color     = figuredata.anl_color;
+        marker    = figuredata.anl_marker;
+        linestyle = figuredata.anl_linestyle;
+        linewidth = figuredata.linewidth;
+        string1   = 'analysis:';
+    otherwise
+        error('phase (%s) not supported',phase)
 end
 
 % Determine legend text
@@ -798,10 +821,10 @@ end
 
 h = line(plotdat.bincenters,data);
 set(h, 'LineStyle',  linestyle, ...
-       'LineWidth',  linewidth, ...
-       'Color',      color, ...
-       'Marker',     marker,    ...
-       'MarkerSize', 2*linewidth);
+    'LineWidth',  linewidth, ...
+    'Color',      color, ...
+    'Marker',     marker,    ...
+    'MarkerSize', 2*linewidth);
 
 % <next few lines under version control, do not edit>
 % $URL$

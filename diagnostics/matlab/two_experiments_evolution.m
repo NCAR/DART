@@ -205,7 +205,7 @@ for i = 1:nexp
     commondata{i}.region_names = strtrim(ncread(filenames{i},'region_names')');
     commondata{i}.times        = ncread(filenames{i}, 'time');
     commondata{i}.time_bnds    = ncread(filenames{i}, 'time_bounds');
-    commondata{i}.copyindex    = get_copy_index(filenames{i},copystring,'copy');
+    commondata{i}.copyindex    = get_copy_index(filenames{i},copystring);
     commondata{i}.ncopies      = nc_dim_info(filenames{i}, 'copy');
     commondata{i}.nobstypes    = nc_dim_info(filenames{i}, 'obstypes');
     commondata{i}.nregions     = nc_dim_info(filenames{i}, 'region');
@@ -313,7 +313,7 @@ plotdat.NQC4index     = get_copy_index(fname, 'N_DARTqc_4');
 plotdat.NQC5index     = get_copy_index(fname, 'N_DARTqc_5');
 plotdat.NQC6index     = get_copy_index(fname, 'N_DARTqc_6');
 plotdat.NQC7index     = get_copy_index(fname, 'N_DARTqc_7');
-plotdat.NQC8index     = get_copy_index(fname, 'N_DARTqc_8','fatal','no');
+plotdat.NQC8index     = get_copy_index(fname, 'N_DARTqc_8','fatal',false);
 
 plotdat.trusted       = nc_read_att(fname, plotdat.varname, 'TRUSTED');
 if (isempty(plotdat.trusted)), plotdat.trusted = 'NO'; end
@@ -432,13 +432,12 @@ hd     = [];   % handle to an unknown number of data lines
 legstr = {[]}; % strings for the legend
 
 for i = 1:Nexp
-    iexp         = iexp + 1;
-    hd(iexp)     = line(plotobj{i}.bincenters, plotobj{i}.data, ...
+    hd(i)     = line(plotobj{i}.bincenters, plotobj{i}.data, ...
         'Color',    figdata.expcolors{i}, ...
         'Marker',   figdata.expsymbols{i}, ...
         'MarkerFaceColor', figdata.expcolors{i}, ...
         'LineStyle', figdata.prpolines{1}, ...
-        'LineWidth', figdata.linewidth,'Parent',ax1);
+        'LineWidth', figdata.linewidth,'Parent',ax1); %#ok<AGROW>
 
     % calculate the weighted mean for a summary. Each experiment
     % may use different numbers of observations, so a simple mean
@@ -447,7 +446,7 @@ for i = 1:Nexp
     N = sum(plotobj{i}.nused,'omitnan');
     X = sum(plotobj{i}.data .* plotobj{i}.nused,'omitnan')/N;
 
-    legstr{iexp} = sprintf('%s ... mean = %s',plotobj{i}.title,num2str(X));
+    legstr{i} = sprintf('%s ... mean = %s',plotobj{i}.title,num2str(X));
 end
 
 % Plot a bias line.
