@@ -402,7 +402,7 @@ end
 
 switch plotdat.copystring
     case {'bias'}
-        zeroline = line([0 0],plotdat.Yrange,'Color',[0 100 0]/255,'Parent',ax1);
+        zeroline = line([0 0],plotdat.Yrange,'Color',[200 200 200]/255,'Parent',ax1);
         set(zeroline,'LineWidth',2.5,'LineStyle','-')
         plotdat.xlabel = sprintf('%s (%s)',plotdat.copystring, plotdat.biasconv);
     otherwise

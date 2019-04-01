@@ -25,15 +25,17 @@ function plotdat = plot_evolution(fname, copy, varargin)
 %
 % copy     : string defining the metric of interest. 'rmse', 'spread', etc.
 %            Possible values are available in the netcdf 'CopyMetaData' variable.
-%            (ncdump -v CopyMetaData obs_diag_output.nc)%
+%            (ncdump -v CopyMetaData obs_diag_output.nc)
 %
-% obsname  : Optional. If present, The strings of each observation type to plot.
+% varargin: optional, parameter-value pairs. Supported parameters are described below.
+%
+% obsname  : The strings of each observation type to plot.
 %            Each observation type will be plotted in a separate graphic.
 %            Default is to plot all available observation types.
 %
-% level        : Optional. 'level' index. Default is to plot all levels.
+% level    :  'level' index. Default is to plot all levels.
 %
-% range        : Optional. 'range' of the value being plotted. Default is to
+% range    : 'range' of the value being plotted. Default is to
 %                automatically determine range based on the data values.
 %
 % OUTPUT: 'plotdat' is a structure containing what was last plotted.
@@ -71,33 +73,32 @@ function plotdat = plot_evolution(fname, copy, varargin)
 %
 % DART $Id$
 
-default_level = -1;
 default_obsname = 'none';
-default_verbosity = 'yes';
 default_range = [NaN NaN];
+default_level = -1;
+default_verbosity = 'yes';
+default_markersize = 8;
+default_pause = 'no';
 p = inputParser;
 
 addRequired(p,'fname',@ischar);
 addRequired(p,'copy',@ischar);
 if (exist('inputParser/addParameter','file') == 2)
-    addParameter(p,'obsname',default_obsname,@ischar);
-    addParameter(p,'range',default_range,@isnumeric);
-    addParameter(p,'level',default_level,@isnumeric);
-    addParameter(p,'verbose',default_verbosity,@ischar);
+    addParameter(p,'obsname',    default_obsname,    @ischar);
+    addParameter(p,'range',      default_range,      @isnumeric);
+    addParameter(p,'level',      default_level,      @isnumeric);
+    addParameter(p,'verbose',    default_verbosity,  @ischar);
+    addParameter(p,'MarkerSize', default_markersize, @isnumeric);
+    addParameter(p,'pause',      default_pause,      @ischar);
 else
-    addParamValue(p,'obsname',default_obsname,@ischar);
-    addParamValue(p,'range',default_range,@isnumeric);
-    addParamValue(p,'level',default_level,@isnumeric);
-    addParamValue(p,'verbose',default_verbosity,@ischar);
+    addParamValue(p,'obsname',   default_obsname,    @ischar);
+    addParamValue(p,'range',     default_range,      @isnumeric);
+    addParamValue(p,'level',     default_level,      @isnumeric);
+    addParamValue(p,'verbose',   default_verbosity,  @ischar);
+    addParamValue(p,'MarkerSize',default_markersize, @isnumeric);
+    addParamValue(p,'pause',     default_pause,      @ischar);
 end
 p.parse(fname, copy, varargin{:});
-
-% if you want to echo the input
-% fprintf('fname   : %s\n',     p.Results.fname)
-% fprintf('copy    : %s\n',     p.Results.copy)
-% fprintf('obsname : %s\n',     p.Results.obsname)
-% fprintf('level   : %d\n',     p.Results.level)
-% fprintf('range   : %f %f \n', p.Results.range)
 
 if ~isempty(fieldnames(p.Unmatched))
     disp('Extra inputs:')
@@ -199,7 +200,7 @@ plotdat.NQC8index   = get_copy_index(fname,'N_DARTqc_8','fatal',false);
 
 global figuredata
 figuredata = setfigure();
-
+figuredata.MarkerSize = p.Results.MarkerSize;
 
 %%---------------------------------------------------------------------
 % Loop around (time-copy-level-region) observation types
@@ -235,9 +236,7 @@ for ivar = 1:plotdat.nvars
     logfid = fopen(lgfname,'wt');
     fprintf(logfid,'%s\n',lgfname);
 
-    %% todo FIXME replace with a permute routine to get desired shape
     % get appropriate vertical coordinate variable
-    % regions-levels-copy-time
 
     [dimnames, ~] = nc_var_dims(fname, plotdat.guessvar);
 
@@ -256,11 +255,8 @@ for ivar = 1:plotdat.nvars
     end
     plotdat.nlevels = length(plotdat.level);
 
-    % Here is the tricky part.
-    % ncread returns: region-level-copy-time ... we need:
-    %                 time-copy-level-region
-    % Singleton dimensions are auto-squeezed; single levels, single regions ...
-    % The reshape restores the singleton dimensions
+    % Here is the tricky part. Singleton dimensions are auto-squeezed ...
+    % single levels, single regions ...
 
     guess_raw = ncread(fname, plotdat.guessvar);
     guess_raw = permute(guess_raw,length(size(guess_raw)):-1:1);
@@ -269,6 +265,8 @@ for ivar = 1:plotdat.nvars
 
     analy_raw = local_ncread(fname, plotdat.analyvar);
     if ( isempty(analy_raw) )
+        % force analysis to be the same shape as the guess,
+        % and full of NaNs instead of 0s.
         analy = guess;
         analy(:) = NaN;
     else
@@ -465,27 +463,17 @@ end
 set(h,'Interpreter','none','Box','off','FontSize',figuredata.fontsize)
 
 % Attempt to make plotting robust in the face of 'empty' bins.
-% There was one case where the observations were only at one time, but
-% obs_diag was run with multple bins. All the empty bins had NaN in them,
-% so matlab auto-ranged to the single time (+/-). Then along comes the
-% need to plot symbols for how many obs are possible (zero) and the axes
-% were a mess.
-% The 't' variable has all the temporal bins specified, so we use that
-% to determine the X axis limits. After we know them, we turn OFF the
-% bits (which normally causes the X axis limits revert) and manually
-% reinstate the full axis values.
+% The 't' variable has all the temporal bins specified, 
+% so we use that to determine the X axis limits. 
 
 t = plotdat.bincenters;
-hdummy = line(t, ones(size(t)) * plotdat.Yrange);
-axlims = axis;
-set(hdummy,'Visible','off')
-axlims = [axlims(1:2) plotdat.Yrange];
+axlims = [min(t(:)) max(t(:)) plotdat.Yrange];
 axis(axlims)
 
 switch lower(plotdat.copystring)
     case 'bias'
         % plot a zero-bias line
-        zeroline = line(axlims(1:2),[0 0], 'Color',[0 100 0]/255,'Parent',ax1);
+        zeroline = line(axlims(1:2),[0 0], 'Color',[200 200 200]/255,'Parent',ax1);
         set(zeroline,'LineWidth',2.5,'LineStyle','-')
         plotdat.ylabel = sprintf('%s (%s)',plotdat.copystring,plotdat.biasconv);
     otherwise
@@ -701,10 +689,11 @@ orientation   = 'landscape';
 position      = [0.10 0.15 0.8 0.7];
 fontsize      = 16;
 linewidth     = 2.5;
-markersize    = 8.0;
+obs_color     = [215/255  10/255  83/255]; % obs_red
 ges_color     = [  0/255 128/255   0/255]; % prior_green
 anl_color     = [  0/255   0/255 255/255]; % poste_blue
-obs_color     = [215/255  10/255  83/255]; % obs_red
+rmse_color    = [  0/255   0/255   0/255]; % black
+copy_color    = [  0/255 128/255 128/255]; % teal
 ges_marker    = '*';
 anl_marker    = 'd';
 ges_linestyle = '-';
@@ -718,10 +707,11 @@ figdata = struct( ...
     'fontsize'     , fontsize, ...
     'orientation'  , orientation, ...
     'linewidth'    , linewidth, ...
-    'markersize'   , markersize, ...
+    'obs_color'    , obs_color, ...
     'ges_color'    , ges_color, ...
     'anl_color'    , anl_color, ...
-    'obs_color'    , obs_color, ...
+    'rmse_color'   , rmse_color, ...
+    'copy_color'   , copy_color, ...
     'ges_marker'   , ges_marker, ...
     'anl_marker'   , anl_marker, ...
     'ges_linestyle', ges_linestyle, ...

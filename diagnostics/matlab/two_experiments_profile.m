@@ -97,9 +97,9 @@ if (exist('inputParser/addParameter','file') == 2)
     addParameter(p,'hlevel',defaultHlevels,@isnumeric);
     addParameter(p,'mlevel',defaultMlevels,@isnumeric);
 else
-    addParamValue(p,'plevel',defaultPlevels,@isnumeric);
-    addParamValue(p,'hlevel',defaultHlevels,@isnumeric);
-    addParamValue(p,'mlevel',defaultMlevels,@isnumeric);
+    addParamValue(p,'plevel',defaultPlevels,@isnumeric); %#ok<NVREPL>
+    addParamValue(p,'hlevel',defaultHlevels,@isnumeric); %#ok<NVREPL>
+    addParamValue(p,'mlevel',defaultMlevels,@isnumeric); %#ok<NVREPL>
 end
 
 p.parse(files, titles, obsnames, copy, prpo, varargin{:});
@@ -206,7 +206,7 @@ for ivar = 1:nvars
         % Plot all regions - one region to a page
         %---------------------------------------------------------------------
 
-        myplot(plotobj, Drange, Yrange, figuredata);
+        myplot(plotobj, Drange, figuredata);
 
         BottomAnnotation(files)
 
@@ -497,7 +497,7 @@ plotdat.Nrange = [min(plotdat.nused(:))    max(plotdat.nposs(:))];
 %=====================================================================
 
 
-function myplot( plotdat, Drange, Yrange, figdata)
+function myplot( plotdat, Drange, figdata)
 %% Create graphic for one region - for all experiments.
 
 Nexp    = length(plotdat);
@@ -530,7 +530,7 @@ end
 
 switch plotdat{1}.copystring
     case {'bias','rmse'}
-        zeroline = line([0 0],get(ax1,'YLim'),'Color',[0 100 0]/255,'Parent',ax1);
+        zeroline = line([0 0],get(ax1,'YLim'),'Color',[200 200 200]/255,'Parent',ax1);
         set(zeroline,'LineWidth',2.5,'LineStyle','-')
     otherwise
 end
@@ -637,7 +637,7 @@ xc = [ axlims(1) axlims(2) axlims(2) axlims(1) axlims(1) ];
 hold on;
 for i = 1:2:(length(edges)-1)
     yc = [ edges(i) edges(i) edges(i+1) edges(i+1) edges(i) ];
-    hf = fill(xc,yc,[0.8 0.8 0.8],'EdgeColor','none');
+    fill(xc,yc,[0.8 0.8 0.8],'EdgeColor','none');
 end
 hold off;
 

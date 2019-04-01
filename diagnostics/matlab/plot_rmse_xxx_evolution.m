@@ -506,21 +506,11 @@ h  = legend([h1,h2],'rmse', plotdat.copystring);
 set(h,'Interpreter','none','Box','off')
 
 % Attempt to make plotting robust in the face of 'empty' bins.
-% There was one case where the observations were only at one time, but
-% obs_diag was run with multple bins. All the empty bins had NaN in them,
-% so matlab auto-ranged to the single time (+/-). Then along comes the
-% need to plot symbols for how many obs are possible (zero) and the axes
-% were a mess.
-% The 't' variable has all the temporal bins specified, so we use that
-% to determine the X axis limits. After we know them, we turn OFF the
-% bits (which normally causes the X axis limits revert) and manually
-% reinstate the full axis values.
+% The 't' variable has all the temporal bins specified, 
+% so we use that to determine the X axis limits. 
 
 t = plotdat.bincenters;
-hdummy = line(t, ones(size(t)) * plotdat.Yrange);
-axlims = axis;
-set(hdummy,'Visible','off')
-axlims = [axlims(1:2) plotdat.Yrange];
+axlims = [min(t(:)) max(t(:)) plotdat.Yrange];
 axis(axlims)
 
 switch lower(plotdat.copystring)

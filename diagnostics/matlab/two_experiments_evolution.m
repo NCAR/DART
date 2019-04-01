@@ -78,7 +78,7 @@ addRequired(p,'prpo',@ischar);
 if (exist('inputParser/addParameter','file') == 2)
     addParameter(p,'level',default_level,@isnumeric);
 else
-    addParamValue(p,'level',default_level,@isnumeric);
+    addParamValue(p,'level',default_level,@isnumeric); %#ok<NVREPL>
 end
 
 p.parse(files, titles, obsnames, copy, prpo, varargin{:});
@@ -110,6 +110,7 @@ end
 
 commondata = check_compatibility(files, prpo, obsnames, copy);
 figuredata = setfigure(NumExp);
+plotobj    = cell(NumExp,1);
 
 %%--------------------------------------------------------------------
 % Set some static data
@@ -265,7 +266,6 @@ plotdat.fname         = fname;
 plotdat.varname       = varname;
 plotdat.copystring    = copystring;
 plotdat.region        = regionindex;
-plotdat.levelindex    = levelindex;
 plotdat.bincenters    = ncread(fname,'time');
 plotdat.binedges      = ncread(fname,'time_bounds');
 plotdat.mlevel        = local_ncread(fname,'mlevel');
@@ -318,36 +318,38 @@ plotdat.NQC8index     = get_copy_index(fname, 'N_DARTqc_8','fatal',false);
 plotdat.trusted       = nc_read_att(fname, plotdat.varname, 'TRUSTED');
 if (isempty(plotdat.trusted)), plotdat.trusted = 'NO'; end
 
-myinfo.diagn_file     = fname;
-myinfo.copyindex      = plotdat.copyindex;
-myinfo.regionindex    = plotdat.region;
-myinfo.levelindex     = plotdat.levelindex;
-
 % get appropriate vertical coordinate variable
 
 [dimnames, ~] = nc_var_dims(fname, plotdat.varname);
 
 if ( dimensionality == 1 ) % observations on a unit circle, no level
-    plotdat.level = 1;
+    plotdat.levelindex  = 1;
+    plotdat.level       = 1;
     plotdat.level_units = [];
 elseif ( strfind(dimnames{2},'surface') > 0 )
+    plotdat.levelindex  = 1;
     plotdat.level       = 1;
     plotdat.level_units = 'surface';
     plotdat.level_edges = [];
 elseif ( strfind(dimnames{2},'undef') > 0 )
+    plotdat.levelindex  = 1;
     plotdat.level       = 1;
     plotdat.level_units = 'undefined';
     plotdat.level_edges = [];
 else
+    plotdat.levelindex  = levelindex;
     plotdat.level       = ncread(fname, dimnames{2});
     plotdat.level_units = nc_read_att(fname, dimnames{2}, 'units');
     plotdat.level_edges = ncread(fname,sprintf('%s_edges',dimnames{2}));
 end
 
-[start, count] = GetNCindices(myinfo,'diagn',plotdat.varname);
-hyperslab      = ncread(fname, plotdat.varname, start, count);
-plotdat.data  = squeeze(hyperslab);
-
+myinfo.diagn_file  = fname;
+myinfo.copyindex   = plotdat.copyindex;
+myinfo.regionindex = plotdat.region;
+myinfo.levelindex  = plotdat.levelindex;
+[start, count]     = GetNCindices(myinfo,'diagn',plotdat.varname);
+hyperslab          = ncread(fname, plotdat.varname, start, count);
+plotdat.data       = squeeze(hyperslab);
 
 %% Determine data limits
 %  always make sure we have a zero bias line ...
@@ -427,7 +429,6 @@ set(ax1,'YAxisLocation','left','FontSize',figdata.fontsize)
 
 %% draw the results of the experiments, priors and posteriors
 %  each with their own line type.
-iexp   = 0;
 hd     = [];   % handle to an unknown number of data lines
 legstr = {[]}; % strings for the legend
 
@@ -453,7 +454,7 @@ end
 
 switch plotobj{1}.copystring
     case {'bias'}
-        zeroline = line(get(ax1,'XLim'),[0 0],'Color',[0 100 0]/255,'Parent',ax1);
+        zeroline = line(get(ax1,'XLim'),[0 0],'Color',[200 200 200]/255,'Parent',ax1);
         set(zeroline,'LineWidth',2.5,'LineStyle','-')
     otherwise
 end

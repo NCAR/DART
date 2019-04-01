@@ -66,7 +66,7 @@ addRequired(p,'copy',@ischar);
 if (exist('inputParser/addParameter','file') == 2)
     addParameter(p,'obsname',default_obsname,@ischar);
 else
-    addParamValue(p,'obsname',default_obsname,@ischar);
+    addParamValue(p,'obsname',default_obsname,@ischar); %#ok<NVREPL>
 end
 
 p.parse(fname, copy, varargin{:});
@@ -393,7 +393,6 @@ set(ax1,'YAxisLocation','left','FontSize',figdata.fontsize)
 
 % draw the result of the experiment
 
-hold on;
 h1 = line(ges_rmse,plotdat.level);
 h2 = line(ges_copy,plotdat.level);
 
@@ -430,9 +429,16 @@ end
 
 set(h,'Interpreter','none','Box','off')
 
-hold off;
+if verLessThan('matlab','R2017a')
+    % Convince Matlab to not autoupdate the legend with each new line.
+    % Before 2017a, this was the default behavior, so do nothing.
+    % We do not want to add the bias line to the legend, for example.
+else
+    h.AutoUpdate = 'off';
+end
 
-zeroline = line([0 0],plotdat.Yrange,'Color',[0 100 0]/255,'Parent',ax1);
+% Want a zeroline for bias plots.
+zeroline = line([0 0],plotdat.Yrange,'Color',[200 200 200]/255,'Parent',ax1);
 set(zeroline,'LineWidth',2.5,'LineStyle','-')
 
 % If the observation is trusted, reference that somehow
@@ -539,7 +545,7 @@ basedims  = struct([]);
 
 for i = 1:length(x.allvarnames)
     dimnames = lower(x.allvardims{i});
-    if (isempty(strfind(dimnames,'time')))
+    if (isempty(strfind(dimnames,'time'))) %#ok<STREMP>
         platform = ReturnBase(x.allvarnames{i});
         if (~ isempty(platform))
             j = j + 1;
@@ -702,7 +708,7 @@ xc = [ axlims(1) axlims(2) axlims(2) axlims(1) axlims(1) ];
 hold on;
 for i = 1:2:(length(edges)-1)
     yc = [ edges(i) edges(i) edges(i+1) edges(i+1) edges(i) ];
-    hf = fill(xc,yc,[0.8 0.8 0.8],'EdgeColor','none');
+    fill(xc,yc,[0.8 0.8 0.8],'EdgeColor','none');
 end
 hold off;
 
