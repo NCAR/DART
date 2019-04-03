@@ -7,39 +7,54 @@
 # DART $Id$
 #
 # build and test all the models given in the list.
-# usage: [ -mpi | -nompi | -default ]
+#
+# usage: [ -mpi | -nompi ] [ -mpicmd name_of_mpi_launch_command ]
 #
 #----------------------------------------------------------------------
 
 set usingmpi=no
+set MPICMD=""
+set LOGDIR=`pwd`/testing_logs
 
 if ( $#argv > 0 ) then
   if ( "$argv[1]" == "-mpi" ) then
     set usingmpi=yes
-  else if ( "$argv[1]" == "-default" ) then
-    set usingmpi=default
   else if ( "$argv[1]" == "-nompi" ) then
     set usingmpi=no
   else
     echo "Unrecognized argument to $0: $argv[1]"
-    echo "Usage: $0 [ -mpi | -nompi | -default ]"
+    echo "Usage: $0 [ -mpi | -nompi ]  [ -mpicmd name_of_mpi_launch_command ]"
     echo " default is to run tests without MPI"
     exit -1
   endif
+  shift
+endif
+
+if ( $#argv > 1 ) then
+  if ( "$argv[1]" == "-mpicmd" ) then
+    set MPICMD = "$argv[2]"
+  else
+    echo "Unrecognized argument to $0: $argv[1]"
+    echo "Usage: $0 [ -mpi | -nompi ]  [ -mpicmd name_of_mpi_launch_command ]"
+    echo " default is to run tests without MPI"
+    exit -1
+  endif
+  shift
 endif
 
 # set the environment variable MPI to anything in order to enable the
 # MPI builds and tests.  set the argument to the build scripts so it
 # knows which ones to build.
 if ( "$usingmpi" == "yes" ) then
-  echo "Will be building with MPI enabled"
+  echo "Building with MPI support."
   set QUICKBUILD_ARG='-mpi'
-else if ( "$usingmpi" == "default" ) then
-  echo "Will be building with the default MPI settings"
-  set QUICKBUILD_ARG=''
+  if ( ! $?MPICMD) then
+    set MPICMD='mpirun -n 2'
+  endif
 else if ( "$usingmpi" == "no" ) then
-  echo "Will NOT be building with MPI enabled"
+  echo "Building WITHOUT MPI support."
   set QUICKBUILD_ARG='-nompi'
+  set MPICMD=""
 else
   echo "Internal error: unrecognized value of usingmpi; should not happen"
   exit -1
@@ -50,8 +65,14 @@ endif
 if ( ! $?REMOVE) then
    setenv REMOVE 'rm -f'
 endif
+if ( ! $?REMOVE_DIR) then
+   setenv REMOVE_DIR 'rmdir'
+endif
 if ( ! $?COPY) then
    setenv COPY 'cp -f'
+endif
+if ( ! $?MOVE) then
+   setenv MOVE 'mv -f'
 endif
 
 if ( ! $?host) then
@@ -72,7 +93,11 @@ set HAS_TESTS = `ls */work/quickbuild.csh`
 # Compile and run all executables 
 #----------------------------------------------------------------------
 
-@ testnum = 1
+mkdir -p $LOGDIR
+\rm -f $LOGDIR/*
+echo putting build and run logs in $LOGDIR
+
+@ testnum = 0
 
 foreach TESTFILE ( $HAS_TESTS ) 
     
@@ -81,9 +106,7 @@ foreach TESTFILE ( $HAS_TESTS )
     echo
     echo
     echo "=================================================================="
-    echo "=================================================================="
     echo "Compiling tests in $TESTDIR starting at "`date`
-    echo "=================================================================="
     echo "=================================================================="
     echo
     echo
@@ -91,56 +114,61 @@ foreach TESTFILE ( $HAS_TESTS )
     cd ${TESTDIR}
     set FAILURE = 0
 
-    ./quickbuild.csh ${QUICKBUILD_ARG} || set FAILURE = 1
+    ( ./quickbuild.csh ${QUICKBUILD_ARG} > ${LOGDIR}/buildlog.${TESTDIR}.out ) || set FAILURE = 1
 
     @ testnum = $testnum + 1
 
     echo
     echo
-    echo "=================================================================="
-    echo "=================================================================="
     if ( $FAILURE ) then
+      echo "=================================================================="
       echo "ERROR - unsuccessful build in $TESTDIR at "`date`
+      echo "=================================================================="
       cd $TOPDIR
-      cycle
+      continue
     else
+      echo "=================================================================="
       echo "End of successful build in $TESTDIR at "`date`
+      echo "=================================================================="
+      echo
+      echo
+      echo "=================================================================="
+      echo "Running tests in $TESTDIR starting at "`date`
+      echo "=================================================================="
+      echo
+      echo
+  
+      foreach TARGET ( mkmf_* )
+  
+           \rm -f *.o *.mod
+           \rm -f Makefile input.nml.*_default .cppdefs
+
+           set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
+           echo "++++++++++++++++++"
+           echo Starting $PROG
+           ( ${MPICMD} ./$PROG  > ${LOGDIR}/runlog.${TESTDIR}.out ) || set FAILURE = 1
+           echo Finished $PROG
+           echo
+           if ( $FAILURE ) then
+              echo "ERROR - unsuccessful run in $TESTDIR at "`date`
+           else
+              \rm -f $PROG
+           endif
+           echo "++++++++++++++++++"
+  
+      end
+
+      cd $TOPDIR
+
     endif
-    echo "=================================================================="
-    echo "=================================================================="
-    echo
-    echo
 
     echo
     echo
-    echo "=================================================================="
-    echo "=================================================================="
-    echo "Running tests in $TESTDIR starting at "`date`
-    echo "=================================================================="
-    echo "=================================================================="
-    echo
-    echo
-
-    foreach TARGET ( mkmf_* )
-
-         set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
-         echo Starting $PROG
-         ./$PROG 
-         echo Finished $PROG
-
-    end
-
-    echo
-    echo
-    echo "=================================================================="
     echo "=================================================================="
     echo "Done running tests in $TESTDIR at "`date`
     echo "=================================================================="
-    echo "=================================================================="
     echo
     echo
-
-    cd $TOPDIR
 
 end
 
@@ -152,19 +180,17 @@ end
 cd $TOPDIR/location
 
 echo "=================================================================="
-echo "=================================================================="
 echo "Running location tests starting at "`date`
 echo "=================================================================="
-echo "=================================================================="
 
-./testall.csh
+set FAILURE = 0
+
+( ./testall.csh > ${LOGDIR}/location_tests.out ) || set FAILURE = 1
 
 echo
 echo
-echo "=================================================================="
 echo "=================================================================="
 echo "Done running location tests at "`date`
-echo "=================================================================="
 echo "=================================================================="
 echo
 echo

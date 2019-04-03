@@ -6,17 +6,27 @@
 #
 # DART $Id$
 
-set SNAME = $0
-set clobber
+
+echo 
+echo 
+echo "=================================================================="
+echo "Start of observation converter tests at "`date`
+echo "=================================================================="
+echo 
+echo 
 
 set startdir=`pwd`
 
+set LOGDIR=${startdir}/testing_logs
+echo putting build and run logs in $LOGDIR
+
+mkdir -p ${LOGDIR}
+\rm -f ${LOGDIR}/*
+
 echo 
 echo 
-echo "=================================================================="
 echo "=================================================================="
 echo "Compiling NCEP BUFR libs starting at "`date`
-echo "=================================================================="
 echo "=================================================================="
 echo 
 echo 
@@ -62,11 +72,10 @@ cd NCEP/prep_bufr
 
 set FAILURE = 0
 
-./install.sh || set FAILURE = 1
+( ./install.sh > ${LOGDIR}/buildlog.NCEP.out ) || set FAILURE = 1
 
 echo 
 echo 
-echo "=================================================================="
 echo "=================================================================="
 echo "Build of NCEP BUFR libs ended at "`date`
 if ( $FAILURE ) then
@@ -74,7 +83,6 @@ if ( $FAILURE ) then
       echo "ERROR - build was unsuccessful"
       echo 
 endif
-echo "=================================================================="
 echo "=================================================================="
 echo 
 echo 
@@ -91,9 +99,7 @@ foreach project ( `find . -name quickbuild.csh -print` )
    echo 
    echo 
    echo "=================================================================="
-   echo "=================================================================="
    echo "Compiling obs converter $dir starting at "`date`
-   echo "=================================================================="
    echo "=================================================================="
    echo 
    echo 
@@ -103,15 +109,14 @@ foreach project ( `find . -name quickbuild.csh -print` )
    echo
    echo building in $dir
 
-   ./quickbuild.csh || set FAILURE = 1
+   ( ./quickbuild.csh > ${LOGDIR}/buildlog.${dir}.out ) || set FAILURE = 1
 
    echo
    echo
-   echo "=================================================================="
    echo "=================================================================="
 
    if ( $FAILURE ) then
-      echo "ERROR - unsuccessful build in $dir at "`date`
+      echo "ERROR - unsuccessful build of $dir at "`date`
       echo 
 
       switch ( $dir )
@@ -140,14 +145,47 @@ foreach project ( `find . -name quickbuild.csh -print` )
       endsw
    else
       echo "Successful build of obs converter $dir ended at "`date`
+      echo 
+      echo "+++++++++++++"
+      echo "Trying to execute converters in directory $dir"
+
+      \rm -f *.o *.mod
+      \rm -f Makefile input.nml.*_default .cppdefs
+
+      foreach TARGET ( mkmf_* )
+         set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
+         echo "Running $PROG"
+         if ( -f ${PROG}.in ) then
+           ( ./$PROG < ${PROG}.in > ${LOGDIR}/runlog.${dir}.out ) || set FAILURE = 1
+         else
+           ( ./$PROG > ${LOGDIR}/runlog.${dir}.out ) || set FAILURE = 1
+         endif
+         if ( $FAILURE ) then
+            echo "ERROR - unsuccessful run of $PROG at "`date`
+            echo 
+         else
+            \rm -f $PROG
+         endif
+      end
+
+      echo "+++++++++++++"
+      echo
+
    endif
 
-   echo "=================================================================="
    echo "=================================================================="
    echo
    echo
   
 end
+
+echo 
+echo 
+echo "=================================================================="
+echo "End of observation converter tests at "`date`
+echo "=================================================================="
+echo 
+echo 
 
 exit 0
 
