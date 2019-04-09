@@ -1,34 +1,5 @@
 #!/bin/tcsh
 
-#BSUB -n 1
-#BSUB -R "span[ptile=1]"
-#BSUB -W 1:30
-#BSUB -q casper
-#BSUB -P P86850054
-#BSUB -N
-#BSUB -u raeder@ucar.edu
-#BSUB -o obs_diags.%J
-#BSUB -e obs_diags.%J
-#BSUB -J obs_diags
-#-----------------------------------------
-#PBS  -N obs_diags
-#PBS  -A P86850054
-#PBS  -q casper
-# Resources I want:
-#    select=#nodes
-#    ncpus=#CPUs/node
-#    mpiprocs=#MPI_tasks/node
-#PBS  -l select=1:ncpus=1:mpiprocs=1
-#PBS  -l walltime=02:00:00
-# Send email after a(bort) or e(nd)
-#PBS  -m ae
-#PBS  -M raeder@ucar.edu
-# Send standard output and error to this file.
-# It's helpful to use the $casename here.
-#PBS  -o obs_diags.eo
-#PBS  -j oe 
-#--------------------------------------------
-
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
@@ -43,12 +14,70 @@
 # because it can take longer than is allowed on many systems' login nodes. 
 # It can be run interactively for smaller jobs.
 
+# Make sure that Matlab has access to the NetCDF toolbox.
+# This can be accomplished by putting the script 
+# $DART/diagnostics/matlab/startup.m  into  ~/matlab/startup.m
+
+#-----------------------------------------
+# Submitting the job to casper (or other NCAR DAV clusters?) requires using slurm.
+
+# Important things to know about slurm:
+#
+# sinfo     information about the whole slurm system
+# squeue    information about running jobs
+# sbatch    submitting a job
+# scancel   killing a job
+#
+#==========================================================================
+#
+#SBATCH --job-name=obs_diags
+#SBATCH --ntasks=1 
+#SBATCH --time=01:00:00
+#SBATCH --mail-type=END
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-user=raeder@ucar.edu
+#SBATCH --account=P86850054
+#SBATCH --partition=dav
+# 
+# #----------------------------------------------------------------------
+# #BSUB -n 1
+# #BSUB -R "span[ptile=1]"
+# #BSUB -W 1:30
+# #BSUB -q share
+# #BSUB -P P86850054
+# #BSUB -N
+# #BSUB -u raeder@ucar.edu
+# #BSUB -o obs_diags.%J
+# #BSUB -e obs_diags.%J
+# #BSUB -J obs_diags
+# #-----------------------------------------
+# #PBS  -N obs_diags
+# #PBS  -A P86850054
+# #PBS  -q share
+# # Resources I want:
+# #    select=#nodes
+# #    ncpus=#CPUs/node
+# #    mpiprocs=#MPI_tasks/node
+# #PBS  -l select=1:ncpus=1:mpiprocs=1
+# #PBS  -l walltime=02:00:00
+# # Send email after a(bort) or e(nd)
+# #PBS  -m ae
+# #PBS  -M raeder@ucar.edu
+# # Send standard output and error to this file.
+# # It's helpful to use the $casename here.
+# #PBS  -o obs_diags.eo
+# #PBS  -j oe 
+# #--------------------------------------------
+
+module list
+
 if ($#argv == 0) then
    # User submitted, independent batch job (not run by another batch job).
    # CASE could be replaced by setup_*, as is done for DART_config.
-   set arch_dir = /glade/scratch/${USER}/CASE/archive/esp/hist
-   set date_string = '2017-03'
-   set output_dir = Diags_NTrS_2017.3.1-2017.4.1H0_s0
+   set arch_dir = /glade/scratch/${USER}/Test_merged0.bld1/archive/esp/hist
+   set date_string = '2017-01'
+   set DART = ~/DART/reanalysis
+   set output_dir = Diags_NTr_2017.1.1-2017.1.3H12_s0
 #   Diags_NTrS_2017.3.1-2017.4.1H0_s0
 #         ^    ^        ^          ^
 #         |    |        |          Skip first N cycles for vert profiles
@@ -56,6 +85,24 @@ if ($#argv == 0) then
 #         |    Start,   end dates
 #         Domains
 
+   env | sort | grep SLURM
+
+# If I want to write job description like ~thoar/scripts/MatlabBatch.slurm
+#    if ($?SLURM_JOBID) then
+# 
+#       setenv ORIGINALDIR $SLURM_SUBMIT_DIR
+#       setenv     JOBNAME $SLURM_JOB_NAME
+#       setenv       JOBID $SLURM_JOBID
+#       setenv     MYQUEUE $SLURM_JOB_PARTITION
+#       setenv      MYHOST $SLURM_CLUSTER_NAME
+#       setenv   PROCNAMES $SLURMD_NODENAME
+#       setenv      NPROCS $SLURM_NPROCS
+#       setenv      NTASKS $SLURM_NTASKS
+#    
+#       env | grep SLURM | sort
+#    endif
+# 
+#-----------------------------------------
 else if ($#argv == 1) then
    # Request for help; any argument will do.
    echo "Usage: call by user or script:"
@@ -74,7 +121,7 @@ else
    set date_string = "$2"
    set output_dir  = $3
    # DART could be filled by setup_*, as is done for DART_config.
-   if ($#argv == 4) 
+   if ($#argv == 4) then
       set DART = $4
    else
       set DART = ~/DART/reanalysis
@@ -94,11 +141,12 @@ else
 #    endif
 endif
 
-if (! -d $arch_dir:t) then
+if (! -d $arch_dir) then
    echo "Missing arch_dir"
    exit 10
 endif
 cd $arch_dir
+pwd
 
 if (-d $output_dir) then
    echo "$output_dir exists; choose another name"
@@ -113,27 +161,33 @@ if ($#files == 0) then
    echo "No files matching $date_string"
    exit 30
 endif
+echo "file1,...,fileN = $files[1],$files[$#files]"
 
-if (! -d Obs_seqs) mkdir Obs_seqs
+if (-d Obs_seqs) rm -rf Obs_seqs
+mkdir Obs_seqs
 cd Obs_seqs
-if ($files[1]:t == 'gz') then
+if ($files[1]:e == 'gz') then
+   echo "# files = $#files"
    foreach f ($files)
+      echo "decompressing ../$f"
       gunzip --stdout ../$f > $f:r
    end
    set compr = 'true'  
 else
    foreach f ($files)
-      ln -s ../$f $f:r
+      echo "linking ../$f"
+      ln -s ../$f .
    endif
    set compr = 'false'  
 endif
-ls *obs_seq_final* >! ../${output_dir}/obs.list 
 
 # Run obs_diag in the directory where we want the obs space output to be.
 cd ../$output_dir
+# cd $output_dir
 
->>> Update env_archive.xml to copy input.nml to $archive/esp/hist
+ls ../Obs_seqs/*obs_seq_final* >! obs.list 
 
+# Harvest the date span from the first and last files in obs.list.
 set yr = ()
 set mo = ()
 set dy = ()
@@ -143,17 +197,21 @@ while ($t <= 2)
    if ($t == 2) set this = $#files
 
    set date =  $files[$this]:r
-   if ($comp == 'true') set date = $date:r
+   if ($compr == 'true') set date = $date:r
 
-   set parts = (`echo $date:t | sed -e 's/-[0]/ /g'`)
+   # Ignore the hour of the day for now, but round up to the next day.
+   set parts = (`echo $date:e | sed -e 's/-0/ /g;s/-/ /g'`)
    set yr = ($yr $parts[1])
    set mo = ($mo $parts[2])
+   if ($t == 2  && $parts[4] != '00000') @ parts[3] = $parts[3] + 1
    set dy = ($dy $parts[3])
 
    @ t++
 end
 echo "Begin and end dates = $yr[1]-$mo[1]-$dy[1], $yr[2]-$mo[2]-$dy[2]"
-ex ../input.nml<< ex_end
+
+cp ../input.nml .
+ex input.nml << ex_end
 /obs_diag_nml/
 /obs_sequence_name/
 s;= '.*';= "";
@@ -169,15 +227,28 @@ ex_end
 # /time_to_skip/
 # s;= '.*';=  $yr_skip, $mo_skip, $day_skip, $hr_skip, 0, 0 ,
 
-echo "Running ${DART}/models/cam-fv/work/obs_diag"
-${DART}/models/cam-fv/work/obs_diag >&! obs_diag.out 
+if (! -f input.nml) then
+   echo "ERROR: No input.nml in `pwd`"
+   exit 60
+else
+   set line = `ls -l input.nml`
+   if ($line[5] == 0) then
+      echo "ERROR: input.nml has size 0"
+      exit 65
+   endif
+endif
+
+echo "Running ${DART}/models/cam-fv/work_casper/obs_diag"
+${DART}/models/cam-fv/work_casper/obs_diag >&! obs_diag.out 
 
 if ($status != 0) exit 50
 
 #-----------------------------------------
-# Plot selected data from obs_seq_output.nc using matlab.
+# Plot selected data from obs_diag_output.nc using matlab.
 
 # Plot all of the obs_types listed in input.nml:{assimilate,evaluate}_these_obs_types.
+# See commented 'Selective' section below for more selective plotting.
+
 # Line number of the assimilate_these_obs_types variable.
 set line_as = (`grep -n assimilate_these_obs_types ../input.nml`)
 set line_assim = `echo $line_as[1] | sed -e "s/://"`
@@ -197,7 +268,8 @@ set nml_len = `echo $line[1] | sed -e "s/://"`
 @ line_end = ($line_assim - 1) + $nml_len
 
 set obsnames = ()
-# It's 4 because of the extra word added by grep to list the line number.
+# If a value follows the variable name on the same line;
+# (it's 4 because of the extra word added by grep to list the line number.)
 if ($#line_as == 4) then
    set obsnames = (`echo $line_as[4] | sed -e "s/,//"`)
 endif
@@ -228,17 +300,19 @@ endif
 
 
 # Create the matlab script
-echo "fname = 'obs_diag_output.nc';"   >! script.m
+echo "addpath('$DART/diagnostics/matlab','-BEGIN')" >! script.m
+echo "fname = 'obs_diag_output.nc';"   >> script.m
 foreach obs ($obsnames)
 foreach copy (totalspread bias)
 foreach func (plot_rmse_xxx_evolution plot_rmse_xxx_profile)
-   echo "$func(fname,$copy,'obsname',$obs)"         >> script.m
+   echo "$func(fname,'$copy','obsname',$obs)"         >> script.m
 end
 end
 end
 
 echo "exit" >> script.m
 
+# Selective plotting.
 
 # Alternatively, hard-wire the specific output you'd like to see.
 # cat << EndOfFile > script.m
