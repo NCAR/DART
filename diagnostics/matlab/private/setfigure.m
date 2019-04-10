@@ -5,11 +5,11 @@ function figdata = setfigure(whichway)
 %  extra space at the top because the titles have multiple lines
 
 if (strncmpi(whichway,'land',4))
-   orientation   = 'landscape';
-   position      = [0.10 0.15 0.8 0.7];
+    orientation   = 'landscape';
+    position      = [0.10 0.15 0.8 0.7];
 else
-   orientation   = 'tall';
-   position      = [0.15 0.12 0.7 0.75];
+    orientation   = 'tall';
+    position      = [0.15 0.12 0.7 0.75];
 end
 
 fontsize      = 16;
