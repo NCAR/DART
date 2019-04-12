@@ -73,7 +73,7 @@ function plotdat = plot_bias_xxx_profile(fname, copy, varargin)
 
 default_obsname    = 'none';
 default_verbosity  = true;
-default_markersize = 8;
+default_markersize = 12;
 default_pause      = false;
 default_range      = [NaN NaN];
 p = inputParser;
@@ -206,8 +206,10 @@ for ivar = 1:plotdat.nvars
         analy    = guess;  % make the variable the same shape as guess
         analy(:) = NaN;    % and fill it with nothing
         plotdat.has_analysis = false;
+        plotdat.post_string = '';
     else
         plotdat.has_analysis = true;
+        plotdat.post_string = '; \diamondsuit=posteriorOK';
     end
     
     % check to see if there is anything to plot
@@ -261,7 +263,12 @@ for ivar = 1:plotdat.nvars
         
         psfname = sprintf('%s_bias_%s_profile_region%d', ...
             plotdat.varnames{ivar}, plotdat.copystring, iregion);
-        print(gcf,'-dpdf',psfname);
+        
+        if verLessThan('matlab','R2016a')
+            print(gcf, '-dpdf', psfname);
+        else
+            print(gcf, '-dpdf', '-bestfit', psfname);
+        end
         
         % block to go slow and look at each one ...
         if (p.Results.pause)
@@ -416,14 +423,14 @@ set(ax2h1, 'LineStyle', 'none', ...
     'MarkerSize', figuredata.MarkerSize);
 
 set(ax2h2, 'LineStyle', 'none', ...
-    'Color',      figuredata.ges_color, ...
+    'Color',      figuredata.obs_color, ...
     'Marker',     figuredata.ges_marker, ...
     'MarkerSize', figuredata.MarkerSize);
 
 if anl_Ngood > 0
     ax2h3 = line(anl_Nused, plotdat.levels, 'Parent',ax2);
     set(ax2h3, 'LineStyle', 'none', ...
-        'Color',     figuredata.anl_color, ...
+        'Color',     figuredata.obs_color, ...
         'Marker',    figuredata.anl_marker, ...
         'MarkerSize',figuredata.MarkerSize);
 end
@@ -442,11 +449,11 @@ set(get(ax1,'Xlabel'),'String',{plotdat.xlabel, plotdat.timespan}, ...
 % determine if the observation was flagged as 'evaluate' or 'assimilate'
 
 if sum(ges_Neval) > 0
-    string1 = sprintf('# of obs (o=possible; %s=evaluated) x %d', ...
-        '\ast,\diamondsuit', uint32(xscale));
+    string1 = sprintf('# of obs (o=possible; %s %s) x %d', ...
+        '\ast=evaluated', plotdat.post_string, uint32(xscale));
 else
-    string1 = sprintf('# of obs (o=possible; %s=assimilated) x %d', ...
-        '\ast,\diamondsuit', uint32(xscale));
+    string1 = sprintf('# of obs (o=possible; %s %s) x %d', ...
+        '\ast=assimilated', plotdat.post_string, uint32(xscale));
 end
 
 set(get(ax2,'Xlabel'), 'String', string1, 'FontSize', figuredata.fontsize)

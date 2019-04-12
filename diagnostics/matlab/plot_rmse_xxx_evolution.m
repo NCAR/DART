@@ -82,7 +82,7 @@ function plotdat = plot_rmse_xxx_evolution(fname, copy, varargin)
 
 default_obsname    = 'none';
 default_verbosity  = true;
-default_markersize = 8;
+default_markersize = 12;
 default_pause      = false;
 default_range      = [NaN NaN];
 default_level      = -1;
@@ -215,7 +215,7 @@ for ivar = 1:plotdat.nvars
     else
         plotdat.level       = ncread(fname, dimnames{2});
         plotdat.level_units = nc_read_att(fname, dimnames{2}, 'units');
-        nlevels             = length(plotdat.level); 
+        nlevels             = length(plotdat.level);
         if (p.Results.level < 0 )
             % use all the levels
         elseif (p.Results.level > 0 && p.Results.level < nlevels)
@@ -234,8 +234,10 @@ for ivar = 1:plotdat.nvars
         analy = guess;
         analy(:) = NaN;
         has_posterior = false;
+        plotdat.post_string = '';
     else
         has_posterior = true;
+        plotdat.post_string = '; \diamondsuit=posteriorOK';
     end
     
     for ilevel = 1:length(plotdat.level)
@@ -292,7 +294,11 @@ for ivar = 1:plotdat.nvars
             myplot(plotdat);
             
             % create/append to the postscript file
-            print(gcf, '-dpsc', '-append', psfname{iregion});
+            if verLessThan('matlab','R2016a')
+                print(gcf, '-dpsc', '-append', psfname{iregion});
+            else
+                print(gcf, '-dpsc', '-append', '-bestfit', psfname{iregion});
+            end
             
             % block to go slow and look at each one ...
             if (p.Results.pause)
@@ -404,14 +410,14 @@ set(ax2h1, 'LineStyle', 'none', ...
     'MarkerSize',figuredata.MarkerSize);
 
 set(ax2h2, 'LineStyle', 'none', ...
-    'Color',     figuredata.ges_color, ...
+    'Color',     figuredata.obs_color, ...
     'Marker',    figuredata.ges_marker, ...
     'MarkerSize',figuredata.MarkerSize);
 
 if anl_Ngood > 0
     ax2h3 = line(plotdat.bincenters, anl_Nused, 'Parent',ax2);
     set(ax2h3, 'LineStyle', 'none', ...
-        'Color',     figuredata.anl_color, ...
+        'Color',     figuredata.obs_color, ...
         'Marker',    figuredata.anl_marker, ...
         'MarkerSize',figuredata.MarkerSize);
 end
@@ -434,9 +440,9 @@ set(get(ax1,'Ylabel'), 'String', plotdat.ylabel, ...
 % regions, we can use an 'all-or-nothing' approach.
 
 if ges_Neval > 0
-    string1 = '# of obs : o=possible; \ast,\diamondsuit=evaluated';
+    string1 = ['# of obs: o=possible; \ast=evaluated' plotdat.post_string];
 else
-    string1 = '# of obs : o=possible; \ast,\diamondsuit=assimilated';
+    string1 = ['# of obs: o=possible; \ast=assimilated' plotdat.post_string];
 end
 set(get(ax2,'Ylabel'), 'String', string1, 'FontSize', figuredata.fontsize)
 
@@ -604,8 +610,8 @@ switch lower(quantity)
         mean_posterior = mean(posterior(isfinite(posterior)));
         
         color     = figuredata.rmse_color;
-        marker    = 'x';
-        linestyle = figuredata.ges_linestyle;
+        marker    = figuredata.marker1;
+        linestyle = figuredata.solid;
         linewidth = figuredata.linewidth;
         
     otherwise
@@ -616,8 +622,8 @@ switch lower(quantity)
         mean_posterior = mean(posterior(isfinite(posterior)));
         
         color     = figuredata.copy_color;
-        marker    = 's';
-        linestyle = figuredata.anl_linestyle;
+        marker    = figuredata.marker2;
+        linestyle = figuredata.solid;
         linewidth = figuredata.linewidth;
         
 end
@@ -636,10 +642,11 @@ else
 end
 
 h = line(t,data);
-set(h, 'LineStyle',  linestyle, ...
-    'LineWidth',  linewidth, ...
-    'Color',      color, ...
-    'Marker',     marker,    ...
+set(h, 'LineStyle',    linestyle, ...
+    'LineWidth',       linewidth, ...
+    'Color',           color, ...
+    'Marker',          marker, ...
+    'MarkerFaceColor', color, ...
     'MarkerSize', figuredata.MarkerSize);
 
 % <next few lines under version control, do not edit>

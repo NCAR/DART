@@ -61,18 +61,20 @@ ges_color     = [  0/255 128/255   0/255]; % prior_green
 anl_color     = [  0/255   0/255 255/255]; % poste_blue
 rmse_color    = [  0/255   0/255   0/255]; % black
 copy_color    = [  0/255 128/255 128/255]; % teal
+purple        = [ 153,51,255 ]/255;
+orange        = [ 255,153,51 ]/255;
 obs_marker    = 'o';
 ges_marker    = '*';
 anl_marker    = 'd';
 marker1       = 'o';
-marker2       = 'x';
+marker2       = 's';
 ges_linestyle = '-';
 anl_linestyle = '-';
 dashed        = '--';
 solid         = '-';
 
 figdata = struct( ...
-    'expcolors',  {{'k','r','b','m','g','c','y'}}, ...
+    'expcolors',  {{'k','b','m','g','c','y','r'}}, ...
     'expsymbols', {{'o','s','d','p','h','s','*'}}, ...
     'prpolines',  {{'-','--'}}, ...
     'position'     , position, ...

@@ -99,7 +99,7 @@ defaultHlevels = [-Inf Inf];
 defaultMlevels = [  1  Inf];
 
 default_verbosity  = true;
-default_markersize = 8;
+default_markersize = 12;
 default_pause      = false;
 default_range      = [NaN NaN];
 default_level      = 1;
@@ -238,7 +238,12 @@ for ivar = 1:nvars
         
         psfname = sprintf('%s_%s_region%d_profile_%dexp', ...
             obsnames{ivar}, plotobj{1}.copystring, iregion, NumExp);
-        print(iregion,'-dpdf',psfname)
+        
+        if verLessThan('matlab','R2016a')
+            print(iregion, '-dpdf', psfname)
+        else
+            print(iregion, '-dpdf', '-bestfit', psfname)
+        end
         
     end % of loop around regions
     

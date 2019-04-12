@@ -79,7 +79,7 @@ function two_experiments_evolution(files, titles, obsnames, copy, prpo, varargin
 %---------------------------------------------------------------------
 
 default_verbosity  = true;
-default_markersize = 8;
+default_markersize = 12;
 default_pause      = false;
 default_range      = [NaN NaN];
 default_level      = 1;
@@ -179,7 +179,12 @@ for ivar = 1:nvars
         
         psfname = sprintf('%s_%s_region%d_ilev%d_evolution_%dexp', ...
             obsnames{ivar}, plotobj{1}.copystring, iregion, p.Results.level, NumExp);
-        print(iregion,'-dpdf',psfname)
+        
+        if verLessThan('matlab','R2016a')
+            print(iregion, '-dpdf', psfname)
+        else
+            print(iregion, '-dpdf', '-bestfit', psfname)
+        end
         
     end % of loop around regions
     
@@ -421,6 +426,7 @@ elseif (plotobj{1}.bincenters(1) > 1000)
 end
 
 % Create another axes to use for plotting the observation counts
+% using a black axis because there is no single observation color.
 
 ax2 = axes( ...
     'Position',get(ax1,'Position'), ...
@@ -430,7 +436,7 @@ ax2 = axes( ...
     'XTick'   ,get(ax1,'XTick'), ...
     'YDir'    ,get(ax1,'YDir'), ...
     'Color'   ,'none', ...
-    'YColor'  ,'b', ...
+    'YColor'  ,'k', ...
     'XAxisLocation','top', ...
     'YAxisLocation','right');
 
