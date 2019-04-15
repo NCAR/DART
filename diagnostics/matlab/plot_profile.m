@@ -671,16 +671,16 @@ switch lower(phase)
         data      = plotdat.ges_copy( plotdat.region,:);
         Nused     = plotdat.ges_Nused(plotdat.region,:);
         color     = figuredata.ges_color;
-        marker    = figuredata.ges_marker;
-        linestyle = figuredata.ges_linestyle;
+        marker    = figuredata.marker1;
+        linestyle = figuredata.solid;
         linewidth = figuredata.linewidth;
         string1   = 'forecast:';
     case 'posterior'
         data      = plotdat.anl_copy( plotdat.region,:);
         Nused     = plotdat.anl_Nused(plotdat.region,:);
         color     = figuredata.anl_color;
-        marker    = figuredata.anl_marker;
-        linestyle = figuredata.anl_linestyle;
+        marker    = figuredata.marker2;
+        linestyle = figuredata.solid;
         linewidth = figuredata.linewidth;
         string1   = 'analysis:';
     otherwise
@@ -697,10 +697,11 @@ else
 end
 
 h = line(data, plotdat.levels);
-set(h, 'LineStyle',  linestyle, ...
-    'LineWidth',  linewidth, ...
-    'Color',      color, ...
-    'Marker',     marker,    ...
+set(h, 'LineStyle',    linestyle, ...
+    'LineWidth',       linewidth, ...
+    'Color',           color, ...
+    'Marker',          marker, ...
+    'MarkerFaceColor', color, ...
     'MarkerSize', figuredata.MarkerSize);
 
 % <next few lines under version control, do not edit>

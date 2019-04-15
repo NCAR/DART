@@ -439,7 +439,7 @@ set(get(ax1,'Ylabel'), 'String', plotdat.ylabel, ...
 % since we don't have the ability to specify this level-by-level or by
 % regions, we can use an 'all-or-nothing' approach.
 
-if ges_Neval > 0
+if sum(ges_Neval(:)) > 0
     string1 = ['# of obs: o=possible; \ast=evaluated' plotdat.post_string];
 else
     string1 = ['# of obs: o=possible; \ast=assimilated' plotdat.post_string];

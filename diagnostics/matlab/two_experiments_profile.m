@@ -184,7 +184,7 @@ end
 
 %% set up all the stuff that is common.
 
-global figuredata verbose
+global figuredata
 
 commondata = check_compatibility(files, prpo, obsnames, copy);
 figuredata = set_obsdiag_figure('tall', 'numexp', NumExp);
@@ -444,7 +444,7 @@ plotdat.nposs         = qcvalues.nposs;
 plotdat.nused         = qcvalues.nused;
 plotdat.num_evaluated = qcvalues.num_evaluated;
 
-if sum(plotdat.num_evaluated > 0)
+if sum(plotdat.num_evaluated(:) > 0)
     plotdat.assim_eval_string = 'evaluated';
 else
     plotdat.assim_eval_string = 'assimilated';
