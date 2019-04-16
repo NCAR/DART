@@ -16,9 +16,11 @@
 
 # the time of the observations is appended to the output_file_base to result in names like
 # obs_seq_oisst.2004-01-03-00000     (the format used by CESM)
+# full year here:
+#   input_file       = '/glade/p/univ/cmia0001/Observations/OI.SST.v2/sst.day.mean.2004.nc'
 
 &oi_sst_to_obs_nml
-   input_file       = '/gpfs/fs1/p/univ/cmia0001/Observations/OI.SST.v2/sst.day.mean.2004.nc'
+   input_file       = '../data/sst.jan1.2004.nc'
    output_file_base = 'obs_seq_oisst'
    sst_error_std    = 0.3
    subsample_intv   = 2
