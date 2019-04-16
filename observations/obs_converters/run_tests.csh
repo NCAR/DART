@@ -18,7 +18,8 @@ echo
 set startdir=`pwd`
 
 set LOGDIR=${startdir}/testing_logs
-echo putting build and run logs in $LOGDIR
+echo putting build and run logs in:
+echo $LOGDIR
 
 mkdir -p ${LOGDIR}
 \rm -f ${LOGDIR}/*
@@ -89,52 +90,54 @@ echo
 
 cd $startdir
 
-foreach project ( `find . -name quickbuild.csh -print` )
+foreach quickb ( `find . -name quickbuild.csh -print` )
 
    cd $startdir
 
-   set dir = $project:h
+   # get the working dir name. also, make a project name by stripping off
+   # the leading ./ and the /work parts of the dirname, and turning slashes
+   # into underscores so we can use the string as part of a log filename.
+   set wdir = $quickb:h
+   set project = `echo $wdir | sed -e 's;^./;;' -e 's;/[^/]*$;;' -e 's;/;_;g'`
+
+   echo 
+   echo 
+   echo "=================================================================="
+   echo "Compiling obs converter $project starting at "`date`
+   echo "=================================================================="
+   echo 
+   echo 
+
+
+   cd $wdir
+   echo
+   echo building in $wdir
+
    set FAILURE = 0
-
-   echo 
-   echo 
-   echo "=================================================================="
-   echo "Compiling obs converter $dir starting at "`date`
-   echo "=================================================================="
-   echo 
-   echo 
-
-
-   cd $dir
-   echo
-   echo building in $dir
-
-   ( ./quickbuild.csh > ${LOGDIR}/buildlog.${dir}.out ) || set FAILURE = 1
+   ( ./quickbuild.csh > ${LOGDIR}/buildlog.${project}.out ) || set FAILURE = 1
 
    echo
-   echo
-   echo "=================================================================="
 
    if ( $FAILURE ) then
-      echo "ERROR - unsuccessful build of $dir at "`date`
+      echo "ERROR - unsuccessful build of $project at "`date`
       echo 
 
-      switch ( $dir )
+      switch ( $project )
    
-         case *GSI2DART*
+         case GSI2DART
             echo " This build expected to fail on case-insensitive filesystems."
          breaksw
             
-         case */var/*
+         case var
             echo " This build expected to fail unless you have the WRF code in-situ."
          breaksw
             
-         case *AIRS*
+         case AIRS
             echo " AIRS build is expected to fail due to dependency on hdfeos libs,"
             echo " which are not required to be part of the standard DART environment."
          breaksw
             
-         case *quikscat*
+         case quikscat
             echo " quikscat build is expected to fail due to dependency on mfhdf libs,"
             echo " which are not required to be part of the standard DART environment."
          breaksw
@@ -144,31 +147,30 @@ foreach project ( `find . -name quickbuild.csh -print` )
          breaksw
       endsw
    else
-      echo "Successful build of obs converter $dir ended at "`date`
+      echo "Successful build of obs converter $project ended at "`date`
       echo 
-      echo "+++++++++++++"
-      echo "Trying to execute converters in directory $dir"
+      echo "Executing converters in directory $wdir"
 
       \rm -f *.o *.mod
       \rm -f Makefile input.nml.*_default .cppdefs
 
       foreach TARGET ( mkmf_* )
+         set FAILURE = 0
          set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
          echo "Running $PROG"
          if ( -f ${PROG}.in ) then
-           ( ./$PROG < ${PROG}.in > ${LOGDIR}/runlog.${dir}.out ) || set FAILURE = 1
+           ( ./$PROG < ${PROG}.in > ${LOGDIR}/runlog.${project}.out ) || set FAILURE = 1
          else
-           ( ./$PROG > ${LOGDIR}/runlog.${dir}.out ) || set FAILURE = 1
+           ( ./$PROG > ${LOGDIR}/runlog.${project}.out ) || set FAILURE = 1
          endif
          if ( $FAILURE ) then
             echo "ERROR - unsuccessful run of $PROG at "`date`
-            echo 
          else
+            echo "Successful run of $PROG at "`date`
             \rm -f $PROG
          endif
       end
 
-      echo "+++++++++++++"
       echo
 
    endif
