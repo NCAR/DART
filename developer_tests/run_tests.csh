@@ -14,7 +14,6 @@
 
 set usingmpi=no
 set MPICMD=""
-set LOGDIR=`pwd`/testing_logs
 
 if ( $#argv > 0 ) then
   if ( "$argv[1]" == "-mpi" ) then
@@ -60,20 +59,17 @@ else
   exit -1
 endif
 
-#----------------------------------------------------------------------
+# prevent shell warning messages about no files found when trying
+# to remove files using wildcards.
+set nonomatch
+
+set LOGDIR=`pwd`/testing_logs
 
 if ( ! $?REMOVE) then
    setenv REMOVE 'rm -f'
 endif
-if ( ! $?REMOVE_DIR) then
-   setenv REMOVE_DIR 'rmdir'
-endif
-if ( ! $?COPY) then
-   setenv COPY 'cp -f'
-endif
-if ( ! $?MOVE) then
-   setenv MOVE 'mv -f'
-endif
+
+#----------------------------------------------------------------------
 
 if ( ! $?host) then
    setenv host `uname -n`
@@ -93,15 +89,18 @@ set HAS_TESTS = `ls */work/quickbuild.csh`
 # Compile and run all executables 
 #----------------------------------------------------------------------
 
+${REMOVE} -r $LOGDIR
 mkdir -p $LOGDIR
-\rm -f $LOGDIR/*
-echo putting build and run logs in $LOGDIR
+
+echo see $LOGDIR
+echo for build and run logs
 
 @ testnum = 0
 
 foreach TESTFILE ( $HAS_TESTS ) 
     
     set TESTDIR = `dirname $TESTFILE`
+    set LOGNAME = `echo $TESTDIR | sed -e 's;/[^/]*$;;' -e 's;/;_;g'`
 
     echo
     echo
@@ -114,7 +113,7 @@ foreach TESTFILE ( $HAS_TESTS )
     cd ${TESTDIR}
     set FAILURE = 0
 
-    ( ./quickbuild.csh ${QUICKBUILD_ARG} > ${LOGDIR}/buildlog.${TESTDIR}.out ) || set FAILURE = 1
+    ( ./quickbuild.csh ${QUICKBUILD_ARG} > ${LOGDIR}/buildlog.${LOGNAME}.out ) || set FAILURE = 1
 
     @ testnum = $testnum + 1
 
@@ -128,11 +127,6 @@ foreach TESTFILE ( $HAS_TESTS )
       continue
     else
       echo "=================================================================="
-      echo "End of successful build in $TESTDIR at "`date`
-      echo "=================================================================="
-      echo
-      echo
-      echo "=================================================================="
       echo "Running tests in $TESTDIR starting at "`date`
       echo "=================================================================="
       echo
@@ -140,23 +134,22 @@ foreach TESTFILE ( $HAS_TESTS )
   
       foreach TARGET ( mkmf_* )
   
-           \rm -f *.o *.mod
-           \rm -f Makefile input.nml.*_default .cppdefs
 
+           set FAILURE = 0
            set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
-           echo "++++++++++++++++++"
+         
            echo Starting $PROG
-           ( ${MPICMD} ./$PROG  > ${LOGDIR}/runlog.${TESTDIR}.out ) || set FAILURE = 1
-           echo Finished $PROG
-           echo
+           ( ${MPICMD} ./$PROG  > ${LOGDIR}/runlog.${LOGNAME}.${PROG}.out ) || set FAILURE = 1
            if ( $FAILURE ) then
-              echo "ERROR - unsuccessful run in $TESTDIR at "`date`
+              echo "ERROR - unsuccessful run of $PROG"
            else
-              \rm -f $PROG
+              ${REMOVE} $PROG
+              echo "Successful run of $PROG"
            endif
-           echo "++++++++++++++++++"
   
       end
+
+      ${REMOVE} Makefile input.nml.*_default .cppdefs *.o *.mod
 
       cd $TOPDIR
 
@@ -185,7 +178,7 @@ echo "=================================================================="
 
 set FAILURE = 0
 
-( ./testall.csh > ${LOGDIR}/location_tests.out ) || set FAILURE = 1
+( ./run_tests.csh > ${LOGDIR}/location_tests.out ) || set FAILURE = 1
 
 echo
 echo

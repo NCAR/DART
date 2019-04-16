@@ -10,10 +10,8 @@
 #               This compiles many of the programs (but not all) and
 #               runs a limited number of tests.
 #
-#>@todo FIXME ... implement some method to run mpi executables. 
-#
 #==========================================================================
-# SLURM directives              sbatch test_batch.csh
+# SLURM directives              sbatch test_dart.csh
 #
 # sinfo     information about the whole slurm system
 # squeue    information about running jobs
@@ -22,126 +20,131 @@
 #
 #SBATCH --ignore-pbs
 #SBATCH --job-name dart_test
-#SBATCH --ntasks-per-node=1
 #SBATCH -t 2:00:00
-#SBATCH -n 1
 #SBATCH -A P86850054
 #SBATCH -p dav
 #SBATCH -o dart_test.log
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 #
-#==========================================================================
-# PBS directives                qsub test_batch.csh
+# for mpi tests:
+#SBATCH --ntasks=4
+#SBATCH --ntasks-per-node=4
+# for serial tests:
+#SB#### --ntasks=1
+#SB#### --ntasks-per-node=1
 #
+#==========================================================================
+# PBS directives                qsub test_dart.csh
+#
+# qstat    information about the running job
+# qdel     killing a job
+# qsub     submitting a job
+# 
 #PBS -N dart_test     
 #PBS -l walltime=02:00:00
-#PBS -q share 
-#PBS -l select=1:ncpus=1
 #PBS -A P86850054 
 #PBS -j oe
-#PBS -m abe
+#PBS -m ae
+#
+# for mpi tests:
+#PBS -q regular 
+#PBS -l select=1:ncpus=36:mpiprocs=36
+# for serial tests:
+#P## -q share
+#P## -l select=1:ncpus=1
+
+#==========================================================================
 
 set clobber
-setenv MPIFLAG '-nompi'
+setenv MPIFLAG '-mpi'
 
 if ( $#argv > 0 ) then
   if ( "$argv[1]" == "-mpi" ) then
     setenv MPIFLAG '-mpi'
   else if ("$argv[1]" == "-nompi") then
     setenv MPIFLAG '-nompi'
-  else if ("$argv[1]" == "-default") then
-    setenv MPIFLAG '-default'
   else
     echo "Unrecognized argument to $0: $argv[1]"
-    echo "Usage: $0 [ -mpi | -nompi | -default ]"
-    echo " default is to run tests without using MPI."
+    echo "Usage: $0 [ -mpi | -nompi ]"
+    echo " default is to run tests using MPI."
     exit -1
   endif
 endif
 
-# Since this script does not launch the mpi executables with an mpirun etc.,
-# this whole script can only possibly test the serial implementation.
-# So - in batch mode, just force it to be nompi.
-#>@todo FIXME ... implement some method to run mpi executables. 
-
+# set any batch system specific items here
 if ($?SLURM_JOB_ID) then
-    setenv MPIFLAG '-nompi'
+  # e.g. casper
+  setenv MPICMD "srun"
 else if ($?PBS_NODEFILE) then
-    setenv MPIFLAG '-nompi'
-endif
-
-# cd to the start of the DART directory
-cd ..
-
-if ( ! -d models ) then
-   echo "models directory does not exist. $0 must be run from the developer_tests"
-   echo "directory -- please try again."
-   exit 2
+  # e.g. cheyenne
+  setenv MPICMD "mpiexec_mpt"
 else
-   set DARTHOME = `pwd`
+  # other (no queue system, e.g. openmpi on laptop)
+  setenv MPICMD "mpirun -n 2"
 endif
 
-echo "The top-level DART directory (DARTHOME) is $DARTHOME"
+# if your system supports different options or needs to
+# use a different location for these commands, set them here.
+# they will be inherited by the other test scripts.
+setenv REMOVE 'rm -f'
+setenv RMDIR  'rmdir'
+setenv COPY   'cp -p'
+setenv MOVE   'mv -f'
 
-#----------------------------------------------------------------------
-# See if some necessary environment variables are set.
-# We'd like to have a short hostname but uname can be configured very
-# differently from host to host.
-#----------------------------------------------------------------------
+# require we start running this from the developer_tests dir
+if ( ! -d ../models ) then
+   echo "../models directory does not exist. $0 must be run from"
+   echo "the developer_tests directory."
+   exit 2
+endif
+
+# cd to the top level DART directory and 
+# record where we are running this script
+cd ..
+set DARTHOME = `pwd`
 
 if ( ! $?host) then
    setenv host `uname -n`
 endif
 echo "Running $0 on $host"
+echo "The top-level DART directory is $DARTHOME"
+
 
 #----------------------------------------------------------------------
-# Not all unix systems support the same subset of flags; try to figure
-# out what system we are running on and adjust accordingly.
 #----------------------------------------------------------------------
-
-set OSTYPE = `uname -s`
-switch ( ${OSTYPE} )
-   case IRIX64:
-      setenv REMOVE 'rm -rf'
-      setenv   COPY 'cp -p'
-      setenv   MOVE 'mv -f'
-      breaksw
-   case AIX:
-      setenv REMOVE 'rm -rf'
-      setenv   COPY 'cp -p'
-      setenv   MOVE 'mv -f'
-      breaksw
-   default:
-      setenv REMOVE 'rm -rf'
-      setenv   COPY 'cp -vp'
-      setenv   MOVE 'mv -fv'
-      breaksw
-endsw
+# setup complete
+#----------------------------------------------------------------------
+#----------------------------------------------------------------------
 
 #----------------------------------------------------------------------
 
 echo
 echo
 echo "=================================================================="
+echo "DART tests begin at "`date`
+echo "=================================================================="
+echo
+echo
+
+#----------------------------------------------------------------------
+
+echo
+echo
 echo "=================================================================="
 echo "Building and testing supported models starting at "`date`
-echo "=================================================================="
 echo "=================================================================="
 echo
 echo
 
 cd ${DARTHOME}/models
-if ( 1 == 1 ) then
-  ./buildall.csh $MPIFLAG
-endif
+
+./run_tests.csh $MPIFLAG -mpicmd "$MPICMD"
 
 echo
 echo
 echo "=================================================================="
-echo "=================================================================="
-echo "Supported model testing complete at "`date`
-echo "=================================================================="
+echo "Supported model tests complete at "`date`
 echo "=================================================================="
 echo
 echo
@@ -151,9 +154,7 @@ echo
 echo
 echo
 echo "=================================================================="
-echo "=================================================================="
-echo "Testing observation converters starting at "`date`
-echo "=================================================================="
+echo "Building and testing observation converters starting at "`date`
 echo "=================================================================="
 echo
 echo
@@ -163,16 +164,13 @@ echo "not have all the necessary supporting libraries.  So errors here"
 echo "are not fatal."
 
 cd ${DARTHOME}/observations/obs_converters
-if ( 1 == 1 ) then
-  ./buildall.csh
-endif
+
+./run_tests.csh
 
 echo
 echo
 echo "=================================================================="
-echo "=================================================================="
-echo "Observation converter testing complete at "`date`
-echo "=================================================================="
+echo "Observation converter tests complete at "`date`
 echo "=================================================================="
 echo
 echo
@@ -182,24 +180,19 @@ echo
 echo
 echo
 echo "=================================================================="
-echo "=================================================================="
 echo "Building and testing support programs starting at "`date`
-echo "=================================================================="
 echo "=================================================================="
 echo
 echo
 
 cd ${DARTHOME}/assimilation_code/programs
-if ( 1 == 1 ) then
-  ./buildall.csh $MPIFLAG
-endif
+
+./run_tests.csh $MPIFLAG -mpicmd "$MPICMD"
 
 echo
 echo
 echo "=================================================================="
-echo "=================================================================="
-echo "Support program testing complete at "`date`
-echo "=================================================================="
+echo "Support program tests complete at "`date`
 echo "=================================================================="
 echo
 echo
@@ -209,59 +202,34 @@ echo
 echo
 echo
 echo "=================================================================="
-echo "=================================================================="
-echo "Running developer tests starting at "`date`
-echo "=================================================================="
+echo "Building and running developer tests starting at "`date`
 echo "=================================================================="
 echo
 echo
 
 cd ${DARTHOME}/developer_tests
-if ( 1 == 1 ) then
-  ./run_dev_tests.csh
-endif
+
+./run_tests.csh $MPIFLAG -mpicmd "$MPICMD"
 
 echo
 echo
-echo "=================================================================="
 echo "=================================================================="
 echo "Developer tests complete at "`date`
 echo "=================================================================="
-echo "=================================================================="
 echo
 echo
+
 
 #----------------------------------------------------------------------
 
-if ( $?MPI ) then
 
-   #echo
-   #echo
-   #echo "=================================================================="
-   #echo "=================================================================="
-   #echo "MPI testing complete  at "`date`
-   #echo "=================================================================="
-   #echo "=================================================================="
-   #echo
-   #echo
-
-   echo "No MPI tests yet ... stopping."
-
-   #echo
-   #echo
-   #echo "=================================================================="
-   #echo "=================================================================="
-   #echo "MPI testing complete  at "`date`
-   #echo "=================================================================="
-   #echo "=================================================================="
-   #echo
-   #echo
-
-else
-
-   echo "MPI tests not requested ... stopping."
-
-endif
+echo
+echo
+echo "=================================================================="
+echo "DART tests complete at "`date`
+echo "=================================================================="
+echo
+echo
 
 exit 0
 
