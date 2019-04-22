@@ -4,22 +4,31 @@
 !
 ! $Id$
 
-!> A collection of interfaces that bypass calling MPI and
-!> allows programs to be compiled in a serial configuration.
-!> Uses only a single task.  Does NOT require actual MPI libs.
+!> Substitute this code for mpi_utilities_mod.f90 if you do not want to
+!> have to link in an MPI library, and you only want to run single task.
+!> Many of the single task DART utility programs use this file instead of
+!> the parallel version.  Note that this file has the same module name
+!> and the same external entry points as the real mpi_utilities_mod.f90
+!> file, so it will link correctly as a replacement file.
+!>
+!> Programs using this module instead of the actual MPI routines do not
+!> need to be compiled with the MPI wrapper commands (e.g. mpif90).
+!> In most cases it will be better to compile with the fortran compiler
+!> directly.  (On some platforms this is required.)
 
 module mpi_utilities_mod
 
-use types_mod, only        : i8, r8, digits12
-use utilities_mod, only    : register_module, error_handler,             &
-                             initialize_utilities, get_unit, close_file, & 
-                             E_ERR, E_WARN, E_MSG, E_DBG, finalize_utilities
+use types_mod, only :  i8, r8, digits12
+use utilities_mod, only : register_module, error_handler, & 
+                             E_ERR, E_WARN, E_MSG,                    &
+                             initialize_utilities, finalize_utilities
 use time_manager_mod, only : time_type, set_time
 
 ! the NAG compiler needs these special definitions enabled
 
 ! !!NAG_BLOCK_EDIT START COMMENTED_OUT
-! use F90_unix_proc, only : sleep, system, exit
+!#ifdef __NAG__
+ !use F90_unix_proc, only : sleep, system, exit
  !! block for NAG compiler
  !  PURE SUBROUTINE SLEEP(SECONDS,SECLEFT)
  !    INTEGER,INTENT(IN) :: SECONDS
@@ -33,6 +42,7 @@ use time_manager_mod, only : time_type, set_time
  !  SUBROUTINE EXIT(STATUS)
  !    INTEGER,OPTIONAL :: STATUS
  !! end block
+!#endif
 ! !!NAG_BLOCK_EDIT END COMMENTED_OUT
 
 
@@ -48,6 +58,7 @@ private
 ! block below.  Please leave the BLOCK comment lines unchanged.
 
 ! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
+! !#if .not. defined (__GFORTRAN__) .and. .not. defined(__NAG__)
 ! ! interface block for getting return code back from system() routine
 ! interface
 !  function system(string)
@@ -56,6 +67,7 @@ private
 !  end function system
 ! end interface
 ! ! end block
+! !#endif
 ! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
 
 
@@ -65,12 +77,15 @@ interface sum_across_tasks
    module procedure sum_across_tasks_int8
    module procedure sum_across_tasks_real
 end interface
+
 !   ---- private data for mpi_utilities ----
 
-integer :: myrank          ! my mpi number
-integer :: total_tasks     ! total mpi tasks/procs
-integer :: comm_size       ! if ens count < tasks, only the first N participate
-integer :: datasize        ! should be an accessor function, not a public
+integer :: myrank        = 0  ! my mpi number
+integer :: total_tasks   = 1  ! total mpi tasks/procs
+integer :: my_local_comm = 0  ! duplicate communicator private to this file
+integer :: datasize      = 8  ! which MPI type corresponds to our r8 definition
+
+
 
 public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           task_count, my_task_id, block_task, restart_task,                  &
@@ -82,14 +97,15 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           all_reduce_min_max  ! deprecated, replace by broadcast_minmax
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 logical :: module_initialized   = .false.
 
 character(len = 256) :: saved_progname = ''
+character(len = 128) :: shell_name = ''   ! if needed, add ksh, tcsh, bash, etc
 
 character(len = 256) :: errstring
 
@@ -103,24 +119,26 @@ contains
 ! mpi cover routines
 !-----------------------------------------------------------------------------
 
-subroutine initialize_mpi_utilities(progname, alternatename)
- character(len=*), intent(in), optional :: progname
- character(len=*), intent(in), optional :: alternatename
+!> Initialize the utilities module, and print out a message including the 
+!> program name.
+subroutine initialize_mpi_utilities(progname, alternatename, communicator)
 
-! Initialize MPI and query it for global information.  Make a duplicate
-! communicator so that any user code which wants to call MPI will not 
-! interfere with any outstanding asynchronous requests, accidental tag
-! matches, etc.  This routine must be called before any other routine in
-! this file, and it should not be called more than once (but it does have
-! defensive code in case that happens.)
+character(len=*), intent(in), optional :: progname
+character(len=*), intent(in), optional :: alternatename
+integer,          intent(in), optional :: communicator
 
 if ( module_initialized ) then
-   ! return without calling the code below multiple times
+   ! return without calling the code below multiple times.  Print out a warning each
+   ! time this is called again because it may indicate an error in logic.  In a well-
+   ! constructed program the initialize routine will only be called once.
    write(errstring, *) 'initialize_mpi_utilities has already been called'
    call error_handler(E_WARN,'initialize_mpi_utilities', errstring, source, revision, revdate)
    return
 endif
 
+module_initialized = .true.
+
+! Initialize the module with utilities
 call initialize_utilities(progname, alternatename)
 
 if (present(progname)) then
@@ -131,18 +149,8 @@ if (present(progname)) then
    endif
 endif
 
-if ( .not. module_initialized ) then
-   ! Initialize the module with utilities
-   call register_module(source, revision, revdate)
-   module_initialized = .true.
-endif
-
-myrank = 0
-total_tasks = 1
-
-! TODO: if there are fewer ensembles than tasks, all the collective routines
-! need to take that into account and not participate if they are > comm_size.
-comm_size = total_tasks
+! log info if requested
+call register_module(source, revision, revdate)
 
 if (r8 /= digits12) then
    datasize = 4
@@ -160,13 +168,12 @@ end subroutine initialize_mpi_utilities
 
 !-----------------------------------------------------------------------------
 
+!> Shut down cleanly.  Call normal utilities finalize if we have actually
+!> ever called initialize.  Otherwise there is nothing to do in the null case.
+
 subroutine finalize_mpi_utilities(callfinalize, async)
  logical, intent(in), optional :: callfinalize
  integer, intent(in), optional :: async
-
-! Shut down cleanly.  Call normal utilities finalize if we have actually
-! ever called initialize.  Otherwise there is nothing to do in the null case.
-
 
 if ( .not. module_initialized ) return
 
@@ -181,11 +188,9 @@ end subroutine finalize_mpi_utilities
 
 !-----------------------------------------------------------------------------
 
-function task_count()
+!> Return the number of MPI tasks.  For this code this is always 1.
 
-! Return the total number of MPI tasks.  e.g. if the number of tasks is 4,
-! it returns 4.  (The actual task numbers are 0-3.)  For the null mpi utils,
-! this always returns 1.
+function task_count()
 
 integer :: task_count
 
@@ -198,10 +203,9 @@ end function task_count
 
 !-----------------------------------------------------------------------------
 
-function my_task_id()
+!> Return my unique task id.  For this code this is always 0.
 
-! Return my unique task id.  Values run from 0 to N-1 (where N is the
-! total number of MPI tasks.  For the null mpi utils, this is always 0.
+function my_task_id()
 
 integer :: my_task_id
 
@@ -214,18 +218,18 @@ end function my_task_id
 
 !-----------------------------------------------------------------------------
 
+!> A no-op for this code.
+
 subroutine task_sync()
-
-! Synchronize all tasks.  This subroutine does not return until all tasks
-! execute this line of code.
-
-if ( .not. module_initialized ) call initialize_mpi_utilities()
-
 
 end subroutine task_sync
 
 
 !-----------------------------------------------------------------------------
+
+!> Send the srcarray to the destination task id.
+!> This communication style cannot be easily simulated correctly with one task.
+!> If called, always throw an error.
 
 subroutine send_to(dest_id, srcarray, time, label)
  integer, intent(in) :: dest_id
@@ -233,30 +237,17 @@ subroutine send_to(dest_id, srcarray, time, label)
  type(time_type), intent(in), optional :: time
  character(len=*), intent(in), optional :: label
 
-! Send the srcarray to the destination id.
-! If time is specified, it is also sent in a separate communications call.  
-! This is a synchronous call; it will not return until the destination has 
-! called receive to accept the data.  If the send_to/receive_from calls are 
-! not paired correctly the code will hang.
-
-if ( .not. module_initialized ) call initialize_mpi_utilities()
-
-! simple idiotproofing
-if ((dest_id < 0) .or. (dest_id >= total_tasks)) then
-   write(errstring, '(a,i8,a,i8)') "destination task id ", dest_id, &
-                                   "must be >= 0 and < ", total_tasks
-   call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
-endif
-
-! this style cannot be easily simulated correctly with one task.
-! always throw an error.
 write(errstring, '(a)') "cannot call send_to() in the single process case"
-call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
+      call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
 
 end subroutine send_to
 
 
 !-----------------------------------------------------------------------------
+
+!> Receive the dstarray from the source task id.
+!> This communication style cannot be easily simulated correctly with one task.
+!> If called, always throw an error.
 
 subroutine receive_from(src_id, destarray, time, label)
  integer, intent(in) :: src_id
@@ -264,44 +255,20 @@ subroutine receive_from(src_id, destarray, time, label)
  type(time_type), intent(out), optional :: time
  character(len=*), intent(in), optional :: label
 
-! Receive data into the destination array from the src task.
-! If time is specified, it is received in a separate communications call.  
-! This is a synchronous call; it will not return until the source has 
-! sent the data.  If the send_to/receive_from calls are not paired correctly 
-! the code will hang.
-
-if ( .not. module_initialized ) call initialize_mpi_utilities()
-
-! simple idiotproofing
-if ((src_id < 0) .or. (src_id >= total_tasks)) then
-   write(errstring, '(a,i8,a,i8)') "source task id ", src_id, &
-                                   "must be >= 0 and < ", total_tasks
-   call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
-endif
-
-! this style cannot be easily simulated correctly with one task.
-! always throw an error.
 write(errstring, '(a)') "cannot call receive_from() in the single process case"
-call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
-
-destarray = 0
-if (present(time)) time = set_time(0, 0)
+      call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
 
 end subroutine receive_from
 
 
+
 !-----------------------------------------------------------------------------
-! TODO: do i need to overload this for both integer and real?
-!       do i need to handle 2D inputs?
+
+!> The array already has the values, nothing to do.  Not an error to call.
 
 subroutine array_broadcast(array, root)
  real(r8), intent(inout) :: array(:)
  integer, intent(in) :: root
-
-! The data array values on the root task will be broadcast to every other
-! task.  When this routine returns, all tasks will have the contents of the
-! root array in their own arrays.  Thus 'array' is intent(in) on root, and
-! intent(out) on all other tasks.
 
 if ( .not. module_initialized ) call initialize_mpi_utilities()
 
@@ -312,7 +279,7 @@ if ((root < 0) .or. (root >= total_tasks)) then
    call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
 endif
 
-! array already has the values, nothing to do.
+! Data is already in array, so you can return here.
 
 end subroutine array_broadcast
 
@@ -321,10 +288,11 @@ end subroutine array_broadcast
 ! DART-specific cover utilities
 !-----------------------------------------------------------------------------
 
-function iam_task0()
+!> Return .TRUE. if my local task id is 0, .FALSE. otherwise.
+!> (Task numbers in MPI start at 0, contrary to the rules of polite fortran.)
+!> This version always returns .TRUE. since there is only a single task ever.
 
-! Return .TRUE. if my local task id is 0, .FALSE. otherwise.
-! (Task numbers in MPI start at 0, contrary to the rules of polite fortran.)
+function iam_task0()
 
 logical :: iam_task0
 
@@ -335,18 +303,17 @@ iam_task0 = (myrank == 0)
 end function iam_task0
 
 !-----------------------------------------------------------------------------
+
+!> Returns with nothing to do.  Does validate the 'from' task id.
+!> Not an error to call.
+
 subroutine broadcast_send(from, array1, array2, array3, array4, array5, &
                           scalar1, scalar2, scalar3, scalar4, scalar5)
  integer, intent(in) :: from
- ! really only intent(in) here, but must match array_broadcast() call.
+! arrays are really only intent(in) here, but must match array_broadcast() call.
  real(r8), intent(inout) :: array1(:)
  real(r8), intent(inout), optional :: array2(:), array3(:), array4(:), array5(:)
  real(r8), intent(inout), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
-
-! cover routine for array broadcast.  one additional sanity check -- make 
-! sure the 'from' matches my local task id.  also, these arrays are
-! intent(in) here, but they call a routine which is intent(inout) so they
-! must be the same here.
 
 if ( .not. module_initialized ) call initialize_mpi_utilities()
 
@@ -364,18 +331,17 @@ call array_broadcast(array1, from)
 end subroutine broadcast_send
 
 !-----------------------------------------------------------------------------
+
+!> Returns with nothing to do.  Does validate the 'from' task id.
+!> Not an error to call.
+
 subroutine broadcast_recv(from, array1, array2, array3, array4, array5, &
                           scalar1, scalar2, scalar3, scalar4, scalar5)
  integer, intent(in) :: from
- ! really only intent(out) here, but must match array_broadcast() call.
+! arrays are really only intent(out) here, but must match array_broadcast() call.
  real(r8), intent(inout) :: array1(:)
  real(r8), intent(inout), optional :: array2(:), array3(:), array4(:), array5(:)
  real(r8), intent(inout), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
-
-! cover routine for array broadcast.  one additional sanity check -- make 
-! sure the 'from' is not the same as my local task id.  these arrays are
-! intent(out) here, but they call a routine which is intent(inout) so they
-! must be the same here.
 
 if ( .not. module_initialized ) call initialize_mpi_utilities()
 
@@ -393,6 +359,8 @@ call array_broadcast(array1, from)
 end subroutine broadcast_recv
 
 !-----------------------------------------------------------------------------
+!> return sum for various input types/kinds
+
 subroutine sum_across_tasks_int4(addend, sum)
  integer, intent(in) :: addend
  integer, intent(out) :: sum
@@ -402,8 +370,9 @@ sum = addend
 end subroutine sum_across_tasks_int4
 
 !-----------------------------------------------------------------------------
+
 subroutine sum_across_tasks_int8(addend, sum)
- integer(i8), intent(in) :: addend
+ integer(i8), intent(in)  :: addend
  integer(i8), intent(out) :: sum
 
 sum = addend
@@ -411,6 +380,7 @@ sum = addend
 end subroutine sum_across_tasks_int8
 
 !-----------------------------------------------------------------------------
+
 subroutine sum_across_tasks_real(addend, sum)
  real(r8), intent(in) :: addend
  real(r8), intent(out) :: sum
@@ -419,26 +389,93 @@ sum = addend
 
 end subroutine sum_across_tasks_real
 
+!-----------------------------------------------------------------------------
+
+!> Sum array items across all tasks and send
+!> results in an array of same size to one task.
+
+subroutine send_sum_to(local_val, task, global_val)
+
+real(r8), intent(in)  :: local_val(:)  !> addend vals on each task
+integer,  intent(in)  :: task          !> task to collect on
+real(r8), intent(out) :: global_val(:) !> results returned only on given task
+
+global_val(:) = local_val(:) ! only one task.
+
+end subroutine send_sum_to
+
+!-----------------------------------------------------------------------------
+
+!> Collect min and max on task.
+
+subroutine send_minmax_to(minmax, task, global_val)
+
+real(r8), intent(in)  :: minmax(2)     !> min max on each task
+integer,  intent(in)  :: task          !> task to collect on
+real(r8), intent(out) :: global_val(2) !> results returned only on given task
+
+global_val(:) = minmax(:) ! only one task.
+
+end subroutine send_minmax_to
+
+!-----------------------------------------------------------------------------
+
+!> cover routine which is deprecated.  when all user code replaces this
+!> with broadcast_minmax(), remove this.
+
+subroutine all_reduce_min_max(min_var, max_var, num_elements)
+
+integer,  intent(in)    :: num_elements
+real(r8), intent(inout) :: min_var(num_elements)
+real(r8), intent(inout) :: max_var(num_elements)
+
+call broadcast_minmax(min_var, max_var, num_elements)
+
+end subroutine all_reduce_min_max
+
+!-----------------------------------------------------------------------------
+
+!> Find min and max of each element of an array across tasks, put the result on every task.
+!> For this null_mpi_version min_var and max_var are unchanged because there is
+!> only 1 task.
+
+subroutine broadcast_minmax(min_var, max_var, num_elements)
+
+integer,  intent(in)    :: num_elements
+real(r8), intent(inout) :: min_var(num_elements)
+real(r8), intent(inout) :: max_var(num_elements)
+
+end subroutine broadcast_minmax
+
+!-----------------------------------------------------------------------------
+
+!> Broadcast logical
+
+subroutine broadcast_flag(flag, root)
+
+logical, intent(inout) :: flag
+integer, intent(in)    :: root !> relative to get_dart_mpi_comm()
+
+integer :: errcode
+
+! does nothing because data is already there
+
+end subroutine broadcast_flag
+
 
 !-----------------------------------------------------------------------------
 ! pipe-related utilities
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
+
 subroutine block_task()
 
-
-if ( .not. module_initialized ) call initialize_mpi_utilities()
- 
- 
 end subroutine block_task
 
 !-----------------------------------------------------------------------------
-subroutine restart_task()
-   
-   
-if ( .not. module_initialized ) call initialize_mpi_utilities()
 
+subroutine restart_task()
 
 end subroutine restart_task
 
@@ -446,56 +483,64 @@ end subroutine restart_task
 !-----------------------------------------------------------------------------
 ! general system util wrappers.
 !-----------------------------------------------------------------------------
+
+!> Use the system() command to execute a command string.
+!> Will wait for the command to complete and returns an
+!> error code unless you end the command with & to put
+!> it into background.   Function which returns the rc
+!> of the command, 0 being all is ok.
+
 function shell_execute(execute_string, serialize)
  character(len=*), intent(in) :: execute_string
  logical, intent(in), optional :: serialize
  integer :: shell_execute
 
-! Use the system() command to execute a command string.
-! Will wait for the command to complete and returns an
-! error code unless you end the command with & to put
-! it into background.   Function which returns the rc
-! of the command, 0 being all is ok.
+!DEBUG: print *, "in-string is: ", trim(execute_string)
 
-! on some platforms/mpi implementations, the system() call
-! does not seem to be reentrant.  if serialize is set and
-! is true, do each call serially.
+call do_system(execute_string, shell_execute)
 
-character(len=255) :: doit
-
-   !print *, "in-string is: ", trim(execute_string)
-
-   write(doit, "(a, 1x, a1)") trim(execute_string), char(0)
-
-   !print *, "about to run: ", trim(doit)
-   !print *, "input string length = ", len(trim(doit))
-
-! !!NAG_BLOCK_EDIT START COMMENTED_OUT
-!   call system(doit, status=rc)
-!   shell_execute = rc
-! !!NAG_BLOCK_EDIT END COMMENTED_OUT
-  !!OTHER_BLOCK_EDIT START COMMENTED_IN
-    shell_execute = system(doit)
-  !!OTHER_BLOCK_EDIT END COMMENTED_IN
-   !print *, "execution returns, rc = ", shell_execute
-
+!DEBUG: print *, "execution returns, rc = ", shell_execute
+    
 end function shell_execute
 
 !-----------------------------------------------------------------------------
+
+!> wrapper so you only have to make this work in a single place
+!> 'shell_name' is a namelist item and normally is the null string.
+!> on at least on cray system, the compute nodes only had one type
+!> of shell and you had to specify it.
+
+subroutine do_system(execute, rc)
+
+character(len=*), intent(in)  :: execute
+integer,          intent(out) :: rc
+
+! !!NAG_BLOCK_EDIT START COMMENTED_OUT
+!  call system(trim(shell_name)//' '//trim(execute)//' '//char(0), errno=rc)
+! !!NAG_BLOCK_EDIT END COMMENTED_OUT
+! !!OTHER_BLOCK_EDIT START COMMENTED_IN
+    rc = system(trim(shell_name)//' '//trim(execute)//' '//char(0))
+! !!OTHER_BLOCK_EDIT END COMMENTED_IN
+
+end subroutine do_system
+
+!-----------------------------------------------------------------------------
+
+!> Wrapper for the sleep command.  Argument is a real
+!> in seconds.  Different systems have different lower
+!> resolutions for the minimum time it will sleep.
+!> Subroutine, no return value.
+
 subroutine sleep_seconds(naplength)
- real(r8), intent(in) :: naplength
 
-! Wrapper for the sleep command.  Argument is a real
-! in seconds.  Different systems have different lower
-! resolutions for the minimum time it will sleep.
-! Subroutine, no return value.
+real(r8), intent(in) :: naplength
 
- integer :: sleeptime
+integer :: sleeptime
 
- sleeptime = floor(naplength)
- if (sleeptime <= 0) sleeptime = 1
+sleeptime = floor(naplength)
+if (sleeptime <= 0) sleeptime = 1
 
- call sleep(sleeptime)
+call sleep(sleeptime)
 
 end subroutine sleep_seconds
 
@@ -548,69 +593,18 @@ read_mpi_timer = now - base
 end function read_mpi_timer
 
 !-----------------------------------------------------------------------------
+!> Return the communicator number.
 
 function get_dart_mpi_comm()
- integer :: get_dart_mpi_comm
 
-! return dummy value
-get_dart_mpi_comm = 0
+integer :: get_dart_mpi_comm
+
+get_dart_mpi_comm = my_local_comm
 
 end function get_dart_mpi_comm
 
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
-! Sum array items across all tasks and send
-! results in an array of same size to one task.
-subroutine send_sum_to(local_val, task, global_val)
-
-real(r8), intent(in)  :: local_val(:)  !> addend vals on each task
-integer,  intent(in)  :: task          !> task to collect on
-real(r8), intent(out) :: global_val(:) !> results returned only on given task
-
-global_val(:) = local_val(:) ! only one task.
-
-end subroutine send_sum_to
-
-!-----------------------------------------------------------------------------
-
-!-----------------------------------------------------------------------------
-! Collect min and max on task.
-subroutine send_minmax_to(minmax, task, global_val)
-
-real(r8), intent(in)  :: minmax(2)     !> min max on each task
-integer,  intent(in)  :: task          !> task to collect on
-real(r8), intent(out) :: global_val(2) !> results returned only on given task
-
-global_val(:) = minmax(:) ! only one task.
-
-end subroutine send_minmax_to
-
-!-----------------------------------------------------------------------------
-! cover routine which is deprecated.  when all user code replaces this
-! with broadcast_minmax(), remove this.
-subroutine all_reduce_min_max(min_var, max_var, num_elements)
-
-integer,  intent(in)    :: num_elements
-real(r8), intent(inout) :: min_var(num_elements)
-real(r8), intent(inout) :: max_var(num_elements)
-
-call broadcast_minmax(min_var, max_var, num_elements)
-
-end subroutine all_reduce_min_max
-
-
-!-----------------------------------------------------------------------------
-! Find min and max of each element of an array across tasks, put the result on every task.
-! For this null_mpi_version min_var and max_var are unchanged because there is
-! only 1 task.
-subroutine broadcast_minmax(min_var, max_var, num_elements)
-
-integer,  intent(in)    :: num_elements
-real(r8), intent(inout) :: min_var(num_elements)
-real(r8), intent(inout) :: max_var(num_elements)
-
-end subroutine broadcast_minmax
-
 !-----------------------------------------------------------------------------
 ! One sided communication
 
@@ -619,7 +613,7 @@ subroutine get_from_mean(owner, window, mindex, x)
 integer,  intent(in)  :: owner  ! task in the window that owns the memory
 integer,  intent(in)  :: window ! window object
 integer,  intent(in)  :: mindex ! index in the tasks memory
-real(r8), intent(out) :: x ! result
+real(r8), intent(out) :: x      ! result
 
 call error_handler(E_ERR,'get_from_mean', 'cannot be used in serial mode', source, revision, revdate)
 
@@ -645,29 +639,21 @@ x(:) = 0.0_r8
 
 end subroutine get_from_fwd
 
-
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
-
-! Broadcast logical
-subroutine broadcast_flag(flag, root)
-
-logical, intent(inout) :: flag
-integer, intent(in)    :: root ! relative to get_dart_mpi_comm()
-
-end subroutine broadcast_flag
 
 
 end module mpi_utilities_mod
 
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
-! NOTE -- non-module code, so this subroutine can be called from the
-!  utilities module, which this module uses (and cannot have circular refs)
+!> NOTE: non-module code, so this subroutine can be called from the
+!>  utilities module, which this module uses (and cannot have circular refs)
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------
+!> Call exit with the specified code.  NOT PART of the mpi_utilities_mod, so
+!> this can be called from any code in the system.
 
 subroutine exit_all(exit_code)
 ! !!NAG_BLOCK_EDIT START COMMENTED_OUT
@@ -675,11 +661,11 @@ subroutine exit_all(exit_code)
 ! !!NAG_BLOCK_EDIT END COMMENTED_OUT
  integer, intent(in) :: exit_code
 
-! Call exit with the specified code.
-
    call exit(exit_code)
 
 end subroutine exit_all
+
+!-----------------------------------------------------------------------------
 
 ! <next few lines under version control, do not edit>
 ! $URL$
