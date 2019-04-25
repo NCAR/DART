@@ -2,7 +2,7 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
+! DART $Id$
 
 
 !> open an obs_seq file and randomly change the error variance of N of 
