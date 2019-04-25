@@ -31,11 +31,11 @@ function varargout = run_template(varargin)
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
 gui_State = struct('gui_Name',       mfilename, ...
-                   'gui_Singleton',  gui_Singleton, ...
-                   'gui_OpeningFcn', @run_template_OpeningFcn, ...
-                   'gui_OutputFcn',  @run_template_OutputFcn, ...
-                   'gui_LayoutFcn',  [] , ...
-                   'gui_Callback',   []);
+    'gui_Singleton',  gui_Singleton, ...
+    'gui_OpeningFcn', @run_template_OpeningFcn, ...
+    'gui_OutputFcn',  @run_template_OutputFcn, ...
+    'gui_LayoutFcn',  [] , ...
+    'gui_Callback',   []);
 if nargin && ischar(varargin{1})
     gui_State.gui_Callback = str2func(varargin{1});
 end
@@ -123,43 +123,43 @@ set(handles.pushbutton_single_step, 'Enable', 'Off');
 
 % Check the button label to see if we are starting or stopping a free run
 if(strcmp(get(hObject, 'String'), 'Stop Free Run'))
-
-   % Turn off the free run pushbutton until everything has completely stopped
-   set(hObject, 'Enable', 'Off');
-
-   % Being told to stop; switch to not running status
-   set(hObject, 'String', 'Start Free Run');
-
-   % Update the handles global structure
-   guidata(hObject, handles);
-
+    
+    % Turn off the free run pushbutton until everything has completely stopped
+    set(hObject, 'Enable', 'Off');
+    
+    % Being told to stop; switch to not running status
+    set(hObject, 'String', 'Start Free Run');
+    
+    % Update the handles global structure
+    guidata(hObject, handles);
+    
 else
-   % Being told to start free run
-   % Change the pushbutton to stop
-   set(hObject, 'String', 'Stop Free Run');
-   % Update the handles global structure
-   guidata(hObject, handles);
-
-   % Loop through advance and assimilate steps until stopped
-   while(true)
-      % Check to see if stop has been pushed; get latest copy of global data
-      my_data = guidata(gcbo);
-
-      status_string = get(my_data.pushbutton_free_run, 'String');
-      if(strcmp(status_string, 'Start Free Run'))
-
-         % Turn all the other model status controls back on
-         % MAKE SURE TO INCLUDE OTHER CONTROLS HERE
-         set(handles.pushbutton_single_step, 'Enable', 'On');
-
-         % Very last, turn on the start free run button
-         set(hObject, 'Enable', 'On');
-
-         return
-      end
-      % Do the next advance or assimilation step
-      step_ahead(hObject, my_data)
-   end
+    % Being told to start free run
+    % Change the pushbutton to stop
+    set(hObject, 'String', 'Stop Free Run');
+    % Update the handles global structure
+    guidata(hObject, handles);
+    
+    % Loop through advance and assimilate steps until stopped
+    while(true)
+        % Check to see if stop has been pushed; get latest copy of global data
+        my_data = guidata(gcbo);
+        
+        status_string = get(my_data.pushbutton_free_run, 'String');
+        if(strcmp(status_string, 'Start Free Run'))
+            
+            % Turn all the other model status controls back on
+            % MAKE SURE TO INCLUDE OTHER CONTROLS HERE
+            set(handles.pushbutton_single_step, 'Enable', 'On');
+            
+            % Very last, turn on the start free run button
+            set(hObject, 'Enable', 'On');
+            
+            return
+        end
+        % Do the next advance or assimilation step
+        step_ahead(hObject, my_data)
+    end
 end
 
 % Only way to get here is at the end of a stop; No need to clean up
@@ -173,27 +173,27 @@ function step_ahead(hObject, handles)
 
 % Test on semaphore, either advance or assimilate
 if(handles.ready_to_advance)
-   % Set semaphore to indicate that next step is an assimilation
-   handles.ready_to_advance = false;
-
-   % Set the pushbutton text to indicate that next step is an assimilate
-   set(handles.pushbutton_single_step, 'String', 'Assimilate Obs');
-
-   % Code for advancing model comes next (delete two exisiting lines)
-   pause(2)
-   plot([1 2], [2 1], 'r');
-
+    % Set semaphore to indicate that next step is an assimilation
+    handles.ready_to_advance = false;
+    
+    % Set the pushbutton text to indicate that next step is an assimilate
+    set(handles.pushbutton_single_step, 'String', 'Assimilate Obs');
+    
+    % Code for advancing model comes next (delete two exisiting lines)
+    pause(2)
+    plot([1 2], [2 1], 'r');
+    
 else
-   % Set semaphore to indicate that next step is a model advance
-   handles.ready_to_advance = true;
-
-   % Set the pushbutton text to indicate that the next step is a model advance
-   set(handles.pushbutton_single_step, 'String', 'Advance Model');
-
-   % Code for doing the assimilation comes here (delete two exisiting lines)
-   pause(2)
-   plot([1 2], [2 1], 'b');
-
+    % Set semaphore to indicate that next step is a model advance
+    handles.ready_to_advance = true;
+    
+    % Set the pushbutton text to indicate that the next step is a model advance
+    set(handles.pushbutton_single_step, 'String', 'Advance Model');
+    
+    % Code for doing the assimilation comes here (delete two exisiting lines)
+    pause(2)
+    plot([1 2], [2 1], 'b');
+    
 end
 
 % If using multiple windows might need to reset focus to the gui window here

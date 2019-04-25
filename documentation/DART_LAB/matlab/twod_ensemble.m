@@ -273,9 +273,9 @@ set(handles.h_obMarginal  , 'Yticklabel', []);
 
 %This graph is the graph of the observation
 handles.h_obs_likelihood = axes( ...
-      'Position', [500/figureWidth 40/figureHeight 390/figureWidth 200/figureHeight], ...
-      'FontName', atts.fontname, ...
-      'FontSize', atts.fontsize);
+    'Position', [500/figureWidth 40/figureHeight 390/figureWidth 200/figureHeight], ...
+    'FontName', atts.fontname, ...
+    'FontSize', atts.fontsize);
 
 handles.h_marg_obs_plot = plot_gaussian(observation, obs_error_sd, 1);
 
@@ -302,13 +302,13 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
 
     function create_ensemble_Callback(~,~)
         % Allows the user to create a new ensemble in the left axes
-
+        
         % Disable the update ensemble button and all other active buttons
         set(handles.ui_button_create_ensemble, 'Enable', 'Off');
         set(handles.ui_button_update_ensemble, 'Enable', 'Off');
         set(handles.ui_edit_observation,       'Enable', 'Off');
         set(handles.ui_edit_obs_error_sd,      'Enable', 'Off');
-
+        
         % Clear out any old ensemble members if they exist
         axes(handles.h_joint)
         for i = 1:handles.ens_size
@@ -317,7 +317,7 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
             set(handles.h_unobs(i),         'Visible', 'off');
             set(handles.h_marg(i),          'Visible', 'off');
         end
-
+        
         % Turn off any posterior old plotting
         set(handles.h_update_ens,   'Visible', 'off');
         set(handles.h_marg_update,  'Visible', 'off');
@@ -326,106 +326,106 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
         set(handles.h_state_inc,    'Visible', 'off');
         set(handles.h_joint_update, 'Visible', 'off');
         set(handles.h_joint_inc,    'Visible', 'off');
-
+        
         % Clear out the old best fit line
         set(handles.h_best_fit, 'Visible', 'off');
         set(handles.h_correl,   'Visible', 'off');
-
+        
         % Work in the joint distribution plot
         axes(handles.h_joint);
         hold on
-
+        
         % Need to guarantee at least 2 ensemble members
         ens_size = 0;
-
+        
         while ens_size < 1000
-
+            
             [xt, yt] = ginput(1);
             gca;
             % Make sure that the click was in the correct set of axes
             % Terminate by clicking outside of graph range
             if(xt < 0 || xt > 10 || yt < 0 || yt > 10 || gca ~= handles.h_joint)
-                axes(handles.h_joint);
+                axes(handles.h_joint); %#ok<LAXES>
                 break;
             else
-
+                
                 ens_size = ens_size + 1;
-                x(1, ens_size) = xt;
-                x(2, ens_size) = yt;
-
-                axes(handles.h_joint);
+                x(1, ens_size) = xt; %#ok<AGROW>
+                x(2, ens_size) = yt; %#ok<AGROW>
+                
+                axes(handles.h_joint); %#ok<LAXES>
                 handles.h_ens_member(ens_size) = ...
                     plot(x(1, ens_size), x(2, ens_size), '*', ...
                     'MarkerSize', 16, 'Color', atts.green, 'LineWidth',2.0);
-
+                
                 % Plot the marginal for the unobserved state variable
                 %>@ TODO  POSSIBLE IMPROVEMENT ... annotate new marginal mean, sd
-                axes(handles.h_unobMarginal);
+                axes(handles.h_unobMarginal); %#ok<LAXES>
                 handles.h_unobs(ens_size) = ...
                     plot(0, x(2, ens_size), '*', 'MarkerSize', 16, 'Color', atts.green, 'LineWidth',2.0);
-
+                
                 % Plot the marginal for the observed quantity
-                axes(handles.h_obMarginal);
+                axes(handles.h_obMarginal); %#ok<LAXES>
                 handles.h_marg(ens_size) = ...
                     plot(x(1, ens_size), 0, '*', 'MarkerSize', 16, 'Color', atts.green, 'LineWidth',2.0);
-
+                
                 % Plot the marginal in the gui frame
-                axes(handles.h_obs_likelihood);
+                axes(handles.h_obs_likelihood); %#ok<LAXES>
                 handles.h_gui_marg(ens_size) = ...
                     plot(x(1, ens_size), 0, '*', 'MarkerSize', 16, 'Color', atts.green, 'LineWidth',2.0);
-
+                
                 % Then switch back to axes(handles.h_joint)
-                axes(handles.h_joint);
-
+                axes(handles.h_joint); %#ok<LAXES>
+                
                 if (ens_size < 2)
                     continue
                 end
-
+                
                 % Clear out the error message if it's been made visible
                 set(h_err_text, 'Visible', 'off');
                 set(h_click,    'Visible', 'off');
-
+                
                 prior_correl = corrcoef(x(1, :), x(2, :));
                 str1         = sprintf('Correlation = %f', prior_correl(1,2));
                 set(handles.h_correl,'String', str1, 'Visible', 'on')
-
+                
             end
         end
-
+        
         % it is possible that they click outside the box before completing a viable
         % ensemble ... in this case, just return and let them start over.
         if (ens_size > 0)
-
+            
             % Turn off the data entry messages
             set(h_finish, 'Visible', 'off');
-
+            
             %% Ensemble created, compute mean and sd, clean up and return
             % Set the global gui storage
             handles.ens_size    = ens_size;
             handles.ens_members = x;
-
+            
             % Plot the best fit line on the ensemble
             prior_mean = mean(x, 2);
             prior_cov  = cov(x(1, :), x(2, :));
             slope      = prior_cov(1, 2) / var(x(1, :));
-
+            
             best_x = [0 10];
             best_y(1) = prior_mean(2) - (prior_mean(1)) * slope;
             best_y(2) = best_y(1) + 10 * slope;
             handles.h_best_fit = plot(best_x, best_y, 'g', 'LineWidth', 2.0);
             set(handles.h_best_fit, 'Color', atts.green);
-
+            
         end
-
+        
         % Enable the update ensemble button
         set(handles.ui_button_create_ensemble, 'Enable', 'On');
         set(handles.ui_button_update_ensemble, 'Enable', 'On');
         set(handles.ui_edit_observation,       'Enable', 'On');
         set(handles.ui_edit_obs_error_sd,      'Enable', 'On');
-
+        
         % Reset focus to the menu gui window
         axes(handles.h_obs_likelihood);
-
+        
     end
 
 %% -------------------------------------------------------------------------
@@ -434,7 +434,7 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
         % Uses the assimilation to update the ensemble according to the
         % observation, and then plots it on the main graph on the left, the
         % two marginals, and the right observation graph
-
+        
         axes(handles.h_obs_likelihood);
         % Turn off any old points
         set(handles.h_update_ens,   'Visible', 'off');
@@ -444,13 +444,13 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
         set(handles.h_state_inc,    'Visible', 'off');
         set(handles.h_joint_update, 'Visible', 'off');
         set(handles.h_joint_inc,    'Visible', 'off');
-
+        
         ensemble = handles.ens_members;
         h_observation  = get(handles.ui_edit_observation);
         h_obs_error_sd = get(handles.ui_edit_obs_error_sd);
         observation    = str2double(h_observation.String);
         obs_error_sd   = str2double(h_obs_error_sd.String);
-
+        
         %If ensemble is not empty
         if (size(ensemble,2) > 0)
             switch handles.filter_type
@@ -464,19 +464,19 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
                     [obs_increments, ~] = ...
                         obs_increment_rhf(ensemble(1, :), observation, obs_error_sd^2);
             end
-
+            
             % Add on increments to get new ensemble
             new_ensemble = ensemble(1, :) + obs_increments;
-
+            
             %Set the y-coordinate of the ensembles, to be halfway between 0 and
             %the bottom of the graph;
             y(1:handles.ens_size) = -handles.y_max/10;
-
+            
             handles.h_update_ens = plot(new_ensemble, y, '*', 'MarkerSize', 16, 'Color', atts.blue);
-
+            
             % Plot the increments in the state marginal plot
             axes(handles.h_obMarginal);
-
+            
             % Need to sort ensemble to get nice ordering for increments
             [~, sort_obs_ind] = sort(ensemble(1, :));
             for i = 1:handles.ens_size
@@ -488,16 +488,16 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
                     plot([ensemble(1, sort_obs_ind(i)), new_ensemble(1, sort_obs_ind(i))], ...
                     [y(i), y(i)], 'c');
             end
-
+            
             % Figure out the increments for the unobserved variable
-
+            
             axes(handles.h_unobMarginal);
-
+            
             covar     = cov(ensemble');
             state_inc = obs_increments * covar(1, 2) / covar(1, 1);
             new_state = ensemble(2, :) + state_inc;
             %>@ TODO POSSIBLE IMPROVEMENT ... annotate new marginal mean, sd
-
+            
             % Now need to sort the state variable ensemble to get nice ordering
             [~, sort_ind] = sort(ensemble(2, :));
             for i = 1:handles.ens_size
@@ -507,7 +507,7 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
                 handles.h_state_inc(i) = plot([y(i), y(i)], ...
                     [ensemble(2, sort_ind(i)), new_state(sort_ind(i))], 'c');
             end
-
+            
             % Plot the updated joint distribution points
             axes(handles.h_joint);
             for i = 1:handles.ens_size
@@ -516,30 +516,30 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
                 handles.h_joint_inc(i) = plot([ensemble(1, i), new_ensemble(1, i)], ...
                     [ensemble(2, i), new_state(i)], 'c');
             end
-
+            
             % Return the focus to the window with pushbuttons
             axes(handles.h_obs_likelihood);
-
+            
         end
     end
 
 %% -------------------------------------------------------------------------
 
     function edit_observation_Callback(~, ~)
-
+        
         % Enable things that an error might have turned off
         set(handles.ui_edit_obs_error_sd,      'Enable', 'on');
         set(handles.ui_button_create_ensemble, 'Enable', 'on');
-
+        
         % Only enable the update ensemble pushbutton if an ensemble has been created
         if(handles.ens_size > 0)
             set(handles.ui_button_update_ensemble, 'Enable', 'on');
         end
-
+        
         % Get the value of the observation
         if( isfinite( str2double(    get(handles.ui_edit_observation, 'String'))))
             observation = str2double(get(handles.ui_edit_observation, 'String'));
-
+            
             if (observation > 10)
                 set(handles.ui_edit_observation, 'String', '<10!');
                 input_error('observation');
@@ -549,7 +549,7 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
                 input_error('observation');
                 return;
             end
-
+            
             %Set background color to normal and error text off
             set(handles.ui_edit_observation, 'BackgroundColor', 'white');
             set(handles.ui_text_error,  'Visible', 'Off');
@@ -562,55 +562,55 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
             input_error('observation');
             return
         end
-
+        
         % Get the value of the observation error sd
         h_obs_error_sd = get(handles.ui_edit_obs_error_sd);
         obs_error_sd   = str2double(h_obs_error_sd.String);
-
+        
         % Plot the updated distribution
         set(handles.h_marg_obs_plot, 'Visible', 'off');
         handles.h_marg_obs_plot = plot_gaussian(observation, obs_error_sd, 1);
         set(handles.h_marg_obs_plot, 'Color', atts.red, 'Linestyle', '--', 'Linewidth', 2);
-
+        
         % Update the observation asterisk
         set(handles.h_obs_ast, 'Visible', 'off');
         handles.h_obs_ast = plot(observation, 0, 'r*', 'MarkerSize', 16,'LineWidth',2.0);
         set(handles.h_obs_ast,'Color',atts.red)
-
+        
         % Plot the updated obs distribution on the marginal subplot
         axes(handles.h_obMarginal);
-
+        
         % Plot the updated observation in the marginal
         set(handles.h_obs_marg, 'Visible', 'off');
         handles.h_obs_marg = plot(observation, 0, 'r*', 'MarkerSize', 16,'LineWidth',2.0);
         set(handles.h_obs_marg,'Color',atts.red)
-
+        
         % Replot the update ensemble members so the correlate to new
         % observation
         update_ensemble_Callback();
-
+        
         axes(handles.h_obs_likelihood);
-
+        
     end
 
 %% --------------------------------------------------------------------
 
     function edit_obs_error_sd_Callback(~, ~)
-
+        
         % Enable things that an error might have turned off
         set(handles.ui_edit_observation,       'Enable', 'on')
         set(handles.ui_button_create_ensemble, 'Enable', 'on')
-
+        
         % Only enable the update ensemble pushbutton if an ensemble has been created
         if(handles.ens_size > 0)
             set(handles.ui_button_update_ensemble, 'Enable', 'on');
         end
-
+        
         % Get the value of the observation error standard deviation
         if(isfinite(str2double(get(handles.ui_edit_obs_error_sd, 'String'))) && ...
-                    str2double(get(handles.ui_edit_obs_error_sd, 'String')) > 0)
+                str2double(get(handles.ui_edit_obs_error_sd, 'String')) > 0)
             obs_error_sd = str2double(get(handles.ui_edit_obs_error_sd, 'String'));
-
+            
             %Set background color to normal and error text off
             set(handles.ui_edit_obs_error_sd, 'BackgroundColor', 'white');
             set(handles.ui_text_error,  'Visible', 'Off');
@@ -618,55 +618,55 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
             set(handles.h_best_fit,     'Visible', 'On');
             set(handles.h_joint_update, 'Visible', 'On');
             set(handles.h_joint_inc,    'Visible', 'On');
-
+            
         else
             set(handles.ui_edit_obs_error_sd, 'String', '?');
             input_error('standard deviation');
             return
         end
-
+        
         % Get the value of the observation
         h_observation = get(handles.ui_edit_observation);
         observation   = str2double(h_observation.String);
         handles.y_max = norm_pdf(observation, observation, obs_error_sd);
-
+        
         %Give 0.2 cushion to y_max
         handles.y_max = handles.y_max + 0.2;
-
+        
         %Update the axis based on the new y_max
         axis([0 10 -handles.y_max/5 handles.y_max]);
-
+        
         set(gca,'YTickMode','auto')
         ticks    = get(gca,'YTick');
         inds     = (ticks >= 0); % Only show ticks for values greater than 0
         newticks = ticks(inds);
         set(gca,'YTick',newticks)
-
+        
         % Replot the update ensemble members so the correlate to new obs_sd
         update_ensemble_Callback();
-
+        
         % Plot the updated distribution on the menu plot
-
+        
         set(handles.h_marg_obs_plot, 'Visible', 'off');
         handles.h_marg_obs_plot = plot_gaussian(observation, obs_error_sd, 1);
         set(handles.h_marg_obs_plot, 'Color', atts.red, 'Linestyle', '--', 'Linewidth', 2);
-
+        
         % Update the observation asterisk
-
+        
         set(handles.h_obs_ast, 'Visible', 'off');
         handles.h_obs_ast = plot(observation, 0, 'r*', 'MarkerSize', 16,'LineWidth',2.0);
         set(handles.h_obs_ast, 'Color', atts.red)
-
+        
         % Plot the updated observation in the marginal
         axes(handles.h_obMarginal);
-
+        
         set(handles.h_obs_marg, 'Visible', 'off');
         handles.h_obs_marg = plot(observation, 0, 'r*', 'MarkerSize', 16,'LineWidth',2.0);
         set(handles.h_obs_marg, 'Color', atts.red)
-
+        
         % Reset focus to the menu gui window
         axes(handles.h_obs_likelihood);
-
+        
     end
 
 %% ----------------------------------------------------------------------------
@@ -699,12 +699,12 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
     function Assimilation_selection(~, eventdata)
         % Function is called whenever a radio button has been selected, it sets
         % the global filter variable
-
+        
         % eventdata refers to the data in the GUI when a radio button in the
         % group is changed
-
+        
         % Set the filter_type string to newest radiobutton Value
-
+        
         handles.filter_type = get(eventdata.NewValue,'String');
     end
 
@@ -720,14 +720,14 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
                 set(handles.h_joint_inc,              'Visible', 'Off');
                 set(handles.ui_text_error,            'String' , 'Observation must be a number between 0 and 10');
                 set(handles.ui_text_error,            'Visible', 'On');
-
+                
                 % Disable other input to guarantee only one error at a time!
                 set(handles.ui_edit_obs_error_sd,      'Enable', 'off');
                 set(handles.ui_button_create_ensemble, 'Enable', 'off');
                 set(handles.ui_button_update_ensemble, 'Enable', 'off');
-
+                
             otherwise
-
+                
                 set(handles.ui_edit_obs_error_sd, 'BackgroundColor', atts.red);
                 set(handles.h_ens_member,   'Visible', 'Off');
                 set(handles.h_best_fit,     'Visible', 'Off');
@@ -735,7 +735,7 @@ plot([0 10], [0 0], 'k', 'LineWidth', 2);
                 set(handles.h_joint_inc,    'Visible', 'Off');
                 set(handles.ui_text_error,  'String' , 'Observation Error SD must be a number greater than 0');
                 set(handles.ui_text_error,  'Visible', 'On');
-
+                
                 % Disable other input to guarantee only one error at a time!
                 set(handles.ui_edit_observation,       'Enable', 'off')
                 set(handles.ui_button_create_ensemble, 'Enable', 'off')
