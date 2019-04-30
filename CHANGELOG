@@ -775,15 +775,17 @@ and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - Important performance fix if model does vertical conversion for localization.
-Results were not wrong but performance was poor if 'distribute_mean = .true.' 
-was selected in the &assim_tools_nml namelist.
-Now distributing the mean runs in close to the non-distributed time and uses
-much less memory for large models. This only impacts models which do a vertical
-conversion of either the observation or state vertical coordinate for localization
-AND which set &assim_tools_nml :: distribute_mean = .true. to use less memory.
-When using a distributed mean "convert_all_obs_verticals_first = .true." should 
-be set.  If your observations will impact most of the model state, then 
-"convert_all_state_verticals_first = .true.' can also be set.
+  Results were not wrong but performance was poor if 'distribute_mean = .true.' 
+  was selected in the &assim_tools_nml namelist.
+
+  Now distributing the mean runs in close to the non-distributed time and uses
+  much less memory for large models. This only impacts models which do a vertical
+  conversion of either the observation or state vertical coordinate for localization
+  AND which set &assim_tools_nml :: distribute_mean = .true. to use less memory.
+
+  When using a distributed mean "convert_all_obs_verticals_first = .true." should 
+  be set.  If your observations will impact most of the model state, then 
+  "convert_all_state_verticals_first = .true.' can also be set.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 + Apr 30 2019 :: cam-fv refactor, posteriors optional, QC 8   $Revision$
@@ -825,7 +827,7 @@ be set.  If your observations will impact most of the model state, then
 - get_maxdist() now a required routine all location modules
 
 - Default routines now create a time variable as time(time) to allow multiple
-  files to be concatinated along the unlimited dimension more easily.  Also
+  files to be concatenated along the unlimited dimension more easily.  Also
   conforms to the netCDF convention for coordinate dimensions.
 
 - obs_impact_tool handles a continuum of values, not just discrete 0 or 1.
@@ -864,7 +866,7 @@ be set.  If your observations will impact most of the model state, then
 - Better error and informational messages in various routines.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ MMM DD YYYY :: summary of changes in Manhattan update   $Revision$
++ MMM DD YYYY :: summary of changes in next Manhattan update $Revision$
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
