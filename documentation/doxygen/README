@@ -8,7 +8,7 @@ Doxygen automatic documentation generation.
 
 To create html pages from the DART source:
 
-- You must have doxygen installed somewhere on your search path.  
+- You must have 'doxygen' installed somewhere on your search path.  
   From a terminal window type 'which doxygen'.  For Linux systems
   in many cases this is already installed.  For Macs try one of
   the package managers like 'macports'.  The GUI download .dmg
@@ -21,21 +21,21 @@ To create html pages from the DART source:
   cd into that directory and run the './gendocs' shell script.  It will 
   generate a single index.html main page plus separate documentation pages 
   for each executable that has a mkmf_xxx and path_names_xxx pair of files 
-  in the work directory.  All documentation will be created and put under 
-  $DART/documentation/doxygen/model_name.
+  in the work directory. The last output lines of the script will echo 
+  where the html files have been created.
 
   To create documentation with diagrams of 'used by' and 'uses', run
-  './gendocs -devel' to enable the development diagrams.
+  './gendocs -devel' to enable the development diagrams.  This takes
+  longer to run and requires the 'dot' utility.
 
 
 To use the documentation:
 
-- Open $DART/documentation/doxygen/model_name/index.html in a browser and click
-  on any executable name.
+- Open index.html in a browser and click on any executable name.
 
 - Click on the triangle in front of 'Data Types List' to open the list.
 
-- There is a second 'Data Types List'.  Click on that triangle in
+- There may be a second 'Data Types List'.  Click on that triangle in
   front of the second 'Data Types List' to open the list. You
   should see a list of modules.
 
@@ -49,6 +49,7 @@ To use the documentation:
 
 - Any text in blue can be clicked on and it will take you to the
   reference page for that type, function or subroutine.
+
 
 # <next few lines under version control, do not edit>
 # $URL$
