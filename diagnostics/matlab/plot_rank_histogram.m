@@ -60,6 +60,10 @@ else
     error('wrong number of arguments ... ')
 end
 
+%TODO actually implement the varargin ... should be able to specify a
+%         specific region or level
+
+
 % Make sure the file exists.
 
 if (exist(fname,'file') ~= 2)
@@ -152,7 +156,7 @@ plotdat.NQC4index   = get_copy_index(fname,'N_DARTqc_4');
 plotdat.NQC5index   = get_copy_index(fname,'N_DARTqc_5');
 plotdat.NQC6index   = get_copy_index(fname,'N_DARTqc_6');
 plotdat.NQC7index   = get_copy_index(fname,'N_DARTqc_7');
-plotdat.NQC8index   = get_copy_index(fname,'N_DARTqc_8');
+plotdat.NQC8index   = get_copy_index(fname,'N_DARTqc_8','fatal',false);
 
 figuredata = setfigure();
 
@@ -162,42 +166,42 @@ figuredata = setfigure();
 psfname = cell(plotdat.nvars);
 
 for ivar = 1:plotdat.nvars
-    
+
     % create the variable names of interest.
     % netCDF can only support variable names less than 41 chars.
-    
+
     plotdat.myvarname = plotdat.varnames{ivar};
     plotdat.guessvar  = sprintf('%s_guess',plotdat.varnames{ivar});
-    
+
     plotdat.rhistvar = BuildFullVarname(plotdat.varnames{ivar});
-    
+
     [present, ~] = nc_var_exists(fname, plotdat.rhistvar);
     if ( ~ present )
         fprintf('Could not find %s in %s ... skipping\n',plotdat.rhistvar, fname)
         continue
     end
-    
+
     % remove any existing postscript file - will simply append each
     % level as another 'page' in the .ps file.
-    
+
     for iregion = 1:plotdat.nregions
         psfname{iregion} = sprintf('%s_rank_hist_region%d.ps',plotdat.varnames{ivar},iregion);
         fprintf('Removing %s from the current directory.\n',psfname{iregion})
         system(sprintf('rm %s',psfname{iregion}));
     end
-    
+
     % remove any existing log file -
-    
+
     lgfname = sprintf('%s_rank_hist_obscount.txt',plotdat.varnames{ivar});
     fprintf('Removing %s from the current directory.\n',lgfname)
     system(sprintf('rm %s',lgfname));
     logfid = fopen(lgfname,'wt');
     fprintf(logfid,'%s\n',lgfname);
-    
+
     % get appropriate vertical coordinate variable
-    
+
     [dimnames, ~] = nc_var_dims(fname, plotdat.guessvar);
-    
+
     if ( dimensionality == 1 ) % observations on a unit circle, no level
         plotdat.level = 1;
         plotdat.level_units = [];
@@ -212,70 +216,72 @@ for ivar = 1:plotdat.nvars
         plotdat.level_units = nc_read_att(fname, dimnames{2}, 'units');
     end
     plotdat.nlevels = length(plotdat.level);
-    
+
     % Here is the tricky part. Singleton dimensions are auto-squeezed ...
     % single levels, single regions ...
-    
+
     guess_raw = ncread(fname, plotdat.guessvar);
     guess_raw = permute(guess_raw,length(size(guess_raw)):-1:1);
     guess = reshape(guess_raw, plotdat.Ntimes,  plotdat.ncopies, ...
         plotdat.nlevels, plotdat.nregions);
-    
+
     rhist_raw = ncread(fname, plotdat.rhistvar);
     rhist_raw = permute(rhist_raw,length(size(rhist_raw)):-1:1);
     rhist = reshape(rhist_raw, plotdat.Ntimes,  plotdat.Nrhbins, ...
         plotdat.nlevels, plotdat.nregions);
-    
+
     % Collapse the time dimension if need be.
     % >@todo TJH FIXME ... this should honor the time_to_skip ...
-    
+
     if ( timeindex < 0 )
         guess             = sum(guess,1);
         rhist             = sum(rhist,1);
         plotdat.timeindex = 1;
     end
-    
+
     % check to see if there is anything to plot
     nposs = sum(guess(plotdat.timeindex,plotdat.Npossindex,:,:)) - ...
         sum(guess(plotdat.timeindex,plotdat.NQC5index ,:,:)) - ...
         sum(guess(plotdat.timeindex,plotdat.NQC6index ,:,:));
-    
+
     if ( sum(nposs(:)) < 1 )
         fprintf('no obs for %s ...  skipping\n', plotdat.varnames{ivar})
         continue
     end
-    
+
     for ilevel = 1:plotdat.nlevels
-        
+
         fprintf(logfid,'\nlevel %d %f %s\n',ilevel,plotdat.level(ilevel),plotdat.level_units);
-        
+
         plotdat.ges_Nqc4  = squeeze(guess(plotdat.timeindex,plotdat.NQC4index  ,ilevel,:));
         fprintf(logfid,'DART QC == 4, prior %d\n',sum(plotdat.ges_Nqc4(:)));
-        
+
         plotdat.ges_Nqc5  = squeeze(guess(plotdat.timeindex,plotdat.NQC5index  ,ilevel,:));
         fprintf(logfid,'DART QC == 5, prior %d\n',sum(plotdat.ges_Nqc5(:)));
-        
+
         plotdat.ges_Nqc6  = squeeze(guess(plotdat.timeindex,plotdat.NQC6index  ,ilevel,:));
         fprintf(logfid,'DART QC == 6, prior %d\n',sum(plotdat.ges_Nqc6(:)));
-        
+
         plotdat.ges_Nqc7  = squeeze(guess(plotdat.timeindex,plotdat.NQC7index  ,ilevel,:));
         fprintf(logfid,'DART QC == 7, prior %d\n',sum(plotdat.ges_Nqc7(:)));
 
-        plotdat.ges_Nqc8  = squeeze(guess(plotdat.timeindex,plotdat.NQC8index  ,ilevel,:));
-        fprintf(logfid,'DART QC == 8, prior %d\n',sum(plotdat.ges_Nqc8(:)));
-        
+        if (plotdat.NQC8index > 0)
+            plotdat.ges_Nqc8  = squeeze(guess(plotdat.timeindex,plotdat.NQC8index  ,ilevel,:));
+            fprintf(logfid,'DART QC == 8, prior %d\n',sum(plotdat.ges_Nqc8(:)));
+        end
+
         plotdat.ges_Nposs = squeeze(guess(plotdat.timeindex,plotdat.Npossindex, ilevel,:)) ...
             - plotdat.ges_Nqc5 - plotdat.ges_Nqc6;
         fprintf(logfid,'# obs poss,   prior %d\n',sum(plotdat.ges_Nposs(:)));
-        
+
         plotdat.ges_Nused = squeeze(guess(plotdat.timeindex,plotdat.Nusedindex, ilevel,:));
         fprintf(logfid,'# obs used,   prior %d\n',sum(plotdat.ges_Nused(:)));
-        
+
         % plot by region
-        
+
         for iregion = 1:plotdat.nregions
-            figure(iregion); clf; orient(figuredata.orientation); wysiwyg
-            
+            figure(iregion); clf; orient(figuredata.orientation);
+
             plotdat.region   = iregion;
             plotdat.myregion = deblank(plotdat.region_names(iregion,:));
             if ( isempty(plotdat.level_units) )
@@ -286,14 +292,14 @@ for ivar = 1:plotdat.nvars
                     plotdat.level(ilevel), ...
                     plotdat.level_units);
             end
-            
+
             plotdat.rank_hist = squeeze(rhist(plotdat.timeindex, :, ilevel,iregion));
-            
+
             myplot(plotdat,figuredata);
-            
+
             % create a postscript file
             print(gcf,'-dpsc','-append',psfname{iregion});
-            
+
             % block to go slow and look at each one ...
             % disp('Pausing, hit any key to continue ...')
             % pause
@@ -387,7 +393,7 @@ for i = 1:length(x.allvarnames)
     indx = strfind(x.allvardims{i},'time');
     if (indx > 0)
         j = j + 1;
-        
+
         basenames{j} = ReturnBase(x.allvarnames{i});
         basedims{j}  = x.allvardims{i};
     end

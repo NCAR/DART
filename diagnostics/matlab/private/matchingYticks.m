@@ -43,8 +43,8 @@ delta = 1.0e-14;
 % Rescale the magnitude and span if the span is to small to be useful.
 
 if ((nYticks -1  - yrange_span) > delta )
-   yrange_span      = yrange_span * 10;
-   yrange_magnitude = yrange_magnitude - 1;
+    yrange_span      = yrange_span * 10;
+    yrange_magnitude = yrange_magnitude - 1;
 end
 
 % Here's the distance between obs ticks, in units of # of observations.

@@ -12,10 +12,12 @@ program jeff_netcdf
 
 use        types_mod, only : r8
 
-use    utilities_mod, only : initialize_utilities, finalize_utilities, nc_check, &
+use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              open_file, close_file, find_namelist_in_file, &
                              check_namelist_read, nmlfileunit, do_nml_file, do_nml_term, &
                              E_ERR, error_handler, get_unit
+
+use netcdf_utilities_mod, only : nc_check
 
 use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, &
                              read_time, get_time, set_time,  &

@@ -1,0 +1,24 @@
+netcdf time1 {
+
+dimensions:
+level = 3;
+lat = 4;
+lon = 5;
+
+variables:
+
+int A(level);
+A:units = "meters";
+
+float time;
+time:units = "days";
+
+//global attributes:
+
+:title = "time1";
+
+data:
+A = 1, 2, 3 ;
+time = 1.5 ;
+
+}

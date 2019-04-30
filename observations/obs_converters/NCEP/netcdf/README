@@ -1,0 +1,23 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+This is the start of a converter from the new NetCDF format
+files with NCEP obs in them, directly to DART obs_seq files.
+
+THIS CONVERTER IS NOT FINISHED YET.  anyone interested in
+doing the rest, let dart@ucar.edu know.  we'd love to use 
+it instead of parsing prepbufr files.
+
+Thanks to Soyoung Ha for the initial work on this converter.
+We stopped when some of the needed information was not in
+the netcdf file, but later versions of the converter are
+expected to contain what's needed.
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

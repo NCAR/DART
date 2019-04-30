@@ -34,9 +34,10 @@ program convert_madis_rawin
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 use         types_mod, only : r8, missing_r8
-use     utilities_mod, only : nc_check, initialize_utilities, finalize_utilities, &
+use     utilities_mod, only : initialize_utilities, finalize_utilities, &
                               find_namelist_in_file, check_namelist_read,         &
                               do_nml_file, do_nml_term, logfileunit, nmlfileunit
+use  netcdf_utilities_mod, only : nc_open_file_readonly, nc_close_file, nc_check
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, &
                                   increment_time, get_time, operator(-), GREGORIAN
 use      location_mod, only : VERTISSURFACE, VERTISPRESSURE, VERTISHEIGHT
@@ -157,8 +158,7 @@ comp_day0 = set_date(1970, 1, 1, 0, 0, 0)
 first_obs = .true.
 
 
-call nc_check( nf90_open(rawin_in_file, nf90_nowrite, ncid), &
-               'convert_madis_rawin', 'opening file '//trim(rawin_in_file))
+ncid = nc_open_file_readonly(rawin_in_file, 'convert_madis_rawin')
 
 call getdimlen(ncid, "recNum", nsound)
 call set_missing_name("missing_value")
@@ -704,8 +704,7 @@ sondeloop2: do i = 1, nused
 enddo sondeloop2
 
 ! have to close at end of loop, unlike other versions of the madis converters
-call nc_check( nf90_close(ncid), &
-               'convert_madis_rawin', 'closing file '//trim(rawin_in_file))
+call nc_close_file(ncid, 'convert_madis_rawin')
 
 ! if we added any obs to the sequence, write it now.
 if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, rawin_out_file)

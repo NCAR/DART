@@ -3043,7 +3043,7 @@ call error_handler(E_MSG, 'assim_tools_init:', 'Selected filter type is '//trim(
 
 if (adjust_obs_impact) then
    call allocate_impact_table(obs_impact_table)
-   call read_impact_table(obs_impact_filename, obs_impact_table, allow_any_impact_values)
+   call read_impact_table(obs_impact_filename, obs_impact_table, allow_any_impact_values, "allow_any_impact_values")
    call error_handler(E_MSG, 'assim_tools_init:', &
                       'Using observation impact table from file "'//trim(obs_impact_filename)//'"')
 endif

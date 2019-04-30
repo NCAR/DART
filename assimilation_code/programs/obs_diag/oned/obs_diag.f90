@@ -44,8 +44,11 @@ use    utilities_mod, only : open_file, close_file, register_module, &
                              file_exist, error_handler, E_ERR, E_WARN, E_MSG,  &
                              initialize_utilities, logfileunit, nmlfileunit,   &
                              find_namelist_in_file, check_namelist_read,       &
-                             nc_check, do_nml_file, do_nml_term,               &
-                             set_filename_list, finalize_utilities
+                             do_nml_file, do_nml_term, finalize_utilities,     &
+                             set_filename_list
+
+use netcdf_utilities_mod, only : nc_check
+                             
 use         sort_mod, only : sort
 use   random_seq_mod, only : random_seq_type, init_random_seq, several_random_gaussians
 
@@ -488,6 +491,18 @@ ObsFileLoop : do ifile=1, num_input_files
          call get_obs_def(observation, obs_def)
 
          flavor    = get_obs_def_type_of_obs(obs_def)
+
+         ! Check to see if it is an identity observation.
+         ! Redefine identity observations as flavor = RAW_STATE_VARIABLE
+         !> Still have a problem determining what state type best relates
+         !> to the observation kind - but it would allow us to
+         !> do this for all models, regardless of dimensionality.
+
+         if ( flavor < 0 ) then
+            Nidentity = Nidentity + 1
+            flavor = RAW_STATE_VARIABLE
+         endif
+
          obsname   = get_name_for_type_of_obs(flavor)
          obs_time  = get_obs_def_time(obs_def)
          obs_loc   = get_obs_def_location(obs_def)
@@ -503,30 +518,27 @@ ObsFileLoop : do ifile=1, num_input_files
             trusted = .false.
          endif
 
-         ! Check to see if it is an identity observation.
-         ! Redefine identity observations as flavor = RAW_STATE_VARIABLE
-         !> Still have a problem determining what state type best relates
-         !> to the observation kind - but it would allow us to
-         !> do this for all models, regardless of dimensionality.
-
-         if ( flavor < 0 ) then
-            Nidentity = Nidentity + 1
-            flavor = RAW_STATE_VARIABLE
-         endif
-
          if ( use_zero_error_obs ) then
             obs_error_variance = 0.0_r8
          else
             obs_error_variance = get_obs_def_error_variance(obs_def)
          endif
-
          ! retrieve observation prior and posterior means and spreads
 
-         call get_obs_values(observation,              obs,              obs_index)
-         call get_obs_values(observation,       prior_mean,       prior_mean_index)
-         call get_obs_values(observation,   posterior_mean,   posterior_mean_index)
-         call get_obs_values(observation,     prior_spread,     prior_spread_index)
-         call get_obs_values(observation, posterior_spread, posterior_spread_index)
+         prior_mean(1)       = 0.0_r8
+         posterior_mean(1)   = 0.0_r8
+         prior_spread(1)     = 0.0_r8
+         posterior_spread(1) = 0.0_r8
+
+            call get_obs_values(observation,              obs,              obs_index)
+         if (prior_mean_index > 0) &
+            call get_obs_values(observation,       prior_mean,       prior_mean_index)
+         if (posterior_mean_index > 0) &
+            call get_obs_values(observation,   posterior_mean,   posterior_mean_index)
+         if (prior_spread_index > 0) &
+            call get_obs_values(observation,     prior_spread,     prior_spread_index)
+         if (posterior_spread_index > 0) &
+            call get_obs_values(observation, posterior_spread, posterior_spread_index)
 
          pr_mean =       prior_mean(1)
          po_mean =   posterior_mean(1)
@@ -1392,11 +1404,19 @@ if ( verbose ) then
         org_qc_index, trim(get_qc_meta_data(seq,org_qc_index))
    call error_handler(E_MSG,'SetIndices',string1)
 
-   if (          dart_qc_index > 0 ) then
+   if (dart_qc_index > 0 ) then
    write(string1,'(''DART quality control index '',i2,'' metadata '',a)') &
         dart_qc_index, trim(get_qc_meta_data(seq,dart_qc_index))
    call error_handler(E_MSG,'SetIndices',string1)
    endif
+endif
+
+if ( any( (/ prior_mean_index,     prior_spread_index, &
+         posterior_mean_index, posterior_spread_index /) < 0) ) then
+   string1 = 'Observation sequence has no prior/posterior information.'
+   string2 = 'You will still get a count, maybe observation value, incoming qc, ...'
+   string3 = 'For simple information, you may want to use "obs_seq_to_netcdf" instead.'
+   call error_handler(E_MSG, 'SetIndices', string1, text2=string2, text3=string3)
 endif
 
 end subroutine SetIndices

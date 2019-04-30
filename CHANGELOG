@@ -785,6 +785,88 @@ When using a distributed mean "convert_all_obs_verticals_first = .true." should
 be set.  If your observations will impact most of the model state, then 
 "convert_all_state_verticals_first = .true.' can also be set.
 
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Apr 30 2019 :: cam-fv refactor, posteriors optional, QC 8   $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- The CAM Finite Volume (cam-fv)  model_mod.f90 has undergone substantial 
+  refactoring to improve simplicity and remove code for unsupported CAM variants
+  while also supporting WACCM and WACCM-X.  Namelist changes will be required.
+
+- CAM-FV setup and scripting support added for CESM 2.1, including advanced
+  archiving and compression
+
+- fix for WRF's wind direction vectors when using the Polar Stereographic 
+  map projection.  Thanks to Kevin Manning for the fix.
+
+- Add filter namelist option to avoid calling the posterior forward operators 
+  and to not create those copies in the obs_seq.final file.
+
+- Use less memory if writing ensemble member values into the obs_seq.final file.
+
+- added a DART QC of 8 for failed vertical conversions
+
+- updated Matlab scripts support QC=8 and no posterior in obs sequence files.
+
+- sampling error correction table now has all ensemble sizes between 3 and 200
+
+- closest_member_tool can be compiled with other MPI targets
+
+- COSMIC_ELECTRON_DENSITY has been moved from obs_def_gps_mod.f90 to 
+  obs_def_upper_atm_mod.f90, which has new quantities for 
+  ION_O_MIXING_RATIO and ATOMIC_H_MIXING_RATIO
+
+- obs_converters/gps/convert_cosmic_ionosphere.f90 has a test dataset
+
+- support for NAG compiler 
+
+- fixed Intel compiler bug in lorenz_96 comparing long integers to integer loop indices
+
+- get_maxdist() now a required routine all location modules
+
+- Default routines now create a time variable as time(time) to allow multiple
+  files to be concatinated along the unlimited dimension more easily.  Also
+  conforms to the netCDF convention for coordinate dimensions.
+
+- obs_impact_tool handles a continuum of values, not just discrete 0 or 1.
+
+- fill_inflation_restart now produces files with names consistent with filter defaults. 
+
+- expanded functionality in xyz_location_mod.f90
+
+- Removed 'slow' sorting routines from sort_mod.f90
+
+- replacing some repeated native netCDF library calls with routines from
+  the netcdf_utilities_mod.f90 
+
+- Updated dewpoint equation to avoid dividing by zero given a very unlikely
+  scenario (r12832)
+
+- More efficient implementation of adaptive inflation 
+
+- Yongfei Zhang and Cecilia Bitz added improvements to the CICE model and 
+  observation converters and forward operators. These changes also use the
+  locations of the 'new' glade filesystem. They used CESM tag: cesm2_0_alpha06n
+
+- Worked with Yongfei Zhang to remove prototype codes and more completely
+  document observation converters and data sources for cice assimilation.
+
+- removed 'allow_missing_in_clm' flag from the &assim_tools_nml namelist in
+  the CICE work directory.  The flag moved to a different namelist and the
+  CICE model doesn't care about it.
+
+- increased the maximum number of input files to obs_diag from 100 to 10000.
+
+- Updated the developer_tests to include more cases.
+
+- Updated oned/obs_diag.f90 to support 'obs_seq.out' files.
+
+- Better error and informational messages in various routines.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ MMM DD YYYY :: summary of changes in Manhattan update   $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 # <next few lines under version control, do not edit>
 # $URL$

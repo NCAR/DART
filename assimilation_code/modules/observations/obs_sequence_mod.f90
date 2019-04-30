@@ -4,11 +4,13 @@
 !
 ! $Id$
 
-!> \file obs_sequence_mod.f90  modifing this to have distributed identity obs
-!> \dir obs_sequence modifing obs_sequence to have distributed identity obs
-
-!> @brief For observations sequence stuff
+!> @{ 
+!> @brief Manage lists of observations 
+!>
+!> Time-ordered sequences of observations.
 !> get expected obs is in here
+!> @}
+
 module obs_sequence_mod
 
 ! WARNING OPERATOR OVERLOAD FOR EQUIVALENCE???
@@ -26,10 +28,10 @@ use     location_mod, only : location_type, is_location_in_region
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
                              write_obs_def, destroy_obs_def, copy_obs_def, &
                              interactive_obs_def, get_obs_def_location, &
-                             get_obs_def_type_of_obs, get_obs_def_key, &
-                             operator(/=), print_obs_def
-use     obs_kind_mod, only : write_type_of_obs_table, read_type_of_obs_table, max_defined_types_of_obs, &
-                             get_index_for_type_of_obs
+                             get_obs_def_type_of_obs, get_obs_def_key,  &
+                             operator(==), operator(/=), print_obs_def
+use     obs_kind_mod, only : write_type_of_obs_table, read_type_of_obs_table, &
+                             max_defined_types_of_obs, get_index_for_type_of_obs
 use time_manager_mod, only : time_type, operator(>), operator(<), &
                              operator(>=), operator(/=), set_time, &
                              operator(-), operator(+), operator(==)
@@ -44,14 +46,13 @@ private
 interface assignment(=)
    module procedure copy_obs
 end interface
-
 interface operator(==)
    module procedure eq_obs
 end interface
-
 interface operator(/=)
    module procedure ne_obs
 end interface
+
 
 
 ! Public interfaces for obs sequences
@@ -72,7 +73,7 @@ public :: obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
 public :: obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
    get_obs_values, set_obs_values, replace_obs_values, get_qc, set_qc, &  
    read_obs, write_obs, replace_qc, interactive_obs, copy_obs, assignment(=), &
-   get_obs_key, copy_partial_obs, print_obs, eq_obs, ne_obs
+   get_obs_key, copy_partial_obs, print_obs
 
 ! Public interfaces for obs covariance modeling
 public :: obs_cov_type
@@ -1276,7 +1277,6 @@ logical,           intent(out) :: pre_I_format
 logical, optional, intent(in)  :: close_the_file
 
 character(len=16) :: label(2)
-character(len=12) :: header
 integer :: ios
 
 ! always false now, should be deprecated
@@ -1297,21 +1297,24 @@ file_id = open_file(file_name, form=read_format, action='read')
 ! header string 'obs_sequence'
 
 ios = check_obs_seq_header(file_id, read_format)
-if(ios /= 0) then
+if(ios /= 0) then  ! try reading binary formats
    call close_file(file_id)
 
-read_format = 'unformatted'
+   read_format = 'unformatted'
    file_id = open_file(file_name, form=read_format, action='read', convert=read_binary_file_format)
+   ios     = check_obs_seq_header(file_id, read_format)
 
-   ios = check_obs_seq_header(file_id, read_format)
-   if(ios /= 0) then
+   if(ios /= 0) then ! try the other flavor
+
+      !>@todo Can we check the other binary file endianness ... can only be native, big or little ... 
+      !>      could remove obs_sequence_nml:read_binary_file_format
 
       ! the file exists but isn't recognizable as one of our obs_seq files.
       ! it could be the wrong byte order, or just not an obs_seq file.
       write(string1, *) 'File "', trim(file_name), '" is not recognized as a DART observation sequence file.'
       write(string2, *) 'Attempted to read both as a formatted (ascii) and unformatted (binary) file.'
       write(string3, *) 'For binary files, endian selection was "'//trim(read_binary_file_format)//'"' 
-   call error_handler(E_ERR, 'read_obs_seq_header', string1, &
+      call error_handler(E_ERR, 'read_obs_seq_header', string1, &
                          source, revision, revdate, text2=string2, text3=string3)
    endif
 endif
@@ -1324,10 +1327,10 @@ call read_type_of_obs_table(file_id, .false., read_format)
 
 ! Read in the rest of the header information
 if (read_format == 'formatted') then
-read(file_id, *) label(1), num_copies, label(2), num_qc
-read(file_id, *) label(1), num_obs, label(2), max_num_obs
+   read(file_id, *) label(1), num_copies, label(2), num_qc
+   read(file_id, *) label(1), num_obs, label(2), max_num_obs
 else
-read(file_id) num_copies, num_qc, num_obs, max_num_obs
+   read(file_id) num_copies, num_qc, num_obs, max_num_obs
 endif
 
 ! Close the file if requested by optional argument
@@ -1336,6 +1339,7 @@ if(present(close_the_file)) then
 endif
 
 end subroutine read_obs_seq_header
+
 !-------------------------------------------------
 
 ! ok, this needs some explanation.  for a binary formatted file,
@@ -2146,6 +2150,7 @@ endif
 
 obs1%values = obs2%values
 obs1%qc = obs2%qc
+
 obs1%prev_time = obs2%prev_time
 obs1%next_time = obs2%next_time
 obs1%cov_group = obs2%cov_group
@@ -2201,7 +2206,7 @@ end subroutine print_obs
 
 function eq_obs(obs1, obs2)
 
-! This routine could be overloaded with the == operator
+! This routine is overloaded with the == operator
 
 type(obs_type), intent(in) :: obs1
 type(obs_type), intent(in) :: obs2
@@ -2237,7 +2242,7 @@ end function eq_obs
 
 function ne_obs(obs1, obs2)
 
-! This routine could be overloaded with the /= operator
+! This routine is overloaded with the /= operator
 
 type(obs_type), intent(in) :: obs1
 type(obs_type), intent(in) :: obs2

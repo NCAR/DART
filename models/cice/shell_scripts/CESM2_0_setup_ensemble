@@ -1,0 +1,460 @@
+#!/bin/csh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+# ------------------------------------------------------------------------------
+# Script to help configure, build, and stage a CESM multi-instance experiment.
+# The experiment initially does not perform any data assimilation. After
+# initial trials are confirmed to be working correctly, the experiment can
+# be restarted with data assimilation enabled. This two-step approach has
+# been shown to have better results than trying to do everything at once.
+# ------------------------------------------------------------------------------
+
+# ==============================================================================
+# Options defining the experiment:
+#
+# CASE          The value of "CASE" will be used many ways; directory and file
+#               names both locally and (possibly) on the HPSS, and script names;
+#               so consider its length and information content.
+# compset       Defines the vertical resolution and physics packages to be used.
+#               Must be a standard CESM compset; see the CESM documentation.
+# resolution    Defines the horizontal resolution and dynamics; see CESM docs.
+# cesmtag       The version of the CESM source code to use when building the code.
+# num_instances The number of ensemble members.
+# ==============================================================================
+# 2000_DATM%NYF_SLND_CICE_DOCN%SOM_DROF%NYF_SGLC_SWAV_TEST
+
+setenv CASE           test1
+setenv resolution     T62_g16
+setenv compset        DTEST
+setenv cesmtag        cesm2_0_alpha06n
+setenv num_instances  10
+
+# ==============================================================================
+# Directories:
+# cesmdata        Location of some supporting CESM data files.
+# cesmroot        Location of the CESM code base.  This version of the script
+#                 only supports version cesm1_5_beta06c.
+# caseroot        Defines the CESM case directory - where the CESM+DART
+#                 configuration files will be stored.  This should probably not
+#                 be in scratch (on yellowstone, your 'work' partition is suggested).
+#                 This script will delete any existing caseroot, so this script,
+#                 and other useful things should be kept elsewhere.
+# rundir          Defines the location of the CESM run directory.  Will need large
+#                 amounts of disk space, generally on a scratch partition.
+# exeroot         Defines the location of the CESM executable directory , where the
+#                 CESM executables will be built.  Medium amount of space
+#                 needed, generally on a scratch partition.
+# archdir         Defines the location of the CESM short-term archive directories.
+#                 Requires large amounts of disk space, may be on a scratch partition if
+#                 the long-term archiver is invoked to move these files to permanent storage.
+#                 Files will remain here until the long-term archiver moves it to permanent storage.
+# dartroot        Location of the root of _your_ DART installation
+# baseobsdir      Part of the directory name containing the obs_seq.out files to be used in the 
+#                 assimilation. The year, month, and filename will be provided in assimilate.csh.
+#                 Will be inherited by CESM#_#_DART_config and inserted into assimilate.csh
+# ==============================================================================
+
+setenv project      UCUB0067
+setenv machine      cheyenne
+setenv cesmdata     /glade/p/cesm/cseg/inputdata
+setenv cesmroot     /glade/work/yfzhang/$cesmtag
+     # cesmroot points to the directory of the CESM code. Change to your own model code if you have one. 
+setenv caseroot     /glade/work/${USER}/cesmcases/$cesmtag/${CASE}
+     # put the case in somewhere 
+setenv rundir       /glade/scratch/${USER}/$cesmtag/${CASE}/run
+setenv exeroot      /glade/scratch/${USER}/$cesmtag/${CASE}/bld
+setenv archdir      /glade/scratch/${USER}/$cesmtag/${CASE}/archive
+
+setenv dartroot     /glade/u/home/${USER}/dart_manhattan
+setenv baseobsdir  /glade/u/home/${USER}/PWS2018/day4/obs_seqs
+
+# ==============================================================================
+# runtime control namelists
+# ==============================================================================
+
+setenv runtype branch          #set refcase and refdate if runtype is branch
+                               #will be ignored if runtype is startup
+setenv refcase  free_ens10
+setenv refdate  2005-04-01
+
+setenv startdate  2005-04-01
+
+setenv stop_option  ndays
+setenv stop_n       5
+setenv rest_option  nday
+setenv rest_n       1
+
+setenv resubmit    12
+setenv job_time    00:10  #10 minutes
+
+setenv stream_year_align  2005
+setenv stream_year_first  2005
+setenv stream_year_last   2010
+
+# ==============================================================================
+# standard commands:
+#
+# If you are running on a machine where the standard commands are not in the
+# expected location, add a case for them below.
+# ==============================================================================
+
+set nonomatch       # suppress "rm" warnings if wildcard does not match anything
+
+# The FORCE options are not optional.
+# The VERBOSE options are useful for debugging though
+# some systems don't like the -v option to any of the following
+switch ("`hostname`")
+   case ys*:
+         # NCAR "yellowstone"
+         set   MOVE = '/bin/mv -v'
+         set   COPY = '/bin/cp -v --preserve=timestamps'
+         set   LINK = '/bin/ln -vs'
+         set REMOVE = '/bin/rm -rf'
+      breaksw
+   case be*:
+         # NCAR "bluefire"
+         set   MOVE = '/usr/local/bin/mv -v'
+         set   COPY = '/usr/local/bin/cp -v --preserve=timestamps'
+         set   LINK = '/usr/local/bin/ln -vs'
+         set REMOVE = '/usr/local/bin/rm -rf'
+      breaksw
+   default:
+         # NERSC "hopper", TACC "stampede" ... many more
+         set   MOVE = 'mv -v'
+         set   COPY = 'cp -v --preserve=timestamps'
+         set   LINK = 'ln -vs'
+         set REMOVE = 'rm -rf'
+      breaksw
+endsw
+
+# If an old case exists, exit the script. If the old case is no longer needed, delete it mannually. 
+if ( -d $caseroot) then
+    echo "case existed"
+    echo "to delete the old case, please type"
+    echo "rm -rf $caseroot";exit
+endif
+
+# FATAL idea to make caseroot the same dir as where this setup script is
+# since the build process removes all files in the caseroot dir before
+# populating it.  try to prevent shooting yourself in the foot.
+
+
+if ( ${caseroot} == `pwd` ) then
+   echo "ERROR: the setup script should not be located in the caseroot"
+   echo "directory, because all files in the caseroot dir will be removed"
+   echo "before creating the new case.  move the script to a safer place."
+   exit 11
+endif
+
+echo "removing old files from ${caseroot}"
+echo "removing old files from ${exeroot}"
+echo "removing old files from ${rundir}"
+${REMOVE} ${caseroot}
+${REMOVE} ${exeroot}
+${REMOVE} ${rundir}
+${cesmroot}/cime/scripts/create_newcase  --res  ${resolution} \
+                                         -mach ${machine} \
+                                         -compset ${compset} \
+                                         -case ${caseroot} \
+                                         -project ${project} \
+                                         --output-root /glade/scratch/$USER/$cesmtag \
+                                         --run-unsupported || exit 1
+
+# ==============================================================================
+# Preserve a copy of this script as it was run.
+# Copy the DART setup script (CESM_DART_config) to CASEROOT.
+# Since we know the DARTROOT and BASEOBSDIR now, record them into 
+# CASEROOT/CESM_DART_config now.
+# ==============================================================================
+
+set ThisFileName = $0:t
+${COPY} $ThisFileName ${caseroot}/${ThisFileName}.original
+
+if (   -e ${dartroot}/models/cice/shell_scripts/CESM2_0_DART_config ) then
+   sed -e "s#BOGUS_DART_ROOT_STRING#${dartroot}#" \
+       -e "s#BOGUS_DART_OBS_STRING#${baseobsdir}#" \
+          ${dartroot}/models/cice/shell_scripts/CESM2_0_DART_config \
+           >! ${caseroot}/CESM_DART_config  || exit 20
+   chmod 755  ${caseroot}/CESM_DART_config
+else
+   echo "ERROR: the script to configure for data assimilation is not available."
+   echo "       ${dartroot}/models/cice/shell_scripts/CESM2_0_DART_config MUST exist."
+   exit 21
+endif
+
+# ==============================================================================
+cd ${caseroot}
+# ==============================================================================
+
+# Save a copy for debug purposes
+foreach FILE ( *xml )
+   if ( ! -e        ${FILE}.original ) then
+      ${COPY} $FILE ${FILE}.original
+   endif
+end
+
+# Grab machine-specific resources values
+
+setenv MAX_TASKS_PER_NODE `./xmlquery MAX_TASKS_PER_NODE -value`
+@ ptile = $MAX_TASKS_PER_NODE 
+@ nthreads = 1
+
+#> @TODO stream template files & multiple years. Do we need to specify
+#> year 1 and year N (performance penalty?). Can we change years on-the-fly
+#> during a run
+
+
+# TJH ... DIN_LOC_ROOT ... redundant or can we remove it from the stream templates
+# Fei uses DIN_LOC_ROOT on the TACC machines for datasets that are automatically downloaded by CESM
+# TJH ... resubmit 0 
+
+# Turn off short-term archiving for now
+./xmlchange DOUT_S=FALSE
+
+# Turn on archiving interm restart files
+./xmlchange DOUT_S_SAVE_INTERIM_RESTART_FILES=TRUE
+
+ ./xmlchange EXEROOT=$exeroot
+./xmlchange STOP_OPTION=$stop_option
+./xmlchange STOP_N=$stop_n
+./xmlchange RESUBMIT=$resubmit
+
+./xmlchange REST_OPTION=$rest_option
+./xmlchange REST_N=$rest_n
+./xmlchange JOB_QUEUE=regular
+./xmlchange JOB_WALLCLOCK_TIME=$job_time
+
+./xmlchange DATM_MODE=CPLHISTForcing
+./xmlchange DATM_CPLHIST_YR_START=$stream_year_first
+./xmlchange DATM_CPLHIST_YR_END=$stream_year_last
+./xmlchange DATM_CPLHIST_YR_ALIGN=$stream_year_align
+
+# A branch run continues a previous run but with a new case name and/or a new startdate
+# The new case will start exactly as "continue run" 
+# RUN_REFCASE and RUN_REFDATE will not be used if RUN_TYPE is not branch or hybrid
+./xmlchange RUN_TYPE=$runtype
+./xmlchange RUN_REFCASE=${refcase}
+./xmlchange RUN_REFDATE=${refdate}
+./xmlchange RUN_STARTDATE=${startdate}
+
+./xmlchange PIO_TYPENAME=netcdf
+
+@ nodes_per_instance = 1
+
+@ atm_tasks = $ptile * $nodes_per_instance * $num_instances
+@ lnd_tasks = $ptile * $nodes_per_instance 
+@ ice_tasks = $ptile * $nodes_per_instance * $num_instances
+@ ocn_tasks = $ptile * $nodes_per_instance * $num_instances
+@ cpl_tasks = $ptile * $nodes_per_instance
+@ wav_tasks = $ptile * $nodes_per_instance
+@ esp_tasks = $ptile * $nodes_per_instance
+
+# # TJH determine glacier
+# set glacier = CISM2P
+# # CESM1_5_beta03: CISM1 (the default) can only handle 1 task per member.
+# if ($glacier == 'CISM1' || $glacier == 'CISM2S') then
+#     @ glc_tasks = $num_instances
+# else if ($glacier == 'CISM2P') then
+#     @ glc_tasks = $ptile * $nodes_per_instance * $num_instances
+# else
+#    # @ glc_tasks = 1   Exercised in ATM_spinup5, which failed to run in some MCT mapping routine.
+#     @ glc_tasks = $ptile * $nodes_per_instance
+# endif
+# 
+# # TJH determine river_runoff
+# set river_runoff = bob
+# if ($river_runoff == 'RTM' || $river_runoff == 'MOSART') then
+#    @ rof_tasks = $ptile * $nodes_per_instance * $num_instances
+# else
+#    @ rof_tasks = $ptile * $nodes_per_instance
+# endif
+
+@ glc_tasks = $ptile * $nodes_per_instance
+@ rof_tasks = $ptile * $nodes_per_instance
+
+./xmlchange ROOTPE_CPL=0,NTHRDS_CPL=$nthreads,NTASKS_CPL=$cpl_tasks
+./xmlchange ROOTPE_ICE=0,NTHRDS_ICE=$nthreads,NTASKS_ICE=$ice_tasks,NINST_ICE=$num_instances
+./xmlchange ROOTPE_ATM=0,NTHRDS_ATM=$nthreads,NTASKS_ATM=$atm_tasks,NINST_ATM=$num_instances
+./xmlchange ROOTPE_OCN=0,NTHRDS_OCN=$nthreads,NTASKS_OCN=$ocn_tasks,NINST_OCN=$num_instances
+./xmlchange ROOTPE_LND=0,NTHRDS_LND=$nthreads,NTASKS_LND=$lnd_tasks,NINST_LND=1
+./xmlchange ROOTPE_GLC=0,NTHRDS_GLC=$nthreads,NTASKS_GLC=$glc_tasks,NINST_GLC=1
+./xmlchange ROOTPE_ROF=0,NTHRDS_ROF=$nthreads,NTASKS_ROF=$rof_tasks,NINST_ROF=1
+./xmlchange ROOTPE_WAV=0,NTHRDS_WAV=$nthreads,NTASKS_WAV=$wav_tasks,NINST_WAV=1
+./xmlchange ROOTPE_ESP=0,NTHRDS_ESP=$nthreads,NTASKS_ESP=$esp_tasks,NINST_ESP=1
+
+
+./case.setup || exit 9
+echo "case setup finished"
+
+# Customize the user namelists and text stream files for each instance (aka ensemble member)
+# The default multi-instance behaviour is to run N identical instances, which is not
+# what we want to do. 
+
+#===========================================================
+# perturbed parameters for CICE
+# you can perturb the parameters you're interested in
+#===========================================================
+
+set r_snw = ( -0.8346421  -0.8321888  -0.2238045  -0.9605725  -0.7291763 \
+              -1.445741    0.03836016  0.9545915  -0.8282194  -0.7757131 \
+               1.222636   -0.788242   -0.9739172  -0.1878285   0.7847106 \
+              -1.923835   -1.866753   -0.9538506  -1.690121    0.6913126 \
+              -0.7059948  -1.250739   -1.712841   -1.467445    0.5493592 \
+              -0.5763934   0.7519119   0.3253862  -0.2969795   1.094377 )
+
+set Cf = ( 45.2172   4.77717  22.83    13.4244  26.1557  12.5715 \
+            5.45581 11.9083   31.6812  45.0404   8.36396 46.4757 \
+           45.6548  29.6026   25.856   38.746   20.8352  41.8975 \
+           35.9006   9.72523  42.139    7.36385  1.38402  2.0052 \
+           49.101   29.1324    1.09503 31.06    20.8142   6.37866 )
+
+@ inst = 1
+while ( $inst <= $num_instances )
+
+    set inst_string = `printf %04d $inst`
+
+    # ===========================================================================
+    set fname = "user_nl_datm"_${inst_string}
+    # ===========================================================================
+    # DATM namelist
+
+    echo "streams  = 'datm.streams.txt.CPLHISTForcing.Solar_$inst_string        $stream_year_align $stream_year_first $stream_year_last'," >> ${fname}
+    echo "           'datm.streams.txt.CPLHISTForcing.nonSolarFlux_$inst_string $stream_year_align $stream_year_first $stream_year_last'," >> ${fname}
+    echo "           'datm.streams.txt.CPLHISTForcing.State1hr_$inst_string     $stream_year_align $stream_year_first $stream_year_last'," >> ${fname}
+    echo "           'datm.streams.txt.CPLHISTForcing.State3hr_$inst_string     $stream_year_align $stream_year_first $stream_year_last'," >> ${fname}
+    echo "           'datm.streams.txt.presaero.clim_2000_$inst_string 1 1 1'"  >> ${fname}
+    echo "vectors  = 'u:v' "     >> ${fname}
+    echo "mapmask  = 'nomask', " >> ${fname}
+    echo "           'nomask', " >> ${fname}
+    echo "           'nomask', " >> ${fname}
+    echo "           'nomask'  " >> ${fname}
+    echo "tintalgo = 'coszen', " >> ${fname}
+    echo "           'nearest'," >> ${fname}
+    echo "           'linear', " >> ${fname}
+    echo "           'linear'  " >> ${fname}
+    echo "           'linear'  " >> ${fname}
+
+    # Create stream files for each ensemble member
+    cp ${dartroot}/models/cice/shell_scripts/datm.streams.txt.CPLHISTForcing.Solar_2005to2010 \
+                                        user_datm.streams.txt.CPLHISTForcing.Solar_${inst_string}
+    cp ${dartroot}/models/cice/shell_scripts/datm.streams.txt.CPLHISTForcing.nonSolarFlux_2005to2010 \
+                                        user_datm.streams.txt.CPLHISTForcing.nonSolarFlux_${inst_string}
+    cp ${dartroot}/models/cice/shell_scripts/datm.streams.txt.CPLHISTForcing.State1hr_2005to2010 \
+                                        user_datm.streams.txt.CPLHISTForcing.State1hr_${inst_string}
+    cp ${dartroot}/models/cice/shell_scripts/datm.streams.txt.CPLHISTForcing.State3hr_2005to2010 \
+                                         user_datm.streams.txt.CPLHISTForcing.State3hr_${inst_string}
+
+    foreach FNAME ( user_datm.streams.txt*_${inst_string} )
+       echo "modifying $FNAME"
+       sed s/NINST/${inst_string}/g $FNAME >! temp
+       sed s/RUNYEAR/${stream_year_first}/g temp >! $FNAME
+    end
+    ${REMOVE} temp
+
+    # ===========================================================================
+     set fname = "user_nl_cice_${inst_string}"
+    # ===========================================================================
+    # CICE namelist
+
+    # Do not need to specify ice_ic if the runtype is branch
+    # put it back if your runtype is startup
+    # echo "ice_ic    = '/glade/scratch/yfzhang/inputdata_cam/ice/cice/${refdate}/${refcase}.cice_${inst_string}.r.${refdate}-00000.nc' " >> $fname 
+    echo "histfreq_n =  1,1,1,1,1  "            >> $fname
+    echo "histfreq   = 'd','m','x','x','x' "    >> $fname
+    echo "f_sst = 'dmxxx' "                     >> $fname
+    echo "f_sss = 'dmxxx' "                     >> $fname
+    echo "f_frzmlt = 'dmxxx' "                  >> $fname
+    echo "f_frz_onset = 'dmxxx' "               >> $fname
+    echo "f_aicen = 'dmxxx' "                   >> $fname
+    echo "f_vicen = 'dmxxx' "                   >> $fname
+    echo "f_vsnon = 'dmxxx' "                   >> $fname
+    echo "f_hi = 'dmxxx' "                      >> $fname
+    echo "f_hs = 'dmxxx' "                      >> $fname
+    echo "f_aice = 'dmxxx' "                    >> $fname
+    echo "f_snowfrac = 'dmxxx' "                >> $fname
+    echo "f_albsni = 'dmxxx' "                  >> $fname
+    echo "f_albsno = 'dmxxx' "                  >> $fname
+    echo "f_albice = 'dmxxx' "                  >> $fname
+    echo "f_albpnd = 'dmxxx' "                  >> $fname
+    echo "Cf   =  ${Cf[$inst]} "                >> $fname
+    echo "r_snw   =  ${r_snw[$inst]} "          >> $fname
+    echo "highfreq = .false. "                  >> $fname
+   
+    @ inst = $inst + 1
+end
+
+./preview_namelists
+
+# ==============================================================================
+# Copy the restart files and pointers to the run directory if runtype is branch
+# ==============================================================================
+
+if ( $runtype == "branch" ) then
+   cp /glade/scratch/yfzhang/inputdata_cam/ice/cice/$startdate/$refcase/* $rundir/
+endif 
+
+# now build the case
+./case.build || exit 10
+
+# ==============================================================================
+# What to do next
+# ==============================================================================
+# 1. Go to the case directory and run the CESM_DART_config script
+#    It will do the following things
+#    1.1 Copy the DART executables (filter and dart_to_cice) to the exeroot
+#    1.2 Copy the assimilation script (assimilate.csh) and DART namelist file (input.nml)
+#        to the case directory and integrate enviornment variables
+#    1.3 Modify DA-related namelist variables in env_run.xml
+# 2. Submit the job as usual: ./case.submit
+# 3. Checkout the results!
+
+cat << EndOfText >! CESM_instructions.txt
+
+-------------------------------------------------------------------------
+Time to check the case.
+
+1) cd ${rundir}
+   and check the compatibility between the namelists/pointer files
+   and the files that were staged.
+
+2) cd ${caseroot}
+
+3) check things
+
+4) run a single day, verify that it works without assimilation
+   ./case.submit
+
+5) IF NEEDED, compile all the DART executables by
+   cd  ${dartroot}/models/cice/work
+   ./quickbuild.csh -mpi
+
+5) configure the case to be able to DART by executing
+   cd ${caseroot}
+   ./CESM_DART_config
+
+6) Make sure the DART-related parts are appropriate. 
+   Check the input.nml
+   Check the assimilate.csh
+   ./case.submit
+
+7) If that works 
+   ./xmlchange CONTINUE_RUN=TRUE
+   that sort of thing
+-------------------------------------------------------------------------
+
+EndOfText
+
+cat CESM_instructions.txt
+
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

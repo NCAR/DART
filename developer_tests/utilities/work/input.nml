@@ -46,3 +46,6 @@
 &obs_kind_nml
   /
 
+&file_utils_test_nml
+  /
+

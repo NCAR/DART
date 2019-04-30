@@ -446,7 +446,7 @@ subroutine nc_write_model_atts(ncid, domain_id)
 integer, intent(in) :: ncid      ! netCDF file identifier
 integer, intent(in) :: domain_id
 
-integer :: msize, i
+integer :: msize
 
 ! other parts of the dart system will write the state into the file
 ! so this routine just needs to write any model-specific

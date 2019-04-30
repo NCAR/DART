@@ -22,7 +22,9 @@ assimilation_code/modules/utilities/time_manager_mod.f90
 assimilation_code/modules/utilities/types_mod.f90
 assimilation_code/modules/utilities/utilities_mod.f90
 assimilation_code/programs/obs_diag/threed_sphere/obs_diag.f90
+models/cam-fv/chem_tables_mod.f90
 models/cam-fv/model_mod.f90
 models/utilities/default_model_mod.f90
+models/utilities/quad_utils_mod.f90
 observations/forward_operators/obs_def_mod.f90
 observations/forward_operators/obs_def_utilities_mod.f90

@@ -37,7 +37,7 @@ implicit none
 private
 
 public :: location_type, get_location, set_location, &
-          set_location_missing, is_location_in_region, &
+          set_location_missing, is_location_in_region, get_maxdist, &
           write_location, read_location, interactive_location, query_location, &
           LocationDims, LocationName, LocationLName, LocationStorageOrder, LocationUnits, &
           get_close_type, get_close_init, get_close_obs, get_close_state, get_close_destroy, &
@@ -2008,6 +2008,23 @@ latval = asin(b/a)
 find_del_lon = acos((a - (b*sin(latval))) / (c*cos(latval)))
 
 end function find_del_lon
+
+!---------------------------------------------------------------------------
+!> returns the maximum distance for the cutoff specified for the 
+!> observation type of interest.
+!> May be useful in custom 'get_close' applications.
+
+function get_maxdist(gc, obs_type)
+type(get_close_type), intent(in) :: gc
+integer, optional,    intent(in) :: obs_type
+real(r8) :: get_maxdist
+
+integer :: bt
+
+bt = gc%type_to_cutoff_map(obs_type)
+get_maxdist = gc%gtt(bt)%maxdist
+
+end function get_maxdist
 
 !----------------------------------------------------------------------------
 

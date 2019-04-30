@@ -130,7 +130,7 @@ switch lower(CopyString)
    case 'all'
       mytypeind = 1:ncopies;
    otherwise
-      mytypeind = get_copy_index(fname, CopyString, 'CopyString');
+      mytypeind = get_copy_index(fname, CopyString, 'context', 'CopyString');
 end
 
 %% Find observations of the correct type.

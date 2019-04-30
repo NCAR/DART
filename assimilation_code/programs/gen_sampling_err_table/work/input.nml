@@ -1,20 +1,15 @@
 
-# the default netcdf file that is checked out with the source
-# code already contains these ensemble sizes.  you can run
-# the generator program to append new sizes to the
+# the supplied netcdf file contains all ensemble sizes from 3 to 200.
+#
+# you can run the generator program to append new ensemble sizes to the
 # existing file.
 #
 # the computation iterates many times to compute the factors;
 # each new size will take many minutes.
 #
-#   ens_sizes = 5, 6, 7, 8, 9, 10, 12, 14, 15, 16, 18, 20,
-#              22, 24, 28, 30, 32, 36, 40, 44, 48, 49, 50,
-#              52, 56, 60, 64, 70, 72, 80, 84, 88, 90, 96,
-#              100, 120, 140, 160, 180, 200
-#
 
 &gen_sampling_error_table_nml
-   ens_sizes = 98, 128
+   ens_sizes = 250, 300
    debug = .false.
    /
 

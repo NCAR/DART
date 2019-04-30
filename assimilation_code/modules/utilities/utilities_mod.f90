@@ -6,195 +6,56 @@
 
 module utilities_mod
 
-!-----------------------------------------------------------------------
-!
-!   A collection of simple useful routines:
-!
-!      file_exist       Function that returns if a given
-!                       file name exists
-!
-!      get_unit         Function that returns an available 
-!                       Fortran unit number
-!
-!      error_handler    Print warning and error messages, 
-!                       terminates program for error messages.
-!
-!      open_file        Opens a given file name for i/o and returns
-!                       a unit number.  If the file is already open
-!                       the unit number is returned.
-!
-!      close_file       Closes the given unit_number. If the file is 
-!                       already closed, nothing happens.
-!
-!      initialize_utilities    Call this routine once before using any
-!                              of the other routines in this file.  If you
-!                              are using the MPI library, do not call this
-!                              routine -- call mpi_initialize_utilities instead.
-!                              It will call this routine as part of initializing
-!                              the MPI code.
-!
-!      finalize_utilities      Call this routine at the end of a program to close
-!                              the log file and flush pending output.  For an MPI
-!                              program, call mpi_finalize_utilities instead.
-!
-!      dump_unit_attributes    A debug routine that dumps out a long list of
-!                              attributes that can be queried from an open file unit.
-!
-!      set_output       Set the status of printing.  Can be set on a per-task
-!                       basis if you are running with multiple tasks.
-!                       By default all warnings and errors print no matter
-!                       which task executes the code; messages only print
-!                       from task 0 to avoid N copies of identical messages.
-!
-!      do_output        Logical function which returns whether informational
-!                       messages should be output.  Controlled by the setting
-!                       made from set_output.  Useful for messages which cannot
-!                       go through the normal error handler (e.g. namelists).
-!
-!      find_namelist_in_file   Opens the namelist file and verifies the given
-!                              namelist name exists.  If found, rewind the file
-!                              and return true.  Then a F90 namelist read command
-!                              can be used to read in the namelist values.
-!                              Otherwise, print an error message and terminate.
-!
-!      check_namelist_read    Confirms that a namelist read was successful. 
-!                             If it failed print an error message and terminate.
-!
-!      set_nml_output   Set the status of printing namelist data.  By default,
-!                       only print to the nml log file.  Can be set to print
-!                       to stdout, both, or none.  Argument is a string; valid
-!                       values are 'none', 'file', 'terminal', or 'both'.
-!
-!      do_nml_file      Logical function which returns whether informational
-!                       messages should be output to the file.  Controlled
-!                       by a call to set_nml_output().
-!                     
-!      do_nml_term      Logical function which returns whether informational
-!                       messages should be output to * (unit 6?).  Controlled
-!                       by a call to set_nml_output().
-!
-!      set_tasknum      Only called for an MPI job with multiple tasks.
-!                       Sets the 'multi-task' flag and records the local task
-!                       number for later error and info messages.
-!
-!      nc_check         Check netcdf return codes, and if not ok, extract
-!                       the netcdf error string and pass that to the error
-!                       handler routine.  Two optional strings allow the caller
-!                       to provide the subroutine name and some context.
-!
-!      write_time       Writes a timestamp in a standard format.
-!
-!      logfileunit      Global integer unit numbers for the log file and
-!      nmlfileunit      for the namelist file (which defaults to same as log)
-!
-!      to_upper         converts a character string to uppercase.
-!
-!      find_textfile_dims    finds number of lines and max line length in a 
-!                            text file. Used so we can record the namelist 
-!                            file content in the netcdf output files.
-!
-!      file_to_text     converts the contents of a (hopefully small) file to
-!                       a single text variable ... to record in the
-!                       netcdf output files.
-!
-!      get_next_filename     returns the next filename, given the name of
-!                            an ascii file which contains a filename per line.
-!                            it returns an empty string at end of list.
-!
-!      is_longitude_between  checks whether a given longitude is between
-!                            the two given limits, starting at the first and
-!                            going EAST until reaching the second.  the end
-!                            points are included. if min=max, all points are
-!                            considered inside.  there is no rejection of the
-!                            input values based on range; they are all converted
-!                            to [0-360) by calling modulo() before starting.
-!                            default is degrees, but there is an optional
-!                            argument to select radians instead.
-!                           
-!      ascii_file_format  function that returns true if the string argument
-!                         is indicating the requested format is ascii/text.
-!                         false means unformatted/binary.  
-!
-! nsc start 31jan07
-!   idea - add some unit number routine here?
-!   you can extract the filename associated with a fortran unit number
-!   with the inquire function on the unit.  this seems useful for
-!   automatically generating filenames in messages.  here is an example
-!   of how that code works:
-!
-!character(len=128) :: filename
-!logical :: is_named
-!integer :: rc
-!
-!inquire(unitnum, named=is_named, name=filename, iostat=rc)
-!print *, 'is_named =', is_named, 'name = ', trim(filename)
-!if ((rc /= 0) .or. (.not. is_named)) filename = 'unknown file'
-!
-! nsc end 31jan07
-!
-!-----------------------------------------------------------------------
+!> general purpose lower level utility routines.  
+!>
+!> probably large enough now this file should be split with the 
+!> logging and error handing here, maybe the file routines in 
+!> another util module?
 
 use types_mod, only : r4, r8, digits12, i4, i8, PI, MISSING_R8, MISSING_I
-
-!>@todo FIXME  netcdf is only needed for the nc_check() routine.
-!>when it moves to the netcdf_utilities_mod module remove the 'use'
-!>from here to simplify things.
-use netcdf
 
 implicit none
 private
 
 ! module local data
 
-integer, parameter :: E_DBG = -2,   E_MSG = -1,  E_ALLMSG = 0, E_WARN = 1, E_ERR = 2
-integer, parameter :: DEBUG = -1, MESSAGE = 0, WARNING = 1, FATAL = 2
+integer, parameter :: E_DBG = -2, E_MSG = -1, E_ALLMSG = 0, E_WARN = 1, E_ERR = 2
 integer, parameter :: NML_NONE = 0, NML_FILE = 1, NML_TERMINAL = 2, NML_BOTH = 3
 
 real(r8), parameter :: TWOPI = PI * 2.0_r8
 
-logical :: do_output_flag = .true.
-integer :: nml_flag       = NML_FILE
-logical :: single_task    = .true.
-integer :: task_number    = 0
+logical :: do_output_flag     = .false.
+integer :: nml_flag           = NML_FILE
+logical :: single_task        = .true.
+integer :: task_number        = 0
 logical :: module_initialized = .false.
-integer :: logfileunit = -1
-integer :: nmlfileunit = -1
+integer :: logfileunit        = -1
+integer :: nmlfileunit        = -1
 
-public :: file_exist, &
-          get_unit, &
+
+public :: get_unit, &
           open_file, &
           close_file, &
-          timestamp, &
-          register_module, &
+          file_exist, &
           error_handler, &
           to_upper, &
           squeeze_out_blanks, &
-          nc_check, &
-          next_file, &
+          nc_check, &    ! remove this; moved to netcdf_utils
+          next_file, &   ! deprecate this
           logfileunit, &
           nmlfileunit, &
           find_textfile_dims, &
           file_to_text, &
-          initialize_utilities, &
-          finalize_utilities, &
-          dump_unit_attributes, &
-          find_namelist_in_file, &
-          check_namelist_read, &
-          do_nml_term, &
+          timestamp, &
           set_tasknum, &
           set_output, &
           do_output, &
           set_nml_output, &
-          do_nml_file, &
           E_DBG, &
           E_MSG, &
           E_ALLMSG, &
           E_WARN, &
           E_ERR, &
-          DEBUG, &
-          MESSAGE, &
-          WARNING, &
-          FATAL, &
           is_longitude_between, &
           get_next_filename, &
           ascii_file_format, &
@@ -203,7 +64,20 @@ public :: file_exist, &
           scalar, &
           string_to_real, &
           string_to_integer, &
-          string_to_logical
+          string_to_logical, &
+          find_enclosing_indices, &
+          find_first_occurrence, &
+          array_dump, &
+          dump_unit_attributes, &
+          ! lowest level routines
+          initialize_utilities, &
+          finalize_utilities, &
+          register_module, &
+          find_namelist_in_file, &
+          check_namelist_read, &
+          do_nml_file, &
+          do_nml_term, &
+          log_it
 
 ! this routine is either in the null_mpi_utilities_mod.f90, or in
 ! the mpi_utilities_mod.f90 file, but it is not a module subroutine.
@@ -223,8 +97,15 @@ end interface
 ! if so, make to_scalar_int explicitly I4, i guess.)
 interface scalar
    module procedure to_scalar_real
-   module procedure to_scalar_int
+   module procedure to_scalar_int4
    module procedure to_scalar_int8
+end interface
+
+interface array_dump
+   module procedure array_1d_dump
+   module procedure array_2d_dump
+   module procedure array_3d_dump
+   module procedure array_4d_dump
 end interface
 
 ! version controlled file description for error handling, do not edit
@@ -260,540 +141,531 @@ namelist /utilities_nml/ TERMLEVEL, logfilename, module_details, &
 
 contains
 
-!#######################################################################
+!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+! base (lowest level) routines
+!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
 
-   subroutine initialize_utilities(progname, alternatename, output_flag)
-   character(len=*), intent(in), optional :: progname
-   character(len=*), intent(in), optional :: alternatename
-   logical, intent(in), optional          :: output_flag
-   ! integer :: logfileunit -- public module variable
-   integer :: iunit, io
 
-   character(len=256) :: lname
-   character(len=512) :: string1,string2,string3
+!-----------------------------------------------------------------------
+!>
 
-      if ( module_initialized ) then ! nothing to do
+subroutine initialize_utilities(progname, alternatename, output_flag)
+character(len=*), intent(in), optional :: progname
+character(len=*), intent(in), optional :: alternatename
+logical, intent(in), optional          :: output_flag
+integer :: iunit, io
 
-         ! write(*,*)'Module initialized ... carry on.'
+character(len=256) :: lname
 
-         return
+if ( module_initialized ) return
 
-      else ! initialize the module
-         
-         module_initialized = .true.
+module_initialized = .true.
 
-         if (present(output_flag)) do_output_flag = output_flag
 
-         ! Since the logfile is not open yet, the error terminations
-         ! must be handled differently than all other cases.
-         ! The routines that normally write to the logfile cannot
-         ! be used just yet. If we cannot open a logfile, we
-         ! always abort execution at this step.
+! now default to false, and only turn on if i'm task 0
+! or the caller tells me to turn it on.
+if (present(output_flag)) then
+   do_output_flag = output_flag
+else
+   if (single_task .or. task_number == 0) do_output_flag = .true.
+endif
 
-         if ( present(progname) ) then
-            if (do_output_flag) write(*,*)'Starting program ',trim(adjustl(progname))
-         endif
+! Since the logfile is not open yet, the error terminations
+! must be handled differently than all other cases.
+! The routines that normally write to the logfile cannot
+! be used just yet. If we cannot open a logfile, we
+! always abort execution at this step.
 
-         if (do_output_flag) write(*,*)'Initializing the utilities module.'
+!>@todo see if we like leaving this off
+!if ( present(progname) ) then
+!   if (do_output_flag) write(*,*)'Starting program ',trim(progname)
+!endif
 
-         ! Read the namelist entry
-         call find_namelist_in_file("input.nml", "utilities_nml", iunit, .false.)
-         read(iunit, nml = utilities_nml, iostat = io)
-         call check_namelist_read(iunit, io, "utilities_nml", .false.)
+! Read the namelist entry first before opening logfile, because
+! you can rename the logfile via a utilities namelist item.
 
-         ! Open the log file with the name from the namelist 
-         logfileunit = nextunit()
-         if ( logfileunit < 0 ) then
-            write(*,*)'   unable to get a unit to use for the logfile.'
-            write(*,*)'   stopping.'
-            call exit_all(77)
-         endif
+call find_namelist_in_file("input.nml", "utilities_nml", iunit)
+read(iunit, nml = utilities_nml, iostat = io)
+call check_namelist_read(iunit, io, "utilities_nml")
 
-         if (present(alternatename)) then
-            lname = alternatename
-         else
-            lname = logfilename
-         endif
+! Check to make sure termlevel is set to a reasonable value
+call check_term_level(TERMLEVEL)
 
-         if (do_output_flag) write(*,*)'Trying to log to unit ', logfileunit
-         if (do_output_flag) write(*,*)'Trying to open file ', trim(adjustl(lname))
+! Open the log file with the name from the namelist 
+! does not return here on failure.
+logfileunit = get_unit()
 
-         open(logfileunit, file=trim(adjustl(lname)), form='formatted', &
-                           action='write', position='append', iostat = io )
-         if ( io /= 0 ) then
-            write(*,*)'FATAL ERROR in initialize_utilities'
-            write(*,*)'  ',trim(source)
-            write(*,*)'  ',trim(revision)
-            write(*,*)'  ',trim(revdate)
-            write(*,*)'   unable to open the logfile for writing.'
-            write(*,*)'   the logfile name is "',trim(lname),'"'
-            write(*,*)'   stopping.'
-            call exit_all(77)
-         endif
+! name of the log file
+lname = logfilename
+if (present(alternatename)) lname = alternatename
 
-         ! Log the run-time 
+open(logfileunit, file=lname, form='formatted', &
+                  action='write', position='append', iostat = io )
+if ( io /= 0 ) call fatal_opening_log('initialize_utilities', lname)
 
-         if (do_output_flag) then
-            if ( present(progname) ) then
-               call write_time (logfileunit, label='Starting ', &
-                                string1='Program '//trim(progname))
-               call write_time (             label='Starting ', &
-                                string1='Program '//trim(progname))
-            else
-               call write_time (logfileunit, label='Starting ')
-               call write_time (             label='Starting ')
-            endif 
-         endif
+! Log the starting wall-clock time 
+if (do_output_flag) then
+   if ( present(progname) ) then
+      call log_time (logfileunit, label='Starting ', &
+                     string1='Program '//trim(progname))
+   else
+      call log_time (logfileunit, label='Starting ')
+   endif 
+endif
 
-         ! Check to make sure termlevel is set to a reasonable value
-         call checkTermLevel
+! Echo the module information using normal mechanism
+call register_module(source, revision, revdate)
 
-         ! Echo the module information using normal mechanism
-         call register_module(source, revision, revdate)
+! Set the defaults for logging the namelist values
+call set_nml_output(write_nml)
 
-         ! Set the defaults for logging the namelist values
-         call set_nml_output(write_nml)
-
-         ! If nmlfilename != logfilename, open it.  otherwise set nmlfileunit
-         ! to be same as logunit.
-         if (do_nml_file()) then
-            if (trim(adjustl(nmlfilename)) /= trim(adjustl(lname))) then
-               if (do_output_flag) &
-                write(*,*)'Trying to open namelist log ', trim(adjustl(nmlfilename))
-       
-               nmlfileunit = nextunit()
-               if (nmlfileunit < 0) &
-                  call error_handler(E_ERR,'initialize_utilities', &
-                    'Cannot get unit for nm log file', source, revision, revdate)
-   
-               open(nmlfileunit, file=trim(adjustl(nmlfilename)), form='formatted', &
-                    position='append', iostat = io )
-               if ( io /= 0 ) then
-                  call error_handler(E_ERR,'initialize_utilities', &
-                      'Cannot open nm log file', source, revision, revdate)
-               endif
-       
-            else
-              nmlfileunit = logfileunit
-            endif
-         endif
-
-         ! Echo the namelist values for this module using normal mechanism
-         ! including a separator line for this run.
-         if (do_output_flag) then
-            if (do_nml_file() .and. (nmlfileunit /= logfileunit)) then
-               if ( present(progname) ) then
-                  write(nmlfileunit, *) '!Starting Program '//trim(progname)
-               else
-                  write(nmlfileunit, *) '!Starting Program '
-               endif 
-            endif
-            if (do_nml_file()) write(nmlfileunit, nml=utilities_nml)
-            if (do_nml_term()) write(     *     , nml=utilities_nml)
-         endif
-
-         ! Record the values used for variable types:
-         if (do_output_flag .and. print_debug) then
-        
-            write(     *     ,*)  ! a little whitespace is nice
-            write(logfileunit,*)  ! a little whitespace is nice
-
-            write(string1,*)'..  digits12 is ',digits12
-            write(string2,*)'r8       is ',r8
-            write(string3,*)'r4       is ',r4
-            call error_handler(E_DBG, 'initialize_utilities', string1, &
-                               source, revision, revdate, text2=string2, text3=string3)
-
-            write(string1,*)'..  integer  is ',kind(iunit) ! any integer variable will do
-            write(string2,*)'i8       is ',i8
-            write(string3,*)'i4       is ',i4
-            call error_handler(E_DBG, 'initialize_utilities', string1, &
-                               source, revision, revdate, text2=string2, text3=string3)
-         endif
-
+! If nmlfilename != logfilename, open it.  otherwise set nmlfileunit
+! to be same as logunit.
+if (do_nml_file()) then
+   if (nmlfilename /= lname) then
+ 
+      nmlfileunit = get_unit()
+      open(nmlfileunit, file=nmlfilename, form='formatted', &
+           position='append', iostat = io )
+      if ( io /= 0 ) then
+         call error_handler(E_ERR,'initialize_utilities', &
+             'Cannot open namelist log file "'//trim(nmlfilename)//'"', &
+              source, revision, revdate)
       endif
+ 
+   else
+     nmlfileunit = logfileunit
+   endif
+endif
 
-   contains
-
-      function nextunit() result(iunit)
-         integer :: iunit
-
-         logical :: open
-         integer :: i
-
-         iunit = -1
-         UnitLoop : do i = 10, 80
-            inquire (i, opened=open)
-            if (.not. open) then
-               iunit = i
-               exit UnitLoop
-            endif
-         enddo UnitLoop
-         if ( iunit < 0 ) then 
-            write(*,*)'FATAL ERROR in initialize_utilities'
-            write(*,*)'  ',trim(source)
-            write(*,*)'  ',trim(revision)
-            write(*,*)'  ',trim(revdate)
-         endif
-      end function nextunit
-
-      subroutine checktermlevel
-         select case (TERMLEVEL)
-             case (E_MSG)
-                ! do nothing
-             case (E_ALLMSG)
-                ! do nothing
-             case (E_WARN)
-                ! do nothing
-             case (E_ERR)
-                ! do nothing
-             case default
-                print *, ' MESSAGE from initialize_utilities'
-                print *, ' namelist input of TERMLEVEL is ',TERMLEVEL
-                print *, ' possible values are ',E_MSG, E_ALLMSG, E_WARN, E_ERR
-                if (TERMLEVEL < E_WARN ) TERMLEVEL = E_WARN
-                if (TERMLEVEL > E_ERR  ) TERMLEVEL = E_ERR
-                print *, ' using ',TERMLEVEL
-         end select
-      end subroutine checktermlevel
-
-   end subroutine initialize_utilities
-
-
-!#######################################################################
-
-
-   subroutine finalize_utilities(progname)
-   character(len=*), intent(in), optional :: progname
-   ! integer :: logfileunit -- private module variable
-
-      ! if called multiple times, just return
-      if (.not. module_initialized) return
-
-      if (do_output_flag) then
-         if ( present(progname) ) then
-            call write_time (logfileunit, label='Finished ', &
-                             string1='Program '//trim(progname))
-            call write_time (             label='Finished ', &
-                             string1='Program '//trim(progname))
-         else
-            call write_time (logfileunit, label='Finished ')
-            call write_time (             label='Finished ')
-         endif 
-
-         if (do_nml_file() .and. (nmlfileunit /= logfileunit)) then
-            if ( present(progname) ) then
-               write(nmlfileunit, *) '!Finished Program '//trim(progname)
-            else
-               write(nmlfileunit, *) '!Finished Program '
-            endif 
-         endif 
-      endif
-
-      call close_file(logfileunit)
-      if ((nmlfileunit /= logfileunit) .and. (nmlfileunit /= -1)) then
-         call close_file(nmlfileunit)
-      endif
-
-      module_initialized = .false.
-
-   end subroutine finalize_utilities
-
-
-!#######################################################################
-
-
-   subroutine register_module(src, rev, rdate)
-   character(len=*), intent(in) :: src, rev, rdate
-
-      if ( .not. module_initialized ) call initialize_utilities
-      if ( .not. do_output_flag) return
-      if ( .not. module_details) return
-
-
-      write(logfileunit,*)
-      write(logfileunit,*)'Registering module :'
-      write(logfileunit,*)trim(src)
-      write(logfileunit,*)trim(rev)
-      write(logfileunit,*)trim(rdate)
-      write(logfileunit,*)'Registration complete.'
-      write(logfileunit,*)
-
-      write(     *     ,*)
-      write(     *     ,*)'Registering module :'
-      write(     *     ,*)trim(src)
-      write(     *     ,*)trim(rev)
-      write(     *     ,*)trim(rdate)
-      write(     *     ,*)'Registration complete.'
-      write(     *     ,*)
-
-   end subroutine register_module
-
-
-!#######################################################################
-
-
-   subroutine timestamp(string1,string2,string3,pos)
-
-      character(len=*), optional, intent(in) :: string1
-      character(len=*), optional, intent(in) :: string2
-      character(len=*), optional, intent(in) :: string3
-      character(len=*),           intent(in) :: pos
-
-      if ( .not. module_initialized ) call initialize_utilities
-      if ( .not. do_output_flag) return
-
-      if (trim(adjustl(pos)) == 'end') then
-         call finalize_utilities()
-      else if (trim(adjustl(pos)) == 'brief') then
-         call write_time (logfileunit, brief=.true., & 
-                          string1=string1, string2=string2, string3=string3)
-         call write_time (             brief=.true., &
-                          string1=string1, string2=string2, string3=string3)
-          
+! Echo the namelist values for this module using normal mechanism
+! including a separator line for this run.
+if (do_output_flag) then
+   if (do_nml_file() .and. (nmlfileunit /= logfileunit)) then
+      if ( present(progname) ) then
+         write(nmlfileunit, *) '!Starting Program '//trim(progname)
       else
-         call write_time (logfileunit, & 
-                          string1=string1, string2=string2, string3=string3)
-         call write_time (string1=string1, string2=string2, string3=string3)
-          
+         write(nmlfileunit, *) '!Starting Program '
+      endif 
+   endif
+   if (do_nml_file()) write(nmlfileunit, nml=utilities_nml)
+   if (do_nml_term()) write(     *     , nml=utilities_nml)
+endif
+
+! Record the values used for variable kinds
+if (do_output_flag .and. print_debug) call dump_varkinds()
+  
+end subroutine initialize_utilities
+
+!-----------------------------------------------------------------------
+!>
+
+subroutine finalize_utilities(progname)
+character(len=*), intent(in), optional :: progname
+
+! if called multiple times, just return
+if (.not. module_initialized) return
+
+if (do_output_flag) then
+   if ( present(progname) ) then
+      call log_time (logfileunit, label='Finished ', &
+                     string1='Program '//trim(progname))
+   else
+      call log_time (logfileunit, label='Finished ')
+   endif 
+
+   if (do_nml_file() .and. (nmlfileunit /= logfileunit)) then
+      if ( present(progname) ) then
+         write(nmlfileunit, *) '!Finished Program '//trim(progname)
+      else
+         write(nmlfileunit, *) '!Finished Program '
+      endif 
+   endif 
+endif
+
+call close_file(logfileunit)
+if ((nmlfileunit /= logfileunit) .and. (nmlfileunit /= -1)) then
+   call close_file(nmlfileunit)
+endif
+
+module_initialized = .false.
+
+end subroutine finalize_utilities
+
+!-----------------------------------------------------------------------
+!> log the subversion information about the different source modules
+!> being used in this run.
+
+subroutine register_module(src, rev, rdate)
+character(len=*), intent(in) :: src, rev, rdate
+
+if ( .not. do_output_flag) return
+if ( .not. module_details) return
+
+! you cannot have this routine call init because it calls
+! back into register module.  this is an error if this
+! routine is called before initialize_utilities().
+! AND you cannot use the error handler because it hasn't
+! been initialized yet.
+
+if ( .not. module_initialized ) call fatal_not_initialized('register_module')
+
+call log_it('')
+call log_it('Registering module :')
+call log_it(src)
+call log_it(rev)
+call log_it(rdate)
+call log_it('Registration complete.')
+call log_it('')
+
+end subroutine register_module
+
+!-----------------------------------------------------------------------
+!> unfortunately you can't pass a namelist as an argument, so all modules
+!> with namelists have to call write() themselves.  so this routine and
+!> the next are logicals to say whether (and to where) they should write.
+!>
+!> return whether nml should be written to the nml file
+
+function do_nml_file ()
+
+logical :: do_nml_file
+
+if ( .not. module_initialized ) call initialize_utilities
+
+if ( .not. do_output()) then
+   do_nml_file = .false.
+else
+   do_nml_file = (nml_flag == NML_FILE .or. nml_flag == NML_BOTH)
+endif
+
+end function do_nml_file
+
+!-----------------------------------------------------------------------
+!> return whether nml should be written to terminal
+!> for more details see above.
+
+function do_nml_term ()
+
+logical :: do_nml_term
+
+if ( .not. module_initialized ) call initialize_utilities
+
+if ( .not. do_output()) then
+   do_nml_term = .false.
+else
+   do_nml_term = (nml_flag == NML_TERMINAL .or. nml_flag == NML_BOTH)
+endif
+
+end function do_nml_term
+
+
+!-----------------------------------------------------------------------
+!> Opens namelist_file_name if it exists on unit iunit, error if it
+!> doesn't exist.
+!> Searches file for a line containing ONLY the string  &nml_name, 
+!> for instance &filter_nml. If found, backs up one record and
+!> returns true. Otherwise, error message and terminates
+!>
+
+subroutine find_namelist_in_file(namelist_file_name, nml_name, iunit)
+
+character(len=*),  intent(in)  :: namelist_file_name
+character(len=*),  intent(in)  :: nml_name
+integer,           intent(out) :: iunit
+
+character(len=256) :: next_nml_string, test_string, string1
+integer            :: io
+
+if (.not. module_initialized) call fatal_not_initialized('find_namelist_in_file')
+
+! Check for namelist file existence; no file is an error
+if(.not. file_exist(trim(namelist_file_name))) then
+
+   write(msgstring1, *) 'Namelist input file: ', namelist_file_name, ' must exist.'
+   call error_handler(E_ERR, 'find_namelist_in_file', msgstring1, &
+                      source, revision, revdate)
+
+endif
+
+iunit = open_file(namelist_file_name, action = 'read')
+
+! Read each line until end of file is found
+! Look for the start of a namelist with &nml_name
+! Convert test string to all uppercase ... since that is
+! what happens if Fortran writes a namelist.
+
+string1 = adjustl(nml_name)
+call to_upper(string1)             ! works in-place
+test_string = '&' // trim(string1)
+
+do
+   read(iunit, '(A)', iostat = io) next_nml_string
+   if(io /= 0) then
+      ! Reached end of file and didn't find this namelist
+      write(msgstring1, *) 'Namelist entry &', trim(nml_name), &
+                           ' must exist in file ', trim(namelist_file_name)
+      call error_handler(E_ERR, 'find_namelist_in_file', msgstring1, &
+                         source, revision, revdate)
+   else
+      ! see if this line starts the namelist we are asking for
+      string1 = adjustl(next_nml_string)
+      call to_upper(string1)
+
+      if(string1 == test_string) then
+         backspace(iunit)
+         return
       endif
+   endif
+end do
 
-   end subroutine timestamp
+! not reached
 
-
-!#######################################################################
-
-
-   function file_exist (file_name)
-
-      character(len=*), intent(in) :: file_name
-      logical :: file_exist
-      integer :: trimlen
-
-      if ( .not. module_initialized ) call initialize_utilities
-
-      trimlen = len_trim(file_name)
-
-      inquire (file=file_name(1:trimlen), exist=file_exist)
-
-   end function file_exist
+end subroutine find_namelist_in_file
 
 
-!#######################################################################
+!-----------------------------------------------------------------------
+
+!> Confirms that a namelist read was successful. If it failed
+!> produces an error message and stops execution.
+
+subroutine check_namelist_read(iunit, iostat_in, nml_name)
+
+integer,          intent(in) :: iunit, iostat_in
+character(len=*), intent(in) :: nml_name
+
+character(len=256) :: nml_string
+integer            :: io
+
+if (.not. module_initialized) call fatal_not_initialized('check_namelist_read')
+
+! If the namelist read was successful, close the namelist file and we're done.
+if(iostat_in == 0) then
+   call close_file(iunit)
+   return
+endif
+
+! If it wasn't successful, print the line on which it failed  
+backspace(iunit)
+read(iunit, '(A)', iostat = io) nml_string
+
+! A failure in this read means that the namelist started but never terminated
+! Result was falling off the end, so backspace followed by read fails
+if(io /= 0) then
+   write(msgstring1, *) 'Namelist ', trim(nml_name), ' started but never terminated'
+else
+   ! Didn't fall off end so bad entry in the middle of namelist
+   write(msgstring1, *) 'INVALID NAMELIST ENTRY: ', trim(nml_string), ' in namelist ', trim(nml_name)
+endif
+
+call error_handler(E_ERR, 'check_namelist_read', msgstring1, &
+                   source, revision, revdate)
+
+end subroutine check_namelist_read
+
+!-----------------------------------------------------------------------
+!> if trying to write an unformatted string, like "write(*,*)"
+!> to both standard output and the logfile, call this routine instead.
+!> it prevents you from having to maintain two copies of the same
+!> output message.
+
+subroutine log_it(message)
+character(len=*), intent(in) :: message
+
+                      write(     *     , *) trim(message)
+if (logfileunit >= 0) write(logfileunit, *) trim(message)
+
+end subroutine log_it
 
 
-   function get_unit () result (iunit)
+!-----------------------------------------------------------------------
+!> call this routine if you cannot open the log file.
 
-      integer :: i, iunit
-      logical :: available
+subroutine fatal_opening_log(from_routine, lname)
 
-      if ( .not. module_initialized ) call initialize_utilities
+character(len=*), intent(in) :: from_routine
+character(len=*), intent(in) :: lname
 
-! ---- get available unit ----
+write(*,*)'FATAL ERROR in '//trim(from_routine)
+write(*,*)'   unable to open the logfile for writing.'
+write(*,*)'   the logfile name is "',trim(lname),'"'
+write(*,*)'  ',trim(source)
+write(*,*)'  ',trim(revision)
+write(*,*)'  ',trim(revdate)
+write(*,*)'   stopping.'
+call exit_all(66)
 
-      iunit = -1
-      do i = 10, 80
-         inquire (i, opened=available)
-         if (.not. available) then
-            iunit = i
-            exit
-         endif
-      enddo
+end subroutine fatal_opening_log
 
-      if (iunit == -1) call error_handler(E_ERR,'get_unit', &
-             'No available units.', source, revision, revdate)
+!-----------------------------------------------------------------------
+!> call this routine if you end up in a function or subroutine here
+!> that CANNOT be called before the initialize_utilities() or
+!> initialize_mpi_utilities() routine is called.
 
-   end function get_unit
+subroutine fatal_not_initialized(from_routine)
 
+character(len=*), intent(in) :: from_routine
 
-!#######################################################################
+write(*,*)'FATAL ERROR in '//trim(from_routine)
+write(*,*)'   initialize_utilities() or initialize_mpi_utilities()'
+write(*,*)'   must be called before calling '//trim(from_routine)//'().'
+write(*,*)'  ',trim(source)
+write(*,*)'  ',trim(revision)
+write(*,*)'  ',trim(revdate)
+write(*,*)'   stopping.'
+call exit_all(77)
 
+end subroutine fatal_not_initialized
 
-   subroutine dump_unit_attributes(iunit) 
-!--------------------------------------------------------------------------------
-!  subroutine dump_unit_attributes(iunit) 
-!
-!  Useful for dumping all the attributes for a file 'unit'
-!  A debugging routine, really. TJH Oct 2004
+!-----------------------------------------------------------------------
+!> call this routine if you find an error before the logfile
+!> has been opened.
 
-      integer, intent(in) :: iunit
+subroutine fatal_error_w_no_log(from_routine, msg1, msg2, msg3)
 
-      logical :: exists, connected, named_file
-      character(len=256) :: file_name
-      character(len=512) :: str1
-      character(len=32)  :: srname
-      character(len=32)  :: ynu     ! YES, NO, UNDEFINED ... among others
-      integer :: ios, reclen, nextrecnum
+character(len=*), intent(in) :: from_routine
+character(len=*), intent(in), optional :: msg1
+character(len=*), intent(in), optional :: msg2
+character(len=*), intent(in), optional :: msg3
 
-      if ( .not. module_initialized ) call initialize_utilities
+write(*,*)'FATAL ERROR in '//trim(from_routine)
+if (present(msg1)) write(*,*) trim(msg1)
+if (present(msg2)) write(*,*) trim(msg2)
+if (present(msg2)) write(*,*) trim(msg3)
+write(*,*)'  ',trim(source)
+write(*,*)'  ',trim(revision)
+write(*,*)'  ',trim(revdate)
+write(*,*)'   stopping.'
+call exit_all(88)
 
-      srname = "dump_unit_attributes"
+end subroutine fatal_error_w_no_log
 
-! --- start querying 
+!-----------------------------------------------------------------------
 
-      write(str1,*)'for unit ',iunit 
-      call error_handler(E_MSG, srname, str1, source, revision, revdate)
+subroutine check_term_level(level)
 
-      inquire(iunit, opened = connected, iostat=ios)
-      if ( connected .and. (ios == 0) ) &
-         call error_handler(E_MSG, srname, ' connected', source, revision, revdate)
+integer, intent(in) :: level
 
-      inquire(iunit, named = named_file, iostat=ios)
-      if ( named_file .and. (ios == 0) ) &
-         call error_handler(E_MSG, srname, ' file is named.', source, revision, revdate)
+if (.not. module_initialized) call fatal_not_initialized('check_term_level')
 
-      inquire(iunit, name = file_name, iostat=ios)
-      if ( ios == 0 ) then
-         write(str1,*)'file name is ' // trim(adjustl(file_name))
-         call error_handler(E_MSG, srname, str1, source, revision, revdate)
-      endif
+select case (level)
+  case (E_MSG, E_ALLMSG, E_WARN, E_ERR, E_DBG)
+    ! ok, do nothing
+  case default
+    write(msgstring1, *) 'bad integer value for "termlevel", must be one of'
+    write(msgstring2, *) '-1 (E_MSG), 0 (E_ALLMSG), 1 (E_WARN), 2 (E_ERR), -2 (E_DBG)'
+    call error_handler(E_ERR,'check_term_level', msgstring1, &
+                       source, revision, revdate, text2=msgstring2)
 
-      inquire(iunit, exist = exists, iostat=ios)
-      if ( exists .and. (ios == 0) ) &
-         call error_handler(E_MSG, srname, ' file exists', source, revision, revdate)
+  end select
 
-      inquire(iunit, recl = reclen, iostat=ios)
-      if ( ios == 0 ) then
-         write(str1,*)'record length is ', reclen
-         call error_handler(E_MSG, srname, str1, source, revision, revdate)
-      endif
-
-      inquire(iunit, nextrec = nextrecnum, iostat=ios)
-      if ( ios == 0 ) then
-         write(str1,*)'next record is ', nextrecnum
-         call error_handler(E_MSG, srname, str1, source, revision, revdate)
-      endif
-
-      inquire(iunit, access = ynu, iostat=ios)
-      if ( ios == 0 ) then
-         write(str1,*)'access_type is ', ynu
-         call error_handler(E_MSG, srname, str1, source, revision, revdate)
-      endif
-
-      inquire(iunit, sequential = ynu, iostat=ios)
-      if ( ios == 0 ) then
-         write(str1,*)'is file sequential ', ynu
-         call error_handler(E_MSG, srname, str1, source, revision, revdate)
-      endif
-
-      inquire(iunit, direct = ynu, iostat=ios)
-      if ( ios == 0 ) then
-         write(str1,*)'is file direct ', ynu
-         call error_handler(E_MSG, srname, str1, source, revision, revdate)
-      endif
-
-      inquire(iunit, form = ynu, iostat=ios)
-      if ( ios == 0 ) then
-         write(str1,*)'file format ', ynu
-         call error_handler(E_MSG, srname, str1, source, revision, revdate)
-      endif
-
-      inquire(iunit, action = ynu, iostat=ios)
-      if ( ios == 0 ) then
-         write(str1,*)'action ', ynu
-         call error_handler(E_MSG, srname, str1, source, revision, revdate)
-      endif
-
-      inquire(iunit, read = ynu, iostat=ios)
-      if ( ios == 0 ) then
-         write(str1,*)'read ', ynu
-         call error_handler(E_MSG, srname, str1, source, revision, revdate)
-      endif
-
-      inquire(iunit, write = ynu, iostat=ios)
-      if ( ios == 0 ) then
-         write(str1,*)'write ', ynu
-         call error_handler(E_MSG, srname, str1, source, revision, revdate)
-      endif
-
-      inquire(iunit, readwrite = ynu, iostat=ios)
-      if ( ios == 0 ) then
-         write(str1,*)'readwrite ', ynu
-         call error_handler(E_MSG, srname, str1, source, revision, revdate)
-      endif
-
-      inquire(iunit, blank = ynu, iostat=ios)
-      if ( ios == 0 ) then
-         write(str1,*)'blank ', ynu
-         call error_handler(E_MSG, srname, str1, source, revision, revdate)
-      endif
-
-      inquire(iunit, position = ynu, iostat=ios)
-      if ( ios == 0 ) then
-         write(str1,*)'position ', ynu
-         call error_handler(E_MSG, srname, str1, source, revision, revdate)
-      endif
-
-      inquire(iunit, delim = ynu, iostat=ios)
-      if ( ios == 0 ) then
-         write(str1,*)'delim ', ynu
-         call error_handler(E_MSG, srname, str1, source, revision, revdate)
-      endif
-
-      inquire(iunit, pad = ynu, iostat=ios)
-      if ( ios == 0 ) then
-         write(str1,*)'pad ', ynu
-         call error_handler(E_MSG, srname, str1, source, revision, revdate)
-      endif
-
-   end subroutine dump_unit_attributes
+end subroutine check_term_level
 
 
-!#######################################################################
+!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+! file and error handling
+!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
 
 
-   subroutine error_mesg (routine, message, level)
+!-----------------------------------------------------------------------
+!>
 
-!             ------------------------------------
-!             |                                  |
-!             |    a very simple error handler   |
-!             |                                  |
-!             ------------------------------------
-!
-!  input:
-!      routine   name of the calling routine (character string)
-!      message   message written to standard output (character string)
-!      level     if not equal to zero then the program terminates
-!
-          character(len=*), intent(in) :: routine, message
-          integer,          intent(in) :: level
+function file_exist (file_name)
 
-          select case (iabs(level))
-             case (0)
-                if ( .not. do_output_flag) return
-                print *, ' MESSAGE from ',routine(1:len_trim(routine))
-                print *, ' ',message(1:len_trim(message))
-             case (1)
-                print *, ' WARNING in ',routine(1:len_trim(routine))
-                print *, ' ',message(1:len_trim(message))
-             case default
-                print *, ' ERROR in ',routine(1:len_trim(routine))
-                print *, ' ',message(1:len_trim(message))
-                call exit_all(99)
-          end select
+character(len=*), intent(in) :: file_name
+logical :: file_exist
 
-!         --------------------------------------------
+if ( .not. module_initialized ) call initialize_utilities
 
-   end subroutine error_mesg
+inquire (file=file_name, exist=file_exist)
+
+end function file_exist
 
 
-!#######################################################################
+!-----------------------------------------------------------------------
+!>
+
+! get available file unit number
+function get_unit() 
+integer :: get_unit
+
+integer :: i, iunit
+logical :: open
+
+if ( .not. module_initialized ) call fatal_not_initialized('get_unit')
+
+iunit = -1
+do i = 10, 80
+   inquire (i, opened=open)
+   if (.not. open) then
+      get_unit = i
+      return
+   endif
+enddo
+
+! if you get here it is an error
+write(msgstring1, *) 'Unable to find an available unit number between 10 and 80'
+call error_handler(E_ERR,'get_unit', msgstring1, source, revision, revdate)
+
+end function get_unit
 
 
-  subroutine error_handler(level, routine, text, src, rev, rdate, aut, text2, text3 )
-!----------------------------------------------------------------------
-! subroutine error_handler(level, routine, text, src, rev, rdate, aut , text2, text3)
-!
-! logs warning/error 
-implicit none
+!-----------------------------------------------------------------------
+!> write to log and/or standard output, messages, warnings, debug, errors
+!>
+
+
+subroutine error_handler(level, routine, text, src, rev, rdate, aut, text2, text3 )
 
 integer, intent(in) :: level
 character(len=*), intent(in) :: routine, text
 character(len=*), intent(in), optional :: src, rev, rdate, aut, text2, text3
 
-character(len=8) :: taskstr
+character(len=16) :: taskstr, msgtype
+character(len=256) :: wherefrom, wherecont
 
-if ( .not. module_initialized ) call initialize_utilities
+! the init code uses the error_handler so no trying to call init from here.
+if ( .not. module_initialized ) call fatal_not_initialized('error_handler')
+
+! handle the case where we have an error without an open log file.
+
+if (logfileunit < 0) call fatal_error_w_no_log(routine, text, text2, text3)
+
+! early returns:
+
+! messages only print if the 'do_output_flag' is on, which by default
+! is only task 0.  debug messages only print if enabled.
+
+if (level == E_MSG .and. .not. do_output_flag) return
+if (level == E_DBG .and. .not. print_debug)    return
+
+! if we get here, we're printing something.  set up some strings
+! to make the code below simpler.
+
+if ( single_task ) then
+   taskstr = ''
+else
+   if (task_number == 0) then
+      write(taskstr, '(a)' ) "PE 0: "
+   else
+      write(taskstr, '(a,i5,a)' ) "PE ", task_number, ": "
+   endif
+endif
+
+! these are going to get used a lot below.  make them
+! single strings so the code is easier to parse.  but can't
+! add trailing blanks here because trim will strip them below.
+
+wherefrom = trim(taskstr)//' '//trim(routine)
+wherecont = trim(taskstr)//' '//trim(routine)//' ...'
+
+if (level == E_ERR)  msgtype = 'ERROR FROM:'
+if (level == E_WARN) msgtype = 'WARNING FROM:'
+if (level == E_DBG)  msgtype = 'DEBUG FROM:'
 
 ! current choice is to log all errors and warnings regardless
 ! of setting of output flag.  messages only print from those
@@ -801,165 +673,38 @@ if ( .not. module_initialized ) call initialize_utilities
 
 select case(level)
    case (E_MSG)
-
-      if ( .not. do_output_flag) return
-      if ( single_task ) then
-        write(     *     , *) trim(routine),' ', trim(text)
-        write(logfileunit, *) trim(routine),' ', trim(text)
-        if ( present(text2)) then
-           write(     *     , *) trim(routine),' ... ', trim(text2)
-           write(logfileunit, *) trim(routine),' ... ', trim(text2)
-        endif
-        if ( present(text3)) then
-           write(     *     , *) trim(routine),' ... ', trim(text3)
-           write(logfileunit, *) trim(routine),' ... ', trim(text3)
-        endif
-      else
-        ! FIXME: should they just all use i5? but most common case is only
-        ! messages from PE0, so it's tempting not to waste all those columns.
-        if (task_number == 0) then
-            write(taskstr, '(a)' ) "PE 0"
-        else
-            write(taskstr, '(a,i5)' ) "PE ", task_number
-        endif
-        write(     *     , *) trim(taskstr),': ',trim(routine),' ', trim(text)
-        write(logfileunit, *) trim(taskstr),': ',trim(routine),' ', trim(text)
-        if ( present(text2)) then
-           write(     *     , *) trim(taskstr),': ',trim(routine),' ... ', trim(text2)
-           write(logfileunit, *) trim(taskstr),': ',trim(routine),' ... ', trim(text2)
-        endif
-        if ( present(text3)) then
-           write(     *     , *) trim(taskstr),': ',trim(routine),' ... ', trim(text3)
-           write(logfileunit, *) trim(taskstr),': ',trim(routine),' ... ', trim(text3)
-        endif
-      endif
+                          call log_it(trim(wherefrom)//' '//trim(text))
+      if (present(text2)) call log_it(trim(wherecont)//' '//trim(text2))
+      if (present(text3)) call log_it(trim(wherecont)//' '//trim(text3))
 
    case (E_ALLMSG)
 
       if ( single_task ) then
-        write(     *     , *) trim(routine),' ', trim(text)
-        write(logfileunit, *) trim(routine),' ', trim(text)
-        if ( present(text2)) then
-           write(     *     , *) trim(routine),' ... ', trim(text2)
-           write(logfileunit, *) trim(routine),' ... ', trim(text2)
-        endif
-        if ( present(text3)) then
-           write(     *     , *) trim(routine),' ... ', trim(text3)
-           write(logfileunit, *) trim(routine),' ... ', trim(text3)
-        endif
+                             call log_it(trim(wherefrom)//' '//trim(text))
+         if (present(text2)) call log_it(trim(wherecont)//' '//trim(text2))
+         if (present(text3)) call log_it(trim(wherecont)//' '//trim(text3))
       else
-        write(taskstr, '(a,i5)' ) "PE ", task_number
-        write(     *     , *) trim(taskstr),': ',trim(routine),' ', trim(text)
-        if ( present(text2)) then
-           write(     *     , *) trim(taskstr),': ',trim(routine),' ... ', trim(text2)
-        endif
-        if ( present(text3)) then
-           write(     *     , *) trim(taskstr),': ',trim(routine),' ... ', trim(text3)
-        endif
+        ! this has a problem that multiple tasks are writing to the same logfile.
+        ! it's overwriting existing content.  short fix is to NOT write ALLMSGs
+        ! to the log file, only stdout.
+                            write(*,*) trim(trim(wherefrom)//' '//trim(text))
+        if (present(text2)) write(*,*) trim(trim(wherecont)//' '//trim(text2))
+        if (present(text3)) write(*,*) trim(trim(wherecont)//' '//trim(text3))
       endif
 
-   case (E_DBG)
-      if (print_debug) then
+   case (E_DBG, E_WARN, E_ERR)
 
-         ! what about do_output_flag?  want messages from all procs or just PE0?
-
-         if ( single_task ) then
-           write(     *     , *) 'DEBUG FROM: ', trim(routine),' ', trim(text)
-           write(logfileunit, *) 'DEBUG FROM: ', trim(routine),' ', trim(text)
-           if ( present(text2)) then
-              write(     *     , *) 'DEBUG FROM: ', trim(routine),' ... ', trim(text2)
-              write(logfileunit, *) 'DEBUG FROM: ', trim(routine),' ... ', trim(text2)
-           endif
-           if ( present(text3)) then
-              write(     *     , *) 'DEBUG FROM: ', trim(routine),' ... ', trim(text3)
-              write(logfileunit, *) 'DEBUG FROM: ', trim(routine),' ... ', trim(text3)
-           endif
-         else
-           if (task_number == 0) then
-               write(taskstr, '(a)' ) "PE 0"
-           else
-               write(taskstr, '(a,i5)' ) "PE ", task_number
-           endif
-           write(     *     , *) trim(taskstr),': DEBUG FROM: ',trim(routine),' ', trim(text)
-           write(logfileunit, *) trim(taskstr),': DEBUG FROM: ',trim(routine),' ', trim(text)
-           if ( present(text2)) then
-              write(     *     , *) trim(taskstr),': DEBUG FROM: ',trim(routine),' ... ', trim(text2)
-              write(logfileunit, *) trim(taskstr),': DEBUG FROM: ',trim(routine),' ... ', trim(text2)
-           endif
-           if ( present(text3)) then
-              write(     *     , *) trim(taskstr),': DEBUG FROM: ',trim(routine),' ... ', trim(text3)
-              write(logfileunit, *) trim(taskstr),': DEBUG FROM: ',trim(routine),' ... ', trim(text3)
-           endif
-         endif
-      endif
-
-   case (E_WARN)
-
-      write(     *     , *) 'WARNING FROM:'
-      if ( .not. single_task ) &
-      write(     *     , *) ' task id: ', task_number
-      write(     *     , *) ' routine: ', trim(routine)
-      write(     *     , *) ' message: ', trim(text)
-      if ( present(text2)) &
-      write(     *     , *) ' message: ... ', trim(text2)
-      if ( present(text3)) &
-      write(     *     , *) ' message: ... ', trim(text3)
-      write(     *     , *) ' '
-      write(     *     , *) ' source file: ', trim(src)
-      write(     *     , *) ' file revision: ', trim(rev)
-      write(     *     , *) ' revision date: ', trim(rdate)
-      if(present(aut)) &
-      write(     *     , *) ' last editor: ', trim(aut)
-
-      write(logfileunit, *) 'WARNING FROM:'
-      if ( .not. single_task ) &
-      write(logfileunit, *) ' task id: ', task_number
-      write(logfileunit, *) ' routine: ', trim(routine)
-      write(logfileunit, *) ' message: ', trim(text)
-      if ( present(text2)) &
-      write(logfileunit, *) ' message: ... ', trim(text2)
-      if ( present(text3)) &
-      write(logfileunit, *) ' message: ... ', trim(text3)
-      write(logfileunit, *) ' '
-      write(logfileunit, *) ' source file: ', trim(src)
-      write(logfileunit, *) ' file revision: ', trim(rev)
-      write(logfileunit, *) ' revision date: ', trim(rdate)
-      if(present(aut)) &
-      write(logfileunit, *) ' last editor: ', trim(aut)
-
-   case(E_ERR)
-
-      write(     *     , *) 'ERROR FROM:'
-      if ( .not. single_task ) &
-      write(     *     , *) ' task id: ', task_number
-      write(     *     , *) ' routine: ', trim(routine)
-      write(     *     , *) ' message: ', trim(text)
-      if ( present(text2)) &
-      write(     *     , *) ' message: ... ', trim(text2)
-      if ( present(text3)) &
-      write(     *     , *) ' message: ... ', trim(text3)
-      write(     *     , *) ' '
-      write(     *     , *) ' source file: ', trim(src)
-      write(     *     , *) ' file revision: ', trim(rev)
-      write(     *     , *) ' revision date: ', trim(rdate)
-      if(present(aut)) &
-      write(     *     , *) ' last editor: ', trim(aut)
-
-      write(logfileunit, *) 'ERROR FROM:'
-      if ( .not. single_task ) &
-      write(logfileunit, *) ' task id: ', task_number
-      write(logfileunit, *) ' routine: ', trim(routine)
-      write(logfileunit, *) ' message: ', trim(text)
-      if ( present(text2)) &
-      write(logfileunit, *) ' message: ... ', trim(text2)
-      if ( present(text3)) &
-      write(logfileunit, *) ' message: ... ', trim(text3)
-      write(logfileunit, *) ' '
-      write(logfileunit, *) ' source file: ', trim(src)
-      write(logfileunit, *) ' file revision: ', trim(rev)
-      write(logfileunit, *) ' revision date: ', trim(rdate)
-      if(present(aut)) &
-      write(logfileunit, *) ' last editor: ', trim(aut)
+      call log_it(msgtype)
+      call log_it(wherefrom)
+      call log_it(' routine: '//trim(routine))
+      call log_it(' message: '//trim(text))
+      if (present(text2)) call log_it(' message: ... '//trim(text2))
+      if (present(text3)) call log_it(' message: ... '//trim(text3))
+      call log_it('')
+      call log_it(' source file: '//trim(src))
+      call log_it(' file revision: '//trim(rev))
+      call log_it(' revision date: '//trim(rdate))
+      if(present(aut)) call log_it(' last editor: '//trim(aut))
 
 end select
 
@@ -969,400 +714,171 @@ if( level >= TERMLEVEL ) call exit_all( 99 )
 end subroutine error_handler
 
 
-!#######################################################################
+!-----------------------------------------------------------------------
+!> open a file.  assigns a unit number to be used for subsequent read/writes.
+!> can open an existing file, append to an existing file, overwrite an
+!> existing file, or create a new file.  additional options for setting the
+!> record length on formatted files, and doing binary byte-swapping conversions.
 
+function open_file (fname, form, action, access, convert, delim, reclen, return_rc) result (iunit)
 
-   function open_file (fname, form, action, access, convert, delim, reclen, return_rc) result (iunit)
+character(len=*), intent(in)            :: fname
+character(len=*), intent(in),  optional :: form, action, access, convert, delim
+integer,          intent(in),  optional :: reclen
+integer,          intent(out), optional :: return_rc
+integer  :: iunit
 
-   character(len=*), intent(in)            :: fname
-   character(len=*), intent(in),  optional :: form, action, access, convert, delim
-   integer,          intent(in),  optional :: reclen
-   integer,          intent(out), optional :: return_rc
-   integer  :: iunit
+integer           :: rc, rlen
+logical           :: open, use_recl
+character(len=32) :: format, pos, act, stat, acc, conversion, del
 
-   integer           :: rc, rlen
-   logical           :: open, use_recl
-   character(len=32) :: format, pos, act, stat, acc, conversion, del
+if ( .not. module_initialized ) call initialize_utilities
 
-   if ( .not. module_initialized ) call initialize_utilities
+! if file already open, set iunit and return
+inquire (file=trim(fname), opened=open, number=iunit, iostat=rc)
+if (open) then
+   if (present(return_rc)) return_rc = rc
+   return
+endif
 
-   ! if file already open, set iunit and return
-   inquire (file=trim(fname), opened=open, number=iunit, iostat=rc)
-   if (open) then
-      if (present(return_rc)) return_rc = rc
-      return
-   endif
+! not already open, so open it.
+      
+! set defaults, and then modify depending on what user requests
+! via the arguments.  this combination of settings either creates
+! a new file or overwrites an existing file from the beginning.
 
-   ! not already open, so open it.
-         
-   ! set defaults, and then modify depending on what user requests
-   ! via the arguments.  this combination of settings either creates
-   ! a new file or overwrites an existing file from the beginning.
+format     = 'formatted'
+act        = 'readwrite'
+pos        = 'rewind'
+stat       = 'unknown'
+acc        = 'sequential'
+rlen       = 1
+del        = 'apostrophe'
+conversion = 'native'
 
-   format     = 'formatted'
-   act        = 'readwrite'
-   pos        = 'rewind'
-   stat       = 'unknown'
-   acc        = 'sequential'
-   rlen       = 1
-   del        = 'apostrophe'
-   conversion = 'native'
+if (present(form)) format = form
+call to_upper(format)  
 
-   if (present(form)) format = form
-   call to_upper(format)  
+! change defaults based on intended action.
+if (present(action)) then
+    select case(action)
 
-   ! change defaults based on intended action.
-   if (present(action)) then
-       select case(action)
+       case ('read', 'READ')
+          ! open existing file.  fail if not found.  read from start.
+          act  = 'read'
+          stat = 'old'
 
-          case ('read', 'READ')
-             ! open existing file.  fail if not found.  read from start.
-             act  = 'read'
-             stat = 'old'
+       case ('write', 'WRITE')
+          ! create new file/replace existing file.  write at start.
+          act  = 'write'
+          stat = 'replace'
 
-          case ('write', 'WRITE')
-             ! create new file/replace existing file.  write at start.
-             act  = 'write'
-             stat = 'replace'
+       case ('append', 'APPEND')
+          ! create new/open existing file.  write at end if existing.
+          act  = 'readwrite'
+          pos  = 'append'
 
-          case ('append', 'APPEND')
-             ! create new/open existing file.  write at end if existing.
-             act  = 'readwrite'
-             pos  = 'append'
+       case default
+          ! if the user specifies an action, make sure it is a valid one.
+          write(msgstring1,*) 'opening file "'//trim(fname)//'"'
+          write(msgstring2,*) 'unrecognized action, "'//trim(action)//'"; valid values: "read", "write", "append"'
+          call error_handler(E_ERR, 'open_file', msgstring1, source, revision, revdate, text2=msgstring2)
+    end select
+endif
 
-          case default
-             ! if the user specifies an action, make sure it is a valid one.
-             write(msgstring1,*) 'opening file "'//trim(fname)//'"'
-             write(msgstring2,*) 'unrecognized action, "'//trim(action)//'"; valid values: "read", "write", "append"'
-             call error_handler(E_ERR, 'open_file', msgstring1, source, revision, revdate, text2=msgstring2)
-       end select
-   endif
+! from the ibm help pages:
+!   valid values for access: SEQUENTIAL, DIRECT or STREAM. 
+!   If ACCESS= is DIRECT, RECL= must be specified. 
+!   If ACCESS= is STREAM, RECL= must not be specified.
+!   SEQUENTIAL is the default, for which RECL= is optional
+! i can't see how to specify all the options in any kind of reasonable way.
+! but i need to be able to specify 'stream'... so here's a stab at it.
 
-   ! from the ibm help pages:
-   !   valid values for access: SEQUENTIAL, DIRECT or STREAM. 
-   !   If ACCESS= is DIRECT, RECL= must be specified. 
-   !   If ACCESS= is STREAM, RECL= must not be specified.
-   !   SEQUENTIAL is the default, for which RECL= is optional
-   ! i can't see how to specify all the options in any kind of reasonable way.
-   ! but i need to be able to specify 'stream'... so here's a stab at it.
+if (present(access)) then
+   acc = access
+   call to_upper(acc)
+endif
 
-   if (present(access)) then
-      acc = access
-      call to_upper(acc)
-   endif
+! recl can't apply to stream files, is required for direct,
+! and is optional for sequential.  ugh.
+if (present(reclen)) then
+   rlen = reclen
+   use_recl = .true.
+else if (acc == 'DIRECT') then
+   use_recl = .true.
+else
+   use_recl = .false.
+endif
 
-   ! recl can't apply to stream files, is required for direct,
-   ! and is optional for sequential.  ugh.
-   if (present(reclen)) then
-      rlen = reclen
-      use_recl = .true.
-   else if (acc == 'DIRECT') then
-      use_recl = .true.
-   else
-      use_recl = .false.
-   endif
-
-   ! endian-conversion only applies to binary files
-   ! valid values seem to be:  'native', 'big-endian', 'little-endian', and possibly 'cray'
-   ! depending on the compiler.
-   if (present(convert)) then 
-      if (format == 'FORMATTED') then
-         write(msgstring1,*) 'opening file "'//trim(fname)//'"'
-         write(msgstring2,*) 'cannot specify binary conversion on a formatted file'
-         call error_handler(E_ERR, 'open_file ', msgstring1, source, revision, revdate, text2=msgstring2)
-      endif
-      conversion = convert
-   endif
-
-   ! string delimiters only apply to ascii files
-   if (present(delim)) then
-      if (format /= 'FORMATTED') then
-         write(msgstring1,*) 'opening file "'//trim(fname)//'"'
-         write(msgstring2,*) 'cannot specify a delimiter on an unformatted file'
-         call error_handler(E_ERR, 'open_file ', msgstring1, source, revision, revdate, text2=msgstring2)
-      endif
-      del = delim
-   endif
-
-   ! ok, now actually open the file
-
-   iunit = get_unit()
-
+! endian-conversion only applies to binary files
+! valid values seem to be:  'native', 'big-endian', 'little-endian', and possibly 'cray'
+! depending on the compiler.
+if (present(convert)) then 
    if (format == 'FORMATTED') then
-      ! formatted file: only pass in recl if required
-      if (use_recl) then
-         open (iunit, file=trim(fname), form=format, access=acc, recl=rlen, &
-               delim=del, position=pos, action=act, status=stat, iostat=rc)
-      else
-         open (iunit, file=trim(fname), form=format, access=acc,            &
-               delim=del, position=pos, action=act, status=stat, iostat=rc)
-      endif
-   else  
-      ! unformatted file - again, only pass in recl if required 
-      if (use_recl) then
-         open (iunit, file=trim(fname), form=format, access=acc, recl=rlen, &
-               convert=conversion, position=pos, action=act, status=stat, iostat=rc)
-      else
-         open (iunit, file=trim(fname), form=format, access=acc,            &
-               convert=conversion, position=pos, action=act, status=stat, iostat=rc)
-      endif
+      write(msgstring1,*) 'opening file "'//trim(fname)//'"'
+      write(msgstring2,*) 'cannot specify binary conversion on a formatted file'
+      call error_handler(E_ERR, 'open_file ', msgstring1, source, revision, revdate, text2=msgstring2)
    endif
-   if (rc /= 0 .and. print_debug) call dump_unit_attributes(iunit) 
+   conversion = convert
+endif
 
-   if (present(return_rc)) then
-      return_rc = rc
-      return
+! string delimiters only apply to ascii files
+if (present(delim)) then
+   if (format /= 'FORMATTED') then
+      write(msgstring1,*) 'opening file "'//trim(fname)//'"'
+      write(msgstring2,*) 'cannot specify a delimiter on an unformatted file'
+      call error_handler(E_ERR, 'open_file ', msgstring1, source, revision, revdate, text2=msgstring2)
    endif
+   del = delim
+endif
 
-   if (rc /= 0) then
-      write(msgstring1, *)'Cannot open file "'//trim(fname)//'" for '//trim(act)
-      write(msgstring2,*)'File may not exist or permissions may prevent the requested operation'
-      write(msgstring3,*)'Error code was ', rc
-      call error_handler(E_ERR, 'open_file: ', msgstring1, source, revision, revdate, &
-                         text2=msgstring2, text3=msgstring3)
-   endif
+! ok, now actually open the file
 
-   end function open_file
+iunit = get_unit()
 
-
-!#######################################################################
-
-
-   subroutine write_time (unit, label, string1, string2, string3, tz, brief)
-
-! ***  Write the current time to a log file or standard output ***
-!
-!    in: unit number (default is * if not specified)
-!    in: label (default is  "Time is" if not specified)
-!    in: string1,2,3 (no defaults)
-!
-!  default output is a block of 3-4 lines, with dashed line separators
-!  and up to 3 descriptive text strings.
-!  if brief specified as true, only string1 printed if given,
-!  and time printed on same line in YYYY/MM/DD HH:MM:SS format
-!  with the tag 'TIME:' before it.  should be easier to postprocess.
-
-   integer,          optional, intent(in) :: unit
-   character(len=*), optional, intent(in) :: label
-   character(len=*), optional, intent(in) :: string1
-   character(len=*), optional, intent(in) :: string2
-   character(len=*), optional, intent(in) :: string3
-   logical,          optional, intent(in) :: tz
-   logical,          optional, intent(in) :: brief
-
-
-   integer :: lunit
-   character(len= 8) :: cdate
-   character(len=10) :: ctime
-   character(len= 5) :: zone
-   integer, dimension(8) :: values
-   logical :: oneline
-
-   if (present(unit)) then
-      lunit = unit
+if (format == 'FORMATTED') then
+   ! formatted file: only pass in recl if required
+   if (use_recl) then
+      open (iunit, file=trim(fname), form=format, access=acc, recl=rlen, &
+            delim=del, position=pos, action=act, status=stat, iostat=rc)
    else
-      lunit = 6   ! this should be *
+      open (iunit, file=trim(fname), form=format, access=acc,            &
+            delim=del, position=pos, action=act, status=stat, iostat=rc)
    endif
-
-   call DATE_AND_TIME(cdate, ctime, zone, values)
-
-   ! give up if no good values were returned
-   if (.not. any(values /= -HUGE(0)) ) return 
-
-   oneline = .false.
-   if (present(brief)) oneline = brief
-
-   if (oneline) then
-      if (present(string1)) then
-         write(lunit,'(A,1X,I4,5(A1,I2.2))') string1//' TIME:', &
-                        values(1), '/', values(2), '/', values(3), &
-                        ' ', values(5), ':', values(6), ':', values(7)
-      else
-         write(lunit,'(A,1X,I4,5(A1,I2.2))') 'TIME: ', &
-                        values(1), '/', values(2), '/', values(3), &
-                        ' ', values(5), ':', values(6), ':', values(7)
-      endif
+else  
+   ! unformatted file - again, only pass in recl if required 
+   if (use_recl) then
+      open (iunit, file=trim(fname), form=format, access=acc, recl=rlen, &
+            convert=conversion, position=pos, action=act, status=stat, iostat=rc)
    else
-      write(lunit,*)
-      write(lunit,*)'--------------------------------------'
-      if ( present(label) ) then
-         write(lunit,*) label // '... at YYYY MM DD HH MM SS = '
-      else
-         write(lunit,*) 'Time is  ... at YYYY MM DD HH MM SS = '
-      endif 
-      write(lunit,'(17x,i4,5(1x,i2))') values(1), values(2), &
-                        values(3),  values(5), values(6), values(7)
-   
-      if(present(string1)) write(lunit,*)trim(string1)
-      if(present(string2)) write(lunit,*)trim(string2)
-      if(present(string3)) write(lunit,*)trim(string3)
-   
-      if (present(tz)) then
-         if ( values(4) /= -HUGE(0) .and. tz) &
-            write(lunit,*)'time zone offset is ',values(4),' minutes.'
-      endif
-   
-      write(lunit,*)'--------------------------------------'
-      write(lunit,*)
+      open (iunit, file=trim(fname), form=format, access=acc,            &
+            convert=conversion, position=pos, action=act, status=stat, iostat=rc)
    endif
+endif
+if (rc /= 0 .and. print_debug) call dump_unit_attributes(iunit) 
 
-   end subroutine write_time
+if (present(return_rc)) then
+   return_rc = rc
+   return
+endif
 
+if (rc /= 0) then
+   write(msgstring1, *)'Cannot open file "'//trim(fname)//'" for '//trim(act)
+   write(msgstring2,*)'File may not exist or permissions may prevent the requested operation'
+   write(msgstring3,*)'Error code was ', rc
+   call error_handler(E_ERR, 'open_file: ', msgstring1, source, revision, revdate, &
+                      text2=msgstring2, text3=msgstring3)
+endif
 
-!#######################################################################
+end function open_file
 
+!-----------------------------------------------------------------------
 
-   subroutine set_output (doflag)
-
-! *** set whether output is written to a log file or simply ignored ***
-!
-!    in:  doflag  = whether to output log information or not
-
-   logical, intent(in) :: doflag
-
-!! THIS ONE IS DIFFERENT.  Set the flag FIRST before doing the
-!! standard initialization, so if you are turning off writing
-!! for some tasks you do not get output you are trying to avoid.
-
-   do_output_flag = doflag
-
-   if ( .not. module_initialized ) call initialize_utilities
-
-   end subroutine set_output
-
-
-!#######################################################################
-
-
-   function do_output ()
-
-! *** return whether output should be written from this task ***
-!
-
-   logical :: do_output
-
-   if ( .not. module_initialized ) call initialize_utilities
-
-   do_output = do_output_flag
-
-   end function do_output
-
-
-!#######################################################################
-
-
-   subroutine set_nml_output (nmlstring)
-
-! *** set whether nml output is written to stdout file or only nml file
-!
-!    in:  doflag  = whether to output nml information to stdout 
-
-   character(len=*), intent(in) :: nmlstring
-
-   if ( .not. module_initialized ) call initialize_utilities
-
-   select case (nmlstring)
-      case ('NONE', 'none')
-         nml_flag = NML_NONE
-         call error_handler(E_MSG, 'set_nml_output', &
-                            'No echo of NML values')
-
-      case ('FILE', 'file')
-         nml_flag = NML_FILE
-         call error_handler(E_MSG, 'set_nml_output', &
-                            'Echo NML values to log file only')
-  
-      case ('TERMINAL', 'terminal')
-         nml_flag = NML_TERMINAL
-         call error_handler(E_MSG, 'set_nml_output', &
-                            'Echo NML values to terminal output only')
-   
-      case ('BOTH', 'both')
-         nml_flag = NML_BOTH
-         call error_handler(E_MSG, 'set_nml_output', &
-                            'Echo NML values to both log file and terminal')
-
-      case default
-         call error_handler(E_ERR, 'set_nml_output', &
-           'unrecognized input string: '//trim(nmlstring), &
-           source, revision, revdate)
- 
-   end select
-
-   end subroutine set_nml_output
-
-
-!#######################################################################
-
-
-   function do_nml_file ()
-
-! *** return whether nml should be written to nml file
-!
-
-   logical :: do_nml_file
-
-   if ( .not. module_initialized ) call initialize_utilities
-
-   if ( .not. do_output()) then
-      do_nml_file = .false.
-   else
-      do_nml_file = (nml_flag == NML_FILE .or. nml_flag == NML_BOTH)
-   endif
-
-   end function do_nml_file
-
-
-!#######################################################################
-
-
-   function do_nml_term ()
-
-! *** return whether nml should be written to terminal
-!
-
-   logical :: do_nml_term
-
-   if ( .not. module_initialized ) call initialize_utilities
-
-   if ( .not. do_output()) then
-      do_nml_term = .false.
-   else
-      do_nml_term = (nml_flag == NML_TERMINAL .or. nml_flag == NML_BOTH)
-   endif
-
-   end function do_nml_term
-
-
-!#######################################################################
-
-
-   subroutine set_tasknum (tasknum)
-
-! *** for multiple-task jobs, set the task number for error msgs ***
-!
-!    in:  tasknum  = task number, 0 to N-1
-
-   integer, intent(in) :: tasknum
-
-   if ( .not. module_initialized ) call initialize_utilities
-
-   single_task = .false. 
-   task_number = tasknum
-
-   end subroutine set_tasknum
-
-
-!#######################################################################
-
+!> Closes the given unit_number if that unit is open.
+!> Not an error to call on an already closed unit.
+!> Will print a message if the status of the unit cannot be determined.
 
 subroutine close_file(iunit)
-!-----------------------------------------------------------------------
-!
-! Closes the given unit_number if that unit is open.
-! Not an error to call on an already closed unit.
-! Will print a message if the status of the unit cannot be determined.
-!
 
 integer, intent(in) :: iunit
 
@@ -1381,203 +897,348 @@ if (open) close(iunit)
 
 end subroutine close_file
 
-
-!#######################################################################
-
-
-subroutine find_namelist_in_file(namelist_file_name, nml_name, iunit, &
-   write_to_logfile_in)
 !-----------------------------------------------------------------------
-! 
-! Opens namelist_file_name if it exists on unit iunit, error if it
-! doesn't exist.
-! Searches file for a line containing ONLY the string
-! &nml_name, for instance &filter_nml. If found, backs up one record and
-! returns true. Otherwise, error message and terminates
-!
+!> Function that returns .true. if this unit number refers to an open file.
 
-character(len=*),  intent(in)  :: namelist_file_name
-character(len=*),  intent(in)  :: nml_name
-integer,           intent(out) :: iunit
-logical, optional, intent(in)  :: write_to_logfile_in
+function is_file_open(iunit)
 
-character(len=256) :: nml_string, test_string, string1
-integer            :: io
-logical            :: write_to_logfile
+integer, intent(in) :: iunit
+logical :: is_file_open
 
+integer :: ios
+logical :: open
 
-! Decide if there is a logfile or not
-write_to_logfile = .true.
-if(present(write_to_logfile_in)) write_to_logfile = write_to_logfile_in
+if ( .not. module_initialized ) call initialize_utilities
 
-! Check for file existence; no file is an error
-if(file_exist(trim(namelist_file_name))) then
-
-   iunit = open_file(trim(namelist_file_name), action = 'read')
-
-   ! Read each line until end of file is found
-   ! Look for the start of a namelist with &nml_name
-   ! Convert test string to all uppercase ... since that is
-   ! what happens if Fortran writes a namelist.
-
-   string1 = adjustl(nml_name)
-   call to_upper(string1)             ! works in-place
-   test_string = '&' // trim(string1)
-
-   do
-      read(iunit, '(A)', iostat = io) nml_string
-      if(io /= 0) then
-         ! No values for this namelist; error
-         write(msgstring1, *) 'Namelist entry &', nml_name, ' must exist in ', namelist_file_name
-         ! Can't write to logfile if it hasn't yet been opened
-         if(write_to_logfile) then
-            call error_handler(E_ERR, 'find_namelist_in_file', msgstring1, &
-               source, revision, revdate)
-         else
-            write(*, *) 'FATAL ERROR before logfile initialization in utilities_mod'
-            write(*, *) 'Error is in subroutine find_namelist_in_file'
-            write(*, *) msgstring1
-            write(*,*)'  ',trim(source)
-            write(*,*)'  ',trim(revision)
-            write(*,*)'  ',trim(revdate)
-            call exit_all(88) 
-         endif
-      else
-
-         string1 = adjustl(nml_string)
-         call to_upper(string1)
-
-         if(trim(string1) == trim(test_string)) then
-            backspace(iunit)
-            return
-         endif
-
-      endif
-   end do
-else
-   ! No namelist_file_name file is an error
-   write(msgstring1, *) 'Namelist input file: ', namelist_file_name, ' must exist.'
-   if(write_to_logfile) then
-      call error_handler(E_ERR, 'find_namelist_in_file', msgstring1, &
-         source, revision, revdate)
-   else
-      write(*, *) 'FATAL ERROR before logfile initialization in utilities_mod'
-      write(*, *) 'Error is in subroutine find_namelist_in_file'
-      write(*, *) msgstring1
-      write(*,*)'  ',trim(source)
-      write(*,*)'  ',trim(revision)
-      write(*,*)'  ',trim(revdate)
-      call exit_all(88) 
-   endif
+inquire (unit=iunit, opened=open, iostat=ios)
+if ( ios /= 0 ) then
+   write(msgstring1,*)'Unable to determine status of file unit ', iunit
+   call error_handler(E_MSG, 'is_file_open: ', msgstring1, source, revision, revdate)
 endif
 
-end subroutine find_namelist_in_file
+is_file_open = open
 
+end function is_file_open
 
-!#######################################################################
-
-
-subroutine check_namelist_read(iunit, iostat_in, nml_name, &
-   write_to_logfile_in)
 !-----------------------------------------------------------------------
-! 
-! Confirms that a namelist read was successful. If it failed
-! produces an error message and stops execution.
-!
+!> Common routine for decoding read/write file format string.
+!> Returns .true. for formatted/ascii file, .false. is unformatted/binary
+!> Defaults (if fform not specified) to formatted/ascii.
 
-integer,            intent(in) :: iunit, iostat_in
-character(len=*), intent(in) :: nml_name
-logical, intent(in), optional :: write_to_logfile_in
+function ascii_file_format(fform)
 
-character(len=256) :: nml_string
-integer            :: io
-logical            :: write_to_logfile
+character(len=*), intent(in), optional :: fform
+logical                                :: ascii_file_format
 
-! Decide if there is a logfile or not
-write_to_logfile = .true.
-if(present(write_to_logfile_in)) write_to_logfile = write_to_logfile_in
 
-if(iostat_in == 0) then
-   ! If the namelist read was successful, just close the file
-   call close_file(iunit)
-else
-   ! If it wasn't successful, print the line on which it failed  
-   backspace(iunit)
-   read(iunit, '(A)', iostat = io) nml_string
-   ! A failure in this read means that the namelist started but never terminated
-   ! Result was falling off the end, so backspace followed by read fails
-   if(io /= 0) then
-      write(msgstring1, *) 'Namelist ', trim(nml_name), ' started but never terminated'
-      if(write_to_logfile) then
-         call error_handler(E_ERR, 'check_namelist_read', msgstring1, &
-            source, revision, revdate)
-      else
-         write(*, *) 'FATAL ERROR before logfile initialization in utilities_mod'
-         write(*, *) 'Error is in subroutine check_namelist_read'
-         write(*, *) msgstring1
-         write(*,*)'  ',trim(source)
-         write(*,*)'  ',trim(revision)
-         write(*,*)'  ',trim(revdate)
-         call exit_all(66) 
-      endif
-   else
-      ! Didn't fall off end so bad entry in the middle of namelist
-      write(msgstring1, *) 'INVALID NAMELIST ENTRY: ', trim(nml_string), ' in namelist ', trim(nml_name)
-      if(write_to_logfile) then
-         call error_handler(E_ERR, 'check_namelist_read', msgstring1, &
-            source, revision, revdate)
-      else
-         write(*, *) 'FATAL ERROR before logfile initialization in utilities_mod'
-         write(*, *) 'Error is in subroutine check_namelist_read'
-         write(*, *) msgstring1
-         write(*,*)'  ',trim(source)
-         write(*,*)'  ',trim(revision)
-         write(*,*)'  ',trim(revdate)
-         call exit_all(66) 
-      endif
-   endif
+if ( .not. module_initialized ) call initialize_utilities
+
+! Default to formatted/ascii.
+if ( .not. present(fform)) then
+   ascii_file_format = .true.
+   return
 endif
 
-end subroutine check_namelist_read
+SELECT CASE (fform)
+   CASE("unf", "UNF", "unformatted", "UNFORMATTED")
+      ascii_file_format = .false.
+   CASE DEFAULT
+      ascii_file_format = .true.
+END SELECT
+
+end function ascii_file_format
+
+!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+! time and text/text file handling
+!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
 
 
-!#######################################################################
+!-----------------------------------------------------------------------
+!>@todo FIXME:  nsc opinion:
+!> 1. this routine should NOT support 'end' anymore.  the calling code
+!>    should call finalize_utilities() directly.  
+!> 2. 'brief' format should be the default (easier to grep for and to
+!>     sed for postprocessing)
+!> 3. write_time() should be able to take a string to write into
+
+subroutine timestamp(string1,string2,string3,pos)
+
+   character(len=*), optional, intent(in) :: string1
+   character(len=*), optional, intent(in) :: string2
+   character(len=*), optional, intent(in) :: string3
+   character(len=*),           intent(in) :: pos
+
+   if ( .not. module_initialized ) call initialize_utilities
+   if ( .not. do_output_flag) return
+
+!>@todo remove this option after a few months of having it deprecated.
+   if (pos == 'end') then
+      call log_it('calling timestamp with the "end" option is deprecated')
+      call log_it('call finalize_utilities() directly instead.')
+      call finalize_utilities()
+
+   else if (pos == 'brief') then
+      call log_time (logfileunit, brief=.true., & 
+                     string1=string1, string2=string2, string3=string3)
+       
+   else
+      call log_time (logfileunit, & 
+                     string1=string1, string2=string2, string3=string3)
+   endif
+
+end subroutine timestamp
+
+!-----------------------------------------------------------------------
+!> write time to standard output and also a unit number if specified.
+!>
+!>   in: unit number to write to, in addition to unit 6
+!>   in: label (default is  "Time is" if not specified)
+!>   in: string1,2,3 (no defaults)
+!>
+!>
+!>  default output is a block of 3-4 lines, with dashed line separators
+!>  and up to 3 descriptive text strings.
+!>  if brief specified as true, only string1 printed if given,
+!>  and time printed on same line in YYYY/MM/DD HH:MM:SS format
+!>  with the tag 'TIME:' before it.  should be easier to postprocess.
+
+subroutine log_time(unit, label, string1, string2, string3, tz, brief)
+
+integer,          optional, intent(in) :: unit
+character(len=*), optional, intent(in) :: label
+character(len=*), optional, intent(in) :: string1
+character(len=*), optional, intent(in) :: string2
+character(len=*), optional, intent(in) :: string3
+logical,          optional, intent(in) :: tz
+logical,          optional, intent(in) :: brief
+
+integer :: stdout = 6
+
+if (present(unit)) &
+   call write_time(unit, label, string1, string2, string3, tz, brief)
+
+call write_time(stdout, label, string1, string2, string3, tz, brief)
+
+end subroutine log_time
+
+!-----------------------------------------------------------------------
+!> write time to the given unit.  should have option to write to a string.
+!> and brief should be the default.  (my opinion. nsc)
+!>
+!>   in: unit number (default is 6 if not specified)
+!>   in: label (default is  "Time is" if not specified)
+!>   in: string1,2,3 (no defaults)
+!>
+!>  default output is a block of 3-4 lines, with dashed line separators
+!>  and up to 3 descriptive text strings.
+!>  if brief specified as true, only string1 printed if given,
+!>  and time printed on same line in YYYY/MM/DD HH:MM:SS format
+!>  with the tag 'TIME:' before it.  should be easier to postprocess.
+
+subroutine write_time(unit, label, string1, string2, string3, tz, brief)
+
+integer,          optional, intent(in) :: unit
+character(len=*), optional, intent(in) :: label
+character(len=*), optional, intent(in) :: string1
+character(len=*), optional, intent(in) :: string2
+character(len=*), optional, intent(in) :: string3
+logical,          optional, intent(in) :: tz
+logical,          optional, intent(in) :: brief
 
 
-   subroutine nc_check(istatus, subr_name, context)
-      integer, intent (in)                   :: istatus
-      character(len=*), intent(in)           :: subr_name
-      character(len=*), intent(in), optional :: context
+integer :: lunit
+character(len= 8) :: cdate
+character(len=10) :: ctime
+character(len= 5) :: zone
+integer, dimension(8) :: values
+logical :: oneline
+
+
+call DATE_AND_TIME(cdate, ctime, zone, values)
+
+! give up if no good values were returned
+if (.not. any(values /= -HUGE(0)) ) return 
+
+lunit = 6   ! normal fortran output unit
+if (present(unit)) lunit = unit
+
+oneline = .false.
+if (present(brief)) oneline = brief
+
+!>@todo write into a string to avoid replicating complex lines
+!> add on the label if it's there separately.
+
+if (oneline) then
+   write(msgstring1,'(A,1X,I4,5(A1,I2.2))') 'TIME:', &
+                     values(1), '/', values(2), '/', values(3), &
+                     ' ', values(5), ':', values(6), ':', values(7)
+   if (present(string1)) then
+      write(lunit,'(A)') trim(string1)//' '//trim(msgstring1)
+   else
+      write(lunit,'(A)') trim(msgstring1)
+   endif
+else
+   write(lunit,*)
+   write(lunit,*)'--------------------------------------'
+   if ( present(label) ) then
+      write(lunit,*) label // '... at YYYY MM DD HH MM SS = '
+   else
+      write(lunit,*) 'Time is  ... at YYYY MM DD HH MM SS = '
+   endif 
+   write(lunit,'(17x,i4,5(1x,i2))') values(1), values(2), &
+             values(3),  values(5), values(6), values(7)
+
+   if(present(string1)) write(lunit,*)trim(string1)
+   if(present(string2)) write(lunit,*)trim(string2)
+   if(present(string3)) write(lunit,*)trim(string3)
+
+   if (present(tz)) then
+      if ( values(4) /= -HUGE(0) .and. tz) &
+         write(lunit,*)'time zone offset is ',values(4),' minutes.'
+   endif
+
+   write(lunit,*)'--------------------------------------'
+   write(lunit,*)
+endif
+
+end subroutine write_time
+
+!-----------------------------------------------------------------------
+!> set whether output is written to a log file or simply ignored 
+!>
+!>   in:  doflag  = whether to output log information or not
+
+
+subroutine set_output (doflag)
+
+logical, intent(in) :: doflag
+
+!! THIS ONE IS DIFFERENT.  Set the flag FIRST before doing the
+!! standard initialization, so if you are turning off writing
+!! for some tasks you do not get output you are trying to avoid.
+
+do_output_flag = doflag
+
+if ( .not. module_initialized ) call initialize_utilities
+
+end subroutine set_output
+
+!-----------------------------------------------------------------------
+!> return whether output should be written from this task 
+
+function do_output ()
+
+logical :: do_output
+
+if ( .not. module_initialized ) call initialize_utilities
+
+do_output = do_output_flag
+
+end function do_output
+
+!-----------------------------------------------------------------------
+!> set whether nml output is written to stdout file or only nml file
+!>
+!>    in:  doflag  = whether to output nml information to stdout 
+
+subroutine set_nml_output (nmlstring)
+
+character(len=*), intent(in) :: nmlstring
+
+! initialize_utilities calls this routine, so you cannot call
+! the init routine from here.
+
+if ( .not. module_initialized ) call fatal_not_initialized('set_nml_output')
+
+select case (nmlstring)
+   case ('NONE', 'none')
+      nml_flag = NML_NONE
+      call error_handler(E_MSG, 'set_nml_output', &
+                         'No echo of NML values')
+
+   case ('FILE', 'file')
+      nml_flag = NML_FILE
+      call error_handler(E_MSG, 'set_nml_output', &
+                         'Echo NML values to log file only')
   
-      character(len=512) :: error_msg
+   case ('TERMINAL', 'terminal')
+      nml_flag = NML_TERMINAL
+      call error_handler(E_MSG, 'set_nml_output', &
+                         'Echo NML values to terminal output only')
+
+   case ('BOTH', 'both')
+      nml_flag = NML_BOTH
+      call error_handler(E_MSG, 'set_nml_output', &
+                         'Echo NML values to both log file and terminal')
+
+   case default
+      call error_handler(E_ERR, 'set_nml_output', &
+                        'unrecognized input string: '//trim(nmlstring), &
+                        source, revision, revdate)
+ 
+end select
+
+end subroutine set_nml_output
+
+!-----------------------------------------------------------------------
+!> for multiple-task jobs, set the task number for error msgs 
+!>
+!>    in:  tasknum  = task number, 0 to N-1
+
+subroutine set_tasknum (tasknum)
+
+integer, intent(in) :: tasknum
+
+if ( .not. module_initialized ) call initialize_utilities
+
+single_task = .false. 
+task_number = tasknum
+
+end subroutine set_tasknum
+
+!-----------------------------------------------------------------------
+
+!>@todo FIXME: remove this once all other code is calling
+!>this from the netcdf_utilities_mod instead.
+
+subroutine nc_check(istatus, subr_name, context)
+
+use netcdf
+
+integer, intent (in)                   :: istatus
+character(len=*), intent(in)           :: subr_name
+character(len=*), intent(in), optional :: context
   
-      ! if no error, nothing to do here.  we are done.
-      if( istatus == nf90_noerr) return
+! if no error, nothing to do here.  we are done.
+if(istatus == nf90_noerr) return
 
 
-      ! something wrong.  construct an error string and call the handler.
+! something wrong.  construct an error string and call the handler.
 
-      ! context is optional, but is very useful if specified.
-      ! if context + error code > 129, the assignment will truncate.
-      if (present(context) ) then
-          error_msg = trim(context) // ': ' // trim(nf90_strerror(istatus))
-      else
-          error_msg = nf90_strerror(istatus)
-      endif
+! context is optional, but is very useful if specified.
+! if context + error code > 512, the assignment will truncate.
+if (present(context) ) then
+   msgstring1 = trim(context) // ': ' // trim(nf90_strerror(istatus))
+else
+   msgstring1 = nf90_strerror(istatus)
+endif
 
-      ! this does not return 
-      call error_mesg(subr_name, error_msg, FATAL)
+! this does not return 
+call error_handler(E_ERR, 'nc_check', msgstring1, source, revision, revdate, &
+                      text2=subr_name)
   
+end subroutine nc_check
 
-   end subroutine nc_check
 
-
-!#######################################################################
-
+!-----------------------------------------------------------------------
+!> convert a string to upper case *in place*
 
 subroutine to_upper( string )
-! Converts 'string' to uppercase
-character(len=*), intent(INOUT) :: string
+
+character(len=*), intent(inout) :: string
+
 integer :: ismalla, ibiga, i
 
 ismalla = ichar('a')
@@ -1592,8 +1253,7 @@ enddo
 end subroutine to_upper
 
 
-!#######################################################################
-
+!-----------------------------------------------------------------------
 !> copy instring to outstring, omitting all internal blanks
 !> outstring must be at least as long as instring
 
@@ -1614,16 +1274,15 @@ enddo
 
 end subroutine squeeze_out_blanks
 
-
-!#######################################################################
-
+!-----------------------------------------------------------------------
+!> Determines the number of lines and maximum line length
+!> of an ascii file.
 
 subroutine find_textfile_dims( fname, nlines, linelen )
-! Determines the number of lines and maximum line length
-! of the file. Sometimes you need to know this stuff.
-character(len=*),  intent(IN)  :: fname
-integer,           intent(OUT) :: nlines
-integer, optional, intent(OUT) :: linelen
+
+character(len=*),  intent(in)  :: fname
+integer,           intent(out) :: nlines
+integer, optional, intent(out) :: linelen
 
 integer :: i, maxlen, mylen, ios, funit
 
@@ -1666,20 +1325,18 @@ if (present(linelen)) linelen = maxlen
 end subroutine find_textfile_dims
 
 
-!#######################################################################
-
+!-----------------------------------------------------------------------
+!> Reads a text file into a character variable.
+!> Initially needed to read a namelist file into a variable that could 
+!> then be inserted into a netCDF file. Due to a quirk in the way Fortran
+!> and netCDF play together, I have not figured out how to dynamically
+!> create the minimal character length ... so any line longer than
+!> the declared length of the textblock variable is truncated.
 
 subroutine file_to_text( fname, textblock )
-!
-! Reads a text file into a character variable.
-! Initially needed to read a namelist file into a variable that could 
-! then be inserted into a netCDF file. Due to a quirk in the way Fortran
-! and netCDF play together, I have not figured out how to dynamically
-! create the minimal character length ... so any line longer than
-! the declared length of the textblock variable is truncated.
 
-character(len=*),               intent(IN)  :: fname
-character(len=*), dimension(:), intent(OUT) :: textblock
+character(len=*),               intent(in)  :: fname
+character(len=*), dimension(:), intent(out) :: textblock
 
 integer :: i, ios, funit
 integer :: mynlines, mylinelen, strlen
@@ -1702,7 +1359,7 @@ funit   = open_file(fname, form="FORMATTED", action="READ")
 
 strlen  = min(mylinelen, strlen)
 
-PARSELOOP : do i = 1,mynlines
+do i = 1,mynlines
 
    read(funit, '(A)', iostat=ios) string
 
@@ -1714,32 +1371,29 @@ PARSELOOP : do i = 1,mynlines
                          source, revision, revdate)
    endif
 
-enddo PARSELOOP
+enddo 
 
 call close_file(funit)
 
 end subroutine file_to_text
 
-
-!#######################################################################
-
+!-----------------------------------------------------------------------
+!> Arguments are the name of a file which contains a list of filenames.
+!> This routine opens the listfile, and returns the lineindex-th one.
+!> We agreed to support filenames/pathnames up to 256.
 
 function get_next_filename( listname, lineindex )
 
-! Arguments are the name of a file which contains a list of filenames.
-! This routine opens the listfile, and returns the index-th one.
-!
 character(len=*),  intent(in) :: listname
 integer,           intent(in) :: lineindex
 character(len=256)            :: get_next_filename
 
 integer :: i, ios, funit
+character(len=512) :: string
 
-character(len=512)  :: string
+funit = open_file(listname, form="FORMATTED", action="READ")
 
-funit   = open_file(listname, form="FORMATTED", action="READ")
-
-PARSELOOP : do i=1, lineindex
+do i=1, lineindex
 
    read(funit, '(A)', iostat=ios) string
 
@@ -1750,23 +1404,26 @@ PARSELOOP : do i=1, lineindex
       return
    endif
 
-enddo PARSELOOP
+enddo
 
-! check for length problems
-if (len_trim(string) > len(get_next_filename)) then
+call close_file(funit)
+
+
+! check for length problems after stripping off any leading blanks.
+! @todo FIXME define 256 as a constant - MAXFILENAMELEN or something
+if (len_trim(adjustl(string)) > 256) then
    call error_handler(E_ERR, 'get_next_filename', &
                       'maximum filename length of 256 exceeded', &
                       source, revision, revdate)   
 endif
 
-get_next_filename = adjustl(string(1:len(get_next_filename)))
-call close_file(funit)
+
+get_next_filename = adjustl(string)
 
 end function get_next_filename
 
 
-!#######################################################################
-
+!-----------------------------------------------------------------------
 !> this function is intended to be used when there are 2 ways to specify 
 !> an unknown number of input files, most likely in a namelist.
 !>
@@ -1858,7 +1515,7 @@ do fileindex = 1, max_num_input_files
          write(msgstring2,*)'reading file # ',fileindex
          write(msgstring3,*)'reading file name "'//trim(name_array(fileindex))//'"'
          call error_handler(E_ERR, caller_name, 'found no '//trim(fsource), &
-                    source,revision,revdate,text2=msgstring2,text3=msgstring3)
+                            source,revision,revdate,text2=msgstring2,text3=msgstring3)
       endif
 
       ! at the end of the list. return how many filenames were found, 
@@ -1886,8 +1543,7 @@ set_filename_list = max_num_input_files
 
 end function set_filename_list
 
-!#######################################################################
-
+!-----------------------------------------------------------------------
 !> this function is intended to be used when there are 2 ways to specify 
 !> a KNOWN number of input files, most likely in a namelist.
 !>
@@ -1989,7 +1645,7 @@ max_num_input_files = size(name_array)
 if (max_num_input_files < nlists * nentries) then
    write(msgstring1, *) 'list length = ', max_num_input_files, '  needs room for ', nlists * nentries
    call error_handler(E_ERR, caller_name, 'internal error: name_array not long enough to hold lists', &
-       source,revision,revdate, text2=msgstring1)
+                      source,revision,revdate, text2=msgstring1)
 endif
 
 ! loop over the inputs.  if the names were already specified in the
@@ -2015,7 +1671,7 @@ do nl = 1, nlists
          endif
 
          call error_handler(E_ERR, caller_name, trim(msgstring1)//trim(fsource), &
-            source,revision,revdate,text2=msgstring2,text3=msgstring3)
+                            source,revision,revdate,text2=msgstring2,text3=msgstring3)
    
       endif
    enddo
@@ -2023,94 +1679,14 @@ enddo
 
 end subroutine set_multiple_filename_lists
 
-!#######################################################################
-
-
-function is_longitude_between (lon, minlon, maxlon, doradians, newlon)
-
-!  uniform way to treat longitude ranges, in degrees, on a globe.
-!  returns true if lon is between min and max, starting at min
-!  and going EAST until reaching max.  wraps across 0 longitude.
-!  if min == max, all points are inside.  includes edges.
-!  if optional arg doradians is true, do computation in radians 
-!  between 0 and 2*PI instead of 360.   if given, return the
-!  'lon' value possibly + 360 (or 2PI) which can be used for averaging
-!  or computing on a consistent set of longitude values.  after the
-!  computation is done if the answer is > 360 (or 2PI), subtract that
-!  value to get back into the 0 to 360 (or 2PI) range.
-
-real(r8), intent(in)            :: lon, minlon, maxlon
-logical,  intent(in),  optional :: doradians
-real(r8), intent(out), optional :: newlon
-logical :: is_longitude_between
-
-real(r8) :: minl, maxl, lon2, circumf
-
-circumf = 360.0_r8
-if (present(doradians)) then
-  if (doradians) circumf = TWOPI
-endif
-
-! ensure the valid region boundaries are between 0 and one circumference
-! (must use modulo() and not mod() so negative vals are handled ok)
-minl = modulo(minlon, circumf)
-maxl = modulo(maxlon, circumf)
-
-! boundary points are included in the valid region so if min=max 
-! the 'region' is the entire globe and you can return early.
-if (minl == maxl) then
-   is_longitude_between = .true. 
-   if (present(newlon)) newlon = lon
-   return
-endif
-
-! ensure the test point is between 0 and one circumference
-lon2  = modulo(lon, circumf)
-
-! here's where the magic happens:
-! minl will be bigger than maxl if the region of interest crosses the prime 
-! meridian (longitude = 0).  in this case add one circumference to the 
-! eastern boundary so maxl is guarenteed to be larger than minl (and valid 
-! values are now between 0 and 2 circumferences).  
-!
-! if the test point longitude is west of the minl boundary add one circumference
-! to it as well before testing against the bounds.  values that were east of 
-! longitude 0 but west of maxl will now be shifted so they are again correctly 
-! within the new range; values that were west of the prime meridian but east 
-! of minl will stay in range; values west of minl and east of maxl will be 
-! correctly shifted out of range.
-
-if (minl > maxl) then
-   maxl = maxl + circumf
-   if (lon2 < minl) lon2 = lon2 + circumf
-endif
-
-is_longitude_between = ((lon2 >= minl) .and. (lon2 <= maxl))
-
-! if requested, return the value that was tested against the bounds, which 
-! will always be between 0 and 2 circumferences and monotonically increasing
-! from minl to maxl.  if the region of interest doesn't cross longitude 0
-! this value will be the same as the input value.  if the region does
-! cross longitude 0 this value will be between 0 and 2 circumferences.
-! it's appropriate for averaging values together or comparing them against
-! other values returned from this routine with a simple greater than or less
-! than without further computation for longitude 0.  to convert the values
-! back into the range from 0 to one circumference, compare it to the
-! circumference and if larger, subtract one circumference from the value.
-
-if (present(newlon)) newlon = lon2
-
-end function is_longitude_between 
-
-
-!#######################################################################
-
+!-----------------------------------------------------------------------
 
 function next_file(fname,ifile)
 
 ! FIXME: THIS FUNCTION IS DEPRECATED AND SHOULD BE REMOVED.
 ! FIXME: THIS FUNCTION IS DEPRECATED AND SHOULD BE REMOVED.
 ! FIXME: THIS FUNCTION IS DEPRECATED AND SHOULD BE REMOVED.
+! (only used by obs_seq_to_netcdf currently.)
 
 !----------------------------------------------------------------------
 ! The file name can take one of three forms:
@@ -2237,40 +1813,93 @@ endif
 
 end function next_file
 
+!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+! generic routines needed by more than one part of the code
+!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
 
-!#######################################################################
 
+!-----------------------------------------------------------------------
+!>  uniform way to treat longitude ranges, in degrees, on a globe.
+!>  returns true if lon is between min and max, starting at min
+!>  and going EAST until reaching max.  wraps across 0 longitude.
+!>  if min == max, all points are inside.  includes edges.
+!>  if optional arg doradians is true, do computation in radians 
+!>  between 0 and 2*PI instead of 360.   if given, return the
+!>  'lon' value possibly + 360 (or 2PI) which can be used for averaging
+!>  or computing on a consistent set of longitude values.  after the
+!>  computation is done if the answer is > 360 (or 2PI), subtract that
+!>  value to get back into the 0 to 360 (or 2PI) range.
 
-function ascii_file_format(fform)
+function is_longitude_between (lon, minlon, maxlon, doradians, newlon)
 
-!----------------------------------------------------------------------
-! Common routine for setting read/write file format.
+real(r8), intent(in)            :: lon, minlon, maxlon
+logical,  intent(in),  optional :: doradians
+real(r8), intent(out), optional :: newlon
+logical :: is_longitude_between
 
-character(len=*), intent(in), optional :: fform
-logical                                :: ascii_file_format
+real(r8) :: minl, maxl, lon2, circumf
 
-! Returns .true. for formatted/ascii file, .false. is unformatted/binary
-! Defaults (if fform not specified) to formatted/ascii.
+circumf = 360.0_r8
+if (present(doradians)) then
+  if (doradians) circumf = TWOPI
+endif
 
-if ( .not. module_initialized ) call initialize_utilities
+! ensure the valid region boundaries are between 0 and one circumference
+! (must use modulo() and not mod() so negative vals are handled ok)
+minl = modulo(minlon, circumf)
+maxl = modulo(maxlon, circumf)
 
-! Default to formatted/ascii.
-if ( .not. present(fform)) then
-   ascii_file_format = .true.
+! boundary points are included in the valid region so if min=max 
+! the 'region' is the entire globe and you can return early.
+if (minl == maxl) then
+   is_longitude_between = .true. 
+   if (present(newlon)) newlon = lon
    return
 endif
 
-SELECT CASE (fform)
-   CASE("unf", "UNF", "unformatted", "UNFORMATTED")
-      ascii_file_format = .false.
-   CASE DEFAULT
-      ascii_file_format = .true.
-END SELECT
+! ensure the test point is between 0 and one circumference
+lon2  = modulo(lon, circumf)
 
-end function ascii_file_format
+! here's where the magic happens:
+! minl will be bigger than maxl if the region of interest crosses the prime 
+! meridian (longitude = 0).  in this case add one circumference to the 
+! eastern boundary so maxl is guarenteed to be larger than minl (and valid 
+! values are now between 0 and 2 circumferences).  
+!
+! if the test point longitude is west of the minl boundary add one circumference
+! to it as well before testing against the bounds.  values that were east of 
+! longitude 0 but west of maxl will now be shifted so they are again correctly 
+! within the new range; values that were west of the prime meridian but east 
+! of minl will stay in range; values west of minl and east of maxl will be 
+! correctly shifted out of range.
+
+if (minl > maxl) then
+   maxl = maxl + circumf
+   if (lon2 < minl) lon2 = lon2 + circumf
+endif
+
+is_longitude_between = ((lon2 >= minl) .and. (lon2 <= maxl))
+
+! if requested, return the value that was tested against the bounds, which 
+! will always be between 0 and 2 circumferences and monotonically increasing
+! from minl to maxl.  if the region of interest doesn't cross longitude 0
+! this value will be the same as the input value.  if the region does
+! cross longitude 0 this value will be between 0 and 2 circumferences.
+! it's appropriate for averaging values together or comparing them against
+! other values returned from this routine with a simple greater than or less
+! than without further computation for longitude 0.  to convert the values
+! back into the range from 0 to one circumference, compare it to the
+! circumference and if larger, subtract one circumference from the value.
+
+if (present(newlon)) newlon = lon2
+
+end function is_longitude_between 
 
 
-!#######################################################################
+!-----------------------------------------------------------------------
+!>
 
 pure function to_scalar_real(x)
  real(r8), intent(in) :: x(1)
@@ -2280,17 +1909,19 @@ to_scalar_real = x(1)
 
 end function to_scalar_real
 
-!#######################################################################
+!-----------------------------------------------------------------------
+!>
 
-pure function to_scalar_int(x)
- integer, intent(in) :: x(1)
- integer :: to_scalar_int
+pure function to_scalar_int4(x)
+ integer(i4), intent(in) :: x(1)
+ integer(i4) :: to_scalar_int4
  
-to_scalar_int = x(1)
+to_scalar_int4 = x(1)
 
-end function to_scalar_int
+end function to_scalar_int4
 
-!#######################################################################
+!-----------------------------------------------------------------------
+!>
 
 pure function to_scalar_int8(x)
  integer(i8), intent(in) :: x(1)
@@ -2378,6 +2009,758 @@ end select
 
 end function string_to_logical
 
+!-----------------------------------------------------------------------
+!> dump the contents of a 1d array with a max of N items per line.
+!> optional arguments allow the caller to restrict the output to 
+!> no more than X items, to write to an open file unit, and to
+!> write a text label before the numerical dump.
+!>
+
+subroutine array_1d_dump(array, nper_line, max_items, funit, label)
+real(r8),         intent(in)           :: array(:)
+integer,          intent(in), optional :: nper_line
+integer,          intent(in), optional :: max_items
+integer,          intent(in), optional :: funit
+character(len=*), intent(in), optional :: label
+
+integer :: i, per_line, ounit, asize_i
+logical :: has_label
+
+! set defaults and override if arguments are present
+
+per_line = 4
+if (present(nper_line)) per_line = nper_line
+
+asize_i = size(array)
+if (present(max_items)) asize_i = min(asize_i, max_items)
+
+ounit = 0
+if (present(funit)) ounit = funit
+
+has_label = .false.
+if (present(label)) has_label = .true.
+
+! output section
+
+if (has_label) write(ounit, *) trim(label)
+
+do i=1, asize_i, per_line
+   write(ounit, *) i, ' : ', array(i:min(asize_i,i+per_line-1))
+enddo
+
+end subroutine array_1d_dump
+
+!-----------------------------------------------------------------------
+!> dump the contents of a 2d array with a max of N items per line.
+!> optional arguments allow the caller to restrict the output to 
+!> no more than X items, to write to an open file unit, and to
+!> write a text label before the numerical dump.
+!>
+
+subroutine array_2d_dump(array, nper_line, max_i_items, max_j_items, funit, label)
+real(r8),         intent(in)           :: array(:,:)
+integer,          intent(in), optional :: nper_line
+integer,          intent(in), optional :: max_i_items
+integer,          intent(in), optional :: max_j_items
+integer,          intent(in), optional :: funit
+character(len=*), intent(in), optional :: label
+
+integer :: i, j, per_line, ounit, asize_i, asize_j
+logical :: has_label
+
+! set defaults and override if arguments are present
+
+per_line = 4
+if (present(nper_line)) per_line = nper_line
+
+asize_i = size(array, 1)
+asize_j = size(array, 2)
+if (present(max_i_items)) asize_i = min(asize_i, max_i_items)
+if (present(max_j_items)) asize_j = min(asize_j, max_j_items)
+
+ounit = 0
+if (present(funit)) ounit = funit
+
+has_label = .false.
+if (present(label)) has_label = .true.
+
+! output section
+
+if (has_label) write(ounit, *) trim(label)
+
+do j=1, asize_j
+   do i=1, asize_i, per_line
+      write(ounit, *) i, j, ' : ', array(i:min(asize_i,i+per_line-1), j)
+   enddo
+enddo
+
+end subroutine array_2d_dump
+
+!-----------------------------------------------------------------------
+!> dump the contents of a 3d array with a max of N items per line.
+!> optional arguments allow the caller to restrict the output to 
+!> no more than X items, to write to an open file unit, and to
+!> write a text label before the numerical dump.
+!>
+
+subroutine array_3d_dump(array, nper_line, max_i_items, max_j_items, max_k_items, funit, label)
+real(r8),         intent(in)           :: array(:,:,:)
+integer,          intent(in), optional :: nper_line
+integer,          intent(in), optional :: max_i_items
+integer,          intent(in), optional :: max_j_items
+integer,          intent(in), optional :: max_k_items
+integer,          intent(in), optional :: funit
+character(len=*), intent(in), optional :: label
+
+integer :: i, j, k, per_line, ounit, asize_i, asize_j, asize_k
+logical :: has_label
+
+! set defaults and override if arguments are present
+
+per_line = 4
+if (present(nper_line)) per_line = nper_line
+
+asize_i = size(array, 1)
+asize_j = size(array, 2)
+asize_k = size(array, 3)
+if (present(max_i_items)) asize_i = min(asize_i, max_i_items)
+if (present(max_j_items)) asize_j = min(asize_j, max_j_items)
+if (present(max_k_items)) asize_k = min(asize_k, max_k_items)
+
+ounit = 0
+if (present(funit)) ounit = funit
+
+has_label = .false.
+if (present(label)) has_label = .true.
+
+! output section
+
+if (has_label) write(ounit, *) trim(label)
+
+do k=1, asize_k
+   do j=1, asize_j
+      do i=1, asize_i, per_line
+         write(ounit, *) i, j, k, ' : ', array(i:min(asize_i,i+per_line-1), j, k)
+      enddo
+   enddo
+enddo
+
+end subroutine array_3d_dump
+
+!-----------------------------------------------------------------------
+!> dump the contents of a 4d array with a max of N items per line.
+!> optional arguments allow the caller to restrict the output to 
+!> no more than X items, to write to an open file unit, and to
+!> write a text label before the numerical dump.
+!>
+
+subroutine array_4d_dump(array, nper_line, max_i_items, max_j_items, max_k_items, max_l_items, funit, label)
+real(r8),         intent(in)           :: array(:,:,:,:)
+integer,          intent(in), optional :: nper_line
+integer,          intent(in), optional :: max_i_items
+integer,          intent(in), optional :: max_j_items
+integer,          intent(in), optional :: max_k_items
+integer,          intent(in), optional :: max_l_items
+integer,          intent(in), optional :: funit
+character(len=*), intent(in), optional :: label
+
+integer :: i, j, k, l, per_line, ounit, asize_i, asize_j, asize_k, asize_l
+logical :: has_label
+
+! set defaults and override if arguments are present
+
+per_line = 4
+if (present(nper_line)) per_line = nper_line
+
+asize_i = size(array, 1)
+asize_j = size(array, 2)
+asize_k = size(array, 3)
+asize_l = size(array, 4)
+if (present(max_i_items)) asize_i = min(asize_i, max_i_items)
+if (present(max_j_items)) asize_j = min(asize_j, max_j_items)
+if (present(max_k_items)) asize_k = min(asize_k, max_k_items)
+if (present(max_l_items)) asize_l = min(asize_l, max_l_items)
+
+ounit = 0
+if (present(funit)) ounit = funit
+
+has_label = .false.
+if (present(label)) has_label = .true.
+
+! output section
+
+if (has_label) write(ounit, *) trim(label)
+
+do l=1, asize_l
+   do k=1, asize_k
+      do j=1, asize_j
+         do i=1, asize_i, per_line
+            write(ounit, *) i, j, k, l, ' : ', array(i:min(asize_i,i+per_line-1), j, k, l)
+         enddo
+      enddo
+   enddo
+enddo
+
+end subroutine array_4d_dump
+
+!-----------------------------------------------------------------------
+!> given an array of sorted values and a value to find, return the
+!> two indices that enclose that value, and the fraction between.
+!>
+!> fraction_across = 0.0 is the 100% the smaller index value, 
+!>                   1.0 is the 100% the larger index value.
+!>
+!> if the array values are inverted (e.g. index 1 is the largest value),
+!> set inverted = .true.  the interpretation in the calling code for
+!> smaller index, larger index and fraction_across remain the same as the default case.
+!>
+!> if the fraction_across the enclosing level should be computed using a
+!> log scale, set log_scale = .true.
+!>
+!> if indirect_indices specified, use as indirect indices into data_array,
+!> with these indices giving the sorted order.  the order of the values
+!> cannot be inverted!  use either indirect addressing or inverted but
+!> not both.
+!> 
+!> my_status values:
+!>   0 = good return
+!>  -1 = value_to_find is below smallest value
+!>   1 = value_to_find is above largest value
+!>
+!>  95 = cannot combine inverted and indirect indices
+!>  96 = cannot use log scale with negative data values
+!>  97 = array only has a single value
+!>  98 = interval has 0 width or values are inverted
+!>  99 = unknown error
+!>
+!> bad output values use MISSING_I and MISSING_R8
+!>
+!> usage example:
+!>   you have an array of model level heights called my_heights() and you
+!>   have an array of data values at those model levels called data_on_heights.
+!>   you want to interpolate the data at a height of 'this_height'.
+!>
+!>   call find_enclosing_indices(size(my_heights), my_heights, this_height, low_i, high_i, fract, istat)
+!>   if (istat /= 0) return
+!>   value = data_on_heights(low_i)  * (1.0 - fract) + &
+!>           data_on_heights(high_i) * fract
+!>          
+!> FIXME:
+!> added to the utilities module, but this module should be split into
+!> smaller modules because right now it's a dumping ground for every
+!> random routine that is useful to more than one module.  (my fault
+!> as much as anyones - nsc)
+
+subroutine find_enclosing_indices(nitems, data_array, value_to_find,     &
+                                  smaller_index, larger_index, fraction_across, my_status, &
+                                  inverted, log_scale, indirect_indices)
+
+integer,  intent(in)  :: nitems
+real(r8), intent(in)  :: data_array(nitems)
+real(r8), intent(in)  :: value_to_find
+integer,  intent(out) :: smaller_index
+integer,  intent(out) :: larger_index
+real(r8), intent(out) :: fraction_across
+integer,  intent(out) :: my_status
+logical,  intent(in), optional :: inverted
+logical,  intent(in), optional :: log_scale
+integer,  intent(in), optional :: indirect_indices(nitems)
+
+integer :: i, j, k
+integer :: lowest_i, highest_i
+real(r8) :: smaller_data, larger_data, this_data
+logical :: one_is_smallest, linear_interp, direct    ! the normal defaults are true
+
+! set defaults and initialize intent(out) items
+! so we can return immediately on error.
+
+one_is_smallest = .true.
+if (present(inverted)) one_is_smallest = .not. inverted
+
+linear_interp = .true.
+if (present(log_scale)) linear_interp = .not. log_scale
+
+direct = .true.
+if (present(indirect_indices)) direct = .false.
+
+smaller_index = MISSING_I
+larger_index  = MISSING_I
+fraction_across = MISSING_R8
+my_status = -99
+
+
+! exclude malformed call cases
+if (nitems <= 1) then
+   my_status = 97
+   return
+endif
+if (.not. direct .and. .not. one_is_smallest) then
+   my_status = 95
+   return
+endif
+
+! set these indices so we can simplify the tests below
+if (.not. direct) then
+   lowest_i  = indirect_indices(1)
+   highest_i = indirect_indices(nitems)
+else if (one_is_smallest) then
+   lowest_i  = 1
+   highest_i = nitems
+else
+   lowest_i  = nitems
+   highest_i = 1
+endif
+   
+! get limits so we can easily discard out of range values
+smaller_data  = data_array(lowest_i)
+larger_data   = data_array(highest_i)
+
+if (value_to_find < smaller_data) then
+   my_status = -1
+   return
+endif
+
+if (value_to_find > larger_data) then
+   my_status = 1
+   return
+endif
+
+! bisection search:
+! because input must be in sorted order take the middle
+! index each time and shift the lower or upper index
+! to match it, depending on which half the value falls in.
+
+i = 1
+j = nitems
+
+do
+   k=(i+j)/2
+
+   if (direct) then
+      this_data = data_array(k)
+   else
+      this_data = data_array(indirect_indices(k))
+   endif
+
+   if ((value_to_find < this_data .and.       one_is_smallest) .or. &
+       (value_to_find > this_data .and. .not. one_is_smallest)) then
+      j=k
+   else
+      i=k
+   endif
+   
+   if (i+1 >= j) exit
+enddo
+
+! return index values.  if indirect, return indices
+! directly into the data array so caller doesn't have
+! do redo the indirection.
+if (.not. direct) then
+   smaller_index = indirect_indices(i)
+   larger_index  = indirect_indices(i+1)
+else if (one_is_smallest) then
+   smaller_index = i
+   larger_index  = i+1
+else
+   smaller_index = i+1
+   larger_index  = i       
+endif
+
+! use the indices to look up the corresponding data values
+! to compute the fraction across.
+smaller_data = data_array(smaller_index)
+larger_data  = data_array(larger_index)
+
+! avoid cases that would divide by 0 below.
+!> if smaller > larger then the input data isn't monotonic.
+!>   return valid index values but bad status and fraction.
+!> if smaller == larger, return fraction of 0
+
+if (smaller_data > larger_data) then
+   my_status = 98
+   return
+endif
+if (smaller_data == larger_data) then
+   fraction_across = 0.0_r8
+   my_status = 0
+   return
+endif
+
+! no log computations if any data values are negative
+if (.not. linear_interp .and. smaller_data <= 0.0) then
+   my_status = 96
+   return
+endif
+
+! compute fraction here.  0.0 = smaller value, 1.0 = larger value
+if (linear_interp) then
+   fraction_across = (value_to_find - smaller_data) / &
+                     (larger_data   - smaller_data)
+else
+   fraction_across = (log(value_to_find) - log(smaller_data)) / &
+                     (log(larger_data)   - log(smaller_data))
+
+endif
+
+! good return
+my_status = 0
+
+end subroutine find_enclosing_indices
+
+!-----------------------------------------------------------------------
+!> given an array of sorted values and a value to find, return the
+!>  first index value that is less than or equal to the target.
+!>
+!> if the array values are inverted (e.g. index 1 is the largest value),
+!> set inverted = .true. 
+!>
+!> if indirect_indices specified, use as indirect indices into data_array,
+!> with these indices giving the sorted order.  return index will be the
+!> direct index into the data_array.  to also return the index into the
+!> indirect array, specify the_indirect_index in the arg list.
+!>  
+!> note that you cannot specify both inverted and indirect.
+!>
+!> my_status values:
+!>   0 = good return
+!>  -1 = value_to_find is below the smallest value
+!>   1 = value_to_find is above largest value
+!>
+!>  94 = invalid indirect index values
+!>  95 = cannot specify the_indirect_index and not indirect_indices(:)
+!>  96 = cannot specify both indirect and inverted
+!>  97 = empty input data array
+!>  98 = interval values are inverted
+!>  99 = unknown error
+!>
+!> bad output values use MISSING_I and MISSING_R8
+!>
+!> usage example:
+!>   you have a long array of unsorted numbers and you want to find the index of
+!>   a given value.
+!>
+!>   ! do this only once
+!>   call index_sort(unsorted_array, index_array, sizeof(unsorted_array))
+!>
+!>   call find_first_occurrence(sizeof(unsorted_array), unsorted_array, value_to_find, &
+!>                              this_index, istat, indirect_indices = index_array)
+!>   if (istat /= 0) return
+!>   if (value_to_find == unsorted_array(this_index)) then
+!>      print *, 'found ', value_to_find, ' in array at index ', this_index
+!>   else
+!>      print *, 'did not find exact match in array'
+!>      print *, 'largest value still less than ', value_to_find, ' in array at index ', this_index
+!>      print *, 'is value ', unsorted_array(this_index)
+!>   endif
+!>          
+
+!>@todo FIXME - do we need an integer version of this?  (i think yes)
+!>    possibly also a character version for arrays of strings.
+!>    C++ overloading would be nice sometimes.
+
+subroutine find_first_occurrence(nitems, data_array, value_to_find, &
+                                the_index, my_status, &
+                                inverted, indirect_indices, the_indirect_index)
+
+integer,  intent(in)  :: nitems
+real(r8), intent(in)  :: data_array(nitems)
+real(r8), intent(in)  :: value_to_find
+integer,  intent(out) :: the_index
+integer,  intent(out) :: my_status
+logical,  intent(in),  optional :: inverted
+integer,  intent(in),  optional :: indirect_indices(nitems)
+integer,  intent(out), optional :: the_indirect_index
+
+integer :: i, j, k
+integer :: lowest_i, highest_i
+logical :: one_is_smallest, direct    ! the normal defaults are true
+real(r8) :: smallest_data, largest_data, this_data
+
+! set defaults and initialize intent(out) items
+! so we can return immediately on error.
+
+one_is_smallest = .true.
+if (present(inverted)) one_is_smallest = .not. inverted
+
+direct = .true.
+if (present(indirect_indices)) direct = .false.
+
+the_index = MISSING_I
+if (present(the_indirect_index)) the_indirect_index = MISSING_I
+my_status = -99
+
+
+! exclude malformed call cases
+if (nitems < 1) then
+   my_status = 97
+   return
+endif
+
+if (.not. direct .and. .not. one_is_smallest) then
+   my_status = 96
+   return
+endif
+
+if (present(the_indirect_index) .and. .not. present(indirect_indices)) then
+   my_status = 95
+   return
+endif
+
+!> if the input is a single value, test it and
+!> return if the value to find is too small or too large.
+!> also check for bad indirect index values.
+if (nitems == 1) then
+   if (.not. direct) then
+      if (indirect_indices(1) /= 1) then
+         my_status = 94
+         return
+      endif
+   endif
+
+   this_data = data_array(1)
+   if (value_to_find < this_data) then
+      my_status = -1
+      return
+   endif
+   if (value_to_find > this_data) then
+      my_status = 1
+      return
+   endif
+
+   the_index = 1
+   if (present(the_indirect_index)) the_indirect_index = 1
+   my_status = 0
+   return
+endif
+
+! set these indices so we can simplify the tests below
+if (.not. direct) then
+   lowest_i  = indirect_indices(1)
+   highest_i = indirect_indices(nitems)
+else if (one_is_smallest) then
+   lowest_i  = 1
+   highest_i = nitems
+else
+   lowest_i  = nitems
+   highest_i = 1
+endif
+   
+! get limits so we can easily discard out of range values
+smallest_data  = data_array(lowest_i)
+largest_data   = data_array(highest_i)
+
+! discard small and large values here
+if (value_to_find < smallest_data) then
+   my_status = -1
+   return
+endif
+if (value_to_find > largest_data) then
+   my_status = 1
+   return
+endif
+
+! if equal to the largest value, return here.
+if (value_to_find == largest_data) then
+   the_index = highest_i
+   if (present(the_indirect_index)) the_indirect_index = nitems
+   my_status = 0
+   return
+endif
+ 
+! bisection search:
+! because input must be in sorted order take the middle
+! index each time and shift the lower or upper index
+! to match it, depending on which half the value falls in.
+
+i = 1
+j = nitems
+
+do
+   k=(i+j)/2
+
+   if (direct) then
+      this_data = data_array(k)
+   else
+      this_data = data_array(indirect_indices(k))
+   endif
+
+   if ((value_to_find <  this_data .and.       one_is_smallest) .or. &
+       (value_to_find >= this_data .and. .not. one_is_smallest)) then
+      j=k
+   else
+      i=k
+   endif
+
+   if (i+1 >= j) exit
+enddo
+
+! always return the index directly into the incoming data array.  
+! if requested and there are indirect indices also return the indirect 
+! array index number.  the former makes it easy to access the data directly.  
+! the latter makes it possible to move forward and back in numeric order.
+if (.not. direct) then
+   the_index = indirect_indices(i)
+   if (present(the_indirect_index)) the_indirect_index = i
+else if (one_is_smallest) then
+   the_index = i
+else
+   the_index = j
+endif
+
+! good return
+my_status = 0
+
+end subroutine find_first_occurrence
+
+
+!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+! debug code section
+!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+
+!-----------------------------------------------------------------------
+!> print out the kind numbers for various variable kinds
+
+subroutine dump_varkinds()
+
+integer :: bob
+
+call log_it('') ! a little whitespace is nice
+
+write(msgstring1,*)'..  digits12 is ',digits12
+write(msgstring2,*)'r8       is ',r8
+write(msgstring3,*)'r4       is ',r4
+call error_handler(E_DBG, 'initialize_utilities', msgstring1, &
+                   source, revision, revdate, text2=msgstring2, text3=msgstring3)
+
+write(msgstring1,*)'..  integer  is ',kind(bob) ! any integer variable will do
+write(msgstring2,*)'i8       is ',i8
+write(msgstring3,*)'i4       is ',i4
+call error_handler(E_DBG, 'initialize_utilities', msgstring1, &
+                   source, revision, revdate, text2=msgstring2, text3=msgstring3)
+
+end subroutine dump_varkinds
+ 
+!-----------------------------------------------------------------------
+!>  Useful for dumping all the attributes for a file 'unit'
+!>  A debugging routine, really. TJH Oct 2004
+
+subroutine dump_unit_attributes(iunit) 
+
+integer, intent(in) :: iunit
+
+logical :: exists, open, named_file
+integer :: ios, reclen, nextrecnum
+character(len=256) :: file_name
+character(len=32)  :: ynu     ! YES, NO, UNDEFINED ... among others
+
+if ( .not. module_initialized ) call initialize_utilities
+
+call output_unit_attribs(ios, 'for unit', '', ivalue=iunit)
+
+inquire(iunit, opened = open, iostat=ios)
+call output_unit_attribs(ios, 'opened', '', lvalue=open)
+
+inquire(iunit, named = named_file, iostat=ios)
+call output_unit_attribs(ios, 'named file', '', lvalue=named_file)
+
+if (named_file) then
+   inquire(iunit, name = file_name, iostat=ios)
+   call output_unit_attribs(ios, 'file name is', file_name)
+endif
+
+inquire(iunit, exist = exists, iostat=ios)
+call output_unit_attribs(ios, 'file exists', '', lvalue=exists)
+
+inquire(iunit, recl = reclen, iostat=ios)
+call output_unit_attribs(ios, 'record length', '', ivalue=reclen)
+
+inquire(iunit, nextrec = nextrecnum, iostat=ios)
+call output_unit_attribs(ios, 'next record', '', ivalue=nextrecnum)
+
+inquire(iunit, access = ynu, iostat=ios)
+call output_unit_attribs(ios, 'access type', ynu)
+
+inquire(iunit, sequential = ynu, iostat=ios)
+call output_unit_attribs(ios, 'sequential', ynu)
+
+inquire(iunit, direct = ynu, iostat=ios)
+call output_unit_attribs(ios, 'direct', ynu)
+
+inquire(iunit, form = ynu, iostat=ios)
+call output_unit_attribs(ios, 'file format', ynu)
+
+inquire(iunit, action = ynu, iostat=ios)
+call output_unit_attribs(ios, 'action', ynu)
+
+inquire(iunit, read = ynu, iostat=ios)
+call output_unit_attribs(ios, 'read', ynu)
+
+inquire(iunit, write = ynu, iostat=ios)
+call output_unit_attribs(ios, 'write', ynu)
+
+inquire(iunit, readwrite = ynu, iostat=ios)
+call output_unit_attribs(ios, 'readwrite', ynu)
+
+inquire(iunit, blank = ynu, iostat=ios)
+call output_unit_attribs(ios, 'blank', ynu)
+
+inquire(iunit, position = ynu, iostat=ios)
+call output_unit_attribs(ios, 'position', ynu)
+
+inquire(iunit, delim = ynu, iostat=ios)
+call output_unit_attribs(ios, 'delim', ynu)
+
+inquire(iunit, pad = ynu, iostat=ios)
+call output_unit_attribs(ios, 'pad', ynu)
+
+end subroutine dump_unit_attributes
+
+!-----------------------------------------------------------------------
+!> fairly specialized routine to output the results 
+!> of a file inquire call from dump_unit_attributes
+
+
+subroutine output_unit_attribs(ios, label, cvalue, ivalue, lvalue)
+integer,           intent(in) :: ios
+character(len=*),  intent(in) :: label
+character(len=*),  intent(in) :: cvalue
+integer, optional, intent(in) :: ivalue
+logical, optional, intent(in) :: lvalue
+
+character(len=128) :: string1
+
+! if the inquire failed, just return
+if (ios /= 0) return
+
+! format the output string based on the type of input
+
+if (present(lvalue)) then    ! logical
+
+   if (lvalue) then
+      write(string1, *) trim(label) // " is true"
+   else
+      write(string1, *) trim(label) // " is false"
+   endif
+
+else if (present(ivalue)) then   ! integer
+
+   write(string1, *) trim(label) // " is ", ivalue
+
+else   ! character
+
+   write(string1, *) trim(label) // " = " // trim(cvalue)
+
+endif
+
+call error_handler(E_MSG, 'dump_unit_attributes', string1, &
+                   source, revision, revdate)
+
+end subroutine output_unit_attribs
+
+!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
 
 !=======================================================================
 ! End of utilities_mod

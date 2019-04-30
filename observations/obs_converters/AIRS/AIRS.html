@@ -254,11 +254,15 @@ those.  But in the absence of anything else, here's a place to start:
 <blockquote>
 <pre>
  
-ftp edhs1.gsfc.nasa.gov
-# (log in as 'anonymous' and your email as the password)
-cd /edhs/hdfeos/latest_release
-mget *
-quit
+wget https://observer.gsfc.nasa.gov/ftp/edhs/hdfeos/latest_release/*
+
+# NOTE: direct ftp does not work for me anymore
+
+##ftp edhs1.gsfc.nasa.gov
+### (log in as 'anonymous' and your email as the password)
+##cd /edhs/hdfeos/latest_release
+##mget *
+##quit
  
 # mar 2013, the dir contents:
 # 
@@ -272,7 +276,15 @@ quit
 # 
 # (i skipped a 'windows' dir).
 # 
-
+# mar 2019 contents:
+#      HDF-EOS2.20v1.00.tar.Z  08-Jan-2018 15:21  7.3M  
+#      HDF-EOS2.20v1.00_Tes..> 08-Jan-2018 15:21  9.5M  
+#      HDF-EOS_REF.pdf         07-Nov-2018 13:45  695K  
+#      HDF-EOS_UG.pdf          08-Jan-2018 15:28  429K  
+#      hdf-4.2.13.tar.gz       08-Jan-2018 15:14  4.3M  
+#      jpegsrc.v9b.tar.gz      09-Jan-2018 13:44  1.0M  
+#      zlib-1.2.11.tar.gz      08-Jan-2018 15:22  593K  
+#
 for i in *.tar.gz
 do
   tar -zxvf $i
@@ -285,7 +297,7 @@ done
 
 echo zlib:
 
-cd zlib-1.2.5
+cd zlib-1.2.11
 ./configure --prefix=/glade/p/work/nancy
 make
 make test 
@@ -293,7 +305,7 @@ make install
 
 echo jpeg:
 
-cd jpeg-6b
+cd jpeg-9b
 ./configure --prefix=/glade/p/work/nancy
 make
 make test 
@@ -305,7 +317,7 @@ make install
 
 echo hdf:
 
-cd hdf-4.2.6
+cd hdf-4.2.13
 ./configure --prefix=/glade/p/work/nancy
 # (it found zlib and jpeg, from the install prefix i guess)
 make
@@ -329,17 +341,9 @@ cd $DART/observations/AIRS/work
 echo edit mkmf_convert_airs_L2 to have all the base paths
 echo be /glade/p/work/nancy instead of whatever.  make it look like:
 echo ' '
-echo 'set JPGDIR = /glade/p/work/nancy'
-echo 'set JPGLIB = ${JPGDIR}/lib'
-echo 'set JPGINC = ${JPGDIR}/include'
-echo ' '
-echo 'set HDFDIR = /glade/p/work/nancy'
-echo 'set HDFLIB = ${HDFDIR}/lib'
-echo 'set HDFINC = ${HDFDIR}/include'
-echo ' '
-echo 'set EOSDIR = /glade/p/work/nancy'
-echo 'set EOSLIB = ${EOSDIR}/lib'
-echo 'set EOSINC = ${EOSDIR}/include'
+echo 'set JPGDIR = /glade/work/nancy'
+echo 'set HDFDIR = /glade/work/nancy'
+echo 'set EOSDIR = /glade/work/nancy'
 echo ' '
 
 ./quickbuild.csh

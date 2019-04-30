@@ -4,17 +4,26 @@
 !
 ! $Id$
 
-!> interface identical to WRF da_advance_cymdh, except for reading the arg line
-!> from standard input, to be more portable since iargc() is nonstandard across
-!> different fortran implementations.
-!
-!> i/o sections of file lightly modified from da_advance_cymdh
-!> time computations all call DART time manager
+!> @mainpage
+!> @{
+!> @brief Compute with time quantities
+!>
+!> The advance_time program computes the resulting time when either
+!> adding or subtracting time intervals.  The increments can be
+!> expressed in days, hours, minutes or seconds.  The output can be
+!> formatted as native WRF, CESM, Julian or Gregorian format.
+!>
+!> Reads input from standard input to be more portable, since older
+!> versions of iargc() weren't standardized.
+!> 
+!> Based on the WRF da_advance_cymdh utility.
+!>
+!> All time computations call DART time manager.
 !>
 !>   - has accuracy down to second,
 !>   - can use day/hour/minute/second (with/without +/- sign) to advance time,
 !>   - can digest various input date format if it still has the right order (ie. cc yy mm dd hh nn ss)
-!>   - can digest flexible time increment
+!>   - can digest flexible time increment 
 !>   - can output in wrf date format (ccyy-mm-dd_hh:nn:ss)
 !>   - can specify output date format
 !>   - can output Julian day
@@ -59,14 +68,16 @@
 !>
 !>    echo 2007073006    0 -c       | advance_time
 !>
-!> @todo if called with no arguments ... it just hangs. Can we make it fail straight away?
+!> @todo if run with no inputs ... it just hangs. Can we make it fail straight away?
+!> @}
 
 program advance_time
 
 use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, &
                              increment_time, decrement_time, get_time, &
                              set_date, get_date, julian_day
-use    utilities_mod, only : initialize_utilities, E_ERR, error_handler
+use    utilities_mod, only : initialize_utilities, E_ERR, error_handler, &
+                             finalize_utilities
 use   parse_args_mod, only : get_args_from_string
 
 implicit none
@@ -94,14 +105,14 @@ call initialize_utilities('advance_time', output_flag = .false.)
 
 call set_calendar_type(GREGORIAN)
 
-! this routine reads a line from standard input and parses it up
+! this routine reads a line from standard input and parses it up 
 ! into blank-separated words.
 read(*, '(A)') in_string
 call get_args_from_string(in_string, nargum, argum)
 
 if ( nargum < 2 ) then
    write(unit=stdout, fmt='(a)') &
-      'Usage:   echo ccyymmddhh[nnss] [+|-]dt[d|h|m|s] [-w|-W|-wrf|-WRF] [-f|-F date_format] [-j|-J] [-g|-G] [-c|-C] | advance_time'
+   'Usage:   echo ccyymmddhh[nnss] [+|-]dt[d|h|m|s] [-w|-W|-wrf|-WRF] [-f|-F date_format] [-j|-J] [-g|-G] [-c|-C] | advance_time'
    write(unit=stdout, fmt='(a)') &
       'Option:  -w|-W|-wrf|-WRF  output in wrf date format as ccyy-mm-dd_hh:nn:ss'
    write(unit=stdout, fmt='(a)') &
@@ -121,7 +132,7 @@ if ( nargum < 2 ) then
    write(unit=stdout, fmt='(a)') &
       '         echo 2007-07-30_12:00:00 2d1s -w | advance_time              # same as previous example'
    write(unit=stdout, fmt='(a)') &
-      '         echo 200707301200  2d1s -f ccyy-mm-dd_hh:nn:ss | advance_time # same as previous'
+      '         echo 200707301200  2d1s -f ccyy-mm-dd_hh:nn:ss | advance_time # same as previous' 
    write(unit=stdout, fmt='(a)') &
       '         echo 2007073006    120 -j     | advance_time    # advance 120 h, and print year and Julian day'
    write(unit=stdout, fmt='(a)') &
@@ -133,7 +144,7 @@ if ( nargum < 2 ) then
    write(unit=stdout, fmt='(a)') ''
 
    call error_handler(E_ERR,'advance_time','Invalid Usage', source, revision, revdate)
-endif
+end if
 
 ccyymmddhhnnss = parsedate(argum(1))
 datelen = len_trim(ccyymmddhhnnss)
@@ -143,14 +154,14 @@ if (datelen == 8) then
    hh = 0
    nn = 0
    ss = 0
-elseif (datelen == 10) then
+else if (datelen == 10) then
    read(ccyymmddhhnnss(1:10), fmt='(i4, 3i2)')  ccyy, mm, dd, hh
    nn = 0
    ss = 0
-elseif (datelen == 12) then
+else if (datelen == 12) then
    read(ccyymmddhhnnss(1:12), fmt='(i4, 4i2)')  ccyy, mm, dd, hh, nn
    ss = 0
-elseif (datelen == 14) then
+else if (datelen == 14) then
    read(ccyymmddhhnnss(1:14), fmt='(i4, 5i2)')  ccyy, mm, dd, hh, nn, ss
 elseif (datelen == 13) then
    read(ccyymmddhhnnss(1:13), fmt='(i4, 2i2, i5)')  ccyy, mm, dd, ss
@@ -177,42 +188,44 @@ call parsedt(dtime,dday,dh,dn,ds)
 
 !print*, 'delta t: ', dday, dh, dn, ds
 
-! each part can be positive or negative, or 0.
+! each part can be positive or negative, or 0. 
 if (dday > 0) then
    base_time = increment_time(base_time, 0, dday)
-elseif (dday < 0) then
+else if (dday < 0) then
    base_time = decrement_time(base_time, 0, -dday)
 endif
-
+   
 if (dh > 0) then
    base_time = increment_time(base_time, dh*3600)
-elseif (dh < 0) then
+else if (dh < 0) then
    base_time = decrement_time(base_time, -dh*3600)
 endif
-
+   
 if (dn > 0) then
    base_time = increment_time(base_time, dn*60)
-elseif (dn < 0) then
+else if (dn < 0) then
    base_time = decrement_time(base_time, -dn*60)
 endif
-
+   
 if (ds > 0) then
    base_time = increment_time(base_time, ds)
-elseif (ds < 0) then
+else if (ds < 0) then
    base_time = decrement_time(base_time, -ds)
 endif
+   
 
 call get_date(base_time, ccyy, mm, dd, hh, nn, ss)
+
 
 write(ccyymmddhhnnss(1:14), fmt='(i4, 5i2.2)')  ccyy, mm, dd, hh, nn, ss
 if ( nargum == 2 ) then
    if (datelen == 13) datelen=10
-   if (datelen<14) then
+   if (datelen < 14) then
       if(nn /= 0) datelen=12
       if(ss /= 0) datelen=14
    endif
    write(unit=stdout, fmt='(a)') ccyymmddhhnnss(1:datelen)
-elseif ( nargum > 2 ) then
+else if ( nargum > 2 ) then
    i = 3
    do while (i <= nargum)
      select case ( trim(argum(i)) )
@@ -241,8 +254,10 @@ elseif ( nargum > 2 ) then
         case default
            i = i+1
      end select
-   enddo
-endif
+   end do
+end if
+
+call finalize_utilities()
 
 contains
 
@@ -255,31 +270,30 @@ contains
 
 function parsedate(datein)
 character(len=*), intent(in) :: datein
-character(len=14) :: parsedate
 
+character(len=14) :: parsedate
 character(len=1 ) :: ch
 integer :: n, i
 
 parsedate = '00000000000000'
+
 i=0
 do n = 1, len_trim(datein)
    ch = datein(n:n)
    if (ch >= '0' .and. ch <= '9') then
       i=i+1
       parsedate(i:i)=ch
-   endif
-enddo
+   end if
+end do
 
 if (i == 13) then
    parsedate(14:14) = ''
    return  ! CESM format
-elseif (parsedate(11:14) == '0000') then
+else if (parsedate(11:14) == '0000') then
    parsedate(11:14) = ''
-elseif(parsedate(13:14) == '00') then
+else if(parsedate(13:14) == '00') then
    parsedate(13:14) = ''
-endif
-
-return
+end if
 
 end function parsedate
 
@@ -299,7 +313,7 @@ integer,          intent(out) :: dh
 integer,          intent(out) :: dn
 integer,          intent(out) :: ds
 
-character(len=1) :: ch
+character(len=1 ) :: ch
 integer :: n,i,d,s,nounit
 
 ! initialize time and sign
@@ -310,6 +324,7 @@ dn=0
 ds=0
 d=0
 s=1
+
 do n = 1, len_trim(dt)
    ch = dt(n:n)
    select case (ch)
@@ -337,8 +352,10 @@ do n = 1, len_trim(dt)
         ds=ds+d*s
         d=0
       case default
+        continue
    end select
-enddo
+end do
+
 if (nounit==1) dh=d*s
 
 end subroutine parsedt
@@ -353,8 +370,8 @@ end subroutine parsedt
 function formatdate(datein,dateform)
 character(len=*), intent(in) :: datein
 character(len=*), intent(in) :: dateform
-character(len=80) :: formatdate
 
+character(len=80) :: formatdate
 integer :: ic,iy,im,id,ih,in,is
 
 ic=index(dateform,'cc')
@@ -364,7 +381,9 @@ id=index(dateform,'dd')
 ih=index(dateform,'hh')
 in=index(dateform,'nn')
 is=index(dateform,'ss')
+
 formatdate=trim(dateform)
+
 if (ic /= 0) formatdate(ic:ic+1) = datein(1:2)
 if (iy /= 0) formatdate(iy:iy+1) = datein(3:4)
 if (im /= 0) formatdate(im:im+1) = datein(5:6)

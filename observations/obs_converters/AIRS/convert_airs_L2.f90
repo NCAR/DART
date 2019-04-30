@@ -6,7 +6,7 @@
 
 program convert_airs_L2
 
-! Initial version of a program to read the AIRS retrievals for temperature
+! Program to read the AIRS retrievals for temperature
 ! and humidity. 
 
 use types_mod,        only : r8, deg2rad, PI
@@ -16,10 +16,11 @@ use     airs_JPL_mod, only : airs_ret_rdr, airs_granule_type
 use    utilities_mod, only : initialize_utilities, register_module, &
                              error_handler, finalize_utilities, E_ERR, E_MSG, &
                              find_namelist_in_file, check_namelist_read, &
-                             do_nml_file, do_nml_term, &
+                             do_nml_file, do_nml_term, set_filename_list, &
                              logfileunit, nmlfileunit, get_next_filename
 
-use airs_obs_mod,     only : real_obs_sequence, create_output_filename
+use airs_obs_mod,     only : make_obs_sequence, initialize_obs_sequence, &
+                             compute_thin_factor
 
 implicit none
 
@@ -27,6 +28,7 @@ implicit none
 ! Declare local parameters
 ! ----------------------------------------------------------------------
 
+integer                 :: thin_factor, filecount
 character(len=256)      :: datafile(1), output_name, dartfile, msgstring
 type(airs_granule_type) :: granule
 type(obs_sequence_type) :: seq
@@ -43,13 +45,11 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! Declare namelist parameters
 ! ----------------------------------------------------------------------
         
-integer, parameter :: MAXFILES = 256
-character(len=128) :: nextfile
+integer, parameter :: MAXFILES = 512
 
-character(len=128) :: l2_files(MAXFILES) = ''
-character(len=128) :: l2_file_list       = ''
-character(len=128) :: datadir   = '.'
-character(len=128) :: outputdir = '.'
+character(len=256) :: l2_files(MAXFILES) = ''
+character(len=256) :: l2_file_list       = ''
+character(len=256) :: outputfile         = ''
 
 real(r8) :: lon1 =   0.0_r8,  &   !  lower longitude bound
             lon2 = 360.0_r8,  &   !  upper longitude bound 
@@ -60,12 +60,15 @@ real(r8) :: min_MMR_threshold = 1.0e-30
 real(r8) :: top_pressure_level = 0.0001    ! no obs higher than this
 integer  :: cross_track_thin = 0
 integer  :: along_track_thin = 0
+logical  :: use_NCEP_errs = .false.
+integer  :: version = 6    ! AIRS file format version
 
 namelist /convert_airs_L2_nml/ l2_files, l2_file_list, &
-                               datadir, outputdir, &
+                               outputfile, &
                                lon1, lon2, lat1, lat2, &
                                min_MMR_threshold, top_pressure_level, &
-                               cross_track_thin, along_track_thin
+                               cross_track_thin, along_track_thin, &
+                               use_NCEP_errs, version
 
 ! ----------------------------------------------------------------------
 ! start of executable program code
@@ -90,53 +93,36 @@ call check_namelist_read(iunit, io, 'convert_airs_L2_nml')
 if (do_nml_file()) write(nmlfileunit, nml=convert_airs_L2_nml)
 if (do_nml_term()) write(    *      , nml=convert_airs_L2_nml)
 
-if ((l2_files(1) /= '') .and. (l2_file_list /= '')) then
-   write(msgstring,*)'cannot specify both an input file and an input file list'
-   call error_handler(E_ERR, 'convert_airs_L2', msgstring, &
-                      source, revision, revdate)
-endif
 
+! when this routine returns, the l2_files variable will have
+! all the filenames, regardless of which way they were specified.
+filecount = set_filename_list(l2_files, l2_file_list, "convert_airs_l2")
 
-index = 0
+! used to estimate the max size of the output sequence
+thin_factor = compute_thin_factor(along_track_thin, cross_track_thin)
 
-! do loop without an index.  will loop until exit called.
-do
-   index = index + 1
-   if (l2_files(1) /= '') then
-      if (index > size(l2_files)) then
-         write(msgstring,*)'cannot specify more than ', size(l2_files), ' files'
-         call error_handler(E_ERR, 'convert_airs_L2', msgstring, &
-                            source, revision, revdate)
-      endif
-      nextfile = l2_files(index)
-   else
-      ! this is the new routine
-      ! it opens the listfile, returns the index-th one
-      nextfile = get_next_filename(l2_file_list, index)
-   endif
+! initialize an empty obs_seq to start
+seq = initialize_obs_sequence(outputfile, filecount, thin_factor)
 
-   if (nextfile == '') exit
+! for each input file
+do index=1, filecount
 
-   ! construct an appropriate output filename
-   call create_output_filename(nextfile, output_name)
-   datafile(1) = trim(datadir)   // '/' // trim(nextfile)
-   dartfile    = trim(outputdir) // '/' // trim(output_name)
-   
    ! read from HDF file into a derived type that holds all the information
-   call airs_ret_rdr(datafile, granule)   
+   call airs_ret_rdr(l2_files(index), granule, version)   
 
    ! convert derived type information to DART sequence
-   seq = real_obs_sequence(granule, lon1, lon2, lat1, lat2, &
-                           min_MMR_threshold, top_pressure_level, &
-                           along_track_thin, cross_track_thin) 
-
-   ! write the sequence to a disk file
-   call write_obs_seq(seq, dartfile) 
- 
-   ! release the sequence memory
-   call destroy_obs_sequence(seq)
+   call make_obs_sequence(seq, granule, lon1, lon2, lat1, lat2, &
+                          min_MMR_threshold, top_pressure_level, &
+                          along_track_thin, cross_track_thin, &
+                          use_NCEP_errs, version)
 
 enddo
+
+! write the sequence to a disk file
+call write_obs_seq(seq, outputfile) 
+ 
+! release the sequence memory
+call destroy_obs_sequence(seq)
 
 call error_handler(E_MSG, 'convert_airs_L2', 'Finished successfully.',source,revision,revdate)
 call finalize_utilities()

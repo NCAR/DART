@@ -12,7 +12,7 @@ GROUP sam
 END GROUP
 
 GROUP fred   # comment on keywordline
- ALLKINDS EXCEPT QTY_TEMPERATURE QTY_SPECIFIC_HUMIDITY
+ ALLQTYS EXCEPT QTY_TEMPERATURE QTY_SPECIFIC_HUMIDITY
 END GROUP
 
 #
@@ -49,7 +49,7 @@ IMPACT
  QTY_TEMPERATURE       fred                   0.9
  george                 QTY_SPECIFIC_HUMIDITY 0.8
 # AIRCRAFT_TEMPERATURE   george                 0.3    # cannot have groups with types on right
- RADIOSONDE_TEMPERATURE QTY_DEWPOINT          0.2
+# RADIOSONDE_TEMPERATURE QTY_DEWPOINT          0.2     # cannot reset to diff value
  LAND_SFC_ALTIMETER     QTY_TEMPERATURE       0.2
 # LAND_SFC_ALTIMETER     QTY_TEMPERATURE      -0.2   # dup setting
 # LAND_SFC_ALTIMETER     QTY_PRESSURE         -0.2   # requires namelist change to accept

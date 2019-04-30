@@ -81,7 +81,6 @@ real(r8) :: delta_t    = 0.005_r8
 real(r8) :: coupling_b = 10.0_r8
 real(r8) :: coupling_c = 10.0_r8
 real(r8) :: coupling_h = 1.0_r8
-logical  :: output_state_vector = .false.
 logical  :: local_y = .false.  ! default Lorenz' approach
 integer  :: time_step_days = 0
 integer  :: time_step_seconds = 3600
@@ -438,8 +437,6 @@ integer :: i, xs, xe, ys, ye
 integer(i8) :: indx
 type(location_type) :: lctn
 real(r8) :: loc
-character(len=128)  :: filename
-
 
 call nc_begin_define_mode(ncid)
 

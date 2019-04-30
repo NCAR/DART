@@ -30,8 +30,6 @@ use        obs_err_mod, only : sat_wind_error, sat_wv_wind_error
 use       obs_kind_mod, only : SAT_U_WIND_COMPONENT, SAT_V_WIND_COMPONENT
 use  obs_utilities_mod, only : create_3d_obs, add_obs_to_seq
 
-use netcdf
-
 implicit none
 
 character(len=16),  parameter :: ssec_sat_file = 'satwnd_input.txt'

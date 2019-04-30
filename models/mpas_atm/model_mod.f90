@@ -41,12 +41,12 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
 
 use location_io_mod,      only :  nc_write_location_atts, nc_write_location
 
-use default_model_mod,     only : nc_write_model_vars, init_time, init_conditions, &
-                                  adv_1step
+use default_model_mod,     only : nc_write_model_vars, adv_1step,          &
+                                  init_time => fail_init_time,             &
+                                  init_conditions => fail_init_conditions
 
-use xyz_location_mod, only : xyz_location_type, xyz_get_close_maxdist_init,    &
-                             xyz_get_close_type, xyz_set_location, xyz_get_location, &
-                             xyz_get_close_obs_init, xyz_get_close_obs_destroy, &
+use xyz_location_mod, only : xyz_location_type, xyz_set_location, xyz_get_location,         &
+                             xyz_get_close_type, xyz_get_close_init, xyz_get_close_destroy, &
                              xyz_find_nearest
 
 use    utilities_mod, only : register_module, error_handler,                   &
@@ -83,7 +83,7 @@ use     obs_kind_mod, only : get_index_for_quantity,  &
                              QTY_GEOPOTENTIAL_HEIGHT, &
                              QTY_PRECIPITABLE_WATER
 
-use mpi_utilities_mod, only: my_task_id, all_reduce_min_max, task_count
+use mpi_utilities_mod, only: my_task_id, broadcast_minmax, task_count
 
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 
@@ -1730,7 +1730,7 @@ do i = 1, get_num_variables(domid)
 enddo
 
 ! get global min/max for each variable
-call all_reduce_min_max(min_var, max_var, num_variables)
+call broadcast_minmax(min_var, max_var, num_variables)
 deallocate(within_range)
 
 call init_random_seq(random_seq, my_task_id()+1)
@@ -5767,10 +5767,8 @@ do i=1, nCells
    cell_locs(i) = xyz_set_location(lonCell(i), latCell(i), 0.0_r8, radius)
 enddo
 
-! the width really isn't used anymore, but it's part of the
-! interface so we have to pass some number in.
-call xyz_get_close_maxdist_init(cc_gc, 1.0_r8)
-call xyz_get_close_obs_init(cc_gc, nCells, cell_locs)
+! get 2nd arg from max dcEdge or a namelist item where it's precomputed
+call xyz_get_close_init(cc_gc, 33000.0_r8, nCells, cell_locs)
 
 end subroutine init_closest_center
 
@@ -5817,7 +5815,7 @@ subroutine finalize_closest_center()
 ! get rid of storage associated with GC for cell centers if
 ! they were used.
 
-if (search_initialized) call xyz_get_close_obs_destroy(cc_gc)
+if (search_initialized) call xyz_get_close_destroy(cc_gc)
 
 end subroutine finalize_closest_center
 

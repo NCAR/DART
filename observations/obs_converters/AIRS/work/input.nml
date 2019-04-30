@@ -7,19 +7,25 @@
    input_files              = '../../../../observations/forward_operators/obs_def_AIRS_mod.f90'
  /
 
+! version 5 file?:
+!   l2_files = '../data/AIRS.2007.11.01.001.L2.RetStd.v5.2.2.0.G08078150655.hdf'
+! version 6 file?:
+!   l2_files = '../data/AIRS.2017.01.01.110.L2.RetStd_IR.v6.0.31.1.G19058124823.hdf'
+
 &convert_airs_L2_nml
-   datadir            = '../data',
-   l2_files           = 'AIRS.2007.11.01.001.L2.RetStd.v5.2.2.0.G08078150655.hdf',
-   l2_file_list       = '' ,
-   outputdir          = '../output',
+   l2_files = '../data/AIRS.2017.01.01.110.L2.RetStd_IR.v6.0.31.1.G19058124823.hdf'
+   l2_file_list = ''
+   outputfile   = 'obs_seq.out'
+   lon1         =   0.0 
+   lon2         = 360.0 
+   lat1         = -90.0 
+   lat2         = 90.0
    min_MMR_threshold  = 1.0e-30
-   top_pressure_level = 0.0001,
-   along_track_thin   = 0,
-   cross_track_thin   = 0,
-   lon1               =   0.0, 
-   lon2               = 360.0, 
-   lat1               = -90.0, 
-   lat2               =  90.0
+   top_pressure_level = 0.0001
+   cross_track_thin   = 0
+   along_track_thin   = 0
+   use_NCEP_errs      = .true.
+   version            = 6
  /
 
 &obs_sequence_nml
@@ -33,5 +39,6 @@
  /
 
 &utilities_nml
+ module_details = .false.
  /
 

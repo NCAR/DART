@@ -271,8 +271,8 @@ logical, intent(in) :: output_inflation
 
 ! The 4 is for ensemble mean and spread plus inflation mean and spread
 character(len = metadatalength) :: state_meta(num_output_state_members + 4)
-character(len = 14)  :: file_name
-character(len = 15)  :: meta_data_string
+!character(len = 14)  :: file_name
+!character(len = 15)  :: meta_data_string
 integer              :: i, ensemble_offset, num_state_copies
 
 ! must have called init_smoother() before using this routine
@@ -318,7 +318,7 @@ if (output_inflation) then
    state_meta(num_state_copies) = 'inflation sd'
 endif
 
-!>@todo FIXME JPH: No longer writting diagnostic files.  Need to handle
+!>@todo FIXME: No longer writing diagnostic files.  Need to handle
 !>                 writting out smoother information.
 ! ! Set up diagnostic output for model state, if output is desired
 ! do i = 1, num_lags
@@ -344,7 +344,7 @@ integer,             intent(in)    :: start_copy, end_copy
 character(len = 256) :: file_name
 integer              :: i, smoother_index
 
-type(file_info_type) :: file_info
+!type(file_info_type) :: file_info
 
 ! must have called init_smoother() before using this routine
 if ( .not. module_initialized ) then
@@ -361,7 +361,7 @@ if (.not. output_restart) return
 do i = 1, num_current_lags
    smoother_index = next_index(i)
    write(file_name, '("Lag_", I5.5, "_", A)') i, trim(restart_out_file_name)
-   !>@todo FIXME JPH: Need to write out smoother restarts
+   !>@todo FIXME : Need to write out smoother restarts
    !call write_ensemble_restart(lag_handle(smoother_index), file_info, file_name, start_copy, end_copy)
    !write(errstring, '(A,I4,A,I4)') 'writing restart file ', i, ' from cycle number', smoother_index
    !call error_handler(E_MSG, 'smoother_write_restart', errstring)

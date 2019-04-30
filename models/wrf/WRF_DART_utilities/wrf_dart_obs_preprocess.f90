@@ -32,7 +32,8 @@ use        types_mod, only : r8, i8
 use obs_sequence_mod, only : obs_sequence_type, static_init_obs_sequence, &
                              read_obs_seq_header, destroy_obs_sequence, &
                              get_num_obs, write_obs_seq 
-use    utilities_mod, only : find_namelist_in_file, check_namelist_read, nc_check
+use    utilities_mod, only : find_namelist_in_file, check_namelist_read
+use  netcdf_utilities_mod, only : nc_check
 use     obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT, ACARS_U_WIND_COMPONENT, &
                              MARINE_SFC_U_WIND_COMPONENT, LAND_SFC_U_WIND_COMPONENT, &
                              METAR_U_10_METER_WIND, GPSRO_REFRACTIVITY, &
@@ -831,10 +832,10 @@ real(r8), intent(in) :: plevel
 integer, parameter :: nman = 16
 integer :: kk
 logical :: isManLevel
-real (r8) raw_man_levels(nman) &
-     / 100000.0_r8, 92500.0_r8, 85000.0_r8, 70000.0_r8, 50000.0_r8, 40000.0_r8, &
+real(r8) :: raw_man_levels(nman) =  (/  &
+       100000.0_r8, 92500.0_r8, 85000.0_r8, 70000.0_r8, 50000.0_r8, 40000.0_r8, &
         30000.0_r8, 25000.0_r8, 20000.0_r8, 15000.0_r8, 10000.0_r8,  7000.0_r8, &
-         5000.0_r8,  3000.0_r8,  2000.0_r8,  1000.0_r8 /
+         5000.0_r8,  3000.0_r8,  2000.0_r8,  1000.0_r8 /)
 
 isManLevel = .false.
 do kk = 1, nman
@@ -973,7 +974,8 @@ subroutine read_and_parse_input_seq(filename, nx, ny, obs_bdy, siglevel, ptop, &
                                     tc_seq, gpsro_seq, other_seq)
 
 use         types_mod, only : r8
-use     utilities_mod, only : nc_check
+use  netcdf_utilities_mod, only : nc_open_file_readonly, nc_close_file, &
+                                  nc_get_variable
 use  time_manager_mod, only : time_type 
 use      location_mod, only : location_type, get_location, is_vertical
 use  obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs, &
@@ -1005,7 +1007,6 @@ use      obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT, RADIOSONDE_V_WIND_COM
                               SAT_U_WIND_COMPONENT, SAT_V_WIND_COMPONENT, &
                               VORTEX_LAT, VORTEX_LON, VORTEX_PMIN, VORTEX_WMAX
 use         model_mod, only : get_domain_info
-use            netcdf
 
 implicit none
 
@@ -1045,13 +1046,10 @@ allocate(qc(get_num_qc(seq)))
 
 !  read land distribution
 allocate(xland(nint(nx),nint(ny)))
-call nc_check( nf90_open(path = "wrfinput_d01", mode = nf90_nowrite, ncid = fid), &
-                         'read_and_parse_input_seq', 'open wrfinput_d01')
-call nc_check( nf90_inq_varid(fid, "XLAND", var_id), &
-                         'read_and_parse_input_seq', 'inquire XLAND ID')
-call nc_check( nf90_get_var(fid, var_id, xland), &
-                         'read_and_parse_input_seq', 'read XLAND')
-call nc_check( nf90_close(fid), 'read_and_parse_input_seq', 'close wrfinput_d01')
+
+fid = nc_open_file_readonly("wrfinput_d01", "read_and_parse_input_seq")
+call nc_get_variable(fid, "XLAND", xland)
+call nc_close_file(fid, "read_and_parse_input_seq")
 
 input_ncep_qc = .false.
 qcmeta = get_qc_meta_data(seq, 1)

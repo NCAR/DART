@@ -29,8 +29,8 @@ use   time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time
 use      utilities_mod, only : initialize_utilities, find_namelist_in_file,    &
                                check_namelist_read, nmlfileunit, do_nml_file,  &
                                get_next_filename, error_handler, E_ERR, E_MSG, &
-                               nc_check, find_textfile_dims, do_nml_term,      &
-                               finalize_utilities
+                               find_textfile_dims, do_nml_term, finalize_utilities
+use  netcdf_utilities_mod, only : nc_check
 use       location_mod, only : VERTISHEIGHT, set_location
 use   obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,         &
                                static_init_obs_sequence, init_obs, destroy_obs,   &
@@ -1021,7 +1021,6 @@ function gsi_refractivity_error(H, lat, is_it_global, factor)
  real(r8)              :: gsi_refractivity_error
 
  real(r8) :: zkm, rerr
- integer  :: kk
  
  zkm = H * 0.001       ! height in km
  rerr = 1.0_r8

@@ -43,6 +43,7 @@ if [ "$FCOMP" == "" ]; then
  #FCOMP=intel
  #FCOMP=pgi
  #FCOMP=f77
+ #FCOMP=nag   # NOT SUPPORTED
 fi
 
 #  ------------------------------------------------------------------------
@@ -75,6 +76,8 @@ elif [ $FCOMP = pgi ] ; then
    ff=pgf90 
 elif [ $FCOMP = f77 ] ; then
    ff=f77 
+elif [ $FCOMP = nag ] ;  then
+   ff=nagfor ;
 else
    echo error: unrecognized FCOMP name
    exit 1
@@ -82,6 +85,17 @@ fi
 
 if [ $UNDERSCORE = add ] ; then
    cc="$cc -DUNDERSCORE"
+fi
+
+# so far this doesn't compile with NAG - too many errors
+# we might be able to coerce it to work - but for now punt.
+if [ $ff = nagfor ]; then
+  echo
+  echo WARNING WARNING WARNING:
+  echo The prepbufr libraries do not successfully compile with NAG fortran.
+  echo Skipping the NCEP prepbufr library builds.
+  echo
+  exit -1
 fi
 
 # in any case, add -O for optimized code

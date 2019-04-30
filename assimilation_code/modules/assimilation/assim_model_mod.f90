@@ -59,9 +59,6 @@ character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
 
-! Permanent class storage for model_size
-integer :: model_size
-
 ! Ensure init code is called exactly once
 logical :: module_initialized = .false.
 

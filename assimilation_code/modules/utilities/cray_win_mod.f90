@@ -181,9 +181,9 @@ integer :: ierr
 if(get_allow_transpose(state_ens_handle)) then ! the forward operators were done var complete
    !transpose back if allowing transposes
    if (present(fwd_op_ens_handle)) &
-   call all_vars_to_all_copies(fwd_op_ens_handle)
+      call all_vars_to_all_copies(fwd_op_ens_handle)
    if (present(qc_ens_handle)) &
-   call all_vars_to_all_copies(qc_ens_handle)
+      call all_vars_to_all_copies(qc_ens_handle)
 else
    ! close mpi window
    call mpi_win_free(state_win, ierr)

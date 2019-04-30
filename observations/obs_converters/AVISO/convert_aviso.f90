@@ -20,8 +20,10 @@ program convert_aviso
 
 use         types_mod, only : r8
 
-use     utilities_mod, only : nc_check, initialize_utilities, finalize_utilities, &
+use     utilities_mod, only : initialize_utilities, finalize_utilities, &
                               error_handler, E_ERR, E_MSG
+
+use  netcdf_utilities_mod, only : nc_check
 
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, set_time, &
                               increment_time, get_time, operator(+), GREGORIAN

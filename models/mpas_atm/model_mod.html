@@ -1,6 +1,5 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <HTML>
 <HEAD>
 <TITLE>module model_mod (MPAS ATM)</TITLE>
@@ -116,9 +115,7 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;model_nml
-   model_analysis_filename      = 'mpas_init.nc',
-   grid_definition_filename     = 'mpas_init.nc',
-   output_state_vector          = .false.,
+   init_template_filename       = 'mpas_init.nc',
    vert_localization_coord      = 3,
    assimilation_period_days     = 0,
    assimilation_period_seconds  = 21600,
@@ -150,23 +147,11 @@ prematurely terminating the namelist.
 </THEAD>
 
 <TBODY valign=top>
-<TR><TD>model_analysis_filename</TD>
+<TR><TD>init_template_filename</TD>
     <TD>character(len=256)<br />
         <em class=units>[default:&nbsp;'mpas_init.nc']</em></TD>
     <TD>The name of the MPAS analysis file to be read and/or written 
         by the DART programs for the state data.</TD>
-</TR>
-
-<TR><TD>grid_definition_filename</TD>
-    <TD>character(len=256)<br />
-        <em class=units>[default:&nbsp;'mpas_init.nc']</em></TD>
-    <TD>The name of the MPAS file to be read 
-        by the DART programs for the grid information.  Generally
-        this is the same as the <em class=code>model_analysis_filename</em>.
-        However, the grid information is large and if the grid is static
-        that information could be omitted from the analysis files to
-        save space. A single grid file could be supplied once and
-        not change during the assimilation run. </TD>
 </TR>
 
 <TR><TD>highest_obs_pressure_mb</TD>
@@ -180,17 +165,6 @@ prematurely terminating the namelist.
         and larger coefficients as the assimilation tries to effect state
         vector change.
     </TD>
-</TR>
-
-<TR><TD>output_state_vector</TD>
-    <TD>logical <em class=units>[default:&nbsp;.false.]</em></TD>
-    <TD>The switch to determine the form of the state vector in the
-        output netCDF files. If <em class=code>.true.</em> 
-        the state vector will be output exactly as DART uses it;
-        as one long array.  If <em class=code>.false.</em>, 
-        the state vector is parsed into prognostic variables and 
-        output that way -- much easier to use with 'ncview', for
-        example. [Recommended] </TD>
 </TR>
 
 <TR><TD>assimilation_period_days</TD>
@@ -211,7 +185,7 @@ prematurely terminating the namelist.
 
 <TR><TD>vert_localization_coord</TD>
     <TD>integer <em class=units>[default:&nbsp;3]</em></TD>
-    <TD>Vertical coordinate for vertical localization.</em> 
+    <TD>Vertical coordinate for vertical localization.
        <UL style="list-style: none;">
           <LI>1 = model level</LI>
           <LI>2 = pressure (in pascals)</LI>
@@ -222,7 +196,7 @@ prematurely terminating the namelist.
 
 <TR><TD>sfc_elev_max_diff</TD>
     <TD>real(r8)<em class=units>[default:&nbsp;-1.0]</em></TD>
-    <TD>If > 0, the maximum difference, in meters, between an observation marked
+    <TD>If &gt; 0, the maximum difference, in meters, between an observation marked
         as a 'surface obs' as the vertical type (with the surface elevation, in
         meters, as the numerical vertical location), and the surface elevation as
         defined by the model. Observations further away from the surface than this
@@ -427,10 +401,9 @@ these fields carefully when using bounds to restrict their values.
 
 <br />
 <br />
-</TABLE>
 
 <!--==================================================================-->
-<A NAME="Grid information"></A>
+<A NAME="GridInformation"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Grid information</H2>
 <P>As the forward operators use the unstructured grid meshes in MPAS-ATM, the DART/MPAS interface needs to read static 
@@ -440,7 +413,7 @@ these fields carefully when using bounds to restrict their values.
    point in the cartesian coordinate (to avoid the polar issues). 
 </P>
 
-<table width="100%" cellpadding="3">
+<table width="100%" cellpadding="3" summary="description of grid cell variables">
 <tr><td valign="top">integer :: nCells        </td><td>the number of cell centers</td></tr>
 <tr><td valign="top">integer :: nEdges        </td><td>the number of cell edges </td></tr>
 <tr><td valign="top">integer :: nVertices     </td><td>the number of cell vertices</td></tr>
@@ -765,7 +738,7 @@ Each module has its own discussion of their routines.
 </P>
 
 <h3 class=indent1>Required Interface Routines</h3>
-<TABLE width=50%>
+<TABLE width=50% summary='list of required interface routines'>
 <TR><TD><em class=call>use model_mod,&nbsp;only&nbsp;:</em></TD>
                    <TD><A HREF="#get_model_size">get_model_size</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#adv_1step">adv_1step</A></TD></TR>
@@ -777,7 +750,6 @@ Each module has its own discussion of their routines.
 <TR><TD>&nbsp;</TD><TD><A HREF="#init_time">init_time</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#init_conditions">init_conditions</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_atts">nc_write_model_atts</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_vars">nc_write_model_vars</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#pert_model_state">pert_model_state</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
@@ -786,7 +758,7 @@ Each module has its own discussion of their routines.
 </TABLE>
 
 <h3 class=indent1>Unique Interface Routines</h3>
-<TABLE width=50%>
+<TABLE width=50% summary='list of interface routines unique to mpas'>
 <TR><TD><em class=call>use model_mod, only : </em></TD>
                    <TD><A HREF="#get_model_analysis_filename">get_model_analysis_filename</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_grid_definition_filename">get_grid_definition_filename</A></TD></TR>
@@ -1159,10 +1131,10 @@ the initial state is always provided by the input files.
 <A NAME="nc_write_model_atts"></A>
 <br />
 <div class=routine>
-<em class=call>ierr = nc_write_model_atts(ncFileID)</em>
+<em class=call>call nc_write_model_atts(ncFileID, domainID)</em>
 <pre>
-integer             :: <em class=code>nc_write_model_atts</em>
 integer, intent(in) :: <em class=code>ncFileID</em>
+integer, intent(in) :: <em class=code>domainID</em>
 </pre>
 </div>
 
@@ -1171,7 +1143,7 @@ integer, intent(in) :: <em class=code>ncFileID</em>
 
 <P>
 <em class=code>nc_write_model_atts</em>
-writes model-specific attributes to an opened netCDF file:
+writes model-specific attributes to a created netCDF file:
 In the MPAS case, this includes information like the 
 coordinate variables (the grid arrays: lonCell, latCell, xCell, lonVertex, zgrid, etc.),
 information from some of the namelists, and the variable attributes of either the 1D state 
@@ -1187,8 +1159,8 @@ is preserved in the netCDF file as variables <em class=code>inputnml</em>.
 <TR><TD valign=top><em class=code>ncFileID&nbsp;&nbsp;&nbsp;</em></TD>
     <TD>Integer file descriptor to previously-opened netCDF file.</TD></TR>
 
-<TR><TD valign=top><em class=code>ierr</em></TD>
-    <TD>Returns a 0 for successful completion.</TD></TR>
+<TR><TD valign=top><em class=code>domainID</em></TD>
+    <TD>Integer descriptor specifying the domain whose metadata should be written.</TD></TR>
 
 </TABLE>
 
@@ -1199,59 +1171,6 @@ is responsible for the model-specific attributes in the following DART-output ne
 <em class=file>preassim.nc</em>, and 
 <em class=file>analysis.nc</em>.
 </P>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="nc_write_model_vars"></A>
-<br />
-<div class=routine>
-<em class=call>ierr = nc_write_model_vars(ncFileID, statevec, copyindex, timeindex)</em>
-<pre>
-integer,                intent(in) :: <em class=code>ncFileID</em>
-real(r8), dimension(:), intent(in) :: <em class=code>statevec</em>
-integer,                intent(in) :: <em class=code>copyindex</em>
-integer,                intent(in) :: <em class=code>timeindex</em>
-integer                            :: <em class=code>ierr</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>nc_write_model_vars</em>
-writes a copy of the state variables to a NetCDF file. Multiple copies of the
-state for a given time are supported, allowing, for instance, a single file to
-include multiple ensemble estimates of the state. Whether the state vector is 
-parsed into prognostic variables (potential temperature, dry density, vertical velocity, etc.) or simply written as a 1D array is controlled by 
-<em class=file>input.nml</em> <em class=code>&amp;model_mod_nml:output_state_vector</em>.
-If <em class=code>output_state_vector&nbsp;=&nbsp;.true.</em> the state vector is 
-written as a 1D array (the simplest case, but hard to explore with the diagnostics).
-If <em class=code>output_state_vector&nbsp;=&nbsp;.false.</em> the state vector is 
-parsed into prognostic variables before being written.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>ncFileID</em></TD>
-    <TD>file descriptor to previously-opened netCDF file.</TD></TR>
-
-<TR><TD valign=top><em class=code>statevec</em></TD>
-    <TD>A model state vector.</TD></TR>
-
-<TR><TD valign=top><em class=code>copyindex&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Integer index of copy to be written.</TD></TR>
-
-<TR><TD valign=top><em class=code>timeindex</em></TD>
-    <TD>The timestep counter for the given state.</TD></TR>
-
-<TR><TD valign=top><em class=code>ierr</em></TD>
-    <TD>Returns 0 for normal completion.</TD></TR>
-
-</TABLE>
 
 </div>
 <br />
@@ -1465,7 +1384,7 @@ No storage is allocated.
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 
-<TABLE border=0 width=100%>
+<TABLE border=0 width=100% summary='list of files used by this module'>
 <TR><TH align=left>filename</TH>
     <TH align=left>purpose</TH></TR>
 <TR><TD>input.nml</TD>

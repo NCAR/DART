@@ -45,8 +45,6 @@ use             model_mod, only : get_model_size
 
 use     mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities
 
-use netcdf
-
 implicit none
 
 ! version controlled file description for error handling, do not edit
@@ -64,14 +62,14 @@ integer, parameter :: ss_inflate_sd_index = 2
 ! The namelist variables
 !------------------------------------------------------------------
 
-logical            :: single_file = .false.
-character(len=256) :: input_state_files(MAX_FILES)  = ''
 logical            :: write_prior_inf = .FALSE. 
 real(r8)           :: prior_inf_mean = MISSING_R8
 real(r8)           :: prior_inf_sd   = MISSING_R8
 logical            :: write_post_inf = .FALSE.
 real(r8)           :: post_inf_mean  = MISSING_R8
 real(r8)           :: post_inf_sd    = MISSING_R8
+logical            :: single_file    = .FALSE.
+character(len=256) :: input_state_files(MAX_FILES)  = ''
 logical            :: verbose        = .FALSE.
 
 namelist /fill_inflation_restart_nml/              &
@@ -231,7 +229,7 @@ endif
 ens_handle%copies(ss_inflate_index   , :) = prior_inf_mean
 ens_handle%copies(ss_inflate_sd_index, :) = prior_inf_sd
 
-write(my_stage,'(2A)') stage, '_inflation'
+write(my_stage,'(3A)') 'input_', stage, 'inf'
 write(my_base, '(A)')  'mean'
 write(my_desc, '(2A)') stage, ' inflation mean'
 call set_file_metadata(file_info_output,    &
