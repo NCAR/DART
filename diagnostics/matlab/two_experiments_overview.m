@@ -1,6 +1,34 @@
 function two_experiments_overview(file1,label1,file2,label2,varargin)
 %% two_experiments_overview create a trellis-plot-like view of the comparison of two experiments.
 %
+% USAGE: two_experiments_overview(file1, label1, file2, label2 [,varargin]);
+%
+% file1  : filename of the output of obs_diag for an experiment.
+% label1 : Label for the experiment.
+% file2  : filename of the output of obs_diag for a second experiment.
+% label2 : Label for the second experiment.
+%
+% varargin: optional parameter-value pairs. Supported parameters are described below.
+%
+% obsname  : The strings of each observation type to plot.
+%            Each observation type will be plotted in a separate graphic.
+%            Default is to plot all available observation types.
+%            If there are more than 12 observation types, multiple pages
+%            will be created.
+%
+% FlagLevel : It is possible to flag levels that don't have many observations
+%             relative to the level with the most observations.
+%             This value is a fraction of the level with the most observations.
+%
+% MarkerSize : integer controlling the size of the flaggin symbols.
+%
+% verbose  : true/false to control amount of run-time output
+%
+% pause    : true/false to conrol pausing after each figure is created.
+%            true will require hitting any key to continue to next plot
+%
+% papertype: valid values are 'uslegal' and 'usletter'
+%
 % EXAMPLE :
 %
 % file1 = 'Diags_2010.08.15-31_0-500m/obs_diag_output.nc';
@@ -34,13 +62,11 @@ function two_experiments_overview(file1,label1,file2,label2,varargin)
 % Decode,Parse,Check the input
 %---------------------------------------------------------------------
 
-defaultFlagLevel   = 0.00;   % ten percent would be 0.10
-defaultVarCheck    = -1;
-default_verbosity  = true;
-default_markersize = 12;
-default_pause      = false;
-default_range      = [NaN NaN];
 default_obsnames   = {'all'};
+default_flaglevel  = 0.00;   % ten percent would be 0.10
+default_markersize = 12;
+default_verbosity  = true;
+default_pause      = false;
 default_papertype  = 'uslegal';
 
 p = inputParser;
@@ -51,21 +77,17 @@ addRequired(p,'file2' , @ischar);
 addRequired(p,'label2', @ischar);
 
 if (exist('inputParser/addParameter','file') == 2)
-    addParameter(p, 'FlagLevel',  defaultFlagLevel,   @isnumeric);
-    addParameter(p, 'VarCheck',   defaultVarCheck,    @isnumeric);
+    addParameter(p, 'FlagLevel',  default_flaglevel,  @isnumeric);
     addParameter(p, 'verbose',    default_verbosity,  @islogical);
     addParameter(p, 'MarkerSize', default_markersize, @isnumeric);
     addParameter(p, 'pause',      default_pause,      @islogical);
-    addParameter(p, 'range',      default_range,      @isnumeric);
     addParameter(p, 'obsnames',   default_obsnames,   @iscell);
     addParameter(p, 'papertype',  default_papertype,  @ischar);
 else
-    addParamValue(p, 'FlagLevel', defaultFlagLevel,   @isnumeric); %#ok<NVREPL>
-    addParamValue(p, 'VarCheck',  defaultVarCheck,    @isnumeric); %#ok<NVREPL>
+    addParamValue(p, 'FlagLevel', default_flaglevel,  @isnumeric); %#ok<NVREPL>
     addParamValue(p, 'verbose',   default_verbosity,  @islogical); %#ok<NVREPL>
     addParamValue(p, 'MarkerSize',default_markersize, @isnumeric); %#ok<NVREPL>
     addParamValue(p, 'pause',     default_pause,      @islogical); %#ok<NVREPL>
-    addParamValue(p, 'range',     default_range,      @isnumeric); %#ok<NVREPL>
     addParamValue(p, 'obsnames',  default_obsnames,   @iscell);    %#ok<NVREPL>
     addParamValue(p, 'papertype', default_papertype,  @ischar);    %#ok<NVREPL>
 end
@@ -74,7 +96,6 @@ p.parse(file1,label1,file2,label2,varargin{:}) % parse inputs
 
 global figuredata
 figuredata.MarkerSize = p.Results.MarkerSize;
-figuredata.range      = p.Results.range;
 figuredata.verbose    = p.Results.verbose;
 
 %% collect the results of parsing (makes code easier to read)
@@ -83,7 +104,6 @@ FileA     = p.Results.file1;
 FileB     = p.Results.file2;
 LabelA    = p.Results.label1;
 LabelB    = p.Results.label2;
-VarCheck  = p.Results.VarCheck;
 FlagLevel = p.Results.FlagLevel;
 
 if (exist(FileA,'file') ~= 2), error('File %s does not exist.',FileA); end
@@ -91,6 +111,8 @@ if (exist(FileB,'file') ~= 2), error('File %s does not exist.',FileB); end
 
 %% prepare the figures
 % These positions fit 12 variables on a single page.
+% If more then 12 variables are listed, multiple pages will be created
+% which necessitates the postscript format. Single pages are best as .pdf
 
 f1 = gcf;    set_figure(f1, p.Results.papertype);
 f2 = figure; set_figure(f2, p.Results.papertype);
@@ -120,8 +142,8 @@ positions = [ x1 0.7000 dx dy; ...
 ntiles = size(positions,1);
 
 bluered = flipud(redblue(15));
-figure(f1); colormap(bluered)
 figure(f2); colormap(bluered)
+figure(f3); colormap(bluered)
 
 %% Create the list of vertical profile prior observation types in both files.
 
@@ -130,30 +152,9 @@ verticalobs = parse_DART_vars(FileA, FileB, p.Results.obsnames);
 nvariables = length(verticalobs);
 
 if nvariables <= ntiles
-    printformat = '-dpdf';
+    printformat = 'pdf';
 else
-    printformat = '-dpsc';
-end
-
-%% plot some reference plot just to make sure we're not upside down or ...
-
-if ( VarCheck > nvariables )
-    fprintf('\nThere are only %d possible variables in %s\n',nvariables,FileA)
-    for ivar=1:nvariables
-        fprintf('%40s is VarCheck %d\n',verticalobs{ivar},ivar)
-    end
-    error('VarCheck must be less than %d.',nvariables)
-    
-elseif ( VarCheck > 0 )
-    close all
-    files  = { FileA,  FileB};
-    titles = {LabelA, LabelB};
-    obsnames{1} = verticalobs{VarCheck};
-    copy = 'bias';
-    prpo = 'forecast';
-    % fires up N figure windows ... for each region
-    two_experiments_profile(files, titles, obsnames, copy, prpo)
-    figure
+    printformat = 'psc';
 end
 
 %% plot the new stuff
@@ -211,14 +212,13 @@ for ivar = 1:nvariables
         % fprintf('Height vertical coords for %s\n',varname)
         levels = hlevels;
     end
-    nlevels = length(levels);
     
     %----------------------------------------------------------------------
     % Plot the number of observations used and create the mask of which
     % cells are weakest. FIXME ... remove color from these cells.
     
-    figure(f3);
-    ha = axes('position',positions(plotnum,:));
+    figure(f1);
+    axes('position',positions(plotnum,:));
     
     [hall, legendstr, weak] = obsplot(datasetA(:,:,nusedindx)', datasetB(:,:,nusedindx)', ...
         verticalobs{ivar}, levels, region_name, '# observations used', FlagLevel);
@@ -232,87 +232,59 @@ for ivar = 1:nvariables
     %----------------------------------------------------------------------
     % Plot the rmse
     
-    figure(f1);
+    figure(f2);
     axes('position',positions(plotnum,:))
-    string1 = sprintf('rmse(%s)-rmse(%s)',LabelA,LabelB);
+    string1 = sprintf('rmse(%s)-rmse(%s)', LabelA, LabelB);
     myplot(rmsemat, verticalobs{ivar}, levels, region_name, string1, weak, LabelB)
     
     %----------------------------------------------------------------------
     % Plot the bias
     
-    figure(f2);
+    figure(f3);
     axes('position',positions(plotnum,:))
-    string1 = sprintf('abs(bias(%s))-abs(bias(%s))',LabelA,LabelB);
+    string1 = sprintf('abs(bias(%s))-abs(bias(%s))', LabelA, LabelB);
     myplot(biasmat, verticalobs{ivar}, levels, region_name, string1, weak, LabelB)
     
     %----------------------------------------------------------------------
-    % Plot the difference of the number of observations used
-    % also spew these to the command line for context ...
+    % Plot the difference of the number of observations used.
+    % Echo to the command line for context if desired ...
     
     figure(f4);
     axes('position',positions(plotnum,:));
-    
-    %  offset each region, would need to scale for this to make sense.
-    %     nummat   = nummat + ones(nlevels,1) * [0:nregions-1];
-    
-    line(nummat, 1:nlevels, 'LineWidth', 3.0);
-    axis([-Inf Inf 0 nlevels])
-    
-    % Just convert the nuisance scientific notation to regular numbers
-    xtick = get(gca,'XTick');
-    xticklabel = cell(1,numel(xtick));
-    for ix = 1:numel(xtick)
-        xticklabel{ix} = sprintf('%d',xtick(ix));
-    end
-    
-    yticklabel = cell(1,nlevels);
-    for i=1:length(levels)
-        yticklabel{i} = sprintf('%d',round(levels(i)));
-    end
-    
-    set(gca,'YDir','normal', ...
-        'XTick',xtick,'XTickLabel',xticklabel, ...
-        'YTick',1:length(levels),'YTickLabel',yticklabel);
-    
-    string1 = sprintf('obs used; %s - %s',LabelA,LabelB);
-    h = title({verticalobs{ivar},string1});
-    set(h,'interpreter','none');
-    grid on
-    set(gca,'GridColor',[0 0 0],'GridAlpha',0.30);  % Darken the grid lines
+    string1 = sprintf('obs used; %s - %s', LabelA, LabelB);
+    obs_count_diffs(nummat, verticalobs{ivar}, levels, string1)
     
     if(ivar == nvariables)
         L = legend(region_name);
         set(L,'Location','Best');
-        %         set(ha,'Visible','off')
-        %         set(hp,'Visible','off')
     end
     
     if figuredata.verbose
         fprintf('%s observation counts\n',LabelA)
-        datasetA(:,:,nusedindx)'
+        datasetA(:,:,nusedindx)' %#ok<NOPRT>
         fprintf('%s observation counts\n',LabelB)
-        datasetB(:,:,nusedindx)'
+        datasetB(:,:,nusedindx)' %#ok<NOPRT>
         fprintf('difference of observation counts\n')
-        diffs(:,:,nusedindx)'
+        diffs(:,:,nusedindx)' %#ok<NOPRT>
     end
     
     %----------------------------------------------------------------------
     % determine if we need to print another page
-        
+    
     if (ivar == ntiles) || (ivar == nvariables)
         if firstpage
-            print(f1, printformat, 'rmse_diff')
-            print(f2, printformat, 'abs_bias_diff')
-            print(f3, printformat, 'num_obs_used')
-            print(f4, printformat, 'num_obs_used_diff')
+            myprint(f1, printformat, 'num_obs_used')
+            myprint(f2, printformat, 'rmse_diff')
+            myprint(f3, printformat, 'abs_bias_diff')
+            myprint(f4, printformat, 'num_obs_used_diff')
         else
             % can only get here with printformat = dpsc
-            print(f1, printformat, '-append', 'rmse_diff')
-            print(f2, printformat, '-append', 'abs_bias_diff')
-            print(f3, printformat, '-append', 'num_obs_used')
-            print(f4, printformat, '-append', 'num_obs_used_diff')
+            myprint(f1, printformat, 'num_obs_used'     , '-append')
+            myprint(f2, printformat, 'rmse_diff'        , '-append')
+            myprint(f3, printformat, 'abs_bias_diff'    , '-append')
+            myprint(f4, printformat, 'num_obs_used_diff', '-append')
         end
-
+        
         plotnum = 0;
         firstpage = false;
         if ivar ~= nvariables
@@ -468,7 +440,7 @@ end
 weak = (old < FlagLevel) | (new < FlagLevel);
 
 % then offset from one another
-shift = ones(nlevels,1) * [0:nregions-1];
+shift = ones(nlevels,1) * [0:nregions-1]; %#ok<NBRAK>
 old   = old + shift;
 new   = new + shift;
 
@@ -495,38 +467,37 @@ end
 
 end
 
-
 %%----------------------------------------------------------------------
 
+function obs_count_diffs(diffmat, obsname, levels, string1)
 
-function colors = rwb()
-% Creates a red-to-white-to-blue colormap without yellows.
-%
-% Example:
-% bob = rwb;
-% rgbplot(bob);
-%
-% -or, more simply-
-%
-% rgbplot(rwb)
+%  offset each region, would need to scale for this to make sense.
+%     diffmat   = diffmat + ones(nlevels,1) * [0:nregions-1];
 
-num_points = 96;
-mymean= 1.0;
-mystd = 1.0;
-x_min = mymean - 3*mystd;
-x_max = mymean + 3*mystd;
-x     = linspace(x_min, x_max, num_points);
-e     = exp(1);
-basen = (1.0 / (mystd * sqrt(2*pi)));
-expon = -0.5 * (((x-mymean) / mystd).^2 );
-y     = basen * (e .^ expon);
+nlevels  = length(levels);
+line(diffmat, 1:nlevels, 'LineWidth', 3.0);
+axis([-Inf Inf 0 nlevels])
 
-green = y./max(y);
-red   = [1.0-green(1:2:end) ones(1,48)];
-blue  = fliplr(red);
+% Just convert the nuisance scientific notation to regular numbers
+xtick = get(gca,'XTick');
+xticklabel = cell(1,numel(xtick));
+for ix = 1:numel(xtick)
+    xticklabel{ix} = sprintf('%d',xtick(ix));
+end
 
-bob    = [red' green' blue'];
-colors = bob(17:80,:);
+yticklabel = cell(1,nlevels);
+for i=1:length(levels)
+    yticklabel{i} = sprintf('%d',round(levels(i)));
+end
+
+set(gca,'YDir','normal', ...
+    'XTick',xtick,'XTickLabel',xticklabel, ...
+    'YTick',1:length(levels),'YTickLabel',yticklabel);
+
+h = title({obsname,string1});
+set(h,'interpreter','none');
+grid on
+set(gca,'GridColor',[0 0 0],'GridAlpha',0.30);  % Darken the grid lines
 
 end
 
@@ -590,6 +561,28 @@ end
 
 
 %%----------------------------------------------------------------------
+
+
+function myprint(fignum, extension, filename, options)
+
+printformat = sprintf('-d%s',extension);
+
+if nargin == 4
+    fprintf('appending Figure %d to %s.%s ...',fignum.Number, filename, extension)
+    print(fignum, printformat, options, filename)
+else
+    fprintf('printing  Figure %d to %s.%s ...',fignum.Number, filename, extension)
+    print(fignum, printformat, filename)
+end
+
+fprintf(' done.\n')
+
+end
+
+
+%%----------------------------------------------------------------------
+
+
 % <next few lines under version control, do not edit>
 % $URL$
 % $Revision$
