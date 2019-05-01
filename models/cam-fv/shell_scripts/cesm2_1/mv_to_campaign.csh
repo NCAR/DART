@@ -7,106 +7,117 @@
 # DART $Id$
 
 
-# Script to package output from a CAM+DART assimilation,
-# especially the Reanalysis project (2019),
-# and send it to Campaign storage.
-# It's derived from ./mv_to_campaign.sample.csh.
+# Script to send output from a CAM+DART assimilation,
+# especially the Reanalysis project (2019), to Campaign storage.
+# >>> Before running this script:
+#     1) (re)package the files into a directory containing only files to be archived.
+#        The final subdirectory should be a CESM style date string; YYYY-MM-DD-SSSSS
+#     2) You may need to interactively log in to globus.
+#        See https://www2.cisl.ucar.edu/resources/storage-and-file-systems/globus-file-transfers
+#        for details.
+#        > ssh data-access.ucar.edu 
+#          (alternative: ssh username@data-access.ucar.edu)
+#        > globus login
+#        Copy the resulting URL into your browser
+#        Log in there to get the access code.
+#        Enter the code into the interactive globus prompt.
+
+# This script was derived from ./mv_to_campaign.sample.csh.
 # Documentation of that script is in 
 #   https://www2.cisl.ucar.edu/sites/default/files/CISL_GlobusCLI_Nov2018.html
 
-# To get access to the python globus command it seems necessary 
-# to do the following from the command line (not in python):
+if ($#argv == 1) then
 
-# > module load gnu python    (even though the python command is available without loading)
-# > ncar_pylib
-# > globus --help
+   # Request for help; any argument will do.
+   echo "Usage: call by user or script:"
+   echo "   mv_to_campaign.csh CASE TIME_STR SRC_DIR CS_DIR"
+   echo '      CASE     = CESM $CASE name.'
+   echo "      TIME_STR = CESM format time string associated with the data; YYYY-MM-DD-SSSSS"
+   echo "      SRC_DIR  = the directory to archive in Campaign Storage"
+   echo "      CS_DIR   = Campaign Storage"
+   exit
 
-# This will show the commands that can be given to globus, like 'endpoint'
-# The subcommands of 'endpoint', like 'search' can be seen with
+else if ($#argv == 0) then
 
-# > globus list-commands
+   set CASE     = Test_mv_to_globus
+   # set CASE     = f.e21.FHIST_BGC.f09_025.CAM6assim.003
+   set TIME_STR = 2019-04-23-91800
+   # set TIME_STR = 2017-01-02-00000
+   set SRC_DIR  = /glade/scratch/${USER}/${CASE}/${TIME_STR}
+   # set SRC_DIR  = /glade/scratch/${USER}/${CASE}/archive/rest/${TIME_STR}
+   # set SRC_DIR  = /glade/p/cisl/dares/Reanalyses/CAM6_2017/${CASE}/archive
+   set CS_DIR   = /gpfs/csfs1/cisl/dares/Reanalyses/CAM6_2017/${CASE}
 
-# But that shows subcommands of all commands.  Focus the search with 
+else if ($#argv == 4) then
 
-# > globus [command [subcommand]] --help
-# For example 
-# > globus endpoint activate --help
+   set CASE     = $1 
+   set TIME_STR = $2 
+   set SRC_DIR  = $3
+   set CS_DIR   = $4
 
-# will show obscura such as --myproxy (below).
+else
+   
+   echo "ERROR: This script requires 0, 1, or 4 arguments"
+   exit
+endif
 
-# >> Add error checking on arguments
-# and a "Usage:" section
-
-# Case name
-set CASENAME = "$1"
-# or set these explicitly in here?
-# Depends whether it will be run from another script.
-
-# Set analysis time.
-# But we'll be archiving multiple times at once.
-# But maybe by month, so YYYY-MM would be useful.
-set TIMESTR="$2"
-
-# Need log file time stamp time?
-set STAMP = "$3"
+# Done with input parameters.
+#=================================================================
 
 # Beware: the label cannot contain slashes.  valid chars are only:
 # A-Z, a-z, 0-9, space, hyphen, underscore, and comma
 # No '.'?
 # Max length is 128 chars.
-set LABEL = "copy of $CASENAME dares project files for $TIMESTR" 
+set LABEL = "copy of $CASE dares project files for $TIME_STR" 
 
-# Declare paths to use in script (EDIT THESE BEFORE RUNNING!)
-# set SRC_DIR=/glade/scratch/${USER}/${CASENAME}/archive
-set SRC_DIR=/glade/p/cisl/dares/Reanalyses/${CASENAME}/archive
-# Campaign Storage
-# Change a dir name to Reanalyses or ...sis?
-set CS_DIR=/gpfs/csfs1/cisl/dares/Reanalysis/CAM6_2017/
+set AN_DATE = $SRC_DIR:t
 
-# Done with input parameters.
-#=================================================================
-
-set AnY=`date -d $TIMESTR '+%Y'`
-set AnM=`date -d $TIMESTR '+%m'`
-# set AnD=`date -d $TIMESTR '+%d'`
-set AN_DATE = ${AnY}${AnM}
-set glog   = globus_${AN_DATE}.log
+cd $SRC_DIR:h
 
 # start with an empty log
-cd $SRC_DIR:h
+set glog = globus_${AN_DATE}.log
 rm -f $glog globus-batch-dirs.txt globus-batch-files.txt
 echo Copy $SRC_DIR to campaign storage $CS_DIR >>& $glog
 
-# Load Python to get the CLI
+# Load Python to get the globus Command Line Interface.
+# Learn more about globus using
+# > globus --help
+# This will show the commands that can be given to globus, like 'endpoint'
+# The subcommands of 'endpoint', like 'search' can be seen with
+# > globus list-commands
+# But that shows subcommands of all commands.  Focus the search with 
+# > globus [command [subcommand]] --help
+# For example 
+# > globus endpoint activate --help
+# will show obscura such as --myproxy (below).
 module load gnu python
-# Activate the NCAR Python Library (NPL) virtual environment 
-# for version given as argument.
-# This command activates the 'globus' command, used below.
-ncar_pylib 20190118
 
-# Retrieve endpoint IDs and store them as variables
-# Access to the globus command comes through the python module.
-# That module requires  ncarenv/1.2  gnu/6.3.0  ncarcompilers/0.4.1  
-# gnu replaces intel/#.#.# that I have already loaded.
-# OK because that load expires with the end of this script.
+# Activate the NCAR Python Library (NPL) virtual environment 
+# for the version given as the argument (no arg = use default).
+# This command activates the 'globus' command, used below.
+# ncar_pylib 20190118
+ncar_pylib
+
+# Retrieve endpoint IDs and store them as variables using globus.
 # --filter-owner-id not documented.
 # --jq              is A JMESPath expression to apply to json output.
 #                   Takes precedence over any specified '--format'
 # But this has a '--format UNIX' anyway.
 # 
 # EP = endpoint
-set EP_SRC=`globus endpoint search 'NCAR GLADE'            \
+set EP_SRC = `globus endpoint search 'NCAR GLADE'           \
                 --filter-owner-id ncar@globusid.org         \
                 --jq 'DATA[0].id' --format UNIX`
-set EP_CS=`globus endpoint search 'NCAR Campaign Storage' \
+set EP_CS = `globus endpoint search 'NCAR Campaign Storage' \
                 --filter-owner-id ncar@globusid.org         \
                 --jq 'DATA[0].id' --format UNIX`
 
-# Nancy had to add this activation before being able to see 
-# the EP_CS location using globus.
+echo EP_SRC = $EP_SRC
+echo EP_CS = $EP_CS
+
+# Add these activations in order to use (and see) the end points.
 # (E.g. > globus ls ${EP_CS}:/gpfs/csfs1/cisl/dares/Reanalysis/).
 # It seems to activate the endpoints without requiring a password.
-# (Or was she already logged into globus from previous commands?)
 foreach ep ($EP_SRC $EP_CS)
    # Check if endpoint is activated
    # (we don't care about output, only return code)
@@ -115,83 +126,36 @@ foreach ep ($EP_SRC $EP_CS)
       globus endpoint activate --myproxy --myproxy-lifetime 1 $ep
       if ( $status != 0 ) then
          echo "Fatal: NCAR endpoint $ep isn't activated." > $glog
-         echo "Aborting transfer..." >> $glog
+         echo "       Aborting transfer..." >> $glog
          echo "Failed: $AN_DATE to Campaign Storage!" > ~/GLOBUS-ERROR.$AN_DATE
          exit 1
       endif
+   else
+      echo Endpoint $ep is activated
    endif
 end
 
-set EXPIRE=`globus endpoint is-activated                \
-            --jq expire_time -F unix $EP_SRC`
+set EXPIRE = `globus endpoint is-activated                \
+              --jq expire_time -F unix $EP_SRC`
 echo "NCAR endpoints active until $EXPIRE" > $glog
 
-# Check if destination directory exists; if not, create it
-globus ls ${EP_CS}:$CS_DIR >& /dev/null
+set DEST_DIR = ${CS_DIR}/$AN_DATE
 
-if ( $status != 0 ) then
-    globus mkdir ${EP_CS}:$CS_DIR >>& $glog
-else
-    echo $CS_DIR already exists on campaign store >>& $glog
-endif
-
-set DESTDIR=${CS_DIR}/$AN_DATE
-globus mkdir ${EP_CS}:${DESTDIR} >>& $glog
-
-# Create a list of files to archive.
-# This is mysterious, since I don't know how the original file names look.
-#    set BATCHAnMT="${RUNDIR}/\1 ${DESTDIR}/\1"
-#    ls -1 fcst*.nc | sed "s|\(.*\)|${BATCHAnMT}|" > globus-batch.txt
-# Hopefully the output to globus-batch.txt does not have special formatting.
-# It may:
-# "The batch file needs to have full source and destination paths
-#  We use a sed command to format our ls output and store it as a bash variable SOUT"
-# 
-# The list will depend on the packaging of files:
-# laptop:/Users/raeder/DAI/ATM_forcXX/CAM6_setup/campaign_storage
-
-# this finds directories as well as files.  not sure what we need here.
-#ls -1R . | sed -e "s;.*;${SRC_DIR}/& ${CS_DIR}/&;" > globus-batch.txt
-# find . -type d | sed -e "s;.*;globus mkdir ${EP_CS}:${CS_DIR}/&;" >! globus-batch-dirs.txt
-
-# possibly this:
-
-# cd into the source dir
+# Cd from where task files will be created into the source dir where the data files are.
 cd $SRC_DIR
 
-# find all dirs, and get rid of the ./ at the start of each subdir name
-find . -type d | sed -e "s;..;;"  >! ../globus-batch-dirs.txt
+# Start copy of GLADE data holdings to Campaign Storage.
+# --recursive  to duplicate an entire directory and all its contents. 
+# --sync-level anything with a newer modification time gets copied,
+# --batch < ../globus-batch-files.txt   NOT needed when moving whole directories\
+globus transfer                         \
+    --recursive --sync-level mtime      \
+    --label "$LABEL"                    \
+    ${EP_SRC}:${SRC_DIR} ${EP_CS}:${DEST_DIR}   >>& ../$glog
 
-# find all files, get rid of the ./ at the start of each filename, and 
-# convert them to 2 full pathnames: the source and the destination
-find . -type f | sed -e "s;..\(.*\);${SRC_DIR}/\1 ${DESTDIR}/\1;" >! ../globus-batch-files.txt
-
-# do we need to check for their existance first? doing so to be safe.
-echo Creating needed subdirectories
-foreach SUBDIR ( `cat ../globus-batch-dirs.txt` )
-   set target = ${EP_CS}:${CS_DIR}/${SUBDIR}
-
-   # Check if destination directory already exists; if not, create it
-   globus ls $target >& /dev/null
-
-   if ( $status != 0 ) then
-      echo Making $target on campaign store   >>& ../$glog
-      globus mkdir $target                    >>& ../$glog
-   else
-      echo Subdir $target already exists on campaign store >>& ../$glog
-   endif
-end
-
-echo files to be copied are in globus-batch-files.txt
-
-# Start copy of GLADE data holdings to CS
-# Finally, we use the variable contents as stdin to our globus batch transfer
-globus transfer $EP_SRC $EP_CS                           \
-    --label "$LABEL"              \
-    --batch < ../globus-batch-files.txt >>& ../$glog
 
 echo ""
-echo Output of this script is in $SRC_PARENT/$glog.
+echo Output of this script is in $SRC_DIR:h/$glog.
 echo Transfer is asynchronous.  If successfully started, 
 echo you will receive email when it is complete
 

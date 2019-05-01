@@ -38,6 +38,7 @@
 #SBATCH --mail-user=raeder@ucar.edu
 #SBATCH --account=P86850054
 #SBATCH --partition=dav
+#SBATCH --ignore-pbs
 # 
 # #----------------------------------------------------------------------
 # #BSUB -n 1
@@ -74,10 +75,13 @@ module list
 if ($#argv == 0) then
    # User submitted, independent batch job (not run by another batch job).
    # CASE could be replaced by setup_*, as is done for DART_config.
-   set arch_dir = /glade/scratch/${USER}/Test_merged0.bld1/archive/esp/hist
-   set date_string = '2017-01'
+   set arch_dir = /glade/scratch/${USER}/f.e21.FHIST_BGC.f09_025.CAM6assim.004/archive/esp/hist
+   set yr_mo = '2017-01'
    set DART = ~/DART/reanalysis
-   set output_dir = Diags_NTr_2017.1.1-2017.1.3H12_s0
+   # Use a simplified convention for Reanalysis, 
+   # which will deal with whole months
+#    set output_dir = Diags_NTrS_${yr_mo}
+   set output_dir = Diags_NTrS_2017.1.1-2017.1.8H0_s0
 #   Diags_NTrS_2017.3.1-2017.4.1H0_s0
 #         ^    ^        ^          ^
 #         |    |        |          Skip first N cycles for vert profiles
@@ -106,9 +110,9 @@ if ($#argv == 0) then
 else if ($#argv == 1) then
    # Request for help; any argument will do.
    echo "Usage: call by user or script:"
-   echo "   obs_diags.csh arch_dir 'date_string' output_dir [dart_dir]"
+   echo "   obs_diags.csh arch_dir 'yr_mo' output_dir [dart_dir]"
    echo "      arch_dir    = directory where $case.dart.e.cam_obs_seq_final.$date.nc are"
-   echo "      date_string = cshell regular expression which selects the files, e.g. '2017-03-[01]',"
+   echo "      yr_mo = cshell regular expression which selects the files, e.g. '2017-03-[01]',"
    echo "                    or set manually in the script."
    echo "      output_dir  = directory where output from obs_diag and matlab will be put."
    echo "                    I give it a name that will distinguish it from other obs space output"
@@ -118,7 +122,7 @@ else if ($#argv == 1) then
 else
    # Script run by another (batch) script or interactively.
    set arch_dir    = $1
-   set date_string = "$2"
+   set yr_mo = "$2"
    set output_dir  = $3
    # DART could be filled by setup_*, as is done for DART_config.
    if ($#argv == 4) then
@@ -156,9 +160,9 @@ mkdir $output_dir
 
 # ls -1 does not work; unusable formatting.
 # Separate the obs_seq.final files we want to process.
-set files = `ls *cam_obs_seq_final.*${date_string}*`
+set files = `ls *cam_obs_seq_final.*${yr_mo}*`
 if ($#files == 0) then
-   echo "No files matching $date_string"
+   echo "No files matching $yr_mo"
    exit 30
 endif
 echo "file1,...,fileN = $files[1],$files[$#files]"
@@ -177,7 +181,7 @@ else
    foreach f ($files)
       echo "linking ../$f"
       ln -s ../$f .
-   endif
+   end
    set compr = 'false'  
 endif
 
@@ -196,8 +200,8 @@ while ($t <= 2)
    set this = 1
    if ($t == 2) set this = $#files
 
-   set date =  $files[$this]:r
-   if ($compr == 'true') set date = $date:r
+   set date = $files[$this]
+   if ($compr == 'true') set date = $files[$this]:r
 
    # Ignore the hour of the day for now, but round up to the next day.
    set parts = (`echo $date:e | sed -e 's/-0/ /g;s/-/ /g'`)
@@ -305,7 +309,7 @@ echo "fname = 'obs_diag_output.nc';"   >> script.m
 foreach obs ($obsnames)
 foreach copy (totalspread bias)
 foreach func (plot_rmse_xxx_evolution plot_rmse_xxx_profile)
-   echo "$func(fname,'$copy','obsname',$obs)"         >> script.m
+   echo "$func(fname,'$copy','obsname',$obs);"         >> script.m
 end
 end
 end
@@ -353,3 +357,8 @@ echo "exit" >> script.m
 matlab -r script
 
 exit
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

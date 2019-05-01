@@ -43,6 +43,7 @@
 #SBATCH --mail-user=raeder@ucar.edu
 #SBATCH --account=P86850054
 #SBATCH --partition=dav
+#SBATCH --ignore-pbs
 # 
 #-----------------------------------------
 #PBS  -N repack_st_archive
