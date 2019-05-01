@@ -33,14 +33,18 @@ function plotdat = plot_evolution(fname, copy, varargin)
 %            Each observation type will be plotted in a separate graphic.
 %            Default is to plot all available observation types.
 %
-% level    :  'level' index. Default is to plot all levels.
+% level    : 'level' index. Default is to plot all levels.
 %
 % range    : 'range' of the value being plotted. Default is to
 %                automatically determine range based on the data values.
 %
 % verbose  : true/false to control amount of run-time output
 %
-% MarkerSize  : integer controlling the size of the symbols
+% MarkerSize : integer controlling the size of the symbols
+%
+% DateForm : Free-form character string controlling representation of the time axis.
+%            See 'help datetick' for discussion and valid values.
+%            Example ones are 'mm/dd' and 'dd HH:MM'.
 %
 % pause  : true/false to conrol pausing after each figure is created.
 %          true will require hitting any key to continue to next plot
@@ -87,6 +91,7 @@ default_markersize = 12;
 default_pause      = false;
 default_range      = [NaN NaN];
 default_level      = -1;
+default_dateform   = 'default';
 p = inputParser;
 
 addRequired(p,'fname',@ischar);
@@ -98,6 +103,7 @@ if (exist('inputParser/addParameter','file') == 2)
     addParameter(p,'pause',      default_pause,      @islogical);
     addParameter(p,'range',      default_range,      @isnumeric);
     addParameter(p,'level',      default_level,      @isnumeric);
+    addParameter(p,'DateForm',   default_dateform,   @ischar);
 else
     addParamValue(p,'obsname',   default_obsname,    @ischar);    %#ok<NVREPL>
     addParamValue(p,'verbose',   default_verbosity,  @islogical); %#ok<NVREPL>
@@ -105,6 +111,7 @@ else
     addParamValue(p,'pause',     default_pause,      @islogical); %#ok<NVREPL>
     addParamValue(p,'range',     default_range,      @isnumeric); %#ok<NVREPL>
     addParamValue(p,'level',     default_level,      @isnumeric); %#ok<NVREPL>
+    addParamValue(p,'DateForm',  default_dateform,   @ischar);    %#ok<NVREPL>
 end
 p.parse(fname, copy, varargin{:});
 
@@ -147,6 +154,7 @@ global figuredata verbose
 
 figuredata            = set_obsdiag_figure('landscape');
 figuredata.MarkerSize = p.Results.MarkerSize;
+figuredata.DateForm   = p.Results.DateForm;
 verbose               = p.Results.verbose;
 
 %%---------------------------------------------------------------------
@@ -332,19 +340,12 @@ ges_Nused = squeeze(plotdat.ges_Nused(plotdat.region,:,:,:));
 anl_Nused = squeeze(plotdat.anl_Nused(plotdat.region,:,:,:));
 anl_Ngood = sum(anl_Nused);
 
-if verbose
-    fprintf('region %d %s level %d nobs_poss %d prior %d poste %d\n', ...
-        plotdat.region, plotdat.myvarname, plotdat.mylevel, ...
-        sum(ges_Nposs), sum(ges_Nused), anl_Ngood)
-    fprintf('region %d %s level %d %s\n\n', ...
-        plotdat.region, plotdat.myvarname, plotdat.mylevel, prior_legstr)
-end
-
 if anl_Ngood
     [hposte, poste_legstr] = plot_quantity('posterior', plotdat);
     h = legend([hprior, hposte], prior_legstr, poste_legstr);
 else
     h = legend(hprior,prior_legstr);
+    poste_legstr = [];
 end
 
 set(h,'Interpreter','none','Box','off','FontSize',figuredata.fontsize)
@@ -355,6 +356,14 @@ if verLessThan('matlab','R2017a')
     % We do not want to add the bias line to the legend, for example.
 else
     h.AutoUpdate = 'off';
+end
+
+if verbose
+    fprintf('region %d %s level %d nobs_poss %d prior %d poste %d\n', ...
+        plotdat.region, plotdat.myvarname, plotdat.mylevel, ...
+        sum(ges_Nposs), sum(ges_Nused), anl_Ngood)
+    fprintf('region %d %s level %d %s %s\n\n', ...
+        plotdat.region, plotdat.myvarname, plotdat.mylevel, prior_legstr, poste_legstr)
 end
 
 % Attempt to make plotting robust in the face of 'empty' bins.
@@ -374,20 +383,11 @@ switch lower(plotdat.copystring)
         plotdat.ylabel = sprintf('%s',plotdat.copystring);
 end
 
-% hokey effort to decide to plot months/days vs. daynum vs.
-ttot = plotdat.bincenters(plotdat.Nbins) - plotdat.bincenters(1) + 1;
+% effort to use user-supplied value for time labelling or
+% make a stab at a useful default.
 
-if ((plotdat.bincenters(1) > 1000) && (ttot > 5))
-    datetick('x','mm/dd','keeplimits','keepticks');
-    monstr = datestr(plotdat.bincenters(1),21);
-    xlabelstring = sprintf('month/day - %s start',monstr);
-elseif (plotdat.bincenters(1) > 1000)
-    datetick('x','dd HH:MM','keeplimits')
-    monstr = datestr(plotdat.bincenters(1),21);
-    xlabelstring = sprintf('%s start',monstr);
-else
-    xlabelstring = 'days';
-end
+xlabelstring = set_time_axis('x', plotdat.bincenters, figuredata.DateForm);
+
 set(get(ax1,'Xlabel'),'String',xlabelstring, ...
     'Interpreter','none','FontSize',figuredata.fontsize)
 
@@ -441,7 +441,7 @@ set(get(ax1,'Ylabel'), 'String', plotdat.ylabel, ...
 % since we don't have the ability to specify this level-by-level or by
 % regions, we can use an 'all-or-nothing' approach.
 
-if (sum(plotdat.ges_Neval(:)) > 0)
+if sum(plotdat.ges_Neval(:)) > 0
     string1 = ['# of obs: o=possible; \ast=evaluated' plotdat.post_string];
 else
     string1 = ['# of obs: o=possible; \ast=assimilated' plotdat.post_string];

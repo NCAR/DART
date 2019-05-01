@@ -1,9 +1,9 @@
 %% DART - the list of routines useful for exploring the output of the DART ensemble assimilation software.
 % This is not intended to be an exhaustive list, but it should get you started. -- Tim
 %
-%% These functions explore the DART state-space diagnostic files -- the output of the _stages_to_write_ netCDF files.
+% These functions explore the DART state-space diagnostic files -- the output of the _stages_to_write_ netCDF files.
 % 
-% * plot_bins.m rank histograms
+% * plot_bins.m			rank histograms
 % * plot_correl.m		space-time series of correlation
 % * plot_ens_err_spread.m	summary plots of the ensemble error and ensemble spread
 % * plot_ens_mean_time_series.m	time series of ensemble mean and truth
@@ -14,12 +14,11 @@
 % * plot_total_err.m		plots of global error and spread of ensemble mean
 % * plot_var_var_correl.m	correlation of a vrbl at a time and another vrbl at all times
 %
-%% These functions require that the observation sequences in question have been run 
+% These functions require that the observation sequences in question have been run 
 % through "obs_diag" and have resulted in "obs_diag_output.nc" files. Strictly 
 % "observation-space" diagnostics.
 %
 % Typical quantities of interest are : rmse, bias, spread, totalspread, ...
-% * plot_observation_locations.m	locations of observations, by QC value
 % * plot_profile.m		vertical profile of a single quantity
 % * plot_bias_xxx_profile.m	vertical profile of the bias and any other quantity
 % * plot_rmse_xxx_profile.m 	vertical profile of the rmse and any other quantity
@@ -28,25 +27,31 @@
 % * plot_wind_vectors.m		This is a "one-off" ... since DART actually only knows
 %                               about univariate observations, matching them into pairs
 %                               is perilous ...
+% * two_experiments_evolution.m	Compares the time-series of multiple (not just 2) experiments.
+% * two_experiments_profile.m	Compares the vertical profiles of multiple (not just 2) experiments.
+% * two_experiments_overview.m	Creates a trellis-like plot of the difference of 
+%				vertical profiles for exactly 2 experiments.
 %
-%% These functions require processing observation sequences into netCDF files 
+% These functions require processing observation sequences into netCDF files 
 % with "obs_seq_to_netcdf" - which currently does not preserve all of the observation 
 % sequence metadata for some of the more complicated observation types.
 %
+% * link_obs.m			Data brushing across multiple dimensions. Explore where
+%                               the observations are rejected and why. 
 % * read_obs_netcdf.m		Reads a netCDF observation sequence and returns a structure.
 % * plot_obs_netcdf.m		creates a 2D or 3D plot of the observation locations
 %                               and values - and rejected observations.
 % * plot_obs_netcdf_diffs.m	ditto, only for the difference of two observation copies
 %                               - the observation and the ensemble mean, for example.
 %
-% DART/models/<modelname>/matlab	Each model has an optional matlab directory where
+% DART/models/<modelname>/matlab	Many models have an optional matlab directory where
 %                               the model developers are free to supply whatever functions
 %                               or scripts they deem useful.
 
 % The documentation for publishing is 
 % https://www.mathworks.com/help/matlab/matlab_prog/publishing-matlab-code.html
 
-%% DART software - Copyright UCAR. This open source software is provided
+% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %

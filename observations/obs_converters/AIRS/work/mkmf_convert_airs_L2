@@ -6,26 +6,40 @@
 #
 # DART $Id$
 
-# if you are building this on yellowstone.ucar.edu you can changed 
-# each of the /opt/local build directories below to /glade/p/work/nancy
-# where i have built the jpg, hdf, and eos libraries.
+# if you are building this on cheyenne.ucar.edu (ncar supercomputer)
+# i've been able to use these two methods to build this converter:
+#
+#  1) use the prebuild hdf-eos module on the system:
+#     a) unload the netcdf module, 
+#     b) load the hdf-eos module, then 
+#     c) reload netcdf
+#     d) uncomment the MYINCDIR, MYLIBDIR lines below that use the NCAR_... versions
+#
+#  2) use the older libs i have previously built:
+#     a) load the gnu compiler module
+#        (i get dup symbol errors with intel.)
+#     b) use the /glade/work/nancy versions of the dirs
 
-set JPGDIR = /opt/local
-set JPGLIB = ${JPGDIR}/lib
-set JPGINC = ${JPGDIR}/include
+# these env vars seem to be defined on cheyenne by loading the hdf-eos module:
+# NCAR_INC_HDFEOS
+# NCAR_LDFLAGS_HDFEOS
+# NCAR_LIBS_HDFEOS
 
-set HDFDIR = /opt/local
-set HDFLIB = ${HDFDIR}/lib
-set HDFINC = ${HDFDIR}/include
+set MYINCDIR = "-I$NCAR_INC_HDFEOS"
+set MYLIBDIR = "-L$NCAR_LIBS_HDFEOS"
+set MYLIBS   = "$NCAR_LIBS_HDFEOS"
 
-set EOSDIR = /opt/local
-set EOSLIB = ${EOSDIR}/lib
-set EOSINC = ${EOSDIR}/include
+# or
+#
+#set JPGDIR = /glade/work/nancy
+#set HDFDIR = /glade/work/nancy
+#set EOSDIR = /glade/work/nancy
+#
+#set MYINCDIR = "-I$EOSDIR/include -I$HDFDIR/include -I$JPGDIR/include"
+#set MYLIBDIR = "-L$EOSDIR/lib     -L$HDFDIR/lib     -L$JPGDIR/lib"
+#set MYLIBS = "-lhdfeos -lmfhdf -ldf -ljpeg -lz  -lm"
+#
 
-set MYLIBS = "-lhdfeos -lmfhdf -ldf -ljpeg -lz  -lm"
-
-set MYINCDIR = "-I${EOSDIR}/include -I${HDFDIR}/include -I${JPGDIR}/include"
-set MYLIBDIR = "-L${EOSDIR}/lib     -L${HDFDIR}/lib     -L${JPGDIR}/lib"
 
 ../../../../build_templates/mkmf -p convert_airs_L2 -t ../../../../build_templates/mkmf.template \
  -l "${MYINCDIR} ${MYLIBDIR} ${MYLIBS}" \

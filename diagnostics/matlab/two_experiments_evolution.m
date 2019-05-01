@@ -46,6 +46,10 @@ function two_experiments_evolution(files, titles, obsnames, copy, prpo, varargin
 %
 % MarkerSize  : integer controlling the size of the symbols
 %
+% DateForm : Free-form character string controlling representation of the time axis.
+%            See 'help datetick' for discussion and valid values.
+%            Example ones are 'mm/dd' and 'dd HH:MM'.
+%
 % pause    : true/false to conrol pausing after each figure is created.
 %            true will require hitting any key to continue to next plot
 %
@@ -83,6 +87,7 @@ default_markersize = 12;
 default_pause      = false;
 default_range      = [NaN NaN];
 default_level      = 1;
+default_dateform   = 'default';
 p = inputParser;
 
 addRequired(p,'files',@iscell);
@@ -97,12 +102,14 @@ if (exist('inputParser/addParameter','file') == 2)
     addParameter(p,'pause',      default_pause,      @islogical);
     addParameter(p,'range',      default_range,      @isnumeric);
     addParameter(p,'level',      default_level,      @isnumeric);
+    addParameter(p,'DateForm',   default_dateform,   @ischar);
 else
     addParamValue(p,'verbose',   default_verbosity,  @islogical); %#ok<NVREPL>
     addParamValue(p,'MarkerSize',default_markersize, @isnumeric); %#ok<NVREPL>
     addParamValue(p,'pause',     default_pause,      @islogical); %#ok<NVREPL>
     addParamValue(p,'range',     default_range,      @isnumeric); %#ok<NVREPL>
     addParamValue(p,'level',     default_level,      @isnumeric); %#ok<NVREPL>
+    addParamValue(p,'DateForm',  default_dateform,   @ischar);    %#ok<NVREPL>
 end
 
 p.parse(files, titles, obsnames, copy, prpo, varargin{:});
@@ -135,6 +142,7 @@ global figuredata verbose
 commondata = check_compatibility(files, prpo, obsnames, copy);
 figuredata = set_obsdiag_figure('landscape','numexp',NumExp);
 figuredata.MarkerSize = p.Results.MarkerSize;
+figuredata.DateForm   = p.Results.DateForm;
 verbose    = p.Results.verbose;
 plotobj    = cell(NumExp,1);
 
@@ -416,14 +424,10 @@ switch plotobj{1}.copystring
     otherwise
 end
 
-% hokey effort to decide to plot months/days vs. daynum vs.
-ttot = plotobj{1}.bincenters(plotobj{1}.Nbins) - plotobj{1}.bincenters(1) + 1;
+% effort to use user-supplied value for time labelling or
+% make a stab at a useful default.
 
-if ((plotobj{1}.bincenters(1) > 1000) && (ttot > 5))
-    datetick('x','mm/dd','keeplimits','keepticks');
-elseif (plotobj{1}.bincenters(1) > 1000)
-    datetick('x','dd HH:MM','keeplimits','keepticks')
-end
+set_time_axis('x', plotobj{i}.bincenters, figuredata.DateForm);
 
 % Create another axes to use for plotting the observation counts
 % using a black axis because there is no single observation color.

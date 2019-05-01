@@ -33,14 +33,18 @@ function plotdat = plot_rmse_xxx_evolution(fname, copy, varargin)
 %            Each observation type will be plotted in a separate graphic.
 %            Default is to plot all available observation types.
 %
-% level    :  'level' index. Default is to plot all levels.
+% level    : 'level' index. Default is to plot all levels.
 %
 % range    : 'range' of the value being plotted. Default is to
 %                automatically determine range based on the data values.
 %
 % verbose  : true/false to control amount of run-time output
 %
-% MarkerSize  : integer controlling the size of the symbols
+% MarkerSize : integer controlling the size of the symbols
+%
+% DateForm : Free-form character string controlling representation of the time axis.
+%            See 'help datetick' for discussion and valid values.
+%            Example ones are 'mm/dd' and 'dd HH:MM'.
 %
 % pause  : true/false to conrol pausing after each figure is created.
 %          true will require hitting any key to continue to next plot
@@ -86,6 +90,7 @@ default_markersize = 12;
 default_pause      = false;
 default_range      = [NaN NaN];
 default_level      = -1;
+default_dateform   = 'default';
 p = inputParser;
 
 addRequired(p,'fname',@ischar);
@@ -97,6 +102,7 @@ if (exist('inputParser/addParameter','file') == 2)
     addParameter(p,'pause',      default_pause,      @islogical);
     addParameter(p,'range',      default_range,      @isnumeric);
     addParameter(p,'level',      default_level,      @isnumeric);
+    addParameter(p,'DateForm',   default_dateform,   @ischar);
 else
     addParamValue(p,'obsname',   default_obsname,    @ischar);    %#ok<NVREPL>
     addParamValue(p,'verbose',   default_verbosity,  @islogical); %#ok<NVREPL>
@@ -104,6 +110,7 @@ else
     addParamValue(p,'pause',     default_pause,      @islogical); %#ok<NVREPL>
     addParamValue(p,'range',     default_range,      @isnumeric); %#ok<NVREPL>
     addParamValue(p,'level',     default_level,      @isnumeric); %#ok<NVREPL>
+    addParamValue(p,'DateForm',  default_dateform,   @ischar);    %#ok<NVREPL>
 end
 p.parse(fname, copy, varargin{:});
 
@@ -146,6 +153,7 @@ global figuredata verbose
 
 figuredata            = set_obsdiag_figure('landscape');
 figuredata.MarkerSize = p.Results.MarkerSize;
+figuredata.DateForm   = p.Results.DateForm;
 verbose               = p.Results.verbose;
 
 %%---------------------------------------------------------------------
@@ -367,20 +375,11 @@ switch lower(plotdat.copystring)
         plotdat.ylabel = sprintf('rmse and %s',plotdat.copystring);
 end
 
-% hokey effort to decide to plot months/days vs. daynum vs.
-ttot = plotdat.bincenters(plotdat.Nbins) - plotdat.bincenters(1) + 1;
+% effort to use user-supplied value for time labelling or
+% make a stab at a useful default.
 
-if ((plotdat.bincenters(1) > 1000) && (ttot > 5))
-    datetick('x','mm/dd','keeplimits','keepticks');
-    monstr = datestr(plotdat.bincenters(1),21);
-    xlabelstring = sprintf('month/day - %s start',monstr);
-elseif (plotdat.bincenters(1) > 1000)
-    datetick('x','dd HH:MM','keeplimits')
-    monstr = datestr(plotdat.bincenters(1),21);
-    xlabelstring = sprintf('%s start',monstr);
-else
-    xlabelstring = 'days';
-end
+xlabelstring = set_time_axis('x', plotdat.bincenters, figuredata.DateForm);
+
 set(get(ax1,'Xlabel'),'String',xlabelstring, ...
     'Interpreter','none','FontSize',figuredata.fontsize)
 

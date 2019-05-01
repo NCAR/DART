@@ -5,13 +5,13 @@ function bob = get_DARTvars(fname)
 % the result is a cell array of strings ... must use {} notation to address elements.
 %
 % EXAMPLE:
-% fname    = 'obs_seq.final.nc';
+% fname    = 'preassim.nc';
 % DARTvars = get_DARTvars(fname);
 % DARTvars{:}
 % nvars = length(DARTvars);
 % disp(sprintf('first atmospheric variable (of %d) is %s',nvars,DARTvars{1}))
 
-%% DART software - Copyright UCAR. This open source software is provided
+% DART software - Copyright UCAR. This open source software is provided
 % by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
@@ -33,6 +33,15 @@ for i = 1:nvars
        % Reject the obvious metadata variable
        varname = fileinfo.Variables(i).Name;
        if (strcmp(varname, 'MemberMetadata')), isDARTvar(i) = 0; end
+
+       % Anything with a 'copy' dimension is probably a DART state vector variable.
+       dimname = fileinfo.Variables(i).Dimensions(idim).Name;
+       if (strcmp(dimname,'copy')), isDARTvar(i) = 1; end
+
+       % Reject the obvious metadata variable
+       varname = fileinfo.Variables(i).Name;
+       if (strcmp(varname, 'CopyMetaData')), isDARTvar(i) = 0; end
+
     end
 
     % If the variable is 1D and the name and the dimension name are the same,
@@ -59,6 +68,7 @@ for i = 1:nvars
 end
 
 % Each of the candidate variables may have a _mean or _sd counterpart
+% TJH ... not sure why this is here ...
 
 % varind = nDARTvars;
 % extensions = {'mean','sd','priorinf_mean', 'priorinf_sd','postinf_mean','postinf_sd'};

@@ -12,7 +12,7 @@
 # before using this script, copy it to a model's work directory, along 
 # with one of the doxygen configuration template files listed below.
 
-# pick one: the second tries to create diagrams showing the calling
+# pick one: the "devel" version tries to create diagrams showing the calling
 # and called relationship between subroutines, but the number and size
 # of files it generates is much larger.
 
