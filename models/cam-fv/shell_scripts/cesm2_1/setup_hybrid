@@ -765,6 +765,7 @@ if ( -e ${DART_CESM_scripts}/DART_config.template ) then
        -e "s#days_between_archiving_restarts#${save_every_Mth_day_restart}#" \
        < ${DART_CESM_scripts}/DART_config.template \
        >! DART_config  || exit 20
+   chmod 755 DART_config
 else
    echo "ERROR: the script to configure for data assimilation is not available."
    echo "       DART_config.template MUST be in $DART_CESM_scripts "

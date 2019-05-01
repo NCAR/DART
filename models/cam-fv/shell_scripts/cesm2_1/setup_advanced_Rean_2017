@@ -13,7 +13,7 @@
 # The job name should be the name of this script(file), 
 # or this file may not be archived in $caseroot causing DART_config to fail.
 #--------------------------------------------
-#BSUB  -J setup_advanced_test
+#BSUB  -J setup_advanced_Rean_2017
 #BSUB  -n 1 
 #BSUB  -R "span[ptile=1]"
 #BSUB  -q shared_node_queue_for_this_setup_script
@@ -25,7 +25,7 @@
 #BSUB  -o Test0.bld1
 #BSUB  -e Test0.bld1
 #--------------------------------------------
-#PBS  -N setup_advanced_test
+#PBS  -N setup_advanced_Rean_2017
 #PBS  -A P86850054
 #PBS  -q share
 #
@@ -40,7 +40,7 @@
 # Send standard output and error to this file.
 # It's helpful to use the $casename here.
 # #PBS  -o Test_merged1.bld1
-#PBS  -o f.e21.FHIST_BGC.f09_025.CAM6assim.001.bld1
+#PBS  -o f.e21.FHIST_BGC.f09_025.CAM6assim.004.bld1
 #PBS  -j oe 
 #--------------------------------------------
 
@@ -197,6 +197,37 @@
 # >  Sampling Error Correction  
 # >  purge, archive CESM2_1_Dec_spinup to $project
 # >  Archiving to $project and/or campaign storage.
+
+# f.e21.FHIST_BGC.f09_025.CAM6assim.002.bld1
+#                                     ^
+#    f.e21.FHIST_BGC.f09_025.CAM6assim.001.bld1, but add in AIRS obs
+#    The June 2017 run of .001 used an MPT2.19 filter:
+#        -rwxr-xr-x 1 raeder p86850054 10991168 Mar 13 17:03 filter
+#        -rwxr-xr-x 1 raeder p86850054 10991168 Mar 13 17:03 
+#         /glade/scratch/raeder/f.e21.FHIST_BGC.f09_025.CAM6assim.001/bld/MPT_2.19/filter
+#    evaluate only of AIRS_TEMPERATURE, AIRS_SPECIFIC_HUMIDITY
+#    Case is built with the 'reanalysis' branch from the result of merging rma_recam with rma_trunk.
+#    >>>  A CAM forcing files has been removed:
+#    /glade/p/cesmdata/cseg/inputdata/atm/cam/chem/emis/elev/
+#     H2O_emission_CH4_oxidationx2_elev_1850-2100_CCMI_RCP8_5_c160219.nc
+#    Replace with RCP6_0?
+
+# f.e21.FHIST_BGC.f09_025.CAM6assim.003.bld1
+#                                     ^
+#    assimilate the x9x10 thinned AIRS_TEMPERATURE, AIRS_SPECIFIC_HUMIDITY
+#    These have different obs variances (low down; max(AIRS,NCEP))
+#    Same time span; first week of Jan 2017.
+# >  Use to test some changes for archiving:
+#     x Don't compress obs_seq.finals
+#     x Implement new restart saving timing mechanism in assimilate.csh.template; 
+#          'day-of-week' using `date` or 
+#          'Nth day of month' as currently.
+
+# f.e21.FHIST_BGC.f09_025.CAM6assim.004.bld1
+#                                     ^
+#    Only evaluate the AIRS_SPECIFICI_HUMIDITY.
+#    Assimilate the AIRS_T (and the standard obs).
+
 #
 # ---------------------
 # Purpose
@@ -308,7 +339,7 @@
 # ==============================================================================
 
 # The year of forcing
-setenv case            f.e21.FHIST_BGC.f09_025.CAM6assim.001
+setenv case            f.e21.FHIST_BGC.f09_025.CAM6assim.004
 setenv compset         HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV
 setenv user_grid       ''
 #      alias: f09_f09_mg17 (only for compsets that are not _POP and no CISM)
@@ -367,12 +398,15 @@ setenv cesmdata     /glade/p/cesm/cseg/inputdata
 setenv cesmroot     /glade/work/${USER}/Models/${cesmtag}
 setenv sourcemods   ~/${cesmtag}/SourceMods
 setenv caseroot     /glade/work/${USER}/Exp/${case}
-setenv dartroot     /glade/u/home/${USER}/DART/rma_recam
+setenv dartroot     /glade/u/home/${USER}/DART/reanalysis
 
 setenv cime_output  /glade/scratch/${USER}
 setenv archdir      ${cime_output}/${case}/archive
 
-setenv baseobsdir   /glade/p/cisl/dares/Observations/NCEP+ACARS+GPS
+# Nancy put AIRS thinned by 1/9 and 1/10 into
+# setenv baseobsdir   /glade/p/cisl/dares/Observations/NCEP+ACARS+GPS+AIRS/thinner.YYYY...
+# I linked to something that will fit with the naming convention better:
+setenv baseobsdir   /glade/p/cisl/dares/Observations/NCEP+ACARS+GPS+AIRS/Thinned_x9x10
 
 # ==============================================================================
 # Initial conditions files:
@@ -952,7 +986,8 @@ endif
 
 # Define how often sets of restart files will be archived,
 # in order to conserve disk space during a multi-cycle job.
-setenv save_every_Mth_day_restart 3
+# It can be every Mth day of the month, or every Mth weekday (e.g. Monday (at 00Z))
+setenv save_every_Mth_day_restart Monday
 
 # Fill the DART_config script with information it needs and copy it to caseroot.
 # DART_config can be run at some later date if desired, but it must be run
