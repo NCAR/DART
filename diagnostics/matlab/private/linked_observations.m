@@ -55,35 +55,36 @@ zstring = sprintf('obsmat(:,%d)',obs.zindex  );
 symbolsize = set_symbol_size(numel(obs.obs));
 
 scatter3(obsmat(:,obs.lonindex), obsmat(:,obs.latindex), obsmat(:,obs.zindex), ...
-             symbolsize, obsmat(:,obs.obsindex), 'filled', ...
-             'Parent',fig1ax1, ...
-             'DisplayName','observation locations', ...
-             'XDataSource',xstring, ...
-             'YDataSource',ystring, ...
-             'ZDataSource',zstring);
+    symbolsize, obsmat(:,obs.obsindex), 'filled', ...
+    'Parent',fig1ax1, ...
+    'DisplayName','observation locations', ...
+    'XDataSource',xstring, ...
+    'YDataSource',ystring, ...
+    'ZDataSource',zstring);
 
 set(fig1ax1,'FontSize',18);
 
-xlabel(obs.colnames{obs.lonindex});
-ylabel(obs.colnames{obs.latindex});
-zlabel(obs.colnames{obs.zindex});
+xlabel(fig1ax1, obs.colnames{obs.lonindex});
+ylabel(fig1ax1, obs.colnames{obs.latindex});
+zlabel(fig1ax1, obs.colnames{obs.zindex});
 
 tmin = min(obs.time);
 tmax = max(obs.time);
 
 pstruct = struct('axis', obs.region, ...
-                 'clim', [min(obs.obs) max(obs.obs)], ...
-                 'Ztype', obs.Ztyp(1));
+    'clim', [min(obs.obs) max(obs.obs)], ...
+    'Ztype', obs.Ztyp(1));
 FlatEarth(pstruct);
 
 hb = colorbar;
 set(get(hb,'YLabel'),'String',obs.ObsTypeString,'Interpreter','none')
 
-h = title({obs.ObsTypeString, ...
-      sprintf('"%s"',obs.ObsCopyString), ...
-      sprintf('%s ---> %s',datestr(tmin),datestr(tmax)) });
+h = title(fig1ax1, {obs.ObsTypeString, ...
+    sprintf('"%s"',obs.ObsCopyString), ...
+    sprintf('%s ---> %s',datestr(tmin),datestr(tmax)) });
 set(h,'Interpreter','none')
 linkdata on
+
 
 %% ------------------------------------------------------------------------
 % Create figure for ancillary plots
@@ -99,7 +100,7 @@ box(fig2ax1,'on');
 
 xstring = sprintf('obsmat(:,%d)',obs.timeindex);
 ystring = sprintf('obsmat(:,%d)',obs.qcindex);
-scatter(obsmat(:,obs.timeindex),obsmat(:,obs.qcindex), ...
+scatter(obsmat(:,obs.timeindex), obsmat(:,obs.qcindex), ...
     'Parent', fig2ax1, ...
     'DisplayName', 'time vs qc', ...
     'XDataSource', xstring, ...
@@ -110,27 +111,28 @@ set(fig2ax1,'FontSize',14);
 ax = axis;
 ax(3:4) = [0 8]; %min/max range of DART QC values
 axis(ax)
-datetick(fig2ax1,'x')
-ylabel(obs.colnames{obs.qcindex});
+datetick(fig2ax1, 'x')
+ylabel(fig2ax1, obs.colnames{obs.qcindex});
 grid(fig2ax1,'on');
 
-%% Create axes for observation count/density VS. time 
+%% Create axes for observation count/density VS. time
 
 fig2ax2 = axes('Parent',figure2,'Position',[0.13 0.41 0.78 0.22]);
 box(fig2ax2,'on');
 
 xstring = sprintf('obsmat(:,%d)',obs.timeindex);
 ystring = sprintf('obsmat(:,%d)',obs.indindex);
-scatter(obsmat(:,obs.timeindex),obsmat(:,obs.indindex),'Parent',fig2ax2, ...
-             'DisplayName','time vs key', ...
-             'XDataSource',xstring, ...
-             'YDataSource',ystring);
+scatter(obsmat(:,obs.timeindex), obsmat(:,obs.indindex), ...
+    'Parent',fig2ax2, ...
+    'DisplayName','time vs key', ...
+    'XDataSource',xstring, ...
+    'YDataSource',ystring);
 
 set(fig2ax2,'FontSize',14);
 
-ylabel('obs count');
-xlabel('time');
-datetick(fig2ax2,'x');
+ylabel(fig2ax2, 'obs count');
+xlabel(fig2ax2, 'time');
+datetick(fig2ax2, 'x');
 
 %% Create axes for observation index VS. linked list key
 
@@ -139,25 +141,26 @@ box(fig2ax3,'on');
 
 xstring = sprintf('obsmat(:,%d)',obs.indindex);
 ystring = sprintf('obsmat(:,%d)',obs.keyindex);
-scatter(obsmat(:,obs.indindex),obsmat(:,obs.keyindex),'Parent',fig2ax3, ...
-             'DisplayName','count vs key', ...
-             'XDataSource',xstring, ...
-             'YDataSource',ystring);
+scatter(obsmat(:,obs.indindex), obsmat(:,obs.keyindex), ...
+    'Parent',fig2ax3, ...
+    'DisplayName','count vs key', ...
+    'XDataSource',xstring, ...
+    'YDataSource',ystring);
 
 set(fig2ax3,'FontSize',14);
 
-xlabel('obs count');
-ylabel('key');
+xlabel(fig2ax3, 'obs count');
+ylabel(fig2ax3, 'key');
 
 refreshdata
 linkdata on
+
 
 %% ------------------------------------------------------------------------
 % Create figure for 2D scatterplots plots
 % -------------------------------------------------------------------------
 
 figure3 = figure(3); clf(figure3); orient tall; wysiwyg
-
 
 %% Create axes for observation vs ensemble
 % This figure is most useful when all the 'bad' obs have been
@@ -176,25 +179,24 @@ h2 = scatter(obsmat(:,obs.obsindex), obsmat(:,obs.copyindex), ...
 
 set(fig3ax2,'FontSize',14);
 
-xlabel(obs.colnames{obs.obsindex});
-ylabel(obs.colnames{obs.copyindex});
-h = title({obs.ObsTypeString, ...
-      sprintf('%s ---> %s',obs.timestring(1,:),obs.timestring(2,:)) });
+xlabel(fig3ax2, obs.colnames{obs.obsindex});
+ylabel(fig3ax2, obs.colnames{obs.copyindex});
+h = title(fig3ax2, {obs.ObsTypeString, ...
+    sprintf('%s ---> %s',obs.timestring(1,:),obs.timestring(2,:)) });
 set(h,'Interpreter','none');
 
-axlims = [min(axis) max(axis) min(axis) max(axis)];
-axis(axlims)
-line([min(axis) max(axis)],[min(axis) max(axis)],'LineWidth',1.5,'Color','k')
+% Want to make the graphic 'square'; same values on X,Y axes
+axmin = min(axis);
+axmax = max(axis);
+axis([axmin axmax axmin axmax])
+set(fig3ax2,'YTick',get(fig3ax2,'XTick'))
+
+line([axmin axmax],[axmin axmax],'LineWidth',1.5,'Color','k','Parent',fig3ax2)
 grid(fig3ax2,'on');
-xmin = axlims(1);
-xmax = axlims(2);
 
 if (sum(isfinite(get(h2,'YData')))) == 0
     Print_Empty_Banner(obs.colnames{obs.copyindex});
 end
-
-refreshdata
-linkdata on
 
 %% Create axes for ObsVal vs. DART QC scatterplot
 fig3ax1 = axes('Parent',figure3,'Position',[0.15 0.675 0.7 0.25]);
@@ -203,7 +205,7 @@ box(fig3ax1,'on');
 xstring = sprintf('obsmat(:,%d)',obs.obsindex);
 ystring = sprintf('obsmat(:,%d)',obs.qcindex);
 
-h1 = scatter(obsmat(:,obs.obsindex),obsmat(:,obs.qcindex), ...
+scatter(obsmat(:,obs.obsindex),obsmat(:,obs.qcindex), ...
     'Parent',fig3ax1, ...
     'DisplayName','obs vs qc', ...
     'XDataSource',xstring, ...
@@ -211,16 +213,22 @@ h1 = scatter(obsmat(:,obs.obsindex),obsmat(:,obs.qcindex), ...
 
 set(fig3ax1,'FontSize',14);
 
-xlabel(obs.colnames{obs.obsindex});
-ylabel(obs.colnames{obs.qcindex});
-h = title(obs.ObsTypeString);
+xlabel(fig3ax1, obs.colnames{obs.obsindex});
+ylabel(fig3ax1, obs.colnames{obs.qcindex});
+h = title(fig3ax1, obs.ObsTypeString);
 set(h,'Interpreter','none');
-axis([xmin xmax 0 8]);   % use same horizontal scale as fig3ax2
+axis([axmin axmax 0 8]);   % use same horizontal scale as fig3ax2
 grid(fig3ax1,'on');
 
-
-fprintf('QC summary follows:\n')
+fprintf('\nQC summary follows:\n')
 LabelQC(obs.colnames{obs.qcindex}, obs.qc)
+
+refreshdata
+linkdata on
+
+
+%% ------------------------------------------------------------------------
+
 
 function LabelQC(QCString, qcarray)
 %% Create legend for (DART) QC values.
@@ -237,38 +245,39 @@ function LabelQC(QCString, qcarray)
 % 7     outlier rejected
 
 dartqc_strings = { 'assimilated', ...
-        'observation evaluated only', ...
-   'assimilated, post fwd op failed', ...
-     'eval only, post fwd op failed', ...
-     'prior forward operator failed', ...
-                          'not used', ...
-                 'prior QC rejected', ...
-                  'outlier rejected', ...
-        'vertical conversion failed', ...
-                          'reserved'};
+    'observation evaluated only', ...
+    'assimilated, post fwd op failed', ...
+    'eval only, post fwd op failed', ...
+    'prior forward operator failed', ...
+    'not used', ...
+    'prior QC rejected', ...
+    'outlier rejected', ...
+    'vertical conversion failed', ...
+    'reserved'};
 
 switch lower(strtrim(QCString))
-   case 'dart quality control',
-
-      qcvals  = unique(qcarray);
-      qccount = zeros(size(qcvals));
-      for i = 1:length(qcvals)
-         qccount(i) = sum(qcarray == qcvals(i));
-         fprintf('(%s == %d) %10d obs [%s]\n',strtrim(QCString), qcvals(i), ...
-                            qccount(i), dartqc_strings{qcvals(i)+1});
-      end
-
-   otherwise,
-
-      qcvals  = unique(qcarray);
-      qccount = zeros(size(qcvals));
-      for i = 1:length(qcvals)
-         qccount(i) = sum(qcarray == qcvals(i));
-         fprintf('(%s == %d) %10d obs\n',strtrim(QCString), qcvals(i), qccount(i));
-      end
+    case 'dart quality control'
+        
+        qcvals  = unique(qcarray);
+        qccount = zeros(size(qcvals));
+        for i = 1:length(qcvals)
+            qccount(i) = sum(qcarray == qcvals(i));
+            fprintf('(%s == %d) %10d obs [%s]\n',strtrim(QCString), qcvals(i), ...
+                qccount(i), dartqc_strings{qcvals(i)+1});
+        end
+        
+    otherwise
+        
+        qcvals  = unique(qcarray);
+        qccount = zeros(size(qcvals));
+        for i = 1:length(qcvals)
+            qccount(i) = sum(qcarray == qcvals(i));
+            fprintf('(%s == %d) %10d obs\n',strtrim(QCString), qcvals(i), qccount(i));
+        end
 end
 
 
+%% ------------------------------------------------------------------------
 
 
 function y = set_symbol_size(xx)
@@ -288,6 +297,8 @@ else
 end
 
 
+%% ------------------------------------------------------------------------
+
 
 function Print_Empty_Banner(mystring)
 
@@ -296,7 +307,7 @@ dx = mean(ax(1:2));
 dy = mean(ax(3:4));
 text(dx,dy,sprintf('No "%s" \n with a meaningful DART QC', mystring), ...
     'HorizontalAlignment','center', ...
-    'FontSize',20) 
+    'FontSize',20)
 
 % <next few lines under version control, do not edit>
 % $URL$
