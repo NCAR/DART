@@ -406,8 +406,8 @@ if ($#log_list >= 3) then
 
       if ($save_stages_freq =~ NONE || $save_stages_freq =~ RESTART_TIMES) then
          # 'output' will have been renamed by the time the purging happens.
-         echo "     ${CASE}"'*'[0-9].${stages_except_output}'*'${day_time}
-         ${REMOVE}  ${CASE}.*[0-9].${stages_except_output}*${day_time}* &
+         echo "     ${CASE}"'*'[0-9].e.${stages_except_output}'*'${day_time}
+         ${REMOVE}  ${CASE}.*[0-9].e.${stages_except_output}*${day_time}* &
       endif
    else
 
@@ -802,7 +802,7 @@ echo "`date` -- BEGIN FILE RENAMING"
 # '_####.i.' files are CESM initial files.
 # '.dart.i.' files are ensemble statistics (mean, sd) of just the state variables 
 #            in the initial files.
-# '.e.'      designates a file as something from the 'external system processing ESP', e.g. DART.
+# '.e.'      files are from the 'external system processing (ESP)', e.g. DART.
 
 foreach FILE (`${LIST} ${stages_all}_member_*.nc`)
 

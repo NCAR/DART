@@ -8,12 +8,6 @@
 
 #==========================================================================
 
-# >>> Run st_archive and obs_diags.csh before running this script. <<<
-# >>> Edit compress.csh to make it decompress the (cpl/hist) files,
-#     in cases where they are compressed (gzipped).
-# >>> Log in to globus
-# >>> Run this script from the CESM CASEROOT directory. <<<
-
 # Script to package files found in $DOUT_S_ROOT
 # after $reanalysis_cesm/st_archive has sorted them,
 # and obs_diags.csh has generated basic obs space diagnostics.
@@ -22,6 +16,12 @@
 #   > Campaign Storage for temporary archiving, 
 #     until we want to send them to HPSS (tape).
 # Both destinations take time.  They are actually copies.
+
+# >>> Run st_archive and obs_diags.csh before running this script. <<<
+# >>> Edit compress.csh to make it decompress the (cpl/hist) files,
+#     in cases where they are compressed (gzipped).
+# >>> Log in to globus (see mv_to_campaign.csh for instructions).
+# >>> Submit this script from the CESM CASEROOT directory. <<<
 
 #-----------------------------------------
 # Submitting the job to casper (or other NCAR DAV clusters?) requires using slurm.
@@ -47,9 +47,7 @@
 # 
 #-----------------------------------------
 #PBS  -N repack_st_archive
-#PBS  -A P86850054
-# #PBS  -q premium
-#PBS  -q share
+#PBS  -A NCIS0006
 # Resources I want:
 #    select=#nodes
 #    ncpus=#CPUs/node
@@ -57,15 +55,22 @@
 # Request enough processors for command file commands to handle the larger of 
 #    > ensemble size x 5 (forcing file types), 
 #    > (ensemble size + 1(mean_sd_log)) x # dates being saved (4-5 / month.  )
-# 81->405 #PBS  -l select=12:ncpus=34:mpiprocs=34
-#PBS  -l select=1:ncpus=15:mpiprocs=15
+# 81->405 
+
+# #PBS  -q premium
+# #PBS  -l select=12:ncpus=34:mpiprocs=34
+# #PBS  -l select=1:ncpus=15:mpiprocs=15
+
+#PBS  -q share
+#PBS  -l select=1:ncpus=1:mpiprocs=1
+
 #PBS  -l walltime=02:00:00
 # Send email after a(bort) or e(nd)
 #PBS  -m ae
 #PBS  -M raeder@ucar.edu
 # Send standard output and error to this file.
 # It's helpful to use the $CASE name here.
-#PBS  -o repack_st_archive.eo
+#PBS  -o repack_f.e21.FHIST_BGC.f09_025.CAM6assim.002.eo
 #PBS  -j oe 
 #--------------------------------------------
 
@@ -89,6 +94,8 @@ set CASEROOT       = $cwd
 set CASE           = $CASEROOT:t
 set local_arch     = `./xmlquery DOUT_S_ROOT --value`
 set ensemble_size  = `./xmlquery NINST_ATM   --value`
+set line           = `grep '^[ ]*stages_to_write' input.nml`
+set stages_all     = (`echo $line[3-$#line] | sed -e "s#[',]# #g"`)
 
 set line = `grep -m 1 save_every_Mth_day_restart ./setup*`
 set save_rest_freq = $line[3]
@@ -104,8 +111,8 @@ endif
 # These can be turned off by editing or argument(s).
 set do_forcing     = 'true'
 set do_restarts    = 'true'
-set do_obs_space   = 'false'
-set do_state_space = 'false'
+set do_obs_space   = 'true'
+set do_state_space = 'true'
 
 #--------------------------------------------
 if ($#argv == 0) then
@@ -153,8 +160,8 @@ if ($do_obs_space != 'true') then
    echo "SKIPPING archiving of obs_space diagnostics"
 else if (! -d esp/hist/$obs_space) then
    echo "ERROR: esp/hist/$obs_space does not exist."
-   echo "       run obs_diags.csh before this script."
-   exit 20
+#    echo "       run obs_diags.csh before this script."
+#    exit 20
 endif
 
 
@@ -274,7 +281,10 @@ if ($do_restarts == true) then
    
    cd rest
 
-   set pre_clean = true
+# 2017 is already made
+#    set pre_clean = true
+   set pre_clean = false
+
    foreach rd (`ls -d *`)
       # Purge restart directories which don't fit in the frequency 
       # defined in setup_* by save_every_Mth_day_restart.
@@ -320,7 +330,7 @@ if ($do_restarts == true) then
             mkdir $year
             echo Made directory `pwd`/$year to store restart members until globus archives them.
             # Date for use in mv_to_campaign.csh
-            set yr_mo = ${year}-${month}
+#             set yr_mo = ${year}-${month}
          endif
    
       endif
@@ -387,7 +397,7 @@ if ($do_restarts == true) then
       
          ls *.eo
          if ($status == 0) then
-            grep tar *.eo >& /dev/null
+            grep tar *.eo | grep -v log >& /dev/null
             # grep failure = tar success = "not 0"
             set gr_stat = $status
          else
@@ -403,7 +413,7 @@ if ($do_restarts == true) then
             echo '      grep tar *.eo  yielded status '$gr_stat
             exit 20
          endif
-      
+    
       else
          echo Did not remove or tar $rd
          
@@ -423,16 +433,187 @@ endif
 
 # 3) Obs space diagnostics.
 #    Generated separately using ./obs_diags.csh
-#    Move to $project
+
+# A csh pattern that will find the days of desired obs_seq files.
+# set obs_times_pattern = '2017-{01}-01'
+# Non-standard set;
+# set obs_times_pattern = '2017-{01}-{0*,1[0-4]}'
+if ($do_obs_space == true) then
+   cd esp/hist
+   echo "Location is `pwd`"
+
+   set obs_times_pattern = $yr_mo
+
+   # Create the obs lists and the Obs_seq directory, which diags_batch.csh needs to use.
+   # Decompress, if needed.
+   # For now, do this serially, since we've greatly reduced the size of the obs_seq files,
+   # and won't compress them during the assimilation, so this won't be needed often.
+   # Later I may want to expand compress.csh to handle this set of decompression (a date span).
+   echo Making raw.list
+   ls -1 ${CASE}.dart.e.cam_obs_seq_final.${obs_times_pattern}* >! raw.list
+
+   if (-f Obs_seqs.list) rm Obs_seqs.list
+   touch Obs_seqs.list
+   
+   echo Filling Obs_seqs.list
+   foreach f (`cat raw.list`)
+      if ($f:e == 'gz') then
+         gunzip $f
+         echo "../$f:r" >> Obs_seqs.list
+      else 
+         echo "../$f"   >> Obs_seqs.list
+      endif
+   end
+
+   if (-d Obs_seqs) rm -rf Obs_seqs
+   echo Making Obs_seqs
+   mkdir Obs_seqs
+   cd Obs_seqs
+   ln -s ../${CASE}.dart.e.cam_obs_seq_final.${obs_times_pattern}* .
+   ls -l
+   cd ..
+   
+   # Harvest dates for the diagnostics directories used by diags_batch. 
+   # set ofile = `head -n 1 Obs_seqs.list `
+   # set first = `echo $ofile:e | sed -e "s#-# #g"`
+   # set ofile = `tail -n 1 Obs_seqs.list `
+   # set last  = `echo $ofile:e | sed -e "s#-# #g"`
+   # set date_span = $first[1].$first[2].$first[3]-$last[1].$last[2].$last[3]
+   
+   ${CASEROOT}/diags_batch.csh ${CASE} Obs_seqs $obs_space
+   if ($status == 0) then
+      # Done with obs_seq_final files.  Prep them for archiving.
+      tar -z -c -f ${CASE}.cam_obs_seq_final.${yr_mo}.tgz \
+          ${CASE}.dart.e.cam_obs_seq_final.${obs_times_pattern}* || \
+          echo tar of ${CASE}.'dart.e.cam_obs_seq_final.${obs_times_pattern} failed; exit' &
+   else
+      echo diags_batch.csh failed with status = $status
+      exit
+   endif
+
+# Generate pictures of the obs space diagnostics using matlab.
+   cd $obs_space
+
+   echo "addpath('$DART/diagnostics/matlab','-BEGIN')" >! script.m
+   echo "fname = 'obs_diag_output.nc';"                >> script.m
+
+   foreach copy (totalspread bias)
+   foreach func (plot_rmse_xxx_evolution plot_rmse_xxx_profile)
+      echo "copystring = '$copy';"           >> script.m
+      echo "$func(fname,copystring)"         >> script.m
+   end
+   end
+
+   matlab -r script
+   
+   if ($status == 0) then
+      # Prep the obs space diagnostics for archiving;
+      # obs_diag_output.nc and matlab output.
+      cd ..
+      tar -z -c -f ${obs_space}.tgz $obs_space 
+   else
+      echo ERROR: matlab failed with status = $status.
+      # Let the tar of obs_seq files finish.
+      wait
+      exit
+   endif
+   
+   # Let the tar of obs_seq files finish.
+   wait
+
+   # Move to $project.
+   set obs_proj_dir = ${project}/${CASE}/esp/hist
+   if (! -d $obs_proj_dir) mkdir -p $obs_proj_dir
+
+#    mv ${obs_space}.tgz $obs_proj_dir
+   if (  -f ${CASE}.cam_obs_seq_final.${yr_mo}.tgz && \
+       ! -z ${CASE}.cam_obs_seq_final.${yr_mo}.tgz) \
+      rm ${CASE}.dart.e.cam_obs_seq_final.${obs_times_pattern}*
+   
+   mv ${CASE}.cam_obs_seq_final.${yr_mo}.tgz $obs_proj_dir
+   echo "Moved ${CASE}.cam_obs_seq_final.${yr_mo}.tgz "
+   echo "   to $obs_proj_dir"
+
+   cd ../..
+   
+endif
+
+#--------------------------------------------
 
 # 4) DART diagnostic files
 #    + esp/hist/.i.cam_output_{mean,sd}
 #    + esp/hist/.e.cam_$stages_{mean,sd}
-#    + atm/hist/$inst.e.$stages
-#      compress?  85 Mb * 80 * #_dates = 816 Gb -> 710 Gb/mo.
-#      Maybe not worth it.  The savings is over a Tb/year.
-#    Send to campaign storage using ./mv_to_campaign.csh
+#    + esp/hist/.rh.cam_$stages_{mean,sd}
+#      compress?  85 Mb * 120 dates * 6 uncompressed files= 60 Gb -> 52 Gb/mo.
+#                 save 100 Gb / year
+if ($do_state_space == true) then
+   cd esp/hist
+   
+   foreach stage ($stages_all)
+      set ext = e
+      if ($stage == output) set ext = i
+   
+      # Ignoring posterior inflation for now
+      foreach stat  (mean sd priorinf_mean priorinf_sd)
+         echo $stat | grep inf 
+         if ($status == 0) set ext = rh
+         echo "stage, stat, ext = $stage $stat $ext"
 
+         if (! -f ${CASE}.dart.${ext}.cam_${stage}_${stat}.${yr_mo}.tar) then
+            tar -c -f ${CASE}.dart.${ext}.cam_${stage}_${stat}.${yr_mo}.tar  \
+                      ${CASE}.dart.${ext}.cam_${stage}_${stat}.${yr_mo}-*
+            if ($status == 0) then
+               rm ${CASE}.dart.${ext}.cam_${stage}_${stat}.${yr_mo}-*
+            else
+               echo tar -c -f ${CASE}.dart.${ext}.cam_${stage}_${stat}.${yr_mo}.tar failed
+               exit
+            endif
+         endif
+      end
+   end
+   echo "${CASEROOT}/mv_to_campaign.csh $CASE ${yr_mo} ${local_arch}/esp/hist " \
+        " ${campaign}/${CASE}/esp/hist"
+   
+   #    + atm/hist/$inst.e.$stages_except_output
+   #      compressed already  73 Mb * 80 * 5 dates =  25 Gb/mo.
+   #      compress?  85 Mb * 80 * 120 dates = 816 Gb -> 710 Gb/mo.
+   #                              ^ f*00[1-4] saved all (120/mo) times, due to missing .e.
+   #                                from save_stages_freq archiving section.
+   #      Already done during assim.  The savings is over a Tb/year.
+   cd ../../atm/hist
+   
+   set files = `ls ${CASE}.cam_0001.e.$stages_all[1].*`
+   set dates = ()
+   foreach f ($files)
+      set date = $f:r:e
+      if ($date == nc) set date = $f:r:r:e
+      set dates = ($dates $date)
+   end
+   
+   foreach date ($dates)
+   foreach stage ($stages_all)
+   if ($stage != output) then
+      tar -c -f ${CASE}.cam_allinst.e.$stage.${date}.tar  ${CASE}.cam_[0-9]*.e.${stage}.${date}*
+      if ($status == 0) then
+         rm ${CASE}.cam_[0-9]*.e.${stage}.${date}*
+         mv ${CASE}.cam_0001.h0.${stage}.${date}* ..
+         rm ${CASE}.cam_*.h0.${stage}.${date}*
+         mv ../${CASE}.cam_0001.h0.${stage}.${date}*  .
+      else
+         echo tar -c -f ${CASE}.cam_allinst.e.$stage.${date}.tar failed
+         exit
+      endif
+   endif
+   end
+   end
+   
+   echo "${CASEROOT}/mv_to_campaign.csh $CASE ${yr_mo} ${local_arch}/atm/hist " \
+        " ${campaign}/${CASE}/atm/hist"
+   
+   cd ../..
+
+endif 
+#--------------------------------------------
 # >>> Run this job;
 #     + as a batch job, as well as interactive.
 #       - PBS

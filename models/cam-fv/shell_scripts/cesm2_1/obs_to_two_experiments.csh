@@ -103,7 +103,8 @@ set compare   = (001-004 )
 
 # A csh pattern that will find the days of desired obs_seq files.
 # set obs_times_pattern = '2017-{01}-01'
-full set; set obs_times_pattern = '2017-{01}-{0*,1[0-4]}'
+# full set; 
+set obs_times_pattern = '2017-{01}-{0*,1[0-4]}'
 
 #--------------------------------------------
 # Possibly install a section to set up input.nml (from a template)
@@ -131,6 +132,14 @@ foreach ext ($cases)
    # Modify the obs_seq_finals to be consistent with each other.
    # E.g. remove the AIRS obs from some.
    # Hopefully, if it finds no AIRS, it won't die.
+
+   # WARNING: obs_common_subset was designed to use cases which used the same
+   #          obs_seq_output file set.  There's no guarantee that 
+   #          obs_sequence_tool can make 2 different sets have the same obs 
+   #          in the same order.
+   #          NCEP+ACARS+GPS and NCEP+ACARS+GPS+AIRS worked,
+   #          probably because the latter is just the former with AIRS added in.
+
    $scr_dir/obs_seq_tool_series.csh $case_base $ext
    if ($status != 0) exit 10
 

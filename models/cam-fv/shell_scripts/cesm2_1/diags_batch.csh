@@ -62,8 +62,11 @@ else
    
 endif
 
+# These things should be gathered from env_*.xml files in CASEROOT.
 set DART = ~/DART/reanalysis
 set cam = 'cam-fv'
+set machine = '_casper'
+# Cheyenne;  set machine = ''
 
 # Use big endian obs_diag for POP_force output from IBM
 # set endian = '_big_endian'
@@ -95,6 +98,6 @@ ln -s ${obs_dir}.list obs.list
 cp ../input.nml .
 
 echo "Running ${DART}/models/${cam}/work/obs_diag${endian}"
-${DART}/models/${cam}/work_casper/obs_diag${endian} >&! obs_diag.out 
+${DART}/models/${cam}/work${machine}/obs_diag${endian} >&! obs_diag.out 
 
 exit

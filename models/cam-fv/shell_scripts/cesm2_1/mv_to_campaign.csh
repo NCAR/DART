@@ -66,16 +66,17 @@ endif
 
 # Beware: the label cannot contain slashes.  valid chars are only:
 # A-Z, a-z, 0-9, space, hyphen, underscore, and comma
-# No '.'?
+# No '.'; replace with ','
 # Max length is 128 chars.
-set LABEL = "copy of $CASE dares project files for $TIME_STR" 
+set clean_CASE = `echo $CASE | sed -e "s#\.#,#g"`  
+set LABEL = "copy of $clean_CASE dares project files for $TIME_STR" 
 
 set AN_DATE = $SRC_DIR:t
 
 cd $SRC_DIR:h
 
 # start with an empty log
-set glog = globus_${AN_DATE}.log
+set glog = globus_${AN_DATE}_$$.log
 rm -f $glog globus-batch-dirs.txt globus-batch-files.txt
 echo Copy $SRC_DIR to campaign storage $CS_DIR >>& $glog
 
@@ -155,9 +156,9 @@ globus transfer                         \
 
 
 echo ""
-echo Output of this script is in $SRC_DIR:h/$glog.
-echo Transfer is asynchronous.  If successfully started, 
-echo you will receive email when it is complete
+echo Transfer is asynchronous.  
+echo IF successfully started, you will receive email when it is complete.
+echo CHECK $SRC_DIR:h/$glog.
 
 echo ""
 echo Ending script to copy the contents of $SRC_DIR to campaign storage at `date`
