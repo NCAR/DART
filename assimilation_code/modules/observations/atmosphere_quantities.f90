@@ -8,7 +8,7 @@
  
 ! ! in this section you can have comments (which need a second !) or
 ! ! lines with a single word on them that begins QTY_ 
-! ! can have trailing comments after QTY_xxx  word
+! ! can have trailing comments after:  QTY_xxx  ! comment
 !
 ! BEGIN DART PREPROCESS QUANTITY DEFINITIONS
 !

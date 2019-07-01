@@ -27,10 +27,10 @@ use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,   &
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 ! Pick something ridiculously large and forget about it (lazy)
 integer, parameter   :: max_types = 5000, max_qtys = 5000
@@ -40,7 +40,7 @@ integer              :: iunit, ierr, io, i, j, k
 integer              :: l_string, l2_string, total_len, linenum1, linenum2
 integer              :: num_types_found, num_qtys_found, qty_index(0:max_types)
 logical              :: duplicate, qty_found, usercode(max_types), temp_user
-character(len = 256) :: err_string
+character(len = 512) :: err_string
 character(len = 6)   :: full_line_in  = '(A256)'
 character(len = 3)   :: full_line_out = '(A)'
 
@@ -107,18 +107,18 @@ logical :: file_has_usercode(max_obs_type_files) = .false.
 
 ! The namelist reads in a sequence of path_names that are absolute or
 ! relative to the working directory in which preprocess is being executed
-! and these files are used to fill in observation kind details in
+! and these files are used to fill in observation type/qty details in
 ! DEFAULT_obs_def_mod.f90 and DEFAULT_obs_qty_mod.f90.
-character(len = 129) :: input_obs_def_mod_file = &
-                        '../../../obs_def/DEFAULT_obs_def_mod.F90'
-character(len = 129) :: output_obs_def_mod_file = &
-                        '../../../obs_def/obs_def_mod.f90'
-character(len = 129) :: input_obs_qty_mod_file = &
-                        '../../../obs_kind/DEFAULT_obs_kind_mod.F90'
-character(len = 129) :: output_obs_qty_mod_file = &
-                        '../../../obs_kind/obs_kind_mod.f90'
-character(len = 129) :: obs_type_files(max_obs_type_files) = 'null'
-character(len = 129) :: quantity_files(max_quantity_files) = 'null'
+character(len = 256) :: input_obs_def_mod_file = &
+                        '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+character(len = 256) :: output_obs_def_mod_file = &
+                        '../../../observations/forward_operators/obs_def_mod.f90'
+character(len = 256) :: input_obs_qty_mod_file = &
+                        '../../../assimilation_code/modules/observations/DEFAULT_obs_qty_mod.F90'
+character(len = 256) :: output_obs_qty_mod_file = &
+                        '../../../assimilation_code/modules/observations/obs_qty_mod.f90'
+character(len = 256) :: obs_type_files(max_obs_type_files) = 'null'
+character(len = 256) :: quantity_files(max_quantity_files) = 'null'
 logical              :: overwrite_output = .true.
 
 namelist /preprocess_nml/ input_obs_def_mod_file, input_obs_qty_mod_file,   &
@@ -138,11 +138,11 @@ read(iunit, nml = preprocess_nml, iostat = io)
 call check_namelist_read(iunit, io, "preprocess_nml")
 
 ! Output the namelist file information
-call log_it('Path names of default obs_def and obs_kind modules')
+call log_it('Path names of default obs_def and obs_qty modules')
 call log_it(input_obs_def_mod_file)
 call log_it(input_obs_qty_mod_file)
 
-call log_it('Path names of output obs_def and obs_kind modules')
+call log_it('Path names of output obs_def and obs_qty modules')
 call log_it(output_obs_def_mod_file)
 call log_it(output_obs_qty_mod_file)
 
@@ -230,7 +230,7 @@ else
 endif
 
 !______________________________________________________________________________
-! Preprocessing for the obs_kind module
+! Preprocessing for the obs_qty module
 ! Read in the quantity table and build index numbers for them. 
 
 ! Copy over lines from obs_qty_template file up to the next insertion point
@@ -279,7 +279,7 @@ SEARCH_QUANTITY_FILES: do j = 1, num_quantity_files
       test = adjustl(line)
       if(test == qty2_end_string) exit DEFINE_QTYS
    
-      ! All lines between start/end must be comments or QTY/kind strings
+      ! All lines between start/end must be comments or QTY_xxx strings
       ! Format:  ! QTY_string  ! optional comment
       !    or :  ! comment
    
@@ -312,7 +312,7 @@ SEARCH_QUANTITY_FILES: do j = 1, num_quantity_files
    
       temp_qty = test(l_string:l2_string)
    
-      ! this loop adds a new kind to the string array if it's new.
+      ! this loop adds a new quantity to the string array if it's new.
       duplicate = .false.
       do i=1, num_qtys_found
          if (qty_string(i) == temp_qty) then
@@ -334,12 +334,12 @@ SEARCH_QUANTITY_FILES: do j = 1, num_quantity_files
 end do SEARCH_QUANTITY_FILES
 
 !______________________________________________________________________________
-! Preprocessing for the obs_kind module
-! Get all the type/kind strings from all of the obs_def files 
+! Preprocessing for the obs_qty module
+! Get all the type/qty strings from all of the obs_def files 
 ! up front and then insert stuff.  Easier to error check and combine
-! duplicate kinds.
+! duplicate quantities.
 
-! Initial number of types is 0, kinds is based on previous section
+! Initial number of types is 0, qtys is based on previous section
 num_types_found = 0
 
 SEARCH_OBS_DEF_FILES: do j = 1, num_obs_type_files
@@ -375,7 +375,7 @@ SEARCH_OBS_DEF_FILES: do j = 1, num_obs_type_files
       test = adjustl(line)
       if(test == qty_end_string) exit EXTRACT_TYPES
 
-      ! All lines between start/end must be type/kind lines.
+      ! All lines between start/end must be type/qty lines.
       ! Format:  ! type_string, qty_string [, COMMON_CODE]
 
       ! Get rid of the leading comment and any subsequent whitespace
@@ -401,7 +401,7 @@ SEARCH_OBS_DEF_FILES: do j = 1, num_obs_type_files
 
       ! save results in temp vars for now, so we can check for
       ! duplicates (not allowed in types) or duplicates (which are
-      ! expected in kinds)
+      ! expected in quantities)
       temp_type = adjustl(test(1:l_string))
 
       ! check for another comma before end of line (not mandatory)
@@ -410,7 +410,7 @@ SEARCH_OBS_DEF_FILES: do j = 1, num_obs_type_files
          if(test(k:k) == ',') exit
       end do
 
-      ! not found?  ok, then kind is remaining part of string
+      ! not found?  ok, then qty is remaining part of string
       if (l2_string == total_len - 1) then
          temp_qty = adjustl(test(l_string + 2:))
          temp_user = .true.
@@ -431,7 +431,7 @@ SEARCH_OBS_DEF_FILES: do j = 1, num_obs_type_files
 
       !FIXME: does not correctly flag: !type  qty, COMMON_CODE 
       ! as an error (note missing comma between type and qty)
-! how to catch?  not allow spaces in type?
+      ! how to catch?  not allow spaces in type?
   
       ! Another type/qty line; increment the type count.  Check the qtys
       ! list for repeated occurances first before deciding this is
@@ -441,7 +441,7 @@ SEARCH_OBS_DEF_FILES: do j = 1, num_obs_type_files
       ! no usercode in either the original definition or this one
       do i=1, num_types_found
          if (type_string(i) == temp_type) then
-            ! allow dups if 1) same kind 2) no usercode
+            ! allow dups if 1) same qty 2) no usercode
             if ((qty_string(qty_index(i)) /= temp_qty) .or. &
                 (temp_user) .or. (usercode(i))) then
                err_string = &
@@ -457,7 +457,7 @@ SEARCH_OBS_DEF_FILES: do j = 1, num_obs_type_files
       type_string(num_types_found) = temp_type
             usercode(num_types_found) = temp_user
 
-      ! multiple obs types mapping to the same kind is ok.
+      ! multiple obs types mapping to the same qty is ok.
       qty_found = .false.
       do i=1, num_qtys_found
          if (qty_string(i) == temp_qty) then
@@ -478,80 +478,85 @@ SEARCH_OBS_DEF_FILES: do j = 1, num_obs_type_files
 end do SEARCH_OBS_DEF_FILES
 
 
-! Write out the integer declaration lines for kinds
-write(obs_qty_out_unit, 51) separator_line
-write(obs_qty_out_unit, 51) blank_line
-write(obs_qty_out_unit, 51) '! Integer definitions for DART QUANTITIES'
-write(obs_qty_out_unit, 51) blank_line
+! Write out the integer declaration lines for qtys
+
+call write_separator_line(obs_qty_out_unit)
+call write_blank_line(obs_qty_out_unit)
+write(obs_qty_out_unit, '(A)') '! Integer definitions for DART QUANTITIES'
+call write_blank_line(obs_qty_out_unit)
 do i = 1, num_qtys_found 
    write(obs_qty_out_unit, '(A30,A32,A3,I5)') &
       'integer, parameter, public :: ', trim(qty_string(i)), ' = ', i-1
 end do
-write(obs_qty_out_unit, 51) blank_line
+call write_blank_line(obs_qty_out_unit)
 
-write(obs_qty_out_unit, 51) blank_line
-write(line, 61) 'integer, parameter, public :: max_defined_quantities = ', &
+!--
+
+call write_blank_line(obs_qty_out_unit)
+write(line, '(A,I5)') 'integer, parameter, public :: max_defined_quantities = ', &
    num_qtys_found-1
-write(obs_qty_out_unit, 51) trim(line)
-write(obs_qty_out_unit, 51) blank_line
-write(obs_qty_out_unit, 51) separator_line
+write(obs_qty_out_unit, '(A)') trim(line)
+call write_blank_line(obs_qty_out_unit)
+call write_separator_line(obs_qty_out_unit)
+
+!--
 
 ! Write out the integer declaration lines for types
-51 format(A)
-61 format(A,I5)
-write(obs_qty_out_unit, 51) separator_line
-write(obs_qty_out_unit, 51) blank_line
-write(obs_qty_out_unit, 51) '! Integer definitions for DART OBS TYPES'
+call write_separator_line(obs_qty_out_unit)
+call write_blank_line(obs_qty_out_unit)
+write(obs_qty_out_unit, '(A)') '! Integer definitions for DART OBS TYPES'
+call write_blank_line(obs_qty_out_unit)
 do i = 1, num_types_found 
    write(obs_qty_out_unit, '(A30,A32,A3,I5)') &
       'integer, parameter, public :: ', trim(type_string(i)), ' = ', i
 end do
-write(obs_qty_out_unit, 51) blank_line
+call write_blank_line(obs_qty_out_unit)
 
-! Write out the max_obs_types, too
-! FIXME:  this should be max_obs_types, but it is a public and all the
-! subroutines use kind where it means type.  sigh.
-write(obs_qty_out_unit, 51) blank_line
-write(line, 61) 'integer, parameter, public :: max_defined_types_of_obs = ', &
+!--
+
+! Write out the max num of obs_types, too
+call write_blank_line(obs_qty_out_unit)
+write(line, '(A,I5)') 'integer, parameter, public :: max_defined_types_of_obs = ', &
    num_types_found
-write(obs_qty_out_unit, 51) trim(line)
-write(obs_qty_out_unit, 51) blank_line
-write(obs_qty_out_unit, 51) separator_line
+write(obs_qty_out_unit, '(A)') trim(line)
+call write_blank_line(obs_qty_out_unit)
+call write_separator_line(obs_qty_out_unit)
 
 ! Copy over lines up to the next insertion point
 call copy_until(obs_qty_in_unit,   input_obs_qty_mod_file, insert_init_string, linenum1, &
                 obs_qty_out_unit, output_obs_qty_mod_file)
 
+!--
 
 ! Write out the definitions of each entry of obs_qty_names
-write(obs_qty_out_unit, 51) blank_line
+call write_blank_line(obs_qty_out_unit)
 write(line, '(A)') 'do i = 0, max_defined_quantities'
-write(obs_qty_out_unit, 21) trim(line)
+write(obs_qty_out_unit, '(A)') trim(line)
 write(line, '(A)') '   obs_qty_names(i) = obs_qty_type(i, "UNKNOWN")'
-write(obs_qty_out_unit, 21) trim(line)
+write(obs_qty_out_unit, '(A)') trim(line)
 write(line, '(A)') 'enddo'
-write(obs_qty_out_unit, 21) trim(line)
-write(obs_qty_out_unit, 51) blank_line
+write(obs_qty_out_unit, '(A)') trim(line)
+call write_blank_line(obs_qty_out_unit)
 
 
 ! Write out the definitions of each entry of obs_qty_names
 do i = 1, num_qtys_found
    write(line, '(A,I5,5A)') 'obs_qty_names(', i-1, ') = obs_qty_type(', &
       trim(qty_string(i)), ", '", trim(qty_string(i)), "')"
-   write(obs_qty_out_unit, 21) trim(line)
+   write(obs_qty_out_unit, '(A)') trim(line)
 end do
-write(obs_qty_out_unit, 51) blank_line
+write(obs_qty_out_unit, '(A)') blank_line
 
 ! Write out the definitions of each entry of obs_type_info
 do i = 1, num_types_found
    write(line, '(A,I5,3A)') 'obs_type_info(', i, ') = obs_type_type(', &
       trim(type_string(i)), ", &"
-   write(obs_qty_out_unit, 21) trim(line)
+   write(obs_qty_out_unit, '(A)') trim(line)
    write(line, *) '   ', "'", trim(type_string(i)), "', ", &
       trim(qty_string(qty_index(i))), ', .false., .false., .false.)'
-   write(obs_qty_out_unit, 21) trim(line)
+   write(obs_qty_out_unit, '(A)') trim(line)
 end do
-write(obs_qty_out_unit, 51) blank_line
+write(obs_qty_out_unit, '(A)') blank_line
 
 
 ! Copy over rest of lines
@@ -561,7 +566,7 @@ do
    if(ierr /=0) exit
 
    ! Write the line to the output file
-   write(obs_qty_out_unit, 21) trim(line)
+   write(obs_qty_out_unit, '(A)') trim(line)
 end do
 
 close(obs_qty_out_unit)
@@ -575,7 +580,7 @@ close(obs_qty_out_unit)
 ! file and then proceed.
 
 ! There are seven special code sections (ITEMS) in the obs_def file at present.
-! Each copies code in from the special type specific obs_kind modules
+! Each copies code in from the special type specific obs_qty modules
 ! Loop goes to N+1 so that lines after the last item are copied to the output.
 ITEMS: do i = 1, 8
    READ_LINE: do
@@ -600,30 +605,29 @@ ITEMS: do i = 1, 8
       if(test == t_string) exit READ_LINE
 
       ! Write this line into the output file
-      write(obs_def_out_unit, 21) trim(line)
-      21 format(A)
+      write(obs_def_out_unit, '(A)') trim(line)
 
    end do READ_LINE
 
    ! The 'USE FOR OBS_QTY_MOD' section is handled differently; lines are not
-   ! copied, they are generated based on the list of types and kinds.
+   ! copied, they are generated based on the list of types and qtys.
    if(i == qty_item) then
-      ! Create use statements for both the QTY_ kinds and the individual
+      ! Create use statements for both the QTY_ quantities and the individual
       ! observation type strings.
-      write(obs_def_out_unit, 21) separator_line
-      write(obs_def_out_unit, 21) blank_line
+      write(obs_def_out_unit, '(A)') separator_line
+      write(obs_def_out_unit, '(A)') blank_line
       do k = 1, num_types_found
-         write(obs_def_out_unit, 21) &
-            'use obs_kind_mod, only : ' // trim(type_string(k))    ! should be qty
+         write(obs_def_out_unit, '(A)') &
+            'use obs_kind_mod, only : ' // trim(type_string(k))     !!!!! FIXME: kind -> qty
       end do
-      write(obs_def_out_unit, 21) blank_line
+      write(obs_def_out_unit, '(A)') blank_line
       do k = 1, num_qtys_found
-         write(obs_def_out_unit, 21) &
-            'use obs_kind_mod, only : ' // trim(qty_string(k))    ! should be qty
+         write(obs_def_out_unit, '(A)') &
+            'use obs_kind_mod, only : ' // trim(qty_string(k))      !!!!! FIXME: kind -> qty
       end do
-      write(obs_def_out_unit, 21) blank_line
-      write(obs_def_out_unit, 21) separator_line
-      write(obs_def_out_unit, 21) blank_line
+      write(obs_def_out_unit, '(A)') blank_line
+      write(obs_def_out_unit, '(A)') separator_line
+      write(obs_def_out_unit, '(A)') blank_line
       cycle
    endif
 
@@ -632,18 +636,18 @@ ITEMS: do i = 1, 8
    do j = 1, num_obs_type_files
       if (.not. file_has_usercode(j)) then
          if (i == module_item) then
-            write(obs_def_out_unit, 51) separator_line
+            write(obs_def_out_unit, '(A)') separator_line
             write(obs_def_out_unit, 31) &
                '!No module code needed for ', &
                trim(obs_type_files(j))
-            write(obs_def_out_unit, 51) separator_line
+            write(obs_def_out_unit, '(A)') separator_line
          endif
          !if (i == use_item) then
-         !   write(obs_def_out_unit, 51) separator_line
+         !   write(obs_def_out_unit, '(A)') separator_line
          !   write(obs_def_out_unit, 31) &
          !      '!No use statements needed for ', &
          !      trim(obs_type_files(j))
-         !   write(obs_def_out_unit, 51) separator_line
+         !   write(obs_def_out_unit, '(A)') separator_line
          !endif
          cycle
       endif
@@ -684,11 +688,11 @@ ITEMS: do i = 1, 8
       
       ! decoration or visual separation, depending on your viewpoint
       if (i == module_item) then
-         write(obs_def_out_unit, 51) separator_line
+         write(obs_def_out_unit, '(A)') separator_line
          write(obs_def_out_unit, 31) '! Start of code inserted from ', &
             trim(obs_type_files(j))
-         write(obs_def_out_unit, 51) separator_line
-         write(obs_def_out_unit, 51) blank_line
+         write(obs_def_out_unit, '(A)') separator_line
+         write(obs_def_out_unit, '(A)') blank_line
          31 format(2A)
       endif
 
@@ -714,19 +718,19 @@ ITEMS: do i = 1, 8
          ! All other code sections are preceeded by a ! in col 1
          ! so it must be stripped off.
          if (i == module_item) then
-            write(obs_def_out_unit, 21) trim(line)
+            write(obs_def_out_unit, '(A)') trim(line)
          else
-            write(obs_def_out_unit, 21) trim(line(2:))
+            write(obs_def_out_unit, '(A)') trim(line(2:))
          endif
       end do COPY_ITEM
 
       ! decoration or visual separation, depending on your viewpoint
       if (i == module_item) then
-         write(obs_def_out_unit, 51) blank_line
-         write(obs_def_out_unit, 51) separator_line
+         write(obs_def_out_unit, '(A)') blank_line
+         write(obs_def_out_unit, '(A)') separator_line
          write(obs_def_out_unit, 31) '! End of code inserted from ', &
             trim(obs_type_files(j))
-         write(obs_def_out_unit, 51) separator_line
+         write(obs_def_out_unit, '(A)') separator_line
       endif
 
       ! Got everything from this file, move along
@@ -740,13 +744,12 @@ ITEMS: do i = 1, 8
 
      select case (i)
      case (get_expected_item)
-        11 format(3A)
-        write(obs_def_out_unit, 11) '      case(', trim(type_string(j)), ')'
-        write(obs_def_out_unit, 11) '         call interpolate(state_handle, ens_size, location, ', &
+        write(obs_def_out_unit, '(A)')  '      case(' // trim(type_string(j)) // ')'
+        write(obs_def_out_unit, '(3A)') '         call interpolate(state_handle, ens_size, location, ', &
            trim(qty_string(qty_index(j))), ', expected_obs, istatus)'
      case (read_item, write_item, interactive_item)
-        write(obs_def_out_unit, 11) '   case(', trim(type_string(j)), ')'
-        write(obs_def_out_unit, 21) '      continue'
+        write(obs_def_out_unit, '(A)')  '   case(' // trim(type_string(j)) // ')'
+        write(obs_def_out_unit, '(A)')  '      continue'
      case default
        ! nothing to do for others 
      end select
@@ -879,6 +882,24 @@ write(err_string, *) 'See msg lines above for error details'
 call error_handler(E_ERR, 'preprocess', err_string, source, revision, revdate)
 
 end subroutine quantity_error
+
+!------------------------------------------------------------------------------
+
+subroutine write_separator_line(unitnum)
+ integer, intent(in) :: unitnum
+
+write(unitnum, '(A)') separator_line
+
+end subroutine write_separator_line
+
+!------------------------------------------------------------------------------
+
+subroutine write_blank_line(unitnum)
+ integer, intent(in) :: unitnum
+
+write(unitnum, '(A)') blank_line
+
+end subroutine write_blank_line
 
 !------------------------------------------------------------------------------
 
