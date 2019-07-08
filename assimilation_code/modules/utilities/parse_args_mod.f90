@@ -32,6 +32,10 @@ use utilities_mod, only : error_handler, E_ERR
 ! the limit on the number of words and the length of each string
 ! is determined by the 'words' character array that is passed in.
 ! it should have already been allocated by the caller.
+!
+! limitations:  doesn't understand escaped spaces (e.g. "\ ")
+! and doesn't understand quoted strings (e.g. "this string has spaces")
+! it may need to handle quoted strings (with either ' or ") soon.  
 !---------------------------------------------------------------------
 
 implicit none

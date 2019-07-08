@@ -6,23 +6,59 @@
 
 program preprocess
 
-! Takes a list of observation type module path names. These modules contain
-! multiple fragments of standard F90 that may be required to implement forward
-! observation operators for DART. The sections are retrieved from the files
-! by this program and inserted into the appropriate blanks in the
-! DEFAULT_obs_def_mod.F90 and DEFAULT_obs_qty_mod.F90 templates. 
-! The final obs_def_mod.f90 and obs_qty_mod.f90 that are created contain
-! the default code plus all the code required from the selected observation
-! type modules. Preprocess also inserts the required identifier and string
-! for the corresponding observation quantities (and only those quantities).
+!> Takes a list of observation type module path names and physical quantity
+!> module path names and creates two output files that are compiled into
+!> the rest of the DART executables.  They define the quantities and observation
+!> types that are recognized and processed in any way. 
+!>
+!> The output module for observation types can contain multiple fragments of 
+!> standard F90 that may be required to implement forward observation operators 
+!> for DART. The sections are retrieved from the files by this program and 
+!> inserted into the appropriate blanks in the DEFAULT_obs_def_mod.F90 and 
+!> DEFAULT_obs_qty_mod.F90 templates. 
+!>
+!> The final obs_def_mod.f90 and obs_qty_mod.f90 that are created contain
+!> the default code plus all the code required from the selected observation
+!> type modules. Preprocess also inserts the required identifiers and strings
+!> for the corresponding observation quantities.
+!>
+!> @todo FIXME: the module name is set by whatever is in the DEFAULT_xxx file
+!> which is still obs_kind_mod instead of _qty_.  also i have changed the default
+!> filenames here to be _qty_ but in reality all the pathnames files for the
+!> build system expect _kind_ and the names are always specified in our input.nml
+!> namelist files, so we aren't depending on the defaults. (maybe we should?)
+!> and finally, this code generates module 'use' statements, and those, 
+!> to keep things working, are still outputing "use obs_kind_mod" instead 
+!> of "use obs_qty_mod".   this should change but i'm not sure when.
+!>
+!> @todo FIXME: this version is being changed to require at least 2 strings
+!> per line - the qty name and units (which could be "none" if there really
+!> are none).  
+!> it can also have 2 additional optional tokens on the line which are any 
+!> physical limits for the min and max values of this quantity.  for example, 
+!> temperature in K can't be negative. relative humidity must be [0,1].  
+!>
+!> don't specify them if there aren't any limits, and use MISSING_R8 (or NA?)
+!> for any bounds where there is only either a minimum or maximum 
+!> but not the other. (if you specify either, two numbers will be required.)
+!>
+!> note to me:
+!> since this is a text processor, could NA, null, or MISSING_R8 all be used?
+!> the token MISSING_R8 should be output but may not ever be interpreted by 
+!> this program. is r8 really needed as well?  again, text based processing.  
+!> i guess for a numeric value it should be vetted to be valid here?
+!>
+!> @todo FIXME: should we hardcode QTY_STATE_VARIABLE as 0 here?
+!>
 
-! NEED TO ADD IN ALL THE ERROR STUFF
 
-use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,   &
-                          file_exist, open_file,                          &
-                          initialize_utilities, do_nml_file, do_nml_term, &
-                          find_namelist_in_file, check_namelist_read,     &
-                          finalize_utilities, log_it
+use types_mod,      only : r8, MISSING_R8     ! @todo FIXME r8 is needed; is MISSING_R8?
+use utilities_mod,  only : register_module, error_handler, E_ERR, E_MSG,   &
+                           file_exist, open_file, close_file,              &
+                           initialize_utilities, do_nml_file, do_nml_term, &
+                           find_namelist_in_file, check_namelist_read,     &
+                           finalize_utilities, log_it
+use parse_args_mod, only : get_args_from_string
 
 implicit none
 
@@ -34,19 +70,49 @@ character(len=*), parameter :: revdate  = "$Date$"
 
 ! Pick something ridiculously large and forget about it (lazy)
 integer, parameter   :: max_types = 5000, max_qtys = 5000
-character(len = 256) :: line, test, test2, type_string(max_types), &
-                        qty_string(0:max_qtys), t_string, temp_type, temp_qty
+
+
+character(len = 256) :: line, test, test2, t_string
 integer              :: iunit, ierr, io, i, j, k
-integer              :: l_string, l2_string, total_len, linenum1, linenum2
-integer              :: num_types_found, num_qtys_found, qty_index(0:max_types)
-logical              :: duplicate, qty_found, usercode(max_types), temp_user
+integer              :: l_string, l2_string, total_len
+integer              :: linenum1, linenum2, linenum3, linenum4
+integer              :: num_types_found, num_qtys_found
+logical              :: duplicate, qty_found, temp_user
 character(len = 512) :: err_string
 character(len = 6)   :: full_line_in  = '(A256)'
 character(len = 3)   :: full_line_out = '(A)'
 
+! max valid number of tokens per line is 4.  allocate more
+! to handle error conditions.
+integer, parameter   :: MAX_TOKENS = 20
+integer              :: ntokens
+character(len=128)   :: token(MAX_TOKENS)
+
+integer, parameter :: MAX_NAME_LEN = 32
+character(len=MAX_NAME_LEN) :: temp_type, temp_qty
+
+type qty_info_type
+   character(len=MAX_NAME_LEN) :: name          = 'null'
+   character(len=128)          :: ud_units_name = 'none'
+   real(r8)                    :: minbound      = MISSING_R8
+   real(r8)                    :: maxbound      = MISSING_R8
+end type qty_info_type
+
+type(qty_info_type) :: qty_info(0:max_qtys)
+
+
+type obs_info_type
+   character(len=MAX_NAME_LEN) :: name         = 'null'
+   character(len=MAX_NAME_LEN) :: qty          = 'null'
+   logical                     :: has_usercode = .false.
+
+end type obs_info_type
+
+type(obs_info_type) :: obs_info(1:max_types)
+
 ! specific marker strings
-!                                                             1         2         3         4         5
-!                                                    12345678901234567890123456789012345678901234567890
+!                                                             1         2         3         4         5         6
+!                                                    123456789012345678901234567890123456789012345678901234567890
 character(len=*),parameter :: qty_start_string   = '! BEGIN DART PREPROCESS QUANTITY LIST'
 character(len=*),parameter :: qty_end_string     = '! END DART PREPROCESS QUANTITY LIST'
 character(len=*),parameter :: qty2_start_string  = '! BEGIN DART PREPROCESS QUANTITY DEFINITIONS'
@@ -65,28 +131,27 @@ character(len = 78) :: blank_line = &
 !character(len = 78) :: blank_comment_line = &
 !'!                                                                           '
 
+integer, parameter :: NUM_SECTIONS = 7
 ! List of the DART PREPROCESS strings for obs_def type files.
-character(len = 29) :: preprocess_string(8) = (/ &
+character(len = 29) :: preprocess_string(NUM_SECTIONS) = (/ &
       'MODULE CODE                  ', &
       'USE FOR OBS_QTY_MOD          ', &
       'USE OF SPECIAL OBS_DEF MODULE', &
       'GET_EXPECTED_OBS_FROM_DEF    ', &
       'READ_OBS_DEF                 ', &
       'WRITE_OBS_DEF                ', &
-      'INTERACTIVE_OBS_DEF          ', &
-      'THE EIGHTH ONE IS UNDEFINED  '/)
+      'INTERACTIVE_OBS_DEF          '/)
 
 !! Must match the list above.  Is there a default code section that we can
 !! autogenerate for this section?
-!logical :: default_code(8) = &
+!logical :: default_code(NUM_SECTIONS) = &
 !   (/ .false., &
 !      .false., &
 !      .false., &
 !      .true.,  &
 !      .true.,  &
 !      .true.,  &
-!      .true.,  &
-!      .false. /)
+!      .true.  /)
 
 integer, parameter :: module_item = 1
 integer, parameter :: qty_item = 2
@@ -146,88 +211,36 @@ call log_it('Path names of output obs_def and obs_qty modules')
 call log_it(output_obs_def_mod_file)
 call log_it(output_obs_qty_mod_file)
 
-! A path for the default files is required. Have an error if these are null.
-if(input_obs_def_mod_file == 'null') &
-   call error_handler(E_ERR, 'preprocess', &
-      'Namelist must provide input_obs_def_mod_file', &
-      source, revision, revdate)
-if(input_obs_qty_mod_file == 'null') &
-   call error_handler(E_ERR, 'preprocess', &
-      'Namelist must provide input_obs_qty_mod_file', &
-      source, revision, revdate)
+! The name for the default files is required. Error if these are null.
+call cannot_be_null(input_obs_def_mod_file, 'input_obs_def_mod_file')
+call cannot_be_null(input_obs_qty_mod_file, 'input_obs_qty_mod_file')
 
-! A path for the output files is required. Have an error if these are null.
-if(output_obs_def_mod_file == 'null') &
-   call error_handler(E_ERR, 'preprocess', &
-      'Namelist must provide output_obs_def_mod_file', &
-      source, revision, revdate)
-if(output_obs_qty_mod_file == 'null') &
-   call error_handler(E_ERR, 'preprocess', &
-      'Namelist must provide output_obs_qty_mod_file', &
-      source, revision, revdate)
+call cannot_be_null(output_obs_def_mod_file, 'output_obs_def_mod_file')
+call cannot_be_null(output_obs_qty_mod_file, 'output_obs_qty_mod_file')
 
-call log_it('INPUT obs_def files follow:')
+call log_it('INPUT obs_def files:')
 
 do i = 1, max_obs_type_files
    if(obs_type_files(i) == 'null') exit
    call log_it(obs_type_files(i))
    num_obs_type_files= i
-end do
+enddo
 
-call log_it('INPUT quantity files follow:')
+call log_it('INPUT quantity files:')
 
 do i = 1, max_quantity_files
    if(quantity_files(i) == 'null') exit
    call log_it(quantity_files(i))
    num_quantity_files = i
-end do
+enddo
 
-! Try to open the DEFAULT and OUTPUT files
-! DEFAULT files must exist or else an error
-if(file_exist(input_obs_def_mod_file)) then
-   ! Open the file for reading
-   obs_def_in_unit = open_file(input_obs_def_mod_file, action='read')
-else
-   ! If file does not exist it is an error
-   write(err_string, *) 'file ', trim(input_obs_def_mod_file), &
-      ' must exist (and does not)'
-   call error_handler(E_ERR, 'preprocess', err_string, &
-      source, revision, revdate)
-endif
+! Open/Create the DEFAULT and OUTPUT files and set the unit numbers
 
-if(file_exist(input_obs_qty_mod_file)) then
-   ! Open the file for reading
-   obs_qty_in_unit = open_file(input_obs_qty_mod_file, action='read')
-else
-   ! If file does not exist it is an error
-   write(err_string, *) 'file ', trim(input_obs_qty_mod_file), &
-      ' must exist (and does not)'
-   call error_handler(E_ERR, 'preprocess', err_string, &
-      source, revision, revdate)
-endif
+call open_file_for_read(input_obs_def_mod_file, 'input file ', obs_def_in_unit)
+call open_file_for_read(input_obs_qty_mod_file, 'input file ', obs_qty_in_unit)
 
-! Error if Output files EXIST, unless 'overwrite_output' is TRUE
-if(.not. file_exist(output_obs_def_mod_file) .or. overwrite_output) then
-   ! Open (create) the file for writing
-   obs_def_out_unit = open_file(output_obs_def_mod_file, action='write')
-else
-   ! If file *does* exist and we haven't said ok to overwrite, error
-   write(err_string, *) 'file ', trim(output_obs_def_mod_file), &
-      ' exists and will not be overwritten: Please remove or rename'
-   call error_handler(E_ERR, 'preprocess', err_string, &
-      source, revision, revdate)
-endif
-
-if(.not. file_exist(output_obs_qty_mod_file) .or. overwrite_output) then
-   ! Open (create) the file for writing
-   obs_qty_out_unit = open_file(output_obs_qty_mod_file, action='write')
-else
-   ! If file *does* exist and we haven't said ok to overwrite, error
-   write(err_string, *) 'file ', trim(output_obs_qty_mod_file), &
-      ' exists and will not be overwritten: Please remove or rename'
-   call error_handler(E_ERR, 'preprocess', err_string, &
-      source, revision, revdate)
-endif
+call open_file_for_write(output_obs_def_mod_file, 'output file ', overwrite_output, obs_def_out_unit)
+call open_file_for_write(output_obs_qty_mod_file, 'output file ', overwrite_output, obs_qty_out_unit)
 
 !______________________________________________________________________________
 ! Preprocessing for the obs_qty module
@@ -236,123 +249,130 @@ endif
 ! Copy over lines from obs_qty_template file up to the next insertion point
 linenum1 = 0
 call copy_until(obs_qty_in_unit,   input_obs_qty_mod_file, insert_ints_string, linenum1, &
-                obs_qty_out_unit, output_obs_qty_mod_file)
+                obs_qty_out_unit, output_obs_qty_mod_file, .false.)
 
 num_qtys_found = 0
-qty_string(:) = 'unknown'
-qty_index(:) = -1
+
+! QTY_STATE_VARIABLE is always defined (and always offset 0).
+qty_info(num_qtys_found)%name = 'QTY_STATE_VARIABLE'
+num_qtys_found = num_qtys_found + 1
 
 !> for each quantity input file, read in quantities to be used.
 !> duplicates are ignored (so you can list overlapping subsets 
-!> of quantities).
+!> of quantities).  units and (if specified) bounds must match
+!> if duplicate.
 
 SEARCH_QUANTITY_FILES: do j = 1, num_quantity_files
-   if(file_exist(quantity_files(j))) then
-      ! Open the file for reading
-         in_unit = open_file(quantity_files(j), action='read')
-   else
-      ! If file does not exist it is an error
-      write(err_string, *) 'quantity_files ', trim(quantity_files(j)), &
-         ' does NOT exist (and must).'
-      call error_handler(E_ERR, 'preprocess', err_string, &
-         source, revision, revdate)
-   endif
 
-   ! Read until the ! BEGIN QUANTITY LIST is found
+   call open_file_for_read(quantity_files(j), 'quantity_files', in_unit)
+
+   ! Read until the ! BEGIN QUANTITY LIST marker string is found
    linenum2 = 0
    call read_until(in_unit, quantity_files(j), qty2_start_string, linenum2)
 
    ! Subsequent lines can contain QTY_xxx lines or comments or
    ! the end string.
    DEFINE_QTYS: do
-      read(in_unit, 222, IOSTAT = ierr) line
-      ! If end of file, input file is incomplete or weird stuff happened
-      if(ierr /= 0) then
-         write(err_string, *) 'file ', trim(quantity_files(j)), &
-            ' does NOT contain ', qty2_end_string
-         call error_handler(E_ERR, 'preprocess', err_string, &
-            source, revision, revdate)
-      endif
-      linenum2 = linenum2 + 1
+      call get_next_line(in_unit, full_line_in, qty2_end_string, &
+                         quantity_files(j), linenum2)
 
       ! Look for the ! END QTY LIST in the current line
       test = adjustl(line)
       if(test == qty2_end_string) exit DEFINE_QTYS
    
       ! All lines between start/end must be comments or QTY_xxx strings
-      ! Format:  ! QTY_string  ! optional comment
-      !    or :  ! comment
+      !
+      ! Formats accepted:  
+      !
+      ! QTY_string, "units"
+      ! QTY_string, "units" ! optional comment
+      !
+      ! QTY_string, "units", minbound, maxbound
+      ! QTY_string, "units", minbound, maxbound  ! both required if either specified
+      !       
+      ! ! comment
+      ! ! if setting only one bound, use MISSING_R8 as the value?  or NA? 
+      ! !  it is a string at this point so can be anything we choose.
+      ! !
    
-      ! Get rid of the leading comment and any subsequent whitespace
-      if (line(1:1) /= '!') then 
-         err_string = 'line must begin with !'
+      ! ntokens < 0 means error
+      ! ntokens == 0 means cycle without error
+      ! ntokens > 0 means some work to do
+
+      call parse_line(line, ntokens, token, err_string)
+      if (ntokens < 0) &
+         call quantity_error(err_string, line, quantity_files(j), linenum2)
+   
+      if (ntokens == 0) cycle DEFINE_QTYS
+
+      if (ntokens > 4 .or. ntokens == 3) then
+         err_string = 'expected QTY_xxx units minbound maxbound. unable to process.'
          call quantity_error(err_string, line, quantity_files(j), linenum2)
       endif
-   
-      test = adjustl(line(2:))
-      total_len = len(test)
-   
-      ! find start of word.  if comment found first, punt
-      do k = 1,  total_len
-         l_string = k
-         if(test(k:k) == '!') cycle DEFINE_QTYS
-         if(test(k:k) /= ' ') exit
-      end do
 
-      ! If there is no QTY on the line, cycle
-      l_string = index(test(l_string:), 'QTY_')
-      if (l_string == 0) cycle DEFINE_QTYS
-   
-      ! find end of word by looking one space ahead
-      do k = l_string+1, total_len
-         l2_string = k - 1
-         if(test(k:k) == ' ' .or. test(k:k) == '!') exit
-         if (k == total_len) l2_string = k 
-      end do
-   
-      temp_qty = test(l_string:l2_string)
-   
+      if (ntokens < 2) then
+         err_string = 'expected QTY_xxx units. unable to process.'
+         call quantity_error(err_string, line, quantity_files(j), linenum2)
+      endif
+
+      if (token(1)(1:4) /= 'QTY_') then
+         err_string = 'QTY_xxx not found as first word on line'
+         call quantity_error(err_string, line, quantity_files(j), linenum2)
+      endif
+
+      if (len_trim(token(1)) > MAX_NAME_LEN) then
+         write(err_string, *) 'Quantity names are limited to ', MAX_NAME_LEN, ' characters'
+         call quantity_error(err_string, line, quantity_files(j), linenum2)
+      endif
+
       ! this loop adds a new quantity to the string array if it's new.
       duplicate = .false.
-      do i=1, num_qtys_found
-         if (qty_string(i) == temp_qty) then
+      do i=0, num_qtys_found-1
+         if (qty_info(i)%name == token(1)) then
             duplicate = .true.
+            ! @todo FIXME test dups here for identity in all other fields
             exit
          endif
-      end do
+      enddo
    
       if (.not. duplicate) then
+         qty_info(num_qtys_found)%name = trim(token(1))
+         qty_info(num_qtys_found)%ud_units_name = trim(token(2))
+         if (ntokens > 2) then
+            call string_to_real(token(3), qty_info(num_qtys_found)%minbound, err_string)
+            if (err_string /= '') then
+               err_string = trim(err_string) // ' min bounds'
+               call quantity_error(err_string, line, quantity_files(j), linenum2)
+            endif
+            call string_to_real(token(4), qty_info(num_qtys_found)%maxbound, err_string)
+            if (err_string /= '') then
+               err_string = trim(err_string) // ' max bounds'
+               call quantity_error(err_string, line, quantity_files(j), linenum2)
+            endif
+         endif
          num_qtys_found = num_qtys_found + 1
-         qty_string(num_qtys_found) = temp_qty
-         qty_index(num_qtys_found) = num_qtys_found
       endif
    
-   end do DEFINE_QTYS
+   enddo DEFINE_QTYS
 
    ! Close this quantity file
-   close(in_unit)
-end do SEARCH_QUANTITY_FILES
+   call close_file(in_unit)
+
+enddo SEARCH_QUANTITY_FILES
 
 !______________________________________________________________________________
-! Preprocessing for the obs_qty module
+! Preprocessing of obs_def files for info to add to the obs_qty module
 ! Get all the type/qty strings from all of the obs_def files 
 ! up front and then insert stuff.  Easier to error check and combine
 ! duplicate quantities.
 
 ! Initial number of types is 0, qtys is based on previous section
+! (unlike quantities, types are 1 based)
 num_types_found = 0
 
 SEARCH_OBS_DEF_FILES: do j = 1, num_obs_type_files
-   if(file_exist(obs_type_files(j))) then
-      ! Open the file for reading
-         in_unit = open_file(obs_type_files(j), action='read')
-   else
-      ! If file does not exist it is an error
-      write(err_string, *) 'obs_type_files ', trim(obs_type_files(j)), &
-         ' does NOT exist (and must).'
-      call error_handler(E_ERR, 'preprocess', err_string, &
-         source, revision, revdate)
-   endif
+
+   call open_file_for_read(obs_type_files(j), 'obs_type_files', in_unit)
 
    ! Read until the ! BEGIN QUANTITY LIST is found
    linenum2 = 0
@@ -361,15 +381,8 @@ SEARCH_OBS_DEF_FILES: do j = 1, num_obs_type_files
    ! Subsequent lines contain the type_identifier (same as type_string), and
    ! qty_string separated by commas, and optional usercode flag
    EXTRACT_TYPES: do
-      read(in_unit, 222, IOSTAT = ierr) line
-      ! If end of file, input file is incomplete or weird stuff happened
-      if(ierr /= 0) then
-         write(err_string, *) 'file ', trim(obs_type_files(j)), &
-            ' does NOT contain ', qty_end_string
-         call error_handler(E_ERR, 'preprocess', err_string, &
-            source, revision, revdate)
-      endif
-      linenum2 = linenum2 + 1
+      call get_next_line(in_unit, full_line_in, qty_end_string, &
+                         obs_type_files(j), linenum2)
 
       ! Look for the ! END QUANTITY LIST in the current line
       test = adjustl(line)
@@ -378,104 +391,91 @@ SEARCH_OBS_DEF_FILES: do j = 1, num_obs_type_files
       ! All lines between start/end must be type/qty lines.
       ! Format:  ! type_string, qty_string [, COMMON_CODE]
 
-      ! Get rid of the leading comment and any subsequent whitespace
-      if (line(1:1) /= '!') then 
-         err_string = 'line must begin with !'
+      call parse_line(line, ntokens, token, err_string)
+      if (ntokens < 0) &
+         call typeqty_error(err_string, line, obs_type_files(j), linenum2)
+   
+      if (ntokens == 0) cycle EXTRACT_TYPES
+
+      if (ntokens < 2 .or. ntokens > 3) then
+         err_string = 'expected OBS_TYPE  QTY_xxx  [COMMON_CODE]. unable to process.'
          call typeqty_error(err_string, line, obs_type_files(j), linenum2)
       endif
 
-      test = adjustl(line(2:))
-      total_len = len(test)
-
-      ! Compute the length of the type_string by seeking comma
-      do k = 1, total_len
-         l_string = k - 1
-         if(test(k:k) == ',') exit
-      end do
-
-      ! comma not found? (first one is required)
-      if (l_string == total_len - 1) then
-         err_string = 'strings must be separated by commas'
+      if (token(2)(1:4) /= 'QTY_') then
+         err_string = 'QTY_xxx not found as second word on line'
          call typeqty_error(err_string, line, obs_type_files(j), linenum2)
       endif
 
       ! save results in temp vars for now, so we can check for
       ! duplicates (not allowed in types) or duplicates (which are
       ! expected in quantities)
-      temp_type = adjustl(test(1:l_string))
+      if (len_trim(token(1)) > len(temp_type)) then
+         write(err_string, *) 'Observation type names are limited to ', MAX_NAME_LEN, ' characters'
+         call typeqty_error(err_string, line, obs_type_files(j), linenum2)
+      endif
+      temp_type = trim(token(1))
 
-      ! check for another comma before end of line (not mandatory)
-      do k = l_string+2, total_len
-         l2_string = k - 1
-         if(test(k:k) == ',') exit
-      end do
+      if (len_trim(token(2)) > len(temp_qty)) then
+         write(err_string, *) 'Quantity names are limited to ', MAX_NAME_LEN, ' characters'
+         call typeqty_error(err_string, line, obs_type_files(j), linenum2)
+      endif
+      temp_qty = trim(token(2))
 
-      ! not found?  ok, then qty is remaining part of string
-      if (l2_string == total_len - 1) then
-         temp_qty = adjustl(test(l_string + 2:))
-         temp_user = .true.
-      else
-         ! another comma found, need to have COMMON_CODE on rest of line
-         test2 = adjustl(test(l2_string+2:))
-         if (test2(1:11) /= 'COMMON_CODE') then
+      if (ntokens == 3) then
+         if (token(3) /= 'COMMON_CODE') then
             err_string = 'if third word present on line, it must be COMMON_CODE'
             call typeqty_error(err_string, line, obs_type_files(j), linenum2)
          endif
-
-         temp_qty = adjustl(test(l_string + 2:l2_string))
          temp_user = .false.
-         
-      endif
+      else
+         temp_user = .true.
+         file_has_usercode(j) = .true.
+      endif 
 
-      if (temp_user) file_has_usercode(j) = .true.
-
-      !FIXME: does not correctly flag: !type  qty, COMMON_CODE 
-      ! as an error (note missing comma between type and qty)
-      ! how to catch?  not allow spaces in type?
-  
-      ! Another type/qty line; increment the type count.  Check the qtys
-      ! list for repeated occurances first before deciding this is
-      ! an unrecognized quantity.
+      ! Another type/qty line; increment the type count.  
+      ! Check the qtys for unrecognized quantities.
 
       ! only allow duplicate definitions if the qtys match and there is
       ! no usercode in either the original definition or this one
       do i=1, num_types_found
-         if (type_string(i) == temp_type) then
+         if (obs_info(i)%name == temp_type) then
             ! allow dups if 1) same qty 2) no usercode
-            if ((qty_string(qty_index(i)) /= temp_qty) .or. &
-                (temp_user) .or. (usercode(i))) then
+            if ((obs_info(i)%qty /= temp_qty) .or. &
+                (obs_info(i)%has_usercode) .or. temp_user) then
                err_string = &
-                  'Duplicate! This observation type has already been processed'
+                  'Duplicate! This observation type has already been processed with different options'
                call typeqty_error(err_string, line, obs_type_files(j), linenum2)
             else ! dup, can safely ignore?
                cycle EXTRACT_TYPES
             endif
          endif
-      end do
+      enddo
 
       num_types_found = num_types_found + 1
-      type_string(num_types_found) = temp_type
-            usercode(num_types_found) = temp_user
+      obs_info(num_types_found)%name = trim(temp_type)
+      obs_info(num_types_found)%qty = trim(temp_qty) 
+      obs_info(num_types_found)%has_usercode = temp_user
 
       ! multiple obs types mapping to the same qty is ok.
       qty_found = .false.
-      do i=1, num_qtys_found
-         if (qty_string(i) == temp_qty) then
+      do i=0, num_qtys_found - 1
+         if (qty_info(i)%name == temp_qty) then
             qty_found = .true.
             exit
          endif
-      end do
+      enddo
       if (.not. qty_found) then
          ! an error to specify a quantity not already defined
          err_string = 'Unrecognized QTY_xxx quantity'
          call typeqty_error(err_string, line, obs_type_files(j), linenum2)
       endif
 
-   end do EXTRACT_TYPES
+   enddo EXTRACT_TYPES
 
    ! Close this obs_def file
-   close(in_unit)
-end do SEARCH_OBS_DEF_FILES
+   call close_file(in_unit)
+enddo SEARCH_OBS_DEF_FILES
 
 
 ! Write out the integer declaration lines for qtys
@@ -484,10 +484,10 @@ call write_separator_line(obs_qty_out_unit)
 call write_blank_line(obs_qty_out_unit)
 write(obs_qty_out_unit, '(A)') '! Integer definitions for DART QUANTITIES'
 call write_blank_line(obs_qty_out_unit)
-do i = 1, num_qtys_found 
+do i = 0, num_qtys_found-1
    write(obs_qty_out_unit, '(A30,A32,A3,I5)') &
-      'integer, parameter, public :: ', trim(qty_string(i)), ' = ', i-1
-end do
+      'integer, parameter, public :: ', trim(qty_info(i)%name), ' = ', i
+enddo
 call write_blank_line(obs_qty_out_unit)
 
 !--
@@ -508,8 +508,8 @@ write(obs_qty_out_unit, '(A)') '! Integer definitions for DART OBS TYPES'
 call write_blank_line(obs_qty_out_unit)
 do i = 1, num_types_found 
    write(obs_qty_out_unit, '(A30,A32,A3,I5)') &
-      'integer, parameter, public :: ', trim(type_string(i)), ' = ', i
-end do
+      'integer, parameter, public :: ', trim(obs_info(i)%name), ' = ', i
+enddo
 call write_blank_line(obs_qty_out_unit)
 
 !--
@@ -524,7 +524,7 @@ call write_separator_line(obs_qty_out_unit)
 
 ! Copy over lines up to the next insertion point
 call copy_until(obs_qty_in_unit,   input_obs_qty_mod_file, insert_init_string, linenum1, &
-                obs_qty_out_unit, output_obs_qty_mod_file)
+                obs_qty_out_unit, output_obs_qty_mod_file, .false.)
 
 !--
 
@@ -532,7 +532,7 @@ call copy_until(obs_qty_in_unit,   input_obs_qty_mod_file, insert_init_string, l
 call write_blank_line(obs_qty_out_unit)
 write(line, '(A)') 'do i = 0, max_defined_quantities'
 write(obs_qty_out_unit, '(A)') trim(line)
-write(line, '(A)') '   obs_qty_names(i) = obs_qty_type(i, "UNKNOWN")'
+write(line, '(A)') '   obs_qty_names(i) = obs_qty_type(i, "UNKNOWN", "none", MISSING_R8, MISSING_R8)'
 write(obs_qty_out_unit, '(A)') trim(line)
 write(line, '(A)') 'enddo'
 write(obs_qty_out_unit, '(A)') trim(line)
@@ -540,36 +540,40 @@ call write_blank_line(obs_qty_out_unit)
 
 
 ! Write out the definitions of each entry of obs_qty_names
-do i = 1, num_qtys_found
-   write(line, '(A,I5,5A)') 'obs_qty_names(', i-1, ') = obs_qty_type(', &
-      trim(qty_string(i)), ", '", trim(qty_string(i)), "')"
+do i = 0, num_qtys_found-1
+   write(line, '(A,I5,5A))') 'obs_qty_names(', &
+      i, ') = obs_qty_type(', trim(qty_info(i)%name),  ", '", &
+      trim(qty_info(i)%name), "', &"
    write(obs_qty_out_unit, '(A)') trim(line)
-end do
-write(obs_qty_out_unit, '(A)') blank_line
+   write(line, '(3A,2(F20.12,A))') "     '", &
+      trim(qty_info(i)%ud_units_name), &
+      "' ,", &
+      qty_info(i)%minbound, &
+      ", ", &
+      qty_info(i)%maxbound, &
+      ")"
+   write(obs_qty_out_unit, '(A)') trim(line)
+enddo
+call write_blank_line(obs_qty_out_unit)
 
 ! Write out the definitions of each entry of obs_type_info
 do i = 1, num_types_found
    write(line, '(A,I5,3A)') 'obs_type_info(', i, ') = obs_type_type(', &
-      trim(type_string(i)), ", &"
+      trim(obs_info(i)%name), ", &"
    write(obs_qty_out_unit, '(A)') trim(line)
-   write(line, *) '   ', "'", trim(type_string(i)), "', ", &
-      trim(qty_string(qty_index(i))), ', .false., .false., .false.)'
+   write(line, *) '   ', "'", trim(obs_info(i)%name), "', ", &
+      trim(obs_info(i)%qty), ', .false., .false., .false.)'
    write(obs_qty_out_unit, '(A)') trim(line)
-end do
-write(obs_qty_out_unit, '(A)') blank_line
+enddo
+call write_blank_line(obs_qty_out_unit)
 
 
 ! Copy over rest of lines
-do
-   read(obs_qty_in_unit, 222, IOSTAT = ierr) line
-   ! Check for end of file
-   if(ierr /=0) exit
+call copy_until_end(obs_qty_in_unit, obs_qty_out_unit)
 
-   ! Write the line to the output file
-   write(obs_qty_out_unit, '(A)') trim(line)
-end do
+call close_file(obs_qty_in_unit)
+call close_file(obs_qty_out_unit)
 
-close(obs_qty_out_unit)
 !______________________________________________________________________________
 
 !______________________________________________________________________________
@@ -581,54 +585,35 @@ close(obs_qty_out_unit)
 
 ! There are seven special code sections (ITEMS) in the obs_def file at present.
 ! Each copies code in from the special type specific obs_qty modules
-! Loop goes to N+1 so that lines after the last item are copied to the output.
-ITEMS: do i = 1, 8
-   READ_LINE: do
-      read(obs_def_in_unit, 222, IOSTAT = ierr) line
-      222 format(A256)
+linenum4 = 0
+ITEMS: do i = 1, NUM_SECTIONS
 
-      ! Check for end of file (it's an error if this is before the 
-      ! 7 DART ITEMS have been passed)
-      if(ierr /= 0) then
-         if(i < 8) then
-            call error_handler(E_ERR, 'preprocess', &
-               'Input DEFAULT obs_def file ended unexpectedly', &
-               source, revision, revdate)
-         else
-            exit ITEMS
-         endif
-      endif
-
-      ! Check to see if this line indicates the start of an insertion section
-      test = adjustl(line)
-      t_string = '! DART PREPROCESS ' // trim(preprocess_string(i)) // ' INSERTED HERE'
-      if(test == t_string) exit READ_LINE
-
-      ! Write this line into the output file
-      write(obs_def_out_unit, '(A)') trim(line)
-
-   end do READ_LINE
+   t_string = '! DART PREPROCESS ' // trim(preprocess_string(i)) // ' INSERTED HERE'
+   call copy_until(obs_def_in_unit, input_obs_def_mod_file, t_string, linenum4, &
+                   obs_def_out_unit, output_obs_def_mod_file, .false.)
 
    ! The 'USE FOR OBS_QTY_MOD' section is handled differently; lines are not
    ! copied, they are generated based on the list of types and qtys.
    if(i == qty_item) then
       ! Create use statements for both the QTY_ quantities and the individual
       ! observation type strings.
-      write(obs_def_out_unit, '(A)') separator_line
-      write(obs_def_out_unit, '(A)') blank_line
+      call write_separator_line(obs_def_out_unit)
+      call write_blank_line(obs_def_out_unit)
       do k = 1, num_types_found
          write(obs_def_out_unit, '(A)') &
-            'use obs_kind_mod, only : ' // trim(type_string(k))     !!!!! FIXME: kind -> qty
-      end do
-      write(obs_def_out_unit, '(A)') blank_line
-      do k = 1, num_qtys_found
+            'use obs_kind_mod, only : ' // trim(obs_info(k)%name)     !!!!! FIXME: kind -> qty
+      enddo
+
+      call write_blank_line(obs_def_out_unit)
+      do k = 0, num_qtys_found-1
          write(obs_def_out_unit, '(A)') &
-            'use obs_kind_mod, only : ' // trim(qty_string(k))      !!!!! FIXME: kind -> qty
-      end do
-      write(obs_def_out_unit, '(A)') blank_line
-      write(obs_def_out_unit, '(A)') separator_line
-      write(obs_def_out_unit, '(A)') blank_line
-      cycle
+            'use obs_kind_mod, only : ' // trim(qty_info(k)%name)      !!!!! FIXME: kind -> qty
+      enddo
+      call write_blank_line(obs_def_out_unit)
+
+      call write_separator_line(obs_def_out_unit)
+      call write_blank_line(obs_def_out_unit)
+      cycle ITEMS
    endif
 
 
@@ -636,128 +621,83 @@ ITEMS: do i = 1, 8
    do j = 1, num_obs_type_files
       if (.not. file_has_usercode(j)) then
          if (i == module_item) then
-            write(obs_def_out_unit, '(A)') separator_line
-            write(obs_def_out_unit, 31) &
-               '!No module code needed for ', &
-               trim(obs_type_files(j))
-            write(obs_def_out_unit, '(A)') separator_line
+            call write_separator_line(obs_def_out_unit)
+            write(obs_def_out_unit, '(2A)') &
+               '!No module code needed for ', trim(obs_type_files(j))
+            call write_separator_line(obs_def_out_unit)
          endif
          !if (i == use_item) then
-         !   write(obs_def_out_unit, '(A)') separator_line
-         !   write(obs_def_out_unit, 31) &
-         !      '!No use statements needed for ', &
-         !      trim(obs_type_files(j))
-         !   write(obs_def_out_unit, '(A)') separator_line
+         !   call write_separator_line(obs_def_out_unit)
+         !   write(obs_def_out_unit, '(2A)') &
+         !      '!No use statements needed for ', trim(obs_type_files(j))
+         !   call write_separator_line(obs_def_out_unit)
          !endif
          cycle
       endif
 
       ! Since there might someday be a lot of these, 
       ! open and close them each time needed
-      if(file_exist(obs_type_files(j))) then
-         ! Open the file for reading
-         in_unit = open_file(obs_type_files(j), action='read')
-      else
-         ! If file does not exist it is an error
-         write(err_string, *) 'obs_type_files ', trim(obs_type_files(j)), &
-            ' does NOT exist.'
-         call error_handler(E_ERR, 'preprocess', err_string, &
-            source, revision, revdate)
-      endif
+      call open_file_for_read(obs_type_files(j), 'obs_type_files', in_unit)
+      linenum3 = 0
 
       ! Read until the appropriate ITEM # label is found in the input 
       ! for this obs_type
-      FIND_ITEM: do
-
-         read(in_unit, 222, IOSTAT = ierr) line
-         ! If end of file, input file is incomplete or weird stuff happened
-         if(ierr /=0) then
-            write(err_string, *) 'file ', trim(obs_type_files(j)), &
-               ' does NOT contain ! BEGIN DART PREPROCESS ', &
-               trim(preprocess_string(i))
-            call error_handler(E_ERR, 'preprocess', err_string, &
-               source, revision, revdate)
-         endif
-
-         ! Look for the ITEM flag
-         test = adjustl(line)
-         t_string = '! BEGIN DART PREPROCESS ' // trim(preprocess_string(i))
-         if(test == t_string) exit FIND_ITEM
-
-      end do FIND_ITEM
+      t_string = '! BEGIN DART PREPROCESS ' // trim(preprocess_string(i)) 
+      call read_until(in_unit, obs_type_files(j), t_string, linenum3)
       
       ! decoration or visual separation, depending on your viewpoint
       if (i == module_item) then
-         write(obs_def_out_unit, '(A)') separator_line
-         write(obs_def_out_unit, 31) '! Start of code inserted from ', &
+         call write_separator_line(obs_def_out_unit)
+         write(obs_def_out_unit, '(2A)') '! Start of code inserted from ', &
             trim(obs_type_files(j))
-         write(obs_def_out_unit, '(A)') separator_line
-         write(obs_def_out_unit, '(A)') blank_line
-         31 format(2A)
+         call write_separator_line(obs_def_out_unit)
+         call write_blank_line(obs_def_out_unit)
       endif
 
       ! Copy all code until the end of item into the output obs_def file
-      COPY_ITEM: do
-         read(in_unit, 222, IOSTAT = ierr) line
-         ! If end of file, input file is incomplete or weird stuff happened
-         if(ierr /=0) then
-            write(err_string, *) 'file ', trim(obs_type_files(j)), &
-               ' does NOT contain ! END DART PREPROCESS ', &
-               trim(preprocess_string(i))
-            call error_handler(E_ERR, 'preprocess', err_string, &
-               source, revision, revdate)
-         endif
-
-         ! Look for the ITEM flag
-         test = adjustl(line)
-         t_string = '! END DART PREPROCESS ' // trim(preprocess_string(i))
-         if(test == t_string) exit COPY_ITEM
-
-         ! Write the line to the output obs_def_mod.f90 file
-         ! Module code, if present, is copied verbatim.  
-         ! All other code sections are preceeded by a ! in col 1
-         ! so it must be stripped off.
-         if (i == module_item) then
-            write(obs_def_out_unit, '(A)') trim(line)
-         else
-            write(obs_def_out_unit, '(A)') trim(line(2:))
-         endif
-      end do COPY_ITEM
+ 
+      t_string = '! END DART PREPROCESS ' // trim(preprocess_string(i))
+      call copy_until(in_unit, obs_type_files(j), t_string, linenum3, &
+                      obs_def_out_unit, output_obs_def_mod_file, (i /= module_item))
+         
 
       ! decoration or visual separation, depending on your viewpoint
       if (i == module_item) then
-         write(obs_def_out_unit, '(A)') blank_line
-         write(obs_def_out_unit, '(A)') separator_line
-         write(obs_def_out_unit, 31) '! End of code inserted from ', &
+         call write_blank_line(obs_def_out_unit)
+         call write_separator_line(obs_def_out_unit)
+         write(obs_def_out_unit, '(2A)') '! End of code inserted from ', &
             trim(obs_type_files(j))
-         write(obs_def_out_unit, '(A)') separator_line
+         call write_separator_line(obs_def_out_unit)
       endif
 
       ! Got everything from this file, move along
-      close(in_unit)
-  end do
+      call close_file(in_unit)
+  enddo
    
   ! Now check to see if this item has any types which are expecting us
   ! to automatically generate the code for them.
   do j = 1, num_types_found
-     if (usercode(j)) cycle
+     if (obs_info(j)%has_usercode) cycle
 
      select case (i)
      case (get_expected_item)
-        write(obs_def_out_unit, '(A)')  '      case(' // trim(type_string(j)) // ')'
+        write(obs_def_out_unit, '(A)')  '      case(' // trim(obs_info(j)%name) // ')'
         write(obs_def_out_unit, '(3A)') '         call interpolate(state_handle, ens_size, location, ', &
-           trim(qty_string(qty_index(j))), ', expected_obs, istatus)'
+           trim(obs_info(j)%qty), ', expected_obs, istatus)'
      case (read_item, write_item, interactive_item)
-        write(obs_def_out_unit, '(A)')  '   case(' // trim(type_string(j)) // ')'
+        write(obs_def_out_unit, '(A)')  '   case(' // trim(obs_info(j)%name) // ')'
         write(obs_def_out_unit, '(A)')  '      continue'
      case default
        ! nothing to do for others 
      end select
-  end do
+  enddo
 
-end do ITEMS
+enddo ITEMS
 
-close(obs_def_out_unit)
+call copy_until_end(obs_def_in_unit, obs_def_out_unit)
+
+call close_file(obs_def_in_unit)
+call close_file(obs_def_out_unit)
 
 call error_handler(E_MSG,'preprocess','Finished successfully.',source,revision,revdate)
 call finalize_utilities('preprocess')
@@ -777,13 +717,13 @@ character(len=*), intent(in) :: iname
 character(len=*), intent(in) :: stop_string
 integer, intent(inout) :: linenum
 
-call do_until(iunit, iname, stop_string, linenum, .false., 0, '')
+call do_until(iunit, iname, stop_string, linenum, .false., 0, '', .false.)
 
 end subroutine read_until
 
 !------------------------------------------------------------------------------
 
-subroutine copy_until(iunit, iname, stop_string, linenum, ounit, oname)
+subroutine copy_until(iunit, iname, stop_string, linenum, ounit, oname, trimfirst)
 
 integer, intent(in) :: iunit
 character(len=*), intent(in) :: iname
@@ -791,14 +731,15 @@ character(len=*), intent(in) :: stop_string
 integer, intent(inout) :: linenum
 integer, intent(in) :: ounit
 character(len=*), intent(in) :: oname
+logical, intent(in) :: trimfirst
 
-call do_until(iunit, iname, stop_string, linenum, .true., ounit, oname)
+call do_until(iunit, iname, stop_string, linenum, .true., ounit, oname, trimfirst)
 
 end subroutine copy_until
 
 !------------------------------------------------------------------------------
 
-subroutine do_until(iunit, iname, stop_string, linenum, docopy, ounit, oname)
+subroutine do_until(iunit, iname, stop_string, linenum, docopy, ounit, oname, trimfirst)
 
 integer, intent(in) :: iunit
 character(len=*), intent(in) :: iname
@@ -807,6 +748,7 @@ integer, intent(inout) :: linenum
 logical, intent(in) :: docopy
 integer, intent(in) :: ounit
 character(len=*), intent(in) :: oname
+logical, intent(in) :: trimfirst
 
 integer :: ierr
 character(len=256) :: line   ! this should match the format length
@@ -827,11 +769,15 @@ FIND_NEXT: do
    linenum = linenum + 1
 
    ! Look for the required string in the current line
-   if(line == stop_string) exit FIND_NEXT
+   if(index(line, trim(stop_string)) > 0) exit FIND_NEXT
 
    ! if doing a copy, write it verbatim to the output file
    if (docopy) then
-       write(ounit, full_line_out, IOSTAT = ierr) trim(line)
+       if (trimfirst) then
+          write(ounit, full_line_out, IOSTAT = ierr) trim(line(2:))
+       else
+          write(ounit, full_line_out, IOSTAT = ierr) trim(line)
+       endif
        if(ierr /= 0) then
           write(err_string,  *) 'Write error, returned code = ', ierr
           write(err_string2, *) 'writing file ', trim(oname)
@@ -841,9 +787,29 @@ FIND_NEXT: do
    endif
 
 
-end do FIND_NEXT
+enddo FIND_NEXT
 
 end subroutine do_until
+
+!------------------------------------------------------------------------------
+
+subroutine copy_until_end(iunit, ounit)
+
+integer, intent(in) :: iunit
+integer, intent(in) :: ounit
+
+integer :: ierr
+
+DO_NEXT: do
+
+   read(iunit, full_line_in, IOSTAT = ierr) line
+   if (ierr /= 0) exit DO_NEXT
+
+   write(ounit, full_line_out) trim(line)
+
+enddo DO_NEXT
+
+end subroutine copy_until_end
 
 !------------------------------------------------------------------------------
 
@@ -852,7 +818,7 @@ subroutine typeqty_error(errtext, line, file, linenum)
  integer, intent(in) :: linenum
 
 call error_handler(E_MSG, 'preprocess error:', &
-   'obs_def file has bad Type/Qty line')
+   'obs_def file has bad Obs Type/Qty line')
 call error_handler(E_MSG, 'preprocess error:', errtext)
 call error_handler(E_MSG, 'expected input:', &
    '! UniqueObsType, Quantity   or  ! UniqueObsType, Quantity, COMMON_CODE')
@@ -871,10 +837,13 @@ subroutine quantity_error(errtext, line, file, linenum)
  integer, intent(in) :: linenum
 
 call error_handler(E_MSG, 'preprocess error:', &
-   'obs_def file has bad Quantity line')
+   'obs_qty file has bad Quantity line')
 call error_handler(E_MSG, 'preprocess error:', errtext)
 call error_handler(E_MSG, 'expected input:', &
-   '! QTY_xxx    or  ! comment only ')
+   '! QTY_xxx "units"   or  ! comment line ')
+call error_handler(E_MSG, 'or:', &
+   '! QTY_xxx "units" min_bounds max_bounds')
+call error_handler(E_MSG, 'where:', 'if unbounded on one side, use NA or MISSING_R8')
 write(err_string, '(2A,I5)') trim(file), ", line number", linenum
 call error_handler(E_MSG, 'bad file:', err_string)
 call error_handler(E_MSG, 'bad line contents:', line)
@@ -882,6 +851,168 @@ write(err_string, *) 'See msg lines above for error details'
 call error_handler(E_ERR, 'preprocess', err_string, source, revision, revdate)
 
 end subroutine quantity_error
+
+!------------------------------------------------------------------------------
+
+! get the next line from the input file, and bump up the line count
+! it is an error if you get to the end of the file.
+
+subroutine get_next_line(iunit, format, end_string, filename, linenum)
+ integer, intent(in) :: iunit
+ character(len=*), intent(in) :: format, end_string, filename
+ integer, intent(inout) :: linenum
+
+integer :: ierr
+
+read(iunit, format, IOSTAT = ierr) line
+if (ierr == 0) then
+   linenum = linenum + 1
+   return
+endif
+
+! If end of file, input file is incomplete or weird stuff happened
+write(err_string, *) 'file ', trim(filename), &
+                  ' does NOT contain ', trim(end_string)
+call error_handler(E_ERR, 'preprocess', err_string, &
+                   source, revision, revdate)
+
+end subroutine get_next_line
+
+!------------------------------------------------------------------------------
+
+! if the file exists, open for reading.
+! otherwise it is an error.
+
+subroutine open_file_for_read(filename, label, fileunit)
+ character(len=*), intent(in) :: filename, label
+ integer, intent(out) :: fileunit
+
+if(file_exist(filename)) then
+   fileunit = open_file(filename, action='read')
+   return
+endif
+
+! If file does not exist it is an error
+write(err_string, *) trim(label) // ' ' // trim(filename), & 
+                     ' does NOT exist (and must).'
+call error_handler(E_ERR, 'preprocess', err_string, &
+      source, revision, revdate)
+
+end subroutine open_file_for_read
+
+!------------------------------------------------------------------------------
+
+! if the file does NOT exist, create.  if override flag is set,
+! allow an existing file to be completely overwritten.
+! otherwise it is an error.
+
+subroutine open_file_for_write(filename, label, overwrite, fileunit)
+ character(len=*), intent(in) :: filename, label
+ logical, intent(in) :: overwrite
+ integer, intent(out) :: fileunit
+
+if((.not. file_exist(filename)) .or. overwrite) then
+   fileunit = open_file(filename, action='write')
+   return
+endif
+
+! If file *does* exist and we haven't said ok to overwrite, error
+write(err_string, *) trim(label) // ' ' // trim(filename), &
+                     ' exists and will not be overwritten: Please remove or rename'
+call error_handler(E_ERR, 'preprocess', err_string, &
+      source, revision, revdate)
+
+end subroutine open_file_for_write
+
+!------------------------------------------------------------------------------
+
+subroutine cannot_be_null(varvalue, varname)
+ character(len=*), intent(in) :: varvalue, varname
+
+if(varvalue /= 'null') return
+
+call error_handler(E_ERR, 'preprocess', &
+                  'Namelist must provide ' // trim(varname), &
+                   source, revision, revdate)
+
+end subroutine cannot_be_null
+
+!------------------------------------------------------------------------------
+
+! can this be common for qtys & types?  maybe...
+! ntokens < 0 means error
+! ntokens == 0 means cycle without error
+! ntokens > 0 means some work to do
+
+subroutine parse_line(line, ntokens, tokens, estring)
+ character(len=*), intent(in)  :: line
+ integer,          intent(out) :: ntokens
+ character(len=*), intent(out) :: tokens(MAX_TOKENS)
+ character(len=*), intent(out) :: estring
+
+character(len=256) :: test
+integer :: i
+integer :: trimmed_len, start_of_comment
+
+ntokens = 0
+estring = ''
+
+! plan:
+! 1) strip the required leading ! in col 1
+! 2) truncate string at next !
+! 3) parse into tokens by spaces, respecting " or ' strings (not yet)
+! 4) strip trailing commas off tokens for now.
+
+if (line(1:1) /= '!') then 
+   ntokens = -1
+   estring = 'line must begin with !'
+   return
+endif
+
+test = adjustl(line(2:))
+trimmed_len = len_trim(test)
+
+start_of_comment = index(test, '!')
+if (start_of_comment > 0) &
+  test(start_of_comment:trimmed_len) = ' '
+
+trimmed_len = len_trim(test)
+if (trimmed_len == 0) return
+
+! hack for now - remove all commas from line.
+! this will only mess things up if there is a
+! unit type with a comma in it.
+
+do 
+   i = index(test, ',')
+   if (i == 0) exit
+   test(i:i) = ' '
+enddo
+
+! parse here
+call get_args_from_string(test, ntokens, tokens)
+
+end subroutine parse_line
+
+!------------------------------------------------------------------------------
+
+subroutine string_to_real(s, r, estring)
+ character(len=*), intent(in) :: s
+ real(r8), intent(out) :: r
+ character(len=*), intent(out) :: estring
+
+estring = ''
+r = MISSING_R8
+
+if (s == 'MISSING_R8' .or. s == 'NA') return
+
+read(s, *, iostat=ierr) r
+if(ierr /= 0) then
+   estring = 'unable to convert string to real number'   
+   return
+endif
+
+end subroutine string_to_real
 
 !------------------------------------------------------------------------------
 

@@ -14,7 +14,7 @@
 
 module obs_kind_mod
 
-use        types_mod, only : obstypelength
+use        types_mod, only : obstypelength, r8, MISSING_R8
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN,  &
                              logfileunit, find_namelist_in_file, log_it,     &
                              check_namelist_read, do_output, ascii_file_format
@@ -33,7 +33,9 @@ public :: get_name_for_type_of_obs, &
           map_type_of_obs_table,  &
           use_ext_prior_this_type_of_obs, &
           get_name_for_quantity, &
-          get_index_for_quantity
+          get_index_for_quantity, &
+          get_units_for_quantity, &
+          get_bounds_for_quantity
 
 public :: get_num_types_of_obs, get_num_quantities
 
@@ -63,10 +65,10 @@ public :: get_num_types_of_obs, get_num_quantities
 !----------------------------------------------------------------------------
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 ! integer, parameters: max_defined_types_of_obs, max_defined_quantities 
 ! generated and inserted by preprocess.
@@ -74,6 +76,9 @@ character(len=128), parameter :: revdate  = "$Date$"
 logical, save :: module_initialized = .false.
 
 character(len=512) :: msg_string, msg_string1
+
+! @todo FIXME: what is the right len for a units string?
+integer, parameter :: unitslen = 128
 
 integer :: num_types_assimilate, num_types_evaluate 
 integer :: num_types_use_precomputed_FOs
@@ -108,8 +113,11 @@ end type obs_type_type
 type(obs_type_type) :: obs_type_info(max_defined_types_of_obs)
 
 type obs_qty_type
-   integer                      :: index
-   character(len=obstypelength) :: name
+   integer                      :: index = -1
+   character(len=obstypelength) :: name = 'null'
+   character(len=unitslen)      :: units = 'none'
+   real(r8)                     :: minbound = MISSING_R8
+   real(r8)                     :: maxbound = MISSING_R8
 end type obs_qty_type
 
 ! An obs_qty_name_type is defined by the preprocess program to store
@@ -424,6 +432,50 @@ end do
 get_index_for_quantity = -1
 
 end function get_index_for_quantity
+
+!----------------------------------------------------------------------------
+! Get units string for quantity by index
+
+function get_units_for_quantity(obs_qty_ind)
+
+! Returns the units string for this quantity index
+! Returns 'null' if index out of range
+
+integer, intent(in) :: obs_qty_ind
+character(len=128)  :: get_units_for_quantity
+
+character(len=*), parameter :: routine = 'get_units_for_quantity'
+
+if (.not. module_initialized) call initialize_module
+
+call validate_obs_qty_index(obs_qty_ind, routine)
+
+get_units_for_quantity = obs_qty_names(obs_qty_ind)%units
+
+end function get_units_for_quantity
+
+!----------------------------------------------------------------------------
+! Get bounds values for quantity by index
+
+subroutine get_bounds_for_quantity(obs_qty_ind, minbounds, maxbounds)
+
+! Returns the min/max bounds, if any, for this quantity index
+! Returns MISSING_R8 if no bounds
+
+integer,  intent(in)  :: obs_qty_ind
+real(r8), intent(out) :: minbounds
+real(r8), intent(out) :: maxbounds
+
+character(len=*), parameter :: routine = 'get_bounds_for_quantity'
+
+if (.not. module_initialized) call initialize_module
+
+call validate_obs_qty_index(obs_qty_ind, routine)
+
+minbounds = obs_qty_names(obs_qty_ind)%minbound
+maxbounds = obs_qty_names(obs_qty_ind)%maxbound
+
+end subroutine get_bounds_for_quantity
 
 !----------------------------------------------------------------------------
 !> Accessor function to return observation type count

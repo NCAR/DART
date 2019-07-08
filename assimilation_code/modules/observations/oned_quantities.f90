@@ -11,11 +11,11 @@
 !
 ! BEGIN DART PREPROCESS QUANTITY DEFINITIONS
 !
-!  QTY_STATE_VARIABLE            ! basic item in a state 
-!  QTY_1D_INTEGRAL               ! compute value with an integral 
-!  QTY_STATE_VAR_POWER           ! raising a state value to a power
-!  QTY_LARGE_SCALE_STATE         ! state varies with large time/space scale
-!  QTY_SMALL_SCALE_STATE         ! state varies with small time/space scale
+!  QTY_STATE_VARIABLE      none      ! basic item in a state 
+!  QTY_1D_INTEGRAL         none      ! compute value with an integral 
+!  QTY_STATE_VAR_POWER     none      ! raising a state value to a power
+!  QTY_LARGE_SCALE_STATE   none      ! state varies with large time/space scale
+!  QTY_SMALL_SCALE_STATE   none      ! state varies with small time/space scale
 ! 
 ! END DART PREPROCESS QUANTITY DEFINITIONS
 
