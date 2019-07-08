@@ -1892,7 +1892,7 @@ call nc_add_attribute_to_variable(ncid, 'slat', 'units',     'degrees_north',   
 ! Vertical Grid Latitudes
 call nc_define_real_variable(     ncid, 'lev', (/ 'lev' /),                                                     routine)
 call nc_add_attribute_to_variable(ncid, 'lev', 'long_name',      'hybrid level at midpoints (1000*(A+B))',      routine)
-call nc_add_attribute_to_variable(ncid, 'lev', 'units',          'level',                                       routine)
+call nc_add_attribute_to_variable(ncid, 'lev', 'units',          'hPa',                                         routine)
 call nc_add_attribute_to_variable(ncid, 'lev', 'positive',       'down',                                        routine)
 call nc_add_attribute_to_variable(ncid, 'lev', 'standard_name',  'atmosphere_hybrid_sigma_pressure_coordinate', routine)
 call nc_add_attribute_to_variable(ncid, 'lev', 'formula_terms',  'a: hyam b: hybm p0: P0 ps: PS',               routine)
@@ -1900,7 +1900,7 @@ call nc_add_attribute_to_variable(ncid, 'lev', 'formula_terms',  'a: hyam b: hyb
 
 call nc_define_real_variable(     ncid, 'ilev', (/ 'ilev' /),                                                    routine)
 call nc_add_attribute_to_variable(ncid, 'ilev', 'long_name',      'hybrid level at interfaces (1000*(A+B))',     routine)
-call nc_add_attribute_to_variable(ncid, 'ilev', 'units',          'level',                                       routine)
+call nc_add_attribute_to_variable(ncid, 'ilev', 'units',          'hPa',                                         routine)
 call nc_add_attribute_to_variable(ncid, 'ilev', 'positive',       'down',                                        routine)
 call nc_add_attribute_to_variable(ncid, 'ilev', 'standard_name',  'atmosphere_hybrid_sigma_pressure_coordinate', routine)
 call nc_add_attribute_to_variable(ncid, 'ilev', 'formula_terms',  'a: hyai b: hybi p0: P0 ps: PS',               routine)
