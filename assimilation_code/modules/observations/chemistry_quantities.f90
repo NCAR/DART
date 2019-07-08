@@ -7,52 +7,52 @@
 
  
 ! ! in this section you can have comments (which need a second !) or
-! ! lines with a single word on them that begins QTY_ 
-! ! can have trailing comments after:  QTY_xxx  ! comment
+! ! lines with a single word on them that begins QTY_    "none"   MISSING_R8   MISSING_R8
+! ! can have trailing comments after:  QTY_xxx  ! comment   "none"   MISSING_R8   MISSING_R8
 !
 ! BEGIN DART PREPROCESS QUANTITY DEFINITIONS
 !
-!     QTY_STATE_VARIABLE             
+!     QTY_STATE_VARIABLE                "none"   MISSING_R8   MISSING_R8
 ! ! these chemistry kinds match the numbers Arthur Mizzi is using
-!     QTY_O3                         
-!     QTY_CO                         
-!     QTY_NO                         
-!     QTY_NO2                        
+!     QTY_O3                            "none"   MISSING_R8   MISSING_R8
+!     QTY_CO                            "none"   MISSING_R8   MISSING_R8
+!     QTY_NO                            "none"   MISSING_R8   MISSING_R8
+!     QTY_NO2                           "none"   MISSING_R8   MISSING_R8
 ! 
 ! ! more chemistry kinds (Jerome Barre)  (through 249)
-!     QTY_CO01                       
-!     QTY_CO02                       
-!     QTY_CO03                       
+!     QTY_CO01                          "none"   MISSING_R8   MISSING_R8
+!     QTY_CO02                          "none"   MISSING_R8   MISSING_R8
+!     QTY_CO03                          "none"   MISSING_R8   MISSING_R8
 ! 
-!     QTY_SFCO                       
-!     QTY_SFCO01                     
-!     QTY_SFCO02                     
-!     QTY_SFCO03                     
-! 
-! 
-!     QTY_AOD                        
-!     QTY_CB1                        
-!     QTY_CB2                        
-!     QTY_OC1                        
-!     QTY_OC2                        
-!     QTY_CB102                      
-!     QTY_CB202                      
-!     QTY_OC102                      
-!     QTY_OC202                      
+!     QTY_SFCO                          "none"   MISSING_R8   MISSING_R8
+!     QTY_SFCO01                        "none"   MISSING_R8   MISSING_R8
+!     QTY_SFCO02                        "none"   MISSING_R8   MISSING_R8
+!     QTY_SFCO03                        "none"   MISSING_R8   MISSING_R8
 ! 
 ! 
-!     QTY_SFCB1                      
-!     QTY_SFCB2                      
-!     QTY_SFOC1                      
-!     QTY_SFOC2                      
-!     QTY_SFCB102                    
-!     QTY_SFCB202                    
-!     QTY_SFOC102                    
-!     QTY_SFOC202                    
+!     QTY_AOD                           "none"   MISSING_R8   MISSING_R8
+!     QTY_CB1                           "none"   MISSING_R8   MISSING_R8
+!     QTY_CB2                           "none"   MISSING_R8   MISSING_R8
+!     QTY_OC1                           "none"   MISSING_R8   MISSING_R8
+!     QTY_OC2                           "none"   MISSING_R8   MISSING_R8
+!     QTY_CB102                         "none"   MISSING_R8   MISSING_R8
+!     QTY_CB202                         "none"   MISSING_R8   MISSING_R8
+!     QTY_OC102                         "none"   MISSING_R8   MISSING_R8
+!     QTY_OC202                         "none"   MISSING_R8   MISSING_R8
 ! 
-!     QTY_CO2                        
-!     QTY_NH3                        
-!     QTY_CH4                        
+! 
+!     QTY_SFCB1                         "none"   MISSING_R8   MISSING_R8
+!     QTY_SFCB2                         "none"   MISSING_R8   MISSING_R8
+!     QTY_SFOC1                         "none"   MISSING_R8   MISSING_R8
+!     QTY_SFOC2                         "none"   MISSING_R8   MISSING_R8
+!     QTY_SFCB102                       "none"   MISSING_R8   MISSING_R8
+!     QTY_SFCB202                       "none"   MISSING_R8   MISSING_R8
+!     QTY_SFOC102                       "none"   MISSING_R8   MISSING_R8
+!     QTY_SFOC202                       "none"   MISSING_R8   MISSING_R8
+! 
+!     QTY_CO2                           "none"   MISSING_R8   MISSING_R8
+!     QTY_NH3                           "none"   MISSING_R8   MISSING_R8
+!     QTY_CH4                           "none"   MISSING_R8   MISSING_R8
 ! 
 ! 
 ! END DART PREPROCESS QUANTITY DEFINITIONS

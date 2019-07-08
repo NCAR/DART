@@ -12,19 +12,25 @@
 !
 ! BEGIN DART PREPROCESS QUANTITY DEFINITIONS
 !
-!     QTY_STATE_VARIABLE             
+! ! ocean related quantities
 !
-! ! kinds for the MITgcm, POP ocean model
-!
-!     QTY_SALINITY                   
-!     QTY_U_CURRENT_COMPONENT        
-!     QTY_V_CURRENT_COMPONENT        
-!     QTY_SEA_SURFACE_HEIGHT         
-!     QTY_DRY_LAND                   
-!     QTY_SEA_SURFACE_PRESSURE       
-!     QTY_W_CURRENT_COMPONENT        
-!     QTY_SEA_SURFACE_ANOMALY          
+!     QTY_SALINITY                    "none"  0.0           MISSING_R8
+!     QTY_TEMPERATURE                 "none"  0.0           MISSING_R8
+!     QTY_POTENTIAL_TEMPERATURE       "none"  0.0           MISSING_R8
+!     QTY_PRESSURE                    "none"  0.0           MISSING_R8
+!     QTY_VELOCITY                    "none"  0.0           MISSING_R8
+!     QTY_U_CURRENT_COMPONENT         "none"  MISSING_R8    MISSING_R8
+!     QTY_V_CURRENT_COMPONENT         "none"  MISSING_R8    MISSING_R8
+!     QTY_SEA_SURFACE_HEIGHT          "none"  MISSING_R8    MISSING_R8
+!     QTY_DRY_LAND                    "none"  0.0           1.0
+!     QTY_SEA_SURFACE_PRESSURE        "none"  MISSING_R8    MISSING_R8
+!     QTY_W_CURRENT_COMPONENT         "none"  MISSING_R8    MISSING_R8
+!     QTY_SEA_SURFACE_ANOMALY         "none"  MISSING_R8    MISSING_R8
 ! 
+!
+! ! fixme - this is hardcoded in obs_diag and shouldn't be
+!     QTY_U_WIND_COMPONENT            "none"  MISSING_R8    MISSING_R8
+!     QTY_V_WIND_COMPONENT            "none"  MISSING_R8    MISSING_R8
 ! 
 ! END DART PREPROCESS QUANTITY DEFINITIONS
 

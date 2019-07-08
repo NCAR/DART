@@ -7,7 +7,7 @@
 ! Fortran has a limit of 32 characters for variable names. Hence,
 ! each column can be at most 32 characters wide.
 ! xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS QUANTITY LIST
 ! SAT_TEMPERATURE,                 QTY_TEMPERATURE,                COMMON_CODE
 ! SAT_TEMPERATURE_ELECTRON,        QTY_TEMPERATURE_ELECTRON,       COMMON_CODE
 ! SAT_TEMPERATURE_ION,             QTY_TEMPERATURE_ION,            COMMON_CODE
@@ -52,7 +52,7 @@
 ! MIDAS_TEC,                       QTY_VERTICAL_TEC
 ! SSUSI_O_N2_RATIO,                QTY_O_N2_COLUMN_DENSITY_RATIO
 ! GPS_VTEC_EXTRAP,                 QTY_VERTICAL_TEC,               COMMON_CODE
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS QUANTITY LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !  use obs_def_upper_atm_mod, only : get_expected_upper_atm_density
