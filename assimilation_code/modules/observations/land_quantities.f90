@@ -7,56 +7,54 @@
 
  
 ! ! in this section you can have comments (which need a second !) or
-! ! lines with a single word on them that begins QTY_ 
-! ! can have trailing comments after:  QTY_xxx  ! comment
+! ! lines with a single word on them that begins QTY_    "none"
+! ! can have trailing comments after:  QTY_xxx  ! comment   "none"
 !
 ! BEGIN DART PREPROCESS QUANTITY DEFINITIONS
 !
-!     QTY_STATE_VARIABLE             
-!
 ! ! kinds for CLM - Community Land Model (Tim Hoar)
-!     QTY_SNOW_THICKNESS             
-!     QTY_SNOW_WATER                 
-!     QTY_SNOWCOVER_FRAC             
-!     QTY_LIQUID_WATER               
-!     QTY_ICE                        
-!     QTY_CARBON                     
-!     QTY_SOIL_CARBON                
-!     QTY_ROOT_CARBON                
-!     QTY_STEM_CARBON                
-!     QTY_LEAF_CARBON                
-!     QTY_LEAF_AREA_INDEX            
-!     QTY_NET_CARBON_FLUX            
-!     QTY_LATENT_HEAT_FLUX           
-!     QTY_SENSIBLE_HEAT_FLUX         
-!     QTY_RADIATION                  
-!     QTY_NET_CARBON_PRODUCTION      
-!     QTY_NITROGEN                   
-!     QTY_SOIL_NITROGEN              
-!     QTY_ROOT_NITROGEN              
-!     QTY_STEM_NITROGEN              
-!     QTY_LEAF_NITROGEN              
-!     QTY_WATER_TABLE_DEPTH          
-!     QTY_FPAR                       
-!     QTY_TOTAL_WATER_STORAGE        
+!     QTY_SNOW_THICKNESS                "none"
+!     QTY_SNOW_WATER                    "none"
+!     QTY_SNOWCOVER_FRAC                "none"
+!     QTY_LIQUID_WATER                  "none"
+!     QTY_ICE                           "none"
+!     QTY_CARBON                        "none"
+!     QTY_SOIL_CARBON                   "none"
+!     QTY_ROOT_CARBON                   "none"
+!     QTY_STEM_CARBON                   "none"
+!     QTY_LEAF_CARBON                   "none"
+!     QTY_LEAF_AREA_INDEX               "none"
+!     QTY_NET_CARBON_FLUX               "none"
+!     QTY_LATENT_HEAT_FLUX              "none"
+!     QTY_SENSIBLE_HEAT_FLUX            "none"
+!     QTY_RADIATION                     "none"
+!     QTY_NET_CARBON_PRODUCTION         "none"
+!     QTY_NITROGEN                      "none"
+!     QTY_SOIL_NITROGEN                 "none"
+!     QTY_ROOT_NITROGEN                 "none"
+!     QTY_STEM_NITROGEN                 "none"
+!     QTY_LEAF_NITROGEN                 "none"
+!     QTY_WATER_TABLE_DEPTH             "none"
+!     QTY_FPAR                          "none"
+!     QTY_TOTAL_WATER_STORAGE           "none"
 ! 
 ! ! kinds for NOAH  (Tim Hoar)
-!     QTY_NEUTRON_INTENSITY          
-!     QTY_CANOPY_WATER               
-!     QTY_GROUND_HEAT_FLUX           
+!     QTY_NEUTRON_INTENSITY             "none"
+!     QTY_CANOPY_WATER                  "none"
+!     QTY_GROUND_HEAT_FLUX              "none"
 !  
 ! ! more land kinds
-!   QTY_BRIGHTNESS_TEMPERATURE       
-!   QTY_VEGETATION_TEMPERATURE       
-!   QTY_CANOPY_HEIGHT                
-!   QTY_FPAR_DIRECT                  
-!   QTY_FPAR_DIFFUSE                 
-!   QTY_FPAR_SUNLIT_DIRECT           
-!   QTY_FPAR_SUNLIT_DIFFUSE          
-!   QTY_FPAR_SHADED_DIRECT           
-!   QTY_FPAR_SHADED_DIFFUSE          
-!   QTY_FPSN                         
-!   QTY_FSIF                         
+!   QTY_BRIGHTNESS_TEMPERATURE          "none"
+!   QTY_VEGETATION_TEMPERATURE          "none"
+!   QTY_CANOPY_HEIGHT                   "none"
+!   QTY_FPAR_DIRECT                     "none"
+!   QTY_FPAR_DIFFUSE                    "none"
+!   QTY_FPAR_SUNLIT_DIRECT              "none"
+!   QTY_FPAR_SUNLIT_DIFFUSE             "none"
+!   QTY_FPAR_SHADED_DIRECT              "none"
+!   QTY_FPAR_SHADED_DIFFUSE             "none"
+!   QTY_FPSN                            "none"
+!   QTY_FSIF                            "none"
 ! 
 ! 
 ! END DART PREPROCESS QUANTITY DEFINITIONS

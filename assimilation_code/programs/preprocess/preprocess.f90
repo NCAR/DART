@@ -541,7 +541,7 @@ call write_blank_line(obs_qty_out_unit)
 
 ! Write out the definitions of each entry of obs_qty_names
 do i = 0, num_qtys_found-1
-   write(line, '(A,I5,5A))') 'obs_qty_names(', &
+   write(line, '(A,I5,5A)') 'obs_qty_names(', &
       i, ') = obs_qty_type(', trim(qty_info(i)%name),  ", '", &
       trim(qty_info(i)%name), "', &"
    write(obs_qty_out_unit, '(A)') trim(line)

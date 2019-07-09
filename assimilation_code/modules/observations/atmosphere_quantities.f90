@@ -7,23 +7,24 @@
 
  
 ! ! in this section you can have comments (which need a second !) or
-! ! lines with a single word on them that begins QTY_    "none"   MISSING_R8   MISSING_R8
-! ! can have trailing comments after:  QTY_xxx  ! comment   "none"   MISSING_R8   MISSING_R8
+! ! lines with two words on them:      QTY_xxx    "m/s"
+! ! or lines with 4 words on them:     QTY_xxx    "hPa"   0.0   MISSING_R8
+! ! can have trailing comments after:  QTY_xxx  "m"  ! comment
 !
 ! BEGIN DART PREPROCESS QUANTITY DEFINITIONS
 !
 !     QTY_STATE_VARIABLE                "none"   MISSING_R8   MISSING_R8
-!     QTY_U_WIND_COMPONENT              "none"   MISSING_R8   MISSING_R8
-!     QTY_V_WIND_COMPONENT              "none"   MISSING_R8   MISSING_R8
-!     QTY_SURFACE_PRESSURE              "none"   MISSING_R8   MISSING_R8
-!     QTY_TEMPERATURE                   "none"   MISSING_R8   MISSING_R8
+!     QTY_U_WIND_COMPONENT              "m/s"    MISSING_R8   MISSING_R8
+!     QTY_V_WIND_COMPONENT              "m/s"    MISSING_R8   MISSING_R8
+!     QTY_SURFACE_PRESSURE              "hPa"    0.0          MISSING_R8
+!     QTY_TEMPERATURE                   "K"      0.0          MISSING_R8
 !     QTY_SPECIFIC_HUMIDITY             "none"   MISSING_R8   MISSING_R8
-!     QTY_PRESSURE                      "none"   MISSING_R8   MISSING_R8
-!     QTY_VERTICAL_VELOCITY             "none"   MISSING_R8   MISSING_R8
+!     QTY_PRESSURE                      "hPa"    0.0          MISSING_R8
+!     QTY_VERTICAL_VELOCITY             "m/s"    MISSING_R8   MISSING_R8
 !     QTY_RAINWATER_MIXING_RATIO        "none"   MISSING_R8   MISSING_R8
 !     QTY_DEWPOINT                      "none"   MISSING_R8   MISSING_R8
 !     QTY_DENSITY                       "none"   MISSING_R8   MISSING_R8
-!     QTY_VELOCITY                      "none"   MISSING_R8   MISSING_R8
+!     QTY_VELOCITY                      "m/s"    MISSING_R8   MISSING_R8
 !     QTY_RADAR_REFLECTIVITY            "none"   MISSING_R8   MISSING_R8
 !     QTY_GRAUPEL_MIXING_RATIO          "none"   MISSING_R8   MISSING_R8
 !     QTY_SNOW_MIXING_RATIO             "none"   MISSING_R8   MISSING_R8
@@ -33,10 +34,10 @@
 !     QTY_CONDENSATIONAL_HEATING        "none"   MISSING_R8   MISSING_R8
 !     QTY_VAPOR_MIXING_RATIO            "none"   MISSING_R8   MISSING_R8
 !     QTY_ICE_NUMBER_CONCENTRATION      "none"   MISSING_R8   MISSING_R8
-!     QTY_GEOPOTENTIAL_HEIGHT           "none"   MISSING_R8   MISSING_R8
+!     QTY_GEOPOTENTIAL_HEIGHT           "m"      MISSING_R8   MISSING_R8
 !     QTY_POTENTIAL_TEMPERATURE         "none"   MISSING_R8   MISSING_R8
 !     QTY_SOIL_MOISTURE                 "none"   MISSING_R8   MISSING_R8
-!     QTY_SURFACE_ELEVATION             "none"   MISSING_R8   MISSING_R8
+!     QTY_SURFACE_ELEVATION             "m"      MISSING_R8   MISSING_R8
 ! 
 ! ! kinds for Gravity Wave Drag (CAM - kevin)
 !     QTY_GRAV_WAVE_DRAG_EFFIC          "none"   MISSING_R8   MISSING_R8
@@ -75,36 +76,37 @@
 ! 
 ! ! kind for the other way of measuring elevation
 ! ! contrast this with geopotential height
-!     QTY_GEOMETRIC_HEIGHT              "none"   MISSING_R8   MISSING_R8
+!     QTY_GEOMETRIC_HEIGHT              "m"      MISSING_R8   MISSING_R8
 ! 
 !     QTY_INFRARED_RADIANCE             "none"   MISSING_R8   MISSING_R8
 !     QTY_INFRARED_BRIGHT_TEMP          "none"   MISSING_R8   MISSING_R8
 !     QTY_LANDMASK                      "none"   MISSING_R8   MISSING_R8
 ! 
 ! ! kind for unstructured grids
-!     QTY_EDGE_NORMAL_SPEED             "none"   MISSING_R8   MISSING_R8
+!     QTY_EDGE_NORMAL_SPEED             "m/s"    MISSING_R8   MISSING_R8
 ! 
 ! ! kind for cloud liquid water path
-! ! see also kinds 363, 364
 !     QTY_CLW_PATH                      "none"   MISSING_R8   MISSING_R8
+!     QTY_CWP_PATH                      "none"   MISSING_R8   MISSING_R8
+!     QTY_CWP_PATH_ZERO                 "none"   MISSING_R8   MISSING_R8
+! 
 ! 
 ! ! kind for wind power
 !     QTY_WIND_TURBINE_POWER            "none"   MISSING_R8   MISSING_R8
 ! 
 ! ! kinds for surface fields
 !     QTY_2M_SPECIFIC_HUMIDITY          "none"   MISSING_R8   MISSING_R8
-!     QTY_2M_TEMPERATURE                "none"   MISSING_R8   MISSING_R8
-!     QTY_10M_U_WIND_COMPONENT          "none"   MISSING_R8   MISSING_R8
-!     QTY_10M_V_WIND_COMPONENT          "none"   MISSING_R8   MISSING_R8
+!     QTY_2M_TEMPERATURE                "K"      MISSING_R8   MISSING_R8
+!     QTY_10M_U_WIND_COMPONENT          "m/s"    MISSING_R8   MISSING_R8
+!     QTY_10M_V_WIND_COMPONENT          "m/s"    MISSING_R8   MISSING_R8
 ! 
 ! ! kinds for planetary remote sensing (wglawson, c.lee)
-!     QTY_SKIN_TEMPERATURE              "none"   MISSING_R8   MISSING_R8
+!     QTY_SKIN_TEMPERATURE              "K"      MISSING_R8   MISSING_R8
 !     QTY_NADIR_RADIANCE                "none"   MISSING_R8   MISSING_R8
 !     QTY_TRACER_1_MIXING_RATIO         "none"   MISSING_R8   MISSING_R8
 !     QTY_TRACER_2_MIXING_RATIO         "none"   MISSING_R8   MISSING_R8
-!     ! Is QTY_TRACER_MIXING_RATIO necessary with QTY_TRACER_CONCENTRATION 
-!     !   (= 29) available from the simple advection model?
-!     QTY_SOIL_TEMPERATURE              "none"   MISSING_R8   MISSING_R8
+!     ! this or QTY_TRACER_CONCENTRATION?
+!     QTY_SOIL_TEMPERATURE              "K"      MISSING_R8   MISSING_R8
 !     QTY_SOIL_LIQUID_WATER             "none"   MISSING_R8   MISSING_R8
 ! 
 ! ! kinds for NCOMMAS  (Lou W., Ted M.)
@@ -117,10 +119,10 @@
 !     QTY_THC                           "none"   MISSING_R8   MISSING_R8
 ! 
 ! ! kinds for vortex tracking (WRF - yongsheng)
-!     QTY_VORTEX_LON                    "none"   MISSING_R8   MISSING_R8
-!     QTY_VORTEX_LAT                    "none"   MISSING_R8   MISSING_R8
-!     QTY_VORTEX_PMIN                   "none"   MISSING_R8   MISSING_R8
-!     QTY_VORTEX_WMAX                   "none"   MISSING_R8   MISSING_R8
+!     QTY_VORTEX_LON                    "degrees" MISSING_R8   MISSING_R8
+!     QTY_VORTEX_LAT                    "degrees" MISSING_R8   MISSING_R8
+!     QTY_VORTEX_PMIN                   "hPa"     MISSING_R8   MISSING_R8
+!     QTY_VORTEX_WMAX                   "m/s"     MISSING_R8   MISSING_R8
 ! 
 ! ! kinds for COAMPS (Tim Whitcomb)
 !     QTY_EXNER_FUNCTION                "none"   MISSING_R8   MISSING_R8
@@ -150,9 +152,6 @@
 !     QTY_SPECIFIC_DIFFERENTIAL_PHASE   "none"   MISSING_R8   MISSING_R8
 !     QTY_FLASH_RATE_2D                 "none"   MISSING_R8   MISSING_R8
 ! 
-! 
-!   QTY_CWP_PATH                        "none"   MISSING_R8   MISSING_R8
-!   QTY_CWP_PATH_ZERO                   "none"   MISSING_R8   MISSING_R8
 ! 
 ! END DART PREPROCESS QUANTITY DEFINITIONS
 
