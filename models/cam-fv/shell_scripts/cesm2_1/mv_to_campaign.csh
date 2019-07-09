@@ -11,16 +11,22 @@
 # especially the Reanalysis project (2019), to Campaign storage.
 # >>> Before running this script:
 #     1) (re)package the files into a directory containing only files to be archived.
-#        The final subdirectory should be a CESM style date string; YYYY-MM-DD-SSSSS
+#        The final subdirectory is often a CESM style date string; YYYY-MM-DD-SSSSS
 #     2) You may need to interactively log in to globus.
 #        See https://www2.cisl.ucar.edu/resources/storage-and-file-systems/globus-file-transfers
 #        for details.
+#        But may need to first
 #        > ssh data-access.ucar.edu 
 #          (alternative: ssh username@data-access.ucar.edu)
+#        It may be enough to 
+#        > module load gnu python
+#        OR log in through the globus file manager.
+#        In either case:
 #        > globus login
-#        Copy the resulting URL into your browser
-#        Log in there to get the access code.
-#        Enter the code into the interactive globus prompt.
+#        This seems unnecessary:
+#           Copy the resulting URL into your browser
+#           Log in there to get the access code.
+#           Enter the code into the interactive globus prompt.
 
 # This script was derived from ./mv_to_campaign.sample.csh.
 # Documentation of that script is in 
@@ -95,9 +101,10 @@ module load gnu python
 
 # Activate the NCAR Python Library (NPL) virtual environment 
 # for the version given as the argument (no arg = use default).
+# which doesn't work 2019-6-21)
 # This command activates the 'globus' command, used below.
-# ncar_pylib 20190118
-ncar_pylib
+ncar_pylib 20190326
+# ncar_pylib 
 
 # Retrieve endpoint IDs and store them as variables using globus.
 # --filter-owner-id not documented.
@@ -119,12 +126,14 @@ echo EP_CS = $EP_CS
 # Add these activations in order to use (and see) the end points.
 # (E.g. > globus ls ${EP_CS}:/gpfs/csfs1/cisl/dares/Reanalysis/).
 # It seems to activate the endpoints without requiring a password.
+# myproxy-lifetime is the number of hours the credential will be valid. 
+#    (Max 720 = 30 days)
 foreach ep ($EP_SRC $EP_CS)
    # Check if endpoint is activated
    # (we don't care about output, only return code)
    globus endpoint is-activated $ep >& /dev/null
    if ( $status != 0 ) then
-      globus endpoint activate --myproxy --myproxy-lifetime 1 $ep
+      globus endpoint activate --myproxy --myproxy-lifetime 720 $ep
       if ( $status != 0 ) then
          echo "Fatal: NCAR endpoint $ep isn't activated." > $glog
          echo "       Aborting transfer..." >> $glog
@@ -161,7 +170,8 @@ echo IF successfully started, you will receive email when it is complete.
 echo CHECK $SRC_DIR:h/$glog.
 
 echo ""
-echo Ending script to copy the contents of $SRC_DIR to campaign storage at `date`
+echo Ending script to copy the contents of $SRC_DIR 
+echo to campaign storage at `date`
 
 exit 0
 

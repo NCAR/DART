@@ -190,12 +190,15 @@ chmod 755 assimilate.csh
 chmod 755 no_assimilate.csh
 # chmod 755 perfect_model.csh
 
-if (-f ${DART_SCRIPTS_DIR}/compress.csh) then
-   $COPY -f ${VERBOSE} ${DART_SCRIPTS_DIR}/compress.csh . || exit 43
-else
-   echo "ERROR: no compress.csh in  ${DART_SCRIPTS_DIR}"
-   exit 45
-endif
+foreach script (compress.csh mv_to_campaign.csh repack_st_arch.csh \
+                purge.csh launch_cf.sh diags_batch.csh)
+   if (-f ${DART_SCRIPTS_DIR}/${script}) then
+      $COPY -f ${VERBOSE} ${DART_SCRIPTS_DIR}/${script} . || exit 43
+   else
+      echo "ERROR: no ${script} in  ${DART_SCRIPTS_DIR}"
+      exit 45
+   endif
+end
 
 # ==============================================================================
 # Stage the DART executables in the CESM execution root directory: EXEROOT

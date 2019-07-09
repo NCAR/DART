@@ -54,21 +54,22 @@
 # 2) Before archiving a restart set to archive/rest; all large restart files.
 # ------------------------------------------------------------------------------
 
-if ($#argv == 5) then
+if ($#argv == 6) then
    # Called from assimilate.csh (or other script).
-   set comp_cmd      = 'gzip'
-   set case_name     = $1
-   set ymds          = $2
-   set ensemble_size = $3
-   set sets          = ($4)
-   set stages        = ($5)
+   set comp_cmd      = $1
+   set case_name     = $2
+   set ymds          = $3
+   set ensemble_size = $4
+   set sets          = ($5)
+   set stages        = ($6)
    set data_dir      = '.'
 
 else if ($#argv == 0) then
    # Edit these and run as a batch job.
    # 'sets' performs better when ordered by decreasing size (clm2 cpl cam cice hist dart)
    set comp_cmd      = 'gunzip'
-   set case_name     = CESM2_1_80_3node
+   set CASEROOT      = /glade/work/raeder/Exp/Test4
+   set case_name     = ${CASEROOT}:t
    set ymds          = 2010-07-17-64800
    set ensemble_size = 80
    set sets          = (hist dart)
@@ -78,7 +79,7 @@ else if ($#argv == 0) then
    set data_dir      = /glade/scratch/${USER}/${case_name}/run
 
 else 
-   echo "Usage: call with exactly 5 arguments or submit as a batch job with 0 arguments:"
+   echo "Usage: call with exactly 6 arguments or submit as a batch job with 0 arguments:"
    echo '   ${scr_dir}/compress.csh case_name YYYY-MM-DD-SSSS ensemble_size "sets" "stages"'
    echo '   where '
    echo '   sets   = 1 or more of {clm2 cpl cam cice hist dart} to compress, separated by spaces'
@@ -242,10 +243,14 @@ $date
 # CHECKME ... make sure $task is <= the number of MPI tasks in this job.
 
 if ($task > 0) then
-   mpiexec_mpt -n $task launch_cf.sh ./mycmdfile
+   if ($?PBS_O_WORKDIR) then
+      mpiexec_mpt -n $task ${CASEROOT}/launch_cf.sh ./mycmdfile
+   else if ($?SLURM_SUBMIT_DIR) then
+      mpirun      -n $task ${CASEROOT}/launch_cf.sh ./mycmdfile
+   endif
 
-   set mpt_status = $status
-   echo "mpt_status = $mpt_status"
+   set mpi_status = $status
+   echo "mpi_status = $mpi_status"
 else
    echo "No compression to do"
    exit 0

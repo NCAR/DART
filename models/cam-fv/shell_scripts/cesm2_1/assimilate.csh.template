@@ -371,7 +371,7 @@ if ($#log_list >= 3) then
 
    # Numbers can be tested inside the 'if' statement.
    else if (`echo $save_rest_freq | grep '[0-9]'`) then
-      if ($day_o_month == $save_rest_freq) set purge = 'false'
+      if (${day_o_month} % ${save_rest_freq} == 0) set purge = 'false'
 
    endif
 
@@ -397,8 +397,16 @@ if ($#log_list >= 3) then
       # Note that *cpl.h[ar]* are retained, and any h#, #>0.
 
       echo "Removing unneeded restart file set (DD_SSSSS ${day_time}) from RUNDIR: "
-      echo "     ${CASE}"'*.{r,rs,rs1,rh0,h0}.*'"${day_time}"
-      ${REMOVE}  ${CASE}*.{r,rs,rs1,rh0,h0}.*${day_time}* &
+      # It's OK to remove rh# (all components) because only the last date is needed,
+      # while this is the 3rd to last date.  Also, if the history output is averaged, 
+      # the averaging period is (should be) the length of the forecast, 
+      # so there will be no running averages stored in the rh# files.
+      # But the h0 files need to be kept if any user specified fields are in them.
+      # They will be handled by repack_st_archive.csh and/or purge.csh later.
+      echo "     ${CASE}"'*.{r,rs,rs1,rh*}.*'"${day_time}"
+      ${REMOVE}  ${CASE}*.{r,rs,rs1,rh[0-9]}.*${day_time}* &
+      # echo "     ${CASE}"'*.{r,rs,rs1,rh0,h0}.*'"${day_time}"
+      # ${REMOVE}  ${CASE}*.{r,rs,rs1,rh0,h0}.*${day_time}* &
 
       # Handle .i. separately to avoid sweeping up .i.${scomp}_{in,out}put_{mean,sd,...} files.
       echo "     ${CASE}"'*.i.[0-9]*'"${day_time}"
@@ -431,7 +439,7 @@ if ($#log_list >= 3) then
       # List the large files first (more efficient and reliable).
       # There is another call farther down to compress the DART files every cycle.
       echo "compress.csh started at `date`"
-      ${CASEROOT}/compress.csh $CASE ${rm_date} $ensemble_size "clm2 cpl cam cice" "$stages_all"
+      ${CASEROOT}/compress.csh gzip $CASE ${rm_date} $ensemble_size "clm2 cpl cam cice" "$stages_all"
       if ($status != 0) then
          echo "compress.csh failed at `date`"
          exit 55
@@ -445,7 +453,7 @@ if ($#log_list >= 3) then
       set save_root = ${archive}/rest/${rm_date}
       if (! -d $save_root) then
          mkdir -p $save_root
-         (${MOVE} ${CASE}*.{r,rs,rs1,rh0,h0}.*${day_time}*  $save_root || exit 60) &
+         (${MOVE} ${CASE}*.{r,rs,rs1,rh[0-9]}.*${day_time}*  $save_root || exit 60) &
          (${MOVE} ${CASE}*.i.[0-9]*${day_time}*             $save_root || exit 61) &
          (${COPY} *output*inf*${day_time}*                  $save_root || exit 62) &
          (${MOVE} *0001*${rm_log[$rm_slot]}*                $save_root || exit 63) &
@@ -532,13 +540,16 @@ ${REMOVE} ${CAMINPUT}
 ${LINK} ${CASE}.cam_0001.i.${ATM_DATE_EXT}.nc ${CAMINPUT} || exit 90
 
 # All of the .h0. files contain the same PHIS field, so we can link to any of them.
-
-set hists = `${LIST} ${CASE}.cam_0001.h0.*.nc`
 set MYSTRING = `grep cam_phis_filename input.nml`
 set MYSTRING = `echo $MYSTRING | sed -e "s#[=,']# #g"`
 set CAM_PHIS = $MYSTRING[2]
-${REMOVE} ${CAM_PHIS}
-${LINK} $hists[1] ${CAM_PHIS} || exit 100
+# Avoid doing LISTs in rundir; only search for an h0 file is cam_phis.nc doesn't exist.
+if (! -f ${CAM_PHIS}) then
+   # -r puts the file with the latest date first in the list.
+   # It won't be purged during this cycle by the cleanup (above).
+   set hists = `${LIST} -r ${CASE}.cam_0001.h0.*.nc`
+   ${COPY} $hists ${CAM_PHIS} || exit 100
+endif
 
 # Now, actually check the inflation settings
 
@@ -947,7 +958,12 @@ if ($cycle == $DATA_ASSIMILATION_CYCLES) then
       endif
 
       # Hide the CAM 'restart' files from the previous cycle (day_time) from the archiver.
-      ${MOVE}           ${CASE}*.{r,rs,rs1,rh0,h0,i}.*${day_time}*    $hidedir
+      # ${MOVE}           ${CASE}*.{r,rs,rs1,rh0,h0,i}.*${day_time}*    $hidedir
+      # We don't need/want to mess with the .rh files.
+      # ${MOVE}           ${CASE}*.{r,rs,rs1,h0,i}.*${day_time}*    $hidedir
+      # h0 should also not be hidden from the archiver (in case it has fields
+      # besides CAM's PHIS).
+      ${MOVE}           ${CASE}*.{r,rs,rs1,i}.*${day_time}*    $hidedir
 
       # Move log files: *YYMMDD-HHMMSS.  [2] means the previous restart set is being moved.
       set rm_log = `echo $log_list[2] | sed -e "s/\./ /g;"`
@@ -997,36 +1013,36 @@ ___EndOfText
 
    echo "`date` -- END   ARCHIVING LOGIC"
 
-   # DEBUG st_archive by making a shadow copy of this directory.
-   module load nco
-
-   if (-d ../run_shadow) ${REMOVE} -f ../run_shadow
-   mkdir ../run_shadow
-
-   set comps = ('cam_'  'clm2_'  'mosart_' 'dart')
-   set vars  = ('nhfil' 'locfnh' 'locfnh'  'restart_hist')
-
-   foreach f (`$LIST[1]`)
-      set gr_stat = 1
-      echo $f | grep '\.r\.'
-      if ($status == 0) then
-         set c = 1
-         while ($c <= $#comps) 
-            echo $f | grep $comps[$c]
-            if ($status == 0) then
-               echo "c = $c for $f"
-#                set echo verbose
-               set gr_stat = 0
-               ncks -O -v $vars[$c] $f ../run_shadow/$f
-               break
-            endif
-            @ c++
-         end
-      endif
-      if ($gr_stat == 1) then
-         ${LIST} -l $f >! ../run_shadow/$f
-      endif
-   end
+#    # DEBUG st_archive by making a shadow copy of this directory.
+#    module load nco
+# 
+#    if (-d ../run_shadow) ${REMOVE} -f ../run_shadow
+#    mkdir ../run_shadow
+# 
+#    set comps = ('cam_'  'clm2_'  'mosart_' 'dart')
+#    set vars  = ('nhfil' 'locfnh' 'locfnh'  'restart_hist')
+# 
+#    foreach f (`$LIST[1]`)
+#       set gr_stat = 1
+#       echo $f | grep '\.r\.'
+#       if ($status == 0) then
+#          set c = 1
+#          while ($c <= $#comps) 
+#             echo $f | grep $comps[$c]
+#             if ($status == 0) then
+#                echo "c = $c for $f"
+# #                set echo verbose
+#                set gr_stat = 0
+#                ncks -O -v $vars[$c] $f ../run_shadow/$f
+#                break
+#             endif
+#             @ c++
+#          end
+#       endif
+#       if ($gr_stat == 1) then
+#          ${LIST} -l $f >! ../run_shadow/$f
+#       endif
+#    end
 
 endif
 
@@ -1034,10 +1050,11 @@ endif
 # Compress the large coupler history files and DART files.
 # ==============================================================================
 
-echo "STARTING: compressing coupler history files and DART files at `date`"
+# echo "STARTING: compressing coupler history files and DART files at `date`"
+# ${CASEROOT}/compress.csh gzip $CASE $ATM_DATE_EXT $ensemble_size "hist dart" "$stages_all"
+echo "STARTING: compressing coupler history files at `date`"
+${CASEROOT}/compress.csh gzip $CASE $ATM_DATE_EXT $ensemble_size "hist" "$stages_all"
 
-# ${CASEROOT}/compress.csh $CASE $ATM_DATE_EXT $ensemble_size "hist dart" "$stages_all"
-${CASEROOT}/compress.csh $CASE $ATM_DATE_EXT $ensemble_size "hist" "$stages_all"
 if ($status != 0) then
    echo "ERROR: Compression of coupler history files and DART files failed at `date`"
    # Ensure the removal of unneeded restart sets and copy of obs_seq.final are finished.
