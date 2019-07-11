@@ -45,6 +45,8 @@
    num_output_obs_members   = 3
    output_interval          = 1
    num_groups               = 1
+   distributed_state        = .true.
+   compute_posterior        = .true.
    output_forward_op_errors = .false.
    output_timestamps        = .true.
    trace_execution          = .true.
@@ -61,11 +63,12 @@
    inf_sd_initial_from_restart = .false.,                 .false.
    inf_deterministic           = .true.,                  .true.
    inf_initial                 = 1.0,                     1.0
-   inf_sd_initial              = 0.6,                     0.6
-   inf_damping                 = 0.9,                     0.9
    inf_lower_bound             = 1.0,                     1.0
    inf_upper_bound             = 1000.0,               1000.0
+   inf_damping                 = 0.9,                     0.9
+   inf_sd_initial              = 0.6,                     0.6
    inf_sd_lower_bound          = 0.6,                     0.6
+   inf_sd_max_change           = 1.05,                    1.05
    /
 
 &quality_control_nml
@@ -138,11 +141,12 @@
                               '../../../observations/forward_operators/obs_def_COSMOS_mod.f90'
    /
 
+
 # hist_nhtfrq should be negative (hours) ... same context as in
 # the CLM namelist for the .h1. files.
 &obs_def_tower_nml
-   casename    = '../clm_dart'
-   hist_nhtfrq = -HISTORY_OUTPUT_INTERVAL
+   casename    = 'clm_dart'
+   hist_nhtfrq = -24
    debug       = .false.
    /
 
@@ -301,28 +305,30 @@
    loc_of_interest      =  90.0,  41.00, 0.35
 
 &model_mod_check_nml
-   input_state_files     = clm_restart.nc
-   output_state_files    = check_me.nc
-   verbose               = .false.
-   test1thru             = 5
+   input_state_files     = 'clm_restart.nc', 'clm_history.nc', 'clm_vector_history.nc'
+   output_state_files    = 'mmc_output1.nc', 'mmc_output2.nc', 'mmc_output3.nc'
+   test1thru             = 0
+   run_tests             = 1, 2, 3, 4, 7
    x_ind                 = 720
-   kind_of_interest      = 'QTY_LEAF_CARBON'
-   loc_of_interest       = 287.5, 82.48, 0.35
-   interp_test_lonrange  = 0.0, 359.0 
+   loc_of_interest       = 254.727854, 39.9768545, 0.35
+   quantity_of_interest  = 'QTY_LEAF_CARBON'
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   interp_test_lonrange  = 320.0, 90.0 
    interp_test_dlon      = 1.0
-   interp_test_latrange  = -89.0, 89.0
+   interp_test_latrange  = 0.0, 75.0
    interp_test_dlat      = 1.0
    interp_test_vertrange = 1.0, 2.0
    interp_test_dvert     = 1.0
-   /
+   verbose               = .false.
+  /
 
 &state_vector_io_nml
-/
+  /
 
 &compare_states_nml
    debug                   = .false.
    fail_on_missing_field   = .false.
    do_all_numeric_fields   = .true.
    only_report_differences = .true.
-   /
+  /
 

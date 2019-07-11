@@ -15,7 +15,9 @@ use             types_mod, only : r8, i8, MISSING_R8, metadatalength
 use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, &
                                   initialize_utilities, finalize_utilities,     &
                                   find_namelist_in_file, check_namelist_read,   &
-                                  nc_check, E_MSG, open_file, close_file, do_output
+                                  E_MSG, open_file, close_file, do_output
+
+use  netcdf_utilities_mod, only : nc_check
 
 use          location_mod, only : location_type, set_location, write_location,  &
                                   get_dist, VERTISUNDEF, VERTISSURFACE,         &

@@ -54,6 +54,11 @@
 !     QTY_NH3                           "none"   MISSING_R8   MISSING_R8
 !     QTY_CH4                           "none"   MISSING_R8   MISSING_R8
 ! 
+!     QTY_MOLEC_OXYGEN_MIXING_RATIO     "none"   MISSING_R8   MISSING_R8
+!     QTY_ION_O_MIXING_RATIO            "none"   MISSING_R8   MISSING_R8
+!     QTY_ATOMIC_H_MIXING_RATIO         "none"   MISSING_R8   MISSING_R8
+!     QTY_ATOMIC_OXYGEN_MIXING_RATIO    "none"   MISSING_R8   MISSING_R8
+!     QTY_NITROGEN                      "none"   MISSING_R8   MISSING_R8
 ! 
 ! END DART PREPROCESS QUANTITY DEFINITIONS
 

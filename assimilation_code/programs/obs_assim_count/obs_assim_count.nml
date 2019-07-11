@@ -1,0 +1,7 @@
+&obs_assim_count_nml
+   obs_sequence_name = 'obs_seq.final', 
+   obs_sequence_list = '', 
+   calendar = 'Gregorian'
+   stats_by_obs_type = .false.
+   /
+

@@ -1,0 +1,10 @@
+
+&obs_keep_a_few_nml
+   filename_in        = ''
+   filename_out       = '' 
+   max_count_per_type = 10
+   max_total_count    = -1
+   print_only         = .false.
+   calendar           = 'Gregorian'
+   /
+

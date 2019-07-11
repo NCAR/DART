@@ -1,0 +1,38 @@
+#!/bin/sh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+#
+#--------------------------------------------------------------
+# DESCRIPTION:
+#   Run prepbufr_to_obs for the timespan described in input.nml
+#
+#--------------------------------------------------------------
+
+# you might need other options set for LSF on your system;
+#  e.g. -P project_charge_code, a different queue name, etc.
+
+#BSUB -J createobs
+#BSUB -o createobs_%J.out
+#BSUB -e createobs_%J.err
+#BSUB -q geyser
+#BSUB -P P86850054
+#BSUB -W 24:00
+#BSUB -n 1
+
+echo using $$ as tempdir name
+
+mkdir work_$$
+cd work_$$
+
+cp ../input.nml .
+cp ../prepbufr_to_obs .
+
+./prepbufr_to_obs
+
+
+exit 0
+

@@ -45,14 +45,14 @@ implicit none
 ! you an error about an undefined symbol (something like '_system_').  
 ! Comment this block in or out as needed.
 
-  ! interface block for getting return code back from system() routine
-  interface
-   function system(string)
-    character(len=*) :: string
-    integer :: system
-   end function system
-  end interface
-  ! end block
+!  ! interface block for getting return code back from system() routine
+!  interface
+!   function system(string)
+!    character(len=*) :: string
+!    integer :: system
+!   end function system
+!  end interface
+!  ! end block
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 

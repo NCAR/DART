@@ -38,39 +38,53 @@
 <H2>Overview</H2>
 
 <P>
-Utility program which assists in constructing a table that is read
-by filter at run time to alter how the assimilation
-of different types of observations impact the state vector values
-based on their quantity, and other observations based on their 
-observation type or quantity.  This tool allows users to group related
-collections of observation types and state vector quantities by name
-and then express the relationship of the named groups to each
-other in a concise way.
+The standard DART algorithms compute increments for an observation and then
+compute corresponding increments for each model state variable due to that
+observation. To do this, DART computes a sample regression coefficient using
+the prior ensemble distributions of a state variable and the observation. The
+increments for each member of the observation are multiplied by this
+regression coefficient and then added to the corresponding prior ensemble
+member for the state variable. However, in many cases, it is appropriate to
+reduce the impact of an observation on a state variable; this is called
+localization. The standard DART algorithms allow users to specify a
+localization that is a function of the horizontal (and optionally vertical)
+distance between the observation and the state variable. The localization is
+a value between 0 and 1 and multiplies the regression coefficient when
+updating state ensemble members.
 </P>
 <P>
-At run time filter reads the output file from this tool
-and uses it to control the impact at assimilation time based
-on the relationships specified.
+Sometimes, it may be desirable to do an additional localization that is a
+function of the type of observation and the state vector quantity. This
+program allows users to construct a table that is read by filter at run-time
+to localize the impact of sets of observation types on sets of state
+vectorquantities. Users can create named sets of observation types and sets
+of state vector quantities and specify a localization for the impact of the
+specified observation types on the state vector quantities.
 </P>
 <P>
-This version of this tool requires the last numeric
-column to be 0.0 or 1.0, but future extensions may allow 
-different values to be used.
+An example would be to create a subset of observations of tracer
+concentration for a variety of tracers, and a subset of dynamic state
+variable quantities like temperatures and wind components. It has been common
+to set this localization value to 0 so that tracer observations have no
+impact on dynamic state quantities, however, the tool allows values between 0
+and 1 to be specified.
+</P>
+
+<P>
+This tool allows related collections of observation types and state vector 
+quantities to be named and then express the relationship of the named groups 
+to each other in a concise way.
+It can also define relationships by exceptions.
 </P>
 <P>
 All the listed observation types and state vector quantities
 must be known by the system.  If they are not, look at the
-&preprocess_nml :: input_items namelist which specifies
+&amp;preprocess_nml :: input_items namelist which specifies
 which obs_def_xxx_mod.f90 files are included, which is
-where observation types are defined.  Quantities are defined
-in the obs_kinds/DEFAULT_obs_kinds_mod.F90 file and
-are static.  (Note you must add new quantities in 2 places 
+where observation types are defined.  Quantities are defined in
+<em class="file">assimilation_code/modules/observations/DEFAULT_obs_kinds_mod.F90</em>.
+(Note you must add new quantities in 2 places 
 if you do alter this file.)
-</P>
-<P>
-This program can define groups of observation types and
-then describe the relationship of groups to groups.
-It can also define relationships by exceptions.
 </P>
 
 <P>
@@ -129,9 +143,9 @@ END GROUP
 # (last entry wins).
 
 IMPACT
- QTY_xxx    QTY_xxx     0.0
- QTY_xxx    groupname1   0.0
- groupname1  QTY_xxx     0.0
+ QTY_xxx     QTY_xxx      0.0
+ QTY_xxx     groupname1   0.0
+ groupname1  QTY_xxx      0.0
  groupname1  groupname1   0.0
 END IMPACT
 
@@ -165,8 +179,7 @@ prematurely terminating the namelist.
 &amp;obs_impact_tool_nml
   input_filename          = 'cross_correlations.txt'
   output_filename         = 'control_impact_runtime.txt'
-  allow_any_impact_values = .false.
-  debug                   = .true.
+  debug                   = .false.
   /
 </pre>
 </div>
@@ -202,14 +215,6 @@ not be modified by hand.  Rerun this tool to recreate
 the file.
 </TD></TR>
 
-<TR><TD>allow_any_impact_values</TD>
-    <TD>logical</TD>
-    <TD>Recommended to stay false.  This allows only 0.0 and 1.0 as the
-impact factors, effectively using the full increments or no increments
-during the assimilation.  To experiment with partial application of
-the increments this flag can be set to true to allow other values.
-<TD></TR>
-
 <TR><TD>debug</TD>
     <TD>logical</TD>
     <TD>If true print out debugging info.
@@ -221,7 +226,7 @@ the increments this flag can be set to true to allow other values.
 
 <br />
 <br />
-<P></P>
+<P> <!-- --> </P>
 
 <!--==================================================================-->
 
@@ -252,8 +257,7 @@ END IMPACT
 </pre>
 </div>
 
-<P>
-</P>
+<P> <!-- --> </P>
 
 <!--==================================================================-->
 
@@ -266,7 +270,7 @@ types_mod
 utilities_mod
 parse_args_mod
 </PRE>
-<P></P>
+<P> <!-- --> </P>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -290,6 +294,7 @@ parse_args_mod
 <li> none </li>
 </ul>
 
+<P> <!-- --> </P>
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
 <!--==================================================================-->
@@ -298,7 +303,7 @@ parse_args_mod
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
-<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100% summary="error msgs">
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
 <TR><!-- routine --><TD VALIGN=top>obs_impact_tool</TD>

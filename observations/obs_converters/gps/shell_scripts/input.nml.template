@@ -1,0 +1,148 @@
+! DART $Id: input.nml 12241 2017-12-26 17:28:04Z thoar@ucar.edu $
+!
+! notes on the convert_cosmic_gps_nml namelist items:
+!  only one of 'gpsro_netcdf_file' or 'gpsro_netcdf_filelist' can be specified:
+!   gpsro_netcdf_file     is a single input source.
+!   gpsro_netcdf_filelist is the name of a text file containing a list of
+!    filenames, one per line, to convert into a single output file.
+!
+!  local operator is a single tangent-point calculation
+!  non-local operator integrates along the ray-path
+!
+!  obs_levels are specified in kilometers
+!  ray delta-step and top ray height are specified in meters
+!
+!  ray_ds and ray_htop are ignored for local operator.
+!  for the non-local operator, ray_ds is the integration length
+!  of each step along the ray path, starting from the tangent
+!  point and going out in each of the two directions.
+!  ray_htop is the height at which the integration stops, when
+!  the next end point exceeds this height.
+!
+!  obs_window is obsolete and should be removed from your namelist.
+!  use the obs_sequence_tool to select obs within a particular
+!  time-window.
+
+&convert_cosmic_gps_nml
+   gpsro_netcdf_file      = ''
+   gpsro_netcdf_filelist  = 'flist'
+   gpsro_out_file         = 'obs_seq.gpsro'
+   use_original_kuo_error = .false.
+   local_operator         = .true.
+   ray_ds                 = 5000.0
+   ray_htop               = 13000.1
+   obs_levels =        0.2,  0.4,  0.6,  0.8,
+                 1.0,  1.2,  1.4,  1.6,  1.8,
+                 2.0,  2.2,  2.4,  2.6,  2.8,
+                 3.0,  3.2,  3.4,  3.6,  3.8,
+                 4.0,  4.2,  4.4,  4.6,  4.8,
+                 5.0,  5.2,  5.4,  5.6,  5.8,
+                 6.0,  6.2,  6.4,  6.6,  6.8,
+                 7.0,  7.2,  7.4,  7.6,  7.8,
+                 8.0,  8.2,  8.4,  8.6,  8.8,
+                 9.0,  9.2,  9.4,  9.6,  9.8,
+                10.0, 10.2, 10.4, 10.6, 10.8,
+                11.0, 11.2, 11.4, 11.6, 11.8,
+                12.0, 12.2, 12.4, 12.6, 12.8,
+                13.0, 13.2, 13.4, 13.6, 13.8,
+                14.0, 14.2, 14.4, 14.6, 14.8,
+                15.0, 15.2, 15.4, 15.6, 15.8,
+                16.0, 16.2, 16.4, 16.6, 16.8,
+                17.0, 17.2, 17.4, 17.6, 17.8,
+                18.0, 19.0, 20.0, 21.0, 22.0,
+                23.0, 24.0, 25.0, 26.0, 27.0,
+                28.0, 29.0, 30.0, 31.0, 32.0,
+                33.0, 34.0, 35.0, 36.0, 37.0,
+                38.0, 39.0, 40.0, 41.0, 42.0,
+                43.0, 44.0, 45.0, 46.0, 47.0,
+                48.0, 49.0, 50.0, 51.0, 52.0,
+                53.0, 54.0, 55.0, 56.0, 57.0,
+                58.0, 59.0, 60.0,
+ /
+
+! values that have been used - the provenance has been lost,
+! use at your own discretion. 
+!  obs_levels =  0.22,  0.55,  1.1,  1.8,  2.7,  
+!                3.7,   4.9,   6.0,  7.0,  8.0,
+!                9.0,  10.0,  11.0, 12.0, 13.0
+!
+!  obs_levels = 0.3, 0.6, 0.9, 1.2, 1.5, 1.8, 2.1, 2.4, 2.7,
+!               3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0,
+!               7.5, 8.0, 8.5, 9.0, 9.5, 10.0, 11.0, 12.0,
+!               13.0, 14.0, 15.0, 16.0, 17.0
+
+&convert_cosmic_ionosphere_nml
+   input_file               = ''
+   input_file_list          = 'file_list.txt'
+   output_file              = 'obs_seq.iondens'
+   observation_error_file   = '../f3coerr.nc'
+   observation_error_method = 'lookup'
+   locations_only           = .false.
+   obs_error_factor         = 0.01
+   verbose                  = 0
+   obs_levels = 160.0, 170.0, 180.0, 190.0, 200.0,
+                210.0, 220.0, 230.0, 240.0, 250.0,
+                260.0, 270.0, 280.0, 290.0, 300.0,
+                310.0, 320.0, 330.0, 340.0, 350.0,
+                360.0, 370.0, 380.0, 390.0, 400.0,
+                410.0, 420.0, 430.0, 440.0, 450.0
+ /
+
+&convert_gpsro_bufr_nml
+   gpsro_bufr_file     = 'gdas.gpsro.bufr'
+   gpsro_bufr_filelist = ''
+   gpsro_out_file      = 'obs_seq.gpsro'
+   gpsro_aux_file      = 'convinfo.txt'
+   ray_htop            = 30000.0
+   ray_hbot            =  3000.0
+   obs_error_in_gsi    = .true.
+   if_global           = .true.
+   convert_to_geopotential_height = .true.
+   obs_window_hr       = 1.5
+   debug               = .true.
+ /
+
+&preprocess_nml
+    input_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+     input_obs_def_mod_file = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+    output_obs_def_mod_file = '../../../../observations/forward_operators/obs_def_mod.f90'
+   input_files              = '../../../../observations/forward_operators/obs_def_gps_mod.f90'
+ /
+
+&obs_kind_nml
+ /
+
+&obs_def_gps_nml
+  max_gpsro_obs = 10000000
+ /
+
+&location_nml
+ /
+
+&utilities_nml
+   module_details = .false.
+ /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.
+ /
+
+&obs_sequence_tool_nml
+   filename_seq      = 'input'
+   filename_out      = 'output'
+   print_only        = .false.
+   gregorian_cal     = .true.
+   first_obs_days    = -1
+   first_obs_seconds = -1
+   last_obs_days     = -1
+   last_obs_seconds  = -1
+ /
+
+! obs_types =
+! keep_types =
+! min_lat =
+! max_lat =
+! min_lon =
+! max_lon =
+

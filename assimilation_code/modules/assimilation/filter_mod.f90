@@ -48,20 +48,18 @@ use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,  
                                   compute_copy_mean, compute_copy_mean_sd,                    &
                                   compute_copy_mean_var, duplicate_ens, get_copy_owner_index, &
                                   get_ensemble_time, set_ensemble_time, broadcast_copy,       &
-                                  prepare_to_read_from_vars, prepare_to_write_to_vars,        &
-                                  prepare_to_read_from_copies,  get_my_num_vars,              &
-                                  prepare_to_write_to_copies, get_ensemble_time,              &
-                                  map_task_to_pe,  map_pe_to_task, prepare_to_update_copies,  &
+                                  map_pe_to_task, prepare_to_update_copies,  &
                                   copies_in_window, set_num_extra_copies, get_allow_transpose, &
                                   all_copies_to_all_vars, allocate_single_copy, allocate_vars, &
                                   get_single_copy, put_single_copy, deallocate_single_copy,   &
                                   print_ens_handle
 
-use adaptive_inflate_mod,  only : do_varying_ss_inflate, mean_from_restart, sd_from_restart,  &
-                                  do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
+use adaptive_inflate_mod,  only : do_ss_inflate, mean_from_restart, sd_from_restart,  &
+                                  inflate_ens, adaptive_inflate_init,   &
                                   adaptive_inflate_type, set_inflation_mean_copy ,            &
                                   log_inflation_info, set_inflation_sd_copy,                  &
-                                  get_minmax_task_zero, do_rtps_inflate
+                                  get_minmax_task_zero, do_rtps_inflate,                      &
+                                  validate_inflate_options
 
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                   task_count
@@ -110,9 +108,8 @@ character(len=128), parameter :: revdate  = "$Date$"
 
 ! Some convenient global storage items
 character(len=512)      :: msgstring
-type(obs_type)          :: observation
 
-integer                 :: trace_level, timestamp_level
+integer :: trace_level, timestamp_level
 
 ! Defining whether diagnostics are for prior or posterior
 integer, parameter :: PRIOR_DIAG = 0, POSTERIOR_DIAG = 2
@@ -161,6 +158,12 @@ type(adaptive_inflate_type) :: prior_inflate, post_inflate
 
 logical :: has_cycling          = .false. ! filter will advance the model
 
+! parms for trace/timing messages
+integer, parameter :: T_BEFORE  = 1
+integer, parameter :: T_AFTER   = 2
+integer, parameter :: T_NEITHER = 3
+logical, parameter :: P_TIME    = .true.
+
 !----------------------------------------------------------------
 ! Namelist input with default values
 !
@@ -187,6 +190,7 @@ integer  :: num_groups          = 1
 logical  :: output_forward_op_errors = .false.
 logical  :: output_timestamps        = .false.
 logical  :: trace_execution          = .false.
+logical  :: write_obs_every_cycle    = .false.  ! debug only
 logical  :: silence                  = .false.
 logical  :: distributed_state = .true. ! Default to do state complete forward operators.
 
@@ -201,9 +205,12 @@ character(len=256) :: output_state_file_list(MAX_NUM_DOMS) = ''
 ! Read in a single file and perturb this to create an ensemble
 logical  :: perturb_from_single_instance = .false.
 real(r8) :: perturbation_amplitude       = 0.2_r8
-! File options.  Single vs. Multiple.
-logical  :: single_file_in               = .false. ! all copies read  from 1 file
-logical  :: single_file_out              = .false. ! all copies written to 1 file
+! File options.  Single vs. Multiple.  really 'unified' or 'combination' vs 'individual'
+logical  :: single_file_in  = .false. ! all copies read  from 1 file
+logical  :: single_file_out = .false. ! all copies written to 1 file
+
+! optimization option:
+logical :: compute_posterior   = .true. ! set to false to not compute posterior values
 
 ! Stages to write.  Valid values are:
 ! multi-file:    input, forecast, preassim, postassim, analysis, output
@@ -231,13 +238,14 @@ character(len=256) :: obs_sequence_in_name  = "obs_seq.out",    &
 
 ! Inflation namelist entries follow, first entry for prior, second for posterior
 ! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space,
-! 4 is rtps (relax to prior spread)
+! 4: rtps (relax to prior spread), 5: enhanced state space
 integer  :: inf_flavor(2)                  = 0
 logical  :: inf_initial_from_restart(2)    = .false.
 logical  :: inf_sd_initial_from_restart(2) = .false.
 logical  :: inf_deterministic(2)           = .true.
 real(r8) :: inf_initial(2)                 = 1.0_r8
 real(r8) :: inf_sd_initial(2)              = 0.0_r8
+real(r8) :: inf_sd_max_change(2)           = 1.05_r8
 real(r8) :: inf_damping(2)                 = 1.0_r8
 real(r8) :: inf_lower_bound(2)             = 1.0_r8
 real(r8) :: inf_upper_bound(2)             = 1000000.0_r8
@@ -275,6 +283,7 @@ namelist /filter_nml/ async,     &
    inf_flavor,                   &
    inf_initial_from_restart,     &
    inf_sd_initial_from_restart,  &
+   inf_sd_max_change,            & 
    inf_deterministic,            &
    inf_damping,                  &
    inf_initial,                  &
@@ -288,6 +297,7 @@ namelist /filter_nml/ async,     &
    single_file_out,              &
    perturb_from_single_instance, &
    perturbation_amplitude,       &
+   compute_posterior,            &
    stages_to_write,              &
    input_state_files,            &
    output_state_files,           &
@@ -296,6 +306,7 @@ namelist /filter_nml/ async,     &
    output_mean,                  &
    output_sd,                    &
    write_all_stages_at_end,      &
+   write_obs_every_cycle,        & 
    allow_missing_clm
 
 
@@ -319,7 +330,7 @@ type(time_type)             :: curr_ens_time, next_ens_time, window_time
 
 integer,    allocatable :: keys(:)
 integer(i8)             :: model_size
-integer                 :: i, iunit, io, time_step_number, num_obs_in_set, ntimes
+integer                 :: iunit, io, time_step_number, num_obs_in_set, ntimes
 integer                 :: last_key_used, key_bounds(2)
 integer                 :: in_obs_copy, obs_val_index
 integer                 :: prior_obs_mean_index, posterior_obs_mean_index
@@ -381,69 +392,26 @@ call error_handler(E_MSG,'filter_main:', msgstring, source, revision, revdate)
 ! See if smoothing is turned on
 ds = do_smoothing()
 
-! Make sure inflation options are legal - this should be in the inflation module
-! and not here.  FIXME!
-do i = 1, 2
-   if(inf_flavor(i) < 0 .or. inf_flavor(i) > 4) then
-      write(msgstring, *) 'inf_flavor=', inf_flavor(i), ' Must be 0, 1, 2, 3, or 4 '
-      call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
-   endif
-
-   if(inf_damping(i) < 0.0_r8 .or. inf_damping(i) > 1.0_r8) then
-      write(msgstring, *) 'inf_damping=', inf_damping(i), ' Must be 0.0 <= d <= 1.0'
-      call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
-   endif
-end do
-
-! Check to see if state space inflation is turned on
-if (inf_flavor(1) > 1 )                           do_prior_inflate     = .true.
-if (inf_flavor(2) > 1 )                           do_posterior_inflate = .true.
-if (do_prior_inflate .or. do_posterior_inflate)   output_inflation     = .true.
-
-! Observation space inflation not currently supported
-if(inf_flavor(1) == 1 .or. inf_flavor(2) == 1) call error_handler(E_ERR, 'filter_main', &
-   'observation space inflation (type 1) not currently supported', source, revision, revdate, &
-   text2='contact DART developers if you are interested in using it.')
-
-! Relaxation-to-prior-spread (RTPS) is only an option for posterior inflation
-if(inf_flavor(1) == 4) call error_handler(E_ERR, 'filter_main', &
-   'RTPS inflation (type 4) only supported for Posterior inflation', source, revision, revdate)
-
-! RTPS needs a single parameter from namelist: inf_initial(2).  
-! Do not read in any files.  Also, no damping.  but warn the user if they try to set different
-! values in the namelist.
-if ( inf_flavor(2) == 4 ) then
-   if (inf_initial_from_restart(2) .or. inf_sd_initial_from_restart(2)) &
-      call error_handler(E_MSG, 'filter_main:', 'RTPS inflation (type 4) overrides posterior inflation restart file with value in namelist', &
-         text2='posterior inflation standard deviation value not used in RTPS')
-   inf_initial_from_restart(2) = .false.    ! Get parameter from namelist inf_initial(2), not from file
-   inf_sd_initial_from_restart(2) = .false. ! inf_sd not used in this algorithm
-
-   if (.not. inf_deterministic(2)) &
-      call error_handler(E_MSG, 'filter_main:', 'RTPS inflation (type 4) overrides posterior inf_deterministic with .true.')
-   inf_deterministic(2) = .true.  ! this algorithm is deterministic
-
-   if (inf_damping(2) /= 1.0_r8) &
-      call error_handler(E_MSG, 'filter_main:', 'RTPS inflation (type 4) disables posterior inf_damping')
-   inf_damping(2) = 1.0_r8  ! no damping
-endif
-
 call set_missing_ok_status(allow_missing_clm)
 allow_missing = get_missing_ok_status()
 
 call trace_message('Before initializing inflation')
 
+call validate_inflate_options(inf_flavor, inf_damping, inf_initial_from_restart, &
+   inf_sd_initial_from_restart, inf_deterministic, inf_sd_max_change,            &
+   do_prior_inflate, do_posterior_inflate, output_inflation, compute_posterior)
+
 ! Initialize the adaptive inflation module
 call adaptive_inflate_init(prior_inflate, inf_flavor(1), inf_initial_from_restart(1), &
    inf_sd_initial_from_restart(1), output_inflation, inf_deterministic(1),            &
    inf_initial(1), inf_sd_initial(1), inf_lower_bound(1), inf_upper_bound(1),         &
-   inf_sd_lower_bound(1), state_ens_handle,                                           &
+   inf_sd_lower_bound(1), inf_sd_max_change(1), state_ens_handle,                     &
    allow_missing, 'Prior')
 
 call adaptive_inflate_init(post_inflate, inf_flavor(2), inf_initial_from_restart(2),  &
    inf_sd_initial_from_restart(2), output_inflation, inf_deterministic(2),            &
    inf_initial(2),  inf_sd_initial(2), inf_lower_bound(2), inf_upper_bound(2),        &
-   inf_sd_lower_bound(2), state_ens_handle,                                           &
+   inf_sd_lower_bound(2), inf_sd_max_change(2), state_ens_handle,                     &
    allow_missing, 'Posterior')
 
 if (do_output()) then
@@ -499,11 +467,27 @@ OBS_VAR_END          = OBS_VAR_START + num_groups - 1
 
 TOTAL_OBS_COPIES = ens_size + 5 + 2*num_groups
 
+!>@todo FIXME turn trace/timestamp calls into:  
+!>
+!> integer, parameter :: T_BEFORE = 1
+!> integer, parameter :: T_AFTER  = 2
+!> integer, parameter :: P_TIME   = 1
+!>
+!>  call progress(string, T_BEFORE)  ! simple trace msg
+!>  call progress(string, T_AFTER)
+!>
+!>  call progress(string, T_BEFORE, P_TIME)  ! trace plus timestamp
+!>  call progress(string, T_AFTER,  P_TIME)
+
+!> DO NOT timestamp every trace message because some are
+!> so quick that the timestamps don't impart any info.  
+!> we should be careful to timestamp logical *sections* instead.
+
 call     trace_message('Before setting up space for observations')
 call timestamp_message('Before setting up space for observations')
 
 ! Initialize the obs_sequence; every pe gets a copy for now
-call filter_setup_obs_sequence(seq, in_obs_copy, obs_val_index, input_qc_index, DART_qc_index)
+call filter_setup_obs_sequence(seq, in_obs_copy, obs_val_index, input_qc_index, DART_qc_index, compute_posterior)
 
 call timestamp_message('After  setting up space for observations')
 call     trace_message('After  setting up space for observations')
@@ -515,17 +499,31 @@ model_size = get_model_size()
 
 if(distributed_state) then
    call init_ensemble_manager(state_ens_handle, num_state_ens_copies, model_size)
+   msgstring = 'running with distributed state; model states stay distributed across all tasks for the entire run'
 else
    call init_ensemble_manager(state_ens_handle, num_state_ens_copies, model_size, transpose_type_in = 2)
+   msgstring = 'running without distributed state; model states are gathered by ensemble for forward operators'
 endif
+! don't print if running single task.  transposes don't matter in this case.
+if (task_count() > 1) &
+   call error_handler(E_MSG,'filter_main:', msgstring, source, revision, revdate)
 
 call set_num_extra_copies(state_ens_handle, num_extras)
 
 call trace_message('After  setting up space for ensembles')
 
 ! Don't currently support number of processes > model_size
-if(task_count() > model_size) call error_handler(E_ERR,'filter_main', &
-   'Number of processes > model size' ,source,revision,revdate)
+if(task_count() > model_size) then 
+   write(msgstring, *) 'number of MPI processes = ', task_count(), ' while model size = ', model_size
+   call error_handler(E_ERR,'filter_main', &
+      'Cannot have number of processes > model size' ,source,revision,revdate, &
+       text2=msgstring)
+endif
+
+if(.not. compute_posterior) then
+   msgstring = 'skipping computation of posterior forward operators'
+   call error_handler(E_MSG,'filter_main:', msgstring, source, revision, revdate)
+endif
 
 ! Set a time type for initial time if namelist inputs are not negative
 call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time_from_file)
@@ -560,9 +558,9 @@ call read_state(state_ens_handle, file_info_input, read_time_from_file, time1, &
 
 ! This must be after read_state
 call get_minmax_task_zero(prior_inflate, state_ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
-call log_inflation_info(prior_inflate, state_ens_handle%my_pe, 'Prior')
+call log_inflation_info(prior_inflate, state_ens_handle%my_pe, 'Prior', single_file_in)
 call get_minmax_task_zero(post_inflate, state_ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
-call log_inflation_info(post_inflate, state_ens_handle%my_pe, 'Posterior')
+call log_inflation_info(post_inflate, state_ens_handle%my_pe, 'Posterior', single_file_in)
 
 
 if (perturb_from_single_instance) then
@@ -589,7 +587,8 @@ call timestamp_message('Before initializing output files')
 ! Initialize the output sequences and state files and set their meta data
 call filter_generate_copy_meta_data(seq, in_obs_copy, &
       prior_obs_mean_index, posterior_obs_mean_index, &
-      prior_obs_spread_index, posterior_obs_spread_index)
+      prior_obs_spread_index, posterior_obs_spread_index, &
+      compute_posterior)
 
 if(ds) call error_handler(E_ERR, 'filter', 'smoother broken by Helen')
 if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflation=.true.) !> @todo fudge
@@ -806,7 +805,7 @@ AdvanceTime : do
       endif
    endif
 
-   if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
+   if(do_ss_inflate(prior_inflate)) then
       call trace_message('Before prior inflation damping and prep')
 
       if (inf_damping(1) /= 1.0_r8) then
@@ -878,13 +877,9 @@ AdvanceTime : do
       obs_val_index, OBS_KEY_COPY, &                                 ! new
       prior_obs_mean_index, prior_obs_spread_index, num_obs_in_set, &
       OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
-      OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index)
+      OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index, compute_posterior)
    call trace_message('After  observation space diagnostics')
 
-
-   ! FIXME:  i believe both copies and vars are equal at the end
-   ! of the obs_space diags, so we can skip this.
-   !call all_vars_to_all_copies(obs_fwd_op_ens_handle)
 
    write(msgstring, '(A,I8,A)') 'Ready to assimilate up to', size(keys), ' observations'
    call trace_message(msgstring, 'filter:', -1)
@@ -925,7 +920,7 @@ AdvanceTime : do
 
    ! This block applies posterior inflation
 
-   if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
+   if(do_ss_inflate(post_inflate)) then
 
       call trace_message('Before posterior inflation damping')
 
@@ -969,8 +964,7 @@ AdvanceTime : do
 
    ! This block applies posterior inflation
 
-   if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate) .or. &
-      do_rtps_inflate(post_inflate)) then
+   if(do_ss_inflate(post_inflate)) then
 
       call trace_message('Before posterior inflation applied to state')
 
@@ -990,48 +984,52 @@ AdvanceTime : do
 
    ! this block recomputes the expected obs values for the obs_seq.final file
 
-   call     trace_message('Before computing posterior observation values')
-   call timestamp_message('Before computing posterior observation values')
-
-   ! Compute the ensemble of posterior observations, load up the obs_err_var
-   ! and obs_values.  ens_size is the number of regular ensemble members,
-   ! not the number of copies
-
-    call get_obs_ens_distrib_state(state_ens_handle, obs_fwd_op_ens_handle, qc_ens_handle, &
-     seq, keys, obs_val_index, input_qc_index, &
-     OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, &
-     OBS_MEAN_START, OBS_VAR_START, isprior=.false., prior_qc_copy=prior_qc_copy)
-
-   call deallocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
-
-   call timestamp_message('After  computing posterior observation values')
-   call     trace_message('After  computing posterior observation values')
-
-   if(ds) then
-      call trace_message('Before computing smoother means/spread')
-      call smoother_mean_spread(ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-      call trace_message('After  computing smoother means/spread')
+   if (compute_posterior) then
+      call     trace_message('Before computing posterior observation values')
+      call timestamp_message('Before computing posterior observation values')
+   
+      ! Compute the ensemble of posterior observations, load up the obs_err_var
+      ! and obs_values.  ens_size is the number of regular ensemble members,
+      ! not the number of copies
+   
+       call get_obs_ens_distrib_state(state_ens_handle, obs_fwd_op_ens_handle, qc_ens_handle, &
+        seq, keys, obs_val_index, input_qc_index, &
+        OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, &
+        OBS_MEAN_START, OBS_VAR_START, isprior=.false., prior_qc_copy=prior_qc_copy)
+   
+      call deallocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
+   
+      call timestamp_message('After  computing posterior observation values')
+      call     trace_message('After  computing posterior observation values')
+   
+      if(ds) then
+         call trace_message('Before computing smoother means/spread')
+         call smoother_mean_spread(ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+         call trace_message('After  computing smoother means/spread')
+      endif
+   
+      call trace_message('Before posterior obs space diagnostics')
+   
+      ! Write posterior observation space diagnostics
+      ! There is a transpose (all_copies_to_all_vars(obs_fwd_op_ens_handle)) in obs_space_diagnostics
+      call obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size, &
+         seq, keys, POSTERIOR_DIAG, num_output_obs_members, in_obs_copy+2, &
+         obs_val_index, OBS_KEY_COPY, &                             ! new
+         posterior_obs_mean_index, posterior_obs_spread_index, num_obs_in_set, &
+         OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
+         OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index, compute_posterior)
+   
+   
+      call trace_message('After  posterior obs space diagnostics')
+   else
+      call deallocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
    endif
-
-   call trace_message('Before posterior obs space diagnostics')
-
-   ! Write posterior observation space diagnostics
-   ! There is a transpose (all_copies_to_all_vars(obs_fwd_op_ens_handle)) in obs_space_diagnostics
-   call obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size, &
-      seq, keys, POSTERIOR_DIAG, num_output_obs_members, in_obs_copy+2, &
-      obs_val_index, OBS_KEY_COPY, &                             ! new
-      posterior_obs_mean_index, posterior_obs_spread_index, num_obs_in_set, &
-      OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
-      OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index)
-
-
-   call trace_message('After  posterior obs space diagnostics')
 
    ! this block computes the adaptive state space posterior inflation
    ! (it was applied earlier, this is computing the updated values for
    ! the next cycle.)
 
-   if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
+   if(do_ss_inflate(post_inflate)) then
 
       ! If not reading the sd values from a restart file and the namelist initial
       !  sd < 0, then bypass this entire code block altogether for speed.
@@ -1083,6 +1081,18 @@ AdvanceTime : do
       endif
    endif
 
+   ! only intended for debugging when cycling inside filter.
+   ! writing the obs_seq file here will be slow - but if filter crashes
+   ! you can get partial results by enabling this flag.
+   if (write_obs_every_cycle) then
+      call     trace_message('Before writing in-progress output sequence file')
+      call timestamp_message('Before writing in-progress output sequence file')
+      ! Only pe 0 outputs the observation space diagnostic file
+      if(my_task_id() == 0) call write_obs_seq(seq, obs_sequence_out_name)
+      call timestamp_message('After  writing in-progress output sequence file')
+      call     trace_message('After  writing in-progress output sequence file')
+   endif
+
    call trace_message('Near bottom of main loop, cleaning up obs space')
    ! Deallocate storage used for keys for each set
    deallocate(keys)
@@ -1117,10 +1127,12 @@ if (get_stage_to_write('output')) then
 
 endif
 
-call trace_message('Before writing output sequence file')
+call     trace_message('Before writing output sequence file')
+call timestamp_message('Before writing output sequence file')
 ! Only pe 0 outputs the observation space diagnostic file
 if(my_task_id() == 0) call write_obs_seq(seq, obs_sequence_out_name)
-call trace_message('After  writing output sequence file')
+call timestamp_message('After  writing output sequence file')
+call     trace_message('After  writing output sequence file')
 
 ! Output all restart files if requested
 if (write_all_stages_at_end) then
@@ -1164,8 +1176,7 @@ call trace_message('After  end_model call')
 call trace_message('Before ensemble and obs memory cleanup')
 call end_ensemble_manager(state_ens_handle)
 
-! Free up the observation kind and obs sequence
-call destroy_obs(observation)
+! Free up the obs sequence
 call destroy_obs_sequence(seq)
 call trace_message('After  ensemble and obs memory cleanup')
 
@@ -1192,12 +1203,14 @@ end subroutine filter_main
 !> in the ensemble handle.
 subroutine filter_generate_copy_meta_data(seq, in_obs_copy, &
    prior_obs_mean_index, posterior_obs_mean_index, &
-   prior_obs_spread_index, posterior_obs_spread_index)
+   prior_obs_spread_index, posterior_obs_spread_index, &
+   do_post)
 
 type(obs_sequence_type),     intent(inout) :: seq
 integer,                     intent(in)    :: in_obs_copy
 integer,                     intent(out)   :: prior_obs_mean_index, posterior_obs_mean_index
 integer,                     intent(out)   :: prior_obs_spread_index, posterior_obs_spread_index
+logical,                     intent(in)    :: do_post
 
 ! Figures out the strings describing the output copies for the three output files.
 ! THese are the prior and posterior state output files and the observation sequence
@@ -1206,30 +1219,52 @@ integer,                     intent(out)   :: prior_obs_spread_index, posterior_
 character(len=metadatalength) :: prior_meta_data, posterior_meta_data
 integer :: i, num_obs_copies
 
+! only PE0 (here task 0) will allocate space for the obs_seq.final
+!
+! all other tasks should NOT allocate all this space.
+! instead, set the copy numbers to an illegal value
+! so we'll trap if they're used, and return early.
+if (my_task_id() /= 0) then
+   prior_obs_mean_index  = -1
+   posterior_obs_mean_index = -1
+   prior_obs_spread_index  = -1
+   posterior_obs_spread_index = -1
+   return
+endif
+  
 ! Set the metadata for the observations.
 
 ! Set up obs ensemble mean
 num_obs_copies = in_obs_copy
+
 num_obs_copies = num_obs_copies + 1
 prior_meta_data = 'prior ensemble mean'
 call set_copy_meta_data(seq, num_obs_copies, prior_meta_data)
 prior_obs_mean_index = num_obs_copies
-num_obs_copies = num_obs_copies + 1
-posterior_meta_data = 'posterior ensemble mean'
-call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
-posterior_obs_mean_index = num_obs_copies
+
+if (do_post) then
+   num_obs_copies = num_obs_copies + 1
+   posterior_meta_data = 'posterior ensemble mean'
+   call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
+   posterior_obs_mean_index = num_obs_copies
+endif
 
 ! Set up obs ensemble spread
 num_obs_copies = num_obs_copies + 1
 prior_meta_data = 'prior ensemble spread'
 call set_copy_meta_data(seq, num_obs_copies, prior_meta_data)
 prior_obs_spread_index = num_obs_copies
-num_obs_copies = num_obs_copies + 1
-posterior_meta_data = 'posterior ensemble spread'
-call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
-posterior_obs_spread_index = num_obs_copies
 
-! Make sure there are not too many copies requested
+if (do_post) then
+   num_obs_copies = num_obs_copies + 1
+   posterior_meta_data = 'posterior ensemble spread'
+   call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
+   posterior_obs_spread_index = num_obs_copies
+endif
+
+! Make sure there are not too many copies requested - 
+! proposed: make this magic number set in 1 place with an accessor
+! routine so all parts of the code agree on max values.
 if(num_output_obs_members > 10000) then
    write(msgstring, *)'output metadata in filter needs obs ensemble size < 10000, not ',&
                       num_output_obs_members
@@ -1238,12 +1273,14 @@ endif
 
 ! Set up obs ensemble members as requested
 do i = 1, num_output_obs_members
+   num_obs_copies = num_obs_copies + 1
    write(prior_meta_data, '(a21, 1x, i6)') 'prior ensemble member', i
-   write(posterior_meta_data, '(a25, 1x, i6)') 'posterior ensemble member', i
-   num_obs_copies = num_obs_copies + 1
    call set_copy_meta_data(seq, num_obs_copies, prior_meta_data)
-   num_obs_copies = num_obs_copies + 1
-   call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
+   if (do_post) then
+      num_obs_copies = num_obs_copies + 1
+      write(posterior_meta_data, '(a25, 1x, i6)') 'posterior ensemble member', i
+      call set_copy_meta_data(seq, num_obs_copies, posterior_meta_data)
+   endif
 end do
 
 
@@ -1270,23 +1307,20 @@ end subroutine filter_initialize_modules_used
 !-------------------------------------------------------------------------
 
 subroutine filter_setup_obs_sequence(seq, in_obs_copy, obs_val_index, &
-   input_qc_index, DART_qc_index)
+   input_qc_index, DART_qc_index, do_post)
 
 type(obs_sequence_type), intent(inout) :: seq
 integer,                 intent(out)   :: in_obs_copy, obs_val_index
 integer,                 intent(out)   :: input_qc_index, DART_qc_index
+logical,                 intent(in)    :: do_post
 
 character(len=metadatalength) :: no_qc_meta_data = 'No incoming data QC'
 character(len=metadatalength) :: dqc_meta_data   = 'DART quality control'
 character(len=129) :: obs_seq_read_format
-integer              :: obs_seq_file_id, num_obs_copies
-integer              :: tnum_copies, tnum_qc, tnum_obs, tmax_num_obs, qc_num_inc, num_qc
-logical              :: pre_I_format
-
-! Determine the number of output obs space fields
-! 4 is for prior/posterior mean and spread,
-! Prior and posterior values for all selected fields (so times 2)
-num_obs_copies = 2 * num_output_obs_members + 4
+integer :: obs_seq_file_id, copies_num_inc, qc_num_inc
+integer :: tnum_copies, tnum_qc, tnum_obs, tmax_num_obs
+integer :: my_task, io_task
+logical :: pre_I_format
 
 ! Input file can have one qc field, none, or more.  note that read_obs_seq_header
 ! does NOT return the actual metadata values, which would be helpful in trying
@@ -1294,18 +1328,53 @@ num_obs_copies = 2 * num_output_obs_members + 4
 call read_obs_seq_header(obs_sequence_in_name, tnum_copies, tnum_qc, tnum_obs, tmax_num_obs, &
    obs_seq_file_id, obs_seq_read_format, pre_I_format, close_the_file = .true.)
 
+! return the original number of copies in the obs_seq file
+! before we add any copies for diagnostics.
+in_obs_copy = tnum_copies
+
+! FIXME: this should be called from inside obs_space_diagnostics the first
+! time that routine is called, so it has an ensemble handle to query for 
+! exactly which task is pe0 (or use a different pe number).  here we 
+! have to assume task 0 == pe 0 which is currently true but someday
+! we would like to be able to change.
+io_task = 0
+my_task = my_task_id()
+
+! only the task writing the obs_seq.final file needs space for the
+! additional copies/qcs.  for large numbers of individual members
+! in the final file this takes quite a bit of memory. 
+
+if (my_task == io_task) then
+   ! Determine the number of output obs space fields
+   if (do_post) then
+      ! 4 is for prior/posterior mean and spread, plus
+      ! prior/posterior values for all requested members
+      copies_num_inc = 4 + (2 * num_output_obs_members)
+   else
+      ! 2 is for prior mean and spread, plus
+      ! prior values for all requested members
+      copies_num_inc = 2 + (1 * num_output_obs_members)
+   endif
+else
+   copies_num_inc = 0
+endif
 
 ! if there are less than 2 incoming qc fields, we will need
 ! to make at least 2 (one for the dummy data qc and one for
-! the dart qc).
+! the dart qc) on task 0.  other tasks just need 1 for incoming qc.
 if (tnum_qc < 2) then
-   qc_num_inc = 2 - tnum_qc
+   if (my_task == io_task) then
+      qc_num_inc = 2 - tnum_qc
+   else
+      qc_num_inc = 1 - tnum_qc
+   endif
 else
    qc_num_inc = 0
 endif
 
 ! Read in with enough space for diagnostic output values and add'l qc field(s)
-call read_obs_seq(obs_sequence_in_name, num_obs_copies, qc_num_inc, 0, seq)
+! ONLY ADD SPACE ON TASK 0.  everyone else just read in the original obs_seq file.
+call read_obs_seq(obs_sequence_in_name, copies_num_inc, qc_num_inc, 0, seq)
 
 ! check to be sure that we have an incoming qc field.  if not, look for
 ! a blank qc field
@@ -1327,9 +1396,9 @@ if (input_qc_index < 0) then
 endif
 
 ! check to be sure we either find an existing dart qc field and
-! reuse it, or we add a new one.
+! reuse it, or we add a new one. only on task 0.
 DART_qc_index = get_obs_dartqc_index(seq)
-if (DART_qc_index < 0) then
+if (DART_qc_index < 0 .and. my_task == io_task) then
    DART_qc_index = get_blank_qc_index(seq)
    if (DART_qc_index < 0) then
       ! Need 1 new qc field for the DART quality control
@@ -1344,18 +1413,7 @@ if (DART_qc_index < 0) then
    call set_qc_meta_data(seq, DART_qc_index, dqc_meta_data)
 endif
 
-! Get num of obs copies and num_qc
-num_qc = get_num_qc(seq)
-in_obs_copy = get_num_copies(seq) - num_obs_copies
-
-! Create an observation type temporary for use in filter
-call init_obs(observation, get_num_copies(seq), num_qc)
-
-! Set initial DART quality control to 0 for all observations?
-! Or leave them uninitialized, since
-! obs_space_diagnostics should set them all without reading them
-
-! Determine which copy has actual obs
+! Determine which copy has actual obs value and return it.
 obs_val_index = get_obs_copy_index(seq)
 
 end subroutine filter_setup_obs_sequence
@@ -1569,7 +1627,7 @@ subroutine obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size,
    obs_val_index, OBS_KEY_COPY, &
    ens_mean_index, ens_spread_index, num_obs_in_set, &
    OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, OBS_VAL_COPY, &
-   OBS_ERR_VAR_COPY, DART_qc_index)
+   OBS_ERR_VAR_COPY, DART_qc_index, do_post)
 
 ! Do prior observation space diagnostics on the set of obs corresponding to keys
 
@@ -1585,42 +1643,50 @@ type(obs_sequence_type), intent(inout) :: seq
 integer,                 intent(in)    :: OBS_MEAN_START, OBS_VAR_START
 integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY, OBS_VAL_COPY
 integer,                 intent(in)    :: OBS_ERR_VAR_COPY, DART_qc_index
+logical,                 intent(in)    :: do_post
 
-integer               :: j, k, ens_offset
-integer               :: ivalue
+integer               :: j, k, ens_offset, copy_factor
+integer               :: ivalue, io_task, my_task
 real(r8), allocatable :: obs_temp(:)
 real(r8)              :: rvalue(1)
 
 ! Do verbose forward operator output if requested
 if(output_forward_op_errors) call verbose_forward_op_output(qc_ens_handle, prior_post, ens_size, keys)
 
+! this is a query routine to return which task has 
+! logical processing element 0 in this ensemble.
+io_task = map_pe_to_task(obs_fwd_op_ens_handle, 0)
+my_task = my_task_id()
+
+! single value per member if no posterior, else 2
+if (do_post) then
+   copy_factor = 2
+else
+   copy_factor = 1
+endif
+
 ! Make var complete for get_copy() calls below.
-! Can you use a gather instead of a transpose and get copy?
+! Optimize: Could we use a gather instead of a transpose and get copy?
 call all_copies_to_all_vars(obs_fwd_op_ens_handle)
 
-! allocate temp space for sending data - surely only task 0 needs to allocate this?
-allocate(obs_temp(num_obs_in_set))
+! allocate temp space for sending data only on the task that will
+! write the obs_seq.final file
+if (my_task == io_task) allocate(obs_temp(num_obs_in_set))
+
 
 ! Update the ensemble mean
-! Get this copy to process 0
-call get_copy(map_task_to_pe(obs_fwd_op_ens_handle, 0), obs_fwd_op_ens_handle, OBS_MEAN_START, obs_temp)
-! Only pe 0 gets to write the sequence
-if(my_task_id() == 0) then
-     ! Loop through the observations for this time
-     do j = 1, obs_fwd_op_ens_handle%num_vars
+call get_copy(io_task, obs_fwd_op_ens_handle, OBS_MEAN_START, obs_temp)
+if(my_task == io_task) then
+   do j = 1, obs_fwd_op_ens_handle%num_vars
       rvalue(1) = obs_temp(j)
       call replace_obs_values(seq, keys(j), rvalue, ens_mean_index)
      end do
   endif
 
 ! Update the ensemble spread
-! Get this copy to process 0
-call get_copy(map_task_to_pe(obs_fwd_op_ens_handle, 0), obs_fwd_op_ens_handle, OBS_VAR_START, obs_temp)
-! Only pe 0 gets to write the sequence
-if(my_task_id() == 0) then
-   ! Loop through the observations for this time
+call get_copy(io_task, obs_fwd_op_ens_handle, OBS_VAR_START, obs_temp)
+if(my_task == io_task) then
    do j = 1, obs_fwd_op_ens_handle%num_vars
-      ! update the spread in each obs
       if (obs_temp(j) /= missing_r8) then
          rvalue(1) = sqrt(obs_temp(j))
       else
@@ -1630,38 +1696,29 @@ if(my_task_id() == 0) then
    end do
 endif
 
-! May be possible to only do this after the posterior call...
 ! Update any requested ensemble members
-ens_offset = members_index + 4
-! Update all of these ensembles that are required to sequence file
+ens_offset = members_index + 2*copy_factor
 do k = 1, num_output_members
-   ! Get this copy on pe 0
-   call get_copy(map_task_to_pe(obs_fwd_op_ens_handle, 0), obs_fwd_op_ens_handle, k, obs_temp)
-   ! Only task 0 gets to write the sequence
-   if(my_task_id() == 0) then
-      ! Loop through the observations for this time
+   call get_copy(io_task, obs_fwd_op_ens_handle, k, obs_temp)
+   if(my_task == io_task) then
+      ivalue = ens_offset + copy_factor * (k - 1)
       do j = 1, obs_fwd_op_ens_handle%num_vars
-         ! update the obs values
          rvalue(1) = obs_temp(j)
-         ivalue = ens_offset + 2 * (k - 1)
          call replace_obs_values(seq, keys(j), rvalue, ivalue)
       end do
    endif
 end do
 
 ! Update the qc global value
-call get_copy(map_task_to_pe(obs_fwd_op_ens_handle, 0), obs_fwd_op_ens_handle, OBS_GLOBAL_QC_COPY, obs_temp)
-! Only task 0 gets to write the observations for this time
-if(my_task_id() == 0) then
-   ! Loop through the observations for this time
+call get_copy(io_task, obs_fwd_op_ens_handle, OBS_GLOBAL_QC_COPY, obs_temp)
+if(my_task == io_task) then
    do j = 1, obs_fwd_op_ens_handle%num_vars
       rvalue(1) = obs_temp(j)
       call replace_qc(seq, keys(j), rvalue, DART_qc_index)
    end do
 endif
 
-! clean up.
-deallocate(obs_temp)
+if (my_task == io_task) deallocate(obs_temp)
 
 end subroutine obs_space_diagnostics
 
@@ -1682,7 +1739,7 @@ real(r8) :: rtime(4)
 integer  :: days, secs
 integer  :: copy1_owner, owner_index
 
-call get_copy_owner_index(1, copy1_owner, owner_index)
+call get_copy_owner_index(ens_handle, 1, copy1_owner, owner_index)
 
 if( ens_handle%my_pe == copy1_owner) then
    rkey_bounds = key_bounds
@@ -1727,7 +1784,7 @@ integer  :: days, secs
 integer  :: copy1_owner, owner_index
 type(time_type) :: time_from_copy1
 
-call get_copy_owner_index(1, copy1_owner, owner_index)
+call get_copy_owner_index(ens_handle, 1, copy1_owner, owner_index)
 
 if( ens_handle%my_pe == copy1_owner) then
    call get_time(ens_time, secs, days)
@@ -1819,6 +1876,67 @@ endif
 if (do_output()) call timestamp(' '//trim(msg), pos='brief')
 
 end subroutine timestamp_message
+
+!-------------------------------------------------------------------------
+!>  call progress(string, T_BEFORE, P_TIME, label, threshold, sync)  ! trace plus timestamp
+!-------------------------------------------------------------------------
+
+subroutine progress(msg, when, dotime, label, threshold, sync)  ! trace plus timestamp
+
+character(len=*), intent(in)           :: msg
+integer,          intent(in)           :: when
+logical,          intent(in)           :: dotime
+character(len=*), intent(in), optional :: label
+integer,          intent(in), optional :: threshold
+logical,          intent(in), optional :: sync
+
+! Write message to stdout and log file.
+! optionally write timestamp.
+integer :: t, lastchar
+character(len=40) :: label_to_use
+
+t = 0
+if (present(threshold)) t = threshold
+
+if (trace_level <= t) return
+
+if (.not. do_output()) return
+
+if (present(label)) then
+   lastchar = min(len_trim(label), len(label_to_use))
+   label_to_use = label(1:lastchar)
+else
+   label_to_use = ' filter_trace: '
+endif
+
+select case (when)
+  case (T_BEFORE)
+    call error_handler(E_MSG, trim(label_to_use)//' Before ', trim(msg))
+  case (T_AFTER)
+    call error_handler(E_MSG, trim(label_to_use)//' After  ', trim(msg))
+  case default
+    call error_handler(E_MSG, trim(label_to_use), trim(msg))
+end select
+
+if (timestamp_level <= 0) return
+
+! if sync is present and true, sync mpi jobs before printing time.
+if (present(sync)) then
+  if (sync) call task_sync()
+endif
+
+if (do_output()) then
+   select case (when)
+     case (T_BEFORE)
+      call timestamp(' Before '//trim(msg), pos='brief')
+     case (T_AFTER)
+      call timestamp(' After  '//trim(msg), pos='brief')
+     case default
+      call timestamp(' '//trim(msg), pos='brief')
+   end select
+endif
+
+end subroutine progress
 
 !-------------------------------------------------------------------------
 
@@ -1963,7 +2081,7 @@ type(ensemble_type), intent(inout) :: ens_handle
 
 integer               :: i, j ! loop variables
 type(random_seq_type) :: r(ens_size)
-real(r8)              :: random_number(ens_size) ! array of random numbers
+real(r8)              :: random_array(ens_size) ! array of random numbers
 integer               :: local_index
 
 ! Need ens_size random number sequences.
@@ -1979,11 +2097,11 @@ do i = 1, ens_handle%num_vars
    do j = 1, ens_size
      ! Can use %copies here because the random number
      ! is only relevant to the task than owns element i.
-     random_number(j)  =  random_gaussian(r(j), ens_handle%copies(j, local_index), perturbation_amplitude)
+     random_array(j)  =  random_gaussian(r(j), ens_handle%copies(j, local_index), perturbation_amplitude)
    enddo
 
    if (ens_handle%my_vars(local_index) == i) then
-      ens_handle%copies(1:ens_size, local_index) = random_number(:)
+      ens_handle%copies(1:ens_size, local_index) = random_array(:)
       local_index = local_index + 1 ! task is ready for the next random number
       local_index = min(local_index, ens_handle%my_num_vars)
    endif
@@ -2007,7 +2125,7 @@ ens_size = ens_handle%num_copies - ens_handle%num_extras
 
 do copy_num = ens_size + 1, ens_handle%num_copies
    ! Set time for a given copy of an ensemble
-   call get_copy_owner_index(copy_num, owner, owners_index)
+   call get_copy_owner_index(ens_handle, copy_num, owner, owners_index)
    if(ens_handle%my_pe == owner) then
       call set_ensemble_time(ens_handle, owners_index, ens_handle%current_time)
    endif
@@ -2430,8 +2548,7 @@ type(file_info_type), intent(out) :: file_info_postassim
 type(file_info_type), intent(out) :: file_info_analysis
 type(file_info_type), intent(out) :: file_info_output
 
-integer :: noutput_members, next_file, ninput_files, noutput_files, ndomains, idom
-character(len=64)  :: fsource
+integer :: noutput_members, ninput_files, noutput_files, ndomains
 character(len=256), allocatable :: file_array_input(:,:), file_array_output(:,:)
 
 ! local variable to shorten the name for function input

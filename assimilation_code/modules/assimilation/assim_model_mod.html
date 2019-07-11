@@ -100,8 +100,6 @@ typeSizes (part of netcdf)
 <TABLE>
 <TR><TD><em class=call>use assim_model_mod, only : </em></TD>
 <TR><TD>&nbsp;</TD><TD><A HREF="#adv_1step">adv_1step</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#aget_closest_state_time_to">aget_closest_state_time_to</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#aget_initial_condition" >aget_initial_condition</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#aoutput_diagnostics">aoutput_diagnostics</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#aread_state_restart">aread_state_restart</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#assim_model_type" >assim_model_type</A> </TD></TR>
@@ -329,11 +327,11 @@ integer :: <em class=code>get_model_size </em>
 <A NAME="get_closest_state_time_to"></A>
 <br>
 <div class=routine>
-<em class=call> var = get_closest_state_time_to(assim_model, time) </em>
+<em class=call> var = get_closest_state_time_to(model_time, time) </em>
 <pre>
-type(time_type)                     :: <em class=code> get_closest_state_time_to </em>
-type(assim_model_type), intent(in)  :: <em class=code> assim_model </em>
-type(time_type), intent(in)         :: <em class=code> time</em>
+type(time_type)              :: <em class=code> get_closest_state_time_to </em>
+type(time_type), intent(in)  :: <em class=code> model_time </em>
+type(time_type), intent(in)  :: <em class=code> time</em>
 </pre>
 </div>
 
@@ -352,42 +350,12 @@ type(time_type), intent(in)         :: <em class=code> time</em>
 <TR><TD valign=top><em class=code>var</em></TD>
     <TD>The closest time to which the model can be advanced is returned.</TD></TR>
 
-<TR><TD valign=top><em class=code>assim_model &nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>A model state vector and time that might be advanced.</TD></TR>
+<TR><TD valign=top><em class=code>model_time&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The time of a model state vector.</TD></TR>
 
 <TR><TD valign=top><em class=code>time</em></TD>
     <TD>A time that one would like to get close to with the model.</TD></TR>
 
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="aget_initial_condition"></A>
-<br>
-<div class=routine>
-<em class=call> call aget_initial_condition(time, x) </em>
-<pre>
-type(time_type), intent(out) :: <em class=code>time</em>
-type(r8), intent(out) :: <em class=code>x</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Reads an initial time and state vector from a restart format file
-into a real time and real array, which are put into an assim_model_type.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Contains time of input state vector on return</TD></TR>
-<TR><TD valign=top><em class=code>x</em></TD>
-    <TD>Contains state of input state vector on return</TD></TR>
 </TABLE>
 
 </div>
@@ -925,41 +893,6 @@ from a state restart file.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="aget_closest_state_time_to"></A>
-<br>
-<div class=routine>
-<em class=call> var = aget_closest_state_time_to (model_time, time) </em>
-<pre>
-type(time_type)             :: <em class=code>aget_closest_state_time_to</em>
-type(time_type), intent(in) :: <em class=code>model_time</em>
-type(time_type), intent(in) :: <em class=code>time</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Computes the closest time to which a model can advance given
-the current model time and a target time. If the target time is earlier
-than the model time, the model time is returned (new feature in post Hawaii
-releases).
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>var</em></TD>
-    <TD>The closest model accessible time to time.</TD></TR>
-<TR><TD valign=top><em class=code>model_time&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>The current time of the model state.</TD></TR>
-<TR><TD valign=top><em class=code>time</em></TD>
-    <TD>The time we want to get close to.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
 <A NAME="aoutput_diagnostics"></A>
 <br>
 <div class=routine>
@@ -1286,9 +1219,10 @@ See model_mod documentation for arguments and details.
 <A NAME="get_initial_conditions"></A>
 <br>
 <div class=routine>
-<em class=call> call get_initial_condition(x) </em>
+<em class=call> call get_initial_condition(time, x) </em>
 <pre>
-type(assim_model_type), intent(out) :: <em class=code>x</em>
+type(time_type), intent(out) :: <em class=code>time</em>
+real(r8),        intent(out) :: <em class=code>x</em>
 </pre>
 </div>
 
@@ -1300,8 +1234,10 @@ Obtains an initial condition from models that support this option.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>x&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>assim_model into which an initial model state can be written.</TD></TR>
+<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>the valid time of the model state</TD></TR>
+<TR><TD valign=top><em class=code>x</em></TD>
+    <TD>the initial model state</TD></TR>
 </TABLE>
 
 </div>

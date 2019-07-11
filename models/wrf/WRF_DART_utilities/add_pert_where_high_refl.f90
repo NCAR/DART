@@ -91,10 +91,6 @@ real(r8), PARAMETER   :: cpovcv = 1.4_r8        ! cp / (cp - gas_constant)
 real(r8), allocatable :: p(:,:,:)               ! pressure (mb)
 
 
-character(len=8)      :: crdate                 ! needed by F90 DATE_AND_TIME intrinsic
-character(len=10)     :: crtime                 ! needed by F90 DATE_AND_TIME intrinsic
-character(len=5)      :: crzone                 ! needed by F90 DATE_AND_TIME intrinsic
-integer, dimension(8) :: values                 ! needed by F90 DATE_AND_TIME intrinsic
 real(r8)              :: dx, dy                 ! horizontal grid spacings (m)
 integer               :: bt, sn, we             ! WRF grid dimensions
 integer               :: i, j, k, o
@@ -314,12 +310,6 @@ enddo
 ! Initialize random number generator based on the analysis time and
 ! the ensemble number so repeated runs have reproducible values.
 call init_random_seq(rs, (gdays + gsecs)*1000 + ens_num)
-
-! Original code was setting the seed based on the milliseconds of
-! the system clock, so all seeds were random but not reproducible.
-!call date_and_time(crdate,crtime,crzone,values)
-!call init_random_seq(rs, -int(values(8)))
-
 
 
 ! Add perturbations.

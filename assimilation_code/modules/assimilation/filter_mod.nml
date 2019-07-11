@@ -18,6 +18,7 @@
    output_mean                  = .true.
    output_sd                    = .true.
    write_all_stages_at_end      = .false.
+   compute_posterior            = .true.
 
    ens_size                     = 20,
    num_groups                   = 1,
@@ -42,15 +43,17 @@
    inf_sd_initial_from_restart = .false.,                 .false.,
    inf_deterministic           = .true.,                  .true.,
    inf_initial                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.0,                     0.0,
-   inf_damping                 = 1.0,                     1.0,
-   inf_lower_bound             = 1.0,                     1.0,
+   inf_lower_bound             = 0.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
+   inf_damping                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.0,                     0.0,
    inf_sd_lower_bound          = 0.0,                     0.0
+   inf_sd_max_change           = 1.05,                    1.05,
 
    trace_execution              = .false.,
    output_timestamps            = .false.,
    output_forward_op_errors     = .false.,
+   write_obs_every_cycle        = .false.,
    silence                      = .false.,
    
    allow_missing_clm            = .false.

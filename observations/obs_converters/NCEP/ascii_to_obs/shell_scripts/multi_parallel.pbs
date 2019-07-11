@@ -1,0 +1,174 @@
+#!/bin/csh 
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+#
+# Driver script for the parallel version.  Submit this script
+# to your batch system and it will invoke the 'prepbufr_to_obs'
+# exeutable once for each conversion day.
+#
+#--------------------------------------------------------------
+# DESCRIPTION:
+#
+#  This script is used to generate daily (3:01Z to 3:00Z of next day) 
+#  decoded NCEP reanalysis PREPBUFR text/ascii data.
+#
+#--------------------------------------------------------------
+
+#PBS -A P86850054
+#PBS -N ascibufr1
+#PBS -j oe
+#PBS -q regular
+#PBS -l walltime=01:00:00
+#PBS -l select=1:ncpus=36:mpiprocs=36
+
+setenv TMPDIR /glade/scratch/$USER/temp
+mkdir -p $TMPDIR
+
+
+# USER SETTINGS HERE
+
+# Set year, month, days for to pass as args to prepbufr.csh
+set start_year  = 2017
+set start_month =    8
+set start_day   =    1
+
+set end_year    = 2017
+set end_month   =    8
+set end_day     =   03
+
+# should match the mpiprocs=X setting
+# on the BSUB line above
+set njobs = 36
+
+# END USER SETTINGS
+
+echo job started at `date`
+
+# very important! must set this to run multiple scripts at once
+setenv MPI_SHEPHERD true
+
+
+# convert the start and stop times to gregorian days, so we can
+# compute total number of days including rolling over month and
+# year boundaries.  make sure all values have leading 0s if they
+# are < 10.  do the end time first so we can use the same values
+# to set the initial day while we are doing the total day calc.
+
+# the output of advance time with the -g input is:
+#   gregorian_day_number  seconds
+# use $var[1] to return just the day number
+
+set mon2=`printf %02d $end_month`
+set day2=`printf %02d $end_day`
+set end_d=(`echo ${end_year}${mon2}${day2}00 0 -g | ./advance_time`)
+
+set mon2=`printf %02d $start_month`
+set day2=`printf %02d $start_day`
+set start_d=(`echo ${start_year}${mon2}${day2}00 0 -g | ./advance_time`)
+
+# the output of this call is a string YYYYMMDDHH
+# see below for help in how to easily parse this up into words
+set curday=`echo ${start_year}${mon2}${day2}00 0 | ./advance_time`
+
+# how many total days are going to be processed (for the loop counter)
+# note that the parens below are necessary; otherwise the computation
+# does total = end - (start+1), or total = end - start - 1, which is
+# not how elementary math is supposed to work.
+@ totaldays = ( $end_d[1] - $start_d[1] ) + 1
+
+# loop over each day
+set d=1
+while ( $d <= $totaldays )
+
+  rm -f cmdfile
+
+  set j=1
+  while ( $j <= $njobs && $d <= $totaldays)
+
+    # parse out the parts from a string which is YYYYMMDDHH
+    # use cut with the byte option to pull out columns 1-4, 5-6, and 7-8
+    # then bc to strip off leading blanks
+    set  year=`echo $curday | cut -b1-4`
+    set month=`echo $curday | cut -b5-6`
+    set   day=`echo $curday | cut -b7-8`
+  
+    # numeric month/day (no leading 0)
+    set nummonth=`echo $month | bc`
+    set   numday=`echo $day | bc`
+
+    # figure out the next day; the output is YYYYMMDD00
+    set nextday=`echo ${year}${month}${day}00 +1d | ./advance_time`
+
+    set  nyear=`echo $nextday | cut -b1-4`
+    set nmonth=`echo $nextday | cut -b5-6`
+    set   nday=`echo $nextday | cut -b7-8`
+  
+    # numeric next month/day (no leading 0)
+    set numnmonth=`echo $nmonth | bc`
+    set   numnday=`echo $nday | bc`
+  
+    # status/debug - comment in or out as desired.
+    echo starting processing for ${year} ${nummonth} ${numday}
+  
+    # Subdirectory base name.
+    set tdir = workdir_${year}_${month}_${day}
+  
+    # make the dir, cd in, and link the executable and sed'd namelist file there
+    mkdir $tdir
+    cd $tdir
+    ln -s ../prepbufr_to_obs .
+    sed -e "s/SYYYY/$year/" \
+        -e "s/SMM/$nummonth/"  \
+        -e "s/SDD/$numday/"  \
+        -e "s/SHH/3/"  \
+        -e "s/EYYYY/$nyear/" \
+        -e "s/EMM/$numnmonth/"  \
+        -e "s/EDD/$numnday/"  \
+        -e "s/EHH/3/"  \
+    ../input.nml.template > input.nml
+    
+    cd ..
+    echo starting day $day 
+    echo "csh -c 'cd $tdir; ./prepbufr_to_obs; rm input.nml ./prepbufr_to_obs'" >> cmdfile
+  
+    # advance the day
+    set curday=$nextday
+  
+    # advance the loop counter
+    @ d += 1
+
+    # advance the concurrent job counter
+    @ j += 1
+  end
+
+  # avoid echoing the filename by making wc read stdin
+  set j=`cat cmdfile | wc -l`
+  while ( $j < $njobs )
+    echo "date " >> cmdfile
+    @ j += 1
+  end
+
+  echo running jobs:
+  cat cmdfile
+
+  mpiexec_mpt launch_cf.sh cmdfile
+end
+
+# there should not be any non-empty dirs if all went well
+# rmdir will fail if the dir isn't empty
+rmdir workdir_*
+ls -l workdir_*
+
+echo job ended at `date`
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

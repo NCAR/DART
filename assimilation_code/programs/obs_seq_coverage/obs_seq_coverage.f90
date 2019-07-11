@@ -49,9 +49,11 @@ use time_manager_mod, only : time_type, set_date, set_time, get_time, &
 use    utilities_mod, only : get_unit, close_file, register_module, &
                              file_exist, error_handler, E_ERR, E_WARN, E_MSG, &
                              initialize_utilities, nmlfileunit, finalize_utilities, &
-                             find_namelist_in_file, check_namelist_read, nc_check, &
+                             find_namelist_in_file, check_namelist_read, &
                              next_file, set_filename_list, find_textfile_dims, &
                              file_to_text, do_nml_file, do_nml_term
+
+use  netcdf_utilities_mod, only : nc_check
 
 use typeSizes
 use netcdf

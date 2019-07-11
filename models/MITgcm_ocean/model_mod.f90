@@ -28,6 +28,7 @@ use     obs_kind_mod, only : QTY_TEMPERATURE, QTY_SALINITY, QTY_U_CURRENT_COMPON
 use mpi_utilities_mod, only: my_task_id
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
 
+use netcdf
 
 implicit none
 private
@@ -62,10 +63,10 @@ public :: prog_var_to_vector, vector_to_prog_var, &
           DARTtime_to_timestepindex 
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 character(len=129) :: msgstring
 logical, save :: module_initialized = .false.

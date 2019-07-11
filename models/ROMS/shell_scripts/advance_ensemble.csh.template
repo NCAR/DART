@@ -6,56 +6,101 @@
 #
 # DART $Id$
 #
-#==========================================================================
-# this script submits the jobs to advance the ROMS ensemble members using
-# a job array. Each ensemble member gets executed on its own node.
+# This script submits the jobs to advance the ROMS ensemble members using
+# a JOB ARRAY. EACH ENSEMBLE MEMBER GETS EXECUTED ON ITS OWN NODE(s).
+# The run-time control file for ROMS gets updated with the next filename
+# and DSTART appropriate for the next forecast cycle.
 #
-#SBATCH --array=1-Myens_size
-#SBATCH --ntasks=16 
-#SBATCH --time=10:00
-#SBATCH --exclude=node04
-#SBATCH --job-name=roms_filter
-#SBATCH --output=roms_filter-%A-%a.out
-#SBATCH --error=roms_filter-%A-%a.err
-#
-#SXXXXX --dependency=afterok:FILTERJOBID
-#==========================================================================
-#
+# The prerequisite for this script is that advance_ensemble.csh has been run.
 # Things to note: many strings are intended to be replaced when this
 # template gets copied and ultimately submitted. Anything that starts
 # with 'My' is a string that gets replaced in the "normal" ROMs fashion.
-# The next few are not standard. 
+# The next few are not standard.
 #
 # Myens_size             gets replaced in the 'stage_experiment.csh' script
 # SXXXXX                 gets replaced if this is a dependent job (with SBATCH)
 # FILTERJOBID            gets replaced by the job ID that must finish first
 # EXPERIMENT_DIRECTORY   gets replaced in the 'stage_experiment.csh' script
+#
+#==========================================================================
+# SLURM directives 			sbatch advance_ensemble.csh
+# 					squeue -u $USER
+# 					scancel <jobnumber>
+#SBATCH --ignore-pbs
+#SBATCH --array=1-Myens_size
+#SBATCH --ntasks=16
+#SBATCH --time=10:00
+#SBATCH --exclude=node04
+#SBATCH --job-name=roms_advance
+#SBATCH --output=roms_advance-%A-%a.out
+#SBATCH --error=roms_advance-%A-%a.err
+#
+#==========================================================================
+# PBS directives                	qsub test_batch.csh
+# 					qstat -u $USER
+# 					qdel <jobnumber>
+#PBS -J 1-Myens_size
+#PBS -l walltime=00:10:00
+#PBS -q economy
+#PBS -l select=1:ncpus=16:mpiprocs=16
+#PBS -A P8685nnnn
+#PBS -N roms_advance
+#
+#==========================================================================
+# LSF directives 			bsub < advance_ensemble.csh
+# 					bjobs
+# 					bkill <jobnumber>
+#BSUB -J roms_advance[1-Myens_size]
+#BSUB -o roms_advance.%J.%I.log
+#BSUB -N -u ${USER}@ucar.edu
+#BSUB -q small
+#BSUB -n 16
+#BSUB -W 0:10
+#BSUB -P P8685nnnn
 
-# machine-specific dereferencing
-if ($?LS_SUBCWD) then
-   set     JOBNAME = $LSB_JOBNAME
-   set       JOBID = $LSB_JOBID
-   set    NODELIST = $LSB_SUB_HOST
-   set   LAUNCHCMD = "mpirun.lsf"
-else if ($?SLURM_JOB_ID) then
+#==========================================================================
+# Figure out the platform-specific nuances.
+#==========================================================================
+if ($?SLURM_JOB_ID) then
+
    set     JOBNAME = $SLURM_JOB_NAME
    set       JOBID = $SLURM_JOBID
+   set ARRAY_INDEX = $SLURM_ARRAY_TASK_ID
    set    NODELIST = $SLURM_NODELIST
    set   LAUNCHCMD = "mpirun -np $SLURM_NTASKS -bind-to core"
+
 else if ($?PBS_O_WORKDIR) then
-   set   LAUNCHCMD = "mpirun -np $SLURM_NTASKS -bind-to core"
+
+   env | grep PBS | sort
+
+   set     JOBNAME = $PBS_JOBNAME
+   set       JOBID = "$PBS_JOBID"
+   set ARRAY_INDEX = $PBS_ARRAY_INDEX
+   set    NODELIST = `cat "${PBS_NODEFILE}"`
+   set   LAUNCHCMD = "mpiexec_mpt"
+
+   # CISL suggests users set TMPDIR when running batch jobs on Cheyenne
+   mkdir -p /glade/scratch/$USER/temp
+   setenv TMPDIR /glade/scratch/$USER/temp
+
+else if ($?LS_SUBCWD) then
+
+   set     JOBNAME = $LSB_JOBNAME
+   set       JOBID = $LSB_JOBID
+   set ARRAY_INDEX = $LSB_JOBINDEX
+   set    NODELIST = $LSB_SUB_HOST
+   set   LAUNCHCMD = "mpirun.lsf"
+
 else
-   set     JOBNAME = roms_filter
-   set       JOBID = $$
-   set    NODELIST = $host
-   set LAUNCHCMD = "aprun -n 16"
+   echo "This script must be run with a queueing system that supports job arrays."
+   exit 1
 endif
 
-#----------------------------------------------------------------------
+#--------------------------------------------------------------------------
 # Just an echo of job attributes
-#----------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
-set instance = $SLURM_ARRAY_TASK_ID
+set instance = $ARRAY_INDEX
 set INSTANCE_DIRECTORY = `printf "instance_%04d" $instance`
 cd EXPERIMENT_DIRECTORY/$INSTANCE_DIRECTORY
 
@@ -71,40 +116,31 @@ echo
 
 rm -f log_$instance.txt
 
-#----------------------------------------------------------------------
+#--------------------------------------------------------------------------
 echo "advancing instance $instance at ..."`date`
-#----------------------------------------------------------------------
+#--------------------------------------------------------------------------
+
+# sometimes we need the full name, sometimes we need it without the extension
+set RST_FILE = MyRSTNAME
+set DAI_FILE = MyDAINAME
+set OBS_FILE = MyMODname
+set RST_ROOT = $RST_FILE:r
+set DAI_ROOT = $DAI_FILE:r
+set OBS_ROOT = $OBS_FILE:r
+
+# get the DSTART time so we can get the right observation file
+set INPUT_FILE = `sed -n -e '/ININAME/s/.*== *//p' MyROMS_STDIN` || exit 1
+set     DSTART = `../get_ocean_time.csh ${INPUT_FILE}`       || exit 1
 
 # Set ROMS standard input parameters needed in template scripts.
 
 \cp ../s4dvar.in.template MyAPARNAM
-\cp ../ocean.in.template  MyROMS_STDIN
-
-# determine the current model time to use as DSTART -and-
-# to know which observation file to use.
-# NOTE ... bc can handle the 'long' integers that happen when the
-# reference time is 1900-01-01, the shell divide cannot.
-
-if ( -e ../restart_files.txt ) then
-   set FULLFILE = `head -n $instance ../restart_files.txt| tail -n 1`
-   set ROMS_INI = $FULLFILE:t
-else
-   set ROMS_INI = `printf %s_%04d.nc MyINIBASE $instance`
-endif
-
-set OCEAN_TIME = `ncdump -v ocean_time ${ROMS_INI} | grep "ocean_time =" | tail -1`
-set TIME_SEC = `echo $OCEAN_TIME | grep -oE '[[:digit:]]+'`
-set DSTART = `echo "scale=6; $TIME_SEC / 86400.0" | bc `
-set IDSTART = `echo "scale=0; $DSTART / 1" | bc `
-
 set OBS_PREF = ../Obs/obs
-set  NEW_OBS = `printf %s_%d.nc ${OBS_PREF} $IDSTART`
-
+set  NEW_OBS = `printf %s_%d.nc ${OBS_PREF} $DSTART`
 MySUBSTITUTE MyAPARNAM     MyOBSname   $NEW_OBS
-MySUBSTITUTE MyROMS_STDIN  MyDSTART    $DSTART
-MySUBSTITUTE MyROMS_STDIN  MyININAME   $ROMS_INI
 
-${LAUNCHCMD} ../MyROMS_EXE MyROMS_STDIN >& log_$instance.txt
+# Advance the model
+${LAUNCHCMD} ../MyROMS_EXE MyROMS_STDIN >& log_$instance.txt || exit 2
 
 # Check for successful completion - log file should NOT have something like:
 # Blowing-up: Saving latest model state into  RESTART file
@@ -116,20 +152,11 @@ if ($status == 0) then
    exit 1
 endif
 
-# sometimes we need the full name, sometimes we need it without the extension
-set RST_FILE = MyRSTNAME
-set DAI_FILE = MyDAINAME
-set OBS_FILE = MyMODname
-set RST_ROOT = $RST_FILE:r
-set DAI_ROOT = $DAI_FILE:r
-set OBS_ROOT = $OBS_FILE:r
-
 # The ROMS restart file will be treated as the DART prior.
-# Create a ROMS POSTERIOR file that will be updated by DART and
-# tag the output with the model time.
+# DART will create an updated ROMS posterior.
+# Tag the output with the current ocean time.
 
-set DSTART_STRING = `ncdump -v dstart ${DAI_FILE} | grep '^ dstart = '`
-set DSTART = `echo $DSTART_STRING | sed -e "s#[=;a-z_ ]##g"`
+set DSTART = `../get_ocean_time.csh ${DAI_FILE}` || exit 3
 
 set ROMS_PRIOR     = `printf %s_%04d_%d.nc ${RST_ROOT} $instance $DSTART`
 set ROMS_POSTERIOR = `printf roms_posterior_%04d_%d.nc $instance $DSTART`
@@ -137,9 +164,16 @@ set ROMS_OBSFILE   = `printf %s_%04d_%d.nc ${OBS_ROOT} $instance $DSTART`
 set SAFETY         = `printf roms_dai_original_%04d_%d.nc $instance $DSTART`
 
 \cp -v ${DAI_FILE} ${SAFETY}          || exit 1
-\mv -v ${RST_FILE} ${ROMS_PRIOR}      || exit 1
 \mv -v ${DAI_FILE} ${ROMS_POSTERIOR}  || exit 1
+\mv -v ${RST_FILE} ${ROMS_PRIOR}      || exit 1
 \mv -v ${OBS_FILE} ${ROMS_OBSFILE}    || exit 1
+
+# Update the ocean.in file with the new DSTART value
+
+\cp ../ocean.in.template  MyROMS_STDIN
+
+MySUBSTITUTE MyROMS_STDIN  MyDSTART   ${DSTART}
+MySUBSTITUTE MyROMS_STDIN  MyININAME  ${ROMS_POSTERIOR}
 
 echo
 echo "#---------------------------------------------------------------------"

@@ -1,8 +1,8 @@
-! DART software - Copyright 2004 - 2013 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
+! DART software - Copyright UCAR. This open source software is provided
+! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
+! DART $Id$
 
 program clm_to_dart
 
@@ -31,16 +31,16 @@ use time_manager_mod, only : time_type, print_time, print_date
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 !-----------------------------------------------------------------------
 ! namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-character(len=512) :: clm_to_dart_output_file  = 'clm_restart.nc'
+character(len=256) :: clm_to_dart_output_file  = 'clm_restart.nc'
 
 namelist /clm_to_dart_nml/ clm_to_dart_output_file
 

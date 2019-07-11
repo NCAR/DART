@@ -8,7 +8,7 @@ program nml_test
 
 use     types_mod, only : r8
 use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,       &
-                          open_file, close_file, nc_check, get_next_filename, &
+                          open_file, close_file,                              &
                           find_namelist_in_file, check_namelist_read,         &
                           do_nml_file, do_nml_term, nmlfileunit,              &
                           initialize_utilities, finalize_utilities

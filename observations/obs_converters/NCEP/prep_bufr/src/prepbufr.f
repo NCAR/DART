@@ -680,7 +680,8 @@ c----------------------------------------------------------------------
 
           if(use_this_data_int(uqm,qctype_use,inum_qctype) .and. 
      &       use_this_data_int(pqm,qctype_use,inum_qctype) .and. 
-     &       uoe .lt. 1.e9 .and. uob .lt. 1.e9             ) then
+     &       uoe .lt. 1.e9 .and. uob .lt. 1.e9             .and.
+     &       voe .lt. 1.e9 .and. vob .lt. 1.e9             ) then
 
             udata(1) = uoe
             udata(4) = ppb

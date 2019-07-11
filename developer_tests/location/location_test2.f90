@@ -10,7 +10,8 @@ program location_test2
 
 use location_mod
 use types_mod,     only : r8
-use utilities_mod, only : get_unit, error_handler, E_ERR
+use utilities_mod, only : get_unit, error_handler, E_ERR, &
+                          initialize_utilities, finalize_utilities
 
 implicit none
 
@@ -23,6 +24,8 @@ character(len=128), parameter :: revdate  = "$Date$"
 type(location_type) :: loc1, loc2
 integer  :: iunit, i
 real(r8) :: loc2_val
+
+call initialize_utilities('location_test2')
 
 ! Open an output file
 iunit = get_unit()
@@ -55,6 +58,8 @@ do i = 1, 4
 end do
 
 close(iunit)
+
+call finalize_utilities()
 
 end program location_test2
 

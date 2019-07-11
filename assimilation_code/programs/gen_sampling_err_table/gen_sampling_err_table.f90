@@ -31,10 +31,11 @@
 program gen_sampling_err_table
 
 use types_mod,      only : r8, MISSING_I
-use utilities_mod,  only : error_handler, E_ERR, nc_check, file_exist,  &
+use utilities_mod,  only : error_handler, E_ERR, file_exist,  &
                            initialize_utilities, finalize_utilities, &
                            find_namelist_in_file, check_namelist_read, &
                            do_nml_file, do_nml_term, nmlfileunit, E_MSG
+use  netcdf_utilities_mod, only : nc_check
 use random_seq_mod, only : random_seq_type, init_random_seq, twod_gaussians
 
 use netcdf

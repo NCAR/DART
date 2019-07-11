@@ -22,19 +22,19 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN,  &
 implicit none
 private
 
-public :: get_name_for_type_of_obs, &
-          assimilate_this_type_of_obs, &
-          evaluate_this_type_of_obs, &
-          get_quantity_for_type_of_obs, &
-          get_index_for_type_of_obs, &
-          write_type_of_obs_table, &
-          read_type_of_obs_table, &
-          get_type_of_obs_from_menu, &
-          map_type_of_obs_table,  &
+public :: get_name_for_type_of_obs,       &
+          assimilate_this_type_of_obs,    &
+          evaluate_this_type_of_obs,      &
+          get_quantity_for_type_of_obs,   &
+          get_index_for_type_of_obs,      &
+          write_type_of_obs_table,        &
+          read_type_of_obs_table,         &
+          get_type_of_obs_from_menu,      &
+          map_type_of_obs_table,          &
           use_ext_prior_this_type_of_obs, &
-          get_name_for_quantity, &
-          get_index_for_quantity, &
-          get_units_for_quantity, &
+          get_name_for_quantity,          &
+          get_index_for_quantity,         &
+          get_units_for_quantity,         &
           get_bounds_for_quantity
 
 public :: get_num_types_of_obs, get_num_quantities
@@ -60,7 +60,6 @@ public :: get_num_types_of_obs, get_num_quantities
 !
 
 ! DART PREPROCESS INTEGER DECLARATIONS INSERTED HERE
-
 
 !----------------------------------------------------------------------------
 
@@ -204,9 +203,9 @@ else
    end do
 endif
 
-if (do_output() .and. (num_types_assimilate > 0 .or. num_types_evaluate > 0 .or.  &
+if (do_output() .and. (num_types_assimilate > 0 .or. &
+                       num_types_evaluate > 0   .or. &
                        num_types_use_precomputed_FOs > 0 )) then  
-
    call log_it('')
    call log_it('Assimilate_these_obs_types:')
    if (num_types_assimilate < 1) then
@@ -227,7 +226,6 @@ if (do_output() .and. (num_types_assimilate > 0 .or. num_types_evaluate > 0 .or.
    endif
 
    call log_it('Use the precomputed Prior Forward Operators for these obs types:')
-
    if (num_types_use_precomputed_FOs <1) then
          call log_it('   none')
    else
@@ -236,7 +234,6 @@ if (do_output() .and. (num_types_assimilate > 0 .or. num_types_evaluate > 0 .or.
       enddo
    endif
    call log_it('')
-
 endif
 
 

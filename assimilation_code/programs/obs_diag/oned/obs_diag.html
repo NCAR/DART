@@ -3,7 +3,7 @@
 <HTML>
 <HEAD>
 <TITLE>program obs_diag (for 1D observations)</TITLE>
-<link rel="stylesheet" type="text/css" href="../../../../documentation/html/doc.css">
+<link rel="stylesheet" type="text/css" href="../../../../documentation/html/doc.css" />
 <link href="../../../../documentation/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
@@ -42,7 +42,11 @@
    temporal bin specified by user input.  The result of the code is a netCDF
    file that contains the 18 quantities of the prior (aka 'guess') and
    posterior (aka 'analysis') estimates as a function of time and region as
-   well as all the metadata to create meaningful figures.
+   well as all the metadata to create meaningful figures. <strong>The 1D version
+   of <em class=program>obs_diag</em> has defaults that automatically set the 
+   first and last bin center based on the first and last observation time in 
+   the set of observations being processed.</strong>
+   This is different behavior than the 3D versions.
 </P>
 <P>
    Each <em class="file">obs_seq.final</em> file contains an observation
@@ -50,18 +54,26 @@
    the actual observation, another copy is the prior ensemble mean estimate
    of the observation, one is the spread of the prior ensemble estimate,
    one may be the prior estimate from ensemble member 1, ... etc.
-   The only observations for the 1D models are the result of a
+   The only observations for the 1D models are generally the result of a
    'perfect model' experiment, so there is an additional copy called
    the 'truth' - the noise-free expected observation given the true
    model state.  Since this copy does not, in general, exist for the
    high-order models, all comparisons are made with the copy labelled
-   'observation'. It may, in some instances be useful to compare against
-   the 'truth', in which case you will have to hand-edit the code and
-   recompile. Caveat emptor.
+   'observation'. There is also a namelist variable
+   (<em class=code>use_zero_error_obs</em>) to compare
+   against the 'truth' instead; the observation error variance is then
+   automatically set to zero.
 </P>
 <P>
-   Each ensemble member applies a forward operator to the state to compute
-   the "expected" value of an observation. Given multiple estimates of
+   Each ensemble member applies a forward observation operator to the state to compute
+   the "expected" value of an observation.  Please note:
+   the forward observation operator is applied <strong>AFTER</strong> any prior inflation
+   has taken place! Similarly, the forward observation operator is applied AFTER any posterior
+   inflation. This has always been the case. For a detailed
+   look at the relationship between the observation operators and inflation, please look at the
+   <a href="../../filter/filter.html#DetailedProgramFlow">Detailed&nbsp;Program&nbsp;Execution Flow</a>
+   section of <a href="../../filter/filter.html">filter.html</a>.<br /><br />
+   Given multiple estimates of
    the observation, several quantities can be calculated. It is possible to
    compute the expected observations from the state vector before
    assimilating (the "guess", "forecast", or "prior") or after the
@@ -69,27 +81,44 @@
 </P>
 <P>
    Even with <em class="file">input.nml</em>:<em class="code">filter_nml:num_output_obs_members</em>
-   set to <em class="code">0</em>; the full [prior,posterior] ensemble mean
-   and [prior,posterior] ensemble spread are preserved in the
-   <em class="file">obs_seq.final</em> file. Consequently, the ensemble
-   means and spreads are used to calculate the diagnostics.  If the
+   set to <em class="code">0</em>; the full [prior,posterior] ensemble mean and
+   [prior,posterior] ensemble spread are preserved in the
+   <em class="file">obs_seq.final</em> file. Consequently, the ensemble means and
+   spreads are used to calculate the diagnostics.
+
+   If the
    <em class="file">input.nml</em>:<em class="code">filter_nml:num_output_obs_members</em>
-   is set to <em class="code">80</em> (for example); the first 80 ensemble
-   members prior and posterior "expected" values of the observation are
-   also included.  In this case, the <em class="file">obs_seq.final</em>
-   file contains enough information to calculate a rank histograms,
-   verify forecasts, etc.
+   is set to <em class="code">80</em> (for example); the first 80 ensemble members
+   prior and posterior "expected" values of the observation are also included.
+   In this case, the <em class="file">obs_seq.final</em> file contains enough
+   information to calculate a rank histograms, verify forecasts, etc.
    The ensemble means are still used for many other calculations.
 </P>
 
 <table width="100%">
 <tr>
-<td align=left><a href="../../../../documentation/images/lorenz_63_rmse_evolution.png"><img src="../../../../documentation/images/lorenz_63_rmse_evolution.png" width="300"></a></td>
-<td align=right><a href="../../../../documentation/images/lorenz_63_rank_histogram.png"><img src="../../../../documentation/images/lorenz_63_rank_histogram.png" width="300"></a></td>
+<td align=left><a href="../../../../documentation/images/lorenz_63_rmse_evolution.png">
+<img src="../../../../documentation/images/lorenz_63_rmse_evolution.png" width="300">
+</a></td>
+<td align=right><a href="../../../../documentation/images/lorenz_63_rank_histogram.png">
+<img src="../../../../documentation/images/lorenz_63_rank_histogram.png" width="300">
+</a></td>
 </tr>
 </table>
 
-
+<P>
+   Since this program is fundamentally interested in the response as a function of
+   region, there are three versions of this program; one for each of the
+   <em class=file>oned, threed_sphere, or threed_cartesian</em> location modules
+   (<em class=file>location_mod.f90</em>). It did not make sense to ask the
+   <em class=program>lorenz_96</em> model what part of North America you'd like
+   to investigate or how you would like to bin in the vertical.
+   The low-order models write out similar
+   netCDF files and the Matlab scripts have been updated accordingly.
+   The oned observations have locations conceptualized as being on
+   a unit circle, so only the namelist input variables pertaining to longitude are
+   used.
+</P>
 <P>
    <em class="program">obs_diag</em> is designed to explore the effect of
    the assimilation in two ways; 1) as a function of time for a particular
@@ -98,16 +127,15 @@
    relative to the  rest of the ensemble?" (figure on the right).
    The figures were created by Matlab&#174;
    scripts that query the <em class="file">obs_diag_output.nc</em> file:
-   <em class="file">DART/diagnostics/matlab/<a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/diagnostics/matlab/plot_evolution.m">plot_evolution.m</a></em> and
-   <a href="https://svn-dares-dart.cgd.ucar.edu/DART/trunk/diagnostics/matlab/plot_rank_histogram.m">plot_rank_histogram.m</a>.
+   <em class="file">DART/diagnostics/matlab/<a href="../../../../diagnostics/matlab/plot_evolution.m">plot_evolution.m</a></em>
+   and <a href="../../../../diagnostics/matlab/plot_rank_histogram.m">plot_rank_histogram.m</a>.
    Both of these takes as input a
-   file name and a 'quantity' to plot ('rmse', 'spread', 'totalspread',&nbsp;...)
+   file name and a 'quantity' to plot ('rmse','spread','totalspread',&nbsp;...)
    and exhaustively plots the quantity (for every variable,
    every region) in a single matlab figure window  - and creates a series
    of .ps files with multiple pages for each of the figures.
    The directory gets cluttered with them.
 </P>
-
 <P>
    The observation sequence files contain only the time of the observation,
    nothing of the assimilation interval, etc. - so it requires user guidance
@@ -124,11 +152,18 @@
 <P>
    <em class=program>obs_diag</em> reads <em class=file>obs_seq.final</em>
    files and calculates the following quantities (in no particular order)
-   for an arbitrary number of regions and levels. It is necessary to query
+   for an arbitrary number of regions and levels.
+   <em class=program>obs_diag</em> creates a netCDF file called
+   <em class=file>obs_diag_output.nc</em>.  It is necessary to query
    the <em class=code>CopyMetaData</em> variable to determine the storage order
-   (i.e. "which copy is what?").
+   (i.e. "which copy is what?") if you want to use your own plotting routines.
 </P>
 
+<div class=unix>
+ncdump -f F -v CopyMetaData obs_diag_output.nc
+</div>
+<br />
+<br />
 <table width="90%">
 <tr><td valign="top"><b>Nposs</b></td>
     <td>The number of observations available to be assimilated.</td></tr>
@@ -157,6 +192,8 @@
     <td>the mean of the observation values</td></tr>
 <tr><td valign="top"><b>ens_mean</b></td>
     <td>the ensemble mean of the model estimates of the observation values</td></tr>
+<tr><td valign="top"><b>N_trusted</b></td>
+    <td>the number of implicitly trusted observations, regardless of DART QC</td></tr>
 <tr><td valign="top"><b>N_DARTqc_0</b></td>
     <td>the number of observations that had a DART QC value of 0</td></tr>
 <tr><td valign="top"><b>N_DARTqc_1</b></td>
@@ -173,42 +210,50 @@
     <td>the number of observations that had a DART QC value of 6</td></tr>
 <tr><td valign="top"><b>N_DARTqc_7</b></td>
     <td>the number of observations that had a DART QC value of 7</td></tr>
-<tr><td valign="top"><b>N_trusted</b></td>
-    <td>the number of 'trusted' observations, regardless of DART QC</td></tr>
+<tr><td valign="top"><b>N_DARTqc_8</b></td>
+    <td>the number of observations that had a DART QC value of 8</td></tr>
 </table>
 
 <P>
-   Here is a table explaining the DART QC values:
+   The DART QC flag is intended to provide information about whether the
+   observation was assimilated, evaluated only, whether the assimilation resulted
+   in a 'good' observation, etc.
+   <em class=green>DART QC values lower than <strong>2</strong> indicate the prior and posteriors are OK.</em>
+   DART QC values higher than <strong>3</strong> were <strong>not</strong> assimilated or evaluated.
+   Here is the table that should explain things more fully:
 </P>
 
 <table width="80%">
    <tr><th align="left">DART QC flag value</th><th align="left">meaning</th></tr>
    <tr><td>0</td><td>observation assimilated</td></tr>
-   <tr><td>1</td><td>observation evaluated only</td></tr>
-
-   <tr><th align="left" colspan=2>DART QC values higher than this means the prior and posterior are OK, but ...</th></tr>
-
+   <tr><td>1</td><td>observation evaluated only (because of namelist settings)</td></tr>
+   <tr><td colspan=2><hr /></td></tr>
    <tr><td>2</td><td>assimilated, but the posterior forward operator failed</td></tr>
-   <tr><td>3</td><td>Evaluated only, but the posterior forward operator failed</td></tr>
-
-   <tr><th align="left" colspan=2>DART QC values higher than this means only the prior is OK, but ...</th></tr>
-
+   <tr><td>3</td><td>evaluated only, but the posterior forward operator failed</td></tr>
+   <tr><td colspan=2><hr /></td></tr>
    <tr><td>4</td><td>prior forward operator failed</td></tr>
-   <tr><td>5</td><td>not used because of namelist control</td></tr>
-
-   <tr><th align="left" colspan=2>DART QC values higher than this are bad news.</th></tr>
-
-   <tr><td>6</td><td>prior QC rejected</td></tr>
-   <tr><td>7</td><td>outlier rejected</td></tr>
-   <tr><td>8+</td><td>reserved for future use</td></tr>
+   <tr><td>5</td><td>not used because observation type not listed in namelist</td></tr>
+   <tr><td>6</td><td>rejected because incoming observation QC too large</td></tr>
+   <tr><td>7</td><td>rejected because of a failed outlier threshold test</td></tr>
+   <tr><td><em class=changed>8</em></td><td><em class=changed>vertical conversion failed</em></td></tr>
+   <tr><td>9+</td><td>reserved for future use</td></tr>
 </table>
-
-<P></P>
 
 <!--==================================================================-->
 
+<P><!-- spacer for top --></P>
 <A NAME="New"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
+<H2>What is new in the Manhattan Release.</H2>
+<ol>
+    <li>Support for DART QC = 8 (failed vertical conversion).
+        This is provided simply to make the netCDF
+        files as consistent as needed for plotting purposes.</li><br />
+    <li>Simplified input file specification.</li><br />
+    <li>Some of the internal variable names have been changed to make it 
+        easier to distinguish between variances and standard deviations.</li>
+</ol>
+
 <H2>What is new in the Lanai Release.</H2>
 <P>
    <em class=program>obs_diag</em> has several improvements:
@@ -237,12 +282,11 @@
         </li>
 </ol>
 
-<P></P>
-
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
 <!--==================================================================-->
 
+<P><!-- spacer for top --></P>
 <A NAME="Namelist"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
@@ -258,23 +302,27 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;obs_diag_nml
-   obs_sequence_name     = 'obs_seq.final'
+   obs_sequence_name     = ''
    obs_sequence_list     = ''
    bin_width_days        = -1
    bin_width_seconds     = -1
    init_skip_days        = 0
    init_skip_seconds     = 0
    max_num_bins          = 9999
-   trusted_obs           = 'null'
    Nregions              = 3
    lonlim1               = 0.0, 0.0, 0.5
    lonlim2               = 1.0, 0.5, 1.0
    reg_names             = 'whole', 'yin', 'yang'
+   trusted_obs           = 'null'
+   use_zero_error_obs    = .false.
    create_rank_histogram = .true.
    outliers_in_histogram = .true.
-   use_zero_error_obs    = .false.
    verbose               = .false.
-  /
+   /
+</pre>
+<P>This value may be more useful:</P>
+<pre>
+   obs_sequence_name     = 'obs_seq.final'
 </pre>
 </div>
 
@@ -288,7 +336,6 @@ An observation with a location exactly ON a region boundary cannot
 'count' for both regions. The logic used to resolve this is:
 </P>
 <blockquote>if((lon &ge; lon1) .and. (lon &lt; lon2)) keeper = .true.</blockquote>
-<br />
 <P>
    Consequently, if you want to include an observation precisely AT 1.0, (for example),
    you need to specify something a little larger than 1.0.<br /><br />
@@ -308,33 +355,22 @@ An observation with a location exactly ON a region boundary cannot
 </THEAD>
 
 <TBODY valign=top>
-
 <TR><TD> obs_sequence_name </TD>
-    <TD> character </TD>
-    <TD>Name of the observation sequence file(s). <br />
-    This may be a relative or absolute filename. If the filename contains a '/',
-    the filename is considered to be comprised of everything to the right, and a
-    directory structure to the left.  The directory structure is then queried to
-    see if it can be incremented to handle a sequence of observation files.  The
-    default behavior of <em class="program">obs_diag</em> is to look for
-    additional files to include until the files are exhausted or an
-    <em class=file>obs_seq.final</em> file is found that contains observations
-    beyond the timeframe of interest.<br />e.g. 'obsdir_001/obs_seq.final'
-    will cause <em class="program">obs_diag</em> to look for
-    'obsdir_002/obs_seq.final', and so on.
-    <br />
-    If this is set, <em class=code>obs_sequence_list</em> must be set to a
-    null string ('&nbsp;').
+    <TD> character(len=256), dimension(100) </TD>
+    <TD>An array of names of observation sequence files.
+    These may be relative or absolute filenames.
+    If this is set, <em class=code>obs_sequence_list</em> 
+    must be set to '&nbsp;'&nbsp;(empty string).
 </TD></TR>
 
 <TR><TD> obs_sequence_list </TD>
-    <TD> character </TD>
+    <TD> character(len=256) </TD>
     <TD>Name of an ascii text file which contains a list of one or more
-    observation sequence files, one per line.  If this is specified,
-    <em class=code>obs_sequence_name</em> must be set to a null string ('&nbsp;').
-    Can be created by any method, including sending the output of the 'ls'
-    command to a file, a text editor, or another program.  If this is set,
-    <em class=code>obs_sequence_name</em> must be set to a null string ('&nbsp;').
+observation sequence files, one per line.  If this is specified,
+<em class=code>obs_sequence_name</em> must be set to '&nbsp;'.  Can be created by any
+method, including sending the output of the 'ls' command to a file, a text
+editor, or another program.  If this is set, <em class=code>obs_sequence_name</em>
+must be set to '&nbsp;' (empty string).
 </TD></TR>
 
 <TR><TD> bin_width_days, bin_width_seconds </TD>
@@ -386,20 +422,6 @@ An observation with a location exactly ON a region boundary cannot
     three regions.
 </TD></TR>
 
-<TR><TD> create_rank_histogram </TD>
-    <TD> logical </TD>
-    <TD>Determines whether or not to create the rank histogram IFF the
-    observation sequence file has individual ensemble members.  Number of
-    output observation values is set when running filter in the &amp;filter_nml
-    namelist item: <em class=code>&amp;filter_nml:num_output_obs_members</em>
-</TD></TR>
-
-<TR><TD> outliers_in_histogram </TD>
-    <TD> logical </TD>
-    <TD>Determines whether or not to use observations that have been rejected
-    by the outlier threshhold mechanism in the calculation of the rank histogram.
-</TD></TR>
-
 <TR><TD> trusted_obs </TD>
     <TD> character(len=32), dimension(5) </TD>
     <TD>Array of names for observation TYPES that will be included in the
@@ -412,9 +434,24 @@ An observation with a location exactly ON a region boundary cannot
 <TR><TD> use_zero_error_obs </TD>
     <TD> logical </TD>
     <TD> if <em class=code>.true.</em>, the observation copy used for the
-    statistics calculations will be 'truth'.  Only 'perfect' observations
-    (from <em class=program>perfect_model_obs</em>) have this copy.
-    The observation error variance will be set to zero.
+         statistics calculations will be 'truth'.  Only 'perfect' observations
+	 (from <em class=program>perfect_model_obs</em>) have this copy.
+	 The observation error variance will be set to zero.
+</TD></TR>
+
+<TR><TD> create_rank_histogram </TD>
+    <TD> logical </TD>
+    <TD> if <em class=code>.true.</em> and there are actual ensemble estimates of the
+         observations in the <em class=file>obs_seq.final</em>
+         (i.e. <em class=code>filter_nml:num_output_obs_members</em> is
+         larger than zero), a rank histogram will be created.
+</TD></TR>
+
+<TR><TD> outliers_in_histogram </TD>
+    <TD> logical </TD>
+    <TD> if <em class=code>.true.</em> the  observations that have been
+         rejected by the outlier threshhold mechanism will be <em> included</em>
+	 in the calculation of the rank histogram.
 </TD></TR>
 
 <TR><TD> verbose </TD>
@@ -426,10 +463,9 @@ An observation with a location exactly ON a region boundary cannot
 </TABLE>
 </div>
 
-<P></P>
-
 <!--==================================================================-->
 
+<P><!-- spacer for top --></P>
 <A NAME="Modules"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES DIRECTLY USED</H2>
@@ -457,22 +493,26 @@ null_mpi_utilities_mod
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
+<P><!-- spacer for top --></P>
 <A NAME="FilesUsed"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
-<UL>
-   <LI>input namelist; <em class=file>input.nml</em>
-   <LI>observation sequence file (input) ; from obs_sequence_name
-   <LI>output state space 'guess' file; <em class=file>obs_diag_output.nc</em>
-   <LI>histogram of observation distances in terms of numbers of standard
-       deviations out ... ; <em class=file>LargeInnov.txt</em>
+<UL><LI><em class="file">input.nml</em> is used for
+        <em class="code">obs_diag_nml</em></LI>
+    <LI><em class="file">obs_diag_output.nc</em> is the
+        netCDF output file</LI>
+    <LI><em class="file">dart_log.out</em> list directed output
+        from the obs_diag.</LI>
+    <LI><em class="file">LargeInnov.txt</em> contains the distance ratio
+	histogram -- useful for estimating the distribution of the
+        magnitudes of the innovations.</LI>
 </UL>
 
 <H3 class=indent1>Discussion of obs_diag_output.nc</H3>
 
 <P>
 Every observation type encountered in the observation sequence file is
-tracked separately, and aggregated into temporal and 3D spatial bins.
+tracked separately, and aggregated into temporal and spatial bins.
 There are two main efforts to this program. One is to track the temporal
 evolution of any of the quantities available in the netCDF file for any
 possible observation type:
@@ -484,6 +524,8 @@ kind. By default, each observation kind has a 'guess/prior' value and
 an 'analysis/posterior' value - which shed some insight into the
 innovations.
 </P>
+
+<P></P><hr width=40% align=left>
 
 <H4 class=indent1>temporal evolution</H4>
 
@@ -516,9 +558,9 @@ is appended to the variable name.  An example seems appropriate:
 <P>
 If it is possible to calculate a rank histogram, there will also be :</P>
 <pre>
-  ...
+   ...
   int RAW_STATE_VARIABLE_guess_RankHist(time, rank_bins, region) ;
-  ...
+   ...
 </pre>
 <P>
 as well as some global attributes. The attributes reflect the namelist settings
@@ -526,8 +568,8 @@ and can be used by plotting routines to provide additional annotation for
 the histogram.
 </P>
 <pre>
-                :DART_QCs_in_histogram = 0, 1, 2, 3, 7 ;
-                :outliers_in_histogram = "TRUE" ;
+		:DART_QCs_in_histogram = 0, 1, 2, 3, 7 ;
+		:outliers_in_histogram = "TRUE" ;
 </pre>
 <P>
 Please note:<br />
@@ -539,6 +581,7 @@ may be truncated.
 <!-- Cite references, if need be.                                     -->
 <!--==================================================================-->
 
+<P><!-- spacer for top --></P>
 <A NAME="References"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
@@ -550,6 +593,7 @@ may be truncated.
 <!-- Describe all the error conditions and codes.                     -->
 <!--==================================================================-->
 
+<P><!-- spacer for top --></P>
 <A NAME="Errors"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
@@ -558,13 +602,12 @@ may be truncated.
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
 <TR><!-- routine --><TD VALIGN=top>get_last_obs</TD>
-    <!-- message --><TD VALIGN=top>No "last" observation in sequence</TD>
-    <!-- comment --><TD VALIGN=top>Must have an incomplete observation sequence file. </TD>
+    <!-- message --><TD VALIGN=top>No "last" observation in sequence.</TD>
+    <!-- comment --><TD VALIGN=top>Generated by an incomplete observation sequence file.</TD>
 <TR><!-- routine --><TD VALIGN=top>get_first_obs</TD>
     <!-- message --><TD VALIGN=top>No Observations in sequence.</TD>
     <!-- comment --><TD VALIGN=top>Empty observation sequence file.</TD>
 </TR>
-
 </TABLE>
 </div>
 
@@ -577,6 +620,7 @@ none at this time
 <!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
+<P><!-- spacer for top --></P>
 <A NAME="FuturePlans"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
@@ -588,6 +632,7 @@ none.
 <!-- PrivateComponents                                                -->
 <!--==================================================================-->
 
+<P><!-- spacer for top --></P>
 <A NAME="PrivateComponents"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
@@ -599,6 +644,7 @@ N/A
 <!-- Legalese & Metadata                                              -->
 <!--==================================================================-->
 
+<P><!-- spacer for top --></P>
 <A NAME="Legalese"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>

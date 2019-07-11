@@ -1,0 +1,10 @@
+
+&perturb_single_instance_nml
+   ens_size               = 1
+   input_files            = ''
+   output_files           = ''
+   output_file_list       = ''
+   perturbation_amplitude = 0.0
+   single_restart_file_in = .false.,
+ /
+

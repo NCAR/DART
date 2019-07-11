@@ -67,15 +67,17 @@
    inf_sd_initial_from_restart = .false.,                 .false.,
    inf_deterministic           = .true.,                  .true.,
    inf_initial                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.0,                     0.0,
-   inf_damping                 = 1.0,                     1.0,
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
+   inf_damping                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.0,                     0.0,
    inf_sd_lower_bound          = 0.0,                     0.0,
+   inf_sd_max_change           = 1.05,                    1.05,
 
    trace_execution              = .false.,
    output_timestamps            = .false.,
    output_forward_op_errors     = .false.,
+   write_obs_every_cycle        = .false.,
    silence                      = .false.,
    /
 
@@ -125,6 +127,8 @@
 
 &obs_kind_nml
    assimilate_these_obs_types = 'RAW_STATE_VARIABLE',
+                                'RAW_STATE_1D_INTEGRAL',
+                                'RAW_STATE_VAR_POWER'
    /
 
 &model_nml
@@ -176,9 +180,9 @@
    init_skip_seconds     = 0,
    Nregions              = 3,
    trusted_obs           = 'null',
-   lonlim1               = 0.00, 0.00, 0.50, -1.0,
-   lonlim2               = 1.01, 0.50, 1.01, -1.0,
-   reg_names             = 'whole', 'yin', 'yang', 'bogus',
+   lonlim1               = 0.00, 0.00, 0.50
+   lonlim2               = 1.01, 0.50, 1.01
+   reg_names             = 'whole', 'lower', 'upper'
    create_rank_histogram = .true.,
    outliers_in_histogram = .true.,
    use_zero_error_obs    = .false.,
@@ -220,20 +224,17 @@
    /
 
 &model_mod_check_nml
-  x_ind            = 2
-  num_ens          = 1
-  loc_of_interest  = 0.3, 0.0, 0.0
-  kind_of_interest = 'QTY_STATE_VARIABLE'
-  verbose          = .true.
-  interp_test_xrange  = 0.0, 1.0
-  interp_test_dx      = 0.02
-  interp_test_yrange  = 0.0, 1.0
-  interp_test_dy      = 0.2
-  interp_test_zrange  = 0.0, 1.0
-  interp_test_dz      = 0.2
-  interp_test_vertcoord = 'VERTISHEIGHT'
-  test1thru             = 9
-  input_restart_list  = 'restart_in.txt'
-  output_restart_list = 'restart_out.txt'
+  input_state_files     = 'perfect_input.nc'
+  output_state_files    = 'mmc_output.nc'
+  num_ens               = 1
+  single_file           = .false.
+  test1thru             = 0
+  run_tests             = 1,2,3,4,5,6,7
+  x_ind                 = 2
+  loc_of_interest       = 0.3
+  quantity_of_interest  = 'QTY_STATE_VARIABLE'
+  interp_test_dx        = 0.02
+  interp_test_xrange    = 0.0, 1.0
   verbose               = .true.
   /
+

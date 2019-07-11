@@ -17,8 +17,9 @@ use    utilities_mod,      only : register_module, error_handler, E_ERR, E_MSG, 
                                   nmlfileunit, do_output, find_namelist_in_file, &
                                   check_namelist_read, do_nml_file, do_nml_term
 
-use netcdf_utilities_mod, only : nc_add_global_attribute, nc_sync, &
-                                 nc_add_global_creation_time, nc_redef, nc_enddef
+use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
+                                 nc_add_global_creation_time, &
+                                 nc_begin_define_mode, nc_end_define_mode
 
 use time_manager_mod, only : time_type, set_time
 
@@ -375,7 +376,7 @@ integer, intent(in) :: domain_id
 
 ! Write Global Attributes 
 
-call nc_redef(ncid)
+call nc_begin_define_mode(ncid)
 
 call nc_add_global_creation_time(ncid)
 
@@ -390,10 +391,10 @@ call nc_add_global_attribute(ncid, "model_advance_method", advance_method )
 call nc_add_global_attribute(ncid, "model_interpolation_method", interpolation_method )
 
 call nc_write_location_atts(ncid, model_size)
-call nc_enddef(ncid)
+call nc_end_define_mode(ncid)
 call nc_write_location(ncid, state_loc, model_size)
 
-call nc_sync(ncid)
+call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts
 

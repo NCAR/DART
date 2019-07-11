@@ -16,11 +16,11 @@ function x = clm_get_var(fname,varname,copystring,levelindex,timeindex,clmfname)
 % fname      = 'Prior_Diag.2000-01-06-00000.nc';
 % clmfname   = '../clmruns/enstest_0906.clm2_0006.r.2000-01-06-00000.nc';
 %
-% % 'frac_sno',    'KIND_SNOWCOVER_FRAC',
-% % 'DZSNO',       'KIND_SNOW_THICKNESS',
-% % 'H2OSOI_LIQ',  'KIND_LIQUID_WATER',
-% % 'H2OSOI_ICE',  'KIND_ICE',
-% % 'T_SOISNO',    'KIND_SOIL_TEMPERATURE',
+% % 'frac_sno',    'QTY_SNOWCOVER_FRAC',
+% % 'DZSNO',       'QTY_SNOW_THICKNESS',
+% % 'H2OSOI_LIQ',  'QTY_LIQUID_WATER',
+% % 'H2OSOI_ICE',  'QTY_ICE',
+% % 'T_SOISNO',    'QTY_SOIL_TEMPERATURE',
 %
 
 %% DART software - Copyright UCAR. This open source software is provided

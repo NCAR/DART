@@ -1,0 +1,14 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+Download an example data file here from the NCAR RDA.
+Dataset number 337.0 now has options to download in
+both prepbufr and netcdf format.  Get a netcdf format file.
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

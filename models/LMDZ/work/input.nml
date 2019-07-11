@@ -36,11 +36,12 @@
    inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart',
    inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag',
    inf_initial                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.1,                     0.1,
-   inf_damping                 = 1.0,                     1.0,
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
-   inf_sd_lower_bound          = 0.0,                     0.0
+   inf_damping                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.1,                     0.1,
+   inf_sd_lower_bound          = 0.0,                     0.0,
+   inf_sd_max_change           = 1.05,                    1.05,
 /
 ! ! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space
 
@@ -157,8 +158,8 @@
    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90',
   input_files              = '../../../observations/forward_operators/obs_def_gps_mod.f90',
                              '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
-                             '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90'
-                             '../../../observations/forward_operators/obs_def_AIRS_mod.f90'
+                             '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
+                             '../../../observations/forward_operators/obs_def_AIRS_mod.f90',
                              '../../../observations/forward_operators/obs_def_insat_mod.f90'
    /
 
@@ -317,11 +318,21 @@
    single_restart_file_in = .true.,
    difference_method      = 4,
  /
-&model_mod_check_nml 
-   input_state_files    = "dart_ics.nc",        
-   output_state_files   = "check_me.nc",
-   x_ind                = 10000,
-   loc_of_interest      = -1.0, -1.0, -1.0,
-   kind_of_interest     = 'ANY'
-   verbose              = .TRUE.,
-   /
+
+&model_mod_check_nml
+   input_state_files     = 'lmdz_input.nc'
+   output_state_files    = 'mmc_output.nc'
+   test1thru             = 0
+   run_tests             = 1,2,3,4,5,7
+   x_ind                 = 10000
+   loc_of_interest       = 231.0, 40.0, 10.0
+   quantity_of_interest  = 'ALL'
+   interp_test_dlon      = 0.1
+   interp_test_dlat      = 0.1
+   interp_test_dvert     = 5.0
+   interp_test_lonrange  = 205.0,  226.0
+   interp_test_latrange  =  30.0,   47.0
+   interp_test_vertrange =  0.0,    10.0
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   verbose               = .false.
+  /

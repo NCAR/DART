@@ -1,0 +1,10 @@
+
+&modis_ist_to_obs_nc_nml
+   year              = 2000
+   doy               = 1
+   terr              = 3.0
+   seaice_input_file = 'seaicedata.input'
+   obs_out_file      = 'obs_seq.out'
+   debug             = .false.
+   /
+

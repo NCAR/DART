@@ -33,7 +33,7 @@ use adaptive_inflate_mod, only : adaptive_inflate_type, mean_from_restart, sd_fr
                                  do_single_ss_inflate, &
                                  get_inflate_mean, get_inflate_sd, do_ss_inflate, &
                                  get_is_prior, get_is_posterior, get_inflation_mean_copy, &
-                                 get_inflation_sd_copy
+                                 get_inflation_sd_copy, print_inflation_restart_filename
 
 use direct_netcdf_mod,    only : read_transpose, transpose_write, write_single_file, &
                                  read_single_file, write_augmented_state, &
@@ -51,7 +51,7 @@ use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, &
                                  all_copies_to_all_vars, all_vars_to_all_copies, &
                                  get_var_owner_index
 
-use utilities_mod,        only : error_handler, nc_check, check_namelist_read, &
+use utilities_mod,        only : error_handler, check_namelist_read, &
                                  find_namelist_in_file, nmlfileunit, do_nml_file, &
                                  do_nml_term, register_module, to_upper,  E_MSG, E_ERR
 
@@ -68,16 +68,14 @@ use model_mod,            only : read_model_time
 
 use state_structure_mod,  only : get_num_domains
 
-use netcdf
-
 
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 private
 
@@ -116,11 +114,11 @@ logical :: module_initialized = .false.
 
 ! namelist variables with default values
 ! Aim: to have the regular transpose as the default
-logical :: buffer_state_io         = .false. !< Write one variable at a time. This is for models
-                                             !< whose entire model state can not fit into a single array on
-                                             !< a given node
-logical :: single_precision_output = .false. !< Allows you to write r4 netcdf files 
-                                             !< even if filter is double precision
+logical :: buffer_state_io         = .false. !< .false. puts the  entire model state 
+                                             !< into a single array on a given node
+                                             !< (desirable if possible).
+logical :: single_precision_output = .false. !< .true. writes 32 bit netcdf variables
+                                             !< even if filter uses 64 bit 
 
 namelist /  state_vector_io_nml / buffer_state_io, single_precision_output
 
@@ -203,15 +201,20 @@ if (present(prior_inflate_handle) .and. present(post_inflate_handle)) inflation_
 if (inflation_handles) then
 
    !>@todo just a print at the moment
+   !>@todo FIXME: the print code should all be in the inflation module.
+   !> this code may be needed to figure out the filename but the actual
+   !> output should come from a routine in adaptive_inflate_mod.f90
    call print_inflation_source(file_info, prior_inflate_handle, 'Prior')
    call print_inflation_source(file_info, post_inflate_handle,  'Posterior')
 
    ! If inflation is single state space read from a file, the copies array is filled here.
-   call fill_single_ss_inflate_from_read(state_ens_handle, prior_inflate_handle, post_inflate_handle)
+   call fill_single_inflate_val_from_read(state_ens_handle, prior_inflate_handle, post_inflate_handle)
 
    ! If inflation is from a namelist value it is set here.
-   call fill_ss_from_nameslist_value(state_ens_handle, prior_inflate_handle)
-   call fill_ss_from_nameslist_value(state_ens_handle, post_inflate_handle)
+   !>@todo FIXME: ditto here - the output should be from a routine
+   !> in the adaptive_inflate_mod.f90 code
+   call fill_inf_from_namelist_value(state_ens_handle, prior_inflate_handle)
+   call fill_inf_from_namelist_value(state_ens_handle, post_inflate_handle)
 
 endif
 
@@ -345,10 +348,10 @@ end subroutine write_restart_direct
 !> to all other tasks who then update their copies array.
 !> Note filling both mean and sd values if at least one of mean
 !> or sd is read from file.  If one is set from a namelist the copies 
-!> array is overwritten in fill_ss_from_namelist value
+!> array is overwritten in fill_inf_from_namelist_value()
 
 !>@todo We need to refactor this, not sure where it is being used
-subroutine fill_single_ss_inflate_from_read(ens_handle, &
+subroutine fill_single_inflate_val_from_read(ens_handle, &
                 prior_inflate_handle, post_inflate_handle)
 
 type(ensemble_type),         intent(inout) :: ens_handle
@@ -391,7 +394,7 @@ allocate(inf_array(inf_count)) ! for sending and recveiving inflation values
 
 ! Find out who owns the first element of vars array
 first_element = 1
-call get_var_owner_index(first_element, owner, owners_index)
+call get_var_owner_index(ens_handle, first_element, owner, owners_index)
 
 PRIOR_INF_MEAN  = get_inflation_mean_copy(prior_inflate_handle)
 PRIOR_INF_SD    = get_inflation_sd_copy(  prior_inflate_handle)
@@ -402,21 +405,21 @@ if (ens_handle%my_pe == owner) then
    if (do_single_ss_inflate(prior_inflate_handle) .and. &
        do_single_ss_inflate(post_inflate_handle)) then
       inf_array(1) = ens_handle%copies(PRIOR_INF_MEAN, owners_index)
-      inf_array(2) = ens_handle%copies(PRIOR_INF_SD, owners_index)
-      inf_array(3) = ens_handle%copies(POST_INF_MEAN, owners_index)
-      inf_array(4) = ens_handle%copies(POST_INF_SD, owners_index)
+      inf_array(2) = ens_handle%copies(PRIOR_INF_SD,   owners_index)
+      inf_array(3) = ens_handle%copies(POST_INF_MEAN,  owners_index)
+      inf_array(4) = ens_handle%copies(POST_INF_SD,    owners_index)
 
    elseif (do_single_ss_inflate(post_inflate_handle) .and. &
      .not. do_single_ss_inflate(post_inflate_handle)) then
 
       inf_array(1) = ens_handle%copies(PRIOR_INF_MEAN, owners_index)
-      inf_array(2) = ens_handle%copies(PRIOR_INF_SD, owners_index)
+      inf_array(2) = ens_handle%copies(PRIOR_INF_SD,   owners_index)
 
    elseif(.not. do_single_ss_inflate(post_inflate_handle) .and. &
                 do_single_ss_inflate(post_inflate_handle)) then
 
       inf_array(1) = ens_handle%copies(POST_INF_MEAN, owners_index)
-      inf_array(2) = ens_handle%copies(POST_INF_SD, owners_index)
+      inf_array(2) = ens_handle%copies(POST_INF_SD,   owners_index)
 
    endif
 
@@ -429,28 +432,28 @@ else
    if (do_single_ss_inflate(prior_inflate_handle) .and. &
        do_single_ss_inflate(post_inflate_handle)) then
 
-      ens_handle%copies(PRIOR_INF_MEAN, owners_index)     = inf_array(1)
-      ens_handle%copies(PRIOR_INF_SD, owners_index)  = inf_array(2)
-      ens_handle%copies(POST_INF_MEAN, owners_index)      = inf_array(3)
-      ens_handle%copies(POST_INF_SD, owners_index)   = inf_array(4)
+      ens_handle%copies(PRIOR_INF_MEAN, owners_index) = inf_array(1)
+      ens_handle%copies(PRIOR_INF_SD,   owners_index) = inf_array(2)
+      ens_handle%copies(POST_INF_MEAN,  owners_index) = inf_array(3)
+      ens_handle%copies(POST_INF_SD,    owners_index) = inf_array(4)
 
    elseif (do_single_ss_inflate(prior_inflate_handle) .and. &
      .not. do_single_ss_inflate(post_inflate_handle)) then
 
-      ens_handle%copies(PRIOR_INF_MEAN, owners_index)    = inf_array(1)
-      ens_handle%copies(PRIOR_INF_SD, owners_index) = inf_array(2)
+      ens_handle%copies(PRIOR_INF_MEAN, owners_index) = inf_array(1)
+      ens_handle%copies(PRIOR_INF_SD,   owners_index) = inf_array(2)
 
    elseif(.not. do_single_ss_inflate(prior_inflate_handle) .and. &
                 do_single_ss_inflate(post_inflate_handle)) then
 
-      ens_handle%copies(POST_INF_MEAN, owners_index)    = inf_array(1)
-      ens_handle%copies(POST_INF_SD, owners_index) = inf_array(2)
+      ens_handle%copies(POST_INF_MEAN, owners_index) = inf_array(1)
+      ens_handle%copies(POST_INF_SD,   owners_index) = inf_array(2)
 
    endif
 
 endif
 
-end subroutine fill_single_ss_inflate_from_read
+end subroutine fill_single_inflate_val_from_read
 
 
 !-----------------------------------------------------------------------
@@ -458,13 +461,12 @@ end subroutine fill_single_ss_inflate_from_read
 !> fill copies array with namelist values for inflation if they do.
 
 
-subroutine fill_ss_from_nameslist_value(ens_handle, inflate_handle)
+subroutine fill_inf_from_namelist_value(ens_handle, inflate_handle)
 
 type(ensemble_type),         intent(inout) :: ens_handle
 type(adaptive_inflate_type), intent(in)    :: inflate_handle
 
 character(len=32)  :: label
-character(len=128) :: nmread
 integer            :: INF_MEAN_COPY, INF_SD_COPY
 real(r8)           :: inf_initial, sd_initial
 
@@ -485,27 +487,21 @@ else if (get_is_posterior(inflate_handle)) then
    label = "Posterior"
 else
    write(msgstring, *) "state space inflation but neither prior or posterior"
-   call error_handler(E_ERR, 'fill_ss_from_nameslist_value', msgstring, &
+   call error_handler(E_ERR, 'fill_inf_from_namelist_value', msgstring, &
       source, revision, revdate)
 endif
 
 if (.not. mean_from_restart(inflate_handle)) then
    inf_initial = get_inflate_mean(inflate_handle)
-   write(nmread, '(A, F12.6)') 'mean read from namelist as ', inf_initial
-   call error_handler(E_MSG, trim(label) // ' inflation:', trim(nmread), &
-      source, revision, revdate)
    ens_handle%copies(INF_MEAN_COPY, :) = inf_initial
 endif
 
 if (.not. sd_from_restart(inflate_handle)) then
    sd_initial = get_inflate_sd(inflate_handle)
-   write(nmread, '(A, F12.6)') 'sd read from namelist as ', sd_initial
-   call error_handler(E_MSG, trim(label) // ' inflation:', trim(nmread), &
-      source, revision, revdate)
    ens_handle%copies(INF_SD_COPY, :) = sd_initial
 endif
 
-end subroutine fill_ss_from_nameslist_value
+end subroutine fill_inf_from_namelist_value
 
 !-----------------------------------------------------------
 !> set stage names
@@ -572,29 +568,23 @@ type(stage_metadata_type) :: restart_files
 ! do this once
 restart_files = get_stage_metadata(file_info)
 
-do idom = 1, get_num_domains()
-   if (do_ss_inflate(inflate_handle)) then
-      if (mean_from_restart(inflate_handle)) then
-         ! Format for input prior inflation mean
-         !    input_priorinf_mean[_d0X].nc'
-         INF_MEAN_COPY = get_inflation_mean_copy(inflate_handle)
+if (do_ss_inflate(inflate_handle)) then
+   if (mean_from_restart(inflate_handle)) then
+      INF_MEAN_COPY = get_inflation_mean_copy(inflate_handle)
+      do idom = 1, get_num_domains()
          fname = get_restart_filename(restart_files, INF_MEAN_COPY, idom)   
-         write(msgstring,*) 'mean read from restart file: ' // trim(fname)
-         call error_handler(E_MSG, trim(label) // ' inflation:', trim(msgstring), &
-            source, revision, revdate)
-      endif
-
-      if (sd_from_restart(inflate_handle)) then  
-         ! Format for input prior inflation standard deviation
-         !    input_priorinf_sd[_d0X].nc'
-         INF_SD_COPY = get_inflation_sd_copy(inflate_handle)
-         fname = get_restart_filename(restart_files, INF_SD_COPY, idom)   
-         write(msgstring,*) 'sd read from restart file: ' // trim(fname)
-         call error_handler(E_MSG, trim(label) // ' inflation:', trim(msgstring), &
-            source, revision, revdate)
-      endif
+         call print_inflation_restart_filename(inflate_handle, fname, 'mean')
+      enddo
    endif
-enddo
+
+   if (sd_from_restart(inflate_handle)) then  
+      INF_SD_COPY = get_inflation_sd_copy(inflate_handle)
+      do idom = 1, get_num_domains()
+         fname = get_restart_filename(restart_files, INF_SD_COPY, idom)   
+         call print_inflation_restart_filename(inflate_handle, fname, 'stddev')
+      enddo
+   endif
+endif
 
 end subroutine print_inflation_source
 

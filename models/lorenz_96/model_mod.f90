@@ -18,11 +18,11 @@ use utilities_mod,         only : register_module, do_nml_file, do_nml_term,    
                                   nmlfileunit, find_namelist_in_file,           &
                                   check_namelist_read
 
-use location_io_mod,      only :  nc_write_location_atts, nc_get_location_varids, &
-                                  nc_write_location
+use location_io_mod,      only :  nc_write_location_atts, nc_write_location
 
-use netcdf_utilities_mod, only : nc_add_global_attribute, nc_sync, &
-                                 nc_add_global_creation_time, nc_redef, nc_enddef
+use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
+                                 nc_add_global_creation_time, nc_begin_define_mode, &
+                                 nc_end_define_mode
 
 use         obs_kind_mod,  only : QTY_STATE_VARIABLE
 
@@ -135,15 +135,18 @@ subroutine comp_dt(x, dt)
 real(r8), intent(in)  ::  x(:)
 real(r8), intent(out) :: dt(:)
 
-integer :: j, jp1, jm1, jm2
+integer :: j, jp1, jm1, jm2, ms
 
-do j = 1, model_size
+! avoid compiler bugs with long integers
+! being used as loop indices.
+ms = model_size
+do j = 1, ms
    jp1 = j + 1
-   if(jp1 > model_size) jp1 = 1
+   if(jp1 > ms) jp1 = 1
    jm2 = j - 2
-   if(jm2 < 1) jm2 = model_size + jm2
+   if(jm2 < 1) jm2 = ms + jm2
    jm1 = j - 1
-   if(jm1 < 1) jm1 = model_size
+   if(jm1 < 1) jm1 = ms
    
    dt(j) = (x(jp1) - x(jm2)) * x(jm1) - x(j) + forcing
 end do
@@ -311,13 +314,10 @@ integer, intent(in) :: ncid
 integer, intent(in) :: domain_id
 
 integer :: msize
-type(location_type) :: lctn 
-character(len=128)  :: filename
-
 
 msize = int(model_size, i4)
 
-call nc_redef(ncid)
+call nc_begin_define_mode(ncid)
 
 call nc_add_global_creation_time(ncid)
 
@@ -330,10 +330,10 @@ call nc_add_global_attribute(ncid, "model_forcing", forcing )
 call nc_add_global_attribute(ncid, "model_delta_t", delta_t )
 
 call nc_write_location_atts(ncid, msize)
-call nc_enddef(ncid)
+call nc_end_define_mode(ncid)
 call nc_write_location(ncid, state_loc, msize)
 
-call nc_sync(ncid)
+call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts
 

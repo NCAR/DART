@@ -258,18 +258,22 @@ em.italic{
 
 em.red{
     color:crimson;
+    font-style:normal;
     font-family:sans-serif;}
 
 em.green{
     color:green;
+    font-style:normal;
     font-family:sans-serif;}
 
 em.Navy{
     color:Navy;
+    font-style:normal;
     font-family:sans-serif;}
 
 em.teal{
     color:cornflowerblue;
+    font-style:normal;
     font-family:sans-serif;}
 
 em.redtt{

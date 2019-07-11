@@ -1,0 +1,51 @@
+<streamstemplate>
+      <general_comment>
+         streams template for datm in CESM1_5
+      </general_comment>
+<stream>
+      <comment>
+         Stream description file for CPL history 3-hourly Solar data
+      </comment>
+      <dataSource>
+         Raeder et al. 80 member FV 2 deg CAM/DART reanalysis
+      </dataSource>
+      <domainInfo>
+         <variableNames>
+            time          time
+            doma_lon      lon
+            doma_lat      lat
+            doma_area     area
+            doma_mask     mask
+         </variableNames>
+         <filePath>
+            /glade/collections/rda/data/ds199.1
+         </filePath>
+         <fileNames>
+          CAM_DATM.cpl_NINST.ha2x1dx6h.RUNYEAR.nc
+         </fileNames>
+      </domainInfo>
+      <fieldInfo>
+         <variableNames>
+            a2x6h_Sa_u           u
+            a2x6h_Sa_v           v
+         </variableNames>
+         <filePath>
+            /glade/collections/rda/data/ds199.1
+         </filePath>
+         <tInterpAlgo>
+            linear
+         </tInterpAlgo>
+         <offset>
+            -10800
+         </offset>
+         <fileNames>
+          CAM_DATM.cpl_NINST.ha2x1dx6h.RUNYEAR.nc
+          CAM_DATM.cpl_NINST.ha2x1dx6h.2001.nc
+          CAM_DATM.cpl_NINST.ha2x1dx6h.2002.nc
+          CAM_DATM.cpl_NINST.ha2x1dx6h.2003.nc
+         </fileNames>
+      </fieldInfo>
+      <build_streams_documentation>
+      </build_streams_documentation>
+</stream>
+</streamstemplate>

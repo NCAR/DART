@@ -1,0 +1,63 @@
+
+#
+# example of how to control the impact of
+# chemistry observations on model state
+# and vice versa.
+#
+
+GROUP chemistry
+ ALLQTYS EXCEPT 
+    QTY_O3
+    QTY_CO
+    QTY_NO
+    QTY_NO2
+    QTY_CO01
+    QTY_CO02
+    QTY_CO03
+    QTY_SFCO
+    QTY_SFCO01
+    QTY_SFCO02
+    QTY_SFCO03
+    QTY_AOD
+    QTY_CB1
+    QTY_CB2
+    QTY_OC1
+    QTY_OC2
+    QTY_CB102
+    QTY_CB202
+    QTY_OC102
+    QTY_OC202
+    QTY_SFCB1
+    QTY_SFCB2
+    QTY_SFOC1
+    QTY_SFOC2
+    QTY_SFCB102
+    QTY_SFCB202
+    QTY_SFOC102
+    QTY_SFOC202
+    QTY_CO2
+    QTY_NH3
+    QTY_CH4
+END GROUP
+
+GROUP met
+  ALLQTYS EXCEPT chemistry
+END GROUP
+
+# actual table to define factors for impacts.
+# 
+# the first column can contain either types or kinds because
+# it applies to the current obs being assimilated.
+# 
+# the second column has to be kinds because it applies
+# to the state (also unassimilated obs, but states only 
+# have kinds so that's the most restrictive).
+#
+# either column can have a group name, but any group used
+# in column 2 can contain only kinds.
+
+IMPACT
+ met         chemistry    0.0
+ chemistry   met          0.0
+END IMPACT
+

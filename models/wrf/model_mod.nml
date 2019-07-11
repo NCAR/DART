@@ -43,23 +43,25 @@
 
 
 &model_nml
-   default_state_variables     = .true.,
-   wrf_state_variables         = 'NULL',
-   wrf_state_bounds            = 'NULL',
-   num_domains                 = 1,
-   calendar_type               = 3,
-   assimilation_period_seconds = 21600,
-   allow_obs_below_vol         = .false.,
-   vert_localization_coord     = 3,
-   center_search_half_length   = 500000.,
-   center_spline_grid_scale    = 10,
-   circulation_pres_level      = 80000.0,
-   circulation_radius          = 108000.0,
-   sfc_elev_max_diff           = -1.0,
-   polar                       = .false.,
-   periodic_x                  = .false.,
-   periodic_y                  = .false.,
-   scm                         = .false.  /
+   default_state_variables     = .true.
+   wrf_state_variables         = 'NULL'
+   wrf_state_bounds            = 'NULL'
+   num_domains                 = 1
+   calendar_type               = 3
+   assimilation_period_seconds = 21600
+   allow_obs_below_vol         = .false.
+   vert_localization_coord     = 3
+   center_search_half_length   = 500000.
+   center_spline_grid_scale    = 10
+   circulation_pres_level      = 80000.0
+   circulation_radius          = 108000.0
+   sfc_elev_max_diff           = -1.0
+   polar                       = .false.
+   periodic_x                  = .false.
+   periodic_y                  = .false.
+   scm                         = .false.
+   allow_perturbed_ics         = .false.
+ /
 
 # polar and periodic_x are used in global wrf.  if polar is true, the 
 # grid interpolation routines will wrap over the north & south poles.  

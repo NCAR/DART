@@ -135,11 +135,12 @@ MODULE map_utils
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+   use types_mod, only : digits12
    use constants_module
    use misc_definitions_module
 
    ! Define some private constants
-   INTEGER, PRIVATE, PARAMETER :: HIGH = 8
+   INTEGER, PRIVATE, PARAMETER :: HIGH = digits12
  
    TYPE proj_info
  
@@ -685,6 +686,7 @@ MODULE map_utils
   
       ! Executable code
       reflon = proj%stdlon + 90.
+      proj%cone = 1.0_r8
   
       ! Compute numerator term of map scale factor
       scale_top = 1. + proj%hemi * SIN(proj%truelat1 * rad_per_deg)

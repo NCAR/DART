@@ -1,0 +1,29 @@
+netcdf time2 {
+
+dimensions:
+level = 3;
+lat = 4;
+lon = 5;
+time = 1;
+copy = UNLIMITED;
+
+variables:
+
+int A(level);
+A:units = "meters";
+
+float time(time);
+time:units = "days" ;
+
+int copy(copy);
+
+//global attributes:
+
+:title = "time2" ;
+
+data:
+A = 1, 2, 3 ;
+time = 2.5 ;
+copy = 1,2,3;
+
+}

@@ -1,0 +1,15 @@
+
+&fill_inflation_restart_nml
+   write_prior_inf    = .FALSE.
+   prior_inf_mean     = -88888.8888
+   prior_inf_sd       = -88888.8888
+
+   write_post_inf     = .FALSE.
+   post_inf_mean      = -88888.8888
+   post_inf_sd        = -88888.8888
+
+   single_file        = .FALSE.
+   input_state_files  = ''
+   verbose            = .FALSE.
+/
+

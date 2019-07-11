@@ -1,0 +1,47 @@
+! local operator does not do ray-path reconstruction
+! obs levels are in kilometers
+! flist contains a list of input filenames to convert into a single
+!  output file
+&sst_to_obs_nml
+   sst_netcdf_file = '<SST_IN_FILE>',
+   sst_netcdf_filelist = '', 
+   sst_out_file    = '<SST_OUT_FILE>'
+   subsample_intv  = 1
+   sst_rep_error   = <ERROR_REP>
+   /
+
+&utilities_nml
+   TERMLEVEL      = 1
+   module_details = .false.
+   logfilename    = '<SST_TO_OBS_LOG>'
+   nmlfilename    = '<SST_TO_OBS_NML>'
+   print_debug    = .false.
+   write_nml      = 'file'
+  /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.
+  /
+
+&location_nml
+   horiz_dist_only                 = .false.
+   vert_normalization_pressure     = 100000.0
+   vert_normalization_height       = 10000.0
+   vert_normalization_level        = 20.0
+   vert_normalization_scale_height = 5.0
+   approximate_distance            = .false.
+   nlon                            = 71
+   nlat                            = 36
+   output_box_info                 = .true.
+   print_box_level                 = 0
+   special_vert_normalization_obs_types     = 'null'
+   special_vert_normalization_pressures     = 100000.0
+   special_vert_normalization_heights       = 10000.0
+   special_vert_normalization_levels        = 20.0
+   special_vert_normalization_scale_heights = 5.0
+  /
+
+&obs_kind_nml
+  /
+
+

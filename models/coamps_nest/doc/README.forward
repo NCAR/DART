@@ -23,8 +23,8 @@ DART PREPROCESS KIND LIST:
 This section describes the obs_kind for what this variable will be
 called, and also the raw variable type that it is based on.  For most
 things, these things will correspond, i.e.
-	GEOPOTENTIAL_HEIGHT, KIND_HEIGHT
-	GEOMETRIC_HEIGHT, KIND_HEIGHT
+	GEOPOTENTIAL_HEIGHT, QTY_GEOPOTENTIAL_HEIGHT
+	GEOMETRIC_HEIGHT, QTY_GEOMETRIC_HEIGHT
 will define two height variables - the geopotential height on a
 pressure surface and the _actual_ height on that pressure surface,
 that are both kinds of heights.

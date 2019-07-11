@@ -32,7 +32,8 @@ program convert_madis_mesonet
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 use         types_mod, only : r8, missing_r8
-use     utilities_mod, only : nc_check, initialize_utilities, finalize_utilities
+use     utilities_mod, only : initialize_utilities, finalize_utilities
+use  netcdf_utilities_mod, only : nc_open_file_readonly, nc_close_file
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, &
                               increment_time, get_time, operator(-), GREGORIAN
 use      location_mod, only : VERTISSURFACE
@@ -53,7 +54,8 @@ use      obs_kind_mod, only : LAND_SFC_U_WIND_COMPONENT, LAND_SFC_V_WIND_COMPONE
                               LAND_SFC_ALTIMETER                
 use          sort_mod, only : index_sort
 use obs_utilities_mod, only : getvar_real, get_or_fill_QC, add_obs_to_seq, &
-                              create_3d_obs, getvar_int, getdimlen, set_missing_name
+                              create_3d_obs, getvar_int, getdimlen, set_missing_name, &
+                              is_variable_integer
 
 use           netcdf
 
@@ -81,7 +83,7 @@ real(r8) :: alti_miss, tair_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &
 
 integer,  allocatable :: tobs(:), tused(:), used(:), sorted_used(:)
 real(r8), allocatable :: lat(:), lon(:), elev(:), alti(:), tair(:), & 
-                         tdew(:), wdir(:), wspd(:)
+                         tdew(:), wdir(:), wspd(:), tobs_r(:)
 integer,  allocatable :: qc_alti(:), qc_tair(:), qc_tdew(:), qc_wdir(:), qc_wspd(:)
   
 type(obs_sequence_type) :: obs_seq
@@ -101,8 +103,7 @@ comp_day0 = set_date(1970, 1, 1, 0, 0, 0)
 first_obs = .true.
 
 
-call nc_check(nf90_open(surface_netcdf_file, nf90_nowrite, ncid), &
-             'convert_madis_mesonet', 'opening file '//trim(surface_netcdf_file))
+ncid = nc_open_file_readonly(surface_netcdf_file, 'convert_madis_mesonet')
 
 call getdimlen(ncid, "recNum", nobs)
 call set_missing_name("missing_value")
@@ -111,8 +112,9 @@ allocate( lat(nobs))  ;  allocate( lon(nobs))
 allocate(elev(nobs))  ;  allocate(alti(nobs))
 allocate(tair(nobs))  ;  allocate(tdew(nobs))
 allocate(wdir(nobs))  ;  allocate(wspd(nobs))
-allocate(tobs(nobs))  ;  allocate(tused(nobs))
 allocate(used(nobs))  ;  allocate(sorted_used(nobs))
+allocate(tobs(nobs))  ;  allocate(tobs_r(nobs))
+allocate(tused(nobs))
 
 nvars = 4
 if (include_specific_humidity) nvars = nvars + 1
@@ -132,8 +134,15 @@ call getvar_real(ncid, "temperature",     tair, tair_miss) ! air temperature
 call getvar_real(ncid, "dewpoint",        tdew, tdew_miss) ! dew-point temperature
 call getvar_real(ncid, "windDir",         wdir, wdir_miss) ! wind direction
 call getvar_real(ncid, "windSpeed",       wspd, wspd_miss) ! wind speed
-call getvar_int (ncid, "observationTime", tobs           ) ! observation time
 
+! recent versions of MADIS files seem to have changed time to a real
+! perhaps to avoid overflowing an integer value?
+if (is_variable_integer(ncid, "observationTime")) then
+   call getvar_int (ncid, "observationTime", tobs           ) ! observation time as integer
+else
+   call getvar_real(ncid, "observationTime", tobs_r         ) ! observation time as real
+   tobs = nint(tobs_r)                                        ! and convert to nearest second
+endif
 
 ! if user says to use them, read in QCs if present
 if (use_input_qc) then
@@ -148,8 +157,7 @@ else
    qc_wdir = 0 ;  qc_wspd = 0
 endif
 
-call nc_check( nf90_close(ncid), &
-               'convert_madis_mesonet', 'closing file '//trim(surface_netcdf_file))
+call nc_close_file(ncid, 'convert_madis_mesonet')
 
 
 !  either read existing obs_seq or create a new one

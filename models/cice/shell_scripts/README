@@ -1,0 +1,31 @@
+#To whom use CESM2_0_alpha06n and higher versions
+
+Datmmode has changed to CPLHISTForcing. This mode has slightly different stream files.
+
+1. datm.streams.txt.CPLHISTForcing.Solar is the same as before
+            a2x6h_Faxa_swndr     swndr
+            a2x6h_Faxa_swvdr     swvdr
+            a2x6h_Faxa_swndf     swndf
+            a2x6h_Faxa_swvdf     swvdf
+2. datm.streams.txt.CPLHISTForcing.nonSolarFlux is longwave plus precipitation
+            a2x6h_Faxa_rainc     rainc
+            a2x6h_Faxa_rainl     rainl
+            a2x6h_Faxa_snowc     snowc
+            a2x6h_Faxa_snowl     snowl
+            a2x6h_Faxa_lwdn      lwdn
+
+3.datm.streams.txt.CPLHISTForcing.State1hr  is horizontal wind speeds 
+            a2x6h_Sa_u           u
+            a2x6h_Sa_v           v
+
+4. datm.streams.txt.CPLHISTForcing.State3hr is the remaining forcing fields
+            a2x6h_Sa_z           z
+            a2x6h_Sa_tbot        tbot
+            a2x6h_Sa_ptem        ptem
+            a2x6h_Sa_shum        shum
+            a2x6h_Sa_pbot        pbot
+            a2x6h_Faxa_lwdn      lwdn
+            a2x6h_Sa_dens        dens
+            a2x6h_Sa_pslv        pslv
+
+

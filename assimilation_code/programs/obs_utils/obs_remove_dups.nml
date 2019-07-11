@@ -1,0 +1,14 @@
+! if ignore_values = .true. it will ignore the
+! obs data values and only compare the obs_def part
+! (time, location, type, error).  the default compares 
+! the obs values and qcs as well before declaring a
+! duplicate obs.
+
+&obs_remove_dups_nml
+   filename_in = ''
+   filename_out = ''
+   ignore_values = .false.
+   print_only = .false.
+   calendar = 'Gregorian'
+   debug = .false.
+/

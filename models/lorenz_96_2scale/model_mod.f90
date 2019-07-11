@@ -25,8 +25,8 @@ use utilities_mod,         only : register_module, do_nml_file, do_nml_term,    
                                   nmlfileunit, find_namelist_in_file,           &
                                   check_namelist_read, E_ERR, error_handler
 use location_io_mod,       only : nc_add_location_atts
-use netcdf_utilities_mod,  only : nc_add_global_attribute, nc_sync, nc_put_variable, &
-                                  nc_add_global_creation_time, nc_redef, nc_enddef, &
+use netcdf_utilities_mod,  only : nc_add_global_attribute, nc_synchronize_file, nc_put_variable, &
+                                  nc_add_global_creation_time, nc_begin_define_mode, nc_end_define_mode, &
                                   nc_add_attribute_to_variable, nc_define_dimension, &
                                   nc_define_real_variable, nc_define_integer_variable
 use         obs_kind_mod,  only : QTY_LARGE_SCALE_STATE, QTY_SMALL_SCALE_STATE
@@ -81,7 +81,6 @@ real(r8) :: delta_t    = 0.005_r8
 real(r8) :: coupling_b = 10.0_r8
 real(r8) :: coupling_c = 10.0_r8
 real(r8) :: coupling_h = 1.0_r8
-logical  :: output_state_vector = .false.
 logical  :: local_y = .false.  ! default Lorenz' approach
 integer  :: time_step_days = 0
 integer  :: time_step_seconds = 3600
@@ -329,7 +328,7 @@ end subroutine adv_1step
 
 function get_model_size()
 
-integer :: get_model_size
+integer(i8) :: get_model_size
 
 get_model_size = l96%model_size
 
@@ -438,10 +437,8 @@ integer :: i, xs, xe, ys, ye
 integer(i8) :: indx
 type(location_type) :: lctn
 real(r8) :: loc
-character(len=128)  :: filename
 
-
-call nc_redef(ncid)
+call nc_begin_define_mode(ncid)
 
 call nc_add_global_creation_time(ncid)
 
@@ -469,7 +466,7 @@ call nc_define_real_variable(ncid, "Ylocation", "Ylocation")
 call nc_add_location_atts   (ncid, "Ylocation")
 
 ! Leave define mode so we can fill
-call nc_enddef(ncid)
+call nc_end_define_mode(ncid)
 
 ! The starting and ending indices of the X vars and Y vars
 ! in the state vector
@@ -493,7 +490,7 @@ do i = ys, ye
    call nc_put_variable(ncid, "Ylocation", i - ys + 1, loc)
 enddo
 
-call nc_sync(ncid)
+call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts
 

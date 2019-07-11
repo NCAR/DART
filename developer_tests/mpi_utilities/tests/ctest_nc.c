@@ -21,7 +21,7 @@
 
 void netcdf_error_exit(int istat);
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
 
    char filename[32] = "ctestdata.nc";

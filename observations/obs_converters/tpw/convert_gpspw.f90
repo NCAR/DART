@@ -40,7 +40,7 @@ use  time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time,
 use     utilities_mod, only : initialize_utilities, find_namelist_in_file,      &
                               check_namelist_read, nmlfileunit, do_nml_file,    &
                               get_next_filename, error_handler, E_ERR, E_MSG,   &
-                              nc_check, find_textfile_dims, do_nml_term,        &
+                              find_textfile_dims, do_nml_term,                  &
                               is_longitude_between, finalize_utilities,         &
                               open_file, close_file, register_module
 use      location_mod, only : VERTISSURFACE, set_location

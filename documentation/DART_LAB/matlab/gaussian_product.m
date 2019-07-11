@@ -237,9 +237,9 @@ handles.ui_text_posterior_weight = uicontrol(handles.PosteriorPanel, ...
     'HorizontalAlignment', 'right');
 
 align([handles.ui_text_posterior_mean, ...
-       handles.ui_text_posterior_sd, ...
-       handles.ui_text_posterior_weight], ...
-      'Distribute','None');
+    handles.ui_text_posterior_sd, ...
+    handles.ui_text_posterior_weight], ...
+    'Distribute','None');
 reset_Posterior();
 
 hlist = [handles.PriorPanel, handles.ObservationPanel, handles.ui_button_Plot, handles.PosteriorPanel];
@@ -255,22 +255,22 @@ g_prod_plot(handles);
         %This function plots the graph using the inputs in the 4 edit boxes. It
         %makes changes to handles, so the function must return an update to
         %handles. This is done through the function definition.
-
+        
         [prior_mean, prior_sd, obs_mean, obs_err_sd, is_err] = g_prod_plot(handles);
-
+        
         % If there is an error, zero out the posterior text values
         % don't try to do posterior computation
         if(is_err)
             reset_Posterior();
             return;
         end
-
+        
         % Compute the posterior mean, sd and weight
         [post_mean, post_sd, weight] = ...
             product_of_gaussians(prior_mean, prior_sd, obs_mean, obs_err_sd);
         post_handle = plot_gaussian(post_mean, post_sd, 1);
         set(post_handle, 'Color', atts.blue, 'LineWidth', 2);
-
+        
         %Round post_mean, post_sd and weight to 4 decimal places
         post_mean = round(post_mean * 10000);
         post_mean = post_mean/10000;
@@ -278,25 +278,25 @@ g_prod_plot(handles);
         post_sd = post_sd/10000;
         weight = round(weight * 10000);
         weight = weight/10000;
-
+        
         % Print values
         str1 = sprintf('Mean = %.4f',post_mean);
         set(handles.ui_text_posterior_mean, 'String', str1);
         str1 = sprintf('SD = %.4f',post_sd);
         set(handles.ui_text_posterior_sd, 'String', str1);
-
+        
         % Also plot the weighted posterior as dashed
         post_handle = plot_gaussian(post_mean, post_sd, weight);
         set(post_handle, 'Color', atts.blue, 'LineStyle', '--');
         str1 = sprintf('Weight = %.4f',weight);
         set(handles.ui_text_posterior_weight, 'String', str1);
-
+        
         h = legend('Prior', 'Obs. Likelihood', 'Posterior', 'Weighted Posterior');
         set(h, 'box', 'on', 'Location', 'NorthWest')
-
+        
     end
 
-    % These functions plot the graph immediately after the user edits a text box
+% These functions plot the graph immediately after the user edits a text box
 
     function edit_prior_mean_Callback(~, ~)
         g_prod_plot(handles);

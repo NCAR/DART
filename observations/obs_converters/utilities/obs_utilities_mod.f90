@@ -8,7 +8,8 @@ module obs_utilities_mod
 
 
 use        types_mod, only : i2, i4, r8, MISSING_R8, MISSING_I
-use    utilities_mod, only : nc_check, E_MSG, E_ERR, error_handler
+use    utilities_mod, only : E_MSG, E_ERR, error_handler
+use  netcdf_utilities_mod, only : nc_check
 use      obs_def_mod, only : obs_def_type, set_obs_def_time, set_obs_def_type_of_obs, &
                              set_obs_def_error_variance, set_obs_def_location, &
                              get_obs_def_time, get_obs_def_location,           &
@@ -33,6 +34,7 @@ public :: create_3d_obs,    &
           getvarshape,      &
           getvar_real,      &
           getvar_int,       &
+          getvar_char,      &
           get_short_as_r8,  &
           get_int_as_r8,    &
           get_or_fill_real, &
@@ -44,11 +46,15 @@ public :: create_3d_obs,    &
           getvar_int_1d_1val,      &
           getvar_real_2d_slice,    &
           get_or_fill_QC_2d_slice, &
+          is_variable_integer,     &
+          is_variable_real,        &
           query_varname,    &
           set_missing_name
 
+!>@todo FIXME there is no documentation for this module
 
-! module global storage
+!>@todo FIXME should this default to 'missing_value'?  i think yes.
+! module global storage - set with 'set_missing_name()' routine.
 character(len=NF90_MAX_NAME) :: missing_name = ''
 
 ! version controlled file description for error handling, do not edit
@@ -146,18 +152,18 @@ subroutine query_3d_obs(obs, lat, lon, vval, vkind, obsv, okind, oerr, day, sec,
 
 real(r8)              :: obs_val(1), qc_val(1), locvals(3)
 type(obs_def_type)    :: obs_def
-type(location_type)   :: loc
+type(location_type)   :: location
 
 ! get the obs_def out of the obs.  it has the location, time, kind;
 ! basically everything except the actual obs value and qc.
 call get_obs_def(obs, obs_def)
 
-loc = get_obs_def_location(obs_def)
-locvals = get_location(loc)
+location = get_obs_def_location(obs_def)
+locvals = get_location(location)
 lon  = locvals(1)
 lat  = locvals(2)
 vval = locvals(3)
-vkind = query_location(loc)
+vkind = query_location(location)
 
 okind = get_obs_def_type_of_obs(obs_def)
 call get_time(get_obs_def_time(obs_def), sec, day)
@@ -289,8 +295,7 @@ end subroutine getvarshape
 
 !--------------------------------------------------------------------
 !> sets the name of the attribute that describes missing values.  
-!> in some cases it is _FillValue but in others it is something 
-!> nonstandard like 'missing_value'.
+!> in some cases it is _FillValue but in others it is 'missing_value'.
 !>
 !> name - string name of attribute that holds the missing value
 !>
@@ -400,6 +405,24 @@ end subroutine getvar_real
 !>            in the missing value attribute if that arg is present.
 !>            gets the entire array, no start or count specified.
 !>
+!> FIXME: this code handles scale and offset ok, but like most of the other
+!> routines here it doesn't check for 'missing_value' which many obs files
+!> have either in addition to the _FillValue or instead of it.
+!> e.g. a dump from a MADIS mesonet file:
+!>
+!> double observationTime ( recNum )
+!>  long_name : time of observation
+!>  units : seconds since 1970-1-1 00:00:00.0
+!>  _FillValue : 3.40282346e+38
+!>  missing_value : -9999
+!>  standard_name : time 
+!> 
+!> i've most commonly encountered the "missing_value" in the actual data 
+!> for obs files, not the fill value.  we need a routine that looks for missing, 
+!> then fill, and decides what to do if there are both.  or use the routine
+!> that was already here 'set_missing_value' and the calling code tells us
+!> which attribute name this particular netcdf file is using.
+!>
 !>  ncid    - open netcdf file handle
 !>  varname - string name of netcdf variable
 !>  darray  - output array.  real(r8)
@@ -417,6 +440,7 @@ integer(i2) :: shortarray(size(darray))
 integer(i2) :: FillValue
 real(r8)    :: scale_factor, add_offset
 integer     :: offset_exists, scaling_exists, fill_exists
+!>@todo FIXME need missing_exists or something
 
 ! read the data for the requested array, and get the fill value
 call nc_check( nf90_inq_varid(ncid, varname, varid), &
@@ -425,6 +449,7 @@ call nc_check( nf90_inq_varid(ncid, varname, varid), &
  offset_exists = nf90_get_att(ncid, varid, 'add_offset',   add_offset)
 scaling_exists = nf90_get_att(ncid, varid, 'scale_factor', scale_factor)
    fill_exists = nf90_get_att(ncid, varid, '_FillValue',   FillValue)
+!  miss_exists = nf90_get_att(ncid, varid, 'missing_value', miss_value)
 
 call nc_check( nf90_get_var(ncid, varid, shortarray), &
                'get_short_as_r8', 'getting var '// trim(varname))
@@ -593,6 +618,71 @@ if (present(dmiss)) then
 endif
   
 end subroutine getvar_int
+
+
+!--------------------------------------------------------------------
+!>   getvar_char - subroutine that inquires, gets the variable, and fills 
+!>            in the missing value attribute if that arg is present.
+!>            gets the entire array, no start or count specified.
+!>
+!>      ncid - open netcdf file handle
+!>      varname - string name of netcdf variable
+!>      darray - output array.  character
+!>      dmiss - value that signals a missing value  char, optional
+!>
+!>     created 11 Mar 2010,  nancy collins,  ncar/image
+
+subroutine getvar_char(ncid, varname, darray, dmiss)
+
+ integer,            intent(in)   :: ncid
+ character(len = *), intent(in)   :: varname
+ character(len = *), intent(out)  :: darray(:)
+ character, optional, intent(out)  :: dmiss
+
+integer   :: varid, nfrc
+character :: fill, miss
+logical   :: found_miss
+
+! read the data for the requested array, and get the fill value
+call nc_check( nf90_inq_varid(ncid, varname, varid), &
+               'getvar_char', 'inquire var '// trim(varname))
+call nc_check( nf90_get_var(ncid, varid, darray), &
+               'getvar_char', 'getting var '// trim(varname))
+
+! see long comment in getvar_real() about the logic here.
+if (present(dmiss)) then
+   dmiss = ''
+   found_miss = .false.
+
+   ! if user defined another attribute name for missing vals
+   ! look for it first, and make it an error if it's not there?
+   if (missing_name /= '') then
+      nfrc = nf90_get_att(ncid, varid, missing_name, miss)
+      if (nfrc == NF90_NOERR) then 
+         found_miss = .true.
+         dmiss = miss
+      endif
+   endif
+
+   ! the predefined netcdf fill value.
+   nfrc = nf90_get_att(ncid, varid, '_FillValue', fill)
+   if (nfrc == NF90_NOERR) then
+      if (.not. found_miss) then  
+         found_miss = .true.
+         dmiss = fill
+      else
+         ! found both, set all to fill value
+         where(darray .eq. miss) darray = fill 
+         dmiss = fill
+      endif
+   endif
+
+   ! if you wanted an error if you specified dmiss and neither attr are
+   ! there, you'd test found_miss here.  if it's still false, none were there.
+
+endif
+  
+end subroutine getvar_char
 
 
 !--------------------------------------------------------------------
@@ -886,11 +976,11 @@ end subroutine getvar_int_2d
 
 subroutine getvar_real_1d_1val(ncid, varname, start, dout, dmiss)
 
- integer,            intent(in)   :: ncid
- character(len = *), intent(in)   :: varname
- integer,            intent(in)   :: start
- real(r8),           intent(out)  :: dout
- real(r8), optional, intent(out)  :: dmiss
+integer,            intent(in)   :: ncid
+character(len = *), intent(in)   :: varname
+integer,            intent(in)   :: start
+real(r8),           intent(out)  :: dout
+real(r8), optional, intent(out)  :: dmiss
 
 integer :: varid, ret
 
@@ -923,11 +1013,11 @@ end subroutine getvar_real_1d_1val
 
 subroutine getvar_int_1d_1val(ncid, varname, start, dout, dmiss)
 
- integer,            intent(in)   :: ncid
- character(len = *), intent(in)   :: varname
- integer,            intent(in)   :: start
- integer,            intent(out)  :: dout
- integer,  optional, intent(out)  :: dmiss
+integer,            intent(in)   :: ncid
+character(len = *), intent(in)   :: varname
+integer,            intent(in)   :: start
+integer,            intent(out)  :: dout
+integer,  optional, intent(out)  :: dmiss
 
 integer :: varid, ret
 
@@ -963,12 +1053,12 @@ end subroutine getvar_int_1d_1val
 
 subroutine getvar_real_2d_slice(ncid, varname, start, count, darray, dmiss)
 
- integer,            intent(in)   :: ncid
- character(len = *), intent(in)   :: varname
- integer,            intent(in)   :: start
- integer,            intent(in)   :: count
- real(r8),           intent(out)  :: darray(:)
- real(r8), optional, intent(out)  :: dmiss
+integer,            intent(in)   :: ncid
+character(len = *), intent(in)   :: varname
+integer,            intent(in)   :: start
+integer,            intent(in)   :: count
+real(r8),           intent(out)  :: darray(:)
+real(r8), optional, intent(out)  :: dmiss
 
 integer :: varid, ret
 
@@ -1005,11 +1095,11 @@ end subroutine getvar_real_2d_slice
 
 subroutine get_or_fill_QC_2d_slice(ncid, varname, start, count, darray)
 
- integer,            intent(in)    :: ncid
- character(len = *), intent(in)    :: varname
- integer,            intent(in)    :: start
- integer,            intent(in)    :: count
- integer,            intent(inout) :: darray(:)
+integer,            intent(in)    :: ncid
+character(len = *), intent(in)    :: varname
+integer,            intent(in)    :: start
+integer,            intent(in)    :: count
+integer,            intent(inout) :: darray(:)
 
 integer :: varid, nfrc
 
@@ -1077,6 +1167,48 @@ endif
 
 end subroutine query_varname
 
+!--------------------------------------------------------------------
+
+function is_variable_integer(ncid, varname)
+integer,            intent(in) :: ncid
+character(len = *), intent(in) :: varname
+logical :: is_variable_integer
+
+integer :: varid, nfrc, xtype
+
+nfrc = nf90_inq_varid(ncid, varname, varid)
+if (nfrc == NF90_NOERR) then
+   nfrc = nf90_inquire_variable(ncid, varid, xtype = xtype)
+   is_variable_integer = (xtype == NF90_INT)
+else
+   is_variable_integer = .false.
+endif
+
+end function is_variable_integer
+
+!--------------------------------------------------------------------
+
+! this needs to accept either float or double because depending on
+! how this code is compiled reals may be r4 or r8 at runtime.
+
+function is_variable_real(ncid, varname)
+integer,            intent(in) :: ncid
+character(len = *), intent(in) :: varname
+logical :: is_variable_real
+
+integer :: varid, nfrc, xtype
+
+nfrc = nf90_inq_varid(ncid, varname, varid)
+if (nfrc == NF90_NOERR) then
+   nfrc = nf90_inquire_variable(ncid, varid, xtype = xtype)
+   is_variable_real = (xtype == NF90_FLOAT .or. xtype == NF90_DOUBLE)
+else
+   is_variable_real = .false.
+endif
+
+end function is_variable_real
+
+!--------------------------------------------------------------------
 
 end module obs_utilities_mod
 

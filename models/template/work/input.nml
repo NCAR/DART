@@ -68,11 +68,12 @@
    inf_sd_initial_from_restart = .false.,                 .false.,
    inf_deterministic           = .true.,                  .true.,
    inf_initial                 = 1.0,                    1.0,
-   inf_sd_initial              = 0.0,                     0.0,
-   inf_damping                 = 1.0,                     1.0,
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 100.0,                   1000000.0,
-   inf_sd_lower_bound          = 0.0,                     0.0
+   inf_damping                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.0,                     0.0,
+   inf_sd_lower_bound          = 0.0,                     0.0,
+   inf_sd_max_change           = 1.05,                    1.05,
 
    trace_execution              = .false.,
    output_timestamps            = .false.,
@@ -138,10 +139,10 @@
    /
 
 &preprocess_nml
-    input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90', 
-   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90', 
-   input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90', 
-  output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90', 
+    input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+   input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+  output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
                input_files = '../../../observations/forward_operators/obs_def_1d_state_mod.f90'
    /
 
@@ -177,18 +178,18 @@
    /
 
 &model_mod_check_nml
-   input_state_files   = 'input.nc'
-   output_state_files  = 'mmc_output.nc'
-   test1thru           = 0
-   run_tests           = 1,2,3,4,5,7
-   x_ind               = 42
-   loc_of_interest     = 0.3
-   kind_of_interest    = 'QTY_STATE_VARIABLE'
-   interp_test_xrange  = 0.0, 1.0
-   interp_test_dx      = 0.02
-   verbose             = .false.
+   input_state_files    = 'input.nc'
+   output_state_files   = 'mmc_output.nc'
+   test1thru            = 0
+   run_tests            = 1,2,3,4,5,7
+   x_ind                = 42
+   loc_of_interest      = 0.3
+   quantity_of_interest = 'QTY_STATE_VARIABLE'
+   interp_test_dx       = 0.02
+   interp_test_xrange   = 0.0, 1.0
+   verbose              = .false.
    /
- 
+
 &quality_control_nml
    input_qc_threshold       =  3.0,
    outlier_threshold        = -1.0,

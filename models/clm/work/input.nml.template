@@ -168,24 +168,24 @@
    output_state_vector          = .false.,
    calendar                     = 'Gregorian',
    debug                        = 0,
-   clm_state_variables          = 'frac_sno',    'KIND_SNOWCOVER_FRAC',
-                                  'H2OSNO',      'KIND_SNOW_WATER',
-                                  'H2OSOI_LIQ',  'KIND_SOIL_MOISTURE',
-                                  'H2OSOI_ICE',  'KIND_ICE',
-                                  'T_SOISNO',    'KIND_SOIL_TEMPERATURE',
-                                  'cpool',       'KIND_CARBON',
-                                  'frootc',      'KIND_ROOT_CARBON',
-                                  'leafc',       'KIND_LEAF_CARBON',
-                                  'leafn',       'KIND_LEAF_NITROGEN',
+   clm_state_variables          = 'frac_sno',    'QTY_SNOWCOVER_FRAC',
+                                  'H2OSNO',      'QTY_SNOW_WATER',
+                                  'H2OSOI_LIQ',  'QTY_SOIL_MOISTURE',
+                                  'H2OSOI_ICE',  'QTY_ICE',
+                                  'T_SOISNO',    'QTY_SOIL_TEMPERATURE',
+                                  'cpool',       'QTY_CARBON',
+                                  'frootc',      'QTY_ROOT_CARBON',
+                                  'leafc',       'QTY_LEAF_CARBON',
+                                  'leafn',       'QTY_LEAF_NITROGEN',
    /
 
   frac_sno  is needed for the forward operator
   H2OSNO is updated by the filter,
   update_snow() takes H2OSNO* and updates the four following:
-                                  'SNOWDP',      'KIND_SNOW_THICKNESS',
-                                  'H2OSOI_LIQ',  'KIND_LIQUID_WATER',
-                                  'H2OSOI_ICE',  'KIND_ICE',
-                                  'T_SOISNO',    'KIND_SOIL_TEMPERATURE',
+                                  'SNOWDP',      'QTY_SNOW_THICKNESS',
+                                  'H2OSOI_LIQ',  'QTY_LIQUID_WATER',
+                                  'H2OSOI_ICE',  'QTY_ICE',
+                                  'T_SOISNO',    'QTY_SOIL_TEMPERATURE',
 
 
 &clm_to_dart_nml
@@ -299,18 +299,25 @@
 ! useful input for model_mod_check_nml ...
 
    x_inds    of interest   720, 7000
-   loc_of_interest      = 287.5,  82.48, 0.35,
-   loc_of_interest      = 287.5, -40.70, 0.35,
-   loc_of_interest      =  90.0,  41.00, 0.35,
+   loc_of_interest      = 287.5,  82.48, 0.35
+   loc_of_interest      = 287.5, -40.70, 0.35
+   loc_of_interest      =  90.0,  41.00, 0.35
 
 &model_mod_check_nml
-   input_file           = "dart_ics",
-   output_file          = "check_me_out",
-   advance_time_present = .FALSE.,
-   verbose              = .TRUE.,
-   test1thru            = 16,
-   x_ind                = 720,
-   kind_of_interest     = 'T_SOISNO',
-   loc_of_interest      = 287.5, 82.48, 0.35,
-   /
+   input_state_files     = 'clm_restart.nc', 'clm_history.nc', 'clm_vector_history.nc'
+   output_state_files    = 'mmc_output1.nc', 'mmc_output2.nc', 'mmc_output3.nc'
+   test1thru             = 0
+   run_tests             = 1, 2, 3, 4, 7
+   x_ind                 = 720
+   loc_of_interest       = 254.727854, 39.9768545, 0.35
+   quantity_of_interest  = 'QTY_LEAF_CARBON'
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   interp_test_lonrange  = 320.0, 90.0 
+   interp_test_dlon      = 1.0
+   interp_test_latrange  = 0.0, 75.0
+   interp_test_dlat      = 1.0
+   interp_test_vertrange = 1.0, 2.0
+   interp_test_dvert     = 1.0
+   verbose               = .false.
+  /
 

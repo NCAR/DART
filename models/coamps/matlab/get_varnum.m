@@ -12,7 +12,7 @@ function varnum=get_varnum(restart_info_file,varname,level)
 % DART $Id$
 
   % format string for the restart.vars file
-  % u2 01 NOPERTS 1.0 M KIND_U_WIND UPDATE FALSE NOPOSDEF
+  % u2 01 NOPERTS 1.0 M QTY_U_WIND UPDATE FALSE NOPOSDEF
   %fmt_str='%s %d %s %f %c %s %s %s %s';
   fmt_str = '%s %d %*[^\n]';  
   [name,sigma_level] = textread(restart_info_file,fmt_str, ...

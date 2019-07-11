@@ -12,7 +12,7 @@ module location_mod
 
 use      types_mod, only : r8, i8, MISSING_R8, MISSING_I, PI, RAD2DEG, DEG2RAD
 use  utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format, &
-                           nc_check, E_MSG, open_file, close_file, set_output,       &
+                           E_MSG, open_file, close_file, set_output,       &
                            logfileunit, nmlfileunit, find_namelist_in_file,          &
                            check_namelist_read, do_output, do_nml_file,              &
                            do_nml_term, is_longitude_between
@@ -29,7 +29,7 @@ implicit none
 private
 
 public :: location_type, get_location, set_location, &
-          set_location_missing, is_location_in_region, &
+          set_location_missing, is_location_in_region, get_maxdist, &
           write_location, read_location, interactive_location, query_location, &
           LocationDims, LocationName, LocationLName, LocationStorageOrder, LocationUnits, &
           get_close_type, get_close_init, get_close_obs, get_close_state, get_close_destroy, &
@@ -100,10 +100,6 @@ logical, save         :: module_initialized = .false.
 
 character(len = 512) :: errstring
 
-real(r8) :: radius     ! used only for converting points on a sphere into x,y,z and back
-
-! If maxdist stays the same, don't need to do box distance calculations
-integer :: last_maxdist = -1.0
 
 ! for sanity when i'm using arrays of length(3):
 integer, parameter :: IX = 1
@@ -154,7 +150,7 @@ integer :: print_box_level  = 0
 integer :: debug  = 0
 
 ! for boxes
-integer :: nboxes           = 10000   ! currently unused
+!integer :: nboxes           = 10000   ! currently unused
 integer :: nx               = 10   ! box counts in each dimension
 integer :: ny               = 10
 integer :: nz               = 10
@@ -216,8 +212,7 @@ subroutine initialize_module
 
 ! things which need doing exactly once.
 
-integer :: iunit, io, i
-character(len=129) :: str1
+integer :: iunit, io
 
 if (module_initialized) return
 
@@ -665,7 +660,6 @@ character(len = *),  intent(out), optional :: charstring
 
 integer             :: charlength
 logical             :: writebuf
-character(len=129)  :: string1
 
 10 format(1X,3(G25.16,1X))
 
@@ -1173,7 +1167,7 @@ type(get_close_type), intent(inout) :: gc
 integer,              intent(in)    :: num
 type(location_type),  intent(in)    :: locs(num)
 
-logical :: old_out
+!logical :: old_out
 
 if (x_is_periodic) then
    gc%box%bot_x = min_x_for_periodic
@@ -1460,6 +1454,17 @@ if (debug > 0) write(0,*)  'namelist read, module initialized, loopy filled in'
 if (debug > 0) write(0,*)  'any_periodic = ', any_periodic
 
 end subroutine recompute_periodic
+
+!---------------------------------------------------------------------------
+
+function get_maxdist(gc, obs_type)
+type(get_close_type), intent(in) :: gc
+integer, optional,    intent(in) :: obs_type
+real(r8) :: get_maxdist
+
+get_maxdist = gc%maxdist
+
+end function get_maxdist
 
 !----------------------------------------------------------------------------
 

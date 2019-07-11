@@ -8,6 +8,7 @@
 !> add capabilities needed by the standard assimilation methods.
 !>
 !>@todo FIXME explore redundant routines , especially 'diagnostic' ones
+!>@todo the documentation for this module is out-of-date.
 
 module assim_model_mod
 
@@ -57,9 +58,6 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-
-! Permanent class storage for model_size
-integer :: model_size
 
 ! Ensure init code is called exactly once
 logical :: module_initialized = .false.

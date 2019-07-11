@@ -1,0 +1,15 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+Scripts in this directory requires the following executables:
+
+advance_time
+obs_sequence_tool
+prepbufr_to_obs
+input.nml
+
+built in DART/observations/obs_converters/NCEP/ascii_to_obs/work
+

@@ -32,7 +32,8 @@ use   time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time
 use      utilities_mod, only : initialize_utilities, find_namelist_in_file,    &
                                check_namelist_read, nmlfileunit, do_nml_file,   &
                                get_next_filename, error_handler, E_ERR, E_MSG, &
-                               nc_check, find_textfile_dims, do_nml_term
+                               find_textfile_dims, do_nml_term
+use  netcdf_utilities_mod, only : nc_check
 use       location_mod, only : VERTISHEIGHT, set_location
 use   obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,       &
                                static_init_obs_sequence, init_obs, destroy_obs, &
@@ -68,10 +69,9 @@ integer, parameter ::   num_copies = 1,   &   ! number of copies in sequence
 
 character (len=512) :: msgstring
 character (len=256) :: next_infile
-character (len=80)  :: name
 character (len=6)   :: subset
 integer :: nlevels, nfiles, num_new_obs, oday, osec, &
-           iyear, imonth, iday, ihour, imin, isec, obs_count, gps_obs_num, obs_num_byfile, &
+           iyear, imonth, iday, ihour, imin, obs_count, gps_obs_num, obs_num_byfile, &
            io, iunit, filenum, dummy
 logical :: file_exist, first_obs, from_list = .false.
 real(r8) :: oerr, qc, nx, ny, nz, &
@@ -115,7 +115,7 @@ integer :: num_satid, nk
 integer :: idate,iret,num_message,num_subset
 integer :: ikx, nlevs, nreps_ROSEQ1
 integer :: i,k,m,said,ptid
-integer :: nread,ndata,nprof_gps,nprof_bytime,nprof_bad
+integer :: nprof_gps,nprof_bytime,nprof_bad
 integer :: nprof_nosat,nprof_cdaac_bad,nprof_gras_bad,nprof_levs_bad
 integer :: ibit(mxib),nib
 integer :: nsatid,nlines,istat
@@ -786,7 +786,6 @@ function gsi_refractivity_error(H, lat, is_it_global, factor)
  real(r8)              :: gsi_refractivity_error
 
  real(r8) :: zkm, rerr
- integer  :: kk
  
  zkm = H * 0.001       ! height in km
  rerr = 1.0_r8

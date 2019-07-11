@@ -13,8 +13,9 @@ use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time,&
 use    utilities_mod, only : initialize_utilities, find_namelist_in_file,    &
                              check_namelist_read, nmlfileunit, do_nml_file,    &
                              get_next_filename, error_handler, E_ERR, E_MSG, &
-                             nc_check, find_textfile_dims, finalize_utilities, &
+                             find_textfile_dims, finalize_utilities, &
                              timestamp,do_nml_term
+use  netcdf_utilities_mod, only : nc_check
 use     location_mod, only : VERTISPRESSURE, set_location ! pressure ccordinates for SABER
 use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,       &
                              static_init_obs_sequence, init_obs, destroy_obs, &

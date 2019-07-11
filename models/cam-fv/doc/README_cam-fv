@@ -1,0 +1,32 @@
+Before using the cam-fv interface, we recommend
+you become familiar with DART by working through 
+the core parts of the tutorial.
+
+The scripts which set up CAM and CAM-DART assimilations are in
+the shell_scripts directory. 
+There is a subdirectory for the releases of CESM which work with DART.
+
+Working through setup_hybrid will guide you 
+through setting up the multi-instance CAM-FV environment 
+which DART requires.
+That script includes instructions for activating the 
+assimilation using DART_config.template.
+Do check the output of the forecasts and assimilations 
+carefully, to catch errors earlier in the development process.
+We highly recommend using observation space diagnostics
+to evaluate your results.
+
+Once you are comfortable with those procedures,
+you may want to explore the setup_advanced script,
+which has advanced features.
+
+CESM's automated testing includes the features that DART requires.
+You should be able to use CESM versions newer than 2.0 with DART.
+We recommend that you set up a new shell_scripts/cesm#_#
+directory, modeled on the cesm2_1 directory, to minimize
+problems running with multiple CESM versions.
+
+If you discover that CESM is not playing well with DART,
+and you have tried the simple fixes (increasing nodes/member,
+decreasing ensemble size, removing your SourceMods, etc)
+please contact us at dart@ucar.edu.

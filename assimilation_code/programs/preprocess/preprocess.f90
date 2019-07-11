@@ -82,6 +82,8 @@ character(len = 512) :: err_string
 character(len = 6)   :: full_line_in  = '(A256)'
 character(len = 3)   :: full_line_out = '(A)'
 
+logical :: DEBUG = .false.
+
 ! max valid number of tokens per line is 4.  allocate more
 ! to handle error conditions.
 integer, parameter   :: MAX_TOKENS = 20
@@ -989,8 +991,22 @@ do
    test(i:i) = ' '
 enddo
 
+! get rid of tabs.
+do 
+   i = index(test, achar(9))
+   if (i == 0) exit
+   test(i:i) = ' '
+enddo
+
 ! parse here
 call get_args_from_string(test, ntokens, tokens)
+if (DEBUG) then
+   print *, "line: ", trim(test)
+   print *, "ntokens, tokens: ", ntokens
+   do i=1, ntokens
+      print *, i, trim(tokens(i))
+   enddo
+endif
 
 end subroutine parse_line
 

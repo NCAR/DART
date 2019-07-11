@@ -31,8 +31,9 @@ use      utilities_mod, only : initialize_utilities, finalize_utilities, &
                                register_module, error_handler, E_MSG, E_ERR, &
                                open_file, close_file, do_nml_file, do_nml_term, &
                                check_namelist_read, find_namelist_in_file, &
-                               nmlfileunit, file_exist, nc_check, to_upper, &
-                               find_textfile_dims
+                               nmlfileunit, file_exist, to_upper, find_textfile_dims
+
+use  netcdf_utilities_mod, only : nc_check
 
 use   time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, &
                                set_date, set_time, get_time, print_time, &

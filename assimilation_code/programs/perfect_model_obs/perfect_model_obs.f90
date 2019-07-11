@@ -9,11 +9,11 @@ program perfect_model_obs
 ! Program to build an obs_sequence file from simulated observations.
 
 use        types_mod,     only : r8, i8, metadatalength, MAX_NUM_DOMS
-use    utilities_mod,     only : initialize_utilities, register_module, error_handler, &
-                                 find_namelist_in_file, check_namelist_read,           &
-                                 E_ERR, E_MSG, E_DBG, nmlfileunit, timestamp,          &
+use    utilities_mod,     only : register_module, error_handler, &
+                                 find_namelist_in_file, check_namelist_read, &
+                                 E_ERR, E_MSG, E_DBG, nmlfileunit, timestamp, &
                                  do_nml_file, do_nml_term, logfileunit, &
-                                 open_file, close_file, finalize_utilities
+                                 open_file, close_file
 use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), print_time,   &
                                  generate_seed
 use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,                 &
@@ -619,6 +619,9 @@ endif
 call trace_message('After  writing state restart file if requested')
 call trace_message('Before ensemble and obs memory cleanup')
 
+! Close the windows
+call free_state_window(ens_handle)
+
 !  Release storage for ensemble
 call end_ensemble_manager(ens_handle)
 
@@ -775,21 +778,6 @@ call print_time(mtime, ' p_m_o trace: '//msg)
 call destroy_obs(obs)
 
 end subroutine print_obs_time
-
-!-------------------------------------------------------------------------
-
-subroutine perfect_set_initial_time(time)
-
-type(time_type), intent(out) :: time
-
-
-if(init_time_days >= 0) then
-   time = set_time(init_time_seconds, init_time_days)
-else
-   time = set_time(0, 0)
-endif
-
-end subroutine perfect_set_initial_time
 
 !-------------------------------------------------------------------------
 

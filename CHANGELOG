@@ -599,8 +599,276 @@ Single File I/O:
   and 2013 file formats.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ MMM DD YYYY :: summary of next changes                    $Revision$
++ Nov 22 2017 :: minor updates for DA challenge files          Revision: 12144
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- added obs_seq.in.power to the Lorenz 96 directory
+
+- added new obs types to the workshop version of the input.nml assimilation list
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Dec 01 2017 :: ROMS scripting, debugging aids                Revision: 12166  
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- Added an option to the ROMS model scripting to advance the model ensemble
+members in parallel using a job array.
+
+- Updated the DART_LAB Matlab GUIs to log a history of the settings and
+results.
+
+- Added a debug option to the filter namelist, 'write_obs_every_cycle', 
+to output the full obs_seq.final during each cycle of filter.  
+(Very slow - use only when debugging a filter crash.)
+
+- Allow the test grid in model_mod_check to cross the prime meridian for testing
+longitude interpolation in grids that cross the 360/0 line.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Mar 01 2018 :: ROMS, MMC, PMO, MPAS_ATM debug, etc           Revision: 12419
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- Fix a debug message in the MPAS ATM model which might have caused a buffer
+overflow crash when formatting a message for a larger ensemble size.
+
+- Update the ROMS shell scripts to support PBS, SLURM, as well as LSF.
+Update the ROMS model_mod html documentation.
+
+- Update the default CAM-FV input.nml to have more realistic values
+for the highest observation assimilated, and for where the ramp starts
+that decreases the increments at the model top. If running with a higher
+model top than the default check these items carefully.
+
+- Fixed variable type for 'time' variables we create in diagnostic files
+
+- Miscellaneous minor Bug fixes: 
+   - Print format wider for fractional levels in threed_sphere locations
+   - Fixed a deallocate call at program shutdown time
+   - Fixed an indexing problem computing cam-fv U_WIND observations if the
+     observation used HEIGHT as the vertical coordinate (very unusual).
+   - Fixed grid creation bug in a test program used with model_mod_check.
+     Now uses correct spacing for grids in the x,y coordinates.
+   - Fixed an allocate problem in a test interpolate routine.
+
+- Add surface pressure to the default state list in the wrf work/input.nml
+
+- developer_tests/test_dart.csh can run PMO for more models. required
+updates to the work/input.nml in several directories (wrf, cm1, POP,
+mpas_atm) to match the current namelist.
+
+- several model_mod_check programs were combined into a single version
+that allows for selection of individual tests.  many of the input.nml
+models/xxx/work/input.nml files have either had a &model_mod_check_nml
+section added or updated to match the updated interface.
+
+- the DART QTYs are now available via the state structure in the wrf 
+and clm model_mods.
+
+- support the NAG compiler better.  (contact dart@ucar.edu for more
+help if you want to use this compiler.  some hand work is still needed.)
+
+- streamlined the debug output from the state_structure_info() call to
+avoid replicating information that was the same for all variables.
+
+- minor formatting change to the dart log file output for the list of
+observation types being assimilated, evaluated, and using precomputed
+forward operators.
+
+- fixed an uninitialized variable in the BGRID model code in a routine
+that isn't normally used.
+
+- Updated the threed_sphere location module documentation with some usage
+notes about issues commonly encountered.
+
+- Fixed an incorrect test when printing out a log message describing if the
+inflation would be variance-adaptive or not.
+
+- Change the location of the POP MDT reference file to be relative to the 
+current run directory and not an absolute file location on cheyenne.
+
+- Make the ROMS, CM1, and POP model_mod log namelist information to the 
+namelist log file and not the main DART log file.
+
+- Updated several html documentation files, including the template/model_mod.html
+which describes the current model_mod required interfaces.
+
+- Updated the instructions for the GSI to DART obs converter to suggest some
+needed compiler flags in certain cases.
+
+- Updated the location module test programs.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ May 21 2018 :: enhanced inflation option, scripting          Revision: 12591
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- Enhanced inflation algorithm added.  See the filter_mod.html for new
+documentation on this option.
+
+- Updated WRF scripts for the Manhattan release.
+
+- Obs_diag reports statistics on DART QC 8, observation failed vertical
+conversion.  Matlab scripts also updated to support QC 8.
+
+- New parallel conversion scripts for GPS Radio Occultation observations and
+  NCEP prepbufr conversions.
+
+- Further updates to documentation files to change KIND to QTY or Quantity.
+
+- Documented required changes when moving from the Lanai/Classic release to
+Manhattan in documentation/html/Manhattan_diffs_from_Lanai.html
+
+- Expanded the routines in the netcdf_utilities_mod.f90
+
+- Add an ensemble handle parameter to the 6 ensemble manager routines 
+where it was missing.
+
+- The advance_time program can read/generate CESM format time strings
+(YYYY-MM-DD-SSSSS).
+
+- Fixed a bug in the netcdf read routines that under certain circumstances
+could report an array was using the unlimited dimension incorrectly.
+
+- Removed the option to try to bitwise reproduce Lanai results; due to the
+number of changes this is no longer possible.
+
+- Minor bug fixes to the (seldom used) perturb routines in the WRF 
+and MPAS_ATM model_mod.f90 files.  (used to add gaussian noise to a
+single model state to generate an ensemble; this is never the recommended
+method of starting a new experiment but the code remains for testing 
+purposes.)
+
+- Several remaining model-specific model_mod_check programs were 
+removed in favor of a single common program source file.
+
+- Keep filter_mod.dopplerfold.f90 in sync with filter_mod.f90,
+and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
+
+- Removed makefiles for the obsolete trans_time program.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Jun 18 2018 :: CAM/CESM 2.0, DART QC 8, closest_member_tool  Revision: 12682
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- Support for CAM-FV assimilations in the CESM 2.0 release.  See 
+  documentation in models/cam-fv/doc/README_cam-fv for details.
+
+- obs_diag and matlab scripts updated to report statistics on DART QC 8, 
+  observation failed vertical conversion
+
+- Updates to fix minor problems with the new WRF scripts
+
+- Added the 'inf_sd_max_change' namelist item to all input.nml files for
+  the enhanced inflation option
+
+- Revival of the closest_member_tool, which now runs in parallel on
+  all ensemble members at one time.  This tool can be used as a template
+  for any other tools which need to process something for all ensemble
+  members in parallel.
+
+- Revival of the fill_inflation_restart tool as a Fortran 90 program.
+  Using ncap2 is still possible, but if the correct version is not
+  installed or available this tool can be used.
+
+- Added more functions to the netcdf_utilities_mod.f90
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Aug 03 2018 :: performance fix for distributed mean          Revision: 12758 
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- Important performance fix if model does vertical conversion for localization.
+  Results were not wrong but performance was poor if 'distribute_mean = .true.' 
+  was selected in the &assim_tools_nml namelist.
+
+  Now distributing the mean runs in close to the non-distributed time and uses
+  much less memory for large models. This only impacts models which do a vertical
+  conversion of either the observation or state vertical coordinate for localization
+  AND which set &assim_tools_nml :: distribute_mean = .true. to use less memory.
+
+  When using a distributed mean "convert_all_obs_verticals_first = .true." should 
+  be set.  If your observations will impact most of the model state, then 
+  "convert_all_state_verticals_first = .true.' can also be set.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ Apr 30 2019 :: cam-fv refactor, posteriors optional, QC 8    Revision: 13138
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- The CAM Finite Volume (cam-fv)  model_mod.f90 has undergone substantial 
+  refactoring to improve simplicity and remove code for unsupported CAM variants
+  while also supporting WACCM and WACCM-X.  Namelist changes will be required.
+
+- CAM-FV setup and scripting support added for CESM 2.1, including advanced
+  archiving and compression
+
+- fix for WRF's wind direction vectors when using the Polar Stereographic 
+  map projection.  Thanks to Kevin Manning for the fix.
+
+- Add filter namelist option to avoid calling the posterior forward operators 
+  and to not create those copies in the obs_seq.final file.
+
+- Use less memory if writing ensemble member values into the obs_seq.final file.
+
+- added a DART QC of 8 for failed vertical conversions
+
+- updated Matlab scripts support QC=8 and no posterior in obs sequence files.
+
+- sampling error correction table now has all ensemble sizes between 3 and 200
+
+- closest_member_tool can be compiled with other MPI targets
+
+- COSMIC_ELECTRON_DENSITY has been moved from obs_def_gps_mod.f90 to 
+  obs_def_upper_atm_mod.f90, which has new quantities for 
+  ION_O_MIXING_RATIO and ATOMIC_H_MIXING_RATIO
+
+- obs_converters/gps/convert_cosmic_ionosphere.f90 has a test dataset
+
+- support for NAG compiler 
+
+- fixed Intel compiler bug in lorenz_96 comparing long integers to integer loop indices
+
+- get_maxdist() now a required routine all location modules
+
+- Default routines now create a time variable as time(time) to allow multiple
+  files to be concatenated along the unlimited dimension more easily.  Also
+  conforms to the netCDF convention for coordinate dimensions.
+
+- obs_impact_tool handles a continuum of values, not just discrete 0 or 1.
+
+- fill_inflation_restart now produces files with names consistent with filter defaults. 
+
+- expanded functionality in xyz_location_mod.f90
+
+- Removed 'slow' sorting routines from sort_mod.f90
+
+- replacing some repeated native netCDF library calls with routines from
+  the netcdf_utilities_mod.f90 
+
+- Updated dewpoint equation to avoid dividing by zero given a very unlikely
+  scenario (r12832)
+
+- More efficient implementation of adaptive inflation 
+
+- Yongfei Zhang and Cecilia Bitz added improvements to the CICE model and 
+  observation converters and forward operators. These changes also use the
+  locations of the 'new' glade filesystem. They used CESM tag: cesm2_0_alpha06n
+
+- Worked with Yongfei Zhang to remove prototype codes and more completely
+  document observation converters and data sources for cice assimilation.
+
+- removed 'allow_missing_in_clm' flag from the &assim_tools_nml namelist in
+  the CICE work directory.  The flag moved to a different namelist and the
+  CICE model doesn't care about it.
+
+- increased the maximum number of input files to obs_diag from 100 to 10000.
+
+- Updated the developer_tests to include more cases.
+
+- Updated oned/obs_diag.f90 to support 'obs_seq.out' files.
+
+- Better error and informational messages in various routines.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ MMM DD YYYY :: summary of changes in next Manhattan update $Revision$
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 # <next few lines under version control, do not edit>
 # $URL$

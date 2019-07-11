@@ -71,11 +71,12 @@
    inf_sd_initial_from_restart = .false.,                 .false.,
    inf_deterministic           = .true.,                  .true.,
    inf_initial                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.0,                     0.0,
-   inf_damping                 = 1.0,                     1.0,
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
-   inf_sd_lower_bound          = 0.0,                     0.0
+   inf_damping                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.0,                     0.0,
+   inf_sd_lower_bound          = 0.0,                     0.0,
+   inf_sd_max_change           = 1.05,                    1.05,
 
    trace_execution              = .false.,
    output_timestamps            = .false.,
@@ -200,3 +201,18 @@
    verbose               = .false.
    /
 
+
+&model_mod_check_nml
+  input_state_files     = 'perfect_input.nc'
+  output_state_files    = 'mmc_output.nc'
+  num_ens               = 1
+  single_file           = .true.
+  test1thru             = 2
+  run_tests             = 1,2,3,4,5,6,7
+  x_ind                 = 2
+  loc_of_interest       = 0.3
+  quantity_of_interest  = 'QTY_SMALL_SCALE_STATE'
+  interp_test_dx        = 0.02
+  interp_test_xrange    = 0.0, 1.0
+  verbose               = .false.
+  /
