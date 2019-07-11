@@ -249,3 +249,8 @@ gzip $lists
 wait
 
 exit
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
