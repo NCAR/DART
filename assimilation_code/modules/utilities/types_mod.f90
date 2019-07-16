@@ -4,10 +4,10 @@
 !
 ! $Id$
 
-!> Should only have fortran "kinds".  the constants should
-!> go into their own module, or this should be renamed 'constants'
-!> or something more descriptive than 'types' (which overlaps
-!> into our obs kinds and types).
+!> Should only have fortran "kinds" - number of bytes/precision - for
+!> integer, real, etc.  the constants should go into their own module, 
+!> or this should be renamed 'constants' or something more descriptive 
+!> than 'types' (which overlaps with dart's use of kinds and types).
 
 module types_mod
 
@@ -37,7 +37,7 @@ integer, parameter :: metadatalength   = 64   ! 75 is max w/out wrapping in ncdu
 integer, parameter :: varnamelength    = 31   ! max name of any fortran variable
                                               ! in F90/95. increased to 63 in F2003
 integer, parameter :: obstypelength    = 31   ! because of variable name limits.
-                                              ! use this for obs types/kinds
+                                              ! use this for obs types/state quantities
 integer, parameter :: vtablenamelength = 64   ! use this for the model_mod variable table items
                                            
 integer, parameter :: MAX_NUM_DOMS     = 10   ! max num domains. this is arbitrarily 
@@ -49,6 +49,12 @@ integer, parameter :: MAX_FILES        = 1000 ! maximum number of files
 ! Attributes for variable kinds -- declaring sizes explicitly means we know
 ! exactly what precision we are using and are not relying on compiler flags
 ! to set the defaults for real and int.
+!
+! the call is: selected_int_kind(p, r)
+!  where p = decimal_precision,  and r = decimal_exponent_range
+!
+! below, "external32_size" = number of bytes 
+! 
 !
 ! from the MPI documentation, they say:
 !

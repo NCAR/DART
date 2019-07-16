@@ -453,13 +453,16 @@ end function get_units_for_quantity
 
 !----------------------------------------------------------------------------
 ! Get bounds values for quantity by index
+! Returns .false. for 'hasbounds' if both min and max are missing_r8
+! (hopefully a shortcut for calling code to skip additional tests.)
 
-subroutine get_bounds_for_quantity(obs_qty_ind, minbounds, maxbounds)
+subroutine get_bounds_for_quantity(obs_qty_ind, hasbounds, minbounds, maxbounds)
 
 ! Returns the min/max bounds, if any, for this quantity index
 ! Returns MISSING_R8 if no bounds
 
 integer,  intent(in)  :: obs_qty_ind
+logical,  intent(out) :: hasbounds
 real(r8), intent(out) :: minbounds
 real(r8), intent(out) :: maxbounds
 
@@ -471,6 +474,8 @@ call validate_obs_qty_index(obs_qty_ind, routine)
 
 minbounds = obs_qty_names(obs_qty_ind)%minbound
 maxbounds = obs_qty_names(obs_qty_ind)%maxbound
+
+hasbounds = .not. (minbounds == MISSING_R8 .and. maxbounds == MISSING_R8)
 
 end subroutine get_bounds_for_quantity
 
