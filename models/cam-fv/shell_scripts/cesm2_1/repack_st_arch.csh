@@ -38,11 +38,11 @@
 #
 #SBATCH --job-name=repack_st_archive
 # 80 members
-# #SBATCH --ntasks=405 
+#SBATCH --ntasks=405 
 # 3 members; 
-#SBATCH --ntasks=15 
+# #SBATCH --ntasks=15 
 # #SBATCH --ntasks=1 
-#SBATCH --time=01:00:00
+#SBATCH --time=03:00:00
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=raeder@ucar.edu
@@ -149,10 +149,10 @@ if ($#argv == 0) then
    # CASE could be replaced by setup_*, as is done for DART_config.
    # "project" will be created as needed (assuming user has permission to write there).
    # set project    = /glade/p/cisl/dares/Reanalyses/CAM6_2017
-   set project    = /glade/p/nsc/ncis0006/Reanalyses/CAM6_2010
-   set campaign   = /gpfs/csfs1/cisl/dares/Reanalyses/CAM6_2010
+   set project    = /glade/p/nsc/ncis0006/Reanalyses
+   set campaign   = /gpfs/csfs1/cisl/dares/Reanalyses
    set year  = 2011
-   set month = 1
+   set month = 2
    set yr_mo = `printf %4d-%02d ${year} ${month}`
    set obs_space  = Diags_NTrS_${yr_mo}
    # set DART       = ~/DART/reanalysis
@@ -240,7 +240,7 @@ if ($do_forcing == true) then
    set files_dates = `ls ${CASE}.cpl_0001.ha2x1d.${yr_mo}-*.nc*`
    if ($#files_dates == 0) then
       echo "ERROR: there are no ${CASE}.cpl_0001.ha2x1d files.  Set do_forcing = false?"
-      exit
+      exit 23
    else if ($files_dates[1]:e == 'gz') then
       # Separate decompress.csh for each date
       foreach d ($files_dates)
@@ -263,11 +263,23 @@ if ($do_forcing == true) then
    while ($i <= $ensemble_size)
       set NINST = `printf %04d $i`
       set inst_dir = ${project}/${CASE}/cpl/hist/${NINST}
-      if (! -d $inst_dir) mkdir -p $inst_dir
-
+# Fix nonmono; there is never a file yearly_file = ...TYPE...
+      # "TYPE" will be replaced by `sed` commands below.
       set yearly_file = ${CASE}.cpl_${NINST}.TYPE.${year}.nc
 
-      # && is bash for 'do the next command if the previous succeeded.
+      if (-d $inst_dir) then
+         mv ${inst_dir}/${CASE}.cpl_${NINST}.*.${year}.nc . || exit 28
+         # Possibly exit because the directory should only exist 
+         # if yearly files were put into it.
+     
+         # "$init" is a place holder, in the template command, for the existence
+         # of a yearly file
+         set init = $yearly_file
+      else
+         mkdir -p $inst_dir
+         set init = ''
+      endif
+
       # First try:
       # echo "ncrcat -A -o $yearly_file " \
       #    "${CASE}.cpl_${NINST}.TYPE.${yr_mo}-*.nc &> TYPE_${NINST}.eo " \
@@ -281,14 +293,8 @@ if ($do_forcing == true) then
       # 3) The output file cannot also be the first input file,
       #    or the time monotonicity may be violated.
       #    This defeats the intent of the "append" mode, but testing confirmed it.
-      #
-      if (-f ${inst_dir}/$yearly_file) then
-         mv ${inst_dir}/$yearly_file . 
-         set init = $yearly_file
-      else
-         set init = ''
-      endif
-      echo "ncrcat --rec_apn  $init ${CASE}.cpl_${NINST}.TYPE.${yr_mo}-*.nc " \
+
+      echo "ncrcat --rec_apn $init  ${CASE}.cpl_${NINST}.TYPE.${yr_mo}-*.nc " \
            " ${inst_dir}/$yearly_file &> TYPE_${NINST}.eo " \
            >> cmds_template
       @ i++
@@ -324,7 +330,7 @@ if ($do_forcing == true) then
    else
       echo 'ERROR in repackaging forcing (cpl history) files: See h*.eo, cmds_template, mycmdfile'
       echo '      grep ncrcat *.eo  yielded status '$gr_stat
-      exit 20
+      exit 50
    endif
 
 cd ../..
@@ -483,7 +489,7 @@ if ($do_restarts == true) then
             echo 'ERROR in repackaging restart files: See tar*.eo, mycmdfile'
             echo '      grep tar *.eo  yielded status '$gr_stat
             ls -l *.eo
-            exit 20
+            exit 60
          endif
 
       endif
@@ -571,7 +577,7 @@ if ($do_obs_space == true) then
                ${CASE}.dart.e.cam_obs_seq_final.${obs_times_pattern}* &
 #    else
 #       echo diags_batch.csh failed with status = $status
-#       exit 35
+#       exit 70
 #    endif
 # 
 # ? TURN THIS ON FOR PRODUCTION RUN
@@ -599,7 +605,7 @@ if ($do_obs_space == true) then
 #       echo ERROR: matlab failed with status = $status.
 #       # Let the tar of obs_seq files finish.
 #       wait
-#       exit
+#       exit 80
 #    endif
 #    
    # Move the obs space diagnostics to $project.
@@ -625,7 +631,7 @@ if ($do_obs_space == true) then
       echo "   to $obs_proj_dir"
    else
       echo "${CASE}.cam_obs_seq_final.${obs_times_pattern}.tgz cannot be moved"
-      exit 35
+      exit 90
    endif
 
    cd ../..
@@ -648,8 +654,8 @@ endif
 echo "------------------------"
 if ($do_history == true) then
    # If cam files are too big, do them separately and monthly.
-   set m = 1
    echo "There are $#components components (models)"
+   set m = 1
    while ($m <= $#components)
       ls $components[$m]/hist/*h0* >& /dev/null
       if ($status == 0) then
@@ -666,15 +672,16 @@ if ($do_history == true) then
       while ($i <= $ensemble_size)
          set NINST = `printf %04d $i`
          set inst_dir = ${project}/${CASE}/$components[$m]/hist/${NINST}
-         set yearly_file = ${CASE}.$models[$m]_${NINST}.TYPE.${year}.nc
 
-         if (! -d $inst_dir) then
+         if (-d $inst_dir) then
+            # The file form is like yearly_file = ${CASE}.cpl_${NINST}.TYPE.${year}.nc
+            # in the forcing file section, but for all TYPEs.
+            mv ${inst_dir}/${CASE}.$models[$m]_${NINST}.*.${year}.nc . 
+            if ($status != 0 && $models[$m] != 'cam' ) exit 100
+            # Exit because if the directory should only exist 
+            # if yearly files were put into it.
+         else 
             mkdir -p $inst_dir
-         else if (-f ${inst_dir}/$yearly_file) then
-            mv ${inst_dir}/$yearly_file . 
-         else
-            echo "ERROR: $inst_dir exists, but does not have $yearly_file in it"
-            exit 50
          endif
 
          @ i++
@@ -686,7 +693,7 @@ if ($do_history == true) then
       # This is what's in cmds_template, which is re-used here.
       #       set inst_dir = ${project}/${CASE}/cpl/hist/${NINST}
       #       set yearly_file = ${CASE}.cpl_${NINST}.TYPE.${year}.nc
-      #       echo "mv ${inst_dir}/$yearly_file . ; ncrcat --rec_apn    $yearly_file " \
+      #       echo "ncrcat --rec_apn    $yearly_file " \
       #            "${CASE}.cpl_${NINST}.TYPE.${yr_mo}-*.nc ${inst_dir}/$yearly_file &> " \
       #            "TYPE_${NINST}.eo " \
       set cmds_template = cmds_template_$models[$m]
@@ -696,7 +703,7 @@ if ($do_history == true) then
       else
          echo "ERROR: ../../cpl/hist/cmds_template is missing; need it for archiving h# files."
          echo "       It should have been created in section 1 of this script."
-         exit 50
+         exit 110
       endif
 
       # Append a copy of the template file, modified for each file type, into the command file.
@@ -754,7 +761,7 @@ if ($do_history == true) then
             echo "ERROR in repackaging history files: See $components[$m]/hist/"\
                  'h*.eo, cmds_template*, mycmdfile*'
             echo '      grep ncrcat *.eo  yielded status '$gr_stat
-            exit 20
+            exit 130
          endif
       endif
 
@@ -801,7 +808,7 @@ if ($do_state_space == true) then
                   rm ${CASE}.dart.${ext}.cam_${stage}_${stat}.${yr_mo}-*
                else
                   echo tar -c -f ${CASE}.dart.${ext}.cam_${stage}_${stat}.${yr_mo}.tar failed
-                  exit 30
+                  exit 140
                endif
             endif
 #          endif
@@ -861,7 +868,7 @@ if ($do_state_space == true) then
             # mv ../${CASE}.cam_0001.h0.${date}*  .
          else
             echo tar -c -f ${CASE}.cam_allinst.e.$stage.${date}.tar failed
-            exit 40
+            exit 150
          endif
       endif
       end
