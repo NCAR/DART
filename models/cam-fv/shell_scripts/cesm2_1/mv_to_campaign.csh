@@ -1,13 +1,5 @@
 #!/bin/tcsh
 
-#
-# DART software - Copyright UCAR. This open source software is provided
-# by UCAR, "as is", without charge, subject to all terms of use at
-# http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
-
-
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
@@ -134,14 +126,19 @@ echo EP_CS = $EP_CS
 # Add these activations in order to use (and see) the end points.
 # (E.g. > globus ls ${EP_CS}:/gpfs/csfs1/cisl/dares/Reanalysis/).
 # It seems to activate the endpoints without requiring a password.
-# myproxy-lifetime is the number of hours the credential will be valid. 
-#    (Max 720 = 30 days)
+# That's because the credentials were set up manually 
+# with a lifetime of 30 days.  "activate" first tries auto-activation.
+# If that fails, it tries the activation method from the command line.
+# But all of those options require a browser (not available on batch nodes)
+# or user name and password (which is insecure if provided by the script).
+# So this activation relies on auto-activation.
+# It may be redundant, but maybe this script needs an explicit activation.
 foreach ep ($EP_SRC $EP_CS)
    # Check if endpoint is activated
    # (we don't care about output, only return code)
    globus endpoint is-activated $ep >& /dev/null
    if ( $status != 0 ) then
-      globus endpoint activate --myproxy --myproxy-lifetime 720 $ep
+      globus endpoint activate $ep
       if ( $status != 0 ) then
          echo "Fatal: NCAR endpoint $ep isn't activated." > $glog
          echo "       Aborting transfer..." >> $glog
@@ -188,7 +185,3 @@ exit 0
 # $Revision$
 # $Date$
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
