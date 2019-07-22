@@ -46,12 +46,14 @@
 ! SAT_F107,                        QTY_1D_PARAMETER,               COMMON_CODE
 ! SAT_RHO,                         QTY_DENSITY
 ! GPS_PROFILE,                     QTY_ELECTRON_DENSITY,           COMMON_CODE
-! COSMIC_ELECTRON_DENSITY,         QTY_ELECTRON_DENSITY,           COMMON_CODE
+! COSMIC_ELECTRON_DENSITY,         QTY_ELECTRON_DENSITY
 ! GND_GPS_VTEC,		           QTY_GND_GPS_VTEC
 ! CHAMP_DENSITY,                   QTY_DENSITY
 ! MIDAS_TEC,                       QTY_VERTICAL_TEC
 ! SSUSI_O_N2_RATIO,                QTY_O_N2_COLUMN_DENSITY_RATIO
 ! GPS_VTEC_EXTRAP,                 QTY_VERTICAL_TEC,               COMMON_CODE
+! SABER_TEMPERATURE,               QTY_TEMPERATURE,                COMMON_CODE
+! AURAMLS_TEMPERATURE,             QTY_TEMPERATURE,                COMMON_CODE
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -59,6 +61,7 @@
 !  use obs_def_upper_atm_mod, only : get_expected_gnd_gps_vtec
 !  use obs_def_upper_atm_mod, only : get_expected_vtec
 !  use obs_def_upper_atm_mod, only : get_expected_O_N2_ratio
+!  use obs_def_upper_atm_mod, only : get_expected_electron_density
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
@@ -72,6 +75,8 @@
 !      call get_expected_gnd_gps_vtec(state_handle, ens_size, location, expected_obs, istatus)
 ! case(SSUSI_O_N2_RATIO)
 !      call get_expected_O_N2_ratio(state_handle, ens_size, location, expected_obs, istatus)
+! case(COSMIC_ELECTRON_DENSITY)
+!      call get_expected_electron_density(state_handle, ens_size, location, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
@@ -84,6 +89,8 @@
 ! case(GND_GPS_VTEC)
 !      continue
 ! case(SSUSI_O_N2_RATIO)
+!      continue
+! case(COSMIC_ELECTRON_DENSITY)
 !      continue
 ! END DART PREPROCESS READ_OBS_DEF
 
@@ -98,6 +105,8 @@
 !      continue
 ! case(SSUSI_O_N2_RATIO)
 !      continue
+! case(COSMIC_ELECTRON_DENSITY)
+!      continue
 ! END DART PREPROCESS WRITE_OBS_DEF
 
 ! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
@@ -111,6 +120,8 @@
 !      continue
 ! case(SSUSI_O_N2_RATIO)
 !      continue
+! case(COSMIC_ELECTRON_DENSITY)
+!      continue
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 
 ! BEGIN DART PREPROCESS MODULE CODE
@@ -122,11 +133,14 @@ use     location_mod, only : location_type, get_location, set_location, &
                              VERTISHEIGHT, VERTISLEVEL
 use  assim_model_mod, only : interpolate
 use     obs_kind_mod, only : QTY_ATOMIC_OXYGEN_MIXING_RATIO, &
+                             QTY_ATOMIC_H_MIXING_RATIO, &
+                             QTY_ION_O_MIXING_RATIO, &
                              QTY_MOLEC_OXYGEN_MIXING_RATIO, &
                              QTY_TEMPERATURE, &
                              QTY_PRESSURE, &
                              QTY_DENSITY, &
                              QTY_DENSITY_ION_E, &
+                             QTY_ELECTRON_DENSITY, &
                              QTY_GND_GPS_VTEC, &
                              QTY_GEOPOTENTIAL_HEIGHT, &
                              QTY_GEOMETRIC_HEIGHT, &
@@ -139,7 +153,8 @@ private
 public :: get_expected_upper_atm_density, &
           get_expected_gnd_gps_vtec, &
           get_expected_vtec, &
-          get_expected_O_N2_ratio
+          get_expected_O_N2_ratio, &
+          get_expected_electron_density
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -149,12 +164,16 @@ character(len=128), parameter :: revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
 
-real(r8), PARAMETER :: N2_molar_mass = 28.0_r8
-real(r8), PARAMETER :: O_molar_mass  = 16.0_r8
-real(r8), PARAMETER :: O2_molar_mass = 32.0_r8
-real(r8), PARAMETER :: universal_gas_constant = 8314.0_r8 ! [J/K/kmol]
-integer,  PARAMETER :: MAXLEVELS = 100 ! more than max levels expected in the model 
+real(r8), parameter :: N2_molar_mass = 28.0_r8
+real(r8), parameter :: O_molar_mass  = 16.0_r8
+real(r8), parameter :: O2_molar_mass = 32.0_r8
+real(r8), parameter :: H_molar_mass  =  1.0_r8
 
+! WACCM-X; put into common/types_mod.f90?
+real(r8), parameter :: kboltz = 1.380648E-23_r8    ! [N*m/K]
+real(r8), parameter :: universal_gas_constant = 8314.0_r8 ! [J/K/kmol]
+real(r8), parameter :: molar_mass_dry_air = 28.9644_r8
+integer,  parameter :: MAXLEVELS = 300 ! more than max levels expected in the model (waccm-x has 126)
 character(len=512) :: string1, string2, string3
 
 contains
@@ -265,7 +284,6 @@ logical  :: return_now
 if ( .not. module_initialized ) call initialize_module
 
 istatus = 0     ! must be 0 to use track_status()
-obs_val = MISSING_R8
 
 loc_vals = get_location(location)
 
@@ -277,9 +295,8 @@ LEVELS: do iAlt=1, size(ALT)+1
    if (iAlt > size(ALT)) then
       write(string1,'(''more than '',i4,'' levels in the model.'')') MAXLEVELS
       string2='increase MAXLEVELS in obs_def_upper_atm_mod.f90, rerun preprocess and recompile.'
-      string3='increase ALT, IDensityS_ie array sizes in code and recompile'
       call error_handler(E_ERR, 'get_expected_gnd_gps_vtec', string1, &
-           source, revision, revdate, text2=string2, text3=string3)
+           source, revision, revdate, text2=string2)
    endif
 
    ! At each altitude interpolate the 2D IDensityS_ie to the lon-lat where data 
@@ -298,8 +315,14 @@ LEVELS: do iAlt=1, size(ALT)+1
    nAlts = nAlts+1
 enddo LEVELS
 
-if (nAlts == 0) return
+! failed first time through loop - no values to return.
+if (nAlts == 0) then
+   obs_val(:) = MISSING_R8
+   return
+endif
 
+! clear the error from the last level and start again?
+istatus(:) = 0
 tec=0.0_r8 !start with zero for the summation
 
 do iAlt = 1, nAlts-1 !approximate the integral over the altitude as a sum of trapezoids
@@ -310,7 +333,6 @@ enddo
 where (istatus == 0) &
    obs_val = tec * 10.0**(-16) !units of TEC are "10^16" #electron/m^2 instead of just "1" #electron/m^2
 
-! return code set by track_status
 
 end subroutine get_expected_gnd_gps_vtec
 
@@ -380,7 +402,7 @@ real(r8), allocatable :: N2_number_density(:, :)
 real(r8), allocatable :: total_number_density(:, :)
 real(r8), allocatable :: O_number_density(:, :)
 
-real(r8), PARAMETER :: k_constant = 1.381e-23_r8 ! m^2 * kg / s^2 / K
+real(r8), parameter :: k_constant = 1.381e-23_r8 ! m^2 * kg / s^2 / K
 integer :: ilayer, nlevels, nilevels
 integer :: this_istatus(ens_size)
 real(r8) :: layerfraction(ens_size)
@@ -388,7 +410,6 @@ real(r8) :: layerfraction(ens_size)
 if ( .not. module_initialized ) call initialize_module
 
 istatus = 0
-obs_val = MISSING_R8
 
 call error_handler(E_ERR, 'get_expected_O_N2_ratio', 'routine not tested', &
            source, revision, revdate, &
@@ -406,6 +427,10 @@ loc_lat   = loc_array(2)
 nilevels = 0
 heights = 0.0_r8
 
+!>@todo FIXME: this is setting the same location for VERTISLEVEL
+!> as the loop below, so one can *not* be filling the interfaces and 
+!> the other filling the midpoints.
+
 FILLINTERFACES : do ilayer = 1,MAXLEVELS
 
    loc = set_location(loc_lon, loc_lat, real(ilayer,r8), VERTISLEVEL)
@@ -418,7 +443,10 @@ FILLINTERFACES : do ilayer = 1,MAXLEVELS
 enddo FILLINTERFACES
 
 
-if (nilevels == 0) return
+if (nilevels == 0) then
+   obs_val(:) = missing_r8
+   return
+endif
 
 istatus(:) = 0
 thickness = 0.0_r8
@@ -428,7 +456,8 @@ thickness(:, 1:nilevels-1) = heights(:, 2:nilevels) - heights(:, 1:nilevels-1)
 
 nlevels = 0
 
-FILLMIDPOINTS : do ilayer = 1,MAXLEVELS
+!>@todo FIXME: don't we know how many layers there are now? 
+FILLMIDPOINTS : do ilayer = 1, MAXLEVELS
 
    loc = set_location(loc_lon, loc_lat, real(ilayer,r8), VERTISLEVEL)
 
@@ -452,7 +481,10 @@ FILLMIDPOINTS : do ilayer = 1,MAXLEVELS
 
 enddo FILLMIDPOINTS
 
-if (nlevels == 0) return
+if (nlevels == 0) then
+   obs_val(:) = missing_r8
+   return
+endif
 
 ! Check to make sure we have more interfaces than layers.
 !>@todo should this be an error instead of a message?
@@ -538,6 +570,96 @@ deallocate(N2_mmr, mbar, total_number_density, O_number_density, N2_number_densi
 
 end subroutine get_expected_O_N2_ratio
 
+
+!-----------------------------------------------------------------------------
+!> Common interface for electron density forward operators.
+!> If there is a variable in the DART state that is the electron density, just use it.
+!> If it doesn't exist, try the forward operator from WACCM-X, and return that error code.
+!> May be extended to handle other methods of computing electron density.
+
+subroutine get_expected_electron_density(state_handle, ens_size, location, obs_val, istatus)
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
+type(location_type), intent(in)  :: location
+integer,             intent(out) :: istatus(ens_size)
+real(r8),            intent(out) :: obs_val(ens_size)
+
+call interpolate(state_handle, ens_size, location, QTY_ELECTRON_DENSITY, obs_val, istatus)
+if (any(istatus == 0)) return
+
+call get_expected_oxygen_ion_density(state_handle, ens_size, location, obs_val, istatus)
+
+end subroutine get_expected_electron_density
+
+
+!-----------------------------------------------------------------------------
+!> Given DART state vector and a location, it computes O+ density [1/cm^3].
+!> The istatus variable should be returned as 0 unless there is a problem.
+!> This function was implemented for WACCM-X. 
+!> Check the units for use with other models.
+
+subroutine get_expected_oxygen_ion_density(state_handle, ens_size, location, obs_val, istatus)
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
+type(location_type), intent(in)  :: location
+integer,             intent(out) :: istatus(ens_size)
+real(r8),            intent(out) :: obs_val(ens_size)
+
+real(r8), dimension(ens_size)  :: mmr_o1, mmr_o2, mmr_n2, mmr_h1, mmr_op   ! mass mixing ratio 
+real(r8), dimension(ens_size)  :: mbar, pressure, temperature 
+integer,  dimension(ens_size)  :: this_istatus
+real(r8), dimension(3)  :: loc_vals
+logical :: return_now
+
+istatus = 0 ! Need to have istatus = 0 for track_status()
+
+! cam-fv returns volume mixing ratio, not mass mixing ratio. undo for computation below.
+call interpolate(state_handle, ens_size, location, QTY_ATOMIC_OXYGEN_MIXING_RATIO, mmr_o1, this_istatus)
+call track_status(ens_size, this_istatus, obs_val, istatus, return_now)
+if (return_now) return
+mmr_o1 = mmr_o1 / (molar_mass_dry_air/O_molar_mass)
+
+call interpolate(state_handle, ens_size, location, QTY_MOLEC_OXYGEN_MIXING_RATIO, mmr_o2, this_istatus)
+call track_status(ens_size, this_istatus, obs_val, istatus, return_now)
+if (return_now) return
+mmr_o2 = mmr_o2 / (molar_mass_dry_air/O2_molar_mass)
+
+call interpolate(state_handle, ens_size, location, QTY_ATOMIC_H_MIXING_RATIO, mmr_h1, this_istatus)
+call track_status(ens_size, this_istatus, obs_val, istatus, return_now)
+if (return_now) return
+mmr_h1 = mmr_h1 / (molar_mass_dry_air/H_molar_mass)
+
+call interpolate(state_handle, ens_size, location, QTY_ION_O_MIXING_RATIO, mmr_op, this_istatus)
+call track_status(ens_size, this_istatus, obs_val, istatus, return_now)
+if (return_now) return
+
+call interpolate(state_handle, ens_size, location, QTY_PRESSURE, pressure, this_istatus)
+call track_status(ens_size, this_istatus, obs_val, istatus, return_now)
+if (return_now) return
+
+call interpolate(state_handle, ens_size, location, QTY_TEMPERATURE, temperature, this_istatus)
+call track_status(ens_size, this_istatus, obs_val, istatus, return_now)
+if (return_now) return
+
+!------------------------------------------------------------------------------------------------------
+!  Need to get number density (cgs units) from mass mixing ratio (kg/kg).  
+!  mbar is g/mole, same as rMass units
+!       kg/kg * (g/mole)/(g/mole) * (Pa = N/m^2)/((Joules/K = N*m/K) * (K)) = m-3 * 1E-06 = cm-3
+!------------------------------------------------------------------------------------------------------
+! WACCM-X .i file pressure unit is Pa 
+
+loc_vals = get_location(location)
+
+where (istatus == 0) 
+   mmr_n2 = 1.0_r8 - (mmr_o1 + mmr_o2 + mmr_h1)
+   mbar   = 1.0_r8/( mmr_o1/O_molar_mass   &
+                   + mmr_o2/O2_molar_mass  &
+                   + mmr_h1/H_molar_mass   &
+                   + mmr_n2/N2_molar_mass)
+   obs_val = mmr_op * mbar/O_molar_mass * pressure/(kboltz * temperature) * 1.E-06_r8
+end where
+
+end subroutine get_expected_oxygen_ion_density
 
 end module obs_def_upper_atm_mod
 ! END DART PREPROCESS MODULE CODE      

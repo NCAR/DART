@@ -19,8 +19,8 @@ program dart_to_cice
 use        types_mod, only : r8
 use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
-                             logfileunit, nc_check, file_exist, &
-                             error_handler, E_ERR, E_MSG, to_upper
+                             file_exist, error_handler, E_ERR, E_MSG, to_upper
+use  netcdf_utilities_mod, only : nc_check
 use netcdf 
 
 implicit none
@@ -94,8 +94,8 @@ real(r8), allocatable :: qsno001(:,:,:)
 real(r8), allocatable :: qsno002(:,:,:)
 real(r8), allocatable :: qsno003(:,:,:)
 real(r8), allocatable :: aice(:,:)
-real(r8), allocatable :: vice(:,:)
-real(r8), allocatable :: vsno(:,:)
+!real(r8), allocatable :: vice(:,:)
+!real(r8), allocatable :: vsno(:,:)
 
 !Parameters
 real(r8), allocatable :: r_snw(:,:)
@@ -115,7 +115,8 @@ real(r8), allocatable :: tendency_aicen(:,:,:)
 
 real(r8) :: R, weight_aicen     !, weight_vicen, weight_vsnon
 
-integer  :: i, j, k, n
+integer  :: i, j, n
+! integer :: k
 integer  :: VarID, ncid,ncid2, iunit, io, ndims
 real(r8) :: squeeze
 

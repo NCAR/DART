@@ -15,7 +15,9 @@ use             types_mod, only : r8, i8, missing_r8, metadatalength
 use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, &
                                   initialize_utilities, finalize_utilities,     &
                                   find_namelist_in_file, check_namelist_read,   &
-                                  nc_check, E_MSG, open_file, close_file, do_output
+                                  E_MSG, open_file, close_file, do_output
+
+use  netcdf_utilities_mod, only : nc_check
 
 use          location_mod, only : location_type, set_location, write_location,  &
                                   get_dist, get_location, LocationDims
@@ -26,7 +28,8 @@ use  ensemble_manager_mod, only : ensemble_type
 
 use model_check_utilities_mod, only : test_single_interpolation, &
                                       find_closest_gridpoint, &
-                                      count_error_codes
+                                      count_error_codes, &
+                                      verify_consistent_istatus
 
 use             model_mod, only : get_model_size, &
                                   get_state_meta_data, &
@@ -144,6 +147,8 @@ do i = 1, nx
 
          call model_interpolate(ens_handle, ens_size, loc, quantity_index, &
                                 field(i,j,k,:), ios_out)
+
+         call verify_consistent_istatus(ens_size, field(i,j,k,:), ios_out)
 
          write(iunit,*) field(i,j,k,:)
          if (any(ios_out(:) /= 0)) then

@@ -12,7 +12,7 @@
 # before using this script, copy it to a model's work directory, along 
 # with one of the doxygen configuration template files listed below.
 
-# pick one: the second tries to create diagrams showing the calling
+# pick one: the "devel" version tries to create diagrams showing the calling
 # and called relationship between subroutines, but the number and size
 # of files it generates is much larger.
 
@@ -22,14 +22,36 @@ else
   template=doxygen-config-template
 fi
 
+# this assumes we are running from some work directory.
+# if you are building from some other named dir, change
+# 'work' to that dir name in the line below.
 model=`pwd | sed -e 's;/work;;' -e 's;^.*/;;' `
 umodel=`echo $model | tr '[a-z]' '[A-Z]' `
-toppath=`cd ../../../; pwd`
 
-destdir=$toppath/documentation/doxygen/$model
+# figure out how far down we are in the directory hierarchy.
+if [ -f        ../../../CHANGELOG ]; then
+   toppath=`cd ../../../; pwd`
+elif [ -f   ../../../../CHANGELOG ]; then
+   toppath=`cd ../../../../; pwd`
+elif [ -f   ../../CHANGELOG ]; then
+   toppath=`cd ../../; pwd`
+elif [ -f   ../../../../../CHANGELOG ]; then
+   toppath=`cd ../../../../../; pwd`
+else
+   echo cannot find the top level DART directory
+   echo based on the current working directory.
+   exit -1
+fi
+
+# the first option puts all docs under DART/documentation.
+# try putting them into models/bob/documentation instead?
+# (this script needs to be run from a work directory)
+#destdir=$toppath/documentation/doxygen/$model
+destdir=../documentation
+doxygen_dir=$toppath/documentation/doxygen
 
 echo Generating documentation for all executables in the current directory
-echo for the model ${model}.   All html files will be located under the directory
+echo for ${model}.   All html files will be located under the directory
 echo $destdir
 
 if [ ! -d $destdir ]; then mkdir -p $destdir; fi
@@ -50,7 +72,7 @@ do
   # flist -> multiline path_names_xx content with \ after every
   # line except the last one
 
-  sed -e "s;THISDESTDIR;${destdir};" -e "s/THISEXECUTABLE/$exename/" -e "s/THISMODEL/$model/" -e "/^INPUT  /r flist" $template > doxygen-$exename
+  sed -e "s;THISDESTDIR;${destdir};" -e "s/THISEXECUTABLE/$exename/" -e "s/THISMODEL/$model/" -e "/^INPUT  /r flist" $doxygen_dir/$template > doxygen-$exename
 
   doxygen doxygen-$exename
   

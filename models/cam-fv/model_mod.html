@@ -219,7 +219,7 @@ but minor modifications to model_mod.f90 and CAM may be necessary.
 </P>
 
 <P>
-The 16 public interfaces in model_mod
+The 19 public interfaces in model_mod
 are standardized for all DART compliant models. These interfaces allow
 DART to get the model state and metadata describing 
 this state, find state variables that are close to a given location, 
@@ -263,33 +263,24 @@ The values shown here are the default values.
 <div class=namelist>
 <pre>
 &amp;model_nml
-   output_state_vector = .false.,
-   model_config_file   = 'caminput.nc',
-   cam_phis            = 'cam_phis.nc',
-   state_num_0d        = 0,
-   state_num_1d        = 0,
-   state_num_2d        = 1,
-   state_num_3d        = 6,
-   state_names_0d      = '',
-   state_names_1d      = '',
-   state_names_2d      = 'PS'
-   state_names_3d      = 'T', 'U', 'V', 'Q', 'CLDLIQ','CLDICE',
-   which_vert_1d       = -2 ,
-   which_vert_2d       = -1 , 
-   which_vert_3d       = 6*1  ,
-   pert_names          = '',
-   pert_sd             = -888888.0,
-   pert_base_vals      = -888888.0,
-   vert_coord          = 'pressure'
-   highest_obs_pressure_Pa   = 1000.0,
-   highest_state_pressure_Pa = 9400.0,
-   max_obs_lat_degree  = 90.0,
-   Time_step_seconds   = 21600,
-   Time_step_days      = 0,
-   print_details       = .false.
-   model_version       = '4.0',
-   impact_only_same_kind = '',
-   /
+   cam_template_filename               = 'caminput.nc'
+   cam_phis_filename                   = 'cam_phis.nc'
+   vertical_localization_coord         = 'PRESSURE'
+   use_log_vertical_scale              = .false.
+   no_normalization_of_scale_heights   = .true.
+   no_obs_assim_above_level            = -1,
+   model_damping_ends_at_level         = -1,
+   state_variables                     = ''
+   assimilation_period_days            = 0
+   assimilation_period_seconds         = 21600
+   suppress_grid_info_in_output        = .false.
+   custom_routine_to_generate_ensemble = .true.
+   fields_to_perturb                   = ''
+   perturbation_amplitude              = 0.0_r8
+   using_chemistry                     = .false.
+   use_variable_mean_mass              = .false.
+   debug_level                         = 0
+/  
 </pre>
 </div>
 
@@ -297,27 +288,8 @@ The values shown here are the default values.
 <br />
 
 <P>
-The names of the fields to put into the state vector come from the CAM initial
-file field names.
-The specification of lists of names and numbers for the various dimensions 
-enables the very flexible definition of the state vector.  It can be
-done via the namelist, instead of recompiling DART for each different set.
-In the CESM+DART framework, filter initial condition files are
-created based on the state vector defined in the namelist.
-</P>
-
-<P>
-The dimension of these lists is currently hardwired to size 100. 
-If more fields need to be assimilated (e.g. many chemical species),
-look for the integer parameter MAX_STATE_NAMES in the source code
-and change it to a large enough value and recompile DART.
-</P>
-
-<P>
-The values for which_vert_#d are described in 
-
-<em class=file>location_mod</em>:<A HREF="../../assimilation_code/location/threed_sphere/location_mod.html#get_close_obs">
-location_mod.html.</a>
+The names of the fields to put into the state vector 
+must match the CAM initial NetCDF file variable names.
 </P>
 
 <div>
@@ -330,71 +302,111 @@ location_mod.html.</a>
 
 <TBODY valign=top>
 
-<TR><TD> output_state_vector </TD>
-    <TD> logical </TD>
-    <TD>Controls the output to netCDF files. 
-If .true., output the raw dart state vector. If .false., output the
-prognostic flavor (gridded data) for easier plotting (recommended).
-</TD></TR>
-
-<TR><TD> model_config_file </TD>
+<TR><TD> cam_template_file </TD>
     <TD> character(len=128) </TD>
-    <TD>CAM initial file used to provide configuration information, like
-the resolution of the grid, number of vertical levels, whether fields 
+    <TD>CAM initial file used to provide configuration information, 
+such as the grid resolution, number of vertical levels, whether fields 
 are staggered or not, etc.
 </TD></TR>
 
 <TR><TD> cam_phis </TD>
     <TD> character(len=128) </TD>
-    <TD>CAM topography file for the Eulerian and Finite Volume versions.
-Not used in the Spectral Element version.
+    <TD>CAM topography file.  Reads the "PHIS" NetCDF variable from
+this file.  Typically this is a CAM History file because this field is
+not normally found in a CAM initial file.
 </TD></TR>
 
-<TR><TD> cs_grid_file </TD>
+<TR><TD> vertical_localization_coord </TD>
     <TD> character(len=128) </TD>
-    <TD>CAM Spectral Element grid file.  Not used in the Eulerian or
-Finite Volume versions.
+    <TD>The vertical coordinate to which all vertical locations are converted
+in model_mod. Valid options are "pressure", "height", "scaleheight" or "level".
 </TD></TR>
 
-<TR><TD> homme_map_file </TD>
-    <TD> character(len=128) </TD>
-    <TD>CAM Spectral Element mapping file written by CAM-SE.  Not used in the Eulerian or
-Finite Volume versions.
+<TR><TD> no_normalization_of_scale_heights </TD>
+    <TD> logical </TD>
+    <TD>If true the scale height is computed as the log of the pressure at
+the given location. If false the scale height is computed as a ratio of the 
+log of the surface pressure and the log of the pressure aloft.  
+In limited areas of high topography the ratio version might be advantageous, 
+and in previous versions of filter this was the default.
+For global CAM the recommendation is to set this to .true. so the scale 
+height is simply the log of the pressure at any location.
 </TD></TR>
 
-<TR><TD>state_num_#d,<br /> #=0,1,2,3   </TD>
+<TR><TD> no_obs_assim_above_level </TD>
     <TD> integer </TD>
-    <TD>Numbers of fields of various dimensions to put into the state vector.
-Note that CAM-SE fields have only 1 horizontal dimension on the initial files, 
-due to the cubed-sphere grid being not logically rectangular.
-"Dimensions" in cam/model_mod.f90 generally refers to dimensions on the initial file, 
-not spatial dimensions of the fields.
+    <TD>Because the top of the model is highly damped it is recommended
+to NOT assimilate observations in the top model levels.  The units here
+are CAM model level numbers.  Set it to equal or below the lowest model 
+level (the highest number) where damping is applied in the model.  
 </TD></TR>
 
-<TR><TD>state_names_#d,<br /> #=0,1,2,3 </TD>
-    <TD>character(len=8), dimension(100)  </TD>
-    <TD>Names of fields of various dimensions to put into the state vector.  
+<TR><TD> model_damping_ends_at_level </TD>
+    <TD> integer </TD>
+    <TD>Set this to the lowest model level (the highest number) where
+model damping is applied.  Observations below the 'no_obs_assim_above_level'
+cutoff but close enough to the model top to have an impact during the
+assimilation will have their impacts decreased smoothly to 0 at this
+given model level. The assimilation should make no changes to the model
+state above the given level.
 </TD></TR>
 
-<TR><TD>which_vert_#d,<br /> #=1,2,3 </TD>
-    <TD>integer, dimension(100)  </TD>
-    <TD>Vertical location types of fields in state_names_#d.
-See the <a href="../../assimilation_code/location/threed_sphere/location_mod.html">3D sphere location</a>
-documentation for the mapping of integer values to vertical location types.
+<TR><TD>state_variables </TD>
+    <TD>character(len=64), dimension(100)  </TD>
+    <TD>Character string table that includes: Names of fields (NetCDF variable
+names) to be read into the state vector, the corresponding DART Quantity for
+that variable, if a bounded quantity the minimum and maximum valid values,
+and finally the string 'UPDATE' to indicate the updated values should be
+written back to the output file.  'NOUPDATE' will skip writing this field
+at the end of the assimilation.
 </TD></TR>
 
-<TR><TD> pert_names </TD>
-    <TD>character(len=8), dimension(100)    </TD>
-    <TD>To make filter generate an ensemble from a single model state by
-randomly perturbing it, list the field(s) to be perturbed here 
-(and see the DART namelist settings for a 
-<A HREF="#PerturbedEnsemble">perturbed initial ensemble)</A>. 
+<TR><TD> assimilation_period_days </TD>
+    <TD> integer </TD>
+    <TD>Sets the assimilation window width, and should match the
+model advance time when cycling.  The scripts distributed with DART
+always set this to 0 days, 21600 seconds (6 hours).
 </TD></TR>
 
-<TR><TD> pert_sd </TD>
-    <TD>real(r8), dimension(100)    </TD>
-    <TD>If positive, it's the standard deviation of the perturbation for each
-field in the pert_names list (filter).  Unused unless pert_names is set.
+<TR><TD> assimilation_period_seconds </TD>
+    <TD> integer </TD>
+    <TD>Sets the assimilation window width, and should match the
+model advance time when cycling.  The scripts distributed with DART
+always set this to 0 days, 21600 seconds (6 hours).
+</TD></TR>
+
+<TR><TD> suppress_grid_info_in_output </TD>
+    <TD> logical </TD>
+    <TD>Filter can update fields in existing files or create diagnostic/output
+files from scratch. By default files created from scratch include a full set
+of CAM grid information to make the file fully self-contained and plottable.
+However, to save disk space the grid variables can be suppressed in files
+created by filter by setting this to true.
+</TD></TR>
+
+<TR><TD> custom_routine_to_generate_ensemble </TD>
+    <TD> logical </TD>
+    <TD>The default perturbation routine in filter adds gaussian noise
+equally to all fields in the state vector.  It is recommended to set
+this option to true so code in the model_mod is called instead.
+This allows only a limited number of fields to be perturbed.
+For example, only perturbing the temperature field T with a small
+amount of noise and then running the model forward for a few days
+is often a recommended way to generate an ensemble from a single state.
+</TD></TR>
+
+<TR><TD> fields_to_perturb </TD>
+    <TD>character(len=32), dimension(100) </TD>
+    <TD>If perturbing a single state to generate an ensemble,
+set 'custom_routine_to_generate_ensemble = .true.' and list
+list the field(s) to be perturbed here.
+</TD></TR>
+
+<TR><TD> perturbation_amplitude </TD>
+    <TD>real(r8), dimension(100) </TD>
+    <TD>For each field name in the 'fields_to_perturb' list
+give the standard deviation for the gaussian noise to add to
+each field being perturbed.
 </TD></TR>
 
 <TR><TD> pert_base_vals </TD>
@@ -407,62 +419,22 @@ Unused unless pert_names is set
 and pert_base_vals is not the DART missing value.
 </TD></TR>
 
-<TR><TD> max_obs_lat_degree </TD>
-    <TD> real(r8) </TD>
-    <TD>Observations closer to the poles than this latitude will be ignored.
-</TD></TR>
-
-<TR><TD> vert_coord </TD>
-    <TD> character(len=8) </TD>
-    <TD>The vertical coordinate to which all vertical locations are converted
-in model_mod.  "log_invP" ("scale height" especially for WACCM) or "pressure". 
-</TD></TR>
-
-<TR><TD> highest_obs_pressure_Pa </TD>
-    <TD> real(r8) </TD>
-    <TD>Observations higher than this pressure are ignored.  
-NOTE that this
-has a non-backwards incompatible change from previous versions.  It is now
-specified in Pascals, not millibars. Divide by 100 to convert the units.
-</TD></TR>
-
-<TR><TD> highest_state_pressure_Pa </TD>
-    <TD> real(r8) </TD>
-    <TD>Influence of all observations on model points higher than this is reduced.
-NOTE that this has a non-backwards incompatible change from previous versions.  
-It is now specified in Pascals, not millibars. Divide by 100 to convert the units to mb.
-Details of calculating the minimum value recommended for a given vertical grid
-and set of DART namelist variables can be found in 
-<A HREF="./doc/model_top_issues.pdf">model_top_issues.pdf</A>, 
-</TD></TR>
-
-<TR><TD> Time_step_seconds </TD>
-    <TD> real(r8) </TD>
-    <TD>Minimum forecast duration (the part &lt; 1 day).
-CESM1_2_1_setup_{hybrid,advanced} assume that this is 6 hours (21600 s).
-</TD></TR>
-
-<TR><TD> Time_step_days </TD>
-    <TD> real(r8) </TD>
-    <TD>Minimum forecast duration (the part &gt; 24*3600 sec)
-</TD></TR>
-
-<TR><TD> print_details </TD>
+<TR><TD> using_chemistry </TD>
     <TD> logical </TD>
-    <TD>If true, print out detailed information about the sizes, shapes, offsets,
-etc. of items in the CAM state vector.  If false, just print out the names of
-the fields as they are read into the state vector.
+    <TD>If using CAM-CHEM, set this to .true.
 </TD></TR>
 
-<TR><TD> model_version </TD>
-    <TD> character(len=128) </TD>
-    <TD> Not used in CESM+DART; deprecated.  The number of the CAM version being used, i.e. '3.0.7'.  
+<TR><TD> using_variable_mean_mass </TD>
+    <TD> logical </TD>
+    <TD>If using any variant of WACCM with a very high
+model top, set this to .true.
 </TD></TR>
 
-<TR><TD> impact_only_same_kind </TD>
-    <TD> character(len=32) </TD>
-    <TD>Name of one observation kind which can only affect 
-state variables of the same kind.
+<TR><TD> debug_level </TD>
+    <TD> integer </TD>
+    <TD>Set this to increasingly larger values to
+print out more debugging information.  Note that this
+can be very verbose.  Use with care.
 </TD></TR>
 
 </TBODY> 

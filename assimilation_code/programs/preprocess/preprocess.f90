@@ -109,14 +109,14 @@ logical :: file_has_usercode(max_input_files) = .false.
 ! relative to the working directory in which preprocess is being executed
 ! and these files are used to fill in observation kind details in
 ! DEFAULT_obs_def_mod.f90 and DEFAULT_obs_kind_mod.f90.
-character(len = 129) :: input_obs_def_mod_file = &
-                        '../../../obs_def/DEFAULT_obs_def_mod.F90'
-character(len = 129) :: output_obs_def_mod_file = &
-                        '../../../obs_def/obs_def_mod.f90'
-character(len = 129) :: input_obs_kind_mod_file = &
-                        '../../../obs_kind/DEFAULT_obs_kind_mod.F90'
-character(len = 129) :: output_obs_kind_mod_file = &
-                        '../../../obs_kind/obs_kind_mod.f90'
+character(len=129) ::     input_obs_def_mod_file = &
+                   '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+character(len=129) ::    output_obs_def_mod_file = &
+                   '../../../observations/forward_operators/obs_def_mod.f90'
+character(len=129) ::    input_obs_kind_mod_file = &
+                   '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+character(len=129) ::   output_obs_kind_mod_file = &
+                   '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
 character(len = 129) :: input_files(max_input_files) = 'null'
 character(len = 129) :: model_files(max_model_files) = 'null'
 logical              :: overwrite_output = .true.

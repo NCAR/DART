@@ -5,15 +5,18 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
+#
+# compile all converter programs
 
 #----------------------------------------------------------------------
 # 'preprocess' is a program that culls the appropriate sections of the
-# observation module for the observations types in 'input.nml'; the 
-# resulting source file is used by all the remaining programs, 
+# observation module for the observations types in 'input.nml'; the
+# resulting source file is used by all the remaining programs,
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
-\rm -f preprocess *.o *.mod
+set nonomatch
+\rm -f preprocess *.o *.mod Makefile
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
 
@@ -46,7 +49,7 @@ foreach TARGET ( mkmf_* )
       @ n = $n + 1
       echo
       echo "---------------------------------------------------"
-      echo "${MODEL} build number ${n} is ${PROG}" 
+      echo "${MODEL} build number ${n} is ${PROG}"
       \rm -f ${PROG}
       csh $TARGET || exit $n
       make        || exit $n
@@ -54,10 +57,9 @@ foreach TARGET ( mkmf_* )
    endsw
 end
 
-  echo ""
-  echo "Success: All DART programs compiled."  
-  echo ""
-endif
+\rm -f *.o *.mod input.nml*_default Makefile .cppdefs
+
+echo "Success: All ${MODEL} programs compiled."
 
 exit 0
 

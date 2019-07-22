@@ -35,7 +35,7 @@ module io_filenames_mod
 
 use types_mod,            only : r4, r8, MISSING_R8, MAX_NUM_DOMS, digits12
 use utilities_mod,        only : file_exist, E_ERR, E_MSG, E_WARN, error_handler,&
-                                 nc_check, open_file, close_file, find_textfile_dims, &
+                                 open_file, close_file, find_textfile_dims, &
                                  do_output
 use time_manager_mod,     only : time_type
 use mpi_utilities_mod,    only : my_task_id
@@ -45,6 +45,7 @@ use state_structure_mod,  only : get_num_domains, get_dim_length, get_dim_name, 
                                  get_FillValue, get_xtype, get_add_offset, get_scale_factor, &
                                  get_has_missing_value, do_io_update
 use ensemble_manager_mod, only : ensemble_type
+use netcdf_utilities_mod, only : nc_check
 
 use netcdf
 
@@ -103,10 +104,10 @@ public :: READ_COPY, &
           COPY_NOT_PRESENT
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
+character(len=256), parameter :: source   = &
    "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! IO Parameters
 integer, parameter :: NO_IO            = -1
@@ -180,7 +181,7 @@ type file_info_type
 
 end type
 
-character(len=512) :: msgstring ! message handler
+character(len=512) :: msgstring
 
 contains
 
@@ -322,18 +323,16 @@ type(file_info_type),  intent(inout) :: file_info
 type(ensemble_type),   intent(in)    :: ens_handle
 
 integer :: num_domains, idom, icopy, my_copy
-character(len=256) :: filename
 
 num_domains = get_num_domains()
 
 ! check that the netcdf files match the variables for this domain
 ! to prevent overwriting unwanted files.
-
 do icopy = 1, ens_handle%my_num_copies ! just have owners check
    my_copy = ens_handle%my_copies(icopy)
    do idom = 1, num_domains
-      filename = file_info%stage_metadata%filenames(my_copy,idom)
-      if(file_exist(filename)) call check_correct_variables(filename,idom)
+      if(file_exist(file_info%stage_metadata%filenames(my_copy,idom))) &
+         call check_correct_variables(file_info%stage_metadata%filenames(my_copy,idom),idom)
    enddo
 enddo
 
@@ -443,7 +442,7 @@ endif
 
 do idom = 1, get_num_domains()
     if (get_num_domains() > 1) then
-        write(string1,'(A,1x,A,I4)') trim(desc), 'for domain ', idom
+        write(string1,'(2A,I4)') trim(desc), 'for domain ', idom
     else
         write(string1,*) trim(desc)
     endif

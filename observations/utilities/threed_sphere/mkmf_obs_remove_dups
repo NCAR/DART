@@ -1,0 +1,18 @@
+#!/bin/csh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id: mkmf_obs_remove_dups 12310 2018-01-11 16:43:13Z nancy@ucar.edu $
+
+../../../build_templates/mkmf -p obs_remove_dups -t ../../../build_templates/mkmf.template   \
+ -a "../../.." path_names_obs_remove_dups
+
+exit $status
+
+# <next few lines under version control, do not edit>
+# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/recam/observations/utilities/threed_sphere/mkmf_obs_remove_dups $
+# $Revision: 12310 $
+# $Date: 2018-01-11 09:43:13 -0700 (Thu, 11 Jan 2018) $
+

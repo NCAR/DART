@@ -6,23 +6,23 @@
 #
 # DART $Id$
 
-# This is the right set for coral.
+# Your locations may differ
 #----------------------------------------------------------------------
 #set JPGDIR = /contrib/jpeg-6b_intel-10.1-64
 #set HDFDIR = /contrib/HDF4.2r4_intel-10.1-64
+#set HDFDIR = /contrib/HDF4.2r4/intel-10-64
 #set MYLIBS = "-lmfhdf -ldf -ljpeg -lz -lm"
 #set MYINCDIR = "-I${HDFDIR}/include -I${JPGDIR}/include"
 #set MYLIBDIR = "-L${HDFDIR}/lib     -L${JPGDIR}/lib"
-
-# This is the right set for the DASG cluster.
 #----------------------------------------------------------------------
- set HDFDIR = /contrib/HDF4.2r4/intel-10-64
- set MYLIBS = "-lmfhdf -ldf -ljpeg -lz -lm"
- set MYINCDIR = "-I${HDFDIR}/include"
- set MYLIBDIR = "-L${HDFDIR}/lib"
+
+set HDFDIR = /opt/local
+set MYLIBS = "-lmfhdf -ldf -ljpeg -lz -lm"
+set MYINCDIR = "-I${HDFDIR}/include"
+set MYLIBDIR = "-L${HDFDIR}/lib"
 
 ../../../../build_templates/mkmf -p convert_L2b -t ../../../../build_templates/mkmf.template \
- -l "${MYINCDIR} -L/usr/lib64 ${MYLIBDIR} ${MYLIBS}" \
+ -l "${MYINCDIR} ${MYLIBDIR} ${MYLIBS}" \
  -a "../../../.." path_names_convert_L2b
 
 exit $status

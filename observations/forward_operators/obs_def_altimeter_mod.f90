@@ -123,7 +123,6 @@ where (altimeter_setting <  MIN_REALISTIC_ALTIMETER .or. &
    istatus = 1
 endwhere
 
-return
 end subroutine get_expected_altimeter
 
 !----------------------------------------------------------------------

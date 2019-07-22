@@ -1,0 +1,10 @@
+# the time of the observations is appended to the output_file_base to result in names like
+# obs_seq_oisst.2004-01-03-00000     (the format used by CESM)
+
+&oi_sst_to_obs_nml
+   input_file       = 'sst.day.mean.2004.nc'
+   output_file_base = 'obs_seq_oisst'
+   ssterror_std     = 0.3
+   subsample_intv   = 1
+   debug            = .false.
+   /

@@ -11,9 +11,11 @@ use time_manager_mod, only : time_type, get_date, set_date, get_time, set_time, 
                              set_calendar_type, get_calendar_string, &
                              print_date, print_time, operator(==), operator(-)
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
-                             register_module, error_handler, nc_check, &
+                             register_module, error_handler, &
                              find_namelist_in_file, check_namelist_read, &
                              E_ERR, E_MSG, find_textfile_dims
+
+use  netcdf_utilities_mod, only : nc_check
                              
 
 use typesizes
@@ -436,7 +438,6 @@ end subroutine write_cice_namelist
 integer,                    intent(in)  :: nx, ny
 real(r8), dimension(nx,ny), intent(out) :: ULAT, ULON, TLAT, TLON
 
-integer  :: i,j
 !real(r8), dimension(nx,ny) :: &
 !     HTN ,  &! length (cm) of north edge of T box
 !     HTE ,  &! length (cm) of east  edge of T box
@@ -473,14 +474,6 @@ read(grid_unit, rec=2) ULON
 !read(grid_unit, rec=7) ANGLE
 close(grid_unit)
 
-!DEBUG
-!do j=2,ny
-!do i=2,nx
-  
-! write(*,*)'i,j',i,j,'ULAT',ULAT(i,j)
-!end do
-!end do
-!DEBUG
 call calc_tpoints(nx, ny, ULAT, ULON, TLAT, TLON)
 
 ! convert from radians to degrees

@@ -46,6 +46,8 @@
    num_output_obs_members   = 3
    output_interval          = 1
    num_groups               = 1
+   distributed_state        = .true.
+   compute_posterior        = .true.
    output_forward_op_errors = .false.
    output_timestamps        = .false.
    trace_execution          = .false.

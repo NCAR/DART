@@ -29,14 +29,14 @@
 
 &filter_nml
    single_file_in               = .true.,
-   input_state_files            = ''
-   input_state_file_list        = 'filter_input_list.txt'
+   input_state_files            = 'filter_input.nc'
+   input_state_file_list        = ''
 
    stages_to_write  = 'preassim', 'analysis', 'output'
 
    single_file_out              = .true.,
-   output_state_files           = ''
-   output_state_file_list       = 'filter_output_list.txt'
+   output_state_files           = 'filter_output.nc'
+   output_state_file_list       = ''
    output_interval              = 1,
    output_members               = .true.
    num_output_state_members     = 20,

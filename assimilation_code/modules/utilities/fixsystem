@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh 
 #
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
@@ -37,11 +37,25 @@ for f in mpi_utilities_mod.f90 null_mpi_utilities_mod.f90
 do
 
   # figure out what state the source file is in before we start
-  export bline="`fgrep SYSTEM_BLOCK_EDIT ${f} | grep START | head -n 1`"
-  if [ "`echo $bline | grep COMMENTED_OUT`" != ""  ]; then
-    export before=out
-  elif [ "`echo $bline | grep COMMENTED_IN`" != ""  ]; then
-    export before=in
+  export bline1="`fgrep SYSTEM_BLOCK_EDIT ${f} | grep START | head -n 1`"
+  if [ "`echo $bline1 | grep COMMENTED_OUT`" != ""  ]; then
+    export before1=out
+  elif [ "`echo $bline1 | grep COMMENTED_IN`" != ""  ]; then
+    export before1=in
+  else
+    echo ${f} not found, or does not have the right comment string to
+    echo automatically change the system interface block via script.
+    echo Please restore original file from the subversion repository
+    echo and try again.
+    exit 1
+  fi
+  
+  # NAG sections have both in and out - but NAG_BLOCK_EDIT is key
+  export bline2="`fgrep NAG_BLOCK_EDIT ${f} | grep START | head -n 1`"
+  if [ "`echo $bline2 | grep COMMENTED_OUT`" != ""  ]; then
+    export before2=out
+  elif [ "`echo $bline2 | grep COMMENTED_IN`" != ""  ]; then
+    export before2=in
   else
     echo ${f} not found, or does not have the right comment string to
     echo automatically change the system interface block via script.
@@ -50,20 +64,15 @@ do
     exit 1
   fi
 
+  # no args given - error.  required now.
   if [ $# = 0 ]; then
-    # no args given, swap to the other configuration.  deprecated
-    # and eventually a single argument will become required.
-    if [ $before = out ]; then
-      export todo=in
-      export compiler=non-gfortran
-    elif [ $before = in ]; then
-      export todo=out
-      export compiler=gfortran
-    else
-      echo Internal error; should not happen.  Contact DART support.
+      echo invalid usage, 1 argument required by $0
+      echo "usage: $0 [ your_fortran_command_name | -help  ]"
+      echo "  e.g. $0 gfortran"
+      echo "  or   $0 ifort "
+      echo "  or   $0 pgf90 "
+      echo "  etc."
       exit 1
-    fi
-
   elif [ $# = 1 ]; then
     # single arg: the name of your fortran compiler command
     if ([ "$1" = help ] || [ "$1" = -help ] || [ "$1" = --help ]); then
@@ -74,9 +83,14 @@ do
       echo "  etc."
       exit 1
     elif ([ "$1" = gfortran ] || [ "$1" = nagfor ]); then
-      export todo=out
+      export todo1=out
+      export todo2=out
+    elif [ "$1" = nagfor ]; then
+      export todo1=out
+      export todo2=in
     else
-      export todo=in
+      export todo1=in
+      export todo2=out
     fi
     export compiler=$1
 
@@ -92,11 +106,8 @@ do
   fi
   
   # if we are already in the right state, loop to next file
-  if ([ $before = out ] && [ $todo = out ]); then continue; fi
-  if ([ $before = in  ] && [ $todo = in  ]); then continue; fi
+  if ([ $before1 = $todo1 ] && [ $before2 = $todo2 ]); then continue; fi
  
-  # we do have something do to
-
   # save original copy for backup if one does not already exist.
   if [ ! -f ${f}.orig ]; then
     cp -p ${f} ${f}.orig
@@ -108,15 +119,34 @@ do
   mv ${f} tempfile
 
   # removing comment chars, enabling interface block code
-  if [ $todo = in ]; then
+  if [ $todo1 = in ]; then
    sed -e '/SYSTEM_BLOCK_EDIT START COMMENTED_OUT/,/SYSTEM_BLOCK_EDIT END COMMENTED_OUT/s/^!//' \
        -e '/\(SYSTEM_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_OUT/s//\1 COMMENTED_IN/' tempfile > ${f}
+   mv ${f} tempfile
   fi
   
   # adding comment chars, disabling interface block code
-  if [ $todo = out ]; then
+  if [ $todo1 = out ]; then
    sed -e '/SYSTEM_BLOCK_EDIT START COMMENTED_IN/,/SYSTEM_BLOCK_EDIT END COMMENTED_IN/s/^/!/' \
        -e '/\(SYSTEM_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_IN/s//\1 COMMENTED_OUT/' tempfile > ${f}
+   mv ${f} tempfile
+  fi
+
+  # changing comment chars, enabling NAG specific block code
+  # non-nag section headers cannot match nag headers.
+  if [ $todo2 = in ]; then
+   sed -e '/NAG_BLOCK_EDIT START COMMENTED_OUT/,/NAG_BLOCK_EDIT END COMMENTED_OUT/s/^!//' \
+       -e '/\(NAG_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_OUT/s//\1 COMMENTED_IN/' \
+       -e '/OTHER_BLOCK_EDIT START COMMENTED_IN/,/OTHER_BLOCK_EDIT END COMMENTED_IN/s/^/!/' \
+       -e '/\(OTHER_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_IN/s//\1 COMMENTED_OUT/' tempfile > ${f}
+  fi
+  
+  # changing comment chars, disabling NAG specific block code
+  if [ $todo2 = out ]; then
+   sed -e '/NAG_BLOCK_EDIT START COMMENTED_IN/,/NAG_BLOCK_EDIT END COMMENTED_IN/s/^/!/' \
+       -e '/\(NAG_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_IN/s//\1 COMMENTED_OUT/' \
+       -e '/OTHER_BLOCK_EDIT START COMMENTED_OUT/,/OTHER_BLOCK_EDIT END COMMENTED_OUT/s/^!//' \
+       -e '/\(OTHER_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_OUT/s//\1 COMMENTED_IN/' tempfile > ${f}
   fi
 
   \rm -f tempfile

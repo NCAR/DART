@@ -1,4 +1,4 @@
-#!/bin/csh 
+#!/bin/csh
 #
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
@@ -15,8 +15,8 @@
 # environment variable options:
 #  before running this script, do:
 #   "setenv CODE_DEBUG 1" (csh) or "export CODE_DEBUG=1" (bash)
-#  to keep the .o and .mod files in the current directory instead of 
-#  removing them at the end.  this usually improves runtime error reports 
+#  to keep the .o and .mod files in the current directory instead of
+#  removing them at the end.  this usually improves runtime error reports
 #  and these files are required by most debuggers.
 #----------------------------------------------------------------------
 
@@ -36,7 +36,7 @@ set with_mpi = 0
 
 if ( $#argv >= 1 ) then
    if ( "$1" == "-mpi" ) then
-      set with_mpi = 1 
+      set with_mpi = 1
    else if ( "$1" == "-nompi" ) then
       set with_mpi = 0
    else
@@ -52,7 +52,7 @@ if ( $?CODE_DEBUG ) then
    set cdebug = $CODE_DEBUG
 endif
 
-\rm -f *.o *.mod 
+\rm -f *.o *.mod Makefile .cppdefs
 
 #----------------------------------------------------------------------
 # Build any NetCDF files from .cdl files
@@ -68,8 +68,8 @@ foreach DATAFILE ( *.cdl )
       @ n = $n + 1
       echo
       echo "---------------------------------------------------"
-      echo "constructing $MODEL data file $n named $OUTNAME" 
-   
+      echo "constructing $MODEL data file $n named $OUTNAME"
+
       ncgen -o $OUTNAME $DATAFILE  || exit $n
    endif
 
@@ -97,7 +97,7 @@ foreach TARGET ( mkmf_preprocess mkmf_* )
    @ n = $n + 1
    echo
    echo "---------------------------------------------------"
-   echo "$MODEL build number $n is $PROG" 
+   echo "$MODEL build number $n is $PROG"
    \rm -f $PROG
    csh $TARGET || exit $n
    make        || exit $n
@@ -113,15 +113,15 @@ foreach TARGET ( mkmf_preprocess mkmf_* )
 skip:
 end
 
-if ( $cdebug ) then 
+if ( $cdebug ) then
    echo 'preserving .o and .mod files for debugging'
 else
-   \rm -f *.o *.mod 
+   \rm -f *.o *.mod Makefile .cppdefs
 endif
 
 \rm -f input.nml*_default
 
-echo "Success: All single task DART programs compiled."  
+echo "Success: All single task DART programs compiled."
 
 if ( $with_mpi ) then
   echo "Script now compiling MPI parallel versions of the DART programs."
@@ -130,10 +130,10 @@ else
   exit 0
 endif
 
-\rm -f *.o *.mod 
+\rm -f *.o *.mod Makefile .cppdefs
 
 #----------------------------------------------------------------------
-# Build the MPI-enabled target(s) 
+# Build the MPI-enabled target(s)
 #----------------------------------------------------------------------
 
 foreach PROG ( $MPI_TARGETS )
@@ -143,21 +143,21 @@ foreach PROG ( $MPI_TARGETS )
    @ n = $n + 1
    echo
    echo "---------------------------------------------------"
-   echo "$MODEL MPI build number $n is $PROG" 
+   echo "$MODEL MPI build number $n is $PROG"
    \rm -f $PROG
    csh $TARGET -mpi || exit $n
    make             || exit $n
 
 end
 
-if ( $cdebug ) then 
+if ( $cdebug ) then
    echo 'preserving .o and .mod files for debugging'
 else
-   \rm -f *.o *.mod 
+   \rm -f *.o *.mod Makefile .cppdefs
 endif
 \rm -f input.nml*_default
 
-echo "Success: All MPI parallel DART programs compiled."  
+echo "Success: All MPI parallel DART programs compiled."
 
 exit 0
 

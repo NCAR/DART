@@ -6,30 +6,34 @@ time = UNLIMITED ; //(1 currently)
 variables:
 
 int A(level);
-A:units = "units A";
-A:long_name = "variable A" ;
-A:short_name = "short A" ; 
-A:missing_value = -77 ;
-A:_FillValue = -77 ;
+   A:units = "units A";
+   A:long_name = "variable A" ;
+   A:short_name = "short A" ; 
+   A:missing_value = -77 ;
+   A:_FillValue = -77 ;
 
 float B(level);
-B:units = "units B" ;
-B:long_name = "variable B" ;
-B:short_name = "short B" ;
-B:missing_value = -777.77 ;
-B:_FillValue = -777.77 ;
+   B:units = "units B" ;
+   B:long_name = "variable B" ;
+   B:short_name = "short B" ;
+   B:missing_value = -777.77 ;
+   B:_FillValue = -777.77 ;
 
 double C(level);
-C:units = "units C" ;
-C:long_name = "variable C" ;
-C:short_name = "short C" ;
-C:missing_value = -88888.88888 ;
-C:_FillValue = -88888.88888 ;
+   C:units = "units C" ;
+   C:long_name = "variable C" ;
+   C:short_name = "short C" ;
+   C:missing_value = -88888.88888 ;
+   C:_FillValue = -88888.88888 ;
 
 double D(level);
 
+short E(level);
+   E:scale_factor = 0.2 ;
+   E:add_offset = 2.0 ;
+
 float time(time);
-time:units = "hours" ;
+   time:units = "hours" ;
 
 //global attributes:
 
@@ -40,5 +44,6 @@ A = 1, 2, 3, 4, 5 ;
 B = 1.1, 2.2, 3.3, 4.4, 5.5 ;
 C = -10.1, 20.2, 30.3, 40.4, 50.5 ;
 D = -100.1, 200.2, 300.3, 400.4, 500.5 ;
+E = 1, 2, 3, 4, 5 ;
 time = 1 ;
 }

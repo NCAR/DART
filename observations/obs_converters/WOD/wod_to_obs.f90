@@ -23,7 +23,7 @@ use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time,&
 use    utilities_mod, only : initialize_utilities, find_namelist_in_file,    &
                              check_namelist_read, nmlfileunit, do_output,    &
                              get_next_filename, error_handler, E_ERR, E_MSG, &
-                             nc_check, find_textfile_dims, finalize_utilities, &
+                             find_textfile_dims, finalize_utilities,         &
                              open_file, close_file
 use     location_mod, only : VERTISHEIGHT, set_location
 use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,       &

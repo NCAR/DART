@@ -1,0 +1,63 @@
+
+&obs_assim_count_nml
+   obs_sequence_name = 'obs_seq.final', 
+   obs_sequence_list = '', 
+   calendar = 'Gregorian'
+   /
+
+# for low order models, use this version of preprocess.
+#&preprocess_nml
+#          overwrite_output = .true.
+#    input_obs_def_mod_file = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+#   output_obs_def_mod_file = '../../../../observations/forward_operators/obs_def_mod.f90'
+#   input_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+#  output_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+#               input_files = '../../../../observations/forward_operators/obs_def_1d_state_mod.f90
+
+&preprocess_nml
+          overwrite_output = .true.
+    input_obs_def_mod_file = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'  
+   output_obs_def_mod_file = '../../../../observations/forward_operators/obs_def_mod.f90'
+   input_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+  output_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+               input_files = '../../../../observations/forward_operators/obs_def_AIRS_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_AOD_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_AURA_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_COSMOS_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_CO_Nadir_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_GWD_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_QuikSCAT_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_SABER_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_TES_nadir_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_altimeter_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_cice_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_cloud_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_cwp_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_dew_point_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_dwl_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_eval_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_gps_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_gts_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_metar_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_ocean_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_pe2lyr_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_radar_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_radiance_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_rel_humidity_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_sqg_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_surface_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_tower_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_tpw_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_upper_atm_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_vortex_mod.f90',
+                             '../../../../observations/forward_operators/obs_def_wind_speed_mod.f90',
+ /
+
+&utilities_nml
+   module_details = .false.
+   write_nml      = 'file'
+  /
+
+&obs_sequence_nml
+  /

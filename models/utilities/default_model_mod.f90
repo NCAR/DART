@@ -19,7 +19,9 @@ use     location_mod,      only : location_type, set_location, set_location_miss
 
 use    utilities_mod,      only : register_module, error_handler, E_ERR, E_MSG, nmlfileunit, &
                                   do_output, find_namelist_in_file, check_namelist_read,     &
-                                  do_nml_file, do_nml_term, nc_check
+                                  do_nml_file, do_nml_term
+
+use netcdf_utilities_mod,  only : nc_check
 
 use ensemble_manager_mod,  only : ensemble_type
 
@@ -79,7 +81,7 @@ end subroutine init_conditions
 subroutine fail_init_conditions(x)
 real(r8), intent(out) :: x(:)
 
-call error_handler(E_ERR, 'init_conditions', 'this model cannot start from scratch', &
+call error_handler(E_ERR, 'init_conditions', 'this model cannot provide initial conditions', &
                    source, revision, revdate)
 
 ! default
@@ -121,7 +123,7 @@ end subroutine init_time
 subroutine fail_init_time(time)
 type(time_type), intent(out) :: time
 
-call error_handler(E_ERR, 'init_time', 'this model cannot start from scratch', &
+call error_handler(E_ERR, 'init_time', 'this model cannot provide an initial time', &
                    source, revision, revdate)
 
 time = set_time(0, 0)

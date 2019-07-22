@@ -98,6 +98,7 @@ prematurely terminating the namelist.
    output_mean                  = .true.,
    output_sd                    = .true.,
    write_all_stages_at_end      = .false.,
+   compute_posterior            = .true.
 
    ens_size                     = 20,
    num_groups                   = 1,
@@ -293,6 +294,14 @@ and the second controls the posterior inflation.
         runtime, but can lower the cost of the job significantly in some cases.
  </TD></TR>
 
+<TR><TD>compute_posterior</TD>
+    <TD>logical</TD>
+    <TD>If .false., skip computing posterior forward operators and do not write
+        posterior values in the obs_seq.final file.  Saves time and memory.
+        Cannot enable posterior inflation and skip computing the posteriors.
+        For backwards compatibility the default for this is .true.
+ </TD></TR>
+
 <TR><TD>ens_size</TD>
     <TD>integer</TD>
     <TD>Size of ensemble.
@@ -478,7 +487,7 @@ unchanged.
         for a discussion of how the standard deviation
         adapts based on different types of inflation.
  </TD></TR>
-
+ 
 <TR><TD>trace_execution</TD>
     <TD>logical</TD>
     <TD>True means output very detailed messages about what routines
@@ -534,6 +543,8 @@ unchanged.
 
 <br />
 <br />
+
+</div>
 
 <P><!-- make sure the 'top' is aligned correctly --></P>
 

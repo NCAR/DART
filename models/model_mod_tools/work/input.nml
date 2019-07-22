@@ -1,0 +1,79 @@
+
+&state_vector_io_nml
+  buffer_state_io         = .false.
+  single_precision_output = .false.
+  /
+
+&ensemble_manager_nml
+   layout                  = 2
+   tasks_per_node          = 16
+   /
+
+&assim_tools_nml
+   filter_kind                     = 1,
+   cutoff                          = 0.15,
+   sort_obs_inc                    = .false.,
+   spread_restoration              = .false.,
+   sampling_error_correction       = .false.,
+   adaptive_localization_threshold = -1,
+   output_localization_diagnostics = .false.,
+   localization_diagnostics_file   = 'localization_diagnostics',
+   print_every_nth_obs             = 10000,
+   distribute_mean                 = .false.,
+   /
+
+&cov_cutoff_nml
+   select_localization = 1
+   /
+
+&reg_factor_nml
+   select_regression    = 1,
+   input_reg_file       = 'time_mean_reg'
+   save_reg_diagnostics = .false.
+   reg_diagnostics_file = 'reg_diagnostics'
+   /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.
+   /
+
+&quality_control_nml
+   input_qc_threshold          =  3.0
+   outlier_threshold           =  3.0
+   enable_special_outlier_code = .false.
+   /
+
+&location_nml
+   /
+
+&preprocess_nml
+   input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
+  output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90',
+    input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
+   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90',
+  input_files              = '../../../observations/forward_operators/obs_def_gps_mod.f90',
+                             '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
+                             '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
+   /
+
+&obs_kind_nml
+   /
+
+&utilities_nml
+   TERMLEVEL = 2
+   module_details = .false.
+   logfilename = 'dart_log.out'
+   nmlfilename = 'dart_log.nml'
+  /
+
+&mpi_utilities_nml
+   /
+
+&obs_def_gps_nml
+   max_gpsro_obs = 15000000
+   / 
+
+&quad_interpolate_nml
+   debug = 0
+  /
+

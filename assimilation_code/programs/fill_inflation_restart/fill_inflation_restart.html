@@ -42,8 +42,9 @@ Useful for a multi-step assimilation, so the values
 <em class=code>inf_sd_initial_from_restart</em> items in the &amp;filter_nml
 namelist can be .TRUE. from the beginning.
 </P><P>
-This reads values from the namelist, prior_inf_mean, prior_inf_sd and/or
-post_inf_mean, post_inf_sd.
+This reads inflation values from the &amp;fill_inflation_restart_nml namelist for
+prior_inf_mean, prior_inf_sd and post_inf_mean, post_inf_sd.  It does not use
+the values in the &amp; filter namelist.
 </P>
 
 <P>
@@ -53,6 +54,16 @@ right model's model_mod, and if the items in the state vector are selectable
 by namelist options, the namelist when running this program must match
 exactly the namelist used during the assimilation run.
 </P>
+
+<P>                   
+It creates files with names consistent with the input names expected by filter:
+</P>
+<pre>
+<em class=file>input_priorinf_mean.nc</em>
+<em class=file>input_priorinf_sd.nc</em>
+<em class=file>input_postinf_mean.nc</em>
+<em class=file>input_postinf_sd.nc</em>
+</pre>                 
 
 <P>
 Alternatively you can use one of the standard NCO utilities like 
@@ -100,17 +111,17 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;fill_inflation_restart_nml
-   input_state_files  = ''
 
    write_prior_inf    = .FALSE.
    prior_inf_mean     = -88888.8888
    prior_inf_sd       = -88888.8888
 
    write_post_inf     = .FALSE.
-   prior_inf_mean     = -88888.8888
-   prior_inf_sd       = -88888.8888
+   post_inf_mean      = -88888.8888
+   post_inf_sd        = -88888.8888
 
    single_file        = .FALSE.
+   input_state_files  = ''
    verbose            = .FALSE.
 /
 </pre>
@@ -131,17 +142,11 @@ utility routines behave.
 
 <TBODY valign=top>
 
-<TR><TD>input_state_files</TD>
-    <TD>character(:)</TD>
-    <TD>A template file that contains all of the variables in the
-    state vector.  If there is multiple domains you need to provide
-    a file for each domain.
-</TD></TR>
-
 <TR><TD>write_prior_inf</TD>
     <TD>logical</TD>
     <TD>Setting this to .TRUE. writes both the prior inflation mean and
-    standard deviation file 'inflation_prior_mean', 'inflation_prior_sd'.
+    standard deviation files: <em class=file>input_priorinf_mean.nc</em>, 
+    <em class=file>input_priorinf_sd.nc</em>.
 </TD></TR>
 
 <TR><TD>prior_inf_mean</TD>
@@ -157,7 +162,8 @@ utility routines behave.
 <TR><TD>write_post_inf</TD>
     <TD>logical</TD>
     <TD>Setting this to .TRUE. writes both the posterior inflation mean and
-    standard deviation file 'inflation_post_mean', 'inflation_post_sd'.
+    standard deviation files <em class=file>input_postinf_mean.nc</em>, 
+    <em class=file>input_postinf_sd.nc</em>.
 </TD></TR>
 
 <TR><TD>post_inf_mean</TD>
@@ -174,7 +180,14 @@ utility routines behave.
     <TD>logical</TD>
     <TD>Currently not supported, but would be used in the
     case where you have a single restart file that contains
-    all of the ensemble members.
+    all of the ensemble members.  Must be .false.
+</TD></TR>
+
+<TR><TD>input_state_files</TD>
+    <TD>character(:)</TD>
+    <TD>For the single file case a list of input files, one per domain,
+      to add the inflation values into with the proper netcdf variable names.
+      Unused for the multiple file case. 
 </TD></TR>
 
 <TR><TD>verbose</TD>
@@ -191,24 +204,23 @@ utility routines behave.
 <br />
 
 <P>
-Here is an example of a typical namelist for
-fill_inflation_restart.
+Here is an example of a typical namelist for <em class=program>fill_inflation_restart</em> :
 </P>
 
 <div class=namelist>
 <pre>
 &amp;fill_inflation_restart_nml
-   input_state_files  = 'caminput.nc'
 
    write_prior_inf    = .TRUE.
-   prior_inf_mean     = 1.0
+   prior_inf_mean     = 1.01
    prior_inf_sd       = 0.6
 
    write_post_inf     = .FALSE.
-   prior_inf_mean     = -88888.8888
-   prior_inf_sd       = -88888.8888
+   post_inf_mean      = 1.0
+   post_inf_sd        = 0.6
 
    single_file        = .FALSE.
+   input_state_files  = ''
    verbose            = .FALSE.
 /
 </pre>
@@ -229,7 +241,7 @@ mpi_utilities_mod
 </PRE-->
 
 <!--==================================================================-->
-<P></P> <!-- stupid break to put top at end of page -->
+<P><!-- stupid break to put top at end of page --></P>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -239,7 +251,17 @@ mpi_utilities_mod
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <P>
-inpute_state_files
+Creates:
+</P>
+<pre>
+<em class=file>input_priorinf_mean.nc</em>
+<em class=file>input_priorinf_sd.nc</em>
+<em class=file>input_postinf_mean.nc</em>
+<em class=file>input_postinf_sd.nc</em>
+</pre>
+<P>
+based on the template file from the specific model
+this code is compiled for.
 </P>
 
 <!--==================================================================-->
@@ -250,7 +272,7 @@ inpute_state_files
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
-none
+<li>none</li>
 </ul>
 
 <!--==================================================================-->
