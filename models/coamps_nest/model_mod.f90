@@ -683,8 +683,8 @@ end subroutine pert_model_copies
           !                 obs_kind, obs_val, interp_worked)
           ! NEW:
           do i = 1, ens_size
-             call interpolate(state_handle, ens_size, i, domain, state_definition, location, &
-                              obs_kind, expected_obs(i), interp_status(i))
+             call interpolate(state_handle, ens_size, i, domain, state_definition, &
+                       location, obs_kind, expected_obs(i), interp_status(i))
           enddo
 
         end select
@@ -708,7 +708,7 @@ end subroutine pert_model_copies
     type(location_type),           intent(inout)  :: base_loc, locs(:)
     integer,                       intent(in)  :: base_type, loc_qtys(:)
     integer(i8),                   intent(in)  :: loc_indx(:)
-    integer(i8),                   intent(out) :: num_close, close_ind(:)
+    integer,                       intent(out) :: num_close, close_ind(:)
     real(r8),            optional, intent(out) :: dist(:)
     type(ensemble_type), optional, intent(in)  :: ens_handle
     
@@ -741,8 +741,8 @@ end subroutine pert_model_copies
     type(get_close_type),          intent(in)  :: gc
     type(location_type),           intent(inout) :: base_obs_loc, obs_locs(:)
     integer,                       intent(in)  :: base_obs_type, loc_qtys(:), loc_types(:)
-    integer(i8),                   intent(out) :: num_close
-    integer(i8),                   intent(out) :: close_ind(:)
+    integer,                       intent(out) :: num_close
+    integer,                       intent(out) :: close_ind(:)
     real(r8),            optional, intent(out) :: dist(:)
     type(ensemble_type), optional, intent(in)  :: ens_mean_handle
 

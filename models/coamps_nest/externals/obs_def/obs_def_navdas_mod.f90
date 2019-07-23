@@ -248,7 +248,8 @@ contains
     istatus(:) = 0
 
     ! Potential temperature at this location
-    call interpolate(state_handle, ens_size, location, QTY_POTENTIAL_TEMPERATURE, pot_t, this_istatus)
+    call interpolate(state_handle, ens_size, location, QTY_POTENTIAL_TEMPERATURE, &
+                      pot_t, this_istatus)
     call track_status(ens_size, this_istatus, t, istatus, return_now)
     if (return_now) return
     
