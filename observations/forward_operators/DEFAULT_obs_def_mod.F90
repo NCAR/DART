@@ -607,6 +607,7 @@ character(len=5)  :: header
 integer           :: o_index
 logical           :: is_ascii
 character(len=32) :: fileformat   ! here for backwards compatibility only
+character(len=256) :: errstring
 character(len=11) :: header_external_FO 
 integer           :: ii, secs,days 
 character(len=128) :: string 
@@ -632,8 +633,10 @@ endif
 if (is_ascii) then
    read(ifile, '(a5)') header
    if(header /= 'obdef') then
+      write(errstring, *) 'read "//header//" instead'
       call error_handler(E_ERR,'read_obs_def', &
-         'Expected header "obdef" in input file', source, revision, revdate)
+         'Expected header "obdef" in input file', &
+          source, revision, revdate, text2=errstring)
    endif
 endif
 
@@ -642,9 +645,10 @@ obs_def%location = read_location(ifile, fform)
 if (is_ascii) then
    read(ifile, '(a5)' ) header
    if(header /= 'kind ') then
+      write(errstring, *) 'read "//header//" instead'
       call error_handler(E_ERR,'read_kind', &
          'Expected kind header "kind " in input file', &
-          source, revision, revdate)
+          source, revision, revdate, text2=errstring)
    endif
    read(ifile, *) o_index
 else
@@ -672,9 +676,10 @@ select case(obs_def%kind)
       continue
 
    case DEFAULT
+      write(errstring, *) 'unknown type number was ', obs_def%kind
       call error_handler(E_ERR, 'read_obs_def', &
          'Attempt to read for undefined obs_kind type.', &
-         source, revision, revdate)
+         source, revision, revdate, text2=errstring)
 end select
 
 ! We need to see whether there is external prior metadata.

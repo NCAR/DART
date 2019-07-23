@@ -56,7 +56,8 @@ There are three kinds of input files:
 <li>0 or more special obs_def modules which contain
 observation specific types and code, such as
 <em class="file">obs_def_mod_reanalysis_bufr_mod.f90</em>.
-By convention these files are in the <em class="file">obs_def</em> directory. 
+By convention these files are in the 
+<em class="file">observations/forward_operators</em> directory. 
 </ol>
 
 <P>
@@ -118,7 +119,7 @@ prematurely terminating the namelist.
    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90', 
    input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90', 
   output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90', 
-               input_files = '../../../observations/forward_operators/null
+               input_files = 'null'
  /
 </pre>
 </div>
@@ -139,7 +140,8 @@ prematurely terminating the namelist.
 <TR><TD>input_obs_def_mod_file </TD>
     <TD>character(len=129)<BR>
     <TD> Path name of input obs definition module to be preprocessed. Normally
-this is <em class="file">DEFAULT_obs_def_mod.F90</em> in the obs_def directory. 
+this is <em class="file">DEFAULT_obs_def_mod.F90</em> in the 
+<em class="file">observations/forward_operators</em> directory. 
 This file must have the appropriate commented lines indicating where the different 
 parts of the input special obs definition modules are to be inserted. 
 </TD></TR>
@@ -147,13 +149,15 @@ parts of the input special obs definition modules are to be inserted.
 <TR><TD>output_obs_def_mod_file </TD>
     <TD>character(len=129)<BR>
     <TD> Path name of output obs definition module to be created by preprocessor.
-Normally this is <em class="file">obs_def_mod.f90</em> in the obs_def directory. 
+Normally this is <em class="file">obs_def_mod.f90</em> in the 
+<em class="file">observations/forward_operators</em> directory. 
 </TD></TR>
 
 <TR><TD>input_obs_kind_mod_file </TD>
     <TD>character(len=129)<BR>
     <TD> Path name of input obs kind module to be preprocessed. Normally this is
-<em class="file">DEFAULT_obs_kind_mod.F90</em> in the obs_kind directory.
+<em class="file">DEFAULT_obs_kind_mod.F90</em> in the 
+<em class="file">assimilation_code/modules/observations</em> directory.
 This file must have the appropriate commented lines indicating where the
 different parts of the input special obs definition modules are to be inserted. 
 </TD></TR>
@@ -161,7 +165,8 @@ different parts of the input special obs definition modules are to be inserted.
 <TR><TD>output_obs_kind_mod_file </TD>
     <TD>character(len=129)<BR>
     <TD> Path name of output obs kind module to be created by the preprocessor.
-Normally this is <em class="file">obs_kind_mod.F90</em> in the obs_kind directory. 
+Normally this is <em class="file">obs_kind_mod.F90</em> in the 
+<em class="file">assimilation_code/modules/observations</em> directory. 
 </TD></TR>
 
 <TR><TD>input_files </TD>
@@ -170,8 +175,9 @@ Normally this is <em class="file">obs_kind_mod.F90</em> in the obs_kind director
 obs definition files that are to be incorporated into the preprocessed
 obs_kind_mod.f90 and obs_def_mod.f90. The files must be in the special obs
 definition format that includes commented F90 lines delimitting information
-about the observation type(s). These files normally reside in the obs_def
-directory in files such as <em class="file">obs_def_reanalysis_bufr_mod.f90</em>. 
+about the observation type(s). These files normally reside in the 
+<em class="file">observations/forward_operators</em> directory in files such as 
+<em class="file">obs_def_reanalysis_bufr_mod.f90</em>. 
 </TD></TR>
 
 <TR><TD>overwrite_output </TD>

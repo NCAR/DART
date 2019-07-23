@@ -70,9 +70,11 @@ use time_manager_mod,     only : time_type, get_time, get_calendar_type, &
                                  operator(-), operator(/), operator(*), &
                                  operator(==), operator(/=)
 
-use utilities_mod,        only : error_handler, nc_check, file_to_text, &
+use utilities_mod,        only : error_handler, file_to_text, &
                                  find_textfile_dims, file_exist, &
                                  E_MSG, E_ALLMSG, E_ERR, E_DBG, E_WARN
+
+use netcdf_utilities_mod, only : nc_check
 
 use mpi_utilities_mod,    only : task_count, send_to, receive_from, my_task_id, &
                                  broadcast_flag

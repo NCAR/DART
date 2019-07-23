@@ -42,10 +42,10 @@ public :: initialize_qc, input_qc_ok, get_dart_qc, check_outlier_threshold, &
 
 !------------------------------------------------------------------------------
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 !------------------------------------------------------------------------------
 
 ! Dart quality control variables
@@ -57,8 +57,7 @@ integer, parameter :: DARTQC_FAILED_FOP            = 4
 integer, parameter :: DARTQC_NOT_IN_NAMELIST       = 5
 integer, parameter :: DARTQC_BAD_INCOMING_QC       = 6
 integer, parameter :: DARTQC_FAILED_OUTLIER_TEST   = 7
-integer, parameter :: DARTQC_FAILED_VERT_CONVERT   = 4   ! change this to 8 after we test more
-!integer, parameter :: DARTQC_FAILED_VERT_CONVERT   = 8
+integer, parameter :: DARTQC_FAILED_VERT_CONVERT   = 8
 !integer, parameter :: DARTQC_OUTSIDE_DOMAIN        = 9  ! we have no way (yet) for the model_mod to signal this
 
 !------------------------------------------------------------------------------
@@ -134,7 +133,7 @@ integer              :: set_input_qc  !>  return value
 if(input_qc == 0 .and. (assimilate_this_ob .or. evaluate_this_ob)) then
    set_input_qc = 0.0_r8
 else
-   set_input_qc = 1000.0_r8
+   set_input_qc = 1000.0_r8 + input_qc   ! give some clue about why
 endif
 
 end function set_input_qc

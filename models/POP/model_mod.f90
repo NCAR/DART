@@ -1887,6 +1887,7 @@ character(len=*), parameter :: routine = 'nc_write_model_atts'
 if ( .not. module_initialized ) call static_init_model
 
 ! Write Global Attributes 
+
 call nc_begin_define_mode(ncid)
 
 call nc_add_global_creation_time(ncid)
@@ -1903,7 +1904,6 @@ if (.true.) then
    call output_grid(ncid)
 endif
 
-! Flush the buffer and leave netCDF file open
 call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts

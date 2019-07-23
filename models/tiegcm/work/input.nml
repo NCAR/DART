@@ -43,6 +43,8 @@
    num_groups               = 1
    input_qc_threshold       =  3.0
    outlier_threshold        =  3.0
+   distributed_state        = .true.
+   compute_posterior        = .true.
    output_forward_op_errors = .false.
    output_timestamps        = .false.
    output_inflation         = .true.
@@ -54,15 +56,13 @@
    inf_sd_initial_from_restart = .false.,                 .false.
    inf_output_restart          = .true.,                  .true.
    inf_deterministic           = .true.,                  .true.
-   inf_in_file_name            = 'prior_inflate_ics',     'post_inflate_ics'
-   inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart'
-   inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag'
    inf_initial                 = 1.0,                     1.0
-   inf_sd_initial              = 0.0,                     0.0
-   inf_damping                 = 1.0,                     1.0
    inf_lower_bound             = 1.0,                     1.0
    inf_upper_bound             = 1000000.0,               1000000.0
+   inf_damping                 = 1.0,                     1.0
+   inf_sd_initial              = 0.0,                     0.0
    inf_sd_lower_bound          = 0.0,                     0.0
+   inf_sd_max_change           = 1.05,                    1.05
    /
 
 &smoother_nml

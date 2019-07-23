@@ -4,7 +4,7 @@
 !
 ! $Id$
 
-!> This module supports the obs_impact_tool and reading in the
+!> This module supports both the obs_impact_tool and reading in the
 !> table at runtime for use during the assimilation phase, to
 !> alter the impact of observations on the state vector.
 !>
@@ -16,18 +16,17 @@ module obs_impact_mod
 
 use      types_mod, only : r8, obstypelength, missing_r8
 use  utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,       &
-                           open_file, close_file, nc_check, get_next_filename, &
-                           find_namelist_in_file, check_namelist_read,         &
-                           do_nml_file, do_nml_term, nmlfileunit, to_upper
+                           open_file, close_file, get_next_filename, to_upper
 use  obs_kind_mod        ! all qtys/types, so impossible to enumerate them here
 use parse_args_mod, only : get_args_from_string
 
 implicit none
 private
 
-public :: create_impact_table, &
-          allocate_impact_table, read_impact_table, free_impact_table, &
-          get_impact_table_name
+public :: create_impact_table,   &
+          allocate_impact_table, &
+          read_impact_table,     &
+          free_impact_table
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -116,25 +115,18 @@ logical, save :: module_initialized = .false.
 
 character(len=512) :: msgstring, msgstring2, msgstring3
 
-! namelist: input/output names, values, etc
-character(len=512) :: input_filename  = ''
-character(len=512) :: output_filename = ''
-logical :: allow_any_impact_values = .false.
-logical :: debug = .false.  ! .true. for more output
-
-! namelist
-namelist /obs_impact_tool_nml/  &
-   input_filename,  &
-   output_filename, &
-   allow_any_impact_values, &
-   debug
+! .true. gives more output
+logical :: debug = .false. 
 
 contains
  
 !----------------------------------------------------------------------
 
 ! TOOL:
-subroutine create_impact_table()
+subroutine create_impact_table(input_filename, output_filename, debug_flag)
+character(len=*),  intent(in) :: input_filename 
+character(len=*),  intent(in) :: output_filename 
+logical,           intent(in), optional :: debug_flag
 
 ! this is the routine that reads in the config file
 ! and creates an output file that's suitable for reading
@@ -146,7 +138,7 @@ real(r8), allocatable :: table(:,:)
 integer               :: funit
 
 ! initialization and setup
-call initialize_module()
+call initialize_module(debug)
 
 ! set up space for the output table
 call allocate_impact_table(table)
@@ -234,9 +226,6 @@ integer, optional,     intent(out) :: nqtys
 
 integer :: qty_count, type_count
 
-! initialization and setup
-!call initialize_module()
-
 ! output table is dimensioned (numtypes, 0:numqtys)
 ! space for results, and initial values
 ! default to 'unset'.  at the end, anything unset will be
@@ -264,11 +253,12 @@ end subroutine allocate_impact_table
 ! type or qty names without a dictionary or state machine.
 
 ! RUNTIME:
-subroutine read_impact_table(sourcefile, table, allow_any_values)
+subroutine read_impact_table(sourcefile, table, allow_any_values, anyvals_string)
 
 character(len=*), intent(in)    :: sourcefile
 real(r8),         intent(inout) :: table(:,0:)
 logical,          intent(in)    :: allow_any_values
+character(len=*), intent(in), optional :: anyvals_string
 
 integer :: i, j
 integer :: funit
@@ -305,7 +295,7 @@ readloop: do
    endif
 !print *, trim(typename)//' '//trim(qtyname)//' ', rvalue
 
-   call set_impact(table, typename, qtyname, rvalue, allow_any_values)
+   call set_impact(table, typename, qtyname, rvalue, allow_any_values, anyvals_string)
 
 enddo readloop
 call close_file(funit)
@@ -329,16 +319,17 @@ end subroutine read_impact_table
 !----------------------------------------------------------------------
 
 ! RUNTIME:
-subroutine set_impact(table, typename, qtyname, rvalue, allow_any_values)
+subroutine set_impact(table, typename, qtyname, rvalue, allow_any_values, anyvals_string)
 
 real(r8),         intent(inout) :: table(:,0:)
 character(len=*), intent(in)    :: typename
 character(len=*), intent(in)    :: qtyname
 real(r8),         intent(in)    :: rvalue
 logical,          intent(in)    :: allow_any_values
+character(len=*), intent(in), optional :: anyvals_string
 
-! change this to false to allow any value between 0 and 1
-logical, save :: must_be_on_or_off = .true.
+! change this to true to force values to be 0 or 1
+logical, save :: fully_on_or_off = .false.
 
 integer :: index1, index2
 
@@ -360,24 +351,29 @@ if (index2 < 0) then
                      source, revision, revdate, text2=errline, text3=readbuf)
 endif
 
-! options for the actual impact value here could be:  
+! options for the actual impact value:  
 !   1. anything goes
-!   2. restrict range to between 0.0 and 1.0
-!   3. allow ONLY 0.0 or 1.0
+!   2. values restricted
+!       a. must be 0.0 or 1.0 only
+!       b. must be between 0.0 and 1.0 inclusive
 
 if (.not. allow_any_values) then
-   if (must_be_on_or_off) then
+   if (fully_on_or_off) then
       if (rvalue /= 0.0_r8 .and. rvalue /= 1.0_r8) then 
          call error_handler(E_ERR, 'obs_impact', &
                            'impact values must be 0 or 1', &
-                           source, revision, revdate, text2=readbuf)
+                            source, revision, revdate, text2=readbuf)
       endif
    else 
+      if (present(anyvals_string)) then
+         msgstring3='set "'//trim(anyvals_string)//'=.true." in namelist to allow'
+      else
+         msgstring3=""
+      endif
       if (rvalue < 0.0_r8 .or. rvalue > 1.0_r8) then 
          call error_handler(E_ERR, 'obs_impact', &
                            'impact values must be between 0 and 1, inclusive', &
-                           source, revision, revdate, text2=readbuf, &
-                           text3='set "allow_any_impact_values=.true." in namelist to allow')
+                           source, revision, revdate, text2=readbuf, text3=msgstring3)
       endif
    endif
 endif
@@ -412,38 +408,15 @@ end subroutine free_impact_table
 !----------------------------------------------------------------------
 
 ! TOOL & RUNTIME:
-function get_impact_table_name()
-
-character(len=512) :: get_impact_table_name
-
-get_impact_table_name = output_filename
-
-end function get_impact_table_name
-
-!----------------------------------------------------------------------
-
-! TOOL & RUNTIME:
-subroutine initialize_module()
-
-integer :: funit
+subroutine initialize_module(debug_flag)
+logical, intent(in), optional :: debug_flag
 
 if (module_initialized) return
 
 module_initialized = .true.
 call register_module(source, revision, revdate)
 
-! Read the namelist entry
-call find_namelist_in_file("input.nml", "obs_impact_tool_nml", funit)
-read(funit, nml = obs_impact_tool_nml, iostat = ios)
-call check_namelist_read(funit, ios, "obs_impact_tool_nml")
-
-! Record the namelist values used for the run ...
-if (do_nml_file()) write(nmlfileunit, nml=obs_impact_tool_nml)
-if (do_nml_term()) write(     *     , nml=obs_impact_tool_nml)
-
-if (debug) then
-   call error_handler(E_MSG, 'obs_impact_tool', ' debug on')
-endif
+if (present(debug_flag)) debug = debug_flag
 
 end subroutine initialize_module
 
@@ -492,6 +465,7 @@ do i=1, groupsize
 enddo
 
 allocate(toc%toc_entries(ntoc))
+toc%toc_count = 0
 
 call build_toc(qty_count, knownqtys, type_count, knowntypes, toc)
 
@@ -1456,17 +1430,6 @@ if (itemlist(2) < 0) then
 endif
 
 call extract_value(wordarray(3), rvalue)
-
-! FIXME: do this at runtime now.  if you want to check values
-! at table build time, uncomment this code again.
-!if (.not. allow_any_impact_values) then
-!   if (rvalue < 0.0_r8 .or. rvalue > 1.0_r8) then 
-!      call error_handler(E_ERR, 'check_impact_line', &
-!                        'impact values must be between 0 and 1, inclusive', &
-!                        source, revision, revdate, text2=readbuf, &
-!                        text3='set "allow_any_impact_values=.true." in namelist to allow')
-!   endif
-!endif
 
 end subroutine check_impact_line
 

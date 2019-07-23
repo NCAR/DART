@@ -58,11 +58,12 @@
    inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart',
    inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag',
    inf_initial                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.0,                     0.0,
-   inf_damping                 = 1.0,                     1.0,
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
-   inf_sd_lower_bound          = 0.0,                     0.0
+   inf_damping                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.0,                     0.0,
+   inf_sd_lower_bound          = 0.0,                     0.0,
+   inf_sd_max_change           = 1.05,                    1.05,
    /
 
 &smoother_nml

@@ -66,9 +66,9 @@ character(len=512) :: errstring
 call initialize_utilities('full_error')
 
 ! Read the namelist entry
-call find_namelist_in_file("input.nml", "full_error_nml", iunit, .false.)
+call find_namelist_in_file("input.nml", "full_error_nml", iunit)
 read(iunit, nml = full_error_nml, iostat = io)
-call check_namelist_read(iunit, io, "full_error_nml", .false.)
+call check_namelist_read(iunit, io, "full_error_nml")
 
 ! Record the namelist values used for the run
 if (do_nml_file()) write(nmlfileunit, nml=full_error_nml)

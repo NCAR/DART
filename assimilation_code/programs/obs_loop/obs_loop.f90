@@ -14,7 +14,7 @@ use        types_mod, only : r8, missing_r8, metadatalength
 use    utilities_mod, only : register_module, initialize_utilities,            &
                              find_namelist_in_file, check_namelist_read,       &
                              error_handler, E_ERR, E_MSG, nmlfileunit,         &
-                             do_nml_file, do_nml_term, get_next_filename,      &
+                             do_nml_file, do_nml_term,                         &
                              open_file, close_file, finalize_utilities
 use     location_mod, only : location_type, get_location, set_location,        &
                              LocationName, read_location, operator(/=),        &
@@ -56,12 +56,11 @@ type(obs_type)          :: obs_out, prev_obs_out
 logical                 :: is_this_last
 integer                 :: size_seq_in, size_seq_out
 integer                 :: num_copies_in, num_qc_in
-integer                 :: num_inserted, iunit, io, i, j
+integer                 :: num_inserted, iunit, io, j
 integer                 :: max_num_obs, file_id
 character(len=129)      :: read_format
 logical                 :: pre_I_format, cal
 character(len=512)      :: msgstring, msgstring1, msgstring2, msgstring3
-type(obs_def_type)      :: this_obs_def
 
 character(len=metadatalength) :: meta_data
 

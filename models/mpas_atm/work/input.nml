@@ -46,6 +46,8 @@
    num_output_obs_members   = 96
    output_interval          = 1
    num_groups               = 1
+   distributed_state        = .true.
+   compute_posterior        = .true.
    output_forward_op_errors = .false.
    output_timestamps        = .false.
    trace_execution          = .false.
@@ -61,12 +63,13 @@
    inf_initial_from_restart    = .false.,                .false.,
    inf_sd_initial_from_restart = .false.,                .false.,
    inf_deterministic           = .true.,                  .true.,
-   inf_initial                 = 1.0,                     1.0
-   inf_sd_initial              = 0.0,                     0.0
-   inf_damping                 = 1.0,                     1.0
-   inf_lower_bound             = 1.0,                     1.0
-   inf_upper_bound             = 1000000.0,               1000000.0
-   inf_sd_lower_bound          = 0.0,                     0.0
+   inf_initial                 = 1.0,                     1.0,
+   inf_lower_bound             = 1.0,                     1.0,
+   inf_upper_bound             = 1000000.0,               1000000.0,
+   inf_damping                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.0,                     0.0,
+   inf_sd_lower_bound          = 0.0,                     0.0,
+   inf_sd_max_change           = 1.05,                    1.05,
   /
 
 &quality_control_nml
@@ -167,10 +170,10 @@
 &model_nml
    model_analysis_filename      = 'mpas_init.nc'
    grid_definition_filename     = 'mpas_init.nc'
+   vert_localization_coord      = 3
    assimilation_period_days     = 0
    assimilation_period_seconds  = 43200
    model_perturbation_amplitude = 0.0001
-   vert_localization_coord      = 3
    calendar                     = 'Gregorian'
    debug                        = 0
    use_u_for_wind               = .false.

@@ -298,7 +298,7 @@ if(copy < 1 .or. copy > ens_handle%num_copies) then
 endif
 
 ! Make sure that vars has enough space to handle the answer
-if(ens_handle%my_pe == receiving_pe) then !HK I think only the reciever needs the space
+if(ens_handle%my_pe == receiving_pe) then !HK I think only the receiver needs the space
    if(size(vars) < ens_handle%num_vars) then
       write(msgstring, *) 'Size of vars: ', size(vars), ' Must be at least ', ens_handle%num_vars
       call error_handler(E_ERR,'get_copy', msgstring, source, revision, revdate)
@@ -319,7 +319,7 @@ if(ens_handle%my_pe == receiving_pe) then
    endif
  
    ! Otherwise, must wait to receive vars and time from storing pe
-      call receive_from(map_pe_to_task(ens_handle, owner), vars, mtime)
+   call receive_from(map_pe_to_task(ens_handle, owner), vars, mtime)
 endif
 
 !----- Block of code that must be done by PE that stores the copy IF it is NOT receiver -----
@@ -751,10 +751,12 @@ allocate(ens_handle%my_copies(ens_handle%my_num_copies),              &
 
 if(ens_handle%transpose_type == 2) then
    allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
+   ens_handle%vars = MISSING_R8
 endif
 
 if(ens_handle%transpose_type == 3) then
    allocate(ens_handle%vars(ens_handle%num_vars,1))
+   ens_handle%vars = MISSING_R8
 endif
 
 ! Set everything to missing value
@@ -833,6 +835,19 @@ type (ensemble_type), intent(in)  :: ens_handle
 integer(i8), intent(in) :: num_vars
 integer                 :: get_max_num_vars
 !!!integer, intent(in) :: distribution_type
+
+!could this be instead:
+!
+! get_max_num_vars = num_vars / num_pes   ! integer math rounds down
+! if (get_max_num_vars * num_pes /= num_vars) &
+!    get_max_num_vars = get_max_num_vars + 1
+!
+! if num_vars divides evenly into the num_pes we use
+! the exact size.  otherwise if uneven we add one.  
+! this number has to be the same on all PEs because it
+! sets the send/recv size. it doesn't matter which pes
+! have extra values, just that is any of them do then
+! everyone uses the larger number.
 
 get_max_num_vars = num_vars / num_pes + 1
 

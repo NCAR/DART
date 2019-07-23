@@ -33,9 +33,10 @@ use     schedule_mod, only : schedule_type, set_regular_schedule, get_schedule_l
 use    utilities_mod, only : register_module, &
                              file_exist, error_handler, E_ERR, E_MSG, &
                              initialize_utilities, finalize_utilities, nmlfileunit, &
-                             find_namelist_in_file, check_namelist_read, nc_check, &
+                             find_namelist_in_file, check_namelist_read, &
                              next_file, get_next_filename, find_textfile_dims, &
                              file_to_text, do_nml_file, do_nml_term
+use netcdf_utilities_mod, only : nc_check
 
 use typeSizes
 use netcdf

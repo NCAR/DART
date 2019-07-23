@@ -1,15 +1,16 @@
 &convert_airs_L2_nml
-   l2_files           = 'input.hdf',
-   l2_file_list       = '',
-   datadir            = '.',
-   outputdir          = '.',
-   lon1               =   0.0,
-   lon2               = 360.0,
-   lat1               = -90.0,
-   lat2               =  90.0,
-   min_MMR_threshold  = 1.0e-30,
-   top_pressure_level = 0.0001,
-   cross_track_thin   = 0,
-   along_track_thin   = 0,
+   l2_files     = ''
+   l2_file_list = ''
+   outputfile   = 'obs_seq.out'
+   lon1         =   0.0 
+   lon2         = 360.0 
+   lat1         = -90.0 
+   lat2         = 90.0
+   min_MMR_threshold  = 1.0e-30
+   top_pressure_level = 0.0001
+   cross_track_thin   = 0
+   along_track_thin   = 0
+   use_NCEP_errs      = .false.
+   version            = 6
 /
 

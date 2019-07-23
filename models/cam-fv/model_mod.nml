@@ -1,30 +1,44 @@
+
+# options for vertical localization:  'PRESSURE', 'HEIGHT', 'SCALEHEIGHT', 'LEVEL'
+# options for vertical interpolation (use_log_vertical_scale) = .false., .true.
+#
+# model top related items (no_obs_assim_above_level, model_damping_ends_at_level)
+# are now specified in model level numbers.  the top level is 1 and increases
+# going down towards the surface.
+#
+# examples of state_variables, 5 columns per field:
+#
+#   netcdf varname, dart quantity, min allowed value, max allowed value, (no)update this var
+#
+#   state_variables = 'T', 'QTY_TEMPERATURE',                'NA', 'NA', 'UPDATE'
+#                     'US','QTY_U_WIND_COMPONENT',           'NA', 'NA', 'UPDATE'
+#                     'VS','QTY_V_WIND_COMPONENT',           'NA', 'NA', 'UPDATE'
+#                     'Q', 'QTY_SPECIFIC_HUMIDITY',          'NA', 'NA', 'UPDATE'
+#                     'CLDLIQ','QTY_CLOUD_LIQUID_WATER',     'NA', 'NA', 'UPDATE'
+#                     'CLDICE','QTY_CLOUD_ICE',              'NA', 'NA', 'UPDATE'
+#                     'PS','QTY_SURFACE_PRESURE',            'NA', 'NA', 'UPDATE'
+#                     'O', 'QTY_ATOMIC_OXYGEN_MIXING_RATIO', 'NA', 'NA', 'UPDATE'
+#                     'O2','QTY_MOLEC_OXYGEN_MIXING_RATIO',  'NA', 'NA', 'UPDATE'
+#                     'H', 'QTY_ATOMIC_H_MIXING_RATIO',      'NA', 'NA', 'UPDATE'
+#                     'Op','QTY_ION_O_MIXING_RATIO',         'NA', 'NA', 'UPDATE'
+
 &model_nml
-   model_version             = '4.0'
-   model_config_file         = 'caminput.nc'
-   cam_phis                  = 'cam_phis.nc'
-   cs_grid_file              = 'SEMapping_cs_grid.nc'
-   homme_map_file            = 'SEMapping.nc'
-   state_num_0d              = 0
-   state_num_1d              = 0
-   state_num_2d              = 0
-   state_num_3d              = 0
-   state_names_0d            = ''
-   state_names_1d            = ''
-   state_names_2d            = ''
-   state_names_3d            = ''
-   which_vert_1d             = -2 
-   which_vert_2d             = -1  
-   which_vert_3d             = 1  
-   pert_names                = ''
-   pert_sd                   = -888888.0
-   pert_base_vals            = -888888.0
-   highest_obs_pressure_Pa   = 1000.0
-   highest_state_pressure_Pa = 9400.0
-   vert_coord                = 'pressure'
-   max_obs_lat_degree        = 90.0
-   Time_step_seconds         = 21600
-   Time_step_days            = 0
-   impact_only_same_kind     = ' '
-   print_details             = .false.
-   /
+   cam_template_filename               = 'caminput.nc'
+   cam_phis_filename                   = 'cam_phis.nc'
+   vertical_localization_coord         = 'PRESSURE'
+   use_log_vertical_scale              = .false.
+   no_normalization_of_scale_heights   = .true.
+   no_obs_assim_above_level            = -1,
+   model_damping_ends_at_level         = -1,
+   state_variables                     = ''
+   assimilation_period_days            = 0
+   assimilation_period_seconds         = 21600
+   suppress_grid_info_in_output        = .false.
+   custom_routine_to_generate_ensemble = .true.
+   fields_to_perturb                   = ''
+   perturbation_amplitude              = 0.0_r8
+   using_chemistry                     = .false.
+   use_variable_mean_mass              = .false.
+   debug_level                         = 0
+/
 

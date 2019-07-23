@@ -7,7 +7,8 @@
 program dart_to_cice
 
 !----------------------------------------------------------------------
-! purpose: muck with cice state vector after filter
+! purpose: implement a 'partition function' to modify the cice state 
+!          to be consistent with the states from assimilation
 !
 ! method: Read in restart (restart with prior) and out restart (restart 
 !         with posterior) written by DART after filter. 
@@ -18,17 +19,17 @@ program dart_to_cice
 use        types_mod, only : r8
 use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
-                             logfileunit, nc_check, file_exist, &
-                             error_handler, E_ERR, E_MSG, to_upper
+                             file_exist, error_handler, E_ERR, E_MSG, to_upper
+use  netcdf_utilities_mod, only : nc_check
 use netcdf 
 
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 !------------------------------------------------------------------
 
@@ -36,10 +37,13 @@ character(len=256) :: dart_to_cice_input_file = 'dart_restart.nc'
 character(len=256) :: original_cice_input_file = 'cice_restart.nc'
 character(len=256) :: previous_cice_input_file = 'pre_restart.nc'
 character(len=128) :: balance_method = 'simple_squeeze'
+character(len=15)  :: r_snw_name  = 'r_snw'
+
 namelist /dart_to_cice_nml/ dart_to_cice_input_file, & 
                             original_cice_input_file, &
                             previous_cice_input_file, &
-                            balance_method
+                            balance_method, &
+                            r_snw_name
 
 character(len=512) :: string1, string2, msgstring
 character(len=15)  :: varname
@@ -90,9 +94,13 @@ real(r8), allocatable :: qsno001(:,:,:)
 real(r8), allocatable :: qsno002(:,:,:)
 real(r8), allocatable :: qsno003(:,:,:)
 real(r8), allocatable :: aice(:,:)
-real(r8), allocatable :: vice(:,:)
-real(r8), allocatable :: vsno(:,:)
+!real(r8), allocatable :: vice(:,:)
+!real(r8), allocatable :: vsno(:,:)
 
+!Parameters
+real(r8), allocatable :: r_snw(:,:)
+
+!Temporary variables
 real(r8), allocatable :: aice_temp(:,:)
 real(r8), allocatable :: increment_aice(:,:)
 !real(r8), allocatable :: increment_vice(:,:)
@@ -107,10 +115,14 @@ real(r8), allocatable :: tendency_aicen(:,:,:)
 
 real(r8) :: R, weight_aicen     !, weight_vicen, weight_vsnon
 
-integer  :: i, j, k, n
+integer  :: i, j, n
+! integer :: k
 integer  :: VarID, ncid,ncid2, iunit, io, ndims
 real(r8) :: squeeze
 
+real(r8), parameter :: &        !from ice_shortwave.F90
+     rsnw_max   = 1.6_r8, &   
+     rsnw_min   = -2.0_r8
 
 real(r8), parameter :: &      ! from ice_therm_vertical.F90
      phi_init = 0.75_r8, &    ! initial liquid fraction of frazil ice 
@@ -146,18 +158,18 @@ write(string2,*) 'using the "'//trim(balance_method)//'" method.'
 call error_handler(E_MSG,'dart_to_cice',string1,text2=string2)
 
 if ( .not. file_exist(dart_to_cice_input_file) ) then
-   write(string1,*) 'cannot open file ', trim(dart_to_cice_input_file),' for updating.'
+   write(string1,*) 'cannot open "', trim(dart_to_cice_input_file),'" for updating.'
    call error_handler(E_ERR,'dart_to_cice:filename not found ',trim(dart_to_cice_input_file))
 endif
 
 if ( .not. file_exist(original_cice_input_file) ) then
-   write(string1,*) 'cannot open file ', trim(original_cice_input_file),' for reading.'
+   write(string1,*) 'cannot open "', trim(original_cice_input_file),'" for reading.'
    call error_handler(E_ERR,'dart_to_cice:filename not found ',trim(original_cice_input_file))
 endif
 
 ! open original restart file with read only
 call nc_check( nf90_open(trim(original_cice_input_file), NF90_NOWRITE, ncid), &
-                  'dart_to_cice', 'open '//trim(original_cice_input_file))
+                  'dart_to_cice', 'open "'//trim(original_cice_input_file)//'"')
 
 ! get the original ice concentration, ice volume and snow volume (FYI it is allocated in routine)
 call get_3d_variable(ncid, 'aicen', aicen_original, original_cice_input_file)
@@ -168,7 +180,7 @@ call nc_check(nf90_close(ncid),'dart_to_cice', 'close '//trim(original_cice_inpu
 
 ! open posterior restart file with read and write 
 call nc_check( nf90_open(trim(dart_to_cice_input_file), NF90_WRITE, ncid), &
-                  'dart_to_cice', 'open '//trim(dart_to_cice_input_file))
+                  'dart_to_cice', 'open "'//trim(dart_to_cice_input_file)//'"')
 
 ! get the key restart variables (FYI allocated in the routine)
 call get_3d_variable(ncid, 'aicen', aicen, dart_to_cice_input_file)
@@ -195,6 +207,8 @@ call get_3d_variable(ncid, 'qsno001', qsno001, dart_to_cice_input_file)
 call get_3d_variable(ncid, 'qsno002', qsno002, dart_to_cice_input_file)
 call get_3d_variable(ncid, 'qsno003', qsno003, dart_to_cice_input_file)
 
+! get the parameter variables in the restart
+call get_2d_variable(ncid, r_snw_name, r_snw, dart_to_cice_input_file)
 
 Nx   = size(aicen,1)
 Ny   = size(aicen,2)
@@ -260,8 +274,8 @@ SELECT CASE (method)
       !Open the restart file from the previous day (beginning of the current
       !day's forecast)
       if ( .not. file_exist(previous_cice_input_file)) then
-         write(string1,*)'cannot open file ',trim(previous_cice_input_file),'for updating.'
-         call error_handler(E_ERR,'dart_to_cice: filename not found',trim(previous_cice_input_file))
+         write(string1,*)'cannot open "',trim(previous_cice_input_file),'" for updating.'
+         call error_handler(E_ERR,'dart_to_cice',string1)
       endif
 
       call nc_check(nf90_open(trim(previous_cice_input_file),NF90_NOWRITE,ncid2), &
@@ -389,7 +403,7 @@ SELECT CASE (method)
 
       write(string1,*)'input.nml:dart_to_cice_nml:balance_method "'//trim(balance_method)//'" unsupported.'
       write(string2,*)'valid values are "simple_squeeze", "tendency_weight", or "prior weight"'
-      call error_handler(E_ERR,'dart_to_cice',string1,source, revision, revdate, text2=string2)
+      call error_handler(E_ERR,'dart_to_cice',string1, source, revision, revdate, text2=string2)
 
    CASE ('PRIOR_WEIGHT')  
       !Fei
@@ -499,6 +513,10 @@ END SELECT
      qsno003 = min(0.0_r8,qsno003)
      aicen   = min(1.0_r8,aicen)    ! concentrations must not exceed 1 
      Tsfcn   = min(Tsmelt,Tsfcn)    ! ice/sno surface must not exceed melting
+
+     ! post-process the parameters
+     r_snw   = min(rsnw_max,r_snw)
+     r_snw   = max(rsnw_min,r_snw)
 
      ! calculate aice, which might be negative or >1 at this point
      aice = aicen(:,:,1)
@@ -668,7 +686,6 @@ END SELECT
    !for testing make something to fix
 !  aicen(10,10,1)=1.1
 !  write(*,*) (aicen(10,10,k), k=1,5)
-
    
    varname='aicen'
    io = nf90_inq_varid(ncid, trim(varname), VarID)
@@ -854,6 +871,13 @@ END SELECT
    call nc_check(io, 'dart_to_cice', &
                  'put_var '//trim(varname)//' '//trim(dart_to_cice_input_file))
 
+   varname=r_snw_name
+   io = nf90_inq_varid(ncid, trim(varname), VarID)
+   call nc_check(io, 'dart_to_cice', &
+                 'inq_varid '//trim(varname)//' '//trim(dart_to_cice_input_file))
+   io = nf90_put_var(ncid, VarID, r_snw)
+   call nc_check(io, 'dart_to_cice', &
+                 'put_var '//trim(varname)//' '//trim(dart_to_cice_input_file))
 
 call nc_check(nf90_close(ncid),'dart_to_cice', 'close '//trim(dart_to_cice_input_file))
 
@@ -862,6 +886,7 @@ deallocate( aicen, vicen, vsnon, Tsfcn, aice )
 deallocate( sice001, sice002, sice003, sice004, sice005, sice006, sice007, sice008 )
 deallocate( qice001, qice002, qice003, qice004, qice005, qice006, qice007, qice008 )
 deallocate( qsno001, qsno002, qsno003 )
+deallocate(r_snw)
 
 call finalize_utilities('dart_to_cice')
 
@@ -907,6 +932,48 @@ call nc_check(nf90_get_var(ncid, VarID, var), 'dart_to_cice', &
          'get_var '//trim(msgstring))
 
 end subroutine get_3d_variable
+
+!==============================================================
+
+subroutine get_2d_variable(ncid, varname, var, filename)
+
+integer,               intent(in)  :: ncid
+character(len=*),      intent(in)  :: varname
+real(r8), allocatable, intent(out) :: var(:,:)
+character(len=*),      intent(in)  :: filename
+
+integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, dimLengths
+character(len=NF90_MAX_NAME)          :: dimName
+
+write(msgstring,*) trim(varname)//' '//trim(filename)
+
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(msgstring))
+
+io = nf90_inquire_variable(ncid, VarID, dimids=dimIDs, ndims=ndims)
+call nc_check(io, 'dart_to_cice', 'inquire_variable '//trim(msgstring))
+
+if (ndims /= 2) then
+   write(string2,*) 'expected 2 dimension, got ', ndims
+   call error_handler(E_ERR,'dart_to_cice',msgstring,text2=string2)
+endif
+
+dimLengths = 1
+DimensionLoop : do i = 1,ndims
+
+   write(string1,'(''inquire dimension'',i2,A)') i,trim(msgstring)
+   io = nf90_inquire_dimension(ncid, dimIDs(i), name=dimname, len=dimLengths(i))
+   call nc_check(io, 'dart_to_cice', string1)
+
+enddo DimensionLoop
+
+allocate( var(dimLengths(1), dimLengths(2)) )
+
+call nc_check(nf90_get_var(ncid, VarID, var), 'dart_to_cice', &
+         'get_var '//trim(msgstring))
+
+end subroutine get_2d_variable
+
 
 !=======================================================================
 ! Mushy Layer Formulation - Assur (1958) liquidus

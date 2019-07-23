@@ -58,7 +58,7 @@ type(obs_type)          :: obs_out, prev_obs_out
 logical                 :: is_this_last
 integer                 :: size_seq_in, size_seq_out
 integer                 :: num_copies_in, num_qc_in
-integer                 :: num_inserted, iunit, io, i, j
+integer                 :: num_inserted, iunit, io, j
 integer                 :: max_num_obs, file_id
 integer                 :: num_rejected_badqc, num_rejected_diffqc
 integer                 :: num_rejected_other
@@ -82,19 +82,19 @@ integer, parameter :: max_obs_input_types = 500
 ! Namelist input with default values
 
 
-character(len=256)   :: filename_in = ''
-character(len=256)   :: filename_out = ''
+character(len=256) :: filename_in = ''
+character(len=256) :: filename_out = ''
 
-integer              :: keep_N_of_each  = 10
-integer              :: max_all_obs_out = -1
+integer            :: max_count_per_type = 10
+integer            :: max_total_count    = -1
 
-logical              :: print_only    = .false.
-character(len=32)    :: calendar      = 'Gregorian'
+logical            :: print_only    = .false.
+character(len=32)  :: calendar      = 'Gregorian'
 
 
 namelist /obs_keep_a_few_nml/ &
          filename_in, filename_out, &
-         keep_N_of_each, max_all_obs_out, &
+         max_count_per_type, max_total_count, &
          print_only, calendar
 
 !----------------------------------------------------------------
@@ -127,8 +127,8 @@ cal = (get_calendar_type() /= NO_CALENDAR)
 
 ! end of namelist processing and setup
 
-! make space for the counts
-allocate(n_this_type(get_num_types_of_obs()))
+! make space for the counts.  0 is for all identity obs.
+allocate(n_this_type(0:get_num_types_of_obs()))
 n_this_type(:) = 0
 
 ! single pass algorithm (unlike other obs tools).
@@ -210,7 +210,9 @@ if ( get_first_obs(seq_in, obs_in) )  then
 
       this_type = get_obs_def_type_of_obs(this_obs_def)
 
-      if (n_this_type(this_type) < keep_N_of_each .or. keep_N_of_each < 0) then
+      if (this_type < 0) this_type = 0   ! identity obs
+
+      if (n_this_type(this_type) < max_count_per_type .or. max_count_per_type < 0) then
  
          ! copy to output obs_seq and increment the count for this type
          n_this_type(this_type) = n_this_type(this_type) + 1
@@ -232,7 +234,7 @@ if ( get_first_obs(seq_in, obs_in) )  then
 
       endif
 
-      if (max_all_obs_out > 0 .and. num_inserted >= max_all_obs_out) exit ObsLoop
+      if (max_total_count > 0 .and. num_inserted >= max_total_count) exit ObsLoop
 
       call get_next_obs(seq_in, obs_in, next_obs_in, is_this_last)
 
@@ -249,7 +251,6 @@ if (.not. print_only) then
    print*, 'Number of obs copied to output  :         ', num_inserted
    print*, '---------------------------------------------------------'
 endif
-
 
 
 write(msgstring, *) 'Starting to process output sequence file ', &

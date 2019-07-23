@@ -19,12 +19,14 @@ program convert_roms_obs
 
 use         types_mod, only : r8, missing_r8, obstypelength
 
-use     utilities_mod, only : nc_check, initialize_utilities, finalize_utilities,  &
-                              error_handler, do_nml_term, do_nml_file, nc_check,   &
+use     utilities_mod, only : initialize_utilities, finalize_utilities,            &
+                              error_handler, do_nml_term, do_nml_file,             &
                               E_ERR, E_WARN, E_MSG, logfileunit, nmlfileunit,      &
                               find_namelist_in_file, check_namelist_read,          &
                               open_file, close_file, find_textfile_dims,           &
                               file_to_text, do_output, set_filename_list
+
+use netcdf_utilities_mod, only : nc_check
 
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, &
                               increment_time, get_time, operator(-), GREGORIAN, &

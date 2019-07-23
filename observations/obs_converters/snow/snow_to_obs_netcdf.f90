@@ -22,7 +22,8 @@ use         types_mod, only : r8, PI, DEG2RAD
 use     utilities_mod, only : initialize_utilities, finalize_utilities,      &
                               open_file, close_file, find_namelist_in_file,  &
                               check_namelist_read, nmlfileunit, do_nml_file, &
-                              do_nml_term, nc_check
+                              do_nml_term
+use  netcdf_utilities_mod, only : nc_check
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, set_time, &
                               operator(>=), increment_time, get_time, &
                               operator(-), GREGORIAN, operator(+), print_date

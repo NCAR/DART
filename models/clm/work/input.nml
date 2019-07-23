@@ -45,6 +45,8 @@
    num_output_obs_members   = 3
    output_interval          = 1
    num_groups               = 1
+   distributed_state        = .true.
+   compute_posterior        = .true.
    output_forward_op_errors = .false.
    output_timestamps        = .true.
    trace_execution          = .true.
@@ -61,11 +63,12 @@
    inf_sd_initial_from_restart = .false.,                 .false.
    inf_deterministic           = .true.,                  .true.
    inf_initial                 = 1.0,                     1.0
-   inf_sd_initial              = 0.6,                     0.6
-   inf_damping                 = 0.9,                     0.9
    inf_lower_bound             = 1.0,                     1.0
    inf_upper_bound             = 1000.0,               1000.0
+   inf_damping                 = 0.9,                     0.9
+   inf_sd_initial              = 0.6,                     0.6
    inf_sd_lower_bound          = 0.6,                     0.6
+   inf_sd_max_change           = 1.05,                    1.05
    /
 
 &quality_control_nml

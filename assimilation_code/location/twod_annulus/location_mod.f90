@@ -16,21 +16,20 @@ module location_mod
 
 use      types_mod, only : r8, PI, RAD2DEG, DEG2RAD, MISSING_R8, MISSING_I
 use  utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format, &
-                           nc_check, find_namelist_in_file, check_namelist_read, &
+                           find_namelist_in_file, check_namelist_read, &
                            do_output, do_nml_file, do_nml_term, nmlfileunit, &
-                           open_file, close_file, nc_check, is_longitude_between
+                           open_file, close_file, is_longitude_between
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
 private
 
 public :: location_type, get_location, set_location, &
-          set_location_missing, is_location_in_region, &
+          set_location_missing, is_location_in_region, get_maxdist,  &
           write_location, read_location, interactive_location, query_location, &
           LocationDims, LocationName, LocationLName, get_close_obs, &
           get_close_maxdist_init, get_close_obs_init, get_close_type, &
           operator(==), operator(/=), get_dist, get_close_obs_destroy, &
-          nc_write_location_atts, nc_get_location_varids, nc_write_location, &
           vert_is_height, vert_is_pressure, vert_is_undef, vert_is_level, &
           vert_is_surface, has_vertical_localization, &
           set_vert, get_vert, set_which_vert
@@ -315,7 +314,6 @@ character(len = *),  intent(out), optional :: charstring
 
 integer             :: charlength
 logical             :: writebuf
-character(len = 128) :: string1
 
 10 format(1X,F21.16,1X,G25.16,1X,I2)
 
@@ -565,112 +563,6 @@ end subroutine interactive_location
 
 !----------------------------------------------------------------------------
 
-function nc_write_location_atts( ncFileID, fname, ObsNumDimID ) result (ierr)
- 
-! Writes the "location module" -specific attributes to a netCDF file.
-
-use typeSizes
-use netcdf
-
-integer,          intent(in) :: ncFileID     ! handle to the netcdf file
-character(len=*), intent(in) :: fname        ! file name (for printing purposes)
-integer,          intent(in) :: ObsNumDimID  ! handle to the dimension that grows
-integer                      :: ierr
-
-integer :: LocDimID
-integer :: VarID
-
-if ( .not. module_initialized ) call initialize_module
-
-ierr = -1 ! assume things will fail ...
-
-! define the rank/dimension of the location information
-call nc_check(nf90_def_dim(ncid=ncFileID, name='location', len=LocationDims, &
-       dimid = LocDimID), 'nc_write_location_atts', 'def_dim:location '//trim(fname))
-
-! Define the observation location variable and attributes
-
-call nc_check(nf90_def_var(ncid=ncFileID, name='location', xtype=nf90_double, &
-          dimids=(/ LocDimID, ObsNumDimID /), varid=VarID), &
-            'nc_write_location_atts', 'location:def_var')
-
-call nc_check(nf90_put_att(ncFileID, VarID, 'description', &
-        'location coordinates'), 'nc_write_location_atts', 'location:description')
-call nc_check(nf90_put_att(ncFileID, VarID, 'location_type', &
-        trim(LocationName)), 'nc_write_location_atts', 'location:location_type')
-call nc_check(nf90_put_att(ncFileID, VarID, 'long_name', &
-        trim(LocationLName)), 'nc_write_location_atts', 'location:long_name')
-call nc_check(nf90_put_att(ncFileID, VarID, 'storage_order',     &
-        'Azimuth Radius'), 'nc_write_location_atts', 'location:storage_order')
-call nc_check(nf90_put_att(ncFileID, VarID, 'units',     &
-        'degrees meters'), 'nc_write_location_atts', 'location:units')
-
-! Define the ancillary vertical array and attributes
-
-! If we made it to here without error-ing out ... we're good.
-
-ierr = 0
-
-end function nc_write_location_atts
-
-!----------------------------------------------------------------------------
-
-subroutine nc_get_location_varids( ncFileID, fname, LocationVarID, WhichVertVarID )
-
-! Return the LocationVarID and WhichVertVarID variables from a given netCDF file.
-!
-! ncFileId         the netcdf file descriptor
-! fname            the name of the netcdf file (for error messages only)
-! LocationVarID    the integer ID of the 'location' variable in the netCDF file
-! WhichVertVarID   the integer ID of the 'which_vert' variable in the netCDF file
-
-use typeSizes
-use netcdf
-
-integer,          intent(in)  :: ncFileID   ! handle to the netcdf file
-character(len=*), intent(in)  :: fname      ! file name (for printing purposes)
-integer,          intent(out) :: LocationVarID, WhichVertVarID
-
-if ( .not. module_initialized ) call initialize_module
-
-call nc_check(nf90_inq_varid(ncFileID, 'location', varid=LocationVarID), &
-          'nc_get_location_varids', 'inq_varid:location '//trim(fname))
-
-WhichVertVarID = -99
-
-end subroutine nc_get_location_varids
-
-!----------------------------------------------------------------------------
-
-subroutine nc_write_location(ncFileID, LocationVarID, loc, obsindex, WhichVertVarID)
- 
-! Writes a SINGLE location to the specified netCDF variable and file.
-! The LocationVarID and WhichVertVarID must be the values returned from
-! the nc_get_location_varids call.
-
-use typeSizes
-use netcdf
-
-integer,             intent(in) :: ncFileID, LocationVarID
-type(location_type), intent(in) :: loc
-integer,             intent(in) :: obsindex
-integer,             intent(in) :: WhichVertVarID
-
-real(r8), dimension(LocationDims) :: locations
-integer,  dimension(1) :: intval
-
-if ( .not. module_initialized ) call initialize_module
-
-locations = get_location( loc ) ! converts from radians to degrees, btw
-
-call nc_check(nf90_put_var(ncFileID, LocationVarId, locations, &
-          start=(/ 1, obsindex /), count=(/ LocationDims, 1 /) ), &
-            'nc_write_location', 'put_var:location')
-
-end subroutine nc_write_location
-
-!----------------------------------------------------------------------------
-
 subroutine get_close_obs_init(gc, num, obs)
  
 ! Initializes part of get_close accelerator that depends on the particular obs
@@ -745,6 +637,17 @@ do i = 1, gc%num
 end do
 
 end subroutine get_close_obs
+
+!---------------------------------------------------------------------------
+
+function get_maxdist(gc, obs_type)
+type(get_close_type), intent(in) :: gc
+integer, optional,    intent(in) :: obs_type
+real(r8) :: get_maxdist
+
+get_maxdist = gc%maxdist
+
+end function get_maxdist
 
 !----------------------------------------------------------------------------
 

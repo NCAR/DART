@@ -41,7 +41,7 @@
 <P>
 The DART framework needs to be able to compute distances
 between locations, to pass location information to and from the
-model interface code (model_mod.f90), and to be able to
+model interface code (<em class=file>model_mod.f90</em>), and to be able to
 read and write location information to files.
 DART isolates all this location information into separate modules 
 so that the main algorithms can operate with the same code independent
@@ -73,7 +73,7 @@ of physical space.
 The location routines are general purpose code that can be used
 for a variety of utilities.  The following discussion is specifically
 restricted to how the location namelist settings affect the
-execution of the <em class=file>filter</em> assimilation program.
+execution of the <em class=program>filter</em> assimilation program.
 </P>
 
 <P>
@@ -89,7 +89,7 @@ observation types.</LI>
 
 <P>
 Issues related to changing the results of an assimilation based on 
-code in the model-specific <em class=code>model_mod.f90</em> module:<br />
+code in the model-specific <em class=file>model_mod.f90</em> module:<br />
 <UL>
 <LI>Whether the model-specific code needs to convert vertical coordinates.</LI>
 <LI>Whether the model-specific code alters the distances in some other way.</LI>
@@ -143,6 +143,11 @@ observation at the center.  The horizontal radius is defined by the
 cutoff and the vertical radius is defined by the normalization factors.
 </P>
 
+<P>
+See <a href="#Example">examples below</a> for specific examples that 
+highlight some vertical localization issues.
+</P>
+
 <H4>Different vertical factors per observation type</H4>
 <P>
 Generally a single cutoff value and a single set of normalization
@@ -164,7 +169,7 @@ control the vertical distance contribution on a per-observation, per-vertical-ty
 If the model supports either a different vertical coordinate than
 the vertical coordinate of the observations, or if the user wants to
 localize in a different vertical coordinate than the observations
-or state vector items, the model-specific <em class=code>model_mod.f90</em> 
+or state vector items, the model-specific <em class=file>model_mod.f90</em> 
 code will have to provide a conversion between different vertical coordinates.
 This cannot be done by the location module since most vertical
 conversions require additional model-specific information such
@@ -192,7 +197,7 @@ which one or both have an undefined vertical location.
 <P>
 The calls to routines that collect the distances between locations
 for the assimilation code pass through
-the model-specific <em class=code>model_mod.f90</em> code.  This allows
+the model-specific <em class=file>model_mod.f90</em> code.  This allows
 the code to alter the actual distances to either increase or decrease the
 effect of an observation on the state or on other observations.
 </P>
@@ -236,7 +241,62 @@ count uses more memory but shortens the linear part of the
 location search.
 </P>
 
-<br /><br />
+<A NAME="Example"></A>
+<H4>Examples and Questions involving vertical issues</H4>
+<H5>Example of specifying a cutoff based on a distance in kilometers</H5>
+<P>
+The Earth radius is nominally 6,371 Km.  If you want the
+maximum horizontal distance that an observation can possibly
+influence something in the model state to be X km, then set
+the cutoff to be (X / 6,371) / 2.  Remember the actual impact will
+depend on a combination of this distance and the regression
+coefficient computed from the distribution of forward operator values 
+and the ensemble of values in the model state.
+</P>
+<H5>Cutoff and half-widths</H5>
+<P>
+Q: Why is the cutoff specified as half the distance to where
+the impact goes to 0, and why is it called 'cutoff'?<br />
+A: Because the original paper by Gaspari &amp; Cohn used that
+definition in this paper which our localization function is 
+based on.<br />
+Gaspari, G. and Cohn, S. E. (1999), Construction of correlation 
+functions in two and three dimensions. Q.J.R. Meteorol. Soc., 125: 723-757. 
+<a href="doi:10.1002/qj.49712555417">doi:10.1002/qj.49712555417</a>
+</P>
+<H5>Computing vertical normalization values</H5>
+<P>
+Because distances are computed in radians, the vertical distances
+have to be translated to radians.  To get a maximum vertical separation
+of X meters (if localizing in height), specify the vert_normalization_height
+of X / cutoff.  If localizing in pressure, specify vert_normalization_pressure
+as X pascals / cutoff, etc.
+</P>
+<H5>Single vertical coordinate type</H5>
+<P>
+Vertical distances can only be computed between two locations that have
+the same vertical type.  In practice this means
+if vertical localization is enabled all observations which have a
+vertical location need to be converted to a single vertical coordinate
+type, which matches the desired localization unit.  The model state must
+also be able to be converted to the same vertical coordinate type.
+</P>
+<P>
+For example, if some observations come with a vertical coordinate type of
+pressure and some with height, and you want to localize in height, the
+pressure coordinates need to be converted to an equivalant height.
+This usually requires information only available to the model interface
+code in the model_mod.f90 file, so a convert_vertical_obs() routine
+is called to do the conversion.
+</P>
+<P>
+The locations of the model state are returned by the get_state_meta_data()
+routine in the model_mod.f90 file.  If the vertical coordinate used in
+the state is not the same as the desired vertical localization type,
+they must also be converted using a convert_vertical_state() routine.
+</P>
+<br />
+<P><!-- space so the 'top' aligns correctly --></P>
 
 <!--=====================================================================-->
 <!--===================== DESCRIPTION OF A NAMELIST =====================-->
@@ -412,9 +472,7 @@ listed in the 'special_vert_normalization_obs_types' list.
 </TABLE>
 </div>
 
-<br />
-<br />
-
+<P><!-- space so the 'top' aligns correctly --></P>
 
 <!--=====================================================================-->
 <!--===================== DISCUSSION ====================================-->
@@ -475,25 +533,24 @@ is as follows:
 </P>
 <pre>
 <em class=code>
-call get_close_maxdist_init()  ! is called before get_close_obs_init()
-call get_close_obs_init()
+call get_close_init()
 ...
 call get_close_obs()           ! called many, many times
 ...
-call get_close_obs_destroy()
+call get_close_destroy()
 </em>
 </pre>
 <P>
-In the <em class=file>threed_sphere</em> implementation the
-first routine initializes some data structures, the second one
-bins up the list of locations, and then the third one is called
+<em class=code>get_close_init()</em> initializes the data structures, 
+<em class=code>get_close_obs()</em> is called
 multiple times to find all locations within a given radius of
 some reference location, and to optionally
 compute the exact separation distance from the reference location.
-The last routine deallocates the space.  See the documentation 
+<em class=code>get_close_destroy()</em> deallocates the space.
+See the documentation 
 below for the specific details for each routine.
 </P> <P>
-All 4 of these routines must be present in every location module
+All 3 of these routines must be present in every location module
 but in most other versions
 all but <em class=code>get_close_obs()</em> are stubs.
 In this <em class=file>threed_sphere</em> version
@@ -528,9 +585,8 @@ it would declare:
 </P>
 <pre>
 <em class=code>
-use location_mod, only :: location_get_close_obs => get_close_obs,    &amp;
-                          get_close_maxdist_init, get_close_obs_init, &amp;
-                          get_close_obs_destroy
+use location_mod, only :: get_close_init, get_close_destroy, &amp;
+                          location_get_close_obs => get_close_obs
 </em>
 </pre>
 <P>
@@ -699,6 +755,8 @@ as the pole is approached.
 types_mod
 utilities_mod
 random_seq_mod
+obs_kind_mod
+ensemble_manager_mod
 </PRE>
 
 <!--==================================================================-->
@@ -723,11 +781,11 @@ random_seq_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#interactive_location">interactive_location</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_location_missing">set_location_missing</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#query_location">query_location</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_init">get_close_init</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_destroy">get_close_obs_destroy</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_destroy">get_close_destroy</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_dist">get_dist</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_maxdist">get_maxdist</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#LocationDims">LocationDims</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#LocationName">LocationName</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#LocationLName">LocationLName</A></TD></TR>
@@ -1097,15 +1155,17 @@ types module.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="get_close_maxdist_init"></A>
+<A NAME="get_close_init"></A>
 <br>
 <div class=routine>
-<em class=call> call get_close_maxdist_init(gc,maxdist,
-<em class=optionalcode>[maxdist_list]</em>) </em>
+<em class=call>call get_close_init(gc, num, maxdist, locs
+<em class=optionalcode>[,maxdist_list]</em>) </em>
 <pre>
 type(get_close_type), intent(inout) :: <em class=code>gc</em>
-real(r8), intent(in)                :: <em class=code>maxdist</em>
-real(r8), intent(in), optional      :: <em class=optionalcode>maxdist_list(:)</em>
+integer,              intent(in)    :: <em class=code>num</em>
+real(r8),             intent(in)    :: <em class=code>maxdist</em>
+type(location_type),  intent(in)    :: <em class=code>locs(:)</em>
+real(r8), optional,   intent(in)    :: <em class=optionalcode>maxdist_list(:)</em>
 </pre>
 </div>
 
@@ -1113,32 +1173,40 @@ real(r8), intent(in), optional      :: <em class=optionalcode>maxdist_list(:)</e
 <!-- Description -->
 
 <P>
-Sets the threshhold distance.  <em class=code>maxdist</em> is in
-units of radians.
+Initializes the get_close  accelerator.
+<em class=code>maxdist</em> is in units of radians.
 Anything closer than this is deemed to be close.
 This routine must be called first, before the other 
 <em class=code>get_close</em> routines.  
 It allocates space so it is necessary to call 
-<em class=code>get_close_obs_destroy</em>
+<em class=code>get_close_destroy</em>
 when completely done with getting distances between locations.
 </P>
 <P>
-If the last optional argument is not specified, maxdist
+If the last optional argument is not specified, <em class=code>maxdist</em>
 applies to all locations.  If the last argument is specified,
 it must be a list of exactly the length of the number of
-specific types in the obs_kind_mod.f90 file.
+specific types in the <em class=file>obs_kind_mod.f90</em> file.
 This length can be queried with the
 <a href="../../modules/observations/obs_kind_mod.html#get_num_types_of_obs">
 get_num_types_of_obs()</a> function to get count of obs types.
 It allows a different maximum distance to be set per base type
-when get_close() is called.
+when <em class=code>get_close()</em> is called.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>gc</em></TD>
     <TD>Data for efficiently finding close locations.</TD></TR>
+
+<TR><TD valign=top><em class=code>num</em></TD>
+    <TD> The number of locations, i.e. the length of the <em class=code>locs</em> array.</TD></TR>
+
 <TR><TD valign=top><em class=code>maxdist</em></TD>
     <TD>Anything closer than this number of radians is a close location.</TD></TR>
+
+<TR><TD valign=top><em class=code>locs</em></TD>
+    <TD>The list of locations in question.</TD></TR>
+
 <TR><TD valign=top><em class=optionalcode>maxdist</em></TD>
     <TD>If specified, must be a list of real values.  The length of
         the list must be exactly the same length as the number of
@@ -1154,54 +1222,12 @@ when get_close() is called.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="get_close_obs_init"></A>
-<br>
-<div class=routine>
-<em class=call> call get_close_obs_init(gc, num, obs)</em>
-<pre>
-type(get_close_type),             intent(inout) :: <em class=code>gc</em>
-integer,                          intent(in)    :: <em class=code>num</em>
-type(location_type), dimension(:) intent(in)    :: <em class=code>obs</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Initialize storage for efficient identification of locations close
-to a given location. Allocates storage for keeping track of which 'box'
-each location in the list is in.
-Must be called after <em class=code>get_close_maxdist_init</em>, and
-the list of locations here must be the same as the list of locations
-passed into <em class=code>get_close_obs()</em>.  If the list changes,
-<em class=code>get_close_obs_destroy()</em> must be called, and both
-the initialization routines must be called again.
-It allocates space so it is necessary to call <em class=code>get_close_obs_destroy</em>
-when completely done with getting distances between locations.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>gc</em></TD>
-    <TD>Structure that contains data to efficiently find locations 
-        close to a given location.</TD></TR>
-<TR><TD valign=top><em class=code>num</em></TD>
-    <TD>The number of locations in the list.</TD></TR>
-<TR><TD valign=top><em class=code>obs</em></TD>
-    <TD>The locations of each element in the list, 
-        not used in 1D implementation.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
 <A NAME="get_close_obs"></A>
 <br>
 <div class=routine>
 <em class=call>call get_close_obs(gc, base_obs_loc, base_obs_type, 
-               obs, obs_kind, num_close, close_ind, dist) </em>
+               obs, obs_kind, num_close, close_ind 
+              <em class=optionalcode>[, dist, ens_handle]</em>) </em>
 <pre>
 type(get_close_type),              intent(in)  :: <em class=code>gc</em>
 type(location_type),               intent(in)  :: <em class=code>base_obs_loc</em>
@@ -1211,6 +1237,7 @@ integer,             dimension(:), intent(in)  :: <em class=code>obs_kind</em>
 integer,                           intent(out) :: <em class=code>num_close</em>
 integer,             dimension(:), intent(out) :: <em class=code>close_ind</em>
 real(r8), optional,  dimension(:), intent(out) :: <em class=optionalcode>dist</em>
+type(ensemble_type), optional,     intent(in)  :: <em class=optionalcode>ens_handle</em>
 </pre>
 </div>
 
@@ -1223,8 +1250,8 @@ of all the locations close to the single one along with the number of
 these and the distances for the close ones.  The list of locations
 passed in via the <em class=code>obs</em> argument must be identical to
 the list of <em class=code>obs</em> passed into the most recent call
-to <em class=code>get_close_obs_init()</em>.  If the list of locations
-of interest changes <em class=code>get_close_obs_destroy()</em> must
+to <em class=code>get_close_init()</em>.  If the list of locations
+of interest changes <em class=code>get_close_destroy()</em> must
 be called and then the two initialization routines must be called 
 before using <em class=code>get_close_obs()</em> again.
 </P>
@@ -1241,7 +1268,7 @@ but also for state variable locations which only have a generic kind.
 If called without the optional <em class=optionalcode>dist</em> argument,
 all locations that are potentially close are returned, which is likely a
 superset of the locations that are within the threshold distance specified in
-the <em class=code>get_close_maxdist_init()</em> call.  This can be
+the <em class=code>get_close_init()</em> call.  This can be
 useful to collect a list of potential locations, and then to convert
 all the vertical coordinates into one consistent unit (pressure, height
 in meters, etc), and then the list can be looped over, calling
@@ -1268,6 +1295,8 @@ or not depending on the setting of <em class=code>horiz_dist_only</em>.
 <TR><TD valign=top><em class=optionalcode>dist</em></TD>
     <TD>Distance between given location and the 
         close ones identified in close_ind.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>ens_handle</em></TD>
+    <TD>Handle to an ensemble of interest.</TD></TR>
 </TABLE>
 
 </div>
@@ -1275,10 +1304,10 @@ or not depending on the setting of <em class=code>horiz_dist_only</em>.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="get_close_obs_destroy"></A>
+<A NAME="get_close_destroy"></A>
 <br>
 <div class=routine>
-<em class=call> call get_close_obs_destroy(gc) </em>
+<em class=call> call get_close_destroy(gc) </em>
 <pre>
 type(get_close_type), intent(inout) :: <em class=code>gc</em>
 </pre>
@@ -1290,8 +1319,8 @@ type(get_close_type), intent(inout) :: <em class=code>gc</em>
 <P>
 Releases memory associated with the <em class=code>gc</em>
 derived type.  Must be called whenever the list of locations
-changes, and then <em class=code>get_close_maxdist_init</em> and
-<em class=code>get_close_obs_init</em> must be called again
+changes, and then 
+<em class=code>get_close_init</em> must be called again
 with the new locations list.
 </P>
 
@@ -1363,6 +1392,44 @@ of the two locations.
 <TR><TD valign=top><em class=code>var</em></TD>
     <TD>distance between loc1 and loc2.</TD></TR>
 
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_maxdist"></A>
+<br>
+<div class=routine>
+<em class=call>var = get_maxdist(gc <em class=optionalcode>[, obs_type]</em>) </em>
+<pre>
+real(r8)                            :: var
+type(get_close_type), intent(inout) :: <em class=code>gc</em>
+integer, optional,    intent(in)    :: <em class=optionalcode>obs_type</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Since it is possible to have different cutoffs for different observation types,
+an optional argument  <em class=optionalcode>obs_type</em> 
+may be used to specify which maximum distance is of interest.
+The cutoff is specified as the half-width of the tapering function,
+<em class=code>get_maxdist</em> returns the full width of the tapering function.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>gc</em></TD>
+    <TD>Data for efficiently finding close locations.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>obs_type</em></TD>
+    <TD>The integer code specifying the type of observation.</TD></TR>
+<TR><TD valign=top><em class=code>var</em></TD>
+    <TD>The distance at which the tapering function is zero. Put another way,
+anything closer than this number of radians is a close location.
+</TD></TR>
 </TABLE>
 
 </div>
@@ -1712,8 +1779,8 @@ to identify this location module in output long name metadata.
 </P>
 
 </div>
-<br>
 
+<P><!-- space so the 'top' aligns correctly --></P>
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
@@ -1728,6 +1795,7 @@ to identify this location module in output long name metadata.
     <TD>to read the location_mod namelist</TD></TR>
 </TABLE>
 
+<P><!-- space so the 'top' aligns correctly --></P>
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
 <!--==================================================================-->
@@ -1739,6 +1807,7 @@ to identify this location module in output long name metadata.
 <li> none </li>
 </ol>
 
+<P><!-- space so the 'top' aligns correctly --></P>
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
 <!--==================================================================-->
@@ -1820,12 +1889,6 @@ by a single call 'val = vert_is(loc, VERTISxxx)'.
 <P>
 See the note in the 'has_vertical_localization()' about a better
 name for this routine.
-</P>
-<P>
-The functions of 'get_close_maxdist_init()' and 'get_close_obs_init()'
-appear to be able to be combined into a single init routine.  This 
-impacts all model_mods, however, since they can intercept these routines.
-Doing this will be a non-backwards compatible change.
 </P>
 <P>
 The use of 'obs' in all these routine names should probably be

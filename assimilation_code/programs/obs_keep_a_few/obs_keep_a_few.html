@@ -35,14 +35,40 @@
 <H2>Overview</H2>
 
 <P>
-This program allows you to create an output observations sequence file that is
-shorter than the input observation sequence file.  Observations in an
-observation sequence file are always processed in time order, so this tool
-allows you to select the first N observations, in time sequence, of any type,
-or it allows you to select the first N observations of each different
-observation type.  Set the limit values to -1 to disable them. If both 
-the max count per type and max total count limits are given, the program
-quits when the first one of the limits is reached.
+This program creates an output observation sequence 
+(obs_seq) file that is shorter than the input obs_seq file.  
+There are two ways to restrict the number of observations
+copied to the output: the total number of observations
+regardless of observation type, or up to N observations of each type.
+Observations in an obs_seq file are processed in time order
+so the observations with the earliest timestamps will be copied.
+</P>
+
+<P>
+Set either limit to -1 to disable it. 
+If both the maximum count per type and maximum total count are 
+given the copying stops when the first limit is reached.
+</P>
+
+<P>
+If you want to subset an obs_seq file starting at a later time
+see the <a href="../obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool</a>
+for subsetting by time and then use this tool on the output.
+That tool also allows you to subset by obs type, location, data value,
+and a variety of other options.  
+</P>
+
+<P>
+The <em class=program>obs_keep_a_few</em> program
+only subsets by numbers of observations.  It is expected to be useful 
+when prototyping experiments so the run time is short, or for debugging
+or testing.  Setting a limit per type ensures you have up to N of
+each type of observation present in the output file.
+</P>
+
+<P>
+Identity observations are all considered to be the same 
+identity "observation type" by this tool.
 </P>
 
 <!--==================================================================-->
@@ -51,7 +77,12 @@ quits when the first one of the limits is reached.
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
+types_mod
 utilities_mod
+location_mod
+obs_def_mod
+obs_kind_mod
+time_manager_mod
 obs_sequence_mod
 </PRE>
 
@@ -73,13 +104,13 @@ prematurely terminating the namelist.
 
 <div class=namelist>
 <pre>
-&amp;obs_loop_nml
-   filename_in     = ''
-   filename_out    = '' 
-   keep_N_of_each  = 10
-   max_all_obs_out = -1
-   print_only      = .false.
-   calendar        = 'Gregorian'
+&amp;obs_keep_a_few_nml
+   filename_in        = ''
+   filename_out       = '' 
+   max_count_per_type = 10
+   max_total_count    = -1
+   print_only         = .false.
+   calendar           = 'Gregorian'
    /
 </pre>
 </div>
@@ -109,23 +140,24 @@ prematurely terminating the namelist.
 An existing file will be overwritten.
 </TD></TR>
 
-<TR><TD>keep_N_of_each</TD>
+<TR><TD>max_count_per_type</TD>
     <TD>integer</TD>
     <TD>The first N observations of each different type
 will be copied to the output file.  Observation sequence
-files are always processed in time order, so the first N
-observations will be the ones with the earliest time
-stamps, relative to all other observations of the same type.
+files are processed in time order so these will be 
+the ones with the earliest time stamps relative to 
+other observations of this same type.
 Set to -1 to disable this limit.
 </TD></TR>
 
-<TR><TD>max_all_obs_out</TD>
+<TR><TD>max_total_count</TD>
     <TD>integer</TD>
-    <TD>If greater than 0, sets the upper limit on the number
-of observations of all types to be copied to output.  The
-program quits when either this limit is reached or when
-there are N of each obs type in the output.  Set to -1 to
-disable.
+    <TD>If greater than 0, sets the upper limit on the 
+total number of observations to be copied to the output 
+file regardless of type.  
+The program quits when either this limit is reached or when
+there are N of each different obs type in the output.  
+Set to -1 to disable.
 </TD></TR>
 
 <TR><TD>print_only</TD>
@@ -141,7 +173,7 @@ of each obs type) but doesn't create the output file.
 Generally 'Gregorian' or 'No calendar'.
 See the DART time manager for more options.
 Only controls the formatting of how the times
-in the obs_seq files are displayed.
+in the output summary messages are displayed.
 </TD></TR>
 
 </TBODY> 

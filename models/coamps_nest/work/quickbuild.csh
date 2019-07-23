@@ -37,12 +37,12 @@ endif
 
 #----------------------------------------------------------------------
 # 'preprocess' is a program that culls the appropriate sections of the
-# observation module for the observations types in 'input.nml'; the 
-# resulting source file is used by all the remaining programs, 
+# observation module for the observations types in 'input.nml'; the
+# resulting source file is used by all the remaining programs,
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
-\rm -f preprocess *.o *.mod
+\rm -f preprocess *.o *.mod Makefile .cppdefs
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
 
@@ -75,7 +75,7 @@ foreach TARGET ( mkmf_* )
       @ n = $n + 1
       echo
       echo "---------------------------------------------------"
-      echo "${MODEL} build number ${n} is ${PROG}" 
+      echo "${MODEL} build number ${n} is ${PROG}"
       \rm -f ${PROG}
       csh $TARGET || exit $n
       make        || exit $n
@@ -83,18 +83,18 @@ foreach TARGET ( mkmf_* )
    endsw
 end
 
-\rm -f *.o *.mod input.nml*_default
+\rm -f *.o *.mod input.nml*_default Makefile .cppdefs
 
 if ( $#argv == 1 && "$1" == "-mpi" ) then
-  echo "Success: All single task DART programs compiled."  
+  echo "Success: All single task DART programs compiled."
   echo "Script now compiling MPI parallel versions of the DART programs."
 else if ( $#argv == 1 && "$1" == "-nompi" ) then
-  echo "Success: All single task DART programs compiled."  
+  echo "Success: All single task DART programs compiled."
   echo "Script is exiting without building the MPI version of the DART programs."
   exit 0
 else
   echo ""
-  echo "Success: All single task DART programs compiled."  
+  echo "Success: All single task DART programs compiled."
   echo "Script now compiling MPI parallel versions of the DART programs."
   echo "Run the quickbuild.csh script with a -nompi argument or"
   echo "edit the quickbuild.csh script and add an exit line"
@@ -103,13 +103,13 @@ else
 endif
 
 #----------------------------------------------------------------------
-# to disable an MPI parallel version of filter for this model, 
+# to disable an MPI parallel version of filter for this model,
 # call this script with the -nompi argument, or if you are never going to
 # build with MPI, add an exit before the entire section above.
 #----------------------------------------------------------------------
 
 #----------------------------------------------------------------------
-# Build the MPI-enabled target(s) 
+# Build the MPI-enabled target(s)
 #----------------------------------------------------------------------
 
 \rm -f filter create_mean_std create_increment
@@ -143,7 +143,7 @@ if ($status != 0) then
    exit $n
 endif
 
-\rm -f *.o *.mod input.nml*_default
+\rm -f *.o *.mod input.nml*_default Makefile .cppdefs
 
 exit 0
 

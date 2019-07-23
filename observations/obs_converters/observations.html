@@ -134,7 +134,8 @@ to be converted.  If your input data format is:
 <DL>
 <DT>netCDF</DT><DD>Start with the <em class=file>MADIS</em> converters,
 and in particular try the <em class=file>convert_madis_profiler.f90</em>
-file because it is the most straightforward.
+file because it is the most straightforward. Another good option is 
+<em class=file>SST/oi_sst_to_obs.f90</em>.
 </DD>
 <DT>Comma separated text</DT><DD>Start with the <em class=file>Ameriflux</em> converter.
 </DD>
@@ -330,21 +331,50 @@ the observations into the format required by DART.</P>
 <P>The current list of converters include:</P>
 <UL>
 <LI><a href="AIRS/AIRS.html">AIRS</a></LI>
+<!-- AURA -->
 <LI><a href="AVISO/AVISO.html">Aviso+/CMEMS</a></LI>
+<LI><a href="Ameriflux/level4_to_obs.html">Ameriflux</a></LI>
+<!-- CHAMP -->
+<!-- CNOFS -->
+<LI><a href="COSMOS/COSMOS_to_obs.html">COSMOS</a></LI>
+<LI><a href="DWL/dwl_to_obs.html">DWL</a></LI>
+<LI><a href="GPSPW/README">GPSPW</a></LI>
+<LI><a href="GSI2DART/README">GSI2DART</a></LI>
 <LI><a href="GTSPP/GTSPP.html">GTSPP</a></LI>
 <LI><a href="MADIS/MADIS.html">MADIS</a></LI>
+<LI><a href="MIDAS/MIDAS_to_obs.html">MIDAS</a></LI>
+<LI><a href="MODIS/MOD15A2_to_obs.htm">MODIS</a></LI>
 <LI><a href="NCEP/prep_bufr/prep_bufr.html">NCEP (prepbufr->ascii)</a></LI>
 <LI><a href="NCEP/ascii_to_obs/create_real_obs.html">NCEP (ascii->obs_seq)</a></LI>
+<LI><a href="ROMS/ROMS.htm">ROMS</a></LI>
+<!-- SABER -->
 <LI><a href="SSEC/SSEC.html">SSEC</a></LI>
+<LI><a href="SST/SST.html">SST</a></LI>
+<LI><a href="SSUSI/convert_f16_edr_dsk.html">SSUSI</a></LI>
 <LI><a href="WOD/WOD.html">WOD</a></LI>
+<LI><a href="cice/cice_to_obs.html">cice</a></LI>
+<LI><a href="gnd_gps_vtec/README">gnd_gps_vtec</a></LI>
 <LI><a href="gps/gps.html">GPS</a></LI>
+<LI><a href="ok_mesonet/ok_mesonet.html">ok_mesonet</a></LI>
 <LI><a href="quikscat/QuikSCAT.html">QuikSCAT</a></LI>
 <LI><a href="radar/radar.html">Radar</a></LI>
+<LI><a href="snow/snow_to_obs.html">snow</a></LI>
 <LI><a href="text/text_to_obs.html">Text</a></LI>
+<!-- text_GITM -->
+<LI><a href="tpw/tpw.html">tpw</a></LI>
 <LI><a href="tropical_cyclone/tc_to_obs.html">Tropical Cyclones</a></LI>
 <LI><a href="var/littler_tf_dart.html">Var (little-r)</a></LI>
 <LI><a href="var/rad_3dvar_to_dart.html">Var (radar)</a></LI>
 </UL>
+
+<P>
+There are also a couple utilities of note:
+</P>
+<ul>
+<LI><a href="even_sphere/README">even_sphere</a> - a utility for generating evenly-spaced observation locations that can then be used in a perfect model experiment.</LI>
+<LI><a href="obs_error/README">obs_error</a> - modules that specify observation errors based on what is used by ECMWF and NCEP </LI>
+</ul>
+
 <P>
 In addition the following external program produces
 DART observation sequence files:

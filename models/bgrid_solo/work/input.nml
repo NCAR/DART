@@ -29,14 +29,14 @@
 
 &filter_nml
    single_file_in               = .true.
-   input_state_files            = ''
-   input_state_file_list        = 'filter_input_list.txt'
+   input_state_files            = 'filter_input.nc'
+   input_state_file_list        = ''
 
    stages_to_write  = 'preassim', 'analysis', 'output'
 
    single_file_out              = .true.
-   output_state_files           = ''
-   output_state_file_list       = 'filter_output_list.txt'
+   output_state_files           = 'filter_output.nc'
+   output_state_file_list       = ''
    output_interval              = 1
    output_members               = .true.
    num_output_state_members     = 20
@@ -68,13 +68,14 @@
    inf_sd_initial_from_restart = .false.,                 .false.
    inf_deterministic           = .true.,                  .true.
    inf_initial                 = 1.0,                     1.0
-   inf_sd_initial              = 0.0,                     0.0
-   inf_damping                 = 1.0,                     1.0
    inf_lower_bound             = 1.0,                     1.0
    inf_upper_bound             = 1000000.0,               1000000.0
+   inf_damping                 = 1.0,                     1.0
+   inf_sd_initial              = 0.0,                     0.0
    inf_sd_lower_bound          = 0.0,                     0.0
+   inf_sd_max_change           = 1.05,                    1.05
 
-   trace_execution              = .false
+   trace_execution              = .false.
    output_timestamps            = .false.
    output_forward_op_errors     = .false.
    silence                      = .false.
@@ -158,7 +159,7 @@
    state_variables = 'ps', 'QTY_SURFACE_PRESSURE',
                      't',  'QTY_TEMPERATURE',
                      'u',  'QTY_U_WIND_COMPONENT',
-                     'v',  'QTY_V_WIND_COMPONENT',
+                     'v',  'QTY_V_WIND_COMPONENT'
    template_file = 'perfect_input.nc'
    /
 
@@ -166,8 +167,8 @@
 # namelists used for cold start of bgrid core (N45L20)
 # running the held-suarez benchmark
 #
-#     nlon = 144, nlat = 90, nlev = 20,
-#     nlon = 60, nlat = 30, nlev = 5,
+#     nlon = 144, nlat = 90, nlev = 20
+#     nlon = 60, nlat = 30, nlev = 5
 
 &fms_nml
    domains_stack_size = 90000
@@ -273,12 +274,12 @@
 #
 # keep only the U and V radiosonde winds:
 #   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT',
-#                        'RADIOSONDE_V_WIND_COMPONENT'
+#                        'RADIOSONDE_V_WIND_COMPONENT',
 #   keep_types         = .true.
 #
 # remove the U and V radiosonde winds:
 #   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT',
-#                        'RADIOSONDE_V_WIND_COMPONENT'
+#                        'RADIOSONDE_V_WIND_COMPONENT',
 #   keep_types         = .false.
 #
 # keep only observations with a DART QC of 0:
@@ -296,7 +297,7 @@
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:
 # year   month   day   hour   minute   second
-# max_num_bins can be used to specify a fixed number of bins
+# max_num_bins can be used to specify a fixed number of bins,
 # in which case last_bin_center should be safely in the future.
 #
 # Acceptable latitudes range from  [-90,  90]
@@ -306,9 +307,9 @@
    obs_sequence_name = 'obs_seq.final'
    obs_sequence_list = ''
    first_bin_center =  1601, 1, 1, 0, 0, 0
-   last_bin_center  =  1601, 1, 1, 3, 0, 0
-   bin_separation   =     0, 0, 0, 0, 3, 0
-   bin_width        =     0, 0, 0, 0, 3, 0
+   last_bin_center  =  1601, 1, 1, 1, 0, 0
+   bin_separation   =     0, 0, 0, 1, 0, 0
+   bin_width        =     0, 0, 0, 1, 0, 0
    time_to_skip     =     0, 0, 0, 0, 0, 0
    max_num_bins     = 1000
    trusted_obs      = 'null'

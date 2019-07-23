@@ -8,7 +8,8 @@ module obs_utilities_mod
 
 
 use        types_mod, only : i2, i4, r8, MISSING_R8, MISSING_I
-use    utilities_mod, only : nc_check, E_MSG, E_ERR, error_handler
+use    utilities_mod, only : E_MSG, E_ERR, error_handler
+use  netcdf_utilities_mod, only : nc_check
 use      obs_def_mod, only : obs_def_type, set_obs_def_time, set_obs_def_type_of_obs, &
                              set_obs_def_error_variance, set_obs_def_location, &
                              get_obs_def_time, get_obs_def_location,           &

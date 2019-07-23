@@ -1,0 +1,9 @@
+&sst_to_obs_nml
+   sst_netcdf_file     = '20121231120000-NCEI-L4_GHRSST-SSTblend-AVHRR_OI-GLOB-v02.0-fv02.0_NWA.nc'
+   sst_netcdf_filelist = ''
+   sst_out_file        = 'obs_seq.sst'
+   subsample_intv      = 1
+   sst_rep_error       = 3.0
+   debug               = .false.
+  /
+

@@ -29,7 +29,8 @@ program convert_madis_profiler
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 use         types_mod, only : r8, missing_r8
-use     utilities_mod, only : nc_check, initialize_utilities, finalize_utilities
+use     utilities_mod, only : initialize_utilities, finalize_utilities
+use  netcdf_utilities_mod, only : nc_open_file_readonly, nc_close_file
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, &
                               increment_time, get_time, operator(-), GREGORIAN
 use      location_mod, only : VERTISHEIGHT
@@ -88,8 +89,7 @@ comp_day0 = set_date(1970, 1, 1, 0, 0, 0)
 first_obs = .true.
 
 
-call nc_check( nf90_open(profiler_netcdf_file, nf90_nowrite, ncid), &
-               'convert_madis_profiler', 'opening file '//trim(profiler_netcdf_file))
+ncid = nc_open_file_readonly(profiler_netcdf_file, 'convert_madis_profiler')
 
 call getdimlen(ncid, "recNum", nsta)
 call getdimlen(ncid, "level" , nlev)
@@ -237,8 +237,7 @@ end do staloop
 
 ! need to wait to close file because in the loop it queries the
 ! report types.
-call nc_check( nf90_close(ncid) , &
-               'convert_madis_profiler', 'closing file '//trim(profiler_netcdf_file))
+call nc_close_file(ncid, 'convert_madis_profiler')
 
 ! if we added any obs to the sequence, write it now.
 if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, profiler_out_file)
