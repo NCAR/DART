@@ -67,7 +67,7 @@ character(len=*), parameter :: revdate  = "$Date$"
 
 
 ! Module storage for writing error messages
-character(len=512) :: msgstring
+character(len=512) :: string1, string2
 
 contains
 
@@ -439,10 +439,10 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
          write(state_size_string, *) state_ens_handle%num_vars
          write(obs_key_string, *) keys(i)
          write(identity_obs_string, *) -obs_kind_ind
-         write(msgstring,  *) 'unable to compute forward operator for obs number '//trim(adjustl(obs_key_string))
-         write(msgstring2, *) 'identity index '//trim(adjustl(identity_obs_string))//&
+         write(string1,  *) 'unable to compute forward operator for obs number '//trim(adjustl(obs_key_string))
+         write(string2, *) 'identity index '//trim(adjustl(identity_obs_string))//&
                               ' must be between 1 and the state size of '//trim(adjustl(state_size_string))
-         call error_handler(E_ERR, 'get_expected_obs', msgstring, source, revision, revdate, text2=msgstring2)
+         call error_handler(E_ERR, 'get_expected_obs', string1, source, revision, revdate, text2=string2)
       endif
 
       expected_obs =  get_state(-1*int(obs_kind_ind,i8), state_ens_handle)
@@ -532,17 +532,17 @@ do copy = 1, num_fwd_ops
    ! Successful istatus but missing_r8 for forward operator
    if(istatus(copy) == 0) then
       if ((assimilate_ob .or. evaluate_ob) .and. (expected_obs(copy) == missing_r8)) then
-         write(msgstring, *) 'istatus was 0 (OK) but forward operator returned missing value.'
-         write(msgstring2, *) 'observation number ', thiskey
-         call error_handler(E_ERR,'check_forward_operator_istatus', msgstring, &
-                    source, revision, revdate, text2=msgstring2)
+         write(string1, *) 'istatus was 0 (OK) but forward operator returned missing value.'
+         write(string2, *) 'observation number ', thiskey
+         call error_handler(E_ERR,'check_forward_operator_istatus', string1, &
+                    source, revision, revdate, text2=string2)
       endif
    ! Negative istatus
    else if (istatus(copy) < 0) then
-      write(msgstring, *) 'istatus must not be <0 from forward operator. 0=OK, >0 for error'
-      write(msgstring2, *) 'observation number ', thiskey
-      call error_handler(E_ERR,'check_forward_operator_istatus', msgstring, &
-                    source, revision, revdate, text2=msgstring2)
+      write(string1, *) 'istatus must not be <0 from forward operator. 0=OK, >0 for error'
+      write(string2, *) 'observation number ', thiskey
+      call error_handler(E_ERR,'check_forward_operator_istatus', string1, &
+                    source, revision, revdate, text2=string2)
    endif
 
 enddo
