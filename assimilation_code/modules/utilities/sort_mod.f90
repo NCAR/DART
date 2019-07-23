@@ -16,7 +16,7 @@
 
 module sort_mod
 
-use     types_mod, only : r8
+use     types_mod, only : r4, r8, i8, digits12
 use utilities_mod, only : register_module
 
 implicit none
@@ -25,10 +25,10 @@ private
 public :: sort, index_sort
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
 
@@ -44,7 +44,9 @@ end interface sort
 
 interface index_sort
    module procedure index_sort_real
+   module procedure index_sort_digits12
    module procedure index_sort_int
+   module procedure index_sort_i8
    module procedure index_sort_user
 end interface
 
@@ -273,6 +275,73 @@ end subroutine index_sort_real
 
 !-------------------------------------------------------------------------
 
+subroutine index_sort_digits12(x, indx, num)
+
+implicit none
+
+integer(i8),    intent(in)  :: num
+real(digits12), intent(in)  :: x(num)
+integer(i8),    intent(out) :: indx(num)
+
+integer(i8) :: ind, i, j, l_val_myindex, level
+real(digits12) :: l_val
+
+if ( .not. module_initialized ) call initialize_module
+
+!  INITIALIZE THE indx ARRAY TO INPUT ORDER
+do i = 1, num
+   indx(i) = i
+end do
+
+! Only one element, just send it back
+if(num <= 1) return
+
+level = num / 2 + 1
+ind = num
+
+! Keep looping until finished
+do
+   ! Keep going down levels until bottom
+   if(level > 1) then
+      level = level - 1
+      l_val = x(indx(level))
+      l_val_myindex = indx(level)
+   else
+      l_val = x(indx(ind))
+      l_val_myindex = indx(ind)
+
+      indx(ind) = indx(1)
+      ind = ind - 1
+      if(ind == 1) then
+         indx(1) = l_val_myindex
+         return
+      endif
+   endif
+
+   i = level
+   j = 2 * level
+
+   do while(j <= ind)
+      if(j < ind) then
+         if(x(indx(j)) < x(indx(j + 1))) j = j + 1
+      endif
+      if(l_val < x(indx(j))) then
+         indx(i) = indx(j)
+         i = j
+         j = 2 * j
+      else
+         j = ind + 1
+      endif
+
+   end do
+   indx(i) = l_val_myindex
+
+end do
+
+end subroutine index_sort_digits12
+
+!-------------------------------------------------------------------------
+
 !> Uses a heap sort algorithm on x(), returns integer array of sorted indices.
 !> x(num) array returned unchanged; index array doesn't need to be 
 !> initialized before this call. 
@@ -286,7 +355,7 @@ end subroutine index_sort_real
 
 subroutine index_sort_int(x, indx, num)
 
-integer,  intent(in)  :: num
+integer, intent(in)  :: num
 integer, intent(in)  :: x(num)
 integer, intent(out) :: indx(num)
 
@@ -318,11 +387,11 @@ do
       l_val_index = indx(ind)
 
       indx(ind) = indx(1)
-  ind = ind - 1
-    if(ind == 1) then
+      ind = ind - 1
+      if(ind == 1) then
          indx(1) = l_val_index
-    return
-    endif
+         return
+      endif
   endif
 
   i = level
@@ -330,22 +399,91 @@ do
 
   do while(j <= ind)
     if(j < ind) then
-         if(x(indx(j)) < x(indx(j + 1))) j = j + 1
+       if(x(indx(j)) < x(indx(j + 1))) j = j + 1
     endif
-      if(l_val < x(indx(j))) then
-         indx(i) = indx(j)
-      i = j
-      j = 2 * j
+    if(l_val < x(indx(j))) then
+       indx(i) = indx(j)
+       i = j
+       j = 2 * j
     else
-     j = ind + 1
+       j = ind + 1
     endif
-
    end do
    indx(i) = l_val_index
 
 end do
 
 end subroutine index_sort_int
+
+!-------------------------------------------------------------------------
+
+subroutine index_sort_i8(x, indx, num)
+
+! Uses a heap sort alogrithm on x (an array of long integers)
+!  returns array of sorted indices and the sorted array
+implicit none
+
+integer(i8), intent(in)  :: num
+integer(i8), intent(in)  :: x(num)
+integer(i8), intent(out) :: indx(num)
+
+integer(i8) :: ind, i, j, l_val_myindex, level
+integer(i8) :: l_val
+
+if ( .not. module_initialized ) call initialize_module
+
+!  INITIALIZE THE indx ARRAY TO INPUT ORDER
+do i = 1, num
+  indx(i) = i
+end do
+
+! Only one element, just send it back
+if(num <= 1) return
+
+level = num / 2 + 1
+ind = num
+
+! Keep looping until finished
+do
+  ! Keep going down levels until bottom
+  if(level > 1) then
+    level = level - 1
+    l_val = x(indx(level))
+    l_val_myindex = indx(level)
+   else
+     l_val = x(indx(ind))
+     l_val_myindex = indx(ind)
+
+     indx(ind) = indx(1)
+     ind = ind - 1
+     if(ind == 1) then
+        indx(1) = l_val_myindex
+        return
+     endif
+  endif
+
+  i = level
+  j = 2 * level
+
+  do while(j <= ind)
+    if(j < ind) then
+      if(x(indx(j)) < x(indx(j + 1))) j = j + 1
+    endif
+    if(l_val < x(indx(j))) then
+      indx(i) = indx(j)
+      i = j
+      j = 2 * j
+    else
+      j = ind + 1
+    endif
+
+   end do
+
+   indx(i) = l_val_myindex
+
+end do
+
+end subroutine index_sort_i8
 
 !-------------------------------------------------------------------------
 

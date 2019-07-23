@@ -30,9 +30,9 @@ public :: read_model_time, write_model_time
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = &
-   "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+   '$URL$'
+character(len=*), parameter :: revision = '$Revision$'
+character(len=*), parameter :: revdate  = '$Date$'
 
 character(len=512) :: string1, string2, string3
 
@@ -68,7 +68,7 @@ write(string3,*)'You may need to supply a model-specific "read_model_time()" to 
 
 ncid = nc_open_file_readonly(filename, routine)
 
-ios = nf90_inq_varid(ncid, "time", VarID)
+ios = nf90_inq_varid(ncid, 'time', VarID)
 if (ios /= NF90_NOERR) then
    write(string1,*)'Expecting to be able to read the model time from a "time" variable'
    write(string2,*)'in file "'//trim(filename)//'"'
@@ -93,7 +93,7 @@ else
 
    ! Since the time variable is known to have only 1 dimension, we know it is the first one.
    ios = nf90_inquire_dimension(ncid, dimIDs(1), len=ntimes)
-   call nc_check(ios, 'read_model_time', 'inquire_dimension for time dimension from "'//trim(filename) )
+   call nc_check(ios, 'read_model_time', 'inquire_dimension for time dimension from "'//trim(filename)//'"')
 
    ! read the last one
    ios = nf90_get_var(ncid, VarID, time_array, start=(/ntimes/), count=(/1/))
@@ -181,7 +181,7 @@ else if ( dart_calendar == 'GREGORIAN' ) then
    endif
 else
    call error_handler(E_ERR, 'read_model_time:', &
-    'calendar type "'//trim(dart_calendar)//' unsupported by default read_model_time() routine', &
+    'calendar type "'//trim(dart_calendar)//'" unsupported by default read_model_time() routine', &
                       source, revision, revdate, text2=string3)
 endif
 
@@ -234,9 +234,9 @@ write(string3,*)'You may need to supply a model-specific "write_model_time()" to
 ! see what kind of calendar dart is currently running with.
 call get_calendar_string(dart_calendar)
 
-ios = nf90_inq_varid(ncid, "time", VarID)
+ios = nf90_inq_varid(ncid, 'time', VarID)
 
-! if the file doesn't already have a "time" variable, we make one
+! if the file doesn't already have a 'time' variable, we make one
 if (ios /= NF90_NOERR) then
 
    call error_handler(E_MSG, routine, 'no variable "time" found in file', &
@@ -244,11 +244,11 @@ if (ios /= NF90_NOERR) then
 
    ! begin define mode
    ios = nf90_Redef(ncid)
-   call nc_check(ios, routine, "redef")
+   call nc_check(ios, routine, 'redef')
 
    ! check to see if there is a time dimension
    ! if it does not exist create it
-   ios = nf90_inq_dimid(ncid, "time", dimIDs(1))
+   ios = nf90_inq_dimid(ncid, 'time', dimIDs(1))
    if (ios /= NF90_NOERR) then
 
       ! If there is already an unlimited dimension, just make a
@@ -256,10 +256,10 @@ if (ios /= NF90_NOERR) then
       ! make the time variable 'unlimited'.
 
       if (has_unlimited) then
-         ios = nf90_def_dim(ncid, "time", 1, dimIDs(1))
+         ios = nf90_def_dim(ncid, 'time', 1, dimIDs(1))
          call nc_check(ios, routine, 'def_dim singleton dimension time')
       else
-         ios = nf90_def_dim(ncid, "time", nf90_unlimited, dimIDs(1))
+         ios = nf90_def_dim(ncid, 'time', nf90_unlimited, dimIDs(1))
          call nc_check(ios, routine, 'def_dim unlimited dimension time')
          has_unlimited = .true.
          unlimitedDimID = dimIDs(1)
@@ -270,30 +270,30 @@ if (ios /= NF90_NOERR) then
    ! make the time variable be dimensioned time(time) which is the
    ! netCDF convention for coordinate variables (variables with the
    ! same name as a dimension).
-   ios = nf90_def_var(ncid, name="time", xtype=nf90_double, dimids=dimIDs(1), varid=VarID)
-   call nc_check(ios, routine, "time def_var")
+   ios = nf90_def_var(ncid, name='time', xtype=nf90_double, dimids=dimIDs(1), varid=VarID)
+   call nc_check(ios, routine, 'time def_var')
 
    ! define time attributes consistent with CF convention
-   ios = nf90_put_att(ncid, VarID, "long_name", "valid time of the model state")
-   call nc_check(ios, routine, "time long_name")
+   ios = nf90_put_att(ncid, VarID, 'long_name', 'valid time of the model state')
+   call nc_check(ios, routine, 'time long_name')
 
    if (dart_calendar == 'NO_CALENDAR') then
-      ios = nf90_put_att(ncid, VarID, "calendar", "none")
-      call nc_check(ios, routine, "calendar long_name")
+      ios = nf90_put_att(ncid, VarID, 'calendar', 'none')
+      call nc_check(ios, routine, 'calendar long_name')
 
       ! ncview (actually, probably udunits2) crashes or errors out or 
       ! displays misleading plot axes if you use 'days since ...' as the units.
       ! if you simply use 'days' it works much better.
 
-      ios = nf90_put_att(ncid, VarID, "units", "days")
-      call nc_check(ios, routine, "units long_name")
+      ios = nf90_put_att(ncid, VarID, 'units', 'days')
+      call nc_check(ios, routine, 'units long_name')
 
    else if (dart_calendar == 'GREGORIAN') then
-      ios = nf90_put_att(ncid, VarID, "calendar", "gregorian")
-      call nc_check(ios, routine, "calendar long_name")
+      ios = nf90_put_att(ncid, VarID, 'calendar', 'gregorian')
+      call nc_check(ios, routine, 'calendar long_name')
 
-      ios = nf90_put_att(ncid, VarID, "units", "days since 1601-01-01 00:00:00")
-      call nc_check(ios, routine, "units long_name")
+      ios = nf90_put_att(ncid, VarID, 'units', 'days since 1601-01-01 00:00:00')
+      call nc_check(ios, routine, 'units long_name')
    else
       write(string1,*) 'calendar type "'//trim(dart_calendar)// &
                        &'" unsupported by default write_model_time() routine'
@@ -302,7 +302,7 @@ if (ios /= NF90_NOERR) then
    endif
 
    ! end define mode
-   call nc_check( nf90_Enddef(ncid),routine, "Enddef" )
+   call nc_check( nf90_Enddef(ncid),routine, 'Enddef' )
 endif
 
 ! See if the existing time variable has a calendar and start date to consider
@@ -360,7 +360,7 @@ endif
 
 ! write dart days and seconds files to netcdf file
 ios = nf90_put_var(ncid, VarID, model_time, start=(/ ntimes /))
-call nc_check(ios, routine, "put_var model_time")
+call nc_check(ios, routine, 'put_var model_time')
 
 end subroutine write_model_time
 
