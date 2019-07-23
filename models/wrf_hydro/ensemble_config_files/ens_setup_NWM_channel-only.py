@@ -18,6 +18,13 @@ values = './FORCING_perturbed'
 wrf_hydro_ens_sim.set_member_diffs(att_tuple, values)
 
 
+# The nwm_ana default for channel-only is forc-type 10 (channel+bucket).
+# We want just the channel.
+att_tuple = ('base_hrldas_namelist', 'wrf_hydro_offline', 'forc_typ')
+values = 9
+wrf_hydro_ens_sim.set_member_diffs(att_tuple, values)
+
+
 # Sixmile does not currently have a routelink with support for compound-channel.
 att_tuple = ('base_hydro_namelist', 'hydro_nlist', 'compound_channel')
 values = False

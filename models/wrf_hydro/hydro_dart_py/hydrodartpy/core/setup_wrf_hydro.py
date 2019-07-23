@@ -31,7 +31,10 @@ def setup_wrf_hydro(config):
         wrf_hydro_model = wrfhydropy.Model(
             source_dir=config['wrf_hydro']['wrf_hydro_src'] / 'trunk/NDHMS/' ,
             model_config=config['wrf_hydro']['model_config'],
-            compiler=config['wrf_hydro']['compiler']
+            compiler=config['wrf_hydro']['compiler'],
+            hydro_namelist_config_file=config['wrf_hydro']['hydro_namelist_config_file'],
+            hrldas_namelist_config_file=config['wrf_hydro']['hrldas_namelist_config_file'],
+            compile_options_config_file=config['wrf_hydro']['compile_options_config_file']
         )
 
         # Apply compile option patches.

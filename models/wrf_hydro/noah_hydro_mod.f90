@@ -21,7 +21,8 @@ use misc_definitions_module, only : PROJ_LATLON, PROJ_MERC, PROJ_LC, &
 use    mpi_utilities_mod, only : my_task_id 
 
 use netcdf_utilities_mod, only : nc_check, nc_open_file_readonly, nc_close_file, &
-                                 nc_get_global_attribute, nc_add_global_attribute
+                                 nc_get_global_attribute, nc_add_global_attribute, &
+                                 nc_get_dimension_size, nc_get_variable
 
 use netcdf
 
@@ -42,6 +43,7 @@ public :: configure_lsm, &
           get_downstream_links, &
           get_noah_timestepping, &
           num_soil_layers, &
+          num_soil_nitrogen_layers, &  ! Added for UT Austin research
           soil_layer_thickness, &
           lsm_namelist_filename, &
           get_lsm_domain_info, &
@@ -134,6 +136,7 @@ namelist /HYDRO_nlist/ sys_cpl, geo_static_flnm, geo_finegrid_flnm,  &
 !> variables accessed by public functions
 
 integer :: num_soil_layers = -1
+integer :: num_soil_nitrogen_layers = -1
 real(r8) :: soil_layer_thickness(NSOLDX)
 character(len=256) :: lsm_domain_file(1)   ! 1 domain in this application
 
@@ -148,9 +151,8 @@ real(r8), allocatable, dimension(:) :: roughness  ! Manning's roughness
 real(r8), allocatable, dimension(:) :: channelIndsX, channelIndsY
 real(r8), allocatable, dimension(:) :: basnMask, basnLon, basnLat
 integer,  allocatable, dimension(:) :: linkID ! Link ID (NHDFlowline_network COMID)
-real(r4), allocatable, dimension(:) :: length
-integer,  allocatable, dimension(:) :: downstream
-integer,  allocatable, dimension(:,:) :: upstream
+real(r8), allocatable, dimension(:) :: length
+integer,  allocatable, dimension(:) :: to
 
 integer, parameter :: IDSTRLEN = 15 ! must match declaration in netCDF file
 character(len=IDSTRLEN), allocatable, dimension(:) :: gageID ! NHD Gage Event ID from SOURCE_FEA field in Gages feature class
@@ -180,9 +182,9 @@ type link_relations
    real(r4)                :: linkLength         = 0.0_r8      ! stream length (meters)
    integer(i8)             :: domain_offset      = MISSING_I8  ! into DART state vector
    integer                 :: downstream_linkID  = MISSING_I
-   integer                 :: upstream_linkID(2) = MISSING_I
-   integer                 :: to_link_index      = MISSING_I   ! into link_type structure
-   integer                 :: from_link_index(2) = MISSING_I   ! into link_type structure
+   integer                 :: downstream_index   = MISSING_I   ! into link_type structure
+   integer, allocatable    :: upstream_linkID(:)
+   integer, allocatable    :: upstream_index(:)                ! into link_type structure
 end type link_relations
 type(link_relations), allocatable :: connections(:)
 
@@ -423,11 +425,12 @@ call nc_check(io, routine, 'get_var XLAT',ncid=ncid)
 call nc_close_file(ncid, routine)
 
 if (debug > 99) then
-   write(*,*)routine,' south_north      is ', south_north
-   write(*,*)routine,' west_east        is ', west_east
-   write(*,*)routine,' soil_layers_stag is ', soil_layers_stag
-   write(*,*)routine,' snow_layers      is ', snow_layers
-   write(*,*)routine,' sosn_layers      is ', sosn_layers
+   write(*,*)routine,' south_north              is ', south_north
+   write(*,*)routine,' west_east                is ', west_east
+   write(*,*)routine,' soil_layers_stag         is ', soil_layers_stag
+   write(*,*)routine,' num_soil_nitrogen_layers is ', num_soil_nitrogen_layers
+   write(*,*)routine,' snow_layers              is ', snow_layers
+   write(*,*)routine,' sosn_layers              is ', sosn_layers
 endif
 
 end subroutine get_hrldas_constants
@@ -875,13 +878,11 @@ end subroutine getChannelGridCoords
 
 subroutine get_routelink_constants(filename)
 
-! (base) jamesmcc@cheyenne4[1037]:/glade/work/jamesmcc/domains/public/sixmile/NWM/DOMAIN> \
-! ncdump -h RouteLink.localLinks.v2.nc 
-! netcdf RouteLink.localLinks.v2 {
+! netcdf RouteLink {
 ! dimensions:
-! 	IDLength = 15 ;
-! 	localDim = 2 ;
-! 	feature_id = 157 ;
+!       feature_id = 67267 ;
+!       IDLength = 15 ;
+!       index = 66949 ;
 ! variables:
 ! 	float BtmWdth(feature_id) ;
 ! 		BtmWdth:long_name = "Bottom width of channel" ;
@@ -953,9 +954,22 @@ subroutine get_routelink_constants(filename)
 ! 	int to(feature_id) ;
 ! 		to:long_name = "To Link ID (PlusFlow table TOCOMID for every FROMCOMID)" ;
 ! 		to:coordinates = "lat lon" ;
-! 	int localLinks(feature_id, localDim) ;
-! 		localLinks:units = " " ;
-! 		localLinks:_FillValue = -9999 ;
+!       int fromIndices(index) ;
+!               fromIndices:long_name = "1-based index into link variable.
+!               Represents index of the upstream segment for each
+!               flowline in link variables." ;
+!       int fromIndsStart(feature_id) ;
+!               fromIndsStart:long_name = "1-based index into
+!               fromIndices variable. Represents index of first
+!               upstream segment for each flowline in link variable" ;
+!       int fromIndsEnd(feature_id) ;
+!               fromIndsEnd:long_name = "1-based index into fromIndices
+!               variable. Represents index of last upstream segment for
+!               each flowline in link variable" ;
+!       int toIndex(feature_id) ;
+!               toIndex:long_name = "1-based index into to variable.
+!               Represents index of the downstream segment for each
+!               flowline in link variable" ;
 
 ! module variables set: n_link, linkLong, linkLat, linkAlt, roughness, linkID, gageID
 ! module variables set: channelIndsX, channelIndsY
@@ -964,23 +978,20 @@ character(len=*), intent(in) :: filename
 
 character(len=*), parameter :: routine = 'get_routelink_constants'
 
-integer :: io, iunit, DimID, i, VarID, strlen
+integer :: io, ncid, i, VarID, strlen, database_length
 
-!! open the file
-io = nf90_open(filename, NF90_NOWRITE, iunit)
-call nc_check(io, routine, 'open', filename)
+! These are temporary variables needed to fill the connections structure
+! and must be read here to determine 'n_upstream' used to allocate some 
+! connections structure components
+integer, allocatable :: fromIndices(:)
+integer, allocatable :: fromIndsStart(:)
+integer, allocatable :: fromIndsEnd(:)
+integer, allocatable :: toIndex(:)
 
-!! get the linkDim ID and its length ... n_link
-io = nf90_inq_dimid(iunit, 'feature_id', DimID)
-call nc_check(io, routine,'inq_dimid','feature_id', filename)
-io = nf90_inquire_dimension(iunit, DimID, len=n_link)
-call nc_check(io, routine,'inquire_dimension','feature_id',filename)
-
-!! Need to test the character string length for the linkID
-io = nf90_inq_dimid(iunit, 'IDLength', DimID)
-call nc_check(io, routine,'inq_dimid','IDLength', filename)
-io = nf90_inquire_dimension(iunit, DimID, len=strlen)
-call nc_check(io, routine,'inquire_dimension','IDLength',filename)
+ncid            = nc_open_file_readonly(filename, routine)
+database_length = nc_get_dimension_size(ncid,'index',     routine)
+n_link          = nc_get_dimension_size(ncid,'feature_id',routine)
+strlen          = nc_get_dimension_size(ncid,'IDLength',  routine)
 
 if (strlen /= IDSTRLEN) then 
    write(string1,*)'IDLength read as ',strlen,' expected ',IDSTRLEN
@@ -989,11 +1000,17 @@ if (strlen /= IDSTRLEN) then
               revdate, text2=string2, text3=filename)
 endif
 
-! get the upstream links dimensionality
-io = nf90_inq_dimid(iunit, 'localDim', DimID)
-call nc_check(io, routine,'inq_dimid','localDim', filename)
-io = nf90_inquire_dimension(iunit, DimID, len=n_upstream)
-call nc_check(io, routine,'inquire_dimension','localDim',filename)
+allocate (fromIndices(database_length))
+allocate (fromIndsStart(       n_link))
+allocate (fromIndsEnd(         n_link))
+allocate (toIndex(             n_link))
+
+call nc_get_variable(ncid,'fromIndices',  fromIndices,  routine)
+call nc_get_variable(ncid,'fromIndsStart',fromIndsStart,routine)
+call nc_get_variable(ncid,'fromIndsEnd',  fromIndsEnd,  routine)
+call nc_get_variable(ncid,'toIndex',      toIndex,      routine)
+
+n_upstream = maxval(fromIndsEnd - fromIndsStart) + 1
 
 !! Allocate these module variables
 allocate(linkLong(n_link), linkLat(n_link), linkAlt(n_link))
@@ -1002,91 +1019,64 @@ allocate(linkID(n_link))
 allocate(gageID(n_link))
 allocate(channelIndsX(n_link), channelIndsY(n_link))
 allocate(connections(n_link))
+do i = 1, n_link
+   allocate(connections(i)%upstream_linkID(n_upstream))
+   allocate(connections(i)%upstream_index(n_upstream))
+enddo
 allocate(length(n_link))
-allocate(downstream(n_link))
-allocate(upstream(n_upstream,n_link))
+allocate(to(n_link))
 
-! Longitude [DART uses longitudes [0,360)]
-io = nf90_inq_varid(iunit, 'lon', VarID)
-call nc_check(io, routine, 'inq_varid', 'lon', filename)
-io = nf90_get_var(iunit, VarID, linkLong)
-call nc_check(io, routine, 'get_var', 'lon', filename)
+!    alt: Elevation from the North American Vertical Datum 1988 (NADV88)
+!      n: Manning's roughness
+!  gages: NHD Gage Event ID from SOURCE_FEA field in Gages feature class
+!   link: Link ID (NHDFlowline_network COMID)
+! length: Length (Stream length (m))
+!     to: "To Link ID (PlusFlow table TOCOMID for every FROMCOMID)"
 
-where(linkLong < 0.0_r8)    linkLong = linkLong + 360.0_r8
-where(linkLong == 360.0_r8) linkLong = 0.0_r8
+call nc_get_variable(ncid,'lon',   linkLong,  routine)
+call nc_get_variable(ncid,'lat',   linkLat,   routine)
+call nc_get_variable(ncid,'alt',   linkAlt,   routine)
+call nc_get_variable(ncid,'n',     roughness, routine)
+call nc_get_variable(ncid,'link',  linkID,    routine)
+call nc_get_variable(ncid,'Length',length,    routine)
+call nc_get_variable(ncid,'to',    to,        routine)
 
-! Latitude
-io = nf90_inq_varid(iunit, 'lat', VarID)
-call nc_check(io, routine, 'inq_varid', 'lat', filename)
-io = nf90_get_var(iunit, VarID, linkLat)
-call nc_check(io, routine, 'get_var', 'lat', filename)
-
-! Elevation from the North American Vertical Datum 1988 (NADV88)
-io = nf90_inq_varid(iunit, 'alt', VarID)
-call nc_check(io, routine, 'inq_varid', 'alt', filename)
-io = nf90_get_var(iunit, VarID, linkAlt)
-call nc_check(io, routine, 'get_var', 'alt', filename)
-
-! Manning's roughness
-io = nf90_inq_varid(iunit, 'n', VarID)
-call nc_check(io, routine, 'inq_varid', 'n', filename)
-io = nf90_get_var(iunit, VarID, roughness)
-call nc_check(io, routine, 'get_var', 'n', filename)
-
-! NHD Gage Event ID from SOURCE_FEA field in Gages feature class
-io = nf90_inq_varid(iunit, 'gages', VarID)
+! no snappy accessor routine for character arrays
+! call nc_get_variable(ncid,'gages', gageID,    routine)
+io = nf90_inq_varid(ncid,'gages', VarID)
 call nc_check(io, routine, 'inq_varid', 'gages', filename)
-io = nf90_get_var(iunit, VarID,  gageID)
+io = nf90_get_var(ncid, VarID, gageID)
 call nc_check(io, routine, 'get_var', 'gages', filename)
 
-! Link ID (NHDFlowline_network COMID)
-io = nf90_inq_varid(iunit, 'link', VarID)
-call nc_check(io, routine, 'inq_varid', 'link', filename)
-io = nf90_get_var(iunit, VarID, linkID)
-call nc_check(io, routine, 'get_var', 'link', filename)
+call nc_close_file(ncid, routine)
 
-! Length (Stream length (m))
-io = nf90_inq_varid(iunit, 'Length', VarID)
-call nc_check(io, routine, 'inq_varid', 'Length', filename)
-io = nf90_get_var(iunit, VarID, length)
-call nc_check(io, routine, 'get_var', 'Length', filename)
-
-! "To Link ID (PlusFlow table TOCOMID for every FROMCOMID)"
-io = nf90_inq_varid(iunit, 'to', VarID)
-call nc_check(io, routine, 'inq_varid', 'to', filename)
-io = nf90_get_var(iunit, VarID, downstream)
-call nc_check(io, routine, 'get_var', 'to', filename)
-
-! upstreamLinks  ... TBD
-io = nf90_inq_varid(iunit, 'localLinks', VarID)
-call nc_check(io, routine, 'inq_varid', 'localLinks', filename)
-io = nf90_get_var(iunit, VarID, upstream)
-call nc_check(io, routine, 'get_var', 'localLinks', filename)
-
-io = nf90_close(iunit)
-call nc_check(io, routine, filename)
+! Longitude [DART uses longitudes [0,360)]
+where(linkLong < 0.0_r8)    linkLong = linkLong + 360.0_r8
+where(linkLong == 360.0_r8) linkLong = 0.0_r8
 
 ! Not sure what these are for ...
 channelIndsX = (/ (i, i=1,n_link) /)
 channelIndsY = (/ (i, i=1,n_link) /)
 
-call fill_connections()
+call fill_connections(toIndex,fromIndices,fromIndsStart,fromIndsEnd)
 
 if (debug > 99) then
    do i=1,n_link
       write(*,*)'link ',i,linkLong(i),linkLat(i),linkAlt(i),gageID(i),roughness(i),linkID(i)
    enddo
-
    write(*,*)'Longitude range is ',minval(linkLong),maxval(linkLong)
    write(*,*)'Latitude  range is ',minval(linkLat),maxval(linkLat)
    write(*,*)'Altitude  range is ',minval(linkAlt),maxval(linkAlt)
 endif
 
-deallocate(gageID)
 deallocate(linkID)
+deallocate(gageID)
 deallocate(length)
-deallocate(downstream)
-deallocate(upstream)
+deallocate(to)
+deallocate(toIndex)
+deallocate(fromIndices)
+deallocate(fromIndsStart)
+deallocate(fromIndsEnd)
 
 end subroutine get_routelink_constants
 
@@ -1094,9 +1084,14 @@ end subroutine get_routelink_constants
 !-----------------------------------------------------------------------
 !> 
 
-subroutine fill_connections()
+subroutine fill_connections(toIndex,fromIndices,fromIndsStart,fromIndsEnd)
 
-integer :: i, j, k
+integer, intent(in) :: toIndex(:)
+integer, intent(in) :: fromIndices(:)
+integer, intent(in) :: fromIndsStart(:)
+integer, intent(in) :: fromIndsEnd(:)
+
+integer :: i, j, id, nfound
 
 ! hydro_domain_offset = 0   !>@todo get the actual offset somehow
 
@@ -1105,37 +1100,38 @@ do i = 1,n_link
    connections(i)%linkID                 = linkID(i)
    connections(i)%linkLength             = length(i)
    connections(i)%domain_offset          = i
-   connections(i)%downstream_linkID      = downstream(i)
-   connections(i)%upstream_linkID        = upstream(:,i)
-   connections(i)%to_link_index          = MISSING_I
-   connections(i)%from_link_index        = MISSING_I 
+   connections(i)%downstream_linkID      = to(i)
+   connections(i)%downstream_index       = toIndex(i)
+   connections(i)%upstream_linkID(:)     = MISSING_I
+   connections(i)%upstream_index(:)      = MISSING_I 
 enddo
 
-! Now try to figure out the linking structure
-
-DOWN1 : do i = 1,n_link  ! loops over dimension to fill
-DOWN2 : do j = 1,n_link  ! loops over dimension to query
-   if (connections(i)%downstream_linkID == connections(j)%linkID) then
-       connections(i)%to_link_index     = j
-       exit DOWN2
+! The downstream links are already read in ... 
+do i = 1,n_link
+   if (to(i) == 0) then
+      connections(i)%downstream_linkID = MISSING_I
+      connections(i)%downstream_index  = MISSING_I
    endif
-enddo DOWN2
-enddo DOWN1
+enddo
 
-UP1 : do i = 1,n_link  ! loops over dimension to fill
-UP2 : do j = 1,n_link  ! loops over dimension to query
-   do k=1,n_upstream
-      if (connections(i)%upstream_linkID(k) == connections(j)%linkID) then
-          connections(i)%from_link_index(k) = j 
-      endif
+! There are different numbers of upstream links for each link
+UPSTREAM : do id = 1,n_link
+
+   ! If there is nothing upstream ... already set to MISSING
+   if ( fromIndsStart(id) == 0 ) cycle UPSTREAM
+
+   nfound = 0
+   do j = fromIndsStart(id),fromIndsEnd(id)  ! loops over dimension to query
+         nfound = nfound + 1
+         connections(id)%upstream_linkID(nfound) = linkID(fromIndices(j))
+         connections(id)%upstream_index(nfound)  =        fromIndices(j) 
    enddo
-   !>@todo should be a way to exit UP2 early ... after two links are found, perhaps?
-enddo UP2
-enddo UP1
+enddo UPSTREAM
 
 if (debug > 99) then
    write(string1,'("PE ",i3)') my_task_id()
-   do i = 1,n_link
+!  do i = 1,n_link
+   do i = 54034,54034
    write(*,*)''
    write(*,*)trim(string1),' connectivity for link : ',i
    write(*,*)trim(string1),' gageName              : ',connections(i)%gageName
@@ -1144,10 +1140,10 @@ if (debug > 99) then
    write(*,*)trim(string1),' domain_offset         : ',connections(i)%domain_offset
    
    write(*,*)trim(string1),' downstream_linkID     : ',connections(i)%downstream_linkID
-   write(*,*)trim(string1),' to_link_index         : ',connections(i)%to_link_index
+   write(*,*)trim(string1),' downstream_index      : ',connections(i)%downstream_index
    
    write(*,*)trim(string1),' upstream_linkID       : ',connections(i)%upstream_linkID
-   write(*,*)trim(string1),' from_link_index       : ',connections(i)%from_link_index
+   write(*,*)trim(string1),' upstream_index        : ',connections(i)%upstream_index
    enddo
 endif
 
@@ -1198,8 +1194,8 @@ if (debug > 99) then
 endif
 
 do iup = 1,n_upstream
-   if ( connections(my_index)%from_link_index(iup) /= MISSING_I8 ) then
-      call get_link_tree( connections(my_index)%from_link_index(iup), &
+   if ( connections(my_index)%upstream_index(iup) /= MISSING_I8 ) then
+      call get_link_tree( connections(my_index)%upstream_index(iup), &
                reach_cutoff, depth+1, direct_length, nclose, close_indices, distances)
    endif
 enddo
@@ -1242,15 +1238,14 @@ real(r8),    intent(inout) :: distances(:)
 real(r8) :: direct_length
 integer  :: idown
 
-
 idown = my_index
 
 direct_length = connections(idown)%linkLength
 
 do while( direct_length < reach_cutoff .and. &
-          connections(idown)%to_link_index > 0)
+          connections(idown)%downstream_index > 0)
 
-   idown     = connections(idown)%to_link_index
+   idown     = connections(idown)%downstream_index
 
    nclose                = nclose + 1
    close_indices(nclose) = idown
@@ -1281,8 +1276,8 @@ character(len=*), intent(out) :: setup_filename
 character(len=*), parameter :: routine = 'read_noah_namelist'
 
 ! namelist variables specific to this version.
-!>@todo now that we do not need to write a namelist, I am not sure
-!> we need anything more than a few variables.
+! Any variable in the namelist being read MUST be defined here
+! or the check_namelist_read() program will error and terminate.
 
 character(len=256) :: hrldas_setup_file = 'no_hrldas_setup_file'
 character(len=256) :: spatial_filename  = 'no_spatial_filename'
@@ -1311,6 +1306,7 @@ integer            :: output_timestep                   = -999
 integer            :: restart_frequency_hours           = -999
 integer            :: split_output_count                = 1
 integer            :: nsoil
+integer            :: nitsoil                           = -1
 real(r8)           :: soil_thick_input(NSOLDX)          = MISSING_R8
 real(r8)           :: zlvl
 integer            :: rst_bi_out
@@ -1324,7 +1320,7 @@ namelist / NOAHLSM_OFFLINE / hrldas_setup_file, spatial_filename, &
    radiative_transfer_option, snow_albedo_option, pcp_partition_option, &
    tbot_option, temp_time_scheme_option, glacier_option, &
    surface_resistance_option, forcing_timestep, noah_timestep, output_timestep, &
-   restart_frequency_hours, split_output_count, nsoil, soil_thick_input, &
+   restart_frequency_hours, split_output_count, nsoil, nitsoil, soil_thick_input, &
    zlvl, rst_bi_out, rst_bi_in
 
 logical, save :: lsm_namelist_read = .false.
@@ -1350,9 +1346,10 @@ if ( .not. file_exist(hrldas_setup_file) ) then
    call error_handler(E_ERR,routine,string1,source,revision,revdate)
 endif
 
-setup_filename       = hrldas_setup_file
-num_soil_layers      = nsoil
-soil_layer_thickness = soil_thick_input
+setup_filename           = hrldas_setup_file
+num_soil_layers          = nsoil
+num_soil_nitrogen_layers = nitsoil
+soil_layer_thickness     = soil_thick_input
 
 !>@todo I am not sure this has any relevance now that DART is not advancing NOAH
 ! Check to make sure the required NOAH namelist items are set:
@@ -1413,7 +1410,8 @@ integer            :: noah_timestep                     = -999
 integer            :: output_timestep                   = -999
 integer            :: split_output_count                = 1
 integer            :: restart_frequency_hours           = -999
-integer            :: nsoil ! number of soil layers in use.
+integer            :: nsoil                                  ! number of soil layers in use.
+integer            :: nitsoil                           = -1 ! number of soil nitrogen layers in use.
 real(r8)           :: soil_thick_input(NSOLDX)          = MISSING_R8
 real(r8)           :: zlvl
 
@@ -1425,7 +1423,7 @@ namelist / NOAHLSM_OFFLINE / hrldas_constants_file, indir, outdir, &
            radiative_transfer_option, snow_albedo_option, pcp_partition_option, &
            tbot_option, temp_time_scheme_option, soil_hydraulic_parameter_option, &
            forcing_timestep, noah_timestep, output_timestep, split_output_count, &
-           restart_frequency_hours, nsoil, soil_thick_input, zlvl
+           restart_frequency_hours, nsoil, nitsoil, soil_thick_input, zlvl
 
 integer :: iunit, io
 logical, save :: lsm_namelist_read = .false.
@@ -1451,9 +1449,10 @@ if ( .not. file_exist(hrldas_constants_file) ) then
    call error_handler(E_ERR,routine,string1,source,revision,revdate)
 endif
 
-setup_filename       = hrldas_constants_file
-num_soil_layers      = nsoil
-soil_layer_thickness = soil_thick_input
+setup_filename           = hrldas_constants_file
+num_soil_layers          = nsoil
+num_soil_nitrogen_layers = nitsoil
+soil_layer_thickness     = soil_thick_input
 
 !>@todo not sure any of this is needed because DART does not advance model ...
 !> Check to make sure the required NOAH namelist items are set:

@@ -1,3 +1,4 @@
+import copy
 import datetime
 import f90nml
 import pathlib
@@ -6,36 +7,29 @@ import shlex
 import shutil
 import subprocess
 import time
-import wrfhydropy
+import yaml
 
 from .gregorian import gregorian
 from .setup_experiment_tools import replace_in_file, get_top_level_dir_from_config
+from .create_usgs_daily_obs_seq import create_usgs_daily_obs_seq
 
-def setup_usgs_daily(config):
+def setup_usgs_daily(
+    config,
+    config_file: None
+):
 
     print('Preparing USGS daily observations.')
 
-    usgs_daily_config = config['observation_preparation']['USGS_daily']
+    # Setup the namelist and establish the "outputdir". The create_usgs_daily_obs_seq
+    # actually creates the obs sequences.
 
+    usgs_daily_config = config['observation_preparation']['USGS_daily']
     input_dir = usgs_daily_config['input_dir']
     output_dir = usgs_daily_config['output_dir']
     # Output directory: make if DNE
     output_dir.mkdir(exist_ok=False, parents=True)
 
-    # stage the scripts
-    make_daily = output_dir / 'makedaily.csh'
-    parallel_daily_batch = output_dir / 'parallel_daily.batch.csh'
-    
-    dart_repo_usgs_scripts_path = \
-        config['dart']['dart_src'] / 'observations/obs_converters/USGS/scripts'
-    
-    _ = shutil.copy(dart_repo_usgs_scripts_path / 'makedaily.TEMPLATE.csh', make_daily)
-    _ = shutil.copy(
-        dart_repo_usgs_scripts_path / 'parallel_daily.batch.TEMPLATE.csh',
-        parallel_daily_batch
-    )
-
-    # identity or regular obs converter?
+    # converter: identity or regular obs converter?
     # Check that the desired obs converter is in the dart build
     exp_dir = config['experiment']['experiment_dir']
     dart_build_dir = config['dart']['build_dir']
@@ -48,9 +42,6 @@ def setup_usgs_daily(config):
 
     obs_conv_prog = ocp
     _ = shutil.copy(obs_conv_prog, output_dir / obs_conv_prog.name)
-    replace_in_file(make_daily, 'CONVPROG_TEMPLATE', str(obs_conv_prog.name))
-
-    replace_in_file(make_daily, 'DART_DIR', str(dart_build_dir))
 
     # input.nml: patch.
     converter_nml = str(obs_conv_prog.name) + '_nml'
@@ -80,19 +71,12 @@ def setup_usgs_daily(config):
     else:
         raise ValueError("wanted_gages must be either string or list type.")
 
-    replace_in_file(
-        make_daily,
-        'GAGES_LIST_FILE_TEMPLATE',
-        input_nml[converter_nml]['gages_list_file']
-    )
-
     # input.nml location_file/Routelink: link file, edit input.nml
     run_dir = config['experiment']['run_dir']
     m0 = pickle.load(open(run_dir / "member_000/WrfHydroSim.pkl", 'rb'))
     route_link_f = run_dir / 'member_000' / m0.base_hydro_namelist['hydro_nlist']['route_link_f']
     (output_dir / route_link_f.name).symlink_to(route_link_f)
     input_nml[converter_nml]['location_file'] = route_link_f.name
-    replace_in_file(make_daily, 'ROUTELINK_TEMPLATE', route_link_f.name)
 
     #input.nml input_files: create a list of files in the start and end range.
     in_start_time = datetime.datetime.strptime(str(usgs_daily_config['start_date']), '%Y-%m-%d')
@@ -120,89 +104,82 @@ def setup_usgs_daily(config):
         (output_dir / hydro_rst_file.name).symlink_to(hydro_rst_file)
         input_nml['model_nml']['domain_order'] = 'hydro'
         input_nml['model_nml']['domain_shapefiles'] = str(hydro_rst_file.name)
-        replace_in_file(
-            make_daily,
-            'HYDRO_RST_TEMPLATE',
-            'ln -s $origindir/' + hydro_rst_file.name + ' .'
-        )
 
         f90nml.Namelist(m0.base_hydro_namelist).write(output_dir / 'hydro.namelist', force=True)
         top_level_dir = get_top_level_dir_from_config(config, m0)
         (output_dir / top_level_dir).symlink_to(config['wrf_hydro']['domain_src'] / top_level_dir)
-        replace_in_file(
-            make_daily,
-            'TOP_LEVEL_CONFIG_TEMPLATE',
-            'ln -s $origindir/' + top_level_dir + ' .'
-        )
-
-    else:
-
-        replace_in_file(make_daily, 'HYDRO_RST_TEMPLATE', '')
-        replace_in_file(make_daily, 'TOP_LEVEL_CONFIG_TEMPLATE', '')
 
     # Now we are done editing it, write the input.nml back out.
     input_nml.write(output_dir / 'input.nml')
 
-    # Create the command files here
-    # Create all the commands then write to files.
-    current_time = in_start_time
-    all_cmds=[]
-    while current_time <= in_end_time:
-        cmd_str = "csh ./makedaily.csh {0} " + str(input_dir)
-        cmd_str = cmd_str.format(current_time.strftime('%Y%m%d'))
-        all_cmds.append(cmd_str)
-        current_time = current_time + datetime.timedelta(days=1)
-        
-    # The length of all_cmds must be zero mod ppn, if it is not, pad it with dummy commands.
-    ppn = usgs_daily_config['scheduler']['ppn']
-    remainder = len(all_cmds) % ppn
-    n_pad = ppn - remainder
-    for pp in range(n_pad):
-        all_cmds.append("echo 'This command is just padding this last cmdfile.'")
+    # Symlink the config file into the output_dir so the default yaml file name
+    # can be used by create_usgs_daily_obs_seq.
+    if config_file is None:
+        config_file = sorted(exp_dir.glob('experiment_config_files.original.*.yaml'))[0]
+    (output_dir / 'config_file.yaml').symlink_to(config_file)
 
-    n_cmd_files = len(all_cmds) // ppn
+    # Stage the file that does the batch processing.
+    this_file = pathlib.Path(__file__)
+    batcher_base = 'create_usgs_daily_obs_seq.py'
+    (output_dir / batcher_base).symlink_to(this_file.parent / batcher_base)
 
-    for nn in range(n_cmd_files): 
-        cmd_filename = 'day_cmdfile.' + str(nn+1)
-        with open(output_dir / cmd_filename, 'w') as opened_file:
-            for cc in range(ppn*nn, ppn*(nn+1)):
-                _ = opened_file.write(all_cmds[cc] + '\n')
+    # Setup the scheduled script.
+    orig_submit_script = this_file.parent / 'submission_scripts/submit_usgs_daily_obs_converter.sh'
+    this_submit_script = output_dir / 'submit_usgs_daily_obs_converter.sh'
+    shutil.copy(orig_submit_script, this_submit_script)
 
     # Set the PBS directives (cheyenne)
 
     # PBS options from config
     # Short-hand
-    usgs_sched = usgs_daily_config['scheduler']
+    usgs_sched = config['observation_preparation']['USGS_daily']['scheduler']
 
     # The easy ones.
-    replace_in_file(parallel_daily_batch, 'JOB_NAME_TEMPLATE', usgs_sched['job_name'])
-    replace_in_file(parallel_daily_batch, 'ACCOUNT_TEMPLATE', usgs_sched['account'])
-    replace_in_file(parallel_daily_batch, 'EMAIL_WHO_TEMPLATE', usgs_sched['email_who'])
-    replace_in_file(parallel_daily_batch, 'EMAIL_WHEN_TEMPLATE', usgs_sched['email_when'])
-    replace_in_file(parallel_daily_batch, 'QUEUE_TEMPLATE', usgs_sched['queue'])
+    replace_in_file(this_submit_script, 'JOB_NAME_TEMPLATE', usgs_sched['job_name'])
+    replace_in_file(this_submit_script, 'ACCOUNT_TEMPLATE', usgs_sched['account'])
+    replace_in_file(this_submit_script, 'EMAIL_WHO_TEMPLATE', usgs_sched['email_who'])
+    replace_in_file(this_submit_script, 'EMAIL_WHEN_TEMPLATE', usgs_sched['email_when'])
+    replace_in_file(this_submit_script, 'QUEUE_TEMPLATE', usgs_sched['queue'])
 
     # Wall time
     usgs_walltime = usgs_sched['walltime']
     if len(usgs_walltime.split(':')) == 2:
         usgs_walltime = usgs_walltime + ':00'
     usgs_walltime = 'walltime=' + usgs_walltime
-    replace_in_file(parallel_daily_batch, 'WALLTIME_TEMPLATE', usgs_walltime)
+    replace_in_file(this_submit_script, 'WALLTIME_TEMPLATE', usgs_walltime)
 
-    wait_file = output_dir / '.parallel_daily_batch_not_complete'
+    # Select statement
+    # Right now, only single node processing
+    select_stmt = 'select=1:ncpus={ncpus}:mpiprocs={mpiprocs}'.format(
+        **{
+            'ncpus': usgs_sched['ncpus'],
+            'mpiprocs': usgs_sched['mpiprocs']
+        }
+    )
+    replace_in_file(this_submit_script, 'PBS_SELECT_TEMPLATE', select_stmt)
+
+    wait_file = output_dir / '.this_submit_script_not_complete'
+    replace_in_file(this_submit_script, 'WAIT_FILE_TEMPLATE', str(wait_file))
+
     proc = subprocess.Popen(
         shlex.split('touch ' + wait_file.name),
         cwd=output_dir
     )
     proc.wait()
-   
+
     proc = subprocess.Popen(
-        shlex.split('qsub ' + parallel_daily_batch.name),
+        shlex.split('qsub ' + this_submit_script.name),
         cwd=output_dir
     )
-
+    proc.wait()
+    
+    print('Job submitted. \nWait file: ' + str(wait_file) + ' ...')
     while wait_file.exists():
-        print('setup_usgs_daily: \nWaiting for removal of wait file: ' + str(wait_file))
-        time.sleep(20)
+        msg = 'Last check for wait file {twirl}: ' + \
+              datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        for twirl in ['|', '/', '-', '\\', '|', '/', '-', '\\']:
+            print(msg.format(**{'twirl':twirl}), end='\r')
+            time.sleep(10/8)
 
     # Link the obs_seq files to the "all_obs_dir" for the experiment.    
     all_obs_dir = pathlib.PosixPath(config['observation_preparation']['all_obs_dir'])
@@ -211,4 +188,4 @@ def setup_usgs_daily(config):
         (all_obs_dir / oo.name).symlink_to(oo)
         
         
-    return True
+    return 0

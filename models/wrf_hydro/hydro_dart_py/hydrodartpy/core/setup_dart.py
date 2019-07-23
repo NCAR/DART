@@ -18,9 +18,6 @@ def setup_dart(config):
 
     else:
 
-        # todo(JLM): If fork specified, pull fork. Check out desired commit.
-        # TODO(JLM): clone to build_dir? or make a clone_dir in this case?
-        #            If not fork, only use local repo state.
         dart_compile = DartCompile(
             source_dir=config['dart']['dart_src'],
             mkmf_template=config['dart']['mkmf_template'],

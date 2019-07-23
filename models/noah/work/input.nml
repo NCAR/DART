@@ -152,7 +152,7 @@
 
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'GRACE_TWS','MODIS_SNOWCOVER_FRAC'
+   assimilate_these_obs_types = 'GRACE_TOTAL_WATER_STORAGE','MODIS_SNOWCOVER_FRAC'
    evaluate_these_obs_types   = 'LAYER_LIQUID_WATER', 'SNOW_THICKNESS'
   /
 
@@ -248,7 +248,7 @@
    interp_test_latrange  = 18.125,  53.625
    interp_test_vertrange =  0.05,   1.5
    interp_test_vertcoord = 'VERTISHEIGHT'
-   verbose               = .false.
+   verbose               = .true.
    allow_missing         = .true.
   /
 

@@ -11,7 +11,7 @@
 #
 # Driver script to consolidate the wrf_hydro run-time output.
 # Submit this script to your batch system and it will invoke 
-# the 'wrfHydro_cleanup_worker.csh' script once for each ensemble member.
+# the 'wrf_hydro_cleanup_worker.csh' script once for each ensemble member.
 #
 #-------------------------------------------------------------------------------
 
@@ -68,7 +68,7 @@
 # USER SETTINGS HERE
 
 set DARTdir = /glade/work/${USER}/DART/wrf_hydro_dart_git/wrf_hydro_dart/models/wrf_hydro
-set HydroDARTdir = /glade/scratch/${USER}/wrf_hydro/daR_const_sd_03
+set HydroDARTdir = /glade/scratch/${USER}/wrfhydro_dart/sixmile/runs/test1
 
 # END USER SETTINGS
 
@@ -107,8 +107,8 @@ mkdir -p $TMPDIR
 
 cd ${HydroDARTdir} || exit 1
 
-ln -sf ${DARTdir}/work/advance_time                         . || exit 2
-ln -sf ${DARTdir}/shell_scripts/wrfHydro_cleanup_worker.csh . || exit 2
+ln -sf ${DARTdir}/work/advance_time                          . || exit 2
+ln -sf ${DARTdir}/shell_scripts/wrf_hydro_cleanup_worker.csh . || exit 2
 
 echo "summarizing started at "`date`
 
@@ -126,7 +126,7 @@ while ( $member < $ens_size )
 
     # create a command file where each line calls a script with
     # unique arguments, including a unique work directory name.
-    echo "csh ./wrfHydro_cleanup_worker.csh $member" >> mycmdfile
+    echo "csh ./wrf_hydro_cleanup_worker.csh $member" >> mycmdfile
   
     # advance the ensemble member index
     @ member ++
@@ -166,13 +166,13 @@ echo "summarizing ended at "`date`
 
 foreach STAGE ( CHANOBS_DOMAIN1 CHRTOUT_DOMAIN1 LAKEOUT_DOMAIN1 )
 
-   ls -1 ${STAGE}.*.nc | sort >! wrfHydro_cleanup_files.txt
+   ls -1 ${STAGE}.*.nc | sort >! wrf_hydro_cleanup_files.txt
    if ( $status == 0 ) then
       
       # Consolidates all the ensemble members into one - unfortunately the
       # 'time' variable has invalid 'valid_min','valid_max' attributes. 
 
-      cat wrfHydro_cleanup_files.txt | \
+      cat wrf_hydro_cleanup_files.txt | \
           ncecat -O -h -H -u member -o ${STAGE}.nc || exit 1
 
       # This deletes the nuisance 'time' attributes and then permutes the
@@ -187,7 +187,7 @@ foreach STAGE ( CHANOBS_DOMAIN1 CHRTOUT_DOMAIN1 LAKEOUT_DOMAIN1 )
 
    endif
 
-   \rm -f wrfHydro_cleanup_files.txt
+   \rm -f wrf_hydro_cleanup_files.txt
 
 end
 
@@ -195,13 +195,13 @@ end
 # because there are no 'time:valid_[min,max]' attributes
 foreach STAGE ( HYDRO_RST )
 
-   ls -1 ${STAGE}.*.nc | sort >! wrfHydro_cleanup_files.txt
+   ls -1 ${STAGE}.*.nc | sort >! wrf_hydro_cleanup_files.txt
    if ( $status == 0 ) then
       
       # Consolidates all the ensemble members into one - this time there
       # are no 'time:valid_[min,max]' attributes to delete. 
 
-      cat wrfHydro_cleanup_files.txt | \
+      cat wrf_hydro_cleanup_files.txt | \
           ncecat -O -h -H -u member -o bob.nc || exit 1
 
       # This permutes the variables to be shaped (time, member, links)
@@ -213,7 +213,7 @@ foreach STAGE ( HYDRO_RST )
 
    endif
 
-   \rm -f wrfHydro_cleanup_files.txt
+   \rm -f wrf_hydro_cleanup_files.txt
 
 end
 

@@ -11,28 +11,60 @@ import yaml
 # Remapping nested values
 # http://sedimental.org/remap.html
 
-def visit(path, key, value):
+def visit_expand_vars(path, key, value):
     if isinstance(value, str):
         return key, os.path.expanduser(os.path.expandvars(value))
     return key, value
 
 
-def remap_spec(spec_file):
-    return(remap(spec_file, visit))
+config_abs_paths_list = [
+    'experiment_dir',
+    'run_dir',
+    'path',
+    'hydro_file_list.txt',
+    'param_file_list.txt',
+    'dart_src',
+    'wrf_hydro_src',
+    'domain_src',
+    'setup_py',
+    'noise_function',
+    'output_dir',
+    'input_dir'
+]
+
+
+def visit_abs_paths(path, key, value):
+    if value is None:
+        return True
+    # Making a bet that the same keys at different hierarchical levels
+    # will both be desired as pathlib.PosixPath objects.
+    if key in config_abs_paths_list and type(value) is not dict:
+        return key, pathlib.PosixPath(value)
+    else:
+        return True
 
 
 # ######################################################
 # Generic spec establishment = YAML + remap_spec
 
 def establish_config(spec_file):
-    """Parse YAML and expand  ~ and $
+    """1) Parse YAML,
+       2) expand  ~ and $ using the system,
+       3) turn selected strings into pathlib.Path objects
     """
+    # 1) Parse YAML
     with open(spec_file) as ff:
-        spec_dict = yaml.safe_load(ff)
+        config0 = yaml.safe_load(ff)
 
-    spec = remap_spec(spec_dict)
+    # 2) expand the ~ and  vars
+    config1 = remap(config0, visit_expand_vars)
 
-    return(spec)
+    # 3) Selected strings to pathlib.Path objects.
+    # The following list and function turn strings in the config
+    # into pathlib.PosixPath objs.
+    config2 = remap(config1, visit_abs_paths)
+
+    return(config2)
 
 
 # #######################################################

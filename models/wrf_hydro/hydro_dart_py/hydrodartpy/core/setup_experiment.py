@@ -1,18 +1,13 @@
 # Setup a "HydroDartRun". For now this is a filter experiment.
 
-from boltons.iterutils import remap
-import code
 import datetime
 import f90nml
 import os
 import pathlib
 from pprint import pprint
-import shlex
 import shutil
 import subprocess
-import sys
 import warnings
-import wrfhydropy
 
 from .setup_dart import setup_dart
 from .setup_experiment_tools import establish_config, replace_in_file, get_machine
@@ -22,47 +17,12 @@ from .setup_wrf_hydro import setup_wrf_hydro
 from .setup_wrf_hydro_ens import setup_wrf_hydro_ens
 from .setup_wrf_hydro_ens_job import setup_wrf_hydro_ens_job
 
+
 def setup_experiment(config_file):
 
     config = establish_config(config_file)
 
-    # The following list and function turn strings in the config
-    # into pathlib.PosixPath objs.
-    config_abs_paths_list = [
-        'experiment_dir',
-        'run_dir',
-        'path',
-        'hydro_file_list.txt',
-        'param_file_list.txt',
-        'dart_src',
-        'wrf_hydro_src',
-        'domain_src',
-        'setup_py',
-        'noise_function',
-        'output_dir',
-        'input_dir'
-    ]
-
-
-    def visit_abs_paths(path, key, value):
-        if value is None:
-            return True
-        # Making a bet that the same keys at different hierarchical levels
-        # will both be desired as pathlib.PosixPath objects.
-        if key in config_abs_paths_list and type(value) is not dict:
-            return key, pathlib.PosixPath(value)
-        else:
-            return True
-
-
-    config = remap(config, visit_abs_paths)
-
-    # JLM: Not sure this print is really worth it. I rarely look at it.
-    # TODO(JLM): consider a verbose mode for this script.
-    # print("The configuration file:")
-    # pprint(config)
-    # print('')
-
+    # Report the important dirs in the experiment structure.
     dirs_string = """
 expdir={0}
 rundir={1}
@@ -142,7 +102,8 @@ allobsdir={3}
     os.chdir(config['experiment']['run_dir'])
     wrf_hydro_ens_sim.compose(
         rm_members_from_memory=False,
-        check_nlst_warn=True
+        check_nlst_warn=True,
+        symlink_domain=config['wrf_hydro']['domain_symlink']
     )
 
 
@@ -262,13 +223,13 @@ allobsdir={3}
     print("Staging scripts.")
 
     # Various scripts (tied to run_experiment)
-    script_list = ['advance_ensemble.py', 'get_ensemble_time.py', 'set_obs_seq_times.py']
+    #script_list = ['advance_ensemble.py', 'get_ensemble_time.py', 'set_obs_seq_times.py']
+    script_list = ['run_filter_experiment.py']
     for ss in script_list:
         adv_ens_script_src = config['dart']['dart_src'] / \
                              ('models/wrf_hydro/hydro_dart_py/hydrodartpy/core/' + ss)
         adv_ens_script_link = config['experiment']['run_dir'] / ss
         adv_ens_script_link.symlink_to(adv_ens_script_src)
-
 
     # Noise scripts
     perturb_forcing = config['run_experiment']['perturb_forcing']
@@ -278,7 +239,6 @@ allobsdir={3}
                 the_link = config['experiment']['run_dir'] / \
                            (('member_' + "%03d" % (mm,)) + '/' + os.path.basename(ff))
                 the_link.symlink_to(ff)
-
 
     # DART binaries / namelist
     print('Staging DART executables and input.nml.')
@@ -345,7 +305,7 @@ allobsdir={3}
     # Since there only two levels, just write a double for loop.
     for k0 in input_nml.keys():
         for k1 in input_nml[k0].keys():
-            if k1 in ['ens_size', 'num_output_obs_members']:
+            if k1 in ['ens_size', 'num_output_obs_members', 'num_output_state_members']:
                 input_nml[k0][k1] = int(config['ensemble']['size'])
 
     input_nml.write(dart_input_nml_copy)    
@@ -355,175 +315,51 @@ allobsdir={3}
 
     # Setup run_filter_experiment.csh_template
     # Copy to run_dir then preprocess the template.
-    run_experiment_template = \
-        config['dart']['dart_src'] / 'models/wrf_hydro/shell_scripts/run_filter_experiment.csh.template'
-    run_experiment_specific = config['experiment']['run_dir'] / 'run_filter_experiment.csh'
-    shutil.copy(str(run_experiment_template), str(run_experiment_specific))
 
-    replace_in_file(
-        run_experiment_specific,
-        'EXPERIMENT_DIRECTORY_TEMPLATE',
-        str(config['experiment']['run_dir'])
-    )
-
-    replace_in_file(
-        run_experiment_specific,
-        'OBSERVATION_DIR_TEMPLATE',
-        str(config['observation_preparation']['all_obs_dir'])
-    )
-
-    # Ensemble advance
-    advance_cmd = "`python advance_ensemble.py --hold True"
-    config_perturb_forcing = config['run_experiment']['perturb_forcing']
-    if config_perturb_forcing['perturb']:
-        advance_cmd += " --job_entry_cmd '" + config_perturb_forcing['noise_cmd'] + "'`\n"
-        advance_cmd += 'set ens_adv_exit_code = $? \n'
-
-    replace_in_file(run_experiment_specific, 'PYTHON_ADVANCE_TEMPLATE', advance_cmd)
-
-    # Call filter again
-    if config['run_experiment']['wrf_hydro_ens_advance']['with_filter']:
-        filter_again_cmd =  'echo "ens_adv_exit_code: $ens_adv_exit_code" \n'
-        filter_again_cmd += 'if ( $ens_adv_exit_code == 1 ) then \n'
-        filter_again_cmd += '    echo "Ensemble advance failed, exiting." \n'
-        filter_again_cmd += '    rm .filter_not_complete" \n'
-        filter_again_cmd += 'exit 1 \n'
-        filter_again_cmd += 'endif \n'
-        filter_again_cmd += './run_filter_experiment.csh &\n'
-    else:
-        filter_again_cmd =  'set next_filter_afterok = `echo "$next_filter_afterok"'
-        filter_again_cmd += ' | cut -d " " -f1 | tr -d " "`\n'
-        filter_again_cmd += 'qsub -W depend=afterok:$next_filter_afterok run_filter_experiment.csh\n'
-        filter_again_cmd += 'qrls $next_filter_afterok'
-
-    replace_in_file(run_experiment_specific, 'FILTER_AGAIN_TEMPLATE', filter_again_cmd)
-
-
-    # PBS tmp dir on cheyenne
-    tmp_dir_cmd = 'setenv TMPDIR /glade/scratch/$USER/temp\nmkdir -p $TMPDIR'
-    replace_in_file(run_experiment_specific, 'TMP_DIR_TEMPLATE', tmp_dir_cmd)
-
-    # PBS options from config
+    # job execution options from config
     # Short-hand
-    dart_sched = config['run_experiment']['dart']['scheduler']
+    job_exe = config['run_experiment']['job_execution']
+    sched = job_exe['scheduler']
     config_time = config['run_experiment']['time']
-
-    # The easy ones.
-    replace_in_file(run_experiment_specific, 'JOB_NAME_TEMPLATE', dart_sched['job_name'])
-    replace_in_file(run_experiment_specific, 'ACCOUNT_TEMPLATE', dart_sched['account'])
-    replace_in_file(run_experiment_specific, 'EMAIL_WHO_TEMPLATE', dart_sched['email_who'])
-    replace_in_file(run_experiment_specific, 'EMAIL_WHEN_TEMPLATE', dart_sched['email_when'])
-
-    # Model end time
-    end_time_fmt = datetime.datetime.strptime(config_time['end_time'],'%Y-%m-%d_%H:%M')
-    end_time_fmt = end_time_fmt.strftime('%Y%m%d%H%M')
-    replace_in_file(run_experiment_specific, 'END_DATE_TEMPLATE', end_time_fmt)
-
-    # Model advance time
-    replace_in_file(run_experiment_specific, 'ADV_MODEL_HRS_TEMPLATE', config_time['advance_model_hours'])
-
-    # Wall time
-    dart_walltime = dart_sched['walltime']
-    if len(dart_walltime.split(':')) == 2:
-        dart_walltime = dart_walltime + ':00'
-    dart_walltime = 'walltime=' + dart_walltime
-    replace_in_file(run_experiment_specific, 'WALLTIME_TEMPLATE', dart_walltime)
 
     # If cheyenne, we know ppn (proc per node) <= 36.
     this_machine = get_machine()
     if this_machine != 'cheyenne':
         warnings.warn("Dont YET know how to handle schduler on machines other than cheyenne.")
-    if dart_sched['ppn_max'] > 36:
+    # TODO: check that if cheynne the number is 36 and
+    # also check this against job_execution:moachine:ppn
+    if sched['ppn_use'] > 36:
         raise ValueError("Cheyenne has maximum ppn of 36.")
 
-    # Do the nodes vs total number of processors match/make sense?
-    if dart_sched['nnodes']*dart_sched['ppn_max'] < dart_sched['nproc']:
-        raise ValueError(
-            "run_experiment:dart:scheduler:nproc is the TOTAL number of processors requested."
-        )
+    # Write a submission script
+    submit_script_template = config['dart']['dart_src'] / \
+                             ('models/wrf_hydro/hydro_dart_py/hydrodartpy/core/'
+                              'submission_scripts/submit_filter_experiment.sh')
+    submit_script_specific = config['experiment']['run_dir'] / 'submit_filter_experiment.sh'
+    shutil.copy(submit_script_template, submit_script_specific)
 
-    # pbs "-l select=" : Distribute the processors over the nodes how to split?
-    dart_nproc_last_node = \
-        (dart_sched['nproc'] - (dart_sched['nnodes'] * dart_sched['ppn_max'])) % dart_sched['ppn_max']
+    pbs_select_specific = "select={0}:ncpus={1}:mpiprocs={1}".format(
+        sched['nnodes'],
+        sched['ppn_use']
+    )
 
-    if dart_nproc_last_node > 0:
-        if dart_nproc_last_node >= dart_sched['ppn_max']:
-            raise ValueError('nproc - (nnodes * ppn) = {0} >= ppn'.format(dart_nproc_last_node))
+    walltime_specific = sched['walltime']
+    if len(walltime_specific.split(':')) == 2:
+        walltime_specific = walltime_specific + ':00'
+    walltime_specific = 'walltime=' + walltime_specific
 
-    if dart_nproc_last_node == 0 or int(dart_sched['nnodes']) < 2:
+    template_dict = {
+        'JOB_NAME_TEMPLATE': sched['job_name'],
+        'PBS_SELECT_TEMPLATE': pbs_select_specific,
+        'WALLTIME_TEMPLATE': walltime_specific,
+        'ACCOUNT_TEMPLATE': sched['account'],
+        'QUEUE_TEMPLATE': sched['queue'],
+        'EMAIL_WHEN_TEMPLATE': sched['email_when'],
+        'EMAIL_WHO_TEMPLATE': sched['email_who']
+    }
 
-        if config['run_experiment']['wrf_hydro_ens_advance']['with_filter']:
-            prcstr = "select=1:ncpus=36:mpiprocs=36"
-        else:
-            prcstr = "select={0}:ncpus={1}:mpiprocs={1}"
-            if int(dart_sched['nnodes']) < 2:
-                prcstr = prcstr.format(dart_sched['nnodes'], dart_sched['nproc'])
-            else:
-                prcstr = prcstr.format(dart_sched['nnodes'], dart_sched['ppn_max'])
-
-    else:
-        prcstr = "select={0}:ncpus={1}:mpiprocs={1}+1:ncpus={2}:mpiprocs={2}"
-        prcstr = prcstr.format(int(dart_sched['nnodes'])-1,
-                               dart_sched['ppn_max'],
-                               dart_nproc_last_node)
-
-    pbs_select_cmd = prcstr
-    replace_in_file(run_experiment_specific, 'PBS_SELECT_TEMPLATE', pbs_select_cmd)
-
-    # queue
-    if dart_sched['nproc'] <= 18:
-
-        if not config['run_experiment']['wrf_hydro_ens_advance']['with_filter']:
-
-            # Shared queue
-            if dart_sched['queue'] != 'share':
-                warnings.warn(
-                    'You have not selected share queue but are requesting <= 18 cores.\n' +
-                    'DART jobs will be sent to the shared queue.'
-                )
-                share_use_array_cmd = 'setenv MPI_USE_ARRAY false'
-                launch_cmd = '"mpirun `hostname` -np {0}"'.format(dart_sched['nproc'])
-                dart_queue = 'share'
-
-        else:
-
-            share_use_array_cmd = 'setenv MPI_USE_ARRAY false'
-            launch_cmd = '"mpirun `hostname` -np {0}"'.format(dart_sched['nproc'])
-            dart_queue = dart_sched['queue']
-
-    else:
-
-        share_use_array_cmd = ''
-        launch_cmd = 'mpiexec_mpt'
-        dart_queue = dart_sched['queue']
-
-    # Apply the choices
-    replace_in_file(run_experiment_specific, 'SHARE_USE_ARRAY_TEMPLATE', share_use_array_cmd)
-    replace_in_file(run_experiment_specific, 'LAUNCH_CMD_TEMPLATE', launch_cmd)
-    replace_in_file(run_experiment_specific, 'QUEUE_TEMPLATE', dart_queue)
-
-    # If with_filter, change the top-level script to put the stdout/err to disk (not PBS buffer).
-    if config['run_experiment']['wrf_hydro_ens_advance']['with_filter']:
-
-        ## TODO(JLM): this should be a script in a file that we edit... 
-        submit_filter_file = run_experiment_specific.parent / 'submit_filter_experiment.csh'
-        subprocess.run(
-            (
-                'echo "#!/bin/tcsh" >> ' + str(submit_filter_file) + 
-                ' && egrep "^#PBS" ' + str(run_experiment_specific) + ' >> ' + str(submit_filter_file) +
-                ' && echo "touch .filter_not_complete" >> ' + str(submit_filter_file) +
-                ' && echo "./run_filter_experiment.csh >& submit_filter_experiment.stdeo" >> ' +
-                str(submit_filter_file) +
-                ' && echo "while (\`ls .filter_not_complete | wc -l\`)" >> ' + str(submit_filter_file) +
-                ' && echo "    sleep 20" >> ' + str(submit_filter_file) +
-                ' && echo "end" >> ' + str(submit_filter_file) +
-                ' && echo "exit 0" >> ' + str(submit_filter_file)
-            ),
-            shell=True,
-            executable='/bin/bash'
-        )
-        submit_filter_file.chmod(0o755)
-
+    for key, value in template_dict.items():
+        replace_in_file(submit_script_specific, key, value)
 
 
     # ###################################
@@ -586,11 +422,10 @@ The experiment has been established in
 
 To run a filter experiment:
     cd {1}
-    qsub {2}_filter_experiment.csh
+    qsub submit_filter_experiment.sh
     """.format(
-        config['experiment']['experiment_dir'],
-        config['experiment']['run_dir'],
-        'submit' if config['run_experiment']['wrf_hydro_ens_advance']['with_filter'] else 'run'
+            config['experiment']['experiment_dir'],
+            config['experiment']['run_dir']
         )
     )
 

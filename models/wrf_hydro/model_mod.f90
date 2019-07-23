@@ -67,7 +67,8 @@ use   state_structure_mod, only : add_domain,      get_domain_size,   &
 
 use     mpi_utilities_mod, only : my_task_id
 
-use        random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
+use        random_seq_mod, only : random_seq_type, init_random_seq,   & 
+                                  random_gaussian, random_gamma
 
 use netcdf
 
@@ -181,6 +182,7 @@ integer  :: iunit, io, domainID
 integer  :: n_lsm_fields
 integer  :: n_hydro_fields
 integer  :: n_parameters
+integer  :: vsize
 
 character(len=obstypelength) :: var_names(MAX_STATE_VARIABLES)
 real(r8) :: var_ranges(MAX_STATE_VARIABLES,2)
@@ -260,19 +262,16 @@ DOMAINS: do domainID = 1,size(domain_order)
 
       if (debug > 99) call state_structure_info(idom_hydro)
 
-      !>@todo if there is ever more than 1 variable in the hydro domain
-      !> this test will fail. Should find a more robust way to get the size
-      !> of the variables in the domain, rather than the whole domain.
-      if ( get_domain_size(idom_hydro) /= n_link ) then
+      vsize = get_variable_size(idom_hydro,1)
+      if ( vsize /= n_link ) then
          write(string1,*)'restart file, domain file not consistent.'
-         write(string2,*)'number of links ',get_domain_size(idom_hydro), &
+         write(string2,*)'number of links ',vsize, &
                          ' from "'//trim(domain_shapefiles(domainID))//'"'
          write(string3,*)'number of links ',int(n_link,i8), &
                          ' from "'//get_hydro_domain_filename()//'"'
          call error_handler(E_ERR, routine, string1, &
                     source, revision, revdate, text2=string2, text3=string3)
       endif
-
 
    elseif (index(domain_name,'PARAMETER') > 0) then
 
@@ -284,6 +283,8 @@ DOMAINS: do domainID = 1,size(domain_order)
                              clamp_vals=var_ranges(1:n_parameters,:), &
                             update_list=var_update )
       if (debug > 99) call state_structure_info(idom_parameters)
+
+      !>@todo check the size of the parameter variables against nlinks
 
    elseif (index(domain_name,'LSM') > 0) then
 
@@ -386,8 +387,8 @@ logical, save :: seed_unset = .true.
 integer, save :: seed
 type(random_seq_type) :: random_seq
 
-real(r8) :: stddev, rng
-real(r8) :: new_state
+real(r8) :: stddev, rng, m_shape, m_scale
+real(r8) :: new_state, in_mean
 integer  :: j, k, copy, ivar
 integer  :: start_ind, end_ind
 logical  :: positive
@@ -444,14 +445,26 @@ DOMAIN : do idom = 1, domain_count
              state_ens_handle%my_vars(j) <= end_ind   ) then
 
             do copy = 1, ens_size
+
                if (trim(perturb_distribution) == 'lognormal') then
                   rng = random_gaussian(random_seq, 0.0_r8, 1.0_r8)
                   state_ens_handle%copies(copy,j) = &
-                  state_ens_handle%copies(copy,j)*exp(stddev*rng)
-               else
+                            state_ens_handle%copies(copy,j)*exp(stddev*rng)
 
-                  !MOHA: if it's not lognormal, then the only
-                  !current other option is Gaussian. We can add more later.
+               elseif (trim(perturb_distribution) == 'trunc-normal') then
+
+                  state_ens_handle%copies(copy,j) = max(0.0_r8, &
+                            random_gaussian(random_seq, state_ens_handle%copies(copy,j), stddev))
+
+               elseif (trim(perturb_distribution) == 'gamma') then
+
+                  in_mean = state_ens_handle%copies(copy,j)
+
+                  m_scale = 0.5_r8 * (sqrt(in_mean**2 + 4.0_r8*stddev**2) - in_mean)
+                  m_shape = in_mean / m_scale + 1.0_r8
+                  state_ens_handle%copies(copy,j) = random_gamma(random_seq, m_shape, m_scale)
+
+               elseif (trim(perturb_distribution) == 'pos-gaussian') then
 
                   positive = .false.
 
@@ -474,7 +487,16 @@ DOMAIN : do idom = 1, domain_count
                      call error_handler(E_ERR, routine, string1, &
                                 source, revision, revdate, text2=string2)
                   endif
+
+               else
+
+                  write(string1,*)'pert_model_copies'
+                  write(string2,*)'Distribution "', trim(perturb_distribution), '" is not valid.'
+                  call error_handler(E_ERR, routine, string1, &
+                       source, revision, revdate, text2=string2)
+
                endif
+
             enddo
          endif
       enddo

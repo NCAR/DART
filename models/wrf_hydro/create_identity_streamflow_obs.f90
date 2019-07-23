@@ -65,7 +65,10 @@ character(len=512) :: string1, string2, string3 ! strings for messages
 
 integer,  parameter :: NUM_COPIES      = 1      ! number of copies in sequence
 integer,  parameter :: NUM_QC          = 1      ! number of QC entries
-real(r8), parameter :: MIN_OBS_ERR_STD = 0.5_r8 ! m^3/sec
+real(r8), parameter :: MIN_OBS_ERR_STD = 0.1_r8 ! m^3/sec
+real(r8), parameter :: MAX_OBS_ERR_STD = 100000.0_r8 
+real(r8), parameter :: NORMAL_FLOW     = 10.0_r8
+real(r8), parameter :: contract        = 0.001_r8
 
 integer :: existing_num_copies, existing_num_qc
 
@@ -312,14 +315,30 @@ FILELOOP : do ifile=1,nfiles
       indx = find_matching_gage_index(n)
       if (indx == 0) cycle OBSLOOP
 
-      ! relate the physical location to the state vector index
-
+      ! relate the physical location to the dart state vector index
       dart_index = linkloc_to_dart(lat(indx), lon(indx))
 
       ! oerr is the observation error standard deviation in this application.
       ! The observation error variance encoded in the observation file
       ! will be oerr*oerr
       oerr = max(discharge(n)*obs_fraction_for_error, MIN_OBS_ERR_STD)
+
+      ! MEG: A fix to not crush the ensemble in a no-flood period (stagnant water).  
+      !if ( discharge(n) < NORMAL_FLOW ) then 
+         ! don't correct that much, the gauge observations imply that the flow 
+         ! in the stream is small. This is not a flood period. Streamflow values
+         ! indicate a more or less lake situation rather than a strongly flowing stream. 
+         ! For this, choose a large value for the observation error standard deviation 
+         ! in order not to crush the ensemble spread. 
+      !   oerr = MAX_OBS_ERR_STD
+      !else 
+         ! This is a more interesting scenario where the flow in teh stream 
+         ! is big enough for DA to make sense. 
+         
+         ! NEW MOHA
+      !   oerr = MIN_OBS_ERR_STD + contract*(discharge(n) - NORMAL_FLOW)**2
+      !   oerr = max(discharge(n)*obs_fraction_for_error, MIN_OBS_ERR_STD)
+      !endif 
 
       call convert_time_string(time_string(n),oday,osec,n)
       time_obs = set_time(osec,oday)  ! yes, seconds then days
@@ -673,8 +692,8 @@ LONLOOP : do n = 1,lookup_table%nlinks
 
    sorted_index = lookup_table%sortedindex(n)
 
-   if (lon == lookup_table%longitude(sorted_index) .and. &
-       lat == lookup_table%latitude( sorted_index)) then
+   if ( abs(lon - lookup_table%longitude(sorted_index)) < .0000001 .and. &
+        abs(lat - lookup_table%latitude( sorted_index)) < .0000001      ) then
       dartindx = sorted_index
       exit LONLOOP
    endif

@@ -4,7 +4,9 @@ import f90nml
 import os
 import pathlib
 import pickle
+import socket
 import sys
+import time
 import xarray as xa
 
 def perturb_channel_only_forcing(
@@ -37,6 +39,8 @@ def perturb_channel_only_forcing(
 
 
 if __name__ == "__main__":
+
+    #ts = time.time()
 
     parser = argparse.ArgumentParser(
         description='Apply noise to channel-only forcing files implied by the current run.'
@@ -180,3 +184,10 @@ if __name__ == "__main__":
     # DO NOT change the run_obj.setup.domain.forcing_dir
     namelist_hrldas['noahlsm_offline']['indir'] = perturb_forcing_dir
     namelist_hrldas.write(str(job_dir) + '/namelist.hrldas', force=True)
+
+    #te = time.time()
+    #print('Timing: ' + str(round(te - ts, 2)) + ' seconds: ')
+    #print(datetime.datetime.now())
+    #print(socket.gethostname())
+
+    sys.exit(0)

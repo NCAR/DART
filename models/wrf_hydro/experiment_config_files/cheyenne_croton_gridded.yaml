@@ -40,7 +40,7 @@ wrf_hydro:
   build_dir: wrf_hydro_build
   # Absolute path required: 
   domain_src: /glade/work/jamesmcc/domains/public/croton_NY
-
+  domain_symlink: False
 
 experiment:
   # tag: croton_gridded # not yet used. 
@@ -66,7 +66,7 @@ ensemble:
   size: 4
   # A python script which constructs the ensemble from a single member
   # specified in the wrf_hydro options.
-  constructor: ens_setup_files/ens_setup_croton_gridded.py
+  constructor: ../../ensemble_config_files/ens_setup_croton_gridded.py
 
 
 # How is the initial ensemble created?  
@@ -136,7 +136,7 @@ initial_ens:
 observation_preparation:
   all_obs_dir: /glade/work/${USER}/wrfhydro_dart/croton_gridded/obs_seq/test1
   USGS_daily:
-    prepare: True
+    prepare: False
     identity_obs: False
     input_dir: /glade/work/jamesmcc/domains/public/croton_NY/NWM/nudgingTimeSliceObs/
     output_dir: /glade/work/${USER}/wrfhydro_dart/croton_gridded/obs_seq/test1/USGS/
@@ -178,28 +178,8 @@ run_experiment:
       use_input_nml: False
       assim_window_size_hours: 1
     submit_all_jobs: False  ## not currently used.
-    
-  wrf_hydro_ens_advance:
-    # With filter means that the model advance happens with the filter under
-    # a single scheduled job. This is meant for models of small-med size. In
-    # that case only nproc is used below and floor((ppn_max-1)/nproc) members
-    # are advanced simultaneously where ppn_max is set in run_experiment:dart:scheduler.
-    # These fields (of dart:scheduler:) are used for the scheduling.
-    with_filter: True
-    # The number of mpi processes for each model advance
-    # The mpi command for the model. can use {nproc} and {exe_name} to use those
-    # internal variables.
-    exe_cmd: 'mpirun `hostname` -np {nproc} ./{exe_name}'
-    # The number of mpi process for each model advance.
-    nproc: 1
-    nnodes: 1
-    account: NRAL0017
-    walltime: '00:01'
-    # TODO(JLM) Currently this is hard-coded:
-    job_name: ens_adv
-    queue: regular
-    email_when: abe
-    email_who: ${USER}@ucar.edu
+    skip_missing_obs_hours: True
+    skip_missing_obs_days: True
     
   perturb_forcing:
     perturb: False
@@ -212,17 +192,6 @@ run_experiment:
 
   dart:
     exes: ['filter', 'obs_sequence_tool']
-    scheduler: 
-      nproc: 2
-      nnodes: 1
-      ppn_max: 36
-      account: NRAL0017
-      walltime: '00:01'
-      job_name: croton_filter
-      queue: regular
-      email_when: abe
-      email_who: ${USER}@ucar.edu    
-
     input_nml_patches:
       filter_nml:
         inf_flavor: [2, 0]
@@ -248,6 +217,48 @@ run_experiment:
         # are used in run_filter_experiment:
         #Note the name and order convention for the state file lists:
         # 1) hydro_file_list.txt  2) lsm_file_list.txt  3) param_file_list.txt
-
       assim_tools_nml:
         cutoff: 0.0003139  # 0.5*the max. reach length specified in model_nml 
+
+  # Notes on choosing job_execution resources.
+  # 1) Determine wrfhydro:nproc
+  # 2) Then determine scheduler:ppn
+  # 3) n_teams_per_node = floor( scheduler:ppn / wrfhydro:nproc )
+  # 4) Then select scheduler:nnodes to determine how many teams (max concurrent members
+  #    running.
+  job_execution:
+    machine:
+      ppn_max: 36
+    scheduler:
+      nnodes: 1
+      ppn_use: 35
+      account: NRAL0017
+      walltime: '00:09'
+      job_name: ens_adv
+      queue: premium
+      email_when: abe
+      email_who: ${USER}@ucar.edu
+    wrf_hydro:
+      # The number of mpi processes for each model advance
+      nproc: 2
+      # The exe_cmd depends on your mpi implememtation. Currently only supporting openmpi.
+      # The exe_cmd applied to both the entry and exit commands applying the exe_cmd form to each
+      # semicolon-separated command and running these serially with nproc=1 and using only the
+      # first available hostname.
+      # The exe_cmd is solved for the model run by substituting ./wrf_hydro.exe for {cmd} and using
+      # nproc above and the appropriate, full set of hostnames available.
+      # Certain MPI distributions may need env variable, passed as a dictionary of key:value pairs.
+      # OpenMPI:
+      exe_cmd: 'mpirun --host {hostname} -np {nproc} {cmd}'
+      env: None
+      # MPT: UNSATISFACTORY PERFORMANCE.
+      # exe_cmd: 'mpirun --host {hostname} -np {nproc} ./wrf_hydro.exe'
+      # env = {**os.environ, **{'MPI_SHEPHERD':'true'}}
+    dart:
+      # This must not exceed scheduler:ppn_use
+      nproc: 35
+      # OpenMPI
+      exe_cmd: 'mpirun -np {nproc} ./filter'
+      #exe_cmd: 'mpirun --host {hostname} -np {nproc} {cmd}'
+      # MPT
+      #cmd: 'mpirun {hostname} -np {nproc} {cmd}'

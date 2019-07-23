@@ -45,9 +45,7 @@ def setup_initial_ens(config, wrf_hydro_ens_sim):
 
         if input_state_file_list['hydro_file_list.txt'] is None:
             input_state_file_list['hydro_file_list.txt'] = \
-                sorted(domain_config_rst_path.glob('*HYDRO_RST*'))[0]
-
-
+                wrf_hydro_ens_sim.members[0].base_hydro_namelist['hydro_nlist']['restart_file']
 
     # -------------------------------------------------------
     # Create a parameter restart file
@@ -205,9 +203,13 @@ def setup_initial_ens(config, wrf_hydro_ens_sim):
         )
 
         # Run filter
-        filter_cmd = './filter'
-        if config['dart']['mpi']:
-            filter_cmd = 'mpirun -np 1 ' + filter_cmd
+        if 'cmd' in config['initial_ens']['from_filter'].keys():
+            filter_cmd = config['initial_ens']['from_filter']['cmd']
+        else:
+            filter_cmd = './filter'
+            if config['dart']['mpi']:
+                filter_cmd = 'mpirun --host `hostname` -np 1 ' + filter_cmd
+
         spr = subprocess.run(shlex.split(filter_cmd), cwd=init_ens_filter_dir)
 
         if spr.returncode != 0:

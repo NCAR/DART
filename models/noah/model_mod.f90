@@ -48,7 +48,8 @@ use     obs_kind_mod,      only : get_index_for_quantity, &
                                   QTY_SNOW_THICKNESS, &
                                   QTY_LEAF_CARBON, &
                                   QTY_WATER_TABLE_DEPTH, &
-                                  QTY_GEOPOTENTIAL_HEIGHT
+                                  QTY_GEOPOTENTIAL_HEIGHT, &
+                                  QTY_SOIL_NITROGEN
 
 use  ensemble_manager_mod, only : ensemble_type
 
@@ -60,7 +61,8 @@ use        noah_hydro_mod, only : configure_lsm, get_noah_timestepping, &
                                   num_soil_layers, lsm_namelist_filename, &
                                   soil_layer_thickness, get_lsm_domain_info, &
                                   wrf_static_data, get_lsm_domain_filename, &
-                                  read_noah_global_atts, write_noah_global_atts
+                                  read_noah_global_atts, write_noah_global_atts, &
+                                  num_soil_nitrogen_layers
 
 use   state_structure_mod, only : add_domain,      get_domain_size,   &
                                   get_index_start, get_index_end,     &
@@ -215,6 +217,7 @@ logical, save      :: module_initialized = .false.
 character(len=32)  :: calendar = 'Gregorian'
 
 real(r8), allocatable :: soil_depth(:)
+real(r8), allocatable :: soil_nitrogen_depth(:)
 real(r8), allocatable :: xlong(:,:), xlat(:,:)
 integer :: south_north, west_east
 
@@ -315,6 +318,20 @@ do i = 2,num_soil_layers
    soil_depth(i) = soil_depth(i-1) + &
                    (soil_layer_thickness(i)+soil_layer_thickness(i-1))/2.0_r8
 enddo
+
+! soil nitrogen support implemented for UT Austin research code.
+
+if (num_soil_nitrogen_layers > 0) then
+   allocate(soil_nitrogen_depth(num_soil_nitrogen_layers))
+   
+   soil_nitrogen_depth(1) = 0.005_r8 
+   soil_nitrogen_depth(2) = soil_layer_thickness(1)/2.0_r8+soil_nitrogen_depth(1)
+   
+   do i = 3,num_soil_nitrogen_layers
+      soil_nitrogen_depth(i) = soil_nitrogen_depth(i-1) + &
+                      (soil_layer_thickness(i-1)+soil_layer_thickness(i-2))/2.0_r8
+   enddo
+endif
 
 ! Now that we know the composition of the DART state, determine the model size.
 
@@ -603,7 +620,7 @@ real(r8) :: dx, dy, dz, dxm, dym, dzm  !< fractional weights
 
 integer  :: i, j, k, e
 
-integer  :: domid, varid, obs_kind
+integer  :: domid, varid, obs_kind, num_dims
 logical  :: is_lev0
 
 integer, dimension(2) :: ll, lr, ul, ur
@@ -613,7 +630,9 @@ integer(i8)        :: ill, ilr, iul, iur
 real(r8) :: fld(2,ens_size)
 real(r8) :: x_iul(ens_size) ,x_iur(ens_size)
 real(r8) :: x_ill(ens_size), x_ilr(ens_size)
-real(r8) :: a1(ens_size)
+
+real(r8) :: layer_midpoints(max(num_soil_layers,num_soil_nitrogen_layers))
+integer  :: num_layers
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -704,11 +723,18 @@ endif
 call toGrid(xloc, i, dx, dxm)
 call toGrid(yloc, j, dy, dym)
 
-call height_to_zk(loc_depth, soil_depth, num_soil_layers, zloc, is_lev0)
+num_dims = get_num_dims(domid, varid)
+
+! Some variables have vertical levels of soil_layers, soil_nitrogen_layers, etc.
+call get_vertical_array(domid, varid, num_dims, layer_midpoints, num_layers)
+
+call height_to_zk(loc_depth, layer_midpoints, num_layers, zloc, is_lev0)
 
 if( debug > 99 ) then
    print*,' obs is by height and zloc,lev0 =',zloc, is_lev0
-   print*,'model height profile', soil_depth
+   print*,'soil_depth ', soil_depth
+   if (num_soil_nitrogen_layers > 0) &
+   print*,'soil_nitrogen_depth', soil_nitrogen_depth
 endif
 
 if(zloc == missing_r8) istatus = 2
@@ -723,7 +749,7 @@ if(zloc == missing_r8) istatus = 2
 call getCorners(i, j, domid, ll, ul, lr, ur, rc )
 
 ! Interpolation at level k
-if (get_num_dims(domid, varid)==3) then
+if (num_dims == 3) then
    ill = get_dart_vector_index(ll(1), int(zloc), ll(2), domid, varid)
    iul = get_dart_vector_index(ul(1), int(zloc), ul(2), domid, varid)
    ilr = get_dart_vector_index(lr(1), int(zloc), lr(2), domid, varid)
@@ -747,13 +773,6 @@ if (debug > 99) then
    print*,'corner weights            ',dym*dxm, dym*dx, dy*dxm, dy*dx
 endif
 
-!>@todo replace this loop with vector computation below
-do e = 1, ens_size
-    a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
-    fld(1,e) = a1(e)
-    if (debug > 0) print*,'fld(1,:)',fld(1,e)
-enddo
-
 fld(1,:) = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
 if (debug > 0) print*,'vector comp:',fld(1,:)
 
@@ -764,7 +783,7 @@ where(x_iur == missing_r8) fld(1,:) = missing_r8
 
 ! Interpolation at level k+1
 
-if (get_num_dims(domid, varid)==3) then
+if (num_dims == 3) then
    ill = get_dart_vector_index(ll(1), int(zloc), ll(2), domid, varid)
    iul = get_dart_vector_index(ul(1), int(zloc), ul(2), domid, varid)
    ilr = get_dart_vector_index(lr(1), int(zloc), lr(2), domid, varid)
@@ -781,10 +800,7 @@ x_ilr = get_state(ilr, state_handle)
 x_iul = get_state(iul, state_handle)
 x_iur = get_state(iur, state_handle)
 
-do e = 1, ens_size
-   a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
-   fld(2,e) = a1(e)
-enddo
+fld(2,:) = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
 
 where(x_ill == missing_r8) fld(2,:) = missing_r8
 where(x_ilr == missing_r8) fld(2,:) = missing_r8
@@ -850,26 +866,48 @@ type(location_type), intent(out)           :: location
 integer,             intent(out), optional :: var_type
 
 character(len=*), parameter :: routine = 'get_state_meta_data'
-integer :: ilon, ivert, ilat, varid, domid, qtyid
+integer :: idim1, idim2, idim3, varid, domid, qtyid, num_dims
 character(len=obstypelength) :: qtystring
+
+character(len=NF90_MAX_NAME) :: varname
+
+real(r8) :: layer_midpoints(max(num_soil_layers,num_soil_nitrogen_layers))
+integer  :: num_layers
 
 if ( .not. module_initialized ) call static_init_model
 
-call get_model_variable_indices(index_in, ilon, ivert, ilat, varid, domid, &
-                                qtyid, qtystring)
+! Be careful with the indices from get_model_variable_indices.
+! lat/lon variables are declared (west_east,south_north)
+! 2D      variables are declared (west_east,south_north)
+! 3D      variables are declared (west_east,soil_layers_stag,south_north)
+
+call get_model_variable_indices(index_in, idim1, idim2, idim3, &
+                                varid, domid, qtyid, qtystring)   
+
+num_dims = get_num_dims(domid,varid)
+varname  = get_variable_name(domid,varid)
 
 !>@todo Support more than just soil layers.
 !> Different vertical dimensions will have different ways of specifying depth.
+!> Snow layers are still a problem.
 
-if(get_num_dims(domid,varid)==3) then
-   location = set_location(xlong(ilon,ilat), &
-                           xlat(ilon,ilat),  &
-                           soil_depth(ivert), VERTISHEIGHT)
+call get_vertical_array(domid, varid, num_dims, layer_midpoints, num_layers)
+
+if ( num_dims == 2 ) then
+
+   location = set_location(xlong(idim1,idim2), xlat(idim1,idim2),  &
+                  0.0_r8, VERTISSURFACE)
+
+elseif ( num_dims == 3 ) then
+
+   location = set_location(xlong(idim1,idim3), xlat(idim1,idim3),  &
+                  layer_midpoints(idim2), VERTISHEIGHT)
+
 else
-   location = set_location(xlong(ilon,ivert), &
-                           xlat(ilon,ivert),  &
-                           soil_depth(ilat), VERTISHEIGHT)
+   write(string1,*) 'unsupported number of dimensions (',num_dims,') for "',trim(varname),'"'
+   call error_handler(E_ERR,'get_state_meta_data',string1,source,revision,revdate)
 endif
+
 if (present(var_type)) var_type = qtyid
 
 end subroutine get_state_meta_data
@@ -908,7 +946,6 @@ integer, intent(in)  :: ncid
 integer, intent(in)  :: domain_id
 
 character(len=*), parameter :: routine = 'nc_write_model_atts'
-integer :: nVariables, nAttributes
 
 ! variables for the geographic metadata
 
@@ -917,10 +954,8 @@ integer :: DateStrLenDimID
 integer :: weDimID
 integer :: snDimID
 integer :: nsoilDimID
-integer :: myndims
+integer :: nitsoilDimID
 integer :: varid
-integer, dimension(NF90_MAX_VAR_DIMS) :: mydimids
-character(len=NF90_MAX_NAME) :: varname
 
 ! variables for the namelist output
 
@@ -949,21 +984,24 @@ else
    has_lsm_namelist = .false.
 endif
 
-!TJH if (has_lsm_namelist) then
-!TJH    allocate(textblock(nlines))
-!TJH    textblock = ''
-!TJH
-!TJH    io= nf90_def_dim(ncid, name='noahNMLnlines', len = nlines, dimid = nlinesDimID)
-!TJH    call nc_check(io, routine, 'def_dim noahNMLnlines')
-!TJH
-!TJH    io = nf90_def_var(ncid,name=trim(lsm_namelist_filename), xtype=nf90_char, &
-!TJH           dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID)
-!TJH    call nc_check(io, routine, 'def_var noah_namelist')
-!TJH
-!TJH    io= nf90_put_att(ncid, nmlVarID, 'long_name', &
-!TJH           'contents of '//trim(lsm_namelist_filename))
-!TJH    call nc_check(io, routine, 'put_att noah_namelist')
-!TJH endif
+if (has_lsm_namelist) then
+   allocate(textblock(nlines))
+   textblock = ''
+
+   io= nf90_def_dim(ncid, name='noahNMLnlines', len = nlines, dimid = nlinesDimID)
+   call nc_check(io, routine, 'def_dim noahNMLnlines')
+
+   io= nf90_def_dim(ncid, name='line_length', len = 129, dimid = linelenDimID)
+   call nc_check(io, routine, 'def_dim line_length')
+
+   io = nf90_def_var(ncid,name=trim(lsm_namelist_filename), xtype=nf90_char, &
+          dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID)
+   call nc_check(io, routine, 'def_var noah_namelist')
+
+   io= nf90_put_att(ncid, nmlVarID, 'long_name', &
+          'contents of '//trim(lsm_namelist_filename))
+   call nc_check(io, routine, 'put_att noah_namelist')
+endif
 
 ! We need to output the prognostic variables.
 ! Define the additional dimensions IDs
@@ -983,6 +1021,12 @@ call nc_check(io, routine, 'south_north def_dim')
 
 io = nf90_def_dim(ncid, name='soil_layers_stag', len=num_soil_layers, dimid=nsoilDimID)
 call nc_check(io, routine, 'def_dim soil_layers_stag')
+
+if (num_soil_nitrogen_layers > 0 ) then
+   io = nf90_def_dim(ncid, name='soil_nitrogen_layers_stag', &
+             len=num_soil_nitrogen_layers, dimid=nitsoilDimID)
+   call nc_check(io, routine, 'def_dim soil_nitrogen_layers_stag')
+endif
 
 ! Create the (empty) Coordinate Variables and the Attributes
 
@@ -1051,16 +1095,16 @@ call nc_check(nf90_put_var(ncid, VarID, soil_layer_thickness(1:num_soil_layers))
              routine, 'put_var soil_layers_stag ')
 
 
-! TJH ! Fill the variables we can
-! TJH
-! TJH if (has_lsm_namelist) then
-! TJH    call file_to_text(lsm_namelist_filename, textblock)
-! TJH    call nc_check(nf90_put_var(ncid, nmlVarID, textblock ), &
-! TJH                  routine, 'put_var nmlVarID')
-! TJH    deallocate(textblock)
-! TJH endif
-! TJH
-! TJH ! Flush the buffer and leave netCDF file open
+! Fill the variables we can
+
+if (has_lsm_namelist) then
+   call file_to_text(lsm_namelist_filename, textblock)
+   call nc_check(nf90_put_var(ncid, nmlVarID, textblock ), &
+                 routine, 'put_var nmlVarID')
+   deallocate(textblock)
+endif
+
+! Flush the buffer and leave netCDF file open
 
 call nc_check(nf90_sync(ncid),routine, 'sync')
 
@@ -1340,9 +1384,10 @@ do ivar = 1,get_num_variables(domainID)
 
       if(dimname /= 'south_north' .and. &
          dimname /= 'west_east'   .and. &
-         dimname /= 'soil_layers_stag') then
+         dimname /= 'soil_layers_stag' .and. &
+         dimname /= 'soil_nitrogen_layers_stag') then
          write(string1,*) 'Only supporting variables with a vertical coordinate &
-                           &of "soil_layers_stag"'
+                           &of "soil_layers_stag" or "soil_nirogen_layers_stag"'
          write(string2,*) trim(varname), ' has "',trim(dimname),'"'
          call error_handler(E_ERR, routine, string1, &
               source, revision, revdate, text2=string2)
@@ -1629,7 +1674,6 @@ end subroutine toGrid
 
 subroutine height_to_zk(obs_v, mdl_v, n3, zk, lev0)
 
-
   real(r8), intent(in)  :: obs_v
   integer,  intent(in)  :: n3
   real(r8), intent(in)  :: mdl_v(1:n3)
@@ -1756,6 +1800,48 @@ endif
 end subroutine getCorners
 
 !-------------------------------------------------------------------
+
+subroutine get_vertical_array(domid, varid, num_dims, layer_midpoints, num_layers)
+
+integer,          intent(in) :: domid
+integer,          intent(in) :: varid
+integer,          intent(in) :: num_dims
+real(r8),         intent(out) :: layer_midpoints(:)
+integer,          intent(out) :: num_layers
+
+integer :: jdim
+character(len=NF90_MAX_NAME) :: dimname
+
+! Assume everything is at the surface until proven different
+
+layer_midpoints = 0.0_r8
+num_layers      = 1
+
+VERTICAL : do jdim = 1, num_dims
+   dimname = get_dim_name(domid, varid, jdim)
+   select case (dimname)
+      case ('soil_layers_stag')
+         layer_midpoints = soil_depth
+         num_layers      = num_soil_layers
+         exit VERTICAL
+
+      case ('soil_nitrogen_layers_stag')
+         if (num_soil_nitrogen_layers > 0) then
+            layer_midpoints = soil_nitrogen_depth
+            num_layers      = num_soil_nitrogen_layers
+         else
+            write(string1,*)'variable uses soil_nitrogen_layers but'
+            write(string2,*)'namelist.hrldas has no nitrogen layers (NITSOIL).'
+            call error_handler(E_ERR,'get_vertical_array',string1, &
+                       source, revision, revdate, text2=string2)
+         endif
+         exit VERTICAL
+
+   end select
+enddo VERTICAL
+
+end subroutine get_vertical_array
+
 
 end module model_mod
 

@@ -8,7 +8,55 @@ James (jamesmcc-at-ucar-dot-edu)
 ### Python 3.6+
 
 #### Cheyenne
-Please configure your python virtual environment using the instructions at https://www2.cisl.ucar.edu/resources/computational-systems/cheyenne/software/python. This is known to not work. The `pip uninstall -y seaborn` command is a check and the environment is broken if there's a permission error on the source of the virtual env. Please report this issue to cisl@ucar.edu or to us.
+Please configure your python virtual environment using the following script (adapted from https://www2.cisl.ucar.edu/resources/computational-systems/cheyenne/software/python). This is known to not work, that is why there is a test section. If it does not work, please report this issue to cisl@ucar.edu or to us.
+
+```
+#!/bin/bash
+
+# This script installs and activates a new python virtual environment
+# from the latest, stock cisl one. 
+# Configure two variables here:
+env_tag=cisl_test # This will be wrapped in () in your PS1/prompt.
+clone_dir=/glade/work/$USER/python_envs/$env_tag
+
+# -------------------------------------------------------
+# Make sure the script is being sourced
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    echo "This script is to be sourced (not run in a sub shell)."
+    exit 1
+fi
+
+# -------------------------------------------------------
+# Install and config
+deactivate 2&>1 > /dev/null
+rm -rf $clone_dir
+module load python/3.6.4
+ncar_pylib -c `ncar_pylib -l | tail -n1` $clone_dir
+
+if [ ! -z $env_tag ]; then
+    sed -i "s/(NPL)/(${env_tag})/" ${clone_dir}/bin/activate
+fi
+
+# -------------------------------------------------------
+# Activate
+source ${clone_dir}/bin/activate || return 1
+
+# -------------------------------------------------------
+# Test
+pip uninstall -y seaborn || return 1
+pip install seaborn || return 1
+
+# -------------------------------------------------------
+# Bashrc
+echo
+echo "To activate this environment on login, put this at the"
+echo "bottom of your bashrc:"
+echo "source ${clone_dir}/bin/activate"
+echo
+
+return 0
+```
+
 
 
 ### Python package dependencies

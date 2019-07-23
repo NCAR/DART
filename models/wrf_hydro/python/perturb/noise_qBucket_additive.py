@@ -14,7 +14,7 @@ def noise_model():
         def the_closure(x, seed: int=None):
             if seed is not None:
                 np.random.seed(seed)
-            return np.maximum(x+np.random.normal(0.0, .2, 1), min)
+            return np.maximum(x+np.random.normal(0.0, 10.0, 1), min)
         return the_closure
 
     return np.vectorize(close_trunc_gauss(min=0.0))

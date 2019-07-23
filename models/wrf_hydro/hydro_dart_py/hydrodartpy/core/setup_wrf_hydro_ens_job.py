@@ -2,17 +2,24 @@ import code
 import datetime
 import os
 import pathlib
+import subprocess
 import sys
 import wrfhydropy
 
 def setup_wrf_hydro_ens_job(config, wrf_hydro_ens_sim):
 
-    config_ens_advance = config['run_experiment']['wrf_hydro_ens_advance']
+    config_job_exe = config['run_experiment']['job_execution']
 
     # I think the exe name is hard-coded in wrfhydropy to this. If it's
     # tracked, could bring it in.
-    fmt_dict = {**config_ens_advance, **{'exe_name': 'wrf_hydro.exe'}}
-    exe_cmd = config_ens_advance['exe_cmd'].format(**fmt_dict)
+    hostname = subprocess.run('hostname', stdout=subprocess.PIPE).stdout.rstrip().decode('utf-8')
+    fmt_dict = {
+        **{'cmd': 'wrf_hydro.exe',
+           'hostname': hostname,
+           'nproc': config_job_exe['wrf_hydro']['nproc']
+        }
+    }
+    exe_cmd = config_job_exe['wrf_hydro']['exe_cmd'].format(**fmt_dict)
 
     # This is ugly, but there are no files on disk to query, which is the other way of doing this.
     def get_nlist_date(member):
@@ -42,7 +49,7 @@ def setup_wrf_hydro_ens_job(config, wrf_hydro_ens_sim):
 
     job = wrfhydropy.Job(
         exe_cmd=exe_cmd,
-        job_id=config_ens_advance['job_name'],
+        job_id=config_job_exe['scheduler']['job_name'],
         model_start_time=start_time,
         model_end_time=end_time,
         restart=True,
