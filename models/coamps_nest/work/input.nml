@@ -7,13 +7,13 @@
 
    write_output_state_to_file = .true.
    single_file_out            = .false.
-   output_state_files         = "perfect_output.nc", "perfect_output.nc"
+   output_state_files         = "perfect_domain1.nc", "perfect_domain2.nc"
    output_interval            = 1
 
    async                      = 4
    adv_ens_command            = "../shell_scripts/advance_model.csh"
 
-   obs_seq_in_file_name       = "obs_seq.in"
+   obs_seq_in_file_name       = "obs_seq.one"
    obs_seq_out_file_name      = "obs_seq.out"
    init_time_days             = -1
    init_time_seconds          = -1
@@ -98,8 +98,8 @@
    assimilation_period_days    = 0
    assimilation_period_seconds = 21600
    need_mean                   = .true.
-   output_interpolation        = .false.
-   debug                       = 1
+   output_interpolation        = .true.
+   debug                       = 0
   /
 
 
@@ -170,7 +170,6 @@
    /
 
 # P_SFC_* observations generate forward op errors of 915 (see get_expected_altimeter())
-
 
 &preprocess_nml
     input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'

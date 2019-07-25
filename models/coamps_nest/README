@@ -111,7 +111,8 @@ Eddy in /home/nopp/COAMPS_hdf5_files
  
 Innovation file innov_a_2013011000
 Some description of this format is in “Innovation Vector Description.pdf”
-However, it is not the exact description. This document is actually for a related system that produces this innovation vector. You can pretty much ignore all the stuff about the radiances.
+However, it is not the exact description. This document is actually for a related system 
+that produces this innovation vector. You can pretty much ignore all the stuff about the radiances.
  
 Matlab program to read the file is in rd_ainv.m
 In matlab
@@ -128,8 +129,6 @@ went from almost 700 seconds to 14 seconds. Also added the 'ngt' filename to the
 -------------------------------------------------------------------------------
 Mon Dec 18 09:42:42 PST 2017
 
-conference call today ...
-
 0) assimilation of two simple synthetic observations works as expected.
 1) innovation observation file conversion supported. Have not run it through filter.
    those forward operators are appropriate for the existing obs_def_navdas_mod.f90,
@@ -145,9 +144,74 @@ conference call today ...
 5) scripting is updated as far as I can take it without actually being able to advance
    coamps ...
 
+-------------------------------------------------------------------------------
+Thu Mar  1 08:33:38 PST 2018
 
+Sergey provided these files.
+He had an 80 member ensemble experiment in the Med, but the files were binary.
+He converted a subset of the variables to hdf5 for me ... not sure the DTG in the file
+matches the DTG in the variables. Not all variables 'naturally' present in the native
+HDF5 files are present in these.
 
+0[308] eddy:~/COAMPS_hdf5_files/MedEnsemble $ h5ls coamps_0001_2012010100.hdf5
+airtmp_sig_031050_000010_1a0067x0037_2012010100_00060000_fcstfld Dataset {30, 37, 67}
+datahd_sfc_000000_000000_1a2000x0001_2012010100_00000000_infofld Dataset {2000, 1}
+perprs_sig_031050_000010_1a0067x0037_2012010100_00060000_fcstfld Dataset {30, 37, 67}
+pottmp_sig_031050_000010_1a0067x0037_2012010100_00060000_fcstfld Dataset {30, 37, 67}
+uuwind_sig_031050_000010_1a0067x0037_2012010100_00060000_fcstfld Dataset {30, 37, 67}
+uuwind_zht_000010_000000_1a0067x0037_2012010100_00060000_fcstfld Dataset {1, 37, 67}
+vvwind_sig_031050_000010_1a0067x0037_2012010100_00060000_fcstfld Dataset {30, 37, 67}
+vvwind_zht_000010_000000_1a0067x0037_2012010100_00060000_fcstfld Dataset {1, 37, 67}
+wvapor_sig_031050_000010_1a0067x0037_2012010100_00060000_fcstfld Dataset {30, 37, 67}
+wwwind_sig_034800_000000_1a0067x0037_2012010100_00060000_fcstfld Dataset {31, 37, 67}
 
+Running Darth_Test/run_filter.csh made headway, but the forward operators all failed.
+
+0[389] eddy:~/thoar_eddy1/Darth_Test/instance_0001 $ h5ls coamps_0001_2012010606.hdf5
+airtmp_sig_031050_000010_1a0067x0037_2012010606_00060000_fcstfld Dataset {30, 37, 67}
+datahd_sfc_000000_000000_1a2000x0001_2012010606_00000000_infofld Dataset {1, 2000}
+perprs_sig_031050_000010_1a0067x0037_2012010606_00060000_fcstfld Dataset {30, 37, 67}
+pottmp_sig_031050_000010_1a0067x0037_2012010606_00060000_fcstfld Dataset {30, 37, 67}
+terrht_sfc_000000_000000_1a0067x0037_2012010606_00000000_fcstfld Dataset {37, 67}
+uuwind_sig_031050_000010_1a0067x0037_2012010606_00060000_fcstfld Dataset {30, 37, 67}
+uuwind_zht_000010_000000_1a0067x0037_2012010606_00060000_fcstfld Dataset {37, 67}
+vvwind_sig_031050_000010_1a0067x0037_2012010606_00060000_fcstfld Dataset {30, 37, 67}
+vvwind_zht_000010_000000_1a0067x0037_2012010606_00060000_fcstfld Dataset {37, 67}
+wvapor_sig_031050_000010_1a0067x0037_2012010606_00060000_fcstfld Dataset {30, 37, 67}
+wwwind_sig_034800_000000_1a0067x0037_2012010606_00060000_fcstfld Dataset {31, 37, 67}
+
+After assimilation , 'trans_dart_to_coamps' uses COAMPS write routines that expect a
+DTG in the file name, the dart call provides the base filename of 'CoampsUpdate'
+
+0[382] eddy:~/thoar_eddy1/Darth_Test/instance_0001 $ h5ls CoampsUpdate_2012010612.hdf5
+perprs_sig_031050_000010_1a0067x0037_2012010606_00000000_analfld Dataset {30, 37, 67}
+pottmp_sig_031050_000010_1a0067x0037_2012010606_00000000_analfld Dataset {30, 37, 67}
+uuwind_sig_031050_000010_1a0067x0037_2012010606_00000000_analfld Dataset {30, 37, 67}
+uuwind_zht_000010_000000_1a0067x0037_2012010606_00000000_analfld Dataset {37, 67}
+vvwind_sig_031050_000010_1a0067x0037_2012010606_00000000_analfld Dataset {30, 37, 67}
+vvwind_zht_000010_000000_1a0067x0037_2012010606_00000000_analfld Dataset {37, 67}
+wvapor_sig_031050_000010_1a0067x0037_2012010606_00000000_analfld Dataset {30, 37, 67}
+wwwind_sig_034800_000000_1a0067x0037_2012010606_00000000_analfld Dataset {31, 37, 67}
+
+-------------------------------------------------------------------------------
+
+conference call today ... Sasha, Jim D., Andy
+
+a) Sasha will create an initial 20-member ensemble for the WC domain using a perturbed physics
+   approach - then forecast for 12 hours. A single mesh.
+b) Jim/Sasha will provide a routine to go to/from their sigma coordinates to pressure so
+   that we can convert the model state (and obs) to pressure for assimilation.
+a + b have a target delivery date of August 9th.
+
+c) given a forecast file (coamps_0001_2012010606.hdf5) with variables 
+(airtmp_sig_031050_000010_1a0067x0037_2012010606_00060000_fcstfld) the DTG is 2012010606, the TAU is 00060000
+After assimilation the filename (CoampsUpdate_2012010612.hdf5) should have variables
+(airtmp_sig_031050_000010_1a0067x0037_2012010612_00000000_analfld)
+
+d) I need to become familiar with converting 'everything' (state/obs) to the assimilation vertical coordinate.
+   Should be able to get a single assimilation cycle going with our conventional obs.
+
+e) NRL will be responsible for cycling the system to flush out any bugs in the assimilation framework.
 
 
 # <next few lines under version control, do not edit>

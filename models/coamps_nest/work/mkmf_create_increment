@@ -52,8 +52,17 @@ endif
 # remove temp file and now really call mkmf to generate makefile
 rm -f ${path_name}.back
 
+if (! $?HDF_DIR) then
+   set HDF_DIR = /auto/soft/hdf5/CentOS_6_pgi
+endif
+
+set HDFINCDIR = "-I${HDF_DIR}/include"
+set HDFLIBDIR = "-L${HDF_DIR}/lib"
+set   HDFLIBS = "-lhdf5hl_fortran -lhdf5_fortran"
+
 ../../../build_templates/mkmf -p create_increment -t ../../../build_templates/mkmf.template \
-       -c"-DHDF5"  -a "../../.." ${wrapper_arg} ${path_name}
+ -l "${HDFINCDIR} ${HDFLIBDIR} ${HDFLIBS}" \
+ -c "-DHDF5"  -a "../../.." ${wrapper_arg} ${path_name}
 
 exit $status
 

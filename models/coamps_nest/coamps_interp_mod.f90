@@ -306,6 +306,9 @@ contains
         obs_value = MISSING_R8   ! failure until proven otherwise
         interp_worked = 800
 
+        call write_location(0,obs_loc,charstring=message)
+        write(*,*)'TJH '//trim(message)
+
         if (.not. has_valid_location(interpolator)) then
             interp_worked = 901
             call finalize_interpolator(interpolator)
@@ -350,6 +353,8 @@ contains
                      query_location(obs_loc, 'VLOC'), is_success)
           endif 
 
+          write(*,*)'TJH is_success is ',is_success
+
           if( .not. is_success) then
 
              call get_target_var(interpolator, obs_kind)
@@ -357,6 +362,9 @@ contains
 
              ! Interpolation is spotty if there aren't enough vertical levels,
              ! so declare failure rather than returning a (probably bad) result
+
+          write(*,*)'TJH is_success is ',is_success
+
              call calculate_available_levels(interpolator)
              if (.not. enough_levels_available(interpolator)) then
                interp_worked = 902
@@ -440,6 +448,11 @@ contains
     function has_valid_location(interpolator)
         type(coamps_interpolator), intent(in)  :: interpolator
         logical                                :: has_valid_location
+
+        write(*,*)'TJH has_valid_location: ', &
+                        interpolator%interp_level_type, &
+        is_valid_level_type(interpolator%interp_level_type), &
+            in_this_nest(interpolator%interp_point)
 
         ! Need to check the horizontal and vertical components separately
         if (is_valid_level_type(interpolator%interp_level_type) .and. &
@@ -1272,9 +1285,12 @@ contains
         end if
 
         do cur_level_num = 1, num_levels
+
+            write(*,*)'TJH var_kind, cur_level_num is ',var_kind,cur_level_num
+
             matching_var => find_state_variable(interpolator%state_definition, &
                                                interpolator%interp_nest,       &
-                                               var_kind,   is_mean,             &
+                                               var_kind,   is_mean,            &
                                                level_type, cur_level_num)
 
             if(present(var_availability_index)) then
@@ -1626,6 +1642,8 @@ contains
     subroutine calculate_available_levels(interpolator)
         type(coamps_interpolator), intent(inout) :: interpolator
 
+        write(*,*)'TJH calculate_available_levels: vars_available',interpolator%vars_available
+
         ! A level is defined as available if every variable required
         ! for the interpolation is available at that level
         interpolator%levels_available(:) = all(interpolator%vars_available, &
@@ -1841,6 +1859,8 @@ contains
         else
             scaled_level = interpolator%interp_level
         end if
+
+        write(*,*)'TJH interp_level_in_available_range:',min_maxlevel_available, scaled_level, max_minlevel_available
 
         ! We're OK if the level is below the highest available and
         ! higher than the lowest available
