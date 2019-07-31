@@ -9,15 +9,10 @@ program dart_to_gitm
 !----------------------------------------------------------------------
 ! purpose: interface between DART and the GITM model
 !
-! method: Read DART state vector and overwrite values in a gitm restart file.
-!         If the DART state vector has an 'advance_to_time' present, a
-!         file called DART_GITM_time_control.txt is created with
-!         information appropriate to advance gitm to the requested time.
+! method: Read DART state netcdf files and overwrite values in a gitm restart file.
 !
-!         The dart_to_gitm_nml namelist setting for advance_time_present
-!         determines whether or not the input file has an 'advance_to_time'.
-!         Typically, only temporary files like 'assim_model_state_ic' have
-!         an 'advance_to_time'.
+! NOT FINISHED!  HARDLY STARTED.
+!
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8
@@ -27,9 +22,7 @@ use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              logfileunit, open_file, close_file
 
 use        model_mod, only : static_init_model, get_model_size, &
-                             get_gitm_restart_dirname, statevector_to_restart_file
-
-use  assim_model_mod, only : open_restart_read, aread_state_restart, close_restart
+                             get_gitm_restart_dirname !! , statevector_to_restart_file
 
 use time_manager_mod, only : time_type, print_time, print_date, operator(-), &
                              get_time, get_date
@@ -46,11 +39,9 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-character (len = 128) :: dart_to_gitm_input_file = 'dart_restart'
-logical               :: advance_time_present    = .false.
+character (len = 128) :: dart_to_gitm_input_file = 'filter_restart.nc'
 
-namelist /dart_to_gitm_nml/ dart_to_gitm_input_file, &
-                            advance_time_present
+namelist /dart_to_gitm_nml/ dart_to_gitm_input_file
 
 !----------------------------------------------------------------------
 ! global storage
@@ -58,7 +49,6 @@ namelist /dart_to_gitm_nml/ dart_to_gitm_input_file, &
 
 integer               :: iunit, io, x_size
 type(time_type)       :: model_time, adv_to_time
-real(r8), allocatable :: statevector(:)
 character(len=256)    :: gitm_restart_dirname  = 'none'
 
 !======================================================================
@@ -86,20 +76,20 @@ write(*,*) 'dart_to_gitm: converting DART file ', "'"//trim(dart_to_gitm_input_f
 write(*,*) 'to gitm restart files in directory ', "'"//trim(gitm_restart_dirname)//"'"
 
 x_size = get_model_size()
-allocate(statevector(x_size))
+!allocate(statevector(x_size))
 
 !----------------------------------------------------------------------
 ! Reads the valid time, the state, and the target time.
 !----------------------------------------------------------------------
 
-iunit = open_restart_read(dart_to_gitm_input_file)
+!iunit = open_restart_read(dart_to_gitm_input_file)
 
-if ( advance_time_present ) then
-   call aread_state_restart(model_time, statevector, iunit, adv_to_time)
-else
-   call aread_state_restart(model_time, statevector, iunit)
-endif
-call close_restart(iunit)
+!if ( advance_time_present ) then
+!   call aread_state_restart(model_time, statevector, iunit, adv_to_time)
+!else
+!   call aread_state_restart(model_time, statevector, iunit)
+!endif
+!call close_restart(iunit)
 
 !----------------------------------------------------------------------
 ! update the current gitm state vector
@@ -107,11 +97,11 @@ call close_restart(iunit)
 ! time_manager_nml: stop_option, stop_count increments
 !----------------------------------------------------------------------
 
-call statevector_to_restart_file(statevector, gitm_restart_dirname, model_time)
+!call statevector_to_restart_file(statevector, gitm_restart_dirname, model_time)
 
-if ( advance_time_present ) then
-   call write_gitm_time_control(model_time, adv_to_time)
-endif
+!if ( advance_time_present ) then
+!   call write_gitm_time_control(model_time, adv_to_time)
+!endif
 
 !----------------------------------------------------------------------
 ! Log what we think we're doing, and exit.
@@ -121,13 +111,6 @@ call print_date( model_time,'dart_to_gitm:gitm model date')
 call print_time( model_time,'dart_to_gitm:DART model time')
 call print_date( model_time,'dart_to_gitm:gitm model date',logfileunit)
 call print_time( model_time,'dart_to_gitm:DART model time',logfileunit)
-
-if ( advance_time_present ) then
-call print_time(adv_to_time,'dart_to_gitm:advance_to time')
-call print_date(adv_to_time,'dart_to_gitm:advance_to date')
-call print_time(adv_to_time,'dart_to_gitm:advance_to time',logfileunit)
-call print_date(adv_to_time,'dart_to_gitm:advance_to date',logfileunit)
-endif
 
 ! end - close the log, etc
 call finalize_utilities()

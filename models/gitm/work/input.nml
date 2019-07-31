@@ -222,13 +222,16 @@
 
 
 &gitm_to_dart_nml
-   gitm_to_dart_output_file = 'dart_ics'
+   gitm_to_dart_output_file = 'filter_input.nc'
    /
 
 
 &dart_to_gitm_nml
-   dart_to_gitm_input_file  = 'dart_restart',
-   advance_time_present     = .true.,
+   dart_to_gitm_input_file  = 'filter_restart.nc',
+   /
+
+&gitm_to_netcdf.nml
+   gitm_to_netcdf_output_file  = 'gitm_netcdf.nc'
    /
 
 
