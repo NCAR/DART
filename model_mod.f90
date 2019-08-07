@@ -6,9 +6,9 @@
 
 module model_mod
 
-! FEOM ocean model interface to the DART data assimilation system.
+! FESOM interface to the DART data assimilation system.
 ! code in this module is compiled with the DART executables.  It isolates
-! all information about the FeoM grids, model variables, and other details.
+! all information about the FESOM grids, model variables, and other details.
 ! There are a set of 16 subroutine interfaces that are required by DART;
 ! these cannot be changed.  Additional public routines in this file can
 ! be used by converters and utilities and those interfaces can be anything
@@ -69,7 +69,7 @@ use mpi_utilities_mod, only: my_task_id
 
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 
-use      feom_modules, only: read_node, read_aux3, read_depth, read_namelist, &
+use      fesom_modules, only: read_node, read_aux3, read_depth, read_namelist, &
                              nCells => myDim_nod2D, & ! number of surface locations
                              nVertices => myDim_nod3D, & ! wet points in grid
                              nVertLevels => max_num_layers, & ! number of vertical levels
@@ -127,7 +127,7 @@ character(len=128), parameter :: revdate  = "$Date: 2016-05-09 19:06:15 +0200 (M
 character(len=512) :: string1, string2, string3
 logical, save :: module_initialized = .false.
 
-! Real (physical) constants as defined exactly in FeoM.
+! Real (physical) constants as defined exactly in FESOM.
 ! redefined here for consistency with the model.
 real(r8), parameter :: rgas = 287.0_r8
 real(r8), parameter :: cp = 1003.0_r8
@@ -137,7 +137,7 @@ real(r8), parameter :: rcv = rgas/(cp-rgas)
 
 ! earth radius; needed to convert lat/lon to x,y,z cartesian coords.
 ! FIXME: the example ocean files has a global attr with 6371220.0
-! the actual FeoM code may have hardwired values (it did in the atmosphere)
+! the actual FESOM code may have hardwired values (it did in the atmosphere)
 ! need to check what is really going on.
 real(r8), parameter :: radius = 6371229.0 ! meters
 
@@ -207,16 +207,16 @@ type progvartype
    integer :: dart_kind
    character(len=paramname_length) :: kind_string
    logical  :: clamping     ! does variable need to be range-restricted before
-   real(r8) :: range(2)     ! being stuffed back into FeoM analysis file.
+   real(r8) :: range(2)     ! being stuffed back into FESOM analysis file.
    logical  :: out_of_range_fail  ! is out of range fatal if range-checking?
-   logical  :: replace      ! does variable need to be stuffed back info FeoM
+   logical  :: replace      ! does variable need to be stuffed back info FESOM
 end type progvartype
 
 type(progvartype), dimension(MAX_STATE_VARIABLES) :: progvar
 
-! Grid parameters - the values will be read from an FeoM analysis file.
+! Grid parameters - the values will be read from an FESOM analysis file.
 
-!$! integer :: FEOM:num_layers_below_2d(:) ! list of maximum (deepest) level index for each cell
+!$! integer :: FESOM:num_layers_below_2d(:) ! list of maximum (deepest) level index for each cell
 
 integer         :: model_size          ! the state vector length
 type(time_type) :: model_timestep      ! smallest time to adv model
@@ -322,13 +322,13 @@ if (do_nml_term()) write(     *     , nml=model_nml)
 ! 2) allocate space for the grids
 ! 3) read them from the analysis file
 
-! Get the FeoM run-time configurations from a hardcoded filename
+! Get the FESOM run-time configurations from a hardcoded filename
 ! must be called 'namelist.config' in the current directory.
 call read_namelist()
 
 !---------------------------------------------------------------
 !>@todo Ensure model_timestep is multiple of "dynamics timestep"
-!> FeoM must be able to be stopped at the requested time
+!> FESOM must be able to be stopped at the requested time
 
 call set_calendar_type( calendar )
 
@@ -462,7 +462,7 @@ do ivar = 1, nfields
       progvar(ivar)%clamping = .true.
    endif
 
-   ! resolve issues with variables that may not need to be reinserted into FeoM
+   ! resolve issues with variables that may not need to be reinserted into FESOM
 
    string1 = adjustl(variable_table(ivar,REPLACE_INDEX))
    call to_upper(string1)
@@ -821,7 +821,7 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model_revision',revision), &
            'nc_write_model_atts', 'revision put '//trim(filename))
 call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model_revdate' ,revdate ), &
            'nc_write_model_atts', 'revdate put '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model',  'FEOM' ), &
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model',  'FESOM' ), &
            'nc_write_model_atts', 'model put '//trim(filename))
 
 !-------------------------------------------------------------------------------
@@ -1227,7 +1227,7 @@ real(r8), intent(in) :: filter_ens_mean(:)
 
 if ( .not. module_initialized ) call static_init_model
 
-! Not needed by FeoM ... just a stub.
+! Not needed by FESOM ... just a stub.
 
 end subroutine ens_mean_for_model
 
@@ -1390,7 +1390,7 @@ if ( .not. module_initialized ) call static_init_model
 ! this shuts up the compiler warnings about unused variables
 time = set_time(0, 0)
 
-write(string1,*) 'Cannot initialize FeoM time via subroutine call.'
+write(string1,*) 'Cannot initialize FESOM time via subroutine call.'
 write(string2,*) 'input.nml:start_from_restart cannot be FALSE'
 call error_handler(E_ERR, 'init_time', string1, &
            source, revision, revdate, text2=string2)
@@ -1412,7 +1412,7 @@ real(r8), intent(out) :: x(:)
 
 if ( .not. module_initialized ) call static_init_model
 
-write(string1,*) 'Cannot initialize FeoM time via subroutine call.'
+write(string1,*) 'Cannot initialize FESOM time via subroutine call.'
 write(string2,*) 'input.nml:start_from_restart cannot be FALSE'
 call error_handler(E_ERR, 'init_conditions', string1, &
            source, revision, revdate, text2=string2)
@@ -1450,7 +1450,7 @@ if (do_output()) then
    call print_time(time,'NULL interface adv_1step (no advance) DART time is',logfileunit)
 endif
 
-write(string1,*) 'Cannot advance FeoM with a subroutine call; async cannot equal 0'
+write(string1,*) 'Cannot advance FESOM with a subroutine call; async cannot equal 0'
 call error_handler(E_ERR,'adv_1step',string1,source,revision,revdate)
 
 end subroutine adv_1step
@@ -1481,7 +1481,7 @@ end subroutine get_model_analysis_filename
 
 subroutine analysis_file_to_statevector(filename, state_vector, model_time)
 
-! Reads the current time and state variables from a FeoM analysis
+! Reads the current time and state variables from a FESOM analysis
 ! file and packs them into a dart state vector.
 
 character(len=*), intent(in)    :: filename
@@ -1639,7 +1639,7 @@ end subroutine analysis_file_to_statevector
 subroutine statevector_to_analysis_file(state_vector, filename, statetime)
 
 ! Writes the posterior state from a dart state
-! vector (1d array) into a FeoM file.
+! vector (1d array) into a FESOM file.
 
 real(r8),         intent(in) :: state_vector(:)
 character(len=*), intent(in) :: filename
@@ -1672,16 +1672,16 @@ call nc_check(nf90_open(trim(filename), NF90_WRITE, ncFileID), &
 
 ! make sure the time in the file is the same as the time on the data
 ! we are trying to insert.  we are only updating part of the contents
-! of the FeoM analysis file, and state vector contents from a different
+! of the FESOM analysis file, and state vector contents from a different
 ! time won't be consistent with the rest of the file.
 
 model_time = get_analysis_time(ncFileID, filename)
 
 if ( model_time /= statetime ) then
    call print_time( statetime,'DART current time',logfileunit)
-   call print_time(model_time,'FeoM current time',logfileunit)
+   call print_time(model_time,'FESOM current time',logfileunit)
    call print_time( statetime,'DART current time')
-   call print_time(model_time,'FeoM current time')
+   call print_time(model_time,'FESOM current time')
    write(string1,*)trim(filename),' current time must be equal to model time'
    call error_handler(E_ERR,'statevector_to_analysis_file',string1,source,revision,revdate)
 endif
@@ -2132,8 +2132,8 @@ call error_handler(E_MSG,'write_model_time:','next model time should be '//trim(
 
 write(iunit, '(A)') trim(string2)
 
-call print_time(new_model_time,'FeoM    stop at :',  iunit)
-call print_time(    model_time,'FeoM current at :',  iunit)
+call print_time(new_model_time,'FESOM    stop at :',  iunit)
+call print_time(    model_time,'FESOM current at :',  iunit)
 call print_date(new_model_time,'stop    date :',  iunit)
 call print_date(    model_time,'current date :',  iunit)
 
@@ -2277,7 +2277,7 @@ end function set_model_time_step
 
 
 !------------------------------------------------------------------
-!> Read the grid from the FeoM metadata files.
+!> Read the grid from the FESOM metadata files.
 !>@ TODO If this can be moved to some routine that gets called by
 !   every task - but not when called by the converter routines,
 !   it would be faster.
@@ -2299,7 +2299,7 @@ if (grid_read) return ! only read the grid once.
 ! nVertices   = myDim_nod3D
 ! nVertLevels = max_num_layers
 
-! the grid coordinates (coord_nod3D) come from the FeoM module
+! the grid coordinates (coord_nod3D) come from the FESOM module
 ! lon   = coord_nod3D(1,:)
 ! lat   = coord_nod3D(2,:)
 ! depth = coord_nod3D(3,:)
@@ -2317,7 +2317,7 @@ where(coord_nod3D(1,:) < 0.0_r8) &
 ! the observations in the WOD have positive depths.
 coord_nod3D(3,:) = -1.0_r8 * coord_nod3D(3,:)
 
-!>@ TODO there are a lot of variables allocated in the feom_modules.f90
+!>@ TODO there are a lot of variables allocated in the fesom_modules.f90
 !        that are not needed. For memory-efficiency, we should deallocate
 !        all those (large) variables. coord_nod2D, index_nod2D, myList_nod2D, ...
 
@@ -2773,8 +2773,8 @@ integer,  intent(in)           :: ivar
 !%!    integer :: dart_kind
 !%!    character(len=paramname_length) :: kind_string
 !%!    logical  :: clamping     ! does variable need to be range-restricted before
-!%!    real(r8) :: range(2)     ! being stuffed back into FeoM analysis file.
-!%!    logical  :: replace      ! does it need to be stuffed back into FeoM file.
+!%!    real(r8) :: range(2)     ! being stuffed back into FESOM analysis file.
+!%!    logical  :: replace      ! does it need to be stuffed back into FESOM file.
 !%! end type progvartype
 
 integer :: i
@@ -2908,7 +2908,7 @@ dimids = 0
 
 do i = 1,progvar(ivar)%numdims
 
-   ! Each of these dimension names (originally from the FeoM analysis file)
+   ! Each of these dimension names (originally from the FESOM analysis file)
    ! must exist in the DART diagnostic netcdf files.
 
    call nc_check(nf90_inq_dimid(ncid, trim(progvar(ivar)%dimname(i)), mydimid), &
@@ -3506,7 +3506,7 @@ end subroutine finalize_closest_center
 !$!
 
 !>@todo FIXME : should not need to convert between latlon and xyz
-!$! ! use the same radius as FeoM for computing this
+!$! ! use the same radius as FESOM for computing this
 !$! call latlon_to_xyz(lat, lon, px, py, pz)
 !$!
 !$! closest_vertex_ll = closest_vertex_xyz(cellid, px, py, pz)
@@ -3558,9 +3558,9 @@ end subroutine finalize_closest_center
 !#! ! Given a lat, lon in degrees, return the cartesian x,y,z coordinate
 !#! ! on the surface of a specified radius relative to the origin
 !#! ! at the center of the earth.  (this radius matches the one
-!#! ! used at FeoM grid generation time and must agree in order
+!#! ! used at FESOM grid generation time and must agree in order
 !#! ! to be consistent with the cartisian coordinate arrays in
-!#! ! the FeoM data files.)
+!#! ! the FESOM data files.)
 !#!
 !#! real(r8), intent(in)  :: lat, lon
 !#! real(r8), intent(out) :: x, y, z
@@ -3582,7 +3582,7 @@ end subroutine finalize_closest_center
 !#!
 !#! ! Given a cartesian x, y, z coordinate relative to the origin
 !#! ! at the center of the earth, using a fixed radius specified
-!#! ! by FeoM (in the grid generation step), return the corresponding
+!#! ! by FESOM (in the grid generation step), return the corresponding
 !#! ! lat, lon location in degrees.
 !#!
 !#! real(r8), intent(in)  :: x, y, z
@@ -3765,7 +3765,7 @@ end subroutine finalize_closest_center
 !#! !------------------------------------------------------------
 !#!
 !#! !==================================================================
-!#! ! The following (private) routines were borrowed from the FeoM code
+!#! ! The following (private) routines were borrowed from the FESOM code
 !#! !==================================================================
 !#!
 !#! !------------------------------------------------------------------
@@ -3790,7 +3790,7 @@ end subroutine finalize_closest_center
 !#! function theta_to_tk (theta, rho, qv)
 !#!
 !#! ! Compute sensible temperature [K] from potential temperature [K].
-!#! ! code matches computation done in FeoM model
+!#! ! code matches computation done in FESOM model
 !#!
 !#! real(r8), intent(in)  :: theta    ! potential temperature [K]
 !#! real(r8), intent(in)  :: rho      ! dry density
@@ -3822,7 +3822,7 @@ end subroutine finalize_closest_center
 !#! ! since it has to compute sensible temp along the way,
 !#! ! make temp one of the return values rather than having
 !#! ! to call theta_to_tk() separately.
-!#! ! code matches computation done in FeoM model
+!#! ! code matches computation done in FESOM model
 !#!
 !#! real(r8), intent(in)  :: theta    ! potential temperature [K]
 !#! real(r8), intent(in)  :: rho      ! dry density
@@ -3903,9 +3903,9 @@ if (do_output() .and. state_table_needed ) then
    enddo
    call close_file(iunit)
 
-   write(*,*)'writing feom_state_locations.txt'
+   write(*,*)'writing fesom_state_locations.txt'
 
-   iunit = open_file('feom_state_locations.txt',action='write')
+   iunit = open_file('fesom_state_locations.txt',action='write')
    do i = 1,nVertices
       var_type = 50  ! to match to salinity
       lon  = coord_nod3D(1,i) * deg2rad
@@ -3919,9 +3919,9 @@ if (do_output() .and. state_table_needed ) then
    enddo
    call close_file(iunit)
 
-   write(*,*)'writing feom_surface_locations.txt'
+   write(*,*)'writing fesom_surface_locations.txt'
 
-   iunit = open_file('feom_surface_locations.txt',action='write')
+   iunit = open_file('fesom_surface_locations.txt',action='write')
    do i = 1,nCells
       var_type = 50  ! to match to salinity
       lon  = coord_nod2D(1,i) * deg2rad
