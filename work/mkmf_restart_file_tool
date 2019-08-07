@@ -6,7 +6,7 @@
 #
 # DART $Id: mkmf_restart_file_tool 10044 2016-04-05 21:00:28Z hendric $
 
-../../../mkmf/mkmf -p restart_file_tool -t ../../../mkmf/mkmf.template   \
+../../../build_templates/mkmf -p restart_file_tool -t ../../../mkmf/mkmf.template   \
  -a "../../.." path_names_restart_file_tool
 
 exit $status

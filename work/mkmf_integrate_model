@@ -6,7 +6,7 @@
 #
 # DART $Id: mkmf_integrate_model 10044 2016-04-05 21:00:28Z hendric $
 
-../../../mkmf/mkmf -p integrate_model -t ../../../mkmf/mkmf.template   \
+../../../build_templates/mkmf -p integrate_model -t ../../../mkmf/mkmf.template   \
  -a "../../.." path_names_integrate_model
 
 exit $status

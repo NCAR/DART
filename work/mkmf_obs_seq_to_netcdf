@@ -6,7 +6,7 @@
 #
 # DART $Id: mkmf_obs_seq_to_netcdf 10237 2016-05-02 21:47:02Z thoar $
 
-../../../mkmf/mkmf -p obs_seq_to_netcdf -t ../../../mkmf/mkmf.template   \
+../../../build_templates/mkmf -p obs_seq_to_netcdf -t ../../../mkmf/mkmf.template   \
  -a "../../.." path_names_obs_seq_to_netcdf
 
 exit $status

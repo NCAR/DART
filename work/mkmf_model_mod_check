@@ -6,7 +6,7 @@
 #
 # DART $Id: mkmf_model_mod_check 10044 2016-04-05 21:00:28Z hendric $
 
-../../../mkmf/mkmf -p model_mod_check -t ../../../mkmf/mkmf.template   \
+../../../build_templates/mkmf -p model_mod_check -t ../../../mkmf/mkmf.template   \
  -a "../../.." path_names_model_mod_check
 
 exit $status
