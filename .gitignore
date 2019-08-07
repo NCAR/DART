@@ -1,4 +1,6 @@
 *.swp
+*.o
+*.mod
 
 scripts
 RuNSCRiPT
@@ -18,13 +20,14 @@ FESOMMESH/m3d.ini
 FESOMMESH/nod2d.out
 FESOMMESH/nod3d.out
 
+work/input.nml.*
+work/LOG
 work/check_me.nc
 work/create_fixed_network_seq
 work/create_obs_sequence
 work/dart_ics
 work/dart_log.nml
 work/dart_restart
-work/dart_to_model
 work/ENS01.2009.oce.nc
 work/FeoM_time
 work/filter
@@ -32,7 +35,6 @@ work/input.nml
 work/input.nml.TeMPLaTe
 work/integrate_model
 work/Makefile
-work/model_to_dart
 work/namelist.config
 work/obs_diag
 work/obs_epoch_001.nc
@@ -56,5 +58,4 @@ work/using_mpi_for_filter
 work/obs_seq_to_netcdf
 work/perfect_model_obs
 work/preprocess
-work/wakeup_filter
-work/using_mpi_for_wakeup_filter
+work/dart_log.out
