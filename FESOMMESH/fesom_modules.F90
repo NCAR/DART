@@ -1,4 +1,4 @@
-module feom_modules
+module fesom_modules
 
   ! Bits from DART
   use utilities_mod, only: get_unit, do_output
@@ -767,4 +767,4 @@ write(*,*) 'Error: ', nf_strerror(errcode)
 !  call par_ex 
 stop
 end subroutine handle_err
-end module feom_modules
+end module fesom_modules
