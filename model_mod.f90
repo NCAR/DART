@@ -26,94 +26,114 @@ module model_mod
 
 ! Routines in other modules that are used here.
 
-use        types_mod, only : r4, r8, digits12, SECPERDAY, MISSING_R8,       &
-                             rad2deg, deg2rad, PI, MISSING_I, obstypelength
+use            types_mod, only : r4, r8, digits12, SECPERDAY, MISSING_R8,       &
+                                 rad2deg, deg2rad, PI, MISSING_I, obstypelength
 
-use time_manager_mod, only : time_type, set_time, set_date, get_date, &
-                             get_time, print_time, print_date,        &
-                             set_calendar_type, increment_time,       &
-                             operator(*),  operator(+), operator(-),  &
-                             operator(>),  operator(<), operator(/),  &
-                             operator(/=), operator(<=)
+use     time_manager_mod, only : time_type, set_time, set_date, get_date, &
+                                 get_time, print_time, print_date,        &
+                                 set_calendar_type, increment_time,       &
+                                 operator(*),  operator(+), operator(-),  &
+                                 operator(>),  operator(<), operator(/),  &
+                                 operator(/=), operator(<=)
 
-use     location_mod, only : location_type, get_dist, query_location,    &
-                             get_close_maxdist_init, get_close_type,     &
-                             set_location, get_location, write_location, &
-                             vert_is_height, VERTISHEIGHT,               &
-                             get_close_obs_init, get_close_obs_destroy,  &
-                             loc_get_close_obs => get_close_obs
+use         location_mod, only : location_type, get_dist, query_location,    &
+                                 set_location, get_location, write_location, &
+                                 get_close_type, VERTISHEIGHT,               &
+                                 loc_get_close_obs => get_close_obs,         &
+                                 loc_get_close_state => get_close_state,     &
+                                 is_vertical, set_vertical_localization_coord
 
-use    utilities_mod, only : register_module, error_handler,                   &
-                             E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
-                             nc_check, do_output, to_upper, nmlfileunit,       &
-                             find_namelist_in_file, check_namelist_read,       &
-                             open_file, file_exist, find_textfile_dims,        &
-                             file_to_text, close_file, do_nml_file, do_nml_term
+use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
+                                 nc_add_global_creation_time, nc_check,        &
+                                 nc_begin_define_mode, nc_end_define_mode
 
-use     obs_kind_mod, only : paramname_length,           &
-                             get_raw_obs_kind_index,     &
-                             get_raw_obs_kind_name,      &
-                             KIND_VERTICAL_VELOCITY,     &
-                             KIND_POTENTIAL_TEMPERATURE, &
-                             KIND_TEMPERATURE,           &
-                             KIND_SALINITY,              &
-                             KIND_DRY_LAND,              &
-                             KIND_EDGE_NORMAL_SPEED,     &
-                             KIND_U_CURRENT_COMPONENT,   &
-                             KIND_V_CURRENT_COMPONENT,   &
-                             KIND_SEA_SURFACE_HEIGHT,    &
-                             KIND_SEA_SURFACE_PRESSURE,  &
-                             KIND_TRACER_CONCENTRATION
+use      location_io_mod, only : nc_write_location_atts, nc_write_location
 
-use mpi_utilities_mod, only: my_task_id
+use        utilities_mod, only : register_module, error_handler,                   &
+                                 E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
+                                 do_output, to_upper, nmlfileunit,                 &
+                                 find_namelist_in_file, check_namelist_read,       &
+                                 open_file, file_exist, find_textfile_dims,        &
+                                 file_to_text, close_file, do_nml_file,            &
+                                 do_nml_term, scalar
 
-use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
+use         obs_kind_mod, only : get_index_for_quantity,     &
+                                 get_name_for_quantity,      &
+                                 QTY_VERTICAL_VELOCITY,      &
+                                 QTY_POTENTIAL_TEMPERATURE,  &
+                                 QTY_TEMPERATURE,            &
+                                 QTY_SALINITY,               &
+                                 QTY_DRY_LAND,               &
+                                 QTY_EDGE_NORMAL_SPEED,      &
+                                 QTY_U_CURRENT_COMPONENT,    &
+                                 QTY_V_CURRENT_COMPONENT,    &
+                                 QTY_SEA_SURFACE_HEIGHT,     &
+                                 QTY_SEA_SURFACE_PRESSURE,   &
+                                 QTY_TRACER_CONCENTRATION
 
-use      fesom_modules, only: read_node, read_aux3, read_depth, read_namelist, &
-                             nCells => myDim_nod2D, & ! number of surface locations
-                             nVertices => myDim_nod3D, & ! wet points in grid
-                             nVertLevels => max_num_layers, & ! number of vertical levels
-                             layerdepth, & ! depth at each level (m)
-                             coord_nod2D, &
-                             coord_nod3D, &
-                             num_layers_below_nod2d, &
-                             nod2d_corresp_to_nod3D, &
-                             nod3d_below_nod2d
+use mpi_utilities_mod, only: my_task_id, broadcast_minmax, task_count
+
+use        random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
+
+use         fesom_modules, only: read_node, read_aux3, read_depth, read_namelist, &
+                                 nCells => myDim_nod2D, & ! number of surface locations
+                                 nVertices => myDim_nod3D, & ! wet points in grid
+                                 nVertLevels => max_num_layers, & ! number of vertical levels
+                                 layerdepth, & ! depth at each level (m)
+                                 coord_nod2D, &
+                                 coord_nod3D, &
+                                 num_layers_below_nod2d, &
+                                 nod2d_corresp_to_nod3D, &
+                                 nod3d_below_nod2d
+
+use        random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
+
+use  ensemble_manager_mod, only: ensemble_type, get_my_num_vars, get_my_vars
+
+use     distributed_state_mod
 
 ! netcdf modules
 use typesizes
 use netcdf
 
+
+use state_structure_mod, only :  add_domain, get_model_variable_indices, &
+                                 state_structure_info, get_index_start, get_index_end, get_num_variables
 implicit none
 private
 
 ! these routines must be public and you cannot change
 ! the arguments - they will be called *from* the DART code.
-public :: get_model_size,         &
-          adv_1step,              &
-          get_state_meta_data,    &
-          model_interpolate,      &
-          get_model_time_step,    &
-          static_init_model,      &
-          end_model,              &
-          init_time,              &
-          init_conditions,        &
-          nc_write_model_atts,    &
-          nc_write_model_vars,    &
-          pert_model_state,       &
-          get_close_maxdist_init, &
-          get_close_obs_init,     &
-          get_close_obs,          &
+public :: get_model_size,                      &
+          get_num_vars,                        &
+          adv_1step,                           &
+          get_state_meta_data,                 &
+          model_interpolate,                   &
+          get_model_time_step,                 &
+          shortest_time_between_assimilations, &
+          static_init_model,                   &
+          end_model,                           &
+          init_time,                           &
+          init_conditions,                     &
+          nc_write_model_atts,                 &
+          pert_model_copies,                   &
+          nc_write_model_vars,                 &
+!          get_close_obs_init,                  &
+          get_close_obs,                       &
+          get_close_state,                     &
+          convert_vertical_obs,           &
+          convert_vertical_state,         &
           ens_mean_for_model
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
 
-public :: get_model_analysis_filename,  &
-          analysis_file_to_statevector, &
-          statevector_to_analysis_file, &
-          write_model_time,             &
-          get_grid_dims,                &
+public :: get_model_analysis_filename,        &
+          analysis_file_to_statevector,       &
+          statevector_to_analysis_file,       &
+          write_model_time,                   &
+          read_model_time,                    &
+          get_grid_dims,                      &
           print_variable_ranges
 
 ! version controlled file description for error handling, do not edit
@@ -146,6 +166,11 @@ real(r8), parameter :: roundoff = 1.0e-12_r8
 
 ! Structure for computing distances to cell centers, and assorted arrays
 ! needed for the get_close code.
+
+! Storage for a random sequence for perturbing a single initial state
+type(random_seq_type) :: random_seq
+
+integer :: domid ! For state_structure_mod access
 
 type(location_type), allocatable :: cell_locations(:)
 integer,             allocatable :: cell_kinds(:)
@@ -205,7 +230,7 @@ type progvartype
    integer :: index1        ! location in dart state vector of first occurrence
    integer :: indexN        ! location in dart state vector of last  occurrence
    integer :: dart_kind
-   character(len=paramname_length) :: kind_string
+   character(len=obstypelength) :: kind_string
    logical  :: clamping     ! does variable need to be range-restricted before
    real(r8) :: range(2)     ! being stuffed back into FESOM analysis file.
    logical  :: out_of_range_fail  ! is out of range fatal if range-checking?
@@ -242,6 +267,13 @@ INTERFACE prog_var_to_vector
       MODULE PROCEDURE prog_var_2d_to_vector
       MODULE PROCEDURE prog_var_3d_to_vector
 END INTERFACE
+
+interface write_model_time
+   module procedure write_model_time_file
+   module procedure write_model_time_restart
+end interface
+
+
 
 !------------------------------------------------
 
@@ -291,7 +323,7 @@ subroutine static_init_model()
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME)          :: varname,dimname
-character(len=paramname_length)       :: kind_string
+character(len=obstypelength)       :: kind_string
 integer :: ncid, VarID, numdims, varsize, dimlen
 integer :: iunit, io, ivar, i, index1, indexN
 integer :: ss, dd
@@ -380,7 +412,7 @@ do ivar = 1, nfields
    kind_string               = trim(variable_table(ivar,   KIND_INDEX))
    progvar(ivar)%varname     = varname
    progvar(ivar)%kind_string = kind_string
-   progvar(ivar)%dart_kind   = get_raw_obs_kind_index( progvar(ivar)%kind_string )
+   progvar(ivar)%dart_kind   = get_index_for_quantity( progvar(ivar)%kind_string )
    progvar(ivar)%numdims     = 0
    progvar(ivar)%numvertical = 1
    progvar(ivar)%dimlens     = MISSING_I
@@ -548,163 +580,208 @@ endif
 
 end subroutine get_state_meta_data
 
-
 !------------------------------------------------------------------
-!>
+subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
 
-subroutine model_interpolate(x, location, obs_type, interp_val, istatus)
-
-! given a state vector, a location, and a KIND_xxx, return the
+! given a state vector, a location, and a QTY_xxx, return the
 ! interpolated value at that location, and an error code.  0 is success,
 ! anything positive is an error.  (negative reserved for system use)
-!
-! This version simply returns the value at the closest node.
 !
 !       ERROR codes:
 !
 !       ISTATUS = 99:  general error in case something terrible goes wrong...
 !       ISTATUS = 88:  this kind is not in the state vector
 !       ISTATUS = 11:  Could not find a triangle that contains this lat/lon
-!       ISTATUS = 12:  depth vertical coordinate out of model range.
+!       ISTATUS = 12:  Height vertical coordinate out of model range.
 !       ISTATUS = 13:  Missing value in interpolation.
 !       ISTATUS = 16:  Don't know how to do vertical velocity for now
 !       ISTATUS = 17:  Unable to compute pressure values
-!       ISTATUS = 18:  observation too shallow
-!       ISTATUS = 19:  observation too deep
+!       ISTATUS = 18:  altitude illegal
+!       ISTATUS = 19:  could not compute u using RBF code
 !       ISTATUS = 101: Internal error; reached end of subroutine without
 !                      finding an applicable case.
+!       ISTATUS = 201: Reject observation from user specified pressure level
 !
 
 ! passed variables
 
-real(r8),            intent(in)  :: x(:)
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
 type(location_type), intent(in)  :: location
 integer,             intent(in)  :: obs_type
-real(r8),            intent(out) :: interp_val
-integer,             intent(out) :: istatus
+real(r8),            intent(out) :: expected_obs(ens_size)
+integer,             intent(out) :: istatus(ens_size)
 
 ! local storage
 
-integer  :: ivar, obs_kind, surface_index
-integer  :: ilayer, layer_below, layer_above
-real(r8) :: llv(3), lon, lat, vert
-real(r8) :: depth_below, depth_above, layer_thick
-integer  :: closest_index_above, closest_index_below
-integer  :: index_above, index_below
-
-type(location_type) :: location_above, location_below
+type(location_type) :: location_tmp(ens_size)
+integer  :: ivar, obs_kind
+integer  :: tvars(3)
+integer  :: cellid
+logical  :: goodkind
+real(r8) :: lpres(ens_size), values(3, ens_size)
+real(r8) :: llv(3)    ! lon/lat/vert
+integer  :: e, verttype
 
 if ( .not. module_initialized ) call static_init_model
 
-interp_val = MISSING_R8
-istatus    = 99           ! must be positive (and integer)
-
-! rename for sanity - we can't change the argument names
-! to this subroutine, but this really is a kind.
-obs_kind = obs_type
-
-! Make sure the DART state has the type (T,S,U,etc.) that we are asking for.
-! If we cannot, simply return and 'fail' with an 88
-
-ivar = get_progvar_index_from_kind(obs_kind)
-if (ivar < 1) then
-   istatus = 88
-   return
-endif
-
-! Decode the location into bits for error messages ...
-llv  = get_location(location)
-lon  = llv(1)    ! degrees East [0,360)
-lat  = llv(2)    ! degrees North [-90,90]
-vert = llv(3)    ! depth in meters ... even 2D fields have a value of 0.0
-
-surface_index = find_closest_surface_location(location, obs_kind)
-
-if (surface_index < 1) then ! nothing close
-   istatus = 11
-   return
-endif
-
-! If it is a surface variable, we're done.
-
-if (progvar(ivar)%varsize == nCells) then
-   index_above = progvar(ivar)%index1 + surface_index - 1
-   interp_val  = x( index_above )
-   istatus     = 0
-   return
-endif
-
-! Which vertical level is closest
-! Find the first nominal layer deeper than than the observation.
-! 2 <= layer_below <= nVertLevels
-! use the nod3D_below_nod2D(nVertLevels,nCells)  array to figure out
-! 1 <= surface_index <= nCells
-
-layer_below = 0
-LAYER: do ilayer = 1,nVertLevels
-   if (depths(ilayer) > vert ) then
-        layer_below = ilayer
-        exit LAYER
-   endif
-enddo LAYER
-
-if     (layer_below == 0) then ! below the deepest level
-   istatus = 19
-elseif (layer_below == 1) then ! too shallow
-   istatus = 18
-else                           ! somewhere in the water column
-
-   layer_above = layer_below - 1
-
-   ! If there is no water, the return value is a negative number
-
-   closest_index_above = nod3d_below_nod2d(layer_above,surface_index)
-   closest_index_below = nod3d_below_nod2d(layer_below,surface_index)
-
-   if ((closest_index_below < 1) .or.  (closest_index_above < 1)) then
-      istatus = 17
-      return
-   endif
-
-   ! observation must be 'wet' as far as the model resolution is concerned
-
-   index_above = progvar(ivar)%index1 + closest_index_above - 1
-   index_below = progvar(ivar)%index1 + closest_index_below - 1
-
-   depth_below = depths(layer_below) - vert
-   depth_above = vert - depths(layer_above)
-   layer_thick = depths(layer_below) - depths(layer_above)
-
-   interp_val  = (depth_below*x(index_above) + depth_above*x(index_below)) &
-                 / layer_thick
-   istatus     = 0
-
-   ! DEBUG block to confirm that the interpolation is using the state
-   ! at the correct location.
-
-   if (do_output() .and. debug > 2) then
-      call get_state_meta_data(index_above, location_above)
-      call get_state_meta_data(index_below, location_below)
-
-      call write_location(0,location_above,charstring=string1)
-      call write_location(0,location      ,charstring=string2)
-      call write_location(0,location_below,charstring=string3)
-
-      write(logfileunit,*)
-      write(     *     ,*)
-      call error_handler(E_MSG,'model_interpolate', '... '//string1, &
-                 text2=string2, text3=string3)
-   endif
-
-endif
-
 end subroutine model_interpolate
+!------------------------------------------------------------------
+!>
+
+!> FIXME -aLi- subroutine model_interpolate(x, location, obs_type, interp_val, istatus)
+!> 
+!> ! given a state vector, a location, and a KIND_xxx, return the
+!> ! interpolated value at that location, and an error code.  0 is success,
+!> ! anything positive is an error.  (negative reserved for system use)
+!> !
+!> ! This version simply returns the value at the closest node.
+!> !
+!> !       ERROR codes:
+!> !
+!> !       ISTATUS = 99:  general error in case something terrible goes wrong...
+!> !       ISTATUS = 88:  this kind is not in the state vector
+!> !       ISTATUS = 11:  Could not find a triangle that contains this lat/lon
+!> !       ISTATUS = 12:  depth vertical coordinate out of model range.
+!> !       ISTATUS = 13:  Missing value in interpolation.
+!> !       ISTATUS = 16:  Don't know how to do vertical velocity for now
+!> !       ISTATUS = 17:  Unable to compute pressure values
+!> !       ISTATUS = 18:  observation too shallow
+!> !       ISTATUS = 19:  observation too deep
+!> !       ISTATUS = 101: Internal error; reached end of subroutine without
+!> !                      finding an applicable case.
+!> !
+!> 
+!> ! passed variables
+!> 
+!> real(r8),            intent(in)  :: x(:)
+!> type(location_type), intent(in)  :: location
+!> integer,             intent(in)  :: obs_type
+!> real(r8),            intent(out) :: interp_val
+!> integer,             intent(out) :: istatus
+!> 
+!> ! local storage
+!> 
+!> integer  :: ivar, obs_kind, surface_index
+!> integer  :: ilayer, layer_below, layer_above
+!> real(r8) :: llv(3), lon, lat, vert
+!> real(r8) :: depth_below, depth_above, layer_thick
+!> integer  :: closest_index_above, closest_index_below
+!> integer  :: index_above, index_below
+!> 
+!> type(location_type) :: location_above, location_below
+!> 
+!> if ( .not. module_initialized ) call static_init_model
+!> 
+!> interp_val = MISSING_R8
+!> istatus    = 99           ! must be positive (and integer)
+!> 
+!> ! rename for sanity - we can't change the argument names
+!> ! to this subroutine, but this really is a kind.
+!> obs_kind = obs_type
+!> 
+!> ! Make sure the DART state has the type (T,S,U,etc.) that we are asking for.
+!> ! If we cannot, simply return and 'fail' with an 88
+!> 
+!> ivar = get_progvar_index_from_kind(obs_kind)
+!> if (ivar < 1) then
+!>    istatus = 88
+!>    return
+!> endif
+!> 
+!> ! Decode the location into bits for error messages ...
+!> llv  = get_location(location)
+!> lon  = llv(1)    ! degrees East [0,360)
+!> lat  = llv(2)    ! degrees North [-90,90]
+!> vert = llv(3)    ! depth in meters ... even 2D fields have a value of 0.0
+!> 
+!> surface_index = find_closest_surface_location(location, obs_kind)
+!> 
+!> if (surface_index < 1) then ! nothing close
+!>    istatus = 11
+!>    return
+!> endif
+!> 
+!> ! If it is a surface variable, we're done.
+!> 
+!> if (progvar(ivar)%varsize == nCells) then
+!>    index_above = progvar(ivar)%index1 + surface_index - 1
+!>    interp_val  = x( index_above )
+!>    istatus     = 0
+!>    return
+!> endif
+!> 
+!> ! Which vertical level is closest
+!> ! Find the first nominal layer deeper than than the observation.
+!> ! 2 <= layer_below <= nVertLevels
+!> ! use the nod3D_below_nod2D(nVertLevels,nCells)  array to figure out
+!> ! 1 <= surface_index <= nCells
+!> 
+!> layer_below = 0
+!> LAYER: do ilayer = 1,nVertLevels
+!>    if (depths(ilayer) > vert ) then
+!>         layer_below = ilayer
+!>         exit LAYER
+!>    endif
+!> enddo LAYER
+!> 
+!> if     (layer_below == 0) then ! below the deepest level
+!>    istatus = 19
+!> elseif (layer_below == 1) then ! too shallow
+!>    istatus = 18
+!> else                           ! somewhere in the water column
+!> 
+!>    layer_above = layer_below - 1
+!> 
+!>    ! If there is no water, the return value is a negative number
+!> 
+!>    closest_index_above = nod3d_below_nod2d(layer_above,surface_index)
+!>    closest_index_below = nod3d_below_nod2d(layer_below,surface_index)
+!> 
+!>    if ((closest_index_below < 1) .or.  (closest_index_above < 1)) then
+!>       istatus = 17
+!>       return
+!>    endif
+!> 
+!>    ! observation must be 'wet' as far as the model resolution is concerned
+!> 
+!>    index_above = progvar(ivar)%index1 + closest_index_above - 1
+!>    index_below = progvar(ivar)%index1 + closest_index_below - 1
+!> 
+!>    depth_below = depths(layer_below) - vert
+!>    depth_above = vert - depths(layer_above)
+!>    layer_thick = depths(layer_below) - depths(layer_above)
+!> 
+!>    interp_val  = (depth_below*x(index_above) + depth_above*x(index_below)) &
+!>                  / layer_thick
+!>    istatus     = 0
+!> 
+!>    ! DEBUG block to confirm that the interpolation is using the state
+!>    ! at the correct location.
+!> 
+!>    if (do_output() .and. debug > 2) then
+!>       call get_state_meta_data(index_above, location_above)
+!>       call get_state_meta_data(index_below, location_below)
+!> 
+!>       call write_location(0,location_above,charstring=string1)
+!>       call write_location(0,location      ,charstring=string2)
+!>       call write_location(0,location_below,charstring=string3)
+!> 
+!>       write(logfileunit,*)
+!>       write(     *     ,*)
+!>       call error_handler(E_MSG,'model_interpolate', '... '//string1, &
+!>                  text2=string2, text3=string3)
+!>    endif
+!> 
+!> endif
+!> 
+!> end subroutine model_interpolate
 
 
 !-----------------------------------------------------------------------
 !>
 
-function nc_write_model_atts( ncFileID ) result (ierr)
+subroutine nc_write_model_atts( ncFileID, domain_id )
 
 ! TJH -- Writes the model-specific attributes to a netCDF file.
 !     This includes coordinate variables and some metadata, but NOT
@@ -723,8 +800,8 @@ function nc_write_model_atts( ncFileID ) result (ierr)
 !    NF90_put_var       ! provide values for variable
 ! NF90_CLOSE            ! close: save updated netCDF dataset
 
+integer, intent(in) :: domain_id
 integer, intent(in)  :: ncFileID      ! netCDF file identifier
-integer              :: ierr          ! return value of function
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 
@@ -768,7 +845,6 @@ character(len=256) :: filename
 
 if ( .not. module_initialized ) call static_init_model
 
-ierr = -1 ! assume things go poorly
 
 !--------------------------------------------------------------------
 ! we only have a netcdf handle here so we do not know the filename
@@ -977,9 +1053,8 @@ endif
 !-------------------------------------------------------------------------------
 call nc_check(nf90_sync(ncFileID), 'nc_write_model_atts', 'atts sync')
 
-ierr = 0 ! If we got here, things went well.
 
-end function nc_write_model_atts
+end subroutine nc_write_model_atts
 
 
 !------------------------------------------------------------------
@@ -1196,6 +1271,19 @@ get_model_size = model_size
 
 end function get_model_size
 
+!------------------------------------------------------------------
+!> Returns the number of variables as an integer.
+
+function get_num_vars()
+
+integer :: get_num_vars
+
+if ( .not. module_initialized ) call static_init_model
+
+get_num_vars = nfields
+
+end function get_num_vars
+
 
 !------------------------------------------------------------------
 !>
@@ -1234,6 +1322,18 @@ end subroutine ens_mean_for_model
 
 !------------------------------------------------------------------
 !>
+function shortest_time_between_assimilations()
+
+type(time_type) :: shortest_time_between_assimilations
+
+if ( .not. module_initialized ) call static_init_model
+
+shortest_time_between_assimilations = model_timestep
+
+end function shortest_time_between_assimilations
+
+!------------------------------------------------------------------
+
 
 subroutine end_model()
 
@@ -1244,7 +1344,7 @@ if (allocated(cell_kinds))      deallocate(cell_kinds)
 if (allocated(close_cell_inds)) deallocate(close_cell_inds)
 if (allocated(depths))          deallocate(depths)
 
-if (close_structure_allocated) call finalize_closest_center()
+!> if (close_structure_allocated) call finalize_closest_center()
 
 end subroutine end_model
 
@@ -1252,91 +1352,95 @@ end subroutine end_model
 !------------------------------------------------------------------
 !>
 
-subroutine pert_model_state(state, pert_state, interf_provided)
+subroutine pert_model_copies(ens_handle, ens_size, pert_amp, interf_provided)
 
-! Perturbs a model state for generating initial ensembles.
-! The perturbed state is returned in pert_state.
+ type(ensemble_type), intent(inout) :: ens_handle
+ integer,                intent(in) :: ens_size
+ real(r8),               intent(in) :: pert_amp
+ logical,               intent(out) :: interf_provided
+
+logical, allocatable  :: within_range(:)
+real(r8), allocatable :: min_var(:), max_var(:)
+integer  :: start_ind, end_ind
+real(r8) :: pert_val, range
+integer  :: copy
+integer  :: num_variables
+integer  :: i, j
+integer(kind=8), allocatable :: var_list(:)
+
+
+
+! Perturbs a model state copies for generating initial ensembles.
 ! A model may choose to provide a NULL INTERFACE by returning
 ! .false. for the interf_provided argument. This indicates to
-! the filter that if it needs to generate perturbed states, it
-! may do so by adding a perturbation to each model state
+! the filter that if it needs to generate perturbed states, 
+! it may do so by adding a perturbation to each model state 
 ! variable independently. The interf_provided argument
 ! should be returned as .true. if the model wants to do its own
 ! perturbing of states.
 
-real(r8), intent(in)  :: state(:)
-real(r8), intent(out) :: pert_state(:)
-logical,  intent(out) :: interf_provided
-
-real(r8)              :: pert_ampl
-real(r8)              :: minv, maxv, temp
-type(random_seq_type) :: random_seq
-integer               :: i, j, s, e
-integer, save         :: counter = 1
-
-! generally you do not want to perturb a single state
-! to begin an experiment - unless you make minor perturbations
-! and then run the model free for long enough that differences
-! develop which contain actual structure.
-!
-! the subsequent code is a pert routine which
-! can be used to add minor perturbations which can be spun up.
-!
-! if all values in a field are identical (i.e. 0.0) this
-! routine will not change those values since it won't
-! make a new value outside the original min/max of that
-! variable in the state vector.  to handle this case you can
-! remove the min/max limit lines below.
-
-
-! start of pert code
-
-if ( .not. module_initialized ) call static_init_model
-
 interf_provided = .true.
 
-! the first time through get the task id (0:N-1)
-! and set a unique seed per task.  this won't
-! be consistent between different numbers of mpi
-! tasks, but at least it will reproduce with
-! multiple runs with the same task count.
-! best i can do since this routine doesn't have
-! the ensemble member number as an argument
-! (which i think it needs for consistent seeds).
-!
-! this only executes the first time since counter
-! gets incremented after the first use and the value
-! is saved between calls.
-if (counter == 1) counter = counter + (my_task_id() * 1000)
+!>@todo If MPAS ever supports more than a single domain then
+!>look at the wrf model_mod code for how to change this.  you
+!>have to separate out the total number of variables across
+!>all domains for the min/max part, and then loop over only
+!>the number of variables in each domain in the second part.
 
-call init_random_seq(random_seq, counter)
-counter = counter + 1
+num_variables = get_num_variables(domid)
 
-do i=1, nfields
-   ! starting and ending indices in the linear state vect
-   ! for each different state kind.
-   s = progvar(i)%index1
-   e = progvar(i)%indexN
-   ! original min/max data values of each type
-   minv = minval(state(s:e))
-   maxv = maxval(state(s:e))
-   do j=s, e
-      ! once you change pert_state, state is changed as well
-      ! since they are the same storage as called from filter.
-      ! you have to save it if you want to use it again.
-      temp = state(j)  ! original value
-      ! perturb each value individually
-      ! make the perturbation amplitude N% of this value
-      pert_ampl = model_perturbation_amplitude * temp
-      pert_state(j) = random_gaussian(random_seq, state(j), pert_ampl)
-      ! keep it from exceeding the original range
-      pert_state(j) = max(minv, pert_state(j))
-      pert_state(j) = min(maxv, pert_state(j))
-   enddo
+! Get min and max of each variable in each domain
+allocate(var_list(get_my_num_vars(ens_handle)))
+call get_my_vars(ens_handle, var_list)
+
+allocate(min_var(num_variables), max_var(num_variables))
+allocate(within_range(ens_handle%my_num_vars))
+
+do i = 1, get_num_variables(domid)
+
+   start_ind = get_index_start(domid, i)
+   end_ind = get_index_end(domid, i)
+
+   within_range = (var_list >= start_ind .and. var_list <= end_ind)
+   min_var(i) = minval(ens_handle%copies(1,:), MASK=within_range)
+   max_var(i) = maxval(ens_handle%copies(1,:), MASK=within_range)
+
 enddo
 
-end subroutine pert_model_state
+! get global min/max for each variable
+call broadcast_minmax(min_var, max_var, num_variables)
+deallocate(within_range)
 
+call init_random_seq(random_seq, my_task_id()+1)
+
+do i = 1, num_variables
+
+   start_ind = get_index_start(domid, i)
+   end_ind = get_index_end(domid, i)
+
+   ! make the perturbation amplitude a fraction of the
+   ! entire variable range.
+   range = max_var(i) - min_var(i)
+   pert_val = model_perturbation_amplitude * range   ! this is a namelist item
+
+   do j=1, ens_handle%my_num_vars
+      if (ens_handle%my_vars(j) >= start_ind .and. ens_handle%my_vars(j) <= end_ind) then
+         do copy = 1, ens_size
+            ens_handle%copies(copy, j) = random_gaussian(random_seq, ens_handle%copies(copy, j), pert_val)
+         enddo
+
+         ! keep variable from exceeding the original range
+         ens_handle%copies(1:ens_size,j) = max(min_var(i), ens_handle%copies(1:ens_size,j))
+         ens_handle%copies(1:ens_size,j) = min(max_var(i), ens_handle%copies(1:ens_size,j))
+
+      endif
+   enddo
+
+enddo
+
+deallocate(var_list, min_var, max_var)
+
+end subroutine pert_model_copies
 
 !------------------------------------------------------------------
 !>
@@ -1363,18 +1467,95 @@ integer,                           intent(out)   :: num_close
 integer,             dimension(:), intent(out)   :: close_ind
 real(r8), optional,  dimension(:), intent(out)   :: dist
 
+
+num_close = 0
+close_ind = -99
+if (present(dist)) dist = 1.0e9_r8   !something big and positive (far away) in radians
 ! If you want to impose some sort of special localization, you can key
 ! off things like the obs_kind and make things 'infinitely' far away.
 ! Otherwise, this does nothing. Take a look at the POP model_mod.f90 for an example.
 
-call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-                          num_close, close_ind, dist)
+!> TODO -aLi-: check if this should be here
+!> call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
+!>                           num_close, close_ind, dist)
 
 end subroutine get_close_obs
 
 
+
+!------------------------------------------------------------------
+! Given a DART location (referred to as "base") and a set of candidate
+! locations & qtys/indices (locs, loc_qtys/loc_indx), returns the subset close 
+! to the "base", their indices, and their distances to the "base" 
+
+subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
+                           num_close, close_ind, dist, state_handle)
+
+!>@todo FIXME this is working on state vector items.  if a vertical
+!>conversion is needed, it doesn't need to interpolate.  it can compute
+!>the location using the logic that get_state_meta_data() uses.
+
+type(get_close_type),          intent(in)  :: gc
+type(location_type),           intent(inout)  :: base_loc, locs(:)
+integer,                       intent(in)  :: base_type, loc_qtys(:)
+integer(kind=8),                   intent(in)  :: loc_indx(:)
+integer,                       intent(out) :: num_close, close_ind(:)
+real(r8),            optional, intent(out) :: dist(:)
+type(ensemble_type), optional, intent(in)  :: state_handle
+
+
+integer                :: ztypeout
+integer                :: t_ind, istatus1, istatus2, k
+integer                :: base_which, local_obs_which
+real(r8), dimension(3) :: base_llv, local_obs_llv   ! lon/lat/vert
+type(location_type)    :: local_obs_loc
+
+real(r8) ::  hor_dist
+hor_dist = 1.0e9_r8
+
+! Initialize variables to missing status
+
+num_close = 0
+close_ind = -99
+if (present(dist)) dist = 1.0e9_r8   !something big and positive (far away) in radians
+istatus1  = 0
+istatus2  = 0
+
+
+
+end subroutine get_close_state
 !------------------------------------------------------------------
 !>
+
+subroutine convert_vertical_obs(state_handle, num, locs, loc_qtys, loc_types, &
+                                which_vert, status)
+
+type(ensemble_type), intent(in)    :: state_handle
+integer,             intent(in)    :: num
+type(location_type), intent(inout) :: locs(:)
+integer,             intent(in)    :: loc_qtys(:), loc_types(:)
+integer,             intent(in)    :: which_vert
+integer,             intent(out)   :: status(:)
+
+end subroutine convert_vertical_obs
+
+!--------------------------------------------------------------------
+
+subroutine convert_vertical_state(state_handle, num, locs, loc_qtys, loc_indx, &
+                                  which_vert, istatus)
+
+type(ensemble_type), intent(in)    :: state_handle
+integer,             intent(in)    :: num
+type(location_type), intent(inout) :: locs(:)
+integer,             intent(in)    :: loc_qtys(:)
+integer(kind=8),         intent(in)    :: loc_indx(:)
+integer,             intent(in)    :: which_vert
+integer,             intent(out)   :: istatus
+
+end subroutine convert_vertical_state
+
+
+!------------------------------------------------------------------
 
 subroutine init_time(time)
 
@@ -2085,70 +2266,133 @@ end function year_from_filename
 
 !------------------------------------------------------------------
 !>
+!--------------------------------------------------------------------
+!> read the time from the input file
+!> stolen get_analysis_time_fname
+function read_model_time(filename)
 
-subroutine write_model_time(time_filename, model_time, adv_to_time)
+character(len=256), intent(in) :: filename
+
+type(time_type) :: read_model_time
+integer         :: ncid  ! netcdf file id
+integer         :: ret ! return code for netcdf
+
+ret = nf90_open(filename, NF90_NOWRITE, ncid)
+call nc_check(ret, 'opening', filename)
+
+read_model_time = get_analysis_time(ncid, filename)
+
+ret = nf90_close(ncid)
+call nc_check(ret, 'closing', filename)
+
+
+end function read_model_time
+
+!-----------------------------------------------------------------------
+
+subroutine write_model_time_file(time_filename, model_time, adv_to_time)
  character(len=*), intent(in)           :: time_filename
  type(time_type),  intent(in)           :: model_time
  type(time_type),  intent(in), optional :: adv_to_time
 
 integer :: iunit
-type(time_type) :: deltatime
-type(time_type) :: new_model_time, assim_start, assim_end
-integer :: seconds, days
+character(len=19) :: timestring
+type(time_type)   :: deltatime
 
-iunit = open_file(time_filename, form='formatted', action='write')
+iunit = open_file(time_filename, action='write')
 
-deltatime = set_time(assimilation_period_seconds, assimilation_period_days)
-
-new_model_time = model_time + deltatime
-assim_start    = new_model_time - deltatime/2 + set_time(1,0)
-assim_end      = new_model_time + deltatime/2
-
-! By writing the days,seconds to strings with a free-format write,
-! you can avoid any decision about formatting precision.
-! The '(A)' syntax avoids printing the quotes delimiting the string
-
-call get_time(new_model_time, seconds, days)
-write(string1,*) days
-write(string2,*) seconds
-write(iunit,'(A,A)') ' init_time_days     = ',trim(string1)
-write(iunit,'(A,A)') ' init_time_seconds  = ',trim(string2)
-
-call get_time(assim_start, seconds, days)
-write(string1,*) days
-write(string2,*) seconds
-write(iunit,'(A,A)') ' first_obs_days     = ',trim(string1)
-write(iunit,'(A,A)') ' first_obs_seconds  = ',trim(string2)
-
-call get_time(assim_end, seconds, days)
-write(string1,*) days
-write(string2,*) seconds
-write(iunit,'(A,A)') ' last_obs_days      = ',trim(string1)
-write(iunit,'(A,A)') ' last_obs_seconds   = ',trim(string2)
-
-string2 = time_to_string(new_model_time)
-
-call error_handler(E_MSG,'write_model_time:','next model time should be '//trim(string2))
-
-write(iunit, '(A)') trim(string2)
-
-call print_time(new_model_time,'FESOM    stop at :',  iunit)
-call print_time(    model_time,'FESOM current at :',  iunit)
-call print_date(new_model_time,'stop    date :',  iunit)
-call print_date(    model_time,'current date :',  iunit)
+timestring = time_to_string(model_time)
+write(iunit, '(A)') timestring
 
 if (present(adv_to_time)) then
-   string1 = time_to_string(adv_to_time)
-   write(iunit, '(A)') trim(string1)
+   timestring = time_to_string(adv_to_time)
+   write(iunit, '(A)') timestring
 
    deltatime = adv_to_time - model_time
-   string1 = time_to_string(deltatime, interval=.true.)
-   write(iunit, '(A)') trim(string1)
+   timestring = time_to_string(deltatime, interval=.true.)
+   write(iunit, '(A)') timestring
 endif
 
 call close_file(iunit)
 
-end subroutine write_model_time
+end subroutine write_model_time_file
+
+
+!-----------------------------------------------------------------------
+
+subroutine write_model_time_restart(ncid, dart_time)
+
+integer,             intent(in) :: ncid !< netcdf file handle
+type(time_type),     intent(in) :: dart_time
+
+call error_handler(E_MSG, 'write_model_time', 'no routine for mpas_atm write model time')
+
+end subroutine write_model_time_restart
+
+!> FIXME: -aLi-----------------------------------------------------
+!> subroutine write_model_time(time_filename, model_time, adv_to_time)
+!>  character(len=*), intent(in)           :: time_filename
+!>  type(time_type),  intent(in)           :: model_time
+!>  type(time_type),  intent(in), optional :: adv_to_time
+!> 
+!> integer :: iunit
+!> type(time_type) :: deltatime
+!> type(time_type) :: new_model_time, assim_start, assim_end
+!> integer :: seconds, days
+!> 
+!> iunit = open_file(time_filename, form='formatted', action='write')
+!> 
+!> deltatime = set_time(assimilation_period_seconds, assimilation_period_days)
+!> 
+!> new_model_time = model_time + deltatime
+!> assim_start    = new_model_time - deltatime/2 + set_time(1,0)
+!> assim_end      = new_model_time + deltatime/2
+!> 
+!> ! By writing the days,seconds to strings with a free-format write,
+!> ! you can avoid any decision about formatting precision.
+!> ! The '(A)' syntax avoids printing the quotes delimiting the string
+!> 
+!> call get_time(new_model_time, seconds, days)
+!> write(string1,*) days
+!> write(string2,*) seconds
+!> write(iunit,'(A,A)') ' init_time_days     = ',trim(string1)
+!> write(iunit,'(A,A)') ' init_time_seconds  = ',trim(string2)
+!> 
+!> call get_time(assim_start, seconds, days)
+!> write(string1,*) days
+!> write(string2,*) seconds
+!> write(iunit,'(A,A)') ' first_obs_days     = ',trim(string1)
+!> write(iunit,'(A,A)') ' first_obs_seconds  = ',trim(string2)
+!> 
+!> call get_time(assim_end, seconds, days)
+!> write(string1,*) days
+!> write(string2,*) seconds
+!> write(iunit,'(A,A)') ' last_obs_days      = ',trim(string1)
+!> write(iunit,'(A,A)') ' last_obs_seconds   = ',trim(string2)
+!> 
+!> string2 = time_to_string(new_model_time)
+!> 
+!> call error_handler(E_MSG,'write_model_time:','next model time should be '//trim(string2))
+!> 
+!> write(iunit, '(A)') trim(string2)
+!> 
+!> call print_time(new_model_time,'FESOM    stop at :',  iunit)
+!> call print_time(    model_time,'FESOM current at :',  iunit)
+!> call print_date(new_model_time,'stop    date :',  iunit)
+!> call print_date(    model_time,'current date :',  iunit)
+!> 
+!> if (present(adv_to_time)) then
+!>    string1 = time_to_string(adv_to_time)
+!>    write(iunit, '(A)') trim(string1)
+!> 
+!>    deltatime = adv_to_time - model_time
+!>    string1 = time_to_string(deltatime, interval=.true.)
+!>    write(iunit, '(A)') trim(string1)
+!> endif
+!> 
+!> call close_file(iunit)
+!> 
+!> end subroutine write_model_time
 
 
 !------------------------------------------------------------------
@@ -2342,8 +2586,8 @@ enddo
 
 maxdist_km = 2.5_r8 ! more than the largest separation between vertices
 
-call get_close_maxdist_init(cc_gc, maxdist = maxdist_km*PI/20000.0_r8)
-call get_close_obs_init(cc_gc, nCells, cell_locations)
+!> TODO -aLi-: check if this should be here
+!> call get_close_obs_init(cc_gc, nCells, cell_locations)
 
 close_structure_allocated = .true.
 
@@ -2723,7 +2967,7 @@ MyLoop : do i = 1, nrows
 
    ! Make sure DART kind is valid
 
-   if( get_raw_obs_kind_index(dartstr) < 0 ) then
+   if( get_index_for_quantity(dartstr) < 0 ) then
       write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
       call error_handler(E_ERR,'parse_variable_input',string1,source,revision,revdate)
    endif
@@ -2756,28 +3000,7 @@ subroutine dump_progvar(ivar)
 ! expected to be called in a loop or called for entries of interest.
 
 integer,  intent(in)           :: ivar
-
-!%! type progvartype
-!%!    private
-!%!    character(len=NF90_MAX_NAME) :: varname
-!%!    character(len=NF90_MAX_NAME) :: long_name
-!%!    character(len=NF90_MAX_NAME) :: units
-!%!    integer, dimension(NF90_MAX_VAR_DIMS) :: dimlens
-!%!    integer :: xtype         ! netCDF variable type (NF90_double, etc.)
-!%!    integer :: numdims       ! number of dims - excluding TIME
-!%!    integer :: numvertical   ! number of vertical levels in variable
-!%!    integer :: numcells      ! number of horizontal locations (typically cell centers)
-!%!    integer :: varsize       ! prod(dimlens(1:numdims))
-!%!    integer :: index1        ! location in dart state vector of first occurrence
-!%!    integer :: indexN        ! location in dart state vector of last  occurrence
-!%!    integer :: dart_kind
-!%!    character(len=paramname_length) :: kind_string
-!%!    logical  :: clamping     ! does variable need to be range-restricted before
-!%!    real(r8) :: range(2)     ! being stuffed back into FESOM analysis file.
-!%!    logical  :: replace      ! does it need to be stuffed back into FESOM file.
-!%! end type progvartype
-
-integer :: i
+integer                        :: i
 
 ! take care of parallel runs where we only want a single copy of
 ! the output.
@@ -2977,249 +3200,6 @@ return
 end function get_index_from_varname
 
 
-!------------------------------------------------------------------
-!>
-
-!#! !>@todo FIXME : threed_cartesian/location assumes everything is in height
-!#!
-!#! subroutine vert_convert(x, location, obs_kind, ztypeout, istatus)
-!#!
-!#! ! This subroutine converts a given ob/state vertical coordinate to
-!#! ! the vertical localization coordinate type requested through the
-!#! ! model_mod namelist.
-!#! !
-!#! ! Notes: (1) obs_kind is only necessary to check whether the ob
-!#! !            is an identity ob.
-!#! !        (2) This subroutine can convert both obs' and state points'
-!#! !            vertical coordinates. Remember that state points get
-!#! !            their DART location information from get_state_meta_data
-!#! !            which is called by filter_assim during the assimilation
-!#! !            process.
-!#! !        (3) x is the relevant DART state vector for carrying out
-!#! !            computations necessary for the vertical coordinate
-!#! !            transformations. As the vertical coordinate is only used
-!#! !            in distance computations, this is actually the "expected"
-!#! !            vertical coordinate, so that computed distance is the
-!#! !            "expected" distance. Thus, under normal circumstances,
-!#! !            x that is supplied to vert_convert should be the
-!#! !            ensemble mean. Nevertheless, the subroutine has the
-!#! !            functionality to operate on any DART state vector that
-!#! !            is supplied to it.
-!#!
-!#! real(r8), dimension(:), intent(in)    :: x
-!#! type(location_type),    intent(inout) :: location
-!#! integer,                intent(in)    :: obs_kind
-!#! integer,                intent(in)    :: ztypeout
-!#! integer,                intent(out)   :: istatus
-!#!
-!#!  ! zin and zout are the vert values coming in and going out.
-!#!  ! ztype{in,out} are the vert types as defined by the 3d sphere
-!#!  ! locations mod (location/threed_sphere/location_mod.f90)
-!#!  real(r8) :: llv_loc(3)
-!#!  real(r8) :: zin, zout, tk, fullp, surfp
-!#!  real(r8) :: weights(3), zk_mid(3), values(3), fract(3), fdata(3)
-!#!  integer  :: ztypein, i
-!#!  integer  :: k_low(3), k_up(3), c(3), n
-!#!  integer  :: ivars(3)
-!#!  type(location_type) :: surfloc
-!#! !$!
-!#! !$! ! assume failure.
-!#! !$! istatus = 1
-!#! !$!
-!#! !$! ! initialization
-!#! !$! k_low   = 0.0_r8
-!#! !$! k_up    = 0.0_r8
-!#! !$! weights = 0.0_r8
-!#! !$!
-!#! !$! ! first off, check if ob is identity ob.  if so get_state_meta_data() will
-!#! !$! ! have returned location information already in the requested vertical type.
-!#! !$! if (obs_kind < 0) then
-!#! !$!    call get_state_meta_data(obs_kind,location)
-!#! !$!    istatus = 0
-!#! !$!    return
-!#! !$! endif
-!#! !$!
-!#! !$! !#! ! if the existing coord is already in the requested vertical units
-!#! !$! !#! ! or if the vert is 'undef' which means no specifically defined
-!#! !$! !#! ! vertical coordinate, return now.
-!#! !$!
-!#! !>@todo FIXME : threed_cartesian/location assumes everything is in height
-!#! !$!
-!#! !$! !#! ztypein  = nint(query_location(location, 'which_vert'))
-!#! !$! !#! if ((ztypein == ztypeout) .or. (ztypein == VERTISUNDEF)) then
-!#! !$! !#!    istatus = 0
-!#! !$! !#!    return
-!#! !$! !#! else
-!#! !$! !#!    if (do_output() .and. debug > 9) then
-!#! !$! !#!       write(string1,'(A,3X,2I3)') 'ztypein, ztypeout:',ztypein,ztypeout
-!#! !$! !#!       call error_handler(E_MSG, 'vert_convert',string1,source, revision, revdate)
-!#! !$! !#!    endif
-!#! !$! !#! endif
-!#! !$!
-!#! !$! ! we do need to convert the vertical.  start by
-!#! !$! ! extracting the location lon/lat/vert values.
-!#! !$! llv_loc = get_location(location)
-!#! !$!
-!#! !$! ! the routines below will use zin as the incoming vertical value
-!#! !$! ! and zout as the new outgoing one.  start out assuming failure
-!#! !$! ! (zout = missing) and wait to be pleasantly surprised when it works.
-!#! !$! zin     = llv_loc(3)
-!#! !$! !@>todo FIXME : this probably does not matter since everything is always in
-!#! !$! !> hight, some models have to do vertival conversion for incomming observations
-!#! !$! zout    = MISSING_R8
-!#! !$!
-!#! !$! ! if the vertical is missing to start with, return it the same way
-!#! !$! ! with the requested type as out.
-!#! !$! if (zin == MISSING_R8) then
-!#! !$!    location = set_location(llv_loc(1),llv_loc(2),MISSING_R8,ztypeout)
-!#! !$!    return
-!#! !$! endif
-!#! !$!
-!#! !$! !>@todo FIXME : threed_cartesian/location assumes everything is in height
-!#! !$!
-!#! !$! !#! ! Convert the incoming vertical type (ztypein) into the vertical
-!#! !$! !#! ! localization coordinate given in the namelist (ztypeout).
-!#! !$! !#! ! Various incoming vertical types (ztypein) are taken care of
-!#! !$! !#! ! inside find_vert_level. So we only check ztypeout here.
-!#! !$! !#!
-!#! !$! !#! ! convert into:
-!#! !$! !#! select case (ztypeout)
-!#! !$! !#!
-!#! !$! !#!    ! ------------------------------------------------------------
-!#! !$! !#!    ! outgoing vertical coordinate should be 'model level number'
-!#! !$! !#!    ! ------------------------------------------------------------
-!#! !$! !#!    case (VERTISLEVEL)
-!#! !$! !#!
-!#! !$! !#!    ! Identify the three cell ids (c) in the triangle enclosing the obs and
-!#! !$! !#!    ! the vertical indices for the triangle at two adjacent levels (k_low and k_up)
-!#! !$! !#!    ! and the fraction (fract) for vertical interpolation.
-!#! !$! !#!
-!#! !$! !#!   call find_triangle_vert_indices (x, location, n, c, k_low, k_up, fract, weights, istatus)
-!#! !$! !#!   if(istatus /= 0) return
-!#! !$! !#!
-!#! !$! !#!   zk_mid = k_low + fract
-!#! !$! !#!   zout = sum(weights * zk_mid)
-!#! !$! !#!
-!#! !$! !#!   if (do_output() .and. debug > 9) then
-!#! !$! !#!      write(string2,'("Zk:",3F8.2," => ",F8.2)') zk_mid,zout
-!#! !$! !#!      call error_handler(E_MSG, 'vert_convert',string2,source, revision, revdate)
-!#! !$! !#!   endif
-!#! !$! !#!
-!#! !$! !#!    ! ------------------------------------------------------------
-!#! !$! !#!    ! outgoing vertical coordinate should be 'pressure' in Pa
-!#! !$! !#!    ! ------------------------------------------------------------
-!#! !$! !#!    case (VERTISPRESSURE)
-!#! !$! !#!
-!#! !$! !#!    ! Need to get base offsets for the potential temperature, density, and water
-!#! !$! !#!    ! vapor mixing fields in the state vector
-!#! !$! !#! ! TJH   ivars(1) = get_progvar_index_from_kind(KIND_POTENTIAL_TEMPERATURE)
-!#! !$! !#! ! TJH   ivars(2) = get_progvar_index_from_kind(KIND_DENSITY)
-!#! !$! !#! ! TJH   ivars(3) = get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO)
-!#! !$! !#!
-!#! !$! !#! string1 = 'fix VERTISPRESSURE get base offsets - detritus from atmosphere'
-!#! !$! !#! call error_handler(E_ERR,'vert_convert',string1,source,revision,revdate)
-!#! !$! !#!
-!#! !$! !#!    if (any(ivars(1:3) < 0)) then
-!#! !$! !#!       write(string1,*) 'Internal error, cannot find one or more of: theta, rho, qv'
-!#! !$! !#!       call error_handler(E_ERR, 'vert_convert',string1,source, revision, revdate)
-!#! !$! !#!    endif
-!#! !$! !#!
-!#! !$! !#!    ! Get theta, rho, qv at the interpolated location
-!#! !$! !#!    call compute_scalar_with_barycentric (x, location, 3, ivars, values, istatus)
-!#! !$! !#!    if (istatus /= 0) return
-!#! !$! !#!
-!#! !$! !#!    ! Convert theta, rho, qv into pressure
-!#! !$! !#!    call compute_full_pressure(values(1), values(2), values(3), zout, tk)
-!#! !$! !#!    if (do_output() .and. debug > 9) then
-!#! !$! !#!       write(string2,'("zout_in_pressure, theta, rho, qv:",3F10.2,F15.10)') zout, values
-!#! !$! !#!       call error_handler(E_MSG, 'vert_convert',string2,source, revision, revdate)
-!#! !$! !#!    endif
-!#! !$! !#!
-!#! !$! !#!    ! ------------------------------------------------------------
-!#! !$! !#!    ! outgoing vertical coordinate should be 'depth' in meters
-!#! !$! !#!    ! ------------------------------------------------------------
-!#! !$! !#!    case (VERTISHEIGHT)
-!#!
-!#! !>@todo FIXME : might still want something similar to this code
-!#!
-!#!      call find_triangle_vert_indices (x, location, n, c, k_low, k_up, fract, weights, istatus)
-!#!      if (istatus /= 0) return
-!#!
-!#!      ! now have vertically interpolated values at cell centers.
-!#!      ! use horizontal weights to compute value at interp point.
-!#!      zout = sum(weights * fdata)
-!#!
-!#! !$! !#!
-!#! !$! !#!    ! ------------------------------------------------------------
-!#! !$! !#!    ! outgoing vertical coordinate should be 'scale height' (a ratio)
-!#! !$! !#!    ! ------------------------------------------------------------
-!#! !$! !#!    case (VERTISSCALEHEIGHT)
-!#! !$! !#!
-!#! !$! !#!    ! Scale Height is defined here as: -log(pressure / surface_pressure)
-!#! !$! !#!
-!#! !$! !#!    ! Need to get base offsets for the potential temperature, density, and water
-!#! !$! !#!    ! vapor mixing fields in the state vector
-!#! !$! !#! ! TJH   ivars(1) = get_progvar_index_from_kind(KIND_POTENTIAL_TEMPERATURE)
-!#! !$! !#! ! TJH   ivars(2) = get_progvar_index_from_kind(KIND_DENSITY)
-!#! !$! !#! ! TJH   ivars(3) = get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO)
-!#! !$! !#!
-!#! !$! !#! string1 = 'fix vertisscaleheight get base offsets - detritus from atmosphere'
-!#! !$! !#! call error_handler(E_ERR,'vert_convert',string1,source,revision,revdate)
-!#! !$! !#!
-!#! !$! !#!    ! Get theta, rho, qv at the interpolated location
-!#! !$! !#!    call compute_scalar_with_barycentric (x, location, 3, ivars, values, istatus)
-!#! !$! !#!    if (istatus /= 0) return
-!#! !$! !#!
-!#! !$! !#!    ! Convert theta, rho, qv into pressure
-!#! !$! !#!    call compute_full_pressure(values(1), values(2), values(3), fullp, tk)
-!#! !$! !#!    if (do_output() .and. debug > 9) then
-!#! !$! !#!       write(string2,'("zout_full_pressure, theta, rho, qv:",3F10.2,F15.10)') fullp, values
-!#! !$! !#!       call error_handler(E_MSG, 'vert_convert',string2,source, revision, revdate)
-!#! !$! !#!    endif
-!#! !$! !#!
-!#! !$! !#!    ! Get theta, rho, qv at the surface corresponding to the interpolated location
-!#! !$! !#!    surfloc = set_location(llv_loc(1), llv_loc(2), 1.0_r8, VERTISLEVEL)
-!#! !$! !#!    call compute_scalar_with_barycentric (x, surfloc, 3, ivars, values, istatus)
-!#! !$! !#!    if (istatus /= 0) return
-!#! !$! !#!
-!#! !$! !#!    ! Convert surface theta, rho, qv into pressure
-!#! !$! !#!    call compute_full_pressure(values(1), values(2), values(3), surfp, tk)
-!#! !$! !#!    if (do_output() .and. debug > 9) then
-!#! !$! !#!       write(string2,'("zout_surf_pressure, theta, rho, qv:",3F10.2,F15.10)') surfp, values
-!#! !$! !#!       call error_handler(E_MSG, 'vert_convert',string2,source, revision, revdate)
-!#! !$! !#!    endif
-!#! !$! !#!
-!#! !$! !#!    ! and finally, convert into scale height
-!#! !$! !#!    if (surfp /= 0.0_r8) then
-!#! !$! !#!       zout = -log(fullp / surfp)
-!#! !$! !#!    else
-!#! !$! !#!       zout = MISSING_R8
-!#! !$! !#!    endif
-!#! !$! !#!
-!#! !$! !#!    if (do_output() .and. debug > 9) then
-!#! !$! !#!       write(string2,'("zout_in_pressure:",F10.2)') zout
-!#! !$! !#!       call error_handler(E_MSG, 'vert_convert',string2,source, revision, revdate)
-!#! !$! !#!    endif
-!#! !$! !#!
-!#! !$! !#!    ! -------------------------------------------------------
-!#! !$! !#!    ! outgoing vertical coordinate is unrecognized
-!#! !$! !#!    ! -------------------------------------------------------
-!#! !$! !#!    case default
-!#! !$! !#!       write(string1,*) 'Requested vertical coordinate not recognized: ', ztypeout
-!#! !$! !#!       call error_handler(E_ERR,'vert_convert', string1, &
-!#! !$! !#!                          source, revision, revdate)
-!#! !$! !#!
-!#! !$! !#! end select   ! outgoing vert type
-!#! !$!
-!#! !$! ! Returned location
-!#! !$! location = set_location(llv_loc(1),llv_loc(2),zout,ztypeout)
-!#! !$!
-!#! !$! ! Set successful return code only if zout has good value
-!#! !$! if(zout /= MISSING_R8) istatus = 0
-!#! !$!
-!#! !$!
-!#! end subroutine vert_convert
-
 !==================================================================
 ! The following (private) interfaces are used for triangle interpolation
 !==================================================================
@@ -3349,8 +3329,9 @@ find_closest_surface_location = -1
 
 ! Generate the list of indices into the DART vector of the close candidates.
 
-call loc_get_close_obs(cc_gc, location, obs_kind, cell_locations, cell_kinds, &
-                       num_close, close_ind=close_cell_inds)
+!> TODO -aLi-: check if this is needed
+!> call loc_get_close_obs(cc_gc, location, obs_kind, cell_locations, cell_kinds, &
+!>                        num_close, close_ind=close_cell_inds)
 
 ! Sometimes the location is outside the model domain.
 ! In this case, we cannot interpolate.
@@ -3383,468 +3364,7 @@ find_closest_surface_location = surface_index
 
 end function find_closest_surface_location
 
-
 !------------------------------------------------------------
-!>
-
-subroutine finalize_closest_center()
-
-! get rid of storage associated with get close lookup table
-
-!>@ TODO make this initialization a global T/F variable and only call if ...
-
-call get_close_obs_destroy(cc_gc)
-
-end subroutine finalize_closest_center
-
-
-!$! !------------------------------------------------------------
-!$!
-!$! function on_boundary(cellid)
-!$!
-!$! ! use the surface (level 1) to determine if any edges (or vertices?)
-!$! ! are on the boundary, and return true if so.   if the global flag
-!$! ! is set, skip all code and return false immediately.
-!$!
-!$! integer,  intent(in)  :: cellid
-!$! logical               :: on_boundary
-!$!
-!$! integer :: vertical
-!$!
-!$! vertical = 1
-!$!
-!$! if (global_grid) then
-!$!    on_boundary = .false.
-!$!    return
-!$! endif
-!$!
-!$! write(*,*) 'boundaryCell ', cellid, boundaryCell(vertical,cellid)
-!$!
-!$! on_boundary = boundaryCell(vertical,cellid) .eq. 1
-!$!
-!$! end function on_boundary
-!$!
-!$! !------------------------------------------------------------
-!$!
-!$! function inside_cell(cellid, lat, lon)
-!$!
-!$! ! this function no longer really determines if we are inside
-!$! ! the cell or not.  what it does do is determine if the nearest
-!$! ! cell is on the grid boundary in any way and says no if it is
-!$! ! a boundary.  if we have a flag saying this a global grid, we
-!$! ! can avoid doing any work and immediately return true.  for a
-!$! ! global atmosphere this is always so; for a regional atmosphere
-!$! ! and for the ocean (which does not have cells on land) this is
-!$! ! necessary test.
-!$!
-!$! integer,  intent(in)  :: cellid
-!$! real(r8), intent(in)  :: lat, lon
-!$! logical               :: inside_cell
-!$!
-!$! ! do this completely with topology of the grid.  if any of
-!$! ! the cell edges are marked as boundary edges, return no.
-!$! ! otherwise return yes.
-!$!
-!$! integer :: nedges, i, edgeid, vert
-!$!
-!$! ! if we're on a global grid, skip all this code
-!$! if (global_grid) then
-!$!    inside_cell = .true.
-!$!    return
-!$! endif
-!$!
-!$! nedges = nEdgesOnCell(cellid)
-!$!
-!$! ! go around the edges and check the boundary array.
-!$! ! if any are true, return false.  even if we are inside
-!$! ! this cell, we aren't going to be able to interpolate it
-!$! ! so shorten the code path.
-!$!
-!$! ! FIXME: at some point we can be more selective and try to
-!$! ! interpolate iff the edges of the three cells which are
-!$! ! going to contribute edges to the RBF exist, even if some
-!$! ! of the other cell edges are on the boundary.  so this
-!$! ! decision means we won't be interpolating some obs that in
-!$! ! theory we have enough information to interpolate.  but it
-!$! ! is conservative for now - we certainly won't try to interpolate
-!$! ! outside the existing grid.
-!$!
-!$! ! FIXME: can this loop over edges be replaced by a single test of the 'boundaryCell' array?
-!$! do i=1, nedges
-!$!    edgeid = edgesOnCell(i, cellid)
-!$!
-!$!    ! FIXME: this is an int array.  is it 0=false,1=true?
-!$!    ! BOTHER - we need the vert for this and we don't have it
-!$!    ! and in fact can't compute it if the interpolation point
-!$!    ! has pressure or depth as its vertical coordinate.
-!$!    vert = 1
-!$!
-!$!    if (boundaryEdge(vert, edgeid) > 0) then
-!$!       inside_cell = .false.
-!$!       return
-!$!    endif
-!$!
-!$! enddo
-!$!
-!$! inside_cell = .true.
-!$!
-!$! end function inside_cell
-
-!$-----------------------------------------------------------
-
-!$! function closest_vertex_ll(cellid, lat, lon)
-!$!
-!$! ! Return the vertex id of the closest one to the given point
-!$! ! this version uses lat/lon.  see closest_vertex_xyz for the
-!$! ! cartesian version.
-!$!
-!$! integer,  intent(in)  :: cellid
-!$! real(r8), intent(in)  :: lat, lon
-!$! integer               :: closest_vertex_ll
-!$!
-!$! real(r8) :: px, py, pz
-!$!
-
-!>@todo FIXME : should not need to convert between latlon and xyz
-!$! ! use the same radius as FESOM for computing this
-!$! call latlon_to_xyz(lat, lon, px, py, pz)
-!$!
-!$! closest_vertex_ll = closest_vertex_xyz(cellid, px, py, pz)
-!$! if ((closest_vertex_ll < 0)  .and. &
-!$!     (debug > 8) .and. do_output()) &
-!$!    print *, 'cannot find nearest vertex to lon, lat: ', lon, lat, &
-!$!             'cellid', cellid,'px: ', px,'py: ', py,'pz: ', pz
-!$!
-!$! end function closest_vertex_ll
-!$!
-!$! !------------------------------------------------------------
-!$!
-!$! function closest_vertex_xyz(cellid, px, py, pz)
-!$!
-!$! ! Return the vertex id of the closest one to the given point
-!$! ! see closest_vertex_ll for the lat/lon version (which calls this)
-!$!
-!$! integer,  intent(in)  :: cellid
-!$! real(r8), intent(in)  :: px, py, pz
-!$! integer               :: closest_vertex_xyz
-!$!
-!$! integer :: nverts, i, vertexid
-!$! real(r8) :: distsq, closest_dist, dx, dy, dz
-!$!
-!$! ! nedges and nverts is same in a closed figure
-!$! nverts = nEdgesOnCell(cellid)
-!$!
-!$! closest_dist = 1.0e38_r8   ! something really big; these are meters not radians
-!$! closest_vertex_xyz = -1
-!$!
-!$! do i=1, nverts
-!$!    vertexid = verticesOnCell(i, cellid)
-!$!    distsq = (dx * dx) + (dy * dy) + (dz * dz)
-!$!    if (distsq < closest_dist) then
-!$!       closest_dist = distsq
-!$!       closest_vertex_xyz = vertexid
-!$!    endif
-!$! enddo
-!$!
-!$! end function closest_vertex_xyz
-
-!------------------------------------------------------------
-!----DON'T CHANGE THE REST-----------------------------------
-!------------------------------------------------------------
-!------------------------------------------------------------
-
-!#! subroutine latlon_to_xyz(lat, lon, x, y, z)
-!#!
-!#! ! Given a lat, lon in degrees, return the cartesian x,y,z coordinate
-!#! ! on the surface of a specified radius relative to the origin
-!#! ! at the center of the earth.  (this radius matches the one
-!#! ! used at FESOM grid generation time and must agree in order
-!#! ! to be consistent with the cartisian coordinate arrays in
-!#! ! the FESOM data files.)
-!#!
-!#! real(r8), intent(in)  :: lat, lon
-!#! real(r8), intent(out) :: x, y, z
-!#!
-!#! real(r8) :: rlat, rlon
-!#!
-!#! rlat = lat * deg2rad
-!#! rlon = lon * deg2rad
-!#!
-!#! x = radius * cos(rlon) * cos(rlat)
-!#! y = radius * sin(rlon) * cos(rlat)
-!#! z = radius * sin(rlat)
-!#!
-!#! end subroutine latlon_to_xyz
-!#!
-!#! !------------------------------------------------------------
-!#!
-!#! subroutine xyz_to_latlon(x, y, z, lat, lon)
-!#!
-!#! ! Given a cartesian x, y, z coordinate relative to the origin
-!#! ! at the center of the earth, using a fixed radius specified
-!#! ! by FESOM (in the grid generation step), return the corresponding
-!#! ! lat, lon location in degrees.
-!#!
-!#! real(r8), intent(in)  :: x, y, z
-!#! real(r8), intent(out) :: lat, lon
-!#!
-!#! real(r8) :: rlat, rlon
-!#!
-!#! ! right now this is only needed for debugging messages.
-!#! ! the arc versions of routines are expensive.
-!#!
-!#! rlat = PI/2.0_r8 - acos(z/radius)
-!#! rlon = atan2(y,x)
-!#! if (rlon < 0) rlon = rlon + PI*2
-!#!
-!#! lat = rlat * rad2deg
-!#! lon = rlon * rad2deg
-!#!
-!#! end subroutine xyz_to_latlon
-
-!------------------------------------------------------------
-
-!#! subroutine inside_triangle(t1, t2, t3, r, lat, lon, inside, weights)
-!#!
-!#! ! given 3 corners of a triangle and an xyz point, compute whether
-!#! ! the point is inside the triangle.  this assumes r is coplanar
-!#! ! with the triangle - the caller must have done the lat/lon to
-!#! ! xyz conversion with a constant radius and then this will be
-!#! ! true (enough).  sets inside to true/false, and returns the
-!#! ! weights if true.  weights are set to 0 if false.
-!#!
-!#! real(r8), intent(in)  :: t1(3), t2(3), t3(3)
-!#! real(r8), intent(in)  :: r(3), lat, lon
-!#! logical,  intent(out) :: inside
-!#! real(r8), intent(out) :: weights(3)
-!#!
-!#! ! check for degenerate cases first - is the test point located
-!#! ! directly on one of the vertices?  (this case may be common
-!#! ! if we're computing on grid point locations.)
-!#! if (all(abs(r - t1) < roundoff)) then
-!#!    inside = .true.
-!#!    weights = (/ 1.0_r8, 0.0_r8, 0.0_r8 /)
-!#!    return
-!#! else if (all(abs(r - t2) < roundoff)) then
-!#!    inside = .true.
-!#!    weights = (/ 0.0_r8, 1.0_r8, 0.0_r8 /)
-!#!    return
-!#! else if (all(abs(r - t3) < roundoff)) then
-!#!    inside = .true.
-!#!    weights = (/ 0.0_r8, 0.0_r8, 1.0_r8 /)
-!#!    return
-!#! endif
-!#!
-!#! ! not a vertex. compute the weights.  if any are
-!#! ! negative, the point is outside.  since these are
-!#! ! real valued computations define a lower bound for
-!#! ! numerical roundoff error and be sure that the
-!#! ! weights are not just *slightly* negative.
-!#! call get_3d_weights(r, t1, t2, t3, lat, lon, weights)
-!#!
-!#! if (any(weights < -roundoff)) then
-!#!    inside = .false.
-!#!    weights = 0.0_r8
-!#!    return
-!#! endif
-!#!
-!#! ! truncate barely negative values to 0
-!#! inside = .true.
-!#! where (weights < 0.0_r8) weights = 0.0_r8
-!#! return
-!#!
-!#! end subroutine inside_triangle
-
-!>@todo FIXME : function no used
-!#! !------------------------------------------------------------
-!#!
-!#! function vector_magnitude(a)
-!#!
-!#! ! Given a cartesian vector, compute the magnitude
-!#
-!#! real(r8), intent(in)  :: a(3)
-!#! real(r8) :: vector_magnitude
-!#!
-!#! vector_magnitude = sqrt(a(1)*a(1) + a(2)*a(2) + a(3)*a(3))
-!#!
-!#! end function vector_magnitude
-!#!
-!#! !------------------------------------------------------------
-!#!
-!#! subroutine vector_cross_product(a, b, r)
-!#!
-!#! ! Given 2 cartesian vectors, compute the cross product of a x b
-!#!
-!#! real(r8), intent(in)  :: a(3), b(3)
-!#! real(r8), intent(out) :: r(3)
-!#!
-!#! r(1) = a(2)*b(3) - a(3)*b(2)
-!#! r(2) = a(3)*b(1) - a(1)*b(3)
-!#! r(3) = a(1)*b(2) - a(2)*b(1)
-!#!
-!#! end subroutine vector_cross_product
-!#!
-!#! !------------------------------------------------------------
-!#!
-!#! function vector_dot_product(a, b)
-!#!
-!#! ! Given 2 cartesian vectors, compute the dot product of a . b
-!#!
-!#! real(r8), intent(in)  :: a(3), b(3)
-!#! real(r8) :: vector_dot_product
-!#!
-!#! vector_dot_product = a(1)*b(1) + a(2)*b(2) + a(3)*b(3)
-!#!
-!#! end function vector_dot_product
-!#!
-!#! !------------------------------------------------------------
-!#!
-!#! subroutine vector_projection(a, b, r)
-!#!
-!#! ! Given 2 cartesian vectors, project a onto b
-!#!
-!#! real(r8), intent(in)  :: a(3), b(3)
-!#! real(r8), intent(out) :: r(3)
-!#!
-!#! real(r8) :: ab_over_bb
-!#!
-!#! ab_over_bb = vector_dot_product(a, b) / vector_dot_product(b, b)
-!#! r = (ab_over_bb) * b
-!#!
-!#! end subroutine vector_projection
-!#!
-!#! !------------------------------------------------------------
-!#!
-!#! subroutine determinant3(a, r)
-!#!
-!#! ! Given a 3x3 matrix, compute the determinant
-!#!
-!#! real(r8), intent(in)  :: a(3,3)
-!#! real(r8), intent(out) :: r
-!#!
-!#! r = a(1,1)*(a(2,2)*a(3,3) - (a(3,2)*a(2,3))) + &
-!#!     a(2,1)*(a(3,2)*a(1,3) - (a(3,3)*a(1,2))) + &
-!#!     a(3,1)*(a(1,2)*a(2,3) - (a(2,2)*a(1,3)))
-!#!
-!#! end subroutine determinant3
-!#!
-!#! !------------------------------------------------------------
-!#!
-!#! subroutine invert3(a, r)
-!#!
-!#! ! Given a 3x3 matrix, compute the inverse
-!#!
-!#! real(r8), intent(in)  :: a(3,3)
-!#! real(r8), intent(out) :: r(3,3)
-!#!
-!#! real(r8) :: det, b(3,3)
-!#!
-!#! call determinant3(a, det)
-!#! if (det == 0.0_r8) then
-!#!    print *, 'matrix cannot be inverted'
-!#!    r = 0.0_r8
-!#!    return
-!#! endif
-!#!
-!#! b(1,1) = a(2,2)*a(3,3) - a(3,2)*a(2,3)
-!#! b(2,1) = a(3,1)*a(2,3) - a(2,1)*a(3,3)
-!#! b(3,1) = a(2,1)*a(3,2) - a(3,1)*a(2,2)
-!#!
-!#! b(1,2) = a(3,2)*a(1,3) - a(1,2)*a(3,3)
-!#! b(2,2) = a(1,1)*a(3,3) - a(3,1)*a(1,3)
-!#! b(3,2) = a(3,1)*a(1,2) - a(1,1)*a(3,2)
-!#!
-!#! b(1,3) = a(1,2)*a(2,3) - a(2,2)*a(1,3)
-!#! b(2,3) = a(1,3)*a(2,1) - a(1,1)*a(2,3)
-!#! b(3,3) = a(1,1)*a(2,2) - a(2,1)*a(1,2)
-!#!
-!#! r = b / det
-!#!
-!#! end subroutine invert3
-!#!
-!#! !------------------------------------------------------------
-!#!
-!#! !==================================================================
-!#! ! The following (private) routines were borrowed from the FESOM code
-!#! !==================================================================
-!#!
-!#! !------------------------------------------------------------------
-!#!
-!#! subroutine r3_normalize(ax, ay, az)
-!#!
-!#! !normalizes the vector (ax, ay, az)
-!#!
-!#! real(r8), intent(inout) :: ax, ay, az
-!#! real(r8) :: mi
-!#!
-!#!  mi = 1.0_r8 / sqrt(ax**2 + ay**2 + az**2)
-!#!  ax = ax * mi
-!#!  ay = ay * mi
-!#!  az = az * mi
-!#!
-!#! end subroutine r3_normalize
-
-
-!------------------------------------------------------------------
-
-!#! function theta_to_tk (theta, rho, qv)
-!#!
-!#! ! Compute sensible temperature [K] from potential temperature [K].
-!#! ! code matches computation done in FESOM model
-!#!
-!#! real(r8), intent(in)  :: theta    ! potential temperature [K]
-!#! real(r8), intent(in)  :: rho      ! dry density
-!#! real(r8), intent(in)  :: qv       ! water vapor mixing ratio [kg/kg]
-!#! real(r8)  :: theta_to_tk          ! sensible temperature [K]
-!#!
-!#! ! Local variables
-!#! real(r8) :: theta_m               ! potential temperature modified by qv
-!#! real(r8) :: exner                 ! exner function
-!#! real(r8) :: qv_nonzero            ! qv >= 0
-!#!
-!#! qv_nonzero = max(qv,0.0_r8)
-!#! theta_m = (1.0_r8 + 1.61_r8 * qv_nonzero)*theta
-!#!
-!#! !theta_m = (1.0_r8 + 1.61_r8 * (max(qv, 0.0_r8)))*theta
-!#! exner = ( (rgas/p0) * (rho*theta_m) )**rcv
-!#!
-!#! ! Temperature [K]
-!#! theta_to_tk = theta * exner
-!#!
-!#! end function theta_to_tk
-
-
-!#! !------------------------------------------------------------------
-!#!
-!#! subroutine compute_full_pressure(theta, rho, qv, pressure, tk)
-!#!
-!#! ! Compute full pressure from the equation of state.
-!#! ! since it has to compute sensible temp along the way,
-!#! ! make temp one of the return values rather than having
-!#! ! to call theta_to_tk() separately.
-!#! ! code matches computation done in FESOM model
-!#!
-!#! real(r8), intent(in)  :: theta    ! potential temperature [K]
-!#! real(r8), intent(in)  :: rho      ! dry density
-!#! real(r8), intent(in)  :: qv       ! water vapor mixing ratio [kg/kg]
-!#! real(r8), intent(out) :: pressure ! full pressure [Pa]
-!#! real(r8), intent(out) :: tk       ! return sensible temperature to caller
-!#!
-!#! ! Local variables
-!#! real(r8) :: qv_nonzero            ! qv >= 0
-!#!
-!#! qv_nonzero = max(qv,0.0_r8)
-!#! tk = theta_to_tk(theta, rho, qv_nonzero)
-!#!
-!#! !tk = theta_to_tk(theta, rho, max(qv,0.0_r8))
-!#! pressure = rho * rgas * tk * (1.0_r8 + 1.61_r8 * qv)
-!#! !if (do_output() .and. debug > 9) print *, 't,r,q,p,tk =', theta, rho, qv, pressure, tk
-!#!
-!#! end subroutine compute_full_pressure
-
-
-!------------------------------------------------------------------
-!>
 
 subroutine dump_tables
 
