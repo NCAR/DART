@@ -47,7 +47,8 @@ use         location_mod, only : location_type, get_dist, query_location,    &
 use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_add_global_creation_time, nc_check,        &
                                  nc_begin_define_mode, nc_end_define_mode,     &
-                                 nc_open_file_readonly, nc_close_file
+                                 nc_open_file_readonly, nc_close_file,         &
+                                 nc_define_dimension
 
 use      location_io_mod, only : nc_write_location_atts, nc_write_location
 
@@ -108,7 +109,8 @@ use state_structure_mod, only : add_domain, &
                                 state_structure_info, &
                                 get_index_start, &
                                 get_index_end, &
-                                get_num_variables
+                                get_num_variables, &
+                                get_variable_name
 
 implicit none
 private
@@ -436,20 +438,18 @@ integer, optional,   intent(out) :: var_type
 
 integer  :: nf, n, myindx
 real(r8) :: lon, lat, depth
+integer  :: dim2_j, dim3_k
+integer  :: var_id, dom_id, variable_type
 
 if ( .not. module_initialized ) call static_init_model
 
 myindx = -1
 nf     = -1
 
-! Determine the right variable
-FindIndex : do n = 1,nfields
-    if( (progvar(n)%index1 <= index_in) .and. (index_in <= progvar(n)%indexN) ) then
-      nf = n
-      myindx = index_in - progvar(n)%index1 + 1
-      exit FindIndex
-    endif
-enddo FindIndex
+! from the dart index get the local variables indices
+
+call get_model_variable_indices(index_in, myindx, dim2_j, dim3_k, &
+            var_id=var_id, dom_id=dom_id, kind_index=variable_type)
 
 if( myindx == -1 ) then
      write(string1,*) 'Problem, cannot find base_offst, index_in is: ', index_in
@@ -466,7 +466,14 @@ depth = coord_nod3D(3,myindx)
 location = set_location(lon,lat,depth,VERTISHEIGHT)
 
 if (present(var_type)) then
-   var_type = progvar(nf)%dart_kind
+   var_type = variable_type
+
+   if( var_type == MISSING_I ) then
+      write(string1,*) 'Cannot find DART QTY for indx ', index_in
+      write(string2,*) 'variable "'//trim(get_variable_name(dom_id, var_id))//'"'
+      call error_handler(E_ERR, 'get_state_meta_data', string1, &
+                 source, revision, revdate, text2=string2)
+   endif
 endif
 
 end subroutine get_state_meta_data
@@ -801,19 +808,9 @@ subroutine nc_write_model_atts( ncFileID, domain_id )
 ! assim_model_mod:init_diag_output uses information from the location_mod
 !     to define the location dimension and variable ID. All we need to do
 !     is query, verify, and fill ...
-!
-! Typical sequence for adding new dimensions,variables,attributes:
-! NF90_OPEN             ! open existing netCDF dataset
-!    NF90_redef         ! put into define mode
-!    NF90_def_dim       ! define additional dimensions (if any)
-!    NF90_def_var       ! define variables: from name, type, and dims
-!    NF90_put_att       ! assign attribute values
-! NF90_ENDDEF           ! end definitions: leave define mode
-!    NF90_put_var       ! provide values for variable
-! NF90_CLOSE            ! close: save updated netCDF dataset
 
 integer, intent(in) :: domain_id
-integer, intent(in)  :: ncFileID      ! netCDF file identifier
+integer, intent(in)  :: ncFileID
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 
@@ -857,208 +854,101 @@ character(len=256) :: filename
 
 if ( .not. module_initialized ) call static_init_model
 
-
-!--------------------------------------------------------------------
-! we only have a netcdf handle here so we do not know the filename
-! or the fortran unit number.  but construct a string with at least
-! the netcdf handle, so in case of error we can trace back to see
-! which netcdf file is involved.
-!--------------------------------------------------------------------
-
-write(filename,*) 'ncFileID', ncFileID
-
 !-------------------------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file,
 ! and then put into define mode.
 !-------------------------------------------------------------------------------
 
-call nc_check(nf90_Inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID),&
-                                   'nc_write_model_atts', 'inquire '//trim(filename))
-call nc_check(nf90_Redef(ncFileID),'nc_write_model_atts',   'redef '//trim(filename))
+io = nf90_Inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID)
+call nc_check(io, 'nc_write_model_atts', 'inquire')
 
-!-------------------------------------------------------------------------------
-! We need the dimension ID for the number of copies/ensemble members, and
-! we might as well check to make sure that Time is the Unlimited dimension.
-! Our job is create the 'model size' dimension.
-!-------------------------------------------------------------------------------
+call nc_begin_define_mode(ncFileID)
 
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name='copy', dimid=MemberDimID), &
-                           'nc_write_model_atts', 'copy dimid '//trim(filename))
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name='time', dimid=  TimeDimID), &
-                           'nc_write_model_atts', 'time dimid '//trim(filename))
+call nc_add_global_creation_time(ncFileID)
+call nc_add_global_attribute(ncFileID, "model", "FESOM")
 
-if ( TimeDimID /= unlimitedDimId ) then
-   write(string1,*)'Time Dimension ID ',TimeDimID, &
-             ' should equal Unlimited Dimension ID',unlimitedDimID
-   call error_handler(E_ERR,'nc_write_model_atts', string1, source, revision, revdate)
-endif
+!----------------------------------------------------------------------------
+! Define useful geometry variables.
+!----------------------------------------------------------------------------
 
-!-------------------------------------------------------------------------------
-! Write Global Attributes
-!-------------------------------------------------------------------------------
+if (diagnostic_metadata) then
 
-call DATE_AND_TIME(crdate,crtime,crzone,values)
-write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
-                  values(1), values(2), values(3), values(5), values(6), values(7)
+   call nc_define_dimension(ncFileID, 'nodes_3d', nVertices, 'nc_write_model_atts')
+   call nc_define_dimension(ncFileID, 'nodes_2d', nCells,    'nc_write_model_atts')
 
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'creation_date' ,str1    ), &
-           'nc_write_model_atts', 'creation put '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model_source'  ,source  ), &
-           'nc_write_model_atts', 'source put '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model_revision',revision), &
-           'nc_write_model_atts', 'revision put '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model_revdate' ,revdate ), &
-           'nc_write_model_atts', 'revdate put '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model',  'FESOM' ), &
-           'nc_write_model_atts', 'model put '//trim(filename))
+   io = nf90_inq_dimid(ncFileID, 'nodes_3d', nodes_3DimID)
+   call nc_check(io,'nc_write_model_atts', 'inquire nodes_3d')
 
-!-------------------------------------------------------------------------------
-! Here is the extensible part. The simplest scenario is to output the state vector,
-! parsing the state vector into model-specific parts is complicated, and you need
-! to know the geometry, the output variables (PS,U,V,T,Q,...) etc. We're skipping
-! complicated part.
-!-------------------------------------------------------------------------------
+   io = nf90_inq_dimid(ncFileID, 'nodes_2d', nodes_2DimID)
+   call nc_check(io,'nc_write_model_atts', 'inquire nodes_2d')
 
-if ( output_state_vector ) then
+   io = nf90_def_var(ncFileID, 'longitudes', NF90_DOUBLE, (/ nodes_3DimID /), VarID)
+   call nc_check(io,'nc_write_model_atts', 'longitudes def_var')
 
-   !----------------------------------------------------------------------------
-   ! Define the DART model size and
-   ! create a variable for the state vector.
-   !----------------------------------------------------------------------------
+   call nc_check(nf90_put_att(ncFileID,VarID,'units','degrees East'),&
+                 'nc_write_model_atts', 'longitude units')
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='StateVariable', len=model_size, &
-        dimid = StateVarDimID),'nc_write_model_atts', 'state def_dim '//trim(filename))
+   io = nf90_def_var(ncid=ncFileID, name='latitudes', &
+                    xtype=NF90_DOUBLE, dimids = (/ nodes_3DimID /), varid=VarID)
+   call nc_check(io,'nc_write_model_atts', 'latitudes def_var')
+   call nc_check(nf90_put_att(ncFileID,VarID,'units','degrees North'),&
+                 'nc_write_model_atts', 'latitudes units')
 
-   ! Define the actual (3D) state vector, which gets filled as time goes on ...
-   call nc_check(nf90_def_var(ncid=ncFileID, name='state', xtype=nf90_real, &
-                 dimids=(/StateVarDimID,MemberDimID,unlimitedDimID/),varid=VarID),&
-                 'nc_write_model_atts','state def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,VarID,'long_name','model state or fcopy'),&
-                 'nc_write_model_atts', 'state long_name '//trim(filename))
+   io = nf90_def_var(ncid=ncFileID, name='depths', &
+                    xtype=NF90_REAL, dimids = (/ nodes_3DimID /), varid=VarID)
+   call nc_check(io,'nc_write_model_atts', 'depths def_var')
+   call nc_check(nf90_put_att(ncFileID,VarID,'units','meters'),&
+                 'nc_write_model_atts', 'depths units')
 
-   ! Leave define mode.
-   call nc_check(nf90_enddef(ncFileID),'nc_write_model_atts','state enddef '//trim(filename))
-
-else
-
-   !----------------------------------------------------------------------------
-   ! We need to output the prognostic variables.
-   !----------------------------------------------------------------------------
-   ! Define the new dimensions IDs
-   !----------------------------------------------------------------------------
-
-   io = nf90_def_dim(ncid=ncFileID, name='nodes_2d',len=nCells, dimid=nodes_2DimID)
-   call nc_check(io, 'nc_write_model_atts', 'nodes_2D def_dim '//trim(filename))
-
-   io = nf90_def_dim(ncid=ncFileID, name='nodes_3d', len=nVertices, dimid=nodes_3DimID)
-   call nc_check(io,'nc_write_model_atts', 'nodes_3D def_dim '//trim(filename))
-
-   io = nf90_def_dim(ncid=ncFileID, name='levels', len=nVertLevels, dimid=nVertLevelsDimID)
-   call nc_check(io,'nc_write_model_atts', 'levels def_dim '//trim(filename))
-
-   !----------------------------------------------------------------------------
-   ! Define useful geometry variables.
-   !----------------------------------------------------------------------------
-
-   if (diagnostic_metadata) then
-
-      io = nf90_def_var(ncid=ncFileID, name='longitudes', &
-                       xtype=NF90_DOUBLE, dimids = (/ nodes_3DimID /), varid=VarID)
-      call nc_check(io,'nc_write_model_atts', 'longitudes def_var '//trim(filename))
-      call nc_check(nf90_put_att(ncFileID,VarID,'units','degrees East'),&
-                    'nc_write_model_atts', 'longitude units  '//trim(filename))
-
-      io = nf90_def_var(ncid=ncFileID, name='latitudes', &
-                       xtype=NF90_DOUBLE, dimids = (/ nodes_3DimID /), varid=VarID)
-      call nc_check(io,'nc_write_model_atts', 'latitudes def_var '//trim(filename))
-      call nc_check(nf90_put_att(ncFileID,VarID,'units','degrees North'),&
-                    'nc_write_model_atts', 'latitudes units  '//trim(filename))
-
-      io = nf90_def_var(ncid=ncFileID, name='depths', &
-                       xtype=NF90_REAL, dimids = (/ nodes_3DimID /), varid=VarID)
-      call nc_check(io,'nc_write_model_atts', 'depths def_var '//trim(filename))
-      call nc_check(nf90_put_att(ncFileID,VarID,'units','meters'),&
-                    'nc_write_model_atts', 'depths units  '//trim(filename))
-
-      io = nf90_def_var(ncid=ncFileID, name='node_table', &
-                xtype=NF90_INT, dimids = (/ nVertLevelsDimID, nodes_2DimID /), varid=VarID)
-      call nc_check(io,'nc_write_model_atts', 'node_table def_var '//trim(filename))
-      call nc_check(nf90_put_att(ncFileID,VarID,'long_name','nod3D_below_nod2D'),&
-                    'nc_write_model_atts', 'node_table long_name  '//trim(filename))
-      call nc_check(nf90_put_att(ncFileID,VarID,'valid_range',(/ 1, nVertices /)),&
-                    'nc_write_model_atts', 'node_table long_name  '//trim(filename))
-      call nc_check(nf90_put_att(ncFileID,VarID,'description', &
-                   'table defining packing order. Given a level and a &
-              &horizontal cell, return the vertex index (between 1 and nodes_3d). &
-              &A value outside the valid_range means there is no wet location.'),&
-                    'nc_write_model_atts', 'node_table description  '//trim(filename))
-
-   endif
-
-   !----------------------------------------------------------------------------
-   ! Create the (empty) Prognostic Variables and the Attributes
-   !----------------------------------------------------------------------------
-
-   do ivar=1, nfields
-
-      varname = trim(progvar(ivar)%varname)
-      string1 = trim(filename)//' '//trim(varname)
-
-      ! match shape of the variable to the dimension IDs
-
-      call define_var_dims(ncFileID, ivar, MemberDimID, unlimitedDimID, myndims, mydimids)
-
-      ! define the variable and set the attributes
-
-      call nc_check(nf90_def_var(ncid=ncFileID, name=trim(varname), xtype=progvar(ivar)%xtype, &
-                    dimids = mydimids(1:myndims), varid=VarID),&
-                    'nc_write_model_atts', trim(string1)//' def_var' )
-
-      call nc_check(nf90_put_att(ncFileID, VarID, 'long_name', trim(progvar(ivar)%long_name)), &
-           'nc_write_model_atts', trim(string1)//' put_att long_name' )
-
-      call nc_check(nf90_put_att(ncFileID, VarID, 'DART_kind', trim(progvar(ivar)%kind_string)), &
-           'nc_write_model_atts', trim(string1)//' put_att dart_kind' )
-      call nc_check(nf90_put_att(ncFileID, VarID, 'units', trim(progvar(ivar)%units)), &
-           'nc_write_model_atts', trim(string1)//' put_att units' )
-
-   enddo
-
-   !----------------------------------------------------------------------------
-   ! Finished with dimension/variable definitions, must end 'define' mode to fill.
-   !----------------------------------------------------------------------------
-
-   call nc_check(nf90_enddef(ncFileID), 'prognostic enddef '//trim(filename))
-
-   !----------------------------------------------------------------------------
-   ! Fill the coordinate variables that DART needs and has locally
-   !----------------------------------------------------------------------------
-
-   if (diagnostic_metadata) then
-
-      call nc_check(NF90_inq_varid(ncFileID, 'longitudes', VarID), &
-                    'nc_write_model_atts', 'longitudes inq_varid '//trim(filename))
-      call nc_check(nf90_put_var(ncFileID, VarID, coord_nod3D(1,:) ), &
-                   'nc_write_model_atts', 'longitudes put_var '//trim(filename))
-
-      call nc_check(NF90_inq_varid(ncFileID, 'latitudes', VarID), &
-                    'nc_write_model_atts', 'latitudes inq_varid '//trim(filename))
-      call nc_check(nf90_put_var(ncFileID, VarID, coord_nod3D(2,:) ), &
-                   'nc_write_model_atts', 'latitudes put_var '//trim(filename))
-
-      call nc_check(NF90_inq_varid(ncFileID, 'depths', VarID), &
-                    'nc_write_model_atts', 'depths inq_varid '//trim(filename))
-      call nc_check(nf90_put_var(ncFileID, VarID, coord_nod3D(3,:) ), &
-                   'nc_write_model_atts', 'depths put_var '//trim(filename))
-
-      call nc_check(NF90_inq_varid(ncFileID, 'node_table', VarID), &
-                    'nc_write_model_atts', 'node_table inq_varid '//trim(filename))
-      call nc_check(nf90_put_var(ncFileID, VarID, nod3D_below_nod2D ), &
-                   'nc_write_model_atts', 'node_table put_var '//trim(filename))
-
-   endif
+!TJH    io = nf90_def_var(ncid=ncFileID, name='node_table', &
+!TJH              xtype=NF90_INT, dimids = (/ nVertLevelsDimID, nodes_2DimID /), varid=VarID)
+!TJH    call nc_check(io,'nc_write_model_atts', 'node_table def_var')
+!TJH    call nc_check(nf90_put_att(ncFileID,VarID,'long_name','nod3D_below_nod2D'),&
+!TJH                  'nc_write_model_atts', 'node_table long_name')
+!TJH    call nc_check(nf90_put_att(ncFileID,VarID,'valid_range',(/ 1, nVertices /)),&
+!TJH                  'nc_write_model_atts', 'node_table long_name')
+!TJH    call nc_check(nf90_put_att(ncFileID,VarID,'description', &
+!TJH                 'table defining packing order. Given a level and a &
+!TJH            &horizontal cell, return the vertex index (between 1 and nodes_3d). &
+!TJH            &A value outside the valid_range means there is no wet location.'),&
+!TJH                  'nc_write_model_atts', 'node_table description')
 
 endif
+
+!----------------------------------------------------------------------------
+! Finished with dimension/variable definitions, must end 'define' mode to fill.
+!----------------------------------------------------------------------------
+
+call nc_end_define_mode(ncFileID, 'nc_write_model_atts', 'enddef')
+
+!----------------------------------------------------------------------------
+! Fill the coordinate variables that DART needs and has locally
+!----------------------------------------------------------------------------
+
+if (diagnostic_metadata) then
+
+   call nc_check(NF90_inq_varid(ncFileID, 'longitudes', VarID), &
+                 'nc_write_model_atts', 'longitudes inq_varid')
+   call nc_check(nf90_put_var(ncFileID, VarID, coord_nod3D(1,:) ), &
+                'nc_write_model_atts', 'longitudes put_var')
+
+   call nc_check(NF90_inq_varid(ncFileID, 'latitudes', VarID), &
+                 'nc_write_model_atts', 'latitudes inq_varid')
+   call nc_check(nf90_put_var(ncFileID, VarID, coord_nod3D(2,:) ), &
+                'nc_write_model_atts', 'latitudes put_var')
+
+   call nc_check(NF90_inq_varid(ncFileID, 'depths', VarID), &
+                 'nc_write_model_atts', 'depths inq_varid')
+   call nc_check(nf90_put_var(ncFileID, VarID, coord_nod3D(3,:) ), &
+                'nc_write_model_atts', 'depths put_var')
+
+!TJH    call nc_check(NF90_inq_varid(ncFileID, 'node_table', VarID), &
+!TJH                  'nc_write_model_atts', 'node_table inq_varid')
+!TJH    call nc_check(nf90_put_var(ncFileID, VarID, nod3D_below_nod2D ), &
+!TJH                 'nc_write_model_atts', 'node_table put_var')
+
+endif
+
 
 !-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
@@ -1382,15 +1272,12 @@ integer,                       intent(out) :: num_close, close_ind(:)
 real(r8),            optional, intent(out) :: dist(:)
 type(ensemble_type), optional, intent(in)  :: state_handle
 
+integer :: istatus1, istatus2
+real(r8) :: hor_dist
 
-integer                :: ztypeout
-integer                :: t_ind, istatus1, istatus2, k
-integer                :: base_which, local_obs_which
-real(r8), dimension(3) :: base_llv, local_obs_llv   ! lon/lat/vert
-type(location_type)    :: local_obs_loc
-
-real(r8) ::  hor_dist
 hor_dist = 1.0e9_r8
+
+call error_handler(E_ERR,'get_close_state','routine not written')
 
 ! Initialize variables to missing status
 
@@ -1401,8 +1288,8 @@ istatus1  = 0
 istatus2  = 0
 
 
-
 end subroutine get_close_state
+
 !------------------------------------------------------------------
 !>
 
@@ -1943,7 +1830,7 @@ integer,          intent(out) :: ngood
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME) :: dimname
-integer :: nrows, ncols, i, j, VarID, dimlen, numdims
+integer :: nrows, i, j, VarID, dimlen, numdims
 logical :: failure
 
 character(len=NF90_MAX_NAME) :: varname       ! column 1
