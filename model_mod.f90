@@ -2,7 +2,7 @@
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id: model_mod.f90 10268 2016-05-09 17:06:15Z thoar $
+! $Id$
 
 module model_mod
 
@@ -46,7 +46,8 @@ use         location_mod, only : location_type, get_dist, query_location,    &
 
 use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_add_global_creation_time, nc_check,        &
-                                 nc_begin_define_mode, nc_end_define_mode
+                                 nc_begin_define_mode, nc_end_define_mode,     &
+                                 nc_open_file_readonly, nc_close_file
 
 use      location_io_mod, only : nc_write_location_atts, nc_write_location
 
@@ -91,14 +92,24 @@ use        random_seq_mod, only: random_seq_type, init_random_seq, random_gaussi
 
 use  ensemble_manager_mod, only: ensemble_type, get_my_num_vars, get_my_vars
 
+use default_model_mod,    only : nc_write_model_vars, adv_1step,          &
+                                 init_time => fail_init_time,             &
+                                 init_conditions => fail_init_conditions
+
 use     distributed_state_mod
 
 ! netcdf modules
 use typesizes
 use netcdf
 
-use state_structure_mod, only :  add_domain, get_model_variable_indices, &
-                                 state_structure_info, get_index_start, get_index_end, get_num_variables
+use state_structure_mod, only : add_domain, &
+                                get_domain_size, &
+                                get_model_variable_indices, &
+                                state_structure_info, &
+                                get_index_start, &
+                                get_index_end, &
+                                get_num_variables
+
 implicit none
 private
 
@@ -120,27 +131,24 @@ public :: get_model_size,                      & !>!DoNe
           read_model_time,                     & !>!ToDo how to read model time
           write_model_time                       !>!ToDo
 
+! code for these mandatory routines are in other modules
+public :: init_time,           &
+          init_conditions,     &
+          adv_1step,           &
+          nc_write_model_vars
+
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
 
-public :: get_model_analysis_filename,         &
-          analysis_file_to_statevector,        &
-          statevector_to_analysis_file,        &
-          get_grid_dims,                       &
+public :: get_grid_dims,                       &
           read_2d_from_nc_file,                &
           print_variable_ranges,               &
-          adv_1step,                           &
-          get_model_time_step,                 &
-          init_time,                           &
-          init_conditions,                     &
-          nc_write_model_vars
-!          get_close_obs_init,                  &
+          get_model_time_step
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/FEOM/models/FeoM/model_mod.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 10268 $"
-character(len=128), parameter :: revdate  = "$Date: 2016-05-09 19:06:15 +0200 (Mon, 09 May 2016) $"
+character(len=*), parameter :: source   = "$URL$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 ! module global storage; maintains values between calls, accessible by
 ! any subroutine
@@ -179,13 +187,18 @@ real(r8),            allocatable :: depths(:)
 
 type(get_close_type)  :: cc_gc
 
-integer, parameter :: MAX_STATE_VARIABLES = 80
+integer, parameter :: MAX_STATE_VARIABLES = 3
 integer, parameter :: NUM_STATE_TABLE_COLUMNS = 5
 integer, parameter :: VARNAME_INDEX = 1
 integer, parameter ::    KIND_INDEX = 2
 integer, parameter ::  MINVAL_INDEX = 3
 integer, parameter ::  MAXVAL_INDEX = 4
 integer, parameter :: REPLACE_INDEX = 5
+
+character(len=obstypelength) :: var_names(max_state_variables)
+real(r8) :: var_ranges(max_state_variables,2)
+logical  :: var_update(max_state_variables)
+integer  :: var_qtys(  max_state_variables)
 
 ! variables which are in the module namelist
 integer            :: vert_localization_coord = VERTISHEIGHT
@@ -197,7 +210,7 @@ logical            :: diagnostic_metadata = .false.
 integer            :: debug = 0   ! turn up for more and more debug messages
 character(len=32)  :: calendar = 'Gregorian'
 character(len=256) :: model_analysis_filename = 'expno.year.oce.nc'
-character(len=NF90_MAX_NAME) :: variables(MAX_STATE_VARIABLES * NUM_STATE_TABLE_COLUMNS ) = ' '
+character(len=NF90_MAX_NAME) :: variables(NUM_STATE_TABLE_COLUMNS,MAX_STATE_VARIABLES) = ' '
 
 namelist /model_nml/             &
    model_analysis_filename,      &
@@ -210,8 +223,6 @@ namelist /model_nml/             &
    calendar,                     &
    variables,                    &
    debug
-
-character(len=NF90_MAX_NAME) :: variable_table(MAX_STATE_VARIABLES, NUM_STATE_TABLE_COLUMNS )
 
 ! Everything needed to describe a variable
 
@@ -260,23 +271,11 @@ type(time_type) :: model_timestep      ! smallest time to adv model
 !#! character(len= 64) :: ew_boundary_type, ns_boundary_type
 
 ! common names that call specific subroutines based on the arg types
-INTERFACE vector_to_prog_var
-      MODULE PROCEDURE vector_to_1d_prog_var
-      MODULE PROCEDURE vector_to_2d_prog_var
-      MODULE PROCEDURE vector_to_3d_prog_var
-END INTERFACE
-
-INTERFACE prog_var_to_vector
-      MODULE PROCEDURE prog_var_1d_to_vector
-      MODULE PROCEDURE prog_var_2d_to_vector
-      MODULE PROCEDURE prog_var_3d_to_vector
-END INTERFACE
 
 interface write_model_time
    module procedure write_model_time_file
    module procedure write_model_time_restart
 end interface
-
 
 
 !------------------------------------------------
@@ -325,23 +324,19 @@ subroutine static_init_model()
 
 ! Local variables - all the important ones have module scope
 
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
-character(len=NF90_MAX_NAME)          :: varname,dimname
-character(len=obstypelength)       :: kind_string
-integer :: ncid, VarID, numdims, varsize, dimlen
-integer :: iunit, io, ivar, i, index1, indexN
+integer :: ncid
+integer :: iunit, io
 integer :: ss, dd
-integer :: nDimensions, nVariables, nAttributes, unlimitedDimID, TimeDimID
-real(r8) :: lower_bound, upper_bound
-real(r8) :: variable_bounds(max_state_variables, 2)
 
 if ( module_initialized ) return ! only need to do this once.
 
 ! Print module information to log file and stdout.
+
 call register_module(source, revision, revdate)
 
 ! Since this routine calls other routines that could call this routine
 ! we'll say we've been initialized pretty dang early.
+
 module_initialized = .true.
 
 ! Read the DART namelist for this model and
@@ -361,6 +356,7 @@ if (do_nml_term()) write(     *     , nml=model_nml)
 
 ! Get the FESOM run-time configurations from a hardcoded filename
 ! must be called 'namelist.config' in the current directory.
+
 call read_namelist()
 
 !---------------------------------------------------------------
@@ -388,136 +384,11 @@ call error_handler(E_MSG,'static_init_model',string1,source,revision,revdate)
 !
 ! Record the extent of the data type in the state vector.
 
-call nc_check( nf90_open(trim(model_analysis_filename), NF90_NOWRITE, ncid), &
-                  'static_init_model', 'open '//trim(model_analysis_filename))
+ncid = nc_open_file_readonly(model_analysis_filename,'static_init_model')
 
-call parse_variable_input( variables, ncid, model_analysis_filename, &
-                             nfields, variable_table )
+call parse_variable_input(variables, ncid, model_analysis_filename, nfields)
 
-TimeDimID = FindTimeDimension( ncid )
-
-if (TimeDimID < 0 ) then
-   write(string1,*)'unable to find a dimension named Time.'
-   call error_handler(E_MSG,'static_init_model', string1, source, revision, revdate)
-endif
-
-call nc_check(nf90_Inquire(ncid,nDimensions,nVariables,nAttributes,unlimitedDimID), &
-                    'static_init_model', 'inquire '//trim(model_analysis_filename))
-
-if ( (TimeDimID > 0) .and. (unlimitedDimID > 0) .and. (TimeDimID /= unlimitedDimID)) then
-   write(string1,*)'IF Time is not the unlimited dimension, I am lost.'
-   call error_handler(E_MSG,'static_init_model', string1, source, revision, revdate)
-endif
-
-index1  = 1;
-indexN  = 0;
-do ivar = 1, nfields
-
-   varname                   = trim(variable_table(ivar,VARNAME_INDEX))
-   kind_string               = trim(variable_table(ivar,   KIND_INDEX))
-   progvar(ivar)%varname     = varname
-   progvar(ivar)%kind_string = kind_string
-   progvar(ivar)%dart_kind   = get_index_for_quantity( progvar(ivar)%kind_string )
-   progvar(ivar)%numdims     = 0
-   progvar(ivar)%numvertical = 1
-   progvar(ivar)%dimlens     = MISSING_I
-   progvar(ivar)%numcells    = MISSING_I
-   progvar(ivar)%replace     = .true.
-   progvar(ivar)%clamping    = .false.
-   progvar(ivar)%out_of_range_fail = .false.  ! FIXME ... not used
-
-   string2 = trim(model_analysis_filename)//' '//trim(varname)
-
-   call nc_check(nf90_inq_varid(ncid, trim(varname), VarID), &
-            'static_init_model', 'inq_varid '//trim(string2))
-
-   call nc_check(nf90_inquire_variable(ncid, VarID, xtype=progvar(ivar)%xtype, &
-           dimids=dimIDs, ndims=numdims), 'static_init_model', 'inquire '//trim(string2))
-
-   ! If the long_name and/or units attributes are set, get them.
-   ! They are not REQUIRED to exist but are nice to use if they are present.
-
-   if( nf90_inquire_attribute(    ncid, VarID, 'long_name') == NF90_NOERR ) then
-      call nc_check( nf90_get_att(ncid, VarID, 'long_name' , progvar(ivar)%long_name), &
-                  'static_init_model', 'get_att long_name '//trim(string2))
-   else
-      progvar(ivar)%long_name = varname
-   endif
-
-   if( nf90_inquire_attribute(    ncid, VarID, 'units') == NF90_NOERR )  then
-      call nc_check( nf90_get_att(ncid, VarID, 'units' , progvar(ivar)%units), &
-                  'static_init_model', 'get_att units '//trim(string2))
-   else
-      progvar(ivar)%units = 'unknown'
-   endif
-
-   ! Since we are not concerned with the TIME dimension, we need to skip it.
-   ! When the variables are read, only a single timestep is ingested into
-   ! the DART state vector.
-
-   varsize = 1
-   dimlen  = 1
-   DimensionLoop : do i = 1,numdims
-
-      if (dimIDs(i) == TimeDimID) cycle DimensionLoop
-
-      write(string1,'(''inquire dimension'',i2,A)') i,trim(string2)
-      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen, name=dimname), &
-                                          'static_init_model', string1)
-
-      progvar(ivar)%numdims    = progvar(ivar)%numdims + 1
-      progvar(ivar)%dimlens(i) = dimlen
-      progvar(ivar)%dimname(i) = trim(dimname)
-      varsize = varsize * dimlen
-
-      select case ( dimname(1:8) )
-         case ('nodes_2d')
-            progvar(ivar)%numcells = nCells
-         case ('nodes_3d')
-            progvar(ivar)%numcells    = nVertices
-            progvar(ivar)%numvertical = nVertLevels
-      end select
-
-   enddo DimensionLoop
-
-   progvar(ivar)%varsize = varsize
-   progvar(ivar)%index1  = index1
-   progvar(ivar)%indexN  = index1 + varsize - 1
-   index1                = index1 + varsize      ! sets up for next variable
-
-   ! resolve issues with bounded variables.
-
-   read(variable_table(ivar,MINVAL_INDEX),*,iostat=io)lower_bound
-   if (io /= 0) lower_bound = MISSING_R8
-
-   read(variable_table(ivar,MAXVAL_INDEX),*,iostat=io)upper_bound
-   if (io /= 0) upper_bound = MISSING_R8
-
-   progvar(ivar)%range = (/ lower_bound, upper_bound /)
-
-   if (lower_bound /= MISSING_R8 .or. upper_bound /= MISSING_R8) then
-      progvar(ivar)%clamping = .true.
-   endif
-
-   ! resolve issues with variables that may not need to be reinserted into FESOM
-
-   string1 = adjustl(variable_table(ivar,REPLACE_INDEX))
-   call to_upper(string1)
-
-   if (string1(1:2) /= 'UP') then
-      progvar(ivar)%replace = .false.
-   endif
-
-   ! print summary if desired.
-
-   if ( debug > 1 ) call dump_progvar(ivar)
-
-enddo
-
-call nc_check( nf90_close(ncid), &
-                  'static_init_model', 'close '//trim(model_analysis_filename))
-
-model_size = progvar(nfields)%indexN
+call nc_close_file(ncid, 'static_init_model', model_analysis_filename)
 
 !>@ TODO try to move read_grid to some other routine that gets called very
 !   early by all the tasks.
@@ -528,21 +399,20 @@ call read_grid() ! sets nCells, nVertices, nVertLevels
 ! once to generate sanity checks.
 if (state_table_needed .and. debug > 99) call dump_tables()
 
-
-allocate( ens_mean(model_size) )
-
-variable_bounds(1:nfields, 1) = progvar(1:nfields)%range(1)
-variable_bounds(1:nfields, 2) = progvar(1:nfields)%range(2)
-
-domid =  add_domain( trim(model_analysis_filename), nfields,    &
-                     var_names  = variable_table (1:nfields,1), &
-                     clamp_vals = variable_bounds(1:nfields,:) )
+domid = add_domain( model_analysis_filename, nfields, &
+            var_names  = var_names( 1:nfields),       &
+            kind_list  = var_qtys(  1:nfields),       &
+            clamp_vals = var_ranges(1:nfields,:),     &
+            update_list= var_update(1:nfields)        )
 
 if ( debug > 4 .and. do_output()) call state_structure_info(domid)
 
+model_size = get_domain_size(domid)
+
+allocate( ens_mean(model_size) )
+
 ! tell the location module how we want to localize in the vertical
 call set_vertical_localization_coord(vert_localization_coord)
-
 
 end subroutine static_init_model
 
@@ -602,6 +472,7 @@ endif
 end subroutine get_state_meta_data
 
 !------------------------------------------------------------------
+
 subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
 
 ! given a state vector, a location, and a QTY_xxx, return the
@@ -1201,204 +1072,6 @@ end subroutine nc_write_model_atts
 !------------------------------------------------------------------
 !>
 
-function nc_write_model_vars( ncFileID, state_vec, copyindex, timeindex ) result (ierr)
-
-! TJH 29 Aug 2011 -- all errors are fatal, so the
-! return code is always '0 == normal', since the fatal errors stop execution.
-!
-! assim_model_mod:init_diag_output uses information from the location_mod
-!     to define the location dimension and variable ID. All we need to do
-!     is query, verify, and fill ...
-!
-! Typical sequence for adding new dimensions,variables,attributes:
-! NF90_OPEN             ! open existing netCDF dataset
-!    NF90_redef         ! put into define mode
-!    NF90_def_dim       ! define additional dimensions (if any)
-!    NF90_def_var       ! define variables: from name, type, and dims
-!    NF90_put_att       ! assign attribute values
-! NF90_ENDDEF           ! end definitions: leave define mode
-!    NF90_put_var       ! provide values for variable
-! NF90_CLOSE            ! close: save updated netCDF dataset
-
-integer,                intent(in) :: ncFileID      ! netCDF file identifier
-real(r8), dimension(:), intent(in) :: state_vec
-integer,                intent(in) :: copyindex
-integer,                intent(in) :: timeindex
-integer                            :: ierr          ! return value of function
-
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, mystart, mycount
-character(len=NF90_MAX_NAME)          :: varname
-integer :: i, ivar, VarID, ncNdims, dimlen
-integer :: TimeDimID, CopyDimID
-
-real(r8), allocatable, dimension(:)       :: data_1d_array
-real(r8), allocatable, dimension(:,:)     :: data_2d_array
-real(r8), allocatable, dimension(:,:,:)   :: data_3d_array
-
-character(len=128) :: filename
-
-if ( .not. module_initialized ) call static_init_model
-
-ierr = -1 ! assume things go poorly
-
-!--------------------------------------------------------------------
-! we only have a netcdf handle here so we do not know the filename
-! or the fortran unit number.  but construct a string with at least
-! the netcdf handle, so in case of error we can trace back to see
-! which netcdf file is involved.
-!--------------------------------------------------------------------
-
-write(filename,*) 'ncFileID', ncFileID
-
-!-------------------------------------------------------------------------------
-! make sure ncFileID refers to an open netCDF file,
-!-------------------------------------------------------------------------------
-
-call nc_check(nf90_inq_dimid(ncFileID, 'copy', dimid=CopyDimID), &
-            'nc_write_model_vars', 'inq_dimid copy '//trim(filename))
-
-call nc_check(nf90_inq_dimid(ncFileID, 'time', dimid=TimeDimID), &
-            'nc_write_model_vars', 'inq_dimid time '//trim(filename))
-
-if ( output_state_vector ) then
-
-   call nc_check(NF90_inq_varid(ncFileID, 'state', VarID), &
-                 'nc_write_model_vars', 'state inq_varid '//trim(filename))
-   call nc_check(NF90_put_var(ncFileID,VarID,state_vec,start=(/1,copyindex,timeindex/)),&
-                 'nc_write_model_vars', 'state put_var '//trim(filename))
-
-else
-
-   !----------------------------------------------------------------------------
-   ! We need to process the prognostic variables.
-   !----------------------------------------------------------------------------
-
-   do ivar = 1,nfields
-
-      varname = trim(progvar(ivar)%varname)
-      string2 = trim(filename)//' '//trim(varname)
-
-      ! Ensure netCDF variable is conformable with progvar quantity.
-      ! The TIME and Copy dimensions are intentionally not queried
-      ! by looping over the dimensions stored in the progvar type.
-
-      call nc_check(nf90_inq_varid(ncFileID, varname, VarID), &
-            'nc_write_model_vars', 'inq_varid '//trim(string2))
-
-      call nc_check(nf90_inquire_variable(ncFileID,VarID,dimids=dimIDs,ndims=ncNdims), &
-            'nc_write_model_vars', 'inquire '//trim(string2))
-
-      mystart = 1   ! These are arrays, actually
-      mycount = 1
-      DimCheck : do i = 1,progvar(ivar)%numdims
-
-         write(string1,'(a,i2,A)') 'inquire dimension ',i,trim(string2)
-         call nc_check(nf90_inquire_dimension(ncFileID, dimIDs(i), len=dimlen), &
-               'nc_write_model_vars', trim(string1))
-
-         if ( dimlen /= progvar(ivar)%dimlens(i) ) then
-            write(string1,*) trim(string2),' dim/dimlen ',i,dimlen,' not ',progvar(ivar)%dimlens(i)
-            write(string2,*)' but it should be.'
-            call error_handler(E_ERR, 'nc_write_model_vars', trim(string1), &
-                            source, revision, revdate, text2=trim(string2))
-         endif
-
-         mycount(i) = dimlen
-
-      enddo DimCheck
-
-     ! FIXME - wouldn't hurt to make sure each of these match something.
-     !         could then eliminate the if ncndims /= xxx checks below.
-
-      where(dimIDs == CopyDimID) mystart = copyindex
-      where(dimIDs == CopyDimID) mycount = 1
-      where(dimIDs == TimeDimID) mystart = timeindex
-      where(dimIDs == TimeDimID) mycount = 1
-
-      if (do_output() .and. debug > 9) then
-         write(*,*)'nc_write_model_vars '//trim(varname)//' start is ',mystart(1:ncNdims)
-         write(*,*)'nc_write_model_vars '//trim(varname)//' count is ',mycount(1:ncNdims)
-      endif
-
-      if (     progvar(ivar)%numdims == 1 ) then
-
-         if ( ncNdims /= 3 ) then
-            write(string1,*)trim(varname),' no room for copy,time dimensions.'
-            write(string2,*)'netcdf file should have 3 dimensions, has ',ncNdims
-            call error_handler(E_ERR, 'nc_write_model_vars', string1, &
-                            source, revision, revdate, text2=string2)
-         endif
-
-         allocate(data_1d_array( progvar(ivar)%dimlens(1) ) )
-         call vector_to_prog_var(state_vec, ivar, data_1d_array)
-         call nc_check(nf90_put_var(ncFileID, VarID, data_1d_array, &
-             start = mystart(1:ncNdims), count=mycount(1:ncNdims)), &
-                   'nc_write_model_vars', 'put_var '//trim(string2))
-         deallocate(data_1d_array)
-
-      elseif ( progvar(ivar)%numdims == 2 ) then
-
-         if ( ncNdims /= 4 ) then
-            write(string1,*)trim(varname),' no room for copy,time dimensions.'
-            write(string2,*)'netcdf file should have 4 dimensions, has ',ncNdims
-            call error_handler(E_ERR, 'nc_write_model_vars', string1, &
-                            source, revision, revdate, text2=string2)
-         endif
-
-         allocate(data_2d_array( progvar(ivar)%dimlens(1),  &
-                                 progvar(ivar)%dimlens(2) ))
-         call vector_to_prog_var(state_vec, ivar, data_2d_array)
-         call nc_check(nf90_put_var(ncFileID, VarID, data_2d_array, &
-             start = mystart(1:ncNdims), count=mycount(1:ncNdims)), &
-                   'nc_write_model_vars', 'put_var '//trim(string2))
-         deallocate(data_2d_array)
-
-      elseif ( progvar(ivar)%numdims == 3) then
-
-         if ( ncNdims /= 5 ) then
-            write(string1,*)trim(varname),' no room for copy,time dimensions.'
-            write(string2,*)'netcdf file should have 5 dimensions, has ',ncNdims
-            call error_handler(E_ERR, 'nc_write_model_vars', string1, &
-                            source, revision, revdate, text2=string2)
-         endif
-
-         allocate(data_3d_array( progvar(ivar)%dimlens(1), &
-                                 progvar(ivar)%dimlens(2), &
-                                 progvar(ivar)%dimlens(3)))
-         call vector_to_prog_var(state_vec, ivar, data_3d_array)
-         call nc_check(nf90_put_var(ncFileID, VarID, data_3d_array, &
-             start = mystart(1:ncNdims), count=mycount(1:ncNdims)), &
-                   'nc_write_model_vars', 'put_var '//trim(string2))
-         deallocate(data_3d_array)
-
-      else
-
-         ! FIXME put an error message here
-         write(string1,*)'no support (yet) for 4d fields'
-         call error_handler(E_ERR, 'nc_write_model_vars', string1, &
-                            source, revision, revdate)
-
-      endif
-
-   enddo
-
-
-endif
-
-!-------------------------------------------------------------------------------
-! Flush the buffer and leave netCDF file open
-!-------------------------------------------------------------------------------
-
-call nc_check(nf90_sync(ncFileID), 'nc_write_model_vars', 'sync '//trim(filename))
-
-ierr = 0 ! If we got here, things went well.
-
-end function nc_write_model_vars
-
-
-!------------------------------------------------------------------
-!>
-
 function get_model_size()
 
 ! Returns the size of the model as an integer.
@@ -1761,613 +1434,10 @@ integer,             intent(out)   :: istatus
 end subroutine convert_vertical_state
 
 
-!------------------------------------------------------------------
-
-subroutine init_time(time)
-
-! Companion interface to init_conditions. Returns a time that is somehow
-! appropriate for starting up a long integration of the model.
-! At present, this is only used if the namelist parameter
-! start_from_restart is set to .false. in the program perfect_model_obs.
-
-type(time_type), intent(out) :: time
-
-if ( .not. module_initialized ) call static_init_model
-
-! this shuts up the compiler warnings about unused variables
-time = set_time(0, 0)
-
-write(string1,*) 'Cannot initialize FESOM time via subroutine call.'
-write(string2,*) 'input.nml:start_from_restart cannot be FALSE'
-call error_handler(E_ERR, 'init_time', string1, &
-           source, revision, revdate, text2=string2)
-
-end subroutine init_time
-
-
-!------------------------------------------------------------------
-!>
-
-subroutine init_conditions(x)
-
-! Returns a model state vector, x, that is some sort of appropriate
-! initial condition for starting up a long integration of the model.
-! At present, this is only used if the namelist parameter
-! start_from_restart is set to .false. in the program perfect_model_obs.
-
-real(r8), intent(out) :: x(:)
-
-if ( .not. module_initialized ) call static_init_model
-
-write(string1,*) 'Cannot initialize FESOM time via subroutine call.'
-write(string2,*) 'input.nml:start_from_restart cannot be FALSE'
-call error_handler(E_ERR, 'init_conditions', string1, &
-           source, revision, revdate, text2=string2)
-
-! this shuts up the compiler warnings about unused variables
-x = 0.0_r8
-
-end subroutine init_conditions
-
-
-!------------------------------------------------------------------
-!>
-
-subroutine adv_1step(x, time)
-
-! Does a single timestep advance of the model. The input value of
-! the vector x is the starting condition and x is updated to reflect
-! the changed state after a timestep. The time argument is intent
-! in and is used for models that need to know the date/time to
-! compute a timestep, for instance for radiation computations.
-! This interface is only called IF the namelist parameter
-! async is set to 0 in perfect_model_obs or filter -OR- if the
-! program integrate_model is to be used to advance the model
-! state as a separate executable. If none of these options
-! are used (the model will only be advanced as a separate
-! model-specific executable), this can be a NULL INTERFACE.
-
-real(r8),        intent(inout) :: x(:)
-type(time_type), intent(in)    :: time
-
-if ( .not. module_initialized ) call static_init_model
-
-if (do_output()) then
-   call print_time(time,'NULL interface adv_1step (no advance) DART time is')
-   call print_time(time,'NULL interface adv_1step (no advance) DART time is',logfileunit)
-endif
-
-write(string1,*) 'Cannot advance FESOM with a subroutine call; async cannot equal 0'
-call error_handler(E_ERR,'adv_1step',string1,source,revision,revdate)
-
-end subroutine adv_1step
-
-
 !==================================================================
 ! The (model-specific) additional public interfaces come next
 !  (these are not required by dart but are used by other programs)
 !==================================================================
-
-
-subroutine get_model_analysis_filename( filename )
-
-! return the name of the analysis filename that was set
-! in the model_nml namelist
-
-character(len=*), intent(OUT) :: filename
-
-if ( .not. module_initialized ) call static_init_model
-
-filename = trim(model_analysis_filename)
-
-end subroutine get_model_analysis_filename
-
-
-!-------------------------------------------------------------------
-!>
-
-subroutine analysis_file_to_statevector(filename, state_vector, model_time)
-
-! Reads the current time and state variables from a FESOM analysis
-! file and packs them into a dart state vector.
-
-character(len=*), intent(in)    :: filename
-real(r8),         intent(inout) :: state_vector(:)
-type(time_type),  intent(out)   :: model_time
-
-! temp space to hold data while we are reading it
-integer  :: ndim1, ndim2, ndim3
-integer  :: i, ivar
-real(r8), allocatable, dimension(:)         :: data_1d_array
-real(r8), allocatable, dimension(:,:)       :: data_2d_array
-real(r8), allocatable, dimension(:,:,:)     :: data_3d_array
-
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, mystart, mycount
-character(len=NF90_MAX_NAME) :: varname
-integer :: VarID, ncNdims, dimlen
-integer :: ncid, TimeDimID, TimeDimLength
-
-if ( .not. module_initialized ) call static_init_model
-
-state_vector = MISSING_R8
-
-! Check that the input file exists ...
-
-if ( .not. file_exist(filename) ) then
-   write(string1,*) 'cannot open file ', trim(filename),' for reading.'
-   call error_handler(E_ERR,'analysis_file_to_statevector',string1,source,revision,revdate)
-endif
-
-call nc_check(nf90_open(trim(filename), NF90_NOWRITE, ncid), &
-             'analysis_file_to_statevector','open '//trim(filename))
-
-model_time = get_analysis_time(ncid, filename)
-
-! let the calling program print out the time information it wants.
-if (do_output()) &
-    call print_time(model_time,'time in restart file '//trim(filename))
-if (do_output()) &
-    call print_date(model_time,'date in restart file '//trim(filename))
-
-! Start counting and filling the state vector one item at a time,
-! repacking the Nd arrays into a single 1d list of numbers.
-
-! The DART prognostic variables are only defined for a single time.
-! We already checked the assumption that variables are xy2d or xyz3d ...
-! IF the netCDF variable has a TIME dimension, it must be the last dimension,
-! and we need to read the LAST timestep and effectively squeeze out the
-! singleton dimension when we stuff it into the DART state vector.
-
-TimeDimID = FindTimeDimension( ncid )
-
-if ( TimeDimID > 0 ) then
-   call nc_check(nf90_inquire_dimension(ncid, TimeDimID, len=TimeDimLength), &
-            'analysis_file_to_statevector', 'inquire timedimlength '//trim(filename))
-else
-   TimeDimLength = 0
-endif
-
-do ivar=1, nfields
-
-   varname = trim(progvar(ivar)%varname)
-   string2 = trim(filename)//' '//trim(varname)
-
-   ! determine the shape of the netCDF variable
-
-   call nc_check(nf90_inq_varid(ncid,   varname, VarID), &
-            'analysis_file_to_statevector', 'inq_varid '//trim(string2))
-
-   call nc_check(nf90_inquire_variable(ncid,VarID,dimids=dimIDs,ndims=ncNdims), &
-            'analysis_file_to_statevector', 'inquire '//trim(string2))
-
-   mystart = 1   ! These are arrays, actually.
-   mycount = 1
-
-   ! Only checking the shape of the variable - sans TIME
-   DimCheck : do i = 1,progvar(ivar)%numdims
-
-      write(string1,'(''inquire dimension'',i2,A)') i,trim(string2)
-      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
-            'analysis_file_to_statevector', string1)
-
-      if ( dimlen /= progvar(ivar)%dimlens(i) ) then
-         write(string1,*) trim(string2),' dim/dimlen ',i,dimlen,' not ',progvar(ivar)%dimlens(i)
-         call error_handler(E_ERR,'analysis_file_to_statevector',string1,source,revision,revdate)
-      endif
-
-      mycount(i) = dimlen
-
-   enddo DimCheck
-
-   where(dimIDs == TimeDimID) mystart = TimeDimLength  ! pick the latest time
-   where(dimIDs == TimeDimID) mycount = 1              ! only use one time
-
-   if (debug > 0) then
-      write(string1,*)'..  '//trim(varname)//' start = ',mystart(1:ncNdims)
-      write(string3,*)        trim(varname)//' count = ',mycount(1:ncNdims)
-      call error_handler(E_MSG,'analysis_file_to_statevector',string1,text2=string3)
-   endif
-
-   if (ncNdims == 1) then
-
-      ! If the single dimension is TIME, we only need a scalar.
-      ! Pretty sure this cannot happen ...
-      ndim1 = mycount(1)
-      allocate(data_1d_array(ndim1))
-      call nc_check(nf90_get_var(ncid, VarID, data_1d_array, &
-        start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
-            'analysis_file_to_statevector', 'get_var '//trim(varname))
-
-      call prog_var_to_vector(data_1d_array, state_vector, ivar)
-      deallocate(data_1d_array)
-
-   elseif (ncNdims == 2) then
-
-      ndim1 = mycount(1)
-      ndim2 = mycount(2)
-      allocate(data_2d_array(ndim1, ndim2))
-      call nc_check(nf90_get_var(ncid, VarID, data_2d_array, &
-        start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
-            'analysis_file_to_statevector', 'get_var '//trim(varname))
-
-      call prog_var_to_vector(data_2d_array, state_vector, ivar)
-      deallocate(data_2d_array)
-
-   elseif (ncNdims == 3) then
-
-      ndim1 = mycount(1)
-      ndim2 = mycount(2)
-      ndim3 = mycount(3)
-      allocate(data_3d_array(ndim1, ndim2, ndim3))
-      call nc_check(nf90_get_var(ncid, VarID, data_3d_array, &
-        start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
-            'analysis_file_to_statevector', 'get_var '//trim(varname))
-
-      call prog_var_to_vector(data_3d_array, state_vector, ivar)
-      deallocate(data_3d_array)
-
-   else
-      write(string1, *) 'no support for data array of dimension ', ncNdims
-      call error_handler(E_ERR,'analysis_file_to_statevector', string1, &
-                        source,revision,revdate)
-   endif
-
-enddo
-
-call nc_check(nf90_close(ncid), &
-             'analysis_file_to_statevector','close '//trim(filename))
-
-end subroutine analysis_file_to_statevector
-
-
-!-------------------------------------------------------------------
-!>
-
-subroutine statevector_to_analysis_file(state_vector, filename, statetime)
-
-! Writes the posterior state from a dart state
-! vector (1d array) into a FESOM file.
-
-real(r8),         intent(in) :: state_vector(:)
-character(len=*), intent(in) :: filename
-type(time_type),  intent(in) :: statetime
-
-! temp space to hold data while we are writing it
-integer :: i, ivar
-real(r8), allocatable, dimension(:)         :: data_1d_array
-real(r8), allocatable, dimension(:,:)       :: data_2d_array
-real(r8), allocatable, dimension(:,:,:)     :: data_3d_array
-
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, mystart, mycount
-character(len=NF90_MAX_NAME) :: varname
-integer :: VarID, ncNdims, dimlen
-integer :: ncFileID, TimeDimID, TimeDimLength
-logical :: done_winds
-type(time_type) :: model_time
-
-if ( .not. module_initialized ) call static_init_model
-
-! Check that the output file exists ...
-
-if ( .not. file_exist(filename) ) then
-   write(string1,*) 'cannot open file ', trim(filename),' for writing.'
-   call error_handler(E_ERR,'statevector_to_analysis_file',string1,source,revision,revdate)
-endif
-
-call nc_check(nf90_open(trim(filename), NF90_WRITE, ncFileID), &
-             'statevector_to_analysis_file','open '//trim(filename))
-
-! make sure the time in the file is the same as the time on the data
-! we are trying to insert.  we are only updating part of the contents
-! of the FESOM analysis file, and state vector contents from a different
-! time won't be consistent with the rest of the file.
-
-model_time = get_analysis_time(ncFileID, filename)
-
-if ( model_time /= statetime ) then
-   call print_time( statetime,'DART current time',logfileunit)
-   call print_time(model_time,'FESOM current time',logfileunit)
-   call print_time( statetime,'DART current time')
-   call print_time(model_time,'FESOM current time')
-   write(string1,*)trim(filename),' current time must be equal to model time'
-   call error_handler(E_ERR,'statevector_to_analysis_file',string1,source,revision,revdate)
-endif
-
-if (do_output()) call print_time(statetime,'time in DART file '//trim(filename))
-if (do_output()) call print_date(statetime,'date in DART file '//trim(filename))
-
-! The DART prognostic variables are only defined for a single time.
-! We already checked the assumption that variables are xy2d or xyz3d ...
-! IF the netCDF variable has a TIME dimension, it must be the last dimension,
-! and we need to read the LAST timestep and effectively squeeze out the
-! singleton dimension when we stuff it into the DART state vector.
-
-TimeDimID = FindTimeDimension( ncFileID )
-
-if ( TimeDimID > 0 ) then
-   call nc_check(nf90_inquire_dimension(ncFileID, TimeDimID, len=TimeDimLength), &
-            'statevector_to_analysis_file', 'inquire timedimlength '//trim(filename))
-else
-   TimeDimLength = 0
-endif
-
-done_winds = .false.
-PROGVARLOOP : do ivar=1, nfields
-
-   if ( .not. progvar(ivar)%replace ) cycle PROGVARLOOP
-
-   varname = trim(progvar(ivar)%varname)
-   string2 = trim(filename)//' '//trim(varname)
-
-   ! Ensure netCDF variable is conformable with progvar quantity.
-   ! The TIME and Copy dimensions are intentionally not queried
-   ! by looping over the dimensions stored in the progvar type.
-
-   call nc_check(nf90_inq_varid(ncFileID, varname, VarID), &
-            'statevector_to_analysis_file', 'inq_varid '//trim(string2))
-
-   call nc_check(nf90_inquire_variable(ncFileID,VarID,dimids=dimIDs,ndims=ncNdims), &
-            'statevector_to_analysis_file', 'inquire '//trim(string2))
-
-   mystart = 1   ! These are arrays, actually.
-   mycount = 1
-   DimCheck : do i = 1,progvar(ivar)%numdims
-
-      write(string1,'(''inquire dimension'',i2,A)') i,trim(string2)
-      call nc_check(nf90_inquire_dimension(ncFileID, dimIDs(i), len=dimlen), &
-            'statevector_to_analysis_file', string1)
-
-      if ( dimlen /= progvar(ivar)%dimlens(i) ) then
-         write(string1,*) trim(string2),' dim/dimlen ',i,dimlen,' not ',progvar(ivar)%dimlens(i)
-         write(string2,*)' but it should be.'
-         call error_handler(E_ERR, 'statevector_to_analysis_file', string1, &
-                         source, revision, revdate, text2=string2)
-      endif
-
-      mycount(i) = dimlen
-
-   enddo DimCheck
-
-   where(dimIDs == TimeDimID) mystart = TimeDimLength
-   where(dimIDs == TimeDimID) mycount = 1   ! only the latest one
-
-   if (debug > 2) then
-      write(string1,*)'..  '//trim(varname)//' start is ',mystart(1:ncNdims)
-      write(string3,*)        trim(varname)//' count is ',mycount(1:ncNdims)
-      call error_handler(E_MSG,'statevector_to_analysis_file',string1,text2=string3)
-   endif
-
-   if (progvar(ivar)%numdims == 1) then
-      allocate(data_1d_array(mycount(1)))
-      call vector_to_prog_var(state_vector, ivar, data_1d_array)
-
-      ! did the user specify lower and/or upper bounds for this variable?
-      ! if so, follow the instructions to either fail on out-of-range values,
-      ! or set out-of-range values to the given min or max vals
-      if ( progvar(ivar)%clamping ) then
-         call do_clamping(progvar(ivar)%out_of_range_fail, progvar(ivar)%range, &
-                          progvar(ivar)%numdims, varname, array_1d = data_1d_array)
-      endif
-
-      call nc_check(nf90_put_var(ncFileID, VarID, data_1d_array, &
-            start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
-            'statevector_to_analysis_file', 'put_var '//trim(varname))
-      deallocate(data_1d_array)
-
-   elseif (progvar(ivar)%numdims == 2) then
-
-      allocate(data_2d_array(mycount(1), mycount(2)))
-      call vector_to_prog_var(state_vector, ivar, data_2d_array)
-
-      ! did the user specify lower and/or upper bounds for this variable?
-      ! if so, follow the instructions to either fail on out-of-range values,
-      ! or set out-of-range values to the given min or max vals
-      if ( progvar(ivar)%clamping ) then
-         call do_clamping(progvar(ivar)%out_of_range_fail, progvar(ivar)%range, &
-                          progvar(ivar)%numdims, varname, array_2d = data_2d_array)
-      endif
-
-      call nc_check(nf90_put_var(ncFileID, VarID, data_2d_array, &
-            start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
-            'statevector_to_analysis_file', 'put_var '//trim(varname))
-      deallocate(data_2d_array)
-
-   elseif (progvar(ivar)%numdims == 3) then
-
-      allocate(data_3d_array(mycount(1), mycount(2), mycount(3)))
-      call vector_to_prog_var(state_vector, ivar, data_3d_array)
-
-      ! did the user specify lower and/or upper bounds for this variable?
-      ! if so, follow the instructions to either fail on out-of-range values,
-      ! or set out-of-range values to the given min or max vals
-      if ( progvar(ivar)%clamping ) then
-         call do_clamping(progvar(ivar)%out_of_range_fail, progvar(ivar)%range, &
-                          progvar(ivar)%numdims, varname, array_3d = data_3d_array)
-      endif
-
-      call nc_check(nf90_put_var(ncFileID, VarID, data_3d_array, &
-            start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
-            'statevector_to_analysis_file', 'put_var '//trim(varname))
-      deallocate(data_3d_array)
-
-   else
-      write(string1, *) 'no support for data array of dimension ', ncNdims
-      call error_handler(E_ERR,'statevector_to_analysis_file', string1, &
-                        source,revision,revdate)
-   endif
-
-enddo PROGVARLOOP
-
-call nc_check(nf90_close(ncFileID), &
-             'statevector_to_analysis_file','close '//trim(filename))
-
-end subroutine statevector_to_analysis_file
-
-
-!------------------------------------------------------------------
-!>
-
-subroutine do_clamping(out_of_range_fail, range, dimsize, varname, &
-                       array_1d, array_2d, array_3d)
-logical,          intent(in)    :: out_of_range_fail
-real(r8),         intent(in)    :: range(2)
-integer,          intent(in)    :: dimsize
-character(len=*), intent(in)    :: varname
-real(r8),optional,intent(inout) :: array_1d(:), array_2d(:,:), array_3d(:,:,:)
-
-! for a given directive and range, do the data clamping for the given
-! input array.  only one of the optional array args should be specified - the
-! one which matches the given dimsize.  this still has replicated sections for
-! each possible dimensionality (which so far is only 1 to 3 - add 4-7 only
-! if needed) but at least it is isolated to this subroutine.
-
-! these sections should all be identical except for the array_XX specified.
-! if anyone can figure out a way to defeat fortran's strong typing for arrays
-! so we don't have to replicate each of these sections, i'll buy you a cookie.
-! (sorry, you can't suggest using the preprocessor, which is the obvious
-! solution.  up to now we have avoided any preprocessed code in the entire
-! system.  if we cave at some future point this routine is a prime candidate
-! to autogenerate.)
-
-if (dimsize == 1) then
-   if (.not. present(array_1d)) then
-      call error_handler(E_ERR, 'do_clamping', 'Internal error.  Should not happen', &
-                         source,revision,revdate, text2='array_1d not present for 1d case')
-   endif
-
-   ! is lower bound set
-   if ( range(1) /= MISSING_R8 ) then
-
-      if ( out_of_range_fail ) then
-         if ( minval(array_1d) < range(1) ) then
-            write(string1, *) 'min data val = ', minval(array_1d), &
-                              'min data bounds = ', range(1)
-            call error_handler(E_ERR, 'do_clamping', &
-                        'Variable '//trim(varname)//' failed lower bounds check.', &
-                         source,revision,revdate)
-         endif
-      else
-         where ( array_1d < range(1) ) array_1d = range(1)
-      endif
-
-   endif ! min range set
-
-   ! is upper bound set
-   if ( range(2) /= MISSING_R8 ) then
-
-      if ( out_of_range_fail ) then
-         if ( maxval(array_1d) > range(2) ) then
-            write(string1, *) 'max data val = ', maxval(array_1d), &
-                              'max data bounds = ', range(2)
-            call error_handler(E_ERR, 'do_clamping', &
-                        'Variable '//trim(varname)//' failed upper bounds check.', &
-                         source,revision,revdate, text2=string1)
-         endif
-      else
-         where ( array_1d > range(2) ) array_1d = range(2)
-      endif
-
-   endif ! max range set
-
-   write(string1, '(A,A32,2F16.7)') 'BOUND min/max ', trim(varname), &
-                      minval(array_1d), maxval(array_1d)
-   call error_handler(E_MSG,'do_clamping',string1,source,revision,revdate)
-
-else if (dimsize == 2) then
-   if (.not. present(array_2d)) then
-      call error_handler(E_ERR, 'do_clamping', 'Internal error.  Should not happen', &
-                         source,revision,revdate, text2='array_2d not present for 2d case')
-   endif
-
-   ! is lower bound set
-   if ( range(1) /= MISSING_R8 ) then
-
-      if ( out_of_range_fail ) then
-         if ( minval(array_2d) < range(1) ) then
-            write(string1, *) 'min data val = ', minval(array_2d), &
-                              'min data bounds = ', range(1)
-            call error_handler(E_ERR, 'do_clamping', &
-                        'Variable '//trim(varname)//' failed lower bounds check.', &
-                         source,revision,revdate)
-         endif
-      else
-         where ( array_2d < range(1) ) array_2d = range(1)
-      endif
-
-   endif ! min range set
-
-   ! is upper bound set
-   if ( range(2) /= MISSING_R8 ) then
-
-      if ( out_of_range_fail ) then
-         if ( maxval(array_2d) > range(2) ) then
-            write(string1, *) 'max data val = ', maxval(array_2d), &
-                              'max data bounds = ', range(2)
-            call error_handler(E_ERR, 'do_clamping', &
-                        'Variable '//trim(varname)//' failed upper bounds check.', &
-                         source,revision,revdate, text2=string1)
-         endif
-      else
-         where ( array_2d > range(2) ) array_2d = range(2)
-      endif
-
-   endif ! max range set
-
-   write(string1, '(A,A32,2F16.7)') 'BOUND min/max ', trim(varname), &
-                      minval(array_2d), maxval(array_2d)
-   call error_handler(E_MSG,'do_clamping',string1,source,revision,revdate)
-
-else if (dimsize == 3) then
-   if (.not. present(array_3d)) then
-      call error_handler(E_ERR, 'do_clamping', 'Internal error.  Should not happen', &
-                         source,revision,revdate, text2='array_3d not present for 3d case')
-   endif
-
-   ! is lower bound set
-   if ( range(1) /= MISSING_R8 ) then
-
-      if ( out_of_range_fail ) then
-         if ( minval(array_3d) < range(1) ) then
-            write(string1, *) 'min data val = ', minval(array_3d), &
-                              'min data bounds = ', range(1)
-            call error_handler(E_ERR, 'do_clamping', &
-                        'Variable '//trim(varname)//' failed lower bounds check.', &
-                         source,revision,revdate)
-         endif
-      else
-         where ( array_3d < range(1) ) array_3d = range(1)
-      endif
-
-   endif ! min range set
-
-   ! is upper bound set
-   if ( range(2) /= MISSING_R8 ) then
-
-      if ( out_of_range_fail ) then
-         if ( maxval(array_3d) > range(2) ) then
-            write(string1, *) 'max data val = ', maxval(array_3d), &
-                              'max data bounds = ', range(2)
-            call error_handler(E_ERR, 'do_clamping', &
-                        'Variable '//trim(varname)//' failed upper bounds check.', &
-                         source,revision,revdate, text2=string1)
-         endif
-      else
-         where ( array_3d > range(2) ) array_3d = range(2)
-      endif
-
-   endif ! max range set
-
-   write(string1, '(A,A32,2F16.7)') 'BOUND min/max ', trim(varname), &
-                      minval(array_3d), maxval(array_3d)
-   call error_handler(E_MSG,'do_clamping',string1,source,revision,revdate)
-
-else
-   write(string1, *) 'dimsize of ', dimsize, ' found where only 1-3 expected'
-   call error_handler(E_MSG,'do_clamping','Internal error, should not happen', &
-                      source,revision,revdate, text2=string1)
-endif   ! dimsize
-
-end subroutine do_clamping
 
 
 !------------------------------------------------------------------
@@ -2792,9 +1862,6 @@ enddo
 
 maxdist_km = 2.5_r8 ! more than the largest separation between vertices
 
-!> TODO -aLi-: check if this should be here
-!> call get_close_obs_init(cc_gc, nCells, cell_locations)
-
 close_structure_allocated = .true.
 
 if (debug > 5) &
@@ -2867,229 +1934,12 @@ end subroutine read_2d_from_nc_file
 !------------------------------------------------------------------
 !>
 
-subroutine vector_to_1d_prog_var(x, ivar, data_1d_array)
+subroutine parse_variable_input( state_variables, ncid, filename, ngood )
 
-! convert the values from a 1d array, starting at an offset,
-! into a 1d array.
-
-real(r8), dimension(:),   intent(in)  :: x
-integer,                  intent(in)  :: ivar
-real(r8), dimension(:),   intent(out) :: data_1d_array
-
-integer :: idim1,ii
-
-if ( .not. module_initialized ) call static_init_model
-
-ii = progvar(ivar)%index1
-
-do idim1 = 1, size(data_1d_array, 1)
-   data_1d_array(idim1) = x(ii)
-   ii = ii + 1
-enddo
-
-ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' filled wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'vector_to_1d_prog_var', string1, &
-                    source, revision, revdate, text2=string2)
-endif
-
-end subroutine vector_to_1d_prog_var
-
-
-!------------------------------------------------------------------
-!>
-
-subroutine vector_to_2d_prog_var(x, ivar, data_2d_array)
-
-! convert the values from a 1d array, starting at an offset,
-! into a 2d array.
-
-real(r8), dimension(:),   intent(in)  :: x
-integer,                  intent(in)  :: ivar
-real(r8), dimension(:,:), intent(out) :: data_2d_array
-
-integer :: idim1,idim2,ii
-
-if ( .not. module_initialized ) call static_init_model
-
-ii = progvar(ivar)%index1
-
-do idim2 = 1,size(data_2d_array, 2)
-   do idim1 = 1,size(data_2d_array, 1)
-      data_2d_array(idim1,idim2) = x(ii)
-      ii = ii + 1
-   enddo
-enddo
-
-ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' filled wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'vector_to_2d_prog_var', string1, &
-                    source, revision, revdate, text2=string2)
-endif
-
-end subroutine vector_to_2d_prog_var
-
-
-!------------------------------------------------------------------
-!>
-
-subroutine vector_to_3d_prog_var(x, ivar, data_3d_array)
-
-! convert the values from a 1d array, starting at an offset,
-! into a 3d array.
-
-real(r8), dimension(:),     intent(in)  :: x
-integer,                    intent(in)  :: ivar
-real(r8), dimension(:,:,:), intent(out) :: data_3d_array
-
-integer :: idim1,idim2,idim3,ii
-
-if ( .not. module_initialized ) call static_init_model
-
-ii = progvar(ivar)%index1
-
-do idim3 = 1,size(data_3d_array, 3)
-   do idim2 = 1,size(data_3d_array, 2)
-      do idim1 = 1,size(data_3d_array, 1)
-         data_3d_array(idim1,idim2,idim3) = x(ii)
-         ii = ii + 1
-      enddo
-   enddo
-enddo
-
-ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' filled wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'vector_to_3d_prog_var', string1, &
-                    source, revision, revdate, text2=string2)
-endif
-
-end subroutine vector_to_3d_prog_var
-
-
-!------------------------------------------------------------------
-!>
-
-subroutine prog_var_1d_to_vector(data_1d_array, x, ivar)
-
-! convert the values from a 1d array into a 1d array
-! starting at an offset.
-
-real(r8), dimension(:),   intent(in)    :: data_1d_array
-real(r8), dimension(:),   intent(inout) :: x
-integer,                  intent(in)    :: ivar
-
-integer :: idim1,ii
-
-if ( .not. module_initialized ) call static_init_model
-
-ii = progvar(ivar)%index1
-
-do idim1 = 1, size(data_1d_array, 1)
-   x(ii) = data_1d_array(idim1)
-   ii = ii + 1
-enddo
-
-ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' read wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'prog_var_1d_to_vector', string1, &
-                    source, revision, revdate, text2=string2)
-endif
-
-end subroutine prog_var_1d_to_vector
-
-
-!------------------------------------------------------------------
-!>
-
-subroutine prog_var_2d_to_vector(data_2d_array, x, ivar)
-
-! convert the values from a 2d array into a 1d array
-! starting at an offset.
-
-real(r8), dimension(:,:), intent(in)    :: data_2d_array
-real(r8), dimension(:),   intent(inout) :: x
-integer,                  intent(in)    :: ivar
-
-integer :: idim1,idim2,ii
-
-if ( .not. module_initialized ) call static_init_model
-
-ii = progvar(ivar)%index1
-
-do idim2 = 1,size(data_2d_array, 2)
-   do idim1 = 1,size(data_2d_array, 1)
-      x(ii) = data_2d_array(idim1,idim2)
-      ii = ii + 1
-   enddo
-enddo
-
-ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' read wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'prog_var_2d_to_vector', string1, &
-                    source, revision, revdate, text2=string2)
-endif
-
-end subroutine prog_var_2d_to_vector
-
-
-!------------------------------------------------------------------
-!>
-
-subroutine prog_var_3d_to_vector(data_3d_array, x, ivar)
-
-! convert the values from a 2d array into a 1d array
-! starting at an offset.
-
-real(r8), dimension(:,:,:), intent(in)    :: data_3d_array
-real(r8), dimension(:),     intent(inout) :: x
-integer,                    intent(in)    :: ivar
-
-integer :: idim1,idim2,idim3,ii
-
-if ( .not. module_initialized ) call static_init_model
-
-ii = progvar(ivar)%index1
-
-do idim3 = 1,size(data_3d_array, 3)
-   do idim2 = 1,size(data_3d_array, 2)
-      do idim1 = 1,size(data_3d_array, 1)
-         x(ii) = data_3d_array(idim1,idim2,idim3)
-         ii = ii + 1
-      enddo
-   enddo
-enddo
-
-ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' read wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'prog_var_3d_to_vector', string1, &
-                    source, revision, revdate, text2=string2)
-endif
-
-end subroutine prog_var_3d_to_vector
-
-
-!------------------------------------------------------------------
-!>
-
-subroutine parse_variable_input( state_variables, ncid, filename, ngood, table )
-
-character(len=*), intent(in)  :: state_variables(:)
+character(len=*), intent(in)  :: state_variables(:,:)
 integer,          intent(in)  :: ncid
 character(len=*), intent(in)  :: filename
 integer,          intent(out) :: ngood
-character(len=*), intent(out) :: table(:,:)
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME) :: dimname
@@ -3102,35 +1952,54 @@ character(len=NF90_MAX_NAME) :: minvalstring  ! column 3
 character(len=NF90_MAX_NAME) :: maxvalstring  ! column 4
 character(len=NF90_MAX_NAME) :: state_or_aux  ! column 5
 
+real(r8) :: minvalue, maxvalue
+integer  :: ios
+
 if ( .not. module_initialized ) call static_init_model
+
+var_names  = 'no_variable_specified'
+var_qtys   = MISSING_I
+var_ranges = MISSING_R8
+var_update = .false.
 
 failure = .FALSE. ! perhaps all with go well
 
-nrows = size(table,1)
-ncols = size(table,2)
-
 ngood = 0
-MyLoop : do i = 1, nrows
+MyLoop : do i = 1, MAX_STATE_VARIABLES
 
-   varname      = trim(state_variables(NUM_STATE_TABLE_COLUMNS*i-4))
-   dartstr      = trim(state_variables(NUM_STATE_TABLE_COLUMNS*i-3))
-   minvalstring = trim(state_variables(NUM_STATE_TABLE_COLUMNS*i-2))
-   maxvalstring = trim(state_variables(NUM_STATE_TABLE_COLUMNS*i-1))
-   state_or_aux = trim(state_variables(NUM_STATE_TABLE_COLUMNS*i  ))
+   if ( variables(1,i) == ' ' .and. variables(2,i) == ' ' ) exit MyLoop ! Found end of list.
 
-   table(i,VARNAME_INDEX) = trim(varname)
-   table(i,   KIND_INDEX) = trim(dartstr)
-   table(i, MINVAL_INDEX) = trim(minvalstring)
-   table(i, MAXVAL_INDEX) = trim(maxvalstring)
-   table(i,REPLACE_INDEX) = trim(state_or_aux)
-
-   if ( table(i,1) == ' ' .and. table(i,2) == ' ' ) exit MyLoop ! Found end of list.
-
-   if ( any(table(i,:) == ' ') ) then
+   if ( any(state_variables(:,i) == ' ') ) then
       string1 = '...  model_nml:"variables" not fully specified'
       write(string2,*)'failing on line ',i
       call error_handler(E_ERR, 'parse_variable_input', string1, &
                  source, revision, revdate, text2=string2)
+   endif
+
+   varname      = trim(state_variables(VARNAME_INDEX,i))
+   dartstr      = trim(state_variables(   KIND_INDEX,i))
+   minvalstring = trim(state_variables( MINVAL_INDEX,i))
+   maxvalstring = trim(state_variables( MAXVAL_INDEX,i))
+   state_or_aux = trim(state_variables(REPLACE_INDEX,i))
+   call to_upper(state_or_aux)
+
+   var_names(i) = trim(varname)
+   var_qtys(i)  = get_index_for_quantity(dartstr) 
+
+   read(minvalstring,*,iostat=ios) minvalue
+   if (ios == 0) var_ranges(i,1) = minvalue
+
+   read(maxvalstring,*,iostat=ios) maxvalue
+   if (ios == 0) var_ranges(i,1) = maxvalue
+
+   if (state_or_aux == 'UPDATE' ) var_update(i) = .true.
+
+   ! Make sure DART kind is valid
+
+   if( var_qtys(i) < 0 ) then
+      write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') &
+            trim(dartstr)
+      call error_handler(E_ERR,'parse_variable_input',string1,source,revision,revdate)
    endif
 
    ! Make sure variable exists in model analysis variable list
@@ -3171,17 +2040,10 @@ MyLoop : do i = 1, nrows
        call error_handler(E_ERR,'parse_variable_input',string2,source,revision,revdate)
    endif
 
-   ! Make sure DART kind is valid
-
-   if( get_index_for_quantity(dartstr) < 0 ) then
-      write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
-      call error_handler(E_ERR,'parse_variable_input',string1,source,revision,revdate)
-   endif
-
    ! Record the contents of the DART state vector
 
    if (debug > 0) then
-      write(string1,*)'variable ',i,' is ',trim(table(i,1)), ' ', trim(table(i,2))
+      write(string1,*)'variable ',i,' is ',trim(varname), ' ', trim(dartstr)
       call error_handler(E_MSG,'parse_variable_input',string1)
    endif
 
@@ -3579,8 +2441,9 @@ subroutine dump_tables
 ! should be able to cat temp & salinity to recreate all dart_state-vector
 ! temp == salt == coord_nod3D, that sort of thing.
 
-integer :: iunit, i, var_type
-real(r8) :: llv(3), lon, lat, vert
+integer     :: iunit, var_type
+integer(i8) :: i
+real(r8)    :: llv(3), lon, lat, vert
 type(location_type) :: location
 
 if (do_output() .and. state_table_needed ) then
@@ -3673,7 +2536,7 @@ end subroutine dump_tables
 end module model_mod
 
 ! <next few lines under version control, do not edit>
-! $URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/FEOM/models/FeoM/model_mod.f90 $
-! $Id: model_mod.f90 10268 2016-05-09 17:06:15Z thoar $
-! $Revision: 10268 $
-! $Date: 2016-05-09 19:06:15 +0200 (Mon, 09 May 2016) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
