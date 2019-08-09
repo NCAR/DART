@@ -97,7 +97,7 @@ use default_model_mod,    only : nc_write_model_vars, adv_1step,          &
                                  init_time => fail_init_time,             &
                                  init_conditions => fail_init_conditions
 
-use     distributed_state_mod
+use distributed_state_mod, only : get_state
 
 ! netcdf modules
 use typesizes
@@ -125,7 +125,7 @@ public :: get_model_size,                      & !>!DoNe
           shortest_time_between_assimilations, & !>!DoNe
           static_init_model,                   & !>!ToDo add_domain...
           end_model,                           & !>!Check if other variables should be deallocated
-          nc_write_model_atts,                 & !>!ToDo
+          nc_write_model_atts,                 & !>!DoNe
           pert_model_copies,                   & !>!DoNe
           get_close_obs,                       & !>!ToDo vert_convert
           get_close_state,                     & !>!ToDo
@@ -275,10 +275,10 @@ type(time_type) :: model_timestep      ! smallest time to adv model
 
 ! common names that call specific subroutines based on the arg types
 
-interface write_model_time
-   module procedure write_model_time_file
-   module procedure write_model_time_restart
-end interface
+!TJH interface write_model_time
+!TJH    module procedure write_model_time_file
+!TJH    module procedure write_model_time_restart
+!TJH end interface
 
 
 !------------------------------------------------
@@ -888,7 +888,6 @@ if (diagnostic_metadata) then
 
    io = nf90_def_var(ncFileID, 'longitudes', NF90_DOUBLE, (/ nodes_3DimID /), VarID)
    call nc_check(io,'nc_write_model_atts', 'longitudes def_var')
-
    call nc_check(nf90_put_att(ncFileID,VarID,'units','degrees East'),&
                  'nc_write_model_atts', 'longitude units')
 
@@ -1307,6 +1306,8 @@ integer,             intent(in)    :: loc_qtys(:), loc_types(:)
 integer,             intent(in)    :: which_vert
 integer,             intent(out)   :: status(:)
 
+call error_handler(E_ERR,'convert_vertical_obs','routine not written, not needed?')
+
 end subroutine convert_vertical_obs
 
 !--------------------------------------------------------------------
@@ -1321,6 +1322,8 @@ integer,             intent(in)    :: loc_qtys(:)
 integer(i8),         intent(in)    :: loc_indx(:)
 integer,             intent(in)    :: which_vert
 integer,             intent(out)   :: istatus
+
+call error_handler(E_ERR,'convert_vertical_state','routine not written, not needed?')
 
 end subroutine convert_vertical_state
 
@@ -1431,70 +1434,102 @@ year_from_filename = string_to_time(filename(i+1:i+4))
 end function year_from_filename
 
 
-!------------------------------------------------------------------
-!>
 !--------------------------------------------------------------------
-!> read the time from the input file
-!> stolen get_analysis_time_fname
+!> get the model time from the ****.clock   file
+
 function read_model_time(filename)
 
+!  There is a filename with the following format:
+!  previous-seconds     day-of-year      year
+!  current-seconds      day-of-year      year
+
 character(len=256), intent(in) :: filename
-
 type(time_type) :: read_model_time
-integer         :: ncid  ! netcdf file id
-integer         :: ret ! return code for netcdf
 
-ret = nf90_open(filename, NF90_NOWRITE, ncid)
-call nc_check(ret, 'opening', filename)
+real(r8) :: fseconds
+integer  :: seconds, dayofyear, year
+integer  :: io, iunit
+type(time_type) :: january1, forecast
 
-read_model_time = get_analysis_time(ncid, filename)
+! ALI ... make a namelist variable specifying the name of the file we 
+! SHOULD be reading ... and open it here instead of argument.
 
-ret = nf90_close(ncid)
-call nc_check(ret, 'closing', filename)
+iunit = open_file(filename, action = 'read')
 
+! skip the first record
+read(iunit,*,iostat=io) fseconds, dayofyear, year
+if (io /= 0) call error_handler(E_ERR,'read_model_time', &
+             'bomb reading "'//trim(filename)//'"')
 
-end function read_model_time
+! read the time of interest
+read(iunit,*,iostat=io) fseconds, dayofyear, year
+if (io /= 0) call error_handler(E_ERR,'read_model_time','BOMB')
 
-!-----------------------------------------------------------------------
+january1 = set_date(year,1,1)
 
-subroutine write_model_time_file(time_filename, model_time, adv_to_time)
- character(len=*), intent(in)           :: time_filename
- type(time_type),  intent(in)           :: model_time
- type(time_type),  intent(in), optional :: adv_to_time
+seconds = nint(fseconds)
 
-integer :: iunit
-character(len=19) :: timestring
-type(time_type)   :: deltatime
+read_model_time = january1 + set_time(seconds,dayofyear) - set_time(0,1)
 
-iunit = open_file(time_filename, action='write')
-
-timestring = time_to_string(model_time)
-write(iunit, '(A)') timestring
-
-if (present(adv_to_time)) then
-   timestring = time_to_string(adv_to_time)
-   write(iunit, '(A)') timestring
-
-   deltatime = adv_to_time - model_time
-   timestring = time_to_string(deltatime, interval=.true.)
-   write(iunit, '(A)') timestring
-endif
+call print_time(read_model_time,'read_model_time:')
+call print_date(read_model_time,'read_model_time:')
 
 call close_file(iunit)
 
-end subroutine write_model_time_file
+end function read_model_time
 
+!--------------------------------------------------------------------
+!> not written
+
+subroutine write_model_time(ncid, dart_time)
+
+integer,         intent(in) :: ncid
+type(time_type), intent(in) :: dart_time
+
+call error_handler(E_ERR,'write_model_time','routine not written')
+
+end subroutine write_model_time
 
 !-----------------------------------------------------------------------
 
-subroutine write_model_time_restart(ncid, dart_time)
-
-integer,             intent(in) :: ncid !< netcdf file handle
-type(time_type),     intent(in) :: dart_time
-
-call error_handler(E_MSG, 'write_model_time', 'no routine for fesom write model time')
-
-end subroutine write_model_time_restart
+!TJH subroutine write_model_time_file(time_filename, model_time, adv_to_time)
+!TJH  character(len=*), intent(in)           :: time_filename
+!TJH  type(time_type),  intent(in)           :: model_time
+!TJH  type(time_type),  intent(in), optional :: adv_to_time
+!TJH 
+!TJH integer :: iunit
+!TJH character(len=19) :: timestring
+!TJH type(time_type)   :: deltatime
+!TJH 
+!TJH iunit = open_file(time_filename, action='write')
+!TJH 
+!TJH timestring = time_to_string(model_time)
+!TJH write(iunit, '(A)') timestring
+!TJH 
+!TJH if (present(adv_to_time)) then
+!TJH    timestring = time_to_string(adv_to_time)
+!TJH    write(iunit, '(A)') timestring
+!TJH 
+!TJH    deltatime = adv_to_time - model_time
+!TJH    timestring = time_to_string(deltatime, interval=.true.)
+!TJH    write(iunit, '(A)') timestring
+!TJH endif
+!TJH 
+!TJH call close_file(iunit)
+!TJH 
+!TJH end subroutine write_model_time_file
+!TJH 
+!TJH 
+!TJH !-----------------------------------------------------------------------
+!TJH 
+!TJH subroutine write_model_time_restart(ncid, dart_time)
+!TJH 
+!TJH integer,             intent(in) :: ncid !< netcdf file handle
+!TJH type(time_type),     intent(in) :: dart_time
+!TJH 
+!TJH call error_handler(E_MSG, 'write_model_time', 'no routine for fesom write model time')
+!TJH 
+!TJH end subroutine write_model_time_restart
 
 !> FIXME: -aLi-----------------------------------------------------
 !> subroutine write_model_time(time_filename, model_time, adv_to_time)
