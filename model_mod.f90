@@ -110,7 +110,8 @@ use state_structure_mod, only : add_domain, &
                                 get_index_start, &
                                 get_index_end, &
                                 get_num_variables, &
-                                get_variable_name
+                                get_variable_name, &
+                                get_varid_from_kind
 
 implicit none
 private
@@ -483,8 +484,9 @@ end subroutine get_state_meta_data
 subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
 
 ! given a state vector, a location, and a QTY_xxx, return the
-! interpolated value at that location, and an error code.  0 is success,
+! value at from the closest grid location and an error code.  0 is success,
 ! anything positive is an error.  (negative reserved for system use)
+! TODO: possibly interpolate ... 
 !
 !       ERROR codes:
 !
@@ -519,7 +521,8 @@ integer  :: cellid
 logical  :: goodkind
 real(r8) :: lpres(ens_size), values(3, ens_size)
 real(r8) :: llv(3)    ! lon/lat/vert
-integer  :: e, verttype
+integer(i8) :: index1  ! the DART index of the start of the variable of interest
+integer  :: verttype
 
 ! local storage
 
@@ -541,15 +544,17 @@ istatus      = 0          ! must be positive (and integer)
 ! to this subroutine, but this really is a kind.
 obs_kind = obs_type
 
-
 ! Make sure the DART state has the type (T,S,U,etc.) that we are asking for.
 ! If we cannot, simply return and 'fail' with an 88
 
-ivar = get_progvar_index_from_kind(obs_kind)
+ivar = get_varid_from_kind(domid, obs_kind)
 if (ivar < 1) then
    istatus = 88
    return
 endif
+
+! Determine the offset into the DART state vector for this variable
+index1 = get_index_start(domid,ivar)
 
 ! Decode the location into bits for error messages ...
 llv  = get_location(location)
@@ -567,8 +572,8 @@ endif
 ! If it is a surface variable, we're done.
 
 if (progvar(ivar)%varsize == nCells) then
-   index_above = progvar(ivar)%index1 + surface_index - 1
-   expected_obs  = get_state(index_above,state_handle)
+   index_above   = index1 + surface_index - 1
+   expected_obs  = get_state(index_above, state_handle)
    istatus     = 0
    return
 endif
@@ -587,64 +592,63 @@ LAYER: do ilayer = 1,nVertLevels
    endif
 enddo LAYER
 
-if     (layer_below == 0) then ! below the deepest level
+if     (layer_below == 0) then ! below the deepest level, RETURN
    istatus = 19
-elseif (layer_below == 1) then ! too shallow
+   return
+elseif (layer_below == 1) then ! too shallow, RETURN
    istatus = 18
-else                           ! somewhere in the water column
-
-   layer_above = layer_below - 1
-
-   ! If there is no water, the return value is a negative number
-
-   closest_index_above = nod3d_below_nod2d(layer_above,surface_index)
-   closest_index_below = nod3d_below_nod2d(layer_below,surface_index)
-
-   if ((closest_index_below < 1) .or.  (closest_index_above < 1)) then
-      istatus = 17
-      return
-   endif
-
-   ! observation must be 'wet' as far as the model resolution is concerned
-
-   index_above = progvar(ivar)%index1 + closest_index_above - 1
-   index_below = progvar(ivar)%index1 + closest_index_below - 1
-
-   depth_below = depths(layer_below) - vert
-   depth_above = vert - depths(layer_above)
-   layer_thick = depths(layer_below) - depths(layer_above)
-
-   expected_obs  = ( &
-                   depth_below*get_state(index_above,state_handle) &
-                 + depth_above*get_state(index_below,state_handle)) &
-                 / layer_thick
-   istatus     = 0
-
-   ! DEBUG block to confirm that the interpolation is using the state
-   ! at the correct location.
-
-   if (do_output() .and. debug > 2) then
-      call get_state_meta_data(index_above, location_above)
-      call get_state_meta_data(index_below, location_below)
-
-      call write_location(0,location_above,charstring=string1)
-      call write_location(0,location      ,charstring=string2)
-      call write_location(0,location_below,charstring=string3)
-
-      write(logfileunit,*)
-      write(     *     ,*)
-      call error_handler(E_MSG,'model_interpolate', '... '//string1, &
-                 text2=string2, text3=string3)
-   endif
-
+   return
 endif
 
-   ! DEBUG block to confirm that the interpolation is using the state
-   ! at the correct location.
-call error_handler(E_ERR, 'model_interpolate', 'this is not complete yet', &
-                   source, revision, revdate)
+! somewhere in the water column
+
+layer_above = layer_below - 1
+
+! If there is no water, the return value is a negative number
+
+closest_index_above = nod3d_below_nod2d(layer_above,surface_index)
+closest_index_below = nod3d_below_nod2d(layer_below,surface_index)
+
+if ((closest_index_below < 1) .or.  (closest_index_above < 1)) then
+   istatus = 17
+   return
+endif
+
+! observation must be 'wet' as far as the model resolution is concerned
+
+index_above = index1 + closest_index_above - 1
+index_below = index1 + closest_index_below - 1
+
+depth_below = depths(layer_below) - vert
+depth_above = vert - depths(layer_above)
+layer_thick = depths(layer_below) - depths(layer_above)
+
+expected_obs  = ( &
+                depth_below*get_state(index_above,state_handle) &
+              + depth_above*get_state(index_below,state_handle)) &
+              / layer_thick
+istatus     = 0
+
+! DEBUG block to confirm that the interpolation is using the state
+! at the correct location.
+
+if (do_output() .and. debug > 2) then
+   call get_state_meta_data(index_above, location_above)
+   call get_state_meta_data(index_below, location_below)
+
+   call write_location(0,location_above,charstring=string1)
+   call write_location(0,location      ,charstring=string2)
+   call write_location(0,location_below,charstring=string3)
+
+   write(logfileunit,*)
+   write(     *     ,*)
+   call error_handler(E_MSG,'model_interpolate', '... '//string1, &
+              text2=string2, text3=string3)
+endif
 
 end subroutine model_interpolate
+
+
 !------------------------------------------------------------------
 !>
 
@@ -1749,6 +1753,8 @@ enddo
 
 maxdist_km = 2.5_r8 ! more than the largest separation between vertices
 
+!for NANCY ... how do we initialize a get_close structure for _part_ of the state
+
 close_structure_allocated = .true.
 
 if (debug > 5) &
@@ -2276,7 +2282,7 @@ type(location_type), intent(in) :: location
 integer,             intent(in) :: obs_kind
 integer                         :: find_closest_surface_location
 
-integer :: num_close, surface_index, iclose, indx
+integer :: num_close, surface_index, iclose, indx, i
 real(r8) :: closest
 real(r8) :: distance
 
@@ -2284,9 +2290,12 @@ find_closest_surface_location = -1
 
 ! Generate the list of indices into the DART vector of the close candidates.
 
-!> TODO -aLi-: check if this is needed
-!> call loc_get_close_obs(cc_gc, location, obs_kind, cell_locations, cell_kinds, &
-!>                        num_close, close_ind=close_cell_inds)
+!TJH call loc_get_close_state(cc_gc, location, obs_kind, cell_locations, cell_kinds, &
+!TJH                       num_close, close_ind=close_cell_inds)
+
+!TJH just do an exhaustive search for late on a Friday afternoon
+num_close = nCells
+close_cell_inds = (/ (i, i=1,num_close) /)
 
 ! Sometimes the location is outside the model domain.
 ! In this case, we cannot interpolate.
