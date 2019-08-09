@@ -26,7 +26,7 @@ module model_mod
 
 ! Routines in other modules that are used here.
 
-use            types_mod, only : r4, r8, digits12, SECPERDAY, MISSING_R8,       &
+use            types_mod, only : r4, r8, i8, digits12, SECPERDAY, MISSING_R8,       &
                                  rad2deg, deg2rad, PI, MISSING_I, obstypelength
 
 use     time_manager_mod, only : time_type, set_time, set_date, get_date, &
@@ -41,7 +41,8 @@ use         location_mod, only : location_type, get_dist, query_location,    &
                                  get_close_type, VERTISHEIGHT,               &
                                  loc_get_close_obs => get_close_obs,         &
                                  loc_get_close_state => get_close_state,     &
-                                 is_vertical, set_vertical_localization_coord
+                                 is_vertical, set_vertical_localization_coord, &
+                                 vertical_localization_on
 
 use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_add_global_creation_time, nc_check,        &
@@ -96,7 +97,6 @@ use     distributed_state_mod
 use typesizes
 use netcdf
 
-
 use state_structure_mod, only :  add_domain, get_model_variable_indices, &
                                  state_structure_info, get_index_start, get_index_end, get_num_variables
 implicit none
@@ -104,37 +104,37 @@ private
 
 ! these routines must be public and you cannot change
 ! the arguments - they will be called *from* the DART code.
-public :: get_model_size,                      &
-          get_num_vars,                        &
-          adv_1step,                           &
-          get_state_meta_data,                 &
-          model_interpolate,                   &
-          get_model_time_step,                 &
-          shortest_time_between_assimilations, &
-          static_init_model,                   &
-          end_model,                           &
-          init_time,                           &
-          init_conditions,                     &
-          nc_write_model_atts,                 &
-          pert_model_copies,                   &
-          nc_write_model_vars,                 &
-!          get_close_obs_init,                  &
-          get_close_obs,                       &
-          get_close_state,                     &
-          convert_vertical_obs,           &
-          convert_vertical_state,         &
-          ens_mean_for_model
+public :: get_model_size,                      & !>!DoNe
+          get_num_vars,                        & !>!DoNe
+          get_state_meta_data,                 & !>!DoNe
+          model_interpolate,                   & !>!ToDo
+          shortest_time_between_assimilations, & !>!DoNe
+          static_init_model,                   & !>!ToDo add_domain...
+          end_model,                           & !>!Check if other variables should be deallocated
+          nc_write_model_atts,                 & !>!ToDo
+          pert_model_copies,                   & !>!DoNe
+          get_close_obs,                       & !>!ToDo vert_convert
+          get_close_state,                     & !>!ToDo
+          convert_vertical_obs,                & !>!ToDo
+          convert_vertical_state,              & !>!ToDo
+          read_model_time,                     & !>!ToDo how to read model time
+          write_model_time                       !>!ToDo
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
 
-public :: get_model_analysis_filename,        &
-          analysis_file_to_statevector,       &
-          statevector_to_analysis_file,       &
-          write_model_time,                   &
-          read_model_time,                    &
-          get_grid_dims,                      &
-          print_variable_ranges
+public :: get_model_analysis_filename,         &
+          analysis_file_to_statevector,        &
+          statevector_to_analysis_file,        &
+          get_grid_dims,                       &
+          read_2d_from_nc_file,                &
+          print_variable_ranges,               &
+          adv_1step,                           &
+          get_model_time_step,                 &
+          init_time,                           &
+          init_conditions,                     &
+          nc_write_model_vars
+!          get_close_obs_init,                  &
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -188,6 +188,7 @@ integer, parameter ::  MAXVAL_INDEX = 4
 integer, parameter :: REPLACE_INDEX = 5
 
 ! variables which are in the module namelist
+integer            :: vert_localization_coord = VERTISHEIGHT
 integer            :: assimilation_period_days = 0
 integer            :: assimilation_period_seconds = 21600     ! 86400 | 43200 | 21600
 real(r8)           :: model_perturbation_amplitude = 0.0001   ! tiny amounts
@@ -201,6 +202,7 @@ character(len=NF90_MAX_NAME) :: variables(MAX_STATE_VARIABLES * NUM_STATE_TABLE_
 namelist /model_nml/             &
    model_analysis_filename,      &
    output_state_vector,          &
+   vert_localization_coord,      &
    diagnostic_metadata,          &
    assimilation_period_days,     &
    assimilation_period_seconds,  &
@@ -240,6 +242,8 @@ end type progvartype
 type(progvartype), dimension(MAX_STATE_VARIABLES) :: progvar
 
 ! Grid parameters - the values will be read from an FESOM analysis file.
+
+real(r8), allocatable :: ens_mean(:)   ! needed to convert vertical distances consistently
 
 !$! integer :: FESOM:num_layers_below_2d(:) ! list of maximum (deepest) level index for each cell
 
@@ -329,6 +333,7 @@ integer :: iunit, io, ivar, i, index1, indexN
 integer :: ss, dd
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID, TimeDimID
 real(r8) :: lower_bound, upper_bound
+real(r8) :: variable_bounds(max_state_variables, 2)
 
 if ( module_initialized ) return ! only need to do this once.
 
@@ -523,6 +528,22 @@ call read_grid() ! sets nCells, nVertices, nVertLevels
 ! once to generate sanity checks.
 if (state_table_needed .and. debug > 99) call dump_tables()
 
+
+allocate( ens_mean(model_size) )
+
+variable_bounds(1:nfields, 1) = progvar(1:nfields)%range(1)
+variable_bounds(1:nfields, 2) = progvar(1:nfields)%range(2)
+
+domid =  add_domain( trim(model_analysis_filename), nfields,    &
+                     var_names  = variable_table (1:nfields,1), &
+                     clamp_vals = variable_bounds(1:nfields,:) )
+
+if ( debug > 4 .and. do_output()) call state_structure_info(domid)
+
+! tell the location module how we want to localize in the vertical
+call set_vertical_localization_coord(vert_localization_coord)
+
+
 end subroutine static_init_model
 
 
@@ -537,7 +558,7 @@ subroutine get_state_meta_data(index_in, location, var_type)
 
 ! passed variables
 
-integer,             intent(in)  :: index_in
+integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer, optional,   intent(out) :: var_type
 
@@ -600,7 +621,6 @@ subroutine model_interpolate(state_handle, ens_size, location, obs_type, expecte
 !       ISTATUS = 19:  could not compute u using RBF code
 !       ISTATUS = 101: Internal error; reached end of subroutine without
 !                      finding an applicable case.
-!       ISTATUS = 201: Reject observation from user specified pressure level
 !
 
 ! passed variables
@@ -623,7 +643,128 @@ real(r8) :: lpres(ens_size), values(3, ens_size)
 real(r8) :: llv(3)    ! lon/lat/vert
 integer  :: e, verttype
 
+! local storage
+
+integer(i8)  :: surface_index
+integer(i8)  :: ilayer, layer_below, layer_above
+real(r8) :: lon, lat, vert
+real(r8) :: depth_below, depth_above, layer_thick
+integer(i8)  :: closest_index_above, closest_index_below
+integer(i8)  :: index_above, index_below
+
+type(location_type) :: location_above, location_below
+
 if ( .not. module_initialized ) call static_init_model
+
+expected_obs = MISSING_R8
+istatus      = 0          ! must be positive (and integer)
+
+! rename for sanity - we can't change the argument names
+! to this subroutine, but this really is a kind.
+obs_kind = obs_type
+
+
+! Make sure the DART state has the type (T,S,U,etc.) that we are asking for.
+! If we cannot, simply return and 'fail' with an 88
+
+ivar = get_progvar_index_from_kind(obs_kind)
+if (ivar < 1) then
+   istatus = 88
+   return
+endif
+
+! Decode the location into bits for error messages ...
+llv  = get_location(location)
+lon  = llv(1)    ! degrees East [0,360)
+lat  = llv(2)    ! degrees North [-90,90]
+vert = llv(3)    ! depth in meters ... even 2D fields have a value of 0.0
+
+surface_index = find_closest_surface_location(location, obs_kind)
+
+if (surface_index < 1) then ! nothing close
+   istatus = 11
+   return
+endif
+
+! If it is a surface variable, we're done.
+
+if (progvar(ivar)%varsize == nCells) then
+   index_above = progvar(ivar)%index1 + surface_index - 1
+   expected_obs  = get_state(index_above,state_handle)
+   istatus     = 0
+   return
+endif
+
+! Which vertical level is closest
+! Find the first nominal layer deeper than than the observation.
+! 2 <= layer_below <= nVertLevels
+! use the nod3D_below_nod2D(nVertLevels,nCells)  array to figure out
+! 1 <= surface_index <= nCells
+
+layer_below = 0
+LAYER: do ilayer = 1,nVertLevels
+   if (depths(ilayer) > vert ) then
+        layer_below = ilayer
+        exit LAYER
+   endif
+enddo LAYER
+
+if     (layer_below == 0) then ! below the deepest level
+   istatus = 19
+elseif (layer_below == 1) then ! too shallow
+   istatus = 18
+else                           ! somewhere in the water column
+
+   layer_above = layer_below - 1
+
+   ! If there is no water, the return value is a negative number
+
+   closest_index_above = nod3d_below_nod2d(layer_above,surface_index)
+   closest_index_below = nod3d_below_nod2d(layer_below,surface_index)
+
+   if ((closest_index_below < 1) .or.  (closest_index_above < 1)) then
+      istatus = 17
+      return
+   endif
+
+   ! observation must be 'wet' as far as the model resolution is concerned
+
+   index_above = progvar(ivar)%index1 + closest_index_above - 1
+   index_below = progvar(ivar)%index1 + closest_index_below - 1
+
+   depth_below = depths(layer_below) - vert
+   depth_above = vert - depths(layer_above)
+   layer_thick = depths(layer_below) - depths(layer_above)
+
+   expected_obs  = ( &
+                   depth_below*get_state(index_above,state_handle) &
+                 + depth_above*get_state(index_below,state_handle)) &
+                 / layer_thick
+   istatus     = 0
+
+   ! DEBUG block to confirm that the interpolation is using the state
+   ! at the correct location.
+
+   if (do_output() .and. debug > 2) then
+      call get_state_meta_data(index_above, location_above)
+      call get_state_meta_data(index_below, location_below)
+
+      call write_location(0,location_above,charstring=string1)
+      call write_location(0,location      ,charstring=string2)
+      call write_location(0,location_below,charstring=string3)
+
+      write(logfileunit,*)
+      write(     *     ,*)
+      call error_handler(E_MSG,'model_interpolate', '... '//string1, &
+                 text2=string2, text3=string3)
+   endif
+
+endif
+
+   ! DEBUG block to confirm that the interpolation is using the state
+   ! at the correct location.
+call error_handler(E_ERR, 'model_interpolate', 'this is not complete yet', &
+                   source, revision, revdate)
 
 end subroutine model_interpolate
 !------------------------------------------------------------------
@@ -1263,7 +1404,7 @@ function get_model_size()
 ! Returns the size of the model as an integer.
 ! Required for all applications.
 
-integer :: get_model_size
+integer(i8) :: get_model_size
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1301,23 +1442,6 @@ if ( .not. module_initialized ) call static_init_model
 get_model_time_step = model_timestep
 
 end function get_model_time_step
-
-
-!------------------------------------------------------------------
-!>
-
-subroutine ens_mean_for_model(filter_ens_mean)
-
-! If needed by the model interface, this is the current mean
-! for all state vector items across all ensembles.
-
-real(r8), intent(in) :: filter_ens_mean(:)
-
-if ( .not. module_initialized ) call static_init_model
-
-! Not needed by FESOM ... just a stub.
-
-end subroutine ens_mean_for_model
 
 
 !------------------------------------------------------------------
@@ -1366,7 +1490,7 @@ real(r8) :: pert_val, range
 integer  :: copy
 integer  :: num_variables
 integer  :: i, j
-integer(kind=8), allocatable :: var_list(:)
+integer(i8), allocatable :: var_list(:)
 
 
 
@@ -1445,8 +1569,8 @@ end subroutine pert_model_copies
 !------------------------------------------------------------------
 !>
 
-subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, &
-                         obs_loc, obs_kind, num_close, close_ind, dist)
+subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
+                         num_close, close_ind, dist, state_handle)
 !
 ! Given a DART location (referred to as "base") and a set of candidate
 ! locations & kinds (obs, obs_kind), returns the subset close to the
@@ -1458,27 +1582,109 @@ subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, &
 ! within filter_assim. In other words, these modifications will only matter within
 ! filter_assim, but will not propagate backwards to filter.
 
-type(get_close_type),              intent(in)    :: gc
-type(location_type),               intent(inout) :: base_obs_loc
-integer,                           intent(in)    :: base_obs_kind
-type(location_type), dimension(:), intent(inout) :: obs_loc
-integer,             dimension(:), intent(in)    :: obs_kind
-integer,                           intent(out)   :: num_close
-integer,             dimension(:), intent(out)   :: close_ind
-real(r8), optional,  dimension(:), intent(out)   :: dist
+type(get_close_type),          intent(in)  :: gc
+type(location_type),           intent(inout)  :: base_loc, locs(:)
+integer,                       intent(in)  :: base_type, loc_qtys(:), loc_types(:)
+integer,                       intent(out) :: num_close, close_ind(:)
+real(r8),            optional, intent(out) :: dist(:)
+type(ensemble_type), optional, intent(in)  :: state_handle
 
+
+integer                :: ztypeout
+integer                :: t_ind, istatus1, istatus2, k
+integer                :: base_which, local_obs_which
+real(r8), dimension(3) :: base_llv, local_obs_llv   ! lon/lat/vert
+type(location_type)    :: local_obs_loc
+
+real(r8) ::  hor_dist
+hor_dist = 1.0e9_r8
+
+! Initialize variables to missing status
 
 num_close = 0
 close_ind = -99
 if (present(dist)) dist = 1.0e9_r8   !something big and positive (far away) in radians
+istatus1  = 0
+istatus2  = 0
+
 ! If you want to impose some sort of special localization, you can key
 ! off things like the obs_kind and make things 'infinitely' far away.
 ! Otherwise, this does nothing. Take a look at the POP model_mod.f90 for an example.
 
-!> TODO -aLi-: check if this should be here
-!> call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-!>                           num_close, close_ind, dist)
+! Convert base_obs vertical coordinate to requested vertical coordinate if necessary
 
+base_llv = get_location(base_loc)
+base_which = nint(query_location(base_loc))
+
+ztypeout = vert_localization_coord
+
+if (vertical_localization_on()) then
+  if (base_llv(3) == MISSING_R8) then
+     istatus1 = 1
+  else if (base_which /= vert_localization_coord) then
+!>      call vert_convert(state_handle, base_loc, base_type, istatus1)
+      if(debug > 5) then
+         call write_location(0,base_loc,charstring=string1)
+         call error_handler(E_MSG, 'get_close_obs: base_loc',string1,source, revision, revdate)
+     endif
+   endif
+endif
+
+if (istatus1 == 0) then
+
+   ! Loop over potentially close subset of obs priors or state variables
+   ! This way, we are decreasing the number of distance computations that will follow.
+   ! This is a horizontal-distance operation and we don't need to have the relevant vertical
+   ! coordinate information yet (for locs).
+   call loc_get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
+                          num_close, close_ind)
+
+   do k = 1, num_close
+
+      t_ind = close_ind(k)
+      local_obs_loc   = locs(t_ind)
+      local_obs_which = nint(query_location(local_obs_loc))
+
+      ! Convert local_obs vertical coordinate to requested vertical coordinate if necessary.
+      ! This should only be necessary for obs priors, as state location information already
+      ! contains the correct vertical coordinate (filter_assim's call to get_state_meta_data).
+      if (vertical_localization_on()) then
+          if (local_obs_which /= vert_localization_coord) then
+!>              call vert_convert(state_handle, local_obs_loc, loc_qtys(t_ind), istatus2)
+              locs(t_ind) = local_obs_loc
+          else
+              istatus2 = 0
+          endif
+      endif
+
+      if (present(dist)) then
+         ! Compute distance - set distance to a very large value if vert coordinate is missing
+         ! or vert_interpolate returned error (istatus2=1)
+         local_obs_llv = get_location(local_obs_loc)
+         if ( (vertical_localization_on() .and. &
+              (local_obs_llv(3) == MISSING_R8)) .or. (istatus2 /= 0) ) then
+               dist(k) = 1.0e9_r8
+         else
+               dist(k) = get_dist(base_loc, local_obs_loc, base_type, loc_qtys(t_ind))
+         ! if ((debug > 4) .and. (k < 100) .and. do_output()) then
+         !     print *, 'calling get_dist'
+         !     call write_location(0,base_loc,charstring=string2)
+         !     call error_handler(E_MSG, 'get_close_obs: base_loc',string2,source, revision, revdate)
+         !     call write_location(0,local_obs_loc,charstring=string2)
+         !     call error_handler(E_MSG, 'get_close_obs: local_obs_loc',string2,source, revision, revdate)
+         !     hor_dist = get_dist(base_loc, local_obs_loc, base_type, loc_qtys(t_ind), no_vert=.true.)
+         !     print *, 'hor/3d_dist for k =', k, ' is ', hor_dist,dist(k)
+         ! endif
+         endif
+      endif
+
+   enddo
+endif
+
+if ((debug > 2) .and. do_output()) then
+   call write_location(0,base_loc,charstring=string2)
+   print *, 'get_close_obs: nclose, base_loc ', num_close, trim(string2)
+endif
 end subroutine get_close_obs
 
 
@@ -1498,7 +1704,7 @@ subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
 type(get_close_type),          intent(in)  :: gc
 type(location_type),           intent(inout)  :: base_loc, locs(:)
 integer,                       intent(in)  :: base_type, loc_qtys(:)
-integer(kind=8),                   intent(in)  :: loc_indx(:)
+integer(i8),                   intent(in)  :: loc_indx(:)
 integer,                       intent(out) :: num_close, close_ind(:)
 real(r8),            optional, intent(out) :: dist(:)
 type(ensemble_type), optional, intent(in)  :: state_handle
@@ -1548,7 +1754,7 @@ type(ensemble_type), intent(in)    :: state_handle
 integer,             intent(in)    :: num
 type(location_type), intent(inout) :: locs(:)
 integer,             intent(in)    :: loc_qtys(:)
-integer(kind=8),         intent(in)    :: loc_indx(:)
+integer(i8),         intent(in)    :: loc_indx(:)
 integer,             intent(in)    :: which_vert
 integer,             intent(out)   :: istatus
 
@@ -2325,7 +2531,7 @@ subroutine write_model_time_restart(ncid, dart_time)
 integer,             intent(in) :: ncid !< netcdf file handle
 type(time_type),     intent(in) :: dart_time
 
-call error_handler(E_MSG, 'write_model_time', 'no routine for mpas_atm write model time')
+call error_handler(E_MSG, 'write_model_time', 'no routine for fesom write model time')
 
 end subroutine write_model_time_restart
 
