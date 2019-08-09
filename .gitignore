@@ -12,36 +12,26 @@ model_to_dart.f90
 
 shell_scripts/FeoM_SBMT_eNS_MeMBeRS_FB???.lsf
 
-FESOMMESH/aux3d.out
-FESOMMESH/depth.out
-FESOMMESH/elem3d.out
-FESOMMESH/ENS01.2009.oce.nc
-FESOMMESH/m3d.ini
-FESOMMESH/nod2d.out
-FESOMMESH/nod3d.out
+#FESOM inputs
+FESOMMESH/mesh-T2G1.5L110b.V3
 
 work/input.nml.*
 work/LOG
 work/check_me.nc
-work/create_fixed_network_seq
-work/create_obs_sequence
 work/dart_ics
 work/dart_log.nml
 work/dart_restart
 work/ENS01.2009.oce.nc
 work/FeoM_time
-work/filter
 work/input.nml
 work/input.nml.TeMPLaTe
 work/integrate_model
 work/Makefile
 work/namelist.config
-work/obs_diag
 work/obs_epoch_001.nc
 work/obs_seq.ferrybox
 work/obs_seq.ferrybox.FB002
 work/obs_seq.ferrybox.S0.004.T0.8
-work/model_mod_check
 work/obs_seq.out
 work/obs_seq.out.latlon
 work/obs_seq.out.rad
@@ -50,12 +40,29 @@ work/obs_seq.processed
 work/obs_seq.profile
 work/obs_seq.single
 work/obs_seq.in
-work/obs_sequence_tool
 work/path_names_create_fixed_network_seq
+work/dart_log.out
+work/broken_mkmf_integrate_model
+work/path_names_advance_time
+work/path_names_convertdate
+
+# Executables
+work/advance_time
+work/check_me
+work/create_fixed_network_seq
+work/create_obs_sequence
+work/preprocess
+work/convertdate
+work/mkmf_advance_time
+work/mkmf_convertdate
+work/obs_sequence_tool
+work/unused_functions.f90
 work/restart_file_tool
 work/trans_time
 work/using_mpi_for_filter
 work/obs_seq_to_netcdf
 work/perfect_model_obs
-work/preprocess
-work/dart_log.out
+work/model_mod_check
+work/obs_diag
+work/filter
+
