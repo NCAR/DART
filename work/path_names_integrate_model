@@ -1,4 +1,3 @@
-assimilation_code/location/threed_cartesian/xyz_location_mod.f90
 assimilation_code/location/threed_sphere/location_mod.f90
 assimilation_code/location/utilities/default_location_mod.f90
 assimilation_code/location/utilities/location_io_mod.f90
