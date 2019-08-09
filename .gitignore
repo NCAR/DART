@@ -15,7 +15,6 @@ shell_scripts/FeoM_SBMT_eNS_MeMBeRS_FB???.lsf
 #FESOM inputs
 FESOMMESH/mesh-T2G1.5L110b.V3
 
-work/input.nml.*
 work/LOG
 work/check_me.nc
 work/dart_ics
@@ -23,7 +22,6 @@ work/dart_log.nml
 work/dart_restart
 work/ENS01.2009.oce.nc
 work/FeoM_time
-work/input.nml
 work/input.nml.TeMPLaTe
 work/integrate_model
 work/Makefile
