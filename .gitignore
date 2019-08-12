@@ -18,6 +18,7 @@ work/dart_restart
 work/ENS01.2009.oce.nc
 work/FeoM_time
 work/input.nml.TeMPLaTe
+work/input.nml.*_default
 work/Makefile
 work/obs_epoch_001.nc
 work/obs_seq.ferrybox
@@ -33,27 +34,24 @@ work/obs_seq.single
 work/obs_seq.in
 work/dart_log.out
 
-<<<<<<< Updated upstream
-work/path_names_convertdate
-work/input.nml.*_default
-
 # Executables
 work/advance_time
 work/check_me
+work/closest_member_tool
+work/convertdate
 work/create_fixed_network_seq
 work/create_obs_sequence
-work/preprocess
-work/convertdate
 work/fill_inflation_restart
-work/obs_sequence_tool
-work/unused_functions.f90
-work/restart_file_tool
-work/trans_time
-work/using_mpi_for_filter
-work/obs_seq_to_netcdf
-work/perfect_model_obs
+work/filter
 work/model_mod_check
 work/obs_diag
-work/filter
+work/obs_seq_to_netcdf
+work/obs_sequence_tool
+work/perfect_model_obs
+work/preprocess
+work/restart_file_tool
+work/trans_time
+work/unused_functions.f90
+work/using_mpi_for_filter
 
 check_me_interptest.*

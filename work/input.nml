@@ -21,10 +21,15 @@
    silence                  = .true.
    /
 
+
+# If the input and output file_lists are the same ... the input
+# is OVERWRITTEN with the new state. You may preserve the input
+# state by specifying the 'input' stage.
+
 &filter_nml
    async                    = 5
    adv_ens_command          = "advance_model_script.die"
-   ens_size                 = 3
+   ens_size                 = 30
    start_from_restart       = .true.
    output_restart           = .true.
    obs_sequence_in_name     = "obs_seq.out"
@@ -271,7 +276,7 @@
 &restart_file_tool_nml
    input_file_name              = "filter_restart"
    output_file_name             = "filter_updated_restart"
-   ens_size      = 30
+   ens_size                     = 30
    single_restart_file_in       = .true.
    single_restart_file_out      = .true.
    write_binary_restart_files   = .true.
@@ -285,6 +290,23 @@
    new_advance_secs             = -1
    gregorian_cal                = .true.
    /
+
+
+! different methods to compute 'distance' from mean:
+!  1 = simple absolute difference
+!  2 = normalized absolute difference
+!  3 = simple rmse difference
+!  4 = normalized rmse difference
+
+&closest_member_tool_nml
+   input_restart_file_list = 'input_file_list.txt'
+   output_file_name        = 'closest_member'
+   ens_size                = 3
+   single_restart_file_in  = .false.
+   difference_method       = 4
+   use_only_qtys           = ''
+   /
+
 
 &obs_diag_nml
    obs_sequence_name      = ''
