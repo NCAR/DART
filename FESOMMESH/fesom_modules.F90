@@ -667,7 +667,6 @@ subroutine oce_input
   integer                   :: u_varid, v_varid, w_varid, wpot_varid
   integer                   :: istart(2), icount(2), n3
   character(100)            :: filename
-  character(1)              :: trind
   real(kind=8), allocatable :: aux2(:), aux3(:) 
 
   allocate(aux2(myDim_nod2D), aux3(myDim_nod3D)) 

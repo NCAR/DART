@@ -202,7 +202,6 @@
 &model_nml
    model_analysis_filename      = 'ENS01.2009.oce.nc'
    model_clock_filename         = '../FESOMMESH/ENS01.clock'
-   output_state_vector          = .false.
    diagnostic_metadata          = .true.
    assimilation_period_days     = 0
    assimilation_period_seconds  = 86400
@@ -355,7 +354,7 @@
    output_state_files    = 'check_me'
    verbose               = .TRUE.
    test1thru             = 0
-   run_tests             = 1, 3, 4
+   run_tests             = 1, 2, 3, 4, 5, 7
    x_ind                 = 3267068
    loc_of_interest       = 26.0924, 40.1515, 12.01
    quantity_of_interest  = 'QTY_SALINITY'

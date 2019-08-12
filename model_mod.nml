@@ -13,8 +13,8 @@
 
 &model_nml
    model_analysis_filename      = 'expno.year.oce.nc'
-   output_state_vector          = .false.
    diagnostic_metadata          = .true.
+   model_clock_filename         = 'expno.clock'
    assimilation_period_days     = 0
    assimilation_period_seconds  = 86400
    model_perturbation_amplitude = 0.0001
