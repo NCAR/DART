@@ -48,6 +48,7 @@ work/obs_diag
 work/obs_seq_to_netcdf
 work/obs_sequence_tool
 work/perfect_model_obs
+work/perturb_single_instance
 work/preprocess
 work/restart_file_tool
 work/trans_time

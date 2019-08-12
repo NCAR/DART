@@ -308,6 +308,13 @@
    /
 
 
+&perturb_single_instance_nml
+   ens_size               = 3
+   input_files            = 'ENS01.2009.oce.nc'
+   output_file_list       = 'restart_file_list.txt'
+   perturbation_amplitude = 0.2
+   /
+
 &obs_diag_nml
    obs_sequence_name      = ''
    obs_sequence_list      = 'file_list.txt'
