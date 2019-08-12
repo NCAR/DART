@@ -43,6 +43,7 @@ work/dart_log.out
 work/broken_mkmf_integrate_model
 work/path_names_advance_time
 work/path_names_convertdate
+work/input.nml.*_default
 
 # Executables
 work/advance_time
@@ -64,3 +65,4 @@ work/model_mod_check
 work/obs_diag
 work/filter
 
+check_me_interptest.*
