@@ -48,9 +48,7 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_add_global_creation_time, nc_check,        &
                                  nc_begin_define_mode, nc_end_define_mode,     &
                                  nc_open_file_readonly, nc_close_file,         &
-                                 nc_define_dimension
-
-use      location_io_mod, only : nc_write_location_atts, nc_write_location
+                                 nc_define_dimension, nc_define_unlimited_dimension
 
 use        utilities_mod, only : register_module, error_handler,                   &
                                  E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
@@ -75,8 +73,6 @@ use         obs_kind_mod, only : get_index_for_quantity,     &
                                  QTY_TRACER_CONCENTRATION
 
 use mpi_utilities_mod, only: my_task_id, broadcast_minmax, task_count
-
-use        random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 
 use         fesom_modules, only: read_node, read_aux3, read_depth, read_namelist, &
                                  nCells => myDim_nod2D, & ! number of surface locations
@@ -113,6 +109,7 @@ use state_structure_mod, only : add_domain, &
                                 get_variable_name, &
                                 get_varid_from_kind
 
+use    dart_time_io_mod, only : loc_write_model_time => write_model_time
 implicit none
 private
 
@@ -147,6 +144,7 @@ public :: get_grid_dims,                       &
           read_2d_from_nc_file,                &
           print_variable_ranges,               &
           get_model_time_step
+
 
 ! version controlled file description for error handling, do not edit
 character(len=*), parameter :: source   = "$URL$"
@@ -213,10 +211,13 @@ logical            :: diagnostic_metadata = .false.
 integer            :: debug = 0   ! turn up for more and more debug messages
 character(len=32)  :: calendar = 'Gregorian'
 character(len=256) :: model_analysis_filename = 'expno.year.oce.nc'
+character(len=256) :: model_clock_filename = 'expno.clock'
+character(len=256) :: time_filename = 'FESOM_time'
 character(len=NF90_MAX_NAME) :: variables(NUM_STATE_TABLE_COLUMNS,MAX_STATE_VARIABLES) = ' '
 
 namelist /model_nml/             &
    model_analysis_filename,      &
+   model_clock_filename,         &
    output_state_vector,          &
    vert_localization_coord,      &
    diagnostic_metadata,          &
@@ -274,11 +275,6 @@ type(time_type) :: model_timestep      ! smallest time to adv model
 !#! character(len= 64) :: ew_boundary_type, ns_boundary_type
 
 ! common names that call specific subroutines based on the arg types
-
-!TJH interface write_model_time
-!TJH    module procedure write_model_time_file
-!TJH    module procedure write_model_time_restart
-!TJH end interface
 
 
 !------------------------------------------------
@@ -932,17 +928,17 @@ if (diagnostic_metadata) then
 
    call nc_check(NF90_inq_varid(ncFileID, 'longitudes', VarID), &
                  'nc_write_model_atts', 'longitudes inq_varid')
-   call nc_check(nf90_put_var(ncFileID, VarID, coord_nod3D(1,:) ), &
+   call nc_check(NF90_put_var(ncFileID, VarID, coord_nod3D(1,:) ), &
                 'nc_write_model_atts', 'longitudes put_var')
 
    call nc_check(NF90_inq_varid(ncFileID, 'latitudes', VarID), &
                  'nc_write_model_atts', 'latitudes inq_varid')
-   call nc_check(nf90_put_var(ncFileID, VarID, coord_nod3D(2,:) ), &
+   call nc_check(NF90_put_var(ncFileID, VarID, coord_nod3D(2,:) ), &
                 'nc_write_model_atts', 'latitudes put_var')
 
    call nc_check(NF90_inq_varid(ncFileID, 'depths', VarID), &
                  'nc_write_model_atts', 'depths inq_varid')
-   call nc_check(nf90_put_var(ncFileID, VarID, coord_nod3D(3,:) ), &
+   call nc_check(NF90_put_var(ncFileID, VarID, coord_nod3D(3,:) ), &
                 'nc_write_model_atts', 'depths put_var')
 
 !TJH    call nc_check(NF90_inq_varid(ncFileID, 'node_table', VarID), &
@@ -953,10 +949,13 @@ if (diagnostic_metadata) then
 endif
 
 
+
 !-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
 !-------------------------------------------------------------------------------
 call nc_check(nf90_sync(ncFileID), 'nc_write_model_atts', 'atts sync')
+
+write(*,*), "write atts finished successfully"
 
 
 end subroutine nc_write_model_atts
@@ -1443,7 +1442,7 @@ function read_model_time(filename)
 !  previous-seconds     day-of-year      year
 !  current-seconds      day-of-year      year
 
-character(len=256), intent(in) :: filename
+character(len=*), intent(in) :: filename
 type(time_type) :: read_model_time
 
 real(r8) :: fseconds
@@ -1454,12 +1453,13 @@ type(time_type) :: january1, forecast
 ! ALI ... make a namelist variable specifying the name of the file we 
 ! SHOULD be reading ... and open it here instead of argument.
 
-iunit = open_file(filename, action = 'read')
+write(*,*), "Reading clock file: ", trim(model_clock_filename)
+iunit = open_file(model_clock_filename, action = 'read')
 
 ! skip the first record
 read(iunit,*,iostat=io) fseconds, dayofyear, year
 if (io /= 0) call error_handler(E_ERR,'read_model_time', &
-             'bomb reading "'//trim(filename)//'"')
+             'bomb reading "'//trim(model_clock_filename)//'"')
 
 ! read the time of interest
 read(iunit,*,iostat=io) fseconds, dayofyear, year
@@ -1481,121 +1481,72 @@ end function read_model_time
 !--------------------------------------------------------------------
 !> not written
 
-subroutine write_model_time(ncid, dart_time)
+subroutine write_model_time(ncFileID, dart_time)
 
-integer,         intent(in) :: ncid
+integer,         intent(in) :: ncFileID
 type(time_type), intent(in) :: dart_time
+type(time_type) :: adv_to_time
 
-call error_handler(E_ERR,'write_model_time','routine not written')
+integer :: iunit, time_dim, io, VarID
+type(time_type) :: deltatime
+type(time_type) :: new_model_time, assim_start, assim_end
+integer :: seconds, days
+
+iunit = open_file(time_filename, form='formatted', action='write')
+
+deltatime = set_time(assimilation_period_seconds, assimilation_period_days)
+
+new_model_time = dart_time + deltatime
+assim_start    = new_model_time - deltatime/2 + set_time(1,0)
+assim_end      = new_model_time + deltatime/2
+
+! By writing the days,seconds to strings with a free-format write,
+! you can avoid any decision about formatting precision.
+! The '(A)' syntax avoids printing the quotes delimiting the string
+
+call get_time(new_model_time, seconds, days)
+write(string1,*) days
+write(string2,*) seconds
+write(iunit,'(A,A)') ' init_time_days     = ',trim(string1)
+write(iunit,'(A,A)') ' init_time_seconds  = ',trim(string2)
+
+call get_time(assim_start, seconds, days)
+write(string1,*) days
+write(string2,*) seconds
+write(iunit,'(A,A)') ' first_obs_days     = ',trim(string1)
+write(iunit,'(A,A)') ' first_obs_seconds  = ',trim(string2)
+
+call get_time(assim_end, seconds, days)
+write(string1,*) days
+write(string2,*) seconds
+write(iunit,'(A,A)') ' last_obs_days      = ',trim(string1)
+write(iunit,'(A,A)') ' last_obs_seconds   = ',trim(string2)
+
+string2 = time_to_string(new_model_time)
+
+call error_handler(E_MSG,'write_model_time:','next model time should be '//trim(string2))
+
+write(iunit, '(A)') trim(string2)
+
+call print_time(new_model_time,'FESOM    stop at :',  iunit)
+call print_time(    dart_time,'FESOM current at :',  iunit)
+call print_date(new_model_time,'stop    date :',  iunit)
+call print_date(    dart_time,'current date :',  iunit)
+
+!if (present(adv_to_time)) then
+!   string1 = time_to_string(adv_to_time)
+!   write(iunit, '(A)') trim(string1)
+!
+!   deltatime = adv_to_time - dart_time
+!   string1 = time_to_string(deltatime, interval=.true.)
+!   write(iunit, '(A)') trim(string1)
+!endif
+
+call close_file(iunit)
+
+call loc_write_model_time(ncFileID, dart_time)
 
 end subroutine write_model_time
-
-!-----------------------------------------------------------------------
-
-!TJH subroutine write_model_time_file(time_filename, model_time, adv_to_time)
-!TJH  character(len=*), intent(in)           :: time_filename
-!TJH  type(time_type),  intent(in)           :: model_time
-!TJH  type(time_type),  intent(in), optional :: adv_to_time
-!TJH 
-!TJH integer :: iunit
-!TJH character(len=19) :: timestring
-!TJH type(time_type)   :: deltatime
-!TJH 
-!TJH iunit = open_file(time_filename, action='write')
-!TJH 
-!TJH timestring = time_to_string(model_time)
-!TJH write(iunit, '(A)') timestring
-!TJH 
-!TJH if (present(adv_to_time)) then
-!TJH    timestring = time_to_string(adv_to_time)
-!TJH    write(iunit, '(A)') timestring
-!TJH 
-!TJH    deltatime = adv_to_time - model_time
-!TJH    timestring = time_to_string(deltatime, interval=.true.)
-!TJH    write(iunit, '(A)') timestring
-!TJH endif
-!TJH 
-!TJH call close_file(iunit)
-!TJH 
-!TJH end subroutine write_model_time_file
-!TJH 
-!TJH 
-!TJH !-----------------------------------------------------------------------
-!TJH 
-!TJH subroutine write_model_time_restart(ncid, dart_time)
-!TJH 
-!TJH integer,             intent(in) :: ncid !< netcdf file handle
-!TJH type(time_type),     intent(in) :: dart_time
-!TJH 
-!TJH call error_handler(E_MSG, 'write_model_time', 'no routine for fesom write model time')
-!TJH 
-!TJH end subroutine write_model_time_restart
-
-!> FIXME: -aLi-----------------------------------------------------
-!> subroutine write_model_time(time_filename, model_time, adv_to_time)
-!>  character(len=*), intent(in)           :: time_filename
-!>  type(time_type),  intent(in)           :: model_time
-!>  type(time_type),  intent(in), optional :: adv_to_time
-!> 
-!> integer :: iunit
-!> type(time_type) :: deltatime
-!> type(time_type) :: new_model_time, assim_start, assim_end
-!> integer :: seconds, days
-!> 
-!> iunit = open_file(time_filename, form='formatted', action='write')
-!> 
-!> deltatime = set_time(assimilation_period_seconds, assimilation_period_days)
-!> 
-!> new_model_time = model_time + deltatime
-!> assim_start    = new_model_time - deltatime/2 + set_time(1,0)
-!> assim_end      = new_model_time + deltatime/2
-!> 
-!> ! By writing the days,seconds to strings with a free-format write,
-!> ! you can avoid any decision about formatting precision.
-!> ! The '(A)' syntax avoids printing the quotes delimiting the string
-!> 
-!> call get_time(new_model_time, seconds, days)
-!> write(string1,*) days
-!> write(string2,*) seconds
-!> write(iunit,'(A,A)') ' init_time_days     = ',trim(string1)
-!> write(iunit,'(A,A)') ' init_time_seconds  = ',trim(string2)
-!> 
-!> call get_time(assim_start, seconds, days)
-!> write(string1,*) days
-!> write(string2,*) seconds
-!> write(iunit,'(A,A)') ' first_obs_days     = ',trim(string1)
-!> write(iunit,'(A,A)') ' first_obs_seconds  = ',trim(string2)
-!> 
-!> call get_time(assim_end, seconds, days)
-!> write(string1,*) days
-!> write(string2,*) seconds
-!> write(iunit,'(A,A)') ' last_obs_days      = ',trim(string1)
-!> write(iunit,'(A,A)') ' last_obs_seconds   = ',trim(string2)
-!> 
-!> string2 = time_to_string(new_model_time)
-!> 
-!> call error_handler(E_MSG,'write_model_time:','next model time should be '//trim(string2))
-!> 
-!> write(iunit, '(A)') trim(string2)
-!> 
-!> call print_time(new_model_time,'FESOM    stop at :',  iunit)
-!> call print_time(    model_time,'FESOM current at :',  iunit)
-!> call print_date(new_model_time,'stop    date :',  iunit)
-!> call print_date(    model_time,'current date :',  iunit)
-!> 
-!> if (present(adv_to_time)) then
-!>    string1 = time_to_string(adv_to_time)
-!>    write(iunit, '(A)') trim(string1)
-!> 
-!>    deltatime = adv_to_time - model_time
-!>    string1 = time_to_string(deltatime, interval=.true.)
-!>    write(iunit, '(A)') trim(string1)
-!> endif
-!> 
-!> call close_file(iunit)
-!> 
-!> end subroutine write_model_time
-
 
 !------------------------------------------------------------------
 !>
@@ -1978,7 +1929,7 @@ MyLoop : do i = 1, MAX_STATE_VARIABLES
    ngood = ngood + 1
 enddo MyLoop
 
-if (ngood == nrows) then
+if (ngood == MAX_STATE_VARIABLES) then
    string1 = 'WARNING: There is a possibility you need to increase ''MAX_STATE_VARIABLES'''
    write(string2,'(''WARNING: you have specified at least '',i4,'' perhaps more.'')')ngood
    call error_handler(E_MSG,'parse_variable_input',string1,text2=string2)
