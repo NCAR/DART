@@ -112,8 +112,6 @@
    print_box_level             = 0
    /
 
-&xyz_location_nml
-   /
 
 &cov_cutoff_nml
    select_localization = 1
@@ -225,15 +223,6 @@
 #                          'u',      'QTY_EDGE_NORMAL_SPEED'
 #                'temperature',      'QTY_POTENTIAL_TEMPERATURE'
 
-&model_to_dart_nml
-   model_to_dart_output_file = 'filter_ics.0001'
-   print_data_ranges         = .false.
-  /
-
-&dart_to_model_nml
-   dart_to_model_input_file = 'filter_restart.0001'
-  /
-
 &utilities_nml
    TERMLEVEL = 1
    module_details = .false.
@@ -265,6 +254,19 @@
    max_lon           = 360.0
    gregorian_cal     = .true.
    /
+
+
+&fill_inflation_restart_nml
+   input_state_files = 'ENS01.2009.oce.nc'
+   write_prior_inf   = .true.
+   prior_inf_mean    = 1.00
+   prior_inf_sd      = 0.6
+   write_post_inf    = .false.
+   post_inf_mean     = 1.01
+   post_inf_sd       = 0.61
+   verbose           = .false.
+   /
+
 
 &restart_file_tool_nml
    input_file_name              = "filter_restart"
