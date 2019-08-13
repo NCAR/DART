@@ -128,8 +128,8 @@ prematurely terminating the namelist.
 </div>
 
 <P>
-The namelist controls how the logging, namelist, messages, and general
-utility routines behave.
+The namelist controls which files are created and
+what values are written to the restart files.
 </P>
 
 <div>
@@ -185,9 +185,8 @@ utility routines behave.
 
 <TR><TD>input_state_files</TD>
     <TD>character(:)</TD>
-    <TD>For the single file case a list of input files, one per domain,
-      to add the inflation values into with the proper netcdf variable names.
-      Unused for the multiple file case. 
+    <TD>List one per domain, to be used as a template for the output 
+        inflation files.
 </TD></TR>
 
 <TR><TD>verbose</TD>

@@ -45,7 +45,8 @@ use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time
                              operator(*), operator(+), operator(-), &
                              operator(>), operator(<), operator(/), &
                              operator(/=), operator(<=)
-use    utilities_mod, only : error_handler, E_ERR, E_MSG, file_exist
+use    utilities_mod, only : error_handler, E_ERR, E_MSG, file_exist, &
+                             initialize_utilities, finalize_utilities
 use    netcdf
 use    f2kcli
 
@@ -115,6 +116,7 @@ integer :: status, length
 character(len=120) :: string
 
 
+call initialize_utilities('grid_refl_obs')
 
 ! Get command-line parameters, using the F2KCLI interface.  See f2kcli.f90 for details.
 
@@ -387,6 +389,7 @@ deallocate(ht)
 deallocate(refl_ob)
 deallocate(keys)
 
+call finalize_utilities('grid_refl_obs')
 
 contains
 

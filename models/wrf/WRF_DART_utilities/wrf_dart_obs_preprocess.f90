@@ -32,7 +32,8 @@ use        types_mod, only : r8, i8
 use obs_sequence_mod, only : obs_sequence_type, static_init_obs_sequence, &
                              read_obs_seq_header, destroy_obs_sequence, &
                              get_num_obs, write_obs_seq 
-use    utilities_mod, only : find_namelist_in_file, check_namelist_read
+use    utilities_mod, only : find_namelist_in_file, check_namelist_read, &
+                             initialize_utilities, finalize_utilities
 use  netcdf_utilities_mod, only : nc_check
 use     obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT, ACARS_U_WIND_COMPONENT, &
                              MARINE_SFC_U_WIND_COMPONENT, LAND_SFC_U_WIND_COMPONENT, &
@@ -124,6 +125,8 @@ type(obs_sequence_type) :: seq_all, seq_rawin, seq_sfc, seq_acars, seq_satwnd, &
 type(time_type)         :: anal_time
 
 type(ensemble_type)     :: dummy_ens
+
+call initialize_utilities("wrf_dart_obs_preprocess")
 
 print*,'Enter target assimilation time (gregorian day, second): '
 read*,gday,gsec
@@ -297,6 +300,8 @@ if ( increase_bdy_error ) call increase_obs_err_bdy(seq_all, &
 !  write the observation sequence to file
 call write_obs_seq(seq_all, file_name_output)
 call destroy_obs_sequence(seq_all)
+
+call finalize_utilities("wrf_dart_obs_preprocess")
 
 contains
 
