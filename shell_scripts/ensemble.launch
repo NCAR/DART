@@ -1,10 +1,12 @@
 #!/bin/bash
-#-- Load Experiment Environment Variables -----------------     
-. FeoM_SBMT_ENV_VARS.sh
-#----------------------------------------------------------     
-     TMPLFILE=${RUNDIR}/FeoM_SBMT_eNS_MeMBeRS_TeMPLaTe.lsf
-     SBMTFILE=${RUNDIR}/FeoM_SBMT_eNS_MeMBeRS_${EXPINFO}.lsf
-     cat ${TMPLFILE} > ${SBMTFILE}
+
+#-- Load Experiment Environment Variables -----------------
+. environment.load
+
+#----------------------------------------------------------
+TMPLFILE=${RUNDIR}/ens_members.template.lsf
+SBMTFILE=${RUNDIR}/ens_members.${EXPINFO}.lsf
+cat ${TMPLFILE} > ${SBMTFILE}
 
 echo "\
 ##########################################################\\
@@ -34,4 +36,5 @@ echo "\
 #                                                         \\
 ##########################################################" >> \
 ${SBMTFILE}
+
 bsub < ${SBMTFILE}

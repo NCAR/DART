@@ -1,0 +1,47 @@
+#!/bin/bash
+#BSUB -J TSSENSCHeCK             # Name of the job.
+#BSUB -o LOG/TSSENSCHeCK_%J.out        # Appends std output to file %J.out.
+#BSUB -e LOG/TSSENSCHeCK_%J.out        # Appends std error  to file %J.out.
+#BSUB -q serial_30min            # queue
+# LSF
+JOBDIR=${LS_SUBCWD}                   # directory of current script
+JOBIDN=${LSB_JOBID}                   # job-id
+JOBNAM=${LSB_JOBNAME}                 # name of this script
+function jobid {
+  output=$($*)
+  echo $output | head -n1 | cut -d'<' -f2 | cut -d'>' -f1
+    }
+
+#-- Load Experiment Environment Variables -----------------
+. environment.load
+
+#-- Ensemble required variables ---------------------------
+ENSINFO=${ENSID}${MEMNO}; cd ${WRKDIR}
+ENSCHECK=$( cat ${CHECKFILE} | wc -l )
+if [ ${ENSCHECK} -eq ${MEMNO} ]; then
+  SUBMITCHECK=$( awk '{SUM += $3} END {print SUM}' ${CHECKFILE} )
+  if [ ${SUBMITCHECK} -ne 0 ]; then
+    echo "One of the ensemble members stopped. Ensemble collapsed..."
+    exit
+  else
+    cd ${WRKDIR}
+    rm ${CHECKFILE}.prev; mv ${CHECKFILE} ${CHECKFILE}.prev
+     #-------------------------------------------------------------
+     # RUN THE FILTER HERE
+     #-------------------------------------------------------------
+     TMPLFILE=${RUNDIR}/filter.template
+     SBMTFILE=${WRKDIR}/filter.${EXPINFO}
+     sed "s;ENSEMBLEMEMBERNO;${MEMNO};g" ${TMPLFILE} > ${SBMTFILE};
+
+     cd ${WRKDIR}; ID=$( jobid bsub -w "done(${ID})" < ${SBMTFILE} ); echo ${ID}
+     #-------------------------------------------------------------
+     # FINALIZE OR RESUBMIT THE JOB HERE
+     #-------------------------------------------------------------
+     TMPLFILE=${RUNDIR}/finalize.template
+     SBMTFILE=${WRKDIR}/finalize.${EXPINFO}
+     sed -e "s;^EXPID=.*$;EXPID=${EXPID};g" -e \
+            "s;^EXPNO=.*$;EXPNO=${EXPNO};g" \
+            ${TMPLFILE} > ${SBMTFILE}; cd ${WRKDIR};
+     ID=$( jobid bsub -w "done(${ID})" < ${SBMTFILE} ); echo ${ID}
+  fi
+fi

@@ -7,17 +7,20 @@
 JOBDIR=${LS_SUBCWD}                   # directory of this script
 JOBIDN=${LSB_JOBID}                   # job-id
 JOBNAM=${LSB_JOBNAME}                 # name of this script
+
 #-- Load Experiment Environment Variables -----------------
-. FeoM_SBMT_ENV_VARS.sh
-#----------------------------------------------------------
+. environment.load
 cd ${WRKDIR}
+
 #----------------------------------------------------------
-SBMTFILE=${RUNDIR}/FeoM_SBMT_eNS_MeMBeRS_${EXPINFO}.lsf 
-SECST=$(cat ENS01/ENS01.clock | sed -n 2,2p | awk '{printf("%d\n"), $1}')
-DAYST=$(cat ENS01/ENS01.clock | sed -n 2,2p | awk '{print $2}')
-RUNYR=$(cat ENS01/ENS01.clock | sed -n 2,2p | awk '{print $3}') 
+SBMTFILE=${RUNDIR}/ens_members_${EXPINFO}.lsf
+
+SECST=$(cat ${MEM01}/${MEM01}.clock | sed -n 2,2p | awk '{printf("%d\n"), $1}')
+DAYST=$(cat ${MEM01}/${MEM01}.clock | sed -n 2,2p | awk '{print $2}')
+RUNYR=$(cat ${MEM01}/${MEM01}.clock | sed -n 2,2p | awk '{print $3}')
+
 if [ "${RUNYR}" -le "${ENDYR}" ] && [ "${DAYST}" -le "${ENDDY}" ]  && [ "${SECST}" -le 86400 ]; then
-		bsub < ${SBMTFILE}; echo "EXPERIMENT CONTINUES..."
+  bsub < ${SBMTFILE}; echo "Experiment Continues..."
 else
-	echo "EXPERIMENT FINISHED..."; exit
+  echo "Experiment Finished..."; exit
 fi
