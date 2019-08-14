@@ -36,13 +36,13 @@ use     time_manager_mod, only : time_type, set_time, set_date, get_date, &
                                  operator(>),  operator(<), operator(/),  &
                                  operator(/=), operator(<=)
 
-use         location_mod, only : location_type, get_dist, query_location,    &
-                                 set_location, get_location, write_location, &
-                                 get_close_type, VERTISHEIGHT,               &
-                                 loc_get_close_obs => get_close_obs,         &
-                                 loc_get_close_state => get_close_state,     &
-                                 is_vertical, set_vertical_localization_coord, &
-                                 vertical_localization_on
+use         location_mod, only : location_type, get_dist, query_location,     &
+                                 set_location, get_location, write_location,  &
+                                 get_close_type, VERTISHEIGHT,                &
+                                 get_close_obs, get_close_state,              &
+                                 is_vertical, set_vertical_localization_coord,&
+                                 vertical_localization_on, convert_vertical_obs,&
+                                 convert_vertical_state
 
 use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
                                  nc_add_global_creation_time, nc_check,        &
@@ -131,7 +131,7 @@ public :: get_model_size,                      &
           convert_vertical_obs,                &
           convert_vertical_state,              &
           read_model_time,                     &
-          write_model_time                       
+          write_model_time
 
 ! code for these mandatory routines are in other modules
 public :: init_time,           &
@@ -268,7 +268,7 @@ integer, parameter :: max_reg_list_num = 100
 
 ! The triangle interpolation keeps a list of how many and which triangles
 ! overlap each regular lon-lat box. The number is stored in
-! array triangle_num. The allocatable array triangle_list lists the unique 
+! array triangle_num. The allocatable array triangle_list lists the unique
 ! index of each overlapping triangle. The entry in
 ! triangle_start for a given regular lon-lat box indicates
 ! where the list of triangles begins in the triangle_list.
@@ -448,7 +448,7 @@ subroutine model_interpolate(state_handle, ens_size, location, obs_type, expecte
 ! given a state vector, a location, and a QTY_xxx, return the
 ! value at from the closest grid location and an error code.  0 is success,
 ! anything positive is an error.  (negative reserved for system use)
-! TODO: possibly interpolate ... 
+! TODO: possibly interpolate ...
 !
 !       ERROR codes:
 !
@@ -805,8 +805,8 @@ integer(i8), allocatable :: var_list(:)
 ! Perturbs a model state copies for generating initial ensembles.
 ! A model may choose to provide a NULL INTERFACE by returning
 ! .false. for the interf_provided argument. This indicates to
-! the filter that if it needs to generate perturbed states, 
-! it may do so by adding a perturbation to each model state 
+! the filter that if it needs to generate perturbed states,
+! it may do so by adding a perturbation to each model state
 ! variable independently. The interf_provided argument
 ! should be returned as .true. if the model wants to do its own
 ! perturbing of states.
@@ -873,202 +873,6 @@ enddo
 deallocate(var_list, min_var, max_var)
 
 end subroutine pert_model_copies
-
-!------------------------------------------------------------------
-!>
-
-subroutine get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
-                         num_close, close_ind, dist, state_handle)
-!
-! Given a DART location (referred to as "base") and a set of candidate
-! locations & kinds (obs, obs_kind), returns the subset close to the
-! "base", their indices, and their distances to the "base" ...
-
-! Note that both base_obs_loc and obs_loc are intent(inout), meaning that these
-! locations are possibly modified here and returned as such to the calling routine.
-! The calling routine is always filter_assim and these arrays are local arrays
-! within filter_assim. In other words, these modifications will only matter within
-! filter_assim, but will not propagate backwards to filter.
-
-type(get_close_type),          intent(in)  :: gc
-type(location_type),           intent(inout)  :: base_loc, locs(:)
-integer,                       intent(in)  :: base_type, loc_qtys(:), loc_types(:)
-integer,                       intent(out) :: num_close, close_ind(:)
-real(r8),            optional, intent(out) :: dist(:)
-type(ensemble_type), optional, intent(in)  :: state_handle
-
-
-integer                :: ztypeout
-integer                :: t_ind, istatus1, istatus2, k
-integer                :: base_which, local_obs_which
-real(r8), dimension(3) :: base_llv, local_obs_llv   ! lon/lat/vert
-type(location_type)    :: local_obs_loc
-
-real(r8) ::  hor_dist
-hor_dist = 1.0e9_r8
-
-! Initialize variables to missing status
-
-num_close = 0
-close_ind = -99
-if (present(dist)) dist = 1.0e9_r8   !something big and positive (far away) in radians
-istatus1  = 0
-istatus2  = 0
-
-! If you want to impose some sort of special localization, you can key
-! off things like the obs_kind and make things 'infinitely' far away.
-! Otherwise, this does nothing. Take a look at the POP model_mod.f90 for an example.
-
-! Convert base_obs vertical coordinate to requested vertical coordinate if necessary
-
-base_llv = get_location(base_loc)
-base_which = nint(query_location(base_loc))
-
-ztypeout = vert_localization_coord
-
-if (vertical_localization_on()) then
-  if (base_llv(3) == MISSING_R8) then
-     istatus1 = 1
-  else if (base_which /= vert_localization_coord) then
-!>      call vert_convert(state_handle, base_loc, base_type, istatus1)
-      if(debug > 5) then
-         call write_location(0,base_loc,charstring=string1)
-         call error_handler(E_MSG, 'get_close_obs: base_loc',string1,source, revision, revdate)
-     endif
-   endif
-endif
-
-if (istatus1 == 0) then
-
-   ! Loop over potentially close subset of obs priors or state variables
-   ! This way, we are decreasing the number of distance computations that will follow.
-   ! This is a horizontal-distance operation and we don't need to have the relevant vertical
-   ! coordinate information yet (for locs).
-   call loc_get_close_obs(gc, base_loc, base_type, locs, loc_qtys, loc_types, &
-                          num_close, close_ind)
-
-   do k = 1, num_close
-
-      t_ind = close_ind(k)
-      local_obs_loc   = locs(t_ind)
-      local_obs_which = nint(query_location(local_obs_loc))
-
-      ! Convert local_obs vertical coordinate to requested vertical coordinate if necessary.
-      ! This should only be necessary for obs priors, as state location information already
-      ! contains the correct vertical coordinate (filter_assim's call to get_state_meta_data).
-      if (vertical_localization_on()) then
-          if (local_obs_which /= vert_localization_coord) then
-!>              call vert_convert(state_handle, local_obs_loc, loc_qtys(t_ind), istatus2)
-              locs(t_ind) = local_obs_loc
-          else
-              istatus2 = 0
-          endif
-      endif
-
-      if (present(dist)) then
-         ! Compute distance - set distance to a very large value if vert coordinate is missing
-         ! or vert_interpolate returned error (istatus2=1)
-         local_obs_llv = get_location(local_obs_loc)
-         if ( (vertical_localization_on() .and. &
-              (local_obs_llv(3) == MISSING_R8)) .or. (istatus2 /= 0) ) then
-               dist(k) = 1.0e9_r8
-         else
-               dist(k) = get_dist(base_loc, local_obs_loc, base_type, loc_qtys(t_ind))
-         ! if ((debug > 4) .and. (k < 100) .and. do_output()) then
-         !     print *, 'calling get_dist'
-         !     call write_location(0,base_loc,charstring=string2)
-         !     call error_handler(E_MSG, 'get_close_obs: base_loc',string2,source, revision, revdate)
-         !     call write_location(0,local_obs_loc,charstring=string2)
-         !     call error_handler(E_MSG, 'get_close_obs: local_obs_loc',string2,source, revision, revdate)
-         !     hor_dist = get_dist(base_loc, local_obs_loc, base_type, loc_qtys(t_ind), no_vert=.true.)
-         !     print *, 'hor/3d_dist for k =', k, ' is ', hor_dist,dist(k)
-         ! endif
-         endif
-      endif
-
-   enddo
-endif
-
-if ((debug > 2) .and. do_output()) then
-   call write_location(0,base_loc,charstring=string2)
-   print *, 'get_close_obs: nclose, base_loc ', num_close, trim(string2)
-endif
-end subroutine get_close_obs
-
-
-
-!------------------------------------------------------------------
-! Given a DART location (referred to as "base") and a set of candidate
-! locations & qtys/indices (locs, loc_qtys/loc_indx), returns the subset close 
-! to the "base", their indices, and their distances to the "base" 
-
-subroutine get_close_state(gc, base_loc, base_type, locs, loc_qtys, loc_indx, &
-                           num_close, close_ind, dist, state_handle)
-
-!>@todo FIXME this is working on state vector items.  if a vertical
-!>conversion is needed, it doesn't need to interpolate.  it can compute
-!>the location using the logic that get_state_meta_data() uses.
-
-type(get_close_type),          intent(in)  :: gc
-type(location_type),           intent(inout)  :: base_loc, locs(:)
-integer,                       intent(in)  :: base_type, loc_qtys(:)
-integer(i8),                   intent(in)  :: loc_indx(:)
-integer,                       intent(out) :: num_close, close_ind(:)
-real(r8),            optional, intent(out) :: dist(:)
-type(ensemble_type), optional, intent(in)  :: state_handle
-
-integer :: istatus1, istatus2
-real(r8) :: hor_dist
-
-hor_dist = 1.0e9_r8
-
-call error_handler(E_ERR,'get_close_state','routine not written')
-
-! Initialize variables to missing status
-
-num_close = 0
-close_ind = -99
-if (present(dist)) dist = 1.0e9_r8   !something big and positive (far away) in radians
-istatus1  = 0
-istatus2  = 0
-
-
-end subroutine get_close_state
-
-!------------------------------------------------------------------
-!>
-
-subroutine convert_vertical_obs(state_handle, num, locs, loc_qtys, loc_types, &
-                                which_vert, status)
-
-type(ensemble_type), intent(in)    :: state_handle
-integer,             intent(in)    :: num
-type(location_type), intent(inout) :: locs(:)
-integer,             intent(in)    :: loc_qtys(:), loc_types(:)
-integer,             intent(in)    :: which_vert
-integer,             intent(out)   :: status(:)
-
-call error_handler(E_ERR,'convert_vertical_obs','routine not written, not needed?')
-
-end subroutine convert_vertical_obs
-
-!--------------------------------------------------------------------
-
-subroutine convert_vertical_state(state_handle, num, locs, loc_qtys, loc_indx, &
-                                  which_vert, istatus)
-
-type(ensemble_type), intent(in)    :: state_handle
-integer,             intent(in)    :: num
-type(location_type), intent(inout) :: locs(:)
-integer,             intent(in)    :: loc_qtys(:)
-integer(i8),         intent(in)    :: loc_indx(:)
-integer,             intent(in)    :: which_vert
-integer,             intent(out)   :: istatus
-
-call error_handler(E_ERR,'convert_vertical_state','routine not written, not needed?')
-
-end subroutine convert_vertical_state
-
 
 !==================================================================
 ! The (model-specific) additional public interfaces come next
@@ -1193,7 +997,7 @@ integer  :: seconds, dayofyear, year
 integer  :: io, iunit
 type(time_type) :: january1
 
-! ALI ... make a namelist variable specifying the name of the file we 
+! ALI ... make a namelist variable specifying the name of the file we
 ! SHOULD be reading ... and open it here instead of argument.
 
 write(*,*) "Reading clock file: ", trim(model_clock_filename)
@@ -1554,7 +1358,7 @@ MyLoop : do i = 1, MAX_STATE_VARIABLES
    call to_upper(state_or_aux)
 
    var_names(i) = trim(varname)
-   var_qtys(i)  = get_index_for_quantity(dartstr) 
+   var_qtys(i)  = get_index_for_quantity(dartstr)
 
    read(minvalstring,*,iostat=ios) minvalue
    if (ios == 0) var_ranges(i,1) = minvalue
@@ -1779,7 +1583,7 @@ surface_index = 0
 CLOSE : do iclose = 1, num_close
 
    indx     = close_cell_inds(iclose)
-   distance = get_dist(location, cell_locations(indx))
+   distance = get_dist(location, cell_locations(indx), no_vert=.true.)
 
    if (distance < closest) then
       closest       = distance
