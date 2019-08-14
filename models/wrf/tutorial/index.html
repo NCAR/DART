@@ -1,0 +1,548 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<head>
+<title>WRF/DART tutorial presentations</title>
+<link rel="stylesheet" type="text/css" href="/DAReS/DART/Manhattan/documentation/html/doc.css" />
+<link href="/DAReS/DART/Manhattan/documentation/images/dart.ico" rel="shortcut icon" />
+<style type="text/css">
+<!--
+.tab { margin-left: 40px; }
+-->
+</style>
+</head>
+<body leftmargin="30" topmargin="0" marginwidth="15" marginheight="0">
+<A NAME="TOP"></A>
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="/DAReS/DART/Manhattan/documentation/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="/DAReS/DART/Manhattan/documentation/index.html">DART Manhattan Documentation Main Index</a><br />
+       </P></td>
+</tr>
+</table>
+<A HREF="#Tutorial">TUTORIAL</A> /
+<A HREF="#SetUp">SETUP</A> /
+<A HREF="#InitialFiles">INITIAL ENSEMBLE</A> /
+<A HREF="#Obsprep">PREPARE OBSERVATIONS</A> /
+<A HREF="#Cycle">CYCLING</A> /
+<A HREF="#Check">CHECK RESULTS</A> /
+<!-- <A HREF="#Legalese">TERMS OF USE</A> -->
+<br />
+<br/>
+<H3>WRF/DART materials for the Manhattan release. </H3>
+
+<A NAME="Tutorial"></A>
+<ul><b>Agenda from the 22 Jan 2014 tutorial</b>
+<li>Introduction (Anderson) - <a href="/DAReS/DART/Manhattan/documentation/DART_LAB/DART_LAB.html">DART Lab materials</a>
+<li>WRF/DART basic building blocks (Romine) - <a href="../classic/wrf_workshop_building_blocks.pdf">slides</a> (some material is outdated)
+<li>Computing environment support (Collins) - <a href="../classic/wrf_workshop_computing_environment.pdf">slides</a>
+<li>WRF/DART application examples (Romine) - <a href="../classic/wrf_workshop_application_examples.pdf">slides</a> (some material is outdated)
+<li>Observation processing (Collins) - <a href="../classic/wrf_workshop_observation_processing.pdf">slides</a>
+<li>DART diagnostics (Hoar) - <a href="/DAReS/DART/Manhattan/assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html">observation diagnostics</a>,
+                              <a href="/DAReS/DART/Manhattan/assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html">more observation diagnostics</a>
+</ul>
+
+<ul><b>Helpful links</b>
+<li><a href="http://www.image.ucar.edu/DAReS/DART/">DAReS website</a>
+<li><a href="/DAReS/DART/Manhattan/documentation/index.html">DART Manhattan release</a>
+<li><a href="https://www2.cisl.ucar.edu/software/dart/download">Register for DART</a>
+<li><a href="http://www.image.ucar.edu/DAReS/DART/DART2_Starting.php#matlab">Preparing MATLAB</a>
+<li><a href="http://www.image.ucar.edu/staff/thoar/svn_primer.html">Using SVN</a>
+<li><a href="http://www.mmm.ucar.edu/wrf/users/">WRF model users page</a>
+<li>Need help? e-mail dart (at) ucar (dot) edu
+</ul>
+
+<A NAME="SetUp"></A>
+<P><!-- do nothing space --></P>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H3>Getting started running your own WRF/DART system</H3>
+
+<p>
+The materials above were developed with earlier versions of DART, 
+so not all aspects are still relevant.
+Still, we suggest working through the tutorial materials (especially the Intro)
+before trying to build your own WRF/DART analysis system with the current tools.
+The following tutorial is designed to help get you going with a real data 
+retrospective cycled analysis.
+A specific case set is provided so that you can check that things are working 
+as expected.
+Because of the wide range of computing environments we have limited ability 
+for this tutorial to be equally simple to run for all users.
+Further, setting up a wrf/dart system of your own will require additional effort.
+<br />
+<br />
+Specifically, this tutorial was assembled to be compatible with ~ WRF V3.9.1 and 
+the DART Manhattan release, to be run on NCAR's Cheyenne supercomputer. Contact
+us if you need help adapting this guidance to your system.
+<br />
+<br />
+DISCLAIMER: We do not claim that this is a turnkey or blackbox system.  
+Be mentally prepared to invest a reasonable amount of time on the learning curve.  
+There are many outstanding research issues which have no easy answers here.  
+This is not a one week/grad student/naive user system.
+Even after you get the code up and running, you have to be able to 
+interpret the results, which requires developing specific skills.
+There are a lot of ways to alter how the system works -- localization, 
+inflation, which variables and observations are assimilated,
+the assimilation window time, the model resolution, etc, etc.
+This is both good and bad - you have many ways of 
+improving your results, but you have to take care on how you leave all the settings of these inputs.
+Getting a set of scripts that runs doesn't mean the system is running well,
+or producing useful results.  Let the adventure begin!
+</p>
+<p>
+If you are a visual learner, 
+<a href="http://www.image.ucar.edu/DAReS/images_dart2/DART_flow_native_netCDF.png">this diagram</a> 
+may be helpful to you in understanding the overall flow of a cycled data assimilation system.
+</p>
+
+<P><!-- do nothing space --></P>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H3>Step 1: Setup</H3>
+<p>There are several dependencies for the executables and scripting components. On Cheyennne, 
+users have reported success building WRF, WPS, WRFDA, and DART with the default 
+module environment including intel compilers, MPT, and netcdf 4. In addition, you'll need to load 
+the NCO and NCL modules to run the script set that accompanies the tutorial. </p>
+<p>
+ Download the software packages needed:
+<ul>
+<li>The Manhattan release of 
+    <a href="https://www2.cisl.ucar.edu/software/dart/download">DART</a> 
+
+<li><a href="http://www2.mmm.ucar.edu/wrf/users/wrfda/download/get_source.html">WRFDA</a> 
+	 is needed to generate a set of perturbed initial ensemble member files and also
+	 to generate perturbed boundary condition files.<br />
+    (If running this tutorial on NCAR's cheyenne system this step can be optional.)
+
+<li><a href="http://www2.mmm.ucar.edu/wrf/users/download/get_source.html">WRF</a> components 
+    (WPS, real_em build of WRF). It is assumed here that you are already comfortable running WRF. 
+    If not, work through the 
+    <a href="http://www2.mmm.ucar.edu/wrf/OnLineTutorial/index.htm">WRF model tutorial</a>
+    first before trying WRF/DART.
+<li>The tutorial-specific additional files needed to run the examples for this tutorial:
+<ol><li>
+Create a work directory someplace with a lot of free space.  On most large
+systems there is a 'scratch' filesystem for this purpose.  For the rest of these
+instructions we will assume the last part of this directory name 
+is <em class=file>WORKDIR</em>.
+<li>
+Place
+<a href="./wrf_dart_tutorial_23May2018_v2.tar.gz">this very large tar file</a> in it.
+CAUTION ~ 15 GB file - you might be better off using 'wget' to download the file 
+directly to your local system, e.g.:
+<div class=unix>
+cd WORKDIR<br />
+wget&nbsp;http://www.image.ucar.edu/wrfdart/tutorial/wrf_dart_tutorial_23May2018_v2.tar.gz<br />
+tar&nbsp;-xzvf&nbsp;wrf_dart_tutorial_23May2018_v2.tar.gz
+</div>
+<li>After untarring the file you should see the following directories: 
+<em class=file>icbc, obs_diag, rundir, scripts, output, perts</em>, and 
+<em class=file>template</em>.
+The directory names (case sensitive) are important, as the scripts 
+rely on these local paths and file names.
+</ol>
+</ul>
+<p>
+Build the software packages and copy files into place:
+<ol>
+<li>Build the DART executables.
+    <ol><li>Copy the tutorial DART namelist from <em class=file>rundir/input.nml</em> 
+            to <em class=file>$DART/models/wrf/work/input.nml</em>
+        <li>Configure your <a href="/DAReS/DART/Manhattan/build_templates/mkmf.html">$DART/build_templates/mkmf.template</a>
+            by copying the appropriate system-dependent version to this name.
+        <li>Build the executables by cd'ing into <em class=file>$DART/models/wrf/work</em>
+             and running <em class=file>quickbuild.csh</em>
+   </ol>
+<li>Copy the contents of <em class=file>$DART/models/wrf/shell_scripts</em> to the <em class=file>WORKDIR/scripts</em> directory.
+<li>Copy the WRF and WRFDA executables and support files (except for <em class=file>namelist.input</em>) into 
+	<em class=file>WORKDIR/rundir/WRF_RUN/</em>
+	<ol><li>Build a serial version of WRF.
+	     Copy <em class=file>real.exe</em> to <em class=file>WORKDIR/rundir/WRF_RUN/real.serial.exe</em>.
+           <li>From your WRFDA build:
+	    <ul><li>Copy <em class=file>da_wrfvar.exe</em> to <em class=file>WORKDIR/rundir/WRF_RUN/da_wrfvar.exe</em> 
+           <li>Copy <em class=file>WRFDA/var/run/be.dat.cv3</em> to <em class=file>WORKDIR/rundir/WRF_RUN/be.dat</em>
+	   </ul>
+   </ol>
+<li>Copy the needed DART executables into <em class=file>rundir/</em>
+   <ol>
+   <li>The executables from DART that you need are:
+       <a href="/DAReS/DART/Manhattan/assimilation_code/programs/advance_time/advance_time.html">advance_time</a>, 
+       <a href="/DAReS/DART/Manhattan/assimilation_code/programs/filter/filter.html">filter</a>, 
+       pert_wrf_bc (no helper page), 
+       <a href="/DAReS/DART/Manhattan/assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html">obs_diag</a>, 
+       <a href="/DAReS/DART/Manhattan/assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool</a>, 
+       <a href="/DAReS/DART/Manhattan/assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>, 
+       and <a href="/DAReS/DART/Manhattan/models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html">wrf_dart_obs_preprocess</a> 
+       (if making your own obs). 
+       <li>We will use a few 'advanced' features here as well, so copy <em class=file>sampling_error_correction_table.nc</em>
+	       to your <em class=file>rundir</em> from 
+	       <em class=file>$DART/assimilation_code/programs/gen_sampling_err_table/work</em> directory if it is not already there. 
+
+       <li>You will need a list of the file names for the DART/WRF input and restart files.
+        The files with the list of filenames 
+        (<em class=file>input_list_d01.txt, output_list_d01.txt</em>)
+        should already be present, but if needed 
+        the following script will regenerate them (run in <em class=file>rundir</em>):
+        <pre>
+        #!/bin/csh
+        
+        set num_ens = 50 
+        set input_file_name  = "input_list_d01.txt" 
+        set input_file_path  = "./advance_temp" 
+        
+        set output_file_name = "output_list_d01.txt" 
+        
+        set n = 1 
+        
+        if ( -e $input_file_name )  rm $input_file_name 
+        if ( -e $output_file_name ) rm $output_file_name 
+        
+        while ($n &lt;= $num_ens)
+        
+           set     ensstring = `printf %04d $n`
+           set  in_file_name = ${input_file_path}${n}"/wrfinput_d01" 
+           set out_file_name = "filter_restart_d01."$ensstring 
+        
+           echo $in_file_name  &gt;&gt; $input_file_name
+           echo $out_file_name &gt;&gt; $output_file_name
+        
+           @ n++
+        end
+        </pre>
+	</li>
+        </ol>
+</ol>
+
+
+So far, your rundir should contain (correct as needed):
+</P>
+<table width=100% border=0 summary="" cellpadding=5>
+<tr><td valign=top>executables:</td>
+    <td>advance_time, filter, obs_diag, obs_seq_to_netcdf, obs_sequence_tool, 
+        pert_wrf_bc, wrf_dart_obs_preprocess
+    </td></tr>
+<tr><td valign=top>scripts:</td>
+    <td>new_advance_model.csh, add_bank_perts.ncl
+    </td></tr>
+<tr><td valign=top>directories:</td>
+    <td>WRFIN (empty), WRFOUT (empty), WRF_RUN (wrf executables and support files, except namelist.input)
+    </td></tr>
+<tr><td valign=top>support data and files:</td>
+    <td>input_list_d01.txt, output_list_d01.txt, sampling_error_correction_table.nc
+    </td></tr>
+<tr><td valign=top>namelists:</td>
+    <td>input.nml, namelist.input
+    </td></tr>
+</table>
+
+<p>
+For this tutorial, we are providing you with a specified WRF domain.
+To make your own, you would need to define your own wps namelist and use 
+WPS to make your own geogrid files.
+See the WRF site for help with building and running those tools as needed.
+You would also need to get the appropriate grib files to generate initial 
+and boundary condition files for the full period you plan to cycle.
+In this tutorial we have provided you with geogrid files, 
+a small set of grib files, and a namelist to
+generate series of analyses for several days covering a North American region. 
+</p>
+<p>
+Let's now look inside the scripts directory. You should find:
+<pre>
+ assim_advance.csh
+ assimilate.csh
+ diagnostics_obs.csh
+ driver.csh
+ first_advance.csh
+ gen_retro_icbc.csh
+ init_ensemble_var.csh
+ param.csh
+ prep_ic.csh
+</pre>
+The primary script for running the cycled analysis system is the <em class=file>driver.csh</em>.
+The <em class=file>param.csh</em> is home to most of the key settings
+and paths for running the system. 
+The scripts <em class=file>assim_advance.csh</em>, 
+<em class=file>assimilate.csh</em>, 
+<em class=file>first_advance.csh</em>, 
+<em class=file>prep_ic.csh</em>, and 
+<em class=file>diagnostics_obs.csh</em> are templates
+for submitted jobs or helper scripts for specific tasks that need to be done during the cycling. 
+Finally, the <em class=file>gen_retro_icbc.csh</em> is used
+to generate template files and boundary conditions, 
+while <em class=file>init_ensemble_var.csh</em> is used to 
+get an initial ensemble set ready for cycled DA. 
+You will need
+to edit these scripts to provide the paths to where you are running the experiment and 
+to connect up files. Search for the string <tt>'set this appropriately #%%%#'</tt> for
+locations that you need to edit.</p>
+
+<p>
+Next, move to the <em class=file>perts</em> directory.
+Inside, unzip and extract the perturbation files (there should be 100 files). 
+For your own case, you will need to create a perturbation bank of your own.
+A brief description for running the the script from 
+<em class=file>$DART/models/wrf/shell_scripts/gen_pert_bank.csh</em> is provided with that script.
+</p>
+<p>
+The <em class=file>icbc</em> directory contains a geo_em_d01.nc file (geo information for our test domain), 
+and grib files that will be used to generate the 
+initial and boundary condition files. </p>
+<p>
+The <em class=file>template</em> directory contains namelists for WRF, WPS, and filter, along with a 
+wrfinput file that matches what will be the analysis domain. 
+</p>
+<p>
+Finally, the <em class=file>output</em> directory contains observations within each directory name. 
+Template files will be placed here once created (done below),
+and as we get into the cycling the output will go in these directories.
+</p>
+
+<A NAME="InitialFiles"></A>
+<P><!-- do nothing space --></P>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H3> Step 2: Initial conditions</H3> 
+<p> 
+To get an initial set of ensemble files, depending on the size of your ensemble and
+data available to you, you might have options to initialize the ensemble from say
+a global ensemble set of states. Here, we develop a set of flow dependent errors by
+starting with random perturbations and conducting a short forecast. use the will use
+WRFDA random CV option 3 to provide an initial set of random errors, and since this is
+already available in the perturbation bank developed in the setup, we can simply add
+these to a deterministic GFS state. Further, lateral boundary uncertainty will come
+from adding a random perturbation to the forecast (target) lateral boundary state,
+such that after the integration the lateral boundaries have random errors.
+</p>
+<p>
+First, we need to generate a set of GFS states and boundary conditions that will be used
+in the cycling. Use the script (in the script dir) named gen_retro_icbc.csh to create
+this set of files, which will be added to the output directory date directories. If you
+didn't already do so, edit this file to put in the appropriate path to your param.csh
+script. If the param.csh script also has the correct edits for paths, you have the
+executables placed in the rundir, etc., then running this script should execute a series
+of operations that extracts the grib data, runs metgrid, and then twice executes the
+serial build of real.exe to generate a pair of wrf files and a boundary file for each
+analysis time. Check in your output/2017042700 directory, and you should see these files:
+<pre>
+   wrfbdy_d01_152057_21600_mean
+   obs_seq.out
+   wrfinput_d01_152057_21600_mean
+   wrfinput_d01_152057_0_mean
+</pre>
+The odd extensions of these files is the Gregorian dates for this files, 
+which is used by the dart software for time schedules. 
+Similar files (with different dates) should appear in all of the date directories.
+</p>
+<p>
+Next, we will execute the script to generate an initial ensemble of states for the first analysis. 
+For this we run the script <em class=file>init_ensemble_var.csh</em>.   This script generates 50 small scripts
+and submits them to the batch system.  It assumes a PBS batch system and the 'qsub' command for submitting
+jobs.  If you have a different batch system, edit this script and look near the end.  You will
+need to modify the lines staring with #PBS and change 'qsub' to the right command for your system.
+You might also want to modify this script to test running a single member first just in 
+case you have some debugging to do. When complete for the full ensemble, you should find 50 new files in the
+directory <em class=file>output/2017042700/PRIORS</em> with names 
+like <em class=file>prior_d01.0001</em>, <em class=file>prior_d01.0002</em>, etc... 
+</p> 
+
+<A NAME="Obsprep"></A>
+<P><!-- do nothing space --></P>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H3>Step 3: Prepare observations</H3> 
+<p>
+For the tutorial exercise, observation sequence files are provided to enable you 
+quickly advance to running a test system. The observation processing is critical
+to the success of your results, so please plan to come back to this and invest 
+some time in understanding the observation processing. In brief, there are many options
+provided by DART to convert a broad range of observations from a number of different sources. 
+What makes for the most sense for you will depend on your application
+and what data sources you have ready access to. 
+An example using bufr observations from the GDAS system is provided below. </p>
+<p>
+DART has developed a number of tools for converting standard observation formats into 
+<a href="/DAReS/DART/DART2_Observations.php#obs_seq_overview">observation sequence files</a>, 
+which is the format of observations used by the DART system. 
+See the DART <a href="/DAReS/DART/Manhattan/observations/obs_converters/observations.html">observations documentation</a> 
+page for a comprehensive overview of the available 
+observation converters. For now, let's work through using NCEP bufr observations 
+which contains a wide array of observation types from many platforms within a single file. 
+Follow the guidance on the 
+<a href="/DAReS/DART/Manhattan/observations/obs_converters/NCEP/prep_bufr/prep_bufr.html">prepbufr</a> page to build the bufr 
+conversion programs, get observation files for the dates you plan to build an analysis for, and 
+run the codes to generate an observation sequence file. </p>
+
+<p>To control what observations are convertered there are namelist controls 
+worth investigating a bit here. Within your input.nml, add the following 
+namelist for the bufr conversion:
+</p>
+<pre>
+&amp;prep_bufr_nml
+   obs_window    = 1.0
+   obs_window_cw = 1.5
+   otype_use     = 120.0, 130.0, 131.0, 132.0, 133.0, 180.0
+                   181.0, 182.0, 220.0, 221.0, 230.0, 231.0
+                   232.0, 233.0, 242.0, 243.0, 245.0, 246.0
+                   252.0, 253.0, 255.0, 280.0, 281.0, 282.0
+   qctype_use    = 0,1,2,3,15
+   /
+</pre>
+<P>
+This defines an observation time window of +/- 1.0 hours, 
+while cloud motion vectors will be used over a window of +/- 1.5 hours. 
+Use observation types sounding temps (120), aircraft temps (130,131), 
+dropsonde temps (132), mdcars aircraft temps, marine temp (180), 
+land humidity (181), ship humidity (182), rawinsonde U,V (220), 
+pibal U,V (221), Aircraft U,V (230,231,232), cloudsat winds (242,243,245), 
+GOES water vapor (246), sat winds (252,253,255), ship obs (280, 281, 282). 
+Include observations with specified qc types only. See the prepbufr page for 
+more available namelist controls. Copy this <em class=file>input.nml</em> into 
+<em class=file>DART/observations/obs_converters/NCEP/prep_bufr/work/</em> directory.
+</p>
+<p>
+Within DART/observations/obs_converters/NCEP/prep_bufr/work/prepbufr.csh:
+</p>
+<pre>
+set daily    = no
+set zeroZ    = no # to create 06,12,18,24 convention files
+set convert  = no
+set block    = no
+set year     = 2008
+set month    = 5 # no leading zero
+set beginday = 22
+set endday   = 24
+set BUFR_dir = ../data
+</pre>
+<p>
+Run the shell script to generate the intermediate format text files. 
+Next, edit your input.nml to add the namelist below, and copy into the 
+<em class=file>$DART/observations/NCEP/ascii_to_obs/work/</em> directory, 
+and run <em class=file>quickbuild.csh</em> there.
+</p>
+<pre>
+&amp;ncepobs_nml 
+   year       = 2008 
+   month      = 5 
+   day        = 22 
+   tot_days   = 31 
+   max_num    = 800000 
+   select_obs = 0 
+   ObsBase    = '../../path/to/temp_obs.' 
+   ADPUPA     = .true. 
+   AIRCFT     = .true. 
+   SATWND     = .true. 
+   obs_U      = .true. 
+   obs_V      = .true. 
+   obs_T      = .true. 
+   obs_PS     = .false. 
+   obs_QV     = .false. 
+   daily_file = .false. 
+   lon1       = 270.0 
+   lon2       = 330.0 
+   lat1       = 15.0 
+   lat2       = 60.0
+   /
+</pre>
+<p>
+Look at the <a href="/DAReS/DART/Manhattan/observations/obs_converters/NCEP/ascii_to_obs/create_real_obs.html">create_real_obs</a> 
+program help page to set/add the appropriate namelist options. 
+Run <em class=file>create_real_obs</em> and you'll get some observation sequence files, one for each six hour window. 
+For a cycled experiment, the typical approach is to put a single set of observations, associated 
+with a single analysis step, into a separate directory. For example, within the <em class=file>output</em> directory 
+(we also will put inputs there to start), we would create directories like 
+<em class=file>2012061500</em>, <em class=file>2012061506</em>, <em class=file>2012061512</em>, etc. 
+for 6-hourly cycling. 
+Place the observation files in the appropriate directory to match the contents in the files 
+(e.g. <em class=file>obs_seq2012061500</em>) and rename as simply 
+<em class=file>obs_seq.out</em> (e.g. <em class=file>work/output/2012061500/obs_seq.out</em>).
+</p>
+<p>
+It is helpful to also run the 
+<a href="/DAReS/DART/Manhattan/models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html">wrf_dart_obs_preprocess</a> program, 
+which strips away observations not in the model domain, can perform superobservations of typically dense observations, 
+increases observation errors near the lateral boundaries, 
+checks for surface observations far from the model terrain height, etc. 
+These collectively improve the system performance and simplifies interpretting the observation space diagnostics. 
+There are a number of namelist options to consider, and you must provide a 
+wrfinput file for the program to access the analysis domain information.
+</p>
+
+<A NAME="Cycle"></A>
+<P><!-- do nothing space --></P>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H3>Step 4: Cycled analysis system</H3>
+<p>
+For larger analysis domains, with many observations, run on modern supercomputers
+with batch queue job control systems, scripts can provide a practical solution
+to managing the completion of work tasks. A set of scripts is provided with the
+tutorial tarball.  You will need to edit these scripts, perhaps extensively, to run
+them within your particular computing environment. If you will run on NCAR's Cheyenne
+environment, fewer edits may be needed, but you should familiarize yourself with 
+<a href="https://www2.cisl.ucar.edu/resources/computational-systems/cheyenne/quick-start-cheyenne">running jobs on Cheyenne</a> 
+if necessary. </p>
+
+<p>Within the scripts directory you'll find a parameter shell script (param.csh),
+a driver script (driver.csh), template scripts for advancing the ensemble members
+(assim_advance.csh) and running filter (assimilate.csh). Edit the parameter shell script
+as needed to set up all of the appropriate paths and other settings (see comments in script: 
+<tt>set this appropriately #%%%#</tt>). There are other options here to adjust cycling
+frequency, domains, ensemble size, etc., which are available when adapting this set of
+scripts for your own research.  Edit the driver script to set the path to the parameter
+file (this is set the same as the first analysis time during testing, but you have
+things running, you can set this to future times to run through multiple cycles). I
+would advise commenting out all the places the script submits jobs while debugging,
+placing an 'exit' in the script at each job submission step. The driver script expects
+a date as a command line argument (YYYYMMDDHH), so you would for instance run it as:
+<pre>
+ csh driver.csh 2017042706 &gt;&amp; run.out &amp; 
+</pre>
+The script will check that the input files are present (wrfinput files, wrfbdy,
+observation sequence, and DART restart files), create a job script to run filter
+in rundir, monitors that expected output from filter is created, then generates job
+scripts for all of the model advances. After this completes, a check for if this is
+the last analysis is done to determine if a new cycle is needed or not.  A script
+is also launched by the driver to compute some observation space diagnostics and to
+convert the final observation sequence file into a netcdf format.  </p>
+
+<A NAME="Check"></A>
+<P><!-- do nothing space --></P>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H3> Step 5: Check your results</H3> 
+<p>
+Once you have run the analysis system, it is time to check if things ran well or if
+there are problems that need to be addressed. DART provides analysis system diagnostics
+in both state and observation space. </p>
+
+<p>
+Check to see if the analysis system actually changed the state. 
+You should find a file in the output/$date/ directory called 'analysis_increment.nc' 
+which is the change in the ensemble mean state from the background to
+the analysis after running filter.  Use a tool, such as ncview, to look at this file. 
+You should see spatial patterns that look something like the 
+meteorology of the day. These should be places where the background (short ensemble forecast) was 
+adjusted based on the set of observations provided. </p>
+
+<p>
+You can also use the provided 
+<a href="/DAReS/DART/Manhattan/assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html">obs_diag</a> program 
+to investigate the observation space analysis statistics. You'll find the results of this in output/$date/obs_diag_output.nc. 
+Additional statistics can be evaluated using the converted final observation sequence file in netcdf format from the 
+<a href="/DAReS/DART/Manhattan/assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a> tool. 
+This file has a name like 'obs_epoch_029.nc', where the number in the file is largest in the most 
+recent set of observations processed. The additional files enable plotting
+the time series of recently assimilated observations once multiple cycles have been run. 
+Be sure to check that a high percentage (&gt;&nbsp;90%) of 
+available observations were assimilated. Low assimilation rates typically point to a 
+problem with the background analysis, observation quality, and/or 
+observation error specification which are important to address before using system results for science. 
+</p>
+<p> If you encounter difficulties setting up, running, or evaluating the system performance, please contact us at dart(at)ucar(dot)edu.</p>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+</body>
+</html>
