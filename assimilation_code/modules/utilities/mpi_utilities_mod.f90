@@ -132,8 +132,7 @@ character(len = 256) :: errstring, errstring1
 ! for broadcasts, pack small messages into larger ones.  remember that the
 ! byte size will be this count * 8 because we only communicate r8s.  (unless
 ! the code is compiled with r8 redefined as r4, in which case it's * 4).
-integer, parameter :: PACKLIMIT1 = 8
-integer, parameter :: PACKLIMIT2 = 512
+integer, parameter :: PACKLIMIT = 512
 
 ! also for broadcasts, make sure message size is not too large.  if so,
 ! split a single request into two or more broadcasts.  i know 2G is really
@@ -780,9 +779,10 @@ end subroutine receive_from
 !> root array in their own arrays.  Thus 'array' is intent(in) on root, and
 !> intent(out) on all other tasks.
 
-subroutine array_broadcast(array, root)
+subroutine array_broadcast(array, root, icount)
  real(r8), intent(inout) :: array(:)
  integer, intent(in) :: root
+ integer, intent(in), optional :: icount
 
 integer :: itemcount, errcode, offset, nextsize
 real(r8), allocatable :: tmpdata(:)
@@ -799,7 +799,22 @@ if ((root < 0) .or. (root >= total_tasks)) then
    call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
 endif
 
-itemcount = size(array)
+! if the actual data to be sent is shorter than the size of 'array',
+! there are performance advantages to sending only the actual data
+! and not the full array size.  (performance tested on an ibm machine.)
+! calling code must determine if this is the case and pass in a length
+! shorter than the array size.
+if (present(icount)) then
+   if (icount > size(array)) then
+      write(errstring,  '(a,i12)') "number of items to broadcast: ", icount
+      write(errstring1, '(a,i12)') "cannot be larger than the array size: ", size(array)
+      call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate, &
+                         text2=errstring1)
+   endif
+   itemcount = icount
+else
+   itemcount = size(array)
+endif
 
 if (verbose .and. myrank == root) write(*,*) "PE", myrank, ": bcast itemsize from here ", itemcount
 
@@ -898,7 +913,7 @@ subroutine broadcast_send(from, array1, array2, array3, array4, array5, &
  real(r8), intent(inout), optional :: array2(:), array3(:), array4(:), array5(:)
  real(r8), intent(inout), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
 
-real(r8) :: packbuf1(PACKLIMIT1), packbuf2(PACKLIMIT2)
+real(r8) :: packbuf(PACKLIMIT)
 real(r8) :: local(5)
 logical  :: doscalar, morethanone
 integer  :: itemcount
@@ -920,20 +935,12 @@ call countup(array1, array2, array3, array4, array5, &
              scalar1, scalar2, scalar3, scalar4, scalar5, &
              itemcount, morethanone, doscalar)
 
-! try to use the smallest buffer possible
-if (itemcount <= PACKLIMIT1 .and. morethanone) then
+if (itemcount <= PACKLIMIT .and. morethanone) then
 
-   call packit(packbuf1, array1, array2, array3, array4, array5, doscalar, &
+   call packit(packbuf, array1, array2, array3, array4, array5, doscalar, &
                          scalar1, scalar2, scalar3, scalar4, scalar5)
 
-   call array_broadcast(packbuf1, from)
-
-else if (itemcount <= PACKLIMIT2 .and. morethanone) then
-
-   call packit(packbuf2, array1, array2, array3, array4, array5, doscalar, &
-                         scalar1, scalar2, scalar3, scalar4, scalar5)
-
-   call array_broadcast(packbuf2, from)
+   call array_broadcast(packbuf, from, itemcount)
 
 else
 
@@ -977,7 +984,7 @@ subroutine broadcast_recv(from, array1, array2, array3, array4, array5, &
  real(r8), intent(inout), optional :: array2(:), array3(:), array4(:), array5(:)
  real(r8), intent(inout), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
 
-real(r8) :: packbuf1(PACKLIMIT1), packbuf2(PACKLIMIT2)
+real(r8) :: packbuf(PACKLIMIT)
 real(r8) :: local(5)
 logical :: doscalar, morethanone
 integer :: itemcount
@@ -999,19 +1006,12 @@ call countup(array1, array2, array3, array4, array5, &
              scalar1, scalar2, scalar3, scalar4, scalar5, &
              itemcount, morethanone, doscalar)
 
-if (itemcount <= PACKLIMIT1 .and. morethanone) then
+if (itemcount <= PACKLIMIT .and. morethanone) then
 
-   call array_broadcast(packbuf1, from)
+   call array_broadcast(packbuf, from, itemcount)
 
-   call unpackit(packbuf1, array1, array2, array3, array4, array5, doscalar, &
-                           scalar1, scalar2, scalar3, scalar4, scalar5)
-
-else if (itemcount <= PACKLIMIT2 .and. morethanone) then
-
-   call array_broadcast(packbuf2, from)
-
-   call unpackit(packbuf2, array1, array2, array3, array4, array5, doscalar, &
-                           scalar1, scalar2, scalar3, scalar4, scalar5)
+   call unpackit(packbuf, array1, array2, array3, array4, array5, doscalar, &
+                          scalar1, scalar2, scalar3, scalar4, scalar5)
 
 else
 

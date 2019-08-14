@@ -266,9 +266,10 @@ end subroutine receive_from
 
 !> The array already has the values, nothing to do.  Not an error to call.
 
-subroutine array_broadcast(array, root)
+subroutine array_broadcast(array, root, isize)
  real(r8), intent(inout) :: array(:)
  integer, intent(in) :: root
+ integer, intent(in), optional :: isize
 
 if ( .not. module_initialized ) call initialize_mpi_utilities()
 
