@@ -19,27 +19,29 @@ set domains = $NUM_DOMAINS
 
 cd ${RUN_DIR}
 
-  set gdate = (`echo $datea 0 -g | ${RUN_DIR}/advance_time`)
-  set gdatef = (`echo $datea $ASSIM_INT_HOURS -g | ${RUN_DIR}/advance_time`)
-  set yyyy  = `echo $datea | cut -b1-4`
-  set mm    = `echo $datea | cut -b5-6`
-  set dd    = `echo $datea | cut -b7-8`
-  set hh    = `echo $datea | cut -b9-10`
-  set nn    = "00"
-  set ss    = "00"
-#  copy files to appropriate location
+set gdate = (`echo $datea 0 -g | ${RUN_DIR}/advance_time`)
+set gdatef = (`echo $datea $ASSIM_INT_HOURS -g | ${RUN_DIR}/advance_time`)
+set yyyy  = `echo $datea | cut -b1-4`
+set mm    = `echo $datea | cut -b5-6`
+set dd    = `echo $datea | cut -b7-8`
+set hh    = `echo $datea | cut -b9-10`
+set nn    = "00"
+set ss    = "00"
+
 echo $start_time >! ${RUN_DIR}/start_member_${emember}
-# if ( -d ${RUN_DIR}/advance_temp${emember} )  ${REMOVE} ${RUN_DIR}/advance_temp${emember}
-#mkdir -p ${RUN_DIR}/advance_temp${emember}  
-## DMODS - we don't need to use the restart file tool anymore, so removing this section
+
 # go into member directory and generate the needed wrf.info file
 cd $RUN_DIR/advance_temp${emember}
+
 set icnum = `echo $emember + 10000 | bc | cut -b2-5`
 if ( -e $RUN_DIR/advance_temp${emember}/wrf.info ) then
   ${REMOVE} $RUN_DIR/advance_temp${emember}/wrf.info
 endif
-  touch wrf.info
+
+touch wrf.info
+
 if ( $SUPER_PLATFORM == 'yellowstone' ) then
+
  cat >! $RUN_DIR/advance_temp${emember}/wrf.info << EOF
  ${gdatef[2]}  ${gdatef[1]}
  ${gdate[2]}   ${gdate[1]}
@@ -47,16 +49,20 @@ $yyyy $mm $dd $hh $nn $ss
            1
  mpirun.lsf ./wrf.exe
 EOF
+
 else if ( $SUPER_PLATFORM == 'cheyenne' ) then
-## Cheyenne
-# module load openmpi
-setenv MPI_SHEPHERD true
+
+ # TJH MPI_IB_CONGESTED, MPI_LAUNCH_TIMEOUT used after cheyenne O/S change in July 2019
+ # TJH setenv MPI_IB_CONGESTED 1
+ # TJH setenv MPI_LAUNCH_TIMEOUT 40
+ # TJH setenv MPI_SHEPHERD true
+
  cat >! $RUN_DIR/advance_temp${emember}/wrf.info << EOF
  ${gdatef[2]}  ${gdatef[1]}
  ${gdate[2]}   ${gdate[1]}
 $yyyy $mm $dd $hh $nn $ss
            $domains
- mpiexec_mpt dplace -s 1  ./wrf.exe
+ mpiexec_mpt dplace -s 1 ./wrf.exe
 EOF
 # For the MPT execution - ill-behaved on Cheyenne
 # mpiexec_mpt dplace -s 1  ./wrf.exe

@@ -9,17 +9,21 @@
 #==================================================================
 #BSUB -J gen_wrfinput_bdy
 #BSUB -o gen_wrfinput_bdy.%J.log
-##BSUB -P 64000049
-#BSUB -P 25000077
+#BSUB -P 25000077 # set this appropriately #%%%#
 #BSUB -W 0:38
 #BSUB -q regular
 #BSUB -n 64
 #BSUB -x
 #BSUB -R "span[ptile=64]"
 #==================================================================
+# TJH Add block for SLURM/PBS ... this takes a long time for 50
+#==================================================================
+
+echo "gen_retro_icbc.csh is running in `pwd`"
 
 ########################################################################
 #
+# TJH ... this filename may have been useful at one point ... but not now.
 #   generate_wrfinput_bdy_files.csh - shell script that generates the
 #                                     necessary wrfinput_d01 and
 #                                     wrfbdy_d01 files for running
@@ -27,25 +31,31 @@
 #
 #     created May 2009, Ryan Torn, U. Albany
 #
+# This creates   output/${date}/wrfbdy_d01_{days}_{seconds}_mean
+#                output/${date}/wrfinput_d01_{days}_{time_step1}_mean
+#                output/${date}/wrfinput_d01_{days}_{time_step2}_mean
 ########################################################################
 
-########################################################################
  set datea     = 2017042700
- set datefnl   = 2017043000
+ set datefnl   = 2017043000 # set this appropriately #%%%#
+ set datefnl   = 2017042712    # TJH shorter ... for testing
  set paramfile = /glade2/scratch2/USERNAME/WORK_DIR/scripts/param.csh   # set this appropriately #%%%#
-########################################################################
+ set paramfile = /glade/work/thoar/DART/clean_rma_trunk/models/wrf/tutorial/scripts/param.csh
+
  source $paramfile
 
- ${LINK} ${GEO_FILES_DIR}/geo_*.nc .
- mkdir -p $ICBC_DIR/metgrid
- ${LINK} ${WPS_SRC_DIR}/metgrid/METGRID.TBL $ICBC_DIR/metgrid/METGRID.TBL
+# TJH The geo_*.nc file is already in the ${ICBC_DIR}/*/ directories.
+# ${LINK} ${GEO_FILES_DIR}/geo_*.nc .
+
+ mkdir -p ${ICBC_DIR}/metgrid
+ ${LINK} ${WPS_SRC_DIR}/metgrid/METGRID.TBL ${ICBC_DIR}/metgrid/METGRID.TBL
  
  while ( 1 == 1 )
- echo "Entering generate_wrfinput_bdy_files.csh for $datea"
+ echo "Entering gen_retro_icbc.csh for $datea"
  
  if ( ! -d ${OUTPUT_DIR}/${datea} )  mkdir -p ${OUTPUT_DIR}/${datea}
 
- cd $ICBC_DIR
+ cd ${ICBC_DIR}
  ${LINK} ${TEMPLATE_DIR}/input.nml.template input.nml
  ${REMOVE} gfs*pgrb2* *grib2
 
@@ -64,6 +74,7 @@
 EOF
 
 # build grib file names - may need to change for other data sources. These are from RDA
+ set GRIB_SRC = 'GFS' # TJH GRIB_SRC undefined otherwise
  set gribfile_a = ${GRIB_DATA_DIR}/${datea}/gfs_ds084.1/gfs.0p25.${datea}.f000.grib2 
  set gribfile_b = ${GRIB_DATA_DIR}/${datea}/gfs_ds084.1/gfs.0p25.${datea}.f006.grib2 
  ${LINK} $gribfile_a GRIBFILE.AAA
@@ -71,13 +82,12 @@ EOF
 
  sed -f script.sed ${TEMPLATE_DIR}/namelist.wps.template >! namelist.wps
  ${LINK} ${WPS_SRC_DIR}/ungrib/Variable_Tables/Vtable.${GRIB_SRC} Vtable
- ${REMOVE} output.ungrib.exe.gfs
-# ${WPS_SRC_DIR}/ungrib.exe >& output.ungrib.exe.gfs    # use the wrfhelp built versions 
- /glade/u/home/wrfhelp/PRE_COMPILED_CHEYENNE/WPSV3.9.1_intel_serial/ungrib.exe >& output.ungrib.exe.gfs
 
- ${REMOVE} output.metgrid.exe
-# ${WPS_SRC_DIR}/metgrid.exe >& output.metgrid.exe      # use the wrfhelp built versions
- /glade/u/home/wrfhelp/PRE_COMPILED_CHEYENNE/WPSV3.9.1_intel_serial/metgrid.exe >& output.metgrid.exe
+ ${REMOVE}                    output.ungrib.exe.gfs
+ ${WPS_SRC_DIR}/ungrib.exe >& output.ungrib.exe.gfs
+
+ ${REMOVE}                     output.metgrid.exe
+ ${WPS_SRC_DIR}/metgrid.exe >& output.metgrid.exe
 
  ${LINK} ${WPS_SRC_DIR}/met_em.d01.* .
  set datef  =  `echo $datea $ASSIM_INT_HOURS | ${DART_DIR}/models/wrf/work/advance_time`

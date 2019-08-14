@@ -16,23 +16,27 @@
 # 	list of perturbed variables
 # 	wrfda executable and be.dat
 
-  set datea = 2017042700  # need to start from a known valid date matching the wrfinput_d01 date
+set datea = 2017042700  # need to start from a known valid date matching the wrfinput_d01 date
 
-  set wrfda_dir = /glade/scratch/romine/pert_hrrr/wrfda
-           # this has all wrf and wrfda executables and support files
-  set work_dir  = /glade/scratch/romine/pert_hwt2018
-  set save_dir  = /glade/p/nmmm0001/romine/hwt2018/boundary_perts
-           # put the final eperturbation files here for later use
-  set DART_DIR = /glade/p/work/romine/c_codes/DART_manhattan
-  set template_dir =  /glade/scratch/romine/pert_hwt2018/template    
-           # where the template namelist is for wrfvar
-  set IC_PERT_SCALE      = 0.009
-  set IC_HORIZ_SCALE     = 0.8
-  set IC_VERT_SCALE      = 0.8
-  set num_ens =  150  # number of perturbations to generate, must be at least ensemble size, suggest 3-4X. SUGGEST testing
-                      # a single member until you are sure the script works, and are happy with the settings. 
-  set wrfin_dir = ${work_dir}/wrfin
-  set ASSIM_INT_HOURS = 6
+# this has all wrf and wrfda executables and support files
+set wrfda_dir = /glade/scratch/romine/pert_hrrr/wrfda # set this appropriately #%%%#
+
+set work_dir  = /glade/scratch/romine/pert_hwt2018 # set this appropriately #%%%#
+
+# put the final eperturbation files here for later use
+set save_dir  = /glade/p/nmmm0001/romine/hwt2018/boundary_perts # set this appropriately #%%%#
+
+set DART_DIR = /glade/p/work/romine/c_codes/DART_manhattan # set this appropriately #%%%#
+
+# where the template namelist is for wrfvar
+set template_dir =  /glade/scratch/romine/pert_hwt2018/template     # set this appropriately #%%%#
+set IC_PERT_SCALE      = 0.009
+set IC_HORIZ_SCALE     = 0.8
+set IC_VERT_SCALE      = 0.8
+set num_ens =  150  # number of perturbations to generate, must be at least ensemble size, suggest 3-4X. SUGGEST testing
+                    # a single member until you are sure the script works, and are happy with the settings. 
+set wrfin_dir = ${work_dir}/wrfin
+set ASSIM_INT_HOURS = 6
 
 
   module load nco
@@ -111,7 +115,7 @@ EOF
 #PBS -l walltime=0:05:00
 #PBS -q regular
 #PBS -m a
-#PBS -M USERNAME@X.X            
+#PBS -M USERNAME@X.X             # set this appropriately #%%%#
 #PBS -l select=4:ncpus=32:mpiprocs=16
 #=================================================================
 

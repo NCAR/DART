@@ -6,6 +6,10 @@
 #
 # DART $Id$
 
+# TJH   NUM_ENS            is disconnected from input.nml
+# TJH   ADAPTIVE_INFLATION is disconnected from input.nml
+# TJH   rundir/sampling_error_correction_table.nc is out-of-date and does not support NUM_ENS=3
+
    #  Set the assimilation parameters
    set NUM_ENS            = 50
    set ASSIM_INT_HOURS    = 6   # ignored if assim_int_minutes > 0
@@ -55,6 +59,10 @@
    set NCAR_GAU_ACCOUNT    = YOUR_ACCT   # set this appropriately #%%%#
    set CNCAR_GAU_ACCOUNT   = YOUR_ACCT   # set this appropriately #%%%#
 
+# TJH consistent way of checking the SUPER_PLATFORM and injecting that
+#     header information into the scripts ... rather than have scripts
+#     that have redundant blocks in them ...
+
 # yellowstone parameters
    set FILTER_QUEUE        = regular
    set FILTER_TIME         = 0:25
@@ -79,6 +87,8 @@
    set CADVANCE_MPI         = 36
 
    #  System specific commands
+   # TJH ... The LINK command probably should not have the force option.
+   # TJH ... and if the LINK fails, should it die right there?
    setenv   REMOVE 'rm -rf'
    setenv   COPY 'cp -pfr'
    setenv   MOVE 'mv -f'
