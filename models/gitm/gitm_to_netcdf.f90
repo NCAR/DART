@@ -2,7 +2,7 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id: gitm_to_netcdf.f90 10977 2017-02-01 18:15:42Z thoar@ucar.edu $
+! $Id$
 
 program gitm_to_netcdf
 
@@ -27,28 +27,30 @@ implicit none
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
-   "$URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/models/gitm/gitm_to_netcdf.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 10977 $"
-character(len=128), parameter :: revdate  = "$Date: 2017-02-01 11:15:42 -0700 (Wed, 01 Feb 2017) $"
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 !-----------------------------------------------------------------------
 ! namelist parameters with default values.
 !-----------------------------------------------------------------------
 
 
-character(len=128) :: gitm_to_2d_netcdf_output_file  = 'gitm_2d_netcdf.nc'
-character(len=128) :: gitm_to_3d_netcdf_output_file  = 'gitm_3d_netcdf.nc'
+character(len=256) :: gitm_to_netcdf_2d_input_file   = '../data/2DTEC_t110311_204500.bin'
+character(len=256) :: gitm_to_netcdf_3d_input_file   = '../data/3DUSR_t110311_204500.bin'
+character(len=256) :: gitm_to_netcdf_2d_output_file  = 'gitm_2d_netcdf.nc'
+character(len=256) :: gitm_to_netcdf_3d_output_file  = 'gitm_3d_netcdf.nc'
 
-namelist /gitm_to_netcdf_nml/ gitm_to_2d_netcdf_output_file, &
-                              gitm_to_3d_netcdf_output_file
+namelist /gitm_to_netcdf_nml/ gitm_to_netcdf_2d_input_file,  &
+                              gitm_to_netcdf_3d_input_file,  &
+                              gitm_to_netcdf_2d_output_file, &
+                              gitm_to_netcdf_3d_output_file
 
 !----------------------------------------------------------------------
 ! global storage
 !----------------------------------------------------------------------
 
 integer               :: iunit
-character(len=256)    :: gitm_3Drestart_filename  = '3DUSR_t110311_204500.bin'
-character(len=256)    :: gitm_2Drestart_filename  = '2DTEC_t110311_204500.bin'
 
 ! educated guess only !!  my interpretation from dumping a file.
 !
@@ -94,7 +96,7 @@ integer :: t_year, t_month, t_day, t_hour, t_min, t_sec, t_msec
 
 call initialize_utilities(progname='gitm_to_netcdf')
 
-iunit =  open_file(gitm_2Drestart_filename, action='read', form='unformatted')
+iunit =  open_file(gitm_to_netcdf_2d_input_file, action='read', form='unformatted')
 call read_header(iunit, twod=.true.)
 
 do i=1, nvars_2D
@@ -106,7 +108,7 @@ enddo
 call close_file(iunit)
 
 ! create 2D netcdf file
-ncid = nc_create_file(gitm_to_2d_netcdf_output_file)
+ncid = nc_create_file(gitm_to_netcdf_2d_output_file)
 print *, 'ncid = ', ncid
 
 ! create netcdf dims
@@ -136,7 +138,7 @@ enddo
 call nc_close_file(ncid)
 
 
-iunit =  open_file(gitm_3Drestart_filename, action='read', form='unformatted')
+iunit =  open_file(gitm_to_netcdf_3d_input_file, action='read', form='unformatted')
 call read_header(iunit, twod=.false.)
 
 do i=1, nvars_3D
@@ -148,7 +150,7 @@ enddo
 call close_file(iunit)
 
 ! create netcdf file
-ncid = nc_create_file(gitm_to_3d_netcdf_output_file)
+ncid = nc_create_file(gitm_to_netcdf_3d_output_file)
 print *, 'ncid = ', ncid
 
 ! create netcdf dims
