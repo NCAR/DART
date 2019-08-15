@@ -10,6 +10,9 @@ program gitm_to_netcdf
 ! purpose: interface between the GITM model and DART
 !
 ! method: Read gitm "restart" files of model state
+!         This version assumes the individual blocks of gitm data
+!         (one per gitm mpi task) have been combined into a single
+!         data file.  see the other converter programs for alternatives.
 !         Reform fields into a NetCDF format file.
 !
 ! USAGE:  TBD

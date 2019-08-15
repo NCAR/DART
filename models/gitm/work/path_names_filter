@@ -41,6 +41,7 @@ models/gitm/GITM2/src/ModTime.f90
 models/gitm/GITM2/src/time_routines.f90
 models/gitm/model_mod.f90
 models/utilities/default_model_mod.f90
+models/utilities/quad_utils_mod.f90
 observations/forward_operators/obs_def_mod.f90
 observations/forward_operators/obs_def_utilities_mod.f90
 assimilation_code/modules/utilities/no_cray_win_mod.f90

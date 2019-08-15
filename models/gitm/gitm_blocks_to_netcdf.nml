@@ -1,4 +1,4 @@
-&gitm_to_dart_nml
-   gitm_to_dart_input_file = 'dart_ics',
+&gitm_blocks_to_netcdf_nml
+   gitm_blocks_to_netcdf_input_file = 'filter_input.nc',
    /
 

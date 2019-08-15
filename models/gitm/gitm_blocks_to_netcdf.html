@@ -3,14 +3,14 @@
 
 <HTML>
 <HEAD>
-<TITLE>program gitm_to_dart</TITLE>
+<TITLE>program gitm_blocks_to_netcdf</TITLE>
 <link rel="stylesheet" type="text/css" href="../../documentation/html/doc.css" />
 <link href="../../documentation/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<H1>PROGRAM <em class=program>gitm_to_dart</em></H1>
+<H1>PROGRAM <em class=program>gitm_blocks_to_netcdf</em></H1>
 
 <table border=0 summary="" cellpadding=5>
 <tr>
@@ -42,7 +42,7 @@
     <a href="model_mod.html">DART GITM model documentation</a>.
    <br />
    <br />
-   <em class=program>gitm_to_dart</em> is the program that reads
+   <em class=program>gitm_blocks_to_netcdf</em> is the program that reads
    GITM restart files (i.e. <em class=file>b?????.rst</em>) 
    and creates a DART output/restart file
    (e.g.&nbsp;<em class=file>perfect_ics,&nbsp;filter_ics,&nbsp;...&nbsp;</em>).
@@ -52,7 +52,7 @@
    the <em class="file">input.nml</em> file.
    <br />
    <br />
-   Conditions required for successful execution of <em class=program>gitm_to_dart</em>:
+   Conditions required for successful execution of <em class=program>gitm_blocks_to_netcdf</em>:
 </P>
 
 <UL>
@@ -77,7 +77,7 @@
 <P>
 The individual model instances are run in unique directories.
 This is also where the converter routines 
-<em class=program>gitm_to_dart</em> and
+<em class=program>gitm_blocks_to_netcdf</em> and
 <em class=program>dart_to_gitm</em> are run.
 This makes it easy to use a single 'static' name for the input
 and output filenames.
@@ -118,8 +118,8 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
 </P>
 <div class=namelist>
 <pre>
-&amp;gitm_to_dart_nml
-   gitm_to_dart_output_file = 'dart_ics',
+&amp;gitm_blocks_to_netcdf_nml
+   gitm_blocks_to_netcdf_output_file = 'dart_ics',
    /
 
 &amp;model_nml
@@ -138,13 +138,13 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
 </pre>
 </div>
 
-<TABLE border=0 cellpadding=3 width=100% summary='gitm_to_dart namelist description'>
+<TABLE border=0 cellpadding=3 width=100% summary='gitm_blocks_to_netcdf namelist description'>
 <TR><TH align=left>Contents    </TH>
     <TH align=left>Type        </TH>
     <TH align=left>Description </TH>
 </TR>
 
-<TR><!--contents--><TD valign=top>gitm_to_dart_output_file&nbsp;&nbsp;&nbsp;</TD>
+<TR><!--contents--><TD valign=top>gitm_blocks_to_netcdf_output_file&nbsp;&nbsp;&nbsp;</TD>
     <!--  type  --><TD valign=top>character(len=128)&nbsp;&nbsp;</TD>
     <!--descript--><TD>The name of the DART file containing the model state
                        derived from the GITM restart files.</TD>
@@ -155,7 +155,7 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
 <P>
 The full description of the <em class=code>model_nml</em> namelist is documented
 in the <a href="model_mod.html#Namelist">gitm model_mod</a>, but the most important
-variable for <em class=program>gitm_to_dart</em> is repeated here.
+variable for <em class=program>gitm_blocks_to_netcdf</em> is repeated here.
 </P>
 <TABLE border=0 cellpadding=3 width=100% summary='partial model_nml namelist description'>
 <TR><TH align=left>Contents    </TH>
@@ -198,7 +198,7 @@ models/gitm/GITM2/src/ModSize.f90
 models/gitm/GITM2/src/ModTime.f90
 models/gitm/GITM2/src/time_routines.f90
 models/gitm/dart_gitm_mod.f90
-models/gitm/gitm_to_dart.f90
+models/gitm/gitm_blocks_to_netcdf.f90
 models/gitm/model_mod.f90
 null_mpi_utilities_mod.f90
 obs_kind_mod.f90

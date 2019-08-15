@@ -1,5 +1,4 @@
-&dart_to_gitm_nml
-   dart_to_gitm_input_file = 'dart_restart',
-   advance_time_present    = .true.,
+&netcdf_to_gitm_blocks_nml
+   netcdf_to_gitm_blocks_input_file = 'filter_output.nc',
    /
 
