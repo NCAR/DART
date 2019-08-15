@@ -16,7 +16,7 @@ use types_mod,         only : r8, digits12
 
 use utilities_mod,     only : error_handler, E_MSG, E_ERR, initialize_utilities, finalize_utilities
 
-use sort_mod,          only : simple_sort, simple_index_sort, sort, index_sort, insertion_sort, index_insertion_sort
+use sort_mod,          only : sort, index_sort, insertion_sort, index_insertion_sort
 
 use random_seq_mod,    only: random_seq_type, init_random_seq, random_gaussian
 
@@ -32,15 +32,17 @@ use mpi_utilities_mod, only : start_mpi_timer, read_mpi_timer
 
 
 ! buffer sizes
-integer, parameter :: MAXSIZE = 20000
-integer, parameter :: SMALLER =  2000
+integer, parameter :: MAXSIZE = 20480
+integer, parameter :: SMALLER =  4096
+integer, parameter :: SMALLE1 =  2048
+integer, parameter :: SMALLE2 =  1024
 integer, parameter :: TINY    =    80
 
 type(random_seq_type) :: seq
 
 ! fill arrays with gaussian distribution of numeric values 
-real(r8), parameter :: BASEVAL = 250.0_r8
-real(r8), parameter :: STDDEV  = 50.0_r8
+real(r8), parameter :: BASEVAL = 2500.0_r8
+real(r8), parameter :: STDDEV  = 500.0_r8
 
 real(r8) :: base_real_array(MAXSIZE)
 integer  :: base_int_array(MAXSIZE)
@@ -48,27 +50,32 @@ integer  :: base_int_array(MAXSIZE)
 ! real and integer arrays of 'm' (maxsize), 's' (smaller)
 ! and 't' (tiny) for sorting and timing.
 real(r8) :: mr_array1(MAXSIZE), mr_array2(MAXSIZE)
-integer  :: mi_array1(MAXSIZE), mi_array2(MAXSIZE)
 real(r8) :: sr_array1(SMALLER), sr_array2(SMALLER)
-integer  :: si_array1(SMALLER), si_array2(SMALLER)
+real(r8) :: sr1array1(SMALLE1), sr1array2(SMALLE1)
+real(r8) :: sr2array1(SMALLE2), sr2array2(SMALLE2)
 real(r8) :: tr_array1(TINY),    tr_array2(TINY)
+integer  :: mi_array1(MAXSIZE), mi_array2(MAXSIZE)
+integer  :: si_array1(SMALLER), si_array2(SMALLER)
+integer  :: si1array1(SMALLE1), si1array2(SMALLE1)
+integer  :: si2array1(SMALLE2), si2array2(SMALLE2)
 integer  :: ti_array1(TINY),    ti_array2(TINY)
 
 integer  :: i, itmp
 real(r8) :: tmp
+character(len=64) :: content_type
 
 character(len=*), parameter :: routine = 'sort_test'
 
 ! start of executable code
 
-call initialize_utililities('sort_test')
+call initialize_utilities('sort_test')
 
 print *, 'sort test.  array sizes: '
-print *, '  large = ', MAXSIZE
-print *, 'smaller = ', SMALLER
-print *, '   tiny = ', TINY
-print *, ''
-print *, 'time in milliseconds.'
+print *, '  large  = ', MAXSIZE
+print *, 'smaller  = ', SMALLER
+print *, 'smaller1 = ', SMALLE1
+print *, 'smaller2 = ', SMALLE2
+print *, '   tiny  = ', TINY
 print *, ''
 
 ! fill the base array with random values for sorting.
@@ -87,92 +94,95 @@ mi_array1(:) = floor(mr_array1(:))
 sr_array1(:) = base_real_array(1:SMALLER)
 si_array1(:) = floor(sr_array1(:))
 
+sr1array1(:) = base_real_array(1:SMALLE1)
+si1array1(:) = floor(sr1array1(:))
+
+sr2array1(:) = base_real_array(1:SMALLE2)
+si2array1(:) = floor(sr2array1(:))
+
 tr_array1(:) = base_real_array(1:TINY)
 ti_array1(:) = floor(tr_array1(:))
 
 
-write(*,*) ""
-write(*,*) "random, large"
+content_type = "random"
 
-call do_each_real_type(mr_array1, MAXSIZE)
-call do_each_int_type (mi_array1, MAXSIZE)
+call do_each_real_type(mr_array1, MAXSIZE, content_type)
+call do_each_real_type(sr_array1, SMALLER, content_type)
+call do_each_real_type(sr1array1, SMALLE1, content_type)
+call do_each_real_type(sr2array1, SMALLE2, content_type)
+call do_each_real_type(tr_array1, TINY, content_type)
 
-write(*,*) ""
-write(*,*) "random, small"
-
-call do_each_real_type(sr_array1, SMALLER)
-call do_each_int_type (si_array1, SMALLER)
-
-write(*,*) ""
-write(*,*) "random, tiny"
-
-call do_each_real_type(tr_array1, TINY)
-call do_each_int_type (ti_array1, TINY)
+call do_each_int_type (mi_array1, MAXSIZE, content_type)
+call do_each_int_type (si_array1, SMALLER, content_type)
+call do_each_int_type (si1array1, SMALLE1, content_type)
+call do_each_int_type (si2array1, SMALLE2, content_type)
+call do_each_int_type (ti_array1, TINY, content_type)
 
 
-! inverted order arrays
+content_type = "inverted"
+
+mr_array1 = sort(base_real_array)
 do i=1, MAXSIZE
-   mr_array2(i) = base_real_array(MAXSIZE - i + 1)
+   mr_array2(i) = mr_array1(MAXSIZE - i + 1)
 enddo
+
 mi_array2(:) = floor(mr_array2(:))
 
 sr_array2(:) = mr_array2(1:SMALLER)
 si_array2(:) = floor(sr_array2(:))
 
+sr1array2(:) = mr_array2(1:SMALLE1)
+si1array2(:) = floor(sr1array2(:))
+
+sr2array2(:) = mr_array2(1:SMALLE2)
+si2array2(:) = floor(sr2array2(:))
+
 tr_array2(:) = mr_array2(1:TINY)
 ti_array2(:) = floor(tr_array2(:))
 
 
-write(*,*) ""
-write(*,*) "inverted order, large"
+call do_each_real_type(mr_array2, MAXSIZE, content_type)
+call do_each_real_type(sr_array2, SMALLER, content_type)
+call do_each_real_type(sr1array2, SMALLE1, content_type)
+call do_each_real_type(sr2array2, SMALLE2, content_type)
+call do_each_real_type(tr_array2, TINY, content_type)
 
-call do_each_real_type(mr_array2, MAXSIZE)
-call do_each_int_type (mi_array2, MAXSIZE)
+call do_each_int_type (mi_array2, MAXSIZE, content_type)
+call do_each_int_type (si_array2, SMALLER, content_type)
+call do_each_int_type (si1array2, SMALLE1, content_type)
+call do_each_int_type (si2array2, SMALLE2, content_type)
+call do_each_int_type (ti_array2, TINY, content_type)
 
-write(*,*) ""
-write(*,*) "inverted order, small"
 
-call do_each_real_type(sr_array2, SMALLER)
-call do_each_int_type (si_array2, SMALLER)
-
-write(*,*) ""
-write(*,*) "inverted order, tiny"
-
-call do_each_real_type(tr_array2, TINY)
-call do_each_int_type (ti_array2, TINY)
-
+content_type = "almost sorted"
 
 ! almost sorted order arrays
-mr_array2(:) = sort(base_real_array)
+mr_array2(:) = mr_array1(:)
 mi_array2(:) = floor(mr_array2(:))
 
 call reorder_pair(mr_array2, mi_array2)
 call reorder_pair(sr_array2, si_array2)
+call reorder_pair(sr1array2, si1array2)
+call reorder_pair(sr2array2, si2array2)
 call reorder_pair(tr_array2, ti_array2)
 
 
-write(*,*) ""
-write(*,*) "almost sorted order, large"
+call do_each_real_type(mr_array2, MAXSIZE, content_type)
+call do_each_real_type(sr_array2, SMALLER, content_type)
+call do_each_real_type(sr1array2, SMALLE1, content_type)
+call do_each_real_type(sr2array2, SMALLE2, content_type)
+call do_each_real_type(tr_array2, TINY, content_type)
 
-call do_each_real_type(mr_array2, MAXSIZE)
-call do_each_int_type (mi_array2, MAXSIZE)
-
-write(*,*) ""
-write(*,*) "almost sorted order, small"
-
-call do_each_real_type(sr_array2, SMALLER)
-call do_each_int_type (si_array2, SMALLER)
-
-write(*,*) ""
-write(*,*) "almost sorted order, tiny"
-
-call do_each_real_type(tr_array2, TINY)
-call do_each_int_type (ti_array2, TINY)
+call do_each_int_type (mi_array2, MAXSIZE, content_type)
+call do_each_int_type (si_array2, SMALLER, content_type)
+call do_each_int_type (si1array2, SMALLE1, content_type)
+call do_each_int_type (si2array2, SMALLE2, content_type)
+call do_each_int_type (ti_array2, TINY, content_type)
 
 
 write(*,*) 'end of test'
 
-call finalize_utililities('sort_test')
+call finalize_utilities('sort_test')
 
 !-------------------------------------------------------------------------------
 
@@ -183,9 +193,10 @@ contains
 
 ! here is where templated functions would be nice.
 
-subroutine do_each_real_type(array, asize)
+subroutine do_each_real_type(array, asize, label)
  real(r8), intent(in) :: array(:)
  integer,  intent(in) :: asize
+ character(len=*), intent(in) :: label
  
 real(digits12) :: b, inc
 real(r8) :: array1(asize), sorted1(asize)
@@ -195,13 +206,13 @@ integer :: indirect1(asize)
 call start_mpi_timer(b)
 sorted1 = sort(array)
 inc = read_mpi_timer(b)
-call print_time(inc, 'basic sort (real)')
+call print_time(inc, label, 'basic sort, real ', asize)
 call validate(sorted1, asize)
 
 call start_mpi_timer(b)
 call index_sort(array, indirect1, asize)
 inc = read_mpi_timer(b)
-call print_time(inc, 'index sort (real)')
+call print_time(inc, label, 'index sort, real ', asize)
 call validate_indx(array, indirect1, asize)
 
 array1 = array
@@ -209,36 +220,25 @@ array1 = array
 call start_mpi_timer(b)
 call insertion_sort(array1)
 inc = read_mpi_timer(b)
-call print_time(inc, 'insertion sort (real)')
+call print_time(inc, label, 'insertion sort, real', asize)
 call validate(array1, asize)
 
 call start_mpi_timer(b)
 call index_insertion_sort(array, indirect1, asize)
 inc = read_mpi_timer(b)
-call print_time(inc, 'index insertion sort (real)')
+call print_time(inc, label, 'index insertion sort, real', asize)
 call validate_indx(array, indirect1, asize)
 
-array1 = array
-
-call start_mpi_timer(b)
-call simple_sort(array1)
-inc = read_mpi_timer(b)
-call print_time(inc, 'simple sort (real)')
-call validate(array1, asize)
-
-call start_mpi_timer(b)
-call simple_index_sort(array, indirect1, asize)
-inc = read_mpi_timer(b)
-call print_time(inc, 'index simple sort (real)')
-call validate_indx(array, indirect1, asize)
+print *, ''
 
 end subroutine do_each_real_type
 
 !-------------------------------------------------------------------------------
 
-subroutine do_each_int_type(array, asize)
+subroutine do_each_int_type(array, asize, label)
  integer, intent(in) :: array(:)
  integer, intent(in) :: asize
+ character(len=*), intent(in) :: label
  
 real(digits12) :: b, inc
 integer :: array1(asize), sorted1(asize)
@@ -248,13 +248,13 @@ integer :: indirect1(asize)
 call start_mpi_timer(b)
 sorted1 = sort(array)
 inc = read_mpi_timer(b)
-call print_time(inc, 'basic sort (integer)')
+call print_time(inc, label, 'basic sort, integer', asize)
 call ivalidate(sorted1, asize)
 
 call start_mpi_timer(b)
 call index_sort(array, indirect1, asize)
 inc = read_mpi_timer(b)
-call print_time(inc, 'index sort (integer)')
+call print_time(inc, label, 'index sort, integer', asize)
 call ivalidate_indx(array, indirect1, asize)
 
 array1 = array
@@ -262,28 +262,16 @@ array1 = array
 call start_mpi_timer(b)
 call insertion_sort(array1)
 inc = read_mpi_timer(b)
-call print_time(inc, 'insertion sort (integer)')
+call print_time(inc, label, 'insertion sort, integer', asize)
 call ivalidate(array1, asize)
 
 call start_mpi_timer(b)
 call index_insertion_sort(array, indirect1, asize)
 inc = read_mpi_timer(b)
-call print_time(inc, 'index insertion sort (integer)')
+call print_time(inc, label, 'index insertion sort, integer', asize)
 call ivalidate_indx(array, indirect1, asize)
 
-array1 = array
-
-call start_mpi_timer(b)
-call simple_sort(array1)
-inc = read_mpi_timer(b)
-call print_time(inc, 'simple sort (integer)')
-call ivalidate(array1, asize)
-
-call start_mpi_timer(b)
-call simple_index_sort(array, indirect1, asize)
-inc = read_mpi_timer(b)
-call print_time(inc, 'index simple sort (integer)')
-call ivalidate_indx(array, indirect1, asize)
+print *, ''
 
 end subroutine do_each_int_type
 
@@ -391,11 +379,17 @@ end subroutine reorder_pair
 !-------------------------------------------------------------------------------
 !-------------------------------------------------------------------------------
 
-subroutine print_time(timespan, label)
+subroutine print_time(timespan, label1, label2, asize)
  real(digits12),   intent(in) :: timespan
- character(len=*), intent(in) :: label
+ character(len=*), intent(in) :: label1, label2
+ integer,          intent(in) :: asize
 
-write(*, '(A32,F12.3)') trim(label)//' ', timespan/1000.0_digits12
+real(digits12) :: mt, t
+
+mt = timespan / 1000.0_digits12
+t = timespan
+
+write(*, '(A16,A32,I8,A,2(F22.5,A))') trim(label1), trim(label2)//' ', asize, ' items ', mt, ' msec total, ', t/real(asize,digits12), ' usec/item'
 
 end subroutine print_time
 

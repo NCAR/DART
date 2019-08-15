@@ -39,7 +39,7 @@ private
 ! the simple sorts should be removed from the public list.  they are there
 ! so we can time them, but in all cases they are slower and a bad choice.
 public :: sort, index_sort, insertion_sort, index_insertion_sort
-public :: simple_sort, simple_index_sort  
+!public :: simple_sort, simple_index_sort  
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
