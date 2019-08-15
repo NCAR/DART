@@ -19,7 +19,7 @@ assimilation_code/modules/utilities/time_manager_mod.f90
 assimilation_code/modules/utilities/types_mod.f90
 assimilation_code/modules/utilities/utilities_mod.f90
 models/gitm/dart_gitm_mod.f90
-models/gitm/dart_to_gitm.f90
+models/gitm/netcdf_to_gitm_blocks.f90
 models/gitm/GITM2/src/ModConstants.f90
 models/gitm/GITM2/src/ModEarth.f90
 models/gitm/GITM2/src/ModKind.f90

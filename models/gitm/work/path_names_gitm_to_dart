@@ -25,7 +25,7 @@ models/gitm/GITM2/src/ModKind.f90
 models/gitm/GITM2/src/ModSize.f90
 models/gitm/GITM2/src/ModTime.f90
 models/gitm/GITM2/src/time_routines.f90
-models/gitm/gitm_to_dart.f90
+models/gitm/gitm_blocks_to_netcdf.f90
 models/gitm/model_mod.f90
 models/utilities/default_model_mod.f90
 models/utilities/quad_utils_mod.f90
