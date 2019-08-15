@@ -159,11 +159,12 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
          set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
          echo "Running $PROG"
    
-         # for programs which read standard input, put what they need into a prog.in file.
+         # for programs which read standard input, put what they need into a prog.in file
+         # in the tests directory.
          # if we miss any programs which need input and we don't have a .in file, have it
          # read from /dev/null so it errors out and doesn't just sit there waiting for input
-         if ( -f ${PROG}.in ) then
-           ( ./$PROG < ${PROG}.in > ${LOGDIR}/runlog.${project}.out ) || set FAILURE = 1
+         if ( -f ../tests/${PROG}.in ) then
+           ( ./$PROG < ../tests/${PROG}.in > ${LOGDIR}/runlog.${project}.out ) || set FAILURE = 1
          else
            ( ./$PROG < /dev/null > ${LOGDIR}/runlog.${project}.out ) || set FAILURE = 1
          endif
