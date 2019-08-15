@@ -158,10 +158,14 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
          set FAILURE = 0
          set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
          echo "Running $PROG"
+   
+         # for programs which read standard input, put what they need into a prog.in file.
+         # if we miss any programs which need input and we don't have a .in file, have it
+         # read from /dev/null so it errors out and doesn't just sit there waiting for input
          if ( -f ${PROG}.in ) then
            ( ./$PROG < ${PROG}.in > ${LOGDIR}/runlog.${project}.out ) || set FAILURE = 1
          else
-           ( ./$PROG > ${LOGDIR}/runlog.${project}.out ) || set FAILURE = 1
+           ( ./$PROG < /dev/null > ${LOGDIR}/runlog.${project}.out ) || set FAILURE = 1
          endif
          if ( $FAILURE ) then
             echo "ERROR - unsuccessful run of $PROG at "`date`
