@@ -1,0 +1,5 @@
+*.o
+*.mod
+dart_log.out
+dart_log.nml
+Makefile
