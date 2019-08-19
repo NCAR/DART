@@ -3,34 +3,34 @@
 # excluding the repository name makes it easier to navigate when building locally
 menu:
   - title: Documentation
-    url: /pages/DART2_Starting.html
+    url: /DART_development/pages/DART2_Starting.html
     submenu:
       - title: Getting Started
-        url: /pages/DART2_Starting.html
+        url: /DART_development/pages/DART2_Starting.html
       - title: Tutorial
-        url: /pages/dart_tutorial.html
+        url: /DART_development/pages/dart_tutorial.html
       - title: Lab
-        url: /pages/dart_lab.html
+        url: /DART_development/pages/dart_lab.html
       - title: In Depth
-        url: /pages/DART2_Documentation.html
+        url: /DART_development/pages/DART2_Documentation.html
       - title: Diagnostics
-        url: /pages/DART2_Diagnostics.html
+        url: /DART_development/pages/DART2_Diagnostics.html
       - title: Observations 
-        url: /pages/DART2_Observations.html
+        url: /DART_development/pages/DART2_Observations.html
       - title: Misc
-        url: /pages/DART2_Miscellany.html
+        url: /DART_development/pages/DART2_Miscellany.html
   - title: Research
-    url: /pages/Research.html
+    url: /DART_development/pages/Research.html
   - title: About Us
-    url: /pages/aboutus.html
+    url: /DART_development/pages/aboutus.html
   - title: Support
-    url: /pages/support.html
+    url: /DART_development/pages/support.html
   - title: API
     submenu:
       - title: Manhattan
-        url: /pages/release.html
+        url: /DART_development/pages/release.html
       - title: v3.0.0
-        url: /api/v3.0.0/index.html
+        url: /DART_development/api/v3.0.0/index.html
       - title: Lanai
       - title: v2.0.0
         url: 
