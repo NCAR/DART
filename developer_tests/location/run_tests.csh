@@ -23,10 +23,9 @@ echo
 echo
 
 
-set LOCLIST = 'annulus channel column oned threed \
-               threed_cartesian threed_sphere \
-               twod twod_annulus twod_sphere'
-
+set LOCLIST = ( annulus channel column oned threed \
+                threed_cartesian threed_sphere \
+                twod twod_annulus twod_sphere )
 
 foreach i ( $LOCLIST )
 
