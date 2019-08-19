@@ -1,5 +1,5 @@
 
-![DARTlogo](documentation/images/Dartboard7.png)
+![DARTlogo](docs/images/Dartboard7.png)
 
 ## Welcome to DART, the Data Assimilation Research Testbed.
 
@@ -7,26 +7,26 @@
 
 Extensive on-line documentation is available at the GitHub project web pages:
 [https://ncar.github.io/DART](https://ncar.github.io/DART)
-or in the repository at [documentation/index.html](documentation/index.html).
+or in the repository at [docs/index.md](docs/index.md).
 
 <table><tr>
-<td><img height=250, src="./documentation/images/DARTspaghettiSquare.gif"></td> 
-<td><img height=250, src="./documentation/images/AssimAnim.gif"></td>
+<td><img height=250, src="./docs/images/DARTspaghettiSquare.gif"></td> 
+<td><img height=250, src="./docs/images/science_nuggets/AssimAnim.gif"></td>
 </tr></table>
 
-[Extensive local documentation is included with DART.](documentation/index.html)
+[Extensive local documentation is included with DART.](docs/index.md)
 
 A Matlab-based introduction is in the ```documentation/DART_LAB``` directory.  
 There are a set of PDF presentations along with hands-on Matlab exercises.  
 This starts with a very basic introduction to data assimilation and covers 
 several fundamental algorithms in the system.
 A more exhaustive tutorial for data assimilation with DART is in PDF format at 
-[documentation/tutorial](documentation/tutorial/index.html).
+[docs/tutorial](docs/tutorial/index.html).
 
 The DART Manhattan release documentation is on the web:
 http://www.image.ucar.edu/DAReS/DART/Manhattan/documentation/html/Manhattan_release.html
 and in the repository at:
-[documentation/html/Manhattan_release.html](documentation/html/Manhattan_release.html)
+[docs/html/Manhattan_release.html](docs/html/Manhattan_release.html)
 
 There is a mailing list where we summarize updates to the DART repository
 and notify users about recent bug fixes.
@@ -61,7 +61,7 @@ The top level DART source code tree contains the following directories and files
 | ```build_templates/```   | Configuration files for installation |
 | ```developer_tests/```   | regression testing |
 | ```diagnostics/```       | routines to diagnose assimilation performance |
-| ```documentation/```     | General documentation and DART_LAB tutorials |
+| ```docs/```              | General documentation and DART_LAB tutorials |
 | ```models/```            | the interface routines for the models |
 | ```observations/```      | routines for converting observations and forward operators |
 | **Files**                | **Purpose** |
