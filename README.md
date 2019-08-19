@@ -16,7 +16,7 @@ or in the repository at [docs/index.md](docs/index.md).
 
 [Extensive local documentation is included with DART.](docs/index.md)
 
-A Matlab-based introduction is in the ```documentation/DART_LAB``` directory.  
+A Matlab-based introduction is in the ```docs/DART_LAB``` directory.  
 There are a set of PDF presentations along with hands-on Matlab exercises.  
 This starts with a very basic introduction to data assimilation and covers 
 several fundamental algorithms in the system.
