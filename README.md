@@ -87,6 +87,23 @@ Update the DART version and year as appropriate.
 <a name="QuickStart"></a>
 ## Quick-start for the impatient:
 
+There are several large files that are needed to run some of the tests and examples but are not included
+in order to keep the repository as small as possible. If you are interested in running *bgrid_solo*, 
+*cam-fv*, or testing the *NCEP/prep_bufr* observation converter, you will need these files.
+These files are available at:
+
+| Release                | Size   | Filename  |
+| :--------------        | :----- | :-------- |
+| ```Manhattan```        |  189M  | [Manhattan_large_files.tar.gz](https://www.image.ucar.edu/pub/DART/Release_datasets/Manhattan_large_files.tar.gz) |
+| ```wrf-chem.r13172```  |  141M  | [wrf-chem.r13172_large_files.tar.gz](https://www.image.ucar.edu/pub/DART/Release_datasets/wrf-chem.r13172_large_files.tar.gz) |
+| ```Lanai/```           |  158M  | [Lanai_large_files.tar.gz](https://www.image.ucar.edu/pub/DART/Release_datasets/Lanai_large_files.tar.gz) |
+| ```Kodiak```           |  158M  | [Kodiak_large_files.tar.gz](https://www.image.ucar.edu/pub/DART/Release_datasets/Kodiak_large_files.tar.gz) |
+| ```Jamaica```          |   32M  | [Jamaica_large_files.tar.gz](https://www.image.ucar.edu/pub/DART/Release_datasets/Jamaica_large_files.tar.gz) |
+| ```Hawaii```           |   32M  | [Hawaii_large_files.tar.gz](https://www.image.ucar.edu/pub/DART/Release_datasets/Hawaii_large_files.tar.gz) |
+
+Download the appropriate tar file and untar it into your DART repository. Ignore any warnings about
+```tar: Ignoring unknown extended header keyword``` .
+
 Go into the ```build_templates``` directory and copy over the closest
 ```mkmf.template```._compiler.system_ file into ```mkmf.template```.
 

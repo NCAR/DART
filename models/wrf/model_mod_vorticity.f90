@@ -1872,7 +1872,9 @@ else
 
       ! Adjust zloc for staggered ZNW grid (or W-grid, as compared to ZNU or M-grid)
       zloc = zloc + 0.5_r8
-      k = max(1,int(zloc))  !> @todo what should you do with this?
+
+      !>@todo what should you do with this?
+      k = max(1,int(zloc))
 
      call simple_interp_distrib(fld, wrf, id, i, j, k, obs_kind, dxm, dx, dy, dym, uniquek, ens_size, state_ens_handle )
 
@@ -2391,7 +2393,7 @@ istatus = 1
 
 ! first off, check if ob is identity ob.  if so get_state_meta_data() will 
 ! return location information already in the requested vertical type.
-!> @todo This in not true anymore if you don't convert all the state variables 
+!>@todo This in not true anymore if you don't convert all the state variables 
 ! to the localization coordinate in get_state_meta_data
 if (obs_kind < 0) then
    call get_state_meta_data_distrib(state_ens_handle, obs_kind,location)
@@ -4471,7 +4473,7 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t 
 
       ! I'm not quite sure where this comes from, but I will trust them on it....
       ! Do you have to do this per ensemble?
-      !> @todo This is messy
+      !>@todo This is messy
       do e = 1,ens_size
 
          if ( x_ill(e) /= 0.0_r8 .and. x_ilr(e) /= 0.0_r8 .and. x_iul(e) /= 0.0_r8 .and. &
@@ -5158,7 +5160,8 @@ else
 
       do i = 1, size(intermediate)
          if (intermediate(i) <= 0.0_r8) then
-            interp_4pressure_distrib(i) = edgep(i) !> @todo is this correct?
+            !>@todo is this correct?
+            interp_4pressure_distrib(i) = edgep(i)
          else
             interp_4pressure_distrib(i) = exp(intermediate(i))
          endif
@@ -8292,7 +8295,7 @@ logical :: debug = .false.
 
 logical  :: is_lev0(ens_size)
 real(r8) :: zloc(ens_size)
-integer  :: uk !> loop variable
+integer  :: uk
 
 !!   define a search box bounded by center_track_***
 center_search_half_size = nint(center_search_half_length/wrf%dom(id)%dx)
@@ -8748,7 +8751,7 @@ integer               :: wrf_type
 real(r8), dimension(ens_size) ::x_ill, x_iul, x_ilr, x_iur
 
 ! Confirm that the obs kind is in the DART state vector and return the wrf_type
-!> @todo should boundsCheck always be temperatue type? This is what it is in the original code
+!>@todo should boundsCheck always be temperatue type? This is what it is in the original code
 call obs_kind_in_state_vector(in_state, wrf_type, obs_kind, id)
 
 if ( in_state ) then
@@ -8836,7 +8839,7 @@ real(r8), dimension(ens_size) ::x_ill, x_iul, x_ilr, x_iur
 
 ! Find the wrf_type from the obs kind
 ! check for in state is performed before surface_interp_distrib is called
-!> @todo should boundsCheck always be temperatue type? This is what it is in the original code
+!>@todo should boundsCheck always be temperatue type? This is what it is in the original code
 call obs_kind_in_state_vector(in_state, wrf_type, obs_kind, id)
 
 ! Check to make sure retrieved integer gridpoints are in valid range
@@ -9012,7 +9015,9 @@ subroutine variables_domains(num_variables_in_state, num_doms)
 integer, intent(out) :: num_variables_in_state
 integer, intent(out) :: num_doms !< number of domains
 
-num_variables_in_state = wrf%dom(1)%number_of_wrf_variables !> @todo massive assumption same variables in each domain
+!>@todo massive assumption same variables in each domain
+num_variables_in_state = wrf%dom(1)%number_of_wrf_variables
+
 num_doms = num_domains
 
 end subroutine variables_domains

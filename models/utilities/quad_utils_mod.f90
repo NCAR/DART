@@ -364,7 +364,7 @@ select case (grid_type)
       if (num_lats * num_lons > 6 * 1000 * 1000) then  ! ~1/10th degree
          interp_handle%ii%num_reg_x = 900
          interp_handle%ii%num_reg_y = 900
-         interp_handle%ii%max_reg_list_num = 800   !>@todo  what is good val?
+         interp_handle%ii%max_reg_list_num = 800   !todo  what is good val?
          if(debug > 10) then
             write(string1, *) 'case 1: ', interp_handle%ii%num_reg_x, interp_handle%ii%num_reg_y, &
                                interp_handle%ii%max_reg_list_num
