@@ -87,6 +87,21 @@ Update the DART version and year as appropriate.
 <a name="QuickStart"></a>
 ## Quick-start for the impatient:
 
+There are several large files that are nice to have but are probably best 
+not version-controlled. These files are available at:
+
+| Release                  | Purpose  |
+| :--------------          | :------- |
+| ```Manhattan/```         | [Manhattan_large_files.tar.gz](https://www.image.ucar.edu/pub/DART/Release_datasets/Manhattan_large_files.tar.gz) |
+| ```wrf-chem.r13172/```   | [wrf-chem.r13172_large_files.tar.gz](https://www.image.ucar.edu/pub/DART/Release_datasets/wrf-chem.r13172_large_files.tar.gz) |
+| ```Lanai/```             | [Lanai_large_files.tar.gz](https://www.image.ucar.edu/pub/DART/Release_datasets/Lanai_large_files.tar.gz) |
+| ```Kodiak/```            | [Kodiak_large_files.tar.gz](https://www.image.ucar.edu/pub/DART/Release_datasets/Kodiak_large_files.tar.gz) |
+| ```Jamaica/```           | [Jamaica_large_files.tar.gz](https://www.image.ucar.edu/pub/DART/Release_datasets/Jamaica_large_files.tar.gz) |
+| ```Hawaii/```            | [Hawaii_large_files.tar.gz](https://www.image.ucar.edu/pub/DART/Release_datasets/Hawaii_large_files.tar.gz) |
+
+Download the appropriate tar file and untar it into your DART repository. Ignore any warnings about
+```tar: Ignoring unknown extended header keyword``` .
+
 Go into the ```build_templates``` directory and copy over the closest
 ```mkmf.template```._compiler.system_ file into ```mkmf.template```.
 
