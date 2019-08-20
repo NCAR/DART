@@ -1355,7 +1355,9 @@ select case (which_vert)
       ! that enclose this value
       call cam_height_levels(ens_handle, ens_size, lon_index, lat_index, ref_nlevels, obs_qty, &
                              height_array, my_status)
-      if (any(my_status /= 0)) return   !>@todo FIXME let successful members continue?
+
+      !>@todo FIXME let successful members continue?
+      if (any(my_status /= 0)) return
 
       if (debug_level > 400) then
          do k = 1,ref_nlevels
@@ -1368,7 +1370,9 @@ select case (which_vert)
                              levs1(imember), levs2(imember), vert_fracts(imember), &
                              my_status(imember))
       enddo
-      if (any(my_status /= 0)) return   !>@todo FIXME let successful members continue?
+
+      !>@todo FIXME let successful members continue?
+      if (any(my_status /= 0)) return
 
       if (debug_level > 100) then
          do k = 1,ens_size

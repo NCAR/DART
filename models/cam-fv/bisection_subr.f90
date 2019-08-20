@@ -1,3 +1,8 @@
+
+module bisection
+
+contains
+
 !> given an array of sorted values and a value to find, return the smaller
 !> and higher index values, and the fraction across.
 !>
@@ -137,3 +142,5 @@ endif
 my_status = 0
 
 end subroutine find_enclosing_indices
+
+end module bisection
