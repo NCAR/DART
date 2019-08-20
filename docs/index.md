@@ -2,12 +2,7 @@
 layout: frontpage
 title: Home
 banner-title: Welcome to DART
-banner-description: DART has been reformulated to better support the ensemble data 
-assimilation needs of researchers who are interested in native netCDF support, less 
-filesystem I/O, better computational performance, good scaling for large processor 
-counts, and support for the memory requirements of very large models. Manhattan has 
-support for many of our larger models (<em>WRF, POP, CAM, CICE, CLM, ROMS, 
-MPAS_ATM,</em> ...) with many more being added as time permits. 
+banner-description: DART has been reformulated to better support the ensemble data assimilation needs of researchers who are interested in native netCDF support, less filesystem I/O, better computational performance, good scaling for large processor counts, and support for the memory requirements of very large models. Manhattan has support for many of our larger models (<em>WRF, POP, CAM, CICE, CLM, ROMS, MPAS_ATM,</em> ...) with many more being added as time permits. 
 banner-button-text: Download
 banner-button-url: https://github.com/NCAR/DART_development
 ---
