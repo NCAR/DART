@@ -1,7 +1,7 @@
 &filter_nml
    async                    =  2,
    adv_ens_command          = "./advance_model.csh",
-   ens_size                 =  50,
+   ens_size                 =  3,
    obs_sequence_in_name     = "obs_seq.out",
    obs_sequence_out_name    = "obs_seq.final",
    input_state_file_list    = "input_list_d01.txt", "input_list_d02.txt"
@@ -13,7 +13,7 @@
    last_obs_days            = -1,
    last_obs_seconds         = -1,
    num_output_state_members = 0,
-   num_output_obs_members   = 50,
+   num_output_obs_members   = 3,
    output_interval          = 1,
    num_groups               = 1,
    output_forward_op_errors = .false.,
@@ -27,8 +27,8 @@
    write_all_stages_at_end  = .false.
 
    inf_flavor                  = 2,                      0,
-   inf_initial_from_restart    = .true.,                 .false.,
-   inf_sd_initial_from_restart = .true.,                 .false.,
+   inf_initial_from_restart    = .false.,                 .false.,
+   inf_sd_initial_from_restart = .false.,                 .false.,
    inf_initial                 = 1.0,                   1.12,
    inf_sd_initial              = 0.60,                   0.50,
    inf_damping                 = 0.9,                   1.00,
@@ -74,7 +74,7 @@
 &closest_member_tool_nml 
    input_file_name        = 'filter_ic_new',
    output_file_name       = 'closest_restart',
-   ens_size               = 50,
+   ens_size               = 3,
    single_restart_file_in = .false.,
    difference_method      = 4,
  /
@@ -159,21 +159,22 @@
    /
 
 &preprocess_nml
-    overwrite_output        = .true.
-    input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
-   output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
-     input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
-    output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
-   input_files              = '../../../obs_def/obs_def_reanalysis_bufr_mod.f90',
-                              '../../../obs_def/obs_def_altimeter_mod.f90',
-                              '../../../obs_def/obs_def_radar_mod.f90',
-                              '../../../obs_def/obs_def_metar_mod.f90',
-                              '../../../obs_def/obs_def_dew_point_mod.f90',
-                              '../../../obs_def/obs_def_rel_humidity_mod.f90',
-                              '../../../obs_def/obs_def_gps_mod.f90',
-                              '../../../obs_def/obs_def_gts_mod.f90',
-                              '../../../obs_def/obs_def_QuikSCAT_mod.f90',
-                              '../../../obs_def/obs_def_vortex_mod.f90'  /
+           overwrite_output = .true.,
+    input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
+   output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90',
+     input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
+    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90',
+   input_files              = '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90',
+                              '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
+                              '../../../observations/forward_operators/obs_def_radar_mod.f90',
+                              '../../../observations/forward_operators/obs_def_metar_mod.f90',
+                              '../../../observations/forward_operators/obs_def_dew_point_mod.f90',
+                              '../../../observations/forward_operators/obs_def_rel_humidity_mod.f90',
+                              '../../../observations/forward_operators/obs_def_gps_mod.f90',
+                              '../../../observations/forward_operators/obs_def_gts_mod.f90',
+                              '../../../observations/forward_operators/obs_def_QuikSCAT_mod.f90',
+                              '../../../observations/forward_operators/obs_def_vortex_mod.f90'  /
+
 
 &obs_kind_nml
    assimilate_these_obs_types   = 'RADIOSONDE_TEMPERATURE',

@@ -1,17 +1,9 @@
 #!/bin/csh
 
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
-#
-# <next few lines under version control, do not edit>
-# $URL: https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/wrf/shell_scripts/advance_model.csh $
-# $Id: advance_model.csh 4170 2009-11-30 20:56:39Z nancy $
-# $Revision: 4170 $
-# $Date: 2009-11-30 20:56:39 +0000 (Mon, 30 Nov 2009) $
-
 # Shell script to run the WRF model from DART input.
 # where the model advance is executed as a separate process.
 
@@ -74,6 +66,8 @@
 #  wrfbdy members - wrfbdy_d01_${gday}_${gsec}_${member}
 
 #-----snip--------------
+
+echo "new_advance_model.csh is running in `pwd`"
 
 # Arguments are the process number of caller, the number of state copies
 # belonging to that process, and the name of the filter_control_file for
@@ -197,9 +191,9 @@ set output_file_line = 3
 
 while($state_copy <= $num_states)     # MULTIPLE DOMAINS - we don't expect advance model to run more than one member anymore. Reuse num_states for # domains?
 
-   set ensemble_member = `head -$ensemble_member_line ${CENTRALDIR}/${control_file} | tail -1`
-   set input_file      = `head -$input_file_line      ${CENTRALDIR}/${control_file} | tail -1`
-   set output_file     = `head -$output_file_line     ${CENTRALDIR}/${control_file} | tail -1`
+   set ensemble_member = `head -n $ensemble_member_line ${CENTRALDIR}/${control_file} | tail -n 1`
+   set input_file      = `head -n $input_file_line      ${CENTRALDIR}/${control_file} | tail -n 1`
+   set output_file     = `head -n $output_file_line     ${CENTRALDIR}/${control_file} | tail -n 1`
 
    set infl = 0.0
 
@@ -249,7 +243,7 @@ while($state_copy <= $num_states)     # MULTIPLE DOMAINS - we don't expect advan
 # MULTIPLE_DOMAINS - need a more general instrument here
    if ( -e ${CENTRALDIR}/moving_domain_info ) then
 
-      set MY_NUM_DOMAINS = `head -1 ${CENTRALDIR}/moving_domain_info | tail -1`
+      set MY_NUM_DOMAINS = `head -n 1 ${CENTRALDIR}/moving_domain_info | tail -n 1`
       ${MOVE} input.nml input.nml--
 #      sed /num_domains/c\ "   num_domains = ${MY_NUM_DOMAINS}," input.nml-- >! input.nml
       cat >! script.sed << EOF
@@ -293,10 +287,21 @@ EOF
 
   set dn = 1
   while ( $dn <= $num_domains )
+
      set dchar = `echo $dn + 100 | bc | cut -b2-3` 
+     set dchar = `printf %02d $dn` 
      set icnum = `echo $ensemble_member + 10000 | bc | cut -b2-5`
+     set icnum = `printf %04d $ensemble_member`
+
      set this_file = filter_restart_d${dchar}.${icnum}
-     ncks -A -v ${stuff_str} ../${this_file} wrfinput_d${dchar}    #MUTLIPLE DOMAINS - input file is incomplete file name?
+
+     if ( -e ../${this_file} ) then
+        ncks -A -v ${stuff_str} ../${this_file} wrfinput_d${dchar}
+     else
+        echo "WARNING: ../${this_file} does not exist ..."
+        echo "WARNING: this is expected for the first cycle ONLY!"
+     endif
+
      @ dn ++  #
   end  
    #  Move and remove unnecessary domains    MULTIPLE DOMAINS - this problably needs to be removed to avoid confusion
@@ -308,7 +313,7 @@ EOF
       set n = 1
       set NUMBER_FILE_MOVE = `cat ${CENTRALDIR}/rename_domain_info | wc -l`
       while ( $n <= $NUMBER_FILE_MOVE )
-         ${MOVE} `head -${n} ${CENTRALDIR}/rename_domain_info | tail -1`
+         ${MOVE} `head -n ${n} ${CENTRALDIR}/rename_domain_info | tail -n 1`
          @ n ++
       end
 
@@ -320,12 +325,12 @@ EOF
    # not boundary conditions.)
 
 # DMODS - note the wrf.info file was pre-generated, not from dart_to_wrf
-   set secday = `head -1 wrf.info`
+   set secday = `head -n 1 wrf.info`
    set targsecs = $secday[1]
    set targdays = $secday[2]
    set targkey = `echo "$targdays * 86400 + $targsecs" | bc`
 
-   set secday = `head -2 wrf.info | tail -1`
+   set secday = `head -n 2 wrf.info | tail -n 1`
    set wrfsecs = $secday[1]
    set wrfdays = $secday[2]
    set wrfkey = `echo "$wrfdays * 86400 + $wrfsecs" | bc`
@@ -365,7 +370,7 @@ EOF
 
    endif
 
-   set cal_date    = `head -3 wrf.info | tail -1`
+   set cal_date    = `head -n 3 wrf.info | tail -n 1`
    set START_YEAR  = $cal_date[1]
    set START_MONTH = $cal_date[2]
    set START_DAY   = $cal_date[3]
@@ -376,17 +381,17 @@ EOF
    set START_STRING = ${START_YEAR}-${START_MONTH}-${START_DAY}_${START_HOUR}:${START_MIN}:${START_SEC}
    set datea = ${cal_date[1]}${cal_date[2]}${cal_date[3]}${cal_date[4]}
 
-   set MY_NUM_DOMAINS    = `head -4 wrf.info | tail -1`
-   set ADV_MOD_COMMAND   = `head -5 wrf.info | tail -1`
+   set MY_NUM_DOMAINS    = `head -n 4 wrf.info | tail -n 1`
+   set ADV_MOD_COMMAND   = `head -n 5 wrf.info | tail -n 1`
 
    #  Code for dealing with TC nests
    if ( -e ${CENTRALDIR}/fixed_domain_info ) then
 
-      set MY_NUM_DOMAINS = `head -1 ${CENTRALDIR}/fixed_domain_info | tail -1`
+      set MY_NUM_DOMAINS = `head -n 1 ${CENTRALDIR}/fixed_domain_info | tail -n 1`
 
    else if ( -e ${CENTRALDIR}/moving_domain_info ) then
 
-      set MY_NUM_DOMAINS = `head -2 ${CENTRALDIR}/moving_domain_info | tail -1`
+      set MY_NUM_DOMAINS = `head -n 2 ${CENTRALDIR}/moving_domain_info | tail -n 1`
       ${MOVE} input.nml input.nml--
       cat >! script.sed << EOF
       /num_domains/c\
@@ -470,9 +475,9 @@ EOF
 
          #  Set the covariance perturbation scales using file or default values
          if ( -e ${CENTRALDIR}/bc_pert_scale ) then
-            set pscale = `head -1 ${CENTRALDIR}/bc_pert_scale | tail -1`
-            set hscale = `head -2 ${CENTRALDIR}/bc_pert_scale | tail -1`
-            set vscale = `head -3 ${CENTRALDIR}/bc_pert_scale | tail -1`
+            set pscale = `head -n 1 ${CENTRALDIR}/bc_pert_scale | tail -n 1`
+            set hscale = `head -n 2 ${CENTRALDIR}/bc_pert_scale | tail -n 1`
+            set vscale = `head -n 3 ${CENTRALDIR}/bc_pert_scale | tail -n 1`
          else
             set pscale = 0.25
             set hscale = 1.0
@@ -611,10 +616,10 @@ EOF
 
       if ( -e ${CENTRALDIR}/fixed_domain_info ) then
 
-         set nx_string      = `head -2 ${CENTRALDIR}/fixed_domain_info | tail -1`
-         set ny_string      = `head -3 ${CENTRALDIR}/fixed_domain_info | tail -1`
-         set i_start_str    = `head -4 ${CENTRALDIR}/fixed_domain_info | tail -1`
-         set j_start_str    = `head -5 ${CENTRALDIR}/fixed_domain_info | tail -1`
+         set nx_string      = `head -n 2 ${CENTRALDIR}/fixed_domain_info | tail -n 1`
+         set ny_string      = `head -n 3 ${CENTRALDIR}/fixed_domain_info | tail -n 1`
+         set i_start_str    = `head -n 4 ${CENTRALDIR}/fixed_domain_info | tail -n 1`
+         set j_start_str    = `head -n 5 ${CENTRALDIR}/fixed_domain_info | tail -n 1`
 
          cat >> script.sed << EOF
          /e_we/c\
@@ -629,16 +634,16 @@ EOF
 
       else if ( -e ${CENTRALDIR}/moving_domain_info ) then
 
-         set nx_string      = `head -3  ${CENTRALDIR}/moving_domain_info | tail -1`
-         set ny_string      = `head -4  ${CENTRALDIR}/moving_domain_info | tail -1`
-         set i_start_str    = `head -5  ${CENTRALDIR}/moving_domain_info | tail -1`
-         set j_start_str    = `head -6  ${CENTRALDIR}/moving_domain_info | tail -1`
-         set input_file     = `head -7  ${CENTRALDIR}/moving_domain_info | tail -1`
-         set num_move_str   = `head -8  ${CENTRALDIR}/moving_domain_info | tail -1`
-         set id_move_str    = `head -9  ${CENTRALDIR}/moving_domain_info | tail -1`
-	 set move_time_str  = `head -10 ${CENTRALDIR}/moving_domain_info | tail -1`
-	 set x_move_string  = `head -11 ${CENTRALDIR}/moving_domain_info | tail -1`
-	 set y_move_string  = `head -12 ${CENTRALDIR}/moving_domain_info | tail -1`
+         set nx_string      = `head -n 3  ${CENTRALDIR}/moving_domain_info | tail -n 1`
+         set ny_string      = `head -n 4  ${CENTRALDIR}/moving_domain_info | tail -n 1`
+         set i_start_str    = `head -n 5  ${CENTRALDIR}/moving_domain_info | tail -n 1`
+         set j_start_str    = `head -n 6  ${CENTRALDIR}/moving_domain_info | tail -n 1`
+         set input_file     = `head -n 7  ${CENTRALDIR}/moving_domain_info | tail -n 1`
+         set num_move_str   = `head -n 8  ${CENTRALDIR}/moving_domain_info | tail -n 1`
+         set id_move_str    = `head -n 9  ${CENTRALDIR}/moving_domain_info | tail -n 1`
+	 set move_time_str  = `head -n 10 ${CENTRALDIR}/moving_domain_info | tail -n 1`
+	 set x_move_string  = `head -n 11 ${CENTRALDIR}/moving_domain_info | tail -n 1`
+	 set y_move_string  = `head -n 12 ${CENTRALDIR}/moving_domain_info | tail -n 1`
 
          cat >> script.sed << EOF
          /e_we/c\

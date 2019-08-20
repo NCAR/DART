@@ -99,27 +99,31 @@ EOF
 
   sed -f script.sed ${TEMPLATE_DIR}/input.nml.template >! input.nml
 
-  ${DART_DIR}/models/wrf/work/obs_diag
+  # create the state-space diagnostic summary
+
+  ${DART_DIR}/models/wrf/work/obs_diag || exit 1
   ${MOVE} obs_diag_output.nc ${OUTPUT_DIR}/${datea}/. 
   ${MOVE} `ls -1 observation_locations.*.dat | tail -1` ${OUTPUT_DIR}/${datea}/observation_locations.dat
+
+  # create a netCDF file with the original observation data (may not have some of the unusual metadata)
+
   ${DART_DIR}/models/wrf/work/obs_seq_to_netcdf
   ${MOVE} obs_epoch* ${OUTPUT_DIR}/${datea}/ 
   ${REMOVE} *.txt obs_seq.final_* flist observation_locations.*.dat
+
+  # prune the obs_seq.final and store result  keeps first 5 copies? why not set num_output_obs = 0
+  # is it the time subsetting that is of interest?
 
   ${LINK} ${OUTPUT_DIR}/${datea}/obs_seq.final .
   ${DART_DIR}/models/wrf/work/obs_sequence_tool
   ${MOVE} obs_seq.final_reduced ${OUTPUT_DIR}/${datea}/.
   ${REMOVE} obs_seq.final
 
-# process the mean analysis increment
+  # process the mean analysis increment
+
   cd ${OUTPUT_DIR}/${datea}
   ${COPY} ${SHELL_SCRIPTS_DIR}/mean_increment.ncl .
-  set cmd1 = "ncl ${OUTPUT_DIR}/${datea}/mean_increment.ncl"
-
-  cat >! nclrun.out << EOF
-  $cmd1 
-EOF
-
+  echo "ncl ${OUTPUT_DIR}/${datea}/mean_increment.ncl" >! nclrun.out
   chmod +x nclrun.out
   ./nclrun.out
 
