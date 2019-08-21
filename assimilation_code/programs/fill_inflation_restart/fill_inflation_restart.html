@@ -37,14 +37,31 @@
 
 <P>
 Utility program to create inflation restart files with constant values.
-Useful for a multi-step assimilation, so the values
-<em class=code>inf_initial_from_restart</em> and
-<em class=code>inf_sd_initial_from_restart</em> items in the &amp;filter_nml
-namelist can be .TRUE. from the beginning.
 </P><P>
-This reads inflation values from the &amp;fill_inflation_restart_nml namelist for
-prior_inf_mean, prior_inf_sd and post_inf_mean, post_inf_sd.  It does not use
-the values in the &amp; filter namelist.
+These files can be used as input for the first step of a 
+multi-step assimilation when adaptive inflation is being used. 
+This allows the namelist items
+<em class=code>inf_initial_from_restart</em> and
+<em class=code>inf_sd_initial_from_restart</em> in the 
+<em class=code>&amp;filter_nml</em>
+namelist to be <em class=code>.TRUE.</em> for all steps of the 
+assimilation including the very first one.   
+(These items control whether inflation values
+are read from an input file or read from constants in the namelist.)
+</P><P>
+Adaptive inflation restart files are written
+at the end of a <em class=program>filter</em> run
+and are needed as input for the next timestep.  
+This program creates files that can be used
+for the initial run of filter when no inflation restart files have
+been created by filter but are required to be read as input.
+</P><P>
+This program reads the inflation values to use from the 
+<em class=code>&amp;fill_inflation_restart_nml</em>
+namelist for setting the prior inflation mean and standard deviation,
+and/or the posterior inflation mean and standard deviation.
+It does not use the inflation values in the 
+<em class=code>&amp;filter</em> namelist.
 </P>
 
 <P>
@@ -65,8 +82,10 @@ It creates files with names consistent with the input names expected by filter:
 <em class=file>input_postinf_sd.nc</em>
 </pre>                 
 
+
 <P>
-Alternatively you can use one of the standard NCO utilities like 
+An older alternative to running <em class=program>fill_inflation_restart</em>
+is to create inflation netcdf files by using one of the NCO utilities like
 "<em class=program>ncap2</em>"
 on a copy of another restart file to set the initial inflation mean, and another
 for the initial inflation standard deviation.  Inflation mean and sd values
