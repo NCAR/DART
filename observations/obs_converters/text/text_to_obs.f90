@@ -35,7 +35,7 @@ use      obs_kind_mod, only : EVAL_U_WIND_COMPONENT, EVAL_V_WIND_COMPONENT, &
 
 implicit none
 
-character(len=64), parameter :: text_input_file = 'textdata.input'
+character(len=64), parameter :: text_input_file = '../data/text_input_file'
 character(len=64), parameter :: obs_out_file    = 'obs_seq.out'
 
 logical, parameter :: debug = .false.  ! set to .true. to print info
