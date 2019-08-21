@@ -3,8 +3,8 @@
 <HTML>
 <head>
 <title>WRF/DART tutorial presentations</title>
-<link rel="stylesheet" type="text/css" href="/DAReS/DART/Manhattan/documentation/html/doc.css" />
-<link href="/DAReS/DART/Manhattan/documentation/images/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../../../documentation/html/doc.css" />
+<link href="../../../documentation/images/dart.ico" rel="shortcut icon" />
 <style type="text/css">
 <!--
 .tab { margin-left: 40px; }
@@ -16,7 +16,7 @@
 <table border="0" summary="" cellpadding="5">
 <tr>
     <td valign="middle">
-    <img src="/DAReS/DART/Manhattan/documentation/images/Dartboard7.png" alt="DART project logo" height="70" />
+    <img src="../../../documentation/images/Dartboard7.png" alt="DART project logo" height="70" />
     </td>
     <td>
        <P>Jump to <a href="/DAReS/DART/Manhattan/documentation/index.html">DART Manhattan Documentation Main Index</a><br />
@@ -36,7 +36,7 @@
 
 <A NAME="Tutorial"></A>
 <H4>Agenda from the 22 Jan 2014 tutorial</H4>
-<ul><li>Introduction (Anderson) - <a href="/DAReS/DART/Manhattan/documentation/DART_LAB/DART_LAB.html">DART Lab materials</a>
+<ul><li>Introduction (Anderson) - <a href="../../../documentation/DART_LAB/DART_LAB.html">DART Lab materials</a>
     </li>
 
 <li>WRF/DART basic building blocks (Romine) - <a href="../classic/wrf_workshop_building_blocks.pdf">slides</a> (some material is outdated)
@@ -51,8 +51,8 @@
 <li>Observation processing (Collins) - <a href="../classic/wrf_workshop_observation_processing.pdf">slides</a>
     </li>
 
-<li>DART diagnostics (Hoar) - <a href="/DAReS/DART/Manhattan/assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html">observation diagnostics</a>,
-                              <a href="/DAReS/DART/Manhattan/assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html">more observation diagnostics</a>
+<li>DART diagnostics (Hoar) - <a href="../../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html">observation diagnostics</a>,
+                              <a href="../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html">more observation diagnostics</a>
     </li>
 </ul>
 
@@ -304,6 +304,7 @@ So far, your <em class="file">rundir</em> should contain (correct as needed):
 <tr><td valign="top">executables:</td>
     <td><em class="program">advance_time</em>, 
         <em class="program">filter</em>, 
+        <em class="program">fill_inflation_restart</em>, 
         <em class="program">obs_diag</em>, 
         <em class="program">obs_seq_to_netcdf</em>, 
         <em class="program">obs_sequence_tool</em>, 
@@ -628,7 +629,7 @@ The inflation files must then be moved to the directory named expected by the
 </p>
 <div class="unix">
 <pre>
-cd wrf/work/
+cd rundir/
 ./fill_inflation_restart
 mv input_priorinf_*.nc ${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_*.nc
 </pre>
