@@ -251,7 +251,7 @@ end subroutine send_to
 
 subroutine receive_from(src_id, destarray, time, label)
  integer, intent(in) :: src_id
- real(r8), intent(out) :: destarray(:)
+ real(r8), intent(inout) :: destarray(:)    ! really only out, but avoid compiler warnings
  type(time_type), intent(out), optional :: time
  character(len=*), intent(in), optional :: label
 
