@@ -44,8 +44,8 @@ subroutine track_status(ens_size, val_istatus, val_data, istatus, return_now)
 
 integer,  intent(in)    :: ens_size
 integer,  intent(in)    :: val_istatus(ens_size)
-real(r8), intent(inout) :: val_data(ens_size) !> expected_obs for obs_def
-integer,  intent(inout) :: istatus(ens_size) !> istatus for obs_def
+real(r8), intent(inout) :: val_data(ens_size) !! expected_obs for obs_def
+integer,  intent(inout) :: istatus(ens_size) !! istatus for obs_def
 logical,  intent(out)   :: return_now
 
 where (istatus == 0) istatus = val_istatus

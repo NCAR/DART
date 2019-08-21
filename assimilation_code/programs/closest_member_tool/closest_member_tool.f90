@@ -4,16 +4,11 @@
 !
 ! $Id$
 
-!> @mainpage
-!> @{
-!> @brief  Select the member closest to the ensemble mean.
+!> Select the member closest to the ensemble mean.
 !>
-!>  This program has options to compute <em> distance </em> in several different ways
-!>  and returns the ensemble member which has the smallest total distance from
-!>  the ensemble mean.
-!> @}
-!>
-!>
+!> This program has options to compute <em> distance </em> in several different ways
+!> and returns the ensemble member which has the smallest total distance from
+!> the ensemble mean.
 
 program closest_member_tool
 
@@ -427,8 +422,3 @@ end function compute_diff
 
 end program closest_member_tool
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

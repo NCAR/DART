@@ -1,8 +1,9 @@
-src_dir: ../models
+src_dir: ../.
 exclude_dir: ../docs/_api
              ../docs/_site/api
              ../models/bgrid_solo/fms_src
-             ../observations/obs_converters/NCEP/preb_bufr/lib
+             ../observations/obs_converters/NCEP
+             ../assimilation_code/programs/system_simulation
 exclude: mpisetup.f90
 output_dir: ./ford_output
 page_dir: ./pages
@@ -10,8 +11,8 @@ project: DART
 project_github: https://github.com/NCAR/DART_development
 project_website: https://ncar.github.io/DART_development
 summary: **D**ata **A**ssimilation **R**esearch **T**estbed
-author: Tim Hoar
-author_description: part of the Data Assimilation Research Section
+author: DAReS
+author_description: The NCAR Data Assimilation Research Section
 display: public
 source: false
 graph: true
