@@ -27,15 +27,16 @@
    write_all_stages_at_end  = .false.
 
    inf_flavor                  = 2,                      0,
-   inf_initial_from_restart    = .false.,                 .false.,
-   inf_sd_initial_from_restart = .false.,                 .false.,
+   inf_initial_from_restart    = .true.,                .false.,
+   inf_sd_initial_from_restart = .true.,                .false.,
    inf_initial                 = 1.0,                   1.12,
-   inf_sd_initial              = 0.60,                   0.50,
-   inf_damping                 = 0.9,                   1.00,
    inf_lower_bound             = 1.0,                    1.0,
    inf_upper_bound             = 10000.0,              10000.0,
-   inf_sd_lower_bound          = 0.60,                   0.10
-/
+   inf_damping                 = 0.9,                     1.0,
+   inf_sd_initial              = 0.6,                     0.50,
+   inf_sd_lower_bound          = 0.6,                     0.10,
+   inf_sd_max_change           = 1.05,                    1.05,
+   /
 
 &quality_control_nml
    input_qc_threshold       = 4.0,
@@ -45,14 +46,30 @@
 
 &ensemble_manager_nml
    layout = 2,
-   tasks_per_node = 30 /
+   tasks_per_node = 30
+   /
+
+&fill_inflation_restart_nml
+   write_prior_inf = .true.
+   prior_inf_mean  = 1.00
+   prior_inf_sd    = 0.6
+
+   write_post_inf  = .false.
+   post_inf_mean   = 1.00
+   post_inf_sd     = 0.6
+
+   input_state_files = 'wrfinput_d01'
+   single_file       = .false.
+   verbose           = .false.
+   /
 
 &smoother_nml
    num_lags              = 0
    start_from_restart    = .false.
    output_restart        = .false.
    restart_in_file_name  = 'smoother_ics'
-   restart_out_file_name = 'smoother_restart' /
+   restart_out_file_name = 'smoother_restart'
+   /
 
 &assim_tools_nml
    filter_kind                     = 1,
@@ -69,7 +86,8 @@
    /             
 
 &cov_cutoff_nml
-   select_localization = 1  /
+   select_localization = 1
+   /
 
 &closest_member_tool_nml 
    input_file_name        = 'filter_ic_new',
@@ -77,10 +95,11 @@
    ens_size               = 3,
    single_restart_file_in = .false.,
    difference_method      = 4,
- /
+   /
 
 &assim_model_nml
-   write_binary_restart_files = .true.  /
+   write_binary_restart_files = .true.
+   /
 
 &location_nml
    horiz_dist_only = .false.,
@@ -91,7 +110,8 @@
    approximate_distance = .false.,
    nlon = 221,
    nlat = 122,
-   output_box_info  = .false.  /
+   output_box_info  = .false.
+   /
 
 &model_nml
    default_state_variables = .false.,
@@ -132,27 +152,30 @@
    circulation_pres_level = 80000.0,
    circulation_radius = 72000.0,
    center_spline_grid_scale = 4,
-/
+   /
 
 &utilities_nml
    TERMLEVEL = 1,
    nmlfilename = 'dart_log.nml',
    logfilename = 'dart_log.out',
    module_details = .false.,
-   print_debug = .true. /
+   print_debug = .true.
+   /
 
 &mpi_utilities_nml
-   reverse_task_layout = .true.
+   reverse_task_layout = .false.
    /
 
 &reg_factor_nml
    select_regression = 1,
    input_reg_file = "time_mean_reg",
    save_reg_diagnostics = .false.,
-   reg_diagnostics_file = 'reg_diagnostics'  /
+   reg_diagnostics_file = 'reg_diagnostics'
+   /
 
 &obs_sequence_nml
-   write_binary_obs_sequence = .false.  /
+   write_binary_obs_sequence = .false.
+   /
 
 &state_vector_io_nml
    single_precision_output    = .true.,
@@ -173,7 +196,8 @@
                               '../../../observations/forward_operators/obs_def_gps_mod.f90',
                               '../../../observations/forward_operators/obs_def_gts_mod.f90',
                               '../../../observations/forward_operators/obs_def_QuikSCAT_mod.f90',
-                              '../../../observations/forward_operators/obs_def_vortex_mod.f90'  /
+                              '../../../observations/forward_operators/obs_def_vortex_mod.f90'
+   /
 
 
 &obs_kind_nml
@@ -206,7 +230,7 @@
                                'LAND_SFC_V_WIND_COMPONENT',
                                'LAND_SFC_ALTIMETER',
                                'LAND_SFC_DEWPOINT',
-/
+   /
 
 &obs_diag_nml
    obs_sequence_name = 'obs_seq.out',
@@ -224,7 +248,8 @@
    latlim2    = 65.0,  46.0, 40.6,  23.4,
    reg_names  = 'Full Domain','central-plains','southern-plains'
    print_mismatched_locs = .false.,
-   verbose = .true.  /
+   verbose = .true.
+   /
 
 &ncepobs_nml
    year = 2010,
@@ -251,7 +276,8 @@
    lat1 = 10.00,
    lat2 = 60.00,
    lon1 = 210.0,
-   lon2 = 300.0 /
+   lon2 = 300.0
+   /
 
 &prep_bufr_nml
    obs_window     = -1.,
@@ -260,10 +286,11 @@
    obs_window_cw = 1.0,
    obs_window_sfc = 0.8,
    otype_use      = 180.0, 182.0, 183.0, 194.0, 280.0, 282.0, 284.0, 294.0
-   qctype_use     = 0, 1, 2, 3, 4, 9, 15  /
+   qctype_use     = 0, 1, 2, 3, 4, 9, 15
+   /
 
 &obs_def_gps_nml
-/
+   /
 
 &convert_gpsro_bufr_nml
    gpsro_bufr_file     = 'nam.gpsro.bufr',
@@ -276,7 +303,7 @@
    convert_to_geopotential_height = .true.,
    obs_window_hr       = 1.5,
    debug = .false.
-/
+   /
 
 &convert_cosmic_gps_nml
    gpsro_netcdf_file     = '',
@@ -287,8 +314,7 @@
                            6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0,
    ray_ds                = 5000.0,
    ray_htop              = 13000.1,
-/
-
+   /
 
 &wrf_obs_preproc_nml
    obs_boundary             = 5.0,
@@ -310,7 +336,7 @@
    overwrite_ncep_sfc_qc    = .false.,
    overwrite_obs_time       = .true.,
    overwrite_ncep_satwnd_qc = .true.,
-/  
+   /  
 
 &obs_sequence_tool_nml
    filename_seq         = 'obs_seq.out',
@@ -331,7 +357,7 @@
    keep_types           = .true.,
    synonymous_copy_list = '',
    synonymous_qc_list   = '',
-/
+   /
 
 &wrf_dart_to_fields_nml
    include_slp             = .true.,
@@ -363,7 +389,7 @@
    lonlim2 = 40.
    latlim1 = 10.
    latlim2 = 65.
-/
+   /
 
 &replace_wrf_fields_nml
    debug = .false.,
@@ -397,5 +423,4 @@
    rho_graupel                 =     400.0,
    rho_snow                    =     100.0 
    /
-
 

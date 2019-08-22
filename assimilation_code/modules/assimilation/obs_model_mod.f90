@@ -422,8 +422,8 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
          ! if it needs to create unique filenames for its own use.
          do i = 1, my_num_state_copies
             write(control_unit, '(i5)') ens_handle%my_copies(i)
-            write(control_unit, '(a)' ) trim(ic_file_name(i)) !>@todo netCDF
-            write(control_unit, '(a)' ) trim(ud_file_name(i)) !>@todo netCDF
+            write(control_unit, '(a)' ) trim(ic_file_name(i)) !!@todo netCDF
+            write(control_unit, '(a)' ) trim(ud_file_name(i)) !!@todo netCDF
          end do
          close(control_unit)
    

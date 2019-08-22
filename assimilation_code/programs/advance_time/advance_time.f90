@@ -4,9 +4,7 @@
 !
 ! $Id$
 
-!> @mainpage
-!> @{
-!> @brief Compute with time quantities
+!> Compute with time quantities
 !>
 !> The advance_time program computes the resulting time when either
 !> adding or subtracting time intervals.  The increments can be
@@ -69,7 +67,6 @@
 !>    echo 2007073006    0 -c       | advance_time
 !>
 !> @todo if run with no inputs ... it just hangs. Can we make it fail straight away?
-!> @}
 
 program advance_time
 
@@ -423,8 +420,3 @@ end function formatCESMdate
 
 end program advance_time
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
