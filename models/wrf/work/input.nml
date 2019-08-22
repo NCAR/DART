@@ -77,7 +77,7 @@
 
 &fill_inflation_restart_nml
    write_prior_inf = .true.
-   prior_inf_mean  = 1.01
+   prior_inf_mean  = 1.00
    prior_inf_sd    = 0.6
 
    write_post_inf  = .false.
