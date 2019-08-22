@@ -163,7 +163,7 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
          # in the tests directory.
          # if we miss any programs which need input and we don't have a .in file, have it
          # read from /dev/null so it errors out and doesn't just sit there waiting for input
-         if ( -f ../tests/${PROG}.in ) then
+         if ( -f ../work/${PROG}.in ) then
            ( ./$PROG < ../work/${PROG}.in > ${LOGDIR}/runlog.${project}.out ) || set FAILURE = 1
          else
            ( ./$PROG < /dev/null > ${LOGDIR}/runlog.${project}.out ) || set FAILURE = 1
