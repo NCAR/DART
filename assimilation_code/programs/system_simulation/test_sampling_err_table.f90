@@ -62,8 +62,3 @@ call finalize_utilities()
 
 end program test_sampling_err_table
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

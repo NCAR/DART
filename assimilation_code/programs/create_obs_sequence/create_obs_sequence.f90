@@ -50,8 +50,3 @@ call finalize_utilities()
 
 end program create_obs_sequence
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

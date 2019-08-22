@@ -84,28 +84,28 @@ subroutine get_obs_ens_distrib_state(ens_handle, obs_fwd_op_ens_handle, &
    OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, OBS_MEAN_COPY, &
    OBS_VAR_COPY, isprior, prior_qc_copy)
 
-type(ensemble_type),     intent(inout) :: ens_handle  !< state ensemble handle
-type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle  !< observation forward operator handle
-type(ensemble_type),     intent(inout) :: qc_ens_handle  !< quality control handle
-type(obs_sequence_type), intent(in)    :: seq  !< the observation sequence
-integer,                 intent(in)    :: keys(:)  !< observation key numbers
-integer,                 intent(in)    :: obs_val_index  !< copy index for observation value 
-integer,                 intent(in)    :: input_qc_index  !< qc index for incoming QC value
-integer,                 intent(in)    :: OBS_ERR_VAR_COPY  !< ensemble copy number for observation error variances
-integer,                 intent(in)    :: OBS_VAL_COPY  !< ensemble copy number for observation values
-integer,                 intent(in)    :: OBS_KEY_COPY  !> ensemble copy number for observation keys
-integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY  !< ensemble copy number for ??
-integer,                 intent(in)    :: OBS_EXTRA_QC_COPY  !< ensemble copy number for ??
-integer,                 intent(in)    :: OBS_MEAN_COPY  !< ensemble copy number for obs mean values
-integer,                 intent(in)    :: OBS_VAR_COPY  !< ensemble copy number for obs variance 
-logical,                 intent(in)    :: isprior  !< true for prior eval; false for posterior
-real(r8),                intent(inout) :: prior_qc_copy(:)  !< array instead of ensemble copy ??
+type(ensemble_type),     intent(inout) :: ens_handle  !! state ensemble handle
+type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle  !! observation forward operator handle
+type(ensemble_type),     intent(inout) :: qc_ens_handle  !! quality control handle
+type(obs_sequence_type), intent(in)    :: seq  !! the observation sequence
+integer,                 intent(in)    :: keys(:)  !! observation key numbers
+integer,                 intent(in)    :: obs_val_index  !! copy index for observation value 
+integer,                 intent(in)    :: input_qc_index  !! qc index for incoming QC value
+integer,                 intent(in)    :: OBS_ERR_VAR_COPY  !! ensemble copy number for observation error variances
+integer,                 intent(in)    :: OBS_VAL_COPY  !! ensemble copy number for observation values
+integer,                 intent(in)    :: OBS_KEY_COPY  !! ensemble copy number for observation keys
+integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY  !! ensemble copy number for ??
+integer,                 intent(in)    :: OBS_EXTRA_QC_COPY  !! ensemble copy number for ??
+integer,                 intent(in)    :: OBS_MEAN_COPY  !! ensemble copy number for obs mean values
+integer,                 intent(in)    :: OBS_VAR_COPY  !! ensemble copy number for obs variance 
+logical,                 intent(in)    :: isprior  !! true for prior eval; false for posterior
+real(r8),                intent(inout) :: prior_qc_copy(:)  !! array instead of ensemble copy ??
 
 real(r8) :: input_qc(1), obs_value(1), obs_err_var
 
 real(r8), allocatable :: expected_obs(:) !Also regular obs now?
 
-integer :: i, j, k !< index variables
+integer :: i, j, k !! index variables
 integer :: thiskey(1)
 integer :: global_obs_num, global_qc_value
 integer :: num_copies_to_calc
@@ -386,23 +386,23 @@ end subroutine get_obs_ens_distrib_state
 !> Subroutine get_expected_obs_distrib_state
 !>               
 !> Compute forward operator for set of obs in sequence for distributed state vector. 
-!> @todo does this need to be for a set of obs?
+!>@todo does this need to be for a set of obs?
 !> 
 !------------------------------------------------------------------------------
 subroutine get_expected_obs_distrib_state(seq, keys, state_time, isprior, &
    istatus, assimilate_this_ob, evaluate_this_ob, state_ens_handle, num_ens, copy_indices, expected_obs)
 
-type(obs_sequence_type), intent(in)    :: seq  !< the observation sequence
-integer,                 intent(in)    :: keys(:)  !< list of obs numbers
-type(time_type),         intent(in)    :: state_time  !< time state vector data is valid for
-logical,                 intent(in)    :: isprior  !< true if prior; false if posterior
-integer,                 intent(in)    :: num_ens  !< number of ensemble members (decl must preceed use)
-integer,                 intent(out)   :: istatus(num_ens)  !< FO return codes; 0=ok, >0 is error, <0 reserved for system use
-logical,                 intent(out)   :: assimilate_this_ob  !< true if assimilated; false otherwise
-logical,                 intent(out)   :: evaluate_this_ob  !< true if evaluated; false otherwise
-type(ensemble_type),     intent(in)    :: state_ens_handle  !< state ensemble handle
-integer,                 intent(in)    :: copy_indices(num_ens)  !< ??
-real(r8),                intent(inout) :: expected_obs(num_ens)  !< the array of computed forward operator values
+type(obs_sequence_type), intent(in)    :: seq  !! the observation sequence
+integer,                 intent(in)    :: keys(:)  !! list of obs numbers
+type(time_type),         intent(in)    :: state_time  !! time state vector data is valid for
+logical,                 intent(in)    :: isprior  !! true if prior; false if posterior
+integer,                 intent(in)    :: num_ens  !! number of ensemble members (decl must preceed use)
+integer,                 intent(out)   :: istatus(num_ens)  !! FO return codes; 0=ok, >0 is error, <0 reserved for system use
+logical,                 intent(out)   :: assimilate_this_ob  !! true if assimilated; false otherwise
+logical,                 intent(out)   :: evaluate_this_ob  !! true if evaluated; false otherwise
+type(ensemble_type),     intent(in)    :: state_ens_handle  !! state ensemble handle
+integer,                 intent(in)    :: copy_indices(num_ens)  !! ??
+real(r8),                intent(inout) :: expected_obs(num_ens)  !! the array of computed forward operator values
 
 type(obs_type)     :: obs
 type(obs_def_type) :: obs_def
@@ -419,7 +419,9 @@ istatus = 0
 ! Initialize the observation type
 !!! Can actually init with the correct size here if wanted
 call init_obs(obs, 0, 0)
-do i = 1, num_obs !> @todo do you ever use this with more than one obs?
+
+!>@todo do you ever use this with more than one obs?
+do i = 1, num_obs
    call get_obs_from_key(seq, keys(i), obs)
    call get_obs_def(obs, obs_def)
 

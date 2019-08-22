@@ -4,14 +4,12 @@
 !
 ! $Id$
 
-program obs_diag
+!> The programs defines a series of epochs (periods of time) and geographic
+!> regions and accumulates statistics for these epochs and regions.
+!> All 'possible' observation types are treated separately.
+!> The results are written to a netCDF file.
 
-!-----------------------------------------------------------------------
-! The programs defines a series of epochs (periods of time) and geographic
-! regions and accumulates statistics for these epochs and regions.
-!
-! All 'possible' obs_kinds are treated separately.
-!-----------------------------------------------------------------------
+program obs_diag
 
 ! In Atmospheric Science, 'spread' has units of standard deviation ...
 ! In filter:obs_space_diagnostics() the 'spread' copies are converted to
@@ -2504,8 +2502,3 @@ end subroutine NormalizeTRV
 
 end program obs_diag
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

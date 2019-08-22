@@ -959,8 +959,8 @@ end function get_allow_transpose
 function map_pe_to_task(ens_handle, p)
 
 type(ensemble_type), intent(in) :: ens_handle
-integer,             intent(in) :: p  !> pe number
-integer                         :: map_pe_to_task !> physical task number
+integer,             intent(in) :: p  !! pe number
+integer                         :: map_pe_to_task !! physical task number
 
 map_pe_to_task = ens_handle%pe_to_task_list(p + 1)
 

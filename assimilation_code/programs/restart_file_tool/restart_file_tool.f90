@@ -4,6 +4,8 @@
 !
 ! $Id$
 
+!> This tool is no longer supported.
+
 program restart_file_tool
 
 print *, 'This tool is no longer supported.  DART initial condition and restart files'
@@ -11,8 +13,3 @@ print *, 'are now in NetCDF format and any NetCDF tool can be used to manipulate
 
 end program restart_file_tool
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

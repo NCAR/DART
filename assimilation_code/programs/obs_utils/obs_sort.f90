@@ -808,9 +808,3 @@ end subroutine print_metadata
 
 end program obs_sort
 
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
