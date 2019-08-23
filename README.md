@@ -96,7 +96,7 @@ These files are available at:
 | :--------------        | :----- | :-------- |
 | ```Manhattan```        |  189M  | [Manhattan_large_files.tar.gz](https://www.image.ucar.edu/pub/DART/Release_datasets/Manhattan_large_files.tar.gz) |
 | ```wrf-chem.r13172```  |  141M  | [wrf-chem.r13172_large_files.tar.gz](https://www.image.ucar.edu/pub/DART/Release_datasets/wrf-chem.r13172_large_files.tar.gz) |
-| ```Lanai/```           |  158M  | [Lanai_large_files.tar.gz](https://www.image.ucar.edu/pub/DART/Release_datasets/Lanai_large_files.tar.gz) |
+| ```Lanai```            |  158M  | [Lanai_large_files.tar.gz](https://www.image.ucar.edu/pub/DART/Release_datasets/Lanai_large_files.tar.gz) |
 | ```Kodiak```           |  158M  | [Kodiak_large_files.tar.gz](https://www.image.ucar.edu/pub/DART/Release_datasets/Kodiak_large_files.tar.gz) |
 | ```Jamaica```          |   32M  | [Jamaica_large_files.tar.gz](https://www.image.ucar.edu/pub/DART/Release_datasets/Jamaica_large_files.tar.gz) |
 | ```Hawaii```           |   32M  | [Hawaii_large_files.tar.gz](https://www.image.ucar.edu/pub/DART/Release_datasets/Hawaii_large_files.tar.gz) |

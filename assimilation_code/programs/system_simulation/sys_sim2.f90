@@ -219,8 +219,3 @@ correl = (n * sum_xy - sum_x * sum_y) / &
  
 end subroutine comp_correl
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

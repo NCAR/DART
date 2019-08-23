@@ -22,7 +22,6 @@
 !> periodically.
 !>
 !> This program does compute any weighted errors.
-!> 
 
 program compute_error
 
@@ -656,8 +655,3 @@ end function construct_msg_string
 
 end program compute_error
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

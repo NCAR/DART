@@ -4,18 +4,15 @@
 !
 ! $Id$
 
-!----------------------------------------------------------------------
-!> purpose: generate initial inflation files so an experiment starting up
-!> can always start from a restart file without having to alter the namelist
-!> between cycles 1 and 2.
+!> Generate initial inflation files from namelist values.
+!> This way an experiment can always start from a restart file 
+!> without having to alter the namelist between cycles 1 and 2.
 !>
 !> an alternative to running this program is to use the nco utilities thus:
 !>
 !> Here is an example using version 4.4.2 or later of the NCO tools:
 !>   ncap2 -s "T=1.0;U=1.0;V=1.0" wrfinput_d01 prior_inflation_mean.nc
 !>   ncap2 -s "T=0.6;U=0.6;V=0.6" wrfinput_d01 prior_inflation_sd.nc'
-!>
-!----------------------------------------------------------------------
 
 program fill_inflation_restart
 
@@ -308,10 +305,4 @@ call finalize_mpi_utilities()
 end subroutine finalize_modules_used
 
 end program fill_inflation_restart
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
