@@ -460,25 +460,25 @@ the truth and can calculate an error.
 </colgroup>
 <tbody>
 <tr class="odd">
-<td><div class="routine">
+<td>
 
 ```
 <unix prompt> cd DART/models/lorenz_63/work
 <unix prompt> matlab -nodesktop
-... (lots of startup messages I&#39;m skipping)...
-&gt;&gt; addpath ../../../diagnostics/matlab
-&gt;&gt; plot_total_err
+... (skipping lots of startup messages)...
+>> addpath ../../../diagnostics/matlab
+>> plot_total_err
 
 Input name of ensemble trajectory file;
-&lt;cr&gt; for preassim.nc
+<cr> for preassim.nc
 preassim.nc
 Comparing perfect_output.nc and
           preassim.nc
 
 pinfo = 
 
-                 model: &#39;Lorenz_63&#39;
-               def_var: &#39;state&#39;
+                 model: 'Lorenz_63';
+               def_var: 'state';
         num_state_vars: 3
        num_ens_members: 22
     time_series_length: 200
@@ -487,8 +487,8 @@ pinfo =
            min_ens_mem: 1
            max_ens_mem: 22
         def_state_vars: [1 2 3]
-            truth_file: &#39;perfect_output.nc&#39;
-            diagn_file: &#39;preassim.nc&#39;
+            truth_file: 'perfect_output.nc';
+            diagn_file: 'preassim.nc';
             truth_time: [1 200]
             diagn_time: [1 200]
 
@@ -499,9 +499,12 @@ plot_ens_time_series
 
 ```
 
-</div></td>
-<td><a href="../images/lorenz_63_total_err.png"><img src="../images/lorenz_63_total_err.png" width="400" /></a><br />
-<a href="../images/lorenz_63_ens_time_series.png"><img src="../images/lorenz_63_ens_time_series.png" width="400" /></a></td>
+</td>
+<td>
+<a href="../images/lorenz_63_total_err.png"><img src="../images/lorenz_63_total_err.png" width="400" /></a><br />
+<a href="../images/lorenz_63_ens_time_series.png"><img src="../images/lorenz_63_ens_time_series.png" width="400" /></a>
+</td>
+
 </tr>
 </tbody>
 </table>
