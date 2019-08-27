@@ -61,3 +61,12 @@ ${MPIEXEC} ./${EXE}
 
 #-- rename diagnostic outputs -----------------------------
 ${COPY} obs_seq.final obs_seq.final.${DARTDAY}_${DARTSEC}
+
+${COPY} preassim_mean.nc preassim_mean_${DARTDAY}_${DARTSEC}.nc
+${COPY} preassim_sd.nc preassim_sd_${DARTDAY}_${DARTSEC}.nc
+
+${COPY} postassim_mean.nc postassim_mean_${DARTDAY}_${DARTSEC}.nc
+${COPY} postassim_sd.nc postassim_sd_${DARTDAY}_${DARTSEC}.nc
+
+${COPY} output_mean.nc output_mean_${DARTDAY}_${DARTSEC}.nc
+${COPY} output_sd.nc output_sd_${DARTDAY}_${DARTSEC}.nc
