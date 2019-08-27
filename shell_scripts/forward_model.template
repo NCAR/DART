@@ -1,14 +1,17 @@
 #!/bin/bash
 #BSUB -a poe
-#BSUB -J TSSFWDFEOM[1-ENSEMBLEMEMBERNO]%3     # Name of the job.
-#BSUB -o LOG/TSSFWDFEOM_%I_%J.out  # Appends stdout to file %J.out.
-#BSUB -e LOG/TSSFWDFEOM_%I_%J.out  # Appends stderr to file %J.err.
+#BSUB -J forward_fesom[1-ENSEMBLEMEMBERNO]%3     # Name of the job.
+#BSUB -o LOG/forward_fesom_%I_%J.out  # Appends stdout to file %J.out.
+#BSUB -e LOG/forward_fesom_%I_%J.out  # Appends stderr to file %J.err.
 #BSUB -P fesom                     # Project ID.
 #BSUB -q POEQUEUENAME              # queue
 #BSUB -R "span[ptile=16]"          #
 #BSUB -n NUMBEROFCORES             #
 #BSUB -N                           #
 ####BSUB -x                        #
+
+
+#--- run each ensemble member -----------------------------
 
 #--  BEGIN ATHENA CONFIG ----------------------------------
 MPIPROGINF=detail
@@ -51,6 +54,9 @@ ${MPIEXEC} ./fesom.x
 CHECKRETURN=$(bpeek -J TSSFWDFEOM[${LSB_JOBINDEX}] | grep -ir "The model blows up")
 CHECKRESULT=$(echo $?); echo ${CHECKRESULT}
 if [ ${CHECKRESULT} -ne "0" ];  then
+  cd ${FILDIR}; [ ! -f restart_file_list.txt ] && \
+                echo "${ENSDIR}/${ENSINFO}.${EXPYR}.oce.nc" > restart_file_list.txt || \
+                echo "${ENSDIR}/${ENSINFO}.${EXPYR}.oce.nc" >> restart_file_list.txt
   echo "${ENSINFO} EXIT 0 :is ready to be resubmitted" >> ${CHECKFILE}
 else
   echo "${ENSINFO} EXIT 1 :is blowed up   " >> ${CHECKFILE}

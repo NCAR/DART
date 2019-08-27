@@ -16,15 +16,15 @@ export POENAME=poe_short   # Name of the lsf queue to submit
 export MPIEXEC=/users/home/opt/lsf/8.0/linux2.6-glibc2.3-x86_64/bin/mpirun.lsf
 
 #-- Set experiment parameters here  -----------------------
-export EXPID=FB1           # id of the experiment
-export EXPNO=02            # nb of the experiment
+export EXPID=FB4           # id of the experiment
+export EXPNO=01            # nb of the experiment
 export EXPYR=2009          # experiment initial year
 export EXPINFO=${EXPID}${EXPNO};
 
-export MEMNO=30            # nb of ensemble members
+export MEMNO=3            # nb of ensemble members
 export ENSID=ENS           # id of ensemble members
 export ENDYR=2009          # year to end the experiment
-export ENDDY=7             # day to end the experiment
+export ENDDY=1             # day to end the experiment
 export MEM01=${ENSID}01
 
 export RNLEN=1800          # RNLEN is number of time step; use for FESOM
@@ -34,16 +34,16 @@ export CYCLE=${RNSEC}
 
 #-- Set the common directories here  ----------------------
 export USRHOM=/users/home/$(whoami)
-export DRTDIR=${USRHOM}/DART/FESOM/models/FeoM/work
-export WRKDIR=/work/$$(whomai)/TSS/${EXPINFO}
-export RUNDIR=${USRHOM}/DART/FESOM/models/FeoM/shell_scripts
-export DIADIR=${USRHOM}/FESOM_POSTPROC/MESH_READ
+export DRTDIR=${USRHOM}/GIT/DART_master/models/FESOM/work
+export WRKDIR=/work/$(whoami)/TSS/${EXPINFO}
+export RUNDIR=${USRHOM}/GIT/DART_master/models/FESOM/shell_scripts
+export DIADIR=${USRHOM}/FEOM_POSTPROC/MESH_READ
 export LOGDIR=${WRKDIR}/LOG
 export FILDIR=${WRKDIR}/FILTER
 export CHECKFILE=${WRKDIR}/submitcheck.lst
-export FSMHOM=${USRHOM}/FESOM
+export FSMHOM=${USRHOM}/FEOM
 export MODELHOM=${FSMHOM}/FETSSOM.ENS01
-export FSMPRE=${USRHOM}/FESOM_PREPROC
+export FSMPRE=${USRHOM}/FEOM_PREPROC
 export FSMINI=${FSMPRE}/ENSEMBLE_IC
 export OBSSEQ=${DRTDIR}/obs_seq.ferrybox
 
@@ -52,3 +52,11 @@ export OBSSEQ=${DRTDIR}/obs_seq.ferrybox
 [ ${NPROC} -eq  256 ] && export MESHDIR=mesh-T2G1.5L110b
 [ ${NPROC} -eq  512 ] && export MESHDIR=mesh-T2G1.5L110b.V3
 [ ${NPROC} -eq 1024 ] && export MESHDIR=mesh-T2G1.5L110b.V2
+
+# function to control the job sequence
+# finds the id of the current job and pass it to the next
+function jobid {
+  output=$($*)
+  echo $output | head -n1 | cut -d'<' -f2 | cut -d'>' -f1
+    }
+

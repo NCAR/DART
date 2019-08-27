@@ -1,7 +1,5 @@
 &perfect_model_obs_nml
    async                    = 0
-   start_from_restart       = .true.
-   output_restart           = .true.
    init_time_days           = -1
    init_time_seconds        = -1
    first_obs_days           = -1
@@ -29,9 +27,7 @@
 &filter_nml
    async                    = 5
    adv_ens_command          = "advance_model_script.die"
-   ens_size                 = 30
-   start_from_restart       = .true.
-   output_restart           = .true.
+   ens_size                 = 3
    obs_sequence_in_name     = "obs_seq.out"
    obs_sequence_out_name    = "obs_seq.final"
 
@@ -43,12 +39,10 @@
    first_obs_seconds        = -1
    last_obs_days            = -1
    last_obs_seconds         = -1
-   num_output_state_members = 30
-   num_output_obs_members   = 30
+   num_output_state_members = 3
+   num_output_obs_members   = 3
    output_interval          = 1
    num_groups               = 1
-   input_qc_threshold       = 3.0
-   outlier_threshold        = 3.0
    output_forward_op_errors = .false.
    output_timestamps        = .true.
    trace_execution          = .true.
@@ -83,7 +77,6 @@
 &smoother_nml
    num_lags              = 0
    start_from_restart    = .false.
-   output_restart        = .false.
    restart_in_file_name  = 'smoother_ics'
    restart_out_file_name = 'smoother_restart'
    /
@@ -121,6 +114,11 @@
 &cov_cutoff_nml
    select_localization = 1
    /
+
+&quality_control_nml
+   input_qc_threshold       = 1.0
+   outlier_threshold        = 3.0
+/
 
 &reg_factor_nml
    select_regression    = 1
@@ -206,7 +204,7 @@
 
 &model_nml
    model_analysis_filename      = 'ENS01.2009.oce.nc'
-   model_clock_filename         = '../FESOMMESH/ENS01.clock'
+   model_clock_filename         = '../ENS01/ENS01.clock'
    diagnostic_metadata          = .true.
    assimilation_period_days     = 0
    assimilation_period_seconds  = 86400
@@ -276,9 +274,9 @@
 &restart_file_tool_nml
    input_file_name              = "filter_restart"
    output_file_name             = "filter_updated_restart"
-   ens_size                     = 30
-   single_restart_file_in       = .true.
-   single_restart_file_out      = .true.
+   ens_size                     = 3
+   single_restart_file_in       = .false.
+   single_restart_file_out      = .false.
    write_binary_restart_files   = .true.
    overwrite_data_time          = .false.
    new_data_days                = -1

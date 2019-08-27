@@ -1,9 +1,12 @@
 #!/bin/bash
-#BSUB -J TSSENSINI[1-ENSEMBLEMEMBERNO]       # Name of the job.
-#BSUB -o LOG/TSSENSINI_%J_%I.out  # Appends stdout to file %J.out.
-#BSUB -e LOG/TSSENSINI_%J_%I.out  # Appends stderr to file %J.err.
+#BSUB -J init_ens[1-ENSEMBLEMEMBERNO]       # Name of the job.
+#BSUB -o LOG/init_ens_%J_%I.out  # Appends stdout to file %J.out.
+#BSUB -e LOG/init_ens_%J_%I.out  # Appends stderr to file %J.err.
 #BSUB -q serial_30min            # queue
 
+
+#--Initializes the ensemble if not yet done----------------
+#--creates directories, copies initial ensemble, namelists-
 ############################ LSF ###################################
 JOBDIR=${LS_SUBCWD}                   # directory of this script
 JOBIDN=$( echo ${LSB_JOBID} | awk '{ printf("%08d\n", $1) }' ) # job-id
@@ -22,17 +25,14 @@ SUBMITFILE=${WRKDIR}/initialize.${EXPINFO}
 #----------------------------------------------------------
 #-------- CREATE ENSEMBLE MEMBER DIRECTORY ----------------
 #----------------------------------------------------------
-if [ ! -d ${ENSDIR} ]; then
-  mkdir ${ENSDIR}
-fi
+[ ! -d ${ENSDIR} ] && mkdir ${ENSDIR}
 cd ${ENSDIR}
 
 #----------------------------------------------------------
 #-------- LINK INITIAL CONDITIONS -------------------------
 #----------------------------------------------------------
 if [ ! -f  ${ENSINFO}.clock ]; then
-  if [ ${EXPYR} -eq 2009 ]; then
-    INIYR=2008
+    INIYR=$[ ${EXPYR} - 1 ] # assuming experiment starts on Jan, 1
     cp ${FSMINI}/ENSHC.${INIYR}.clock ${ENSINFO}.clock
     ln -sf ${FSMINI}/ENSHC.${INIYR}.forcing.diag.nc .
     ln -sf ${FSMINI}/ENSHC.${INIYR}.oce.diag.nc .
@@ -41,10 +41,9 @@ if [ ! -f  ${ENSINFO}.clock ]; then
     ln -sf ${FSMINI}/ENSHC.${INIYR}.ice.mean.nc .
     ln -sf ${FSMINI}/ENSHC.${INIYR}.ice.nc .
     ln -sf ${FSMINI}/${ENSINFO}.${INIYR}.oce.nc .
-  fi
 
 #----------------------------------------------------------
-#-------- SET FEOM NAMELIST PARAMETERS --------------------
+#-------- SET FESOM NAMELIST PARAMETERS -------------------
 #----------------------------------------------------------
   for File in ENSHC.${INIYR}.*.nc; do
     NFile=$( echo ${File} | sed 's/ENSHC/'${ENSINFO}'/' );
@@ -64,7 +63,6 @@ if [ ! -f  ${ENSINFO}.clock ]; then
   cp ${MODELHOM}/namelist.diag namelist.diag
   cp ${MODELHOM}/namelist.ice namelist.ice
   cp ${MODELHOM}/namelist.oce namelist.oce
-  cp ${DRTDIR}/FeoM_time ${ENSDIR}/.
 
   sed -e  "s/ENSNUM/${ENSNO}/" -e "s/ENSDEF/${ENSID}/"  \
           ${MODELHOM}/namelist.ensemble > ${ENSDIR}/namelist.ensemble

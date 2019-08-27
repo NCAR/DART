@@ -1,5 +1,12 @@
 #!/bin/bash
 
+#----------------------------------------------------------
+#----the main script to be submitted to an lsf queue-------
+#----loads environment.load--------------------------------
+#----and modifies ens_members.template.lsf-----------------
+#----then submits it---------------------------------------
+#----------------------------------------------------------
+
 #-- Load Experiment Environment Variables -----------------
 . environment.load
 
@@ -8,6 +15,9 @@ TMPLFILE=${RUNDIR}/ens_members.template.lsf
 SBMTFILE=${RUNDIR}/ens_members.${EXPINFO}.lsf
 cat ${TMPLFILE} > ${SBMTFILE}
 
+#----------------------------------------------------------
+#--can keep experiment specific notes----------------------
+#----------------------------------------------------------
 echo "\
 ##########################################################\\
 #    SOME DISTINGUISHING INFORMATION ABOUT THE EXPERIMENT:\\

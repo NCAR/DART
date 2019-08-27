@@ -1,28 +1,30 @@
 #!/bin/bash
-#BSUB -J TSSENSRUN               # Name of the job.
-#BSUB -o LOG/TSSENSRUN_%J.out    # Appends std output to file %J.out.
-#BSUB -e LOG/TSSENSRUN_%J.out    # Appends std error  to file %J.out.
+#BSUB -J fesom_ens               # Name of the job.
+#BSUB -o LOG/fesom_ens_%J.out    # Appends std output to file %J.out.
+#BSUB -e LOG/fesom_ens_%J.out    # Appends std error  to file %J.out.
 #BSUB -q serial_30min            # queue
 
+#---calls initialize the ensemble-------------------------
+#---calls forwarding the ensemble-------------------------
+#---calls check ensemble to decide if finished------------
+#---if not, submitted again until the experiment ends-----
 
 #-- Load Experiment Environment Variables -----------------
 . environment.load
-function jobid {
-  output=$($*)
-  echo $output | head -n1 | cut -d'<' -f2 | cut -d'>' -f1
-    }
-ID=0; DAYSTEP=1; RUNYEAR=2009
 
+ID=0;
 
 #-----------------------------------------------------------------------
 # INITIALIZE ENSEMBLE IF NOT DONE YET
 #-----------------------------------------------------------------------
 if [ ! -d ${WRKDIR} ]; then
+  DAYSTEP=1; RUNYEAR=2009
   mkdir ${WRKDIR}; mkdir ${LOGDIR}; mkdir ${FILDIR}
-  cp ${RUNDIR}/environment.load ${WRKDIR}/.
+  ${COPY} ${RUNDIR}/environment.load ${WRKDIR}/.
+  ${COPY} ${DRTDIR}/FESOM_time ${FILDIR}
   TMPLFILE=${RUNDIR}/initialize.template
   SBMTFILE=${WRKDIR}/initialize.${EXPINFO}
-  sed -e "s;ENSEMBLEMEMBERNO;${MEMNO};g" ${TMPLFILE} > ${SBMTFILE}
+  sed -e "s;ENSEMBLEMEMBERNO;${MEMNO};g" ${TMPLFILE} > ${SBMTFILE} || exit 1
   cd ${WRKDIR}; ID=$( jobid bsub < ${SBMTFILE} ); echo ${ID}
 else
   cd ${WRKDIR}
@@ -38,7 +40,7 @@ TMPLFILE=${RUNDIR}/forward_model.template
 SBMTFILE=${WRKDIR}/forward_model.${EXPINFO}
 sed -e "s;ENSEMBLEMEMBERNO;${MEMNO};g" -e \
        "s;NUMBEROFCORES;${NPROC};"     -e \
-       "s;POEQUEUENAME;${POENAME};" ${TMPLFILE} > ${SBMTFILE}
+       "s;POEQUEUENAME;${POENAME};" ${TMPLFILE} > ${SBMTFILE} || exit 1
 if [ ${ID} = 0 ]; then
   cd ${WRKDIR}; ID=$( jobid bsub < ${SBMTFILE} ); echo ${ID}
 else
@@ -50,17 +52,6 @@ fi
 # if continues
 #-----------------------------------------------------------------------
 TMPLFILE=${RUNDIR}/check_ensemble.template
-SBMTFILE=${WRKDIR}eck_ensemble.${EXPINFO}
+SBMTFILE=${WRKDIR}/check_ensemble.${EXPINFO}
 cat ${TMPLFILE} > ${SBMTFILE}
 cd ${WRKDIR}; ID=$( jobid bsub -w "done(${ID})" < ${SBMTFILE} ); echo ${ID}
-exit
-
-#-----------------------------------------------------------------------
-# RUN THE DART DIAGNOSTICS HERE
-#-----------------------------------------------------------------------
-TMPLFILE=${DIADIR}/FeoM_SBMT_DaRTDiaG_TeMPLaTe.sh
-SBMTFILE=${WRKDIR}/FeoM_SBMT_DaRTDiaG_${EXPINFO}.sh
-sed -e "s;EXPNO;${EXPNO};g" -e "s;EXPCODE;${EXPID};g" -e \
-       "s;^EXPYR=.*$;EXPYR=${EXPYR};g"  \
-       ${TMPLFILE} > ${SBMTFILE}
-cd ${DIADIR}; ID=$( jobid bsub -w "done(${ID})" < ${SBMTFILE} ); echo ${ID}

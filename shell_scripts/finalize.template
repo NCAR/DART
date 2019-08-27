@@ -1,19 +1,22 @@
 #!/bin/bash
-#BSUB -J TSSENSFINAL         # Name of the job.
-#BSUB -o LOG/TSSENSFINAL_%J.out        # Appends std output to file %J.out.
-#BSUB -e LOG/TSSENSFINAL_%J.out        # Appends std error  to file %J.out.
+#BSUB -J ens_finalize            # Name of the job.
+#BSUB -o LOG/ens_finalize_%J.out # Appends std output to file %J.out.
+#BSUB -e LOG/ens_finalize_%J.out # Appends std error  to file %J.out.
 #BSUB -q serial_30min            # queue
 # LSF
 JOBDIR=${LS_SUBCWD}                   # directory of this script
 JOBIDN=${LSB_JOBID}                   # job-id
 JOBNAM=${LSB_JOBNAME}                 # name of this script
 
+#---Check if the experiment finished or not----------------
+#---If not, resubmit else finalize it----------------------
+
 #-- Load Experiment Environment Variables -----------------
 . environment.load
 cd ${WRKDIR}
 
 #----------------------------------------------------------
-SBMTFILE=${RUNDIR}/ens_members_${EXPINFO}.lsf
+SBMTFILE=${RUNDIR}/ens_members.${EXPINFO}.lsf
 
 SECST=$(cat ${MEM01}/${MEM01}.clock | sed -n 2,2p | awk '{printf("%d\n"), $1}')
 DAYST=$(cat ${MEM01}/${MEM01}.clock | sed -n 2,2p | awk '{print $2}')
