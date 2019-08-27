@@ -1,31 +1,72 @@
-!---------------------------------------------
-!> README file on how to use the bash scripts
-!> scripts are written for lsf queuing system
-!> they should be modified to work with others such as slurm
+## **Finite Element Sea-ice Ocean Model (FESOM)**
 
-!> FESOM executables are called externally detached from DART
-!> therefore no need for an advance model
+FESOM is an unstructured mesh global ocean model using finite element methods to solve the
+hydro-static primitive equations with the Boussinesq approximation (Danilov et al., 2004; Wang et
+al., 2008). FESOM v1.4 is interfaced with DART by Aydoğdu et al. (2018a) using a regional
+implementation in Turkish Straits System (Gürses et al. 2016, Aydoğdu et al. 2018).
 
-environment.load           :: environment variables, relevant directories, experiment specification are set
-                              here. There is a template called environment.template to be copied
-                              here. This script is sourced by every other one. serial
+There is a more recent version of the model called the Finite-volumE Sea ice–Ocean Model (FESOM2,
+Danilov et al. 2017). A version for coastal applications FESOM-C v.2 (Androsov et al., 2019) also
+presented recently.
 
-ensemble.launch            :: main script modifying ens_members.template.lsf and calling ens_members.${EXPINFO}.lsf.
-                              Keeps also an experiment specific brief information about the experiment which should
-                              be modified before launching the scripts. serial
 
-ens_members.template.lsf   :: calls initialize.template, forward_model.template check_ensemble.template subsequently.
-                              serial job submitted to the queue
+## **FESOM/DART interface**
+### model_mod.f90
 
-initialize.template        :: is called only once at the beginning of the experiment. Sets the experiment directory,
-                              copies initial ensemble, namelists. serial job submitted to queue
+A module called *fesom_modules* is provided to pass the information from FESOM to DART.
+fesom_modules.f90 includes fortran routines adopted from FESOM v1.4 to read the mesh, set the
+variables and dimensions of the arrays. *fesom_modules* should have access to *nod2d.out*, *nod3d.out*,
+*elem2d.out*, *elem3d.out*, *aux3d.out*, *depth.out* and *m3d.ini* mesh files.
 
-forward_model.template     :: submits a job array including all ensemble members. parallel
+Forward operators use an interpolation using closing model node in the horizontal, given that the
+application in Aydoğdu et al. (2018a) uses a very high-resolution mesh. In the vertical, a linear
+interpolation is performed between two enclosing model layers. Interpolation in model_interpolate
+routine can be improved, if needed.
 
-check_ensemble.template    :: checks if the forwarding all members is finished. If so, first calls filter.template
-                              and then calls finalize.template to conclude current assimilation cycle
+### Shell scripts
 
-filter.template            :: runs the filter after all members are forwarded to performs the analysis
+Shell scripts are written in bash for lsf queuing system. They should be modified to work with
+others such as slurm. FESOM executables are called externally detached from DART therefore no need
+for an advance model.
 
-finalize.template          :: checks if the whole experiment is finished. If so, stops. Otherwise, resubmits
-                              ens_members.${EXPINFO}.lsf for the next assimilation cycle. for the next assimilation cycle.
+
+| Script                       | Queue  | Definition    |
+| ---------------------------- | ------:|---------------|
+| **environment.load**         | serial | Includes environment variables, relevant directories, experiment specifications. This file is sourced by every other script below. |
+| **ensemble.launch**          | serial | Main script which modifies ens_members.template.lsf and calling ens_members.${EXPINFO}.lsf. Keeps also an experiment specific brief information which should be modified before launching the scripts to keep track. |
+| **ens_members.template.lsf** | serial | Calls and submits initialize.template, forward_model.template check_ensemble.template subsequently. |
+| **initialize.template**      | serial | Called only once at the beginning of the experiment. Sets the experiment directory, copies initial ensemble, namelists. |
+| **forward_model.template**   |parallel| Submits a job array for all ensemble members. |
+| **check_ensemble.template**  | serial | Checks if the forwarding for all members is finished. If so, first calls filter.template and then calls finalize.template to conclude current assimilation cycle. |
+| **filter.template**          |parallel| Runs the filter after all members are forwarded to performs the analysis. |
+| **finalize.template**        | serial | Checks if the whole experiment is finished. If so, stops. Otherwise, resubmits ens_members.${EXPINFO}.lsf for the next assimilation cycle. |
+
+### References
+
+- Androsov, A., Fofonova, V., Kuznetsov, I., Danilov, S., Rakowsky, N., Harig, S., Brix, H., and
+Wiltshire, K. H.: FESOM-C v.2: coastal dynamics on hybrid unstructured meshes, Geosci. Model Dev.,
+12, 1009-1028, https://doi.org/10.5194/gmd-12-1009-2019, 2019.
+
+- Aydoğdu, A., Hoar, T. J., Vukicevic, T., Anderson, J. L., Pinardi, N., Karspeck, A., Hendricks,
+J., Collins, N., Macchia, F., and Özsoy, E.: OSSE for a sustainable marine observing network in the
+Sea of Marmara, Nonlin. Processes Geophys., 25, 537-551, https://doi.org/10.5194/npg-25-537-2018,
+2018a.
+
+- Aydoğdu, A., Pinardi, N., Özsoy, E., Danabasoglu, G., Gürses, Ö., and Karspeck, A.: Circulation of
+the Turkish Straits System under interannual atmospheric forcing, Ocean Sci., 14, 999-1019,
+https://doi.org/10.5194/os-14-999-2018, 2018b.
+
+- Danilov, S., Kivman, G., and Schröter, J.: A finite-element ocean model: principles and
+evaluation, Ocean Modell., 6, 125–150, 2004.
+
+- Danilov, S., Sidorenko, D., Wang, Q., and Jung, T.: The Finite-volumE Sea ice–Ocean Model
+(FESOM2), Geosci. Model Dev., 10, 765-789, https://doi.org/10.5194/gmd-10-765-2017, 2017.
+
+- Gürses, Ö., Aydoğdu, A., Pinardi, N., and Özsoy, E.: A finite element modeling study of the
+Turkish Straits System, in: The Sea of Marmara – Marine Biodiversity, Fisheries, Conservations and
+Governance, edited by: Özsoy E., Çaǧatay, M. N., Balkis, N., and
+Öztürk, B., TUDAV Publication, 169–184, 2016.
+
+- Wang, Q., Danilov, S., and Schröter, J.: Finite element ocean circulation model based on
+triangular prismatic elements, with application in studying the effect of topography representation,
+J. Geophys. Res.-Oceans (1978–2012), 113, C05015, https://doi.org/10.1029/2007JC004482, 2008.
