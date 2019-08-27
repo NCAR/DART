@@ -7,11 +7,12 @@
 #BSUB -q serial_6h           # queue
 ####BSUB -x
 
-# compute the ensemble mean from fesom outputs
-# then, plot using gmt
+# computes ensemble mean from fesom ocean outputs
+# using tool number 7 for the related ruoutine in fesom_post_main.F90
+# then, plot using gmt plot_ensemble_mean.gmt
 
-source fesom.postproc.env
-froutine=7
+source fesom.postproc.env # fesom environment file. Set the parameters there
+tool=7 # see fesom_post_main.F90
 
 ENSDEF=ENS; ENSMEM=30
 

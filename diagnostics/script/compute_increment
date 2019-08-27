@@ -1,9 +1,14 @@
 #!/bin/bash
 #BSUB -a poe               #
-#BSUB -J DART_POST         # Name of the job.
-#BSUB -o DART_POST_%J.out  # Appends std output to file %J.out.
-#BSUB -e DART_POST_%J.out  # Appends std error to file %J.err.
+#BSUB -J dart_post         # Name of the job.
+#BSUB -o dart_post_%J.out  # Appends std output to file %J.out.
+#BSUB -e dart_post_%J.out  # Appends std error to file %J.err.
 #BSUB -q serial_30min      # queue
+
+
+# diffs the output_mean.nc and preassim_mean.nc to have the increment
+# calls fesom_post_mesh.x to extract a level
+# and gmt/plot_increment.gmt to plot it
 
 . dart.postproc.env; tool=13
 
@@ -28,8 +33,8 @@ for ((output=0; output<${#F_output[@]}; output++)); do
   fesom_second=$( echo "scale=2;${dart_second} / 86400" | bc )
 
   prior=${D_filter}/preassim_mean_${dart_day}_${dart_second}.nc
-  posterior=${D_filter}/postassim_mean_${dart_day}_${dart_second}.nc
-  increment=${D_filter}/Increment_Diag_${dart_day}_${dart_second}.cdf
+  posterior=${D_filter}/output_mean_${dart_day}_${dart_second}.nc
+  increment=${D_filter}/Increment_Diag_${dart_day}_${dart_second}.nc
   state_vars=$( echo ${kind[@]} | sed 's; ;,;g' )
 
   if [[ ${debug} > 0 ]]; then
@@ -40,8 +45,8 @@ for ((output=0; output<${#F_output[@]}; output++)); do
   fi
   ncdiff -O -v ${state_vars} ${prior} ${posterior} ${increment}
 
-  ${REMOVE} ${D_filter}/Increment.cdf
-  ${COPY} ${increment} ${D_filter}/Increment.cdf
+  ${REMOVE} ${D_filter}/Increment.nc
+  ${COPY} ${increment} ${D_filter}/Increment.nc
 
   level=$( echo ${layer[@]} | sed 's/\ /,/g' )
 
