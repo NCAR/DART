@@ -1,0 +1,22 @@
+####################################################################
+# Makefile for FEOM on ATHENA
+####################################################################
+
+OPT= -m64 -r8 -i4 -check all -g -traceback -fpconstant -real-size 64 -fpscomp logical
+OPT= -g -O2 -ffree-line-length-none
+CPP = /usr/bin/cpp -P -C
+
+######################################################
+# Preprocessor definition
+
+CPP_DEFS= -DPETSC -Duse_tracer_fct -Duse_ice -Duse_ice_fct -Dallow_diag -Dallow_calcmeans -Duse_fullfreesurf
+
+# NetCDF library and include paths
+NCLIB   = /users/home/opt/netcdf/netcdf-4.2.1.1_netcdf3/lib
+NCINC   = /users/home/opt/netcdf/netcdf-4.2.1.1_netcdf3/include
+
+#---------------------------------------------------
+LIBS = -L$(NCLIB) -lnetcdf -lnetcdff
+
+FC = ifort
+FC = gfortran
