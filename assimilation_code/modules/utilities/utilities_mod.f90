@@ -2,7 +2,7 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
+! $Id: utilities_mod.f90 13137 2019-04-30 15:48:00Z nancy@ucar.edu $
 
 module utilities_mod
 
@@ -12,7 +12,7 @@ module utilities_mod
 !> logging and error handing here, maybe the file routines in 
 !> another util module?
 
-use types_mod, only : r4, r8, digits12, i4, i8, PI, MISSING_R8, MISSING_I
+use types_mod, only : r4, r8, digits12, i2, i4, i8, PI, MISSING_R8, MISSING_I
 
 implicit none
 private
@@ -25,7 +25,7 @@ integer, parameter :: NML_NONE = 0, NML_FILE = 1, NML_TERMINAL = 2, NML_BOTH = 3
 real(r8), parameter :: TWOPI = PI * 2.0_r8
 
 logical :: do_output_flag     = .false.
-integer :: nml_flag           = NML_FILE
+integer :: nml_flag           = NML_NONE
 logical :: single_task        = .true.
 integer :: task_number        = 0
 logical :: module_initialized = .false.
@@ -108,11 +108,17 @@ interface array_dump
    module procedure array_4d_dump
 end interface
 
+! the default is to use input.nml for namelists and to open
+! log files and output info to stdout and the log.
+! on init if the caller sets this to true, don't do any of
+! those things.
+logical :: standalone = .false.
+
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+   "$URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/assimilation_code/modules/utilities/utilities_mod.f90 $"
+character(len=32 ), parameter :: revision = "$Revision: 13137 $"
+character(len=128), parameter :: revdate  = "$Date: 2019-04-30 09:48:00 -0600 (Tue, 30 Apr 2019) $"
 
 character(len=512) :: msgstring1, msgstring2, msgstring3
 
@@ -151,10 +157,11 @@ contains
 !-----------------------------------------------------------------------
 !>
 
-subroutine initialize_utilities(progname, alternatename, output_flag)
+subroutine initialize_utilities(progname, alternatename, output_flag, standalone_program)
 character(len=*), intent(in), optional :: progname
 character(len=*), intent(in), optional :: alternatename
-logical, intent(in), optional          :: output_flag
+logical,          intent(in), optional :: output_flag
+logical,          intent(in), optional :: standalone_program
 integer :: iunit, io
 
 character(len=256) :: lname
@@ -163,6 +170,8 @@ if ( module_initialized ) return
 
 module_initialized = .true.
 
+! check this first
+if (present(standalone_program)) standalone = standalone_program
 
 ! now default to false, and only turn on if i'm task 0
 ! or the caller tells me to turn it on.
@@ -170,6 +179,11 @@ if (present(output_flag)) then
    do_output_flag = output_flag
 else
    if (single_task .or. task_number == 0) do_output_flag = .true.
+endif
+
+if (standalone) then
+   logfileunit = 0
+   return
 endif
 
 ! Since the logfile is not open yet, the error terminations
@@ -268,6 +282,11 @@ character(len=*), intent(in), optional :: progname
 ! if called multiple times, just return
 if (.not. module_initialized) return
 
+if (standalone) then
+   module_initialized = .false.
+   return
+endif   
+
 if (do_output_flag) then
    if ( present(progname) ) then
       call log_time (logfileunit, label='Finished ', &
@@ -304,6 +323,8 @@ character(len=*), intent(in) :: src, rev, rdate
 if ( .not. do_output_flag) return
 if ( .not. module_details) return
 
+if (standalone) return
+
 ! you cannot have this routine call init because it calls
 ! back into register module.  this is an error if this
 ! routine is called before initialize_utilities().
@@ -335,7 +356,7 @@ logical :: do_nml_file
 
 if ( .not. module_initialized ) call initialize_utilities
 
-if ( .not. do_output()) then
+if ( .not. do_output() .or. standalone) then
    do_nml_file = .false.
 else
    do_nml_file = (nml_flag == NML_FILE .or. nml_flag == NML_BOTH)
@@ -353,7 +374,7 @@ logical :: do_nml_term
 
 if ( .not. module_initialized ) call initialize_utilities
 
-if ( .not. do_output()) then
+if ( .not. do_output() .or. standalone) then
    do_nml_term = .false.
 else
    do_nml_term = (nml_flag == NML_TERMINAL .or. nml_flag == NML_BOTH)
@@ -380,6 +401,11 @@ character(len=256) :: next_nml_string, test_string, string1
 integer            :: io
 
 if (.not. module_initialized) call fatal_not_initialized('find_namelist_in_file')
+
+if (standalone) then
+  iunit = -1
+  return
+endif
 
 ! Check for namelist file existence; no file is an error
 if(.not. file_exist(trim(namelist_file_name))) then
@@ -439,6 +465,8 @@ character(len=*), intent(in) :: nml_name
 character(len=256) :: nml_string
 integer            :: io
 
+if (standalone) return
+
 if (.not. module_initialized) call fatal_not_initialized('check_namelist_read')
 
 ! If the namelist read was successful, close the namelist file and we're done.
@@ -475,7 +503,7 @@ subroutine log_it(message)
 character(len=*), intent(in) :: message
 
                       write(     *     , *) trim(message)
-if (logfileunit >= 0) write(logfileunit, *) trim(message)
+if (logfileunit >  0) write(logfileunit, *) trim(message)
 
 end subroutine log_it
 
@@ -700,11 +728,14 @@ select case(level)
       call log_it(' message: '//trim(text))
       if (present(text2)) call log_it(' message: ... '//trim(text2))
       if (present(text3)) call log_it(' message: ... '//trim(text3))
-      call log_it('')
-      call log_it(' source file: '//trim(src))
-      call log_it(' file revision: '//trim(rev))
-      call log_it(' revision date: '//trim(rdate))
-      if(present(aut)) call log_it(' last editor: '//trim(aut))
+      ! with the move from subversion to git, these strings no longer autogenerate
+      ! and should be removed from the calls.  in the meantime, to ease the transition
+      ! don't print values like $URL$, etc.
+      !call log_it('')
+      !if (present(src))   call log_it('   source file: '//trim(src))
+      !if (present(rev))   call log_it(' file revision: '//trim(rev))
+      !if (present(rdate)) call log_it(' revision date: '//trim(rdate))
+      !if (present(aut))   call log_it('   last editor: '//trim(aut))
 
 end select
 
@@ -2620,31 +2651,56 @@ end subroutine find_first_occurrence
 !-----------------------------------------------------------------------
 
 !-----------------------------------------------------------------------
-!> print out the kind numbers for various variable kinds
+!> print out the kind numbers for various Fortran90 variable kinds
+!> (as in F90 type/kind/rank, not DART state or observation kinds)
 
 subroutine dump_varkinds()
 
-integer :: bob
+! declare these without an indicated KIND so we can print out 
+! what default variable sizes are.  this can be changed by the
+! user at compile time so these are out of our control.  this is
+! why in our code we always specify (r8) for reals.  we usually
+! let integers default because they are rarely used for data values.
+! (loop counters, array sizes, etc)
 
-call log_it('') ! a little whitespace is nice
+integer :: idummy
+real    :: rdummy
 
-write(msgstring1,*)'..  digits12 is ',digits12
-write(msgstring2,*)'r8       is ',r8
-write(msgstring3,*)'r4       is ',r4
-call error_handler(E_DBG, 'initialize_utilities', msgstring1, &
-                   source, revision, revdate, text2=msgstring2, text3=msgstring3)
+call log_it('') ! whitespace 
 
-write(msgstring1,*)'..  integer  is ',kind(bob) ! any integer variable will do
-write(msgstring2,*)'i8       is ',i8
-write(msgstring3,*)'i4       is ',i4
-call error_handler(E_DBG, 'initialize_utilities', msgstring1, &
-                   source, revision, revdate, text2=msgstring2, text3=msgstring3)
+write(msgstring1,*) 'compiler KIND for  real     is ',kind(rdummy)
+call log_it(msgstring1)
+
+write(msgstring1,*) 'compiler KIND for  r4       is ',r4
+call log_it(msgstring1)
+
+write(msgstring1,*) 'compiler KIND for  r8       is ',r8
+call log_it(msgstring1)
+
+write(msgstring1,*) 'compiler KIND for  digits12 is ',digits12
+call log_it(msgstring1)
+
+call log_it('') ! whitespace 
+
+write(msgstring1,*) 'compiler KIND for  integer  is ',kind(idummy) 
+call log_it(msgstring1)
+
+write(msgstring1,*) 'compiler KIND for  i2       is ',i2
+call log_it(msgstring1)
+
+write(msgstring1,*) 'compiler KIND for  i4       is ',i4
+call log_it(msgstring1)
+
+write(msgstring1,*) 'compiler KIND for  i8       is ',i8
+call log_it(msgstring1)
+
+call log_it('') ! whitespace 
 
 end subroutine dump_varkinds
  
 !-----------------------------------------------------------------------
 !>  Useful for dumping all the attributes for a file 'unit'
-!>  A debugging routine, really. TJH Oct 2004
+!>  A debugging routine. TJH Oct 2004
 
 subroutine dump_unit_attributes(iunit) 
 
@@ -2769,7 +2825,7 @@ end subroutine output_unit_attribs
 end module utilities_mod
 
 ! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
+! $URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/assimilation_code/modules/utilities/utilities_mod.f90 $
+! $Id: utilities_mod.f90 13137 2019-04-30 15:48:00Z nancy@ucar.edu $
+! $Revision: 13137 $
+! $Date: 2019-04-30 09:48:00 -0600 (Tue, 30 Apr 2019) $
