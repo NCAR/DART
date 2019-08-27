@@ -1,15 +1,19 @@
-include make.inc.linux
+
+include ../../../../build_templates/mkmf.template
+
+CPP = /usr/bin/cpp -P -C
+CPP_DEFS= -DPETSC -Duse_tracer_fct -Duse_ice -Duse_ice_fct -Dallow_diag -Dallow_calcmeans -Duse_fullfreesurf
 
 # modules
-MODULES=oce_modules.o            \
-        utilities.o     \
-        gen_modules_config.o     \
-        random_perturbation.o    \
-        gen_modules_clock.o      \
-        fesom_forcing_diag.o     \
-        fesom_obs_diag.o         \
-        fesom_dart_diag.o        \
-        fesom_ocean_diag.o
+MODULES=oce_modules.o           \
+        utilities.o             \
+        gen_modules_config.o    \
+        random_perturbation.o   \
+        gen_modules_clock.o     \
+        fesom_forcing_mod.o     \
+        fesom_observation_mod.o \
+        fesom_dart_mod.o        \
+        fesom_ocean_mod.o
 
 # objects
 OBJECTS=oce_dens_press.o  \
@@ -29,8 +33,8 @@ $(EXE) : $(MODULES) $(OBJECTS)
 .SUFFIXES: .F90 .o
 
 .F90.o :
-	$(CPP) $(CPP_DEFS) -I$(NCINC)< $*.F90 > $*.f90
-	$(FC) $(OPT) -c $*.f90 -I$(NCINC)
+	$(CPP) $(CPP_DEFS) $(INCS)< $*.F90 > $*.f90
+	$(FC) $(OPT) -c $*.f90 $(INCS)
 	rm -f  $*.f90
 
 clean :
