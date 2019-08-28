@@ -6,6 +6,11 @@
 #BSUB -P fesom             # Project ID.
 #BSUB -q serial_6h           # queue
 ####BSUB -x
+
+# extract a model level from fesom ocean output
+# for the days and levels indicated
+# calls zlevel_daily_mean.gmt to plot
+
 TOOLCODE=3
 INITIALDAY=1; FINALDAY=1
 EXPDEF=FB0; EXPNUM=01; YEAR=2009

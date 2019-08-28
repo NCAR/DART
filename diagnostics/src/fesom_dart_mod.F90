@@ -1,4 +1,14 @@
-module fesom_dart_diag
+!
+! Includes tools to process ensemble and dart outputs
+! Tools are used to produce the analysis in:
+! Aydoğdu, A., Hoar, T. J., Vukicevic, T., Anderson, J. L., Pinardi, N., Karspeck, A., Hendricks, J., Collins, N., Macchia, F., and
+! Özsoy, E.: OSSE for a sustainable marine observing network in the Sea of Marmara, Nonlin. Processes Geophys., 25, 537-551,
+! https://doi.org/10.5194/npg-25-537-2018, 2018
+!
+! Provided by ali.aydogdu@cmcc.it
+
+
+module fesom_dart_mod
 
   use g_config,   only : iniday, endday, runyear, runid, day2ext, &
                          save_count, resultpath, level_number,    &
@@ -11,16 +21,15 @@ module fesom_dart_diag
 
   implicit none
 
-  public ::  read_increment,            &
-             read_ensemble_from_netcdf, &
-             calc_ensemble_mean,        &
-             calc_ensemble_variance,    &
-             read_section_from_ino,     &
-             read_section_from_inc,     &
-             dart_obs_seq_proc
+  public ::  read_increment,            & ! reads increments from the diff increment.nc of output_mean.nc and preassim_mean.nc
+             read_ensemble_from_netcdf, & ! reads all ensemble members from fesom outputs to compute mean and variance
+             calc_ensemble_mean,        & ! calculates ensemble mean
+             calc_ensemble_variance,    & ! calculates ensemble variance
+             read_section_from_ino,     & ! calculates innovation if a nature run is provided
+             read_section_from_inc        ! reads a horizontal section from increment.nc
 
   integer(i4)                 :: i, j, k
-  character(len=*), parameter :: filename="inputfile.cdf"
+  character(len=*), parameter :: filename="inputfile.nc"
 
   contains
 
@@ -41,7 +50,7 @@ module fesom_dart_diag
       allocate(aux3(myDim_nod3D))
 
       ! open files
-      filename=trim(ResultPath)//'FILTER/Innovation.cdf'
+      filename=trim(ResultPath)//'FILTER/Innovation.nc'
       print*, filename
       status = nf_open(filename, nf_nowrite, ncid)
       if (status .ne. nf_noerr) call handle_err(status)
@@ -90,7 +99,7 @@ module fesom_dart_diag
       allocate(aux3(myDim_nod3D,copy))
 
       ! open files
-      filename=trim(ResultPath)//'FILTER/Increment.cdf'
+      filename=trim(ResultPath)//'FILTER/Increment.nc'
       print*, filename
       status = nf_open(filename, nf_nowrite, ncid)
       if (status .ne. nf_noerr) call handle_err(status)
@@ -315,76 +324,5 @@ NODLOOP:  do i=1,myDim_nod2D
      end do
     end subroutine read_section_from_inc
 
-    subroutine dart_obs_seq_proc
 
-      use utilities, only : skip_read_line
-
-      integer, parameter        ::   iread=101
-      integer, parameter        ::   iwrite1=103
-      integer, parameter        ::   iwrite2=104
-      character(13)             ::   obsfilename="obs_seq.final"
-      character(13)             ::   soutfilename="obs_seq.salt"
-      character(13)             ::   toutfilename="obs_seq.temp"
-      character(100)            ::   header_obs_seq
-      character(100)            ::   dummy_text
-
-      integer                   ::   tot_kind, num_copy, num_qc
-      integer                   ::   num_obs, tot_obs, obs_num
-      integer                   ::   first_obs, last_obs
-      integer                   ::   prev_obs, next_obs
-      integer                   ::   flag1, flag2
-      integer                   ::   sec, day
-      integer,allocatable       ::   num_kind(:)
-      integer                   ::   obs_kind, iwrite
-      character(20),allocatable ::   nam_kind(:)
-
-      real(r8),allocatable      ::   copy(:)
-      real(r8)                  ::   lat_rad, lon_rad, depth
-      real(r8)                  ::   obs_err
-
-      open(unit=iwrite1,file=soutfilename,status='replace',access='append',form='formatted')
-      open(unit=iwrite2,file=toutfilename,status='replace',access='append',form='formatted')
-      open(unit=iread, file=obsfilename)
-      call skip_read_line(iread,2)
-      read(iread,*) tot_kind
-      allocate(num_kind(tot_kind), nam_kind(tot_kind))
-      do i=1,2
-        read(iread,*) num_kind(i), nam_kind(i)
-      end do
-      read(iread,*) dummy_text,num_copy,dummy_text,num_qc
-      allocate(copy(num_copy+num_qc))
-      read(iread,*) dummy_text,num_obs,dummy_text,tot_obs
-
-
-      call skip_read_line(iread,num_copy+num_qc)
-      read(iread,*) dummy_text,first_obs,dummy_text,last_obs
-LOOP_OBS: do j=1,tot_obs
-        read(iread,*) dummy_text, obs_num
-LOOP_COPY:do i=1,num_copy+num_qc
-          read(iread,*) copy(i)
-        end do LOOP_COPY
-
-        read(iread,*) prev_obs, next_obs, flag1
-        call skip_read_line(iread,2)
-        read(iread,*) lat_rad, lon_rad, depth, flag2
-        call skip_read_line(iread,1)
-        read(iread,*) obs_kind
-        read(iread,*) sec, day
-        read(iread,*) obs_err
-        if (obs_kind.eq.1) iwrite=iwrite1
-        if (obs_kind.eq.2) iwrite=iwrite2
-
-        write(iwrite,'(I5,3F10.5,2I5,8F10.5)') &
-                obs_kind, lat_rad, lon_rad, depth, sec, day, &
-                copy(1), copy(2), copy(3), copy(4), copy(5), &
-                copy(num_copy+1), copy(num_copy+2), obs_err
-      end do LOOP_OBS
-
-      deallocate(num_kind, nam_kind, copy)
-      close(iread)
-      close(iwrite2)
-      close(iwrite1)
-
-    end subroutine dart_obs_seq_proc
-
-end module fesom_dart_diag
+end module fesom_dart_mod

@@ -5,8 +5,8 @@ hydro-static primitive equations with the Boussinesq approximation (Danilov et a
 al., 2008). FESOM v1.4 is interfaced with DART by Aydoğdu et al. (2018a) using a regional
 implementation in Turkish Straits System (Gürses et al. 2016, Aydoğdu et al. 2018).
 
-There is a more recent version of the model called the Finite-volumE Sea ice–Ocean Model (FESOM2,
-Danilov et al. 2017). A version for coastal applications FESOM-C v.2 (Androsov et al., 2019) also
+There is a recent version of the model called the Finite-volumE Sea ice–Ocean Model (FESOM2,
+Danilov et al. 2017). A version for coastal applications FESOM-C v.2 (Androsov et al., 2019) is also
 presented recently.
 
 
@@ -40,6 +40,51 @@ for an advance model.
 | **check_ensemble.template**  | serial | Checks if the forwarding for all members is finished. If so, first calls filter.template and then calls finalize.template to conclude current assimilation cycle. |
 | **filter.template**          |parallel| Runs the filter after all members are forwarded to performs the analysis. |
 | **finalize.template**        | serial | Checks if the whole experiment is finished. If so, stops. Otherwise, resubmits ens_members.${EXPINFO}.lsf for the next assimilation cycle. |
+
+### Diagnostics
+
+A toolbox for diagnostics is provided. Some are written for a specific regional application using
+Ferrybox observations. However, it shouldn't be difficult to add new tools following the present
+ones. A fortran toolbox post-processes the FESOM outputs and visualization is done using Generic
+Mapping Tools (GMT). DART outputs are plotted using FERRET. Please see the description inside respective code.
+
+| Directory   | code file                       |  description  |
+| ------------|:--------------------------------|---------------|
+| src/        |                                 ||
+|             |fesom_post_main.F90              | main fortran routine calling each tool by a switch |
+|             |fesom_ocean_mod.F90              | ocean diagnostic routines |
+|             |fesom_dart_mod.F90               | dart outputs diagnostic routines |
+|             |fesom_forcing_mod.F90            | forcing diagnostic routines |
+|             |fesom_observation_mod.F90        | observation diagnostic routines |
+|             |gen_input.F90                    | fesom routines for I/O |
+|             |gen_modules_clock.F90            | fesom routines for timing |
+|             |gen_modules_config.F90           | fesom routines for configuration |
+|             |mesh_read.F90                    | fesom routines for reading the mesh |
+|             |Makefile                         | Makefile reading mkmf_template |
+|             |oce_dens_press.F90               | fesom routines to compute density and pressure|
+|             |oce_mesh_setup.F90               | fesom routines for mesh setup |
+|             |oce_modules.F90                  | fesom routines for ocean modules |
+|             |random_perturbation.F90          | random perturbation to observation sampling |
+|             |utilities.F90                    | various utilities |
+| script/     |                                 ||
+|             |compute_ensemble_mean            | computes ensemble mean and extracts a transect or level |
+|             |compute_increment                | computes increment using preassim_mean.nc and postassim_mean.nc |
+|             |compute_innovation               | computes innovation if there is a nature run |
+|             |dart_obs_seq_diag                | dart statistics from obs_epoch.nc and obs_diag.nc|
+|             |dart.postproc.env                | dart environment variables |
+|             |fesom.postproc.env               | fesom environment variables|
+|             |observe_nature_run               | sampling observations if there is a nature run |
+|             |transect_daily_mean              | extracts and plots a transect of a individual ensemble member|
+|             |zlevel_daily_mean                | extracts and plots a level of an individual ensemble member|
+| gmt/        |                                 ||
+|             |plot_ensemble_mean.gmt           | plots ensemble mean called by compute_ensemble_mean|
+|             |plot_increment.gmt               | plots increment called by compute_increment|
+|             |plot_innovation.gmt              | plots innovation called by compute_innovation|
+|             |transect_daily_mean.gmt          | plots transects called by transect_daily_mean|
+|             |zlevel_yearly_mean.gmt           | plots levels called by zlevel_daily_mean|
+| ferret/     |                                 ||
+|             |frt.obs_diag_TeMPLaTe.jnl        | plot dart diags called by dart_obs_seq_diag|
+|             |frt.obs_epoch_TeMPLaTe.jnl       | plots dart diags called by dart_obs_seq_diag|
 
 ### References
 

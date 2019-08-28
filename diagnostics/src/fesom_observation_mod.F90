@@ -1,4 +1,12 @@
-module fesom_obs_diag
+!
+! Includes tools to process forcing files
+! Tools are used to produce the analysis in:
+! Aydoğdu, A., Pinardi, N., Özsoy, E., Danabasoglu, G., Gürses, Ö., and Karspeck, A.: Circulation of the Turkish
+! Straits System under interannual atmospheric forcing, Ocean Sci., 14, 999-1019, https://doi.org/10.5194/os-14-999-2018, 2018b.
+!
+! Provided by ali.aydogdu@cmcc.it
+!
+module fesom_observation_mod
 
 use g_config,   only : runid, day2ext, runyear
 use o_param,    only : rad
@@ -11,15 +19,15 @@ use utilities, only : r8, i4
 
 implicit none
 
-public    :: read_obs_nml, &
-             read_ctd_data, &
-             read_ship_track, &
-             calc_misfit, &
-             calc_rms_latlon, &
-             find_close_2D, &
-             find_close_layer, &
-             profile_from_netcdf, &
-             synthetic_ferrybox_from_nr
+public    :: read_obs_nml,             & ! read observation namelist nml/namelist.obs
+             read_ctd_data,            & ! compare model outputs with ctd profiles
+             read_ship_track,          & ! compare model outputs with ship tracks
+             calc_misfit,              & ! calculate misfits with CTD profiles
+             calc_rms_latlon,          & ! calculate RMSE against CTD
+             find_close_2D,            & ! find closest 2D location on the mesh to the obs
+             find_close_layer,         & ! find closest level on the mesh to the obs
+             profile_from_netcdf,      & ! extract profile from fesom ocean outputs
+             synthetic_ferrybox_from_nr  ! generate ferrybox data from nature run (if exists, a ship track is needed)
 
 character(len=100)   :: ctddir,wrkdir
 character(len=100)   :: obslist, ctd_input_file
@@ -385,9 +393,9 @@ contains
     integer           :: check_EOF
     integer           :: fileID,k,hnode,fileno
     integer           :: min_begin, yr, mnt, day, hr, minute, second
-    real(r8)            :: lon,lat
-    character*6       :: DAYNUM
-    character*100     :: OUTFILENAM,OBSCREAFILE,ferry_filename
+    real(r8)          :: lon,lat
+    character(len=6)  :: DAYNUM
+    character(len=100):: OUTFILENAM,OBSCREAFILE,ferry_filename
 
     real(r8)            :: TEM, SAL
 
@@ -433,4 +441,4 @@ contains
     close(101)
   end subroutine synthetic_ferrybox_from_nr
 
-end module fesom_obs_diag
+end module fesom_observation_mod

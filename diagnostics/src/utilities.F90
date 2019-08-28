@@ -1,3 +1,7 @@
+!
+! inside function is by Alexander F. Shchepetkin
+! provided by ali.aydogdu@cmcc.it
+!
 module utilities
 
 ! integer precision:
@@ -11,6 +15,10 @@ integer, parameter :: i8 = SELECTED_INT_KIND(13)
 integer, parameter :: r4 = SELECTED_REAL_KIND(6,30)
 integer, parameter :: r8 = SELECTED_REAL_KIND(12)   ! real r8
 
+public             :: skip_read_line, &  ! skip a number of lines while reading
+                      to_radian,      &  ! degree to radian
+                      earthdistance,  &  ! compute earth distance of two locations
+                      inside             ! check if inside polygon by Alexander F. Shchepetkin
 
 contains
 

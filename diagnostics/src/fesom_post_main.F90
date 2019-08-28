@@ -1,15 +1,15 @@
 program fesom_post_main
 
-  use fesom_forcing_diag, only : compute_forcing_monthly_timeseries, compute_wind_stress_curl, compute_surface_buoyancy,  &
-                                 compute_wind_work, forcing_array_setup
-  use fesom_ocean_diag,   only : find_surface_area, basin_mean_evolution, read_thalweg_from_nc, read_section_from_netcdf, &
-                                 marmara_mean_evolution, calc_section_monthly_mean, calc_thalweg_monthly_mean,            &
-                                 velocity_at_the_exit, dardanelles_for_MFS, total_kinetic_energy, surface_kinetic_energy, &
-                                 calc_section_annual_mean, calc_thalweg_annual_mean, compute_vorticity, compute_net_flux, &
-                                 bosphorus_for_blk_mfs, compute_volume_transport
-  use fesom_dart_diag,    only : read_ensemble_from_netcdf, read_section_from_ino, read_section_from_inc
-  use fesom_obs_diag,     only : synthetic_ferrybox_from_nr, read_ctd_data, profile_from_netcdf, read_ship_track
-  use g_config,           only : tool
+  use fesom_forcing_mod,         only : compute_forcing_monthly_timeseries, compute_wind_stress_curl, compute_surface_buoyancy,  &
+                                        compute_wind_work, forcing_array_setup
+  use fesom_ocean_mod,           only : find_surface_area, basin_mean_evolution, read_thalweg_from_nc, read_section_from_netcdf, &
+                                        marmara_mean_evolution, calc_section_monthly_mean, calc_thalweg_monthly_mean,            &
+                                        velocity_at_the_exit, dardanelles_for_MFS, total_kinetic_energy, surface_kinetic_energy, &
+                                        calc_section_annual_mean, calc_thalweg_annual_mean, compute_vorticity, compute_net_flux, &
+                                        bosphorus_for_blk_mfs, compute_volume_transport
+  use fesom_dart_mod,            only : read_ensemble_from_netcdf, read_section_from_ino, read_section_from_inc
+  use fesom_observation_mod,     only : synthetic_ferrybox_from_nr, read_ctd_data, profile_from_netcdf, read_ship_track
+  use g_config,                  only : tool
 
   real              :: t0, t1, t2, t3, t4, t5, t6, &
                        t7, t8, t9, t10, t11, t12,t13, &

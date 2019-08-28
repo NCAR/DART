@@ -1,4 +1,12 @@
-module fesom_ocean_diag
+!
+! Includes tools to process forcing files
+! Tools are used to produce the analysis in:
+! Aydoğdu, A., Pinardi, N., Özsoy, E., Danabasoglu, G., Gürses, Ö., and Karspeck, A.: Circulation of the Turkish
+! Straits System under interannual atmospheric forcing, Ocean Sci., 14, 999-1019, https://doi.org/10.5194/os-14-999-2018, 2018b.
+!
+! Provided by ali.aydogdu@cmcc.it
+!
+module fesom_ocean_mod
 
 use g_config,   only : runyear, day2ext, resultpath, runid, save_count,      &
                        level_number, thalweg_directory, flux_section,        &
@@ -18,20 +26,21 @@ use utilities,  only : r8, i4
 
 implicit none
 
-public   :: find_surface_area, &
-            basin_mean_evolution, &
-            marmara_mean_evolution, &
-            read_section_from_netcdf, &
-            read_thalweg_from_nc, &
-            calc_section_annual_mean, &
-            calc_section_monthly_mean, &
-            calc_thalweg_annual_mean, &
-            calc_thalweg_monthly_mean, &
-            velocity_at_the_exit, &
-            dardanelles_for_MFS, &
-            surface_kinetic_energy, &
-            total_kinetic_energy, &
-            compute_vorticity
+public   :: find_surface_area,          &   ! computes surface area in a polygon (should be provided)
+            basin_mean_evolution,       &   ! computes the mean of variables in the whole domain
+            marmara_mean_evolution,     &   ! computes the mean of variables in a region (marmax_lon, marmin_lon, marmax_lat, marmin_lat)
+            read_section_from_netcdf,   &   ! reads and extracts a level from fesom ocean outputs
+            read_thalweg_from_nc,       &   ! reads and extracts a transect from fesom ocean outputs (file to be provided)
+            calc_section_annual_mean,   &   ! computes yearly average of a level
+            calc_section_monthly_mean,  &   ! computes monthly average of a level
+            calc_thalweg_annual_mean,   &   ! computes yearly average of a transect
+            calc_thalweg_monthly_mean,  &   ! computes monthly average of a transect
+            velocity_at_the_exit,       &   ! computes velocity at strait exits (a transect should be provided)
+            dardanelles_for_MFS,        &   ! extracts a region in the exit of the Dardanelles (a region to be provided)
+            bosphorus_for_blk_mfs,      &   ! extracts a region in the exit of the Bosphorus (a region to be provided)
+            surface_kinetic_energy,     &   ! computes surface kinetic energy for 2D vis.
+            total_kinetic_energy,       &   ! computes total kinetic energy for 2D vis
+            compute_vorticity               ! computes vorticity for 2D vis
 
 integer  :: i, j, k
 
@@ -594,7 +603,7 @@ end subroutine calc_thalweg_monthly_mean
 
 subroutine velocity_at_the_exit
 
-  use  fesom_obs_diag, only   : find_close_2D, close_node
+  use  fesom_observation_mod, only   : find_close_2D, close_node
 
   integer           :: region,hnode(4),layer
   real(r8)          :: vlon(4),vlat(4), swap_uv
@@ -1408,4 +1417,4 @@ close(101)
 end do day_loop
  end subroutine bosphorus_for_blk_mfs
 
-end module fesom_ocean_diag
+end module fesom_ocean_mod

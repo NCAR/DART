@@ -1,4 +1,12 @@
-module fesom_forcing_diag
+!
+! Includes tools to process forcing files
+! Tools are used to produce the analysis in:
+! Aydoğdu, A., Pinardi, N., Özsoy, E., Danabasoglu, G., Gürses, Ö., and Karspeck, A.: Circulation of the Turkish
+! Straits System under interannual atmospheric forcing, Ocean Sci., 14, 999-1019, https://doi.org/10.5194/os-14-999-2018, 2018b.
+!
+! Provided by ali.aydogdu@cmcc.it
+!
+module fesom_forcing_mod
 
   use g_config,   only : runyear, day2ext, resultpath, runid, save_count, level_number, thalweg_directory, endday
   use o_param,    only : km3yr2m3sec, rad, vcpw, g, marmax_lon, marmin_lon, marmax_lat, marmin_lat, rho0r
@@ -10,16 +18,14 @@ module fesom_forcing_diag
 
   implicit none
 
-  public  :: compute_wind_stress_curl, &
-             compute_surface_buoyancy, &
-             compute_wind_work, &
-             compute_forcing_monthly_timeseries, &
-             forcing_array_setup, &
-             read_forcing_input, &
-             cal_nodal_alpha_beta
+  public  :: compute_wind_stress_curl, & ! computes the wind stress curl from forcing.nc
+             compute_surface_buoyancy, & ! computes the buoyancy from forcig 
+             compute_wind_work, &        ! computes wind work
+             compute_forcing_monthly_timeseries, & ! computes monthly timeseries for a given variable
+             forcing_array_setup, &                ! sets arrays for forcing variables
+             read_forcing_input, &                 ! reads forcing file
+             cal_nodal_alpha_beta                  ! computes thermal expansion and saline contraction coefficients
 
-  !integer, parameter :: r8 = r4                      ! alias r8 to r4
-  ! *** exchange coefficients ***
   real(r8)    :: Ce_atm_oce=1.75e-3 ! exchange coeff. of latent heat over open water
   real(r8)    :: Ch_atm_oce=1.75e-3 ! exchange coeff. of sensible heat over open water
   real(r8)    :: Cd_atm_oce=1.0e-3  ! drag coefficient between atmosphere and water
@@ -130,8 +136,6 @@ module fesom_forcing_diag
       wind_xy(i,2)=wind_xy(i,2)+wind_v(i)
       ws_curl_tot(i)=( ws_curl(2,i)-ws_curl(1,i) ) * inv3
       end do
-
-  !  call deallocate_forcing
 
     end do
 
@@ -949,26 +953,4 @@ module fesom_forcing_diag
       end do
   end subroutine cal_nodal_alpha_beta
 
-  !subroutine deallocate_forcing
-  !
-  !  deallocate(wind_u, wind_v, Tair, shum)
-  !  deallocate(Tdew, shortwave, srf_longwave, srf_long_w)
-  !  deallocate(srf_prec_rain, srf_prec_snow, srf_runoff, srf_evaporation)
-  !  deallocate(srf_water_flux, srf_heat_flux, srf_salinity_virtual, srf_salinity_relax)
-  !  deallocate(wind_stress_x, wind_stress_y)
-  !  deallocate(ccvr, Pair)
-  !
-  !  deallocate(chl, sw_3d)
-  !
-  !  deallocate(thdgr, thdgrsn, flice)
-  !  deallocate(srf_olat_heat, srf_osen_heat, srf_olwout)
-  !
-  !  deallocate(Cd_atm_oce_arr)
-  !  deallocate(Ch_atm_oce_arr)
-  !  deallocate(Ce_atm_oce_arr)
-  !!  deallocate(Cd_atm_ice_arr)
-  !
-  !
-  !end subroutine deallocate_forcing
-
-end module fesom_forcing_diag
+end module fesom_forcing_mod

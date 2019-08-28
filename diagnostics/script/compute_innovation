@@ -1,9 +1,14 @@
 #!/bin/bash
 #BSUB -a poe               #
-#BSUB -J DART_POST         # Name of the job.
-#BSUB -o DART_POST_%J.out  # Appends std output to file %J.out.
-#BSUB -e DART_POST_%J.out  # Appends std error to file %J.err.
+#BSUB -J dart_post         # Name of the job.
+#BSUB -o dart_post_%J.out  # Appends std output to file %J.out.
+#BSUB -e dart_post_%J.out  # Appends std error to file %J.err.
 #BSUB -q serial_30min      # queue
+
+# requires a nature run
+# diffs preassim_mean.nc and nature run to get the innovations
+# calls fesom_post_mesh.x to extract a section
+# parameters needs to be set in dart.postproc.env
 
 . dart.postproc.env; tool=9
 
@@ -27,7 +32,7 @@ for ((output=0; output<${#F_output[@]}; output++)); do
   nature_step=$( echo "scale=0; ${fesom_date}*24 + ${fesom_second} / 1" | bc )
 
   prior=${D_filter}/preassim_mean_${dart_day}_${dart_second}.nc
-  innovation=${D_filter}/Innovation_Diag_${dart_day}_${dart_second}.cdf
+  innovation=${D_filter}/Innovation_Diag_${dart_day}_${dart_second}.nc
   state_vars=$( echo ${kind[@]} | sed 's; ;,;g' )
 
   if [[ ${debug} > 0 ]]; then
@@ -38,16 +43,16 @@ for ((output=0; output<${#F_output[@]}; output++)); do
     echo ${nature_step} ${fesom_second} ${fesom_date} ${dart_second} ${dart_day} ${dart_time[@]}
   fi
 
-  ncks -O -v ${state_vars} -d T,${nature_step} ${F_nature} ${D_filter}/naturerun.cdf
-  ncrename -d T,time ${D_filter}/naturerun.cdf
-  ncks -O -v ${state_vars} -d copy,0 ${prior} ${D_filter}/prior_copy.cdf
-  ncwa -O -d copy,0 -a copy ${D_filter}/prior_copy.cdf ${D_filter}/prior.cdf
-  ncdiff -O -v ${state_vars} ${D_filter}/prior.cdf ${D_filter}/naturerun.cdf ${innovation}
+  ncks -O -v ${state_vars} -d T,${nature_step} ${F_nature} ${D_filter}/naturerun.nc
+  ncrename -d T,time ${D_filter}/naturerun.nc
+  ncks -O -v ${state_vars} -d copy,0 ${prior} ${D_filter}/prior_copy.nc
+  ncwa -O -d copy,0 -a copy ${D_filter}/prior_copy.nc ${D_filter}/prior.nc
+  ncdiff -O -v ${state_vars} ${D_filter}/prior.nc ${D_filter}/naturerun.nc ${innovation}
 
-  ${REMOVE} ${D_filter}/prior.cdf ${D_filter}/naturerun.cdf
-  ${REMOVE} ${D_filter}/prior_copy.cdf #${D_filter}/naturerun_copy.cdf
-  ${REMOVE} ${D_filter}/Innovation.cdf
-  ${COPY} ${innovation} ${D_filter}/Innovation.cdf
+  ${REMOVE} ${D_filter}/prior.nc ${D_filter}/naturerun.nc
+  ${REMOVE} ${D_filter}/prior_copy.nc #${D_filter}/naturerun_copy.nc
+  ${REMOVE} ${D_filter}/Innovation.nc
+  ${COPY} ${innovation} ${D_filter}/Innovation.nc
   #
   level=$( echo ${layer[@]} | sed 's/\ /,/g' )
   #
