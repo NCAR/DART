@@ -46,4 +46,4 @@ $(EXE) : $(MODULES) $(OBJECTS)
 	mv $*.cpp.o $*.o
 
 clean :
-	rm -f *.o *.mod *~ *.f $(EXE)
+	rm -f *.o *.mod *~ *.cpp.f90 $(EXE)
