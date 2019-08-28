@@ -11,9 +11,7 @@ program fesom_post_main
   use fesom_observation_mod,     only : synthetic_ferrybox_from_nr, read_ctd_data, profile_from_netcdf, read_ship_track
   use g_config,                  only : tool
 
-  real              :: t0, t1, t2, t3, t4, t5, t6, &
-                       t7, t8, t9, t10, t11, t12,t13, &
-                       t14,t15,t16, t17
+  real              :: t0, t1, t2, t3, t4, t5, t6, t7, t8
   call read_namelist
   call cpu_time(t0); print*, 'time elapsed:',t0
   call read_elem
@@ -63,7 +61,7 @@ program fesom_post_main
   call total_kinetic_energy
   else if ( tool.eq.16 ) then
   call surface_kinetic_energy
-  call cpu_time(t16)
+  call cpu_time(t8)
   else if ( tool.eq.17 ) then
   call calc_section_annual_mean
   else if ( tool.eq.18 ) then
