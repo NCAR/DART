@@ -163,9 +163,3 @@ end function create_grid
 
 end program create_obs_grid
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
-

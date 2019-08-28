@@ -57,7 +57,6 @@ real    :: dif_days, delta_t, real_time
 complex :: force(0:num_fourier, 0:num_spherical)
 integer :: fourier_lim, spherical_lim
 
-
 ! Following is for standard dynamical systems interface; physical space
 ! FIXME: why not times 2 here?
 integer, parameter :: model_size = lat_max * num_lon
@@ -77,9 +76,7 @@ integer :: diag_output_index(9)
 contains
 
 
-
-
- suboutine get_state_meta_data(index_in, location, var_type)
+subroutine get_state_meta_data(index_in, location, var_type)
 !---------------------------------------------------------------------
 
 integer,             intent(in)  :: index_in
@@ -113,7 +110,7 @@ end subroutine get_state_meta_data
 
 
 
-  subroutine barot_init(force_in)
+subroutine barot_init(force_in)
 !---------------------------------------------------------------------
 !
 ! Calls the initialization routines for the spherical harmonic transforms.

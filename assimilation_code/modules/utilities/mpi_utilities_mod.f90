@@ -1402,9 +1402,9 @@ end subroutine sum_across_tasks_real
 
 subroutine send_sum_to(local_val, task, global_val)
 
-real(r8), intent(in)  :: local_val(:)  !> addend vals on each task
-integer,  intent(in)  :: task          !> task to collect on
-real(r8), intent(out) :: global_val(:) !> results returned only on given task
+real(r8), intent(in)  :: local_val(:)  !! addend vals on each task
+integer,  intent(in)  :: task          !! task to collect on
+real(r8), intent(out) :: global_val(:) !! results returned only on given task
 
 integer :: errcode
 
@@ -1425,9 +1425,9 @@ end subroutine send_sum_to
 
 subroutine send_minmax_to(minmax, task, global_val)
 
-real(r8), intent(in)  :: minmax(2)     !> min max on each task
-integer,  intent(in)  :: task          !> task to collect on
-real(r8), intent(out) :: global_val(2) !> results returned only on given task
+real(r8), intent(in)  :: minmax(2)     !! min max on each task
+integer,  intent(in)  :: task          !! task to collect on
+real(r8), intent(out) :: global_val(2) !! results returned only on given task
 
 integer :: errcode
 
@@ -1487,7 +1487,7 @@ end subroutine broadcast_minmax
 subroutine broadcast_flag(flag, root)
 
 logical, intent(inout) :: flag
-integer, intent(in)    :: root !> relative to get_dart_mpi_comm()
+integer, intent(in)    :: root !! relative to get_dart_mpi_comm()
 
 integer :: errcode
 

@@ -1,0 +1,37 @@
+# For this data file to work on GitHub pages you need to include the name of the repository in the url
+# e.g. /<repo name>/pages/DART2_Starting.html
+# excluding the repository name makes it easier to navigate when building locally
+menu:
+  - title: Documentation
+    url: /DART_development/pages/DART2_Starting.html
+    submenu:
+      - title: Getting Started
+        url: /DART_development/pages/DART2_Starting.html
+      - title: Tutorial
+        url: /DART_development/pages/dart_tutorial.html
+      - title: Lab
+        url: /DART_development/pages/dart_lab.html
+      - title: In Depth
+        url: /DART_development/pages/DART2_Documentation.html
+      - title: Diagnostics
+        url: /DART_development/pages/DART2_Diagnostics.html
+      - title: Observations 
+        url: /DART_development/pages/DART2_Observations.html
+      - title: Misc
+        url: /DART_development/pages/DART2_Miscellany.html
+  - title: Research
+    url: /DART_development/pages/Research.html
+  - title: About Us
+    url: /DART_development/pages/aboutus.html
+  - title: Support
+    url: /DART_development/pages/support.html
+  - title: API
+    submenu:
+      - title: Manhattan
+        url: /DART_development/pages/release.html
+      - title: v3.0.0
+        url: /DART_development/api/v3.0.0/index.html
+      - title: Lanai
+      - title: v2.0.0
+        url: 
+

@@ -4714,7 +4714,8 @@ slon_index = find_name('slon    ',dim_names)
 
 allocate(bot_val(ens_size), top_val(ens_size), p_surf(ens_size), frac(ens_size))
 allocate(ps_local(ens_size, 2))
-allocate(bot_lev(ens_size), top_lev(ens_size)) !> @todo HK I don't know why you need two values, one is just + 
+!> @todo HK I don't know why you need two values, one is just + 
+allocate(bot_lev(ens_size), top_lev(ens_size))
 
 ! No errors to start with
 istatus = 0
@@ -4889,7 +4890,8 @@ ens_size = state_ens_handle%num_copies -5
 allocate(model_h_distrib(ens_size, num_levs))
 allocate(bot_val(ens_size), top_val(ens_size), p_surf(ens_size), frac(ens_size))
 allocate(p_col_distrib(ens_size, num_levs))
-allocate(bot_lev(ens_size), top_lev(ens_size)) !> @todo HK I don't know why you need two values, one is just + 1 to the other
+!> @todo HK I don't know why you need two values, one is just + 1 to the other
+allocate(bot_lev(ens_size), top_lev(ens_size))
 allocate(ps_local(ens_size, 2))
 allocate(vstatus(ens_size))
 
@@ -5069,7 +5071,8 @@ end subroutine get_val
 !=======================================================================
 subroutine get_val_distrib(val, state_ens_handle, ens_size, lon_index, lat_index, level, obs_kind, istatus)
 
-integer,             intent(in)  :: ens_size !> how may pieces of state to grab
+!> how may pieces of state to grab
+integer,             intent(in)  :: ens_size
 real(r8),            intent(out) :: val(ens_size)
 type(ensemble_type), intent(in)  :: state_ens_handle
 integer,             intent(in)  :: lon_index, lat_index, level, obs_kind
@@ -5565,20 +5568,21 @@ if (old_which == VERTISLEVEL ) then
 !                         .true., old_which)
       !p_surf = ps(closest,1)
       p_surf = get_surface_pressure(state_ens_handle, closest, 1)
-      !HK p_col(1:num_levs) = p(1:num_levs,closest,1) !> @todo Is this a 3D pressure array?
+      !HK p_col(1:num_levs) = p(1:num_levs,closest,1)
+      !>@todo Is this a 3D pressure array?
       call plevs_cam(p_surf, num_levs, p_col)
    end if
 else
-   !> @todo What is this code doing? Can you do this without calling interp?
+   !>@todo What is this code doing? Can you do this without calling interp?
    ! Find ps at the ob point.  Need to interpolate.
    if (l_rectang) then
        call error_handler(E_ERR, 'not done for l_rectang', 'yet. Why do you need to call interploate?')
    !   ! Only interested in P (columns), so don't need to worry about staggered grids here.
    !   call interp_lonlat_distrib(state_ens_handle, old_loc, QTY_SURFACE_PRESSURE, all_psurf, istatus)
-   !   p_surf = all_psurf(ens_size) !> @todo Sort this out only need the mean
+   !   p_surf = all_psurf(ens_size) !>@todo Sort this out only need the mean
    else
       !call interp_cubed_sphere_distrib(state_ens_handle, old_loc, QTY_SURFACE_PRESSURE, all_psurf, istatus)
-      !p_surf = all_psurf(ens_size) !> @todo Sort this out only need the mean
+      !p_surf = all_psurf(ens_size) !>@todo Sort this out only need the mean
 
       !HK idea: get the psurf at each of the indices and interpolate?
       ! Stolen from the interpolate part of model_interpolate
@@ -5595,7 +5599,7 @@ else
    end if
    ! 4 means that ob is beyond lat_max from namelist, so go ahead, ignoring it.
    ! HK convert_vert uses the mean only - this is messy
-   !> @todo No status to check now, what should you do?
+   !>@todo No status to check now, what should you do?
    !if (istatus(ens_size) /= 0 .and. istatus(ens_size) /= 4) then
    !   write(string1,'(A,I8)') 'inter_X failed for QTY_SURFACE_PRESSURE.  istatus = ',istatus
    !   call error_handler(E_ERR, 'convert_vert', string1,source,revision,revdate)
@@ -7206,8 +7210,10 @@ integer,             intent(in)  :: lon_ind
 integer,             intent(in)  :: lat_ind
 
 real(r8) :: get_surface_pressure_state(ens_size)
-integer  :: ifld !> pressure field index
-integer  :: ind !> index into state vector
+!> ifld ... pressure field index
+integer  :: ifld
+!> ind ... index into state vector
+integer  :: ind
 
 ifld = find_name('PS      ',cflds)
 
@@ -7228,8 +7234,8 @@ integer,             intent(in) :: lon_ind
 integer,             intent(in) :: lat_ind
 
 real(r8) :: get_surface_pressure_mean
-integer  :: ifld !> pressure field index
-integer  :: ind !> index into state vector
+integer  :: ifld
+integer  :: ind
 
 ifld = find_name('PS      ',cflds)
 
@@ -7255,7 +7261,8 @@ real(r8),              intent(out) :: vert_coord
 integer,               intent(out) :: istatus
 
 real(r8), dimension(3) :: base_array
-integer                :: base_obs_kind !> @todo Should check for identity obs
+!> @todo Should check for identity obs
+integer                :: base_obs_kind
 integer                :: base_which ! vertical coorardiate
 integer                :: istatus_v
 

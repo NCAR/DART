@@ -4,17 +4,17 @@
 !
 ! $Id$
 
-program preprocess
+!> Takes a list of observation type module path names. These modules contain
+!> multiple fragments of standard F90 that may be required to implement forward
+!> observation operators for DART. The sections are retrieved from the files
+!> by this program and inserted into the appropriate blanks in the
+!> DEFAULT_obs_def_mod.F90 and DEFAULT_obs_kind_mod.F90 templates. 
+!> The final obs_def_mod.f90 and obs_kind_mod.f90 that are created contain
+!> the default code plus all the code required from the selected observation
+!> type modules. Preprocess also inserts the required identifier and string
+!> for the corresponding observation kinds (and only those kinds).
 
-! Takes a list of observation type module path names. These modules contain
-! multiple fragments of standard F90 that may be required to implement forward
-! observation operators for DART. The sections are retrieved from the files
-! by this program and inserted into the appropriate blanks in the
-! DEFAULT_obs_def_mod.F90 and DEFAULT_obs_kind_mod.F90 templates. 
-! The final obs_def_mod.f90 and obs_kind_mod.f90 that are created contain
-! the default code plus all the code required from the selected observation
-! type modules. Preprocess also inserts the required identifier and string
-! for the corresponding observation kinds (and only those kinds).
+program preprocess
 
 ! NEED TO ADD IN ALL THE ERROR STUFF
 
@@ -726,8 +726,3 @@ end subroutine typekind_error
 
 end program preprocess
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -3085,7 +3085,7 @@ do e = 1, ens_size
 
 enddo
 
-!> @todo Sort out istatus
+!>@todo Sort out istatus
 istatus = istatus_distrib
 
 ! Set the element of ps that's tested elsewhere back to MISSING_R8, to signal
@@ -3208,7 +3208,9 @@ slon_index = find_name('slon    ',dim_names)
 
 allocate(bot_val(ens_size), top_val(ens_size), p_surf(ens_size), frac(ens_size))
 allocate(p_col_distrib(ens_size, num_levs))
-allocate(bot_lev(ens_size), top_lev(ens_size)) !> @todo HK I don't know why you need two values, one is just + 1 to the other
+
+!>@todo HK I don't know why you need two values, one is just + 1 to the other
+allocate(bot_lev(ens_size), top_lev(ens_size))
 
 ! No errors to start with !HK is this wise?
 istatus = 0
@@ -3358,7 +3360,9 @@ slon_index = find_name('slon    ',dim_names)
 allocate(model_h_distrib(ens_size, num_levs))
 allocate(bot_val(ens_size), top_val(ens_size), p_surf(ens_size), frac(ens_size))
 allocate(p_col_distrib(ens_size, num_levs))
-allocate(bot_lev(ens_size), top_lev(ens_size)) !> @todo HK I don't know why you need two values, one is just + 1 to the other
+
+!>@todo HK I don't know why you need two values, one is just + 1 to the other
+allocate(bot_lev(ens_size), top_lev(ens_size))
 
 ! No errors to start with
 istatus = 0
@@ -4096,7 +4100,7 @@ elseif (old_which == VERTISHEIGHT) then
    ! by a call from filter_assim to ens_mean_for_model.
 
    print*, '*** HEIGHT in convert vert ****'
-   !> @todo vertisheight
+   !>@todo vertisheight
    !HK How does this work in the distributed case
    !call model_heights(ens_mean, p_surf, lon_index, lat_index, num_levs, stagr_lon, stagr_lat,  &
    !                   model_h, istatus)
@@ -4672,7 +4676,7 @@ if (alloc_ps_distrib) then
    alloc_ps_distrib = .false.
 end if
 
-!> @todo index from grid
+!>@todo index from grid
 
 ! assign values to ps grids for use by the rest of the module.
 ! assuming ps is the first 2D field in state_num_2d
@@ -5035,7 +5039,7 @@ do e = 1, ens_size
    end do
 enddo
 
-!> @todo I think phi needs to be ensemble size
+!>@todo I think phi needs to be ensemble size
 do e = 1, ens_size
    call dcz2(p_surf(e), phi_surf, tv, P0%vals(1) ,hyba, hybb, num_levs, pmln, pterm, phi)
 enddo
@@ -5144,7 +5148,7 @@ end do
 end subroutine get_interp_prof
 
 !> Distributed version of get_interp_prof
-!> @todo Helen I don't think this is working, your var_00 is 2d
+!>@todo Helen I don't think this is working, your var_00 is 2d
 subroutine get_interp_prof_distrib(state_ens_handle, ens_size, prof, &
               num_levs, lon_index, lat_index, stagr_lon, stagr_lat, kind_cam, vstatus)
 !=====================================================================
@@ -5611,7 +5615,9 @@ type(ensemble_type), intent(in)  :: state_ens_handle
 integer,             intent(in)  :: lon_ind
 integer,             intent(in)  :: lat_ind
 
-real(r8) :: get_surface_pressure_state(ens_size) !> @todo this ens_size needs to match
+!>@todo this ens_size needs to match
+real(r8) :: get_surface_pressure_state(ens_size)
+
 integer  :: ifld !< pressure field index
 integer  :: ind !< index into state vector
 
@@ -5662,7 +5668,8 @@ real(r8),              intent(out) :: vert_coord
 integer,               intent(out) :: istatus
 
 real(r8), dimension(3) :: base_array
-integer                :: base_obs_kind !> @todo Should check for identity obs
+!>@todo Should check for identity obs
+integer                :: base_obs_kind
 integer                :: base_which !< vertical coorardiate
 integer                :: istatus_v
 
@@ -5682,7 +5689,7 @@ istatus = istatus_v
 base_array = get_location(obs_loc)
 vert_coord = base_array(3)
 
-!> @todot set location so you don't redo this calculation in get_close_obs NOPE  they are two different structures
+!>@todot set location so you don't redo this calculation in get_close_obs NOPE  they are two different structures
 !obs_loc = set_location(base_array(1), base_array(2), base_array(3), wrf%dom(1)%localization_coord )
 
 end subroutine convert_base_obs_location

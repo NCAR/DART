@@ -29,7 +29,7 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-integer :: data_count !> number of copies in the window
+integer :: data_count !! number of copies in the window
 type(ensemble_type) :: mean_ens_handle
 
 

@@ -1116,8 +1116,3 @@ end function match_qc
 !---------------------------------------------------------------------
 end program obs_common_subset
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -4,18 +4,16 @@
 !
 ! DART $Id$
 
+!> Prints out a quick table of obs types and counts, overall start and
+!> stop times, and metadata strings and counts.
+!> You can get more info by running the obs_diag program.
+!> right now this program counts up the number of obs for each
+!> possible 'DART quality control' value (0-8). (it could also
+!> check for a 'posterior ensemble mean' copy and count how
+!> many are missing_r8 and how many are not.) It does the
+!> former right now.
+
 program obs_assim_count
-
-! you can get more info by running the obs_diag program, but this
-! prints out a quick table of obs types and counts, overall start and
-! stop times, and metadata strings and counts.
-
-! right now this program counts up the number of obs for each
-! possible 'DART quality control' value (0-7).  (it could also
-! check for a 'posterior ensemble mean' copy and count how
-! many are missing_r8 and how many are not.)   it does the
-! former right now.
-
 
 use        types_mod, only : r8, missing_r8, metadatalength, obstypelength
 use    utilities_mod, only : register_module, initialize_utilities,            &
@@ -572,10 +570,4 @@ end function get_dartqc_index
 
 !---------------------------------------------------------------------
 end program obs_assim_count
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 

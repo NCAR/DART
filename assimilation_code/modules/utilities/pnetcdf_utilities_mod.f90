@@ -21,7 +21,7 @@ contains
 !> if the call failed.
 subroutine pnet_check(istatus, subr_name, context)
 
-integer, intent (in)                   :: istatus !> pnetcdf return code
+integer,          intent(in)           :: istatus !! pnetcdf return code
 character(len=*), intent(in)           :: subr_name
 character(len=*), intent(in), optional :: context
 

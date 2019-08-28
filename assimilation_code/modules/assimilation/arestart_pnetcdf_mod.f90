@@ -30,24 +30,24 @@ subroutine aread_state_restart_parallel(stateId, timeId, nblocks, model_time, mo
 
 implicit none
 
-integer,         intent(in)               :: nblocks !< number of blocks - my_num_vars
+integer,         intent(in)               :: nblocks !! number of blocks - my_num_vars
 type(time_type), intent(out)              :: model_time
-real(r8),        intent(out)              :: model_state(:) !< now distributed
-integer,         intent(in)               :: funit !< pnetcdf file identifier
+real(r8),        intent(out)              :: model_state(:) !! now distributed
+integer,         intent(in)               :: funit !! pnetcdf file identifier
 type(time_type), optional, intent(out)    :: target_time
 
 character(len = 16) :: open_format
 integer :: ios, int1, int2
 
 ! Parallel netcdf variables
-integer(KIND=MPI_OFFSET_KIND) :: start(1) !< state is one dimensional
+integer(KIND=MPI_OFFSET_KIND) :: start(1) !! state is one dimensional
 integer(KIND=MPI_OFFSET_KIND) :: count(1)
 integer(KIND=MPI_OFFSET_KIND) :: stride(1)
-integer(KIND=MPI_OFFSET_KIND) :: bufcount !< my num vars
-integer                       :: stateId !< Id of state variable
-integer                       :: timeId !< Id of time variable
-integer                       :: ret !< return code
-integer                       :: time(2) !< for reading from netcdf file
+integer(KIND=MPI_OFFSET_KIND) :: bufcount !! my num vars
+integer                       :: stateId !! Id of state variable
+integer                       :: timeId !! Id of time variable
+integer                       :: ret !! return code
+integer                       :: time(2) !! for reading from netcdf file
 
 ios = 0
 
@@ -78,7 +78,10 @@ count(1) = 2
 stride(1) = 1
 
 ! Read time from the netCDF variable
-ret = nfmpi_get_vars_int_all(funit, timeId, start, count, stride, time) !> @todo does this need to be a collective call?
+
+!>@todo does this need to be a collective call?
+ret = nfmpi_get_vars_int_all(funit, timeId, start, count, stride, time)
+
 call pnet_check(ret, 'aread_state_restart', 'reading time')
 model_time = set_time(time(1), time(2)) ! seconds, days
 
@@ -91,24 +94,24 @@ subroutine aread_state_restart_giant(state_length, stateId, timeId, nblocksVars,
 use mpi
 use pnetcdf
 
-integer(KIND=MPI_OFFSET_KIND),  intent(in) :: state_length !< just to make the overloading work?
-integer,                        intent(in) :: stateId !< Id for state_vector
-integer,                        intent(in) :: timeId !< Id for time
-integer(KIND=MPI_OFFSET_KIND),  intent(in) :: nblocksVars, nblocksCopies !< num vars
+integer(KIND=MPI_OFFSET_KIND),  intent(in) :: state_length !! just to make the overloading work?
+integer,                        intent(in) :: stateId !! Id for state_vector
+integer,                        intent(in) :: timeId !! Id for time
+integer(KIND=MPI_OFFSET_KIND),  intent(in) :: nblocksVars, nblocksCopies !! num vars
 type(time_type),             intent(inout) :: model_time(:)
-real(r8),                    intent(inout) :: model_state(:, :) !< see inout in ensemble manager call
+real(r8),                    intent(inout) :: model_state(:, :) !! see inout in ensemble manager call
 logical,                        intent(in) :: transpose
-integer,                        intent(in) :: funit !< restart file
+integer,                        intent(in) :: funit !! restart file
 type(time_type), optional,      intent(in) :: target_time
 
 integer :: time(2), seconds, days
 
 ! pnetcdf variables
-integer                       :: ret !< return code for pnetcdf calls
-integer(KIND=MPI_OFFSET_KIND) :: start(1) !< time is one dimensional
+integer                       :: ret !! return code for pnetcdf calls
+integer(KIND=MPI_OFFSET_KIND) :: start(1) !! time is one dimensional
 integer(KIND=MPI_OFFSET_KIND) :: count(1)
 integer(KIND=MPI_OFFSET_KIND) :: stride(1)
-integer(KIND=MPI_OFFSET_KIND) :: state_start(2) !< state is two dimensional
+integer(KIND=MPI_OFFSET_KIND) :: state_start(2) !! state is two dimensional
 integer(KIND=MPI_OFFSET_KIND) :: state_count(2)
 integer(KIND=MPI_OFFSET_KIND) :: state_stride(2)
 integer :: time_length
@@ -170,13 +173,13 @@ use pnetcdf_utilities_mod, only :pnet_check
 use mpi
 use pnetcdf
 
-integer,                        intent(in) :: stateId !< Id for state_vector
-integer,                        intent(in) :: timeId !< Id for time
-integer(KIND=MPI_OFFSET_KIND),  intent(in) :: nblocks !< num vars
+integer,                        intent(in) :: stateId !! Id for state_vector
+integer,                        intent(in) :: timeId !! Id for time
+integer(KIND=MPI_OFFSET_KIND),  intent(in) :: nblocks !! num vars
 type(time_type),                intent(in) :: model_time
-real(r8),                    intent(inout) :: model_state(:) !< see inout in ensemble manager call
-integer(KIND=MPI_OFFSET_KIND),  intent(in) :: state_length !< num vars
-integer,                        intent(in) :: funit !< restart file
+real(r8),                    intent(inout) :: model_state(:) !! see inout in ensemble manager call
+integer(KIND=MPI_OFFSET_KIND),  intent(in) :: state_length !! num vars
+integer,                        intent(in) :: funit !! restart file
 type(time_type), optional,      intent(in) :: target_time
 
 integer :: i, io, rc
@@ -187,8 +190,8 @@ logical :: is_named
 integer :: time(2), seconds, days
 
 ! pnetcdf variables
-integer                       :: ret !< return code for pnetcdf calls
-integer(KIND=MPI_OFFSET_KIND) :: start(1) !< state and time are one dimensional
+integer                       :: ret !! return code for pnetcdf calls
+integer(KIND=MPI_OFFSET_KIND) :: start(1) !! state and time are one dimensional
 integer(KIND=MPI_OFFSET_KIND) :: count(1)
 integer(KIND=MPI_OFFSET_KIND) :: stride(1)
 integer :: time_length
@@ -236,13 +239,13 @@ subroutine awrite_state_restart_giant(timeId, stateId, nblocksVars, nblocksCopie
 ! opened to the restart file. (Need to reconsider what is passed to 
 ! identify file or if file can even be opened within this routine).
 
-integer,                        intent(in) :: stateId !< Id for state_vector
-integer,                        intent(in) :: timeId !< Id for time
-integer(KIND=MPI_OFFSET_KIND),  intent(in) :: nblocksVars, nblocksCopies !< num vars
-type(time_type),                intent(in) :: model_time !< one time?
-real(r8),                    intent(inout) :: model_state(:, :) !< see inout in ensemble manager call
-logical,                        intent(in) :: transpose !< pnetcdf stride and count depends on (copies, vars), (vars, copies)
-integer,                        intent(in) :: funit !< restart file
+integer,                        intent(in) :: stateId !! Id for state_vector
+integer,                        intent(in) :: timeId !! Id for time
+integer(KIND=MPI_OFFSET_KIND),  intent(in) :: nblocksVars, nblocksCopies !! num vars
+type(time_type),                intent(in) :: model_time !! one time?
+real(r8),                    intent(inout) :: model_state(:, :) !! see inout in ensemble manager call
+logical,                        intent(in) :: transpose !! pnetcdf stride and count depends on (copies, vars), (vars, copies)
+integer,                        intent(in) :: funit !! restart file
 type(time_type), optional,      intent(in) :: target_time
 
 integer :: i, io, rc
@@ -253,7 +256,7 @@ logical :: is_named
 integer :: time(2), seconds, days
 
 ! pnetcdf variables
-integer                       :: ret !< return code for pnetcdf calls
+integer                       :: ret !! return code for pnetcdf calls
 integer(KIND=MPI_OFFSET_KIND) :: start(1) ! state and time are one dimensional
 integer(KIND=MPI_OFFSET_KIND) :: count(1)
 integer(KIND=MPI_OFFSET_KIND) :: stride(1)
