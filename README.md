@@ -9,6 +9,7 @@ There is a recent version of the model called the Finite-volumE Sea ice–Ocean 
 Danilov et al. 2017). A version for coastal applications FESOM-C v.2 (Androsov et al., 2019) is also
 presented recently.
 
+The FESOM source code can be downloaded from https://github.com/FESOM/fesom2
 
 ## **FESOM/DART interface**
 ### model_mod.f90
@@ -18,7 +19,7 @@ fesom_modules.f90 includes fortran routines adopted from FESOM v1.4 to read the 
 variables and dimensions of the arrays. *fesom_modules* should have access to *nod2d.out*, *nod3d.out*,
 *elem2d.out*, *elem3d.out*, *aux3d.out*, *depth.out* and *m3d.ini* mesh files.
 
-Forward operators use an interpolation using closing model node in the horizontal, given that the
+Forward operators use an interpolation using the closest model node in the horizontal, given that the
 application in Aydoğdu et al. (2018a) uses a very high-resolution mesh. In the vertical, a linear
 interpolation is performed between two enclosing model layers. Interpolation in model_interpolate
 routine can be improved, if needed.
@@ -33,58 +34,60 @@ for an advance model.
 | Script                       | Queue  | Definition    |
 | ---------------------------- | ------:|---------------|
 | **environment.load**         | serial | Includes environment variables, relevant directories, experiment specifications. This file is sourced by every other script below. |
-| **ensemble.launch**          | serial | Main script which modifies ens_members.template.lsf and calling ens_members.${EXPINFO}.lsf. Keeps also an experiment specific brief information which should be modified before launching the scripts to keep track. |
-| **ens_members.template.lsf** | serial | Calls and submits initialize.template, forward_model.template check_ensemble.template subsequently. |
+| **ensemble.launch**          | serial | Main script which modifies ```ens_members.template.lsf``` and calls ```ens_members.${EXPINFO}.lsf```. An experiment-specific summary which should be modified before launching the scripts. |
+| **ens_members.template.lsf** | serial | Calls and submits ```initialize.template```, ```forward_model.template``` ```check_ensemble.template``` subsequently. |
 | **initialize.template**      | serial | Called only once at the beginning of the experiment. Sets the experiment directory, copies initial ensemble, namelists. |
 | **forward_model.template**   |parallel| Submits a job array for all ensemble members. |
-| **check_ensemble.template**  | serial | Checks if the forwarding for all members is finished. If so, first calls filter.template and then calls finalize.template to conclude current assimilation cycle. |
-| **filter.template**          |parallel| Runs the filter after all members are forwarded to performs the analysis. |
-| **finalize.template**        | serial | Checks if the whole experiment is finished. If so, stops. Otherwise, resubmits ens_members.${EXPINFO}.lsf for the next assimilation cycle. |
+| **check_ensemble.template**  | serial | Checks if the forwarding for all members is finished. If so, first calls ```filter.template``` and then calls ```finalize.template``` to conclude current assimilation cycle. |
+| **filter.template**          |parallel| Runs the filter to performs the analysis. |
+| **finalize.template**        | serial | Checks if the whole experiment is finished. If so, stops. Otherwise, resubmits ```ens_members.${EXPINFO}.lsf``` for the next assimilation cycle. |
 
 ### Diagnostics
 
 A toolbox for diagnostics is provided. Some are written for a specific regional application using
-Ferrybox observations. However, it shouldn't be difficult to add new tools following the present
-ones. A fortran toolbox post-processes the FESOM outputs and visualization is done using Generic
-Mapping Tools (GMT). DART outputs are plotted using FERRET. Please see the description inside respective code.
+Ferrybox observations of temperature and salinity. However, it shouldn't be difficult to add new tools following the present
+ones. A fortran toolbox post-processes the FESOM outputs and visualization is done using [Generic
+Mapping Tools (GMT)](https://www.soest.hawaii.edu/gmt/).
+DART post-processed netCDF outputs are visualized using [FERRET](https://ferretop.pmel.noaa.gov/Ferret/).
+Please see the expanded description inside each source file.
 
 | Directory   | code file                       |  description  |
 | ------------|:--------------------------------|---------------|
 | src/        |                                 ||
-|             |fesom_post_main.F90              | main fortran routine calling each tool by a switch |
+|             |fesom_post_main.F90              | main fortran routine calling each tool selected in the namelist |
 |             |fesom_ocean_mod.F90              | ocean diagnostic routines |
-|             |fesom_dart_mod.F90               | dart outputs diagnostic routines |
+|             |fesom_dart_mod.F90               | DART diagnostic output routines |
 |             |fesom_forcing_mod.F90            | forcing diagnostic routines |
 |             |fesom_observation_mod.F90        | observation diagnostic routines |
-|             |gen_input.F90                    | fesom routines for I/O |
-|             |gen_modules_clock.F90            | fesom routines for timing |
-|             |gen_modules_config.F90           | fesom routines for configuration |
-|             |mesh_read.F90                    | fesom routines for reading the mesh |
-|             |Makefile                         | Makefile reading mkmf_template |
-|             |oce_dens_press.F90               | fesom routines to compute density and pressure|
-|             |oce_mesh_setup.F90               | fesom routines for mesh setup |
-|             |oce_modules.F90                  | fesom routines for ocean modules |
-|             |random_perturbation.F90          | random perturbation to observation sampling |
-|             |utilities.F90                    | various utilities |
+|             |gen_input.F90                    | routines for I/O (adapted from FESOM)|
+|             |gen_modules_clock.F90            | routines for timing (adapted from FESOM)|
+|             |gen_modules_config.F90           | routines for configuration (adapted from FESOM)|
+|             |mesh_read.F90                    | routines for reading the mesh (adapted from FESOM)|
+|             |Makefile                         | Makefile (adapted from FESOM) but reads DART environment|
+|             |oce_dens_press.F90               | routines to compute density and pressure(adapted from FESOM)|
+|             |oce_mesh_setup.F90               | routines for mesh setup (adapted from FESOM)|
+|             |oce_modules.F90                  | routines for ocean modules (adapted from FESOM)|
+|             |random_perturbation.F90          | random perturbation to observation sampling|
+|             |utilities.F90                    | various utilities|
 | script/     |                                 ||
 |             |compute_ensemble_mean            | computes ensemble mean and extracts a transect or level |
-|             |compute_increment                | computes increment using preassim_mean.nc and postassim_mean.nc |
-|             |compute_innovation               | computes innovation if there is a nature run |
-|             |dart_obs_seq_diag                | dart statistics from obs_epoch.nc and obs_diag.nc|
-|             |dart.postproc.env                | dart environment variables |
-|             |fesom.postproc.env               | fesom environment variables|
-|             |observe_nature_run               | sampling observations if there is a nature run |
-|             |transect_daily_mean              | extracts and plots a transect of a individual ensemble member|
+|             |compute_increment                | computes increment using DART diagnostic output |
+|             |compute_innovation               | computes the difference between a nature run and the ensemble prior mean |
+|             |dart_obs_seq_diag                | DART observation-space statistics from ```obs_epoch.nc``` and ```obs_diag.nc```|
+|             |dart.postproc.env                | DART environment variables |
+|             |fesom.postproc.env               | FESOM environment variables|
+|             |observe_nature_run               | creates synthetic observations from a nature run |
+|             |transect_daily_mean              | extracts and plots a transect of an individual ensemble member|
 |             |zlevel_daily_mean                | extracts and plots a level of an individual ensemble member|
 | gmt/        |                                 ||
-|             |plot_ensemble_mean.gmt           | plots ensemble mean called by compute_ensemble_mean|
-|             |plot_increment.gmt               | plots increment called by compute_increment|
-|             |plot_innovation.gmt              | plots innovation called by compute_innovation|
-|             |transect_daily_mean.gmt          | plots transects called by transect_daily_mean|
-|             |zlevel_yearly_mean.gmt           | plots levels called by zlevel_daily_mean|
+|             |plot_ensemble_mean.gmt           | plots ensemble mean created by ```compute_ensemble_mean```|
+|             |plot_increment.gmt               | plots increment created by ```compute_increment```|
+|             |plot_innovation.gmt              | plots difference created by ```compute_innovation```|
+|             |transect_daily_mean.gmt          | plots transects created by ```transect_daily_mean```|
+|             |zlevel_yearly_mean.gmt           | plots levels created by ```zlevel_daily_mean```|
 | ferret/     |                                 ||
-|             |frt.obs_diag_TeMPLaTe.jnl        | plot dart diags called by dart_obs_seq_diag|
-|             |frt.obs_epoch_TeMPLaTe.jnl       | plots dart diags called by dart_obs_seq_diag|
+|             |frt.obs_diag_TeMPLaTe.jnl        | plot DART diags created by ```dart_obs_seq_diag```|
+|             |frt.obs_epoch_TeMPLaTe.jnl       | plot DART diags created by ```dart_obs_seq_diag```|
 
 ### References
 
