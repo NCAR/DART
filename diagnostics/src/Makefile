@@ -1,4 +1,7 @@
-
+#
+# using the same mkmf.template with DART
+# this Makefile use C-preprocessing
+#
 include ../../../../build_templates/mkmf.template
 
 CPP = /usr/bin/cpp -P -C
