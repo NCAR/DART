@@ -240,7 +240,7 @@ NODLOOP:  do i=1,myDim_nod2D
 
 
 ! extract a cross-section from innovation
-    subroutin read_section_from_ino
+    subroutine read_section_from_ino
 
       character(20)     :: DAYNUM,LEVNUM
       character(8)      :: OUTDIR
