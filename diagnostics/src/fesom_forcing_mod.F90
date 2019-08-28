@@ -18,22 +18,22 @@ module fesom_forcing_mod
 
   implicit none
 
-  public  :: compute_wind_stress_curl, & ! computes the wind stress curl from forcing.nc
-             compute_surface_buoyancy, & ! computes the buoyancy from forcig 
-             compute_wind_work, &        ! computes wind work
-             compute_forcing_monthly_timeseries, & ! computes monthly timeseries for a given variable
-             forcing_array_setup, &                ! sets arrays for forcing variables
-             read_forcing_input, &                 ! reads forcing file
-             cal_nodal_alpha_beta                  ! computes thermal expansion and saline contraction coefficients
+  public  :: compute_wind_stress_curl, & !! computes the wind stress curl from forcing.nc
+             compute_surface_buoyancy, & !! computes the buoyancy from forcig 
+             compute_wind_work, &        !! computes wind work
+             compute_forcing_monthly_timeseries, & !! computes monthly timeseries for a given variable
+             forcing_array_setup, &                !! sets arrays for forcing variables
+             read_forcing_input, &                 !! reads forcing file
+             cal_nodal_alpha_beta                  !! computes thermal expansion and saline contraction coefficients
 
-  real(r8)    :: Ce_atm_oce=1.75e-3 ! exchange coeff. of latent heat over open water
-  real(r8)    :: Ch_atm_oce=1.75e-3 ! exchange coeff. of sensible heat over open water
-  real(r8)    :: Cd_atm_oce=1.0e-3  ! drag coefficient between atmosphere and water
-  real(r8)    :: rho_air   =1.2     ! air density
+  real(r8)    :: Ce_atm_oce=1.75e-3 !! exchange coeff. of latent heat over open water
+  real(r8)    :: Ch_atm_oce=1.75e-3 !! exchange coeff. of sensible heat over open water
+  real(r8)    :: Cd_atm_oce=1.0e-3  !! drag coefficient between atmosphere and water
+  real(r8)    :: rho_air   =1.2     !! air density
 
-  real(r8)    :: Ce_atm_ice=1.75e-3 ! exchange coeff. of latent heat over ice
-  real(r8)    :: Ch_atm_ice=1.75e-3 ! exchange coeff. of sensible heat over ice
-  real(r8)    :: Cd_atm_ice=1.32e-3 ! drag coefficient between atmosphere and ice
+  real(r8)    :: Ce_atm_ice=1.75e-3 !! exchange coeff. of latent heat over ice
+  real(r8)    :: Ch_atm_ice=1.75e-3 !! exchange coeff. of sensible heat over ice
+  real(r8)    :: Cd_atm_ice=1.32e-3 !! drag coefficient between atmosphere and ice
 
   namelist /forcing_exchange_coeff/ Ce_atm_oce, Ch_atm_oce, Cd_atm_oce, &
        Ce_atm_ice, Ch_atm_ice, Cd_atm_ice
