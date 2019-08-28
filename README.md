@@ -39,7 +39,7 @@ for an advance model.
 | **initialize.template**      | serial | Called only once at the beginning of the experiment. Sets the experiment directory, copies initial ensemble, namelists. |
 | **forward_model.template**   |parallel| Submits a job array for all ensemble members. |
 | **check_ensemble.template**  | serial | Checks if the forwarding for all members is finished. If so, first calls ```filter.template``` and then calls ```finalize.template``` to conclude current assimilation cycle. |
-| **filter.template**          |parallel| Runs the filter to performs the analysis. |
+| **filter.template**          |parallel| Runs the filter to perform the assimilation. |
 | **finalize.template**        | serial | Checks if the whole experiment is finished. If so, stops. Otherwise, resubmits ```ens_members.${EXPINFO}.lsf``` for the next assimilation cycle. |
 
 ### Diagnostics
