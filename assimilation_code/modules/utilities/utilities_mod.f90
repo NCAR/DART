@@ -25,7 +25,7 @@ integer, parameter :: NML_NONE = 0, NML_FILE = 1, NML_TERMINAL = 2, NML_BOTH = 3
 real(r8), parameter :: TWOPI = PI * 2.0_r8
 
 logical :: do_output_flag     = .false.
-integer :: nml_flag           = NML_NONE
+integer :: nml_flag           = NML_FILE
 logical :: single_task        = .true.
 integer :: task_number        = 0
 logical :: module_initialized = .false.
