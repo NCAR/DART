@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="title" content="Observations">
+  <meta name="description" content="UCAR">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta class="foundation-mq">
+  <link rel="canonical" href="https://www.ucar.edu/">
+
+  <title>Observations | DART</title>
+
+  <link rel="stylesheet" href="/assets/koru-base/css/main.min.css" media="all">
+  <link rel="stylesheet" href="/assets/css/styles.css" media="all">
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Poppins:400,600,700" media="all">
+</head>
+
+
+<body class="ncar no-banner with-sidebar">
+<div class="content-wrapper">
+    <header>
+    <div data-sticky-container="" class="sticky-container">
+        <div data-sticky="" data-options="marginTop:0;stickyOn:small;" data-top-anchor="main-content"
+             class="sticky is-anchored is-at-top">
+            <div class="top-bar align-top hide-for-print" id="top-bar">
+                <div class="grid-x">
+                    <div class="cell">
+                        <div class="grid-x align-middle">
+                            <div class="cell small-3 large-2">
+                                <div class="grid-x grid-margin-x nsf-logo">
+                                    <div class="cell small-4">
+                                        <div class="grid-x">
+                                            <div class="cell small-1 small-4 xlarge-3">
+                                                <p><a href="https://www.ucar.edu/who-we-are/funding">Sponsored By</a></p>
+                                                <a href="https://www.ucar.edu/who-we-are/funding"><img alt="NSF Logo" src="/assets/koru-base/img/NSF_4-Color_bitmap_Logo.png"/></a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div></div>
+                            <div class="cell small-6 large-8 top-bar-title logo-wrapper align-center">
+                                <h2 class="acronym-wrapper">
+                                    <a href="https://ncar.ucar.edu" title="NCAR Home">
+                                        <img src="/assets/koru-base/img/logo-ncar-active-large.png"
+                                             alt="NCAR">
+                                        <span class="show-for-sr">NCAR</span>
+                                    </a>
+                                </h2>
+                                <h1><a href="/">DART</a></h1>
+                            </div>
+                            <div class="cell small-3 large-2 text-right"><p class="ncar-title"><a href="https://ncar.ucar.edu">National Center for Atmospheric Research</a></p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mobile-nav hide-for-print text-center" data-responsive-toggle="main-nav" data-hide-for="mlarge">
+                <div class="title-bar-title">Menu</div>
+                <button class="fa fa-chevron-down" type="button" data-toggle="main-nav"></button>
+            </div>
+            <div class="main-nav hide-for-print" id="main-nav">
+                <div class="grid-x">
+                <nav class="cell center mlarge-10 large-7">
+                    <ul class="menu icons icon-left" data-responsive-menu="accordion mlarge-dropdown">
+                        
+                        <li aria-label="Documentation">
+                            <a class="text-center" href="/DART_development/pages/DART2_Starting.html">Documentation</a>
+                            
+                            <ul class="menu">
+                                <li aria-label="Documentation"><a class="text-center" href="/DART_development/pages/DART2_Starting.html">Overview</a></li>
+                                
+                                <li aria-label="Getting Started"><a class="text-left" href="/DART_development/pages/DART2_Starting.html">Getting Started</a></li>
+                                
+                                <li aria-label="Tutorial"><a class="text-left" href="/DART_development/pages/dart_tutorial.html">Tutorial</a></li>
+                                
+                                <li aria-label="Lab"><a class="text-left" href="/DART_development/pages/dart_lab.html">Lab</a></li>
+                                
+                                <li aria-label="In Depth"><a class="text-left" href="/DART_development/pages/DART2_Documentation.html">In Depth</a></li>
+                                
+                                <li aria-label="Diagnostics"><a class="text-left" href="/DART_development/pages/DART2_Diagnostics.html">Diagnostics</a></li>
+                                
+                                <li aria-label="Observations"><a class="text-left" href="/DART_development/pages/DART2_Observations.html">Observations</a></li>
+                                
+                                <li aria-label="Misc"><a class="text-left" href="/DART_development/pages/DART2_Miscellany.html">Misc</a></li>
+                                
+                            </ul>
+                            
+                        </li>
+                        
+                        <li aria-label="Research">
+                            <a class="text-center" href="/DART_development/pages/Research.html">Research</a>
+                            
+                        </li>
+                        
+                        <li aria-label="About Us">
+                            <a class="text-center" href="/DART_development/pages/aboutus.html">About Us</a>
+                            
+                        </li>
+                        
+                        <li aria-label="Support">
+                            <a class="text-center" href="/DART_development/pages/support.html">Support</a>
+                            
+                        </li>
+                        
+                        <li aria-label="API">
+                            <a class="text-center" href="">API</a>
+                            
+                            <ul class="menu">
+                                <li aria-label="API"><a class="text-center" href="">Overview</a></li>
+                                
+                                <li aria-label="Manhattan"><a class="text-left" href="/DART_development/pages/release.html">Manhattan</a></li>
+                                
+                                <li aria-label="v3.0.0"><a class="text-left" href="/DART_development/api/v3.0.0/index.html">v3.0.0</a></li>
+                                
+                                <li aria-label="Lanai"><a class="text-left" href="">Lanai</a></li>
+                                
+                                <li aria-label="v2.0.0"><a class="text-left" href="">v2.0.0</a></li>
+                                
+                            </ul>
+                            
+                        </li>
+                        
+                    </ul>
+                </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+    <div class="body-content" id="main-content">
+        <section class="panel primary-content">
+        <div class="grid-x align-center">
+            <div class="cell medium-8 large-9">
+                <article role="article" class="content">
+                    <h1 id="dart-observation-support-and-processing">DART Observation support and processing:</h1>
+
+<p>The DART distribution includes a full set of documentation. Once you
+download DART, you may view the documentation offline by opening the
+<em>index.html</em> file in the top-level DART directory. If you want to
+explore the documentation page without downloading DART, you may <a href="Manhattan/documentation/index.html">view
+the documentation for the Manhattan
+release</a>.</p>
+
+<p><span id="preprocess" class="anchor"></span></p>
+
+<p>[<a href="#">top</a>]</p>
+
+<hr />
+
+<h1 id="an-overview-of-the-dart-preprocess-program">An overview of the DART ‘preprocess’ program</h1>
+
+<p>First and foremost, check out
+<a href="https://ncar.github.io/DART/api/v2.1.10/program/preprocess.html">preprocess.html</a>
+for detailed information.</p>
+
+<p>The <em>preprocess</em> program actually builds source code to be used by all
+the remaining modules. It is <strong>imperative</strong> to actually <strong>run</strong>
+<em>preprocess</em> before building any executables. This is how the same code
+can assimilate synthetic ‘observations’ for the Lorenz_63 model and
+real radar reflectivities for WRF without needing to specify a set of
+radar operators for the Lorenz_63 model!</p>
+
+<p><em>preprocess</em> combines multiple ‘obs_def’ modules into one
+<em>obs_def_mod.f90</em> that is then used by the rest of DART. Additionally,
+a new <em>obs_kind_mod.f90</em> is built that will provide support for
+associating the specific observation <strong>TYPES</strong> with corresponding
+(generic) observation <strong>QUANTITIES</strong>. More on that later. The list of
+source codes is contained in the <em>&amp;preprocess_nml</em> namelist and they
+ultimately determine what observations and operators are supported. If
+you want to add another ‘obs_def’ module, you <strong>must</strong> rerun
+<em>preprocess</em> and recompile the rest of your project. <em>preprocess</em> is
+designed to abort if the files it is supposed to build already exist.
+For this reason, it is necessary to remove a couple files (if they
+exist) before you run the preprocessor. It is just a good habit to
+develop.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>\rm -f ../../../observations/forward_operators/obs_def_mod.f90
+\rm -f ../../../observations/forward_operators/obs_kind_mod.f90
+./preprocess
+ls -l ../../../observations/forward_operators/obs_def_mod.f90
+ls -l ../../../observations/forward_operators/obs_kind_mod.f90
+</code></pre></div></div>
+
+<p>For example, with a namelist that looks like:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&amp;preprocess_nml
+    input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90' 
+    output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90' 
+    input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90' 
+    input_files              = '../../../observations/forward_operators/obs_def_gps_mod.f90',
+                              '../../../observations/forward_operators/obs_def_QuikSCAT_mod.f90',
+                              '../../../observations/forward_operators/obs_def_GWD_mod.f90',
+                              '../../../observations/forward_operators/obs_def_altimeter_mod.f90',
+                              '../../../observations/forward_operators/obs_def_reanalysis_bufr_mod.f90' 
+    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+    /
+</code></pre></div></div>
+
+<p><em>preprocess</em> will combine <em>DEFAULT_obs_def_mod.F90</em>,
+<em>obs_def_gps_mod.f90</em>, <em>obs_def_QuikSCAT_mod.f90</em>,
+<em>obs_def_GWD_mod.f90</em>, <em>obs_def_altimeter_mod.f90</em>, and
+<em>obs_def_reanalysis_bufr_mod.f90</em>, into <em>obs_def_mod.f90</em> - which
+can be used by the rest of the project.</p>
+
+<h2 id="building-and-running-preprocess">Building and Running ‘preprocess’</h2>
+
+<p><em>preprocess</em> is an executable, so it should come as no surprise that it
+must be built in the normal DART fashion. The
+<em>DART/build_templates/mkmf.template</em> must be correct for your
+environment, and the <em>input.nml</em> must have your desired preprocess_nml
+set correctly. Given that …</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>csh mkmf_preprocess  
+make  
+./preprocess
+</code></pre></div></div>
+
+<p>will build and run <em>preprocess</em>.</p>
+
+<p>The first command generates an appropriate <em>Makefile</em> and the
+<em>input.nml.preprocess_default</em> file. The second command results in the
+compilation of a series of Fortran90 modules which ultimately produces
+an executable file: <em>preprocess</em>. The third command actually runs
+preprocess - which builds the new <em>obs_kind_mod.f90</em> and
+<em>obs_def_mod.f90</em> source code files. The rest of DART may now be
+built.</p>
+
+<h2 id="the-rationale-for-preprocess">The rationale for ‘preprocess’</h2>
+
+<p><strong>IMPORTANT</strong>: Since each ‘observation quantity’ may require different
+amounts of metadata to be read or written; any routine to read or write
+an observation sequence <strong>must</strong> be compiled with support for those
+particular observations. The supported observations are listed in the
+<em>input.nml&amp;obs_kind_nml</em> block. This is the <strong>whole point</strong> of the
+‘preprocess’ process …</p>
+
+<p>For example, radar observations need extra metadata to specify the
+location of the radar in addition to the location of the observation,
+radiosondes only require the observation location. GPS occultations need
+the locations of the two satellites so the forward operator can
+integrate along the raypath, cosmic ray soil moisture sensors (yes, they
+exist) have forward operators that require site-specific calibration
+parameters that are not part of the model and must be included in the
+observation metadata. That sort of thing.</p>
+
+<p><span id="obs_seq_overview" class="anchor"></span></p>
+
+<p>[<a href="#">top</a>]</p>
+
+<hr />
+
+<h1 id="an-overview-of-the-observation-sequence">An overview of the observation sequence</h1>
+
+<p>Observation sequences are complicated, there’s just no better way to
+describe it. Trying to automatically accomodate a myriad of observation
+file formats, structure, and metadata is simply not an easy task. For
+this reason, DART has its own format for observations and a set of
+programs to convert observations from their original formats to DART’s
+format. There are definitely some things to know …</p>
+
+<p>An <strong><em>obs_seq.in</em></strong> file actually contains no observation quantities.
+It may be best thought of as a <strong>perfectly</strong>-laid-out notebook - just
+waiting for an observer to fill in the actual observation quantities.
+All the rows and columns are ready, labelled, and repeated for every
+observation time and platform. This file is generally the start of a
+“perfect model” experiment. Essentially, one instance of the model is
+run through <em>perfect_model_obs</em> - which applies the appropriate
+forward operators to the model state and ‘writes them down’ in our
+notebook. The completed notebook is renamed <em>obs_seq.out</em>.</p>
+
+<p>An <strong><em>obs_seq.out</em></strong> file contains a linked list of observations -
+potentially (and usually) observations from different platforms and of
+different quantities - each with their own error characteristics and
+metadata. These files arise from running <em>perfect_model_obs</em> <strong>OR</strong>
+from any number of converter programs. The creation of observation
+sequences from real observations is not automatic and an email to the
+DART team asking for advice for your specific types of observations is
+perfectly within reason.</p>
+
+<p>There is something called an <strong><em>obs_seq.final</em></strong> file - which contains
+everything in the <em>obs_seq.out</em> file as well as a few additional
+‘copies’ of the observation. Remember, DART is an ensemble algorithm.
+Each ensemble member must compute its own estimate of the observation
+for the algorithm. The <em>obs_seq.final</em> file <em>may</em> contain each of these
+estimates (namelist controlled). Minimally, the mean and spread of the
+ensemble estimates is recorded in the <em>obs_seq.final</em> file. The best
+method of determining the performance of your ‘real world’ experiment is
+to compare in <em>observation-space</em> since we can never know the model
+state that perfectly represents the real world.</p>
+
+<p><strong>IMPORTANT</strong>: Since each ‘observation kind’ may require different
+amounts of metadata to be read or written; any routine to read or write
+an observation sequence <strong>must</strong> be compiled with support for those
+particular observations. The supported observations are listed in the
+<em>input.nml&amp;obs_kind_nml</em> block. This is the <strong>whole point</strong> of the
+‘preprocess’ process
+…</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>observation sequence file structure</th>
+      <th>obs_seq.out</th>
+      <th>obs_seq.final</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>There are extensible parts of the observation sequence file; for example, the number of observation kinds contained in the file, whether the locations have 1 or more components, how many quality control values are available for each observation, where those quality control values come from, how many ‘copies’ of each observation there are … et cetera. The images to the right are links to full-size images. <strong>They are from entirely separate experiments. They are just meant to show the flexibility of the file format.</strong></td>
+      <td><a href="../images/obs_seq_out_diagram.png"><img src="../images/obs_seq_out_diagram.png" alt="The structure of an obs_seq.out file" /></a></td>
+      <td><a href="../images/obs_seq_final_diagram.png"><img src="../images/obs_seq_final_diagram.png" alt="The structure of an obs_seq.final file" /></a></td>
+    </tr>
+  </tbody>
+</table>
+
+<p><span id="obs_synthetic" class="anchor"></span></p>
+
+<p>[<a href="#">top</a>]</p>
+
+<hr />
+
+<h1 id="creating-observations-and-sequences">Creating observations and sequences.</h1>
+
+<p><strong>It is strongly encouraged that you use a single observation to test a
+new model implementation.</strong></p>
+
+<p>Experience has shown that starting ‘simple’ is the fastest way to good
+results. Starting with a <strong>single</strong> observation will exercise a
+sufficient portion of the procedure and provide insight into where to
+spend more effort. Starting with a single <em>synthetic</em> observation will
+allow you to focus on the more interesting parts of the DART scheme
+without getting bogged down in the world of observation data formats.</p>
+
+<p><span id="obs_seq_osse"></span></p>
+
+<h1 id="creating-a-synthetic-observation-sequence">Creating a synthetic observation sequence.</h1>
+
+<p>There are several steps to create an observation sequence file, which
+follows directly from the modular nature of the DART programming
+philosophy.</p>
+
+<ol>
+  <li>Decide what observations you want to investigate and edit the
+<em>input.nml&amp;obs_kind_nml</em> block.</li>
+  <li>Build and run <em>preprocess</em> to create code that supports the
+observations you want.</li>
+  <li>Build and run <em>create_obs_sequence</em> to define the specifics about
+the observation you want.</li>
+  <li>Build and run <em>create_fixed_network_sequence</em> to replicate those
+specifics through time.</li>
+  <li>Build and run <em>perfect_model_obs</em> to create an observation
+consistent with the model state and specified error distribution at
+the requested times and locations.</li>
+</ol>
+
+<p><span id="L63_obs_generation"></span></p>
+
+<h4 id="example-generating-observations-for-the-lorenz-63-model">Example: generating observations for the Lorenz ‘63 model.</h4>
+
+<p>1) There are no ‘real’ observations for the Lorenz ‘63 model, so the
+appropriate namelist settings are:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&amp;obs_kind_nml
+    assimilate_these_obs_types = 'RAW_STATE_VARIABLE'  /
+    
+&amp;preprocess_nml
+      input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+    input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+    output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+                input_files = '../../../observations/forward_operators/obs_def_1d_state_mod.f90'
+  /
+</code></pre></div></div>
+
+<p>2) Run <em>preprocess</em> in the normal fashion.</p>
+
+<p>3) <em>create_obs_sequence</em> creates an <em>observation set definition</em>
+(typically named <em>set_def.out</em>), the time-independent part of an
+observation sequence. It may help to think of it as trying to define
+what sorts of observations will be taken at one ‘reading’ … you walk
+out to the box and take temperature, humidity, and wind observations all
+at the same time and place, for example. You can think of it as one page
+in an observer’s notebook, and only contains the <em>location, type,</em> and
+<em>observational error characteristics</em> (normally just the diagonal
+observational error variance) for a related set of observations. There
+are no actual observation values, nor are there any times associated
+with the definition. The program is interactive and queries the user for
+the information it needs. Begin by creating a minimal observation set
+definition in which each of the 3 state variables of L63 is directly
+observed with an observational error variance of 1.0 for each
+observation. To do this, use the following input sequence (the text
+including and after # is a comment and does not need to be entered):</p>
+
+<p>The following is a screenshot (much of the verbose logging has been left
+off for clarity), the user input looks <em>like this</em>.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>   [unixprompt]$ ./create_obs_sequence
+    Starting program create_obs_sequence
+    Initializing the utilities module.
+    Trying to log to unit   10
+    Trying to open file dart_log.out
+
+    --------------------------------------
+    Starting ... at YYYY MM DD HH MM SS = 
+                    2017  3 28 10 15 30
+    Program create_obs_sequence
+    --------------------------------------
+
+    set_nml_output Echo NML values to log file only
+    Trying to open namelist log dart_log.nml
+    ------------------------------------------------------
+
+
+    -------------- ASSIMILATE_THESE_OBS_TYPES --------------
+    RAW_STATE_VARIABLE
+    -------------- EVALUATE_THESE_OBS_TYPES --------------
+    ------------------------------------------------------
+   
+    ---------- USE_PRECOMPUTED_FO_OBS_TYPES --------------
+    ------------------------------------------------------
+
+    Input upper bound on number of observations in sequence
+   4
+    Input number of copies of data (0 for just a definition)
+   0
+    Input number of quality control values per field (0 or greater)
+   0
+    input a -1 if there are no more obs
+   0
+         Input -1 * state variable index for identity observations
+         OR input the name of the observation kind from table below:
+         OR input the integer index, BUT see documentation...
+           1 RAW_STATE_VARIABLE
+   -1
+    input time in days and seconds
+   0 0
+    Input error variance for this observation definition
+   1.0
+    input a -1 if there are no more obs
+   0
+
+    { this gets repeated ... until you tell it to stop ... }
+
+    input a -1 if there are no more obs
+   -1
+    Input filename for sequence (  set_def.out   usually works well)
+    set_def.out 
+    write_obs_seq  opening formatted file set_def.out
+    write_obs_seq  closed file set_def.out
+</code></pre></div></div>
+
+<p>Rest assured that if you requested to assimilate more realistic
+observation types, you will be queried for appropriate information by
+<em>create_obs_sequence</em>. Below is a table that explains all of the input
+you should need to supply for observations of the L63 model state.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>4            # upper bound on num of observations in sequence
+0            # number of copies of data (0 for just a definition)
+0            # number of quality control values per field (0 or greater)
+0            # -1 to exit/end observation definitions
+
+-1           # observe state variable 1
+0   0        # time -- days, seconds
+1.0          # observational variance
+0            # -1 to exit/end observation definitions
+
+-2           # observe state variable 2
+0   0        # time -- days, seconds
+1.0          # observational variance
+0            # -1 to exit/end observation definitions
+
+-3           # observe state variable 3
+0   0        # time -- days, seconds
+1.0          # observational variance
+-1           # -1 to exit/end observation definitions
+
+set_def.out  # Output file name
+</code></pre></div></div>
+
+<p>4) <em>create_fixed_network_sequence</em> takes the observation set
+definition and repeats it in time, essentially making multiple pages in
+our notebook. Again, the program is interactive and queries the user for
+information. You should be able to simply follow the prompts. The table
+below represents the input needed for the L63
+example:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>set_def.out # Input observation set definition file          
+1           # Regular spaced observation interval in time      
+1000        # 1000 observation times                           0, 43200    # First observation after 12 hours (0 days, 12 \* 3600 seconds)
+0, 43200    # Observations every 12 hours                      obs_seq.in  # Output file for observation sequence definition
+</code></pre></div></div>
+
+<p>5) <em>perfect_model_obs</em> advances the model from the state defined by
+the initial conditions file specified in the <em>input.nml</em> and ‘applies
+the forward operator’ to harvest observations to fill in the observation
+sequence specified in <em>obs_seq.in</em>. The observation sequence finally
+has values for the observations and is saved in a file generally named
+<em>obs_seq.out</em>. <em>perfect_model_obs</em> is namelist-driven, as opposed to
+the previous two (whose input is a lot harder to specify in a namelist).
+Take a look at (and modify if you like) the
+<em>input.nml&amp;perfect_model_obs_nml</em> section of the namelist.</p>
+
+<p>The End. Not only should you have an observation sequence file (usually
+<em>obs_seq.out</em>) , you also have a file containing the exact evolution of
+the model consistent with those observations - the true state:
+<em>perfect_output.nc</em>.</p>
+
+<p><span id="obs_real" class="anchor"></span></p>
+
+<p>[<a href="#">top</a>]</p>
+
+<hr />
+
+<h1 id="real-observations---converting-to-a-dart-compatible-format">Real Observations - Converting to a DART-compatible format.</h1>
+
+<p>Real observations come in a mind-boggling diversity of formats. We have
+converters for many formats in the <em>DART/observations/obs_converters</em>
+directory. The documentation for that directory is listed in
+<a href="Manhattan/observations/obs_converters/observations.html">observations.html</a>.</p>
+
+<p>The converters are designed to work on one input file format and create
+(or add to) an output observation sequence. It may be desirable to
+post-process multiple observation sequence files with the
+<a href="https://ncar.github.io/DART/api/v2.1.10/program/obs_sequence_tool.html">obs_sequence_tool</a>
+… to select for timeframe, geographic region, etc.</p>
+
+<p>Many of the formats require their own libraries (like HDF), and require
+intimate knowledge of the data format to extract the portions required
+for the <a href="DART2_Observations.html#obs_seq_overview">DART observation sequence
+file</a>. Please feel free to
+browse the converters and their companion documentation. Feel free to
+donate converters for formats we don’t already support! We like that
+kind of stuff.</p>
+
+<p>The DART framework enforces a clean separation between observations and
+the models used for assimilation. The same observations can be used in
+any model which understands how to generate a value for the requested
+type of observation from the models’ state-space values (i.e. the
+forward observation operator must exist - DART provides many for the
+most common state variables).</p>
+
+<p>In many cases, the original datasets are in a standard scientific format
+like netCDF, HDF, or BUFR, and library routines for those formats can be
+used to read in the original observation data. The DART software
+distribution includes Fortran subroutines and functions to help create a
+sequence of observations in memory, and then a call to the DART
+observation sequence write routine will create an entire <em>obs_seq</em> file
+in the correct format.</p>
+
+<p>In many cases, a single, self-contained program can convert directly
+from the observation location, time, value, and error into the DART
+format. In other cases, especially those linking with a complicated
+external library (e.g. BUFR), there is a two-step process with two
+programs and an ASCII intermediate file. We are currently leaning
+towards single-step conversions but either approach can be used for new
+programs.</p>
+
+<p>The DART system comes with several types of location modules for
+computing distances appropriately. The two most commonly used are for
+data in a 1D system and for data in a 3D spherical coordinate system.
+All the programs in the <em>DART/observations</em> directory assume the
+<em>location/threed_sphere/location_mod.f90</em> 3D sphere location module is
+being used.</p>
+
+<p>With the myriad of observation file formats, HDF, Grib, BUFR, netCDF,
+… we simply have not had the time nor need to support all of them. The
+converters are a work in progress. There are currently about 10 other
+observation sources and types which we are in the process of collecting
+information and conversion programs for and which will eventually be
+added to this directory. In the meantime, if you have converters for
+data or interest in something that is not in the repository, please
+email the DART group. Your best bet is to contact our group at
+<em>dart@ucar.edu</em> with a specific request and we can steer you to the most
+similar process.</p>
+
+<p><span id="obs_seq_manip" class="anchor"></span></p>
+
+<p>[<a href="#">top</a>]</p>
+
+<hr />
+
+<h1 id="manipulating-observation-sequences">Manipulating observation sequences.</h1>
+
+<p>First and foremost, check out the
+<a href="https://ncar.github.io/DART/api/v2.1.10/program/obs_sequence_tool.html">obs_sequence_tool.html</a>
+document for detailed information and examples.</p>
+
+<p><em>obs_sequence_tool</em> is the primary tool for manipulating observation
+sequence files. Observations sequence files are linked lists of
+observations organized by time. That is to say, the observations may
+appear in any order in the file, but traversing the linked list will
+result in observations ordered by time. <em>obs_sequence_tool</em> can be
+used to combine observation sequences, convert from ASCII to binary or
+vice-versa, extract a subset of observations, etc.</p>
+
+<p>For testing, it is terribly useful to extract a small number of
+observations (like ONE) from an existing observation sequence file.</p>
+
+<p><span id="adding_types" class="anchor"></span></p>
+
+<p>[<a href="#">top</a>]</p>
+
+<hr />
+
+<h1 id="the-difference-between-observation-type-and-observation-quantity">The difference between observation TYPE and observation QUANTITY.</h1>
+
+<p>Broadly speaking, observation TYPES are specific instances of a generic
+observation QUANTITY. The distinction is useful for several reasons, not
+the least of which is to evaluate observation platforms. Zonal wind
+observations from QuikSCAT vs. radiosondes, for example. They are both
+observations of zonal winds (what we call QTY_U_WIND_COMPONENT), but
+they are different observation TYPES; QKSWND_U_WIND_COMPONENT, and
+RADIOSONDE_U_WIND_COMPONENT, respectively. The forward observation
+operators are implemented based on observation QUANTITY. When requested,
+the model generates a QTY_U_WIND_COMPONENT, it doesn’t need to know
+that it will be compared to a QuikSCAT value or a radiosonde value.</p>
+
+<p><strong>However</strong>, it is usually scientifically very interesting to be able to
+compare the assimilations one TYPE of observation vs. another. One
+observation sequence file can have lots of types of observations; DART
+has the capability to assimilate (or evaluate) any combination of
+observation types without getting bogged down in dataset management. The
+same observation sequence can be used for experiments that
+include/exclude certain observation types - ensuring that you are
+performing the experiment you THINK you are performing
+…</p>
+
+<h1 id="adding-support-for-a-new-observation-type">Adding support for a new observation TYPE.</h1>
+
+<p><a href="https://ncar.github.io/DART/api/v2.1.10/module/obs_def_mod.html">DART/observations/forward_operators/obs_def_mod.html</a>
+is the source for detailed information.</p>
+
+<hr />
+
+                </article>
+            </div>
+        </div>
+    </section>
+    </div>
+
+    <footer>
+    <div class="grid-x grid-padding-y footer-menu-tertiary">
+        <div class="cell text-center">
+            <small>©  UCAR</small>
+            <ul class="menu vertical">
+                <li><a href="https://www.ucar.edu/privacy-policy">Privacy Policy</a></li>
+                <li><a href="https://www.ucar.edu/terms-of-use">Terms of Use</a></li>
+                <li><a href="https://www.ucar.edu/notification-copyright-infringement-digital-millenium-copyright-act">Copyright Issues</a></li>
+                <li><a href="https://nsf.gov">Sponsored by NSF</a></li>
+                <li><a href="https://ncar.ucar.edu">NCAR Home</a></li>
+                <li><a href="https://www.ucar.edu">UCAR Home</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="grid-x grid-padding-y footer-sponsor">
+        <div class="cell">
+            <div class="grid-container">
+                <div class="grid-x">
+                    <div class="cell small-auto medium-10 description">
+                        <p>The National Center for Atmospheric Research is sponsored by the National Science Foundation. Any opinions, findings and conclusions or recommendations expressed in this material do not necessarily reflect the views of the National Science Foundation.</p>
+                    </div>
+                    <div class="cell small-3 medium-2 mlarge-1 logo">
+                        <a href="https://www.nsf.gov/" target="_blank"><img src="/assets/koru-base/img/footer-logo-nsf.png" alt="National Science Foundation"></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</footer>
+</div>
+</body>
+
+<script src="/assets/koru-base/lib/jquery/dist/jquery.js"></script>
+<script src="/assets/koru-base/lib/foundation-sites/dist/js/foundation.js"></script>
+<script src="/assets/koru-base/js/main.min.js"></script>
+</html>

@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="title" content="CESM Setup">
+  <meta name="description" content="UCAR">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta class="foundation-mq">
+  <link rel="canonical" href="https://www.ucar.edu/">
+
+  <title>CESM Setup | DART</title>
+
+  <link rel="stylesheet" href="/assets/koru-base/css/main.min.css" media="all">
+  <link rel="stylesheet" href="/assets/css/styles.css" media="all">
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Poppins:400,600,700" media="all">
+</head>
+
+
+<body class="ncar no-banner with-sidebar">
+<div class="content-wrapper">
+    <header>
+    <div data-sticky-container="" class="sticky-container">
+        <div data-sticky="" data-options="marginTop:0;stickyOn:small;" data-top-anchor="main-content"
+             class="sticky is-anchored is-at-top">
+            <div class="top-bar align-top hide-for-print" id="top-bar">
+                <div class="grid-x">
+                    <div class="cell">
+                        <div class="grid-x align-middle">
+                            <div class="cell small-3 large-2">
+                                <div class="grid-x grid-margin-x nsf-logo">
+                                    <div class="cell small-4">
+                                        <div class="grid-x">
+                                            <div class="cell small-1 small-4 xlarge-3">
+                                                <p><a href="https://www.ucar.edu/who-we-are/funding">Sponsored By</a></p>
+                                                <a href="https://www.ucar.edu/who-we-are/funding"><img alt="NSF Logo" src="/assets/koru-base/img/NSF_4-Color_bitmap_Logo.png"/></a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div></div>
+                            <div class="cell small-6 large-8 top-bar-title logo-wrapper align-center">
+                                <h2 class="acronym-wrapper">
+                                    <a href="https://ncar.ucar.edu" title="NCAR Home">
+                                        <img src="/assets/koru-base/img/logo-ncar-active-large.png"
+                                             alt="NCAR">
+                                        <span class="show-for-sr">NCAR</span>
+                                    </a>
+                                </h2>
+                                <h1><a href="/">DART</a></h1>
+                            </div>
+                            <div class="cell small-3 large-2 text-right"><p class="ncar-title"><a href="https://ncar.ucar.edu">National Center for Atmospheric Research</a></p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mobile-nav hide-for-print text-center" data-responsive-toggle="main-nav" data-hide-for="mlarge">
+                <div class="title-bar-title">Menu</div>
+                <button class="fa fa-chevron-down" type="button" data-toggle="main-nav"></button>
+            </div>
+            <div class="main-nav hide-for-print" id="main-nav">
+                <div class="grid-x">
+                <nav class="cell center mlarge-10 large-7">
+                    <ul class="menu icons icon-left" data-responsive-menu="accordion mlarge-dropdown">
+                        
+                        <li aria-label="Documentation">
+                            <a class="text-center" href="/DART_development/pages/DART2_Starting.html">Documentation</a>
+                            
+                            <ul class="menu">
+                                <li aria-label="Documentation"><a class="text-center" href="/DART_development/pages/DART2_Starting.html">Overview</a></li>
+                                
+                                <li aria-label="Getting Started"><a class="text-left" href="/DART_development/pages/DART2_Starting.html">Getting Started</a></li>
+                                
+                                <li aria-label="Tutorial"><a class="text-left" href="/DART_development/pages/dart_tutorial.html">Tutorial</a></li>
+                                
+                                <li aria-label="Lab"><a class="text-left" href="/DART_development/pages/dart_lab.html">Lab</a></li>
+                                
+                                <li aria-label="In Depth"><a class="text-left" href="/DART_development/pages/DART2_Documentation.html">In Depth</a></li>
+                                
+                                <li aria-label="Diagnostics"><a class="text-left" href="/DART_development/pages/DART2_Diagnostics.html">Diagnostics</a></li>
+                                
+                                <li aria-label="Observations"><a class="text-left" href="/DART_development/pages/DART2_Observations.html">Observations</a></li>
+                                
+                                <li aria-label="Misc"><a class="text-left" href="/DART_development/pages/DART2_Miscellany.html">Misc</a></li>
+                                
+                            </ul>
+                            
+                        </li>
+                        
+                        <li aria-label="Research">
+                            <a class="text-center" href="/DART_development/pages/Research.html">Research</a>
+                            
+                        </li>
+                        
+                        <li aria-label="About Us">
+                            <a class="text-center" href="/DART_development/pages/aboutus.html">About Us</a>
+                            
+                        </li>
+                        
+                        <li aria-label="Support">
+                            <a class="text-center" href="/DART_development/pages/support.html">Support</a>
+                            
+                        </li>
+                        
+                        <li aria-label="API">
+                            <a class="text-center" href="">API</a>
+                            
+                            <ul class="menu">
+                                <li aria-label="API"><a class="text-center" href="">Overview</a></li>
+                                
+                                <li aria-label="Manhattan"><a class="text-left" href="/DART_development/pages/release.html">Manhattan</a></li>
+                                
+                                <li aria-label="v3.0.0"><a class="text-left" href="/DART_development/api/v3.0.0/index.html">v3.0.0</a></li>
+                                
+                                <li aria-label="Lanai"><a class="text-left" href="">Lanai</a></li>
+                                
+                                <li aria-label="v2.0.0"><a class="text-left" href="">v2.0.0</a></li>
+                                
+                            </ul>
+                            
+                        </li>
+                        
+                    </ul>
+                </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+    <div class="body-content" id="main-content">
+        <section class="panel primary-content">
+        <div class="grid-x align-center">
+            <div class="cell medium-8 large-9">
+                <article role="article" class="content">
+                    <h1 id="cesmdart-setup">CESM+DART setup</h1>
+
+<p><a href="#CESM%20MODES">SET-UP</a> / <a href="#CESM+DART%20MODELS">CESM+DART MODELS</a> /
+<a href="#SETUP">SET-UP</a> / <a href="#INITIALFILES">INITIAL ENSEMBLE</a> / <a href="#OUTPUTDIRECTORY">OUTPUT
+DIRECTORY</a> / <a href="#HINTS">HINTS</a> / <a href="#SPACE">SPACE</a> /
+<a href="#Legalese">TERMS OF USE</a> <span id="OVERVIEW"></span></p>
+
+<h2 id="cesmdart-setup-overview">CESM+DART Setup Overview</h2>
+
+<p>If you found your way to this file without reading more basic DART help
+files, please read those first. $DART/README is a good place to find
+pointers to those files. This document gives specific help in setting up
+a CESM+DART assimilation for the first time. Unless you just came from
+there, also see the ../{your_model(s)}/model_mod.html documentation
+about the code-level interfaces and namelist values.</p>
+
+<h4 id="cesm-context">CESM context</h4>
+
+<p>Most other models are either called by DART (low order models), or are
+run by DART via a shell script command (e.g. WRF). In contrast, CESM
+runs its forecast, and then calls DART to do the assimilation. The
+result is that assimilation set-up scripts for CESM components focus on
+modifying the set-up and build of CESM to accommodate DART’s needs, such
+as multi-instance forecasts, stopping at the assimilation times to run
+filter, and restarting with the updated model state. The amount of
+modification of CESM depends on which version of CESM is being used.
+Later versions require fewer changes because CESM has accommodated more
+of DART’s needs with each CESM release. This release of DART focuses on
+selected CESM versions from 1_2_1 onward, through CESM2 (June, 2017)
+and versions to be added later. Using this DART with other CESM versions
+will quite possibly fail.</p>
+
+<p>Since the ability to use DART has not been completely integrated into
+CESM testing, it is necessary to use some CESM fortran subroutines which
+have been modified for use with DART. These must be provided to CESM
+through the SourceMods mechanism. SourceMods for selected versions of
+CESM are available from the DART website. They can often be used as a
+template for making a SourceMods for a different CESM version. If you
+have other CESM modifications, they must be merged with the DART
+modifications.</p>
+
+<h4 id="cesm2">CESM2</h4>
+
+<p>CESM2 (expected release May, 2017) has several helpful improvements,
+from DART’s perspective.</p>
+
+<ul>
+  <li>Reduced number of subroutines in DART’s SourceMods.</li>
+  <li>“Multi-instance” capability enables the ensemble forecasts DART
+needs.</li>
+  <li>Cycling capability, enabling multiple assimilation cycles in a
+single job, which reduces the frequency of waiting in the queue.</li>
+  <li>Removal of the short term archiver from the run script so that the
+MPI run doesn’t need to idle while the single task archiver runs.
+This significantly reduces the core hours required.</li>
+  <li>CESM’s translation of the short term archiver to python, and control
+of it to an xml file ($caseroot/env_archive.xml), so that DART
+modifications to the short term archiver are more straight-forward.</li>
+  <li>The creation of a new component class, “External Statistical
+Processing” (“esp”), of which DART is the first instance, integrates
+DART more fully into the CESM development, testing, and running
+environment. This is the same as the atm class, which has CAM as an
+instance. This will help make DART available in the most recent
+tagged CESM versions which have the most recent CESM component
+versions.</li>
+</ul>
+
+<p>These have been exploited most fully in the CAM interfaces to DART,
+since the other components’ interfaces still use older CESMs. The
+cam-fv/shell_scripts can be used as a template for updating other
+models’ scripting. The multi-cycling capability, with the short- and
+long-term archivers running as separate jobs at the end, results in
+assimilation jobs which rapidly fill the scratch space. Cam-fv’s and
+pop’s assimilate.csh scripts have code to remove older and unneeded CESM
+restart file sets during the run. All of DART’s output and user
+selected, restart file sets are preserved.</p>
+
+<p>DART’s manhattan release includes the change to hard-wired input and
+output filenames in filter. Cam-fv’s assimilate.csh renames these files
+into the CESM file format:<br />
+$case.$component{_$instance}.$filetype.$date.nc.<br />
+DART’s hard-wired names are used as new filetypes, just like CESM’s
+existing “r”, “h0”, etc. For example, preassim_mean.nc from a CAM
+assimilation named Test0 will be renamed<br />
+Test0.cam.preassim_mean.2013-03-14-21600.nc<br />
+The obs_seq files remain an exception to this renaming, since they are
+not in NetCDF format (yet).</p>
+
+<p><span id="CESM MODES"></span></p>
+
+<h2 id="cesm-component-combinations">CESM Component Combinations</h2>
+
+<p>CESM can be configured with many combinations of its components (CAM,
+CLM, POP, CICE, …) some of which may be ‘data’ components, which
+merely read in data from some external source and pass it to the other,
+active, components to use. The components influence each other only
+through the coupler. There are several modes of assimilating
+observations in this context.</p>
+
+<h4 id="single-component-assimilation">Single-Component Assimilation</h4>
+
+<p>The first, and simplest, consists of assimilating relevant observations
+into one active component. Most/all of the rest of the components are
+‘data’. For example, observations of the oceans can be assimilated into
+the POP model state, while the atmospheric forcing of the ocean comes
+from CAM re-analysis files, and is not changed by the observations. A
+variation of this is used by CAM assimilations. A CAM forecast usually
+uses an active land component (CLM) as well as an active atmospheric
+component. Atmospheric observations are assimilated only into the CAM
+state, while the land state is modified only through its interactions
+with CAM through the coupler. Each of these assimilations is handled by
+one of $DART/models/{cam-fv, pop, clm, …} If you want to use an
+unusual combination of active and data components, you may need to (work
+with us to) modify the setup
+scripts.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><img src="../images/CAM_only.png" alt="CAM+DART flowchart" /></td>
+      <td><img src="../images/POP_only.png" alt="POP+DART flowchart" /></td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="multi-component-assimilation-aka-weakly-coupled">Multi-Component Assimilation (aka “weakly coupled”)</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><img src="../images/multi-component.png" alt="Multi-component flowchart" /></td>
+      <td>It’s also possible to assimilate observations into multiple active components, but restricting the impact of observations to only “their own” component. So in a “coupled” CESM with active CAM and POP, atmospheric observations change only the CAM model state while oceanic observations change only the POP model state. This mode uses multiple DART models; cam-fv and pop in this example to make a filter for each model.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="cross-component-assimilation-aka-strongly-coupled">Cross-Component Assimilation (aka “strongly coupled”)</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><img src="../images/cross-component.png" alt="Cross-component flowchart" /></td>
+      <td>Work is underway to enable the assimilation of all observations into multiple active CESM components. So observations of the atmosphere would directly change the POP state variables and vice versa. Some unresolved issues include defining the “distance” between an observation in the atmosphere and a grid point in the ocean (for localization), and how frequently to assimilate in CAM versus POP. This mode will use code in this models/CESM directory.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><a href="../../cam-fv/model_mod.html">Go to cam-fv/model_mod page</a></p>
+
+<p><span id="CESM+DART MODELS"></span><span></span></p>
+
+<hr />
+
+<h2 id="dartmodelscesm-components-organization">$DART/models/{CESM components} organization</h2>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>SCRIPT                          NOTES
+
+$DART/models/**cam-fv**/        A 'model' for each CAM dynamical core (see note below this outline)
+   model_mod.\*                 The fortran interface between CAM-FV and DART
+   shell_scripts/
+      no_assimilate.csh,...     Independent_of_cesm_version
+      cesm1_5/
+        setup_hybrid,...        Dependent on CESM version
+      cesm2_0/
+        setup_hybrid,...        Dependent on CESM version
+
+$DART/models/**pop**/           A 'model' for each ocean model (MOM may be interfaced next)
+   model_mod.\*                 The fortran interface between CAM-FV and DART
+   shell_scripts/
+      no_assimilate.csh,...     Independent_of_cesm_version
+      cesm1_5/
+        setup_hybrid,...        Dependent on CESM version
+      cesm2_0/
+        setup_hybrid,...        Dependent on CESM version
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>For each CAM dynamical core "model", e.g. "cam-fv",  the scripts  in cesm#_# will handle:
+    all CAM variants + vertical resolutions (*dy-core is NOT part of this.*):
+        CAM5.5, CAM6, ...
+        WACCM4, WACCM6, WACCM-X...
+        CAM-Chem,
+        ...
+    all horizontal resolutions of its dy-core:
+        1.9x2.5, 0.9x1.25, ..., for cam-fv
+        ne30np4, ne0_CONUS,..., for cam-se
+</code></pre></div></div>
+
+<p><span id="SETUP"></span></p>
+
+<hr />
+
+<h2 id="assimilation-set-up-procedure">Assimilation Set-up Procedure</h2>
+
+<p>Here is a list of steps to set up an assimilation from scratch, except
+that it assumes you have downloaded DART and learned how to use it with
+low order models. Some of the steps can be skipped if you have a
+suitable replacement, as noted.</p>
+
+<ol>
+  <li>Decide which component(s) you want to use as the assimilating
+model(s). (The rest of this example assumes that you’re building a
+cam-fv assimilation.) Look in models/cam-fv/shell_scripts to see
+which CESM versions are supported.</li>
+  <li>CESM: locate that version on your system, or check it out from
+http://www.cesm.ucar.edu/models/current.html</li>
+  <li>Choose a start date for your assimilation. Choosing/creating the
+initial ensemble is a complicated issue.
+    <ul>
+      <li>It’s simpler for CAM assimilations. If you don’t have an initial
+state and/or ensemble for this date, build a single instance of
+CESM (Fxxxx compset for cam-fv) and run it from the default Jan
+1 start date until 2-4 weeks before your start date. Be sure to
+set the cam namelist variable inithist = ‘ENDOFRUN’ during the
+last stage, so that CAM will write an “initial” file, which DART
+needs.</li>
+      <li>For ocean and land assimilations,which use an ensemble of data
+atmospheres, creating usable initial ensemble is a different
+process.</li>
+    </ul>
+  </li>
+  <li>Put the entire cam-fv restart file set (including the initial file)
+where it won’t be scrubbed before you want to use it. Create a
+pseudo-ensemble by linking files with instance numbers in them to
+the restart file set (which has no instance number) using
+CESM/shell_scripts/link_ens_to_single.csh</li>
+  <li>Choose the options in $dart/mkmf/mkmf.template that are best for
+your assimilation. These will not affect the CESM build, only
+filter.</li>
+  <li>In models/cam-fv/work/input.nml, be sure to include all of your
+required obs_def_${platform}_mod.f90 file names in
+preprocess_nml:input_files. It’s also useful to modify the rest of
+input.nml to make it do what you want for the first assimilation
+cycle. This input.nml will be copied to the $case_root directory
+and used by assimilate.csh.</li>
+  <li>Build the DART executables using quickbuild.csh.</li>
+  <li>Follow the directions in
+models/cam-fv/shell_scripts/cesm#_#/setup_hybrid to set up the
+assimilation and build of CESM. We recommend a tiny ensemble to
+start with, to more quickly test whether everything is in order.</li>
+  <li>After convincing yourself that the CESM+DART framework is working
+with no_assimilate.csh, activate the assimilation by changing
+CESM’s env_run.xml:DATA_ASSIMILATION_SCRIPT to use
+assimilate.csh.</li>
+  <li>After the first forecast+assimilation cycle finishes correctly,
+change the input.nml, env_run.xml and env_batch.xml to do
+additional cycle(s) without the perturbation of the initial state,
+and with using the just created restart files. You may also want to
+turn on the st_archive program. Instructions are in setup_hybrid
+and cam-fv/work/input.nml.</li>
+  <li>Finally, build a new case with the full ensemble, activate the
+assimilate.csh script and repeat the steps in step 10.</li>
+</ol>
+
+<p><span id="INITIALFILES"></span></p>
+
+<hr />
+
+<h2 id="cam-initial-ensembles">CAM Initial Ensembles</h2>
+
+<p>Strategies for generating an initial ensemble from which DART can
+start.</p>
+
+<ol>
+  <li>
+    <p>MINIMAL WORK; Get an ensemble of CAM/CLM/CICE/POP/… initial and
+restart files from someone else (DART has a few dates for a few
+model cores and resolutions
+<a href="http://www.image.ucar.edu/pub/DART/Obs_sets">here</a>. This limits the
+investigations you can undertake, but is the fastest and cheapest
+way to start assimilating.</p>
+  </li>
+  <li>
+    <p>MINIMAL CAM COMPUTING; an assimilation can be started from a single
+CAM (+CLM[+CICE]) initial file. The single model state is randomly
+perturbed to make as many ensemble members as are requested in the
+<em>ens_size</em> variable in the <em>filter_nml</em> namelist. Create a
+<em>filter_ic</em> file from the CAM initial file (dart_to_cam.f90).
+Create an <em>obs_seq.out</em> file which has a single observation with a
+large observational error variance, valid at least a week after the
+start date for the spin-up. This will make the ensemble advance long
+enough to balance the fields, without being perturbed by the
+assimilation of any observations.</p>
+  </li>
+</ol>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&amp;filter_nml
+    ...
+    start_from_restart       = .false.,
+    restart_in_file_name     = "filter_ic",
+    ...
+/
+&amp;model_nml
+   ...
+   pert_names         = 'T       ','US      ','VS      '
+   pert_sd           = 1.0d0,2.0d0,2.0d0
+   ...
+/
+</code></pre></div></div>
+
+<p>Note that <em>start_from_restart</em> is false (“don’t start from a
+pre-existing *ensemble*”), but a restart file (<em>filter_ic</em>) is
+still needed for filter to have something realistic to perturb.
+<em>pert_names</em> specifies which fields will be perturbed. CAM field
+names are used. <em>pert_sd</em> &gt; 0 allows each point of the pert_names
+fields of each ensemble member to be randomly perturbed with a
+standard deviation of pert_sd. Other fields can be used, but
+moisture variables are tricky because of their variation with height
+by orders of magnitude. Regardless of which fields are specified,
+the spin-up period will allow the fields to come into balance with
+respect to the model, so the perturbations will propagate into all fields.</p>
+
+<ol>
+  <li>
+    <p>FULL FUNCTION ENSEMBLE; In order to have, on hand, initial ensembles
+of any practical size, for any date of the year, we recommend the
+following. Scripts for doing this are available in
+…/DART/models/cam/make_ensemble. See the README there for more
+details. They are not highly documented or elegent, but offer a
+starting point. Make 20 successive 1-year free CAM runs (MPI CAM
+highly recommended, NO_LEAP calender), saving the initial files
+every 5 days. ? ? Or 5 years, saving every day. Then pull together
+all of the, e.g., Jan 6ths (00Z) into a 20 (5) member ensemble
+(numbered 1…20(5)).</p>
+
+    <p>When you need an ensemble of, say 60 members for June 1 then
+retrieve the 20 members from each of May 26, May 31, and June 5,
+renumbering them 1,…,60. --&gt;</p>
+
+    <p><span id="OUTPUTDIRECTORY"></span></p>
+  </li>
+</ol>
+
+<hr />
+
+<h2 id="output-directory">Output Directory</h2>
+
+<p>CESM’s short term archiver (st_archive) is controlled by its
+<em>env_archive.xml</em>. DART’s setup scripts modify that file to archive
+DART output along with CESM’s. (See the <a href="../../../documentation/html/rma.html">list of RMA
+changes</a> for a description of
+DART’s output). DART’s output is archived in
+<em>$arch_dir/dart/{hist,rest,logs,…}</em>, where arch_dir is defined in
+<em>setup_{hybrid,advanced}</em>, <em>hist</em> contains all of the state space and
+observation space output, and <em>rest</em> contains the inflation restart
+files.</p>
+
+<p>Central directory</p>
+
+<p>User Location of scripts and pass-through point for files during execution.
+Typically named according defining characteristics of a *set* of
+experiments; resolution, model, obs being assimilated, unique model
+state variables, etc. --&gt;</p>
+
+<p>The cam-XX assimilate.csh scripts also make a copy of the obs_seq.final
+files in a scratch space ($scratch/$case/Obs_seqs) which won’t be
+removed by CESM’s long term archiver, if that is run.</p>
+
+<p><span id="HINTS"></span></p>
+
+<hr />
+
+<h2 id="helpful-hints">Helpful Hints</h2>
+
+<p><span id="SPACE"></span></p>
+
+<hr />
+
+<h2 id="space-requirements">Space Requirements</h2>
+
+<p>Space requirements (Gb per ensemble member) for several CAM resolutions.</p>
+
+<p>There are, no doubt, things missing from these lists, so don’t struggle
+too long before contacting dart’at’ucar.edu.</p>
+
+<p>Useful terms found in this web page.</p>
+
+<p><span id="Legalese"></span></p>
+
+<hr />
+
+                </article>
+            </div>
+        </div>
+    </section>
+    </div>
+
+    <footer>
+    <div class="grid-x grid-padding-y footer-menu-tertiary">
+        <div class="cell text-center">
+            <small>©  UCAR</small>
+            <ul class="menu vertical">
+                <li><a href="https://www.ucar.edu/privacy-policy">Privacy Policy</a></li>
+                <li><a href="https://www.ucar.edu/terms-of-use">Terms of Use</a></li>
+                <li><a href="https://www.ucar.edu/notification-copyright-infringement-digital-millenium-copyright-act">Copyright Issues</a></li>
+                <li><a href="https://nsf.gov">Sponsored by NSF</a></li>
+                <li><a href="https://ncar.ucar.edu">NCAR Home</a></li>
+                <li><a href="https://www.ucar.edu">UCAR Home</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="grid-x grid-padding-y footer-sponsor">
+        <div class="cell">
+            <div class="grid-container">
+                <div class="grid-x">
+                    <div class="cell small-auto medium-10 description">
+                        <p>The National Center for Atmospheric Research is sponsored by the National Science Foundation. Any opinions, findings and conclusions or recommendations expressed in this material do not necessarily reflect the views of the National Science Foundation.</p>
+                    </div>
+                    <div class="cell small-3 medium-2 mlarge-1 logo">
+                        <a href="https://www.nsf.gov/" target="_blank"><img src="/assets/koru-base/img/footer-logo-nsf.png" alt="National Science Foundation"></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</footer>
+</div>
+</body>
+
+<script src="/assets/koru-base/lib/jquery/dist/jquery.js"></script>
+<script src="/assets/koru-base/lib/foundation-sites/dist/js/foundation.js"></script>
+<script src="/assets/koru-base/js/main.min.js"></script>
+</html>

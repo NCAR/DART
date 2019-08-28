@@ -1,0 +1,300 @@
+/*
+ * DART software - Copyright UCAR. This open source software is provided
+ * by UCAR, "as is", without charge, subject to all terms of use at
+ * http://www.image.ucar.edu/DAReS/DART/DART_download
+ *
+ * DART $Id$
+ */
+
+/* $Id$ */
+
+body{background:white;
+      margin-left :5%;
+      margin-right:5%;
+      font-family:Verdana, Arial, Helvetica, sans-serif;
+      font-weight:normal;}
+
+h1,h2,h3,h4,h5,h6 { margin-left:-4%; color:Black; }
+
+h1{font-size:2.00em;}
+h2{font-size:1.50em;}
+h3{font-size:1.25em;}
+h4{font-size:1.00em;}
+
+h1.indent1{font-size:2.00em; margin-left:0%}
+h2.indent1{font-size:1.50em; margin-left:0%}
+h3.indent1{font-size:1.25em; margin-left:0%}
+h4.indent1{font-size:1.00em; margin-left:0%}
+
+h1.indent2{font-size:2.00em; margin-left:4%}
+h2.indent2{font-size:1.50em; margin-left:4%}
+h3.indent2{font-size:1.25em; margin-left:4%}
+h4.indent2{font-size:1.00em; margin-left:4%}
+
+div.box   {
+    border:solid;
+    border-width:thin;
+    width:100%;}
+
+div.namelist {
+    background-color: rgb(225,225,225);
+    padding: 0.5em;
+    border: solid;
+    border-width: thin;
+    width: 100%;}
+
+div.routine {
+    background-color: rgb(240,240,240);
+    padding: 1.0em;
+    border: solid;
+    border-width: thin}
+
+div.routineIndent1 {
+    background-color: rgb(240,240,240);
+    padding: 1.0em;
+    border: solid;
+    border-width: thin;
+    margin-left: 4%;
+    width: 92%;}
+
+/* KDR added for CESM/doc/setup_guidelines.html to preserve blanks in table cells 
+   Too broad; applies to all tables and breaks the dartboard table;  tr, td { white-space: pre;}*/
+
+.keepspace tr, .keepspace td { white-space: pre; }
+
+table.indent1 {
+    border: 0;
+    border-width: thin;
+    margin-left: 4%;
+    width: 96%;}
+
+table.indent2 {
+    border: 0;
+    border-width: thin;
+    margin-left: 8%;
+    width: 92%;}
+
+div.type {
+    background-color: rgb(240,240,240);
+    padding: 0.5em;
+    border: solid;
+    border-width: thin;
+    width: 100%;}
+
+div.errors {
+    background-color: rgb(204,204,255);
+    padding: 0.5em;
+    border: none;
+    width: 100%;}
+
+div.color {
+    background-color: rgb(204,204,255);
+    padding: 0.5em;
+    border: none;
+    width: 100%;}
+
+div.unix {
+    background-color: rgb(204,204,204);
+    font-family: monospace;
+    padding: 1.0em;
+    border: none;
+    margin-left: 4%;}
+
+div.unixnoindent {
+    background-color: rgb(204,204,204);
+    font-family: monospace;
+    padding: 1.0em;
+    border: none;}
+
+div.disclaimer {
+    background-color: rgb(240,240,240);
+    font-family: monospace;
+    font-size:0.75em;
+    padding: 1.0em;
+    border: none;
+    margin-left: 0%;
+    width: 50%;}
+
+p.changed {
+    padding-left: 0.2em;
+    border-left: solid;
+    border-top: none;
+    border-bottom: none;
+    border-right: none;
+    border-left-width: thin;
+    border-color: red; }
+
+div.center{
+    margin-left: auto;
+    margin-right: auto; }
+
+.indent1{
+    margin-left: 4%;
+    margin-right:4%; }
+
+p.indent1{
+    margin-left: 4%;
+    margin-right:4%;
+    font-weight: normal; }
+
+p.indent2{
+    margin-left: 8%;
+    margin-right: 8%;
+    font-weight: normal; }
+
+p.abstract{
+    font-size: 1.1em;
+    margin-left:  5%;
+    margin-right: 15%;
+    font-weight: normal;
+    text-align:justify; }
+
+p.sub2{
+    font-size: 1.1em;
+    font-weight: normal;
+    margin-left:15%; }
+
+p.head{
+    margin-left: 5%;
+    font-weight: normal; }
+
+li{ font-size: 1.0em; }
+
+a.optionalcode{ color:red;  font-family:monospace; }
+a.code    {     color:blue; font-family:monospace; }
+a.link    { color: rgb(  0,   0, 153) } /* for unvisited links */
+a.visited { color: rgb(153,   0, 153) } /* for visited links */
+a.active  { color: rgb(255,   0, 102) } /* when link is clicked */
+a.hover   { color: rgb(  0,  96, 255) } /* when mouse is over link */
+
+td{font-weight:normal;}
+form{font-weight:normal;}
+option{font-weight:normal;}
+
+pre.indent1{
+    margin-left:  5%;
+    margin-right:10%;
+    font-weight:normal;}
+
+em.units{
+    color:crimson;
+    font-style:normal;
+    font-family:"Lucida Console", monospace;}
+
+em.code{
+    color:blue;
+    font-style:normal;
+    font-family:"Lucida Console", monospace;}
+
+em.changed{
+    color:blue;
+    font-style:oblique;
+    font-family:"Courier", monospace;
+    background-color: #FFCCFF;}
+
+em.removed{
+    color:blue;
+    font-style:oblique;
+    text-decoration:line-through;}
+
+em.call{
+    color:blue;
+    font-style:normal;
+    font-family:"Courier", monospace;
+    font-size:1.5em;}
+
+em.input{
+    color:magenta;
+    font-style:normal;
+    font-family:"Lucida Console", monospace;
+    font-weight:bold;}
+
+em.option{
+    color:blue;
+    font-family:oblique;}
+
+em.optionalcode{
+    color:red;
+    font-style:oblique;
+    font-family:"Lucida Console",monospace;}
+
+em.program{
+    color:green;
+    font-style:oblique;
+    font-family:"Lucida Console",monospace;}
+
+em.file{
+    color:green;
+    font-style:normal;
+    font-family:"Lucida Console",monospace;}
+
+em.dir{
+    color:#00BFFF;
+    font-style:normal;
+    font-family:"Lucida Console",monospace;}
+
+em.mono{
+    color:black;
+    font-style:normal;
+    font-family:"Lucida Console",monospace;}
+
+em.nav{
+    font-family:sans-serif;
+    color:white;}
+
+em.sub{
+    color:peru;
+    font-family:sans-serif;
+    font-size:1.2em;}
+
+em.head{
+    color:white;
+    font-family:sans-serif;
+    font-size:1.2em;}
+
+em.italic{
+    color:black;
+    font-family:italic;}
+
+em.red{
+    color:crimson;
+    font-style:normal;
+    font-family:sans-serif;}
+
+em.green{
+    color:green;
+    font-style:normal;
+    font-family:sans-serif;}
+
+em.Navy{
+    color:Navy;
+    font-style:normal;
+    font-family:sans-serif;}
+
+em.teal{
+    color:cornflowerblue;
+    font-style:normal;
+    font-family:sans-serif;}
+
+em.redtt{
+    color:crimson;
+    font-family:monospace;}
+
+em{
+    font-family:sans-serif;
+    color:red;}
+
+.top {
+    font-size: 8pt;
+    clear: both;
+    float: right;
+    margin-top: -10px;
+    margin-left: 5px;
+}
+
+/* # RGB(204,204,204) == "#CCCCCC" */
+
+/* <next few lines under version control, do not edit> */
+/* $URL$ */
+/* $Revision$ */
+/* $Date$ */

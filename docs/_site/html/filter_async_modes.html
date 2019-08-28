@@ -1,0 +1,140 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>Filter async modes</TITLE>
+<link rel="stylesheet" type="text/css" href="doc.css" />
+<link href="../images/dart.ico" rel="shortcut icon" />
+</head>
+<body>
+<a name="TOP"></a>
+
+<h1>Filter async modes </h1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <p>Jump to the <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </p></td>
+</tr>
+</table>
+
+<!--==================================================================-->
+
+<H2>Options for parallelism both in DART and in the model advances:</H2>
+
+<big>
+<br> 
+<a name=async0></a>
+<br>
+Simplest case, async=0:
+<br>
+<img src="../images/async0.gif">
+<br>
+This is a single MPI executable, with each call to the
+model being simply a subroutine call from each MPI task.
+<br>
+<br>
+<a href="mpi_intro.html#async0">To the DART mpi intro document</a>
+<br>
+<br>
+<br>
+<a name=async2></a>
+<br>
+Parallel advance, async=2:
+<br>
+<img src="../images/async2a.gif">
+<br>
+The filter executable is one MPI program, and the model is a 
+single, sequential executable.   Each MPI task uses the
+unix "system()" call to invoke a shell script (advance_model.csh)
+which runs the models as independent programs.
+<br>
+<br>
+<a href="mpi_intro.html#async2">To the DART mpi intro document</a>
+<br>
+<br>
+Other views of how the async=2 option is structured; these
+may be more or less helpful.
+<br>
+Parallel advance, async=2:
+<br>
+<img src="../images/async2_v1.gif">
+<br>
+<br>
+<br>
+Parallel advance, async=2, second version:
+<br>
+<img src="../images/async2_v2.gif">
+<br>
+<br>
+<br>
+Parallel model advance, async=2, showing how data is communicated
+between filter and the model thru intermediate files.  
+IC are 'initial condition' files, UD are 'updated' files.
+<br>
+<img src="../images/async2_wfiles.gif">
+<br>
+<br>
+<br>
+<a name=async4></a>
+<br>
+Parallel model advance, async=4:
+<br>
+<img src="../images/async4.gif">
+<br>
+The filter executable is one MPI program, and the model is also
+an MPI program.  The filter executable communicates with the
+runme_filter shell script, which sequentially invokes mpirun
+to advance each of the model runs, one per ensemble member,
+still using advance_model.csh.
+<br>
+<br>
+<a href="mpi_intro.html#async4">To the DART mpi intro document</a>
+<br>
+<br>
+<br>
+Parallel model advance, async=4, showing how data is communicated
+between filter and the model thru intermediate files.
+IC are 'initial condition' files, UD are 'updated' files.
+<br>
+<img src="../images/async4_wfiles.gif">
+<br>
+<br>
+<br>
+<br>
+</big>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright UCAR. This open source software is provided
+by UCAR, "as is", without charge, subject to all terms of use at
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Nancy Collins, Jeff Anderson</TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

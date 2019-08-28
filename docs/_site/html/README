@@ -1,0 +1,29 @@
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+This directory contains general DART documentation, figure sources,
+and release notes and backwards-compatible issues for the latest DART release.
+
+The documentation for each of the components of DART are
+located in the same directory as the corresponding source files.
+See 'index.html' at the top level directory for a pointer
+to all the html files in the system.
+
+The 'boilerplate' directory contains files and programs for
+generating documentation files.
+
+If you are looking for release notes from a previous version
+of DART check out a copy of this directory from the SVN repository
+with a revision number of 6330 or earlier.
+
+Thanks,
+The DART Team
+
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

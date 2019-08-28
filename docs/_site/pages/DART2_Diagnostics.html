@@ -1,0 +1,1858 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="title" content="Diagnostics">
+  <meta name="description" content="UCAR">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta class="foundation-mq">
+  <link rel="canonical" href="https://www.ucar.edu/">
+
+  <title>Diagnostics | DART</title>
+
+  <link rel="stylesheet" href="/assets/koru-base/css/main.min.css" media="all">
+  <link rel="stylesheet" href="/assets/css/styles.css" media="all">
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Poppins:400,600,700" media="all">
+</head>
+
+
+<body class="ncar no-banner with-sidebar">
+<div class="content-wrapper">
+    <header>
+    <div data-sticky-container="" class="sticky-container">
+        <div data-sticky="" data-options="marginTop:0;stickyOn:small;" data-top-anchor="main-content"
+             class="sticky is-anchored is-at-top">
+            <div class="top-bar align-top hide-for-print" id="top-bar">
+                <div class="grid-x">
+                    <div class="cell">
+                        <div class="grid-x align-middle">
+                            <div class="cell small-3 large-2">
+                                <div class="grid-x grid-margin-x nsf-logo">
+                                    <div class="cell small-4">
+                                        <div class="grid-x">
+                                            <div class="cell small-1 small-4 xlarge-3">
+                                                <p><a href="https://www.ucar.edu/who-we-are/funding">Sponsored By</a></p>
+                                                <a href="https://www.ucar.edu/who-we-are/funding"><img alt="NSF Logo" src="/assets/koru-base/img/NSF_4-Color_bitmap_Logo.png"/></a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div></div>
+                            <div class="cell small-6 large-8 top-bar-title logo-wrapper align-center">
+                                <h2 class="acronym-wrapper">
+                                    <a href="https://ncar.ucar.edu" title="NCAR Home">
+                                        <img src="/assets/koru-base/img/logo-ncar-active-large.png"
+                                             alt="NCAR">
+                                        <span class="show-for-sr">NCAR</span>
+                                    </a>
+                                </h2>
+                                <h1><a href="/">DART</a></h1>
+                            </div>
+                            <div class="cell small-3 large-2 text-right"><p class="ncar-title"><a href="https://ncar.ucar.edu">National Center for Atmospheric Research</a></p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mobile-nav hide-for-print text-center" data-responsive-toggle="main-nav" data-hide-for="mlarge">
+                <div class="title-bar-title">Menu</div>
+                <button class="fa fa-chevron-down" type="button" data-toggle="main-nav"></button>
+            </div>
+            <div class="main-nav hide-for-print" id="main-nav">
+                <div class="grid-x">
+                <nav class="cell center mlarge-10 large-7">
+                    <ul class="menu icons icon-left" data-responsive-menu="accordion mlarge-dropdown">
+                        
+                        <li aria-label="Documentation">
+                            <a class="text-center" href="/DART_development/pages/DART2_Starting.html">Documentation</a>
+                            
+                            <ul class="menu">
+                                <li aria-label="Documentation"><a class="text-center" href="/DART_development/pages/DART2_Starting.html">Overview</a></li>
+                                
+                                <li aria-label="Getting Started"><a class="text-left" href="/DART_development/pages/DART2_Starting.html">Getting Started</a></li>
+                                
+                                <li aria-label="Tutorial"><a class="text-left" href="/DART_development/pages/dart_tutorial.html">Tutorial</a></li>
+                                
+                                <li aria-label="Lab"><a class="text-left" href="/DART_development/pages/dart_lab.html">Lab</a></li>
+                                
+                                <li aria-label="In Depth"><a class="text-left" href="/DART_development/pages/DART2_Documentation.html">In Depth</a></li>
+                                
+                                <li aria-label="Diagnostics"><a class="text-left" href="/DART_development/pages/DART2_Diagnostics.html">Diagnostics</a></li>
+                                
+                                <li aria-label="Observations"><a class="text-left" href="/DART_development/pages/DART2_Observations.html">Observations</a></li>
+                                
+                                <li aria-label="Misc"><a class="text-left" href="/DART_development/pages/DART2_Miscellany.html">Misc</a></li>
+                                
+                            </ul>
+                            
+                        </li>
+                        
+                        <li aria-label="Research">
+                            <a class="text-center" href="/DART_development/pages/Research.html">Research</a>
+                            
+                        </li>
+                        
+                        <li aria-label="About Us">
+                            <a class="text-center" href="/DART_development/pages/aboutus.html">About Us</a>
+                            
+                        </li>
+                        
+                        <li aria-label="Support">
+                            <a class="text-center" href="/DART_development/pages/support.html">Support</a>
+                            
+                        </li>
+                        
+                        <li aria-label="API">
+                            <a class="text-center" href="">API</a>
+                            
+                            <ul class="menu">
+                                <li aria-label="API"><a class="text-center" href="">Overview</a></li>
+                                
+                                <li aria-label="Manhattan"><a class="text-left" href="/DART_development/pages/release.html">Manhattan</a></li>
+                                
+                                <li aria-label="v3.0.0"><a class="text-left" href="/DART_development/api/v3.0.0/index.html">v3.0.0</a></li>
+                                
+                                <li aria-label="Lanai"><a class="text-left" href="">Lanai</a></li>
+                                
+                                <li aria-label="v2.0.0"><a class="text-left" href="">v2.0.0</a></li>
+                                
+                            </ul>
+                            
+                        </li>
+                        
+                    </ul>
+                </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+    <div class="body-content" id="main-content">
+        <section class="panel primary-content">
+        <div class="grid-x align-center">
+            <div class="cell medium-8 large-9">
+                <article role="article" class="content">
+                    <h1 id="did-my-experiment-work">Did my experiment work?</h1>
+
+<h2 id="filter-ran-and-produced-output-files-now-what"><em>filter</em> ran and produced output files, now what?</h2>
+
+<p>One of the most requested features for DART has been finer control of
+what information is written and when. Do you want the input ensemble
+spread before the application of prior inflation? After prior inflation
+but before the assimilation? After the assimilation but before posterior
+inflation? After posterior inflation? etc. There are several namelist
+settings that control what files are output. <a href="../tutorials/section_16.pdf">Section
+16</a> of the DART
+tutorial has a more detailed explanation.</p>
+
+<p>From a computational perspective, there are two broad situations:</p>
+
+<ol>
+  <li><em>filter</em> is called for a single assimilation and each ensemble
+member is in its own file (both <em>single_file_in = .false.</em> and
+<em>single_file_out = .false.</em>.), and</li>
+  <li><em>filter</em> is called once for multiple assimilation cycles and writes
+a single output file containing information for all the ensemble
+members (<em>single_file_out = .true.</em>) <em>for each stage!</em> Depending
+on what you choose to write, this actually results in more than a
+single file.</li>
+</ol>
+
+<p><em>single_file_out = .false.</em> :  <em>filter</em> is usually called for a single
+assimilation cycle by ‘large’ models or in cases where it is beneficial
+to run different number of MPI tasks for the model advances and the
+assimilation. In this case, there can be a substantial computational
+efficiency to have each ensemble member write its information to a
+separate file, and each file can be written simultaneously by different
+tasks. The tradeoff (at the moment) is that each of the files can only
+have a single timestep in them. Consequently, some files are redundant
+and should not be output. See the <a href="../tutorials/section_16.pdf">section
+16</a> of the DART
+tutorial for a more detailed explanation.</p>
+
+<p><em>single_file_out = .true.</em> :  When <em>filter</em> is used for a long
+assimilation experiment (as in the case for the low-order models), it is
+possible to consolidate all the information for a particular stage into
+a single file that contains all the ensemble members, the mean, spread,
+inflation, etc. This results in far fewer files, and each file may
+contain multiple timesteps to encompass the entirety of the experiment.
+Since a single task must write each file, there is some computational
+overhead.</p>
+
+<p>Perhaps somewhat paradoxically, <em>single_file_out</em> only refers to the
+output <em>for a particular stage</em>. So even if you set
+<em>single_file_out = .true.</em> , you can get <em>several</em> output files -
+one per stage. However, if you set <em>single_file_out = .false.</em> , be
+prepared for a deluge of files. Be careful about what stages you choose
+to write.</p>
+
+<h4 id="what-output-and-diagnostic-files-are-produced">What output and diagnostic files are produced:</h4>
+
+<h4 id="when-single_file_outfalse">When <em>single_file_out = .false.</em></h4>
+
+<table>
+  <thead>
+    <tr>
+      <th><strong>from <em>perfect_model_obs</em></strong></th>
+      <th> </th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><em>obs_seq.out</em></td>
+      <td> </td>
+      <td>the synthetic observations at some predefined times and locations</td>
+    </tr>
+    <tr>
+      <td><em>perfect_output.nc</em></td>
+      <td>1 timestep</td>
+      <td> a netCDF file containing the model trajectory - the true state</td>
+    </tr>
+  </tbody>
+</table>
+
+<table>
+  <thead>
+    <tr>
+      <th><strong>from <em>filter</em></strong></th>
+      <th> </th>
+      <th> </th>
+    </tr>
+    <tr>
+      <th>There are some namelist settings that control what files are output. Depending on the settings for <em>input.nml&amp;filter_nml:stages_to_write</em> and others …</th>
+      <th> </th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><em>forecast_member_####.nc</em></td>
+      <td>1 timestep</td>
+      <td>the ensemble forecast, each ensemble member is a separate file</td>
+    </tr>
+    <tr>
+      <td><em>forecast_[mean,sd].nc</em></td>
+      <td>1 timestep</td>
+      <td>the mean and standard deviation (spread) of the ensemble forecast</td>
+    </tr>
+    <tr>
+      <td><em>forecast_priorinf_[mean,sd].nc</em></td>
+      <td>1 timestep</td>
+      <td>the prior inflation information before assimilation</td>
+    </tr>
+    <tr>
+      <td><em>forecast_postinf_[mean,sd].nc</em></td>
+      <td>1 timestep</td>
+      <td>the posterior inflation information before assimilation</td>
+    </tr>
+    <tr>
+      <td><em>preassim_member_####.nc</em></td>
+      <td>1 timestep</td>
+      <td>the model states after any prior inflation but before assimilation</td>
+    </tr>
+    <tr>
+      <td><em>preassim_[mean,sd].nc</em></td>
+      <td>1 timestep</td>
+      <td>the mean and standard deviation (spread) of the ensemble after any prior inflation but before assimilation</td>
+    </tr>
+    <tr>
+      <td><em>preassim_priorinf_[mean,sd].nc</em></td>
+      <td>1 timestep</td>
+      <td>the prior inflation information before assimilation</td>
+    </tr>
+    <tr>
+      <td><em>preassim_postinf_[mean,sd].nc</em></td>
+      <td>1 timestep</td>
+      <td>the posterior inflation information before assimilation</td>
+    </tr>
+    <tr>
+      <td><em>postassim_member_####.nc</em></td>
+      <td>1 timestep</td>
+      <td>the model states after assimilation but before posterior inflation</td>
+    </tr>
+    <tr>
+      <td><em>postassim_[mean,sd].nc</em></td>
+      <td>1 timestep</td>
+      <td>the mean and standard deviation (spread) of the ensemble after assimilation but before posterior inflation</td>
+    </tr>
+    <tr>
+      <td><em>postassim_priorinf_[mean,sd].nc</em></td>
+      <td>1 timestep</td>
+      <td>the (new) prior inflation information after assimilation</td>
+    </tr>
+    <tr>
+      <td><em>postassim_postinf_[mean,sd].nc</em></td>
+      <td>1 timestep</td>
+      <td>the (new) posterior inflation information after assimilation</td>
+    </tr>
+    <tr>
+      <td><em>analysis_member_####.nc</em></td>
+      <td>1 timestep</td>
+      <td>the model states after assimilation and after any posterior inflation</td>
+    </tr>
+    <tr>
+      <td><em>analysis_[mean,sd].nc</em></td>
+      <td>1 timestep</td>
+      <td>the mean and standard deviation (spread) of the ensemble after assimilation and after posterior inflation</td>
+    </tr>
+    <tr>
+      <td><em>analysis_priorinf_[mean,sd].nc</em></td>
+      <td>1 timestep</td>
+      <td>the (new) prior inflation information after assimilation</td>
+    </tr>
+    <tr>
+      <td><em>analysis_postinf_[mean,sd].nc</em></td>
+      <td>1 timestep</td>
+      <td>the (new) posterior inflation information after assimilation</td>
+    </tr>
+    <tr>
+      <td><em>output_[mean,sd].nc</em></td>
+      <td>1 timestep</td>
+      <td>the mean and spread of the posterior ensemble</td>
+    </tr>
+    <tr>
+      <td><em>output_priorinf_[mean,sd].nc</em></td>
+      <td>1 timestep</td>
+      <td>the (new) prior inflation information after assimilation</td>
+    </tr>
+    <tr>
+      <td><em>output_priorinf_[mean,sd].nc</em></td>
+      <td>1 timestep</td>
+      <td>the (new) posterior inflation information after assimilation</td>
+    </tr>
+    <tr>
+      <td><em>obs_seq.final</em></td>
+      <td> </td>
+      <td>the model estimates of the observations (an integral part of the data assimilation process)</td>
+    </tr>
+  </tbody>
+</table>
+
+<table>
+  <thead>
+    <tr>
+      <th><strong>from both</strong></th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><em>dart_log.out</em></td>
+      <td>the ‘important’ run-time output (each run of <em>filter</em> appends to this file; remove it or start at the bottom to see the latest values)</td>
+    </tr>
+    <tr>
+      <td><em>dart_log.nml</em></td>
+      <td>the input parameters used for an experiment</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="when-single_file_outtrue">When <em>single_file_out = .true.</em></h4>
+
+<p>All the information for each stage is contained in a single file that
+<em>may</em> have multiple timesteps.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th><strong>from <em>perfect_model_obs</em></strong></th>
+      <th> </th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><em>obs_seq.out</em></td>
+      <td>the synthetic observations at some predefined times and locations</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td><em>perfect_output.nc</em></td>
+      <td>N timesteps</td>
+      <td>a netCDF file containing the model trajectory - the true state</td>
+    </tr>
+  </tbody>
+</table>
+
+<table>
+  <thead>
+    <tr>
+      <th><strong>from <em>filter</em></strong></th>
+      <th> </th>
+      <th> </th>
+    </tr>
+    <tr>
+      <th>There are some namelist settings that control what files are output. Depending on the settings for <em>input.nml &amp;filter_nml:stages_to_write</em> and others …</th>
+      <th> </th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><em>filter_input.nc</em></td>
+      <td>single timestep </td>
+      <td>The starting condition of the experiment. All ensemble members, [optionally] the input mean and standard deviation (spread), [optionally] the prior inflation values, [optionally] the posterior inflation values</td>
+    </tr>
+    <tr>
+      <td><em>forecast.nc</em></td>
+      <td>N timesteps</td>
+      <td>The ensemble forecast. All ensemble members, the mean and standard deviation (spread), the prior inflation values, the posterior inflation values</td>
+    </tr>
+    <tr>
+      <td><em>preassim.nc</em></td>
+      <td>N timesteps</td>
+      <td>After any prior inflation but before assimilation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the prior inflation values, the posterior inflation values</td>
+    </tr>
+    <tr>
+      <td><em>postassim.nc</em></td>
+      <td>N timesteps</td>
+      <td>After assimilation but before posterior inflation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the (new) prior inflation values, the (new) posterior inflation values</td>
+    </tr>
+    <tr>
+      <td><em>analysis.nc</em></td>
+      <td>N timesteps</td>
+      <td>After assimilation and after any posterior inflation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the (new) prior inflation values, the (new) posterior inflation values</td>
+    </tr>
+    <tr>
+      <td><em>filter_output.nc</em></td>
+      <td>single timestep</td>
+      <td>After assimilation and after any posterior inflation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the (new) prior inflation values, the (new) posterior inflation values</td>
+    </tr>
+    <tr>
+      <td><em>obs_seq.final</em></td>
+      <td> </td>
+      <td>the model estimates of the observations (an integral part of the data assimilation process)</td>
+    </tr>
+  </tbody>
+</table>
+
+<table>
+  <thead>
+    <tr>
+      <th><strong>from both</strong></th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><em>dart_log.out</em></td>
+      <td>the ‘important’ run-time output (each run of <em>filter</em> appends to this file; remove it or start at the bottom to see the latest values)</td>
+    </tr>
+    <tr>
+      <td><em>dart_log.nml</em></td>
+      <td>the input parameters used for an experiment</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="first-questions-to-ask">First questions to ask</h3>
+
+<p><strong>NOTE: the remainder of this document is written from the perspective
+of an experiment run with <em>single_file_out = .true.</em>. The permutations
+of the file names is just too great to write exhaustive documentation.</strong></p>
+
+<p>After <em>filter</em> executes without error and produces an <em>obs_seq.final</em>
+file, a <em>preassim.nc</em> file, and an <em>analysis.nc</em> file, the first
+questions to ask are:</p>
+
+<ol>
+  <li>“Is the model state output from <em>filter</em> different from the input?”,
+and</li>
+  <li>“Were any observations successfully assimilated?”.</li>
+</ol>
+
+<p>One way to check if the output model state data was changed by the
+assimilation is to use the ‘ncdiff’ tool to difference the <em>preassim.nc</em>
+and <em>analysis.nc</em> files:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ncdiff analysis.nc preassim.nc Innov.nc  
+ncview Innov.nc
+</code></pre></div></div>
+
+<p>If your model can run under <em>single_file_[in,out]</em> Look at the
+ensemble mean variables. If all values are 0, then the assimilation
+changed nothing in the state. If your model writes multiple output
+files, diff the <em>preassim_mean.nc</em> and <em>output_mean.nc</em>.</p>
+
+<p><span id="debugging" class="anchor"></span></p>
+
+<p>[<a href="#">top</a>]</p>
+
+<hr />
+
+<h4 id="debugging-hints">Debugging hints:</h4>
+
+<p>You may need to rerun <em>filter</em> multiple times to diagnose this. The
+fastest way to get to the answer is to make <em>filter</em> very fast to run.
+You can do this by:</p>
+
+<ol>
+  <li>make an obs_seq file with only 1 or a just a few observations in
+it, and</li>
+  <li>configure a run so <em>filter</em> does a single assimilation and exits,
+without having to advance the ensemble of models or do other
+work.</li>
+</ol>
+
+<h5 id="to-make-an-obs-file-with-a-single-observation-use-one-of-these-methods">To make an obs file with a single observation, use one of these methods:</h5>
+
+<ol>
+  <li>run <em>create_obs_sequence</em> to make a new, short, obs_seq file</li>
+  <li>Use the <em>obs_sequence_tool</em> to cut your existing obs_seq.out file
+down to just a few obs by selecting only a subset of the types and
+setting a very short time window (just a second or two where you
+know there are obs).</li>
+</ol>
+
+<h5 id="to-make-the-filter-program-only-do-an-assimilation">To make the <em>filter</em> program only do an assimilation:</h5>
+
+<ol>
+  <li>Edit the <em>input.nml</em> and in the <em>&amp;filter_nml</em> namelist set the
+<em>init_time_days</em> and <em>init_time_seconds</em> to match the
+observation time in the truncated obs_seq file. This overrides any
+times in the input files and ensures that <em>filter</em> will only
+assimilate and not try to advance the model.</li>
+  <li>Make sure the truncated obs_seq file contains only 1 obs, a few obs
+at the same time, or obs close enough together in time to fit into a
+single assimilation window.</li>
+</ol>
+
+<p>If there are no changes in the model state after assimilation, then
+examine the <em>obs_seq.final</em> file. There are two ways to do this. 1) If
+you are testing with a single observation, just look in the file. If
+this file is in binary format, change the namelist so the output
+observation sequence file will be written in ascii:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&amp;obs_sequence_nml
+    write_binary_obs_sequence = .false.
+   /
+</code></pre></div></div>
+
+<p>and rerun <em>filter</em> to regenerate an obs_seq.final file in ascii. <a href="DART2_Observations.html#obs_seq_overview">These
+diagrams</a> help to understand
+an <em>obs_seq.final</em> file. 2) If you are using many observations, run the
+<a href="https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html">obs_diag.f90</a>
+appropriate for your model. There are some <a href="#mat_obs">diagnostic
+scripts</a> to help summarize and explore what is going on.</p>
+
+<p>If all the prior and posterior mean values are -888888.0 (the DART
+“missing data” value), those observations were not assimilated. <em>Note:
+some observations have precomputed values and the posterior values for
+these will always be -888888.0, no matter if the observation was
+assimilated or not.</em> If it is not already set, change <em>&amp;filter_nml
+num_output_obs_members</em> to be the same as the ensemble size. This
+will give you all the forward operator values for all the ensemble
+members. You can determine if all ensemble members are failing in the
+same way, or if only a few are problematic.</p>
+
+<p>For the failing observations, the ‘DART QC’ may indicate the reason.
+(<a href="DART2_Observations.html#obs_seq_overview">How to locate the different values in an obs_seq.final
+file.</a> The ‘DART QC’ field is
+usually the second of the 2 “quality control” copies.) A list of all the
+DART QC values can be found in <a href="#qc_table">this table</a>.</p>
+
+<ul>
+  <li>
+    <p>If the DART QC values are 4, the forward operators have failed. Look
+at the <em>model_interpolate()</em> routine in your model_mod.f90 file,
+or the forward operator code in
+<em>observations/forward_operators/obs_def_xxx_mod.f90</em> for your
+observation type. A successful forward operator must return a valid
+obs_val and an <em>istatus = 0</em>. If the forward operator code returns
+different istatus values for different error types, you can set
+<em>&amp;filter_nml :: output_forward_op_errors = </em>.true.** and rerun
+<em>filter</em> to see exactly what error istatus codes are being set. See
+<a href="https://ncar.github.io/DART/api/v2.1.10/program/filter.html">the filter
+webpage</a>
+for more information on how to use the ‘output_forward_op_errors’
+option. Negative istatus values are reserved for the system,
+<em>istatus = 0</em> is success, and any positive value indicates a failed
+forward operator. The code is free to use different positive values
+to signal different types of errors.</p>
+  </li>
+  <li>
+    <p>If the DART QC values are 5, those observation types were
+intentionally ignored because they were not listed in the
+&amp;obs_kind_nml namelist, in the ‘assimilate_these_obs_types’
+stringlist.</p>
+  </li>
+  <li>
+    <p>If the DART QC values are 6, the data quality control that came with
+the original observation data indicates this is a bad quality
+observation and it was skipped for this reason.</p>
+  </li>
+  <li>
+    <p>If the DART QC values are 7, the observation value is too far away
+from the ensemble mean. Set the &amp;filter_nml :: outlier_threshold
+value to -1 to ignore this for now and rerun. In general, this is
+not the optimal strategy as the number of observations inconsistent
+with the ensemble is a very powerful indicator of the success or
+failure of the assimilation.</p>
+  </li>
+</ul>
+
+<p>If the prior and posterior values in the obs_seq.final are not
+-888888.0 but are identical, your obs are being assimilated but are
+having no impact.</p>
+
+<p>The most common reasons assimilated obs have no impact on the model
+state include:</p>
+
+<ul>
+  <li><strong>Zero spread in ensemble members</strong><br />
+Your initial ensemble members must have different values for each
+state item. If all members have identical values, the observations
+cannot make a change. To diagnose this condition, look at the prior
+ensemble spread. This is either in <em>preassim.nc</em> or
+<em>preassim_sd.nc</em>, depending on your model. If all the values are 0,
+this is your problem. One way to generate an ensemble with some
+spread is to set <em>&amp;filter_nml ::
+perturb_from_single_instance = .false.,</em> (which will still
+require a single filter initial condition file) but then the
+<em>filter</em> code will add random gaussian perturbations to each state
+vector item to generate an initial ensemble with spread. The
+magnitude of the gaussian noise added is controlled by the
+<em>&amp;ensemble_manager :: perturbation_amplitude</em>. It is also
+possible to write your own perturbation routine in your
+model_mod.f90 code.</li>
+  <li><strong>Cutoff value too small</strong><br />
+If the localization radius is too small, the observation may not be
+‘close enough’ to the model grid to be able to impact the model.
+Check the localization radius (<em>&amp;assim_tools_nml cutoff</em>). Set it
+to a very large number (e.g. 100000) and rerun. If there is now an
+impact, the cutoff was restricting the items in the state vector so
+your obs had no impact before. Cutoff values are dependent on the
+location type being used. It is specified in radians for the
+threed_sphere locations module (what most large models use), or in
+simple distance (along a unit circle) if using a low order model
+(lorenz, ikeda, etc).</li>
+  <li><strong>Obs error values too large (less likely)</strong><br />
+If the observation error is very large, it will have no impact on
+the model state. This is less likely a cause than other
+possibilities.</li>
+  <li><strong>No correlation (unlikely)</strong><br />
+If there is no correlation between the distribution of the forward
+observation values and the state vector values, the increments will
+be very tiny. However there are generally still tiny increments
+applied, so this is also a low likelyhood case.</li>
+  <li><strong>Errors in forward operator location computations, or
+<em>get_close_obs()</em></strong><br />
+If there is an error in the <em>model_mod.f90</em> code in either
+<em>get_state_meta_data()</em>, <em>model_interpolate()</em>, or the vertical
+conversion code in <em>get_close_obs()</em>, it is possible for the
+forward operators to appear to be working correctly, but the
+distances computed for the separation between the obs and the state
+vector values can be incorrect. The most frequent problem is that
+the wrong locations are being passed back from
+<em>get_state_meta_data()</em>. This can result in the increments being
+applied in the wrong locations or not at all. This is usually one of
+the things to test carefully when developing a new model interface,
+and usually why we recommend starting with a single observation at a
+known location.</li>
+  <li><strong>Incorrect vertical conversion</strong><br />
+If the model is using 3d coordinates and needs the capability to
+convert between pressure, height, and/or model level, the conversion
+may be incorrect. The state vector locations can appear to be too
+high or too low to be impacted by an observation. Some models have a
+height limit built into their model_mod code to avoid trying to
+assimilate observations at the model top. The observations cannot
+make meaningful changes to the model state there and trying to
+assimilate them can lead to problems with the inflation. If the code
+in the model_mod is excluding observations incorrectly, or you are
+testing with observations at the model top, this can result in no
+impact on the model state.</li>
+</ul>
+
+<h3 id="how-is-the-output-different-from-the-input">How is the output different from the input?</h3>
+
+<p>If you compute the difference between the prior and posterior diagnostic
+files by this process:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ncdiff analysis.nc preassim.nc Innov.nc  
+ncview Innov.nc
+</code></pre></div></div>
+
+<p>and you see a difference, is it correct?</p>
+
+<p>If you run with a single observation, you should be able to easily see
+the impact - generally it’s a mostly spherical or circular ring around
+the observation location depending on your vertical localization, you
+may or may not see an impact in the vertical. Using
+<em>&amp;location_nml::horiz_dist_only=</em>.true.** is usually a good idea for
+a full 3d model to start out, and then add vertical localization once
+you believe the horizontal impact makes sense. Without any vertical
+localization, the observation should have an impact along the entire
+vertical column. (For lower order models this doesn’t apply.) If you
+change the cutoff distances you should be able to watch the change in
+impact on the state and make sure that it’s something reasonable.</p>
+
+<p>Now you can use the observation space diagnostics, and the state space
+diagnostics to get more information about what the impact was, and
+whether it’s doing the right thing or not.</p>
+
+<p><span id="DidItWork" class="anchor"></span></p>
+
+<p>[<a href="#">top</a>]</p>
+
+<hr />
+
+<h1 id="was-the-assimilation-effective">Was the Assimilation Effective?</h1>
+
+<p>If your filter run finished, and the Posterior is now different from the
+Prior, now what? This section presumes that you have debugged your
+model/DART interfaces or are using a model that came with the DART
+distribution. A <em>working</em> implementation.</p>
+
+<p><strong>There is no single metric that can declare success.</strong></p>
+
+<p><a href="dart_tutorial.html">The DART Tutorial</a> has the
+best explanation of what to look for, what to change to improve the next
+experiment, etc. DART has an extensive set of diagnostics implemented in
+MATLAB®. To use them, make sure you have read the <a href="DART2_Starting.html#matlab">Configuring
+MATLAB®</a> section.</p>
+
+<h3 id="the-observations-are-the-key">The Observations are the Key.</h3>
+
+<p>My own (Tim’s) personal view is that the first thing to check is to see
+how many observations are getting rejected by the assimilation in
+addition to the RMSE and spread of the ensemble. A natural part of the
+DART framework is that these metrics are calculated automatically and
+are readily available in the <em>obs_seq.final</em> files. Checking the
+temporal evolution of the RMSE and observation rejection characteristics
+is a first-order metric for determining the health of the assimilation
+system.</p>
+
+<ol>
+  <li>Use
+<a href="https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html">obs_diag.f90</a>
+to process the collection of <em>obs_seq.final</em> files for regions and
+times of interest. Edit the <em>input.nml:obs_diag_nml</em> namelist to
+reflect the details of your experiment, and then run <em>obs_diag</em> to
+create a netCDF file <em>obs_diag_output.nc</em> that contains the
+summaries.</li>
+  <li>Make sure the spread of the ensemble does not collapse. Use
+<em>plot_evolution.m</em> with <em>copystring = ’spread’;</em> to explore
+<em>obs_diag_output.nc</em>. It is normal (and desirable!) for the
+spread to decrease somewhat from the initial value, but it should
+not decrease to a small value. Insufficient spread leads to filter
+divergence and a large observation rejection rate.
+<em>plot_evolution.m</em> automatically plots the number of observations
+available and the number of observations successfully assimilated.</li>
+  <li>Make sure the RMSE of the ensemble does not collapse. Use
+<em>plot_evolution.m</em> with <em>copystring = ’rmse’;</em> to explore
+<em>obs_diag_output.nc</em>. It is important to interpret the RMSE in
+light of the number of observations successfully assimilated. It is
+possible to have a very low RMSE if the assimilation system rejects
+all of the observations that are in disagreement! A low RMSE is
+desirable and is a much stronger result if most/all of the
+observations are being assimilated successfully. Also - the RMSE of
+the <strong>prior</strong> is a much stronger result. Any method can overfit the
+observations (match them perfectly) - what is important is that the
+<strong>forecast</strong> is a good forecast!</li>
+  <li>Make sure the RMSE of the ensemble does not continually increase.
+<em>plot_evolution.m</em> with <em>copystring = ’rmse’;</em> to explore
+<em>obs_diag_output.nc</em>. It is natural for the RMSE to vary in time
+in response to the changing number and location of the observations,
+the phenomenon being modeled, etc. … but it should not generally
+increase as the system evolves. Once the system has ‘burned in’, the
+RMSE should be relatively stable.</li>
+  <li>Check to make sure the observations that are getting rejected are
+getting rejected for the right reasons. Run <em>obs_seq_to_netcdf</em>
+to convert the <em>obs_seq.final</em> files into netCDF files that can be
+explored with <em>link_obs.m</em> or <em>plot_obs_netcdf.m</em>. Both of these
+tools will allow you to isolate the rejected observations and
+determine if the observations are being rejected because they are in
+disagreement with the ensemble (DART QC = 7) or they were rejected
+because of a namelist setting (DART QC = 5), or incoming QC value
+(DART QC = 6), or were they simply outside the domain (DART
+generally only interpolates, not extrapolate) or …</li>
+  <li>Check that the ensemble spread captures the ‘truth’ as determined by
+the observations. Use <em>obs_diag</em> to create the data for a rank
+histogram. <a href="#ncview_histogram">Plot the histograms with ncview</a> or
+<a href="#mat_obs">plot_rank_histogram.m</a></li>
+</ol>
+
+<p>Generally speaking, the observation-space diagnostics provide the first
+and best metrics for the assimilation system. We always have
+observations, we rarely have the ‘truth’ in a full state-space
+representation. Personally, I rarely see value when comparing to some
+other gridded product - as it surely has its own set of deficiencies or
+assumptions. Observations aren’t perfect - but they are still best.</p>
+
+<p><strong>NOTE:</strong> Combining observations from multiple sources can lead to the
+same observation type begin defined with <em>different</em> vertical coordinate
+systems. While this does not pose a problem for assimilation, it <em>does</em>
+pose a problem for the diagnostics. The current
+<a href="https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html">obs_diag.f90</a>
+cannot (vertically) bin the same observation type that exploits two
+different vertical coordinate systems. If you get a WARNING from
+<em>obs_diag:CheckVertical()</em> you should know that the observation
+triggering the warning uses a different vertical coordinate system that
+the first observation encountered of that same type. If the <em>termlevel</em>
+is set to be 1, this is a fatal error, not a warning. The following
+example is one where observation 7113 defined the vertical coordinate
+system to be VERTISSURFACE (i.e. -1) and observation 7150 was created
+using VERTISPRESSURE. The messages take the form:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>WARNING FROM:
+  routine: CheckVertical
+  message: obs 7150 type  42 changing from -1 to pressure - def by obs 7113
+</code></pre></div></div>
+
+<h3 id="state-space-diagnostics">State-Space Diagnostics</h3>
+
+<p>If you’re reading this, it means you have an assimilation that is not
+rejecting too many observations, the ensemble spread is relatively
+constant and is not too small, and presumably the RMSE is stable if not
+decreasing. Now it is time to assess the affect the assimilation has on
+your model - the whole point of data assimilation.</p>
+
+<p>DART produces (sometimes many) netCDF files: <em>preassim.nc</em> and
+<em>analysis.nc</em>. Your files many have slightly different names depending
+on the namelist settings you have chosen. You should get familiar with
+what is available in the files you have created. Please read the
+documentation for
+<a href="https://ncar.github.io/DART/api/v2.1.10/program/filter.html">&amp;filter_nml</a>,
+especially for the variables: <em>stages_to_write</em>, <em>output_members</em>,
+<em>output_mean</em>, <em>output_sd</em>, and <em>single_file_out</em>. You should
+experiment and become familiar with <strong>ALL</strong> the namelist variables
+controlling what gets written. The ability to explore the ensemble at
+various parts of the assimilation process and/or restrict the volume of
+data being written has been on of our most-requested
+enhancements.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ncdump -v MemberMetadata preassim.nc        to check which copy you want to explore
+ncdiff postassim.nc preassim.nc Innov.nc    ncdiff comes from NCO, not DART        
+ncview Innov.nc                             ncview is another 'third-party' tool.  
+</code></pre></div></div>
+
+<p>See the expanded section on <a href="#ss_diagnostics">DART state-space
+diagnostics</a> for more.</p>
+
+<p><span id="obs_diagnostics" class="anchor"></span>
+<span id="qc_table" class="anchor"></span></p>
+
+<p>[<a href="#">top</a>]</p>
+
+<hr />
+
+<h1 id="dart-observation-space-diagnostics">DART observation-space diagnostics.</h1>
+
+<p><strong>The DART QC table is an important piece of information.</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>QC value</th>
+      <th>meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0,1 == both Prior and Posterior are good.</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>0</td>
+      <td>Assimilated O.K.</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>Evaluated O.K., not assimilated because namelist specified evaluate only.</td>
+    </tr>
+    <tr>
+      <td>2,3 == Prior OK, but Posterior failed.</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Assimilated O.K. BUT posterior forward operator failed.</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Evaluated O.K. BUT posterior forward operator failed.</td>
+    </tr>
+    <tr>
+      <td>4 or higher == both Prior and Posterior have failed</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Prior forward operator failed.</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Not used because of namelist control.</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Rejected because of incoming data QC higher than namelist control.</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>Rejected because of outlier threshold test.</td>
+    </tr>
+    <tr>
+      <td>8 and above</td>
+      <td>reserved for future use.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>It is required to post-process the <em>obs_seq.final</em> file(s) with
+<a href="https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html">obs_diag</a>
+to generate a netCDF file containing accumulated diagnostics for
+specified regions, etc. Since the experiment information (assimilation
+interval, assimilating model, etc.) are not recorded in the
+<em>obs_seq.final</em> file, the
+<a href="https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html">obs_diag_nml</a>
+namelist has a section that allows specification of the necessary
+quantities.</p>
+
+<p>The following quantities are normally
+diagnosed:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Nposs</td>
+      <td>the number of observations for each assimilation period;</td>
+    </tr>
+    <tr>
+      <td>Nused</td>
+      <td>the number of observations successfully assimilated each assimilation period;</td>
+    </tr>
+    <tr>
+      <td>NbigQC</td>
+      <td>the number of observations that had an undesirable (original) QC value;</td>
+    </tr>
+    <tr>
+      <td>NbadIZ</td>
+      <td>the number of observations that had an undesirable Innovation Z;</td>
+    </tr>
+    <tr>
+      <td>NbadUV</td>
+      <td>the number of velocity observations that had a matching component that was not assimilated;</td>
+    </tr>
+    <tr>
+      <td>NbadLV</td>
+      <td>the number of observations that were above or below the highest or lowest model level, respectively;</td>
+    </tr>
+    <tr>
+      <td>rmse</td>
+      <td>the rmse of the ensemble;</td>
+    </tr>
+    <tr>
+      <td>bias</td>
+      <td>the bias of the ensemble (forecast-observation);</td>
+    </tr>
+    <tr>
+      <td>spread</td>
+      <td>the spread of the ensemble; and the</td>
+    </tr>
+    <tr>
+      <td>totalspread</td>
+      <td>pooled spread of the observation (knowing its observational error) and the ensemble.</td>
+    </tr>
+    <tr>
+      <td>NbadDARTQC</td>
+      <td>the number of observations that had a DART QC value (&gt; 1 for a prior, &gt; 3 for a posterior)</td>
+    </tr>
+    <tr>
+      <td>observation</td>
+      <td>the mean of the observation values</td>
+    </tr>
+    <tr>
+      <td>ens_mean</td>
+      <td>the ensemble mean of the model estimates of the observation values</td>
+    </tr>
+    <tr>
+      <td>N_DARTqc_0</td>
+      <td>the number of observations that had a DART QC value of 0</td>
+    </tr>
+    <tr>
+      <td>N_DARTqc_1</td>
+      <td>the number of observations that had a DART QC value of 1</td>
+    </tr>
+    <tr>
+      <td>N_DARTqc_2</td>
+      <td>the number of observations that had a DART QC value of 2</td>
+    </tr>
+    <tr>
+      <td>N_DARTqc_3</td>
+      <td>the number of observations that had a DART QC value of 3</td>
+    </tr>
+    <tr>
+      <td>N_DARTqc_4</td>
+      <td>the number of observations that had a DART QC value of 4</td>
+    </tr>
+    <tr>
+      <td>N_DARTqc_5</td>
+      <td>the number of observations that had a DART QC value of 5</td>
+    </tr>
+    <tr>
+      <td>N_DARTqc_6</td>
+      <td>the number of observations that had a DART QC value of 6</td>
+    </tr>
+    <tr>
+      <td>N_DARTqc_7</td>
+      <td>the number of observations that had a DART QC value of 7</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><span id="mat_obs" class="anchor"></span></p>
+
+<p>[<a href="#">top</a>]</p>
+
+<hr />
+
+<p>The observation-space functions are in the <em>DART/diagnostics/matlab</em>
+directory. Once you have processed the <em>obs_seq.final</em> files into a
+single <em>obs_diag_output.nc</em>, you can use that as input to your own
+plotting routines or use the following DART MATLAB® routines:</p>
+
+<p><a href="scripts/plot_evolution.m">plot_evolution.m</a></p>
+
+<p>plots the temporal evolution of any of the quantities above for each
+variable for specified levels. The number of observations possible and
+used are plotted on the same
+axis.</p>
+
+<p><a href="../images/plot_evolution_example.png"><img src="../images/plot_evolution_example_thumb.png" alt="" /></a></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>fname      = 'POP11/obs_diag_output.nc';        % netcdf file produced by 'obs_diag'
+copystring = 'rmse';                            % 'copy' string == quantity of interest
+plotdat    = plot_evolution(fname,copystring);  % -- OR --
+plotdat    = plot_evolution(fname,copystrin     'RADIOSONDE_TEMPERATURE');
+</code></pre></div></div>
+<p> </p>
+
+<p><a href="scripts/plot_profile.m">plot_profile.m</a></p>
+
+<p>plots the spatial and temporal average of any specified quantity as a
+function of height. The number of observations possible and used are
+plotted on the same
+axis.</p>
+
+<p><a href="../images/plot_profile_example.png"><img src="../images/plot_profile_example_thumb.png" alt="" /></a></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>fname      = 'POP11/obs_diag_output.nc';        % netcdf file produced by 'obs_diag'
+copystring = 'rmse';                            % 'copy' string == quantity of interest
+plotdat    = plot_profile(fname,copystring);
+</code></pre></div></div>
+<p> </p>
+
+<p><a href="scripts/plot_rmse_xxx_evolution.m">plot_rmse_xxx_evolution.m</a></p>
+
+<p>same as <em>plot_evolution.m</em> but will overlay <strong>rmse</strong> on the same
+axis.</p>
+
+<p><a href="scripts/plot_rmse_xxx_profile.m">plot_rmse_xxx_profile.m</a></p>
+
+<p>same as <em>plot_profile.m</em> with an overlay of
+<strong>rmse</strong>.</p>
+
+<p><a href="scripts/plot_bias_xxx_profile.m">plot_bias_xxx_profile.m</a></p>
+
+<p>same as <em>plot_profile.m</em> with an overlay of
+<strong>bias</strong>.</p>
+
+<p> </p>
+
+<p><a href="scripts/two_experiments_evolution.m">two_experiments_evolution.m</a>   </p>
+
+<p>same as <em>plot_evolution.m</em> but will overlay multiple (more than two,
+actually) experiments (i.e. multiple <em>obs_diag_output.nc</em> files) on
+the same axis. A separate figure is created for each region in the
+<em>obs_diag_output.nc</em>
+file.</p>
+
+<p><a href="../images/two_experiments_evolution_example.png"><img src="../images/two_experiments_evolution_example_thumb.png" alt="" /></a></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>files    = {'POP12/obs_diag_output.nc','POP11/obs_diag_output.nc'};
+titles   = {'CAM4','CAM3.6.71'};
+varnames = {'ACARS_TEMPERATURE'};
+qtty     = 'rmse';
+prpo     = 'prior';
+levelind = 5;
+two_experiments_evolution(files, titles,{'ACARS_TEMPERATURE'}, qtty, prpo, levelind)
+</code></pre></div></div>
+<p> </p>
+
+<p><a href="scripts/two_experiments_profile.m">two_experiments_profile.m</a></p>
+
+<p>same as <em>plot_profile.m</em> but will overlay multiple (more than two,
+actually) experiments (i.e. multiple <em>obs_diag_output.nc</em> files) on
+the same axis. If the <em>obs_diag_output.nc</em> file was created with
+multiple regions, there are multiple axes on a single
+figure.</p>
+
+<p><a href="../images/two_experiments_profile_example.png"><img src="../images/two_experiments_profile_example_thumb.png" alt="" /></a></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>files    = {'POP12/obs_diag_output.nc','POP11/obs_diag_output.nc'};
+titles   = {'CAM4','CAM3.6.71'};
+varnames = {'ACARS_TEMPERATURE'};
+qtty     = 'rmse';
+prpo     = 'prior';
+two_experiments_profile(files, titles, varnames, qtty, prpo)
+</code></pre></div></div>
+<p> 
+<a href="scripts/plot_rank_histogram.m">plot_rank_histogram.m</a></p>
+
+<p>will create rank histograms for any variable that has that information
+present in
+<em>obs_diag_output.nc</em>.</p>
+
+<p><a href="../images/rank_hist_matlab_example.png"><img src="../images/rank_hist_matlab_example_thumb.png" alt="" /></a></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>fname     = 'obs_diag_output.nc'; % netcdf file produced by 'obs_diag'
+timeindex = 3;                    % plot the histogram for the third timestep
+plotdat   = plot_rank_histogram(fname, timeindex, 'RADIOSONDE_TEMPERATURE');
+</code></pre></div></div>
+<p> 
+You may also convert observation sequence files to netCDF by using
+<a href="https://ncar.github.io/DART/api/v2.1.10/program/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>.
+All of the following routines will work on observation sequences files
+AFTER an assimilation (i.e. <em>obs_seq.final</em> files that have been
+converted to netCDF), and some of them will work on <em>obs_seq.out</em>-type
+files that have been converted.</p>
+
+<p><span id="read_obs_netcdf"></span> 
+<span id="plot_obs_netcdf"></span></p>
+
+<p><a href="scripts/read_obs_netcdf.m">read_obs_netcdf.m</a></p>
+
+<p>reads a particular variable and copy from a netCDF-format observation
+sequence file and returns a single structure with useful bits for
+plotting/exploring. This routine is the back-end for
+<em>plot_obs_netcdf</em> .</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>fname         = 'obs_sequence_001.nc';
+ObsTypeString = 'RADIOSONDE_U_WIND_COMPONENT';   % or 'ALL' ...
+region        = [0 360 -90 90 -Inf Inf];
+CopyString    = 'NCEP BUFR observation';
+QCString      = 'DART quality control';
+verbose       = 1;   % anything &gt; 0 == 'true'
+obs = read_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, verbose);
+</code></pre></div></div>
+<p> 
+<a href="scripts/plot_obs_netcdf.m">plot_obs_netcdf.m</a></p>
+
+<p>creates a 3D scatterplot of the observation locations, color-coded to
+the observation values. A second axis will also plot the QC values if
+desired.</p>
+
+<p><a href="../images/plot_obs_netcdf_example.png"><img src="../images/plot_obs_netcdf_example_thumb.png" alt="" /></a></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>fname         = 'POP11/obs_epoch_011.nc';
+region        = [0 360 -90 90 -Inf Inf];
+ObsTypeString = 'AIRCRAFT_U_WIND_COMPONENT';
+CopyString    = 'NCEP BUFR observation';
+QCString      = 'DART quality control';
+maxgoodQC     = 2;
+verbose       = 1;   % &gt; 0 means 'print summary to command window'
+twoup         = 1;   % &gt; 0 means 'use same Figure for QC plot'
+bob = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, ...
+                  QCString, maxgoodQC, verbose, twoup);
+</code></pre></div></div>
+<p> 
+<a href="scripts/plot_obs_netcdf_diffs.m">plot_obs_netcdf_diffs.m</a></p>
+
+<p>creates a 3D scatterplot of the difference between two ‘copies’ of an
+observation.</p>
+
+<p><a href="../images/plot_obs_netcdf_diffs_example.png"><img src="../images/plot_obs_netcdf_diffs_example_thumb.png" alt="" /></a></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>fname         = 'POP11/obs_epoch_011.nc';
+region        = [0 360 -90 90 -Inf Inf];
+ObsTypeString = 'AIRCRAFT_U_WIND_COMPONENT';
+CopyString1   = 'NCEP BUFR observation';
+CopyString2   = 'prior ensemble mean';
+QCString      = 'DART quality control';
+maxQC         = 2;
+verbose       = 1;   % &gt; 0 means 'print summary to command window'
+twoup         = 0;   % &gt; 0 means 'use same Figure for QC plot'
+bob = plot_obs_netcdf_diffs(fname, ObsTypeString, region, CopyString1, CopyString2, ...
+                            QCString, maxQC, verbose, twoup);
+</code></pre></div></div>
+<p> 
+<a href="scripts/plot_wind_vectors.m">plot_wind_vectors.m</a></p>
+
+<p>creates a 2D ‘quiver’ plot of a wind field. This function is in the
+<em>matlab/private</em> directory - but if you want to use it, you can move it
+out. I find it has very little practical
+value.</p>
+
+<p><a href="../images/plot_wind_vectors_example.pdf"><img src="../images/plot_wind_vectors_example_small.png" alt="" /></a></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>fname       = 'obs_epoch_001.nc';
+platform    = 'SAT';    % usually 'RADIOSONDE', 'SAT', 'METAR', ...
+CopyString  = 'NCEP BUFR observation';
+QCString    = 'DART quality control';
+region      = [210 310 12 65 -Inf Inf];
+scalefactor = 5;     % reference arrow magnitude
+bob = plot_wind_vectors(fname, platform, CopyString, QCString, ...
+                        'region', region, 'scalefactor', scalefactor);
+</code></pre></div></div>
+
+<p><a href="scripts/link_obs.m">link_obs.m</a></p>
+
+<p>creates multiple figures that have linked attributes. This is my
+favorite function. Click on the little paintbrush icon in any of the
+figure frames and select all the observations with DART QC == 4 in one
+window, and those same observations are highlighted in all the other
+windows (for example). The 3D scatterplot can be rotated around with the
+mouse to really pinpoint exactly where the observations are getting
+rejected, for example. All the images are links to larger versions - the
+image on the right has the MATLAB® call. If the data browser (the
+spreadsheet-like panel) is open, the selected observations get
+highlighted there too
+…</p>
+
+<p><a href="../images/link_obs_example_F2.png"><img src="../images/link_obs_example_F2_thumb.png" alt="" /></a>
+<a href="../images/link_obs_example_F1.png"><img src="../images/link_obs_example_F1_thumb.png" alt="" /></a>
+<a href="../images/link_obs_example_F0.png"><img src="../images/link_obs_example_F0_thumb.png" alt="" /></a></p>
+
+<p><a href="scripts/ObsTimeCheck.m">ObsTimeCheck.m</a></p>
+
+<p>is an example of a trivial little script to wrap around
+<em>plot_obs_netcdf.m</em> that allows you to explore the spatial
+distribution of your observation sequences. Since <em>obs_seq_to_netcdf</em>
+doesn’t know anything about assimilation windows; the idea is to create
+separate netCDF files for each assimilation window and then explore a
+sequence of windows. Since <em>ObsTimeCheck.m</em> is in the subversion
+repository, you should feel free to edit it/modify it to your heart’s
+desire. If there are no observations of that type in a particular
+assimilation window, the MATLAB® Command window will have a comment to
+that
+effect.</p>
+
+<p><a href="../images/ObsTimeCheck_Fig1.png"><img src="../images/ObsTimeCheck_Fig1_thumb.png" alt="" /></a>
+<a href="../images/ObsTimeCheck_Fig2.png"><img src="../images/ObsTimeCheck_Fig2_thumb.png" alt="" /></a>
+<a href="../images/ObsTimeCheck_Fig3.png"><img src="../images/ObsTimeCheck_Fig3_thumb.png" alt="" /></a>
+<a href="../images/ObsTimeCheck_Fig4.png"><img src="../images/ObsTimeCheck_Fig4_thumb.png" alt="" /></a></p>
+
+<p><span id="obs_diag_output_explanation" class="anchor"></span></p>
+
+<p>[<a href="#">top</a>]</p>
+
+<hr />
+
+<h1 id="understanding-whats-in-obs_diag_outputnc">Understanding what’s in obs_diag_output.nc</h1>
+
+<p>After you create <em>obs_diag_output.nc</em> with
+<a href="Manhattan/assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html">obs_diag</a>
+it is important to understand what is contained in
+<em>obs_diag_output.nc</em>. Remember, this is just a dump of the <em>header</em> of the file!</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[work]$ ncdump -v CopyMetaData obs_diag_output.nc
+netcdf obs_diag_output {
+dimensions:
+        copy = 21 ;
+        obstypes = 78 ;
+        region = 1 ;
+        surface = 1 ;
+        undef = 1 ;
+        mlevel = 11 ;
+        mlevel_edges = 12 ;
+        plevel = 11 ;
+        plevel_edges = 12 ;
+        hlevel = 11 ;
+        hlevel_edges = 12 ;
+        time = UNLIMITED ; // (6 currently)
+        bounds = 2 ;
+        stringlength = 32 ;
+        rank_bins = 97 ;
+variables:
+        int copy(copy) ;
+                copy:explanation = "see CopyMetaData" ;
+        int obstypes(obstypes) ;
+                obstypes:explanation = "see ObservationTypes" ;
+        int region(region) ;
+                region:long_name = "model region" ;
+                region:units = "nondimensional" ;
+                region:valid_range = 1, 1 ;
+        int mlevel(mlevel) ;
+                mlevel:long_name = "model level" ;
+                mlevel:units = "model level" ;
+                mlevel:axis = "Z" ;
+                mlevel:valid_range = 1, 11 ;
+        float mlevel_edges(mlevel_edges) ;
+                mlevel_edges:long_name = "model level edges" ;
+                mlevel_edges:units = "model level" ;
+                mlevel_edges:axis = "Z" ;
+                mlevel_edges:valid_range = 0.5, 11.5 ;
+        float plevel(plevel) ;
+                plevel:long_name = "pressure bin midpoints" ;
+                plevel:units = "hPa" ;
+                plevel:axis = "Z" ;
+                plevel:valid_range = 100., 1000. ;
+        float plevel_edges(plevel_edges) ;
+                plevel_edges:long_name = "pressure bin edges" ;
+                plevel_edges:units = "hPa" ;
+                plevel_edges:axis = "Z" ;
+                plevel_edges:valid_range = 75., 1025. ;
+        float hlevel(hlevel) ;
+                hlevel:long_name = "height bin midpoints" ;
+                hlevel:units = "m" ;
+                hlevel:axis = "Z" ;
+                hlevel:valid_range = 1000., 11000. ;
+        float hlevel_edges(hlevel_edges) ;
+                hlevel_edges:long_name = "height bin edges" ;
+                hlevel_edges:units = "m" ;
+                hlevel_edges:axis = "Z" ;
+                hlevel_edges:valid_range = 500., 11500. ;
+        int bounds(bounds) ;
+                bounds:valid_range = 1, 2 ;
+        double time(time) ;
+                time:standard_name = "time" ;
+                time:long_name = "temporal bin midpoints" ;
+                time:units = "days since 1601-1-1" ;
+                time:calendar = "Gregorian" ;
+                time:axis = "T" ;
+                time:bounds = "time_bounds" ;
+                time:valid_range = 148880.5, 148885.5 ;
+        double time_bounds(time, bounds) ;
+                time_bounds:long_name = "temporal bin edges" ;
+                time_bounds:units = "days since 1601-1-1" ;
+                time_bounds:calendar = "Gregorian" ;
+                time_bounds:valid_range = 148880.000011574, 148886. ;
+        char region_names(region, stringlength) ;
+                region_names:long_name = "region names" ;
+        char CopyMetaData(copy, stringlength) ;
+                CopyMetaData:long_name = "quantity names" ;
+        char ObservationTypes(obstypes, stringlength) ;
+                ObservationTypes:long_name = "DART observation types" ;
+                ObservationTypes:comment = "table relating integer to observation type string" ;
+        int rank_bins(rank_bins) ;
+                rank_bins:long_name = "rank histogram bins" ;
+                rank_bins:comment = "position of the observation among the sorted noisy ensemble members" ;
+        float RADIOSONDE_U_WIND_COMPONENT_guess(time, copy, plevel, region) ;
+              RADIOSONDE_U_WIND_COMPONENT_guess:_FillValue = -888888.f ;
+              RADIOSONDE_U_WIND_COMPONENT_guess:missing_value = -888888.f ;
+        int   RADIOSONDE_U_WIND_COMPONENT_guess_RankHi(time, rank_bins, plevel, region) ;
+...
+        float AIRCRAFT_U_WIND_COMPONENT_guess(time, copy, plevel, region) ;
+              AIRCRAFT_U_WIND_COMPONENT_guess:_FillValue = -888888.f ;
+              AIRCRAFT_U_WIND_COMPONENT_guess:missing_value = -888888.f ;
+        int   AIRCRAFT_U_WIND_COMPONENT_guess_RankHist(time, rank_bins, plevel, region) ;
+...
+        float RADIOSONDE_U_WIND_COMPONENT_analy(time, copy, plevel, region) ;
+              RADIOSONDE_U_WIND_COMPONENT_analy:_FillValue = -888888.f ;
+              RADIOSONDE_U_WIND_COMPONENT_analy:missing_value = -888888.f ;
+...
+        float AIRCRAFT_U_WIND_COMPONENT_analy(time, copy, plevel, region) ;
+              AIRCRAFT_U_WIND_COMPONENT_analy:_FillValue = -888888.f ;
+              AIRCRAFT_U_WIND_COMPONENT_analy:missing_value = -888888.f ;
+...
+        float RADIOSONDE_U_WIND_COMPONENT_VPguess(copy, plevel, region) ;
+              RADIOSONDE_U_WIND_COMPONENT_VPguess:_FillValue = -888888.f ;
+              RADIOSONDE_U_WIND_COMPONENT_VPguess:missing_value = -888888.f ;
+...
+        float RADIOSONDE_U_WIND_COMPONENT_VPanaly(copy, plevel, region) ;
+              RADIOSONDE_U_WIND_COMPONENT_VPanaly:_FillValue = -888888.f ;
+              RADIOSONDE_U_WIND_COMPONENT_VPanaly:missing_value = -888888.f ;
+...
+...
+    
+// global attributes:
+                :creation_date = "YYYY MM DD HH MM SS = 2011 03 18 13 37 34" ;
+                :obs_diag_source = "URL: blah_blah_blah/diagnostics/threed_sphere/obs_diag.html $" ;
+                :obs_diag_revision = "$Revision$" ;
+                :obs_diag_revdate = "$Date$" ;
+                :bias_convention = "model - observation" ;
+                :horizontal_wind = "vector wind derived from U,V components" ;
+                :horizontal_wind_bias = "definition : sum[sqrt(u**2 + v**2) - obsspeed]/nobs" ;
+                :horizontal_wind_rmse = "definition : sqrt(sum[(u-uobs)**2 + (v-vobs)**2]/nobs)" ;
+                :horizontal_wind_spread = "definition : sqrt(sum[var(u) + var(v)]/nobs)" ;
+                :DART_QCs_in_histogram = 0, 1, 2, 3 ;
+                :outliers_in_histogram = "FALSE" ;
+                :first_bin_center = 2008, 8, 15, 12, 0, 0 ;
+                :last_bin_center = 2008, 8, 20, 12, 0, 0 ;
+                :bin_separation = 0, 0, 1, 0, 0, 0 ;
+                :bin_width = 0, 0, 1, 0, 0, 0 ;
+                :time_to_skip = 0, 0, 0, 0, 0, 0 ;
+                :max_num_bins = 1000 ;
+                :rat_cri = 5000. ;
+                :input_qc_threshold = 3. ;
+                :lonlim1 = 0. ;
+                :lonlim2 = 360. ;
+                :latlim1 = -90. ;
+                :latlim2 = 90. ;
+                :obs_seq_file_001 = "/ptmp/thoar/HuiGPS/08_01/obs_seq.final" ;
+...
+...
+data:
+    
+  CopyMetaData =
+  "Nposs                           ",
+  "Nused                           ",
+  "NbigQC                          ",
+  "NbadIZ                          ",
+  "NbadUV                          ",
+  "NbadLV                          ",
+  "rmse                            ",
+  "bias                            ",
+  "spread                          ",
+  "totalspread                     ",
+  "NbadDARTQC                      ",
+  "observation                     ",
+  "ens_mean                        ",
+  "N_DARTqc_0                      ",
+  "N_DARTqc_1                      ",
+  "N_DARTqc_2                      ",
+  "N_DARTqc_3                      ",
+  "N_DARTqc_4                      ",
+  "N_DARTqc_5                      ",
+  "N_DARTqc_6                      ",
+  "N_DARTqc_7                      " ;
+}
+</code></pre></div></div>
+
+<p>There are <strong>many</strong> more variables in this particular netCDF file -
+indicated by the ‘…’ (the ellipsis).<br />
+Every observation type is preserved in its own set of variables with the
+following suffixes:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>suffix</th>
+      <th>description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>_guess</td>
+      <td>prior, forecast</td>
+    </tr>
+    <tr>
+      <td>_analy</td>
+      <td>posterior, analysis</td>
+    </tr>
+    <tr>
+      <td>_VPguess</td>
+      <td>vertical profile only - prior, forecast</td>
+    </tr>
+    <tr>
+      <td>_VPanaly</td>
+      <td>vertical profile only - posterior, analysis</td>
+    </tr>
+    <tr>
+      <td>_RankHist</td>
+      <td>rank histogram - prior</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>What is really important to note is that each observation variable has a
+<em>copy</em> dimension - and each copy description is contained in the
+<em>CopyMetaData</em> variable. A dump of that variable provides information
+about what quantities are directly available. In the above example, the
+<em>rmse</em> is copy <strong>7</strong>. You should never assume this information, you
+should always check the <em>CopyMetaData</em> variable to find the appropriate
+copy index. Let’s look at the <em>RADIOSONDE_U_WIND_COMPONENT_guess</em>
+variable in the example. It has 4 dimensions:
+[time, copy, plevel, region]. Since ‘plevel’ is one of the
+dimensions, the appropriate levels are defined by the coordinate
+variable of the same name. The <em>RADIOSONDE_U_WIND_COMPONENT_VPguess</em>
+variable has 3 dimensions: [copy, plevel, region]. The ‘time’
+dimension has been averaged out such that a single <strong>V</strong>ertical
+<strong>P</strong>rofile (VP) is defined for the entire timeframe specified in the
+namelist. If I were a better man, I’d put the averaging interval in the
+variable metadata to have a hope of complying with convention; instead,
+it is only in the global metadata for the entire netCDF file as
+<em>first_bin_center, last_bin_center</em>, and <em>time_to_skip</em>. Add the
+<em>time_to_skip</em> to the <em>first_bin_center</em> to derive the start of the
+averaging period. This allows one to ignore the effects of spinup.</p>
+
+<p>The <em>RADIOSONDE_U_WIND_COMPONENT_guess_RankHi</em> variable name has
+been cut short by the netCDF restriction that variable names can only
+contain 40 characters. The <em>_RankHist</em> variables are only present if
+the input <em>obs_seq.final</em> files have multiple ensemble members present.
+You cannot derive this information unless the assimilation was performed
+with <em>filter_nml:num_output_obs_members</em> equal to something like the
+ensemble size.</p>
+
+<p><span id="ncview_histogram" class="anchor"></span></p>
+
+<p>[<a href="#">top</a>]</p>
+
+<hr />
+
+<h1 id="viewing-the-rank-histogram-information-with-ncview">Viewing the rank histogram information with ‘ncview’</h1>
+
+<p>After you create <em>obs_diag_output.nc</em> with <em>obs_diag</em> you can view
+the rank histograms in the following way:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[work]$ ncview obs_diag_output.nc
+</code></pre></div></div>
+
+<p>Note there are forty-seven 3D variables. Pick one. In this case, I
+selected <em>AIRCRAFT_U_WIND_COMPONENT_guess_RankHist</em></p>
+
+<p><img src="../images/ncview_histogram_0.png" alt="" /></p>
+
+<p>Navigate to the time of interest (these are the arrows next to the QUIT
+button.) If <em>ncview</em> was built with <em>udunits</em> support, the actual
+calendar dates and times should be shown next to the frame counter. That
+should generate something like the graphic on the right below. Since the
+default axes are (Y == histogram_bins, X == levels) and there are many
+more ensemble members (96) than vertical levels (20) in this netCDF
+file, the graphic appears tall and narrow.</p>
+
+<p><img src="../images/ncview_histogram_1.png" alt="" /></p>
+
+<p>Click anywhere on the graphic and something like the following is
+displayed:</p>
+
+<p><img src="../images/ncview_histogram_2.png" alt="" /></p>
+
+<p>Change the “X Axis:” to “rank_bins” and a new graphic will display the
+rank histogram.</p>
+
+<p><img src="../images/ncview_histogram_3.png" alt="" /></p>
+
+<p>If you continue to click on the “tall,skinny” graphic, the histogram for
+that level will be added to the rank histogram window. Remember, levels
+are along the X axis on the “tall,skinny” graphic. Viola’!</p>
+
+<p><span id="ss_diagnostics" class="anchor"></span>
+<span id="ss_diagnostics_matlab" class="anchor"></span></p>
+
+<p>[<a href="#">top</a>]</p>
+
+<hr />
+
+<h1 id="dart-state-space-diagnostics---low-order-models">DART state-space diagnostics - low-order models.</h1>
+
+<h4 id="the-high-order-model-state-space-diagnostics-descriptions-are-under-construction">The High-order model state-space diagnostics descriptions are under construction.</h4>
+
+<h3 id="matlab">MATLAB®</h3>
+
+<p>There are a set of MATLAB® functions to help explore the assimilation
+performance in state-space, which is very useful for OSSE’s (i.e. when
+you know the true model state). The general guideline here is that
+anything that computes an ‘error’ requires the truth. There are some
+functions that work without a true state.</p>
+
+<p>In order to use any of these functions, the scripts need to know how to
+interpret the layout of the netCDF file - which is usually
+model-dependent. See the section on <a href="DART2_Documentation.html#model_matlab_support">Adding MATLAB® support for your own
+model</a> if you are not
+using one of the supported DART models.</p>
+
+<p>The state-space functions are in the <em>DART/diagnostics/matlab</em>
+directory. They all have the expected ‘help’ file accessible by simply
+typing <em>help</em> <em>[function_of_interest]</em> at the Matlab
+prompt.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><em>plot_total_err.m</em></td>
+      <td>plots the evolution of the error (un-normalized) and ensemble spread of all state variables.</td>
+    </tr>
+    <tr>
+      <td><em>plot_bins.m</em></td>
+      <td>plots the rank histograms for a set of state variables.</td>
+    </tr>
+    <tr>
+      <td><em>plot_ens_time_series.m</em></td>
+      <td>plots the evolution of a set of state variables - all ensemble members, the ensemble mean (and Truth, if available).</td>
+    </tr>
+    <tr>
+      <td><em>plot_ens_mean_time_series.m</em></td>
+      <td>plots the evolution of a set of state variables - just the ensemble mean (and Truth, if available).</td>
+    </tr>
+    <tr>
+      <td><em>plot_ens_err_spread.m</em></td>
+      <td>plots the evolution of the ensemble error and spread for a select set of state variables.</td>
+    </tr>
+    <tr>
+      <td><em>plot_correl.m</em></td>
+      <td>plots the correlation through time of a state variable and the rest of the state.</td>
+    </tr>
+    <tr>
+      <td><em>plot_var_var_correl.m</em></td>
+      <td>plots the correlation between two variables at a particular location.</td>
+    </tr>
+    <tr>
+      <td><em>plot_jeff_correl.m</em></td>
+      <td>plots the correlation through time of a state variable at a particular time and any state variable.</td>
+    </tr>
+    <tr>
+      <td><em>plot_sawtooth.m</em></td>
+      <td>plots the trajectory of any set of state variables highlighting the assimilation ‘increment’.</td>
+    </tr>
+    <tr>
+      <td><em>plot_phase_space.m</em></td>
+      <td>plots the trajectory of any two or three state variables. The classic attractor diagram.</td>
+    </tr>
+    <tr>
+      <td><em>plot_smoother_err.m</em></td>
+      <td>plots the error of the ensemble smoother - which uses observations in the future as well as the present.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>netCDF files are self-describing, so it is imperative that you
+understand the structure of the netCDF files and variables. fact that it
+might be the ensemble mean, the ensemble spread, ensemble member 43, the
+inflation values … a whole host of possibilities. For instance:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0[1020] swordfish:~/&lt;3&gt;models/wrf/work % ncdump -v member,MemberMetadata preassim.nc
+netcdf preassim {
+dimensions:
+        metadatalength = 64 ;
+        member = 3 ;
+        time = UNLIMITED ; // (1 currently)
+        NMLlinelen = 129 ;
+        NMLnlines = 203 ;
+        domain = 1 ;
+        west_east_d01 = 267 ;
+        west_east_stag_d01 = 268 ;
+        south_north_d01 = 215 ;
+        south_north_stag_d01 = 216 ;
+        bottom_top_d01 = 35 ;
+        bottom_top_stag_d01 = 36 ;
+variables:
+        int member(member) ;
+                member:long_name = "ensemble member or copy" ;
+                member:units = "nondimensional" ;
+                member:valid_range = 1, 100 ;
+        char MemberMetadata(member, metadatalength) ;
+                MemberMetadata:long_name = "Metadata for each copy/member" ;
+        ...
+        float U_d01(time, member, bottom_top_d01, south_north_d01, west_east_stag_d01) ;
+        ...
+  member = 1, 2, 3 ;
+    
+  MemberMetadata =
+  "ensemble member      1                                          ",
+  "ensemble member      2                                          ",
+  "ensemble member      3                                          ",
+}
+</code></pre></div></div>
+
+<p><span id="alt_diagnostics" class="anchor"></span>
+<span id="ss_diagnostics_nonmatlab" class="anchor"></span></p>
+
+<p>[<a href="#">top</a>]</p>
+
+<hr />
+
+<h3 id="non-matlab-state-space-diagnostics">Non-MATLAB® state-space diagnostics</h3>
+
+<p>The innovations to the model state are easy to derive. Use the <a href="http://nco.sourceforge.net/">NCO
+Operator</a> <em>ncdiff</em> to difference the two
+DART diagnostic netCDF files to create the innovations. Be sure to check
+the <em>CopyMetaData</em> variable to figure out what <em>copy</em> is of interest.
+Then, use <em>ncview</em> to explore the innovations or the inflation values or
+…</p>
+
+<p>If the assimilation used state-space inflation, the inflation fields
+will be added as additional ‘copies’. A sure sign of trouble is if the
+inflation fields grow without bound. As the observation network changes,
+expect the inflation values to change.</p>
+
+<p>The only other thing I look for in state-space is that the increments
+are ‘reasonable’. As the assimilation ‘burns in’, the increments are
+generally larger than increments from an assimilation that has been
+cycling for a long time. If the increments keep getting bigger, the
+ensemble is continually drifting away from the observation. Not good. In
+<em>ncview</em>, it is useful to navigate to the copy/level of interest and
+re-range the data to values appropriate to the current data and then hit
+the ‘&gt;&gt;’ button to animate the image. It should be possible to get a
+sense of the magnitude of the innovations as a function of time.</p>
+
+<p><strong>Example from a model of intermediate complexity: the bgrid model.</strong><br />
+I ran a perfect model experiment with the bgrid model in the
+DART-default configuration and turned on some adaptive inflation for
+this example. To fully demonstrate the adaptive inflation, it is useful
+to have an observation network that changes through time. I created two
+observation sequence files: one that had a single
+‘RADIOSONDE_TEMPERATURE’ observation at the surface with an observation
+error variance of 1.5 degrees Kelvin - repeated every 6 hours for 6 days
+(24 timesteps); and one that had 9 observations locations clustered in
+about the same location that repeated every 6 hours for 1.5 days (6
+timesteps). I merged the two observation sequences into one using
+<a href="https://ncar.github.io/DART/api/v2.1.10/program/obs_sequence_tool.html">obs_sequence_tool</a>
+and ran them through <em>perfect_model_obs</em> to derive the observation
+values and create an <em>obs_seq.out</em> file to run through <em>filter</em>.
+<strong>NOTE:</strong> Other models may have their ensemble means and spreads and
+inflation values in separate files. <a href="#FilenameTable">See the table of possible
+filenames.</a></p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0[1074] models/bgrid_solo/work %  ncdiff analysis.nc preassim.nc Innov.nc
+0[1075] models/bgrid_solo/work %  ncview preassim.nc &amp;
+0[1076] models/bgrid_solo/work %  ncview Innov.nc &amp;
+0[1077] models/bgrid_solo/work %  ncdump -v MemberMetadata preassim.nc
+netcdf preassim {
+dimensions:
+        metadatalength = 64 ;
+        member = 20 ;
+        time = UNLIMITED ; // (24 currently)
+        NMLlinelen = 129 ;
+        NMLnlines = 303 ;
+        StateVariable = 28200 ;
+        TmpI = 60 ;
+        TmpJ = 30 ;
+        lev = 5 ;
+        VelI = 60 ;
+        VelJ = 29 ;
+variables:
+        char MemberMetadata(member, metadatalength) ;
+                MemberMetadata:long_name = "Metadata for each copy/member" ;
+        ...
+        double ps(time, member, TmpJ, TmpI) ;
+                ps:long_name = "surface pressure" ;
+                ps:units = "Pa" ;
+                ps:units_long_name = "pascals" ;
+        double t(time, member, lev, TmpJ, TmpI) ;
+                t:long_name = "temperature" ;
+                t:units = "degrees Kelvin" ;
+        double u(time, member, lev, VelJ, VelI) ;
+                u:long_name = "zonal wind component" ;
+                u:units = "m/s" ;
+        double v(time, member, lev, VelJ, VelI) ;
+                v:long_name = "meridional wind component" ;
+                v:units = "m/s" ;
+        double ps_mean(time, TmpJ, TmpI) ;        The ensemble mean   is now a separate variable.
+        double t_mean(time, lev, TmpJ, TmpI) ;    The ensemble spread is now a separate variable.
+        double u_mean(time, lev, VelJ, VelI) ;    If I was using inflation, they would also be separate variables.
+        double v_mean(time, lev, VelJ, VelI) ;
+        double ps_sd(time, TmpJ, TmpI) ;
+        double t_sd(time, lev, TmpJ, TmpI) ;
+        double u_sd(time, lev, VelJ, VelI) ;
+        double v_sd(time, lev, VelJ, VelI) ;
+    
+data:
+  MemberMetadata =
+  "ensemble member      1                                          ",
+  "ensemble member      2                                          ",
+  "ensemble member      3                                          ",
+  "ensemble member      4                                          ",
+  "ensemble member      5                                          ",
+  "ensemble member      6                                          ",
+  "ensemble member      7                                          ",
+  "ensemble member      8                                          ",
+  "ensemble member      9                                          ",
+  "ensemble member     10                                          ",
+  "ensemble member     11                                          ",
+  "ensemble member     12                                          ",
+  "ensemble member     13                                          ",
+  "ensemble member     14                                          ",
+  "ensemble member     15                                          ",
+  "ensemble member     16                                          ",
+  "ensemble member     17                                          ",
+  "ensemble member     18                                          ",
+  "ensemble member     19                                          ",
+  "ensemble member     20                                          " ;
+}
+</code></pre></div></div>
+
+<p><img src="../images/bgrid_prior_inflation_main.png" alt="" /></p>
+
+<p><img src="../images/bgrid_prior_inflation_image.png" alt="" /></p>
+
+<p><img src="../images/bgrid_prior_inflation_timeseries.png" alt="" /></p>
+
+<p>This is an exploration of the <em>preassim.nc</em> file. Note that I selected
+the ‘<strong>t</strong>’ field, turned the coastlines ‘off’ under the ‘Opts’ button,
+used the ‘Repl’ instead of ‘Bi-lin’ (to more faithfully represent the
+model resolution), <em>navigated to copy 23 of 24 (in this case, the
+<strong>inflation mean</strong>)</em> select the <strong>inflation mean variable of your
+choice</strong> and advanced to the last timestep. The image plot is pretty
+boring, but does indicate that the inflation values are restricted to
+where I put the observations. Right-clicking on the ‘Range’ button
+automatically re-ranges the colorbar to the min/max of the current data.
+Clicking on any location generates a time series figure.</p>
+
+<p><img src="../images/bgrid_innov_ncview_main.png" alt="" /></p>
+
+<p><img src="../images/bgrid_innov_ncview_image.png" alt="" /></p>
+
+<p><img src="../images/bgrid_innov_ncview_timeseries.png" alt="" /></p>
+
+<p>This is an exploration of the <em>Innov.nc</em> file as created by <em>ncdiff</em>.
+Note that the titles are somewhat misleading because they reflect
+information from the first file given to <em>ncdiff</em>. This time I left the
+rendering as ‘Bi-lin’ (which obfuscates the model resolution),
+<em>navigated to copy 1 of 24 (in this case, the <strong>ensemble mean</strong>)</em>
+selected the <strong>t_mean</strong> variable and advanced to the 6th timestep.
+Right-click on the ‘Range’ button to reset the colorbar. The image plot
+confirms that the innovations are restricted to a local region. Clicking
+on any location generates a time series.</p>
+
+<p><img src="../images/bgrid_innov_ncview_main_u.png" alt="" /></p>
+
+<p><img src="../images/bgrid_innov_ncview_image_u.png" alt="" /></p>
+
+<p><img src="../images/bgrid_innov_ncview_timeseries_u.png" alt="" /></p>
+
+<p>This is fundamentally the same as the previous panel except that I have
+now selected the ‘<strong><em>u</em></strong>’ <strong>u_mean</strong> variable. Despite the fact the
+observations were only of ‘<strong>t</strong>’, the assimilation has generated
+(rightly so) increments to the ‘<strong>u</strong>’ state variable.</p>
+
+<p>[<a href="#">top</a>]</p>
+
+<hr />
+
+                </article>
+            </div>
+        </div>
+    </section>
+    </div>
+
+    <footer>
+    <div class="grid-x grid-padding-y footer-menu-tertiary">
+        <div class="cell text-center">
+            <small>©  UCAR</small>
+            <ul class="menu vertical">
+                <li><a href="https://www.ucar.edu/privacy-policy">Privacy Policy</a></li>
+                <li><a href="https://www.ucar.edu/terms-of-use">Terms of Use</a></li>
+                <li><a href="https://www.ucar.edu/notification-copyright-infringement-digital-millenium-copyright-act">Copyright Issues</a></li>
+                <li><a href="https://nsf.gov">Sponsored by NSF</a></li>
+                <li><a href="https://ncar.ucar.edu">NCAR Home</a></li>
+                <li><a href="https://www.ucar.edu">UCAR Home</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="grid-x grid-padding-y footer-sponsor">
+        <div class="cell">
+            <div class="grid-container">
+                <div class="grid-x">
+                    <div class="cell small-auto medium-10 description">
+                        <p>The National Center for Atmospheric Research is sponsored by the National Science Foundation. Any opinions, findings and conclusions or recommendations expressed in this material do not necessarily reflect the views of the National Science Foundation.</p>
+                    </div>
+                    <div class="cell small-3 medium-2 mlarge-1 logo">
+                        <a href="https://www.nsf.gov/" target="_blank"><img src="/assets/koru-base/img/footer-logo-nsf.png" alt="National Science Foundation"></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</footer>
+</div>
+</body>
+
+<script src="/assets/koru-base/lib/jquery/dist/jquery.js"></script>
+<script src="/assets/koru-base/lib/foundation-sites/dist/js/foundation.js"></script>
+<script src="/assets/koru-base/js/main.min.js"></script>
+</html>

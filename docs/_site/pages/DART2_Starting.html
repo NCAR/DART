@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="title" content="Getting Started">
+  <meta name="description" content="UCAR">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta class="foundation-mq">
+  <link rel="canonical" href="https://www.ucar.edu/">
+
+  <title>Getting Started | DART</title>
+
+  <link rel="stylesheet" href="/assets/koru-base/css/main.min.css" media="all">
+  <link rel="stylesheet" href="/assets/css/styles.css" media="all">
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Poppins:400,600,700" media="all">
+</head>
+
+
+<body class="ncar no-banner with-sidebar">
+<div class="content-wrapper">
+    <header>
+    <div data-sticky-container="" class="sticky-container">
+        <div data-sticky="" data-options="marginTop:0;stickyOn:small;" data-top-anchor="main-content"
+             class="sticky is-anchored is-at-top">
+            <div class="top-bar align-top hide-for-print" id="top-bar">
+                <div class="grid-x">
+                    <div class="cell">
+                        <div class="grid-x align-middle">
+                            <div class="cell small-3 large-2">
+                                <div class="grid-x grid-margin-x nsf-logo">
+                                    <div class="cell small-4">
+                                        <div class="grid-x">
+                                            <div class="cell small-1 small-4 xlarge-3">
+                                                <p><a href="https://www.ucar.edu/who-we-are/funding">Sponsored By</a></p>
+                                                <a href="https://www.ucar.edu/who-we-are/funding"><img alt="NSF Logo" src="/assets/koru-base/img/NSF_4-Color_bitmap_Logo.png"/></a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div></div>
+                            <div class="cell small-6 large-8 top-bar-title logo-wrapper align-center">
+                                <h2 class="acronym-wrapper">
+                                    <a href="https://ncar.ucar.edu" title="NCAR Home">
+                                        <img src="/assets/koru-base/img/logo-ncar-active-large.png"
+                                             alt="NCAR">
+                                        <span class="show-for-sr">NCAR</span>
+                                    </a>
+                                </h2>
+                                <h1><a href="/">DART</a></h1>
+                            </div>
+                            <div class="cell small-3 large-2 text-right"><p class="ncar-title"><a href="https://ncar.ucar.edu">National Center for Atmospheric Research</a></p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mobile-nav hide-for-print text-center" data-responsive-toggle="main-nav" data-hide-for="mlarge">
+                <div class="title-bar-title">Menu</div>
+                <button class="fa fa-chevron-down" type="button" data-toggle="main-nav"></button>
+            </div>
+            <div class="main-nav hide-for-print" id="main-nav">
+                <div class="grid-x">
+                <nav class="cell center mlarge-10 large-7">
+                    <ul class="menu icons icon-left" data-responsive-menu="accordion mlarge-dropdown">
+                        
+                        <li aria-label="Documentation">
+                            <a class="text-center" href="/DART_development/pages/DART2_Starting.html">Documentation</a>
+                            
+                            <ul class="menu">
+                                <li aria-label="Documentation"><a class="text-center" href="/DART_development/pages/DART2_Starting.html">Overview</a></li>
+                                
+                                <li aria-label="Getting Started"><a class="text-left" href="/DART_development/pages/DART2_Starting.html">Getting Started</a></li>
+                                
+                                <li aria-label="Tutorial"><a class="text-left" href="/DART_development/pages/dart_tutorial.html">Tutorial</a></li>
+                                
+                                <li aria-label="Lab"><a class="text-left" href="/DART_development/pages/dart_lab.html">Lab</a></li>
+                                
+                                <li aria-label="In Depth"><a class="text-left" href="/DART_development/pages/DART2_Documentation.html">In Depth</a></li>
+                                
+                                <li aria-label="Diagnostics"><a class="text-left" href="/DART_development/pages/DART2_Diagnostics.html">Diagnostics</a></li>
+                                
+                                <li aria-label="Observations"><a class="text-left" href="/DART_development/pages/DART2_Observations.html">Observations</a></li>
+                                
+                                <li aria-label="Misc"><a class="text-left" href="/DART_development/pages/DART2_Miscellany.html">Misc</a></li>
+                                
+                            </ul>
+                            
+                        </li>
+                        
+                        <li aria-label="Research">
+                            <a class="text-center" href="/DART_development/pages/Research.html">Research</a>
+                            
+                        </li>
+                        
+                        <li aria-label="About Us">
+                            <a class="text-center" href="/DART_development/pages/aboutus.html">About Us</a>
+                            
+                        </li>
+                        
+                        <li aria-label="Support">
+                            <a class="text-center" href="/DART_development/pages/support.html">Support</a>
+                            
+                        </li>
+                        
+                        <li aria-label="API">
+                            <a class="text-center" href="">API</a>
+                            
+                            <ul class="menu">
+                                <li aria-label="API"><a class="text-center" href="">Overview</a></li>
+                                
+                                <li aria-label="Manhattan"><a class="text-left" href="/DART_development/pages/release.html">Manhattan</a></li>
+                                
+                                <li aria-label="v3.0.0"><a class="text-left" href="/DART_development/api/v3.0.0/index.html">v3.0.0</a></li>
+                                
+                                <li aria-label="Lanai"><a class="text-left" href="">Lanai</a></li>
+                                
+                                <li aria-label="v2.0.0"><a class="text-left" href="">v2.0.0</a></li>
+                                
+                            </ul>
+                            
+                        </li>
+                        
+                    </ul>
+                </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+    <div class="body-content" id="main-content">
+        <section class="panel primary-content">
+        <div class="grid-x align-center">
+            <div class="cell medium-8 large-9">
+                <article role="article" class="content">
+                    <h2 id="installing-dart">Installing DART</h2>
+
+<p>The entire installation process is summarized in the following steps:</p>
+
+<ol>
+  <li><a href="#fortran90">Determine which F90 compiler is available</a>.</li>
+  <li><a href="#netCDFlib">Determine the location of (or build) the <em>netCDF</em>
+library</a>.</li>
+  <li><a href="#installing">Download the DART software into the expected source
+tree</a>.</li>
+  <li><a href="#customizations">Modify certain DART files to reflect the available F90 compiler and
+location of the appropriate libraries</a>.</li>
+  <li><a href="#building">Build the executables</a>.</li>
+  <li><a href="#matlab">Verifying the result</a>.</li>
+</ol>
+
+<p>If you can compile and run ONE of the low-order models, you should be
+able to compile and run ANY of the low-order models. For this reason, we
+can focus on the Lorenz `63 model. Consequently, the only directories
+with files to be modified to check the installation are usually:
+<em>DART/build_templates</em> and <em>DART/models/lorenz_63/work</em>.</p>
+
+<p>We have tried to make the code as portable as possible, but we do not
+have access to all compilers on all platforms, so there are no
+guarantees. We are interested in your experience building the system, so
+please send us a note at dart @ ucar .edu</p>
+
+<p><span id="requirements" class="anchor"></span> <a href="#requirements"></a></p>
+
+<hr />
+
+<h2 id="system-requirements">System Requirements</h2>
+
+<p>DART is intended to be highly portable among Unix/Linux operating
+systems. At this point we have no plans to port DART to Windows
+machines.</p>
+
+<p>Minimally, you will need:</p>
+
+<ol>
+  <li><a href="#fortran90">a Fortran90 compiler</a>,</li>
+  <li>the <a href="http://www.unidata.ucar.edu/software/netcdf/">netCDF libraries</a>
+built with the F90 interface,</li>
+  <li><em>perl</em> (just about any version),</li>
+  <li>an environment that understands <em>csh</em> or <em>tcsh</em>, <em>sh</em>, <em>ksh</em>, and</li>
+  <li>the old unix standby … <em>make</em></li>
+  <li>and more than 1Gb of disk space for the DART distribution.</li>
+</ol>
+
+<p>History has shown that it is a very good idea to make sure your run-time
+environment has the following:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>limit stacksize unlimited  
+limit datasize unlimited
+</code></pre></div></div>
+
+<p>Additionally, what has proven to be <em>nice</em> (but not required) is:</p>
+
+<ol>
+  <li><a href="http://meteora.ucsd.edu/~pierce/ncview_home_page.html">ncview</a>: a
+great visual browser for netCDF files.</li>
+  <li><a href="http://nco.sourceforge.net/">the netCDF Operators (NCO)</a>: tools to
+perform operations on netCDF files like concatenating, slicing, and
+dicing</li>
+  <li>Some sort of MPI environment. Put another way, DART does not come
+with MPICH, LAM-MPI, or OpenMPI; but we use them all the time. You
+should become familiar with the DART MPI introduction in
+<a href="dart_mpi.html">mpi_intro.html</a>.</li>
+  <li>If you want to use the DART diagnostic scripts, you will need a
+basic MATLAB®. No additional toolboxes are required. No third-party
+toolboxes are required.</li>
+</ol>
+
+<p><span id="fortran90"></span></p>
+
+<h3 id="requirements-a-fortran90-compiler">Requirements: a Fortran90 compiler</h3>
+
+<p>The DART software is written in standard Fortran 90, with no compiler-specific
+extensions. It has been compiled with and run with several versions of each of
+the following: <a href="http://gcc.gnu.org/fortran">GNU Fortran Compiler (“gfortran”)</a>
+(free), <a href="http://software.intel.com/en-us/intel-composer-xe">Intel Fortran Compiler for Linux and
+OSX</a>, <a href="http://www-01.ibm.com/software/awdtools/fortran/">IBM XL Fortran
+Compiler</a>, <a href="http://www.pgroup.com/">Portland Group
+Fortran Compiler</a>, and <a href="http://www.lahey.com/">Lahey Fortran
+Compiler</a>. Since recompiling the code is a necessity to
+experiment with different models, there are no binaries to distribute.</p>
+
+<p><span id="netCDFlib"></span></p>
+
+<h3 id="requirements-the-netcdf-library">Requirements: the netCDF library</h3>
+
+<p>DART uses the <a href="https://www.unidata.ucar.edu/software/netcdf/">netCDF</a>
+self-describing data format for the results of assimilation experiments.
+These files have the extension <em>.nc</em> and can be read by a number of
+standard data analysis tools. In particular, DART also makes use of the
+F90 interface to the library which is available through the <em>netcdf.mod</em>
+and <em>typesizes.mod</em> modules. <em>IMPORTANT</em>: different compilers create
+these modules with different “case” filenames, and sometimes they are
+not <strong>both</strong> installed into the expected directory. It is required that
+both modules be present. The normal place would be in the
+<code class="highlighter-rouge">netcdf/include</code> directory, as opposed to the <code class="highlighter-rouge">netcdf/lib</code> directory.</p>
+
+<p>If the netCDF library does not exist on your system, you must build it
+(as well as the F90 interface modules). The library and instructions for
+building the library or installing from an RPM may be found at the
+netCDF home page: <a href="https://www.unidata.ucar.edu/software/netcdf/">https://www.unidata.ucar.edu/software/netcdf/</a></p>
+
+<p>NOTE: The location of the netCDF library, <em>libnetcdf.a</em>, and the
+locations of both <em>netcdf.mod</em> and <em>typesizes.mod</em> will be needed later.
+Depending on the version of netCDF and the build options selected, the
+fortran interface routines may be in a separate library named
+<em>libnetcdff.a</em> (note the 2 F’s). In this case both libraries are
+required to build executables.</p>
+
+<p><span id="own_model_requirements"></span></p>
+
+<h3 id="requirements-if-you-have-your-own-model">Requirements: if you have your own model</h3>
+
+<p><a href="DART2_Documentation.html#adding_a_model">If you want to run your own model</a>, 
+all you need is an executable and some scripts to interface with DART - we have 
+templates and examples. If your model can be called as a subroutine, <em>life is
+good</em>, and the hardest part is usually a routine to parse the model
+state vector into one whopping array - and back. Again - we have
+templates, examples, and a document describing the required interfaces.
+That document exists in the DART code - <em>DART/models/model_mod.html</em> -
+as does all the most current documentation. Almost every DART
+program/module has a matching piece of documentation.</p>
+
+<p>Starting with the Jamaica release, there is an option to compile with
+the MPI (Message Passing Interface) libraries in order to run the
+assimilation step in parallel on hardware with multiple CPUs. Note that
+this is optional; MPI is not required. If you do want to run in
+parallel, then we also require a working MPI library and appropriate
+cluster or SMP hardware. See the 
+<a href="dart_mpi.html">MPI intro</a> for more information on
+ running with the MPI option.</p>
+
+<p>One of the beauties of ensemble data assimilation is that even if
+(particularly if) your model is single-threaded, you can still run
+efficiently on parallel machines by dealing out each ensemble member (a
+unique instance of the model) to a separate processor. If your model
+cannot run single-threaded, fear not, DART can do that too, and simply
+runs each ensemble member one after another using all the processors for
+each instance of the model.</p>
+
+<p><span id="download" class="anchor"></span> <a href="#download"></a></p>
+
+<p>[<a href="#">top</a>]</p>
+
+<hr />
+
+<h2 id="download-dart">Download DART</h2>
+
+<p>The DART source code is distributed through a Subversion server.
+Subversion (the client-side app is ‘<strong>svn</strong>’) allows you to compare your
+code tree with one on a remote server and selectively update individual
+files or groups of files - without losing any local modifications. I
+have a brief summary of the svn commands I use most posted at:
+<a href="http://www.image.ucar.edu/~thoar/svn_primer.html">http://www.image.ucar.edu/~thoar/svn_primer.html</a></p>
+
+<p>The DART download site is:
+<a href="https://www2.cisl.ucar.edu/software/dart/download">http://www.image.ucar.edu/DAReS/DART/DART_download</a>.</p>
+
+<p>svn has adopted the strategy that “disk is cheap”. In addition to
+downloading the code, it downloads an additional copy of the code to
+store locally (in hidden .svn directories) as well as some
+administration files. This allows svn to perform some commands even when
+the repository is not available. It does double the size of the code
+tree … so the download is just over 1 GB – pretty big. BUT - all
+future updates are (usually) just the differences, so they happen very
+quickly. We are working to remove the large example datasets into a
+separate .tar file to reduce the overhead.</p>
+
+<p>If you follow the instructions on the download site, you should wind up
+with a directory named <strong>my_path_to/</strong><em>DART</em><em>*, which we call
+*$DARTHOME</em>. Compiling the code in this tree (as is usually the case)
+will necessitate much more space.</p>
+
+<p>If you cannot use svn, just let me know and I will create a tar file for
+you. svn is so superior that a tar file should be considered a last
+resort.</p>
+
+<p><span id="installing" class="anchor"></span> <a href="#installing"></a></p>
+
+<p>[<a href="#">top</a>]</p>
+
+<hr />
+
+<h2 id="installing-dart-1">Installing DART</h2>
+
+<h3 id="document-conventions">document conventions</h3>
+
+<p><em>All filenames look like this – (typewriter font, green)</em>.<br />
+<em>Program names look like this – (italicized font, green)</em>.<br />
+<em>user input looks like this – (bold, magenta)</em>.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>commands to be typed at the command line are contained in an indented
+gray box.
+</code></pre></div></div>
+
+<p>And the contents of a file are enclosed in a box with a border:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&amp;hypothetical_nml  
+  obs_seq_in_file_name = "obs_seq.in",  
+  obs_seq_out_file_name = "obs_seq.out",  
+  init_time_days = 0,  
+  init_time_seconds = 0,  
+  output_interval = 1  
+&amp;end
+</code></pre></div></div>
+
+<p><span id="customizations"></span></p>
+
+<h3 id="customizing-the-build-scripts--overview">Customizing the build scripts – Overview.</h3>
+
+<p>DART executable programs are constructed using two tools: <em>mkmf</em>, and
+<em>make</em>. The <em>make</em> utility is a very common piece of software that
+requires a user-defined input file that records dependencies between
+different source files. <em>make</em> then performs a hierarchy of actions when
+one or more of the source files is modified. <em>mkmf</em> is a <em>perl</em> script
+that generates a <em>make</em> input file (named <em>Makefile</em>) and an example
+namelist <em>input.nml.<strong>program*_default</strong> with the default values. The
+*Makefile</em> is designed specifically to work with object-oriented
+Fortran90 (and other languages) for systems like DART.</p>
+
+<p><em>mkmf</em> (think <em>“make makefile”</em>) requires two separate input files. The
+first is a `template’ file which specifies details of the commands
+required for a specific Fortran90 compiler and may also contain pointers
+to directories containing pre-compiled utilities required by the DART
+system. <strong>This template file will need to be modified to reflect your
+system</strong>. The second input file is a `path_names’ file which are
+supplied by DART and can be used without modification. An <em>mkmf</em> command
+is executed which uses the ‘path_names’ file and the mkmf template file
+to produce a <em>Makefile</em> which is subsequently used by the standard
+<em>make</em> utility.</p>
+
+<p>Shell scripts that execute the mkmf command for all standard DART
+executables are provided as part of the standard DART software. For more
+information on the FMS <a href="https://github.com/NOAA-GFDL/mkmf">mkmf</a> please
+see the <a href="https://extranet.gfdl.noaa.gov/~vb/mkmf.html">mkmf documentation</a>.<br />
+Be aware that we have slightly modified <em>mkmf</em> such that it also creates
+an example namelist file for each program. The example namelist is
+called <em>input.nml.<strong>program*_default</strong>, so as not to clash with any
+exising *input.nml</em> that may exist in that directory.</p>
+
+<p><span id="template"></span></p>
+
+<h4 id="building-and-customizing-the-mkmftemplate-file">Building and Customizing the ‘mkmf.template’ file</h4>
+
+<p>A series of templates for different compilers/architectures exists in
+the <em>DART/build_templates</em> directory and have names with extensions
+that identify the compiler, the architecture, or both. This is how you
+inform the build process of the specifics of your system. <strong>Our intent
+is that you copy one that is similar to your system into
+<em>DART/build_templates/mkmf.template</em> and customize it.</strong> For the
+discussion that follows, knowledge of the contents of one of these
+templates (i.e. <em>DART/build_templates/mkmf.template.intel.linux</em>) is
+needed. Note that only the LAST lines are shown here, the head of the
+file is just a big comment (worth reading).</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>...  
+MPIFC = mpif90  
+MPILD = mpif90  
+FC = *ifort*  
+LD = *ifort*  
+NETCDF = */usr/local*  
+INCS = -I${NETCDF}/include  
+LIBS = -L${NETCDF}/lib -lnetcdf  
+FFLAGS = -O2 $(INCS)  
+LDFLAGS = $(FFLAGS)
+$(LIBS)  
+</code></pre></div></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>variable</th>
+      <th>value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>FC</td>
+      <td>the Fortran compiler</td>
+    </tr>
+    <tr>
+      <td>LD</td>
+      <td>the name of the loader; typically, the same as the Fortran compiler</td>
+    </tr>
+    <tr>
+      <td>NETCDF</td>
+      <td>the location of your netCDF installation containing <em>netcdf.mod</em> and <em>typesizes.mod</em>. Note that the value of the <em>NETCDF</em> variable will be used by the <em>FFLAGS, LIBS,</em> and <em>LDFLAGS</em> variables.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><span id="path_names"></span></p>
+
+<h4 id="customizing-the-path_names_-file">Customizing the ‘path_names_*’ file</h4>
+
+<p>Several <em>path_names_*</em> files are provided in the <em>work</em> directory for
+each specific model, in this case: <em>DART/models/lorenz_63/work</em>. Since
+each model comes with its own set of files, the <em>path_names_*</em> files
+need no customization.</p>
+
+<p><span id="building"></span></p>
+
+<h2 id="building-the-lorenz_63-dart-project">Building the Lorenz_63 DART project.</h2>
+
+<p>All DART programs are compiled the same way. Each model directory has a
+directory called <em>work</em> that has the components to build the
+executables. This is an example of how to build two programs for the
+lorenz_63 model: <em>preprocess</em> and <em>obs_diag</em>. <em>preprocess</em> needs to be
+built and run to create the source codes that support observations -
+which are (potentially) different for every model. Once that has been
+done, any other DART program may be built in the same was as <em>obs_diag</em>
+in this example.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cd DART/models/lorenz_63/work  
+./mkmf_preprocess  
+make  
+./preprocess  
+./mkmf_obs_diag  
+make  
+</code></pre></div></div>
+
+<p>Currently, DART executables are built in a <em>work</em> subdirectory under the
+directory containing code for the given model. The Lorenz_63 model has
+seven <em>mkmf_xxxxxx</em> files (some models have many more) for the
+following programs:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Program</th>
+      <th>Purpose</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><a href="https://ncar.github.io/DART/api/v2.1.10/program/preprocess.html">preprocess</a></td>
+      <td>creates custom source code for just the observations of interest</td>
+    </tr>
+    <tr>
+      <td><a href="https://ncar.github.io/DART/api/v2.1.10/program/create_obs_sequence.html">create_obs_sequence</a></td>
+      <td>specify a (set) of observation characteristics taken by a particular (set of) instruments</td>
+    </tr>
+    <tr>
+      <td><a href="https://ncar.github.io/DART/api/v2.1.10/program/create_fixed_network_seq.html">create_fixed_network_seq</a></td>
+      <td>specify the temporal attributes of the observation sets</td>
+    </tr>
+    <tr>
+      <td><a href="https://ncar.github.io/DART/api/v2.1.10/program/perfect_model_obs.html">perfect_model_obs</a></td>
+      <td>spinup, generate “true state” for synthetic observation experiments, …</td>
+    </tr>
+    <tr>
+      <td><a href="https://ncar.github.io/DART/api/v2.1.10/program/filter.html">filter</a></td>
+      <td>perform experiments</td>
+    </tr>
+    <tr>
+      <td><em>obs_diag</em></td>
+      <td>creates observation-space diagnostic files to be explored by the MATLAB® scripts.</td>
+    </tr>
+    <tr>
+      <td><a href="https://ncar.github.io/DART/api/v2.1.10/program/obs_sequence_tool.html">obs_sequence_tool</a></td>
+      <td>manipulates observation sequence files. It is not generally needed (particularly for low-order models) but can be used to combine observation sequences or convert from ASCII to binary or vice-versa. Since this is a specialty routine - we will not cover its use in this document.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><em>quickbuild.csh</em> is a script that will build every executable in the
+directory. There is an optional argument that will additionally build
+the mpi-enabled versions - which is not the intent of this set of
+instructions. Running <em>quickbuild.csh</em> will compile all the executables.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cd DART/models/lorenz_63/work  
+./quickbuild.csh -nompi
+</code></pre></div></div>
+
+<p>The result (hopefully) is that seven executables now reside in your work
+directory. The <em>most common problem</em> is that the netCDF libraries and
+include files (particularly <em>typesizes.mod</em>) are not found. Find them,
+edit the <em>DART/build_templates/mkmf.template</em> to point to their
+location, recreate the <em>Makefile</em>, and try again. The <em>next most common
+problem</em> is from the <em>gfortran</em> compiler complaining about “<em>undefined
+reference to `system_‘</em>” which is covered in the <a href="DART2_Miscellany.html#platform_notes">Platform-specific
+notes</a> section.</p>
+
+<h3 id="checking-the-build--running-something">Checking the build – running something.</h3>
+
+<p>This section is not intended to provide any details of why we are doing
+what we are doing - this is sort of a ‘black-box’ test. The
+<em>DART/models/lorenz_63/work</em> directory is distributed with input files
+ready to run a simple experiment: use 20 ensemble members to assimilate
+observations ‘every 6 hours’ for 50 days. Simply run the programs
+<em>perfect_model_obs</em> and <em>filter</em> to generate the results to compare
+against known results.</p>
+
+<p>The initial conditions files and observations sequences are in ASCII, so
+there is no portability issue, but there may be some roundoff error in
+the conversion from ASCII to machine binary. With such a highly
+nonlinear model, small differences in the initial conditions will result
+in a different model trajectory. Your results should start out looking
+VERY SIMILAR and may diverge with time.</p>
+
+<p>The Manhattan release uses netCDF files for the input file format.
+Creating the netCDF files from their ASCII representation is a trivial
+operation - simply running a command that comes with any netCDF
+installation: <em>ncgen</em>. After these files are built (this only needs to
+be done once), simply running <em>perfect_model_obs</em> and <em>filter</em> is
+easy:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ncgen -o perfect_input.nc perfect_input.cdl  
+ncgen -o filter_input.nc filter_input.cdl  
+./perfect_model_obs  
+./filter
+</code></pre></div></div>
+
+<p>There should now be the following output files:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>from executable “perfect_model_obs”</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><em>perfect_output.nc</em></td>
+      <td>a netCDF file containing the model trajectory … the ‘truth’</td>
+    </tr>
+    <tr>
+      <td><em>obs_seq.out</em></td>
+      <td>The observations (harvested as the true model was advanced) that were assimilated.</td>
+    </tr>
+  </tbody>
+</table>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>from executable “filter”</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><em>preassim.nc</em></td>
+      <td>A netCDF file of the ensemble model states just before assimilation. This is the <strong>prior</strong>.</td>
+    </tr>
+    <tr>
+      <td><em>filter_output.nc</em></td>
+      <td>A netCDF file of the ensemble model states after assimilation.</td>
+    </tr>
+    <tr>
+      <td><em>obs_seq.final</em></td>
+      <td>The observations that were assimilated as well as the ensemble mean estimates of the ‘observations’ - for comparison.</td>
+    </tr>
+  </tbody>
+</table>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>from both</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><em>dart_log.out</em></td>
+      <td>The run-time log of the experiment. This grows with each execution and may safely be deleted at any time.</td>
+    </tr>
+    <tr>
+      <td><em>dart_log.nml</em></td>
+      <td>A record of the input settings of the experiment. This file may safely be deleted at any time.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Note that if you change the <em>input.nml</em> namelist values controlling
+inflation and file output, several (perhaps many) more files are
+created.</p>
+
+<p>The <a href="dart_tutorial.html">DART/documentation/tutorial</a>
+documents are an excellent way to kick the tires on DART and learn about
+ensemble data assimilation. If you’ve been able to build the Lorenz 63
+model, you have correctly configured your <em>mkmf.template</em> and you can
+run anything in the tutorial.</p>
+
+<p><span id="matlab" class="anchor"></span> <a href="#matlab"></a></p>
+
+<p>[<a href="#">top</a>]</p>
+
+<hr />
+
+<h2 id="configuring-matlab">Configuring MATLAB®</h2>
+
+<p>The Manhattan release of DART uses native MATLAB® netCDF support and no
+longer requires any third-party toolboxes. Furthermore, no additional
+MATLAB toolboxes are required. To allow your environment to seamlessly
+use the DART MATLAB functions, your MATLABPATH must be set such that you
+have access to a couple of DART directories. Do something like the
+following at the MATLAB® prompt, using the real path to your DART
+installation:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&gt;&gt; addpath('path_to_dart/diagnostics/matlab','-BEGIN')
+&gt;&gt; addpath('path_to_dart/documentation/DART_LAB/matlab','-BEGIN')
+</code></pre></div></div>
+
+<p>It’s very convenient to put these it in your <em>~/matlab/startup.m</em> so
+they get run every time MATLAB® starts up. DART provides an example
+<em>diagnostics/matlab/startup.m</em> that you can use. It is internally
+documented.</p>
+
+<p><span id="verify" class="anchor"></span> <a href="#verify"></a></p>
+
+<p>[<a href="#">top</a>]</p>
+
+<hr />
+
+<h2 id="verify-are-the-results-correct-requires-matlab">Verify: Are the results correct? (requires MATLAB®)</h2>
+
+<p>The initial conditions files and observations sequences are in ASCII, so there
+is no portability issue, but there may be some roundoff error in the conversion
+from ASCII to machine binary. With such a highly nonlinear model, small
+differences in the initial conditions will result in a different model
+trajectory. Your results should start out looking VERY SIMILAR and may diverge
+with time.</p>
+
+<p>The simplest way to determine if the installation is successful is to run some
+of the functions we have available in <em>DART/diagnostics/matlab/</em>. Usually, we
+launch MATLAB® from the <em>DART/models/lorenz_63/work</em> directory and use the
+MATLAB® <em>addpath</em> command to make the <em>DART/matlab/</em> functions available. In
+this case, we know the true state of the model that is consistent with the
+observations. The following MATLAB® scripts compare the ensemble members with
+the truth and can calculate an error.</p>
+
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<tbody>
+<tr class="odd">
+<td><div class="routine">
+<pre><code>
+&lt;unix_prompt&gt; cd DART/models/lorenz_63/work
+&lt;unix_prompt&gt; matlab -nodesktop
+... (lots of startup messages I&#39;m skipping)...
+&gt;&gt; addpath ../../../diagnostics/matlab
+&gt;&gt; plot_total_err
+
+Input name of true model trajectory file;
+&lt;cr&gt; for perfect_output.nc
+perfect_output.nc
+Input name of ensemble trajectory file;
+&lt;cr&gt; for preassim.nc
+preassim.nc
+Comparing perfect_output.nc and
+          preassim.nc
+
+pinfo = 
+
+                 model: &#39;Lorenz_63&#39;
+               def_var: &#39;state&#39;
+        num_state_vars: 3
+       num_ens_members: 22
+    time_series_length: 200
+         min_state_var: 1
+         max_state_var: 3
+           min_ens_mem: 1
+           max_ens_mem: 22
+        def_state_vars: [1 2 3]
+            truth_file: &#39;perfect_output.nc&#39;
+            diagn_file: &#39;preassim.nc&#39;
+            truth_time: [1 200]
+            diagn_time: [1 200]
+
+true state is copy   1
+ensemble mean is copy   1
+ensemble spread is copy   2
+&gt;&gt; plot_ens_time_series
+</code></pre>
+</div></td>
+<td><a href="../images/lorenz_63_total_err.png"><img src="../images/lorenz_63_total_err.png" width="800" /></a><br />
+<a href="../images/lorenz_63_ens_time_series.png"><img src="../images/lorenz_63_ens_time_series.png" width="800" /></a></td>
+</tr>
+</tbody>
+</table>
+
+<p>From the <em>plot_ens_time_series</em> graphic, you can see the individual
+green ensemble members getting more constrained as time evolves. If your
+figures look similar to these, that’s pretty much what you’re looking
+for and you should feel pretty confident that everything is
+working.</p>
+
+<p>[<a href="#">top</a>]</p>
+
+<hr />
+
+<h2 id="please-suggest-ways-for-us-to-improve-dart">Please <a href="https://www2.cisl.ucar.edu/image/software/dart/suggestion-box">suggest ways for us to improve DART.</a></h2>
+
+                </article>
+            </div>
+        </div>
+    </section>
+    </div>
+
+    <footer>
+    <div class="grid-x grid-padding-y footer-menu-tertiary">
+        <div class="cell text-center">
+            <small>©  UCAR</small>
+            <ul class="menu vertical">
+                <li><a href="https://www.ucar.edu/privacy-policy">Privacy Policy</a></li>
+                <li><a href="https://www.ucar.edu/terms-of-use">Terms of Use</a></li>
+                <li><a href="https://www.ucar.edu/notification-copyright-infringement-digital-millenium-copyright-act">Copyright Issues</a></li>
+                <li><a href="https://nsf.gov">Sponsored by NSF</a></li>
+                <li><a href="https://ncar.ucar.edu">NCAR Home</a></li>
+                <li><a href="https://www.ucar.edu">UCAR Home</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="grid-x grid-padding-y footer-sponsor">
+        <div class="cell">
+            <div class="grid-container">
+                <div class="grid-x">
+                    <div class="cell small-auto medium-10 description">
+                        <p>The National Center for Atmospheric Research is sponsored by the National Science Foundation. Any opinions, findings and conclusions or recommendations expressed in this material do not necessarily reflect the views of the National Science Foundation.</p>
+                    </div>
+                    <div class="cell small-3 medium-2 mlarge-1 logo">
+                        <a href="https://www.nsf.gov/" target="_blank"><img src="/assets/koru-base/img/footer-logo-nsf.png" alt="National Science Foundation"></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</footer>
+</div>
+</body>
+
+<script src="/assets/koru-base/lib/jquery/dist/jquery.js"></script>
+<script src="/assets/koru-base/lib/foundation-sites/dist/js/foundation.js"></script>
+<script src="/assets/koru-base/js/main.min.js"></script>
+</html>
