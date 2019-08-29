@@ -51,6 +51,8 @@ else
    pinfo.diagn_time = [1 pinfo.time_series_length];
 end
 
+figdata = setfigure('landscape');
+
 switch lower(pinfo.model)
 
    case '9var'
@@ -72,6 +74,8 @@ switch lower(pinfo.model)
                           'tindex1', pinfo.truth_time(1), ...
                           'tcount',pinfo.truth_time(2));
                plot(pinfo.time,truth,'b','LineWidth',1.0); hold on;
+               set(gca,'FontSize',figdata.fontsize)
+
                legendstr = 'True State';
             end
 
@@ -81,6 +85,8 @@ switch lower(pinfo.model)
                            'tindex1',pinfo.diagn_time(1), ...
                            'tcount',pinfo.diagn_time(2));
             plot(pinfo.time,ens_mean,'r','LineWidth',1.0)
+            set(gca,'FontSize',figdata.fontsize)
+
 
             if (exist('legendstr','var'))
                legend(legendstr,'Ensemble Mean','Location','NorthEast')
@@ -111,6 +117,7 @@ switch lower(pinfo.model)
                            'tindex1',pinfo.diagn_time(1),...
                            'tcount',pinfo.diagn_time(2));
             plot(pinfo.time, ens_mean, 'r');
+            set(gca,'FontSize',figdata.fontsize)
             legend(sprintf('Ensemble Mean %f',mean(ens_mean)),'Location','NorthEast')
 
             if ( have_truth )
@@ -128,7 +135,8 @@ switch lower(pinfo.model)
             s1 = sprintf('%s Variable %d',pinfo.model,ivar);
             title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
             xlabel(sprintf('model "days" (%d timesteps)',pinfo.time_series_length))
-            legend boxoff
+            hl = legend;
+            set(hl,'Box','off','FontSize',figdata.fontsize)
       end
 
       % as a bonus, plot the mean attractors.
@@ -138,6 +146,7 @@ switch lower(pinfo.model)
                  'tindex1',pinfo.diagn_time(1), ...
                  'tcount',pinfo.diagn_time(2));
       plot3(ens(1,:), ens(2,:), ens(3,:), 'r')
+      set(gca,'FontSize',figdata.fontsize)
       legend('Ensemble Mean','Location','NorthEast')
 
       if (have_truth)

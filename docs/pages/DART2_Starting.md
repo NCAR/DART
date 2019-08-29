@@ -8,18 +8,15 @@ layout: default
 The entire installation process is summarized in the following steps:
 
 1.  [Determine which F90 compiler is available](#fortran90).
-2.  [Determine the location of (or build) the *netCDF*
-    library](#netCDFlib).
-3.  [Download the DART software into the expected source
-    tree](#installing).
-4.  [Modify certain DART files to reflect the available F90 compiler and
-    location of the appropriate libraries](#customizations).
+2.  [Determine the location of (or build) the *netCDF* library](#netCDFlib).
+3.  [Download the DART software into the expected source tree](#installing).
+4.  [Modify certain DART files to reflect the available F90 compiler and location of the appropriate libraries](#customizations).
 5.  [Build the executables](#building).
 6.  [Verifying the result](#matlab).
 
 If you can compile and run ONE of the low-order models, you should be
 able to compile and run ANY of the low-order models. For this reason, we
-can focus on the Lorenz \`63 model. Consequently, the only directories
+can focus on the Lorenz_63 model. Consequently, the only directories
 with files to be modified to check the installation are usually:
 *DART/build_templates* and *DART/models/lorenz_63/work*.  
   
@@ -65,8 +62,7 @@ Additionally, what has proven to be *nice* (but not required) is:
     dicing
 3.  Some sort of MPI environment. Put another way, DART does not come
     with MPICH, LAM-MPI, or OpenMPI; but we use them all the time. You
-    should become familiar with the DART MPI introduction in
-    [mpi_intro.html](dart_mpi.html).
+    should become familiar with [the DART MPI introduction](dart_mpi.md).
 4.  If you want to use the DART diagnostic scripts, you will need a
     basic MATLAB®. No additional toolboxes are required. No third-party
     toolboxes are required.
@@ -77,13 +73,14 @@ Additionally, what has proven to be *nice* (but not required) is:
 
 The DART software is written in standard Fortran 90, with no compiler-specific
 extensions. It has been compiled with and run with several versions of each of
-the following: [GNU Fortran Compiler ("gfortran")](http://gcc.gnu.org/fortran)
-(free), [Intel Fortran Compiler for Linux and
-OSX](http://software.intel.com/en-us/intel-composer-xe), [IBM XL Fortran
-Compiler](http://www-01.ibm.com/software/awdtools/fortran/), [Portland Group
-Fortran Compiler](http://www.pgroup.com/), and [Lahey Fortran
-Compiler](http://www.lahey.com/). Since recompiling the code is a necessity to
-experiment with different models, there are no binaries to distribute.
+the following:
+[GNU Fortran Compiler ("gfortran")](http://gcc.gnu.org/fortran) (free),
+[Intel Fortran Compiler for Linux and OSX](http://software.intel.com/en-us/intel-composer-xe),
+[IBM XL Fortran Compiler](http://www-01.ibm.com/software/awdtools/fortran/),
+[Portland Group Fortran Compiler](http://www.pgroup.com/), and 
+[Lahey Fortran Compiler](http://www.lahey.com/).
+Since recompiling the code is a necessity to experiment with different models, 
+there are no binaries to distribute.
 
 <span id="netCDFlib"></span>  
 
@@ -119,12 +116,10 @@ required to build executables.
 [If you want to run your own model](DART2_Documentation.html#adding_a_model), 
 all you need is an executable and some scripts to interface with DART - we have 
 templates and examples. If your model can be called as a subroutine, *life is
-good*, and the hardest part is usually a routine to parse the model
+good*, and the hardest part is usually a routine to pack the model
 state vector into one whopping array - and back. Again - we have
-templates, examples, and a document describing the required interfaces.
-That document exists in the DART code - *DART/models/model_mod.html* -
-as does all the most current documentation. Almost every DART
-program/module has a matching piece of documentation.  
+templates, examples, and a [../../models/README.md](models/README.md)
+describing the required interfaces.
   
 Starting with the Jamaica release, there is an option to compile with
 the MPI (Message Passing Interface) libraries in order to run the
@@ -132,8 +127,8 @@ assimilation step in parallel on hardware with multiple CPUs. Note that
 this is optional; MPI is not required. If you do want to run in
 parallel, then we also require a working MPI library and appropriate
 cluster or SMP hardware. See the 
-[MPI intro](dart_mpi.html) for more information on
- running with the MPI option.  
+[MPI intro](dart_mpi.html)
+for more information on running with the MPI option.  
   
 One of the beauties of ensemble data assimilation is that even if
 (particularly if) your model is single-threaded, you can still run
@@ -151,34 +146,18 @@ each instance of the model.
 
 ## Download DART
 
-The DART source code is distributed through a Subversion server.
-Subversion (the client-side app is '**svn**') allows you to compare your
-code tree with one on a remote server and selectively update individual
-files or groups of files - without losing any local modifications. I
-have a brief summary of the svn commands I use most posted at:
-<http://www.image.ucar.edu/~thoar/svn_primer.html>  
-  
-The DART download site is:
-[http://www.image.ucar.edu/DAReS/DART/DART_download](https://www2.cisl.ucar.edu/software/dart/download).
+The DART source code is distributed on the GitHub repository 
+[NCAR/DART_development](https://github.com/NCAR/DART_development)
+with the documentation served through GitHub Pages at
+[https://ncar.github.io/DART_development](https://ncar.github.io/DART_development).
 
-svn has adopted the strategy that "disk is cheap". In addition to
-downloading the code, it downloads an additional copy of the code to
-store locally (in hidden .svn directories) as well as some
-administration files. This allows svn to perform some commands even when
-the repository is not available. It does double the size of the code
-tree ... so the download is just over 1 GB -- pretty big. BUT - all
-future updates are (usually) just the differences, so they happen very
-quickly. We are working to remove the large example datasets into a
-separate .tar file to reduce the overhead.  
-  
+If you ever intend to contribute your work back to DART, we ask that
+you fork the repository to facilitate issuing pull requests. *:thumbsup:*!
+
 If you follow the instructions on the download site, you should wind up
-with a directory named **my_path_to/***DART***, which we call
-*$DARTHOME*. Compiling the code in this tree (as is usually the case)
+with a directory named **my_path_to/DART**, which we call
+_**DARTHOME**_. Compiling the code in this tree (as is usually the case)
 will necessitate much more space.  
-  
-If you cannot use svn, just let me know and I will create a tar file for
-you. svn is so superior that a tar file should be considered a last
-resort.
 
 <span id="installing" class="anchor"></span> [](#installing)  
 
@@ -190,16 +169,9 @@ resort.
 
 ### document conventions
 
-*All filenames look like this -- (typewriter font, green)*.  
-*Program names look like this -- (italicized font, green)*.  
-*user input looks like this -- (bold, magenta)*.  
+> commands to be typed at the command line appear as a blockquote
 
-~~~
-commands to be typed at the command line are contained in an indented
-gray box.
-~~~
-
-And the contents of a file are enclosed in a box with a border:
+And the contents of a file are enclosed in a box:
 
 ~~~
 &hypothetical_nml  
@@ -221,16 +193,18 @@ requires a user-defined input file that records dependencies between
 different source files. *make* then performs a hierarchy of actions when
 one or more of the source files is modified. *mkmf* is a *perl* script
 that generates a *make* input file (named *Makefile*) and an example
-namelist *input.nml.**program*_default** with the default values. The
+namelist *input.nml._**program**_\_default* with the default values. The
 *Makefile* is designed specifically to work with object-oriented
 Fortran90 (and other languages) for systems like DART.  
   
 *mkmf* (think *"make makefile"*) requires two separate input files. The
-first is a \`template' file which specifies details of the commands
+first is a 'template' file which specifies details of the commands
 required for a specific Fortran90 compiler and may also contain pointers
 to directories containing pre-compiled utilities required by the DART
 system. **This template file will need to be modified to reflect your
-system**. The second input file is a \`path_names' file which are
+system**.
+
+The second input file is a 'path_names' file which are
 supplied by DART and can be used without modification. An *mkmf* command
 is executed which uses the 'path_names' file and the mkmf template file
 to produce a *Makefile* which is subsequently used by the standard
@@ -242,7 +216,7 @@ information on the FMS [mkmf](https://github.com/NOAA-GFDL/mkmf) please
 see the [mkmf documentation](https://extranet.gfdl.noaa.gov/~vb/mkmf.html).  
 Be aware that we have slightly modified *mkmf* such that it also creates
 an example namelist file for each program. The example namelist is
-called *input.nml.**program*_default**, so as not to clash with any
+called *input.nml._program_\_default*, so as not to clash with any
 exising *input.nml* that may exist in that directory.
 
 <span id="template"></span>
@@ -270,8 +244,7 @@ NETCDF = */usr/local*
 INCS = -I${NETCDF}/include  
 LIBS = -L${NETCDF}/lib -lnetcdf  
 FFLAGS = -O2 $(INCS)  
-LDFLAGS = $(FFLAGS)
-$(LIBS)  
+LDFLAGS = $(FFLAGS) $(LIBS)  
 ~~~
 
 | variable | value |
@@ -291,7 +264,7 @@ need no customization.
 
 <span id="building"></span>
 
-## Building the Lorenz_63 DART project.
+### Building the Lorenz_63 DART project.
 
 All DART programs are compiled the same way. Each model directory has a
 directory called *work* that has the components to build the
@@ -302,14 +275,12 @@ which are (potentially) different for every model. Once that has been
 done, any other DART program may be built in the same was as *obs_diag*
 in this example.
 
-~~~
-cd DART/models/lorenz_63/work  
-./mkmf_preprocess  
-make  
-./preprocess  
-./mkmf_obs_diag  
-make  
-~~~
+> cd DART/models/lorenz_63/work  
+> ./mkmf_preprocess  
+> make  
+> ./preprocess  
+> ./mkmf_obs_diag  
+> make  
 
 Currently, DART executables are built in a *work* subdirectory under the
 directory containing code for the given model. The Lorenz_63 model has
@@ -331,29 +302,24 @@ directory. There is an optional argument that will additionally build
 the mpi-enabled versions - which is not the intent of this set of
 instructions. Running *quickbuild.csh* will compile all the executables.
 
-~~~
-cd DART/models/lorenz_63/work  
-./quickbuild.csh -nompi
-~~~
+> cd DART/models/lorenz_63/work  
+> ./quickbuild.csh -nompi
 
-The result (hopefully) is that seven executables now reside in your work
-directory. The *most common problem* is that the netCDF libraries and
-include files (particularly *typesizes.mod*) are not found. Find them,
-edit the *DART/build_templates/mkmf.template* to point to their
-location, recreate the *Makefile*, and try again. The *next most common
-problem* is from the *gfortran* compiler complaining about "*undefined
-reference to \`system_'*" which is covered in the [Platform-specific
-notes](DART2_Miscellany.html#platform_notes) section.
+The result (hopefully) is that seven executables now reside in your work directory. 
+*The most common problem* is that the netCDF libraries and include files 
+(particularly *typesizes.mod*) are not found.
+Find them, edit the *DART/build_templates/mkmf.template* to point to their
+location, recreate the *Makefile*, and try again.
 
 ### Checking the build -- running something.
 
 This section is not intended to provide any details of why we are doing
-what we are doing - this is sort of a 'black-box' test. The
-*DART/models/lorenz_63/work* directory is distributed with input files
+what we are doing - this is sort of a 'black-box' test.
+The *DART/models/lorenz_63/work* directory is distributed with input files
 ready to run a simple experiment: use 20 ensemble members to assimilate
-observations 'every 6 hours' for 50 days. Simply run the programs
-*perfect_model_obs* and *filter* to generate the results to compare
-against known results.  
+observations 'every 6 hours' for 50 days.
+Simply run the programs *perfect_model_obs* and *filter* to generate 
+the results to compare against known results.  
   
 The initial conditions files and observations sequences are in ASCII, so
 there is no portability issue, but there may be some roundoff error in
@@ -365,38 +331,36 @@ VERY SIMILAR and may diverge with time.
 The Manhattan release uses netCDF files for the input file format.
 Creating the netCDF files from their ASCII representation is a trivial
 operation - simply running a command that comes with any netCDF
-installation: *ncgen*. After these files are built (this only needs to
-be done once), simply running *perfect_model_obs* and *filter* is
+installation: *ncgen*. This is done automatically by the *lorenz_63 quickbuild.csh*,
+but is repeated here for clarity. Once the netCDF input files
+are created, simply running *perfect_model_obs* and *filter* is
 easy:
 
-~~~
-ncgen -o perfect_input.nc perfect_input.cdl  
-ncgen -o filter_input.nc filter_input.cdl  
-./perfect_model_obs  
-./filter
-~~~
+> ncgen -o perfect_input.nc perfect_input.cdl  
+> ncgen -o filter_input.nc filter_input.cdl  
+> ./perfect_model_obs  
+> ./filter
 
 There should now be the following output files:
 
-| | from executable "perfect_model_obs" | 
-| --- | ------------------------------- |
-| *perfect_output.nc* | a netCDF file containing the model trajectory ... the 'truth' |
+|      | from executable "perfect_model_obs" | 
+| ---- | ------------------------------- |
+| *perfect_output.nc* | a netCDF file containing the model trajectory ... the **truth** |
 | *obs_seq.out* | The observations (harvested as the true model was advanced) that were assimilated. |
 
-| | from executable "filter" |
-| --- | -------------------- |
+|      | from executable "filter" |
+| ---- | -------------------- |
 | *preassim.nc* | A netCDF file of the ensemble model states just before assimilation. This is the **prior**. |
 | *filter_output.nc* | A netCDF file of the ensemble model states after assimilation. |
 | *obs_seq.final* | The observations that were assimilated as well as the ensemble mean estimates of the 'observations' - for comparison. |
 
-| | from both |
-| --- | ----- |
-|*dart_log.out* | The run-time log of the experiment. This grows with each execution and may safely be deleted at any time. |
-| *dart_log.nml* | A record of the input settings of the experiment. This file may safely be deleted at any time. |
+|      | from both |
+| ---- | ----- |
+|*dart_log.out* | The run-time log of the experiment.  This grows with each execution and may safely be deleted at any time. |
+| *dart_log.nml* | A record of the input settings of the experiment.  This file may safely be deleted at any time. |
 
 Note that if you change the *input.nml* namelist values controlling
-inflation and file output, several (perhaps many) more files are
-created.  
+inflation and file output, several (perhaps many) more files are created.  
   
 The [DART/documentation/tutorial](dart_tutorial.html)
 documents are an excellent way to kick the tires on DART and learn about
@@ -420,10 +384,8 @@ have access to a couple of DART directories. Do something like the
 following at the MATLAB® prompt, using the real path to your DART
 installation:
 
-~~~
->> addpath('path_to_dart/diagnostics/matlab','-BEGIN')
->> addpath('path_to_dart/documentation/DART_LAB/matlab','-BEGIN')
-~~~
+> \>\> addpath('path_to_dart/diagnostics/matlab','-BEGIN')
+> \>\>addpath('path_to_dart/documentation/DART_LAB/matlab','-BEGIN')
 
 It's very convenient to put these it in your *\~/matlab/startup.m* so
 they get run every time MATLAB® starts up. DART provides an example
@@ -442,8 +404,9 @@ The initial conditions files and observations sequences are in ASCII, so there
 is no portability issue, but there may be some roundoff error in the conversion
 from ASCII to machine binary. With such a highly nonlinear model, small
 differences in the initial conditions will result in a different model
-trajectory. Your results should start out looking VERY SIMILAR and may diverge
-with time.  
+trajectory. Even compiler options will cause tiny differences that ultimately
+result in noticeably different trajectories.
+Your results should start out looking VERY SIMILAR and may diverge with time.  
   
 The simplest way to determine if the installation is successful is to run some
 of the functions we have available in *DART/diagnostics/matlab/*. Usually, we
@@ -461,47 +424,56 @@ the truth and can calculate an error.
 <tbody>
 <tr class="odd">
 <td><div class="routine">
-<pre><code>
-&lt;unix_prompt&gt; cd DART/models/lorenz_63/work
-&lt;unix_prompt&gt; matlab -nodesktop
+<pre>
+&lt;unix prompt&gt; cd DART/models/lorenz_63/work
+&lt;unix prompt&gt; matlab -nodesktop
 ... (lots of startup messages I&#39;m skipping)...
+
 &gt;&gt; addpath ../../../diagnostics/matlab
 &gt;&gt; plot_total_err
-
 Input name of true model trajectory file;
 &lt;cr&gt; for perfect_output.nc
 perfect_output.nc
 Input name of ensemble trajectory file;
 &lt;cr&gt; for preassim.nc
 preassim.nc
-Comparing perfect_output.nc and
+Comparing true_state.nc and
           preassim.nc
+&gt;&gt; plot_ens_time_series
+Input name of ensemble trajectory file:
+&lt;cr&gt; for preassim.nc
+
+Comparing true_state.nc and 
+          preassim.nc
+Using Variable state IDs 1  2  3
 
 pinfo = 
 
-                 model: &#39;Lorenz_63&#39;
-               def_var: &#39;state&#39;
-        num_state_vars: 3
-       num_ens_members: 22
-    time_series_length: 200
+  struct with fields:
+
+                 model: 'Lorenz_63'
+               def_var: 'state'
+        num_state_vars: 1
+            num_copies: 20
+       num_ens_members: 20
+      ensemble_indices: [1 2 3 ... 18 19 20]
          min_state_var: 1
          max_state_var: 3
-           min_ens_mem: 1
-           max_ens_mem: 22
         def_state_vars: [1 2 3]
-            truth_file: &#39;perfect_output.nc&#39;
-            diagn_file: &#39;preassim.nc&#39;
+                 fname: 'preassim.nc'
+            truth_file: 'true_state.nc'
+            diagn_file: 'preassim.nc'
             truth_time: [1 200]
             diagn_time: [1 200]
-
-true state is copy   1
-ensemble mean is copy   1
-ensemble spread is copy   2
-&gt;&gt; plot_ens_time_series
-</code></pre>
+                  vars: {'state'}
+                  time: [200x1 double]
+    time_series_length: 200
+                   var: 'state'
+              var_inds: [1 2 3]
+</pre>
 </div></td>
-<td><a href="../images/lorenz_63_total_err.png"><img src="../images/lorenz_63_total_err.png" width="800" /></a><br />
-<a href="../images/lorenz_63_ens_time_series.png"><img src="../images/lorenz_63_ens_time_series.png" width="800" /></a></td>
+<td><a href="../images/lorenz_63_total_err.png"><img src="../images/lorenz_63_total_err.png" width="500" /></a><br />
+<a href="../images/lorenz_63_ens_time_series.png"><img src="../images/lorenz_63_ens_time_series.png" width="500" /></a></td>
 </tr>
 </tbody>
 </table>
@@ -510,10 +482,9 @@ From the *plot_ens_time_series* graphic, you can see the individual
 green ensemble members getting more constrained as time evolves. If your
 figures look similar to these, that's pretty much what you're looking
 for and you should feel pretty confident that everything is
-working.
+working. Don't miss the opportunity to rotate the 'butterfly' plot.
 
 \[[top](#)\]
 
 -----
 
-## Please [suggest ways for us to improve DART.](https://www2.cisl.ucar.edu/image/software/dart/suggestion-box)

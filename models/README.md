@@ -1,10 +1,9 @@
-# DART software - Copyright UCAR. This open source software is provided
-# by UCAR, "as is", without charge, subject to all terms of use at
-# http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
+---
+title: Adding a new model to DART
+layout: default
+---
 
-Hints for porting a new model to DART:
+## Hints for porting a new model to DART:
 
 copy this template directory into a DART/models/xxx
 directory for your new model.
