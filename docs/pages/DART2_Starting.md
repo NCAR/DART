@@ -460,25 +460,27 @@ the truth and can calculate an error.
 </colgroup>
 <tbody>
 <tr class="odd">
-<td>
+<td><div class="routine">
+<pre><code>
+&lt;unix_prompt&gt; cd DART/models/lorenz_63/work
+&lt;unix_prompt&gt; matlab -nodesktop
+... (lots of startup messages I&#39;m skipping)...
+&gt;&gt; addpath ../../../diagnostics/matlab
+&gt;&gt; plot_total_err
 
-```
-<unix prompt> cd DART/models/lorenz_63/work
-<unix prompt> matlab -nodesktop
-... (skipping lots of startup messages)...
->> addpath ../../../diagnostics/matlab
->> plot_total_err
-
+Input name of true model trajectory file;
+&lt;cr&gt; for perfect_output.nc
+perfect_output.nc
 Input name of ensemble trajectory file;
-<cr> for preassim.nc
+&lt;cr&gt; for preassim.nc
 preassim.nc
 Comparing perfect_output.nc and
           preassim.nc
 
 pinfo = 
 
-                 model: 'Lorenz_63';
-               def_var: 'state';
+                 model: &#39;Lorenz_63&#39;
+               def_var: &#39;state&#39;
         num_state_vars: 3
        num_ens_members: 22
     time_series_length: 200
@@ -487,24 +489,19 @@ pinfo =
            min_ens_mem: 1
            max_ens_mem: 22
         def_state_vars: [1 2 3]
-            truth_file: 'perfect_output.nc';
-            diagn_file: 'preassim.nc';
+            truth_file: &#39;perfect_output.nc&#39;
+            diagn_file: &#39;preassim.nc&#39;
             truth_time: [1 200]
             diagn_time: [1 200]
 
 true state is copy   1
 ensemble mean is copy   1
 ensemble spread is copy   2
-plot_ens_time_series
-
-```
-
-</td>
-<td>
-<a href="../images/lorenz_63_total_err.png"><img src="../images/lorenz_63_total_err.png" width="400" /></a><br />
-<a href="../images/lorenz_63_ens_time_series.png"><img src="../images/lorenz_63_ens_time_series.png" width="400" /></a>
-</td>
-
+&gt;&gt; plot_ens_time_series
+</code></pre>
+</div></td>
+<td><a href="../images/lorenz_63_total_err.png"><img src="../images/lorenz_63_total_err.png" width="800" /></a><br />
+<a href="../images/lorenz_63_ens_time_series.png"><img src="../images/lorenz_63_ens_time_series.png" width="800" /></a></td>
 </tr>
 </tbody>
 </table>
