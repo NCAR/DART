@@ -14,7 +14,7 @@
 # Tool code of creating vertical profile obs is 11         !
 # An ascii file should be provided for locations           !
 #----------------------------------------------------------!
-TOOLCODE=8
+tool=8
 
 source postproc.env
 
@@ -25,7 +25,7 @@ INITIALDAY=1; FINALDAY=2; EXPDEF=NR0; EXPNUM=01; YEAR=2009
 
 sed -e 's;EXPDEF;'${EXPDEF}';' -e 's;EXPNUM;'${EXPNUM}';' -e \
        's;INITIALDAY;'${INITIALDAY}';' -e 's;FINALDAY;'${FINALDAY}';' -e \
-       's;YEAROFNC;'${YEAR}';' -e 's;TOOL2RUN;'${TOOLCODE}';' -e \
+       's;YEAROFNC;'${YEAR}';' -e 's;TOOL2RUN;'${tool}';' -e \
        's;LEVEL2RUN;'${LAYER}';' -e \
        's;RUNLENGTH;365;' -e 's;TIMESTEP;1;'\
        ${RUNDIR}/namelist.config.template > namelist.config

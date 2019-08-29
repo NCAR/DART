@@ -11,13 +11,13 @@
 # set initial and final day
 # calls transect_daily_mean.gmt to plot
 
-TOOLCODE=2
+tool=2
 INITIALDAY=1; FINALDAY=1
 EXPDEF=LEP; EXPNUM=PC; YEAR=2008
 make
 sed -e 's;EXPDEF;'${EXPDEF}';' -e 's;EXPNUM;'${EXPNUM}';'\
     -e 's;INITIALDAY;'${INITIALDAY}';' -e 's;FINALDAY;'${FINALDAY}';'\
-    -e 's;YEAROFNC;'${YEAR}';' -e 's;TOOL2RUN;'${TOOLCODE}';'\
+    -e 's;YEAROFNC;'${YEAR}';' -e 's;TOOL2RUN;'${tool}';'\
     -e 's;LEVEL2RUN;'${LAYER}';' -e 's;RUNLENGTH;365;' -e 's;TIMESTEP;1;'\
      namelist.config.template > namelist.config
 

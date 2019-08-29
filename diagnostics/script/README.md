@@ -22,32 +22,30 @@ FERRET to visualize DART diagnostic outputs.
 
 Similar scripts and plotting tools can be written to use the tools below.
 
-tool=1  basin_mean_evolution
-tool=2  read_thalweg_from_nc
-tool=3  read_section_from_netcdf
-tool=4  marmara_mean_evolution
-tool=5  calc_section_monthly_mean
-tool=6  calc_thalweg_monthly_mean
-tool=7  read_ensemble_from_netcdf
-tool=8  synthetic_ferrybox_from_nr
-tool=9  read_section_from_NR_diff
-tool=10 read_ctd_data
-tool=11 profile_from_netcdf
-tool=12 velocity_at_the_exit
-tool=13 read_section_from_inc
-tool=14 dardanelles_for_MFS
-tool=15 total_kinetic_energy
-tool=16 surface_kinetic_energy
-tool=17 calc_section_annual_mean
-tool=18 calc_thalweg_annual_mean
-tool=19 compute_vorticity
-tool=20 compute_wind_stress_curl
-tool=21 compute_net_flux
-tool=22 compute_surface_buoyancy
-tool=23 compute_forcing_monthly_timeseries
-tool=24 compute_wind_work
-tool=25 read_ship_track
-tool=26 bosphorus_for_blk_mfs
-tool=27 compute_volume_transport
-
-
+|tool=1 | basin_mean_evolution|
+|tool=2 | read_thalweg_from_nc|
+|tool=3 | read_section_from_netcdf|
+|tool=4 | marmara_mean_evolution|
+|tool=5 | calc_section_monthly_mean|
+|tool=6 | calc_thalweg_monthly_mean|
+|tool=7 | read_ensemble_from_netcdf|
+|tool=8 | synthetic_ferrybox_from_nr|
+|tool=9 | read_section_from_NR_diff|
+|tool=10| read_ctd_data|
+|tool=11| profile_from_netcdf|
+|tool=12| velocity_at_the_exit|
+|tool=13| read_section_from_inc|
+|tool=14| dardanelles_for_MFS|
+|tool=15| total_kinetic_energy|
+|tool=16| surface_kinetic_energy|
+|tool=17| calc_section_annual_mean|
+|tool=18| calc_thalweg_annual_mean|
+|tool=19| compute_vorticity|
+|tool=20| compute_wind_stress_curl|
+|tool=21| compute_net_flux|
+|tool=22| compute_surface_buoyancy|
+|tool=23| compute_forcing_monthly_timeseries|
+|tool=24| compute_wind_work|
+|tool=25| read_ship_track|
+|tool=26| bosphorus_for_blk_mfs|
+|tool=27| compute_volume_transport||
