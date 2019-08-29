@@ -4,10 +4,6 @@
 !
 ! $Id$
 
-program text_to_obs
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
 !   text_to_obs - an example program to create DART format observations
 !      from a text-based input data file.  see below for where to adapt
 !      the read routine to match your white-space separated values or 
@@ -16,12 +12,18 @@ program text_to_obs
 !     created 29 Mar 2010   nancy collins NCAR/IMAGe
 !     updated  8 Feb 2016   minor changes to wind conversion, and updated
 !                           comments to try to be more helpful.
+!     updated 29 Aug 2019   added namelist with example values
 !
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+program text_to_obs
 
 use         types_mod, only : r8, PI, DEG2RAD
 use     utilities_mod, only : initialize_utilities, finalize_utilities, &
-                              open_file, close_file
+                              open_file, close_file, &
+                              find_namelist_in_file, check_namelist_read, &
+                              error_handler, E_ERR, E_MSG, nmlfileunit,   &
+                              do_nml_file, do_nml_term
+
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, &
                               operator(>=), increment_time, get_time, &
                               operator(-), GREGORIAN, operator(+), print_date
@@ -35,11 +37,16 @@ use      obs_kind_mod, only : EVAL_U_WIND_COMPONENT, EVAL_V_WIND_COMPONENT, &
 
 implicit none
 
-character(len=64), parameter :: text_input_file = '../data/text_input_file'
-character(len=64), parameter :: obs_out_file    = 'obs_seq.out'
+! variables that can be changed at runtime from a namelist
+! add any other options here that would be useful for your application.
+character(len=256) :: text_input_file = '../data/text_input_file'
+character(len=256) :: obs_out_file    = 'obs_seq.out'
+logical            :: debug = .false.  ! set to .true. to print info
 
-logical, parameter :: debug = .false.  ! set to .true. to print info
+namelist /text_to_obs_nml/ text_input_file, obs_out_file, debug
 
+
+! local variables
 character (len=129) :: input_line
 
 integer :: oday, osec, rcio, iunit, otype
@@ -55,9 +62,20 @@ type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
 type(time_type)         :: ref_day0, time_obs, prev_time
 
+
 ! start of executable code
 
 call initialize_utilities('text_to_obs')
+
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "text_to_obs_nml", iunit)
+read(iunit, nml = text_to_obs_nml, iostat = rcio)
+call check_namelist_read(iunit, rcio, "text_to_obs_nml")
+
+! Record the namelist values used for the run 
+if (do_nml_file()) write(nmlfileunit, nml=text_to_obs_nml)
+if (do_nml_term()) write(     *     , nml=text_to_obs_nml)
+
 
 ! time setup
 call set_calendar_type(GREGORIAN)

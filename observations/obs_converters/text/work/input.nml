@@ -1,3 +1,8 @@
+&text_to_obs_nml
+   text_input_file = '../data/text_input_file'
+   obs_out_file    = 'obs_seq.out'
+   debug           = .false.
+/
 
 &preprocess_nml
     input_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
