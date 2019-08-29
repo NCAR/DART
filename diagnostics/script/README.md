@@ -22,6 +22,7 @@ FERRET to visualize DART diagnostic outputs.
 
 Similar scripts and plotting tools can be written to use the tools below.
 
+|-------|---------------------|
 |tool=1 | basin_mean_evolution|
 |tool=2 | read_thalweg_from_nc|
 |tool=3 | read_section_from_netcdf|
