@@ -59,21 +59,23 @@ Be careful about what stages you choose to write.
 
 #### When *single_file_out = .false.*
 
-| **from *perfect_model_obs* ** | | |
-| ---------------------------- | --- | --- |
+| from *perfect_model_obs* |      |      |
+| ------------------------ | ---- | ---- |
 | *obs_seq.out* | | the synthetic observations at some predefined times and locations |
 | *perfect_output.nc* | 1 timestep | a netCDF file containing the model trajectory - the true state |
 
-| **from *filter**  | | |
-| There are some namelist settings that control what files are output. Depending on the settings for *input.nml&filter_nml:stages_to_write* and others ... | | |
-| --- | --- | --- |
+There are some namelist settings that control what files are output.
+        Depending on the settings for *input.nml&filter_nml:stages_to_write* and others ...
+        
+| from *filter* |      |      |
+| ------------- | ---- | ---- |
 | *forecast_member_\#\#\#\#.nc* | 1 timestep | the ensemble forecast, each ensemble member is a separate file |
-| *forecast_\[mean,sd\].nc* | 1 timestep | the mean and standard deviation (spread) of the ensemble forecast |
+| *forecast_\[mean,sd\].nc*     | 1 timestep | the mean and standard deviation (spread) of the ensemble forecast |
 | *forecast_priorinf_\[mean,sd\].nc* | 1 timestep | the prior inflation information before assimilation |
 | *forecast_postinf_\[mean,sd\].nc* | 1 timestep | the posterior inflation information before assimilation |
 | *preassim_member_\#\#\#\#.nc* | 1 timestep | the model states after any prior inflation but before assimilation |
 | *preassim_\[mean,sd\].nc* | 1 timestep | the mean and standard deviation (spread) of the ensemble after any prior inflation but before assimilation |
-| *preassim_priorinf_\[mean,sd\].nc* | 1 timestep | the prior inflation information before assimilation|
+| *preassim_priorinf_\[mean,sd\].nc* | 1 timestep | the prior inflation information before assimilation |
 | *preassim_postinf_\[mean,sd\].nc* | 1 timestep | the posterior inflation information before assimilation |
 | *postassim_member_\#\#\#\#.nc* | 1 timestep | the model states after assimilation but before posterior inflation |
 | *postassim_\[mean,sd\].nc* | 1 timestep | the mean and standard deviation (spread) of the ensemble after assimilation but before posterior inflation |
@@ -83,12 +85,12 @@ Be careful about what stages you choose to write.
 | *analysis_\[mean,sd\].nc* | 1 timestep | the mean and standard deviation (spread) of the ensemble after assimilation and after posterior inflation |
 | *analysis_priorinf_\[mean,sd\].nc* | 1 timestep | the (new) prior inflation information after assimilation |
 | *analysis_postinf_\[mean,sd\].nc* | 1 timestep | the (new) posterior inflation information after assimilation |
-| *output_\[mean,sd\].nc* | 1 timestep | the mean and spread of the posterior ensemble|
+| *output_\[mean,sd\].nc* | 1 timestep | the mean and spread of the posterior ensemble |
 | *output_priorinf_\[mean,sd\].nc* | 1 timestep | the (new) prior inflation information after assimilation |
 | *output_priorinf_\[mean,sd\].nc* | 1 timestep | the (new) posterior inflation information after assimilation |
 | *obs_seq.final* | | the model estimates of the observations (an integral part of the data assimilation process) |
 
-| **from both** | |
+| from both | |
 | ------------- | --- |
 | *dart_log.out* | the 'important' run-time output (each run of *filter* appends to this file; remove it or start at the bottom to see the latest values) |
 | *dart_log.nml* | the input parameters used for an experiment |
@@ -98,13 +100,15 @@ Be careful about what stages you choose to write.
 All the information for each stage is contained in a single file that
 *may* have multiple timesteps.
 
-| **from *perfect_model_obs* ** | | |
+| from *perfect_model_obs* | | |
 | ---------------------------- | --- | --- |
-| *obs_seq.out* | the synthetic observations at some predefined times and locations |
+| *obs_seq.out* | | the synthetic observations at some predefined times and locations |
 | *perfect_output.nc* | N timesteps | a netCDF file containing the model trajectory - the true state |
 
-| **from *filter* **   | | |
-There are some namelist settings that control what files are output. Depending on the settings for *input.nml &filter_nml:stages_to_write* and others ... | | |
+There are some namelist settings that control what files are output. Depending on the settings for
+      *input.nml &filter_nml:stages_to_write* and others ...
+
+| from *filter* | | |
 | -------------- | ---- | ---- |
 | *filter_input.nc* | single timestep | The starting condition of the experiment. All ensemble members, \[optionally\] the input mean and standard deviation (spread), \[optionally\] the prior inflation values, \[optionally\] the posterior inflation values |
 | *forecast.nc* | N timesteps | The ensemble forecast. All ensemble members, the mean and standard deviation (spread), the prior inflation values, the posterior inflation values |
@@ -114,7 +118,8 @@ There are some namelist settings that control what files are output. Depending o
 | *filter_output.nc* | single timestep | After assimilation and after any posterior inflation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the (new) prior inflation values, the (new) posterior inflation values |
 | *obs_seq.final* | | the model estimates of the observations (an integral part of the data assimilation process) |
 
-| **from both** | |
+
+| from both | |
 | ------------- | --- |
 | *dart_log.out* | the 'important' run-time output (each run of *filter* appends to this file; remove it or start at the bottom to see the latest values) |
 | *dart_log.nml* | the input parameters used for an experiment |
@@ -147,7 +152,6 @@ files, diff the *preassim_mean.nc* and *output_mean.nc*.
 
 <span id="debugging" class="anchor"></span> 
 
-\[[top](#)\]
 -----
 
 #### Debugging hints:
@@ -346,8 +350,6 @@ whether it's doing the right thing or not.
 
 <span id="DidItWork" class="anchor"></span> 
 
-\[[top](#)\]
-
 -----
 
 # Was the Assimilation Effective?
@@ -474,9 +476,10 @@ various parts of the assimilation process and/or restrict the volume of
 data being written has been on of our most-requested
 enhancements.
 
-|    |    |
+| unix command  | meaning |
+| --------------| ------- |
 | ncdump -v MemberMetadata preassim.nc     |  to check which copy you want to explore |
-| ncdiff postassim.nc preassim.nc Innov.nc |  ncdiff comes from NCO, not DART         |
+| ncdiff analysis.nc preassim.nc Innov.nc  |  ncdiff comes from NCO, not DART         |
 | ncview Innov.nc                          |  ncview is another 'third-party' tool.   |
 
 See the expanded section on 
@@ -484,8 +487,6 @@ See the expanded section on
 
 <span id="obs_diagnostics" class="anchor"></span>
 <span id="qc_table" class="anchor"></span>  
-
-\[[top](#)\]
 
 -----
 
@@ -506,14 +507,15 @@ See the expanded section on
 | 5 | Not used because of namelist control. |
 | 6 | Rejected because of incoming data QC higher than namelist control. |
 | 7 | Rejected because of outlier threshold test. |
-| 8 and above | reserved for future use. |
+| 8 | Vertical conversion failed. |
+| 9 and above | reserved for future use. |
 
-It is required to post-process the *obs_seq.final* file(s) with
+It is required to post-process the ```obs_seq.final``` file(s) with
 [obs_diag](https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html)
 to generate a netCDF file containing accumulated diagnostics for
 specified regions, etc. Since the experiment information (assimilation
 interval, assimilating model, etc.) are not recorded in the
-*obs_seq.final* file, the
+```obs_seq.final``` file, the
 [obs_diag_nml](https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html)
 namelist has a section that allows specification of the necessary
 quantities.  
@@ -544,6 +546,7 @@ diagnosed:
 | N_DARTqc_5   | the number of observations that had a DART QC value of 5                                             |
 | N_DARTqc_6   | the number of observations that had a DART QC value of 6                                             |
 | N_DARTqc_7   | the number of observations that had a DART QC value of 7                                             |
+| N_DARTqc_8   | the number of observations that had a DART QC value of 8                                             |
 
 <span id="mat_obs" class="anchor"></span>
 
@@ -560,7 +563,7 @@ plotting routines or use the following DART MATLAB® routines:
 fname      = 'POP11/obs_diag_output.nc';        % netcdf file produced by 'obs_diag'
 copystring = 'rmse';                            % 'copy' string == quantity of interest
 plotdat    = plot_evolution(fname,copystring);  % -- OR --
-plotdat    = plot_evolution(fname,copystrin     'RADIOSONDE_TEMPERATURE');
+plotdat    = plot_evolution(fname,copystring,'obsname','RADIOSONDE_TEMPERATURE');
 ~~~
 
 [![](../images/science_nuggets/plot_evolution_example_thumb.png)](../images/science_nuggets/plot_evolution_example.png)
@@ -753,8 +756,6 @@ bob = plot_wind_vectors(fname, platform, CopyString, QCString, ...
 
 <span id="obs_diag_output_explanation" class="anchor"></span>
 
-\[[top](#)\]
-
 -----
 
 #### Understanding what's in ```obs_diag_output.nc```
@@ -936,11 +937,11 @@ following suffixes:
 
 | suffix     | description                                 |
 | ---------- | ------------------------------------------- |
-| _guess     | prior, forecast                             |
-| _analy     | posterior, analysis                         |
-| _VPguess   | vertical profile only - prior, forecast     |
-| _VPanaly   | vertical profile only - posterior, analysis |
-| _RankHist  | rank histogram - prior                      |
+| \_guess    | prior, forecast                             |
+| \_analy    | posterior, analysis                         |
+| \_VPguess  | vertical profile only - prior, forecast     |
+| \_VPanaly  | vertical profile only - posterior, analysis |
+| \_RankHist | rank histogram - prior                      |
 
 
 What is really important to note is that each observation variable has a
@@ -974,8 +975,6 @@ ensemble size.
 
 <span id="ncview_histogram" class="anchor"></span>
 
-\[[top](#)\]
-
 -----
 
 #### Viewing the rank histogram information with 'ncview'
@@ -983,9 +982,7 @@ ensemble size.
 After you create ```obs_diag_output.nc``` with *obs_diag* you can view
 the rank histograms in the following way:
 
-
 > ncview obs_diag_output.nc
-
 
 Note that in this particular file, there are forty-seven 3D variables.
 Pick one. In this case, I selected *AIRCRAFT_U_WIND_COMPONENT_guess_RankHist*  
@@ -1019,15 +1016,13 @@ are along the X axis on the "tall,skinny" graphic. Viola'\!
 <span id="ss_diagnostics" class="anchor"></span>
 <span id="ss_diagnostics_matlab" class="anchor"></span>
 
-\[[top](#)\]
-
 -----
 
-### High-order model state-space diagnostics
+### State-Space diagnostics for High-order Models.
 
 Vary model-by-model. This section is under construction.
 
-#### state-space diagnostics - low-order models.
+### State-Space diagnostics for Low-order Models.
 
 #### MATLAB®
 
@@ -1103,8 +1098,6 @@ variables:
 
 <span id="alt_diagnostics" class="anchor"></span>
 <span id="ss_diagnostics_nonmatlab" class="anchor"></span>
-
-\[[top](#)\]
 
 -----
 
@@ -1261,7 +1254,5 @@ This is fundamentally the same as the previous panel except that I have
 now selected the '***u***' **u_mean** variable. Despite the fact the
 observations were only of '**t**', the assimilation has generated
 (rightly so) increments to the '**u**' state variable.
-
-\[[top](#)\]
 
 -----
