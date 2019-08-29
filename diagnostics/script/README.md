@@ -21,6 +21,7 @@ FERRET to visualize DART diagnostic outputs.
 |```dart_obs_seq_diag```     |     | ```frt.obs_diag_TeMPLaTe.jnl``` and ```frt.obs_epoch_TeMPLaTe.jnl```   | DART observation-space statistics from ```obs_epoch.nc``` and ```obs_diag.nc```|
 
 Similar scripts and plotting tools can be written to use the tools below.
+
 |tool code | called routine |
 |-------|---------------------|
 |tool=1 | basin_mean_evolution|
