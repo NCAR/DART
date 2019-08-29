@@ -25,7 +25,7 @@ module fesom_dart_mod
              read_ensemble_from_netcdf, & ! reads all ensemble members from fesom outputs to compute mean and variance
              calc_ensemble_mean,        & ! calculates ensemble mean
              calc_ensemble_variance,    & ! calculates ensemble variance
-             read_section_from_ino,     & ! calculates innovation if a nature run is provided
+             read_section_from_NR_diff, & ! calculates diff between nature run and prior mean if a NR is provided
              read_section_from_inc        ! reads a horizontal section from increment.nc
 
   integer(i4)                 :: i, j, k
@@ -33,8 +33,8 @@ module fesom_dart_mod
 
   contains
 
-! read innovation file generated after postproc
-    subroutine read_innovation
+! read NR_diff file generated after postproc
+    subroutine read_NR_diff
 
       #include "netcdf.inc"
 
@@ -50,7 +50,7 @@ module fesom_dart_mod
       allocate(aux3(myDim_nod3D))
 
       ! open files
-      filename=trim(ResultPath)//'FILTER/Innovation.nc'
+      filename=trim(ResultPath)//'FILTER/NR_prior_diff.nc'
       print*, filename
       status = nf_open(filename, nf_nowrite, ncid)
       if (status .ne. nf_noerr) call handle_err(status)
@@ -77,7 +77,7 @@ module fesom_dart_mod
 
       deallocate(aux3)
 
-    end subroutine read_innovation
+    end subroutine read_NR_diff
 
 
 ! read increment file generated after postproc
@@ -248,8 +248,8 @@ NODLOOP:  do i=1,myDim_nod2D
     end subroutine calc_ensemble_variance
 
 
-! extract a cross-section from innovation
-    subroutine read_section_from_ino
+! extract a cross-section from NR_diff
+    subroutine read_section_from_NR_diff
 
       character(20)     :: DAYNUM,LEVNUM
       character(8)      :: OUTDIR
@@ -259,7 +259,7 @@ NODLOOP:  do i=1,myDim_nod2D
 
      OUTDIR='.'
      day2ext=1
-       call read_innovation
+       call read_NR_diff
        write(DAYNUM,'(i6.6,a,i5.5)')dart_days,'_',dart_secs
        print*,DAYNUM
        OUTFILENAM=trim(OUTDIR)//'/INO_'//runid//'_'//runyear//'_'//trim(DAYNUM)//'.asc'
@@ -284,7 +284,7 @@ NODLOOP:  do i=1,myDim_nod2D
            tracer1(i), tracer2(i)
        end do
        close(101)
-    end subroutine read_section_from_ino
+    end subroutine read_section_from_NR_diff
 
 
 ! extract a cross-section from increment

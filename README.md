@@ -72,7 +72,7 @@ Please see the expanded description inside each source file.
 | script/     |                                 ||
 |             |compute_ensemble_mean            | computes ensemble mean and extracts a transect or level |
 |             |compute_increment                | computes increment using DART diagnostic output |
-|             |compute_innovation               | computes the difference between a nature run and the ensemble prior mean |
+|             |compute_NR_diff                  | computes the difference between a nature run and the ensemble prior mean |
 |             |dart_obs_seq_diag                | DART observation-space statistics from ```obs_epoch.nc``` and ```obs_diag.nc```|
 |             |dart.postproc.env                | DART environment variables |
 |             |fesom.postproc.env               | FESOM environment variables|
@@ -82,7 +82,7 @@ Please see the expanded description inside each source file.
 | gmt/        |                                 ||
 |             |plot_ensemble_mean.gmt           | plots ensemble mean created by ```compute_ensemble_mean```|
 |             |plot_increment.gmt               | plots increment created by ```compute_increment```|
-|             |plot_innovation.gmt              | plots difference created by ```compute_innovation```|
+|             |plot_NR_diff.gmt                 | plots difference created by ```compute_NR_diff```|
 |             |transect_daily_mean.gmt          | plots transects created by ```transect_daily_mean```|
 |             |zlevel_yearly_mean.gmt           | plots levels created by ```zlevel_daily_mean```|
 | ferret/     |                                 ||

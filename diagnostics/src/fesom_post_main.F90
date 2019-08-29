@@ -18,7 +18,7 @@
 !>  tool =  6   calc_thalweg_monthly_mean
 !>  tool =  7   read_ensemble_from_netcdf
 !>  tool =  8   synthetic_ferrybox_from_nr
-!>  tool =  9   read_section_from_ino
+!>  tool =  9   read_section_from_NR_diff
 !>  tool = 10   read_ctd_data
 !>  tool = 11   profile_from_netcdf
 !>  tool = 12   velocity_at_the_exit
@@ -65,7 +65,7 @@ program fesom_post_main
                                         compute_volume_transport
 
   use fesom_dart_mod,            only : read_ensemble_from_netcdf, &
-                                        read_section_from_ino, &
+                                        read_section_from_NR_diff, &
                                         read_section_from_inc
 
   use fesom_observation_mod,     only : synthetic_ferrybox_from_nr, &
@@ -110,7 +110,7 @@ program fesom_post_main
   else if ( tool.eq.8 ) then
      call synthetic_ferrybox_from_nr
   else if ( tool.eq.9 ) then
-     call read_section_from_ino
+     call read_section_from_NR_diff
   else if ( tool.eq.10 ) then
      call read_ctd_data
   else if ( tool.eq.11 ) then

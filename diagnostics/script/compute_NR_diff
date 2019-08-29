@@ -6,7 +6,7 @@
 #BSUB -q serial_30min      # queue
 
 # requires a nature run
-# diffs preassim_mean.nc and nature run to get the innovations
+# diffs preassim_mean.nc and nature run to get the difference
 # calls fesom_post_mesh.x to extract a section
 # parameters needs to be set in dart.postproc.env
 
@@ -32,13 +32,13 @@ for ((output=0; output<${#F_output[@]}; output++)); do
   nature_step=$( echo "scale=0; ${fesom_date}*24 + ${fesom_second} / 1" | bc )
 
   prior=${D_filter}/preassim_mean_${dart_day}_${dart_second}.nc
-  innovation=${D_filter}/Innovation_Diag_${dart_day}_${dart_second}.nc
+  NR_diff=${D_filter}/NR_diff_Diag_${dart_day}_${dart_second}.nc
   state_vars=$( echo ${kind[@]} | sed 's; ;,;g' )
 
   if [[ ${debug} > 0 ]]; then
     ls ${prior}
     ls ${F_nature}
-    echo ${innovation}
+    echo ${NR_diff}
     echo ${state_vars}
     echo ${nature_step} ${fesom_second} ${fesom_date} ${dart_second} ${dart_day} ${dart_time[@]}
   fi
@@ -47,12 +47,12 @@ for ((output=0; output<${#F_output[@]}; output++)); do
   ncrename -d T,time ${D_filter}/naturerun.nc
   ncks -O -v ${state_vars} -d copy,0 ${prior} ${D_filter}/prior_copy.nc
   ncwa -O -d copy,0 -a copy ${D_filter}/prior_copy.nc ${D_filter}/prior.nc
-  ncdiff -O -v ${state_vars} ${D_filter}/prior.nc ${D_filter}/naturerun.nc ${innovation}
+  ncdiff -O -v ${state_vars} ${D_filter}/prior.nc ${D_filter}/naturerun.nc ${NR_diff}
 
   ${REMOVE} ${D_filter}/prior.nc ${D_filter}/naturerun.nc
   ${REMOVE} ${D_filter}/prior_copy.nc #${D_filter}/naturerun_copy.nc
-  ${REMOVE} ${D_filter}/Innovation.nc
-  ${COPY} ${innovation} ${D_filter}/Innovation.nc
+  ${REMOVE} ${D_filter}/NR_diff.nc
+  ${COPY} ${NR_diff} ${D_filter}/NR_diff.nc
   #
   level=$( echo ${layer[@]} | sed 's/\ /,/g' )
   #
@@ -70,8 +70,8 @@ for ((output=0; output<${#F_output[@]}; output++)); do
   ${EXECUTE_FESOM_POST}
 
   if [[ ${debug} > 0 ]]; then echo ${D_output}; fi
-  template=${D_PROG}/gmt/plot_innovation.gmt
-  sbmtfile=${D_output}/gmt.innovation
+  template=${D_PROG}/gmt/plot_NR_diff.gmt
+  sbmtfile=${D_output}/gmt.NR_diff
   for LAYER in ${layer[@]} ; do
     for VARIABLE in ${gmt_kind[@]}; do
       sed -e "s;^FEOMDAY=.*$;FEOMDAY=${fesom_date};g" \
