@@ -13,21 +13,21 @@ spread before the application of prior inflation? After prior inflation
 but before the assimilation? After the assimilation but before posterior
 inflation? After posterior inflation? etc. There are several namelist
 settings that control what files are output. 
-[Section 16](../tutorials/section_16.pdf) of the DART
+[Section&nbsp;16](../tutorials/section_16.pdf) of the DART
 tutorial has a more detailed explanation.  
   
 From a computational perspective, there are two broad situations:
 
 1.  *filter* is called for a single assimilation and each ensemble
-    member is in its own file (both ```single_file_in = .false.``` and
-    ```single_file_out = .false.```.), and
+    member is in its own file (both ```single_file_in = .false.``` and
+    ```single_file_out = .false.```.), and
 2.  *filter* is called once for multiple assimilation cycles and writes
     a single output file containing information for all the ensemble
-    members (```single_file_out = .true.```) **for each stage\!** Depending
+    members (```single_file_out = .true.```) **for each stage\!** Depending
     on what you choose to write, this actually results in more than a
     single file.
 
-**```single_file_out = .false.```** :  *filter* is usually called for a single
+**```single_file_out = .false.```** :  *filter* is usually called for a single
 assimilation cycle by 'large' models or in cases where it is beneficial
 to run different number of MPI tasks for the model advances and the
 assimilation. In this case, there can be a substantial computational
@@ -36,10 +36,10 @@ separate file, and each file can be written simultaneously by different
 tasks. The tradeoff (at the moment) is that each of the files can only
 have a single timestep in them. Consequently, some files are redundant
 and should not be output.
-See the [section 16](../tutorials/section_16.pdf) of the DART
+See the [section&nbsp;16](../tutorials/section_16.pdf) of the DART
 tutorial for a more detailed explanation.  
   
-**```single_file_out = .true.```** :  When *filter* is used for a long
+**```single_file_out = .true.```** :  When *filter* is used for a long
 assimilation experiment (as in the case for the low-order models), it is
 possible to consolidate all the information for a particular stage into
 a single file that contains all the ensemble members, the mean, spread,
@@ -50,44 +50,44 @@ overhead.
   
 Perhaps somewhat paradoxically, *single_file_out* only refers to the
 output **for a particular stage**. So even if you set
-```single_file_out = .true.``` , you can get *several* output files -
-one per stage. However, if you set ```single_file_out = .false.``` ,
+```single_file_out = .true.``` , you can get *several* output files -
+one per stage. However, if you set ```single_file_out = .false.``` ,
 be prepared for a deluge of files.
 Be careful about what stages you choose to write.
 
 ### What output and diagnostic files are produced:
 
-#### When *single_file_out = .false.*
+#### When *single_file_out&nbsp;=&nbsp;.false.*
 
 | from *perfect_model_obs* |      |      |
 | ------------------------ | ---- | ---- |
 | *obs_seq.out* | | the synthetic observations at some predefined times and locations |
-| *perfect_output.nc* | 1 timestep | a netCDF file containing the model trajectory - the true state |
+| *perfect_output.nc* | 1&nbsp;timestep | a netCDF file containing the model trajectory - the true state |
 
 There are some namelist settings that control what files are output.
         Depending on the settings for *input.nml&filter_nml:stages_to_write* and others ...
         
 | from *filter* |      |      |
 | ------------- | ---- | ---- |
-| *forecast_member_\#\#\#\#.nc* | 1 timestep | the ensemble forecast, each ensemble member is a separate file |
-| *forecast_\[mean,sd\].nc*     | 1 timestep | the mean and standard deviation (spread) of the ensemble forecast |
-| *forecast_priorinf_\[mean,sd\].nc* | 1 timestep | the prior inflation information before assimilation |
-| *forecast_postinf_\[mean,sd\].nc* | 1 timestep | the posterior inflation information before assimilation |
-| *preassim_member_\#\#\#\#.nc* | 1 timestep | the model states after any prior inflation but before assimilation |
-| *preassim_\[mean,sd\].nc* | 1 timestep | the mean and standard deviation (spread) of the ensemble after any prior inflation but before assimilation |
-| *preassim_priorinf_\[mean,sd\].nc* | 1 timestep | the prior inflation information before assimilation |
-| *preassim_postinf_\[mean,sd\].nc* | 1 timestep | the posterior inflation information before assimilation |
-| *postassim_member_\#\#\#\#.nc* | 1 timestep | the model states after assimilation but before posterior inflation |
-| *postassim_\[mean,sd\].nc* | 1 timestep | the mean and standard deviation (spread) of the ensemble after assimilation but before posterior inflation |
-| *postassim_priorinf_\[mean,sd\].nc* | 1 timestep | the (new) prior inflation information after assimilation |
-| *postassim_postinf_\[mean,sd\].nc* | 1 timestep | the (new) posterior inflation information after assimilation |
-| *analysis_member_\#\#\#\#.nc* | 1 timestep | the model states after assimilation and after any posterior inflation |
-| *analysis_\[mean,sd\].nc* | 1 timestep | the mean and standard deviation (spread) of the ensemble after assimilation and after posterior inflation |
-| *analysis_priorinf_\[mean,sd\].nc* | 1 timestep | the (new) prior inflation information after assimilation |
-| *analysis_postinf_\[mean,sd\].nc* | 1 timestep | the (new) posterior inflation information after assimilation |
-| *output_\[mean,sd\].nc* | 1 timestep | the mean and spread of the posterior ensemble |
-| *output_priorinf_\[mean,sd\].nc* | 1 timestep | the (new) prior inflation information after assimilation |
-| *output_priorinf_\[mean,sd\].nc* | 1 timestep | the (new) posterior inflation information after assimilation |
+| *forecast_member_\#\#\#\#.nc* | 1&nbsp;timestep | the ensemble forecast, each ensemble member is a separate file |
+| *forecast_\[mean,sd\].nc*     | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble forecast |
+| *forecast_priorinf_\[mean,sd\].nc* | 1&nbsp;timestep | the prior inflation information before assimilation |
+| *forecast_postinf_\[mean,sd\].nc* | 1&nbsp;timestep | the posterior inflation information before assimilation |
+| *preassim_member_\#\#\#\#.nc* | 1&nbsp;timestep | the model states after any prior inflation but before assimilation |
+| *preassim_\[mean,sd\].nc* | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after any prior inflation but before assimilation |
+| *preassim_priorinf_\[mean,sd\].nc* | 1&nbsp;timestep | the prior inflation information before assimilation |
+| *preassim_postinf_\[mean,sd\].nc* | 1&nbsp;timestep | the posterior inflation information before assimilation |
+| *postassim_member_\#\#\#\#.nc* | 1&nbsp;timestep | the model states after assimilation but before posterior inflation |
+| *postassim_\[mean,sd\].nc* | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after assimilation but before posterior inflation |
+| *postassim_priorinf_\[mean,sd\].nc* | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
+| *postassim_postinf_\[mean,sd\].nc* | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
+| *analysis_member_\#\#\#\#.nc* | 1&nbsp;timestep | the model states after assimilation and after any posterior inflation |
+| *analysis_\[mean,sd\].nc* | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after assimilation and after posterior inflation |
+| *analysis_priorinf_\[mean,sd\].nc* | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
+| *analysis_postinf_\[mean,sd\].nc* | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
+| *output_\[mean,sd\].nc* | 1&nbsp;timestep | the mean and spread of the posterior ensemble |
+| *output_priorinf_\[mean,sd\].nc* | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
+| *output_priorinf_\[mean,sd\].nc* | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
 | *obs_seq.final* | | the model estimates of the observations (an integral part of the data assimilation process) |
 
 | from both | |
@@ -103,19 +103,19 @@ All the information for each stage is contained in a single file that
 | from *perfect_model_obs* | | |
 | ---------------------------- | --- | --- |
 | *obs_seq.out* | | the synthetic observations at some predefined times and locations |
-| *perfect_output.nc* | N timesteps | a netCDF file containing the model trajectory - the true state |
+| *perfect_output.nc* | N&nbsp;timesteps | a netCDF file containing the model trajectory - the true state |
 
 There are some namelist settings that control what files are output. Depending on the settings for
       *input.nml &filter_nml:stages_to_write* and others ...
 
 | from *filter* | | |
 | -------------- | ---- | ---- |
-| *filter_input.nc* | single timestep | The starting condition of the experiment. All ensemble members, \[optionally\] the input mean and standard deviation (spread), \[optionally\] the prior inflation values, \[optionally\] the posterior inflation values |
-| *forecast.nc* | N timesteps | The ensemble forecast. All ensemble members, the mean and standard deviation (spread), the prior inflation values, the posterior inflation values |
-| *preassim.nc* | N timesteps | After any prior inflation but before assimilation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the prior inflation values, the posterior inflation values |
-| *postassim.nc* | N timesteps | After assimilation but before posterior inflation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the (new) prior inflation values, the (new) posterior inflation values |
-| *analysis.nc* | N timesteps | After assimilation and after any posterior inflation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the (new) prior inflation values, the (new) posterior inflation values |
-| *filter_output.nc* | single timestep | After assimilation and after any posterior inflation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the (new) prior inflation values, the (new) posterior inflation values |
+| *filter_input.nc* | 1&nbsp;timestep | The starting condition of the experiment. All ensemble members, \[optionally\] the input mean and standard deviation (spread), \[optionally\] the prior inflation values, \[optionally\] the posterior inflation values |
+| *forecast.nc* | N&nbsp;timesteps | The ensemble forecast. All ensemble members, the mean and standard deviation (spread), the prior inflation values, the posterior inflation values |
+| *preassim.nc* | N&nbsp;timesteps | After any prior inflation but before assimilation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the prior inflation values, the posterior inflation values |
+| *postassim.nc* | N&nbsp;timesteps | After assimilation but before posterior inflation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the (new) prior inflation values, the (new) posterior inflation values |
+| *analysis.nc* | N&nbsp;timesteps | After assimilation and after any posterior inflation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the (new) prior inflation values, the (new) posterior inflation values |
+| *filter_output.nc* | 1&nbsp;timestep | After assimilation and after any posterior inflation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the (new) prior inflation values, the (new) posterior inflation values |
 | *obs_seq.final* | | the model estimates of the observations (an integral part of the data assimilation process) |
 
 
@@ -127,7 +127,7 @@ There are some namelist settings that control what files are output. Depending o
 ### First questions to ask
 
 **NOTE: the remainder of this document is written from the perspective
-of an experiment run with *single_file_out = .true.*. The permutations
+of an experiment run with *single_file_out&nbsp;=&nbsp;.true.*. The permutations
 of the file names is just too great to write exhaustive documentation.**
 
 After *filter* executes without error and produces an *obs_seq.final*
@@ -143,7 +143,7 @@ assimilation is to use the 'ncdiff' tool to difference the *preassim.nc*
 and *analysis.nc* files:
 
 > ncdiff analysis.nc preassim.nc Innov.nc  
->ncview Innov.nc
+> ncview Innov.nc
 
 If your model can run under *single_file_\[in,out\]* Look at the
 ensemble mean variables. If all values are 0, then the assimilation
@@ -196,43 +196,40 @@ observation sequence file will be written in ascii:
    /
 ~~~
 
-and rerun *filter* to regenerate an obs_seq.final file in ascii. [These
-diagrams](DART2_Observations.html#obs_seq_overview) help to understand
-an *obs_seq.final* file. 2) If you are using many observations, run the
+and rerun *filter* to regenerate an obs_seq.final file in ascii.
+[These&nbsp;diagrams](DART2_Observations.html#obs_seq_overview) help to understand
+an ```obs_seq.final``` file. 2) If you are using many observations, run the
 [obs_diag.f90](https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html)
-appropriate for your model. There are some [diagnostic
-scripts](#mat_obs) to help summarize and explore what is going on.
+appropriate for your model. There are some
+[diagnostic&nbsp;scripts](#mat_obs) to help summarize and explore what is going on.
 
 If all the prior and posterior mean values are -888888.0 (the DART
 "missing data" value), those observations were not assimilated. *Note:
 some observations have precomputed values and the posterior values for
 these will always be -888888.0, no matter if the observation was
-assimilated or not.* If it is not already set, change *&filter_nml
-num_output_obs_members* to be the same as the ensemble size. This
-will give you all the forward operator values for all the ensemble
+assimilated or not.* If it is not already set, change
+*&filter_nml::num_output_obs_members* to be the same as the ensemble size.
+This will give you all the forward operator values for all the ensemble
 members. You can determine if all ensemble members are failing in the
 same way, or if only a few are problematic.
 
 For the failing observations, the 'DART QC' may indicate the reason.
-([How to locate the different values in an obs_seq.final
-file.](DART2_Observations.html#obs_seq_overview) The 'DART QC' field is
-usually the second of the 2 "quality control" copies.) A list of all the
-DART QC values can be found in [this table](#qc_table).
+([How to locate the different values in an ```obs_seq.final``` file.](DART2_Observations.html#obs_seq_overview) The 'DART QC' field is usually the second of the 2 "quality control" copies.)
+A list of all the DART QC values can be found in [this&nbsp;table](#qc_table).
 
   - If the DART QC values are 4, the forward operators have failed. Look
     at the *model_interpolate()* routine in your model_mod.f90 file,
     or the forward operator code in
     *observations/forward_operators/obs_def_xxx_mod.f90* for your
     observation type. A successful forward operator must return a valid
-    obs_val and an *istatus = 0*. If the forward operator code returns
+    obs_val and an *istatus&nbsp;=&nbsp;0*. If the forward operator code returns
     different istatus values for different error types, you can set
-    *&filter_nml :: output_forward_op_errors = *.true.** and rerun
+    *&filter_nml::output_forward_op_errors&nbsp;=&nbsp;*.true.** and rerun
     *filter* to see exactly what error istatus codes are being set. See
-    [the filter
-    webpage](https://ncar.github.io/DART/api/v2.1.10/program/filter.html)
+    [the filter webpage](https://ncar.github.io/DART/api/v2.1.10/program/filter.html)
     for more information on how to use the 'output_forward_op_errors'
     option. Negative istatus values are reserved for the system,
-    *istatus = 0* is success, and any positive value indicates a failed
+    *istatus&nbsp;=&nbsp;0* is success, and any positive value indicates a failed
     forward operator. The code is free to use different positive values
     to signal different types of errors.  
       
@@ -246,8 +243,8 @@ DART QC values can be found in [this table](#qc_table).
     observation and it was skipped for this reason.  
       
   - If the DART QC values are 7, the observation value is too far away
-    from the ensemble mean. Set the &filter_nml :: outlier_threshold
-    value to -1 to ignore this for now and rerun. In general, this is
+    from the ensemble mean. Set *&filter_nml::outlier_threshold&nbsp;=&nbsp;1*
+    to ignore this for now and rerun. In general, this is
     not the optimal strategy as the number of observations inconsistent
     with the ensemble is a very powerful indicator of the success or
     failure of the assimilation.
@@ -263,23 +260,24 @@ state include:
     Your initial ensemble members must have different values for each
     state item. If all members have identical values, the observations
     cannot make a change. To diagnose this condition, look at the prior
-    ensemble spread. This is either in *preassim.nc* or
-    *preassim_sd.nc*, depending on your model. If all the values are 0,
+    ensemble spread. This is either in ```preassim.nc``` or
+    ```preassim_sd.nc```, depending on your model. If all the values are 0,
     this is your problem. One way to generate an ensemble with some
-    spread is to set *&filter_nml ::
-    perturb_from_single_instance = .false.,* (which will still
+    spread is to set 
+    *&filter_nml::perturb_from_single_instance&nbsp;=&nbsp;.false.,*
+    (which will still
     require a single filter initial condition file) but then the
     *filter* code will add random gaussian perturbations to each state
     vector item to generate an initial ensemble with spread. The
     magnitude of the gaussian noise added is controlled by the
-    *&ensemble_manager :: perturbation_amplitude*. It is also
+    *&filter_nml::perturbation_amplitude*. It is also
     possible to write your own perturbation routine in your
-    model_mod.f90 code.
+    ```model_mod.f90``` code.
   - **Cutoff value too small**  
     If the localization radius is too small, the observation may not be
     'close enough' to the model grid to be able to impact the model.
-    Check the localization radius (*&assim_tools_nml cutoff*). Set it
-    to a very large number (e.g. 100000) and rerun. If there is now an
+    Check the localization radius (*&assim_tools_nml::cutoff*). Set it
+    to a very large number (e.g.&nbsp;100000) and rerun. If there is now an
     impact, the cutoff was restricting the items in the state vector so
     your obs had no impact before. Cutoff values are dependent on the
     location type being used. It is specified in radians for the
