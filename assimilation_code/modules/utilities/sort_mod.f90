@@ -42,10 +42,9 @@ public :: sort, index_sort, insertion_sort, index_insertion_sort
 !public :: simple_sort, simple_index_sort  
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/rma_trunk/assimilation_code/modules/utilities/sort_mod.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 13074 $"
-character(len=128), parameter :: revdate  = "$Date: 2019-03-26 09:18:06 -0600 (Tue, 26 Mar 2019) $"
+character(len=256), parameter :: source   = "$URL:$"
+character(len=32 ), parameter :: revision = "$Revision:$"
+character(len=128), parameter :: revdate  = "$Date:$"
 
 logical, save :: module_initialized = .false.
 

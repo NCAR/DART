@@ -2,7 +2,7 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id: utilities_mod.f90 13137 2019-04-30 15:48:00Z nancy@ucar.edu $
+! $Id:$
 
 module utilities_mod
 

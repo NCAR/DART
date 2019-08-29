@@ -42,7 +42,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-character (len = 128) :: netcdf_to_gitm_blocks_input_file = 'filter_restart.nc'
+character (len = 256) :: netcdf_to_gitm_blocks_input_file = 'filter_restart.nc'
 
 namelist /netcdf_to_gitm_blocks_nml/ netcdf_to_gitm_blocks_input_file
 
