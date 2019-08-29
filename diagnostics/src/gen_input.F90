@@ -1,3 +1,12 @@
+
+! FESOM 2 (Finite-volumE Sea ice-Ocean Model)
+! multi-resolution ocean general circulation model
+! FESOM/fesom2 is licensed under the GNU General Public License v2.0
+! Copyright (C) 2018  FESOM team
+!
+! This source file was taken from  the FESOM V1.4 modules
+
+
 subroutine read_namelist
   ! Routine reads namelist files to overwrite default parameters.
 

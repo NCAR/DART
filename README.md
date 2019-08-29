@@ -9,7 +9,7 @@ There is a recent version of the model called the Finite-volumE Sea ice–Ocean 
 Danilov et al. 2017). A version for coastal applications FESOM-C v.2 (Androsov et al., 2019) is also
 presented recently.
 
-The FESOM source code can be downloaded from https://github.com/FESOM/fesom2
+The FESOM V1.4 source code can be downloaded from https://fesom.de/models/fesom14
 
 ## **FESOM/DART interface**
 ### model_mod.f90
