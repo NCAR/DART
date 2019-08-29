@@ -1,4 +1,4 @@
-Further description of the scripts:
+### Further description of the scripts
 
 Scripts call a fortran tool to post-process the FESOM and DART outputs. They include a **tool** variable
 which is inserted into the namelist.config which is read by the fortran program. Please see
