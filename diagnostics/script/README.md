@@ -21,7 +21,7 @@ FERRET to visualize DART diagnostic outputs.
 |```dart_obs_seq_diag```     |     | ```frt.obs_diag_TeMPLaTe.jnl``` and ```frt.obs_epoch_TeMPLaTe.jnl```   | DART observation-space statistics from ```obs_epoch.nc``` and ```obs_diag.nc```|
 
 Similar scripts and plotting tools can be written to use the tools below.
-
+|tool code | called routine |
 |-------|---------------------|
 |tool=1 | basin_mean_evolution|
 |tool=2 | read_thalweg_from_nc|
@@ -49,4 +49,4 @@ Similar scripts and plotting tools can be written to use the tools below.
 |tool=24| compute_wind_work|
 |tool=25| read_ship_track|
 |tool=26| bosphorus_for_blk_mfs|
-|tool=27| compute_volume_transport||
+|tool=27| compute_volume_transport|
