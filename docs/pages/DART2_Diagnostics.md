@@ -12,22 +12,22 @@ what information is written and when. Do you want the input ensemble
 spread before the application of prior inflation? After prior inflation
 but before the assimilation? After the assimilation but before posterior
 inflation? After posterior inflation? etc. There are several namelist
-settings that control what files are output. [Section
-16](../tutorials/section_16.pdf) of the DART
+settings that control what files are output. 
+[Section 16](../tutorials/section_16.pdf) of the DART
 tutorial has a more detailed explanation.  
   
 From a computational perspective, there are two broad situations:
 
 1.  *filter* is called for a single assimilation and each ensemble
-    member is in its own file (both *single_file_in = .false.* and
-    *single_file_out = .false.*.), and
+    member is in its own file (both ```single_file_in = .false.``` and
+    ```single_file_out = .false.```.), and
 2.  *filter* is called once for multiple assimilation cycles and writes
     a single output file containing information for all the ensemble
-    members (*single_file_out = .true.*) *for each stage\!* Depending
+    members (```single_file_out = .true.```) **for each stage\!** Depending
     on what you choose to write, this actually results in more than a
     single file.
 
-*single_file_out = .false.* :  *filter* is usually called for a single
+**```single_file_out = .false.```** :  *filter* is usually called for a single
 assimilation cycle by 'large' models or in cases where it is beneficial
 to run different number of MPI tasks for the model advances and the
 assimilation. In this case, there can be a substantial computational
@@ -35,11 +35,11 @@ efficiency to have each ensemble member write its information to a
 separate file, and each file can be written simultaneously by different
 tasks. The tradeoff (at the moment) is that each of the files can only
 have a single timestep in them. Consequently, some files are redundant
-and should not be output. See the [section
-16](../tutorials/section_16.pdf) of the DART
+and should not be output.
+See the [section 16](../tutorials/section_16.pdf) of the DART
 tutorial for a more detailed explanation.  
   
-*single_file_out = .true.* :  When *filter* is used for a long
+**```single_file_out = .true.```** :  When *filter* is used for a long
 assimilation experiment (as in the case for the low-order models), it is
 possible to consolidate all the information for a particular stage into
 a single file that contains all the ensemble members, the mean, spread,
@@ -49,23 +49,23 @@ Since a single task must write each file, there is some computational
 overhead.  
   
 Perhaps somewhat paradoxically, *single_file_out* only refers to the
-output *for a particular stage*. So even if you set
-*single_file_out = .true.* , you can get *several* output files -
-one per stage. However, if you set *single_file_out = .false.* , be
-prepared for a deluge of files. Be careful about what stages you choose
-to write.
+output **for a particular stage**. So even if you set
+```single_file_out = .true.``` , you can get *several* output files -
+one per stage. However, if you set ```single_file_out = .false.``` ,
+be prepared for a deluge of files.
+Be careful about what stages you choose to write.
 
-#### What output and diagnostic files are produced:
+### What output and diagnostic files are produced:
 
 #### When *single_file_out = .false.*
 
-| **from *perfect_model_obs*** | | |
+| **from *perfect_model_obs* ** | | |
 | ---------------------------- | --- | --- |
 | *obs_seq.out* | | the synthetic observations at some predefined times and locations |
 | *perfect_output.nc* | 1 timestep | a netCDF file containing the model trajectory - the true state |
 
-| **from *filter***  
-There are some namelist settings that control what files are output. Depending on the settings for *input.nml&filter_nml:stages_to_write* and others ... | | |
+| **from *filter**  | | |
+| There are some namelist settings that control what files are output. Depending on the settings for *input.nml&filter_nml:stages_to_write* and others ... | | |
 | --- | --- | --- |
 | *forecast_member_\#\#\#\#.nc* | 1 timestep | the ensemble forecast, each ensemble member is a separate file |
 | *forecast_\[mean,sd\].nc* | 1 timestep | the mean and standard deviation (spread) of the ensemble forecast |
@@ -98,12 +98,12 @@ There are some namelist settings that control what files are output. Depending o
 All the information for each stage is contained in a single file that
 *may* have multiple timesteps.
 
-| **from *perfect_model_obs*** | | |
+| **from *perfect_model_obs* ** | | |
 | ---------------------------- | --- | --- |
 | *obs_seq.out* | the synthetic observations at some predefined times and locations |
 | *perfect_output.nc* | N timesteps | a netCDF file containing the model trajectory - the true state |
 
-| **from *filter***  
+| **from *filter* **   | | |
 There are some namelist settings that control what files are output. Depending on the settings for *input.nml &filter_nml:stages_to_write* and others ... | | |
 | -------------- | ---- | ---- |
 | *filter_input.nc* | single timestep | The starting condition of the experiment. All ensemble members, \[optionally\] the input mean and standard deviation (spread), \[optionally\] the prior inflation values, \[optionally\] the posterior inflation values |
@@ -137,10 +137,8 @@ One way to check if the output model state data was changed by the
 assimilation is to use the 'ncdiff' tool to difference the *preassim.nc*
 and *analysis.nc* files:
 
-~~~
-ncdiff analysis.nc preassim.nc Innov.nc  
-ncview Innov.nc
-~~~
+> ncdiff analysis.nc preassim.nc Innov.nc  
+>ncview Innov.nc
 
 If your model can run under *single_file_\[in,out\]* Look at the
 ensemble mean variables. If all values are 0, then the assimilation
@@ -150,7 +148,6 @@ files, diff the *preassim_mean.nc* and *output_mean.nc*.
 <span id="debugging" class="anchor"></span> 
 
 \[[top](#)\]
-
 -----
 
 #### Debugging hints:
@@ -159,15 +156,14 @@ You may need to rerun *filter* multiple times to diagnose this. The
 fastest way to get to the answer is to make *filter* very fast to run.
 You can do this by:
 
-1.  make an obs_seq file with only 1 or a just a few observations in
+1.  make an observation sequence file with only 1 or a just a few observations in
     it, and
 2.  configure a run so *filter* does a single assimilation and exits,
-    without having to advance the ensemble of models or do other
-work.
+    without having to advance the ensemble of models or do other work.
 
 ##### To make an obs file with a single observation, use one of these methods:
 
-1.  run *create_obs_sequence* to make a new, short, obs_seq file
+1.  run *create_obs_sequence* to make a new, short, observation sequence file
 2.  Use the *obs_sequence_tool* to cut your existing obs_seq.out file
     down to just a few obs by selecting only a subset of the types and
     setting a very short time window (just a second or two where you
@@ -177,10 +173,10 @@ work.
 
 1.  Edit the *input.nml* and in the *&filter_nml* namelist set the
     *init_time_days* and *init_time_seconds* to match the
-    observation time in the truncated obs_seq file. This overrides any
+    observation time in the truncated observation sequence file. This overrides any
     times in the input files and ensures that *filter* will only
     assimilate and not try to advance the model.
-2.  Make sure the truncated obs_seq file contains only 1 obs, a few obs
+2.  Make sure the truncated observation sequence file contains only 1 obs, a few obs
     at the same time, or obs close enough together in time to fit into a
     single assimilation window.
 
@@ -327,10 +323,8 @@ state include:
 If you compute the difference between the prior and posterior diagnostic
 files by this process:
 
-~~~
-ncdiff analysis.nc preassim.nc Innov.nc  
-ncview Innov.nc
-~~~
+> ncdiff analysis.nc preassim.nc Innov.nc  
+> ncview Innov.nc
 
 and you see a difference, is it correct?
 
@@ -368,8 +362,8 @@ distribution. A *working* implementation.
 [The DART Tutorial](dart_tutorial.html) has the
 best explanation of what to look for, what to change to improve the next
 experiment, etc. DART has an extensive set of diagnostics implemented in
-MATLAB®. To use them, make sure you have read the [Configuring
-MATLAB®](DART2_Starting.html#matlab) section.
+MATLAB®. To use them, make sure you have read the 
+[Configuring MATLAB®](DART2_Starting.html#matlab) section.
 
 ### The Observations are the Key.
 
@@ -466,8 +460,8 @@ constant and is not too small, and presumably the RMSE is stable if not
 decreasing. Now it is time to assess the affect the assimilation has on
 your model - the whole point of data assimilation.  
   
-DART produces (sometimes many) netCDF files: *preassim.nc* and
-*analysis.nc*. Your files many have slightly different names depending
+DART produces (sometimes many) netCDF files: ```preassim.nc``` and
+```analysis.nc```. Your files many have slightly different names depending
 on the namelist settings you have chosen. You should get familiar with
 what is available in the files you have created. Please read the
 documentation for
@@ -480,14 +474,13 @@ various parts of the assimilation process and/or restrict the volume of
 data being written has been on of our most-requested
 enhancements.
 
-~~~
-ncdump -v MemberMetadata preassim.nc        to check which copy you want to explore
-ncdiff postassim.nc preassim.nc Innov.nc    ncdiff comes from NCO, not DART        
-ncview Innov.nc                             ncview is another 'third-party' tool.  
-~~~
+|    |    |
+| ncdump -v MemberMetadata preassim.nc     |  to check which copy you want to explore |
+| ncdiff postassim.nc preassim.nc Innov.nc |  ncdiff comes from NCO, not DART         |
+| ncview Innov.nc                          |  ncview is another 'third-party' tool.   |
 
-See the expanded section on [DART state-space
-diagnostics](#ss_diagnostics) for more.
+See the expanded section on 
+[DART state-space diagnostics](#ss_diagnostics) for more.
 
 <span id="obs_diagnostics" class="anchor"></span>
 <span id="qc_table" class="anchor"></span>  
@@ -496,7 +489,7 @@ diagnostics](#ss_diagnostics) for more.
 
 -----
 
-# DART observation-space diagnostics.
+### Observation-Space Diagnostics.
 
 **The DART QC table is an important piece of information.**
 
@@ -538,39 +531,30 @@ diagnosed:
 | NbadLV       | the number of observations that were above or below the highest or lowest model level, respectively; |
 | rmse         | the rmse of the ensemble;                                                                            |
 | bias         | the bias of the ensemble (forecast-observation);                                                     |
-| spread       | the spread of the ensemble; and the                                                                  |
-| totalspread  | pooled spread of the observation (knowing its observational error) and the ensemble.                 |
+| spread       | the spread of the ensemble;                                                                          |
+| totalspread  | the pooled spread of the observation (knowing its observational error) and the ensemble.             |
 | NbadDARTQC   | the number of observations that had a DART QC value (\> 1 for a prior, \> 3 for a posterior)         |
 | observation  | the mean of the observation values                                                                   |
-| ens_mean    | the ensemble mean of the model estimates of the observation values                                   |
-| N_DARTqc_0 | the number of observations that had a DART QC value of 0                                             |
-| N_DARTqc_1 | the number of observations that had a DART QC value of 1                                             |
-| N_DARTqc_2 | the number of observations that had a DART QC value of 2                                             |
-| N_DARTqc_3 | the number of observations that had a DART QC value of 3                                             |
-| N_DARTqc_4 | the number of observations that had a DART QC value of 4                                             |
-| N_DARTqc_5 | the number of observations that had a DART QC value of 5                                             |
-| N_DARTqc_6 | the number of observations that had a DART QC value of 6                                             |
-| N_DARTqc_7 | the number of observations that had a DART QC value of 7                                             |
+| ens_mean     | the ensemble mean of the model estimates of the observation values                                   |
+| N_DARTqc_0   | the number of observations that had a DART QC value of 0                                             |
+| N_DARTqc_1   | the number of observations that had a DART QC value of 1                                             |
+| N_DARTqc_2   | the number of observations that had a DART QC value of 2                                             |
+| N_DARTqc_3   | the number of observations that had a DART QC value of 3                                             |
+| N_DARTqc_4   | the number of observations that had a DART QC value of 4                                             |
+| N_DARTqc_5   | the number of observations that had a DART QC value of 5                                             |
+| N_DARTqc_6   | the number of observations that had a DART QC value of 6                                             |
+| N_DARTqc_7   | the number of observations that had a DART QC value of 7                                             |
 
 <span id="mat_obs" class="anchor"></span>
 
-\[[top](#)\]
-
------
-
 The observation-space functions are in the *DART/diagnostics/matlab*
-directory. Once you have processed the *obs_seq.final* files into a
-single *obs_diag_output.nc*, you can use that as input to your own
+directory. Once you have processed the ```obs_seq.final``` files into a
+single ```obs_diag_output.nc```, you can use that as input to your own
 plotting routines or use the following DART MATLAB® routines:
 
-[plot_evolution.m](scripts/plot_evolution.m)
-
-plots the temporal evolution of any of the quantities above for each
-variable for specified levels. The number of observations possible and
-used are plotted on the same
-axis.
-
-[![](../images/plot_evolution_example_thumb.png)](../images/plot_evolution_example.png)
+[plot_evolution.m](../../diagnostics/matlab/plot_evolution.m) plots the temporal evolution 
+    of any of the quantities above for each variable for specified levels.
+    The number of observations possible and used are plotted on the same axis.
 
 ~~~
 fname      = 'POP11/obs_diag_output.nc';        % netcdf file produced by 'obs_diag'
@@ -578,50 +562,36 @@ copystring = 'rmse';                            % 'copy' string == quantity of i
 plotdat    = plot_evolution(fname,copystring);  % -- OR --
 plotdat    = plot_evolution(fname,copystrin     'RADIOSONDE_TEMPERATURE');
 ~~~
- 
 
-[plot_profile.m](scripts/plot_profile.m)
+[![](../images/science_nuggets/plot_evolution_example_thumb.png)](../images/science_nuggets/plot_evolution_example.png)
 
-plots the spatial and temporal average of any specified quantity as a
-function of height. The number of observations possible and used are
-plotted on the same
-axis.
 
-[![](../images/plot_profile_example_thumb.png)](../images/plot_profile_example.png)
+[plot_profile.m](../../diagnostics/matlab/plot_profile.m) plots the spatial and temporal 
+    average of any specified quantity as a function of height. The number 
+    of observations possible and used are plotted on the same axis.
+
+[![](../images/science_nuggets/plot_profile_example_thumb.png)](../images/science_nuggets/plot_profile_example.png)
 
 ~~~
 fname      = 'POP11/obs_diag_output.nc';        % netcdf file produced by 'obs_diag'
 copystring = 'rmse';                            % 'copy' string == quantity of interest
 plotdat    = plot_profile(fname,copystring);
 ~~~
- 
 
-[plot_rmse_xxx_evolution.m](scripts/plot_rmse_xxx_evolution.m)
+[plot_rmse_xxx_evolution.m](../../diagnostics/matlab/plot_rmse_xxx_evolution.m) same as *plot_evolution.m* 
+    but will overlay **rmse** on the same axis.
 
-same as *plot_evolution.m* but will overlay **rmse** on the same
-axis.
+[plot_rmse_xxx_profile.m](../../diagnostics/matlab/plot_rmse_xxx_profile.m) same as *plot_profile.m* 
+    with an overlay of **rmse**.
 
-[plot_rmse_xxx_profile.m](scripts/plot_rmse_xxx_profile.m)
+[plot_bias_xxx_profile.m](../../diagnostics/matlab/plot_bias_xxx_profile.m) same as *plot_profile.m* 
+    with an overlay of **bias**.
 
-same as *plot_profile.m* with an overlay of
-**rmse**.
-
-[plot_bias_xxx_profile.m](scripts/plot_bias_xxx_profile.m)
-
-same as *plot_profile.m* with an overlay of
-**bias**.
-
- 
-
-[two_experiments_evolution.m](scripts/two_experiments_evolution.m)   
-
-same as *plot_evolution.m* but will overlay multiple (more than two,
-actually) experiments (i.e. multiple *obs_diag_output.nc* files) on
-the same axis. A separate figure is created for each region in the
-*obs_diag_output.nc*
-file.
-
-[![](../images/two_experiments_evolution_example_thumb.png)](../images/two_experiments_evolution_example.png)
+[two_experiments_evolution.m](../../diagnostics/matlab/two_experiments_evolution.m) same as 
+    *plot_evolution.m* but will overlay multiple (more than two, actually) 
+    experiments (i.e. multiple ```obs_diag_output.nc``` files) on the same 
+    axis. A separate figure is created for each region in the 
+    ```obs_diag_output.nc``` file.
 
 ~~~
 files    = {'POP12/obs_diag_output.nc','POP11/obs_diag_output.nc'};
@@ -632,17 +602,15 @@ prpo     = 'prior';
 levelind = 5;
 two_experiments_evolution(files, titles,{'ACARS_TEMPERATURE'}, qtty, prpo, levelind)
 ~~~
- 
 
-[two_experiments_profile.m](scripts/two_experiments_profile.m)
+[![](../images/science_nuggets/two_experiments_evolution_example_thumb.png)](../images/science_nuggets/two_experiments_evolution_example.png)
 
-same as *plot_profile.m* but will overlay multiple (more than two,
-actually) experiments (i.e. multiple *obs_diag_output.nc* files) on
-the same axis. If the *obs_diag_output.nc* file was created with
-multiple regions, there are multiple axes on a single
-figure.
 
-[![](../images/two_experiments_profile_example_thumb.png)](../images/two_experiments_profile_example.png)
+[two_experiments_profile.m](../../diagnostics/matlab/two_experiments_profile.m) same as 
+    *plot_profile.m* but will overlay multiple (more than two, actually)
+    experiments (i.e. multiple *obs_diag_output.nc* files) on the same 
+    axis. If the *obs_diag_output.nc* file was created with multiple 
+    regions, there are multiple axes on a single figure.
 
 ~~~
 files    = {'POP12/obs_diag_output.nc','POP11/obs_diag_output.nc'};
@@ -653,19 +621,20 @@ prpo     = 'prior';
 two_experiments_profile(files, titles, varnames, qtty, prpo)
 ~~~
  
-[plot_rank_histogram.m](scripts/plot_rank_histogram.m)
+[![](../images/science_nuggets/two_experiments_profile_example_thumb.png)](../images/science_nuggets/two_experiments_profile_example.png)
 
-will create rank histograms for any variable that has that information
-present in
-*obs_diag_output.nc*.
 
-[![](../images/rank_hist_matlab_example_thumb.png)](../images/rank_hist_matlab_example.png)
+[plot_rank_histogram.m](../../diagnostics/matlab/plot_rank_histogram.m) will create rank histograms 
+    for any variable that has that information present in ```obs_diag_output.nc```.
 
 ~~~
 fname     = 'obs_diag_output.nc'; % netcdf file produced by 'obs_diag'
 timeindex = 3;                    % plot the histogram for the third timestep
 plotdat   = plot_rank_histogram(fname, timeindex, 'RADIOSONDE_TEMPERATURE');
 ~~~
+
+[![](../images/science_nuggets/rank_hist_matlab_example_thumb.png)](../images/science_nuggets/rank_hist_matlab_example.png)
+
  
 You may also convert observation sequence files to netCDF by using
 [obs_seq_to_netcdf](https://ncar.github.io/DART/api/v2.1.10/program/obs_seq_to_netcdf.html).
@@ -677,12 +646,10 @@ files that have been converted.
 <span id="read_obs_netcdf"></span> 
 <span id="plot_obs_netcdf"></span>
 
-[read_obs_netcdf.m](scripts/read_obs_netcdf.m)
-
-reads a particular variable and copy from a netCDF-format observation
-sequence file and returns a single structure with useful bits for
-plotting/exploring. This routine is the back-end for
-*plot_obs_netcdf* .
+[read_obs_netcdf.m](../../diagnostics/matlab/read_obs_netcdf.m) reads a particular variable 
+    and copy from a netCDF-format observation sequence file and returns a 
+    single structure with useful bits for plotting/exploring. 
+    This routine is the back-end for ```plot_obs_netcdf``` .
 
 ~~~
 fname         = 'obs_sequence_001.nc';
@@ -694,13 +661,9 @@ verbose       = 1;   % anything > 0 == 'true'
 obs = read_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, verbose);
 ~~~
  
-[plot_obs_netcdf.m](scripts/plot_obs_netcdf.m)
-
-creates a 3D scatterplot of the observation locations, color-coded to
-the observation values. A second axis will also plot the QC values if
-desired.
-
-[![](../images/plot_obs_netcdf_example_thumb.png)](../images/plot_obs_netcdf_example.png)
+[plot_obs_netcdf.m](../../diagnostics/matlab/plot_obs_netcdf.m) creates a 3D scatterplot of 
+    the observation locations, color-coded to the observation values.
+    A second axis will also plot the QC values if desired.
 
 ~~~
 fname         = 'POP11/obs_epoch_011.nc';
@@ -715,12 +678,11 @@ bob = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, ...
                   QCString, maxgoodQC, verbose, twoup);
 ~~~
  
-[plot_obs_netcdf_diffs.m](scripts/plot_obs_netcdf_diffs.m)
+[![](../images/science_nuggets/plot_obs_netcdf_example_thumb.png)](../images/science_nuggets/plot_obs_netcdf_example.png)
 
-creates a 3D scatterplot of the difference between two 'copies' of an
-observation.
 
-[![](../images/plot_obs_netcdf_diffs_example_thumb.png)](../images/plot_obs_netcdf_diffs_example.png)
+[plot_obs_netcdf_diffs.m](../../diagnostics/matlab/plot_obs_netcdf_diffs.m) creates a 3D 
+    scatterplot of the difference between two 'copies' of an observation.
 
 ~~~
 fname         = 'POP11/obs_epoch_011.nc';
@@ -736,14 +698,13 @@ bob = plot_obs_netcdf_diffs(fname, ObsTypeString, region, CopyString1, CopyStrin
                             QCString, maxQC, verbose, twoup);
 ~~~
  
-[plot_wind_vectors.m](scripts/plot_wind_vectors.m)
+[![](../images/science_nuggets/plot_obs_netcdf_diffs_example_thumb.png)](../images/science_nuggets/plot_obs_netcdf_diffs_example.png)
 
-creates a 2D 'quiver' plot of a wind field. This function is in the
-*matlab/private* directory - but if you want to use it, you can move it
-out. I find it has very little practical
-value.
 
-[![](../images/plot_wind_vectors_example_small.png)](../images/plot_wind_vectors_example.pdf)
+[plot_wind_vectors.m](../../diagnostics/matlab/plot_wind_vectors.m) creates a 2D 'quiver' 
+    plot of a wind field. This function is in the *matlab/private* 
+    directory - but if you want to use it, you can move it out.
+    I find it has very little practical value.
 
 ~~~
 fname       = 'obs_epoch_001.nc';
@@ -756,42 +717,39 @@ bob = plot_wind_vectors(fname, platform, CopyString, QCString, ...
                         'region', region, 'scalefactor', scalefactor);
 ~~~
 
-[link_obs.m](scripts/link_obs.m)
+[![](../images/science_nuggets/plot_wind_vectors_example_small.png)](../images/science_nuggets/plot_wind_vectors_example.pdf)
 
-creates multiple figures that have linked attributes. This is my
-favorite function. Click on the little paintbrush icon in any of the
-figure frames and select all the observations with DART QC == 4 in one
-window, and those same observations are highlighted in all the other
-windows (for example). The 3D scatterplot can be rotated around with the
-mouse to really pinpoint exactly where the observations are getting
-rejected, for example. All the images are links to larger versions - the
-image on the right has the MATLAB® call. If the data browser (the
-spreadsheet-like panel) is open, the selected observations get
-highlighted there too
-...
+[link_obs.m](../../diagnostics/matlab/link_obs.m) creates multiple figures that have linked 
+    attributes. This is my favorite function. Click on the little paintbrush 
+    icon in any of the figure frames and select all the observations with 
+    DART QC == 4 in one window, and those same observations are highlighted
+    in all the other windows (for example). The 3D scatterplot can be 
+    rotated around with the mouse to really pinpoint exactly where the 
+    observations are getting rejected, for example. All the images are 
+    links to larger versions - the image on the right has the MATLAB® call.
+    If the data browser (the spreadsheet-like panel) is open, the selected 
+    observations get highlighted there too ...
 
-[![](../images/link_obs_example_F2_thumb.png)](../images/link_obs_example_F2.png)
-[![](../images/link_obs_example_F1_thumb.png)](../images/link_obs_example_F1.png)
-[![](../images/link_obs_example_F0_thumb.png)](../images/link_obs_example_F0.png)
+[![](../images/science_nuggets/link_obs_example_F2_thumb.png)](../images/science_nuggets/link_obs_example_F2.png)
+[![](../images/science_nuggets/link_obs_example_F1_thumb.png)](../images/science_nuggets/link_obs_example_F1.png)
+[![](../images/science_nuggets/link_obs_example_F0_thumb.png)](../images/science_nuggets/link_obs_example_F0.png)
 
-[ObsTimeCheck.m](scripts/ObsTimeCheck.m)
 
-is an example of a trivial little script to wrap around
-*plot_obs_netcdf.m* that allows you to explore the spatial
-distribution of your observation sequences. Since *obs_seq_to_netcdf*
-doesn't know anything about assimilation windows; the idea is to create
-separate netCDF files for each assimilation window and then explore a
-sequence of windows. Since *ObsTimeCheck.m* is in the subversion
-repository, you should feel free to edit it/modify it to your heart's
-desire. If there are no observations of that type in a particular
-assimilation window, the MATLAB® Command window will have a comment to
-that
-effect.
+[ObsTimeCheck.m](../../diagnostics/matlab/ObsTimeCheck.m) is an example of a trivial little 
+    script to wrap around ```plot_obs_netcdf.m``` that allows you to explorex
+    the spatial distribution of your observation sequences. Since 
+    *obs_seq_to_netcdf* doesn't know anything about assimilation windows;
+    the idea is to create separate netCDF files for each assimilation window 
+    and then explore a sequence of windows. Since ```ObsTimeCheck.m``` is 
+    under version control, you should feel free to edit it/modify it to 
+    your heart's desire. If there are no observations of that type in a 
+    particular assimilation window, the MATLAB® Command window will have 
+    a comment to that effect.
 
-[![](../images/ObsTimeCheck_Fig1_thumb.png)](../images/ObsTimeCheck_Fig1.png)
-[![](../images/ObsTimeCheck_Fig2_thumb.png)](../images/ObsTimeCheck_Fig2.png)
-[![](../images/ObsTimeCheck_Fig3_thumb.png)](../images/ObsTimeCheck_Fig3.png)
-[![](../images/ObsTimeCheck_Fig4_thumb.png)](../images/ObsTimeCheck_Fig4.png)
+[![](../images/science_nuggets/ObsTimeCheck_Fig1_thumb.png)](../images/science_nuggets/ObsTimeCheck_Fig1.png)
+[![](../images/science_nuggets/ObsTimeCheck_Fig2_thumb.png)](../images/science_nuggets/ObsTimeCheck_Fig2.png)
+[![](../images/science_nuggets/ObsTimeCheck_Fig3_thumb.png)](../images/science_nuggets/ObsTimeCheck_Fig3.png)
+[![](../images/science_nuggets/ObsTimeCheck_Fig4_thumb.png)](../images/science_nuggets/ObsTimeCheck_Fig4.png)
 
 <span id="obs_diag_output_explanation" class="anchor"></span>
 
@@ -799,12 +757,12 @@ effect.
 
 -----
 
-# Understanding what's in obs_diag_output.nc
+#### Understanding what's in ```obs_diag_output.nc```
 
-After you create *obs_diag_output.nc* with
+After you create ```obs_diag_output.nc``` with
 [obs_diag](Manhattan/assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html)
 it is important to understand what is contained in
-*obs_diag_output.nc*. Remember, this is just a dump of the *header* of the file\!
+```obs_diag_output.nc```. Remember, this is just a dump of the *header* of the file\!
 
 ~~~
 [work]$ ncdump -v CopyMetaData obs_diag_output.nc
@@ -978,20 +936,21 @@ following suffixes:
 
 | suffix     | description                                 |
 | ---------- | ------------------------------------------- |
-| _guess    | prior, forecast                             |
-| _analy    | posterior, analysis                         |
-| _VPguess  | vertical profile only - prior, forecast     |
-| _VPanaly  | vertical profile only - posterior, analysis |
-| _RankHist | rank histogram - prior                      |
+| _guess     | prior, forecast                             |
+| _analy     | posterior, analysis                         |
+| _VPguess   | vertical profile only - prior, forecast     |
+| _VPanaly   | vertical profile only - posterior, analysis |
+| _RankHist  | rank histogram - prior                      |
+
 
 What is really important to note is that each observation variable has a
-*copy* dimension - and each copy description is contained in the
-*CopyMetaData* variable. A dump of that variable provides information
-about what quantities are directly available. In the above example, the
-*rmse* is copy **7**. You should never assume this information, you
-should always check the *CopyMetaData* variable to find the appropriate
-copy index. Let's look at the *RADIOSONDE_U_WIND_COMPONENT_guess*
-variable in the example. It has 4 dimensions:
+       *copy* dimension - and each copy description is contained in the
+       *CopyMetaData* variable. A dump of that variable provides information
+       about what quantities are directly available. In the above example, the
+       *rmse* is copy **7** . You should never assume this information, you
+       should always check the *CopyMetaData* variable to find the appropriate 
+       copy index. Let's look at the *RADIOSONDE_U_WIND_COMPONENT_guess* 
+       variable in the example. It has 4 dimensions:
 \[time, copy, plevel, region\]. Since 'plevel' is one of the
 dimensions, the appropriate levels are defined by the coordinate
 variable of the same name. The *RADIOSONDE_U_WIND_COMPONENT_VPguess*
@@ -1004,7 +963,7 @@ it is only in the global metadata for the entire netCDF file as
 *first_bin_center, last_bin_center*, and *time_to_skip*. Add the
 *time_to_skip* to the *first_bin_center* to derive the start of the
 averaging period. This allows one to ignore the effects of spinup.  
-  
+
 The *RADIOSONDE_U_WIND_COMPONENT_guess_RankHi* variable name has
 been cut short by the netCDF restriction that variable names can only
 contain 40 characters. The *_RankHist* variables are only present if
@@ -1019,19 +978,19 @@ ensemble size.
 
 -----
 
-# Viewing the rank histogram information with 'ncview'
+#### Viewing the rank histogram information with 'ncview'
 
-After you create *obs_diag_output.nc* with *obs_diag* you can view
+After you create ```obs_diag_output.nc``` with *obs_diag* you can view
 the rank histograms in the following way:
 
-~~~
-[work]$ ncview obs_diag_output.nc
-~~~
 
-Note there are forty-seven 3D variables. Pick one. In this case, I
-selected *AIRCRAFT_U_WIND_COMPONENT_guess_RankHist*  
+> ncview obs_diag_output.nc
 
-![](../images/ncview_histogram_0.png)  
+
+Note that in this particular file, there are forty-seven 3D variables.
+Pick one. In this case, I selected *AIRCRAFT_U_WIND_COMPONENT_guess_RankHist*  
+
+![](../images/science_nuggets/ncview_histogram_0.png)  
 
 Navigate to the time of interest (these are the arrows next to the QUIT
 button.) If *ncview* was built with *udunits* support, the actual
@@ -1041,17 +1000,17 @@ default axes are (Y == histogram_bins, X == levels) and there are many
 more ensemble members (96) than vertical levels (20) in this netCDF
 file, the graphic appears tall and narrow.  
 
-![](../images/ncview_histogram_1.png)  
+![](../images/science_nuggets/ncview_histogram_1.png)  
 
 Click anywhere on the graphic and something like the following is
 displayed:  
 
-![](../images/ncview_histogram_2.png)  
+![](../images/science_nuggets/ncview_histogram_2.png)  
 
 Change the "X Axis:" to "rank_bins" and a new graphic will display the
 rank histogram.  
 
-![](../images/ncview_histogram_3.png)  
+![](../images/science_nuggets/ncview_histogram_3.png)  
 
 If you continue to click on the "tall,skinny" graphic, the histogram for
 that level will be added to the rank histogram window. Remember, levels
@@ -1064,11 +1023,13 @@ are along the X axis on the "tall,skinny" graphic. Viola'\!
 
 -----
 
-# DART state-space diagnostics - low-order models.
+### High-order model state-space diagnostics
 
-#### The High-order model state-space diagnostics descriptions are under construction.
+Vary model-by-model. This section is under construction.
 
-### MATLAB®
+#### state-space diagnostics - low-order models.
+
+#### MATLAB®
 
 There are a set of MATLAB® functions to help explore the assimilation
 performance in state-space, which is very useful for OSSE's (i.e. when
@@ -1078,16 +1039,15 @@ functions that work without a true state.
   
 In order to use any of these functions, the scripts need to know how to
 interpret the layout of the netCDF file - which is usually
-model-dependent. See the section on [Adding MATLAB® support for your own
-model](DART2_Documentation.html#model_matlab_support) if you are not
-using one of the supported DART models.  
+model-dependent. See the section on 
+[Adding MATLAB® support for your own model](DART2_Documentation.html#model_matlab_support) 
+if you are not using one of the supported DART models.  
   
-The state-space functions are in the *DART/diagnostics/matlab*
+The state-space functions are in the *```DART/diagnostics/matlab```*
 directory. They all have the expected 'help' file accessible by simply
-typing *help* *\[function_of_interest\]* at the Matlab
-prompt.  
+typing *help* *\[function_of_interest\]* at the Matlab prompt.  
 
-| | |
+|     |     |
 | --- | --- |
 | *plot_total_err.m* | plots the evolution of the error (un-normalized) and ensemble spread of all state variables. |
 | *plot_bins.m* | plots the rank histograms for a set of state variables. |
@@ -1107,7 +1067,7 @@ might be the ensemble mean, the ensemble spread, ensemble member 43, the
 inflation values ... a whole host of possibilities. For instance:
 
 ~~~
-0[1020] swordfish:~/<3>models/wrf/work % ncdump -v member,MemberMetadata preassim.nc
+0[1020] swordfish:models/wrf/work % ncdump -v member,MemberMetadata preassim.nc
 netcdf preassim {
 dimensions:
         metadatalength = 64 ;
@@ -1148,14 +1108,13 @@ variables:
 
 -----
 
-### Non-MATLAB® state-space diagnostics
+#### Non-MATLAB® state-space diagnostics
 
-The innovations to the model state are easy to derive. Use the [NCO
-Operator](http://nco.sourceforge.net/) *ncdiff* to difference the two
+The innovations to the model state are easy to derive. Use the
+[NCO Operator](http://nco.sourceforge.net/) *ncdiff* to difference the two
 DART diagnostic netCDF files to create the innovations. Be sure to check
 the *CopyMetaData* variable to figure out what *copy* is of interest.
-Then, use *ncview* to explore the innovations or the inflation values or
-...  
+Then, use *ncview* to explore the innovations or the inflation values or ...  
   
 If the assimilation used state-space inflation, the inflation fields
 will be added as additional 'copies'. A sure sign of trouble is if the
@@ -1236,36 +1195,36 @@ variables:
     
 data:
   MemberMetadata =
-  "ensemble member      1                                          ",
-  "ensemble member      2                                          ",
-  "ensemble member      3                                          ",
-  "ensemble member      4                                          ",
-  "ensemble member      5                                          ",
-  "ensemble member      6                                          ",
-  "ensemble member      7                                          ",
-  "ensemble member      8                                          ",
-  "ensemble member      9                                          ",
-  "ensemble member     10                                          ",
-  "ensemble member     11                                          ",
-  "ensemble member     12                                          ",
-  "ensemble member     13                                          ",
-  "ensemble member     14                                          ",
-  "ensemble member     15                                          ",
-  "ensemble member     16                                          ",
-  "ensemble member     17                                          ",
-  "ensemble member     18                                          ",
-  "ensemble member     19                                          ",
-  "ensemble member     20                                          " ;
+  "ensemble member      1 ",
+  "ensemble member      2 ",
+  "ensemble member      3 ",
+  "ensemble member      4 ",
+  "ensemble member      5 ",
+  "ensemble member      6 ",
+  "ensemble member      7 ",
+  "ensemble member      8 ",
+  "ensemble member      9 ",
+  "ensemble member     10 ",
+  "ensemble member     11 ",
+  "ensemble member     12 ",
+  "ensemble member     13 ",
+  "ensemble member     14 ",
+  "ensemble member     15 ",
+  "ensemble member     16 ",
+  "ensemble member     17 ",
+  "ensemble member     18 ",
+  "ensemble member     19 ",
+  "ensemble member     20 " ;
 }
 ~~~
 
-![](../images/bgrid_prior_inflation_main.png)
+![](../images/science_nuggets/bgrid_prior_inflation_main.png)
 
-![](../images/bgrid_prior_inflation_image.png)
+![](../images/science_nuggets/bgrid_prior_inflation_image.png)
 
-![](../images/bgrid_prior_inflation_timeseries.png)
+![](../images/science_nuggets/bgrid_prior_inflation_timeseries.png)
 
-This is an exploration of the *preassim.nc* file. Note that I selected
+This is an exploration of the ```preassim.nc``` file. Note that I selected
 the '**t**' field, turned the coastlines 'off' under the 'Opts' button,
 used the 'Repl' instead of 'Bi-lin' (to more faithfully represent the
 model resolution), *navigated to copy 23 of 24 (in this case, the
@@ -1276,13 +1235,13 @@ where I put the observations. Right-clicking on the 'Range' button
 automatically re-ranges the colorbar to the min/max of the current data.
 Clicking on any location generates a time series figure.
 
-![](../images/bgrid_innov_ncview_main.png)
+![](../images/science_nuggets/bgrid_innov_ncview_main.png)
 
-![](../images/bgrid_innov_ncview_image.png)
+![](../images/science_nuggets/bgrid_innov_ncview_image.png)
 
-![](../images/bgrid_innov_ncview_timeseries.png)
+![](../images/science_nuggets/bgrid_innov_ncview_timeseries.png)
 
-This is an exploration of the *Innov.nc* file as created by *ncdiff*.
+This is an exploration of the ```Innov.nc``` file as created by *ncdiff*.
 Note that the titles are somewhat misleading because they reflect
 information from the first file given to *ncdiff*. This time I left the
 rendering as 'Bi-lin' (which obfuscates the model resolution),
@@ -1292,11 +1251,11 @@ Right-click on the 'Range' button to reset the colorbar. The image plot
 confirms that the innovations are restricted to a local region. Clicking
 on any location generates a time series.
 
-![](../images/bgrid_innov_ncview_main_u.png)
+![](../images/science_nuggets/bgrid_innov_ncview_main_u.png)
 
-![](../images/bgrid_innov_ncview_image_u.png)
+![](../images/science_nuggets/bgrid_innov_ncview_image_u.png)
 
-![](../images/bgrid_innov_ncview_timeseries_u.png)
+![](../images/science_nuggets/bgrid_innov_ncview_timeseries_u.png)
 
 This is fundamentally the same as the previous panel except that I have
 now selected the '***u***' **u_mean** variable. Despite the fact the
