@@ -23,7 +23,25 @@ Forward operators use an interpolation using the closest model node in the horiz
 application in Aydoğdu et al. (2018a) uses a very high-resolution mesh. In the vertical, a linear
 interpolation is performed between two enclosing model layers. Interpolation in model_interpolate
 routine can be improved, if needed.
+### Workflow
 
+1.  *environment.load* Must be modified to contain the specifics of an experiment. 
+    This file is sourced by every other script below.
+2.  *ensemble.launch*  Takes the information from **environment.load** and creates runnable 
+    scripts from the template script files. This also initiates the first cycle of the experiment.
+
+    2.1. *ens_members.template*
+    
+    2.1.1. *initialize.template* (first cycle only)
+
+    2.1.2. *forward_model.template* (job array to advance the ensemble)
+
+    2.1.3. *check_ensemble.template* (if all goes well, assimilate)
+
+    2.1.3.1. *filter.sh* (assimilate)
+
+    2.1.3.2. *finalize.sh*  if all goes well and experiment is not finished ... continue to 2.1
+             
 ### Shell scripts
 
 Shell scripts are written in bash for lsf queuing system. They should be modified to work with
@@ -35,7 +53,7 @@ for an advance model.
 | ---------------------------- | ------:|---------------|
 | **environment.load**         | serial | Includes environment variables, relevant directories, experiment specifications. This file is sourced by every other script below. |
 | **ensemble.launch**          | serial | Main script which modifies ```ens_members.template.lsf``` and calls ```ens_members.${EXPINFO}.lsf```. An experiment-specific summary which should be modified before launching the scripts. |
-| **ens_members.template.lsf** | serial | Calls and submits ```initialize.template```, ```forward_model.template``` ```check_ensemble.template``` subsequently. |
+| **ens_members.template.lsf** | serial | Calls and submits ```initialize.template```, ```forward_model.template``` ```check_ensemble.template``` one after the other. |
 | **initialize.template**      | serial | Called only once at the beginning of the experiment. Sets the experiment directory, copies initial ensemble, namelists. |
 | **forward_model.template**   |parallel| Submits a job array for all ensemble members. |
 | **check_ensemble.template**  | serial | Checks if the forwarding for all members is finished. If so, first calls ```filter.template``` and then calls ```finalize.template``` to conclude current assimilation cycle. |
