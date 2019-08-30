@@ -564,14 +564,14 @@ plotdat    = plot_evolution(fname,copystring);  % -- OR --
 plotdat    = plot_evolution(fname,copystring,'obsname','RADIOSONDE_TEMPERATURE');
 ~~~
 
-[![](../images/science_nuggets/plot_evolution_example_thumb.png)](../images/science_nuggets/plot_evolution_example.png)
+[<img src="../images/science_nuggets/plot_evolution_example_thumb.png">](../images/science_nuggets/plot_evolution_example.png)
 
 
 [plot_profile.m](../../diagnostics/matlab/plot_profile.m) plots the spatial and temporal 
     average of any specified quantity as a function of height. The number 
     of observations possible and used are plotted on the same axis.
 
-[![](../images/science_nuggets/plot_profile_example_thumb.png)](../images/science_nuggets/plot_profile_example.png)
+[<img src="../images/science_nuggets/plot_profile_example_thumb.png">](../images/science_nuggets/plot_profile_example.png)
 
 ~~~
 fname      = 'POP11/obs_diag_output.nc';        % netcdf file produced by 'obs_diag'
@@ -604,7 +604,7 @@ levelind = 5;
 two_experiments_evolution(files, titles,{'ACARS_TEMPERATURE'}, qtty, prpo, levelind)
 ~~~
 
-[![](../images/science_nuggets/two_experiments_evolution_example_thumb.png)](../images/science_nuggets/two_experiments_evolution_example.png)
+[<img src="../images/science_nuggets/two_experiments_evolution_example_thumb.png">](../images/science_nuggets/two_experiments_evolution_example.png)
 
 
 [two_experiments_profile.m](../../diagnostics/matlab/two_experiments_profile.m) same as 
@@ -622,7 +622,7 @@ prpo     = 'prior';
 two_experiments_profile(files, titles, varnames, qtty, prpo)
 ~~~
  
-[![](../images/science_nuggets/two_experiments_profile_example_thumb.png)](../images/science_nuggets/two_experiments_profile_example.png)
+[<img src="../images/science_nuggets/two_experiments_profile_example_thumb.png">](../images/science_nuggets/two_experiments_profile_example.png)
 
 
 [plot_rank_histogram.m](../../diagnostics/matlab/plot_rank_histogram.m) will create rank histograms 
@@ -634,7 +634,7 @@ timeindex = 3;                    % plot the histogram for the third timestep
 plotdat   = plot_rank_histogram(fname, timeindex, 'RADIOSONDE_TEMPERATURE');
 ~~~
 
-[![](../images/science_nuggets/rank_hist_matlab_example_thumb.png)](../images/science_nuggets/rank_hist_matlab_example.png)
+[<img src="../images/science_nuggets/rank_hist_matlab_example_thumb.png">](../images/science_nuggets/rank_hist_matlab_example.png)
 
  
 You may also convert observation sequence files to netCDF by using
@@ -679,7 +679,7 @@ bob = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, ...
                   QCString, maxgoodQC, verbose, twoup);
 ~~~
  
-[![](../images/science_nuggets/plot_obs_netcdf_example_thumb.png)](../images/science_nuggets/plot_obs_netcdf_example.png)
+[<img src="../images/science_nuggets/plot_obs_netcdf_example_thumb.png">](../images/science_nuggets/plot_obs_netcdf_example.png)
 
 
 [plot_obs_netcdf_diffs.m](../../diagnostics/matlab/plot_obs_netcdf_diffs.m) creates a 3D 
@@ -699,7 +699,7 @@ bob = plot_obs_netcdf_diffs(fname, ObsTypeString, region, CopyString1, CopyStrin
                             QCString, maxQC, verbose, twoup);
 ~~~
  
-[![](../images/science_nuggets/plot_obs_netcdf_diffs_example_thumb.png)](../images/science_nuggets/plot_obs_netcdf_diffs_example.png)
+[<img src="../images/science_nuggets/plot_obs_netcdf_diffs_example_thumb.png">](../images/science_nuggets/plot_obs_netcdf_diffs_example.png)
 
 
 [plot_wind_vectors.m](../../diagnostics/matlab/plot_wind_vectors.m) creates a 2D 'quiver' 
@@ -718,7 +718,7 @@ bob = plot_wind_vectors(fname, platform, CopyString, QCString, ...
                         'region', region, 'scalefactor', scalefactor);
 ~~~
 
-[![](../images/science_nuggets/plot_wind_vectors_example_small.png)](../images/science_nuggets/plot_wind_vectors_example.pdf)
+[<img src="../images/science_nuggets/plot_wind_vectors_example_small.png">](../images/science_nuggets/plot_wind_vectors_example.pdf)
 
 [link_obs.m](../../diagnostics/matlab/link_obs.m) creates multiple figures that have linked 
     attributes. This is my favorite function. Click on the little paintbrush 
@@ -731,9 +731,9 @@ bob = plot_wind_vectors(fname, platform, CopyString, QCString, ...
     If the data browser (the spreadsheet-like panel) is open, the selected 
     observations get highlighted there too ...
 
-[![](../images/science_nuggets/link_obs_example_F2_thumb.png)](../images/science_nuggets/link_obs_example_F2.png)
-[![](../images/science_nuggets/link_obs_example_F1_thumb.png)](../images/science_nuggets/link_obs_example_F1.png)
-[![](../images/science_nuggets/link_obs_example_F0_thumb.png)](../images/science_nuggets/link_obs_example_F0.png)
+[<img src="../images/science_nuggets/link_obs_example_F2_thumb.png">](../images/science_nuggets/link_obs_example_F2.png)
+[<img src="../images/science_nuggets/link_obs_example_F1_thumb.png">](../images/science_nuggets/link_obs_example_F1.png)
+[<img src="../images/science_nuggets/link_obs_example_F0_thumb.png">](../images/science_nuggets/link_obs_example_F0.png)
 
 
 [ObsTimeCheck.m](../../diagnostics/matlab/ObsTimeCheck.m) is an example of a trivial little 
@@ -747,10 +747,10 @@ bob = plot_wind_vectors(fname, platform, CopyString, QCString, ...
     particular assimilation window, the MATLAB® Command window will have 
     a comment to that effect.
 
-[![](../images/science_nuggets/ObsTimeCheck_Fig1_thumb.png)](../images/science_nuggets/ObsTimeCheck_Fig1.png)
-[![](../images/science_nuggets/ObsTimeCheck_Fig2_thumb.png)](../images/science_nuggets/ObsTimeCheck_Fig2.png)
-[![](../images/science_nuggets/ObsTimeCheck_Fig3_thumb.png)](../images/science_nuggets/ObsTimeCheck_Fig3.png)
-[![](../images/science_nuggets/ObsTimeCheck_Fig4_thumb.png)](../images/science_nuggets/ObsTimeCheck_Fig4.png)
+[<img src="../images/science_nuggets/ObsTimeCheck_Fig1_thumb.png">](../images/science_nuggets/ObsTimeCheck_Fig1.png)
+[<img src="../images/science_nuggets/ObsTimeCheck_Fig2_thumb.png">](../images/science_nuggets/ObsTimeCheck_Fig2.png)
+[<img src="../images/science_nuggets/ObsTimeCheck_Fig3_thumb.png">](../images/science_nuggets/ObsTimeCheck_Fig3.png)
+[<img src="../images/science_nuggets/ObsTimeCheck_Fig4_thumb.png">](../images/science_nuggets/ObsTimeCheck_Fig4.png)
 
 <span id="obs_diag_output_explanation" class="anchor"></span>
 
@@ -985,7 +985,7 @@ the rank histograms in the following way:
 Note that in this particular file, there are forty-seven 3D variables.
 Pick one. In this case, I selected *AIRCRAFT_U_WIND_COMPONENT_guess_RankHist*  
 
-![](../images/science_nuggets/ncview_histogram_0.png)  
+<img src="../images/science_nuggets/ncview_histogram_0.png">
 
 Navigate to the time of interest (these are the arrows next to the QUIT
 button.) If *ncview* was built with *udunits* support, the actual
@@ -995,17 +995,17 @@ default axes are (Y == histogram_bins, X == levels) and there are many
 more ensemble members (96) than vertical levels (20) in this netCDF
 file, the graphic appears tall and narrow.  
 
-![](../images/science_nuggets/ncview_histogram_1.png)  
+<img src="../images/science_nuggets/ncview_histogram_1.png">
 
 Click anywhere on the graphic and something like the following is
 displayed:  
 
-![](../images/science_nuggets/ncview_histogram_2.png)  
+<img src="../images/science_nuggets/ncview_histogram_2.png">
 
 Change the "X Axis:" to "rank_bins" and a new graphic will display the
 rank histogram.  
 
-![](../images/science_nuggets/ncview_histogram_3.png)  
+<img src="../images/science_nuggets/ncview_histogram_3.png">
 
 If you continue to click on the "tall,skinny" graphic, the histogram for
 that level will be added to the rank histogram window. Remember, levels
@@ -1209,11 +1209,11 @@ data:
 }
 ~~~
 
-![](../images/science_nuggets/bgrid_prior_inflation_main.png)
+<img src="../images/science_nuggets/bgrid_prior_inflation_main.png">
 
-![](../images/science_nuggets/bgrid_prior_inflation_image.png)
+<img src="../images/science_nuggets/bgrid_prior_inflation_image.png">
 
-![](../images/science_nuggets/bgrid_prior_inflation_timeseries.png)
+<img src="../images/science_nuggets/bgrid_prior_inflation_timeseries.png">
 
 This is an exploration of the ```preassim.nc``` file. Note that I selected
 the '**t**' field, turned the coastlines 'off' under the 'Opts' button,
@@ -1226,11 +1226,11 @@ where I put the observations. Right-clicking on the 'Range' button
 automatically re-ranges the colorbar to the min/max of the current data.
 Clicking on any location generates a time series figure.
 
-![](../images/science_nuggets/bgrid_innov_ncview_main.png)
+<img src="../images/science_nuggets/bgrid_innov_ncview_main.png">
 
-![](../images/science_nuggets/bgrid_innov_ncview_image.png)
+<img src="../images/science_nuggets/bgrid_innov_ncview_image.png">
 
-![](../images/science_nuggets/bgrid_innov_ncview_timeseries.png)
+<img src="../images/science_nuggets/bgrid_innov_ncview_timeseries.png">
 
 This is an exploration of the ```Innov.nc``` file as created by *ncdiff*.
 Note that the titles are somewhat misleading because they reflect
@@ -1242,11 +1242,11 @@ Right-click on the 'Range' button to reset the colorbar. The image plot
 confirms that the innovations are restricted to a local region. Clicking
 on any location generates a time series.
 
-![](../images/science_nuggets/bgrid_innov_ncview_main_u.png)
+<img src="../images/science_nuggets/bgrid_innov_ncview_main_u.png">
 
-![](../images/science_nuggets/bgrid_innov_ncview_image_u.png)
+<img src="../images/science_nuggets/bgrid_innov_ncview_image_u.png">
 
-![](../images/science_nuggets/bgrid_innov_ncview_timeseries_u.png)
+<img src="../images/science_nuggets/bgrid_innov_ncview_timeseries_u.png">
 
 This is fundamentally the same as the previous panel except that I have
 now selected the '***u***' **u_mean** variable. Despite the fact the
