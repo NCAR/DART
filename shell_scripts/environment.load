@@ -6,7 +6,7 @@
 #----------------------------------------------------------
 
 #-- Some bash commands are assigned to variables ----------
-export TEMPLATE=TeMPLaTe; export COPY='cp -f'
+export TEMPLATE=template; export COPY='cp -f'
 export REMOVE='rm -f'; export LINK='ln -sf'
 export MOVE='mv -f'
 
@@ -14,12 +14,14 @@ export MOVE='mv -f'
 export NPROC=512           # How many cores to run FESOM
 export POENAME=poe_short   # Name of the lsf queue to submit
 export MPIEXEC=/users/home/opt/lsf/8.0/linux2.6-glibc2.3-x86_64/bin/mpirun.lsf
+export MPIEXEC=mpiexec_mpt
 
 #-- Set experiment parameters here  -----------------------
 export EXPID=FB4           # id of the experiment
 export EXPNO=01            # nb of the experiment
 export EXPYR=2009          # experiment initial year
 export EXPINFO=${EXPID}${EXPNO};
+export REGION=TSS
 
 export MEMNO=3            # nb of ensemble members
 export ENSID=ENS           # id of ensemble members
@@ -33,10 +35,10 @@ export RNSEC=$( echo "${RNLEN} * ${TSTEP}" | bc ) # RNSEC is seconds to run; use
 export CYCLE=${RNSEC}
 
 #-- Set the common directories here  ----------------------
-export USRHOM=/users/home/$(whoami)
-export DRTDIR=${USRHOM}/GIT/DART_master/models/FESOM/work
-export WRKDIR=/work/$(whoami)/TSS/${EXPINFO}
-export RUNDIR=${USRHOM}/GIT/DART_master/models/FESOM/shell_scripts
+export USRHOM=/glade/u/home/$(whoami)
+export DRTDIR=${USRHOM}/git/DART_master/models/FESOM/work
+export WRKDIR=/glade/work/$(whoami)/${REGION}/${EXPINFO}
+export RUNDIR=${USRHOM}/git/DART_master/models/FESOM/shell_scripts
 export DIADIR=${USRHOM}/FEOM_POSTPROC/MESH_READ
 export LOGDIR=${WRKDIR}/LOG
 export FILDIR=${WRKDIR}/FILTER

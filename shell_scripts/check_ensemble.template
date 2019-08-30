@@ -1,12 +1,42 @@
 #!/bin/bash
+#
+#--- check if any members of the ensemble crashed
+#--- check if the experiment finished
+#--- if not, call filter
+#----------------------------------------------------------------------
+# LSF options
+#
 #BSUB -J ens_check               # Name of the job.
 #BSUB -o LOG/ens_check_%J.out    # Appends std output to file %J.out.
 #BSUB -e LOG/ens_check_%J.out    # Appends std error  to file %J.out.
 #BSUB -q serial_30min            # queue
+#
+#----------------------------------------------------------------------
+# PBS options  (set for the NCAR machine "cheyenne")
+#
+#PBS -N ens_check
+#PBS -l walltime=0:20:00
+#PBS -q regular
+#PBS -j oe
+#PBS -A P86850054
+#PBS -l select=1:ncpus=1:mpiprocs=1
+#
+#----------------------------------------------------------------------
 
-#---check if any members of the ensemble crashed-----------------
-#---check if the experiment finished-----------------------------
-#---if not, call filter------------------------------------------
+# We need to translate the queueing-specific variables into
+# a common tongue.
+
+if [[ -v LSB_JOBID ]] ; then
+
+   SUB_CMD='bsub < '
+
+elif [[ -v PBS_NODEFILE ]] ; then
+
+   TMPDIR=/glade/scratch/$USER/temp  # cheyenne-specific
+   mkdir -p $TMPDIR                  # cheyenne-specific
+   SUB_CMD=qsub
+
+fi
 
 #-- Load Experiment Environment Variables -----------------
 . environment.load
@@ -14,30 +44,38 @@
 #-- Ensemble required variables ---------------------------
 ENSINFO=${ENSID}${MEMNO}; cd ${WRKDIR}
 ENSCHECK=$( cat ${CHECKFILE} | wc -l )
-if [ ${ENSCHECK} -eq ${MEMNO} ]; then
-  SUBMITCHECK=$( awk '{SUM += $3} END {print SUM}' ${CHECKFILE} )
-  if [ ${SUBMITCHECK} -ne 0 ]; then
-    echo "One of the ensemble members stopped. Ensemble collapsed..."
-    exit
-  else
-    cd ${WRKDIR}
-    rm ${CHECKFILE}.prev; mv ${CHECKFILE} ${CHECKFILE}.prev
-     #-------------------------------------------------------------
-     # RUN THE FILTER HERE
-     #-------------------------------------------------------------
-     TMPLFILE=${RUNDIR}/filter.template
-     SBMTFILE=${WRKDIR}/filter.${EXPINFO}
-     sed "s;ENSEMBLEMEMBERNO;${MEMNO};g" ${TMPLFILE} > ${SBMTFILE};
 
-     cd ${WRKDIR}; ID=$( jobid bsub < ${SBMTFILE} ); echo ${ID}
-     #-------------------------------------------------------------
-     # FINALIZE OR RESUBMIT THE JOB HERE
-     #-------------------------------------------------------------
-     TMPLFILE=${RUNDIR}/finalize.template
-     SBMTFILE=${WRKDIR}/finalize.${EXPINFO}
-     sed -e "s;^EXPID=.*$;EXPID=${EXPID};g" -e \
-            "s;^EXPNO=.*$;EXPNO=${EXPNO};g" \
-            ${TMPLFILE} > ${SBMTFILE}; cd ${WRKDIR};
-     ID=$( jobid bsub -w "done(${ID})" < ${SBMTFILE} ); echo ${ID}
-  fi
+if [ ${ENSCHECK} -eq ${MEMNO} ]; then
+   SUBMITCHECK=$( awk '{SUM += $3} END {print SUM}' ${CHECKFILE} )
+   if [ ${SUBMITCHECK} -ne 0 ]; then
+      echo "ERROR: One of the ensemble members failed to advance."
+      exit 1
+   else
+      cd ${WRKDIR}
+      rm ${CHECKFILE}.prev
+      mv ${CHECKFILE} ${CHECKFILE}.prev
+ 
+      #-------------------------------------------------------------
+      # RUN THE FILTER
+      #-------------------------------------------------------------
+ 
+      TMPLFILE=${RUNDIR}/filter.template
+      SBMTFILE=${WRKDIR}/filter.${EXPINFO}
+      sed "s;ENSEMBLEMEMBERNO;${MEMNO};g" ${TMPLFILE} > ${SBMTFILE};
+ 
+      cd ${WRKDIR}; ID=$( jobid ${SUB_CMD} ${SBMTFILE} ); echo ${ID}
+ 
+      #-------------------------------------------------------------
+      # FINALIZE (which may) RESUBMIT THE JOB
+      #-------------------------------------------------------------
+ 
+      TMPLFILE=${RUNDIR}/finalize.template
+      SBMTFILE=${WRKDIR}/finalize.${EXPINFO}
+      sed -e "s;^EXPID=.*$;EXPID=${EXPID};g" -e \
+             "s;^EXPNO=.*$;EXPNO=${EXPNO};g" \
+             ${TMPLFILE} > ${SBMTFILE}
+      cd ${WRKDIR}
+ 
+      ID=$( jobid bsub -w "done(${ID})" < ${SBMTFILE} ); echo ${ID}
+   fi
 fi

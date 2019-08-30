@@ -179,9 +179,13 @@
 # SATELLITE_MICROWAVE_SST,       QTY_TEMPERATURE
 # SATELLITE_INFRARED_SST,        QTY_TEMPERATURE
 
+# The full list of available observations are defined in obs_def_ocean_mod.f90
+
 &obs_kind_nml
-   assimilate_these_obs_types = 'SALINITY', 'TEMPERATURE'
-   evaluate_these_obs_types = '', ''
+   assimilate_these_obs_types = 'FERRYBOX_SALINITY',
+                                'FERRYBOX_TEMPERATURE'
+   evaluate_these_obs_types = 'SALINITY',
+                              'TEMPERATURE',
    /
 
 &assim_model_nml
@@ -191,13 +195,13 @@
 
 # Each variable must have 5 entries.
 # 1: variable name
-# 2: DART KIND
+# 2: DART QUANTITY
 # 3: minimum value - as a character string - if none, use 'NA'
 # 4: maximum value - as a character string - if none, use 'NA'
 # 5: does the variable get updated in the restart file or not ...
 #    only variables from restart files may be updated.
-#    'UPDATE'       =>        update the variable in the FeoM file
-#    'NO_COPY_BACK' => do NOT update the variable in the FeoM file
+#    'UPDATE'       =>        update the variable in the FESOM file
+#    'NO_COPY_BACK' => do NOT update the variable in the FESOM file
 #    Note: All variables will be modified internally in DART and
 #    preserved in the DART diagnostic netCDF files without being
 #    range-restricted.
@@ -341,13 +345,13 @@
 # default is to put everything into one 'bin'.
 
 &obs_seq_to_netcdf_nml
-   obs_sequence_name = '/glade/scratch/thoar/FILTER/obs_seq.final'
+   obs_sequence_name = 'obs_seq.final'
    obs_sequence_list = ''
    append_to_netcdf  = .false.
-   lonlim1           = 22.50
-   lonlim2           = 33.10
-   latlim1           = 38.60
-   latlim2           = 43.00
+   lonlim1           = 0.0
+   lonlim2           = 360.0
+   latlim1           = 0.0
+   latlim2           = 90.00
    verbose           = .true.
    /
 
@@ -358,9 +362,9 @@
 
 &schedule_nml
    calendar        = 'Gregorian'
-   first_bin_start =  2009,  1,  1, 12,  0,  0
-   first_bin_end   =  2009,  1,  2, 12,  0,  0
-   last_bin_end    =  2009,  1,  2, 12,  0,  0
+   first_bin_start =  2009,  1,  1,  0,  0,  0
+   first_bin_end   =  2009,  1, 31,  0,  0,  0
+   last_bin_end    =  2009,  1, 31,  0,  0,  0
    bin_interval_days    = 1000000
    bin_interval_seconds = 0
    max_num_bins         = 1000
