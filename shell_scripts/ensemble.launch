@@ -48,3 +48,7 @@ echo "\
 ${SBMTFILE}
 
 bsub < ${SBMTFILE}
+
+#TJH ... several strategies come to mind ... my favorite is to
+# supply an argument specifying LSF, PBS, SLURM, etc.
+# then take appropriate action.

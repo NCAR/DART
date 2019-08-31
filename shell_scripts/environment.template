@@ -4,8 +4,10 @@
 #-- They can be common directories, common variables etc. -
 #----------------------------------------------------------
 #-- Some bash commands are assigned to variables ----------
-export TEMPLATE=template; export COPY='cp -f'
-export REMOVE='rm -f'; export LINK='ln -sf'
+export TEMPLATE=template
+export COPY='cp -f'
+export REMOVE='rm -f'
+export LINK='ln -sf'
 export MOVE='mv -f'
 
 #-- LSF required variables --------------------------------

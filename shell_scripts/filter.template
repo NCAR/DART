@@ -22,9 +22,7 @@
 #PBS -l select=1:ncpus=36:mpiprocs=36
 #----------------------------------------------------------------------
 
-
-# We need to translate the queueing-specific variables into
-# a common tongue.
+# Translate the queueing-specific variables into a common tongue.
 
 if [[ -v LSB_JOBID ]] ; then
 
@@ -69,6 +67,7 @@ DART_FINAL_OBS_SECS=($(cat FESOM_time | sed -n 6,6p | sed 's;_\|:\|=\|,; ;g' | s
 ANALYSISFILE=../${ENSINFO}/${ENSINFO}.${EXPYR}.oce.nc
 
 #-- Modify DART input.nml.template ------------------------
+
 sed -e "s;^   model_analysis_filename.*$;   model_analysis_filename = '${ANALYSISFILE}';g" -e \
        "s/^   assimilation_period_days.*$/   assimilation_period_days = 0/g"               -e \
        "s/^   assimilation_period_seconds.*$/   assimilation_period_seconds = ${CYCLE}/g"  -e \

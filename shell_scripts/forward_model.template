@@ -1,4 +1,9 @@
 #!/bin/bash
+#
+#--- advance each ensemble member using a job array
+#----------------------------------------------------------------------
+# LSF options  (set for the NCAR machine "cheyenne")
+#
 #BSUB -a poe
 #BSUB -J forward_fesom[1-ENSEMBLEMEMBERNO]%3     # Name of the job.
 #BSUB -o LOG/forward_fesom_%I_%J.out  # Appends stdout to file %J.out.
@@ -9,55 +14,86 @@
 #BSUB -n NUMBEROFCORES             #
 #BSUB -N                           #
 ####BSUB -x                        #
+#
+#----------------------------------------------------------------------
+# PBS options  (set for the NCAR machine "cheyenne")
+#
+#PBS -N init_ens
+#PBS -J 1-ENSEMBLEMEMBERNO
+#PBS -l walltime=0:10:00
+#PBS -q regular
+#PBS -j oe
+#PBS -A P86850054
+#PBS -l select=1:ncpus=36:mpiprocs=36
+#
+#----------------------------------------------------------------------
 
+# Translate the queueing-specific variables into a common tongue.
+   
+if [[ -v LSB_JOBID ]] ; then   
+   
+   JOBDIR=${LS_SUBCWD}         # directory of this script
+   JOBNAM=${LSB_JOBNAME}       # name of this script
+   JOBIDN=${LSB_JOBINDEX}      # job array index
+   EXTENSION=lsf
+   
+   #--  BEGIN ATHENA CONFIG ----------------------------------
+   MPIPROGINF=detail
+   export MPIPROGINF
+   export LSF_PJL_TYPE="poe"
+   export MEMORY_AFFINITY=MCM
+   export MP_WAIT_MODE=poll
+   export MP_SINGLE_THREAD=yes
+   export MP_TASK_AFFINITY=MCM
+   export MP_PGMMODEL=mpmd
+   export MP_WAIT_MODE=poll
+   export MP_POLLING_INTERVAL=30000000
+   export MP_SHARED_MEMORY=yes
+   export MP_EUILIB=us
+   export MP_EUIDEVICE=sn_all
+   export LDR_CNTRL=TEXTPSIZE=64K@STACKPSIZE=64K@DATAPSIZE=64K
+   export MP_TASK_AFFINITY=core
+   #--  END ATHENA CONFIG ------------------------------------
 
-#--- run each ensemble member -----------------------------
-
-#--  BEGIN ATHENA CONFIG ----------------------------------
-MPIPROGINF=detail
-export MPIPROGINF
-export LSF_PJL_TYPE="poe"
-export MEMORY_AFFINITY=MCM
-export MP_WAIT_MODE=poll
-export MP_SINGLE_THREAD=yes
-export MP_TASK_AFFINITY=MCM
-export MP_PGMMODEL=mpmd
-export MP_WAIT_MODE=poll
-export MP_POLLING_INTERVAL=30000000
-export MP_SHARED_MEMORY=yes
-export MP_EUILIB=us
-export MP_EUIDEVICE=sn_all
-export LDR_CNTRL=TEXTPSIZE=64K@STACKPSIZE=64K@DATAPSIZE=64K
-export MP_TASK_AFFINITY=core
-#--  END ATHENA CONFIG ------------------------------------
+elif [[ -v PBS_NODEFILE ]] ; then
+   
+   JOBDIR=${PBS_O_WORKDIR}     # directory of this script
+   JOBNAM=${PBS_JOBNAME}       # name of this script
+   JOBIDN=${PBS_ARRAY_INDEX}   # job array index
+   TMPDIR=/glade/scratch/$USER/temp  # cheyenne-specific
+   mkdir -p $TMPDIR                  # cheyenne-specific
+   EXTENSION=pbs
+   
+fi
 
 F_RSVTASK=1; export F_RSVTASK; #THIS CAN BE USEFUL FOR ENSEMBLE. CHECK!
 F_ERRCNT=0; export F_ERRCNT
-JOBDIR=${LS_SUBCWD}                   # directory of this script
-JOBIDN=$( echo ${LSB_JOBID} | awk '{ printf("%08d\n", $1) }' ) # job-id
-JOBNAM=${LSB_JOBNAME}                 # name of this script
 
 #-- Load Experiment Environment Variables -----------------
 . environment.load
 
 #-- Ensemble required variables ---------------------------
 ENSNO=$( echo ${LSB_JOBINDEX} | awk '{ printf("%02d\n", $1) }' )
-ENSN4=$( echo ${LSB_JOBINDEX} | awk '{ printf("%04d\n", $1) }' )
 ENSINFO=${ENSID}${ENSNO};
 ENSDIR=${WRKDIR}/${ENSINFO};
-
-#-- RUN THE FORWARD MODEL ---------------------------------
 cd ${ENSDIR}
+
+#-- Advance FESOM -----------------------------------------
+
 ${MPIEXEC} ./fesom.x
 
-#-- Check if the forward model blowed up ------------------
+#-- Check if the model advance failed ---------------------
+# TJH to Ali ... might need to do something different here ... bpeek is 
+# unique to LSF ... can we capture the run-time log from fesom.x and check that?
+
 CHECKRETURN=$(bpeek -J TSSFWDFEOM[${LSB_JOBINDEX}] | grep -ir "The model blows up")
 CHECKRESULT=$(echo $?); echo ${CHECKRESULT}
 if [ ${CHECKRESULT} -ne "0" ];  then
-  cd ${FILDIR}; [ ! -f restart_file_list.txt ] && \
-                echo "${ENSDIR}/${ENSINFO}.${EXPYR}.oce.nc" > restart_file_list.txt || \
-                echo "${ENSDIR}/${ENSINFO}.${EXPYR}.oce.nc" >> restart_file_list.txt
+  cd ${FILDIR}
+  [ ! -f restart_file_list.txt ] && \
+         echo "${ENSDIR}/${ENSINFO}.${EXPYR}.oce.nc" >  restart_file_list.txt || \
+         echo "${ENSDIR}/${ENSINFO}.${EXPYR}.oce.nc" >> restart_file_list.txt
   echo "${ENSINFO} EXIT 0 :is ready to be resubmitted" >> ${CHECKFILE}
 else
-  echo "${ENSINFO} EXIT 1 :is blowed up   " >> ${CHECKFILE}
+  echo "${ENSINFO} EXIT 1 :model advance FAILED. ERROR." >> ${CHECKFILE}
 fi

@@ -24,8 +24,7 @@
 #
 #----------------------------------------------------------------------
 
-# We need to translate the queueing-specific variables into
-# a common tongue.
+# Translate the queueing-specific variables into a common tongue.
 
 if [[ -v LSB_JOBID ]] ; then
 

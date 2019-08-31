@@ -24,15 +24,14 @@
 #
 #----------------------------------------------------------------------
 
-# We need to translate the queueing-specific variables into
-# a common tongue.
+# Translate the queueing-specific variables into a common tongue.
 
 if [[ -v LSB_JOBID ]] ; then
 
    JOBDIR=${LS_SUBCWD}         # directory of this script
    JOBNAM=${LSB_JOBNAME}       # name of this script
-   JOBIDN=${LSB_JOBINDEX}      # job array index
    SUB_CMD='bsub < '
+   DEP_CMD='bsub -w "done(${ID})" < '
 
    EXTENSION=lsf
 
@@ -40,16 +39,16 @@ elif [[ -v PBS_NODEFILE ]] ; then
 
    JOBDIR=${PBS_O_WORKDIR}     # directory of this script
    JOBNAM=${PBS_JOBNAME}       # name of this script
-   JOBIDN=${PBS_ARRAY_INDEX}   # job array index
    TMPDIR=/glade/scratch/$USER/temp  # cheyenne-specific
    mkdir -p $TMPDIR                  # cheyenne-specific
-   EXTENSION=pbs
    SUB_CMD=qsub
+   DEP_CMD='qsub -W depend=afterok:$ID '
+   EXTENSION=pbs
 
 fi
 
-
 #-- Load Experiment Environment Variables and Functions --
+
 . environment.load
 
 ID=0;
@@ -59,14 +58,26 @@ ID=0;
 #-----------------------------------------------------------------------
 
 if [ ! -d ${WRKDIR} ]; then
+
+  # If the directory does not exist, there is some one-time setup
+  # initialze.${EXPINFI} must be called. The initialize step is
+  # embarassingly parallel, so a job array is used.
+
   DAYSTEP=1; RUNYEAR=2009
+
   mkdir ${WRKDIR}; mkdir ${LOGDIR}; mkdir ${FILDIR}
+
   ${COPY} ${RUNDIR}/environment.load ${WRKDIR}/.
-  ${COPY} ${DRTDIR}/FESOM_time ${FILDIR}
+  ${COPY} ${DRTDIR}/FESOM_time       ${FILDIR}
+
   TMPLFILE=${RUNDIR}/initialize.template
   SBMTFILE=${WRKDIR}/initialize.${EXPINFO}
   sed -e "s;ENSEMBLEMEMBERNO;${MEMNO};g" ${TMPLFILE} > ${SBMTFILE} || exit 1
-  cd ${WRKDIR}; ID=$( jobid ${SUB_CMD} ${SBMTFILE} ); echo ${ID}
+
+  cd ${WRKDIR}
+  ID=$( jobid ${SUB_CMD} ${SBMTFILE} )
+  echo "Initalize job is ID ${ID}"
+
 else
   cd ${WRKDIR}
   DAYSTEP=$(cat ${MEM01}/${MEM01}.clock | sed -n 2,2p | awk '{print $2}')
@@ -84,12 +95,14 @@ sed -e "s;ENSEMBLEMEMBERNO;${MEMNO};g" -e \
        "s;NUMBEROFCORES;${NPROC};"     -e \
        "s;POEQUEUENAME;${POENAME};" ${TMPLFILE} > ${SBMTFILE} || exit 1
 if [ ${ID} = 0 ]; then
-  cd ${WRKDIR}; ID=$( jobid ${SUB_CMD} ${SBMTFILE} ); echo ${ID}
+  cd ${WRKDIR}
+  ID=$( jobid ${SUB_CMD} ${SBMTFILE} )
+  echo "Model advance job is ID ${ID}"
 else
-  cd ${WRKDIR}; ID=$( jobid bsub -w "done(${ID})" < ${SBMTFILE} ); echo ${ID}
+  cd ${WRKDIR}
+  ID=$( jobid ${DEP_CMD} ${SBMTFILE} )
+  echo "Model advance job is ID ${ID} ... queued and waiting."
 fi
-
-this is trickier ... pbs syntax is bsub -d({ID})
 
 #-----------------------------------------------------------------------
 # CHECK THE ENSEMBLE and RUN DART if all members advanced successfully.
@@ -99,4 +112,8 @@ this is trickier ... pbs syntax is bsub -d({ID})
 TMPLFILE=${RUNDIR}/check_ensemble.template
 SBMTFILE=${WRKDIR}/check_ensemble.${EXPINFO}
 cat ${TMPLFILE} > ${SBMTFILE}
-cd ${WRKDIR}; ID=$( jobid bsub -w "done(${ID})" < ${SBMTFILE} ); echo ${ID}
+
+cd ${WRKDIR}
+ID=$( jobid ${DEP_CMD} ${SBMTFILE} )
+echo "Model advance check job is ${ID} ... queued and waiting.""
+
