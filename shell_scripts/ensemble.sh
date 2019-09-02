@@ -89,8 +89,8 @@ fi
 # ADVANCE THE MODEL
 #-----------------------------------------------------------------------
 
-TMPLFILE=${RUNDIR}/forward_model.template
-SBMTFILE=${WRKDIR}/forward_model.${EXPINFO}
+TMPLFILE=${RUNDIR}/advance_model.template
+SBMTFILE=${WRKDIR}/advance_model.${EXPINFO}
 sed -e "s;ENSEMBLEMEMBERNO;${MEMNO};g" -e \
        "s;NUMBEROFCORES;${NPROC};"     -e \
        "s;POEQUEUENAME;${POENAME};" ${TMPLFILE} > ${SBMTFILE} || exit 1
@@ -109,7 +109,7 @@ fi
 # Resubmit the experiment if continues
 #-----------------------------------------------------------------------
 
-TMPLFILE=${RUNDIR}/check_ensemble.template
+TMPLFILE=${RUNDIR}/check_ensemble.sh
 SBMTFILE=${WRKDIR}/check_ensemble.${EXPINFO}
 cat ${TMPLFILE} > ${SBMTFILE}
 

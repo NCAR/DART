@@ -11,8 +11,8 @@
 . environment.load
 
 #----------------------------------------------------------
-TMPLFILE=${RUNDIR}/ens_members.template.lsf
-SBMTFILE=${RUNDIR}/ens_members.${EXPINFO}.lsf
+TMPLFILE=${RUNDIR}/ensemble.sh
+SBMTFILE=${RUNDIR}/ensemble.${EXPINFO}.sh
 cat ${TMPLFILE} > ${SBMTFILE}
 
 #----------------------------------------------------------

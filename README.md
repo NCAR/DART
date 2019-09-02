@@ -27,18 +27,18 @@ routine can be improved, if needed.
 
 1.  *environment.load* Must be modified to contain the specifics of an experiment. 
     This file is sourced by every other script below.
-2.  *ensemble.launch*  Takes the information from **environment.load** and creates runnable 
+2.  *experiment.launch*  Takes the information from **environment.load** and creates runnable 
     scripts from the template script files. This also initiates the first cycle of the experiment.
 
-    2.1. *ens_members.template*
+    2.1. *ensemble.sh*
     
     2.1.1. *initialize.template* (first cycle only)
 
-    2.1.2. *forward_model.template* (job array to advance the ensemble)
+    2.1.2. *advance_model.template* (job array to advance the ensemble)
 
-    2.1.3. *check_ensemble.template* (if all goes well, assimilate)
+    2.1.3. *check_ensemble.sh* (if all goes well, assimilate)
 
-    2.1.3.1. *filter.sh* (assimilate)
+    2.1.3.1. *filter.template* (assimilate)
 
     2.1.3.2. *finalize.sh*  if all goes well and experiment is not finished ... continue to 2.1
              
@@ -52,13 +52,13 @@ for an advance model.
 | Script                       | Queue  | Definition    |
 | ---------------------------- | ------:|---------------|
 | **environment.load**         | serial | Includes environment variables, relevant directories, experiment specifications. This file is sourced by every other script below. |
-| **ensemble.launch**          | serial | Main script which modifies ```ens_members.template.lsf``` and calls ```ens_members.${EXPINFO}.lsf```. An experiment-specific summary which should be modified before launching the scripts. |
-| **ens_members.template.lsf** | serial | Calls and submits ```initialize.template```, ```forward_model.template``` ```check_ensemble.template``` one after the other. |
+| **experiment.launch**        | serial | Main script which modifies ```ensemble.sh``` and calls ```ensemble.${EXPINFO}.sh```. An experiment-specific summary which should be modified before launching the scripts. |
+| **ensemble.sh** | serial     | Calls and submits ```initialize.template```, ```advance_model.template``` ```check_ensemble.sh``` one after the other. |
 | **initialize.template**      | serial | Called only once at the beginning of the experiment. Sets the experiment directory, copies initial ensemble, namelists. |
-| **forward_model.template**   |parallel| Submits a job array for all ensemble members. |
-| **check_ensemble.template**  | serial | Checks if the forwarding for all members is finished. If so, first calls ```filter.template``` and then calls ```finalize.template``` to conclude current assimilation cycle. |
+| **advance_model.template**   |parallel| Submits a job array for all ensemble members. |
+| **check_ensemble.sh**        | serial | Checks if the forwarding for all members is finished. If so, first calls ```filter.template``` and then calls ```finalize.sh``` to conclude current assimilation cycle. |
 | **filter.template**          |parallel| Runs the filter to perform the assimilation. |
-| **finalize.template**        | serial | Checks if the whole experiment is finished. If so, stops. Otherwise, resubmits ```ens_members.${EXPINFO}.lsf``` for the next assimilation cycle. |
+| **finalize.sh**              | serial | Checks if the whole experiment is finished. If so, stops. Otherwise, resubmits ```ensemble.${EXPINFO}.sh``` for the next assimilation cycle. |
 
 ### Diagnostics
 

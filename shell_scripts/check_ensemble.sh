@@ -76,11 +76,9 @@ if [ ${ENSCHECK} -eq ${MEMNO} ]; then
       # FINALIZE (which may) RESUBMIT THE JOB
       #-------------------------------------------------------------
  
-      TMPLFILE=${RUNDIR}/finalize.template
+      TMPLFILE=${RUNDIR}/finalize.sh
       SBMTFILE=${WRKDIR}/finalize.${EXPINFO}
-      sed -e "s;^EXPID=.*$;EXPID=${EXPID};g" -e \
-             "s;^EXPNO=.*$;EXPNO=${EXPNO};g" \
-             ${TMPLFILE} > ${SBMTFILE}
+      cat ${TMPLFILE} > ${SBMTFILE}
       cd ${WRKDIR}
 
       ID=$( jobid ${DEP_CMD} ${SBMTFILE} )
