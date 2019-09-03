@@ -37,18 +37,22 @@
 #
 # Binary (unformatted) file issues:
 # 
-#  Model state input/output files use NetCDF format, which automatically
-#  handles converting between big-endian and little-endian file formats
-#  and handles differences in real variable sizes.  However, for binary
-#  observation sequence files and other model-dependent binary files 
-#  which are read/written the following issues can arise:
+#  Files which use NetCDF format (e.g. input/output ensemble member model state)
+#  automatically convert between big-endian and little-endian number formats
+#  if needed, and handle differences between single and double precision reals.
+#
+#  Ascii files (e.g. obs_seq files using ascii format, control files, scripts) 
+#  are portable between different systems. 
+# 
+#  However, binary observation sequence (obs_seq) files and other model-specific 
+#  binary files can have some or all of the following issues:
 #
 #  - Record Marker size
 #
-#     Some older versions of the gfortran compiler (including 4.1.2)
-#     changed the record marker size to 8 bytes, which made binary files written
-#     with the 'unformatted' option unreadable by programs compiled with other
-#     compilers.  Later versions of the compiler changed the default back to 4 bytes.
+#     Some older versions of the gfortran compiler (including 4.1.2) changed
+#     the record marker size to 8 bytes, which made binary files written with
+#     the 'unformatted' option unreadable by programs built with other compilers.  
+#     Later versions of the compiler changed the default back to 4 bytes.
 #     If you have a version that defaults to 8 byte record markers, use this 
 #     compile time flag to write files with 4 byte markers:
 #       -frecord-marker=4
@@ -70,17 +74,17 @@
 #
 #     Intel CPU chips use "little-endian" number format.  IBM Power chips
 #     use "big-endian" number format.  When binary files are written they
-#     will write numbers with the byte order native to the machine.  
+#     default to writing numbers with the byte order native to the machine.  
 #
 #     To read DART observation sequence (obs_seq) binary files on a 
-#     different platform with a different "endian-ness":
+#     computing platform with a different "endian-ness":
 #
 #       There is a runtime namelist item in the &obs_sequence_nml namelist 
 #       to set a different endian for the observation sequence files only.
 #       This is the recommended way to read binary obs_seq files if written
-#       by a different platform.
+#       by a different platform.  Options:  big_endian, little_endian, native.
 # 
-#     To read other model-dependent binary files on a different platform:
+#     To read other model-specific binary files on a different platform:
 #
 #       You can convert big-endian or little-endian binary files at runtime
 #       on a unit-number by unit-number basis.  Note that if you set all
@@ -98,7 +102,7 @@
 #         Treats file units 10-20 as big_endian but the rest are 'native' 
 #
 #       For more information on unit conversions:
-#        http://gcc.gnu.org/onlinedocs/gfortran/GFORTRAN_005fCONVERT_005fUNIT.html#GFORTRAN_005fCONVERT_005fUNIT
+#        http://gcc.gnu.org/onlinedocs/gfortran/GFORTRAN_005fCONVERT_005fUNIT.html
 #
 
 
