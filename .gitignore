@@ -6,6 +6,8 @@
 *region?.ps
 *~
 .DS_Store
+Gemfile.lock
+_site/
 
 # Nuisance files
 
