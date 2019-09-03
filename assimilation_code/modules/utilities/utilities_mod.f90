@@ -115,10 +115,9 @@ end interface
 logical :: standalone = .false.
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/assimilation_code/modules/utilities/utilities_mod.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 13137 $"
-character(len=128), parameter :: revdate  = "$Date: 2019-04-30 09:48:00 -0600 (Tue, 30 Apr 2019) $"
+character(len=256), parameter :: source   = "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 character(len=512) :: msgstring1, msgstring2, msgstring3
 
@@ -2825,7 +2824,7 @@ end subroutine output_unit_attribs
 end module utilities_mod
 
 ! <next few lines under version control, do not edit>
-! $URL: https://svn-dares-dart.cgd.ucar.edu/DART/releases/Manhattan/assimilation_code/modules/utilities/utilities_mod.f90 $
-! $Id: utilities_mod.f90 13137 2019-04-30 15:48:00Z nancy@ucar.edu $
-! $Revision: 13137 $
-! $Date: 2019-04-30 09:48:00 -0600 (Tue, 30 Apr 2019) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
