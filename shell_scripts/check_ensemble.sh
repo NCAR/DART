@@ -78,7 +78,7 @@ if [ ${ENSCHECK} -eq ${MEMNO} ]; then
  
       TMPLFILE=${RUNDIR}/finalize.sh
       SBMTFILE=${WRKDIR}/finalize.${EXPINFO}
-      cat ${TMPLFILE} > ${SBMTFILE}
+      ${COPY} ${TMPLFILE} ${SBMTFILE}
       cd ${WRKDIR}
 
       ID=$( jobid ${DEP_CMD} ${SBMTFILE} )

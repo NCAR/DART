@@ -111,7 +111,7 @@ fi
 
 TMPLFILE=${RUNDIR}/check_ensemble.sh
 SBMTFILE=${WRKDIR}/check_ensemble.${EXPINFO}
-cat ${TMPLFILE} > ${SBMTFILE}
+${COPY} ${TMPLFILE} ${SBMTFILE}
 
 cd ${WRKDIR}
 ID=$( jobid ${DEP_CMD} ${SBMTFILE} )

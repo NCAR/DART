@@ -15,7 +15,7 @@ export MOVE='mv -f'
 
 #-- LSF required variables --------------------------------
 
-export QUEUE=lsf
+export SCHEDULER=lsf
 export NPROC=512           # How many cores to run FESOM
 export POENAME=poe_short   # Name of the lsf queue to submit
 export MPIEXEC=/users/home/opt/lsf/8.0/linux2.6-glibc2.3-x86_64/bin/mpirun.lsf
