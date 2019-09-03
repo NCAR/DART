@@ -11,8 +11,30 @@
 . environment.load
 
 #----------------------------------------------------------
+
+if [[ ${QUEUE} = "lsf"  ]] ; then
+
+   JOBDIR=${LS_SUBCWD}         # directory of this script
+   JOBNAM=${LSB_JOBNAME}       # name of this script
+   SUB_CMD='bsub < '
+   DEP_CMD='bsub -w "done(${ID})" < '
+
+   EXTENSION=lsf
+
+elif [[ ${QUEUE} = "pbs" ]] ; then
+
+   JOBDIR=${PBS_O_WORKDIR}     # directory of this script
+   JOBNAM=${PBS_JOBNAME}       # name of this script
+   TMPDIR=/glade/scratch/$USER/temp  # cheyenne-specific
+   mkdir -p $TMPDIR                  # cheyenne-specific
+   SUB_CMD=qsub
+   DEP_CMD='qsub -W depend=afterok:$ID '
+   EXTENSION=pbs
+
+fi
+
 TMPLFILE=${RUNDIR}/ensemble.sh
-SBMTFILE=${RUNDIR}/ensemble.${EXPINFO}.sh
+SBMTFILE=${RUNDIR}/ensemble.${EXPINFO}.${EXTENSION}
 cat ${TMPLFILE} > ${SBMTFILE}
 
 #----------------------------------------------------------
@@ -47,7 +69,7 @@ echo "\
 ##########################################################" >> \
 ${SBMTFILE}
 
-bsub < ${SBMTFILE}
+${SUB_CMD} ${SBMTFILE}
 
 #TJH ... several strategies come to mind ... my favorite is to
 # supply an argument specifying LSF, PBS, SLURM, etc.
