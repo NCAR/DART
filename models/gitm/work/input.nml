@@ -1,13 +1,13 @@
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
    single_file_in             = .false.
-   input_state_files          = 'pop.r.nc'
+   input_state_files          = 'gitm_netcdf.nc'
    init_time_days             = -1
    init_time_seconds          = -1
 
    write_output_state_to_file = .false.
    single_file_out            = .false.
-   output_state_files         = 'perfect_restart'
+   output_state_files         = 'perfect_restart.nc'
    output_interval            = 1
 
    async                      = 0
