@@ -89,17 +89,17 @@
 #       You can convert big-endian or little-endian binary files at runtime
 #       on a unit-number by unit-number basis.  Note that if you set all
 #       open file units to a different endian-ness, any new files you write
-#       will also have that same endian-ness.  It can be a bit difficult
-#       to track which unit numbers are assigned to specific files.  Add some
-#       print statements after the open to determine which unit numbers will
-#       be necessary to change.
+#       will also have that same endian-ness. You may need to add some print 
+#       statements in the code after opening the file to determine which 
+#       unit numbers are being used.  You can then set them in the environment
+#       to override the default:
 #
 #       setenv GFORTRAN_CONVERT_UNIT 'big_endian'
 #         Treats ALL open file units as big_endian.  (Not recommended if new files
 #         will be written.)  Options:  big_endian, little_endian, native.
 #
 #       setenv GFORTRAN_CONVERT_UNIT 'big_endian;native:10-20'
-#         Treats file units 10-20 as big_endian but the rest are 'native' 
+#         Treats file units 10-20 as native; the rest are 'big_endian' 
 #
 #       For more information on unit conversions:
 #        http://gcc.gnu.org/onlinedocs/gfortran/GFORTRAN_005fCONVERT_005fUNIT.html
