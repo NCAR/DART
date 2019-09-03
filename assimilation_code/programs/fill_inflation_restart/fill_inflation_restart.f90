@@ -216,15 +216,15 @@ real(r8),         intent(in) :: inf_sd
 character(len=*), intent(in) :: stage
 
 if (inf_mean == MISSING_R8 .or. inf_sd == MISSING_R8) then
-   write(string1,*) 'you must specify both inf_mean and inf_sd values'
+   write(string1,*) 'you must specify both inflation mean and inflation standard deviation values'
    write(string2,*) 'you have "',trim(stage),'_inf_mean = ', inf_mean,'" and '
    write(string3,*) '         "',trim(stage),'_inf_sd   = ', inf_sd,  '"     '
    call error_handler(E_MSG, 'fill_inflation_restart: ', string1,  &
                       source, revision, revdate, text2=string2, text3=string3)
    return
 endif
-ens_handle%copies(ss_inflate_index   , :) = prior_inf_mean
-ens_handle%copies(ss_inflate_sd_index, :) = prior_inf_sd
+ens_handle%copies(ss_inflate_index   , :) = inf_mean
+ens_handle%copies(ss_inflate_sd_index, :) = inf_sd
 
 write(my_stage,'(3A)') 'input_', stage, 'inf'
 write(my_base, '(A)')  'mean'

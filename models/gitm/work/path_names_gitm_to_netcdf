@@ -28,3 +28,4 @@ models/gitm/GITM2/src/time_routines.f90
 models/gitm/gitm_to_netcdf.f90
 models/gitm/model_mod.f90
 models/utilities/default_model_mod.f90
+models/utilities/quad_utils_mod.f90

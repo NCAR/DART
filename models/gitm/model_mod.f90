@@ -10,7 +10,7 @@ module model_mod
 
 ! Modules that are absolutely required for use are listed
 
-use        types_mod, only : r4, r8, digits12, SECPERDAY, MISSING_R8,          &
+use        types_mod, only : r4, r8, digits12, SECPERDAY, MISSING_R8, MISSING_I, &
                              rad2deg, deg2rad, PI, obstypelength, i8
 
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time,&
@@ -25,10 +25,11 @@ use     location_mod, only : location_type, get_dist, query_location,          &
                              loc_get_close_obs => get_close_obs, is_vertical,  &
                              vertical_localization_on
 
-use    utilities_mod, only : register_module, error_handler,                   &
+use    utilities_mod, only : register_module, error_handler, string_to_logical,&
                              E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
-                             nc_check, do_output, to_upper,                    &
+                             do_output, to_upper, string_to_real,              &
                              find_namelist_in_file, check_namelist_read,       &
+                             nmlfileunit, do_nml_file, do_nml_term,            &
                              open_file, file_exist, find_textfile_dims,        &
                              file_to_text, close_file
 
@@ -38,9 +39,21 @@ use  ensemble_manager_mod,  only : ensemble_type
 
 use distributed_state_mod,  only : get_state
 
-use     obs_kind_mod, only : get_index_for_quantity,  &
-                             get_name_for_quantity,   &
-                             QTY_GEOPOTENTIAL_HEIGHT
+use   state_structure_mod,  only : add_domain, get_dart_vector_index, get_domain_size, &
+                                   get_dim_name, get_kind_index, get_num_dims, &
+                                   get_num_variables, get_varid_from_kind, &
+                                   get_model_variable_indices, state_structure_info, &
+                                   get_index_start
+
+use     obs_kind_mod  ! all for now - fixme  !only : get_index_for_quantity,  &
+                                             !get_name_for_quantity,   &
+                                             !QTY_GEOPOTENTIAL_HEIGHT
+
+use        quad_utils_mod,  only : quad_interp_handle, init_quad_interp, &
+                                   set_quad_coords, finalize_quad_interp, &
+                                   quad_lon_lat_locate, quad_lon_lat_evaluate, &
+                                   GRID_QUAD_IRREG_SPACED_REGULAR,  &
+                                   QUAD_LOCATED_CELL_CENTERS
 
 use     default_model_mod,  only : adv_1step, nc_write_model_vars, &
                                    pert_model_copies, get_close_state, &
@@ -94,8 +107,8 @@ public :: get_gitm_restart_dirname,    &
           ! only used in a converter but this code
           ! has not been updated.  must go to/from
           ! gitm binary and netcdf - not 1d array.
-          !restart_file_to_statevector, &
-          !statevector_to_restart_file, &
+          !restart_files_to_netcdf, &
+          !netcdf_to_restart_files, &
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -135,17 +148,19 @@ integer, parameter :: num_state_table_columns = 2
 character(len=NF90_MAX_NAME) :: gitm_state_variables(max_state_variables * num_state_table_columns ) = ' '
 character(len=NF90_MAX_NAME) :: variable_table(max_state_variables, num_state_table_columns )
 
+logical            :: single_file_in = .false.
 integer            :: assimilation_period_days = 0
 integer            :: assimilation_period_seconds = 60
 real(r8)           :: model_perturbation_amplitude = 0.2
-logical            :: output_state_vector = .false.
 integer            :: debug = 0   ! turn up for more and more debug messages
 character(len=32)  :: calendar = 'Gregorian'
+character(len=256) :: template_filename = 'bob.nc'
 character(len=256) :: gitm_restart_dirname = 'gitm_restartdir'
 
 namelist /model_nml/  &
+   single_file_in,              &
+   template_filename,           &
    gitm_restart_dirname,        &
-   output_state_vector,         &
    assimilation_period_days,    &  ! for now, this is the timestep
    assimilation_period_seconds, &
    model_perturbation_amplitude,&
@@ -153,30 +168,11 @@ namelist /model_nml/  &
    debug,                       &
    gitm_state_variables
 
-integer :: nfields
+type(quad_interp_handle) :: quad_interp
 
-! Everything needed to describe a variable
-
-type progvartype
-   private
-   character(len=NF90_MAX_NAME) :: varname       ! crazy species name
-   character(len=NF90_MAX_NAME) :: long_name
-   character(len=NF90_MAX_NAME) :: units
-   character(len=NF90_MAX_NAME) :: storder
-   character(len=NF90_MAX_NAME) :: gitm_varname  ! NDensityS, IDensityS, ...
-   integer :: gitm_dim                           ! dimension defining species
-   integer :: gitm_index                         ! 'iSpecies' or u,v,w ...
-   integer, dimension(NF90_MAX_VAR_DIMS) :: dimlens ! nlons, nlats, nalts [, nspecies]
-   integer :: posdef
-   integer :: numdims
-   integer :: varsize     ! prod(dimlens(1:numdims))
-   integer :: index1      ! location in dart state vector of first occurrence
-   integer :: indexN      ! location in dart state vector of last  occurrence
-   integer :: dart_kind
-   character(len=obstypelength) :: kind_string
-end type progvartype
-
-type(progvartype), dimension(max_state_variables) :: progvar
+! this id allows us access to all of the state structure
+! info and is required for getting state variables.
+integer :: domain_id
 
 ! nLons, nLats are the number of lons/lats PER block
 !                  the number of blocks comes from UAM.in
@@ -204,7 +200,6 @@ real(r8), allocatable :: ALT(:)   ! vertical level centers
 integer               :: model_size      ! the state vector length
 type(time_type)       :: model_time      ! valid time of the model state
 type(time_type)       :: model_advance_time  ! smallest time to adv model
-real(r8), allocatable :: ens_mean(:)     ! may be needed for forward ops
 
 ! set this to true if you want to print out the current time
 ! after each N observations are processed, for benchmarking.
@@ -233,17 +228,17 @@ contains
 !==================================================================
 
 
+!-----------------------------------------------------------------------
+!> Returns the size of the DART state vector (i.e. model) as an integer.
+!>
+
 function get_model_size()
-!------------------------------------------------------------------
 
-! Returns the size of the model as an integer.
-! Required for all applications.
-
-integer :: get_model_size
+integer(i8) :: get_model_size
 
 if ( .not. module_initialized ) call static_init_model
 
-get_model_size = model_size
+get_model_size = get_domain_size(domain_id)
 
 end function get_model_size
 
@@ -264,36 +259,19 @@ integer, optional,   intent(out) :: var_type
 ! Local variables
 
 integer :: lat_index, lon_index, alt_index
-integer :: n, nf, myindx, remainder, remainder2
+integer :: myvarid, myqty
 
 if ( .not. module_initialized ) call static_init_model
 
-! Find out which of the 3D fields index_in is part of
-nf     = -1
+! FIXME: call state structure routine to get i,j,k from index_in
+! then return location.
 
-FindIndex : do n = 1,nfields
-   if( (progvar(n)%index1 <= index_in) .and. (index_in <= progvar(n)%indexN) ) then
-      nf = n
-      myindx = index_in - progvar(n)%index1 + 1
-      exit FindIndex
-   endif
-enddo FindIndex
-
-if( myindx == -1 ) then
-   write(string1,*) 'Problem, cannot find base_offset, index_in is: ', index_in
-   call error_handler(E_ERR,'get_state_meta_data',string1,source,revision,revdate)
-endif
-
-alt_index = 1 + (myindx - 1) / (NgridLon * NgridLat)
-remainder = myindx - (alt_index-1) * NgridLon * NgridLat
-lat_index = 1 + (remainder - 1) / NgridLon
-remainder2 = remainder - (lat_index - 1) * NgridLon
-lon_index = remainder2
+call get_model_variable_indices(index_in, lon_index, lat_index, alt_index, var_id=myvarid, kind_index=myqty)
 
 location = set_location(LON(lon_index), LAT(lat_index), ALT(alt_index), VERTISHEIGHT)
 
 if (present(var_type)) then
-   var_type = progvar(nf)%dart_kind
+   var_type = myqty
 endif
 
 end subroutine get_state_meta_data
@@ -302,7 +280,7 @@ end subroutine get_state_meta_data
 !==================================================================
 
 
-subroutine model_interpolate(state_handle, ens_size, location, obs_type, interp_val, istatus)
+subroutine model_interpolate(state_handle, ens_size, location, obs_qty, interp_vals, status_array)
 !------------------------------------------------------------------
 !     PURPOSE:
 !
@@ -329,27 +307,35 @@ subroutine model_interpolate(state_handle, ens_size, location, obs_type, interp_
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
 type(location_type), intent(in)  :: location
-integer,             intent(in)  :: obs_type
-real(r8),            intent(out) :: interp_val(ens_size)
-integer,             intent(out) :: istatus(ens_size)
+integer,             intent(in)  :: obs_qty
+real(r8),            intent(out) :: interp_vals(ens_size)
+integer,             intent(out) :: status_array(ens_size)
 
 ! Local storage
+
+character(len=*), parameter :: routine = 'model_interpolate'
 
 real(r8) :: loc_array(3), llon, llat, lvert, lon_fract, lat_fract, alt_fract
 integer  :: blon(2), blat(2), balt(2), i, j, k, ier, nhgt
 integer(i8) :: base_offset, end_offset
 real(r8) :: cube(2, 2, 2, ens_size), square(2, 2, ens_size), line(2, ens_size)
 
+integer  :: four_lons(4), four_lats(4)
+integer  :: status1, which_vert, varid
+real(r8) :: lon_lat_vert(3)
+real(r8) :: quad_vals(4, ens_size)
+
+
 if ( .not. module_initialized ) call static_init_model
 
 ! Assume failure.  Set return val to missing, then the code can
-! just set istatus to something indicating why it failed, and return.
-! If the interpolation is good, the interp_val will be set to the
-! good value, and the last line here sets istatus to 0.
+! just set status_array to something indicating why it failed, and return.
+! If the interpolation is good, interp_vals will be set to the
+! good values, and the last line here sets status_array to 0.
 ! make any error codes set here be in the 10s
 
-interp_val = MISSING_R8     ! the DART bad value flag
-istatus = 99                ! unknown error
+interp_vals = MISSING_R8     ! the DART bad value flag
+status_array = 99            ! unknown error
 
 ! Get the individual locations values
 
@@ -357,131 +343,56 @@ loc_array = get_location(location)
 llon      = loc_array(1)
 llat      = loc_array(2)
 lvert     = loc_array(3)
+which_vert   = nint(query_location(location))
 
 ! IF (debug > 2) print *, 'requesting interpolation at ', llon, llat, lvert
 print *, 'requesting interpolation at ', llon, llat, lvert
 
 ! Only height and level for vertical location type is supported at this point
 if (.not. is_vertical(location, "HEIGHT") .and. .not. is_vertical(location, "LEVEL")) THEN
-     istatus = 15
+     status_array = 15
      return
 endif
 
+! do we know how to interpolate this quantity?
+call ok_to_interpolate(obs_qty, varid, status1)
+
+if (status1 /= 0) then
+   if(debug > 12) then
+      write(string1,*)'did not find observation quantity ', obs_qty, ' in the state vector'
+      call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   endif
+   status_array(:) = status1   ! this quantity not in the state vector
+   return
+endif
+
+
+
+! FIXME:
+! call the quad interp code here.
 ! Find the start and end offsets for this field in the state vector x(:)
 
-! FIXME: this fails if you ask for a kind that doesn't exist in the state vector.
-! in most cases you just want to set a bad istatus and return without stopping
-! the entire assimilation.  if the error calls are commented out of the two
-! index range subroutines, the offsets will come back as 0.  since the
-! return values have already been set, just give it a more specific error
-! code and return here.
-
-if (obs_type == QTY_GEOPOTENTIAL_HEIGHT ) then
-   ! ok to continue.  offsets unused in this case, but
-   ! set them to something > 0 to indicate its ok.
-   base_offset = 1
-   end_offset = 1
-else 
-   call get_index_range(obs_type, base_offset, end_offset)
-endif
-
-if (debug > 2) print *, 'base offset now ', base_offset
-
-! fail if this kind isn't in the state vector.
-if (base_offset <= 0) then 
-   istatus = 20
+! get the indices for the 4 corners of the quad in the horizontal, plus
+! the fraction across the quad for the obs location
+call quad_lon_lat_locate(quad_interp, llon, llat, & 
+                         four_lons, four_lats, lon_fract, lat_fract, status1)
+if (status1 /= 0) then
+   status_array(:) = 3  ! cannot locate enclosing horizontal quad
    return
 endif
 
-! Need to find bounding center indices and fractional offsets for lat, lon, alt
-call find_lon_bounds(llon, blon(1), blon(2), lon_fract, ier)
-if(ier /= 0) then
-   istatus = 16
-   return
-endif
+call get_quad_vals(state_handle, ens_size, varid, obs_qty, four_lons, four_lats, &
+                   lon_lat_vert, which_vert, quad_vals, status_array)
+if (any(status_array /= 0)) return
 
-call find_lat_or_alt_bounds(llat, NgridLat, LAT, blat(1), blat(2), lat_fract, ier)
-if(ier /= 0) then
-   istatus = 17
-   return
-endif
 
-if (is_vertical(location, "HEIGHT")) then ! call the height interpolation routine.
+! do the horizontal interpolation for each ensemble member
+call quad_lon_lat_evaluate(quad_interp, lon_fract, lat_fract, ens_size, &
+                           quad_vals, interp_vals, status_array)
 
-   call find_lat_or_alt_bounds(lvert, NgridAlt, ALT, balt(1), balt(2), alt_fract, ier)
-
-else if (is_vertical(location, "LEVEL")) then ! set the levels and fraction.
-
-   nhgt = int(lvert)
-   if (nhgt < 1 .or. nhgt > NgridAlt) then
-      istatus = 18
-      return
-   endif
-
-   ! if we are below the top level, set the lower bound to the integer part of the
-   ! level and set the fraction between it and the next level to the fractional part.
-   ! if we are asking for the top level, set the upper bound to the requested level 
-   ! and set the fraction to 1.
-   if (nhgt < NGridAlt) then
-      balt(1) = nhgt
-      balt(2) = nhgt + 1
-      alt_fract = lvert - real(nhgt,r8)
-   else
-      balt(1) = nhgt - 1
-      balt(2) = nhgt
-      alt_fract = 1.0_r8
-   endif
-   ier = 0
-else
-   ! shouldn't happen
-   istatus = 99
-   return
-endif
-if(ier /= 0) then
-   istatus = 18
-   return
-endif
-
-! if we're asking about height, we have the alt arrays directly.
-if (obs_type == QTY_GEOPOTENTIAL_HEIGHT) then
-
-   ! Interpolate to the given altitude - lat/lon doesn't matter here.
-   interp_val = (1 - alt_fract) * ALT(balt(1)) + alt_fract * ALT(balt(2))
-   
-   istatus = 0
-   return
-endif
-
-! for the rest of the state vector contents - find the offset to the start
-! of the requested kind, and do a tri-linear interpolation inside the enclosing
-! cube from the grid.
-
-! Get the grid values for the first
-do i = 1, 2
-   do j = 1, 2
-      do k = 1, 2
-         cube(i, j, k, :) = get_grid_value(base_offset, blon(i), blat(j), balt(k), state_handle, ens_size)
-      end do
-   end do
-end do
-
-! Interpolate to the given altitude
-do i = 1, 2
-   do j = 1, 2
-      square(i, j, :) = (1 - alt_fract) * cube(i, j, 1, :) + alt_fract * cube(i, j, 2, :)
-   end do
-end do
-
-! Interpolate to the given latitude
-do i = 1, 2
-   line(i, :) = (1 - lat_fract) * square(i, 1, :) + lat_fract * square(i, 2, :)
-end do
-
-! Interpolate to the given longitude
-interp_val(:) = (1 - lon_fract) * line(1, :) + lon_fract * line(2, :)
 
 ! All good.
-istatus(:) = 0
+status_array(:) = 0
 
 end subroutine model_interpolate
 
@@ -522,6 +433,8 @@ integer :: varsize
 integer :: iunit, io, ivar, index1, indexN
 integer :: ss, dd
 
+character(len=*), parameter :: routine = 'static_init_model'
+
 if ( module_initialized ) return ! only need to do this once.
 
 ! Print module information to log file and stdout.
@@ -537,9 +450,8 @@ read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, 'model_nml')
 
 ! Record the namelist values used for the run
-call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
-if (do_output()) write(logfileunit, nml=model_nml)
-if (do_output()) write(     *     , nml=model_nml)
+if (do_nml_file()) write(nmlfileunit, nml=model_nml)
+if (do_nml_term()) write(     *     , nml=model_nml)
 
 ! Get the GITM variables in a restricted scope setting.
 
@@ -595,100 +507,14 @@ call get_grid(gitm_restart_dirname, nBlocksLon, nBlocksLat, &
               nLons, nLats, nAlts, LON, LAT, ALT )
 
 !---------------------------------------------------------------
-! Compile the list of gitm variables to use in the creation
-! of the DART state vector. Required to determine model_size.
-!
-! Verify all variables are in the gitm restart file
-!
-! Compute the offsets into the state vector for the start of each
-! different variable type. Requires reading shapes from the gitm
-! restart file. As long as TIME is the LAST dimension, we're OK.
-!
-! Record the extent of the data type in the state vector.
 
-call verify_state_variables( gitm_state_variables, nfields, variable_table)
+! mass points at cell centers
+call init_quad_interp(GRID_QUAD_IRREG_SPACED_REGULAR, nLons, nLats, &
+                      QUAD_LOCATED_CELL_CENTERS, &
+                      global=.false., spans_lon_zero=.false., pole_wrap=.false., &
+                      interp_handle=quad_interp)
 
-index1  = 1;
-indexN  = 0;
-
-do ivar = 1, nfields
-
-   varname                   = trim(variable_table(ivar,1))
-   kind_string               = trim(variable_table(ivar,2))
-   progvar(ivar)%varname     = varname
-   progvar(ivar)%kind_string = kind_string
-   progvar(ivar)%dart_kind   = get_index_for_quantity( progvar(ivar)%kind_string )
-   progvar(ivar)%dimlens     = 0
-
-   ! I would really like decode_gitm_indices to set the following (on a per-variable basis)
-   ! progvar(ivar)%storder
-   ! progvar(ivar)%numdims
-   ! progvar(ivar)%dimlens
-
-   ! This routine also checks to make sure user specified accurate GITM variables
-   call decode_gitm_indices( varname, &
-                             progvar(ivar)%gitm_varname, &
-                             progvar(ivar)%gitm_dim,     &
-                             progvar(ivar)%gitm_index,   &
-                             progvar(ivar)%long_name,    &
-                             progvar(ivar)%units)
-
-   if (progvar(ivar)%varname == 'f107') then ! if we are dealing with f107
-      varsize = 1
-      progvar(ivar)%storder     = '0d'
-      progvar(ivar)%numdims     = 1
-      progvar(ivar)%dimlens     = 1
-
-   else !anything but f107
-      varsize = NgridLon * NgridLat * NgridAlt
-      progvar(ivar)%storder     = 'xyz3d'
-      progvar(ivar)%numdims     = 3
-      progvar(ivar)%dimlens(1:progvar(ivar)%numdims) = (/ NgridLon, NgridLat, NgridAlt /)
-
-   endif
-
-   progvar(ivar)%varsize     = varsize
-   progvar(ivar)%index1      = index1
-   progvar(ivar)%indexN      = index1 + varsize - 1
-   index1                    = index1 + varsize      ! sets up for next variable
-
-   if ( debug > 0 ) then
-      write(logfileunit,*)
-      write(logfileunit,*) trim(progvar(ivar)%varname),' variable number ',ivar
-      write(logfileunit,*) ' storage      ',trim(progvar(ivar)%storder)
-      write(logfileunit,*) ' long_name    ',trim(progvar(ivar)%long_name)
-      write(logfileunit,*) ' units        ',trim(progvar(ivar)%units)
-      write(logfileunit,*) ' numdims      ',progvar(ivar)%numdims
-      write(logfileunit,*) ' dimlens      ',progvar(ivar)%dimlens(1:progvar(ivar)%numdims)
-      write(logfileunit,*) ' varsize      ',progvar(ivar)%varsize
-      write(logfileunit,*) ' index1       ',progvar(ivar)%index1
-      write(logfileunit,*) ' indexN       ',progvar(ivar)%indexN
-      write(logfileunit,*) ' dart_kind    ',progvar(ivar)%dart_kind
-      write(logfileunit,*) ' kind_string  ',trim(progvar(ivar)%kind_string)
-      write(logfileunit,*) ' gitm_varname ',trim(progvar(ivar)%gitm_varname)
-      write(logfileunit,*) ' gitm_dim     ',progvar(ivar)%gitm_dim
-      write(logfileunit,*) ' gitm_index   ',progvar(ivar)%gitm_index
-
-      write(     *     ,*)
-      write(     *     ,*) trim(progvar(ivar)%varname),' variable number ',ivar
-      write(     *     ,*) ' storage      ',trim(progvar(ivar)%storder)
-      write(     *     ,*) ' long_name    ',trim(progvar(ivar)%long_name)
-      write(     *     ,*) ' units        ',trim(progvar(ivar)%units)
-      write(     *     ,*) ' numdims      ',progvar(ivar)%numdims
-      write(     *     ,*) ' dimlens      ',progvar(ivar)%dimlens(1:progvar(ivar)%numdims)
-      write(     *     ,*) ' varsize      ',progvar(ivar)%varsize
-      write(     *     ,*) ' index1       ',progvar(ivar)%index1
-      write(     *     ,*) ' indexN       ',progvar(ivar)%indexN
-      write(     *     ,*) ' dart_kind    ',progvar(ivar)%dart_kind
-      write(     *     ,*) ' kind_string  ',trim(progvar(ivar)%kind_string)
-      write(     *     ,*) ' gitm_varname ',trim(progvar(ivar)%gitm_varname)
-      write(     *     ,*) ' gitm_dim     ',progvar(ivar)%gitm_dim
-      write(     *     ,*) ' gitm_index   ',progvar(ivar)%gitm_index
-   endif
-
-enddo
-
-model_size = progvar(nfields)%indexN
+call set_quad_coords(quad_interp, LON, LAT)
 
 if ( debug > 0 ) then
   write(logfileunit,'("grid: NgridLon, NgridLat, NgridAlt =",3(1x,i5))') NgridLon, NgridLat, NgridAlt
@@ -697,7 +523,8 @@ if ( debug > 0 ) then
   write(     *     , *)'model_size = ', model_size
 endif
 
-allocate( ens_mean(model_size) )
+
+call set_gitm_variable_info(gitm_state_variables)
 
 end subroutine static_init_model
 
@@ -711,6 +538,7 @@ subroutine end_model()
 ! INTERFACE if the model has no need to clean up storage, etc.
 
 if (allocated(LON)) deallocate(LON, LAT, ALT)
+call finalize_quad_interp(quad_interp)
 
 end subroutine end_model
 
@@ -965,10 +793,10 @@ end subroutine get_close_obs
 !==================================================================
 
 
-subroutine restart_file_to_statevector(dirname, state_vector, model_time)
+subroutine restart_files_to_netcdf(dirname, ncid, model_time)
 !------------------------------------------------------------------
 ! Reads the current time and state variables from a gitm restart
-! file and packs them into a dart state vector.
+! file and packs them into netcdf variables.
 !
 ! FIXME:
 ! this routine needs:
@@ -1001,12 +829,10 @@ subroutine restart_file_to_statevector(dirname, state_vector, model_time)
 ! any or all of the three dimensions.
 
 character(len=*), intent(in)  :: dirname
-real(r8),         intent(out) :: state_vector(:)
+integer,          intent(in)  :: ncid
 type(time_type),  intent(out) :: model_time
 
 if ( .not. module_initialized ) call static_init_model
-
-state_vector = MISSING_R8
 
 ! this is going to have to loop over all the blocks, both to get
 ! the data values and to get the full grid spacings.
@@ -1023,20 +849,20 @@ if (do_output()) &
 ! read each field.  when this routine returns all the data has
 ! been read.
 
-call get_data(trim(dirname), state_vector)
+call get_data(dirname, ncid)
 
-end subroutine restart_file_to_statevector
+end subroutine restart_files_to_netcdf
 
 
 !==================================================================
 
 
-subroutine statevector_to_restart_file(state_vector, dirname, statedate)
+subroutine netcdf_to_restart_files(ncid, dirname, statedate)
 !------------------------------------------------------------------
 ! Writes the current time and state variables from a dart state
 ! vector (1d array) into a gitm netcdf restart file.
 !
-real(r8),         intent(in) :: state_vector(:)
+integer,          intent(in) :: ncid
 character(len=*), intent(in) :: dirname
 type(time_type),  intent(in) :: statedate
 
@@ -1044,22 +870,20 @@ character(len=256) :: dirnameout
 
 if ( .not. module_initialized ) call static_init_model
 
-print *, 'in statevector_to_restart_file, debug, nfields = ', debug, nfields
-
 ! sort the required fields into the order they exist in the
 ! binary restart files and write out the state vector data
 ! field by field.  when this routine returns all the data has
 ! been written.
 
 dirnameout = trim(dirname) // '.out'
-call put_data(dirname, dirnameout, state_vector)
+call put_data(dirname, dirnameout, ncid)
 
 if (do_output()) &
     call print_time(statedate,'time in restart file '//trim(dirname)//'/header.rst')
 if (do_output()) &
     call print_date(statedate,'date in restart file '//trim(dirname)//'/header.rst')
 
-end subroutine statevector_to_restart_file
+end subroutine netcdf_to_restart_files
 
 
 !==================================================================
@@ -1170,8 +994,149 @@ end function get_state_time
 
 
 !==================================================================
-! The remaining interfaces come last
+! The remaining private interfaces come last
 !==================================================================
+
+
+!-----------------------------------------------------------------------
+!>
+!> Fill the array of requested variables, dart kinds, possible min/max
+!> values and whether or not to update the field in the output file.
+!> Then calls 'add_domain()' to tell the DART code which variables to
+!> read into the state vector after this code returns.
+!>
+!>@param variable_array  the list of variables and kinds from model_mod_nml
+!>@param nfields         the number of variable/Quantity pairs specified
+
+subroutine set_gitm_variable_info(variable_array)
+
+character(len=*), intent(in)  :: variable_array(:)
+
+character(len=*), parameter :: routine = 'set_gitm_variable_info:'
+
+integer :: i, nfields
+integer, parameter :: MAX_STRING_LEN = 128
+
+character(len=MAX_STRING_LEN) :: varname    ! column 1, NetCDF variable name
+character(len=MAX_STRING_LEN) :: dartstr    ! column 2, DART Quantity
+character(len=MAX_STRING_LEN) :: minvalstr  ! column 3, Clamp min val
+character(len=MAX_STRING_LEN) :: maxvalstr  ! column 4, Clamp max val
+character(len=MAX_STRING_LEN) :: updatestr  ! column 5, Update output or not
+
+integer, parameter :: MAX_STATE_VARIABLES = 100
+integer, parameter :: vtablenamelength = 32
+
+character(len=vtablenamelength) :: var_names(MAX_STATE_VARIABLES)
+logical  :: update_list(MAX_STATE_VARIABLES)   = .FALSE.
+integer  ::   kind_list(MAX_STATE_VARIABLES)   = MISSING_I
+real(r8) ::  clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
+
+var_names(:) = ' ' 
+
+nfields = 0
+ParseVariables : do i = 1, MAX_STATE_VARIABLES
+
+   varname   = variable_array(num_state_table_columns*i-4)
+   dartstr   = variable_array(num_state_table_columns*i-3)
+   minvalstr = variable_array(num_state_table_columns*i-2)
+   maxvalstr = variable_array(num_state_table_columns*i-1)
+   updatestr = variable_array(num_state_table_columns*i  )
+
+   if ( varname == ' ' .and. dartstr == ' ' ) exit ParseVariables ! Found end of list.
+
+   if ( varname == ' ' .or.  dartstr == ' ' ) then
+      string1 = 'model_nml:model "state_variables" not fully specified'
+      call error_handler(E_ERR,routine,string1,source,revision,revdate)
+   endif
+
+   ! Make sure DART kind is valid
+
+   if( get_index_for_quantity(dartstr) < 0 ) then
+      write(string1,'(3A)') 'there is no obs_kind "', trim(dartstr), '" in obs_kind_mod.f90'
+      call error_handler(E_ERR,routine,string1,source,revision,revdate)
+   endif
+
+   call to_upper(minvalstr)
+   call to_upper(maxvalstr)
+   call to_upper(updatestr)
+
+   var_names(   i) = varname
+   kind_list(   i) = get_index_for_quantity(dartstr)
+   clamp_vals(i,1) = string_to_real(minvalstr)
+   clamp_vals(i,2) = string_to_real(maxvalstr)
+   update_list( i) = string_to_logical(updatestr, 'UPDATE')
+
+   nfields = nfields + 1
+
+enddo ParseVariables
+
+if (nfields == MAX_STATE_VARIABLES) then
+   write(string1,'(2A)') 'WARNING: There is a possibility you need to increase ', &
+                         'MAX_STATE_VARIABLES in the global variables in model_mod.f90'
+
+   write(string2,'(A,i4,A)') 'WARNING: you have specified at least ', nfields, &
+                             ' perhaps more'
+
+   call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
+endif
+
+! gitm only has a single domain (only a single grid, no nests or multiple grids)
+
+domain_id = add_domain(template_filename, nfields, var_names, kind_list, &
+                       clamp_vals, update_list)
+
+if (debug > 100) call state_structure_info(domain_id)
+
+end subroutine set_gitm_variable_info
+
+
+!-----------------------------------------------------------------------
+!>
+
+subroutine get_four_state_values(state_handle, ens_size, four_lons, four_lats, &
+                                 four_levs1, four_levs2, four_vert_fracts, &
+                                 varid, quad_vals, my_status)
+
+type(ensemble_type), intent(in) :: state_handle
+integer,             intent(in) :: ens_size
+integer,             intent(in) :: four_lons(4), four_lats(4)
+integer,             intent(in) :: four_levs1(4, ens_size), four_levs2(4, ens_size)
+real(r8),            intent(in) :: four_vert_fracts(4, ens_size)
+integer,             intent(in) :: varid
+real(r8),           intent(out) :: quad_vals(4, ens_size) !< array of interpolated values
+integer,            intent(out) :: my_status(ens_size)
+
+integer  :: icorner
+real(r8) :: vals1(ens_size), vals2(ens_size)
+
+character(len=*), parameter :: routine = 'get_four_state_values:'
+
+do icorner=1, 4
+   call get_values_from_varid(state_handle,  ens_size, &
+                              four_lons(icorner), four_lats(icorner), &
+                              four_levs1(icorner, :), varid, vals1, &
+                              my_status)
+
+   if (any(my_status /= 0)) then
+      my_status(:) = 16   ! cannot retrieve vals1 values
+      return
+   endif
+
+   call get_values_from_varid(state_handle,  ens_size, &
+                              four_lons(icorner), four_lats(icorner), &
+                              four_levs2(icorner, :), varid, vals2, my_status)
+   if (any(my_status /= 0)) then
+      my_status(:) = 17   ! cannot retrieve top values
+      return
+   endif
+
+   call vert_interp(ens_size, vals1, vals2, four_vert_fracts(icorner, :), &
+                    quad_vals(icorner, :))
+
+enddo
+
+
+end subroutine get_four_state_values
 
 
 function get_grid_value(base_offset, ilon, ilat, ialt, state_handle, ens_size)
@@ -1516,15 +1481,17 @@ end function open_block_file
 
 !==================================================================
 
+! FIXME: do we need this for filter?  perhaps we still need this
+! for the original gitm_to_dart?
 
-subroutine get_data(dirname, statevector)
+subroutine get_data(dirname, ncid)
 !------------------------------------------------------------------
 ! open all restart files and read in the requested data item
 !
 character(len=*), intent(in)  :: dirname
-real(r8),         intent(out) :: statevector(:)
+integer,          intent(in)  :: ncid
 
-integer :: ib, jb, nb, iunit, blockoffset, i
+integer :: ib, jb, nb, iunit, i
 
 character(len=256) :: filename
 
@@ -1535,27 +1502,16 @@ do ib = 1, nBlocksLon
 
    nb = (jb-1) * nBlocksLon + ib
 
-   blockoffset = nLats * ngridLon * (jb-1) + nLons * (ib-1)
-
-!print *, 'ib,jb = ', ib, jb
-!print *, 'blockoffset, nb = ', blockoffset, nb
-
    iunit = open_block_file(dirname, nb, 'read', filename)
 
-   call read_data(iunit, blockoffset, statevector)
+   ! this isn't making a statevector anymore.
+   ! it is adding each block to a netcdf variable to make
+   ! a file containing all the blocks.
+   call read_data(iunit, ib, jb, ncid)
 
    call close_file(iunit)
 enddo
 enddo
-
-if ( debug > 4 ) then ! A little sanity check
-   write (*,*) 'variable data after read: '
-   do i = 1, nfields
-      write(*,*) trim(progvar(i)%varname), ' range ', &
-                 minval(statevector(progvar(i)%index1:progvar(i)%indexN)), &
-                 maxval(statevector(progvar(i)%index1:progvar(i)%indexN))
-   enddo
-endif
 
 end subroutine get_data
 
@@ -1563,27 +1519,18 @@ end subroutine get_data
 !==================================================================
 
 
-subroutine put_data(dirname, dirnameout, statevector)
+subroutine put_data(dirname, dirnameout, ncid)
 !------------------------------------------------------------------
 ! open all restart files and write out the requested data item
 !
  character(len=*), intent(in) :: dirname, dirnameout
- real(r8),         intent(in) :: statevector(:)
+ integer,          intent(in) :: ncid
 
 integer :: ib, jb, nb, iunit, ounit
 integer :: i, blockoffset
 character(len=256) :: readfilename, writefilename
 
 ! get the dirname, construct the filenames inside open_block_file
-
-if ( debug > 4 ) then ! A little sanity check
-   write (*,*) 'variable data to be written: '
-   do i = 1, nfields
-      write(*,*) trim(progvar(i)%varname), 'range ', &
-                 minval(statevector(progvar(i)%index1:progvar(i)%indexN)), &
-                 maxval(statevector(progvar(i)%index1:progvar(i)%indexN))
-   enddo
-endif
 
 do jb = 1, nBlocksLat
 do ib = 1, nBlocksLon
@@ -1599,7 +1546,7 @@ do ib = 1, nBlocksLon
    iunit = open_block_file(dirname,    nb, 'read',  readfilename)
    ounit = open_block_file(dirnameout, nb, 'write', writefilename)
 
-   call write_data(iunit, ounit, blockoffset, statevector, readfilename, writefilename)
+   call write_data(iunit, ounit, ib, jb,  ncid, readfilename, writefilename)
 
    call close_file(iunit)
    call close_file(ounit)
@@ -1612,35 +1559,38 @@ end subroutine put_data
 !==================================================================
 
 
-subroutine unpack_data(data3d, ivar, blockoffset, statevector)
+subroutine unpack_data(data3d, ivar, blockoffset, ncid)
 !------------------------------------------------------------------
-! put the requested data into the state vector
+! put the requested data into a netcdf variable
 !
 real(r8), intent(in)    :: data3d(:,:,:)
-integer,  intent(in)    :: ivar         ! index into progvar struct
-integer,  intent(in)    :: blockoffset
-real(r8), intent(inout) :: statevector(:)
+integer,  intent(in)    :: ivar         ! variable index
+integer,  intent(in)    :: blockoffset(:,:,:)
+integer,  intent(in)    :: ncid
 
 integer :: i, j, k, offset, base
 
 !print *, 'ivar = ', ivar
-base = progvar(ivar)%index1 - 1
-!print *, 'blockoffset, base = ', blockoffset, base
 
 do k=1,nAlts
  do j=1,nLats
   do i=1,nLons
 
-      offset = ((k-1) * ngridLat * ngridLon) +  &
-               ((j-1) * ngridLon) +             &
-               i
-    if (base+blockoffset+offset < 1 .or. &
-        base+blockoffset+offset > model_size) then
-      print *, 'i,j,k, index: ', i, j, k, base+blockoffset+offset
-    else
-      statevector(base + blockoffset + offset) = data3d(nGhost+i, nGhost+j, nGhost+k)
-      !print *, 'i,j,k,varoffset = ', i,j,k,blockoffset + offset
-    endif
+      ! FIXME _ this needs to be copied into a hyperslab of 
+      ! a 3d netcdf variable, not a 1D statevector.
+
+      ! call put_var() with the right offsets.
+
+!      offset = ((k-1) * ngridLat * ngridLon) +  &
+!               ((j-1) * ngridLon) +             &
+!               i
+!    if (base+blockoffset+offset < 1 .or. &
+!        base+blockoffset+offset > model_size) then
+!      print *, 'i,j,k, index: ', i, j, k, base+blockoffset+offset
+!    else
+!      statevector(base + blockoffset + offset) = data3d(nGhost+i, nGhost+j, nGhost+k)
+!      !print *, 'i,j,k,varoffset = ', i,j,k,blockoffset + offset
+!    endif
 
   enddo
  enddo
@@ -1652,7 +1602,7 @@ end subroutine unpack_data
 !==================================================================
 
 
-subroutine unpack_data0d(data0d, ivar, blockoffset, statevector)
+subroutine unpack_data0d(data0d, ivar, blockoffset, ncid)
 !------------------------------------------------------------------
 ! put the f107 estimate (a scalar, hence 0d) into the state vector.
 ! Written specifically
@@ -1662,13 +1612,13 @@ subroutine unpack_data0d(data0d, ivar, blockoffset, statevector)
 ! written by alex
 
 real(r8), intent(in)    :: data0d
-integer,  intent(in)    :: ivar         ! index into progvar struct
+integer,  intent(in)    :: ivar         ! index into state structure
 integer,  intent(in)    :: blockoffset
-real(r8), intent(inout) :: statevector(:)
+integer,  intent(in)    :: ncid
 
 integer :: offset, base
 
-base = progvar(ivar)%index1 - 1
+base = get_index_start(domain_id, ivar)
 offset = 1
 
 if (blockoffset > 0) then
@@ -1679,7 +1629,7 @@ else
    ! if the first block (blockoffset = 0), then put this value into the state vector
    ! print *, 'u: BASE+BO+O is fine', base, blockoffset, offset, data0d
    ! blockoffset is 0 (f107 does not depend on blocks), offset is 1
-   statevector(base + blockoffset + offset) = data0d
+!   statevector(base + blockoffset + offset) = data0d
 endif
 
 end subroutine unpack_data0d
@@ -1688,18 +1638,18 @@ end subroutine unpack_data0d
 !==================================================================
 
 
-subroutine pack_data(statevector, ivar, blockoffset, data3d)
+subroutine pack_data(ncid, ivar, blockoffset, data3d)
 !------------------------------------------------------------------
 ! put the state vector data into a 3d array
 !
-real(r8), intent(in)    :: statevector(:)
-integer,  intent(in)    :: ivar         ! index into progvar struct
+integer,  intent(in)    :: ncid
+integer,  intent(in)    :: ivar         ! index into state structure
 integer,  intent(in)    :: blockoffset
 real(r8), intent(inout) :: data3d(:,:,:)
 
 integer :: i, j, k, offset, base
 
-base = progvar(ivar)%index1 - 1
+base = get_index_start(domain_id, ivar)
 
 do k=1,nAlts
  do j=1,nLats
@@ -1708,7 +1658,7 @@ do k=1,nAlts
       offset = ((k-1) * ngridLat * ngridLon) +  &
                ((j-1) * ngridLon) +             &
                i
-      data3d(nGhost+i, nGhost+j, nGhost+k) = statevector(base + blockoffset + offset)
+!      data3d(nGhost+i, nGhost+j, nGhost+k) = statevector(base + blockoffset + offset)
       !print *, 'i,j,k,varoffset = ', i,j,k,blockoffset + offset
 
   enddo
@@ -1721,7 +1671,7 @@ end subroutine pack_data
 !==================================================================
 
 
-subroutine pack_data0d(statevector, ivar, blockoffset, data0d)
+subroutine pack_data0d(ncid, ivar, blockoffset, data0d)
 !------------------------------------------------------------------
 ! put the f107 estimate (scalar) from the statevector into a 0d container
 ! the only trick this routine does is give all blocks the same f107 (the
@@ -1730,14 +1680,14 @@ subroutine pack_data0d(statevector, ivar, blockoffset, data0d)
 ! the blockoffset variable).
 ! written by alex
 
-real(r8), intent(in)    :: statevector(:)
-integer,  intent(in)    :: ivar         ! index into progvar struct
+integer,  intent(in)    :: ncid
+integer,  intent(in)    :: ivar         ! index into state structure
 integer,  intent(in)    :: blockoffset
 real(r8), intent(inout) :: data0d
 
 integer :: offset, base
 
-base   = progvar(ivar)%index1 - 1
+base   = get_index_start(domain_id, ivar)
 offset = 1
 
 if (blockoffset > 0) then
@@ -1745,12 +1695,12 @@ if (blockoffset > 0) then
    ! print *, 'p: BO>0, updating data0d w f107 from BLOCK 1 (ONE) !!!', &
    !           base, blockoffset, offset, statevector(base + 0 + offset)
    ! 0 blockoffset corresponds to block 1
-   data0d = statevector(base + 0 + offset)
+!   data0d = statevector(base + 0 + offset)
 else
    ! block = 1
    ! print *, 'p: BASE+BO+O is fine', &
    !           base, blockoffset, offset, statevector(base + blockoffset + offset)
-   data0d = statevector(base + blockoffset + offset)
+!   data0d = statevector(base + blockoffset + offset)
 endif
 
 end subroutine pack_data0d
@@ -1759,17 +1709,20 @@ end subroutine pack_data0d
 !==================================================================
 
 
-subroutine read_data(iunit, blockoffset, statevector)
+subroutine read_data(iunit, ib, jb, ncid)
 !------------------------------------------------------------------
 ! open all restart files and read in the requested data items
 !
-integer,  intent(in)    :: iunit
-integer,  intent(in)    :: blockoffset
-real(r8), intent(inout) :: statevector(:)
+integer,  intent(in) :: iunit
+integer,  intent(in) :: ib, jb
+integer,  intent(in) :: ncid
 
 real(r8), allocatable :: temp1d(:), temp3d(:,:,:), temp4d(:,:,:,:)
 real(r8) :: temp0d !Alex: single parameter has "zero dimensions"
 integer :: i, j, inum, maxsize, ivals(NSpeciesTotal)
+integer :: blockoffset(1,1,1) = 0  ! FIXME
+integer :: iblockoffset = 0
+integer :: gitm_index = 1
 
 ! a temp array large enough to hold any of the
 ! Lon,Lat or Alt array from a block plus ghost cells
@@ -1791,7 +1744,10 @@ read(iunit) temp1d(1-nGhost:nLons+nGhost)
 read(iunit) temp1d(1-nGhost:nLats+nGhost)
 read(iunit) temp1d(1-nGhost:nAlts+nGhost)
 
-call get_index_from_gitm_varname('NDensityS', inum, ivals)
+! FIXME: where do these names come from?
+! shouldn't it be the namelist???
+gitm_index = get_index_start(domain_id, 'NDensityS')
+!call get_index_from_gitm_varname('NDensityS', inum, ivals)
 if (inum > 0) then
    ! if i equals ival, use the data from the state vect
    ! otherwise read/write what's in the input file
@@ -1799,8 +1755,8 @@ if (inum > 0) then
    do i = 1, nSpeciesTotal
       read(iunit)  temp3d
       if (j <= inum) then
-         if (i == progvar(ivals(j))%gitm_index) then
-            call unpack_data(temp3d, ivals(j), blockoffset, statevector)
+         if (i == gitm_index) then
+            call unpack_data(temp3d, ivals(j), blockoffset, ncid)
             j = j + 1
          endif
       endif
@@ -1813,7 +1769,8 @@ else
    enddo
 endif
 
-call get_index_from_gitm_varname('IDensityS', inum, ivals)
+gitm_index = get_index_start(domain_id, 'IDensityS')
+!call get_index_from_gitm_varname('IDensityS', inum, ivals)
 if (inum > 0) then
    ! one or more items in the state vector need to replace the
    ! data in the output file.  loop over the index list in order.
@@ -1821,9 +1778,9 @@ if (inum > 0) then
    do i = 1, nIons
       read(iunit)  temp3d
       if (j <= inum) then
-         if (i == progvar(ivals(j))%gitm_index) then
+         if (i == gitm_index) then
             ! read from input but write from state vector
-            call unpack_data(temp3d, ivals(j), blockoffset, statevector)
+            call unpack_data(temp3d, ivals(j), blockoffset, ncid)
             j = j + 1
          endif
       endif
@@ -1837,34 +1794,38 @@ else
 endif
 
 read(iunit)  temp3d
-call get_index_from_gitm_varname('Temperature', inum, ivals)
+gitm_index = get_index_start(domain_id, 'Temperature')
+!call get_index_from_gitm_varname('Temperature', inum, ivals)
 if (inum > 0) then
-   call unpack_data(temp3d, ivals(1), blockoffset, statevector)
+   call unpack_data(temp3d, ivals(1), blockoffset, ncid)
 endif
 
 read(iunit) temp3d
+gitm_index = get_index_start(domain_id, 'ITemperature')
 call get_index_from_gitm_varname('ITemperature', inum, ivals)
 if (inum > 0) then
-   call unpack_data(temp3d, ivals(1), blockoffset, statevector)
+   call unpack_data(temp3d, ivals(1), blockoffset, ncid)
 endif
 
 read(iunit) temp3d
-call get_index_from_gitm_varname('eTemperature', inum, ivals)
+gitm_index = get_index_start(domain_id, 'eTemperature')
+!call get_index_from_gitm_varname('eTemperature', inum, ivals)
 if (inum > 0) then
-   call unpack_data(temp3d, ivals(1), blockoffset, statevector)
+   call unpack_data(temp3d, ivals(1), blockoffset, ncid)
 endif
 
 !print *, 'reading in temp4d for vel'
 read(iunit) temp4d(:,:,:,1:3)
-call get_index_from_gitm_varname('Velocity', inum, ivals)
+gitm_index = get_index_start(domain_id, 'Velocity')
+!call get_index_from_gitm_varname('Velocity', inum, ivals)
 if (inum > 0) then
    ! copy out any requested bits into state vector
    j = 1
    do i = 1, 3
       if (j <= inum) then
-         if (i == progvar(ivals(j))%gitm_index) then
+         if (i == gitm_index) then
             temp3d = temp4d(:,:,:,i)
-            call unpack_data(temp3d, ivals(j), blockoffset, statevector)
+            call unpack_data(temp3d, ivals(j), blockoffset, ncid)
             j = j + 1
          endif
       endif
@@ -1873,16 +1834,17 @@ endif
 
 !print *, 'reading in temp4d for ivel'
 read(iunit) temp4d(:,:,:,1:3)
-call get_index_from_gitm_varname('IVelocity', inum, ivals)
+gitm_index = get_index_start(domain_id, 'IVelocity')
+!call get_index_from_gitm_varname('IVelocity', inum, ivals)
 if (inum > 0) then
    ! copy out any requested bits into state vector
    j = 1
    do i = 1, 3
       if (j <= inum) then
-         if (i == progvar(ivals(j))%gitm_index) then
+         if (i == gitm_index) then
             ! read from input but write from state vector
             temp3d = temp4d(:,:,:,i)
-            call unpack_data(temp3d, ivals(j), blockoffset, statevector)
+            call unpack_data(temp3d, ivals(j), blockoffset, ncid)
             j = j + 1
          endif
       endif
@@ -1891,15 +1853,16 @@ endif
 
 !print *, 'reading in temp4d for vvel'
 read(iunit) temp4d(:,:,:,1:nSpecies)
-call get_index_from_gitm_varname('VerticalVelocity', inum, ivals)
+gitm_index = get_index_start(domain_id, 'VerticalVelocity')
+!call get_index_from_gitm_varname('VerticalVelocity', inum, ivals)
 if (inum > 0) then
    ! copy out any requested bits into state vector
    j = 1
    do i = 1, nSpecies
       if (j <= inum) then
-         if (i == progvar(ivals(j))%gitm_index) then
+         if (i == gitm_index) then
             temp3d = temp4d(:,:,:,i)
-            call unpack_data(temp3d, ivals(j), blockoffset, statevector)
+            call unpack_data(temp3d, ivals(j), blockoffset, ncid)
             j = j + 1
          endif
       endif
@@ -1908,15 +1871,16 @@ endif
 
 !alex begin
 read(iunit)  temp0d
-call get_index_from_gitm_varname('f107', inum, ivals)
+gitm_index = get_index_start(domain_id, 'VerticalVelocity')
+!call get_index_from_gitm_varname('f107', inum, ivals)
 if (inum > 0) then
-   call unpack_data0d(temp0d, ivals(1), blockoffset, statevector) !see comments in the body of the subroutine
+   call unpack_data0d(temp0d, ivals(1), iblockoffset, ncid) !see comments in the body of the subroutine
 endif
 
 read(iunit)  temp3d
 call get_index_from_gitm_varname('Rho', inum, ivals)
 if (inum > 0) then
-   call unpack_data(temp3d, ivals(1), blockoffset, statevector)
+   call unpack_data(temp3d, ivals(1), blockoffset, ncid)
 endif
 !alex end
 
@@ -1929,19 +1893,20 @@ end subroutine read_data
 !==================================================================
 
 
-subroutine write_data(iunit, ounit, blockoffset, statevector, infile, outfile)
+subroutine write_data(iunit, ounit, ib, jb, ncid, infile, outfile)
 !------------------------------------------------------------------
 ! open all restart files and write out the requested data item
 !
 integer,          intent(in) :: iunit, ounit
-integer,          intent(in) :: blockoffset
-real(r8),         intent(in) :: statevector(:)
+integer,          intent(in) :: ib, jb, ncid
 character(len=*), intent(in) :: infile, outfile
 
 real(r8), allocatable :: temp1d(:), temp3d(:,:,:), temp4d(:,:,:,:), data3d(:,:,:)
 real(r8) :: data0d, temp0d !Alex !parameter is technically zero-dimensional
 integer :: ios
 integer :: i, j, inum, maxsize, ivals(NSpeciesTotal)
+integer :: blockoffset = 0
+integer :: gitm_index = 1
 
 ! a temp array large enough to hold any of the
 ! Lon,Lat or Alt array from a block plus ghost cells
@@ -1997,7 +1962,7 @@ if (inum > 0) then
    do i = 1, nSpeciesTotal
       read(iunit)  temp3d
       if (j <= inum) then
-         if (i == progvar(ivals(j))%gitm_index) then
+         if (i == gitm_index) then
 
             ! FIXME: if the program restart is really resetting the ghost zones
             ! correctly, then we shouldn't need to initialize the array with the
@@ -2014,7 +1979,7 @@ if (inum > 0) then
             ! (as is the case with CHAMP and GRACE).
             data3d = temp3d
 
-            call pack_data(statevector, ivals(j), blockoffset, data3d)
+            call pack_data(ncid, ivals(j), blockoffset, data3d)
 
             ! FIXME: also needs fixing.  if we have made some value negative
             ! where the model doesn't support it, and it can't be 0 either, then
@@ -2094,10 +2059,10 @@ if (inum > 0) then
    do i = 1, nIons
       read(iunit)  temp3d
       if (j <= inum) then
-         if (i == progvar(ivals(j))%gitm_index) then
+         if (i == gitm_index) then
             ! read from input but write from state vector
             data3d = temp3d
-            call pack_data(statevector, ivals(j), blockoffset, data3d)
+            call pack_data(ncid, ivals(j), blockoffset, data3d)
             where (data3d < 0.0_r8) data3d = 1.0e-16_r8 !alex
             write(ounit) data3d
             j = j + 1
@@ -2122,7 +2087,7 @@ read(iunit)  temp3d
 data3d = temp3d
 call get_index_from_gitm_varname('Temperature', inum, ivals)
 if (inum > 0) then
-   call pack_data(statevector, ivals(1), blockoffset, data3d)
+   call pack_data(ncid, ivals(1), blockoffset, data3d)
    where (data3d < 0.0_r8) data3d = 100.0_r8 !alex
    write(ounit) data3d
 else
@@ -2134,7 +2099,7 @@ read(iunit) temp3d
 data3d = temp3d
 call get_index_from_gitm_varname('ITemperature', inum, ivals)
 if (inum > 0) then
-   call pack_data(statevector, ivals(1), blockoffset, data3d)
+   call pack_data(ncid, ivals(1), blockoffset, data3d)
    where (data3d < 0.0_r8) data3d = 100.0_r8 !alex
    write(ounit) data3d
 else
@@ -2145,7 +2110,7 @@ read(iunit) temp3d
 data3d = temp3d
 call get_index_from_gitm_varname('eTemperature', inum, ivals)
 if (inum > 0) then
-   call pack_data(statevector, ivals(1), blockoffset, data3d)
+   call pack_data(ncid, ivals(1), blockoffset, data3d)
    where (data3d < 0.0_r8) data3d = 100.0_r8 !alex
    write(ounit) data3d
 else
@@ -2161,10 +2126,10 @@ if (inum > 0) then
    j = 1
    do i = 1, 3
       if (j <= inum) then
-         if (i == progvar(ivals(j))%gitm_index) then
+         if (i == gitm_index) then
             ! read from input but write from state vector
             data3d = temp4d(:,:,:,i)
-            call pack_data(statevector, ivals(j), blockoffset, data3d)
+            call pack_data(ncid, ivals(j), blockoffset, data3d)
             temp4d(:,:,:,i) = data3d
             j = j + 1
          endif
@@ -2182,10 +2147,10 @@ if (inum > 0) then
    j = 1
    do i = 1, 3
       if (j <= inum) then
-         if (i == progvar(ivals(j))%gitm_index) then
+         if (i == gitm_index) then
             ! read from input but write from state vector
             data3d = temp4d(:,:,:,i)
-            call pack_data(statevector, ivals(j), blockoffset, data3d)
+            call pack_data(ncid, ivals(j), blockoffset, data3d)
             temp4d(:,:,:,i) = data3d
             j = j + 1
          endif
@@ -2203,10 +2168,10 @@ if (inum > 0) then
    j = 1
    do i = 1, nSpecies
       if (j <= inum) then
-         if (i == progvar(ivals(j))%gitm_index) then
+         if (i == gitm_index) then
             ! read from input but write from state vector
             data3d = temp4d(:,:,:,i)
-            call pack_data(statevector, ivals(j), blockoffset, data3d)
+            call pack_data(ncid, ivals(j), blockoffset, data3d)
             temp4d(:,:,:,i) = data3d
             j = j + 1
          endif
@@ -2221,7 +2186,7 @@ read(iunit) temp0d
 data0d = temp0d
 call get_index_from_gitm_varname('f107', inum, ivals)
 if (inum > 0) then
-   call pack_data0d(statevector, ivals(1), blockoffset, data0d)
+   call pack_data0d(ncid, ivals(1), blockoffset, data0d)
    if (data0d < 0.0_r8) data0d = 60.0_r8 !alex
    write(ounit) data0d
 else
@@ -2232,7 +2197,7 @@ read(iunit)  temp3d
 data3d = temp3d
 call get_index_from_gitm_varname('Rho', inum, ivals)
 if (inum > 0) then
-   call pack_data(statevector, ivals(1), blockoffset, data3d)
+   call pack_data(ncid, ivals(1), blockoffset, data3d)
    where (data3d < 0.0_r8) data3d = 1.0e-16_r8 !alex
    write(ounit) data3d
 else
@@ -2247,6 +2212,42 @@ end subroutine write_data
 
 !==================================================================
 
+!-----------------------------------------------------------------------
+!> return 0 (ok) if we know how to interpolate this quantity.
+!> if it is a field in the state, return the variable id from
+!> the state structure.  if not in the state, varid will return -1
+
+subroutine ok_to_interpolate(obs_qty, varid, my_status)
+integer, intent(in)  :: obs_qty
+integer, intent(out) :: varid
+integer, intent(out) :: my_status
+
+! See if the state contains the obs quantity
+varid = get_varid_from_kind(domain_id, obs_qty)
+
+! in the state vector
+if (varid > 0) then
+   my_status = 0
+   return
+endif
+
+
+! add any quantities that can be interpolated to this list if they
+! are not in the state vector.
+select case (obs_qty)
+   case (QTY_SURFACE_ELEVATION, &
+         QTY_PRESSURE,          &
+         QTY_GEOMETRIC_HEIGHT,  &
+         QTY_VERTLEVEL)
+      my_status = 0
+   case default
+      my_status = 2
+end select
+
+
+end subroutine ok_to_interpolate
+
+
 
 subroutine get_index_range_string(string,index1,indexN)
 !------------------------------------------------------------------
@@ -2257,14 +2258,17 @@ character(len=*), intent(in)  :: string
 integer,          intent(out) :: index1,indexN
 
 integer :: i
+character(len=40) :: kind_string = 'bob'    ! fixme
+integer :: nfields = 1 ! fixme
 
 index1 = 0
 indexN = 0
 
 FieldLoop : do i=1,nfields
-   if (progvar(i)%kind_string /= trim(string)) cycle FieldLoop
-   index1 = progvar(i)%index1
-   indexN = progvar(i)%indexN
+   !if (progvar(i)%dart_string /= string) cycle FieldLoop
+   if (kind_string /= trim(string)) cycle FieldLoop
+   index1 = 1 ! progvar(i)%index1
+   indexN = 2 ! progvar(i)%indexN
    exit FieldLoop
 enddo FieldLoop
 
@@ -2292,16 +2296,18 @@ subroutine get_index_range_int(dartkind,index1,indexN)
 integer, intent(in) :: dartkind
 integer(i8), intent(out) :: index1,indexN
 
-integer :: i
+integer :: i, dart_kind = 1
 character(len=obstypelength) :: string
+integer :: nfields = 1 ! fixme
 
 index1 = 0
 indexN = 0
 
 FieldLoop : do i=1,nfields
-   if (progvar(i)%dart_kind /= dartkind) cycle FieldLoop
-   index1 = progvar(i)%index1
-   indexN = progvar(i)%indexN
+   !if (progvar(i)%dart_kind /= dartkind) cycle FieldLoop
+   if (dart_kind /= dartkind) cycle FieldLoop
+   index1 = 1 ! progvar(i)%index1
+   indexN = 2 ! progvar(i)%indexN
    exit FieldLoop
 enddo FieldLoop
 
@@ -2326,24 +2332,25 @@ subroutine get_index_from_gitm_varname(gitm_varname, inum, ivals)
 character(len=*), intent(in) :: gitm_varname
 integer, intent(out) :: inum, ivals(:)
 
+integer, parameter :: nfields = 1
 integer :: gindex(nfields)
 integer :: i, limit
 
 inum = 0
 limit = size(ivals)
 
-FieldLoop : do i=1,nfields
-   if (progvar(i)%gitm_varname /= gitm_varname) cycle FieldLoop
-   inum = inum + 1
-   if (inum > limit) then
-      write(string1,*) 'found too many matches, ivals needs to be larger than ', limit
-      call error_handler(E_ERR,'get_index_from_gitm_varname',string1,source,revision,revdate)
-   endif
-   ! i is index into progvar array - the order of the fields in the sv
-   ! gitm_index is index into the specific variable in the gitm restarts
-   ivals(inum) = i
-   gindex(inum) = progvar(i)%gitm_index
-enddo FieldLoop
+!FieldLoop : do i=1,nfields
+!   if (progvar(i)%gitm_varname /= gitm_varname) cycle FieldLoop
+!   inum = inum + 1
+!   if (inum > limit) then
+!      write(string1,*) 'found too many matches, ivals needs to be larger than ', limit
+!      call error_handler(E_ERR,'get_index_from_gitm_varname',string1,source,revision,revdate)
+!   endif
+!   ! i is index into progvar array - the order of the fields in the sv
+!   ! gitm_index is index into the specific variable in the gitm restarts
+!   ivals(inum) = i
+!   gindex(inum) = progvar(i)%gitm_index
+!enddo FieldLoop
 
 !if (inum > 0) then
 !   print *, 'before sort, inum: ', inum
@@ -2375,211 +2382,11 @@ type(time_type) :: set_model_time_step
 
 if ( .not. module_initialized ) call static_init_model
 
-   set_model_time_step = set_time(assimilation_period_seconds, &
-                           assimilation_period_days) ! (seconds, days)
+set_model_time_step = set_time(assimilation_period_seconds, &
+                               assimilation_period_days) ! (seconds, days)
 
 end function set_model_time_step
 
-
-!==================================================================
-
-
-subroutine verify_state_variables( state_variables, ngood, table )
-!------------------------------------------------------------------
-character(len=*), dimension(:),   intent(in)  :: state_variables
-integer,                          intent(out) :: ngood
-character(len=*), dimension(:,:), intent(out) :: table
-
-integer :: nrows, i
-character(len=NF90_MAX_NAME) :: varname
-character(len=NF90_MAX_NAME) :: dartstr
-
-if ( .not. module_initialized ) call static_init_model
-
-nrows = size(table,1)
-
-ngood = 0
-MyLoop : do i = 1, nrows
-
-   varname    = trim(state_variables(2*i -1))
-   dartstr    = trim(state_variables(2*i   ))
-   table(i,1) = trim(varname)
-   table(i,2) = trim(dartstr)
-
-   if ( table(i,1) == ' ' .and. table(i,2) == ' ' ) exit MyLoop ! Found end of list.
-
-   if ( table(i,1) == ' ' .or. table(i,2) == ' ' ) then
-      string1 = 'model_nml:gitm_state_variables not fully specified'
-      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
-   endif
-
-   ! Normally sure variable exists in GITM restart variable list
-   ! This is done in dart_gitm_mod:decode_gitm_indices() 
-
-
-   ! Make sure DART kind is valid
-
-   if( get_index_for_quantity(dartstr) < 0 ) then
-      write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
-      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
-   endif
-
-   ! Record the contents of the DART state vector
-
-   if ( debug > 0 ) then
-      write(logfileunit,*)'variable ',i,' is ',trim(table(i,1)), ' ', trim(table(i,2))
-      write(     *     ,*)'variable ',i,' is ',trim(table(i,1)), ' ', trim(table(i,2))
-   endif
-
-   ngood = ngood + 1
-enddo MyLoop
-
-if (ngood == nrows) then
-   string1 = 'WARNING: There is a possibility you need to increase ''max_state_variables'''
-   write(string2,'(''WARNING: you have specified at least '',i4,'' perhaps more.'')')ngood
-   call error_handler(E_MSG,'verify_state_variables',string1,source,revision,revdate,text2=string2)
-endif
-
-end subroutine verify_state_variables
-
-
-!==================================================================
-
-
-function find_index(x, xa, n)
-!------------------------------------------------------------------
-! This function returns the array index (here, the value returned by
-! find_index is designated as i) such that x is between xa(i) and xa(i+1).
-! If x is less than xa(1), then i=-1 is returned.  If x is greater than
-! xa(n), then i=-1 is returned.  It is assumed that the values of
-! xa increase monotonically with increasing i.
-
-    integer              :: find_index
-    integer,  intent(in) :: n             ! array size
-    real(r8), intent(in) :: xa(n)         ! array of locations
-    real(r8), intent(in) :: x             ! location of interest
-
-    integer :: lower, upper, mid          ! lower and upper limits, and midpoint
-    integer :: order
-
-    lower = 0
-    upper = n + 1
-
-    IF( xa(1) .lt. xa(n) ) THEN
-      order = 1
-    ELSE
-      order = -1
-    ENDIF
-
-    IF ( x .gt. maxval(xa) ) THEN
-      mid = -1
-    ELSEIF ( x .lt. minval(xa) ) THEN
-      mid = -1
-    ELSE
-
-10    IF ((upper-lower).gt.1) THEN
-        mid=(lower+upper)/2
-        IF( order .eq. 1 ) THEN
-          IF (x .ge. xa(mid)) THEN
-            lower = mid
-          ELSE
-            upper = mid
-          ENDIF
-          go to 10
-        ELSE
-          IF (x .lt. xa(mid)) THEN
-            lower = mid
-          ELSE
-            upper = mid
-          ENDIF
-          go to 10
-        ENDIF
-      ENDIF
-
-    ENDIF
-
-    find_index = lower
-
-return
-end function find_index
-
-
-!==================================================================
-
-
-subroutine define_var_dims(myprogvar, ndims, DimIDs, memberDimID, unlimitedDimID, &
-               LONDimID, LATDimID, ALTDimID, WLDimID)
-!------------------------------------------------------------------
-
-type(progvartype),     intent(in)  :: myprogvar
-integer,               intent(out) :: ndims
-integer, dimension(:), intent(out) :: DimIDs
-integer,               intent(in)  :: memberDimID, unlimitedDimID
-integer,               intent(in)  :: LONDimID, LATDimID, ALTDimID
-integer,               intent(in)  :: WLDimID
-
-select case( myprogvar%storder )
-case('xyz3d')
-
-      ndims = 5
-
-      DimIDs(1) = LONDimID
-      DimIDs(2) = LATDimID
-      DimIDs(3) = ALTDimID
-      DimIDs(4) = memberDimID
-      DimIDs(5) = unlimitedDimID
-
-case('xy2d')
-
-      ndims = 4
-
-      DimIDs(1) = LONDimID
-      DimIDs(2) = LATDimID
-      DimIDs(3) = memberDimID
-      DimIDs(4) = unlimitedDimID
-
-case('0d')
-
-      ndims = 3
-
-      DimIDs(1) = WLDimID
-      DimIDs(2) = memberDimID
-      DimIDs(3) = unlimitedDimID
-
-case('x1d')
-
-      ndims = 3
-
-      DimIDs(1) = LONDimID
-      DimIDs(2) = memberDimID
-      DimIDs(3) = unlimitedDimID
-
-case('y1d')
-
-      ndims = 3
-
-      DimIDs(1) = LATDimID
-      DimIDs(2) = memberDimID
-      DimIDs(3) = unlimitedDimID
-
-case('z1d')
-
-      ndims = 3
-
-      DimIDs(1) = ALTDimID
-      DimIDs(2) = memberDimID
-      DimIDs(3) = unlimitedDimID
-
-case default
-
-      write(string1,*)'unknown storage order '//trim(myprogvar%storder)//&
-                              ' for variable '//trim(myprogvar%varname)
-      call error_handler(E_ERR,'define_var_dims',string1,source,revision,revdate)
-
-end select
-
-return
-end subroutine define_var_dims
 
 
 !==================================================================

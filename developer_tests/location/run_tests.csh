@@ -9,7 +9,7 @@
 # this script builds and  runs the location test code for each of the
 # possible location modules.
 
-set LOGDIR = `pwd'/testing_logs
+set LOGDIR = `pwd`/testing_logs
 mkdir -p $LOGDIR
 \rm -f $LOGDIR/*
 echo putting build and run logs in $LOGDIR
@@ -23,10 +23,9 @@ echo
 echo
 
 
-set LOCLIST = 'annulus channel column oned threed \
-               threed_cartesian threed_sphere \
-               twod twod_annulus twod_sphere'
-
+set LOCLIST = ( annulus channel column oned threed \
+                threed_cartesian threed_sphere \
+                twod twod_annulus twod_sphere )
 
 foreach i ( $LOCLIST )
 

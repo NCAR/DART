@@ -6,8 +6,8 @@
 #
 # DART $Id$
 
-../../../build_templates/mkmf -p dart_to_gitm -t ../../../build_templates/mkmf.template \
- -a "../../.." path_names_dart_to_gitm
+../../../build_templates/mkmf -p gitm_blocks_to_netcdf -t ../../../build_templates/mkmf.template \
+ -a "../../.." path_names_gitm_blocks_to_netcdf
 
 exit $status
 

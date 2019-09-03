@@ -251,7 +251,7 @@ end subroutine send_to
 
 subroutine receive_from(src_id, destarray, time, label)
  integer, intent(in) :: src_id
- real(r8), intent(out) :: destarray(:)
+ real(r8), intent(inout) :: destarray(:)    ! really only out, but avoid compiler warnings
  type(time_type), intent(out), optional :: time
  character(len=*), intent(in), optional :: label
 
@@ -266,9 +266,10 @@ end subroutine receive_from
 
 !> The array already has the values, nothing to do.  Not an error to call.
 
-subroutine array_broadcast(array, root)
+subroutine array_broadcast(array, root, icount)
  real(r8), intent(inout) :: array(:)
  integer, intent(in) :: root
+ integer, intent(in), optional :: icount
 
 if ( .not. module_initialized ) call initialize_mpi_utilities()
 
@@ -551,8 +552,8 @@ end subroutine sleep_seconds
 !> must be supplied to read_timer function to get
 !> elapsed time since that timer was set.  contrast this with
 !> 'start_timer/read_timer' in the utils module which returns
-!> elapsed seconds.  this returns whatever units the mpi wtime()
-!> function returns.
+!> elapsed seconds.  this returns whatever units the fortran
+!> intrinsic system_clock() returns.
 !>
 !> usage:
 !>  real(digits12) :: base, time_elapsed
@@ -564,7 +565,7 @@ subroutine start_mpi_timer(base)
 
 real(digits12), intent(out) :: base
 
-integer :: temp
+integer(i8) :: temp
 
 call system_clock(temp)
 base = real(temp, digits12)
@@ -583,7 +584,7 @@ real(digits12), intent(in) :: base
 real(digits12) :: read_mpi_timer
 
 real(digits12) :: now
-integer :: temp
+integer(i8) :: temp
 
 call system_clock(temp)
 now = real(temp, digits12)

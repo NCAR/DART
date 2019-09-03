@@ -4,7 +4,7 @@
 !
 ! $Id$
 
-program dart_to_gitm
+program netcdf_to_gitm_blocks
 
 !----------------------------------------------------------------------
 ! purpose: interface between DART and the GITM model
@@ -12,6 +12,9 @@ program dart_to_gitm
 ! method: Read DART state netcdf files and overwrite values in a gitm restart file.
 !
 ! NOT FINISHED!  HARDLY STARTED.
+! this version assumes that the grid is global and the data needs to be
+! blocked into one block per gitm mpi task.  there is a different converter
+! for when gitm only needs a single input/output file.
 !
 !----------------------------------------------------------------------
 
@@ -39,9 +42,9 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-character (len = 128) :: dart_to_gitm_input_file = 'filter_restart.nc'
+character (len = 256) :: netcdf_to_gitm_blocks_input_file = 'filter_restart.nc'
 
-namelist /dart_to_gitm_nml/ dart_to_gitm_input_file
+namelist /netcdf_to_gitm_blocks_nml/ netcdf_to_gitm_blocks_input_file
 
 !----------------------------------------------------------------------
 ! global storage
@@ -53,15 +56,15 @@ character(len=256)    :: gitm_restart_dirname  = 'none'
 
 !======================================================================
 
-call initialize_utilities(progname='dart_to_gitm')
+call initialize_utilities(progname='netcdf_to_gitm_blocks')
 
 !----------------------------------------------------------------------
 ! Read the namelist.
 !----------------------------------------------------------------------
 
-call find_namelist_in_file("input.nml", "dart_to_gitm_nml", iunit)
-read(iunit, nml = dart_to_gitm_nml, iostat = io)
-call check_namelist_read(iunit, io, "dart_to_gitm_nml")
+call find_namelist_in_file("input.nml", "netcdf_to_gitm_blocks_nml", iunit)
+read(iunit, nml = netcdf_to_gitm_blocks_nml, iostat = io)
+call check_namelist_read(iunit, io, "netcdf_to_gitm_blocks_nml")
 
 !----------------------------------------------------------------------
 ! Call model_mod:static_init_model() which reads the gitm namelists
@@ -72,7 +75,7 @@ call static_init_model()
 call get_gitm_restart_dirname(gitm_restart_dirname)
 
 write(*,*)
-write(*,*) 'dart_to_gitm: converting DART file ', "'"//trim(dart_to_gitm_input_file)//"'"
+write(*,*) 'netcdf_to_gitm_blocks: converting DART file ', "'"//trim(netcdf_to_gitm_blocks_input_file)//"'"
 write(*,*) 'to gitm restart files in directory ', "'"//trim(gitm_restart_dirname)//"'"
 
 x_size = get_model_size()
@@ -82,7 +85,7 @@ x_size = get_model_size()
 ! Reads the valid time, the state, and the target time.
 !----------------------------------------------------------------------
 
-!iunit = open_restart_read(dart_to_gitm_input_file)
+!iunit = open_restart_read(netcdf_to_gitm_blocks_input_file)
 
 !if ( advance_time_present ) then
 !   call aread_state_restart(model_time, statevector, iunit, adv_to_time)
@@ -107,10 +110,10 @@ x_size = get_model_size()
 ! Log what we think we're doing, and exit.
 !----------------------------------------------------------------------
 
-call print_date( model_time,'dart_to_gitm:gitm model date')
-call print_time( model_time,'dart_to_gitm:DART model time')
-call print_date( model_time,'dart_to_gitm:gitm model date',logfileunit)
-call print_time( model_time,'dart_to_gitm:DART model time',logfileunit)
+call print_date( model_time,'netcdf_to_gitm_blocks:gitm model date')
+call print_time( model_time,'netcdf_to_gitm_blocks:DART model time')
+call print_date( model_time,'netcdf_to_gitm_blocks:gitm model date',logfileunit)
+call print_time( model_time,'netcdf_to_gitm_blocks:DART model time',logfileunit)
 
 ! end - close the log, etc
 call finalize_utilities()
@@ -172,7 +175,7 @@ end subroutine write_gitm_time_control
 
 
 
-end program dart_to_gitm
+end program netcdf_to_gitm_blocks
 
 ! <next few lines under version control, do not edit>
 ! $URL$
