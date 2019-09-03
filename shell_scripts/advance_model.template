@@ -35,6 +35,7 @@ if [[ -v LSB_JOBID ]] ; then
    JOBDIR=${LS_SUBCWD}         # directory of this script
    JOBNAM=${LSB_JOBNAME}       # name of this script
    JOBIDN=${LSB_JOBINDEX}      # job array index
+   JOBID=${LSB_JOBID}          # job index
    EXTENSION=lsf
 
    #--  BEGIN ATHENA CONFIG ----------------------------------
@@ -60,6 +61,7 @@ elif [[ -v PBS_NODEFILE ]] ; then
    JOBDIR=${PBS_O_WORKDIR}     # directory of this script
    JOBNAM=${PBS_JOBNAME}       # name of this script
    JOBIDN=${PBS_ARRAY_INDEX}   # job array index
+   JOBID=${PBS_JOBID}          # job index
    TMPDIR=/glade/scratch/$USER/temp  # cheyenne-specific
    mkdir -p $TMPDIR                  # cheyenne-specific
    EXTENSION=pbs
@@ -79,21 +81,22 @@ ENSDIR=${WRKDIR}/${ENSINFO};
 cd ${ENSDIR}
 
 #-- Advance FESOM -----------------------------------------
+#-- capture the model advance stderr,stdout in a file 
 
-${MPIEXEC} ./fesom.x
+${MPIEXEC} ./fesom.x > LOG/advance_fesom_${JOBIDN}_${JOBID}.out 2>&1
 
 #-- Check if the model advance failed ---------------------
-# TJH to Ali ... might need to do something different here ... bpeek is
-# unique to LSF ... can we capture the run-time log from fesom.x and check that?
+#-- check_ensemble checks the length of restart_file_list.txt against 
+#-- the number of ensemble members and decides what to do.
 
-CHECKRETURN=$(bpeek -J TSSFWDFEOM[${LSB_JOBINDEX}] | grep -ir "The model blows up")
-CHECKRESULT=$(echo $?); echo ${CHECKRESULT}
-if [ ${CHECKRESULT} -ne "0" ];  then
+CHECKRETURN=$( grep -ir "The model blows up" LOG/advance_fesom_${JOBIDN}_${JOBID}.out )
+CHECKSTATUS=$(echo $?); echo ${CHECKSTATUS}
+if [ ${CHECKSTATUS} -eq "0" ];  then
+  echo "${ENSINFO} EXIT 1 :model advance FAILED. ERROR." >> ${CHECKFILE}
+else
   cd ${FILDIR}
   [ ! -f restart_file_list.txt ] && \
          echo "${ENSDIR}/${ENSINFO}.${EXPYR}.oce.nc" >  restart_file_list.txt || \
          echo "${ENSDIR}/${ENSINFO}.${EXPYR}.oce.nc" >> restart_file_list.txt
   echo "${ENSINFO} EXIT 0 :is ready to be resubmitted" >> ${CHECKFILE}
-else
-  echo "${ENSINFO} EXIT 1 :model advance FAILED. ERROR." >> ${CHECKFILE}
 fi

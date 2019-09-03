@@ -28,14 +28,14 @@
 if [[ -v LSB_JOBID ]] ; then
 
    SUB_CMD='bsub < '
-   DEP_CMD='bsub -w "done(${ID})" < '
+   DEP_CMD='bsub -w "done(XXXXXXXX)" < '
 
 elif [[ -v PBS_NODEFILE ]] ; then
 
    TMPDIR=/glade/scratch/$USER/temp  # cheyenne-specific
    mkdir -p $TMPDIR                  # cheyenne-specific
    SUB_CMD=qsub
-   DEP_CMD='qsub -W depend=afterok:$ID '
+   DEP_CMD='qsub -W depend=afterok:XXXXXXXX '
 
 fi
 
@@ -81,7 +81,9 @@ if [ ${ENSCHECK} -eq ${MEMNO} ]; then
       ${COPY} ${TMPLFILE} ${SBMTFILE}
       cd ${WRKDIR}
 
-      ID=$( jobid ${DEP_CMD} ${SBMTFILE} )
+      DEP_STRING=`echo ${DEP_CMD} | sed "s/XXXXXXXX/${ID}/"`
+
+      ID=$( jobid ${DEP_STRING} ${SBMTFILE} )
       echo "Finalize job ID is ${ID}"
    fi
 fi

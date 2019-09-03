@@ -31,7 +31,7 @@ if [[ -v LSB_JOBID ]] ; then
    JOBDIR=${LS_SUBCWD}         # directory of this script
    JOBNAM=${LSB_JOBNAME}       # name of this script
    SUB_CMD='bsub < '
-   DEP_CMD='bsub -w "done(${ID})" < '
+   DEP_CMD='bsub -w "done(XXXXXXXX)" < '
 
    EXTENSION=lsf
 
@@ -42,7 +42,7 @@ elif [[ -v PBS_NODEFILE ]] ; then
    TMPDIR=/glade/scratch/$USER/temp  # cheyenne-specific
    mkdir -p $TMPDIR                  # cheyenne-specific
    SUB_CMD=qsub
-   DEP_CMD='qsub -W depend=afterok:$ID '
+   DEP_CMD='qsub -W depend=afterok:XXXXXXXX '
    EXTENSION=pbs
 
 fi
@@ -50,8 +50,6 @@ fi
 #-- Load Experiment Environment Variables and Functions --
 
 . environment.load
-
-ID=0;
 
 #-----------------------------------------------------------------------
 # INITIALIZE ENSEMBLE IF NOT DONE YET
@@ -83,6 +81,7 @@ else
   DAYSTEP=$(cat ${MEM01}/${MEM01}.clock | sed -n 2,2p | awk '{print $2}')
   RUNYEAR=$(cat ${MEM01}/${MEM01}.clock | sed -n 2,2p | awk '{print $3}')
   ${MOVE} ${CHECKFILE} ${CHECKFILE}.prev
+  ID=0;
 fi
 
 #-----------------------------------------------------------------------
@@ -100,7 +99,8 @@ if [ ${ID} = 0 ]; then
   echo "Model advance job is ID ${ID}"
 else
   cd ${WRKDIR}
-  ID=$( jobid ${DEP_CMD} ${SBMTFILE} )
+  DEP_STRING=`echo ${DEP_CMD} | sed "s/XXXXXXXX/${ID}/"`
+  ID=$( jobid ${DEP_STRING} ${SBMTFILE} )
   echo "Model advance job is ID ${ID} ... queued and waiting."
 fi
 
@@ -114,6 +114,7 @@ SBMTFILE=${WRKDIR}/check_ensemble.${EXPINFO}
 ${COPY} ${TMPLFILE} ${SBMTFILE}
 
 cd ${WRKDIR}
-ID=$( jobid ${DEP_CMD} ${SBMTFILE} )
+DEP_STRING=`echo ${DEP_CMD} | sed "s/XXXXXXXX/${ID}/"`
+ID=$( jobid ${DEP_STRING} ${SBMTFILE} )
 echo "Model advance check job is ${ID} ... queued and waiting.""
 
