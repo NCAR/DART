@@ -5,9 +5,9 @@
 # LSF options  (set for the NCAR machine "cheyenne")
 #
 #BSUB -a poe
-#BSUB -J forward_fesom[1-ENSEMBLEMEMBERNO]%3     # Name of the job.
-#BSUB -o LOG/forward_fesom_%I_%J.out  # Appends stdout to file %J.out.
-#BSUB -e LOG/forward_fesom_%I_%J.out  # Appends stderr to file %J.err.
+#BSUB -J advance_fesom[1-ENSEMBLEMEMBERNO]%3     # Name of the job.
+#BSUB -o LOG/advance_fesom_%I_%J.out  # Appends stdout to file %J.out.
+#BSUB -e LOG/advance_fesom_%I_%J.out  # Appends stderr to file %J.err.
 #BSUB -P fesom                     # Project ID.
 #BSUB -q POEQUEUENAME              # queue
 #BSUB -R "span[ptile=16]"          #
@@ -29,14 +29,14 @@
 #----------------------------------------------------------------------
 
 # Translate the queueing-specific variables into a common tongue.
-   
-if [[ -v LSB_JOBID ]] ; then   
-   
+
+if [[ -v LSB_JOBID ]] ; then
+
    JOBDIR=${LS_SUBCWD}         # directory of this script
    JOBNAM=${LSB_JOBNAME}       # name of this script
    JOBIDN=${LSB_JOBINDEX}      # job array index
    EXTENSION=lsf
-   
+
    #--  BEGIN ATHENA CONFIG ----------------------------------
    MPIPROGINF=detail
    export MPIPROGINF
@@ -56,14 +56,14 @@ if [[ -v LSB_JOBID ]] ; then
    #--  END ATHENA CONFIG ------------------------------------
 
 elif [[ -v PBS_NODEFILE ]] ; then
-   
+
    JOBDIR=${PBS_O_WORKDIR}     # directory of this script
    JOBNAM=${PBS_JOBNAME}       # name of this script
    JOBIDN=${PBS_ARRAY_INDEX}   # job array index
    TMPDIR=/glade/scratch/$USER/temp  # cheyenne-specific
    mkdir -p $TMPDIR                  # cheyenne-specific
    EXTENSION=pbs
-   
+
 fi
 
 F_RSVTASK=1; export F_RSVTASK; #THIS CAN BE USEFUL FOR ENSEMBLE. CHECK!
@@ -83,7 +83,7 @@ cd ${ENSDIR}
 ${MPIEXEC} ./fesom.x
 
 #-- Check if the model advance failed ---------------------
-# TJH to Ali ... might need to do something different here ... bpeek is 
+# TJH to Ali ... might need to do something different here ... bpeek is
 # unique to LSF ... can we capture the run-time log from fesom.x and check that?
 
 CHECKRETURN=$(bpeek -J TSSFWDFEOM[${LSB_JOBINDEX}] | grep -ir "The model blows up")
