@@ -27,15 +27,15 @@ points. In a workshop setting, these materials and exercises took about
 
 Here are the PDF files for the presentation part of the tutorial:
 
-  - [Section 1:](../DART_LAB/DART_LAB_Section01.pdf) The basics in 1D.
-  - [Section 2:](../DART_LAB/DART_LAB_Section02.pdf) How should
+  - [Section 1:](../DART_LAB/presentations/DART_LAB_Section01.pdf) The basics in 1D.
+  - [Section 2:](../DART_LAB/presentations/DART_LAB_Section02.pdf) How should
     observations of a state variable impact an unobserved state
     variable? Multivariate assimilation.
-  - [Section 3:](../DART_LAB/DART_LAB_Section03.pdf) Sampling error and
+  - [Section 3:](../DART_LAB/presentations/DART_LAB_Section03.pdf) Sampling error and
     localization.
-  - [Section 4:](../DART_LAB/DART_LAB_Section04.pdf) The Ensemble
+  - [Section 4:](../DART_LAB/presentations/DART_LAB_Section04.pdf) The Ensemble
     Kalman Filter (Perturbed Observations).
-  - [Section 5:](../DART_LAB/DART_LAB_Section05.pdf) Adaptive
+  - [Section 5:](../DART_LAB/presentations/DART_LAB_Section05.pdf) Adaptive
     Inflation.
 
 <span id="Matlab"></span>
