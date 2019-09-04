@@ -4,20 +4,22 @@
 !
 ! $Id$
 
-! nsc 12apr2012 -
-! was too slow for large lists and large obs_seq files.
-! sorted the obs_def list by time and then started the search
-! at the time of the next obs, and quit looping when past that time.
-! really speeded up - may not have to do anything more complicated
-! at this time.
-! if more speed is needed, next likely place to pick up speed is
-! by sorting all obs at the same time by locations (maybe just
-! by the x coord for starters), or binning in spatial bins if
-! still too slow.  but the current fixes should go a long way
-! to making the performance acceptable.
-!
+!> This specialized tool selects a subset of input observations
+!> from an observation sequence file.
 
 program obs_selection
+
+!> nsc 12apr2012 -
+!> was too slow for large lists and large obs_seq files.
+!> sorted the obs_def list by time and then started the search
+!> at the time of the next obs, and quit looping when past that time.
+!> really speeded up - may not have to do anything more complicated
+!> at this time.
+!> if more speed is needed, next likely place to pick up speed is
+!> by sorting all obs at the same time by locations (maybe just
+!> by the x coord for starters), or binning in spatial bins if
+!> still too slow.  but the current fixes should go a long way
+!> to making the performance acceptable.
 
 ! this latest addition has select by list of obs types.
 
@@ -1267,8 +1269,3 @@ end function get_type_from_obs
 !---------------------------------------------------------------------
 end program obs_selection
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

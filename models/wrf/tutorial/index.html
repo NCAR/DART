@@ -3,8 +3,8 @@
 <HTML>
 <head>
 <title>WRF/DART tutorial presentations</title>
-<link rel="stylesheet" type="text/css" href="/DAReS/DART/Manhattan/documentation/html/doc.css" />
-<link href="/DAReS/DART/Manhattan/documentation/images/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../../../docs/html/doc.css" />
+<link href="../../../docs/images/dart.ico" rel="shortcut icon" />
 <style type="text/css">
 <!--
 .tab { margin-left: 40px; }
@@ -16,10 +16,10 @@
 <table border="0" summary="" cellpadding="5">
 <tr>
     <td valign="middle">
-    <img src="/DAReS/DART/Manhattan/documentation/images/Dartboard7.png" alt="DART project logo" height="70" />
+    <img src="../../../docs/images/Dartboard7.png" alt="DART project logo" height="70" />
     </td>
     <td>
-       <P>Jump to <a href="/DAReS/DART/Manhattan/documentation/index.html">DART Manhattan Documentation Main Index</a><br />
+       <P>Jump to <a href="../../../docs/html/Manhattan_release.html">DART Manhattan Documentation Main Index</a><br />
        </P></td>
 </tr>
 </table>
@@ -36,7 +36,7 @@
 
 <A NAME="Tutorial"></A>
 <H4>Agenda from the 22 Jan 2014 tutorial</H4>
-<ul><li>Introduction (Anderson) - <a href="/DAReS/DART/Manhattan/documentation/DART_LAB/DART_LAB.html">DART Lab materials</a>
+<ul><li>Introduction (Anderson) - <a href="../../../docs/DART_LAB/DART_LAB.html">DART Lab materials</a>
     </li>
 
 <li>WRF/DART basic building blocks (Romine) - <a href="../classic/wrf_workshop_building_blocks.pdf">slides</a> (some material is outdated)
@@ -51,17 +51,16 @@
 <li>Observation processing (Collins) - <a href="../classic/wrf_workshop_observation_processing.pdf">slides</a>
     </li>
 
-<li>DART diagnostics (Hoar) - <a href="/DAReS/DART/Manhattan/assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html">observation diagnostics</a>,
-                              <a href="/DAReS/DART/Manhattan/assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html">more observation diagnostics</a>
+<li>DART diagnostics (Hoar) - <a href="../../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html">observation diagnostics</a>,
+                              <a href="../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html">more observation diagnostics</a>
     </li>
 </ul>
 
 <H4>Helpful links</H4>
 <ul><li><a href="http://www.image.ucar.edu/DAReS/DART/">DAReS website</a></li>
-<li><a href="/DAReS/DART/Manhattan/documentation/index.html">DART Manhattan release</a></li>
+<li><a href="../../../docs/html/index.html">DART Manhattan release</a></li>
 <li><a href="https://www2.cisl.ucar.edu/software/dart/download">Register for DART</a></li>
 <li><a href="http://www.image.ucar.edu/DAReS/DART/DART2_Starting.php#matlab">Preparing MATLAB</a></li>
-<li><a href="http://www.image.ucar.edu/staff/thoar/svn_primer.html">Using SVN</a></li>
 <li><a href="http://www.mmm.ucar.edu/wrf/users/">WRF model users page</a></li>
 <li>Need help? e-mail dart (at) ucar (dot) edu</li>
 </ul>
@@ -188,7 +187,7 @@ Build the software packages and copy files into place:
         <br />
         <br />
         </li>
-        <li>Configure your <a href="/DAReS/DART/Manhattan/build_templates/mkmf.html">$DART/build_templates/mkmf.template</a>
+        <li>Configure your <a href="../../../build_templates/mkmf.html">$DART/build_templates/mkmf.template</a>
             by copying the appropriate system-dependent version to this name.
         <br />
         <br />
@@ -238,14 +237,14 @@ Build the software packages and copy files into place:
    <br /><br />
    <ol>
    <li>The executables from DART that you need are:
-       <a href="/DAReS/DART/Manhattan/assimilation_code/programs/advance_time/advance_time.html">advance_time</a>, 
-       <a href="/DAReS/DART/Manhattan/assimilation_code/programs/filter/filter.html">filter</a>, 
+       <a href="../../../assimilation_code/programs/advance_time/advance_time.html">advance_time</a>, 
+       <a href="../../../assimilation_code/programs/filter/filter.html">filter</a>, 
        pert_wrf_bc (no helper page), 
-       <a href="/DAReS/DART/Manhattan/assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html">obs_diag</a>, 
-       <a href="/DAReS/DART/Manhattan/assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool</a>, 
-       <a href="/DAReS/DART/Manhattan/assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>, 
-       <a href="/DAReS/DART/Manhattan/assimilation_code/programs/fill_inflation_restart/fill_inflation_restart.html">fill_inflation_restart</a>, 
-       and <a href="/DAReS/DART/Manhattan/models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html">wrf_dart_obs_preprocess</a> 
+       <a href="../../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html">obs_diag</a>, 
+       <a href="../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool</a>, 
+       <a href="../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>, 
+       <a href="../../../assimilation_code/programs/fill_inflation_restart/fill_inflation_restart.html">fill_inflation_restart</a>, 
+       and <a href="../../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html">wrf_dart_obs_preprocess</a> 
        (if making your own obs). 
        <br />
        <br />
@@ -304,6 +303,7 @@ So far, your <em class="file">rundir</em> should contain (correct as needed):
 <tr><td valign="top">executables:</td>
     <td><em class="program">advance_time</em>, 
         <em class="program">filter</em>, 
+        <em class="program">fill_inflation_restart</em>, 
         <em class="program">obs_diag</em>, 
         <em class="program">obs_seq_to_netcdf</em>, 
         <em class="program">obs_sequence_tool</em>, 
@@ -494,12 +494,12 @@ An example using bufr observations from the GDAS system is provided below.
 DART has developed a number of tools for converting standard observation formats into 
 <a href="/DAReS/DART/DART2_Observations.php#obs_seq_overview">observation sequence files</a>, 
 which is the format of observations used by the DART system. 
-See the DART <a href="/DAReS/DART/Manhattan/observations/obs_converters/observations.html">observations documentation</a> 
+See the DART <a href="../../../observations/obs_converters/observations.html">observations documentation</a> 
 page for a comprehensive overview of the available 
 observation converters. For now, let's work through using NCEP bufr observations 
 which contains a wide array of observation types from many platforms within a single file. 
 Follow the guidance on the 
-<a href="/DAReS/DART/Manhattan/observations/obs_converters/NCEP/prep_bufr/prep_bufr.html">prepbufr</a>
+<a href="../../../observations/obs_converters/NCEP/prep_bufr/prep_bufr.html">prepbufr</a>
 page to build the bufr conversion programs, get observation files for the 
 dates you plan to build an analysis for, and 
 run the codes to generate an observation sequence file.
@@ -577,7 +577,7 @@ and run <em class="program">quickbuild.csh</em> there.
    /
 </pre>
 <p>
-Look at the <a href="/DAReS/DART/Manhattan/observations/obs_converters/NCEP/ascii_to_obs/create_real_obs.html">create_real_obs</a> 
+Look at the <a href="../../../observations/obs_converters/NCEP/ascii_to_obs/create_real_obs.html">create_real_obs</a> 
 program help page to set/add the appropriate namelist options. 
 Run <em class="program">create_real_obs</em> and you'll get some observation sequence files, one for each six hour window. 
 For a cycled experiment, the typical approach is to put a single set of observations, associated 
@@ -593,7 +593,7 @@ in the files (e.g. <em class="file">obs_seq2012061500</em>) and rename as simply
 </p>
 <p>
 It is helpful to also run the 
-<a href="/DAReS/DART/Manhattan/models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html">wrf_dart_obs_preprocess</a> program, 
+<a href="../../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html">wrf_dart_obs_preprocess</a> program, 
 which strips away observations not in the model domain, 
 can perform superobservations of typically dense observations, 
 increases observation errors near the lateral boundaries, 
@@ -628,7 +628,7 @@ The inflation files must then be moved to the directory named expected by the
 </p>
 <div class="unix">
 <pre>
-cd wrf/work/
+cd rundir/
 ./fill_inflation_restart
 mv input_priorinf_*.nc ${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_*.nc
 </pre>
@@ -699,10 +699,10 @@ adjusted based on the set of observations provided.
 </p>
 <p>
 You can also use the provided 
-<a href="/DAReS/DART/Manhattan/assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html">obs_diag</a> program 
+<a href="../../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html">obs_diag</a> program 
 to investigate the observation space analysis statistics. You'll find the results of this in output/$date/obs_diag_output.nc. 
 Additional statistics can be evaluated using the converted final observation sequence file in netcdf format from the 
-<a href="/DAReS/DART/Manhattan/assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a> tool. 
+<a href="../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a> tool. 
 This file has a name like 'obs_epoch_029.nc', where the number in the file is largest in the most 
 recent set of observations processed. The additional files enable plotting
 the time series of recently assimilated observations once multiple cycles have been run. 

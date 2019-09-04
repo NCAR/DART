@@ -44,7 +44,7 @@ integer, parameter :: NO_WINDOW    = -1
 integer, parameter :: MEAN_WINDOW  = 0 
 integer, parameter :: STATE_WINDOW = 2 
 
-integer :: data_count !> number of copies in the window
+integer :: data_count !! number of copies in the window
 integer(KIND=MPI_ADDRESS_KIND) :: window_size
 logical :: use_distributed_mean = .false. ! initialize to false
 

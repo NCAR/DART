@@ -4,11 +4,10 @@
 !
 ! $Id$
 
-!----------------------------------------------------------------------
-!> purpose: test model_mod routines.  this version works for models
-!> with any location type.  depends on a location-specific module
+!> Tests model_mod routines. Very useful when adding a new model.
+!> This version works for models with any location type.
+!> Depends on a location-specific module
 !> for test_interpolate_single and test_interpolate_range.
-!----------------------------------------------------------------------
 
 program model_mod_check
 
@@ -841,8 +840,3 @@ end subroutine left_just_i8
 
 end program model_mod_check
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

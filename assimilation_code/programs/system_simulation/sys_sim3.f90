@@ -4,17 +4,17 @@
 !
 ! $Id$
 
+!> In this variant modified slightly from system simulation original, 
+!> try to determine what fraction of the recommended small sample update 
+!> should be used to adjust the mean to get the smallest error variance. 
+!> See notes from ~ 19 Dec. 2001.
+
+!> See notes from first two weeks of December, 2001. This program begins attempts 
+!> to analyze the value of particular observations. Here, we begin by trying to 
+!> determine the value of observations with a given correlation to a state variable
+!> using an N member ensemble to compute the correlations.
+
 program sys_sim3
-
-! In this variant modified slightly from system simulation original, 
-! try to determine what fraction of the recommended small sample update 
-! should be used to adjust the mean to get the smallest error variance. 
-! See notes from ~ 19 Dec. 2001.
-
-! See notes from first two weeks of December, 2001. This program begins attempts 
-! to analyze the value of particular observations. Here, we begin by trying to 
-! determine the value of observations with a given correlation to a state variable
-! using an N member ensemble to compute the correlations.
 
 use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, twod_gaussians
 

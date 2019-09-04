@@ -594,7 +594,9 @@ call filter_generate_copy_meta_data(seq, in_obs_copy, &
       compute_posterior)
 
 if(ds) call error_handler(E_ERR, 'filter', 'smoother broken by Helen')
-if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflation=.true.) !> @todo fudge
+
+!>@todo fudge
+if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflation=.true.)
 
 call timestamp_message('After  initializing output files')
 call     trace_message('After  initializing output files')
@@ -1784,7 +1786,7 @@ end subroutine filter_sync_keys_time
 ! This routine makes the times consistent across the ensemble. 
 ! Any task that owns one or more state vectors needs the time for
 ! the move ahead call.
-!> @todo This is broadcasting the time to all tasks, not
+!>@todo This is broadcasting the time to all tasks, not
 !> just the tasks that own copies.
 
 subroutine broadcast_time_across_copy_owners(ens_handle, ens_time)
@@ -2733,8 +2735,8 @@ subroutine test_obs_copies(obs_fwd_op_ens_handle, information)
 type(ensemble_type), intent(in) :: obs_fwd_op_ens_handle
 character(len=*),    intent(in) :: information
 
-character(len=20)  :: task_str !< string to hold the task number
-character(len=129) :: file_obscopies !< output file name
+character(len=20)  :: task_str !! string to hold the task number
+character(len=129) :: file_obscopies !! output file name
 integer :: i
 
 write(task_str, '(i10)') obs_fwd_op_ens_handle%my_pe
