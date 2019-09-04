@@ -35,42 +35,39 @@ cd $RUN_DIR/advance_temp${emember}
 
 set icnum = `echo $emember + 10000 | bc | cut -b2-5`
 if ( -e $RUN_DIR/advance_temp${emember}/wrf.info ) then
-  ${REMOVE} $RUN_DIR/advance_temp${emember}/wrf.info
+   ${REMOVE} $RUN_DIR/advance_temp${emember}/wrf.info
 endif
 
 touch wrf.info
 
 if ( $SUPER_PLATFORM == 'yellowstone' ) then
 
- cat >! $RUN_DIR/advance_temp${emember}/wrf.info << EOF
+   cat >! $RUN_DIR/advance_temp${emember}/wrf.info << EOF
  ${gdatef[2]}  ${gdatef[1]}
  ${gdate[2]}   ${gdate[1]}
-$yyyy $mm $dd $hh $nn $ss
+ $yyyy $mm $dd $hh $nn $ss
            1
  mpirun.lsf ./wrf.exe
 EOF
 
 else if ( $SUPER_PLATFORM == 'cheyenne' ) then
 
- # TJH MPI_IB_CONGESTED, MPI_LAUNCH_TIMEOUT used after cheyenne O/S change in July 2019
- # TJH setenv MPI_IB_CONGESTED 1
- # TJH setenv MPI_LAUNCH_TIMEOUT 40
- # TJH setenv MPI_SHEPHERD true
+   # TJH MPI_IB_CONGESTED, MPI_LAUNCH_TIMEOUT used after cheyenne O/S change in July 2019
+   # TJH setenv MPI_IB_CONGESTED 1
+   # TJH setenv MPI_LAUNCH_TIMEOUT 40
+   setenv MPI_SHEPHERD false
 
- cat >! $RUN_DIR/advance_temp${emember}/wrf.info << EOF
+   cat >! $RUN_DIR/advance_temp${emember}/wrf.info << EOF
  ${gdatef[2]}  ${gdatef[1]}
  ${gdate[2]}   ${gdate[1]}
-$yyyy $mm $dd $hh $nn $ss
+ $yyyy $mm $dd $hh $nn $ss
            $domains
  mpiexec_mpt dplace -s 1 ./wrf.exe
 EOF
-# For the MPT execution - ill-behaved on Cheyenne
-# mpiexec_mpt dplace -s 1  ./wrf.exe
-# For openmpi:
-# mpirun  ./wrf.exe
+
 endif
 
-cd $RUN_DIR 
+cd $RUN_DIR
 
 echo $emember                      >! ${RUN_DIR}/filter_control${icnum}
 echo filter_restart_d01.${icnum}   >> ${RUN_DIR}/filter_control${icnum}

@@ -688,7 +688,7 @@ EOF
       if ( -e rsl.out.integration )  ${REMOVE} rsl.*
 
       # run WRF here
-      setenv MPI_SHEPHERD true
+      setenv MPI_SHEPHERD FALSE
       ${ADV_MOD_COMMAND} >>&! rsl.out.integration
 
       if ( -e rsl.out.0000 ) cat rsl.out.0000 >> rsl.out.integration

@@ -26,8 +26,8 @@ if ( $SUPER_PLATFORM == 'yellowstone' ) then
 
 else if ( $SUPER_PLATFORM == 'cheyenne' ) then
 
-# TJH MPI_SHEPHERD may be a very bad thing 
-# TJH setenv MPI_SHEPHERD true
+# TJH MPI_SHEPHERD true may be a very bad thing
+   setenv MPI_SHEPHERD FALSE
 # TJH module load mpt
    setenv TMPDIR  /dev/shm
    limit stacksize unlimited

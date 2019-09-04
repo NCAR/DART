@@ -1,4 +1,4 @@
-#!/bin/csh 
+#!/bin/csh
 #
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
@@ -15,7 +15,7 @@
 # modified by G. Romine 2011-2018
 
 set initial_date = ${1}
-set paramfile    = ${2} 
+set paramfile    = ${2}
 source $paramfile
 
 module load ncl
@@ -41,8 +41,8 @@ while ( $n <= $NUM_ENS )
 
    mkdir -p ${RUN_DIR}/advance_temp${n}
 
-# TJH why does the run_dir/*/input.nml come from the template_dir and not the rundir?
-# TJH furthermore, template_dir/input.nml.template and rundir/input.nml are identical. SIMPLIFY.
+   # TJH why does the run_dir/*/input.nml come from the template_dir and not the rundir?
+   # TJH furthermore, template_dir/input.nml.template and rundir/input.nml are identical. SIMPLIFY.
 
    ${LINK} ${RUN_DIR}/WRF_RUN/* ${RUN_DIR}/advance_temp${n}/.
    ${LINK} ${TEMPLATE_DIR}/input.nml.template ${RUN_DIR}/advance_temp${n}/input.nml

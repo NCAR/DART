@@ -10,7 +10,7 @@
 set paramfile = /glade2/scratch2/USERNAME/WORK_DIR/scripts/param.csh
 source $paramfile
 
-if ( $#argv > 0 ) then 
+if ( $#argv > 0 ) then
    set n     = ${1}   # pass in the ensemble member number
    set datep = ${2}   # needed for correct path to file
    set dn    = ${3}

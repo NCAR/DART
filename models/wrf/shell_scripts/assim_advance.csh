@@ -12,7 +12,7 @@ set paramfile = ${3}
 
 source $paramfile
 
-set domains = $NUM_DOMAINS 
+set domains = $NUM_DOMAINS
 
 set start_time = `date +%s`
 echo "host is " `hostname`
@@ -39,7 +39,7 @@ set ss    = "00"
 echo $start_time >! ${RUN_DIR}/start_member_${emember}
 
 # if ( -d ${RUN_DIR}/advance_temp${emember} )  ${REMOVE} ${RUN_DIR}/advance_temp${emember}
-#mkdir -p ${RUN_DIR}/advance_temp${emember}  
+#mkdir -p ${RUN_DIR}/advance_temp${emember}
 
 # go into member directory and generate the needed wrf.info file
 cd $RUN_DIR/advance_temp${emember}
@@ -73,7 +73,7 @@ EOF
 
 endif
 
-cd $RUN_DIR 
+cd $RUN_DIR
 
 echo $emember                      >! ${RUN_DIR}/filter_control${icnum}
 echo filter_restart_d01.${icnum}   >> ${RUN_DIR}/filter_control${icnum}
