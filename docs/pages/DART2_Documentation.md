@@ -3,16 +3,30 @@ title: Documentation
 layout: default
 ---
 
+## Adding your efforts to DART.
+
+Please let us know if you have suggestions or code to contribute to
+DART. We're a small group, but we are willing to listen and will make
+every effort to incorporate improvements to the code. Email us at
+<dart@ucar.edu>.
+
 # DART documentation
 
 The DART distribution includes a full set of documentation. Once you
 download DART, you may view the documentation offline by opening the
 *index.html* file in the top-level DART directory. If you want to
-explore the documentation page without downloading DART, you may [view
-the documentation for the Manhattan
-release](https://ncar.github.io/DART/api/v2.1.10/index.html).
+explore the documentation page without downloading DART, you may 
+[view the documentation for the Manhattan release](https://ncar.github.io/DART/api/v2.1.10/index.html).
 
-# DART-supported models:
+## Links to major sections of this document:
+- [Downloadable datasets for DART.](#datasets)
+- [Creating initial conditions for DART](#creating_ics)
+- ['Perfect Model' or 'OSSE' experiments](#perfect_osse)
+- [Adding a model to DART](#adding_a_model)
+
+----- 
+
+## DART-supported models:
 
 There are two broad classes of models supported by DART. Some are
 'low-order' models, generally single-threaded, subroutine-callable, and
@@ -20,39 +34,71 @@ idealized: there are no **real** observations of these systems. The
 other class of models are 'high-order' models. There **are** real
 observations of these systems. Or at least, we like to think so ...
 
-  - models that are ready to use with Manhattan:
-    [lorenz_63](#lorenz_63)  [lorenz_84](#lorenz_84) 
-    [9var](#NINEvar)  [lorenz_96](#lorenz_96) 
-    [lorenz_96_2scale](#lorenz_96_2scale) 
-    [forced_lorenz_96](#forced_lorenz_96)  [lorenz_04](#lorenz_04) 
-    [simple_advection](#simple_advection)  [bgrid_solo](#bgrid_solo) 
-    [WRF](#wrf)  [MPAS ATM](#mpas_atm)  [ROMS](#ROMS)  [CESM](#CESM) 
-    [CAM-FV](#cam-fv)  [CICE](#CICE)  [POP](#POP)  [CM1](#CM1) 
-  - models that are nearly ready to use with Manhattan or are under
-    development: [GCCOM](#GCCOM)  [LMDZ](#LMDZ) 
-    [MITgcm_ocean](#MITgcm_ocean)  [NAAPS](#NAAPS)  [WACCM](#WACCM) 
-    [WACCM-X](#WACCM-X)  [AM2](#AM2)  [CABLE](#cable) 
-    [CAM-CHEM](#cam-chem)  [CAM-SE](#cam-se)  [CLM](#CLM) 
-    [COAMPS](#COAMPS)  [COSMO](#COSMO)  [dynamo](#dynamo) 
-    [fesom](#fesom)  [ikeda](#ikeda)  [jules](#jules) 
-    [mpas_ocean](#mpas_ocean)  [noah](#noah)  [null](#null) 
-    [openggcm](#openggcm)  [parflow](#parflow)  [sqg](#sqg) 
-    [tiegcm](#tiegcm)  [wrf-chem](#wrf-chem)  [wrf-hydro](#wrf-hydro) 
-  - models that have been orphaned (these may not take that much work to
-    revive): [ECHAM](#ECHAM)  [PBL_1d](#PBL_1d) 
-    [MITgcm_annulus](#MITgcm_annulus)  [forced_barot](#forced_barot) 
-    [gitm](#gitm) [pe2lyr](#pe2lyr) [ROSE](#rose) 
+### Models that are ready to use with Manhattan:
+   [lorenz_63](#lorenz_63)
+   [lorenz_84](#lorenz_84)
+   [9var](#NINEvar)
+   [lorenz_96](#lorenz_96)
+   [lorenz_96_2scale](#lorenz_96_2scale)
+   [forced_lorenz_96](#forced_lorenz_96)
+   [lorenz_04](#lorenz_04)
+   [simple_advection](#simple_advection)
+   [bgrid_solo](#bgrid_solo)
+   [WRF](#wrf)
+   [MPAS ATM](#mpas_atm)
+   [ROMS](#ROMS)
+   [CESM](#CESM)
+   [CAM-FV](#cam-fv)
+   [CAM-CHEM](#cam-chem)
+   [WACCM](#WACCM) 
+   [WACCM-X](#WACCM-X)
+   [CICE](#CICE)
+   [POP](#POP)
+   [CM1](#CM1)
+   [FESOM](#fesom)
+   [NOAH-MP](#noah-mp)
+   [WRF-Hydro](#wrf-hydro) 
 
-<span id="Manhattan_ready_models"></span>
+### Models supported in Lanai:
+   [GCCOM](#GCCOM)
+   [LMDZ](#LMDZ) 
+   [MITgcm_ocean](#MITgcm_ocean)
+   [NAAPS](#NAAPS)
+   [AM2](#AM2)
+   [CAM-SE](#cam-se)
+   [CLM](#CLM) 
+   [COAMPS](#COAMPS)
+   [COSMO](#COSMO)
+   [dynamo](#dynamo) 
+   [gitm](#gitm)
+   [ikeda](#ikeda)
+   [jules](#jules) 
+   [mpas_ocean](#mpas_ocean)
+   [null](#null) 
+   [openggcm](#openggcm)
+   [parflow](#parflow)
+   [sqg](#sqg) 
+   [tiegcm](#tiegcm)
+   [wrf-chem](#wrf-chem)
+
+### Models that were used a long time ago (these may not take that much work to revive):
+   [ECHAM](#ECHAM)
+   [PBL_1d](#PBL_1d) 
+   [MITgcm_annulus](#MITgcm_annulus)
+   [forced_barot](#forced_barot) 
+   [pe2lyr](#pe2lyr)
+   [ROSE](#rose) 
+   [CABLE](#cable) 
+
 <span id="models" class="anchor"></span>  
 
 \[[top](#)\]
 
 ----- 
 
-# The 'Manhattan-ready' models in DART.
+## The 'Manhattan-ready' models in DART.
 
-<span id="lorenz_63"></span>
+<span id="lorenz_63" class="anchor"></span>
 
 ### lorenz_63
 
@@ -67,7 +113,7 @@ Y' = -XZ + rX - Y
 Z' =  XY -bZ
 ~~~
 
-<span id="lorenz_84"></span>
+<span id="lorenz_84" class="anchor"></span>
 
 ### lorenz_84
 
@@ -83,14 +129,14 @@ Z' = bXY  +  XZ  - Z
 
 Where a, b, F, and G are the model parameters.
 
-<span id="NINEvar"></span>
+<span id="NINEvar" class="anchor"></span>
 
 ### 9var
 
 This model provides interesting off-attractor transients that behave
 something like gravity waves.
 
-<span id="lorenz_96"></span>
+<span id="lorenz_96" class="anchor"></span>
 
 ### lorenz_96
 
@@ -130,7 +176,7 @@ Quoting from the **Lorenz 1998** paper:
 > circle. Nothing will simulate the atmosphere's latitudinal or vertical
 > extent.
 
-<span id="lorenz_96_2scale"></span>
+<span id="lorenz_96_2scale" class="anchor"></span>
 
 ### lorenz_96_2scale
 
@@ -143,7 +189,7 @@ whether the Lorenz or Smith option is specified in the namelist. Lorenz
 is the default model. Interface written by **Josh Hacker**. Thanks
 Josh\!
 
-<span id="forced_lorenz_96"></span>
+<span id="forced_lorenz_96" class="anchor"></span>
 
 ### forced_lorenz_96
 
@@ -158,7 +204,7 @@ forcing terms as part of the time tendency computation which can help in
 assimilation performance. If the random noise option is turned off (see
 namelist) the time tendency of the forcing terms is 0.
   
-<span id="lorenz_04"></span>
+<span id="lorenz_04" class="anchor"></span>
 
 ### lorenz_04
 
@@ -175,7 +221,7 @@ form of model III. The basic equations are documented in Lorenz (2005)
 and also in the model_mod.f90 code. The user is free to choose model II
 or III with a Namelist variable.
 
-<span id="simple_advection"></span>
+<span id="simple_advection" class="anchor"></span>
 
 ### simple_advection
 
@@ -189,7 +235,7 @@ differencing is both numerically unstable and subject to shock
 formation. However, it can sometimes be made stable in assimilation mode
 (see recent work by Majda and collaborators).
 
-<span id="bgrid_solo"></span>
+<span id="bgrid_solo" class="anchor"></span>
 
 ### bgrid_solo
 
@@ -197,9 +243,9 @@ This is a dynamical core for B-grid dynamics using the Held-Suarez
 forcing. The resolution is configurable, and the entire model can be run
 as a subroutine. *Status:* supported.
 
-<span id="wrf"></span>
+<span id="wrf" class="anchor"></span>
 
-### wrf
+### WRF
 
 The [Weather Research and Forecasting (WRF)
 Model](http://www.wrf-model.org/) is a next-generation mesoscale
@@ -208,43 +254,45 @@ forecasting and atmospheric research needs. More people are using DART
 with WRF than any other model. Note: The actual WRF code is not
 distributed with DART. *Status:* supported.
 
-<span id="mpas_atm"></span>
+<span id="mpas_atm" class="anchor"></span>
 
 ### MPAS ATM
 
 [Model Prediction Across Scales -
 atmosphere](https://mpas-dev.github.io/) *Status:* active
  
-<span id="ROMS"></span>
+<span id="ROMS" class="anchor"></span>
 
 ### ROMS
 
-[Regional Ocean Modelling System](https://www.myroms.org/) *Status:*
-active
+[Regional Ocean Modelling System](https://www.myroms.org/) *Status:* active
 
-<span id="CESM"></span>
+<span id="CESM" class="anchor"></span>
 
 ### CESM
 
-There are several [supported
-versions](http://www.cesm.ucar.edu/models/current.html) of the Community
-Earth System Model (CESM) and its ancestors
+There are several 
+[supported versions](http://www.cesm.ucar.edu/models/current.html) 
+of the Community Earth System Model (CESM) and its ancestors
 ([CCSM4.0](http://www.cesm.ucar.edu/models/ccsm4.0)). Contact us for
 support for unreleased, developmental versions of CESM. Not all are
 supported because each requires modification of some subroutines and
 setup scripts in order to work with DART. The supported versions depend
 to some degree on the CESM component(s) which will be used as the
-assimilating model(s). See CAM-FV, POP, and CICE, below, and [CESM setup
-guidelines](CESM_setup_guidelines.html). In
+assimilating model(s). See CAM-FV, POP, and CICE, below, and
+[CESM setup guidelines](CESM_setup_guidelines.md). In
 general, later versions of CESM can build the latest component models
 plus any earlier versions of the component models. For example, CESM2.0
 can build CAM-FV version 6, 5, 4, ... while CESM1.2.1 can build CAM-FV
 5, 4, ..., but not 6. Note: the source code for CESM component models is
 not distributed with DART.
 
-<span id="cam-fv"></span>
+<span id="cam-fv" class="anchor"></span>
+<span id="WACCM" class="anchor"></span>
+<span id="WACCM-X" class="anchor"></span>
+<span id="cam-chem" class="anchor"></span>
 
-### CAM-FV
+### CAM-FV CAM-Chem WACCM WACCM-X
 
 See CESM, above. CAM-FV has been the "work horse" atmospheric climate
 model for several generations of CESM releases. The Manhattan release of
@@ -252,25 +300,26 @@ DART provides interfaces to CESM1.5 and CESM2.0. The setup scripts for
 those CESMs will currently build only the finite volume dynamical core
 of CAM. This works for all of the variants of CAM-FV; CAM-Chem, WACCM,
 WACCM-X. An interface between DART and the spectral element dy-core of
-CAM is available in DART Classic, and will be brought into the Manhattan
+CAM is available in DART Classic and will be brought into the Manhattan
 release when needed.
 [(CAM5)](http://www.cesm.ucar.edu/models/cesm1.0/cam); Some SourceMods
 and initial file ensembles for older and lower-resolution CAM-FVs are
-available in [DART/CAM
-datasets](http://www.image.ucar.edu/pub/DART/CAM/) *Status:* available
+available in 
+[DART/CAM datasets](http://www.image.ucar.edu/pub/DART/CAM/) *Status:* available
 for community use.
 
-<span id="CICE"></span>
+<span id="CICE" class="anchor"></span>
 
 ### CICE (pronounced 'sea ice')
 
 See CESM, above. The sea-ice component of
 [CESM](http://www.cesm.ucar.edu/models/current.html) The interface of
 [CESM-CICE](http://www.cesm.ucar.edu/models/cesm1.2/cice/) to DART is
-through CESM1.5 which is still under development. *Status:* throroughly
+through CESM1.5. **Cecilia Bitz** and **Yongfei Zhang** created the
+interfaces for DART.  *Status:* throroughly
 beta-tested, full support awaiting the CESM2.0 release.
 
-<span id="POP"></span>
+<span id="POP" class="anchor"></span>
 
 ### POP
 
@@ -284,7 +333,7 @@ perform an adjustment upon restart to account for the fact that the input ocean
 state has been modified by the assimilation. There are interfaces for CESM1.1.1
 and CESM1.2.1. *Status:* available for community use.
 
-<span id="CM1"></span>
+<span id="CM1" class="anchor"></span>
 
 ### CM1
 
@@ -295,47 +344,87 @@ was developed and is maintained by George Bryan at the National Center for
 Atmospheric Research (NCAR) Mesoscale and Microscale Meteorology Laboratory
 (MMM). The model code is freely available from the CM1 website:
 <http://www2.mmm.ucar.edu/people/bryan/cm1> and must be downloaded and compiled
-outside of DART. This model interface and scripting support were created by Luke
-Madaus. **Thanks Luke\!**
+outside of DART.
+This model interface and scripting support were created by **Luke Madaus**.
+
+<span id="fesom" class="anchor"></span>
+
+### FESOM
+
+<span id="noah-mp" class="anchor"></span>
+
+[FESOM](https://fesom.de/models/fesom14) is an unstructured mesh global 
+ocean model using finite element methods to solve the hydrostatic 
+primitive equations with the Boussinesq approximation.
+The [FESOM model interface](../../models/FESOM/Readme.md),
+scripting support and some diagnostic routines were 
+contributed by **Ali Aydoğdu**.
+*Status:* available for community use.
+
+### NOAH-MP
+
+<span id="wrf-hydro" class="anchor"></span>
+
+### WRF-HYDRO
+
+The WRF-Hydro assimilation support has its own (private) GitHub repository
+[NCAR/wrf_hydro_dart](https://github.com/NCAR/wrf_hydro_dart) that supports
+the channel-only configuration of WRF-Hydro. Originally, this was almost 
+entirely the work of **James McCreight** of NCAR's Research Applications 
+Laboratory (RAL). The DAReS team has been working with RAL to incorporate new
+features such as localization restricted to watersheds, new inflation algorithms
+and variable transformations that provide much better results when assimilating
+non-gaussian quantities such as streamflow. The private wrf_hydro_dart repository
+is expected to be released in a public version very soon.
+
 
 \[[top](#)\]
 
 -----
 
-<span id="models_in_progress"></span>  
+<span id="models_in_progress" class="anchor"></span>  
 
-# Models that are supported by DART Classic and could be ported to the Manhattan release if needed.
+## Models that are supported by DART Classic and could be ported to the Manhattan release if needed.
 
-<span id="GCCOM"></span>
+<span id="GCCOM" class="anchor"></span>
 
 ### General Curvilinear Coastal Ocean Model - GCCOM
 
-<span id="LMDZ"></span>
+GCCOM is a three-dimensional, nonhydrostatic Large Eddy Simulation (LES), 
+rigid lid model that has the ability to run in a fully three-dimensional 
+general curvilinear coordinate system. Much of the work of supporting GCCOM in
+DART was by **Mariangel Garcia** while she was at San Diego State University.
+One article is 
+["Interfacing an ensemble Data Assimilation system with a 3D nonhydrostatic Coastal Ocean Model, an OSSE experiment"](https://ieeexplore.ieee.org/abstract/document/7760992)
+
+<span id="LMDZ" class="anchor"></span>
 
 ### LMDZ
 
-<span id="MITgcm_ocean"></span>
+The DART interfaces were prototyped by **Tarkeshwar Singh** of the
+Centre for Atmospheric Sciences, Indian Institute of Technology (IIT) Delhi.
+From the LMDZ homepage:
+> LMDZ is a general circulation model (or global climate model) developed 
+> since the 70s at the "Laboratoire de Météorologie Dynamique", which 
+> includes various variants for the Earth and other planets (Mars, 
+> Titan, Venus, Exoplanets). The 'Z' in LMDZ stands for "zoom" 
+> (and the 'LMD' is for  'Laboratoire de Météorologie Dynamique").
+
+
+<span id="MITgcm_ocean" class="anchor"></span>
 
 ### MITgcm_ocean
 
 The [MIT ocean GCM](http://mitgcm.org/) version 'checkpoint59a' is the
-foundation of this implementation. It was modified by Ibrahim Hoteit
+foundation of this implementation. It was modified by **Ibrahim Hoteit**
 (then of Scripps) to accomodate the interfaces needed by DART. *Status:*
 supported, and currently being ported to Manhattan.
  
-<span id="NAAPS"></span>
+<span id="NAAPS" class="anchor"></span>
 
 ### NAAPS
  
-<span id="WACCM"></span>
-
-### WACCM
-
-<span id="WACCM-X"></span>
-
-### WACCM-X
-
-<span id="AM2"></span>
+<span id="AM2" class="anchor"></span>
 
 ### AM2
 
@@ -343,32 +432,46 @@ The [FMS AM2](http://data1.gfdl.noaa.gov/~arl/pubrel/m/am2/doc/) model
 is GFDL's atmosphere-only code using observed sea surface temperatures,
 time-varying radiative forcings (including volcanos) and time-varying
 land cover type. This version of AM2 (also called AM2.1) uses the
-finite-volume dynamical core (Lin 2004). Robert Pincus (CIRES/NOAA ESRL
-PSD1) and Patrick Hoffman (NOAA) wrote the DART interface and are
+finite-volume dynamical core (Lin 2004). **Robert Pincus** (CIRES/NOAA ESRL
+PSD1) and **Patrick Hoffman** (NOAA) wrote the DART interface and are
 currently using the system for research. Note: the model code is not
 distributed with DART. *Status:* supported
 
-<span id="cable"></span>
+<span id="cable" class="anchor"></span>
 
 ### CABLE
 
-<span id="cam-chem"></span>
+The Community Atmosphere Biosphere Land Exchange (CABLE) model is a 
+land surface model,used to calculate the fluxes of momentum, energy, 
+water and carbon between the land surface and the atmosphere and to 
+model the major biogeochemical cycles of the land ecosystem. The DART
+interfaces for the standalone version of CABLE have preliminary support
+and needs to be updated to be consistent with the Manhattan release.
 
-### CAM-CHEM
 
-<span id="cam-se"></span>
+<span id="cam-se" class="anchor"></span>
 
 ### CAM-SE
 
-<span id="CLM"></span>
+<span id="CLM" class="anchor"></span>
 
 ### CLM
 
-<span id="COAMPS"></span>
+Assimilation with the [Community Land Model](http://www.cesm.ucar.edu/models/clm/)
+is well supported and the system has been used for many research interests, from 
+biogeochemistry to snow, ice, soil moisture and more. DART/CLM has many research
+branches and guidance for which branch is most appropriate is provided upon request. 
+There is support for CLM under the Lanai release and several development branches
+that are consistent with the Manhattan release. The version distributed with the 
+Manhattan release is not as fully functional as the development branches.
+Much of the original DART/CLM support was written by **Yongfei Zhang** while 
+she was at the University of Texas at Austin.
+
+<span id="COAMPS" class="anchor"></span>
 
 ### coamps_nest
 
-The DART interface was originally written and supported by Tim Whitcomb.
+The DART interface was originally written and supported by **Tim Whitcomb**.
 The following model description is taken from the [COAMPS overview web
 page:](http://www.nrlmry.navy.mil/coamps-web/web/view)
 
@@ -381,19 +484,19 @@ page:](http://www.nrlmry.navy.mil/coamps-web/web/view)
 
 Note: the model code is not distributed with DART. *Status:* supported
 
-<span id="COSMO"></span>
+<span id="COSMO" class="anchor"></span>
 
 ### COSMO
 
-<span id="dynamo"></span>
+<span id="dynamo" class="anchor"></span>
 
 ### dynamo
 
-<span id="fesom"></span>
+A Flux-Transport Dynamo model from **Mausumi Dikpati**.
+The goal of this interface is to estimate the time variation of 
+velocities to match given spatio-temporal observation of magnetic fields.
 
-### FESOM
-
-<span id="ikeda"></span>
+<span id="ikeda" class="anchor"></span>
 
 ### ikeda
 
@@ -414,22 +517,19 @@ t = a - b / ( X(i)**2 + Y(i)**2 + 1 )
 ~~~
 
 Note the system is time-discrete already, meaning there is no delta_t.
-The system stems from nonlinear optics (Ikeda 1979, Optics
-Communications). Interface written by **Greg Lawson**. Thanks Greg\!
+The system stems from nonlinear optics 
+(Ikeda 1979, Optics Communications).
+Interface written by **Greg Lawson**. Thanks Greg\!
 
-<span id="jules"></span>
+<span id="jules" class="anchor"></span>
 
 ### JULES
 
-<span id="mpas_ocean"></span>
+<span id="mpas_ocean" class="anchor"></span>
 
 ### MPAS Ocean
 
-<span id="noah"></span>
-
-### NOAH
-
-<span id="null"></span>
+<span id="null" class="anchor"></span>
 
 ### null_model
 
@@ -437,43 +537,48 @@ This model provides very simple models for evaluating filtering
 algorithms. It can provide simple linear growth around a fixed point, a
 random draw from a Gaussian, or combinations of the two.
 
-<span id="openggcm"></span>
+<span id="openggcm" class="anchor"></span>
 
 ### OpenGCCM
 
-<span id="parflow"></span>
+<span id="parflow" class="anchor"></span>
 
 ### PARFLOW
 
-<span id="sqg"></span>
+<span id="sqg" class="anchor"></span>
 
 ### SQG
 
-<span id="tiegcm"></span>
+<span id="tiegcm" class="anchor"></span>
 
 ### TIEGCM
 
-<span id="wrf-chem"></span>
+The DART interfaces to the Thermosphere Ionosphere Electrodynamic General 
+Circulation Model [TIEGCM](http://www.hao.ucar.edu/modeling/tgcm/tie.php)
+are fully supported in the Lanai release.
+TIEGCM is a community model developed at the NCAR High Altitude Observatory and
+is widely used by the space physics and aeronomy community.
+DART/TIEGCM has been used to assimilate neutral mass density retrieved from 
+satellite-borne accelerometers and electon density obtained from ground-based 
+and space-based GNSS signals. TIEGCM2 is not yet supported, and the existing
+interfaces need to be updated to work under the Manhattan release.
 
-### WRF-CHEM
-
-<span id="wrf-hydro"></span>
-
-### WRF-HYDRO
 
 \[[top](#)\]
 
 -----
 
-<span id="orphans"></span>  
+<span id="orphans" class="anchor"></span>  
 
-# Models that have been orphaned.
+## Models that were used a long time ago
 
-<span id="ECHAM"></span>
+<span id="ECHAM" class="anchor"></span>
 
 ### ECHAM
 
-<span id="PBL_1d"></span>
+*Status:* orphaned.
+
+<span id="PBL_1d" class="anchor"></span>
 
 ### PBL_1d
 
@@ -483,7 +588,7 @@ interface so this version is no longer needed. See the WRF model_mod
 namelist documentation for how to use the single-column features.
 *Status:* orphaned, obsolete.
 
-<span id="MITgcm_annulus"></span>
+<span id="MITgcm_annulus" class="anchor"></span>
 
 ### MITgcm_annulus
 
@@ -492,26 +597,26 @@ is a non-hydrostatic, rigid lid, C-grid, primitive equation model
 utilizing a cylindrical coordinate system. For detailed information
 about the MITgcm, see http://mitgcm.org *Status:* orphaned.
 
-<span id="forced_barot"></span>
+<span id="forced_barot" class="anchor"></span>
 
 ### FORCED_BAROT
 
 *Status:* orphaned.
 
-<span id="gitm"></span>
+<span id="gitm" class="anchor"></span>
 
 ### GITM
 
 *Status:* orphaned.
 
-<span id="pe2lyr"></span>
+<span id="pe2lyr" class="anchor"></span>
 
 ### pe2lyr
 
 This model is a 2-layer, isentropic, primitive equation model on a
 sphere. *Status:* orphaned.
 
-<span id="rose"></span>
+<span id="rose" class="anchor"></span>
 
 ### rose
 
@@ -545,26 +650,28 @@ general datasets. It is our intent to populate this site with some
 and that should be fairly reproducible - appropriate to test the DART
 installation.  
   
-Please be patient as I make time to populate this directory. (yes,
-'make', all my 'found' time is taken ...)  
+Please be patient as I make time to populate this directory.
+(yes, 'make', all my 'found' time is taken ...)  
   
 Observation sequences can be found at 
-<http://www.image.ucar.edu/pub/DART/Obs_sets>.  
+[www.image.ucar.edu/pub/DART/Obs_sets](http://www.image.ucar.edu/pub/DART/Obs_sets)
   
-<span id="initial_conditions"></span> Useful bits for CAM can be found
-at <http://www.image.ucar.edu/pub/DART/CAM>.  
+<span id="initial_conditions" class="anchor"></span>
+Useful bits for CAM can be found at 
+[www.image.ucar.edu/pub/DART/CAM](http://www.image.ucar.edu/pub/DART/CAM).  
   
 Useful bits for WRF can be found at
-<http://www.image.ucar.edu/pub/DART/WRF>.  
+[www.image.ucar.edu/pub/DART/WRF](http://www.image.ucar.edu/pub/DART/WRF).  
   
 Useful bits for MPAS_ocn can be found at
-<http://www.image.ucar.edu/pub/DART/MPAS_OCN>.  
+[www.image.ucar.edu/pub/DART/MPAS_OCN](http://www.image.ucar.edu/pub/DART/MPAS_OCN)
   
 Useful bits for CICE can be found at
-<http://www.image.ucar.edu/pub/DART/CICE>.  
+[www.image.ucar.edu/pub/DART/CICE](http://www.image.ucar.edu/pub/DART/CICE)
   
 Verification experiments will be posted to
-<http://www.image.ucar.edu/pub/DART/VerificationData> as soon as I can
+[www.image.ucar.edu/pub/DART/VerificationData](http://www.image.ucar.edu/pub/DART/VerificationData) 
+as soon as I can
 get to it. These experiments will consist of initial conditions files
 for testing different high-order models like CAM, WRF, POP ... The
 low-order models are still distributed with verification data in their
@@ -587,8 +694,8 @@ ways, only a couple of which will be discussed here. The first is to
 generate a single initial condition and let DART perturb it with noise
 of a nature you specify to generate as many ensemble members as you
 like. The second is to take some existing collection of model states and
-convert them to DART initial conditions files and then use the [NCO
-operators](http://nco.sourceforge.net/) to set the proper date in the
+convert them to DART initial conditions files and then use the 
+[NCO operators](http://nco.sourceforge.net/) to set the proper date in the
 files. The hard part is then coming up with the original collection of
 model state(s).
 
@@ -605,7 +712,7 @@ perturbation scheme.
 
 Simply collect the filenames of all the model netCDF files - one per
 ensemble member - and specify them through the *input.nml* 
-*&filter_nml:input_state_file_list = "restarts_in.txt"*  
+```&filter_nml:input_state_file_list = "restarts_in.txt"```  
   
 Frequently, the initial ensemble of restart files is some climatological
 collection. For CAM experiments, we usually start with *N* different
@@ -616,21 +723,21 @@ ensemble spread. WRF has its own method of generating an initial
 ensemble. For that, it is best to go to contact someone familiar with
 WRF/DART.
 
-<span id="low_order_spinup"></span>
+<span id="low_order_spinup" class="anchor"></span>
 
 ### Initial conditions for the low-order models.
 
 In general, there are 'restart files' for the low-order models that
 already exist as ASCII sources for netCDF files. These files are usually
-called *work/filter_input.cdl* and can be converted to netCDF files by
+called ```work/filter_input.cdl``` and can be converted to netCDF files by
 using the *ncgen -o* unix command.  
   
 You can generate your own ensemble by adding noise to a single
-*perfect_input.nc* file and run *filter*. At present (27 March 2017),
-the way to specify the input state file is to use the
+```perfect_input.nc``` file and run *filter*. 
+The way to specify the input state file is to use the
 *input_state_file_list* mechanism. Simply put the name of the file
 into the file referenced by *input_state_file_list*. In this example,
-*filter_input_list.txt* would contain exactly one line - the string
+```filter_input_list.txt```  would contain exactly one line - the string
 "perfect_input.nc". You will also need an observation sequence file,
 and you may want to explicitly state the start/stop times.
 
@@ -653,7 +760,7 @@ and you may want to explicitly state the start/stop times.
 ~~~
 
 In this example, the ensemble will be created with whatever file name
-you put in *filter_output_list.txt*.
+you put in ```filter_output_list.txt```.
 
 <span id="perfect_osse" class="anchor"></span>  
 <span id="osse_simple" class="anchor"></span>
@@ -691,10 +798,11 @@ converters usually assume some sort of representativeness error in the
 observation error specification.  
   
 There are a set of MATLAB® functions to help explore the assimilation
-performance in state-space as well as in observation-space. [Exploring
-the results of a Lorenz '96 OSSE](Research/Lorenz96/index.html).
+performance in state-space as well as in observation-space.
 
-# Perfect Model Experiment Overview
+<!-- TJH FIXME [Exploring the results of a Lorenz '96 OSSE](Research/Lorenz96/index.html). -->
+
+## Perfect Model Experiment Overview
 
 There are four fundamental steps to running an OSSE from within DART:
 
@@ -719,35 +827,35 @@ There are four fundamental steps to running an OSSE from within DART:
     observation blueprint. The noise-free 'truth' and the noisy
     'observation' are recorded in the output observation sequence file.
     The entire time-history of the true state of the model is recorded
-    in *perfect_output.nc* . The default filename for the
-    'observations' is *obs_seq.out* .  
+    in ```perfect_output.nc```. The default filename for the
+    'observations' is ```obs_seq.out```.  
 3.  [Assimilate the synthetic observations](#run_filter) with
     [filter](https://ncar.github.io/DART/api/v2.1.10/program/filter.html) in
     the usual way. The prior/forecast states are preserved in
-    *preassim.nc* and the posterior/analysis states are preserved in
-    *filter_output.nc* . The default filename for the file with the
+    ```preassim.nc``` and the posterior/analysis states are preserved in
+    ```filter_output.nc``` . The default filename for the file with the
     observations and (optionally) the ensemble estimates of the
-    observations is *obs_seq.final* .  
-4.  [Check to make sure the assimilation was
-    effective\!](#run_diagnostics) Ensemble DA is not a black box\! YOU
-    must check to make sure you are making effective use of the
+    observations is ```obs_seq.final``` .  
+4.  [Check to make sure the assimilation was effective\!](#run_diagnostics)
+    Ensemble DA is not a black box\!
+    YOU must check to make sure you are making effective use of the
     information in the observations\!
 
-<span id="obs_blueprint"></span>
+<span id="obs_blueprint" class="anchor"></span>
 
 ## 1. Defining the observation metadata - the 'blueprint'.
 
 There are lots of ways to define an observation sequence that DART can
 use as input for a perfect model experiment. If you have observations in
 DART format already, you can simply use them. If you have observations
-in one of the formats already supported by the DART converters (check
-[DART/observations/obs_converters/observations.html](obs_converters_observations.html),
+in one of the formats already supported by the DART converters
+(check [DART/observations/obs_converters/observations.html](obs_converters_observations.html)),
 convert it to a DART observation sequence. You may need to use the
 [obs_sequence_tool](https://ncar.github.io/DART/api/v2.1.10/program/obs_sequence_tool.html)
 to combine multiple observation sequence files into observation sequence
 files for the perfect model experiment. Any existing observation values
-and quality control information will be ignored by *perfect_model_obs*
-- only the time and location information are used. In fact, any and all
+and quality control information will be ignored by *perfect_model_obs*;
+only the time and location information are used. In fact, any and all
 existing observation and QC values will be removed.  
   
 GENERAL COMMENT ABOUT THE INTERPLAY BETWEEN THE MODEL STOP/START
@@ -762,8 +870,7 @@ multiple of 3600 seconds. Trying to get observations at a finer
 timescale is not possible, we only have access to the model state when
 the model stops.
 
-If you do not have an input observation sequence, it is simple to create
-one.
+If you do not have an input observation sequence, it is simple to create one.
 
 1.  Run
     [create_obs_sequence](https://ncar.github.io/DART/api/v2.1.10/program/create_obs_sequence.html)
@@ -779,12 +886,14 @@ quite tedious if you want a spatially dense set of observations. People
 have been known to actually write programs to generate the input to
 *create_obs_sequence* and simply pipe or redirect the information into
 the program. There are several examples of these in the
-*models/bgrid_solo* directory: *column_rand.f90,
-id_set_def_stdin.f90, ps_id_stdin.f90,* and *ps_rand_local.f90* .
+*models/bgrid_solo* directory: ```column_rand.f90,
+id_set_def_stdin.f90, ps_id_stdin.f90,``` and ```ps_rand_local.f90``` .
 Be advised that some observation types have different input
 requirements, so a 'one size fits all' program is a waste of time.
 
-NOTE: only the observation kinds in the *input.nml* **&obs_kind_nml:assimilate_these_obs_types,evaluate_these_obs** will be available to the *create_obs_sequence* program.
+NOTE: only the observation kinds in the ```input.nml 
+&obs_kind_nml:assimilate_these_obs_types,evaluate_these_obs``` 
+will be available to the *create_obs_sequence* program.
 
 DEVELOPERS TIP: You can specify 'identity' observations as input to
 *perfect_model_obs*. Identity observations are the model values AT the
@@ -794,10 +903,10 @@ interfaces; you can test many of the routines and scripts without having
 a working *model_interpolate()*.
 
 More information about creating observation sequence files for OSSE's is
-available in the [Synthetic Observations
-section](DART2_Observations.html#obs_synthetic).
+available in the 
+[Synthetic Observations section](DART2_Observations.md#obs_synthetic).
 
-<span id="run_pmo"></span>
+<span id="run_pmo" class="anchor"></span>
 
 ## 2. Generating the true state and harvesting the observation values - *perfect_model_obs*
 
@@ -821,12 +930,12 @@ forecast for 'as long as it takes' to harvest all the observations.
 </thead>
 <tbody>
 <tr class="odd">
-<td><em>perfect_input.nc  </em></td>
+<td><em>perfect_input.nc</em></td>
 <td>netCDF</td>
 <td>The DART model state to start from. If the variables have a <code>time</code> dimension, The last timestep will be used as the starting point.</td>
 </tr>
 <tr class="even">
-<td><em>perfect_output.nc   </em></td>
+<td><em>perfect_output.nc</em></td>
 <td>netCDF</td>
 <td>The DART model state at every assimilation timestep. This file has but one 'copy' - the truth. Dump the metadata and the time:<br />
 <em>ncdump -v time,MemberMetadata perfect_output.nc</em></td>
@@ -835,7 +944,14 @@ forecast for 'as long as it takes' to harvest all the observations.
 <td><em>obs_seq.out</em></td>
 <td>ASCII or binary  <br />
 DART-specific linked list</td>
-<td>This file has the observations - the result of the forward observation operator. This observation sequence file has two 'copies' of the observation: the noisy 'copy' and the noise-free 'copy'. The noisy copy is designated as the 'observation', the noise-free copy is the truth. The observation-space diagnostic program <em>obs_diag</em> has special options for using the true copy instead of the observation copy. See the <a href="https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html">obs_diag.html</a> for details.</td>
+<td>This file has the observations - the result of the forward 
+observation operator. This observation sequence file has two 'copies' 
+of the observation: the noisy 'copy' and the noise-free 'copy'. 
+The noisy copy is designated as the 'observation', the noise-free 
+copy is the truth. The observation-space diagnostic program 
+<em>obs_diag</em> has special options for using the true copy instead 
+of the observation copy. See the 
+<a href="https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html">obs_diag.html</a> for details.</td>
 </tr>
 <tr class="even">
 <td><em>dart_log.out</em></td>
@@ -862,48 +978,48 @@ the namelists and variables of particular interest for
 described by the corresponding module document.
 
 ~~~
-&perfect_model_obs_nml  <--- link to the full namelist description!
+&perfect_model_obs_nml
     ...
-    read_input_state_from_file  = .true.      some models can start from preset ICs
-    single_file_in              = .true       some models have nested domains ... 
-    input_state_files           = 'perfect_input.nc'  list of files ... for each domain
+    read_input_state_from_file  = .true.              # some models can start from preset ICs
+    single_file_in              = .true               # some models have nested domains ... 
+    input_state_files           = 'perfect_input.nc'  # list of files ... for each domain
     write_output_state_to_file  = .true.
     single_file_out             = .true.
-    output_state_files          = 'perfect_output.nc' the time-evolution of the true state
-    async                       = 0                   totally depends on the model
-    adv_ens_command             = './advance_ens.csh'         depends on the model
+    output_state_files          = 'perfect_output.nc' # the time-evolution of the true state
+    async                       = 0                   # totally depends on the model
+    adv_ens_command             = './advance_ens.csh' #         depends on the model
     obs_seq_in_file_name        = 'obs_seq.in'
     obs_seq_out_file_name       = 'obs_seq.out'
-    init_time_days              = -1                negative means use the time in ...
-    init_time_seconds           = -1                the 'restart_in_file_name' file
-    first_obs_days              = -1                negative means start at the first time in ...
-    first_obs_seconds           = -1                the 'obs_seq_in_file_name' file.
-    last_obs_days               = -1                negative means to stop with the last ...
-    last_obs_seconds            = -1                observation in the file.
+    init_time_days              = -1                  # negative means use the time in ...
+    init_time_seconds           = -1                  # the 'restart_in_file_name' file
+    first_obs_days              = -1                  # negative means start at the first time in ...
+    first_obs_seconds           = -1                  # the 'obs_seq_in_file_name' file.
+    last_obs_days               = -1                  # negative means to stop with the last ...
+    last_obs_seconds            = -1                  # observation in the file.
    /
     
 &obs_sequence_nml
-    write_binary_obs_sequence = .false.       .false. will create ASCII - easy to check.
+    write_binary_obs_sequence = .false.       #.false. will create ASCII - easy to check.
    /
     
 &obs_kind_nml
     ...
     assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
-    ...                                       list all the synthetic observation
-    ...                                       types you want
+    ...                                       # list all the synthetic observation
+    ...                                       # types you want
    /
     
 &model_nml
     ...
-    time_step_days = 0,                       some models call this 'assimilation_period_days'
-    time_step_seconds = 3600                  some models call this 'assimilation_period_seconds'
-                                                 use whatever value you want
+    time_step_days = 0,                       # some models call this 'assimilation_period_days'
+    time_step_seconds = 3600                  # some models call this 'assimilation_period_seconds'
+                                              # use what is appropriate for the model
    /
     
 &utilities_nml
     ...
-    termlevel   = 1                           your choice
-    logfilename = 'dart_log.out'              your choice
+    termlevel   = 1                           # your choice
+    logfilename = 'dart_log.out'              # your choice
    /
 ~~~
 
@@ -915,25 +1031,23 @@ files or ..., it is not possible to provide a single example that will
 cover all possibilities. The subroutine-callable models (i.e. the
 low-order models) can run *perfect_model_obs* very simply:
 
-~~~
-./perfect_model_obs
-~~~
+> ./perfect_model_obs
 
-<span id="run_filter"></span>
+<span id="run_filter" class="anchor"></span>
 
 ## 3. Performing the assimilation experiment - *filter*
 
 This step is done with the program
 [filter](https://ncar.github.io/DART/api/v2.1.10/program/filter.html), which
-also uses *input.nml* for input and run-time control. A successful
+also uses ```input.nml``` for input and run-time control. A successful
 assimilation will depend on many things: an approprite initial ensemble,
 monitoring and perhaps correcting the ensemble spread, localization,
 etc. It is simply not possible to design a one-size-fits-all system that
 will work for all cases. It is **critically important** to analyze the
 results of the assimilation and explore ways of making the assimilation
-more effective. The [DART
-tutorial](dart_tutorial.html) and the
-[DART_LAB](dart_lab.html) exercises
+more effective. 
+The [DART tutorial](dart_tutorial.md) and the
+[DART_LAB](dart_lab.md) exercises
 are an invaluable resource to learn and understand how to determine the
 effectiveness of, and improve upon, an assimilation experiment. The
 concepts learned with the low-order models are directly applicable to
@@ -945,11 +1059,11 @@ does not necessarily mean the assimilation was effective\!**
 The Manhattan release of DART allows for a very high degree of
 customization when it comes to output. To stay focused on the concepts,
 I will restrict the examples to models that have
-*single_file_in = .true.*, *single_file_out = .true.*, and.
-*stages_to_write = 'preassim', 'output'*.  
+```single_file_in=.true.```, ```single_file_out=.true.```, and
+```stages_to_write='preassim','output'```.  
   
 *filter* generally produces at least two state-space output diagnostic
-files (*preassim.nc* and *filter_output.nc*) which contains values of
+files (```preassim.nc``` and ```filter_output.nc```) which contains values of
 the ensemble mean, ensemble spread, perhaps the inflation values, and
 (optionally) ensemble members for the duration of the experiment.
 *filter* also creates an observation sequence file that contains the
@@ -958,9 +1072,9 @@ ensemble mean estimates of that observation, the prior and posterior
 ensemble spread for that observation, and (optionally), the actual prior
 and posterior ensemble estimates of that observation. Rather than
 replicate the observation metadata for each of these, the single
-metadata is shared for all these 'copies' of the observation. See [An
-overview of the observation
-sequence](DART2_Observations.html#obs_seq_overview) for more detail.
+metadata is shared for all these 'copies' of the observation. See
+[An overview of the observation sequence](DART2_Observations.md#obs_seq_overview)
+for more detail.
 *filter* also produces a run-time log file that can greatly aid in
 determining what went wrong if the program terminates abnormally.  
   
@@ -973,18 +1087,17 @@ documentation for a full description of each namelist.
 ~~~
 &filter_nml  <--- link to the full namelist description!
     async                        = 0
-    ens_size                     = 40                 something ≥ 20, please
+    ens_size                     = 40                 # something ≥ 20, please
     num_output_state_members     = 40                 # of FULL DART model states to put in state-space output files
     num_output_obs_members       = 40                 # of ensemble member estimates of observation to save
-    obs_sequence_in_name         = 'obs_seq.out'      output from perfect_model_obs
+    obs_sequence_in_name         = 'obs_seq.out'      # output from perfect_model_obs
     obs_sequence_out_name        = 'obs_seq.final'
-    init_time_days               = -1                 the time in the restart file is correct
+    init_time_days               = -1                 # the time in the restart file is correct
     init_time_seconds            = -1
-    first_obs_days               = -1                 same interpretation as with perfect_model_obs
+    first_obs_days               = -1                 # same interpretation as with perfect_model_obs
     first_obs_seconds            = -1
-    last_obs_days                = -1                 same interpretation as with perfect_model_obs
+    last_obs_days                = -1                 # same interpretation as with perfect_model_obs
     last_obs_seconds             = -1
-    outlier_threshold            =  3.0               Observation rejection criterion!
     
     single_file_in               = .true.
     input_state_file_list        = 'filter_input_list.txt'   file containing the list of input files - 1 per domain
@@ -997,6 +1110,12 @@ documentation for a full description of each namelist.
     ...
    /
     
+
+&quality_control_nml
+   input_qc_threshold       =  3.0,
+    outlier_threshold       =  3.0               # Observation rejection criterion!
+   /
+
 &assim_tools_nml
     filter_kind             = 1             1 is EAKF, 2 is EnKF ...
     cutoff                  = 0.2           this is your localization - units depend on type of 'location_mod'
@@ -1014,11 +1133,11 @@ documentation for a full description of each namelist.
 
 Once the namelist is set, execute *filter* to integrate the ensemble
 forward with the final ensemble state written to the files in
-*filter_output_list.txt*. For the low-order models and *bgrid_solo*
+```filter_output_list.txt```. For the low-order models and *bgrid_solo*
 (i.e. the models that can be run with *single_file_in = .true.* and
-*single_file_out = .true.*) the default filenames will be
-*preassim.nc* and *filter_output.nc* and will contain values for 40
-ensemble members once a day.
+```single_file_out = .true.```) the default filenames will be
+```preassim.nc``` and ```filter_output.nc``` and will contain values 
+for 40 ensemble members once a day.
 
 ~~~
 mpirun ./filter        -OR-
@@ -1030,23 +1149,23 @@ mpirun.lsf ./filter    -OR-
 however YOU run filter on your system!
 ~~~
 
-<span id="run_diagnostics"></span>
+<span id="run_diagnostics" class="anchor"></span>
 
 ## 4. ASSESS THE PERFORMANCE!
 
 All the concepts of spread, rmse, rank histograms that were taught in
 the DART tutorial and in DART_LAB should be applied now. Try the
-techniques described in the [Did my experiment
-work?](DART2_Diagnostics.html#DidItWork) section. The 'big three'
-state-space diagnostics are repeated here because they are so important.
-The first two require the
-*perfect_output.nc* .
+techniques described in the 
+[Did my experiment work?](DART2_Diagnostics.md#DidItWork) section.
+The 'big three' state-space diagnostics are repeated here because 
+they are so important.
+The first two require the ```perfect_output.nc```.
 
 | | |
 | --- | --- |
-| *plot_bins.m* | plots the rank histograms for a set of state variables. This requires you to have all or most of the ensemble members available in the *preassim.nc* or *filter_output.nc* files. |
+| *plot_bins.m* | plots the rank histograms for a set of state variables. This requires you to have all or most of the ensemble members available in the ```preassim.nc``` or ```filter_output.nc``` files. |
 | *plot_total_err.m* | plots the evolution of the error (un-normalized) and ensemble spread of all state variables. |
-| *plot_ens_mean_time_series.m* | plots the evolution of a set of state variables - just the ensemble mean (and Truth, if available). *plot_ens_time_series.m* is actually a better choice if you can afford to write all/most of the ensemble members to the *preassim.nc* and *filter_output.nc* files. |
+| *plot_ens_mean_time_series.m* | plots the evolution of a set of state variables - just the ensemble mean (and Truth, if available). *plot_ens_time_series.m* is actually a better choice if you can afford to write all/most of the ensemble members to the ```preassim.nc``` and ```filter_output.nc``` files. |
 
 ## DON'T FORGET ABOUT THE OBSERVATION-SPACE DIAGNOSTICS\!
 
@@ -1193,9 +1312,9 @@ precious few places.
 
 -----
 
-<span id="addingAmodelSpecific"></span>
+<span id="addingAmodelSpecific" class="anchor"></span>
 
-# Adding a model to DART - Specifics
+## Adding a model to DART - Specifics
 
 If your model is a separate executable, it would be wise to look at the
 heavily commented template script
@@ -1207,44 +1326,32 @@ parallelism](filter_async_modes.html), and
 the *filter* namelist parameter
 [*async*](https://ncar.github.io/DART/api/v2.1.10/program/filter.html).
 
-<span id="Copying"></span>
+<span id="Copying" class="anchor"></span>
 
-## 1. Copying the template directory
+### 1. Copying the template directory
 
 A little explanation/motivation is warranted. If the model uses the
 standard layout, it is much easier to include the model in the nightly
 builds and testing. For this reason alone, please try to use the
 recommended directory layout. Simply looking at the *DART/models*
 directory should give you a pretty good idea of how things should be
-laid out. Copy the *template* directory and its contents. It is best to
-remove the (hidden) subversion files to keep the directory 'clean'. The
-point of copying this directory is to get a *model_mod.f90* that works
+laid out. Copy the *template* directory and its contents. 
+The point of copying this directory is to get a ```model_mod.f90``` that works
 as-is and you can modify/debug the routines one at a time.
-
-~~~
-~/DART/models % cp -r template mymodel
-    ~/DART/models % find mymodel -name .svn -print
-    mymodel/.svn
-    mymodel/shell_scripts/.svn
-    mymodel/work/.svn
-    ~/DART/models % rm -rf `find mymodel -name .svn -print`
-    ~/DART/models % find mymodel -name .svn -print
-    ~/DART/models %
-~~~
 
 The destination directory (your model directory) should be in the
 *DART/models* directory to keep life simple. Moving them around will
-cause problems for the *work/mkmf_*xxxxx** configuration files. Each
+cause problems for the ```work/mkmf_xxxxx``` configuration files. Each
 model directory should have a *work* and *shell_scripts* directories,
 and may have a *matlab* directory, a *src* directory, or anything else
 you may find convenient.  
   
-Now, you must change all the *work/path_names_*xxx** file contents to
-reflect the location of your *model_mod.f90*.
+Now, you must change all the ```work/path_names_xxxxx``` file contents to
+reflect the location of your ```model_mod.f90```.
 
-<span id="model_mod"></span>
+<span id="model_mod" class="anchor"></span>
 
-## 2. model_mod.f90
+### 2. model_mod.f90
 
 We have templates, examples, and a document describing the required
 interfaces in the DART code tree -
@@ -1269,9 +1376,9 @@ necessary to preface the print as in this example:
 if (do_output()) write(*,*)'model_mod:namelist cal_NML',startDate_1,startDate_2
 ~~~
 
-<span id="requiredinterfaces"></span>
+<span id="requiredinterfaces" class="anchor"></span>
 
-### Required Interfaces in model_mod.f90
+#### Required Interfaces in model_mod.f90
 
 No matter the complexity of the model, the DART software requires a few
 interface routines in a model-specific Fortran90 module *model_mod.f90*
@@ -1310,13 +1417,13 @@ is:
 | easy | easy | [read_model_time](Manhattan/models/template/model_mod.html#read_model_time) | This routine simply stores a copy of the ensemble mean of the state vector within the *model_mod*. The ensemble mean may be needed for some calculations (like converting model sigma levels to the units of the observation - pressure levels, for example). |
 | easy | easy | [write_model_time](Manhattan/models/template/model_mod.html#read_model_time) | This routine simply stores a copy of the ensemble mean of the state vector within the *model_mod*. The ensemble mean may be needed for some calculations (like converting model sigma levels to the units of the observation - pressure levels, for example). |
 
-## If your model is subroutine-callable - you're done\!
+### If your model is subroutine-callable - you're done\!
 
-<span id="add_a_simple_model"></span>
+<span id="add_a_simple_model" class="anchor"></span>
 
-# Adding support for a "simple" model
+## Adding support for a "simple" model
 
-## overview
+### overview
 
 each routine includes usual things it often has to do for subroutine-callable
 models which can manufacture an initial condition state vector.
@@ -1405,11 +1512,11 @@ often unused unless you want to modify the localization behavior
 not currently called, leave it using the default routine. here for
 possible future implementation.
 
-<span id="add_a_complex_model"></span>
+<span id="add_a_complex_model" class="anchor"></span>
 
-# Adding support for a "complex" model
+## Adding support for a "complex" model
 
-## overview
+### overview
 
 Each routine includes usual things it often has to do for a large
 geophysical model. this is different from the low order models.
@@ -1500,11 +1607,11 @@ code to adv_1step.
 not currently called, leave it using the default routine. here for
 possible future implementation.
 
-<span id="cycling_a_model"></span>
+<span id="cycling_a_model" class="anchor"></span>
 
-# Cycling Models
+## Cycling Models
 
-## Overview
+### Overview
 
 For simple models which can be advanced by a subroutine call, the
 *filter* program is driven by the input observation sequence. It
@@ -1529,7 +1636,7 @@ need to:
 6.  Run *filter* again.
 7.  Repeat until all observations have been assimilated.
 
-## In More Detail
+### In More Detail
 
 The *filter* program requires an ensemble of model output files in
 NetCDF file format as input. If the model does not use NetCDF a
@@ -1593,11 +1700,11 @@ A few of the ways we're aware of are:
     single copy of the model. The disadvantage is this is the slowest
     wall-clock way to advance the ensemble.
 
-<span id="scriptingbackground"></span> <span id="advance_model"></span>
+<span id="scriptingbackground" class="anchor"></span> <span id="advance_model" class="anchor"></span>
 
-## 3. advance_model.csh
+### 3. advance_model.csh
 
-## The Big Picture for models advanced as separate executables.
+### The Big Picture for models advanced as separate executables.
 
 The normal sequence of events is that DART reads in its own restart file
 (do not worry about where this comes from right now) and eventually
@@ -1654,7 +1761,7 @@ then *filter* uses a *system()* call, or 2) if *async = 4* then
     ...
     </div>
 
-### async = 2 ... advancing many copies at the same time
+#### async = 2 ... advancing many copies at the same time
 
 Modify *shell_scripts/advance_model.csh* to:
 
@@ -1695,15 +1802,15 @@ Modify *shell_scripts/advance_model.csh* to:
 During this initial phase, it may be useful to _leave_ the temporary
 directory intact until you verify everything is as it should be.
 
-### async = 4 ... advancing each copy one at a time
+#### async = 4 ... advancing each copy one at a time
 
 In addition to modifying *shell_scripts/advance_model.csh* as
 described above, you must also modify *shell_scripts/run_filter.csh*
 in the following way: THIS PART NEEDS TO BE FILLED IN
 
-<span id="testing_strategies"></span>
+<span id="testing_strategies" class="anchor"></span>
 
-## 4. Testing Strategies - under construction
+### 4. Testing Strategies - under construction
 
 Generally testing when you add a new model to DART includes:  
 Checking the converter programs.  
@@ -1713,14 +1820,12 @@ and error specification.
 Performing a 'perfect model' experiment for a few timesteps.  
 Looking at what the assimilation did with:
 
-~~~
-work % ncdiff filter_output.nc preassim.nc Innov.nc
-work % ncview Innov.nc
-~~~
+> work % ncdiff filter_output.nc preassim.nc Innov.nc
+> work % ncview Innov.nc
 
-<span id="model_matlab_support"></span>  
+<span id="model_matlab_support" class="anchor"></span>  
   
-## 5. Adding MATLAB® support for your own model - under construction.
+### 5. Adding MATLAB® support for your own model - under construction.
 
 Only needed for state-space diagnostics.  
 Define a structure with required elements.  
@@ -1728,58 +1833,15 @@ Examples exist in the *diagnostics/matlab/private* directory.
 
 <span id="examples" class="anchor"></span> 
 
-\[[top](#)\]
-
 -----
 
 ## Examples - under construction
 
 1.  observation location/value plots
-2.  [a brief explanation of
-    'localization'](https://ncar.github.io/DART/api/v2.1.10/module/assim_tools_mod.html)
+2.  [a brief explanation of 'localization'](https://ncar.github.io/DART/api/v2.1.10/module/assim_tools_mod.html)
 3.  namelist settings for damped adaptive spatially-varying group filter
 
-<span id="customizing" class="anchor"></span>
-
-\[[top](#)\]
-
------
-
-## Customizing DART - under construction.
-
-Modify the code to your heart's content.  
-'svn revert' cures all ...  
-
-<span id="contributing" class="anchor"></span>
-
-\[[top](#)\]
-
------
-
-## Adding your efforts to DART.
-
-Please let us know if you have suggestions or code to contribute to
-DART. We're a small group, but we are willing to listen and will make
-every endeavor to incorporate improvements to the code. Email us at
-<dart@ucar.edu>.
-
-<span id="algorithms" class="anchor"></span>  
-
-\[[top](#)\]
-
------
-
-## Assimilation Algorithms employed in DART.
-
-The DART system includes several different types of Kalman filter
-algorithms, selectable at runtime by a namelist setting. See the
-documentation for the [assimilation tools
-module](https://ncar.github.io/DART/api/v2.1.10/module/assim_tools_mod.html)
-for descriptions of the various filter types and how to select them.
-
 <span id="namelists" class="anchor"></span> 
-
-\[[top](#)\]
 
 -----
 
@@ -1788,16 +1850,16 @@ for descriptions of the various filter types and how to select them.
 Many DART programs have namelists to specify run-time control. Some
 programs use one or more modules - each module may have its own
 namelist. As a consequence, we find it convenient to have one file
-(called *input.nml*) specifying all the namelists.  
+(called ```input.nml```) specifying all the namelists.  
   
-For a complete list of namelists, see the following document: [master
-list of namelists](Manhattan/documentation/index.html#Namelists)  
+For a complete list of namelists, see the following document:
+[master list of namelists](Manhattan/documentation/index.html#Namelists)  
   
 An example namelist for each program is automatically built when the
 makefile is generated by *mkmf_xxxxx*. The example namelist is named
-*input.nml.xxxxx_default* where *xxxxx* is the name of the program. The
+```input.nml.xxxxx_default``` where *xxxxx* is the name of the program. The
 example namelists have default values, which may not be appropriate for
-your use. The default *input.nml* in each *work* directory generally has
+your use. The default ```input.nml``` in each *work* directory generally has
 better values. As usual, the documentation for each module is the best
 place to get information about the namelist settings.
 

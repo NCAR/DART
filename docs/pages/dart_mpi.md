@@ -11,14 +11,14 @@ The latest release of the DART system includes an MPI option. MPI stands
 for 'Message Passing Interface', and is both a library and run-time
 system that enables multiple copies of a single program to run in
 parallel, exchange data, and combine to solve a problem more quickly.
-The latest release of DART does \*NOT\* require MPI to run; the default
+The latest release of DART does **NOT** require MPI to run; the default
 build scripts do not need nor use MPI in any way. However, for larger
 models with large state vectors and large numbers of observations, the
 data assimilation step will run much faster in parallel, which requires
 MPI to be installed and used. However, if multiple ensembles of your
 model fit comfortably (in time and memory space) on a single processor,
-you need read no further about MPI.  
-  
+you need read no further about MPI.
+
 MPI is an open-source standard; there are many implementations of it. If
 you have a large single-vendor system it probably comes with an MPI
 library by default. For a Linux cluster there are generally more
@@ -27,15 +27,15 @@ called MPICH. In smaller clusters or dual-processor workstations a
 version of MPI called either LAM-MPI or OpenMPI might be installed, or
 can be downloaded and installed by the end user. (Note that OpenMP is a
 different parallel system; OpenMPI is a recent effort with a confusingly
-similar name.)  
-  
+similar name.)
+
 An "MPI program" makes calls to an MPI library, and needs to be compiled
 with MPI include files and libraries. Generally the MPI installation
-includes a shell script called 'mpif90' which adds the flags and
+includes a shell script called *mpif90* which adds the flags and
 libraries appropriate for each type of fortran compiler. So compiling an
 MPI program usually means simply changing the fortran compiler name to
-the MPI script name.  
-  
+the MPI script name.
+
 These MPI scripts are built during the MPI install process and are
 specific to a particular compiler; if your system has multiple fortran
 compilers installed then either there will be multiple MPI scripts
@@ -48,25 +48,25 @@ program compile command and copy it.
 
 ### DART use of MPI
 
-To run in parallel, only the DART 'filter' program (and possibly the
-companion 'wakeup_filter' program) need be compiled with the MPI
+To run in parallel, only the DART *filter* program (and possibly the
+companion *wakeup_filter* program) need be compiled with the MPI
 scripts. All other DART executables should be compiled with a standard
-F90 compiler and are not MPI enabled. (And note again that 'filter' can
+F90 compiler and are not MPI enabled. (And note again that *filter* can
 still be built as a single executable like previous releases of DART;
 using MPI and running in parallel is simply an additional option.) To
-build a parallel version of the 'filter' program, the 'mkmf_filter'
+build a parallel version of the *filter* program, the *mkmf_filter*
 command needs to be called with the '-mpi' option to generate a Makefile
-which compiles with the MPI scripts instead of the Fortran compiler.  
-  
-See the *quickbuild.csh* script in each $DART/models/\*/work directory
+which compiles with the MPI scripts instead of the Fortran compiler.
+
+See the *quickbuild.csh* script in each `$DART/models/*/work` directory
 for the commands that need to be edited to enable the MPI utilities. You
 will also need to edit the $DART/mkmf/mkmf.template file to call the
 proper version of the MPI compile script if it does not have the default
 name, is not in a standard location on the system, or needs additional
-options set to select between multiple Fortran compilers.  
-  
+options set to select between multiple Fortran compilers.
+
 MPI programs generally need to be started with a shell script called
-'mpirun' or 'mpiexec', but they also interact with any batch control
+*mpirun* or *mpiexec*, but they also interact with any batch control
 system that might be installed on the cluster or parallel system.
 Parallel systems with multiple users generally run some sort of batch
 system (e.g. LSF, PBS, POE, LoadLeveler, etc). You submit a job request
@@ -76,41 +76,41 @@ consult your local web pages or knowledgeable system admin for help
 here. Generally the run scripts supplied with DART have generic sections
 to deal with LSF, PBS, no batch system at all, and sequential execution,
 but the details (e.g. the specific queue names, accounting charge codes)
-will almost certainly have to be adjusted.  
-  
+will almost certainly have to be adjusted.
+
 The data assimilation process involves running multiple copies
 (ensembles) of a user model, with an assimilation computation
 interspersed between calls to the model. There are many possible
 execution combinations, including:
 
-  - Compiling the assimilation program 'filter' with the model,
+  - Compiling the assimilation program *filter* with the model,
     resulting in a single executable. This can be either a sequential or
     parallel program.
-  - Compiling 'filter' separately from the model, and having 2 separate
+  - Compiling *filter* separately from the model, and having 2 separate
     executables. Either or both can be sequential or parallel.
 
-The choice of how to combine the 'filter' program and the model has 2
+The choice of how to combine the *filter* program and the model has 2
 parts: building the executables and then running them. At build time,
 the choice of using MPI or not must be made. At execution time, the
-setting of the 'async' namelist value in the filter_nml section
-controls how the 'filter' program interacts with the model.  
-  
+setting of the `async` namelist value in the `filter_nml` section
+controls how *filter* interacts with the model.
+
 Choices include:
 
 <span id="async0"></span>
 
-  - async = 0  
+  - async = 0
     The model and filter programs are compiled into a single executable,
     and when the model needs to advance, the filter program calls a
     subroutine. See a [diagram](filter_async_modes.html#async0) which
     illustrates this option.
-  - <span id="async2"></span> async = 2  
+  - <span id="async2"></span> async = 2
     The model is compiled into a sequential (single task) program. If
     'filter' is running in parallel, each filter task will execute the
     model independently to advance the group of ensembles. See a
     [diagram](filter_async_modes.html#async2) which illustrates this
     option.
-  - <span id="async4"></span> async = 4  
+  - <span id="async4"></span> async = 4
     The model is compiled into an MPI program (parallel) and only
     'filter' task 0 tells the startup script when it is time to advance
     the model. Each ensemble is advanced one by one, with the model
@@ -118,7 +118,7 @@ Choices include:
     [diagram](filter_async_modes.html#async4) which illustrates this
     option.
   - <span id="async5"></span> async ignored (sometimes referred to as
-    'async 5', but not a setting in the namelist)  
+    'async 5', but not a setting in the namelist)
     This is the way most large models run now. There is a separate
     script, outside of filter, which runs the N copies of the model to
     do the advance. Then filter is run, as an MPI program, and it only
@@ -133,8 +133,8 @@ mode, that they both run on the same number of processors; e.g. if
 processors as well. Alternatively, if the user model is compiled as a
 single executable (async=2), 'filter' can run in parallel on any number
 of processors and each model advance can be executed independently
-without the model having to know about MPI or parallelism.  
-  
+without the model having to know about MPI or parallelism.
+
 Compiling and running an MPI application can be substantially more
 complicated than running a single executable. There are a suite of small
 test programs to help diagnose any problems encountered in trying to run
@@ -147,13 +147,13 @@ for instructions and a set of tests to narrow down any difficulties.
 Getting good performance from a parallel program is frequently
 difficult. Here are a few of reasons why:
 
-  - Amdahl's law  
+  - Amdahl's law
     You can look up the actual formula for this "law" in the Wikipedia,
     but the gist is that the amount of serial code in your program
     limits how much faster your program runs on a parallel machine, and
     at some point (often much sooner than you'd expect) you stop getting
     any speedup when adding more processors.
-  - Surface area to volume ratio  
+  - Surface area to volume ratio
     Many scientific problems involve breaking up a large grid or array
     of data and distributing the smaller chunks across the multiple
     processors. Each processor computes values for the data on the
@@ -165,7 +165,7 @@ difficult. Here are a few of reasons why:
     edges decreases slower than the 'volume' inside that one processor
     can compute independently of other processors. At some point the
     communication overhead of exchanging edge data limits your speedup.
-  - Hardware architecture system balance  
+  - Hardware architecture system balance
     Raw CPU speeds have increased faster than memory access times, which
     have increased faster than access to secondary storage (e.g. I/O to
     disk). Computations which need to read input data and write result
@@ -177,7 +177,7 @@ difficult. Here are a few of reasons why:
     for I/O and communication to and from the I/O node increases. There
     are also capacity issues; for example the amount of memory available
     on the I/O node to hold the entire dataset can be insufficient.
-  - NUMA memory  
+  - NUMA memory
     Many machines today have multiple levels of memory: on-chip private
     cache, on-chip shared cache, local shared memory, and remote shared
     memory. The approach is referred as Non-Uniform Memory Access (NUMA)
@@ -196,16 +196,16 @@ difficult. Here are a few of reasons why:
 Parallel performance can be measured and expressed in several different
 ways. A few of the relevant definitions are:
 
-  - Speedup  
+  - Speedup
     Generally defined as the wall-clock time for a single processor
     divided by the wall-clock time for N processors.
-  - Efficiency  
+  - Efficiency
     The speedup number divided by N, which for perfect scalability will
     remain at 1.0 as N increases.
-  - Strong scaling  
+  - Strong scaling
     The problem size is held constant and the number of processors is
     increased.
-  - Weak scaling  
+  - Weak scaling
     The problem size grows as the number of processors increases so the
     amount of work per processor is held constant.
 
@@ -224,16 +224,16 @@ memory processors; meaning that some small number (e.g. 2-32) of CPUs
 share some amount of physical memory and can transfer data quickly
 between them, while communicating data to other CPUs involves slower
 communication across either some kind of hardware switch or fabric, or a
-network communication card like high speed ethernet.  
-  
+network communication card like high speed ethernet.
+
 Running as many tasks per node as CPUs per shared-memory node is in
 general good, unless the total amount of virtual memory used by the
 program exceeds the physical memory. Factors to consider here include
 whether each task is limited by the operating system to 1/Nth of the
 physical memory, or whether one task is free to consume more than its
 share. If the node starts paging memory to disk, performance takes a
-huge nosedive.  
-  
+huge nosedive.
+
 Some models have large memory footprints, and it may be necessary to run
 in MPI mode not necessarily because the computation is faster in
 parallel, but because the dataset size is larger than the physical
