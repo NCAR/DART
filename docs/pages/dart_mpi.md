@@ -102,20 +102,20 @@ Choices include:
   - async = 0
     The model and filter programs are compiled into a single executable,
     and when the model needs to advance, the filter program calls a
-    subroutine. See a [diagram](filter_async_modes.html#async0) which
+    subroutine. See a [diagram](filter_async_modes.md#async0) which
     illustrates this option.
   - <span id="async2"></span> async = 2
     The model is compiled into a sequential (single task) program. If
     'filter' is running in parallel, each filter task will execute the
     model independently to advance the group of ensembles. See a
-    [diagram](filter_async_modes.html#async2) which illustrates this
+    [diagram](filter_async_modes.md#async2) which illustrates this
     option.
   - <span id="async4"></span> async = 4
     The model is compiled into an MPI program (parallel) and only
     'filter' task 0 tells the startup script when it is time to advance
     the model. Each ensemble is advanced one by one, with the model
     using all the processors to run in parallel. See a
-    [diagram](filter_async_modes.html#async4) which illustrates this
+    [diagram](filter_async_modes.md#async4) which illustrates this
     option.
   - <span id="async5"></span> async ignored (sometimes referred to as
     'async 5', but not a setting in the namelist)
@@ -214,8 +214,8 @@ on a variety of platforms and problem sizes. The scaling looks very good
 up to the numbers of processors available to us to test on. It is
 assumed that for MPP (Massively-Parallel Processing) machines with
 10,000s of processors that some algorithmic changes will be required.
-These are described in [this
-paper](http://www.image.ucar.edu/DAReS/DART/scalable_paper.pdf).
+These are described in **Anderson & Collins**
+["Scalable Implementations of Ensemble Filter Algorithms for Data Assimilation"](https://doi.org/10.1175/JTECH2049.1) 2007.
 
 ### User considerations for their own configurations
 
@@ -239,7 +239,5 @@ in MPI mode not necessarily because the computation is faster in
 parallel, but because the dataset size is larger than the physical
 memory on a node and must be divided and spread across multiple nodes to
 avoid paging to disk.
-
-<span id="Legalese"></span>
 
 -----

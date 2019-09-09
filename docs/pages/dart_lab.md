@@ -23,6 +23,18 @@ about 1.5 days to complete. -->
 
 Here are the PDF files for the presentation part of the tutorial:
 
+<!--   is this right for GH-pages? 
+  - [Section 1:](../DART_LAB/DART_LAB_Section01.pdf) The basics in 1D.
+  - [Section 2:](../DART_LAB/DART_LAB_Section02.pdf) How should
+    observations of a state variable impact an unobserved state
+    variable? Multivariate assimilation.
+  - [Section 3:](../DART_LAB/DART_LAB_Section03.pdf) Sampling error and
+    localization.
+  - [Section 4:](../DART_LAB/DART_LAB_Section04.pdf) The Ensemble
+    Kalman Filter (Perturbed Observations).
+  - [Section 5:](../DART_LAB/DART_LAB_Section05.pdf) Adaptive
+    Inflation.
+======= because the one below is right for GitHub viewing -->
  - [Section 1:](../DART_LAB/presentation/DART_LAB_Section01.pdf)
    The basics in 1D.
  - [Section 2:](../DART_LAB/presentation/DART_LAB_Section02.pdf)
