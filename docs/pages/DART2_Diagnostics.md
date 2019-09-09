@@ -13,7 +13,7 @@ spread before the application of prior inflation? After prior inflation
 but before the assimilation? After the assimilation but before posterior
 inflation? After posterior inflation? etc. There are several namelist
 settings that control what files are output. 
-[Section&nbsp;16](../tutorials/section_16.pdf) of the DART
+[Section&nbsp;16](../tutorial/section_16.pdf) of the DART
 tutorial has a more detailed explanation.  
   
 From a computational perspective, there are two broad situations:
@@ -36,7 +36,7 @@ separate file, and each file can be written simultaneously by different
 tasks. The tradeoff (at the moment) is that each of the files can only
 have a single timestep in them. Consequently, some files are redundant
 and should not be output.
-See the [section&nbsp;16](../tutorials/section_16.pdf) of the DART
+See [Section&nbsp;16](../tutorial/section_16.pdf) of the DART
 tutorial for a more detailed explanation.  
   
 **```single_file_out = .true.```** :  When *filter* is used for a long
@@ -61,39 +61,39 @@ Be careful about what stages you choose to write.
 
 | from *perfect_model_obs* |      |      |
 | ------------------------ | ---- | ---- |
-| *obs_seq.out* | | the synthetic observations at some predefined times and locations |
-| *perfect_output.nc* | 1&nbsp;timestep | a netCDF file containing the model trajectory - the true state |
+| `obs_seq.out` | | the synthetic observations at some predefined times and locations |
+| `perfect_output.nc` | 1&nbsp;timestep | a netCDF file containing the model trajectory - the true state |
 
 There are some namelist settings that control what files are output.
         Depending on the settings for *input.nml&filter_nml:stages_to_write* and others ...
         
 | from *filter* |      |      |
 | ------------- | ---- | ---- |
-| *forecast_member_\#\#\#\#.nc* | 1&nbsp;timestep | the ensemble forecast, each ensemble member is a separate file |
-| *forecast_\[mean,sd\].nc*     | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble forecast |
-| *forecast_priorinf_\[mean,sd\].nc* | 1&nbsp;timestep | the prior inflation information before assimilation |
-| *forecast_postinf_\[mean,sd\].nc* | 1&nbsp;timestep | the posterior inflation information before assimilation |
-| *preassim_member_\#\#\#\#.nc* | 1&nbsp;timestep | the model states after any prior inflation but before assimilation |
-| *preassim_\[mean,sd\].nc* | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after any prior inflation but before assimilation |
-| *preassim_priorinf_\[mean,sd\].nc* | 1&nbsp;timestep | the prior inflation information before assimilation |
-| *preassim_postinf_\[mean,sd\].nc* | 1&nbsp;timestep | the posterior inflation information before assimilation |
-| *postassim_member_\#\#\#\#.nc* | 1&nbsp;timestep | the model states after assimilation but before posterior inflation |
-| *postassim_\[mean,sd\].nc* | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after assimilation but before posterior inflation |
-| *postassim_priorinf_\[mean,sd\].nc* | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
-| *postassim_postinf_\[mean,sd\].nc* | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
-| *analysis_member_\#\#\#\#.nc* | 1&nbsp;timestep | the model states after assimilation and after any posterior inflation |
-| *analysis_\[mean,sd\].nc* | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after assimilation and after posterior inflation |
-| *analysis_priorinf_\[mean,sd\].nc* | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
-| *analysis_postinf_\[mean,sd\].nc* | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
-| *output_\[mean,sd\].nc* | 1&nbsp;timestep | the mean and spread of the posterior ensemble |
-| *output_priorinf_\[mean,sd\].nc* | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
-| *output_priorinf_\[mean,sd\].nc* | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
-| *obs_seq.final* | | the model estimates of the observations (an integral part of the data assimilation process) |
+| `forecast_member_\#\#\#\#.nc` | 1&nbsp;timestep | the ensemble forecast, each ensemble member is a separate file |
+| `forecast_\[mean,sd\].nc`     | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble forecast |
+| `forecast_priorinf_\[mean,sd\].nc` | 1&nbsp;timestep | the prior inflation information before assimilation |
+| `forecast_postinf_\[mean,sd\].nc` | 1&nbsp;timestep | the posterior inflation information before assimilation |
+| `preassim_member_\#\#\#\#.nc` | 1&nbsp;timestep | the model states after any prior inflation but before assimilation |
+| `preassim_\[mean,sd\].nc` | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after any prior inflation but before assimilation |
+| `preassim_priorinf_\[mean,sd\].nc` | 1&nbsp;timestep | the prior inflation information before assimilation |
+| `preassim_postinf_\[mean,sd\].nc` | 1&nbsp;timestep | the posterior inflation information before assimilation |
+| `postassim_member_\#\#\#\#.nc` | 1&nbsp;timestep | the model states after assimilation but before posterior inflation |
+| `postassim_\[mean,sd\].nc` | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after assimilation but before posterior inflation |
+| `postassim_priorinf_\[mean,sd\].nc` | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
+| `postassim_postinf_\[mean,sd\].nc` | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
+| `analysis_member_\#\#\#\#.nc` | 1&nbsp;timestep | the model states after assimilation and after any posterior inflation |
+| `analysis_\[mean,sd\].nc` | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after assimilation and after posterior inflation |
+| `analysis_priorinf_\[mean,sd\].nc` | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
+| `analysis_postinf_\[mean,sd\].nc` | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
+| `output_\[mean,sd\].nc` | 1&nbsp;timestep | the mean and spread of the posterior ensemble |
+| `output_priorinf_\[mean,sd\].nc` | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
+| `output_priorinf_\[mean,sd\].nc` | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
+| `obs_seq.final` | | the model estimates of the observations (an integral part of the data assimilation process) |
 
 | from both | |
 | ------------- | --- |
-| *dart_log.out* | the 'important' run-time output (each run of *filter* appends to this file; remove it or start at the bottom to see the latest values) |
-| *dart_log.nml* | the input parameters used for an experiment |
+| `dart_log.out` | the 'important' run-time output (each run of *filter* appends to this file; remove it or start at the bottom to see the latest values) |
+| `dart_log.nml` | the input parameters used for an experiment |
 
 #### When *single_file_out = .true.*
 
@@ -102,36 +102,36 @@ All the information for each stage is contained in a single file that
 
 | from *perfect_model_obs* | | |
 | ---------------------------- | --- | --- |
-| *obs_seq.out* | | the synthetic observations at some predefined times and locations |
-| *perfect_output.nc* | N&nbsp;timesteps | a netCDF file containing the model trajectory - the true state |
+| `obs_seq.out` | | the synthetic observations at some predefined times and locations |
+| `perfect_output.nc` | N&nbsp;timesteps | a netCDF file containing the model trajectory - the true state |
 
 There are some namelist settings that control what files are output. Depending on the settings for
       *input.nml &filter_nml:stages_to_write* and others ...
 
 | from *filter* | | |
 | -------------- | ---- | ---- |
-| *filter_input.nc* | 1&nbsp;timestep | The starting condition of the experiment. All ensemble members, \[optionally\] the input mean and standard deviation (spread), \[optionally\] the prior inflation values, \[optionally\] the posterior inflation values |
-| *forecast.nc* | N&nbsp;timesteps | The ensemble forecast. All ensemble members, the mean and standard deviation (spread), the prior inflation values, the posterior inflation values |
-| *preassim.nc* | N&nbsp;timesteps | After any prior inflation but before assimilation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the prior inflation values, the posterior inflation values |
-| *postassim.nc* | N&nbsp;timesteps | After assimilation but before posterior inflation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the (new) prior inflation values, the (new) posterior inflation values |
-| *analysis.nc* | N&nbsp;timesteps | After assimilation and after any posterior inflation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the (new) prior inflation values, the (new) posterior inflation values |
-| *filter_output.nc* | 1&nbsp;timestep | After assimilation and after any posterior inflation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the (new) prior inflation values, the (new) posterior inflation values |
-| *obs_seq.final* | | the model estimates of the observations (an integral part of the data assimilation process) |
+| `filter_input.nc` | 1&nbsp;timestep | The starting condition of the experiment. All ensemble members, \[optionally\] the input mean and standard deviation (spread), \[optionally\] the prior inflation values, \[optionally\] the posterior inflation values |
+| `forecast.nc` | N&nbsp;timesteps | The ensemble forecast. All ensemble members, the mean and standard deviation (spread), the prior inflation values, the posterior inflation values |
+| `preassim.nc` | N&nbsp;timesteps | After any prior inflation but before assimilation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the prior inflation values, the posterior inflation values |
+| `postassim.nc` | N&nbsp;timesteps | After assimilation but before posterior inflation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the (new) prior inflation values, the (new) posterior inflation values |
+| `analysis.nc` | N&nbsp;timesteps | After assimilation and after any posterior inflation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the (new) prior inflation values, the (new) posterior inflation values |
+| `filter_output.nc` | 1&nbsp;timestep | After assimilation and after any posterior inflation. All ensemble members, the mean and standard deviation (spread) of the ensemble, the (new) prior inflation values, the (new) posterior inflation values |
+| `obs_seq.final` | | the model estimates of the observations (an integral part of the data assimilation process) |
 
 
 | from both | |
 | ------------- | --- |
-| *dart_log.out* | the 'important' run-time output (each run of *filter* appends to this file; remove it or start at the bottom to see the latest values) |
-| *dart_log.nml* | the input parameters used for an experiment |
+| `dart_log.out` | the 'important' run-time output (each run of *filter* appends to this file; remove it or start at the bottom to see the latest values) |
+| `dart_log.nml` | the input parameters used for an experiment |
 
 ### First questions to ask
 
 **NOTE: the remainder of this document is written from the perspective
-of an experiment run with *single_file_out&nbsp;=&nbsp;.true.*. The permutations
+of an experiment run with ```single_file_out&nbsp;=&nbsp;.true.*.``` The permutations
 of the file names is just too great to write exhaustive documentation.**
 
-After *filter* executes without error and produces an *obs_seq.final*
-file, a *preassim.nc* file, and an *analysis.nc* file, the first
+After *filter* executes without error and produces an `obs_seq.final`
+file, a `preassim.nc` file, and an `analysis.nc` file, the first
 questions to ask are:
 
 1.  "Is the model state output from *filter* different from the input?",
@@ -139,16 +139,16 @@ questions to ask are:
 2.  "Were any observations successfully assimilated?".
 
 One way to check if the output model state data was changed by the
-assimilation is to use the 'ncdiff' tool to difference the *preassim.nc*
-and *analysis.nc* files:
+assimilation is to use the 'ncdiff' tool to difference the `preassim.nc`
+and `analysis.nc` files:
 
-> ncdiff analysis.nc preassim.nc Innov.nc  
+> ncdiff analysis.nc preassim.nc Innov.nc    
 > ncview Innov.nc
 
 If your model can run under *single_file_\[in,out\]* Look at the
 ensemble mean variables. If all values are 0, then the assimilation
 changed nothing in the state. If your model writes multiple output
-files, diff the *preassim_mean.nc* and *output_mean.nc*.
+files, diff the `preassim_mean.nc` and `output_mean.nc`.
 
 <span id="debugging" class="anchor"></span> 
 
@@ -168,14 +168,14 @@ You can do this by:
 ##### To make an obs file with a single observation, use one of these methods:
 
 1.  run *create_obs_sequence* to make a new, short, observation sequence file
-2.  Use the *obs_sequence_tool* to cut your existing obs_seq.out file
+2.  Use the *obs_sequence_tool* to cut your existing `obs_seq.out` file
     down to just a few obs by selecting only a subset of the types and
     setting a very short time window (just a second or two where you
     know there are obs).
 
 ##### To make the *filter* program only do an assimilation:
 
-1.  Edit the *input.nml* and in the *&filter_nml* namelist set the
+1.  Edit the `input.nml` and in the *&filter_nml* namelist set the
     *init_time_days* and *init_time_seconds* to match the
     observation time in the truncated observation sequence file. This overrides any
     times in the input files and ensures that *filter* will only
@@ -185,7 +185,7 @@ You can do this by:
     single assimilation window.
 
 If there are no changes in the model state after assimilation, then
-examine the *obs_seq.final* file. There are two ways to do this. 1) If
+examine the `obs_seq.final` file. There are two ways to do this. 1) If
 you are testing with a single observation, just look in the file. If
 this file is in binary format, change the namelist so the output
 observation sequence file will be written in ascii:
@@ -196,9 +196,9 @@ observation sequence file will be written in ascii:
    /
 ~~~
 
-and rerun *filter* to regenerate an obs_seq.final file in ascii.
-[These&nbsp;diagrams](DART2_Observations.html#obs_seq_overview) help to understand
-an ```obs_seq.final``` file. 2) If you are using many observations, run the
+and rerun *filter* to regenerate an `obs_seq.final` file in ascii.
+[These&nbsp;diagrams](DART2_Observations.md#obs_seq_overview) help to understand
+an `obs_seq.final` file. 2) If you are using many observations, run the
 [obs_diag.f90](https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html)
 appropriate for your model. There are some
 [diagnostic&nbsp;scripts](#mat_obs) to help summarize and explore what is going on.
@@ -214,42 +214,42 @@ members. You can determine if all ensemble members are failing in the
 same way, or if only a few are problematic.
 
 For the failing observations, the 'DART QC' may indicate the reason.
-([How to locate the different values in an ```obs_seq.final``` file.](DART2_Observations.html#obs_seq_overview) The 'DART QC' field is usually the second of the 2 "quality control" copies.)
-A list of all the DART QC values can be found in [this&nbsp;table](#qc_table).
+([How to locate the different values in an ```obs_seq.final``` file.](DART2_Observations.md#obs_seq_overview) The 'DART QC' field is usually the second of the 2 "quality control" copies.)
+A list of all the DART QC values can be found in [this&nbsp;table](#qc_table).  
 
-  - If the DART QC values are 4, the forward operators have failed. Look
-    at the *model_interpolate()* routine in your model_mod.f90 file,
-    or the forward operator code in
-    *observations/forward_operators/obs_def_xxx_mod.f90* for your
-    observation type. A successful forward operator must return a valid
-    obs_val and an *istatus&nbsp;=&nbsp;0*. If the forward operator code returns
-    different istatus values for different error types, you can set
-    *&filter_nml::output_forward_op_errors&nbsp;=&nbsp;*.true.** and rerun
-    *filter* to see exactly what error istatus codes are being set. See
-    [the filter webpage](https://ncar.github.io/DART/api/v2.1.10/program/filter.html)
-    for more information on how to use the 'output_forward_op_errors'
-    option. Negative istatus values are reserved for the system,
-    *istatus&nbsp;=&nbsp;0* is success, and any positive value indicates a failed
-    forward operator. The code is free to use different positive values
-    to signal different types of errors.  
-      
-  - If the DART QC values are 5, those observation types were
-    intentionally ignored because they were not listed in the
-    &obs_kind_nml namelist, in the 'assimilate_these_obs_types'
-    stringlist.  
-      
-  - If the DART QC values are 6, the data quality control that came with
-    the original observation data indicates this is a bad quality
-    observation and it was skipped for this reason.  
-      
-  - If the DART QC values are 7, the observation value is too far away
-    from the ensemble mean. Set *&filter_nml::outlier_threshold&nbsp;=&nbsp;1*
-    to ignore this for now and rerun. In general, this is
-    not the optimal strategy as the number of observations inconsistent
-    with the ensemble is a very powerful indicator of the success or
-    failure of the assimilation.
+- If the DART QC values are 4, the forward operators have failed. Look
+  at the *model_interpolate()* routine in your model_mod.f90 file,
+  or the forward operator code in
+  *observations/forward_operators/obs_def_xxx_mod.f90* for your
+  observation type. A successful forward operator must return a valid
+  obs_val and an *istatus&nbsp;=&nbsp;0*. If the forward operator code returns
+  different istatus values for different error types, you can set
+  *&filter_nml::output_forward_op_errors&nbsp;=&nbsp;*.true.** and rerun
+  *filter* to see exactly what error istatus codes are being set. See
+  [the filter webpage](https://ncar.github.io/DART/api/v2.1.10/program/filter.html)
+  for more information on how to use the 'output_forward_op_errors'
+  option. Negative istatus values are reserved for the system,
+  *istatus&nbsp;=&nbsp;0* is success, and any positive value indicates a failed
+  forward operator. The code is free to use different positive values
+  to signal different types of errors.  
+    
+- If the DART QC values are 5, those observation types were
+  intentionally ignored because they were not listed in the
+  &obs_kind_nml namelist, in the 'assimilate_these_obs_types'
+  stringlist.  
+    
+- If the DART QC values are 6, the data quality control that came with
+  the original observation data indicates this is a bad quality
+  observation and it was skipped for this reason.  
+    
+- If the DART QC values are 7, the observation value is too far away
+  from the ensemble mean. Set *&filter_nml::outlier_threshold&nbsp;=&nbsp;1*
+  to ignore this for now and rerun. In general, this is
+  not the optimal strategy as the number of observations inconsistent
+  with the ensemble is a very powerful indicator of the success or
+  failure of the assimilation.  
 
-If the prior and posterior values in the obs_seq.final are not
+If the prior and posterior values in the `obs_seq.final` are not
 -888888.0 but are identical, your obs are being assimilated but are
 having no impact.  
   
@@ -260,8 +260,8 @@ state include:
     Your initial ensemble members must have different values for each
     state item. If all members have identical values, the observations
     cannot make a change. To diagnose this condition, look at the prior
-    ensemble spread. This is either in ```preassim.nc``` or
-    ```preassim_sd.nc```, depending on your model. If all the values are 0,
+    ensemble spread. This is either in `preassim.nc` or
+    `preassim_sd.nc`, depending on your model. If all the values are 0,
     this is your problem. One way to generate an ensemble with some
     spread is to set 
     *&filter_nml::perturb_from_single_instance&nbsp;=&nbsp;.false.,*
@@ -272,7 +272,7 @@ state include:
     magnitude of the gaussian noise added is controlled by the
     *&filter_nml::perturbation_amplitude*. It is also
     possible to write your own perturbation routine in your
-    ```model_mod.f90``` code.
+    `model_mod.f90` code.
   - **Cutoff value too small**  
     If the localization radius is too small, the observation may not be
     'close enough' to the model grid to be able to impact the model.
@@ -295,7 +295,7 @@ state include:
     applied, so this is also a low likelyhood case.
   - **Errors in forward operator location computations, or
     *get_close_obs()***  
-    If there is an error in the *model_mod.f90* code in either
+    If there is an error in the `model_mod.f90` code in either
     *get_state_meta_data()*, *model_interpolate()*, or the vertical
     conversion code in *get_close_obs()*, it is possible for the
     forward operators to appear to be working correctly, but the
@@ -334,7 +334,7 @@ If you run with a single observation, you should be able to easily see
 the impact - generally it's a mostly spherical or circular ring around
 the observation location depending on your vertical localization, you
 may or may not see an impact in the vertical. Using
-*&location_nml::horiz_dist_only=*.true.** is usually a good idea for
+ ```&location_nml::horiz_dist_only=.true.``` is usually a good idea for
 a full 3d model to start out, and then add vertical localization once
 you believe the horizontal impact makes sense. Without any vertical
 localization, the observation should have an impact along the entire
@@ -359,11 +359,11 @@ distribution. A *working* implementation.
   
 **There is no single metric that can declare success.**  
   
-[The DART Tutorial](dart_tutorial.html) has the
+[The DART Tutorial](dart_tutorial.md) has the
 best explanation of what to look for, what to change to improve the next
 experiment, etc. DART has an extensive set of diagnostics implemented in
 MATLAB®. To use them, make sure you have read the 
-[Configuring MATLAB®](DART2_Starting.html#matlab) section.
+[Configuring MATLAB®](DART2_Starting.md#matlab) section.
 
 ### The Observations are the Key.
 
@@ -371,21 +371,21 @@ My own (Tim's) personal view is that the first thing to check is to see
 how many observations are getting rejected by the assimilation in
 addition to the RMSE and spread of the ensemble. A natural part of the
 DART framework is that these metrics are calculated automatically and
-are readily available in the *obs_seq.final* files. Checking the
+are readily available in the `obs_seq.final` files. Checking the
 temporal evolution of the RMSE and observation rejection characteristics
 is a first-order metric for determining the health of the assimilation
 system.
 
 1.  Use
     [obs_diag.f90](https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html)
-    to process the collection of *obs_seq.final* files for regions and
+    to process the collection of `obs_seq.final` files for regions and
     times of interest. Edit the *input.nml:obs_diag_nml* namelist to
     reflect the details of your experiment, and then run *obs_diag* to
-    create a netCDF file *obs_diag_output.nc* that contains the
+    create a netCDF file `obs_diag_output.nc` that contains the
     summaries.
 2.  Make sure the spread of the ensemble does not collapse. Use
     *plot_evolution.m* with *copystring = 'spread';* to explore
-    *obs_diag_output.nc*. It is normal (and desirable\!) for the
+    `obs_diag_output.nc`. It is normal (and desirable\!) for the
     spread to decrease somewhat from the initial value, but it should
     not decrease to a small value. Insufficient spread leads to filter
     divergence and a large observation rejection rate.
@@ -393,7 +393,7 @@ system.
     available and the number of observations successfully assimilated.
 3.  Make sure the RMSE of the ensemble does not collapse. Use
     *plot_evolution.m* with *copystring = 'rmse';* to explore
-    *obs_diag_output.nc*. It is important to interpret the RMSE in
+    `obs_diag_output.nc`. It is important to interpret the RMSE in
     light of the number of observations successfully assimilated. It is
     possible to have a very low RMSE if the assimilation system rejects
     all of the observations that are in disagreement\! A low RMSE is
@@ -404,14 +404,14 @@ system.
     **forecast** is a good forecast\!
 4.  Make sure the RMSE of the ensemble does not continually increase.
     *plot_evolution.m* with *copystring = 'rmse';* to explore
-    *obs_diag_output.nc*. It is natural for the RMSE to vary in time
+    `obs_diag_output.nc`. It is natural for the RMSE to vary in time
     in response to the changing number and location of the observations,
     the phenomenon being modeled, etc. ... but it should not generally
     increase as the system evolves. Once the system has 'burned in', the
     RMSE should be relatively stable.
 5.  Check to make sure the observations that are getting rejected are
     getting rejected for the right reasons. Run *obs_seq_to_netcdf*
-    to convert the *obs_seq.final* files into netCDF files that can be
+    to convert the `obs_seq.final` files into netCDF files that can be
     explored with *link_obs.m* or *plot_obs_netcdf.m*. Both of these
     tools will allow you to isolate the rejected observations and
     determine if the observations are being rejected because they are in
@@ -493,7 +493,7 @@ See the expanded section on
 **The DART QC table is an important piece of information.**
 
 | QC value | meaning |
-| -------- | ------- |
+| :------- | :------ |
 | 0,1 == both Prior and Posterior are good. |
 | 0 | Assimilated O.K. |
 | 1 | Evaluated O.K., not assimilated because namelist specified evaluate only. |
@@ -508,18 +508,17 @@ See the expanded section on
 | 8 | Vertical conversion failed. |
 | 9 and above | reserved for future use. |
 
-It is required to post-process the ```obs_seq.final``` file(s) with
+It is required to post-process the `obs_seq.final` file(s) with
 [obs_diag](https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html)
 to generate a netCDF file containing accumulated diagnostics for
 specified regions, etc. Since the experiment information (assimilation
 interval, assimilating model, etc.) are not recorded in the
-```obs_seq.final``` file, the
+`obs_seq.final` file, the
 [obs_diag_nml](https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html)
 namelist has a section that allows specification of the necessary
 quantities.  
   
-The following quantities are normally
-diagnosed:
+The following quantities are normally diagnosed:  
 
 |              |                                                                                                      |
 | ------------ | ---------------------------------------------------------------------------------------------------- |
@@ -549,8 +548,8 @@ diagnosed:
 <span id="mat_obs" class="anchor"></span>
 
 The observation-space functions are in the *DART/diagnostics/matlab*
-directory. Once you have processed the ```obs_seq.final``` files into a
-single ```obs_diag_output.nc```, you can use that as input to your own
+directory. Once you have processed the `obs_seq.final` files into a
+single `obs_diag_output.nc`, you can use that as input to your own
 plotting routines or use the following DART MATLAB® routines:
 
 [plot_evolution.m](../../diagnostics/matlab/plot_evolution.m) plots the temporal evolution 
@@ -590,9 +589,9 @@ plotdat    = plot_profile(fname,copystring);
 
 [two_experiments_evolution.m](../../diagnostics/matlab/two_experiments_evolution.m) same as 
     *plot_evolution.m* but will overlay multiple (more than two, actually) 
-    experiments (i.e. multiple ```obs_diag_output.nc``` files) on the same 
+    experiments (i.e. multiple `obs_diag_output.nc` files) on the same 
     axis. A separate figure is created for each region in the 
-    ```obs_diag_output.nc``` file.
+    `obs_diag_output.nc` file.
 
 ~~~
 files    = {'POP12/obs_diag_output.nc','POP11/obs_diag_output.nc'};
@@ -609,8 +608,8 @@ two_experiments_evolution(files, titles,{'ACARS_TEMPERATURE'}, qtty, prpo, level
 
 [two_experiments_profile.m](../../diagnostics/matlab/two_experiments_profile.m) same as 
     *plot_profile.m* but will overlay multiple (more than two, actually)
-    experiments (i.e. multiple *obs_diag_output.nc* files) on the same 
-    axis. If the *obs_diag_output.nc* file was created with multiple 
+    experiments (i.e. multiple `obs_diag_output.nc` files) on the same 
+    axis. If the `obs_diag_output.nc` file was created with multiple 
     regions, there are multiple axes on a single figure.
 
 ~~~
@@ -626,7 +625,7 @@ two_experiments_profile(files, titles, varnames, qtty, prpo)
 
 
 [plot_rank_histogram.m](../../diagnostics/matlab/plot_rank_histogram.m) will create rank histograms 
-    for any variable that has that information present in ```obs_diag_output.nc```.
+    for any variable that has that information present in `obs_diag_output.nc`.
 
 ~~~
 fname     = 'obs_diag_output.nc'; % netcdf file produced by 'obs_diag'
@@ -640,7 +639,7 @@ plotdat   = plot_rank_histogram(fname, timeindex, 'RADIOSONDE_TEMPERATURE');
 You may also convert observation sequence files to netCDF by using
 [obs_seq_to_netcdf](https://ncar.github.io/DART/api/v2.1.10/program/obs_seq_to_netcdf.html).
 All of the following routines will work on observation sequences files
-AFTER an assimilation (i.e. *obs_seq.final* files that have been
+AFTER an assimilation (i.e. `obs_seq.final` files that have been
 converted to netCDF), and some of them will work on *obs_seq.out*-type
 files that have been converted.
 
@@ -650,7 +649,7 @@ files that have been converted.
 [read_obs_netcdf.m](../../diagnostics/matlab/read_obs_netcdf.m) reads a particular variable 
     and copy from a netCDF-format observation sequence file and returns a 
     single structure with useful bits for plotting/exploring. 
-    This routine is the back-end for ```plot_obs_netcdf``` .
+    This routine is the back-end for *plot_obs_netcdf.m* .
 
 ~~~
 fname         = 'obs_sequence_001.nc';
@@ -737,11 +736,11 @@ bob = plot_wind_vectors(fname, platform, CopyString, QCString, ...
 
 
 [ObsTimeCheck.m](../../diagnostics/matlab/ObsTimeCheck.m) is an example of a trivial little 
-    script to wrap around ```plot_obs_netcdf.m``` that allows you to explorex
+    script to wrap around *plot_obs_netcdf.m* that allows you to explorex
     the spatial distribution of your observation sequences. Since 
     *obs_seq_to_netcdf* doesn't know anything about assimilation windows;
     the idea is to create separate netCDF files for each assimilation window 
-    and then explore a sequence of windows. Since ```ObsTimeCheck.m``` is 
+    and then explore a sequence of windows. Since *ObsTimeCheck.m* is 
     under version control, you should feel free to edit it/modify it to 
     your heart's desire. If there are no observations of that type in a 
     particular assimilation window, the MATLAB® Command window will have 
@@ -761,7 +760,7 @@ bob = plot_wind_vectors(fname, platform, CopyString, QCString, ...
 After you create ```obs_diag_output.nc``` with
 [obs_diag](Manhattan/assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html)
 it is important to understand what is contained in
-```obs_diag_output.nc```. Remember, this is just a dump of the *header* of the file\!
+`obs_diag_output.nc`. Remember, this is just a dump of the *header* of the file\!
 
 ~~~
 [work]$ ncdump -v CopyMetaData obs_diag_output.nc
@@ -966,7 +965,7 @@ averaging period. This allows one to ignore the effects of spinup.
 The *RADIOSONDE_U_WIND_COMPONENT_guess_RankHi* variable name has
 been cut short by the netCDF restriction that variable names can only
 contain 40 characters. The *_RankHist* variables are only present if
-the input *obs_seq.final* files have multiple ensemble members present.
+the input `obs_seq.final` files have multiple ensemble members present.
 You cannot derive this information unless the assimilation was performed
 with *filter_nml:num_output_obs_members* equal to something like the
 ensemble size.
@@ -977,7 +976,7 @@ ensemble size.
 
 #### Viewing the rank histogram information with 'ncview'
 
-After you create ```obs_diag_output.nc``` with *obs_diag* you can view
+After you create `obs_diag_output.nc` with *obs_diag* you can view
 the rank histograms in the following way:
 
 > ncview obs_diag_output.nc
@@ -1036,7 +1035,7 @@ model-dependent. See the section on
 [Adding MATLAB® support for your own model](DART2_Documentation.html#model_matlab_support) 
 if you are not using one of the supported DART models.  
   
-The state-space functions are in the *```DART/diagnostics/matlab```*
+The state-space functions are in the *`DART/diagnostics/matlab`*
 directory. They all have the expected 'help' file accessible by simply
 typing *help* *\[function_of_interest\]* at the Matlab prompt.  
 
@@ -1215,7 +1214,7 @@ data:
 
 <img src="../images/science_nuggets/bgrid_prior_inflation_timeseries.png">
 
-This is an exploration of the ```preassim.nc``` file. Note that I selected
+This is an exploration of the `preassim.nc` file. Note that I selected
 the '**t**' field, turned the coastlines 'off' under the 'Opts' button,
 used the 'Repl' instead of 'Bi-lin' (to more faithfully represent the
 model resolution), *navigated to copy 23 of 24 (in this case, the
@@ -1232,7 +1231,7 @@ Clicking on any location generates a time series figure.
 
 <img src="../images/science_nuggets/bgrid_innov_ncview_timeseries.png">
 
-This is an exploration of the ```Innov.nc``` file as created by *ncdiff*.
+This is an exploration of the `Innov.nc` file as created by *ncdiff*.
 Note that the titles are somewhat misleading because they reflect
 information from the first file given to *ncdiff*. This time I left the
 rendering as 'Bi-lin' (which obfuscates the model resolution),

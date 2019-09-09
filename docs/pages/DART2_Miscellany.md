@@ -1,11 +1,11 @@
----
+--- 
 title: Miscellany
 layout: default
 ---
 
 <span id="useful_software" class="anchor"></span>
 
-### Useful Software
+# Useful Software
 
 The following free open-source tools have proven to be very useful:
 
@@ -17,8 +17,7 @@ The following free open-source tools have proven to be very useful:
 3.  [the netCDF Operators (NCO)](http://nco.sourceforge.net/): tools to
     perform operations on netCDF files like concatenating, differencing,
     averaging, etc.
-4.  [An MPI
-    environment](http://en.wikipedia.org/wiki/Message_Passing_Interface#Overview):
+4.  [An MPI environment](http://en.wikipedia.org/wiki/Message_Passing_Interface#Overview):
     to run larger jobs in parallel. DART can be used without MPI,
     especially the low order models where the memory use is small. The
     larger models often require MPI so that filter can be run as a
@@ -26,42 +25,39 @@ The following free open-source tools have proven to be very useful:
     are [OpenMPI](http://www.open-mpi.org/) or
     [MPICH](http://www.mpich.org/). See the DART MPI introduction in
     [mpi_intro.html](dart_mpi.html).
-5.  [Observation Processing And Wind Synthesis
-    (OPAWS)](http://code.google.com/p/opaws/): OPAWS can process NCAR
+5.  [Observation Processing And Wind Synthesis (OPAWS)](http://code.google.com/p/opaws/):
+    OPAWS can process NCAR
     Dorade (sweep) and NCAR EOL Foray (netcdf) radar data. It analyzes
     (grids) data in either two-dimensions (on the conical surface of
     each sweep) or three-dimensions (Cartesian). Analyses are output in
     netcdf, Vis5d, and/or DART (Data Assimilation Research Testbed)
     formats.
+6.  Some DART users have contributed scripts using the 
+   [NCAR Command Language (NCL)](http://www.ncl.ucar.edu/Document/Manuals/Getting_Started/introduction.shtml)
+    for computation and plotting.
 
-The following licensed (commercial) tools have proven to be very useful:
+The following licensed (commercial) tool has proven very useful:
 
-1.  [MATLAB®](http://www.mathworks.com/products/matlab/): An interactive
-    and programming language for computation and visualization. We
-    supply our diagnostic and plotting routines as MATLAB® scripts.  
-    Free alternatives to MATLAB® (for which we unfortunately do not have
-    the resources to support, but would happily accept user
-    contributions) include:
-    1.  [Octave](http://www.gnu.org/software/octave)
-    2.  [SciPy](http://www.scipy.org/) plus
-    3.  [matplotlib](http://matplotlib.org/)
-    4.  The [R](http://www.r-project.org/) programming language has
-        similiar functionality but a different enough syntax that the
-        diagnostic and plotting routines we supply which work with
-        MATLAB® are unlikely to be easy to port.
-    5.  The [NCAR Command Language
-        (NCL)](http://www.ncl.ucar.edu/Document/Manuals/Getting_Started/introduction.shtml)
-        package also does computation and plotting, but again with a
-        different enough syntax that the routines supplied with DART
-        would need major rewriting to work.
+1.  [MATLAB®](http://www.mathworks.com/products/matlab/):
+    An interactive and programming language for computation and visualization.
+    We supply our diagnostic and plotting routines as MATLAB® scripts.
 
-<span id="RegressionTestResults" class="anchor"></span>
+Free alternatives to MATLAB® (for which we unfortunately do not have the 
+resources to support, but would happily accept user contributions) include:
+-  [Octave](http://www.gnu.org/software/octave)
+-  [SciPy](http://www.scipy.org/) plus
+-  [matplotlib](http://matplotlib.org/)
+-  The [R](http://www.r-project.org/) programming language has
+   similiar functionality but a different enough syntax that the
+   diagnostic and plotting routines we supply which work with
+   MATLAB® are unlikely to be easy to port.
+
 
 \[[top](#)\]
 
 -----
 
-## DART platforms/compilers/batch systems
+# DART platforms/compilers/batch systems
 
 We work to keep the DART code highly portable. We avoid
 compiler-specific constructs, require no system-specific functions, and
@@ -110,13 +106,13 @@ make: *** [preprocess] Error 1
 ~~~
 
 There is a script to facilitate making the appropriate change to
-*null_mpi_utilities_mod.f90* and *mpi_utilities_mod.f90*. Run the
+```null_mpi_utilities_mod.f90``` and ```mpi_utilities_mod.f90```. Run the
 shell script *DART/mpi_utilities/fixsystem* with no arguments to simply
 'flip' the state of these files (i.e. if the system block is defined, it
 will undefine the block by commenting it out; if the block is commented
 out, it will define it by uncommenting the block). If you want to
-hand-edit *null_mpi_utilities_mod.f90* and *mpi_utilities_mod.f90*
-- look for the comment block that starts *\! BUILD TIP* and follow the
+hand-edit ```null_mpi_utilities_mod.f90``` and ```mpi_utilities_mod.f90```,
+look for the comment block that starts ```\! BUILD TIP``` and follow the
 directions in the comment block.  
 
 ### module mismatch errors
@@ -149,11 +145,14 @@ error to be of much use. If the compile flags exist and are known to us,
 we try to include them in the comment section of the individual
 *mkmf.template.xxxx.yyyy* file.  
   
-These errors most often manifest themselves as 'time' errors in the DART
+With the Lanai and earlier versions of DART, endian problems were more common
+and most often manifest themselves as 'time' errors in the DART
 execution. The restart/initial conditions files have the valid time of
 the ensuing model state as the first bit of information in the header,
 and if these files are 'wrong'-endian, the encoded times are
-nonsensical.
+nonsensical. Since DART now uses netCDF files, endian errors have been
+greatly reduced and generally exist trying to ingest binary observation 
+sequence files or binary data from some other source.
 
 ### MPI
 
@@ -171,9 +170,7 @@ simpler than the entire DART build tree.
 
 -----
 
-<span id="FAQ"></span>
-
-## Frequently Asked Questions for DART
+# Frequently Asked Questions for DART
 
   - [General Info about DART](#General)
   - [Installation Questions](#Install)
@@ -181,17 +178,17 @@ simpler than the entire DART build tree.
   - [The WRF Weather Model and DART](#WRFDART)
   - [The CESM Climate Model and DART](#CESMDART)
 
-### General Info about DART
-  
+## General Info about DART
+
 <span id="General"></span>
 
-#### What kind of data assimilation does DART do?
+> What kind of data assimilation does DART do?
 
 There are two main techniques for doing data assimilation: variational
 and ensemble methods. DART uses a variety of ensemble Kalman filter
 techniques.
 
-#### What parts of the DART source should I feel free to alter?
+> What parts of the DART source should I feel free to alter?
 
 We distribute the full source code for the system so you're free to edit
 anything you please. However, the system was designed so that you should
@@ -220,7 +217,7 @@ kind, we'd love for you to send a copy of it back to us for inclusion in
 the DART
 distribution.
 
-#### What systems and compilers do you support? What other tools do I need?
+> What systems and compilers do you support? What other tools do I need?
 
 We run on almost any Linux-based system including laptops, clusters, and
 supercomputers. This includes IBMs, Crays, SGIs, Macs. We discourage
@@ -229,7 +226,7 @@ trying to use Windows but it has been done using the CygWin package.
 We require a Fortran 90 compiler. Common ones in use are from GNU
 (gfortran), Intel, PGI, PathScale, IBM, and g95.  
   
-We need a compatible NetCDF library, which means compiled with the same
+We need a compatible netCDF library, which means compiled with the same
 compiler you build DART with, and built with the Fortran interfaces.  
   
 You can run DART as a single program without any additional software. To
@@ -245,7 +242,7 @@ to adapt our scripts themselves.
 
 <span id="Install"></span>
 
-#### How do I get started?
+> How do I get started?
 
 Go to the extensive [DART web pages](../index.html) where there are
 detailed instructions on checking the source out of our subversion
@@ -258,7 +255,7 @@ read the [full setup instructions](DART2_Starting.html#installing)
 before contacting us for help. We will start out suggesting you read
 those web pages first anyway.
 
-#### I'm trying to build with MPI and getting errors.
+> I'm trying to build with MPI and getting errors.
 
 The MPI compiler commands are usually scripts or programs which add
 additional arguments and then call the standard Fortran compiler. If
@@ -277,40 +274,27 @@ were missing interfaces in the 1.10.0 release which are fixed in the
 1.10.1
 release.
 
-#### I'm getting errors from subversion when I'm trying to check out a copy of DART.
+> I'm getting errors related to netCDF when I try to build the executables.
 
-If you are behind some kind of firewall they may not allow the ports
-needed to talk to the subversion server. If you can, try from a machine
-outside the firewall, or talk to your system support people about how to
-access a subversion server. Sometimes there are machines which allow
-subversion access which share filesystems with machines that are not
-allowed. It's always better if you can go back later and update your
-copy of DART with subversion to keep it in sync with the server; making
-a tar of the checked out source and moving it to another machine won't
-let you do
-this.
-
-#### I'm getting errors related to NetCDF when I try to build the executables.
-
-Any application that uses the NetCDF data libraries must be compiled
+Any application that uses the netCDF data libraries must be compiled
 with exactly the same compiler as the libraries were built with. On
 systems which have either multiple compilers, or multiple versions of
 the same compiler, there is the possibilty that the libraries don't
 match the compiler you're using to compile DART. Options here are:
 
-  - If there are multiple versions of the NetCDF libraries installed,
+  - If there are multiple versions of the netCDF libraries installed,
     find a method to select the right version; e.g. specify the exact
     path to the include files and libraries in your mkmf.template file,
     or load the right module if your system uses the 'module' command to
     select software options.
   - Change the version of the compiler you are using to build DART to
-    match the one used to build NetCDF.
-  - Build your own version of the NetCDF libraries with the compiler you
+    match the one used to build netCDF.
+  - Build your own version of the netCDF libraries with the compiler you
     prefer to use. See [this web
     page](http://www.unidata.ucar.edu/software/netcdf/docs/building_netcdf_fortran.html)
     for help in building the libraries. DART requires only the basic
-    library with the NetCDF 3 interfaces, but will work with NetCDF 4
-    versions. Building NetCDF 4 does require additional libraries such
+    library with the netCDF 3 interfaces, but will work with netCDF 4
+    versions. Building netCDF 4 does require additional libraries such
     as HDF, libz, etc.
 
 If you believe you are using the right version of the compiler, then
@@ -319,10 +303,10 @@ library with the C code, or if there are two libraries, libnetcdf.a and
 libnetcdff.a (note the 2 f's in the second library). The library lines
 in your mkmf.template must reference either one or both libraries,
 depending on what exists. This is a choice that is made by the person
-who built the NetCDF libraries and cannot be predicted
+who built the netCDF libraries and cannot be predicted
 beforehand.
 
-#### I'm getting errors about undefined symbol "_system_" when I try to compile.
+> I'm getting errors about undefined symbol "_system_" when I try to compile.
 
 If you're running the Lanai release or code from the trunk later than
 2013, the DART Makefiles should automatically call a script in the
@@ -337,7 +321,7 @@ would work without change for the `gfortran` compiler, but all other
 compilers require that you run `fixsystem` before trying to
 compile.  
 
-#### I have a netCDF library but I'm getting errors about unrecognized module format.
+> I have a netCDF library but I'm getting errors about unrecognized module format.
 
 The netCDF libraries need to be built by the same version of the same
 compiler as you are building DART. If your system has more than one
@@ -347,7 +331,7 @@ the netCDF libraries which was built with the same version of the same
 compiler as you're using to build
 DART.
 
-#### I'm getting errors about `-lnetcdff` not found, or I'm getting errors about undefined symbols for things in the netCDF libraries.
+> I'm getting errors about `-lnetcdff` not found, or I'm getting errors about undefined symbols for things in the netCDF libraries.
 
 There are several important options when the netCDF libraries are built
 that change what libraries you get and whether you have what you need.
@@ -366,25 +350,24 @@ Bottom line: What you need to set for the library list in your
 `DART/mkmf/mkmf.template` file depends on how your netCDF was
 built.
   
-#### My model runs in single precision and I want to compile DART the same way.
+> My model runs in single precision and I want to compile DART the same way.
 
-We recommend that you run an assimilation with Fortran double precision
-reals (e.g. all real values are real\*8 or 64 bits). However if your
-model is compiled in single precision (real\*4 or 32 bits) then there is
-an option to build DART the same way. Edit `DART/common/types_mod.f90`
+We recommend that you run an assimilation with Fortran 64-bit 
+reals (e.g. all real values are real\*8 or 'double precision'). However if your
+model is compiled with 32-bit reals (real\*4 or 'single precision') there is
+an option to build DART the same way. Edit `DART/assimilation_code/modules/utilities/types_mod.f90`
 and change the definition of `R8` to equal `R4` (comment out the
 existing line and comment in the following line). Rebuild all DART
 executables and it will run with single precision reals. We declare
 every real variable inside DART with an explicit size, so we do not
 recommend using compiler flags to try to change the default real
-variable precision because it will not affect the DART
-code.
+variable precision because it will not affect the DART code.
 
 ### Questions about Using DART
 
 <span id="Using"></span>
 
-#### I'm trying to run an MPI filter and I'm getting N copies of every message.
+> I'm trying to run an MPI filter and I'm getting N copies of every message.
 
 Look in the log or in the standard output for the message:
 'initialize_mpi_utilities: Running with N MPI processes.' Instead of
@@ -395,15 +378,15 @@ quickbuild.csh script with the -mpi flag to force it to build filter
 with mpif90 or whatever the mpi compiler wrapper is called on your
 system.
 
-#### How does DART interact with running my model?
+> How does DART interact with running my model?
 
 If you are running one of the "low-order" models (e.g. one of the Lorenz
 models, the null model, the pe2lyr model, etc), the easiest way to run
 is to let DART control advancing the model when necessary. You run the
 "filter" executable and it runs both the assimilation and model advances
 until all observations in the input observation sequence file have been
-assimilated. See the "async" setting in the [filter namelist
-documentation](https://ncar.github.io/DART/api/v2.1.10/program/filter.html)
+assimilated. See the "async" setting in the 
+[filter namelist documentation](https://ncar.github.io/DART/api/v2.1.10/program/filter.html)
 for more information.  
   
 If you are running a large model with a complicated configuration and/or
@@ -427,7 +410,7 @@ The "multi-instance" capability of CESM is used to manage the multiple
 copies of the components which are needed for assimilation, and to run
 them all as part of a single job.
 
-#### After assimilating, my model variables are out of range.
+> After assimilating, my model variables are out of range.
 
 One of the assumptions of the Kalman filter is that the model states and
 the observation values have gaussian distributions. The assimilation can
@@ -458,7 +441,7 @@ original scale at export time. This ensures the values stay positive,
 which is common requirement for legal
 values.
 
-#### After assimilating, my job finished successfully but no values changed.
+> After assimilating, my job finished successfully but no values changed.
 
 This is a common problem, especially when adding a new observation type
 or trying to assimilate with a new model. But it can happen at any time
@@ -467,7 +450,7 @@ page](DART2_Diagnostics.html#DidItWork) for a list of common causes of
 the assimilation output state being the same as the input state, and how
 to determine which one is responsible.
 
-#### You have lots of namelists. How can I tell what to set?
+> You have lots of namelists. How can I tell what to set?
 
 Each module in DART has an html web page which describes the namelists
 in detail. Start with `DART/index.html` and follow the links to all the
@@ -475,7 +458,7 @@ other modules and namelists in the system. If you want help with setting
 up an experiment the `DART/filter/filter.html` page has some
 introductory advice for some of the more important namelist settings.
 
-#### I'm not getting an error but I am getting MPI timeouts
+> I'm not getting an error but I am getting MPI timeouts
 
 If your job is getting killed for no discernable reason but is usually
 during computing prior or posterior forward operators, or during writing
@@ -495,7 +478,7 @@ the timeout threshold, run with fewer MPI tasks, or ask the DART team to
 be a Beta user of a newer version of DART which does not have such large
 time differentials between different MPI tasks.
 
-#### filter is finishing but my job is hanging at exit
+> filter is finishing but my job is hanging at exit
 
 If filter finishes running, including the final timestamp message to the
 log file, but then the MPI job does not exit (the next line in the job
@@ -514,7 +497,7 @@ PEMPI MPI libraries.
 
 <span id="WRFDART"></span>
 
-#### How does DART interact with running WRF?
+> How does DART interact with running WRF?
 
 Most users with large WRF domains run a single cycle of filter to do
 assimilation, and then advance each ensemble member of WRF from a
@@ -526,7 +509,10 @@ multiple ensemble members in parallel. See the WRF documentation pages
 for more
 details.
 
-#### I have completed running *filter* and I have the *filter_restart.\#\#\#\#* files. Can you refer me to the utility to convert them back to a set of *wrfinput_d01* files?
+> I have completed running *filter* and I have the *filter_restart.\#\#\#\#* files.
+> Can you refer me to the utility to convert them back to a set of *wrfinput_d01* files?
+
+<!-- TJH FIXME ... this section no longer appropriate for Manhattan ... -->
 
 If you are using the *advance_model.csh* script that is distributed
 with DART, it will take care of converting the filter output files back
@@ -573,7 +559,7 @@ namelist item to be *.true.* .
 
 <span id="CESMDART"></span>
 
-#### How does DART interact with CESM?
+> How does DART interact with CESM?
 
 The CESM climate model comes with its own configuration, build, run, and
 archive scripts already. The DART distribution supplies a 'setup' script
@@ -584,7 +570,7 @@ new case. At run-time the CESM run scripts are used to start the job.
 The CESM "multi-instance" capability is used to run multiple ensemble
 members as part of a single job.
 
-#### I want to assimilate with one of the CESM models. Where do I start?
+> I want to assimilate with one of the CESM models. Where do I start?
 
 We use the CESM framework to execute the CESM model components, and then
 call the DART assimilation via an addition to the standard CESM run
@@ -597,7 +583,7 @@ needed for assimilation. See comments in the appropriate setup script
 for more details of how to
 proceed.
 
-#### I'm getting a mysterious run-time error from CESM about box rearranging.
+> I'm getting a mysterious run-time error from CESM about box rearranging.
 
 Certain versions of CESM (including CESM1_5_alpha02d) won't run with 3
 instances (ensemble members). We are unsure what other instance sizes
@@ -606,7 +592,7 @@ box_rearrange.F90. This is a problem in CESM and should be reported via
 their Bugzilla process. 4 instances works
 fine.
 
-#### I'm getting 'update_reg_list' errors trying to assimilate with POP.
+> I'm getting 'update_reg_list' errors trying to assimilate with POP.
 
 If you are trying to assimilate with POP and you get this error:
 
@@ -624,7 +610,7 @@ with a flag to swap the bytes as it is reading binary files. For the
 Intel compiler, see the comments at the top of the mkmf file about
 adding '-convert bigendian' to the FFLAGS line.
 
-#### I'm getting asked to confirm removing files when CESM is built.
+> I'm getting asked to confirm removing files when CESM is built.
 
 If you have the `rm` (remove) command aliased to require you to confirm
 removing files, the CESM build process will stop and wait for you to
@@ -636,10 +622,10 @@ DART scripts or commands to be sure you have a good CESM environment
 before trying to add DART. The DART setup script uses CESM scripts and
 commands and cannot change how those scripts behave in your environment.
 
-#### I'm getting module errors when CESM is built.
+> I'm getting module errors when CESM is built.
 
-DART only uses the plain NetCDF libraries for I/O. CESM can be
-configured to use several versions of NetCDF including PIO, parallel
+DART only uses the plain netCDF libraries for I/O. CESM can be
+configured to use several versions of netCDF including PIO, parallel
 netCDF, and plain netCDF. Be sure you have the correct modules loaded
 before you build CESM. If there are questions, try setting up a CESM
 case without DART and resolve any build errors or warnings there before
@@ -648,7 +634,3 @@ using the DART scripts.
 \[[top](#)\]
 
 -----
-
-<span id="widgets"></span>
-
-### DART tools/preprocessors/widgets - under construction

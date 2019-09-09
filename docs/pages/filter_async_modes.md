@@ -13,7 +13,7 @@ Simplest case, async=0:
 This is a single MPI executable, with each call to the model being
 simply a subroutine call from each MPI task.  
   
-[To the DART mpi intro document](dart_mpi.html#async0)  
+[To the DART mpi intro document](dart_mpi.md#async0)  
   
 <span id="async2"></span>  
 Parallel advance, async=2:  
@@ -23,7 +23,7 @@ sequential executable. Each MPI task uses the unix "system()" call to
 invoke a shell script (advance_model.csh) which runs the models as
 independent programs.  
   
-[To the DART mpi intro document](dart_mpi.html#async2)  
+[To the DART mpi intro document](dart_mpi.md#async2)  
   
 Other views of how the async=2 option is structured; these may be more
 or less helpful.  
@@ -46,13 +46,11 @@ program. The filter executable communicates with the runme_filter shell
 script, which sequentially invokes mpirun to advance each of the model
 runs, one per ensemble member, still using advance_model.csh.  
   
-[To the DART mpi intro document](dart_mpi.html#async4)  
+[To the DART mpi intro document](dart_mpi.md#async4)  
    
 Parallel model advance, async=4, showing how data is communicated
 between filter and the model thru intermediate files. IC are 'initial
 condition' files, UD are 'updated' files.  
 ![](../images/async4_wfiles.gif)  
   
-<span id="Legalese"></span>
-
 -----
