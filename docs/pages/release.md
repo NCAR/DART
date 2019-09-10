@@ -591,8 +591,6 @@ scripting, setup, and build information since the Lanai release.
     release code, and be prepared to do an 'svn update' from time to
     time to get updated files.
 
-<span id="Legalese"></span>
-
 \[[top](#)\]
 
 -----

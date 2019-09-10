@@ -10,7 +10,7 @@ data assimilation theory and consists of step-by-step concepts and
 companion exercises with DART. The diagnostics in the tutorial use
 Matlab® (to see how to configure your environment to use Matlab and the
 DART diagnostics, see the documentation for
-[Configuring Matlab® for netCDF & DART](http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#configure_matlab)).
+[Configuring Matlab® for netCDF & DART](DART2_Starting.md#matlab)).
 
 |            |               |              |
 | ---------- | ------------- | ------------ |
@@ -39,7 +39,5 @@ DART diagnostics, see the documentation for
 | Section 23 | [\[pdf\]](../tutorial/section_23.pdf) | Location Module Design |
 | Section 24 |                           | Fixed Lag Smoother (not available yet) |
 | Section 25 | [\[pdf\]](../tutorial/section_25.pdf) | A Simple 1D Advection Model: Tracer Data Assimilation |
-
-<span id="Legalese"></span>
 
 -----

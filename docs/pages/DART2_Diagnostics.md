@@ -13,7 +13,7 @@ spread before the application of prior inflation? After prior inflation
 but before the assimilation? After the assimilation but before posterior
 inflation? After posterior inflation? etc. There are several namelist
 settings that control what files are output. 
-[Section&nbsp;16](../tutorials/section_16.pdf) of the DART
+[Section&nbsp;16](../tutorial/section_16.pdf) of the DART
 tutorial has a more detailed explanation.  
   
 From a computational perspective, there are two broad situations:
@@ -36,7 +36,7 @@ separate file, and each file can be written simultaneously by different
 tasks. The tradeoff (at the moment) is that each of the files can only
 have a single timestep in them. Consequently, some files are redundant
 and should not be output.
-See the [section&nbsp;16](../tutorials/section_16.pdf) of the DART
+See [Section&nbsp;16](../tutorial/section_16.pdf) of the DART
 tutorial for a more detailed explanation.  
   
 **```single_file_out = .true.```** :  When *filter* is used for a long

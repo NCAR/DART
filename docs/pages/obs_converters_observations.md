@@ -5,10 +5,12 @@ layout: default
 
 # DART Observations
 
-[OVERVIEW](#Overview) / [DATA SOURCES](#DataSources) /
-[DECISIONS](#Decisions) / [PROGRAMS](#Programs) / [KNOWN
-BUGS](#KnownBugs) / [FUTURE PLANS](#FuturePlans) / [TERMS OF
-USE](#Legalese)
+[OVERVIEW](#Overview) /
+[DATA SOURCES](#DataSources) /
+[DECISIONS](#Decisions) /
+[PROGRAMS](#Programs) /
+[KNOWN BUGS](#KnownBugs) /
+[FUTURE PLANS](#FuturePlans)
 
 ## Overview
 
@@ -62,7 +64,7 @@ meantime, if you have converters for data or interest in something that
 is not in the repository, please [email the DART
 group](mailto:dart@ucar.edu).
 
-<span id="DataSources"></span>
+<span id="DataSources" class="anchor"></span>
 
 \[[top](#)\]
 
@@ -90,30 +92,21 @@ converter. Create a new subdirectory in the *observations* directory.
 Copy with the recursive option (*cp -r*) one of the existing converters
 and adapt to your needs. Our suggestions for which converter to start
 from depends on the format of your input observations to be converted.
-If your input data format is:
+If your input data format is: 
 
-  - netCDF  
-    Start with the *MADIS* converters, and in particular try the
-    *convert_madis_profiler.f90* file because it is the most
-    straightforward. Another good option is *SST/oi_sst_to_obs.f90*.
-  - Comma separated text  
-    Start with the *Ameriflux* converter.
-  - Generic text  
-    Start with the *text* converter.
-  - HDF-EOS  
-    Start with the *AIRS* converter.
-  - BUFR or prepBUFR  
-    Start with the *NCEP* converter.
-  - Dense data, like Satellite swaths  
-    Start with the *tpw* converter, which includes code that averages
-    the raw data in space and time.
-  - Ray-path integrated data  
-    Start with the *GPS* converter, which includes code that traces a
-    path and integrates values along the ray.
-  - World Ocean Database packed ASCII  
-    Start with the *WOD* converter.
+|        |        |  
+| format | advice |  
+| ------ | ------ |  
+| netCDF | Start with the *MADIS* converters, and in particular try the `convert_madis_profiler.f90` file because it is the most straightforward. Another good option is `SST/oi_sst_to_obs.f90`. |  
+| Comma separated text | Start with the *Ameriflux* converter. |  
+| Generic text | Start with the *text* converter. |  
+| HDF-EOS | Start with the *AIRS* converter. |  
+| BUFR or prepBUFR | Start with the *NCEP* converter. |  
+| Dense data, like Satellite swaths | Start with the *tpw* converter, which includes code that averages the raw data in space and time. |  
+| Ray-path integrated data | Start with the *GPS* converter, which includes code that traces a path and integrates values along the ray. |  
+| World Ocean Database packed ASCII | Start with the *WOD* converter. |  
 
-<span id="Decisions"></span>
+<span id="Decisions" class="anchor"></span>
 
 \[[top](#)\]
 
@@ -140,8 +133,8 @@ systems do not need to use a calendar.
 Observations of a real-world system usually are distributed with a
 year/month/day, hour/min/seconds timestamp. There are routines in DART
 to convert back and forth between the (day-number/seconds) format and a
-variety of (year/month/day) calendars. See [the time manager
-documentation](../../assimilation_code/modules/utilities/time_manager_mod.html#time_type)
+variety of (year/month/day) calendars. See
+[the time manager documentation](../../assimilation_code/modules/utilities/time_manager_mod.html#time_type)
 for more details on how DART stores time information and the types of
 available calendars. Some climate models which do long runs (100s or
 1000s of years) use a modified calendar for simplicity in computation,
@@ -155,21 +148,22 @@ up by some factor. As long as the observation time, the state data time,
 and the minimum model advance time are expressed in the same scaled time
 units, there is no problem.
 
-#### Error
+#### Error Variances
 
-Observations must specify an associated expected error. Each individual
-observation stores its own error value, so it can be a constant value
+Observations must specify an associated expected error variance. Each individual
+observation stores its own error variance value, so it can be a constant value
 for all observations of that type or it can vary by location, by height,
 by magnitude of the observed value, etc. This value is the expected
-instrument error plus the representativeness error of the model. The
-model error includes deficiencies in the equations representing the
+instrument error variance plus the representativeness error variance of the model.
+The model error variance includes deficiencies in the equations representing the
 processes of the system as well as errors introduced by representing a
 continuous system as a series of discrete points. While the instrument
 error and the representativeness error could be specified separately,
 they each have the same impact on the assimilation and can be difficult
 to determine with any real accuracy. For simplicity, in DART (and most
 current assimilation software) they are combined and specified as a
-single value.
+single value, which we frequently call the 'observation error'. Keep in
+mind we really mean 'observation error variance'.
 
 The instrument error is generally supplied by the instrument maker.
 Sadly, it is frequently surprisingly difficult to find these values. For
@@ -181,8 +175,7 @@ estimate of the error in the model. In practice however most people make
 an educated guess on the values of the error and then start with a
 larger than expected value and decrease it based on the results of
 running some test assimilations. For these tests the namelist for the
-[outlier
-threshold](../../assimilation_code/programs/filter/filter.html#Namelist)
+[outlier threshold](../../assimilation_code/programs/filter/filter.html#Namelist)
 should be disabled by setting it to -1 (the default value is 3). This
 value controls whether the observation is rejected because the observed
 value is too far from the ensemble mean.
@@ -190,13 +183,13 @@ value is too far from the ensemble mean.
 If the diagnostics show that the difference between the mean of the
 forward operators and the observed value is consistently smaller than
 the specified observation error, then the error is probably too large. A
-too-large error reduces the impact of an observation on the state. If
+error that is too large reduces the impact of an observation on the state. If
 the specified observation error is too small it is likely the
 observation will be rejected when the outlier threshold is enabled, and
 the observation will not be assimilated. It is important to look at the
 output observation sequence files after an assimilation to see how many
-observations were assimilated or rejected, and also at the RMSE ([root
-mean squared error](http://www.wikipedia.org/wiki/RMSE)) versus the
+observations were assimilated or rejected, and also at the RMSE
+([root mean squared error](http://www.wikipedia.org/wiki/RMSE)) versus the
 total spread. DART includes Matlab diagnostic routines to create these
 types of plots. The observation RMSE and total spread should be roughly
 commensurate. The total spread includes contributions from both the
@@ -214,7 +207,7 @@ on the diagnostic plots. But the actual test is to then advance the
 model and look at how the forecast of the state compares to the
 observations.
 
-#### Types
+#### Observation Types
 
 All observations have to have a specific 'type'. There are namelist
 controls to turn on and off the assimilation of observations at run-time
@@ -227,13 +220,14 @@ ARGO_SALINITY, etc. Each type is associated with a single underlying
 generic 'kind', which controls what forward operator code is called
 inside the model, e.g. QTY_TEMPERATURE, QTY_DENSITY, etc.
 
-See [here](../forward_operators/obs_def_mod.html) for more details on
-how to use and add new DART types. The DART obs_kind_mod.f90 defines a
+See the [obs_def_mod.html](../forward_operators/obs_def_mod.html) for more details on
+how to use and add new DART types. The DART `obs_kind_mod.f90` defines a
 list of already defined observation kinds, and users can either use
 existing observation types in 'obs_def_xxx_mod.f90' files, or define
-their own.
+their own. Be aware that `obs_kind_mod.f90` is autogenerated by *preprocess*,
+so until you configure and run *preprocess*, `obs_kind_mod.f90` will not exist.
 
-#### Locations
+#### Observation Locations
 
 The two most common choices for specifying the location of an
 observation are the
@@ -242,9 +236,28 @@ and the [oned](../../assimilation_code/location/oned/location_mod.html)
 locations. For observations of a real-world system, the 3D Sphere is
 generally the best choice. For low-order, 1D models, the 1D locations
 are the most commonly used. The observation locations need to match the
-type of locations used in the model.
+type of locations used in the model in that you cannot read observations
+on a unit circle (1D) when using models that require 3D Sphere locations.
 
-<span id="Programs"></span>
+The choice of the vertical coordinate system may also be important.
+For the 3D Sphere, the vertical coordinate system choices are:
+  
+ |                   |               |          |  
+ | string            | integer value | meaning  |  
+ | ------            | ------------- | -------  |  
+ | VERTISUNDEF       | -2            | has no specific vertical location (undefined) |  
+ | VERTISSURFACE     | -1            | surface value (value is surface elevation in m) |  
+ | VERTISLEVEL       |  1            | by model level |  
+ | VERTISPRESSURE    |  2            | by pressure (in pascals) |  
+ | VERTISHEIGHT      |  3            | by height (in meters) |  
+ | VERTISSCALEHEIGHT |  4            | by scale height (unitless) |  
+
+The choice of the vertical coordinate system may have ramifications for vertical
+localization, depending on your model's ability to convert from one coordinate
+system to another. `VERTISUNDEF` is typically used for column-integrated quantities.
+`VERTISLEVEL` only makes sense for synthetic observations.
+
+<span id="Programs" class="anchor"></span>
 
 \[[top](#)\]
 
@@ -259,8 +272,11 @@ observations into the format required by DART.
 The current list of converters include:
 
   - [AIRS](AIRS/AIRS.html)
+<!-- AURA -->
   - [Aviso+/CMEMS](AVISO/AVISO.html)
   - [Ameriflux](Ameriflux/level4_to_obs.html)
+<!-- CHAMP -->
+<!-- CNOFS -->
   - [COSMOS](COSMOS/COSMOS_to_obs.html)
   - [DWL](DWL/dwl_to_obs.html)
   - [GPSPW](GPSPW/README)
@@ -272,6 +288,7 @@ The current list of converters include:
   - [NCEP (prepbufr-\>ascii)](NCEP/prep_bufr/prep_bufr.html)
   - [NCEP (ascii-\>obs_seq)](NCEP/ascii_to_obs/create_real_obs.html)
   - [ROMS](ROMS/ROMS.htm)
+<!-- SABER -->
   - [SSEC](SSEC/SSEC.html)
   - [SST](SST/SST.html)
   - [SSUSI](SSUSI/convert_f16_edr_dsk.html)
@@ -284,6 +301,7 @@ The current list of converters include:
   - [Radar](radar/radar.html)
   - [snow](snow/snow_to_obs.html)
   - [Text](text/text_to_obs.html)
+<!-- text_GITM -->
   - [tpw](tpw/tpw.html)
   - [Tropical Cyclones](tropical_cyclone/tc_to_obs.html)
   - [Var (little-r)](var/littler_tf_dart.html)
@@ -300,13 +318,12 @@ There are also a couple utilities of note:
 In addition the following external program produces DART observation
 sequence files:
 
-  - [Observation Processing And Wind Synthesis
-    (OPAWS)](http://code.google.com/p/opaws/): OPAWS can process NCAR
-    Dorade (sweep) and NCAR EOL Foray (netcdf) radar data. It analyzes
-    (grids) data in either two-dimensions (on the conical surface of
-    each sweep) or three-dimensions (Cartesian). Analyses are output in
-    netcdf, Vis5d, and/or DART (Data Assimilation Research Testbed)
-    formats.
+  - [Observation Processing And Wind Synthesis (OPAWS)](http://code.google.com/p/opaws/):
+    OPAWS can process NCAR Dorade (sweep) and NCAR EOL Foray (netcdf)
+    radar data. It analyzes (grids) data in either two-dimensions
+    (on the conical surface of each sweep) or three-dimensions (Cartesian).
+    Analyses are output in netcdf, Vis5d, and/or DART
+    (Data Assimilation Research Testbed) formats.
 
 For generating synthetic observations, see the
 [create_obs_sequence](../../assimilation_code/programs/create_obs_sequence/create_obs_sequence.html)
@@ -323,7 +340,7 @@ program documentation on how to run a model with a set of observations
 that have only locations, types, and times, and have the forward
 operators compute the observation values.
 
-<span id="KnownBugs"></span>
+<span id="KnownBugs" class="anchor"></span>
 
 \[[top](#)\]
 
@@ -331,7 +348,7 @@ operators compute the observation values.
 
 ## KNOWN BUGS
 
-<span id="FuturePlans"></span>
+<span id="FuturePlans" class="anchor"></span>
 
 \[[top](#)\]
 
@@ -342,8 +359,6 @@ operators compute the observation values.
 Contact the [DART development group](mailto:dart@ucar.edu) if you have
 observations in a different format that you want to convert. We can give
 you advice and pointers on how to approach writing the code.
-
-<span id="Legalese"></span>
 
 \[[top](#)\]
 

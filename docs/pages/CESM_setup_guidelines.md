@@ -7,13 +7,13 @@ layout: default
 
 [SET-UP](#CESM%20MODES) / [CESM+DART MODELS](#CESM+DART%20MODELS) /
 [SET-UP](#SETUP) / [INITIAL ENSEMBLE](#INITIALFILES) / [OUTPUT
-DIRECTORY](#OUTPUTDIRECTORY) / [HINTS](#HINTS) / [SPACE](#SPACE) /
-[TERMS OF USE](#Legalese) <span id="OVERVIEW"></span>
+DIRECTORY](#OUTPUTDIRECTORY) / [HINTS](#HINTS) / [SPACE](#SPACE)
+ <span id="OVERVIEW"></span>
 
 ## CESM+DART Setup Overview
 
 If you found your way to this file without reading more basic DART help
-files, please read those first. $DART/README is a good place to find
+files, please read those first. $DART/README.md is a good place to find
 pointers to those files. This document gives specific help in setting up
 a CESM+DART assimilation for the first time. Unless you just came from
 there, also see the ../{your_model(s)}/model_mod.html documentation
@@ -74,11 +74,11 @@ cam-fv/shell_scripts can be used as a template for updating other
 models' scripting. The multi-cycling capability, with the short- and
 long-term archivers running as separate jobs at the end, results in
 assimilation jobs which rapidly fill the scratch space. Cam-fv's and
-pop's assimilate.csh scripts have code to remove older and unneeded CESM
+POP's assimilate.csh scripts have code to remove older and unneeded CESM
 restart file sets during the run. All of DART's output and user
 selected, restart file sets are preserved.
 
-DART's manhattan release includes the change to hard-wired input and
+DART's Manhattan release includes the change to hard-wired input and
 output filenames in filter. Cam-fv's assimilate.csh renames these files
 into the CESM file format:  
 $case.$component{_$instance}.$filetype.$date.nc.  
@@ -112,28 +112,28 @@ uses an active land component (CLM) as well as an active atmospheric
 component. Atmospheric observations are assimilated only into the CAM
 state, while the land state is modified only through its interactions
 with CAM through the coupler. Each of these assimilations is handled by
-one of $DART/models/{cam-fv, pop, clm, ...} If you want to use an
+one of $DART/models/{cam-fv, POP, clm, ...} If you want to use an
 unusual combination of active and data components, you may need to (work
 with us to) modify the setup
 scripts.
 
 |    |         |
 | ------------- | --------------- |
-| ![CAM+DART flowchart](../images/CAM_only.png) | ![POP+DART flowchart](../images/POP_only.png) |
+| ![CAM+DART flowchart](../images/science_nuggets/CAM_only.png) | ![POP+DART flowchart](../images/science_nuggets/POP_only.png) |
 
 #### Multi-Component Assimilation (aka "weakly coupled")
 
 |          |             |
 | ------------------------- | ----------------------- |
-| ![Multi-component flowchart](../images/multi-component.png) | It's also possible to assimilate observations into multiple active components, but restricting the impact of observations to only "their own" component. So in a "coupled" CESM with active CAM and POP, atmospheric observations change only the CAM model state while oceanic observations change only the POP model state. This mode uses multiple DART models; cam-fv and pop in this example to make a filter for each model. |
+| ![Multi-component flowchart](../images/science_nuggets/multi-component.png) | It's also possible to assimilate observations into multiple active components, but restricting the impact of observations to only "their own" component. So in a "coupled" CESM with active CAM and POP, atmospheric observations change only the CAM model state while oceanic observations change only the POP model state. This mode uses multiple DART models; cam-fv and POP in this example to make a filter for each model. |
 
 #### Cross-Component Assimilation (aka "strongly coupled")
 
 |                |                  |
 | ----------------------------- | --------------------------- |
-| ![Cross-component flowchart](../images/cross-component.png) | Work is underway to enable the assimilation of all observations into multiple active CESM components. So observations of the atmosphere would directly change the POP state variables and vice versa. Some unresolved issues include defining the "distance" between an observation in the atmosphere and a grid point in the ocean (for localization), and how frequently to assimilate in CAM versus POP. This mode will use code in this models/CESM directory. |
+| ![Cross-component flowchart](../images/science_nuggets/cross-component.png) | Work is underway to enable the assimilation of all observations into multiple active CESM components. So observations of the atmosphere would directly change the POP state variables and vice versa. Some unresolved issues include defining the "distance" between an observation in the atmosphere and a grid point in the ocean (for localization), and how frequently to assimilate in CAM versus POP. This mode will use code in this models/CESM directory. |
 
-[Go to cam-fv/model_mod page](../../cam-fv/model_mod.html)
+[Go to cam-fv/model_mod page](../../models/cam-fv/model_mod.html)
 
 <span id="CESM+DART MODELS"></span><span></span>
 
@@ -153,7 +153,7 @@ $DART/models/**cam-fv**/        A 'model' for each CAM dynamical core (see note 
       cesm2_0/
         setup_hybrid,...        Dependent on CESM version
 
-$DART/models/**pop**/           A 'model' for each ocean model (MOM may be interfaced next)
+$DART/models/**POP**/           A 'model' for each ocean model (MOM may be interfaced next)
    model_mod.\*                 The fortran interface between CAM-FV and DART
    shell_scripts/
       no_assimilate.csh,...     Independent_of_cesm_version
@@ -209,7 +209,7 @@ suitable replacement, as noted.
     pseudo-ensemble by linking files with instance numbers in them to
     the restart file set (which has no instance number) using
     CESM/shell_scripts/link_ens_to_single.csh
-5.  Choose the options in $dart/mkmf/mkmf.template that are best for
+5.  Choose the options in $DART/mkmf/mkmf.template that are best for
     your assimilation. These will not affect the CESM build, only
     filter.
 6.  In models/cam-fv/work/input.nml, be sure to include all of your
@@ -348,9 +348,5 @@ Space requirements (Gb per ensemble member) for several CAM resolutions.
 
 There are, no doubt, things missing from these lists, so don't struggle
 too long before contacting dart'at'ucar.edu.
-
-Useful terms found in this web page.
-
-<span id="Legalese"></span>
 
 -----
