@@ -73,8 +73,16 @@ while ( 1 == 1 )
  end_date   = 2*'${end_date}',
 EOF
 
-   # build grib file names - may need to change for other data sources. These are from RDA
-   set GRIB_SRC = 'GFS' # TJH GRIB_SRC undefined otherwise
+   # build grib file names - may need to change for other data sources.
+
+   if ( $GRIB_SRC != 'GFS' ) then 
+      echo "gen_retro_icbc.csh: GRIB_SRC is set to $GRIB_SRC"
+      echo "gen_retro_icbc.csh: There are some assumptions about using 'GFS'."
+      echo "If you want to use something else, you will need to change the"
+      echo "values of gribfile_a, gribfile_b"
+      exit 2
+   endif
+
    set gribfile_a = ${GRIB_DATA_DIR}/${datea}/gfs_ds084.1/gfs.0p25.${datea}.f000.grib2
    set gribfile_b = ${GRIB_DATA_DIR}/${datea}/gfs_ds084.1/gfs.0p25.${datea}.f006.grib2
    ${LINK} $gribfile_a GRIBFILE.AAA
@@ -83,8 +91,8 @@ EOF
    sed -f script.sed ${TEMPLATE_DIR}/namelist.wps.template >! namelist.wps
    ${LINK} ${WPS_SRC_DIR}/ungrib/Variable_Tables/Vtable.${GRIB_SRC} Vtable
 
-   ${REMOVE}                    output.ungrib.exe.gfs
-   ${WPS_SRC_DIR}/ungrib.exe >& output.ungrib.exe.gfs
+   ${REMOVE}                    output.ungrib.exe.${GRIB_SRC}
+   ${WPS_SRC_DIR}/ungrib.exe >& output.ungrib.exe.${GRIB_SRC}
 
    ${REMOVE}                     output.metgrid.exe
    ${WPS_SRC_DIR}/metgrid.exe >& output.metgrid.exe
@@ -173,7 +181,7 @@ EOF
    if ( $datea == $datefnl) then
       echo "Reached the final date "
       echo "Script exiting normally"
-      exit
+      exit 0
    endif
    set datea  = `echo $datea $ASSIM_INT_HOURS | ${DART_DIR}/models/wrf/work/advance_time`
    echo "starting next time: $datea"

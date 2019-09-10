@@ -39,8 +39,9 @@ set WPS_SRC_DIR       = /glade/p/work/USER/WPS                      # set this a
 set VAR_SRC_DIR       = /glade/p/work/USER/WRFDA                    # set this appropriately #%%%#
 
 # for generating wrf template files
-set GEO_FILES_DIR     =  /glade/p/work/USER/WPS       # set this appropriately #%%%#
+set GEO_FILES_DIR     = /glade/p/work/USER/WPS        # set this appropriately #%%%#
 set GRIB_DATA_DIR     = /glade/p/work/USER/WPS/GRIB   # set this appropriately #%%%#
+set GRIB_SRC          = 'GFS'                         # set this appropriately #%%%#
 
 # list of variables for extraction and cycling
 ################################################################
