@@ -1,4 +1,5 @@
---- title: Miscellany
+--- 
+title: Miscellany
 layout: default
 ---
 

@@ -16,7 +16,7 @@ layout: default
 
 Real-world observations of earth-system data come from a variety of
 sources, including radiosondes, satellites, ships, aircraft, weather
-stations, etc. The files in this *observations* directory can be used to
+stations, etc. The files in this `observations` directory can be used to
 convert data from a variety of native formats into a common DART
 *observation sequence* format.
 
@@ -54,15 +54,15 @@ The DART system comes with several types of location modules for
 computing distances appropriately. Two of the ones most commonly used
 are for data in a 1D system and for data in a 3D spherical coordinate
 system. All the programs here assume the
-*location/threed_sphere/location_mod.f90* 3D sphere location module is
+`location/threed_sphere/location_mod.f90` 3D sphere location module is
 being used.
 
 There are currently some additional observation sources and types which
 we are in the process of collecting information and conversion programs
 for and which will eventually be added to this directory. In the
 meantime, if you have converters for data or interest in something that
-is not in the repository, please [email the DART
-group](mailto:dart@ucar.edu).
+is not in the repository, 
+please [email the DART group](mailto:dart@ucar.edu).
 
 <span id="DataSources" class="anchor"></span>
 
@@ -76,11 +76,11 @@ See the various subdirectories here, which generally include information
 on where the example data was obtained and in what format it is
 distributed. Most data is available for download off the web. The Data
 Support Section (DSS) at NCAR has large data repositories, the MADIS
-data center distributes observations in NetCDF format, GTS real-time
+data center distributes observations in netCDF format, GTS real-time
 weather data is available from various sources. For new converters, if
 you can find what format the data is distributed in you may be able to
 adapt one of the existing converters here for your own use. Formats read
-by the existing converters include NetCDF, HDF, little-r, text,
+by the existing converters include netCDF, HDF, little-r, text,
 Prepbufr, amongst others.
 
 See the [Programs](#Programs) section below for a list of the current
@@ -92,11 +92,10 @@ converter. Create a new subdirectory in the *observations* directory.
 Copy with the recursive option (*cp -r*) one of the existing converters
 and adapt to your needs. Our suggestions for which converter to start
 from depends on the format of your input observations to be converted.
-If your input data format is: 
+If your input data format is:  
 
-|        |        |  
 | format | advice |  
-| ------ | ------ |  
+| :----- | :----- |  
 | netCDF | Start with the *MADIS* converters, and in particular try the `convert_madis_profiler.f90` file because it is the most straightforward. Another good option is `SST/oi_sst_to_obs.f90`. |  
 | Comma separated text | Start with the *Ameriflux* converter. |  
 | Generic text | Start with the *text* converter. |  
@@ -240,17 +239,16 @@ type of locations used in the model in that you cannot read observations
 on a unit circle (1D) when using models that require 3D Sphere locations.
 
 The choice of the vertical coordinate system may also be important.
-For the 3D Sphere, the vertical coordinate system choices are:
+For the 3D Sphere, the vertical coordinate system choices are:  
   
- |                   |               |          |  
- | string            | integer value | meaning  |  
- | ------            | ------------- | -------  |  
- | VERTISUNDEF       | -2            | has no specific vertical location (undefined) |  
- | VERTISSURFACE     | -1            | surface value (value is surface elevation in m) |  
- | VERTISLEVEL       |  1            | by model level |  
- | VERTISPRESSURE    |  2            | by pressure (in pascals) |  
- | VERTISHEIGHT      |  3            | by height (in meters) |  
- | VERTISSCALEHEIGHT |  4            | by scale height (unitless) |  
+| string            | integer value | meaning  |  
+| :-----            | :------------ | :------  |  
+| VERTISUNDEF       | -2            | has no specific vertical location (undefined) |  
+| VERTISSURFACE     | -1            | surface value (value is surface elevation in m) |  
+| VERTISLEVEL       |  1            | by model level |  
+| VERTISPRESSURE    |  2            | by pressure (in pascals) |  
+| VERTISHEIGHT      |  3            | by height (in meters) |  
+| VERTISSCALEHEIGHT |  4            | by scale height (unitless) |  
 
 The choice of the vertical coordinate system may have ramifications for vertical
 localization, depending on your model's ability to convert from one coordinate
@@ -271,12 +269,9 @@ observations into the format required by DART.
 
 The current list of converters include:
 
-  - [AIRS](AIRS/AIRS.html)
-<!-- AURA -->
+  - [AIRS](AIRS/AIRS.html) <!-- AURA -->
   - [Aviso+/CMEMS](AVISO/AVISO.html)
-  - [Ameriflux](Ameriflux/level4_to_obs.html)
-<!-- CHAMP -->
-<!-- CNOFS -->
+  - [Ameriflux](Ameriflux/level4_to_obs.html) <!-- CHAMP --> <!-- CNOFS -->
   - [COSMOS](COSMOS/COSMOS_to_obs.html)
   - [DWL](DWL/dwl_to_obs.html)
   - [GPSPW](GPSPW/README)
@@ -285,10 +280,9 @@ The current list of converters include:
   - [MADIS](MADIS/MADIS.html)
   - [MIDAS](MIDAS/MIDAS_to_obs.html)
   - [MODIS](MODIS/MOD15A2_to_obs.htm)
-  - [NCEP (prepbufr-\>ascii)](NCEP/prep_bufr/prep_bufr.html)
-  - [NCEP (ascii-\>obs_seq)](NCEP/ascii_to_obs/create_real_obs.html)
-  - [ROMS](ROMS/ROMS.htm)
-<!-- SABER -->
+  - [NCEP (prepbufr -\> ascii)](NCEP/prep_bufr/prep_bufr.html)
+  - [NCEP (ascii -\> obs_seq)](NCEP/ascii_to_obs/create_real_obs.html)
+  - [ROMS](ROMS/ROMS.htm) <!-- SABER -->
   - [SSEC](SSEC/SSEC.html)
   - [SST](SST/SST.html)
   - [SSUSI](SSUSI/convert_f16_edr_dsk.html)
@@ -300,8 +294,7 @@ The current list of converters include:
   - [QuikSCAT](quikscat/QuikSCAT.html)
   - [Radar](radar/radar.html)
   - [snow](snow/snow_to_obs.html)
-  - [Text](text/text_to_obs.html)
-<!-- text_GITM -->
+  - [Text](text/text_to_obs.html) <!-- text_GITM -->
   - [tpw](tpw/tpw.html)
   - [Tropical Cyclones](tropical_cyclone/tc_to_obs.html)
   - [Var (little-r)](var/littler_tf_dart.html)
@@ -319,10 +312,10 @@ In addition the following external program produces DART observation
 sequence files:
 
   - [Observation Processing And Wind Synthesis (OPAWS)](http://code.google.com/p/opaws/):
-    OPAWS can process NCAR Dorade (sweep) and NCAR EOL Foray (netcdf)
+    OPAWS can process NCAR Dorade (sweep) and NCAR EOL Foray (netCDF)
     radar data. It analyzes (grids) data in either two-dimensions
     (on the conical surface of each sweep) or three-dimensions (Cartesian).
-    Analyses are output in netcdf, Vis5d, and/or DART
+    Analyses are output in netCDF, Vis5d, and/or DART
     (Data Assimilation Research Testbed) formats.
 
 For generating synthetic observations, see the

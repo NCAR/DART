@@ -90,8 +90,8 @@ DART uses the [netCDF](https://www.unidata.ucar.edu/software/netcdf/)
 self-describing data format for the results of assimilation experiments.
 These files have the extension *.nc* and can be read by a number of
 standard data analysis tools. In particular, DART also makes use of the
-F90 interface to the library which is available through the *netcdf.mod*
-and *typesizes.mod* modules. *IMPORTANT*: different compilers create
+F90 interface to the library which is available through the `netcdf.mod`
+and `typesizes.mod` modules. *IMPORTANT*: different compilers create
 these modules with different "case" filenames, and sometimes they are
 not **both** installed into the expected directory. It is required that
 both modules be present. The normal place would be in the
@@ -102,11 +102,11 @@ If the netCDF library does not exist on your system, you must build it
 building the library or installing from an RPM may be found at the
 netCDF home page: <https://www.unidata.ucar.edu/software/netcdf/>  
   
-NOTE: The location of the netCDF library, *libnetcdf.a*, and the
-locations of both *netcdf.mod* and *typesizes.mod* will be needed later.
+NOTE: The location of the netCDF library, `libnetcdf.a`, and the
+locations of both `netcdf.mod` and `typesizes.mod` will be needed later.
 Depending on the version of netCDF and the build options selected, the
 fortran interface routines may be in a separate library named
-*libnetcdff.a* (note the 2 F's). In this case both libraries are
+`libnetcdff.a` (note the 2 "f"'s). In this case both libraries are
 required to build executables.
 
 <span id="own_model_requirements"></span>  
@@ -115,8 +115,8 @@ required to build executables.
 
 [If you want to run your own model](DART2_Documentation.html#adding_a_model), 
 all you need is an executable and some scripts to interface with DART - we have 
-templates and examples. If your model can be called as a subroutine, *life is
-good*, and the hardest part is usually a routine to pack the model
+templates and examples. If your model can be called as a subroutine, *life is good*,
+and the hardest part is usually a routine to pack the model
 state vector into one whopping array - and back. Again - we have
 templates, examples, and a [../../models/README.md](models/README.md)
 describing the required interfaces.
@@ -201,13 +201,12 @@ Fortran90 (and other languages) for systems like DART.
 first is a 'template' file which specifies details of the commands
 required for a specific Fortran90 compiler and may also contain pointers
 to directories containing pre-compiled utilities required by the DART
-system. **This template file will need to be modified to reflect your
-system**.
+system. **This template file will need to be modified to reflect your system**.
 
 The second input file is a 'path_names' file which are
 supplied by DART and can be used without modification. An *mkmf* command
 is executed which uses the 'path_names' file and the mkmf template file
-to produce a *Makefile* which is subsequently used by the standard
+to produce a `Makefile` which is subsequently used by the standard
 *make* utility.  
   
 Shell scripts that execute the mkmf command for all standard DART
@@ -217,7 +216,7 @@ see the [mkmf documentation](https://extranet.gfdl.noaa.gov/~vb/mkmf.html).
 Be aware that we have slightly modified *mkmf* such that it also creates
 an example namelist file for each program. The example namelist is
 called *input.nml._program_\_default*, so as not to clash with any
-exising *input.nml* that may exist in that directory.
+existing `input.nml` that may exist in that directory.
 
 <span id="template"></span>
 
@@ -228,9 +227,9 @@ the *DART/build_templates* directory and have names with extensions
 that identify the compiler, the architecture, or both. This is how you
 inform the build process of the specifics of your system. **Our intent
 is that you copy one that is similar to your system into
-*DART/build_templates/mkmf.template* and customize it.** For the
+`DART/build_templates/mkmf.template` and customize it.** For the
 discussion that follows, knowledge of the contents of one of these
-templates (i.e. *DART/build_templates/mkmf.template.intel.linux*) is
+templates (i.e. `DART/build_templates/mkmf.template.intel.linux`) is
 needed. Note that only the LAST lines are shown here, the head of the
 file is just a big comment (worth reading).
 
@@ -248,18 +247,18 @@ LDFLAGS = $(FFLAGS) $(LIBS)
 ~~~
 
 | variable | value |
-| -------- |------ |
+| :------- | :---- |
 | FC       | the Fortran compiler |
 | LD       | the name of the loader; typically, the same as the Fortran compiler |
-| NETCDF   | the location of your netCDF installation containing *netcdf.mod* and *typesizes.mod*. Note that the value of the *NETCDF* variable will be used by the *FFLAGS, LIBS,* and *LDFLAGS* variables. |
+| NETCDF   | the location of your netCDF installation containing `netcdf.mod` and `typesizes.mod`. Note that the value of the *NETCDF* variable will be used by the *FFLAGS, LIBS,* and *LDFLAGS* variables. |
 
 <span id="path_names"></span>
 
 #### Customizing the 'path_names_\*' file
 
-Several *path_names_\** files are provided in the *work* directory for
-each specific model, in this case: *DART/models/lorenz_63/work*. Since
-each model comes with its own set of files, the *path_names_\** files
+Several *path_names_&ast;*  files are provided in the *work* directory for
+each specific model, in this case: `DART/models/lorenz_63/work`. Since
+each model comes with its own set of files, the *path_names_&ast;* files
 need no customization.
 
 <span id="building"></span>
@@ -267,7 +266,7 @@ need no customization.
 ### Building the Lorenz_63 DART project.
 
 All DART programs are compiled the same way. Each model directory has a
-directory called *work* that has the components to build the
+directory called `work` that has the components to build the
 executables. This is an example of how to build two programs for the
 lorenz_63 model: *preprocess* and *obs_diag*. *preprocess* needs to be
 built and run to create the source codes that support observations -
@@ -282,13 +281,13 @@ in this example.
 > ./mkmf_obs_diag  
 > make  
 
-Currently, DART executables are built in a *work* subdirectory under the
+Currently, DART executables are built in a `work` subdirectory under the
 directory containing code for the given model. The Lorenz_63 model has
 seven *mkmf_xxxxxx* files (some models have many more) for the
 following programs:  
 
 | Program | Purpose |
-| ------- | ------- |
+| :------ | :------ |
 | [preprocess](https://ncar.github.io/DART/api/v2.1.10/program/preprocess.html) | creates custom source code for just the observations of interest |
 | [create_obs_sequence](https://ncar.github.io/DART/api/v2.1.10/program/create_obs_sequence.html) | specify a (set) of observation characteristics taken by a particular (set of) instruments |
 | [create_fixed_network_seq](https://ncar.github.io/DART/api/v2.1.10/program/create_fixed_network_seq.html) | specify the temporal attributes of the observation sets |
@@ -307,15 +306,15 @@ instructions. Running *quickbuild.csh* will compile all the executables.
 
 The result (hopefully) is that seven executables now reside in your work directory. 
 *The most common problem* is that the netCDF libraries and include files 
-(particularly *typesizes.mod*) are not found.
-Find them, edit the *DART/build_templates/mkmf.template* to point to their
-location, recreate the *Makefile*, and try again.
+(particularly `typesizes.mod`) are not found.
+Find them, edit the `DART/build_templates/mkmf.template` to point to their
+location, recreate the `Makefile`, and try again.
 
 ### Checking the build -- running something.
 
 This section is not intended to provide any details of why we are doing
 what we are doing - this is sort of a 'black-box' test.
-The *DART/models/lorenz_63/work* directory is distributed with input files
+The `DART/models/lorenz_63/work` directory is distributed with input files
 ready to run a simple experiment: use 20 ensemble members to assimilate
 observations 'every 6 hours' for 50 days.
 Simply run the programs *perfect_model_obs* and *filter* to generate 
@@ -343,29 +342,26 @@ easy:
 
 There should now be the following output files:
 
-|      | from executable "perfect_model_obs" | 
-| ---- | ------------------------------- |
-| *perfect_output.nc* | a netCDF file containing the model trajectory ... the **truth** |
-| *obs_seq.out* | The observations (harvested as the true model was advanced) that were assimilated. |
+|                     |                   |
+| :------             | :------           |
+| **from executable "perfect_model_obs"** |       |
+| `perfect_output.nc` | a netCDF file containing the model trajectory ... the **truth** |
+| `obs_seq.out`       | The observations (harvested as the true model was advanced) that were assimilated. |
+| **from executable "filter"** |      |
+| `preassim.nc`       | A netCDF file of the ensemble model states just before assimilation. This is the **prior**. |
+| `filter_output.nc`  | A netCDF file of the ensemble model states after assimilation. |
+| `obs_seq.final`     | The observations and ensemble estimates of the 'observations'. |
+| **from both**       |      |
+| `dart_log.out`      | The run-time log of the experiment.  This grows with each execution and may safely be deleted at any time. |
+| `dart_log.nml`      | A record of the input settings of the experiment.  This file may safely be deleted at any time. |
 
-|      | from executable "filter" |
-| ---- | -------------------- |
-| *preassim.nc* | A netCDF file of the ensemble model states just before assimilation. This is the **prior**. |
-| *filter_output.nc* | A netCDF file of the ensemble model states after assimilation. |
-| *obs_seq.final* | The observations that were assimilated as well as the ensemble mean estimates of the 'observations' - for comparison. |
-
-|      | from both |
-| ---- | ----- |
-|*dart_log.out* | The run-time log of the experiment.  This grows with each execution and may safely be deleted at any time. |
-| *dart_log.nml* | A record of the input settings of the experiment.  This file may safely be deleted at any time. |
-
-Note that if you change the *input.nml* namelist values controlling
+Note that if you change the `input.nml` namelist values controlling
 inflation and file output, several (perhaps many) more files are created.  
   
 The [DART/documentation/tutorial](dart_tutorial.html)
 documents are an excellent way to kick the tires on DART and learn about
 ensemble data assimilation. If you've been able to build the Lorenz 63
-model, you have correctly configured your *mkmf.template* and you can
+model, you have correctly configured your `mkmf.template` and you can
 run anything in the tutorial.
 
 <span id="matlab" class="anchor"></span> [](#matlab)  
@@ -384,12 +380,12 @@ have access to a couple of DART directories. Do something like the
 following at the MATLAB® prompt, using the real path to your DART
 installation:
 
-> \>\> addpath('path_to_dart/diagnostics/matlab','-BEGIN')
-> \>\>addpath('path_to_dart/documentation/DART_LAB/matlab','-BEGIN')
+> \>\> addpath('path_to_dart/diagnostics/matlab','-BEGIN')  
+> \>\> addpath('path_to_dart/documentation/DART_LAB/matlab','-BEGIN')
 
 It's very convenient to put these it in your *\~/matlab/startup.m* so
 they get run every time MATLAB® starts up. DART provides an example
-*diagnostics/matlab/startup.m* that you can use. It is internally
+`diagnostics/matlab/startup.m` that you can use. It is internally
 documented.
 
 <span id="verify" class="anchor"></span> [](#verify)  
@@ -409,9 +405,9 @@ result in noticeably different trajectories.
 Your results should start out looking VERY SIMILAR and may diverge with time.  
   
 The simplest way to determine if the installation is successful is to run some
-of the functions we have available in *DART/diagnostics/matlab/*. Usually, we
-launch MATLAB® from the *DART/models/lorenz_63/work* directory and use the
-MATLAB® *addpath* command to make the *DART/matlab/* functions available. In
+of the functions we have available in `DART/diagnostics/matlab/`. Usually, we
+launch MATLAB® from the `DART/models/lorenz_63/work` directory and use the
+MATLAB® *addpath* command to make the `DART/matlab/` functions available. In
 this case, we know the true state of the model that is consistent with the
 observations. The following MATLAB® scripts compare the ensemble members with
 the truth and can calculate an error.

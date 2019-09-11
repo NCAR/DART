@@ -7,11 +7,11 @@ menu:
     submenu:
       - title: Getting Started
         url: /DART_development/pages/DART2_Starting.html
+      - title: DART_LAB
+        url: /DART_development/pages/dart_lab.html
       - title: Tutorial
         url: /DART_development/pages/dart_tutorial.html
-      - title: Lab
-        url: /DART_development/pages/dart_lab.html
-      - title: In Depth
+      - title: Models
         url: /DART_development/pages/DART2_Documentation.html
       - title: Diagnostics
         url: /DART_development/pages/DART2_Diagnostics.html
@@ -20,18 +20,34 @@ menu:
       - title: Misc
         url: /DART_development/pages/DART2_Miscellany.html
   - title: Research
-    url: /DART_development/pages/Research.html
+    submenu:
+      - title: Projects
+        url: /DART_development/pages/Research.html
+      - title: CESM and DART
+        url: /DART_development/pages/CESM_setup_guidelines.html
   - title: About Us
     url: /DART_development/pages/aboutus.html
   - title: Support
     url: /DART_development/pages/support.html
-  - title: API
+  - title: Releases
+    url: /DART_development/pages/release.html
     submenu:
       - title: Manhattan
-        url: /DART_development/pages/release.html
-      - title: v3.0.0
-        url: /DART_development/api/v3.0.0/index.html
+        url: /DART_development/api/v9.6.0/index.html
       - title: Lanai
-      - title: v2.0.0
-        url: 
+        url: /DART_development/api/v8.4.1/index.html
+      - title: Kodiak
+        url: /DART_development/api/v7.2.2/index.html
+      - title: Jamaica
+        url: /DART_development/api/v6.0.1/index.html
+      - title: Iceland
+        url: /DART_development/api/v5.1.0/index.html
+      - title: Hawaii
+        url: /DART_development/api/v4.1.0/index.html
+      - title: Guam
+        url: /DART_development/api/v3.0.0/index.html
+      - title: Fiji
+        url: /DART_development/api/v2.0.0/index.html
+      - title: Easter
+        url: /DART_development/api/v1.0.0/index.html
 

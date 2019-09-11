@@ -1023,8 +1023,6 @@ described by the corresponding module document.
    /
 ~~~
 
-## Executing perfect_model_obs
-
 Since *perfect_model_obs* generally requires advancing the model, and
 the model may use MPI or require special ancillary files or forcing
 files or ..., it is not possible to provide a single example that will

@@ -97,10 +97,9 @@ The "Manhattan" version of DART was released on 15 March 2017.
 
 If you want an idea of what it takes to build DART and run experiments 
 before downloading, look at the
-<A HREF="DART2_Starting.md">Getting Started</A> page.
+<A HREF="DART2_Starting.md">Getting Started</A> page.  
 
 ---
-
-|     |    |
-|The National Center for Atmospheric Research is sponsored by the National Science Foundation.  Any opinions, findings and conclusions or recommendations expressed in this material do not necessarily reflect the views of the National Science Foundation. | <img alt="logo of the National Science Foundation" height=36px src="images/nsf.png"> |
-
+  
+|     |     |
+|The National Center for Atmospheric Research is sponsored by the National Science Foundation.  Any opinions, findings and conclusions or recommendations expressed in this material do not necessarily reflect the views of the National Science Foundation. | ![National Science Foundation logo](images/nsf.png") |
