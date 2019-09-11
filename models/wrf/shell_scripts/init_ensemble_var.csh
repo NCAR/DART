@@ -32,6 +32,7 @@ set hh     = `echo $initial_date | cut -b9-10`
 
 ${COPY} ${SHELL_SCRIPTS_DIR}/add_bank_perts.ncl .
 ${COPY} ${SHELL_SCRIPTS_DIR}/new_advance_model.csh .
+${COPY} ${TEMPLATE_DIR}/namelist.input.meso namelist.input
 ${COPY} ${TEMPLATE_DIR}/input.nml.template input.nml
 ${REMOVE} ${RUN_DIR}/WRF
 ${LINK} ${OUTPUT_DIR}/${initial_date} WRF
