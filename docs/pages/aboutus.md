@@ -100,7 +100,6 @@ before downloading, look at the
 <A HREF="DART2_Starting.md">Getting Started</A> page.  
 
 ---
-
+  
 |     |     |
 |The National Center for Atmospheric Research is sponsored by the National Science Foundation.  Any opinions, findings and conclusions or recommendations expressed in this material do not necessarily reflect the views of the National Science Foundation. | ![National Science Foundation logo](images/nsf.png") |
-
