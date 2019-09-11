@@ -13,10 +13,10 @@ menu:
         url: /DART_development/pages/dart_tutorial.html
       - title: Models
         url: /DART_development/pages/DART2_Documentation.html
-      - title: Diagnostics
-        url: /DART_development/pages/DART2_Diagnostics.html
       - title: Observations 
         url: /DART_development/pages/DART2_Observations.html
+      - title: Diagnostics
+        url: /DART_development/pages/DART2_Diagnostics.html
       - title: Misc
         url: /DART_development/pages/DART2_Miscellany.html
   - title: Research

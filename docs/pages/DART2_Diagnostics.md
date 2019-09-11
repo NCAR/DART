@@ -69,25 +69,25 @@ There are some namelist settings that control what files are output.
         
 | from *filter* |      |      |
 | ------------- | ---- | ---- |
-| `forecast_member_\#\#\#\#.nc` | 1&nbsp;timestep | the ensemble forecast, each ensemble member is a separate file |
-| `forecast_\[mean,sd\].nc`     | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble forecast |
-| `forecast_priorinf_\[mean,sd\].nc` | 1&nbsp;timestep | the prior inflation information before assimilation |
-| `forecast_postinf_\[mean,sd\].nc` | 1&nbsp;timestep | the posterior inflation information before assimilation |
-| `preassim_member_\#\#\#\#.nc` | 1&nbsp;timestep | the model states after any prior inflation but before assimilation |
-| `preassim_\[mean,sd\].nc` | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after any prior inflation but before assimilation |
-| `preassim_priorinf_\[mean,sd\].nc` | 1&nbsp;timestep | the prior inflation information before assimilation |
-| `preassim_postinf_\[mean,sd\].nc` | 1&nbsp;timestep | the posterior inflation information before assimilation |
-| `postassim_member_\#\#\#\#.nc` | 1&nbsp;timestep | the model states after assimilation but before posterior inflation |
-| `postassim_\[mean,sd\].nc` | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after assimilation but before posterior inflation |
-| `postassim_priorinf_\[mean,sd\].nc` | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
-| `postassim_postinf_\[mean,sd\].nc` | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
-| `analysis_member_\#\#\#\#.nc` | 1&nbsp;timestep | the model states after assimilation and after any posterior inflation |
-| `analysis_\[mean,sd\].nc` | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after assimilation and after posterior inflation |
-| `analysis_priorinf_\[mean,sd\].nc` | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
-| `analysis_postinf_\[mean,sd\].nc` | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
-| `output_\[mean,sd\].nc` | 1&nbsp;timestep | the mean and spread of the posterior ensemble |
-| `output_priorinf_\[mean,sd\].nc` | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
-| `output_priorinf_\[mean,sd\].nc` | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
+| `forecast_member_####.nc` | 1&nbsp;timestep | the ensemble forecast, each ensemble member is a separate file |
+| `forecast_[mean,sd].nc`     | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble forecast |
+| `forecast_priorinf_[mean,sd].nc` | 1&nbsp;timestep | the prior inflation information before assimilation |
+| `forecast_postinf_[mean,sd].nc` | 1&nbsp;timestep | the posterior inflation information before assimilation |
+| `preassim_member_####.nc` | 1&nbsp;timestep | the model states after any prior inflation but before assimilation |
+| `preassim_[mean,sd].nc` | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after any prior inflation but before assimilation |
+| `preassim_priorinf_[mean,sd].nc` | 1&nbsp;timestep | the prior inflation information before assimilation |
+| `preassim_postinf_[mean,sd].nc` | 1&nbsp;timestep | the posterior inflation information before assimilation |
+| `postassim_member_####.nc` | 1&nbsp;timestep | the model states after assimilation but before posterior inflation |
+| `postassim_[mean,sd].nc` | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after assimilation but before posterior inflation |
+| `postassim_priorinf_[mean,sd].nc` | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
+| `postassim_postinf_[mean,sd].nc` | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
+| `analysis_member_####.nc` | 1&nbsp;timestep | the model states after assimilation and after any posterior inflation |
+| `analysis_[mean,sd].nc` | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after assimilation and after posterior inflation |
+| `analysis_priorinf_[mean,sd].nc` | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
+| `analysis_postinf_[mean,sd].nc` | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
+| `output_[mean,sd].nc` | 1&nbsp;timestep | the mean and spread of the posterior ensemble |
+| `output_priorinf_[mean,sd].nc` | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
+| `output_priorinf_[mean,sd].nc` | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
 | `obs_seq.final` | | the model estimates of the observations (an integral part of the data assimilation process) |
 
 | from both | |
