@@ -34,18 +34,18 @@ set IC_PERT_SCALE      = 0.009
 set IC_HORIZ_SCALE     = 0.8
 set IC_VERT_SCALE      = 0.8
 set num_ens =  150  # number of perturbations to generate, must be at least ensemble size, suggest 3-4X. SUGGEST testing
-                    # a single member until you are sure the script works, and are happy with the settings. 
+                    # a single member until you are sure the script works, and are happy with the settings.
 set wrfin_dir = ${work_dir}/wrfin
 set ASSIM_INT_HOURS = 6
 
 
-  module load nco
-
+module load nco
 
 #  mkdir ${work_dir}
-  cd ${work_dir}
-  cp ${template_dir}/input.nml.template input.nml
-# get a wrfdate and parse 
+cd ${work_dir}
+cp ${template_dir}/input.nml.template input.nml
+
+# get a wrfdate and parse
 set gdate  = (`echo $datea 0h -g | ${DART_DIR}/models/wrf/work/advance_time`)
 set gdatef = (`echo $datea ${ASSIM_INT_HOURS}h -g | ${DART_DIR}/models/wrf/work/advance_time`)
 set wdate  =  `echo $datea 0h -w | ${DART_DIR}/models/wrf/work/advance_time`
@@ -54,15 +54,16 @@ set mm     = `echo $datea | cut -b5-6`
 set dd     = `echo $datea | cut -b7-8`
 set hh     = `echo $datea | cut -b9-10`
 
-  set n = 1
-  while ( $n <= $num_ens )
-    mkdir ${work_dir}/mem_${n}
-    cd ${work_dir}/mem_${n}
-    cp ${wrfda_dir}/* ${work_dir}/mem_${n}/.
-    ln -sf ${wrfin_dir}/wrfinput_d01 ${work_dir}/mem_${n}/fg
-# prep the namelist to run wrfvar
-     @ seed_array2 = $n * 10
-     cat >! script.sed << EOF
+set n = 1
+while ( $n <= $num_ens )
+
+   mkdir ${work_dir}/mem_${n}
+   cd ${work_dir}/mem_${n}
+   cp ${wrfda_dir}/* ${work_dir}/mem_${n}/.
+   ln -sf ${wrfin_dir}/wrfinput_d01 ${work_dir}/mem_${n}/fg
+   # prep the namelist to run wrfvar
+   @ seed_array2 = $n * 10
+   cat >! script.sed << EOF
    /run_hours/c\
    run_hours                  = 0,
    /run_minutes/c\
@@ -104,7 +105,7 @@ set hh     = `echo $datea | cut -b9-10`
    seed_array2 = $seed_array2 /
 EOF
    sed -f script.sed ${template_dir}/namelist.input.3dvar >! ${work_dir}/mem_${n}/namelist.input
-# make a run file for wrfvar
+   # make a run file for wrfvar
 
    cat >> ${work_dir}/mem_${n}/gen_pert_${n}.csh << EOF
 #!/bin/csh
@@ -119,21 +120,22 @@ EOF
 #PBS -l select=4:ncpus=32:mpiprocs=16
 #=================================================================
 
-   cd ${work_dir}/mem_${n}
+cd ${work_dir}/mem_${n}
 
-   mpiexec_mpt dplace -s 1 ./da_wrfvar.exe >& output.wrfvar
-   mv wrfvar_output wrfinput_d01
-   
+mpiexec_mpt dplace -s 1 ./da_wrfvar.exe >& output.wrfvar
+mv wrfvar_output wrfinput_d01
+
 # extract only the fields that are updated by wrfvar, then diff to generate the pert file for this member
-   ncks -h -F -A -a -v U,V,T,QVAPOR,MU fg orig_data.nc
-   ncks -h -F -A -a -v U,V,T,QVAPOR,MU wrfinput_d01 pert_data.nc
-   ncdiff pert_data.nc orig_data.nc pert_bank_mem_${n}.nc
-   mv pert_bank_mem_${n}.nc ${save_dir}/pert_bank_mem_${n}.nc
+
+ncks -h -F -A -a -v U,V,T,QVAPOR,MU fg orig_data.nc
+ncks -h -F -A -a -v U,V,T,QVAPOR,MU wrfinput_d01 pert_data.nc
+ncdiff pert_data.nc orig_data.nc pert_bank_mem_${n}.nc
+mv pert_bank_mem_${n}.nc ${save_dir}/pert_bank_mem_${n}.nc
 EOF
 
-    qsub ${work_dir}/mem_${n}/gen_pert_${n}.csh
-    @ n++
-  end
+   qsub ${work_dir}/mem_${n}/gen_pert_${n}.csh
+   @ n++
+end
 
 # currently the script exits, but it could sleep and do cleanup once all the forecasts are complete.
 exit(0)

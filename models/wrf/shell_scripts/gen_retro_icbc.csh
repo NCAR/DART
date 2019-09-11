@@ -36,96 +36,103 @@ echo "gen_retro_icbc.csh is running in `pwd`"
 #                output/${date}/wrfinput_d01_{days}_{time_step2}_mean
 ########################################################################
 
- set datea     = 2017042700
- set datefnl   = 2017043000 # set this appropriately #%%%#
- set datefnl   = 2017042712    # TJH shorter ... for testing
- set paramfile = /glade2/scratch2/USERNAME/WORK_DIR/scripts/param.csh   # set this appropriately #%%%#
- set paramfile = /glade/work/thoar/DART/clean_rma_trunk/models/wrf/tutorial/scripts/param.csh
+set datea     = 2017042700
+set datefnl   = 2017043000 # set this appropriately #%%%#
+set datefnl   = 2017042712    # TJH shorter ... for testing
+set paramfile = /glade2/scratch2/USERNAME/WORK_DIR/scripts/param.csh   # set this appropriately #%%%#
+set paramfile = /glade/work/thoar/DART/clean_rma_trunk/models/wrf/tutorial/scripts/param.csh
 
- source $paramfile
+source $paramfile
 
 # TJH The geo_*.nc file is already in the ${ICBC_DIR}/*/ directories.
 # ${LINK} ${GEO_FILES_DIR}/geo_*.nc .
 
- mkdir -p ${ICBC_DIR}/metgrid
- ${LINK} ${WPS_SRC_DIR}/metgrid/METGRID.TBL ${ICBC_DIR}/metgrid/METGRID.TBL
- 
- while ( 1 == 1 )
- echo "Entering gen_retro_icbc.csh for $datea"
- 
- if ( ! -d ${OUTPUT_DIR}/${datea} )  mkdir -p ${OUTPUT_DIR}/${datea}
+mkdir -p ${ICBC_DIR}/metgrid
+${LINK} ${WPS_SRC_DIR}/metgrid/METGRID.TBL ${ICBC_DIR}/metgrid/METGRID.TBL
 
- cd ${ICBC_DIR}
- ${LINK} ${TEMPLATE_DIR}/input.nml.template input.nml
- ${REMOVE} gfs*pgrb2* *grib2
+while ( 1 == 1 )
+   echo "Entering gen_retro_icbc.csh for $datea"
 
- #  prepare to run WPS ungrib and metgrid
- set start_date = `echo $datea 0 -w | ${DART_DIR}/models/wrf/work/advance_time`
- set end_date   = `echo $datea 6 -w | ${DART_DIR}/models/wrf/work/advance_time`
- echo $start_date
+   if ( ! -d ${OUTPUT_DIR}/${datea} )  mkdir -p ${OUTPUT_DIR}/${datea}
 
- ${REMOVE} script.sed
- ${REMOVE} namelist.wps
- cat >! script.sed << EOF
+   cd ${ICBC_DIR}
+   ${LINK} ${TEMPLATE_DIR}/input.nml.template input.nml
+   ${REMOVE} gfs*pgrb2* *grib2
+
+   #  prepare to run WPS ungrib and metgrid
+   set start_date = `echo $datea 0 -w | ${DART_DIR}/models/wrf/work/advance_time`
+   set end_date   = `echo $datea 6 -w | ${DART_DIR}/models/wrf/work/advance_time`
+   echo $start_date
+
+   ${REMOVE} script.sed
+   ${REMOVE} namelist.wps
+   cat >! script.sed << EOF
  /start_date/c\
  start_date = 2*'${start_date}',
  /end_date/c\
  end_date   = 2*'${end_date}',
 EOF
 
-# build grib file names - may need to change for other data sources. These are from RDA
- set GRIB_SRC = 'GFS' # TJH GRIB_SRC undefined otherwise
- set gribfile_a = ${GRIB_DATA_DIR}/${datea}/gfs_ds084.1/gfs.0p25.${datea}.f000.grib2 
- set gribfile_b = ${GRIB_DATA_DIR}/${datea}/gfs_ds084.1/gfs.0p25.${datea}.f006.grib2 
- ${LINK} $gribfile_a GRIBFILE.AAA
- ${LINK} $gribfile_b GRIBFILE.AAB
+   # build grib file names - may need to change for other data sources.
 
- sed -f script.sed ${TEMPLATE_DIR}/namelist.wps.template >! namelist.wps
- ${LINK} ${WPS_SRC_DIR}/ungrib/Variable_Tables/Vtable.${GRIB_SRC} Vtable
+   if ( $GRIB_SRC != 'GFS' ) then 
+      echo "gen_retro_icbc.csh: GRIB_SRC is set to $GRIB_SRC"
+      echo "gen_retro_icbc.csh: There are some assumptions about using 'GFS'."
+      echo "If you want to use something else, you will need to change the"
+      echo "values of gribfile_a, gribfile_b"
+      exit 2
+   endif
 
- ${REMOVE}                    output.ungrib.exe.gfs
- ${WPS_SRC_DIR}/ungrib.exe >& output.ungrib.exe.gfs
+   set gribfile_a = ${GRIB_DATA_DIR}/${datea}/gfs_ds084.1/gfs.0p25.${datea}.f000.grib2
+   set gribfile_b = ${GRIB_DATA_DIR}/${datea}/gfs_ds084.1/gfs.0p25.${datea}.f006.grib2
+   ${LINK} $gribfile_a GRIBFILE.AAA
+   ${LINK} $gribfile_b GRIBFILE.AAB
 
- ${REMOVE}                     output.metgrid.exe
- ${WPS_SRC_DIR}/metgrid.exe >& output.metgrid.exe
+   sed -f script.sed ${TEMPLATE_DIR}/namelist.wps.template >! namelist.wps
+   ${LINK} ${WPS_SRC_DIR}/ungrib/Variable_Tables/Vtable.${GRIB_SRC} Vtable
 
- ${LINK} ${WPS_SRC_DIR}/met_em.d01.* .
- set datef  =  `echo $datea $ASSIM_INT_HOURS | ${DART_DIR}/models/wrf/work/advance_time`
- set gdatef = (`echo $datef 0 -g             | ${DART_DIR}/models/wrf/work/advance_time`)
- set hh     =  `echo $datea | cut -b9-10`
+   ${REMOVE}                    output.ungrib.exe.${GRIB_SRC}
+   ${WPS_SRC_DIR}/ungrib.exe >& output.ungrib.exe.${GRIB_SRC}
 
+   ${REMOVE}                     output.metgrid.exe
+   ${WPS_SRC_DIR}/metgrid.exe >& output.metgrid.exe
 
- #  Run real.exe twice, once to get first time wrfinput_d0? and wrfbdy_d01,
- #  then again to get second time wrfinput_d0? file
- set n = 1
- while ( $n <= 2 )
+   ${LINK} ${WPS_SRC_DIR}/met_em.d01.* .
+   set datef  =  `echo $datea $ASSIM_INT_HOURS | ${DART_DIR}/models/wrf/work/advance_time`
+   set gdatef = (`echo $datef 0 -g             | ${DART_DIR}/models/wrf/work/advance_time`)
+   set hh     =  `echo $datea | cut -b9-10`
 
-    echo "RUNNING REAL, STEP $n"
-    echo " "
- 
-    if ( $n == 1 ) then
-       set date1      = $datea
-       set date2      = $datef
-       set fcst_hours = $ASSIM_INT_HOURS
-    else
-       set date1      = $datef
-       set date2      = $datef
-       set fcst_hours = 0
-    endif
+   #  Run real.exe twice, once to get first time wrfinput_d0? and wrfbdy_d01,
+   #  then again to get second time wrfinput_d0? file
+   set n = 1
+   while ( $n <= 2 )
 
-    set yyyy1 = `echo $date1 | cut -c 1-4`
-    set mm1   = `echo $date1 | cut -c 5-6`
-    set dd1   = `echo $date1 | cut -c 7-8`
-    set hh1   = `echo $date1 | cut -c 9-10`
-    set yyyy2 = `echo $date2 | cut -c 1-4`
-    set mm2   = `echo $date2 | cut -c 5-6`
-    set dd2   = `echo $date2 | cut -c 7-8`
-    set hh2   = `echo $date2 | cut -c 9-10`
+      echo "RUNNING REAL, STEP $n"
+      echo " "
 
-    ${REMOVE} namelist.input script.sed
-    cat >! script.sed << EOF
+      if ( $n == 1 ) then
+         set date1      = $datea
+         set date2      = $datef
+         set fcst_hours = $ASSIM_INT_HOURS
+      else
+         set date1      = $datef
+         set date2      = $datef
+         set fcst_hours = 0
+      endif
+
+      set yyyy1 = `echo $date1 | cut -c 1-4`
+      set mm1   = `echo $date1 | cut -c 5-6`
+      set dd1   = `echo $date1 | cut -c 7-8`
+      set hh1   = `echo $date1 | cut -c 9-10`
+      set yyyy2 = `echo $date2 | cut -c 1-4`
+      set mm2   = `echo $date2 | cut -c 5-6`
+      set dd2   = `echo $date2 | cut -c 7-8`
+      set hh2   = `echo $date2 | cut -c 9-10`
+
+      ${REMOVE} namelist.input script.sed
+      cat >! script.sed << EOF
     /run_hours/c\
-    run_hours                  = ${fcst_hours}, 
+    run_hours                  = ${fcst_hours},
     /run_minutes/c\
     run_minutes                = 0,
     /run_seconds/c\
@@ -156,29 +163,29 @@ EOF
     end_second                 = 00, 00,
 EOF
 
-    sed -f script.sed ${TEMPLATE_DIR}/namelist.input.meso >! namelist.input
-    ${REMOVE} out.real.exe
-    ${RUN_DIR}/WRF_RUN/real.serial.exe >& out.real.exe
-    if ( -e rsl.out.0000 )  cat rsl.out.0000 >> out.real.exe
+      sed -f script.sed ${TEMPLATE_DIR}/namelist.input.meso >! namelist.input
+      ${REMOVE} out.real.exe
+      ${RUN_DIR}/WRF_RUN/real.serial.exe >& out.real.exe
+      if ( -e rsl.out.0000 )  cat rsl.out.0000 >> out.real.exe
 
-    #  move output files to storage
-    set gdate = (`echo $date1 0 -g | ${DART_DIR}/models/wrf/work/advance_time`)
-    ${MOVE} wrfinput_d01 ${OUTPUT_DIR}/${datea}/wrfinput_d01_${gdate[1]}_${gdate[2]}_mean
-    if ( $n == 1 ) ${MOVE} wrfbdy_d01 ${OUTPUT_DIR}/${datea}/wrfbdy_d01_${gdatef[1]}_${gdatef[2]}_mean
+      #  move output files to storage
+      set gdate = (`echo $date1 0 -g | ${DART_DIR}/models/wrf/work/advance_time`)
+      ${MOVE} wrfinput_d01 ${OUTPUT_DIR}/${datea}/wrfinput_d01_${gdate[1]}_${gdate[2]}_mean
+      if ( $n == 1 ) ${MOVE} wrfbdy_d01 ${OUTPUT_DIR}/${datea}/wrfbdy_d01_${gdatef[1]}_${gdatef[2]}_mean
 
-    @ n++
+      @ n++
 
- end
+   end
 
- # move to next time, or exit if final time is reached
-     if ( $datea == $datefnl) then
-        echo "Reached the final date "
-        echo "Script exiting normally"
-        exit
-     endif
-     set datea  = `echo $datea $ASSIM_INT_HOURS | ${DART_DIR}/models/wrf/work/advance_time`
-     echo "starting next time: $datea"
-  end
+   # move to next time, or exit if final time is reached
+   if ( $datea == $datefnl) then
+      echo "Reached the final date "
+      echo "Script exiting normally"
+      exit 0
+   endif
+   set datea  = `echo $datea $ASSIM_INT_HOURS | ${DART_DIR}/models/wrf/work/advance_time`
+   echo "starting next time: $datea"
+end
 
 exit 0
 
