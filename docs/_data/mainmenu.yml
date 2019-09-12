@@ -16,16 +16,16 @@ menu:
   - title: Research
     url: /DART_development/pages/Research.html
     submenu:
-      - title: "DART_LAB: more explanation"
+      - title: "DART_LAB: explore ensemble DA concepts with MATLAB"
         url: /DART_development/pages/dart_lab.html
-      - title: "Tutorial: here too"
+      - title: "Tutorial: learn how to use DART"
         url: /DART_development/pages/Tutorial.html
       - title: Publications
         url: /DART_development/pages/Publications.html
       - title: Presentations
         url: /DART_development/pages/Presentations.html
       - title: CESM and DART
-        url: /DART_development/pages/CESM_setup_guidelines.html
+        url: /DART_development/pages/CESM_DART_guidelines.html
       - title: WRF and DART
         url: /DART_development/pages/WRF_DART_guidelines.html
   - title: About Us
