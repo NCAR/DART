@@ -69,25 +69,25 @@ There are some namelist settings that control what files are output.
         
 | from *filter* |      |      |
 | ------------- | ---- | ---- |
-| `forecast_member_\#\#\#\#.nc` | 1&nbsp;timestep | the ensemble forecast, each ensemble member is a separate file |
-| `forecast_\[mean,sd\].nc`     | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble forecast |
-| `forecast_priorinf_\[mean,sd\].nc` | 1&nbsp;timestep | the prior inflation information before assimilation |
-| `forecast_postinf_\[mean,sd\].nc` | 1&nbsp;timestep | the posterior inflation information before assimilation |
-| `preassim_member_\#\#\#\#.nc` | 1&nbsp;timestep | the model states after any prior inflation but before assimilation |
-| `preassim_\[mean,sd\].nc` | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after any prior inflation but before assimilation |
-| `preassim_priorinf_\[mean,sd\].nc` | 1&nbsp;timestep | the prior inflation information before assimilation |
-| `preassim_postinf_\[mean,sd\].nc` | 1&nbsp;timestep | the posterior inflation information before assimilation |
-| `postassim_member_\#\#\#\#.nc` | 1&nbsp;timestep | the model states after assimilation but before posterior inflation |
-| `postassim_\[mean,sd\].nc` | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after assimilation but before posterior inflation |
-| `postassim_priorinf_\[mean,sd\].nc` | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
-| `postassim_postinf_\[mean,sd\].nc` | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
-| `analysis_member_\#\#\#\#.nc` | 1&nbsp;timestep | the model states after assimilation and after any posterior inflation |
-| `analysis_\[mean,sd\].nc` | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after assimilation and after posterior inflation |
-| `analysis_priorinf_\[mean,sd\].nc` | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
-| `analysis_postinf_\[mean,sd\].nc` | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
-| `output_\[mean,sd\].nc` | 1&nbsp;timestep | the mean and spread of the posterior ensemble |
-| `output_priorinf_\[mean,sd\].nc` | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
-| `output_priorinf_\[mean,sd\].nc` | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
+| `forecast_member_####.nc` | 1&nbsp;timestep | the ensemble forecast, each ensemble member is a separate file |
+| `forecast_[mean,sd].nc`     | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble forecast |
+| `forecast_priorinf_[mean,sd].nc` | 1&nbsp;timestep | the prior inflation information before assimilation |
+| `forecast_postinf_[mean,sd].nc` | 1&nbsp;timestep | the posterior inflation information before assimilation |
+| `preassim_member_####.nc` | 1&nbsp;timestep | the model states after any prior inflation but before assimilation |
+| `preassim_[mean,sd].nc` | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after any prior inflation but before assimilation |
+| `preassim_priorinf_[mean,sd].nc` | 1&nbsp;timestep | the prior inflation information before assimilation |
+| `preassim_postinf_[mean,sd].nc` | 1&nbsp;timestep | the posterior inflation information before assimilation |
+| `postassim_member_####.nc` | 1&nbsp;timestep | the model states after assimilation but before posterior inflation |
+| `postassim_[mean,sd].nc` | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after assimilation but before posterior inflation |
+| `postassim_priorinf_[mean,sd].nc` | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
+| `postassim_postinf_[mean,sd].nc` | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
+| `analysis_member_####.nc` | 1&nbsp;timestep | the model states after assimilation and after any posterior inflation |
+| `analysis_[mean,sd].nc` | 1&nbsp;timestep | the mean and standard deviation (spread) of the ensemble after assimilation and after posterior inflation |
+| `analysis_priorinf_[mean,sd].nc` | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
+| `analysis_postinf_[mean,sd].nc` | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
+| `output_[mean,sd].nc` | 1&nbsp;timestep | the mean and spread of the posterior ensemble |
+| `output_priorinf_[mean,sd].nc` | 1&nbsp;timestep | the (new) prior inflation information after assimilation |
+| `output_priorinf_[mean,sd].nc` | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
 | `obs_seq.final` | | the model estimates of the observations (an integral part of the data assimilation process) |
 
 | from both | |
@@ -127,7 +127,7 @@ There are some namelist settings that control what files are output. Depending o
 ### First questions to ask
 
 **NOTE: the remainder of this document is written from the perspective
-of an experiment run with ```single_file_out&nbsp;=&nbsp;.true.*.``` The permutations
+of an experiment run with ```single_file_out=.true.*.``` The permutations
 of the file names is just too great to write exhaustive documentation.**
 
 After *filter* executes without error and produces an `obs_seq.final`
@@ -150,7 +150,7 @@ ensemble mean variables. If all values are 0, then the assimilation
 changed nothing in the state. If your model writes multiple output
 files, diff the `preassim_mean.nc` and `output_mean.nc`.
 
-<span id="debugging" class="anchor"></span> 
+<span id="debugging" class="anchor"></span> [](#debugging)  
 
 -----
 
@@ -197,7 +197,7 @@ observation sequence file will be written in ascii:
 ~~~
 
 and rerun *filter* to regenerate an `obs_seq.final` file in ascii.
-[These&nbsp;diagrams](DART2_Observations.md#obs_seq_overview) help to understand
+[These&nbsp;diagrams](Observations.md#obs_seq_overview) help to understand
 an `obs_seq.final` file. 2) If you are using many observations, run the
 [obs_diag.f90](https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html)
 appropriate for your model. There are some
@@ -214,7 +214,8 @@ members. You can determine if all ensemble members are failing in the
 same way, or if only a few are problematic.
 
 For the failing observations, the 'DART QC' may indicate the reason.
-([How to locate the different values in an ```obs_seq.final``` file.](DART2_Observations.md#obs_seq_overview) The 'DART QC' field is usually the second of the 2 "quality control" copies.)
+([How to locate the different values in an `obs_seq.final` file.](Observations.md#obs_seq_overview)
+The 'DART QC' field is usually the second of the 2 "quality control" copies.)
 A list of all the DART QC values can be found in [this&nbsp;table](#qc_table).  
 
 - If the DART QC values are 4, the forward operators have failed. Look
@@ -344,9 +345,9 @@ impact on the state and make sure that it's something reasonable.
   
 Now you can use the observation space diagnostics, and the state space
 diagnostics to get more information about what the impact was, and
-whether it's doing the right thing or not.
+whether it's doing the right thing or not.  
 
-<span id="DidItWork" class="anchor"></span> 
+<span id="DidItWork" class="anchor"></span> [](#DidItWork)  
 
 -----
 
@@ -363,7 +364,12 @@ distribution. A *working* implementation.
 best explanation of what to look for, what to change to improve the next
 experiment, etc. DART has an extensive set of diagnostics implemented in
 MATLAB®. To use them, make sure you have read the 
-[Configuring MATLAB®](DART2_Starting.md#matlab) section.
+[Configuring MATLAB®](Getting_Started.md#matlab) section.\
+[Configuring MATLAB® 1](Getting_Started.md#MyMatlab) section.\
+[Configuring MATLAB® 2](Getting_Started.md#spanmatlab) section.\
+[Configuring MATLAB® 3](Getting_Started.md#Configuring-MATLAB) section.  
+
+<!-- TJH FIXME what is the right link reference syntax -->
 
 ### The Observations are the Key.
 
@@ -483,8 +489,8 @@ enhancements.
 See the expanded section on 
 [DART state-space diagnostics](#ss_diagnostics) for more.
 
-<span id="obs_diagnostics" class="anchor"></span>
-<span id="qc_table" class="anchor"></span>  
+<span id="obs_diagnostics" class="anchor"></span> [](#obs_diagnostics)  
+<span id="qc_table"        class="anchor"></span> [](#qc_table)  
 
 -----
 
@@ -545,7 +551,7 @@ The following quantities are normally diagnosed:
 | N_DARTqc_7   | the number of observations that had a DART QC value of 7                                             |
 | N_DARTqc_8   | the number of observations that had a DART QC value of 8                                             |
 
-<span id="mat_obs" class="anchor"></span>
+<span id="mat_obs" class="anchor"></span> [](#mat_obs)  
 
 The observation-space functions are in the *DART/diagnostics/matlab*
 directory. Once you have processed the `obs_seq.final` files into a
@@ -643,8 +649,8 @@ AFTER an assimilation (i.e. `obs_seq.final` files that have been
 converted to netCDF), and some of them will work on *obs_seq.out*-type
 files that have been converted.
 
-<span id="read_obs_netcdf"></span> 
-<span id="plot_obs_netcdf"></span>
+<span id="read_obs_netcdf" class="anchor"></span> [](#read_obs_netcdf)  
+<span id="plot_obs_netcdf" class="anchor"></span> [](#plot_obs_netcdf)  
 
 [read_obs_netcdf.m](../../diagnostics/matlab/read_obs_netcdf.m) reads a particular variable 
     and copy from a netCDF-format observation sequence file and returns a 
@@ -751,7 +757,7 @@ bob = plot_wind_vectors(fname, platform, CopyString, QCString, ...
 [<img src="../images/science_nuggets/ObsTimeCheck_Fig3_thumb.png">](../images/science_nuggets/ObsTimeCheck_Fig3.png)
 [<img src="../images/science_nuggets/ObsTimeCheck_Fig4_thumb.png">](../images/science_nuggets/ObsTimeCheck_Fig4.png)
 
-<span id="obs_diag_output_explanation" class="anchor"></span>
+<span id="obs_diag_output_explanation" class="anchor"></span> [](#obs_diag_output_explanation)  
 
 -----
 
@@ -970,7 +976,7 @@ You cannot derive this information unless the assimilation was performed
 with *filter_nml:num_output_obs_members* equal to something like the
 ensemble size.
 
-<span id="ncview_histogram" class="anchor"></span>
+<span id="ncview_histogram" class="anchor"></span> [](#ncview_histogram)  
 
 -----
 
@@ -1010,8 +1016,8 @@ If you continue to click on the "tall,skinny" graphic, the histogram for
 that level will be added to the rank histogram window. Remember, levels
 are along the X axis on the "tall,skinny" graphic. Viola'\!
 
-<span id="ss_diagnostics" class="anchor"></span>
-<span id="ss_diagnostics_matlab" class="anchor"></span>
+<span id="ss_diagnostics"        class="anchor"></span> [](#ss_diagnostics)  
+<span id="ss_diagnostics_matlab" class="anchor"></span> [](#ss_diagnostics_matlab)  
 
 -----
 
@@ -1032,7 +1038,7 @@ functions that work without a true state.
 In order to use any of these functions, the scripts need to know how to
 interpret the layout of the netCDF file - which is usually
 model-dependent. See the section on 
-[Adding MATLAB® support for your own model](DART2_Documentation.html#model_matlab_support) 
+[Adding MATLAB® support for your own model](Models.md#model_matlab_support) 
 if you are not using one of the supported DART models.  
   
 The state-space functions are in the *`DART/diagnostics/matlab`*
@@ -1093,8 +1099,8 @@ variables:
 }
 ~~~
 
-<span id="alt_diagnostics" class="anchor"></span>
-<span id="ss_diagnostics_nonmatlab" class="anchor"></span>
+<span id="alt_diagnostics"          class="anchor"></span> [](#alt_diagnostics)  
+<span id="ss_diagnostics_nonmatlab" class="anchor"></span> [](#ss_diagnostics_nonmatlab)  
 
 -----
 

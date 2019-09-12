@@ -10,7 +10,7 @@ data assimilation theory and consists of step-by-step concepts and
 companion exercises with DART. The diagnostics in the tutorial use
 Matlab® (to see how to configure your environment to use Matlab and the
 DART diagnostics, see the documentation for
-[Configuring Matlab® for netCDF & DART](DART2_Starting.md#matlab)).
+[Configuring Matlab® for netCDF & DART](Getting_Starting.md#matlab)).
 
 |            |              |
 | ---------- | ------------ |
