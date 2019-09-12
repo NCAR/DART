@@ -525,6 +525,8 @@ while ( 1 == 1 )
       ${MOVE} ${RUN_DIR}/prior_d01.${ensstring}             ${OUTPUT_DIR}/${datea}/PRIORS/.
       ${REMOVE} start_member_${n} done_member_${n} filter_restart_d01.${ensstring}
       if ( -e assim_advance_mem${n}.csh )  ${REMOVE} assim_advance_mem${n}.csh
+      set pert = `cat ${RUN_DIR}/advance_temp${n}/mem${n}_pert_bank_num`
+      echo "Member $n uses perturbation bank ensemble member $pert" >>  ${OUTPUT_DIR}/${datea}/pert_bank_members.txt
 
       @ n++
 

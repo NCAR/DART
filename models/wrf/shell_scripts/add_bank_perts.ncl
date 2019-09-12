@@ -34,6 +34,7 @@ begin
  pert_bank_file = "pert_bank_mem_"+ens_mem_num+".nc"
  wrf_file = "wrfvar_output"+".nc"
 
+ asciiwrite("mem"+MEM_NUM+"_pert_bank_num",ens_mem_num)
  print ("bank member number "+ens_mem_num)
 
  pert_fields = (/"U", "V", "T", "QVAPOR","MU"/)
