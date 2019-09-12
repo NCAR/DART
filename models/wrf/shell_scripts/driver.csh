@@ -122,9 +122,9 @@ while ( 1 == 1 )
    set n = 1
    while ( $n <= $NUM_ENS )
       if ( $SUPER_PLATFORM == 'cheyenne' ) then   # can't pass along arguments in the same way
-         $sub_command -v mem_num=${n},date=${datep},domain=${domains} ${SHELL_SCRIPTS_DIR}/prep_ic.csh
+         $sub_command -v mem_num=${n},date=${datep},domain=${domains},paramf=${paramfile} ${SHELL_SCRIPTS_DIR}/prep_ic.csh
       else
-         $sub_command " ${SHELL_SCRIPTS_DIR}/prep_ic.csh ${n} ${datep} ${dn} "
+         $sub_command " ${SHELL_SCRIPTS_DIR}/prep_ic.csh ${n} ${datep} ${dn} ${paramfile} "
       endif
       @ n++
    end  # loop through ensemble members
@@ -148,7 +148,7 @@ while ( 1 == 1 )
             if ( $loop > 60 ) then    # wait 5 minutes for the ic file to be ready, else run manually
                echo "gave up on ic member $n - redo"
                # TJH this is not the command for cheyenne, why not $sub_command from above
-               ${SHELL_SCRIPTS_DIR}/prep_ic.csh ${n} ${datep} ${dn}
+               ${SHELL_SCRIPTS_DIR}/prep_ic.csh ${n} ${datep} ${dn} ${paramfile}
                # TJH the job queued above is still queued and should be killed ...
             endif
          endif

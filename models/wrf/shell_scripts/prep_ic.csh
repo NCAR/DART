@@ -6,21 +6,21 @@
 #
 # DART $Id$
 
-# set paramfile appropriately #%%%#
-set paramfile = /glade2/scratch2/USERNAME/WORK_DIR/scripts/param.csh
-source $paramfile
 
 if ( $#argv > 0 ) then
    set n     = ${1}   # pass in the ensemble member number
    set datep = ${2}   # needed for correct path to file
    set dn    = ${3}
+   set paramfile = ${4}
 else # values come from environment variables   #TJH If these are not set ....
    set n     = $mem_num
    set datep = $date
    set dn    = $domain
+   set paramfile = $paramf
 endif
+source $paramfile
 
-echo "prep_ic.csh using n=$n datep=$datep dn=$dn"
+echo "prep_ic.csh using n=$n datep=$datep dn=$dn paramfile=$paramf"
 
 if ( $dn == 1 ) then
 
