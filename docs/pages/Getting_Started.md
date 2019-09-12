@@ -3,9 +3,9 @@ title: Getting Started
 layout: default
 ---
 
-## Installing DART
+## Getting Started with DART
 
-The entire installation process is summarized in the following steps:
+The entire process is summarized in the following steps:
 
 1.  [Determine which F90 compiler is available](#fortran90).
 2.  [Determine the location of (or build) the *netCDF* library](#netCDFlib).
@@ -18,7 +18,7 @@ If you can compile and run ONE of the low-order models, you should be
 able to compile and run ANY of the low-order models. For this reason, we
 can focus on the Lorenz_63 model. Consequently, the only directories
 with files to be modified to check the installation are usually:
-*DART/build_templates* and *DART/models/lorenz_63/work*.  
+`DART/build_templates` and `DART/models/lorenz_63/work`.  
   
 We have tried to make the code as portable as possible, but we do not
 have access to all compilers on all platforms, so there are no
@@ -341,21 +341,21 @@ run anything in the tutorial.
 
 -----
 
-## Configuring MATLAB
+## Configuring MATLAB®
 
-The Manhattan release of DART uses native MATLAB® netCDF support and no
+The Manhattan release of DART uses native MATLAB netCDF support and no
 longer requires any third-party toolboxes. Furthermore, no additional
 MATLAB toolboxes are required. To allow your environment to seamlessly
 use the DART MATLAB functions, your MATLABPATH must be set such that you
 have access to a couple of DART directories. Do something like the
-following at the MATLAB® prompt, using the real path to your DART
+following at the MATLAB prompt, using the real path to your DART
 installation:
 
 > \>\> addpath('path_to_dart/diagnostics/matlab','-BEGIN')  
 > \>\> addpath('path_to_dart/documentation/DART_LAB/matlab','-BEGIN')
 
 It's very convenient to put these it in your *\~/matlab/startup.m* so
-they get run every time MATLAB® starts up. DART provides an example
+they get run every time MATLAB starts up. DART provides an example
 `diagnostics/matlab/startup.m` that you can use. It is internally
 documented.
 
@@ -377,10 +377,10 @@ Your results should start out looking VERY SIMILAR and may diverge with time.
   
 The simplest way to determine if the installation is successful is to run some
 of the functions we have available in `DART/diagnostics/matlab/`. Usually, we
-launch MATLAB® from the `DART/models/lorenz_63/work` directory and use the
-MATLAB® *addpath* command to make the `DART/matlab/` functions available. In
+launch MATLAB from the `DART/models/lorenz_63/work` directory and use the
+MATLAB *addpath* command to make the `DART/matlab/` functions available. In
 this case, we know the true state of the model that is consistent with the
-observations. The following MATLAB® scripts compare the ensemble members with
+observations. The following MATLAB scripts compare the ensemble members with
 the truth and can calculate an error.
 
 <table>
@@ -455,7 +455,7 @@ working. Don't miss the opportunity to rotate the 'butterfly' plot.
 
 -----
 
-### What to do if the things **do not** look correct
+### What to do if things **do not** look correct
 
 FIXME ... tell them what to do here
 

@@ -31,6 +31,7 @@ from left to right: [Kevin Raeder](http://staff.ucar.edu/users/raeder),
 [Tim Hoar](http://staff.ucar.edu/users/thoar),
 Jonathan Hendricks, and
 [Moha El Gharamti](http://staff.ucar.edu/users/gharamti).  
+This is an old photo and does not show all of us\!
 
 <span id="contact" class="anchor"></span> [](#contact)  
 
@@ -58,6 +59,7 @@ DAReS Staff (alphabetically)
  - [Ben Johnson](http://staff.ucar.edu/users/johnsonb), Associate Scientist
  - [Kevin Raeder](http://staff.ucar.edu/users/raeder), Associate Scientist, CAM
  - [Glen Romine](http://staff.ucar.edu/users/romine), Project Scientist, WRF  
+ - [Jeff Steward](http://staff.ucar.edu/users/jsteward), Software Engineer
 
 <span id="supportstaff" class="anchor"></span> [](#supportstaff)  
 

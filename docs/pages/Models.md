@@ -280,7 +280,7 @@ supported because each requires modification of some subroutines and
 setup scripts in order to work with DART. The supported versions depend
 to some degree on the CESM component(s) which will be used as the
 assimilating model(s). See CAM-FV, POP, and CICE, below, and
-[CESM setup guidelines](CESM_setup_guidelines.md). In
+[CESM DART guidelines](CESM_DART_guidelines.html). In
 general, later versions of CESM can build the latest component models
 plus any earlier versions of the component models. For example, CESM2.0
 can build CAM-FV version 6, 5, 4, ... while CESM1.2.1 can build CAM-FV
@@ -843,7 +843,7 @@ There are four fundamental steps to running an OSSE from within DART:
 
 <span id="obs_blueprint" class="anchor"></span>
 
-## 1. Defining the observation metadata - the 'blueprint'.
+### 1. Defining the observation metadata - the 'blueprint'.
 
 There are lots of ways to define an observation sequence that DART can
 use as input for a perfect model experiment. If you have observations in
@@ -908,7 +908,7 @@ available in the
 
 <span id="run_pmo" class="anchor"></span>
 
-## 2. Generating the true state and harvesting the observation values - *perfect_model_obs*
+### 2. Generating the true state and harvesting the observation values - *perfect_model_obs*
 
 [perfect_model_obs](https://ncar.github.io/DART/api/v2.1.10/program/perfect_model_obs.html)
 reads the blueprint and an initial state and applies the appropriate
@@ -1033,7 +1033,7 @@ low-order models) can run *perfect_model_obs* very simply:
 
 <span id="run_filter" class="anchor"></span>
 
-## 3. Performing the assimilation experiment - *filter*
+### 3. Performing the assimilation experiment - *filter*
 
 This step is done with the program
 [filter](https://ncar.github.io/DART/api/v2.1.10/program/filter.html), which
@@ -1149,7 +1149,7 @@ however YOU run filter on your system!
 
 <span id="run_diagnostics" class="anchor"></span>
 
-## 4. ASSESS THE PERFORMANCE!
+### 4. ASSESS THE PERFORMANCE!
 
 All the concepts of spread, rmse, rank histograms that were taught in
 the DART tutorial and in DART_LAB should be applied now. Try the
@@ -1165,7 +1165,7 @@ The first two require the ```perfect_output.nc```.
 | *plot_total_err.m* | plots the evolution of the error (un-normalized) and ensemble spread of all state variables. |
 | *plot_ens_mean_time_series.m* | plots the evolution of a set of state variables - just the ensemble mean (and Truth, if available). *plot_ens_time_series.m* is actually a better choice if you can afford to write all/most of the ensemble members to the ```preassim.nc``` and ```filter_output.nc``` files. |
 
-## DON'T FORGET ABOUT THE OBSERVATION-SPACE DIAGNOSTICS\!
+### DON'T FORGET ABOUT THE OBSERVATION-SPACE DIAGNOSTICS\!
 
 <span id="adding_a_model" class="anchor"></span>  
 <span id="addingAmodelOverview" class="anchor"></span>
@@ -1180,7 +1180,7 @@ The first two require the ```perfect_output.nc```.
 
 <span id="own_model_requirements" class="anchor"></span> [](#own_model_requirements)
 
-### Requirements: if you have your own model
+## Requirements: if you have your own model
 
 [If you want to run your own model](Models.md#adding_a_model),
 all you need is an executable and some scripts to interface with DART - we have
@@ -1806,7 +1806,7 @@ Modify *shell_scripts/advance_model.csh* to:
 3.  Determine how many tasks you have, and how many ensemble members you
     have. Determine how many 'batches' of ensemble members must be done
     to advance all of them. With 20 tasks and 80 ensemble members, you
-    will need to loop 4 times, for example. clean, temporary directory,
+    will need to loop 4 times, (for example) clean the temporary directory,
     and
 4.  Loop over the following steps - each loop advances one ensemble
     member:

@@ -8,9 +8,11 @@ layout: default
 The DART Tutorial is intended to aid in the understanding of ensemble
 data assimilation theory and consists of step-by-step concepts and
 companion exercises with DART. The diagnostics in the tutorial use
-Matlab® (to see how to configure your environment to use Matlab and the
-DART diagnostics, see the documentation for
-[Configuring Matlab® for netCDF & DART](Getting_Starting.md#matlab)).
+Matlab®. To configure your environment to use Matlab and the
+DART diagnostics, see the 
+[Configuring Matlab® for netCDF & DART](Getting_Starting.md#matlab))
+section of the **Getting_Started** document.
+
 
 |            |              |
 | ---------- | ------------ |

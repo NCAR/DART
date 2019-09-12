@@ -15,25 +15,15 @@ the tutorial directory, and includes hands-on exercises at several points.
 <!-- In a workshop setting, the full tutorial materials and exercises took
 about 1.5 days to complete. -->
 
-<span id="Presentations"></span>
-
 -----
 
-## DART Tutorial Presentations
-
-Here are the PDF files for the presentation part of the tutorial:
-
- - [Section 1:](../DART_LAB/presentation/DART_LAB_Section01.pdf)
-   The basics in 1D.
- - [Section 2:](../DART_LAB/presentation/DART_LAB_Section02.pdf)
-   How should observations of a state variable impact an unobserved state variable?
-   Multivariate assimilation.
- - [Section 3:](../DART_LAB/presentation/DART_LAB_Section03.pdf)
-   Sampling error and localization.
- - [Section 4:](../DART_LAB/presentation/DART_LAB_Section04.pdf)
-   The Ensemble Kalman Filter (Perturbed Observations).
- - [Section 5:](../DART_LAB/presentation/DART_LAB_Section05.pdf)
-   Adaptive Inflation.
+|           |              |
+| --------- | ------------ |
+| Section&nbsp;1 | [The basics in 1D.](../DART_LAB/presentation/DART_LAB_Section01.pdf) |
+| Section&nbsp; 2 | [How should observations of a state variable impact an unobserved state variable? Multivariate assimilation.](../DART_LAB/presentation/DART_LAB_Section02.pdf) |
+| Section&nbsp; 3 | [Sampling error and localization.](../DART_LAB/presentation/DART_LAB_Section03.pdf) |
+| Section&nbsp; 4 | [The Ensemble Kalman Filter (Perturbed Observations).](../DART_LAB/presentation/DART_LAB_Section04.pdf) |
+| Section&nbsp; 5 | [Adaptive Inflation.](../DART_LAB/presentation/DART_LAB_Section05.pdf) |
 
 <span id="Matlab"></span>
 

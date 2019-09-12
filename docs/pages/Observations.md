@@ -696,11 +696,11 @@ system to another. `VERTISUNDEF` is typically used for column-integrated quantit
 
 ### PROGRAMS
 
-The *DART/observations/obs_converters* directory contains a variety of
+The **DART/observations/obs_converters** directory contains a variety of
 converter programs to read various external formats and convert the
 observations into the format required by DART.
 
-The current list of converters include:
+Each directory has at least one converter:
 
   - [AIRS](AIRS/AIRS.html) <!-- AURA -->
   - [Aviso+/CMEMS](AVISO/AVISO.html)

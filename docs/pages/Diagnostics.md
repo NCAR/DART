@@ -90,8 +90,8 @@ There are some namelist settings that control what files are output.
 | `output_priorinf_[mean,sd].nc` | 1&nbsp;timestep | the (new) posterior inflation information after assimilation |
 | `obs_seq.final` | | the model estimates of the observations (an integral part of the data assimilation process) |
 
-| from both | |
-| ------------- | --- |
+| from both |      |
+| --------- | ---- |
 | `dart_log.out` | the 'important' run-time output (each run of *filter* appends to this file; remove it or start at the bottom to see the latest values) |
 | `dart_log.nml` | the input parameters used for an experiment |
 
@@ -100,10 +100,10 @@ There are some namelist settings that control what files are output.
 All the information for each stage is contained in a single file that
 *may* have multiple timesteps.
 
-| from *perfect_model_obs* | | |
-| ---------------------------- | --- | --- |
-| `obs_seq.out` | | the synthetic observations at some predefined times and locations |
-| `perfect_output.nc` | N&nbsp;timesteps | a netCDF file containing the model trajectory - the true state |
+| from *perfect_model_obs* |      |      |
+| ------------------------ | ---- | ---- |
+| `obs_seq.out`       |             | the synthetic observations at some predefined times and locations |
+| `perfect_output.nc` | N timesteps | a netCDF file containing the model trajectory - the true state |
 
 There are some namelist settings that control what files are output. Depending on the settings for
       *input.nml &filter_nml:stages_to_write* and others ...
@@ -127,7 +127,7 @@ There are some namelist settings that control what files are output. Depending o
 ### First questions to ask
 
 **NOTE: the remainder of this document is written from the perspective
-of an experiment run with ```single_file_out=.true.*.``` The permutations
+of an experiment run with ```single_file_out=.true.``` The permutations
 of the file names is just too great to write exhaustive documentation.**
 
 After *filter* executes without error and produces an `obs_seq.final`
@@ -225,7 +225,7 @@ A list of all the DART QC values can be found in [this&nbsp;table](#qc_table).
   observation type. A successful forward operator must return a valid
   obs_val and an *istatus&nbsp;=&nbsp;0*. If the forward operator code returns
   different istatus values for different error types, you can set
-  *&filter_nml::output_forward_op_errors&nbsp;=&nbsp;*.true.** and rerun
+  *&filter_nml::output_forward_op_errors&nbsp;=&nbsp;.true.* and rerun
   *filter* to see exactly what error istatus codes are being set. See
   [the filter webpage](https://ncar.github.io/DART/api/v2.1.10/program/filter.html)
   for more information on how to use the 'output_forward_op_errors'
@@ -244,7 +244,7 @@ A list of all the DART QC values can be found in [this&nbsp;table](#qc_table).
   observation and it was skipped for this reason.  
     
 - If the DART QC values are 7, the observation value is too far away
-  from the ensemble mean. Set *&filter_nml::outlier_threshold&nbsp;=&nbsp;1*
+  from the ensemble mean. Set *&filter_nml::outlier_threshold&nbsp;=&nbsp;-1*
   to ignore this for now and rerun. In general, this is
   not the optimal strategy as the number of observations inconsistent
   with the ensemble is a very powerful indicator of the success or
@@ -363,10 +363,10 @@ distribution. A *working* implementation.
 [The DART Tutorial](dart_tutorial.md) has the
 best explanation of what to look for, what to change to improve the next
 experiment, etc. DART has an extensive set of diagnostics implemented in
-MATLAB®. To use them, make sure you have read the 
-[Configuring MATLAB®](Getting_Started.md#matlab) section.\
-[Configuring MATLAB® 1](Getting_Started.md#MyMatlab) section.\
-[Configuring MATLAB® 2](Getting_Started.md#spanmatlab) section.\
+MATLAB®. To use them, make sure you have read the
+[Configuring MATLAB®](Getting_Started.md#matlab) section.  
+[Configuring MATLAB® 1](Getting_Started.md#MyMatlab) section.  
+[Configuring MATLAB® 2](Getting_Started.md#spanmatlab) section.  
 [Configuring MATLAB® 3](Getting_Started.md#Configuring-MATLAB) section.  
 
 <!-- TJH FIXME what is the right link reference syntax -->
@@ -1101,8 +1101,6 @@ variables:
 
 <span id="alt_diagnostics"          class="anchor"></span> [](#alt_diagnostics)  
 <span id="ss_diagnostics_nonmatlab" class="anchor"></span> [](#ss_diagnostics_nonmatlab)  
-
------
 
 #### Non-MATLAB® state-space diagnostics
 
