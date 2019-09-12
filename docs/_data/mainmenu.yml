@@ -7,10 +7,6 @@ menu:
     submenu:
       - title: Getting Started
         url: /DART_development/pages/DART2_Starting.html
-      - title: DART_LAB
-        url: /DART_development/pages/dart_lab.html
-      - title: Tutorial
-        url: /DART_development/pages/dart_tutorial.html
       - title: Models
         url: /DART_development/pages/DART2_Documentation.html
       - title: Observations 
@@ -21,6 +17,10 @@ menu:
         url: /DART_development/pages/DART2_Miscellany.html
   - title: Research
     submenu:
+      - title: DART_LAB
+        url: /DART_development/pages/dart_lab.html
+      - title: Tutorial
+        url: /DART_development/pages/dart_tutorial.html
       - title: Projects
         url: /DART_development/pages/Research.html
       - title: CESM and DART

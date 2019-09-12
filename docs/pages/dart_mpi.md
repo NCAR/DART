@@ -3,9 +3,15 @@ title: Dart MPI
 layout: default
 ---
 
-# The MPI version of DART
+# DART parallelism
 
-### Introduction
+This document has two sections, the first is DART's use of MPI for the
+core DART routines, and the second section
+['Filter&nbsp;"async"&nbsp;Mode&nbsp;Diagrams'](#async0)
+describes the options for advancing models that may or may not 
+have their own parallel considerations.
+
+## Introduction
 
 The latest release of the DART system includes an MPI option. MPI stands
 for 'Message Passing Interface', and is both a library and run-time
@@ -46,21 +52,21 @@ program compile command and copy it.
 
 <span id="DART_MPI"></span>
 
-### DART use of MPI
+## DART use of MPI
 
 To run in parallel, only the DART *filter* program (and possibly the
 companion *wakeup_filter* program) need be compiled with the MPI
-scripts. All other DART executables should be compiled with a standard
-F90 compiler and are not MPI enabled. (And note again that *filter* can
+scripts. ~~All other DART executables should be compiled with a standard
+F90 compiler and are not MPI enabled.~~ (And note again that *filter* can
 still be built as a single executable like previous releases of DART;
 using MPI and running in parallel is simply an additional option.) To
 build a parallel version of the *filter* program, the *mkmf_filter*
-command needs to be called with the '-mpi' option to generate a Makefile
-which compiles with the MPI scripts instead of the Fortran compiler.
+command needs to be called with the '-mpi' option to generate a `Makefile`
+which compiles with the MPI scripts instead of the basic Fortran compiler.
 
 See the *quickbuild.csh* script in each `$DART/models/*/work` directory
 for the commands that need to be edited to enable the MPI utilities. You
-will also need to edit the $DART/mkmf/mkmf.template file to call the
+will also need to edit the `$DART/build_templates/mkmf.template` file to call the
 proper version of the MPI compile script if it does not have the default
 name, is not in a standard location on the system, or needs additional
 options set to select between multiple Fortran compilers.
@@ -69,7 +75,7 @@ MPI programs generally need to be started with a shell script called
 *mpirun* or *mpiexec*, but they also interact with any batch control
 system that might be installed on the cluster or parallel system.
 Parallel systems with multiple users generally run some sort of batch
-system (e.g. LSF, PBS, POE, LoadLeveler, etc). You submit a job request
+system (e.g. LSF, PBS, SLURM, POE, LoadLeveler, etc). You submit a job request
 to this system and it schedules which nodes are assigned to which jobs.
 Unfortunately the details of this vary widely from system to system;
 consult your local web pages or knowledgeable system admin for help
@@ -97,41 +103,36 @@ controls how *filter* interacts with the model.
 
 Choices include:
 
-<span id="async0"></span>
-
-  - async = 0
-    The model and filter programs are compiled into a single executable,
-    and when the model needs to advance, the filter program calls a
-    subroutine. See a [diagram](filter_async_modes.md#async0) which
+  - **async = 0**  
+    The model and *filter* programs are compiled into a single executable,
+    and when the model needs to advance, *filter* calls a
+    subroutine. See [the async 0 diagram](#async0) which
     illustrates this option.
-  - <span id="async2"></span> async = 2
+  - **async = 2**  
     The model is compiled into a sequential (single task) program. If
-    'filter' is running in parallel, each filter task will execute the
-    model independently to advance the group of ensembles. See a
-    [diagram](filter_async_modes.md#async2) which illustrates this
-    option.
-  - <span id="async4"></span> async = 4
+    *filter* is running in parallel, each filter task will execute the
+    model independently to advance the group of ensembles. See
+    [the async 2 diagram](#async2) which illustrates this option.
+  - **async = 4**  
     The model is compiled into an MPI program (parallel) and only
-    'filter' task 0 tells the startup script when it is time to advance
+    filter task 0 tells the startup script when it is time to advance
     the model. Each ensemble is advanced one by one, with the model
-    using all the processors to run in parallel. See a
-    [diagram](filter_async_modes.md#async4) which illustrates this
-    option.
-  - <span id="async5"></span> async ignored (sometimes referred to as
-    'async 5', but not a setting in the namelist)
+    using all the processors to run in parallel. See
+    [the async 4 diagram](#async4) which illustrates this option.
+  - **async ignored** (sometimes referred to as 'async 5', but not an actual namelist setting)    
     This is the way most large models run now. There is a separate
-    script, outside of filter, which runs the N copies of the model to
-    do the advance. Then filter is run, as an MPI program, and it only
+    script, outside of *filter*, which runs the N copies of the model to
+    do the advance. Then *filter* is run, as an MPI program, and it only
     assimilates for a single time and then exits. The external script
     manages the file motion between steps, and calls both the models and
-    filter in turn.
+    *filter* in turn.
 
 This release of DART has the restriction that if the model and the
-'filter' program are both compiled with MPI and are run in 'async=4'
+*filter* program are both compiled with MPI and are run in 'async=4'
 mode, that they both run on the same number of processors; e.g. if
-'filter' is run on 16 processors, the model must be started on 16
+*filter* is run on 16 processors, the model must be started on 16
 processors as well. Alternatively, if the user model is compiled as a
-single executable (async=2), 'filter' can run in parallel on any number
+single executable (async=2), *filter* can run in parallel on any number
 of processors and each model advance can be executed independently
 without the model having to know about MPI or parallelism.
 
@@ -240,4 +241,61 @@ parallel, but because the dataset size is larger than the physical
 memory on a node and must be divided and spread across multiple nodes to
 avoid paging to disk.
 
------
+<span id="async0"></span>  
+
+---
+
+## Filter async mode diagrams
+
+### Options for parallelism both in DART and in the model advances:
+
+### Simplest case, async=0:  
+![](../images/async0.gif)  
+This is a single MPI executable, with each call to the model being
+simply a subroutine call from each MPI task.  
+  
+<span id="async2"></span>  
+
+---
+  
+### Parallel advance, async=2:  
+![](../images/async2a.gif)  
+The *filter* executable is one MPI program, and the model is a single,
+sequential executable. Each MPI task uses the unix "system()" call to
+invoke a shell script (*advance_model.csh*) which runs the models as
+independent programs.  
+  
+Other views of how the async=2 option is structured; these may be more
+or less helpful.  
+
+#### Parallel advance, async=2:  
+![](../images/async2_v1.gif)  
+  
+#### Parallel advance, async=2, second version:  
+![](../images/async2_v2.gif)  
+  
+#### Parallel model advance, async=2,
+
+showing how data is communicated
+between filter and the model thru intermediate files.
+IC are 'initial condition' files, UD are 'updated' files.  
+![](../images/async2_wfiles.gif)  
+    
+<span id="async4"></span>  
+
+---
+
+### Parallel model advance, async=4:  
+![](../images/async4.gif)  
+The *filter* executable is one MPI program, and the *model* is also an MPI
+program. The filter executable communicates with the *runme_filter* shell
+script, which sequentially invokes *mpirun* to advance each of the model
+runs, one per ensemble member, still using *advance_model.csh*.  
+  
+   
+Parallel model advance, async=4, showing how data is communicated
+between *filter* and the model thru intermediate files.
+IC are 'initial condition' files, UD are 'updated' files.  
+![](../images/async4_wfiles.gif)  
+
+---
