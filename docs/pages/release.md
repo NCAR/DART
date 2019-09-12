@@ -14,7 +14,7 @@ The DART programs are highly portable, having been compiled with many
 Fortran 90 compilers and run on linux compute-servers, linux clusters,
 OSX laptops/desktops, SGI Altix clusters, supercomputers running AIX,
 and more. Read the
-[Customizations](Getting_Starting.md#customizations)
+[Customizations](Getting_Starting.html#customizations)
 section for help in building on new platforms.
 
 DART employs a modular programming approach to apply an Ensemble Kalman
@@ -27,8 +27,8 @@ observation being assimilated is applied to each of the states to
 generate the model's estimate of the observation. Comparing these
 estimates and their uncertainty to the observation and its uncertainty
 ultimately results in the adjustments to the model states. See the
-[DART_LAB](dart_lab.md) demos or read more
-[in the DART tutorial](Tutorial.md).
+[DART_LAB](dart_lab.html) demos or read more
+[in the DART tutorial](Tutorial.html).
 
 DART diagnostic output can be written that contains the model state
 before and after the adjustment, along with the ensemble mean and
@@ -407,7 +407,7 @@ are still supported in DART
 
 The *DART/models/template* directory contains sample files for adding a
 new model. See the 
-[Adding a Model](Models.md#adding_a_model)
+[Adding a Model](Models.html#adding_a_model)
 section of the DART web pages for more help on adding a new model.
 
 <span id="ChangedModels"></span>
@@ -526,9 +526,9 @@ section of the DART web pages for more help on adding a new model.
 
 **Better Web Pages.** We've put a lot of effort into expanding our
 documentation. For example, please check out
-[the MATLAB diagnostics section](Diagnostics.md#mat_obs)
+[the MATLAB diagnostics section](Diagnostics.html#mat_obs)
 or the pages outlining the
-[observation sequence file contents](Observations.md#obs_seq_overview).  
+[observation sequence file contents](Observations.html#obs_seq_overview).  
 
   - The MATLAB® diagnostic routines have been updated to remove the
     dependency on third-party toolboxes. These routines use the built-in

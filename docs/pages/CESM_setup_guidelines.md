@@ -1,16 +1,18 @@
 ---
-title: CESM Setup
+title: CESM and DART
 layout: default
 ---
 
 # CESM+DART setup
 
 [SET-UP](#CESM%20MODES) / [CESM+DART MODELS](#CESM+DART%20MODELS) /
-[SET-UP](#SETUP) / [INITIAL ENSEMBLE](#INITIALFILES) / [OUTPUT
-DIRECTORY](#OUTPUTDIRECTORY) / [HINTS](#HINTS) / [SPACE](#SPACE)
+[SET-UP](#SETUP) / [INITIAL ENSEMBLE](#INITIALFILES) /
+[OUTPUT DIRECTORY](#OUTPUTDIRECTORY) / [HINTS](#HINTS) /
+[SPACE](#SPACE) / [FAQ](#cesm_dart_faq)
+
  <span id="OVERVIEW"></span>
 
-## CESM+DART Setup Overview
+## CESM and DART Setup Overview
 
 If you found your way to this file without reading more basic DART help
 files, please read those first. `$DART/README.md` is a good place to find
@@ -46,8 +48,7 @@ modifications.
 
 #### CESM2
 
-CESM2 (expected release May, 2017) has several helpful improvements,
-from DART's perspective.
+CESM2 has several helpful improvements, from DART's perspective.
 
   - Reduced number of subroutines in DART's SourceMods.
   - "Multi-instance" capability enables the ensemble forecasts DART
@@ -70,7 +71,7 @@ from DART's perspective.
 
 These have been exploited most fully in the CAM interfaces to DART,
 since the other components' interfaces still use older CESMs. The
-cam-fv/shell_scripts can be used as a template for updating other
+`cam-fv/shell_scripts` can be used as a template for updating other
 models' scripting. The multi-cycling capability, with the short- and
 long-term archivers running as separate jobs at the end, results in
 assimilation jobs which rapidly fill the scratch space. Cam-fv's and
@@ -347,5 +348,85 @@ Space requirements (Gb per ensemble member) for several CAM resolutions.
 
 There are, no doubt, things missing from these lists, so don't struggle
 too long before contacting dart'at'ucar.edu.
+
+<span id="cesm_dart_faq"></span>
+
+-----
+
+### The CESM Climate Model and DART Frequently Asked Questions
+
+> How does DART interact with CESM?
+
+The CESM climate model comes with its own configuration, build, run, and
+archive scripts already. The DART distribution supplies a 'setup' script
+that calls the CESM scripts to build a new case, and then add a section
+to the CESM run script so the DART code will be run after each CESM
+model advance. The DART setup scripts are needed only when building a
+new case. At run-time the CESM run scripts are used to start the job.
+The CESM "multi-instance" capability is used to run multiple ensemble
+members as part of a single job.
+
+> I want to assimilate with one of the CESM models. Where do I start?
+
+We use the CESM framework to execute the CESM model components, and then
+call the DART assimilation via an addition to the standard CESM run
+script. We provide a set of setup scripts in our
+`DART/models/XXX/shell_scripts` directories, where `XXX` is currently
+one of: `cam`, `POP`, `clm`, or `CESM`. Start with the shell script, set
+the options you want there, and then run the script. It calls the
+standard CESM 'build_case' scripts, and stages the files that will be
+needed for assimilation. See comments in the appropriate setup script
+for more details of how to
+proceed.
+
+> I'm getting a mysterious run-time error from CESM about box rearranging.
+
+Certain versions of CESM (including CESM1_5_alpha02d) won't run with 3
+instances (ensemble members). We are unsure what other instance sizes
+fail. The error message is about box rearranging from
+box_rearrange.F90. This is a problem in CESM and should be reported via
+their Bugzilla process. 4 instances works
+fine.
+
+> I'm getting 'update_reg_list' errors trying to assimilate with POP.
+
+If you are trying to assimilate with POP and you get this error:
+
+~~~
+ERROR FROM:
+ routine: update_reg_list
+ message: max_reg_list_num ( 80) is too small ... increase
+~~~
+
+The most likely cause is that the POP-DART model interface code is
+trying to read the POP grid information and the default file is in the
+wrong kind of binary for this system (big-endian and not little-endian).
+At this point the easiest solution is to rebuild the DART executables
+with a flag to swap the bytes as it is reading binary files. For the
+Intel compiler, see the comments at the top of the mkmf file about
+adding '-convert bigendian' to the FFLAGS line.
+
+> I'm getting asked to confirm removing files when CESM is built.
+
+If you have the `rm` (remove) command aliased to require you to confirm
+removing files, the CESM build process will stop and wait for you to
+confirm removing the files. You should reply yes when prompted.
+
+If you have questions about the DART setup scripts and how they interact
+with CESM it is a good idea to set up a standalone CESM case without any
+DART scripts or commands to be sure you have a good CESM environment
+before trying to add DART. The DART setup script uses CESM scripts and
+commands and cannot change how those scripts behave in your environment.
+
+> I'm getting module errors when CESM is built.
+
+DART only uses the plain netCDF libraries for I/O. CESM can be
+configured to use several versions of netCDF including PIO, parallel
+netCDF, and plain netCDF. Be sure you have the correct modules loaded
+before you build CESM. If there are questions, try setting up a CESM
+case without DART and resolve any build errors or warnings there before
+using the DART scripts.
+
+\[[top](#)\]
 
 -----

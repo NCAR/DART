@@ -25,7 +25,7 @@ have access to all compilers on all platforms, so there are no
 guarantees. We are interested in your experience building the system, so
 please send us a note at dart @ ucar .edu
 
-<a name="requirements" class="anchor"></a> [](#requirements)   
+<span id="requirements" class="anchor"></span> [](#requirements)   
 
 -----
 
@@ -67,7 +67,7 @@ Additionally, what has proven to be *nice* (but not required) is:
     basic MATLAB®. No additional toolboxes are required. No third-party
     toolboxes are required.
 
-<a name="fortran90" class="anchor"></a> [](#fortran90)  
+<span id="fortran90" class="anchor"></span> [](#fortran90)  
 
 ### Requirements: a Fortran90 compiler
 
@@ -82,7 +82,7 @@ the following:
 Since recompiling the code is a necessity to experiment with different models, 
 there are no binaries to distribute.
 
-<a name="netCDFlib" class="anchor"></a> [](#netCDFlib)  
+<span id="netCDFlib" class="anchor"></span> [](#netCDFlib)  
 
 ### Requirements: the netCDF library
 
@@ -109,36 +109,7 @@ fortran interface routines may be in a separate library named
 `libnetcdff.a` (note the 2 "f"'s). In this case both libraries are
 required to build executables.
 
-<a name="own_model_requirements" class="anchor"></a> [](#own_model_requirements)  
-
-### Requirements: if you have your own model
-
-[If you want to run your own model](Models.md#adding_a_model), 
-all you need is an executable and some scripts to interface with DART - we have 
-templates and examples. If your model can be called as a subroutine, *life is good*,
-and the hardest part is usually a routine to pack the model
-state vector into one whopping array - and back. Again - we have
-templates, examples, and a [../../models/README.md](models/README.md)
-describing the required interfaces.
-  
-Starting with the Jamaica release, there is an option to compile with
-the MPI (Message Passing Interface) libraries in order to run the
-assimilation step in parallel on hardware with multiple CPUs. Note that
-this is optional; MPI is not required. If you do want to run in
-parallel, then we also require a working MPI library and appropriate
-cluster or SMP hardware. See the 
-[MPI intro](dart_mpi.html)
-for more information on running with the MPI option.  
-  
-One of the beauties of ensemble data assimilation is that even if
-(particularly if) your model is single-threaded, you can still run
-efficiently on parallel machines by dealing out each ensemble member (a
-unique instance of the model) to a separate processor. If your model
-cannot run single-threaded, fear not, DART can do that too, and simply
-runs each ensemble member one after another using all the processors for
-each instance of the model.
-
-<a name="download" class="anchor"></a> [](#download)  
+<span id="download" class="anchor"></span> [](#download)  
 
 \[[top](#)\]
 
@@ -159,13 +130,13 @@ with a directory named **my_path_to/DART**, which we call
 _**DARTHOME**_. Compiling the code in this tree (as is usually the case)
 will necessitate much more space.  
 
-<a name="installing" class="anchor"></a> [](#installing)  
+<span id="installing" class="anchor"></span> [](#installing)  
 
 \[[top](#)\]
 
 -----
 
-## Installing DART
+## Testing DART
 
 ### document conventions
 
@@ -183,7 +154,7 @@ And the contents of a file are enclosed in a box:
 &end
 ~~~
  
-<a name="customizations" class="anchor"></a> [](#customizations)  
+<span id="customizations" class="anchor"></span> [](#customizations)  
 
 ### Customizing the build scripts -- Overview.
 
@@ -218,7 +189,7 @@ an example namelist file for each program. The example namelist is
 called *input.nml._program_\_default*, so as not to clash with any
 existing `input.nml` that may exist in that directory.
 
-<a name="template" class="anchor"></a> [](#template)  
+<span id="template" class="anchor"></span> [](#template)  
 
 #### Building and Customizing the 'mkmf.template' file
 
@@ -252,7 +223,7 @@ LDFLAGS = $(FFLAGS) $(LIBS)
 | LD       | the name of the loader; typically, the same as the Fortran compiler |
 | NETCDF   | the location of your netCDF installation containing `netcdf.mod` and `typesizes.mod`. Note that the value of the *NETCDF* variable will be used by the *FFLAGS, LIBS,* and *LDFLAGS* variables. |
 
-<a name="path_names" class="anchor"></a> [](#path_names)  
+<span id="path_names" class="anchor"></span> [](#path_names)  
 
 #### Customizing the 'path_names_\*' file
 
@@ -261,7 +232,7 @@ each specific model, in this case: `DART/models/lorenz_63/work`. Since
 each model comes with its own set of files, the *path_names_&ast;* files
 need no customization.
 
-<a name="building" class="anchor"></a> [](#building)  
+<span id="building" class="anchor"></span> [](#building)  
 
 ### Building the Lorenz_63 DART project.
 
@@ -364,9 +335,7 @@ ensemble data assimilation. If you've been able to build the Lorenz 63
 model, you have correctly configured your `mkmf.template` and you can
 run anything in the tutorial.
 
-<a name="matlab"></a>\
-<a name="MyMatlab"></a>\
-<span id="spanmatlab" class="anchor"></span> [](#spanmatlab)
+<span id="matlab" class="anchor"></span> [](#matlab)
 
 \[[top](#)\]
 
@@ -390,7 +359,7 @@ they get run every time MATLAB® starts up. DART provides an example
 `diagnostics/matlab/startup.m` that you can use. It is internally
 documented.
 
-<a name="verify" class="anchor"></a> [](#verify)  
+<span id="verify" class="anchor"></span> [](#verify)  
 
 \[[top](#)\]
 
@@ -485,4 +454,8 @@ working. Don't miss the opportunity to rotate the 'butterfly' plot.
 \[[top](#)\]
 
 -----
+
+### What to do if the things **do not** look correct
+
+FIXME ... tell them what to do here
 

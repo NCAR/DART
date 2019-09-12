@@ -80,28 +80,3 @@ DAReS Support (alphabetically)
         
 ---
 
-<span id="DART" class="anchor"></span> [](#DART)  
-
-
-# The Data Assimilation Research Testbed Facility : DART
-
-<img width=80% alt="animation demonstrating the assimilation schematic"
-     src="../images/science_nuggets/AssimAnim.gif"/>
-
-The [Data Assimilation Research Testbed](https://ncar.github.io/DART/) **DART**, 
-is a software environment for making it easy to match a variety of data
-assimiliation methods to different numerical models and different kinds of
-observations. DART has been through the crucible of many compilers and platforms.
-It is ready for friendly use and has been used in several field programs
-requiring real-time forecasting.
-The DART source code and documentation may be downloaded from
-[https://github.com/NCAR/DART](https://github.com/NCAR/DART).
-
-The "Manhattan" version of DART was released on 15 March 2017.
-<img src="../images/DART_Manhattan_Announcement_tight.jpg" alt="DART Manhattan advertisement"/>
-
-If you want an idea of what it takes to build DART and run experiments 
-before downloading, look at the
-<A HREF="Starting.md">Getting Started</A> page.  
-
----

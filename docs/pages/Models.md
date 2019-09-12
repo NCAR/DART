@@ -10,11 +10,11 @@ DART. We're a small group, but we are willing to listen and will make
 every effort to incorporate improvements to the code. Email us at
 <dart@ucar.edu>.
 
-# DART documentation
+## DART documentation
 
-The DART distribution includes a full set of documentation. Once you
+~~The DART distribution includes a full set of documentation. Once you
 download DART, you may view the documentation offline by opening the
-*index.html* file in the top-level DART directory. If you want to
+*index.html* file in the top-level DART directory.~~ If you want to
 explore the documentation page without downloading DART, you may 
 [view the documentation for the Manhattan release](https://ncar.github.io/DART/api/v2.1.10/index.html).
 
@@ -26,7 +26,7 @@ explore the documentation page without downloading DART, you may
 
 ----- 
 
-## DART-supported models:
+# DART-supported models:
 
 There are two broad classes of models supported by DART. Some are
 'low-order' models, generally single-threaded, subroutine-callable, and
@@ -1174,7 +1174,40 @@ The first two require the ```perfect_output.nc```.
 
 -----
 
-# Adding a model to DART - Overview
+# Adding a model to DART - Overview  
+
+<!-- this is the start of the content from Getting_Started -->
+
+<span id="own_model_requirements" class="anchor"></span> [](#own_model_requirements)
+
+### Requirements: if you have your own model
+
+[If you want to run your own model](Models.md#adding_a_model),
+all you need is an executable and some scripts to interface with DART - we have
+templates and examples. If your model can be called as a subroutine, *life is good*,
+and the hardest part is usually a routine to pack the model
+state vector into one whopping array - and back. Again - we have
+templates, examples, and a [../../models/README.md](models/README.md)
+describing the required interfaces.
+ 
+Starting with the Jamaica release, there is an option to compile with
+the MPI (Message Passing Interface) libraries in order to run the
+assimilation step in parallel on hardware with multiple CPUs. Note that
+this is optional; MPI is not required. If you do want to run in
+parallel, then we also require a working MPI library and appropriate
+cluster or SMP hardware. See the
+[MPI intro](dart_mpi.html)
+for more information on running with the MPI option.
+ 
+One of the beauties of ensemble data assimilation is that even if
+(particularly if) your model is single-threaded, you can still run
+efficiently on parallel machines by dealing out each ensemble member (a
+unique instance of the model) to a separate processor. If your model
+cannot run single-threaded, fear not, DART can do that too, and simply
+runs each ensemble member one after another using all the processors for
+each instance of the model.
+
+<!-- this is the end of the content from Getting_Started -->
 
 DART is designed to work with many models *without* modifications to the
 DART routines **or** the model source code. DART can 'wrap around' your
@@ -1317,10 +1350,9 @@ precious few places.
 If your model is a separate executable, it would be wise to look at the
 heavily commented template script
 [models/template/shell_scripts/advance_model.csh](https://github.com/ncar/dart/models/template/shell_scripts/advance_model.csh)
-and then a few higher-order models to see how they do it. Become
-familiar with [DART's use of
-MPI](dart_mpi.html), the [options for
-parallelism](filter_async_modes.html), and
+and then a few higher-order models to see how they do it.
+Become familiar with [DART's use of MPI](dart_mpi.html), the
+[options for parallelism](filter_async_modes.html), and
 the *filter* namelist parameter
 [*async*](https://ncar.github.io/DART/api/v2.1.10/program/filter.html).
 
