@@ -13,6 +13,11 @@
 #                        ASSIM_INT_MINUTES support needs to be added to param.csh,
 #                        it is referenced in assim_advance.csh but not declared in param.csh
 
+# Set up environment. Current settings are for NCAR's Cheyenne
+module load mpt          # set this appropriately #%%%#
+module load nco          # set this appropriately #%%%#
+module load ncl/6.6.2    # set this appropriately #%%%#
+
 #  Set the assimilation parameters
 set NUM_ENS            = 50
 set ASSIM_INT_MINUTES  = 0   # 0 means use ASSIM_INT_HOURS

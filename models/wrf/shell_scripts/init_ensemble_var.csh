@@ -18,8 +18,6 @@ set initial_date = ${1}
 set paramfile    = ${2}
 source $paramfile
 
-module load ncl
-
 cd ${RUN_DIR}
 
 set gdate  = (`echo $initial_date 0h -g | ${DART_DIR}/models/wrf/work/advance_time`)

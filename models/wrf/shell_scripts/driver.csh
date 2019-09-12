@@ -29,8 +29,6 @@ set datefnl   =  2017042712 # target date   YYYYMMDDHH  # set this appropriately
 ########################################################################
 
 source $paramfile
-module load nco
-module load ncl
 
 echo `uname -a`
 cd ${RUN_DIR}

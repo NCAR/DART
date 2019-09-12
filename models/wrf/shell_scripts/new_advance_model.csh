@@ -79,8 +79,6 @@ set num_states = 1      # forcing option of only one model advance per execution
 
 # MULTIPLE DOMAINS - pass along the # of domains here?  We just default a value of 1 for the second variable, process is the ensemble member #
 
-module load nco 
-module load ncl 
 
 # Setting to vals > 0 saves wrfout files,
 # will save all member output files <= to this value
