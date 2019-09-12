@@ -7,6 +7,12 @@
 ; state for the target lateral boundaries.
 
 begin
+
+  err = NhlGetErrorObjectId()
+  setvalues err
+    "errFileName" : "add_perts.err"
+  end setvalues
+
  ens_mem_num = ""+MEM_NUM
  pert_bank_path = PERTS_DIR
 

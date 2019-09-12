@@ -106,6 +106,15 @@ EOF
 
       chmod +x nclrun3.out
       ./nclrun3.out >& add_perts.out
+
+      if ( -z add_perts.err ) then
+         echo "Perts added to member ${ensemble_member}"
+      else
+         echo "Error! Non-zero status returned from add_bank_perts.ncl. Check ${RUN_DIR}/advance_temp${ensemble_member}/add_perts.err."
+         cat add_perts.err
+         exit
+      endif
+
       ${MOVE} wrfvar_output.nc wrfinput_d01
    endif
 
