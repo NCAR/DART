@@ -74,7 +74,7 @@ echo filter_restart_d01.${icnum}   >> ${RUN_DIR}/filter_control${icnum}
 echo prior_d01.${icnum}            >> ${RUN_DIR}/filter_control${icnum}
 
 #  integrate the model forward in time
-${RUN_DIR}/new_advance_model.csh ${emember} 1 filter_control${icnum}
+${RUN_DIR}/new_advance_model.csh ${emember} 1 filter_control${icnum} $paramfile
 ${REMOVE} ${RUN_DIR}/filter_control${icnum}
 
 # move the output to the appropriate directory

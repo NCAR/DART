@@ -76,7 +76,8 @@ set process = $1
 set num_domains = $2
 set control_file = $3
 set num_states = 1      # forcing option of only one model advance per execution
-
+set paramfile = $4      # Need this to load modules/environment
+source $paramfile
 # MULTIPLE DOMAINS - pass along the # of domains here?  We just default a value of 1 for the second variable, process is the ensemble member #
 
 
