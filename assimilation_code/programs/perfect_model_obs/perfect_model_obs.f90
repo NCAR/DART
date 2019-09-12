@@ -4,9 +4,9 @@
 !
 ! $Id$
 
-program perfect_model_obs
+!> Program to build an obs_sequence file from simulated observations.
 
-! Program to build an obs_sequence file from simulated observations.
+program perfect_model_obs
 
 use        types_mod,     only : r8, i8, metadatalength, MAX_NUM_DOMS
 use    utilities_mod,     only : register_module, error_handler, &
@@ -805,8 +805,3 @@ end subroutine parse_filenames
 
 end program perfect_model_obs
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date: 2015-04-02 09:14:00 -0600 (Thu, 02 Apr 2015) e

@@ -160,8 +160,3 @@ end subroutine sample_mean_var
 
 end program correl_error
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

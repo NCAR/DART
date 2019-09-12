@@ -352,8 +352,3 @@ call finalize_mpi_utilities()
 
 end program integrate_model
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

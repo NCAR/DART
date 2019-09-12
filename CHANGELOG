@@ -866,11 +866,27 @@ and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
 - Better error and informational messages in various routines.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ MMM DD YYYY :: summary of changes in next Manhattan update $Revision$
++ MMM DD YYYY :: summary of changes in next Manhattan update    hash: NNNNNNN
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+- first GIT release
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
+- fixed bug in fill_inflation_restart tool which used the prior inflation mean
+  and sd for both prior and posterior inflation files.  now correctly uses the
+  posterior mean/sd if requested.
+
+- fixed a typo in the location test script that prevented it from running
+
+- additional functionality in the quad interpolation code, now supports grids
+  which start at 90 (north) and end at -90 (south).
+
+- if possible, send shorter MPI messages.  improves performance on some platforms
+  and MPI implementations.
+
+- add explicit call to initalize_utilities() where it was missing in a couple of
+  the WRF utility routines.
+
+- added an example of how to use a namelist to the text_to_obs.f90 observation
+  converter program.
+
+

@@ -4,7 +4,6 @@
 !
 ! DART $Id$
 
-
 !> open an obs_seq file and randomly change the error variance of N of 
 !> each obs type to a huge value before copying obs over to the output file. 
 !> the value of N is namelist-settable.  this effectively removes the
@@ -593,8 +592,3 @@ end subroutine print_metadata
 !---------------------------------------------------------------------
 end program obs_data_denial
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
