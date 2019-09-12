@@ -115,14 +115,13 @@ that you use to compile DART and must include the F90 interfaces.*
 
 Go into `models/lorenz_63/work` and run *quickbuild.csh*.
 
-> cd models/lorenz_63/work
-> ./quickbuild.csh 
+> cd models/lorenz_63/work  
+> ./quickbuild.csh  
 
 If it compiles, *:tada:*!  Run this series of commands to do a very basic test:
 
-> ./perfect_model_obs
-> ./filter
-
+> ./perfect_model_obs  
+> ./filter  
 
 If that runs, *:tada:* again!  Finally, if you have Matlab installed on
 your system add '$DART/diagnostics/matlab' to your matlab search path 
