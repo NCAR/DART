@@ -25,7 +25,7 @@ have access to all compilers on all platforms, so there are no
 guarantees. We are interested in your experience building the system, so
 please send us a note at dart @ ucar .edu
 
-<span id="requirements" class="anchor"></span> [](#requirements)  
+<span id="requirements" class="anchor"></span> [](#requirements)   
 
 -----
 
@@ -67,7 +67,7 @@ Additionally, what has proven to be *nice* (but not required) is:
     basic MATLAB®. No additional toolboxes are required. No third-party
     toolboxes are required.
 
-<span id="fortran90"></span>
+<span id="fortran90" class="anchor"></span> [](#fortran90)  
 
 ### Requirements: a Fortran90 compiler
 
@@ -82,7 +82,7 @@ the following:
 Since recompiling the code is a necessity to experiment with different models, 
 there are no binaries to distribute.
 
-<span id="netCDFlib"></span>  
+<span id="netCDFlib" class="anchor"></span> [](#netCDFlib)  
 
 ### Requirements: the netCDF library
 
@@ -109,11 +109,11 @@ fortran interface routines may be in a separate library named
 `libnetcdff.a` (note the 2 "f"'s). In this case both libraries are
 required to build executables.
 
-<span id="own_model_requirements"></span>  
+<span id="own_model_requirements" class="anchor"></span> [](#own_model_requirements)  
 
 ### Requirements: if you have your own model
 
-[If you want to run your own model](DART2_Documentation.html#adding_a_model), 
+[If you want to run your own model](Models.md#adding_a_model), 
 all you need is an executable and some scripts to interface with DART - we have 
 templates and examples. If your model can be called as a subroutine, *life is good*,
 and the hardest part is usually a routine to pack the model
@@ -183,7 +183,7 @@ And the contents of a file are enclosed in a box:
 &end
 ~~~
  
-<span id="customizations"></span>
+<span id="customizations" class="anchor"></span> [](#customizations)  
 
 ### Customizing the build scripts -- Overview.
 
@@ -218,7 +218,7 @@ an example namelist file for each program. The example namelist is
 called *input.nml._program_\_default*, so as not to clash with any
 existing `input.nml` that may exist in that directory.
 
-<span id="template"></span>
+<span id="template" class="anchor"></span> [](#template)  
 
 #### Building and Customizing the 'mkmf.template' file
 
@@ -252,7 +252,7 @@ LDFLAGS = $(FFLAGS) $(LIBS)
 | LD       | the name of the loader; typically, the same as the Fortran compiler |
 | NETCDF   | the location of your netCDF installation containing `netcdf.mod` and `typesizes.mod`. Note that the value of the *NETCDF* variable will be used by the *FFLAGS, LIBS,* and *LDFLAGS* variables. |
 
-<span id="path_names"></span>
+<span id="path_names" class="anchor"></span> [](#path_names)  
 
 #### Customizing the 'path_names_\*' file
 
@@ -261,7 +261,7 @@ each specific model, in this case: `DART/models/lorenz_63/work`. Since
 each model comes with its own set of files, the *path_names_&ast;* files
 need no customization.
 
-<span id="building"></span>
+<span id="building" class="anchor"></span> [](#building)  
 
 ### Building the Lorenz_63 DART project.
 

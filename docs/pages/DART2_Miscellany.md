@@ -251,7 +251,7 @@ applications of DART.
   
 If you really hate reading instructions you can try looking at the
 README in the top level directory. But if you run into problems please
-read the [full setup instructions](DART2_Starting.html#installing)
+read the [full setup instructions](Getting_Started.md#installing)
 before contacting us for help. We will start out suggesting you read
 those web pages first anyway.
 
@@ -445,10 +445,10 @@ values.
 
 This is a common problem, especially when adding a new observation type
 or trying to assimilate with a new model. But it can happen at any time
-and can be confusing about why nothing is changing. See [this web
-page](DART2_Diagnostics.html#DidItWork) for a list of common causes of
-the assimilation output state being the same as the input state, and how
-to determine which one is responsible.
+and can be confusing about why nothing is changing.
+See [the "Diagnostics" web page](Diagnostics.md#DidItWork)
+for a list of common causes of the assimilation output state being
+the same as the input state, and how to determine which one is responsible.
 
 > You have lots of namelists. How can I tell what to set?
 

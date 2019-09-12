@@ -29,9 +29,10 @@ from left to right: [Kevin Raeder](http://staff.ucar.edu/users/raeder),
 [Jeff Anderson](http://staff.ucar.edu/users/jla),
 [Nancy Collins](http://staff.ucar.edu/users/nancy),
 [Tim Hoar](http://staff.ucar.edu/users/thoar),
-[Jonathan Hendricks](http://staff.ucar.edu/browse/people/28028), and
-[Moha El Gharamti](http://staff.ucar.edu/users/gharamti).
-<span id="contact" class="anchor"></span>
+Jonathan Hendricks, and
+[Moha El Gharamti](http://staff.ucar.edu/users/gharamti).  
+
+<span id="contact" class="anchor"></span> [](#contact)  
 
 Our small group is comprised of experts in software design,
 algorithm development, large-model implementation and execution,
@@ -45,8 +46,9 @@ researchers interested in DA.
 Our central email address is **dart@ucar.edu**, which will hit
 'everyone' and find its way to the best person.
 The categories that follow are not set in stone, everyone has some
-expertise in all areas.
-<span id="regularstaff" class="anchor"></span>
+expertise in all areas.  
+
+<span id="regularstaff" class="anchor"></span> [](#regularstaff)  
 
 DAReS Staff (alphabetically)                                                          
  - [Jeff Anderson](http://staff.ucar.edu/users/jla), Scientist, algorithms
@@ -55,15 +57,17 @@ DAReS Staff (alphabetically)
  - [Tim Hoar](http://staff.ucar.edu/users/thoar), Associate Scientist, diagnostics, documentation
  - [Ben Johnson](http://staff.ucar.edu/users/johnsonb), Associate Scientist
  - [Kevin Raeder](http://staff.ucar.edu/users/raeder), Associate Scientist, CAM
- - [Glen Romine](http://staff.ucar.edu/users/romine), Project Scientist, WRF
-<span id="supportstaff" class="anchor"></span>
+ - [Glen Romine](http://staff.ucar.edu/users/romine), Project Scientist, WRF  
+
+<span id="supportstaff" class="anchor"></span> [](#supportstaff)  
 
 DAReS Support (alphabetically)
  - [Elizabeth Chapin](http://staff.ucar.edu/users/echapin), Senior Business Analyst
  - [Lisa Larson](http://staff.ucar.edu/users/larsonl), Administrative Assistant
  - [Taysia Peterson](http://staff.ucar.edu/users/taysiana), Administrative Assistant
  - [Mary Pronk](http://staff.ucar.edu/users/pronk), Administrator
-<span id="shipping" class="anchor"></span>
+
+<span id="shipping" class="anchor"></span> [](#shipping)  
 
 ### Shipping information:
 
@@ -73,9 +77,10 @@ DAReS Support (alphabetically)
 | NCAR                     | NCAR                     | 303 497 185          |
 | P.O. Box 3000            | 1850 Table Mesa Dr.      | 303 497 2483 (FAX)   |
 | Boulder, CO 80307-3000   | Boulder, CO 80305        |                      |
-      
+        
 ---
-<span id="DART" class="anchor"></span>
+
+<span id="DART" class="anchor"></span> [](#DART)  
 
 
 # The Data Assimilation Research Testbed Facility : DART
@@ -93,13 +98,10 @@ The DART source code and documentation may be downloaded from
 [https://github.com/NCAR/DART](https://github.com/NCAR/DART).
 
 The "Manhattan" version of DART was released on 15 March 2017.
-<img src="../images_dart2/DART_Manhattan_Announcement_tight.jpg" alt="DART Manhattan advertisement"/>
+<img src="../images/DART_Manhattan_Announcement_tight.jpg" alt="DART Manhattan advertisement"/>
 
 If you want an idea of what it takes to build DART and run experiments 
 before downloading, look at the
-<A HREF="DART2_Starting.md">Getting Started</A> page.  
+<A HREF="Starting.md">Getting Started</A> page.  
 
 ---
-  
-|     |     |
-|The National Center for Atmospheric Research is sponsored by the National Science Foundation.  Any opinions, findings and conclusions or recommendations expressed in this material do not necessarily reflect the views of the National Science Foundation. | ![National Science Foundation logo](images/nsf.png") |

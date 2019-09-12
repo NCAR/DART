@@ -3,16 +3,16 @@
 # excluding the repository name makes it easier to navigate when building locally
 menu:
   - title: Documentation
-    url: /DART_development/pages/DART2_Starting.html
+    url: /DART_development/pages/Getting_Started.html
     submenu:
       - title: Getting Started
-        url: /DART_development/pages/DART2_Starting.html
+        url: /DART_development/pages/Getting_Started.html
       - title: Models
-        url: /DART_development/pages/DART2_Documentation.html
+        url: /DART_development/pages/Models.html
       - title: Observations 
-        url: /DART_development/pages/DART2_Observations.html
+        url: /DART_development/pages/Observations.html
       - title: Diagnostics
-        url: /DART_development/pages/DART2_Diagnostics.html
+        url: /DART_development/pages/Diagnostics.html
       - title: Misc
         url: /DART_development/pages/DART2_Miscellany.html
   - title: Research
@@ -20,13 +20,13 @@ menu:
       - title: DART_LAB
         url: /DART_development/pages/dart_lab.html
       - title: Tutorial
-        url: /DART_development/pages/dart_tutorial.html
+        url: /DART_development/pages/Tutorial.html
       - title: Projects
         url: /DART_development/pages/Research.html
       - title: CESM and DART
         url: /DART_development/pages/CESM_setup_guidelines.html
   - title: About Us
-    url: /DART_development/pages/aboutus.html
+    url: /DART_development/pages/About_Us.html
   - title: Support
     url: /DART_development/pages/support.html
   - title: Releases

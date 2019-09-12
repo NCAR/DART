@@ -14,7 +14,7 @@ The DART programs are highly portable, having been compiled with many
 Fortran 90 compilers and run on linux compute-servers, linux clusters,
 OSX laptops/desktops, SGI Altix clusters, supercomputers running AIX,
 and more. Read the
-[Customizations](https://www.image.ucar.edu/DAReS/DART/DART2_Starting.php#customizations)
+[Customizations](Getting_Starting.md#customizations)
 section for help in building on new platforms.
 
 DART employs a modular programming approach to apply an Ensemble Kalman
@@ -27,8 +27,8 @@ observation being assimilated is applied to each of the states to
 generate the model's estimate of the observation. Comparing these
 estimates and their uncertainty to the observation and its uncertainty
 ultimately results in the adjustments to the model states. See the
-[DART\_LAB](../DART_LAB/DART_LAB.html) demos or read more [in the DART
-tutorial](../tutorial/index.html).
+[DART_LAB](dart_lab.md) demos or read more
+[in the DART tutorial](Tutorial.md).
 
 DART diagnostic output can be written that contains the model state
 before and after the adjustment, along with the ensemble mean and
@@ -40,7 +40,7 @@ inherently portable and contain all the necessary metadata to interpret
 the contents with other analysis programs such as NCL, R, etc.
 
 To get started running with Lorenz 63 model refer to
-[Getting Started](Manhattan_getting_started.html)
+[Getting FIXME Started](Manhattan_getting_started.html)
 
 <span id="CurrentUsers"></span>
 
@@ -64,10 +64,10 @@ structure looks like :
   - *models*
   - *observations*
 
-We suggest that current users checkout a fresh version of Manhattan in a
+~~We suggest that current users checkout a fresh version of Manhattan in a
 new location. To see which files need to be moved, run 'svn status' on
 your original checked out version. Anything with an M or ? in the first
-column needs to be moved to the new location in the new tree. Please
+column needs to be moved to the new location in the new tree.~~ Please
 [contact](mailto:dart@ucar.edu) DART if you have any issues migrating
 your existing code to the new tree structure.
 
@@ -102,8 +102,8 @@ compatible with the Lanai release (13 Dec 2013):
     namelist items in the \&filter_nml namelist:
     `'input_state_file_list'` and `'output_state_file_list'` .
 
-2.  The information formerly in *Prior_Diag.nc* and
-    *Posterior_Diag.nc* has been moved. If you are reading and writing
+2.  The information formerly in `Prior_Diag.nc` and
+    `Posterior_Diag.nc` has been moved. If you are reading and writing
     ensemble members from different files, the state information, the
     ensemble mean and standard deviation, and the inflation mean and
     standard deviation will all be read and written to separate files:  
@@ -407,7 +407,7 @@ are still supported in DART
 
 The *DART/models/template* directory contains sample files for adding a
 new model. See the 
-[Adding a Model](http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#adding_a_model)
+[Adding a Model](Models.md#adding_a_model)
 section of the DART web pages for more help on adding a new model.
 
 <span id="ChangedModels"></span>
@@ -526,9 +526,9 @@ section of the DART web pages for more help on adding a new model.
 
 **Better Web Pages.** We've put a lot of effort into expanding our
 documentation. For example, please check out
-[the MATLAB diagnostics section](http://www.image.ucar.edu/DAReS/DART/DART2_Diagnostics.php#mat_obs)
+[the MATLAB diagnostics section](Diagnostics.md#mat_obs)
 or the pages outlining the
-[observation sequence file contents](http://www.image.ucar.edu/DAReS/DART/DART2_Observations.php#obs_seq_overview).  
+[observation sequence file contents](Observations.md#obs_seq_overview).  
 
   - The MATLAB® diagnostic routines have been updated to remove the
     dependency on third-party toolboxes. These routines use the built-in
@@ -538,9 +538,8 @@ or the pages outlining the
     many MATLAB® versions (which is no small trick considering how many non-backward-compatible
     changes they have made!).
   
-But there's always more to add. **Please [let us
-know](http://www2.cisl.ucar.edu/image/software/dart/suggestion-box)
-where we are lacking.**
+But there's always more to add.
+**Please use the GitHub Wiki or Issues facilities to let us know where we are lacking or what doesn't work.**
 
 <span id="NewUtilities"></span>
 

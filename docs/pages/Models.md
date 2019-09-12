@@ -904,7 +904,7 @@ a working *model_interpolate()*.
 
 More information about creating observation sequence files for OSSE's is
 available in the 
-[Synthetic Observations section](DART2_Observations.md#obs_synthetic).
+[Synthetic Observations section](Observations.md#obs_synthetic).
 
 <span id="run_pmo" class="anchor"></span>
 
@@ -1071,7 +1071,7 @@ ensemble spread for that observation, and (optionally), the actual prior
 and posterior ensemble estimates of that observation. Rather than
 replicate the observation metadata for each of these, the single
 metadata is shared for all these 'copies' of the observation. See
-[An overview of the observation sequence](DART2_Observations.md#obs_seq_overview)
+[An overview of the observation sequence](Observations.md#obs_seq_overview)
 for more detail.
 *filter* also produces a run-time log file that can greatly aid in
 determining what went wrong if the program terminates abnormally.  
@@ -1154,7 +1154,7 @@ however YOU run filter on your system!
 All the concepts of spread, rmse, rank histograms that were taught in
 the DART tutorial and in DART_LAB should be applied now. Try the
 techniques described in the 
-[Did my experiment work?](DART2_Diagnostics.md#DidItWork) section.
+[Did my experiment work?](Diagnostics.md#DidItWork) section.
 The 'big three' state-space diagnostics are repeated here because 
 they are so important.
 The first two require the ```perfect_output.nc```.
