@@ -77,7 +77,7 @@ while ( $n <= $NUM_ENS )
    sleep 3
    ${COPY} ${RUN_DIR}/add_bank_perts.ncl ${RUN_DIR}/advance_temp${n}/.
 
-   set cmd3 = "ncl 'MEM_NUM=${n}' ${RUN_DIR}/advance_temp${n}/add_bank_perts.ncl"
+   set cmd3 = "ncl 'MEM_NUM=${n}' 'PERTS_DIR="\""${PERTS_DIR}"\""' ${RUN_DIR}/advance_temp${n}/add_bank_perts.ncl"
    ${REMOVE} ${RUN_DIR}/advance_temp${n}/nclrun3.out
           cat >!    ${RUN_DIR}/advance_temp${n}/nclrun3.out << EOF
           $cmd3

@@ -541,7 +541,7 @@ EOF
 #         mpiexec_mpt dplace -s 1  ${CENTRALDIR}/WRF_RUN/da_wrfvar.exe >>&! out.wrfvar
           cp fg wrfvar_output
           cp ${CENTRALDIR}/add_bank_perts.ncl .
-          set cmd3 = "ncl 'MEM_NUM=${ensemble_member}' ${CENTRALDIR}/advance_temp${ensemble_member}/add_bank_perts.ncl"
+          set cmd3 = "ncl 'MEM_NUM=${ensemble_member}' 'PERTS_DIR="\""${PERTS_DIR}"\""' ${CENTRALDIR}/advance_temp${ensemble_member}/add_bank_perts.ncl"
           ${REMOVE} nclrun3.out
           cat >! nclrun3.out << EOF
           $cmd3

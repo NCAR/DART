@@ -35,6 +35,7 @@ set OUTPUT_DIR       = ${BASE_DIR}/output
 set ICBC_DIR         = ${BASE_DIR}/icbc
 set POST_STAGE_DIR   = ${BASE_DIR}/post
 set OBS_DIAG_DIR     = ${BASE_DIR}/obs_diag
+set PERTS_DIR        = ${BASE_DIR}/perts
 
 #  Directories that can be used by many things
 set SHELL_SCRIPTS_DIR = ${BASE_DIR}/scripts

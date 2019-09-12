@@ -8,7 +8,7 @@
 
 begin
  ens_mem_num = ""+MEM_NUM
- pert_bank_path = "/glade/work/thoar/DART/clean_rma_trunk/models/wrf/tutorial/perts"   ; set this appropriately #%%%#
+ pert_bank_path = PERTS_DIR
 
 ; perturbation scaling:
  scale_T = 1.3
