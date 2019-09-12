@@ -20,6 +20,30 @@ source $paramfile
 
 cd ${RUN_DIR}
 
+# KRF Generate the i/o lists in rundir automatically when initializing the ensemble
+set num_ens = ${NUM_ENS}
+set input_file_name  = "input_list_d01.txt"
+set input_file_path  = "./advance_temp"
+set output_file_name = "output_list_d01.txt"
+
+set n = 1
+
+if ( -e $input_file_name )  rm $input_file_name
+if ( -e $output_file_name ) rm $output_file_name
+
+while ($n <= $num_ens)
+
+ set     ensstring = `printf %04d $n`
+ set  in_file_name = ${input_file_path}${n}"/wrfinput_d01"
+ set out_file_name = "filter_restart_d01."$ensstring
+
+ echo $in_file_name  >> $input_file_name
+ echo $out_file_name >> $output_file_name
+
+ @ n++
+end
+###
+
 set gdate  = (`echo $initial_date 0h -g | ${DART_DIR}/models/wrf/work/advance_time`)
 set gdatef = (`echo $initial_date ${ASSIM_INT_HOURS}h -g | ${DART_DIR}/models/wrf/work/advance_time`)
 set wdate  =  `echo $initial_date 0h -w | ${DART_DIR}/models/wrf/work/advance_time`
