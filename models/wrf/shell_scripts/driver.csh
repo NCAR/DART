@@ -46,6 +46,8 @@ else
   exit
 endif
 
+touch $RUN_DIR/cycle_started_${datea}
+
 while ( 1 == 1 )
 
    if ( ! -d ${OUTPUT_DIR}/${datea} && $restore == 1 ) then        	
