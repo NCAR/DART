@@ -32,9 +32,9 @@ advances in ensemble DA to a broad community of users by removing the
 implementation-specific peculiarities of one-off DA systems.
 
 <center>
-<a href="images/science_nuggets/AssimAnim.gif"><img src="images/science_nuggets/AssimAnim.gif" width="30%" alt="assim graphic" /></a>&nbsp;
+<img src="images/science_nuggets/AssimAnim.gif" width="30%" alt="assim graphic" />&nbsp;
 <a href="images/DART_Manhattan_Announcement_lowres.jpg"><img src="images/DART_Manhattan_Announcement_lowres.jpg" width="25%" alt="manhattan image" /></a>&nbsp;
-<td><a href="images/DARTspaghettiSquare.gif"><img src="images/DARTspaghettiSquare.gif" width="27%" alt="spaghetti" /></a></td>
+<img src="images/DARTspaghettiSquare.gif" width="27%" alt="spaghetti" />
 </center>  
 
 DART is a software environment for making it easy to match a variety of data
