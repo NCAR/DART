@@ -9,7 +9,7 @@ banner-button-url: https://github.com/NCAR/DART_development
 
 # What is the Data Assimilation Research Testbed (DART)?
   
-![](images/science_nuggets/AssimAnim.gif)
+![](DART_development/images/science_nuggets/AssimAnim.gif)
 
 DART is a community facility for ensemble DA developed and maintained by
 the Data Assimilation Research Section (DAReS) at the National Center for
@@ -27,7 +27,7 @@ DART also provides a framework for developing, testing, and distributing
 advances in ensemble DA to a broad community of users by removing the
 implementation-specific peculiarities of one-off DA systems.  
 
-![](images/DART_flow_with_scripts.png)
+![](DAT_development/images/DART_flow_with_scripts.png)
 
 DART employs a modular programming approach to apply an Ensemble Kalman Filter
 which modifies the underlying models toward a state that is more consistent with
