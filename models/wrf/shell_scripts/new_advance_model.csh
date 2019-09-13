@@ -269,8 +269,7 @@ EOF
 #   ${CENTRALDIR}/dart_to_wrf >&! out.dart_to_wrf
 #   ${REMOVE} dart_wrf_vector
 
-  set stuff_vars =   ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
-                     U10 V10 T2 Q2 PSFC )
+  set stuff_vars = $increment_vars_a
 
 # may want multiple lists here, e.g. do we want w from the analysis?
 
@@ -793,11 +792,6 @@ EOF
 #   # create new input to DART (taken from "wrfinput")
 #   ${CENTRALDIR}/wrf_to_dart >&! out.wrf_to_dart
 #   ${MOVE} dart_wrf_vector ${CENTRALDIR}/${output_file}
-set extract_vars_a = ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
-                     U10 V10 T2 Q2 PSFC TH2 TSLB SMOIS TSK RAINC RAINNC GRAUPELNC )
-set extract_vars_b = ( U V W PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN H_DIABATIC \
-                     U10 V10 T2 Q2 PSFC TH2 TSLB SMOIS TSK RAINC RAINNC GRAUPELNC \
-                     REFL_10CM VT_DBZ_WT )
   set num_vars = $#extract_vars_a
   set extract_str_a = ''
   set i = 1

@@ -50,15 +50,14 @@ set GRIB_DATA_DIR     = /glade/p/work/USER/WPS/GRIB   # set this appropriately #
 set GRIB_SRC          = 'GFS'                         # set this appropriately #%%%#
 
 # list of variables for extraction and cycling
-################################################################
-# IMPORTANT - SHOULD MATCH those set in new_advance_model.csh  #
-################################################################
-
-set extract_vars_a = ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
-                    U10 V10 T2 Q2 PSFC TSLB SMOIS TSK RAINC RAINNC GRAUPELNC )
-set cycle_vars_a =   ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
-                  U10 V10 T2 Q2 PSFC TSLB SMOIS TSK )
-set increment_vars_a = ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN H_DIABATIC U10 V10 T2 Q2 PSFC )
+set extract_vars_a   = ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
+                         U10 V10 T2 Q2 PSFC TSLB SMOIS TSK RAINC RAINNC GRAUPELNC )
+set extract_vars_b   = ( U V W PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
+                         U10 V10 T2 Q2 PSFC TSLB SMOIS TSK RAINC RAINNC GRAUPELNC \
+                         REFL_10CM VT_DBZ_WT )
+set cycle_vars_a     =   ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
+                           U10 V10 T2 Q2 PSFC TSLB SMOIS TSK )
+set increment_vars_a = ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN U10 V10 T2 Q2 PSFC )
 
 #  Diagnostic parameters
 set OBS_VERIF_DAYS      = 7
