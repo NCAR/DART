@@ -33,14 +33,14 @@ if ( -e $output_file_name ) rm $output_file_name
 
 while ($n <= $num_ens)
 
- set     ensstring = `printf %04d $n`
- set  in_file_name = ${input_file_path}${n}"/wrfinput_d01"
- set out_file_name = "filter_restart_d01."$ensstring
+   set     ensstring = `printf %04d $n`
+   set  in_file_name = ${input_file_path}${n}"/wrfinput_d01"
+   set out_file_name = "filter_restart_d01."$ensstring
 
- echo $in_file_name  >> $input_file_name
- echo $out_file_name >> $output_file_name
+   echo $in_file_name  >> $input_file_name
+   echo $out_file_name >> $output_file_name
 
- @ n++
+   @ n++
 end
 ###
 
