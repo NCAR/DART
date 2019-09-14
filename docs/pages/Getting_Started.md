@@ -381,8 +381,8 @@ launch MATLAB from the `DART/models/lorenz_63/work` directory and use the
 MATLAB *addpath* command to make the `DART/matlab/` functions available. In
 this case, we know the true state of the model that is consistent with the
 observations. The following MATLAB scripts compare the ensemble members with
-the truth and can calculate an error.
-
+the truth and can calculate an error.  
+  
 <table>
 <tr>
 <td width="50%">
@@ -441,18 +441,19 @@ the truth and can calculate an error.
 <img src="../images/lorenz_63_ens_time_series.png" width="500" alt="xxxx" />
 </td>
 </tr>
-</table>
-
+</table>  
+   
 From the *plot_ens_time_series* graphic, you can see the individual
 green ensemble members getting more constrained as time evolves. If your
 figures look similar to these, that's pretty much what you're looking
 for and you should feel pretty confident that everything is
-working. Don't miss the opportunity to rotate the 'butterfly' plot.
-
+working. Don't miss the opportunity to rotate the 'butterfly' plot.  
+  
 \[[top](#)\]
-
+  
 -----
-
+   
 ### What to do if things **do not** look correct
-
+  
 FIXME ... tell them what to do here
+
