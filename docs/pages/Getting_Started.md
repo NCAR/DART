@@ -386,11 +386,12 @@ the truth and can calculate an error.
 <table>
 <tr>
 <td width="50%">
+<pre>
+<code>
+[unix prompt] cd DART/models/lorenz_63/work
+[unix prompt] matlab -nodesktop
+(lots of startup messages I'm skipping)
 
-    [unix prompt] cd DART/models/lorenz_63/work
-    [unix prompt] matlab -nodesktop
-     (lots of startup messages I'm skipping)
-    
     >> addpath ../../../diagnostics/matlab
     >> plot_total_err
     Input name of true model trajectory file;
@@ -404,15 +405,15 @@ the truth and can calculate an error.
     >> plot_ens_time_series
     Input name of ensemble trajectory file;
     <cr> for preassim.nc
-    
+
     Comparing true_state.nc and  
               preassim.nc  
     Using Variable state IDs 1  2  3  
-    
+
     pinfo =  
-    
+
       struct with fields:  
-    
+
                      model: 'Lorenz_63'  
                    def_var: 'state'  
             num_state_vars: 1  
@@ -432,7 +433,8 @@ the truth and can calculate an error.
         time_series_length: 200   
                        var: 'state'  
                   var_inds: [1 2 3]
-
+</code>
+</pre>
 </td>
 <td width="50%">
 <img src="../images/lorenz_63_total_err.png"       width="500" alt="xxxx" /><br />  
