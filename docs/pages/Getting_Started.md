@@ -386,53 +386,53 @@ the truth and can calculate an error.
 <table>
 <tr>
 <td width="50%">
-<pre>
-&lt;unix prompt&gt; cd DART/models/lorenz_63/work
-&lt;unix prompt&gt; matlab -nodesktop
- (lots of startup messages I&#39;m skipping)
 
-&gt;&gt; addpath ../../../diagnostics/matlab
-&gt;&gt; plot_total_err
-Input name of true model trajectory file;
-&lt;cr&gt; for perfect_output.nc
-perfect_output.nc
-Input name of ensemble trajectory file;
-&lt;cr&gt; for preassim.nc
-preassim.nc
-Comparing true_state.nc and
-          preassim.nc
-&gt;&gt; plot_ens_time_series
-Input name of ensemble trajectory file;
-&lt;cr&gt; for preassim.nc
+    [unix prompt] cd DART/models/lorenz_63/work
+    [unix prompt] matlab -nodesktop
+     (lots of startup messages I'm skipping)
+    
+    >> addpath ../../../diagnostics/matlab
+    >> plot_total_err
+    Input name of true model trajectory file;
+    <cr> for perfect_output.nc
+    perfect_output.nc
+    Input name of ensemble trajectory file;
+    <cr> for preassim.nc
+    preassim.nc
+    Comparing true_state.nc and
+              preassim.nc
+    >> plot_ens_time_series
+    Input name of ensemble trajectory file;
+    <cr> for preassim.nc
+    
+    Comparing true_state.nc and  
+              preassim.nc  
+    Using Variable state IDs 1  2  3  
+    
+    pinfo =  
+    
+      struct with fields:  
+    
+                     model: 'Lorenz_63'  
+                   def_var: 'state'  
+            num_state_vars: 1  
+                num_copies: 20  
+           num_ens_members: 20  
+          ensemble_indices: [1 2 3 ... 18 19 20]  
+             min_state_var: 1  
+             max_state_var: 3  
+            def_state_vars: [1 2 3]  
+                     fname: 'preassim.nc'  
+                truth_file: 'true_state.nc'  
+                diagn_file: 'preassim.nc'  
+                truth_time: [1 200]  
+                diagn_time: [1 200]   
+                      vars: {'state'}   
+                      time: [200x1 double]  
+        time_series_length: 200   
+                       var: 'state'  
+                  var_inds: [1 2 3]
 
-Comparing true_state.nc and  
-          preassim.nc  
-Using Variable state IDs 1  2  3  
-
-pinfo =  
-
-  struct with fields:  
-
-                 model: 'Lorenz_63'  
-               def_var: 'state'  
-        num_state_vars: 1  
-            num_copies: 20  
-       num_ens_members: 20  
-      ensemble_indices: [1 2 3 ... 18 19 20]  
-         min_state_var: 1  
-         max_state_var: 3  
-        def_state_vars: [1 2 3]  
-                 fname: 'preassim.nc'  
-            truth_file: 'true_state.nc'  
-            diagn_file: 'preassim.nc'  
-            truth_time: [1 200]  
-            diagn_time: [1 200]   
-                  vars: {'state'}   
-                  time: [200x1 double]  
-    time_series_length: 200   
-                   var: 'state'  
-              var_inds: [1 2 3]
-</pre>
 </td>
 <td width="50%">
 <img src="../images/lorenz_63_total_err.png"       width="500" alt="xxxx" /><br />  
