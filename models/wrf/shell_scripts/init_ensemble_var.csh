@@ -18,9 +18,31 @@ set initial_date = ${1}
 set paramfile    = ${2}
 source $paramfile
 
-module load ncl
-
 cd ${RUN_DIR}
+
+# KRF Generate the i/o lists in rundir automatically when initializing the ensemble
+set num_ens = ${NUM_ENS}
+set input_file_name  = "input_list_d01.txt"
+set input_file_path  = "./advance_temp"
+set output_file_name = "output_list_d01.txt"
+
+set n = 1
+
+if ( -e $input_file_name )  rm $input_file_name
+if ( -e $output_file_name ) rm $output_file_name
+
+while ($n <= $num_ens)
+
+   set     ensstring = `printf %04d $n`
+   set  in_file_name = ${input_file_path}${n}"/wrfinput_d01"
+   set out_file_name = "filter_restart_d01."$ensstring
+
+   echo $in_file_name  >> $input_file_name
+   echo $out_file_name >> $output_file_name
+
+   @ n++
+end
+###
 
 set gdate  = (`echo $initial_date 0h -g | ${DART_DIR}/models/wrf/work/advance_time`)
 set gdatef = (`echo $initial_date ${ASSIM_INT_HOURS}h -g | ${DART_DIR}/models/wrf/work/advance_time`)
@@ -55,7 +77,7 @@ while ( $n <= $NUM_ENS )
    sleep 3
    ${COPY} ${RUN_DIR}/add_bank_perts.ncl ${RUN_DIR}/advance_temp${n}/.
 
-   set cmd3 = "ncl 'MEM_NUM=${n}' ${RUN_DIR}/advance_temp${n}/add_bank_perts.ncl"
+   set cmd3 = "ncl 'MEM_NUM=${n}' 'PERTS_DIR="\""${PERTS_DIR}"\""' ${RUN_DIR}/advance_temp${n}/add_bank_perts.ncl"
    ${REMOVE} ${RUN_DIR}/advance_temp${n}/nclrun3.out
           cat >!    ${RUN_DIR}/advance_temp${n}/nclrun3.out << EOF
           $cmd3
@@ -84,6 +106,15 @@ EOF
 
       chmod +x nclrun3.out
       ./nclrun3.out >& add_perts.out
+
+      if ( -z add_perts.err ) then
+         echo "Perts added to member ${n}"
+      else
+         echo "ERROR! Non-zero status returned from add_bank_perts.ncl. Check ${RUN_DIR}/advance_temp${n}/add_perts.err."
+         cat add_perts.err
+         exit
+      endif
+
       ${MOVE} wrfvar_output.nc wrfinput_d01
    endif
 

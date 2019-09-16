@@ -29,8 +29,6 @@ set datefnl   =  2017042712 # target date   YYYYMMDDHH  # set this appropriately
 ########################################################################
 
 source $paramfile
-module load nco
-module load ncl
 
 echo `uname -a`
 cd ${RUN_DIR}
@@ -45,6 +43,8 @@ else
   echo "please enter a date: yyyymmddhh"
   exit
 endif
+
+touch $RUN_DIR/cycle_started_${datea}
 
 while ( 1 == 1 )
 
@@ -122,9 +122,9 @@ while ( 1 == 1 )
    set n = 1
    while ( $n <= $NUM_ENS )
       if ( $SUPER_PLATFORM == 'cheyenne' ) then   # can't pass along arguments in the same way
-         $sub_command -v mem_num=${n},date=${datep},domain=${domains} ${SHELL_SCRIPTS_DIR}/prep_ic.csh
+         $sub_command -v mem_num=${n},date=${datep},domain=${domains},paramf=${paramfile} ${SHELL_SCRIPTS_DIR}/prep_ic.csh
       else
-         $sub_command " ${SHELL_SCRIPTS_DIR}/prep_ic.csh ${n} ${datep} ${dn} "
+         $sub_command " ${SHELL_SCRIPTS_DIR}/prep_ic.csh ${n} ${datep} ${dn} ${paramfile} "
       endif
       @ n++
    end  # loop through ensemble members
@@ -148,7 +148,7 @@ while ( 1 == 1 )
             if ( $loop > 60 ) then    # wait 5 minutes for the ic file to be ready, else run manually
                echo "gave up on ic member $n - redo"
                # TJH this is not the command for cheyenne, why not $sub_command from above
-               ${SHELL_SCRIPTS_DIR}/prep_ic.csh ${n} ${datep} ${dn}
+               ${SHELL_SCRIPTS_DIR}/prep_ic.csh ${n} ${datep} ${dn} ${paramfile}
                # TJH the job queued above is still queued and should be killed ...
             endif
          endif
@@ -525,6 +525,8 @@ while ( 1 == 1 )
       ${MOVE} ${RUN_DIR}/prior_d01.${ensstring}             ${OUTPUT_DIR}/${datea}/PRIORS/.
       ${REMOVE} start_member_${n} done_member_${n} filter_restart_d01.${ensstring}
       if ( -e assim_advance_mem${n}.csh )  ${REMOVE} assim_advance_mem${n}.csh
+      set pert = `cat ${RUN_DIR}/advance_temp${n}/mem${n}_pert_bank_num`
+      echo "Member $n uses perturbation bank ensemble member $pert" >>  ${OUTPUT_DIR}/${datea}/pert_bank_members.txt
 
       @ n++
 

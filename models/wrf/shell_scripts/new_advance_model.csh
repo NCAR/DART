@@ -76,11 +76,10 @@ set process = $1
 set num_domains = $2
 set control_file = $3
 set num_states = 1      # forcing option of only one model advance per execution
-
+set paramfile = $4      # Need this to load modules/environment
+source $paramfile
 # MULTIPLE DOMAINS - pass along the # of domains here?  We just default a value of 1 for the second variable, process is the ensemble member #
 
-module load nco 
-module load ncl 
 
 # Setting to vals > 0 saves wrfout files,
 # will save all member output files <= to this value
@@ -270,8 +269,7 @@ EOF
 #   ${CENTRALDIR}/dart_to_wrf >&! out.dart_to_wrf
 #   ${REMOVE} dart_wrf_vector
 
-  set stuff_vars =   ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
-                     U10 V10 T2 Q2 PSFC )
+  set stuff_vars = $increment_vars_a
 
 # may want multiple lists here, e.g. do we want w from the analysis?
 
@@ -542,13 +540,20 @@ EOF
 #         mpiexec_mpt dplace -s 1  ${CENTRALDIR}/WRF_RUN/da_wrfvar.exe >>&! out.wrfvar
           cp fg wrfvar_output
           cp ${CENTRALDIR}/add_bank_perts.ncl .
-          set cmd3 = "ncl 'MEM_NUM=${ensemble_member}' ${CENTRALDIR}/advance_temp${ensemble_member}/add_bank_perts.ncl"
+          set cmd3 = "ncl 'MEM_NUM=${ensemble_member}' 'PERTS_DIR="\""${PERTS_DIR}"\""' ${CENTRALDIR}/advance_temp${ensemble_member}/add_bank_perts.ncl"
           ${REMOVE} nclrun3.out
           cat >! nclrun3.out << EOF
           $cmd3
 EOF
           chmod +x nclrun3.out
           ./nclrun3.out >& add_perts.out
+          if ( -z add_perts.err ) then
+            echo "Perts added to member ${ensemble_member}"
+          else
+             echo "Error! Non-zero status returned from add_bank_perts.ncl. Check ${RUN_DIR}/advance_temp${ensemble_member}/add_perts.err."
+             cat add_perts.err
+             exit
+          endif
 ################################
          cp namelist.input namelist.input.3dvar
 	 if ( -e rsl.out.0000 ) cat rsl.out.0000 >> out.wrfvar
@@ -787,11 +792,6 @@ EOF
 #   # create new input to DART (taken from "wrfinput")
 #   ${CENTRALDIR}/wrf_to_dart >&! out.wrf_to_dart
 #   ${MOVE} dart_wrf_vector ${CENTRALDIR}/${output_file}
-set extract_vars_a = ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
-                     U10 V10 T2 Q2 PSFC TH2 TSLB SMOIS TSK RAINC RAINNC GRAUPELNC )
-set extract_vars_b = ( U V W PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN H_DIABATIC \
-                     U10 V10 T2 Q2 PSFC TH2 TSLB SMOIS TSK RAINC RAINNC GRAUPELNC \
-                     REFL_10CM VT_DBZ_WT )
   set num_vars = $#extract_vars_a
   set extract_str_a = ''
   set i = 1

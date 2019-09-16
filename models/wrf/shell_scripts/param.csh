@@ -13,6 +13,11 @@
 #                        ASSIM_INT_MINUTES support needs to be added to param.csh,
 #                        it is referenced in assim_advance.csh but not declared in param.csh
 
+# Set up environment. Current settings are for NCAR's Cheyenne
+module load mpt          # set this appropriately #%%%#
+module load nco          # set this appropriately #%%%#
+module load ncl/6.6.2    # set this appropriately #%%%#
+
 #  Set the assimilation parameters
 set NUM_ENS            = 50
 set ASSIM_INT_MINUTES  = 0   # 0 means use ASSIM_INT_HOURS
@@ -30,6 +35,7 @@ set OUTPUT_DIR       = ${BASE_DIR}/output
 set ICBC_DIR         = ${BASE_DIR}/icbc
 set POST_STAGE_DIR   = ${BASE_DIR}/post
 set OBS_DIAG_DIR     = ${BASE_DIR}/obs_diag
+set PERTS_DIR        = ${BASE_DIR}/perts
 
 #  Directories that can be used by many things
 set SHELL_SCRIPTS_DIR = ${BASE_DIR}/scripts
@@ -44,15 +50,14 @@ set GRIB_DATA_DIR     = /glade/p/work/USER/WPS/GRIB   # set this appropriately #
 set GRIB_SRC          = 'GFS'                         # set this appropriately #%%%#
 
 # list of variables for extraction and cycling
-################################################################
-# IMPORTANT - SHOULD MATCH those set in new_advance_model.csh  #
-################################################################
-
-set extract_vars_a = ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
-                    U10 V10 T2 Q2 PSFC TSLB SMOIS TSK RAINC RAINNC GRAUPELNC )
-set cycle_vars_a =   ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
-                  U10 V10 T2 Q2 PSFC TSLB SMOIS TSK )
-set increment_vars_a = ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN H_DIABATIC U10 V10 T2 Q2 PSFC )
+set extract_vars_a   = ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
+                         U10 V10 T2 Q2 PSFC TSLB SMOIS TSK RAINC RAINNC GRAUPELNC )
+set extract_vars_b   = ( U V W PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
+                         U10 V10 T2 Q2 PSFC TSLB SMOIS TSK RAINC RAINNC GRAUPELNC \
+                         REFL_10CM VT_DBZ_WT )
+set cycle_vars_a     =   ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
+                           U10 V10 T2 Q2 PSFC TSLB SMOIS TSK )
+set increment_vars_a = ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN U10 V10 T2 Q2 PSFC )
 
 #  Diagnostic parameters
 set OBS_VERIF_DAYS      = 7
@@ -81,12 +86,12 @@ set NCAR_ADVANCE_PTILE  = 16
 set CFILTER_QUEUE       = regular
 set CFILTER_TIME        = 0:35:00
 set CEMAIL              = YOUR_EMAIL@SOMEPLACE.COM      # set this appropriately #%%%#
-set CFILTER_NODES       = 30
-set CFILTER_PROCS       = 30
-set CFILTER_MPI         = 30
+set CFILTER_NODES       = 10
+set CFILTER_PROCS       = 36
+set CFILTER_MPI         = 36
 set CADVANCE_QUEUE       = regular
-set CADVANCE_TIME        = 00:16:00
-set CDADVANCE_TIME       = 00:35:00
+set CADVANCE_TIME        = 0:20:00
+set CDADVANCE_TIME       = 0:35:00
 set CADVANCE_NODES       = 3
 set CADVANCE_PROCS       = 36
 set CADVANCE_MPI         = 36

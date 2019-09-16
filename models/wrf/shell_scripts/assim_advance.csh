@@ -80,7 +80,7 @@ echo filter_restart_d01.${icnum}   >> ${RUN_DIR}/filter_control${icnum}
 echo prior_d01.${icnum}            >> ${RUN_DIR}/filter_control${icnum}
 
 #  integrate the model forward in time
-${RUN_DIR}/new_advance_model.csh ${emember} $domains filter_control${icnum}
+${RUN_DIR}/new_advance_model.csh ${emember} $domains filter_control${icnum} $paramfile
 ${REMOVE} ${RUN_DIR}/filter_control${icnum}
 
 set end_time   = `date  +%s`
