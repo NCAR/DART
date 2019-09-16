@@ -110,7 +110,7 @@ EOF
       if ( -z add_perts.err ) then
          echo "Perts added to member ${n}"
       else
-         echo "Error! Non-zero status returned from add_bank_perts.ncl. Check ${RUN_DIR}/advance_temp${n}/add_perts.err."
+         echo "ERROR! Non-zero status returned from add_bank_perts.ncl. Check ${RUN_DIR}/advance_temp${n}/add_perts.err."
          cat add_perts.err
          exit
       endif
