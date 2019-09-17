@@ -4,20 +4,18 @@
 !
 ! $Id$
 
+!> Looking at sampling error for the obs. space part of the problem
+!> Assume that the ratio of the prior sample to obs standard dev. is known
+!> Want to compute the following:
+!>   1. An unbiased estimate of the updated variance
+!>   2. An unbiased estimate of the updated mean which should be
+!>      expressed as the fraction of the distance to move between
+!>      the prior sample mean and the observed value
+!>   3. The standard deviation or variance of the updated mean estimate
+!>      Need to add this uncertainty into the sample to avoid loss of
+!>      variance (see also full_error.f90 which does this for regression).
+
 program obs_sampling_err
-
-! Started on 19 August, 2005
-
-! Looking at sampling error for the obs. space part of the problem
-! Assume that the ratio of the prior sample to obs standard dev. is known
-! Want to compute the following:
-!   1. An unbiased estimate of the updated variance
-!   2. An unbiased estimate of the updated mean which should be
-!      expressed as the fraction of the distance to move between
-!      the prior sample mean and the observed value
-!   3. The standard deviation or variance of the updated mean estimate
-!      Need to add this uncertainty into the sample to avoid loss of
-!      variance (see also full_error.f90 which does this for regression).
 
 use      types_mod, only : r8, digits12
 use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
@@ -142,8 +140,3 @@ end subroutine sample_mean_var
 
 end program obs_sampling_err
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

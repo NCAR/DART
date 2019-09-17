@@ -1179,7 +1179,7 @@ else if (obs_kind == QTY_SURFACE_ELEVATION) then
    if (debug > 10) &
       print *, 'model_interpolate: SURFACE_ELEVATION', istatus, expected_obs, trim(locstring)
 
-!> @todo check againt trunk, it does QTY_PRECIPITABLE_WATER and QTY_SURFACE_PRESSURE in the same if
+!>@todo check againt trunk, it does QTY_PRECIPITABLE_WATER and QTY_SURFACE_PRESSURE in the same if
 !> statement
 else if (obs_kind == QTY_PRECIPITABLE_WATER) then
    tvars(1) = ivar
@@ -1668,7 +1668,8 @@ if (allocated(zEdge))          deallocate(zEdge)
 if (allocated(latEdge))        deallocate(latEdge)
 if (allocated(lonEdge))        deallocate(lonEdge)
 
-!call finalize_closest_center() !> @todo cheating for now
+!>@todo cheating for now
+!call finalize_closest_center()
 
 end subroutine end_model
 
@@ -4612,7 +4613,7 @@ end subroutine vert_interp
 
 
 !------------------------------------------------------------------
-!> @todo  is this correct for RMA?
+!>@todo  is this correct for RMA?
 subroutine find_height_bounds(height, nbounds, bounds, lower, upper, fract, ier)
 
 ! Finds position of a given height in an array of height grid points and returns
@@ -4789,7 +4790,8 @@ endif
 ! model level numbers (supports fractional levels)
 if(verttype == VERTISLEVEL) then
    ! FIXME: if this is W, the top is nVertLevels+1
-   if (vert > nVertLevels) then !> @todo Is this the same across the ensemble?
+   !>@todo Is this the same across the ensemble?
+   if (vert > nVertLevels) then
       ier(:) = 12
       return
    endif
@@ -5226,7 +5228,8 @@ do k=1, n
    ! go around triangle and interpolate in the vertical
    ! t1, t2, t3 are the xyz of the cell centers
    ! c(3) are the cell ids
-   do e = 1, ens_size !> @todo Do you really need to loop around ens_size?
+   !>@todo Do you really need to loop around ens_size?
+   do e = 1, ens_size
 
       do i = 1, nc
 !        lowval(i) = x(index1 + (c(i)-1) * nvert + lower(i)-1)
@@ -5587,7 +5590,7 @@ do i = 1, nedges
       edgenormals(j, i) = edgeNormalVectors(j, edgelist(i))
    enddo
 
-   !> @todo lower (upper) could be different levels in pressure
+   !>@todo lower (upper) could be different levels in pressure
    !lowval = x(index1 + (edgelist(i)-1) * nvert + lower(i)-1)
    lowindx = int(index1,i8) + int((edgelist(i)-1) * nvert,i8) + int(lower(i,1)-1,i8)
    lowval =  get_state(lowindx, state_handle)
@@ -5624,7 +5627,7 @@ do e = 1, ens_size
                ureconstructx, ureconstructy, ureconstructz, &
                ureconstructzonal, ureconstructmeridional)
 
-   !> @todo in the distributed version especially:
+   !>@todo in the distributed version especially:
    ! FIXME: it would be nice to return both and not have to call this
    ! code twice.  crap.
    if (zonal) then
@@ -6287,7 +6290,7 @@ subroutine move_pressure_to_edges(ncells, celllist, lower, upper, fract, nedges,
 ! fract values.  the lower, upper and fract lists match the cells on the
 ! way in, they match the edges on the way out.
 
-!> @todo HK Same across the ensemble? I don't know
+!>@todo HK Same across the ensemble? I don't know
 
 integer,  intent(in)    :: ncells, celllist(:)
 integer,  intent(inout) :: lower(:, :), upper(:, :) ! ens_size
@@ -6295,7 +6298,9 @@ real(r8), intent(inout) :: fract(:, :) ! ens_size
 integer,  intent(in)    :: nedges, edgelist(:)
 integer,  intent(out)   :: ier(:)
 
-integer, parameter :: listsize = 30 !> @todo this is set in different places to different values
+!>@todo this is set in different places to different values
+integer, parameter :: listsize = 30
+
 !real(r8) :: o_lower(listsize), o_fract(listsize)
 real(r8), allocatable :: o_lower(:,:), o_fract(:,:)
 real(r8) :: x1, x2, x

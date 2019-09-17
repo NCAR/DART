@@ -4,8 +4,6 @@
 !
 ! $Id$
 
-program preprocess
-
 !> Takes a list of observation type module path names and physical quantity
 !> module path names and creates two output files that are compiled into
 !> the rest of the DART executables.  They define the quantities and observation
@@ -51,6 +49,7 @@ program preprocess
 !> @todo FIXME: should we hardcode QTY_STATE_VARIABLE as 0 here?
 !>
 
+program preprocess
 
 use types_mod,      only : r8, MISSING_R8     ! @todo FIXME r8 is needed; is MISSING_R8?
 use utilities_mod,  only : register_module, error_handler, E_ERR, E_MSG,   &
@@ -1052,8 +1051,3 @@ end subroutine write_blank_line
 
 end program preprocess
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

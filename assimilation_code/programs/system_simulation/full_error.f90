@@ -4,12 +4,12 @@
 !
 ! $Id$
 
-program full_error
+!> Correct covariances for fixed ensemble sizes.
+!> See Anderson, J. L., 2011: Localization and Sampling Error Correction
+!>   in Ensemble Kalman Filter Data Assimilation. 
+!> Submitted for publication, Jan 2011.  Contact author.
 
-! Correct covariances for fixed ensemble sizes.
-! See Anderson, J. L., 2011: Localization and Sampling Error Correction
-!   in Ensemble Kalman Filter Data Assimilation. 
-! Submitted for publication, Jan 2011.  Contact author.
+program full_error
 
 ! This version of the program reads the ensemble size and base filename
 ! for the output from a namelist.

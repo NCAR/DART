@@ -170,7 +170,7 @@ TIMELOOP: do itime = 1,ndays
    seconds = seconds + (hour*60 + minutes)*60
 
    write(string1,'(i4,''-'',i2.2,''-'',i2.2,''-'',i5.5)') year,month,day,seconds
-   write(output_file,*) trim(output_file_base)//'.'//trim(string1)
+   write(output_file,'(A)') trim(output_file_base)//'.'//trim(string1)
    write(*,*)'output file is ',trim(output_file)
 
    io = nf90_get_var(ncid, varid, sst, start=(/1,1,itime/), count=(/nlon,nlat,1/))
