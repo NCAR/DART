@@ -3500,10 +3500,8 @@ bq(1) = get_quantity_for_type_of_obs(otype)
 
 call convert_vertical_obs(ens_handle, 1, bl, bq, bt, &
                              vert_type, status)
-if (status(1) /= 0) then
-   status1 = status(1)
-   return
-endif
+status1 = status(1)
+if (status1 /= 0) return
 
 loc = bl(1)
 
