@@ -41,7 +41,7 @@ menu:
     url: /DART/pages/release.html
     submenu:
       - title: Manhattan
-        url: https://github.com/NCAR/DART/releases/tag/v9.6.0
+        url: https://github.com/NCAR/DART/releases/tag/v9.7.0
       - title: Lanai
         url: https://github.com/NCAR/DART/releases/tag/v8.4.1
       - title: Kodiak
