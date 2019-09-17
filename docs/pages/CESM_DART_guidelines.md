@@ -117,21 +117,51 @@ one of $DART/models/{cam-fv, POP, clm, ...} If you want to use an
 unusual combination of active and data components, you may need to (work
 with us to) modify the setup scripts.  
 
-|    |         |
-| ------------- | --------------- |
-| ![CAM+DART flowchart](../images/science_nuggets/CAM_only.png) | ![POP+DART flowchart](../images/science_nuggets/POP_only.png) |
+
+<center>
+<a href="../images/science_nuggets/CAM_only.png"><img src="../images/science_nuggets/CAM_only.png"
+   height="300" alt="CAM+DART flowchart" /></a>
+<a href="../images/science_nuggets/POP_only.png"><img src="../images/science_nuggets/POP_only.png"
+   height="300" alt="CAM+POP flowchart" /></a>
+</center>
+
+---
 
 #### Multi-Component Assimilation (aka "weakly coupled")
 
-|          |             |
-| ------------------------- | ----------------------- |
-| ![Multi-component flowchart](../images/science_nuggets/multi-component.png) | It's also possible to assimilate observations into multiple active components, but restricting the impact of observations to only "their own" component. So in a "coupled" CESM with active CAM and POP, atmospheric observations change only the CAM model state while oceanic observations change only the POP model state. This mode uses multiple DART models; cam-fv and POP in this example to make a filter for each model. |
+<table>
+<tr>
+<td width="30%"><a href="../images/science_nuggets/multi-component.png"><img src="../images/science_nuggets/multi-component.png" height="200" alt="Multi-component flowchart" /></a></td>
+<td>
+It's also possible to assimilate observations into multiple active components,
+but restricting the impact of observations to only "their own" component.
+So in a "coupled" CESM with active CAM and POP, atmospheric observations change
+only the CAM model state while oceanic observations change only the POP model
+state. This mode uses multiple DART models; cam-fv and POP in this example to
+make a *filter* for each model.
+</td>
+</tr>
+</table>
+
+---
 
 #### Cross-Component Assimilation (aka "strongly coupled")
 
-|                |                  |
-| ----------------------------- | --------------------------- |
-| ![Cross-component flowchart](../images/science_nuggets/cross-component.png) | Work is underway to enable the assimilation of all observations into multiple active CESM components. So observations of the atmosphere would directly change the POP state variables and vice versa. Some unresolved issues include defining the "distance" between an observation in the atmosphere and a grid point in the ocean (for localization), and how frequently to assimilate in CAM versus POP. This mode will use code in this models/CESM directory. |
+<table>
+<tr>
+<td width="30%"><a href="../images/science_nuggets/cross-component.png"><img src="../images/science_nuggets/cross-component.png" height="200" alt="cross-component flowchart" /></a></td>
+<td>
+Work is underway to enable the assimilation of all observations into
+multiple active CESM components. So observations of the atmosphere
+would directly change the POP state variables and vice versa.
+Some unresolved issues include defining the "distance" between an
+observation in the atmosphere and a grid point in the ocean
+(for localization), and how frequently to assimilate in CAM versus
+POP. This mode will use code in this `models/CESM` directory.
+</td>
+</tr>
+</table>
+
 
 [Go to cam-fv/model_mod page](../../models/cam-fv/model_mod.html)
 
@@ -139,7 +169,7 @@ with us to) modify the setup scripts.
 
 -----
 
-## $DART/models/{CESM components} organization
+## models/*CESM components* organization
 
 ~~~
 SCRIPT                          NOTES
@@ -163,17 +193,17 @@ $DART/models/**POP**/           A 'model' for each ocean model (MOM may be inter
         setup_hybrid,...        Dependent on CESM version
 ~~~
 
-~~~
-For each CAM dynamical core "model", e.g. "cam-fv",  the scripts  in cesm#_# will handle:
-    all CAM variants + vertical resolutions (*dy-core is NOT part of this.*):
-        CAM5.5, CAM6, ...
-        WACCM4, WACCM6, WACCM-X...
-        CAM-Chem,
-        ...
-    all horizontal resolutions of its dy-core:
-        1.9x2.5, 0.9x1.25, ..., for cam-fv
-        ne30np4, ne0_CONUS,..., for cam-se
-~~~
+
+For each CAM dynamical core "model", e.g. "cam-fv",  the scripts  in `cesm#_#` will handle:
+- all CAM variants + vertical resolutions (*dy-core is NOT part of this.*):
+  - CAM5.5, CAM6, ...
+  - WACCM4, WACCM6, WACCM-X...
+  - CAM-Chem,
+  - ...
+-all horizontal resolutions of its dy-core:
+  - 1.9x2.5, 0.9x1.25, ..., for cam-fv
+  - ne30np4, ne0_CONUS,..., for cam-se
+
 
 <span id="SETUP"></span>
 
@@ -198,7 +228,7 @@ suitable replacement, as noted.
         state and/or ensemble for this date, build a single instance of
         CESM (Fxxxx compset for cam-fv) and run it from the default Jan
         1 start date until 2-4 weeks before your start date. Be sure to
-        set the cam namelist variable ```inithist = 'ENDOFRUN'``` during the
+        set the cam namelist variable `inithist = 'ENDOFRUN'` during the
         last stage, so that CAM will write an "initial" file, which DART
         needs.
       - For ocean and land assimilations,which use an ensemble of data
@@ -214,13 +244,13 @@ suitable replacement, as noted.
     filter.
 6.  In models/cam-fv/work/`input.nml`, be sure to include all of your
     required obs_def_${platform}_mod.f90 file names in
-    ```preprocess_nml:input_files```. It's also useful to modify the rest of
+    `preprocess_nml:input_files`. It's also useful to modify the rest of
     `input.nml` to make it do what you want for the first assimilation
     cycle. This input.nml will be copied to the $case_root directory
     and used by *assimilate.csh*.
 7.  Build the DART executables using *quickbuild.csh*.
 8.  Follow the directions in
-    models/cam-fv/shell_scripts/cesm\#_\#/*setup_hybrid* to set up the
+    `models/cam-fv/shell_scripts/cesm#_#/*setup_hybrid*` to set up the
     assimilation and build of CESM. We recommend a tiny ensemble to
     start with, to more quickly test whether everything is in order.
 9.  After convincing yourself that the CESM+DART framework is working
@@ -278,11 +308,11 @@ start.
 /
 ~~~
 
-Note that ```start_from_restart``` is false ("don't start from a
+Note that `start_from_restart` is false ("don't start from a
 pre-existing \*ensemble\*"), but a restart file (*filter_ic*) is
 still needed for filter to have something realistic to perturb.
-```pert_names``` specifies which fields will be perturbed. CAM field
-names are used. ```pert_sd``` \> 0 allows each point of the pert_names
+`pert_names` specifies which fields will be perturbed. CAM field
+names are used. `pert_sd` \> 0 allows each point of the pert_names
 fields of each ensemble member to be randomly perturbed with a
 standard deviation of pert_sd. Other fields can be used, but
 moisture variables are tricky because of their variation with height
@@ -300,11 +330,11 @@ respect to the model, so the perturbations will propagate into all fields.
     every 5 days. ? ? Or 5 years, saving every day. Then pull together
     all of the, e.g., Jan 6ths (00Z) into a 20 (5) member ensemble
     (numbered 1...20(5)).
-    
+
     When you need an ensemble of, say 60 members for June 1 then
     retrieve the 20 members from each of May 26, May 31, and June 5,
-    renumbering them 1,...,60. \--\> 
-    
+    renumbering them 1,...,60. \--\>
+
     <span id="OUTPUTDIRECTORY"></span>
 
 -----

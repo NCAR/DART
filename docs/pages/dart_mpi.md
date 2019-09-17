@@ -250,7 +250,6 @@ avoid paging to disk.
 ### Options for parallelism both in DART and in the model advances:
 
 ### Simplest case, async=0:  
-![ghpagesbroken](../images/async0.gif)  
 [<img src="../images/async0.gif">](../images/async0.gif)  
 
 This is a single MPI executable, with each call to the model being
@@ -261,7 +260,6 @@ simply a subroutine call from each MPI task.
 ---
   
 ### Parallel advance, async=2:  
-![ghpagesbroken](../images/async2a.gif)  
 [<img src="../images/async2a.gif">](../images/async2a.gif)
 
 The *filter* executable is one MPI program, and the model is a single,
@@ -273,11 +271,9 @@ Other views of how the async=2 option is structured; these may be more
 or less helpful.  
 
 #### Parallel advance, async=2:  
-![ghpagesbroken](../images/async2_v1.gif)  
 [<img src="../images/async2_v1.gif">](../images/async2_v1.gif)
   
 #### Parallel advance, async=2, second version:  
-![ghpagesbroken](../images/async2_v2.gif)  
 [<img src="../images/async2_v2.gif">](../images/async2_v2.gif)
   
 #### Parallel model advance, async=2,
@@ -285,7 +281,6 @@ or less helpful.
 showing how data is communicated
 between filter and the model thru intermediate files.
 IC are 'initial condition' files, UD are 'updated' files.  
-![ghpagesbroken](../images/async2_wfiles.gif)  
 [<img src="../images/async2_wfiles.gif">](../images/async2_wfiles.gif)
 
 <span id="async4"></span>  
@@ -293,7 +288,6 @@ IC are 'initial condition' files, UD are 'updated' files.
 ---
 
 ### Parallel model advance, async=4:  
-![ghpagesbroken](../images/async4.gif)  
 [<img src="../images/async4.gif">](../images/async4.gif)
 
 The *filter* executable is one MPI program, and the *model* is also an MPI
@@ -305,7 +299,6 @@ runs, one per ensemble member, still using *advance_model.csh*.
 Parallel model advance, async=4, showing how data is communicated
 between *filter* and the model thru intermediate files.
 IC are 'initial condition' files, UD are 'updated' files.  
-![ghpagesbroken](../images/async4_wfiles.gif)  
 [<img src="../images/async4_wfiles.gif">](../images/async4_wfiles.gif)
 
 ---
