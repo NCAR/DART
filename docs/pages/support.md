@@ -9,10 +9,10 @@ Please send email to [dart@ucar.edu](mailto:dart@ucar.edu) rather than individua
 It is the best way to ensure a timely response and sometimes generates productive
 discussion among our group that leads to a better response.
 
-GitHub also provides a [wiki](https://github.com/NCAR/DART_development/wiki) that
+GitHub also provides a [wiki](https://github.com/NCAR/DART/wiki) that
 we will be using to add examples and appropriate content.
 
-Lastly, GitHub also provides a [bug-reporting](https://github.com/NCAR/DART_development/issues)
+Lastly, GitHub also provides a [bug-reporting](https://github.com/NCAR/DART/issues)
 facility. 
 
 ### links

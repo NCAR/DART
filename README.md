@@ -6,7 +6,7 @@
 [quick-start instructions for the impatient](#QuickStart)
 
 Extensive on-line documentation is available at the GitHub project web pages:
-[https://ncar.github.io/DART_development](https://ncar.github.io/DART_development)
+[https://ncar.github.io/DART](https://ncar.github.io/DART)
 or in the repository at [docs/index.md](docs/index.md). It's probably a good idea
 to be familiar with the [GitHub workflow](https://guides.github.com/introduction/flow/).
 

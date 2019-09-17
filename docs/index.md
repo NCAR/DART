@@ -10,7 +10,7 @@ Manhattan has support for many of our larger models
 (<em>WRF, POP, CAM, CICE, CLM, ROMS, MPAS_ATM,</em> ...)
 with many more being added as time permits."
 banner-button-text: Download
-banner-button-url: https://github.com/NCAR/DART_development
+banner-button-url: https://github.com/NCAR/DART
 ---
 
 # The Data Assimilation Research Testbed (DART)
@@ -44,7 +44,7 @@ It is ready for friendly use and has been used in several field programs
 requiring real-time forecasting.
 
 <!--
-![](DART_development/images/DART_flow_with_scripts.png)
+![](DART/images/DART_flow_with_scripts.png)
 
 DART employs a modular programming approach to apply an Ensemble Kalman Filter
 which modifies the underlying models toward a state that is more consistent with

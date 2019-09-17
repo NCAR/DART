@@ -118,9 +118,9 @@ required to build executables.
 ## Download DART
 
 The DART source code is distributed on the GitHub repository
-[NCAR/DART_development](https://github.com/NCAR/DART_development)
+[NCAR/DART](https://github.com/NCAR/DART)
 with the documentation served through GitHub Pages at
-[https://ncar.github.io/DART_development](https://ncar.github.io/DART_development).
+[https://ncar.github.io/DART](https://ncar.github.io/DART).
 
 If you ever intend to contribute your work back to DART, we ask that
 you fork the repository to facilitate issuing pull requests. *:thumbsup:*!
