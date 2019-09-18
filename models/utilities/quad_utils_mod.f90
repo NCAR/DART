@@ -56,6 +56,8 @@ use    utilities_mod, only : register_module, error_handler,         &
                              find_namelist_in_file, check_namelist_read, &
                              log_it, array_dump
 
+use      options_mod, only : get_missing_ok_status
+
 implicit none
 private
 
@@ -89,6 +91,8 @@ character(len=*), parameter :: revdate  = "$Date$"
 character(len=512) :: string1, string2, string3
 
 logical, save :: module_initialized = .false.
+
+logical :: missing_ok_in_state
 
 integer  :: debug = 0               ! turn up for more and more debug messages
 integer  :: interpolation_type = 1  ! add cases for different strategies
@@ -333,6 +337,9 @@ call check_namelist_read(iunit, io, 'quad_interpolate_nml')
 
 if (do_nml_file()) write(nmlfileunit, nml=quad_interpolate_nml)
 if (do_nml_term()) write(     *     , nml=quad_interpolate_nml)
+
+! are MISSING_R8 values possible in the model state?
+missing_ok_in_state = get_missing_ok_status()
 
 end subroutine initialize_module
 
@@ -2576,7 +2583,7 @@ endif
 !> not needed.  should it call allow_missing_in_state() on init and
 !> key off that?  (i think yes.)
 
-if (.false.) then
+if (missing_ok_in_state) then
 
    ! have to do the items individually because some items might
    ! have missing and others not.
