@@ -24,7 +24,7 @@ We have tried to make the code as portable as possible, but we do not
 have access to all compilers on all platforms, so unfortunately we cannot 
 guarantee that the code will work correctly on your particular system. 
 We are interested in your experience building the system, so we welcome you 
-to send us an email with your experiences at dart @ ucar .edu, which will 
+to send us an email with your experiences at dart @ ucar .edu, which we will 
 incorporate into future versions of this guide.
 
 <span id="requirements" class="anchor"></span> [](#requirements)   
@@ -37,7 +37,7 @@ The DART software is intended to compile and run on many different
 Unix/Linux operating systems with little to no change.
 At this point we have no plans to port DART to Windows machines, although Windows 10 
 users may be interested in the free [Windows Subsystem For Linux](https://docs.microsoft.com/en-us/windows/wsl/about)
-which allows developers to "run a GNU/Linux environment -- including most command-line tools, utilities, and applications -- directly on Windows, unmodified, without the overhead of a virtual machine.” (see here https://docs.microsoft.com/en-us/windows/wsl/about for more details)
+which allows developers to "run a GNU/Linux environment &mdash; including most command-line tools, utilities, and applications &mdash; directly on Windows, unmodified, without the overhead of a virtual machine.” (see <https://docs.microsoft.com/en-us/windows/wsl/about> for more details)
 
 Minimally, you will need:
 
@@ -102,8 +102,9 @@ both modules be present. The normal place would be in the
 `netcdf/include` directory, as opposed to the `netcdf/lib` directory.  
 
 If the netCDF library does not exist on your system, you must build it
-(as well as the F90 interface modules). The library and instructions for
-building the library or installing from an RPM may be found at the
+(as well as the F90 interface modules). *IMPORTANT*: You must build netCDF
+with the same compiler (including version) you plan to use for compiling DART. The library 
+and instructions for building the library or installing from an RPM may be found at the
 netCDF home page: <https://www.unidata.ucar.edu/software/netcdf/>  
 
 NOTE: The location of the netCDF library, `libnetcdf.a`, and the
@@ -147,7 +148,7 @@ quota restrictions before continuing.
 
 The following conventions are used within this document.
 
-Commands to be type at the command line will appear as in blockquote. For example:
+Commands to be typed at the command line will appear in blockquote. For example:
 
 > my_command.exe run_it.nml
 
@@ -165,7 +166,7 @@ The contents of a file will be enclosed in a box as follows (for some hypothetic
 
 <span id="customizations" class="anchor"></span> [](#customizations)  
 
-### Customizing the build scripts -- Overview.
+### Customizing the build scripts &mdash; overview
 
 DART executable programs are constructed using two tools: *mkmf*, and
 *make*. The *make* utility is a very common piece of software that
@@ -181,7 +182,7 @@ for a specific Fortran90 compiler and may also contain pointers
 to directories containing pre-compiled utilities required by the DART
 system. **This template file will need to be modified to reflect your system as detailed in the next section**.
 
-The second input file is a `path_names` file which are
+The second input file is a `path_names` file which is
 supplied by DART and can be used without modification. An *mkmf* command
 is executed which uses the `path_names` file and the mkmf template file
 to produce a `Makefile` which is subsequently used by the standard
@@ -194,7 +195,7 @@ see the [mkmf documentation](https://extranet.gfdl.noaa.gov/~vb/mkmf.html).
 Be aware that we have slightly modified *mkmf* such that it also creates
 an example namelist file for each program. The example namelist is
 called `input.nml._program_default` so as not to clash with any
-existing `input.nml` that may exist in that directory.
+other `input.nml` that may exist in that directory.
 
 <span id="template" class="anchor"></span> [](#template)  
 
@@ -210,7 +211,7 @@ discussion that follows, knowledge of the contents of one of these
 templates (i.e. `DART/build_templates/mkmf.template.intel.linux`) is
 needed. Note that only the LAST lines of the file are shown here. 
 The first portion of the file is a large comment block that provides valuable advice 
-on how to customize the *mkmf template file, if necessary.
+on how to customize the *mkmf* template file.
 
 ~~~
 ...  
@@ -231,9 +232,9 @@ LDFLAGS = $(FFLAGS) $(LIBS)
 | LD       | the name of the loader; typically, the same as the Fortran compiler |
 | MPIFC    | the MPI Fortran compiler; see [the DART MPI introduction](dart_mpi.md) for more info|
 | MPILD    | the MPI loader; see [the DART MPI introduction](dart_mpi.md) for more info|
-| NETCDF   | the location of your NetCDF installation containing `netcdf.mod` and `typesizes.mod`. Note that the value of the *NETCDF* variable will be used by the *FFLAGS, LIBS,* and *LDFLAGS* variables. |
-| INCS     | the includes passed to the compiler during compilation. Note you may need to change this if your NetCDF includes `netcdf.mod` and `typesizes.mod` are not in the standard locations. |
-| LIBS     | the libraries passed to *FC* (or *MPIFC*) during compilation. Note you may need to change this if the NetCDF library `libnetcdf` is not in the standard location. |
+| NETCDF   | the location of your netCDF installation containing `netcdf.mod` and `typesizes.mod`. Note that the value of the *NETCDF* variable will be used by the *FFLAGS, LIBS,* and *LDFLAGS* variables. |
+| INCS     | the includes passed to the compiler during compilation. Note you may need to change this if your netCDF includes `netcdf.mod` and `typesizes.mod` are not in the standard locations. |
+| LIBS     | the libraries passed to *FC* (or *MPIFC*) during compilation. Note you may need to change this if the netCDF library `libnetcdf` is not in the standard location. |
 | FFLAGS   | the Fortran flags passed to *FC* (or *MPIFC*) during compilation. See your particular compiler's documentation for more information. |
 | LDFLAGS  | the linker flags passed to *LD* during compilation. See your particular linker's documentation for more information. |
 
@@ -276,7 +277,7 @@ following programs:
 | [preprocess](https://ncar.github.io/DART/api/v2.1.10/program/preprocess.html) | creates custom source code for just the observations of interest |
 | [create_obs_sequence](https://ncar.github.io/DART/api/v2.1.10/program/create_obs_sequence.html) | specify a (set) of observation characteristics taken by a particular (set of) instruments |
 | [create_fixed_network_seq](https://ncar.github.io/DART/api/v2.1.10/program/create_fixed_network_seq.html) | specify the temporal attributes of the observation sets |
-| [perfect_model_obs](https://ncar.github.io/DART/api/v2.1.10/program/perfect_model_obs.html) | spinup, generate "true state" for synthetic observation experiments |
+| [perfect_model_obs](https://ncar.github.io/DART/api/v2.1.10/program/perfect_model_obs.html) | spinup and generate "true state" for synthetic observation experiments |
 | [filter](https://ncar.github.io/DART/api/v2.1.10/program/filter.html) | perform data assimilation analysis |
 | *obs_diag* | creates observation-space diagnostic files to be visualized by the MATLAB® scripts. |
 | [obs_sequence_tool](https://ncar.github.io/DART/api/v2.1.10/program/obs_sequence_tool.html) | manipulates observation sequence files. This tool is not generally required (particularly for low-order models) but can be used to combine observation sequences or convert from ASCII to binary or vice-versa. Since this is a rather specialized routine, we will not cover its use further in this document. |
@@ -295,19 +296,19 @@ The result (hopefully) is that seven executables now reside in your work directo
 Find them, edit the `DART/build_templates/mkmf.template` to point to their
 location, recreate the `Makefile`, and try again.
 
-### Checking the build -- running something.
+### Checking the build &mdash; running something.
 
 The `DART/models/lorenz_63/work` directory is distributed with input files
 ready to run a simple experiment: use 20 ensemble members to assimilate
-observations 'every 6 hours' for 50 days.
+observations "every 6 hours" for 50 days.
 Simply run the programs *perfect_model_obs* and *filter* to generate
 the results to compare against known results.  
 Note that this section is not intended to provide any details of why we are doing
-what we are doing - this is sort of a 'black-box' test.
+what we are doing - this is sort of a "black-box" test.
 
 The Manhattan release uses netCDF files for the input file format.
 Creating the netCDF files from their ASCII representation is a trivial
-operation - simply running a command that comes with any NetCDF
+operation - simply running a command that comes with any netCDF
 installation: *ncgen*. This is done automatically by the *lorenz_63 quickbuild.csh*,
 but is repeated here for clarity. Once the netCDF input files
 are created, running *perfect_model_obs* and *filter* is
@@ -374,17 +375,32 @@ documented through file comments.
 ## Verify: Are the results correct? (requires MATLAB®)
 
 The Lorenz model is notoriously sensitive to very small changes; in fact, the story of 
-Lorenz discovering this sensitivity is a classic story in the annals of the study of chaos:
+Lorenz discovering this sensitivity is a classic in the annals of the study of chaos. As Lorenz states in [The Essence of Chaos, University of Washington Press, 1995](https://uwapress.uw.edu/book/9780295975146/the-essence-of-chaos/):
 
-> At one point I decided to repeat some of the computations in order to examine what was happening in greater detail. I stopped the computer, typed in a line of numbers that it had printed out a while earlier, and set it running again. I went down the hall for a cup of coffee and returned after about an hour, during which the computer had simulated about two months of weather. The numbers being printed out were nothing like the old ones. I immediately suspected a weak vacuum tube or some other computer trouble, which was not uncommon, but before calling for service I decided to see just where the mistake had occurred, knowing that this could speed up the servicing process. Instead of a sudden break, I found that the new values at first repeated the old ones, but soon afterward had differed by one and then several units in the last decimal place. … The numbers I had typed in were not the exact original numbers, but were the rounded-off values that appeared in the original printout. The initial round-off errors were the culprits; they were steadily amplifying until they dominated the solution. In today’s terminology, there was chaos.
-
-[The Essence of Chaos, University of Washington Press, 1995](https://uwapress.uw.edu/book/9780295975146/the-essence-of-chaos/)
+~~~
+At one point I decided to repeat some of the computations in order to 
+examine what was happening in greater detail. I stopped the computer, 
+typed in a line of numbers that it had printed out a while earlier, and 
+set it running again. I went down the hall for a cup of coffee and 
+returned after about an hour, during which the computer had simulated 
+about two months of weather. The numbers being printed out were nothing 
+like the old ones. I immediately suspected a weak vacuum tube or some other 
+computer trouble, which was not uncommon, but before calling for service 
+I decided to see just where the mistake had occurred, knowing that this 
+could speed up the servicing process. Instead of a sudden break, I found 
+that the new values at first repeated the old ones, but soon afterward had 
+differed by one and then several units in the last decimal place. … 
+The numbers I had typed in were not the exact original numbers, but were 
+the rounded-off values that appeared in the original printout. The initial 
+round-off errors were the culprits; they were steadily amplifying until 
+they dominated the solution. In today’s terminology, there was chaos.
+~~~
 
 This story is of practical interest for verifying these results. The initial conditions files 
 and observations sequences are provided in ASCII, but there may be some roundoff 
 error in the conversion from ASCII to machine binary. As Lorenz 63 is such a non-linear model, as discussed above, 
-small differences in the initial conditions many result in a different model
-trajectory. Even compiler options will cause tiny differences that ultimately
+small differences in the initial conditions may result in a different model
+trajectory. Even compiler options may cause tiny differences that ultimately
 result in noticeably different trajectories.
 Your results should start out looking VERY SIMILAR and may diverge with time.  
 
