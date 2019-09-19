@@ -456,8 +456,7 @@ if (nd == 3) then
    use_vert_type = VERTISLEVEL
    use_vert_val  = real(k,r8)
 else if (nd == 2) then
-   ! BG Feb 11
-   ! add emissions to this function
+   ! add any 2d surface fields to this function
    if (is_surface_field(q)) then
       use_vert_type = VERTISSURFACE
       use_vert_val  = MISSING_R8  
@@ -4164,6 +4163,7 @@ select case (qty)
  case (QTY_SURFACE_PRESSURE, QTY_SURFACE_ELEVATION)
    is_surface_field = .true.
 
+! example:
 ! case (QTY_SFNUM_A1, QTY_SFNUM_A2, QTY_SFNUM_A3, QTY_SFNUM_A4, QTY_SFPOM_A4, QTY_SFBC_A4, &
 !       QTY_SFSO4_A1, QTY_SFSO4_A2, QTY_SFCO,     QTY_SFCO01,   QTY_SFCO02 ) 
 !   is_surface_field = .true.
