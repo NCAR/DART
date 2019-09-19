@@ -114,8 +114,7 @@ public :: nc_write_model_vars,           &
           init_conditions
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
+character(len=256), parameter :: source   = "$URL$"
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
@@ -4495,7 +4494,7 @@ end subroutine load_high_top_table
 end module model_mod
 
 ! <next few lines under version control, do not edit>
-! $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/recam/models/cam-fv/model_mod.f90 $
-! $Id: model_mod.f90 13014 2019-03-14 21:59:07Z nancy@ucar.edu $
-! $Revision: 13014 $
-! $Date: 2019-03-14 15:59:07 -0600 (Thu, 14 Mar 2019) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
