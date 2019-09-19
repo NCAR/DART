@@ -21,16 +21,19 @@
 #PBS -A P86850054
 #PBS -l select=1:ncpus=1:mpiprocs=1
 #
-#----------------------------------------------------------------------
+#-- Load Experiment Environment Variables -----------------
 
+. environment.load
+
+#----------------------------------------------------------------------
 # Translate the queueing-specific variables into a common tongue.
 
-if [[ -v LSB_JOBID ]] ; then
+if [[ $SCHEDULER = "lsf" ]] ; then
 
    SUB_CMD='bsub < '
    DEP_CMD='bsub -w "done(XXXXXXXX)" < '
 
-elif [[ -v PBS_NODEFILE ]] ; then
+elif [[ ${SCHEDULER} = "pbs" ]] ; then
 
    TMPDIR=/glade/scratch/$USER/temp  # cheyenne-specific
    mkdir -p $TMPDIR                  # cheyenne-specific
@@ -39,9 +42,6 @@ elif [[ -v PBS_NODEFILE ]] ; then
 
 fi
 
-#-- Load Experiment Environment Variables -----------------
-
-. environment.load
 
 #-- Ensemble required variables ---------------------------
 
@@ -67,7 +67,7 @@ if [ ${ENSCHECK} -eq ${MEMNO} ]; then
       sed "s;ENSEMBLEMEMBERNO;${MEMNO};g" ${TMPLFILE} > ${SBMTFILE};
  
       cd ${WRKDIR}
-      ID=$( jobid ${SUB_CMD} ${SBMTFILE} )
+      ID=$( jobid eval ${SUB_CMD} ${SBMTFILE} )
       echo "Filter job ID is ${ID}"
  
       #-------------------------------------------------------------
@@ -83,7 +83,7 @@ if [ ${ENSCHECK} -eq ${MEMNO} ]; then
 
       DEP_STRING=`echo ${DEP_CMD} | sed "s/XXXXXXXX/${ID}/"`
 
-      ID=$( jobid ${DEP_STRING} ${SBMTFILE} )
+      ID=$( jobid eval ${DEP_STRING} ${SBMTFILE} )
       echo "Finalize job ID is ${ID}"
    fi
 fi

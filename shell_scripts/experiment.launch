@@ -14,7 +14,7 @@
 
 if [[ ${SCHEDULER} = "lsf"  ]] ; then
 
-   SUB_CMD='bsub < '
+   SUB_CMD='bsub <'
 
 elif [[ ${SCHEDULER} = "pbs" ]] ; then
 
@@ -60,4 +60,6 @@ echo "\
 ##########################################################" >> \
 ${SBMTFILE}
 
-${SUB_CMD} ${SBMTFILE}
+echo "${SUB_CMD} ${SBMTFILE}"
+
+eval ${SUB_CMD} ${SBMTFILE}

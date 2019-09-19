@@ -23,16 +23,20 @@
 #
 #----------------------------------------------------------------------
 
+#-- Load Experiment Environment Variables -----------------
+
+. environment.load
+
 # Translate the queueing-specific variables into a common tongue.
 
-if [[ -v LSB_JOBID ]] ; then
+if [[ $SCHEDULER = "lsf" ]] ; then
 
    JOBDIR=${LS_SUBCWD}         # directory of this script
    JOBNAM=${LSB_JOBNAME}       # name of this script
    EXTENSION=lsf
    SUB_CMD='bsub < '
 
-elif [[ -v PBS_NODEFILE ]] ; then
+elif [[ ${SCHEDULER} = "pbs" ]] ; then
 
    JOBDIR=${PBS_O_WORKDIR}     # directory of this script
    JOBNAM=${PBS_JOBNAME}       # name of this script
@@ -43,21 +47,17 @@ elif [[ -v PBS_NODEFILE ]] ; then
 
 fi
 
-#-- Load Experiment Environment Variables -----------------
-
-. environment.load
-
 cd ${WRKDIR}
 
 #----------------------------------------------------------
-SBMTFILE=${RUNDIR}/ens_members.${EXPINFO}.${EXTENSION}
+SBMTFILE=${RUNDIR}/ens_members.${EXPINFO}.sh
 
 SECST=$(cat ${MEM01}/${MEM01}.clock | sed -n 2,2p | awk '{printf("%d\n"), $1}')
 DAYST=$(cat ${MEM01}/${MEM01}.clock | sed -n 2,2p | awk '{print $2}')
 RUNYR=$(cat ${MEM01}/${MEM01}.clock | sed -n 2,2p | awk '{print $3}')
 
 if [ "${RUNYR}" -le "${ENDYR}" ] && [ "${DAYST}" -le "${ENDDY}" ]  && [ "${SECST}" -le 86400 ]; then
-  ${SUB_CMD} ${SBMTFILE}
+  eval ${SUB_CMD} ${SBMTFILE}
   echo "Experiment            at $RUNYR $DAYST $SECST"
   echo "Experiment continuing to $ENDYR $ENDDY 86400 ..."
 else

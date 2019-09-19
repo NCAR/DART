@@ -28,9 +28,12 @@
 #
 #----------------------------------------------------------------------
 
+#-- Load Experiment Environment Variables -----------------
+. environment.load
+
 # Translate the queueing-specific variables into a common tongue.
 
-if [[ -v LSB_JOBID ]] ; then
+if [[ $SCHEDULER = "lsf" ]] ; then
 
    JOBDIR=${LS_SUBCWD}         # directory of this script
    JOBNAM=${LSB_JOBNAME}       # name of this script
@@ -56,7 +59,7 @@ if [[ -v LSB_JOBID ]] ; then
    export MP_TASK_AFFINITY=core
    #--  END ATHENA CONFIG ------------------------------------
 
-elif [[ -v PBS_NODEFILE ]] ; then
+elif [[ ${SCHEDULER} = "pbs" ]] ; then
 
    JOBDIR=${PBS_O_WORKDIR}     # directory of this script
    JOBNAM=${PBS_JOBNAME}       # name of this script
@@ -71,9 +74,6 @@ fi
 F_RSVTASK=1; export F_RSVTASK; #THIS CAN BE USEFUL FOR ENSEMBLE. CHECK!
 F_ERRCNT=0; export F_ERRCNT
 
-#-- Load Experiment Environment Variables -----------------
-. environment.load
-
 #-- Ensemble required variables ---------------------------
 ENSNO=$( echo ${LSB_JOBINDEX} | awk '{ printf("%02d\n", $1) }' )
 ENSINFO=${ENSID}${ENSNO};
@@ -83,7 +83,7 @@ cd ${ENSDIR}
 #-- Advance FESOM -----------------------------------------
 #-- capture the model advance stderr,stdout in a file 
 
-${MPIEXEC} ./fesom.x > LOG/advance_fesom_${JOBIDN}_${JOBID}.out 2>&1
+${MPIEXEC} ./fesom.x #> LOG/advance_fesom_${JOBIDN}_${JOBID}.out 2>&1
 
 #-- Check if the model advance failed ---------------------
 #-- check_ensemble checks the length of restart_file_list.txt against 

@@ -18,18 +18,18 @@ export MOVE='mv -f'
 export SCHEDULER=lsf
 export NPROC=512           # How many cores to run FESOM
 export POENAME=poe_short   # Name of the lsf queue to submit
-export MPIEXEC=/users/home/opt/lsf/8.0/linux2.6-glibc2.3-x86_64/bin/mpirun.lsf
 export MPIEXEC=mpiexec_mpt
+export MPIEXEC=/users/home/opt/lsf/8.0/linux2.6-glibc2.3-x86_64/bin/mpirun.lsf
 
 #-- Set experiment parameters here  -----------------------
 
-export EXPID=FB4           # id of the experiment
+export EXPID=FB5           # id of the experiment
 export EXPNO=01            # nb of the experiment
 export EXPYR=2009          # experiment initial year
 export EXPINFO=${EXPID}${EXPNO};
 export REGION=TSS
 
-export MEMNO=3            # nb of ensemble members
+export MEMNO=2             # nb of ensemble members
 export ENSID=ENS           # id of ensemble members
 export ENDYR=2009          # year to end the experiment
 export ENDDY=1             # day to end the experiment
@@ -42,10 +42,10 @@ export CYCLE=${RNSEC}
 
 #-- Set the common directories here  ----------------------
 
-export USRHOM=/glade/u/home/$(whoami)
-export DRTDIR=${USRHOM}/git/DART_master/models/FESOM/work
-export WRKDIR=/glade/work/$(whoami)/${REGION}/${EXPINFO}
-export RUNDIR=${USRHOM}/git/DART_master/models/FESOM/shell_scripts
+export USRHOM=/users/home/$(whoami)
+export DRTDIR=${USRHOM}/GIT/DART_master/models/FESOM/work
+export WRKDIR=/work/$(whoami)/${REGION}/${EXPINFO}
+export RUNDIR=${USRHOM}/GIT/DART_master/models/FESOM/shell_scripts
 export DIADIR=${USRHOM}/FEOM_POSTPROC/MESH_READ
 export LOGDIR=${WRKDIR}/LOG
 export FILDIR=${WRKDIR}/FILTER
@@ -57,7 +57,7 @@ export FSMINI=${FSMPRE}/ENSEMBLE_IC
 export OBSSEQ=${DRTDIR}/obs_seq.ferrybox
 
 #
--Mesh directories corresponding to different partitioning-
+#-Mesh directories corresponding to different partitioning-
 [ ${NPROC} -eq  128 ] && export MESHDIR=mesh-T2G1.5L110b.V4
 [ ${NPROC} -eq  256 ] && export MESHDIR=mesh-T2G1.5L110b
 [ ${NPROC} -eq  512 ] && export MESHDIR=mesh-T2G1.5L110b.V3
@@ -70,5 +70,5 @@ export OBSSEQ=${DRTDIR}/obs_seq.ferrybox
 function jobid {
   output=$($*)
   echo $output | head -n1 | cut -d'<' -f2 | cut -d'>' -f1
-    }
+  }
 

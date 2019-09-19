@@ -24,16 +24,21 @@
 #
 #----------------------------------------------------------------------
 
+#-- Load Experiment Environment Variables -----------------
+
+. environment.load
+
 # Translate the queueing-specific variables into a common tongue.
 
-if [[ -v LSB_JOBID ]] ; then
+
+if [[ $SCHEDULER = "lsf" ]] ; then
 
    JOBDIR=${LS_SUBCWD}         # directory of this script
    JOBNAM=${LSB_JOBNAME}       # name of this script
    JOBIDN=${LSB_JOBINDEX}      # job array index
    EXTENSION=lsf
 
-elif [[ -v PBS_NODEFILE ]] ; then
+elif [[ ${SCHEDULER} = "pbs" ]] ; then
 
    JOBDIR=${PBS_O_WORKDIR}     # directory of this script
    JOBNAM=${PBS_JOBNAME}       # name of this script
@@ -43,10 +48,6 @@ elif [[ -v PBS_NODEFILE ]] ; then
    EXTENSION=pbs
 
 fi
-
-#-- Load Experiment Environment Variables -----------------
-
-. environment.load
 
 #-- Ensemble required variables ---------------------------
 

@@ -24,18 +24,23 @@
 #
 #----------------------------------------------------------------------
 
+#-- Load Experiment Environment Variables and Functions --
+
+. environment.load
+
+
 # Translate the queueing-specific variables into a common tongue.
 
-if [[ -v LSB_JOBID ]] ; then
+if [[ $SCHEDULER = "lsf" ]] ; then
 
    JOBDIR=${LS_SUBCWD}         # directory of this script
    JOBNAM=${LSB_JOBNAME}       # name of this script
-   SUB_CMD='bsub < '
+   SUB_CMD="bsub < "
    DEP_CMD='bsub -w "done(XXXXXXXX)" < '
 
    EXTENSION=lsf
 
-elif [[ -v PBS_NODEFILE ]] ; then
+elif [[ $SCHEDULER = "pbs" ]] ; then
 
    JOBDIR=${PBS_O_WORKDIR}     # directory of this script
    JOBNAM=${PBS_JOBNAME}       # name of this script
@@ -47,10 +52,6 @@ elif [[ -v PBS_NODEFILE ]] ; then
 
 fi
 
-#-- Load Experiment Environment Variables and Functions --
-
-. environment.load
-
 #-----------------------------------------------------------------------
 # INITIALIZE ENSEMBLE IF NOT DONE YET
 #-----------------------------------------------------------------------
@@ -58,7 +59,7 @@ fi
 if [ ! -d ${WRKDIR} ]; then
 
   # If the directory does not exist, there is some one-time setup
-  # initialze.${EXPINFI} must be called. The initialize step is
+  # initialize.${EXPINFO} must be called. The initialize step is
   # embarassingly parallel, so a job array is used.
 
   DAYSTEP=1; RUNYEAR=2009
@@ -73,8 +74,8 @@ if [ ! -d ${WRKDIR} ]; then
   sed -e "s;ENSEMBLEMEMBERNO;${MEMNO};g" ${TMPLFILE} > ${SBMTFILE} || exit 1
 
   cd ${WRKDIR}
-  ID=$( jobid ${SUB_CMD} ${SBMTFILE} )
-  echo "Initalize job is ID ${ID}"
+  ID=$( jobid eval ${SUB_CMD} ${SBMTFILE} )
+  echo "Initialize job is ID ${ID}"
 
 else
   cd ${WRKDIR}
@@ -95,12 +96,12 @@ sed -e "s;ENSEMBLEMEMBERNO;${MEMNO};g" -e \
        "s;POEQUEUENAME;${POENAME};" ${TMPLFILE} > ${SBMTFILE} || exit 1
 if [ ${ID} = 0 ]; then
   cd ${WRKDIR}
-  ID=$( jobid ${SUB_CMD} ${SBMTFILE} )
+  ID=$( jobid eval ${SUB_CMD} ${SBMTFILE} )
   echo "Model advance job is ID ${ID}"
 else
   cd ${WRKDIR}
   DEP_STRING=`echo ${DEP_CMD} | sed "s/XXXXXXXX/${ID}/"`
-  ID=$( jobid ${DEP_STRING} ${SBMTFILE} )
+  ID=$( jobid eval ${DEP_STRING} ${SBMTFILE} )
   echo "Model advance job is ID ${ID} ... queued and waiting."
 fi
 
@@ -115,6 +116,6 @@ ${COPY} ${TMPLFILE} ${SBMTFILE}
 
 cd ${WRKDIR}
 DEP_STRING=`echo ${DEP_CMD} | sed "s/XXXXXXXX/${ID}/"`
-ID=$( jobid ${DEP_STRING} ${SBMTFILE} )
+ID=$( jobid eval ${DEP_STRING} ${SBMTFILE} )
 echo "Model advance check job is ${ID} ... queued and waiting.""
 
