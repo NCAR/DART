@@ -465,8 +465,8 @@ else if (nd == 2) then
       ! value to the model surface elevation at this location:
       !   use_vert_val  = phis(lon_index, lat_index) / gravity
    else
-      ! anything not listed in the surface field is assumed to
-      ! be an integrated quantity, and the vert type is VERTISUNDEF.
+      ! any 2d field not listed as a surface field (in is_surface_field() function) 
+      ! is assumed to be an integrated quantity with a vert type of VERTISUNDEF.
       use_vert_type = VERTISUNDEF
       use_vert_val  = MISSING_R8
    endif
