@@ -40,6 +40,8 @@ use          obs_kind_mod,  only : QTY_SURFACE_ELEVATION, QTY_PRESSURE, &
                                    QTY_ATOMIC_OXYGEN_MIXING_RATIO, QTY_NITROGEN, &
                                    get_index_for_quantity, get_num_quantities, &
                                    get_name_for_quantity, get_quantity_for_type_of_obs
+
+! examples of additional quantities that cam-chem might need defined from the obs_kind_mod
 !                                   ! GASES
 !                                   QTY_CO, QTY_SFCO, QTY_SFCO01, QTY_SFCO02, QTY_SFCO03, &
 !                                   QTY_O3, QTY_OH, QTY_NO, QTY_NO2, QTY_NO3, QTY_CH2O, &
@@ -461,18 +463,13 @@ else if (nd == 2) then
       use_vert_val  = MISSING_R8  
       ! setting the vertical value to missing matches what the previous
       ! version of this code did.  other models choose to set the vertical
-      ! value to the actual surface elevation at this location:
+      ! value to the model surface elevation at this location:
       !   use_vert_val  = phis(lon_index, lat_index) / gravity
    else
-      ! fields that are assumed to be integrated quantities.
-      if (is_integrated_field(q)) then
-         use_vert_type = VERTISUNDEF
-         use_vert_val  = MISSING_R8
-      else
-         write(string1, *) '2D field is not listed as a surface field nor an integrated quantity'
-         write(string2, *) ' quantity type = ', trim(get_name_for_quantity(q))
-         call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
-      endif
+      ! anything not listed in the surface field is assumed to
+      ! be an integrated quantity, and the vert type is VERTISUNDEF.
+      use_vert_type = VERTISUNDEF
+      use_vert_val  = MISSING_R8
    endif
 else
    write(string1, *) 'state vector field not 2D or 3D and no code to handle other dimensionity'
@@ -4177,25 +4174,6 @@ select case (qty)
 end select
    
 end function is_surface_field
-
-!-----------------------------------------------------------------------
-
-! add any 2d fields here that are column integrated values.
-
-function is_integrated_field(qty)
-integer, intent(in) :: qty
-logical :: is_integrated_field
-
-! turn this into a select if there are lots of quantities
-! that need to be checked.
-
-! if (qty == QTY_AOD) then
-!    is_integrated_field = .true.
-! else
-   is_integrated_field = .false.
-! endif
-
-end function is_integrated_field
 
 !-----------------------------------------------------------------------
 !> Store a table of pressures and heights. based on a std atmosphere.
