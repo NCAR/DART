@@ -13,6 +13,7 @@ DART diagnostics, see the
 [Configuring Matlab® for netCDF & DART](Getting_Starting.md#matlab))
 section of the **Getting_Started** document.
 
+<!-- <a href="{{site.baseurl}}/admin/">Admin</a> | -->
 
 |            |              |
 | ---------- | ------------ |
@@ -41,5 +42,8 @@ section of the **Getting_Started** document.
 | Section 23 | [Location Module Design](../tutorial/section_23.pdf) |
 | Section 24 | Fixed Lag Ensemble Kalman Smoother (not available yet) |
 | Section 25 | [A Simple 1D Advection Model: Tracer Data Assimilation](../tutorial/section_25.pdf) |
-
+| Section XX | <a href="../tutorial/section_25.pdf">A Simple 1D Advection Model: Tracer Data Assimilation</a> |
+| Section YY | <a href="{{site.baseurl}}/tutorial/section_25.pdf">A Simple 1D Advection Model: Tracer Data Assimilation</a> |
+| Section ZZ | [A Simple 1D Advection Model: Tracer Data Assimilation]({{site.baseurl}}/tutorial/section_25.pdf) |
+| section 9a | [More on Dealing with Error; Inflation](/docs/tutorial/section_09.pdf) |
 -----
