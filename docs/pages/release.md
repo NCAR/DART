@@ -14,7 +14,7 @@ The DART programs are highly portable, having been compiled with many
 Fortran 90 compilers and run on linux compute-servers, linux clusters,
 OSX laptops/desktops, SGI Altix clusters, supercomputers running AIX,
 and more. Read the
-[Customizations](https://www.image.ucar.edu/DAReS/DART/DART2_Starting.php#customizations)
+[Customizations](Getting_Starting.html#customizations)
 section for help in building on new platforms.
 
 DART employs a modular programming approach to apply an Ensemble Kalman
@@ -27,20 +27,20 @@ observation being assimilated is applied to each of the states to
 generate the model's estimate of the observation. Comparing these
 estimates and their uncertainty to the observation and its uncertainty
 ultimately results in the adjustments to the model states. See the
-[DART\_LAB](../DART_LAB/DART_LAB.html) demos or read more [in the DART
-tutorial](../tutorial/index.html).
+[DART_LAB](dart_lab.html) demos or read more
+[in the DART tutorial](Tutorial.html).
 
 DART diagnostic output can be written that contains the model state
 before and after the adjustment, along with the ensemble mean and
 standard deviation, and prior or posterior inflation values if inflation
-is enabled. There is also a text file, *obs\_seq.final*, with the model
+is enabled. There is also a text file, `obs_seq.final`, with the model
 estimates of the observations. There is a suite of MATLAB® functions
 that facilitate exploration of the results, but the netCDF files are
 inherently portable and contain all the necessary metadata to interpret
 the contents with other analysis programs such as NCL, R, etc.
 
-To get started running with Lorenz 63 model refer to [Getting
-Started](Manhattan_getting_started.html)
+To get started running with Lorenz 63 model refer to
+[Getting FIXME Started](Manhattan_getting_started.html)
 
 <span id="CurrentUsers"></span>
 
@@ -48,7 +48,7 @@ Started](Manhattan_getting_started.html)
 
 -----
 
-## Notes for Current Users
+## Notes for Current Users - FIXME - 
 
 If you have been updating from the rma\_trunk branch of the DART
 subversion repository you will notice that the code tree has been
@@ -64,18 +64,15 @@ structure looks like :
   - *models*
   - *observations*
 
-if you do try to do an 'svn update' on an existing directory, you will
-encounter many 'tree conflicts'.
-
-We suggest that current users checkout a fresh version of Manhattan in a
+~~We suggest that current users checkout a fresh version of Manhattan in a
 new location. To see which files need to be moved, run 'svn status' on
 your original checked out version. Anything with an M or ? in the first
-column needs to be moved to the new location in the new tree. Please
+column needs to be moved to the new location in the new tree.~~ Please
 [contact](mailto:dart@ucar.edu) DART if you have any issues migrating
 your existing code to the new tree structure.
 
-There is a list of non-backwards compatible changes ([see
-below](#Nonbackward)), and a list of new options and functions.
+There is a list of non-backwards compatible changes 
+([see below](#Nonbackward)), and a list of new options and functions.
 
 The Manhattan release will continue to be updated for the next few
 months as we continue to add features. Checking out the Manhattan
@@ -100,92 +97,85 @@ Changes in the Manhattan release (15 May 2015) which are *not* backwards
 compatible with the Lanai release (13 Dec 2013):
 
 1.  We no longer require model data to be converted to DART format
-    restart files. We directly read and write NetCDF format only. To
+    restart files. We directly read and write netCDF format only. To
     specify the input and output files for filter, there are new
-    namelist items in the \&filter\_nml namelist:
+    namelist items in the \&filter_nml namelist:
     `'input_state_file_list'` and `'output_state_file_list'` .
 
-2.  The information formerly in *Prior\_Diag.nc* and
-    *Posterior\_Diag.nc* has been moved. If you are reading and writing
+2.  The information formerly in `Prior_Diag.nc` and
+    `Posterior_Diag.nc` has been moved. If you are reading and writing
     ensemble members from different files, the state information, the
     ensemble mean and standard deviation, and the inflation mean and
-    standard deviation will all be read and written to separate files:
-    
-      - *\[stage\]\_member\_\#\#\#\#.nc*
-      - *\[stage\]\_mean.nc*
-      - *\[stage\]\_sd.nc*
-      - *\[stage\]\_priorinf\_{mean,sd}.nc* (if prior inflation is
-        turned on)
-      - *\[stage\]\_postinf\_{mean,sd}.nc* (if posterior inflation is
-        turned on)
-    
-      
+    standard deviation will all be read and written to separate files:  
+
+      - *\[stage\]_member\_\#\#\#\#.nc*
+      - *\[stage\]_mean.nc*
+      - *\[stage\]_sd.nc*
+      - *\[stage\]_priorinf_{mean,sd}.nc* (if prior inflation is turned on)
+      - *\[stage\]_postinf_{mean,sd}.nc* (if posterior inflation is turned on)
+
     If you are reading and writing ensemble members from a single file,
-    all this information will now be in a single NetCDF file but will be
-    stored in different variables inside that file:
-    
+    all this information will now be in a single netCDF file but will be
+    stored in different variables inside that file:  
+
       - *\[var\].nc*
-      - *\[var\]\_mean.nc*
-      - *\[var\]\_sd.nc*
-      - *\[var\]\_priorinf\_{mean,sd}.nc* (if prior inflation is turned
-        on)
-      - *\[var\]\_postinf\_{mean,sd}.nc* (if posterior inflation is
-        turned on)
-    
+      - *\[var\]_mean.nc*
+      - *\[var\]_sd.nc*
+      - *\[var\]_priorinf_{mean,sd}.nc* (if prior inflation is turned on)
+      - *\[var\]_postinf_{mean,sd}.nc* (if posterior inflation is turned on)
       
     We also now have options for writing files at four stages of the
     assimilation cycle: `'input', 'preassim', 'postassim', 'output'`.
-    This is set in the \&filter\_nml namelist with stages\_to\_write.
+    This is set in the \&filter_nml namelist with ```stages_to_write```.
 
-3.  New model\_mod.f90 required routines:
-    
-      - *vert\_convert()*
-      - *query\_vert\_localization\_coord()*
-      - *pert\_model\_copies()*
-      - *read\_model\_time()*
-      - *write\_model\_time()*
+3.  New `model_mod.f90` required routines:  
+
+      - *vert_convert()*
+      - *query_vert_localization_coord()*
+      - *pert_model_copies()*
+      - *read_model_time()*
+      - *write_model_time()*
     
     There are default version of these available to use if you have no
     special requirements.
 
-4.  Several of the model\_mod.f90 argument lists have changed
+4.  Several of the `model_mod.f90` argument lists have changed
     
-      - *model\_interpolate()* now takes in the `state_handle` as an
+      - *model_interpolate()* now takes in the 'state_handle' as an
         argument rather than a state vector array. It also return an
-        array of `expected_obs` and `istatus` for each of the ensemble
+        array of 'expected_obs' and 'istatus' for each of the ensemble
         members
-      - *get\_state\_meta\_data()* also requires the `state_handle` as
+      - *get_state_meta_data()* also requires the 'state_handle' as
         an argument rather than a state vector array.
-      - *nc\_write\_model\_atts()* has an additional argument
-        `moel_mod_writes_state_variables`. If true then the model\_mod
-        is expected to write out the state variables, if false DART will
+      - *nc_write_model_atts()* has an additional argument
+        `model_mod_writes_state_variables`. If `TRUE` then the model_mod
+        is expected to write out the state variables, if `FALSE` DART will
         write out the state variable (this is the prefered method for
-        adding new models, it requires less code from the model
-        developer)
+        adding new models, it requires less code from the model developer)
 
-5.  There are several namelist changes mainly in the \&filter\_nml and
-    \&perfect\_model\_mod which are outlined in detail in
-    [Manhattan\_diffs\_from\_Lanai](Manhattan_diffs_from_Lanai.html)
+5.  There are several namelist changes mainly in the \&filter_nml and
+    \&perfect_model_mod which are outlined in detail in
+    [Manhattan_diffs_from_Lanai](Manhattan_diffs_from_Lanai.html)
 
-6.  All modules have been moved to *DART/assimilation\_code/modules/*
+6.  All modules have been moved to *DART/assimilation_code/modules/*
     directory. And similarly all of the programs have moved to
-    *DART/assimilation\_code/programs/*
+    *DART/assimilation_code/programs/*
 
 7.  The location modules which were stored in *locations* have moved to
-    *DART/assimilation\_code/location* directory
+    *DART/assimilation_code/location* directory
 
 8.  The observation converters which were stored in *observations* have
-    moved to *DART/observations/obs\_converters* directory
+    moved to *DART/observations/obs_converters* directory
 
 9.  The forward operators have moved from
-    *obs\_def/obs\_def\_\*\_mod.f90* to
-    *observations/forward\_operators*
+    *obs_def/obs_def_\*_mod.f90* to
+    *observations/forward_operators*
 
 10. The tutorial files have moved to *DART/documentation/tutorial
     directory*
 
-11. The program *fill\_inflation\_restart* is OBSOLETE since DART
-    inflation files are now in NetCDF format. Now inflation files can be
+11. The program *fill_inflation_restart* is OBSOLETE since DART
+    inflation files are now in netCDF format. Now inflation files can be
     filled using *ncap2*. Here is an example using version 4.4.2 or
     later of the NCO tools:
     
@@ -194,27 +184,27 @@ compatible with the Lanai release (13 Dec 2013):
       ncap2 -s "T=0.6;U=0.6;V=0.6" wrfinput_d01 prior_sd.nc'
     ```
 
-12. The default flags in the mkmf\_template.XXX files have been updated
+12. The default flags in the mkmf_template.XXX files have been updated
     to be more consistent with current compiler versions.
 
 13. If you enable the sampling error correction option, the required
-    data is now read from a single netcdf file which supports multiple
+    data is now read from a single netCDF file which supports multiple
     ensemble sizes. A program is provided to compute additional ensemble
     sizes if they are not in the default file.
 
 14. Our use of TYPES and KINDS has been very confusing in the past. In
     Manhattan we have tried to make it clearer which things in DART are
     generic quantities (QTY) - temperature, pressure, etc - and which
-    things are specific types of observations - Radiosonde\_temperature,
-    Argo\_salinity etc.
+    things are specific types of observations - Radiosonde_temperature,
+    Argo_salinity etc.
     
-    Below is a mapping between old and new subroutine names here for
+    Below is a mapping between old and new routine names here for
     reference. We have made these changes to all files distributed with
     DART. If you have lots of code developed outside of the subversion
     repository, please contact [DART](mailto:dart@ucar.edu) for a sed
     script to help automate the changes.
     
-    Public subroutines, existing name on left, replacement on right:
+    Public routines, existing name on left, replacement on right:
     
     ~~~ 
         assimilate_this_obs_kind()     =>     assimilate_this_type_of_obs(type_index)
@@ -251,7 +241,7 @@ compatible with the Lanai release (13 Dec 2013):
         do_obs_form_pair()
     ~~~
     
-    Public integer parameter constants and subroutine formal argument
+    Public integer parameter constants and routine formal argument
     names, old on left, new on right:
     
     ~~~ 
@@ -272,25 +262,23 @@ compatible with the Lanai release (13 Dec 2013):
     can be run with cycling and all time steps will be appended to the
     file.
     
-    For *perfect\_model\_obs* we provide a *perfect\_input.cdl* file
+    For *perfect_model_obs* we provide a `perfect_input.cdl` file
     which contains a single ensemble member which will be considered the
     'truth' and observations will be generated based on those values.
     The output will contain all of the cycling timesteps all of the
     state variables.
     
-    For *filter* we provide a *filter\_input.cdl* file which contains
+    For *filter* we provide a `filter_input.cdl` file which contains
     all of the state member variables and potentially inflation mean and
     standard deviation values. The output will contain all of the
     cycling timesteps all of the state variables. Additionally you have
     the option to write out different stages during the assimilation in
-    the \&filter\_nml `stages_to_write` mentioned above.
+    the \&filter_nml 'stages_to_write' mentioned above.
     
-    To generate a NetCDF file from a .cdl file run:
+    To generate a netCDF file from a .cdl file run:
     
-    ~~~ 
-       ncgen -o perfect_input.nc perfect_input.cdl
-       ncgen -o filter_input.nc filter_input.cdl
-    ~~~
+    >  ncgen -o perfect_input.nc perfect_input.cdl
+    >  ncgen -o filter_input.nc filter_input.cdl
 
 <span id="NewFeatures"></span>
 
@@ -300,17 +288,17 @@ compatible with the Lanai release (13 Dec 2013):
 
 ## New Features
 
-  - DART now reads and writes NetCDF files for the model state
-    information. If your model uses NetCDF file format, you no longer
-    need model\_to\_dart or dart\_to\_model to translate to a DART
-    format file. If your model does not use NetCDF, you can adapt your
-    model\_to\_dart and dart\_to\_model executables to read and write a
-    NetCDF file for DART to use.  
+  - DART now reads and writes netCDF files for the model state
+    information. If your model uses netCDF file format, you no longer
+    need *model_to_dart* or *dart_to_model* to translate to a DART
+    format file. If your model does not use netCDF, you can adapt your
+    *model_to_dart* and *dart_to_model* executables to read and write a
+    netCDF file for DART to use.  
       
     The read/write code is part of the core DART routines so no code is
-    needed in the model\_mod model-specific module. There is a new
-    routine [add\_domain()](state_structure.html) that a
-    model\_mod::static\_init\_model() can user to define which NetCDF
+    needed in the model_mod model-specific module. There is a new
+    routine [add_domain()](state_structure.html) that a
+    model_mod::static_init_model() can user to define which netCDF
     variables should be part of the model state, and what DART quantity
     (formerly kind) they correspond to.
   - DART no longer limits the size of a model state to the size of a
@@ -328,20 +316,20 @@ compatible with the Lanai release (13 Dec 2013):
     to identify the various software tools, modules, documentation and
     tutorials supplied with the system.
   - The MATLAB® diagnostic routines have been updated to not require the
-    MEXNC toolbox. These routines use the built-in NetCDF support that
+    MEXNC toolbox. These routines use the built-in netCDF support that
     comes with MATLAB®.
   - There is a new Particle Filter type. Please contact us if you are
     interested in using it.
   - DART can now take subsets of observation types and restrict them
     from impacting certain quantities in the state during the
     assimilation. A tool to simplify constructing the table of
-    interactions is provided (obs\_impact\_tool).
+    interactions is provided (obs_impact_tool).
   - State Structure
       - Contains information about dimensions and size of variables in
         your state. There is a number of accessor functions to get
         variable information such as `get_variable_size()`. See the
-        [state\_structure.html](state_structure.html) for more details.
-  - The POP model\_mod now can interpolate Sea Surface Anomaly
+        [state_structure.html](state_structure.html) for more details.
+  - The POP model_mod now can interpolate Sea Surface Anomaly
     observations.
 
 <span id="SupportedModels"></span>
@@ -361,58 +349,56 @@ are still supported in DART
   - **9var**
       - DART interface documentation for the
         [9var](models/9var/model_mod.html) model.
-  - **bgrid\_solo**
-      - DART interface documentation for the [bgrid
-        solo](models/bgrid_solo/model_mod.html) model.
+  - **bgrid_solo**
+      - DART interface documentation for the
+       [bgrid solo](models/bgrid_solo/model_mod.html) model.
   - **cam-fv**
-      - DART interface documentation for the [CAM finite
-        volume](models/cam-fv/model_mod.html) global atmospheric
-        model.
-      - Documentation for the [CAM
-        model](http://www.cesm.ucar.edu/models/atm-cam/).
+      - DART interface documentation for the
+       [CAM finite volume](models/cam-fv/model_mod.html) global atmospheric model.
+      - Documentation for the
+       [CAM model](http://www.cesm.ucar.edu/models/atm-cam/).
   - **cice (NEW)**
       - DART interface documentation for the
         [CICE](models/cice/model_mod.html) model.
-      - Documentation for the [CICE
-        model](http://www.cesm.ucar.edu/models/ccsm4.0/cice/).
+      - Documentation for the
+        [CICE model](http://www.cesm.ucar.edu/models/ccsm4.0/cice/).
   - **cm1 (NEW)**
-      - DART interface documentation for the [CM1 cloud-resolving
-        model](models/cm1/model_mod.html).
-      - Documentation for the [CM1
-        model](http://www2.mmm.ucar.edu/people/bryan/cm1/).
-  - **forced\_lorenz\_96**
-      - DART interface documentation for the [forced
-        lorenz\_96](models/forced_lorenz_96/model_mod.html) model.
-  - **lorenz\_63**
       - DART interface documentation for the
-        [lorenz\_96](models/lorenz_63/model_mod.html) model.
-  - **lorenz\_84**
+        [CM1 cloud-resolving model](models/cm1/model_mod.html).
+      - Documentation for the
+        [CM1 model](http://www2.mmm.ucar.edu/people/bryan/cm1/).
+  - **forced_lorenz_96**
       - DART interface documentation for the
-        [lorenz\_84](models/lorenz_84/model_mod.html) model.
-  - **lorenz\_96**
+        [forced lorenz_96](models/forced_lorenz_96/model_mod.html) model.
+  - **lorenz_63**
       - DART interface documentation for the
-        [lorenz\_96](models/lorenz_96/model_mod.html) model.
-  - **lorenz\_04**
+        [lorenz_96](models/lorenz_63/model_mod.html) model.
+  - **lorenz_84**
       - DART interface documentation for the
-        [lorenz\_04](models/lorenz_04/model_mod.html) model.
-  - **mpas\_atm** (NetCDF overwrite not supported for
-    update\_u\_from\_reconstruct = .true. )
-      - DART interface documentation for the [MPAS
-        atmosphere](models/mpas_atm/model_mod.html) model.
-      - Documentation for the [MPAS
-        model](https://mpas-dev.github.io/atmosphere/atmosphere.html).
+        [lorenz_84](models/lorenz_84/model_mod.html) model.
+  - **lorenz_96**
+      - DART interface documentation for the
+        [lorenz_96](models/lorenz_96/model_mod.html) model.
+  - **lorenz_04**
+      - DART interface documentation for the
+        [lorenz_04](models/lorenz_04/model_mod.html) model.
+  - **mpas_atm** (netCDF overwrite not supported for update_u_from_reconstruct = .true. )
+      - DART interface documentation for the
+        [MPAS atmosphere](models/mpas_atm/model_mod.html) model.
+      - Documentation for the
+        [MPAS model](https://mpas-dev.github.io/atmosphere/atmosphere.html).
   - **POP**
       - DART interface documentation for the
         [POP](models/POP/model_mod.html) global ocean model.
-      - Documentation for the [POP
-        model](http://www.cesm.ucar.edu/models/ccsm2.0/pop/).
+      - Documentation for the
+        [POP model](http://www.cesm.ucar.edu/models/ccsm2.0/pop/).
   - **ROMS (NEW)**
       - DART interface documentation for the
         [ROMS](models/ROMS/model_mod.html) regional ocean model.
       - Documentation for the [ROMS model](https://www.myroms.org/).
-  - **simple\_advection**
-      - DART interface documentation for the [simple
-        advection](models/simple_advection/model_mod.html) model.
+  - **simple_advection**
+      - DART interface documentation for the
+        [simple advection](models/simple_advection/model_mod.html) model.
   - **wrf**
       - DART interface documentation for the
         [WRF](models/wrf/model_mod.html) regional forecast model.
@@ -420,8 +406,8 @@ are still supported in DART
         model](http://www.wrf-model.org/index.php).
 
 The *DART/models/template* directory contains sample files for adding a
-new model. See the [Adding a
-Model](http://www.image.ucar.edu/DAReS/DART/DART2_Documentation.php#adding_a_model)
+new model. See the 
+[Adding a Model](Models.html#adding_a_model)
 section of the DART web pages for more help on adding a new model.
 
 <span id="ChangedModels"></span>
@@ -439,11 +425,11 @@ section of the DART web pages for more help on adding a new model.
         linear pressure space. log(p) is the default, but a compile-time
         variable can restore the linear interpolation.
       - Added support in the namelist to avoid writing updated fields
-        back into the wrf netcdf files. The fields are still updated
+        back into the wrf netCDF files. The fields are still updated
         during the assimilation but the updated data is not written back
-        to the wrfinput file during the dart\_to\_wrf step.
+        to the wrfinput file during the dart_to_wrf step.
       - Fixed an obscure bug in the vertical convert routine of the wrf
-        model\_mod that would occasionally fail to convert an obs. This
+        model_mod that would occasionally fail to convert an obs. This
         would make tiny differences in the output as the number of mpi
         tasks change. No quantitative differences in the results but
         they were not bitwise compatible before and they are again now.
@@ -468,19 +454,19 @@ section of the DART web pages for more help on adding a new model.
 
   - Many new observation types related to land and atmospheric chemistry
     have been added. See the
-    [obs\_kind\_mod.f90](../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90)
+    [obs_kind_mod.f90](../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90)
     for a list of the generic quantities now available.
   - New forward operator for Sea Ice (cice) ice thickness observations.
     See the
-    [obs\_def\_cice\_mod.f90](../../observations/forward_operators/obs_def_cice_mod.f90)
+    [obs_def_cice_mod.f90](../../observations/forward_operators/obs_def_cice_mod.f90)
     file for details.
   - New forward operator for Carbon Monoxide (CO) Nadir observations.
     See the
-    [obs\_def\_CO\_Nadir\_mod.f90](../../observations/forward_operators/obs_def_CO_Nadir_mod.f90)
+    [obs_def_CO_Nadir_mod.f90](../../observations/forward_operators/obs_def_CO_Nadir_mod.f90)
     file for details.
   - New forward operator for Total Cloud Water in a column observations.
     See the
-    [obs\_def\_cwp\_mod.f90](../../observations/forward_operators/obs_def_cwp_mod.f90)
+    [obs_def_cwp_mod.f90](../../observations/forward_operators/obs_def_cwp_mod.f90)
     file for details.
 
 <span id="NewObs"></span>
@@ -494,41 +480,41 @@ section of the DART web pages for more help on adding a new model.
   - AVISO  
     Added an observation converter for Sea Surface Height Anomaly
     observations. Documentation in
-    [convert\_aviso.f90](../../observations/obs_converters/AVISO/convert_aviso.f90)
+    [convert_aviso.f90](../../observations/obs_converters/AVISO/convert_aviso.f90)
     (source).
   - cice  
-    Added an obs\_sequence converter for Sea Ice observations.
+    Added an obs_sequence converter for Sea Ice observations.
     Documentation in
-    [cice\_to\_obs.html](../../observations/obs_converters/cice/cice_to_obs.html).
+    [cice_to_obs.html](../../observations/obs_converters/cice/cice_to_obs.html).
   - GPSPW  
-    Added an obs\_sequence converter for GPS precipitable water
+    Added an obs_sequence converter for GPS precipitable water
     observations. Documentation in
-    [convert\_gpspw.f90](../../observations/obs_converters/GPSPW/convert_gpspw.f90)
+    [convert_gpspw.f90](../../observations/obs_converters/GPSPW/convert_gpspw.f90)
     (source).
   - MODIS  
-    Added an obs\_sequence converter for MODIS FPAR (Fraction of
+    Added an obs_sequence converter for MODIS FPAR (Fraction of
     Photosynthetically Active Radiation) and LAI (Leaf Area Index)
     obseverations. Documentation in
-    [MOD15A2\_to\_obs.html](../../observations/obs_converters/MODIS/MOD15A2_to_obs.html).
-  - ok\_mesonet  
-    Added an obs\_sequence converter for the Oklahoma Mesonet
+    [MOD15A2_to_obs.html](../../observations/obs_converters/MODIS/MOD15A2_to_obs.html).
+  - ok_mesonet  
+    Added an obs_sequence converter for the Oklahoma Mesonet
     observations. Documentation in
-    [ok\_mesonet.html](../../observations/obs_converters/ok_mesonet/ok_mesonet.html).
+    [ok_mesonet.html](../../observations/obs_converters/ok_mesonet/ok_mesonet.html).
   - ROMS  
-    Added an obs\_sequence converter for ROMS ocean data. This converter
+    Added an obs_sequence converter for ROMS ocean data. This converter
     includes externally computed forward operators output from the ROMS
     model using FGAT (First Guess At Time) during the model run.
     Documentation in
-    [convert\_roms\_obs.f90](../../observations/obs_converters/ROMS/convert_roms_obs.f90)
+    [convert_roms_obs.f90](../../observations/obs_converters/ROMS/convert_roms_obs.f90)
     (source).
   - SSUSI  
-    Added an obs\_sequence converter for wind profiler observations.
+    Added an obs_sequence converter for wind profiler observations.
     Documentation in
-    [convert\_f16\_edr\_dsk.html](../../observations/obs_converters/SSUSI/convert_f16_edr_dsk.html).
-  - tropical\_cyclone  
-    Added an obs\_sequence converter for ASCII format tropical cyclone
+    [convert_f16_edr_dsk.html](../../observations/obs_converters/SSUSI/convert_f16_edr_dsk.html).
+  - tropical_cyclone  
+    Added an obs_sequence converter for ASCII format tropical cyclone
     track observations. Documentation in
-    [tc\_to\_obs.html](../../observations/obs_converters/tropical_cyclone/tc_to_obs.html).
+    [tc_to_obs.html](../../observations/obs_converters/tropical_cyclone/tc_to_obs.html).
 
 <span id="NewDiagnostics"></span>
 
@@ -539,20 +525,21 @@ section of the DART web pages for more help on adding a new model.
 ## New Diagnostics and Documentation
 
 **Better Web Pages.** We've put a lot of effort into expanding our
-documentation. For example, please check out [the MATLAB diagnostics
-section](http://www.image.ucar.edu/DAReS/DART/DART2_Diagnostics.php#mat_obs)
-or the pages outlining the [observation sequence file
-contents](http://www.image.ucar.edu/DAReS/DART/DART2_Observations.php#obs_seq_overview).  
+documentation. For example, please check out
+[the MATLAB diagnostics section](Diagnostics.html#mat_obs)
+or the pages outlining the
+[observation sequence file contents](Observations.html#obs_seq_overview).  
 
   - The MATLAB® diagnostic routines have been updated to remove the
     dependency on third-party toolboxes. These routines use the built-in
-    netCDF support that comes with basic MATLAB® (no other toolboxes
-    needed).
+    netCDF support that comes with basic MATLAB® (no other toolboxes needed).
 
+  - The MATLAB® routines have been updated to work consistently across
+    many MATLAB® versions (which is no small trick considering how many non-backward-compatible
+    changes they have made!).
   
-But there's always more to add. **Please [let us
-know](http://www2.cisl.ucar.edu/image/software/dart/suggestion-box)
-where we are lacking.**
+But there's always more to add.
+**Please use the GitHub Wiki or Issues facilities to let us know where we are lacking or what doesn't work.**
 
 <span id="NewUtilities"></span>
 
@@ -565,16 +552,16 @@ where we are lacking.**
 This section describes updates and changes to the tutorial materials,
 scripting, setup, and build information since the Lanai release.
 
-  - *obs\_impact\_tool* please refer to
+  - *obs_impact_tool* please refer to
     [Website](https://www.image.ucar.edu/DAReS/DART/Manhattan/assimilation_code/programs/obs_impact_tool/obs_impact_tool.html)
-    or [local
-    file](../../assimilation_code/programs/obs_impact_tool/obs_impact_tool.html)
-  - *gen\_sampling\_error\_table* now computes sampling error correction
+    or 
+    [local file](../../assimilation_code/programs/obs_impact_tool/obs_impact_tool.html)
+  - *gen_sampling_error_table* now computes sampling error correction
     tables for any ensemble size.
-  - *compute\_error*
+  - *compute_error*
     [Website](https://www.image.ucar.edu/DAReS/DART/Manhattan/assimilation_code/programs/compute_error/compute_error.html)
-    or [local
-    file](../../assimilation_code/programs/compute_error/compute_error.html)
+    or
+    [local file](../../assimilation_code/programs/compute_error/compute_error.html)
 
 <span id="KnownProblems"></span>
 
@@ -588,10 +575,9 @@ scripting, setup, and build information since the Lanai release.
     to come soon. We are not aware of any obvious bugs, but if you
     encounter any unexpected behavior please contact us. Please watch
     the dart-users email list for announcements of updates to the
-    release code, and be prepared to do an 'svn update' from time to
-    time to get updated files.
-
-<span id="Legalese"></span>
+    release code, and be prepared to issue a GitHub Pull Request from
+    the DART repository to your fork, or a git 'fetch' from the DART repository
+    to get updated files.
 
 \[[top](#)\]
 
