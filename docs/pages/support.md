@@ -9,15 +9,15 @@ Please send email to [dart@ucar.edu](mailto:dart@ucar.edu) rather than individua
 It is the best way to ensure a timely response and sometimes generates productive
 discussion among our group that leads to a better response.
 
-GitHub also provides a [wiki](https:/v0.0.2/github.com/NCAR/DART/wiki) that
+GitHub also provides a [wiki](https://github.com/NCAR/DART/wiki) that
 we will be using to add examples and appropriate content.
 
-Lastly, GitHub also provides a [bug-reporting](https:/v0.0.2/github.com/NCAR/DART/issues)
+Lastly, GitHub also provides a [bug-reporting](https://github.com/NCAR/DART/issues)
 facility. 
 
 ### links
 
-- [GitHub workflow](https:/v0.0.2/guides.github.com/introduction/flow/)
+- [GitHub workflow](https://guides.github.com/introduction/flow/)
 
 ### Svn to Git
 

@@ -199,7 +199,7 @@ observation sequence file will be written in ascii:
 and rerun *filter* to regenerate an `obs_seq.final` file in ascii.
 [These&nbsp;diagrams](Observations.md#obs_seq_overview) help to understand
 an `obs_seq.final` file. 2) If you are using many observations, run the
-[obs_diag.f90](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/obs_diag.html)
+[obs_diag.f90](https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html)
 appropriate for your model. There are some
 [diagnostic&nbsp;scripts](#mat_obs) to help summarize and explore what is going on.
 
@@ -227,7 +227,7 @@ A list of all the DART QC values can be found in [this&nbsp;table](#qc_table).
   different istatus values for different error types, you can set
   *&filter_nml::output_forward_op_errors&nbsp;=&nbsp;.true.* and rerun
   *filter* to see exactly what error istatus codes are being set. See
-  [the filter webpage](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/filter.html)
+  [the filter webpage](https://ncar.github.io/DART/api/v2.1.10/program/filter.html)
   for more information on how to use the 'output_forward_op_errors'
   option. Negative istatus values are reserved for the system,
   *istatus&nbsp;=&nbsp;0* is success, and any positive value indicates a failed
@@ -383,7 +383,7 @@ is a first-order metric for determining the health of the assimilation
 system.
 
 1.  Use
-    [obs_diag.f90](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/obs_diag.html)
+    [obs_diag.f90](https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html)
     to process the collection of `obs_seq.final` files for regions and
     times of interest. Edit the *input.nml:obs_diag_nml* namelist to
     reflect the details of your experiment, and then run *obs_diag* to
@@ -441,7 +441,7 @@ assumptions. Observations aren't perfect - but they are still best.
 same observation type begin defined with *different* vertical coordinate
 systems. While this does not pose a problem for assimilation, it *does*
 pose a problem for the diagnostics. The current
-[obs_diag.f90](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/obs_diag.html)
+[obs_diag.f90](https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html)
 cannot (vertically) bin the same observation type that exploits two
 different vertical coordinate systems. If you get a WARNING from
 *obs_diag:CheckVertical()* you should know that the observation
@@ -471,7 +471,7 @@ DART produces (sometimes many) netCDF files: `preassim.nc` and
 on the namelist settings you have chosen. You should get familiar with
 what is available in the files you have created. Please read the
 documentation for
-[&filter_nml](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/filter.html),
+[&filter_nml](https://ncar.github.io/DART/api/v2.1.10/program/filter.html),
 especially for the variables: *stages_to_write*, *output_members*,
 *output_mean*, *output_sd*, and *single_file_out*. You should
 experiment and become familiar with **ALL** the namelist variables
@@ -515,12 +515,12 @@ See the expanded section on
 | 9 and above | reserved for future use. |
 
 It is required to post-process the `obs_seq.final` file(s) with
-[obs_diag](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/obs_diag.html)
+[obs_diag](https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html)
 to generate a netCDF file containing accumulated diagnostics for
 specified regions, etc. Since the experiment information (assimilation
 interval, assimilating model, etc.) are not recorded in the
 `obs_seq.final` file, the
-[obs_diag_nml](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/obs_diag.html)
+[obs_diag_nml](https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html)
 namelist has a section that allows specification of the necessary
 quantities.  
 
@@ -640,7 +640,7 @@ plotdat   = plot_rank_histogram(fname, timeindex, 'RADIOSONDE_TEMPERATURE');
 <img src="../images/science_nuggets/rank_hist_matlab_example.png" height="200" alt="rank hist" />
  
 You may also convert observation sequence files to netCDF by using
-[obs_seq_to_netcdf](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/obs_seq_to_netcdf.html).
+[obs_seq_to_netcdf](https://ncar.github.io/DART/api/v2.1.10/program/obs_seq_to_netcdf.html).
 All of the following routines will work on observation sequences files
 AFTER an assimilation (i.e. `obs_seq.final` files that have been
 converted to netCDF), and some of them will work on *obs_seq.out*-type
@@ -777,7 +777,7 @@ dimensions:
         plevel_edges = 12 ;
         hlevel = 11 ;
         hlevel_edges = 12 ;
-        time = UNLIMITED ; /v0.0.2/ (6 currently)
+        time = UNLIMITED ; // (6 currently)
         bounds = 2 ;
         stringlength = 32 ;
         rank_bins = 97 ;
@@ -873,7 +873,7 @@ variables:
 ...
 ...
 
-/v0.0.2/ global attributes:
+// global attributes:
                 :creation_date = "YYYY MM DD HH MM SS = 2011 03 18 13 37 34" ;
                 :obs_diag_source = "URL: blah_blah_blah/diagnostics/threed_sphere/obs_diag.html $" ;
                 :obs_diag_revision = "$Revision$" ;
@@ -1064,7 +1064,7 @@ netcdf preassim {
 dimensions:
         metadatalength = 64 ;
         member = 3 ;
-        time = UNLIMITED ; /v0.0.2/ (1 currently)
+        time = UNLIMITED ; // (1 currently)
         NMLlinelen = 129 ;
         NMLnlines = 203 ;
         domain = 1 ;
@@ -1099,7 +1099,7 @@ variables:
 #### Non-MATLAB® state-space diagnostics
 
 The innovations to the model state are easy to derive. Use the
-[NCO Operator](http:/v0.0.2/nco.sourceforge.net/) *ncdiff* to difference the two
+[NCO Operator](http://nco.sourceforge.net/) *ncdiff* to difference the two
 DART diagnostic netCDF files to create the innovations. Be sure to check
 the *CopyMetaData* variable to figure out what *copy* is of interest.
 Then, use *ncview* to explore the innovations or the inflation values or ...  
@@ -1130,7 +1130,7 @@ error variance of 1.5 degrees Kelvin - repeated every 6 hours for 6 days
 (24 timesteps); and one that had 9 observations locations clustered in
 about the same location that repeated every 6 hours for 1.5 days (6
 timesteps). I merged the two observation sequences into one using
-[obs_sequence_tool](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/obs_sequence_tool.html)
+[obs_sequence_tool](https://ncar.github.io/DART/api/v2.1.10/program/obs_sequence_tool.html)
 and ran them through *perfect_model_obs* to derive the observation
 values and create an *obs_seq.out* file to run through *filter*.
 **NOTE:** Other models may have their ensemble means and spreads and
@@ -1146,7 +1146,7 @@ netcdf preassim {
 dimensions:
         metadatalength = 64 ;
         member = 20 ;
-        time = UNLIMITED ; /v0.0.2/ (24 currently)
+        time = UNLIMITED ; // (24 currently)
         NMLlinelen = 129 ;
         NMLnlines = 303 ;
         StateVariable = 28200 ;

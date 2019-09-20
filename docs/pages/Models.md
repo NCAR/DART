@@ -16,7 +16,7 @@ every effort to incorporate improvements to the code. Email us at
 download DART, you may view the documentation offline by opening the
 *index.html* file in the top-level DART directory.~~ If you want to
 explore the documentation page without downloading DART, you may 
-[view the documentation for the Manhattan release](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/index.html).
+[view the documentation for the Manhattan release](https://ncar.github.io/DART/api/v2.1.10/index.html).
 
 ## Links to major sections of this document:
 - [Downloadable datasets for DART.](#datasets)
@@ -248,7 +248,7 @@ as a subroutine. *Status:* supported.
 ### WRF
 
 The [Weather Research and Forecasting (WRF)
-Model](http:/v0.0.2/www.wrf-model.org/) is a next-generation mesoscale
+Model](http://www.wrf-model.org/) is a next-generation mesoscale
 numerical weather prediction system designed to serve both operational
 forecasting and atmospheric research needs. More people are using DART
 with WRF than any other model. Note: The actual WRF code is not
@@ -259,22 +259,22 @@ distributed with DART. *Status:* supported.
 ### MPAS ATM
 
 [Model Prediction Across Scales -
-atmosphere](https:/v0.0.2/mpas-dev.github.io/) *Status:* active
+atmosphere](https://mpas-dev.github.io/) *Status:* active
  
 <span id="ROMS" class="anchor"></span>
 
 ### ROMS
 
-[Regional Ocean Modelling System](https:/v0.0.2/www.myroms.org/) *Status:* active
+[Regional Ocean Modelling System](https://www.myroms.org/) *Status:* active
 
 <span id="CESM" class="anchor"></span>
 
 ### CESM
 
 There are several 
-[supported versions](http:/v0.0.2/www.cesm.ucar.edu/models/current.html) 
+[supported versions](http://www.cesm.ucar.edu/models/current.html) 
 of the Community Earth System Model (CESM) and its ancestors
-([CCSM4.0](http:/v0.0.2/www.cesm.ucar.edu/models/ccsm4.0)). Contact us for
+([CCSM4.0](http://www.cesm.ucar.edu/models/ccsm4.0)). Contact us for
 support for unreleased, developmental versions of CESM. Not all are
 supported because each requires modification of some subroutines and
 setup scripts in order to work with DART. The supported versions depend
@@ -302,10 +302,10 @@ of CAM. This works for all of the variants of CAM-FV; CAM-Chem, WACCM,
 WACCM-X. An interface between DART and the spectral element dy-core of
 CAM is available in DART Classic and will be brought into the Manhattan
 release when needed.
-[(CAM5)](http:/v0.0.2/www.cesm.ucar.edu/models/cesm1.0/cam); Some SourceMods
+[(CAM5)](http://www.cesm.ucar.edu/models/cesm1.0/cam); Some SourceMods
 and initial file ensembles for older and lower-resolution CAM-FVs are
 available in 
-[DART/CAM datasets](http:/v0.0.2/www.image.ucar.edu/pub/DART/CAM/) *Status:* available
+[DART/CAM datasets](http://www.image.ucar.edu/pub/DART/CAM/) *Status:* available
 for community use.
 
 <span id="CICE" class="anchor"></span>
@@ -313,8 +313,8 @@ for community use.
 ### CICE (pronounced 'sea ice')
 
 See CESM, above. The sea-ice component of
-[CESM](http:/v0.0.2/www.cesm.ucar.edu/models/current.html) The interface of
-[CESM-CICE](http:/v0.0.2/www.cesm.ucar.edu/models/cesm1.2/cice/) to DART is
+[CESM](http://www.cesm.ucar.edu/models/current.html) The interface of
+[CESM-CICE](http://www.cesm.ucar.edu/models/cesm1.2/cice/) to DART is
 through CESM1.5. **Cecilia Bitz** and **Yongfei Zhang** created the
 interfaces for DART.  *Status:* throroughly
 beta-tested, full support awaiting the CESM2.0 release.
@@ -324,10 +324,10 @@ beta-tested, full support awaiting the CESM2.0 release.
 ### POP
 
 See CESM, above. The Parallel Ocean Program
-[(POP)](http:/v0.0.2/www.cesm.ucar.edu/models/cesm1.0/pop2/) was originally created by
+[(POP)](http://www.cesm.ucar.edu/models/cesm1.0/pop2/) was originally created by
 the Los Alamos National Laboratory and has been modified to run in the [NCAR
 Community Earth System Model
-(CESM)](http:/v0.0.2/www.cesm.ucar.edu/models/current.html) framework. Additional
+(CESM)](http://www.cesm.ucar.edu/models/current.html) framework. Additional
 modifications are necessary for data assimilation and center around the need to
 perform an adjustment upon restart to account for the fact that the input ocean
 state has been modified by the assimilation. There are interfaces for CESM1.1.1
@@ -343,7 +343,7 @@ atmospheric phenomena in idealized to semi-idealized simulations. The CM1 model
 was developed and is maintained by George Bryan at the National Center for
 Atmospheric Research (NCAR) Mesoscale and Microscale Meteorology Laboratory
 (MMM). The model code is freely available from the CM1 website:
-<http:/v0.0.2/www2.mmm.ucar.edu/people/bryan/cm1> and must be downloaded and compiled
+<http://www2.mmm.ucar.edu/people/bryan/cm1> and must be downloaded and compiled
 outside of DART.
 This model interface and scripting support were created by **Luke Madaus**.
 
@@ -353,7 +353,7 @@ This model interface and scripting support were created by **Luke Madaus**.
 
 <span id="noah-mp" class="anchor"></span>
 
-[FESOM](https:/v0.0.2/fesom.de/models/fesom14) is an unstructured mesh global 
+[FESOM](https://fesom.de/models/fesom14) is an unstructured mesh global 
 ocean model using finite element methods to solve the hydrostatic 
 primitive equations with the Boussinesq approximation.
 The [FESOM model interface](../../models/FESOM/Readme.md),
@@ -368,7 +368,7 @@ contributed by **Ali Aydoğdu**.
 ### WRF-HYDRO
 
 The WRF-Hydro assimilation support has its own (private) GitHub repository
-[NCAR/wrf_hydro_dart](https:/v0.0.2/github.com/NCAR/wrf_hydro_dart) that supports
+[NCAR/wrf_hydro_dart](https://github.com/NCAR/wrf_hydro_dart) that supports
 the channel-only configuration of WRF-Hydro. Originally, this was almost 
 entirely the work of **James McCreight** of NCAR's Research Applications 
 Laboratory (RAL). The DAReS team has been working with RAL to incorporate new
@@ -395,7 +395,7 @@ rigid lid model that has the ability to run in a fully three-dimensional
 general curvilinear coordinate system. Much of the work of supporting GCCOM in
 DART was by **Mariangel Garcia** while she was at San Diego State University.
 One article is 
-["Interfacing an ensemble Data Assimilation system with a 3D nonhydrostatic Coastal Ocean Model, an OSSE experiment"](https:/v0.0.2/ieeexplore.ieee.org/abstract/document/7760992)
+["Interfacing an ensemble Data Assimilation system with a 3D nonhydrostatic Coastal Ocean Model, an OSSE experiment"](https://ieeexplore.ieee.org/abstract/document/7760992)
 
 <span id="LMDZ" class="anchor"></span>
 
@@ -415,7 +415,7 @@ From the LMDZ homepage:
 
 ### MITgcm_ocean
 
-The [MIT ocean GCM](http:/v0.0.2/mitgcm.org/) version 'checkpoint59a' is the
+The [MIT ocean GCM](http://mitgcm.org/) version 'checkpoint59a' is the
 foundation of this implementation. It was modified by **Ibrahim Hoteit**
 (then of Scripps) to accomodate the interfaces needed by DART. *Status:*
 supported, and currently being ported to Manhattan.
@@ -428,7 +428,7 @@ supported, and currently being ported to Manhattan.
 
 ### AM2
 
-The [FMS AM2](http:/v0.0.2/data1.gfdl.noaa.gov/~arl/pubrel/m/am2/doc/) model
+The [FMS AM2](http://data1.gfdl.noaa.gov/~arl/pubrel/m/am2/doc/) model
 is GFDL's atmosphere-only code using observed sea surface temperatures,
 time-varying radiative forcings (including volcanos) and time-varying
 land cover type. This version of AM2 (also called AM2.1) uses the
@@ -457,7 +457,7 @@ and needs to be updated to be consistent with the Manhattan release.
 
 ### CLM
 
-Assimilation with the [Community Land Model](http:/v0.0.2/www.cesm.ucar.edu/models/clm/)
+Assimilation with the [Community Land Model](http://www.cesm.ucar.edu/models/clm/)
 is well supported and the system has been used for many research interests, from 
 biogeochemistry to snow, ice, soil moisture and more. DART/CLM has many research
 branches and guidance for which branch is most appropriate is provided upon request. 
@@ -473,7 +473,7 @@ she was at the University of Texas at Austin.
 
 The DART interface was originally written and supported by **Tim Whitcomb**.
 The following model description is taken from the [COAMPS overview web
-page:](http:/v0.0.2/www.nrlmry.navy.mil/coamps-web/web/view)
+page:](http://www.nrlmry.navy.mil/coamps-web/web/view)
 
 > The Coupled Ocean/Atmosphere Mesoscale Prediction System (COAMPS) has
 > been developed by the Marine Meteorology Division (MMD) of the Naval
@@ -554,7 +554,7 @@ random draw from a Gaussian, or combinations of the two.
 ### TIEGCM
 
 The DART interfaces to the Thermosphere Ionosphere Electrodynamic General 
-Circulation Model [TIEGCM](http:/v0.0.2/www.hao.ucar.edu/modeling/tgcm/tie.php)
+Circulation Model [TIEGCM](http://www.hao.ucar.edu/modeling/tgcm/tie.php)
 are fully supported in the Lanai release.
 TIEGCM is a community model developed at the NCAR High Altitude Observatory and
 is widely used by the space physics and aeronomy community.
@@ -595,7 +595,7 @@ namelist documentation for how to use the single-column features.
 The MITgcm annulus model as configured for this application within DART
 is a non-hydrostatic, rigid lid, C-grid, primitive equation model
 utilizing a cylindrical coordinate system. For detailed information
-about the MITgcm, see http:/v0.0.2/mitgcm.org *Status:* orphaned.
+about the MITgcm, see http://mitgcm.org *Status:* orphaned.
 
 <span id="forced_barot" class="anchor"></span>
 
@@ -654,23 +654,23 @@ Please be patient as I make time to populate this directory.
 (yes, 'make', all my 'found' time is taken ...)  
   
 Observation sequences can be found at 
-[www.image.ucar.edu/pub/DART/Obs_sets](http:/v0.0.2/www.image.ucar.edu/pub/DART/Obs_sets)
+[www.image.ucar.edu/pub/DART/Obs_sets](http://www.image.ucar.edu/pub/DART/Obs_sets)
   
 <span id="initial_conditions" class="anchor"></span>
 Useful bits for CAM can be found at 
-[www.image.ucar.edu/pub/DART/CAM](http:/v0.0.2/www.image.ucar.edu/pub/DART/CAM).  
+[www.image.ucar.edu/pub/DART/CAM](http://www.image.ucar.edu/pub/DART/CAM).  
   
 Useful bits for WRF can be found at
-[www.image.ucar.edu/pub/DART/WRF](http:/v0.0.2/www.image.ucar.edu/pub/DART/WRF).  
+[www.image.ucar.edu/pub/DART/WRF](http://www.image.ucar.edu/pub/DART/WRF).  
   
 Useful bits for MPAS_ocn can be found at
-[www.image.ucar.edu/pub/DART/MPAS_OCN](http:/v0.0.2/www.image.ucar.edu/pub/DART/MPAS_OCN)
+[www.image.ucar.edu/pub/DART/MPAS_OCN](http://www.image.ucar.edu/pub/DART/MPAS_OCN)
   
 Useful bits for CICE can be found at
-[www.image.ucar.edu/pub/DART/CICE](http:/v0.0.2/www.image.ucar.edu/pub/DART/CICE)
+[www.image.ucar.edu/pub/DART/CICE](http://www.image.ucar.edu/pub/DART/CICE)
   
 Verification experiments will be posted to
-[www.image.ucar.edu/pub/DART/VerificationData](http:/v0.0.2/www.image.ucar.edu/pub/DART/VerificationData) 
+[www.image.ucar.edu/pub/DART/VerificationData](http://www.image.ucar.edu/pub/DART/VerificationData) 
 as soon as I can
 get to it. These experiments will consist of initial conditions files
 for testing different high-order models like CAM, WRF, POP ... The
@@ -695,7 +695,7 @@ generate a single initial condition and let DART perturb it with noise
 of a nature you specify to generate as many ensemble members as you
 like. The second is to take some existing collection of model states and
 convert them to DART initial conditions files and then use the 
-[NCO operators](http:/v0.0.2/nco.sourceforge.net/) to set the proper date in the
+[NCO operators](http://nco.sourceforge.net/) to set the proper date in the
 files. The hard part is then coming up with the original collection of
 model state(s).
 
@@ -811,15 +811,15 @@ There are four fundamental steps to running an OSSE from within DART:
     observations without actually specifying the observation values. The
     default filename for the blueprint is *obs_seq.in*. For simple
     cases, this is just running
-    [create_obs_sequence](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/create_obs_sequence.html)
+    [create_obs_sequence](https://ncar.github.io/DART/api/v2.1.10/program/create_obs_sequence.html)
     and
-    [create_fixed_network_seq](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/create_fixed_network_seq.html).
+    [create_fixed_network_seq](https://ncar.github.io/DART/api/v2.1.10/program/create_fixed_network_seq.html).
     You can also use real observation sequences as long as you take care
     to specify observation error variances that do not incorporate
     representativeness error.  
 2.  [Harvest the synthetic observations](#run_pmo) from the true model
     state by running
-    [perfect_model_obs](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/perfect_model_obs.html)
+    [perfect_model_obs](https://ncar.github.io/DART/api/v2.1.10/program/perfect_model_obs.html)
     to advance the model from a known initial condition and apply the
     forward observation operator based on the observation 'blueprint'.
     The observation will have noise added to it based on a draw from a
@@ -830,7 +830,7 @@ There are four fundamental steps to running an OSSE from within DART:
     in ```perfect_output.nc```. The default filename for the
     'observations' is ```obs_seq.out```.  
 3.  [Assimilate the synthetic observations](#run_filter) with
-    [filter](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/filter.html) in
+    [filter](https://ncar.github.io/DART/api/v2.1.10/program/filter.html) in
     the usual way. The prior/forecast states are preserved in
     ```preassim.nc``` and the posterior/analysis states are preserved in
     ```filter_output.nc``` . The default filename for the file with the
@@ -851,7 +851,7 @@ DART format already, you can simply use them. If you have observations
 in one of the formats already supported by the DART converters
 (check [DART/observations/obs_converters/observations.html](obs_converters_observations.html)),
 convert it to a DART observation sequence. You may need to use the
-[obs_sequence_tool](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/obs_sequence_tool.html)
+[obs_sequence_tool](https://ncar.github.io/DART/api/v2.1.10/program/obs_sequence_tool.html)
 to combine multiple observation sequence files into observation sequence
 files for the perfect model experiment. Any existing observation values
 and quality control information will be ignored by *perfect_model_obs*;
@@ -873,11 +873,11 @@ the model stops.
 If you do not have an input observation sequence, it is simple to create one.
 
 1.  Run
-    [create_obs_sequence](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/create_obs_sequence.html)
+    [create_obs_sequence](https://ncar.github.io/DART/api/v2.1.10/program/create_obs_sequence.html)
     to generate the blueprint for the types of observations and
     observation error variances for whatever locations are desired.  
 2.  Run
-    [create_fixed_network_seq](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/create_fixed_network_seq.html)
+    [create_fixed_network_seq](https://ncar.github.io/DART/api/v2.1.10/program/create_fixed_network_seq.html)
     to define the temporal distribution of the desired observations.
 
 Both *create_obs_sequence* and *create_fixed_network_seq*
@@ -910,7 +910,7 @@ available in the
 
 ### 2. Generating the true state and harvesting the observation values - *perfect_model_obs*
 
-[perfect_model_obs](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/perfect_model_obs.html)
+[perfect_model_obs](https://ncar.github.io/DART/api/v2.1.10/program/perfect_model_obs.html)
 reads the blueprint and an initial state and applies the appropriate
 forward observation operator for each and every observation in the
 current 'assimilation window'. If necessary, the model is advanced until
@@ -951,7 +951,7 @@ The noisy copy is designated as the 'observation', the noise-free
 copy is the truth. The observation-space diagnostic program 
 <em>obs_diag</em> has special options for using the true copy instead 
 of the observation copy. See the 
-<a href="https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/obs_diag.html">obs_diag.html</a> for details.</td>
+<a href="https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html">obs_diag.html</a> for details.</td>
 </tr>
 <tr class="even">
 <td><em>dart_log.out</em></td>
@@ -1036,7 +1036,7 @@ low-order models) can run *perfect_model_obs* very simply:
 ### 3. Performing the assimilation experiment - *filter*
 
 This step is done with the program
-[filter](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/filter.html), which
+[filter](https://ncar.github.io/DART/api/v2.1.10/program/filter.html), which
 also uses ```input.nml``` for input and run-time control. A successful
 assimilation will depend on many things: an approprite initial ensemble,
 monitoring and perhaps correcting the ensemble spread, localization,
@@ -1231,7 +1231,7 @@ be written. We have a lot of experience writing these converters - you
 should not be afraid to ask for advice or for code to start from.  
   
 *NEW* Manhattan provides a program to help test the required interfaces:
-[assimilation_code/programs/model_mod_check/model_mod_check.f90](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/model_mod_check.html).
+[assimilation_code/programs/model_mod_check/model_mod_check.f90](https://ncar.github.io/DART/api/v2.1.10/program/model_mod_check.html).
 Many models start with this and modify it to suit their needs. Be aware
 that some of the model-specific *model_mod_check.f90* programs use
 deprecated features. Focus on the ones for Manhattan-compliant
@@ -1349,12 +1349,12 @@ precious few places.
 
 If your model is a separate executable, it would be wise to look at the
 heavily commented template script
-[models/template/shell_scripts/advance_model.csh](https:/v0.0.2/github.com/ncar/dart/models/template/shell_scripts/advance_model.csh)
+[models/template/shell_scripts/advance_model.csh](https://github.com/ncar/dart/models/template/shell_scripts/advance_model.csh)
 and then a few higher-order models to see how they do it.
 Become familiar with [DART's use of MPI](dart_mpi.html), the
 [options for parallelism](filter_async_modes.html), and
 the *filter* namelist parameter
-[*async*](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/filter.html).
+[*async*](https://ncar.github.io/DART/api/v2.1.10/program/filter.html).
 
 <span id="Copying" class="anchor"></span>
 
@@ -1457,7 +1457,7 @@ is:
 
 each routine includes usual things it often has to do for subroutine-callable
 models which can manufacture an initial condition state vector.
-[model_mod_check.f90](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/model_mod_check.html)
+[model_mod_check.f90](https://ncar.github.io/DART/api/v2.1.10/program/model_mod_check.html)
 can be used to test these routines individually before you run it with *filter*.
 start with all defaults from other modules and add, in order the following
 routines:
@@ -1550,7 +1550,7 @@ possible future implementation.
 
 Each routine includes usual things it often has to do for a large
 geophysical model. this is different from the low order models.
-[model_mod_check.f90](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/model_mod_check.html)
+[model_mod_check.f90](https://ncar.github.io/DART/api/v2.1.10/program/model_mod_check.html)
 can be used to test these routines individually before you run it with
 *filter*. start with all defaults from other modules and add, in order
 the following routines:
@@ -1868,7 +1868,7 @@ Examples exist in the *diagnostics/matlab/private* directory.
 ## Examples - under construction
 
 1.  observation location/value plots
-2.  [a brief explanation of 'localization'](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/module/assim_tools_mod.html)
+2.  [a brief explanation of 'localization'](https://ncar.github.io/DART/api/v2.1.10/module/assim_tools_mod.html)
 3.  namelist settings for damped adaptive spatially-varying group filter
 
 <span id="namelists" class="anchor"></span> 

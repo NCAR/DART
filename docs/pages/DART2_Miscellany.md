@@ -9,23 +9,23 @@ layout: default
 
 The following free open-source tools have proven to be very useful:
 
-1.  [ncview](http:/v0.0.2/meteora.ucsd.edu/~pierce/ncview_home_page.html): a
+1.  [ncview](http://meteora.ucsd.edu/~pierce/ncview_home_page.html): a
     great visual browser for netCDF files.
-2.  [Panoply](http:/v0.0.2/www.giss.nasa.gov/tools/panoply): another visual
+2.  [Panoply](http://www.giss.nasa.gov/tools/panoply): another visual
     browser for netCDF, HDF, and GRIB files with many options for map
     projections and data slicing.
-3.  [the netCDF Operators (NCO)](http:/v0.0.2/nco.sourceforge.net/): tools to
+3.  [the netCDF Operators (NCO)](http://nco.sourceforge.net/): tools to
     perform operations on netCDF files like concatenating, differencing,
     averaging, etc.
-4.  [An MPI environment](http:/v0.0.2/en.wikipedia.org/wiki/Message_Passing_Interface#Overview):
+4.  [An MPI environment](http://en.wikipedia.org/wiki/Message_Passing_Interface#Overview):
     to run larger jobs in parallel. DART can be used without MPI,
     especially the low order models where the memory use is small. The
     larger models often require MPI so that filter can be run as a
     parallel job, both for speed and memory size reasons. Common options
-    are [OpenMPI](http:/v0.0.2/www.open-mpi.org/) or
-    [MPICH](http:/v0.0.2/www.mpich.org/). See the DART MPI introduction in
+    are [OpenMPI](http://www.open-mpi.org/) or
+    [MPICH](http://www.mpich.org/). See the DART MPI introduction in
     [mpi_intro.html](dart_mpi.html).
-5.  [Observation Processing And Wind Synthesis (OPAWS)](http:/v0.0.2/code.google.com/p/opaws/):
+5.  [Observation Processing And Wind Synthesis (OPAWS)](http://code.google.com/p/opaws/):
     OPAWS can process NCAR
     Dorade (sweep) and NCAR EOL Foray (netcdf) radar data. It analyzes
     (grids) data in either two-dimensions (on the conical surface of
@@ -33,21 +33,21 @@ The following free open-source tools have proven to be very useful:
     netcdf, Vis5d, and/or DART (Data Assimilation Research Testbed)
     formats.
 6.  Some DART users have contributed scripts using the 
-   [NCAR Command Language (NCL)](http:/v0.0.2/www.ncl.ucar.edu/Document/Manuals/Getting_Started/introduction.shtml)
+   [NCAR Command Language (NCL)](http://www.ncl.ucar.edu/Document/Manuals/Getting_Started/introduction.shtml)
     for computation and plotting.
 
 The following licensed (commercial) tool has proven very useful:
 
-1.  [MATLAB®](http:/v0.0.2/www.mathworks.com/products/matlab/):
+1.  [MATLAB®](http://www.mathworks.com/products/matlab/):
     An interactive and programming language for computation and visualization.
     We supply our diagnostic and plotting routines as MATLAB® scripts.
 
 Free alternatives to MATLAB® (for which we unfortunately do not have the 
 resources to support, but would happily accept user contributions) include:
--  [Octave](http:/v0.0.2/www.gnu.org/software/octave)
--  [SciPy](http:/v0.0.2/www.scipy.org/) plus
--  [matplotlib](http:/v0.0.2/matplotlib.org/)
--  The [R](http:/v0.0.2/www.r-project.org/) programming language has
+-  [Octave](http://www.gnu.org/software/octave)
+-  [SciPy](http://www.scipy.org/) plus
+-  [matplotlib](http://matplotlib.org/)
+-  The [R](http://www.r-project.org/) programming language has
    similiar functionality but a different enough syntax that the
    diagnostic and plotting routines we supply which work with
    MATLAB® are unlikely to be easy to port.
@@ -289,7 +289,7 @@ match the compiler you're using to compile DART. Options here are:
     match the one used to build netCDF.
   - Build your own version of the netCDF libraries with the compiler you
     prefer to use. See [this web
-    page](http:/v0.0.2/www.unidata.ucar.edu/software/netcdf/docs/building_netcdf_fortran.html)
+    page](http://www.unidata.ucar.edu/software/netcdf/docs/building_netcdf_fortran.html)
     for help in building the libraries. DART requires only the basic
     library with the netCDF 3 interfaces, but will work with netCDF 4
     versions. Building netCDF 4 does require additional libraries such
@@ -384,7 +384,7 @@ is to let DART control advancing the model when necessary. You run the
 "filter" executable and it runs both the assimilation and model advances
 until all observations in the input observation sequence file have been
 assimilated. See the "async" setting in the 
-[filter namelist documentation](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/filter.html)
+[filter namelist documentation](https://ncar.github.io/DART/api/v2.1.10/program/filter.html)
 for more information.  
   
 If you are running a large model with a complicated configuration and/or

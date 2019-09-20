@@ -26,13 +26,13 @@ be coordinated with existing observational and modeling expertise.
 <a href="../images/DAReS_circa_2017.jpg"><img src="../images/DAReS_circa_2017.jpg" height="300" alt="group photo" /></a>
 
 from left to right:
-<a href="http:/v0.0.2/staff.ucar.edu/users/raeder">Kevin Raeder</a>,
-<a href="http:/v0.0.2/staff.ucar.edu/users/romine">Glen Romine</a>,
-<a href="http:/v0.0.2/staff.ucar.edu/users/jla">Jeff Anderson</a>,\
-<a href="http:/v0.0.2/staff.ucar.edu/users/nancy">Nancy Collins</a>,
-<a href="http:/v0.0.2/staff.ucar.edu/users/thoar,">Tim Hoar</a>
+<a href="http://staff.ucar.edu/users/raeder">Kevin Raeder</a>,
+<a href="http://staff.ucar.edu/users/romine">Glen Romine</a>,
+<a href="http://staff.ucar.edu/users/jla">Jeff Anderson</a>,\
+<a href="http://staff.ucar.edu/users/nancy">Nancy Collins</a>,
+<a href="http://staff.ucar.edu/users/thoar,">Tim Hoar</a>
 Jonathan Hendricks, and
-<a href="http:/v0.0.2/staff.ucar.edu/users/gharamti">Moha El Gharamti</a>.\
+<a href="http://staff.ucar.edu/users/gharamti">Moha El Gharamti</a>.\
 This is an old photo and does not show all of us\!
 </center>
 
@@ -55,22 +55,22 @@ expertise in all areas.
 <span id="regularstaff" class="anchor"></span> [](#regularstaff)  
 
 DAReS Staff (alphabetically)                                                          
- - [Jeff Anderson](http:/v0.0.2/staff.ucar.edu/users/jla), Scientist, algorithms
- - [Nancy Collins](http:/v0.0.2/staff.ucar.edu/users/nancy), Software Engineer, platforms/mpi
- - [Moha El Gharamti](http:/v0.0.2/staff.ucar.edu/users/gharamti), Scientist, algorithms
- - [Tim Hoar](http:/v0.0.2/staff.ucar.edu/users/thoar), Associate Scientist, diagnostics, documentation
- - [Ben Johnson](http:/v0.0.2/staff.ucar.edu/users/johnsonb), Associate Scientist
- - [Kevin Raeder](http:/v0.0.2/staff.ucar.edu/users/raeder), Associate Scientist, CAM
- - [Glen Romine](http:/v0.0.2/staff.ucar.edu/users/romine), Project Scientist, WRF  
- - [Jeff Steward](http:/v0.0.2/staff.ucar.edu/users/jsteward), Software Engineer
+ - [Jeff Anderson](http://staff.ucar.edu/users/jla), Scientist, algorithms
+ - [Nancy Collins](http://staff.ucar.edu/users/nancy), Software Engineer, platforms/mpi
+ - [Moha El Gharamti](http://staff.ucar.edu/users/gharamti), Scientist, algorithms
+ - [Tim Hoar](http://staff.ucar.edu/users/thoar), Associate Scientist, diagnostics, documentation
+ - [Ben Johnson](http://staff.ucar.edu/users/johnsonb), Associate Scientist
+ - [Kevin Raeder](http://staff.ucar.edu/users/raeder), Associate Scientist, CAM
+ - [Glen Romine](http://staff.ucar.edu/users/romine), Project Scientist, WRF  
+ - [Jeff Steward](http://staff.ucar.edu/users/jsteward), Software Engineer
 
 <span id="supportstaff" class="anchor"></span> [](#supportstaff)  
 
 DAReS Support (alphabetically)
- - [Elizabeth Chapin](http:/v0.0.2/staff.ucar.edu/users/echapin), Senior Business Analyst
- - [Lisa Larson](http:/v0.0.2/staff.ucar.edu/users/larsonl), Administrative Assistant
- - [Taysia Peterson](http:/v0.0.2/staff.ucar.edu/users/taysiana), Administrative Assistant
- - [Mary Pronk](http:/v0.0.2/staff.ucar.edu/users/pronk), Administrator
+ - [Elizabeth Chapin](http://staff.ucar.edu/users/echapin), Senior Business Analyst
+ - [Lisa Larson](http://staff.ucar.edu/users/larsonl), Administrative Assistant
+ - [Taysia Peterson](http://staff.ucar.edu/users/taysiana), Administrative Assistant
+ - [Mary Pronk](http://staff.ucar.edu/users/pronk), Administrator
 
 <span id="shipping" class="anchor"></span> [](#shipping)  
 

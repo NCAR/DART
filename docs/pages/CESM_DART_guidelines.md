@@ -221,7 +221,7 @@ suitable replacement, as noted.
     cam-fv assimilation.) Look in models/cam-fv/shell_scripts to see
     which CESM versions are supported.
 2.  CESM: locate that version on your system, or check it out from
-    http:/v0.0.2/www.cesm.ucar.edu/models/current.html
+    http://www.cesm.ucar.edu/models/current.html
 3.  Choose a start date for your assimilation. Choosing/creating the
     initial ensemble is a complicated issue.
       - It's simpler for CAM assimilations. If you don't have an initial
@@ -278,7 +278,7 @@ start.
 1.  MINIMAL WORK; Get an ensemble of CAM/CLM/CICE/POP/... initial and
     restart files from someone else (DART has a few dates for a few
     model cores and resolutions
-    [here](http:/v0.0.2/www.image.ucar.edu/pub/DART/Obs_sets). This limits the
+    [here](http://www.image.ucar.edu/pub/DART/Obs_sets). This limits the
     investigations you can undertake, but is the fastest and cheapest
     way to start assimilating.
 

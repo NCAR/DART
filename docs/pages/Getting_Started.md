@@ -38,7 +38,7 @@ machines.
 Minimally, you will need:
 
 1.  [a Fortran90 compiler](#fortran90),
-2.  the [netCDF libraries](http:/v0.0.2/www.unidata.ucar.edu/software/netcdf/)
+2.  the [netCDF libraries](http://www.unidata.ucar.edu/software/netcdf/)
     built with the F90 interface,
 3.  *perl* (just about any version),
 4.  an environment that understands *csh* or *tcsh*, *sh*, *ksh*, and
@@ -55,9 +55,9 @@ limit datasize unlimited
 
 Additionally, what has proven to be *nice* (but not required) is:
 
-1.  [ncview](http:/v0.0.2/meteora.ucsd.edu/~pierce/ncview_home_page.html): a
+1.  [ncview](http://meteora.ucsd.edu/~pierce/ncview_home_page.html): a
     great visual browser for netCDF files.
-2.  [the netCDF Operators (NCO)](http:/v0.0.2/nco.sourceforge.net/): tools to
+2.  [the netCDF Operators (NCO)](http://nco.sourceforge.net/): tools to
     perform operations on netCDF files like concatenating, slicing, and
     dicing
 3.  Some sort of MPI environment. Put another way, DART does not come
@@ -74,11 +74,11 @@ Additionally, what has proven to be *nice* (but not required) is:
 The DART software is written in standard Fortran 90, with no compiler-specific
 extensions. It has been compiled with and run with several versions of each of
 the following:
-[GNU Fortran Compiler ("gfortran")](http:/v0.0.2/gcc.gnu.org/fortran) (free),
-[Intel Fortran Compiler for Linux and OSX](http:/v0.0.2/software.intel.com/en-us/intel-composer-xe),
-[IBM XL Fortran Compiler](http:/v0.0.2/www-01.ibm.com/software/awdtools/fortran/),
-[Portland Group Fortran Compiler](http:/v0.0.2/www.pgroup.com/), and
-[Lahey Fortran Compiler](http:/v0.0.2/www.lahey.com/).
+[GNU Fortran Compiler ("gfortran")](http://gcc.gnu.org/fortran) (free),
+[Intel Fortran Compiler for Linux and OSX](http://software.intel.com/en-us/intel-composer-xe),
+[IBM XL Fortran Compiler](http://www-01.ibm.com/software/awdtools/fortran/),
+[Portland Group Fortran Compiler](http://www.pgroup.com/), and
+[Lahey Fortran Compiler](http://www.lahey.com/).
 Since recompiling the code is a necessity to experiment with different models,
 there are no binaries to distribute.
 
@@ -86,7 +86,7 @@ there are no binaries to distribute.
 
 ### Requirements: the netCDF library
 
-DART uses the [netCDF](https:/v0.0.2/www.unidata.ucar.edu/software/netcdf/)
+DART uses the [netCDF](https://www.unidata.ucar.edu/software/netcdf/)
 self-describing data format for the results of assimilation experiments.
 These files have the extension *.nc* and can be read by a number of
 standard data analysis tools. In particular, DART also makes use of the
@@ -100,7 +100,7 @@ both modules be present. The normal place would be in the
 If the netCDF library does not exist on your system, you must build it
 (as well as the F90 interface modules). The library and instructions for
 building the library or installing from an RPM may be found at the
-netCDF home page: <https:/v0.0.2/www.unidata.ucar.edu/software/netcdf/>  
+netCDF home page: <https://www.unidata.ucar.edu/software/netcdf/>  
 
 NOTE: The location of the netCDF library, `libnetcdf.a`, and the
 locations of both `netcdf.mod` and `typesizes.mod` will be needed later.
@@ -118,9 +118,9 @@ required to build executables.
 ## Download DART
 
 The DART source code is distributed on the GitHub repository
-[NCAR/DART](https:/v0.0.2/github.com/NCAR/DART)
+[NCAR/DART](https://github.com/NCAR/DART)
 with the documentation served through GitHub Pages at
-[https:/v0.0.2/ncar.github.io/DART](https:/v0.0.2/ncar.github.io/DART).
+[https://ncar.github.io/DART](https://ncar.github.io/DART).
 
 If you ever intend to contribute your work back to DART, we ask that
 you fork the repository to facilitate issuing pull requests. *:thumbsup:*!
@@ -182,8 +182,8 @@ to produce a `Makefile` which is subsequently used by the standard
 
 Shell scripts that execute the mkmf command for all standard DART
 executables are provided as part of the standard DART software. For more
-information on the FMS [mkmf](https:/v0.0.2/github.com/NOAA-GFDL/mkmf) please
-see the [mkmf documentation](https:/v0.0.2/extranet.gfdl.noaa.gov/~vb/mkmf.html).  
+information on the FMS [mkmf](https://github.com/NOAA-GFDL/mkmf) please
+see the [mkmf documentation](https://extranet.gfdl.noaa.gov/~vb/mkmf.html).  
 Be aware that we have slightly modified *mkmf* such that it also creates
 an example namelist file for each program. The example namelist is
 called *input.nml._program_default*, so as not to clash with any
@@ -259,13 +259,13 @@ following programs:
 
 | Program | Purpose |
 | :------ | :------ |
-| [preprocess](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/preprocess.html) | creates custom source code for just the observations of interest |
-| [create_obs_sequence](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/create_obs_sequence.html) | specify a (set) of observation characteristics taken by a particular (set of) instruments |
-| [create_fixed_network_seq](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/create_fixed_network_seq.html) | specify the temporal attributes of the observation sets |
-| [perfect_model_obs](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/perfect_model_obs.html) | spinup, generate "true state" for synthetic observation experiments, ... |
-| [filter](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/filter.html) | perform experiments |
+| [preprocess](https://ncar.github.io/DART/api/v2.1.10/program/preprocess.html) | creates custom source code for just the observations of interest |
+| [create_obs_sequence](https://ncar.github.io/DART/api/v2.1.10/program/create_obs_sequence.html) | specify a (set) of observation characteristics taken by a particular (set of) instruments |
+| [create_fixed_network_seq](https://ncar.github.io/DART/api/v2.1.10/program/create_fixed_network_seq.html) | specify the temporal attributes of the observation sets |
+| [perfect_model_obs](https://ncar.github.io/DART/api/v2.1.10/program/perfect_model_obs.html) | spinup, generate "true state" for synthetic observation experiments, ... |
+| [filter](https://ncar.github.io/DART/api/v2.1.10/program/filter.html) | perform experiments |
 | *obs_diag* | creates observation-space diagnostic files to be explored by the MATLAB® scripts. |
-| [obs_sequence_tool](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/obs_sequence_tool.html) | manipulates observation sequence files. It is not generally needed (particularly for low-order models) but can be used to combine observation sequences or convert from ASCII to binary or vice-versa. Since this is a specialty routine - we will not cover its use in this document. |
+| [obs_sequence_tool](https://ncar.github.io/DART/api/v2.1.10/program/obs_sequence_tool.html) | manipulates observation sequence files. It is not generally needed (particularly for low-order models) but can be used to combine observation sequences or convert from ASCII to binary or vice-versa. Since this is a specialty routine - we will not cover its use in this document. |
 
 *quickbuild.csh* is a script that will build every executable in the
 directory. There is an optional argument that will additionally build

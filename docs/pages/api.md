@@ -12,7 +12,7 @@ layout: default
   </tr>
   {% for api in sorted %}
   <tr>
-    <td><a href="https:/v0.0.2/aniemack.github.io/test{{ api.url }}">{{ api.title }}</a></td>
+    <td><a href="https://aniemack.github.io/test{{ api.url }}">{{ api.title }}</a></td>
   </tr>
   {% endfor %}
 </table>

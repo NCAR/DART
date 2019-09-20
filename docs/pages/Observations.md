@@ -27,7 +27,7 @@ explore the documentation page without downloading DART, you may
 ## An overview of the DART 'preprocess' program
 
 ~~First and foremost, check out
-[preprocess.html](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/preprocess.html)
+[preprocess.html](https://ncar.github.io/DART/api/v2.1.10/program/preprocess.html)
 for detailed information.~~
 
 **The *preprocess* program actually *builds* the source code that supports
@@ -421,7 +421,7 @@ directory. The documentation for that directory is listed in
 The converters are designed to work on one input file format and create
 (or add to) an output observation sequence. It may be desirable to
 post-process multiple observation sequence files with the
-[obs_sequence_tool](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/obs_sequence_tool.html)
+[obs_sequence_tool](https://ncar.github.io/DART/api/v2.1.10/program/obs_sequence_tool.html)
 ... to select for timeframe, geographic region, etc.  
 
 Many of the formats require their own libraries (like HDF), and require
@@ -664,7 +664,7 @@ observation will be rejected when the outlier threshold is enabled, and
 the observation will not be assimilated. It is important to look at the
 output observation sequence files after an assimilation to see how many
 observations were assimilated or rejected, and also at the RMSE
-([root mean squared error](http:/v0.0.2/www.wikipedia.org/wiki/RMSE)) versus the
+([root mean squared error](http://www.wikipedia.org/wiki/RMSE)) versus the
 total spread. DART includes Matlab diagnostic routines to create these
 types of plots. The observation RMSE and total spread should be roughly
 commensurate. The total spread includes contributions from both the
@@ -787,7 +787,7 @@ There are also a couple utilities of note:
 In addition the following external program produces DART observation
 sequence files:
 
-  - [Observation Processing And Wind Synthesis (OPAWS)](http:/v0.0.2/code.google.com/p/opaws/):
+  - [Observation Processing And Wind Synthesis (OPAWS)](http://code.google.com/p/opaws/):
     OPAWS can process NCAR Dorade (sweep) and NCAR EOL Foray (netCDF)
     radar data. It analyzes (grids) data in either two-dimensions
     (on the conical surface of each sweep) or three-dimensions (Cartesian).
@@ -828,7 +828,7 @@ you advice and pointers on how to approach writing the code.
 # Working with observation sequences.
 
 First and foremost, check out the
-[obs_sequence_tool.html](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/program/obs_sequence_tool.html)
+[obs_sequence_tool.html](https://ncar.github.io/DART/api/v2.1.10/program/obs_sequence_tool.html)
 document for detailed information and examples.  
 
 *obs_sequence_tool* is the primary tool for manipulating observation
@@ -873,7 +873,7 @@ performing the experiment you THINK you are performing
 
 # Adding support for a new observation TYPE.
 
-[DART/observations/forward_operators/obs_def_mod.html](https:/v0.0.2/ncar.github.io/DART/api/v2.1.10/module/obs_def_mod.html)
+[DART/observations/forward_operators/obs_def_mod.html](https://ncar.github.io/DART/api/v2.1.10/module/obs_def_mod.html)
 is the source for detailed information.
 
 ---

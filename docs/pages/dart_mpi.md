@@ -216,7 +216,7 @@ up to the numbers of processors available to us to test on. It is
 assumed that for MPP (Massively-Parallel Processing) machines with
 10,000s of processors that some algorithmic changes will be required.
 These are described in **Anderson & Collins**
-["Scalable Implementations of Ensemble Filter Algorithms for Data Assimilation"](https:/v0.0.2/doi.org/10.1175/JTECH2049.1) 2007.
+["Scalable Implementations of Ensemble Filter Algorithms for Data Assimilation"](https://doi.org/10.1175/JTECH2049.1) 2007.
 
 ### User considerations for their own configurations
 
