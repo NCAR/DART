@@ -97,7 +97,7 @@ jobs:
         #
         cd ../DART_development/docs/_api
         cd ../pages
-        OLD=$(grep -o -m 1 "/v.*[0-9]/" DART2_Starting.md | sed "s/\///g")
+        OLD=$(grep -o -m 1 "/v.*[0-9]/" Getting_Starting.md | sed "s/\///g")
         find . -name "*.md" > temp.txt
         sed -i "s/^.\///" temp.txt
         IFS=$'\n'
@@ -112,15 +112,15 @@ jobs:
         cd ../..
         RESULT=$(curl -H "Authorization: bearer ${TOKEN}" -X POST -d " \
         { \
-        \"query\": \"query { repository(owner:"dart-ucar", name:"DART_development") { releases(last:1) { nodes { name } } } } \" \
+        \"query\": \"query { repository(owner:"NCAR", name:"DART_development") { releases(last:1) { nodes { name } } } } \" \
         } \
         " https://api.github.com/graphql)
         NAME=$(echo $RESULT | grep -o '"name":.*' | grep -o ':".*' | grep -Eo "[A-Z,a-z,0-9,_,-]{1,50}")
         #
         # Change the banner and pull-down menus for the gh-pages to include the reference to the release
         if [[ $(grep "$NAME" docs/_data/mainmenu.yml) ]];
-        then LINE=$(grep -n "title: $NAME" docs/_data/mainmenu.yml | sed "s/:.*//g") && let "LINE++" && sed -i ''$LINE'i \      - title: '$VERSION'\n        url: https://dart-ucar.github.io/DART_FORD_docs/'$VERSION'/index.html' docs/_data/mainmenu.yml;
-        else LINE=$(grep -n "title: API" docs/_data/mainmenu.yml | sed "s/:.*//g") && let "LINE++" && let "LINE++" && sed -i ''$LINE'i \      - title: '$(echo $NAME)'\n      - title: '$VERSION'\n        url: https://dart-ucar.github.io/DART_FORD_docs/'$VERSION'/index.html' docs/_data/mainmenu.yml;
+        then LINE=$(grep -n "title: $NAME" docs/_data/mainmenu.yml | sed "s/:.*//g") && let "LINE++" && sed -i ''$LINE'i \      - title: '$VERSION'\n        url: https://ncar.github.io/DART_FORD_docs/'$VERSION'/index.html' docs/_data/mainmenu.yml;
+        else LINE=$(grep -n "title: API" docs/_data/mainmenu.yml | sed "s/:.*//g") && let "LINE++" && let "LINE++" && sed -i ''$LINE'i \      - title: '$(echo $NAME)'\n      - title: '$VERSION'\n        url: https://ncar.github.io/DART_FORD_docs/'$VERSION'/index.html' docs/_data/mainmenu.yml;
         fi
         # update the markdown docs that reference this release
         git add docs
