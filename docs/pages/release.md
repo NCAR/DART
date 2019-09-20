@@ -344,7 +344,7 @@ Currently we support the models listed below. There are several new
 models that have been added that are not on the Lanai Release including
 CM1, CICE, and ROMS. Any previously supported models not on this list
 are still supported in DART
-[classic](http://www.image.ucar.edu/DAReS/DART/classic/index.html)
+[classic](http:/v0.0.2/www.image.ucar.edu/DAReS/DART/classic/index.html)
 
   - **9var**
       - DART interface documentation for the
@@ -356,17 +356,17 @@ are still supported in DART
       - DART interface documentation for the
        [CAM finite volume](models/cam-fv/model_mod.html) global atmospheric model.
       - Documentation for the
-       [CAM model](http://www.cesm.ucar.edu/models/atm-cam/).
+       [CAM model](http:/v0.0.2/www.cesm.ucar.edu/models/atm-cam/).
   - **cice (NEW)**
       - DART interface documentation for the
         [CICE](models/cice/model_mod.html) model.
       - Documentation for the
-        [CICE model](http://www.cesm.ucar.edu/models/ccsm4.0/cice/).
+        [CICE model](http:/v0.0.2/www.cesm.ucar.edu/models/ccsm4.0/cice/).
   - **cm1 (NEW)**
       - DART interface documentation for the
         [CM1 cloud-resolving model](models/cm1/model_mod.html).
       - Documentation for the
-        [CM1 model](http://www2.mmm.ucar.edu/people/bryan/cm1/).
+        [CM1 model](http:/v0.0.2/www2.mmm.ucar.edu/people/bryan/cm1/).
   - **forced_lorenz_96**
       - DART interface documentation for the
         [forced lorenz_96](models/forced_lorenz_96/model_mod.html) model.
@@ -386,16 +386,16 @@ are still supported in DART
       - DART interface documentation for the
         [MPAS atmosphere](models/mpas_atm/model_mod.html) model.
       - Documentation for the
-        [MPAS model](https://mpas-dev.github.io/atmosphere/atmosphere.html).
+        [MPAS model](https:/v0.0.2/mpas-dev.github.io/atmosphere/atmosphere.html).
   - **POP**
       - DART interface documentation for the
         [POP](models/POP/model_mod.html) global ocean model.
       - Documentation for the
-        [POP model](http://www.cesm.ucar.edu/models/ccsm2.0/pop/).
+        [POP model](http:/v0.0.2/www.cesm.ucar.edu/models/ccsm2.0/pop/).
   - **ROMS (NEW)**
       - DART interface documentation for the
         [ROMS](models/ROMS/model_mod.html) regional ocean model.
-      - Documentation for the [ROMS model](https://www.myroms.org/).
+      - Documentation for the [ROMS model](https:/v0.0.2/www.myroms.org/).
   - **simple_advection**
       - DART interface documentation for the
         [simple advection](models/simple_advection/model_mod.html) model.
@@ -403,7 +403,7 @@ are still supported in DART
       - DART interface documentation for the
         [WRF](models/wrf/model_mod.html) regional forecast model.
       - Documentation for the [WRF
-        model](http://www.wrf-model.org/index.php).
+        model](http:/v0.0.2/www.wrf-model.org/index.php).
 
 The *DART/models/template* directory contains sample files for adding a
 new model. See the 
@@ -553,13 +553,13 @@ This section describes updates and changes to the tutorial materials,
 scripting, setup, and build information since the Lanai release.
 
   - *obs_impact_tool* please refer to
-    [Website](https://www.image.ucar.edu/DAReS/DART/Manhattan/assimilation_code/programs/obs_impact_tool/obs_impact_tool.html)
+    [Website](https:/v0.0.2/www.image.ucar.edu/DAReS/DART/Manhattan/assimilation_code/programs/obs_impact_tool/obs_impact_tool.html)
     or 
     [local file](../../assimilation_code/programs/obs_impact_tool/obs_impact_tool.html)
   - *gen_sampling_error_table* now computes sampling error correction
     tables for any ensemble size.
   - *compute_error*
-    [Website](https://www.image.ucar.edu/DAReS/DART/Manhattan/assimilation_code/programs/compute_error/compute_error.html)
+    [Website](https:/v0.0.2/www.image.ucar.edu/DAReS/DART/Manhattan/assimilation_code/programs/compute_error/compute_error.html)
     or
     [local file](../../assimilation_code/programs/compute_error/compute_error.html)
 

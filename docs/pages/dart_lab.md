@@ -35,7 +35,7 @@ In the `matlab` subdirectory are a set of MATLAB scripts and GUI
 (graphical user interface) programs which are exercises that go with the
 tutorial. Each is interactive with settings that can be changed and
 rerun to explore various options. A valid
-[MATLAB](http://www.mathworks.com/products/matlab/)
+[MATLAB](http:/v0.0.2/www.mathworks.com/products/matlab/)
 license is needed to run these scripts.
 
 The exercises use the following functions:
