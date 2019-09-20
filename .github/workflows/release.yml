@@ -97,12 +97,14 @@ jobs:
         #
         cd ../DART_development/docs/_api
         cd ../pages
-        OLD=$(grep -o -m 1 "/v.*[0-9]/" Getting_Starting.md | sed "s/\///g")
-        find . -name "*.md" > temp.txt
-        sed -i "s/^.\///" temp.txt
+        # Capture the old version number - no slashes
+        OLD=$(grep -o -m 1 "/v.*[0-9]/" Getting_Started.md | sed "s#/##g")
+        ls -1 "*.md" > temp.txt
         IFS=$'\n'
+        # TJH Question: 1) why IFS ... not used
+        # TJH Question: 2) capture sed status and act accordingly
         for LINE in $(cat temp.txt); do
-           sed -i "s/\/$OLD\//\/$VERSION\//g" $LINE
+           sed -i "s#/$OLD/#/$VERSION/#g" $LINE
         done
         rm temp.txt
         #
