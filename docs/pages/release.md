@@ -60,7 +60,7 @@ structure looks like :
   - *assimilation\_code*
   - *build\_templates*
   - *diagnostics*
-  - *documentation*
+  - *docs*
   - *models*
   - *observations*
 
@@ -171,7 +171,7 @@ compatible with the Lanai release (13 Dec 2013):
     *obs_def/obs_def_\*_mod.f90* to
     *observations/forward_operators*
 
-10. The tutorial files have moved to *DART/documentation/tutorial
+10. The tutorial files have moved to *DART/docs/tutorial
     directory*
 
 11. The program *fill_inflation_restart* is OBSOLETE since DART

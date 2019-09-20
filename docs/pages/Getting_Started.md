@@ -240,7 +240,7 @@ LDFLAGS = $(FFLAGS) $(LIBS)
 
 <span id="path_names" class="anchor"></span> [](#path_names)  
 
-#### Customizing the 'path_names_\*' file
+#### Customizing the 'path_names_*' file
 
 Several *path_names_&ast;*  files are provided in the *work* directory for
 each specific model, in this case: `DART/models/lorenz_63/work`. Since
@@ -359,12 +359,19 @@ have access to several DART directories. At the MATLAB prompt, type the followin
 (using the real path to your DART installation):
 
 > \>\> addpath('path_to_dart/diagnostics/matlab','-BEGIN')  
-> \>\> addpath('path_to_dart/documentation/DART_LAB/matlab','-BEGIN')
+> \>\> addpath('path_to_dart/docs/DART_LAB/matlab','-BEGIN')
 
-It's very convenient to put these lines in your *\~/matlab/startup.m* file so
-they are executed every time MATLAB starts up. DART provides an example
-`diagnostics/matlab/startup.m` that you can use, which is internally
-documented through file comments.
+It's very convenient to put these it in your `startup.m` so
+they get run every time MATLAB starts up. You will have to copy
+`startup.m` to whatever directory you have specified as your Matlab `userpath`.
+
+If you don't want the DART environment every time you use Matlab,
+DART provides an example `diagnostics/matlab/startup.m` that checks
+to see if you are working in a DART repository and will modify your
+matlabpath accordingly. It is internally documented through file comments.
+Again, you will have to copy
+`diagnostics/matlab/startup.m` to whatever directory you have specified
+as your Matlab `userpath`.
 
 <span id="verify" class="anchor"></span> [](#verify)  
 

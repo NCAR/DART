@@ -578,7 +578,7 @@ real(r8), parameter::  rd = 287.05_r8, rv = 461.51_r8, c1 = 77.6d-6 , &
                        c2 = 3.73d-1,  rdorv = rd/rv
 
 real(r8) :: lon2
-real(r8) :: t(ens_size), q(ens_size), p(ens_size), tv(ens_size), ew(ens_size)
+real(r8) :: t(ens_size), q(ens_size), p(ens_size), ew(ens_size)
 integer  :: this_istatus(ens_size)
 logical  :: return_now
 type(location_type) :: location
@@ -617,7 +617,6 @@ if (return_now) return
 where (istatus0 == 0) 
 p     = p * 0.01_r8      ! to mb
 
-tv    = t * (1.0_r8+(rv/rd - 1.0_r8)*q)         ! virtual temperature
 ew    = q * p/(rdorv + (1.0_r8-rdorv)*q )
 ref00 = c1*p/t + c2*ew/(t**2)              ! (N-1)
 endwhere
