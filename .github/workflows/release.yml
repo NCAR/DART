@@ -118,9 +118,10 @@ jobs:
         NAME=$(echo $RESULT | grep -o '"name":.*' | grep -o ':".*' | grep -Eo "[A-Z,a-z,0-9,_,-]{1,50}")
         #
         # Change the banner and pull-down menus for the gh-pages to include the reference to the release
+        # Find the line number of the release name and add a line below it with the new version.
         if [[ $(grep "$NAME" docs/_data/mainmenu.yml) ]];
         then LINE=$(grep -n "title: $NAME" docs/_data/mainmenu.yml | sed "s/:.*//g") && let "LINE++" && sed -i ''$LINE'i \      - title: '$VERSION'\n        url: https://ncar.github.io/DART_FORD_docs/'$VERSION'/index.html' docs/_data/mainmenu.yml;
-        else LINE=$(grep -n "title: API" docs/_data/mainmenu.yml | sed "s/:.*//g") && let "LINE++" && let "LINE++" && sed -i ''$LINE'i \      - title: '$(echo $NAME)'\n      - title: '$VERSION'\n        url: https://ncar.github.io/DART_FORD_docs/'$VERSION'/index.html' docs/_data/mainmenu.yml;
+        else LINE=$(grep -n "title: Releases" docs/_data/mainmenu.yml | sed "s/:.*//g") && let "LINE++" && let "LINE++" && sed -i ''$LINE'i \      - title: '$(echo $NAME)'\n      - title: '$VERSION'\n        url: https://ncar.github.io/DART_FORD_docs/'$VERSION'/index.html' docs/_data/mainmenu.yml;
         fi
         # update the markdown docs that reference this release
         git add docs
@@ -133,5 +134,5 @@ jobs:
         git push --delete origin $VERSION
         githubrelease --github-token ${TOKEN} release ${GITHUB_REPOSITORY} create $VERSION --name $(echo $NAME)
         githubrelease --github-token ${TOKEN} release ${GITHUB_REPOSITORY} publish $VERSION
-        githubrelease --github-token ${TOKEN} asset dart-ucar/DART_development upload $VERSION $VERSION-documentation.tar.gz
+        githubrelease --github-token ${TOKEN} asset NCAR/DART_development upload $VERSION $VERSION-documentation.tar.gz
          
