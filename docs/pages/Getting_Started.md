@@ -164,7 +164,7 @@ requires a user-defined input file that records dependencies between
 different source files. *make* then performs a hierarchy of actions when
 one or more of the source files is modified. *mkmf* is a *perl* script
 that generates a *make* input file (named *Makefile*) and an example
-namelist `input.nml._**program**_\_default` with the default values. The
+namelist `input.nml._**program**_default` with the default values. The
 *Makefile* is designed specifically to work with object-oriented
 Fortran90 (and other languages) for systems like DART.  
 
@@ -186,7 +186,7 @@ information on the FMS [mkmf](https://github.com/NOAA-GFDL/mkmf) please
 see the [mkmf documentation](https://extranet.gfdl.noaa.gov/~vb/mkmf.html).  
 Be aware that we have slightly modified *mkmf* such that it also creates
 an example namelist file for each program. The example namelist is
-called *input.nml._program_\_default*, so as not to clash with any
+called *input.nml._program_default*, so as not to clash with any
 existing `input.nml` that may exist in that directory.
 
 <span id="template" class="anchor"></span> [](#template)  
@@ -225,7 +225,7 @@ LDFLAGS = $(FFLAGS) $(LIBS)
 
 <span id="path_names" class="anchor"></span> [](#path_names)  
 
-#### Customizing the 'path_names_\*' file
+#### Customizing the 'path_names_*' file
 
 Several *path_names_&ast;*  files are provided in the *work* directory for
 each specific model, in this case: `DART/models/lorenz_63/work`. Since
@@ -352,12 +352,18 @@ following at the MATLAB prompt, using the real path to your DART
 installation:
 
 > \>\> addpath('path_to_dart/diagnostics/matlab','-BEGIN')  
-> \>\> addpath('path_to_dart/documentation/DART_LAB/matlab','-BEGIN')
+> \>\> addpath('path_to_dart/docs/DART_LAB/matlab','-BEGIN')
 
-It's very convenient to put these it in your *\~/matlab/startup.m* so
-they get run every time MATLAB starts up. DART provides an example
-`diagnostics/matlab/startup.m` that you can use. It is internally
-documented.
+It's very convenient to put these it in your `startup.m` so
+they get run every time MATLAB starts up. You will have to copy
+`startup.m` to whatever directory you have specified as your Matlab `userpath`.
+
+If you don't want the DART environment every time you use Matlab,
+DART provides an example `diagnostics/matlab/startup.m` that checks
+to see if you are working in a DART repository and will modify your
+matlabpath accordingly. It is internally documented. Again, you will have to copy
+`diagnostics/matlab/startup.m` to whatever directory you have specified
+as your Matlab `userpath`.
 
 <span id="verify" class="anchor"></span> [](#verify)  
 
