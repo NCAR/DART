@@ -86,7 +86,7 @@ jobs:
         #
         cd ../../../DART_FORD_docs
         # just in case something has changed 
-        git pull
+        # git pull  TJH ... this should not be needed
         git add --all
         git commit -m "new version of ford"
         git push origin master
@@ -115,7 +115,7 @@ jobs:
         \"query\": \"query { repository(owner:"dart-ucar", name:"DART_development") { releases(last:1) { nodes { name } } } } \" \
         } \
         " https://api.github.com/graphql)
-        NAME=$(echo $RESULT | grep -o '"name":.*' | grep -o ':".*' | grep -Eo "[A-Z,a-z]{1,50}")
+        NAME=$(echo $RESULT | grep -o '"name":.*' | grep -o ':".*' | grep -Eo "[A-Z,a-z,0-9,_,-]{1,50}")
         #
         # Change the banner and pull-down menus for the gh-pages to include the reference to the release
         if [[ $(grep "$NAME" docs/_data/mainmenu.yml) ]];
