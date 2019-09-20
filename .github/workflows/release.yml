@@ -12,7 +12,7 @@ jobs:
     steps:
     - uses: actions/setup-python@master
       with: 
-        python-version: 3.7
+        python-version: 2.7
     - name: Build Ford
       env:
         TOKEN: ${{ secrets.TOKEN }}
