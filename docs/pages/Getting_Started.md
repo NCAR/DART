@@ -274,13 +274,13 @@ following programs:
 
 | Program | Purpose |
 | :------ | :------ |
-| [preprocess](https://ncar.github.io/DART/api/v2.1.10/program/preprocess.html) | creates custom source code for just the observations of interest |
-| [create_obs_sequence](https://ncar.github.io/DART/api/v2.1.10/program/create_obs_sequence.html) | specify a (set) of observation characteristics taken by a particular (set of) instruments |
-| [create_fixed_network_seq](https://ncar.github.io/DART/api/v2.1.10/program/create_fixed_network_seq.html) | specify the temporal attributes of the observation sets |
-| [perfect_model_obs](https://ncar.github.io/DART/api/v2.1.10/program/perfect_model_obs.html) | spinup and generate "true state" for synthetic observation experiments |
-| [filter](https://ncar.github.io/DART/api/v2.1.10/program/filter.html) | perform data assimilation analysis |
+| [preprocess](https://ncar.github.io/DART/api/v0.0.6/program/preprocess.html) | creates custom source code for just the observations of interest |
+| [create_obs_sequence](https://ncar.github.io/DART/api/v0.0.6/program/create_obs_sequence.html) | specify a (set) of observation characteristics taken by a particular (set of) instruments |
+| [create_fixed_network_seq](https://ncar.github.io/DART/api/v0.0.6/program/create_fixed_network_seq.html) | specify the temporal attributes of the observation sets |
+| [perfect_model_obs](https://ncar.github.io/DART/api/v0.0.6/program/perfect_model_obs.html) | spinup and generate "true state" for synthetic observation experiments |
+| [filter](https://ncar.github.io/DART/api/v0.0.6/program/filter.html) | perform data assimilation analysis |
 | *obs_diag* | creates observation-space diagnostic files to be visualized by the MATLAB® scripts. |
-| [obs_sequence_tool](https://ncar.github.io/DART/api/v2.1.10/program/obs_sequence_tool.html) | manipulates observation sequence files. This tool is not generally required (particularly for low-order models) but can be used to combine observation sequences or convert from ASCII to binary or vice-versa. Since this is a rather specialized routine, we will not cover its use further in this document. |
+| [obs_sequence_tool](https://ncar.github.io/DART/api/v0.0.6/program/obs_sequence_tool.html) | manipulates observation sequence files. This tool is not generally required (particularly for low-order models) but can be used to combine observation sequences or convert from ASCII to binary or vice-versa. Since this is a rather specialized routine, we will not cover its use further in this document. |
 
 *quickbuild.csh* is a script that will build every executable in the
 directory. There is an optional argument that will additionally build

@@ -16,7 +16,7 @@ every effort to incorporate improvements to the code. Email us at
 download DART, you may view the documentation offline by opening the
 *index.html* file in the top-level DART directory.~~ If you want to
 explore the documentation page without downloading DART, you may 
-[view the documentation for the Manhattan release](https://ncar.github.io/DART/api/v2.1.10/index.html).
+[view the documentation for the Manhattan release](https://ncar.github.io/DART/api/v0.0.6/index.html).
 
 ## Links to major sections of this document:
 - [Downloadable datasets for DART.](#datasets)
@@ -811,15 +811,15 @@ There are four fundamental steps to running an OSSE from within DART:
     observations without actually specifying the observation values. The
     default filename for the blueprint is *obs_seq.in*. For simple
     cases, this is just running
-    [create_obs_sequence](https://ncar.github.io/DART/api/v2.1.10/program/create_obs_sequence.html)
+    [create_obs_sequence](https://ncar.github.io/DART/api/v0.0.6/program/create_obs_sequence.html)
     and
-    [create_fixed_network_seq](https://ncar.github.io/DART/api/v2.1.10/program/create_fixed_network_seq.html).
+    [create_fixed_network_seq](https://ncar.github.io/DART/api/v0.0.6/program/create_fixed_network_seq.html).
     You can also use real observation sequences as long as you take care
     to specify observation error variances that do not incorporate
     representativeness error.  
 2.  [Harvest the synthetic observations](#run_pmo) from the true model
     state by running
-    [perfect_model_obs](https://ncar.github.io/DART/api/v2.1.10/program/perfect_model_obs.html)
+    [perfect_model_obs](https://ncar.github.io/DART/api/v0.0.6/program/perfect_model_obs.html)
     to advance the model from a known initial condition and apply the
     forward observation operator based on the observation 'blueprint'.
     The observation will have noise added to it based on a draw from a
@@ -830,7 +830,7 @@ There are four fundamental steps to running an OSSE from within DART:
     in ```perfect_output.nc```. The default filename for the
     'observations' is ```obs_seq.out```.  
 3.  [Assimilate the synthetic observations](#run_filter) with
-    [filter](https://ncar.github.io/DART/api/v2.1.10/program/filter.html) in
+    [filter](https://ncar.github.io/DART/api/v0.0.6/program/filter.html) in
     the usual way. The prior/forecast states are preserved in
     ```preassim.nc``` and the posterior/analysis states are preserved in
     ```filter_output.nc``` . The default filename for the file with the
@@ -851,7 +851,7 @@ DART format already, you can simply use them. If you have observations
 in one of the formats already supported by the DART converters
 (check [DART/observations/obs_converters/observations.html](obs_converters_observations.html)),
 convert it to a DART observation sequence. You may need to use the
-[obs_sequence_tool](https://ncar.github.io/DART/api/v2.1.10/program/obs_sequence_tool.html)
+[obs_sequence_tool](https://ncar.github.io/DART/api/v0.0.6/program/obs_sequence_tool.html)
 to combine multiple observation sequence files into observation sequence
 files for the perfect model experiment. Any existing observation values
 and quality control information will be ignored by *perfect_model_obs*;
@@ -873,11 +873,11 @@ the model stops.
 If you do not have an input observation sequence, it is simple to create one.
 
 1.  Run
-    [create_obs_sequence](https://ncar.github.io/DART/api/v2.1.10/program/create_obs_sequence.html)
+    [create_obs_sequence](https://ncar.github.io/DART/api/v0.0.6/program/create_obs_sequence.html)
     to generate the blueprint for the types of observations and
     observation error variances for whatever locations are desired.  
 2.  Run
-    [create_fixed_network_seq](https://ncar.github.io/DART/api/v2.1.10/program/create_fixed_network_seq.html)
+    [create_fixed_network_seq](https://ncar.github.io/DART/api/v0.0.6/program/create_fixed_network_seq.html)
     to define the temporal distribution of the desired observations.
 
 Both *create_obs_sequence* and *create_fixed_network_seq*
@@ -910,7 +910,7 @@ available in the
 
 ### 2. Generating the true state and harvesting the observation values - *perfect_model_obs*
 
-[perfect_model_obs](https://ncar.github.io/DART/api/v2.1.10/program/perfect_model_obs.html)
+[perfect_model_obs](https://ncar.github.io/DART/api/v0.0.6/program/perfect_model_obs.html)
 reads the blueprint and an initial state and applies the appropriate
 forward observation operator for each and every observation in the
 current 'assimilation window'. If necessary, the model is advanced until
@@ -951,7 +951,7 @@ The noisy copy is designated as the 'observation', the noise-free
 copy is the truth. The observation-space diagnostic program 
 <em>obs_diag</em> has special options for using the true copy instead 
 of the observation copy. See the 
-<a href="https://ncar.github.io/DART/api/v2.1.10/program/obs_diag.html">obs_diag.html</a> for details.</td>
+<a href="https://ncar.github.io/DART/api/v0.0.6/program/obs_diag.html">obs_diag.html</a> for details.</td>
 </tr>
 <tr class="even">
 <td><em>dart_log.out</em></td>
@@ -1036,7 +1036,7 @@ low-order models) can run *perfect_model_obs* very simply:
 ### 3. Performing the assimilation experiment - *filter*
 
 This step is done with the program
-[filter](https://ncar.github.io/DART/api/v2.1.10/program/filter.html), which
+[filter](https://ncar.github.io/DART/api/v0.0.6/program/filter.html), which
 also uses ```input.nml``` for input and run-time control. A successful
 assimilation will depend on many things: an approprite initial ensemble,
 monitoring and perhaps correcting the ensemble spread, localization,
@@ -1231,7 +1231,7 @@ be written. We have a lot of experience writing these converters - you
 should not be afraid to ask for advice or for code to start from.  
   
 *NEW* Manhattan provides a program to help test the required interfaces:
-[assimilation_code/programs/model_mod_check/model_mod_check.f90](https://ncar.github.io/DART/api/v2.1.10/program/model_mod_check.html).
+[assimilation_code/programs/model_mod_check/model_mod_check.f90](https://ncar.github.io/DART/api/v0.0.6/program/model_mod_check.html).
 Many models start with this and modify it to suit their needs. Be aware
 that some of the model-specific *model_mod_check.f90* programs use
 deprecated features. Focus on the ones for Manhattan-compliant
@@ -1354,7 +1354,7 @@ and then a few higher-order models to see how they do it.
 Become familiar with [DART's use of MPI](dart_mpi.html), the
 [options for parallelism](filter_async_modes.html), and
 the *filter* namelist parameter
-[*async*](https://ncar.github.io/DART/api/v2.1.10/program/filter.html).
+[*async*](https://ncar.github.io/DART/api/v0.0.6/program/filter.html).
 
 <span id="Copying" class="anchor"></span>
 
@@ -1457,7 +1457,7 @@ is:
 
 each routine includes usual things it often has to do for subroutine-callable
 models which can manufacture an initial condition state vector.
-[model_mod_check.f90](https://ncar.github.io/DART/api/v2.1.10/program/model_mod_check.html)
+[model_mod_check.f90](https://ncar.github.io/DART/api/v0.0.6/program/model_mod_check.html)
 can be used to test these routines individually before you run it with *filter*.
 start with all defaults from other modules and add, in order the following
 routines:
@@ -1550,7 +1550,7 @@ possible future implementation.
 
 Each routine includes usual things it often has to do for a large
 geophysical model. this is different from the low order models.
-[model_mod_check.f90](https://ncar.github.io/DART/api/v2.1.10/program/model_mod_check.html)
+[model_mod_check.f90](https://ncar.github.io/DART/api/v0.0.6/program/model_mod_check.html)
 can be used to test these routines individually before you run it with
 *filter*. start with all defaults from other modules and add, in order
 the following routines:
@@ -1868,7 +1868,7 @@ Examples exist in the *diagnostics/matlab/private* directory.
 ## Examples - under construction
 
 1.  observation location/value plots
-2.  [a brief explanation of 'localization'](https://ncar.github.io/DART/api/v2.1.10/module/assim_tools_mod.html)
+2.  [a brief explanation of 'localization'](https://ncar.github.io/DART/api/v0.0.6/module/assim_tools_mod.html)
 3.  namelist settings for damped adaptive spatially-varying group filter
 
 <span id="namelists" class="anchor"></span> 
