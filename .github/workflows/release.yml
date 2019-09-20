@@ -99,7 +99,7 @@ jobs:
         cd ../pages
         # Capture the old version number - no slashes
         OLD=$(grep -o -m 1 "/v.*[0-9]/" Getting_Started.md | sed "s#/##g")
-        ls -1 "*.md" > temp.txt
+        ls -1 *.md > temp.txt
         IFS=$'\n'
         # TJH Question: 1) why IFS ... not used
         # TJH Question: 2) capture sed status and act accordingly
