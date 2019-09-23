@@ -573,7 +573,7 @@ sondeloop2: do i = 1, nused
   endif
 
   !  If desired, read the pressure significant-level wind data, write to obs_seq
-  if ( wind_use_vert_pressure ) then
+  if ( do_significant_level_winds .and. wind_use_vert_pressure ) then
       call getvar_int_1d_1val(ncid, "numSigPresW", n, nsig )
   else
       nsig = 0
