@@ -457,8 +457,6 @@ subroutine broadcast_flag(flag, root)
 logical, intent(inout) :: flag
 integer, intent(in)    :: root !! relative to get_dart_mpi_comm()
 
-integer :: errcode
-
 ! does nothing because data is already there
 
 end subroutine broadcast_flag
