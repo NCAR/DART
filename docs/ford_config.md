@@ -8,8 +8,8 @@ exclude: mpisetup.f90
 output_dir: ./ford_output
 page_dir: ./pages
 project: DART
-project_github: https://github.com/NCAR/DART_development
-project_website: https://ncar.github.io/DART_development
+project_github: https://github.com/NCAR/DART
+project_website: https://ncar.github.io/DART
 summary: **D**ata **A**ssimilation **R**esearch **T**estbed
 author: DAReS
 author_description: The NCAR Data Assimilation Research Section

@@ -3,35 +3,59 @@
 # excluding the repository name makes it easier to navigate when building locally
 menu:
   - title: Documentation
-    url: /DART_development/pages/DART2_Starting.html
+    url: /DART/pages/Getting_Started.html
     submenu:
       - title: Getting Started
-        url: /DART_development/pages/DART2_Starting.html
-      - title: Tutorial
-        url: /DART_development/pages/dart_tutorial.html
-      - title: Lab
-        url: /DART_development/pages/dart_lab.html
-      - title: In Depth
-        url: /DART_development/pages/DART2_Documentation.html
-      - title: Diagnostics
-        url: /DART_development/pages/DART2_Diagnostics.html
+        url: /DART/pages/Getting_Started.html
+      - title: Models
+        url: /DART/pages/Models.html
       - title: Observations 
-        url: /DART_development/pages/DART2_Observations.html
-      - title: Misc
-        url: /DART_development/pages/DART2_Miscellany.html
+        url: /DART/pages/Observations.html
+      - title: Diagnostics
+        url: /DART/pages/Diagnostics.html
   - title: Research
-    url: /DART_development/pages/Research.html
+    url: /DART/pages/Research.html
+    submenu:
+      - title: "DART_LAB: explore ensemble DA concepts with MATLAB"
+        url: /DART/pages/dart_lab.html
+      - title: "Tutorial: learn how to use DART"
+        url: /DART/pages/Tutorial.html
+      - title: Publications
+        url: /DART/pages/Publications.html
+      - title: Presentations
+        url: /DART/pages/Presentations.html
+      - title: CESM and DART
+        url: /DART/pages/CESM_DART_guidelines.html
+      - title: WRF and DART
+        url: /DART/pages/WRF_DART_guidelines.html
   - title: About Us
-    url: /DART_development/pages/aboutus.html
+    url: /DART/pages/About_Us.html
   - title: Support
-    url: /DART_development/pages/support.html
-  - title: API
+    url: /DART/pages/support.html
+    submenu:
+      - title: DART Parallelism
+        url: /DART/pages/dart_mpi.html
+      - title: Frequently Asked Questions
+        url: /DART/pages/DART2_Miscellany.html
+  - title: Releases
+    url: /DART/pages/release.html
     submenu:
       - title: Manhattan
-        url: /DART_development/pages/release.html
-      - title: v3.0.0
-        url: /DART_development/api/v3.0.0/index.html
+        url: https://github.com/NCAR/DART/releases/tag/v9.7.0
       - title: Lanai
-      - title: v2.0.0
-        url: 
+        url: https://github.com/NCAR/DART/releases/tag/v8.4.1
+      - title: Kodiak
+        url: https://github.com/NCAR/DART/releases/tag/v7.2.2
+      - title: Jamaica
+        url: https://github.com/NCAR/DART/releases/tag/v6.0.1
+      - title: Iceland
+        url: https://github.com/NCAR/DART/releases/tag/v5.1.0
+      - title: Hawaii
+        url: https://github.com/NCAR/DART/releases/tag/v4.1.0
+      - title: Guam
+        url: https://github.com/NCAR/DART/releases/tag/v3.0.0
+      - title: Fiji
+        url: https://github.com/NCAR/DART/releases/tag/v2.0.0
+      - title: Easter
+        url: https://github.com/NCAR/DART/releases/tag/v1.0.0
 
