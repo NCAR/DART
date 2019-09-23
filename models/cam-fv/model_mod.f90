@@ -440,7 +440,7 @@ if (nd == 3) then
    use_vert_type = VERTISLEVEL
    use_vert_val  = real(k,r8)
 else
-   if (q == QTY_SURFACE_ELEVATION .or. q == QTY_SURFACE_PRESSURE) then
+   if (is_surface_field(q)) then
       use_vert_type = VERTISSURFACE
       use_vert_val  = MISSING_R8  
       ! setting the vertical value to missing matches what the previous
@@ -3500,10 +3500,10 @@ bq(1) = get_quantity_for_type_of_obs(otype)
 
 call convert_vertical_obs(ens_handle, 1, bl, bq, bt, &
                              vert_type, status)
-if (status(1) /= 0) then
-   status1 = status(1)
-   return
-endif
+
+status1 = status(1)
+
+if (status1 /= 0) return
 
 loc = bl(1)
 
