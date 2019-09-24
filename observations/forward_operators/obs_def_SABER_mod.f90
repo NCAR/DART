@@ -7,9 +7,9 @@
 ! This module supports the observation types from the AIRS instruments.
 ! http://winds.jpl.nasa.gov/missions/quikscat/index.cfm
 
-! BEGIN DART PREPROCESS KIND LIST
+! BEGIN DART PREPROCESS QUANTITY LIST
 ! SABER_TEMPERATURE,        QTY_TEMPERATURE,        COMMON_CODE
-! END DART PREPROCESS KIND LIST
+! END DART PREPROCESS QUANTITY LIST
 
 ! <next few lines under version control, do not edit>
 ! $URL$

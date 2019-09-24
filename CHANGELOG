@@ -888,5 +888,3 @@ and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
 
 - added an example of how to use a namelist to the text_to_obs.f90 observation
   converter program.
-
-

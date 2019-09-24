@@ -32,6 +32,10 @@ use utilities_mod, only : error_handler, E_ERR
 ! the limit on the number of words and the length of each string
 ! is determined by the 'words' character array that is passed in.
 ! it should have already been allocated by the caller.
+!
+! limitations:  doesn't understand escaped characters (e.g. "\ ")
+! and doesn't understand quoted strings (e.g. "this string has spaces")
+! it may need to handle quoted strings (with either ' or ") soon.  
 !---------------------------------------------------------------------
 
 implicit none
@@ -48,28 +52,30 @@ public :: get_args_from_string
 
 contains
 
-subroutine get_args_from_string(argline, argcount, argwords)
+subroutine get_args_from_string(inline, argcount, argwords)
 ! parse a single string up into blank-separated words
 
- character(len=*), intent(in)  :: argline
+ character(len=*), intent(in)  :: inline
  integer,          intent(out) :: argcount
  character(len=*), intent(out) :: argwords(:)
 
 ! in all these offsets, they are relative to 1, left hand char in string:
-!  firstc is next non-blank character starting a word
-!  thisc is the current character
-!  finalc is the offset of the last non-blank character in the string
+!  firstoff is offset to next non-blank character starting a word
+!  thisoff  is offset to the current character
+!  finaloff is offset of the last non-blank character in the string
 ! inword is a logical which toggles when inside a word or not
 ! maxw are the max number of words, defined by what the caller passes in
 ! maxl is the max length of any one word, again defined by the size of the
-!  in coming array.
-integer :: firstc, finalc, thisc
+!  incoming array.
+
+integer :: firstoff, finaloff, thisoff
 logical :: inword
 integer :: maxw, maxl
-integer :: wordlen
+integer :: wordlen, i
 
-! error handling
+character(len=len(inline)) :: argline
 character(len=128) :: msgstring
+character :: endword, thisc
 
 
 ! maxw is max number of arg 'words' allowed
@@ -81,54 +87,92 @@ maxl = len(argwords(1))
 argwords = ''
 argcount = 0
 
-finalc = len_trim(argline)
-firstc = 0
-thisc  = 1
+finaloff = len_trim(inline)
+if (finaloff <= 0) return
+
+argline = inline
+
+firstoff = 0
+thisoff  = 1
 inword = .false.
 wordlen = 0
+endword = ' '
+
+!DEBUG print *, 'line = ', '"'//trim(argline)//'"'
 
 LINE: do
    ! end of input?
-   if (thisc > finalc) then
+   if (thisoff > finaloff) then
       ! if currently in a word, complete it
       if (inword) then
          argcount = argcount + 1
          if (argcount > maxw) exit LINE
-         wordlen = thisc-firstc+1
+         wordlen = thisoff-firstoff-1
+!DEBUG print *, 'thisoff, firstoff, wordlen = ', thisoff, firstoff, wordlen
          if (wordlen > maxl) exit LINE
-         argwords(argcount) = argline(firstc:thisc-1)
+         argwords(argcount) = argline(firstoff:firstoff+wordlen)
+!DEBUG print *, 'arg ', argcount, ' is ', '"'//argline(firstoff:firstoff+wordlen)//'"'
       endif
       exit LINE
    endif
 
-   ! transition into a word
-   if (.not. inword .and. argline(thisc:thisc) /= ' ') then
-      inword = .true.
-      firstc = thisc
-      thisc = thisc + 1
-   endif
- 
-   ! transition out of a word
-   if (inword .and. argline(thisc:thisc) == ' ') then
-      inword = .false.
-      argcount = argcount + 1
-      if (argcount > maxw) exit LINE
-      wordlen = thisc-firstc+1
-      if (wordlen > maxl) exit LINE
-      argwords(argcount) = argline(firstc:thisc-1)
-      thisc = thisc + 1
-   endif
-  
-   ! no transition: multiple blanks or consective chars
-   if ((.not. inword  .and. argline(thisc:thisc) == ' ') .or. &
-       (inword  .and. argline(thisc:thisc) /= ' ')) then
-      thisc = thisc + 1
+   ! next character on line
+   thisc = argline(thisoff:thisoff)
+
+!DEBUG print *, 'thisoff, finaloff, inword, endword, thisc = ', thisoff, finaloff, inword, '"'//endword//'"', ' ', '"'//thisc//'"'
+
+   ! escaped chars - backslash prevents interpretation of next char
+   if (thisc == '\') then
+      ! fixme - does this really work?
+      !  intent is to skip the backslash and the next char 
+      !  so it isn't interpreted.
+      do i=thisoff, finaloff-1
+         argline(i:i) = argline(i+1:i+1)
+      enddo
+      argline(finaloff:finaloff) = ' '
+      finaloff = finaloff-1
+      thisoff = thisoff+1
+      cycle LINE
    endif
 
+   ! transition into a word?
+   ! start of a space-separated or quoted string.
+   if (.not. inword) then 
+      if (thisc == '"' .or. thisc == "'") then
+         endword = thisc
+         inword = .true.
+         firstoff = thisoff + 1
+      else if (thisc /= ' ') then
+         inword = .true.
+         firstoff = thisoff
+      else if (thisc == ' ') then
+         endword = thisc
+      endif
+      thisoff = thisoff + 1
+      cycle LINE
+   endif
+
+   ! transition out of a word?
+   if (inword) then
+      if (thisc == endword) then
+         inword = .false.
+         argcount = argcount + 1
+         if (argcount > maxw) exit LINE
+         if (thisc == ' ') endword = thisc
+         wordlen = thisoff-firstoff-1
+!DEBUG print *, 'thisoff, firstoff, wordlen = ', thisoff, firstoff, wordlen
+         if (wordlen > maxl) exit LINE
+         argwords(argcount) = argline(firstoff:firstoff+wordlen)
+!DEBUG print *, 'arg ', argcount, ' is ', '"'//argline(firstoff:firstoff+wordlen)//'"'
+      endif
+      thisoff = thisoff + 1
+      cycle LINE
+   endif
+  
 enddo LINE
 
 if (argcount > maxw) then
-   write(msgstring,*) 'more blank-separated args than max allowed by calling code, ', maxw
+   write(msgstring,*) 'more blank-separated args than max number allowed by calling code, ', maxw
    call error_handler(E_ERR,'get_args_from_string',msgstring, source,revision,revdate)
 endif
 
@@ -136,6 +180,9 @@ if (wordlen > maxl) then
    write(msgstring,*) 'one or more args longer than max length allowed by calling code, ', maxl
    call error_handler(E_ERR,'get_args_from_string',msgstring, source,revision,revdate)
 endif
+
+!DEBUG print *, 'argcount = ', argcount
+
 
 end subroutine 
 

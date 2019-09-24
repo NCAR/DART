@@ -14,7 +14,7 @@
 
 program create_obs_grid
 
-use    utilities_mod, only : register_module, open_file, close_file, &
+use    utilities_mod, only : register_module, &
                              initialize_utilities, finalize_utilities
 use obs_sequence_mod, only : obs_sequence_type, interactive_obs, write_obs_seq, &
                              static_init_obs_sequence, obs_type, init_obs_sequence, &
