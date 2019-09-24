@@ -4,6 +4,8 @@
 !
 ! $Id$
 
+!> Define the observation types and obs/state quantities understood by DART.
+!>
 !> Takes a list of observation type module path names and physical quantity
 !> module path names and creates two output files that are compiled into
 !> the rest of the DART executables.  They define the quantities and observation
@@ -46,7 +48,13 @@
 !> this program. is r8 really needed as well?  again, text based processing.  
 !> i guess for a numeric value it should be vetted to be valid here?
 !>
-!> @todo FIXME: should we hardcode QTY_STATE_VARIABLE as 0 here?
+!> @todo FIXME: this code now creates an obs_def_mod.f90 that contains
+!> a use line for all the known quantities, not just those referenced
+!> by the obs_def_xxx_mod.f90 file.  the obs_kind_mod.f90 has to define
+!> all of them, and the model_mod.f90 code should get quantities from
+!> the obs_kind_mod - so should this code go ahead and flag only the
+!> used quantities in a separate list and only output them in the
+!> final generated obs_def_mod.f90?
 !>
 
 program preprocess
