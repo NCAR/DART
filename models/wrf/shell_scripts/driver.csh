@@ -19,10 +19,10 @@
 #   Modified by G. Romine to run realtime cases 2011-18
 #
 ########################################################################
-#   run as: nohup csh driver.csh 2017042706 >& run.log &
+#   run as: nohup csh driver.csh 2017042706 param.csh >& run.log &
 ########################################################################
 # Set the correct values here
-set paramfile = /glade2/scratch2/USER/WORKDIR/scripts/param.csh  # set this appropriately #%%%#
+set paramfile = `readlink -f ${2}` # Get absolute path for param.csh from command line arg
 set datefnl   =  2017042712 # target date   YYYYMMDDHH  # set this appropriately #%%%#
 ########################################################################
 # Likely do not need to change anything below
