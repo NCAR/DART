@@ -1,0 +1,24 @@
+
+WRF/DART Tutorial
+
+To get started with the WRF/DART tutorial, users need to obtain two things:
+  1) Clone the DART repository
+     $ git https://github.com/NCAR/DART_development  (KRF: or however you want to direct users to obtain the code)
+
+     You will need the DART code as well as the tutorial template files that are provided in DART/models/wrf/tutorial/template
+     
+  2) Download the pre-packaged data for the tutorial
+     $ wget https://www.image.ucar.edu/wrfdart/tutorial/wrf_dart_tutorial_23May2018_v3.tar.gz (KRF: New data not there yet)
+
+     This provides you with the input, perturbation, and observation data required to run the tutorial.  
+
+
+Follow the directions for the tutorial at: https://www.image.ucar.edu/wrfdart/tutorial  (KRF: currently old instructions are live. new ones at models/wrf/tutorial/index.html of wrfdart_tutorial branch)
+
+Disclaimers:
+
+This tutorial is provided as guidance for setting up a basic WRF/DART experiment. It is designed to get the user familiar with the primary components and workflow.  Users should be aware that when moving to their own data/experiments, changes to the scripts or workflow will be required to fit their particular requirements and needs. 
+
+Scripts here have been designed for use on a supercomputer with PBS queueing system (namely, Cheyenne). Users with different resources may need to make addtional changes to work on their particular system.  
+
+For further assistance, please send questions to dart(at)ucar(dot)edu.
