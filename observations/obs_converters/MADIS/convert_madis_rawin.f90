@@ -108,14 +108,15 @@ logical :: include_specific_humidity = .true.
 logical :: include_relative_humidity = .false.
 logical :: include_dewpoint          = .false.
 logical :: use_input_qc              = .true. 
-logical :: wind_use_vert_pressure    = .true.  ! obsolete?  use whichever you find now.
-logical :: verbose                   = .false. ! get more output
+logical :: wind_use_vert_pressure    = .true.  ! use what you find.  if both, use this one.
+logical :: verbose                   = .true. ! get more output
 
 ! mandatory levels are always converted.  significant levels are controlled
 ! by these vars.  if you are using the namelist they are set by the
 ! namelist in input.nml.  if not, you are prompted at runtime for T/F responses.
 logical :: do_significant_level_temps = .true.
 logical :: do_significant_level_winds = .true.
+character(len=32) :: sig_wind_type = 'unknown'
 
 logical :: use_namelist = .false.
 
@@ -170,29 +171,41 @@ allocate(nman(nsound), used(nsound), sorted_used(nsound), tused(nsound))
 ! so you can print them if asked, and then set the optional
 ! ones to 0 if not requested.
 
+! mandatory levels
 call getvar_int(ncid, "numMand", obscnt)
 nmaxml = maxval(obscnt, mask=obscnt<1000)
 if (verbose) print *, 'max mandatory levels per sounding, over all soundings = ', nmaxml
 
-call get_or_fill_int(ncid, "numSigPresW", obscnt)
-nmaxsw = maxval(obscnt, mask=obscnt<1000)
-if (nmaxsw > 0) then
-  if (verbose) print *, 'max significant winds per sounding, pressure vertical, over all soundings = ', nmaxsw
-else
+! significant level temps
+call getvar_int(ncid, "numSigT", obscnt)
+nmaxst = maxval(obscnt, mask=obscnt<1000)
+if (verbose) print *, 'max significant level temperatures per sounding, over all soundings = ', nmaxst
+
+if ( .not. do_significant_level_temps ) nmaxst = 0
+
+! significant level winds - set which one is in this file.
+! (complication is they can be on pressure or height levels)
+call single_vert_type_sigwinds(ncid, nsound, sig_wind_type)
+
+nmaxsw = 0
+if (sig_wind_type == "pressure") then
+  call get_or_fill_int(ncid, "numSigPresW", obscnt)
+  nmaxsw = maxval(obscnt, mask=obscnt<1000)
+  if (nmaxsw > 0) then
+    if (verbose) print *, 'max significant level winds per sounding, pressure vertical, over all soundings = ', nmaxsw
+  endif
+endif
+if (sig_wind_type == "height") then
   call get_or_fill_int(ncid, "numSigW", obscnt)
   nmaxsw = maxval(obscnt, mask=obscnt<1000)
   if (nmaxsw > 0) then
-    if (verbose) print *, 'max significant winds per sounding, height vertical, over all soundings = ', nmaxsw
+    if (verbose) print *, 'max significant level winds per sounding, height vertical, over all soundings = ', nmaxsw
   endif
 endif
 
 if ( .not. do_significant_level_winds ) nmaxst = 0
 
-call getvar_int(ncid, "numSigT", obscnt)
-nmaxst = maxval(obscnt, mask=obscnt<1000)
-if (verbose) print *, 'max significant temperatures per sounding, over all soundings = ', nmaxst
 
-if ( .not. do_significant_level_temps ) nmaxst = 0
 
 
 ! compute the largest possible number of obs that can be created from this input
@@ -586,22 +599,19 @@ sondeloop2: do i = 1, nused
   endif
 
   !  If desired, read the pressure significant-level wind data, write to obs_seq
-  !  convert whichever is present -  with pressure levels or heights.
+  !  Convert whichever is present - with vert units of pressure or height.
 
   !  note that pressure vs height are two separate sections because
   !  the netcdf arrays with data have slightly different field names,
   !  and the vertical coordinate is different in the create obs call.
 
   nsig = 0
-  if ( do_significant_level_winds ) then
-    rc = nf90_inq_varid(ncid, "numSigPresW", varid)
-    if (rc == NF90_NOERR) then
-      call getvar_int_1d_1val(ncid, "numSigPresW", n, nsig )
-    endif
+  if ( do_significant_level_winds .and. sig_wind_type == "pressure") then
+    call getvar_int_1d_1val(ncid, "numSigPresW", n, nsig )
   endif
 
-  !  skip soundings with nsig of 99999
-  if ( do_significant_level_winds .and. nsig > 0 .and. nsig <= nmaxsw) then
+  !  nsig is 0 if not doing sig winds, and skip soundings with nsig of 99999
+  if ( nsig > 0 .and. nsig <= nmaxsw ) then
 
     allocate(pres(nsig))     ;  allocate(wdir(nsig))     ;  allocate(wspd(nsig))
     allocate(qc_pres(nsig))  ;  allocate(qc_wdir(nsig))  ;  allocate(qc_wspd(nsig))
@@ -658,15 +668,12 @@ sondeloop2: do i = 1, nused
 
   !  If desired, read the height significant-level wind data, write to obs_seq
   nsig = 0
-  if ( do_significant_level_winds ) then
-    rc = nf90_inq_varid(ncid, "numSigW", varid)
-    if (rc == NF90_NOERR) then
-      call getvar_int_1d_1val(ncid, "numSigW", n, nsig )
-    endif
+  if ( do_significant_level_winds .and. sig_wind_type == "height") then
+    call getvar_int_1d_1val(ncid, "numSigW", n, nsig )
   endif
 
-  !  skip soundings with nsig of 99999
-  if ( do_significant_level_winds .and. nsig > 0 .and. nsig <= nmaxsw) then
+  !  nsig is 0 if not doing sig winds, and skip soundings with nsig of 99999
+  if ( nsig > 0 .and. nsig <= nmaxsw ) then
 
     allocate(hght(nsig))     ;  allocate(wdir(nsig))     ;  allocate(wspd(nsig))
     allocate(qc_hght(nsig))  ;  allocate(qc_wdir(nsig))  ;  allocate(qc_wspd(nsig))
@@ -738,6 +745,53 @@ if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, rawin_out_file)
 call finalize_utilities()
 
 contains
+
+!
+! make sure this file doesn't have significant level winds on both
+! pressure and height.  we haven't seen this, but test for it just
+! in case.  otherwise the wind data would have replicated obs on
+! different vertical levels which would be almost impossible to
+! detect after the obs_seq file was created.
+!
+subroutine single_vert_type_sigwinds(ncid, nsound, sig_wind_type)
+ integer, intent(in) :: ncid
+ integer, intent(in) :: nsound
+ character(len=*), intent(out) :: sig_wind_type
+
+integer, allocatable :: p(:), h(:)
+integer :: pmax, hmax
+
+allocate(p(nsound), h(nsound))
+
+call get_or_fill_int(ncid, "numSigPresW", p)
+pmax = maxval(p, mask=p<1000)
+
+call get_or_fill_int(ncid, "numSigW", h)
+hmax = maxval(h, mask=h<1000)
+
+if (pmax > 0 .and. hmax > 0) then
+  print *, 'found both height and pressure significant level winds in this file'
+  if ( wind_use_vert_pressure ) then
+    sig_wind_type = 'pressure'
+    print *, 'will use pressure levels, based on setting of "wind_use_vert_pressure"'
+  else
+    sig_wind_type = 'height'
+    print *, 'will use height levels, based on setting of "wind_use_vert_pressure"'
+  endif
+else if (pmax > 0) then
+  sig_wind_type = 'pressure'
+  print *, 'significant level winds are on pressure levels'
+else if (hmax > 0) then
+  sig_wind_type = 'height'
+  print *, 'significant level winds are on height levels'
+else
+  sig_wind_type = 'none'
+endif
+
+deallocate(p, h)
+
+end subroutine single_vert_type_sigwinds
+
 
 ! specialized versions of the netcdf get routines that seem to be
 ! pretty specific to this version of the code, so i didn't put them
