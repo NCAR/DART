@@ -104,6 +104,7 @@ setenv   COPY 'cp -pfr'
 setenv   MOVE 'mv -f'
 setenv   LINK 'ln -fs'
 setenv   WGET /usr/bin/wget
+setenv   LIST 'ls'
 
 exit 0
 
