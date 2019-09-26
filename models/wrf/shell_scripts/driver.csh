@@ -118,6 +118,8 @@ while ( 1 == 1 )
    # Fire off a bunch of small jobs to create the initial conditions for the short model forecast.
    # the prep_ic.csh script creates a file "${RUN_DIR}/ic_d${dchar}_${n}_ready" to signal a
    # successful completion.
+   # NOTE : Submit commands here are system specific and work for this tutorial, users may want/need to change
+   #        for their system and/or production.
 
    set n = 1
    while ( $n <= $NUM_ENS )
@@ -131,6 +133,7 @@ while ( 1 == 1 )
 
    # If any of the queued jobs has not completed in 5 minutes, run them manually
    # cleanup any failed stuffs
+   # NOTE : No automated cleanup for queued jobs. User may want to add system specific monitoring.
    set dn = 1
    while ( $dn <= $domains )
       set dchar = `echo $dn + 100 | bc | cut -b2-3`

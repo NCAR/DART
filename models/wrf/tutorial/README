@@ -19,6 +19,6 @@ Disclaimers:
 
 This tutorial is provided as guidance for setting up a basic WRF/DART experiment. It is designed to get the user familiar with the primary components and workflow.  Users should be aware that when moving to their own data/experiments, changes to the scripts or workflow will be required to fit their particular requirements and needs. 
 
-Scripts here have been designed for use on a supercomputer with PBS queueing system (namely, Cheyenne). Users with different resources may need to make addtional changes to work on their particular system.  
+Scripts here have been designed for use on a supercomputer with PBS queueing system (namely, Cheyenne). Users with different resources may need to make addtional changes to work on their particular system. E.g. see "NOTE" in driver.csh for submitting prep_ic.csh.   
 
 For further assistance, please send questions to dart(at)ucar(dot)edu.
