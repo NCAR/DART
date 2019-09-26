@@ -15,7 +15,7 @@
 # modified by G. Romine 2011-2018
 
 set initial_date = ${1}
-set paramfile    = ${2}
+set paramfile = `readlink -f ${2}` # Get absolute path for param.csh from command line arg
 source $paramfile
 
 cd ${RUN_DIR}
@@ -121,7 +121,7 @@ EOF
    cd $RUN_DIR
 
    echo "Running first_advance.csh for member $n at `date`"
-   ${SHELL_SCRIPTS_DIR}/first_advance.csh $initial_date $n ${SHELL_SCRIPTS_DIR}/$paramfile
+   ${SHELL_SCRIPTS_DIR}/first_advance.csh $initial_date $n $paramfile
 
 EOF
 
