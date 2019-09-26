@@ -108,6 +108,7 @@ prematurely terminating the namelist.
    deltat = 0.01,
    time_step_days = 0,
    time_step_seconds = 3600  
+   solver = 'RK2'
 /
 </pre>
 </div>
@@ -156,6 +157,13 @@ dimensional timestep specified by time_step_days and time_step_seconds.
     <TD>Number of seconds for dimensional timestep, mapped to deltat.
 </TD></TR>
 
+<TR><TD> solver </TD>
+    <TD> character(8) </TD>
+    <TD>The name of the solver to use. 'RK2', the default, is a two-step 
+        Runge-Kutta used in the original Lorenz 63 paper. 'RK4' is the 
+        only other option, which uses the four-step classic Runge-Kutta
+        method.
+</TD></TR>
 </TBODY> 
 </TABLE>
 </div>
