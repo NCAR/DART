@@ -3,7 +3,7 @@ WRF/DART Tutorial
 
 To get started with the WRF/DART tutorial, users need to obtain two things:
   1) Clone the DART repository
-     $ git https://github.com/NCAR/DART_development  (KRF: or however you want to direct users to obtain the code)
+     $ git https://github.com/NCAR/DART
 
      You will need the DART code as well as the tutorial template files that are provided in DART/models/wrf/tutorial/template
      
