@@ -167,8 +167,8 @@ the <a href="http://nco.sourceforge.net/">nco</a> and
         <br />
         </li>
         <li>After untarring the file you should see the following directories: 
-           <em class="file">icbc, obs_diag, output, perts, rundir, scripts</em>, and 
-           <em class="file">template</em>.   <!-- remove test -->
+	   <em class="file">icbc, output, perts,</em> and <em class="file">template.</em> 
+           <!-- remove test -->
            The directory names (case sensitive) are important, as the scripts 
            rely on these local paths and file names.
         </li>
@@ -180,9 +180,15 @@ the <a href="http://nco.sourceforge.net/">nco</a> and
 Build the software packages and copy files into place:
 
 <ol>
+<li>Copy the contents of <em class="file">$DART/models/wrf/shell_scripts</em> to the 
+    <em>WORKDIR</em><em class="file">/scripts</em> directory.
+    <br />
+    <br />
+    </li>
+	
 <li>Build the DART executables.
     <br /><br />
-    <ol><li>Copy the tutorial DART namelist from <em class="file">rundir/input.nml</em> 
+    <ol><li>Copy the tutorial DART namelist from <em class="file">template/input.nml.template</em> 
             to <em class="file">$DART/models/wrf/work/input.nml</em>
         <br />
         <br />
@@ -201,11 +207,6 @@ Build the software packages and copy files into place:
    </ol>
 </li>
 
-<li>Copy the contents of <em class="file">$DART/models/wrf/shell_scripts</em> to the 
-    <em>WORKDIR</em><em class="file">/scripts</em> directory.
-    <br />
-    <br />
-    </li>
 
 <li>Copy the WRF and WRFDA executables and support files (except for <em class="file">namelist.input</em>) into 
     <em>WORKDIR</em><em class="file">/rundir/WRF_RUN/</em>
@@ -257,38 +258,6 @@ Build the software packages and copy files into place:
            <br />
            </li>
 
-       <li>You will need a list of the file names for the DART/WRF input and restart files.
-           The files with the list of filenames 
-           (<em class="file">input_list_d01.txt, output_list_d01.txt</em>)
-           should already be present, but if needed 
-           the following script will regenerate them (run in <em class="file">rundir</em>):
-       <pre>
-       #!/bin/csh
-       
-       set num_ens = 50 
-       set input_file_name  = "input_list_d01.txt" 
-       set input_file_path  = "./advance_temp" 
-       
-       set output_file_name = "output_list_d01.txt" 
-       
-       set n = 1 
-       
-       if ( -e $input_file_name )  rm $input_file_name 
-       if ( -e $output_file_name ) rm $output_file_name 
-       
-       while ($n &lt;= $num_ens)
-       
-          set     ensstring = `printf %04d $n`
-          set  in_file_name = ${input_file_path}${n}"/wrfinput_d01" 
-          set out_file_name = "filter_restart_d01."$ensstring 
-       
-          echo $in_file_name  &gt;&gt; $input_file_name
-          echo $out_file_name &gt;&gt; $output_file_name
-       
-          @ n++
-       end
-       </pre>
-       </li>
    </ol>
    </li>
 </ol>
@@ -310,23 +279,13 @@ So far, your <em class="file">rundir</em> should contain (correct as needed):
         <em class="program">pert_wrf_bc</em>, 
         <em class="program">wrf_dart_obs_preprocess</em>
     </td></tr>
-<tr><td valign="top">scripts:</td>
-    <td><em class="program">new_advance_model.csh</em>, 
-        <em class="program">add_bank_perts.ncl</em>
-    </td></tr>
 <tr><td valign="top">directories:</td>
     <td><em class="file">WRFIN</em> (empty), 
         <em class="file">WRFOUT</em> (empty), 
         <em class="file">WRF_RUN</em> (wrf executables and support files, except namelist.input)
     </td></tr>
-<tr><td valign="top">support data and files:</td>
-    <td><em class="file">input_list_d01.txt</em>, 
-        <em class="file">output_list_d01.txt</em>, 
-        <em class="file">sampling_error_correction_table.nc</em>
-    </td></tr>
-<tr><td valign="top">namelists:</td>
-    <td><em class="file">input.nml</em>, 
-        <em class="file">namelist.input</em>
+<tr><td valign="top">support data:</td>
+    <td><em class="file">sampling_error_correction_table.nc</em>
     </td></tr>
 </table>
 
@@ -349,6 +308,7 @@ generate series of analyses for several days covering a North American region.
 Let's now look inside the <em class="file">scripts</em> directory. You should find:
 </p>
 <pre>
+ <em class="program">add_bank_perts.ncl</em>
  <em class="program">assim_advance.csh</em>
  <em class="program">assimilate.csh</em>
  <em class="program">diagnostics_obs.csh</em>
@@ -357,6 +317,7 @@ Let's now look inside the <em class="file">scripts</em> directory. You should fi
  <em class="program">gen_pert_bank.csh</em>
  <em class="program">gen_retro_icbc.csh</em>
  <em class="program">init_ensemble_var.csh</em>
+ <em class="program">mean_increment.ncl</em>
  <em class="program">param.csh</em>
  <em class="program">prep_ic.csh</em>
 </pre>
@@ -370,6 +331,9 @@ The scripts <em class="program">assim_advance.csh</em>,
 <em class="program">prep_ic.csh</em>, and 
 <em class="program">diagnostics_obs.csh</em> are templates
 for submitted jobs or helper scripts for specific tasks that need to be done during the cycling. 
+The <em class="program">add_bank_perts.ncl</em> script adds perturbations to each member and the
+<em class="program">mean_increment.ncl</em> scripts is a diagonostic tool used to compute mean
+increments.
 Finally, the <em class="program">gen_retro_icbc.csh</em> is used
 to generate template files and boundary conditions, 
 while <em class="program">init_ensemble_var.csh</em> is used to 
