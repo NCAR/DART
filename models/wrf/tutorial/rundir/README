@@ -1,5 +1,0 @@
-To run wrf/dart, this directory needs to be populated with:
-
-From you DART Manhattan build: advance_time filter obs_diag pert_wrf_bc
-
-From your WRF build, placed into the WRF_RUN/ directory: all of the files to run WRF, EXCEPT the namelist.input

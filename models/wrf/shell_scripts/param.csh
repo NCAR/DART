@@ -27,6 +27,8 @@ set ADAPTIVE_INFLATION = 1   # set to 1 if using adaptive inflaton to tell the s
 set NUM_DOMAINS        = 1
 
 #  Directories where things are run
+#  IMPORTANT : Scripts provided rely on this directory structure and these directory names relative to BASE_DIR.
+#              Do not change, otherwise tutorial will fail.    
 set BASE_DIR         = /glade2/scratch2/USER/WORK_DIR     # set this appropriately #%%%#
 set RUN_DIR          = ${BASE_DIR}/rundir
 set TEMPLATE_DIR     = ${BASE_DIR}/template
@@ -48,6 +50,12 @@ set VAR_SRC_DIR       = /glade/p/work/USER/WRFDA                    # set this a
 set GEO_FILES_DIR     = /glade/p/work/USER/WPS        # set this appropriately #%%%#
 set GRIB_DATA_DIR     = /glade/p/work/USER/WPS/GRIB   # set this appropriately #%%%#
 set GRIB_SRC          = 'GFS'                         # set this appropriately #%%%#
+
+# Create directories
+foreach dir ( ${RUN_DIR} ${TEMPLATE_DIR} ${OBSPROC_DIR} ${OUTPUT_DIR} ${ICBC_DIR} \
+              ${POST_STAGE_DIR} ${OBS_DIAG_DIR} ${PERTS_DIR} ${SHELL_SCRIPTS_DIR} )
+    if ( ! -d $dir ) mkdir -p $dir
+end
 
 # list of variables for extraction and cycling
 set extract_vars_a   = ( U V PH T MU QVAPOR QCLOUD QRAIN QICE QSNOW QGRAUP QNICE QNRAIN \
@@ -104,6 +112,7 @@ setenv   COPY 'cp -pfr'
 setenv   MOVE 'mv -f'
 setenv   LINK 'ln -fs'
 setenv   WGET /usr/bin/wget
+setenv   LIST 'ls'
 
 exit 0
 

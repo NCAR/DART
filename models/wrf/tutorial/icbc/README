@@ -1,4 +1,0 @@
-The geo file here is meant to be compatible with the tutorial test case. The grib data is
-also provided to test running the generation of template and boundary condition files.
-
-These particular grib files were drawn from NCAR's RDA repository. 
