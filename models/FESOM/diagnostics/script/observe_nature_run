@@ -1,0 +1,35 @@
+#!/bin/bash
+#BSUB -J FESOM_POST             # Name of the job.
+#BSUB -o LOG/FESOM_POST_%J.out  # Appends std output to file %J.out.
+#BSUB -e LOG/FESOM_POST_%J.out  # Appends std error to file %J.err.
+#BSUB -q serial_6h              # queue
+
+#----------------------------------------------------------!
+#   THIS SCRIPT USES FEOM_POSTPROC ROUTINES                !
+#   IN $RUNDIR TO CREATE SYNTHETIC OBSERVATIONS            !
+#   SBMT_CREATE_OBS_TeMPLaTe.sh                            !
+#----------------------------------------------------------!
+#----------------------------------------------------------!
+# Tool code of creating ferrybox observations is 8         !
+# Tool code of creating vertical profile obs is 11         !
+# An ascii file should be provided for locations           !
+#----------------------------------------------------------!
+tool=8
+
+source postproc.env
+
+RUNDIR=${HOME}/FESOM_POSTPROC
+WRKDIR=${HOME}/FEOM_PREPROC/OBSERVATION/OSSE
+
+INITIALDAY=1; FINALDAY=2; EXPDEF=NR0; EXPNUM=01; YEAR=2009
+
+sed -e 's;EXPDEF;'${EXPDEF}';' -e 's;EXPNUM;'${EXPNUM}';' -e \
+       's;INITIALDAY;'${INITIALDAY}';' -e 's;FINALDAY;'${FINALDAY}';' -e \
+       's;YEAROFNC;'${YEAR}';' -e 's;TOOL2RUN;'${tool}';' -e \
+       's;LEVEL2RUN;'${LAYER}';' -e \
+       's;RUNLENGTH;365;' -e 's;TIMESTEP;1;'\
+       ${RUNDIR}/namelist.config.template > namelist.config
+
+${LINK} ${RUNDIR}/${EXE} .
+
+./${EXE}

@@ -1,0 +1,52 @@
+#!/bin/bash
+###########################################################################
+gmtset FONT_ANNOT_PRIMARY=9p,Courier-Bold,black FONT_ANNOT_SECONDARY=9p,Courier-Bold,black FONT_LABEL=9p,Courier-Bold,black
+gmtset FORMAT_DATE_MAP "o" FORMAT_TIME_PRIMARY_MAP Abbreviated
+gmtset MAP_FRAME_PEN thinnest,black MAP_FRAME_TYPE plain MAP_FRAME_WIDTH 2p
+gmtset MAP_TICK_LENGTH_PRIMARY 2p/0.5p MAP_TICK_LENGTH_SECONDARY 5p/1.75p
+gmtset COLOR_BACKGROUND white COLOR_FOREGROUND black
+PAPER="20ix10i"
+###########################################################################
+VAR=VARIABLENAME
+EXPNAME=EXPDEF; EXPNO=EXPNUM; EXP=${EXPNAME}${EXPNO}
+YR=YEAROFNC; DAY=DAYOFNC; IYR=${YR}-01-01; FYR=${YR}-12-31; 
+DATE=$(echo ${DAY} | awk '{printf "%d\n",$0;}')
+DATE=$(sh ~/script/sh/CALCDATE.sh 1 ${YR} ${DATE})
+DATADIR=THALWEG
+FILENAME=${DATADIR}/THALWEG_${EXP}_${YR}_DAY${DAY}
+if [[ "${VAR}" = TEM ]]; then
+       	COL=9; YMIN=5; YMAX=30; YINC=0.1; UNITY="@+0@+C"; CINT=5
+	VARNAME="TEMPERATURE";
+elif [[ "${VAR}" = SAL ]]; then
+       	COL=10; YMIN=16; YMAX=40.0; YINC=0.1; UNITY=psu; CINT=4
+	VARNAME="SALINITY";
+fi
+###########################################################################
+fig=${FILENAME}_${VAR}; ps=${fig}.ps
+cptfile=${DATADIR}/CPT_${EXP}.cpt
+outpng=${DATADIR}/out.png
+REGIONT=1/540/-100/0; PROJT="X6i/1.8i"; BASE1T=a100f10:DISTANCE::,km:/25:"DEPTH(m)":WSen; 
+makecpt -Csst -T${YMIN}/${YMAX}/${YINC} -N > ${cptfile}
+psbasemap -R${REGIONT} -J${PROJT} -B${BASE1T} --PS_MEDIA=${PAPER} -K > $ps
+###########################################################################
+awk '{print $3,-$8,$'${COL}'}' ${FILENAME}.asc | pscontour -R -J -B -K -O -C${cptfile} -I -V3 >> $ps
+echo "26.921669 0 1" > coords.dat
+echo "26.921669 -75 1" >> coords.dat
+psxy coords.dat -R -J -B -W0.5,black -K -O >> ${ps}
+echo "100 -60 Dardanelles" | pstext -R -J -F+a20+jTR+f9p,Courier-Bold,black -O -K -N  >> $ps
+echo "111.225639 0 1" > coords.dat
+echo "111.225639 -75 1" >> coords.dat
+psxy coords.dat -R -J -B -W0.5,black -K -O >> ${ps}
+echo "448.583858 0 1" > coords.dat
+echo "448.583858 -100 1" >> coords.dat
+psxy coords.dat -R -J -B -W0.5,black -K -O >> ${ps}
+echo "450 -95 Bosphorus" | pstext -R -J -F+a65+jTL+f9,Courier-Bold,black -O -K -N  >> $ps
+echo "487.982401 0 1" > coords.dat
+echo "487.982401 -100 1" >> coords.dat
+psxy coords.dat -R -J -B -W0.5,black -K -O >> ${ps}
+rm coords.dat
+psscale -D1.0i/0.1i/1.2i/0.075h -Aal -C${cptfile} -B${CINT}/:${UNITY}: -O -K -V3 >> $ps
+echo "220 -95 ${DATE}" | pstext -R -J -F+a90+jTL+f9p,Courier-Bold,black -O -N  >> $ps
+ps2raster -Tg -V3 -P -F${outpng} $ps 
+convert -trim -alpha off -antialias -scale 80% ${outpng} ${fig}.png
+rm ${ps} ${cptfile} ${outpng}

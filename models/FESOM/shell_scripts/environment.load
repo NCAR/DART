@@ -1,0 +1,74 @@
+#!/bin/bash
+#----------------------------------------------------------
+#-- Environment variables common to all SBMT_FILES --------
+#-- Machine-specific directries to be modified ------------
+#-- They can be common directories, common variables etc. -
+#----------------------------------------------------------
+
+#-- Some bash commands are assigned to variables ----------
+
+export TEMPLATE=template
+export COPY='cp -f'
+export REMOVE='rm -f'
+export LINK='ln -sf'
+export MOVE='mv -f'
+
+#-- LSF required variables --------------------------------
+
+export SCHEDULER=lsf
+export NPROC=512           # How many cores to run FESOM
+export POENAME=poe_short   # Name of the lsf queue to submit
+export MPIEXEC=mpiexec_mpt
+export MPIEXEC=/users/home/opt/lsf/8.0/linux2.6-glibc2.3-x86_64/bin/mpirun.lsf
+
+#-- Set experiment parameters here  -----------------------
+
+export EXPID=FB5           # id of the experiment
+export EXPNO=01            # nb of the experiment
+export EXPYR=2009          # experiment initial year
+export EXPINFO=${EXPID}${EXPNO};
+export REGION=TSS
+
+export MEMNO=2             # nb of ensemble members
+export ENSID=ENS           # id of ensemble members
+export ENDYR=2009          # year to end the experiment
+export ENDDY=1             # day to end the experiment
+export MEM01=${ENSID}01
+
+export RNLEN=1800          # RNLEN is number of time step; use for FESOM
+export TSTEP=12            # TSTEP is seconds in time step
+export RNSEC=$( echo "${RNLEN} * ${TSTEP}" | bc ) # RNSEC is seconds to run; use for DART
+export CYCLE=${RNSEC}
+
+#-- Set the common directories here  ----------------------
+
+export USRHOM=/users/home/$(whoami)
+export DRTDIR=${USRHOM}/GIT/DART_master/models/FESOM/work
+export WRKDIR=/work/$(whoami)/${REGION}/${EXPINFO}
+export RUNDIR=${USRHOM}/GIT/DART_master/models/FESOM/shell_scripts
+export DIADIR=${USRHOM}/FEOM_POSTPROC/MESH_READ
+export LOGDIR=${WRKDIR}/LOG
+export FILDIR=${WRKDIR}/FILTER
+export CHECKFILE=${WRKDIR}/submitcheck.lst
+export FSMHOM=${USRHOM}/FEOM
+export MODELHOM=${FSMHOM}/FETSSOM.ENS01
+export FSMPRE=${USRHOM}/FEOM_PREPROC
+export FSMINI=${FSMPRE}/ENSEMBLE_IC
+export OBSSEQ=${DRTDIR}/obs_seq.ferrybox
+
+#
+#-Mesh directories corresponding to different partitioning-
+[ ${NPROC} -eq  128 ] && export MESHDIR=mesh-T2G1.5L110b.V4
+[ ${NPROC} -eq  256 ] && export MESHDIR=mesh-T2G1.5L110b
+[ ${NPROC} -eq  512 ] && export MESHDIR=mesh-T2G1.5L110b.V3
+[ ${NPROC} -eq 1024 ] && export MESHDIR=mesh-T2G1.5L110b.V2
+
+# function to control the job sequence
+# finds the id of the current job and pass it to the next
+# Might need to be modified to also handle PBS, etc.
+
+function jobid {
+  output=$($*)
+  echo $output | head -n1 | cut -d'<' -f2 | cut -d'>' -f1
+  }
+
