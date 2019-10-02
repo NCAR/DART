@@ -3,12 +3,12 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
-
-#----------------------------------------------------------------------
+#
+# This script can be run interactively or submitted as a batch job.
+#
 # compile all programs in the current directory that have a mkmf_xxx file.
 #
 # usage: [ -mpi | -nompi ]
-#
 #
 # environment variable options:
 #  before running this script, do:
@@ -16,9 +16,27 @@
 #  to keep the .o and .mod files in the current directory instead of
 #  removing them at the end.  this usually improves runtime error reports
 #  and these files are required by most debuggers.
+#
+#----------------------------------------------------------------------
+# LSF options
+#
+#BSUB -J CompDART             # Name of the job.
+#BSUB -o LOG/CompDART_%J.out  # Appends std output to file %J.out.
+#BSUB -e LOG/CompDART_%J.out  # Appends std error to file %J.err.
+#BSUB -q serial_compile       # queue
+#
+#----------------------------------------------------------------------
+# PBS options
+#
+#PBS -N init_ens
+#PBS -l walltime=0:10:00
+#PBS -q regular
+#PBS -j oe
+#PBS -A P868500XX
+#PBS -l select=1:ncpus=1:mpiprocs=1
+#
 #----------------------------------------------------------------------
 
-# this model name:
 set MODEL = "FESOM"
 
 # programs which have the option of building with MPI:
@@ -27,7 +45,6 @@ set MPI_TARGETS = "filter perfect_model_obs model_mod_check closest_member_tool 
 # set default (override with -mpi or -nompi):
 #  0 = build without MPI, 1 = build with MPI
 set with_mpi = 1
-
 
 # ---------------
 # shouldn't have to modify this script below here.

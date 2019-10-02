@@ -18,6 +18,8 @@ filter_ics
 obs_def_mod.f90
 obs_kind_mod.f90
 using_mpi_for_*
+check_me.nc
+check_me_interptest.*
 
 # Executables
 

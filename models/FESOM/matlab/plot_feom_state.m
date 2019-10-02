@@ -9,8 +9,8 @@ function h = plot_feom_state(fname, varargin)
 %
 % h = plot_feom_state(fname,'varname','temp','timestep', 1, 'copystring','ensemble spread') 
 
-%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
-% provided by UCAR, "as is", without charge, subject to all terms of use at
+%% DART software - Copyright UCAR. This open source software is provided
+% by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id: plot_feom_state.m 10253 2016-05-05 22:05:01Z thoar $
