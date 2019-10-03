@@ -328,7 +328,8 @@ integer :: ivar
 ! add to domains
 call assert_below_max_num_domains()
 state%num_domains = state%num_domains + 1
-dom_id = state%num_domains !>@todo this should be a handle.
+!>@todo dom_id should be a handle.
+dom_id = state%num_domains
 
 ! save information about the information file
 state%domain(dom_id)%info_file = info_file

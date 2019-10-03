@@ -124,10 +124,10 @@ public :: init_obs_def, get_obs_def_key, get_obs_def_location, get_obs_def_type_
    eq_obs_def, ne_obs_def, operator(==), operator(/=), print_obs_def
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
+character(len=256), parameter :: source   = &
    "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! FIXME: should write_external_FO be some kind of global instead of
 ! being per-obs?

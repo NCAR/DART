@@ -4,54 +4,50 @@
 !
 ! $Id$
 
-program obs_seq_verify
+!> This program creates a netCDF file suitable for forecast evaluation.
+!>
+!> (analysisT, station, level, copy, ensemble, forecast_lead)
+!>      |         |       |      |      |         |
+!>      |         |       |      |      |         +- forecast length : 0,3,6,9,12,...
+!>      |         |       |      |      |
+!>      |         |       |      |      +----------- ensemble member index
+!>      |         |       |      |
+!>      |         |       |      +------------------ obs value, prior, obs_err
+!>      |         |       |
+!>      |         |       +------------------------- vertical level index
+!>      |         |
+!>      |         +--------------------------------- (horizontal) station index
+!>      |
+!>      +------------------------------------------- analysis time/date
+!>
+!> I think the logic of the program should be as follows:
+!> 1) The list of 'stations' is read from a netCDF file -- the product of obs_seq_coverage.f90
+!> 2) The set of forecast lead times must be determined. Having 8 might not be
+!>    specific enough ... we want 8 separated by 3 hours ... for example.
+!> 3) A series of obs_seq.fcst files (each from one analysisT and containing multiple
+!>    forecast lead times) is read and stuffed into an appropriate structure.
+!> 4) The structure is written into the netCDF file.
+!> 5) On to the next obs_seq.fcst file ... (step 3)
+!> 6) wrap up ...
+!>
+!> Soyoung's (original) wish list - which has been subsequently modified:
+!> "Now I'm done running filter for 24-hr forecast with 3-hrly observations as an
+!> evaluation mode only, and am ready to hand obs_seq.final over to you for the final
+!> conversion process.
+!>
+!> Ideally, in obs_seq_fcst.nc (if I can name it on my own), I would like to have a
+!> data structure of (copy, station, level, ensemble, date, time) for each variable
+!> and each obs type, where copy is (observation value, prior observation value
+!> corresponding to the observation, obs error standard deviation), date is the
+!> number of cycle, and time is the number of forecast lead times.
+!> So, the dimension "date" is 1 for my current single obs_seq.final, but reserved
+!> for multiple initialization cases (i.e., multiple obs_seq.final files) with the
+!> same length of forecast lead times. This dimension is the most critical one in the
+!> statistical verification since this dimension number is the actual sample size to
+!> tell if we have enough samples to make the verification result statistically
+!> significant or not."
 
-!-----------------------------------------------------------------------
-!
-! This program creates a netCDF file suitable for forecast evaluation.
-!
-! (analysisT, station, level, copy, ensemble, forecast_lead)
-!      |         |       |      |      |         |
-!      |         |       |      |      |         +- forecast length : 0,3,6,9,12,...
-!      |         |       |      |      |
-!      |         |       |      |      +----------- ensemble member index
-!      |         |       |      |
-!      |         |       |      +------------------ obs value, prior, obs_err
-!      |         |       |
-!      |         |       +------------------------- vertical level index
-!      |         |
-!      |         +--------------------------------- (horizontal) station index
-!      |
-!      +------------------------------------------- analysis time/date
-!
-! I think the logic of the program should be as follows:
-! 1) The list of 'stations' is read from a netCDF file -- the product of obs_seq_coverage.f90
-! 2) The set of forecast lead times must be determined. Having 8 might not be
-!    specific enough ... we want 8 separated by 3 hours ... for example.
-! 3) A series of obs_seq.fcst files (each from one analysisT and containing multiple
-!    forecast lead times) is read and stuffed into an appropriate structure.
-! 4) The structure is written into the netCDF file.
-! 5) On to the next obs_seq.fcst file ... (step 3)
-! 6) wrap up ...
-!
-! Soyoung's (original) wish list - which has been subsequently modified:
-! "Now I'm done running filter for 24-hr forecast with 3-hrly observations as an
-! evaluation mode only, and am ready to hand obs_seq.final over to you for the final
-! conversion process.
-!
-! Ideally, in obs_seq_fcst.nc (if I can name it on my own), I would like to have a
-! data structure of (copy, station, level, ensemble, date, time) for each variable
-! and each obs type, where copy is (observation value, prior observation value
-! corresponding to the observation, obs error standard deviation), date is the
-! number of cycle, and time is the number of forecast lead times.
-! So, the dimension "date" is 1 for my current single obs_seq.final, but reserved
-! for multiple initialization cases (i.e., multiple obs_seq.final files) with the
-! same length of forecast lead times. This dimension is the most critical one in the
-! statistical verification since this dimension number is the actual sample size to
-! tell if we have enough samples to make the verification result statistically
-! significant or not."
-!
-!-----------------------------------------------------------------------
+program obs_seq_verify
 
 use        types_mod, only : r4, r8, digits12, MISSING_R8, MISSING_I, &
                              metadatalength, obstypelength

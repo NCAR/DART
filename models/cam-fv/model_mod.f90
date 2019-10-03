@@ -1,6 +1,6 @@
 ! DART software - Copyright UCAR. This open source software is provided
-! by UCAR, "as is", without charge, subject to all terms of use at
-! http://www.image.ucar.edu/DAReS/DART/DART_download
+! by ucar, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/dares/dart/dart_download
 !
 ! $Id$
 !----------------------------------------------------------------
@@ -171,8 +171,8 @@ namelist /model_nml/  &
 character(len=512) :: string1, string2, string3
 logical, save      :: module_initialized = .false.
 
-! domain id for the cam model.  this allows us access to all of the state structure
-! info and is require for getting state variables.
+! this id allows us access to all of the state structure
+! info and is required for getting state variables.
 integer :: domain_id
 
 !> Metadata from the template netCDF file that describes 
@@ -763,7 +763,8 @@ integer  :: status_array(ens_size)
 real(r8) :: lon_fract, lat_fract
 real(r8) :: lon_lat_vert(3)
 real(r8) :: quad_vals(4, ens_size)
-type(quad_interp_handle) :: interp_handle
+type(quad_interp_handle) :: interp_handle   ! should this be a pointer?? 
+                                            ! is it replicating the internal arrays on assignment?
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1354,7 +1355,9 @@ select case (which_vert)
       ! that enclose this value
       call cam_height_levels(ens_handle, ens_size, lon_index, lat_index, ref_nlevels, obs_qty, &
                              height_array, my_status)
-      if (any(my_status /= 0)) return   !>@todo FIXME let successful members continue?
+
+      !>@todo FIXME let successful members continue?
+      if (any(my_status /= 0)) return
 
       if (debug_level > 400) then
          do k = 1,ref_nlevels
@@ -1367,7 +1370,9 @@ select case (which_vert)
                              levs1(imember), levs2(imember), vert_fracts(imember), &
                              my_status(imember))
       enddo
-      if (any(my_status /= 0)) return   !>@todo FIXME let successful members continue?
+
+      !>@todo FIXME let successful members continue?
+      if (any(my_status /= 0)) return
 
       if (debug_level > 100) then
          do k = 1,ens_size
@@ -3259,8 +3264,11 @@ integer :: current_vert_type, i
 do i=1,num
    current_vert_type = nint(query_location(locs(i)))
 
-   if ( current_vert_type == which_vert ) cycle
-   if ( current_vert_type == VERTISUNDEF) cycle
+   if (( current_vert_type == which_vert ) .or. &
+       ( current_vert_type == VERTISUNDEF)) then
+      my_status(i) = 0
+      cycle
+   endif
 
    select case (which_vert)
       case (VERTISPRESSURE)
@@ -3492,10 +3500,8 @@ bq(1) = get_quantity_for_type_of_obs(otype)
 
 call convert_vertical_obs(ens_handle, 1, bl, bq, bt, &
                              vert_type, status)
-if (status(1) /= 0) then
-   status1 = status(1)
-   return
-endif
+status1 = status(1)
+if (status1 /= 0) return
 
 loc = bl(1)
 

@@ -4,19 +4,18 @@
 !
 ! $Id$
 
-!> @mainpage Remote Memory Access version of DART code.
-!>
-!> Forward operator, vertical conversion
-!>
-!> CAM_FV, WRF, CAM_SE
-!> @author dart@ucar.edu
-!> \todo
-!> \dir filter  Main program contained here
-!> \file filter.f90 Main program
+!> filter.separate_seq.f90 is filter.f90 (circa 2014) but each task updates its own 
+!> sequence in obs_space_diagnostics, included here just for future reference. 
+!> The sequences would need to be merged together for output. 
+!> Not sure why every task has a full sequence (all copies) allocated, 
+!> since only task 0 ever fills the seq.
 
 program filter
 
+!> Remote Memory Access version of DART code.
+!> Forward operator, vertical conversion
 !------------------------------------------------------------------------------
+
 use types_mod,            only : r8, missing_r8, metadatalength
 use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,                  &
                                  get_obs_from_key, set_copy_meta_data, get_copy_meta_data,   &
@@ -510,7 +509,7 @@ AdvanceTime : do
    call init_ensemble_manager(forward_op_ens_handle, ens_size, num_obs_in_set, 1)
 
    ! Allocate storage for the keys for this number of observations
-   allocate(keys(num_obs_in_set)) !> @todo only needs to be my_vars long in the distributed version
+   allocate(keys(num_obs_in_set)) !! @todo only needs to be my_vars long in the distributed version
 
    ! Get all the keys associated with this set of observations
    ! Is there a way to distribute this?
@@ -1373,7 +1372,7 @@ integer,                 intent(in)    :: keys(:)
 integer,                 intent(in)    :: obs_val_index, input_qc_index
 integer,                 intent(in)    :: OBS_ERR_VAR_COPY, OBS_VAL_COPY
 integer,                 intent(in)    :: OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
-integer,                 intent(in)    :: OBS_MEAN_START, OBS_VAR_START !> @todo groups
+integer,                 intent(in)    :: OBS_MEAN_START, OBS_VAR_START !! @todo groups
 logical,                 intent(in)    :: isprior
 
 real(r8)             :: input_qc(1), obs_value(1), obs_err_var, thisvar(1)
@@ -1451,7 +1450,7 @@ ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
    ! and -2 for neither evaluate or assimilate. Otherwise pass through the istatus
    ! in the forward operator evaluation field
 
-   do e = 1, ens_handle%num_copies -6 !>@todo this won't always be 6 (groups)
+   do e = 1, ens_handle%num_copies -6 !!@todo this won't always be 6 (groups)
 
       if(istatus(e) == 0) then
          if ((assimilate_this_ob .or. evaluate_this_ob) .and. (expected_obs(e) == missing_r8))  then
@@ -2024,8 +2023,3 @@ end subroutine test_obs_copies
 !-------------------------------------------------------------------
 end program filter
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

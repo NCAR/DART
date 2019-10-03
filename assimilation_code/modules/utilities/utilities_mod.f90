@@ -12,7 +12,7 @@ module utilities_mod
 !> logging and error handing here, maybe the file routines in 
 !> another util module?
 
-use types_mod, only : r4, r8, digits12, i4, i8, PI, MISSING_R8, MISSING_I
+use types_mod, only : r4, r8, digits12, i2, i4, i8, PI, MISSING_R8, MISSING_I
 
 implicit none
 private
@@ -108,9 +108,14 @@ interface array_dump
    module procedure array_4d_dump
 end interface
 
+! the default is to use input.nml for namelists and to open
+! log files and output info to stdout and the log.
+! on init if the caller sets this to true, don't do any of
+! those things.
+logical :: standalone = .false.
+
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
+character(len=256), parameter :: source   = "$URL$"
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
@@ -151,10 +156,11 @@ contains
 !-----------------------------------------------------------------------
 !>
 
-subroutine initialize_utilities(progname, alternatename, output_flag)
+subroutine initialize_utilities(progname, alternatename, output_flag, standalone_program)
 character(len=*), intent(in), optional :: progname
 character(len=*), intent(in), optional :: alternatename
-logical, intent(in), optional          :: output_flag
+logical,          intent(in), optional :: output_flag
+logical,          intent(in), optional :: standalone_program
 integer :: iunit, io
 
 character(len=256) :: lname
@@ -163,6 +169,8 @@ if ( module_initialized ) return
 
 module_initialized = .true.
 
+! check this first
+if (present(standalone_program)) standalone = standalone_program
 
 ! now default to false, and only turn on if i'm task 0
 ! or the caller tells me to turn it on.
@@ -170,6 +178,11 @@ if (present(output_flag)) then
    do_output_flag = output_flag
 else
    if (single_task .or. task_number == 0) do_output_flag = .true.
+endif
+
+if (standalone) then
+   logfileunit = 0
+   return
 endif
 
 ! Since the logfile is not open yet, the error terminations
@@ -268,6 +281,11 @@ character(len=*), intent(in), optional :: progname
 ! if called multiple times, just return
 if (.not. module_initialized) return
 
+if (standalone) then
+   module_initialized = .false.
+   return
+endif   
+
 if (do_output_flag) then
    if ( present(progname) ) then
       call log_time (logfileunit, label='Finished ', &
@@ -304,6 +322,8 @@ character(len=*), intent(in) :: src, rev, rdate
 if ( .not. do_output_flag) return
 if ( .not. module_details) return
 
+if (standalone) return
+
 ! you cannot have this routine call init because it calls
 ! back into register module.  this is an error if this
 ! routine is called before initialize_utilities().
@@ -335,7 +355,7 @@ logical :: do_nml_file
 
 if ( .not. module_initialized ) call initialize_utilities
 
-if ( .not. do_output()) then
+if ( .not. do_output() .or. standalone) then
    do_nml_file = .false.
 else
    do_nml_file = (nml_flag == NML_FILE .or. nml_flag == NML_BOTH)
@@ -353,7 +373,7 @@ logical :: do_nml_term
 
 if ( .not. module_initialized ) call initialize_utilities
 
-if ( .not. do_output()) then
+if ( .not. do_output() .or. standalone) then
    do_nml_term = .false.
 else
    do_nml_term = (nml_flag == NML_TERMINAL .or. nml_flag == NML_BOTH)
@@ -380,6 +400,11 @@ character(len=256) :: next_nml_string, test_string, string1
 integer            :: io
 
 if (.not. module_initialized) call fatal_not_initialized('find_namelist_in_file')
+
+if (standalone) then
+  iunit = -1
+  return
+endif
 
 ! Check for namelist file existence; no file is an error
 if(.not. file_exist(trim(namelist_file_name))) then
@@ -439,6 +464,8 @@ character(len=*), intent(in) :: nml_name
 character(len=256) :: nml_string
 integer            :: io
 
+if (standalone) return
+
 if (.not. module_initialized) call fatal_not_initialized('check_namelist_read')
 
 ! If the namelist read was successful, close the namelist file and we're done.
@@ -475,7 +502,7 @@ subroutine log_it(message)
 character(len=*), intent(in) :: message
 
                       write(     *     , *) trim(message)
-if (logfileunit >= 0) write(logfileunit, *) trim(message)
+if (logfileunit >  0) write(logfileunit, *) trim(message)
 
 end subroutine log_it
 
@@ -700,11 +727,14 @@ select case(level)
       call log_it(' message: '//trim(text))
       if (present(text2)) call log_it(' message: ... '//trim(text2))
       if (present(text3)) call log_it(' message: ... '//trim(text3))
-      call log_it('')
-      call log_it(' source file: '//trim(src))
-      call log_it(' file revision: '//trim(rev))
-      call log_it(' revision date: '//trim(rdate))
-      if(present(aut)) call log_it(' last editor: '//trim(aut))
+      ! with the move from subversion to git, these strings no longer autogenerate
+      ! and should be removed from the calls.  in the meantime, to ease the transition
+      ! don't print values like $URL$, etc.
+      !call log_it('')
+      !if (present(src))   call log_it('   source file: '//trim(src))
+      !if (present(rev))   call log_it(' file revision: '//trim(rev))
+      !if (present(rdate)) call log_it(' revision date: '//trim(rdate))
+      !if (present(aut))   call log_it('   last editor: '//trim(aut))
 
 end select
 
@@ -1506,7 +1536,6 @@ max_num_input_files = size(name_array)
 ! name_array, just look for the '' to indicate the end of the list.
 ! if the names were specified in the listname file, read them in and
 ! fill in the name_array and then look for ''.
-
 do fileindex = 1, max_num_input_files
    if (from_file) &
       name_array(fileindex) = get_next_filename(listname, fileindex)
@@ -1577,17 +1606,17 @@ end function set_filename_list
 !> contrast this with the previous function where you don't know (or care)
 !> how many filenames are specified, and there's only a single listlist option.
 
-subroutine set_multiple_filename_lists(name_array, listname, ndomains, nentries, &
+subroutine set_multiple_filename_lists(name_array, listname, nlists, nentries, &
                                        caller_name, origin, origin_list)
 
-! when this routine returns, name_array() contains (ndomains * nentries) of names,
-! either because they started out there or because we've opened up 'ndomains'
+! when this routine returns, name_array() contains (nlists * nentries) of names,
+! either because they started out there or because we've opened up 'nlists'
 ! listname files and read in 'nentries' from each.  it's a fatal error not to
 ! have enough files. caller_name is used for error messages.
 
 character(len=*), intent(inout) :: name_array(:)
 character(len=*), intent(in)    :: listname(:)
-integer,          intent(in)    :: ndomains
+integer,          intent(in)    :: nlists
 integer,          intent(in)    :: nentries
 character(len=*), intent(in)    :: caller_name
 character(len=*), intent(in)    :: origin
@@ -1596,12 +1625,12 @@ character(len=*), intent(in)    :: origin_list
 integer :: fileindex, max_num_input_files
 logical :: from_file
 character(len=64) :: fsource
-integer :: nl, ne, list_length
+integer :: nl, ne, num_lists
 
 ! here's the logic:
 ! if the user specifies neither name_array nor listname, error
 ! if the user specifies both, error.
-! if the user gives a listname, make sure there are ndomains of them
+! if the user gives a listname, make sure there are nlists of them
 !   and each contains at least nentries
 ! when this routine returns the names are in name_array()
 
@@ -1634,25 +1663,25 @@ endif
 ! this version of the code knows how many files should be in the listname
 if (from_file) then
 
-   list_length = 0
+   num_lists = 0
    COUNT_FILES : do fileindex = 1,size(listname)
       if (listname(fileindex) == '') exit COUNT_FILES
-      list_length = list_length + 1
+         num_lists = num_lists + 1
    enddo COUNT_FILES
 
-   if (list_length /= ndomains) then
-      write(msgstring1, *) '..  read     ', list_length, ' filename(s) in "'//trim(origin_list)//'"'
-      write(msgstring2, *) 'expected ',ndomains,' based on number of domains.'
+   if (num_lists /= nlists) then
+      write(msgstring1, *) '..  read     ', num_lists, ' filename(s) in "'//trim(origin_list)//'"'
+      write(msgstring2, *) 'expected ',nlists,' based on number of domains.'
       call error_handler(E_ERR, caller_name, msgstring1, &
                  source, revision, revdate, text2=msgstring2)
    endif
 endif
-
+   
 ! the max number of names allowed in a list file is the 
 ! size of the name_array passed in by the user.
 max_num_input_files = size(name_array)
-if (max_num_input_files < ndomains * nentries) then
-   write(msgstring1, *) 'list length = ', max_num_input_files, '  needs room for ', ndomains * nentries
+if (max_num_input_files < nlists * nentries) then
+   write(msgstring1, *) 'list length = ', max_num_input_files, '  needs room for ', nlists * nentries
    call error_handler(E_ERR, caller_name, 'internal error: name_array not long enough to hold lists', &
                       source,revision,revdate, text2=msgstring1)
 endif
@@ -1661,13 +1690,13 @@ endif
 ! name_array leave them there.  if they were in the listname file,
 ! read them into the name_array.
 
-do nl = 1, ndomains
+do nl = 1, nlists
    do ne = 1, nentries
       fileindex = (nl-1) * nentries + ne
 
       if (from_file) &
          name_array(fileindex) = get_next_filename(listname(nl), ne)
-
+   
       if (name_array(fileindex) == '') then
          write(msgstring1, *) 'Missing filename for domain number ',nl,' file number ',ne
 
@@ -1676,13 +1705,13 @@ do nl = 1, ndomains
             write(msgstring3,*)'expecting ', nentries, ' files, have ', ne-1
          else
             write(msgstring2,*)'required entry # ', fileindex, ' from "'//trim(origin)//'"'
-            write(msgstring3,*)'expecting ', ndomains*nentries, ' filenames, have ', fileindex-1
+            write(msgstring3,*)'expecting ', nlists*nentries, ' filenames, have ', fileindex-1
          endif
 
          call error_handler(E_ERR, caller_name, trim(msgstring1)//trim(fsource), &
                             source,revision,revdate,text2=msgstring2,text3=msgstring3)
+   
       endif
-
    enddo
 enddo
 
@@ -2629,31 +2658,56 @@ end subroutine find_first_occurrence
 !-----------------------------------------------------------------------
 
 !-----------------------------------------------------------------------
-!> print out the kind numbers for various variable kinds
+!> print out the kind numbers for various Fortran90 variable kinds
+!> (as in F90 type/kind/rank, not DART state or observation kinds)
 
 subroutine dump_varkinds()
 
-integer :: bob
+! declare these without an indicated KIND so we can print out 
+! what default variable sizes are.  this can be changed by the
+! user at compile time so these are out of our control.  this is
+! why in our code we always specify (r8) for reals.  we usually
+! let integers default because they are rarely used for data values.
+! (loop counters, array sizes, etc)
 
-call log_it('') ! a little whitespace is nice
+integer :: idummy
+real    :: rdummy
 
-write(msgstring1,*)'..  digits12 is ',digits12
-write(msgstring2,*)'r8       is ',r8
-write(msgstring3,*)'r4       is ',r4
-call error_handler(E_DBG, 'initialize_utilities', msgstring1, &
-                   source, revision, revdate, text2=msgstring2, text3=msgstring3)
+call log_it('') ! whitespace 
 
-write(msgstring1,*)'..  integer  is ',kind(bob) ! any integer variable will do
-write(msgstring2,*)'i8       is ',i8
-write(msgstring3,*)'i4       is ',i4
-call error_handler(E_DBG, 'initialize_utilities', msgstring1, &
-                   source, revision, revdate, text2=msgstring2, text3=msgstring3)
+write(msgstring1,*) 'compiler KIND for  real     is ',kind(rdummy)
+call log_it(msgstring1)
+
+write(msgstring1,*) 'compiler KIND for  r4       is ',r4
+call log_it(msgstring1)
+
+write(msgstring1,*) 'compiler KIND for  r8       is ',r8
+call log_it(msgstring1)
+
+write(msgstring1,*) 'compiler KIND for  digits12 is ',digits12
+call log_it(msgstring1)
+
+call log_it('') ! whitespace 
+
+write(msgstring1,*) 'compiler KIND for  integer  is ',kind(idummy) 
+call log_it(msgstring1)
+
+write(msgstring1,*) 'compiler KIND for  i2       is ',i2
+call log_it(msgstring1)
+
+write(msgstring1,*) 'compiler KIND for  i4       is ',i4
+call log_it(msgstring1)
+
+write(msgstring1,*) 'compiler KIND for  i8       is ',i8
+call log_it(msgstring1)
+
+call log_it('') ! whitespace 
 
 end subroutine dump_varkinds
  
 !-----------------------------------------------------------------------
 !>  Useful for dumping all the attributes for a file 'unit'
-!>  A debugging routine, really. TJH Oct 2004
+!>  A debugging routine. TJH Oct 2004
 
 subroutine dump_unit_attributes(iunit) 
 

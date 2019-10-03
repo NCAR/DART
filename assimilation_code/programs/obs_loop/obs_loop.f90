@@ -4,11 +4,11 @@
 !
 ! $Id$
 
-program obs_loop
+!> simple program that opens an obs_seq file and loops over the obs
+!> and copies them to a new output file.   this is intended to be a
+!> template for programs that want to alter existing obs in some simple way.
 
-! simple program that opens an obs_seq file and loops over the obs
-! and copies them to a new output file.   this is intended to be a
-! template for programs that want to alter existing obs in some simple way.
+program obs_loop
 
 use        types_mod, only : r8, missing_r8, metadatalength
 use    utilities_mod, only : register_module, initialize_utilities,            &
@@ -574,8 +574,3 @@ end subroutine print_metadata
 !---------------------------------------------------------------------
 end program obs_loop
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

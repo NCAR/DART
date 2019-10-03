@@ -196,7 +196,9 @@ integer :: Ns_w
 real(r8), allocatable, target :: ULAT(:,:), ULON(:,:), UDEP(:,:,:), &
                                  TLAT(:,:), TLON(:,:), TDEP(:,:,:), &
                                  VLAT(:,:), VLON(:,:), VDEP(:,:,:), &
-                                 WDEP(:,:,:) !>@todo FIXME : JPH may not need this array
+                                 WDEP(:,:,:)
+
+!>@todo FIXME : JPH may not need the WDEP array
 
 type(time_type) :: model_timestep
 
@@ -204,7 +206,6 @@ integer :: model_size    ! the state vector length
 
 !> Reshapes a part of the DART vector back to the original variable shape.
 !>@todo FIXME Replaces the DART MISSING value with the original _FillValue value.
-
 
 contains
 

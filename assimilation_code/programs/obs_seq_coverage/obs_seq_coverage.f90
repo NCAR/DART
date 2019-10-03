@@ -4,16 +4,14 @@
 !
 ! $Id$
 
-program obs_seq_coverage
+!> This program queries a bunch of obs_seq.xxxx files and tries to
+!> figure out 'voxel coverage' ... what locations are consistently
+!> reported through time. Absolutely a 'reverse-engineering exercise'.
+!>
+!> The observation sequence file only contains lat/lon/level/which_vert,
+!> so this is all we have to work with.
 
-!-----------------------------------------------------------------------
-! This program queries a bunch of obs_seq.xxxx files and tries to
-! figure out 'voxel coverage' ... what locations are consistently
-! reported through time. Absolutely a 'reverse-engineering exercise'.
-!
-! The observation sequence file only contains lat/lon/level/which_vert,
-! so this is all we have to work with.
-!-----------------------------------------------------------------------
+program obs_seq_coverage
 
 use        types_mod, only : r4, r8, digits12, MISSING_R8, MISSING_R4, MISSING_I, &
                              metadatalength, obstypelength
@@ -1778,8 +1776,3 @@ end function FindClosestPressureLevel
 
 end program obs_seq_coverage
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -19,7 +19,7 @@
 
 mydir      = pwd;
 dartloc    = strfind(mydir,'/models/'  )-1;
-dartlabloc = strfind(mydir,'/documentation/DART_LAB/')-1;
+dartlabloc = strfind(mydir,'/docs/DART_LAB/')-1;
 if (isempty(dartloc) && isempty(dartlabloc))
    return
 elseif (isempty(dartloc))
@@ -39,7 +39,7 @@ end
 
 %% add the DART_LAB/matlab directory ...
 
-dartpath = sprintf('%s/documentation/DART_LAB/matlab',mydir(1:dartloc));
+dartpath = sprintf('%s/docs/DART_LAB/matlab',mydir(1:dartloc));
 if (exist(dartpath,'dir')==7)
    addpath(dartpath,'-BEGIN');
    fprintf('Using DART_LAB tools in    %s\n',dartpath)

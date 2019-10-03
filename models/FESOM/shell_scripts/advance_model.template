@@ -1,0 +1,102 @@
+#!/bin/bash
+#
+#--- advance each ensemble member using a job array
+#----------------------------------------------------------------------
+# LSF options  (set for the NCAR machine "cheyenne")
+#
+#BSUB -a poe
+#BSUB -J advance_fesom[1-ENSEMBLEMEMBERNO]%3     # Name of the job.
+#BSUB -o LOG/advance_fesom_%I_%J.out  # Appends stdout to file %J.out.
+#BSUB -e LOG/advance_fesom_%I_%J.out  # Appends stderr to file %J.err.
+#BSUB -P fesom                     # Project ID.
+#BSUB -q POEQUEUENAME              # queue
+#BSUB -R "span[ptile=16]"          #
+#BSUB -n NUMBEROFCORES             #
+#BSUB -N                           #
+####BSUB -x                        #
+#
+#----------------------------------------------------------------------
+# PBS options  (set for the NCAR machine "cheyenne")
+#
+#PBS -N init_ens
+#PBS -J 1-ENSEMBLEMEMBERNO
+#PBS -l walltime=0:10:00
+#PBS -q regular
+#PBS -j oe
+#PBS -A P86850054
+#PBS -l select=1:ncpus=36:mpiprocs=36
+#
+#----------------------------------------------------------------------
+
+#-- Load Experiment Environment Variables -----------------
+. environment.load
+
+# Translate the queueing-specific variables into a common tongue.
+
+if [[ $SCHEDULER = "lsf" ]] ; then
+
+   JOBDIR=${LS_SUBCWD}         # directory of this script
+   JOBNAM=${LSB_JOBNAME}       # name of this script
+   JOBIDN=${LSB_JOBINDEX}      # job array index
+   JOBID=${LSB_JOBID}          # job index
+   EXTENSION=lsf
+
+   #--  BEGIN ATHENA CONFIG ----------------------------------
+   MPIPROGINF=detail
+   export MPIPROGINF
+   export LSF_PJL_TYPE="poe"
+   export MEMORY_AFFINITY=MCM
+   export MP_WAIT_MODE=poll
+   export MP_SINGLE_THREAD=yes
+   export MP_TASK_AFFINITY=MCM
+   export MP_PGMMODEL=mpmd
+   export MP_WAIT_MODE=poll
+   export MP_POLLING_INTERVAL=30000000
+   export MP_SHARED_MEMORY=yes
+   export MP_EUILIB=us
+   export MP_EUIDEVICE=sn_all
+   export LDR_CNTRL=TEXTPSIZE=64K@STACKPSIZE=64K@DATAPSIZE=64K
+   export MP_TASK_AFFINITY=core
+   #--  END ATHENA CONFIG ------------------------------------
+
+elif [[ ${SCHEDULER} = "pbs" ]] ; then
+
+   JOBDIR=${PBS_O_WORKDIR}     # directory of this script
+   JOBNAM=${PBS_JOBNAME}       # name of this script
+   JOBIDN=${PBS_ARRAY_INDEX}   # job array index
+   JOBID=${PBS_JOBID}          # job index
+   TMPDIR=/glade/scratch/$USER/temp  # cheyenne-specific
+   mkdir -p $TMPDIR                  # cheyenne-specific
+   EXTENSION=pbs
+
+fi
+
+F_RSVTASK=1; export F_RSVTASK; #THIS CAN BE USEFUL FOR ENSEMBLE. CHECK!
+F_ERRCNT=0; export F_ERRCNT
+
+#-- Ensemble required variables ---------------------------
+ENSNO=$( echo ${LSB_JOBINDEX} | awk '{ printf("%02d\n", $1) }' )
+ENSINFO=${ENSID}${ENSNO};
+ENSDIR=${WRKDIR}/${ENSINFO};
+cd ${ENSDIR}
+
+#-- Advance FESOM -----------------------------------------
+#-- capture the model advance stderr,stdout in a file 
+
+${MPIEXEC} ./fesom.x #> LOG/advance_fesom_${JOBIDN}_${JOBID}.out 2>&1
+
+#-- Check if the model advance failed ---------------------
+#-- check_ensemble checks the length of restart_file_list.txt against 
+#-- the number of ensemble members and decides what to do.
+
+CHECKRETURN=$( grep -ir "The model blows up" LOG/advance_fesom_${JOBIDN}_${JOBID}.out )
+CHECKSTATUS=$(echo $?); echo ${CHECKSTATUS}
+if [ ${CHECKSTATUS} -eq "0" ];  then
+  echo "${ENSINFO} EXIT 1 :model advance FAILED. ERROR." >> ${CHECKFILE}
+else
+  cd ${FILDIR}
+  [ ! -f restart_file_list.txt ] && \
+         echo "${ENSDIR}/${ENSINFO}.${EXPYR}.oce.nc" >  restart_file_list.txt || \
+         echo "${ENSDIR}/${ENSINFO}.${EXPYR}.oce.nc" >> restart_file_list.txt
+  echo "${ENSINFO} EXIT 0 :is ready to be resubmitted" >> ${CHECKFILE}
+fi
