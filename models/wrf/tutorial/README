@@ -5,8 +5,6 @@ To get started with the WRF/DART tutorial, users need to obtain two things:
   1) Clone the DART repository
      $ git clone https://github.com/NCAR/DART
 
-     (More download information at: https://www2.cisl.ucar.edu/software/dart/download)
-
      You will need the DART code as well as the tutorial template files that are provided in DART/models/wrf/tutorial/template
      
   2) Download the pre-packaged data for the tutorial
