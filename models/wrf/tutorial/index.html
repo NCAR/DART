@@ -149,7 +149,12 @@ the <a href="http://nco.sourceforge.net/">nco</a> and
            Create a work directory someplace with a lot of free space.  On most large
            systems there is a 'scratch' filesystem for this purpose.  For the rest of these
            instructions we will assume the last part of this directory name 
-           is <em>WORKDIR</em>.
+           is <em>WORKDIR</em>. In this directory you will need the contents of 
+           $DART/models/wrf/tutorial from your DART code directory.  
+           <br /><br />
+           cd <em>WORKDIR</em><br />
+           cp -r $DART/models/wrf/tutorial .
+           </div>
         <br />
         <br />
         </li>
@@ -180,7 +185,7 @@ the <a href="http://nco.sourceforge.net/">nco</a> and
 Build the software packages and copy files into place:
 
 <ol>
-<li>Copy the contents of <em class="file">$DART/models/wrf/shell_scripts</em> to the 
+<li>Copy the contents of <em class="file">$DART/models/wrf/shell_scripts</em> to 
     <em>WORKDIR</em><em class="file">/scripts</em> directory.
     <br />
     <br />
@@ -198,9 +203,22 @@ Build the software packages and copy files into place:
         <br />
         <br />
         </li>
+        <li>Modify code to use single precision reals. <br />
+            Most WRF/DART users run both the WRF model and the DART assimilation code using single precision floats. This is not the normal default for the DART code. <br/>Make this code change before building the DART executables to compile everything with single precision reals: <br/><br/>
+          cd <em>$DART/assimilation_code/modules/utilities </em><br/>
+          Edit the <em class="file">types_mod.f90</em> file <br/>
+          (Tip: search "real precision" to find the code block that contains the proper lines) <br/><br/>
+          Comment out the following line by adding ' ! ' in the first column: <br/>
+          integer, parameter :: r8 = SELECTED_REAL_KIND(12) ! real r8 <br/><br/>
+
+          Comment in the following line by removing the ' ! ' from the first column: <br/>
+          !integer, parameter :: r8 = r4 ! alias r8 to r4 
+        <br />
+        <br />
+        </li>
+
         <li>Build the executables by cd'ing into <em class="file">$DART/models/wrf/work</em>
              and running <em class="program">quickbuild.csh</em>
-            <strong>TJH: do we want to overload r8 to be r4? This is the 'normal' WRF/DART process.</strong>
         <br />
         <br />
         </li>
@@ -208,86 +226,81 @@ Build the software packages and copy files into place:
 </li>
 
 
-<li>Copy the WRF and WRFDA executables and support files (except for <em class="file">namelist.input</em>) into 
-    <em>WORKDIR</em><em class="file">/rundir/WRF_RUN/</em>
-    <br /><br />
-    <ol><li>Build a serial version of WRF.  Copy <em class="program">real.exe</em> to 
-            <em>WORKDIR</em><em class="file">/rundir/WRF_RUN/</em><em class="program">real.serial.exe</em>.
-            <br />
-            <br />
-            </li>
-
-        <li>From your WRFDA build:<br /><br />
-            <ul><li>Copy <em class="program">da_wrfvar.exe</em> to 
-                    <em>WORKDIR</em><em class="file">/rundir/WRF_RUN/</em><em class="program">da_wrfvar.exe</em>
-                <br />
-                <br />
-                </li>
-
-                <li>Copy <em class="file">WRFDA/var/run/be.dat.cv3</em> to 
-                    <em>WORKDIR</em><em class="file">/rundir/WRF_RUN/be.dat</em>
-                <br />
-                <br />
-                </li>
-            </ul>
-            </li>
-    </ol>
+<li> Build WRF, WPS and WRFDA. WRF must be built twice, once serially and once dmpar. WRFDA can be built dmpar.
+     WPS can be built serial.  See WRF/WRFDA documentation for more information about building these packages.
+     <br/> <br/>
 </li>
 
-<li>Copy the needed DART executables into <em class="file">rundir/</em>
-   <br /><br />
-   <ol>
-   <li>The executables from DART that you need are:
-       <a href="../../../assimilation_code/programs/advance_time/advance_time.html">advance_time</a>, 
-       <a href="../../../assimilation_code/programs/filter/filter.html">filter</a>, 
-       pert_wrf_bc (no helper page), 
-       <a href="../../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html">obs_diag</a>, 
-       <a href="../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool</a>, 
-       <a href="../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>, 
-       <a href="../../../assimilation_code/programs/fill_inflation_restart/fill_inflation_restart.html">fill_inflation_restart</a>, 
-       and <a href="../../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html">wrf_dart_obs_preprocess</a> 
-       (if making your own obs). 
-       <br />
-       <br />
-       </li>
+<li> Edit the <em>param.csh</em> script in <em>WORKDIR</em><em class="file">/scripts</em> with proper paths, info, etc.
+     <br/> <br/>
+</li>
 
-       <li>We will use a few 'advanced' features here as well, so copy <em class="file">sampling_error_correction_table.nc</em>
-	   to your <em class="file">rundir</em> from 
-	   <em class="file">$DART/assimilation_code/programs/gen_sampling_err_table/work</em> directory if it is not already there. 
-           <br />
-           <br />
-           </li>
+<li> Run the <em class="program">setup.csh</em> script to create the proper directory structure and move executables to proper locations.
+      <br /><br />
+      <div class="unix">
+        cd <em>WORKDIR</em><em class="file">/scripts</em><br />
+        ./setup.csh   param.csh<br />
+      </div>
+      <br /><br />
+</li>
 
-   </ol>
-   </li>
-</ol>
 
 <!-- maybe make a table that lists things in the same order as 'ls -l' ... 
      three columns: filename, executable/script/namelist, purpose -->
-<P>
-So far, your <em class="file">rundir</em> should contain (correct as needed):
+<p>
+So far, your <wm>$WORKDIR</em> should contain the following directories:
+</p>
+<pre>
+ <em>icbc</em>
+ <em>obs_diag</em>
+ <em>obsproc</em>
+ <em>output</em>
+ <em>perts</em>
+ <em>post</em>
+ <em>rundir</em>
+ <em>scripts</em>
+ <em>template</em>
+</pre>
+
+<p>
+Your <em class="file">rundir</em> should contain (correct as needed):
 </P>
 
 <table width="100%" border="0" summary="" cellpadding="5">
 <tr><td valign="top">executables:</td>
-    <td><em class="program">advance_time</em>, 
-        <em class="program">filter</em>, 
-        <em class="program">fill_inflation_restart</em>, 
-        <em class="program">obs_diag</em>, 
-        <em class="program">obs_seq_to_netcdf</em>, 
-        <em class="program">obs_sequence_tool</em>, 
-        <em class="program">pert_wrf_bc</em>, 
-        <em class="program">wrf_dart_obs_preprocess</em>
+    <td><a href="../../../assimilation_code/programs/advance_time/advance_time.html">advance_time</a>, 
+        <a href="../../../assimilation_code/programs/filter/filter.html">filter</a>,
+        <a href="../../../assimilation_code/programs/fill_inflation_restart/fill_inflation_restart.html">fill_inflation_restart</a>,
+        <a href="../../../assimilation_code/programs/obs_diag/threed_sphere/obs_diag.html">obs_diag</a>,
+        <a href="../../../assimilation_code/programs/obs_seq_to_netcdf/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>,
+        <a href="../../../assimilation_code/programs/obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool</a>,
+        <em class="program">pert_wrf_bc</em> (no helper page), 
+        <a href="../../../models/wrf/WRF_DART_utilities/wrf_dart_obs_preprocess.html">wrf_dart_obs_preprocess</a>
     </td></tr>
 <tr><td valign="top">directories:</td>
     <td><em class="file">WRFIN</em> (empty), 
         <em class="file">WRFOUT</em> (empty), 
         <em class="file">WRF_RUN</em> (wrf executables and support files, except namelist.input)
     </td></tr>
+<tr><td valign="top">scripts:</td>
+    <td><em class="file">add_bank_perts.ncl</em>,
+        <em class="file">new_advance_model.csh</em>
+    </td></tr>
 <tr><td valign="top">support data:</td>
     <td><em class="file">sampling_error_correction_table.nc</em>
     </td></tr>
 </table>
+
+<p>
+Check to make sure your <em class="file">rundir/WRF_RUN</em> directory contains:
+</p>
+<pre>
+  <em class="program">da_wrfvar.exe</em>
+  <em class="program">wrf.exe</em>
+  <em class="program">real.serial.exe</em>
+  <em class="file">be.dat</em>
+  <em class="file">contents of your WRF build run/ directory</em> (support data files for WRF)
+</pre>
 
 <p>
 For this tutorial, we are providing you with a specified WRF domain.
@@ -318,8 +331,10 @@ Let's now look inside the <em class="file">scripts</em> directory. You should fi
  <em class="program">gen_retro_icbc.csh</em>
  <em class="program">init_ensemble_var.csh</em>
  <em class="program">mean_increment.ncl</em>
+ <em class="program">new_model_advance.csh</em>
  <em class="program">param.csh</em>
  <em class="program">prep_ic.csh</em>
+ <em class="program">setup.csh</em>
 </pre>
 <p>
 The primary script for running the cycled analysis system is the <em class="program">driver.csh</em>.
@@ -328,12 +343,15 @@ and paths for running the system.
 The scripts <em class="program">assim_advance.csh</em>, 
 <em class="program">assimilate.csh</em>, 
 <em class="program">first_advance.csh</em>, 
-<em class="program">prep_ic.csh</em>, and 
+<em class="program">prep_ic.csh</em>, 
+<em class="program">new_model_advance.csh</em>, and 
 <em class="program">diagnostics_obs.csh</em> are templates
 for submitted jobs or helper scripts for specific tasks that need to be done during the cycling. 
 The <em class="program">add_bank_perts.ncl</em> script adds perturbations to each member and the
 <em class="program">mean_increment.ncl</em> scripts is a diagonostic tool used to compute mean
 increments.
+The <em class="program">setup.csh</em> script creates the proper directory structure and places
+executables and scripts in the proper location.  
 Finally, the <em class="program">gen_retro_icbc.csh</em> is used
 to generate template files and boundary conditions, 
 while <em class="program">init_ensemble_var.csh</em> is used to 
@@ -354,7 +372,7 @@ grep -r 'set this appropriately #%%%#' .
 
 <p>
 Next, move to the <em class="file">perts</em> directory.
-Inside, unzip and extract the perturbation files (there should be 100 files). 
+Inside, unzip and extract the perturbation files if needed (there should be 100 files). 
 For your own case, you will need to create a perturbation bank of your own.
 A brief description for running the the script from 
 </br ></br >
@@ -379,7 +397,7 @@ and as we get into the cycling the output will go in these directories.
 To get an initial set of ensemble files, depending on the size of your ensemble and
 data available to you, you might have options to initialize the ensemble from say
 a global ensemble set of states. Here, we develop a set of flow dependent errors by
-starting with random perturbations and conducting a short forecast. use the will use
+starting with random perturbations and conducting a short forecast. We will use the
 WRFDA random CV option 3 to provide an initial set of random errors, and since this is
 already available in the perturbation bank developed in the setup, we can simply add
 these to a deterministic GFS state. Further, lateral boundary uncertainty will come
@@ -572,7 +590,7 @@ wrfinput file for the program to access the analysis domain information.
 <A NAME="Inflation"></A>
 <P><!-- do nothing space --></P>
 <div class="top">[<a href="#">top</a>]</div><hr />
-<H3>Step X: Creating the first set of adaptive inflation files</H3>
+<H3>Step 4: Creating the first set of adaptive inflation files</H3>
 <!-- There is no mention of it, yet the template/input.nml requests it.
 the param.csh file should not be the location of whether or not inflation files
 should be copied. -->
@@ -598,6 +616,10 @@ mv input_priorinf_*.nc ${OUTPUT_DIR}/${datep}/Inflation_input/input_priorinf_*.n
 </pre>
 </div>
 <p>
+Where ${datep} is 2017042700 for the tutorial example, and ${OUTPUT_DIR} is $WORKDIR/output.
+You may need to create the Inflation_input directory within ${OUTPUT_DIR}/${datep}.
+</p>
+<p>
 Once the files are in the right place, the scripting should take care of
 renaming the output from the previous cycle as the input for the next cycle.
 </p>
@@ -605,7 +627,7 @@ renaming the output from the previous cycle as the input for the next cycle.
 <A NAME="Cycle"></A>
 <P><!-- do nothing space --></P>
 <div class="top">[<a href="#">top</a>]</div><hr />
-<H3>Step 4: Cycled analysis system</H3>
+<H3>Step 5: Cycled analysis system</H3>
 <p>
 For larger analysis domains, with many observations, run on modern supercomputers
 with batch queue job control systems, scripts can provide a practical solution
@@ -631,7 +653,7 @@ placing an 'exit' in the script at each job submission step. The driver script e
 a starting date as a command line argument (YYYYMMDDHH). So you would, for instance, run it as:
 </p>
 <div class="unix">
- ./driver.csh 2017042706 &gt;&amp; run.out &amp; 
+ ./driver.csh 2017042706 param.csh &gt;&amp; run.out &amp; 
 </div>
 <p>
 The script will check that the input files are present (wrfinput files, wrfbdy,
@@ -646,7 +668,7 @@ convert the final observation sequence file into a netcdf format.
 <A NAME="Check"></A>
 <P><!-- do nothing space --></P>
 <div class="top">[<a href="#">top</a>]</div><hr />
-<H3> Step 5: Check your results</H3> 
+<H3> Step 6: Check your results</H3> 
 <p>
 Once you have run the analysis system, it is time to check if things ran well or if
 there are problems that need to be addressed. DART provides analysis system diagnostics
