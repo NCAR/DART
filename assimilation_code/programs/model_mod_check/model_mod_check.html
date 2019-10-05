@@ -42,8 +42,8 @@
    This is intended to be used when adding a new model to DART -
    test the pieces as they are written.  As such, this program is
    meant to be hacked up and customized to your own purpose. Right now,
-   it reads in model netCDF file(s) - one per domain/nest/whatever -
-   and writes out files, queries the metdata, etc. It also exercises
+   it reads in model netCDF file(s) - one per domain/nest/whatever -  
+   and writes out files, queries the metdata, etc. It also exercises 
    <em class="program">static_init_model()</em>, which is the first routine
    to get right ...
 </P>
@@ -66,7 +66,7 @@ prematurely terminating the namelist.
 
 <div class=namelist>
 <pre>
-&amp;model_mod_check
+&amp;model_mod_check 
    num_ens               = 1
    single_file           = .FALSE.
    input_state_files     = 'null'
@@ -117,14 +117,14 @@ prematurely terminating the namelist.
 
 <TR><TD> num_ens </TD>
     <TD> integer </TD>
-    <TD> Provided for future use. Must be 1. Ultimately, The number of
+    <TD> Provided for future use. Must be 1. Ultimately, The number of 
          ensemble members you would like to read in for testing.
-</TD></TR>
+</TD></TR>  
 
 <TR><TD> single_file </TD>
     <TD> logical </TD>
     <TD> If .TRUE. all members are stored in a single restart file.
-</TD></TR>
+</TD></TR>  
 
 <TR><TD> input_state_files(:)  </TD>
     <TD> character(len=256) </TD>
@@ -133,7 +133,7 @@ prematurely terminating the namelist.
          ensemble member (num_ens). If you have both multiple ensemble members in separate
          files AND multiple domains, specify all the ensemble member filenames for domain 1, 
          then all the ensemble member filenames for domain 2, etc.
-</TD></TR>
+</TD></TR>  
 
 <TR><TD> output_state_files(:)  </TD>
     <TD> character(len=256) </TD>
@@ -142,27 +142,27 @@ prematurely terminating the namelist.
          ensemble member (num_ens). If you have both multiple ensemble members in separate
          files AND multiple domains, specify all the ensemble member filenames for domain 1, 
          then all the ensemble member filenames for domain 2, etc.
-</TD></TR>
+</TD></TR>  
 
 <TR><TD> all_metadata_file  </TD>
     <TD> character(len=256) </TD>
-    <TD> Test 6 produces an exhaustive list of metadata for EVERY element in
+    <TD> Test 6 produces an exhaustive list of metadata for EVERY element in 
          the DART state vector. The metadata get written to this file name.
-</TD></TR>
+</TD></TR>  
 
 <TR><TD> x_ind </TD>
     <TD> integer(i8) </TD>
     <TD> An integer index into the DART state vector.  This will be used to test the
          metadata routines.  Answers questions about location, what variable type is
          stored there, etc.
-</TD></TR>
+</TD></TR>  
 
 <TR><TD> loc_of_interest </TD>
     <TD> real(r8), dimension(3) </TD>
-    <TD> The lat/lon/level for a <b>particular</b> location.
+    <TD> The lat/lon/level for a <b>particular</b> location.  
          Used in Test 4, the single-point interpolation test.
          Indirectly tests the routine to find the closest gridpoint.
-</TD></TR>
+</TD></TR>  
 
 <TR><TD> quantity_of_interest </TD>
     <TD> character(len=32) </TD>
@@ -173,65 +173,65 @@ prematurely terminating the namelist.
     <TD> real(r8) </TD>
     <TD> The distance (measured in degrees) on the longitude interpolation grid.
          Ignored if interpolating with cartesian coordinates. Used in Test 5.
-</TD></TR>
+</TD></TR>  
 
 <TR><TD> interp_test_dlat </TD>
     <TD> real(r8) </TD>
     <TD> The distance (measured in degrees) on the latitude interpolation grid.
          Ignored if interpolating with cartesian coordinates. Used in Test 5.
-</TD></TR>
+</TD></TR>  
 
 <TR><TD> interp_test_dvert </TD>
     <TD> real(r8) </TD>
     <TD> The distance (measured in interp_vertcoord) on the vertical interpolation grid.
          Ignored if interpolating with cartesian coordinates. Used in Test 5.
-</TD></TR>
+</TD></TR>  
 
 <TR><TD> interp_test_lonrange </TD>
     <TD> real(r8) </TD>
     <TD> The range of y to be tested with model_interpolate, with spacing
          <em class=code>interp_test_dlon</em>. Ignored if interpolating with cartesian coordinates. Used in Test 5.
-</TD></TR>
+</TD></TR>  
 
 <TR><TD> interp_test_latrange </TD>
     <TD> real(r8) </TD>
     <TD> The range of y to be tested with model_interpolate, with spacing
          <em class=code>interp_test_dlat</em>. Ignored if interpolating with cartesian coordinates. Used in Test 5.
-</TD></TR>
+</TD></TR>  
 
 <TR><TD> interp_test_vertrange </TD>
     <TD> real(r8) </TD>
     <TD> The range in the vertical direction to be tested with model_interpolate, with spacing
          <em class=code>interp_test_dvert</em>. Ignored if interpolating with cartesian coordinates. Used in Test 5.
-</TD></TR>
+</TD></TR>  
 
 <TR><TD> interp_test_dx </TD>
     <TD> real(r8) </TD>
     <TD> The interval on the x axis of the interpolation grid.
          This is used in Test 5 for models with threed_cartesian coordinates.
-</TD></TR>
+</TD></TR>  
 
 <TR><TD> interp_test_dy </TD>
     <TD> real(r8) </TD>
     <TD> The interval on the y axis of the interpolation grid.
          This is used in Test 5 for models with threed_cartesian coordinates.
-</TD></TR>
+</TD></TR>  
 
 <TR><TD> interp_test_dz </TD>
     <TD> real(r8) </TD>
     <TD> The interval on the z axis of the interpolation grid.
          This is used in Test 5 for models with threed_cartesian coordinates.
-</TD></TR>
+</TD></TR>  
 
 <TR><TD> interp_test_xrange </TD>
     <TD> real(r8) </TD>
     <TD> The range of x to be tested with model_interpolate in Test 5, with spacing <em class=code>interp_test_dx</em>.
-</TD></TR>
+</TD></TR>  
 
 <TR><TD> interp_test_yrange </TD>
     <TD> real(r8) </TD>
     <TD> The range of y to be tested with model_interpolate in Test 5, with spacing <em class=code>interp_test_dy</em>.
-</TD></TR>
+</TD></TR>  
 
 <TR><TD> interp_test_zrange </TD>
     <TD> real(r8) </TD>
@@ -242,7 +242,7 @@ prematurely terminating the namelist.
     <TD> character(len=32) </TD>
     <TD> Specifies the vertical coordinate system to use during the interpolation tests.
          Valid values are: 'VERTISHEIGHT','VERTISPRESSURE','VERTISLEVEL', and 'VERTISSCALEHEIGHT'.
-</TD></TR>
+</TD></TR>  
 
 <TR><TD> test1thru </TD>
     <TD> integer </TD>
@@ -273,7 +273,7 @@ prematurely terminating the namelist.
          There are some dependencies. Tests 4 and 5 require a valid model state - which is read by Test 2.
          If a required test is not specified, the required test is enabled and run.
          A value of -1 means that <em class=code>test1thru</em> will be used.
-</TD></TR>
+</TD></TR>  
 
 <TR><TD>   verbose   </TD>
     <TD>   logical   </TD>
@@ -287,7 +287,7 @@ prematurely terminating the namelist.
 </TABLE>
 </div>
 
-<P>A more typical namelist for a single ensemble member for a model with an outer grid and a
+<P>A more typical namelist for a single ensemble member for a model with an outer grid and a 
    single nested grid is shown below.</P>
 <div class=namelist>
 <pre>
@@ -504,7 +504,7 @@ the DART state vector. This code block tests the two most common features of
 the metadata. As a bonus, this routine is also quite useful to determine
 EXACTLY where to place your first test observation. If you test precisely at
 a grid location, you should be able to really get a handle on debugging your
-<em class="program">model_interpolate()</em> routine.
+<em class="program">model_interpolate()</em> routine. 
 </P>
 
 <H3 class=indent1>Test 4. Test interpolation on a single point.</H3>
@@ -536,9 +536,9 @@ and used to visualize the result.
 
 <H3 class=indent1>Test 7. Find the closest gridpoint to a test location.</H3>
 <P>
-This is a good test to verify that <em class=progtram>get_state_meta_data()</em>
-and the grid information are correct. Typically, one would put in a location that
-is actually <strong>on</strong> the grid and see if the correct gridpoint index
+This is a good test to verify that <em class=progtram>get_state_meta_data()</em> 
+and the grid information are correct. Typically, one would put in a location that 
+is actually <strong>on</strong> the grid and see if the correct gridpoint index 
 is returned. Repeat the test with slightly different locations until
 the next gridpoint is closer. Repeat ...
 </P>

@@ -2,7 +2,7 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! DART $Id$
+! $Id$
 
 module model_mod
 
@@ -70,6 +70,7 @@ character(len=256), parameter :: source   = &
    "$URL$"
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
+
 
 ! Namelist with default values
 

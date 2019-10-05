@@ -4,18 +4,18 @@
 !
 ! $Id$
 
-program compare_states
+!> program to take 2 netCDF DART diagnostic files and compare
+!> the state variable, or whatever variables are listed in the
+!> namelist.  prints the min, max values and the min/max difference
+!> for each field listed.
+!>
+!> hopefully useful when comparing the results of two parallel
+!> experiments.  simple ncdiff balks when the input namelist variable
+!> is a different shape, and it cannot easily tell you when two
+!> variables are identical.   there are matlab functions that would
+!> do this with a short script, but not all platforms have matlab.
 
-! program to take 2 netCDF DART diagnostic files and compare
-! the state variable, or whatever variables are listed in the
-! namelist.  prints the min, max values and the min/max difference
-! for each field listed.
-!
-! hopefully useful when comparing the results of two parallel
-! experiments.  simple ncdiff balks when the input namelist variable
-! is a different shape, and it cannot easily tell you when two
-! variables are identical.   there are matlab functions that would
-! do this with a short script, but not all platforms have matlab.
+program compare_states
 
 use     types_mod, only : r8
 use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,  &

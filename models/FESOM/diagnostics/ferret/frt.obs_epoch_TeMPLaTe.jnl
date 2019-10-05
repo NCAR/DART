@@ -1,0 +1,140 @@
+! ferret script to plot obs_epoch.nc file
+!
+! name     title                             I         J         K         L         M         N
+! OBSTYPESMETADATA
+!          DART observation types           1:56      ...       ...       ...       ...       ...
+! QCMETADATA
+!          quantity names                   1:2       ...       ...       ...       ...       ...
+! COPYMETADATA
+!          quantity names                   1:66      ...       ...       ...       ...       ...
+! NAMELIST input.nml contents               1:359     ...       ...       ...       ...       ...
+! TIME     time of observation              ...       1:2342    ...       ...       ...       ...
+! OBS_TYPE DART observation type            ...       1:2342    ...       ...       ...       ...
+! OBS_KEYS DART key in linked list          ...       1:2342    ...       ...       ...       ...
+! OBSERVATIONS
+!          org observation, estimates, etc  1:66      1:2342    ...       ...       ...       ...
+! QC       QC values                        1:2       1:2342    ...       ...       ...       ...
+! LOCATION threed sphere locations: lon, l  1:3       1:2342    ...       ...       ...       ...
+! WHICH_VERT
+!          vertical coordinate system code  ...       1:2342    ...       ...       ...       ...
+cancel mode logo
+PPL DFLTFNT TI
+define symbol REMOVE=spa rm
+define symbol VAR=VARIABLENAME
+define symbol BINTIME=BINCURRENTTIME
+define symbol FBEXP=EXPERIMENTNAME
+define symbol SAL_QUEUE=1
+define symbol TEM_QUEUE=2
+define symbol SAL_NAM=Cross-section Salinity
+define symbol TEM_NAM=Cross-section Temperature
+define symbol SAL_NAM_FB=Ferrybox Salinity
+define symbol TEM_NAM_FB=Ferrybox Temperature
+define symbol SAL_UNIT=psu
+define symbol TEM_UNIT=#C
+define symbol figh=obs_epoch_($FBEXP)_($BINTIME)_FBOX_($VAR).png
+define symbol figv=obs_epoch_($FBEXP)_($BINTIME)_PROF_($VAR).png
+($REMOVE) ($figh) ($figv)
+define viewport/xlimits=0.,1./ylim=.22,1./TEXT=1.4 t1
+define viewport/xlimits=0.,1./ylim=0.,.55/TEXT=1.4 b1
+use "/users/home/ans051/FEOM_POSTPROC/MESH_READ/tss_topography.cdf"
+use "/work/ans051/TSS/($FBEXP)/FILTER/obs_epoch_($BINTIME).nc"
+let VAL=observations[i=2] - observations[i=1]
+let SAL_VAL=if OBS_TYPE eq 1 then VAL
+let SAL_LON=if OBS_TYPE eq 1 then LOCATION[i=1]
+let SAL_LAT=if OBS_TYPE eq 1 then LOCATION[i=2]
+let SAL_TIM=if OBS_TYPE eq 1 then ((TIME-149019)-(0/24))*24*60
+let SAL_DEP=if OBS_TYPE eq 1 then LOCATION[i=3]
+let TEM_VAL=if OBS_TYPE eq 2 then VAL
+let TEM_LON=if OBS_TYPE eq 2 then LOCATION[i=1]
+let TEM_LAT=if OBS_TYPE eq 2 then LOCATION[i=2]
+let TEM_TIM=if OBS_TYPE eq 2 then ((TIME-149019)-(0/24))*24*60
+let TEM_DEP=if OBS_TYPE eq 2 then LOCATION[i=3]
+let SAL_VAL_FB=if OBS_TYPE eq `($SAL_QUEUE)+56` then VAL
+let SAL_LON_FB=if OBS_TYPE eq `($SAL_QUEUE)+56` then LOCATION[i=1]
+let SAL_LAT_FB=if OBS_TYPE eq `($SAL_QUEUE)+56` then LOCATION[i=2]
+let SAL_TIM_FB=if OBS_TYPE eq `($SAL_QUEUE)+56` then ((TIME-149019)-(0/24))*24*60
+let TEM_VAL_FB=if OBS_TYPE eq `($TEM_QUEUE)+56` then VAL
+let TEM_LON_FB=if OBS_TYPE eq `($TEM_QUEUE)+56` then LOCATION[i=1]
+let TEM_LAT_FB=if OBS_TYPE eq `($TEM_QUEUE)+56` then LOCATION[i=2]
+let TEM_TIM_FB=if OBS_TYPE eq `($TEM_QUEUE)+56` then ((TIME-149019)-(0/24))*24*60
+
+LET DATE=INT(TIME[j=@max]-149019)+1
+PPL TICS,0.1,0.1,0.1,0.1
+
+set viewport t1
+
+define symbol basemap=X=1:60,Y=1:50
+go basemap ($basemap) 20 black
+
+! FIRST PLOT VALIDATION DATA STATISTICS in DEPTH
+GO polymark polygon/key=continous/nolab/levels=(-inf)(-3,3,0.1)(inf) \
+            ($VAR)_TIM, (-1)*($VAR)_DEP, ($VAR)_VAL, square, 0.65
+LABEL `($xaxis_max)+(($xaxis_max)-($xaxis_min))/18` \
+      `($yaxis_max)+(($yaxis_max)-($yaxis_min))/18` \
+       0 0  0.16 @P1 ($($VAR)_UNIT)
+LABEL `($xaxis_min)` `($yaxis_max)+1.5` \
+       -1 0  0.12 @P1 ($($VAR)_NAM) Truth-Background
+LABEL `($xaxis_min)+(($xaxis_max)-($xaxis_min))/($xaxis_max)` \
+      `($yaxis_min)+(($yaxis_max)+($yaxis_min))/($yaxis_min)*3` \
+       -1 0  0.16 @P1 2009-01-0`DATE`
+!go land_detail black overlay
+
+let qc_val=if OBS_TYPE eq ($($VAR)_QUEUE) then QC[i=2]
+
+set viewport b1
+
+GO polymark polygon/key/set/nolab/pal=blue_darkorange/levels=(0,1,2)(2,3,2)(4,7,3) \
+             ($VAR)_TIM, (-1)*($VAR)_DEP, qc_val, square, .65
+        PPL AXSET,1,0,0,0
+        ppl shakey ,,,1,,,,,,
+PPL POLYGON
+LABEL `($xaxis_min)` `($yaxis_min)` 1 0  0.16 @P1 A
+LABEL `($xaxis_max)` `($yaxis_min)` 1 0  0.16 @P1 B
+LABEL `($xaxis_max)+(($xaxis_max)-($xaxis_min))/13` \
+      `($yaxis_max)+(($yaxis_max)-($yaxis_min))/13` \
+       1 0  0.16 @P1 QC
+frame/file=($figv)/YPIXELS=750
+! NOW PLOT STATISTICS FROM FERRYBOX DATA
+cancel window/all
+!set window 1;
+set window 1/ANTIALIAS/QUALITY=HIGH
+
+PPL AXSET,1,1,1,1
+define viewport/xlimits=0.,1./ylim=.25,1./TEXT=1.4 t1
+define viewport/xlimits=0.,1./ylim=0.,.55/TEXT=1.4 b1
+set viewport t1
+define symbol basemap=X=27.5E:30E,Y=40.2N:41.2N
+contour/set/lev=(-1,1,1)/nokey MARM_TOPO[($basemap),d=1]
+  go unlabel 1; go unlabel 2; go unlabel 3;
+  go unlabel 4; go unlabel 5; go unlabel 6;
+  ppl title
+        PPL TICS,0.1,0.1,0.1,0.1
+ppl contour
+GO polymark polygon/over/key=continous/nolab/levels=(-inf)(-3,3,0.1)(inf) \
+             ($VAR)_LON_FB, ($VAR)_LAT_FB, ($VAR)_VAL_FB, circle, .25
+LABEL `($xaxis_max)+(($xaxis_max)-($xaxis_min))/24` \
+      `($yaxis_max)+(($yaxis_max)-($yaxis_min))/20` \
+       0 0  0.16 @P1 ($($VAR)_UNIT)
+LABEL `($xaxis_min)+(($xaxis_max)-($xaxis_min))/($xaxis_max)/10` \
+      `($yaxis_max)-.1` \
+       -1 0  0.12 @P1 ($($VAR)_NAM_FB) Misfits
+LABEL `($xaxis_max)-(($xaxis_max)-($xaxis_min))/($xaxis_max)/10` \
+      `($yaxis_min)+.1` \
+       1 0  0.16 @P1 2009-01-0`DATE`
+set viewport b1
+contour/set/lev=(-1,1,1)/nokey/nolab MARM_TOPO[($basemap),d=1]
+  go unlabel 1; go unlabel 2; go unlabel 3;
+  go unlabel 4; go unlabel 5; go unlabel 6;
+        PPL AXSET,1,0,0,1
+  ppl title
+ppl contour
+let qc_val=if OBS_TYPE eq `($($VAR)_QUEUE)+56` then QC[i=2]
+
+GO polymark polygon/over/set/key/nolab/pal=blue_darkorange/levels=(0,1,2)(2,3,2)(4,7,3) \
+             ($VAR)_LON_FB, ($VAR)_LAT_FB, qc_val, circle, .1
+             ppl shakey ,,,1,,,,,,
+ppl polygon
+LABEL `($xaxis_max)+(($xaxis_max)-($xaxis_min))/($xaxis_max)*2.5` \
+      `($yaxis_max)+(($yaxis_max)-($yaxis_min))/($yaxis_min)*4` \
+       1 0  0.16 @P1 QC
+frame/file=($figh)/YPIXELS=750

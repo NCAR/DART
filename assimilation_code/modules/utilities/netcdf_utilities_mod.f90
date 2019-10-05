@@ -56,6 +56,7 @@ public :: nc_check,                       &
           nc_variable_exists,             &
           nc_put_variable,                &
           nc_get_variable,                &
+          nc_get_variable_info,           &
           nc_add_global_creation_time,    &
           nc_get_variable_num_dimensions, &
           nc_get_variable_size,           &
@@ -164,8 +165,7 @@ interface nc_get_variable_size
 end interface
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
+character(len=*), parameter :: source   = "$URL$"
 character(len=*), parameter :: revision = "$Revision$"
 character(len=*), parameter :: revdate  = "$Date$"
 
@@ -420,7 +420,6 @@ call nc_check(ret, routine, 'getting the global attribute: '//trim(attname), con
 
 end subroutine nc_get_global_real_array_att
 
-!--------------------------------------------------------------------
 !--------------------------------------------------------------------
 ! attributes on specific variables section
 
@@ -1095,6 +1094,78 @@ nc_variable_exists = (ret == NF90_NOERR)
 end function nc_variable_exists
 
 !--------------------------------------------------------------------
+! check if vars, dims, or global atts exist (without error if not)
+! these are functions, unlike the rest of these routines.
+
+function nc_global_attribute_exists(ncid, attname)
+
+integer,          intent(in) :: ncid
+character(len=*), intent(in) :: attname
+logical                      :: nc_global_attribute_exists
+
+character(len=*), parameter :: routine = 'nc_global_attribute_exists'
+integer :: ret
+
+ret = nf90_inquire_attribute(ncid, NF90_GLOBAL, attname)
+nc_global_attribute_exists = (ret == NF90_NOERR) 
+
+end function nc_global_attribute_exists
+
+!--------------------------------------------------------------------
+
+function nc_variable_attribute_exists(ncid, varname, attname)
+
+integer,          intent(in) :: ncid
+character(len=*), intent(in) :: varname
+character(len=*), intent(in) :: attname
+logical                      :: nc_variable_attribute_exists
+
+character(len=*), parameter :: routine = 'nc_variable_attribute_exists'
+integer :: varid, ret
+
+ret = nf90_inq_varid(ncid, varname, varid)
+nc_variable_attribute_exists = (ret == NF90_NOERR) 
+if (ret /= NF90_NOERR) return
+
+ret = nf90_inquire_attribute(ncid, varid, attname)
+nc_variable_attribute_exists = (ret == NF90_NOERR) 
+
+end function nc_variable_attribute_exists
+
+!--------------------------------------------------------------------
+
+function nc_dimension_exists(ncid, dimname)
+
+integer,          intent(in) :: ncid
+character(len=*), intent(in) :: dimname
+logical                      :: nc_dimension_exists
+
+character(len=*), parameter :: routine = 'nc_dimension_exists'
+integer :: ret, dimid
+
+ret = nf90_inq_dimid(ncid, dimname, dimid)
+nc_dimension_exists = (ret == NF90_NOERR)
+
+end function nc_dimension_exists
+
+!--------------------------------------------------------------------
+
+function nc_variable_exists(ncid, varname)
+
+integer,          intent(in) :: ncid
+character(len=*), intent(in) :: varname
+logical                      :: nc_variable_exists
+
+character(len=*), parameter :: routine = 'nc_variable_exists'
+integer :: ret, varid
+
+ret = nf90_inq_varid(ncid, varname, varid)
+nc_variable_exists = (ret == NF90_NOERR) 
+
+end function nc_variable_exists
+
+!--------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! put values into variables
 
 
@@ -1699,7 +1770,6 @@ integer :: myndims
 integer :: mydimids(NF90_MAX_VAR_DIMS)
 integer :: mydimlens(NF90_MAX_VAR_DIMS)
 character(len=NF90_MAX_NAME) :: mydimnames(NF90_MAX_VAR_DIMS)
-
 
 ret = nf90_inq_varid(ncid, varname, varid)
 call nc_check(ret, routine, 'inq_varid for '//trim(varname), context, filename)

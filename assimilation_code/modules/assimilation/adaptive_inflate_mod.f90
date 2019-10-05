@@ -75,7 +75,7 @@ type adaptive_inflate_type
    logical               :: sd_from_restart
    logical               :: prior = .false.
    logical               :: posterior = .false.
-   integer               :: input_mean_copy = -1 !>todo NO_COPY_PRESENT
+   integer               :: input_mean_copy = -1 !!todo NO_COPY_PRESENT
    integer               :: input_sd_copy   = -1
 end type adaptive_inflate_type
 

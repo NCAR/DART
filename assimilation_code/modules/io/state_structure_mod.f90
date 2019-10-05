@@ -328,7 +328,8 @@ integer :: ivar
 ! add to domains
 call assert_below_max_num_domains()
 state%num_domains = state%num_domains + 1
-dom_id = state%num_domains !>@todo this should be a handle.
+!>@todo dom_id should be a handle.
+dom_id = state%num_domains
 
 ! save information about the information file
 state%domain(dom_id)%info_file = info_file
@@ -472,9 +473,9 @@ state%domain(dom_id)%variable(1)%dimlens(1) =  domain_size
 state%domain(dom_id)%variable(1)%dimlens(2) =  1
 state%domain(dom_id)%variable(1)%dimlens(3) =  1
 
-state%domain(dom_id)%variable(1)%io_info%xtype = NF90_DOUBLE
-state%domain(dom_id)%variable(1)%io_info%units      = 'none'
-state%domain(dom_id)%variable(1)%io_info%io_numdims = 3
+state%domain(dom_id)%variable(1)%io_info%xtype        = NF90_DOUBLE
+state%domain(dom_id)%variable(1)%io_info%units        = 'none'
+state%domain(dom_id)%variable(1)%io_info%io_numdims   = 3
 state%domain(dom_id)%variable(1)%io_info%io_dimids(1) = 1
 state%domain(dom_id)%variable(1)%io_info%io_dimids(2) = 2
 state%domain(dom_id)%variable(1)%io_info%io_dimids(3) = NF90_UNLIMITED
@@ -621,6 +622,7 @@ do ivar = 1, num_vars
    !>         is the slowest varying dimension.  For now am assuming that
    !>         there can only be one unlimited dimension. Just subtract 
    !>         to get 'spatial' dimensions.
+
 !  if ( any(domain%variable(ivar)%io_info%io_dimIds(1:num_dims) == domain%unlimDimId) ) then
 !     domain%variable(ivar)%numdims = num_dims - 1 
 !     domain%variable(ivar)%var_has_unlim = .TRUE.

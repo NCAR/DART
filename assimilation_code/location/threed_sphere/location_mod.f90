@@ -601,19 +601,19 @@ end function loc_ne
 
 !---------------------------------------------------------------------------
 
-function get_location(location)
+function get_location(loc)
  
 ! Given a location type (in radians), 
 ! return the longitude, latitude (in degrees) and vertical value
 
-type(location_type), intent(in) :: location
+type(location_type), intent(in) :: loc
 real(r8), dimension(3) :: get_location
 
 if ( .not. module_initialized ) call initialize_module()
 
-get_location(1) = location%lon * RAD2DEG                 
-get_location(2) = location%lat * RAD2DEG                 
-get_location(3) = location%vloc     
+get_location(1) = loc%lon * RAD2DEG                 
+get_location(2) = loc%lat * RAD2DEG                 
+get_location(3) = loc%vloc     
 
 end function get_location
 
@@ -695,11 +695,11 @@ end function set_location_missing
 
 !---------------------------------------------------------------------------
 
-function query_location(location, attr)
+function query_location(loc, attr)
  
 ! Returns the value of the attribute
 
-type(location_type),        intent(in) :: location
+type(location_type),        intent(in) :: loc
 character(len=*), optional, intent(in) :: attr
 real(r8)                               :: query_location
 
@@ -722,17 +722,17 @@ if ( .not. module_initialized ) call initialize_module()
 ! set the default here, and then only overwrite it if we
 ! recognize one of the other valid queries.
 
-query_location = real(location%which_vert, r8)  ! this is really an int
+query_location = real(loc%which_vert, r8)  ! this is really an int
 
 if (.not. present(attr)) return
 
 select case(attr)
    case ('lat','LAT')
-      query_location = location%lat
+      query_location = loc%lat
    case ('lon','LON')
-      query_location = location%lon
+      query_location = loc%lon
    case ('vloc','VLOC')
-      query_location = location%vloc
+      query_location = loc%vloc
    case ('which_vert','WHICH_VERT')
       ! already set
    case default
@@ -745,7 +745,7 @@ end function query_location
 
 !----------------------------------------------------------------------------
 
-subroutine write_location(locfile, location, fform, charstring)
+subroutine write_location(locfile, loc, fform, charstring)
  
 ! Writes a location to a file.
 ! most recent change: adding the optional charstring option.  if present,
@@ -754,7 +754,7 @@ subroutine write_location(locfile, location, fform, charstring)
 ! common units (e.g. hPa, km, etc)
 
 integer, intent(in)                        :: locfile
-type(location_type), intent(in)            :: location
+type(location_type), intent(in)            :: loc
 character(len = *),  intent(in),  optional :: fform
 character(len = *),  intent(out), optional :: charstring
 
@@ -774,9 +774,9 @@ writebuf = present(charstring)
 if (.not. writebuf) then
    if (ascii_file_format(fform)) then
       write(locfile, '(''loc3d'')' ) 
-      write(locfile, 10) location%lon, location%lat, location%vloc, location%which_vert
+      write(locfile, 10) loc%lon, loc%lat, loc%vloc, loc%which_vert
    else
-      write(locfile) location%lon, location%lat, location%vloc, location%which_vert
+      write(locfile) loc%lon, loc%lat, loc%vloc, loc%which_vert
    endif
    return
 endif
@@ -802,28 +802,28 @@ if (len(charstring) < charlength) then
 endif
 
 ! format the horizontal into a temp string
-write(string1, '(A,F12.8,1X,F12.8,1X,A)') 'Lon/Lat(deg): ',  location%lon*RAD2DEG, &
-   location%lat*RAD2DEG, ' Vert:'
+write(string1, '(A,F12.8,1X,F12.8,1X,A)') 'Lon/Lat(deg): ',  loc%lon*RAD2DEG, &
+   loc%lat*RAD2DEG, ' Vert:'
 
 ! then pretty up the vertical choices, trying to get them to line up in
 ! case the caller is listing out locations with different vert units.
 ! concatinate the vertical on the end of the horizontal and put it all
 ! into the return string. 
-select case  (location%which_vert)
+select case  (loc%which_vert)
    case (VERTISUNDEF)
       write(charstring, '(A,A)')       trim(string1), '              Undefined'
    case (VERTISSURFACE)
-      write(charstring, '(A,F13.5,A)') trim(string1), location%vloc, ' surface (m)'
+      write(charstring, '(A,F13.5,A)') trim(string1), loc%vloc, ' surface (m)'
    case (VERTISLEVEL)
-      write(charstring, '(A,F13.6,A)') trim(string1), location%vloc, ' level'
+      write(charstring, '(A,F13.6,A)') trim(string1), loc%vloc, '  level'
    case (VERTISPRESSURE)
-      write(charstring, '(A,F13.7,A)') trim(string1), location%vloc / 100.0_r8, ' hPa'
+      write(charstring, '(A,F13.7,A)') trim(string1), loc%vloc / 100.0_r8, ' hPa'
    case (VERTISHEIGHT)
-      write(charstring, '(A,F13.7,A)') trim(string1), location%vloc / 1000.0_r8, ' km'
+      write(charstring, '(A,F13.7,A)') trim(string1), loc%vloc / 1000.0_r8, ' km'
    case (VERTISSCALEHEIGHT)
-      write(charstring, '(A,F13.7,A)') trim(string1), location%vloc, ' scale ht'
+      write(charstring, '(A,F13.7,A)') trim(string1), loc%vloc, ' scale ht'
    case default
-      write(msgstring, *) 'unrecognized key for vertical type: ', location%which_vert
+      write(msgstring, *) 'unrecognized key for vertical type: ', loc%which_vert
       call error_handler(E_ERR, 'write_location', msgstring, source, revision, revdate)
 end select
 
@@ -986,7 +986,7 @@ end subroutine interactive_location
 
 !----------------------------------------------------------------------------
 
-function is_location_in_region(location, minl, maxl)
+function is_location_in_region(loc, minl, maxl)
  
 ! Returns true if the given location is inside the rectangular
 ! region defined by minl as the lower left, maxl the upper right.
@@ -994,15 +994,15 @@ function is_location_in_region(location, minl, maxl)
 ! Periodic in longitude (box can cross the 2PI -> 0 line)
 
 logical                          :: is_location_in_region
-type(location_type), intent(in)  :: location, minl, maxl
+type(location_type), intent(in)  :: loc, minl, maxl
 
 if ( .not. module_initialized ) call initialize_module()
 
 ! maybe could use VERTISUNDEF in the minl and maxl args to indicate
 ! we want to test only in horizontal?  and if not, vtypes must match?
 !if ( (minl%which_vert /= maxl%which_vert) .or. &
-! ((minl%which_vert /= location%which_vert).and.(minl%which_vert /= VERTISUNDEF))) then
-!   write(msgstring,*)'which_vert (',location%which_vert,') must be same in all args'
+! ((minl%which_vert /= loc%which_vert).and.(minl%which_vert /= VERTISUNDEF))) then
+!   write(msgstring,*)'which_vert (',loc%which_vert,') must be same in all args'
 !   call error_handler(E_ERR, 'is_location_in_region', msgstring, source, revision, revdate)
 !endif
 
@@ -1011,14 +1011,14 @@ if ( .not. module_initialized ) call initialize_module()
 is_location_in_region = .false.
 
 ! latitude: we do not allow wrap of rectangular regions over the poles.
-if ((location%lat < minl%lat) .or. (location%lat > maxl%lat)) return
+if ((loc%lat < minl%lat) .or. (loc%lat > maxl%lat)) return
 
 ! use common routine in utilities module to do all the wrapping
-if (.not. is_longitude_between(location%lon, minl%lon, maxl%lon, doradians=.TRUE.)) return
+if (.not. is_longitude_between(loc%lon, minl%lon, maxl%lon, doradians=.TRUE.)) return
 
 ! once we decide what to do about diff vert units, this is the test.
 !if ((minl%which_vert .ne. VERTISUNDEF) .and. 
-!    (location%vloc < minl%vloc) .or. (location%vloc > maxl%vloc)) return
+!    (loc%vloc < minl%vloc) .or. (loc%vloc > maxl%vloc)) return
  
 is_location_in_region = .true.
 
@@ -1075,27 +1075,27 @@ end function vertical_localization_on
 !----------------------------------------------------------------------------
 !> use a string so caller doesn't have to have access to VERTISxxx values
 
-function is_vertical(location, which_vert)
+function is_vertical(loc, which_vert)
 
 logical                          :: is_vertical
-type(location_type), intent(in)  :: location
+type(location_type), intent(in)  :: loc
 character(len=*),    intent(in)  :: which_vert
 
 select case  (which_vert)
    case ("UNDEFINED")
-      is_vertical = (VERTISUNDEF == location%which_vert)
+      is_vertical = (VERTISUNDEF == loc%which_vert)
    case ("SURFACE")
-      is_vertical = (VERTISSURFACE == location%which_vert)
+      is_vertical = (VERTISSURFACE == loc%which_vert)
    case ("LEVEL")
-      is_vertical = (VERTISLEVEL == location%which_vert)
+      is_vertical = (VERTISLEVEL == loc%which_vert)
    case ("PRESSURE")
-      is_vertical = (VERTISPRESSURE == location%which_vert)
+      is_vertical = (VERTISPRESSURE == loc%which_vert)
    case ("HEIGHT")
-      is_vertical = (VERTISHEIGHT == location%which_vert)
+      is_vertical = (VERTISHEIGHT == loc%which_vert)
    case ("SCALE_HEIGHT")
-      is_vertical = (VERTISSCALEHEIGHT == location%which_vert)
+      is_vertical = (VERTISSCALEHEIGHT == loc%which_vert)
    case default
-      write(msgstring, *) 'unrecognized key for vertical type: "', trim(which_vert)//'"', location%which_vert
+      write(msgstring, *) 'unrecognized key for vertical type: ', which_vert
       call error_handler(E_ERR, 'is_vertical', msgstring, source, revision, revdate)
 end select
 
@@ -1103,14 +1103,14 @@ end function is_vertical
 
 !--------------------------------------------------------------------
 
-subroutine set_vertical(location, vloc, which_vert)
+subroutine set_vertical(loc, vloc, which_vert)
 
-type(location_type), intent(inout) :: location
+type(location_type), intent(inout) :: loc
 real(r8), optional,  intent(in)    :: vloc
 integer,  optional,  intent(in)    :: which_vert
 
-if (present(vloc)) location%vloc = vloc
-if (present(which_vert)) location%which_vert = which_vert
+if (present(vloc)) loc%vloc = vloc
+if (present(which_vert)) loc%which_vert = which_vert
 
 end subroutine set_vertical
 

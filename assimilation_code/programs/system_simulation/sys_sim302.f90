@@ -96,8 +96,3 @@ end subroutine update
 
 end program sys_sim301
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

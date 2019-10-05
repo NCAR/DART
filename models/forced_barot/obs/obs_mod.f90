@@ -309,7 +309,7 @@ end subroutine ens_ics
 
 
 
-! subroutine get_close_state(obs_num, list, max_list, num)
+  subroutine get_close_state(obs_num, list, max_list, num)
 !========================================================================
 ! subroutine get_close_state(obs_num, list, max_list, num)
 

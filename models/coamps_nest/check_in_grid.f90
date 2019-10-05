@@ -45,7 +45,6 @@ program check_in_grid
   if (grid_i < 1)        in_grid = .false.
   if (grid_j < 1)        in_grid = .false.
   print *, in_grid
-
 end program check_in_grid
 
 ! <next few lines under version control, do not edit>

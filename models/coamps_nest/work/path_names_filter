@@ -23,6 +23,7 @@ assimilation_code/modules/utilities/distributed_state_mod.f90
 assimilation_code/modules/utilities/ensemble_manager_mod.f90
 assimilation_code/modules/utilities/mpi_utilities_mod.f90
 assimilation_code/modules/utilities/netcdf_utilities_mod.f90
+assimilation_code/modules/utilities/no_cray_win_mod.f90
 assimilation_code/modules/utilities/obs_impact_mod.f90
 assimilation_code/modules/utilities/options_mod.f90
 assimilation_code/modules/utilities/parse_args_mod.f90
@@ -50,4 +51,3 @@ models/coamps_nest/model_mod.f90
 models/utilities/default_model_mod.f90
 observations/forward_operators/obs_def_mod.f90
 observations/forward_operators/obs_def_utilities_mod.f90
-assimilation_code/modules/utilities/no_cray_win_mod.f90

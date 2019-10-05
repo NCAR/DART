@@ -345,7 +345,7 @@
    input_state_files     = 'roms_input.nc'
    output_state_files    = 'mmc_output.nc'
    test1thru             = 0
-   run_tests             = 1,2,3,4,5,6,7
+   run_tests             = 1,2,3,4
    x_ind                 = 87370
    loc_of_interest       = 231.0, 40.0, 10.0
    quantity_of_interest  = 'QTY_U_CURRENT_COMPONENT'

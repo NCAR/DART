@@ -73,7 +73,6 @@
                     'psfc' , 'QTY_SURFACE_PRESSURE'      , 0.0000, 'NULL', 'UPDATE' 
 /
 
-                    'psfc' , 'QTY_SURFACE_PRESSURE'      , 0.0000, 'NULL', 'UPDATE',
 
 &obs_kind_nml
   assimilate_these_obs_types = 'TEMPERATURE_2M',
@@ -277,7 +276,6 @@
 &model_mod_check_nml
   input_state_files     = 'cm1out_rst_000001.nc'
   output_state_files    = 'mmc_output.nc'
-  num_ens               = 1
   test1thru             = 0
   run_tests             = 1,2,3,4,5,7
   x_ind                 = 1000000
@@ -290,5 +288,5 @@
   interp_test_xrange    = 500.0, 1000.0
   interp_test_yrange    = 500.0, 1000.0
   interp_test_zrange    = 100.0,  101.0
-  verbose               = .false.
+  verbose               = .true.
 /
