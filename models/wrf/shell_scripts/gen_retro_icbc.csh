@@ -164,9 +164,34 @@ EOF
 EOF
 
       sed -f script.sed ${TEMPLATE_DIR}/namelist.input.meso >! namelist.input
-      ${REMOVE} out.real.exe
-      ${RUN_DIR}/WRF_RUN/real.serial.exe >& out.real.exe
-      if ( -e rsl.out.0000 )  cat rsl.out.0000 >> out.real.exe
+     #${REMOVE} out.real.exe
+     #${RUN_DIR}/WRF_RUN/real.serial.exe >& out.real.exe
+     #if ( -e rsl.out.0000 )  cat rsl.out.0000 >> out.real.exe
+
+      rm script.sed real_done rsl.*
+      echo "2i\"                                      >! script.sed
+      echo "#======================================\" >> script.sed
+      echo "#PBS -N run_real\"                        >> script.sed
+      echo "#PBS -A ${CNCAR_GAU_ACCOUNT}\"            >> script.sed
+      echo "#PBS -l walltime=00:05:00\"               >> script.sed
+      echo "#PBS -q ${CADVANCE_QUEUE}\"               >> script.sed
+      echo "#PBS -o run_real.out\"                    >> script.sed
+      echo "#PBS -j oe\"                              >> script.sed
+      echo "#PBS -l select=3:ncpus=36:mpiprocs=36\"   >> script.sed
+      echo "#PBS -V\"                                 >> script.sed
+      echo "#======================================\" >> script.sed
+      echo "\"                                        >> script.sed
+      echo ""                                         >> script.sed
+      echo 's%${1}%'"${paramfile}%g"                  >> script.sed
+      sed -f script.sed ${SHELL_SCRIPTS_DIR}/real.csh >! real.csh
+
+      qsub real.csh
+
+      # need to look for sometihng to know when this job is done
+      while ( ! -e ${ICBC_DIR}/real_done )
+          sleep 15
+      end
+      cat rsl.out.0000 >> out.real.exe
 
       #  move output files to storage
       set gdate = (`echo $date1 0 -g | ${DART_DIR}/models/wrf/work/advance_time`)
