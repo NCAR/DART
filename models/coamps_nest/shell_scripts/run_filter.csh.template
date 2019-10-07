@@ -183,8 +183,8 @@ endif
 #TJH # a (single) coamps input file is required to satisfy 'static_init_model()'.
 #TJH # Any one will do.
 #TJH 
-#TJH #ln -sf instance_0001/coamps_posterior_????_${OCEAN_TIME}.nc MyDAINAME
-#TJH ln -sf instance_0001/coamps_posterior_????_${CDTG}.nc MyDAINAME
+#TJH #ln -sf instance_0001/coamps_posterior_???_${OCEAN_TIME}.nc MyDAINAME
+#TJH ln -sf instance_0001/coamps_posterior_???_${CDTG}.nc MyDAINAME
 #TJH 
 #TJH #ls -1 instance_*/${OBS_ROOT}*_${OCEAN_TIME}.nc  >! precomputed_files.txt
 #TJH ls -1 instance_*/${OBS_ROOT}*_${CDTG}.nc  >! precomputed_files.txt
@@ -196,13 +196,13 @@ endif
 #==========================================================================
 
 @ instance = 0
-foreach INSTANCE_DIRECTORY ( instance_???? )
+foreach INSTANCE_DIRECTORY ( instance_??? )
    @ instance++
 
    cd ${INSTANCE_DIRECTORY}
 
-   set HDFFILE = `printf      coamps_%04d_${CDTG}.hdf5 $instance`
-   set  NCFILE = `printf dart_vector_%04d_${CDTG}.nc   $instance`
+   set HDFFILE = `printf      coamps_%03d_${CDTG}.hdf5 $instance`
+   set  NCFILE = `printf dart_vector_%03d_${CDTG}.nc   $instance`
 
    if ( -e    ${HDFFILE} ) then
       \ln -sf ${HDFFILE} coamps.hdf5
@@ -221,22 +221,23 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
 end
 
 #==========================================================================
-# STEP 3:  Then we run DART on the ensemble of new states
+# STEP 4:  Then we run DART on the ensemble of new states
 #
 # collect all the coamps_RESTARTs into a list of input files for filter
 # The io module will error out if the file_list_domain_N.txt is too short.
 # (make sure all instances of coamps advanced successfully)
 #==========================================================================
 
-ls -1 instance_*/dart_vector_????_${CDTG}.nc  >! file_list_domain_1.txt
-ls -1 instance_*/dart_vector_????_${CDTG}.nc  >! file_list_domain_2.txt
+ls -1 instance_*/dart_vector_???_${CDTG}.nc  >! file_list_domain_1.txt
+ls -1 instance_*/dart_vector_???_${CDTG}.nc  >! file_list_domain_2.txt
 
-# filter needs a template file to read variables sizes, etc.
+# filter needs files to read variables sizes, etc.
 
-\ln -sf instance_0001/coamps_0001_${CDTG}.hdf5    coamps.hdf5
-\ln -sf instance_0001/dart_vector_0001_${CDTG}.nc dart_vector.nc
+\rm -f coamps.hdf5 dart_vector.nc
+\ln -s instance_001/coamps_001_${CDTG}.hdf5    coamps.hdf5    || exit 4
+\ln -s instance_001/dart_vector_001_${CDTG}.nc dart_vector.nc || exit 4
 
-${LAUNCHCMD} ./filter || exit 3
+${LAUNCHCMD} ./filter || exit 4
 
 # Tag the output with the valid time of the model state.
 
@@ -245,8 +246,8 @@ foreach FILE ( input_*mean.nc     input_*sd.nc \
            postassim_*mean.nc postassim_*sd.nc \
             analysis_*mean.nc  analysis_*sd.nc \
               output_*mean.nc    output_*sd.nc \
-           preassim_member_????.nc \
-           postassim_member_????.nc )
+           preassim_member_???.nc \
+           postassim_member_???.nc )
 
    if (  -e $FILE ) then
       set FEXT  = $FILE:e
@@ -263,29 +264,30 @@ end
 \mv -v obs_seq.final             obs_seq.final.${CDTG}
 
 #==========================================================================
-# STEP 4: Update the hdf5 files with the information in the updated netCDF files
+# STEP 5: Update the hdf5 files with the information in the updated netCDF files
 #
 # 'trans_dart_to_coamps' uses COAMPS write routines that expect a DTG in
 # the file name, the dart call provides the base filename of 'CoampsUpdate'
 #==========================================================================
 
 @ instance = 0
-foreach INSTANCE_DIRECTORY ( instance_???? )
+foreach INSTANCE_DIRECTORY ( instance_??? )
    @ instance++
 
    cd ${INSTANCE_DIRECTORY}
 
-   set  NCFILE = `printf dart_vector_%04d_${CDTG}.nc    $instance`
-   set HDFFILE = `printf      coamps_%04d_${CDTG}.hdf5  $instance`
+   set  NCFILE = `printf dart_vector_%03d_${CDTG}.nc    $instance`
+   set HDFFILE = `printf      coamps_%03d_${CDTG}.hdf5  $instance`
    set NEWFILE = CoampsUpdate_${CDTG}.hdf5
 
-   ln -sf $NCFILE  dart_vector.nc || exit 4
-   ln -sf $HDFFILE coamps.hdf5    || exit 4
+   unlink dart_vector.nc coamps.hdf5
+   ln -sf $NCFILE  dart_vector.nc || exit 5
+   ln -sf $HDFFILE coamps.hdf5    || exit 5
 
-   ../trans_dart_to_coamps || exit 4
+   ../trans_dart_to_coamps || exit 5
 
    # what do we want to name the updated file ...
-   # \mv $NEWFILE ...
+   \mv $HDFFILE $NEWFILE
 
    cd ..
 

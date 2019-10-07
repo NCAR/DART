@@ -307,16 +307,147 @@ contains
         end do
     end subroutine dump_vertical_info
 
-    !------------------------------
-    ! END PUBLIC ROUTINES
-    !------------------------------
 
-    !------------------------------
-    ! BEGIN PRIVATE ROUTINES
-    !------------------------------
-    !------------------------------
-    ! END PRIVATE ROUTINES
-    !------------------------------
+
+!TJH !***********************************************************************
+!TJH ! interpolate from sigma levels to p-levels
+!TJH 
+!TJH subroutine s2pint(din,dout,zin,zout,kin,kout,nn)
+!TJH 
+!TJH ! #include <s2pint.prol>
+!TJH ! CONFIGURATION IDENTIFICATION $HeadURL: https://coamps3.nrlmry.navy.mil/svn/atmos/branches/beta/libsrc/amlib/s2pint.F $ 
+!TJH ! CONFIGURATION IDENTIFICATION @(#)$Id: s2pint.F 689 2010-12-07 21:29:08Z chen $
+!TJH 
+!TJH !  use domdec
+!TJH implicit none
+!TJH 
+!TJH !***********************************************************************
+!TJH ! arguments:
+!TJH !***********************************************************************
+!TJH 
+!TJH integer, intent(in)  :: kin
+!TJH integer, intent(in)  :: kout
+!TJH integer, intent(in)  :: nn
+!TJH real,    intent(in)  ::  din(iminf(nn):imaxf(nn),jminf(nn):jmaxf(nn),kin)
+!TJH real,    intent(out) :: dout(iminf(nn):imaxf(nn),jminf(nn):jmaxf(nn),kout)
+!TJH real,    intent(in)  ::  zin(iminf(nn):imaxf(nn),jminf(nn):jmaxf(nn),kin)
+!TJH real,    intent(in)  :: zout(kout)
+!TJH 
+!TJH !***********************************************************************
+!TJH ! local variables and dynamic storage:
+!TJH !***********************************************************************
+!TJH 
+!TJH integer :: i
+!TJH integer :: j
+!TJH integer :: ki
+!TJH integer :: ko
+!TJH real    :: temp
+!TJH 
+!TJH !***********************************************************************
+!TJH ! end of definitions
+!TJH !***********************************************************************
+!TJH 
+!TJH do ko=1,kout
+!TJH   do j = jminf(nn), jmaxf(nn)
+!TJH     do i= iminf(nn), imaxf(nn)
+!TJH       if (zout(ko) .le. zin(i,j,  1)) dout(i,j,ko)=din(i,j,  1)
+!TJH       if (zout(ko) .ge. zin(i,j,kin)) dout(i,j,ko)=din(i,j,kin)
+!TJH     enddo
+!TJH   enddo
+!TJH enddo
+!TJH do ki=2,kin
+!TJH   do ko=1,kout
+!TJH     do j = jminf(nn), jmaxf(nn)
+!TJH       do i= iminf(nn), imaxf(nn)
+!TJH         if ((zout(ko) .gt. zin(i,j,ki-1)) .and.  &
+!TJH             (zout(ko) .le. zin(i,j,ki  ))) then
+!TJH           temp=(alog(zout(ko))-alog(zin(i,j,ki-1))) / (alog(zin(i,j,ki))-alog(zin(i,j,ki-1)))
+!TJH           dout(i,j,ko)=din(i,j,ki-1)+temp*(din(i,j,ki) - din(i,j,ki-1))
+!TJH         endif
+!TJH       enddo
+!TJH     enddo
+!TJH   enddo
+!TJH enddo
+!TJH 
+!TJH return
+!TJH end
+!TJH 
+!TJH 
+!TJH 
+!TJH !***********************************************************************
+!TJH ! interpolate from sigma-z levels to constant z levels
+!TJH 
+!TJH subroutine z2zint(din,dout,zin,zout,kin,kout,nn)
+!TJH  
+!TJH !  use domdec
+!TJH 
+!TJH ! #include <z2zint.prol>
+!TJH ! CONFIGURATION IDENTIFICATION $HeadURL:
+!TJH ! https://coamps3.nrlmry.navy.mil/svn/atmos/branches/beta/libsrc/amlib/z2zint.F $ 
+!TJH ! CONFIGURATION IDENTIFICATION @(#)$Id: z2zint.F 689 2010-12-07 21:29:08Z chen $
+!TJH 
+!TJH implicit none
+!TJH 
+!TJH !***********************************************************************
+!TJH !        parameters:
+!TJH !***********************************************************************
+!TJH 
+!TJH integer, intent(in) :: kin
+!TJH integer, intent(in) :: kout
+!TJH integer, intent(in) :: nn
+!TJH real,    intent(in) ::  din(iminf(nn):imaxf(nn),jminf(nn):jmaxf(nn),kin)
+!TJH real,    intent(in) :: dout(iminf(nn):imaxf(nn),jminf(nn):jmaxf(nn),kout)
+!TJH real,    intent(in) ::  zin(iminf(nn):imaxf(nn),jminf(nn):jmaxf(nn),kin)
+!TJH real,    intent(in) :: zout(kout)
+!TJH 
+!TJH !***********************************************************************
+!TJH !       local variables and dynamic storage:
+!TJH !***********************************************************************
+!TJH 
+!TJH integer :: i
+!TJH integer :: j
+!TJH integer :: ki
+!TJH integer :: ko
+!TJH 
+!TJH real :: temp
+!TJH 
+!TJH do ko=1,kout
+!TJH   do j = jminf(nn), jmaxf(nn)
+!TJH     do i= iminf(nn), imaxf(nn)
+!TJH       if (zout(ko) .ge. zin(i,j,  1)) dout(i,j,ko)=din(i,j,  1)
+!TJH       if (zout(ko) .le. zin(i,j,kin)) dout(i,j,ko)=din(i,j,kin)
+!TJH     enddo
+!TJH   enddo
+!TJH enddo
+!TJH 
+!TJH do ki=2,kin
+!TJH   do ko=1,kout
+!TJH     do j = jminf(nn), jmaxf(nn)
+!TJH       do i= iminf(nn), imaxf(nn)
+!TJH         if ((zout(ko) .lt. zin(i,j,ki-1)) .and. &
+!TJH             (zout(ko) .ge. zin(i,j,ki))) then
+!TJH         temp = (zout(ko)-zin(i,j,ki-1))/(zin(i,j,ki)   - zin(i,j,ki-1))
+!TJH         dout(i,j,ko) = din(i,j,ki-1)+temp*(din(i,j,ki) - din(i,j,ki-1))
+!TJH         endif
+!TJH       enddo
+!TJH     enddo
+!TJH   enddo
+!TJH enddo
+!TJH 
+!TJH return
+!TJH end
+
+
+!------------------------------
+! END PUBLIC ROUTINES
+!------------------------------
+
+!------------------------------
+! BEGIN PRIVATE ROUTINES
+!------------------------------
+!------------------------------
+! END PRIVATE ROUTINES
+!------------------------------
 
 end module coamps_vertical_mod
 

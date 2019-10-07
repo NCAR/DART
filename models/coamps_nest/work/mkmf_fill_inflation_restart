@@ -1,0 +1,27 @@
+#!/bin/csh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+if (! $?HDF_DIR) then
+   set HDF_DIR = /auto/soft/hdf5/CentOS_6_pgi
+endif
+
+set HDFINCDIR = "-I${HDF_DIR}/include"
+set HDFLIBDIR = "-L${HDF_DIR}/lib"
+set   HDFLIBS = "-lhdf5hl_fortran -lhdf5_fortran"
+
+../../../build_templates/mkmf -p fill_inflation_restart -t ../../../build_templates/mkmf.template \
+ -l "${HDFINCDIR} ${HDFLIBDIR} ${HDFLIBS}" \
+ -c "-DHDF5" -a "../../.." path_names_fill_inflation_restart
+
+exit $status
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

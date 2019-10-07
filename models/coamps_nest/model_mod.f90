@@ -103,14 +103,14 @@ use location_mod,        only : get_close_type,                &
                        loc_get_close_obs   => get_close_obs,   &
                                 set_location,                  &
                                 vertical_localization_on,      &
+                                set_vertical_localization_coord, &
                                 query_location,                &
-                                convert_vertical_obs,          &
-                                convert_vertical_state,        &
                                 VERTISLEVEL,                   &
                                 VERTISPRESSURE,                &
                                 VERTISHEIGHT,                  &
                                 VERTISSURFACE,                 &
-                                VERTISUNDEF
+                                VERTISUNDEF,                   &
+                                VERTISSCALEHEIGHT
 
 use obs_kind_mod
 
@@ -225,8 +225,7 @@ public :: write_model_time
 !------------------------------
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
+character(len=*), parameter :: source   = "$URL$"
 character(len=*), parameter :: revision = "$Revision$"
 character(len=*), parameter :: revdate  = "$Date$"
       
@@ -255,10 +254,12 @@ logical           :: output_interpolation = .false.
 integer           :: debug                = 0            ! increase for debug messages
 integer           :: assimilation_period_days = 0
 integer           :: assimilation_period_seconds = 216000
+character(len=32) :: vertical_localization_coord = 'PRESSURE'
 
 namelist /model_nml/ cdtg, y_bound_skip, x_bound_skip, need_mean, &
                      output_interpolation, debug, &
-                     assimilation_period_days, assimilation_period_seconds
+                     assimilation_period_days, assimilation_period_seconds, &
+                     vertical_localization_coord
 
 ! Locations of state variables
 integer, dimension(:), allocatable :: all_vars
@@ -270,6 +271,9 @@ type(state_vector)  :: state_layout_3D    ! Just the variables for DART
 
 ! Ensemble mean
 real(kind=r8), dimension(:), allocatable :: ensemble_mean
+
+! default to localizing in pressure.  override with namelist
+integer :: vertical_localization_type = VERTISPRESSURE
 
 integer :: nfields
 integer :: domid
@@ -314,6 +318,10 @@ module_initialized = .true.
 call set_calendar_type('Gregorian')
 call read_model_namelist()
 call set_debug_level(debug)
+
+! convert from string in namelist to integer (e.g. VERTISxxx)
+! and tell the dart code which vertical type we want to localize in.
+call set_vert_localization(vertical_localization_coord)
 
 ! the domain information is reported upon initialization
 call initialize_domain(HDF5_FILE_NAME, cdtg, domain)
@@ -885,6 +893,47 @@ end subroutine pert_model_copies
 
     end subroutine get_state_meta_data
 
+
+
+subroutine convert_vertical_obs(ens_handle, num, locs, loc_qtys, loc_types, &
+                                which_vert, status)
+
+type(ensemble_type), intent(in)    :: ens_handle
+integer,             intent(in)    :: num
+type(location_type), intent(inout) :: locs(:)
+integer,             intent(in)    :: loc_qtys(:)
+integer,             intent(in)    :: loc_types(:)
+integer,             intent(in)    :: which_vert
+integer,             intent(out)   :: status(:)
+
+status(:) = 0
+
+call error_handler(E_ERR,'convert_vertical_obs','routine not written')
+
+end subroutine convert_vertical_obs
+
+!--------------------------------------------------------------------
+
+subroutine convert_vertical_state(ens_handle, num, locs, loc_qtys, loc_indx, &
+                                  which_vert, istatus)
+
+type(ensemble_type), intent(in)    :: ens_handle
+integer,             intent(in)    :: num
+type(location_type), intent(inout) :: locs(:)
+integer,             intent(in)    :: loc_qtys(:)
+integer(i8),         intent(in)    :: loc_indx(:)
+integer,             intent(in)    :: which_vert
+integer,             intent(out)   :: istatus
+
+istatus = 0
+
+call error_handler(E_ERR,'convert_vertical_state','routine not written')
+
+end subroutine convert_vertical_state
+
+
+
+
 !--------------------------------------------------------------------
 !> Returns the smallest increment in time that the model is capable
 !> of advancing the state.
@@ -1129,14 +1178,49 @@ end subroutine write_model_time
 
     end subroutine kernal_smoother
 
+
+!-----------------------------------------------------------------------
+! Convert all state and obs to this vertical coordinate if vertical 
+! localization is enabled. Needed when get_close() is called to compute
+! the distance between items. 
+
+subroutine set_vert_localization(typename)
+character(len=*), intent(in)  :: typename
+
+character(len=*), parameter :: routine = 'set_vert_localization'
+character(len=32) :: ucasename
+integer :: vcoord
+
+ucasename = typename
+call to_upper(ucasename)
+
+! convert from string to integer
+
+select case (ucasename)
+  case ("PRESSURE")
+     vcoord = VERTISPRESSURE
+  case ("HEIGHT")
+     vcoord = VERTISHEIGHT
+  case ("SCALEHEIGHT", "SCALE_HEIGHT", "SCALE HEIGHT")
+     vcoord = VERTISSCALEHEIGHT
+  case ("LEVEL", "MODEL_LEVEL", "MODEL LEVEL")
+     vcoord = VERTISLEVEL
+  case default
+     write(string1,*)'unrecognized vertical localization coordinate: "'//trim(typename)//'"'
+     write(string2,*)'valid values are: PRESSURE, HEIGHT, SCALEHEIGHT, LEVEL'
+     call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
+end select
+
+call set_vertical_localization_coord(vcoord)
+
+! save in module global for later use.
+vertical_localization_type = vcoord
+
+end subroutine set_vert_localization
+
     !------------------------------
     ! END PRIVATE ROUTINES
     !------------------------------
 
 end module model_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

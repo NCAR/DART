@@ -11,7 +11,7 @@
    output_interval            = 1
 
    async                      = 4
-   adv_ens_command            = "../shell_scripts/advance_model.csh"
+   adv_ens_command            = "no_DART_model_advance.csh"
 
    obs_seq_in_file_name       = "obs_seq.one"
    obs_seq_out_file_name      = "obs_seq.out"
@@ -92,14 +92,15 @@
 
 
 &model_nml
-   cdtg                        = '2013011000'
+   cdtg                        = '2018051700'
    x_bound_skip                = 4
    y_bound_skip                = 4
    assimilation_period_days    = 0
    assimilation_period_seconds = 21600
+   vertical_localization_coord = 'SCALEHEIGHT'
    need_mean                   = .true.
    output_interpolation        = .true.
-   debug                       = 0
+   debug                       = 1
   /
 
 
@@ -127,6 +128,21 @@
    print_every_nth_obs               = 0
    print_every_nth_obs               = 0
   /
+
+
+&fill_inflation_restart_nml
+   write_prior_inf = .true.
+   prior_inf_mean  = 1.01
+   prior_inf_sd    = 0.6
+
+   write_post_inf  = .false.
+   post_inf_mean   = 1.00
+   post_inf_sd     = 0.6
+
+   input_state_files = 'dart_vector.nc', 'dart_vector.nc'
+   single_file       = .false.
+   verbose           = .false.
+   /
 
 
 &cov_cutoff_nml

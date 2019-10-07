@@ -8,6 +8,7 @@
 .DS_Store
 Gemfile.lock
 _site/
+.cppdefs
 
 # Nuisance files
 
@@ -20,6 +21,7 @@ obs_kind_mod.f90
 using_mpi_for_*
 check_me.nc
 check_me_interptest.*
+*.orig
 
 # Executables
 
@@ -88,3 +90,4 @@ FeoM_time
 !restart_file_tool/
 !system_simulation/
 !wakeup_filter/
+

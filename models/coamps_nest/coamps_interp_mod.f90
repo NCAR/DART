@@ -1286,8 +1286,6 @@ contains
 
         do cur_level_num = 1, num_levels
 
-            write(*,*)'TJH var_kind, cur_level_num is ',var_kind,cur_level_num
-
             matching_var => find_state_variable(interpolator%state_definition, &
                                                interpolator%interp_nest,       &
                                                var_kind,   is_mean,            &
@@ -1303,6 +1301,8 @@ contains
             call extract_neighbors(interpolator, matching_var, var_kind, neighbors)
 
             matching_values(:, cur_level_num) = neighbors(:)
+
+! DEBUG stmnt  write(*,*)'QTY,level ',var_kind,cur_level_num,neighbors(:)
 
             if(present(var_availability_index)) &
               call mark_available(interpolator, cur_level_num, var_availability_index)

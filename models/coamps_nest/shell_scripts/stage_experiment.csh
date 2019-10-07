@@ -54,30 +54,30 @@
 
 switch ("`hostname`")
    case eddy
-      set DARTDIR = /home/${USER}/DART/coamps
+      set DARTDIR = /home/${USER}/git/DART
       set COAMPSDIR = /home/${USER}/COAMPS
-      set ENSEMBLEDIR = /home/${USER}/COAMPS_hdf5_files/Ensemble
-      set EXPERIMENTDIR = /home/${USER}/${USER}_eddy1/COAMPS_cycling_test
-      set COPY = '/bin/cp --preserve=timestamps'
+      set ENSEMBLEDIR = /home/${USER}/COAMPS_hdf5_files/Ensemble2018
+      set EXPERIMENTDIR = /home/${USER}/${USER}_eddy1/COAMPS_cycling_test2
+      set COPY = '/bin/cp --preserve=timestamps -v'
       breaksw
    case ch*
       set DARTDIR = /glade/p/work/${USER}/DART/rma_coamps
       set COAMPSDIR = /glade/p/work/${USER}/COAMPS
       set ENSEMBLEDIR = /glade/p/work/${USER}/COAMPS_hdf5_files/Ensemble
       set EXPERIMENTDIR = /glade/scratch/${USER}/COAMPS_cycling_test
-      set COPY = '/bin/cp --preserve=timestamps'
+      set COPY = '/bin/cp --preserve=timestamps -v'
       breaksw
    default
       breaksw
 endsw
 
-set ENSEMBLE_SIZE = 4
-set CDTG = 2013011000
+set ENSEMBLE_SIZE = 20
+set CDTG = 2018051700
 
 if (-e ${EXPERIMENTDIR} ) then
    echo "ERROR: ${EXPERIMENTDIR} already exists."
    echo "Intentionally leaving it alone."
-   echo "Must provide a new directory name for the experiement."
+   echo "Must provide a new directory name for the experiment."
 #  exit 1
 endif
 
@@ -127,6 +127,8 @@ g;input_state_files ;s;= .*;= '', '';
 g;input_state_file_list ;s;= .*;= 'file_list_domain_1.txt', 'file_list_domain_2.txt';
 g;output_state_file_list ;s;= .*;= 'file_list_domain_1.txt', 'file_list_domain_2.txt';
 g;ens_size ;s;= .*;= ${ENSEMBLE_SIZE};
+g;obs_sequence_in_name ;s;= .*;= 'obs_seq.out';
+g;obs_sequence_out_name ;s;= .*;= 'obs_seq.final';
 g;num_output_obs_members ;s;= .*;= ${ENSEMBLE_SIZE};
 g;num_output_state_members ;s;= .*;= ${ENSEMBLE_SIZE};
 g;output_mean ;s;= .*;= .TRUE.;
@@ -157,11 +159,11 @@ chmod u+x run_filter.csh
 set member = 1
 while ( ${member} <= ${ENSEMBLE_SIZE} )
 
-   set dirname = `printf instance_%04d $member`
+   set dirname = `printf instance_%03d $member`
    mkdir -p $dirname
    cd $dirname
 
-   set COAMPS_RESTART = `printf coamps_%04d_%s.hdf5 $member $CDTG`
+   set COAMPS_RESTART = `printf coamps_%03d_%s.hdf5 $member $CDTG`
 
    ${COPY} ../input.nml                      . || exit 4
    ${COPY} ../state.vars                     . || exit 4

@@ -2,7 +2,7 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
+# DART $Id: README 13207 2019-07-25 23:24:59Z thoar@ucar.edu $
 
 An updated version of the coamps model interfaces and scripts.
 Contributed by Alex Reinecke, NRL, Monterey.
@@ -51,7 +51,7 @@ Sasa: Here's the scoop:
 4) You should end up with state.vars file
 
 
-Thu Sep 14 15:31:00 MDT 2017 $Revision$:
+Thu Sep 14 15:31:00 MDT 2017 $Revision: 13207 $:
  The problem I (Tim H) was having was with the DART add_domain() call, 
 it expects the variables to exist in the source file. They do not. 
 I spent a lot of time trying to work around the problem to no avail. 
@@ -195,7 +195,7 @@ wwwind_sig_034800_000000_1a0067x0037_2012010606_00000000_analfld Dataset {31, 37
 
 -------------------------------------------------------------------------------
 
-conference call today ... Sasha, Jim D., Andy
+25 July 2019 : conference call today ... Sasha, Jim D., Andy
 
 a) Sasha will create an initial 20-member ensemble for the WC domain using a perturbed physics
    approach - then forecast for 12 hours. A single mesh.
@@ -213,9 +213,17 @@ d) I need to become familiar with converting 'everything' (state/obs) to the ass
 
 e) NRL will be responsible for cycling the system to flush out any bugs in the assimilation framework.
 
+-------------------------------------------------------------------------------
+
+31 July 
+
+Sasa: "I am putting files on Eddy: /home/nopp/COAMPS_hdf5_files/2018
+The filenames should be self-explanatory, 000 is the control, 001-020 are ensemble members."
+
+
 
 # <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
+# $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/coamps/models/coamps_nest/README $
+# $Revision: 13207 $
+# $Date: 2019-07-25 16:24:59 -0700 (Thu, 25 Jul 2019) $
 
