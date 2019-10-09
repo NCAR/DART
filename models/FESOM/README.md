@@ -11,6 +11,8 @@ presented recently.
 
 The FESOM V1.4 source code can be downloaded from https://fesom.de/models/fesom14
 
+The FESOM/DART interfaces, diagnostics and support scripting were contributed by **Ali Aydoğdu**. Thanks Ali!
+
 ## **FESOM/DART interface**
 ### model_mod.f90
 
@@ -23,6 +25,7 @@ Forward operators use an interpolation using the closest model node in the horiz
 application in Aydoğdu et al. (2018a) uses a very high-resolution mesh. In the vertical, a linear
 interpolation is performed between two enclosing model layers. Interpolation in model_interpolate
 routine can be improved, if needed.
+
 ### Workflow
 
 1.  *environment.load* Must be modified to contain the specifics of an experiment. 
