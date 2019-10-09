@@ -40,19 +40,11 @@ endif
 
 # Put WRF executables and supporting files in proper place
 ${COPY} ${WRF_DM_SRC_DIR}/run/* ${RUN_DIR}/WRF_RUN  || exit 3
-if ( ! -e ${RUN_DIR}/WRF_RUN/wrf.exe ) then
-    echo "ERROR: wrf.exe not copied into ${RUN_DIR}/WRF_RUN"
+if ( ! -e ${RUN_DIR}/WRF_RUN/wrf.exe || ! -e ${RUN_DIR}/WRF_RUN/real.exe ) then
+    echo "ERROR: real.exe or wrf.exe not copied into ${RUN_DIR}/WRF_RUN"
     echo "Check WRF build"
 endif
 ${REMOVE} ${RUN_DIR}/WRF_RUN/namelist.input  || exit 4
-
-if ( -e ${WRF_SL_SRC_DIR}/main/real.exe ) then
-   ${COPY} ${WRF_SL_SRC_DIR}/main/real.exe ${RUN_DIR}/WRF_RUN/real.serial.exe || exit 5
-else
-   echo "ERROR: ${WRF_SL_SRC_DIR}/main/real.exe not found; cannot be copied to ${RUN_DIR}/WRF_RUN/"
-   echo "Check WRF build."
-   exit
-endif
 
 # Put WRFDA executables and supporting files in proper place
 if ( -e ${VAR_SRC_DIR}/var/build/da_wrfvar.exe ) then

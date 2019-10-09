@@ -43,7 +43,6 @@ set PERTS_DIR        = ${BASE_DIR}/perts
 set SHELL_SCRIPTS_DIR = ${BASE_DIR}/scripts
 set DART_DIR          = /glade/p/work/USER/DART_manhattan           # set this appropriately #%%%#
 set WRF_DM_SRC_DIR    = /glade/p/work/USER/WRFV3_dmpar              # set this appropriately #%%%#
-set WRF_SL_SRC_DIR    = /glade/p/work/USER/WRFV3_serial             # set this appropriately #%%%#
 set WPS_SRC_DIR       = /glade/p/work/USER/WPS                      # set this appropriately #%%%#
 set VAR_SRC_DIR       = /glade/p/work/USER/WRFDA                    # set this appropriately #%%%#
 
