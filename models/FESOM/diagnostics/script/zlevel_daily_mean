@@ -1,0 +1,45 @@
+#!/bin/bash
+#BSUB -a poe               #
+#BSUB -J fesom_post         # Name of the job.
+#BSUB -o fesom_post_%J.out  # Appends std output to file %J.out.
+#BSUB -e fesom_post_%J.out  # Appends std error to file %J.err.
+#BSUB -P fesom             # Project ID.
+#BSUB -q serial_6h           # queue
+####BSUB -x
+
+# extract a model level from fesom ocean output
+# for the days and levels indicated
+# calls zlevel_daily_mean.gmt to plot
+
+tool=3
+INITIALDAY=1; FINALDAY=1
+EXPDEF=FB0; EXPNUM=01; YEAR=2009
+make
+for LAYER in 1 12 25 ; do
+sed -e 's;EXPDEF;'${EXPDEF}';' -e 's;EXPNUM;'${EXPNUM}';'\
+    -e 's;INITIALDAY;'${INITIALDAY}';' -e 's;FINALDAY;'${FINALDAY}';'\
+    -e 's;YEAROFNC;'${YEAR}';' -e 's;TOOL2RUN;'${tool}';'\
+    -e 's;LEVEL2RUN;'${LAYER}';' -e 's;RUNLENGTH;365;' -e 's;TIMESTEP;1;'\
+    namelist.config.template > namelist.config
+
+./feom_post_mesh.x
+i=${INITIALDAY}; j=${i}; DAYLOOP=${FINALDAY}; EXPERIMENT=( ${EXPDEF}${EXPNUM} ); FILE=OCE
+for EXP in ${EXPERIMENT[@]}; do
+if [[ ${FILE} == 'OCE' ]] && [[ ${LAYER} == 1 ]]; then VAR=(SAL TEM SSH); fi
+if [[ ${FILE} == 'OCE' ]] && [[ ${LAYER} != 1 ]]; then VAR=(SAL TEM); fi
+if [[ ${FILE} == 'FRC' ]]; then VAR=(RELAX_SALT RUNOFF WNET EVAP); fi
+while [ ${i} -le ${DAYLOOP} ];do
+    for VARIABLE in ${VAR[@]}; do
+      sed -e 's/DAY2PLOT/'${i}'/' -e \
+             's/YEAR2PLOT/'${YEAR}'/' -e \
+             's/EXPCODE/'${EXP}'/' -e \
+             's/VARIABLE2PLOT/'${VARIABLE}'/' -e \
+             's/LAYERNUMBER/'${LAYER}'/' zlevel_daily_mean.gmt > zlevel.gmt
+      sh TSSHRZPLT.sh
+    done
+  i=$[ ${i}+1 ]
+  done
+  done
+  i=${j}
+done
+exit

@@ -1,0 +1,81 @@
+! This is the namelist file for model general configuration
+
+&modelname
+runid='EXPDEFEXPNUM' 
+/
+
+&dart_nml
+dart_days=1
+dart_secs=1
+/
+
+&timestep
+step_per_day=TIMESTEP	                 !21600 4sec !2880 30sec !17280 5sec !4320  
+run_length=RUNLENGTH
+run_length_unit='d' 					! y, m, d, s
+runyear=YEAROFNC
+/
+
+&timeseries
+iniday=INITIALDAY
+endday=FINALDAY
+/
+
+&clockinit						! the model starts at
+timenew=0.0
+daynew=2 
+yearnew=2007
+/
+
+&paths
+MeshPath='/users/home/ans051/FEOM_PREPROC/mesh-T2G1.5L110b.V2/'   		! real_mesh
+OpbndPath='/users/home/ans051/FEOM_PREPROC/OPBND_ARC/'
+ClimateDataPath='/users/home/ans051/FEOM_PREPROC/HYDROINPUT/'
+ForcingDataPath='/users/home/ans051/FEOM_PREPROC/ECMWF_FORCING/'    ! ECMWF_FORCING
+TideForcingPath='/users/home/ans051/FEOM_PREPROC/TIDEFORCING/'
+ResultPath='/work/ans051/TSS/EXPDEFEXPNUM/'
+/
+
+&initialization
+use_prepared_init_ice=.false. 				!true.   !how to init. ice; runid.initiae_ice.nc
+OceClimaDataName='tss_ts.txt' 				!which T/S data to initial. ocean
+!OceClimaDataName='Winter_phc2.1_beta_ts.out' 		!which T/S data to initial. ocean
+							!'Winter_phc2.1_beta_ts.out'
+							!'annual_woa01_ts.out'
+/
+
+&inout
+!restartflag='29'							!restart from which saved record,'last,
+restartflag='last'					!restart from which saved record,'last,'#'
+output_length=1						!only required for m,d,h,s cases,  y takes 1
+output_length_unit='d'  				!output period: y, m, d, h, s 
+logfile_outfreq=100  	        			!in logfile info. output frequency, # steps
+/
+
+&mesh_def
+grid_type=1						!1 z-level, 2 sigma, 3 z+sigma
+/
+
+&geometry
+domain_length=360.    	        			![degree]
+cartesian=.false.
+fplane=.false.
+betaplane=.false.
+f_fplane=-1.4e-4        				![1/s]
+beta_betaplane=2.0e-11  				![1/s/m]
+rotated_grid=.false. 	  				!option only valid for coupled model case now
+alphaEuler=50.						![degree] Euler angles, convention:
+betaEuler=14.	 					![degree] first around z, then around new x,
+gammaEuler=-90.						![degree] then around new z.
+/
+
+&calendar
+include_fleapyear=.false.
+/
+
+&postproc
+tool=TOOL2RUN
+level_number=LEVEL2RUN
+flux_section='NB'
+thalweg_directory='/users/home/ans051/FEOM_POSTPROC/MESH_THALWEG'
+/
