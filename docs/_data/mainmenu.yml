@@ -3,42 +3,42 @@
 # excluding the repository name makes it easier to navigate when building locally
 menu:
   - title: Documentation
-    url: /DART/pages/Getting_Started.html
+    url: /pages/Getting_Started.html
     submenu:
       - title: Getting Started
-        url: /DART/pages/Getting_Started.html
+        url: /pages/Getting_Started.html
       - title: Models
-        url: /DART/pages/Models.html
-      - title: Observations 
-        url: /DART/pages/Observations.html
+        url: /pages/Models.html
+      - title: Observations
+        url: /pages/Observations.html
       - title: Diagnostics
-        url: /DART/pages/Diagnostics.html
+        url: /pages/Diagnostics.html
   - title: Research
-    url: /DART/pages/Research.html
+    url: /pages/Research.html
     submenu:
       - title: "DART_LAB: explore ensemble DA concepts with MATLAB"
-        url: /DART/pages/dart_lab.html
+        url: /pages/dart_lab.html
       - title: "Tutorial: learn how to use DART"
-        url: /DART/pages/Tutorial.html
+        url: /pages/Tutorial.html
       - title: Publications
-        url: /DART/pages/Publications.html
+        url: /pages/Publications.html
       - title: Presentations
-        url: /DART/pages/Presentations.html
+        url: /pages/Presentations.html
       - title: CESM and DART
-        url: /DART/pages/CESM_DART_guidelines.html
+        url: /pages/CESM_DART_guidelines.html
       - title: WRF and DART
-        url: /DART/pages/WRF_DART_guidelines.html
+        url: /pages/WRF_DART_guidelines.html
   - title: About Us
-    url: /DART/pages/About_Us.html
+    url: /pages/About_Us.html
   - title: Support
-    url: /DART/pages/support.html
+    url: /pages/support.html
     submenu:
       - title: DART Parallelism
-        url: /DART/pages/dart_mpi.html
+        url: /pages/dart_mpi.html
       - title: Frequently Asked Questions
-        url: /DART/pages/DART2_Miscellany.html
+        url: /pages/DART2_Miscellany.html
   - title: Releases
-    url: /DART/pages/release.html
+    url: /pages/release.html
     submenu:
       - title: Manhattan
         url: https://github.com/NCAR/DART/releases/tag/v9.7.0
