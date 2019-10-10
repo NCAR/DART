@@ -84,7 +84,7 @@ LD = gfortran
 
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
-FFLAGS  = -O2 -ffree-line-length-none $(INCS)
+FFLAGS  = -O0 -ffree-line-length-none $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
 # FFLAGS = -g -Wuninitialized -Wunused -ffree-line-length-none -fbounds-check \

@@ -2,7 +2,7 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
+! DART $Id$
 
 !> test program that tries to open an obs_sequence file, print out
 !> basic information about it, and write the same information out.

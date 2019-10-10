@@ -1,15 +1,15 @@
 &model_nml
-     noah_netcdf_filename         = 'restart.nc',
-     assimilation_period_days     =    0,
-     assimilation_period_seconds  = 3600,
-     model_perturbation_amplitude = 0.0,
-     debug                        = 1,
-     noah_state_variables         = 'SOIL_T',   'QTY_SOIL_TEMPERATURE',
-                                    'SOIL_M',   'QTY_SOIL_MOISTURE',
-                                    'SOIL_W',   'QTY_SOIL_LIQUID_WATER',
-                                    'SKINTEMP', 'QTY_SKIN_TEMPERATURE',
-                                    'SNODEP',   'QTY_SNOW_THICKNESS',
-                                    'WEASD',    'QTY_SNOW_WATER',
-                                    'CANWAT',   'QTY_CANOPY_WATER',
-                                    'QFX',      'QTY_LATENT_HEAT_FLUX',
+     domain_shapefile                = 'restart.nc' 
+     assimilation_period_days     =    0 
+     assimilation_period_seconds  = 3600 
+     model_perturbation_amplitude = 0.0 
+     debug                        = 1 
+     lsm_variables = 'SOIL_T',   'QTY_SOIL_TEMPERATURE',
+                     'SOIL_M',   'QTY_SOIL_MOISTURE',
+                     'SOIL_W',   'QTY_SOIL_LIQUID_WATER',
+                     'SKINTEMP', 'QTY_SKIN_TEMPERATURE',
+                     'SNODEP',   'QTY_SNOW_THICKNESS',
+                     'WEASD',    'QTY_SNOW_WATER',
+                     'CANWAT',   'QTY_CANOPY_WATER',
+                     'QFX',      'QTY_LATENT_HEAT_FLUX',
   /
