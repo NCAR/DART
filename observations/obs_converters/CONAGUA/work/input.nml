@@ -15,6 +15,12 @@
    obs_min_err_std = 0.5
    /
 
+&formatted_text_to_obs_nml
+   text_input_file = 'example_data/inputtext.txt'
+   obs_out_file    = 'obs_seq.out'
+   debug           = .true.
+   /
+
 &obs_kind_nml
    /
 

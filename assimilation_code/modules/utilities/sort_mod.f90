@@ -476,7 +476,7 @@ ind = num
 
 ! Keep looping until finished
 do
-  ! Keep going down levels until bottom
+   ! Keep going down levels until bottom
    if(level > 1) then
       level = level - 1
       l_val = x(indx(level))

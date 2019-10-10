@@ -40,6 +40,21 @@ use          obs_kind_mod,  only : QTY_SURFACE_ELEVATION, QTY_PRESSURE, &
                                    QTY_ATOMIC_OXYGEN_MIXING_RATIO, QTY_NITROGEN, &
                                    get_index_for_quantity, get_num_quantities, &
                                    get_name_for_quantity, get_quantity_for_type_of_obs
+
+! examples of additional quantities that cam-chem might need defined from the obs_kind_mod
+!                                   ! GASES
+!                                   QTY_CO, QTY_SFCO, QTY_SFCO01, QTY_SFCO02, QTY_SFCO03, &
+!                                   QTY_O3, QTY_OH, QTY_NO, QTY_NO2, QTY_NO3, QTY_CH2O, &
+!                                  ! AEROSOLS
+!                                   QTY_AOD, QTY_NUM_A1, QTY_NUM_A2, QTY_NUM_A3, QTY_NUM_A4, & ! AOD and Numbers
+!                                   QTY_SFNUM_A1, QTY_SFNUM_A2, QTY_SFNUM_A3, QTY_SFNUM_A4, & ! SF / Numbers
+!                                   QTY_POM_A1, QTY_POM_A4, QTY_BC_A1, QTY_BC_A4, &
+!                                   QTY_SFPOM_A4, QTY_SFBC_A4, & ! Carbon
+!                                   QTY_SO4_A1, QTY_SO4_A2, QTY_SO4_A3, QTY_SFSO4_A1, QTY_SFSO4_A2, & ! Sulfates
+!                                   QTY_DST_A1, QTY_DST_A2, QTY_DST_A3, QTY_NCL_A1, QTY_NCL_A2, QTY_NCL_A3, &
+!                                   QTY_SOA1_A1, QTY_SOA1_A2, QTY_SOA2_A1, QTY_SOA2_A2, QTY_SOA3_A1, QTY_SOA3_A2, & ! SOA
+!                                   QTY_SOA4_A1, QTY_SOA4_A2, QTY_SOA5_A1, QTY_SOA5_A2, & ! SOA
+
 use     mpi_utilities_mod,  only : my_task_id
 use        random_seq_mod,  only : random_seq_type, init_random_seq, random_gaussian
 use  ensemble_manager_mod,  only : ensemble_type, get_my_num_vars, get_my_vars
@@ -99,8 +114,7 @@ public :: nc_write_model_vars,           &
           init_conditions
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
+character(len=256), parameter :: source   = "$URL$"
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
@@ -427,6 +441,7 @@ integer, intent(in) :: q
 integer, intent(in) :: nd
 type(location_type) :: get_location_from_index
 
+character(len=*), parameter :: routine = 'get_location_from_index'
 real(r8) :: slon_val
 real(r8) :: use_vert_val
 integer  :: use_vert_type
@@ -439,21 +454,25 @@ integer  :: use_vert_type
 if (nd == 3) then
    use_vert_type = VERTISLEVEL
    use_vert_val  = real(k,r8)
-else
-   if (q == QTY_SURFACE_ELEVATION .or. q == QTY_SURFACE_PRESSURE) then
+else if (nd == 2) then
+   ! add any 2d surface fields to this function
+   if (is_surface_field(q)) then
       use_vert_type = VERTISSURFACE
       use_vert_val  = MISSING_R8  
       ! setting the vertical value to missing matches what the previous
       ! version of this code did.  other models choose to set the vertical
-      ! value to the actual surface elevation at this location:
+      ! value to the model surface elevation at this location:
       !   use_vert_val  = phis(lon_index, lat_index) / gravity
    else
-      ! assume other 2d fields are integrated quantities with no vertical
-      ! location. if there are other real surface fields in the state
-      ! add their quantitys to the if() test above.
+      ! any 2d field not listed as a surface field (in is_surface_field() function) 
+      ! is assumed to be an integrated quantity with a vert type of VERTISUNDEF.
       use_vert_type = VERTISUNDEF
       use_vert_val  = MISSING_R8
    endif
+else
+   write(string1, *) 'state vector field not 2D or 3D and no code to handle other dimensionity'
+   write(string2, *) 'dimensionality = ', nd, ' quantity type = ', trim(get_name_for_quantity(q))
+   call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
 endif
 
 ! the horizontal location depends on whether this quantity is on the
@@ -889,6 +908,10 @@ end subroutine interpolate_values
 !-----------------------------------------------------------------------
 !> return my_status /= 0 if obs is above a user-defined threshold.
 !> intended to be quick (low-cost) and not exact. 
+!> This intentionally does NOT have a case for vert type of
+!> SCALEHEIGHT - because this routine is only used to look at
+!> observation locations.  we have not yet encountered obs
+!> with that vertical type.
 
 subroutine obs_too_high(vert_value, which_vert, my_status)
 real(r8), intent(in) :: vert_value
@@ -3500,7 +3523,9 @@ bq(1) = get_quantity_for_type_of_obs(otype)
 
 call convert_vertical_obs(ens_handle, 1, bl, bq, bt, &
                              vert_type, status)
+
 status1 = status(1)
+
 if (status1 /= 0) return
 
 loc = bl(1)
@@ -3557,7 +3582,10 @@ write(string1, out_fmt) &
    ' ... which is equivalent to height         ', no_assim_above_height, ' meters' 
 call error_handler(E_MSG, 'init_discard_high_obs', string1, source, revision, revdate)
 
-! special for this - normalize by Ps for printing out
+! print this out, but don't save the value unless we encounter
+! incoming observations which have vertical units of scale height.
+! so far we have localized in scale height but never had obs
+! which had an incoming vertical unit of scale height.
 no_assim_above_scaleh = scale_height(no_assim_above_pressure, ref_surface_pressure, .false.)
 write(string1, out_fmt) &
    ' ... which is equivalent to scale height   ', no_assim_above_scaleh
@@ -4124,11 +4152,25 @@ end function scale_height
 
 !--------------------------------------------------------------------
 
+! add any 2d fields here that are surface quantities
+
 function is_surface_field(qty)
 integer, intent(in) :: qty
 logical :: is_surface_field
 
-is_surface_field = (qty == QTY_SURFACE_PRESSURE .or. qty == QTY_SURFACE_ELEVATION)
+select case (qty)
+ case (QTY_SURFACE_PRESSURE, QTY_SURFACE_ELEVATION)
+   is_surface_field = .true.
+
+! example:
+! case (QTY_SFNUM_A1, QTY_SFNUM_A2, QTY_SFNUM_A3, QTY_SFNUM_A4, QTY_SFPOM_A4, QTY_SFBC_A4, &
+!       QTY_SFSO4_A1, QTY_SFSO4_A2, QTY_SFCO,     QTY_SFCO01,   QTY_SFCO02 ) 
+!   is_surface_field = .true.
+
+ case default
+   is_surface_field = .false.
+
+end select
    
 end function is_surface_field
 

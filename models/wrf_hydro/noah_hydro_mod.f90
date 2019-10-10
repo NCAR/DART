@@ -38,6 +38,7 @@ public :: configure_lsm, &
           linkLong, &
           linkLat, &
           linkAlt, &
+          BucketMask, &
           get_link_tree, &
           full_to_connection, &
           get_downstream_links, &
@@ -153,6 +154,7 @@ real(r8), allocatable, dimension(:) :: basnMask, basnLon, basnLat
 integer,  allocatable, dimension(:) :: linkID ! Link ID (NHDFlowline_network COMID)
 real(r8), allocatable, dimension(:) :: length
 integer,  allocatable, dimension(:) :: to
+integer,  allocatable, dimension(:) :: BucketMask
 
 integer, parameter :: IDSTRLEN = 15 ! must match declaration in netCDF file
 character(len=IDSTRLEN), allocatable, dimension(:) :: gageID ! NHD Gage Event ID from SOURCE_FEA field in Gages feature class
@@ -1025,6 +1027,7 @@ do i = 1, n_link
 enddo
 allocate(length(n_link))
 allocate(to(n_link))
+allocate(BucketMask(n_link))
 
 !    alt: Elevation from the North American Vertical Datum 1988 (NADV88)
 !      n: Manning's roughness
@@ -1033,13 +1036,14 @@ allocate(to(n_link))
 ! length: Length (Stream length (m))
 !     to: "To Link ID (PlusFlow table TOCOMID for every FROMCOMID)"
 
-call nc_get_variable(ncid,'lon',   linkLong,  routine)
-call nc_get_variable(ncid,'lat',   linkLat,   routine)
-call nc_get_variable(ncid,'alt',   linkAlt,   routine)
-call nc_get_variable(ncid,'n',     roughness, routine)
-call nc_get_variable(ncid,'link',  linkID,    routine)
-call nc_get_variable(ncid,'Length',length,    routine)
-call nc_get_variable(ncid,'to',    to,        routine)
+call nc_get_variable(ncid,'lon'              ,linkLong,  routine)
+call nc_get_variable(ncid,'lat'              ,linkLat,   routine)
+call nc_get_variable(ncid,'alt'              ,linkAlt,   routine)
+call nc_get_variable(ncid,'n'                ,roughness, routine)
+call nc_get_variable(ncid,'link'             ,linkID,    routine)
+call nc_get_variable(ncid,'Length'           ,length,    routine)
+call nc_get_variable(ncid,'to'               ,to,        routine)
+call nc_get_variable(ncid,'bucket_comid_mask',BucketMask,routine)
 
 ! no snappy accessor routine for character arrays
 ! call nc_get_variable(ncid,'gages', gageID,    routine)
@@ -1062,7 +1066,7 @@ call fill_connections(toIndex,fromIndices,fromIndsStart,fromIndsEnd)
 
 if (debug > 99) then
    do i=1,n_link
-      write(*,*)'link ',i,linkLong(i),linkLat(i),linkAlt(i),gageID(i),roughness(i),linkID(i)
+      write(*,*)'link ',i,linkLong(i),linkLat(i),linkAlt(i),gageID(i),roughness(i),linkID(i),BucketMask(i)
    enddo
    write(*,*)'Longitude range is ',minval(linkLong),maxval(linkLong)
    write(*,*)'Latitude  range is ',minval(linkLat),maxval(linkLat)

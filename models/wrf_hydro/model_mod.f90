@@ -49,7 +49,7 @@ use     default_model_mod, only : adv_1step, nc_write_model_vars
 
 use        noah_hydro_mod, only : configure_lsm, configure_hydro, &
                                   n_link, linkLong, linkLat, linkAlt, get_link_tree, &
-                                  full_to_connection, get_downstream_links, &
+                                  BucketMask, full_to_connection, get_downstream_links, &
                                   read_hydro_global_atts, write_hydro_global_atts, &
                                   read_noah_global_atts, write_noah_global_atts, &
                                   get_hydro_domain_filename
@@ -893,7 +893,8 @@ integer     :: state_indices(size(close_ind))
 real(r8)    :: state_dists(size(close_ind))
 real(r8)    :: stream_ens_mean(1)
 
-integer :: iclose, iparam, start_indx, num_close_tmp
+integer :: iclose, iparam, start_indx, num_close_tmp, close_index
+integer :: ivars, num_vars_hydro_dom
 
 !integer     :: istream
 integer     :: iloc, base_qty
@@ -960,8 +961,6 @@ if (base_qty /= QTY_STREAM_FLOW) then
    RETURN
 endif
 
-! Everything below here only pertains to identity STREAMFLOW observations.
-
 ! 'stream_indices' contains the GLOBAL indices into the DART state vector.
 ! These may or may not be on my task.
 
@@ -976,12 +975,46 @@ if (debug > 3) then
    enddo
 endif
 
+! check all other variables in the hydro domain and apply
+! the same 'get close' logic to them.
+
+num_vars_hydro_dom = get_num_variables(idom_hydro)
+
+if (num_vars_hydro_dom > 1) then
+   ! more than 1 variable (streamflow) in the hydro domain
+
+   num_close_tmp = stream_nclose
+
+   ! Already did streamflow (var #1), now add the other variables 
+   do ivars = 2, num_vars_hydro_dom
+      start_indx = get_index_start(idom_hydro, ivars)
+
+      VARloop: do iclose = 1, num_close_tmp
+         close_index = stream_indices(iclose)
+
+         ! Remove the masked bucket variables from the close set.
+         ! Making them "far" from the observation is a solution to the 
+         ! fact that the bucket is not present on the entire channel network.
+         ! This way filter will not touch them and they won't be updated. 
+         if (get_variable_name(idom_hydro, ivars) == 'z_gwsubbas' .and. &
+             BucketMask(close_index) == 0) cycle VARloop 
+
+         stream_nclose                 = stream_nclose + 1
+         stream_indices(stream_nclose) = start_indx - 1 + close_index
+         stream_dists(  stream_nclose) = stream_dists(iclose)
+      enddo VARloop
+
+   enddo
+endif
+
+
 ! Localize the parameters:
 ! If the ensemble mean streamflow is "near" zero then the next block is ignored.
 ! This is not great, but at this stage we do not have access to the individual
 ! state values.
 
 stream_ens_mean = get_state(full_index, ens_handle)
+! stream_ens_mean = 1.0_r8  ! this is to test model_mod_check ... has no access to get_state()
 
 ! Since the parameter domain has exactly the same geometry/connectivity as the
 ! streamflow, we can add the domain offset (start_indx) to the close streamflow

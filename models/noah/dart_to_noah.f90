@@ -42,8 +42,7 @@ use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
+character(len=*), parameter :: source   = "$URL$"
 character(len=*), parameter :: revision = "$Revision$"
 character(len=*), parameter :: revdate  = "$Date$"
 character(len=*), parameter :: routine  = "dart_to_noah"
@@ -311,11 +310,5 @@ call finalize_utilities(routine)
 !end subroutine calculate_posterior_snowh
 
 
-
 end program dart_to_noah
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

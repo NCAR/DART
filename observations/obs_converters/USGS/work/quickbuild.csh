@@ -11,11 +11,12 @@
 #----------------------------------------------------------------------
 # 'preprocess' is a program that culls the appropriate sections of the
 # observation module for the observations types in 'input.nml'; the 
-# resulting source file is used by all the remaining programs, 
+# resulting source file is used by all the remaining programs,
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
-\rm -f preprocess *.o *.mod 
+set nonomatch
+\rm -f preprocess *.o *.mod Makefile
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
 
@@ -56,7 +57,7 @@ foreach TARGET ( mkmf_* )
    endsw
 end
 
-\rm -f *.o *.mod  input.nml*_default
+\rm -f *.o *.mod input.nml*_default Makefile .cppdefs
 
 echo "Success: All ${MODEL} programs compiled."  
 

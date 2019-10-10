@@ -1,0 +1,5 @@
+&dart_to_noah_nml
+   dart_analysis_file = 'dart_posterior.nc'
+   noah_restart_file  = 'noah_restart.nc
+  /
+

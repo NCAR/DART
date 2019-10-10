@@ -8,7 +8,7 @@ def noise_model(x, seed: int=None):
     # 1) Zero-mean,
     # 2) frac: Standard deviation is a fraction of the value,
     # 3) min: Truncated below at min,
-    frac = 0.2
+    frac = 0.4
     minim = 0.0
 
     # Do not want variables to be correlated...
