@@ -1,24 +1,30 @@
 &perfect_model_obs_nml
-   async                    = 0
-   init_time_days           = -1
-   init_time_seconds        = -1
-   first_obs_days           = -1
-   first_obs_seconds        = -1
-   last_obs_days            = -1
-   last_obs_seconds         = -1
-   output_interval          = 1
-   restart_in_file_name     = "perfect_ics"
-   restart_out_file_name    = "perfect_restart"
-   obs_seq_in_file_name     = "obs_seq.in"
-   obs_seq_out_file_name    = "obs_seq.out"
-   adv_ens_command          = "advance_model_script.die"
-   output_timestamps        = .true.
-   trace_execution          = .false.
-   output_forward_op_errors = .false.
-   print_every_nth_obs      = 100
-   silence                  = .true.
-   /
+   read_input_state_from_file = .true.
+   input_state_files          = "ENS01.2009.oce.nc"
+   init_time_days             = -1
+   init_time_seconds          = -1
 
+   write_output_state_to_file = .true.
+   single_file_out            = .true.
+   output_state_files         = "perfect_output.nc"
+   output_interval            = 1
+
+   async                      = 0
+   adv_ens_command            = "advance_model_script.die"
+
+   obs_seq_in_file_name       = "obs_seq.in"
+   obs_seq_out_file_name      = "obs_seq.out"
+   first_obs_days             = -1
+   first_obs_seconds          = -1
+   last_obs_days              = -1
+   last_obs_seconds           = -1
+
+   trace_execution            = .true.
+   output_timestamps          = .true.
+   print_every_nth_obs        = 0
+   output_forward_op_errors   = .false.
+   silence                    = .false.
+   /
 
 # If the input and output file_lists are the same ... the input
 # is OVERWRITTEN with the new state. You may preserve the input
@@ -68,7 +74,7 @@
    /
 
 &state_vector_io_nml
-   single_precision_output    = .false.,
+   single_precision_output    = .false.
   /
 
 &mpi_utilities_nml
@@ -99,7 +105,7 @@
    /
 
 &location_nml
-   nlon                        = 71,
+   nlon                        = 71
    nlat                        = 36
    horiz_dist_only             = .false.
    vert_normalization_pressure = 100000.0
@@ -185,7 +191,7 @@
    assimilate_these_obs_types = 'FERRYBOX_SALINITY',
                                 'FERRYBOX_TEMPERATURE'
    evaluate_these_obs_types = 'SALINITY',
-                              'TEMPERATURE',
+                              'TEMPERATURE'
    /
 
 &assim_model_nml
@@ -216,7 +222,7 @@
    calendar                     = 'Gregorian'
    debug                        = 0
    variables = 'salt',   'QTY_SALINITY'   , '0.0', 'NA', 'UPDATE',
-               'temp',   'QTY_TEMPERATURE',  'NA', 'NA', 'UPDATE',
+               'temp',   'QTY_TEMPERATURE',  'NA', 'NA', 'UPDATE'
    /
 
 # NOTE: h(nVertLevels,nCells,Time) is layer thickness, not SSH
@@ -239,10 +245,10 @@
    /
 
 &preprocess_nml
-    input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
-   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90',
-   input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
-  output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90',
+    input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
+   input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+  output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
                input_files = '../../../observations/forward_operators/obs_def_ocean_mod.f90'
    /
 
@@ -332,7 +338,7 @@
    lonlim2               = 30.000, 120.0, 270.0
    latlim1               = 40.250, -90.0, -90.0
    latlim2               = 41.125,  25.0,  90.0
-   reg_names             = 'Marmara',
+   reg_names             = 'Marmara'
    create_rank_histogram = .true.
    outliers_in_histogram = .true.
    use_zero_error_obs    = .false.
@@ -385,7 +391,7 @@
    output_state_files    = 'check_me'
    verbose               = .TRUE.
    test1thru             = 0
-   run_tests             = 1, 2, 3, 4, 5, 7
+   run_tests             = 1, 2, 3, 4, 7
    x_ind                 = 3267068
    loc_of_interest       = 26.0924, 40.1515, 12.01
    quantity_of_interest  = 'QTY_SALINITY'

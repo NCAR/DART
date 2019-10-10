@@ -89,6 +89,7 @@ set DO_THESE_MODELS = ( \
   9var \
   POP \
   ROMS \
+  FESOM \
   bgrid_solo \
   cam-fv \
   cice \
