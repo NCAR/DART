@@ -226,7 +226,7 @@ Build the software packages and copy files into place:
 </li>
 
 
-<li> Build WRF, WPS and WRFDA. WRF must be built twice, once serially and once dmpar. WRFDA can be built dmpar.
+<li> Build WRF, WPS and WRFDA. WRF and WRFDA should be built dmpar.
      WPS can be built serial.  See WRF/WRFDA documentation for more information about building these packages.
      <br/> <br/>
 </li>
@@ -297,7 +297,7 @@ Check to make sure your <em class="file">rundir/WRF_RUN</em> directory contains:
 <pre>
   <em class="program">da_wrfvar.exe</em>
   <em class="program">wrf.exe</em>
-  <em class="program">real.serial.exe</em>
+  <em class="program">real.exe</em>
   <em class="file">be.dat</em>
   <em class="file">contents of your WRF build run/ directory</em> (support data files for WRF)
 </pre>
@@ -334,6 +334,7 @@ Let's now look inside the <em class="file">scripts</em> directory. You should fi
  <em class="program">new_model_advance.csh</em>
  <em class="program">param.csh</em>
  <em class="program">prep_ic.csh</em>
+ <em class="program">real.csh</em>
  <em class="program">setup.csh</em>
 </pre>
 <p>
@@ -352,7 +353,7 @@ The <em class="program">add_bank_perts.ncl</em> script adds perturbations to eac
 increments.
 The <em class="program">setup.csh</em> script creates the proper directory structure and places
 executables and scripts in the proper location.  
-Finally, the <em class="program">gen_retro_icbc.csh</em> is used
+Finally, the <em class="program">gen_retro_icbc.csh</em> and <em class="program">real.csh</em> are used
 to generate template files and boundary conditions, 
 while <em class="program">init_ensemble_var.csh</em> is used to 
 get an initial ensemble set ready for cycled DA.
@@ -414,7 +415,7 @@ If the <em class="program">param.csh</em> script also has the correct edits for 
 you have the executables placed in the rundir, etc., then running 
 <em class="program">gen_retro_icbc.csh</em> should execute a series
 of operations that extracts the grib data, runs metgrid, and then twice executes the
-serial build of <em class="program">real.exe</em> to generate a pair of wrf 
+build of <em class="program">real.exe</em> to generate a pair of wrf 
 files and a boundary file for each analysis time.
 <div class="unix">
 cd <em>WORKDIR</em>/scripts<br />
