@@ -2,41 +2,35 @@
 
 &model_nml
    lsm_model_choice             = 'noahMP_36'
-   domain_shapefiles            = 'restart.nc'
+   domain_shapefiles            = 'RESTART.2003051600_DOMAIN1_01'
    assimilation_period_days     =    0
    assimilation_period_seconds  = 3600
    model_perturbation_amplitude = 0.2
    perturb_distribution         = 'gaussian'
    debug                        = 0
+   polar                        = .false.
+   periodic_x                   = .false.
+   periodic_y                   = .false.
    lsm_variables = 'SOIL_T',   'QTY_SOIL_TEMPERATURE',   '0.0',  'NA', 'UPDATE',
                    'SMC',      'QTY_SOIL_MOISTURE',      '0.0', '1.0', 'UPDATE',
                    'WA',       'QTY_AQUIFER_WATER',      '0.0',  'NA', 'UPDATE',
                    'SNEQV',    'QTY_SNOW_WATER',         '0.0',  'NA', 'UPDATE' 
   /
-                   'ZSNSO',    'QTY_NUM_SNOW_LAYERS',    'NA',   'NA', 'NOUPDATE',
-                   'SNOW_T',   'QTY_SNOW_TEMPERATURE',   '0.0',  'NA', 'UPDATE',
-                   'SOIL_W',   'QTY_SOIL_LIQUID_WATER',  '0.0',  'NA', 'UPDATE',
-                   'SKINTEMP', 'QTY_SKIN_TEMPERATURE',   '0.0',  'NA', 'UPDATE',
-                   'GRDFLX',   'QTY_GROUND_HEAT_FLUX'    '0.0',  'NA', 'UPDATE',
-                   'SNODEP',   'QTY_SNOW_THICKNESS',     '0.0',  'NA', 'UPDATE',
-                   'WEASD',    'QTY_SNOW_WATER',         '0.0',  'NA', 'UPDATE',
-                   'CANWAT',   'QTY_CANOPY_WATER',       '0.0',  'NA', 'UPDATE',
 
 
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
    single_file_in             = .false.
-   input_state_files          = '/scratch/04270/l_jing/DART_NoahMP/output/outfiles/rest/RESTART.2001013100_DOMAIN1_01'
+   input_state_files          = 'RESTART.2003051600_DOMAIN1_01'
    init_time_days             = -1
    init_time_seconds          = -1
-   allow_missing_clm          = .true.
 
    write_output_state_to_file = .true.
    output_state_files         = 'perfect_out.nc'
    output_interval            = 1
 
-   obs_seq_in_file_name       = '/work/04270/l_jing/lonestar/DART_data/st/obs_seq.0Z.20030131'
-   obs_seq_out_file_name      =  'obs_seq.out_20010131'
+   obs_seq_in_file_name       = 'obs_seq.2003051600.in'
+   obs_seq_out_file_name      = 'obs_seq.2003051600.out'
    first_obs_days             = -1
    first_obs_seconds          = -1
    last_obs_days              = -1
@@ -56,7 +50,6 @@
 &filter_nml
    input_state_file_list        = 'input_file_list.txt'
    perturb_from_single_instance = .false.
-   allow_missing_clm            = .true.
    init_time_days               = -1
    init_time_seconds            = -1
 
@@ -152,8 +145,12 @@
 
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'GRACE_TOTAL_WATER_STORAGE','MODIS_SNOWCOVER_FRAC'
-   evaluate_these_obs_types   = 'LAYER_LIQUID_WATER', 'SNOW_THICKNESS'
+   assimilate_these_obs_types = 'GRACE_TOTAL_WATER_STORAGE',
+                                'MODIS_SNOWCOVER_FRAC',
+                                'SOIL_TEMPERATURE',
+                                'SOIL_MOISTURE',
+   evaluate_these_obs_types   = 'LAYER_LIQUID_WATER',
+                                'SNOW_THICKNESS'
   /
 
 
@@ -235,10 +232,10 @@
 #  loc_of_interest       = 98.375, 38.125, 0.7  has soil temperature 262.644
 
 &model_mod_check_nml
-   input_state_files     = 'restart.nc'
+   input_state_files     = 'RESTART.2003051600_DOMAIN1_01'
    output_state_files    = 'mmc_output.nc'
    test1thru             = 0
-   run_tests             = 1,2,3,4,6,7
+   run_tests             = 1,2,3,4,7
    x_ind                 = 5170
    loc_of_interest       = 98.375, 38.125, 0.7
    quantity_of_interest  = 'QTY_SOIL_MOISTURE'
@@ -250,7 +247,6 @@
    interp_test_vertrange =  0.05,   1.5
    interp_test_vertcoord = 'VERTISHEIGHT'
    verbose               = .true.
-   allow_missing         = .true.
   /
 
 

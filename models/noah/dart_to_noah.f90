@@ -63,8 +63,7 @@ integer         :: iunit, io,i,j,k
 type(time_type) :: dart_time, noah_time
 
 integer :: ncid_dart, ncid_noah
-integer :: varid, numdims
-integer :: dimids(NF90_MAX_VAR_DIMS)
+integer :: numdims
 integer :: dimlens(NF90_MAX_VAR_DIMS)
 
 real(r8), allocatable :: innov_swe(:,:)

@@ -9,12 +9,12 @@ FORCING_FILE_DIRECTORY = "/Users/thoar/svn/DART/devel/models/noah/forcing/santar
    OUTDIR = "."
 
    RESTART_FILENAME_REQUESTED = "restart.nc"
-
-   KHOUR                   = 1
+ 
+   KHOUR                   = 1 
    FORCING_TIMESTEP        = 3600
    NOAH_TIMESTEP           = 3600
    OUTPUT_TIMESTEP         = 3600
-   RESTART_FREQUENCY_HOURS = 1
+   RESTART_FREQUENCY_HOURS = 1 
    SPLIT_OUTPUT_COUNT      = 1
 
    NSOIL=4
