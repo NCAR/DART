@@ -928,7 +928,7 @@ huge impact on the final results in certain situations. Lorenz discussed the
 strange behavior of this model in
 [The Essence of Chaos, University of Washington Press, 1995](https://uwapress.uw.edu/book/9780295975146/the-essence-of-chaos/):
 
-> > *At one point I decided to repeat some of the computations in order to
+> > At one point I decided to repeat some of the computations in order to
 examine what was happening in greater detail. I stopped the computer,
 typed in a line of numbers that it had printed out a while earlier, and
 set it running again. I went down the hall for a cup of coffee and
@@ -943,7 +943,7 @@ differed by one and then several units in the last decimal place. …
 The numbers I had typed in were not the exact original numbers, but were
 the rounded-off values that appeared in the original printout. The initial
 round-off errors were the culprits; they were steadily amplifying until
-they dominated the solution. In today’s terminology, there was chaos.*
+they dominated the solution. In today’s terminology, there was chaos.
 
 Lorenz discovered that even in a model with just three variables, a very small
 change in the initial conditions (in this case, the numbers he typed back into
@@ -1943,7 +1943,7 @@ converter. The list of these directories is as follows:
 | Satellite winds from [SSEC](https://www.ssec.wisc.edu/data/) | SSEC | Generic text |
 | Sea surface temperature | SST | NetCDF |
 | Special Sensor Ultraviolet Spectrographic Imager ([SSUSI](https://ssusi.jhuapl.edu/)) retrievals | SSUSI | NetCDF |
-| World Ocean Database ([WOD](<a href="http://www.nodc.noaa.gov/OC5/WOD09/pr_wod09.html">WOD 2009 page</a>)) | WOD | World Ocean Database packed ASCII |
+| World Ocean Database ([WOD](http://www.nodc.noaa.gov/OC5/WOD09/pr_wod09.html)) | WOD | World Ocean Database packed ASCII |
 | [National Snow and Ice Data Center](http://nsidc.org/) sea ice obs | cice | Binary sea ice |
 | VTEC [Madrigal](http://millstonehill.haystack.mit.edu/) upper atmospheric obs | gnd_gps_vtec | Generic text |
 | GPS obs from [COSMIC](http://www.cosmic.ucar.edu) | gps | NetCDF |
