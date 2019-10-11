@@ -134,7 +134,7 @@ CHANRTSWCRT = 1
 channel_option = 2
 
 ! Specify the reach file for reach-based routing options (e.g.: "Route_Link.nc")
-route_link_f = "./DOMAIN/RouteLink.localLinks.v2.nc"
+route_link_f = "./DOMAIN/Route_Link_fromVars_bucketmask.nc"
 
 ! Specify the lake parameter file (e.g.: "LAKEPARM.nc")
 ! Note: If this line is commented out, the code will use LAKEPARM.TBL.

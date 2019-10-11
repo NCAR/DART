@@ -69,10 +69,12 @@ end interface simple_sort
 !> leaving the original array in place.
 
 interface index_sort
-   module procedure index_sort_real
-   module procedure index_sort_digits12
-   module procedure index_sort_int
-   module procedure index_sort_i8
+   module procedure index_sort_r4_i4
+   module procedure index_sort_r4_i8
+   module procedure index_sort_digits12_i4
+   module procedure index_sort_digits12_i8
+   module procedure index_sort_i4_i4
+   module procedure index_sort_i8_i8
    module procedure index_sort_user
 end interface
 
@@ -245,7 +247,7 @@ end function isort
 !> @param indx the array of integer indices to be used to traverse the input array in sorted order
 !> @param num the length of x
 
-subroutine index_sort_real(x, indx, num)
+subroutine index_sort_r4_i4(x, indx, num)
 
 integer,  intent(in)  :: num
 real(r4), intent(in)  :: x(num)
@@ -306,11 +308,11 @@ do
 
 end do
 
-end subroutine index_sort_real
+end subroutine index_sort_r4_i4
 
 !-------------------------------------------------------------------------
 
-subroutine index_sort_digits12(x, indx, num)
+subroutine index_sort_digits12_i4(x, indx, num)
 
 integer,        intent(in)  :: num
 real(digits12), intent(in)  :: x(num)
@@ -371,7 +373,7 @@ do
 
 end do
 
-end subroutine index_sort_digits12
+end subroutine index_sort_digits12_i4
 
 !-------------------------------------------------------------------------
 
@@ -379,13 +381,13 @@ end subroutine index_sort_digits12
 !> x(num) array returned unchanged; index array doesn't need to be 
 !> initialized before this call. 
 !> usage: do i=1,num;  x(indx(i)) is next item in sorted order; enddo
-!> This differs from index_sort_real only in the data type of the x() array.
+!> This differs from index_sort_r4_i4 only in the data type of the x() array.
 !>
 !> @param x the (integer) array to sort
 !> @param indx the array of integer indices to be used to traverse the input array in sorted order
 !> @param num the length of x
 
-subroutine index_sort_int(x, indx, num)
+subroutine index_sort_i4_i4(x, indx, num)
 
 integer, intent(in)  :: num
 integer, intent(in)  :: x(num)
@@ -446,11 +448,11 @@ do
 
 end do
 
-end subroutine index_sort_int
+end subroutine index_sort_i4_i4
 
 !-------------------------------------------------------------------------
 
-subroutine index_sort_i8(x, indx, num)
+subroutine index_sort_i8_i8(x, indx, num)
 
 implicit none
 
@@ -512,7 +514,7 @@ do
 
 end do
 
-end subroutine index_sort_i8
+end subroutine index_sort_i8_i8
 
 !-------------------------------------------------------------------------
 
@@ -849,6 +851,137 @@ do j = 1, num
 end do
 
 end subroutine simple_index_sort_int
+
+!-------------------------------------------------------------------------
+
+subroutine index_sort_r4_i8(x, indx, num)
+
+integer(i8),  intent(in)  :: num
+real(r4),     intent(in)  :: x(num)
+integer(i8),  intent(out) :: indx(num)
+
+integer(i8) :: ind, i, j, l_val_indx, level
+real(r4) :: l_val
+
+if ( .not. module_initialized ) call initialize_module
+
+! Initialize the index array to input order
+do i = 1, num
+   indx(i) = i
+end do
+
+! Only one element, just send it back
+if(num <= 1) return
+
+level = num / 2 + 1
+ind = num
+
+! Keep looping until finished
+do
+   ! Keep going down levels until bottom
+   if(level > 1) then
+      level = level - 1
+      l_val = x(indx(level))
+      l_val_indx = indx(level)
+   else
+      l_val = x(indx(ind))
+      l_val_indx = indx(ind)
+
+      indx(ind) = indx(1)
+      ind = ind - 1
+      if(ind == 1) then
+         indx(1) = l_val_indx
+         return
+      endif
+   endif
+
+   i = level
+   j = 2 * level
+
+   do while(j <= ind)
+      if(j < ind) then
+         if(x(indx(j)) < x(indx(j + 1))) j = j + 1
+      endif
+      if(l_val < x(indx(j))) then
+         indx(i) = indx(j)
+         i = j
+         j = 2 * j
+      else
+         j = ind + 1
+      endif
+   end do
+
+   indx(i) = l_val_indx
+
+end do
+
+end subroutine index_sort_r4_i8
+
+
+!-------------------------------------------------------------------------
+
+subroutine index_sort_digits12_i8(x, indx, num)
+
+integer(i8),    intent(in)  :: num
+real(digits12), intent(in)  :: x(num)
+integer(i8),    intent(out) :: indx(num)
+
+integer(i8)  :: ind, i, j, l_val_indx, level
+real(digits12) :: l_val
+
+if ( .not. module_initialized ) call initialize_module
+
+! Initialize the index array to input order
+do i = 1, num
+   indx(i) = i
+end do
+
+! Only one element, just send it back
+if(num <= 1) return
+
+level = num / 2 + 1
+ind = num
+
+! Keep looping until finished
+do
+   ! Keep going down levels until bottom
+   if(level > 1) then
+      level = level - 1
+      l_val = x(indx(level))
+      l_val_indx = indx(level)
+   else
+      l_val = x(indx(ind))
+      l_val_indx = indx(ind)
+
+      indx(ind) = indx(1)
+      ind = ind - 1
+      if(ind == 1) then
+         indx(1) = l_val_indx
+         return
+      endif
+   endif
+
+   i = level
+   j = 2 * level
+
+   do while(j <= ind)
+      if(j < ind) then
+         if(x(indx(j)) < x(indx(j + 1))) j = j + 1
+      endif
+      if(l_val < x(indx(j))) then
+         indx(i) = indx(j)
+         i = j
+         j = 2 * j
+      else
+         j = ind + 1
+      endif
+   end do
+
+   indx(i) = l_val_indx
+
+end do
+
+end subroutine index_sort_digits12_i8
 
 !-------------------------------------------------------------------------
 

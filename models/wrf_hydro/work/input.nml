@@ -16,8 +16,8 @@
      max_link_distance              = 2000.0
      streamflow_4_local_multipliers = 0.0001 
      debug                          = 0
-     domain_order                   = 'hydro', 'parameters'
-     domain_shapefiles              = 'restart.hydro.nc', 'parameters.nc'
+     domain_order                   = 'hydro'
+     domain_shapefiles              = 'restart.hydro.nc'
      lsm_variables    = 'SH2O',              'QTY_SOIL_LIQUID_WATER', '0.0',   'NA', 'NOUPDATE',
                         'SUBSURFACE_FLUX',   'QTY_SUBSURFACE',        '0.0',   'NA', 'NOUPDATE',
                         'OVERLAND_FLUX',     'QTY_OVERLAND_FLOW',     '0.0',   'NA', 'NOUPDATE'
@@ -27,15 +27,6 @@
                         'qSfcLatRunoffMult', 'QTY_RUNOFF_MULTIPLIER', '0.001', '50', 'UPDATE'
   /
 
-# create_identity_streamflow_obs_nml:
-# input_files is a list of all input data
-# gages_list_file is a list of all desired gages
-# look for examples in:
-# /glade/u/home/arezoo/wrf_hydro/wrf_hydro_dart/observations/USGS/work
-#   location_file   = '/glade/p/work/jamesmcc/DART/04233300_VM/DOMAIN/RouteLink.nc'
-
-#  gages_list_file        = 'wanted_gages_list.txt'
-#  gages_list_file        = ''
 
 &create_identity_streamflow_obs_nml
    input_files            = 'list_of_obs_files.txt'
@@ -49,13 +40,13 @@
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
    single_file_in             = .false.
-   input_state_files          = 'restart.hydro.nc', 'parameters.nc'
+   input_state_files          = 'restart.hydro.nc'
    init_time_days             = -1
    init_time_seconds          = -1
 
    write_output_state_to_file = .false.
    single_file_out            = .false.
-   output_state_files         = 'perfect_d01.nc', 'perfect_d02.nc'
+   output_state_files         = 'perfect_d01.nc'
    output_interval            = 1
 
    obs_seq_in_file_name       = 'obs_seq.in'
@@ -80,15 +71,15 @@
 #  output_state_file_list       = 'hydro_file_list.txt'
 
 &filter_nml
-   input_state_file_list        = 'hydro_file_list.txt', 'param_file_list.txt'
+   input_state_file_list        = 'hydro_file_list.txt'
    single_file_in               = .false.
    init_time_days               = -1,
    init_time_seconds            = -1,
    perturb_from_single_instance = .false.
 
-   stages_to_write              = 'forecast', 'preassim', 'analysis', 'output'
+   stages_to_write              = 'preassim', 'analysis', 'output'
 
-   output_state_file_list       = 'hydro_file_list.txt', 'param_file_list.txt'
+   output_state_file_list       = 'hydro_file_list.txt'
    output_mean                  = .true.
    output_sd                    = .true.
    output_members               = .true.
@@ -205,13 +196,8 @@
                               '../../../observations/forward_operators/obs_def_COSMOS_mod.f90'
   /
 
-# we need actual distances, not approximate dists
 &location_nml
    horiz_dist_only             = .true.
-   vert_normalization_pressure = 100000.0
-   vert_normalization_height   = 10000.0
-   vert_normalization_level    = 20.0
-   vert_normalization_scale_height = 10.0
    approximate_distance        = .false.
    nlon                        = 71
    nlat                        = 36
@@ -294,11 +280,11 @@
   /
 
 &model_mod_check_nml
-   input_state_files     = 'restart.hydro.nc', 'parameters.nc'
-   output_state_files    = 'mmc_output1.nc', 'mmc_output2.nc'
+   input_state_files     = 'restart.hydro.nc'
+   output_state_files    = 'mmc_output1.nc'
    test1thru             = 0
    run_tests             = 1,2,3,4,6,7
-   x_ind                 = 65481
+   x_ind                 = 1594
    loc_of_interest       = 281.1950,  35.4041,  288.2900
    quantity_of_interest  = 'QTY_STREAM_FLOW'
    interp_test_dlon      = 0.001
@@ -309,5 +295,5 @@
    interp_test_vertrange = 200.0, 300.0
    interp_test_vertcoord = 'VERTISHEIGHT'
    verbose               = .true.
-   /
+  /
 
