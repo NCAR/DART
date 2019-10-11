@@ -146,7 +146,7 @@ foreach MODEL ( $DO_THESE_MODELS )
     @ ncdlfiles = `ls *.cdl | wc -l`
 
     if ( "$MODEL" == "template" ) then
-      echo skipping tests of the template directory
+      echo "skipping tests of the template directory"
       continue
     endif
 
@@ -163,25 +163,28 @@ foreach MODEL ( $DO_THESE_MODELS )
       ( ./workshop_setup.csh >> ${LOGDIR}/buildlog.${MODEL}.out ) || set FAILURE = 1
 
     else
-      echo building executables for $MODEL
+      echo "building executables for $MODEL"
 
       ( ./quickbuild.csh ${QUICKBUILD_ARG} > ${LOGDIR}/buildlog.${MODEL}.out ) || set FAILURE = 1
 
-      echo "Trying to run pmo for model $MODEL as a test"
-      echo "Will generate NetCDF files from any .cdl files first."
       # try not to error out if no .cdl files found
       if ( $ncdlfiles > 0 ) then
+         echo "Generate netCDF files from .cdl files if needed."
          foreach i ( *.cdl )
            set base = `basename $i .cdl`
            if ( -f ${base}.nc ) continue
+           echo " ... creating ${base}.nc"
            ncgen -o ${base}.nc $i
          end
       endif
+
+      echo "Running pmo for model $MODEL as a test"
       # assumes the executables from quickbuild are here
       ( $MPICMD ./perfect_model_obs >  ${LOGDIR}/runlog.${MODEL}.out ) || set FAILURE = 1
       echo "Rerunning PMO to test for output file overwrite"
       ( $MPICMD ./perfect_model_obs >> ${LOGDIR}/runlog.${MODEL}.out ) || set FAILURE = 1
       # FIXME: if possible, try running filter here as well?
+
     endif
 
     if ( -f model_mod_check ) then
@@ -225,7 +228,7 @@ foreach MODEL ( $DO_THESE_MODELS )
 end
 
 echo
-echo $modelnum models tested.
+echo "$modelnum models tested."
 echo
 
 echo
@@ -237,7 +240,3 @@ echo
 echo
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
