@@ -243,7 +243,7 @@ DOMAINS: do domainID = 1,size(domain_order)
    call to_upper(domain_name)
 
    if ( .not. file_exist(domain_shapefiles(domainID)) ) then
-      write(string1,'("Domain shapefile ",i3, A," does not exist.")')  &
+      write(string1,'("Domain shapefile",1x, i3, 1x, A," does not exist.")')  &
                      domainID, '"'//trim(domain_shapefiles(domainID))//'"'
       call error_handler(E_ERR,routine,string1,source,revision,revdate)
    endif
