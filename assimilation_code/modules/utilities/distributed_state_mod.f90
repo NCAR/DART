@@ -33,10 +33,10 @@ public :: get_state_array, get_state, create_state_window, &
           free_state_window, create_mean_window, free_mean_window
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
    "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 contains
 
@@ -44,6 +44,7 @@ contains
 !> Gets all copies of an element of the state vector from the process who owns it
 !> Assumes ensemble complete. This differes from get_state as it now works on an
 !> array of state indices rather than a single index.
+
 subroutine get_state_array(x, my_index, state_ens_handle)
 
 real(r8),            intent(out) :: x(data_count) !! all copies of an element of the state vector
@@ -127,6 +128,7 @@ end subroutine get_fwd
 !---------------------------------------------------------
 !> Gets all copies of an element of the state vector from the process who owns it
 !> Assumes ensemble complete
+
 subroutine get_mean(x, my_index, state_ens_handle)
 
 real(r8),            intent(out) :: x(1) !! only grabing the mean

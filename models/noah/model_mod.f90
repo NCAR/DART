@@ -6,41 +6,90 @@
 
 module model_mod
 
-use        types_mod, only : r8, MISSING_R8, obstypelength
+use             types_mod, only : r4, r8, i8, MISSING_R8, obstypelength
 
-use time_manager_mod, only : time_type, set_time, set_date, get_time,          &
-                             print_time, print_date, set_calendar_type,        &
-                             operator(*),  operator(+), operator(-),           &
-                             operator(>),  operator(<), operator(/),           &
-                             operator(/=), operator(<=)
+use      time_manager_mod, only : time_type, set_time, set_date, set_calendar_type, &
+                                  get_time, get_date, print_time, print_date, &
+                                  operator(*),  operator(+), operator(-), &
+                                  operator(>),  operator(<), operator(/), &
+                                  operator(/=), operator(<=)
 
-use     location_mod, only : location_type, get_dist, query_location,          &
-                             get_close_maxdist_init, get_close_type,           &
-                             set_location, get_location, horiz_dist_only,      &
-                             vert_is_surface,  VERTISSURFACE,                  &
-                             vert_is_height,   VERTISHEIGHT,                   &
-                             vert_is_level,    VERTISLEVEL,                    &
-                             get_close_obs_init, get_close_obs,                &
-                             set_location_missing, write_location
+use          location_mod, only : location_type, get_close_type, get_dist, &
+                                  get_close_obs, get_close_state, &
+                                  convert_vertical_obs, convert_vertical_state, &
+                                  set_location, set_location_missing, &
+                                  query_location, write_location, &
+                                  get_location, is_vertical,  &
+                                  VERTISSURFACE, VERTISHEIGHT
 
-use    utilities_mod, only : register_module, error_handler, nc_check,         &
-                             E_ERR, E_MSG, logfileunit, get_unit,              &
-                             nmlfileunit, do_output, do_nml_file, do_nml_term, &
-                             find_namelist_in_file, check_namelist_read,       &
-                             file_exist, find_textfile_dims, file_to_text
+use         utilities_mod, only : register_module, error_handler, do_output, &
+                                  E_ERR, E_MSG, file_exist, get_unit, &
+                                  logfileunit, nmlfileunit, to_upper, &
+                                  do_nml_file, do_nml_term, &
+                                  find_namelist_in_file, check_namelist_read, &
+                                  find_textfile_dims, file_to_text
 
-use     obs_kind_mod, only : QTY_SOIL_TEMPERATURE,    &
-                             QTY_LIQUID_WATER,        &
-                             QTY_ICE,                 &
-                             QTY_SNOWCOVER_FRAC,      &
-                             QTY_SNOW_THICKNESS,      &
-                             QTY_LEAF_CARBON,         &
-                             QTY_WATER_TABLE_DEPTH,   &
-                             QTY_GEOPOTENTIAL_HEIGHT, &
-                             get_index_for_quantity
+use  netcdf_utilities_mod, only : nc_check, nc_synchronize_file, &
+                                  nc_add_global_attribute, &
+                                  nc_add_global_creation_time, &
+                                  nc_begin_define_mode, &
+                                  nc_end_define_mode, &
+                                  nc_get_global_attribute, &
+                                  nc_open_file_readonly, nc_close_file
 
-use mpi_utilities_mod, only: my_task_id
-use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
+use obs_def_utilities_mod, only : track_status
+
+use     obs_kind_mod,      only : get_index_for_quantity, &
+                                  get_name_for_quantity, &
+                                  QTY_SOIL_TEMPERATURE, &
+                                  QTY_LIQUID_WATER, &
+                                  QTY_ICE, &
+                                  QTY_SNOWCOVER_FRAC, &
+                                  QTY_SNOW_THICKNESS, &
+                                  QTY_LEAF_CARBON, &
+                                  QTY_WATER_TABLE_DEPTH, &
+                                  QTY_GEOPOTENTIAL_HEIGHT, &
+                                  QTY_SOIL_NITROGEN
+
+use  ensemble_manager_mod, only : ensemble_type
+
+use distributed_state_mod, only : get_state
+
+use     default_model_mod, only : adv_1step, nc_write_model_vars
+
+use        noah_hydro_mod, only : configure_lsm, get_noah_timestepping, &
+                                  num_soil_layers, lsm_namelist_filename, &
+                                  soil_layer_thickness, get_lsm_domain_info, &
+                                  wrf_static_data, get_lsm_domain_filename, &
+                                  read_noah_global_atts, write_noah_global_atts, &
+                                  num_soil_nitrogen_layers
+
+use   state_structure_mod, only : add_domain,      get_domain_size,   &
+                                  get_index_start, get_index_end,     &
+                                  get_num_domains, get_num_variables, &
+                                  get_num_dims,    get_dim_name,      &
+                                  get_dim_length,  get_variable_name, &
+                                  get_model_variable_indices,         &
+                                  get_varid_from_kind,                &
+                                  get_dart_vector_index,              &
+                                  get_variable_size,                  &
+                                  state_structure_info
+
+use     mpi_utilities_mod, only : my_task_id
+
+use           options_mod, only : set_missing_ok_status
+
+use        random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
+
+use             map_utils, only : proj_info, map_init, map_set, &
+                                  latlon_to_ij, ij_to_latlon
+
+use misc_definitions_module, only : map_latlon       => PROJ_LATLON, &
+                                    map_lambert      => PROJ_LC, &
+                                    map_polar_stereo => PROJ_PS, &
+                                    map_mercator     => PROJ_MERC, &
+                                    map_cylindrical  => PROJ_CYL, &
+                                    map_cassini      => PROJ_CASSINI
 
 use typesizes
 use netcdf
@@ -51,47 +100,52 @@ private
 ! required by DART code - will be called from filter and other
 ! DART executables.  interfaces to these routines are fixed and
 ! cannot be changed in any way.
-public :: get_model_size,         &
-          adv_1step,              &
-          get_state_meta_data,    &
-          model_interpolate,      &
-          get_model_time_step,    &
-          end_model,              &
-          static_init_model,      &
-          init_time,              &
-          init_conditions,        &
-          nc_write_model_atts,    &
-          nc_write_model_vars,    &
-          pert_model_state,       &
-          get_close_maxdist_init, &
-          get_close_obs_init,     &
-          get_close_obs,          &
-          ens_mean_for_model
+public :: static_init_model, &
+          init_time, &
+          init_conditions, &
+          pert_model_copies, &
+          get_model_size, &
+          read_model_time, &
+          write_model_time, &
+          shortest_time_between_assimilations, &
+          get_state_meta_data, &
+          model_interpolate, &
+          get_close_obs, &
+          get_close_state, &
+          nc_write_model_atts, &
+          end_model
 
-! not required by DART but for larger models can be useful for
-! utility programs that are tightly tied to the other parts of
-! the model_mod code.
-public :: noah_to_dart_vector, &
-          dart_vector_to_model_file, &
-          get_noah_restart_filename, &
-          get_noah_timestepping,     &
-          get_debug_level
+! Also required, but the default routines are sufficient.
+
+public :: nc_write_model_vars, &
+          adv_1step, &
+          convert_vertical_obs, &
+          convert_vertical_state
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = "$URL$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 !------------------------------------------------------------------
 ! The NSOLDX parameter comes from the NOAH source code. We need it
 ! because we have to read the NOAH namelist for timestep information.
 !------------------------------------------------------------------
 
-integer :: nfields
 integer, parameter :: NSOLDX = 100
-integer, parameter :: MAX_STATE_VARIABLES = 40
-integer, parameter :: NUM_STATE_TABLE_COLUMNS = 2
+character(len=512) :: string1, string2, string3
+
+! Codes for interpreting the columns of the variable_table
+integer, parameter :: VT_VARNAMEINDX  = 1 ! ... variable name
+integer, parameter :: VT_KINDINDX     = 2 ! ... DART kind
+integer, parameter :: VT_MINVALINDX   = 3 ! ... minimum value if any
+integer, parameter :: VT_MAXVALINDX   = 4 ! ... maximum value if any
+integer, parameter :: VT_STATEINDX    = 5 ! ... update (state) or not
+integer, parameter :: MAX_STATE_VARIABLES     = 40
+integer, parameter :: NUM_STATE_TABLE_COLUMNS = 5
+
+integer :: domain_count
+integer :: idom, idom_lsm = -1
 
 !------------------------------------------------------------------
 ! things which can/should be in the DART model_nml
@@ -99,157 +153,97 @@ integer, parameter :: NUM_STATE_TABLE_COLUMNS = 2
 ! DART state vector are specified in the input.nml:model_nml namelist.
 ! For example:
 !
-! noah_state_variables  = 'STC',    'QTY_SOIL_TEMPERATURE',
-!                         'SMC',    'QTY_SOIL_MOISTURE',
-!                         'SH2O',   'QTY_LIQUID_SOIL_MOISTURE',
-!                         'T1',     'QTY_SKIN_TEMPERATURE',
-!                         'SNOWH',  'QTY_SNOW_DEPTH',
-!                         'SNEQV',  'QTY_LIQUID_EQUIVALENT',
-!                         'CMC',    'QTY_CANOPY_WATER'
+! lsm_variables = 'SOIL_T',   'QTY_SOIL_TEMPERATURE',   '0.0',  'NA', 'UPDATE',
+!                 'SMC',      'QTY_SOIL_MOISTURE',      '0.0',  'NA', 'UPDATE',
+!                 'SOIL_W',   'QTY_SOIL_LIQUID_WATER',  '0.0',  'NA', 'UPDATE',
+!                 'SKINTEMP', 'QTY_SKIN_TEMPERATURE',   '0.0',  'NA', 'UPDATE',
+!                 'SNODEP',   'QTY_SNOW_THICKNESS',     '0.0',  'NA', 'UPDATE',
+!                 'WEASD',    'QTY_SNOW_WATER',         '0.0',  'NA', 'UPDATE',
+!                 'CANWAT',   'QTY_CANOPY_WATER',       '0.0',  'NA', 'UPDATE',
+!                 'QFX',      'QTY_LATENT_HEAT_FLUX',   '0.0',  'NA', 'UPDATE',
+!                 'HFX',      'QTY_SENSIBLE_HEAT_FLUX', '0.0',  'NA', 'UPDATE',
+!                 'GRDFLX',   'QTY_GROUND_HEAT_FLUX'    '0.0',  'NA', 'UPDATE',
 !
 !------------------------------------------------------------------
 
-character(len=128)    :: noah_netcdf_filename   = 'restart.nc'
+character(len=256)    :: domain_shapefiles(3)         = ''
+character(len=256)    :: lsm_model_choice             = ''
 integer               :: assimilation_period_days     = 0
 integer               :: assimilation_period_seconds  = 60
-real(r8)              :: model_perturbation_amplitude = 0.2
-logical               :: output_state_vector          = .false.
+real(r8)              :: model_perturbation_amplitude = 0.002
+character(len=256)    :: perturb_distribution         = 'lognormal'
 integer               :: debug    = 0  ! turn up for more and more debug messages
-character(len=obstypelength) :: noah_state_variables(NUM_STATE_TABLE_COLUMNS,MAX_STATE_VARIABLES) = ' '
+character(len=obstypelength) :: lsm_variables(NUM_STATE_TABLE_COLUMNS,MAX_STATE_VARIABLES) = ' '
 
-namelist /model_nml/ noah_netcdf_filename, &
-          assimilation_period_days, assimilation_period_seconds, &
-          model_perturbation_amplitude, &
-          debug, noah_state_variables
+!nc -- we are adding these to the model.nml until they appear in the NetCDF files
+logical :: polar      = .false.    ! wrap over the poles
+logical :: periodic_x = .false.    ! wrap in longitude or x
+logical :: periodic_y = .false.    ! used for single column model, wrap in y
 
-!------------------------------------------------------------------
-! Everything needed to recreate the NOAH METADTA_NAMELIST
-! We are going to require that the namelist be in a file whose name
-! is (I believe) standard .... namelist.hrldas
-!
-! To restart the file, we write a new namelist.
-! DART needs to write a NOAH-compatible namelist.
-!------------------------------------------------------------------
-
-! ZSOIL, set through the namelist, is the BOTTOM of each soil layer (m)
-! Values are negative, implying depth below the surface.
-
-character(len=128)    :: noah_namelist_filename = 'namelist.hrldas' ! mandate
-
-real(r8), dimension(NSOLDX) :: zsoil
-integer                     :: nsoil
-
-CHARACTER(len=256) :: indir = "."
-character(len=256) :: outdir = "."
-character(len=256) :: hrldas_constants_file = " "
-character(len=256) :: external_fpar_filename_template = " "
-character(len=256) :: external_lai_filename_template = " "
-character(len=256) :: restart_filename_requested = " "
-integer            :: split_output_count = 1
-integer            :: restart_frequency_hours = -999
-integer            :: output_timestep  = -999
-integer            :: subwindow_xstart = 1
-integer            :: subwindow_ystart = 1
-integer            :: subwindow_xend = 0
-integer            :: subwindow_yend = 0
-integer            :: sfcdif_option = 0
-integer            :: iz0tlnd = 0
-logical            :: update_snow_from_forcing = .TRUE.
-
-integer  :: start_year, start_month, start_day, start_hour, start_min
-integer  :: noah_timestep = -999
-integer  :: forcing_timestep = -999
-integer  :: khour = 0
-integer  :: kday  = 0
-real(r8) :: zlvl, zlvl_wind
-
-namelist / NOAHLSM_OFFLINE/ indir, nsoil, zsoil, forcing_timestep, noah_timestep, &
-       start_year, start_month, start_day, start_hour, start_min, &
-       restart_frequency_hours, output_timestep, &
-       split_output_count, sfcdif_option, iz0tlnd, update_snow_from_forcing, &
-       khour, kday, zlvl, zlvl_wind, hrldas_constants_file, outdir, restart_filename_requested, &
-       external_fpar_filename_template, external_lai_filename_template, &
-       subwindow_xstart, subwindow_xend, subwindow_ystart, subwindow_yend
+namelist /model_nml/ domain_shapefiles, &
+                     lsm_model_choice, &
+                     assimilation_period_days, &
+                     assimilation_period_seconds, &
+                     model_perturbation_amplitude, &
+                     perturb_distribution, &
+                     debug, &
+                     lsm_variables, &
+                     polar, periodic_x, periodic_y
 
 !------------------------------------------------------------------
 
-! define model parameters here
-type(time_type)     :: time_step
-type(location_type),allocatable, dimension(:) :: state_loc
-
-! Everything needed to describe a variable
-
-type progvartype
+type domain_locations
    private
-   character(len=NF90_MAX_NAME) :: varname
-   character(len=NF90_MAX_NAME) :: long_name
-   character(len=NF90_MAX_NAME) :: units
-   character(len=NF90_MAX_NAME) :: MemoryOrder
-   character(len=NF90_MAX_NAME) :: description
-   character(len=NF90_MAX_NAME) :: stagger
-   character(len=obstypelength), dimension(NF90_MAX_VAR_DIMS) :: dimnames
-   integer, dimension(NF90_MAX_VAR_DIMS) :: dimlens
-   integer  :: numdims
-   integer  :: maxlevels
-   integer  :: xtype
-   integer  :: varsize     ! prod(dimlens(1:numdims))
-   integer  :: index1      ! location in dart state vector of first occurrence
-   integer  :: indexN      ! location in dart state vector of last  occurrence
-   integer  :: dart_kind
-   integer  :: rangeRestricted
-   real(r8) :: maxvalue
-   real(r8) :: minvalue
-   character(len=obstypelength) :: kind_string
-end type progvartype
+   type(location_type), allocatable :: location(:,:)
+end type domain_locations
 
-type(progvartype), dimension(MAX_STATE_VARIABLES) :: progvar
+type(domain_locations), allocatable :: domain_info(:)
 
-!------------------------------------------------------------------------------
-! These are the metadata arrays that are the same size as the state vector.
+! Thinking about supporting multiple (nested) domains for noah
+! This follows the WRF mechanism. The nests must be numbered
+! from the outermost (as domain 1) to innermost (as domain N).
 
-real(r8), allocatable, dimension(:) :: ens_mean ! may be needed for forward ops
-real(r8), allocatable, dimension(:) :: levels   ! depth
+type lsm_dom
+   private
+   type(wrf_static_data), pointer :: dom(:)
+end type lsm_dom
+
+type(lsm_dom) :: lsm
 
 !------------------------------------------------------------------
 ! module storage
 !------------------------------------------------------------------
 
 integer            :: model_size       ! the state vector length
-type(time_type)    :: model_time       ! valid time of the model state
-type(time_type)    :: model_time_step  ! smallest time to adv model
-character(len=256) :: string1, string2, string3
 logical, save      :: module_initialized = .false.
 character(len=32)  :: calendar = 'Gregorian'
 
-real(r8), allocatable, dimension(:,:) :: xlong, xlat
+real(r8), allocatable :: soil_depth(:)
+real(r8), allocatable :: soil_nitrogen_depth(:)
+real(r8), allocatable :: xlong(:,:), xlat(:,:)
 integer :: south_north, west_east
 
-INTERFACE vector_to_prog_var
-      MODULE PROCEDURE vector_to_1d_prog_var
-      MODULE PROCEDURE vector_to_2d_prog_var
-      MODULE PROCEDURE vector_to_3d_prog_var
-END INTERFACE
-
 !==================================================================
-contains
+CONTAINS
 !==================================================================
 
-
+!------------------------------------------------------------------
+!> one-time initialization of the model
 
 subroutine static_init_model()
-!------------------------------------------------------------------
-! one time initialization of the model
 
-! Local variables - all the important ones have module scope
+character(len=*), parameter :: routine = 'static_init_model'
 
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
-character(len=NF90_MAX_NAME)          :: varname
-character(len=NF90_MAX_NAME)          :: dimname
-character(len=obstypelength)          :: kind_string
+integer  :: iunit, io, domainID
+integer  :: n_lsm_fields
+integer  :: i
 
-integer  :: VarID, dimlen, varsize
-integer  :: iunit, io, ivar
-integer  :: i, index1, nLayers
+character(len=obstypelength) :: var_names(MAX_STATE_VARIABLES)
+real(r8) :: var_ranges(MAX_STATE_VARIABLES,2)
+logical  :: var_update(MAX_STATE_VARIABLES)
+integer  :: var_qtys(  MAX_STATE_VARIABLES)
+
+character(len=256) :: filename
 
 if ( module_initialized ) return ! only need to do this once.
 
@@ -269,311 +263,144 @@ call check_namelist_read(iunit, io, 'model_nml')
 if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
 
-! Check to make sure the required NOAH input files exist
-if ( .not. file_exist(noah_netcdf_filename) ) then
-   write(string1,*) 'cannot open NOAH restart file ', trim(noah_netcdf_filename),' for reading.'
-   call error_handler(E_ERR,'static_init_model',string1,source,revision,revdate)
-endif
-if ( .not. file_exist(noah_namelist_filename) ) then
-   write(string1,*) 'cannot open NOAH namelist file ', trim(noah_namelist_filename),' for reading.'
-   call error_handler(E_ERR,'static_init_model',string1,source,revision,revdate)
-endif
-
-! Read the NOAH namelist
-call find_namelist_in_file(trim(noah_namelist_filename), 'NOAHLSM_OFFLINE', iunit)
-read(iunit, nml = NOAHLSM_OFFLINE, iostat = io)
-call check_namelist_read(iunit, io, 'NOAHLSM_OFFLINE')
-
-! Record the NOAH namelist
-if (do_nml_file()) write(nmlfileunit, nml=NOAHLSM_OFFLINE)
-if (do_nml_term()) write(     *     , nml=NOAHLSM_OFFLINE)
-
-! Check to make sure the NOAH constants file exists
-if ( .not. file_exist(hrldas_constants_file) ) then
-   write(string1,*) 'cannot open file ', trim(hrldas_constants_file),' for reading.'
-   call error_handler(E_ERR,'static_init_model',string1,source,revision,revdate)
-endif
-
-! Check to make sure the required NOAH namelist items are set:
-if ( (kday             < 0    ) .or. &
-     (khour            < 0    ) .or. &
-     (forcing_timestep /= 3600) .or. &
-     (noah_timestep    /= 3600) .or. &
-     (output_timestep  /= 3600) .or. &
-     (restart_frequency_hours /= 1) ) then
-   write(string3,*)'the only configuration supported is for hourly timesteps'
-   write(string2,*)'restart_frequency_hours must be equal to the noah_timstep'
-   write(string1,*)'unsupported noah namelist settings'
-   call error_handler(E_ERR,'static_init_model',string1,source,revision,revdate,&
-                            text2=string2,text3=string3)
-endif
-
-call get_hrldas_constants(hrldas_constants_file)
-
-! The time_step in terms of a time type must also be initialized.
+! It is OK for this model to have MISSING_R8 in the DART state.
+call set_missing_ok_status(.true.)
 
 call set_calendar_type( calendar )
 
-call nc_check(nf90_open(adjustl(noah_netcdf_filename), NF90_NOWRITE, iunit), &
-                   'static_init_model', 'open '//trim(noah_netcdf_filename))
+! Determine the composition of the DART state vector.
 
-model_time      = get_state_time(iunit, trim(noah_netcdf_filename))
-
-! FIXME ... make sure model_time_step is attainable given OUTPUT_TIMESTEP
-model_time_step = set_time(assimilation_period_seconds, assimilation_period_days)
-
-if (do_output() .and. (debug > 0)) then
-   call print_date(model_time     ,' static_init_model:model date')
-   call print_time(model_time     ,' static_init_model:model time')
-   call print_time(model_time_step,' static_init_model:model timestep')
+if ( .not. file_exist(domain_shapefiles(1)) ) then
+   write(string1,*) 'Domain 1 shapefile "', trim(domain_shapefiles(1)),'" does not exist.'
+   write(string2,*) 'There must be a domain 1.'
+   call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
 endif
 
-! Make sure the number of soil layers is as we expect
+DOMAINS: do domainID = 1,size(domain_shapefiles)
 
-call nc_check(nf90_inq_dimid(iunit, 'soil_layers_stag', dimIDs(1)), &
-                  'static_init_model','inq_dimid soil_layers_stag '//trim(noah_netcdf_filename))
-call nc_check(nf90_inquire_dimension(iunit, dimIDs(1), len=nLayers), &
-                  'static_init_model','inquire_dimension soil_layers_stag '//trim(noah_netcdf_filename))
+   if (len_trim(domain_shapefiles(domainID)) == 0) exit DOMAINS
 
-if (nsoil /= nLayers) then
-   write(string1,*) 'Expected ',nsoil,' soil layers ', &
-                       trim(noah_netcdf_filename),' has ',nLayers
-   call error_handler(E_ERR,'static_init_model',string1,source,revision,revdate)
-endif
+   filename = domain_shapefiles(domainID)
 
-! FIXME ... extend to 2D case ... should be in get_state_meta_data()
-! Convert soil thicknesses (from namelist.hrldas) to "heights".
-! Closer to the center of the earth is an increasingly large negative number
-allocate(state_loc(0:nsoil))
-state_loc(0)   = set_location(xlong(1,1), xlat(1,1), 0.0_r8, VERTISHEIGHT)
-do i = 1,nsoil
-   state_loc(  i) = set_location(xlong(1,1), xlat(1,1), zsoil(i), VERTISHEIGHT)
+   if ( .not. file_exist(domain_shapefiles(domainID)) ) then
+      write(string1,'("Domain shapefile ",i3, A," does not exist.")')  &
+                     domainID, '"'//trim(domain_shapefiles(domainID))//'"'
+      call error_handler(E_ERR,routine,string1,source,revision,revdate)
+   else
+      call configure_lsm(lsm_model_choice,domain_shapefiles(domainID))
+      call read_noah_global_atts(domain_shapefiles(domainID))
+      call verify_variables(lsm_variables, domain_shapefiles(domainID), n_lsm_fields, &
+                       var_names, var_qtys, var_ranges, var_update)
+      idom_lsm = add_domain(domain_shapefiles(domainID), n_lsm_fields, var_names, &
+                         kind_list=var_qtys, &
+                        clamp_vals=var_ranges(1:n_lsm_fields,:), &
+                       update_list=var_update)
+      if (debug > 99) call state_structure_info(idom_lsm)
+
+      call check_vertical_dimension(idom_lsm)
+
+   endif
+
+enddo DOMAINS
+
+! Each domain has its own array of locations.
+! step 1: finish reading attributes from wrfinput.nc
+! step 2: finish setup_map_projection, which contains map_init and map_set
+
+domain_count = get_num_domains()
+
+allocate(    lsm%dom(domain_count))
+allocate(domain_info(domain_count))
+
+call configure_domains()
+
+!soil_layer_thickness is the thickness of each soil layer,
+! soil_depth is the midpoint of each soil layer.
+
+allocate(soil_depth(num_soil_layers))
+soil_depth(1) = soil_layer_thickness(1)/2.0_r8
+do i = 2,num_soil_layers
+   soil_depth(i) = soil_depth(i-1) + &
+                   (soil_layer_thickness(i)+soil_layer_thickness(i-1))/2.0_r8
 enddo
 
-!---------------------------------------------------------------
-! Compile the list of NOAH variables to use in the creation
-! of the DART state vector. Required to determine model_size.
-!
-! Verify all variables are in the NOAH netcdf file.
-! Compute the offsets into the state vector for each variable type.
-! Record the extent of the variable type in the state vector.
+! soil nitrogen support implemented for UT Austin research code.
 
-call verify_state_variables(iunit, noah_netcdf_filename, nfields)
-
-index1  = 1
-FILL_PROGVAR : do ivar = 1, nfields
-
-   varname                   = trim(noah_state_variables(1,ivar))
-   kind_string               = trim(noah_state_variables(2,ivar))
-   progvar(ivar)%varname     = varname
-   progvar(ivar)%kind_string = kind_string
-   progvar(ivar)%dart_kind   = get_index_for_quantity( progvar(ivar)%kind_string )
-   progvar(ivar)%dimlens     = 0
-   progvar(ivar)%dimnames    = ' '
-   progvar(ivar)%maxlevels   = 0
-
-   string2 = trim(noah_netcdf_filename)//' '//trim(varname)
-
-   call nc_check(nf90_inq_varid(iunit, trim(varname), VarID), &
-            'static_init_model', 'inq_varid '//trim(string2))
-
-   call nc_check(nf90_inquire_variable(iunit, VarID, dimids=dimIDs, &
-                 ndims=progvar(ivar)%numdims, xtype=progvar(ivar)%xtype), &
-            'static_init_model', 'inquire '//trim(string2))
-
-   ! If the long_name and/or units attributes are set, get them.
-   ! They are not REQUIRED to exist but are nice to use if they are present.
-
-   if( nf90_inquire_attribute(    iunit, VarID, 'long_name') == NF90_NOERR ) then
-      call nc_check( nf90_get_att(iunit, VarID, 'long_name' , progvar(ivar)%long_name), &
-                  'static_init_model', 'get_att long_name '//trim(string2))
-   else
-      progvar(ivar)%long_name = varname
-   endif
-
-   if( nf90_inquire_attribute(    iunit, VarID, 'units') == NF90_NOERR )  then
-      call nc_check( nf90_get_att(iunit, VarID, 'units' , progvar(ivar)%units), &
-                  'static_init_model', 'get_att units '//trim(string2))
-   else
-      progvar(ivar)%units = '-'
-   endif
-
-   if( nf90_inquire_attribute(    iunit, VarID, 'MemoryOrder') == NF90_NOERR )  then
-      call nc_check( nf90_get_att(iunit, VarID, 'MemoryOrder' , progvar(ivar)%MemoryOrder), &
-                  'static_init_model', 'get_att MemoryOrder '//trim(string2))
-   else
-      progvar(ivar)%MemoryOrder = '-'
-   endif
-
-   if( nf90_inquire_attribute(    iunit, VarID, 'stagger') == NF90_NOERR )  then
-      call nc_check( nf90_get_att(iunit, VarID, 'stagger' , progvar(ivar)%stagger), &
-                  'static_init_model', 'get_att stagger '//trim(string2))
-   else
-      progvar(ivar)%stagger = '-'
-   endif
-
-   ! This is fundamentally hardcoded clamping. See WRF/model_mod.f90 for a namelist-driven
-   ! example.  It would be nice to use the netCDF file valid_range attribute ...
-   !
-   ! if the variable is bounded, then we need to know how to restrict it.
-   ! rangeRestricted == 0 is unbounded
-   ! rangeRestricted == 1 is bounded below
-   ! rangeRestricted == 2 is bounded above           ( TJH unsupported )
-   ! rangeRestricted == 3 is bounded above and below ( TJH unsupported )
-
-   if ( varname == 'QFX' ) then
-      progvar(ivar)%rangeRestricted = 0
-      progvar(ivar)%minvalue        = -1.0_r8*huge(0.0_r8)
-      progvar(ivar)%maxvalue        = huge(0.0_r8)
-   elseif ( varname == 'HFX' ) then
-      progvar(ivar)%rangeRestricted = 0
-      progvar(ivar)%minvalue        = -1.0_r8*huge(0.0_r8)
-      progvar(ivar)%maxvalue        = huge(0.0_r8)
-   else
-      progvar(ivar)%rangeRestricted = 1
-      progvar(ivar)%minvalue        = 0.0_r8
-      progvar(ivar)%maxvalue        = huge(0.0_r8)
-   endif
-
-   ! These variables have a Time dimension. We only want the most recent time.
-
-   varsize = 1
-   dimlen  = 1
-   DimensionLoop : do i = 1,progvar(ivar)%numdims
-
-      write(string1,'(''inquire dimension'',i2,A)') i,trim(string2)
-      call nc_check(nf90_inquire_dimension(iunit, dimIDs(i), name=dimname, len=dimlen), &
-                                          'static_init_model', string1)
-
-      if ((trim(dimname) == 'Time') .or. (trim(dimname) == 'time')) dimlen = 1
-      progvar(ivar)%dimlens( i) = dimlen
-      progvar(ivar)%dimnames(i) = trim(dimname)
-      varsize = varsize * dimlen
-
-   enddo DimensionLoop
-
-   progvar(ivar)%varsize     = varsize
-   progvar(ivar)%index1      = index1
-   progvar(ivar)%indexN      = index1 + varsize - 1
-   index1                    = index1 + varsize      ! sets up for next variable
-
-   if ( (do_output()) .and. debug > 10 ) then
-      write(logfileunit,*)
-      write(logfileunit,*) trim(progvar(ivar)%varname),' variable number ',ivar
-      write(logfileunit,*) '  long_name   ',trim(progvar(ivar)%long_name)
-      write(logfileunit,*) '  MemoryOrder ',trim(progvar(ivar)%MemoryOrder)
-      write(logfileunit,*) '  stagger     ',trim(progvar(ivar)%stagger)
-      write(logfileunit,*) '  units       ',trim(progvar(ivar)%units)
-      write(logfileunit,*) '  xtype       ',progvar(ivar)%xtype
-      write(logfileunit,*) '  dimnames    ',progvar(ivar)%dimnames(1:progvar(ivar)%numdims)
-      write(logfileunit,*) '  dimlens     ',progvar(ivar)%dimlens( 1:progvar(ivar)%numdims)
-      write(logfileunit,*) '  numdims     ',progvar(ivar)%numdims
-      write(logfileunit,*) '  varsize     ',progvar(ivar)%varsize
-      write(logfileunit,*) '  index1      ',progvar(ivar)%index1
-      write(logfileunit,*) '  indexN      ',progvar(ivar)%indexN
-      write(logfileunit,*) '  dart_kind   ',progvar(ivar)%dart_kind
-      write(logfileunit,*) '  kind_string ',progvar(ivar)%kind_string
-
-      write(     *     ,*)
-      write(     *     ,*) trim(progvar(ivar)%varname),' variable number ',ivar
-      write(     *     ,*) '  long_name   ',trim(progvar(ivar)%long_name)
-      write(     *     ,*) '  MemoryOrder ',trim(progvar(ivar)%MemoryOrder)
-      write(     *     ,*) '  stagger     ',trim(progvar(ivar)%stagger)
-      write(     *     ,*) '  units       ',trim(progvar(ivar)%units)
-      write(     *     ,*) '  xtype       ',progvar(ivar)%xtype
-      write(     *     ,*) '  dimnames    ',progvar(ivar)%dimnames(1:progvar(ivar)%numdims)
-      write(     *     ,*) '  dimlens     ',progvar(ivar)%dimlens( 1:progvar(ivar)%numdims)
-      write(     *     ,*) '  numdims     ',progvar(ivar)%numdims
-      write(     *     ,*) '  varsize     ',progvar(ivar)%varsize
-      write(     *     ,*) '  index1      ',progvar(ivar)%index1
-      write(     *     ,*) '  indexN      ',progvar(ivar)%indexN
-      write(     *     ,*) '  dart_kind   ',progvar(ivar)%dart_kind
-      write(     *     ,*) '  kind_string ',progvar(ivar)%kind_string
-   endif
-
-enddo FILL_PROGVAR
-
-call nc_check(nf90_close(iunit), 'static_init_model', 'close '//trim(noah_netcdf_filename))
-
-model_size = progvar(nfields)%indexN
-
-if ( (do_output()) .and. debug > 99 ) then
-
-   write(*,*)
-   do i=0,nsoil
-      call write_location(iunit,state_loc(i),charstring=string1)
-      write(*,*)'location ',i,' is ',trim(string1)
+if (num_soil_nitrogen_layers > 0) then
+   allocate(soil_nitrogen_depth(num_soil_nitrogen_layers))
+   
+   soil_nitrogen_depth(1) = 0.005_r8 
+   soil_nitrogen_depth(2) = soil_layer_thickness(1)/2.0_r8+soil_nitrogen_depth(1)
+   
+   do i = 3,num_soil_nitrogen_layers
+      soil_nitrogen_depth(i) = soil_nitrogen_depth(i-1) + &
+                      (soil_layer_thickness(i-1)+soil_layer_thickness(i-2))/2.0_r8
    enddo
-
 endif
+
+! Now that we know the composition of the DART state, determine the model size.
+
+model_size = 0
+do idom = 1,domain_count
+   model_size = model_size + get_domain_size(idom)
+enddo
 
 end subroutine static_init_model
 
 
+!------------------------------------------------------------------
+!> Returns a time that is somehow appropriate for starting up a long
+!> integration of the model.  At present, this is only used if the namelist
+!> parameter start_from_restart is set to .false. in the program perfect_model_obs.
+
+subroutine init_time(time)
+
+type(time_type), intent(out) :: time
+
+character(len=*), parameter :: routine = 'init_time'
+
+if ( .not. module_initialized ) call static_init_model
+
+! for now, just set to 0
+time = set_time(0,0)
+
+write(string1,*) 'no good way to specify initial time'
+call error_handler(E_ERR,routine,string1,source,revision,revdate)
+
+end subroutine init_time
+
+
+
+!------------------------------------------------------------------
+!> Returns a model state vector, x, that is some sort of appropriate
+!> initial condition for starting up a long integration of the model.
+!> At present, this is only used if the namelist parameter
+!> start_from_restart is set to .false. in the program perfect_model_obs.
 
 subroutine init_conditions(x)
-!------------------------------------------------------------------
-!
-! Returns a model state vector, x, that is some sort of appropriate
-! initial condition for starting up a long integration of the model.
-! At present, this is only used if the namelist parameter
-! start_from_restart is set to .false. in the program perfect_model_obs.
-! If this option is not to be used in perfect_model_obs, or if no
-! synthetic data experiments using perfect_model_obs are planned,
-! this can be a NULL INTERFACE.
 
 real(r8), intent(out) :: x(:)
+
+character(len=*), parameter :: routine = 'init_conditions'
 
 if ( .not. module_initialized ) call static_init_model
 
 write(string1,*) 'PROBLEM: no known way to set arbitrary initial conditions.'
 write(string2,*) 'start_from_restart must be .true. in this model.'
-call error_handler(E_ERR,'init_conditions',string1,source,revision,revdate, &
-                               text2=string2)
+call error_handler(E_ERR, routine, string1, &
+           source, revision, revdate, text2=string2)
 
 x = MISSING_R8
 
 end subroutine init_conditions
 
 
-
-subroutine adv_1step(x, time)
 !------------------------------------------------------------------
-!
-! Does a single timestep advance of the model. The input value of
-! the vector x is the starting condition and x is updated to reflect
-! the changed state after a timestep. The time argument is intent
-! in and is used for models that need to know the date/time to
-! compute a timestep, for instance for radiation computations.
-! This interface is only called if the namelist parameter
-! async is set to 0 in perfect_model_obs of filter or if the
-! program integrate_model is to be used to advance the model
-! state as a separate executable. If one of these options
-! is not going to be used (the model will only be advanced as
-! a separate model-specific executable), this can be a
-! NULL INTERFACE.
-
-real(r8),        intent(inout) :: x(:)
-type(time_type), intent(in)    :: time
-
-if ( .not. module_initialized ) call static_init_model
-
-write(string1,*) 'PROBLEM: cannot advance model with async == 0.'
-write(string2,*) 'async == 2 is a good choice.'
-call error_handler(E_ERR,'adv_1step',string1,source,revision,revdate, &
-                               text2=string2)
-
-end subroutine adv_1step
-
-
+!> Returns the size of the model as a long integer
 
 function get_model_size()
-!------------------------------------------------------------------
-!
-! Returns the size of the model as an integer. Required for all
-! applications.
 
-integer :: get_model_size
+integer(i8) :: get_model_size
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -582,59 +409,237 @@ get_model_size = model_size
 end function get_model_size
 
 
+!-----------------------------------------------------------------------
+!> The LSM restart files have "time".
+!> We are always using the 'most recent' which is, by defn, the last one.
+!>
+!> LSM restart filename is RESTART.2004010102_DOMAIN1 has
+!>     Times = '2004-01-01_02:00:00' ;
+!> The data is valid @ 2004-01-01_02:00:00
+!>
+!> This routine is identical to the wrf_hydro:model_mod:read_model_time()
 
-subroutine init_time(time)
-!------------------------------------------------------------------
-!
-! Companion interface to init_conditions. Returns a time that is somehow
-! appropriate for starting up a long integration of the model.
-! At present, this is only used if the namelist parameter
-! start_from_restart is set to .false. in the program perfect_model_obs.
-! If this option is not to be used in perfect_model_obs, or if no
-! synthetic data experiments using perfect_model_obs are planned,
-! this can be a NULL INTERFACE.
+function read_model_time(filename)
 
-type(time_type), intent(out) :: time
+type(time_type) :: read_model_time
+character(len=*),  intent(in)  :: filename    !! the file name
 
-if ( .not. module_initialized ) call static_init_model
+character(len=*), parameter :: routine = 'read_model_time'
 
-time = model_time
+integer, parameter :: STRINGLENGTH = 19
+character(len=STRINGLENGTH), allocatable, dimension(:) :: datestring
+character(len=STRINGLENGTH)                            :: datestring_scalar
+integer               :: year, month, day, hour, minute, second
+integer               :: DimID, VarID, strlen, ntimes
+logical               :: isLsmFile
+integer :: ncid, io
 
-end subroutine init_time
+write(string1,*)trim(routine),' "'//trim(filename)//'"'
+ncid = nc_open_file_readonly(filename, string1)
 
+! Test if "Time" is a dimension in the file.
+isLsmFile = nf90_inq_dimid(ncid, 'Time', DimID) == NF90_NOERR
 
+if(isLsmFile) then ! Get the time from the LSM restart file
 
-subroutine model_interpolate(x, location, itype, obs_val, istatus)
-!------------------------------------------------------------------
-!
-! Given a state vector, a location, and a model state variable type,
-! interpolates the state variable field to that location and returns
-! the value in obs_val. The istatus variable should be returned as
-! 0 unless there is some problem in computing the interpolation in
-! which case an alternate value should be returned. The itype variable
-! is a model specific integer that specifies the type of field (for
-! instance temperature, zonal wind component, etc.).
+   ! TJH ... my preference is to read the dimension IDs for the Times variable
+   ! and cycle over the dimension IDs to get the lengths and check compatibility
 
-real(r8),            intent(in) :: x(:)
-type(location_type), intent(in) :: location
-integer,             intent(in) :: itype
-real(r8),           intent(out) :: obs_val
-integer,            intent(out) :: istatus
+   ! TJH This has the assumption that Times(DateStrLen,Time)
+   ! Get the dimensions for the strings of times
+   io = nf90_inq_dimid(ncid, 'Time', DimID)
+   call nc_check(io, routine,'inq_dimid','Time',filename)
 
-real(r8)               :: loc_lon, loc_lat, loc_depth
-real(r8), dimension(3) :: loc
-integer,  dimension(1) :: loninds, latinds
-integer                :: gridloni, gridlatj, zlev, n, ivar, indx
+   io = nf90_inquire_dimension(ncid, DimID, len=ntimes)
+   call nc_check(io, routine,'inquire_dimension','Time',filename)
 
-if ( .not. module_initialized ) call static_init_model
+   io = nf90_inq_dimid(ncid, 'DateStrLen', DimID)
+   call nc_check(io, routine,'inq_dimid','DateStrLen',filename)
 
-! FIXME - for the single column case - there is no obvious way to
-! determine the extent of the domain ... EVERYTHING matches.
+   io = nf90_inquire_dimension(ncid, DimID, len=strlen)
+   call nc_check(io, routine,'inquire_dimension','DateStrLen',filename)
 
-if( west_east*south_north /= 1 ) then
-     write(string1,*) 'PROBLEM: not set up for a case with multiple locations yet.'
-     call error_handler(E_ERR,'model_interpolate',string1,source,revision,revdate)
+   if (strlen /= STRINGLENGTH) then
+      write(string1,*)'DatStrLen string length ',strlen,' /= ',STRINGLENGTH
+      call error_handler(E_ERR,routine, string1, source, revision, revdate)
+   endif
+
+   ! Get all the Time strings, use the last one.
+   io = nf90_inq_varid(ncid, 'Times', VarID)
+   call nc_check(io, routine, 'inq_varid','Times',filename)
+
+   allocate(datestring(ntimes))
+
+   io = nf90_get_var(ncid, VarID, datestring)
+   call nc_check(io, routine, 'get_var','Times',filename)
+
+else ! Get the time from the hydro or parameter file
+
+   io = nf90_inquire_attribute(ncid, NF90_GLOBAL, 'Restart_Time', len=strlen)
+   call nc_check(io, routine, 'inquire_attribute','Restart_Time', filename)
+
+   io = nf90_get_att(ncid, NF90_GLOBAL, 'Restart_Time', datestring_scalar)
+   call nc_check(io, routine, 'get_att','Restart_Time', filename)
+
+   ntimes = 1
+   allocate(datestring(ntimes))
+   datestring(1) = datestring_scalar
+
 endif
+
+call nc_close_file(ncid, routine, filename)
+
+read(datestring(ntimes),'(i4,5(1x,i2))') year, month, day, hour, minute, second
+
+read_model_time = set_date(year, month, day, hour, minute, second)
+
+if ( do_output() .and. debug > 0 ) then
+   write(*,*)'routine: Last time string is '//trim(datestring(ntimes))
+   call print_date(read_model_time,' valid date is ')
+   call print_time(read_model_time,' valid time is ')
+endif
+
+deallocate(datestring)
+
+end function read_model_time
+
+
+!-----------------------------------------------------------------------
+!> The LSM restart files have "time".
+!> We are always using the 'most recent' which is, by defn, the last one.
+!>
+!> RESTART.2004010102_DOMAIN1 has
+!>     Times = '2004-01-01_02:00:00' ;
+!>
+!> The data is valid @ 2004-01-01_02:00:00
+
+subroutine write_model_time(ncid, dart_time)
+
+integer,             intent(in) :: ncid
+type(time_type),     intent(in) :: dart_time
+
+character(len=*), parameter :: routine = 'write_model_time'
+
+integer, parameter :: STRINGLENGTH = 19
+character(len=STRINGLENGTH) datestring
+
+integer :: year, month, day, hour, minute, second
+integer :: VarID, strlen, ntimes
+integer :: TimeDimID
+integer :: DateStrLenDimID
+integer :: ios
+
+integer :: mystart(2), mycount(2)
+
+call get_date(dart_time, year, month, day, hour, minute, second)
+write(datestring,'(i4,"-",i2.2,"-",i2.2,"_",i2.2,":",i2.2,":",i2.2)') &
+                  year, month, day, hour, minute, second
+
+! TJH This has the assumption that Times(DateStrLen,Time)
+! Get the dimensions for the strings of times
+ios = nf90_inq_dimid(ncid, 'Time', TimeDimID)
+call nc_check(ios, routine, 'inq_dimid', 'Time', ncid=ncid)
+
+ios = nf90_inquire_dimension(ncid, TimeDimID, len=ntimes)
+call nc_check(ios, routine, 'inquire_dimension', 'Time', ncid=ncid)
+
+ios = nf90_inq_dimid(ncid, 'DateStrLen', DateStrLenDimID)
+call nc_check(ios, routine, 'inq_dimid', 'DateStrLen', ncid=ncid)
+
+ios = nf90_inquire_dimension(ncid, DateStrLenDimID, len=strlen)
+call nc_check(ios, routine, 'inquire_dimension', 'DateStrLen', ncid=ncid)
+
+if (strlen /= STRINGLENGTH) then
+   write(string1,*)'DatStrLen string length ',strlen,' /= ',STRINGLENGTH
+   call error_handler(E_ERR, routine, string1, source, revision, revdate)
+endif
+
+ios = nf90_inq_varid(ncid, 'Times', VarID)
+call nc_check(ios, routine, "inquire Times variable")
+
+mystart = (/ ntimes, 1 /)
+mycount = (/ 19, 1 /)
+
+! The first time this routine is called the variable is empty.
+if (ntimes == 0) mystart(1) = 1
+
+ios = nf90_put_var(ncid, VarID, datestring, start=mystart, count=mycount)
+call nc_check(ios, routine, 'put_var', 'Times', ncid=ncid)
+
+if ( do_output() .and. debug > 0 ) then
+   write(*,*)'write_model_time: Last time string is '//datestring
+   call print_date(dart_time,' valid date is ')
+   call print_time(dart_time,' valid time is ')
+endif
+
+end subroutine write_model_time
+
+
+!------------------------------------------------------------------
+!> Returns the smallest increment in time that the model is capable
+!> of advancing the state in a given implementation, or the shortest
+!> time you want the model to advance between assimilations.
+!> This interface is required for all applications.
+
+function shortest_time_between_assimilations()
+
+type(time_type) :: shortest_time_between_assimilations
+
+shortest_time_between_assimilations = &
+      set_time(assimilation_period_seconds, assimilation_period_days)
+
+end function shortest_time_between_assimilations
+
+
+!------------------------------------------------------------------
+!> Given a state handle, a location, and a model state variable type,
+!> interpolates the state variable field to that location and returns
+!> the value in expected_obs(:). The istatus variable should be returned as
+!> 0 unless there is some problem in computing the interpolation in
+!> which case an alternate value should be returned.
+!>
+!> istatus = 11 means the DART vector does not have the quantity of interest
+
+subroutine model_interpolate(state_handle, ens_size, location, obs_type, &
+                             expected_obs, istatus)
+
+type(ensemble_type), intent(in) :: state_handle
+integer,             intent(in) :: ens_size
+type(location_type), intent(in) :: location
+integer,             intent(in) :: obs_type
+real(r8),           intent(out) :: expected_obs(ens_size)
+integer,            intent(out) :: istatus(ens_size)
+
+character(len=*), parameter :: routine = 'model_interpolate'
+
+! This is the forward operator -- compute model state value for given point.
+! Strategy is to do the horizontal interpolation on the levels above and below
+! the observation location and then to do the vertical interpolation.
+
+real(r8) :: loc_lon, loc_lat, loc_depth
+real(r8) :: loc(3)
+real(r8) :: xloc                       !< fractional longitudinal index
+real(r8) :: yloc                       !< fractional latitudinal  index
+real(r8) :: zloc                       !< fractional depth/height index
+real(r8) :: dx, dy, dz, dxm, dym, dzm  !< fractional weights
+
+integer  :: i, j, k, e
+
+integer  :: domid, varid, obs_kind, num_dims
+logical  :: is_lev0
+
+integer, dimension(2) :: ll, lr, ul, ur
+integer            :: rc
+integer(i8)        :: ill, ilr, iul, iur
+
+real(r8) :: fld(2,ens_size)
+real(r8) :: x_iul(ens_size) ,x_iur(ens_size)
+real(r8) :: x_ill(ens_size), x_ilr(ens_size)
+
+real(r8) :: layer_midpoints(max(num_soil_layers,num_soil_nitrogen_layers))
+integer  :: num_layers
+
+if ( .not. module_initialized ) call static_init_model
 
 ! The return code for successful return should be 0.
 ! Any positive number is an error.
@@ -642,8 +647,13 @@ endif
 ! Using distinct positive values for different types of errors can be
 ! useful in diagnosing problems.
 
-istatus = 1
-obs_val = MISSING_R8
+istatus      = 1
+expected_obs = MISSING_R8
+fld          = MISSING_R8
+
+! rename for sanity - we can't change the argument names
+! to this subroutine, but this really is a kind.
+obs_kind = obs_type
 
 ! if observation is outside region encompassed in the history file - fail
 
@@ -651,819 +661,574 @@ loc       = get_location(location) ! loc is in DEGREES
 loc_lon   = loc(1)
 loc_lat   = loc(2)
 loc_depth = loc(3)
-! latinds   = minloc(abs(XLAT  - loc_lat))   ! these return 'arrays' ...
-! loninds   = minloc(abs(XLONG - loc_lon))   ! these return 'arrays' ...
-! gridlatj  = latinds(1)
-! gridloni  = loninds(1)
 
 ! one use of model_interpolate is to allow other modules/routines
-! the ability to 'see' the model levels. To do this, we can create
+! the ability to 'count' the model levels. To do this, we can create
 ! locations with model levels and 'interpolate' them to
 ! QTY_GEOPOTENTIAL_HEIGHT
 
-if ( (itype == QTY_GEOPOTENTIAL_HEIGHT) .and. vert_is_level(location) ) then
-   if (nint(loc_depth) > nsoil) then
-      obs_val = MISSING_R8
-      istatus = 1
+if ( (obs_type == QTY_GEOPOTENTIAL_HEIGHT) .and. is_vertical(location,'LEVEL') ) then
+   if (nint(loc_depth) > num_soil_layers) then
+      expected_obs = MISSING_R8
    else
-      obs_val = zsoil(nint(loc_depth))
+      expected_obs = soil_layer_thickness(nint(loc_depth))
       istatus = 0
    endif
    return
 endif
 
-! need to know what variable we are interpolating.
+! need to know if the DART state has this quantity
 
-ivar = 0
-FindVariable : do n = 1,nfields
-   if( progvar(n)%dart_kind == itype ) then
-      ivar = n
-      exit FindVariable
+DOMAIN: do domid = 1,domain_count
+   varid = get_varid_from_kind(domid, obs_kind)
+   if (varid < 0) cycle DOMAIN
+enddo DOMAIN
+
+if (varid < 0) then
+   if (debug > 2) then
+      call write_location(0,location,charstring=string3)
+      write(string1,*) 'obs kind not found in state.  kind ', obs_kind, &
+                       ' (',trim(get_name_for_quantity(obs_kind)),')'
+      write(string2,*) ' loc: ', trim(string3)
+      call error_handler(E_MSG,routine,string1,text2=string2)
    endif
-enddo FindVariable
-
-if (ivar == 0) then
-   write(string1,*) 'unable to find state vector component matching type ',itype
-   call error_handler(E_ERR,'model_interpolate',string1,source,revision,revdate)
+   istatus(:) = 11
+   return ! this kind isn't found in the state vector
 endif
 
-if ( progvar(ivar)%varsize == 1 ) then
-   indx = progvar(ivar)%index1
+!--------------------------------------------------------
+! 0. Prelude to Interpolation
+!--------------------------------------------------------
+
+! first obtain (innermost) domain ID, and mass points (i,j)
+! xloc, yloc are fractional indices ...
+
+call get_domain_info(loc(1), loc(2), domid, xloc, yloc)
+
+if (domid < 1) then
+   istatus(:) = 10
+   return ! observation outside all domains
+endif
+
+if( debug > 99 ) then
+   i = xloc
+   j = yloc
+
+   write(*,*)'domain found is ',domid
+   write(*,*)'loc(1),loc(2),xloc,yloc,i,j',loc(1), loc(2), xloc,yloc,i,j
+   write(*,*)'corners of lat:'
+   write(*,*) xlat(i,j), xlat(i+1,j), xlat(i,j+1), xlat(i+1,j+1)
+   write(*,*)'corners of lon:'
+   write(*,*) xlong(i,j),xlong(i+1,j), xlong(i,j+1),xlong(i+1,j+1)
+endif
+
+! get integer (west/south) grid point and distances to neighboring grid points
+! distances are used as weights to carry out horizontal interpolations
+
+call toGrid(xloc, i, dx, dxm)
+call toGrid(yloc, j, dy, dym)
+
+num_dims = get_num_dims(domid, varid)
+
+! Some variables have vertical levels of soil_layers, soil_nitrogen_layers, etc.
+call get_vertical_array(domid, varid, num_dims, layer_midpoints, num_layers)
+
+call height_to_zk(loc_depth, layer_midpoints, num_layers, zloc, is_lev0)
+
+if( debug > 99 ) then
+   print*,' obs is by height and zloc,lev0 =',zloc, is_lev0
+   print*,'soil_depth ', soil_depth
+   if (num_soil_nitrogen_layers > 0) &
+   print*,'soil_nitrogen_depth', soil_nitrogen_depth
+endif
+
+if(zloc == missing_r8) istatus = 2
+
+!----------------------------------
+! 1. Horizontal Interpolation
+!----------------------------------
+
+! Strategy is to do the horizontal interpolation on two different levels
+! and then to do the vertical interpolation afterwards.
+
+call getCorners(i, j, domid, ll, ul, lr, ur, rc )
+
+! Interpolation at level k
+if (num_dims == 3) then
+   ill = get_dart_vector_index(ll(1), int(zloc), ll(2), domid, varid)
+   iul = get_dart_vector_index(ul(1), int(zloc), ul(2), domid, varid)
+   ilr = get_dart_vector_index(lr(1), int(zloc), lr(2), domid, varid)
+   iur = get_dart_vector_index(ur(1), int(zloc), ur(2), domid, varid)
 else
-   ! This assumes the soil layer has a constant value.
-   DEPTH : do n = 1,nsoil
-      if (loc_depth >= zsoil(n)) then
-         zlev = n
-         exit DEPTH
-      endif
-   enddo DEPTH
-   ! FIXME what if zlev is never set
-   indx = progvar(ivar)%index1 + zlev - 1
+   ill = get_dart_vector_index(ll(1), ll(2), int(zloc), domid, varid)
+   iul = get_dart_vector_index(ul(1), ul(2), int(zloc), domid, varid)
+   ilr = get_dart_vector_index(lr(1), lr(2), int(zloc), domid, varid)
+   iur = get_dart_vector_index(ur(1), ur(2), int(zloc), domid, varid)
 endif
 
-obs_val = x( indx )
-if (obs_val /= MISSING_R8) istatus = 0
+x_ill = get_state(ill, state_handle)
+x_iul = get_state(iul, state_handle)
+x_ilr = get_state(ilr, state_handle)
+x_iur = get_state(iur, state_handle)
 
-if ( (do_output()) .and. debug > 20 ) then
-   write(*,*)'model_interpolate : progvar%kind_string is ',trim(progvar(ivar)%kind_string)
-   write(*,*)'model_interpolate : state index         is ',indx
-   write(*,*)'model_interpolate : value               is ',obs_val
-   call write_location(n,location,charstring=string1)
-   write(*,*)'observation location ',trim(string1)
+if (debug > 99) then
+   print*,'  ill,   iul,   ilr,   iur',   ill,   iul,   ilr,   iur
+   print*,'x_ill, x_iul, x_ilr, x_iur', x_ill, x_iul, x_ilr, x_iur
+   print*,'   dx,   dxm,    dy,   dym',    dx,   dxm,    dy,   dym
+   print*,'corner weights            ',dym*dxm, dym*dx, dy*dxm, dy*dx
+endif
+
+fld(1,:) = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+if (debug > 0) print*,'vector comp:',fld(1,:)
+
+where(x_ill == missing_r8) fld(1,:) = missing_r8
+where(x_ilr == missing_r8) fld(1,:) = missing_r8
+where(x_iul == missing_r8) fld(1,:) = missing_r8
+where(x_iur == missing_r8) fld(1,:) = missing_r8
+
+! Interpolation at level k+1
+
+if (num_dims == 3) then
+   ill = get_dart_vector_index(ll(1), int(zloc), ll(2), domid, varid)
+   iul = get_dart_vector_index(ul(1), int(zloc), ul(2), domid, varid)
+   ilr = get_dart_vector_index(lr(1), int(zloc), lr(2), domid, varid)
+   iur = get_dart_vector_index(ur(1), int(zloc), ur(2), domid, varid)
+else
+   ill = get_dart_vector_index(ll(1), ll(2), int(zloc+1), domid, varid)
+   iul = get_dart_vector_index(ul(1), ul(2), int(zloc+1), domid, varid)
+   ilr = get_dart_vector_index(lr(1), lr(2), int(zloc+1), domid, varid)
+   iur = get_dart_vector_index(ur(1), ur(2), int(zloc+1), domid, varid)
+endif
+
+x_ill = get_state(ill, state_handle)
+x_ilr = get_state(ilr, state_handle)
+x_iul = get_state(iul, state_handle)
+x_iur = get_state(iur, state_handle)
+
+fld(2,:) = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+
+where(x_ill == missing_r8) fld(2,:) = missing_r8
+where(x_ilr == missing_r8) fld(2,:) = missing_r8
+where(x_iul == missing_r8) fld(2,:) = missing_r8
+where(x_iur == missing_r8) fld(2,:) = missing_r8
+
+!----------------------------------
+! 2. Vertical Interpolation
+!----------------------------------
+
+! The previous section (1. Horizontal Interpolation) has produced a variable
+! called "fld", which nominally has two entries in it. 3D fields have
+! hopefully produced 2 non-zero entries, whereas surface fields only have
+! filled the first entry.  If a full 3D field, then do vertical interpolation
+! between encompassing model levels (k and k+1).
+
+! Do vertical interpolation -- at this point zloc is >= 1
+
+do e = 1,ens_size
+   if ( fld(1,e) == missing_r8 ) then
+     expected_obs(e) = missing_r8
+     istatus(e) = 12
+   else
+      call toGrid(zloc, k, dz, dzm)
+      if (debug > 4) print*, 'zloc, k, dz, dzm = ', zloc, k, dz, dzm
+      if (int(zloc) >= 1) then
+         ! Linearly interpolate between grid points
+         expected_obs(e) = dzm*fld(1,e) + dz*fld(2,e)
+         if (debug > 4) print*, 'interpolated obs_val = ', expected_obs(e)
+      else
+         ! Extrapolate below first level.
+         expected_obs(e) = fld(1,e) - (fld(2,e)-fld(1,e))*dzm
+         if (debug > 4) print*, 'extrapolated obs_val = ', expected_obs(e)
+      endif
+      istatus(e) = 0
+   endif
+enddo
+
+if(debug > 1) then
+   do e = 1,ens_size
+   write(     *     ,*) 'model_interpolate: member, kind, "obs", status = ', &
+              e, obs_kind, expected_obs(e), istatus(e)
+   write(logfileunit,*) 'model_interpolate: member, kind, "obs", status = ', &
+              e, obs_kind, expected_obs(e), istatus(e)
+   enddo
+endif
+
+!This is the check routine, skip the Non-uniform part, 
+! If one or more of the ensemble members doesn't have snow,
+! we must reject the observation because we do not have
+! a full rank ensemble for the regression. We don't know
+! how to make snow  
+if ( (obs_kind == QTY_SNOWCOVER_FRAC) .and. &
+     any(expected_obs <= 0.0) )  then
+    expected_obs = missing_r8
+    istatus      = 12
 endif
 
 end subroutine model_interpolate
 
 
-
-function get_model_time_step()
 !------------------------------------------------------------------
-!
-! Returns the the time step of the model; the smallest increment
-! in time that the model is capable of advancing the state in a given
-! implementation. This interface is required for all applications.
-
-type(time_type) :: get_model_time_step
-
-if ( .not. module_initialized ) call static_init_model
-
-! The NOAH model can only be advanced in multiples of the restart frequency.
-
-get_model_time_step = set_time(khour*3600,kday)
-
-end function get_model_time_step
-
-
+!> Given an integer index into the state vector structure, returns the
+!> associated location. A second intent(out) optional argument kind
+!> can be returned if the model has more than one type of field (for
+!> instance temperature and zonal wind component). This interface is
+!> required for all filter applications as it is required for computing
+!> the distance between observations and state variables.
 
 subroutine get_state_meta_data(index_in, location, var_type)
-!------------------------------------------------------------------
-!
-! Given an integer index into the state vector structure, returns the
-! associated location. A second intent(out) optional argument kind
-! can be returned if the model has more than one type of field (for
-! instance temperature and zonal wind component). This interface is
-! required for all filter applications as it is required for computing
-! the distance between observations and state variables.
 
-integer,             intent(in)            :: index_in
+integer(i8),         intent(in)            :: index_in
 type(location_type), intent(out)           :: location
 integer,             intent(out), optional :: var_type
 
-integer :: n, layer, ivar
+character(len=*), parameter :: routine = 'get_state_meta_data'
+integer :: idim1, idim2, idim3, varid, domid, qtyid, num_dims
+character(len=obstypelength) :: qtystring
+
+character(len=NF90_MAX_NAME) :: varname
+
+real(r8) :: layer_midpoints(max(num_soil_layers,num_soil_nitrogen_layers))
+integer  :: num_layers
 
 if ( .not. module_initialized ) call static_init_model
 
-if( west_east*south_north /= 1 ) then
-     write(string1,*) 'PROBLEM: not set up for a case with multiple locations yet.'
-     call error_handler(E_ERR,'get_state_meta_data',string1,source,revision,revdate)
+! Be careful with the indices from get_model_variable_indices.
+! lat/lon variables are declared (west_east,south_north)
+! 2D      variables are declared (west_east,south_north)
+! 3D      variables are declared (west_east,soil_layers_stag,south_north)
+
+call get_model_variable_indices(index_in, idim1, idim2, idim3, &
+                                varid, domid, qtyid, qtystring)   
+
+num_dims = get_num_dims(domid,varid)
+varname  = get_variable_name(domid,varid)
+
+!>@todo Support more than just soil layers.
+!> Different vertical dimensions will have different ways of specifying depth.
+!> Snow layers are still a problem.
+
+call get_vertical_array(domid, varid, num_dims, layer_midpoints, num_layers)
+
+if ( num_dims == 2 ) then
+
+   location = set_location(xlong(idim1,idim2), xlat(idim1,idim2),  &
+                  0.0_r8, VERTISSURFACE)
+
+elseif ( num_dims == 3 ) then
+
+   location = set_location(xlong(idim1,idim3), xlat(idim1,idim3),  &
+                  layer_midpoints(idim2), VERTISHEIGHT)
+
+else
+   write(string1,*) 'unsupported number of dimensions (',num_dims,') for "',trim(varname),'"'
+   call error_handler(E_ERR,'get_state_meta_data',string1,source,revision,revdate)
 endif
 
-layer = -1
-
-FindIndex : do n = 1,nfields
-   if( (progvar(n)%index1 <= index_in) .and. (index_in <= progvar(n)%indexN) ) then
-      layer    = index_in - progvar(n)%index1 + 1
-      var_type = progvar(n)%dart_kind
-      ivar     = n
-      exit FindIndex
-   endif
-enddo FindIndex
-
-if ( (do_output()) .and. debug > 30 ) then
-   write(*,*)'get_state_meta_data: index_in is ',index_in
-   write(*,*)'get_state_meta_data: ivar     is ',ivar
-   write(*,*)'get_state_meta_data: layer    is ',layer
-   write(*,*)
-endif
-
-if( layer == -1 ) then
-     write(string1,*) 'Problem, cannot find base_offset, index_in is: ', index_in
-     call error_handler(E_ERR,'get_state_meta_data',string1,source,revision,revdate)
-endif
-
-if (progvar(ivar)%varsize == 1) layer = 0
-
-location = state_loc(layer)
+if (present(var_type)) var_type = qtyid
 
 end subroutine get_state_meta_data
 
 
+!------------------------------------------------------------------
+!> Does any shutdown and clean-up needed for model.
 
 subroutine end_model()
-!------------------------------------------------------------------
-!
-! Does any shutdown and clean-up needed for model. Can be a NULL
-! INTERFACE if the model has no need to clean up storage, etc.
 
-! good style ... perhaps you could deallocate stuff (from static_init_model?).
-! deallocate(state_loc)
+deallocate(xlong,xlat)
+deallocate(domain_info)
+deallocate(soil_depth)
+
 if ( .not. module_initialized ) call static_init_model
 
 end subroutine end_model
 
 
-
-function nc_write_model_atts( ncFileID ) result (ierr)
 !------------------------------------------------------------------
-! This routine writes all the netCDF 'infrastructure' and sets up the
-! global attributes, dimensions, coordinate variables, and output variables.
-! The actuall filling of the output variables is done by
-! nc_write_model_vars() which can be called repeatedly for each
-! assimilation cycle.
-!
-! All errors are fatal, so the return code is always '0 == normal'
-!
-! assim_model_mod:init_diag_output uses information from the location_mod
-!     to define the location dimension and variable ID. All we need to do
-!     is query, verify, and fill ...
-!
-! Typical sequence for adding new dimensions,variables,attributes:
-! NF90_OPEN             ! open existing netCDF dataset
-!    NF90_redef         ! put into define mode
-!    NF90_def_dim       ! define additional dimensions (if any)
-!    NF90_def_var       ! define variables: from name, type, and dims
-!    NF90_put_att       ! assign attribute values
-! NF90_ENDDEF           ! end definitions: leave define mode
-!    NF90_put_var       ! provide values for variable
-! NF90_CLOSE            ! close: save updated netCDF dataset
+!> This routine writes all the netCDF 'infrastructure' and sets up the
+!> global attributes, dimensions, coordinate variables, and output variables.
+!> The actuall filling of the output variables is done by
+!> nc_write_model_vars() which can be called repeatedly for each
+!> assimilation cycle.
+!>
+!> All errors are fatal, so the return code is always '0 == normal'
+!>
+!> assim_model_mod:init_diag_output uses information from the location_mod
+!>     to define the location dimension and variable ID. All we need to do
+!>     is query, verify, and fill ...
 
-integer, intent(in)  :: ncFileID      ! netCDF file identifier
-integer              :: ierr          ! return value of function
+subroutine nc_write_model_atts( ncid, domain_id )
 
-integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
+integer, intent(in)  :: ncid
+integer, intent(in)  :: domain_id
 
-!----------------------------------------------------------------------
-! variables if we just blast out one long state vector
-!----------------------------------------------------------------------
+character(len=*), parameter :: routine = 'nc_write_model_atts'
 
-integer :: StateVarDimID    ! netCDF pointer to state variable dimension (model size)
-integer :: MemberDimID      ! netCDF pointer to dimension of ensemble    (ens_size)
-integer :: TimeDimID        ! netCDF pointer to time dimension           (unlimited)
+! variables for the geographic metadata
 
-integer :: StateVarVarID   ! netCDF pointer to state variable coordinate array
-integer :: StateVarID      ! netCDF pointer to 3D [state,copy,time] array
-
-!----------------------------------------------------------------------
-! variables if we parse the state vector into prognostic variables
-!----------------------------------------------------------------------
-
+integer :: TimeDimID
+integer :: DateStrLenDimID
 integer :: weDimID
 integer :: snDimID
 integer :: nsoilDimID
-integer :: myndims
-integer :: ivar, varID
-integer, dimension(NF90_MAX_VAR_DIMS) :: mydimids
-character(len=NF90_MAX_NAME) :: varname
+integer :: nitsoilDimID
+integer :: varid
 
-!----------------------------------------------------------------------
 ! variables for the namelist output
-!----------------------------------------------------------------------
 
 character(len=129), allocatable, dimension(:) :: textblock
 integer :: LineLenDimID, nlinesDimID, nmlVarID
 integer :: nlines, linelen
-logical :: has_noah_namelist
+logical :: has_lsm_namelist
 
-!----------------------------------------------------------------------
-! we are going to need these to record the creation date in the netCDF file.
-! This is entirely optional, but nice.
-!----------------------------------------------------------------------
-
-character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
-integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
-character(len=NF90_MAX_NAME) :: str1
-
-integer :: i
-
-character(len=128) :: filename
+integer :: io
 
 if ( .not. module_initialized ) call static_init_model
 
-!-------------------------------------------------------------------------------
-! make sure ncFileID refers to an open netCDF file,
-! and then put into define mode.
-!-------------------------------------------------------------------------------
+call nc_begin_define_mode(ncid)
 
-ierr = -1 ! assume things go poorly
+call write_noah_global_atts(ncid)
 
-!--------------------------------------------------------------------
-! we only have a netcdf handle here so we do not know the filename
-! or the fortran unit number.  but construct a string with at least
-! the netcdf handle, so in case of error we can trace back to see
-! which netcdf file is involved.
-!--------------------------------------------------------------------
+call nc_add_global_attribute(ncid, "model", "NOAHMP", routine)
 
-write(filename,*) 'ncFileID', ncFileID
-
-call nc_check(nf90_inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID), &
-                     'nc_write_model_atts', 'inquire '//trim(filename))
-call nc_check(nf90_redef(ncFileID), 'nc_write_model_atts', 'redef '//trim(filename))
-
-!-------------------------------------------------------------------------------
-! We need the dimension ID for the number of copies/ensemble members, and
-! we might as well check to make sure that Time is the Unlimited dimension.
-! Our job is create the 'model size' dimension.
-!-------------------------------------------------------------------------------
-
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name='NMLlinelen', dimid = linelenDimID), &
-                  'nc_write_model_atts', 'inq_dimid NMLlinelen '//trim(filename))
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name='copy', dimid=MemberDimID), &
-                  'nc_write_model_atts', 'inq_dimid copy '//trim(filename))
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name='time', dimid= TimeDimID), &
-                  'nc_write_model_atts', 'inq_dimid time '//trim(filename))
-
-if ( TimeDimID /= unlimitedDimId ) then
-   write(string1,*)'Time Dimension ID ',TimeDimID, &
-                     ' should equal Unlimited Dimension ID',unlimitedDimID
-   call error_handler(E_ERR,'nc_write_model_atts', string1, source, revision, revdate)
-endif
-
-!-------------------------------------------------------------------------------
-! Define the model size / state variable dimension / whatever ...
-!-------------------------------------------------------------------------------
-
-call nc_check(nf90_def_dim(ncid=ncFileID, name='StateVariable',  &
-                           len=model_size, dimid=StateVarDimID), &
-                           'nc_write_model_atts', 'def_dim state '//trim(filename))
-
-!-------------------------------------------------------------------------------
-! Write Global Attributes
-!-------------------------------------------------------------------------------
-
-call DATE_AND_TIME(crdate,crtime,crzone,values)
-write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
-                  values(1), values(2), values(3), values(5), values(6), values(7)
-
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'creation_date' ,str1), &
-                          'nc_write_model_atts', 'put_att creation_date '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model_source'  ,source), &
-                          'nc_write_model_atts', 'put_att model_source '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model_revision',revision), &
-                          'nc_write_model_atts', 'put_att model_revision '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model_revdate' ,revdate), &
-                          'nc_write_model_atts', 'put_att model_revdate '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model','NOAH'), &
-                          'nc_write_model_atts', 'put_att model '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'calendar',trim(calendar)), &
-                          'nc_write_model_atts', 'put_att calendar '//trim(filename))
-
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'HRLDAS_CONSTANTS_FILE',trim(hrldas_constants_file)), &
-                          'nc_write_model_atts', 'put_att HRLDAS_CONSTANTS_FILE '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'HRLDAS_INDIR',trim(INDIR)), &
-                          'nc_write_model_atts', 'put_att HRLDAS_INDIR '//trim(filename))
-
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'RESTART_FILENAME_REQUESTED ',trim(restart_filename_requested)), &
-                          'nc_write_model_atts', 'put_att RESTART_FILENAME_REQUESTED '//trim(filename))
-
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'KDAY',KDAY), &
-                          'nc_write_model_atts', 'put_att KDAY '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'KHOUR',KHOUR), &
-                          'nc_write_model_atts', 'put_att KHOUR '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'FORCING_TIMESTEP',forcing_timestep), &
-                          'nc_write_model_atts', 'put_att FORCING_TIMESTEP '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'NOAH_TIMESTEP',noah_timestep), &
-                          'nc_write_model_atts', 'put_att NOAH_TIMESTEP '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'OUTPUT_TIMESTEP',output_timestep), &
-                          'nc_write_model_atts', 'put_att OUTPUT_TIMESTEP '//trim(filename))
-
-! call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'Soil_type_index',Soil_type_index), &
-!                           'nc_write_model_atts', 'put_att Soil_type_index'//trim(filename))
-! call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'Vegetation_type_index',Vegetation_type_index), &
-!                           'nc_write_model_atts', 'put_att Vegetation_type_index')
-! call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'Urban_veg_category',Urban_veg_category), &
-!                           'nc_write_model_atts', 'put_att Urban_veg_category'//trim(filename))
-
-!-------------------------------------------------------------------------------
 ! Determine shape of namelist.
 ! long lines are truncated when read into textblock
-!-------------------------------------------------------------------------------
 
-call find_textfile_dims(noah_namelist_filename, nlines, linelen)
+call find_textfile_dims(lsm_namelist_filename, nlines, linelen)
 if (nlines > 0) then
-  has_noah_namelist = .true.
+   has_lsm_namelist = .true.
 else
-  has_noah_namelist = .false.
+   has_lsm_namelist = .false.
 endif
 
-if (has_noah_namelist) then
+if (has_lsm_namelist) then
    allocate(textblock(nlines))
    textblock = ''
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='noahNMLnlines', &
-          len = nlines, dimid = nlinesDimID), &
-          'nc_write_model_atts', 'def_dim noahNMLnlines '//trim(filename))
+   io= nf90_def_dim(ncid, name='noahNMLnlines', len = nlines, dimid = nlinesDimID)
+   call nc_check(io, routine, 'def_dim noahNMLnlines')
 
-   call nc_check(nf90_def_var(ncFileID,name=trim(noah_namelist_filename), xtype=nf90_char,    &
-          dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID), &
-          'nc_write_model_atts', 'def_var noah_namelist '//trim(filename))
+   io= nf90_def_dim(ncid, name='line_length', len = 129, dimid = linelenDimID)
+   call nc_check(io, routine, 'def_dim line_length')
 
-   call nc_check(nf90_put_att(ncFileID, nmlVarID, 'long_name', 'contents of '//trim(noah_namelist_filename)), &
-          'nc_write_model_atts', 'put_att noah_namelist '//trim(filename))
+   io = nf90_def_var(ncid,name=trim(lsm_namelist_filename), xtype=nf90_char, &
+          dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID)
+   call nc_check(io, routine, 'def_var noah_namelist')
 
+   io= nf90_put_att(ncid, nmlVarID, 'long_name', &
+          'contents of '//trim(lsm_namelist_filename))
+   call nc_check(io, routine, 'put_att noah_namelist')
 endif
 
-!-------------------------------------------------------------------------------
-! Here is the extensible part. The simplest scenario is to output the state vector,
-! parsing the state vector into model-specific parts is complicated, and you need
-! to know the geometry, the output variables (PS,U,V,T,Q,...) etc. We're skipping
-! complicated part.
-!-------------------------------------------------------------------------------
+! We need to output the prognostic variables.
+! Define the additional dimensions IDs
+!>@todo multiple domains ... perhaps use the domain_id argument ...
 
-if ( output_state_vector ) then
+io = nf90_def_dim(ncid, name='Time', len=nf90_unlimited, dimid=TimeDimID)
+call nc_check(io, routine, 'def_dim DateStrLen')
 
-   !----------------------------------------------------------------------------
-   ! Create a variable for the state vector
-   !----------------------------------------------------------------------------
+io = nf90_def_dim(ncid, name='DateStrLen', len=19, dimid=DateStrLenDimID)
+call nc_check(io, routine, 'def_dim DateStrLen')
 
-  ! Define the state vector coordinate variable and some attributes.
-   call nc_check(nf90_def_var(ncid=ncFileID,name='StateVariable', xtype=NF90_INT, &
-                              dimids=StateVarDimID, varid=StateVarVarID), &
-                             'nc_write_model_atts', 'def_var StateVariable')
-   call nc_check(nf90_put_att(ncFileID, StateVarVarID,'long_name','State Variable ID'), &
-                             'nc_write_model_atts', 'put_att StateVariable long_name')
-   call nc_check(nf90_put_att(ncFileID, StateVarVarID, 'units',     'indexical'), &
-                             'nc_write_model_atts', 'put_att StateVariable units')
-   call nc_check(nf90_put_att(ncFileID, StateVarVarID, 'valid_range', (/ 1, model_size /)), &
-                             'nc_write_model_atts', 'put_att StateVariable valid_range')
+io = nf90_def_dim(ncid, name='west_east', len=lsm%dom(1)%we, dimid=weDimID)
+call nc_check(io, routine,'west_east def_dim')
 
-   ! Define the actual (3D) state vector, which gets filled as time goes on ...
-   call nc_check(nf90_def_var(ncid=ncFileID, name='state', xtype=NF90_REAL, &
-                 dimids = (/ StateVarDimID, MemberDimID, unlimitedDimID /), &
-                 varid=StateVarID), 'nc_write_model_atts', 'def_var state')
-   call nc_check(nf90_put_att(ncFileID, StateVarID, 'long_name', 'model state or fcopy'), &
-                             'nc_write_model_atts', 'put_att state long_name')
+io = nf90_def_dim(ncid, name='south_north', len=lsm%dom(1)%sn, dimid=snDimID)
+call nc_check(io, routine, 'south_north def_dim')
 
-   ! Leave define mode so we can fill the coordinate variable.
-   call nc_check(nf90_enddef(ncfileID),'nc_write_model_atts', 'state_vector enddef')
+io = nf90_def_dim(ncid, name='soil_layers_stag', len=num_soil_layers, dimid=nsoilDimID)
+call nc_check(io, routine, 'def_dim soil_layers_stag')
 
-   ! Fill the state variable coordinate variable
-   call nc_check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /)), &
-                                    'nc_write_model_atts', 'put_var state')
-
-else
-
-   !----------------------------------------------------------------------------
-   ! We need to output the prognostic variables.
-   !----------------------------------------------------------------------------
-   ! Define the additional dimensions IDs
-   !----------------------------------------------------------------------------
-
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='west_east', &
-          len=west_east, dimid=weDimID),'nc_write_model_atts','west_east def_dim '//trim(filename))
-
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='south_north', &
-          len=south_north, dimid=snDimID),'nc_write_model_atts', 'south_north def_dim '//trim(filename))
-
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='soil_layers_stag',  &
-          len=nsoil, dimid=nsoilDimID), 'nc_write_model_atts', 'def_dim soil_layers_stag'//trim(filename))
-
-   !----------------------------------------------------------------------------
-   ! Create the (empty) Coordinate Variables and the Attributes
-   !----------------------------------------------------------------------------
-
-   ! Grid Longitudes
-   call nc_check(nf90_def_var(ncFileID,name='XLONG', xtype=nf90_real, &
-                 dimids=(/ weDimID, snDimID /), varid=VarID),&
-                 'nc_write_model_atts', 'XLONG def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'coordinate longitude'), &
-                 'nc_write_model_atts', 'XLONG long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'coordinates', 'XLONG XLAT'),  &
-                 'nc_write_model_atts', 'XLONG coordinates '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'FieldType', 104),  &
-                 'nc_write_model_atts', 'XLONG FieldType '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'MemoryOrder', 'XY'),  &
-                 'nc_write_model_atts', 'XLONG MemoryOrder '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, '_FillValue', -999.0 ), &
-                 'nc_write_model_atts', 'XLONG _FillValue '//trim(filename))
-
-   ! Grid Latitudes
-   call nc_check(nf90_def_var(ncFileID,name='XLAT', xtype=nf90_real, &
-                 dimids=(/ weDimID, snDimID /), varid=VarID),&
-                 'nc_write_model_atts', 'XLAT def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'coordinate latitude'), &
-                 'nc_write_model_atts', 'XLAT long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'coordinates', 'XLONG XLAT'),  &
-                 'nc_write_model_atts', 'XLAT coordinates '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'FieldType', 104),  &
-                 'nc_write_model_atts', 'XLAT FieldType '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'MemoryOrder', 'XY'),  &
-                 'nc_write_model_atts', 'XLAT MemoryOrder '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, '_FillValue', -999.0 ), &
-                 'nc_write_model_atts', 'XLAT _FillValue '//trim(filename))
-
-   ! subsurface levels
-   call nc_check(nf90_def_var(ncFileID,name='soil_layers_stag', xtype=nf90_real, &
-                 dimids=(/ nsoilDimID /), varid=VarID),&
-                 'nc_write_model_atts', 'soil_layers_stag def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'coordinate soil levels'), &
-                 'nc_write_model_atts', 'soil_layers_stag long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'm'),  &
-                 'nc_write_model_atts', 'soil_layers_stag units '//trim(filename))
-
-   !----------------------------------------------------------------------------
-   ! Create the (empty) Prognostic Variables and their Attributes
-   !----------------------------------------------------------------------------
-
-   do ivar=1, nfields
-
-      varname = trim(progvar(ivar)%varname)
-      string1 = trim(filename)//' '//trim(varname)
-
-      ! match shape of the variable to the dimension IDs
-
-      call define_var_dims(ivar, ncFileID, MemberDimID, unlimitedDimID, myndims, mydimids)
-
-      ! define the variable and set the attributes
-
-      call nc_check(nf90_def_var(ncid=ncFileID, name=trim(varname), xtype=progvar(ivar)%xtype, &
-                    dimids = mydimids(1:myndims), varid=VarID),&
-                    'nc_write_model_atts', trim(string1)//' def_var' )
-
-      call nc_check(nf90_put_att(ncFileID, VarID, 'long_name', trim(progvar(ivar)%long_name)), &
-           'nc_write_model_atts', trim(string1)//' put_att long_name' )
-
-      call nc_check(nf90_put_att(ncFileID, VarID, 'DART_kind', trim(progvar(ivar)%kind_string)), &
-           'nc_write_model_atts', trim(string1)//' put_att dart_kind' )
-      call nc_check(nf90_put_att(ncFileID, VarID, 'units', trim(progvar(ivar)%units)), &
-           'nc_write_model_atts', trim(string1)//' put_att units' )
-
-      ! Preserve the original missing_value/_FillValue code.
-
-!     if (  progvar(ivar)%xtype == NF90_INT ) then
-!        call nc_check(nf90_put_att(ncFileID, VarID, 'missing_value', progvar(ivar)%spvalINT), &
-!             'nc_write_model_atts', trim(string1)//' put_att missing_value' )
-!        call nc_check(nf90_put_att(ncFileID, VarID, '_FillValue',  progvar(ivar)%spvalINT), &
-!             'nc_write_model_atts', trim(string1)//' put_att _FillValue' )
-
-!     elseif (  progvar(ivar)%xtype == NF90_FLOAT ) then
-!        call nc_check(nf90_put_att(ncFileID, VarID, 'missing_value', progvar(ivar)%spvalR4), &
-!             'nc_write_model_atts', trim(string1)//' put_att missing_value' )
-!        call nc_check(nf90_put_att(ncFileID, VarID, '_FillValue',  progvar(ivar)%spvalR4), &
-!             'nc_write_model_atts', trim(string1)//' put_att _FillValue' )
-
-!     elseif (  progvar(ivar)%xtype == NF90_DOUBLE ) then
-!        call nc_check(nf90_put_att(ncFileID, VarID, 'missing_value', progvar(ivar)%spvalR8), &
-!             'nc_write_model_atts', trim(string1)//' put_att missing_value' )
-!        call nc_check(nf90_put_att(ncFileID, VarID, '_FillValue',  progvar(ivar)%spvalR8), &
-!             'nc_write_model_atts', trim(string1)//' put_att _FillValue' )
-!     endif
-
-   enddo
-
-   !----------------------------------------------------------------------------
-   ! Finished with dimension/variable definitions, must end 'define' mode to fill.
-   !----------------------------------------------------------------------------
-
-   call nc_check(nf90_enddef(ncfileID), 'nc_write_model_atts', 'prognostic enddef')
-
-   !----------------------------------------------------------------------------
-   ! Fill the coordinate variables
-   !----------------------------------------------------------------------------
-
-   call nc_check(nf90_inq_varid(ncFileID, 'XLONG', VarID), &
-                'nc_write_model_atts', 'inq_varid XLONG '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID, VarID, xlong ), &
-                'nc_write_model_atts', 'put_var XLONG '//trim(filename))
-
-   call nc_check(nf90_inq_varid(ncFileID, 'XLAT', VarID), &
-                'nc_write_model_atts', 'inq_varid XLAT '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID, VarID, xlat ), &
-                'nc_write_model_atts', 'put_var XLAT '//trim(filename))
-
-   call nc_check(nf90_inq_varid(ncFileID, 'soil_layers_stag', VarID), &
-                'nc_write_model_atts', 'inq_varid soil_layers_stag '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID, VarID, zsoil(1:nsoil)), &
-                'nc_write_model_atts', 'put_var soil_layers_stag '//trim(filename))
+if (num_soil_nitrogen_layers > 0 ) then
+   io = nf90_def_dim(ncid, name='soil_nitrogen_layers_stag', &
+             len=num_soil_nitrogen_layers, dimid=nitsoilDimID)
+   call nc_check(io, routine, 'def_dim soil_nitrogen_layers_stag')
 endif
 
-!-------------------------------------------------------------------------------
+! Create the (empty) Coordinate Variables and the Attributes
+
+call nc_check(nf90_def_var(ncid, name='Times', xtype=nf90_char, &
+              dimids=(/ DateStrLenDimID, TimeDimID /), varid=VarID),&
+              routine, 'Times def_var')
+
+! Grid Longitudes
+call nc_check(nf90_def_var(ncid,name='XLONG', xtype=nf90_real, &
+              dimids=(/ weDimID, snDimID /), varid=VarID),&
+              routine, 'XLONG def_var')
+call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'coordinate longitude'), &
+              routine, 'XLONG long_name')
+call nc_check(nf90_put_att(ncid,  VarID, 'coordinates', 'XLONG XLAT'),  &
+              routine, 'XLONG coordinates')
+call nc_check(nf90_put_att(ncid,  VarID, 'FieldType', 104),  &
+              routine, 'XLONG FieldType')
+call nc_check(nf90_put_att(ncid,  VarID, 'MemoryOrder', 'XY'),  &
+              routine, 'XLONG MemoryOrder ')
+call nc_check(nf90_put_att(ncid,  VarID, '_FillValue', -999.0 ), &
+              routine, 'XLONG _FillValue')
+
+! Grid Latitudes
+call nc_check(nf90_def_var(ncid,name='XLAT', xtype=nf90_real, &
+              dimids=(/ weDimID, snDimID /), varid=VarID),&
+              routine, 'XLAT def_var ')
+call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'coordinate latitude'), &
+              routine, 'XLAT long_name ')
+call nc_check(nf90_put_att(ncid,  VarID, 'coordinates', 'XLONG XLAT'),  &
+              routine, 'XLAT coordinates ')
+call nc_check(nf90_put_att(ncid,  VarID, 'FieldType', 104),  &
+              routine, 'XLAT FieldType ')
+call nc_check(nf90_put_att(ncid,  VarID, 'MemoryOrder', 'XY'),  &
+              routine, 'XLAT MemoryOrder ')
+call nc_check(nf90_put_att(ncid,  VarID, '_FillValue', -999.0 ), &
+              routine, 'XLAT _FillValue ')
+
+! subsurface levels
+call nc_check(nf90_def_var(ncid,name='soil_layers_stag', xtype=nf90_real, &
+              dimids=(/ nsoilDimID /), varid=VarID),&
+              routine, 'soil_layers_stag def_var ')
+call nc_check(nf90_put_att(ncid,  VarID, 'long_name', 'coordinate soil levels'), &
+              routine, 'soil_layers_stag long_name ')
+call nc_check(nf90_put_att(ncid,  VarID, 'units', 'm'),  &
+              routine, 'soil_layers_stag units ')
+
+! Finished with dimension/variable definitions, must end 'define' mode to fill.
+
+call nc_check(nf90_enddef(ncid), routine, 'prognostic enddef')
+
+! Fill the coordinate variables
+
+call nc_check(nf90_inq_varid(ncid, 'XLONG', VarID), &
+             routine, 'inq_varid XLONG ')
+call nc_check(nf90_put_var(ncid, VarID, xlong ), &
+             routine, 'put_var XLONG ')
+
+call nc_check(nf90_inq_varid(ncid, 'XLAT', VarID), &
+             routine, 'inq_varid XLAT ')
+call nc_check(nf90_put_var(ncid, VarID, xlat ), &
+             routine, 'put_var XLAT ')
+
+call nc_check(nf90_inq_varid(ncid, 'soil_layers_stag', VarID), &
+             routine, 'inq_varid soil_layers_stag ')
+call nc_check(nf90_put_var(ncid, VarID, soil_layer_thickness(1:num_soil_layers)), &
+             routine, 'put_var soil_layers_stag ')
+
+
 ! Fill the variables we can
-!-------------------------------------------------------------------------------
 
-if (has_noah_namelist) then
-   call file_to_text(noah_namelist_filename, textblock)
-   call nc_check(nf90_put_var(ncFileID, nmlVarID, textblock ), &
-                 'nc_write_model_atts', 'put_var nmlVarID')
+if (has_lsm_namelist) then
+   call file_to_text(lsm_namelist_filename, textblock)
+   call nc_check(nf90_put_var(ncid, nmlVarID, textblock ), &
+                 routine, 'put_var nmlVarID')
    deallocate(textblock)
 endif
 
-!-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
-!-------------------------------------------------------------------------------
-call nc_check(nf90_sync(ncFileID),'nc_write_model_atts', 'sync')
 
-ierr = 0 ! If we got here, things went well.
+call nc_check(nf90_sync(ncid),routine, 'sync')
 
-end function nc_write_model_atts
+end subroutine nc_write_model_atts
 
 
-
-
-function nc_write_model_vars( ncFileID, state_vec, copyindex, timeindex ) result (ierr)
 !------------------------------------------------------------------
-! All errors are fatal, so the return code is always '0 == normal'
-!
-! assim_model_mod:init_diag_output uses information from the location_mod
-!     to define the location dimension and variable ID. All we need to do
-!     is query, verify, and fill ...
-!
-! Typical sequence for adding new dimensions,variables,attributes:
-! NF90_OPEN             ! open existing netCDF dataset
-!    NF90_redef         ! put into define mode
-!    NF90_def_dim       ! define additional dimensions (if any)
-!    NF90_def_var       ! define variables: from name, type, and dims
-!    NF90_put_att       ! assign attribute values
-! NF90_ENDDEF           ! end definitions: leave define mode
-!    NF90_put_var       ! provide values for variable
-! NF90_CLOSE            ! close: save updated netCDF dataset
+!> Perturbs a model state for generating initial ensembles.
+!> The perturbed state is referenced by the state_ens_handle.
+!> We do not know how to generate an ensemble for an LSM,
+!> so this dies right away (for now).
 
-integer,                intent(in) :: ncFileID      ! netCDF file identifier
-real(r8), dimension(:), intent(in) :: state_vec
-integer,                intent(in) :: copyindex
-integer,                intent(in) :: timeindex
-integer                            :: ierr          ! return value of function
+subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
 
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, mystart, mycount
-character(len=NF90_MAX_NAME)          :: varname
-character(len=NF90_MAX_NAME),dimension(NF90_MAX_VAR_DIMS) :: dimnames
-integer :: i, ivar, VarID, ncNdims, dimlen, numdims, timedimcounter
-integer :: TimeDimID, CopyDimID
+type(ensemble_type), intent(inout) :: state_ens_handle
+integer,             intent(in)    :: ens_size
+real(r8),            intent(in)    :: pert_amp
+logical,             intent(out)   :: interf_provided
 
-real(r8), allocatable, dimension(:)       :: data_1d_array
-real(r8), allocatable, dimension(:,:)     :: data_2d_array
-real(r8), allocatable, dimension(:,:,:)   :: data_3d_array
+character(len=*), parameter :: routine = 'pert_model_copies'
 
-character(len=128) :: filename
+logical, save :: seed_unset = .true.
+integer, save :: seed
+type(random_seq_type) :: random_seq
+
+real(r8) :: stddev, rng
+real(r8) :: new_state
+integer  :: j, k, copy, ivar
+integer  :: start_ind, end_ind
+logical  :: positive
+integer, parameter :: NTRIES = 100
 
 if ( .not. module_initialized ) call static_init_model
 
-ierr = -1 ! assume things go poorly
-
-!--------------------------------------------------------------------
-! we only have a netcdf handle here so we do not know the filename
-! or the fortran unit number.  but construct a string with at least
-! the netcdf handle, so in case of error we can trace back to see
-! which netcdf file is involved.
-!--------------------------------------------------------------------
-
-write(filename,*) 'ncFileID', ncFileID
-
-!-------------------------------------------------------------------------------
-! make sure ncFileID refers to an open netCDF file,
-!-------------------------------------------------------------------------------
-
-call nc_check(nf90_inq_dimid(ncFileID, 'copy', dimid=CopyDimID), &
-            'nc_write_model_vars', 'inq_dimid copy '//trim(filename))
-
-call nc_check(nf90_inq_dimid(ncFileID, 'time', dimid=TimeDimID), &
-            'nc_write_model_vars', 'inq_dimid time '//trim(filename))
-
-if ( output_state_vector ) then
-
-   !----------------------------------------------------------------------------
-   ! simply blast out the vector
-   !----------------------------------------------------------------------------
-
-   call nc_check(nf90_inq_varid(ncFileID, 'state', VarID), &
-                               'nc_write_model_vars', 'inq_varid state' )
-   call nc_check(nf90_put_var(ncFileID, VarID, state_vec,  &
-                              start=(/ 1, copyindex, timeindex /)), &
-                             'nc_write_model_vars', 'put_var state')
-
-else
-
-   !----------------------------------------------------------------------------
-   ! We need to process the prognostic variables.
-   !----------------------------------------------------------------------------
-
-   do ivar = 1,nfields
-
-      varname = trim(progvar(ivar)%varname)
-      string2 = trim(filename)//' '//trim(varname)
-
-      ! Ensure netCDF variable is conformable with progvar quantity.
-      ! The TIME and Copy dimensions are intentionally not queried.
-      ! This requires that Time is the unlimited dimension (the last one in Fortran),
-      ! and that 'copy' is the second-to-last. The variables declared in the DART
-      ! diagnostic files are required to have the same shape as in the source
-      ! restart file. If Time is present there, it must also be the 'last' one.
-
-      ! FIXME ... somewhere I should ensure that IF time is present in the original
-      ! prognostic variable from the model, it is the last/unlimited dimension.
-
-      call nc_check(nf90_inq_varid(ncFileID, varname, VarID), &
-            'nc_write_model_vars', 'inq_varid '//trim(string2))
-
-      call nc_check(nf90_inquire_variable(ncFileID,VarID,dimids=dimIDs,ndims=ncNdims), &
-            'nc_write_model_vars', 'inquire '//trim(string2))
-
-      timedimcounter = 0
-      mystart(:) = 1
-      mycount(:) = 1
-      DimCheck : do i = 1,ncNdims
-
-         write(string1,'(A,i2,A)') 'inquire dimension ',i,trim(string2)
-         call nc_check(nf90_inquire_dimension(ncFileID, dimIDs(i), name=dimnames(i), len=dimlen), &
-               'nc_write_model_vars', trim(string1))
-
-         if (dimIDs(i) == CopyDimID) cycle DimCheck
-         if (dimIDs(i) == TimeDimID) then
-            timedimcounter = 1
-            cycle DimCheck
-         endif
-
-         if ( dimlen /= progvar(ivar)%dimlens(i) ) then
-            write(string1,*) trim(string2),' dim/dimlen ',i,dimlen,' not ',progvar(ivar)%dimlens(i)
-            write(string2,*)' but it should be.'
-            call error_handler(E_ERR, 'nc_write_model_vars', trim(string1), &
-                            source, revision, revdate, text2=trim(string2))
-         endif
-
-         mycount(i) = dimlen
-
-      enddo DimCheck
-
-      where(dimIDs == CopyDimID) mystart = copyindex
-      where(dimIDs == CopyDimID) mycount = 1
-      where(dimIDs == TimeDimID) mystart = timeindex
-      where(dimIDs == TimeDimID) mycount = 1
-
-      if ( (do_output()) .and. debug > 10 ) then
-         write(*,*)'nc_write_model_vars '//trim(varname)//' start is ',mystart(1:ncNdims)
-         write(*,*)'nc_write_model_vars '//trim(varname)//' count is ',mycount(1:ncNdims)
-         write(*,'(A20)')'nc_write_model_vars ',dimnames(1:progvar(ivar)%numdims)
-      endif
-
-      ! If the original variable is shaped:
-      !     XXXXXX(time, somedimension) -or- XXXXXX(somedimension)
-      ! then it is a 1D variable in our context.
-      ! If it is shaped
-      !     XXXXXX(time, south_north, west_east) -or- XXXXXX(south_north, west_east)
-      ! it really is 2D ...
-      !
-      ! this adjustment to numdims below is to remove the Time dimension
-
-      numdims = progvar(ivar)%numdims - timedimcounter
-
-      if ( numdims == 1 ) then
-
-         if ( ncNdims /= 3 ) then
-            write(string1,*)trim(varname),' no room for copy,time dimensions.'
-            write(string2,*)'netcdf file should have 3 dimensions, has ',ncNdims
-            call error_handler(E_ERR, 'nc_write_model_vars', string1, &
-                            source, revision, revdate, text2=string2)
-         endif
-
-         allocate(data_1d_array( progvar(ivar)%dimlens(1) ))
-         call vector_to_prog_var(state_vec, ivar, data_1d_array)
-         call nc_check(nf90_put_var(ncFileID, VarID, data_1d_array, &
-             start = mystart(1:ncNdims), count=mycount(1:ncNdims)), &
-                   'nc_write_model_vars', 'put_var '//trim(string2))
-         deallocate(data_1d_array)
-
-      elseif ( numdims == 2 ) then
-
-         if ( ncNdims /= 4 ) then
-            write(string1,*)trim(varname),' no room for copy,time dimensions.'
-            write(string2,*)'netcdf file should have 4 dimensions, has ',ncNdims
-            call error_handler(E_ERR, 'nc_write_model_vars', string1, &
-                            source, revision, revdate, text2=string2)
-         endif
-
-         allocate(data_2d_array( progvar(ivar)%dimlens(1),  &
-                                 progvar(ivar)%dimlens(2) ))
-         call vector_to_prog_var(state_vec, ivar, data_2d_array)
-         call nc_check(nf90_put_var(ncFileID, VarID, data_2d_array, &
-             start = mystart(1:ncNdims), count=mycount(1:ncNdims)), &
-                   'nc_write_model_vars', 'put_var '//trim(string2))
-         deallocate(data_2d_array)
-
-      elseif ( numdims == 3 ) then
-
-         if ( ncNdims /= 5 ) then
-            write(string1,*)trim(varname),' no room for copy,time dimensions.'
-            write(string2,*)'netcdf file should have 5 dimensions, has ',ncNdims
-            call error_handler(E_ERR, 'nc_write_model_vars', string1, &
-                            source, revision, revdate, text2=string2)
-         endif
-
-         allocate(data_3d_array( progvar(ivar)%dimlens(1),  &
-                                 progvar(ivar)%dimlens(2),  &
-                                 progvar(ivar)%dimlens(3) ))
-         call vector_to_prog_var(state_vec, ivar, data_3d_array)
-         call nc_check(nf90_put_var(ncFileID, VarID, data_3d_array, &
-             start = mystart(1:ncNdims), count=mycount(1:ncNdims)), &
-                   'nc_write_model_vars', 'put_var '//trim(string2))
-         deallocate(data_3d_array)
-
-      else
-
-         write(string1,*)'do not know how to handle NOAH variables with more than 3 non-time dimensions'
-         write(string2,*)trim(progvar(ivar)%varname),' has dimensions ', progvar(ivar)%dimnames(1:progvar(ivar)%numdims)
-         call error_handler(E_ERR,'nc_write_model_vars',string1, &
-                    source,revision,revdate,text2=string2)
-
-      endif
-
-   enddo
-
-endif
-
-!-------------------------------------------------------------------------------
-! Flush the buffer and leave netCDF file open
-!-------------------------------------------------------------------------------
-
-call nc_check(nf90_sync(ncFileID), 'nc_write_model_vars', 'sync')
-
-ierr = 0 ! If we got here, things went well.
-
-end function nc_write_model_vars
-
-
-
-subroutine pert_model_state(state, pert_state, interf_provided)
-!------------------------------------------------------------------
-!
-! Perturbs a model state for generating initial ensembles.
-! The perturbed state is returned in pert_state.
-! A model may choose to provide a NULL INTERFACE by returning
-! .false. for the interf_provided argument. This indicates to
-! the filter that if it needs to generate perturbed states, it
-! may do so by adding an O(0.1) magnitude perturbation to each
-! model state variable independently. The interf_provided argument
-! should be returned as .true. if the model wants to do its own
-! perturbing of states.  The returned pert_state should in any
-! case be valid, since it will be read by filter even if
-! interf_provided is .false.
-
-real(r8), intent(in)  :: state(:)
-real(r8), intent(out) :: pert_state(:)
-logical,  intent(out) :: interf_provided
-
-if ( .not. module_initialized ) call static_init_model
-
-call error_handler(E_ERR,'pert_model_state', &
+call error_handler(E_MSG,routine, &
                   'NOAH cannot be started from a single vector', &
                   source, revision, revdate, &
-                  text2='see comments in noah/model_mod.f90::pert_model_state()',&
-                  text3='or noah/model_mod.html#pert_model_state')
+                  text2='see comments in noah/model_mod.f90::pert_model_copies()',&
+                  text3='or noah/model_mod.html#pert_model_copies')
 
-interf_provided = .false.
+interf_provided = .true.
 
-end subroutine pert_model_state
+! Generate a unique (but repeatable - if task count is same)
+! seed for each ensemble member
+if (seed_unset) then
+   seed = (my_task_id()+1) * 1000
+   seed_unset = .false.
+endif
 
+if ( debug > 99 ) then
+   write(string1,*)'seed_unset is ',seed_unset,'; seed is ',seed
+   call error_handler(E_MSG,routine,string1)
+endif
 
+call init_random_seq(random_seq, seed)
+seed = seed + 1  ! next ensemble member gets a different seed
 
-subroutine ens_mean_for_model(ens_mean)
-!------------------------------------------------------------------
+stddev = model_perturbation_amplitude
 
-real(r8), intent(in) :: ens_mean(:)
+DOMAIN : do idom = 1, domain_count
 
-if ( .not. module_initialized ) call static_init_model
+   !>@todo skip variables and use lognormal for moisture, gaussians for temperatures ...
+   do ivar = 1, get_num_variables(idom)
 
-end subroutine ens_mean_for_model
+      start_ind = get_index_start(idom, ivar)
+      end_ind   = get_index_end(  idom, ivar)
+
+      MINE : do j = 1, state_ens_handle%my_num_vars
+
+         if (state_ens_handle%my_vars(j) >= start_ind .and. &
+             state_ens_handle%my_vars(j) <= end_ind   ) then
+
+         COPIES : do copy = 1, ens_size
+
+               if (state_ens_handle%copies(copy,j) == MISSING_R8) cycle COPIES
+
+               if (trim(perturb_distribution) == 'lognormal') then
+                  rng = random_gaussian(random_seq, 0.0_r8, 1.0_r8)
+                  state_ens_handle%copies(copy,j) = state_ens_handle%copies(copy,j)*exp(stddev*rng)
+
+               else !if it's not lognormal, then the only other option is Gaussian.
+
+                  positive = .false.
+
+                  !>@todo might want to make sure it is within the variable bounds from the namelist
+                  POSDEF : do k=1,NTRIES ! prevent runoff from being negative
+                     new_state = random_gaussian(random_seq, state_ens_handle%copies(copy,j), stddev)
+
+                     if ( new_state >= 0.0_r8 ) then
+                       positive = .true.
+                       state_ens_handle%copies(copy,j) = new_state
+                       exit POSDEF
+                     endif
+                  enddo POSDEF
+                  if (.not. positive) then
+                     write(string1,*)'tried ',NTRIES,' times to get something >= 0.0_r8 and failed'
+                     write(string2,*)'state value ',state_ens_handle%copies(copy,j)
+                     call error_handler(E_ERR, routine, string1, &
+                                source, revision, revdate, text2=string2)
+                  endif
+               endif
+            enddo COPIES
+         endif
+      enddo MINE
+   enddo
+enddo DOMAIN
+
+end subroutine pert_model_copies
 
 
 !==================================================================
@@ -1473,886 +1238,645 @@ end subroutine ens_mean_for_model
 ! with predefined file formats and control structures.)
 !==================================================================
 
-function get_debug_level()
-   integer :: get_debug_level
 
-   get_debug_level = debug
-
-end function
-
-
-
-subroutine verify_state_variables( ncid, filename, ngood )
 !------------------------------------------------------------------
+!> given the list of variables and a filename, check user input
+!> return the handle to the open netCDF file and the number of variables
+!> in this 'domain'
 
-integer,                          intent(in)  :: ncid
-character(len=*),                 intent(in)  :: filename
-integer,                          intent(out) :: ngood
+subroutine verify_variables( variable_table, filename, ngood, &
+                       var_names, var_qtys, var_ranges, var_update)
 
-integer :: i, VarID
+character(len=*), intent(in)  :: variable_table(:,:)
+character(len=*), intent(in)  :: filename
+integer,          intent(out) :: ngood
+character(len=*), intent(out) :: var_names(:)
+real(r8),         intent(out) :: var_ranges(:,:)
+logical,          intent(out) :: var_update(:)
+integer ,         intent(out) :: var_qtys(:)
+
+character(len=*), parameter :: routine = 'verify_variables'
+
+integer  :: io, i, quantity
+real(r8) :: minvalue, maxvalue
+
 character(len=NF90_MAX_NAME) :: varname
 character(len=NF90_MAX_NAME) :: dartstr
-
-if ( .not. module_initialized ) call static_init_model
+character(len=NF90_MAX_NAME) :: minvalstring
+character(len=NF90_MAX_NAME) :: maxvalstring
+character(len=NF90_MAX_NAME) :: state_or_aux
 
 ngood = 0
-MyLoop : do i = 1, MAX_STATE_VARIABLES
+MyLoop : do i = 1, size(variable_table,2)
 
-   varname    = trim(noah_state_variables(1,i))
-   dartstr    = trim(noah_state_variables(2,i))
+   varname      = variable_table(VT_VARNAMEINDX,i)
+   dartstr      = variable_table(VT_KINDINDX   ,i)
+   minvalstring = variable_table(VT_MINVALINDX ,i)
+   maxvalstring = variable_table(VT_MAXVALINDX ,i)
+   state_or_aux = variable_table(VT_STATEINDX  ,i)
 
    if ( varname == ' ' .and. dartstr == ' ' ) exit MyLoop ! Found end of list.
 
-   if ( varname == ' ' .or. dartstr == ' ' ) then
-      string1 = 'model_nml:noah_state_variables not fully specified'
-      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
+   if ( varname == ' ' .or.  dartstr == ' ' ) then
+      string1 = 'model_nml: variable list not fully specified'
+      string2 = 'reading from "'//trim(filename)//'"'
+      call error_handler(E_ERR,routine, string1, &
+                 source, revision, revdate, text2=string2)
    endif
 
-   ! Make sure variable exists in netCDF file
-
-   write(string1,'(''there is no variable '',a,'' in '',a)') trim(varname), trim(filename)
-   call nc_check(NF90_inq_varid(ncid, trim(varname), VarID), &
-                 'verify_state_variables', trim(string1))
+   ! The internal DART routines check if the variable name is valid.
 
    ! Make sure DART kind is valid
-
-   if( get_index_for_quantity(dartstr) < 0 ) then
-      write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
-      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
+   quantity = get_index_for_quantity(dartstr)
+   if( quantity < 0 ) then
+      write(string1,'(''there is no obs_kind "'',a,''" in obs_kind_mod.f90'')') &
+                    trim(dartstr)
+      call error_handler(E_ERR,routine,string1,source,revision,revdate)
    endif
 
-   ! Record the contents of the DART state vector
-
-   if (do_output() .and. (debug > 0)) then
-      write(logfileunit,*)'variable ',i,' is ',trim(varname), '   ', trim(dartstr)
-      write(     *     ,*)'variable ',i,' is ',trim(varname), '   ', trim(dartstr)
-   endif
+   ! All good to here - fill the output variables
 
    ngood = ngood + 1
+   var_names( ngood)   = varname
+   var_qtys(  ngood)   = quantity
+   var_ranges(ngood,:) = (/ MISSING_R8, MISSING_R8 /)
+   var_update(ngood)   = .false.   ! at least initially
+
+   ! convert the [min,max]valstrings to numeric values if possible
+   read(minvalstring,*,iostat=io) minvalue
+   if (io == 0) var_ranges(ngood,1) = minvalue
+
+   read(maxvalstring,*,iostat=io) maxvalue
+   if (io == 0) var_ranges(ngood,2) = maxvalue
+
+   call to_upper(state_or_aux)
+   if (state_or_aux == 'UPDATE') var_update(ngood) = .true.
+
 enddo MyLoop
 
 if (ngood == MAX_STATE_VARIABLES) then
-   string1 = 'WARNING: There is a possibility you need to increase ''MAX_STATE_VARIABLES'''
-   write(string2,'(''WARNING: you have specified at least '',i4,'' perhaps more.'')')ngood
-   call error_handler(E_MSG,'verify_state_variables',string1,source,revision,revdate,text2=string2)
+   string1 = 'WARNING: you may need to increase "MAX_STATE_VARIABLES"'
+   write(string2,'(''you have specified at least '',i4,'' perhaps more.'')') ngood
+   call error_handler(E_MSG,routine,string1,source,revision,revdate,text2=string2)
 endif
 
-end subroutine verify_state_variables
+
+end subroutine verify_variables
 
 
+!-----------------------------------------------------------------------
+!> Sets the location information arrays for each domain
+!> Each location array is declared to be 3D to make it easy to use
+!> the state_structure routines.
 
-subroutine get_noah_restart_filename( noah_restart_filename )
-!------------------------------------------------------------------
-character(len=*), intent(out) :: noah_restart_filename
+subroutine configure_domains()
 
-if ( .not. module_initialized ) call static_init_model
+! the xlong, xlat, west_east, south_north variables are needed later,
+! so we keep them around in module storage
+!>@todo should be part of the per-domain structure
 
-noah_restart_filename = noah_netcdf_filename
+character(len=*), parameter :: routine = 'configure_domains'
 
-end subroutine get_noah_restart_filename
+integer :: i, j
 
+logical, save :: initialized = .false.
 
+if (initialized) return ! can only call this function ONCE.
 
-subroutine noah_to_dart_vector(filename, state_vector, restart_time)
-!------------------------------------------------------------------
-! Reads the current time and state variables from a model data
-! file and packs them into a dart state vector.
+initialized = .true.
 
-character(len=*), intent(in)  :: filename
-real(r8),         intent(out) :: state_vector(:)
-type(time_type),  intent(out) :: restart_time
+do idom = 1,domain_count
 
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, ncstart, nccount
-character(len=NF90_MAX_NAME) :: dimname, varname
+   ! determine the wrfinput file for this domain
+   call get_lsm_domain_filename(idom, lsm%dom(idom)%filename)
 
-integer  :: ncid, ncNdims, dimlen, VarID
-integer  :: i, indx1, indx2, indx3, indx4, indx, ivar, ntimes
+   ! fills the lsm%dom(idom) structure
+   call read_wrf_file_attributes(idom)
 
-real(r8), allocatable, dimension(:)       :: data_1d_array
-real(r8), allocatable, dimension(:,:)     :: data_2d_array
-real(r8), allocatable, dimension(:,:,:)   :: data_3d_array
-real(r8), allocatable, dimension(:,:,:,:) :: data_4d_array
+   !>@todo should have xlong,xlat one per domain ...
+   allocate(xlong(lsm%dom(idom)%we, lsm%dom(idom)%sn))
+   allocate( xlat(lsm%dom(idom)%we, lsm%dom(idom)%sn))
 
-if ( .not. module_initialized ) call static_init_model
+   !>@todo re-evlauate
+   call get_lsm_domain_info(west_east,south_north,xlong,xlat)
 
-state_vector(:) = MISSING_R8
+   !>@todo do we even need a DART location type representation of xlong,xlat
+   allocate( domain_info(idom)%location(west_east,south_north) )
 
-! Check that the input file exists ...
-
-if ( .not. file_exist(filename) ) then
-   write(string1,*) 'file <', trim(filename),'> does not exist.'
-   call error_handler(E_ERR,'noah_to_dart_vector',string1,source,revision,revdate)
-endif
-
-call nc_check(nf90_open(adjustl(filename), NF90_NOWRITE, ncid), &
-                   'noah_to_dart_vector', 'open '//trim(filename))
-
-restart_time = get_state_time(ncid, trim(filename))
-
-if ( (do_output()) .and. debug > 99 ) then
-   call print_date(restart_time,'noah_to_dart_vector:date of restart file '//trim(filename))
-   call print_time(restart_time,'noah_to_dart_vector:time of restart file '//trim(filename))
-endif
-
-! Start counting and filling the state vector one item at a time,
-! repacking the Nd arrays into a single 1d list of numbers.
-
-do ivar=1, nfields
-
-   ntimes     = -1
-   ncstart(:) = -1
-   nccount(:) = -1
-   varname    = trim(progvar(ivar)%varname)
-   string3    = trim(filename)//' '//trim(varname)
-
-   call nc_check(nf90_inq_varid(ncid, varname, VarID), &
-            'noah_to_dart_vector', 'inq_varid '//trim(string3))
-   call nc_check(nf90_inquire_variable(ncid,VarID,dimids=dimIDs,ndims=ncNdims), &
-            'noah_to_dart_vector', 'inquire '//trim(string3))
-
-   ! Check the shape of the variable
-
-   if ( ncNdims /= progvar(ivar)%numdims ) then
-      write(string1, *) 'netCDF rank of '//trim(varname)//' does not agree with internal rank.'
-      write(string2, *) 'netCDF rank is ',ncNdims,' expected ',progvar(ivar)%numdims
-      write(string3, *) 'should not happen'
-      call error_handler(E_ERR,'noah_to_dart_vector', string1, &
-                        source,revision,revdate,text2=string2,text3=string3)
-   endif
-
-   ! Check the memory order of the variable
-   ! making sure we only compare the last timestep ...
-
-   do i = 1,ncNdims
-      write(string1,'(''inquire dimension'',i2,A)') i,trim(string3)
-      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), name=dimname, len=dimlen), &
-                        'noah_to_dart_vector',string1)
-
-      if (trim(dimname) /= trim(progvar(ivar)%dimnames(i))) then
-         write(string1, *) 'netCDF dimnames of '//trim(varname)//' does not match expected dimname'
-         write(string2, *) 'netCDF dimname is ',trim(dimname),' expected ',trim(progvar(ivar)%dimnames(i))
-         write(string3, *) 'should not happen'
-         call error_handler(E_ERR,'noah_to_dart_vector', string1, &
-                           source,revision,revdate,text2=string2,text3=string3)
-      endif
-
-      ncstart(i) = 1
-      nccount(i) = dimlen
-
-      if ( trim(dimname) == 'Time' ) then
-         ntimes     = dimlen
-         ncstart(i) = dimlen
-         nccount(i) = 1
-      elseif ( dimlen /= progvar(ivar)%dimlens(i) ) then
-         write(string1,*) trim(string3),' dim/dimlen ',i,dimlen,' not ',progvar(ivar)%dimlens(i)
-         call error_handler(E_ERR,'noah_to_dart_vector',string1,source,revision,revdate)
-      endif
+   do j = 1,south_north
+   do i = 1,west_east
+       domain_info(idom)%location(i,j) = &
+            set_location(xlong(i,j), xlat(i,j), 0.0_r8, VERTISSURFACE)
+   enddo
    enddo
 
-   if ( (do_output()) .and. debug > 99 ) then
-      write(*,*)
-      write(*,*)'noah_to_dart_vector: variable ',trim(varname)
-      write(*,*)'noah_to_dart_vector: ncstart ',ncstart(1:ncNdims)
-      write(*,*)'noah_to_dart_vector: nccount ',nccount(1:ncNdims)
-      write(*,*)
-   endif
-
-   ! FIXME - this is probably the place to ensure that the Time dimension is the last
-   ! dimension if it is present. unlimited dimension
-
-   ! Pack the variable into the DART state vector
-
-   indx = progvar(ivar)%index1
-
-   if (ncNdims == 1) then
-
-      allocate(data_1d_array(nccount(1)))
-
-      call nc_check(nf90_get_var(ncid, VarID, data_1d_array,  &
-                     start=ncstart(1:ncNdims), count=nccount(1:ncNdims)), &
-                  'noah_to_dart_vector', 'get_var '//trim(string3))
-
-      do indx1 = 1, nccount(1)
-         state_vector(indx) = data_1d_array(indx1)
-         indx = indx + 1
-      enddo
-      deallocate(data_1d_array)
-
-   elseif (ncNdims == 2) then
-
-      allocate(data_2d_array(nccount(1), nccount(2)))
-
-      call nc_check(nf90_get_var(ncid, VarID, data_2d_array,  &
-                     start=ncstart(1:ncNdims), count=nccount(1:ncNdims)), &
-                  'noah_to_dart_vector', 'get_var '//trim(string3))
-
-      do indx2 = 1, nccount(2)
-      do indx1 = 1, nccount(1)
-         state_vector(indx) = data_2d_array(indx1,indx2)
-         indx = indx + 1
-      enddo
-      enddo
-      deallocate(data_2d_array)
-
-   elseif (ncNdims == 3) then
-
-      allocate(data_3d_array(nccount(1), nccount(2), nccount(3)))
-
-      call nc_check(nf90_get_var(ncid, VarID, data_3d_array,  &
-                     start=ncstart(1:ncNdims), count=nccount(1:ncNdims)), &
-                  'noah_to_dart_vector', 'get_var '//trim(string3))
-
-      do indx3 = 1, nccount(3)
-      do indx2 = 1, nccount(2)
-      do indx1 = 1, nccount(1)
-         state_vector(indx) = data_3d_array(indx1,indx2,indx3)
-         indx = indx + 1
-      enddo
-      enddo
-      enddo
-      deallocate(data_3d_array)
-
-   elseif (ncNdims == 4) then
-
-      allocate(data_4d_array(nccount(1), &
-                             nccount(2), &
-                             nccount(3), &
-                             nccount(4)))
-
-      call nc_check(nf90_get_var(ncid, VarID, data_4d_array,  &
-                     start=ncstart(1:ncNdims), count=nccount(1:ncNdims)), &
-                  'noah_to_dart_vector', 'get_var '//trim(string3))
-
-      ! TJH RAFAEL transform goes here.
-
-      do indx4 = 1, nccount(4)
-      do indx3 = 1, nccount(3)
-      do indx2 = 1, nccount(2)
-      do indx1 = 1, nccount(1)
-         state_vector(indx) = data_4d_array(indx1,indx2,indx3,indx4)
-         indx = indx + 1
-      enddo
-      enddo
-      enddo
-      enddo
-      deallocate(data_4d_array)
-
-   else
-
-      write(string1, *)'Variable '//trim(varname)//' has ',ncNdims,' dimensions.'
-      write(string2, *)'cannot handle that.'
-      call error_handler(E_ERR,'noah_to_dart_vector', string1, &
-                        source,revision,revdate,text2=string2)
-
-   endif
-
-   indx = indx - 1
-   if ( indx /= progvar(ivar)%indexN ) then
-      write(string1, *)'Variable '//trim(varname)//' filled wrong.'
-      write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',indx
-      call error_handler(E_ERR,'noah_to_dart_vector', string1, &
-                        source,revision,revdate,text2=string2)
-   endif
+   ! Get model projection information
+   call setup_map_projection(idom)
 
 enddo
 
-if ( (do_output()) .and. debug > 99 ) then
-   write(*,*)'newest time is ',ntimes
-   do i = 1,size(state_vector)
-      write(*,*)'state vector(',i,') is',state_vector(i)
+end subroutine configure_domains
+
+
+!-----------------------------------------------------------------------
+!> only support variables with a vertical coordinate of 'soil_layers_stag'
+!>@todo this will have to change when we support snow layers ...
+
+subroutine check_vertical_dimension(domainID)
+
+integer, intent(in) :: domainID
+
+character(len=*), parameter  :: routine = 'check_vertical_dimension'
+character(len=obstypelength) :: varname, dimname
+integer :: ivar,i
+
+do ivar = 1,get_num_variables(domainID)
+
+   varname = get_variable_name(domainID,ivar)
+
+   do i = 1, get_num_dims(domainID, ivar)
+
+      dimname = get_dim_name(domainID, ivar, i)
+
+      if(dimname /= 'south_north' .and. &
+         dimname /= 'west_east'   .and. &
+         dimname /= 'soil_layers_stag' .and. &
+         dimname /= 'soil_nitrogen_layers_stag') then
+         write(string1,*) 'Only supporting variables with a vertical coordinate &
+                           &of "soil_layers_stag" or "soil_nirogen_layers_stag"'
+         write(string2,*) trim(varname), ' has "',trim(dimname),'"'
+         call error_handler(E_ERR, routine, string1, &
+              source, revision, revdate, text2=string2)
+      endif
    enddo
+enddo
+
+end subroutine check_vertical_dimension
+
+
+!-----------------------------------------------------------------------
+!> Get the global projection attributes from a 'wrfinput' file.
+!> This routine has an analogue in the wrf model_mod.f90
+
+subroutine read_wrf_file_attributes(dom_id)
+
+integer, intent(in) :: dom_id
+
+character(len=*), parameter :: routine = 'read_wrf_file_attributes'
+integer :: io, ncid, DimID
+real(r8) :: dummy
+
+! set the metadata that should be in the netCDF file but is being read from the module
+
+lsm%dom(dom_id)%periodic_x = periodic_x
+lsm%dom(dom_id)%periodic_y = periodic_y
+lsm%dom(dom_id)%polar      = polar
+
+! Only a subset of the wrf grid logic is implemented in this (noah) 
+! If people are going across the prime meridian or ... that logic is not
+! implemented yet. 
+
+if (periodic_x .or. periodic_y .or. polar) then
+
+   write(string1,*)'Only a subset of the wrf grid logic is supported in our noah implementation.'
+   write(string2,*)'We do not support periodic boundary conditions. Unsupported namelist setting:'
+   write(string3,*)'periodic_x=',periodic_x,'; periodic_y=',periodic_y,'; polar=',polar
+   call error_handler(E_ERR, routine, string1, source, revision, revdate, &
+                      text2=string2, text3=string3)
 endif
 
-end subroutine noah_to_dart_vector
+! get meta data and static data we need
 
+write(string1,*)trim(routine),' "'//trim(lsm%dom(dom_id)%filename)//'"'
+ncid = nc_open_file_readonly(lsm%dom(dom_id)%filename, string1)
 
+io = nf90_inq_dimid(ncid, 'south_north', DimID)
+call nc_check(io, routine, 'inq_dimid','south_north',ncid=ncid)
+io = nf90_inquire_dimension(ncid, DimID, len=lsm%dom(dom_id)%sn)
+call nc_check(io, routine, 'inquire_dimension','south_north',ncid=ncid)
 
-subroutine dart_vector_to_model_file(state_vector, filename, dart_time, skip_variables)
-!------------------------------------------------------------------
-! Writes the current time and state variables from a dart state
-! vector (1d array) into a noah netcdf restart file.
-!
-! This is VERY similar to nc_write_model_vars() for this model.
-! If it were not for the 'copy' dimension, it would be identical, I think.
+io = nf90_inq_dimid(ncid, 'west_east', DimID)
+call nc_check(io, routine, 'inq_dimid','west_east',ncid=ncid)
+io = nf90_inquire_dimension(ncid, DimID, len=lsm%dom(dom_id)%we)
+call nc_check(io, routine, 'inquire_dimension','west_east',ncid=ncid)
 
-real(r8),         intent(in) :: state_vector(:)
-character(len=*), intent(in) :: filename
-type(time_type),  intent(in) :: dart_time
-character(len=*), intent(in) :: skip_variables(:)
+call nc_get_global_attribute(ncid, 'DX',        lsm%dom(dom_id)%dx, routine)
+call nc_get_global_attribute(ncid, 'DY',        lsm%dom(dom_id)%dy, routine)
+call nc_get_global_attribute(ncid, 'MAP_PROJ',  lsm%dom(dom_id)%map_proj, routine)
+call nc_get_global_attribute(ncid, 'TRUELAT1',  lsm%dom(dom_id)%truelat1, routine)
+call nc_get_global_attribute(ncid, 'TRUELAT2',  lsm%dom(dom_id)%truelat2, routine)
+call nc_get_global_attribute(ncid, 'STAND_LON', lsm%dom(dom_id)%stand_lon, routine)
+call nc_get_global_attribute(ncid, 'POLE_LAT',  dummy, routine)
+call nc_get_global_attribute(ncid, 'POLE_LON',  dummy, routine)
 
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, mystart, mycount
-character(len=NF90_MAX_NAME)          :: varname
-character(len=NF90_MAX_NAME),dimension(NF90_MAX_VAR_DIMS) :: dimnames
+if(debug > 0) then
+   write(*,*) ' filename    "'//trim(lsm%dom(dom_id)%filename)//'"'
+   write(*,*) ' south_north ',lsm%dom(dom_id)%sn
+   write(*,*) ' west_east   ',lsm%dom(dom_id)%we
+   write(*,*) ' dx          ',lsm%dom(dom_id)%dx
+   write(*,*) ' dy          ',lsm%dom(dom_id)%dy
+   write(*,*) ' map_proj    ',lsm%dom(dom_id)%map_proj
+   write(*,*) ' truelat1    ',lsm%dom(dom_id)%truelat1
+   write(*,*) ' truelat2    ',lsm%dom(dom_id)%truelat2
+   write(*,*) ' stand_lon      ',lsm%dom(dom_id)%stand_lon
+   write(*,*) ' pole_lat    ',lsm%dom(dom_id)%pole_lat
+   write(*,*) ' pole_lon    ',lsm%dom(dom_id)%pole_lon
 
-integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: ncFileID, VarID, ncNdims, TimeDimID
-integer :: timeindex, dimlen, numdims, timedimcounter
-
-type(time_type) :: file_time
-
-! temp space to hold data while we are writing it
-integer :: i, ivar
-real(r8), allocatable, dimension(:)         :: data_1d_array
-real(r8), allocatable, dimension(:,:)       :: data_2d_array
-real(r8), allocatable, dimension(:,:,:)     :: data_3d_array
-
-if ( .not. module_initialized ) call static_init_model
-
-! Check that the output file exists ...
-
-if ( .not. file_exist(filename) ) then
-   write(string1,*) 'cannot open file ', trim(filename),' for writing.'
-   call error_handler(E_ERR,'dart_vector_to_model_file',string1,source,revision,revdate)
+   write(logfileunit,*) ' filename    "'//trim(lsm%dom(dom_id)%filename)//'"'
+   write(logfileunit,*) ' south_north ',lsm%dom(dom_id)%sn
+   write(logfileunit,*) ' west_east   ',lsm%dom(dom_id)%we
+   write(logfileunit,*) ' dx          ',lsm%dom(dom_id)%dx
+   write(logfileunit,*) ' dy          ',lsm%dom(dom_id)%dy
+   write(logfileunit,*) ' map_proj    ',lsm%dom(dom_id)%map_proj
+   write(logfileunit,*) ' truelat1    ',lsm%dom(dom_id)%truelat1
+   write(logfileunit,*) ' truelat2    ',lsm%dom(dom_id)%truelat2
+   write(logfileunit,*) ' stand_lon      ',lsm%dom(dom_id)%stand_lon
+   write(logfileunit,*) ' pole_lat    ',lsm%dom(dom_id)%pole_lat
+   write(logfileunit,*) ' pole_lon    ',lsm%dom(dom_id)%pole_lon
 endif
 
-call nc_check(nf90_open(trim(filename), NF90_WRITE, ncFileID), &
-                  'dart_vector_to_model_file','open '//trim(filename))
+call nc_close_file(ncid, routine)
 
-call nc_check(nf90_inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID), &
-                  'dart_vector_to_model_file', 'inquire '//trim(filename))
+end subroutine read_wrf_file_attributes
 
-call nc_check(nf90_inq_dimid(ncFileID, 'Time', TimeDimID), &
-                  'dart_vector_to_model_file','inq_dimid Time '//trim(filename))
 
-! make sure the time in the file is the same as the time on the data
-! we are trying to insert.  we are only updating part of the contents
-! of the NOAH restart file, and state vector contents from a different
-! time won't be consistent with the rest of the file.
+!------------------------------------------------------------------------
+!> Initialize the map projection structure
+!> Populate the map projection structure with desired values
 
-file_time = get_state_time(ncFileID, trim(filename), timeindex)
+subroutine setup_map_projection(dom_id)
 
-if ( file_time /= dart_time ) then
-   call print_time(dart_time,'DART current time',logfileunit)
-   call print_time(file_time,'NOAH current time',logfileunit)
-   call print_time(dart_time,'DART current time')
-   call print_time(file_time,'NOAH current time')
-   write(string1,*)trim(filename),' current time /= model time. FATAL error.'
-   call error_handler(E_ERR,'dart_vector_to_model_file',string1,source,revision,revdate)
+integer, intent(in) :: dom_id
+
+character(len=*), parameter :: routine = 'setup_map_projection'
+
+integer  :: proj_code
+real(r8) :: latinc, loninc
+
+call map_init(lsm%dom(dom_id)%proj)
+
+if ( lsm%dom(dom_id)%scm ) then
+   ! JPH -- set to zero which should cause the map utils to return NaNs if called
+   latinc = 0.0_r8
+   loninc = 0.0_r8
+   write(string1,*)'Single Column Model not supported.'
+   call error_handler(E_ERR, routine, string1, source, revision, revdate)
+else
+   latinc = 180.0_r8/lsm%dom(dom_id)%sn
+   loninc = 360.0_r8/lsm%dom(dom_id)%we
 endif
 
-if (do_output() .and. (debug > 0)) then
-   call print_date(file_time,'dart_vector_to_model_file: date of restart file '//trim(filename))
-   call print_time(file_time,'dart_vector_to_model_file: time of restart file '//trim(filename))
+if(lsm%dom(dom_id)%map_proj == map_latlon) then
+   ! latinc and loninc should be the interval between two neighbors
+   latinc   =  xlat(1,2) -  xlat(1,1)
+   loninc   = xlong(2,1) - xlong(1,1)
+   lsm%dom(dom_id)%truelat1 = latinc
+   lsm%dom(dom_id)%stand_lon   = loninc
+   proj_code = map_latlon
+elseif(lsm%dom(dom_id)%map_proj == map_lambert) then
+   proj_code = map_lambert
+elseif(lsm%dom(dom_id)%map_proj == map_polar_stereo) then
+   proj_code = map_polar_stereo
+elseif(lsm%dom(dom_id)%map_proj == map_mercator) then
+   proj_code = map_mercator
+elseif(lsm%dom(dom_id)%map_proj == map_cylindrical) then
+   proj_code = map_cylindrical
+elseif(lsm%dom(dom_id)%map_proj == map_cassini) then
+   proj_code = map_cassini
+else
+   write(string1,*)'Map projection ',lsm%dom(dom_id)%map_proj,' not supported.'
+   write(string2,*)'Valid values are: ',map_latlon, map_lambert, map_polar_stereo
+   write(string3,*)'                  ',map_mercator, map_cylindrical, map_cassini
+   call error_handler(E_ERR, routine, string1, &
+              source, revision, revdate, text2=string2, text3=string3)
 endif
 
-! The DART prognostic variables are only defined for a single time.
-! IF the netCDF variable has a TIME dimension, it must be the last dimension.
+if (debug > 99) then
+   print*,'projection code is ',proj_code
+   print*,'xlat(1,1),xlong(1,1)',xlat(1,1),xlong(1,1)
+   print*,'latinc,loninc', latinc, loninc
+endif
 
-UPDATE : do ivar=1, nfields
+! Throw an error if using a rotated pole. That option is not advised.
+!>@todo include filename in message
 
-   varname = trim(progvar(ivar)%varname)
-   string2 = trim(filename)//' '//trim(varname)
+if (lsm%dom(dom_id)%pole_lat /= 90.0_r8 .or. &
+    lsm%dom(dom_id)%pole_lon /=  0.0_r8 ) then
+   write(string1,*)'Rotated poles are not supported.'
+   write(string2,*)'POLE_LAT must be 90.0'
+   write(string3,*)'POLE_LON must be  0.0'
+   call error_handler(E_ERR, routine, string1, &
+              source, revision, revdate, text2=string2, text3=string3)
+endif
 
-   ! If this variable is on the skip list ... skip it.
+call map_set( proj_code = proj_code, &
+              proj      = lsm%dom(dom_id)%proj, &
+              lat1      = xlat(1,1), &
+              lon1      = xlong(1,1), &
+              lat0      = lsm%dom(dom_id)%pole_lat, &
+              lon0      = lsm%dom(dom_id)%pole_lon, &
+              knowni    = 1.0_r8, &
+              knownj    = 1.0_r8, &
+              dx        = lsm%dom(dom_id)%dx, &
+              latinc    = latinc, &
+              loninc    = loninc, &
+              stdlon    = lsm%dom(dom_id)%stand_lon, &
+              truelat1  = lsm%dom(dom_id)%truelat1, &
+              truelat2  = lsm%dom(dom_id)%truelat2 )
 
-   SKIPME : do i = 1,size(skip_variables)
-      if (len_trim(skip_variables(i)) < 1) cycle SKIPME
-      if (skip_variables(i) == varname) cycle UPDATE
-   enddo SKIPME
+end subroutine setup_map_projection
 
-   ! Ensure netCDF variable is conformable with DART progvar quantity.
 
-   call nc_check(nf90_inq_varid(ncFileID, varname, VarID), &
-            'dart_vector_to_model_file', 'inq_varid '//trim(string2))
+!------------------------------------------------------------------------
+!> given arbitrary lat and lon values, returns closest domain id and
+!> horizontal mass point grid points (xloc,yloc)
 
-   call nc_check(nf90_inquire_variable(ncFileID,VarID,dimids=dimIDs,ndims=ncNdims), &
-            'dart_vector_to_model_file', 'inquire '//trim(string2))
+subroutine get_domain_info(obslon, obslat, dom_id, iloc, jloc, domain_id_start)
 
-   timedimcounter = 0
-   mystart(:) = 1
-   mycount(:) = 1
-   DimCheck : do i = 1,progvar(ivar)%numdims
+real(r8), intent(in)           :: obslon, obslat
+integer,  intent(out)          :: dom_id
+real(r8), intent(out)          :: iloc, jloc
+integer,  intent(in), optional :: domain_id_start
 
-      write(string1,'(''inquire dimension'',i2,A)') i,trim(string2)
-      call nc_check(nf90_inquire_dimension(ncFileID, dimIDs(i), name=dimnames(i), len=dimlen), &
-            'dart_vector_to_model_file', string1)
+character(len=*), parameter :: routine = 'get_domain_info'
+logical :: dom_found
 
-      if (dimIDs(i) == TimeDimID) timedimcounter = 1
+! the default is to start at the innermost domain and stop when
+! the location is found.  however if you want to start at a particular
+! domain id number, pass it in as the last optional arg.
 
-      if ( dimlen /= progvar(ivar)%dimlens(i) ) then
-         write(string1,*) trim(string2),' dim/dimlen ',i,dimlen,' not ',progvar(ivar)%dimlens(i)
-         write(string2,*)' but it should be.'
-         call error_handler(E_ERR, 'dart_vector_to_model_file', string1, &
+dom_id = domain_count
+if (present(domain_id_start)) then
+   if (domain_id_start < 1 .or. domain_id_start > domain_count) then
+      write(string1,  '(A,I1)') 'bad domain_id_start: ', domain_id_start
+      write(string2, '(A,I1)') 'must be between 1 and ', domain_count
+      call error_handler(E_ERR, routine, string1, &
                          source, revision, revdate, text2=string2)
-      endif
-
-      mycount(i) = dimlen
-
-   enddo DimCheck
-
-   if (dimIDs(ncNdims) /= TimeDimID) then
-      write(string1,*) trim(string2),' required to have "Time" as the last/unlimited dimension'
-      write(string2,*)' last dimension is ',trim(dimnames(ncNdims))
-      call error_handler(E_ERR, 'dart_vector_to_model_file', string1, &
-                      source, revision, revdate, text2=string2)
    endif
+   dom_id = domain_id_start
+endif
 
-   where(dimIDs == TimeDimID) mystart = timeindex
-   where(dimIDs == TimeDimID) mycount = 1
+dom_found = .false.
 
-   if ( (do_output()) .and. debug > 99 ) then
-      write(*,*)'dart_vector_to_model_file '//trim(varname)//' start is ',mystart(1:ncNdims)
-      write(*,*)'dart_vector_to_model_file '//trim(varname)//' count is ',mycount(1:ncNdims)
-      write(*,*)'dart_vector_to_model_file ',dimnames(1:progvar(ivar)%numdims)
-   endif
+do while (.not. dom_found)
 
-   numdims = progvar(ivar)%numdims - timedimcounter
+   ! Checking for exact equality on real variable types is generally a bad idea.
 
-   if ( numdims == 1 ) then
+   if(  abs(obslat) > 90.0_r8 ) then
 
-      allocate(data_1d_array(progvar(ivar)%dimlens(1)))
-      call vector_to_prog_var(state_vector, ivar, data_1d_array,limit=.true.)
-      call nc_check(nf90_put_var(ncFileID, VarID, data_1d_array, &
-             start = mystart(1:ncNdims), count=mycount(1:ncNdims)), &
-            'dart_vector_to_model_file', 'put_var '//trim(string2))
-      deallocate(data_1d_array)
-
-   elseif ( numdims == 2 ) then
-
-      allocate(data_2d_array(progvar(ivar)%dimlens(1), &
-                             progvar(ivar)%dimlens(2)))
-      call vector_to_prog_var(state_vector, ivar, data_2d_array,limit=.true.)
-      call nc_check(nf90_put_var(ncFileID, VarID, data_2d_array, &
-             start = mystart(1:ncNdims), count=mycount(1:ncNdims)), &
-            'dart_vector_to_model_file', 'put_var '//trim(string2))
-      deallocate(data_2d_array)
-
-   elseif ( numdims == 3) then
-
-      allocate(data_3d_array(progvar(ivar)%dimlens(1), &
-                             progvar(ivar)%dimlens(2), &
-                             progvar(ivar)%dimlens(3)))
-      call vector_to_prog_var(state_vector, ivar, data_3d_array,limit=.true.)
-      ! TJH RAFAEL undo transform goes here.
-      call nc_check(nf90_put_var(ncFileID, VarID, data_3d_array, &
-             start = mystart(1:ncNdims), count=mycount(1:ncNdims)), &
-            'dart_vector_to_model_file', 'put_var '//trim(string2))
-      deallocate(data_3d_array)
+      ! catch latitudes that are out of range - ignore them but print out a warning.
+      write(string1, *) 'obs with latitude out of range: ', obslat
+      call error_handler(E_MSG, routine, string1)
 
    else
 
-      write(string1, *) 'no support for data array of dimension ', ncNdims
-      call error_handler(E_ERR,'dart_vector_to_model_file', string1, &
-                        source,revision,revdate)
+      call latlon_to_ij(lsm%dom(dom_id)%proj, &
+               min(max(obslat,-89.9999999_r8),89.9999999_r8),obslon,iloc,jloc)
+
+      ! Array bound checking depends on whether periodic or not -- these are
+      !   real-valued indices here, so we cannot use boundsCheck  :(
+
+      if ( lsm%dom(dom_id)%periodic_x .and. .not. lsm%dom(dom_id)%periodic_y  ) then
+         if ( lsm%dom(dom_id)%polar ) then
+            !   Periodic     X & M_grid ==> [1 we+1)
+            !   Periodic     Y & M_grid ==> [0.5 sn+0.5]
+            if ( iloc >= 1.0_r8 .and. iloc <  real(size(xlong(:,1)),r8)+1.0_r8 .and. &
+                 jloc >= 0.5_r8 .and. jloc <= real(size(xlong(1,:)),r8)+0.5_r8 ) &
+                 dom_found = .true.
+         else
+            !   Periodic     X & M_grid ==> [1 we+1)
+            !   NOT Periodic Y & M_grid ==> [1 sn]
+            if ( iloc >= 1.0_r8 .and. iloc <  real(size(xlong(:,1)),r8)+1.0_r8 .and. &
+                 jloc >= 1.0_r8 .and. jloc <= real(size(xlong(1,:)),r8) ) &
+                 dom_found = .true.
+         endif
+
+      elseif ( lsm%dom(dom_id)%periodic_x .and. lsm%dom(dom_id)%periodic_y ) then
+            !   Periodic     X & M_grid ==> [1 we+1)
+            !   Periodic     Y & M_grid ==> [1 sn+1]
+            if ( iloc >= 1.0_r8 .and. iloc <  real(size(xlong(:,1)),r8)+1.0_r8 .and. &
+                 jloc >= 1.0_r8 .and. jloc <= real(size(xlong(1,:)),r8)+1.0_r8 ) &
+                 dom_found = .true.
+
+      else
+         if ( lsm%dom(dom_id)%polar ) then
+            !   NOT Periodic X & M_grid ==> [1 we]
+            !   Periodic     Y & M_grid ==> [0.5 sn+0.5]
+            if ( iloc >= 1.0_r8 .and. iloc <= real(size(xlong(:,1)),r8) .and. &
+                 jloc >= 0.5_r8 .and. jloc <= real(size(xlong(1,:)),r8)+0.5_r8 ) &
+                 dom_found = .true.
+         else
+            !   NOT Periodic X & M_grid ==> [1 we]
+            !   NOT Periodic Y & M_grid ==> [1 sn]
+            if ( iloc >= 1.0_r8 .and. iloc <= real(size(xlong(:,1)),r8) .and. &
+                 jloc >= 1.0_r8 .and. jloc <= real(size(xlong(1,:)),r8) ) &
+                 dom_found = .true.
+         endif
+      endif
+
    endif
 
-   ! Make note that the variable has been updated by DART
-   call nc_check(nf90_Redef(ncFileID),'dart_vector_to_model_file', 'redef '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, VarID,'DART','variable modified by DART'),&
-                 'dart_vector_to_model_file', 'modified '//trim(varname))
-   call nc_check(nf90_enddef(ncfileID),'dart_vector_to_model_file','state enddef '//trim(filename))
-
-enddo UPDATE
-
-call nc_check(nf90_close(ncFileID),'dart_vector_to_model_file','close '//trim(filename))
-ncFileID = 0
-
-end subroutine dart_vector_to_model_file
-
-
-
-function get_state_time(ncid, filename, timeindex)
-!------------------------------------------------------------------
-! The restart netcdf files have the time of the state.
-! We are always using the 'most recent' which is, by defn, the last one.
-!
-! The way the HRLDAS driver works is a bit wonky.
-! The time in the restart file is NOT the time at which the state is valid.
-! It is one noah_timestep AHEAD of the valid time.
-!
-! for instance, if the noah_timestep is 3600 seconds, the restart_frequency_hours is 1,
-! and the filename is RESTART.2004010102_DOMAIN1 the
-!
-!        Time = UNLIMITED ; // (blah_blah_blah currently)
-!        DateStrLen = 19 ;
-!variables:
-!        char Times(Time, DateStrLen) ;
-!
-! Times =
-!  '2004-01-01_02:00:00' ;
-!
-! BUT - the data is for the previous noah_timestep ... i.e. 2004-01-01_01:00:00
-! No kidding.
-
-type(time_type) :: get_state_time
-integer,           intent(in)  :: ncid
-character(len=*),  intent(in)  :: filename
-integer, optional, intent(out) :: timeindex
-
-character(len=19), allocatable, dimension(:) :: datestring
-integer               :: year, month, day, hour, minute, second
-integer               :: DimID, VarID, strlen, ntimes
-type(time_type)       :: filetime, timestep
-
-if ( .not. module_initialized ) call static_init_model
-
-! Get the dimensions for the strings of times
-
-call nc_check(nf90_inq_dimid(ncid, 'Time', DimID), &
-                  'get_state_time','inq_dimid Time '//trim(filename))
-call nc_check(nf90_inquire_dimension(ncid, DimID, len=ntimes), &
-                  'get_state_time','inquire_dimension Time '//trim(filename))
-
-call nc_check(nf90_inq_dimid(ncid, 'DateStrLen', DimID), &
-                  'get_state_time','inq_dimid DateStrLen '//trim(filename))
-call nc_check(nf90_inquire_dimension(ncid, DimID, len=strlen), &
-                  'get_state_time','inquire_dimension DateStrLen '//trim(filename))
-
-if (strlen /= len(datestring)) then
-   write(string1,*)'DatStrLen string length ',strlen,' /= ',len(datestring)
-   call error_handler(E_ERR,'get_state_time', string1, source, revision, revdate)
-endif
-
-! Get all the Time strings, use the last one.
-
-call nc_check(nf90_inq_varid(ncid, 'Times', VarID), &
-                   'get_state_time', 'inq_varid Times '//trim(filename))
-
-allocate(datestring(ntimes))
-
-call nc_check(nf90_get_var(ncid, VarID, datestring), &
-                   'get_state_time', 'get_var Times '//trim(filename))
-
-read(datestring(ntimes),'(i4,5(1x,i2))')year, month, day, hour, minute, second
-
-timestep       = set_time(noah_timestep, 0)
-filetime       = set_date(year, month, day, hours=hour, minutes=minute, seconds=second)
-get_state_time = filetime - timestep
-
-if (present(timeindex)) timeindex = ntimes
-
-if ( (do_output()) .and. debug > 99 ) write(*,*)'get_state_time: Last time string is '//trim(datestring(ntimes))
-if ( (do_output()) .and. debug > 99 ) call print_date(get_state_time,' get_state_time: means valid time is ')
-
-deallocate(datestring)
-
-end function get_state_time
-
-
-
-subroutine get_hrldas_constants(filename)
-!------------------------------------------------------------------
-! Read the 'wrfinput' netCDF file for grid information, etc.
-! This is all time-invariant, so we can mostly ignore the Time coordinate.
-!
-! MODULE variables set by this routine:
-!    south_north
-!    west_east
-!    xlong
-!    xlat
-
-character(len=*), intent(in) :: filename
-
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, ncstart, nccount
-character(len=NF90_MAX_NAME)          :: dimname
-
-integer :: i, iunit, DimID, VarID, numdims, dimlen, xtype
-
-if ( .not. module_initialized ) call static_init_model
-
-call nc_check(nf90_open(adjustl(filename), NF90_NOWRITE, iunit), &
-                   'get_hrldas_constants', 'open '//trim(filename))
-
-call nc_check(nf90_inq_dimid(iunit, 'south_north', DimID), &
-                  'get_hrldas_constants','inq_dimid south_north '//trim(filename))
-call nc_check(nf90_inquire_dimension(iunit, DimID, len=south_north), &
-                  'get_hrldas_constants','inquire_dimension south_north '//trim(filename))
-
-call nc_check(nf90_inq_dimid(iunit, 'west_east', DimID), &
-                  'get_hrldas_constants','inq_dimid west_east '//trim(filename))
-call nc_check(nf90_inquire_dimension(iunit, DimID, len=west_east), &
-                  'get_hrldas_constants','inquire_dimension west_east '//trim(filename))
-
-! Require that the xlong and xlat are the same shape.
-
-allocate(xlong(west_east,south_north), xlat(west_east,south_north))
-
-call nc_check(nf90_inq_varid(iunit, 'XLONG', VarID), &
-                  'get_hrldas_constants','inq_varid XLONG '//trim(filename))
-
-call nc_check(nf90_inquire_variable(iunit, VarID, dimids=dimIDs, &
-                  ndims=numdims, xtype=xtype), &
-                  'get_hrldas_constants', 'inquire_variable XLONG '//trim(filename))
-
-! Form the start/count such that we always get the 'latest' time.
-
-ncstart(:) = 0
-nccount(:) = 0
-
-do i = 1,numdims
-
-   write(string1,'(''inquire dimension'',i2,A)') i,trim(filename)
-   call nc_check(nf90_inquire_dimension(iunit, dimIDs(i), name=dimname, len=dimlen), &
-                                          'get_hrldas_constants', string1)
-   ncstart(i) = 1
-   nccount(i) = dimlen
-
-   if ((trim(dimname) == 'Time') .or. (trim(dimname) == 'time')) then
-      ncstart(i) = dimlen
-      nccount(i) = 1
+   if (.not. dom_found) then  ! check the next domain
+      dom_id = dom_id - 1
+      if (dom_id == 0) return
    endif
 
 enddo
 
-if ( (do_output()) .and. debug > 99 ) write(*,*)'DEBUG get_hrldas_constants ncstart is',ncstart(1:numdims)
-if ( (do_output()) .and. debug > 99 ) write(*,*)'DEBUG get_hrldas_constants nccount is',nccount(1:numdims)
+end subroutine get_domain_info
 
-! finally get the longitudes
+!------------------------------------------------------------------------
+!> Transfer obs. x to grid j and calculate its
+!> distance to grid j and j+1
 
-call nc_check(nf90_get_var(iunit, VarID, xlong, &
-                  start=ncstart(1:numdims), count=nccount(1:numdims)), &
-                  'get_hrldas_constants', 'get_var XLONG '//trim(filename))
+subroutine toGrid (x, j, dx, dxm)
 
-where(xlong < 0.0_r8) xlong = xlong + 360.0_r8
-where(xlong == 360.0_r8) xlong = 0.0_r8
+real(r8), intent(in)  :: x
+real(r8), intent(out) :: dx
+real(r8), intent(out) :: dxm
+integer,  intent(out) :: j
 
-! finally get the latitudes
+j   = int(x)
+dx  = x - real(j)
+dxm = 1.0_r8 - dx
 
-call nc_check(nf90_inq_varid(iunit, 'XLAT', VarID), &
-                  'get_hrldas_constants','inq_varid XLAT '//trim(filename))
-
-call nc_check(nf90_get_var(iunit, VarID, xlat, &
-                  start=ncstart(1:numdims), count=nccount(1:numdims)), &
-                  'get_hrldas_constants', 'get_var XLAT '//trim(filename))
-
-write(string1,*) 'get_hrldas_constants() not verified for multiple gridcells.'
-call error_handler(E_MSG,'get_hrldas_constants',string1,source,revision,revdate)
-
-end subroutine get_hrldas_constants
+end subroutine toGrid
 
 
+!------------------------------------------------------------------------
+!>  Calculate the model level "zk" on half (mass) levels,
+!>  corresponding to height "obs_v".
 
-subroutine define_var_dims(ivar, ncid, memberdimid, unlimiteddimid, ndims, dimids)
-!------------------------------------------------------------------
-! I am trying to preserve the shape of the NOAH variable as much as possible.
-!
-! noah_variable(Time,       soil_layers_stag, south_north, west_east) becomes
-! noah_variable(time, copy, soil_layers_stag, south_north, west_east)
-!
-! Since 'time' or 'Time' is the unlimited dimension in both ... I can skip it
-! in the DEFDIM loop.
+subroutine height_to_zk(obs_v, mdl_v, n3, zk, lev0)
 
-integer,               intent(in)  :: ivar, ncid, memberdimid, unlimiteddimid
-integer,               intent(out) :: ndims
-integer, dimension(:), intent(out) :: dimids
+  real(r8), intent(in)  :: obs_v
+  integer,  intent(in)  :: n3
+  real(r8), intent(in)  :: mdl_v(1:n3)
+  real(r8), intent(out) :: zk
+  logical,  intent(out) :: lev0
 
-integer :: i, mydimid
+  integer   :: k
 
-ndims = 0
+  zk = missing_r8
+  lev0 = .false.
 
-DEFDIM : do i = 1,progvar(ivar)%numdims
+  ! if out of range completely, return missing_r8 and lev0 false
+  if ( obs_v > mdl_v(n3)) return
 
-   if ((trim(progvar(ivar)%dimnames(i)) == 'Time') .or. &
-       (trim(progvar(ivar)%dimnames(i)) == 'time')) cycle DEFDIM
+  ! if above surface but below lowest 3-d height level, return the
+  ! height value but set lev0 true
+  if(obs_v >= 0.0_r8 .and. obs_v < mdl_v(1)) then
+    lev0 = .true.
+    zk = 1.0_r8
+    return
+  endif
 
-   call nc_check(nf90_inq_dimid(ncid=ncid, name=progvar(ivar)%dimnames(i), dimid=mydimid), &
-                           'define_var_dims','inq_dimid '//trim(progvar(ivar)%dimnames(i)))
+  ! find the 2 height levels the value is between and return that
+  ! as a real number, including the fraction between the levels.
+  do k = 1,n3-1
+     if(obs_v >= mdl_v(k) .and. obs_v <= mdl_v(k+1)) then
+        zk = real(k) + (mdl_v(k) - obs_v)/(mdl_v(k) - mdl_v(k+1))
+        exit
+     endif
+  enddo
 
-   ndims         = ndims + 1
-   dimids(ndims) = mydimid
+end subroutine height_to_zk
 
-enddo DEFDIM
+!-------------------------------------------------------------------
+!> takes in an i and j index, information about domain and grid staggering,
+!> and then returns the four cornering gridpoints' 2-element integer indices.
+!>
+!> This routine is a derivative of a routine by the same name in the
+!> wrf model_mod.f90
 
-ndims = ndims + 1
-dimids(ndims) = memberdimid
-ndims = ndims + 1
-dimids(ndims) = unlimitedDimid
+subroutine getCorners(i, j, id, ll, ul, lr, ur, rc)
 
-if ( (do_output()) .and. debug > 99 ) then
-   write(logfileunit,*)
-   write(logfileunit,*)'define_var_dims knowledge'
-   write(logfileunit,*)trim(progvar(ivar)%varname),' has dimnames ', &
-                       progvar(ivar)%dimnames(1:progvar(ivar)%numdims)
-   write(logfileunit,*)' thus dimids ',dimids(1:ndims)
-   write(     *     ,*)
-   write(     *     ,*)'define_var_dims knowledge'
-   write(     *     ,*)trim(progvar(ivar)%varname),' has dimnames ', &
-                       progvar(ivar)%dimnames(1:progvar(ivar)%numdims)
-   write(     *     ,*)' thus dimids ',dimids(1:ndims)
+integer, intent(in)  :: i, j, id
+integer, intent(out) :: ll(2), ul(2), lr(2), ur(2)
+integer, intent(out) :: rc
 
+character(len=*), parameter :: routine = 'getCorners'
+logical, parameter :: restrict_polar = .false.
+
+! set return code to 0, and change this if necessary
+rc = 0
+
+!----------------
+! LOWER LEFT i and j are the lower left (ll) corner already
+!----------------
+
+! NOTE :: once we allow for polar periodicity, the incoming j index could actually
+!           be 0, which would imply a ll(2) value of 1, with a ll(1) value 180 degrees
+!           of longitude away from the incoming i index!  But we have not included
+!           this possibility yet.
+
+! As of 22 Oct 2007, this option is not allowed!
+!   Note that j = 0 can only happen if we are on the M (or U) wrt to latitude
+
+if ( lsm%dom(id)%polar .and. j == 0 .and. .not. restrict_polar ) then
+   ! j = 0 should be mapped to j = 1 (ll is on other side of globe)
+   ll(2) = 1
+   ! Need to map i index 180 degrees away
+   ll(1) = i + size(xlong(1,:))/2
+   ! Check validity of bounds & adjust by periodicity if necessary
+   if ( ll(1) > size(xlong(:,1)) ) ll(1) = ll(1) - size(xlong(:,1))
+else
+   ll(1) = i
+   ll(2) = j
 endif
 
-return
-end subroutine define_var_dims
+!----------------
+! LOWER RIGHT
+!----------------
 
+if ( lsm%dom(id)%periodic_x ) then
+   write(string1,*)'not supporting periodic x just yet'
+   call error_handler(E_ERR,routine,string1,source,revision,revdate)
+endif
 
+! Regardless of grid, NOT Periodic always has i+1
 
-subroutine vector_to_1d_prog_var(x, ivar, data_1d_array, limit)
-!------------------------------------------------------------------
-! convert the values from a 1d array, starting at an offset, into a 1d array.
-!
-! If the optional argument (ncid) is specified, some additional
-! processing takes place. The variable in the netcdf is read.
-! This must be the same shape as the intended output array.
-! Anywhere the DART MISSING code is encountered in the input array,
-! the corresponding (i.e. original) value from the netCDF file is
-! used.
+lr(1) = ll(1) + 1
+lr(2) = ll(2)
 
-real(r8), dimension(:),   intent(in)  :: x
-integer,                  intent(in)  :: ivar
-real(r8), dimension(:),   intent(out) :: data_1d_array
-logical,  OPTIONAL,       intent(in)  :: limit
+!----------------
+! UPPER LEFT
+!----------------
+! Regardless of grid, NOT Periodic always has j+1
 
-integer :: i,ii
+ul(1) = ll(1)
+ul(2) = ll(2) + 1
 
-if ( .not. module_initialized ) call static_init_model
+!----------------
+! UPPER RIGHT
+!----------------
 
-! unpack the right part of the DART state vector into a 1D array.
+ur(2) = ul(2)
 
-ii = progvar(ivar)%index1
+! Need to check if ur(1) .ne. lr(1)
+if ( lsm%dom(id)%polar .and. .not. restrict_polar ) then
+   ! Only if j == 0 or j == sn
+   if ( j == 0 .or. j == size(xlong(1,:)) ) then
+      ! j == 0 means that ll(1) = i + 180 deg, so we cannot use lr(1) -- hence, we will
+      !   add 1 to ul(1), unless doing so spans the longitude seam point.
+      ! j == sn means that ul(1) = i + 180 deg.  Here we cannot use lr(1) either because
+      !   it will be half a domain away from ul(1)+1.  Be careful of longitude seam point.
 
-do i = 1, progvar(ivar)%dimlens(1)
-   data_1d_array(i) = x(ii)
-   ii = ii + 1
-enddo
-
-if (present(limit)) then
-if ( limit ) then
-   if (    progvar(ivar)%rangeRestricted == 1) then
-      where(data_1d_array < progvar(ivar)%minvalue) data_1d_array = progvar(ivar)%minvalue
-   elseif (progvar(ivar)%rangeRestricted == 2) then
-      where(data_1d_array > progvar(ivar)%maxvalue) data_1d_array = progvar(ivar)%maxvalue
-   elseif (progvar(ivar)%rangeRestricted == 3) then
-      where(data_1d_array < progvar(ivar)%minvalue) data_1d_array = progvar(ivar)%minvalue
-      where(data_1d_array > progvar(ivar)%maxvalue) data_1d_array = progvar(ivar)%maxvalue
+      !   Here we need to check longitude periodicity and the type of grid
+   ! If not a special j value, then we are set for the ur(1) = lr(1)
+   else
+      ur(1) = lr(1)
    endif
-endif
-endif
-
-ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' packed wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'vector_to_1d_prog_var', string1, &
-                    source, revision, revdate, text2=string2)
+! If not an unrestricted polar periodic domain, then we have nothing to worry about
+else
+   ur(1) = lr(1)
 endif
 
-end subroutine vector_to_1d_prog_var
+end subroutine getCorners
+
+!-------------------------------------------------------------------
+
+subroutine get_vertical_array(domid, varid, num_dims, layer_midpoints, num_layers)
+
+integer,          intent(in) :: domid
+integer,          intent(in) :: varid
+integer,          intent(in) :: num_dims
+real(r8),         intent(out) :: layer_midpoints(:)
+integer,          intent(out) :: num_layers
+
+integer :: jdim
+character(len=NF90_MAX_NAME) :: dimname
+
+! Assume everything is at the surface until proven different
+
+layer_midpoints = 0.0_r8
+num_layers      = 1
+
+VERTICAL : do jdim = 1, num_dims
+   dimname = get_dim_name(domid, varid, jdim)
+   select case (dimname)
+      case ('soil_layers_stag')
+         layer_midpoints = soil_depth
+         num_layers      = num_soil_layers
+         exit VERTICAL
+
+      case ('soil_nitrogen_layers_stag')
+         if (num_soil_nitrogen_layers > 0) then
+            layer_midpoints = soil_nitrogen_depth
+            num_layers      = num_soil_nitrogen_layers
+         else
+            write(string1,*)'variable uses soil_nitrogen_layers but'
+            write(string2,*)'namelist.hrldas has no nitrogen layers (NITSOIL).'
+            call error_handler(E_ERR,'get_vertical_array',string1, &
+                       source, revision, revdate, text2=string2)
+         endif
+         exit VERTICAL
+
+   end select
+enddo VERTICAL
+
+end subroutine get_vertical_array
 
 
-
-subroutine vector_to_2d_prog_var(x, ivar, data_2d_array, limit)
-!------------------------------------------------------------------
-! convert the values from a 1d array, starting at an offset,
-! into a 2d array.
-!
-real(r8), dimension(:),   intent(in)  :: x
-integer,                  intent(in)  :: ivar
-real(r8), dimension(:,:), intent(out) :: data_2d_array
-logical,  OPTIONAL,       intent(in)  :: limit
-
-integer :: i,j,ii
-
-if ( .not. module_initialized ) call static_init_model
-
-! unpack the right part of the DART state vector into a 2D array.
-
-ii = progvar(ivar)%index1
-
-do j = 1,progvar(ivar)%dimlens(2)
-do i = 1,progvar(ivar)%dimlens(1)
-   data_2d_array(i,j) = x(ii)
-   ii = ii + 1
-enddo
-enddo
-
-if (present(limit)) then
-if ( limit ) then
-   if (    progvar(ivar)%rangeRestricted == 1) then
-      where(data_2d_array < progvar(ivar)%minvalue) data_2d_array = progvar(ivar)%minvalue
-   elseif (progvar(ivar)%rangeRestricted == 2) then
-      where(data_2d_array > progvar(ivar)%maxvalue) data_2d_array = progvar(ivar)%maxvalue
-   elseif (progvar(ivar)%rangeRestricted == 3) then
-      where(data_2d_array < progvar(ivar)%minvalue) data_2d_array = progvar(ivar)%minvalue
-      where(data_2d_array > progvar(ivar)%maxvalue) data_2d_array = progvar(ivar)%maxvalue
-   endif
-endif
-endif
-
-ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' filled wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'vector_to_2d_prog_var', string1, &
-                    source, revision, revdate, text2=string2)
-endif
-
-end subroutine vector_to_2d_prog_var
-
-
-
-subroutine vector_to_3d_prog_var(x, ivar, data_3d_array, limit)
-!------------------------------------------------------------------
-! convert the values from a 1d array, starting at an offset,
-! into a 3d array.
-!
-real(r8), dimension(:),     intent(in)  :: x
-integer,                    intent(in)  :: ivar
-real(r8), dimension(:,:,:), intent(out) :: data_3d_array
-logical,  OPTIONAL,         intent(in)  :: limit
-
-integer :: i,j,k,ii
-
-if ( .not. module_initialized ) call static_init_model
-
-! unpack the right part of the DART state vector into a 3D array.
-
-ii = progvar(ivar)%index1
-
-do k = 1,progvar(ivar)%dimlens(3)
-do j = 1,progvar(ivar)%dimlens(2)
-do i = 1,progvar(ivar)%dimlens(1)
-   data_3d_array(i,j,k) = x(ii)
-   ii = ii + 1
-enddo
-enddo
-enddo
-
-if (present(limit)) then
-if ( limit ) then
-   if (    progvar(ivar)%rangeRestricted == 1) then
-      where(data_3d_array < progvar(ivar)%minvalue) data_3d_array = progvar(ivar)%minvalue
-   elseif (progvar(ivar)%rangeRestricted == 2) then
-      where(data_3d_array > progvar(ivar)%maxvalue) data_3d_array = progvar(ivar)%maxvalue
-   elseif (progvar(ivar)%rangeRestricted == 3) then
-      where(data_3d_array < progvar(ivar)%minvalue) data_3d_array = progvar(ivar)%minvalue
-      where(data_3d_array > progvar(ivar)%maxvalue) data_3d_array = progvar(ivar)%maxvalue
-   endif
-endif
-endif
-
-ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' filled wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'vector_to_3d_prog_var', string1, &
-                    source, revision, revdate, text2=string2)
-endif
-
-end subroutine vector_to_3d_prog_var
-
-
-
-subroutine get_noah_timestepping(day,hour,dynamical,output,forcing,restart)
-integer,          intent(out) :: day,hour,dynamical,output,forcing,restart
-
-day       = kday
-hour      = khour
-dynamical = noah_timestep
-output    = output_timestep
-forcing   = forcing_timestep
-restart   = restart_frequency_hours*3600
-
-end subroutine
-
-
-!===================================================================
-! End of model_mod
-!===================================================================
 end module model_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -2023,7 +2023,7 @@ end subroutine set_used_kinds
 ! Follow the linked list entries to copy only the linked observations
 ! from one sequence to the other.
 
-!>@ todo ... test this routine and make public
+!>@ todo ... test this routine and make public or get rid of it
 
 subroutine copy_obs_seq(oldseq, newseq, time1, time2)
 

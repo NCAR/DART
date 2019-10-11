@@ -746,6 +746,7 @@ end subroutine load_unique_dim_info
 !>
 !> If they exist, load them up into the state structure.
 !-------------------------------------------------------------------------------
+
 subroutine load_common_cf_conventions(domain)
 
 type(domain_type), intent(inout) :: domain
@@ -758,17 +759,18 @@ integer  :: ret, ncid, VarID
 integer  :: var_xtype
 integer  :: cf_spvalINT
 real(r4) :: cf_spvalR4
-real(r8) :: cf_spvalR8
-real(r8) :: cf_scale_factor, cf_add_offset
+real(digits12) :: cf_spvalR8
+real(digits12) :: cf_scale_factor, cf_add_offset
 character(len=512) :: ncFilename
 character(len=NF90_MAX_NAME) :: var_name
 character(len=NF90_MAX_NAME) :: cf_long_name, cf_short_name, cf_units
 
 ncFilename = domain%info_file
 
-! open netcdf file
 ret = nf90_open(ncFilename, NF90_NOWRITE, ncid)
 call nc_check(ret, 'load_common_cf_conventions','nf90_open '//trim(ncFilename))
+
+! determine attributes of each variable in turn
 
 nvars = domain%num_variables
 
@@ -799,11 +801,19 @@ do ivar = 1, nvars
       domain%variable(ivar)%io_info%units = cf_units
    endif
 
-   ! Saving any FillValue, missing_value attributes ...
+   ! Saving any FillValue, missing_value attributes.
 
    var_xtype = domain%variable(ivar)%io_info%xtype
    select case (var_xtype)
       case ( NF90_INT )
+          if (nf90_get_att(ncid, NF90_GLOBAL, '_FillValue', cf_spvalINT) == NF90_NOERR) then
+             domain%variable(ivar)%io_info%spvalINT       = cf_spvalINT
+             domain%variable(ivar)%io_info%has_missing_value = .true.
+          endif
+          if (nf90_get_att(ncid, NF90_GLOBAL, 'missing_value', cf_spvalINT) == NF90_NOERR) then
+             domain%variable(ivar)%io_info%missingINT        = cf_spvalINT
+             domain%variable(ivar)%io_info%has_missing_value = .true.
+          endif
           if (nf90_get_att(ncid, VarID, '_FillValue'    , cf_spvalINT) == NF90_NOERR) then
              domain%variable(ivar)%io_info%spvalINT     = cf_spvalINT
              domain%variable(ivar)%io_info%has_missing_value = .true.
@@ -814,6 +824,14 @@ do ivar = 1, nvars
           endif
 
       case ( NF90_FLOAT )
+          if (nf90_get_att(ncid, NF90_GLOBAL, '_FillValue', cf_spvalR4) == NF90_NOERR) then
+             domain%variable(ivar)%io_info%spvalR4        = cf_spvalR4
+             domain%variable(ivar)%io_info%has_missing_value = .true.
+          endif
+          if (nf90_get_att(ncid, NF90_GLOBAL, 'missing_value', cf_spvalR4) == NF90_NOERR) then
+             domain%variable(ivar)%io_info%missingR4         = cf_spvalR4
+             domain%variable(ivar)%io_info%has_missing_value = .true.
+          endif
           if (nf90_get_att(ncid, VarID, '_FillValue'    , cf_spvalR4) == NF90_NOERR) then
              domain%variable(ivar)%io_info%spvalR4      = cf_spvalR4
              domain%variable(ivar)%io_info%has_missing_value = .true.
@@ -824,6 +842,14 @@ do ivar = 1, nvars
           endif
 
       case ( NF90_DOUBLE )
+          if (nf90_get_att(ncid, NF90_GLOBAL, '_FillValue', cf_spvalR8) == NF90_NOERR) then
+             domain%variable(ivar)%io_info%spvalR8        = cf_spvalR8
+             domain%variable(ivar)%io_info%has_missing_value = .true.
+          endif
+          if (nf90_get_att(ncid, NF90_GLOBAL, 'missing_value', cf_spvalR8) == NF90_NOERR) then
+             domain%variable(ivar)%io_info%missingR8         = cf_spvalR8
+             domain%variable(ivar)%io_info%has_missing_value = .true.
+          endif
           if (nf90_get_att(ncid, VarID, '_FillValue'    , cf_spvalR8) == NF90_NOERR) then
              domain%variable(ivar)%io_info%spvalR8      = cf_spvalR8
              domain%variable(ivar)%io_info%has_missing_value = .true.
@@ -832,6 +858,7 @@ do ivar = 1, nvars
              domain%variable(ivar)%io_info%missingR8    = cf_spvalR8
              domain%variable(ivar)%io_info%has_missing_value = .true.
           endif
+
       case DEFAULT
          write(string1,*) ' unsupported netcdf variable type : ', var_xtype
          call error_handler(E_ERR, 'load_common_cf_conventions',string1,source,revision,revdate)

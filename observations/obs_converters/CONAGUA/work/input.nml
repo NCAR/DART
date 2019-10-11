@@ -1,0 +1,37 @@
+
+&preprocess_nml
+    input_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
+   output_obs_kind_mod_file = '../../../../assimilation_code/modules/observations/obs_kind_mod.f90',
+     input_obs_def_mod_file = '../../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
+    output_obs_def_mod_file = '../../../../observations/forward_operators/obs_def_mod.f90',
+   input_files              = '../../../../observations/forward_operators/obs_def_streamflow_mod.f90',
+   /
+
+&convert_streamflow_nml
+   meta_data_file = 'example_data/LaSierra/Observations/LaSierra_strm_pts.csv'
+   data_file_list = 'example_data/LaSierra/Observations/daily_files_list.txt'
+   debug = .true.
+   obs_fraction_for_error = 0.05
+   obs_min_err_std = 0.5
+   /
+
+&formatted_text_to_obs_nml
+   text_input_file = 'example_data/inputtext.txt'
+   obs_out_file    = 'obs_seq.out'
+   debug           = .true.
+   /
+
+&obs_kind_nml
+   /
+
+&location_nml
+   /
+
+&utilities_nml
+   module_details = .false.
+   /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.  
+   /
+
