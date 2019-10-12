@@ -159,13 +159,16 @@ foreach MODEL ( $DO_THESE_MODELS )
 
       echo "Trying to run workshop_setup.csh for model $MODEL as a test"
       ( ./workshop_setup.csh >  ${LOGDIR}/buildlog.${MODEL}.out ) || set FAILURE = 1
+      echo ''
       echo "Re-running workshop_setup.csh to test overwriting files for model $MODEL"
       ( ./workshop_setup.csh >> ${LOGDIR}/buildlog.${MODEL}.out ) || set FAILURE = 1
+      echo ''
 
     else
       echo "building executables for $MODEL"
 
       ( ./quickbuild.csh ${QUICKBUILD_ARG} > ${LOGDIR}/buildlog.${MODEL}.out ) || set FAILURE = 1
+      echo ''
 
       # try not to error out if no .cdl files found
       if ( $ncdlfiles > 0 ) then
@@ -181,8 +184,10 @@ foreach MODEL ( $DO_THESE_MODELS )
       echo "Running pmo for model $MODEL as a test"
       # assumes the executables from quickbuild are here
       ( $MPICMD ./perfect_model_obs >  ${LOGDIR}/runlog.${MODEL}.out ) || set FAILURE = 1
+      echo ''
       echo "Rerunning PMO to test for output file overwrite"
       ( $MPICMD ./perfect_model_obs >> ${LOGDIR}/runlog.${MODEL}.out ) || set FAILURE = 1
+      echo ''
       # FIXME: if possible, try running filter here as well?
 
     endif
@@ -190,6 +195,7 @@ foreach MODEL ( $DO_THESE_MODELS )
     if ( -f model_mod_check ) then
       echo "Trying to run model_mod_check for model $MODEL as a test"
       ( $MPICMD ./model_mod_check >> ${LOGDIR}/runlog.${MODEL}.out ) || set FAILURE = 1 
+      echo ''
     endif
 
     echo "Removing the newly-built objects and executables"
