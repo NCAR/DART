@@ -854,17 +854,17 @@ if ( fac1 < abs(fac2) ) fac2 = 0.0_r8
 theta    = sqrt( (fac1+fac2) * sigma_p_2 + sigma_o_2 )
 exp_like = - 0.5_r8 * dist_2 / theta**2
 
-write(string1,*)'pg compiler does not have required instrinsic "gamma"'
-write(string2,*)'newer pg compiler version required'
-write(string3,*)'when available uncomment block below and recompile'
-call error_handler(E_ERR, 'enh_compute_new_density', string1, &
-           source, revision, revdate, text2=string2, text3=string3)
+! write(string1,*)'pg compiler does not have required instrinsic "gamma"'
+! write(string2,*)'pg compiler version > pgf90 12.4-0 required'
+! write(string3,*)'when available uncomment block below and recompile'
+! call error_handler(E_ERR, 'enh_compute_new_density', string1, &
+!            source, revision, revdate, text2=string2, text3=string3)
 
 ! Compute the updated probability density for lambda
-!TJH enh_compute_new_density = beta**alpha / gamma(alpha)  * &
-!TJH                          lambda**(- alpha - 1.0_r8)  / &
-!TJH                          (sqrt(2.0_r8 * PI) * theta) * &
-!TJH                          exp(exp_like + exp_prior)
+enh_compute_new_density = beta**alpha / gamma(alpha)  * &
+                         lambda**(- alpha - 1.0_r8)  / &
+                         (sqrt(2.0_r8 * PI) * theta) * &
+                         exp(exp_like + exp_prior)
 
 end function enh_compute_new_density
 
