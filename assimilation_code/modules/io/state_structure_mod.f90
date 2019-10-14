@@ -326,7 +326,7 @@ integer :: dom_id
 integer :: ivar
 
 ! add to domains
-call assert_below_max_num_domains()
+call assert_below_max_num_domains('add_domain_from_file')
 state%num_domains = state%num_domains + 1
 !>@todo dom_id should be a handle.
 dom_id = state%num_domains
@@ -380,7 +380,7 @@ integer :: dom_id
 integer :: ivar
 
 ! add to domains
-call assert_below_max_num_domains()
+call assert_below_max_num_domains('add_domain_from_spec')
 state%num_domains = state%num_domains + 1
 dom_id = state%num_domains
 
@@ -416,7 +416,7 @@ integer :: dom_id
 integer :: domain_offset
 
 ! add to domains
-call assert_below_max_num_domains()
+call assert_below_max_num_domains('add_domain_blank')
 
 state%num_domains = state%num_domains + 1
 dom_id = state%num_domains
@@ -2183,10 +2183,17 @@ end function get_scale_factor
 !> to be exceeded.
 
 
-subroutine assert_below_max_num_domains()
+subroutine assert_below_max_num_domains(context)
+character(len=*), optional, intent(in) :: context
+
+if (present(context)) then
+   write(string1,*)trim(context), ':requesting to add domain #', &
+                   state%num_domains + 1
+else
+   write(string1,*)'requesting to add domain #', state%num_domains + 1
+endif
 
 if (state%num_domains + 1 > MAX_NUM_DOMS) then
-   write(string1,*)'requesting to add domain #',state%num_domains + 1
    write(string2,*)'maximum number of domains is ',MAX_NUM_DOMS
    write(string3,*)'increase "MAX_NUM_DOMS" in the common/types_mod.f90 and recompile'
    call error_handler(E_ERR, 'assert_below_max_num_domains', string1, &
