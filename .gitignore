@@ -29,6 +29,7 @@ advance_time
 closest_member_tool
 compare_states
 compute_error
+convert_streamflow
 create_fixed_network_seq
 create_obs_sequence
 fill_inflation_restart
