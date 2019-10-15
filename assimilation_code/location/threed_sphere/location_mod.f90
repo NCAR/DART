@@ -2028,7 +2028,7 @@ end function get_maxdist
 
 !----------------------------------------------------------------------------
 
-subroutine distinct_values(in_list, count, values, map)
+subroutine distinct_values(in_list, mycount, values, map)
 
 !> parse an input list of values and return:
 !>  1) the count of distinct values
@@ -2038,7 +2038,7 @@ subroutine distinct_values(in_list, count, values, map)
 !> length as the incoming list length.
 
 real(r8), intent(in)    :: in_list(:)   !< incoming list of all values
-integer,  intent(out)   :: count        !< count of distinct values
+integer,  intent(out)   :: mycount      !< count of distinct values
 real(r8), intent(inout) :: values(:)    !< list of distinct values
 integer,  intent(inout) :: map(:)       !< mapping of in_list to values
 
@@ -2048,7 +2048,7 @@ real(r8) :: newval
 
 ! set return values now; if we error out then we can
 ! just return.
-count = 0
+mycount = 0
 values(:) = -1.0_r8
 map(:) = -1
 
@@ -2075,7 +2075,7 @@ OUTER: do i=1, listsize
   if (foundnew) then
      values(nextslot) = newval
      map(i) = nextslot
-     count = nextslot
+     mycount = nextslot
   endif
 enddo OUTER
 

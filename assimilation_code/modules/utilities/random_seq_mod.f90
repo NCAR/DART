@@ -204,27 +204,27 @@ end subroutine twod_gaussians
 !> and the variance: shape * (rate^2).
 
 
-function random_gamma(r, shape, scale)
+function random_gamma(r, rshape, rscale)
 
 type(random_seq_type), intent(inout) :: r
-real(r8),              intent(in)    :: shape 
-real(r8),              intent(in)    :: scale 
+real(r8),              intent(in)    :: rshape 
+real(r8),              intent(in)    :: rscale 
 real(r8)                             :: random_gamma
 
 if ( .not. module_initialized ) call initialize_module
 
-if (shape <= 0.0_r8) then
-   write(errstring, *) 'Shape parameter must be positive, was ', shape
+if (rshape <= 0.0_r8) then
+   write(errstring, *) 'Shape parameter must be positive, was ', rshape
    call error_handler(E_ERR, 'random_gamma', errstring, source, revision, revdate)
 endif
 
-if (scale <= 0.0_r8) then
-   write(errstring, *) 'Scale parameter (scale=1/rate) must be positive, was ', scale
+if (rscale <= 0.0_r8) then
+   write(errstring, *) 'Scale parameter (scale=1/rate) must be positive, was ', rscale
    call error_handler(E_ERR, 'random_gamma', errstring, source, revision, revdate)
 endif
 
-! internal routine uses shape, scale
-random_gamma = ran_gamma(r, shape, scale)
+! internal routine uses rshape, rscale
+random_gamma = ran_gamma(r, rshape, rscale)
 
 end function random_gamma
 
@@ -236,28 +236,28 @@ end function random_gamma
 !> gamma uses a rate parameter, inverse gamma uses scale.
 !> if you have 'rate' instead of 'scale', specify 1.0 / rate
 
-function random_inverse_gamma(r, shape, scale)
+function random_inverse_gamma(r, rshape, rscale)
 
 type(random_seq_type), intent(inout) :: r
-real(r8),              intent(in)    :: shape
-real(r8),              intent(in)    :: scale 
+real(r8),              intent(in)    :: rshape
+real(r8),              intent(in)    :: rscale 
 real(r8)                             :: random_inverse_gamma
 
 real(r8) :: g
 
 if ( .not. module_initialized ) call initialize_module
 
-if (shape <= 0.0_r8) then
-   write(errstring, *) 'Shape parameter must be positive, was ', shape
+if (rshape <= 0.0_r8) then
+   write(errstring, *) 'Shape parameter must be positive, was ', rshape
    call error_handler(E_ERR, 'random_inverse_gamma', errstring, source, revision, revdate)
 endif
 
-if (scale <= 0.0_r8) then
-   write(errstring, *) 'Scale parameter (scale=1/rate) must be positive, was ', scale
+if (rscale <= 0.0_r8) then
+   write(errstring, *) 'Scale parameter (scale=1/rate) must be positive, was ', rscale
    call error_handler(E_ERR, 'random_inverse_gamma', errstring, source, revision, revdate)
 endif
 
-g = ran_gamma(r, shape, scale)
+g = ran_gamma(r, rshape, rscale)
 
 ! ran_gamma can't return 0 so its safe to divide by it
 random_inverse_gamma = 1.0_r8/g
@@ -496,11 +496,11 @@ end function ran_gauss
 !> this internal routine assumes the caller has already verified that
 !> the shape and scale are positive.
 
-recursive function ran_gamma (r, shape, scale) result(g)
+recursive function ran_gamma (r, rshape, rscale) result(g)
 
 type(random_seq_type), intent(inout) :: r
-real(r8), intent(in) :: shape
-real(r8), intent(in) :: scale
+real(r8), intent(in) :: rshape
+real(r8), intent(in) :: rscale
 real(r8) :: g
 
 real(r8) :: x, v, u
@@ -511,13 +511,13 @@ real(r8) :: c, d
 ! seems to be more common in the kalman world.  but the original
 ! code is based on a scale parameter, so that's what we use here.
 
-if (shape < 1.0) then
+if (rshape < 1.0) then
    u = random_uniform (r)
-   g = ran_gamma (r, 1.0_r8 + shape, scale) * u ** (1.0_r8 / shape)
+   g = ran_gamma (r, 1.0_r8 + rshape, rscale) * u ** (1.0_r8 / rshape)
    return
 endif
 
-d = shape - 1.0_r8 / 3.0_r8
+d = rshape - 1.0_r8 / 3.0_r8
 c = (1.0_r8 / 3.0_r8) / sqrt (d)
 v = -1.0_r8
 
@@ -537,7 +537,7 @@ OUTER: do while (.true.)
 
 enddo OUTER
 
-g = scale * d * v
+g = rscale * d * v
 
 end function ran_gamma
 

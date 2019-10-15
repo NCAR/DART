@@ -60,4 +60,14 @@
 &schedule_nml
    /
 
-    
+&obs_sequence_tool_nml
+   filename_seq       = 'obs_seq.20080901'
+   filename_seq_list  = ''
+   filename_out       = 'obs_seq.ditto'
+   print_only         = .false.
+   gregorian_cal      = .true.
+   first_obs_days     = -1
+   first_obs_seconds  = -1
+   last_obs_days      = -1
+   last_obs_seconds   = -1
+  /
