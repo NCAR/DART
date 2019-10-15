@@ -28,7 +28,7 @@
 <A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#Modules">MODULES</A> /
 <A HREF="#FilesUsed">FILES</A> /
-<A HREF="#Usage">USAGE </A> /
+<A HREF="#Usage">USAGE </A> / 
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
@@ -39,7 +39,7 @@
 <P>
    <em class="program">model_mod_check</em> tests some of the more
    fundamental routines in any <em class="program">model_mod</em>.
-   This is intended to be used when adding a new model to DART -
+   This is intended to be used when adding a new model to DART - 
    test the pieces as they are written.  As such, this program is
    meant to be hacked up and customized to your own purpose. Right now,
    it reads in model netCDF file(s) - one per domain/nest/whatever -  
@@ -60,7 +60,7 @@ This namelist is read from the file <em class=file>input.nml</em>.
 Namelists start with an ampersand
 '&amp;' and terminate with a slash '/'.
 Character strings that contain a '/' must be
-enclosed in quotes to prevent them from
+enclosed in quotes to prevent them from 
 prematurely terminating the namelist.
 </P>
 
@@ -283,7 +283,7 @@ prematurely terminating the namelist.
 </TD></TR>
 
 
-</TBODY>
+</TBODY> 
 </TABLE>
 </div>
 
@@ -371,7 +371,7 @@ observations/forward_operators/obs_def_utilities_mod.f90
 <A NAME="FilesUsed"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
-<UL><LI><em class="file">input.nml</em> is used for
+<UL><LI><em class="file">input.nml</em> is used for 
         <em class="code">model_mod_check_nml</em></LI>
 
     <LI>The <em class="code">"input_state_files" </em> can either be a
@@ -447,7 +447,7 @@ observations/forward_operators/obs_def_mod.f90
 observations/forward_operators/obs_def_utilities_mod.f90
 </pre>
 as well as a <em class="file">mkmf_model_mod_check</em> script.
-You should be able to look at any other <em class="file">mkmf_xxxx</em>
+You should be able to look at any other <em class="file">mkmf_xxxx</em> 
 script and figure out what to change. Once they exist:
 <br />
 <br />
@@ -462,7 +462,7 @@ script and figure out what to change. Once they exist:
 <P>
 Unlike other DART components, you are expected
 to modify <em class="file">model_mod_check.f90</em> to suit your needs as
-you develop your <em class="program">model_mod</em>. The code is roughly
+you develop your <em class="program">model_mod</em>. The code is roughly 
 divided into the following categories:
 </P>
 <ol><li>Check the geometry information, </li>
@@ -565,7 +565,7 @@ the next gridpoint is closer. Repeat ...
 <P>There are no error conditions to check. This program is intended
 to demonstrate simple checks that will allow you to proceed with
 improving and testing the <em class="program">model_mod</em>. There
-will be plenty of run-time errors, I suggest compiling your code with
+will be plenty of run-time errors, I suggest compiling your code with 
 "bounds checking" turned on - at a minimum.
 </P>
 </div>
