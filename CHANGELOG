@@ -889,4 +889,7 @@ and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
 - added an example of how to use a namelist to the text_to_obs.f90 observation
   converter program.
 
+- Removing the clamping messages in 'clamp_variable()' of clamped values
 
+- changed argument names using reserved keywords, e.g. 'time' to 'model_time' 
+  in state_vector_io_mod:read_state()

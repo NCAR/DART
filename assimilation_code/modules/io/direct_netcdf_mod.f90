@@ -1459,10 +1459,7 @@ if (minclamp == missing_r8 .and. maxclamp == missing_r8) return
 ! because of circular module dependencies.  it should be defined
 ! maybe in filter?  and set into some low level module (like types
 ! or constants or options_mod so anyone can query it).
-!
-! if we allow missing values in the state (which jeff has never
-! liked because it makes the statistics funny), then these next
-! two lines need to be:
+
 allow_missing = get_missing_ok_status()
 
 if (allow_missing) then
@@ -1479,34 +1476,39 @@ varname = get_variable_name(dom_id, var_index)
 ! is lower bound set?
 if ( minclamp /= missing_r8 ) then ! missing_r8 is flag for no clamping
    if ( my_minmax(1) < minclamp ) then
-      !>@todo again, if we're allowing missing in state, this has to be masked:
-       if (allow_missing) then
-          where(variable /= missing_r8) variable = max(minclamp, variable)
-       else
-          variable = max(minclamp, variable)
-       endif
-   
-! TJH TOO VERBOSE      write(msgstring, *) trim(varname)// ' lower bound ', minclamp, ' min value ', my_minmax(1)
-! TJH TOO VERBOSE      call error_handler(E_ALLMSG, 'clamp_variable', msgstring, &
-! TJH TOO VERBOSE                         source,revision,revdate)
+      if (allow_missing) then
+         where(variable /= missing_r8) variable = max(minclamp, variable)
+      else
+         variable = max(minclamp, variable)
+      endif
+
+      ! At the risk of a lot of output, you can uncomment the following
+      ! to explore what values are getting clamped.
+      if (.false.) then   
+         write(msgstring, *) trim(varname)// ' lower bound ', minclamp, ' min value ', my_minmax(1)
+         call error_handler(E_ALLMSG, 'clamp_variable', msgstring, &
+                            source,revision,revdate)
+      endif
    endif
 endif ! min range set
 
 ! is upper bound set?
 if ( maxclamp /= missing_r8 ) then ! missing_r8 is flag for no clamping
    if ( my_minmax(2) > maxclamp ) then
-      !>@todo again, if we're allowing missing in state, this has to be masked:
       if (allow_missing) then
          where(variable /= missing_r8) variable = min(maxclamp, variable)
       else
          variable = min(maxclamp, variable)
       endif
 
-! TJH TOO VERBOSE      write(msgstring, *) trim(varname)// ' upper bound ', maxclamp, ' max value ', my_minmax(2)
-! TJH TOO VERBOSE      call error_handler(E_ALLMSG, 'clamp_variable', msgstring, &
-! TJH TOO VERBOSE                         source,revision,revdate)
+      ! At the risk of a lot of output, you can uncomment the following
+      ! to explore what values are getting clamped.
+      if (.false.) then   
+         write(msgstring, *) trim(varname)// ' upper bound ', maxclamp, ' max value ', my_minmax(2)
+         call error_handler(E_ALLMSG, 'clamp_variable', msgstring, &
+                            source,revision,revdate)
+      endif
    endif
-
 endif ! max range set
 
 end subroutine clamp_variable
