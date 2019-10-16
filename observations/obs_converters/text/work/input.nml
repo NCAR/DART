@@ -29,7 +29,7 @@
 &obs_sequence_tool_nml
    filename_seq       = 'obs_seq.out'
    filename_seq_list  = ''
-   filename_out       = 'obs_seq.ditto'
+   filename_out       = 'obs_seq.copy'
    print_only         = .false.
    gregorian_cal      = .true.
    first_obs_days     = -1
