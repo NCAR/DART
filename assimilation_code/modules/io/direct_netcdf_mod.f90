@@ -125,10 +125,10 @@ public :: read_transpose,            &
           nc_get_num_times
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
+character(len=256), parameter :: source   = &
    "$URL$"
-character(len=*), parameter :: revision = "$Revision$"
-character(len=*), parameter :: revdate  = "$Date$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! only a single MPI Task reads and writes reads the state variable,
 ! when using single_file_{input,output} = .true.
@@ -480,12 +480,12 @@ end subroutine finalize_single_file_io
 !> read a single netcdf file containing all of the members
 !> and possibly inflation information
 
-subroutine read_single_file(state_ens_handle, file_handle, use_time_from_file, mtime, pert_from_single_copy)
+subroutine read_single_file(state_ens_handle, file_handle, use_time_from_file, time, pert_from_single_copy)
 
 type(ensemble_type),  intent(inout) :: state_ens_handle      !! ensemble handle to store data
 type(file_info_type), intent(in)    :: file_handle           !! file handle for file names
 logical,              intent(in)    :: use_time_from_file    !! read time from file
-type(time_type),      intent(inout) :: mtime                 !! external time
+type(time_type),      intent(inout) :: time                  !! external time
 logical, optional,    intent(in)    :: pert_from_single_copy !! reading single file and perturbing
 
 ! NetCDF IO variables
@@ -522,9 +522,9 @@ fname = get_restart_filename(file_handle%stage_metadata, 1, domain)
 
 !>@todo Check time consistency across files? This is assuming they are consistent.
 ! read time from input file if time not set in namelist
-if( use_time_from_file ) mtime = read_model_time(fname)
+if( use_time_from_file ) time = read_model_time(fname)
 
-state_ens_handle%time = mtime
+state_ens_handle%time = time
 
 ret = nf90_open(fname, NF90_NOWRITE, my_ncid)
 call nc_check(ret, 'read_single_file: nf90_open', fname)
@@ -850,10 +850,6 @@ integer :: var_size
 integer, allocatable :: dims(:)
 integer :: ret, var_id
 
-logical :: missing_possible
-
-missing_possible = get_missing_ok_status()
-
 istart = 1
 
 do i = start_var, end_var
@@ -871,8 +867,6 @@ do i = start_var, end_var
 
    ret = nf90_get_var(ncfile_in, var_id, var_block(istart:iend), count=dims)
    call nc_check(ret, 'read_variables: nf90_get_var',trim(get_variable_name(domain,i)) )
-
-   if (missing_possible) call set_dart_missing_value(var_block(istart:iend), domain, i)
 
    istart = istart + var_size
 
@@ -1005,10 +999,7 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
          call get_ensemble_time(state_ens_handle, time_owner_index, dart_time)
          ncfile_out = create_and_open_state_output(name_handle, domain, copy, &
                                                    dart_time, write_single_precision)
-         !>@todo if multiple domains exist in the same file, only the variables
-         !>      from the first domain are created by create_and_open_state_output()
-         !>      and since the file exists, the variables for the additional domains
-         !>      never get defined in the netCDF file.
+
       endif
    endif
 
@@ -1459,7 +1450,10 @@ if (minclamp == missing_r8 .and. maxclamp == missing_r8) return
 ! because of circular module dependencies.  it should be defined
 ! maybe in filter?  and set into some low level module (like types
 ! or constants or options_mod so anyone can query it).
-
+!
+! if we allow missing values in the state (which jeff has never
+! liked because it makes the statistics funny), then these next
+! two lines need to be:
 allow_missing = get_missing_ok_status()
 
 if (allow_missing) then
@@ -1476,39 +1470,34 @@ varname = get_variable_name(dom_id, var_index)
 ! is lower bound set?
 if ( minclamp /= missing_r8 ) then ! missing_r8 is flag for no clamping
    if ( my_minmax(1) < minclamp ) then
-      if (allow_missing) then
-         where(variable /= missing_r8) variable = max(minclamp, variable)
-      else
-         variable = max(minclamp, variable)
-      endif
-
-      ! At the risk of a lot of output, you can uncomment the following
-      ! to explore what values are getting clamped.
-      if (.false.) then   
-         write(msgstring, *) trim(varname)// ' lower bound ', minclamp, ' min value ', my_minmax(1)
-         call error_handler(E_ALLMSG, 'clamp_variable', msgstring, &
-                            source,revision,revdate)
-      endif
+      !>@todo again, if we're allowing missing in state, this has to be masked:
+       if (allow_missing) then
+          where(variable /= missing_r8) variable = max(minclamp, variable)
+       else
+          variable = max(minclamp, variable)
+       endif
+   
+      write(msgstring, *) trim(varname)// ' lower bound ', minclamp, ' min value ', my_minmax(1)
+      call error_handler(E_ALLMSG, 'clamp_variable', msgstring, &
+                         source,revision,revdate)
    endif
 endif ! min range set
 
 ! is upper bound set?
 if ( maxclamp /= missing_r8 ) then ! missing_r8 is flag for no clamping
    if ( my_minmax(2) > maxclamp ) then
+      !>@todo again, if we're allowing missing in state, this has to be masked:
       if (allow_missing) then
          where(variable /= missing_r8) variable = min(maxclamp, variable)
       else
          variable = min(maxclamp, variable)
       endif
 
-      ! At the risk of a lot of output, you can uncomment the following
-      ! to explore what values are getting clamped.
-      if (.false.) then   
-         write(msgstring, *) trim(varname)// ' upper bound ', maxclamp, ' max value ', my_minmax(2)
-         call error_handler(E_ALLMSG, 'clamp_variable', msgstring, &
-                            source,revision,revdate)
-      endif
+      write(msgstring, *) trim(varname)// ' upper bound ', maxclamp, ' max value ', my_minmax(2)
+      call error_handler(E_ALLMSG, 'clamp_variable', msgstring, &
+                         source,revision,revdate)
    endif
+
 endif ! max range set
 
 end subroutine clamp_variable
@@ -1533,10 +1522,6 @@ logical,  intent(in)    :: force_copy
 integer :: istart, iend
 integer :: i, ret, var_id, var_size
 integer, allocatable :: dims(:)
-
-logical :: missing_possible
-
-missing_possible = get_missing_ok_status()
 
 !>@todo reduce output in log file?
 ! clamp_variable() currently prints out a line per variable per ensemble member.
@@ -1567,14 +1552,12 @@ do i = start_var, end_var
       allocate(dims(get_io_num_dims(domain, i)))
 
       dims = get_io_dim_lengths(domain, i)
-!>@todo FIXME, the first variable in the second domain is not found when using coamps_nest.
-      ret = nf90_inq_varid(ncid, trim(get_variable_name(domain, i)), var_id)
-      call nc_check(ret, 'write_variables:', 'nf90_inq_varid "'//trim(get_variable_name(domain,i))//'"')
 
-      if (missing_possible) call set_model_missing_value(var_block(istart:iend), domain, i)
+      ret = nf90_inq_varid(ncid, trim(get_variable_name(domain, i)), var_id)
+      call nc_check(ret, 'write_variables:', 'getting variable "'//trim(get_variable_name(domain,i))//'"')
 
       ret = nf90_put_var(ncid, var_id, var_block(istart:iend), count=dims)
-      call nc_check(ret, 'write_variables:', 'nf90_put_var "'//trim(get_variable_name(domain,i))//'"')
+      call nc_check(ret, 'write_variables:', 'writing "'//trim(get_variable_name(domain,i))//'"')
 
       deallocate(dims)
    endif
@@ -1608,8 +1591,6 @@ type(time_type),           intent(in) :: dart_time
 logical,                   intent(in) :: single_precision_output
 integer :: ncfile_out
 
-character(len=*), parameter :: routine = 'create_and_open_state_output'
-
 integer :: ret
 integer :: create_mode
 integer :: i, j
@@ -1624,42 +1605,41 @@ character(len=256) :: filename
 filename = get_restart_filename(name_handle, copy_number, dom_id)
 
 write(msgstring,*) 'Creating output file ', trim(filename)
-call error_handler(E_ALLMSG, routine, msgstring)
+call error_handler(E_ALLMSG,'create_and_open_state_output:', msgstring)
 
 ! What file options do you want?
 create_mode = ior(NF90_CLOBBER, NF90_64BIT_OFFSET)
 ret = nf90_create(filename, create_mode, ncfile_out)
-call nc_check(ret, routine, 'nf90_create "'//trim(filename)//'"')
+call nc_check(ret, 'create_and_open_state_output: creating', trim(filename))
 
 ret = nf90_enddef(ncfile_out)
-call nc_check(ret, routine, 'end define mode')
+call nc_check(ret, 'create_and_open_state_output', 'end define mode')
 
 ! write grid information
 call nc_write_model_atts(ncfile_out, dom_id)
-call nc_check(nf90_Redef(ncfile_out), routine, 'redef ')
+call nc_check(nf90_Redef(ncfile_out),'create_and_open_state_output',   'redef ')
 
 ! filename discription
-call nc_write_file_information(ncfile_out, filename, &
-          get_file_description(name_handle, copy_number, dom_id))
+call nc_write_file_information(ncfile_out, filename, get_file_description(name_handle, copy_number, dom_id))
+
 
 ! revision information
 call nc_write_revision_info(ncfile_out)
 
 ! clamping information
-call nc_write_global_att_clamping(ncfile_out, copy_number, dom_id, &
-          from_scratch=.true.)
+call nc_write_global_att_clamping(ncfile_out, copy_number, dom_id, from_scratch=.true.)
+
 
 ! define dimensions, loop around unique dimensions
 do i = 1, get_io_num_unique_dims(dom_id)
    if ( trim(get_io_unique_dim_name(dom_id, i)) == 'time' ) then
       ret = nf90_def_dim(ncfile_out, 'time', NF90_UNLIMITED, new_dimid)
    else
-      ret = nf90_def_dim(ncfile_out, get_io_unique_dim_name(dom_id, i), &
-                       get_io_unique_dim_length(dom_id, i), new_dimid)
+      ret = nf90_def_dim(ncfile_out, get_io_unique_dim_name(dom_id, i), get_io_unique_dim_length(dom_id, i), new_dimid)
    endif
    !>@todo if we already have a unique names we can take this test out
    if(ret /= NF90_NOERR .and. ret /= NF90_ENAMEINUSE) then
-      call nc_check(ret, routine, &
+      call nc_check(ret, 'create_and_open_state_output', &
               'defining dimensions'//trim(get_io_unique_dim_name(dom_id, i)))
    endif
 enddo
@@ -1682,14 +1662,13 @@ do i = 1, get_num_variables(dom_id) ! loop around state variables
       ! query the dimension ids
       do j = 1, ndims
          ret = nf90_inq_dimid(ncfile_out, get_dim_name(dom_id, i, j), dimids(j))
-         call nc_check(ret, routine, 'querying dimensions')
+         call nc_check(ret, 'create_and_open_state_output', 'querying dimensions')
       enddo
   
       ! define variable name and attributes
-      write(msgstring,*) '"'//trim(get_variable_name(dom_id, i))//'"'
       ret = nf90_def_var(ncfile_out, trim(get_variable_name(dom_id, i)), &
                          xtype=xtype, dimids=dimids(1:ndims), varid=new_varid)
-      call nc_check(ret, routine, 'defining variable '//trim(msgstring))
+      call nc_check(ret, 'create_and_open_state_output', 'defining variable')
   
       call set_var_id(dom_id, i, new_varid)
   
@@ -1700,9 +1679,10 @@ do i = 1, get_num_variables(dom_id) ! loop around state variables
 enddo
 
 ret = nf90_enddef(ncfile_out)
-call nc_check(ret, routine, 'nf90_enddef end define mode')
+call nc_check(ret, 'create_and_open_state_output', 'end define mode')
 
 call write_model_time(ncfile_out, dart_time)
+
 
 end function create_and_open_state_output
 
@@ -1993,7 +1973,7 @@ integer,          intent(in) :: ncVarID
 integer,          intent(in) :: domid
 integer,          intent(in) :: varid
 
-real(digits12) :: missingValR8, spvalR8
+real(r8) :: missingValR8, spvalR8
 
 call get_missing_value(domid, varid, missingValR8)
 if (missingValR8 /= MISSING_R8) then
@@ -2495,12 +2475,12 @@ end subroutine write_extra_attributes
 !------------------------------------------------------------------
 !> helper function to return the netcdf dimension id's and lengths
 
-subroutine get_dimension_info(copy, dom_id, var_id, timestep, is_extra, numdims, start, lengths)
+subroutine get_dimension_info(copy, dom_id, var_id, time, is_extra, numdims, start, lengths)
 
 integer, intent(in)  :: copy 
 integer, intent(in)  :: dom_id 
 integer, intent(in)  :: var_id 
-integer, intent(in)  :: timestep
+integer, intent(in)  :: time
 logical, intent(in)  :: is_extra
 integer, intent(out) :: numdims
 integer, intent(out) :: start  (NF90_MAX_VAR_DIMS)
@@ -2527,9 +2507,9 @@ do jdim = 1, numdims
       if ( is_extra ) then 
          ! extra copies have time but it might not be the jdim dimension
          dcount        = dcount + 1
-         start(dcount) = timestep
+         start(dcount) = time! time
       else
-         start(jdim)   = timestep 
+         start(jdim)   = time 
       endif
 
    else if ( dimname == 'member') then
@@ -2786,11 +2766,11 @@ end function nc_get_tindex
 !> This REQUIRES that "time" is a coordinate variable AND it is the
 !> unlimited dimension. If not ... bad things happen.
 
-function nc_append_time(ncFileID, dart_time) result(lngth)
+function nc_append_time(ncFileID, time) result(lngth)
 
 type(netcdf_file_type), intent(inout) :: ncFileID
-type(time_type),        intent(in)    :: dart_time
-integer                               :: lngth
+type(time_type), intent(in) :: time
+integer                     :: lngth
 
 integer  :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer  :: TimeVarID
@@ -2854,7 +2834,7 @@ if ( lngth == ncFileID%NtimesMAX ) then
 
 endif
 
-call get_time(dart_time, secs, days)    ! get time components to append
+call get_time(time, secs, days)         ! get time components to append
 realtime = days + secs/86400.0_digits12 ! time base is "days since ..."
 lngth           = lngth + 1             ! index of new time 
 ncFileID%Ntimes = lngth                 ! new working length of time mirror
@@ -2862,7 +2842,7 @@ ncFileID%Ntimes = lngth                 ! new working length of time mirror
 call nc_check(nf90_put_var(my_ncid, TimeVarID, realtime, start=(/ lngth /) ), &
            'nc_append_time', 'put_var time')
 
-ncFileID%times( lngth) = dart_time
+ncFileID%times( lngth) = time
 ncFileID%rtimes(lngth) = realtime
 
 write(msgstring,*)'ncFileID (',my_ncid,') : "',trim(varname), &
@@ -3016,73 +2996,6 @@ endif
 end function find_start_point
 
 
-!--------------------------------------------------------
-!> replace the netCDF missing_value or _FillValue with
-!> the DART missing value.
-
-subroutine set_dart_missing_value(array, domain, variable)
-
-real(r8), intent(inout) :: array(:)
-integer,  intent(in)    :: domain
-integer,  intent(in)    :: variable
-
-integer        :: model_missing_valueINT
-real(r4)       :: model_missing_valueR4
-real(digits12) :: model_missing_valueR8
-
-! check to see if variable has missing value attributes
-if ( get_has_missing_value(domain, variable) ) then
-
-   select case ( get_xtype(domain, variable) )
-      case ( NF90_INT )
-         call get_missing_value(domain, variable, model_missing_valueINT)
-         where(array == model_missing_valueINT) array = MISSING_R8
-      case ( NF90_FLOAT )
-         call get_missing_value(domain, variable, model_missing_valueR4)
-         where(array == model_missing_valueR4) array = MISSING_R8
-      case ( NF90_DOUBLE )
-         call get_missing_value(domain, variable, model_missing_valueR8)
-         where(array == model_missing_valueR8) array = MISSING_R8
-   end select
-
-endif
-
-end subroutine set_dart_missing_value
-
-!--------------------------------------------------------
-!> replace the DART missing value code with the 
-!> original netCDF missing_value (or _FillValue) value.
-
-subroutine set_model_missing_value(array, domain, variable)
-
-real(r8), intent(inout) :: array(:)
-integer,  intent(in)    :: domain
-integer,  intent(in)    :: variable
-
-integer        :: model_missing_valueINT
-real(r4)       :: model_missing_valueR4
-real(digits12) :: model_missing_valueR8
-
-! check to see if variable has missing value attributes
-if ( get_has_missing_value(domain, variable) ) then
-
-   select case ( get_xtype(domain, variable) )
-      case ( NF90_INT )
-         call get_missing_value(domain, variable, model_missing_valueINT)
-         where(array == MISSING_R8) array = model_missing_valueINT
-      case ( NF90_FLOAT )
-         call get_missing_value(domain, variable, model_missing_valueR4)
-         where(array == MISSING_R8) array = model_missing_valueR4
-      case ( NF90_DOUBLE )
-         call get_missing_value(domain, variable, model_missing_valueR8)
-         where(array == MISSING_R8) array = model_missing_valueR8
-   end select
-
-endif
-
-end subroutine set_model_missing_value
-
-!--------------------------------------------------------
 !--------------------------------------------------------
 
 !> @}
