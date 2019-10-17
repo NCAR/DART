@@ -148,7 +148,7 @@ interface nc_get_variable
    module procedure nc_get_int_1d
    module procedure nc_get_single_real_1d
    module procedure nc_get_real_1d
-   module procedure nc_get_digits12_1d
+   module procedure nc_get_double_1d
    module procedure nc_get_short_2d
    module procedure nc_get_int_2d
    module procedure nc_get_real_2d
@@ -1485,7 +1485,7 @@ end subroutine nc_get_real_1d
 
 !--------------------------------------------------------------------
 
-subroutine nc_get_digits12_1d(ncid, varname, varvals, context, filename)
+subroutine nc_get_double_1d(ncid, varname, varvals, context, filename)
 
 integer,          intent(in)  :: ncid
 character(len=*), intent(in)  :: varname
@@ -1493,7 +1493,7 @@ real(digits12),   intent(out) :: varvals(:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
 
-character(len=*), parameter :: routine = 'nc_get_real_1d'
+character(len=*), parameter :: routine = 'nc_get_double_1d'
 integer :: ret, varid
 
 ret = nf90_inq_varid(ncid, varname, varid)
@@ -1505,7 +1505,7 @@ if (has_scale_off(ncid, varid)) call no_scale_off(ncid, routine, varname, contex
 ret = nf90_get_var(ncid, varid, varvals)
 call nc_check(ret, routine, 'get values for '//trim(varname), context, filename, ncid)
 
-end subroutine nc_get_digits12_1d
+end subroutine nc_get_double_1d
 
 !--------------------------------------------------------------------
 
