@@ -2716,10 +2716,8 @@ addressed appropriately by the DART development team.
 
 ### What if I want my work to remain private until I publish?
 
-In the past, some DART users have expressed concern that if their development
-is public while they are in the process of writing a research paper, they may
-end up "scooped" by another research team and have wasted their time and effort
-for no credit. To accommodate users with these concerns, we describe here an
+Some DART users want to work on a private branch until their work is ready 
+for public viewing.. To accommodate users with these concerns, we describe here an
 additional step to temporarily "hide" sensitive code that is intended to be
 eventually contributed to DART after publication.
 
