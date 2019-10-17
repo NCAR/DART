@@ -8,13 +8,14 @@ module smoother_mod
 
 ! Tools for turning the filter into a fixed lag smoother for the full state vector.
 
-use      types_mod,       only : r8, i8, metadatalength
+use      types_mod,       only : r8, i8, metadatalength, MISSING_R8
 use  mpi_utilities_mod,   only : my_task_id
 use  utilities_mod,       only : file_exist, check_namelist_read, do_output,  &
                                  find_namelist_in_file, register_module, error_handler, &
                                  E_ERR, E_MSG, nmlfileunit, logfileunit, timestamp,     &
                                  do_nml_file, do_nml_term
-use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, all_vars_to_all_copies, &
+use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, &
+                                 all_vars_to_all_copies, &
                                  duplicate_ens, compute_copy_mean_sd,      &
                                  all_copies_to_all_vars, get_copy, map_task_to_pe
 use time_manager_mod,     only : time_type, operator(==), print_time
@@ -38,16 +39,15 @@ public :: smoother_read_restart, advance_smoother,                     &
 
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = "$URL$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 logical :: module_initialized = .false.
 integer :: print_trace_details = 0
 integer :: print_timestamps    = 0
 
-character(len = 129) :: errstring
+character(len=512) :: errstring
 
 ! State for the smoother
 integer :: smoother_head = 1, num_current_lags = 0
@@ -504,6 +504,9 @@ do i = 1, num_current_lags
     !  ENS_MEAN_COPY, ENS_SD_COPY, lag_inflate, POST_INF_COPY, POST_INF_SD_COPY)
 end do
 
+! REMOVE THIS WHEN IMPLEMENTED.
+temp_ens(1) = MISSING_R8 ! Just to silence compiler warnings.
+
 end subroutine smoother_ss_diagnostics
 
 !-----------------------------------------------------------
@@ -585,8 +588,3 @@ end subroutine set_smoother_trace
 
 end module smoother_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

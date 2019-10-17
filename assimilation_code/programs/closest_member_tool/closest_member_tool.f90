@@ -195,7 +195,7 @@ enddo
 
 ! Read the ensemble from files
 member_time = set_time_missing()
-call read_state(ens_handle, ens_file_info, read_time_from_file=.false., time=member_time)
+call read_state(ens_handle, ens_file_info, read_time_from_file=.false., model_time=member_time)
 
 ! Compute mean
 ENS_MEAN_COPY = ens_size + 1

@@ -8,10 +8,11 @@
 .DS_Store
 Gemfile.lock
 _site/
+.cppdefs
 
 # Nuisance files
 
-Makefile
+# Makefile
 dart_log.*
 input.nml.*default
 filter_ics
@@ -20,6 +21,7 @@ obs_kind_mod.f90
 using_mpi_for_*
 check_me.nc
 check_me_interptest.*
+*.orig
 
 # Executables
 
@@ -52,8 +54,6 @@ perturb_single_instance
 preprocess
 restart_file_tool
 system_simulation
-wakeup_filter
-FeoM_time
 
 # Directories to NOT IGNORE ... same as executable names
 # as far as I know, these must be listed after the executables
@@ -88,3 +88,4 @@ FeoM_time
 !restart_file_tool/
 !system_simulation/
 !wakeup_filter/
+

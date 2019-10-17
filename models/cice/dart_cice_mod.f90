@@ -6,7 +6,7 @@
 
 module dart_cice_mod
 
-use        types_mod, only : r8, rad2deg, PI, SECPERDAY
+use        types_mod, only : r8, rad2deg, PI, SECPERDAY, digits12
 use time_manager_mod, only : time_type, get_date, set_date, get_time, set_time, &
                              set_calendar_type, get_calendar_string, &
                              print_date, print_time, operator(==), operator(-)
@@ -31,12 +31,11 @@ public :: get_cice_calendar, set_model_time_step, &
           set_binary_file_conversion
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = "$URL$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
-character(len=256) :: msgstring
+character(len=512) :: msgstring
 logical, save :: module_initialized = .false.
 
 character(len=256) :: ic_filename      = 'cice.r.nc'
@@ -429,11 +428,10 @@ close(iunit)
 end subroutine write_cice_namelist
 
 !------------------------------------------------------------------
+!> Open and read the binary grid file
 
 
   subroutine read_horiz_grid(nx, ny, ULAT, ULON, TLAT, TLON)
-
-! Open and read the binary grid file
 
 integer,                    intent(in)  :: nx, ny
 real(r8), dimension(nx,ny), intent(out) :: ULAT, ULON, TLAT, TLON
@@ -446,6 +444,7 @@ real(r8), dimension(nx,ny), intent(out) :: ULAT, ULON, TLAT, TLON
 !     ANGLE  ! angle
 
 integer :: grid_unit, reclength
+real(digits12), dimension(nx,ny) :: ULAT64, ULON64
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -461,18 +460,21 @@ endif
 ! Actually, we only need the first two, so I'm skipping the rest.
 
 grid_unit = get_unit()
-INQUIRE(iolength=reclength) ULAT
+INQUIRE(iolength=reclength) ULAT64
 
-open(grid_unit, file=trim(grid_file), form='unformatted', &
-     access='direct', recl=reclength, status='old', action='read', convert=conversion)
-read(grid_unit, rec=1) ULAT
-read(grid_unit, rec=2) ULON
+open(grid_unit, file=trim(grid_file), form='unformatted', convert=conversion, &
+            access='direct', recl=reclength, status='old', action='read' )
+read(grid_unit, rec=1) ULAT64
+read(grid_unit, rec=2) ULON64
 !read(grid_unit, rec=3) HTN
 !read(grid_unit, rec=4) HTE
 !read(grid_unit, rec=5) HUS
 !read(grid_unit, rec=6) HUW
 !read(grid_unit, rec=7) ANGLE
 close(grid_unit)
+
+ULAT = ULAT64
+ULON = ULON64
 
 call calc_tpoints(nx, ny, ULAT, ULON, TLAT, TLON)
 
@@ -498,11 +500,11 @@ where (TLAT >  90.0_r8) TLAT =  90.0_r8
 end subroutine read_horiz_grid
 
 
-  subroutine calc_tpoints(nx, ny, ULAT, ULON, TLAT, TLON)
 !------------------------------------------------------------------
-! subroutine calc_tpoints(nx, ny, ULAT, ULON, TLAT, TLON)
-!
-! mimic POP grid.F90:calc_tpoints(), but for one big block.
+!> mimic POP grid.F90:calc_tpoints(), but for one big block.
+
+
+subroutine calc_tpoints(nx, ny, ULAT, ULON, TLAT, TLON)
 
 integer,                    intent( in) :: nx, ny
 real(r8), dimension(nx,ny), intent( in) :: ULAT, ULON
@@ -527,7 +529,7 @@ pih    = p5*pi
 radian = 180.0_r8/pi
 
 ! initialize these arrays to 0. in the code below there is
-! a column that is referenced by a where() construct before 
+! a column that is referenced by a where() construct before
 ! those values are set.  make sure that it doesn't cause a
 ! floating point exception from random memory bits which aren't
 ! valid floating point numbers.
@@ -537,7 +539,7 @@ TLON(:,:) = c0
 do j=2,ny
 do i=2,nx
 
-   !*** convert neighbor U-cell coordinates to 3-d Cartesian coordinates 
+   !*** convert neighbor U-cell coordinates to 3-d Cartesian coordinates
    !*** to prevent problems with averaging near the pole
 
    zsw = cos(ULAT(i-1,j-1))
@@ -594,7 +596,7 @@ end do
 where (TLON(:,:) > pi2) TLON(:,:) = TLON(:,:) - pi2
 where (TLON(:,:) < c0 ) TLON(:,:) = TLON(:,:) + pi2
 
-!*** this leaves the leftmost/western edge to be filled 
+!*** this leaves the leftmost/western edge to be filled
 !*** if the longitudes wrap, this is easy.
 !*** the gx3v5 grid TLON(:,2) and TLON(:,nx) are both about 2pi,
 !*** so taking the average is reasonable.
@@ -614,12 +616,11 @@ endif
 end subroutine calc_tpoints
 
 
-
-  subroutine read_topography(nx, ny, KMT, KMU)
 !------------------------------------------------------------------
-! subroutine read_topography(nx, ny, KMT, KMU)
-!
-! Open and read the binary topography file
+!> Open and read the binary topography file
+
+
+subroutine read_topography(nx, ny, KMT, KMU)
 
 integer,                   intent(in)  :: nx, ny
 integer, dimension(nx,ny), intent(out) :: KMT, KMU
@@ -654,17 +655,17 @@ close(topo_unit)
 ! south and west. so the T points which surround any U(i,j) point are
 ! in fact at indices i,i+1, and j,j+1 .
 !
-!  NO: KMU(i,j) = min(KMT(i, j), KMT(i-1, j), KMT(i, j-1), KMT(i-1, j-1)) 
+!  NO: KMU(i,j) = min(KMT(i, j), KMT(i-1, j), KMT(i, j-1), KMT(i-1, j-1))
 ! YES: KMU(i,j) = min(KMT(i, j), KMT(i+1, j), KMT(i, j+1), KMT(i+1, j+1))
 !
 ! the latter matches the POP source code, on yellowstone, lines 908 and 909 in:
 !  /glade/p/cesm/releases/cesm1_2_2/models/ocn/pop2/source/grid.F90
 !
 ! wrap around longitude boundary at i == nx.  set the topmost (last) latitude
-! U row to the same value in all cases. in the shifted pole grid currently in 
+! U row to the same value in all cases. in the shifted pole grid currently in
 ! use all these points are on land and so are 0.  in the original unshifted
 ! lat/lon grid these last row U points are above the final T row and are believed
-! to be unused.  for completeness we set all values in the last U row to the 
+! to be unused.  for completeness we set all values in the last U row to the
 ! minimum of the all T row values immediately below it, for all longitudes.
 
 do j=1,ny-1
@@ -676,6 +677,7 @@ enddo
 KMU(:,ny) = minval(KMT(:,ny))
 
 end subroutine read_topography
+
 
 !------------------------------------------------------------------
 ! CMB removed read_vert_grid
@@ -690,9 +692,12 @@ filename   = trim(ic_filename)
 
 end subroutine get_cice_restart_filename
 
+
 !------------------------------------------------------------------
 
+
 subroutine set_binary_file_conversion(convertstring)
+
 character(len=*), intent(in) :: convertstring
 
 if ( .not. module_initialized ) call initialize_module
@@ -704,10 +709,6 @@ end subroutine set_binary_file_conversion
 
 !------------------------------------------------------------------
 
+
 end module dart_cice_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

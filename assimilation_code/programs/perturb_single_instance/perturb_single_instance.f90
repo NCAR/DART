@@ -195,7 +195,7 @@ enddo
 ! Read the ensemble from files
 !----------------------------------------------------------------------
 member_time = set_time_missing()
-call read_state(ens_handle, file_info_input, read_time_from_file=.true., time=member_time)
+call read_state(ens_handle, file_info_input, read_time_from_file=.true., model_time=member_time)
 
 !----------------------------------------------------------------------
 ! Copy from ensemble member 1 to the other copies

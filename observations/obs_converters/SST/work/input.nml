@@ -45,10 +45,9 @@
    /
 
 &obs_sequence_tool_nml
-   num_input_files   = 2
-   filename_seq      = '/t1/scratch/bjchoi/DART/ObsData/SST/obsSEQ/obs_seq.sst1.20111231'
-                       '/t1/scratch/bjchoi/DART/ObsData/GTSPP/obsSEQ/obs_seq.gtspp201112.100km'
-   filename_out      = '/t1/scratch/bjchoi/DART/ObsData/MERGEDobsSEQ/obs_seq.sst1_gtspp20111231'
+   filename_seq      = 'ObsData/SST/obsSEQ/obs_seq.sst1.20111231'
+                       'ObsData/GTSPP/obsSEQ/obs_seq.gtspp201112.100km'
+   filename_out      = 'ObsData/MERGEDobsSEQ/obs_seq.sst1_gtspp20111231'
    print_only        = .false.
    gregorian_cal     = .true.
    synonymous_copy_list = 'GTSPP observation', 'SST observation', 'observation'

@@ -1,3 +1,4 @@
+
 &ncepobs_nml
    year       = 2007,
    month      = 1,
@@ -25,29 +26,75 @@
    lon1   =   0.0,
    lon2   = 360.0,
    lat1   = -90.0,
-   lat2   =  90.0  /
+   lat2   =  90.0
+  /
+
+&prepbufr_to_obs_nml
+   startyear     = 2010,
+   startmonth    = 12,
+   startday      = 01,
+   starthour     = 00
+   endyear       = 2010,
+   endmonth      = 12,
+   endday        = 02,
+   endhour       = 00
+   windowdays    = 0,
+   windowhours   = 6
+   windowseconds = 0
+   midnight_24   = .true.
+   input_filename_base     = '/glade/p/cisl/dares/Observations/bufr/prepout/temp_obs.',
+   input_filename_pattern  = '(A,I4.4,3(I2.2))'
+   output_filename_base    = 'obs_seq/obs_seq',
+   output_filename_pattern = '(A,I4.4,3(I2.2))'
+   max_num_obs = 10000000,
+   select_obs = .false.,
+   ADPUPA = .false.,
+   AIRCAR = .false.,
+   AIRCFT = .false.,
+   SATEMP = .false.,
+   SFCSHP = .false.,
+   ADPSFC = .false.,
+   SATWND = .false.,
+   obs_U  = .false.,
+   obs_V  = .false.,
+   obs_T  = .false.,
+   obs_PS = .false.,
+   obs_QV = .false.,
+   include_specific_humidity = .true.,
+   include_relative_humidity = .false.,
+   include_dewpoint = .false.,
+   lon1   =   0.0,
+   lon2   = 360.0,
+   lat1   = -90.0,
+   lat2   =  90.0
+   print_timestamps = .false.,
+   print_every_Nth = 200000,
+   debug = .false.
+  /
 
 &obs_sequence_nml
-   write_binary_obs_sequence = .false.  /
+   write_binary_obs_sequence = .false.
+  /
 
 &assim_model_nml
-   write_binary_restart_files = .true.  /
+  /
 
 &utilities_nml
    TERMLEVEL = 1,
-   logfilename = 'dart_log.out'  /
+   logfilename = 'dart_log.out'
+  /
 
 &model_nml
-   /
+  /
 
 &location_nml
-   /
+  /
 
 &obs_kind_nml
-   /
+  /
 
 &obs_def_gps_nml
-  max_gpsro_obs = 100000,
+   max_gpsro_obs = 100000,
   / 
 
 &preprocess_nml
@@ -60,5 +107,5 @@
                               '../../../../../observations/forward_operators/obs_def_gps_mod.f90'  
                               '../../../../../observations/forward_operators/obs_def_dew_point_mod.f90'  
                               '../../../../../observations/forward_operators/obs_def_rel_humidity_mod.f90'  
-   /
+  /
 

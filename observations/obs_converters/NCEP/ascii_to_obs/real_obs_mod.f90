@@ -7,12 +7,17 @@
 module real_obs_mod
 
 use types_mod,        only : r8, rad2deg, PI
+
 use time_manager_mod, only : time_type, operator(>), operator(<), operator(>=), &
                              operator(/=), set_date, set_calendar_type, get_time, &
                              set_time, GREGORIAN, increment_time
+
 use    utilities_mod, only : get_unit, register_module, error_handler, &
-                             E_ERR, E_MSG, timestamp, is_longitude_between
+                             E_ERR, E_MSG, timestamp, is_longitude_between, &
+                             open_file, close_file
+
 use     location_mod, only : VERTISPRESSURE, VERTISSURFACE
+
 use obs_sequence_mod, only : init_obs_sequence, init_obs, obs_sequence_type, obs_type, &
                              set_copy_meta_data, set_qc_meta_data
 
@@ -74,10 +79,9 @@ private
 public :: real_obs_sequence
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = "$URL$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 
 logical, save :: module_initialized = .false.
@@ -196,10 +200,9 @@ call error_handler(E_MSG,'real_obs_sequence',msgstring1)
 ! open NCEP observation data file
 
 write(obsdate, '(i4.4,i2.2,i2.2)') year, month, day
-obsfile   = trim(adjustl(ObsBase))//obsdate//hourt
-obs_unit  = get_unit()
-open(unit = obs_unit, file = obsfile, form='formatted', status='old')
-write(msgstring1,*) 'input file opened= '//trim(obsfile)
+obsfile  = trim(adjustl(ObsBase))//obsdate//hourt
+obs_unit = open_file(obsfile, form='formatted', action='read')
+write(msgstring1,*) 'input file opened= "'//trim(obsfile)//'"'
 call error_handler(E_MSG,'real_obs_sequence',msgstring1)
 rewind (obs_unit)
 
@@ -549,7 +552,7 @@ end do obsloop
 
 200 continue
 
-close(obs_unit)
+call close_file(obs_unit)
 
 write(msgstring1,*) 'Summary for '//trim(obsfile)
 write(msgstring2,*) 'date ', obsdate
@@ -576,8 +579,3 @@ end subroutine initialize_module
 
 end module real_obs_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
