@@ -1,7 +1,7 @@
 &filter_nml
    async                    =  2,
    adv_ens_command          = "./advance_model.csh",
-   ens_size                 =  3,
+   ens_size                 =  50,
    obs_sequence_in_name     = "obs_seq.out",
    obs_sequence_out_name    = "obs_seq.final",
    input_state_file_list    = "input_list_d01.txt", "input_list_d02.txt"
@@ -92,7 +92,7 @@
 &closest_member_tool_nml 
    input_file_name        = 'filter_ic_new',
    output_file_name       = 'closest_restart',
-   ens_size               = 3,
+   ens_size               = 50,
    single_restart_file_in = .false.,
    difference_method      = 4,
    /
