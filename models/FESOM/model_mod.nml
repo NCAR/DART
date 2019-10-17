@@ -1,0 +1,26 @@
+# Each variable must have 5 entries.
+# 1: variable name
+# 2: DART KIND
+# 3: minimum value - as a character string - if none, use 'NA'
+# 4: maximum value - as a character string - if none, use 'NA'
+# 5: does the variable get updated in the restart file or not ...
+#    only variables from restart files may be updated.
+#    'UPDATE'       =>        update the variable in the FeoM file
+#    'NO_COPY_BACK' => do NOT update the variable in the FeoM file
+#    Note: All variables will be modified internally in DART and
+#    preserved in the DART diagnostic netCDF files without being
+#    range-restricted.
+
+&model_nml
+   model_analysis_filename      = 'expno.year.oce.nc'
+   diagnostic_metadata          = .true.
+   model_clock_filename         = 'expno.clock'
+   assimilation_period_days     = 0
+   assimilation_period_seconds  = 86400
+   model_perturbation_amplitude = 0.0001
+   calendar                     = 'Gregorian'
+   debug                        = 0
+   variables = 'salt',   'KIND_SALINITY'   , '0.0', 'NA', 'UPDATE',
+               'temp',   'KIND_TEMPERATURE',  'NA', 'NA', 'UPDATE',
+   /
+

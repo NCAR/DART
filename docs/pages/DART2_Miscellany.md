@@ -384,7 +384,7 @@ is to let DART control advancing the model when necessary. You run the
 "filter" executable and it runs both the assimilation and model advances
 until all observations in the input observation sequence file have been
 assimilated. See the "async" setting in the 
-[filter namelist documentation](https://ncar.github.io/DART/api/v2.1.10/program/filter.html)
+[filter namelist documentation](https://ncar.github.io/DART/api/v0.0.6/program/filter.html)
 for more information.  
   
 If you are running a large model with a complicated configuration and/or
