@@ -26,6 +26,10 @@ application in Aydoğdu et al. (2018a) uses a very high-resolution mesh. In the 
 interpolation is performed between two enclosing model layers. Interpolation in model_interpolate
 routine can be improved, if needed.
 
+Note that because the FESOM-native code explicitly types reals, the DART mechanism of being
+able to run in reduced precision by defining real(r8) to be the same as real(r4) 
+via 'types_mod.f90' is not supported.
+
 ### Workflow
 
 1.  *environment.load* Must be modified to contain the specifics of an experiment. 

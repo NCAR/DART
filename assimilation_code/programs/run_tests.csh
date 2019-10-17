@@ -160,6 +160,17 @@ foreach PROGRAM ( $DO_THESE_PROGRAMS )
     if ( $FAILURE ) then
       echo "=================================================================="
       echo "ERROR - unsuccessful build of $PROGRAM at "`date`
+      switch ( $PROGRAM )
+         case obs_sampling_err
+            echo " This build expected to fail if running in reduced precision"
+            echo " by defining r8 same as r4. If this is not the case you are"
+            echo " testing, you have other problems."
+            echo
+         breaksw
+         default
+            echo " unexpected error"
+         breaksw
+      endsw
       echo "=================================================================="
       echo
       echo

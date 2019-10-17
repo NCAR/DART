@@ -213,6 +213,21 @@ foreach MODEL ( $DO_THESE_MODELS )
     echo "=================================================================="
     if ( $FAILURE ) then
       echo "ERROR - unsuccessful test of $MODEL at "`date`
+
+      switch ( $MODEL )
+         case FESOM
+            echo "Note that because the FESOM-native code explicitly types reals,"
+            echo "the DART mechanism of being able to run in reduced precision by"
+            echo "defining real(r8) to be the same as real(r4) via 'types_mod.f90':"
+            echo "is not supported. Please check to make sure this is the reason"
+            echo "this test is failing."
+            echo 
+         breaksw
+         default
+            echo " unexpected error"
+         breaksw
+      endsw
+
     else
       echo "End of succesful test of $MODEL at "`date`
     endif
