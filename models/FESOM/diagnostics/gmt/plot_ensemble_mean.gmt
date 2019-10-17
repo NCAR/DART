@@ -1,0 +1,131 @@
+#!/bin/bash
+###########################################################################################################
+############# GMT SCRIPT TO PLOT HORIZONTAL SECTIONS FOR TSS ##############################################
+############# MODIFY DATE AND LAYER BY A SUBMIT SCRIPT USING SED ##########################################
+###########################################################################################################
+### written by: ali aydogdu ###############################################################################
+### last modified: 2015/01/27 #############################################################################
+###########################################################################################################
+date
+###########################################################################################################
+############# SET PARAMETERS FROM SUBMIT SCRIPT ###########################################################
+###########################################################################################################
+LAYER=`echo LAYERNUMBER | awk '{printf("%03d\n",$1)}'`
+DAY=$( echo "(DAY2PLOT - 1)*4+1"| bc | awk '{printf("%03d\n",$1)}' )
+YEAR=YEAR2PLOT
+DATE=$(echo ${DAY} | awk '{printf "%d\n",$0;}')
+DATE=$(sh ~/script/sh/CALCDATE.sh 1 $( echo ${YEAR} + 1 | bc ) ${DATE})
+VAR=VARIABLE2PLOT
+EXP=EXPCODE
+DATADIR="ENSMEAN"
+FILENAME=${DATADIR}/ENSMEAN_${EXP}_STDEV_${YEAR}_DAY${DAY}_LEV${LAYER};
+###########################################################################################################
+############# SET GMT DEFAULTS ############################################################################
+###########################################################################################################
+gmtset PS_MEDIA=20ix14i IO_NAN_RECORDS=pass PLOT_DEGREE_FORMAT ddd:mm:ssF
+gmtset FONT_ANNOT_PRIMARY=12p,Courier-Bold,black FONT_ANNOT_SECONDARY=12p,Courier-Bold,black FONT_LABEL=12p,Courier-Bold,black
+###########################################################################################################
+############# DEFINE FILENAMES REGIONS PROJECTIONS AND GMT FLAGS ##########################################
+###########################################################################################################
+fig=${FILENAME}_${VAR}; ps=${fig}.ps
+outpng=${DATADIR}/out.png
+DATANAM=${FILENAME}.asc;
+REGIONA="-R22.5421/33.004/38.6973/42.98632"; BSMAPA="-Ba1f0.5WSne -P -St"
+REGIONA="-R25.5421/30.104/39.6973/41.58632"; BSMAPA="-Ba1f0.5WSne -P -St"
+REGIONM="-R27/30/40.2/41.2"; BSMAPM="-Ba0.5f0.25wsNE -P -St"
+REGIONB="-R28.75/29.2/40.7/41.3"; BSMAPB="-Ba0.2f0.1WSne -P -St"
+REGIOND="-R25.25/27/39.7/40.6"; BSMAPD="-Ba0.5f0.1wSnE -P -St"
+PROJNON="-JX15/8"; #PROJNON="-Jm0.75i"
+PROJGEO="-JX15d/8d"; #PROJGEO="-Jm0.75i"
+CONNECT="-Qelem2d.new"
+DRAWCOAST="pscoast -R ${PROJGEO} -W0.5p,black -Df -K -O -V3"
+###########################################################################################################
+############# PREPARE CPT COLOR PALETTES VARIABLE ATTRIBUTES ##############################################
+###########################################################################################################
+if [ ${VAR} = "SAL" ];then 
+	gmtset COLOR_BACKGROUND=white COLOR_FOREGROUND=black COLOR_NAN=gray
+	COL=4; VARNAME=SALINITY; UNIT=psu
+	if [ ${LAYER} -ge 1 ] && [ ${LAYER} -lt 20 ];then
+		makecpt -Csss -T0/0.1/0.001  >CPT_A_${EXP}.cpt; TSSB=0.05
+		makecpt -Csss -T0/0.1/0.001  >CPT_M_${EXP}.cpt; MARB=0.05
+		makecpt -Csss -T0/0.1/0.001  >CPT_B_${EXP}.cpt; BOSB=0.05
+		makecpt -Csss -T0/0.1/0.001  >CPT_D_${EXP}.cpt; DARB=0.05
+	elif [ ${LAYER} -ge 20 ] && [ ${LAYER} -lt 40 ];then
+		makecpt -Csss -T0/0.1/0.001  >CPT_A_${EXP}.cpt; TSSB=0.05
+		makecpt -Csss -T0/0.1/0.001  >CPT_M_${EXP}.cpt; MARB=0.05
+		makecpt -Csss -T0/0.1/0.001  >CPT_B_${EXP}.cpt; BOSB=0.05
+		makecpt -Csss -T0/0.1/0.001  >CPT_D_${EXP}.cpt; DARB=0.05
+	elif [ ${LAYER} -ge 40 ] && [ ${LAYER} -le 60 ];then
+		makecpt -Csss -T0/0.01/0.0001  >CPT_A_${EXP}.cpt; TSSB=0.005
+		makecpt -Csss -T0/0.01/0.0001  >CPT_M_${EXP}.cpt; MARB=0.005
+		makecpt -Csss -T0/0.01/0.0001  >CPT_B_${EXP}.cpt; BOSB=0.005
+		makecpt -Csss -T0/0.01/0.0001  >CPT_D_${EXP}.cpt; DARB=0.005
+	else 
+		echo "LAYER is not available for makecpt"
+	fi
+elif [ ${VAR} = "TEM" ];then 
+	gmtset COLOR_BACKGROUND=white COLOR_FOREGROUND=black COLOR_NAN=gray
+	COL=3; VARNAME=TEMPERATURE; UNIT=@+0@+C;
+	if [ ${LAYER} -ge 1 ] && [ ${LAYER} -lt 20 ];then
+		makecpt -Csst -T0/0.1/0.001 >CPT_A_${EXP}.cpt; TSSB=0.05
+		makecpt -Csst -T0/0.1/0.001 >CPT_M_${EXP}.cpt; MARB=0.05
+		makecpt -Csst -T0/0.1/0.001 >CPT_B_${EXP}.cpt; BOSB=0.05
+		makecpt -Csst -T0/0.1/0.001 >CPT_D_${EXP}.cpt; DARB=0.05
+	elif [ ${LAYER} -ge 20 ] && [ ${LAYER} -lt 40 ];then
+		makecpt -Csst -T0/0.1/0.001 >CPT_A_${EXP}.cpt; TSSB=0.05
+		makecpt -Csst -T0/0.1/0.001 >CPT_M_${EXP}.cpt; MARB=0.05
+		makecpt -Csst -T0/0.1/0.001 >CPT_B_${EXP}.cpt; BOSB=0.05
+		makecpt -Csst -T0/0.1/0.001 >CPT_D_${EXP}.cpt; DARB=0.05
+	elif [ ${LAYER} -ge 40 ] && [ ${LAYER} -le 60 ];then
+		makecpt -Csst -T0/0.01/0.0001    >CPT_A_${EXP}.cpt; TSSB=0.005
+		makecpt -Csst -T0/0.01/0.0001 >CPT_M_${EXP}.cpt; MARB=0.005
+		makecpt -Csst -T0/0.01/0.0001 >CPT_B_${EXP}.cpt; BOSB=0.005
+		makecpt -Csst -T0/0.01/0.0001 >CPT_D_${EXP}.cpt; DARB=0.005
+	else 
+		echo "LAYER is not available for makecpt"
+	fi
+elif [ ${VAR} = "SSH" ];then 
+	gmtset COLOR_BACKGROUND=cadetblue COLOR_FOREGROUND=tomato COLOR_NAN=gray
+	COL=7; VARNAME=ELEVATION; UNIT=m
+	if [ ${LAYER} -eq 1 ];then
+		makecpt -Csst -T0/0.001/0.00001  >CPT_A_${EXP}.cpt; TSSB=0.0005
+		makecpt -Csst -T0/0.001/0.00001  >CPT_M_${EXP}.cpt; MARB=0.0005
+		makecpt -Csst -T0/0.001/0.00001  >CPT_B_${EXP}.cpt; BOSB=0.0005
+		makecpt -Csst -T0/0.001/0.00001  >CPT_D_${EXP}.cpt; DARB=0.0005
+	else 
+		echo "LAYER is not available for makecpt"
+	fi
+else 
+	echo "VARIABLE is not define for makecpt"
+fi
+
+###########################################################################################################
+############# PREPARE INPUT FILES #########################################################################
+###########################################################################################################
+awk '{print $1,$2,$'${COL}'}' ${DATANAM} > tss${LAYER}_${EXP}.dat 
+#!awk '{print $1,$2,$5,$6}' ${DATANAM} > curr${LAYER}_${EXP}.dat
+###########################################################################################################
+############# TURKISH STRAITS SYSTEM ######################################################################
+###########################################################################################################
+pscontour tss${LAYER}_${EXP}.dat ${REGIONA} ${PROJNON} ${CONNECT} ${BSMAPA} -K -Yc -Xc -Lthin,black -CCPT_A_${EXP}.cpt -I > $ps
+#!awk '{print $1,$2,$3}' curr${LAYER}_${EXP}.dat | blockmedian -R -I6.0m -Q >uu_${EXP}
+#!awk '{print $1,$2,$4}' curr${LAYER}_${EXP}.dat | blockmedian -R -I6.0m -Q >uv_${EXP}
+#!paste uu_${EXP} uv_${EXP} > curr_${EXP}.dat
+#!awk '{print $1, $2, (180./3.1416)*atan2($6,$3), 0.8*sqrt($3**2+$6**2)}' curr_${EXP}.dat > curr_lst_${EXP}.dat
+#!psxy curr_lst_${EXP}.dat -R -J -Sv0.02i/0.05i/0.6in0.3 -W0.1p,black -K -O >> $ps
+#!echo "31.1 39.50 0 0.4" | psxy -R -J -Sv0.02i/0.05i/0.6in0.3 -F+jCL -W0.1p,black -K -O >> $ps
+#!echo "31.1 39.50 0.5 m/s" | pstext -R ${PROJGEO} -F+jCR+f12p,Courier-Bold,black -O -K -N  >> $ps
+#!echo "22.75 42.5 Turkish Straits System" | pstext -R ${PROJGEO} -F+jTL+f14p,Courier-Bold,black -O -K -N  >> $ps
+psscale -D4.15i/0.23i/2.5i/0.075ih -Aal -CCPT_A_${EXP}.cpt -B${TSSB}/:${UNIT}: -E -O -K >> $ps
+echo "25.6 41.6 ${VARNAME} ${DATE} DEPTH:${LAYER} m." | pstext ${REGIONA} ${PROJGEO} -F+jBL+f17p,Courier-Bold,black -K -O -N  >> $ps
+
+#!###########################################################################################################
+#!############# CONVERT OUTPUT POSTSCRIPT FILE ##############################################################
+#!###########################################################################################################
+echo "25.45 40.75 " | pstext -R ${PROJGEO} -F+a90+jTC+f12p,Courier-Bold,black -O -N  >> $ps
+ps2raster -Tg -V3 -P -F${outpng} $ps 
+convert -trim -alpha off -antialias -scale 80% ${outpng} ${fig}.png
+rm ${ps} CPT_?_${EXP}.cpt ${outpng} tss${LAYER}_${EXP}.dat #!curr_lst_${EXP}.dat
+#!rm uu_${EXP} uv_${EXP} curr_${EXP}.dat curr${LAYER}_${EXP}.dat
+#!date
+#!exit

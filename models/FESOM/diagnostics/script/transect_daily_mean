@@ -1,0 +1,43 @@
+#!/bin/bash
+#BSUB -a poe               #
+#BSUB -J fesom_post        # Name of the job.
+#BSUB -o fesom_post_%J.out # Appends std output to file %J.out.
+#BSUB -e fesom_post_%J.out # Appends std error to file %J.err.
+#BSUB -P fesom             # Project ID.
+#BSUB -q serial_6h         # queue
+####BSUB -x
+
+# extract a transect from fesom ocean outputs
+# set initial and final day
+# calls transect_daily_mean.gmt to plot
+
+tool=2
+INITIALDAY=1; FINALDAY=1
+EXPDEF=LEP; EXPNUM=PC; YEAR=2008
+make
+sed -e 's;EXPDEF;'${EXPDEF}';' -e 's;EXPNUM;'${EXPNUM}';'\
+    -e 's;INITIALDAY;'${INITIALDAY}';' -e 's;FINALDAY;'${FINALDAY}';'\
+    -e 's;YEAROFNC;'${YEAR}';' -e 's;TOOL2RUN;'${tool}';'\
+    -e 's;LEVEL2RUN;'${LAYER}';' -e 's;RUNLENGTH;365;' -e 's;TIMESTEP;1;'\
+     namelist.config.template > namelist.config
+
+
+TMPLFILE=${PROGDIR}/transect_daily_mean.gmt
+SBMTFILE=${DATADIR}/transect.gmt
+
+./feom_post_mesh.x
+
+i=${INITIALDAY}
+while [ ${i} -le ${FINALDAY} ]; do
+	DAY=$(echo ${i} | awk '{printf("%03d\n",$1)}')
+	for VARIABLE in TEM SAL;do
+	sed -e  's;VARIABLENAME;'${VARIABLE}';' -e \
+		's;EXPDEF;'${EXPDEF}';' -e 's;EXPNUM;'${EXPNUM}';' -e \
+		's;YEAROFNC;'${YEAR}';' -e 's;DAYOFNC;'${DAY}';' \
+		${TMPLFILE} > ${SBMTFILE}
+	sh ${SBMTFILE}
+	done
+	i=$[ ${i} + 1 ]
+done
+exit
+
