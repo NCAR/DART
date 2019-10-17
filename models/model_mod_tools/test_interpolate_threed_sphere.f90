@@ -17,7 +17,7 @@ use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, 
                                   find_namelist_in_file, check_namelist_read,   &
                                   E_MSG, open_file, close_file, do_output
  
-use  netcdf_utilities_mod, only : nc_check
+use  netcdf_utilities_mod, only : nc_check, nc_create_file, nc_close_file
 
 use          location_mod, only : location_type, set_location, write_location,  &
                                   get_dist, get_location, LocationDims, &
@@ -47,10 +47,9 @@ public :: test_interpolate_single, &
           find_closest_gridpoint
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = "$URL$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 ! for messages
 character(len=512) :: string1, string2, string3
@@ -214,8 +213,8 @@ call DATE_AND_TIME(crdate,crtime,crzone,values)
 write(string1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
                   values(1), values(2), values(3), values(5), values(6), values(7)
 
-call nc_check( nf90_create(path=trim(ncfilename), cmode=NF90_clobber, ncid=ncid), &
-                  routine, 'open '//trim(ncfilename))
+ncid = nc_create_file(ncfilename,'test_interpolate_threed_sphere')
+
 call nc_check( nf90_put_att(ncid, NF90_GLOBAL, 'creation_date' ,trim(string1) ), &
                   routine, 'creation put '//trim(ncfilename))
 
@@ -277,8 +276,7 @@ do imem = 1, ens_size
 enddo
 
 ! Leave define mode so we can fill the variables.
-call nc_check(nf90_enddef(ncid), &
-              routine,'field enddef '//trim(ncfilename))
+call nc_check(nf90_enddef(ncid), routine, 'enddef')
 
 ! Fill the variables
 call nc_check(nf90_put_var(ncid, lonVarID, lon), &
@@ -294,7 +292,7 @@ do imem = 1, ens_size
 enddo
 
 ! tidy up
-call nc_check(nf90_close(ncid), routine,'close '//trim(ncfilename))
+call nc_close_file(ncid, routine, 'close')
 
 deallocate(lon, lat, vert, field)
 deallocate(all_ios_out)
@@ -485,8 +483,3 @@ end subroutine find_closest_gridpoint
 
 end module test_interpolate_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
