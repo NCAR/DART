@@ -50,7 +50,7 @@ sections, each of which can be read independently:
 * [What is DART?](#WhatIsDART)
     * [Why should I use DART for my project?](#whyDart)
     * [A brief history of DART](#dartHistory)
-    * [A high-level workflow of DA in DART](#dartWorkflow)
+    * [High-level DA workflows in DART](#dartWorkflow)
     * [DART's design philosophy](#dartDesign)
     * [Important capabilities of DART](#dartCapabilities)
     * [How to cite DART](#citeDart)
@@ -2674,9 +2674,9 @@ Kalman Filter concepts. If you've been able to build the Lorenz 63 model, you
 have correctly configured your `mkmf.template` and you are now able to run all
 of the programs required by the tutorial.
 
-### DART_LAB
-
 <span id="dartLab" class="anchor"></span> [](#dartLab)
+
+### DART_LAB
 
 [DART_LAB](../DART_LAB/DART_LAB.html) is a set of PDF presentation files and a
 set of MATLAB® examples that comprise a fully self-contained introduction to
@@ -2688,6 +2688,8 @@ an excellent way to explore the ins-and-outs of DART and learn about ensemble da
 <span id="ContributeToDart" class="anchor"></span> [](#ContributeToDart)
 
 ## How can I contribute to DART?
+
+\[[top](#top)\]
 
 In this section we describe how you can contribute your work to DART. As an
 open-source project, we welcome and value your contributions for the benefit
