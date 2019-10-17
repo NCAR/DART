@@ -10,7 +10,8 @@
 set LOGDIR = `pwd`/testing_logs
 mkdir -p $LOGDIR
 \rm -f $LOGDIR/*
-echo "putting build and run logs in $LOGDIR"
+echo "build and run logs are in: $LOGDIR"
+
 
 echo
 echo

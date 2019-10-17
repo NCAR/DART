@@ -89,9 +89,8 @@ set HAS_TESTS = `ls */work/quickbuild.csh`
 
 ${REMOVE} -r $LOGDIR
 mkdir -p $LOGDIR
+echo "build and run logs are in: $LOGDIR"
 
-echo "see $LOGDIR"
-echo "for build and run logs"
 
 @ testnum = 0
 

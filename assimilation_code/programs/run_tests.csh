@@ -131,8 +131,8 @@ echo
 
 mkdir -p $LOGDIR
 \rm -f $LOGDIR/*
-echo "putting build and run logs in"
-echo "$LOGDIR"
+echo "build and run logs are in: $LOGDIR"
+
 
 @ counter = 0
 

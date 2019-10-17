@@ -14,13 +14,11 @@ echo
 echo 
 
 set startdir=`pwd`
-
 set LOGDIR=${startdir}/testing_logs
-echo "putting build and run logs in:"
-echo "$LOGDIR"
 
 mkdir -p ${LOGDIR}
 \rm -f ${LOGDIR}/*
+echo "build and run logs are in: $LOGDIR"
 
 echo 
 echo 

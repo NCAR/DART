@@ -121,7 +121,8 @@ echo
 
 ${REMOVE} ${LOGDIR}/buildlog.*.out ${LOGDIR}/runlog.*.out
 mkdir -p ${LOGDIR}
-echo "putting build and run logs in $LOGDIR"
+echo "build and run logs are in: $LOGDIR"
+
 
 @ modelnum = 0
 
