@@ -40,10 +40,9 @@ sections, each of which can be read independently:
     *  [Check your system requirements](#system).
     *  [Determine which F90 compiler is available](#fortran90).
     *  [Determine the location of (or build) the netCDF library](#netCDFlib).
-    *  [Download the DART software](#installing).
-    *  [Modify certain DART files to reflect the available F90 compiler and location of the appropriate libraries](#customizations).
-    *  [Build the executables](#building).
-    *  [Verify the result](#verify).
+    *  [Download the DART software](#download).
+    *  [Building and testing DART](#testing).
+    *  [Verifying the DART installation](#verify).
 * [What is data assimilation?](#WhatIsDA)
     * [Introduction to ensemble DA](#EnsDAIntro)
     * [The Lorenz 63 model: what is it and why should we care?](#Lorenz63)
@@ -188,10 +187,10 @@ The getting started process is summarized in the following steps:
 1.  [Check your system requirements](#system).
 2.  [Determine which F90 compiler is available](#fortran90).
 3.  [Determine the location of (or build) the netCDF library](#netCDFlib).
-4.  [Download the DART software](#installing).
+4.  [Download the DART software](#download).
 5.  [Modify certain DART files to reflect the available F90 compiler and location of the appropriate libraries](#customizations).
 6.  [Build the executables](#building).
-7.  [Verify the result](#verify).
+7.  [Verify the DART installation](#verify).
 
 ----
 <span id="conventions" class="anchor"></span> [](#conventions)
@@ -379,9 +378,9 @@ case) may require a large amount of additional disk space (up to the 1 Gb
 required for DART), so be aware of any disk quota restrictions before
 continuing.
 
-<span id="installing" class="anchor"></span> [](#installing)
+<span id="testing" class="anchor"></span> [](#testing)
 
-### Testing DART
+### Building and testing DART
 
 Now that the DART code has been downloaded and the prerequisites have been
 verified, you can now begin building and verifying the DART installation.
@@ -634,7 +633,7 @@ documented through file comments.
 
 <span id="verify" class="anchor"></span> [](#verify)
 
-### Verify: Are the results correct? (requires MATLAB®)
+### Verifying the DART installation (requires MATLAB®)
 
 The Lorenz model is notoriously sensitive to very small changes; in fact, the
 story of Lorenz discovering this sensitivity is a classic in the annals of the
