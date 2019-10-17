@@ -17,7 +17,8 @@ use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, 
                                   find_namelist_in_file, check_namelist_read,   &
                                   E_MSG, open_file, close_file, do_output
 
-use  netcdf_utilities_mod, only : nc_check, nc_create_file, nc_close_file
+use  netcdf_utilities_mod, only : nc_check, nc_create_file, nc_close_file, &
+                                  nc_end_define_mode
 
 use          location_mod, only : location_type, set_location, write_location,  &
                                   get_dist, get_location, LocationDims
@@ -220,7 +221,7 @@ do imem = 1, ens_size
 enddo
 
 ! Leave define mode so we can fill the variables.
-call nc_check(nf90_enddef(ncid), routine, 'enddef')
+call nc_end_define_mode(ncid, routine)
 
 ! Fill the variables
 call nc_check(nf90_put_var(ncid, XVarID, X), &
@@ -232,7 +233,7 @@ do imem = 1, ens_size
 enddo
 
 ! tidy up
-call nc_close_file(ncid, routine, 'close')
+call nc_close_file(ncid, routine)
 
 deallocate(X, field)
 deallocate(all_ios_out)
