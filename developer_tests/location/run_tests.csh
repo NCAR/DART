@@ -3,8 +3,6 @@
 # DART software - Copyright UCAR. This open source software is provided
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# DART $Id$
 
 # this script builds and  runs the location test code for each of the
 # possible location modules.
@@ -12,7 +10,7 @@
 set LOGDIR = `pwd`/testing_logs
 mkdir -p $LOGDIR
 \rm -f $LOGDIR/*
-echo putting build and run logs in $LOGDIR
+echo "putting build and run logs in $LOGDIR"
 
 echo
 echo
@@ -88,9 +86,4 @@ echo
 echo
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

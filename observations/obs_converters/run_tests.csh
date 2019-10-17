@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-
 
 echo 
 echo 
@@ -18,8 +16,8 @@ echo
 set startdir=`pwd`
 
 set LOGDIR=${startdir}/testing_logs
-echo putting build and run logs in:
-echo $LOGDIR
+echo "putting build and run logs in:"
+echo "$LOGDIR"
 
 mkdir -p ${LOGDIR}
 \rm -f ${LOGDIR}/*
@@ -111,11 +109,10 @@ foreach quickb ( `find . -name quickbuild.csh -print` )
 
    cd $wdir
    echo
-   echo building in $wdir
+   echo "building in $wdir"
 
    set FAILURE = 0
    ( ./quickbuild.csh > ${LOGDIR}/buildlog.${project}.out ) || set FAILURE = 1
-
    echo
 
    if ( $FAILURE ) then
@@ -195,9 +192,4 @@ echo
 echo 
 
 exit 0
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # build and test all the models given in the list.
 #
 # usage: [ -mpi | -nompi ] [ -mpicmd name_of_mpi_launch_command ]
@@ -92,8 +90,8 @@ set HAS_TESTS = `ls */work/quickbuild.csh`
 ${REMOVE} -r $LOGDIR
 mkdir -p $LOGDIR
 
-echo see $LOGDIR
-echo for build and run logs
+echo "see $LOGDIR"
+echo "for build and run logs"
 
 @ testnum = 0
 
@@ -137,9 +135,14 @@ foreach TESTFILE ( $HAS_TESTS )
 
            set FAILURE = 0
            set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
-         
            echo Starting $PROG
-           ( ${MPICMD} ./$PROG  > ${LOGDIR}/runlog.${LOGNAME}.${PROG}.out ) || set FAILURE = 1
+
+           if ( -f using_mpi_for_$PROG ) then
+              ( ${MPICMD} ./$PROG  > ${LOGDIR}/runlog.${LOGNAME}.${PROG}.out ) || set FAILURE = 1
+           else
+              (           ./$PROG  > ${LOGDIR}/runlog.${LOGNAME}.${PROG}.out ) || set FAILURE = 1
+           endif
+         
            if ( $FAILURE ) then
               echo "ERROR - unsuccessful run of $PROG"
            else
@@ -192,12 +195,8 @@ cd $TOPDIR
 
 
 echo
-echo $testnum developer tests run.
+echo "$testnum developer tests run."
 echo
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
