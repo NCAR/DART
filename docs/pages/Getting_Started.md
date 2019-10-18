@@ -504,16 +504,17 @@ The `quickbuild.csh` in each directory builds all seven programs necessary for
 Lorenz 63. Describing what the `quickbuild.csh` script does is useful for
 understanding how to get started with DART.
 
-The following sequence of shell commands shows how to build two of these seven
+The following shell commands show how to build two of these seven
 programs for the lorenz_63 model: *preprocess* and *obs_diag*. *preprocess* is
 a special program that needs to be built and run to automatically generate
 Fortran code that is used by DART to support a subset of observations - which
 are (potentially) different for every model. Once *preprocess* has been run and
 the required Fortran code has been generated, any of the other DART programs may
-be built in the same way as *obs_diag* in this example. The following shell
-commands runs *mkmf* for *preprocess*, makes the *preprocess* `Makefile`, runs
-*preprocess* (thus generating the Fortran observation code), runs *mkmf* for
-*obs_diag*, then makes the *obs_diag* program.
+be built in the same way as *obs_diag* in this example. Thus, the following 
+runs *mkmf* to make a `Makefile` for *preprocess*, 
+makes the *preprocess* program, runs *preprocess* to generate the Fortran 
+observation code, runs *mkmf* to make a `Makefile` for *obs_diag*, then makes the
+*obs_diag* program:
 
 > cd DARTHOME/models/lorenz_63/work  
 > ./mkmf_preprocess  
@@ -537,7 +538,7 @@ seven `mkmf_xxxxxx` files for the following programs:
 | [create_fixed_network_seq](https://ncar.github.io/DART/api/v0.0.6/program/create_fixed_network_seq.html) | specify the temporal attributes of the observation sets |
 | [perfect_model_obs](https://ncar.github.io/DART/api/v0.0.6/program/perfect_model_obs.html) | spinup and generate "true state" for synthetic observation experiments |
 | [filter](https://ncar.github.io/DART/api/v0.0.6/program/filter.html) | perform data assimilation analysis |
-| *obs_diag* | creates observation-space diagnostic files to be visualized by the MATLAB® scripts. |
+| [obs_diag](https://ncar.github.io/DART/api/v0.0.6/program/obs_diag.html) | creates observation-space diagnostic files to be visualized by the MATLAB® scripts. |
 | [obs_sequence_tool](https://ncar.github.io/DART/api/v0.0.6/program/obs_sequence_tool.html) | manipulates observation sequence files. This tool is not generally required (particularly for low-order models) but can be used to combine observation sequences or convert from ASCII to binary or vice-versa. Since this is a rather specialized routine, we will not cover its use further in this document. |
 
 As mentioned above, `quickbuild.csh` is a script that will build every
@@ -598,8 +599,8 @@ There should now be the following output files:
 | `perfect_output.nc` | A netCDF file containing the model trajectory - the **truth** |
 | `obs_seq.out`       | The observations that were harvested as the true model was advanced (and which will be assimilated). |
 | **from executable "filter"** |      |
-| `preassim.nc`       | A netCDF file of the ensemble of model states just before assimilation. This is the **prior**. |
-| `filter_output.nc`  | A netCDF file of the ensemble of model states after assimilation. This is the **posterior**. |
+| `preassim.nc`       | A netCDF file of the ensemble of model states just before assimilation. This is the **prior**.<br/> :dart: *NOTE*: this file is a time series of the prior model states at all times. |
+| `filter_output.nc`  | A netCDF file of the ensemble of model states after assimilation. This is the **posterior**.<br/> :dart: *NOTE*: this file has only the final time step of the posterior model state. |
 | `obs_seq.final`     | The observations and ensemble estimates of the 'observations'. |
 | **from both**       |      |
 | `dart_log.out`      | The run-time log of the experiment.  This grows with each execution and may safely be deleted at any time. |
@@ -977,7 +978,7 @@ assimilation.
 
 #### The input.nml namelist
 
-The `DARTHOME/models/lorenz_63/input.nml` file is the Lorenz model *namelist*,
+The `DARTHOME/models/lorenz_63/work/input.nml` file is the Lorenz model *namelist*,
 which is a standard Fortran method for passing parameters from a text file
 into a program without needing to recompile. There are many sections within
 this file that drive the behavior of DART while using the Lorenz 63 model
@@ -1458,14 +1459,17 @@ write_obs_seq  closed observation sequence file "obs_seq.final"
 Based on the default Lorenz 63 `input.nml` namelist for *filter* included in
 the DART repository, the assimilation will have three stages:
 
-1. The *preassim* stage, where the ensemble is generated. The file
-`preassim.nc`, which contains the pre-assimilation model trajectories for all the ensemble members, will be written.
+1. The *preassim* stage, where the ensemble  is updated by advancing the 
+model. The file`preassim.nc`, which contains the pre-assimilation model 
+trajectories for all the ensemble members, will be written.
 2. The *analysis* stage, where the data assimilation is conducted. The
 post-assimilation model trajectories for all the ensemble members will be
 written to `analysis.nc`
 3. The *output* stage, which writes the file `obs_seq.final` containing the
 actual observations as assimilated plus the ensemble forward-operator expected
-values and any quality-control values.
+values and any quality-control values. This stage also writes the 
+`filter_output.nc` file containing the ensemble state from the final cycle, 
+which could be used to restart the experiment.
 
 DART has now successfully assimilated our updated observations with a 6 minute
 model time step and assimilation every 36 minutes. *:tada:*
@@ -1547,7 +1551,7 @@ tools such as quality control and pre-processing will quickly dwarf the amount
 of core DA code, not to mention the headaches involved in supporting multiple
 computing environments, compilers, etc.
 
-DART employs a modular programming approach to apply an algorithm to nudge the
+DART employs a modular programming approach to apply an algorithm to move the
 underlying models toward a state that is more consistent with information from
 a set of observations. Models may be swapped in and out, as can different
 DA algorithms. The method requires running multiple
@@ -2613,15 +2617,18 @@ geophysical forward operator. Both operators are in the
 DART uses an *observation sequence* file that contains the observations to be
 assimilated. An *observation converter* will convert observations from the
 native observation format into this DART-specific format. Ultimately, it is the
-user's responsibility to convert the observations, but there are many helper tools and utilities to make this process easier.
+user's responsibility to convert the observations, but there are many helper 
+tools and utilities to make this process easier.
 
 :dart: *NOTE*: the observation sequence file can be written in either human-
 readable ASCII or machine-readable binary. The binary representation will use
-approximately two times less disk space. For either representation, the
-underlying data is the same. There is a setting in the DART `input.nml` file
-under *obs_sequence_nml* called "write_binary_obs_sequence" that can be used to
-write the format as either binary (".true.") or ASCII (".false"). When the
-observation sequence file is read, the format is detected automatically.
+approximately two times less disk space, but the ASCII representation makes 
+manually inspecting the file contents much easier. For either representation, 
+the underlying data is the same. There is a setting in the DART `input.nml` 
+file under *obs_sequence_nml* called "write_binary_obs_sequence" that can be 
+used to write the format as either binary (".true.") or ASCII (".false"). 
+When the observation sequence file is read, the format is detected 
+automatically.
 
 For new obs converters, once you find what format the data is distributed in
 you may be able to adapt one of the existing converters here for your own use.
