@@ -2172,7 +2172,7 @@ For the remaining routines, we give the following implementation suggestions:
 
 | Routine # / name | Suggested implementation  |
 | :----------    | :------------------------------   |
-| 9. **model_ interpolate()** | Find the (*i*,*j*,*k*) indices which enclose that location, or search for the cell number. For some models you can compute (*i*,*j*) directly from a regular lat/lon grid, and in others you may have to search over a deformed grid. Any model code or utilities available for this purpose may prove very helpful as a starting point. If there are multiple vertical options (for example pressure, height, sigma levels, etc.), computation with different ensemble members may result in different vertical levels, so choose carefully and consistently. In the end, you will use **get_state()** to retrieve an ensemble-sized array of values for each offset into the state vector, and then do interpolation to get an array of expected values. |
+| 9. **model_ interpolate()** | Find the (*i*,*j*,*k*) indices which enclose that location, or search for the cell number. For some models you can compute (*i*,*j*) directly from a regular lat/lon grid, and in others you may have to search over a deformed grid. Any model code or utilities available for this purpose may prove very helpful as a starting point. In the end, you will use **get_state()** to retrieve an ensemble-sized array of values for each offset into the state vector, and then do interpolation to get an array of expected values. |
 | 10. **nc_write_ model_atts()** | It is very helpful (but optional) to add grid information to assist in plotting your results. |
 | 11.	**read_model_ time()**	  | (see **write_model_time()** below) |
 | 12.	**write_model_ time()**	| If the model time is stored in the NetCDF files, supply routines that can read and write it in the correct format. The default routines will work if the model time matches what those routines expect: a time variable with an optional calendar variable. If no calendar is provided, the routine assumes fractional days. If the time variable is an array (i.e. more than one time step is stored in the file), read/write the last one. |
@@ -2720,7 +2720,7 @@ addressed appropriately by the DART development team.
 ### What if I want my work to remain private until I publish?
 
 Some DART users want to work on a private branch until their work is ready 
-for public viewing.. To accommodate users with these concerns, we describe here an
+for public viewing. To accommodate users with these concerns, we describe here an
 additional step to temporarily "hide" sensitive code that is intended to be
 eventually contributed to DART after publication.
 
