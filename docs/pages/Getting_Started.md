@@ -395,8 +395,8 @@ requires a user-defined input file (a `Makefile`) that records dependencies
 between different source files. *make* then performs actions to the source
 hierarchy, in order of dependence, when one or more of the source files is
 modified. *mkmf* is a *perl* script that generates a *make* input file (named
-*Makefile*) and an example namelist `input.nml.<program>_default` with the
-appropriate default values.
+*Makefile*) and an example namelist `input.nml.<program>_default` with 
+default values.
 
 *mkmf* (think *"make makefile"*) requires two separate input files. The
 first is a template file which specifies the commands required for a specific
