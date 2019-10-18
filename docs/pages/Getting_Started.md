@@ -91,8 +91,9 @@ with the documentation served through GitHub Pages at
 
 Go to https://github.com/NCAR/DART, click "Clone or download", and click
 "Download ZIP" to download the latest release of DART; alternately, you can
-clone the DART repository. Unzip or clone in your desired location. Take note
-of the directory you installed into, which is referred to as *DARTHOME* below.
+clone the DART repository to include the version control history. Unzip or 
+clone in your desired location. Take note of the directory you installed into, 
+which is referred to as *DARTHOME* below.
 
 :exclamation: *IMPORTANT*: If you are interested in contributing to DART, when
 you are ready you will need to follow a different workflow to obtain the code in
@@ -271,10 +272,8 @@ Minimally, you will need:
 History has shown that it is a very good idea to remove the stack and heap
 limits in your run-time environment with the following terminal commands:
 
-~~~
-limit stacksize unlimited  
-limit datasize unlimited
-~~~
+> limit stacksize unlimited  
+> limit datasize unlimited
 
 Additionally, the following tools have proven to be *nice* (but are not
 required to run DART):
@@ -362,10 +361,7 @@ with the documentation served through GitHub Pages at
 
 Go to https://github.com/NCAR/DART, click "Clone or download", and click
 "Download ZIP" to download the latest release of DART. Alternately, to view
-the history of the code, you can "clone" the DART repo. Be aware that while
-the ZIP file is approximately 300 Mb, the full DART history from a clone adds
-approximately another 450 Mb. We therefore recommend that users who are not
-interested in the version control history download the ZIP file.
+the version control history of the code, you can "clone" the DART repo. 
 
 :exclamation: *IMPORTANT*: If you are interested in contributing to DART, when
 you are ready you will need to follow a different workflow to obtain the code in
