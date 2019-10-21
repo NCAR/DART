@@ -237,8 +237,10 @@ Build the software packages and copy files into place:
             <div class="unix">
             cd <em>$WORKDIR</em><br />
             cp template/input.nml.template $DART/models/wrf/work/input.nml<br />
-            cp template/input.nml.template rundir/input.nml
             </div>
+            <br />
+            Make sure to edit input.nml to ensure that ens_size = 50.
+            <br />
             <br />
         </li>
         <li>It is assumed you have successfully configured the
@@ -332,7 +334,9 @@ Build the software packages and copy files into place:
       <br /><br />
       <div class="unix">
         cd <em>$WORKDIR</em><em class="file">/scripts</em><br />
-        ./setup.csh param.csh
+        ./setup.csh param.csh<br />
+        cd <em>$WORKDIR</em><br />
+        cp template/input.nml.template rundir/input.nml<br />
       </div>
       <br />
 </li>
@@ -427,7 +431,7 @@ find the following scripts:
  <tr><td><pre><em class="program">gen_retro_icbc.csh</em></pre></td><td>Generate the wrfinput and wrfbdy files.</td></tr>
  <tr><td><pre><em class="program">init_ensemble_var.csh</em></pre></td><td>Create the perturbed initial conditions from the WRF-VAR system.</td></tr>
  <tr><td><pre><em class="program">mean_increment.ncl</em></pre></td><td>Compute the mean state-space increment, which can be used for plotting.</td></tr>
- <tr><td><pre><em class="program">new_model_advance.csh</em></pre></td><td>Template for submitted job to advance the WRF model after running DART.</td></tr>
+ <tr><td><pre><em class="program">new_advance_model.csh</em></pre></td><td>Template for submitted job to advance the WRF model after running DART.</td></tr>
  <tr><td><pre><em class="program">param.csh</em></pre></td><td>Contains most of the key settings to run the DART system.</td></tr>
  <tr><td><pre><em class="program">prep_ic.csh</em></pre></td><td>Template for submitted job to prepare the initial conditions.</td></tr>
  <tr><td><pre><em class="program">real.csh</em></pre></td><td>Run the WRF real.exe program.</td></tr>
@@ -671,7 +675,7 @@ A little trial and error might be necessary to get these set correctly.</li>
 <br/>
 <div class="unix">
 cd <em>$DART</em><em class="file">/observations/obs_converters/NCEP/prep_bufr/work</em><br/>
-cp ../exe/&#42;.exe .</br>
+cp ../exe/&#42;.x .</br>
 ./prepbufr.csh &lt;year&gt; &lt;month&gt; &lt;day&gt;
 </div>
 <br/>
@@ -684,18 +688,18 @@ and write them into the native DART format. Edit the
 directory. Here is a basic example:
 <pre>
 &amp;ncepobs_nml
-   year       = 2017
-   month      = 4
-   day        = 27
-   tot_days   = 3
-   max_num    = 800000
-   select_obs = 0
-   ObsBase = '&lt;path to observations&gt/temp_obs.;'
-   daily_file = .false.
-   lon1       = 270.0
+   year       = 2017,
+   month      = 4,
+   day        = 27,
+   tot_days   = 3,
+   max_num    = 800000,
+   select_obs = 0,
+   ObsBase = '&lt;path to observations&gt/temp_obs.',
+   daily_file = .false.,
+   lat1       = 15.0,
+   lat2       = 60.0,
+   lon1       = 270.0,
    lon2       = 330.0
-   lat1       = 15.0
-   lat2       = 60.0
    /
 </pre>
 Choosing "select_obs = 0" will select all the observations in the ASCII file.
