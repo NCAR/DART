@@ -50,7 +50,7 @@ type(obs_type)          :: obs_in, next_obs_in
 logical                 :: is_this_last
 integer                 :: size_seq_in
 integer                 :: num_copies_in, num_qc_in
-integer                 :: iunit, io, i, fnum
+integer                 :: iunit, io, i, fnum, ounit
 integer                 :: num_input_files = 0
 integer                 :: max_num_obs, file_id
 character(len=129)      :: read_format
@@ -89,10 +89,12 @@ character(len=256)   :: filename_in(MAX_IN_FILES) = ''
 character(len=256)   :: filelist_in = ''
 character(len=32)    :: calendar = 'Gregorian'
 logical              :: filenames_from_terminal = .false.
+logical              :: counts_only = .false.
+character(len=256)   :: output_file = ''
 
 
-namelist /obs_info_nml/ filename_in, filelist_in, &
-                        calendar, filenames_from_terminal
+namelist /obs_info_nml/ filename_in, filelist_in, counts_only, &
+                        calendar, filenames_from_terminal, output_file
 
 !----------------------------------------------------------------
 ! Start of the program:
@@ -124,6 +126,12 @@ if (filenames_from_terminal) then
    call parse_filenames_from_stdin(num_input_files, filename_in)
 else
    call handle_filenames(filename_in, filelist_in, num_input_files)
+endif
+
+if (output_file /= '') then
+   ounit = open_file(output_file, action='create')
+else
+   ounit = 0
 endif
 
 ! end of namelist processing and setup
@@ -200,20 +208,24 @@ do fnum = 1, num_input_files
       call error_handler(E_MSG,'obs_info', msgstring)
    endif
    
-   print*, 'Totals for all obs types:'
-   print*, '  Count: ', all_obs%count
-   call print_date(all_obs%first_time, '.  First obs:')
-   call print_date(all_obs%last_time,  '.   Last obs:')
-   print*, '---------------------------------------------------------'
-   
+   if (.not. counts_only) then
+      write(ounit, *) 'Totals for all obs types:'
+      write(ounit, *) '  Count: ', all_obs%count
+      call print_date(all_obs%first_time, '.  First obs:', ounit)
+      call print_date(all_obs%last_time,  '.   Last obs:', ounit)
+      write(ounit, *) '---------------------------------------------------------'
+   endif
    
    ! print out the results
    ALLTYPES: do i=0, max_defined_types_of_obs
       if (oinfo(i)%count == 0) cycle ALLTYPES
-      write(msgstring, '(A,I8)') get_name_for_type_of_obs(i), oinfo(i)%count
-      call error_handler(E_MSG, '', msgstring)
-      call print_date(oinfo(i)%first_time, '.  First obs:')
-      call print_date(oinfo(i)%last_time,  '.   Last obs:')
+      if (counts_only) then
+         write(ounit, '(2A,I8)') filename_in(fnum), get_name_for_type_of_obs(i), oinfo(i)%count
+      else
+         write(ounit, '(A,I8)') get_name_for_type_of_obs(i), oinfo(i)%count
+         call print_date(oinfo(i)%first_time, '.  First obs:', ounit)
+         call print_date(oinfo(i)%last_time,  '.   Last obs:', ounit)
+      endif
    enddo ALLTYPES
    
    call destroy_obs_sequence(seq_in)
@@ -570,7 +582,7 @@ character(len=512) :: inline
 ! waiting for input.  comment this out if it gets annoying.
 print *, 'reading input filename(s) from terminal'
 
-read (*, '(A512)'), inline
+read (*, '(A512)') inline
 call get_args_from_string(inline, num_in, filenames)
 
 end subroutine parse_filenames_from_stdin
