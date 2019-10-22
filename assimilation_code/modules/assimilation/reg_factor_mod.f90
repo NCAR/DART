@@ -140,7 +140,7 @@ if(select_regression == 1) then
 
          call get_time(obs_time, secs, days)
          write(diag_unit, 22) days, secs, obs_index, state_index, comp_reg_factor
-         22 format(4(i7, 1x), e10.4)
+         22 format(4(i7, 1x), e14.4)
          endif
       endif
 

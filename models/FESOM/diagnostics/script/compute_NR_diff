@@ -1,0 +1,89 @@
+#!/bin/bash
+#BSUB -a poe               #
+#BSUB -J dart_post         # Name of the job.
+#BSUB -o dart_post_%J.out  # Appends std output to file %J.out.
+#BSUB -e dart_post_%J.out  # Appends std error to file %J.err.
+#BSUB -q serial_30min      # queue
+
+# requires a nature run
+# diffs preassim_mean.nc and nature run to get the difference
+# calls fesom_post_mesh.x to extract a section
+# parameters needs to be set in dart.postproc.env
+
+. dart.postproc.env; tool=9
+
+#----------------------------------------------------------
+#--- Diff Nature Run and Prior Diag files -----------------
+#----------------------------------------------------------
+${REMOVE} ${D_output}/${EXECUTE_FESOM_POST}
+cd ${D_output};
+${LINK} ${D_PROG}/${EXECUTE_FESOM_POST} .
+${LINK} ${D_PROG}/elem2d.new .
+
+F_output=( $(ls ${D_filter}/preassim_mean_1490??_?????.nc) )
+
+for ((output=0; output<${#F_output[@]}; output++)); do
+
+  dart_time=( $( echo ${F_output[${output}]} | sed 's;.*[/Prior];;g'   | sed 's;_\|:\|\.\|,; ;g' | sed 's/[A-Za-z]*//g' ) )
+  dart_day=$( echo ${dart_time[0]} | awk '{ printf("%06d\n",$1) }' )
+  dart_second=$( echo ${dart_time[1]} | awk '{ printf("%05d\n",$1) }' )
+  fesom_date=$( echo "${dart_day} - 149019" | bc )
+  fesom_second=$( echo "scale=2; ${dart_second} / 86400 * 24" | bc )
+  nature_step=$( echo "scale=0; ${fesom_date}*24 + ${fesom_second} / 1" | bc )
+
+  prior=${D_filter}/preassim_mean_${dart_day}_${dart_second}.nc
+  NR_diff=${D_filter}/NR_diff_Diag_${dart_day}_${dart_second}.nc
+  state_vars=$( echo ${kind[@]} | sed 's; ;,;g' )
+
+  if [[ ${debug} > 0 ]]; then
+    ls ${prior}
+    ls ${F_nature}
+    echo ${NR_diff}
+    echo ${state_vars}
+    echo ${nature_step} ${fesom_second} ${fesom_date} ${dart_second} ${dart_day} ${dart_time[@]}
+  fi
+
+  ncks -O -v ${state_vars} -d T,${nature_step} ${F_nature} ${D_filter}/naturerun.nc
+  ncrename -d T,time ${D_filter}/naturerun.nc
+  ncks -O -v ${state_vars} -d copy,0 ${prior} ${D_filter}/prior_copy.nc
+  ncwa -O -d copy,0 -a copy ${D_filter}/prior_copy.nc ${D_filter}/prior.nc
+  ncdiff -O -v ${state_vars} ${D_filter}/prior.nc ${D_filter}/naturerun.nc ${NR_diff}
+
+  ${REMOVE} ${D_filter}/prior.nc ${D_filter}/naturerun.nc
+  ${REMOVE} ${D_filter}/prior_copy.nc #${D_filter}/naturerun_copy.nc
+  ${REMOVE} ${D_filter}/NR_diff.nc
+  ${COPY} ${NR_diff} ${D_filter}/NR_diff.nc
+  #
+  level=$( echo ${layer[@]} | sed 's/\ /,/g' )
+  #
+  [[ ${debug} > 0 ]] && echo ${level}
+  template=${D_PROG}/nml/namelist.config.template
+  sbmtfile=${D_output}/namelist.config
+
+  sed -e "s;EXPDEF;${E_name};g" -e "s;EXPNUM;${E_code};g" \
+      -e "s;^dart_days=.*$;dart_days=${dart_day};g" -e "s;^dart_secs=.*$;dart_secs=${dart_second};g" \
+      -e "s;^iniday=.*$;iniday=${E_init};g" -e "s;^endday=.*$;endday=${E_last};g" \
+      -e "s;^runyear=.*$;runyear=${E_year};g" -e "s;^tool=.*$;tool=${tool};g" \
+      -e "s;^level_number=.*$;level_number=${level};g" -e "s;^step_per_day=.*$;step_per_day=1;g" \
+      -e "s;^run_length=.*$;run_length=1;g" ${template} > ${sbmtfile}
+
+  ${EXECUTE_FESOM_POST}
+
+  if [[ ${debug} > 0 ]]; then echo ${D_output}; fi
+  template=${D_PROG}/gmt/plot_NR_diff.gmt
+  sbmtfile=${D_output}/gmt.NR_diff
+  for LAYER in ${layer[@]} ; do
+    for VARIABLE in ${gmt_kind[@]}; do
+      sed -e "s;^FEOMDAY=.*$;FEOMDAY=${fesom_date};g" \
+          -e "s;^YEAR=.*$;YEAR=${E_year};g" \
+          -e "s;^EXP=.*$;EXP=${E_info};g" \
+          -e "s;^DATADIR=.*$;DATADIR=${D_output};g" \
+          -e "s;^LAYERNUMBER=.*$;LAYERNUMBER=${LAYER};g" \
+          -e "s;^VAR=.*$;VAR=${VARIABLE};g" \
+          -e "s;^DARTDAY=.*$;DARTDAY=${dart_day};g" \
+          -e "s;^DARTSEC=.*$;DARTSEC=${dart_second};g" \
+          ${template} > ${sbmtfile}
+    sh ${sbmtfile}
+    done
+  done
+done
