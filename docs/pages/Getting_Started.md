@@ -2026,10 +2026,8 @@ has a doi number, as: The Data Assimilation Research Testbed (Version X.Y.Z) [So
 :exclamation: *IMPORTANT*: Update the DART version and year as appropriate.
 
 The seminal reference for DART is: 
-> > **Anderson, J. L., T. Hoar, K. Raeder, H. Liu, N. Collins, R. Torn and A. Arellano**, 
-2009. The Data Assimilation Research Testbed: A Community Facility. 
-*Bulletin of the American Meteorological Society*, 90, 1283-1296, 
-https://doi.org/10.1175/2009BAMS2618.1
+
+> > **Anderson, J. L., T. Hoar, K. Raeder, H. Liu, N. Collins, R. Torn and A. Arellano**, 2009. The Data Assimilation Research Testbed: A Community Facility. *Bulletin of the American Meteorological Society*, 90, 1283-1296, https://doi.org/10.1175/2009BAMS2618.1
 
 You should also consider citing the algorithm(s) you are using. The citations
 for algorithms are available in
