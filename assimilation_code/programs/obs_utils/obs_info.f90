@@ -22,9 +22,10 @@ use      obs_def_mod, only : obs_def_type, get_obs_def_time,                   &
                              get_obs_def_type_of_obs, get_obs_def_location
 use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs
 use time_manager_mod, only : time_type, operator(>), print_time, set_time,     &
-                             print_date, set_calendar_type,                    &
+                             print_date, set_calendar_type, operator(+),       &
                              operator(==), get_calendar_type, NO_CALENDAR,     &
-                             operator(-), set_time_missing, operator(<)
+                             operator(-), set_time_missing, operator(<),       &
+                             operator(/), get_time, month_name, get_date
 use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq,       &
                              init_obs, assignment(=), get_obs_def,             &
                              static_init_obs_sequence,                         &
@@ -58,6 +59,8 @@ logical                 :: pre_I_format, cal
 character(len=512)      :: msgstring, msgstring1, msgstring2, msgstring3
 type(obs_def_type)      :: this_obs_def
 type(time_type)         :: obs_time
+!integer                 :: mid_day, mid_sec
+character(len=32)       :: mid_string
 
 ! could go into namelist if you wanted more control
 integer, parameter      :: print_every = 5000
@@ -129,7 +132,11 @@ else
 endif
 
 if (output_file /= '') then
-   ounit = open_file(output_file, action='create')
+   ounit = open_file(output_file, action='write')
+   write(msgstring, *) 'Output counts will be written to text file: '
+   write(msgstring1,*)  trim(output_file)
+   call error_handler(E_MSG,'obs_info',msgstring, &
+                      text2=msgstring1)
 else
    ounit = 0
 endif
@@ -220,7 +227,11 @@ do fnum = 1, num_input_files
    ALLTYPES: do i=0, max_defined_types_of_obs
       if (oinfo(i)%count == 0) cycle ALLTYPES
       if (counts_only) then
-         write(ounit, '(2A,I8)') filename_in(fnum), get_name_for_type_of_obs(i), oinfo(i)%count
+         call compute_times(oinfo(i)%first_time, oinfo(i)%last_time, avg_string=mid_string)
+         write(ounit, '(A,I8,A,A36,I8,2A)') "'"//trim(filename_in(fnum))//"', ", &
+                                             i, ", ", &
+                                             trim(get_name_for_type_of_obs(i))//", ", &
+                                             oinfo(i)%count, ", ", trim(mid_string)
       else
          write(ounit, '(A,I8)') get_name_for_type_of_obs(i), oinfo(i)%count
          call print_date(oinfo(i)%first_time, '.  First obs:', ounit)
@@ -258,6 +269,7 @@ end subroutine setup
 !---------------------------------------------------------------------
 subroutine shutdown()
 
+call close_file(ounit)
 call finalize_utilities('obs_info')
 
 end subroutine shutdown
@@ -680,6 +692,34 @@ call error_handler(E_ERR,'obs_info', msgstring, &
 
 end subroutine handle_filenames
 
+!---------------------------------------------------------------------
+
+subroutine compute_times(first_time, last_time, avg_day, avg_sec, avg_string)
+type(time_type),  intent(in)  :: first_time
+type(time_type),  intent(in)  :: last_time
+integer,          intent(out), optional :: avg_day
+integer,          intent(out), optional :: avg_sec
+character(len=*), intent(out), optional :: avg_string
+
+type(time_type)  :: avg_time
+integer          :: yr, mo, dy, hr, mn, sc
+character(len=9) :: mon_name
+
+avg_time = (first_time + last_time) / 2
+
+if (present(avg_day) .and. present(avg_sec)) then
+   call get_time(avg_time, avg_sec, avg_day)
+else if (present(avg_sec)) then
+   call get_time(avg_time, avg_sec)
+endif
+
+if (present(avg_string)) then
+   call get_date(avg_time, yr,mo,dy,hr,mn,sc)
+   mon_name = month_name(mo) 
+   write(avg_string, "(I2.2,'-',A3,'-',I4,' ',I2.2,':',I2.2,':',I2.2 )") dy, mon_name, yr, hr, mn, sc 
+endif
+
+end subroutine compute_times
 
 !---------------------------------------------------------------------
 end program obs_info
