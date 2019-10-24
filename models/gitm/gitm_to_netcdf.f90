@@ -39,8 +39,8 @@ character(len=128), parameter :: revdate  = "$Date$"
 !-----------------------------------------------------------------------
 
 
-character(len=256) :: gitm_to_netcdf_2d_input_file   = '../data/2DTEC_t110311_204500.bin'
-character(len=256) :: gitm_to_netcdf_3d_input_file   = '../data/3DUSR_t110311_204500.bin'
+character(len=256) :: gitm_to_netcdf_2d_input_file   = '../testdata2/2DTEC_t110311_204500.bin'
+character(len=256) :: gitm_to_netcdf_3d_input_file   = '../testdata2/3DUSR_t110311_204500.bin'
 character(len=256) :: gitm_to_netcdf_2d_output_file  = 'gitm_2d_netcdf.nc'
 character(len=256) :: gitm_to_netcdf_3d_output_file  = 'gitm_3d_netcdf.nc'
 

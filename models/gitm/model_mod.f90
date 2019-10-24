@@ -654,7 +654,6 @@ call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts
 
-
 !==================================================================
 
 subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, &
@@ -791,6 +790,24 @@ end subroutine get_close_obs
 !==================================================================
 ! The remaining PUBLIC interfaces come next
 !==================================================================
+
+!==================================================================
+
+subroutine get_quad_vals(state_handle, ens_size, varid, obs_qty, four_lons, four_lats, &
+                         lon_lat_vert, which_vert, quad_vals, status_array)
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
+integer,             intent(in)  :: varid, obs_qty
+integer,             intent(in)  :: four_lons(4), four_lats(4)
+real(r8),            intent(in)  :: lon_lat_vert(3)
+integer,             intent(in)  :: which_vert
+real(r8),            intent(out) :: quad_vals(4, ens_size)
+integer,             intent(out) :: status_array(ens_size)
+
+
+status_array = 1
+
+end subroutine get_quad_vals
 
 
 subroutine restart_files_to_netcdf(dirname, ncid, model_time)

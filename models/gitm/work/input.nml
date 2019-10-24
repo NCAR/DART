@@ -247,10 +247,17 @@
    /
 
 &gitm_to_netcdf.nml
-   gitm_to_netcdf_input_file   = '../data/3DUSR_t110311_204500.bin'
-   gitm_to_netcdf_grid_file    = '../data/2DTEC_t110311_204500.bin'
-   gitm_to_netcdf_output_file  = 'gitm_netcdf.nc'
+   gitm_to_netcdf_2d_input_file   = '../testdata2/2DTEC_t110311_204500.bin'
+   gitm_to_netcdf_3d_input_file   = '../testdata2/3DUSR_t110311_204500.bin'
+   gitm_to_netcdf_2d_output_file  = 'gitm_2d_netcdf.nc'
+   gitm_to_netcdf_3d_output_file  = 'gitm_3d_netcdf.nc'
    /
+
+# probably should be more like:
+#   gitm_to_netcdf_input_file   = '../data/3DUSR_t110311_204500.bin'
+#   gitm_to_netcdf_grid_file    = '../data/2DTEC_t110311_204500.bin'
+#   gitm_to_netcdf_output_file  = 'gitm_netcdf.nc'
+
 
 #press is in PA
 #height is in m (scaling for vertical - how many vertical meters correspond to one horizontal radian)
