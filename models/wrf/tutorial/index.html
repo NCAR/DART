@@ -114,18 +114,18 @@ If you have not already, see the
 <a href="https://dart.ucar.edu/pages/Getting_Started.html">Getting Started</a> page to download
 the DART software package.
 
-Set an environment variable <em>DART</em> to point to your base DART directory.
+Set an environment variable <em>DART_DIR</em> to point to your base DART directory.
 How to do this will depend on which shell you are using. For example, with the
 <em>tcsh</em> shell, you will use
 <br />
 <div class="unix">
-setenv DART &lt;path_to_your_dart_installation&gt;
+setenv DART_DIR &lt;path_to_your_dart_installation&gt;
 </div>
 <br/>
 while for the <em>bash</em> shell you will use
 <br/><br/>
 <div class="unix">
-export DART="&lt;path_to_your_dart_installation&gt;"
+export DART_DIR="&lt;path_to_your_dart_installation&gt;"
 </div>
 <br/>
 In either case, you will replace &lt;path_to_your_dart_installation&gt; with
@@ -133,21 +133,21 @@ the actual path to your DART installation. If you are using another shell,
 refer to your shell-specific documentation on how to set an environment variable.
 <p>
 In the same way, you will need to create a "working" directory and set your
-<em>WORKDIR</em> variable. Create a work directory someplace with a lot of
+<em>BASE_DIR</em> variable. Create a work directory someplace with a lot of
 free space (approximately 100 Gb are needed to run this tutorial).
 On most large systems there is a "scratch" filesystem for this purpose.
 For the rest of these instructions we will assume you have an environment
-variable called <em>$WORKDIR</em> that points to this directory. For example,
+variable called <em>BASE_DIR</em> that points to this directory. For example,
 for <em>tcsh</em>:
 <br />
 <div class="unix">
-setenv WORKDIR &lt;path_to_your_working_directory&gt;
+setenv BASE_DIR &lt;path_to_your_working_directory&gt;
 </div>
 <br/>
 or <em>bash</em>:
 <br/><br/>
 <div class="unix">
-export WORKDIR="&lt;path_to_your_working_directory&gt;"
+export BASE_DIR="&lt;path_to_your_working_directory&gt;"
 </div>
 <br/>
 
@@ -173,23 +173,23 @@ software packages (if needed):
     <br /><br />
     <ol><li>
           In this directory you will need the contents of
-           <em>$DART</em><em class="file">/models/wrf/tutorial</em> from your
+           <em>DART_DIR</em><em class="file">/models/wrf/tutorial</em> from your
            DART code directory.
            <br /><br />
            <div class="unix">
-           cd <em>$WORKDIR</em><br />
-           cp -r $DART/models/wrf/tutorial .
+           cd <em>$BASE_DIR</em><br />
+           cp -r $DART_DIR/models/wrf/tutorial .
            </div>
            <br />
         </li>
         <li> Place
            <a href="./wrf_dart_tutorial_23May2018_v3.tar.gz">this very large tar file</a>
-           in your WORKDIR. CAUTION: this is an approximately 15 GB file, so you
+           in your BASE_DIR. CAUTION: this is an approximately 15 GB file, so you
            might be better off using 'wget' to download the file directly to your
            local system, e.g.:
            <br /><br />
            <div class="unix">
-           cd <em>$WORKDIR</em><br />
+           cd <em>$BASE_DIR</em><br />
            wget&nbsp;http://www.image.ucar.edu/wrfdart/tutorial/wrf_dart_tutorial_23May2018_v3.tar.gz<br />
            tar&nbsp;-xzvf&nbsp;wrf_dart_tutorial_23May2018_v3.tar.gz
            </div>
@@ -209,21 +209,21 @@ software packages (if needed):
 Build the software packages and copy files into place:
 
 <ol>
-<li>Copy the contents of <em class="file">$DART/models/wrf/shell_scripts</em> to
-    the <em>WORKDIR</em><em class="file">/scripts</em> directory.
+<li>Copy the contents of <em>DART_DIR</em><em class="file">/models/wrf/shell_scripts</em> to
+    the <em>BASE_DIR</em><em class="file">/scripts</em> directory.
     <br /><br />
     <div class="unix">
-    cd <em>$WORKDIR</em><br />
-    cp -R $DART/models/wrf/shell_scripts ./scripts
+    cd <em>$BASE_DIR</em><br />
+    cp -R $DART_DIR/models/wrf/shell_scripts ./scripts
     </div>
     <br />
     </li>
 
 <li>Copy the contents (three namelist files) of <em class="file">tutorial/template</em> to
-    the <em>WORKDIR</em><em class="file">/template</em> directory.
+    the <em>BASE_DIR</em><em class="file">/template</em> directory.
     <br /><br />
     <div class="unix">
-    cd <em>$WORKDIR</em><em class="file">/template</em> <br />
+    cd <em>$BASE_DIR</em><em class="file">/template</em> <br />
     cp ../tutorial/template/&#42; .
     </div>
     <br />
@@ -232,17 +232,17 @@ Build the software packages and copy files into place:
 <li>Build the DART executables.
     <br /><br />
     <ol><li>Copy the tutorial DART namelist from <em class="file">template/input.nml.template</em>
-            to <em class="file">$DART/models/wrf/work/input.nml</em>.
+            to <em>DART_DIR</em><em class="file">/models/wrf/work/input.nml</em>.
             <br /><br />
             <div class="unix">
-            cd <em>$WORKDIR</em><br />
-            cp template/input.nml.template $DART/models/wrf/work/input.nml<br />
-            cp template/input.nml.template rundir/input.nml
+            cd <em>$BASE_DIR</em><br />
+            cp template/input.nml.template $DART_DIR/models/wrf/work/input.nml<br />
             </div>
+            <br />
             <br />
         </li>
         <li>It is assumed you have successfully configured the
-        <em class="file">$DART/build_templates/mkmf.template</em> file for your
+        <em>DART_DIR</em><em class="file">/build_templates/mkmf.template</em> file for your
         system. If not, you will need to do so now. See the
         <a href="https://dart.ucar.edu/pages/Getting_Started.html">Getting Started</a>
         page for more detail, if necessary.
@@ -256,7 +256,7 @@ Build the software packages and copy files into place:
             DART executables to compile everything with single precision reals:
             <br/><br/>
             <div class="unix">
-            cd <em>$DART</em><em class="file">/assimilation_code/modules/utilities</em>
+            cd <em>$DART_DIR</em><em class="file">/assimilation_code/modules/utilities</em>
             </div>
             <br/>
           Edit the <em class="file">types_mod.f90</em> file with your favorite
@@ -278,7 +278,7 @@ Build the software packages and copy files into place:
         <li>Build the WRF/DART executables:<br/>
         <br/>
         <div class="unix">
-        cd <em>$DART</em><em class="file">/models/wrf/work</em><br/>
+        cd <em>$DART_DIR</em><em class="file">/models/wrf/work</em><br/>
         ./quickbuild.csh
         </div>
         <br/>
@@ -296,7 +296,7 @@ Build the software packages and copy files into place:
 </li>
 
 <li> Edit the <em>param.csh</em> script in
-     <em>WORKDIR</em><em class="file">/scripts</em> with proper paths, info,
+     <em>BASE_DIR</em><em class="file">/scripts</em> with proper paths, info,
      etc. This is a script that sets variables which will be read by other
      WRF/DART scripts. There are some specific parameters for either the
      Cheyenne supercomputing system using the <a href="https://www.pbsworks.com/">PBS</a>
@@ -314,8 +314,8 @@ Build the software packages and copy files into place:
                  Note that on Cheyenne the intel compiler is loaded by default.</td></tr>
          <tr><td>module load nco</td><td>The <a href="http://nco.sourceforge.net/">nco</a> package.</td></tr>
          <tr><td>module load ncl/6.6.2</td><td>The <a href="https://www.ncl.ucar.edu/">ncl</a> package.</td></tr>
-         <tr><td>set BASE_DIR=&lt;BASE DIR&gt;</td><td>The root <em>WORKDIR</em> containing <em class="file">icbc, output, perts,</em>  etc.</td></tr>
-         <tr><td>set DART_DIR=&lt;DART DIR&gt;</td><td>The root <em>DART</em> directory.</td></tr>
+         <tr><td>set BASE_DIR=&lt;BASE DIR&gt;</td><td>The root <em>BASE_DIR</em> containing <em class="file">icbc, output, perts,</em>  etc.</td></tr>
+         <tr><td>set DART_DIR=&lt;DART DIR&gt;</td><td>The root <em>DART_DIR</em> directory.</td></tr>
          <tr><td>set WRF_DM_SRC_DIR=&lt;WRF DIR&gt;</td><td>The root directory of the WRF dmpar installation.</td></tr>
          <tr><td>set WPS_SRC_DIR=&lt;WPS DIR&gt;</td><td>The root directory of the WPS installation.</td></tr>
          <tr><td>set VAR_SRC_DIR=&lt;WRFDA DIR&gt;</td><td>The root directory of the WRFDA installation.</td></tr>
@@ -331,8 +331,8 @@ Build the software packages and copy files into place:
 <li> Run the <em class="program">setup.csh</em> script to create the proper directory structure and move executables to proper locations.
       <br /><br />
       <div class="unix">
-        cd <em>$WORKDIR</em><em class="file">/scripts</em><br />
-        ./setup.csh param.csh
+        cd <em>$BASE_DIR</em><em class="file">/scripts</em><br />
+        ./setup.csh param.csh<br />
       </div>
       <br />
 </li>
@@ -340,7 +340,7 @@ Build the software packages and copy files into place:
 <!-- maybe make a table that lists things in the same order as 'ls -l' ...
      three columns: filename, executable/script/namelist, purpose -->
 <p>
-So far, your <em>$WORKDIR</em> should contain the following directories:
+So far, your <em>BASE_DIR</em> should contain the following directories:
 </p>
 <pre>
  <em>icbc</em>
@@ -427,7 +427,7 @@ find the following scripts:
  <tr><td><pre><em class="program">gen_retro_icbc.csh</em></pre></td><td>Generate the wrfinput and wrfbdy files.</td></tr>
  <tr><td><pre><em class="program">init_ensemble_var.csh</em></pre></td><td>Create the perturbed initial conditions from the WRF-VAR system.</td></tr>
  <tr><td><pre><em class="program">mean_increment.ncl</em></pre></td><td>Compute the mean state-space increment, which can be used for plotting.</td></tr>
- <tr><td><pre><em class="program">new_model_advance.csh</em></pre></td><td>Template for submitted job to advance the WRF model after running DART.</td></tr>
+ <tr><td><pre><em class="program">new_advance_model.csh</em></pre></td><td>Template for submitted job to advance the WRF model after running DART.</td></tr>
  <tr><td><pre><em class="program">param.csh</em></pre></td><td>Contains most of the key settings to run the DART system.</td></tr>
  <tr><td><pre><em class="program">prep_ic.csh</em></pre></td><td>Template for submitted job to prepare the initial conditions.</td></tr>
  <tr><td><pre><em class="program">real.csh</em></pre></td><td>Run the WRF real.exe program.</td></tr>
@@ -443,7 +443,7 @@ locations that you need to edit.
 
 <div class="unix">
 <pre>
-cd <em>$WORKDIR</em><em class="file">/scripts</em><br/>
+cd <em>$BASE_DIR</em><em class="file">/scripts</em><br/>
 grep -r 'set this appropriately #%%%#' .
 </pre>
 </div>
@@ -501,7 +501,7 @@ First, we need to generate a set of GFS states and boundary conditions that will
 be used in the cycling. Use the script (in the scripts dir) named
 <em class="program">gen_retro_icbc.csh</em> to create
 this set of files, which will be added to a subdirectory corresponding to the
-date of the run under the "output" directory in <em>WORKDIR</em>.
+date of the run under the "output" directory in <em>BASE_DIR</em>.
 Make sure <em class="program">gen_retro_icbc.csh</em> has the appropriate path to your
 <em class="program">param.csh</em> script.
 If the <em class="program">param.csh</em> script also has the correct edits for paths and
@@ -511,7 +511,7 @@ of operations to extract the grib data, run metgrid, and then twice execute
 <em class="program">real.exe</em> to generate a pair of WRF
 files and a boundary file for each analysis time.
 <div class="unix">
-cd <em>$WORKDIR</em><em class="file">/scripts</em><br />
+cd <em>$BASE_DIR</em><em class="file">/scripts</em><br />
 ./gen_retro_icbc.csh
 </div>
 <br />
@@ -543,7 +543,7 @@ For this we run the script <em class="program">init_ensemble_var.csh</em>, which
 takes two arguments: a date string and the location of the <em class="program">param.csh</em> script.
 </p>
 <div class="unix">
-cd <em>$WORKDIR</em><em class="file">/scripts</em><br />
+cd <em>$BASE_DIR</em><em class="file">/scripts</em><br />
 ./init_ensemble_var.csh 2017042700 param.csh
 </div>
 <p>This script generates 50 small scripts and submits them to the batch system.
@@ -604,20 +604,20 @@ as follows:
 <br/>
 <br/>
 <div class="unix">
-cd <em>$DART</em><em class="file">/observations/obs_converters/NCEP/prep_bufr</em><br/>
+cd <em>$DART_DIR</em><em class="file">/observations/obs_converters/NCEP/prep_bufr</em><br/>
 ./install.sh
 </div>
 <br/>
 You may need to edit the <em class="file">install.sh</em> script to match your
 compiler and system settings.
 <li>Go to the
-<em class="file">DART/observations/obs_converters/NCEP/prep_bufr/work/</em>
+<em class="file">DART_DIR/observations/obs_converters/NCEP/prep_bufr/work/</em>
 directory and run <em class="file">quickbuild.csh</em> to build the DART
 PREPBUFR-to-intermediate-file observation processor:
 <br/>
 <br/>
 <div class="unix">
-cd <em>$DART</em><em class="file">/observations/obs_converters/NCEP/prep_bufr/work</em><br/>
+cd <em>$DART_DIR</em><em class="file">/observations/obs_converters/NCEP/prep_bufr/work</em><br/>
 ./quickbuild.csh
 </div>
 <br/>
@@ -631,7 +631,7 @@ the file will appear corrupted if you attempt to untar it without converting the
 data. See the <a href="https://rda.ucar.edu/#!cosb">NCAR COS-block</a> page for more
 information on how to strip the COS-blocking off of your downloaded file.</li>
 <li>Untar the data in your desired directory.</li>
-<li>In the <em class="file">DART/observations/obs_converters/NCEP/prep_bufr/work</em>
+<li>In the <em>DART_DIR</em><em class="file">/observations/obs_converters/NCEP/prep_bufr/work</em>
 directory, edit the <em class="file">input.nml</em> file. This file will
 control what observations will be used for your experiment, so the namelist
 options are worth investigating a bit here. For example, you could use the
@@ -660,7 +660,7 @@ Additionally, it will include observations with specified qc types only. See the
 <a href="../../../observations/obs_converters/NCEP/prep_bufr/prep_bufr.html">prepbufr</a>
 page for more available namelist controls.</li>
 <li> Within the
-<em class="file">DART/observations/obs_converters/NCEP/prep_bufr/work</em>
+<em>DART_DIR</em><em class="file">/observations/obs_converters/NCEP/prep_bufr/work</em>
 directory, edit the <em class="file">prepbufr.csh</em> file and change
 <em>BUFR_dir</em>, <em>BUFR_idir</em>, <em>BUFR_odir</em>, and
 <em>BUFR_in</em> to match the locations and format of the data you downloaded.
@@ -670,8 +670,8 @@ A little trial and error might be necessary to get these set correctly.</li>
 <br/>
 <br/>
 <div class="unix">
-cd <em>$DART</em><em class="file">/observations/obs_converters/NCEP/prep_bufr/work</em><br/>
-cp ../exe/&#42;.exe .</br>
+cd <em>$DART_DIR</em><em class="file">/observations/obs_converters/NCEP/prep_bufr/work</em><br/>
+cp ../exe/&#42;.x .</br>
 ./prepbufr.csh &lt;year&gt; &lt;month&gt; &lt;day&gt;
 </div>
 <br/>
@@ -680,22 +680,22 @@ cp ../exe/&#42;.exe .</br>
 There is another observation converter to take the observations from this format
 and write them into the native DART format. Edit the
 <em class="file">input.nml</em> namelist file in the
-<em class="file">DART/observations/obs_converters/NCEP/ascii_to_obs/work</em>
+<em>DART_DIR</em><em class="file">/observations/obs_converters/NCEP/ascii_to_obs/work</em>
 directory. Here is a basic example:
 <pre>
 &amp;ncepobs_nml
-   year       = 2017
-   month      = 4
-   day        = 27
-   tot_days   = 3
-   max_num    = 800000
-   select_obs = 0
-   ObsBase = '&lt;path to observations&gt/temp_obs.;'
-   daily_file = .false.
-   lon1       = 270.0
+   year       = 2017,
+   month      = 4,
+   day        = 27,
+   tot_days   = 3,
+   max_num    = 800000,
+   select_obs = 0,
+   ObsBase = '&lt;path to observations&gt/temp_obs.',
+   daily_file = .false.,
+   lat1       = 15.0,
+   lat2       = 60.0,
+   lon1       = 270.0,
    lon2       = 330.0
-   lat1       = 15.0
-   lat2       = 60.0
    /
 </pre>
 Choosing "select_obs = 0" will select all the observations in the ASCII file.
@@ -710,7 +710,7 @@ Run the following:
 <br/>
 <br/>
 <div class="unix">
-cd <em>$DART</em><em class="file">/observations/obs_converters/NCEP/ascii_to_obs/work</em><br/>
+cd <em>$DART_DIR</em><em class="file">/observations/obs_converters/NCEP/ascii_to_obs/work</em><br/>
 ./quickbuild.csh
 </div>
 <br/>
@@ -720,7 +720,7 @@ the DART observation sequence files:
 <br/>
 <br/>
 <div class="unix">
-cd <em>$DART</em><em class="file">/observations/obs_converters/NCEP/ascii_to_obs/work</em><br/>
+cd <em>$DART_DIR</em><em class="file">/observations/obs_converters/NCEP/ascii_to_obs/work</em><br/>
 ./create_real_obs
 </div>
 <br/>
@@ -770,7 +770,7 @@ The initial inflation files may be created with <em class="program">fill_inflati
 which was built by the <em class="program">quickbuild.csh</em> step.
 A pair of inflation files is needed for each WRF domain.
 <p>
-Within the <em>WORKDIR</em><em class="file">/rundir</em> directory, the
+Within the <em>BASE_DIR</em><em class="file">/rundir</em> directory, the
 <em class="file">input.nml</em> file has some settings that control the behavior
 of <em class="program">fill_inflation_restart</em>. Within this file there is
 the section:
@@ -795,7 +795,7 @@ prior inflation standard deviation of 0.6. These are reasonable defaults to use.
 The <em class="code">input_state_files</em> variable controls which
 file to use as a template. You can either modify this namelist
 value to point to one of the <em class="file">wrfinput_d01_XXX</em> files under
-<em>WORKDIR</em><em class="file">/output/&lt;DATE&gt;</em>, for any given date,
+<em>BASE_DIR</em><em class="file">/output/&lt;DATE&gt;</em>, for any given date,
 or you can copy one of the files to this directory. The actual contents of the
 file referenced by <em class="code">input_state_files</em> do not matter, as
 this is only used as a template for the
@@ -813,7 +813,7 @@ directory expected by the
 Run the following commands with the dates for this particular tutorial:
 <div class="unix">
 <pre>
-cd <em>$WORKDIR</em><em class="file">/rundir</em><br/>
+cd <em>$BASE_DIR</em><em class="file">/rundir</em><br/>
 cp ../output/2017042700/wrfinput_d01_152057_0_mean ./wrfinput_d01<br/>
 ./fill_inflation_restart<br/>
 mkdir ../output/2017042700/Inflation_input<br/>
@@ -855,7 +855,7 @@ which expects a starting date as a command line argument (YYYYMMDDHH).
 So you would, for this tutorial, run it as:
 </p>
 <div class="unix">
-cd <em>$WORKDIR</em><em class="file">/scripts</em><br/>
+cd <em>$BASE_DIR</em><em class="file">/scripts</em><br/>
  ./driver.csh 2017042706 param.csh &gt;&amp; run.out &amp;
 </div>
 <p>
