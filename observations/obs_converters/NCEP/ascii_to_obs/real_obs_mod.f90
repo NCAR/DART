@@ -205,7 +205,7 @@ write(obsdate, '(i4.4,i2.2,i2.2)') year, month, day
 obs_file_len = len(trim(adjustl(ObsBase))) + len(obsdate) + len(hourt)
 
 if (obs_file_len > len(obsfile)) then
-   write(msgstring1,'(A,I0)') 'ObsFile string length too long: ',obs_file_len
+   write(msgstring1,'(A,I0)') 'ObsBase string length too long: ',obs_file_len
    call error_handler(E_ERR,'real_obs_sequence',msgstring1)
 endif
 
