@@ -23,7 +23,7 @@ use     location_mod, only : location_type, get_dist, query_location,          &
                              get_close_type, VERTISHEIGHT,                     &
                              set_location, get_location,                       &
                              loc_get_close_obs => get_close_obs, is_vertical,  &
-                             vertical_localization_on
+                             vertical_localization_on, set_vertical_localization_coord
 
 use    utilities_mod, only : register_module, error_handler, string_to_logical,&
                              E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
@@ -463,17 +463,6 @@ nSpeciesTotal = get_nSpeciesTotal()
 nIons         = get_nIons()
 nSpeciesAll   = get_nSpeciesAll()
 
-if ((debug > 0) .and.  do_output() ) then
-   write(*,*)
-   write(*,*)'nLons         is ',nLons
-   write(*,*)'nLats         is ',nLats
-   write(*,*)'nAlts         is ',nAlts
-   write(*,*)'nSpecies      is ',nSpecies
-   write(*,*)'nSpeciesTotal is ',nSpeciesTotal
-   write(*,*)'nIons         is ',nIons
-   write(*,*)'nSpeciesAll   is ',nSpeciesAll
-endif
-
 !---------------------------------------------------------------
 ! Set the time step ... causes gitm namelists to be read.
 ! Ensures model_advance_time is multiple of 'dynamics_timestep'
@@ -524,8 +513,15 @@ if ( debug > 0 ) then
 endif
 
 
+! this calls add_domain() for us.   we should stop cutting and pasting
+! this code and make a common routine if it has the same number of columns
+! as other models.  replicated code in multiple model_mods is a maintenance
+! overhead we should try to avoid.
+
 call set_gitm_variable_info(gitm_state_variables)
 
+! needs to set the vertical localization coordinate, too.
+call set_vertical_localization_coord(VERTISHEIGHT)   ! not sure which?
 end subroutine static_init_model
 
 

@@ -47,6 +47,9 @@ contains
 ! All the public interfaces ... nothing more.
 !===================================================================
 
+! @todo FIXME - should this now get the sizes from the netcdf file
+! and not include GITM code?  (i think yes.)
+
 integer function get_gitm_nLons()
    get_gitm_nLons = nLons
 end function get_gitm_nLons
