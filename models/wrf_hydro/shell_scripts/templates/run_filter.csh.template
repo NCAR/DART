@@ -1,0 +1,267 @@
+#!/bin/tcsh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id: $
+#
+# Things to note: several strings are intended to be replaced when this
+# template gets copied and ultimately submitted. 
+#
+# We REQUIRE (at this point, at least 2 domains are being used).
+# This has ramifications on the inflation file names.
+#==========================================================================
+# SLURM directives                      sbatch advance_ensemble.csh
+#                                       squeue -u $USER
+#                                       scancel <jobnumber>
+#SBATCH --ignore-pbs
+#SBATCH --job-name=filter
+#SBATCH --output=filter-%A.log
+#SBATCH --error=filter-%A.err
+#SBATCH --ntasks=48
+#SBATCH --ntasks-per-node=16
+#SBATCH --time=00:30:00
+#SBATCH --error=filter-%A.err
+#SBATCH --output=filter-%A.log
+#
+#==========================================================================
+# PBS directives                        qsub test_batch.csh
+#                                       qstat -u $USER
+#                                       qdel <jobnumber>
+#PBS -N filter
+#PBS -e filter.err
+#PBS -o filter.log
+#PBS -l select=1:ncpus=36:mpiprocs=36
+#PBS -l walltime=00:10:00
+#PBS -A P8685nnnn
+#PBS -q economy
+#PBS -r n
+#
+#==========================================================================
+
+if ($?SLURM_JOB_ID) then
+
+   set ORIGINALDIR = $SLURM_SUBMIT_DIR
+   set     JOBNAME = $SLURM_JOB_NAME
+   set       JOBID = $SLURM_JOBID
+   set     MYQUEUE = $SLURM_JOB_PARTITION
+   set      MYHOST = $SLURM_SUBMIT_HOST
+   set   LAUNCHCMD = "mpirun -np $SLURM_NTASKS -bind-to core"
+   set      SUBMIT = sbatch
+
+else if ($?PBS_O_WORKDIR) then
+
+   set ORIGINALDIR = $PBS_O_WORKDIR
+   set     JOBNAME = $PBS_JOBNAME
+   set       JOBID = $PBS_JOBID
+   set      MYHOST = $PBS_O_HOST
+   set     MYQUEUE = $PBS_QUEUE
+   set   LAUNCHCMD = "mpiexec_mpt"
+   set      SUBMIT = qsub
+
+else
+
+   set ORIGINALDIR = `pwd`
+   set     JOBNAME = hydro_filter
+   set       JOBID = $$
+   set     MYQUEUE = Interactive
+   set      MYHOST = `hostname`
+   set   LAUNCHCMD = "aprun -n 1"
+   set      SUBMIT = ''
+
+endif
+
+#--------------------------------------------------------------------------
+# Just an echo of job attributes
+#--------------------------------------------------------------------------
+
+echo
+echo "${JOBNAME} (${JOBID}) submit directory ${ORIGINALDIR}"
+echo "${JOBNAME} (${JOBID}) submit      host ${MYHOST}"
+echo "${JOBNAME} (${JOBID}) running in queue ${MYQUEUE}"
+echo "${JOBNAME} (${JOBID}) started at "`date`
+echo
+
+cd EXPERIMENT_DIRECTORY
+
+#==========================================================================
+# STEP 1: Observation processing
+# Get the observation sequence file and link to the expected name or die.
+# Grab the YYYY-MM-DD_hh:mm of interest 2013-06-01_15:00
+# Possibly subset the DART observation sequence file
+#==========================================================================
+
+# TODO This has to come from someplace
+
+set DATESTRING = 2013-06-01_15:00
+
+set OBSFILE = ${observation_dir}/obs_seq.input.${DATESTRING}
+if ( -e ${OBSFILE} ) then
+   ln -sf ${OBSFILE} obs_seq.out
+else
+   echo "No observation file ${OBSFILE} ... exiting."
+   exit 1
+endif
+
+#==========================================================================
+# STEP 2: Inflation
+# IF we are doing inflation, we must take the output inflation files from
+# the previous cycle and rename them for input to the current cycle.
+#==========================================================================
+
+# We have to potentially deal with files like:
+# output_priorinf_mean_d01.${OLDDATESTRING}.nc
+# output_priorinf_mean_d02.${OLDDATESTRING}.nc
+# output_priorinf_mean_d03.${OLDDATESTRING}.nc
+# output_priorinf_sd_d01.${OLDDATESTRING}.nc
+# output_priorinf_sd_d02.${OLDDATESTRING}.nc
+# output_priorinf_sd_d03.${OLDDATESTRING}.nc
+# I am not going to worry about posterior inflation files.
+
+# Should the setup script just create input inflation files so we don't 
+# have to screw with changing the namelist after the first execution
+# (which traditionally reads from the namelist, not the file)
+
+# If the file exists, just link to the new expected name.
+# the expected names have a _d0? inserted before the file extension
+# if there are multiple domains.
+# If the file does not exist, filter will die and issue a very explicit
+# death message.
+
+rm -f input_priorinf_mean*.nc input_priorinf_sd*.nc
+
+foreach DOMAIN ( d01 d02 d03 )
+
+   # Checking for a prior inflation mean file from the previous assimilation.
+
+   (ls -rt1 output_priorinf_mean_${DOMAIN}.* | tail -n 1 >! latestfile) > & /dev/null
+   set nfiles = `cat latestfile | wc -l`
+
+   if ( $nfiles > 0 ) then
+      set latest = `cat latestfile`
+      ln -vs $latest input_priorinf_mean_${DOMAIN}.nc
+   endif
+
+   # Checking for a prior inflation sd file from the previous assimilation.
+
+   (ls -rt1 output_priorinf_sd_${DOMAIN}.* | tail -n 1 >! latestfile) > & /dev/null
+   set nfiles = `cat latestfile | wc -l`
+
+   if ( $nfiles > 0 ) then
+      set latest = `cat latestfile`
+      ln -vs $latest input_priorinf_sd_${DOMAIN}.nc
+   endif
+
+end
+
+#==========================================================================
+# STEP 3: Assimilate.
+# Run DART on the ensemble of new states.
+# Collect all the RESTARTs for each domain into a list of input files. 
+# The io module will error out if the input file list is too short 
+# which helps make sure all instances advanced successfully.
+# Our strategy is that DART (filter) will modify these files in-place.
+# If you need to save a copy, do so now, or set one of the DART 
+# 'stages_to_write' to 'input' and 'num_output_state_members = ens_size'
+# and 'output_members = .true.'. This will write _minimal_ netCDF files
+# with whatever is in the DART state. You could take these variables and 
+# insert them into a 'full' restart file and run ...
+#==========================================================================
+
+# Clean up from any previous execution
+rm -f dart_log.out dart_log.nml
+rm -f lsm_file_list.txt hydro_file_list.txt  param_file_list.txt
+
+@ ens_size = 0
+foreach MEMBER ( member_* )
+   ls -rt1 $MEMBER/RESTART.*.nc   | tail -n 1 >> lsm_file_list.txt
+   ls -rt1 $MEMBER/HYDRO_RST.*.nc | tail -n 1 >> hydro_file_list.txt
+   ls -rt1 $MEMBER/param.*.nc     | tail -n 1 >> param_file_list.txt
+   @ ens_size ++
+end
+
+# If there are no files for that domain ... just remove the (empty) file.
+
+if (`cat lsm_file_list.txt | wc -l` != $ens_size)
+   rm -f lsm_file_list.txt
+end
+
+if (`cat hydro_file_list.txt | wc -l` != $ens_size)
+   rm -f hydro_file_list.txt
+end
+
+if (`cat param_file_list.txt | wc -l` != $ens_size)
+   rm -f param_file_list.txt
+end
+
+# TODO could/should jickey with the input.nml to have the domains listed
+# in the order we require:
+#  input_state_file_list    = "hydro_file_list.txt", "lsm_file_list.txt", "param_file_list.txt"
+#  output_state_file_list   = "hydro_file_list.txt", "lsm_file_list.txt", "param_file_list.txt"
+#  -or-
+#  input_state_file_list    = "hydro_file_list.txt", "param_file_list.txt"
+#  output_state_file_list   = "hydro_file_list.txt", "param_file_list.txt"
+#
+# TODO The setup procedure will link individual files to the input.nml&model_nml
+# These files are used to specify variable sizes, etc.
+#
+# domain_1_shapefile        = 'restart.lsm.nc'
+# domain_2_shapefile        = 'restart.hydro.nc'
+# domain_3_shapefile        = 'parameters.nc'
+
+# Perform the assimilation.
+
+${LAUNCHCMD} ./filter || exit 3
+
+# Tag the output with the valid time of the model state.
+# TODO could move each ensemble-member file to the respective member dir.
+
+foreach FILE ( input_*mean.nc      input_*sd.nc \
+            forecast_*mean.nc   forecast_*sd.nc  forecast_member_????.nc \
+            preassim_*mean.nc   preassim_*sd.nc  preassim_member_????.nc \
+           postassim_*mean.nc  postassim_*sd.nc postassim_member_????.nc \
+            analysis_*mean.nc   analysis_*sd.nc  analysis_member_????.nc \
+              output_*mean.nc     output_*sd.nc \
+              output_*mean_d0?.nc output_*sd_d0?.nc )
+
+   if (  -e $FILE ) then
+      set FEXT  = $FILE:e
+      set FBASE = $FILE:r
+      mv -v $FILE ${FBASE}.${DATESTRING}.${FEXT}
+   else
+      echo "$FILE does not exist, no need to take action."
+   endif
+end
+
+# Tag the DART observation file with the valid time of the model state.
+
+mv -v obs_seq.final obs_seq.final.${DATESTRING}
+
+#==========================================================================
+# STEP 4: If necessary, submit the job to advance the ensemble.
+#==========================================================================
+
+# TJH fancy logic to predict the name of the next observation sequence file
+# given the DATESTRING and the model forecast length -or- compare the
+# filename to the last (alphabetical) observation filename and ...
+
+set LAST = `ls -rt1 ${observation_dir}/obs_seq.input* | tail -n 1`
+if ($OBSFILE == $LAST) then
+   echo "Completed assimilation of last observation sequence file."
+   echo "Last observation file is $OBSFILE"
+else 
+   echo "Advancing ensemble in preparation of next observation sequence file."
+   ${SUBMIT} advance_ensemble.csh
+endif
+
+#==========================================================================
+echo "${JOBNAME} (${JOBID}) finished at "`date`
+#==========================================================================
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL: $
+# $Revision: $
+# $Date: $
