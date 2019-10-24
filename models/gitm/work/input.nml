@@ -386,13 +386,13 @@
 
 
 &model_mod_check_nml
-   input_state_files     = 'gitm_input.nc'
+   input_state_files     = 'gitm_3d_netcdf.nc'
    output_state_files    = 'mmc_output.nc'
    test1thru             = 0
    run_tests             = 1,2,3,4,5,7
    x_ind                 = 720
    loc_of_interest       = 287.5, -82.48, 350000.
-   quantity_of_interest  = 'TEMPERATURE'
+   quantity_of_interest  = 'ELECTRON_DENSITY'
    interp_test_dlon      = 0.1
    interp_test_dlat      = 0.1
    interp_test_dvert     = 5.0

@@ -24,6 +24,9 @@ use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
                              open_file, close_file
 
+use time_manager_mod, only : time_type, set_date, get_date, set_time, get_time, &
+                             operator(-), set_calendar_type
+
 use netcdf_utilities_mod    ! all for now
 
 implicit none
@@ -92,12 +95,17 @@ end type var_3D
 
 type(var_3D) :: gitm_3Dvars(100)
 
-real(r8) :: gitm_version
+real(r8) :: gitm_version, real_time
 integer :: t_year, t_month, t_day, t_hour, t_min, t_sec, t_msec
+
+integer :: ndays, nsecs
+type(time_type) :: gitm_time, epoch_time, delta_time
 
 !======================================================================
 
 call initialize_utilities(progname='gitm_to_netcdf')
+
+call set_calendar_type('GREGORIAN')
 
 iunit =  open_file(gitm_to_netcdf_2d_input_file, action='read', form='unformatted')
 call read_header(iunit, twod=.true.)
@@ -124,6 +132,8 @@ print *, 'going to define: ', i, trim(gitm_2Dvars(i)%varname)
    call nc_define_real_variable(ncid, trim(gitm_2Dvars(i)%varname), (/ "lon", "lat" /) )
 enddo
 
+! add attributes
+
 ! change into data mode
 call nc_end_define_mode(ncid)
 
@@ -135,7 +145,6 @@ print *, 'going to add data for: ', i, trim(gitm_2Dvars(i)%varname)
    call nc_put_variable(ncid, trim(gitm_2Dvars(i)%varname), gitm_2Dvars(i)%state)
 enddo
 
-! add attributes
 
 ! close netcdf file
 call nc_close_file(ncid)
@@ -167,6 +176,12 @@ print *, 'going to define: ', i, trim(gitm_3Dvars(i)%varname)
    call nc_define_real_variable(ncid, trim(gitm_3Dvars(i)%varname), (/ "lon", "lat", "alt" /) )
 enddo
 
+call nc_define_real_scalar(ncid, 'time')
+call nc_add_attribute_to_variable(ncid, 'time', 'calendar', 'GREGORIAN')
+call nc_add_attribute_to_variable(ncid, 'time', 'units',    &
+                                 'days since 1601-01-01 00:00:00')
+
+! add attributes to other vars
 
 ! change into data mode
 call nc_end_define_mode(ncid)
@@ -179,7 +194,15 @@ print *, 'going to add data for: ', i, trim(gitm_3Dvars(i)%varname)
    call nc_put_variable(ncid, trim(gitm_3Dvars(i)%varname), gitm_3Dvars(i)%state)
 enddo
 
-! add attributes
+! add time var and attributes
+epoch_time = set_date(1601, 1, 1, 0, 0, 0)
+gitm_time = set_date(t_year, t_month, t_day, t_hour, t_min, t_sec)
+delta_time = gitm_time - epoch_time
+
+call get_time(delta_time, nsecs, ndays)
+real_time = ndays + (real(nsecs, r8) / 86400.0_r8)
+
+call nc_put_variable(ncid, 'time', 1, real_time)
 
 ! close netcdf file
 call nc_close_file(ncid)
