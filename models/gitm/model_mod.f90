@@ -66,9 +66,6 @@ use     dart_gitm_mod, only: get_gitm_nLons, get_gitm_nLats, get_gitm_nAlts, &
                              get_nSpecies, get_nSpeciesTotal, get_nIons,     &
                              get_nSpeciesAll, decode_gitm_indices
 
-use typesizes
-use netcdf
-
 implicit none
 private
 
@@ -119,6 +116,11 @@ character(len=128), parameter :: revdate  = "$Date$"
 character(len=256) :: string1, string2
 logical, save :: module_initialized = .false.
 
+integer :: n_3d_fields = 1
+integer :: n_2d_fields = 0 
+
+integer, parameter :: MAX_NAME_LEN = 256
+
 !------------------------------------------------------------------
 ! things which can/should be in the model_nml
 !
@@ -144,9 +146,9 @@ logical, save :: module_initialized = .false.
 !------------------------------------------------------------------
 
 integer, parameter :: max_state_variables = 80
-integer, parameter :: num_state_table_columns = 2
-character(len=NF90_MAX_NAME) :: gitm_state_variables(max_state_variables * num_state_table_columns ) = ' '
-character(len=NF90_MAX_NAME) :: variable_table(max_state_variables, num_state_table_columns )
+integer, parameter :: num_state_table_columns = 5
+character(len=MAX_NAME_LEN) :: gitm_state_variables(max_state_variables * num_state_table_columns ) = ' '
+character(len=MAX_NAME_LEN) :: variable_table(max_state_variables, num_state_table_columns )
 
 logical            :: single_file_in = .false.
 integer            :: assimilation_period_days = 0
@@ -427,7 +429,7 @@ subroutine static_init_model()
 
 ! Local variables - all the important ones have module scope
 
-character(len=NF90_MAX_NAME)    :: varname
+character(len=MAX_NAME_LEN)    :: varname
 character(len=obstypelength) :: kind_string
 integer :: varsize
 integer :: iunit, io, ivar, index1, indexN
@@ -440,8 +442,10 @@ if ( module_initialized ) return ! only need to do this once.
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
 
-! Since this routine calls other routines that could call this routine
-! we'll say we've been initialized pretty dang early.
+! routines which are used here should *not* call this routine.
+! it can mess up the stack unless you say this is a recursive routine.  
+! rather than go there just don't call this from anything that is used by it.
+
 module_initialized = .true.
 
 ! Read the DART namelist for this model
@@ -481,7 +485,7 @@ call error_handler(E_MSG,'static_init_model',string1,source,revision,revdate)
 ! 2) allocate space for the grids
 ! 3) read them from the block restart files, could be stretched ...
 
-call get_grid_info(NgridLon, NgridLat, NgridAlt, nBlocksLon, nBlocksLat, &
+call get_grid_info(template_filename, NgridLon, NgridLat, NgridAlt, nBlocksLon, nBlocksLat, &
                    LatStart, LatEnd, LonStart)
 
 if( debug  > 0 ) then
@@ -492,7 +496,11 @@ allocate( LON( NgridLon ))
 allocate( LAT( NgridLat ))
 allocate( ALT( NgridAlt ))
 
-call get_grid(gitm_restart_dirname, nBlocksLon, nBlocksLat, &
+nLons = NgridLon
+nLats = NgridLat
+nAlts = NgridAlt
+
+call get_grid(template_filename, nBlocksLon, nBlocksLat, &
               nLons, nLats, nAlts, LON, LAT, ALT )
 
 !---------------------------------------------------------------
@@ -505,13 +513,8 @@ call init_quad_interp(GRID_QUAD_IRREG_SPACED_REGULAR, nLons, nLats, &
 
 call set_quad_coords(quad_interp, LON, LAT)
 
-if ( debug > 0 ) then
-  write(logfileunit,'("grid: NgridLon, NgridLat, NgridAlt =",3(1x,i5))') NgridLon, NgridLat, NgridAlt
-  write(     *     ,'("grid: NgridLon, NgridLat, NgridAlt =",3(1x,i5))') NgridLon, NgridLat, NgridAlt
-  write(logfileunit, *)'model_size = ', model_size
-  write(     *     , *)'model_size = ', model_size
-endif
-
+model_size = (nLons * nLats * nAlts * n_3d_fields) + &
+             (nLons * nLats *         n_2d_fields) 
 
 ! this calls add_domain() for us.   we should stop cutting and pasting
 ! this code and make a common routine if it has the same number of columns
@@ -519,6 +522,13 @@ endif
 ! overhead we should try to avoid.
 
 call set_gitm_variable_info(gitm_state_variables)
+
+if ( debug > 0 ) then
+  write(logfileunit,'("grid: NgridLon, NgridLat, NgridAlt =",3(1x,i5))') NgridLon, NgridLat, NgridAlt
+  write(     *     ,'("grid: NgridLon, NgridLat, NgridAlt =",3(1x,i5))') NgridLon, NgridLat, NgridAlt
+  write(logfileunit, *)'model_size = ', model_size
+  write(     *     , *)'model_size = ', model_size
+endif
 
 ! needs to set the vertical localization coordinate, too.
 call set_vertical_localization_coord(VERTISHEIGHT)   ! not sure which?
@@ -1055,6 +1065,8 @@ ParseVariables : do i = 1, MAX_STATE_VARIABLES
    maxvalstr = variable_array(num_state_table_columns*i-1)
    updatestr = variable_array(num_state_table_columns*i  )
 
+   print *, 'next line: ',    trim(varname), trim(dartstr), trim(minvalstr), trim(maxvalstr), trim(updatestr)
+
    if ( varname == ' ' .and. dartstr == ' ' ) exit ParseVariables ! Found end of list.
 
    if ( varname == ' ' .or.  dartstr == ' ' ) then
@@ -1078,6 +1090,8 @@ ParseVariables : do i = 1, MAX_STATE_VARIABLES
    clamp_vals(i,1) = string_to_real(minvalstr)
    clamp_vals(i,2) = string_to_real(maxvalstr)
    update_list( i) = string_to_logical(updatestr, 'UPDATE')
+
+print *, 'next line: ', var_names(   i), kind_list(   i), clamp_vals(i,:), update_list( i)
 
    nfields = nfields + 1
 
@@ -1284,7 +1298,7 @@ end subroutine find_lat_or_alt_bounds
 !==================================================================
 
 
-subroutine get_grid_info(NgridLon, NgridLat, NgridAlt, &
+subroutine get_grid_info(template_filename, NgridLon, NgridLat, NgridAlt, &
                 nBlocksLon, nBlocksLat, LatStart, LatEnd, LonStart)
 !------------------------------------------------------------------
 !
@@ -1292,20 +1306,18 @@ subroutine get_grid_info(NgridLon, NgridLat, NgridAlt, &
 !
 ! The file name comes from module storage ... namelist.
 
+character(len=*), intent(in) :: template_filename
 integer,  intent(out) :: NgridLon   ! Number of Longitude centers
 integer,  intent(out) :: NgridLat   ! Number of Latitude  centers
 integer,  intent(out) :: NgridAlt   ! Number of Vertical grid centers
 integer,  intent(out) :: nBlocksLon, nBlocksLat
 real(r8), intent(out) :: LatStart, LatEnd, LonStart
 
-character(len=10) :: filename = 'UAM.in'
-
 character(len=100) :: cLine  ! iCharLen_ == 100
 character(len=256) :: fileloc
+character(len=*), parameter :: routine = 'get_grid_info'
 
-integer :: i, iunit, ios
-
-if ( .not. module_initialized ) call static_init_model
+integer :: ncid
 
 ! get the ball rolling ...
 
@@ -1315,38 +1327,13 @@ LatStart   = 0.0_r8
 LatEnd     = 0.0_r8
 LonStart   = 0.0_r8
 
-write(fileloc,'(a,''/'',a)') trim(gitm_restart_dirname),trim(filename)
+ncid = nc_open_file_readonly(template_filename, routine)
 
-iunit = open_file(trim(fileloc), action='read')
+NgridLon = nc_get_dimension_size(ncid, 'lon', routine)
+NgridLat = nc_get_dimension_size(ncid, 'lat', routine)
+NgridAlt = nc_get_dimension_size(ncid, 'alt', routine)
 
-UAMREAD : do i = 1, 1000000
-
-   read(iunit,'(a)',iostat=ios) cLine
-
-   if (ios /= 0) then
-      ! If we get to the end of the file or hit a read error without
-      ! finding what we need, die.
-      write(string1,*) 'cannot find #GRID in ',trim(fileloc)
-      call error_handler(E_ERR,'get_grid_info',string1,source,revision,revdate)
-   endif
-
-   if (cLine(1:5) .ne. "#GRID") cycle UAMREAD
-
-   nBlocksLon = read_in_int( iunit,'NBlocksLon',trim(fileloc))
-   nBlocksLat = read_in_int( iunit,'NBlocksLat',trim(fileloc))
-   LatStart   = read_in_real(iunit,'LatStart',  trim(fileloc))
-   LatEnd     = read_in_real(iunit,'LatEnd',    trim(fileloc))
-   LonStart   = read_in_real(iunit,'LonStart',  trim(fileloc))
-
-   exit UAMREAD
-
-enddo UAMREAD
-
-call close_file(iunit)
-
-NgridLon = nBlocksLon * nLons
-NgridLat = nBlocksLat * nLats
-NgridAlt = nAlts
+call nc_close_file(ncid)
 
 end subroutine get_grid_info
 
@@ -1354,12 +1341,12 @@ end subroutine get_grid_info
 !==================================================================
 
 
-subroutine get_grid(dirname, nBlocksLon, nBlocksLat, &
+subroutine get_grid(template_filename, nBlocksLon, nBlocksLat, &
                   nLons, nLats, nAlts, LON, LAT, ALT )
 !------------------------------------------------------------------
-! open enough of the restart files to read in the lon, lat, alt arrays
+! get 
 !
-character(len=*), intent(in) :: dirname
+character(len=*), intent(in) :: template_filename
 integer, intent(in) :: nBlocksLon ! Number of Longitude blocks
 integer, intent(in) :: nBlocksLat ! Number of Latitude  blocks
 integer, intent(in) :: NLons      ! Number of Longitude centers per block
@@ -1367,81 +1354,26 @@ integer, intent(in) :: NLats      ! Number of Latitude  centers per block
 integer, intent(in) :: NAlts      ! Number of Vertical grid centers
 
 real(r8), dimension( : ), intent(inout) :: LON, LAT, ALT
+character(len=*), parameter :: routine = 'get_grid'
 
-integer :: ios, nb, offset, iunit, nboff
+integer :: ios, nb, offset, iunit, nboff, ncid
 character(len=256) :: filename
 real(r8), allocatable :: temp(:)
 
+! @todo FIXME the converter should strip off the ghost cells,
+! so we are assuming we can just read in the data.
+
 ! a temp array large enough to hold any of the
 ! Lon,Lat or Alt array from a block plus ghost cells
-allocate(temp(1-nGhost:max(nLons,nLats,nAlts)+nGhost))
+!allocate(temp(1-nGhost:max(nLons,nLats,nAlts)+nGhost))
 
-! get the dirname, construct the filenames inside
+ncid = nc_open_file_readonly(template_filename, routine)
 
-if (debug > 9) then
-   write(*,*)'TJH DEBUG: get_grid : size(temp)   is ',size(temp)
-   write(*,*)'TJH DEBUG: get_grid : nBlocksLon   is ',nBlocksLon
-   write(*,*)'TJH DEBUG: get_grid : nLons,nGhost is ',nLons,nGhost
-endif
+call nc_get_variable(ncid, 'Longitude', LON, routine)
+call nc_get_variable(ncid, 'Latitude',  LAT, routine)
+call nc_get_variable(ncid, 'Altitude',  ALT, routine)
 
-! go across the south-most block row picking up all longitudes
-do nb = 1, nBlocksLon
-
-   iunit = open_block_file(dirname, nb, 'read', filename)
-
-   read(iunit,iostat=ios) temp(1-nGhost:nLons+nGhost)
-   if ( ios /= 0 ) then
-      write(string1,*)'ERROR reading file ', trim(filename)
-      write(string2,*)'longitude block ',nb,' of ',nBlocksLon
-      call error_handler(E_ERR,'get_grid',string1, &
-                 source,revision,revdate,text2=string2)
-   endif
-
-   offset = (nLons * (nb - 1))
-   LON(offset+1:offset+nLons) = temp(1:nLons)
-
-   call close_file(iunit)
-enddo
-
-! go up west-most block row picking up all latitudes
-do nb = 1, nBlocksLat
-
-   nboff = ((nb - 1) * nBlocksLon) + 1
-   iunit = open_block_file(dirname, nboff, 'read', filename)
-
-   ! get past lon array and read in lats
-   read(iunit) temp(1-nGhost:nLons+nGhost)
-
-   read(iunit,iostat=ios) temp(1-nGhost:nLats+nGhost)
-   if ( ios /= 0 ) then
-      write(string1,*)'ERROR reading file ', trim(filename)
-      write(string2,*)'latitude block ',nb,' of ',nBlocksLat
-      call error_handler(E_ERR,'get_grid',string1, &
-                 source,revision,revdate,text2=string2)
-   endif
-
-   offset = (nLats * (nb - 1))
-   LAT(offset+1:offset+nLats) = temp(1:nLats)
-
-   call close_file(iunit)
-enddo
-
-! this code assumes UseTopography is false - that all columns share
-! the same altitude array, so we can read it from the first block.
-! if this is not the case, this code has to change.
-
-iunit = open_block_file(dirname, 1, 'read', filename)
-
-! get past lon and lat arrays and read in alt array
-read(iunit) temp(1-nGhost:nLons+nGhost)
-read(iunit) temp(1-nGhost:nLats+nGhost)
-read(iunit) temp(1-nGhost:nAlts+nGhost)
-
-ALT(1:nAlts) = temp(1:nAlts)
-
-call close_file(iunit)
-
-deallocate(temp)
+call nc_close_file(ncid)
 
 ! convert from radians into degrees
 LON = LON * rad2deg
@@ -2392,8 +2324,6 @@ function set_model_time_step()
 ! the static_init_model ensures that the gitm namelists are read.
 !
 type(time_type) :: set_model_time_step
-
-if ( .not. module_initialized ) call static_init_model
 
 set_model_time_step = set_time(assimilation_period_seconds, &
                                assimilation_period_days) ! (seconds, days)
