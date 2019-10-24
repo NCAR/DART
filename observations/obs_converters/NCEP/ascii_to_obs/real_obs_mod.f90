@@ -147,6 +147,7 @@ character(len=32) :: skip_reasons(num_fail_kinds) = (/ &
 
 
 integer :: obs_unit
+integer :: obs_file_len
 integer :: obs_prof, obs_kind, obs_kind_gen, which_vert, iqc, obstype, pc
 real (r8) :: obs_err, lon, lat, lev, zob, time, rcount, zob2
 real (r8) :: vloc, obs_value, aqc
@@ -154,7 +155,7 @@ real (r8) :: vloc, obs_value, aqc
 real (r8) :: bin_beg, bin_end
 
 character(len = 8 ) :: obsdate
-character(len = 80) :: obsfile, label
+character(len = 256) :: obsfile, label
 character(len = 6 ) :: subset
 logical :: pass, first_obs
 
@@ -200,6 +201,14 @@ call error_handler(E_MSG,'real_obs_sequence',msgstring1)
 ! open NCEP observation data file
 
 write(obsdate, '(i4.4,i2.2,i2.2)') year, month, day
+
+obs_file_len = len(trim(adjustl(ObsBase))) + len(obsdate) + len(hourt)
+
+if (obs_file_len > len(obsfile)) then
+   write(msgstring1,'(A,I0)') 'ObsBase string length too long: ',obs_file_len
+   call error_handler(E_ERR,'real_obs_sequence',msgstring1)
+endif
+
 obsfile  = trim(adjustl(ObsBase))//obsdate//hourt
 obs_unit = open_file(obsfile, form='formatted', action='read')
 write(msgstring1,*) 'input file opened= "'//trim(obsfile)//'"'
