@@ -67,8 +67,7 @@ ${COPY} ${SHELL_SCRIPTS_DIR}/add_bank_perts.ncl ${RUN_DIR} || exit 8
 ${COPY} ${SHELL_SCRIPTS_DIR}/new_advance_model.csh ${RUN_DIR} || exit 9
 
 # Edit input.nml.template so that its ens_size is set to the same value as $NUM_ENS in param.csh
-sed -i "s/ens_size.*/ens_size                 =$NUM_ENS,/g" ${DART_DIR}/models/wrf/tutorial/template/input.nml.template || exit 10
+sed "s/ens_size.*/ens_size                 =$NUM_ENS,/g" ${DART_DIR}/models/wrf/tutorial/template/input.nml.template > ${RUN_DIR}/input.nml || exit 10
 
 exit
-
 
