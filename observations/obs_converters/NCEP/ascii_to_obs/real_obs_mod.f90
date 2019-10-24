@@ -154,7 +154,7 @@ real (r8) :: vloc, obs_value, aqc
 real (r8) :: bin_beg, bin_end
 
 character(len = 8 ) :: obsdate
-character(len = 80) :: obsfile, label
+character(len = 256) :: obsfile, label
 character(len = 6 ) :: subset
 logical :: pass, first_obs
 
