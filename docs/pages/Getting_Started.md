@@ -1748,7 +1748,7 @@ model output at a time. External programs will advance the model states,
 generate the observations, and call DART again. The following diagram in shows
 the high-level DART flow in this case:
 
-<img src="../images/DART_flow_native_netCDF.png" width="500" alt="DART flow with netCDF files" /><br />
+<img src="../images/DART_workflow.png" width="500" alt="DART flow with netCDF files" /><br />
 
 Within a single time step, DART will use the *filter* program to run the
 "Assimilate" portion of the above diagram and/or the "diagnostics" as follows:
