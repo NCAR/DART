@@ -87,17 +87,14 @@ sparse for you or if you run into any problems, please refer to
 The DART source code is distributed on the GitHub repository
 [NCAR/DART](https://github.com/NCAR/DART)
 with the documentation served through GitHub Pages at
-[https://ncar.github.io/DART](https://ncar.github.io/DART).
+[https://dart.ucar.edu](https://dart.ucar.edu).
 
-Go to https://github.com/NCAR/DART, click "Clone or download", and click
-"Download ZIP" to download the latest release of DART; alternately, you can
-clone the DART repository. Unzip or clone in your desired location. Take note
-of the directory you installed into, which is referred to as *DARTHOME* below.
+Go to https://github.com/NCAR/DART and clone the repository or get the ZIP file
+according to your preference. Take note of the directory you installed into, 
+which is referred to as *DARTHOME* below.
 
-:exclamation: *IMPORTANT*: If you are interested in contributing to DART, when
-you are ready you will need to follow a different workflow to obtain the code in
-order to send your changes. See
-[How can I contribute to DART?](#ContributeToDart) for more information.
+:exclamation: *IMPORTANT*: If you are interested in contributing to DART, 
+see [How can I contribute to DART?](#ContributeToDart) for more information.
 
 Your `DARTHOME` directory will now contain the latest release of DART.
 
@@ -112,7 +109,7 @@ must include the F90 interfaces. In practice this means that even if you have a
 netCDF distribution on your system, you may need to recompile netCDF in a
 separate location to match the compiler you will use for DART.
 
-As an optional step, if you are interested in running *bgrid_solo*, *cam-fv*, or
+If you are interested in running *bgrid_solo*, *cam-fv*, or
 testing the *NCEP/prep_bufr* observation converter, you will need to download a
 supplemental archive file. There are several large files that are needed to run
 some of these DART tests and examples that are not included on Github in order
@@ -271,10 +268,8 @@ Minimally, you will need:
 History has shown that it is a very good idea to remove the stack and heap
 limits in your run-time environment with the following terminal commands:
 
-~~~
-limit stacksize unlimited  
-limit datasize unlimited
-~~~
+> limit stacksize unlimited  
+> limit datasize unlimited
 
 Additionally, the following tools have proven to be *nice* (but are not
 required to run DART):
@@ -322,7 +317,7 @@ DART uses the [netCDF](https://www.unidata.ucar.edu/software/netcdf/)
 self-describing data format for storing the results of assimilation experiments.
 These files have the extension *.nc* and can be read by a number of
 standard data analysis tools. In particular, DART also makes use of the
-F90 NetCDF interface which is available through the `netcdf.mod`
+F90 netCDF interface which is available through the `netcdf.mod`
 and `typesizes.mod` modules and the `libnetcdf` library. Depending on the
 version, the `libnetcdff` library is also often required.
 
@@ -338,8 +333,8 @@ instructions for building the library or installing from a package manager  may
 be found at the netCDF home page:
 <https://www.unidata.ucar.edu/software/netcdf/>
 
-:exclamation: *IMPORTANT*: the normal location for the NetCDF Fortran modules
-and libraries would be in the `include` and `lib` subdirectories of the NetCDF
+:exclamation: *IMPORTANT*: the normal location for the netCDF Fortran modules
+and libraries would be in the `include` and `lib` subdirectories of the netCDF
 installation. However, different compilers or package managers sometimes
 place the modules and/or libraries into non-standard locations. It is required
 that both modules and the libraries be present.
@@ -358,19 +353,18 @@ required to build executables.
 The DART source code is distributed on the GitHub repository
 [NCAR/DART](https://github.com/NCAR/DART)
 with the documentation served through GitHub Pages at
-[https://ncar.github.io/DART](https://ncar.github.io/DART).
+[http://dart.ucar.edu](http://dart.ucar.edu).
 
-Go to https://github.com/NCAR/DART, click "Clone or download", and click
-"Download ZIP" to download the latest release of DART. Alternately, to view
-the history of the code, you can "clone" the DART repo. Be aware that while
-the ZIP file is approximately 300 Mb, the full DART history from a clone adds
-approximately another 450 Mb. We therefore recommend that users who are not
-interested in the version control history download the ZIP file.
+Go to https://github.com/NCAR/DART and clone the repository or get the ZIP file
+according to your preference. See the 
+[github help page on cloning](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/cloning-a-repository) 
+for more information on how to clone a repository. Take note of the directory 
+you installed into,  which is referred to as *DARTHOME* below.
 
-:exclamation: *IMPORTANT*: If you are interested in contributing to DART, when
-you are ready you will need to follow a different workflow to obtain the code in
-order to send your changes. See
-[How can I contribute to DART?](#ContributeToDart) for more information.
+:exclamation: *IMPORTANT*: If you are interested in contributing to DART, 
+see [How can I contribute to DART?](#ContributeToDart) for more information.
+In short, you will need to be familiar with the 
+[GitHub workflow](https://guides.github.com/introduction/flow/).
 
 Unzip or clone the distribution in your desired directory, which we refer to as
 "DARTHOME" in this document. Compiling the code in this tree (as is usually the
@@ -538,7 +532,7 @@ seven `mkmf_xxxxxx` files for the following programs:
 | [create_fixed_network_seq](https://ncar.github.io/DART/api/v0.0.6/program/create_fixed_network_seq.html) | specify the temporal attributes of the observation sets |
 | [perfect_model_obs](https://ncar.github.io/DART/api/v0.0.6/program/perfect_model_obs.html) | spinup and generate "true state" for synthetic observation experiments |
 | [filter](https://ncar.github.io/DART/api/v0.0.6/program/filter.html) | perform data assimilation analysis |
-| [obs_diag](https://ncar.github.io/DART/api/v0.0.6/program/obs_diag.html) | creates observation-space diagnostic files to be visualized by the MATLAB® scripts. |
+| [obs_diag](https://ncar.github.io/DART/api/v0.0.6/program/obs_diag.html) | creates observation-space diagnostic files in netCDF format to support visualization and quantification. |
 | [obs_sequence_tool](https://ncar.github.io/DART/api/v0.0.6/program/obs_sequence_tool.html) | manipulates observation sequence files. This tool is not generally required (particularly for low-order models) but can be used to combine observation sequences or convert from ASCII to binary or vice-versa. Since this is a rather specialized routine, we will not cover its use further in this document. |
 
 As mentioned above, `quickbuild.csh` is a script that will build every
@@ -559,7 +553,7 @@ directory.
 :dart: *NOTE*: The most common problem is that the netCDF libraries and/or
 include files were not found in the specified location(s). The second most
 common problem is that the netCDF libraries were built with a different
-compiler than the one used for DART. Find (or compile) a compatible NetCDF
+compiler than the one used for DART. Find (or compile) a compatible netCDF
 library, edit the `DARTHOME/build_templates/mkmf.template` to point to the
 correct locations of the includes and library files, recreate the `Makefile`s,
 and try again.
@@ -580,8 +574,8 @@ more about what this "physically" means for this low-order model, and
 more in-depth view of this process.
 
 The Manhattan release uses netCDF files for the input/output file formats.
-There is a helpful tool packaged with any netCDF installation to create netCDF
-files from an ASCII representation named *ncgen*. The *lorenz_63*
+*ncgen* is a helpful tool to create netCDF files from an ASCII representation 
+and is part of any netCDF installation. The *lorenz_63*
 `quickbuild.csh` script already runs this command, but it is repeated here for
 clarity. Once the necessary netCDF input files are created from the ASCII
 `.cdl` text files, run *perfect_model_obs* to generate the "true state" and *filter* to run the data assimilation:
@@ -596,11 +590,13 @@ There should now be the following output files:
 |                     |                   |
 | :------             | :------           |
 | **from executable "perfect_model_obs"** |       |
-| `perfect_output.nc` | A netCDF file containing the model trajectory - the **truth** |
+| `perfect_output.nc` | The last timestep of the model state.                          |
+| `true_state.nc`     | The model trajectory - the **truth**. |
 | `obs_seq.out`       | The observations that were harvested as the true model was advanced (and which will be assimilated). |
 | **from executable "filter"** |      |
-| `preassim.nc`       | A netCDF file of the ensemble of model states just before assimilation. This is the **prior**.<br/> :dart: *NOTE*: this file is a time series of the prior model states at all times. |
-| `filter_output.nc`  | A netCDF file of the ensemble of model states after assimilation. This is the **posterior**.<br/> :dart: *NOTE*: this file has only the final time step of the posterior model state. |
+| `preassim.nc`       | The ensemble of model states just before assimilation. This is the **prior**.<br/> :dart: *NOTE*: this file is a time series of the prior model states at all times. |
+| `filter_output.nc`  | The ensemble of model states after assimilation. This is the **posterior**.<br/> :dart: *NOTE*: this file has only the final time step of the posterior model state. |
+| `analysis.nc`       | The model trajectory of the posterior.                    |
 | `obs_seq.final`     | The observations and ensemble estimates of the 'observations'. |
 | **from both**       |      |
 | `dart_log.out`      | The run-time log of the experiment.  This grows with each execution and may safely be deleted at any time. |
@@ -647,7 +643,7 @@ This sensitivity is of practical interest for verifying these results. The
 initial conditions files and observations sequences are provided in ASCII,
 which is portable across systems, but there may be some machine-specific
 round-off error in the conversion from ASCII to machine binary. As Lorenz 63
-is such a non-linear model, extremely small differences in the initial
+is such a nonlinear model, extremely small differences in the initial
 conditions may eventually result in noticeably different model trajectories.
 Even different compiler flags may cause tiny differences that ultimately result
 in large differences. Your results should start out looking VERY SIMILAR and
@@ -829,10 +825,13 @@ example radar returns) may be an algorithm that is quite complicated.
 In practice, observations are never 100% reliable. The observations
 themselves will have some uncertainty for example arising from instrument
 noise. The instrument noise error variances are typically published
-by the instrument manufacturer, and the observation errors are usually assumed
+by the instrument manufacturer, and these observation errors are usually assumed
 to be independent as true instrument "noise" should not be correlated in time
-or space. The potential "likelihood" of the possible values of the observation
-forms the **observational error distribution** in the above graphic.
+or space. Furthermore, since models have a finite resolution (i.e. they are "fuzzy"), 
+there is almost always an error that arises when comparing the model to the observations.
+This is called the **representativeness error**. Put together, the potential "likelihood" 
+of the possible values of the observation forms the **observational error distribution** 
+in the above graphic.
 
 Finally, note that in real-world applications there are typically many fewer
 observations than state variables, i.e. *m* is typically **much much less** than
@@ -899,7 +898,7 @@ approximation, the Lorenz model was derived for a single thin layer of fluid
 uniformly heated from below and cooled from above. The [original paper](https://journals.ametsoc.org/doi/pdf/10.1175/1520-0469%281963%29020%3C0130%3ADNF%3E2.0.CO%3B2)
 (Lorenz, E. N. 1963. Deterministic nonperiodic flow. *J. Atmos.
 Sci.* **20**, 130-141.) has been cited over 20,000 times.
-The relatively simple &mdash; yet non-linear &mdash; system of ordinary
+The relatively simple &mdash; yet nonlinear &mdash; system of ordinary
 differential equations (ODEs) is:
 
 ~~~
@@ -913,7 +912,7 @@ Here, `X` is proportional to the rate of convection, `Y` is related to the
 horizontal temperature variation, and `Z` is the vertical temperature
 variation. There are three constant parameters: `sigma` relates to the Prandtl
 number, `r` to the Rayleigh number, and `b` to the physical dimensions of the
-layer. Note that `Y'` and `Z'` each have a non-linear term (`-XZ` and `XY`,
+layer. Note that `Y'` and `Z'` each have a nonlinear term (`-XZ` and `XY`,
 respectively).
 
 The numerical investigation of the **chaos** arising from this system of ODEs
@@ -952,7 +951,7 @@ could cause the entire large-scale behavior to change. Lorenz's discovery has
 many important practical implications:
 
 1. If tiny changes can grow to dominate a system, it is no longer possible to find the one set of "perfect" initial conditions and hope to allow the system to run forever with perfect forecasts. Instead, forecasting chaotic systems must be approached **statistically**.
-2. There is a practical limit of predictability inherent in chaotic systems. In other words, the non-linear dynamics of a chaotic model are inherently difficult to predict. Multiple evaluations (an **ensemble**) can be run with different plausible initial conditions to quantify this error growth.
+2. There is a practical limit of predictability inherent in chaotic systems. In other words, the nonlinear dynamics of a chaotic model are inherently difficult to predict. Multiple evaluations (an **ensemble**) can be run with different plausible initial conditions to quantify this error growth.
 3. In order to forecast chaotic systems effectively, periodic observations of the state are required to effectively guide the forecast and narrow the uncertainty. Since in real-world applications observations are almost always sparse compared to the number of state variables, merging observations and forecasts (i.e. **data assimilation**) is required to effectively forecast chaotic systems.
 
 While Lorenz 63 is a simple example of a chaotic system, there are many other
@@ -1089,10 +1088,10 @@ correspond to a dimensional timestep of 360 seconds (6 minutes). This smaller
 time-step will lead to a smoother model trajectory.
 2. Keep the original ratio of time steps to observations included in the
 DART repository of assimilating observations every six time steps, meaning we
-will now have observations every 36 minutes.
+now need observations every 36 minutes.
 
-In order to conduct our new experiment, we will need to regenerate the DART
-observations files.
+Therefore, in order to conduct our new experiment, we will need to regenerate 
+the DART observation sequence files.
 
 To change the time-step, change the `input.nml` file in `DARTHOME/models/lorenz_63/work` to the following:
 
@@ -1113,29 +1112,39 @@ To change the time-step, change the `input.nml` file in `DARTHOME/models/lorenz_
 namelist files is to pass run-time parameters to a Fortran program without
 recompilation.
 
-#### Updating the observation sequence (single copy)
+#### Updating the observation sequence
 
 Let's now regenerate the DART observation files with the updated timestep and
 observation ratio. In a typical large-scale application, the user will provide
 observations to DART in a standardized format called the *Observation Sequence*
-file. However, for the low-order models such as Lorenz 63, included with DART
-are helpful interactive programs to generate these observation sequence files
-for typical research or education-oriented experiments. In such setups,
-observations (with noise added) will be generated at regular intervals from a
-model "truth". This "truth" will only be available to the experiment through
-the noisy observations but can later be used for comparison purposes. The
-number of steps necessary for the ensemble members to reach the true model
-state's "attractor" can be investigated and, for example, compared between
-different DA methods. This is an example of an "OSSE" &mdash; see
+file. Since there are no real observations of the Lorenz 63 system, we must create 
+our own synthetic observations - which may be done using *create_obs_sequence*, 
+*create_fixed_network_seq*, and *perfect_model_obs* programs; each of which we 
+will explain below. These helpful interactive programs are included with DART
+to generate these observation sequence files for typical research or 
+education-oriented experiments. In such setups, observations (with noise added) 
+will be generated at regular intervals from a model "truth". This "truth" will only 
+be available to the experiment through the noisy observations but can later be used 
+for comparison purposes. The number of steps necessary for the ensemble members to 
+reach the true model state's "attractor" can be investigated and, for example, 
+compared between different DA methods. This is an example of an "OSSE" &mdash; see
 [High-level DA workflows in DART](#dartWorkflow) for more information.
 
-Let's now run the DART program `create_obs_sequence` to create a single
-observation that we will later replicate in time:
+The three programs used in this example to create an observation sequence
+again are *create_obs_sequence*, *create_fixed_network_seq*, and *perfect_model_obs*.
+*create_obs_sequence* creates a template for the observations,
+*create_fixed_network_seq* repeats that template at multiple times,
+and finally *perfect_model_obs* harvests the observation values.
+These programs have many additional capabilities; if interested, see
+the corresponding program's documentation.
 
-> cd DARTHOME/models/lorenz_63/work  
+Let's now run the DART program *create_obs_sequence* to create the
+observation template that we will later replicate in time:
+
+> \# Make sure you are in the DARTHOME/models/lorenz_63/work directory
 > ./create_obs_sequence  
 
-The program `create_obs_sequence` will ask for the number of observations.
+The program *create_obs_sequence* will ask for the number of observations.
 Since we plan to have 3 observations at each time step (one for each of the
 state variables), input **3**:
 
@@ -1227,7 +1236,7 @@ input. The interactive program  `create_fixed_network_seq` is a helper tool
 that can be used to generate a DART observation sequence file made of a set of
 regularly repeating observations.
 
-> cd DARTHOME/models/lorenz_63/work  
+> \# Make sure you are in the DARTHOME/models/lorenz_63/work directory
 > ./create_fixed_network_seq  
 
 We want to use the default `set_def.out` file, so press return. We also want a
@@ -1312,7 +1321,7 @@ and generate the observations as well as create the "perfect" model trajectory.
 the observations. Once noise is added (to represent observational uncertainty),
 the output is written to `obs_seq.out`.
 
-> cd DARTHOME/models/lorenz_63/work  
+> \# Make sure you are in the DARTHOME/models/lorenz_63/work directory  
 > ./perfect_model_obs  
 
 The output should look like the following:
@@ -1366,10 +1375,10 @@ write_obs_seq  opening formatted observation sequence file "obs_seq.out"
 write_obs_seq  closed observation sequence file "obs_seq.out"
 ~~~
 
-You can now see the files `true_state.nc`, a NetCDF file which has the perfect
+You can now see the files `true_state.nc`, a netCDF file which has the perfect
 model state at all 2000 observation times; `obs_seq.out`, an ASCII file which
 contains the 6000 observations (2000 times with 3 observations each) of the
-true model state with noise added in; and `perfect_output.nc`, a NetCDF file
+true model state with noise added in; and `perfect_output.nc`, a netCDF file
 with the final true state that could be used to "restart" the experiment from
 the final time (49.75 days in this case).
 
@@ -1392,7 +1401,7 @@ use the ensemble to estimate the prior distribution, compare to the "expected"
 observation of each member, and update the model state according to Bayes'
 rule.
 
-> cd DARTHOME/models/lorenz_63/work  
+> \# Make sure you are in the DARTHOME/models/lorenz_63/work directory 
 > ./filter  
 
 ~~~
@@ -1633,7 +1642,7 @@ following sequence:
 | Jamaica          | 12 Apr 2007 | Vertical localization, extensive MPI testing, <a href="https://www.image.ucar.edu/DAReS/DART/Lanai/doc/html/history/Jamaica_diffs_from_I.html">more</a> |
 | Kodiak           | 30 Jun 2011 | New obs types, new diagnostics, new utilities, much <a href="https://www.image.ucar.edu/DAReS/DART/Lanai/doc/html/history/Kodiak_release.html#CurrentUsers">more</a> |
 | Lanai            | 13 Dec 2013 | Support for many new models, chemistry/aerosol types, new diagnostics, new utilities, much <a href="https://www.image.ucar.edu/DAReS/DART/Lanai/doc/html/Lanai_release.html#CurrentUsers">more</a> |
-| Manhattan        | 15 May 2017 | Native NetCDF support, better scaling/performance, much <a href="https://www.image.ucar.edu/DAReS/DART/Manhattan/documentation/index.html#Updates">more</a> |
+| Manhattan        | 15 May 2017 | Native netCDF support, better scaling/performance, much <a href="https://www.image.ucar.edu/DAReS/DART/Manhattan/documentation/index.html#Updates">more</a> |
 
 In September 2009, DART was featured on the cover of the Bulletin of the
 American Meteorological Society:
@@ -1681,27 +1690,6 @@ The filtering aspect is the same for both OSSE and OSE experiments, and many of
 the same tools for data assimilation are available in OSSE and OSE modes. The
 core difference, therefore, is the existence of the perfect model "truth."
 
-In addition to (but largely independent from) the question of OSSE vs. OSE, how
-the ensemble data is stored may be different in high-order models versus
-low-order models. For low-order models, the state for all ensemble members
-(and potentially at all time steps) can be combined in a **single NetCDF file**
-for each of initialization, prior, forecast, and posterior analysis. For high-
-order models, the process needs to be broken into pieces, as a single ensemble
-member may take up 100s of Mb of disk space, and it is therefore
-inefficient to combine all of the very large NetCDF files together. Instead,
-each ensemble member is stored in a **separate file**. The forecast,
-pre-assimilation, post-assimilation, and final analysis ensemble members are
-each stored in their own file by default.
-
-:dart: *NOTE*: for either the single file or separate files case, the
-"preassim" files will be the same as the "forecast" if prior inflation is not
-used, and the "postassim" will be the same as the "analysis" if posterior
-inflation is not used. The *stages_to_write* variable in the "&filter_nml"
-section of the `input.nml` namelist controls which stages are output to file.
-For a multi-file case, the potential *stages_to_write* are "input, forecast,
-preassim, postassim, analysis, output" while for a single file the same stages
-are available with the exception of "input."
-
 For a simple model such as Lorenz 63 investigated above, DART can typically
 advance the model time explicitly through a Fortran function call, allowing the
 filtering to compute all necessary time steps in sequence without exiting the
@@ -1713,12 +1701,17 @@ complex case, DART only considers one step at a time in order to combine the
 observations and the prior ensemble to find the posterior analysis, which
 will then be used to restart the model and continue the forecast.
 
+For efficiency reasons, data from models with large states may be written in 
+separate files for every ensemble member at every stage of the assimilation 
+process. Data from models with small states may be conveniently be written as
+variables inside a single netCDF file.
+
 #### Simple model workflow with an OSSE
 
-The first workflow is for a simple model with all ensemble members stored in a
-single file running an OSSE:
+The first example DA workflow is for a model that can be advanced by DART 
+with all ensemble members stored in a single file running an OSSE:
 
-<img src="../images/simple_model_workflow.jpg" width="500" alt="OSSE workflow with combined files" /><br />
+<img src="../images/simple_model_workflow.jpg" width="500" alt="OSSE workflow with all members in one file" /><br />
 
 As shown, the program *preprocess* takes the `input.nml` namelist file and
 generates Fortran code for the observations. This code, along with the namelist,
@@ -1732,9 +1725,9 @@ of observations), while `perfect_input.nc` provides the initial state that
 will be used to advance the model. On output, the "perfect" model state at
 the final time, which can be used as a restart for running this procedure again,
 will be written to `perfect_output.nc` (i.e. `perfect_output.nc` could be
-renamed to `perfect_input.nc` to run the OSSE again), while the entire state
-trajectory will be stored in `true_state.nc`. The observations, now with
-concrete values and with added noise will be stored in `obs_seq.out`. The
+renamed to `perfect_input.nc` to extend the OSSE), while the entire state
+trajectory will be stored in `true_state.nc`. The noisy synthetic observations
+and noise-free truth (for verification only) will be stored in `obs_seq.out`. The
 observation values of `obs_seq.out` will be input to *filter* along with the
 `filter_input.nc` (generated by `filter_input.cdl` via *ncgen*), which contains
 the initial state for all the ensemble members. The output of *filter* is
@@ -1745,8 +1738,7 @@ just before applying DA (so including prior inflation if it is being used);
 the OSSE process; and `obs_seq.final`, which adds the forward-calculated
 expected values *h*(**x**) for each observation. The `obs_seq.final` file can
 be analyzed and binned by the *obs_diag* program, producing the file
-`obs_diag_output.nc` which can be used as input to the Matlab DART diagnostic
-files.
+`obs_diag_output.nc` which can be used for diagnostics.
 
 #### Complex model workflow with an OSE
 
@@ -1756,17 +1748,16 @@ model output at a time. External programs will advance the model states,
 generate the observations, and call DART again. The following diagram in shows
 the high-level DART flow in this case:
 
-<img src="../images/DART_flow_native_netCDF.png" width="500" alt="DART flow with NetCDF files" /><br />
+<img src="../images/DART_flow_native_netCDF.png" width="500" alt="DART flow with netCDF files" /><br />
 
 Within a single time step, DART will use the *filter* program to run the
-"Assimilate" portion of the above diagram or the *obs_diag* program for
-the "diagnostics" as follows:
+"Assimilate" portion of the above diagram and/or the "diagnostics" as follows:
 
 <img src="../images/complex_model_workflow.jpg" width="500" alt="OSE workflow with separate files" /><br />
 
 The single time-step workflow for an OSE experiment within a single step is
 slightly simpler than the OSSE equivalent as DART handles less of the process.
-Like the OSSE case, the namelist and *preprocess* observation source files are
+Like the OSSE case, the namelist and preprocessed observation source files are
 input to all other DART programs. In the OSE case, however, the user must
 provide an **obs converter** that will output a `obs_seq.out` file. There are
 many DART utilities to make this process easier, but for the OSE case the
@@ -1781,10 +1772,9 @@ files can be controlled by the user through the `filter_input_list.txt` and
 `filter_output_list.txt` files, which can contain the user-specified list of
 the ensemble input or output files, respectively.
 
-Another view of the filtering process with respect to time (the *diagnostics
-cycle*) is shown in the following diagram:
+Another view of the stages of filter is shown in the following diagram:
 
-<img src="../images/diag_cycle.png" width="500" alt="Diagnostics " /><br />
+<img src="../images/diag_cycle.png" width="500" alt="Filter stages" /><br />
 
 As shown here, an ensemble forecast is stored in `forecast.nc` ,
 to which prior inflation can be applied and stored in `preassim.nc`. Once
@@ -1792,6 +1782,15 @@ assimilation is applied, the output can be stored in `postassim.nc`, and
 finally if posterior inflation is applied, the final analysis can be written in
 `analysis.nc` . The model forecast will start from the analysis to advance the
 model in order to start the cycle over again.
+
+:dart: *NOTE*: the "forecast" will be the same as the "preassim" 
+if prior inflation is not used, and the "postassim" will be the same 
+as the "analysis" if posterior inflation is not used. 
+The *stages_to_write* variable in the "&filter_nml"
+section of the `input.nml` namelist controls which stages are output to file.
+For a multi-file case, the potential *stages_to_write* are "input, forecast,
+preassim, postassim, analysis, output" while for a single file the same stages
+are available with the exception of "input."
 
 :dart: *NOTE*: in the above cycling diagram, there will actually be one file per
 member, which is not shown here in order to simplify the process.
@@ -1903,12 +1902,12 @@ models supported by DART include:
 | NAAPS            |  Lanai         | AM2              |  Lanai         |
 | CAM-SE           |  Lanai         | CLM              |  Lanai         |
 | COAMPS           |  Lanai         | COSMO            |  Lanai         |
-| dynamo           |  Lanai         | gitm             |  Lanai         |
-| ikeda            |  Lanai         | jules            |  Lanai         |
-| mpas_ocean       |  Lanai         | null_model       |  Lanai         |
-| openggcm         |  Lanai         | parflow          |  Lanai         |
-| sqg              |  Lanai         | tiegcm           |  Lanai         |
-| wrf-chem         |  Lanai         | ECHAM            |  Prior to Lanai|
+| Dynamo           |  Lanai         | GITM             |  Lanai         |
+| Ikeda            |  Lanai         | JULES            |  Lanai         |
+| MPAS_ocean       |  Lanai         | null_model       |  Lanai         |
+| openggcm         |  Lanai         | PARFLOW          |  Lanai         |
+| sqg              |  Lanai         | TIE-GCM          |  Lanai         |
+| WRF-CHEM         |  Lanai         | ECHAM            |  Prior to Lanai|
 | PBL_1d           |  Prior to Lanai| MITgcm_annulus   |  Prior to Lanai|
 | forced_barot     |  Prior to Lanai| pe2lyr           |  Prior to Lanai|
 | ROSE             |  Prior to Lanai| CABLE            |  Prior to Lanai|
@@ -1923,7 +1922,8 @@ as the availablity of resources on the DART team.
 
 #### Observation converters provided by DART
 
-Any and all observations, in theory, can be assimilated by DART through the
+Given a way to compute the expected observation value from the model
+state, in theory any and all observations can be assimilated by DART through the
 `obs_seq.out` file. In practice this means a user-defined observation converter
 is required. DART provides many observation converters to make this process
 easier for the user. Under the directory `DARTHOME/observations/obs_converters`
@@ -1933,26 +1933,26 @@ converter. The list of these directories is as follows:
 | Observation                                       | Directory      | Format  |
 | :-------                                          | :----------    | :------ |
 | [Atmospheric Infrared Sounder](https://airs.jpl.nasa.gov/) satellite retrievals | AIRS           | HDF-EOS |
-| [Aviso](https://www.aviso.altimetry.fr/en/home.html): satellite derived sea surface height       | Aviso          | NetCDF  |
+| [Aviso](https://www.aviso.altimetry.fr/en/home.html): satellite derived sea surface height       | Aviso          | netCDF  |
 | Level 4 Flux Tower data from [AmeriFlux](http://ameriflux.lbl.gov)  | Ameriflux      | Comma-separated text |
 | Level 2 soil moisture from [COSMOS](http://cosmos.hwr.arizona.edu/)  | COSMOS      | Fixed-width text   |
-| Doppler wind lidar | DWL      | Text-file |
-| GPS retrievals of precipitable water | GPSPW      | NetCDF |
+| Doppler wind lidar | DWL      | ASCII text |
+| GPS retrievals of precipitable water | GPSPW      | netCDF |
 | GSI observation file | GSI2DART      | Fortran binary |
-| Global Temperature-Salinity Profile Program ([GTSPP](http://www.nodc.noaa.gov/GTSPP/index.html)) | GTSPP      | NetCDF |
-| Meteorological Assimilation Data Ingest System ([MADIS](http://madis.noaa.gov/)) | MADIS      | NetCDF |
-| [MIDAS](https://www.sciencedirect.com/science/article/pii/S0273117712001135) ionospheric obs | MIDAS      | NetCDF |
+| Global Temperature-Salinity Profile Program ([GTSPP](http://www.nodc.noaa.gov/GTSPP/index.html)) | GTSPP      | netCDF |
+| Meteorological Assimilation Data Ingest System ([MADIS](http://madis.noaa.gov/)) | MADIS      | netCDF |
+| [MIDAS](https://www.sciencedirect.com/science/article/pii/S0273117712001135) ionospheric obs | MIDAS      | netCDF |
 | [MODIS](https://modis.gsfc.nasa.gov/) satellite retrievals | MODIS      |  Comma-separated text  |
 | [NCEP PREPBUFR](https://www.emc.ncep.noaa.gov/mmb/data_processing/prepbufr.doc/document.htm) | NCEP/prep_bufr | PREPBUFR |
 | NCEP ASCII observations | NCEP/ascii_to_obs | NCEP text files |
-| [ROMS](https://www.myroms.org/) verification observations | ROMS | NetCDF |
-| Satellite winds from [SSEC](https://www.ssec.wisc.edu/data/) | SSEC | Generic text |
-| Sea surface temperature | SST | NetCDF |
-| Special Sensor Ultraviolet Spectrographic Imager ([SSUSI](https://ssusi.jhuapl.edu/)) retrievals | SSUSI | NetCDF |
+| [ROMS](https://www.myroms.org/) verification observations | ROMS | netCDF |
+| Satellite winds from [SSEC](https://www.ssec.wisc.edu/data/) | SSEC | ASCII text |
+| Sea surface temperature | SST | netCDF |
+| Special Sensor Ultraviolet Spectrographic Imager ([SSUSI](https://ssusi.jhuapl.edu/)) retrievals | SSUSI | netCDF |
 | World Ocean Database ([WOD](http://www.nodc.noaa.gov/OC5/WOD09/pr_wod09.html)) | WOD | World Ocean Database packed ASCII |
 | [National Snow and Ice Data Center](http://nsidc.org/) sea ice obs | cice | Binary sea ice |
-| VTEC [Madrigal](http://millstonehill.haystack.mit.edu/) upper atmospheric obs | gnd_gps_vtec | Generic text |
-| GPS obs from [COSMIC](http://www.cosmic.ucar.edu) | gps | NetCDF |
+| VTEC [Madrigal](http://millstonehill.haystack.mit.edu/) upper atmospheric obs | gnd_gps_vtec | ASCII text |
+| GPS obs from [COSMIC](http://www.cosmic.ucar.edu) | gps | netCDF |
 | Oklahoma [Mesonet](http://www.mesonet.org/) MDF obs | ok_mesonet | Oklahoma Mesonet MDF files |
 | [QuikSCAT](http://winds.jpl.nasa.gov/missions/quikscat/index.cfm) scatterometer winds | quikscat | HDF 4 |
 | Radar reflectivity/radial velocity obs | Radar |  WSR-88D (NEXRAD) |
@@ -2000,17 +2000,18 @@ their type number (set by *inf_flavor* in `input.nml` under the "filter_nml" sec
 
 DART also offers the ability to correct for sampling errors. DART's
 localization and sampling error correction algorithm is described in
-**Anderson, J.L.**, 2012. Localization and Sampling Error Correction in
-Ensemble Kalman Filter Data Assimilation. *Monthly Weather Review*, 140,
-2359–2371. https://doi.org/10.1175/MWR-D-11-00013.1 This behavior
-can be turned on or off via the *sampling_error_correction* in `input.nml` under the "assim_tools_nml" section. The following covariance localization options are available (set by *select_localization* in
+> > **Anderson, J.L.**, 2012. Localization and Sampling Error Correction in 
+Ensemble Kalman Filter Data Assimilation. *Monthly Weather Review*, 140, 
+2359–2371. https://doi.org/10.1175/MWR-D-11-00013.1 
+
+This behavior can be turned on or off via the *sampling_error_correction* in `input.nml` under the "assim_tools_nml" section. The following covariance localization options are available (set by *select_localization* in
 `input.nml` under the "cov_cutoff_nml" section):
 
 | Loc #    | Localization type                 | References  |
 | :------- | :----------                       | :---------- |
 |        1 | Gaspari-Cohn eq. 4.10             | **Gaspari, G. and Cohn, S. E.**, 1999. Construction of correlation functions in two and three dimensions. *Quarterly Journal of the Royal Meteorological Society*, 125, 723-757. https://doi.org/10.1002/qj.49712555417 |
-|        2 | Box-car                           | None |
-|        3 | Ramped box-car                    | None |
+|        2 | Boxcar                           | None |
+|        3 | Ramped boxcar                    | None |
 
 The following image depicts all three of these options:
 <img src="../images/cutoff_fig.png" width="500" alt="localization">
@@ -2024,7 +2025,9 @@ has a doi number, as: The Data Assimilation Research Testbed (Version X.Y.Z) [So
 
 :exclamation: *IMPORTANT*: Update the DART version and year as appropriate.
 
-The seminal reference for DART is: **Anderson, J. L., T. Hoar, K. Raeder, H. Liu, N. Collins, R. Torn and A. Arellano**, 2009. The Data Assimilation Research Testbed: A Community Facility. *Bulletin of the American Meteorological Society*, 90, 1283-1296, https://doi.org/10.1175/2009BAMS2618.1
+The seminal reference for DART is: 
+
+> > **Anderson, J. L., T. Hoar, K. Raeder, H. Liu, N. Collins, R. Torn and A. Arellano**, 2009. The Data Assimilation Research Testbed: A Community Facility. *Bulletin of the American Meteorological Society*, 90, 1283-1296, https://doi.org/10.1175/2009BAMS2618.1
 
 You should also consider citing the algorithm(s) you are using. The citations
 for algorithms are available in
@@ -2038,7 +2041,7 @@ for algorithms are available in
 
 \[[top](#top)\]
 
-In this section, we describe how to add a model to DART. At a high-level, this
+In this section, we describe how to add a model to DART. Essentially, this
 comes down to implementing a list of required subroutines or using the default
 behaviors if appropriate. To cycle more complex models, additional scripting
 may be required, especially if the model is run on a supercomputing queueing
@@ -2092,9 +2095,9 @@ for a model that is advanced externally from DART.
 | 7. **adv_1step()**  | If possible, *advance the model* state from one time to another. Complex models will be unable to implement this method and should fail. | `default_model_mod` / `models/utilities` | Call the error handler with the message "unable to advance model". |
 | 8. **shortest_time_ between_assimilations()**  | Return a namelist or a fixed value for the *minimum model advance time* between assimilations. Note that complex models will handle advancing the time externally. | `default_model_mod` / `models/utilities` | Returns a time period of 1 day. |
 | 9. **model_interpolate()**  | *Interpolate* a requested quantity to the given location to get an array of expected values for all ensemble members. <br/>*NOTE*: this is often the most time consuming method to implement. | `default_model_mod` / `models/utilities` | Fail and set the expected observation to "missing." |
-| 10. **nc_write_ model_atts()**  | Add any *additional information* to the NetCDF output diagnostic files. *NOTE*: the state will already be output by other routines, so this method should not create or write the state variables. | `default_model_mod` / `models/utilities` | Does nothing. |
-| 11. **read_model_time()**	     | *Read* the model time from a state vector NetCDF file. | `dart_time_io` / `assimilation_code/io/utilities` | Attempt to read the "time" variable from a state file in an intelligent way. |
-| 12. **write_model_time()**	  | *Write* the model time to a state vector NetCDF file. | `dart_time_io` / `assimilation_code/io/utilities` | Write the "time" variable from the file according to the DART calendar. |
+| 10. **nc_write_ model_atts()**  | Add any *additional information* to the netCDF output diagnostic files. *NOTE*: the state will already be output by other routines, so this method should not create or write the state variables. | `default_model_mod` / `models/utilities` | Does nothing. |
+| 11. **read_model_time()**	     | *Read* the model time from a state vector netCDF file. | `dart_time_io` / `assimilation_code/io/utilities` | Attempt to read the "time" variable from a state file in an intelligent way. |
+| 12. **write_model_time()**	  | *Write* the model time to a state vector netCDF file. | `dart_time_io` / `assimilation_code/io/utilities` | Write the "time" variable from the file according to the DART calendar. |
 | 13. **pert_model_copies()**	  | *Perturb* a state vector in order to create an ensemble. | `default_model_mod` / `models/utilities` | Add Gaussian noise with a specified amplitude to all parts of the state vector. |
 | 14. **convert_ vertical_obs()** | Some 3D models have multiple vertical coordinates (e.g. pressure, height, or model level); this method *converts observations* between different vertical coordinate systems. | `location_mod/` `assimilation_code/` `location/XXX` | Do no conversion. <br/>*NOTE*: the particular sub-directory of `location` to use is set in `path_names_<program>` for each DART program. |
 | 15. **convert_ vertical_state()** | Some 3D models have multiple vertical coordinates (e.g. pressure, height, or model level); this method *converts state* between different vertical coordinate systems. | `location_mod/` `assimilation_code/` `location/XXX` | Do no conversion. <br/>*NOTE*: the particular sub-directory of `location` to use is set in `path_names_<program>` for each DART program. |
@@ -2127,7 +2130,7 @@ example, "concentration", "wind", etc. as in the
 
 | Routine # / name | Suggested implementation  |
 | :----------    | :------------------------------   |
-| 4.	**static_init_ model()**	| Read from the namelist the number of fields to be used in the state vector. Use **add_domain()** to indicate which NetCDF vars should be read. Read in any auxiliary data needed by interpolation code (for example, the grid topology). Cache the grid locations of the state variables as appropriate, and use **get_domain_size()** to compute the model_size. |
+| 4.	**static_init_ model()**	| Read from the namelist the number of fields to be used in the state vector. Use **add_domain()** to indicate which netCDF vars should be read. Read in any auxiliary data needed by interpolation code (for example, the grid topology). Cache the grid locations of the state variables as appropriate, and use **get_domain_size()** to compute the model_size. |
 | 5. **get_state_ meta_data()**	| Call **get_model_variable_indices()** and **get_state_kind()** to figure out the (*i*,*j*,*k*) indices and which variable this offset is. Use the (*i*,*j*,*k*) index to compute the grid location and return it along with the quantity. |
 
 Now, for either type of simple model, the following applies:
@@ -2176,10 +2179,10 @@ For the remaining routines, we give the following implementation suggestions:
 
 | Routine # / name | Suggested implementation  |
 | :----------    | :------------------------------   |
-| 9. **model_ interpolate()** | Find the (*i*,*j*,*k*) indices which enclose that location, or search for the cell number. For some models you can compute (*i*,*j*) directly from a regular lat/lon grid, and in others you may have to search over a deformed grid. Any model code or utilities available for this purpose may prove very helpful as a starting point. If there are multiple vertical options (for example pressure, height, sigma levels, etc.), computation with different ensemble members may result in different vertical levels, so choose carefully and consistently. In the end, you will use **get_state()** to retrieve an ensemble-sized array of values for each offset into the state vector, and then do interpolation to get an array of expected values. |
+| 9. **model_ interpolate()** | Find the (*i*,*j*,*k*) indices which enclose that location, or search for the cell number. For some models you can compute (*i*,*j*) directly from a regular lat/lon grid, and in others you may have to search over a deformed grid. Any model code or utilities available for this purpose may prove very helpful as a starting point. In the end, you will use **get_state()** to retrieve an ensemble-sized array of values for each offset into the state vector, and then do interpolation to get an array of expected values. |
 | 10. **nc_write_ model_atts()** | It is very helpful (but optional) to add grid information to assist in plotting your results. |
 | 11.	**read_model_ time()**	  | (see **write_model_time()** below) |
-| 12.	**write_model_ time()**	| If the model time is stored in the NetCDF files, supply routines that can read and write it in the correct format. The default routines will work if the model time matches what those routines expect: a time variable with an optional calendar variable. If no calendar is provided, the routine assumes fractional days. If the time variable is an array (i.e. more than one time step is stored in the file), read/write the last one. |
+| 12.	**write_model_ time()**	| If the model time is stored in the netCDF files, supply routines that can read and write it in the correct format. The default routines will work if the model time matches what those routines expect: a time variable with an optional calendar variable. If no calendar is provided, the routine assumes fractional days. If the time variable is an array (i.e. more than one time step is stored in the file), read/write the last one. |
 | 13. **pert_model_ copies()**	  | The default of adding Gaussian noise to all state variables may be undesirable. Complex models often have a method to perturb a state according to a particular formula or method. Otherwise, it may be necessary to perturb each variable with separate noise levels, only perturb certain variables, etc. |
 | 14. **convert_ vertical_obs()** | (see **convert_vertical_state()** below)|
 | 15. **convert_ vertical_state()** | Add code to convert between vertical coordinates (e.g. pressure, height, sigma levels, etc.) if appropriate. Code from the model or a model utility may be a very helpful starting point. |
@@ -2299,8 +2302,9 @@ second column is the generic quantity and must match the list of known
 quantities in `obs_kind_mod.f90`. The first and second column often match, but
 as shown in the last line this need not be the case. The third column must be
 the keyword COMMON_CODE which tells the preprocess program to automatically
-generate all necessary interface code for this type.
-
+generate all necessary interface code for this type. COMMON_CODE also implicitly 
+means the "model_interpolate()" routine is used as the forward operator.
+ 
 :dart: *NOTE*: to add a new quantity, the
 `DARTHOME/assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90` file
 must be edited to include a unique integer identifier for the quantity.
@@ -2332,9 +2336,14 @@ example, here is a real list without "COMMON_CODE" in the third column:
 :dart: *NOTE*: the difference between the simple obs_def case is the lack of
 COMMON_CODE in the third column.
 
-In this case, DART needs additional information for how to process these types.
-This will include code sections delimited by precisely formatted comments, and
-possibly module code sections. This code will be combined by *preprocess* to
+:dart: *NOTE*: if interested, you can reference the `obs_def_wind_speed_mod.f90` 
+"get_expected_wind_speed()" function for an example of a non-COMMON_CODE 
+observation type. The operator is in the `DARTHOME/observations/forward_operators` 
+directory.
+
+In the non-COMMON_CODE case, DART needs additional information for how to process 
+the observation type. This will include code sections delimited by precisely formatted 
+comments, and possibly module code sections. This code will be combined by *preprocess* to
 make a single observation definition file with only the desired observations.
 There are six such locations within `obs_def_XXX.f90` where a new forward
 operator should make changes to meet the interface of obs_def.
@@ -2606,8 +2615,8 @@ end module obs_def_1d_state_mod
 ~~~
 
 See the `obs_def_1d_state_mod.f90` documentation for more details and examples
-of each section. Also see `obs_def_wind_speed_mod.f90` for an example of a 3D
-geophysical forward operator. Both operators are in the
+of each section. Also see `obs_def_wind_speed_mod.f90` "get_expected_wind_speed()" 
+for an example of a 3D geophysical forward operator. Both operators are in the
 `DARTHOME/observations/forward_operators` directory.
 
 <span id="obsSeqFile" class="anchor"></span> [](#obsSeqFile)
@@ -2632,7 +2641,7 @@ automatically.
 
 For new obs converters, once you find what format the data is distributed in
 you may be able to adapt one of the existing converters here for your own use.
-Formats read by the existing converters include NetCDF, HDF, LITTLE_R, text,
+Formats read by the existing converters include netCDF, HDF, LITTLE_R, text,
 PREPBUFR, and many others. The section
 [Observation converters provided by DART](#obsConverters) lists the converters
 that are already available for DART and the formats of the files. The directory
@@ -2650,7 +2659,7 @@ recommendations:
 | :----------    | :---------                    |
 | netCDF         | Start with the MADIS converters, and in particular try the `convert_madis_profiler.f90` file because it is the most straightforward. Another good option is `SST/oi_sst_to_obs.f90`. |
 | Comma separated text | Start with the Ameriflux converter. |
-| Generic text   | Start with the text converter. |
+| ASCII text     | Start with the text converter. |
 | HDF-EOS        | Start with the AIRS converter. |
 | BUFR or prepBUFR | Start with the NCEP converter. |
 | Dense data, like Satellite swaths | Start with the tpw converter, which includes code that averages the raw data in space and time. |
@@ -2724,7 +2733,7 @@ addressed appropriately by the DART development team.
 ### What if I want my work to remain private until I publish?
 
 Some DART users want to work on a private branch until their work is ready 
-for public viewing.. To accommodate users with these concerns, we describe here an
+for public viewing. To accommodate users with these concerns, we describe here an
 additional step to temporarily "hide" sensitive code that is intended to be
 eventually contributed to DART after publication.
 
