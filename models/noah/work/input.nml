@@ -14,7 +14,8 @@
    lsm_variables = 'SOIL_T',   'QTY_SOIL_TEMPERATURE',   '0.0',  'NA', 'UPDATE',
                    'SMC',      'QTY_SOIL_MOISTURE',      '0.0', '1.0', 'UPDATE',
                    'WA',       'QTY_AQUIFER_WATER',      '0.0',  'NA', 'UPDATE',
-                   'SNEQV',    'QTY_SNOW_WATER',         '0.0',  'NA', 'UPDATE' 
+                   'SNEQV',    'QTY_SNOW_WATER',         '0.0',  'NA', 'UPDATE',
+                   'FSNO',     'QTY_SNOWCOVER_FRAC',     '0.0', '1.0', 'UPDATE' 
   /
 
 
@@ -42,7 +43,7 @@
    trace_execution            = .true.
    output_timestamps          = .false.
    print_every_nth_obs        = -1
-   output_forward_op_errors   = .true.
+   output_forward_op_errors   = .false.
    silence                    = .false.
   /
 

@@ -102,11 +102,11 @@ set DO_THESE_MODELS = ( \
   lorenz_96 \
   lorenz_96_2scale \
   mpas_atm \
+  noah \
   null_model \
   simple_advection \
   template \
   wrf \
-  wrf_hydro \
 )
 
 #----------------------------------------------------------------------
