@@ -1,17 +1,17 @@
 
 ### THIS IS FOR DART ###
-FORCING_FILE_DIRECTORY = "/home1/04270/l_jing/git/mygitresp/wrf_hydro_dart/models/noah/forcing"
+FORCING_FILE_DIRECTORY = "models/noah/forcing"
 
 &NOAHLSM_OFFLINE
 
    HRLDAS_CONSTANTS_FILE = 'wrfinput.nc'
 
-   INDIR = '/work/04270/l_jing/lonestar/gldas/2000_2014_forcing'
-   OUTDIR = '/scratch/04270/l_jing/hrldas_old_sai_unlimited'
+   INDIR  = '.'
+   OUTDIR = '.'
 
-   START_YEAR  = 2001
-   START_MONTH = 01
-   START_DAY   = 01
+   START_YEAR  = 2003
+   START_MONTH = 05
+   START_DAY   = 16
    START_HOUR  = 0
    START_MIN   = 0
 
@@ -41,6 +41,7 @@ FORCING_FILE_DIRECTORY = "/home1/04270/l_jing/git/mygitresp/wrf_hydro_dart/model
    RESTART_FREQUENCY_HOURS = 24
 
    NSOIL=4
+   NITSOIL=5
    soil_thick_input(1) = 0.10
    soil_thick_input(2) = 0.30
    soil_thick_input(3) = 0.60
@@ -50,7 +51,9 @@ FORCING_FILE_DIRECTORY = "/home1/04270/l_jing/git/mygitresp/wrf_hydro_dart/model
 
   /
 
+
 &URBAN_OFFLINE
-   UCMCALL = 0
+   UCMCALL    = 0
    ZLVL_URBAN = 15.0
   /
+

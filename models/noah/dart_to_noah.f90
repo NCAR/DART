@@ -2,220 +2,312 @@
 ! by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id$
+! DART $Id$
 
 program dart_to_noah
 
 !----------------------------------------------------------------------
-! purpose: interface between DART and the NOAH model
+! purpose: redistribute changes to the diagnostic snow water equivalent
+!          variable into the prognostic variables needed by noah.
 !
-! method: Read DART state vector and overwrite values in a noah restart file.
-!         If the DART state vector has an 'advance_to_time' present,
-!         it is read ... but nothing happens with it at this time.
-!         DART is NEVER expected to advance noah.
-!
-!         The dart_to_noah_nml namelist setting for advance_time_present
-!         determines whether or not the input file has an 'advance_to_time'.
-!         Typically, only temporary files like 'assim_model_state_ic' have
-!         an 'advance_to_time'.
-!
-! author: Tim Hoar 12 July 2011
+! method: Read DART output and the noah restart file.
+!         Calculate the increment and redistribute the implied changes
+!         so that the noah restart file is consistent with the new
+!         snow water equivalent.
 !----------------------------------------------------------------------
 
-use        types_mod, only : r8, obstypelength
+use        types_mod, only : r8
+
 use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
                              logfileunit, open_file, close_file, &
-                             error_handler, E_ERR
-use  assim_model_mod, only : open_restart_read, aread_state_restart, close_restart
-use time_manager_mod, only : time_type, print_time, print_date, get_date, &
-                             set_time, operator(+), operator(-), operator(<=)
-use        model_mod, only : static_init_model, dart_vector_to_model_file, &
-                             get_model_size, get_noah_restart_filename, &
-                             get_noah_timestepping, get_debug_level
+                             error_handler, E_MSG
+
+use time_manager_mod, only : time_type, print_time, print_date, operator(-), get_time
+
+use        model_mod, only : static_init_model, read_model_time
+
+use  netcdf_utilities_mod, only : nc_check, nc_synchronize_file, &
+                                  nc_get_variable, &
+                                  nc_put_variable, &
+                                  nc_get_variable_size, &
+                                  nc_get_variable_num_dimensions, &
+                                  nc_get_global_attribute, &
+                                  nc_open_file_readonly, &
+                                  nc_open_file_readwrite, &
+                                  nc_close_file
+
+use netcdf
 
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = "$URL$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: routine  = "dart_to_noah"
 
-!-----------------------------------------------------------------------
-! namelist parameters with default values.
-!-----------------------------------------------------------------------
+!------------------------------------------------------------------
+! The namelist variables
+!------------------------------------------------------------------
 
-character (len = 128) :: dart_to_noah_input_file = 'dart_restart'
-character (len=obstypelength), dimension(40) :: skip_variables = ' '
-logical               :: advance_time_present   = .true.
+character(len=256) :: dart_analysis_file = 'dart_posterior.nc'
+character(len=256) :: noah_restart_file = 'noah_restart.nc'
 
-namelist /dart_to_noah_nml/ dart_to_noah_input_file, &
-                            skip_variables, &
-                            advance_time_present
-
-!----------------------------------------------------------------------
-! global storage
-!----------------------------------------------------------------------
-
-character(len=20)     :: noah_restart_filename
-integer               :: ifile, nfiles, iunit, io, x_size
-type(time_type)       :: model_time, adv_to_time, mytime
-type(time_type)       :: forcingtimestep, nexttimestep
-real(r8), allocatable :: statevector(:)
-integer               :: kday, khour, noah_timestep, output_timestep
-integer               :: forcing_timestep, restart_frequency_seconds
-
-integer :: year,month,day,hour,minute,second
-character(len=32)     :: datestring
-character(len=128)    :: string1,string2,string3
+namelist /dart_to_noah_nml/ dart_analysis_file, &
+                           noah_restart_file
 
 !----------------------------------------------------------------------
 
-call initialize_utilities(progname='dart_to_noah')
+integer         :: iunit, io,i,j,k
+type(time_type) :: dart_time, noah_time
+
+integer :: ncid_dart, ncid_noah
+integer :: numdims
+integer :: dimlens(NF90_MAX_VAR_DIMS)
+
+real(r8), allocatable :: innov_swe(:,:)
+real(r8), allocatable :: innov(:,:)
+
+real(r8), allocatable :: dart_sneqv(:,:)
+real(r8), allocatable :: noah_sneqv(:,:)
+real(r8), allocatable :: wt_swe(:,:)
+
+real(r8), allocatable :: prior_snowh(:,:)
+real(r8), allocatable :: poste_snowh(:,:)
+
+real(r8), allocatable :: prior_snice(:,:,:)
+real(r8), allocatable :: poste_snice(:,:,:)
+real(r8), allocatable :: wt_ice(:,:)
+real(r8), allocatable :: innov_ice(:,:)
+real(r8), allocatable :: wt_ice_l(:,:,:)
+
+real(r8), allocatable :: prior_snliq(:,:,:)
+real(r8), allocatable :: poste_snliq(:,:,:)
+real(r8), allocatable :: wt_liq(:,:)
+real(r8), allocatable :: innov_liq(:,:)
+real(r8), allocatable :: wt_liq_l(:,:,:)
+
+real(r8), allocatable :: snow_density(:,:)
+real(r8), allocatable :: sum_sn(:,:)
+real(r8), allocatable :: sum_ice(:,:)
+real(r8), allocatable :: sum_liq(:,:)
+
+!>@todo read this value from the restart file ...
+real :: MISSING_R8=-1E+33
+character(len=NF90_MAX_NAME) :: varname
+
+character(len=512) :: string1, string2, string3
 
 !----------------------------------------------------------------------
-! Call model_mod:static_init_model() which reads the NOAH namelist
-! to set location and state vector
+
+call initialize_utilities(progname=routine)
+
+!----------------------------------------------------------------------
+! Call model_mod:static_init_model() which reads the noah namelists
+! to set grid sizes, etc.
+!>@todo if we want to manually check the date strings instead of
+!> using static_init_model() and read_model_time(), we can greatly 
+!> reduce the number of source code files needed.  
 !----------------------------------------------------------------------
 
 call static_init_model()
 
-! Read the namelist to get the input filename.
+! Read the namelist to get the input filename. 
 
 call find_namelist_in_file("input.nml", "dart_to_noah_nml", iunit)
 read(iunit, nml = dart_to_noah_nml, iostat = io)
 call check_namelist_read(iunit, io, "dart_to_noah_nml")
 
-! the output filename comes from the initialization of model_mod
-
-call get_noah_restart_filename( noah_restart_filename )
-
-write(*,*)
-write(*,'(''dart_to_noah:converting DART file <'',A, &
-      &''> to NOAH restart file <'',A,''>'')') &
-     trim(dart_to_noah_input_file), trim(noah_restart_filename)
-write(logfileunit,*)
-write(logfileunit,'(''dart_to_noah:converting DART file <'',A, &
-      &''> to NOAH restart file <'',A,''>'')') &
-     trim(dart_to_noah_input_file), trim(noah_restart_filename)
+write(string1,*)'converting'
+write(string2,*)'   DART file "'//trim(dart_analysis_file)//'"'
+write(string3,*)'to noah file "'//trim(noah_restart_file)//'"'
+call error_handler(E_MSG,routine,string1,text2=string2,text3=string3)
 
 !----------------------------------------------------------------------
 ! Reads the valid time, the state, and the target time.
 !----------------------------------------------------------------------
 
-x_size = get_model_size()
-allocate(statevector(x_size))
+dart_time = read_model_time(dart_analysis_file)
+noah_time = read_model_time(noah_restart_file)
+!>@todo make sure the times match!
 
-iunit = open_restart_read(dart_to_noah_input_file)
-
-if ( advance_time_present ) then
-   call aread_state_restart(model_time, statevector, iunit, adv_to_time)
-else
-   call aread_state_restart(model_time, statevector, iunit)
-endif
-call close_restart(iunit)
+call print_date( dart_time,'dart_to_noah:noah model date')
+call print_time( dart_time,'dart_to_noah:DART model time')
+call print_date( dart_time,'dart_to_noah:noah model date',logfileunit)
+call print_time( dart_time,'dart_to_noah:DART model time',logfileunit)
 
 !----------------------------------------------------------------------
-! write the updated state to the NOAH restart file.
+! update the current noah state vector
+! SWE is diagnostic  and marked 'NOUPDATE' in the model_nml
+! SNICE, SNLIQ, SNOWH are prognostic but are not in the model_nml AT ALL.
 !----------------------------------------------------------------------
 
-call dart_vector_to_model_file(statevector, noah_restart_filename, model_time, &
-                               skip_variables)
+ncid_dart = nc_open_file_readonly(dart_analysis_file, routine)
+ncid_noah = nc_open_file_readwrite(noah_restart_file, routine)
+
+!>@todo check the number of dimensions to make sure they are what we expect
+varname = 'SNEQV'
+
+call nc_get_variable_num_dimensions(ncid_dart, varname, numdims, routine)
+call nc_get_variable_size(ncid_dart, varname, dimlens(1:numdims), routine)
+
+allocate(dart_sneqv(dimlens(1),dimlens(2)))
+allocate(noah_sneqv(dimlens(1),dimlens(2)))
+allocate(innov_swe(dimlens(1),dimlens(2)))
+allocate(innov(dimlens(1),dimlens(2)))
+allocate(wt_swe(dimlens(1),dimlens(2)))
+
+call nc_get_variable(ncid_dart, varname, dart_sneqv, routine)
+call nc_get_variable(ncid_noah, varname, noah_sneqv, routine)
+
+innov_swe = dart_sneqv - noah_sneqv
+
+call nc_close_file(ncid_dart,routine)
+!----------------------------------------------------------------------
+!>@todo check the number of dimensions to make sure they are what we expect
+varname = 'SNOWH'
+call nc_get_variable_num_dimensions(ncid_noah, varname, numdims, routine)
+call nc_get_variable_size(ncid_noah, varname, dimlens(1:numdims), routine)
+allocate(prior_snowh(dimlens(1),dimlens(2)))
+allocate(poste_snowh(dimlens(1),dimlens(2)))
+allocate(snow_density(dimlens(1),dimlens(2)))
+allocate(sum_sn(dimlens(1),dimlens(2)))
+call nc_get_variable(ncid_noah, varname, prior_snowh, routine)
+
+varname = 'SNICE'
+call nc_get_variable_num_dimensions(ncid_noah, varname, numdims, routine)
+call nc_get_variable_size(ncid_noah, varname, dimlens(1:numdims), routine)
+allocate(prior_snice(dimlens(1),dimlens(2),dimlens(3)))
+allocate(poste_snice(dimlens(1),dimlens(2),dimlens(3)))
+allocate(wt_ice(dimlens(1),dimlens(3)))
+allocate(sum_ice(dimlens(1),dimlens(3)))
+allocate(innov_ice(dimlens(1),dimlens(3)))
+allocate(wt_ice_l(dimlens(1),dimlens(2),dimlens(3)))
+call nc_get_variable(ncid_noah, varname, prior_snice, routine)
+
+varname = 'SNLIQ'
+call nc_get_variable_num_dimensions(ncid_noah, varname, numdims, routine)
+call nc_get_variable_size(ncid_noah, varname, dimlens(1:numdims), routine)
+allocate(prior_snliq(dimlens(1),dimlens(2),dimlens(3)))
+allocate(poste_snliq(dimlens(1),dimlens(2),dimlens(3)))
+allocate(wt_liq(dimlens(1),dimlens(3)))
+allocate(sum_liq(dimlens(1),dimlens(3)))
+allocate(innov_liq(dimlens(1),dimlens(3)))
+allocate(wt_liq_l(dimlens(1),dimlens(2),dimlens(3)))
+call nc_get_variable(ncid_noah, varname, prior_snliq, routine)
 
 !----------------------------------------------------------------------
-! Convey adv_to_time to noah by updating kday or khour in the namelist.
-! Predict the names of the LDASIN files needed -
-!    write these to a file that will be queried by advance_model.csh
-!    so they get staged appropriately.
-!----------------------------------------------------------------------
-
-if ( advance_time_present ) then
-
-   ! AS long as the output_timestep, forcing_timestep, and noah_timestep are all identical,
-   ! the time in the restart file is the time of the next forcing file needed.
-
-   call get_noah_timestepping(kday, khour, noah_timestep, output_timestep, forcing_timestep, &
-                              restart_frequency_seconds)
-
-   if ( (noah_timestep == forcing_timestep) .and. &
-        (noah_timestep == output_timestep )) then
-
-   else
-      write(string2,*) 'noah_timestep ', noah_timestep, ' /= forcing_timestep of ',forcing_timestep
-      write(string3,*) 'noah_timestep ', noah_timestep, ' /= output_timestep of ',output_timestep
-      write(string1,*) 'temporarily unsupported configuration'
-      call error_handler(E_ERR,'dart_to_noah',string1,source,revision,revdate,&
-                         text2=string2,text3=string3)
-   endif
-
-   ! figure out how many timesteps between adv_to_time and model_time
-   mytime          = model_time
-   nexttimestep    = set_time(   noah_timestep, 0)
-   forcingtimestep = set_time(forcing_timestep, 0)
-   nfiles = 0
-   TIMELOOP: do while (mytime <= adv_to_time)
-      nfiles = nfiles + 1
-      mytime = mytime + nexttimestep
-   enddo TIMELOOP
-
-   if (get_debug_level() > 0) &
-   write(*,*)'needed ',nfiles,' LDASIN files to get from model_time to adv_to_time.'
-
-   iunit = open_file('noah_advance_information.txt',form='formatted',action='write')
-   call print_date(  model_time,'dart_to_noah:noah  model      date',iunit)
-   call print_date( adv_to_time,'dart_to_noah:noah  advance_to_date',iunit)
-   write(iunit,'(''khour  = '',i6)') nfiles-1
-   write(iunit,'(''nfiles = '',i6)') nfiles
-
-   mytime = model_time
-
-   do ifile = 1,nfiles
-      ! The model time is one noah_timestep (which must be equal to RESTART_FREQUENCY_HOURS)
-      ! behind the file names needed.
-
-      mytime = mytime + nexttimestep
-
-      call get_date(mytime,year,month,day,hour,minute,second)
-
-      ! TJH FIXME - what happens to seconds ...
-      if ((minute == 0) .and. (second == 0)) then
-         write(datestring,'(i4.4,3(i2.2))')year,month,day,hour
-      else
-         write(datestring,'(i4.4,4(i2.2))')year,month,day,hour,minute
+! use the innov and the prior_* to come up with a poste_*
+! assuming that the snow_density won't change
+do i = 1,dimlens(1)
+   do j = 1, dimlens(3)
+      sum_sn(i,j) = 0.0_r8
+      sum_ice(i,j)= 0.0_r8
+      sum_liq(i,j)= 0.0_r8
+      do k = 1, dimlens(2)
+         if(prior_snice(i,k,j)>=0.0_r8 .and. prior_snliq(i,k,j)>=0.0_r8) then
+            sum_sn(i,j) = sum_sn(i,j) + prior_snliq(i,k,j) + prior_snice(i,k,j)
+            sum_ice(i,j)= sum_ice(i,j)+ prior_snice(i,k,j)
+            sum_liq(i,j)= sum_liq(i,j)+ prior_snliq(i,k,j)
+         endif
+      enddo
+      if(noah_sneqv(i,j)>0.0_r8) then
+         wt_swe(i,j) = sum_sn(i,j)/noah_sneqv(i,j)
+         innov(i,j) = innov_swe(i,j)*wt_swe(i,j)
       endif
-
-      write(iunit,'(a)')trim(datestring)//'.LDASIN_DOMAIN1'
+      if( wt_swe(i,j)>0.0_r8) then
+         wt_liq(i,j) = sum_liq(i,j)/sum_sn(i,j)
+         wt_ice(i,j) = 1.0_r8-wt_liq(i,j) 
+         innov_liq(i,j) = innov(i,j)*wt_liq(i,j)
+         innov_ice(i,j) = innov(i,j)*wt_ice(i,j)
+      endif
+      do k = 1,dimlens(2)
+         if(prior_snice(i,k,j)>=0.0_r8 .and. sum_ice(i,j)>0.0_r8 ) then
+           wt_ice_l(i,k,j) = prior_snice(i,k,j)/sum_ice(i,j)
+         endif
+         if(prior_snliq(i,k,j)>=0.0_r8 .and. sum_liq(i,j)>0.0_r8 ) then
+           wt_liq_l(i,k,j) = prior_snliq(i,k,j)/sum_liq(i,j)
+         endif
+      enddo   
+         
    enddo
+enddo
 
-   call close_file(iunit)
+do i = 1,dimlens(1)
+   do j = 1, dimlens(3)
+      do k = 1, dimlens(2)
+         if(prior_snice(i,k,j)>=0.0_r8) then
+            poste_snice(i,k,j) = prior_snice(i,k,j)+innov_ice(i,j)*wt_ice_l(i,k,j)
+         else
+            poste_snice(i,k,j) = MISSING_R8
+         endif
+          if(prior_snliq(i,k,j)>=0.0_r8) then
+            poste_snliq(i,k,j) = prior_snliq(i,k,j)+innov_liq(i,j)*wt_liq_l(i,k,j)
+         else
+            poste_snliq(i,k,j) = MISSING_R8
+         endif
+         if(poste_snice(i,k,j)<0.0_r8 .and. poste_snice(i,k,j)/=MISSING_R8) then
+            poste_snice(i,k,j) = prior_snice(i,k,j)
+         endif
+         if(poste_snliq(i,k,j)<0.0_r8 .and. poste_snliq(i,k,j)/=MISSING_R8) then
+            poste_snliq(i,k,j) = prior_snliq(i,k,j)
+         endif
+      enddo
+    enddo
+enddo            
 
-endif
+!call calculate_posterior_snowh(innov,prior_snowh,poste_snowh)
+Do i = 1,dimlens(1)
+   Do j = 1,dimlens(3)
+       if(prior_snowh(i,j)>0.0_r8 .and. sum_sn(i,j)>0.0_r8) then
+          snow_density(i,j) = sum_sn(i,j)/prior_snowh(i,j)
+          poste_snowh(i,j) = innov(i,j)/snow_density(i,j) + prior_snowh(i,j)
+       else if (sum_sn(i,j)==0.0_r8) then
+          poste_snowh(i,j) = prior_snowh(i,j)
+       else
+          poste_snowh(i,j) = MISSING_R8
+       endif
+       if(poste_snowh(i,j)<0.0_r8 .and. poste_snowh(i,j)/=MISSING_R8) then
+          poste_snowh(i,j) = prior_snowh(i,j)
+       endif
+   enddo
+enddo
+!test---------------------------------------------------------
+!print*, prior_snowh(40,60),poste_snowh(40,60)
+!print*, noah_sneqv(40,60),dart_sneqv(40,60)
+!print*, prior_snice(40,3,60),poste_snice(40,3,60)
+!print*, prior_snliq(40,3,60),poste_snliq(40,3,60)
+!-------------------------------------------------------------
+varname = 'SNOWH'
+call nc_put_variable(ncid_noah, varname, poste_snowh, routine)
+varname = 'SNEQV'
+call nc_put_variable(ncid_noah, varname, dart_sneqv, routine)
+varname = 'SNICE'
+call nc_put_variable(ncid_noah, varname, poste_snice, routine)
+varname = 'SNLIQ'
+call nc_put_variable(ncid_noah, varname, poste_snliq, routine)
+
+call nc_close_file(ncid_noah,routine)
+
+deallocate(prior_snowh, poste_snowh)
+deallocate(prior_snice, poste_snice)
+deallocate(prior_snliq, poste_snliq)
+deallocate(dart_sneqv, noah_sneqv)
+deallocate(wt_swe,wt_ice,wt_liq,wt_liq_l,wt_ice_l,innov,innov_swe,innov_ice,innov_liq)
+deallocate(sum_sn,sum_ice,sum_liq,snow_density)
 
 !----------------------------------------------------------------------
-! Log what we think we're doing, and exit.
-!----------------------------------------------------------------------
 
-if (get_debug_level() > 0) then
-   call print_date( model_time,'dart_to_noah:noah model date')
-   call print_time( model_time,'dart_to_noah:DART model time')
-   call print_date( model_time,'dart_to_noah:noah model date',logfileunit)
-   call print_time( model_time,'dart_to_noah:DART model time',logfileunit)
+call finalize_utilities(routine)
 
-   if ( advance_time_present ) then
-      call print_time(adv_to_time,'dart_to_noah:advance_to time')
-      call print_date(adv_to_time,'dart_to_noah:advance_to date')
-      call print_time(adv_to_time,'dart_to_noah:advance_to time',logfileunit)
-      call print_date(adv_to_time,'dart_to_noah:advance_to date',logfileunit)
-   endif
-endif
+!contains
+!subroutine calculate_posterior_snowh(innovation, prior, posterior)
+!real(r8), intent(in)  :: innovation(:,:)
+!real(r8), intent(in)  :: prior(:,:)
+!real(r8), intent(out) :: posterior(:,:)
+!end subroutine calculate_posterior_snowh
 
-call finalize_utilities()
 
 end program dart_to_noah
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
