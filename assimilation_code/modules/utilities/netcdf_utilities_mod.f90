@@ -56,7 +56,6 @@ public :: nc_check,                       &
           nc_variable_exists,             &
           nc_put_variable,                &
           nc_get_variable,                &
-          nc_get_variable_info,           &
           nc_add_global_creation_time,    &
           nc_get_variable_num_dimensions, &
           nc_get_variable_size,           &
@@ -149,6 +148,7 @@ interface nc_get_variable
    module procedure nc_get_int_1d
    module procedure nc_get_single_real_1d
    module procedure nc_get_real_1d
+   module procedure nc_get_double_1d
    module procedure nc_get_short_2d
    module procedure nc_get_int_2d
    module procedure nc_get_real_2d
@@ -234,7 +234,7 @@ endif
 ! this does not return 
 call error_handler(E_ERR, subr_name, msgstring1, source, revision, revdate, &
                    text2=context2, text3=saved_filename)
-
+  
 
 end subroutine nc_check
 
@@ -420,6 +420,7 @@ call nc_check(ret, routine, 'getting the global attribute: '//trim(attname), con
 
 end subroutine nc_get_global_real_array_att
 
+!------------------------------------------------------------------
 !--------------------------------------------------------------------
 ! attributes on specific variables section
 
@@ -1023,6 +1024,7 @@ call nc_check(ret, routine, 'define double variable '//trim(varname), context, f
 end subroutine nc_define_var_double_Nd
 
 !--------------------------------------------------------------------
+!--------------------------------------------------------------------
 ! check if vars, dims, or global atts exist (without error if not)
 ! these are functions, unlike the rest of these routines.
 
@@ -1094,6 +1096,9 @@ nc_variable_exists = (ret == NF90_NOERR)
 end function nc_variable_exists
 
 !--------------------------------------------------------------------
+!--------------------------------------------------------------------
+! put values into variables
+
 
 subroutine nc_put_char_1d(ncid, varname, varvals, context, filename)
 
@@ -1456,9 +1461,11 @@ end subroutine nc_get_single_real_1d
 
 subroutine nc_get_real_1d(ncid, varname, varvals, context, filename)
 
+! This will match r4 and if r8=r4 
+
 integer,          intent(in)  :: ncid
 character(len=*), intent(in)  :: varname
-real(r8),         intent(out) :: varvals(:)
+real(r4),         intent(out) :: varvals(:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
 
@@ -1475,6 +1482,30 @@ ret = nf90_get_var(ncid, varid, varvals)
 call nc_check(ret, routine, 'get values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_get_real_1d
+
+!--------------------------------------------------------------------
+
+subroutine nc_get_double_1d(ncid, varname, varvals, context, filename)
+
+integer,          intent(in)  :: ncid
+character(len=*), intent(in)  :: varname
+real(digits12),   intent(out) :: varvals(:)
+character(len=*), intent(in), optional :: context
+character(len=*), intent(in), optional :: filename
+
+character(len=*), parameter :: routine = 'nc_get_double_1d'
+integer :: ret, varid
+
+ret = nf90_inq_varid(ncid, varname, varid)
+call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, filename, ncid)
+
+! don't support variables which are supposed to have the values multiplied and shifted.
+if (has_scale_off(ncid, varid)) call no_scale_off(ncid, routine, varname, context, filename)
+
+ret = nf90_get_var(ncid, varid, varvals)
+call nc_check(ret, routine, 'get values for '//trim(varname), context, filename, ncid)
+
+end subroutine nc_get_double_1d
 
 !--------------------------------------------------------------------
 
@@ -1667,67 +1698,9 @@ call nc_check(ret, routine, 'get values for '//trim(varname), context, filename,
 
 end subroutine nc_get_real_4d
 
-!--------------------------------------------------------------------
+!------------------------------------------------------------------
 !--------------------------------------------------------------------
 ! inquire variable info
-
-!--------------------------------------------------------------------
-!> Query and return information about a netCDF variable given the variable name.
-!> Optionally returns the type of variable, the number of dimensions, 
-!> the dimension names and lengths, the number of attributes (but not the attribute values (yet))
-
-subroutine nc_get_variable_info(ncid, varname, xtype, ndims, dimlens, dimnames, natts, &
-                                context, filename)
-
-integer,          intent(in)            :: ncid
-character(len=*), intent(in)            :: varname
-integer,          intent(out), optional :: xtype
-integer,          intent(out), optional :: ndims
-integer,          intent(out), optional :: dimlens(:)
-character(len=*), intent(out), optional :: dimnames(:)
-integer,          intent(out), optional :: natts
-character(len=*), intent(in) , optional :: context
-character(len=*), intent(in) , optional :: filename
-
-character(len=*), parameter :: routine = 'nc_get_variable_info'
-integer :: ret, varid, dimid, ii
-
-integer :: myndims
-integer :: mydimids(NF90_MAX_VAR_DIMS)
-integer :: mydimlens(NF90_MAX_VAR_DIMS)
-character(len=NF90_MAX_NAME) :: mydimnames(NF90_MAX_VAR_DIMS)
-
-ret = nf90_inq_varid(ncid, varname, varid)
-call nc_check(ret, routine, 'inq_varid for '//trim(varname), context, filename)
-
-ret = nf90_inquire_variable(ncid, varid, xtype=xtype, ndims=myndims, &
-                            dimids=mydimids, natts=natts) 
-call nc_check(ret, routine, 'inquire_variable for '//trim(varname), context, filename)
-
-if (present(dimlens) .or. present(dimnames)) then  ! more work to do 
-
-   !>@todo do we want to make sure dimlens, dimnames are long enough
-   if (present(dimlens))  dimlens  = 0
-   if (present(dimnames)) dimnames = 'null'
-
-   do ii = 1,myndims
-
-      dimid = mydimids(ii)
-      ret = nf90_inquire_dimension(ncid, dimid, name=mydimnames(ii), len=mydimlens(ii))
-
-      write(msgstring1,*)'inquire_dimension ',ii,' for "'//trim(varname)//'"'
-      call nc_check(ret, routine, msgstring1, context, filename)
-
-   enddo
-endif
-
-if (present(   ndims)) ndims             = myndims
-if (present( dimlens)) dimlens(1:ndims)  = mydimlens(1:ndims)
-if (present(dimnames)) dimnames(1:ndims) = mydimnames(1:ndims)
-
-end subroutine nc_get_variable_info
-
-!--------------------------------------------------------------------
 
 subroutine nc_get_variable_size_1d(ncid, varname, varsize, context, filename)      
 
@@ -1980,7 +1953,10 @@ call nc_check(ret, routine, 'synchronize file contents', context, filename, ncid
 
 end subroutine nc_synchronize_file
 
-!--------------------------------------------------------------------
+!------------------------------------------------------------------
+!------------------------------------------------------------------
+
+!------------------------------------------------------------------
 !> check for the existence of either (or both) scale/offset attributes
 
 function has_scale_off(ncid, varid)
@@ -2079,12 +2055,7 @@ filename = ''
 end subroutine find_name_from_fh
 
 !------------------------------------------------------------------
+!------------------------------------------------------------------
 
 end module netcdf_utilities_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 

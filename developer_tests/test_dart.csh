@@ -42,7 +42,7 @@
 # qsub     submitting a job
 # 
 #PBS -N dart_test     
-#PBS -l walltime=02:00:00
+#PBS -l walltime=03:00:00
 #PBS -A P86850054 
 #PBS -j oe
 #PBS -m ae

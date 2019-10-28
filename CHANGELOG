@@ -889,4 +889,11 @@ and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
 - added an example of how to use a namelist to the text_to_obs.f90 observation
   converter program.
 
+- Removing the clamping messages in 'clamp_variable()' of clamped values
 
+- changed argument names using reserved keywords. 
+  state_vector_io_mod:read_state() 'time' to 'model_time' 
+  random_seq_mod:random_gamma() 'shape' to 'rshape', 'scale' to 'rscale'.
+  random_seq_mod:random_inverse_gamma() 'shape' to 'rshape', 'scale' to 'rscale'.
+  obs_def_mod:init_obs_def() 'kind' to 'obkind', 'time' to 'obtime'
+  obs_utilities_mod: 'start' to 'varstart', 'count' to 'varcount'

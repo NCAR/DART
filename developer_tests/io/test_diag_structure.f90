@@ -18,6 +18,7 @@
 !>   * Test that you can call create and destroy multiple times without error.
 !>   * Check that you can add_domains until you read max_num_domains then the code
 !>     should error out (so you can't overwrite the diagnostic domain).
+
 program test_diag_structure
 
 use types_mod,           only : i8
@@ -31,10 +32,9 @@ use assert_mod,          only : assert_equal, assert_greater, assert_not_equal
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = "$URL$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 integer :: diag_id, domain_id
 integer(i8) :: model_size, m
@@ -43,7 +43,7 @@ integer :: i, j, n
 model_size = 44
 
 ! init library
-call initialize_utilities()
+call initialize_utilities('test_diag_structure')
 
 ! Add domain
 domain_id = add_domain(model_size)
@@ -148,8 +148,3 @@ call finalize_utilities()
 
 end program test_diag_structure
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
