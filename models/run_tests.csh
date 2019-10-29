@@ -47,7 +47,7 @@ if ( "$usingmpi" == "yes" ) then
   if ( ! $?MPICMD) then
     set MPICMD='mpirun -n 2'
   endif
-  echo "MPICMD is $MPICMD"
+  echo "MPI programs will be started with: $MPICMD"
 else if ( "$usingmpi" == "no" ) then
   echo "Building WITHOUT MPI support."
   set QUICKBUILD_ARG='-nompi'
