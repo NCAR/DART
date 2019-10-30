@@ -149,6 +149,7 @@ interface nc_get_variable
    module procedure nc_get_int_1d
    module procedure nc_get_single_real_1d
    module procedure nc_get_real_1d
+   module procedure nc_get_double_1d
    module procedure nc_get_short_2d
    module procedure nc_get_int_2d
    module procedure nc_get_real_2d
@@ -165,10 +166,9 @@ interface nc_get_variable_size
 end interface
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = "$URL$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 character(len=512) :: msgstring1
 
@@ -1462,9 +1462,11 @@ end subroutine nc_get_single_real_1d
 
 subroutine nc_get_real_1d(ncid, varname, varvals, context, filename)
 
+! This will match r4 and if r8=r4 
+
 integer,          intent(in)  :: ncid
 character(len=*), intent(in)  :: varname
-real(r8),         intent(out) :: varvals(:)
+real(r4),         intent(out) :: varvals(:)
 character(len=*), intent(in), optional :: context
 character(len=*), intent(in), optional :: filename
 
@@ -1481,6 +1483,30 @@ ret = nf90_get_var(ncid, varid, varvals)
 call nc_check(ret, routine, 'get values for '//trim(varname), context, filename, ncid)
 
 end subroutine nc_get_real_1d
+
+!--------------------------------------------------------------------
+
+subroutine nc_get_double_1d(ncid, varname, varvals, context, filename)
+
+integer,          intent(in)  :: ncid
+character(len=*), intent(in)  :: varname
+real(digits12),   intent(out) :: varvals(:)
+character(len=*), intent(in), optional :: context
+character(len=*), intent(in), optional :: filename
+
+character(len=*), parameter :: routine = 'nc_get_double_1d'
+integer :: ret, varid
+
+ret = nf90_inq_varid(ncid, varname, varid)
+call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, filename, ncid)
+
+! don't support variables which are supposed to have the values multiplied and shifted.
+if (has_scale_off(ncid, varid)) call no_scale_off(ncid, routine, varname, context, filename)
+
+ret = nf90_get_var(ncid, varid, varvals)
+call nc_check(ret, routine, 'get values for '//trim(varname), context, filename, ncid)
+
+end subroutine nc_get_double_1d
 
 !--------------------------------------------------------------------
 
@@ -2067,10 +2093,4 @@ end subroutine find_name_from_fh
 !------------------------------------------------------------------
 
 end module netcdf_utilities_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 

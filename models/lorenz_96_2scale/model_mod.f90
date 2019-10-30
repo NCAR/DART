@@ -227,7 +227,7 @@ if ( local_y ) then
          jm1 = j - 1
          if(jm1 < 1) jm1 = y_per_x
          tmp_dt(j) = c1 * tmp_Y(jp1) * (tmp_Y(jm1)-tmp_Y(jp2)) - c2 * tmp_Y(j) &
-             + c3 * x(idint(real(jk+j-1-ys,r8)/real(y_per_x,r8))+1)
+             + c3 * x(int(real(jk+j-1-ys,r8)/real(y_per_x,r8))+1)
       enddo
       dt(jk:jk+y_per_x-1) = tmp_dt
    enddo
@@ -245,7 +245,7 @@ else
       jm1 = j - 1
       if(jm1 < ys) jm1 = ye
       dt(j) = c1 * x(jp1) * (x(jm1)-x(jp2)) - c2 * x(j) &
-           + c3 * x(idint(real(j-ys,r8)/real(y_per_x,r8))+1)
+           + c3 * x(int(real(j-ys,r8)/real(y_per_x,r8))+1)
    enddo
 endif
 

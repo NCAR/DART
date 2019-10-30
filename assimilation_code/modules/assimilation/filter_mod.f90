@@ -1544,17 +1544,17 @@ end function get_blank_qc_index
 
 !-------------------------------------------------------------------------
 
-subroutine filter_set_initial_time(days, seconds, time, read_time_from_file)
+subroutine filter_set_initial_time(days, seconds, dart_time, read_time_from_file)
 
 integer,         intent(in)  :: days, seconds
-type(time_type), intent(out) :: time
+type(time_type), intent(out) :: dart_time
 logical,         intent(out) :: read_time_from_file
 
 if(days >= 0) then
-   time = set_time(seconds, days)
+   dart_time = set_time(seconds, days)
    read_time_from_file = .false.
 else
-   time = set_time(0, 0)
+   dart_time = set_time(0, 0)
    read_time_from_file = .true.
 endif
 
@@ -1562,15 +1562,15 @@ end subroutine filter_set_initial_time
 
 !-------------------------------------------------------------------------
 
-subroutine filter_set_window_time(time)
+subroutine filter_set_window_time(dart_time)
 
-type(time_type), intent(out) :: time
+type(time_type), intent(out) :: dart_time
 
 
 if(obs_window_days >= 0) then
-   time = set_time(obs_window_seconds, obs_window_days)
+   dart_time = set_time(obs_window_seconds, obs_window_days)
 else
-   time = set_time(0, 0)
+   dart_time = set_time(0, 0)
 endif
 
 end subroutine filter_set_window_time
@@ -1999,7 +1999,7 @@ integer,             intent(in)    :: prior_post
 integer,             intent(in)    :: ens_size
 integer,             intent(in)    :: keys(:) ! I think this is still var size
 
-character*12 :: task
+character(len=12) :: task
 integer :: j, i
 integer :: forward_unit
 

@@ -84,7 +84,7 @@ integer, parameter :: GHA2017 = 1
 integer, parameter :: AND2009 = 2
 
 ! Module storage for writing error messages
-character(len=512) :: msgstring, msgstring2
+character(len=512) :: string1, string2
 
 ! Flag indicating whether module has been initialized
 logical :: initialized = .false.
@@ -250,8 +250,8 @@ endif
 
 ! Cannot support non-determistic inflation and an inf_lower_bound < 1
 if(.not. deterministic .and. inf_lower_bound < 1.0_r8) then
-   write(msgstring, *) 'Cannot have non-deterministic inflation and inf_lower_bound < 1'
-   call error_handler(E_ERR, 'adaptive_inflate_init', msgstring, source, revision, revdate)
+   write(string1, *) 'Cannot have non-deterministic inflation and inf_lower_bound < 1'
+   call error_handler(E_ERR, 'adaptive_inflate_init', string1, source, revision, revdate)
 endif
 
 ! give these distinctive values; if inflation is being used
@@ -264,12 +264,12 @@ inflate_handle%minmax_sd(:)   = missing_r8
 ! Read type 1 (observation space inflation)
 if(inf_flavor == 1) then
 
-   write(msgstring,  *) 'No longer supporting observation space inflation ', &
+   write(string1,  *) 'No longer supporting observation space inflation ', &
                         '(i.e. inf_flavor = 1).'
-   write(msgstring2, *) 'Please contact dart@ucar.edu if you would like to use ', &
+   write(string2, *) 'Please contact dart@ucar.edu if you would like to use ', &
                         'observation space inflation'
    call error_handler(E_ERR, 'adaptive_inflate_init', &
-      msgstring, source, revision, revdate, text2=msgstring2)
+      string1, source, revision, revdate, text2=string2)
 
 endif
 
@@ -286,10 +286,10 @@ type(adaptive_inflate_type), intent(in) :: inflate_handle
 do_obs_inflate = (inflate_handle%inflation_flavor == 1)
 
 if (do_obs_inflate) then
-  write(msgstring,  *) 'observation space inflation not suppported (i.e. inf_flavor = 1)'
-  write(msgstring2, *) 'please contact dart if you would like to use this functionality'
+  write(string1,  *) 'observation space inflation not suppported (i.e. inf_flavor = 1)'
+  write(string2, *) 'please contact dart if you would like to use this functionality'
   call error_handler(E_ERR, 'do_obs_inflate', &
-     msgstring, source, revision, revdate, text2=msgstring2)
+     string1, source, revision, revdate, text2=string2)
 endif
 
 end function do_obs_inflate
@@ -387,14 +387,14 @@ string(2) = 'Posterior'
 
 do i = 1, 2
    if(inf_flavor(i) < 0 .or. inf_flavor(i) > 5) then
-      write(msgstring, *) 'inf_flavor=', inf_flavor(i), ' Must be 0, 1, 2, 3, 4, or 5 '
-      call error_handler(E_ERR,'validate_inflate_options', msgstring, source, revision, revdate, &
+      write(string1, *) 'inf_flavor=', inf_flavor(i), ' Must be 0, 1, 2, 3, 4, or 5 '
+      call error_handler(E_ERR,'validate_inflate_options', string1, source, revision, revdate, &
                                 text2='Inflation type for '//string(i))
    endif
 
    if(inf_damping(i) < 0.0_r8 .or. inf_damping(i) > 1.0_r8) then
-      write(msgstring, *) 'inf_damping=', inf_damping(i), ' Must be 0.0 <= d <= 1.0'
-      call error_handler(E_ERR,'validate_inflate_options', msgstring, source, revision, revdate, &
+      write(string1, *) 'inf_damping=', inf_damping(i), ' Must be 0.0 <= d <= 1.0'
+      call error_handler(E_ERR,'validate_inflate_options', string1, source, revision, revdate, &
                                 text2='Inflation damping for '//string(i))
    endif
 end do
@@ -415,8 +415,8 @@ if(inf_flavor(1) == 4) call error_handler(E_ERR, 'validate_inflate_options', &
 
 ! Cannot select posterior options if not computing posterior
 if(.not. compute_posterior .and. inf_flavor(2) > 0) then
-   write(msgstring, *) 'cannot enable posterior inflation if not computing posterior values'
-   call error_handler(E_ERR,'validate_inflate_options', msgstring, source, revision, revdate, &
+   write(string1, *) 'cannot enable posterior inflation if not computing posterior values'
+   call error_handler(E_ERR,'validate_inflate_options', string1, source, revision, revdate, &
                              text2='"compute_posterior" is false; posterior inflation flavor must be 0')
 endif
 
@@ -447,8 +447,8 @@ if (inf_flavor(1) == 5 .or. inf_flavor(2) == 5) then
    ! check inf_sd_max_change() for valid range
    do i=1, 2
       if (inf_sd_max_change(i) < 1.0_r8 .or. inf_sd_max_change(i) > 2.0_r8) then
-         write(msgstring, *) 'inf_sd_max_change=', inf_sd_max_change(i), ' Must be 1.0 <= X <= 2.0'
-         call error_handler(E_ERR,'validate_inflate_options', msgstring, source, revision, revdate, &
+         write(string1, *) 'inf_sd_max_change=', inf_sd_max_change(i), ' Must be 1.0 <= X <= 2.0'
+         call error_handler(E_ERR,'validate_inflate_options', string1, source, revision, revdate, &
                                    text2='Inflation stddev max change for '//string(i))
       endif
    enddo
@@ -481,8 +481,8 @@ if(inflate_handle%deterministic) then
 
    if ( do_rtps_inflate(inflate_handle)) then
       if ( .not. present(fsprd) .or. .not. present(asprd)) then 
-         write(msgstring, *) 'missing arguments for RTPS inflation, should not happen'
-         call error_handler(E_ERR,'inflate_ens',msgstring,source,revision,revdate) 
+         write(string1, *) 'missing arguments for RTPS inflation, should not happen'
+         call error_handler(E_ERR,'inflate_ens',string1,source,revision,revdate) 
       endif 
       ! only inflate if spreads are > 0
       if ( asprd .gt. 0.0_r8 .and. fsprd .gt. 0.0_r8) &
@@ -792,8 +792,8 @@ else if (inf_type == GHA2017) then
    endif
    
 else
-   write(msgstring, *) 'Internal error, should not happen.  Illegal value for bayes type.'
-   call error_handler(E_ERR, 'bayes_cov_inflate', msgstring, source, revision, revdate)
+   write(string1, *) 'Internal error, should not happen.  Illegal value for bayes type.'
+   call error_handler(E_ERR, 'bayes_cov_inflate', string1, source, revision, revdate)
 endif
 
 end subroutine bayes_cov_inflate
@@ -853,6 +853,20 @@ if ( fac1 < abs(fac2) ) fac2 = 0.0_r8
 
 theta    = sqrt( (fac1+fac2) * sigma_p_2 + sigma_o_2 )
 exp_like = - 0.5_r8 * dist_2 / theta**2
+
+! Modern versions of compilers have intrinsic gamma functions.
+! If you have an unresolved external for the gamma function, you should
+! either try a newer compiler or code your own gamma function here.
+! We know pg compiler versions before pgf90 15.1 do not contain the
+! gamma function. If you are never going to use inflation flavor 5,
+! you could also just comment out the computation for enh_compute_new_density
+! and uncomment the following code block. This will ensure that if you ever
+! did try to use inflation 5, it would appropriately fail.
+
+! write(string1,*)'gamma function not available'
+! write(string2,*)'when available uncomment block below and recompile'
+! call error_handler(E_ERR, 'enh_compute_new_density', string1, &
+!            source, revision, revdate, text2=string2)
 
 ! Compute the updated probability density for lambda
 enh_compute_new_density = beta**alpha / gamma(alpha)  * &
@@ -1124,13 +1138,13 @@ select case(inflation_handle%inflation_flavor)
       sadapt = ' spatially-varying relaxation-to-prior-spread,'
       akind = ' state-space'
    case default
-      write(msgstring, *) 'Illegal inflation value for ', label
-      call error_handler(E_ERR, 'adaptive_inflate_init', msgstring, source, revision, revdate)
+      write(string1, *) 'Illegal inflation value for ', label
+      call error_handler(E_ERR, 'adaptive_inflate_init', string1, source, revision, revdate)
 end select
 
 ! say what basic kind of inflation was selected.
-write(msgstring, '(4A)') trim(det), trim(tadapt), trim(sadapt), trim(akind)
-call error_handler(E_MSG, trim(label) // ' inflation:', msgstring, source, revision, revdate)
+write(string1, '(4A)') trim(det), trim(tadapt), trim(sadapt), trim(akind)
+call error_handler(E_MSG, trim(label) // ' inflation:', string1, source, revision, revdate)
 
 ! print out details about the type of inflation selected.
 ! inflation flavor 2 has min/max values if from restart,
@@ -1141,28 +1155,28 @@ call error_handler(E_MSG, trim(label) // ' inflation:', msgstring, source, revis
 ! combination file, individual file or namelist
 call set_from_string(inflation_handle%mean_from_restart, single_file, from)
 if (nvalues_to_log(inflation_handle, from) == 1) then
-   write(msgstring,  '(A, F8.3)') &
+   write(string1,  '(A, F8.3)') &
          'inf mean   '//trim(from)//', value: ', inflation_handle%minmax_mean(1)
 else
-   write(msgstring,  '(A, 2F8.3)') &
+   write(string1,  '(A, 2F8.3)') &
          'inf mean   '//trim(from)//', min/max values: ', inflation_handle%minmax_mean
 endif
-call error_handler(E_MSG, trim(label) // ' inflation:', msgstring,  source, revision, revdate)
+call error_handler(E_MSG, trim(label) // ' inflation:', string1,  source, revision, revdate)
 
 call set_from_string(inflation_handle%sd_from_restart, single_file, from)
 if (nvalues_to_log(inflation_handle, from) == 1) then
-   write(msgstring,  '(A, F8.3)') &
+   write(string1,  '(A, F8.3)') &
          'inf stddev '//trim(from)//', value: ', inflation_handle%minmax_sd(1)
 else
-   write(msgstring,  '(A, 2F8.3)') &
+   write(string1,  '(A, 2F8.3)') &
          'inf stddev '//trim(from)//', min/max values: ', inflation_handle%minmax_sd
 endif
-call error_handler(E_MSG, trim(label) // ' inflation:', msgstring,  source, revision, revdate)
+call error_handler(E_MSG, trim(label) // ' inflation:', string1,  source, revision, revdate)
 
 if (inflation_handle%inflation_sub_flavor == 5) then
-   write(msgstring, '(A, F8.3)') &
+   write(string1, '(A, F8.3)') &
             'inf stddev max change: ', inflation_handle%sd_max_change
-   call error_handler(E_MSG, trim(label) // ' inflation:', msgstring, source, revision, revdate)
+   call error_handler(E_MSG, trim(label) // ' inflation:', string1, source, revision, revdate)
 endif
 
 end subroutine log_inflation_info
@@ -1219,8 +1233,8 @@ else
    label = ""
 endif
 
-write(msgstring,*) trim(which)//' read from restart file: ' // trim(fname)
-call error_handler(E_MSG, trim(label) // ' inflation:', trim(msgstring), &
+write(string1,*) trim(which)//' read from restart file: ' // trim(fname)
+call error_handler(E_MSG, trim(label) // ' inflation:', trim(string1), &
                    source, revision, revdate)
 
 end subroutine print_inflation_restart_filename
