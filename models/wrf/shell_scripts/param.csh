@@ -6,7 +6,6 @@
 #
 # DART $Id$
 
-# TJH   NUM_ENS            is disconnected from input.nml
 # TJH   ADAPTIVE_INFLATION is disconnected from input.nml
 # TJH   rundir/sampling_error_correction_table.nc is out-of-date and does not support NUM_ENS=3
 # TJH   ASSIM_INT_HOURS  is implicit in (ALL) the scripts except assim_advance.csh
