@@ -4,6 +4,14 @@
 !
 ! $Id$
 
+! utility routines intended to make it easier to create the most
+! common types of observations:  threed_sphere locations, which
+! is what 99% of earth observations use.  
+
+! added an alternative for obs locations specified in X,Y,Z cartesian
+! coordinates.  used for subsurface water models, and some idealized
+! atmosphere models.
+
 module obs_utilities_mod
 
 
@@ -58,10 +66,16 @@ public :: create_3d_obs,    &
 character(len=NF90_MAX_NAME) :: missing_name = ''
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
+character(len=256), parameter :: source   = "$URL$"
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
+
+! create an interface for both 3d sphere obs (most earth obs are this)
+! and 3d cartesian obs (subsurface obs, idealized experiments)
+interface create_3d_obs
+   module procedure create_3d_sphere_obs
+   module procedure create_3d_cartesian_obs
+end interface
 
 contains
 
@@ -74,7 +88,7 @@ contains
 !>        has additional metadata associated with it, the calling code
 !>        should get a unique 'key' from a set metadata routine, and
 !>        pass that in as the last argument to this routine.  if present
-!>         it will be set in the obs_def derived type.
+!>        it will be set in the obs_def derived type.
 !>
 !>  lat   - latitude of observation
 !>  lon   - longitude of observation
@@ -92,8 +106,9 @@ contains
 !>  created Oct. 2007 Ryan Torn, NCAR/MMM
 !>  adapted for more generic use 11 Mar 2010, nancy collins, ncar/image
 !>  added optional metadata key   8 Nov 2013, nancy collins, ncar/image
+!>  overloaded to allow 3d cartesian locations, 23 sept 2019, nsc
 
-subroutine create_3d_obs(lat, lon, vval, vkind, obsv, okind, oerr, day, sec, qc, &
+subroutine create_3d_sphere_obs(lat, lon, vval, vkind, obsv, okind, oerr, day, sec, qc, &
                          obs, key)
 
 integer,           intent(in)    :: okind, vkind, day, sec
@@ -101,10 +116,96 @@ real(r8),          intent(in)    :: lat, lon, vval, obsv, oerr, qc
 type(obs_type),    intent(inout) :: obs
 integer, optional, intent(in)    :: key
 
+real(r8) :: loc_info(4)
+type(location_type) :: loc
+
+! setting location info with an array will allow this code
+! to compile with any location type.  this interface is only
+! intended to work with threed_sphere locations.
+loc_info(1) = lon
+loc_info(2) = lat
+loc_info(3) = vval
+loc_info(4) = real(vkind)
+
+loc = set_location(loc_info)
+call create_obs(loc, obsv, okind, oerr, day, sec, qc, obs, key)
+
+end subroutine create_3d_sphere_obs
+
+!--------------------------------------------------------------------
+!>  subroutine to create an observation type from observation data.  
+!>
+!>  NOTE: assumes the code is using the 3d cartesian locations module, 
+!>        that the observation has a single data value and a single
+!>        qc value. there is a last optional argument now; if the obs
+!>        has additional metadata associated with it, the calling code
+!>        should get a unique 'key' from a set metadata routine, and
+!>        pass that in as the last argument to this routine.  if present
+!>        it will be set in the obs_def derived type.
+!>
+!>  X, Y, Z - location of obs
+!>  obsv  - observation value
+!>  okind - observation kind
+!>  oerr  - standard deviation of observation error
+!>  day   - gregorian day
+!>  sec   - gregorian second
+!>  qc    - quality control value
+!>  obs   - observation type
+!>  key   - optional type-specific integer key from a set_metadata() routine
+!>
+!>  overloaded to allow 3d cartesian locations, 23 sept 2019, nsc
+
+subroutine create_3d_cartesian_obs(X,Y,Z, obsv, okind, oerr, day, sec, qc, &
+                         obs, key)
+
+integer,           intent(in)    :: okind, day, sec
+real(r8),          intent(in)    :: X,Y,Z, obsv, oerr, qc
+type(obs_type),    intent(inout) :: obs
+integer, optional, intent(in)    :: key
+
+real(r8) :: loc_info(3)
+type(location_type) :: loc
+
+! setting location info with an array will allow this code
+! to compile with any location type.  this interface is only
+! intended to work with threed_cartesian locations.
+loc_info(1) = X
+loc_info(2) = Y
+loc_info(3) = Z
+
+loc = set_location(loc_info)
+call create_obs(loc, obsv, okind, oerr, day, sec, qc, obs, key)
+
+end subroutine create_3d_cartesian_obs
+
+!--------------------------------------------------------------------
+!>  private subroutine to create an observation type from observation data.  
+!>
+!>  loc   - observation location 
+!>  obsv  - observation value
+!>  okind - observation kind
+!>  oerr  - standard deviation of observation error
+!>  day   - gregorian day
+!>  sec   - gregorian second
+!>  qc    - quality control value
+!>  obs   - observation type
+!>  key   - optional type-specific integer key from a set_metadata() routine
+!>
+
+subroutine create_obs(loc, obsv, okind, oerr, day, sec, qc, obs, key)
+
+type(location_type), intent(in)  :: loc
+integer,           intent(in)    :: okind, day, sec
+real(r8),          intent(in)    :: obsv, oerr, qc
+type(obs_type),    intent(inout) :: obs
+integer, optional, intent(in)    :: key
+
 real(r8)              :: obs_val(1), qc_val(1)
 type(obs_def_type)    :: obs_def
 
-call set_obs_def_location(obs_def, set_location(lon, lat, vval, vkind))
+! doing it with an array will work for any location mod.
+call set_obs_def_location(obs_def, loc)
+
 call set_obs_def_type_of_obs(obs_def, okind)
 call set_obs_def_time(obs_def, set_time(sec, day))
 call set_obs_def_error_variance(obs_def, oerr * oerr)
@@ -118,8 +219,7 @@ call set_obs_values(obs, obs_val)
 qc_val(1)  = qc
 call set_qc(obs, qc_val)
 
-end subroutine create_3d_obs
-
+end subroutine create_obs
 
 !--------------------------------------------------------------------
 !> takes a DART observation type and extracts the constituent pieces

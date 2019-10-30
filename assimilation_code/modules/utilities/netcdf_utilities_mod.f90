@@ -58,6 +58,7 @@ public :: nc_check,                       &
           nc_get_variable,                &
           nc_add_global_creation_time,    &
           nc_get_variable_num_dimensions, &
+          nc_get_variable_dimension_names, &
           nc_get_variable_size,           &
           nc_open_file_readonly,          &
           nc_open_file_readwrite,         &
@@ -1749,7 +1750,7 @@ ret = nf90_inquire_variable(ncid, varid, dimids=dimids, ndims=ndims)
 call nc_check(ret, routine, 'inquire dimensions for variable '//trim(varname), context, filename, ncid)
 
 if (ndims > size(varsize)) &
-   call nc_check(NF90_EDIMSIZE, routine, 'variable '//trim(varname)//' dimension mismatch', &
+   call nc_check(NF90_EDIMSIZE, routine, 'variable '//trim(varname)//' return varsize array too small', &
                  context, filename, ncid)
 
 ! in case the var is larger than ndims, set unused dims to -1
@@ -1782,6 +1783,40 @@ ret = nf90_inquire_variable(ncid, varid, ndims=numdims)
 call nc_check(ret, routine, 'inquire dimensions for variable '//trim(varname), context, filename, ncid)
 
 end subroutine nc_get_variable_num_dimensions 
+
+!------------------------------------------------------------------
+
+subroutine nc_get_variable_dimension_names(ncid, varname, dimnames, context, filename) 
+
+integer, intent(in) :: ncid
+character(len=*), intent(in):: varname
+character(len=*), intent(out) :: dimnames(:)
+character(len=*), intent(in), optional :: context
+character(len=*), intent(in), optional :: filename
+
+character(len=*), parameter :: routine = 'nc_get_variable_dimension_names'
+integer :: ret, i, ndims, varid, dimids(NF90_MAX_VAR_DIMS)
+
+
+ret = nf90_inq_varid(ncid, varname, varid)
+call nc_check(ret, routine, 'inquire variable id for '//trim(varname), context, filename, ncid)
+
+ret = nf90_inquire_variable(ncid, varid, dimids=dimids, ndims=ndims)
+call nc_check(ret, routine, 'inquire dimensions for variable '//trim(varname), context, filename, ncid)
+
+if (ndims > size(dimnames)) &
+   call nc_check(NF90_EDIMSIZE, routine, 'variable '//trim(varname)//' return dimnames array too small', &
+                 context, filename, ncid)
+
+! in case the var is larger than ndims, set unused dims to ""
+dimnames(:) = ""
+do i=1, ndims
+   ret = nf90_inquire_dimension(ncid, dimids(i), name=dimnames(i))
+   call nc_check(ret, routine, 'inquire dimension name for variable '//trim(varname), &
+                 context, filename, ncid)
+enddo
+
+end subroutine nc_get_variable_dimension_names 
 
 !--------------------------------------------------------------------
 !--------------------------------------------------------------------

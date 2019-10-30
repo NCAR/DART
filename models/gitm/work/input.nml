@@ -139,45 +139,47 @@
 
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'SAT_TEMPERATURE',
-                                'SAT_TEMPERATURE_ELECTRON',
-                                'SAT_TEMPERATURE_ION',
-                                'SAT_DENSITY_NEUTRAL_O3P',
-                                'SAT_DENSITY_NEUTRAL_O2',
-                                'SAT_DENSITY_NEUTRAL_N2',
-                                'SAT_DENSITY_NEUTRAL_N4S',
-                                'SAT_DENSITY_NEUTRAL_NO',
-                                'SAT_DENSITY_NEUTRAL_N2D',
-                                'SAT_DENSITY_NEUTRAL_N2P',
-                                'SAT_DENSITY_NEUTRAL_H',
-                                'SAT_DENSITY_NEUTRAL_HE',
-                                'SAT_DENSITY_NEUTRAL_CO2',
-                                'SAT_DENSITY_NEUTRAL_O1D',
-                                'SAT_DENSITY_ION_O4SP',
-                                'SAT_DENSITY_ION_O2P',
-                                'SAT_DENSITY_ION_N2P',
-                                'SAT_DENSITY_ION_NP',
-                                'SAT_DENSITY_ION_NOP',
-                                'SAT_DENSITY_ION_O2DP',
-                                'SAT_DENSITY_ION_O2PP',
-                                'SAT_DENSITY_ION_HP',
-                                'SAT_DENSITY_ION_HEP',
-                                'SAT_DENSITY_ION_E',
-                                'SAT_VELOCITY_U',
-                                'SAT_VELOCITY_V',
-                                'SAT_VELOCITY_W',
-                                'SAT_VELOCITY_U_ION',
-                                'SAT_VELOCITY_V_ION',
-                                'SAT_VELOCITY_W_ION',
-                                'SAT_VELOCITY_VERTICAL_O3P',
-                                'SAT_VELOCITY_VERTICAL_O2',
-                                'SAT_VELOCITY_VERTICAL_N2',
-                                'SAT_VELOCITY_VERTICAL_N4S',
-                                'SAT_VELOCITY_VERTICAL_NO',
-                                'SAT_F107',
-                                'SAT_RHO',
-				'GND_GPS_VTEC',
+   assimilate_these_obs_types = ''
    /
+
+#   assimilate_these_obs_types = 'SAT_TEMPERATURE',
+#                                'SAT_TEMPERATURE_ELECTRON',
+#                                'SAT_TEMPERATURE_ION',
+#                                'SAT_DENSITY_NEUTRAL_O3P',
+#                                'SAT_DENSITY_NEUTRAL_O2',
+#                                'SAT_DENSITY_NEUTRAL_N2',
+#                                'SAT_DENSITY_NEUTRAL_N4S',
+#                                'SAT_DENSITY_NEUTRAL_NO',
+#                                'SAT_DENSITY_NEUTRAL_N2D',
+#                                'SAT_DENSITY_NEUTRAL_N2P',
+#                                'SAT_DENSITY_NEUTRAL_H',
+#                                'SAT_DENSITY_NEUTRAL_HE',
+#                                'SAT_DENSITY_NEUTRAL_CO2',
+#                                'SAT_DENSITY_NEUTRAL_O1D',
+#                                'SAT_DENSITY_ION_O4SP',
+#                                'SAT_DENSITY_ION_O2P',
+#                                'SAT_DENSITY_ION_N2P',
+#                                'SAT_DENSITY_ION_NP',
+#                                'SAT_DENSITY_ION_NOP',
+#                                'SAT_DENSITY_ION_O2DP',
+#                                'SAT_DENSITY_ION_O2PP',
+#                                'SAT_DENSITY_ION_HP',
+#                                'SAT_DENSITY_ION_HEP',
+#                                'SAT_DENSITY_ION_E',
+#                                'SAT_VELOCITY_U',
+#                                'SAT_VELOCITY_V',
+#                                'SAT_VELOCITY_W',
+#                                'SAT_VELOCITY_U_ION',
+#                                'SAT_VELOCITY_V_ION',
+#                                'SAT_VELOCITY_W_ION',
+#                                'SAT_VELOCITY_VERTICAL_O3P',
+#                                'SAT_VELOCITY_VERTICAL_O2',
+#                                'SAT_VELOCITY_VERTICAL_N2',
+#                                'SAT_VELOCITY_VERTICAL_N4S',
+#                                'SAT_VELOCITY_VERTICAL_NO',
+#                                'SAT_F107',
+#                                'SAT_RHO',
+# 				'GND_GPS_VTEC',
 
 
 # The list of variables to put into the state vector is here:
@@ -192,8 +194,8 @@
    assimilation_period_seconds  = 1800,
    model_perturbation_amplitude = 0.2,
    calendar                     = 'Gregorian',
-   debug                        = 0,
-   gitm_state_variables =
+   debug                        = 99,
+   gitm_state_variables         = 'Electron_Density', 'QTY_ELECTRON_DENSITY', 'NA', 'NA', 'UPDATE'
 /
 
 !!
@@ -247,15 +249,25 @@
    /
 
 &gitm_to_netcdf.nml
-   gitm_to_netcdf_input_file   = '../data/3DUSR_t110311_204500.bin'
-   gitm_to_netcdf_grid_file    = '../data/2DTEC_t110311_204500.bin'
-   gitm_to_netcdf_output_file  = 'gitm_netcdf.nc'
+   gitm_to_netcdf_2d_input_file   = '../testdata2/2DTEC_t110311_204500.bin'
+   gitm_to_netcdf_3d_input_file   = '../testdata2/3DUSR_t110311_204500.bin'
+   gitm_to_netcdf_2d_output_file  = 'gitm_2d_netcdf.nc'
+   gitm_to_netcdf_3d_output_file  = 'gitm_3d_netcdf.nc'
    /
+
+# probably should be more like:
+#   gitm_to_netcdf_input_file   = '../data/3DUSR_t110311_204500.bin'
+#   gitm_to_netcdf_grid_file    = '../data/2DTEC_t110311_204500.bin'
+#   gitm_to_netcdf_output_file  = 'gitm_netcdf.nc'
+
 
 #press is in PA
 #height is in m (scaling for vertical - how many vertical meters correspond to one horizontal radian)
 #level is model level
 
+&quad_interpolate_nml
+   debug = 0
+   /
 
 &location_nml
    horiz_dist_only             = .false.,
@@ -374,13 +386,13 @@
 
 
 &model_mod_check_nml
-   input_state_files     = 'gitm_input.nc'
+   input_state_files     = 'gitm_3d_netcdf.nc'
    output_state_files    = 'mmc_output.nc'
    test1thru             = 0
-   run_tests             = 1,2,3,4,5,7
+   run_tests             = 1,2,3,4
    x_ind                 = 720
-   loc_of_interest       = 287.5, -82.48, 350000.
-   quantity_of_interest  = 'TEMPERATURE'
+   loc_of_interest       = 237.5, 29.699998435911585, 96671.3359375
+   quantity_of_interest  = 'QTY_ELECTRON_DENSITY'
    interp_test_dlon      = 0.1
    interp_test_dlat      = 0.1
    interp_test_dvert     = 5.0
