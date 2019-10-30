@@ -203,7 +203,7 @@ do fnum = 1, num_input_files
          call update(all_obs, obs_time)
          call update(oinfo(obs_type_ind), obs_time)
    
-         call write_location(0, location, charstring = string)
+         !call write_location(0, location, charstring = string)
          !write(*, *) trim(string) // '  ' // trim(get_name_for_type_of_obs(obs_type_ind))
    
          call get_next_obs(seq_in, obs_in, next_obs_in, is_this_last)

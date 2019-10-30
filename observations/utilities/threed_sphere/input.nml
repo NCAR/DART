@@ -30,7 +30,7 @@
    /
 
 &obs_def_gps_nml
-   max_gpsro_obs = 100000,
+   max_gpsro_obs = 10000000,
    / 
 
 &obs_sequence_nml
@@ -187,4 +187,12 @@
    calendar = 'Gregorian'
    debug = .false.
 /
+
+&obs_info_nml
+   filename_in  = ''
+   filelist_in  = 'flist.onemonth'
+   calendar     = 'Gregorian'
+   counts_only  = .true.
+   output_file  = 'ocount.txt'
+   /
 

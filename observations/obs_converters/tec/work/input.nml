@@ -1,5 +1,5 @@
-&text_to_obs_nml
-   text_input_file = '../data/text_input_file'
+&tec_to_obs_nml
+   tec_input_file = '../data/tec_input_file'
    obs_out_file    = 'obs_seq.out'
    debug           = .false.
 /

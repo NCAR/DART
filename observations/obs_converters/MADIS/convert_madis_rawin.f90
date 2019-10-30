@@ -75,8 +75,8 @@ character(len=129), parameter :: rawin_out_file = 'obs_seq.rawin'
 integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
                       num_qc     = 1        ! number of QC entries
 
-integer :: oday, osec, nsig, nsound, nused, io, iunit, rc, varid, & 
-           nmaxml, nmaxsw, nmaxst, maxobs, nvars_man, nvars_sigt, k, n, i, ncid
+integer :: oday, osec, nsig, nsound, nused, io, iunit, &
+           nmaxml, nmaxsw, nmaxswp, nmaxswh, nmaxst, maxobs, nvars_man, nvars_sigt, k, n, i, ncid
 
 integer,  allocatable :: obscnt(:), used(:), sorted_used(:), tused(:), nman(:)
 real(r8), allocatable :: lon(:), lat(:), elev(:), otime(:)
@@ -183,27 +183,24 @@ if (verbose) print *, 'max significant level temperatures per sounding, over all
 
 if ( .not. do_significant_level_temps ) nmaxst = 0
 
-! significant level winds - set which one is in this file.
-! (complication is they can be on pressure or height levels)
-call single_vert_type_sigwinds(ncid, nsound, sig_wind_type)
+! significant level winds
+! slightly more complex in that they could be on pressure levels,
+! heights, or both.  find the max of either.
 
-nmaxsw = 0
-if (sig_wind_type == "pressure") then
-  call get_or_fill_int(ncid, "numSigPresW", obscnt)
-  nmaxsw = maxval(obscnt, mask=obscnt<1000)
-  if (nmaxsw > 0) then
-    if (verbose) print *, 'max significant level winds per sounding, pressure vertical, over all soundings = ', nmaxsw
-  endif
-endif
-if (sig_wind_type == "height") then
-  call get_or_fill_int(ncid, "numSigW", obscnt)
-  nmaxsw = maxval(obscnt, mask=obscnt<1000)
-  if (nmaxsw > 0) then
-    if (verbose) print *, 'max significant level winds per sounding, height vertical, over all soundings = ', nmaxsw
-  endif
-endif
+! this call fills the array with 0s if not present
+call get_or_fill_int(ncid, "numSigPresW", obscnt)
+nmaxswp = maxval(obscnt, mask=obscnt<1000)
+if (verbose) print *, 'max significant level winds per sounding, pressure vertical, over all soundings = ', nmaxswp
 
-if ( .not. do_significant_level_winds ) nmaxst = 0
+call get_or_fill_int(ncid, "numSigW", obscnt)
+nmaxswh = maxval(obscnt, mask=obscnt<1000)
+if (verbose) print *, 'max significant level winds per sounding, height vertical, over all soundings = ', nmaxswh
+
+if ( .not. do_significant_level_winds ) then
+  nmaxsw = 0
+else
+  nmaxsw = max(nmaxswp, nmaxswh)
+endif
 
 
 
@@ -601,6 +598,11 @@ sondeloop2: do i = 1, nused
   !  If desired, read the pressure significant-level wind data, write to obs_seq
   !  Convert whichever is present - with vert units of pressure or height.
 
+  ! select pressure or height, depending on which one is there.
+  if ( do_significant_level_winds ) &
+    call single_vert_type_sigwinds(ncid, nmaxsw, n, sig_wind_type)
+
+
   !  note that pressure vs height are two separate sections because
   !  the netcdf arrays with data have slightly different field names,
   !  and the vertical coordinate is different in the create obs call.
@@ -746,31 +748,33 @@ call finalize_utilities()
 
 contains
 
-!
-! make sure this file doesn't have significant level winds on both
-! pressure and height.  we haven't seen this, but test for it just
-! in case.  otherwise the wind data would have replicated obs on
-! different vertical levels which would be almost impossible to
-! detect after the obs_seq file was created.
-!
-subroutine single_vert_type_sigwinds(ncid, nsound, sig_wind_type)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! make sure this sounding doesn't have significant level winds on both
+! pressure and height.  glen has files where some non-conus radiosondes
+! do have both in the same sounding.  we aren't sure if these are disjoint
+! obs or replicated obs, so to err on the safe side we're only converting
+! one or the other.
+
+subroutine single_vert_type_sigwinds(ncid, max_sound, this_sound, sig_wind_type)
  integer, intent(in) :: ncid
- integer, intent(in) :: nsound
+ integer, intent(in) :: max_sound
+ integer, intent(in) :: this_sound
  character(len=*), intent(out) :: sig_wind_type
 
 integer, allocatable :: p(:), h(:)
-integer :: pmax, hmax
+integer :: pcount, hcount
 
-allocate(p(nsound), h(nsound))
+allocate(p(max_sound), h(max_sound))
 
+! avoid 9999 or 99999 which is used as a fill
 call get_or_fill_int(ncid, "numSigPresW", p)
-pmax = maxval(p, mask=p<1000)
+pcount = min(p(this_sound), 1000)
 
 call get_or_fill_int(ncid, "numSigW", h)
-hmax = maxval(h, mask=h<1000)
+hcount = min(h(this_sound), 1000)
 
-if (pmax > 0 .and. hmax > 0) then
-  print *, 'found both height and pressure significant level winds in this file'
+if (pcount > 0 .and. hcount > 0) then
+  print *, 'found both height and pressure significant level winds in sounding number ', this_sound
   if ( wind_use_vert_pressure ) then
     sig_wind_type = 'pressure'
     print *, 'will use pressure levels, based on setting of "wind_use_vert_pressure"'
@@ -778,12 +782,12 @@ if (pmax > 0 .and. hmax > 0) then
     sig_wind_type = 'height'
     print *, 'will use height levels, based on setting of "wind_use_vert_pressure"'
   endif
-else if (pmax > 0) then
+else if (pcount > 0) then
   sig_wind_type = 'pressure'
-  print *, 'significant level winds are on pressure levels'
-else if (hmax > 0) then
+  if (verbose) print *, 'significant level winds are on pressure levels'
+else if (hcount > 0) then
   sig_wind_type = 'height'
-  print *, 'significant level winds are on height levels'
+  if (verbose) print *, 'significant level winds are on height levels'
 else
   sig_wind_type = 'none'
 endif
