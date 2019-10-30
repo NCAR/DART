@@ -7,24 +7,29 @@
 # DART $Id$
 
 #==================================================================
-#BSUB -J gen_wrfinput_bdy
-#BSUB -o gen_wrfinput_bdy.%J.log
-#BSUB -P 25000077 # set this appropriately #%%%#
+#BSUB -J gen_retro_icbc
+#BSUB -o gen_retro_icbc.%J.log
+#BSUB -P 25000077 # if using LSF, change this
 #BSUB -W 0:38
 #BSUB -q regular
 #BSUB -n 64
 #BSUB -x
 #BSUB -R "span[ptile=64]"
-#==================================================================
-# TJH Add block for SLURM/PBS ... this takes a long time for 50
-#==================================================================
+
+#PBS -N gen_retro_icbc
+#PBS -A 25000077 # if using PBS, change this
+#PBS -l walltime=00:38
+#PBS -q regular               
+#PBS -o gen_retro_icbc.out                    
+#PBS -j oe                              
+#PBS -l select=5:ncpus=60:mpiprocs=60
+#PBS -V                        
 
 echo "gen_retro_icbc.csh is running in `pwd`"
 
 ########################################################################
 #
-# TJH ... this filename may have been useful at one point ... but not now.
-#   generate_wrfinput_bdy_files.csh - shell script that generates the
+#   gen_retro_icbc.csh - shell script that generates the
 #                                     necessary wrfinput_d01 and
 #                                     wrfbdy_d01 files for running
 #                                     a real-time analysis system.
@@ -37,14 +42,13 @@ echo "gen_retro_icbc.csh is running in `pwd`"
 ########################################################################
 
 set datea     = 2017042700
-set datefnl   = 2017043000 # set this appropriately #%%%#
-set datefnl   = 2017042712    # TJH shorter ... for testing
+set datefnl   = 2017042712 # set this appropriately #%%%#
 set paramfile = /glade2/scratch2/USERNAME/WORK_DIR/scripts/param.csh   # set this appropriately #%%%#
 set paramfile = /glade/work/thoar/DART/clean_rma_trunk/models/wrf/tutorial/scripts/param.csh
 
 source $paramfile
 
-# TJH The geo_*.nc file is already in the ${ICBC_DIR}/*/ directories.
+# The geo_*.nc files should already be in the ${ICBC_DIR}/*/ directories.
 # ${LINK} ${GEO_FILES_DIR}/geo_*.nc .
 
 mkdir -p ${ICBC_DIR}/metgrid
