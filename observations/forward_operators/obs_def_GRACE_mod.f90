@@ -11,43 +11,43 @@
 ! GRACE_TOTAL_WATER_STORAGE,  QTY_TOTAL_WATER_STORAGE
 ! END DART PREPROCESS KIND LIST
 
-!----------------------------------------------------------
+!-------------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 ! use obs_def_GRACE_mod, only: get_expected_TWS
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
-!----------------------------------------------------------
+!-------------------------------------------------------------------------------
 
-!---------------------------------------------------------
+!-------------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 ! case(GRACE_TOTAL_WATER_STORAGE)
 ! call get_expected_TWS(state_handle, ens_size, location, &
 !                       obs_def%key, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
-!---------------------------------------------------------
+!-------------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS READ_OBS_DEF
 !    case(GRACE_TOTAL_WATER_STORAGE)
 !       continue
 ! END DART PREPROCESS READ_OBS_DEF
-!-----------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS WRITE_OBS_DEF
 !    case(GRACE_TOTAL_WATER_STORAGE)
 !       continue
 ! END DART PREPROCESS WRITE_OBS_DEF
-!-----------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 
-!-----------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
 !    case(GRACE_TOTAL_WATER_STORAGE)
 !       continue
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
-!-----------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 
 
-!-----------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS MODULE CODE
 
 module obs_def_GRACE_mod
@@ -83,15 +83,14 @@ private
 public ::  get_expected_TWS
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   '$URL$'
+character(len=*), parameter :: source   = '$URL$'
 character(len=*), parameter :: revision = '$Revision$'
 character(len=*), parameter :: revdate  = '$Date$'
 
-logical            :: module_initialized = .false.
-integer            :: max_grace_obs      = 100000
-real(r8),           allocatable, dimension(:) :: grace_data
-logical            :: debug = .false.
+logical               :: module_initialized = .false.
+logical               :: debug              = .false.
+integer               :: max_grace_obs      = 100000
+real(r8), allocatable :: grace_data(:)
 
 namelist /obs_def_grace_nml/ max_grace_obs, debug
 
@@ -131,8 +130,9 @@ endif
 end subroutine initialize_module
 
 
-!-----------------------------------------------------------------------
-!> The forward operator for Total Water Storage
+!-------------------------------------------------------------------------------
+!> The forward operator for Total Water Storage.
+!> Get the soil moisture at several layers, add in the snow amounts ...
 
 subroutine get_expected_TWS(state_handle, ens_size, location, &
                             velkey, expected_obs, istatus)
@@ -160,8 +160,8 @@ integer :: istatus2(ens_size)
 integer :: istatus3(ens_size)
 logical :: return_now
 
-integer :: num, which_vert
-real(r8):: loc(3),test(3)
+integer :: num
+real(r8):: loc(3)
 
 istatus      = 0
 expected_obs = MISSING_R8
@@ -175,35 +175,25 @@ call error_handler(E_ERR,routine,'lots of work to do',source, revision, revdate)
 ! Simple error check on key number before accessing the array
 !call velkey_out_of_range(velkey,'get_expected_TWS')
 
-! Get what you need from the DART state for quantity 1 
-
 loc = get_location(location)
 
-!----------------------------------------------------------------------
+!-------------------------------------------------------------------------------
+! Get the soil moisture at 4 different levels
 
 loc(3) = 0.05_r8
 location_soil=set_location(loc(1),loc(2),loc(3),VERTISHEIGHT)
 call interpolate(state_handle, ens_size, location_soil, QTY_SOIL_MOISTURE, &
                  h2osoi_1, istatus1)
 call track_status(ens_size, istatus1, h2osoi_1, istatus, return_now)
-if (return_now) then
-!   print*,'soil'
-   return
-endif
-!-----------------------------------------------------------------------
-!test = get_location(location_soil)
-!print*,test(1),test(2),test(3)
-!----------------------------------------------------------------------
+if (return_now) return
+
 loc(3) = 0.25_r8
 location_soil=set_location(loc(1),loc(2),loc(3),VERTISHEIGHT)
 call interpolate(state_handle, ens_size, location_soil, QTY_SOIL_MOISTURE, &
                  h2osoi_2, istatus1)
 call track_status(ens_size, istatus1, h2osoi_2, istatus, return_now)
 if (return_now) return
-!-----------------------------------------------------------------------
-!test = get_location(location_soil)
-!print*,test(1),test(2),test(3)
-!----------------------------------------------------------------------
+
 loc(3) = 0.7_r8
 location_soil=set_location(loc(1),loc(2),loc(3),VERTISHEIGHT)
 call interpolate(state_handle, ens_size, location_soil, QTY_SOIL_MOISTURE, &
@@ -211,54 +201,66 @@ call interpolate(state_handle, ens_size, location_soil, QTY_SOIL_MOISTURE, &
 call track_status(ens_size, istatus1, h2osoi_3, istatus, return_now)
 if (return_now) return
 
-!-----------------------------------------------------------------------
-!test = get_location(location_soil)
-!print*,test(1),test(2),test(3)
-!----------------------------------------------------------------------
 loc(3) = 1.5_r8
 location_soil=set_location(loc(1),loc(2),loc(3),VERTISHEIGHT)
 call interpolate(state_handle, ens_size, location_soil, QTY_SOIL_MOISTURE, &
                  h2osoi_4, istatus1)
 call track_status(ens_size, istatus1, h2osoi_4, istatus, return_now)
 if (return_now) return
-!-----------------------------------------------------------------------
-!test = get_location(location_soil)
-!print*,test(1),test(2),test(3)
-!----------------------------------------------------------------------
 
 !>@todo replace the 100, 300, 600, 1000 with the actual layer thicknesses.
 obs_h2osoi = h2osoi_1*100 + h2osoi_2*300 + h2osoi_3*600 + h2osoi_4*1000
 
-!print*,'h2osoi_lines',h2osoi_1(1),h2osoi_2(1),h2osoi_3(1),h2osoi_4(1),obs_h2osoi(1)
+if (debug) then
+   write(string1,*)'soil moisture components:', &
+        h2osoi_1(1),h2osoi_2(1),h2osoi_3(1),h2osoi_4(1),obs_h2osoi(1)
+   call error_handler(E_MSG, 'get_expected_TWS', string1, &
+                     source, revision, revdate)
+endif
 
-! Get what you need from the DART state for quantity 2 
+!-------------------------------------------------------------------------------
+! Get the amount of water in the snow
 
 call interpolate(state_handle, ens_size, location, QTY_SNOW_WATER, &
                  obs_h2osno, istatus2)
 call track_status(ens_size, istatus2, obs_h2osno, istatus, return_now)
 if (return_now) return
 
-! Get what you need from the DART state for quantity 3 
+!-------------------------------------------------------------------------------
+! Get the amount of water in the aquifer ...
+!>@todo some models may not have aquifer ... should this be an error ...
 
 call interpolate(state_handle, ens_size, location, QTY_AQUIFER_WATER, &
                  obs_wa, istatus3)
 call track_status(ens_size, istatus3, obs_wa, istatus, return_now)
 if (return_now) return
 
-! At this point, 'istatus' is an array 
+!-------------------------------------------------------------------------------
+! Add up the water amounts from the different sources
+
 where (istatus == 0 ) expected_obs = obs_h2osno + obs_h2osoi + obs_wa
 
-!>@todo do something to either ensure the components are all positive or ...
+!-------------------------------------------------------------------------------
+! Add up the water amounts from the different sources
+
+
 do num = 1, ens_size
-if (expected_obs(num) < 0.0_r8) then
-   print*,'expected_obs is negative',num
-   istatus = 1
-   expected_obs(num) = MISSING_R8
-   test = get_location(location)
-   print*,'location',test(1),test(2)
-   print*,'obs_h2osno,obs_h2osoi,obs_wa',obs_h2osno(num),obs_h2osoi(num),obs_wa(num)
-   print*,'istatus1,istatus2,istatus3',istatus1(num),istatus2(num),istatus3(num)  
-endif
+   if (expected_obs(num) < 0.0_r8 .and. istatus(num) == 0) then
+
+      call write_location(0,location,charstring=string3)
+      write(string1,*)'TWS expected_obs for member ',num,' at ', &
+                      trim(string3),' is unphysical ',expected_obs(num)
+      write(string2,*)'obs_h2osno, obs_h2osoi, obs_wa', &
+                     obs_h2osno(num), obs_h2osoi(num), obs_wa(num)
+      write(string3,*)'istatus1, istatus2, istatus3', &
+                     istatus1(num), istatus2(num), istatus3(num)  
+      call error_handler(E_MSG, 'get_expected_TWS', string1, &
+                     source, revision, revdate, text2=string2, text3=string3)
+   
+      expected_obs(num) = MISSING_R8
+      istatus = 1
+   
+   endif
 enddo
 
 end subroutine get_expected_TWS
@@ -267,10 +269,4 @@ end subroutine get_expected_TWS
 end module obs_def_GRACE_mod
 
 ! END DART PREPROCESS MODULE CODE
-!-----------------------------------------------------------------------------
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
+!-------------------------------------------------------------------------------
