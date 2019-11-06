@@ -212,7 +212,7 @@
    wrf_state_bounds    = 'QVAPOR','0.0','NULL','CLAMP',
                          'QRAIN', '0.0','NULL','CLAMP',
                          'QCLOUD','0.0','NULL','CLAMP',
-   num_domains                 = 2,
+   num_domains                 = 1,
    calendar_type               = 3,
    assimilation_period_seconds = 21600,
    vert_localization_coord     = 3,
