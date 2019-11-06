@@ -712,6 +712,7 @@ calculate the error in the assimilation:
         time_series_length: 200
                        var: 'state'
                   var_inds: [1 2 3]
+                  
 </code>
 </pre>
 </td>
