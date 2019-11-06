@@ -152,6 +152,11 @@ foreach MODEL ( $DO_THESE_MODELS )
     mkdir -p ${SAVEDIR}
     ${COPY} input.nml obs_seq.* ${SAVEDIR}
 
+    # If there is a testing namelist, use it.
+    if ( -f input.nml.testing ) then
+       ${COPY} input.nml.testing input.nml
+    endif
+
     if ( -f workshop_setup.csh ) then
 
       echo "Trying to run workshop_setup.csh for model $MODEL as a test"
