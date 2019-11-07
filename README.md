@@ -8,7 +8,7 @@
 Extensive on-line documentation is available at the GitHub project web pages:
 [https://ncar.github.io/DART](https://ncar.github.io/DART)
 or in the repository at [docs/index.md](docs/index.md). It's probably a good idea
-to be familiar with the [GitHub workflow](https://guides.github.com/introduction/flow/).
+to be familiar with the [GitHub flow](https://guides.github.com/introduction/flow/).
 
 <table><tr>
 <td><img height=250, src="./docs/images/DARTspaghettiSquare.gif"></td> 
