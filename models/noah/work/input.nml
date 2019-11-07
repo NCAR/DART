@@ -98,10 +98,9 @@
 
 
 &dart_to_noah_nml
-   dart_analysis_file = 'analysis_member_0001.nc'
-   noah_restart_file  = '/work/04270/l_jing/lonestar/DART_CAM/RESTART.2003010100_DOMAIN1_0001'
+   dart_analysis_file = 'perfect_out.nc'
+   noah_restart_file  = 'RESTART.2003051600_DOMAIN1_01'
   /
-   noah_restart_file  = '/work/04270/l_jing/lonestar/DART_CAM/RESTART.2003010100_DOMAIN1_01'
 
 
 &quality_control_nml

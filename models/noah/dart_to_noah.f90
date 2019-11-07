@@ -93,9 +93,12 @@ real(r8), allocatable :: sum_sn(:,:)
 real(r8), allocatable :: sum_ice(:,:)
 real(r8), allocatable :: sum_liq(:,:)
 
-!>@todo read this value from the restart file ...
-real :: MISSING_R8=-1E+33
-character(len=NF90_MAX_NAME) :: varname
+real(r8) :: missing_value
+
+character(len=*), parameter :: SNEQV = 'SNEQV'
+character(len=*), parameter :: SNOWH = 'SNOWH'
+character(len=*), parameter :: SNICE = 'SNICE'
+character(len=*), parameter :: SNLIQ = 'SNLIQ'
 
 character(len=512) :: string1, string2, string3
 
@@ -146,11 +149,13 @@ call print_time( dart_time,'dart_to_noah:DART model time',logfileunit)
 ncid_dart = nc_open_file_readonly(dart_analysis_file, routine)
 ncid_noah = nc_open_file_readwrite(noah_restart_file, routine)
 
-!>@todo check the number of dimensions to make sure they are what we expect
-varname = 'SNEQV'
 
-call nc_get_variable_num_dimensions(ncid_dart, varname, numdims, routine)
-call nc_get_variable_size(ncid_dart, varname, dimlens(1:numdims), routine)
+call nc_get_global_attribute(ncid_noah,'missing_value',missing_value,'dart_to_noah')
+
+!>@todo check the number of dimensions to make sure they are what we expect
+
+call nc_get_variable_num_dimensions(ncid_dart, SNEQV, numdims, routine)
+call nc_get_variable_size(ncid_dart, SNEQV, dimlens(1:numdims), routine)
 
 allocate(dart_sneqv(dimlens(1),dimlens(2)))
 allocate(noah_sneqv(dimlens(1),dimlens(2)))
@@ -158,44 +163,41 @@ allocate(innov_swe(dimlens(1),dimlens(2)))
 allocate(innov(dimlens(1),dimlens(2)))
 allocate(wt_swe(dimlens(1),dimlens(2)))
 
-call nc_get_variable(ncid_dart, varname, dart_sneqv, routine)
-call nc_get_variable(ncid_noah, varname, noah_sneqv, routine)
+call nc_get_variable(ncid_dart, SNEQV, dart_sneqv, routine)
+call nc_get_variable(ncid_noah, SNEQV, noah_sneqv, routine)
 
 innov_swe = dart_sneqv - noah_sneqv
 
 call nc_close_file(ncid_dart,routine)
 !----------------------------------------------------------------------
 !>@todo check the number of dimensions to make sure they are what we expect
-varname = 'SNOWH'
-call nc_get_variable_num_dimensions(ncid_noah, varname, numdims, routine)
-call nc_get_variable_size(ncid_noah, varname, dimlens(1:numdims), routine)
+call nc_get_variable_num_dimensions(ncid_noah, SNOWH, numdims, routine)
+call nc_get_variable_size(ncid_noah, SNOWH, dimlens(1:numdims), routine)
 allocate(prior_snowh(dimlens(1),dimlens(2)))
 allocate(poste_snowh(dimlens(1),dimlens(2)))
 allocate(snow_density(dimlens(1),dimlens(2)))
 allocate(sum_sn(dimlens(1),dimlens(2)))
-call nc_get_variable(ncid_noah, varname, prior_snowh, routine)
+call nc_get_variable(ncid_noah, SNOWH, prior_snowh, routine)
 
-varname = 'SNICE'
-call nc_get_variable_num_dimensions(ncid_noah, varname, numdims, routine)
-call nc_get_variable_size(ncid_noah, varname, dimlens(1:numdims), routine)
+call nc_get_variable_num_dimensions(ncid_noah, SNICE, numdims, routine)
+call nc_get_variable_size(ncid_noah, SNICE, dimlens(1:numdims), routine)
 allocate(prior_snice(dimlens(1),dimlens(2),dimlens(3)))
 allocate(poste_snice(dimlens(1),dimlens(2),dimlens(3)))
 allocate(wt_ice(dimlens(1),dimlens(3)))
 allocate(sum_ice(dimlens(1),dimlens(3)))
 allocate(innov_ice(dimlens(1),dimlens(3)))
 allocate(wt_ice_l(dimlens(1),dimlens(2),dimlens(3)))
-call nc_get_variable(ncid_noah, varname, prior_snice, routine)
+call nc_get_variable(ncid_noah, SNICE, prior_snice, routine)
 
-varname = 'SNLIQ'
-call nc_get_variable_num_dimensions(ncid_noah, varname, numdims, routine)
-call nc_get_variable_size(ncid_noah, varname, dimlens(1:numdims), routine)
+call nc_get_variable_num_dimensions(ncid_noah, SNLIQ, numdims, routine)
+call nc_get_variable_size(ncid_noah, SNLIQ, dimlens(1:numdims), routine)
 allocate(prior_snliq(dimlens(1),dimlens(2),dimlens(3)))
 allocate(poste_snliq(dimlens(1),dimlens(2),dimlens(3)))
 allocate(wt_liq(dimlens(1),dimlens(3)))
 allocate(sum_liq(dimlens(1),dimlens(3)))
 allocate(innov_liq(dimlens(1),dimlens(3)))
 allocate(wt_liq_l(dimlens(1),dimlens(2),dimlens(3)))
-call nc_get_variable(ncid_noah, varname, prior_snliq, routine)
+call nc_get_variable(ncid_noah, SNLIQ, prior_snliq, routine)
 
 !----------------------------------------------------------------------
 ! use the innov and the prior_* to come up with a poste_*
@@ -240,17 +242,17 @@ do i = 1,dimlens(1)
          if(prior_snice(i,k,j)>=0.0_r8) then
             poste_snice(i,k,j) = prior_snice(i,k,j)+innov_ice(i,j)*wt_ice_l(i,k,j)
          else
-            poste_snice(i,k,j) = MISSING_R8
+            poste_snice(i,k,j) = missing_value
          endif
           if(prior_snliq(i,k,j)>=0.0_r8) then
             poste_snliq(i,k,j) = prior_snliq(i,k,j)+innov_liq(i,j)*wt_liq_l(i,k,j)
          else
-            poste_snliq(i,k,j) = MISSING_R8
+            poste_snliq(i,k,j) = missing_value
          endif
-         if(poste_snice(i,k,j)<0.0_r8 .and. poste_snice(i,k,j)/=MISSING_R8) then
+         if(poste_snice(i,k,j)<0.0_r8 .and. poste_snice(i,k,j)/=missing_value) then
             poste_snice(i,k,j) = prior_snice(i,k,j)
          endif
-         if(poste_snliq(i,k,j)<0.0_r8 .and. poste_snliq(i,k,j)/=MISSING_R8) then
+         if(poste_snliq(i,k,j)<0.0_r8 .and. poste_snliq(i,k,j)/=missing_value) then
             poste_snliq(i,k,j) = prior_snliq(i,k,j)
          endif
       enddo
@@ -266,9 +268,9 @@ Do i = 1,dimlens(1)
        else if (sum_sn(i,j)==0.0_r8) then
           poste_snowh(i,j) = prior_snowh(i,j)
        else
-          poste_snowh(i,j) = MISSING_R8
+          poste_snowh(i,j) = missing_value
        endif
-       if(poste_snowh(i,j)<0.0_r8 .and. poste_snowh(i,j)/=MISSING_R8) then
+       if(poste_snowh(i,j)<0.0_r8 .and. poste_snowh(i,j)/=missing_value) then
           poste_snowh(i,j) = prior_snowh(i,j)
        endif
    enddo
@@ -279,14 +281,10 @@ enddo
 !print*, prior_snice(40,3,60),poste_snice(40,3,60)
 !print*, prior_snliq(40,3,60),poste_snliq(40,3,60)
 !-------------------------------------------------------------
-varname = 'SNOWH'
-call nc_put_variable(ncid_noah, varname, poste_snowh, routine)
-varname = 'SNEQV'
-call nc_put_variable(ncid_noah, varname, dart_sneqv, routine)
-varname = 'SNICE'
-call nc_put_variable(ncid_noah, varname, poste_snice, routine)
-varname = 'SNLIQ'
-call nc_put_variable(ncid_noah, varname, poste_snliq, routine)
+call nc_put_variable(ncid_noah, SNOWH, poste_snowh, routine)
+call nc_put_variable(ncid_noah, SNEQV, dart_sneqv, routine)
+call nc_put_variable(ncid_noah, SNICE, poste_snice, routine)
+call nc_put_variable(ncid_noah, SNLIQ, poste_snliq, routine)
 
 call nc_close_file(ncid_noah,routine)
 
