@@ -433,9 +433,11 @@ the truth and can calculate an error.
         time_series_length: 200   
                        var: 'state'  
                   var_inds: [1 2 3]
+                  
 </code>
 </pre>
 </td>
+
 <td width="50%">
 <img src="../images/lorenz_63_total_err.png"       width="500" alt="xxxx" /><br />  
 <img src="../images/lorenz_63_ens_time_series.png" width="500" alt="xxxx" />
