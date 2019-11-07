@@ -48,6 +48,7 @@ if ( "$usingmpi" == "yes" ) then
   if ( ! $?MPICMD) then
     set MPICMD='mpirun -n 2'
   endif
+  echo "MPI programs will be started with: $MPICMD"
 else if ( "$usingmpi" == "no" ) then
   echo "Building WITHOUT MPI support."
   set QUICKBUILD_ARG='-nompi'
@@ -144,6 +145,25 @@ foreach TESTFILE ( $HAS_TESTS )
          
            if ( $FAILURE ) then
               echo "ERROR - unsuccessful run of $PROG"
+
+              switch ( $PROG )
+                 case stacktest
+                    echo "        stacktest intentionally fails."
+                    echo "        stacktest continually reallocates a stack array until it fails."
+                 breaksw
+                 case test_diag_structure
+                    echo "        test_diag_structure intentionally fails."
+                    echo "        test_diag_structure tries to allocate 11 domains - max is 10."
+                 breaksw
+                 case test_state_structure
+                    echo "        test_state_structure fails."
+                    echo "        test_state_structure not fully tested."
+                 breaksw
+                 default
+                    echo "unexpected error"
+                 breaksw
+              endsw
+
            else
               ${REMOVE} $PROG
               echo "Successful run of $PROG"

@@ -1,15 +1,22 @@
 &model_nml
-     noah_netcdf_filename         = 'restart.nc',
-     assimilation_period_days     =    0,
-     assimilation_period_seconds  = 3600,
-     model_perturbation_amplitude = 0.0,
-     debug                        = 1,
-     noah_state_variables         = 'SOIL_T',   'QTY_SOIL_TEMPERATURE',
-                                    'SOIL_M',   'QTY_SOIL_MOISTURE',
-                                    'SOIL_W',   'QTY_SOIL_LIQUID_WATER',
-                                    'SKINTEMP', 'QTY_SKIN_TEMPERATURE',
-                                    'SNODEP',   'QTY_SNOW_THICKNESS',
-                                    'WEASD',    'QTY_SNOW_WATER',
-                                    'CANWAT',   'QTY_CANOPY_WATER',
-                                    'QFX',      'QTY_LATENT_HEAT_FLUX',
+   domain_shapefiles            = '', '', ''
+   lsm_model_choice             = ''
+   assimilation_period_days     =    0
+   assimilation_period_seconds  = 3600
+   model_perturbation_amplitude = 0.002
+   perturbation_distribution    = 'lognormal'
+   debug                        = 0 
+   polar                        = .false. 
+   periodic_x                   = .false. 
+   periodic_y                   = .false. 
+   lsm_variables = 'SOIL_T',   'QTY_SOIL_TEMPERATURE',   '0.0',  'NA', 'UPDATE',
+                   'SOIL_M',   'QTY_SOIL_MOISTURE',      '0.0', '1.0', 'UPDATE',
+                   'SNOW_T',   'QTY_SNOW_TEMPERATURE',   '0.0',  'NA', 'UPDATE',
+                   'SOIL_W',   'QTY_SOIL_LIQUID_WATER',  '0.0',  'NA', 'UPDATE',
+                   'SKINTEMP', 'QTY_SKIN_TEMPERATURE',   '0.0',  'NA', 'UPDATE',
+                   'GRDFLX',   'QTY_GROUND_HEAT_FLUX'    '0.0',  'NA', 'UPDATE',
+                   'SNODEP',   'QTY_SNOW_THICKNESS',     '0.0',  'NA', 'UPDATE',
+                   'WEASD',    'QTY_SNOW_WATER',         '0.0',  'NA', 'UPDATE',
+                   'CANWAT',   'QTY_CANOPY_WATER',       '0.0',  'NA', 'UPDATE',
   /
+

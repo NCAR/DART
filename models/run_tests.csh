@@ -47,6 +47,7 @@ if ( "$usingmpi" == "yes" ) then
   if ( ! $?MPICMD) then
     set MPICMD='mpirun -n 2'
   endif
+  echo "MPI programs will be started with: $MPICMD"
 else if ( "$usingmpi" == "no" ) then
   echo "Building WITHOUT MPI support."
   set QUICKBUILD_ARG='-nompi'
@@ -101,6 +102,7 @@ set DO_THESE_MODELS = ( \
   lorenz_96 \
   lorenz_96_2scale \
   mpas_atm \
+  noah \
   null_model \
   simple_advection \
   template \
