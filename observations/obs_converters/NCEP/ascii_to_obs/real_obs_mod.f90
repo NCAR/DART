@@ -211,6 +211,7 @@ if (obs_file_len > len(obsfile)) then
                               len(obsfile) - len(obsdate) - len(hourt)
    call error_handler(E_ERR, 'real_obs_sequence', msgstring1, &
               source, revision, revdate, text2=msgstring2)
+
 endif
 
 obsfile  = trim(adjustl(ObsBase))//obsdate//hourt
