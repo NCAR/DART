@@ -714,11 +714,19 @@ calculate the error in the assimilation:
         time_series_length: 200
                        var: 'state'
                   var_inds: [1 2 3]
-                  
+
+
 </code>
 </pre>
 
+
+</code>
+</pre>
+
+
 </td>
+
+
 
 <td width="50%">
 <img src="../images/lorenz_63_total_err.png"       width="500" alt="xxxx" /><br />
