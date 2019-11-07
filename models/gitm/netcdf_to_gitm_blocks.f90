@@ -24,8 +24,7 @@ use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
                              logfileunit, open_file, close_file
 
-use        model_mod, only : static_init_model, get_model_size, &
-                             get_gitm_restart_dirname !! , statevector_to_restart_file
+use        model_mod, only : netcdf_to_restart_files
 
 use time_manager_mod, only : time_type, print_time, print_date, operator(-), &
                              get_time, get_date
@@ -42,9 +41,14 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! namelist parameters with default values.
 !-----------------------------------------------------------------------
 
+character (len = 256) :: gitm_restart_input_dirname  = '[none specified]'
+character (len = 256) :: gitm_restart_output_dirname = '[none specified]'
 character (len = 256) :: netcdf_to_gitm_blocks_input_file = 'filter_restart.nc'
 
-namelist /netcdf_to_gitm_blocks_nml/ netcdf_to_gitm_blocks_input_file
+namelist /netcdf_to_gitm_blocks_nml/   &
+     gitm_restart_input_dirname,       &
+     gitm_restart_output_dirname,      &
+     netcdf_to_gitm_blocks_input_file         
 
 !----------------------------------------------------------------------
 ! global storage
@@ -66,19 +70,12 @@ call find_namelist_in_file("input.nml", "netcdf_to_gitm_blocks_nml", iunit)
 read(iunit, nml = netcdf_to_gitm_blocks_nml, iostat = io)
 call check_namelist_read(iunit, io, "netcdf_to_gitm_blocks_nml")
 
-!----------------------------------------------------------------------
-! Call model_mod:static_init_model() which reads the gitm namelists
-! to set grid sizes, etc.
-!----------------------------------------------------------------------
-
-call static_init_model()
-call get_gitm_restart_dirname(gitm_restart_dirname)
-
 write(*,*)
 write(*,*) 'netcdf_to_gitm_blocks: converting DART file ', "'"//trim(netcdf_to_gitm_blocks_input_file)//"'"
-write(*,*) 'to gitm restart files in directory ', "'"//trim(gitm_restart_dirname)//"'"
+write(*,*) 'to gitm restart files in directory ', "'"//trim(gitm_restart_output_dirname)//"'"
+write(*,*) 'using the restart files in directory ', "'"//trim(gitm_restart_input_dirname)//"' as a template"
 
-x_size = get_model_size()
+!x_size = get_model_size()
 !allocate(statevector(x_size))
 
 !----------------------------------------------------------------------
