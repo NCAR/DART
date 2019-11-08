@@ -11,9 +11,9 @@ FORCING_FILE_DIRECTORY = 'noah/forcing'
 
    RESTART_FILENAME_REQUESTED = 'restart.nc'
 
-   START_YEAR  = 2001
-   START_MONTH = 01
-   START_DAY   = 01
+   START_YEAR  = 2003
+   START_MONTH = 05
+   START_DAY   = 16
    START_HOUR  = 0
    START_MIN   = 0
 
@@ -41,6 +41,7 @@ FORCING_FILE_DIRECTORY = 'noah/forcing'
    RESTART_FREQUENCY_HOURS = 24
 
    NSOIL=4
+   NITSOIL=5
    soil_thick_input(1) = 0.10
    soil_thick_input(2) = 0.30
    soil_thick_input(3) = 0.60
@@ -51,6 +52,6 @@ FORCING_FILE_DIRECTORY = 'noah/forcing'
   /
 
 &URBAN_OFFLINE
-   UCMCALL = 0
+   UCMCALL    = 0
    ZLVL_URBAN = 15.0
   /
