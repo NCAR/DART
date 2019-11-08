@@ -18,7 +18,7 @@ layout: default
 download DART, you may view the documentation offline by opening the
 *index.html* file in the top-level DART directory. If you want to
 explore the documentation page without downloading DART, you may
-[view the documentation for the Manhattan release](Manhattan/documentation/index.html).~~
+[view the documentation for the Manhattan release](Manhattan/docs/index.html).~~
 
 <span id="preprocess" class="anchor"></span>
 
