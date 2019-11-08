@@ -91,8 +91,7 @@ public :: get_model_size,         &
           get_close_state,        &
           convert_vertical_obs,   &
           convert_vertical_state, &
-          read_model_time,        &
-          write_model_time 
+          nc_write_model_atts     
 
 ! these routines also must be public.
 ! this list are names of routines where the code
@@ -100,9 +99,10 @@ public :: get_model_size,         &
 public :: init_time,              &
           init_conditions,        &
           adv_1step,              &
-          nc_write_model_atts,    &
           nc_write_model_vars,    &
-          pert_model_copies
+          pert_model_copies,      &
+          read_model_time,        &
+          write_model_time 
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
@@ -141,7 +141,7 @@ integer, parameter :: MAX_NAME_LEN = 256
 !  TH   long_name = "POTENTIAL TEMPERATURE" float  TH(TIME, ALT, LAT, LON)
 !  DBZ  long_name = "RADAR REFLECTIVITY"    float DBZ(TIME, ALT, LAT, LON)
 !  WZ   long_name = "VERTICAL VORTICITY"    float  WZ(TIME, ALT, LAT, LON)
-!  PI   long_name = "PERT. EXNER"	    float  PI(TIME, ALT, LAT, LON)
+!  PI   long_name = "PERT. EXNER"	        float  PI(TIME, ALT, LAT, LON)
 !  QV   long_name = "VAPOR MIXING RATIO"    float  QV(TIME, ALT, LAT, LON)
 !  QC   long_name = "CLOUD MIXING RATIO"    float  QC(TIME, ALT, LAT, LON)
 !  QR   long_name = "RAIN MIXING RATIO"     float  QR(TIME, ALT, LAT, LON)
@@ -235,11 +235,22 @@ integer :: print_every_Nth  = 10000
 
 integer, parameter :: nGhost = 2   ! number of ghost cells on all edges
 
+!       ERROR codes:
+!
+!       99:  general error in case something terrible goes wrong...
+!       15:  dont know what to do with vertical coord supplied
+!       16:  lat/lon illegal
+!       17:  altitude illegal
+!       20:  asking to interpolate an unknown obs quantity
+integer :: GENERAL_ERROR_CODE = 99
+integer :: INVALID_VERT_COORD_ERROR_CODE = 15
+integer :: INVALID_LATLON_VAL_ERROR_CODE = 16
+integer :: INVALID_ALTITUDE_VAL_ERROR_CODE = 17
+integer :: UNKNOWN_OBS_QTY_ERROR_CODE = 20
+
 !------------------------------------------------------------------
 ! The gitm restart manager namelist variables
 !------------------------------------------------------------------
-
-character(len= 64) :: ew_boundary_type, ns_boundary_type
 
 contains
 
@@ -257,7 +268,12 @@ function get_model_size()
 
 integer(i8) :: get_model_size
 
-if ( .not. module_initialized ) call static_init_model
+character(len=*), parameter :: routine = 'get_model_size'
+
+if ( .not. module_initialized ) then
+      write(string1, *) 'Invalid state - the module has not yet been initialized through static_init_model'
+      call error_handler(E_ERR,routine,string1,source,revision,revdate)
+end if
 
 get_model_size = get_domain_size(domain_id)
 
@@ -277,15 +293,17 @@ integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer, optional,   intent(out) :: var_type
 
+character(len=*), parameter :: routine = 'get_state_meta_data'
+
 ! Local variables
 
 integer :: lat_index, lon_index, alt_index
 integer :: myvarid, myqty
 
-if ( .not. module_initialized ) call static_init_model
-
-! FIXME: call state structure routine to get i,j,k from index_in
-! then return location.
+if ( .not. module_initialized ) then
+      write(string1, *) 'Invalid state - the module has not yet been initialized through static_init_model'
+      call error_handler(E_ERR,routine,string1,source,revision,revdate)
+end if
 
 call get_model_variable_indices(index_in, lon_index, lat_index, alt_index, &
    var_id=myvarid, kind_index=myqty)
@@ -311,19 +329,10 @@ subroutine model_interpolate(state_handle, ens_size, location, obs_qty, interp_v
 !
 !     Variables needed to be stored in the MODEL_MODULE data structure
 !
-!       LON   = 2D array storing the local grid center coords (degrees)
-!       LAT   = 2D array storing the local grid center coords (degrees)
-!       ALT   = 2D array storing the local grid center coords (meters)
+!       LON   = 1D array storing the local grid center coords (degrees)
+!       LAT   = 1D array storing the local grid center coords (degrees)
+!       ALT   = 1D array storing the local grid center coords (meters)
 !
-!       ERROR codes:
-!
-!       ISTATUS = 99:  general error in case something terrible goes wrong...
-!       ISTATUS = 15:  dont know what to do with vertical coord supplied
-!       ISTATUS = 16:  longitude illegal
-!       ISTATUS = 17:  latitude illegal
-!       ISTATUS = 18:  altitude illegal
-!       ISTATUS = 20:  asking to interpolate an unknown obs kind
-
 ! Passed variables
 
 type(ensemble_type), intent(in)  :: state_handle
@@ -346,7 +355,11 @@ integer  :: four_lons(4), four_lats(4)
 integer  :: status1, which_vert, varid
 real(r8) :: quad_vals(4, ens_size)
 
-if ( .not. module_initialized ) call static_init_model
+if ( .not. module_initialized ) then
+      write(string1, *) 'Invalid state - the module has not yet been initialized through static_init_model'
+      call error_handler(E_ERR,routine,string1,source,revision,revdate)
+end if
+
 
 ! Assume failure.  Set return val to missing, then the code can
 ! just set status_array to something indicating why it failed, and return.
@@ -354,22 +367,25 @@ if ( .not. module_initialized ) call static_init_model
 ! good values, and the last line here sets status_array to 0.
 ! make any error codes set here be in the 10s
 
-interp_vals = MISSING_R8     ! the DART bad value flag
-status_array = 99            ! unknown error
+interp_vals = MISSING_R8          ! the DART bad value flag
+status_array = GENERAL_ERROR_CODE ! unknown error
 
 ! Get the individual locations values
 
-loc_array = get_location(location)
-llon      = loc_array(1)
-llat      = loc_array(2)
-lvert     = loc_array(3)
-which_vert   = nint(query_location(location))
+loc_array  = get_location(location)
+llon       = loc_array(1)
+llat       = loc_array(2)
+lvert      = loc_array(3)
+which_vert = nint(query_location(location))
 
-IF (debug > 85) print *, 'requesting interpolation at ', llon, llat, lvert
+IF (debug > 85) then
+   write(string1,*)  'requesting interpolation at ', llon, llat, lvert
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+end if
 
 ! Only height and level for vertical location type is supported at this point
 if (.not. is_vertical(location, "HEIGHT") .and. .not. is_vertical(location, "LEVEL")) THEN
-     status_array = 15
+     status_array = INVALID_VERT_COORD_ERROR_CODE
      return
 endif
 
@@ -378,8 +394,8 @@ call ok_to_interpolate(obs_qty, varid, status1)
 
 if (status1 /= 0) then
    if(debug > 12) then
-      write(string1,*)'did not find observation quantity ', obs_qty, ' in the state vector'
-      call error_handler(E_MSG,routine,string1,source,revision,revdate)
+      write(string1,*) 'Did not find observation quantity ', obs_qty, ' in the state vector'
+      call error_handler(E_WARN,routine,string1,source,revision,revdate)
    endif
    status_array(:) = status1   ! this quantity not in the state vector
    return
@@ -394,7 +410,7 @@ endif
 call quad_lon_lat_locate(quad_interp, llon, llat, & 
                          four_lons, four_lats, lon_fract, lat_fract, status1)
 if (status1 /= 0) then
-   status_array(:) = 3  ! cannot locate enclosing horizontal quad
+   status_array(:) = INVALID_LATLON_VAL_ERROR_CODE  ! cannot locate enclosing horizontal quad
    return
 endif
 
@@ -423,7 +439,12 @@ function shortest_time_between_assimilations()
 
 type(time_type) :: shortest_time_between_assimilations
 
-if ( .not. module_initialized ) call static_init_model
+character(len=*), parameter :: routine = 'shortest_time_between_assimilations'
+
+if ( .not. module_initialized ) then
+      write(string1, *) 'Invalid state - the module has not yet been initialized through static_init_model'
+      call error_handler(E_ERR,routine,string1,source,revision,revdate)
+end if
 
 shortest_time_between_assimilations = model_advance_time
 
@@ -481,10 +502,10 @@ call error_handler(E_MSG,'static_init_model',string1,source,revision,revdate)
 !---------------------------------------------------------------
 ! get grid dimensions and values
 
-write(logfileunit,'(3A)') "Now reading template file ",trim(template_filename),&
+write(string1,'(3A)') "Now reading template file ",trim(template_filename),&
    " for grid information"
-write(     *     ,'(3A)') "Now reading template file ",trim(template_filename),&
-   " for grid information"
+call error_handler(E_MSG,routine,string1,source,revision,revdate)
+
 call get_grid_info_from_netcdf(template_filename, NgridLon, NgridLat, NgridAlt)
 
 allocate(LON(NgridLon))
@@ -513,8 +534,8 @@ call set_quad_coords(quad_interp, LON, LAT)
 call set_gitm_variable_info(gitm_state_variables)
 
 if ( debug > 0 ) then
-  write(logfileunit,'("grid: NgridLon, NgridLat, NgridAlt =",3(1x,i5))') NgridLon, NgridLat, NgridAlt
-  write(     *     ,'("grid: NgridLon, NgridLat, NgridAlt =",3(1x,i5))') NgridLon, NgridLat, NgridAlt
+   write(string1,'("grid: NgridLon, NgridLat, NgridAlt =",3(1x,i5))') NgridLon, NgridLat, NgridAlt
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
 endif
 
 ! needs to set the vertical localization coordinate, too.
@@ -814,6 +835,7 @@ end subroutine get_close_obs
 
 subroutine get_quad_vals(state_handle, ens_size, varid, obs_qty, four_lons, four_lats, &
                          lon_lat_vert, which_vert, quad_vals, status_array)
+
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
 integer,             intent(in)  :: varid, obs_qty
@@ -833,7 +855,7 @@ real(r8) :: vert_fract
 character(len=*), parameter :: routine = 'get_quad_vals:'
 
 quad_vals(:,:) = MISSING_R8
-status_array(:) = 99
+status_array(:) = GENERAL_ERROR_CODE
 
 vert_val = lon_lat_vert(3)
 
@@ -843,11 +865,13 @@ select case (which_vert)
       call find_enclosing_indices(NgridAlt, ALT(:), vert_val, lev1, lev2, &
          vert_fract, stat, log_scale = .false.)
 
-      status_array     = stat
+      if (stat /= 0) then
+         status_array     = INVALID_ALTITUDE_VAL_ERROR_CODE
+      end if
       
    case(VERTISLEVEL)
       if (vert_val < 1.0_r8 .or. vert_val > NgridAlt) then
-         status_array(:) = 8
+         status_array(:) = INVALID_ALTITUDE_VAL_ERROR_CODE
          return
       else
          integer_level = floor(vert_val)
@@ -867,7 +891,7 @@ select case (which_vert)
       status_array     = 0
 
    case default
-      status_array(:) = 15
+      status_array(:) = INVALID_VERT_COORD_ERROR_CODE
       write(string1, *) 'unsupported vertical type: ', which_vert
       call error_handler(E_ERR,routine,string1,source,revision,revdate)
 end select
@@ -891,9 +915,7 @@ endif
 if (any(status_array /= 0)) return
 
 ! when you get here, status_array() was set either by passing it to a
-! subroutine, or setting it explicitly here.  if this routine returns
-! the default value of 99 something went wrong in this logic.
-
+! subroutine, or setting it explicitly here.
 end subroutine get_quad_vals
 
 !-----------------------------------------------------------------------
@@ -916,8 +938,7 @@ end subroutine vert_interp
 
 
 !------------------------------------------------------------------
-!> Reads the current time and state variables from a gitm restart
-!> file and packs them into netcdf variables.
+!> Converts gitm restart files to a netCDF file
 !>
 !> This routine needs:
 !>
@@ -1005,7 +1026,8 @@ call get_grid_info_from_blocks(restart_dirname, NgridLon, NgridLat, NgridAlt, nB
                nBlocksLat, LatStart, LatEnd, LonStart)
 
 if( debug  > 0 ) then
-   write(*,*)'grid dims are ',NgridLon,NgridLat,NgridAlt
+    write(string1,*) 'grid dims are ',NgridLon,NgridLat,NgridAlt
+    call error_handler(E_MSG,routine,string1,source,revision,revdate)
 endif
 
 allocate( LON( NgridLon ))
@@ -1042,27 +1064,13 @@ do ivar = 1, nfields
                              gitmvar(ivar)%long_name,    &
                              gitmvar(ivar)%units)
    if ( debug > 0 ) then
-      write(logfileunit,*)
-      write(logfileunit,*) trim(gitmvar(ivar)%varname),' variable number ',ivar
-      write(logfileunit,*) ' long_name    ',trim(gitmvar(ivar)%long_name)
-      write(logfileunit,*) ' units        ',trim(gitmvar(ivar)%units)
-      write(logfileunit,*) ' gitm_varname ',trim(gitmvar(ivar)%gitm_varname)
-      write(logfileunit,*) ' gitm_dim     ',gitmvar(ivar)%gitm_dim
-      write(logfileunit,*) ' gitm_index   ',gitmvar(ivar)%gitm_index
-
-      write(     *     ,*)
-      write(     *     ,*) trim(gitmvar(ivar)%varname),' variable number ',ivar
-      write(     *     ,*) ' long_name    ',trim(gitmvar(ivar)%long_name)
-      write(     *     ,*) ' units        ',trim(gitmvar(ivar)%units)
-      write(     *     ,*) ' gitm_varname ',trim(gitmvar(ivar)%gitm_varname)
-      write(     *     ,*) ' gitm_dim     ',gitmvar(ivar)%gitm_dim
-      write(     *     ,*) ' gitm_index   ',gitmvar(ivar)%gitm_index
+      call print_gitmvar_info(ivar,routine)
    endif
 enddo
 
 if ( debug > 0 ) then
-  write(logfileunit,'("grid: NgridLon, NgridLat, NgridAlt =",3(1x,i5))') NgridLon, NgridLat, NgridAlt
-  write(     *     ,'("grid: NgridLon, NgridLat, NgridAlt =",3(1x,i5))') NgridLon, NgridLat, NgridAlt
+  write(string1,'("grid: NgridLon, NgridLat, NgridAlt =",3(1x,i5))') NgridLon, NgridLat, NgridAlt
+  call error_handler(E_MSG,routine,string1,source,revision,revdate)
 endif
 
 ncid = nc_create_file(netcdf_output_file)
@@ -1084,14 +1092,34 @@ call nc_close_file(ncid)
 end subroutine restart_files_to_netcdf
 
 
-!==================================================================
+subroutine print_gitmvar_info(ivar,routine)
+
+   integer,          intent(in) :: ivar
+   character(len=*), intent(in) :: routine
+
+   call error_handler(E_MSG,routine,'',source,revision,revdate)
+   write(string1,*) trim(gitmvar(ivar)%varname),' variable number ',ivar
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*) ' long_name    ',trim(gitmvar(ivar)%long_name)
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*) ' units        ',trim(gitmvar(ivar)%units)
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*) ' gitm_varname ',trim(gitmvar(ivar)%gitm_varname)
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*) ' gitm_dim     ',gitmvar(ivar)%gitm_dim
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*) ' gitm_index   ',gitmvar(ivar)%gitm_index
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+
+end subroutine
 
 
-subroutine netcdf_to_restart_files(nc_file, output_dirname, input_dirname)
 !------------------------------------------------------------------
 ! Writes the current time and state variables from a dart state
 ! vector (1d array) into a gitm netcdf restart file.
 !
+subroutine netcdf_to_restart_files(nc_file, output_dirname, input_dirname)
+
 character(len=*), intent(in) :: nc_file
 character(len=*), intent(in) :: output_dirname
 character(len=*), intent(in) :: input_dirname
@@ -1119,13 +1147,10 @@ call put_data(input_dirname, output_dirname, ncid)
 end subroutine netcdf_to_restart_files
 
 
-!==================================================================
-
-
-function get_state_time( dirname )
 !------------------------------------------------------------------
 ! the static_init_model ensures that the gitm namelists are read.
 !
+function get_state_time( dirname )
 type(time_type)              :: get_state_time
 character(len=*), intent(in) :: dirname
 
@@ -1139,6 +1164,8 @@ integer  :: ndays,nsec
 
 character(len=256) :: filename
 character(len=100) :: cLine
+
+character(len=*), parameter :: routine = 'get_state_time'
 
 tsimulation = MISSING_R8
 istep       = -1
@@ -1190,15 +1217,24 @@ model_offset   = set_time(nsec,ndays)
 get_state_time = base_time + model_offset
 
 if (debug > 8) then
-   write(*,*)'get_state_time : iyear       ',iyear
-   write(*,*)'get_state_time : imonth      ',imonth
-   write(*,*)'get_state_time : iday        ',iday
-   write(*,*)'get_state_time : ihour       ',ihour
-   write(*,*)'get_state_time : imin        ',imin
-   write(*,*)'get_state_time : isec        ',isec
-   write(*,*)'get_state_time : tsimulation ',tsimulation
-   write(*,*)'get_state_time : ndays       ',ndays
-   write(*,*)'get_state_time : nsec        ',nsec
+   write(string1,*)'get_state_time : iyear       ',iyear
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*)'get_state_time : imonth      ',imonth
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*)'get_state_time : iday        ',iday
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*)'get_state_time : ihour       ',ihour
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*)'get_state_time : imin        ',imin
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*)'get_state_time : isec        ',isec
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*)'get_state_time : tsimulation ',tsimulation
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*)'get_state_time : ndays       ',ndays
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*)'get_state_time : nsec        ',nsec
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
 
    call print_date(     base_time, 'get_state_time:model base date')
    call print_time(     base_time, 'get_state_time:model base time')
@@ -1373,138 +1409,6 @@ end subroutine get_four_state_values
 !==================================================================
 
 
-function get_grid_value(base_offset, ilon, ilat, ialt, state_handle, ens_size)
-!------------------------------------------------------------------
-
-integer(i8),         intent(in) :: base_offset
-integer,             intent(in) :: ilon, ilat, ialt
-type(ensemble_type), intent(in) :: state_handle
-integer,             intent(in) :: ens_size
-real(r8)                        :: get_grid_value(ens_size)
-
-! Returns the value for the given lon,lat,alt point in the field that
-! starts at offset base_offset
-
-integer(i8) :: offset
-
-offset = (ilon - 1) + (ilat - 1) * NgridLon + (ialt - 1) * (NgridLon * NgridLat)
-get_grid_value = get_state(base_offset + offset, state_handle)
-
-end function get_grid_value
-
-
-!==================================================================
-
-
-subroutine find_lon_bounds(llon, lower, upper, fract, ier)
-!------------------------------------------------------------------
-
-! Finds position of a given longitude in an array of longitude grid points and returns
-! the index of the lower and upper bounds and the fractional offset. Assumes that the
-! first longitude in the list is the smallest and that the largest is less than
-! 360 degrees.  ier returns 0 unless there is an error.
-
-real(r8), intent(in)  :: llon
-integer,  intent(out) :: lower, upper
-real(r8), intent(out) :: fract
-integer,  intent(out) :: ier
-
-! For now, assume that the spacing on longitudes is arbitrary.
-! Do a silly linear search. Probably not worth any fancier searching unless
-! models get to be huge.
-
-integer  :: i
-real(r8) :: width
-
-if(llon < 0.0_r8 .or. llon > 360.0_r8) then
-   ier = 2
-   return
-endif
-
-! Look for case where longitude is less than smallest in list
-if(llon <= minval(LON)) then
-   lower = NgridLon
-   upper = 1
-   width = 360.0_r8 - LON(NgridLon) + LON(1)
-   fract = (llon + 360.0_r8 - LON(NgridLon)) / width
-   ier = 0
-   return
-endif
-
-! Look for case where longitude is greater than largest in list
-if(llon >= maxval(LON)) then
-  lower = NgridLon
-  upper = 1
-  width = 360.0 - LON(NgridLon) + LON(1)
-  fract = (llon - LON(NgridLon)) / width
-  ier = 0
-  return
-endif
-
-! Otherwise in the interior
-do i = 2, NgridLon
-   if(llon < LON(i)) then
-      lower = i - 1
-      upper = i
-      fract = (llon - LON(i-1)) / (LON(i) - LON(i - 1))
-      ier = 0
-      return
-   endif
-end do
-
-! Shouldn't ever fall off end of loop
-ier = 2
-
-end subroutine find_lon_bounds
-
-
-!==================================================================
-
-
-subroutine find_lat_or_alt_bounds(llat, nbounds, bounds, lower, upper, fract, ier)
-!------------------------------------------------------------------
-! Finds position of a given latitude in an array of latitude grid points and returns
-! the index of the lower and upper bounds and the fractional offset. Used for both
-! latitude and altitude which have similar linear arrays. ier returns 0 unless there
-! is an error.
-
-real(r8), intent(in)  :: llat
-integer,  intent(in)  :: nbounds
-real(r8), intent(in)  :: bounds(nbounds)
-integer,  intent(out) :: lower, upper
-real(r8), intent(out) :: fract
-integer,  intent(out) :: ier
-
-! For now, assume that the spacing on latitudes or altitudes is arbitrary
-! Do a silly linear search. Probably not worth any fancier searching unless
-! models get to be huge.
-
-integer :: i
-
-if(llat < bounds(1) .or. llat > bounds(nbounds)) then
-   ier = 2
-   return
-endif
-
-do i = 2, nbounds
-   if(llat <= bounds(i)) then
-      lower = i - 1
-      upper = i
-      fract = (llat - bounds(i-1)) / (bounds(i) - bounds(i - 1))
-      ier = 0
-      return
-   endif
-end do
-
-! Shouldn't ever fall off end of loop
-ier = 2
-
-end subroutine find_lat_or_alt_bounds
-
-
-!==================================================================
-
-
 subroutine get_grid_info_from_netcdf(template_filename, nLon, nLat, nAlt )
 
 character(len=*), intent(in)  :: template_filename
@@ -1577,6 +1481,8 @@ character(len=256) :: fileloc
 
 integer :: i, iunit, ios
 
+character(len=*), parameter :: routine = 'get_grid_info_from_blocks'
+
 ! get the ball rolling ...
 
 nBlocksLon = 0
@@ -1586,7 +1492,8 @@ LatEnd     = 0.0_r8
 LonStart   = 0.0_r8
 
 if (debug > 4) then
-   print *,'Now opening GITM restart file: ',trim(gitm_restart_dirname),trim(filename)
+   write(string1,*) 'Now opening GITM restart file: ',trim(gitm_restart_dirname),trim(filename)
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
 end if
 
 write(fileloc,'(a,''/'',a)') trim(gitm_restart_dirname),trim(filename)
@@ -1617,12 +1524,18 @@ UAMREAD : do i = 1, 1000000
 enddo UAMREAD
 
 if (debug > 4) then
-   print *,'Successfully read GITM restart file:',trim(gitm_restart_dirname),trim(filename)
-   print *,'   nBlocksLon:',nBlocksLon
-   print *,'   nBlocksLat:',nBlocksLat
-   print *,'   LatStart:',LatStart
-   print *,'   LatEnd:',LatEnd
-   print *,'   LonStart:',LonStart
+   write(string1,*) 'Successfully read GITM restart file:',trim(gitm_restart_dirname),trim(filename)
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*) '   nBlocksLon:',nBlocksLon
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*) '   nBlocksLat:',nBlocksLat
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*) '   LatStart:',LatStart
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*) '   LatEnd:',LatEnd
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*) '   LonStart:',LonStart
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
 end if
 
 call close_file(iunit)
@@ -1631,9 +1544,12 @@ NgridLon = nBlocksLon * nLonsPerBlock
 NgridLat = nBlocksLat * nLatsPerBlock
 NgridAlt = nAltsPerBlock
 
-print *, 'NgridLon = ', NgridLon
-print *, 'NgridLat = ', NgridLat
-print *, 'NgridAlt = ', NgridAlt
+write(string1,*)  'NgridLon = ', NgridLon
+call error_handler(E_MSG,routine,string1,source,revision,revdate)
+write(string1,*)  'NgridLat = ', NgridLat
+call error_handler(E_MSG,routine,string1,source,revision,revdate)
+write(string1,*)  'NgridAlt = ', NgridAlt
+call error_handler(E_MSG,routine,string1,source,revision,revdate)
 
 end subroutine get_grid_info_from_blocks
 
@@ -1660,17 +1576,11 @@ integer :: ios, nb, offset, iunit, nboff
 character(len=256) :: filename
 real(r8), allocatable :: temp(:)
 
+character(len=*), parameter :: routine = 'get_grid_from_blocks'
+
 ! a temp array large enough to hold any of the
 ! Lon,Lat or Alt array from a block plus ghost cells
 allocate(temp(1-nGhost:max(nLonsPerBlock,nLatsPerBlock,nAltsPerBlock)+nGhost))
-
-! get the dirname, construct the filenames inside
-
-if (debug > 9) then
-   write(*,*)'TJH DEBUG: get_grid : size(temp)   is ',size(temp)
-   write(*,*)'TJH DEBUG: get_grid : nBlocksLon   is ',nBlocksLon
-   write(*,*)'TJH DEBUG: get_grid : nLons,nGhost is ',nLonsPerBlock,nLatsPerBlock,nGhost
-endif
 
 ! go across the south-most block row picking up all longitudes
 do nb = 1, nBlocksLon
@@ -1744,9 +1654,12 @@ if (debug > 4) then
 endif
 
 if ( debug > 1 ) then ! A little sanity check
-   write(*,*)'LON range ',minval(LON),maxval(LON)
-   write(*,*)'LAT range ',minval(LAT),maxval(LAT)
-   write(*,*)'ALT range ',minval(ALT),maxval(ALT)
+   write(string1,*)'LON range ',minval(LON),maxval(LON)
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*)'LAT range ',minval(LAT),maxval(LAT)
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*)'ALT range ',minval(ALT),maxval(ALT)
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
 endif
 
 end subroutine get_grid_from_blocks
@@ -1882,11 +1795,13 @@ integer :: i, j, k, offset, base
 integer :: ib, jb
 integer :: varid, ret
 integer :: starts(3)
+character(len=*), parameter :: routine = 'unpack_data'
 
 if (define) then
   
    if (debug > 10) then 
-      write(*,'(A,I0,2A)') 'Defining ivar = ', ivar,':',trim(gitmvar(ivar)%varname)
+      write(string1,'(A,I0,2A)') 'Defining ivar = ', ivar,':',trim(gitmvar(ivar)%varname)
+      call error_handler(E_MSG,routine,string1,source,revision,revdate)
    end if
 
    call nc_define_double_variable(ncid, gitmvar(ivar)%varname, (/ 'LON', 'LAT', 'ALT' /) )
@@ -2052,6 +1967,8 @@ real(r8), allocatable :: temp1d(:), temp3d(:,:,:), temp4d(:,:,:,:)
 integer :: i, j, inum, maxsize, ivals(NSpeciesTotal)
 integer :: block(2) = 0
 
+character(len=*), parameter :: routine = 'read_data_from_block'
+
 block(1) = ib
 block(2) = jb
 
@@ -2085,8 +2002,9 @@ if (inum > 0) then
    j = 1
    do i = 1, nSpeciesTotal
       if (debug > 80) then
-         write(*,'(A,I0,A,I0,A,I0,A,I0,A)') 'Now reading species ',i,' of ',nSpeciesTotal, &
+         write(string1,'(A,I0,A,I0,A,I0,A,I0,A)') 'Now reading species ',i,' of ',nSpeciesTotal, &
             ' for block (',ib,',',jb,')' 
+         call error_handler(E_MSG,routine,string1,source,revision,revdate)
       end if
       read(iunit)  temp3d
       if (j <= inum) then
@@ -2098,7 +2016,8 @@ if (inum > 0) then
    enddo
 else
    if (debug > 80) then
-      write(*,'(A)') 'Not writing the NDensityS variables to file'
+      write(string1,'(A)') 'Not writing the NDensityS variables to file'
+      call error_handler(E_MSG,routine,string1,source,revision,revdate)
    end if
    ! nothing at all from this variable in the state vector.
    ! copy all data over from the input file to output file
@@ -2115,8 +2034,9 @@ if (inum > 0) then
    j = 1
    do i = 1, nIons
       if (debug > 80) then
-         write(*,'(A,I0,A,I0,A,I0,A,I0,A)') 'Now reading ion ',i,' of ',nIons, &
+         write(string1,'(A,I0,A,I0,A,I0,A,I0,A)') 'Now reading ion ',i,' of ',nIons, &
             ' for block (',ib,',',jb,')' 
+         call error_handler(E_MSG,routine,string1,source,revision,revdate)
       end if
       read(iunit)  temp3d
       if (j <= inum) then
@@ -2131,7 +2051,8 @@ else
    ! nothing at all from this variable in the state vector.
    ! read past this variable
    if (debug > 80) then
-      write(*,'(A)') 'Not writing the IDensityS variables to file'
+      write(string1,'(A)') 'Not writing the IDensityS variables to file'
+      call error_handler(E_MSG,routine,string1,source,revision,revdate)
    end if
    do i = 1, nIons
       read(iunit)  temp3d
@@ -2575,17 +2496,14 @@ if (varid > 0) then
    return
 endif
 
-
 ! add any quantities that can be interpolated to this list if they
 ! are not in the state vector.
 select case (obs_qty)
-   case (QTY_SURFACE_ELEVATION, &
-         QTY_PRESSURE,          &
-         QTY_GEOMETRIC_HEIGHT,  &
+   case (QTY_GEOMETRIC_HEIGHT,  &
          QTY_VERTLEVEL)
       my_status = 0
    case default
-      my_status = 2
+      my_status = UNKNOWN_OBS_QTY_ERROR_CODE
 end select
 
 
@@ -2606,6 +2524,10 @@ integer :: i, limit
 inum = 0
 limit = size(ivals)
 
+! GITM handles variables in a way that might seem strange at first.
+! It uses the same name but multiple indices. For example, the U, V, 
+! and W components of wind are index = 1, 2, 3 for the variable velocity.
+! This is why the code below looks the way it does. 
 FieldLoop : do i=1,nfields
    if (gitmvar(i)%gitm_varname /= gitm_varname) cycle FieldLoop
    inum = inum + 1
@@ -2697,8 +2619,8 @@ MyLoop : do i = 1, nrows
    ! Record the contents of the DART state vector
 
    if ( debug > 0 ) then
-      write(logfileunit,*)'variable ',i,' is ',trim(table(i,1)), ' ', trim(table(i,2))
-      write(     *     ,*)'variable ',i,' is ',trim(table(i,1)), ' ', trim(table(i,2))
+      write(string1,*)'variable ',i,' is ',trim(table(i,1)), ' ', trim(table(i,2))
+      call error_handler(E_MSG,routine,string1,source,revision,revdate)
    endif
 
    ngood = ngood + 1

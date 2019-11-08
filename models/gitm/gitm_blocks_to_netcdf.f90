@@ -39,7 +39,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-character(len=256) :: gitm_restart_input_dirname    = 'none specified'
+character(len=256) :: gitm_restart_input_dirname    = 'none'
 character(len=256) :: gitm_to_netcdf_output_file    = 'filter_input.nc'
 
 namelist /gitm_blocks_to_netcdf_nml/ gitm_restart_input_dirname,        &
@@ -51,7 +51,6 @@ namelist /gitm_blocks_to_netcdf_nml/ gitm_restart_input_dirname,        &
 
 integer               :: iunit, io, x_size
 type(time_type)       :: model_time
-character(len=256)    :: gitm_restart_dirname  = 'none'
 
 !======================================================================
 

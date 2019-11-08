@@ -178,7 +178,7 @@
 #                                'SAT_VELOCITY_VERTICAL_NO',
 #                                'SAT_F107',
 #                                'SAT_RHO',
-# 				'GND_GPS_VTEC',
+# 				                     'GND_GPS_VTEC'
 
 
 # The list of variables to put into the state vector is here:
@@ -222,18 +222,46 @@
                            'ie_IDensityS',           'QTY_DENSITY_ION_E',        'NA', 'NA', 'UPDATE'
                            'U_Velocity_component',   'QTY_VELOCITY_U',           'NA', 'NA', 'UPDATE'
                            'V_Velocity_component',   'QTY_VELOCITY_V',           'NA', 'NA', 'UPDATE'
-                           'W_Velocity_component',   'QTY_VELOCITY_W',           'NA', 'NA', 'UPDATE'
                            'U_IVelocity_component',  'QTY_VELOCITY_U_ION',       'NA', 'NA', 'UPDATE'
                            'V_IVelocity_component',  'QTY_VELOCITY_V_ION',       'NA', 'NA', 'UPDATE'
-                           'W_IVelocity_component',  'QTY_VELOCITY_W_ION',       'NA', 'NA', 'UPDATE'
-                           'iO_3P_VerticalVelocity', 'QTY_VELOCITY_VERTICAL_O3P','NA', 'NA', 'UPDATE'
-                           'iO2_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_O2', 'NA', 'NA', 'UPDATE'
-                           'iN2_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_N2', 'NA', 'NA', 'UPDATE'
-                           'iN_4S_VerticalVelocity', 'QTY_VELOCITY_VERTICAL_N4S','NA', 'NA', 'UPDATE'
-                           'iNO_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_NO', 'NA', 'NA', 'UPDATE'
 /
 
-                           #'Rho',                    'QTY_DENSITY',              'NA', 'NA', 'UPDATE'
+#   gitm_state_variables =  'Temperature',            'QTY_TEMPERATURE',          'NA', 'NA', 'UPDATE'
+#                           'eTemperature',           'QTY_TEMPERATURE_ELECTRON', 'NA', 'NA', 'UPDATE'
+#                           'ITemperature',           'QTY_TEMPERATURE_ION',      'NA', 'NA', 'UPDATE'
+#                           'iO_3P_NDensityS',        'QTY_DENSITY_NEUTRAL_O3P',  'NA', 'NA', 'UPDATE'
+#                           'iO2_NDensityS',          'QTY_DENSITY_NEUTRAL_O2',   'NA', 'NA', 'UPDATE'
+#                           'iN2_NDensityS',          'QTY_DENSITY_NEUTRAL_N2',   'NA', 'NA', 'UPDATE'
+#                           'iN_4S_NDensityS',        'QTY_DENSITY_NEUTRAL_N4S',  'NA', 'NA', 'UPDATE'
+#                           'iNO_NDensityS',          'QTY_DENSITY_NEUTRAL_NO',   'NA', 'NA', 'UPDATE'
+#                           'iN_2D_NDensityS',        'QTY_DENSITY_NEUTRAL_N2D',  'NA', 'NA', 'UPDATE'
+#                           'iN_2P_NDensityS',        'QTY_DENSITY_NEUTRAL_N2P',  'NA', 'NA', 'UPDATE'
+#                           'iH_NDensityS',           'QTY_DENSITY_NEUTRAL_H',    'NA', 'NA', 'UPDATE' 
+#                           'iHe_NDensityS',          'QTY_DENSITY_NEUTRAL_HE',   'NA', 'NA', 'UPDATE'
+#                           'iCO2_NDensityS',         'QTY_DENSITY_NEUTRAL_CO2',  'NA', 'NA', 'UPDATE'
+#                           'iO_1D_NDensityS',        'QTY_DENSITY_NEUTRAL_O1D',  'NA', 'NA', 'UPDATE'
+#                           'iO_4SP_IDensityS',       'QTY_DENSITY_ION_O4SP',     'NA', 'NA', 'UPDATE'
+#                           'iO2P_IDensityS',         'QTY_DENSITY_ION_O2P',      'NA', 'NA', 'UPDATE'
+#                           'iN2P_IDensityS',         'QTY_DENSITY_ION_N2P',      'NA', 'NA', 'UPDATE'
+#                           'iNP_IDensityS',          'QTY_DENSITY_ION_NP',       'NA', 'NA', 'UPDATE'
+#                           'iNOP_IDensityS',         'QTY_DENSITY_ION_NOP',      'NA', 'NA', 'UPDATE'
+#                           'iO_2DP_IDensityS',       'QTY_DENSITY_ION_O2DP',     'NA', 'NA', 'UPDATE'
+#                           'iO_2PP_IDensityS',       'QTY_DENSITY_ION_O2PP',     'NA', 'NA', 'UPDATE'
+#                           'iHP_IDensityS',          'QTY_DENSITY_ION_HP',       'NA', 'NA', 'UPDATE'
+#                           'iHeP_IDensityS',         'QTY_DENSITY_ION_HEP',      'NA', 'NA', 'UPDATE'
+#                           'ie_IDensityS',           'QTY_DENSITY_ION_E',        'NA', 'NA', 'UPDATE'
+#                           'U_Velocity_component',   'QTY_VELOCITY_U',           'NA', 'NA', 'UPDATE'
+#                           'V_Velocity_component',   'QTY_VELOCITY_V',           'NA', 'NA', 'UPDATE'
+#                           'W_Velocity_component',   'QTY_VELOCITY_W',           'NA', 'NA', 'UPDATE'
+#                           'U_IVelocity_component',  'QTY_VELOCITY_U_ION',       'NA', 'NA', 'UPDATE'
+#                           'V_IVelocity_component',  'QTY_VELOCITY_V_ION',       'NA', 'NA', 'UPDATE'
+#                           'W_IVelocity_component',  'QTY_VELOCITY_W_ION',       'NA', 'NA', 'UPDATE'
+#                           'iO_3P_VerticalVelocity', 'QTY_VELOCITY_VERTICAL_O3P','NA', 'NA', 'UPDATE'
+#                           'iO2_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_O2', 'NA', 'NA', 'UPDATE'
+#                           'iN2_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_N2', 'NA', 'NA', 'UPDATE'
+#                           'iN_4S_VerticalVelocity', 'QTY_VELOCITY_VERTICAL_N4S','NA', 'NA', 'UPDATE'
+#                           'iNO_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_NO', 'NA', 'NA', 'UPDATE'
+#                           'Rho',                    'QTY_DENSITY',              'NA', 'NA', 'UPDATE'
 
 &gitm_blocks_nml
    gitm_block_variables =  'Temperature',            
