@@ -153,8 +153,7 @@ public :: init_time,                     &
 public :: get_cice_restart_filename, test_interpolation
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = &
-   "$URL$"
+character(len=*), parameter :: source   = "$URL$"
 character(len=*), parameter :: revision = "$Revision$"
 character(len=*), parameter :: revdate  = "$Date$"
 
@@ -2700,8 +2699,3 @@ end subroutine use_default_state_variables
 
 end module model_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -968,17 +968,17 @@ end subroutine getvar_int_2d
 !>
 !>      ncid - open netcdf file handle
 !>      varname - string name of netcdf variable
-!>      start - starting index in the 1d array
+!>      varstart - starting index in the 1d array
 !>      dout - output value.  real(r8)
 !>      dmiss - value that signals a missing value   real(r8), optional
 !>
 !>     created 11 Mar 2010,  nancy collins,  ncar/image
 
-subroutine getvar_real_1d_1val(ncid, varname, start, dout, dmiss)
+subroutine getvar_real_1d_1val(ncid, varname, varstart, dout, dmiss)
 
 integer,            intent(in)   :: ncid
 character(len = *), intent(in)   :: varname
-integer,            intent(in)   :: start
+integer,            intent(in)   :: varstart
 real(r8),           intent(out)  :: dout
 real(r8), optional, intent(out)  :: dmiss
 
@@ -987,7 +987,7 @@ integer :: varid, ret
 ! read the data for the requested array, and get the fill value
 call nc_check( nf90_inq_varid(ncid, varname, varid), &
                'getvar_real_1d_val', 'inquire var '// trim(varname))
-call nc_check( nf90_get_var(ncid, varid, dout, start = (/ start /) ), &
+call nc_check( nf90_get_var(ncid, varid, dout, start = (/ varstart /) ), &
                'getvar_real_1d_val', 'getting var '// trim(varname))
 
 if (present(dmiss)) then 
@@ -1005,17 +1005,17 @@ end subroutine getvar_real_1d_1val
 !>
 !>      ncid - open netcdf file handle
 !>      varname - string name of netcdf variable
-!>      start - starting index in the 1d array
+!>      varstart - starting index in the 1d array
 !>      dout - output value.  int
 !>      dmiss - value that signals a missing value   int, optional
 !>
 !>     created 11 Mar 2010,  nancy collins,  ncar/image
 
-subroutine getvar_int_1d_1val(ncid, varname, start, dout, dmiss)
+subroutine getvar_int_1d_1val(ncid, varname, varstart, dout, dmiss)
 
 integer,            intent(in)   :: ncid
 character(len = *), intent(in)   :: varname
-integer,            intent(in)   :: start
+integer,            intent(in)   :: varstart
 integer,            intent(out)  :: dout
 integer,  optional, intent(out)  :: dmiss
 
@@ -1024,7 +1024,7 @@ integer :: varid, ret
 ! read the data for the requested array, and get the fill value
 call nc_check( nf90_inq_varid(ncid, varname, varid), &
                'getvar_int_1d_1val', 'inquire var '// trim(varname))
-call nc_check( nf90_get_var(ncid, varid, dout, start = (/ start /) ), &
+call nc_check( nf90_get_var(ncid, varid, dout, start = (/ varstart /) ), &
                'getvar_int_1d_1val', 'getting var '// trim(varname))
 
 if (present(dmiss)) then
@@ -1042,7 +1042,7 @@ end subroutine getvar_int_1d_1val
 !>
 !>      ncid - open netcdf file handle
 !>      varname - string name of 2d netcdf variable
-!>      start - starting index in the 2d array.  integer
+!>      varstart - starting index in the 2d array.  integer
 !>      count - nitems to get. integer
 !>      darray - 1d output array.  real(r8)
 !>      dmiss - value that signals a missing value   real(r8), optional
@@ -1051,12 +1051,12 @@ end subroutine getvar_int_1d_1val
 !>     updated 14 Jul 2011,  nancy collins,  ncar/image
 !>         routine renamed and moved to the utilities module
 
-subroutine getvar_real_2d_slice(ncid, varname, start, count, darray, dmiss)
+subroutine getvar_real_2d_slice(ncid, varname, varstart, varcount, darray, dmiss)
 
 integer,            intent(in)   :: ncid
 character(len = *), intent(in)   :: varname
-integer,            intent(in)   :: start
-integer,            intent(in)   :: count
+integer,            intent(in)   :: varstart
+integer,            intent(in)   :: varcount
 real(r8),           intent(out)  :: darray(:)
 real(r8), optional, intent(out)  :: dmiss
 
@@ -1066,7 +1066,7 @@ integer :: varid, ret
 call nc_check( nf90_inq_varid(ncid, varname, varid), &
                'getvar_real_2d_slice', 'inquire var '// trim(varname))
 call nc_check( nf90_get_var(ncid, varid, darray, &
-                start=(/ 1, start /), count=(/ count, 1 /) ), &
+                start=(/ 1, varstart /), count=(/ varcount, 1 /) ), &
                'getvar_real_2d_slice', 'getting var '// trim(varname))
 
 if (present(dmiss)) then
@@ -1087,18 +1087,18 @@ end subroutine getvar_real_2d_slice
 !>
 !>      ncid - open netcdf file handle
 !>      varname - string name of 2d netcdf variable
-!>      start - starting index in the 2d array.  integer
+!>      varstart - starting index in the 2d array.  integer
 !>      count - nitems to get. integer
 !>      darray - output array.  integer
 !>
 !>     created Mar 8, 2010    nancy collins, ncar/image
 
-subroutine get_or_fill_QC_2d_slice(ncid, varname, start, count, darray)
+subroutine get_or_fill_QC_2d_slice(ncid, varname, varstart, varcount, darray)
 
 integer,            intent(in)    :: ncid
 character(len = *), intent(in)    :: varname
-integer,            intent(in)    :: start
-integer,            intent(in)    :: count
+integer,            intent(in)    :: varstart
+integer,            intent(in)    :: varcount
 integer,            intent(inout) :: darray(:)
 
 integer :: varid, nfrc
@@ -1109,11 +1109,11 @@ integer :: varid, nfrc
 nfrc = nf90_inq_varid(ncid, varname, varid)
 if (nfrc == NF90_NOERR) then
    call nc_check( nf90_get_var(ncid, varid, darray, &
-                  start=(/ 1, start /), count=(/ count, 1 /) ), &
+                  start=(/ 1, varstart /), count=(/ varcount, 1 /) ), &
                   'get_or_fill_int_2d_slice', 'reading '//trim(varname) )
 else
    darray = 0
-   if (start == 1) & 
+   if (varstart == 1) & 
      print *, 'QC field named ' // trim(varname) // ' was not found in input, 0 used instead'
 endif
 

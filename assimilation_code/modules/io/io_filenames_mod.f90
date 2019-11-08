@@ -39,11 +39,23 @@ use utilities_mod,        only : file_exist, E_ERR, E_MSG, E_WARN, error_handler
                                  do_output
 use time_manager_mod,     only : time_type
 use mpi_utilities_mod,    only : my_task_id
-use state_structure_mod,  only : get_num_domains, get_dim_length, get_dim_name, &
-                                 get_num_dims, get_io_num_dims, get_num_variables, get_variable_name, &
-                                 get_units, get_long_name, get_short_name, get_missing_value, &
-                                 get_FillValue, get_xtype, get_add_offset, get_scale_factor, &
-                                 get_has_missing_value, do_io_update
+use state_structure_mod,  only : get_num_domains, &
+                                 get_dim_length, &
+                                 get_dim_name, &
+                                 get_num_dims, &
+                                 get_io_num_dims, &
+                                 get_num_variables, &
+                                 get_variable_name, &
+                                 get_units, &
+                                 get_long_name, &
+                                 get_short_name, &
+                                 get_missing_value, &
+                                 get_FillValue, &
+                                 get_xtype, &
+                                 get_add_offset, &
+                                 get_scale_factor, &
+                                 get_has_missing_value, &
+                                 do_io_update
 use ensemble_manager_mod, only : ensemble_type
 use netcdf_utilities_mod, only : nc_check
 

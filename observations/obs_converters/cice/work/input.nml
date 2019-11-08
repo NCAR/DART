@@ -76,9 +76,9 @@
    error_factor       = 0.15
    ignore_zero_obs    = .false.
 
-   use_data_filename_pattern   = .false.
+   use_data_filename_pattern   = .true.
    data_filename_pattern       = 'bt_YYYYMMDD_v02_n.bin'
-   cice_data_file              = '../data/bt_19800101_n07_v02_n.bin'
+   cice_data_file              = 'bt_20010101_v02_n.bin'
 
    use_obsseq_filename_pattern = .true.
    obsseq_filename_pattern     = 'obs_seq.YYYY-MM-DD-00000'
