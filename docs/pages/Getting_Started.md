@@ -621,7 +621,7 @@ have access to several DART directories. At the MATLAB prompt, type the followin
 (using the real path to your DART installation):
 
 > \>\> addpath('path_to_dart/diagnostics/matlab','-BEGIN')  
-> \>\> addpath('path_to_dart/documentation/DART_LAB/matlab','-BEGIN')  
+> \>\> addpath('path_to_dart/docs/DART_LAB/matlab','-BEGIN')  
 
 It is very convenient to put these lines in your *\~/matlab/startup.m* file so
 they are executed every time MATLAB starts up. DART provides an example
@@ -1643,7 +1643,7 @@ following sequence:
 | Jamaica          | 12 Apr 2007 | Vertical localization, extensive MPI testing, <a href="https://www.image.ucar.edu/DAReS/DART/Lanai/doc/html/history/Jamaica_diffs_from_I.html">more</a> |
 | Kodiak           | 30 Jun 2011 | New obs types, new diagnostics, new utilities, much <a href="https://www.image.ucar.edu/DAReS/DART/Lanai/doc/html/history/Kodiak_release.html#CurrentUsers">more</a> |
 | Lanai            | 13 Dec 2013 | Support for many new models, chemistry/aerosol types, new diagnostics, new utilities, much <a href="https://www.image.ucar.edu/DAReS/DART/Lanai/doc/html/Lanai_release.html#CurrentUsers">more</a> |
-| Manhattan        | 15 May 2017 | Native netCDF support, better scaling/performance, much <a href="https://www.image.ucar.edu/DAReS/DART/Manhattan/documentation/index.html#Updates">more</a> |
+| Manhattan        | 15 May 2017 | Native netCDF support, better scaling/performance, much <a href="https://www.image.ucar.edu/DAReS/DART/Manhattan/docs/index.html#Updates">more</a> |
 
 In September 2009, DART was featured on the cover of the Bulletin of the
 American Meteorological Society:
