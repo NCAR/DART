@@ -1,15 +1,16 @@
 
-### THIS IS FOR DART ###
-FORCING_FILE_DIRECTORY = "/Users/thoar/svn/DART/devel/models/noah/forcing/santarita"
+### FORCING_FILE_DIRECTORY IS FOR DART ###
+FORCING_FILE_DIRECTORY = 'noah/forcing'
 
 &NOAHLSM_OFFLINE
 
-   HRLDAS_CONSTANTS_FILE = "wrfinput"
-   INDIR  = "."
-   OUTDIR = "."
+   HRLDAS_CONSTANTS_FILE = 'wrfinput.nc'
 
-   RESTART_FILENAME_REQUESTED = "restart.nc"
- 
+   INDIR  = '.'
+   OUTDIR = '.'
+
+   RESTART_FILENAME_REQUESTED = 'restart.nc'
+
    KHOUR                   = 1 
    FORCING_TIMESTEP        = 3600
    NOAH_TIMESTEP           = 3600
@@ -30,9 +31,9 @@ FORCING_FILE_DIRECTORY = "/Users/thoar/svn/DART/devel/models/noah/forcing/santar
    SFCDIF_OPTION = 0
    UPDATE_SNOW_FROM_FORCING = .FALSE.
 
-/
+  /
 
 &URBAN_OFFLINE
    SF_URBAN_PHYSICS = 0
    ZLVL_URBAN       = 15.0
-/
+  /

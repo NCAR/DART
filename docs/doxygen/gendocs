@@ -46,9 +46,9 @@ fi
 # the first option puts all docs under DART/documentation.
 # try putting them into models/bob/documentation instead?
 # (this script needs to be run from a work directory)
-#destdir=$toppath/documentation/doxygen/$model
+#destdir=$toppath/docs/doxygen/$model
 destdir=../documentation
-doxygen_dir=$toppath/documentation/doxygen
+doxygen_dir=$toppath/docs/doxygen
 
 echo Generating documentation for all executables in the current directory
 echo for ${model}.   All html files will be located under the directory

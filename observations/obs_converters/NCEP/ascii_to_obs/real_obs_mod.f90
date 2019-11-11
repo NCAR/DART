@@ -202,11 +202,16 @@ call error_handler(E_MSG,'real_obs_sequence',msgstring1)
 
 write(obsdate, '(i4.4,i2.2,i2.2)') year, month, day
 
-obs_file_len = len(trim(adjustl(ObsBase))) + len(obsdate) + len(hourt)
+obs_file_len = len_trim(adjustl(ObsBase)) + len(obsdate) + len(hourt)
 
 if (obs_file_len > len(obsfile)) then
-   write(msgstring1,'(A,I0)') 'ObsBase string length too long: ',obs_file_len
-   call error_handler(E_ERR,'real_obs_sequence',msgstring1)
+   write(msgstring1,'(A,I8)') 'ObsBase string length too long: ', &
+                              len_trim(adjustl(ObsBase))
+   write(msgstring2,'(A,I8)') 'ObsBase string must be shorter than: ',&
+                              len(obsfile) - len(obsdate) - len(hourt)
+   call error_handler(E_ERR, 'real_obs_sequence', msgstring1, &
+              source, revision, revdate, text2=msgstring2)
+
 endif
 
 obsfile  = trim(adjustl(ObsBase))//obsdate//hourt

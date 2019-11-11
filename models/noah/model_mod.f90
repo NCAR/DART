@@ -1630,6 +1630,7 @@ do while (.not. dom_found)
 
    else
 
+      !>@todo is the min(max()) bit necessary given the abs(oblat) just above
       call latlon_to_ij(lsm%dom(dom_id)%proj, &
                min(max(obslat,-89.9999999_r8),89.9999999_r8),obslon,iloc,jloc)
 

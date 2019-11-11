@@ -14,7 +14,8 @@
    lsm_variables = 'SOIL_T',   'QTY_SOIL_TEMPERATURE',   '0.0',  'NA', 'UPDATE',
                    'SMC',      'QTY_SOIL_MOISTURE',      '0.0', '1.0', 'UPDATE',
                    'WA',       'QTY_AQUIFER_WATER',      '0.0',  'NA', 'UPDATE',
-                   'SNEQV',    'QTY_SNOW_WATER',         '0.0',  'NA', 'UPDATE' 
+                   'SNEQV',    'QTY_SNOW_WATER',         '0.0',  'NA', 'UPDATE',
+                   'FSNO',     'QTY_SNOWCOVER_FRAC',     '0.0', '1.0', 'UPDATE'
   /
 
 
@@ -42,7 +43,7 @@
    trace_execution            = .true.
    output_timestamps          = .false.
    print_every_nth_obs        = -1
-   output_forward_op_errors   = .true.
+   output_forward_op_errors   = .false.
    silence                    = .false.
   /
 
@@ -93,12 +94,12 @@
    output_forward_op_errors     = .false.
    write_obs_every_cycle        = .false.
    silence                      = .false.
-   /
+  /
 
 
 &dart_to_noah_nml
-   dart_analysis_file = 'analysis_member_0001.nc'
-   noah_restart_file  = '/work/04270/l_jing/lonestar/DART_CAM/RESTART.2003010100_DOMAIN1_0001'
+   dart_analysis_file = 'perfect_out.nc'
+   noah_restart_file  = 'RESTART.2003051600_DOMAIN1_01'
   /
    noah_restart_file  = '/work/04270/l_jing/lonestar/DART_CAM/RESTART.2003010100_DOMAIN1_01'
 
@@ -164,14 +165,17 @@
                               '../../../observations/forward_operators/obs_def_GRACE_mod.f90'
   /
 
+
 &obs_def_grace_nml
    max_grace_obs = 10000
    debug         = .false.
   /
 
+
 &state_vector_io_nml
    single_precision_output    = .true.
   /
+
 
 &location_nml
    horiz_dist_only             = .false.
@@ -180,10 +184,12 @@
    output_box_info             = .false.
   /
 
+
 &utilities_nml
    TERMLEVEL = 1
    module_details = .true.
   /
+
 
 &obs_sequence_tool_nml
    filename_seq         = 'obs_seq.out_cosmos','obs_seq.out_weasd_single'
@@ -202,6 +208,7 @@
    edit_copy_metadata   = .true.
    new_copy_metadata    = 'observation'
   /
+
 
 &obs_diag_nml
    obs_sequence_name = ''
@@ -271,7 +278,7 @@
    num_to_compare_at_once = 2
    filename_seq           = ''
    filename_seq_list      = 'OLlist','Simlist'
-   filename_out_suffix    = '.common' 
+   filename_out_suffix    = '.common'
    print_every            = -1
    dart_qc_threshold      = 3
    calendar               = 'Gregorian'
@@ -294,9 +301,9 @@
 
 &schedule_nml
    calendar        = 'Gregorian'
-   first_bin_start =  2003, 11, 24, 0, 0, 0 
-   first_bin_end   =  2003, 11, 25, 0, 0, 0 
-   last_bin_end    =  2003, 11, 25, 0, 0, 0 
+   first_bin_start =  2003, 11, 24, 0, 0, 0
+   first_bin_end   =  2003, 11, 25, 0, 0, 0
+   last_bin_end    =  2003, 11, 25, 0, 0, 0
    bin_interval_days    = 1
    bin_interval_seconds = 0
    max_num_bins         = 1

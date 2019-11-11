@@ -110,6 +110,11 @@ endif
 echo "Running $0 on $host"
 echo "The top-level DART directory is $DARTHOME"
 
+# Report on which git branch is being tested and if there are modifications.
+# Hopefully, no need to know about untracked files.
+
+git status -uno
+
 
 #----------------------------------------------------------------------
 #----------------------------------------------------------------------
