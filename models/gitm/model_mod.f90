@@ -1039,11 +1039,8 @@ call set_calendar_type( calendar )   ! comes from model_mod_nml
 ! 2) allocate space for the grids
 ! 3) read them from the block restart files, could be stretched ...
 
-print *,'step 1'
-
 call get_grid_info_from_blocks(restart_dirname, NgridLon, NgridLat, NgridAlt, nBlocksLon, &
                nBlocksLat, LatStart, LatEnd, LonStart)
-print *,'step 2'
 
 if( debug  > 0 ) then
     write(string1,*) 'grid dims are ',NgridLon,NgridLat,NgridAlt
@@ -1057,12 +1054,10 @@ allocate( ALT( NgridAlt ))
 call get_grid_from_blocks(restart_dirname, nBlocksLon, nBlocksLat, &
    nLonsPerBlock, nLatsPerBlock, nAltsPerBlock, LON, LAT, ALT )
 
-print *,'step 3'
 ! this is going to have to loop over all the blocks, both to get
 ! the data values and to get the full grid spacings.
 
 model_time = get_state_time(restart_dirname)
-print *,'step 4'
 
 if (do_output()) &
     call print_time(model_time,'time in restart file '//trim(restart_dirname)//'/header.rst')
@@ -1070,7 +1065,6 @@ if (do_output()) &
     call print_date(model_time,'date in restart file '//trim(restart_dirname)//'/header.rst')
 
 call verify_block_variables( gitm_block_variables, nfields )
-print *,'step 6'
 
 do ivar = 1, nfields
 
