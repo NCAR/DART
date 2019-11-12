@@ -20,9 +20,9 @@ program netcdf_to_gitm_blocks
 
 use        types_mod, only : r8
 
-use    utilities_mod, only : initialize_utilities, finalize_utilities, &
+use    utilities_mod, only : initialize_utilities, finalize_utilities,   &
                              find_namelist_in_file, check_namelist_read, &
-                             logfileunit, open_file, close_file
+                             open_file, close_file, E_MSG, error_handler
 
 use        model_mod, only : netcdf_to_restart_files
 
@@ -37,12 +37,14 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
+character(len=*),   parameter :: progname = 'netcdf_to_gitm_blocks'
+
 !-----------------------------------------------------------------------
 ! namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-character (len = 256) :: gitm_restart_input_dirname  = '[none specified]'
-character (len = 256) :: gitm_restart_output_dirname = '[none specified]'
+character (len = 256) :: gitm_restart_input_dirname  = 'none'
+character (len = 256) :: gitm_restart_output_dirname = 'none'
 character (len = 256) :: netcdf_to_gitm_blocks_input_file = 'filter_restart.nc'
 
 namelist /netcdf_to_gitm_blocks_nml/   &
@@ -54,13 +56,12 @@ namelist /netcdf_to_gitm_blocks_nml/   &
 ! global storage
 !----------------------------------------------------------------------
 
-integer               :: iunit, io, x_size
-type(time_type)       :: model_time, adv_to_time
-character(len=256)    :: gitm_restart_dirname  = 'none'
+integer               :: iunit, io
+character(len=256)    :: string1, string2, string3
 
 !======================================================================
 
-call initialize_utilities(progname='netcdf_to_gitm_blocks')
+call initialize_utilities(progname=progname)
 
 !----------------------------------------------------------------------
 ! Read the namelist.
@@ -70,47 +71,27 @@ call find_namelist_in_file("input.nml", "netcdf_to_gitm_blocks_nml", iunit)
 read(iunit, nml = netcdf_to_gitm_blocks_nml, iostat = io)
 call check_namelist_read(iunit, io, "netcdf_to_gitm_blocks_nml")
 
-write(*,*)
-write(*,*) 'netcdf_to_gitm_blocks: converting DART file ', "'"//trim(netcdf_to_gitm_blocks_input_file)//"'"
-write(*,*) 'to gitm restart files in directory ', "'"//trim(gitm_restart_output_dirname)//"'"
-write(*,*) 'using the restart files in directory ', "'"//trim(gitm_restart_input_dirname)//"' as a template"
-
-!x_size = get_model_size()
-!allocate(statevector(x_size))
+call error_handler(E_MSG,progname,'',source,revision,revdate)
+write(string1,*) 'converting DART file ', "'"//trim(netcdf_to_gitm_blocks_input_file)//"'"
+write(string2,*) 'to gitm restart files in directory ', "'"//trim(gitm_restart_output_dirname)//"'"
+write(string3,*) 'using the restart files in directory ', "'"//trim(gitm_restart_input_dirname)//"' as a template"
+call error_handler(E_MSG,progname,string1,source,revision,revdate,text2=string2,text3=string3)
 
 !----------------------------------------------------------------------
 ! Reads the valid time, the state, and the target time.
 !----------------------------------------------------------------------
 
-!iunit = open_restart_read(netcdf_to_gitm_blocks_input_file)
-
-!if ( advance_time_present ) then
-!   call aread_state_restart(model_time, statevector, iunit, adv_to_time)
-!else
-!   call aread_state_restart(model_time, statevector, iunit)
-!endif
-!call close_restart(iunit)
-
-!----------------------------------------------------------------------
-! update the current gitm state vector
-! Convey the amount of time to integrate the model ...
-! time_manager_nml: stop_option, stop_count increments
-!----------------------------------------------------------------------
-
-!call statevector_to_restart_file(statevector, gitm_restart_dirname, model_time)
-
-!if ( advance_time_present ) then
-!   call write_gitm_time_control(model_time, adv_to_time)
-!endif
+call netcdf_to_restart_files(netcdf_to_gitm_blocks_input_file,gitm_restart_output_dirname,&
+                             gitm_restart_input_dirname)
 
 !----------------------------------------------------------------------
 ! Log what we think we're doing, and exit.
 !----------------------------------------------------------------------
-
-call print_date( model_time,'netcdf_to_gitm_blocks:gitm model date')
-call print_time( model_time,'netcdf_to_gitm_blocks:DART model time')
-call print_date( model_time,'netcdf_to_gitm_blocks:gitm model date',logfileunit)
-call print_time( model_time,'netcdf_to_gitm_blocks:DART model time',logfileunit)
+call error_handler(E_MSG,progname,'',source,revision,revdate)
+call error_handler(E_MSG,progname,'',source,revision,revdate)
+write(string1,*) 'Successfully converted to the gitm restart files in directory'
+write(string2,*) "'"//trim(gitm_restart_output_dirname)//"'"
+call error_handler(E_MSG,progname,string1,source,revision,revdate,text2=string2)
 
 ! end - close the log, etc
 call finalize_utilities()

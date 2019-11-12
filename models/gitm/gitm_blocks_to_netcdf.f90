@@ -49,8 +49,7 @@ namelist /gitm_blocks_to_netcdf_nml/ gitm_restart_input_dirname,        &
 ! global storage
 !----------------------------------------------------------------------
 
-integer               :: iunit, io, x_size
-type(time_type)       :: model_time
+integer               :: iunit, io
 
 !======================================================================
 
@@ -83,9 +82,6 @@ write(*,*)
 !----------------------------------------------------------------------
 ! Finish up
 !----------------------------------------------------------------------
-
-call print_date(model_time, str='gitm_blocks_to_netcdf:gitm model date')
-call print_time(model_time, str='gitm_blocks_to_netcdf:DART model time')
 
 ! end - close the log, etc
 call finalize_utilities()
