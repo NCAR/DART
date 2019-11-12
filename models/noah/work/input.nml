@@ -1,233 +1,305 @@
-# NOAH model namelist
+# This namelist is for both NOAH and NOAH-MP
 
 &model_nml
-     noah_netcdf_filename         = 'restart.nc',
-     assimilation_period_days     =    0,
-     assimilation_period_seconds  = 3600,
-     model_perturbation_amplitude = 0.0,
-     debug                        = 1,
-     noah_state_variables         = 'SOIL_T',   'QTY_SOIL_TEMPERATURE',
-                                    'SOIL_M',   'QTY_SOIL_MOISTURE',
-                                    'SOIL_W',   'QTY_SOIL_LIQUID_WATER',
-                                    'SKINTEMP', 'QTY_SKIN_TEMPERATURE',
-                                    'SNODEP',   'QTY_SNOW_THICKNESS',
-                                    'WEASD',    'QTY_SNOW_WATER',
-                                    'CANWAT',   'QTY_CANOPY_WATER',
-                                    'QFX',      'QTY_LATENT_HEAT_FLUX',
-                                    'HFX',      'QTY_SENSIBLE_HEAT_FLUX',
-                                    'GRDFLX',   'QTY_GROUND_HEAT_FLUX'
+   lsm_model_choice             = 'noahMP_36'
+   domain_shapefiles            = 'RESTART.2003051600_DOMAIN1_01'
+   assimilation_period_days     =    0
+   assimilation_period_seconds  = 3600
+   model_perturbation_amplitude = 0.2
+   perturb_distribution         = 'gaussian'
+   debug                        = 0
+   polar                        = .false.
+   periodic_x                   = .false.
+   periodic_y                   = .false.
+   lsm_variables = 'SOIL_T',   'QTY_SOIL_TEMPERATURE',   '0.0',  'NA', 'UPDATE',
+                   'SMC',      'QTY_SOIL_MOISTURE',      '0.0', '1.0', 'UPDATE',
+                   'WA',       'QTY_AQUIFER_WATER',      '0.0',  'NA', 'UPDATE',
+                   'SNEQV',    'QTY_SNOW_WATER',         '0.0',  'NA', 'UPDATE',
+                   'FSNO',     'QTY_SNOWCOVER_FRAC',     '0.0', '1.0', 'UPDATE' 
   /
 
-&noah_to_dart_nml
-   noah_to_dart_output_file = 'dart_ics'
-  /
-
-&dart_to_noah_nml
-   dart_to_noah_input_file = 'dart_restart',
-   skip_variables          = 'QFX','HFX',
-   advance_time_present    = .true.
-  /
 
 &perfect_model_obs_nml
-   start_from_restart    = .true.,
-   output_restart        = .true.,
-   async                 = 2,
-   init_time_days        = -1,
-   init_time_seconds     = -1,
-   first_obs_days        = -1,
-   first_obs_seconds     = -1,
-   last_obs_days         = -1,
-   last_obs_seconds      = -1,
-   output_interval       = 1,
-   restart_in_file_name  = "perfect_ics",
-   restart_out_file_name = "perfect_restart",
-   obs_seq_in_file_name  = "obs_seq.in",
-   obs_seq_out_file_name = "obs_seq.out",
-   adv_ens_command       = "../shell_scripts/advance_model.csh",
-   output_timestamps     = .false.,
-   trace_execution       = .false.,
-   output_forward_op_errors = .false.,
-   print_every_nth_obs   = -1,
-   silence               = .false.,
+   read_input_state_from_file = .true.
+   single_file_in             = .false.
+   input_state_files          = 'RESTART.2003051600_DOMAIN1_01'
+   init_time_days             = -1
+   init_time_seconds          = -1
+
+   write_output_state_to_file = .true.
+   output_state_files         = 'perfect_out.nc'
+   output_interval            = 1
+
+   obs_seq_in_file_name       = 'obs_seq.2003051600.in'
+   obs_seq_out_file_name      = 'obs_seq.2003051600.out'
+   first_obs_days             = -1
+   first_obs_seconds          = -1
+   last_obs_days              = -1
+   last_obs_seconds           = -1
+
+   async                      = 0
+   adv_ens_command            = ''
+
+   trace_execution            = .true.
+   output_timestamps          = .false.
+   print_every_nth_obs        = -1
+   output_forward_op_errors   = .false.
+   silence                    = .false.
   /
+
 
 &filter_nml
-   async                    = 2,
-   adv_ens_command          = "../shell_scripts/advance_model.csh",
-   ens_size                 = 40,
-   start_from_restart       = .true.,
-   output_restart           = .true.,
-   obs_sequence_in_name     = "obs_seq.out",
-   obs_sequence_out_name    = "obs_seq.final",
-   restart_in_file_name     = "filter_ics",
-   restart_out_file_name    = "filter_restart",
-   init_time_days           = -1,
-   init_time_seconds        = -1,
-   first_obs_days           = -1,
-   first_obs_seconds        = -1,
-   last_obs_days            = -1,
-   last_obs_seconds         = -1,
-   num_output_state_members = 40,
-   num_output_obs_members   = 40,
-   output_interval          = 1,
-   num_groups               = 1,
-   input_qc_threshold       =  3.0,
-   outlier_threshold        =  3.0,
-   output_forward_op_errors = .false.,
-   output_timestamps        = .false.,
-   output_inflation         = .true.,
-   trace_execution          = .false.,
-   silence                  = .false.,
+   input_state_file_list        = 'input_file_list.txt'
+   perturb_from_single_instance = .false.
+   init_time_days               = -1
+   init_time_seconds            = -1
 
-   inf_flavor                  = 0,                       0,
-   inf_initial_from_restart    = .false.,                 .false.,
-   inf_sd_initial_from_restart = .false.,                 .false.,
-   inf_output_restart          = .true.,                  .true.,
-   inf_deterministic           = .true.,                  .true.,
-   inf_initial                 = 1.0,                     1.0,
-   inf_lower_bound             = 1.0,                     1.0,
-   inf_upper_bound             = 1000000.0,               1000000.0,
-   inf_damping                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.0,                     0.0,
-   inf_sd_lower_bound          = 0.0,                     0.0,
-   inf_sd_max_change           = 1.05,                    1.05,
+   stages_to_write              = 'preassim', 'analysis','output'
+
+   output_state_file_list       = 'output_file_list.txt'
+   output_members               = .true.
+   num_output_state_members     = 1
+   output_mean                  = .true.
+   output_sd                    = .true.
+   write_all_stages_at_end      = .false.
+
+   ens_size                     = 40
+
+   async                        = 0
+   adv_ens_command              = 'not possible'
+
+   obs_sequence_in_name         = 'obs_seq.out'
+   obs_sequence_out_name        = 'obs_seq.final'
+   num_output_obs_members       = 40
+   first_obs_days               = -1
+   first_obs_seconds            = -1
+   last_obs_days                = -1
+   last_obs_seconds             = -1
+   obs_window_days              = -1
+   obs_window_seconds           = -1
+
+   inf_flavor                  = 0,                       0
+   inf_initial_from_restart    = .true.,                 .false.
+   inf_sd_initial_from_restart = .true.,                 .false.
+   inf_deterministic           = .true.,                  .true.
+   inf_initial                 = 1.0,                     1.0
+   inf_sd_initial              = 0.6,                     0.0
+   inf_damping                 = 0.9,                     1.0
+   inf_lower_bound             = 1.0,                     1.0
+   inf_upper_bound             = 100.0,               10000.0
+   inf_sd_lower_bound          = 0.6,                     0.0
+
+   trace_execution              = .false.
+   output_timestamps            = .false.
+   output_forward_op_errors     = .false.
+   write_obs_every_cycle        = .false.
+   silence                      = .false.
+   /
+
+
+&dart_to_noah_nml
+   dart_analysis_file = 'perfect_out.nc'
+   noah_restart_file  = 'RESTART.2003051600_DOMAIN1_01'
   /
 
-&smoother_nml
-   num_lags              = 0,
-   start_from_restart    = .false.,
-   output_restart        = .false.,
-   restart_in_file_name  = 'smoother_ics',
-   restart_out_file_name = 'smoother_restart'
+
+&quality_control_nml
+   input_qc_threshold          = 3
+   outlier_threshold           = 3
+   enable_special_outlier_code = .false.
   /
+
+
+# cutoff = 0.03 (radians) is about 200 km
+# cutoff = 0.05 (radians) is about 300 km
+# cutoff = 0.06 (radians) is about 400 km
 
 &assim_tools_nml
-   filter_kind                     = 1,
-   cutoff                          = 0.20,
-   sort_obs_inc                    = .false.,
-   spread_restoration              = .false.,
-   sampling_error_correction       = .false.,
-   adaptive_localization_threshold = -1,
-   output_localization_diagnostics = .false.,
-   localization_diagnostics_file   = 'localization_diagnostics',
+   filter_kind                     = 1
+   cutoff                          = 0.05
+   sort_obs_inc                    = .false.
+   spread_restoration              = .false.
+   sampling_error_correction       = .false.
+   adaptive_localization_threshold = -1
+   output_localization_diagnostics = .false.
+   localization_diagnostics_file   = 'localization_diagnostics'
    print_every_nth_obs             = 0
+   close_obs_caching               = .true.
   /
+
+
+# layout = 2 spreads the IO tasks across the nodes.
+# This can greatly improve the performance in IO if
+# tasks_per_node is set to match your hardware
+# We usually run on cheyenne with 36 tasks per node.
 
 &ensemble_manager_nml
-   single_restart_file_in  = .false.,
-   single_restart_file_out = .false.,
-   perturbation_amplitude  = 0.002
+   layout         = 1
+   tasks_per_node = 1
   /
 
-&cov_cutoff_nml
-   select_localization = 1
-  /
-
-&reg_factor_nml
-   select_regression    = 1,
-   input_reg_file       = "time_mean_reg",
-   save_reg_diagnostics = .false.,
-   reg_diagnostics_file = "reg_diagnostics"
-  /
 
 &obs_sequence_nml
    write_binary_obs_sequence = .false.
   /
 
+
 &obs_kind_nml
-   assimilate_these_obs_types = 'SOIL_TEMPERATURE',
+   assimilate_these_obs_types = 'GRACE_TOTAL_WATER_STORAGE',
+                                'MODIS_SNOWCOVER_FRAC',
+                                'SOIL_TEMPERATURE',
                                 'SOIL_MOISTURE',
-                                'LAYER_LIQUID_WATER',
-                                'COSMOS_NEUTRON_INTENSITY',
+   evaluate_these_obs_types   = 'LAYER_LIQUID_WATER',
                                 'SNOW_THICKNESS'
-   evaluate_these_obs_types   = 'null',
   /
 
+
 &preprocess_nml
-    input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90',
-   output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90',
-     input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90',
-    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90',
+    input_obs_kind_mod_file = '../../../assimilation_code/modules/observations/DEFAULT_obs_kind_mod.F90'
+   output_obs_kind_mod_file = '../../../assimilation_code/modules/observations/obs_kind_mod.f90'
+     input_obs_def_mod_file = '../../../observations/forward_operators/DEFAULT_obs_def_mod.F90'
+    output_obs_def_mod_file = '../../../observations/forward_operators/obs_def_mod.f90'
    input_files              = '../../../observations/forward_operators/obs_def_tower_mod.f90',
-                              '../../../observations/forward_operators/obs_def_COSMOS_mod.f90'
+                              '../../../observations/forward_operators/obs_def_COSMOS_mod.f90',
+                              '../../../observations/forward_operators/obs_def_GRACE_mod.f90'
+  /
+
+&obs_def_grace_nml
+   max_grace_obs = 10000
+   debug         = .false.
+  /
+
+&state_vector_io_nml
+   single_precision_output    = .true.
   /
 
 &location_nml
-   horiz_dist_only             = .true.,
-   vert_normalization_pressure = 100000.0,
-   vert_normalization_height   = 10000.0,
-   vert_normalization_level    = 20.0,
-   approximate_distance        = .true.,
-   nlon                        = 71,
-   nlat                        = 36,
+   horiz_dist_only             = .false.
+   vert_normalization_height   = 7.0
+   approximate_distance        = .false.
    output_box_info             = .false.
   /
 
 &utilities_nml
-   TERMLEVEL = 1,
-   module_details = .false.,
-   logfilename = 'dart_log.out',
-   nmlfilename = 'dart_log.nml',
-   write_nml   = 'file'
+   TERMLEVEL = 1
+   module_details = .true.
   /
 
 &obs_sequence_tool_nml
    filename_seq         = 'obs_seq.out_cosmos','obs_seq.out_weasd_single'
-   filename_out         = 'obs_seq.out_combined',
-   print_only           = .false.,
-   first_obs_days       = -1,
-   first_obs_seconds    = -1,
-   last_obs_days        = -1,
-   last_obs_seconds     = -1,
-   min_lat              =  -90.0,
-   max_lat              =   90.0,
-   min_lon              =    0.0,
-   max_lon              =  360.0,
-   gregorian_cal        = .true.,
+   filename_out         = 'obs_seq.out_combined'
+   print_only           = .false.
+   first_obs_days       = -1
+   first_obs_seconds    = -1
+   last_obs_days        = -1
+   last_obs_seconds     = -1
+   min_lat              =  -90.0
+   max_lat              =   90.0
+   min_lon              =    0.0
+   max_lon              =  360.0
+   gregorian_cal        = .true.
    synonymous_qc_list   = 'COSMOS QC','Quality Control'
-   edit_copy_metadata   = .true.,
-   new_copy_metadata    = 'observation',
+   edit_copy_metadata   = .true.
+   new_copy_metadata    = 'observation'
   /
 
 &obs_diag_nml
-   obs_sequence_name = 'obs_seq.final',
-   obs_sequence_list = '',
-   first_bin_center =  2009, 1, 1, 0, 0, 0 ,
-   last_bin_center  =  2009, 1, 1,12, 0, 0 ,
-   bin_separation   =     0, 0, 0, 1, 0, 0 ,
-   bin_width        =     0, 0, 0, 1, 0, 0 ,
-   time_to_skip     =     0, 0, 0, 0, 0, 0 ,
-   max_num_bins     = 1000,
-   trusted_obs      = 'null',
-   Nregions   = 1,
-   lonlim1    =   0.0,
-   lonlim2    = 360.0,
-   latlim1    = -90.0,
-   latlim2    =  90.0,
-   reg_names  = 'Earth',
-   print_mismatched_locs = .false.,
-   create_rank_histogram = .true.,
-   outliers_in_histogram = .true.,
-   use_zero_error_obs    = .false.,
+   obs_sequence_name = ''
+   obs_sequence_list = 'obs_seq.final_file_list'
+   first_bin_center =  2003, 11, 1, 0, 0, 0
+   last_bin_center  =  2003, 11, 2, 0, 0, 0
+   bin_separation   =     0, 0, 1, 0, 0, 0
+   bin_width        =     0, 0, 1, 0, 0, 0
+   time_to_skip     =     0, 0, 0, 0, 0, 0
+   max_num_bins     = 2
+   trusted_obs      = 'null'
+   Nregions   = 1
+   lonlim1    =   0.0
+   lonlim2    = 360.0
+   latlim1    = -90.0
+   latlim2    =  90.0
+   reg_names  = 'Earth'
+   print_mismatched_locs = .false.
+   create_rank_histogram = .true.
+   outliers_in_histogram = .true.
+   use_zero_error_obs    = .false.
    verbose               = .false.
-   hlevel = 0.0, -0.25, -0.7, -1.5, -10.0
+   hlevel = 0.05, 0.25, 0.7, 1.5
   /
 
+
+#  loc_of_interest       = 86.375, 20.125, 0.7
+#  loc_of_interest       = 98.375, 38.125, 0.7  has soil temperature 262.644
+
 &model_mod_check_nml
-   input_file            = "noah_restart.nc"
-   output_file           = "mmc_output.nc"
+   input_state_files     = 'RESTART.2003051600_DOMAIN1_01'
+   output_state_files    = 'mmc_output.nc'
    test1thru             = 0
-   run_tests             = 1,2,3,4,5,7
-   x_ind                 = 4
+   run_tests             = 1,2,3,4,7
+   x_ind                 = 5170
+   loc_of_interest       = 98.375, 38.125, 0.7
    quantity_of_interest  = 'QTY_SOIL_MOISTURE'
-   loc_of_interest       = 287.5, 82.48, -2.00
    interp_test_dlon      = 0.1
    interp_test_dlat      = 0.1
    interp_test_dvert     = 0.50
-   interp_test_lonrange  = 285.0,  290.0
-   interp_test_latrange  =  30.0,   47.0
-   interp_test_vertrange =  -2.0,   0.0
+   interp_test_lonrange  = 73.375,  134.875
+   interp_test_latrange  = 18.125,  53.625
+   interp_test_vertrange =  0.05,   1.5
    interp_test_vertcoord = 'VERTISHEIGHT'
-   verbose               = .false.
-   /
+   verbose               = .true.
+  /
+
+
+&smoother_nml
+  /
+
+
+&cov_cutoff_nml
+   select_localization = 1
+  /
+
+
+&reg_factor_nml
+   select_regression    = 1
+   input_reg_file       = 'time_mean_reg'
+   save_reg_diagnostics = .false.
+   reg_diagnostics_file = 'reg_diagnostics'
+  /
+
+
+&obs_common_subset_nml
+   num_to_compare_at_once = 2
+   filename_seq           = ''
+   filename_seq_list      = 'OLlist','Simlist'
+   filename_out_suffix    = '.common' 
+   print_every            = -1
+   dart_qc_threshold      = 3
+   calendar               = 'Gregorian'
+   print_only             = .false.
+   eval_and_assim_can_match = .true.
+  /
+
+
+&obs_seq_to_netcdf_nml
+   obs_sequence_name = ''
+   obs_sequence_list = 'obs_to_netcdf'
+   append_to_netcdf  = .false.
+   lonlim1    =    0.0
+   lonlim2    =  300.0
+   latlim1    =    0.0
+   latlim2    =   90.0
+   verbose    = .false.
+  /
+
+
+&schedule_nml
+   calendar        = 'Gregorian'
+   first_bin_start =  2003, 11, 24, 0, 0, 0 
+   first_bin_end   =  2003, 11, 25, 0, 0, 0 
+   last_bin_end    =  2003, 11, 25, 0, 0, 0 
+   bin_interval_days    = 1
+   bin_interval_seconds = 0
+   max_num_bins         = 1
+   print_table          = .false.
+  /
 
