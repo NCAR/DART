@@ -715,7 +715,8 @@ integer,             dimension(:), intent(out)   :: close_ind
 real(r8),            dimension(:), intent(out)   :: dist
 type(ensemble_type), optional,     intent(in)    :: ens_handle
 
-integer                :: t_ind, istatus1, istatus2, k, i, is_in_close_ind, is_in_obs_kind, f107_ind
+integer                :: t_ind, istatus1, istatus2, k, i, is_in_close_ind, is_in_obs_kind
+!integer                ::  f107_ind
 integer                :: base_which, local_obs_which
 real(r8), dimension(3) :: base_array, local_obs_array
 type(location_type)    :: local_obs_loc
@@ -729,7 +730,7 @@ istatus1        = 0
 istatus2        = 0
 is_in_obs_kind  = 0
 is_in_close_ind = 0
-f107_ind        = -37 !a bad index, hopefully out of bounds of obs_kind
+!f107_ind        = -37 !a bad index, hopefully out of bounds of obs_kind
 
 
 ! Convert base_obs vertical coordinate to requested vertical coordinate if necessary
@@ -759,26 +760,26 @@ if (istatus1 == 0) then
 
 !!!! THE following 20-ish+ lines are implementing the search (if f107's dist to obs is to be calculated)
 !!!! Alex 03/07/2012
-   do i = 1, size(obs_kind) !have to go over the whole size because these are all the candidates
-      if (obs_kind(i) .eq. get_index_for_quantity('QTY_1D_PARAMETER')) then !so right now any QTY_1D_PARAMETER will match.
+!   do i = 1, size(obs_kind) !have to go over the whole size because these are all the candidates
+!      if (obs_kind(i) .eq. get_index_for_quantity('QTY_1D_PARAMETER')) then !so right now any QTY_1D_PARAMETER will match.
 !+ right now the only parameter is f107, but if you add more parameters, you might want to change their localizations, as
 !+ right now they will be either all at the meas. location or all far (depending on est_f107 setting in pbs_file.sh)
-         is_in_obs_kind = 1 !true
-         f107_ind = i !its index
-      endif
-   enddo
-   if (is_in_obs_kind == 1) then !only check the close_ind if f107 needs to be added
-      do k = 1, num_close !go only as far as the data is reasonable (not -99 = data missing)
-         if (close_ind(k) .eq. f107_ind) then !if is already in close_ind, take note of it
-            is_in_close_ind = 1
-         endif
-      enddo
-   endif
-   if ((is_in_obs_kind == 1) .and. (is_in_close_ind == 0)) then !if it needs to be added (is in obs_kind), but is not added yet
-      num_close = num_close + 1
-      close_ind(num_close) = f107_ind
+!         is_in_obs_kind = 1 !true
+!         f107_ind = i !its index
+!      endif
+!   enddo
+!   if (is_in_obs_kind == 1) then !only check the close_ind if f107 needs to be added
+!      do k = 1, num_close !go only as far as the data is reasonable (not -99 = data missing)
+!         if (close_ind(k) .eq. f107_ind) then !if is already in close_ind, take note of it
+!            is_in_close_ind = 1
+!         endif
+!      enddo
+!   endif
+!   if ((is_in_obs_kind == 1) .and. (is_in_close_ind == 0)) then !if it needs to be added (is in obs_kind), but is not added yet
+!      num_close = num_close + 1
+!      close_ind(num_close) = f107_ind
 !      write(*,*) "F107 ADDED, n_c, f107_i ", num_close, f107_ind
-   endif
+!   endif
 
 
    do k = 1, num_close
@@ -811,11 +812,11 @@ if (istatus1 == 0) then
            (istatus2 == 1)                   ) then
          dist(k) = 1.0e9_r8
       else
-         if (close_ind(k) .eq. f107_ind) then !check if we came across the parameter
-            dist(k) = 0 !changed by pbs_file script
-         else
+         !if (close_ind(k) .eq. f107_ind) then !check if we came across the parameter
+         !   dist(k) = 0 !changed by pbs_file script
+         !else
             dist(k) = get_dist(base_obs_loc, local_obs_loc, base_obs_kind, obs_kind(t_ind))
-         endif
+         !endif
       endif
    enddo
 endif
