@@ -245,11 +245,11 @@ integer, parameter :: nGhost = 2   ! number of ghost cells on all edges
 !       16:  lat/lon illegal
 !       17:  altitude illegal
 !       20:  asking to interpolate an unknown obs quantity
-integer :: GENERAL_ERROR_CODE = 99
-integer :: INVALID_VERT_COORD_ERROR_CODE = 15
-integer :: INVALID_LATLON_VAL_ERROR_CODE = 16
-integer :: INVALID_ALTITUDE_VAL_ERROR_CODE = 17
-integer :: UNKNOWN_OBS_QTY_ERROR_CODE = 20
+integer, parameter :: GENERAL_ERROR_CODE = 99
+integer, parameter :: INVALID_VERT_COORD_ERROR_CODE = 15
+integer, parameter :: INVALID_LATLON_VAL_ERROR_CODE = 16
+integer, parameter :: INVALID_ALTITUDE_VAL_ERROR_CODE = 17
+integer, parameter :: UNKNOWN_OBS_QTY_ERROR_CODE = 20
 
 !------------------------------------------------------------------
 ! The gitm restart manager namelist variables
@@ -1778,6 +1778,8 @@ if (debug > 0) then
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
 end if
 
+
+
 do jb = 1, nBlocksLat
    do ib = 1, nBlocksLon
 
@@ -1785,6 +1787,12 @@ do jb = 1, nBlocksLat
 
       iunit = open_block_file(dirname,    nb, 'read',  readfilename)
       ounit = open_block_file(dirnameout, nb, 'write', writefilename)
+
+      if (readfilename == writefilename) then
+         write(string1,*) 'Cannot use the same input and output restart files: ',trim(readfilename)
+         write(string2,*) 'Please specify different input/output directories in the input.nml file'
+         call error_handler(E_ERR,routine,string1,source,revision,revdate,text2=string2)
+      end if
 
       call write_data(iunit, ounit, ib, jb,  ncid, readfilename, writefilename)
 

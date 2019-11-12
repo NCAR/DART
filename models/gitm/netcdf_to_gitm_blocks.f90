@@ -71,7 +71,7 @@ call find_namelist_in_file("input.nml", "netcdf_to_gitm_blocks_nml", iunit)
 read(iunit, nml = netcdf_to_gitm_blocks_nml, iostat = io)
 call check_namelist_read(iunit, io, "netcdf_to_gitm_blocks_nml")
 
-call error_handler(E_MSG,progname,'',source,revision,revdate)
+call error_handler(E_MSG,progname,'','',revision,revdate)
 write(string1,*) 'converting DART file ', "'"//trim(netcdf_to_gitm_blocks_input_file)//"'"
 write(string2,*) 'to gitm restart files in directory ', "'"//trim(gitm_restart_output_dirname)//"'"
 write(string3,*) 'using the restart files in directory ', "'"//trim(gitm_restart_input_dirname)//"' as a template"
@@ -87,8 +87,8 @@ call netcdf_to_restart_files(netcdf_to_gitm_blocks_input_file,gitm_restart_outpu
 !----------------------------------------------------------------------
 ! Log what we think we're doing, and exit.
 !----------------------------------------------------------------------
-call error_handler(E_MSG,progname,'',source,revision,revdate)
-call error_handler(E_MSG,progname,'',source,revision,revdate)
+call error_handler(E_MSG,progname,'','',revision,revdate)
+call error_handler(E_MSG,progname,'','',revision,revdate)
 write(string1,*) 'Successfully converted to the gitm restart files in directory'
 write(string2,*) "'"//trim(gitm_restart_output_dirname)//"'"
 call error_handler(E_MSG,progname,string1,source,revision,revdate,text2=string2)
