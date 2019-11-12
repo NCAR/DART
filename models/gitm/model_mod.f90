@@ -568,118 +568,127 @@ end subroutine end_model
 
 
 subroutine nc_write_model_atts(ncid, domain_id)
-   integer, intent(in) :: ncid 
-   integer, intent(in) :: domain_id
 
-   call nc_begin_define_mode(ncid)
+integer, intent(in) :: ncid 
+integer, intent(in) :: domain_id
 
-   call add_nc_definitions(ncid)
+call nc_begin_define_mode(ncid)
 
-   !----------------------------------------------------------------------------
-   ! Finished with dimension/variable definitions, must end 'define' mode to fill.
-   !----------------------------------------------------------------------------
+call add_nc_definitions(ncid)
 
-   call nc_end_define_mode(ncid)
+!----------------------------------------------------------------------------
+! Finished with dimension/variable definitions, must end 'define' mode to fill.
+!----------------------------------------------------------------------------
 
-   call add_nc_dimvars(ncid)
+call nc_end_define_mode(ncid)
+
+call add_nc_dimvars(ncid)
 
 end subroutine nc_write_model_atts
 
+
+
 subroutine add_nc_definitions(ncid)
-   integer, intent(in) :: ncid 
 
-   call nc_add_global_attribute(ncid, 'model', 'gitm')
+integer, intent(in) :: ncid 
 
-   !-------------------------------------------------------------------------------
-   ! Determine shape of most important namelist
-   !-------------------------------------------------------------------------------
-   !
-   !call find_textfile_dims('gitm_vars.nml', nlines, linelen)
-   !if (nlines > 0) then
-   !   has_gitm_namelist = .true.
-   !
-   !   allocate(textblock(nlines))
-   !   textblock = ''
-   !
-   !   call nc_define_dimension(ncid, 'nlines',  nlines)
-   !   call nc_define_dimension(ncid, 'linelen', linelen)
-   !   call nc_define_character_variable(ncid, 'gitm_in', (/ 'nlines ', 'linelen' /))
-   !   call nc_add_attribute_to_variable(ncid, 'gitm_in', 'long_name', 'contents of gitm_in namelist')
-   !
-   !else
-   !  has_gitm_namelist = .false.
-   !endif
-   !
-   !----------------------------------------------------------------------------
-   ! output only grid info - state vars will be written by other non-model_mod code
-   !----------------------------------------------------------------------------
+call nc_add_global_attribute(ncid, 'model', 'gitm')
 
-   call nc_define_dimension(ncid, LON_DIM_NAME, NgridLon)
-   call nc_define_dimension(ncid, LAT_DIM_NAME, NgridLat)
-   call nc_define_dimension(ncid, ALT_DIM_NAME, NgridAlt)
-   call nc_define_dimension(ncid, 'WL',  1)  ! wavelengths - currently only 1?
+!-------------------------------------------------------------------------------
+! Determine shape of most important namelist
+!-------------------------------------------------------------------------------
+!
+!call find_textfile_dims('gitm_vars.nml', nlines, linelen)
+!if (nlines > 0) then
+!   has_gitm_namelist = .true.
+!
+!   allocate(textblock(nlines))
+!   textblock = ''
+!
+!   call nc_define_dimension(ncid, 'nlines',  nlines)
+!   call nc_define_dimension(ncid, 'linelen', linelen)
+!   call nc_define_character_variable(ncid, 'gitm_in', (/ 'nlines ', 'linelen' /))
+!   call nc_add_attribute_to_variable(ncid, 'gitm_in', 'long_name', 'contents of gitm_in namelist')
+!
+!else
+!  has_gitm_namelist = .false.
+!endif
+!
+!----------------------------------------------------------------------------
+! output only grid info - state vars will be written by other non-model_mod code
+!----------------------------------------------------------------------------
 
-   !----------------------------------------------------------------------------
-   ! Create the (empty) Coordinate Variables and the Attributes
-   !----------------------------------------------------------------------------
+call nc_define_dimension(ncid, LON_DIM_NAME, NgridLon)
+call nc_define_dimension(ncid, LAT_DIM_NAME, NgridLat)
+call nc_define_dimension(ncid, ALT_DIM_NAME, NgridAlt)
+call nc_define_dimension(ncid, 'WL',  1)  ! wavelengths - currently only 1?
 
-   ! Grid Longitudes
-   call nc_define_double_variable(ncid, LON_VAR_NAME, (/ LON_DIM_NAME /) )
-   call nc_add_attribute_to_variable(ncid, LON_VAR_NAME, 'type',           'x1d')
-   call nc_add_attribute_to_variable(ncid, LON_VAR_NAME, 'long_name',      'grid longitudes')
-   call nc_add_attribute_to_variable(ncid, LON_VAR_NAME, 'cartesian_axis', 'X')
-   call nc_add_attribute_to_variable(ncid, LON_VAR_NAME, 'units',          'degrees_east')
-   call nc_add_attribute_to_variable(ncid, LON_VAR_NAME, 'valid_range',     (/ 0.0_r8, 360.0_r8 /) )
+!----------------------------------------------------------------------------
+! Create the (empty) Coordinate Variables and the Attributes
+!----------------------------------------------------------------------------
 
-   ! Grid Latitudes
-   call nc_define_double_variable(ncid, LAT_VAR_NAME, (/ LAT_DIM_NAME /) )
-   call nc_add_attribute_to_variable(ncid, LAT_VAR_NAME, 'type',           'y1d')
-   call nc_add_attribute_to_variable(ncid, LAT_VAR_NAME, 'long_name',      'grid latitudes')
-   call nc_add_attribute_to_variable(ncid, LAT_VAR_NAME, 'cartesian_axis', 'Y')
-   call nc_add_attribute_to_variable(ncid, LAT_VAR_NAME, 'units',          'degrees_north')
-   call nc_add_attribute_to_variable(ncid, LAT_VAR_NAME, 'valid_range',     (/ -90.0_r8, 90.0_r8 /) )
+! Grid Longitudes
+call nc_define_double_variable(ncid, LON_VAR_NAME, (/ LON_DIM_NAME /) )
+call nc_add_attribute_to_variable(ncid, LON_VAR_NAME, 'type',           'x1d')
+call nc_add_attribute_to_variable(ncid, LON_VAR_NAME, 'long_name',      'grid longitudes')
+call nc_add_attribute_to_variable(ncid, LON_VAR_NAME, 'cartesian_axis', 'X')
+call nc_add_attribute_to_variable(ncid, LON_VAR_NAME, 'units',          'degrees_east')
+call nc_add_attribute_to_variable(ncid, LON_VAR_NAME, 'valid_range',     (/ 0.0_r8, 360.0_r8 /) )
 
-   ! Grid Altitudes
-   call nc_define_double_variable(ncid, ALT_VAR_NAME, (/ ALT_DIM_NAME /) )
-   call nc_add_attribute_to_variable(ncid, ALT_VAR_NAME, 'type',           'z1d')
-   call nc_add_attribute_to_variable(ncid, ALT_VAR_NAME, 'long_name',      'grid altitudes')
-   call nc_add_attribute_to_variable(ncid, ALT_VAR_NAME, 'cartesian_axis', 'Z')
-   call nc_add_attribute_to_variable(ncid, ALT_VAR_NAME, 'units',          'meters')
-   call nc_add_attribute_to_variable(ncid, ALT_VAR_NAME, 'positive',       'up')
+! Grid Latitudes
+call nc_define_double_variable(ncid, LAT_VAR_NAME, (/ LAT_DIM_NAME /) )
+call nc_add_attribute_to_variable(ncid, LAT_VAR_NAME, 'type',           'y1d')
+call nc_add_attribute_to_variable(ncid, LAT_VAR_NAME, 'long_name',      'grid latitudes')
+call nc_add_attribute_to_variable(ncid, LAT_VAR_NAME, 'cartesian_axis', 'Y')
+call nc_add_attribute_to_variable(ncid, LAT_VAR_NAME, 'units',          'degrees_north')
+call nc_add_attribute_to_variable(ncid, LAT_VAR_NAME, 'valid_range',     (/ -90.0_r8, 90.0_r8 /) )
 
-   ! Grid wavelengths
-   call nc_define_double_variable(ncid, 'WL', (/ 'WL' /) )
-   call nc_add_attribute_to_variable(ncid, 'WL', 'type',           'x1d')
-   call nc_add_attribute_to_variable(ncid, 'WL', 'long_name',      'grid wavelengths')
-   call nc_add_attribute_to_variable(ncid, 'WL', 'cartesian_axis', 'X')
-   call nc_add_attribute_to_variable(ncid, 'WL', 'units',          'wavelength_index')
-   call nc_add_attribute_to_variable(ncid, 'WL', 'valid_range',     (/ 0.9_r8, 38.1_r8 /) )
+! Grid Altitudes
+call nc_define_double_variable(ncid, ALT_VAR_NAME, (/ ALT_DIM_NAME /) )
+call nc_add_attribute_to_variable(ncid, ALT_VAR_NAME, 'type',           'z1d')
+call nc_add_attribute_to_variable(ncid, ALT_VAR_NAME, 'long_name',      'grid altitudes')
+call nc_add_attribute_to_variable(ncid, ALT_VAR_NAME, 'cartesian_axis', 'Z')
+call nc_add_attribute_to_variable(ncid, ALT_VAR_NAME, 'units',          'meters')
+call nc_add_attribute_to_variable(ncid, ALT_VAR_NAME, 'positive',       'up')
+
+! Grid wavelengths
+call nc_define_double_variable(ncid, 'WL', (/ 'WL' /) )
+call nc_add_attribute_to_variable(ncid, 'WL', 'type',           'x1d')
+call nc_add_attribute_to_variable(ncid, 'WL', 'long_name',      'grid wavelengths')
+call nc_add_attribute_to_variable(ncid, 'WL', 'cartesian_axis', 'X')
+call nc_add_attribute_to_variable(ncid, 'WL', 'units',          'wavelength_index')
+call nc_add_attribute_to_variable(ncid, 'WL', 'valid_range',     (/ 0.9_r8, 38.1_r8 /) )
 end subroutine add_nc_definitions
 
+
+
 subroutine add_nc_dimvars(ncid)
-   integer, intent(in) :: ncid 
 
-   !----------------------------------------------------------------------------
-   ! Fill the coordinate variables
-   !----------------------------------------------------------------------------
+integer, intent(in) :: ncid 
 
-   call nc_put_variable(ncid, LON_VAR_NAME, LON)
-   call nc_put_variable(ncid, LAT_VAR_NAME, LAT)
-   call nc_put_variable(ncid, ALT_VAR_NAME, ALT)
-   ! what about WL?
+!----------------------------------------------------------------------------
+! Fill the coordinate variables
+!----------------------------------------------------------------------------
 
-   !if (has_gitm_namelist) then
-   !   call file_to_text('gitm_vars.nml', textblock)
-   !   call nc_put_variable(ncid, 'gitm_in', textblock)
-   !   deallocate(textblock)
-   !endif
+call nc_put_variable(ncid, LON_VAR_NAME, LON)
+call nc_put_variable(ncid, LAT_VAR_NAME, LAT)
+call nc_put_variable(ncid, ALT_VAR_NAME, ALT)
+! what about WL?
 
-   !-------------------------------------------------------------------------------
-   ! Flush the buffer and leave netCDF file open
-   !-------------------------------------------------------------------------------
-   call nc_synchronize_file(ncid)
+!if (has_gitm_namelist) then
+!   call file_to_text('gitm_vars.nml', textblock)
+!   call nc_put_variable(ncid, 'gitm_in', textblock)
+!   deallocate(textblock)
+!endif
+
+!-------------------------------------------------------------------------------
+! Flush the buffer and leave netCDF file open
+!-------------------------------------------------------------------------------
+call nc_synchronize_file(ncid)
 
 end subroutine add_nc_dimvars
+
+
 
 !==================================================================
 
