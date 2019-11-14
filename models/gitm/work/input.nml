@@ -1,75 +1,77 @@
+
+&filter_nml
+   input_state_files            = ''
+   input_state_file_list        = 'gitm_input_files.txt'
+   single_file_in               = .false.
+   perturb_from_single_instance = .false.
+   init_time_days               = -1
+   init_time_seconds            = -1
+
+   stages_to_write              = 'preassim','output'
+
+   output_state_files           = ''
+   output_state_file_list       = 'gitm_output_files.txt'
+   output_mean                  = .true.
+   output_sd                    = .true.
+   output_members               = .true.
+   num_output_state_members     = 10
+   single_file_out              = .false.
+   write_all_stages_at_end      = .false.
+   output_interval              = 1
+
+   ens_size                     = 10
+   num_groups                   = 1
+   distributed_state            = .true.
+
+   inf_flavor                  = 0,                       0
+   inf_initial_from_restart    = .false.,                 .false.
+   inf_initial                 = 1.0,                     1.0
+   inf_lower_bound             = 1.0,                     1.0
+   inf_upper_bound             = 100.0,                   100.0
+   inf_sd_initial_from_restart = .false.,                 .false.
+   inf_sd_initial              = 0.6,                     0.6
+   inf_sd_lower_bound          = 0.6,                     0.6
+   inf_sd_max_change           = 1.05,                    1.05
+   inf_damping                 = 0.9,                     0.9
+   inf_deterministic           = .true.,                  .true.
+
+   obs_sequence_in_name     = 'obs_seq.out'
+   obs_sequence_out_name    = 'obs_seq.final'
+   first_obs_days           = -1
+   first_obs_seconds        = -1
+   last_obs_days            = -1
+   last_obs_seconds         = -1
+   compute_posterior        = .true.
+   num_output_obs_members   = 10
+
+   adv_ens_command          = 'no_GITM_advance_script'
+   trace_execution          = .true.
+   output_timestamps        = .true.
+   output_forward_op_errors = .false.
+   silence                  = .false.
+   /
+
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
-   single_file_in             = .false.
-   input_state_files          = 'gitm_netcdf.nc'
+   input_state_files          = "gitm_netcdf_xing_1hr.nc"
    init_time_days             = -1
    init_time_seconds          = -1
 
-   write_output_state_to_file = .false.
-   single_file_out            = .false.
-   output_state_files         = 'perfect_restart.nc'
-   output_interval            = 1
+   write_output_state_to_file = .true.
+   output_state_files         = "perfect_restart.nc"
 
-   async                      = 0
-   adv_ens_command            = 'no_advance_script'
-
-   obs_seq_in_file_name       = 'obs_seq.in'
-   obs_seq_out_file_name      = 'obs_seq.perfect'
+   obs_seq_in_file_name       = "obs_seq.in"
+   obs_seq_out_file_name      = "obs_seq.out"
    first_obs_days             = -1
    first_obs_seconds          = -1
    last_obs_days              = -1
    last_obs_seconds           = -1
 
-   distributed_state          = .true.
-   print_every_nth_obs        = -1
-   output_forward_op_errors   = .false.
-   output_timestamps          = .true.
    trace_execution            = .true.
-   silence                    = .false.
-  /
-
-&filter_nml
-   async                    = 0
-   adv_ens_command          = 'no_advance_script'
-   ens_size                 =  3
-   obs_sequence_in_name     = 'obs_seq.out'
-   obs_sequence_out_name    = 'obs_seq.final'
-   input_state_file_list    = "restarts_in.txt"
-   output_state_file_list   = "restarts_out.txt"
-   init_time_days           = -1
-   init_time_seconds        = -1
-   first_obs_days           = -1
-   first_obs_seconds        = -1
-   last_obs_days            = -1
-   last_obs_seconds         = -1
-   num_output_state_members = 3,
-   num_output_obs_members   = 3
-   output_interval          = 1
-   num_groups               = 1
-   distributed_state        = .true.
-   compute_posterior        = .true.
-   output_forward_op_errors = .false.
-   output_timestamps        = .true.
-   trace_execution          = .true.
-   silence                  = .false.
-
-   stages_to_write          = 'preassim', 'output'
-   output_members           = .true.
-   output_mean              = .true.
-   output_sd                = .true.
-   write_all_stages_at_end  = .false.
-
-   inf_flavor                  = 0,                       0
-   inf_initial_from_restart    = .false.,                 .false.
-   inf_sd_initial_from_restart = .false.,                 .false.
-   inf_initial                 = 1.0,                     1.0
-   inf_lower_bound             = 1.0,                     1.0
-   inf_upper_bound             = 1.3,                    10.0
-   inf_damping                 = 0.9,                     0.9
-   inf_sd_initial              = 0.6,                     0.6
-   inf_sd_lower_bound          = 0.6,                     0.6
-   inf_sd_max_change           = 1.05,                    1.05
-  /
+   output_timestamps          = .true.
+   print_every_nth_obs        = 0
+   output_forward_op_errors   = .false.
+   /
 
 
 &state_vector_io_nml
@@ -105,7 +107,7 @@
 
 
 &ensemble_manager_nml
-   tasks_per_node = 16
+   tasks_per_node = 36
    layout = 2
   /
 
@@ -138,7 +140,7 @@
 
 
 &obs_kind_nml
-   assimilate_these_obs_types = ''
+   assimilate_these_obs_types = 'SAT_TEMPERATURE'
    /
 
 #   assimilate_these_obs_types = 'SAT_TEMPERATURE',
@@ -187,12 +189,12 @@
 
 &model_nml
    single_file_in               = .true.,
-   template_filename            = 'gitm_netcdf.nc',
+   template_filename            = 'gitm_netcdf_xing_1hr.nc',
    assimilation_period_days     = 0,
    assimilation_period_seconds  = 1800,
    model_perturbation_amplitude = 0.2,
    calendar                     = 'Gregorian',
-   debug                        = 11,
+   debug                        = 2,
    gitm_state_variables =  'Temperature',            'QTY_TEMPERATURE',          'NA', 'NA', 'UPDATE'
                            'eTemperature',           'QTY_TEMPERATURE_ELECTRON', 'NA', 'NA', 'UPDATE'
                            'ITemperature',           'QTY_TEMPERATURE_ION',      'NA', 'NA', 'UPDATE'
@@ -308,13 +310,13 @@
    /
 
 &gitm_blocks_to_netcdf_nml
-   gitm_restart_input_dirname  = '../testdata1/'
+   gitm_restart_input_dirname  = '/glade/scratch/jsteward/DART_dev_nancy/models/gitm/testdata3'
    gitm_to_netcdf_output_file  = 'gitm_netcdf.nc'
    /
 
 &netcdf_to_gitm_blocks_nml
-   gitm_restart_input_dirname        = '../testdata1'
-   gitm_restart_output_dirname       = '../testdata1_out'
+   gitm_restart_input_dirname        = '/glade/scratch/jsteward/DART_dev_nancy/models/gitm/testdata3'
+   gitm_restart_output_dirname       = '../testdata3_out'
    netcdf_to_gitm_blocks_input_file  = 'gitm_netcdf.nc'
    /
 
@@ -326,8 +328,14 @@
    debug = 0
    /
 
+&quality_control_nml
+   input_qc_threshold          = 3
+   outlier_threshold           = -1
+   enable_special_outlier_code = .false.
+  /
+
 &location_nml
-   horiz_dist_only             = .false.,
+   horiz_dist_only             = .true.,
    vert_normalization_pressure = 100000.0,
    vert_normalization_height   = 100000.0,
    vert_normalization_level    = 20.0,
