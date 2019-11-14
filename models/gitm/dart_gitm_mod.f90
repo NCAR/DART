@@ -11,6 +11,7 @@ module dart_gitm_mod
 ! unrestricted GITM modules are confined to this module.
 
 use ModConstants
+use ModSizeGitm
 use ModPlanet 
 
 use typesizes
@@ -23,7 +24,10 @@ private
 
 ! these routines must be public and you cannot change
 ! the arguments - they will be called *from* the DART code.
-public :: get_nSpecies,      &
+public :: get_nLatsPerBlock, &
+          get_nLonsPerBlock, &
+          get_nAltsPerBlock, &
+          get_nSpecies,      &
           get_nSpeciesTotal, &
           get_nIons,         &
           get_nSpeciesAll,   &
@@ -45,6 +49,18 @@ contains
 
 ! @todo FIXME - should this now get the sizes from the netcdf file
 ! and not include GITM code?  (i think yes.)
+
+integer function get_nLatsPerBlock()
+   get_nLatsPerBlock = nLats
+end function get_nLatsPerBlock
+
+integer function get_nLonsPerBlock()
+   get_nLonsPerBlock = nLons
+end function get_nLonsPerBlock
+
+integer function get_nAltsPerBlock()
+   get_nAltsPerBlock = nAlts
+end function get_nAltsPerBlock
 
 integer function get_nSpecies()
    get_nSpecies = nSpecies   ! From ModPlanet, hopefully
