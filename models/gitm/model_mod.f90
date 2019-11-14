@@ -39,7 +39,8 @@ use netcdf_utilities_mod, only : nc_open_file_readonly, nc_close_file, nc_create
                                  nc_add_global_attribute, nc_define_dimension,         &
                                  nc_put_variable, nc_get_dimension_size,               &
                                  nc_define_double_variable, nc_define_dimension,       &
-                                 nc_get_dimension_size, nc_get_variable
+                                 nc_get_dimension_size, nc_get_variable,               &
+                                 nc_define_double_scalar
 
 use  ensemble_manager_mod,  only : ensemble_type
 
@@ -715,8 +716,8 @@ integer,             dimension(:), intent(out)   :: close_ind
 real(r8),            dimension(:), intent(out)   :: dist
 type(ensemble_type), optional,     intent(in)    :: ens_handle
 
-integer                :: t_ind, istatus1, istatus2, k, i, is_in_close_ind, is_in_obs_kind
-!integer                ::  f107_ind
+integer                :: t_ind, istatus1, istatus2, k, is_in_close_ind, is_in_obs_kind
+integer                ::  f107_ind
 integer                :: base_which, local_obs_which
 real(r8), dimension(3) :: base_array, local_obs_array
 type(location_type)    :: local_obs_loc
@@ -730,7 +731,7 @@ istatus1        = 0
 istatus2        = 0
 is_in_obs_kind  = 0
 is_in_close_ind = 0
-!f107_ind        = -37 !a bad index, hopefully out of bounds of obs_kind
+f107_ind        = -37 !a bad index, hopefully out of bounds of obs_kind
 
 
 ! Convert base_obs vertical coordinate to requested vertical coordinate if necessary
@@ -1851,7 +1852,7 @@ else
 
    call nc_put_variable(ncid, gitmvar(ivar)%varname, &
       data3d(1:nLonsPerBlock,1:nLatsPerBlock,1:nAltsPerBlock), &
-      context="unpack_data", nc_start=starts, &
+      context=routine, nc_start=starts, &
       nc_count=(/nLonsPerBlock,nLatsPerBlock,nAltsPerBlock/))
 end if
 
@@ -1861,37 +1862,46 @@ end subroutine unpack_data
 !==================================================================
 
 
-!subroutine unpack_data0d(data0d, ivar, block, ncid)
-!!------------------------------------------------------------------
-!! put the f107 estimate (a scalar, hence 0d) into the state vector.
-!! Written specifically
-!! for f107 since f107 is the same for all blocks. So what it does
-!! is take f107 from the first block (block = 0) and disregard
-!! f107 values from all other blocks (hopefully they are the same).
-!! written by alex
-!
-!real(r8), intent(in)    :: data0d
-!integer,  intent(in)    :: ivar         ! index into state structure
-!integer,  intent(in)    :: block
-!integer,  intent(in)    :: ncid
-!
-!integer :: offset, base
-!
-!base = get_index_start(domain_id, ivar)
-!offset = 1
-!
-!if (block > 0) then
-!   ! if not the first block, don't put this value into the state vector
-!   ! print *, 'u: BO > 0, NOT updating SV, throwing this f107 value AWAY! ', &
-!   ! base, block, offset, data0d
-!else
-!   ! if the first block (block = 0), then put this value into the state vector
-!   ! print *, 'u: BASE+BO+O is fine', base, block, offset, data0d
-!   ! block is 0 (f107 does not depend on blocks), offset is 1
-!!   statevector(base + blockoffset + offset) = data0d
-!endif
-!
-!end subroutine unpack_data0d
+subroutine unpack_data0d(data0d, ivar, ncid, define)
+!------------------------------------------------------------------
+! put the f107 estimate (a scalar, hence 0d) into the state vector.
+! Written specifically
+! for f107 since f107 is the same for all blocks. So what it does
+! is take f107 from the first block (block = 0) and disregard
+! f107 values from all other blocks (hopefully they are the same).
+! written by alex
+
+real(r8), intent(in)    :: data0d
+integer,  intent(in)    :: ivar         ! index into state structure
+integer,  intent(in)    :: ncid
+logical,  intent(in)    :: define
+
+
+character(len=*), parameter :: routine = 'unpack_data0d'
+
+if (define) then
+  
+   if (debug > 10) then 
+      write(string1,'(A,I0,2A)') 'Defining ivar = ', ivar,':',trim(gitmvar(ivar)%varname)
+      call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   end if
+
+   call nc_define_double_variable(ncid, gitmvar(ivar)%varname, (/ LON_DIM_NAME, LAT_DIM_NAME, ALT_DIM_NAME /) )
+   call nc_define_double_scalar(ncid,   gitmvar(ivar)%varname)
+   call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'long_name',      gitmvar(ivar)%long_name)
+   call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'units',          gitmvar(ivar)%units)
+   !call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'storder',        gitmvar(ivar)%storder)
+   call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'gitm_varname',   gitmvar(ivar)%gitm_varname)
+   call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'gitm_dim',       gitmvar(ivar)%gitm_dim)
+   call nc_add_attribute_to_variable(ncid, gitmvar(ivar)%varname, 'gitm_index',     gitmvar(ivar)%gitm_index)
+
+else
+
+   call nc_put_variable(ncid, gitmvar(ivar)%varname, 1, data0d, &
+      context=routine)
+end if
+
+end subroutine unpack_data0d
 
 
 !==================================================================
@@ -1993,39 +2003,23 @@ end subroutine pack_data
 !==================================================================
 
 
-!subroutine pack_data0d(ncid, ivar, block, data0d)
-!!------------------------------------------------------------------
-!! put the f107 estimate (scalar) from the statevector into a 0d container
-!! the only trick this routine does is give all blocks the same f107 (the
-!! f107 value from block 1 state vector goes to block 1,2,3,4 restart files)
-!! so no matter what, always grab the f107 from block 1 (manipulate
-!! the block variable).
-!! written by alex
-!
-!integer,  intent(in)    :: ncid
-!integer,  intent(in)    :: ivar         ! index into state structure
-!integer,  intent(in)    :: block
-!real(r8), intent(inout) :: data0d
-!
-!integer :: offset, base
-!
-!base   = get_index_start(domain_id, ivar)
-!offset = 1
-!
-!if (block > 0) then
-!   ! block > 1
-!   ! print *, 'p: BO>0, updating data0d w f107 from BLOCK 1 (ONE) !!!', &
-!   !           base, block, offset, statevector(base + 0 + offset)
-!   ! 0 block corresponds to block 1
-!!   data0d = statevector(base + 0 + offset)
-!else
-!   ! block = 1
-!   ! print *, 'p: BASE+BO+O is fine', &
-!   !           base, block, offset, statevector(base + blockoffset + offset)
-!!   data0d = statevector(base + blockoffset + offset)
-!endif
-!
-!end subroutine pack_data0d
+subroutine pack_data0d(ncid, ivar, data0d)
+!------------------------------------------------------------------
+! put the f107 estimate (scalar) from the statevector into a 0d container
+! the only trick this routine does is give all blocks the same f107 (the
+! f107 value from block 1 state vector goes to block 1,2,3,4 restart files)
+! so no matter what, always grab the f107 from block 1 (manipulate
+! the block variable).
+! written by alex
+
+integer,  intent(in)    :: ncid
+integer,  intent(in)    :: ivar         ! index into state structure
+real(r8), intent(inout) :: data0d
+
+call nc_get_variable(ncid, gitmvar(ivar)%varname, data0d,&
+   context="pack_data0d")
+
+end subroutine pack_data0d
 
 
 !==================================================================
@@ -2045,7 +2039,7 @@ integer,  intent(in) :: ncid
 logical,  intent(in) :: define
 
 real(r8), allocatable :: temp1d(:), temp3d(:,:,:), temp4d(:,:,:,:)
-!real(r8) :: temp0d !Alex: single parameter has "zero dimensions"
+real(r8) :: temp0d !Alex: single parameter has "zero dimensions"
 integer :: i, j, inum, maxsize, ivals(NSpeciesTotal)
 integer :: block(2) = 0
 
@@ -2077,6 +2071,8 @@ read(iunit) temp1d(1-nGhost:nAltsPerBlock+nGhost)
 ! FIXME: where do these names come from?
 ! shouldn't it be the namelist???
 call get_index_from_gitm_varname('NDensityS', inum, ivals)
+
+print *,'using nSpeciesTotal',nSpeciesTotal
 
 if (inum > 0) then
    ! if i equals ival, use the data from the state vect
@@ -2211,18 +2207,18 @@ if (inum > 0) then
 endif
 
 !alex begin
-!read(iunit)  temp0d
+read(iunit)  temp0d
 !gitm_index = get_index_start(domain_id, 'VerticalVelocity')
-!call get_index_from_gitm_varname('f107', inum, ivals)
-!if (inum > 0) then
-   !call unpack_data0d(temp0d, ivals(1), block, ncid, define) !see comments in the body of the subroutine
-!endif
+call get_index_from_gitm_varname('f107', inum, ivals)
+if (inum > 0) then
+  call unpack_data0d(temp0d, ivals(1), ncid, define) !see comments in the body of the subroutine
+endif
 
-!read(iunit)  temp3d
-!call get_index_from_gitm_varname('Rho', inum, ivals)
-!if (inum > 0) then
-!   call unpack_data(temp3d, ivals(1), block, ncid, define)
-!endif
+read(iunit)  temp3d
+call get_index_from_gitm_varname('Rho', inum, ivals)
+if (inum > 0) then
+   call unpack_data(temp3d, ivals(1), block, ncid, define)
+endif
 !alex end
 
 !print *, 'calling dealloc'
@@ -2243,11 +2239,10 @@ integer,          intent(in) :: ib, jb, ncid
 character(len=*), intent(in) :: infile, outfile
 
 real(r8), allocatable :: temp1d(:), temp3d(:,:,:), temp4d(:,:,:,:), data3d(:,:,:)
-!real(r8) :: data0d, temp0d !Alex !parameter is technically zero-dimensional
+real(r8) :: data0d, temp0d !Alex !parameter is technically zero-dimensional
 integer :: ios
 integer :: i, j, inum, maxsize, ivals(NSpeciesTotal)
 integer :: block(2)
-integer :: gitm_index = 1
 
 block(1) = ib
 block(2) = jb
@@ -2273,6 +2268,7 @@ if (ios /= 0) then
    write(string1,*)'unable to read lons from ',trim(infile)
    call error_handler(E_ERR,'write_data',string1,source,revision,revdate)
 endif
+print *,'now writing: lons'
 write(ounit,iostat=ios) temp1d(1-nGhost:nLonsPerBlock+nGhost)
 if (ios /= 0) then
    write(string1,*)'unable to write lons to ',trim(outfile)
@@ -2284,6 +2280,7 @@ if (ios /= 0) then
    write(string1,*)'unable to read lats from ',trim(infile)
    call error_handler(E_ERR,'write_data',string1,source,revision,revdate)
 endif
+print *,'now writing: lat'
 write(ounit,iostat=ios) temp1d(1-nGhost:nLatsPerBlock+nGhost)
 if (ios /= 0) then
    write(string1,*)'unable to write lats to ',trim(outfile)
@@ -2295,6 +2292,7 @@ if (ios /= 0) then
    write(string1,*)'unable to read alts from ',trim(infile)
    call error_handler(E_ERR,'write_data',string1,source,revision,revdate)
 endif
+print *,'now writing: alt'
 write(ounit,iostat=ios) temp1d(1-nGhost:nAltsPerBlock+nGhost)
 if (ios /= 0) then
    write(string1,*)'unable to write alts to ',trim(infile)
@@ -2380,6 +2378,7 @@ if (inum > 0) then
 !            where (data3d < 0.0_r8) data3d = temp3d/2 !alex, old - bad because might change distr
             where (data3d < 0.0_r8) data3d = 1.0e-16_r8 !alex, new
 
+            print *,'now writing: ',trim(gitmvar(ivals(j))%varname)
             write(ounit) data3d
             j = j + 1
          else
@@ -2412,6 +2411,7 @@ if (inum > 0) then
             data3d = temp3d
             call pack_data(ncid, ivals(j), block, data3d)
             where (data3d < 0.0_r8) data3d = 1.0e-16_r8 !alex
+            print *,'now writing: ',trim(gitmvar(ivals(j))%varname)
             write(ounit) data3d
             j = j + 1
          else
@@ -2437,6 +2437,7 @@ call get_index_from_gitm_varname('Temperature', inum, ivals)
 if (inum > 0) then
    call pack_data(ncid, ivals(1), block, data3d)
    where (data3d < 0.0_r8) data3d = 100.0_r8 !alex
+   print *,'now writing: Temperature'
    write(ounit) data3d
 else
    write(ounit) temp3d
@@ -2449,6 +2450,7 @@ call get_index_from_gitm_varname('ITemperature', inum, ivals)
 if (inum > 0) then
    call pack_data(ncid, ivals(1), block, data3d)
    where (data3d < 0.0_r8) data3d = 100.0_r8 !alex
+   print *,'now writing: ITemperature'
    write(ounit) data3d
 else
    write(ounit) temp3d
@@ -2459,6 +2461,7 @@ data3d = temp3d
 call get_index_from_gitm_varname('eTemperature', inum, ivals)
 if (inum > 0) then
    call pack_data(ncid, ivals(1), block, data3d)
+   print *,'now writing: eTemperature'
    where (data3d < 0.0_r8) data3d = 100.0_r8 !alex
    write(ounit) data3d
 else
@@ -2475,6 +2478,7 @@ if (inum > 0) then
    do i = 1, 3
       if (j <= inum) then
          if (i == gitmvar(ivals(j))%gitm_index) then
+            print *,'now writing:',trim(gitmvar(ivals(j))%varname)
             ! read from input but write from state vector
             data3d = temp4d(:,:,:,i)
             call pack_data(ncid, ivals(j), block, data3d)
@@ -2495,7 +2499,8 @@ if (inum > 0) then
    j = 1
    do i = 1, 3
       if (j <= inum) then
-         if (i == gitm_index) then
+         if (i == gitmvar(ivals(j))%gitm_index) then
+            print *,'now writing:',trim(gitmvar(ivals(j))%varname)
             ! read from input but write from state vector
             data3d = temp4d(:,:,:,i)
             call pack_data(ncid, ivals(j), block, data3d)
@@ -2516,7 +2521,8 @@ if (inum > 0) then
    j = 1
    do i = 1, nSpecies
       if (j <= inum) then
-         if (i == gitm_index) then
+         if (i == gitmvar(ivals(j))%gitm_index) then
+            print *,'now writing:',trim(gitmvar(ivals(j))%varname)
             ! read from input but write from state vector
             data3d = temp4d(:,:,:,i)
             call pack_data(ncid, ivals(j), block, data3d)
@@ -2530,27 +2536,27 @@ write(ounit) temp4d(:,:,:,1:nSpecies)
 
 
 !alex begin: added f107 and Rho to the restart files:
-!read(iunit) temp0d
-!data0d = temp0d
-!call get_index_from_gitm_varname('f107', inum, ivals)
-!if (inum > 0) then
-!   call pack_data0d(ncid, ivals(1), block, data0d)
-!   if (data0d < 0.0_r8) data0d = 60.0_r8 !alex
-!   write(ounit) data0d
-!else
-!   write(ounit) temp0d
-!endif
-!
-!read(iunit)  temp3d
-!data3d = temp3d
-!call get_index_from_gitm_varname('Rho', inum, ivals)
-!if (inum > 0) then
-!   call pack_data(ncid, ivals(1), block, data3d)
-!   where (data3d < 0.0_r8) data3d = 1.0e-16_r8 !alex
-!   write(ounit) data3d
-!else
-!   write(ounit) temp3d
-!endif
+read(iunit) temp0d
+data0d = temp0d
+call get_index_from_gitm_varname('f107', inum, ivals)
+if (inum > 0) then
+   call pack_data0d(ncid, ivals(1), data0d)
+   if (data0d < 0.0_r8) data0d = 60.0_r8 !alex
+   write(ounit) data0d
+else
+   write(ounit) temp0d
+endif
+
+read(iunit)  temp3d
+data3d = temp3d
+call get_index_from_gitm_varname('Rho', inum, ivals)
+if (inum > 0) then
+   call pack_data(ncid, ivals(1), block, data3d)
+   where (data3d < 0.0_r8) data3d = 1.0e-16_r8 !alex
+   write(ounit) data3d
+else
+   write(ounit) temp3d
+endif
 !alex end
 
 deallocate(temp1d, temp3d, temp4d, data3d)
