@@ -72,7 +72,9 @@ use     default_model_mod,  only : adv_1step, nc_write_model_vars, &
 use     dart_time_io_mod,   only : read_model_time, write_model_time
 
 use     dart_gitm_mod,      only : get_nSpecies, get_nSpeciesTotal, get_nIons, &
-                                   get_nSpeciesAll, decode_gitm_indices
+                                   get_nSpeciesAll, get_nLonsPerBlock,         &
+                                   get_nLatsPerBlock, get_nAltsPerBlock,       &
+                                   decode_gitm_indices
 
 use netcdf
 
@@ -174,9 +176,9 @@ namelist /model_nml/            &
    model_perturbation_amplitude,&
    calendar,                    &
    debug,                       &
-   nLonsPerBlock,               &
-   nLatsPerBlock,               &
-   nAltsPerBlock,               &
+   !nLonsPerBlock,               &
+   !nLatsPerBlock,               &
+   !nAltsPerBlock,               &
    gitm_state_variables
 
 character(len=MAX_NAME_LEN)  :: gitm_block_variables(max_state_variables) = ' '
@@ -998,6 +1000,9 @@ call add_nc_dimvars(ncid)
 
 call get_data(restart_dirname, ncid, define=.false.)
 
+print *,'the model time before writing is:'
+call print_time(model_time)
+
 call write_model_time(ncid, model_time)
 
 call nc_close_file(ncid)
@@ -1013,7 +1018,6 @@ character(len=*), intent(in)  :: restart_dirname
 character(len=*), parameter :: routine = 'static_init_blocks'
 
 character(len=NF90_MAX_NAME)    :: varname
-type(time_type) :: model_time
 integer :: iunit, io, ivar
 !logical :: has_gitm_namelist
 
@@ -1038,6 +1042,9 @@ nSpecies      = get_nSpecies()
 nSpeciesTotal = get_nSpeciesTotal()
 nIons         = get_nIons()
 nSpeciesAll   = get_nSpeciesAll()
+nLonsPerBlock = get_nLonsPerBlock()
+nLatsPerBlock = get_nLatsPerBlock()
+nAltsPerBlock = get_nAltsPerBlock()
 
 !---------------------------------------------------------------
 ! Set the time step ... causes gitm namelists to be read.
@@ -1535,6 +1542,10 @@ enddo UAMREAD
 
 if (debug > 4) then
    write(string1,*) 'Successfully read GITM restart file:',trim(fileloc)
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*) '   nLonsPerBlock:',nLonsPerBlock
+   call error_handler(E_MSG,routine,string1,source,revision,revdate)
+   write(string1,*) '   nLatsPerBlock:',nLatsPerBlock
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
    write(string1,*) '   nBlocksLon:',nBlocksLon
    call error_handler(E_MSG,routine,string1,source,revision,revdate)
