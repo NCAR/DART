@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>module random_seq_mod</TITLE>
-<link rel="stylesheet" type="text/css" href="../../../documentation/html/doc.css" />
-<link href="../../../documentation/images/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../../../docs/html/doc.css" />
+<link href="../../../docs/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,14 +14,9 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../../documentation/images/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../../docs/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
-    <td>
-       <P>Jump to <a href="../../../documentation/index.html">DART Documentation Main Index</a><br />
-          <small><small>version information for this file: <br />
-          <!-- version tag follows, do not edit -->
-          $Id$</small></small>
-       </P></td>
+    <td>Jump to <a href="../../../docs/index.html">DART Documentation Main Index</a></td>
 </tr>
 </table>
 
@@ -311,12 +306,12 @@ for more explanation about this function.
 <A NAME="random_gamma"></A>
 <br>
 <div class=routine>
-<em class=call> var = random_gamma(r, shape, scale) </em>
+<em class=call> var = random_gamma(r, rshape, rscale) </em>
 <pre>
 real(r8)                             :: <em class=code>random_gamma</em>
 type(random_seq_type), intent(inout) :: <em class=code>r</em>
-real(r8),              intent(in)    :: <em class=code>shape</em>
-real(r8),              intent(in)    :: <em class=code>scale</em>
+real(r8),              intent(in)    :: <em class=code>rshape</em>
+real(r8),              intent(in)    :: <em class=code>rscale</em>
 </pre>
 </div>
 
@@ -325,7 +320,7 @@ real(r8),              intent(in)    :: <em class=code>scale</em>
 
 <P>
 Returns a random draw from a Gamma distribution with specified
-<em class=code>shape</em> and <em class=code>scale</em>.  
+<em class=code>rshape</em> and <em class=code>rscale</em>.  
 Both must be positive.  
 </P><P>
 Note that there are three different parameterizations in common use:
@@ -349,9 +344,9 @@ for more explanation of the various parameterizations of this function.
     <TD>A random draw from a gamma distribution.</TD></TR>
 <TR><TD valign=top><em class=code>r</em></TD>
     <TD>An initialized random sequence type.</TD></TR>
-<TR><TD valign=top><em class=code>shape</em></TD>
+<TR><TD valign=top><em class=code>rshape</em></TD>
     <TD>Shape parameter.  Often written as either alpha or kappa.</TD></TR>
-<TR><TD valign=top><em class=code>scale</em></TD>
+<TR><TD valign=top><em class=code>rscale</em></TD>
     <TD>Scale parameter. Often written as theta.  If you have a rate parameter
 (often beta) pass in (1/rate) for scale.</TD></TR>
 </TABLE>
@@ -364,12 +359,12 @@ for more explanation of the various parameterizations of this function.
 <A NAME="random_inverse_gamma"></A>
 <br>
 <div class=routine>
-<em class=call> var = random_inverse_gamma(r, shape, scale) </em>
+<em class=call> var = random_inverse_gamma(r, rshape, rscale) </em>
 <pre>
 real(r8)                             :: <em class=code>random_inverse_gamma</em>
 type(random_seq_type), intent(inout) :: <em class=code>r</em>
-real(r8),              intent(in)    :: <em class=code>shape</em>
-real(r8),              intent(in)    :: <em class=code>scale</em>
+real(r8),              intent(in)    :: <em class=code>rshape</em>
+real(r8),              intent(in)    :: <em class=code>rscale</em>
 </pre>
 </div>
 
@@ -391,9 +386,9 @@ for more explanation about this function.
     <TD>A random draw from an inverse gamma distribution.</TD></TR>
 <TR><TD valign=top><em class=code>r</em></TD>
     <TD>An initialized random sequence type.</TD></TR>
-<TR><TD valign=top><em class=code>shape</em></TD>
+<TR><TD valign=top><em class=code>rshape</em></TD>
     <TD>Shape parameter.  Often written as either alpha or kappa.</TD></TR>
-<TR><TD valign=top><em class=code>scale</em></TD>
+<TR><TD valign=top><em class=code>rscale</em></TD>
     <TD>Scale parameter.  Often written as theta.  If you have a 
 rate parameter (often beta) pass in (1/rate) for scale. </TD></TR>
 </TABLE>
@@ -619,12 +614,12 @@ Generates a random draw from a standard gaussian.
 <A NAME="ran_gamma"></A>
 <br>
 <div class=routine>
-<em class=call> var = ran_gamma(r, shape, scale) </em>
+<em class=call> var = ran_gamma(r, rshape, rscale) </em>
 <pre>
 real(r8)                             :: <em class=code>ran_gamma</em>
 type(random_seq_type), intent(inout) :: <em class=code>r</em>
-real(r8),              intent(in)    :: <em class=code>shape</em>
-real(r8),              intent(in)    :: <em class=code>scale</em>
+real(r8),              intent(in)    :: <em class=code>rshape</em>
+real(r8),              intent(in)    :: <em class=code>rscale</em>
 </pre>
 </div>
 
@@ -644,9 +639,9 @@ keeps the (shape,scale) interface.
     <TD>A random draw from a Gamma distribution.</TD></TR>
 <TR><TD valign=top><em class=code>r</em></TD>
     <TD>A random sequence.</TD></TR>
-<TR><TD valign=top><em class=code>shape</em></TD>
+<TR><TD valign=top><em class=code>rshape</em></TD>
     <TD>Shape parameter.</TD></TR>
-<TR><TD valign=top><em class=code>scale</em></TD>
+<TR><TD valign=top><em class=code>rscale</em></TD>
     <TD>Scale parameter.  (This is the inverse of a rate parameter.)</TD></TR>
 </TABLE>
 
@@ -667,14 +662,6 @@ by UCAR, "as is", without charge, subject to all terms of use at
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
 http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>
-
-<TABLE border=0 cellpadding=0 width=100% summary="">
-<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
-<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
-</TABLE>
 
 <!--==================================================================-->
 

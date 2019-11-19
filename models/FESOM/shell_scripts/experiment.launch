@@ -1,0 +1,65 @@
+#!/bin/bash
+
+#----------------------------------------------------------
+#----the main script to be submitted to an lsf queue-------
+#----loads environment.load--------------------------------
+#----and modifies ens_members.template.lsf-----------------
+#----then submits it---------------------------------------
+#----------------------------------------------------------
+
+#-- Load Experiment Environment Variables -----------------
+. environment.load
+
+#----------------------------------------------------------
+
+if [[ ${SCHEDULER} = "lsf"  ]] ; then
+
+   SUB_CMD='bsub <'
+
+elif [[ ${SCHEDULER} = "pbs" ]] ; then
+
+   TMPDIR=/glade/scratch/$USER/temp  # cheyenne-specific
+   mkdir -p $TMPDIR                  # cheyenne-specific
+   SUB_CMD=qsub
+
+fi
+
+TMPLFILE=${RUNDIR}/ensemble.sh
+SBMTFILE=${RUNDIR}/ensemble.${EXPINFO}.sh
+${COPY} ${TMPLFILE} ${SBMTFILE}
+
+#----------------------------------------------------------
+#--can keep experiment specific notes----------------------
+#----------------------------------------------------------
+echo "\
+##########################################################\\
+#    SOME DISTINGUISHING INFORMATION ABOUT THE EXPERIMENT:\\
+#                                                         \\
+# ${EXPINFO} is similar to FB002 but 15 days of run       \\
+#                                                         \\
+#  The observations are genereted from NR001 nature       \\
+#  run. Temperature values are perturbed by std=0.1 degC  \\
+#  around mean=0. Similarlar, salinity values are         \\
+#  perturbed by std=0.04 psu around mean=0.               \\
+#                                                         \\
+#  Assimilation cycle is set to 6 hours and observations  \\
+#  with +- 3hr will be assimilated in each cycles.        \\
+#                                                         \\
+#  Synthetic obs. along a cross-section are created       \\
+#  for validation. These obs. won't                       \\
+#  get assimilated but will appear in obs_seq.final       \\
+#  for evaluation of the assimilation experiment.         \\
+#                                                         \\
+#  Obs. error for temperature is set to 0.5 degC and      \\
+#  0.25 for salinity following Grayet etal 2011           \\
+#                                                         \\
+#  Model started from 2009, January 01  00:00             \\
+#                                                         \\
+#                                                         \\
+#                                                         \\
+##########################################################" >> \
+${SBMTFILE}
+
+echo "${SUB_CMD} ${SBMTFILE}"
+
+eval ${SUB_CMD} ${SBMTFILE}

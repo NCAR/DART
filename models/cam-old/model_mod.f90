@@ -2763,10 +2763,14 @@ subroutine model_interpolate(state_handle, ens_size, location, obs_kind, expecte
 
 type(ensemble_type),   intent(in)  :: state_handle
 integer,               intent(in)  :: ens_size
-type(location_type),   intent(in)  :: location !> The DART location_type 'location' of the desired state estimate.
-integer,               intent(in)  :: obs_kind !> The DART KIND of the variable being estimated.
-real(r8),              intent(out) :: expected_obs(ens_size) !> The state estimate of the 'obs_kind' at 'location'
-integer,               intent(out) :: istatus(ens_size) !> A flag to signal the success of the interpolation.
+!> The DART location_type 'location' of the desired state estimate.
+type(location_type),   intent(in)  :: location
+!> The DART KIND of the variable being estimated.
+integer,               intent(in)  :: obs_kind
+!> The state estimate of the 'obs_kind' at 'location'
+real(r8),              intent(out) :: expected_obs(ens_size)
+!> A flag to signal the success of the interpolation.
+integer,               intent(out) :: istatus(ens_size)
 
 ! FIXME; In future DARTs it may be useful to return the DART KIND too.
 !        also convert to a field name (DART subroutine (get_raw_...?)).

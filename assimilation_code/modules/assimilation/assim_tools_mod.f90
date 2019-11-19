@@ -872,6 +872,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    endif
 
    n_close_obs_items(i) = num_close_obs
+    !print*, 'base_obs _oc', base_obs_loc, 'rank ', my_task_id()
+    !call test_close_obs_dist(close_obs_dist, num_close_obs, i)
+    !print*, 'num close ', num_close_obs
 
    ! set the cutoff default, keep a copy of the original value, and avoid
    ! looking up the cutoff in a list if the incoming obs is an identity ob
@@ -994,6 +997,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    endif
 
    n_close_state_items(i) = num_close_states
+   !print*, 'num close state', num_close_states
+   !call test_close_obs_dist(close_state_dist, num_close_states, i)
+   !call test_state_copies(ens_handle, 'beforeupdates')
 
    if (timing(LG_GRN)) then
       write(msgstring, '(A32,I7)') 'before_state_update: obs', keys(i)

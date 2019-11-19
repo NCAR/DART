@@ -781,8 +781,8 @@ enddo
 
 write(log_unit, *)'----------------------------------------------------'
 
-900 FORMAT(A,2(1x,E12.6))
-901 FORMAT(E12.6,1x,E12.6)
+900 FORMAT(A,2(1x,E14.6))   ! are these even used
+901 FORMAT(E14.6,1x,E14.6)  ! are these even used
 
 
 end subroutine print_tracer_info

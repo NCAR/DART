@@ -4,10 +4,12 @@
 !
 ! $Id$
 
-program sys_sim301
+!> Test to evaluate how to look_for_bias in prior ensemble distribution 
+!> and observation in observation space.
+!>
+!> See work from 13 October, 2003.
 
-! See work from 13 October, 2003. Test to evaluate how to look_for_bias in 
-! prior ensemble distribution and observation in observation space.
+program sys_sim301
 
 use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &
    twod_gaussians, random_uniform
@@ -66,8 +68,3 @@ write(*, *) 'mean squared distance is ', sample_mean / n_samples
 
 end program sys_sim301
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

@@ -1,0 +1,88 @@
+#!/bin/bash
+#BSUB -a poe               #
+#BSUB -J dart_post         # Name of the job.
+#BSUB -o dart_post_%J.out  # Appends std output to file %J.out.
+#BSUB -e dart_post_%J.out  # Appends std error to file %J.err.
+#BSUB -q serial_30min      # queue
+
+
+# diffs the output_mean.nc and preassim_mean.nc to have the increment
+# calls fesom_post_mesh.x to extract a level
+# and gmt/plot_increment.gmt to plot it
+
+. dart.postproc.env; tool=13
+
+${REMOVE} ${D_output}/${EXECUTE_FESOM_POST}
+cd ${D_output};
+${LINK} ${D_PROG}/${EXECUTE_FESOM_POST} .
+${LINK} ${D_PROG}/elem2d.new .
+
+#----------------------------------------------------------
+#--- Diff Posterior and Prior Diag files ------------------
+#----------------------------------------------------------
+F_output=( $(ls ${D_filter}/preassim_mean_1490??_?????.nc) )
+
+[[ ${debug} > 0 ]] && echo ${F_output[@]} ${#F_output[@]}
+
+for ((output=0; output<${#F_output[@]}; output++)); do
+
+  dart_time=($(echo ${F_output[${output}]} | sed 's;.*[/Prior];;g'   | sed 's;_\|:\|\.\|,; ;g' | sed 's/[A-Za-z]*//g'))
+  dart_day=$( echo ${dart_time[0]} | awk '{ printf("%06d\n",$1) }' )
+  dart_second=$( echo ${dart_time[1]} | awk '{ printf("%05d\n",$1) }' )
+  fesom_date=$( echo "${dart_day} - 149018" | bc )
+  fesom_second=$( echo "scale=2;${dart_second} / 86400" | bc )
+
+  prior=${D_filter}/preassim_mean_${dart_day}_${dart_second}.nc
+  posterior=${D_filter}/output_mean_${dart_day}_${dart_second}.nc
+  increment=${D_filter}/Increment_Diag_${dart_day}_${dart_second}.nc
+  state_vars=$( echo ${kind[@]} | sed 's; ;,;g' )
+
+  if [[ ${debug} > 0 ]]; then
+    echo ${prior}
+    echo ${posterior}
+    echo ${increment}
+    echo ${state_vars}
+  fi
+  ncdiff -O -v ${state_vars} ${prior} ${posterior} ${increment}
+
+  ${REMOVE} ${D_filter}/Increment.nc
+  ${COPY} ${increment} ${D_filter}/Increment.nc
+
+  level=$( echo ${layer[@]} | sed 's/\ /,/g' )
+
+  if [[ ${debug} > 0 ]]; then echo ${level}; fi
+  template=${D_PROG}/nml/namelist.config.template
+  sbmtfile=${D_output}/namelist.config
+
+  sed -e "s;EXPDEF;${E_name};g" -e "s;EXPNUM;${E_code};g" \
+      -e "s;^dart_days=.*$;dart_days=${dart_day};g" \
+      -e "s;^dart_secs=.*$;dart_secs=${dart_second};g" \
+      -e "s;^iniday=.*$;iniday=${E_init};g" \
+      -e "s;^endday=.*$;endday=${E_last};g" \
+      -e "s;^runyear=.*$;runyear=${E_year};g" \
+      -e "s;^tool=.*$;tool=${tool};g" \
+      -e "s;^level_number=.*$;level_number=${level};g" \
+      -e "s;^step_per_day=.*$;step_per_day=1;g" \
+      -e "s;^run_length=.*$;run_length=1;g" ${template} > ${sbmtfile}
+
+  ${EXECUTE_FESOM_POST}
+
+
+  [[ ${debug} > 1 ]] && echo ${D_output}
+  template=${D_PROG}/gmt/plot_increment.gmt
+  sbmtfile=${D_output}/dart.gmt
+
+  for (( i=0; i<${#layer[@]}; i++ )); do
+    for (( j=0; j<${#gmt_kind[@]}; j++ )); do
+    sed -e "s;^FESOMDAY=.*$;FESOMDAY=${fesom_date};g" \
+        -e "s;^YEAR=.*$;YEAR=${E_year};g" \
+        -e "s;^EXP=.*$;EXP=${E_info};g" \
+        -e "s;^DATADIR=.*$;DATADIR=${D_output};g" \
+        -e "s;^LAYERNUMBER=.*$;LAYERNUMBER=${layer[${i}]};g" \
+        -e "s;^VAR=.*$;VAR=${gmt_kind[${j}]};g" \
+        -e "s;^DARTDAY=.*$;DARTDAY=${dart_day};g" \
+        -e "s;^DARTSEC=.*$;DARTSEC=${dart_second};g" ${template} > ${sbmtfile}
+    sh ${sbmtfile}
+    done
+  done
+done

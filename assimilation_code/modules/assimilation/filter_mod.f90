@@ -591,7 +591,9 @@ call filter_generate_copy_meta_data(seq, in_obs_copy, &
       compute_posterior)
 
 if(ds) call error_handler(E_ERR, 'filter', 'smoother broken by Helen')
-if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflation=.true.) !> @todo fudge
+
+!>@todo fudge
+if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflation=.true.)
 
 call timestamp_message('After  initializing output files')
 call     trace_message('After  initializing output files')
@@ -1542,17 +1544,17 @@ end function get_blank_qc_index
 
 !-------------------------------------------------------------------------
 
-subroutine filter_set_initial_time(days, seconds, time, read_time_from_file)
+subroutine filter_set_initial_time(days, seconds, dart_time, read_time_from_file)
 
 integer,         intent(in)  :: days, seconds
-type(time_type), intent(out) :: time
+type(time_type), intent(out) :: dart_time
 logical,         intent(out) :: read_time_from_file
 
 if(days >= 0) then
-   time = set_time(seconds, days)
+   dart_time = set_time(seconds, days)
    read_time_from_file = .false.
 else
-   time = set_time(0, 0)
+   dart_time = set_time(0, 0)
    read_time_from_file = .true.
 endif
 
@@ -1560,15 +1562,15 @@ end subroutine filter_set_initial_time
 
 !-------------------------------------------------------------------------
 
-subroutine filter_set_window_time(time)
+subroutine filter_set_window_time(dart_time)
 
-type(time_type), intent(out) :: time
+type(time_type), intent(out) :: dart_time
 
 
 if(obs_window_days >= 0) then
-   time = set_time(obs_window_seconds, obs_window_days)
+   dart_time = set_time(obs_window_seconds, obs_window_days)
 else
-   time = set_time(0, 0)
+   dart_time = set_time(0, 0)
 endif
 
 end subroutine filter_set_window_time
@@ -1997,7 +1999,7 @@ integer,             intent(in)    :: prior_post
 integer,             intent(in)    :: ens_size
 integer,             intent(in)    :: keys(:) ! I think this is still var size
 
-character*12 :: task
+character(len=12) :: task
 integer :: j, i
 integer :: forward_unit
 
@@ -2720,8 +2722,8 @@ subroutine test_obs_copies(obs_fwd_op_ens_handle, information)
 type(ensemble_type), intent(in) :: obs_fwd_op_ens_handle
 character(len=*),    intent(in) :: information
 
-character(len=20)  :: task_str !< string to hold the task number
-character(len=129) :: file_obscopies !< output file name
+character(len=20)  :: task_str !! string to hold the task number
+character(len=129) :: file_obscopies !! output file name
 integer :: i
 
 write(task_str, '(i10)') obs_fwd_op_ens_handle%my_pe

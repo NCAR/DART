@@ -49,19 +49,23 @@ module obs_def_mod
 ! program is used to add in extra observation kinds at the indicated spots in
 ! the code.
 
-use        types_mod,      only : r8, i8, missing_i, missing_r8, obstypelength
-use    utilities_mod,      only : register_module, error_handler, E_ERR, E_MSG, &
+use             types_mod, only : r8, i8, missing_i, missing_r8, obstypelength
+use         utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                                   ascii_file_format
-use     location_mod,      only : location_type, read_location, write_location, &
-                             interactive_location, set_location_missing, &
-                             operator(/=) 
-use time_manager_mod, only : time_type, read_time, write_time, operator(/=), &
-                             set_time_missing, interactive_time, set_time, print_time
-use  assim_model_mod,      only : get_state_meta_data, interpolate
-use     obs_kind_mod,      only : assimilate_this_type_of_obs, evaluate_this_type_of_obs, &
-                                  get_name_for_type_of_obs, map_type_of_obs_table, &
-                             get_type_of_obs_from_menu, use_ext_prior_this_type_of_obs
-use ensemble_manager_mod,  only : ensemble_type
+use          location_mod, only : location_type, read_location, write_location, &
+                                  interactive_location, set_location_missing, &
+                                  operator(/=) 
+use      time_manager_mod, only : time_type, read_time, write_time, operator(/=), &
+                                  set_time_missing, interactive_time, &
+                                  set_time, print_time
+use       assim_model_mod, only : get_state_meta_data, interpolate
+use          obs_kind_mod, only : assimilate_this_type_of_obs, &
+                                  evaluate_this_type_of_obs, &
+                                  get_name_for_type_of_obs, &
+                                  map_type_of_obs_table, &
+                                  get_type_of_obs_from_menu, &
+                                  use_ext_prior_this_type_of_obs
+use  ensemble_manager_mod, only : ensemble_type
 use obs_def_utilities_mod, only : track_status, set_debug_fwd_op
 
 !----------------------------------------------------------------------
@@ -167,22 +171,22 @@ end subroutine initialize_module
 
 !----------------------------------------------------------------------------
 
-subroutine init_obs_def(obs_def, location, kind, time, error_variance)
+subroutine init_obs_def(obs_def, location, obkind, obtime, error_variance)
 ! Need to add additional component arguments as optionals as needed
 
 ! Constructor for an obs_def
 
 type(obs_def_type), intent(out) :: obs_def
 type(location_type), intent(in) :: location
-integer,             intent(in) :: kind
-type(time_type),     intent(in) :: time
+integer,             intent(in) :: obkind
+type(time_type),     intent(in) :: obtime
 real(r8),            intent(in) :: error_variance
 
 if ( .not. module_initialized ) call initialize_module
 
 obs_def%location = location
-obs_def%kind = kind
-obs_def%time = time
+obs_def%kind = obkind
+obs_def%time = obtime
 obs_def%error_variance = error_variance
 ! No key assigned for standard observation defs
 obs_def%key = -1
@@ -603,16 +607,16 @@ integer,                    intent(in)    :: key
 real(r8),                   intent(inout) :: obs_val
 character(len=*), optional, intent(in)    :: fform
 
-character(len=5)  :: header
-integer           :: o_index
-logical           :: is_ascii
-character(len=32) :: fileformat   ! here for backwards compatibility only
-character(len=256) :: errstring
-character(len=11) :: header_external_FO 
-integer           :: ii, secs,days 
+character(len=5)   :: header
+integer            :: o_index
+logical            :: is_ascii
+character(len=32)  :: fileformat   ! here for backwards compatibility only
+character(len=512) :: errstring
+character(len=11)  :: header_external_FO 
+integer            :: ii, secs,days 
 character(len=128) :: string 
-logical           :: time_set
-integer, save     :: counter = 0
+logical            :: time_set
+integer, save      :: counter = 0
 
 if ( .not. module_initialized ) call initialize_module
 

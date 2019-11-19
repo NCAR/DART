@@ -1,72 +1,82 @@
 &perfect_model_obs_nml
-   start_from_restart       = .true.,
-   output_restart           = .true.,
-   async                    = 2,
-   init_time_days           = -1,
-   init_time_seconds        = -1,
-   first_obs_days           = -1,
-   first_obs_seconds        = -1,
-   last_obs_days            = -1,
-   last_obs_seconds         = -1,
-   output_interval          = 1,
-   trace_execution          = .false.,
-   restart_in_file_name     = "perfect_ics",
-   restart_out_file_name    = "perfect_restart",
-   obs_seq_in_file_name     = "obs_seq.in",
-   obs_seq_out_file_name    = "obs_seq.out",
-   adv_ens_command          = "../shell_scripts/advance_model.csh",
-   output_timestamps        = .false.,
-   trace_execution          = .false.,
-   output_forward_op_errors = .false.,
-   print_every_nth_obs      = -1,
-   silence                  = .false.,
-   /
+   read_input_state_from_file = .true.
+   single_file_in             = .false.
+   input_state_files          = 'gitm_netcdf.nc'
+   init_time_days             = -1
+   init_time_seconds          = -1
 
+   write_output_state_to_file = .false.
+   single_file_out            = .false.
+   output_state_files         = 'perfect_restart.nc'
+   output_interval            = 1
+
+   async                      = 0
+   adv_ens_command            = 'no_advance_script'
+
+   obs_seq_in_file_name       = 'obs_seq.in'
+   obs_seq_out_file_name      = 'obs_seq.perfect'
+   first_obs_days             = -1
+   first_obs_seconds          = -1
+   last_obs_days              = -1
+   last_obs_seconds           = -1
+
+   distributed_state          = .true.
+   print_every_nth_obs        = -1
+   output_forward_op_errors   = .false.
+   output_timestamps          = .true.
+   trace_execution            = .true.
+   silence                    = .false.
+  /
 
 &filter_nml
-   async                    = 4,
-   adv_ens_command          = "../shell_scripts/advance_model.csh",
-   ens_size                 = 20,
-   start_from_restart       = .true.,
-   output_restart           = .true.,
-   obs_sequence_in_name     = "obs_seq.out",
-   obs_sequence_out_name    = "obs_seq.final",
-   restart_in_file_name     = "filter_ics",
-   restart_out_file_name    = "filter_restart",
-   init_time_days           = -1,
-   init_time_seconds        = -1,
-   first_obs_days           = -1,
-   first_obs_seconds        = -1,
-   last_obs_days            = -1,
-   last_obs_seconds         = -1,
-   num_output_state_members = 20,
-   num_output_obs_members   = 20,
-   output_interval          = 1,
-   num_groups               = 1,
-   input_qc_threshold       =  1.0,
-   outlier_threshold        =  3.0,
-   output_forward_op_errors = .false.,
-   output_timestamps        = .false.,
-   output_inflation         = .true.,
-   trace_execution          = .false.,
-   silence                  = .false.,
+   async                    = 0
+   adv_ens_command          = 'no_advance_script'
+   ens_size                 =  3
+   obs_sequence_in_name     = 'obs_seq.out'
+   obs_sequence_out_name    = 'obs_seq.final'
+   input_state_file_list    = "restarts_in.txt"
+   output_state_file_list   = "restarts_out.txt"
+   init_time_days           = -1
+   init_time_seconds        = -1
+   first_obs_days           = -1
+   first_obs_seconds        = -1
+   last_obs_days            = -1
+   last_obs_seconds         = -1
+   num_output_state_members = 3,
+   num_output_obs_members   = 3
+   output_interval          = 1
+   num_groups               = 1
+   distributed_state        = .true.
+   compute_posterior        = .true.
+   output_forward_op_errors = .false.
+   output_timestamps        = .true.
+   trace_execution          = .true.
+   silence                  = .false.
 
-   inf_flavor                  = 3,                       0,
-   inf_initial_from_restart    = .false.,                 .false.,
-   inf_sd_initial_from_restart = .false.,                 .false.,
-   inf_output_restart          = .true.,                  .true.,
-   inf_deterministic           = .true.,                  .true.,
-   inf_in_file_name            = 'prior_inflate_ics',     'post_inflate_ics',
-   inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart',
-   inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag',
-   inf_initial                 = 1.10,                    1.0,
-   inf_lower_bound             = 1.0,                     1.0,
-   inf_upper_bound             = 1000000.0,               1000000.0,
-   inf_damping                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.0,                     0.0,
-   inf_sd_lower_bound          = 0.0,                     0.0,
-   inf_sd_max_change           = 1.05,                    1.05,
-   /
+   stages_to_write          = 'preassim', 'output'
+   output_members           = .true.
+   output_mean              = .true.
+   output_sd                = .true.
+   write_all_stages_at_end  = .false.
+
+   inf_flavor                  = 0,                       0
+   inf_initial_from_restart    = .false.,                 .false.
+   inf_sd_initial_from_restart = .false.,                 .false.
+   inf_initial                 = 1.0,                     1.0
+   inf_lower_bound             = 1.0,                     1.0
+   inf_upper_bound             = 1.3,                    10.0
+   inf_damping                 = 0.9,                     0.9
+   inf_sd_initial              = 0.6,                     0.6
+   inf_sd_lower_bound          = 0.6,                     0.6
+   inf_sd_max_change           = 1.05,                    1.05
+  /
+
+
+
+&state_vector_io_nml
+   buffer_state_io         = .false.
+   single_precision_output = .false.
+  /
 
 
 &smoother_nml
@@ -89,15 +99,16 @@
    output_localization_diagnostics = .false.,
    localization_diagnostics_file   = 'localization_diagnostics',
    print_every_nth_obs             = 0
+   distribute_mean                 = .false.
+   convert_all_obs_verticals_first = .true.
+   convert_all_state_verticals_first = .false.
    /
 
 
 &ensemble_manager_nml
-   single_restart_file_in  = .false.,
-   single_restart_file_out = .false.,
-   perturbation_amplitude  = 0.2
-   /
-
+   tasks_per_node = 16
+   layout = 2
+  /
 
 &cov_cutoff_nml
    select_localization = 1
@@ -174,63 +185,72 @@
 # The order doesn't matter to DART. It may to you.
 
 &model_nml
-   gitm_restart_dirname         = 'advance_temp_e1/UA/restartOUT',
+   single_file_in               = .true.
+   template_filename            = 'gitm_3d_netcdf.nc'
+   gitm_restart_dirname         = '.',
    assimilation_period_days     = 0,
    assimilation_period_seconds  = 1800,
    model_perturbation_amplitude = 0.2,
    calendar                     = 'Gregorian',
    debug                        = 0,
    gitm_state_variables =
-                           'Temperature',            'QTY_TEMPERATURE',
-                           'eTemperature',           'QTY_TEMPERATURE_ELECTRON',
-                           'ITemperature',           'QTY_TEMPERATURE_ION',
-                           'iO_3P_NDensityS',        'QTY_DENSITY_NEUTRAL_O3P',
-                           'iO2_NDensityS',          'QTY_DENSITY_NEUTRAL_O2',
-                           'iN2_NDensityS',          'QTY_DENSITY_NEUTRAL_N2',
-                           'iN_4S_NDensityS',        'QTY_DENSITY_NEUTRAL_N4S',
-                           'iNO_NDensityS',          'QTY_DENSITY_NEUTRAL_NO',
-                           'iN_2D_NDensityS',        'QTY_DENSITY_NEUTRAL_N2D',
-                           'iN_2P_NDensityS',        'QTY_DENSITY_NEUTRAL_N2P',
-                           'iH_NDensityS',           'QTY_DENSITY_NEUTRAL_H',
-                           'iHe_NDensityS',          'QTY_DENSITY_NEUTRAL_HE',
-                           'iCO2_NDensityS',         'QTY_DENSITY_NEUTRAL_CO2',
-                           'iO_1D_NDensityS',        'QTY_DENSITY_NEUTRAL_O1D',
-                           'iO_4SP_IDensityS',       'QTY_DENSITY_ION_O4SP',
-                           'iO2P_IDensityS',         'QTY_DENSITY_ION_O2P',
-                           'iN2P_IDensityS',         'QTY_DENSITY_ION_N2P',
-                           'iNP_IDensityS',          'QTY_DENSITY_ION_NP',
-                           'iNOP_IDensityS',         'QTY_DENSITY_ION_NOP',
-                           'iO_2DP_IDensityS',       'QTY_DENSITY_ION_O2DP',
-                           'iO_2PP_IDensityS',       'QTY_DENSITY_ION_O2PP',
-                           'iHP_IDensityS',          'QTY_DENSITY_ION_HP',
-                           'iHeP_IDensityS',         'QTY_DENSITY_ION_HEP',
-                           'ie_IDensityS',           'QTY_DENSITY_ION_E',
-                           'U_Velocity_component',   'QTY_VELOCITY_U',
-                           'V_Velocity_component',   'QTY_VELOCITY_V',
-                           'W_Velocity_component',   'QTY_VELOCITY_W',
-                           'U_IVelocity_component',  'QTY_VELOCITY_U_ION',
-                           'V_IVelocity_component',  'QTY_VELOCITY_V_ION',
-                           'W_IVelocity_component',  'QTY_VELOCITY_W_ION',
-                           'iO_3P_VerticalVelocity', 'QTY_VELOCITY_VERTICAL_O3P',
-                           'iO2_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_O2',
-                           'iN2_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_N2',
-                           'iN_4S_VerticalVelocity', 'QTY_VELOCITY_VERTICAL_N4S',
-                           'iNO_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_NO',
-                           'f107',                   'QTY_1D_PARAMETER',
-                           'Rho',                    'QTY_DENSITY',
-    /
+/
 
+!!
+!   gitm_state_variables =
+!                           'Temperature',            'QTY_TEMPERATURE',
+!                           'eTemperature',           'QTY_TEMPERATURE_ELECTRON',
+!                           'ITemperature',           'QTY_TEMPERATURE_ION',
+!                           'iO_3P_NDensityS',        'QTY_DENSITY_NEUTRAL_O3P',
+!                           'iO2_NDensityS',          'QTY_DENSITY_NEUTRAL_O2',
+!                           'iN2_NDensityS',          'QTY_DENSITY_NEUTRAL_N2',
+!                           'iN_4S_NDensityS',        'QTY_DENSITY_NEUTRAL_N4S',
+!                           'iNO_NDensityS',          'QTY_DENSITY_NEUTRAL_NO',
+!                           'iN_2D_NDensityS',        'QTY_DENSITY_NEUTRAL_N2D',
+!                           'iN_2P_NDensityS',        'QTY_DENSITY_NEUTRAL_N2P',
+!                           'iH_NDensityS',           'QTY_DENSITY_NEUTRAL_H',
+!                           'iHe_NDensityS',          'QTY_DENSITY_NEUTRAL_HE',
+!                           'iCO2_NDensityS',         'QTY_DENSITY_NEUTRAL_CO2',
+!                           'iO_1D_NDensityS',        'QTY_DENSITY_NEUTRAL_O1D',
+!                           'iO_4SP_IDensityS',       'QTY_DENSITY_ION_O4SP',
+!                           'iO2P_IDensityS',         'QTY_DENSITY_ION_O2P',
+!                           'iN2P_IDensityS',         'QTY_DENSITY_ION_N2P',
+!                           'iNP_IDensityS',          'QTY_DENSITY_ION_NP',
+!                           'iNOP_IDensityS',         'QTY_DENSITY_ION_NOP',
+!                           'iO_2DP_IDensityS',       'QTY_DENSITY_ION_O2DP',
+!                           'iO_2PP_IDensityS',       'QTY_DENSITY_ION_O2PP',
+!                           'iHP_IDensityS',          'QTY_DENSITY_ION_HP',
+!                           'iHeP_IDensityS',         'QTY_DENSITY_ION_HEP',
+!                           'ie_IDensityS',           'QTY_DENSITY_ION_E',
+!                           'U_Velocity_component',   'QTY_VELOCITY_U',
+!                           'V_Velocity_component',   'QTY_VELOCITY_V',
+!                           'W_Velocity_component',   'QTY_VELOCITY_W',
+!                           'U_IVelocity_component',  'QTY_VELOCITY_U_ION',
+!                           'V_IVelocity_component',  'QTY_VELOCITY_V_ION',
+!                           'W_IVelocity_component',  'QTY_VELOCITY_W_ION',
+!                           'iO_3P_VerticalVelocity', 'QTY_VELOCITY_VERTICAL_O3P',
+!                           'iO2_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_O2',
+!                           'iN2_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_N2',
+!                           'iN_4S_VerticalVelocity', 'QTY_VELOCITY_VERTICAL_N4S',
+!                           'iNO_VerticalVelocity',   'QTY_VELOCITY_VERTICAL_NO',
+!                           'f107',                   'QTY_1D_PARAMETER',
+!                           'Rho',                    'QTY_DENSITY',
+!
 
 &gitm_to_dart_nml
-   gitm_to_dart_output_file = 'dart_ics'
+   gitm_to_dart_output_file = 'filter_input.nc'
    /
 
 
 &dart_to_gitm_nml
-   dart_to_gitm_input_file  = 'dart_restart',
-   advance_time_present     = .true.,
+   dart_to_gitm_input_file  = 'filter_restart.nc',
    /
 
+&gitm_to_netcdf.nml
+   gitm_to_netcdf_input_file   = '../data/3DUSR_t110311_204500.bin'
+   gitm_to_netcdf_grid_file    = '../data/2DTEC_t110311_204500.bin'
+   gitm_to_netcdf_output_file  = 'gitm_netcdf.nc'
+   /
 
 #press is in PA
 #height is in m (scaling for vertical - how many vertical meters correspond to one horizontal radian)
@@ -253,12 +273,13 @@
    TERMLEVEL = 1,
    module_details = .false.,
    logfilename = 'dart_log.out',
+   write_nml   = 'file'
    nmlfilename = 'dart_log.nml'
    /
 
 
 &mpi_utilities_nml
-   reverse_task_layout = .true.,
+   reverse_task_layout = .false.
    /
 
 

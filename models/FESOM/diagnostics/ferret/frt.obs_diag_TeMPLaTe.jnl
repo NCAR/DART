@@ -1,0 +1,139 @@
+! ferret script to plot obs_diag_output.nc
+!
+!------------------------------------------------------------------------------------------------
+! name     title                             I         J         K         L         M         N
+! REGION_NAMES
+!          region names                     1:2       ...       ...       ...       ...       ...
+! COPYMETADATA
+!          quantity names                   ...       ...       1:22      ...       ...       ...
+! OBSERVATIONTYPES
+!          DART observation types           1:56      ...       ...       ...       ...       ...
+! RANK_BINS
+!          rank histogram bins              ...       ...       1:31      ...       ...       ...
+!       (invalid coordinate axis)
+! SALINITY_GUESS
+!                                           1:2       1:3       1:22      1:9       ...       ...
+! SALINITY_GUESS_RANKHIST
+!                                           1:2       1:3       1:31      1:9       ...       ...
+! TEMPERATURE_GUESS
+!                                           1:2       1:3       1:22      1:9       ...       ...
+! TEMPERATURE_GUESS_RANKHIST
+!                                           1:2       1:3       1:31      1:9       ...       ...
+! SALINITY_ANALY
+!                                           1:2       1:3       1:22      1:9       ...       ...
+! TEMPERATURE_ANALY
+!                                           1:2       1:3       1:22      1:9       ...       ...
+! SALINITY_VPGUESS
+!                                           1:2       ...       1:22      ...       ...       ...
+! TEMPERATURE_VPGUESS
+!                                           1:2       ...       1:22      ...       ...       ...
+! SALINITY_VPANALY
+!                                           1:2       ...       1:22      ...       ...       ...
+! TEMPERATURE_VPANALY
+!                                           1:2       ...       1:22      ...       ...       ...
+! 
+!yes? list COPYMETADATA
+!             VARIABLE : quantity names
+!             FILENAME : obs_diag_output.nc
+!             FILEPATH : /work/ans051/TSS/FB001/FILTER/
+!             SUBSET   : 22 points (Z)
+! 1    /  1:"Nposs                           "
+! 2    /  2:"Nused                           "
+! 3    /  3:"NbigQC                          "
+! 4    /  4:"NbadIZ                          "
+! 5    /  5:"NbadUV                          "
+! 6    /  6:"NbadLV                          "
+! 7    /  7:"rmse                            "
+! 8    /  8:"bias                            "
+! 9    /  9:"spread                          "
+! 10   / 10:"totalspread                     "
+! 11   / 11:"NbadDARTQC                      "
+! 12   / 12:"observation                     "
+! 13   / 13:"ens_mean                        "
+! 14   / 14:"N_DARTqc_0                      "
+! 15   / 15:"N_DARTqc_1                      "
+! 16   / 16:"N_DARTqc_2                      "
+! 17   / 17:"N_DARTqc_3                      "
+! 18   / 18:"N_DARTqc_4                      "
+! 19   / 19:"N_DARTqc_5                      "
+! 20   / 20:"N_DARTqc_6                      "
+! 21   / 21:"N_DARTqc_7                      "
+! 22   / 22:"N_trusted                       "
+
+
+define symbol WRKDIR=WORKDIRECTORY
+define symbol VAR=VARIABLENAME
+define symbol KIND=VARIABLEKIND     ! PROF of FBOX
+define symbol FBEXP=EXPERIMENTNAME !experiment name
+define symbol PARAM=PARAMETER      !guess or analy
+define symbol REGID=REGIONID     !1 (Marmara) or 2 (Bosphorus)
+use "($WRKDIR)/($FBEXP)/FILTER/obs_diag_output.nc"
+
+define symbol SAL_PROF=Salinity
+define symbol SAL_PROF_NAM=Cross-section Salinity
+define symbol SAL_FBOX=Ferrybox_Salinity
+define symbol SAL_FBOX_NAM=Ferrybox Salinity
+define symbol SAL_vlim=vlim=0:3:0.6
+define symbol SAL_Unit=psu
+define symbol TEM_PROF=Temperature
+define symbol TEM_PROF_NAM=Cross-section Temperature
+define symbol TEM_FBOX=Ferrybox_Temperature
+define symbol TEM_FBOX_NAM=Ferrybox Temperature
+define symbol TEM_vlim=vlim=0:2:0.4
+define symbol TEM_UNIT=#C
+
+define symbol GUESS_NAM=Background
+define symbol ANALY_NAM=Analysis
+define symbol PROF_vlim=vlim=0:3000:500
+define symbol FBOX_vlim=vlim=0:600:100
+define symbol REGNAME=`REGION_NAMES[i=($REGID)]`
+
+define symbol figname=obs_diag_($FBEXP)_($REGNAME)_($PARAM)_($KIND)_($VAR)
+spa rm ($figname).png
+
+define viewport/xlimits=0.,1./ylim=0.155,1.00/TEXT=1.6 t1
+define viewport/xlimits=0.,1./ylim=0.00,0.60/TEXT=1.6 b1
+set window/asp=0.75/ANTIALIAS/QUALITY=HIGH
+
+
+ppl axlabp,1,-1
+set viewport t1; cancel mode logo
+plot/set/nokey/($($VAR)_vlim) ($($VAR)_($KIND))_($PARAM)[i=($REGID),j=1,k=7], \
+                              ($($VAR)_($KIND))_($PARAM)[i=($REGID),j=1,k=9], \
+                              ($($VAR)_($KIND))_($PARAM)[i=($REGID),j=1,k=10]
+go unlabel 1; go unlabel 2; go unlabel 3; 
+go unlabel 4; go unlabel 5; go unlabel 6; 
+        ppl xlab; ppl ylab ;
+        PPL AXSET,0,0,1,0
+        PPL TICS,0.1,0.0,0.1,0.1
+        ppl pen 1,1; ppl line 1,27,1;
+        ppl pen 2,1; ppl line 2,20,1;
+        ppl pen 3,1; ppl line 3,18,1;
+        go legend 1 "RMSE @im14@sr($($VAR)_unit)@im15" ul
+        go legend 2 "Spread @im14@sr($($VAR)_unit)^2@im15" ul
+        go legend 3 "Total Spread @im14@sr($($VAR)_unit)^2@im15" ul
+PPL PLOT;
+label/nou `($ppl$xlen)` `($ppl$ylen)-.25` 1 0 .12 "($($VAR)_($KIND)_NAM)"
+label/nou `($ppl$xlen)` `($ppl$ylen)-.50` 1 0 .12 "($($PARAM)_NAM) `REGION_NAMES[i=($REGID)]`"
+
+
+ppl axlabp,1,1
+set viewport b1; cancel mode logo
+plot/set/nokey/($($KIND)_vlim) ($($VAR)_($KIND))_($PARAM)[i=($REGID),j=1,k=1], \
+                              ($($VAR)_($KIND))_($PARAM)[i=($REGID),j=1,k=2], \
+                              ($($VAR)_($KIND))_($PARAM)[i=($REGID),j=1,k=11]
+go unlabel 1; go unlabel 2; go unlabel 3; 
+go unlabel 4; go unlabel 5; go unlabel 6; 
+        ppl xlab; ppl ylab ;
+        PPL AXSET,1,1,1,1
+        PPL TICS,0.1,0.2,0.1,0.1
+        ppl pen 1,1; ppl line 1,4,1;
+        ppl pen 2,1; ppl line 2,0,4;
+        ppl pen 3,1; ppl line 3,0,1;
+        go legend 1 "Nposs" ul
+        go legend 2 "Nused" ul
+        go legend 3 "Nbad" ul
+PPL PLOT;
+!label/nou `($ppl$xlen)-2.0` `($ppl$ylen)-.25` -1 0 .16 `REGION_NAMES[i=1]`
+frame/file=($figname).png/YPIXELS=750
+spa convert -trim ($figname).png ($figname)_trim.png

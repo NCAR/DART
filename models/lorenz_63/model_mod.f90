@@ -82,6 +82,10 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! Model size is fixed for Lorenz-63
 integer(i8), parameter :: model_size = 3
 
+! Solvers available for Lorenz-63
+character(len=*), parameter :: RK2 = 'RK2'
+character(len=*), parameter :: RK4 = 'RK4'
+
 ! Namelist with default values
 
 real(r8) ::  sigma = 10.0_r8
@@ -90,9 +94,10 @@ real(r8) ::      b = 8.0_r8 / 3.0_r8
 real(r8) :: deltat = 0.01_r8
 integer  :: time_step_days = 0
 integer  :: time_step_seconds = 3600
+! use RK2 for the solver by default
+character(len=8) :: solver = RK2
 
-namelist /model_nml/ sigma, r, b, deltat, time_step_days, time_step_seconds
-
+namelist /model_nml/ sigma, r, b, deltat, time_step_days, time_step_seconds, solver
 
 ! Define the location of the state variables in module storage
 type(location_type) :: state_loc(model_size)
@@ -165,11 +170,20 @@ subroutine adv_1step(x, time)
 
 real(r8), intent(inout) :: x(:)
 type(time_type), intent(in) :: time
+character(len=256) :: errMsg
 
 real(r8) :: fract
 
 fract = 1.0_r8
-call adv_single(x, fract)
+if (solver == RK2) then
+   call adv_single(x, fract)
+else if (solver == RK4) then
+   call adv_single_rk4(x, fract)
+else
+   errMsg = 'Unknown lorenz_63 solver option: ' // '"' // trim(solver) // '"'
+   call error_handler(E_ERR,'adv_1step', errMsg, source, revision, revdate, &
+      text2='Valid options are: "' // trim(RK2) // '" and "' // trim(RK4) // '"')
+end if
 
 end  subroutine adv_1step
 
@@ -288,7 +302,8 @@ end subroutine get_state_meta_data
 
 
 !------------------------------------------------------------------
-!> old version of linearized lorenz 63 model time tendency computation
+!> old version of linearized lorenz 63 model time tendency computation.
+!> This is not used by DART, but may be useful for research purposes.
 
 subroutine linear_dt(x, dx, dt)
    
@@ -442,6 +457,7 @@ call nc_add_global_attribute(ncid, "model_r", r )
 call nc_add_global_attribute(ncid, "model_b", b )
 call nc_add_global_attribute(ncid, "model_sigma", sigma )
 call nc_add_global_attribute(ncid, "model_delta_t", deltat )
+call nc_add_global_attribute(ncid, "model_solver", solver )
 
 call nc_write_location_atts(ncid, msize)
 call nc_end_define_mode(ncid)

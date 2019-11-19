@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # build and test all the models given in the list.
 #
 # usage: [ -mpi | -nompi ] [ -mpicmd name_of_mpi_launch_command ]
@@ -49,6 +47,7 @@ if ( "$usingmpi" == "yes" ) then
   if ( ! $?MPICMD) then
     set MPICMD='mpirun -n 2'
   endif
+  echo "MPI programs will be started with: $MPICMD"
 else if ( "$usingmpi" == "no" ) then
   echo "Building WITHOUT MPI support."
   set QUICKBUILD_ARG='-nompi'
@@ -89,6 +88,7 @@ set DO_THESE_MODELS = ( \
   9var \
   POP \
   ROMS \
+  FESOM \
   bgrid_solo \
   cam-fv \
   cice \
@@ -102,6 +102,7 @@ set DO_THESE_MODELS = ( \
   lorenz_96 \
   lorenz_96_2scale \
   mpas_atm \
+  noah \
   null_model \
   simple_advection \
   template \
@@ -122,7 +123,8 @@ echo
 
 ${REMOVE} ${LOGDIR}/buildlog.*.out ${LOGDIR}/runlog.*.out
 mkdir -p ${LOGDIR}
-echo putting build and run logs in $LOGDIR
+echo "build and run logs are in: $LOGDIR"
+
 
 @ modelnum = 0
 
@@ -143,7 +145,7 @@ foreach MODEL ( $DO_THESE_MODELS )
     @ ncdlfiles = `ls *.cdl | wc -l`
 
     if ( "$MODEL" == "template" ) then
-      echo skipping tests of the template directory
+      echo "skipping tests of the template directory"
       continue
     endif
 
@@ -152,17 +154,25 @@ foreach MODEL ( $DO_THESE_MODELS )
     mkdir -p ${SAVEDIR}
     ${COPY} input.nml obs_seq.* ${SAVEDIR}
 
+    # If there is a testing namelist, use it.
+    if ( -f input.nml.testing ) then
+       ${COPY} input.nml.testing input.nml
+    endif
+
     if ( -f workshop_setup.csh ) then
 
       echo "Trying to run workshop_setup.csh for model $MODEL as a test"
       ( ./workshop_setup.csh >  ${LOGDIR}/buildlog.${MODEL}.out ) || set FAILURE = 1
+      echo
       echo "Re-running workshop_setup.csh to test overwriting files for model $MODEL"
       ( ./workshop_setup.csh >> ${LOGDIR}/buildlog.${MODEL}.out ) || set FAILURE = 1
+      echo
 
     else
-      echo building executables for $MODEL
+      echo "building executables for $MODEL"
 
       ( ./quickbuild.csh ${QUICKBUILD_ARG} > ${LOGDIR}/buildlog.${MODEL}.out ) || set FAILURE = 1
+      echo
 
       echo "Trying to run pmo for model $MODEL as a test"
       echo "Will generate NetCDF files from any .cdl files first."
@@ -175,15 +185,25 @@ foreach MODEL ( $DO_THESE_MODELS )
          end
       endif
       # assumes the executables from quickbuild are here
-      ( $MPICMD ./perfect_model_obs >  ${LOGDIR}/runlog.${MODEL}.out ) || set FAILURE = 1
-      echo "Rerunning PMO to test for output file overwrite"
-      ( $MPICMD ./perfect_model_obs >> ${LOGDIR}/runlog.${MODEL}.out ) || set FAILURE = 1
+      if ( -f using_mpi_for_perfect_model_obs ) then
+         ( $MPICMD ./perfect_model_obs >  ${LOGDIR}/runlog.${MODEL}.out ) || set FAILURE = 1
+         echo "Rerunning PMO to test for output file overwrite"
+         ( $MPICMD ./perfect_model_obs >> ${LOGDIR}/runlog.${MODEL}.out ) || set FAILURE = 1
+      else
+         (         ./perfect_model_obs >  ${LOGDIR}/runlog.${MODEL}.out ) || set FAILURE = 1
+         echo "Rerunning PMO to test for output file overwrite"
+         (         ./perfect_model_obs >> ${LOGDIR}/runlog.${MODEL}.out ) || set FAILURE = 1
+      endif
       # FIXME: if possible, try running filter here as well?
     endif
 
     if ( -f model_mod_check ) then
       echo "Trying to run model_mod_check for model $MODEL as a test"
-      ( $MPICMD ./model_mod_check >> ${LOGDIR}/runlog.${MODEL}.out ) || set FAILURE = 1 
+      if ( -f using_mpi_for_model_mod_check ) then
+         ( $MPICMD ./model_mod_check >> ${LOGDIR}/runlog.${MODEL}.out ) || set FAILURE = 1 
+      else
+         (         ./model_mod_check >> ${LOGDIR}/runlog.${MODEL}.out ) || set FAILURE = 1 
+      endif
     endif
 
     echo "Removing the newly-built objects and executables"
@@ -212,6 +232,23 @@ foreach MODEL ( $DO_THESE_MODELS )
     echo "=================================================================="
     if ( $FAILURE ) then
       echo "ERROR - unsuccessful test of $MODEL at "`date`
+
+      switch ( $MODEL )
+         case FESOM
+            echo "Note that because the FESOM-native code explicitly types reals,"
+            echo "the DART mechanism of being able to run in reduced precision by"
+            echo "defining real(r8) to be the same as real(r4) via 'types_mod.f90'"
+            echo "is not supported. Please check to make sure this is the reason"
+            echo "this test is failing."
+         breaksw
+         case clm
+            echo "CLM is expected to fail on this branch."
+         breaksw
+         default
+            echo "unexpected error"
+         breaksw
+      endsw
+
     else
       echo "End of succesful test of $MODEL at "`date`
     endif
@@ -222,7 +259,7 @@ foreach MODEL ( $DO_THESE_MODELS )
 end
 
 echo
-echo $modelnum models tested.
+echo "$modelnum models tested."
 echo
 
 echo
@@ -234,7 +271,3 @@ echo
 echo
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$

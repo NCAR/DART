@@ -34,9 +34,9 @@ set CENTRALDIR = `pwd`
 
 @ BAIL = 0
 foreach FILE ( wrfinput namelist.hrldas Noah_hrldas_beta SOILPARM.TBL \
-               VEGPARM.TBL GENPARM.TBL URBPARM.TBL obs_seq.in input.nml \
-               perfect_model_obs dart_to_noah noah_to_dart run_pmo.csh \
-               advance_model.csh restart.nc perfect_ics)
+               VEGPARM.TBL GENPARM.TBL URBPARM.TBL input.nml \
+               perfect_model_obs \
+               restart.nc )
 
    if ( ! -e $FILE ) then
       echo "$FILE is needed but not present in CENTRALDIR"
@@ -50,7 +50,9 @@ if ( $BAIL > 0 ) then
    echo "FATAL ERROR ... stage the missing file(s) and try again."
    exit 1
 endif
-
+# run the Noah-MP 
+# figure out the date of the model state, should be the same as the observation data
+# run perfect_model_obs, which needs obs_seq.in, could be linked to the folder..
 ./perfect_model_obs
 
 exit 0

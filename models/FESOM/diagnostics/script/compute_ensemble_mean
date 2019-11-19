@@ -1,0 +1,47 @@
+#!/bin/bash
+#BSUB -a poe               #
+#BSUB -J fesom_post         # Name of the job.
+#BSUB -o fesom_post_%J.out  # Appends std output to file %J.out.
+#BSUB -e fesom_post_%J.out  # Appends std error to file %J.err.
+#BSUB -P fesom             # Project ID.
+#BSUB -q serial_6h           # queue
+####BSUB -x
+
+# computes ensemble mean from fesom ocean outputs
+# using tool number 7 for the related routine in fesom_post_main.F90
+# then, plot using gmt plot_ensemble_mean.gmt
+
+source fesom.postproc.env # fesom environment file. Set the parameters there
+tool=7 # see fesom_post_main.F90
+
+ENSDEF=ENS; ENSMEM=30
+
+for (( layer=1; layer<=${#M_layer[@]}; layer++ ));do
+  sed -e 's;EXPDEF;'${E_name}';'             -e 's;EXPNUM;'${E_code}';'\
+      -e 's;ENSDEF;'${ENSDEF}';'             -e 's;ENSNUM;'${ENSMEM}';'\
+      -e 's;ENSEMBLEMEMBER;'${ENSMEM}';'     -e 's;TIMESTEP;1;'\
+         's;INITIALDAY;'${E_init}';'         -e 's;FINALDAY;'${E_last}';'\
+      -e 's;YEAROFNC;'${E_year}';'           -e 's;TOOL2RUN;'${froutine}';'\
+      -e 's;LEVEL2RUN;'${M_layer[$layer]}';' -e 's;RUNLENGTH;365;'\
+         namelist.config.ensemble.template > namelist.config
+
+  ${EXECUTE_FESOM_POST}
+
+# plotting
+  EXPERIMENT=( ${E_name}${E_code} ); FILE=OCE
+  for (( exp=1; exp<=${#EXPERIMENT[@]}; exp++ ));do
+    [ ${layer} == 1 ] && VAR=(SAL TEM SSH)
+    [ ${layer} != 1 ] && VAR=(SAL TEM)
+
+    for (( day=${E_init}; day<=${E_last}; day++ ));do
+      for (( v=1; v<=${#VAR[@]}; v++ ));do
+        sed -e 's/DAY2PLOT/'${day}'/' -e 's/YEAR2PLOT/'${E_year}'/'\
+            -e 's/EXPCODE/'${EXPERIMENT[${exp}]}'/'\
+            -e 's/VARIABLE2PLOT/'${VAR[${v}]}'/'\
+            -e 's/LAYERNUMBER/'${M_layer[$layer]}'/'\
+               plot_ensemble_mean.gmt > ensemble_mean
+        sh ensemble_mean
+      done # variable loop
+    done # day loop
+  done # experiment loop
+done # layer loop
