@@ -25,7 +25,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq
 
-character(len = 129) :: output_name
+character(len = 256) :: output_name
 character(len = 8 ) :: obsdate
 integer :: iunit, io, ii, day1, kkk, kbeg, kend
 
@@ -42,7 +42,7 @@ data bin_end/ 9.000_r8, 15.000_r8, 21.000_r8, 27.000_r8, 27.000_r8/
         
 integer :: year = 2003, month =1, day =1, tot_days = 31
 integer :: max_num = 800000, select_obs = 0
-character(len = 129) :: ObsBase = 'temp_obs.'
+character(len = 256) :: ObsBase = 'temp_obs.'
 logical :: ADPUPA = .false., AIRCAR = .false., AIRCFT = .false., &
            SATWND = .false., SATEMP = .false., SFCSHP = .false., &
            ADPSFC = .false.
