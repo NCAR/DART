@@ -171,6 +171,7 @@ innov_swe = dart_sneqv - noah_sneqv
 call nc_close_file(ncid_dart,routine)
 !----------------------------------------------------------------------
 !>@todo check the number of dimensions to make sure they are what we expect
+
 call nc_get_variable_num_dimensions(ncid_noah, SNOWH, numdims, routine)
 call nc_get_variable_size(ncid_noah, SNOWH, dimlens(1:numdims), routine)
 allocate(prior_snowh(dimlens(1),dimlens(2)))

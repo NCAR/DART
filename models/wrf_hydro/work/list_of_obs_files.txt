@@ -1,0 +1,1 @@
+/glade/work/jamesmcc/domains/public/sixmile/NWM/nudgingTimeSliceObs/2013-06-01_02:00:00.15min.usgsTimeSlice.ncdf

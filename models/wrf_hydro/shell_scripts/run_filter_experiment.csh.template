@@ -1,0 +1,374 @@
+#!/bin/tcsh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id: $
+#
+# Things to note: several strings are intended to be replaced when this
+# template gets copied and ultimately submitted. 
+#
+# We REQUIRE (at this point, at least 2 domains are being used).
+# This has ramifications on the inflation file names.
+#==========================================================================
+# SLURM directives                      sbatch advance_ensemble.csh
+#                                       squeue -u $USER
+#                                       scancel <jobnumber>
+#SBATCH --ignore-pbs
+#SBATCH --job-name=filter
+#SBATCH --output=filter-%A.log
+#SBATCH --error=filter-%A.err
+#SBATCH --ntasks=48
+#SBATCH --ntasks-per-node=16
+#SBATCH --time=00:30:00
+#SBATCH --error=filter-%A.err
+#SBATCH --output=filter-%A.log
+#
+#==========================================================================
+# PBS directives                        qsub test_batch.csh
+#                                       qstat -u $USER
+#                                       qdel <jobnumber>
+#PBS -N JOB_NAME_TEMPLATE
+#PBS -e JOB_NAME_TEMPLATE.stderr
+#PBS -o JOB_NAME_TEMPLATE.stdout
+#PBS -l PBS_SELECT_TEMPLATE
+#PBS -l WALLTIME_TEMPLATE
+#PBS -A ACCOUNT_TEMPLATE
+#PBS -q QUEUE_TEMPLATE
+#PBS -m EMAIL_WHEN_TEMPLATE
+#PBS -M EMAIL_WHO_TEMPLATE
+#
+#
+#==========================================================================
+# Temporary dir directives for cheyenne under PBS
+TMP_DIR_TEMPLATE
+#
+# Potential directive for shared queue
+SHARE_USE_ARRAY_TEMPLATE
+#
+#==========================================================================
+
+if ($?SLURM_JOB_ID) then
+
+   set ORIGINALDIR = $SLURM_SUBMIT_DIR
+   set     JOBNAME = $SLURM_JOB_NAME
+   set       JOBID = $SLURM_JOBID
+   set     MYQUEUE = $SLURM_JOB_PARTITION
+   set      MYHOST = $SLURM_SUBMIT_HOST
+   set   LAUNCHCMD = "mpirun -np $SLURM_NTASKS -bind-to core"
+   set      SUBMIT = sbatch
+
+else if ($?PBS_O_WORKDIR) then
+
+   set ORIGINALDIR = $PBS_O_WORKDIR
+   set     JOBNAME = $PBS_JOBNAME
+   set       JOBID = $PBS_JOBID
+   set      MYHOST = $PBS_O_HOST
+   set     MYQUEUE = $PBS_QUEUE
+   set   LAUNCHCMD = LAUNCH_CMD_TEMPLATE
+   set      SUBMIT = qsub
+
+else
+    
+   # Interactive
+   set ORIGINALDIR = `pwd`
+   set     JOBNAME = hydro_filter_interactive
+   set       JOBID = $$
+   set     MYQUEUE = Interactive
+   set      MYHOST = `hostname`
+   set   LAUNCHCMD = "mpirun -np 1"
+   set      SUBMIT = ''
+
+endif
+
+#--------------------------------------------------------------------------
+# Just an echo of job attributes
+#--------------------------------------------------------------------------
+
+set t0 = `date +%s`
+
+echo "---------------------------------------------------------------------------"
+echo "Starting run_filter_experiment.csh"
+echo
+echo "${JOBNAME} (${JOBID}) submit directory ${ORIGINALDIR}"
+echo "${JOBNAME} (${JOBID}) submit      host ${MYHOST}"
+echo "${JOBNAME} (${JOBID}) running in queue ${MYQUEUE}"
+echo "${JOBNAME} (${JOBID}) started at "`date`
+echo
+
+cd EXPERIMENT_DIRECTORY_TEMPLATE
+echo "Working dir: "`pwd`
+touch .filter_not_complete
+
+#==========================================================================
+# STEP 1: Observation processing
+# Get the observation sequence file and link to the expected name or die.
+# Grab the YYYY-MM-DD_hh:mm of interest 2013-06-01_15:00
+# Possibly subset the DART observation sequence file
+#==========================================================================
+echo
+echo "======================================================="
+echo "Prepare the obs_seq"
+
+set PREV_CURR_DATES = `python get_ensemble_time.py --with_previous ADV_MODEL_HRS_TEMPLATE`
+set PREV_DATESTRING = `echo $PREV_CURR_DATES | cut -d '|' -f1`
+set DATESTRING = `echo $PREV_CURR_DATES | cut -d '|' -f2`
+set DATESTRING_COMPACT_MIN = `echo $DATESTRING | sed 's/[^[:alnum:]\t]//g' | cut -c1-12`
+set DATESTRING_COMPACT = `echo $DATESTRING_COMPACT_MIN | cut -c1-10`
+set DATESTRING_DAY = `echo $DATESTRING | sed 's/[^[:alnum:]\t]//g' | cut -c1-8`
+
+#echo "PREV_DATESTRING=$PREV_DATESTRING"
+echo "DATESTRING=$DATESTRING"
+#echo "DATESTRING_COMPACT_MIN=$DATESTRING_COMPACT_MIN"
+#echo "DATESTRING_COMPACT=$DATESTRING_COMPACT"
+#echo "DATESTRING_DAY: $DATESTRING_DAY"
+
+set OBSFILE = OBSERVATION_DIR_TEMPLATE/obs_seq.${DATESTRING_DAY}
+#echo $OBSFILE
+if ( -e ${OBSFILE} ) then
+   ln -sf ${OBSFILE} obs_seq.daily
+   # The behavior of the following script depends on if obs_sequence_tool is in the run_dir.
+   # If obs_sequence_tool is present, then daily obs are substed to "window" obs. Otherwise,
+   # filter_nml is passed the start and end times for the obs in the daily obs_seq file.
+   # In both cases the name of the correct obs_seq is set in filter_nml.
+   python set_obs_seq_times.py || exit 1
+
+   set t1 = `date +%s` ;
+   echo "set_obs_seq_times.py took:" `echo "scale=1; $t1- $t0" | bc` "sec"
+   set t0 = `date +%s`
+
+   if ( -e obs_sequence_tool ) then
+      ./obs_sequence_tool
+
+      set t1 = `date +%s` ;
+      echo "obs_sequence_tool took:" `echo "scale=1; $t1- $t0" | bc` "sec"
+      set t0 = `date +%s`
+
+   endif 
+else
+   echo "No observation file ${OBSFILE} ... exiting."
+   exit 1
+endif
+
+echo
+echo '\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/'
+set t1 = `date +%s` ;
+echo "Timing: obs_seq prep took:" `echo "scale=1; $t1- $t0" | bc` "sec"
+set t0 = `date +%s`
+
+#==========================================================================
+# STEP 2: Inflation
+# IF we are doing inflation, we must take the output inflation files from
+# the previous cycle and rename them for input to the current cycle.
+#==========================================================================
+echo
+echo "======================================================="
+echo "Inflation"
+
+# We have to potentially deal with files like:
+# output_priorinf_mean_d01.${OLDDATESTRING}.nc
+# output_priorinf_mean_d02.${OLDDATESTRING}.nc
+# output_priorinf_mean_d03.${OLDDATESTRING}.nc
+# output_priorinf_sd_d01.${OLDDATESTRING}.nc
+# output_priorinf_sd_d02.${OLDDATESTRING}.nc
+# output_priorinf_sd_d03.${OLDDATESTRING}.nc
+# I am not going to worry about posterior inflation files.
+
+# Should the setup script just create input inflation files so we don't 
+# have to screw with changing the namelist after the first execution
+# (which traditionally reads from the namelist, not the file)
+
+# If the file exists, just link to the new expected name.
+# the expected names have a _d0? inserted before the file extension
+# if there are multiple domains.
+# If the file does not exist, filter will die and issue a very explicit
+# death message.
+
+
+#==========================================================================
+# STEP 3: Assimilate.
+# Run DART on the ensemble of new states.
+# Collect all the RESTARTs for each domain into a list of input files. 
+# The io module will error out if the input file list is too short 
+# which helps make sure all instances advanced successfully.
+# Our strategy is that DART (filter) will modify these files in-place.
+# If you need to save a copy, do so now, or set one of the DART 
+# 'stages_to_write' to 'input' and 'num_output_state_members = ens_size'
+# and 'output_members = .true.'. This will write _minimal_ netCDF files
+# with whatever is in the DART state. You could take these variables and 
+# insert them into a 'full' restart file and run ...
+#==========================================================================
+echo
+echo "======================================================="
+echo "Assimilate"
+
+# Parameter "advance". Take the posterior parameters and make them priors.
+# This could involve a model one day. For now, "cp" is the model.
+foreach MEMBER ( member_* )
+    if ( -e $MEMBER/parameter_restart.${PREV_DATESTRING}.nc ) then
+        cp $MEMBER/parameter_restart.${PREV_DATESTRING}.nc $MEMBER/parameter_restart.${DATESTRING}.nc
+    endif
+end
+    
+# Clean up from any previous execution
+#Note the name and order convention for the state file lists:
+# 1) hydro_file_list.txt
+# 2) lsm_file_list.txt
+# 3) param_file_list.txt
+
+rm -f dart_log.out dart_log.nml
+rm -f hydro_file_list.txt  lsm_file_list.txt  param_file_list.txt
+
+@ ens_size = 0
+foreach MEMBER ( member_* )
+   (ls -rt1 $MEMBER/HYDRO_RST.${DATESTRING}_DOMAIN1       >> hydro_file_list.txt) > & /dev/null
+   (ls -rt1 $MEMBER/RESTART.${DATESTRING_COMPACT}_DOMAIN1 >> lsm_file_list.txt) > & /dev/null
+   (ls -rt1 $MEMBER/parameter_restart.${DATESTRING}.nc    >> param_file_list.txt) > & /dev/null
+   @ ens_size ++
+end
+
+# If there are no files for that domain ... just remove the (empty) file.
+
+if (`cat hydro_file_list.txt | wc -l` != $ens_size) then
+   rm -f hydro_file_list.txt
+endif
+
+if (`cat lsm_file_list.txt | wc -l` != $ens_size) then
+   rm -f lsm_file_list.txt
+endif
+
+if (`cat param_file_list.txt | wc -l` != $ens_size) then
+   rm -f param_file_list.txt
+endif 
+
+echo
+echo '\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/'
+set t1 = `date +%s` ;
+echo "Timing: filter prep took:" `echo "scale=1; $t1- $t0" | bc` "sec"
+set t0 = `date +%s`
+
+# Perform the assimilation.
+echo
+echo "======================================================="
+echo "Run filter"
+${LAUNCHCMD} ./filter || exit 3
+
+
+echo
+echo '\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/'
+set t1 = `date +%s` ;
+echo "Timing: filter took:" `echo "scale=1; $t1- $t0" | bc` "sec"
+set t0 = `date +%s`
+
+
+set output_dir_date = output/${DATESTRING_COMPACT}
+mkdir -p $output_dir_date
+
+set n_domain = `grep domain_order input.nml | cut -d'=' -f2 | tr -d ' ' | tr '"' "'" | tr "," '\n' | egrep -v '^$' | wc -l`
+if ( $n_domain == 1 ) then
+    set the_domains = 'single_domain'
+else
+    set the_domains = "_d01 _d02 _d03"
+endif
+
+foreach DOMAIN ( `echo $the_domains`  )
+
+   if ( $DOMAIN == "single_domain" ) then
+       set DOMAIN = ''
+   endif
+
+   # NEED TO TIMESTAMP THE output_priorinf
+   if ( -e output_priorinf_mean${DOMAIN}.nc ) then
+       cp output_priorinf_mean${DOMAIN}.nc ${output_dir_date}/output_priorinf_mean${DOMAIN}.${DATESTRING_COMPACT}.nc
+       cp output_priorinf_sd${DOMAIN}.nc   ${output_dir_date}/output_priorinf_sd${DOMAIN}.${DATESTRING_COMPACT}.nc 
+
+       mv output_priorinf_mean${DOMAIN}.nc input_priorinf_mean${DOMAIN}.nc
+       mv output_priorinf_sd${DOMAIN}.nc   input_priorinf_sd${DOMAIN}.nc 
+   endif
+   
+end
+    
+echo
+echo '\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/'
+set t1 = `date +%s` ;
+echo "Timing: inflation mgmt took:" `echo "scale=1; $t1- $t0" | bc` "sec"
+set t0 = `date +%s`
+
+
+echo
+echo "======================================================="
+echo "Tidy up filter"
+# Tag the output with the valid time of the model state.
+# TODO could move each ensemble-member file to the respective member dir.
+foreach FILE ( forecast*mean*nc   forecast*sd*nc  forecast_member_*.nc \
+               preassim*mean*nc   preassim*sd*nc  preassim_member_*.nc \
+              postassim*mean*nc  postassim*sd*nc postassim_member_*.nc \
+               analysis*mean*nc   analysis*sd*nc  analysis_member_*.nc \
+                 output*mean*nc     output*sd*nc )
+
+   if (  -e $FILE ) then
+      set FEXT  = $FILE:e
+      set FBASE = $FILE:r
+      mv -v $FILE ${output_dir_date}/${FBASE}.${DATESTRING_COMPACT}.${FEXT}
+   else
+      echo "$FILE does not exist, no need to take action."
+   endif
+end
+
+# Tag the DART observation file with the valid time of the model state.
+mv -v obs_seq.final ${output_dir_date}/obs_seq.final.${DATESTRING_COMPACT}
+
+echo
+echo '\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/'
+set t1 = `date +%s` ;
+echo "Timing: tidy up filter took:" `echo "scale=1; $t1- $t0" | bc` "sec"
+set t0 = `date +%s`
+
+#==========================================================================
+# STEP 4: Advance the ensemble.
+#==========================================================================
+
+echo
+echo "======================================================="
+echo "Advance the ensemble"
+
+set END_DATE = END_DATE_TEMPLATE
+set end_experiment = `echo "$DATESTRING_COMPACT_MIN >= $END_DATE" | bc`
+#echo "Ensemble END_DATE: $END_DATE"
+#echo "DATESTRING_COMPACT_MIN: $DATESTRING_COMPACT_MIN"
+#echo "end_experiment: $end_experiment"
+
+if ($end_experiment == 1) then
+    echo "Filter experiment has advanced to end of desired period ($DATESTRING_COMPACT_MIN >= $END_DATE)."
+    echo "Stopping the experiment."
+    rm .filter_not_complete
+    exit 0
+endif
+
+echo "Advance ensemble."
+set next_filter_afterok = PYTHON_ADVANCE_TEMPLATE
+
+
+echo
+echo '\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/'
+set t1 = `date +%s` ;
+echo "Timing: ens adv took:" `echo "scale=1; $t1- $t0" | bc` "sec"
+
+
+echo "Filter again dependent on the ensemble advance..."
+FILTER_AGAIN_TEMPLATE
+
+
+#==========================================================================
+echo
+echo "======================================================="
+echo "${JOBNAME} (${JOBID}) finished at "`date`
+#==========================================================================
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL: $
+# $Revision: $
+# $Date: $

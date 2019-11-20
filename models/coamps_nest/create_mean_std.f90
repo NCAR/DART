@@ -31,11 +31,11 @@ program create_mean_std
 
   implicit none
 
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+  ! version controlled file description for error handling, do not edit
+  character(len=*), parameter :: source   = &
+     "$URL$"
+  character(len=*), parameter :: revision = "$Revision$"
+  character(len=*), parameter :: revdate  = "$Date$"  
 
   character(len=*), parameter :: routine = 'create_mean_std'
   character(len=64)           :: coamps_file_name

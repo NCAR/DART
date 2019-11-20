@@ -21,7 +21,7 @@ COAMPS_UTIL=$1
 
 
 # directories for COAMPS utility programs
-DIAG=diagnostic_cdf/src
+DIAG=diagnostic/
 
 INTRINSIC_SUBS="ij2ll 
                 ll2ij 
@@ -35,6 +35,7 @@ INTRINSIC_SUBS="ij2ll
                 tstd
                 deriv_x
                 deriv_y
+                hm2uv
                 vor
                 filt9"
 

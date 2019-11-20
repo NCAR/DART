@@ -83,7 +83,7 @@ private
 public ::  get_expected_TWS
 
 ! version controlled file description for error handling, do not edit
-character(len=*), parameter :: source   = '$URL$'
+character(len=*), parameter :: source   = 'obs_def_GRACE_mod.f90'
 character(len=*), parameter :: revision = '$Revision$'
 character(len=*), parameter :: revdate  = '$Date$'
 
@@ -218,7 +218,6 @@ if (debug) then
                      source, revision, revdate)
 endif
 
-!-------------------------------------------------------------------------------
 ! Get the amount of water in the snow
 
 call interpolate(state_handle, ens_size, location, QTY_SNOW_WATER, &
@@ -226,7 +225,6 @@ call interpolate(state_handle, ens_size, location, QTY_SNOW_WATER, &
 call track_status(ens_size, istatus2, obs_h2osno, istatus, return_now)
 if (return_now) return
 
-!-------------------------------------------------------------------------------
 ! Get the amount of water in the aquifer ...
 !>@todo some models may not have aquifer ... should this be an error ...
 
@@ -235,14 +233,9 @@ call interpolate(state_handle, ens_size, location, QTY_AQUIFER_WATER, &
 call track_status(ens_size, istatus3, obs_wa, istatus, return_now)
 if (return_now) return
 
-!-------------------------------------------------------------------------------
-! Add up the water amounts from the different sources
-
 where (istatus == 0 ) expected_obs = obs_h2osno + obs_h2osoi + obs_wa
 
-!-------------------------------------------------------------------------------
 ! Add up the water amounts from the different sources
-
 
 do num = 1, ens_size
    if (expected_obs(num) < 0.0_r8 .and. istatus(num) == 0) then
