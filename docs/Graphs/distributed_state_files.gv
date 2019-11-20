@@ -1,0 +1,11 @@
+digraph distributed_state_win {
+   node [ shape=box ] 
+   window_mod [color=green];
+   distributed_state -> window_mod; 
+   cray_win_mod_f90 [color=green, shape=ellipse];
+   no_cray_win_mod_f90 [color=green, shape=ellipse];
+   window_mod -> cray_win_mod_f90 [color=green];
+   window_mod -> data_structure_mod
+   window_mod -> no_cray_win_mod_f90 [color=green];
+}
+
