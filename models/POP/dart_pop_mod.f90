@@ -6,7 +6,7 @@
 
 module dart_pop_mod
 
-use        types_mod, only : r4, r8, rad2deg, PI, SECPERDAY, MISSING_R8
+use        types_mod, only : r4, r8, rad2deg, PI, SECPERDAY, MISSING_R8, digits12
 use time_manager_mod, only : time_type, get_date, set_date, get_time, set_time, &
                              set_calendar_type, get_calendar_string, &
                              print_date, print_time, operator(==), operator(-)
@@ -31,10 +31,9 @@ public :: get_pop_calendar, set_model_time_step, &
           set_binary_file_conversion, read_mean_dynamic_topography
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: source   = "$URL$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 character(len=512) :: string1, string2, string3
 
@@ -487,6 +486,7 @@ real(r8), dimension(nx,ny), intent(out) :: ULAT, ULON, TLAT, TLON
 !     ANGLE  ! angle
 
 integer :: grid_unit, reclength
+real(digits12), dimension(nx,ny) :: ULAT64, ULON64
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -502,18 +502,21 @@ endif
 ! Actually, we only need the first two, so I'm skipping the rest.
 
 grid_unit = get_unit()
-INQUIRE(iolength=reclength) ULAT
+INQUIRE(iolength=reclength) ULAT64
 
 open(grid_unit, file=trim(horiz_grid_file), form='unformatted', convert=conversion, &
             access='direct', recl=reclength, status='old', action='read' )
-read(grid_unit, rec=1) ULAT
-read(grid_unit, rec=2) ULON
+read(grid_unit, rec=1) ULAT64
+read(grid_unit, rec=2) ULON64
 !read(grid_unit, rec=3) HTN
 !read(grid_unit, rec=4) HTE
 !read(grid_unit, rec=5) HUS
 !read(grid_unit, rec=6) HUW
 !read(grid_unit, rec=7) ANGLE
 close(grid_unit)
+
+ULAT = ULAT64
+ULON = ULON64
 
 call calc_tpoints(nx, ny, ULAT, ULON, TLAT, TLON)
 
@@ -944,8 +947,3 @@ end subroutine set_binary_file_conversion
 
 end module dart_pop_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

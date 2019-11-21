@@ -22,11 +22,10 @@
 !> are subroutines that work in place.  would need to change the calling
 !> code to be all subroutines and pass in either a single array for
 !> "in place" or a src and dst array for copy.
-!>
 
 module sort_mod
 
-use     types_mod, only : r4, r8, i8, digits12
+use     types_mod, only : r8, i8
 use utilities_mod, only : register_module
 
 implicit none
@@ -36,15 +35,13 @@ private
 !public :: sort, index_sort
 
 ! for now, let code indicate what sort they want. 
-! the simple sorts should be removed from the public list.  they are there
-! so we can time them, but in all cases they are slower and a bad choice.
 public :: sort, index_sort, insertion_sort, index_insertion_sort
 !public :: simple_sort, simple_index_sort  
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = "$URL:$"
-character(len=32 ), parameter :: revision = "$Revision:$"
-character(len=128), parameter :: revdate  = "$Date:$"
+character(len=*), parameter :: source   = "$URL:$"
+character(len=*), parameter :: revision = "$Revision:$"
+character(len=*), parameter :: revdate  = "$Date:$"
 
 logical, save :: module_initialized = .false.
 
@@ -60,6 +57,9 @@ interface insertion_sort
    module procedure insertion_sort_int
 end interface insertion_sort
 
+! the simple sorts are here so we can time them, 
+! but in all cases they are slower and a bad choice.
+
 interface simple_sort
    module procedure simple_sort_real
    module procedure simple_sort_int
@@ -69,12 +69,10 @@ end interface simple_sort
 !> leaving the original array in place.
 
 interface index_sort
-   module procedure index_sort_r4_i4
-   module procedure index_sort_r4_i8
-   module procedure index_sort_digits12_i4
-   module procedure index_sort_digits12_i8
-   module procedure index_sort_i4_i4
-   module procedure index_sort_i8_i8
+   module procedure index_sort_real_int
+   module procedure index_sort_real_i8
+   module procedure index_sort_int_int
+!  module procedure index_sort_i8_i8
    module procedure index_sort_user
 end interface
 
@@ -241,20 +239,20 @@ end function isort
 !> x(num) array returned unchanged; index array doesn't need to be 
 !> initialized before this call. 
 !> usage: do i=1,num;  x(indx(i)) is next item in sorted order; enddo
-!> This differs from index_sort_int only in the data type of the x() array.
+!> This differs from index_sort_int_int only in the data type of the x() array.
 !>
 !> @param x the (real) array to sort
 !> @param indx the array of integer indices to be used to traverse the input array in sorted order
 !> @param num the length of x
 
-subroutine index_sort_r4_i4(x, indx, num)
+subroutine index_sort_real_int(x, indx, num)
 
 integer,  intent(in)  :: num
-real(r4), intent(in)  :: x(num)
+real(r8), intent(in)  :: x(num)
 integer,  intent(out) :: indx(num)
 
 integer  :: ind, i, j, l_val_indx, level
-real(r4) :: l_val
+real(r8) :: l_val
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -308,18 +306,29 @@ do
 
 end do
 
-end subroutine index_sort_r4_i4
+end subroutine index_sort_real_int
 
 !-------------------------------------------------------------------------
 
-subroutine index_sort_digits12_i4(x, indx, num)
+!> Uses a heap sort algorithm on x(), returns long-integer array of sorted indices.
+!> x(num) array returned unchanged; index array doesn't need to be 
+!> initialized before this call. 
+!> usage: do i=1,num;  x(indx(i)) is next item in sorted order; enddo
+!> This differs from index_sort_real_int only in the data type of the integer array
+!> and the data type of the length of the integer array.
+!>
+!> @param x the (real) array to sort
+!> @param indx the array of long-integer indices to be used to traverse the input array in sorted order
+!> @param num the length of x as a long-integer
 
-integer,        intent(in)  :: num
-real(digits12), intent(in)  :: x(num)
-integer,        intent(out) :: indx(num)
+subroutine index_sort_real_i8(x, indx, num)
 
-integer  :: ind, i, j, l_val_indx, level
-real(digits12) :: l_val
+integer(i8),  intent(in)  :: num
+real(r8),     intent(in)  :: x(num)
+integer(i8),  intent(out) :: indx(num)
+
+integer(i8) :: ind, i, j, l_val_indx, level
+real(r8) :: l_val
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -373,7 +382,7 @@ do
 
 end do
 
-end subroutine index_sort_digits12_i4
+end subroutine index_sort_real_i8
 
 !-------------------------------------------------------------------------
 
@@ -381,13 +390,13 @@ end subroutine index_sort_digits12_i4
 !> x(num) array returned unchanged; index array doesn't need to be 
 !> initialized before this call. 
 !> usage: do i=1,num;  x(indx(i)) is next item in sorted order; enddo
-!> This differs from index_sort_r4_i4 only in the data type of the x() array.
+!> This differs from index_sort_real_int only in the data type of the x() array.
 !>
 !> @param x the (integer) array to sort
 !> @param indx the array of integer indices to be used to traverse the input array in sorted order
 !> @param num the length of x
 
-subroutine index_sort_i4_i4(x, indx, num)
+subroutine index_sort_int_int(x, indx, num)
 
 integer, intent(in)  :: num
 integer, intent(in)  :: x(num)
@@ -448,9 +457,18 @@ do
 
 end do
 
-end subroutine index_sort_i4_i4
+end subroutine index_sort_int_int
 
 !-------------------------------------------------------------------------
+!> Uses a heap sort algorithm on x(), returns long-integer array of sorted indices.
+!> x(num) array returned unchanged; index array doesn't need to be 
+!> initialized before this call. 
+!> usage: do i=1,num;  x(indx(i)) is next item in sorted order; enddo
+!> This differs from index_sort_int_int only in the data type of the x() array.
+!>
+!> @param x the (long-integer) array to sort
+!> @param indx the array of long-integer indices to be used to traverse the input array in sorted order
+!> @param num the length of x
 
 subroutine index_sort_i8_i8(x, indx, num)
 
@@ -854,141 +872,8 @@ end subroutine simple_index_sort_int
 
 !-------------------------------------------------------------------------
 
-subroutine index_sort_r4_i8(x, indx, num)
-
-integer(i8),  intent(in)  :: num
-real(r4),     intent(in)  :: x(num)
-integer(i8),  intent(out) :: indx(num)
-
-integer(i8) :: ind, i, j, l_val_indx, level
-real(r4) :: l_val
-
-if ( .not. module_initialized ) call initialize_module
-
-! Initialize the index array to input order
-do i = 1, num
-   indx(i) = i
-end do
-
-! Only one element, just send it back
-if(num <= 1) return
-
-level = num / 2 + 1
-ind = num
-
-! Keep looping until finished
-do
-   ! Keep going down levels until bottom
-   if(level > 1) then
-      level = level - 1
-      l_val = x(indx(level))
-      l_val_indx = indx(level)
-   else
-      l_val = x(indx(ind))
-      l_val_indx = indx(ind)
-
-      indx(ind) = indx(1)
-      ind = ind - 1
-      if(ind == 1) then
-         indx(1) = l_val_indx
-         return
-      endif
-   endif
-
-   i = level
-   j = 2 * level
-
-   do while(j <= ind)
-      if(j < ind) then
-         if(x(indx(j)) < x(indx(j + 1))) j = j + 1
-      endif
-      if(l_val < x(indx(j))) then
-         indx(i) = indx(j)
-         i = j
-         j = 2 * j
-      else
-         j = ind + 1
-      endif
-   end do
-
-   indx(i) = l_val_indx
-
-end do
-
-end subroutine index_sort_r4_i8
-
-
-!-------------------------------------------------------------------------
-
-subroutine index_sort_digits12_i8(x, indx, num)
-
-integer(i8),    intent(in)  :: num
-real(digits12), intent(in)  :: x(num)
-integer(i8),    intent(out) :: indx(num)
-
-integer(i8)  :: ind, i, j, l_val_indx, level
-real(digits12) :: l_val
-
-if ( .not. module_initialized ) call initialize_module
-
-! Initialize the index array to input order
-do i = 1, num
-   indx(i) = i
-end do
-
-! Only one element, just send it back
-if(num <= 1) return
-
-level = num / 2 + 1
-ind = num
-
-! Keep looping until finished
-do
-   ! Keep going down levels until bottom
-   if(level > 1) then
-      level = level - 1
-      l_val = x(indx(level))
-      l_val_indx = indx(level)
-   else
-      l_val = x(indx(ind))
-      l_val_indx = indx(ind)
-
-      indx(ind) = indx(1)
-      ind = ind - 1
-      if(ind == 1) then
-         indx(1) = l_val_indx
-         return
-      endif
-   endif
-
-   i = level
-   j = 2 * level
-
-   do while(j <= ind)
-      if(j < ind) then
-         if(x(indx(j)) < x(indx(j + 1))) j = j + 1
-      endif
-      if(l_val < x(indx(j))) then
-         indx(i) = indx(j)
-         i = j
-         j = 2 * j
-      else
-         j = ind + 1
-      endif
-   end do
-
-   indx(i) = l_val_indx
-
-end do
-
-end subroutine index_sort_digits12_i8
 
 !-------------------------------------------------------------------------
 
 end module sort_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

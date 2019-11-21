@@ -4,8 +4,6 @@
 # by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
-#
 # build and test all the models given in the list.
 #
 # usage: [ -mpi | -nompi ] [ -mpicmd name_of_mpi_launch_command ]
@@ -50,6 +48,7 @@ if ( "$usingmpi" == "yes" ) then
   if ( ! $?MPICMD) then
     set MPICMD='mpirun -n 2'
   endif
+  echo "MPI programs will be started with: $MPICMD"
 else if ( "$usingmpi" == "no" ) then
   echo "Building WITHOUT MPI support."
   set QUICKBUILD_ARG='-nompi'
@@ -91,9 +90,8 @@ set HAS_TESTS = `ls */work/quickbuild.csh`
 
 ${REMOVE} -r $LOGDIR
 mkdir -p $LOGDIR
+echo "build and run logs are in: $LOGDIR"
 
-echo see $LOGDIR
-echo for build and run logs
 
 @ testnum = 0
 
@@ -137,11 +135,35 @@ foreach TESTFILE ( $HAS_TESTS )
 
            set FAILURE = 0
            set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
-         
            echo Starting $PROG
-           ( ${MPICMD} ./$PROG  > ${LOGDIR}/runlog.${LOGNAME}.${PROG}.out ) || set FAILURE = 1
+
+           if ( -f using_mpi_for_$PROG ) then
+              ( ${MPICMD} ./$PROG  > ${LOGDIR}/runlog.${LOGNAME}.${PROG}.out ) || set FAILURE = 1
+           else
+              (           ./$PROG  > ${LOGDIR}/runlog.${LOGNAME}.${PROG}.out ) || set FAILURE = 1
+           endif
+         
            if ( $FAILURE ) then
               echo "ERROR - unsuccessful run of $PROG"
+
+              switch ( $PROG )
+                 case stacktest
+                    echo "        stacktest intentionally fails."
+                    echo "        stacktest continually reallocates a stack array until it fails."
+                 breaksw
+                 case test_diag_structure
+                    echo "        test_diag_structure intentionally fails."
+                    echo "        test_diag_structure tries to allocate 11 domains - max is 10."
+                 breaksw
+                 case test_state_structure
+                    echo "        test_state_structure fails."
+                    echo "        test_state_structure not fully tested."
+                 breaksw
+                 default
+                    echo "unexpected error"
+                 breaksw
+              endsw
+
            else
               ${REMOVE} $PROG
               echo "Successful run of $PROG"
@@ -192,12 +214,8 @@ cd $TOPDIR
 
 
 echo
-echo $testnum developer tests run.
+echo "$testnum developer tests run."
 echo
 
 exit 0
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$

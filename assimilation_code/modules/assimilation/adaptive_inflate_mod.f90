@@ -84,7 +84,7 @@ integer, parameter :: GHA2017 = 1
 integer, parameter :: AND2009 = 2
 
 ! Module storage for writing error messages
-character(len=512) :: string1, string2, string3
+character(len=512) :: string1, string2
 
 ! Flag indicating whether module has been initialized
 logical :: initialized = .false.
@@ -854,11 +854,19 @@ if ( fac1 < abs(fac2) ) fac2 = 0.0_r8
 theta    = sqrt( (fac1+fac2) * sigma_p_2 + sigma_o_2 )
 exp_like = - 0.5_r8 * dist_2 / theta**2
 
-! write(string1,*)'pg compiler does not have required instrinsic "gamma"'
-! write(string2,*)'pg compiler version > pgf90 12.4-0 required'
-! write(string3,*)'when available uncomment block below and recompile'
+! Modern versions of compilers have intrinsic gamma functions.
+! If you have an unresolved external for the gamma function, you should
+! either try a newer compiler or code your own gamma function here.
+! We know pg compiler versions before pgf90 15.1 do not contain the
+! gamma function. If you are never going to use inflation flavor 5,
+! you could also just comment out the computation for enh_compute_new_density
+! and uncomment the following code block. This will ensure that if you ever
+! did try to use inflation 5, it would appropriately fail.
+
+! write(string1,*)'gamma function not available'
+! write(string2,*)'when available uncomment block below and recompile'
 ! call error_handler(E_ERR, 'enh_compute_new_density', string1, &
-!            source, revision, revdate, text2=string2, text3=string3)
+!            source, revision, revdate, text2=string2)
 
 ! Compute the updated probability density for lambda
 enh_compute_new_density = beta**alpha / gamma(alpha)  * &

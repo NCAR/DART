@@ -12,7 +12,7 @@ _site/
 
 # Nuisance files
 
-Makefile
+# Makefile
 dart_log.*
 input.nml.*default
 filter_ics
@@ -55,8 +55,6 @@ perturb_single_instance
 preprocess
 restart_file_tool
 system_simulation
-wakeup_filter
-FeoM_time
 
 # Directories to NOT IGNORE ... same as executable names
 # as far as I know, these must be listed after the executables

@@ -1,6 +1,6 @@
 
-### THIS IS FOR DART ###
-FORCING_FILE_DIRECTORY = "models/noah/forcing"
+### FORCING_FILE_DIRECTORY IS FOR DART ###
+FORCING_FILE_DIRECTORY = 'noah/forcing'
 
 &NOAHLSM_OFFLINE
 
@@ -9,13 +9,13 @@ FORCING_FILE_DIRECTORY = "models/noah/forcing"
    INDIR  = '.'
    OUTDIR = '.'
 
+   RESTART_FILENAME_REQUESTED = 'restart.nc'
+
    START_YEAR  = 2003
    START_MONTH = 05
    START_DAY   = 16
    START_HOUR  = 0
    START_MIN   = 0
-
-   RESTART_FILENAME_REQUESTED = 'restart.nc'
 
    KDAY = 1
 
@@ -51,9 +51,7 @@ FORCING_FILE_DIRECTORY = "models/noah/forcing"
 
   /
 
-
 &URBAN_OFFLINE
    UCMCALL    = 0
    ZLVL_URBAN = 15.0
   /
-

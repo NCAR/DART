@@ -1,21 +1,21 @@
 
-### THIS IS FOR DART ###
-FORCING_FILE_DIRECTORY = "/home1/04270/l_jing/git/mygitresp/wrf_hydro_dart/models/noah/forcing"
+### FORCING_FILE_DIRECTORY IS FOR DART ###
+FORCING_FILE_DIRECTORY = 'noah/forcing'
 
 &NOAHLSM_OFFLINE
 
    HRLDAS_CONSTANTS_FILE = 'wrfinput.nc'
 
-   INDIR = '/work/04270/l_jing/lonestar/gldas/2000_2014_forcing'
-   OUTDIR = '/scratch/04270/l_jing/hrldas_old_sai_unlimited'
+   INDIR  = '.'
+   OUTDIR = '.'
+
+   RESTART_FILENAME_REQUESTED = 'restart.nc'
 
    START_YEAR  = 2001
    START_MONTH = 01
    START_DAY   = 01
    START_HOUR  = 0
    START_MIN   = 0
-
-   RESTART_FILENAME_REQUESTED = 'restart.nc'
 
    KDAY = 1
 
