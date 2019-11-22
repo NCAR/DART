@@ -365,9 +365,6 @@ best explanation of what to look for, what to change to improve the next
 experiment, etc. DART has an extensive set of diagnostics implemented in
 MATLAB®. To use them, make sure you have read the
 [Configuring MATLAB®](Getting_Started.md#matlab) section.  
-[Configuring MATLAB® 1](Getting_Started.md#MyMatlab) section.  
-[Configuring MATLAB® 2](Getting_Started.md#spanmatlab) section.  
-[Configuring MATLAB® 3](Getting_Started.md#Configuring-MATLAB) section.  
 
 <!-- TJH FIXME what is the right link reference syntax -->
 
