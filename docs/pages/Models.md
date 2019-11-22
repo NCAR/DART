@@ -374,7 +374,8 @@ entirely the work of **James McCreight** of NCAR's Research Applications
 Laboratory (RAL). The DAReS team has been working with RAL to incorporate new
 features such as localization restricted to watersheds, new inflation algorithms
 and variable transformations that provide much better results when assimilating
-non-gaussian quantities such as streamflow. The private wrf_hydro_dart repository
+non-gaussian quantities such as streamflow.
+The private wrf_hydro_dart repository
 is expected to be released in a public version very soon.
 
 
