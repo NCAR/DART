@@ -866,10 +866,10 @@ and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
 - Better error and informational messages in various routines.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ MMM DD YYYY :: summary of changes in next Manhattan update    hash: NNNNNNN
++ Nov 20 2019 :: FESOM,NOAH-MP model support, better testing       Tag: v9.8.0
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-- first GIT release
+- first release entirely from GIT 
 
 - fixed bug in fill_inflation_restart tool which used the prior inflation mean
   and sd for both prior and posterior inflation files.  now correctly uses the
@@ -897,3 +897,17 @@ and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
   random_seq_mod:random_inverse_gamma() 'shape' to 'rshape', 'scale' to 'rscale'.
   obs_def_mod:init_obs_def() 'kind' to 'obkind', 'time' to 'obtime'
   obs_utilities_mod: 'start' to 'varstart', 'count' to 'varcount'
+
+- The FESOM model is now Manhattan-ready.
+
+- The noah model is now Manhattan-ready and may be used with NOAH-MP.
+
+- bugfixed references to the 'documentation' directory that was renamed
+  'docs' to comply with GitHub Pages.
+
+- improved test_dart.csh functionality.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ MMM DD YYYY :: summary of changes in next Manhattan update       Tag: vX.Y.Z
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
