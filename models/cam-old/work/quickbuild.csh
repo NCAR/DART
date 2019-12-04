@@ -17,7 +17,7 @@
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
-\rm -f preprocess *.o *.mod
+\rm -f preprocess *.o *.mod Makefile .cppdefs
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
 
@@ -50,17 +50,17 @@ foreach TARGET ( mkmf_* )
       @ n = $n + 1
       echo
       echo "---------------------------------------------------"
-      echo "${MODEL} build number ${n} is ${PROG}" 
+      echo "${MODEL} build number ${n} is ${PROG}"
       \rm -f ${PROG}
       csh $TARGET || exit $n
       make        || exit $n
       breaksw
    endsw
 
-   rm *.o *.mod
+   rm *.o *.mod Makefile .cppdefs
 end
 
-\rm -f *.o *.mod input.nml*_default
+\rm -f *.o *.mod input.nml*_default Makefile .cppdefs
 
 echo ""
 echo "Success: All DART programs compiled."

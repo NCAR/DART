@@ -35,7 +35,6 @@ program convert_tpw
 ! has a full bin of all available observations.  the current code starts
 ! at 0Z and ends at 0Z and so you should construct your time bins carefully
 ! around the day boundaries.
-!
 
 
 use         types_mod, only : r8, metadatalength, missing_r8
@@ -45,7 +44,7 @@ use  time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time,
 use     utilities_mod, only : initialize_utilities, find_namelist_in_file,      &
                               check_namelist_read, nmlfileunit, do_nml_file,    &
                               get_next_filename, error_handler, E_ERR, E_MSG,   &
-                              nc_check, find_textfile_dims, do_nml_term,        &
+                              find_textfile_dims, do_nml_term,                  &
                               is_longitude_between, finalize_utilities,         &
                               open_file, close_file, register_module
 use      location_mod, only : VERTISSURFACE, set_location
@@ -65,16 +64,13 @@ use      obs_kind_mod, only :  AQUA_TOTAL_PRECIPITABLE_WATER,  &
                               get_index_for_type_of_obs
 use obs_utilities_mod, only : create_3d_obs, add_obs_to_seq
 
-
-use           netcdf
-
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
+character(len=*), parameter :: source   = &
  "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
+character(len=*), parameter :: revision = "$Revision$"
+character(len=*), parameter :: revdate  = "$Date$"
 
 !--------------------------------------
 

@@ -148,14 +148,6 @@ integer  :: vert_localization_coord      = VERTISHEIGHT
 integer  :: debug = 0   ! turn up for more and more debug messages
 character(len=256) :: roms_filename = 'roms_input.nc'
 
-namelist /model_nml/  &
-   assimilation_period_days,    &
-   assimilation_period_seconds, &
-   roms_filename,               &
-   vert_localization_coord,     &
-   debug,                       &
-   variables
-
 ! DART contents are specified in the input.nml:&model_nml namelist.
 !>@todo  NF90_MAX_NAME is 256 ... this makes the namelist output unreadable
 integer, parameter :: MAX_STATE_VARIABLES = 8
@@ -165,6 +157,14 @@ character(len=vtablenamelength) :: var_names(MAX_STATE_VARIABLES) = ' '
 logical  ::                   update_list(MAX_STATE_VARIABLES) = .FALSE.
 integer  ::                     kind_list(MAX_STATE_VARIABLES) = MISSING_I
 real(r8) ::                    clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
+
+namelist /model_nml/  &
+   assimilation_period_days,    &
+   assimilation_period_seconds, &
+   roms_filename,               &
+   vert_localization_coord,     &
+   debug,                       &
+   variables
 
 integer :: nfields   ! This is the number of variables in the DART state vector.
 
@@ -196,7 +196,9 @@ integer :: Ns_w
 real(r8), allocatable, target :: ULAT(:,:), ULON(:,:), UDEP(:,:,:), &
                                  TLAT(:,:), TLON(:,:), TDEP(:,:,:), &
                                  VLAT(:,:), VLON(:,:), VDEP(:,:,:), &
-                                 WDEP(:,:,:) !>@todo FIXME : JPH may not need this array
+                                 WDEP(:,:,:)
+
+!>@todo FIXME : JPH may not need the WDEP array
 
 type(time_type) :: model_timestep
 
@@ -204,7 +206,6 @@ integer :: model_size    ! the state vector length
 
 !> Reshapes a part of the DART vector back to the original variable shape.
 !>@todo FIXME Replaces the DART MISSING value with the original _FillValue value.
-
 
 contains
 

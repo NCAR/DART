@@ -1,0 +1,269 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>program obs_keep_a_few</TITLE>
+<link rel="stylesheet" type="text/css" href="../../../documentation/html/doc.css" />
+<link href="../../../documentation/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>program <em class=program>obs_keep_a_few</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../../documentation/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../../documentation/index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+This program creates an output observation sequence 
+(obs_seq) file that is shorter than the input obs_seq file.  
+There are two ways to restrict the number of observations
+copied to the output: the total number of observations
+regardless of observation type, or up to N observations of each type.
+Observations in an obs_seq file are processed in time order
+so the observations with the earliest timestamps will be copied.
+</P>
+
+<P>
+Set either limit to -1 to disable it. 
+If both the maximum count per type and maximum total count are 
+given the copying stops when the first limit is reached.
+</P>
+
+<P>
+If you want to subset an obs_seq file starting at a later time
+see the <a href="../obs_sequence_tool/obs_sequence_tool.html">obs_sequence_tool</a>
+for subsetting by time and then use this tool on the output.
+That tool also allows you to subset by obs type, location, data value,
+and a variety of other options.  
+</P>
+
+<P>
+The <em class=program>obs_keep_a_few</em> program
+only subsets by numbers of observations.  It is expected to be useful 
+when prototyping experiments so the run time is short, or for debugging
+or testing.  Setting a limit per type ensures you have up to N of
+each type of observation present in the output file.
+</P>
+
+<P>
+Identity observations are all considered to be the same 
+identity "observation type" by this tool.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="OtherModulesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>OTHER MODULES USED</H2>
+<PRE>
+types_mod
+utilities_mod
+location_mod
+obs_def_mod
+obs_kind_mod
+time_manager_mod
+obs_sequence_mod
+</PRE>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST ====================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;obs_keep_a_few_nml
+   filename_in        = ''
+   filename_out       = '' 
+   max_count_per_type = 10
+   max_total_count    = -1
+   print_only         = .false.
+   calendar           = 'Gregorian'
+   /
+</pre>
+</div>
+
+<br />
+<br />
+
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD>filename_in</TD>
+    <TD>character(len=256)</TD>
+    <TD>Name of the observation sequence file to read.
+</TD></TR>
+
+<TR><TD>filename_out</TD>
+    <TD>character(len=256)</TD>
+    <TD>Name of the observation sequence file to create.
+An existing file will be overwritten.
+</TD></TR>
+
+<TR><TD>max_count_per_type</TD>
+    <TD>integer</TD>
+    <TD>The first N observations of each different type
+will be copied to the output file.  Observation sequence
+files are processed in time order so these will be 
+the ones with the earliest time stamps relative to 
+other observations of this same type.
+Set to -1 to disable this limit.
+</TD></TR>
+
+<TR><TD>max_total_count</TD>
+    <TD>integer</TD>
+    <TD>If greater than 0, sets the upper limit on the 
+total number of observations to be copied to the output 
+file regardless of type.  
+The program quits when either this limit is reached or when
+there are N of each different obs type in the output.  
+Set to -1 to disable.
+</TD></TR>
+
+<TR><TD>print_only</TD>
+    <TD>logical</TD>
+    <TD>If true, does all the work and prints out what
+the output file would have in it (timestamps and counts
+of each obs type) but doesn't create the output file.
+</TD></TR>
+
+<TR><TD>calendar</TD>
+    <TD>character(len=256)</TD>
+    <TD>Name of the DART calendar type to use.
+Generally 'Gregorian' or 'No calendar'.
+See the DART time manager for more options.
+Only controls the formatting of how the times
+in the output summary messages are displayed.
+</TD></TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<UL>
+   <LI>filename_in is read.
+   <LI>filename_out is written.
+</UL>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ul>
+<li> none </li>
+</ul>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>&nbsp;</TD>
+    <!-- message --><TD VALIGN=top>none</TD>
+    <!-- comment --><TD VALIGN=top>&nbsp;</TD></TR>
+
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright UCAR. This open source software is provided
+by UCAR, "as is", without charge, subject to all terms of use at
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

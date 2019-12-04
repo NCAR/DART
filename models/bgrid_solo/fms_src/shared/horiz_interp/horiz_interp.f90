@@ -1566,7 +1566,7 @@ logical keep_going
      '           when searching for nearest element to value=',value
       write (stdout,*) '           array(i) < array(i-1) for i=',i 
       write (stdout,*) '           array(i) for i=1..ia follows:'
-      call abort()
+      call exit_all()
     endif
   enddo
   if (value .lt. array(1) .or. value .gt. array(ia)) then

@@ -31,7 +31,7 @@ PROGRAM add_pert_where_high_refl
 ! output:
 
 use        types_mod, only : r8, gravity, t_kelvin, ps0, gas_constant, gas_constant_v
-use    utilities_mod, only : error_handler, E_ERR
+use    utilities_mod, only : error_handler, E_ERR, initialize_utilities, finalize_utilities
 use   random_seq_mod, only : random_gaussian, random_seq_type, init_random_seq
 use    netcdf
 use    f2kcli
@@ -91,10 +91,6 @@ real(r8), PARAMETER   :: cpovcv = 1.4_r8        ! cp / (cp - gas_constant)
 real(r8), allocatable :: p(:,:,:)               ! pressure (mb)
 
 
-character(len=8)      :: crdate                 ! needed by F90 DATE_AND_TIME intrinsic
-character(len=10)     :: crtime                 ! needed by F90 DATE_AND_TIME intrinsic
-character(len=5)      :: crzone                 ! needed by F90 DATE_AND_TIME intrinsic
-integer, dimension(8) :: values                 ! needed by F90 DATE_AND_TIME intrinsic
 real(r8)              :: dx, dy                 ! horizontal grid spacings (m)
 integer               :: bt, sn, we             ! WRF grid dimensions
 integer               :: i, j, k, o
@@ -110,6 +106,8 @@ character(len=120) :: string
 ! random number generator stuff
 type (random_seq_type) :: rs
 
+
+call initialize_utilities('add_pert_where_high_refl')
 
  ! Get command-line parameters, using the F2KCLI interface.  See f2kcli.f90 for details.
 
@@ -314,12 +312,6 @@ enddo
 ! Initialize random number generator based on the analysis time and
 ! the ensemble number so repeated runs have reproducible values.
 call init_random_seq(rs, (gdays + gsecs)*1000 + ens_num)
-
-! Original code was setting the seed based on the milliseconds of
-! the system clock, so all seeds were random but not reproducible.
-!call date_and_time(crdate,crtime,crzone,values)
-!call init_random_seq(rs, -int(values(8)))
-
 
 
 ! Add perturbations.
@@ -549,6 +541,7 @@ deallocate(ht_v)
 deallocate(ht_w)
 
 
+call finalize_utilities('add_pert_where_high_refl')
 
 contains
 

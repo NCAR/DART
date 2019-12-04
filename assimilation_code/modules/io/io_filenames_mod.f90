@@ -35,7 +35,7 @@ module io_filenames_mod
 
 use types_mod,            only : r4, r8, MISSING_R8, MAX_NUM_DOMS, digits12
 use utilities_mod,        only : file_exist, E_ERR, E_MSG, E_WARN, error_handler,&
-                                 nc_check, open_file, close_file, find_textfile_dims, &
+                                 open_file, close_file, find_textfile_dims, &
                                  do_output
 use time_manager_mod,     only : time_type
 use mpi_utilities_mod,    only : my_task_id
@@ -45,6 +45,7 @@ use state_structure_mod,  only : get_num_domains, get_dim_length, get_dim_name, 
                                  get_FillValue, get_xtype, get_add_offset, get_scale_factor, &
                                  get_has_missing_value, do_io_update
 use ensemble_manager_mod, only : ensemble_type
+use netcdf_utilities_mod, only : nc_check
 
 use netcdf
 
@@ -180,7 +181,7 @@ type file_info_type
 
 end type
 
-character(len=512) :: msgstring, msgstring2, msgstring3 ! message handler
+character(len=512) :: msgstring
 
 contains
 
@@ -268,7 +269,7 @@ character(len=*), optional, intent(in) :: restart_files(:,:) !< list of restarts
 character(len=*), optional, intent(in) :: root_name          !< base if restart_files not given
 logical,          optional, intent(in) :: check_output_compatibility !< ensure netCDF variables exist in output BEFORE spending a ton of core hours
 
-integer :: ndomains, idom, esize
+integer :: ndomains, esize
 
 file_info%single_file = single_file
 file_info%cycling     = cycling
@@ -322,7 +323,6 @@ type(file_info_type),  intent(inout) :: file_info
 type(ensemble_type),   intent(in)    :: ens_handle
 
 integer :: num_domains, idom, icopy, my_copy
-character(len=256) :: filename
 
 num_domains = get_num_domains()
 
@@ -351,7 +351,7 @@ integer,              intent(in)    :: my_copy_start
 
 character(len=256) :: fname, desc
 character(len=128) :: stage_name, basename
-integer :: nlines, icopy, iunit, ios, idom
+integer :: icopy, idom
 integer :: offset
 
 offset = my_copy_start - 1

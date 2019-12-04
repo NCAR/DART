@@ -70,9 +70,11 @@ use time_manager_mod,     only : time_type, get_time, get_calendar_type, &
                                  operator(-), operator(/), operator(*), &
                                  operator(==), operator(/=)
 
-use utilities_mod,        only : error_handler, nc_check, file_to_text, &
+use utilities_mod,        only : error_handler, file_to_text, &
                                  find_textfile_dims, file_exist, &
                                  E_MSG, E_ALLMSG, E_ERR, E_DBG, E_WARN
+
+use netcdf_utilities_mod, only : nc_check
 
 use mpi_utilities_mod,    only : task_count, send_to, receive_from, my_task_id, &
                                  broadcast_flag
@@ -480,11 +482,11 @@ end subroutine finalize_single_file_io
 
 subroutine read_single_file(state_ens_handle, file_handle, use_time_from_file, time, pert_from_single_copy)
 
-type(ensemble_type),  intent(inout) :: state_ens_handle      !> ensemble handle to store data
-type(file_info_type), intent(in)    :: file_handle           !> file handle for file names
-logical,              intent(in)    :: use_time_from_file    !> read time from file
-type(time_type),      intent(inout) :: time                  !> external time
-logical, optional,    intent(in)    :: pert_from_single_copy !> reading single file and perturbing
+type(ensemble_type),  intent(inout) :: state_ens_handle      !! ensemble handle to store data
+type(file_info_type), intent(in)    :: file_handle           !! file handle for file names
+logical,              intent(in)    :: use_time_from_file    !! read time from file
+type(time_type),      intent(inout) :: time                  !! external time
+logical, optional,    intent(in)    :: pert_from_single_copy !! reading single file and perturbing
 
 ! NetCDF IO variables
 integer                               :: my_ncid, varid, TimeDimID, MemDimID, ret 
@@ -784,8 +786,11 @@ endif
 
 curr_ens_time = ens_handle%current_time
 
-domain = 1 !>@todo : only a single domain for single file read supported. need
-           !>        to consider case for multiple domains.
+!>@todo : only a single domain for single file read supported.
+!>        need to consider case for multiple domains.
+
+domain = 1
+
 if (my_task_id() == SINGLE_IO_TASK_ID) then
    fname = get_restart_filename(file_handle%stage_metadata, 1, domain)
    
@@ -1571,6 +1576,8 @@ end subroutine write_variables
 !> Create the output files
 !>
 !> A 'blank' domain is one variable called state, with dimension = model size.
+!> It is used when the model has not supplied any netcdf info but
+!>     direct_netcdf_write = .true.
 !> The file is intentionally left OPEN.
 !-------------------------------------------------------------------------------
 
@@ -1578,19 +1585,19 @@ function create_and_open_state_output(name_handle, dom_id, copy_number, &
                 dart_time, single_precision_output) result(ncfile_out)
 
 type(stage_metadata_type), intent(in) :: name_handle
-integer,                   intent(in) :: dom_id !< domain
+integer,                   intent(in) :: dom_id
 integer,                   intent(in) :: copy_number
 type(time_type),           intent(in) :: dart_time
 logical,                   intent(in) :: single_precision_output
 integer :: ncfile_out
 
-integer :: ret !> netcdf return code
+integer :: ret
 integer :: create_mode
-integer :: i, j ! loop variables
+integer :: i, j
 integer :: new_dimid
 integer :: new_varid
 integer :: ndims
-integer :: xtype ! precision for netcdf file
+integer :: xtype
 integer :: dimids(NF90_MAX_VAR_DIMS)
 
 character(len=256) :: filename
@@ -2146,14 +2153,13 @@ subroutine recv_variables_to_write(state_ens_handle, sending_pe, start, &
                 elm_count, block_size, variable_block)
 
 type(ensemble_type), intent(in)    :: state_ens_handle
-integer,             intent(in)    :: sending_pe !> sending_pe
-integer,             intent(in)    :: start !> start in vars array on receiver.
-integer,             intent(in)    :: elm_count !> how many elements
-integer,             intent(in)    :: block_size !> size of info on sender - the receiver only
-                                              !> gets part of this.
-real(r8),            intent(inout) :: variable_block(block_size) !> variable info
+integer,             intent(in)    :: sending_pe !! sending_pe
+integer,             intent(in)    :: start      !! start in vars array on receiver.
+integer,             intent(in)    :: elm_count  !! how many elements
+integer,             intent(in)    :: block_size !! size of info on sender - the receiver only gets part of this.
+real(r8),            intent(inout) :: variable_block(block_size) !! variable info
 
-real(r8), allocatable :: buffer(:) !> for making send array contiguous
+real(r8), allocatable :: buffer(:) !! for making send array contiguous
 
 if (state_ens_handle%distribution_type == 1) then
 
@@ -2199,7 +2205,8 @@ character(len=NF90_MAX_NAME) :: dimname, varname
 ncFileID%diag_id = create_diagnostic_structure()
 my_ncid          = ncFileID%ncid
 
-domain = 1 !>@todo ONLY ONE DOMAIN FOR SINGLE FILE OUTPUT
+!>@todo ONLY ONE DOMAIN FOR SINGLE FILE OUTPUT
+domain = 1
 
 do ivar = 1, get_num_variables(domain)
 
@@ -2274,7 +2281,9 @@ if(my_task_id()==SINGLE_IO_TASK_ID) then
       my_xtype = nf90_real
    endif
 
-   domain = 1 !>@todo ONLY ONE DOMAIN FOR SINGLE FILES
+   !>@todo ONLY ONE DOMAIN FOR SINGLE FILES
+   domain = 1
+
    ! Define dimensions for state
    do ivar = 1, get_num_variables(domain)
 
@@ -2347,7 +2356,8 @@ character(len=NF90_MAX_NAME) :: dimname, varname, extraname
 
 my_ncid = ncFileID%ncid
 
-domain    = 1 !>@todo ONLY ONE DOMAIN FOR SINGLE FILE OUTPUT
+!>@todo ONLY ONE DOMAIN FOR SINGLE FILE OUTPUT
+domain    = 1
 
 do ivar = 1, get_num_variables(domain)
 
@@ -2425,7 +2435,9 @@ if(my_task_id()==SINGLE_IO_TASK_ID) then
       my_xtype = nf90_real
    endif
 
-   domain = 1 !>@todo ONLY ONE DOMAIN FOR SINGLE FILES
+   !>@todo ONLY ONE DOMAIN FOR SINGLE FILES
+   domain = 1
+
    ! Define dimensions for state
    do ivar = 1, get_num_variables(domain)
       varname = get_variable_name(domain, ivar)

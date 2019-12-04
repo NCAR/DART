@@ -4,6 +4,48 @@
 !
 ! $Id$
 
+!> @brief Simple Advection model
+!> 
+!>  This model is on a periodic one-dimensional domain. A wind field is
+!>  modeled using Burger's Equation with an upstream semi-lagrangian
+!>  differencing. This diffusive numerical scheme is stable and forcing
+!>  is provided by adding in random gaussian noise to each wind grid
+!>  variable independently at each timestep. The domain mean value of the
+!>  wind is relaxed to a constant fixed value set by the namelist parameter
+!>  mean_wind. The random forcing magnitude is set by namelist parameter
+!>  wind_random_amp and the damping of the mean wind is controlled by
+!>  parameter wind_damping_rate. An Eulerian option with centered in
+!>  space differencing is also provided and can be used by setting namelist
+!>  parameter lagrangian_for_wind to .false. The Eulerian differencing is
+!>  both numerically unstable and subject to shock formation. However, it
+!>  can sometimes be made stable in assimilation mode (see recent work by
+!>  Majda and collaborators).
+!>
+!>  The model state includes a single passive tracer that is advected by
+!>  the wind field using semi-lagrangian upstream differencing. The state
+!>  also includes a tracer source value at each gridpoint. At each time
+!>  step, the source is added into the concentration at each gridpoint.
+!>  There is also a constant global destruction of tracer that is controlled
+!>  by the namelist parameter destruction_rate. The appropriate percentage
+!>  of tracer is destroyed at each gridpoint at each timestep.
+!>
+!>  The model also includes an associated model for the tracer source rate.
+!>  At each gridpoint, there is a value of the time mean source rate and
+!>  a value of the phase offset for a diurnal component of the source rate.
+!>  The diurnal source rate has an amplitude that is proportional to the
+!>  source rate (this proportion is controlled by namelist parameter
+!>  source_diurnal_rel_amp). At each grid point, the source is the sum
+!>  of the source rate plus the appropriate diurnally varying component.
+!>  The phase_offset at the gridpoint controls the diurnal phase. The
+!>  namelist parameter source_phase_noise controls the amplitude of
+!>  random gaussian noise that is added into the source phase at each
+!>  time step. If source_phase_noise is zero then the phase offset is
+!>  fixed. Finally, the time mean source rate is constant in time in the
+!>  present model version. The time mean source rate controls the
+!>  amplitude of the diurnal cycle of the tracer source.
+!>
+!>
+
 module model_mod
 
 use        types_mod, only : r8, PI, i4, i8
@@ -14,6 +56,8 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              nmlfileunit, find_namelist_in_file,           &
                              check_namelist_read, do_output,               &
                              do_nml_file, do_nml_term
+
+use  mpi_utilities_mod, only : sum_across_tasks, my_task_id
 
 use     location_mod,      only : location_type, set_location, get_location, &
                                   get_close_obs, get_close_state, &
@@ -29,13 +73,13 @@ use location_io_mod,      only :  nc_write_location_atts, nc_get_location_varids
 use default_model_mod,     only : end_model, nc_write_model_vars, init_time
 
 use     obs_kind_mod, only : QTY_VELOCITY, QTY_TRACER_CONCENTRATION, &
-                             QTY_TRACER_SOURCE, QTY_MEAN_SOURCE, QTY_SOURCE_PHASE
+                             QTY_TRACER_SOURCE, QTY_MEAN_SOURCE, QTY_SOURCE_PHASE, &
+                             get_name_for_quantity
 
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
 
-use ensemble_manager_mod,  only : ensemble_type, get_allow_transpose, &
-                                  all_vars_to_all_copies, all_copies_to_all_vars, &
-                                  init_ensemble_manager, end_ensemble_manager
+use ensemble_manager_mod,  only : ensemble_type, init_ensemble_manager, end_ensemble_manager, &
+                                  get_my_num_vars, get_my_vars
 
 use distributed_state_mod, only : get_state
 
@@ -136,8 +180,18 @@ real(r8)  :: source_damping_rate    = 0.000002777778
 real(r8)  :: source_diurnal_rel_amp = 0.05_r8
 real(r8)  :: source_phase_noise     = 0.0_r8
 
+! if you change NVARS or the order of any of
+! these, you must change the 'add_domain()' call
+! in static_init_model() below.
 integer, parameter :: NVARS = 5
-integer :: my_ens_size = 1
+integer, parameter :: CONC      = 1
+integer, parameter :: TSOURCE   = 2
+integer, parameter :: WIND      = 3
+integer, parameter :: MEAN_SRC  = 4
+integer, parameter :: SRC_PHASE = 5
+integer :: conc_offset, source_offset, wind_offset
+integer :: mean_src_offset, src_phase_offset
+integer :: model_size
 
 namelist /model_nml/ num_grid_points, grid_spacing_meters, &
                      time_step_days, time_step_seconds, &
@@ -145,7 +199,7 @@ namelist /model_nml/ num_grid_points, grid_spacing_meters, &
                      lagrangian_for_wind, destruction_rate, &
                      source_random_amp_frac, source_damping_rate, &
                      source_diurnal_rel_amp, source_phase_noise, &
-                     template_file, my_ens_size
+                     template_file
 
 
 ! Define the location of the state variables in module storage
@@ -175,14 +229,17 @@ call check_namelist_read(iunit, io, "model_nml")
 if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
 
+! NVARS items at each grid location
+model_size = NVARS * num_grid_points
+
 ! Create storage for locations
-allocate(state_loc(NVARS*num_grid_points))
+allocate(state_loc(model_size))
 
 ! Define the locations of the model state variables
 do i = 1, num_grid_points
    x_loc = (i - 1.0_r8) / num_grid_points
-   do j = 0, 4
-      state_loc(num_grid_points * j + i) = set_location(x_loc)
+   do j = 1, NVARS
+      state_loc(num_grid_points * (j-1) + i) = set_location(x_loc)
    enddo
 enddo
 
@@ -217,7 +274,7 @@ domain_width_meters = num_grid_points * grid_spacing_meters
 ! For any routines that want to use the random number
 ! generator later on, initialize it.
 if(.not. random_seq_init) then
-   call init_random_seq(random_seq, 1)
+   call init_random_seq(random_seq, my_task_id()+1)
    random_seq_init = .true.
 endif
 
@@ -244,13 +301,22 @@ else
 
    do var_id=1, NVARS
       call add_dimension_to_variable(dom_id, var_id, 'time', 1)
-      call add_dimension_to_variable(dom_id, var_id, 'member', my_ens_size)
+      call add_dimension_to_variable(dom_id, var_id, 'member', 1)
       call add_dimension_to_variable(dom_id, var_id, 'location', int(num_grid_points, i4))
    enddo
    
    call finished_adding_domain(dom_id)
 endif
 
+! set the offsets to the start of each variable
+! in the state vector.  the indices for each variable
+! quantity are x(offset+1 : offset+num_grid_points).
+
+conc_offset      = (CONC-1)      * num_grid_points 
+source_offset    = (TSOURCE-1)   * num_grid_points
+wind_offset      = (WIND-1)      * num_grid_points
+mean_src_offset  = (MEAN_SRC-1)  * num_grid_points
+src_phase_offset = (SRC_PHASE-1) * num_grid_points
 
 end subroutine static_init_model
 
@@ -265,20 +331,20 @@ real(r8), intent(out) :: x(:)
 ! Start by zeroing all
 x = 0.0_r8
 
-! First set of variables is the concentration; Everybody starts at 0.0
-x(1:num_grid_points) = 0.0_r8
+! Tracer concentration
+x(conc_offset     +1 : conc_offset     +num_grid_points) = 0.0_r8
 
-! Set initial source to mean_source
-x(num_grid_points + 1 : 2*num_grid_points) = mean_source
+! Initial source 
+x(source_offset   +1 : source_offset   +num_grid_points) = mean_source
 
-! Third set of variables is the u wind; its units are meters/second
-x(2*num_grid_points + 1: 3*num_grid_points) = mean_wind
+! U wind velocity; units are meters/second
+x(wind_offset     +1 : wind_offset     +num_grid_points) = mean_wind
 
-! Fourth set of variables is the time mean source
-x(3*num_grid_points + 1 : 4*num_grid_points) = mean_source
+! Time mean source
+x(mean_src_offset +1 : mean_src_offset +num_grid_points) = mean_source
 
-! Fifth set of variables is the source phase offset 
-x(4*num_grid_points + 1 : 5*num_grid_points) = source_phase_offset
+! Source phase offset 
+x(src_phase_offset+1 : src_phase_offset+num_grid_points) = source_phase_offset
 
 end subroutine init_conditions
 
@@ -292,27 +358,26 @@ subroutine adv_1step(x, time)
 real(r8), intent(inout) :: x(:)
 type(time_type), intent(in) :: time
 
-integer :: next, prev, seconds, days, ens_size
+integer :: next, prev, seconds, days
+integer, parameter :: ens_size = 1
 type(location_type) :: source_loc
 real(r8) :: lctn, source_location, old_u_mean, new_u_mean
 real(r8) :: du_dx, dt_seconds, t_phase, phase, random_src
 type(ensemble_type) :: temp_handle
 
 integer(i8) :: i
-integer  :: istatus(1)
-real(r8) :: new_x(size(x),1)
+integer  :: istatus(ens_size)
+real(r8) :: new_x(size(x),ens_size)
 
-!>@todo  model_interpolate requires an ensemble handle as one of the
+!> model_interpolate requires an ensemble handle as one of the
 !> parameters to the call.  create a dummy one here.
-
-ens_size = 1
-call init_ensemble_manager(temp_handle, ens_size, int(NVARS*num_grid_points,i8))
-temp_handle%copies(1,:) = x(:)
+! the data in this handle is never used. the data passed in as
+! the final optional "x" argument is used instead.
+call init_ensemble_manager(temp_handle, ens_size, int(model_size,i8))
 
 ! State is concentrations (num_grid_points), source(num_grid_points), u(num_grid_points),
 ! mean_source(num_grid_points), and source_phase_offset(num_grid_points)
 ! all dimensioned num_grid_points.
-
 
 ! For the concentration do a linear interpolated upstream distance
 ! Also have an option to do upstream for wind (controlled by namelist; see below).
@@ -327,7 +392,7 @@ do i = 1, num_grid_points
    ! Find source point location: Velocity is in meters/second
    ! Figure out meters to move and then convert to fraction of domain
     
-   source_location = lctn - x(2*num_grid_points + i) * dt_seconds / &
+   source_location = lctn - x(wind_offset + i) * dt_seconds / &
       domain_width_meters
 
    if(source_location > 1.0_r8) &
@@ -337,12 +402,12 @@ do i = 1, num_grid_points
       source_location = source_location - int(source_location) + 1.0_r8
 
    source_loc = set_location(source_location)
-   call model_interpolate(temp_handle, ens_size, source_loc, QTY_TRACER_CONCENTRATION, new_x(i,:), istatus, x)  
+   call model_interpolate(temp_handle, ens_size, source_loc, QTY_TRACER_CONCENTRATION, new_x(conc_offset + i,:), istatus, x)  
 
    ! Following line does lagangian du
 
    if(lagrangian_for_wind) &
-      call model_interpolate(temp_handle, ens_size, source_loc, QTY_VELOCITY, new_x(2*num_grid_points + i,:), istatus, x)  
+      call model_interpolate(temp_handle, ens_size, source_loc, QTY_VELOCITY, new_x(wind_offset + i,:), istatus, x)  
 enddo
 
 
@@ -355,10 +420,10 @@ if(.not. lagrangian_for_wind) then
       if(next > num_grid_points) next = 1
       prev = i - 1
       if(prev < 1) prev = num_grid_points
-      du_dx = (x(2*num_grid_points + next) - x(2*num_grid_points + prev)) / &
+      du_dx = (x(wind_offset + next) - x(wind_offset + prev)) / &
                                        (2.0_r8 * grid_spacing_meters)
-      new_x(2*num_grid_points + i,1) = x(2*num_grid_points + i) + &
-                                       x(2*num_grid_points + i) * du_dx * dt_seconds
+      new_x(wind_offset + i,1) = x(wind_offset + i) + &
+                                 x(wind_offset + i) * du_dx * dt_seconds
    enddo
 endif
 !---- End Eulerian block
@@ -367,23 +432,23 @@ endif
 ! Now add in the source contribution and put concentration and wind back into inout x
 ! Source is in units of .../second
 do i = 1, num_grid_points
-   x(i) = new_x(i,1) + x(num_grid_points + i) * dt_seconds
+   x(conc_offset + i) = new_x(conc_offset + i,1) + x(source_offset + i) * dt_seconds
    ! Also copy over the new velocity
-   x(2*num_grid_points + i) = new_x(2*num_grid_points + i,1)
+   x(wind_offset + i) = new_x(wind_offset + i,1)
 enddo
 
 ! Now do the destruction rate: Units are fraction destroyed per second
 do i = 1, num_grid_points
    if(destruction_rate * dt_seconds > 1.0_r8) then
-      x(i) = 0.0_r8
+      x(conc_offset + i) = 0.0_r8
    else
-      x(i) = x(i) * (1.0_r8 - destruction_rate*dt_seconds)
+      x(conc_offset + i) = x(conc_offset + i) * (1.0_r8 - destruction_rate*dt_seconds)
    endif
 enddo
 
 !----- Following block is random walk plus damping to mean for wind
 ! Random walk for the spatial mean velocity
-old_u_mean = sum(x(2*num_grid_points + 1 : 3*num_grid_points)) / num_grid_points
+old_u_mean = sum(x(wind_offset + 1 : wind_offset + num_grid_points)) / num_grid_points
 
 ! Add in a random walk to the mean
 new_u_mean = random_gaussian(random_seq, old_u_mean, wind_random_amp * dt_seconds)
@@ -394,13 +459,13 @@ if(wind_damping_rate*dt_seconds > 1.0_r8) stop
 new_u_mean = new_u_mean - wind_damping_rate * dt_seconds * (new_u_mean - mean_wind)
 
 ! Substitute the new mean wind
-x(2*num_grid_points  + 1 : 3*num_grid_points) = &
-   x(2*num_grid_points + 1 : 3*num_grid_points) - old_u_mean + new_u_mean
+x(wind_offset + 1 : wind_offset + num_grid_points) = &
+   x(wind_offset + 1 : wind_offset + num_grid_points) - old_u_mean + new_u_mean
 
 ! Add some noise into each wind element
 do i = 1, num_grid_points
-   x(2*num_grid_points + i) = random_gaussian(random_seq, x(2*num_grid_points + i), &
-      wind_random_amp * dt_seconds)
+   x(wind_offset + i) = random_gaussian(random_seq, x(wind_offset + i), &
+                                        wind_random_amp * dt_seconds)
 enddo
 
 !----- End forced damped wind section
@@ -411,19 +476,19 @@ enddo
 call get_time(time, seconds, days)
 t_phase = (2.0_r8 * PI * seconds / 86400.0_r8) 
 do i = 1, num_grid_points
-   phase = t_phase + x(4*num_grid_points + i)
-   x(num_grid_points + i) = x(num_grid_points + i) &
-      + x(3*num_grid_points + i) * source_diurnal_rel_amp * cos(phase)
-      !!!+ x(3*num_grid_points + i) * source_diurnal_rel_amp * cos(phase) * dt_seconds
+   phase = t_phase + x(src_phase_offset + i)
+   x(source_offset + i) = x(source_offset + i) &
+      + x(mean_src_offset + i) * source_diurnal_rel_amp * cos(phase)
+      !!!+ x(mean_src_offset + i) * source_diurnal_rel_amp * cos(phase) * dt_seconds
    ! Also add in some random walk
    random_src = random_gaussian(random_seq, 0.0_r8, source_random_amp(i))
-   x(num_grid_points + i) = x(num_grid_points + i) + random_src * dt_seconds
-   if(x(num_grid_points + i) < 0.0_r8) x(num_grid_points + i) = 0.0_r8
+   x(source_offset + i) = x(source_offset + i) + random_src * dt_seconds
+   if(x(source_offset + i) < 0.0_r8) x(source_offset + i) = 0.0_r8
    ! Finally, damp back towards the base value
    ! Need an error handler call here
    if(source_damping_rate*dt_seconds > 1.0_r8) stop
-   x(num_grid_points + i) = x(num_grid_points + i) - &
-      source_damping_rate*dt_seconds * (x(num_grid_points + i) - x(3*num_grid_points + i))
+   x(source_offset + i) = x(source_offset + i) - &
+      source_damping_rate*dt_seconds * (x(source_offset + i) - x(mean_src_offset + i))
 enddo
 
 !----- End sources time tendency -----
@@ -433,7 +498,7 @@ enddo
 
 ! Process noise test for source_phase_offset
 do i = 1, num_grid_points
-   x(4*num_grid_points + i) = random_gaussian(random_seq, x(4*num_grid_points + i), &
+   x(src_phase_offset + i) = random_gaussian(random_seq, x(src_phase_offset + i), &
       source_phase_noise*dt_seconds)
 enddo
 
@@ -450,7 +515,7 @@ function get_model_size()
 
 integer(i8) :: get_model_size
 
-get_model_size = NVARS*num_grid_points
+get_model_size = model_size
 
 end function get_model_size
 
@@ -467,12 +532,12 @@ end function get_model_size
 !> If x is present, Interpolates from state vector x to the location. 
 !> This code supports three obs types: concentration, source, and u
 
-subroutine model_interpolate(state_handle, ens_size, location, itype, expected_val, istatus, x)
+subroutine model_interpolate(state_handle, ens_size, location, iqty, expected_val, istatus, x)
 
 type(ensemble_type),  intent(in)  :: state_handle
 integer,              intent(in)  :: ens_size
 type(location_type),  intent(in)  :: location
-integer,              intent(in)  :: itype
+integer,              intent(in)  :: iqty
 real(r8),             intent(out) :: expected_val(ens_size)
 integer,              intent(out) :: istatus(ens_size)
 real(r8), optional,   intent(in)  :: x(:)  ! old format state vector, not distributed
@@ -498,14 +563,19 @@ if(upper_index > num_grid_points) upper_index = upper_index - num_grid_points
 lctnfrac = lctn - int(lctn)
 
 ! Now figure out which type
-if(itype == QTY_TRACER_CONCENTRATION) then
-   offset = 0
-else if(itype == QTY_TRACER_SOURCE) then
-   offset = num_grid_points
-else if(itype == QTY_VELOCITY) then
-   offset = 2*num_grid_points
+if(iqty == QTY_TRACER_CONCENTRATION) then
+   offset = conc_offset
+else if(iqty == QTY_TRACER_SOURCE) then
+   offset = source_offset
+else if(iqty == QTY_VELOCITY) then
+   offset = wind_offset
 else
-   write(string1, *) 'itype is not supported in model_interpolate', itype
+   ! technically this should just set istatus to a positive value and return
+   ! because it shouldn't be a fatal error to try to interpolate a quantity
+   ! that is not in the state vector. however for this model we only expect
+   ! to get observations of types in the state, so end the program if not.
+   write(string1, *) 'quantity ', iqty, ' ('//trim(get_name_for_quantity(iqty))// &
+                     ') is not supported in model_interpolate'
    call error_handler(E_ERR,'model_interpolate',string1, source, revision, revdate)
 endif
 
@@ -542,31 +612,31 @@ end function shortest_time_between_assimilations
 
 !------------------------------------------------------------------
 !> Given an integer index into the state vector structure, returns the
-!> assoicated location and optionally the state quantity.
+!> associated location and optionally the state quantity.
 
-subroutine get_state_meta_data(index_in, location, var_type)
+subroutine get_state_meta_data(index_in, location, var_qty)
 
 integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
-integer,             intent(out), optional :: var_type
+integer,             intent(out), optional :: var_qty
 
-integer :: var_type_index, var_loc_index
+integer :: var_qty_index, var_loc_index
 
-! Three variable types
-var_type_index = (index_in - 1) / num_grid_points + 1
-var_loc_index = index_in - (var_type_index - 1)*num_grid_points
+! Variable types
+var_qty_index = (index_in - 1) / num_grid_points + 1
+var_loc_index = index_in - (var_qty_index - 1)*num_grid_points
 
-if(present(var_type)) then
-   if(var_type_index == 1) then
-      var_type = QTY_TRACER_CONCENTRATION
-   else if(var_type_index == 2) then
-      var_type = QTY_TRACER_SOURCE
-   else if(var_type_index == 3) then
-      var_type = QTY_VELOCITY
-   else if(var_type_index == 4) then
-      var_type = QTY_MEAN_SOURCE
-   else if(var_type_index == 5) then
-      var_type = QTY_SOURCE_PHASE
+if(present(var_qty)) then
+   if(var_qty_index == CONC) then
+      var_qty = QTY_TRACER_CONCENTRATION
+   else if(var_qty_index == TSOURCE) then
+      var_qty = QTY_TRACER_SOURCE
+   else if(var_qty_index == WIND) then
+      var_qty = QTY_VELOCITY
+   else if(var_qty_index == MEAN_SRC) then
+      var_qty = QTY_MEAN_SOURCE
+   else if(var_qty_index == SRC_PHASE) then
+      var_qty = QTY_SOURCE_PHASE
    endif
 endif
 
@@ -623,69 +693,113 @@ end subroutine nc_write_model_atts
 
 
 !------------------------------------------------------------------
-!> Perturbs a model state for generating initial ensembles
-!> Returning interf_provided means go ahead and do this with uniform
-!> small independent perturbations.
+!> Perturbs a model state for generating initial ensembles.
+!> Returning interf_provided .true. means this code has 
+!> added uniform small independent perturbations to a
+!> single ensemble member to generate the full ensemble.
 
 subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
 integer,   intent(in) :: ens_size
-real(r8),  intent(in)  :: pert_amp
+real(r8),  intent(in) :: pert_amp
 logical,  intent(out) :: interf_provided
 
-integer :: i,j
-real(r8) :: avg_wind
+integer :: i,j, num_my_grid_points, my_qty
+integer(i8), allocatable :: my_grid_points(:)
+real(r8) :: avg_wind, localsum
 
 interf_provided = .true.
 
-! allocating storage space in ensemble manager
-if(.not. allocated(state_ens_handle%vars)) &
-        allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
-call all_copies_to_all_vars(state_ens_handle)
+! if we are running with more than 1 task, then
+! we have all the ensemble members for a subset of
+! the model state.  which variables we have are determined
+! by looking at the global index number into the state vector.
 
-do i=1,num_grid_points
+! how many grid points does my task have to work on?
+! and what are their indices into the full state vector?
+num_my_grid_points = get_my_num_vars(state_ens_handle)
+allocate(my_grid_points(num_my_grid_points))
+call get_my_vars(state_ens_handle, my_grid_points)
 
-   ! Perturb the tracer concentration
-   do j=1,state_ens_handle%my_num_copies
-      state_ens_handle%vars(i,j) = random_gaussian(random_seq, state_ens_handle%vars(i,j), state_ens_handle%vars(i,j))
-   enddo
-   where(state_ens_handle%vars(i,:) < 0.0_r8) state_ens_handle%vars(i,:) = 0.0_r8 
+! we also want to compute the average wind field before we start.
+! find all the wind values on our task and then sum
+! them with wind values on other tasks.
 
-   ! Perturb the source
-   do j=1,state_ens_handle%my_num_copies
-      state_ens_handle%vars(num_grid_points + i,j) = random_gaussian(random_seq, &
-                                                     state_ens_handle%vars(num_grid_points + i,j), &
-                                                     state_ens_handle%vars(num_grid_points + i,j))
-   enddo
-   where(state_ens_handle%vars(num_grid_points + i,:) < 0.0_r8) state_ens_handle%vars(num_grid_points + i,:) = 0.0_r8 
+localsum = 0.0_r8
+do i=1,num_my_grid_points
 
-   ! Perturb the u field
-   do j=1,state_ens_handle%my_num_copies
+   ! Variable quantities
+   my_qty = (my_grid_points(i) - 1) / num_grid_points + 1
 
-      ! Find the average value of the wind field for the base
-      avg_wind = sum(state_ens_handle%vars(2*num_grid_points + i:3*num_grid_points,j)) / num_grid_points
-      ! Get a random draw to get 
-      state_ens_handle%vars(2*num_grid_points + i,j) = random_gaussian(random_seq, 0.05_r8, avg_wind)
-   enddo
-   where(state_ens_handle%vars(2*num_grid_points + i,:) < 0.0_r8) state_ens_handle%vars(2*num_grid_points + i,:) = 0.0_r8 
+   if(my_qty == WIND) then
+      localsum = localsum + state_ens_handle%copies(1, i)
+   endif
+enddo
 
+call sum_across_tasks(localsum, avg_wind)
+avg_wind = avg_wind / num_grid_points
+   
+! and now we're ready to perturb the ensemble members
+! use the global index into the state vector to see what
+! quantities we have.
+do i=1,num_my_grid_points
 
-   ! NOT Perturbing the mean_source field
-   ! OLD pert_state(3*num_grid_points + i) = random_gaussian(random_seq, state(3*num_grid_points + i), 0.2_r8)
-   ! NEW state_ens_handle%vars(3*num_grid_points + i,j) = &
-   !                        random_gaussian(random_seq, state_ens_handle%vars(3*num_grid_points + i,j), 0.2_r8)
+   ! Variable quantities
+   my_qty = (my_grid_points(i) - 1) / num_grid_points + 1
 
+   if(my_qty == CONC) then
+      ! Perturb the tracer concentration
+      do j=1,ens_size
+         state_ens_handle%copies(j, i) = random_gaussian(random_seq, &
+                                         state_ens_handle%copies(j, i), &
+                                         state_ens_handle%copies(j, i))
+      enddo
+      where(state_ens_handle%copies(1:ens_size, i) < 0.0_r8) &
+            state_ens_handle%copies(1:ens_size, i) = 0.0_r8 
+   
+   else if(my_qty == TSOURCE) then
+      ! Perturb the source
+      do j=1,ens_size
+         state_ens_handle%copies(j, i) = random_gaussian(random_seq, &
+                                         state_ens_handle%copies(j, i), &
+                                         state_ens_handle%copies(j, i))
+      enddo
+      where(state_ens_handle%copies(1:ens_size, i) < 0.0_r8) &
+            state_ens_handle%copies(1:ens_size, i) = 0.0_r8 
 
-   ! NOT Perturbing the source_phase_offset field ONLY if the mean_source is non-zero
-   ! OLD if(mean_source(i) /= 0.0_r8) pert_state(4*num_grid_points + i) = &
-   !             random_gaussian(random_seq, state(4*num_grid_points + i), 0.4_r8)
+   else if(my_qty == WIND) then
+      ! Perturb the u field using the average wind computed above
+      do j=1,ens_size
+         state_ens_handle%copies(j, i) = random_gaussian(random_seq, 0.05_r8, avg_wind)
+      enddo
+      where(state_ens_handle%copies(1:ens_size, i) < 0.0_r8) &
+            state_ens_handle%copies(1:ens_size, i) = 0.0_r8 
+
+   else if(my_qty == MEAN_SRC) then
+      ! NOT Perturbing the mean_source field. 
+      ! comment in the following lines to perturb the source mean.
+      ! do j=1,ens_size
+      !   state_ens_handle%copies(j, i) = random_gaussian(random_seq, &
+      !                                   state_ens_handle%copies(j, i), 0.2_r8)
+      ! enddo
+
+   else if(my_qty == SRC_PHASE) then
+
+      ! NOT Perturbing the source_phase_offset field 
+      !  even if commented in, only perturb if the mean_source is non-zero
+      ! if (state_ens_handle%copies(j, i) /= 0.0_r8) then
+      !    do j=1,ens_size
+      !       state_ens_handle%copies(j, i) = random_gaussian(random_seq, &
+      !                                       state_ens_handle%copies(j, i), 0.4_r8)
+      !    enddo
+      ! endif
+
+   endif
 
 enddo 
 
-call all_vars_to_all_copies(state_ens_handle)
-! deallocate whole state storage
-if(.not. get_allow_transpose(state_ens_handle)) deallocate(state_ens_handle%vars)
+deallocate(my_grid_points)
 
 end subroutine pert_model_copies
 

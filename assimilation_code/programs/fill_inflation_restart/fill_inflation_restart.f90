@@ -4,18 +4,15 @@
 !
 ! $Id$
 
-!----------------------------------------------------------------------
-!> purpose: generate initial inflation files so an experiment starting up
-!> can always start from a restart file without having to alter the namelist
-!> between cycles 1 and 2.
+!> Generate initial inflation files from namelist values.
+!> This way an experiment can always start from a restart file 
+!> without having to alter the namelist between cycles 1 and 2.
 !>
 !> an alternative to running this program is to use the nco utilities thus:
 !>
 !> Here is an example using version 4.4.2 or later of the NCO tools:
 !>   ncap2 -s "T=1.0;U=1.0;V=1.0" wrfinput_d01 prior_inflation_mean.nc
 !>   ncap2 -s "T=0.6;U=0.6;V=0.6" wrfinput_d01 prior_inflation_sd.nc'
-!>
-!----------------------------------------------------------------------
 
 program fill_inflation_restart
 
@@ -45,8 +42,6 @@ use             model_mod, only : get_model_size
 
 use     mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities
 
-use netcdf
-
 implicit none
 
 ! version controlled file description for error handling, do not edit
@@ -72,6 +67,8 @@ real(r8)           :: prior_inf_sd   = MISSING_R8
 logical            :: write_post_inf = .FALSE.
 real(r8)           :: post_inf_mean  = MISSING_R8
 real(r8)           :: post_inf_sd    = MISSING_R8
+logical            :: single_file    = .FALSE.
+character(len=256) :: input_state_files(MAX_FILES)  = ''
 logical            :: verbose        = .FALSE.
 
 namelist /fill_inflation_restart_nml/              &
@@ -221,17 +218,17 @@ real(r8),         intent(in) :: inf_sd
 character(len=*), intent(in) :: stage
 
 if (inf_mean == MISSING_R8 .or. inf_sd == MISSING_R8) then
-   write(string1,*) 'you must specify both inf_mean and inf_sd values'
+   write(string1,*) 'you must specify both inflation mean and inflation standard deviation values'
    write(string2,*) 'you have "',trim(stage),'_inf_mean = ', inf_mean,'" and '
    write(string3,*) '         "',trim(stage),'_inf_sd   = ', inf_sd,  '"     '
    call error_handler(E_MSG, 'fill_inflation_restart: ', string1,  &
                       source, revision, revdate, text2=string2, text3=string3)
    return
 endif
-ens_handle%copies(ss_inflate_index   , :) = prior_inf_mean
-ens_handle%copies(ss_inflate_sd_index, :) = prior_inf_sd
+ens_handle%copies(ss_inflate_index   , :) = inf_mean
+ens_handle%copies(ss_inflate_sd_index, :) = inf_sd
 
-write(my_stage,'(2A)') stage, '_inflation'
+write(my_stage,'(3A)') 'input_', stage, 'inf'
 write(my_base, '(A)')  'mean'
 write(my_desc, '(2A)') stage, ' inflation mean'
 call set_file_metadata(file_info_output,    &
@@ -310,10 +307,4 @@ call finalize_mpi_utilities()
 end subroutine finalize_modules_used
 
 end program fill_inflation_restart
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 

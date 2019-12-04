@@ -41,12 +41,12 @@ use netcdf_utilities_mod, only : nc_add_global_attribute, nc_synchronize_file, &
 
 use location_io_mod,      only :  nc_write_location_atts, nc_write_location
 
-use default_model_mod,     only : nc_write_model_vars, init_time, init_conditions, &
-                                  adv_1step
+use default_model_mod,     only : nc_write_model_vars, adv_1step,          &
+                                  init_time => fail_init_time,             &
+                                  init_conditions => fail_init_conditions
 
-use xyz_location_mod, only : xyz_location_type, xyz_get_close_maxdist_init,    &
-                             xyz_get_close_type, xyz_set_location, xyz_get_location, &
-                             xyz_get_close_obs_init, xyz_get_close_obs_destroy, &
+use xyz_location_mod, only : xyz_location_type, xyz_set_location, xyz_get_location,         &
+                             xyz_get_close_type, xyz_get_close_init, xyz_get_close_destroy, &
                              xyz_find_nearest
 
 use    utilities_mod, only : register_module, error_handler,                   &
@@ -83,7 +83,7 @@ use     obs_kind_mod, only : get_index_for_quantity,  &
                              QTY_GEOPOTENTIAL_HEIGHT, &
                              QTY_PRECIPITABLE_WATER
 
-use mpi_utilities_mod, only: my_task_id, all_reduce_min_max, task_count
+use mpi_utilities_mod, only: my_task_id, broadcast_minmax, task_count
 
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 
@@ -1179,7 +1179,7 @@ else if (obs_kind == QTY_SURFACE_ELEVATION) then
    if (debug > 10) &
       print *, 'model_interpolate: SURFACE_ELEVATION', istatus, expected_obs, trim(locstring)
 
-!> @todo check againt trunk, it does QTY_PRECIPITABLE_WATER and QTY_SURFACE_PRESSURE in the same if
+!>@todo check againt trunk, it does QTY_PRECIPITABLE_WATER and QTY_SURFACE_PRESSURE in the same if
 !> statement
 else if (obs_kind == QTY_PRECIPITABLE_WATER) then
    tvars(1) = ivar
@@ -1668,7 +1668,8 @@ if (allocated(zEdge))          deallocate(zEdge)
 if (allocated(latEdge))        deallocate(latEdge)
 if (allocated(lonEdge))        deallocate(lonEdge)
 
-!call finalize_closest_center() !> @todo cheating for now
+!>@todo cheating for now
+!call finalize_closest_center()
 
 end subroutine end_model
 
@@ -1730,7 +1731,7 @@ do i = 1, get_num_variables(domid)
 enddo
 
 ! get global min/max for each variable
-call all_reduce_min_max(min_var, max_var, num_variables)
+call broadcast_minmax(min_var, max_var, num_variables)
 deallocate(within_range)
 
 call init_random_seq(random_seq, my_task_id()+1)
@@ -4612,7 +4613,7 @@ end subroutine vert_interp
 
 
 !------------------------------------------------------------------
-!> @todo  is this correct for RMA?
+!>@todo  is this correct for RMA?
 subroutine find_height_bounds(height, nbounds, bounds, lower, upper, fract, ier)
 
 ! Finds position of a given height in an array of height grid points and returns
@@ -4789,7 +4790,8 @@ endif
 ! model level numbers (supports fractional levels)
 if(verttype == VERTISLEVEL) then
    ! FIXME: if this is W, the top is nVertLevels+1
-   if (vert > nVertLevels) then !> @todo Is this the same across the ensemble?
+   !>@todo Is this the same across the ensemble?
+   if (vert > nVertLevels) then
       ier(:) = 12
       return
    endif
@@ -5226,7 +5228,8 @@ do k=1, n
    ! go around triangle and interpolate in the vertical
    ! t1, t2, t3 are the xyz of the cell centers
    ! c(3) are the cell ids
-   do e = 1, ens_size !> @todo Do you really need to loop around ens_size?
+   !>@todo Do you really need to loop around ens_size?
+   do e = 1, ens_size
 
       do i = 1, nc
 !        lowval(i) = x(index1 + (c(i)-1) * nvert + lower(i)-1)
@@ -5587,7 +5590,7 @@ do i = 1, nedges
       edgenormals(j, i) = edgeNormalVectors(j, edgelist(i))
    enddo
 
-   !> @todo lower (upper) could be different levels in pressure
+   !>@todo lower (upper) could be different levels in pressure
    !lowval = x(index1 + (edgelist(i)-1) * nvert + lower(i)-1)
    lowindx = int(index1,i8) + int((edgelist(i)-1) * nvert,i8) + int(lower(i,1)-1,i8)
    lowval =  get_state(lowindx, state_handle)
@@ -5624,7 +5627,7 @@ do e = 1, ens_size
                ureconstructx, ureconstructy, ureconstructz, &
                ureconstructzonal, ureconstructmeridional)
 
-   !> @todo in the distributed version especially:
+   !>@todo in the distributed version especially:
    ! FIXME: it would be nice to return both and not have to call this
    ! code twice.  crap.
    if (zonal) then
@@ -5767,10 +5770,8 @@ do i=1, nCells
    cell_locs(i) = xyz_set_location(lonCell(i), latCell(i), 0.0_r8, radius)
 enddo
 
-! the width really isn't used anymore, but it's part of the
-! interface so we have to pass some number in.
-call xyz_get_close_maxdist_init(cc_gc, 1.0_r8)
-call xyz_get_close_obs_init(cc_gc, nCells, cell_locs)
+! get 2nd arg from max dcEdge or a namelist item where it's precomputed
+call xyz_get_close_init(cc_gc, 33000.0_r8, nCells, cell_locs)
 
 end subroutine init_closest_center
 
@@ -5817,7 +5818,7 @@ subroutine finalize_closest_center()
 ! get rid of storage associated with GC for cell centers if
 ! they were used.
 
-if (search_initialized) call xyz_get_close_obs_destroy(cc_gc)
+if (search_initialized) call xyz_get_close_destroy(cc_gc)
 
 end subroutine finalize_closest_center
 
@@ -6289,7 +6290,7 @@ subroutine move_pressure_to_edges(ncells, celllist, lower, upper, fract, nedges,
 ! fract values.  the lower, upper and fract lists match the cells on the
 ! way in, they match the edges on the way out.
 
-!> @todo HK Same across the ensemble? I don't know
+!>@todo HK Same across the ensemble? I don't know
 
 integer,  intent(in)    :: ncells, celllist(:)
 integer,  intent(inout) :: lower(:, :), upper(:, :) ! ens_size
@@ -6297,7 +6298,9 @@ real(r8), intent(inout) :: fract(:, :) ! ens_size
 integer,  intent(in)    :: nedges, edgelist(:)
 integer,  intent(out)   :: ier(:)
 
-integer, parameter :: listsize = 30 !> @todo this is set in different places to different values
+!>@todo this is set in different places to different values
+integer, parameter :: listsize = 30
+
 !real(r8) :: o_lower(listsize), o_fract(listsize)
 real(r8), allocatable :: o_lower(:,:), o_fract(:,:)
 real(r8) :: x1, x2, x

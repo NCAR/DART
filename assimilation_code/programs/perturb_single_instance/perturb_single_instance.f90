@@ -49,7 +49,7 @@ use mpi_utilities_mod,    only : initialize_mpi_utilities, task_count, &
                                  send_sum_to
 
 use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, compute_copy_mean, &
-                                 get_my_vars, get_my_num_vars, end_ensemble_manager
+                                 get_my_num_vars, end_ensemble_manager
 
 implicit none
 
@@ -87,7 +87,7 @@ character(len=256), allocatable :: file_array_output(:,:)
 character(len=512)              :: msgstring, msgstring1
 character(len=256)              :: my_base, my_desc
 integer                         :: idom, imem, iunit, io, i
-integer                         :: ndomains, my_num_vars
+integer                         :: ndomains
 logical                         :: interf_provided
 integer(i8)                     :: model_size
 type(time_type)                 :: member_time
@@ -200,7 +200,7 @@ call read_state(ens_handle, file_info_input, read_time_from_file=.true., time=me
 !----------------------------------------------------------------------
 ! Copy from ensemble member 1 to the other copies
 !----------------------------------------------------------------------
-do i = 1, ens_handle%my_num_vars
+do i = 1, get_my_num_vars(ens_handle)
    ens_handle%copies(2:ens_size, i) = ens_handle%copies(1, i)
 enddo
 
@@ -277,8 +277,3 @@ call finalize_mpi_utilities()
 
 end program perturb_single_instance
 
-! <next few lines under version control, do not edit>
-! $URL: https://svn-dares-dart.cgd.ucar.edu/DART/branches/pertirb_tool/assimilation_code/programs/perturb_single_instance/perturb_single_instance.f90 $
-! $Id: perturb_single_instance.f90 12665 2018-06-12 22:32:05Z hendric@ucar.edu $
-! $Revision: 12665 $
-! $Date: 2018-06-12 16:32:05 -0600 (Tue, 12 Jun 2018) $

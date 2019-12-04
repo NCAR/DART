@@ -18,8 +18,10 @@ program convert_gpspw
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 use         types_mod, only : r8
-use     utilities_mod, only : nc_check, initialize_utilities, finalize_utilities, &
+use     utilities_mod, only : initialize_utilities, finalize_utilities, &
                               find_namelist_in_file, check_namelist_read 
+use  netcdf_utilities_mod, only : nc_open_file_readonly, nc_close_file, &
+                                  nc_get_global_attribute
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, set_time, &
                               increment_time, get_time, get_date, operator(-), GREGORIAN
 use      location_mod, only : VERTISUNDEF 
@@ -32,8 +34,6 @@ use obs_utilities_mod, only : getvar_real, get_or_fill_QC, add_obs_to_seq, &
                               create_3d_obs, getvar_int, getdimlen, getvar_real_2d, &
                               getvar_int_2d, query_varname, set_missing_name
 
-use           netcdf
-
 implicit none
 
 character(len=20),  parameter :: gpspw_netcdf_file = 'gpspw_input.nc'
@@ -44,13 +44,13 @@ integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
                       num_qc     = 1        ! number of QC entries
 
 integer  :: iunit, io
-integer  :: ncid, nstn, nlev, n, i, oday, osec, nused, k, index, ntime, it
+integer  :: ncid, nstn, n, i, oday, osec, nused, index, ntime, it
 logical  :: file_exist, first_obs
 real(r8) :: qc
 real(r8) :: pwv_miss = -999.
-real(r8) :: pwverr_miss = -999.
+!real(r8) :: pwverr_miss = -999.
 
-character(len=129), allocatable :: stationID(:)
+!character(len=129), allocatable :: stationID(:)
 real(r8), allocatable :: lat(:), lon(:), elev(:), toff(:)
 !real(r8), allocatable :: latu(:), lonu(:), levu(:), tobu(:)
 real(r8), allocatable :: pwv(:,:), pwv_err(:,:)
@@ -62,7 +62,8 @@ type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
 type(time_type)         :: comp_day0, time_obs, prev_time
 
-character(len=NF90_MAX_NAME) :: varname(5)
+integer, parameter :: MAX_NAME = 256
+character(len=MAX_NAME) :: varname(5)
 
 ! For the data resource, check Readme in data/ directory.
 ! Sumoinet data provides observation times only as offset [sec] from 00Z 
@@ -90,7 +91,7 @@ character(len=6) :: ftail
 character(len=19):: sdate
 character(len= 8):: ymd            ! YYYYMMDD
 character(len=10):: ymdh           ! YYYYMMDDHH
-integer          :: iyear, iday, ihour, thour
+integer          :: iyear, iday, ihour
 integer          :: iyr, imo, idy, ihr, imn, isc
 
 !------------
@@ -106,9 +107,8 @@ call check_namelist_read(iunit, io, "mpas_obs_preproc_nml")
 
 first_obs = .true.
 
-call nc_check( nf90_open(gpspw_netcdf_file, nf90_nowrite, ncid), &
-               'convert_gpspw', 'opening file '//trim(gpspw_netcdf_file))
-call nc_check( nf90_get_att(ncid,nf90_global,'start_date',sdate), 'get_att start_date')
+ncid = nc_open_file_readonly(gpspw_netcdf_file, 'convert_gpspw')
+call nc_get_global_attribute(ncid, 'start_date', sdate)
 read(sdate,'(i4,1x,i3,1x,i2)')  iyear, iday, ihour
 
 call set_calendar_type(GREGORIAN)
@@ -256,10 +256,7 @@ deallocate(toff)
 deallocate(pwv)         
 deallocate(pwv_err)
 
-! need to wait to close file because in the loop it queries the
-! report types.
-call nc_check( nf90_close(ncid) , &
-               'convert_gpspw', 'closing file '//trim(gpspw_netcdf_file))
+call nc_close_file(ncid, 'convert_gpspw')
 
 ! if we added any obs to the sequence, write it now.
 if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, gpspw_outfile)

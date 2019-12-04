@@ -70,7 +70,7 @@ module obs_def_COSMOS_mod
 
 use        types_mod, only : r8, PI, metadatalength, MISSING_R8
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
-                             logfileunit, get_unit, open_file, close_file, nc_check, &
+                             logfileunit, get_unit, open_file, close_file, &
                              file_exist, ascii_file_format
 use     location_mod, only : location_type, set_location, get_location, &
                              VERTISHEIGHT, VERTISLEVEL, set_location_missing
@@ -79,9 +79,6 @@ use  assim_model_mod, only : interpolate
 
 use obs_def_utilities_mod, only : track_status
 use ensemble_manager_mod,  only : ensemble_type
-
-use typesizes
-use netcdf
 
 implicit none
 private

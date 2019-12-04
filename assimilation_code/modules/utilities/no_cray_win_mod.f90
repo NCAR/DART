@@ -44,7 +44,7 @@ integer, parameter :: NO_WINDOW    = -1
 integer, parameter :: MEAN_WINDOW  = 0 
 integer, parameter :: STATE_WINDOW = 2 
 
-integer :: data_count !> number of copies in the window
+integer :: data_count !! number of copies in the window
 integer(KIND=MPI_ADDRESS_KIND) :: window_size
 logical :: use_distributed_mean = .false. ! initialize to false
 
@@ -155,9 +155,11 @@ type(ensemble_type), intent(inout), optional :: qc_ens_handle
 integer :: ierr
 
 if(get_allow_transpose(state_ens_handle)) then ! the forward operators were done var complete
-   !transpose back
-   if (present(fwd_op_ens_handle)) call all_vars_to_all_copies(fwd_op_ens_handle)
-   if (present(qc_ens_handle))     call all_vars_to_all_copies(qc_ens_handle)
+   !transpose back if present
+   if (present(fwd_op_ens_handle)) &
+      call all_vars_to_all_copies(fwd_op_ens_handle)
+   if (present(qc_ens_handle)) &
+      call all_vars_to_all_copies(qc_ens_handle)
 else
    ! close mpi window
    call mpi_win_free(state_win, ierr)

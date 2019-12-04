@@ -21,8 +21,10 @@ use  time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time,
 use     utilities_mod, only : initialize_utilities, find_namelist_in_file,       &
                               check_namelist_read, nmlfileunit, do_output,       &
                               get_next_filename, error_handler, E_ERR, E_MSG,    &
-                              nc_check, find_textfile_dims, finalize_utilities,  &
+                              find_textfile_dims, finalize_utilities,            &
                               do_nml_file, do_nml_term
+
+use  netcdf_utilities_mod, only : nc_check
 
 use      location_mod, only : VERTISSURFACE, set_location
 

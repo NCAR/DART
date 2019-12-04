@@ -30,11 +30,13 @@ assimilation_code/modules/utilities/utilities_mod.f90
 assimilation_code/programs/perturb_single_instance/perturb_single_instance.f90
 models/cam-fv/model_mod.f90
 models/utilities/default_model_mod.f90
-observations/forward_operators/obs_def_mod.f90
-observations/forward_operators/obs_def_utilities_mod.f90
 observations/forward_operators/rttov_interface_mod.f90
 observations/forward_operators/parkind1.f90
 observations/forward_operators/rttov_const_mod.f90
 observations/forward_operators/rttov_interface_mod.f90
 observations/forward_operators/rttov_types.f90
 assimilation_code/modules/utilities/no_cray_win_mod.f90
+models/utilities/default_model_mod.f90
+models/utilities/quad_utils_mod.f90
+observations/forward_operators/obs_def_mod.f90
+observations/forward_operators/obs_def_utilities_mod.f90

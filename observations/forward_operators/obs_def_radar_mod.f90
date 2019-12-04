@@ -866,11 +866,11 @@ integer,               intent(out) :: istatus(ens_size)
 !
 ! Reference: Lin et al., 1983 (J. Climate Appl.Meteor., 1065-1092)
 
+real(r8), dimension(ens_size) :: u, v, w, precip_fall_speed
+integer,  dimension(ens_size) :: u_istatus, v_istatus, w_istatus, p_istatus
+logical  :: return_now
 real(r8) :: debug_location(3)
 logical  :: debug = .false.   ! set to .true. to enable debug printout
-real(r8), dimension(ens_size) :: u, v, w, qr, qg, qs, rho, temp, precip_fall_speed
-integer,  dimension(ens_size) :: u_istatus, v_istatus, w_istatus, qr_istatus, rho_istatus, temp_istatus, p_istatus
-logical  :: return_now
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -1103,8 +1103,6 @@ real(r8), dimension(ens_size) :: qr, qg, qs, rho, temp
 integer,  dimension(ens_size) :: qr_istatus, qg_istatus, qs_istatus
 integer,  dimension(ens_size) :: rho_istatus, temp_istatus
 
-real(r8)         :: debug_location(3)
-logical          :: debug = .false.  ! set to .true. to enable debug printout
 logical, save    :: first_time = .true.
 integer          :: imem
 logical          :: return_now

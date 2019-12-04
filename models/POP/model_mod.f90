@@ -1887,6 +1887,7 @@ character(len=*), parameter :: routine = 'nc_write_model_atts'
 if ( .not. module_initialized ) call static_init_model
 
 ! Write Global Attributes 
+
 call nc_begin_define_mode(ncid)
 
 call nc_add_global_creation_time(ncid)
@@ -1903,7 +1904,6 @@ if (.true.) then
    call output_grid(ncid)
 endif
 
-! Flush the buffer and leave netCDF file open
 call nc_synchronize_file(ncid)
 
 end subroutine nc_write_model_atts
@@ -2393,7 +2393,9 @@ endif
 
 ! and finally, convert to sensible (in-situ) temperature.
 ! potential temp in degrees C, pressure in decibars, salinity in psu or pss (g/kg).
-do e = 1, ens_size !> @todo should this vectorize inside insitu_temp?
+
+!> @todo should this vectorize inside insitu_temp?
+do e = 1, ens_size
    call insitu_temp(potential_temp(e), salinity_val(e)*1000.0_r8, pres_val(e)*10.0_r8, expected_obs(e))
    if (debug > 2) print *, 's,pt,pres,t: ', salinity_val(e), potential_temp(e), pres_val(e), expected_obs(e)
 enddo

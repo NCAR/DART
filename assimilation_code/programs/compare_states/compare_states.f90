@@ -4,25 +4,26 @@
 !
 ! $Id$
 
+!> program to take 2 netCDF DART diagnostic files and compare
+!> the state variable, or whatever variables are listed in the
+!> namelist.  prints the min, max values and the min/max difference
+!> for each field listed.
+!>
+!> hopefully useful when comparing the results of two parallel
+!> experiments.  simple ncdiff balks when the input namelist variable
+!> is a different shape, and it cannot easily tell you when two
+!> variables are identical.   there are matlab functions that would
+!> do this with a short script, but not all platforms have matlab.
+
 program compare_states
 
-! program to take 2 netCDF DART diagnostic files and compare
-! the state variable, or whatever variables are listed in the
-! namelist.  prints the min, max values and the min/max difference
-! for each field listed.
-!
-! hopefully useful when comparing the results of two parallel
-! experiments.  simple ncdiff balks when the input namelist variable
-! is a different shape, and it cannot easily tell you when two
-! variables are identical.   there are matlab functions that would
-! do this with a short script, but not all platforms have matlab.
-
 use     types_mod, only : r8
-use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,       &
-                          open_file, close_file, nc_check, get_next_filename, &
-                          find_namelist_in_file, check_namelist_read,         &
-                          do_nml_file, do_nml_term, nmlfileunit,              &
+use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,  &
+                          open_file, close_file, get_next_filename,      &
+                          find_namelist_in_file, check_namelist_read,    &
+                          do_nml_file, do_nml_term, nmlfileunit,         &
                           initialize_utilities, finalize_utilities
+use  netcdf_utilities_mod, only : nc_check
 use parse_args_mod, only : get_args_from_string
 
 use netcdf

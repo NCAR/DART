@@ -1,0 +1,11 @@
+ init_time_days     =       149019
+ init_time_seconds  =        21600
+ first_obs_days     =       149019
+ first_obs_seconds  =        10801
+ last_obs_days      =       149019
+ last_obs_seconds   =        32400
+2009 01 09 06 00 00
+FESOM    stop at : day=149019, sec=21600
+FESOM current at : day=149019, sec=00000
+stop        date : 2009 Jan 01 06:00:00
+current     date : 2009 Jan 01 00:00:00

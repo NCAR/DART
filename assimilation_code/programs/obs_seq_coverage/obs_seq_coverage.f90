@@ -4,16 +4,14 @@
 !
 ! $Id$
 
-program obs_seq_coverage
+!> This program queries a bunch of obs_seq.xxxx files and tries to
+!> figure out 'voxel coverage' ... what locations are consistently
+!> reported through time. Absolutely a 'reverse-engineering exercise'.
+!>
+!> The observation sequence file only contains lat/lon/level/which_vert,
+!> so this is all we have to work with.
 
-!-----------------------------------------------------------------------
-! This program queries a bunch of obs_seq.xxxx files and tries to
-! figure out 'voxel coverage' ... what locations are consistently
-! reported through time. Absolutely a 'reverse-engineering exercise'.
-!
-! The observation sequence file only contains lat/lon/level/which_vert,
-! so this is all we have to work with.
-!-----------------------------------------------------------------------
+program obs_seq_coverage
 
 use        types_mod, only : r4, r8, digits12, MISSING_R8, MISSING_R4, MISSING_I, &
                              metadatalength, obstypelength
@@ -49,9 +47,11 @@ use time_manager_mod, only : time_type, set_date, set_time, get_time, &
 use    utilities_mod, only : get_unit, close_file, register_module, &
                              file_exist, error_handler, E_ERR, E_WARN, E_MSG, &
                              initialize_utilities, nmlfileunit, finalize_utilities, &
-                             find_namelist_in_file, check_namelist_read, nc_check, &
+                             find_namelist_in_file, check_namelist_read, &
                              next_file, set_filename_list, find_textfile_dims, &
                              file_to_text, do_nml_file, do_nml_term
+
+use  netcdf_utilities_mod, only : nc_check
 
 use typeSizes
 use netcdf
@@ -1776,8 +1776,3 @@ end function FindClosestPressureLevel
 
 end program obs_seq_coverage
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

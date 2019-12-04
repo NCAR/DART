@@ -34,6 +34,7 @@ use        model_mod, only : static_init_model, get_model_size, get_state_meta_d
                              model_interpolate, DART_get_var, get_grid_vertval
 
 implicit none
+private
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -45,10 +46,14 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! The namelist variables
 !------------------------------------------------------------------
 
+public :: clm_mmc_checks
+
 contains
 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
+
+subroutine clm_mmc_checks
 
 if (test1thru > 7) then
    call gridcell_components( kind_of_interest )
@@ -88,6 +93,7 @@ if (test1thru > 8) then
 
 endif
 
+end subroutine clm_mmc_checks
 
 end module mmc_clm_specific
 

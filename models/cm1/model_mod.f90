@@ -164,7 +164,7 @@ namelist /model_nml/  &
    calendar,                    &
    debug,                       &
    model_variables,             &
-   periodic_x,                  & !>@todo FIXME: should we grab this information from namelist.input
+   periodic_x,                  & ! FIXME: should we grab this information from namelist.input
    periodic_y,                  & ! or have this information written as attributes to restart files?
    periodic_z
 
@@ -1496,8 +1496,10 @@ endif
 
 xloop: do i = 2, size(xcoords)
    if(x <= xcoords(i)) then  ! does this work?
-      ind(1) = i -1 !> What if x is outside the grid?
-      ind(2) = i    !>@todo What if x is the last in the array?
+      !> What if x is outside the grid?
+      !>@todo What if x is the last in the array?
+      ind(1) = i -1
+      ind(2) = i
       ! periodic vs. bail out.
       val(1) = xcoords(ind(1))
       val(2) = xcoords(ind(2))

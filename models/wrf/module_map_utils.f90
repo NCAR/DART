@@ -10,7 +10,7 @@
 
 module constants_module
 
-   use     types_mod, only : r8
+   use     types_mod, only : r8, digits12
 
    real (kind=r8), parameter :: PI = 3.141592653589793_r8
    real (kind=r8), parameter :: OMEGA_E = 0.00007292_r8 ! Angular rotation rate of the earth
@@ -227,7 +227,7 @@ MODULE map_utils
 !   use utilities_mod, only : register_module
 
    ! Define some private constants
-   INTEGER, PRIVATE, PARAMETER :: HIGH = 8
+   INTEGER, PRIVATE, PARAMETER :: HIGH = digits12
 
    TYPE proj_info
 
@@ -774,6 +774,9 @@ MODULE map_utils
       REAL(r8)                              :: scale_top
 
       ! Executable code
+
+      ! Thanks to Kevin Manning for the 'cone' fix.  It must be set to 1.0
+      !  to fix wind rotation for polar stereographic projection
       reflon = proj%stdlon + 90.0_r8
       proj%cone = 1.0_r8
 

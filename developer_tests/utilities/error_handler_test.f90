@@ -35,8 +35,11 @@ namelist /error_handler_test_nml/  test1, test2, test3
 
 ! main code here
  
+!----------------------------------------------------------------------
+
 ! initialize the dart libs
-call initialize_module()
+call initialize_mpi_utilities('error_handler_test')
+call register_module(source, revision, revdate)
 
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "error_handler_test_nml", iunit)
@@ -65,18 +68,6 @@ call error_handler(E_MSG,'error_handler_test','Finished successfully.',source,re
 call finalize_mpi_utilities()
 
 ! end of main code
-
-contains
-
-!----------------------------------------------------------------------
-
-subroutine initialize_module
-
-  call initialize_mpi_utilities('error_handler_test')
-  call register_module(source, revision, revdate)
-  module_initialized = .true.
-
-end subroutine initialize_module
 
 !----------------------------------------------------------------------
 

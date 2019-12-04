@@ -11,20 +11,20 @@ function link_obs(fname, ObsTypeString, ObsCopyString, CopyString, QCString, reg
 % Figure 1 will have a 3D geographic scatterplot. Click on the rotate
 %          icon and drag the graphic around for the best view angle.
 %
-% Figure 2 has multiple axes.
-%   *   The bottom axes has a plot of the observation 'key' 
+% Figure 2 has multiple plots.
+%   *   The bottom plot is the observation 'key'
 %       (some of the linked list information in the original file).
-%   *   The middle axes provides information about the observation 
-%       density as a function of time. 
-%   *   The final (top) axes plots the QC value as a function of time.
+%   *   The middle plot provides information about the observation
+%       density as a function of time.
+%   *   The final (top) plot has the QC value as a function of time.
 %
-% Figure 3 has two axes.
-%   *   The bottom axes is a 2D scatterplot of (typically) the 
+% Figure 3 has two plots.
+%   *   The bottom plot is a 2D scatterplot of (typically) the
 %       'prior mean observation' (or whatever you specify in Copystring) vs. the
 %       'observation' (or whatever you specify in ObsCopyString).
-%       Both of these can be changed however - the allowable settings are defined 
+%       Both of these can be changed however - the allowable settings are defined
 %       in the CopyMetaData variable in the netCDF file.
-%		 
+%
 % link_obs(fname, ObsTypeString, ObsCopyString, CopyString, QCString, region)
 %
 % fname         - name of netcdf file that results from obs_seq_to_netcdf
@@ -62,10 +62,13 @@ function link_obs(fname, ObsTypeString, ObsCopyString, CopyString, QCString, reg
 %
 % IMPORTANT: click on the little paintbrush icon in order to activate the
 % 'brushable' feature on the plots. Once that is highlighted, any observations
-% selected in one view become highlighted in ALL the views. 
+% selected in one view become highlighted in ALL the views.
+% REALLY IMPORTANT: pre-2018b  the paintbrush icon is on the figure toolbar.
+% REALLY IMPORTANT: 2018b-?  the paintbrush icon is on the AXES toolbar, 
+%         you have to hover over a plot and the axes toolbar 'appears'.
 %
 % ALSO IMPORTANT: If you are using the Matlab GUI, doubleclick on 'obsmat' in
-% the the Workspace window to generate a spreadsheet-like view of the 
+% the the Workspace window to generate a spreadsheet-like view of the
 % observations which is also linked to the data brushing.
 
 %% DART software - Copyright UCAR. This open source software is provided
@@ -75,7 +78,7 @@ function link_obs(fname, ObsTypeString, ObsCopyString, CopyString, QCString, reg
 % DART $Id$
 
 if (exist(fname,'file') ~= 2)
-   error('%s does not exist.',fname)
+    error('%s does not exist.',fname)
 end
 
 verbose = 1;
@@ -130,21 +133,29 @@ obsmat(:,obs.keyindex ) = obs.keys; obs.colnames{obs.keyindex}  = 'obskey';
 obsmat(:,obs.timeindex) = obs.time; obs.colnames{obs.timeindex} = 'time';
 obsmat(:,obs.indindex ) = 1:length(obs.time); obs.colnames{obs.indindex} = 'index';
 
-%% Replace all ill-posed copies with 
+%% Replace all ill-posed copies with
 % This should really check to see if the copy is a 'mean' or 'spread' ...
 
 iscalculated = ~isempty(strfind(lower(obs.colnames{obs.copyindex}),'mean')) | ...
-               ~isempty(strfind(lower(obs.colnames{obs.copyindex}),'spread'));
+    ~isempty(strfind(lower(obs.colnames{obs.copyindex}),'spread'));
 
 if iscalculated
-   disp('replacing copies with [1 < QC flag < 5] with NaN')
-   allindices = obsmat(:,obs.qcindex);
-   badinds = ((allindices > 1) & (allindices < 5));
-   obsmat(badinds,obs.copyindex) = NaN;
+    disp('replacing copies with [1 < QC flag < 5] with NaN')
+    allindices = obsmat(:,obs.qcindex);
+    badinds = ((allindices > 1) & (allindices < 5));
+    obsmat(badinds,obs.copyindex) = NaN;
 end
 
 %% create the linked plots
 linked_observations(obs)
+
+fprintf('\nUse the paintbrush icon to select data.\n')
+if verLessThan('matlab','R2018b') 
+   fprintf('The paintbrush is on any figure toolbar.\n\n')
+else
+   fprintf('The paintbrush is available by hovering over a plot.\n')
+   fprintf('It will turn blue when enabled.\n\n')
+end
 
 
 % <next few lines under version control, do not edit>

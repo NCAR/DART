@@ -61,3 +61,7 @@
                      'D', 'QTY_SURFACE_PRESSURE' 
 /
 
+&test_read_write_time_nml
+   input_file      = 'time1.nc', 'time2.nc', 'time3.nc', 'time4.nc'
+/
+

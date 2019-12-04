@@ -30,63 +30,52 @@
 obs_seq.one.out
 
 &filter_nml
-   single_file_in               = .false.,
-   input_state_files            = ''
-   input_state_file_list        = 'restart_list_in_d01.txt'
+   async                    = 0,
+   adv_ens_command          = "../shell_scripts/advance_model.csh",
+   ens_size                 = 3,
+   obs_sequence_in_name     = "obs_seq.out",
+   obs_sequence_out_name    = "obs_seq.final",
+   input_state_file_list    = "input_list.txt"
+   output_state_file_list   = "output_list.txt"
+   init_time_days           = -1,
+   init_time_seconds        = -1,
+   first_obs_days           = -1,
+   first_obs_seconds        = -1,
+   last_obs_days            = -1,
+   last_obs_seconds         = -1,
+   num_output_state_members = 0,
+   num_output_obs_members   = 32,
+   output_interval          = 1,
+   num_groups               = 1,
+   distributed_state        = .true.
+   compute_posterior        = .true.
+   output_forward_op_errors = .false.,
+   output_timestamps        = .false.,
+   trace_execution          = .false.,
 
-   stages_to_write  = 'preassim', 'output'
+   stages_to_write          = 'preassim', 'output'
+   output_members           = .false.
+   output_mean              = .true.
+   output_sd                = .false.
+   write_all_stages_at_end  = .false.
 
-   single_file_out              = .false.,
-   output_state_files           = ''
-   output_state_file_list       = 'restart_list_out_d01.txt'
-   output_interval              = 1,
-   output_members               = .true.
-   num_output_state_members     = 3,
-   output_mean                  = .true.
-   output_sd                    = .true.
+   inf_flavor                  = 2,                      0,
+   inf_initial_from_restart    = .false.,                .false.,
+   inf_sd_initial_from_restart = .false.,                .false.,
+   inf_initial                 = 1.0,                     1.00,
+   inf_lower_bound             = 1.0,                     1.0,
+   inf_upper_bound             = 1000000.0,               1000000.0,
+   inf_damping                 = 0.9,                     1.0,
+   inf_sd_initial              = 0.6,                     0.0,
+   inf_sd_lower_bound          = 0.6,                     0.0,
+   inf_sd_max_change           = 1.05,                    1.05,
+   /
 
-   ens_size                     = 3,
-   num_groups                   = 1,
-   perturb_from_single_instance = .false.,
-   perturbation_amplitude       = 0.2,
-   distributed_state            = .true.
-
-   async                        = 2,
-   adv_ens_command              = './advance_model.csh',
-
-   obs_sequence_in_name         = 'obs_seq.one.out',
-   obs_sequence_out_name        = 'obs_seq.final',
-   num_output_obs_members       = 3,
-   init_time_days               = 149200,
-   init_time_seconds            = 32406,
-   first_obs_days               = -1,
-   first_obs_seconds            = -1,
-   last_obs_days                = -1,
-   last_obs_seconds             = -1,
-
-   inf_flavor                  = 0,                       0,
-   inf_initial_from_restart    = .false.,                 .false.,
-   inf_sd_initial_from_restart = .false.,                 .false.,
-   inf_deterministic           = .true.,                  .true.,
-   inf_initial                 = 1.00,                   1.00,
-   inf_sd_initial              = 0.60,                   0.50,
-   inf_damping                 = 0.95,                   1.00, 
-   inf_lower_bound             = 0.50,                   1.0,
-   inf_upper_bound             = 1000000.0,              1000000.0,
-   inf_sd_lower_bound          = 0.60,                   0.10
-
-   trace_execution              = .false.,
-   output_timestamps            = .false.,
-   silence                      = .false.,
-/
-
-   obs_sequence_in_name         = 'AIRS.2009.07.01.090.out',
-   init_time_days               = 149200,
-   init_time_seconds            = 21603,
-
-&ensemble_manager_nml
-   layout = 1,
-   tasks_per_node = 16  /
+&quality_control_nml
+  input_qc_threshold          = 3.0,
+  outlier_threshold           = 3.0,
+  enable_special_outlier_code = .false.
+  /
 
 &smoother_nml
    num_lags              = 0

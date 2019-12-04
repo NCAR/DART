@@ -745,10 +745,10 @@ and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
 - Removed makefiles for the obsolete trans_time program.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Jun 18 2018 :: CAM/CESM 2.0, DART QC 8, closest_member_tool  Revision: 12681 
++ Jun 18 2018 :: CAM/CESM 2.0, DART QC 8, closest_member_tool  Revision: 12682
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-- Support for CAM assimilations in the CESM 2.0 release.  See 
+- Support for CAM-FV assimilations in the CESM 2.0 release.  See 
   documentation in models/cam-fv/doc/README_cam-fv for details.
 
 - obs_diag and matlab scripts updated to report statistics on DART QC 8, 
@@ -771,32 +771,80 @@ and assim_tools_mod.pf.f90 in sync with assim_tools_mod.f90.
 - Added more functions to the netcdf_utilities_mod.f90
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Aug 03 2018 :: performance fix for distributed mean          Revision: 12758
++ Aug 03 2018 :: performance fix for distributed mean          Revision: 12758 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 - Important performance fix if model does vertical conversion for localization.
-Results were not wrong but performance was poor if 'distribute_mean = .true.'
-was selected in the &assim_tools_nml namelist.
-Now distributing the mean runs in close to the non-distributed time and uses
-much less memory for large models. This only impacts models which do a vertical
-conversion of either the observation or state vertical coordinate for localization
-AND which set &assim_tools_nml :: distribute_mean = .true. to use less memory.
-When using a distributed mean "convert_all_obs_verticals_first = .true." should
-be set.  If your observations will impact most of the model state, then
-"convert_all_state_verticals_first = .true.' can also be set.
+  Results were not wrong but performance was poor if 'distribute_mean = .true.' 
+  was selected in the &assim_tools_nml namelist.
+
+  Now distributing the mean runs in close to the non-distributed time and uses
+  much less memory for large models. This only impacts models which do a vertical
+  conversion of either the observation or state vertical coordinate for localization
+  AND which set &assim_tools_nml :: distribute_mean = .true. to use less memory.
+
+  When using a distributed mean "convert_all_obs_verticals_first = .true." should 
+  be set.  If your observations will impact most of the model state, then 
+  "convert_all_state_verticals_first = .true.' can also be set.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Aug 31 2018 :: WRF Polar, CICE, obs_diag files               Revision: 12807
++ Apr 30 2019 :: cam-fv refactor, posteriors optional, QC 8    Revision: 13138
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+- The CAM Finite Volume (cam-fv)  model_mod.f90 has undergone substantial 
+  refactoring to improve simplicity and remove code for unsupported CAM variants
+  while also supporting WACCM and WACCM-X.  Namelist changes will be required.
+
+- CAM-FV setup and scripting support added for CESM 2.1, including advanced
+  archiving and compression
 
 - fix for WRF's wind direction vectors when using the Polar Stereographic 
   map projection.  Thanks to Kevin Manning for the fix.
 
-- removed 'allow_missing_in_clm' flag from the &assim_tools_nml namelist in
-  the CICE work directory.  The flag moved to a different namelist and the
-  CICE model doesn't care about it.
+- Add filter namelist option to avoid calling the posterior forward operators 
+  and to not create those copies in the obs_seq.final file.
 
-- increased the maximum number of input files to obs_diag from 100 to 10000.
+- Use less memory if writing ensemble member values into the obs_seq.final file.
+
+- added a DART QC of 8 for failed vertical conversions
+
+- updated Matlab scripts support QC=8 and no posterior in obs sequence files.
+
+- sampling error correction table now has all ensemble sizes between 3 and 200
+
+- closest_member_tool can be compiled with other MPI targets
+
+- COSMIC_ELECTRON_DENSITY has been moved from obs_def_gps_mod.f90 to 
+  obs_def_upper_atm_mod.f90, which has new quantities for 
+  ION_O_MIXING_RATIO and ATOMIC_H_MIXING_RATIO
+
+- obs_converters/gps/convert_cosmic_ionosphere.f90 has a test dataset
+
+- support for NAG compiler 
+
+- fixed Intel compiler bug in lorenz_96 comparing long integers to integer loop indices
+
+- get_maxdist() now a required routine all location modules
+
+- Default routines now create a time variable as time(time) to allow multiple
+  files to be concatenated along the unlimited dimension more easily.  Also
+  conforms to the netCDF convention for coordinate dimensions.
+
+- obs_impact_tool handles a continuum of values, not just discrete 0 or 1.
+
+- fill_inflation_restart now produces files with names consistent with filter defaults. 
+
+- expanded functionality in xyz_location_mod.f90
+
+- Removed 'slow' sorting routines from sort_mod.f90
+
+- replacing some repeated native netCDF library calls with routines from
+  the netcdf_utilities_mod.f90 
+
+- Updated dewpoint equation to avoid dividing by zero given a very unlikely
+  scenario (r12832)
+
+- More efficient implementation of adaptive inflation 
 
 - Yongfei Zhang and Cecilia Bitz added improvements to the CICE model and 
   observation converters and forward operators. These changes also use the
@@ -805,20 +853,11 @@ be set.  If your observations will impact most of the model state, then
 - Worked with Yongfei Zhang to remove prototype codes and more completely
   document observation converters and data sources for cice assimilation.
 
-- Default routines now create a time variable as time(time) to allow multiple
-  files to be concatinated along the unlimited dimension more easily.  Also
-  conforms to the netCDF convention for coordinate dimensions.
+- removed 'allow_missing_in_clm' flag from the &assim_tools_nml namelist in
+  the CICE work directory.  The flag moved to a different namelist and the
+  CICE model doesn't care about it.
 
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ Nov 01 2018 :: summary of changes in Manhattan update       $Revision$
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-- Updated dewpoint equation to avoid dividing by zero given a very unlikely
-  scenario (r12832)
-
-- More efficient implementation of adaptive inflation 
-
-- Removed test files from cice
+- increased the maximum number of input files to obs_diag from 100 to 10000.
 
 - Updated the developer_tests to include more cases.
 
@@ -827,14 +866,25 @@ be set.  If your observations will impact most of the model state, then
 - Better error and informational messages in various routines.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+ MMM DD YYYY :: summary of changes in Manhattan update   $Revision$
++ MMM DD YYYY :: summary of changes in next Manhattan update    hash: NNNNNNN
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+- first GIT release
 
-- (ADD MORE CHANGES HERE)
+- fixed bug in fill_inflation_restart tool which used the prior inflation mean
+  and sd for both prior and posterior inflation files.  now correctly uses the
+  posterior mean/sd if requested.
 
+- fixed a typo in the location test script that prevented it from running
 
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
+- additional functionality in the quad interpolation code, now supports grids
+  which start at 90 (north) and end at -90 (south).
+
+- if possible, send shorter MPI messages.  improves performance on some platforms
+  and MPI implementations.
+
+- add explicit call to initalize_utilities() where it was missing in a couple of
+  the WRF utility routines.
+
+- added an example of how to use a namelist to the text_to_obs.f90 observation
+  converter program.

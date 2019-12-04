@@ -43,6 +43,8 @@
    num_groups               = 1
    input_qc_threshold       =  3.0
    outlier_threshold        =  3.0
+   distributed_state        = .true.
+   compute_posterior        = .true.
    output_forward_op_errors = .false.
    output_timestamps        = .false.
    output_inflation         = .true.

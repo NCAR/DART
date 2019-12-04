@@ -1,0 +1,49 @@
+#!/bin/bash
+#BSUB -a poe               #
+#BSUB -J dart_post         # Name of the job.
+#BSUB -o dart_post_%J.out  # Appends std output to file %J.out.
+#BSUB -e dart_post_%J.out  # Appends std error to file %J.err.
+#BSUB -q serial_30min      # queue
+
+. dart.postproc.env # environment variables
+
+#---------------------------------------------------------
+#---- Observation Diagnostics ----------------------------
+#---------------------------------------------------------
+
+# obs_seq_to_netcdf and obs_diag programs should be called for dart diagnostics
+# then, frt.obs_epoch_TeMPLaTe.jnl frt.obs_diag_TeMPLaTe.jnl are called to plot
+# loops over variable, time; and region for obs_diag
+# calls ferret/frt.obs_epoch_TeMPLaTe.jnl and ferret/frt.obs_diag_TeMPLaTe.jnl to plot
+
+cd ${D_filter}; ls -1 obs_seq.final.??????_????? > obsFile_list
+${REMOVE} obs_epoch_???.nc;
+${LINK} ${D_dart}/obs_seq_to_netcdf . ;  ./obs_seq_to_netcdf
+${LINK} ${D_dart}/obs_diag . ;  ./obs_diag
+
+cd ${D_output};
+
+for ((var=0; var<${#gmt_kind[@]}; var++)); do
+  for time in $( seq ${E_init} ${E_last} ); do
+   tim=$( echo ${time} | awk '{ printf("%03d\n",$1) }' )
+   sed -e 's;VARIABLENAME;'${gmt_kind[${var}]}';g' \
+       -e 's;BINCURRENTTIME;'${tim}';g' \
+       -e 's;EXPERIMENTNAME;'${E_info}';g' \
+       -e 's;WORKDIRECTORY;'${WORK}';g' \
+       ${D_PROG}/frt.obs_epoch_TeMPLaTe.jnl > frt.obs_epoch.jnl
+   pyferret -nodisplay -script frt.obs_epoch.jnl
+  done
+  for ((regid=1; regid<=2; regid++)); do
+   for ((borA=0; borA<${#diag_kind[@]; borA++)); do
+    for ((inst=0; inst<${#inst_kind[@]}; inst++)); do
+     sed -e 's;VARIABLENAME;'${gmt_kind[${var}]}';g' -e \
+            's;VARIABLEKIND;'${inst_kind[$inst]}';g' -e \
+            's;PARAMETER;'${diag_kind[$BorA]}';g' -e \
+            's;REGIONID;'${regid}';g' -e \
+            's;EXPERIMENTNAME;'${E_info}';g' \
+            ${D_PROG}/frt.obs_diag_TeMPLaTe.jnl > frt.obs_diag.jnl
+     pyferret -nodisplay -script frt.obs_diag.jnl
+    done
+   done
+  done
+done

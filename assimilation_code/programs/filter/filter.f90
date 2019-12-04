@@ -4,14 +4,9 @@
 !
 ! $Id$
 
-!> \dir filter  Main program contained here
-!> \file filter.f90 Main program
+!> Main DART Ensemble Filtering Program
 
 program filter
-
-!> \mainpage filter Main DART Ensemble Filtering Program
-!> @{ \brief routine to perform ensemble filtering
-!>
 
 use mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities
 use        filter_mod, only : filter_main
@@ -26,12 +21,5 @@ call filter_main()
 
 call finalize_mpi_utilities()
 
-!> @}
-
 end program filter
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$

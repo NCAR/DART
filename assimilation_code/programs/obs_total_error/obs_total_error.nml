@@ -1,0 +1,5 @@
+&obs_total_error_nml
+   obs_sequence_name = 'obs_seq.final', 
+   obs_sequence_list = '', 
+   calendar = 'Gregorian'
+   /

@@ -8,7 +8,8 @@
 #
 # This script compiles all executables in this directory.
 
-\rm -f *.o *.mod
+set nonomatch
+\rm -f *.o *.mod Makefile
 
 set MODEL = "prep_bufr"
 
@@ -25,7 +26,7 @@ foreach TARGET ( mkmf_* )
    @ n = $n + 1
    echo
    echo "---------------------------------------------------"
-   echo "${MODEL} build number ${n} is ${PROG}" 
+   echo "${MODEL} build number ${n} is ${PROG}"
    \rm -f ${PROG}
    csh $TARGET || exit $n
    make        || exit $n
@@ -33,9 +34,9 @@ foreach TARGET ( mkmf_* )
 end
 
 # clean up.  comment this out if you want to keep the .o and .mod files around
-\rm -f *.o *.mod input.nml.*_default
+\rm -f *.o *.mod input.nml.*_default Makefile .cppdefs
 
-echo "Success: All DART programs compiled."  
+echo "Success: All DART programs compiled."
 
 exit 0
 

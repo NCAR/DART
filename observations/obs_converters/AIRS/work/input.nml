@@ -8,6 +8,11 @@
                               '../../../../observations/forward_operators/obs_def_AIRS_mod.f90'
  /
 
+! version 5 file?:
+!   l2_files = '../data/AIRS.2007.11.01.001.L2.RetStd.v5.2.2.0.G08078150655.hdf'
+! version 6 file?:
+!   l2_files = '../data/AIRS.2017.01.01.110.L2.RetStd_IR.v6.0.31.1.G19058124823.hdf'
+
 &convert_airs_L2_nml
    datadir            = '.',
    l2_files           = 'AIRS.2014.11.01.001.L2.CC.v6.0.11.0.G14305131930.hdf',
@@ -59,7 +64,7 @@
  /
 
 &utilities_nml
-  module_details = .false.
+ module_details = .false.
  /
 
 &obs_sequence_tool_nml

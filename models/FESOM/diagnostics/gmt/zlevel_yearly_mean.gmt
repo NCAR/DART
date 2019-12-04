@@ -1,0 +1,291 @@
+#!/bin/bash
+####################################################################################
+############# GMT SCRIPT TO PLOT HORIZONTAL SECTIONS FOR TSS #######################
+############# MODIFY DATE AND LAYER BY A SUBMIT SCRIPT USING SED ###################
+####################################################################################
+### written by: ali aydogdu ########################################################
+### last modified: 2015/01/27 ######################################################
+####################################################################################
+date
+####################################################################################
+############# SET PARAMETERS FROM SUBMIT SCRIPT ####################################
+####################################################################################
+LAYER=`echo LAYERNUMBER | awk '{printf("%03d\n",$1)}'`
+DAY=`echo DAY2PLOT | awk '{printf("%02d\n",$1)}'`
+YEAR=YEAR2PLOT
+#DATE=$(echo ${DAY} | awk '{printf "%d\n",$0;}')
+#DATE=$(sh ~/script/sh/CALCDATE.sh 1 ${YEAR} ${DATE} | )
+DATE=${YEAR}
+VAR=VARIABLE2PLOT
+EXP=EXPCODE
+FILENAME=CALCSMEAN_${EXP}_${YEAR}_ANNUAL_LEV${LAYER};
+####################################################################################
+############# SET GMT DEFAULTS #####################################################
+####################################################################################
+gmtset PS_MEDIA=20ix14i IO_NAN_RECORDS=pass PLOT_DEGREE_FORMAT ddd:mm:ssF
+gmtset FONT_ANNOT_PRIMARY=8p,Courier-Bold,black FONT_ANNOT_SECONDARY=8p,Courier-Bold,black FONT_LABEL=8p,Courier-Bold,black
+gmtset IO_NAN_RECORDS=pass FORMAT_GEO_MAP ddd:mm:ssF
+gmtset MAP_FRAME_TYPE=fancy MAP_FRAME_PEN=thin MAP_FRAME_WIDTH=2p
+gmtset MAP_TICK_LENGTH_PRIMARY=3.5p/2p MAP_TICK_LENGTH_SECONDARY=8p/3p
+gmtset MAP_ANNOT_OBLIQUE=32
+####################################################################################
+############# DEFINE FILENAMES REGIONS PROJECTIONS AND GMT FLAGS ###################
+####################################################################################
+outpng=out.png
+DATANAM=${FILENAME}.asc;
+REGIONA="-R22.5421/33.004/38.6973/43"; BSMAPA="-Ba1f0.5"
+#REGIONA="-R22.5421/33.004/38.6973/42.98632"; BSMAPA="-Ba1f0.5"
+REGIONM="-R26.9/30/40.2/41.2"; BSMAPM="-Ba0.5f0.25"
+REGIONB="-R28.75/29.2/40.7/41.3"; BSMAPB="-Ba0.2f0.1"
+REGIOND="-R25.25/27/39.7/40.6"; BSMAPD="-Ba0.5f0.1"
+PROJNON="-JX15/8"; #PROJNON="-Jm0.75i"
+PROJGEO="-JX15d/8d"; #PROJGEO="-Jm0.75i"
+CONNECT="-Qelem2d.new"
+DRAWCOAST="pscoast -R ${PROJGEO} -W0.5p,black -Df -K -O -V3"
+####################################################################################
+############# PREPARE CPT COLOR PALETTES VARIABLE ATTRIBUTES #######################
+####################################################################################
+if [ ${VAR} = "SAL" ];then 
+	gmtset COLOR_BACKGROUND=white COLOR_FOREGROUND=black COLOR_NAN=gray
+	COL=4; VARNAME=SALINITY; UNIT=psu
+	OFFSET=0 CONVERT=1; Gscale=0.5i
+		makecpt -Cwhite -T12/41/1     -M >CPT_C_${EXP}.cpt
+		makecpt -Cwhite -T12/50/0.1 -M >CPT_A_${EXP}.cpt; TSSB=3
+		makecpt -Cwhite -T12/50/0.1   -M >CPT_M_${EXP}.cpt; MARB=3
+		makecpt -Cwhite -T12/50/0.1   -M >CPT_B_${EXP}.cpt; BOSB=2
+elif [ ${VAR} = "TEM" ];then 
+	gmtset COLOR_BACKGROUND=white COLOR_FOREGROUND=gray COLOR_NAN=black
+	COL=3; VARNAME=TEMPERATURE; UNIT=@+0@+C;
+	OFFSET=0 CONVERT=1; Gscale=0.5i
+		makecpt -Cwhite -T4/35/0.5  -M >CPT_C_${EXP}.cpt
+		makecpt -Cwhite -T4/30/0.1  -M >CPT_A_${EXP}.cpt; TSSB=2
+		makecpt -Cwhite -T4/30/0.1  -M >CPT_M_${EXP}.cpt; MARB=2
+		makecpt -Cwhite -T4/30/0.1  -M >CPT_B_${EXP}.cpt; BOSB=2
+		makecpt -Cwhite -T4/30/0.1  -M >CPT_D_${EXP}.cpt; DARB=2
+elif [ ${VAR} = "SSH" ];then 
+	gmtset COLOR_BACKGROUND=black COLOR_FOREGROUND=gray COLOR_NAN=gray
+	COL=8; VARNAME=SSH; UNIT=m
+	OFFSET=0 CONVERT=1
+	if [ ${LAYER} -eq 1 ];then
+		makecpt -Csst_rainbow -T-0.25/0.25/0.001 -M >CPT_A_${EXP}.cpt; TSSB=0.1
+		makecpt -Csst_rainbow -T-0.1/0.1/0.001 -M >CPT_M_${EXP}.cpt; MARB=0.05
+		makecpt -Csst_rainbow -T-0.25/0.25/0.001 -M >CPT_B_${EXP}.cpt; BOSB=0.1
+		makecpt -Csst_rainbow -T-0.25/0.25/0.001 -M >CPT_D_${EXP}.cpt; DARB=0.1
+	else 
+		echo "LAYER is not available for makecpt"
+	fi
+elif [ ${VAR} = "KEN" ];then 
+	gmtset COLOR_BACKGROUND=black COLOR_FOREGROUND=white COLOR_NAN=black
+	COL=9; VARNAME="KINETIC ENERGY"; UNIT=cm@+2@+/s@+2@+;
+	OFFSET=0 CONVERT=10000; Gscale=1.0i
+	if [ ${LAYER} -ge 1 ] && [ ${LAYER} -lt 20 ];then
+		makecpt -Cwhite -M -T0/1000/250 -M >CPT_C_${EXP}.cpt
+		makecpt -Cgray -M -T1/1000/3 -Qo -M >CPT_A_${EXP}.cpt; TSSB=250
+		makecpt -Cgray -M -T1/1000/3 -Qo -M >CPT_M_${EXP}.cpt; MARB=250
+		makecpt -Cgray -M -T1/10000/3 -Qo -M >CPT_B_${EXP}.cpt; BOSB=2500
+		makecpt -Cgray -M -T1/10000/3 -Qo -M >CPT_D_${EXP}.cpt; DARB=2500
+	
+	elif [ ${LAYER} -ge 20 ] && [ ${LAYER} -lt 40 ];then
+		makecpt -Cwhite -M -T0/10/2.5 >CPT_C_${EXP}.cpt
+		makecpt -Cgray -M -T1/1000/3 -Qo -M >CPT_A_${EXP}.cpt; TSSB=250
+		makecpt -Cgray -M -T1/1000/3 -Qo -M >CPT_M_${EXP}.cpt; MARB=250
+		makecpt -Cgray -M -T1/10000/3 -Qo -M >CPT_B_${EXP}.cpt; BOSB=2500
+		makecpt -Cgray -M -T1/10000/3 -Qo -M >CPT_D_${EXP}.cpt; DARB=2500
+	elif [ ${LAYER} -ge 40 ] && [ ${LAYER} -lt 60 ];then
+		makecpt -Cwhite -M -T0/10/2.5 >CPT_C_${EXP}.cpt
+		makecpt -Csst -M -T1/1000/3 -Qo -M >CPT_A_${EXP}.cpt; TSSB=250
+		makecpt -Csst -M -T1/1000/3 -Qo -M >CPT_M_${EXP}.cpt; MARB=250
+		makecpt -Csst -M -T1/10000/3 -Qo -M >CPT_B_${EXP}.cpt; BOSB=2500
+		makecpt -Csst -M -T1/10000/3 -Qo -M >CPT_D_${EXP}.cpt; DARB=2500
+	else 
+		echo "LAYER is not available for makecpt"
+	fi
+
+
+elif [ ${VAR} = "VEL" ];then 
+	gmtset COLOR_BACKGROUND=black COLOR_FOREGROUND=white COLOR_NAN=black
+	COL=1; VARNAME="CURRENT VELOCITY"; UNIT=m/s;
+	OFFSET=0 CONVERT=1
+	if [ ${LAYER} -ge 1 ] && [ ${LAYER} -lt 20 ];then
+		VCOEF=0.8; VCLAB=0.2; VLNAM=0.25
+		makecpt -Cgray -M -T0/0.5/0.05 -I >CPT_A_${EXP}.cpt; TSSB=0.25
+		makecpt -Cgray -M -T0/0.5/0.05 -I >CPT_M_${EXP}.cpt; MARB=0.25
+		makecpt -Cgray -M -T0/0.5/0.05 -I >CPT_B_${EXP}.cpt; BOSB=0.25
+		makecpt -Cgray -M -T0/0.5/0.05 -I >CPT_D_${EXP}.cpt; DARB=0.25
+	elif [ ${LAYER} -ge 20 ] && [ ${LAYER} -lt 40 ];then
+		VCOEF=4.0; VCLAB=0.2; VLNAM=0.05
+		makecpt -Cgray -M -T0/0.1/0.01 -I >CPT_A_${EXP}.cpt; TSSB=0.25
+		makecpt -Cgray -M -T0/0.1/0.01 -I >CPT_M_${EXP}.cpt; MARB=0.25
+		makecpt -Cgray -M -T0/0.1/0.01 -I >CPT_B_${EXP}.cpt; BOSB=0.25
+		makecpt -Cgray -M -T0/0.1/0.01 -I >CPT_D_${EXP}.cpt; DARB=0.25
+	elif [ ${LAYER} -ge 40 ] && [ ${LAYER} -lt 60 ];then
+		makecpt -Csst -M -T0.0001/1/3 -Qo >CPT_A_${EXP}.cpt; TSSB=0.25
+		makecpt -Csst -M -T0.0001/1/3 -Qo >CPT_M_${EXP}.cpt; MARB=0.25
+		makecpt -Csst -M -T0.0001/1/3 -Qo >CPT_B_${EXP}.cpt; BOSB=0.25
+		makecpt -Csst -M -T0.0001/1/3 -Qo >CPT_D_${EXP}.cpt; DARB=0.25
+	else 
+		echo "LAYER is not available for makecpt"
+	fi
+
+elif [ ${VAR} = "DEN" ];then 
+	gmtset COLOR_BACKGROUND=black COLOR_FOREGROUND=gray COLOR_NAN=gray
+	COL=5; VARNAME=DENSITY; UNIT=kgm@+-3@+;
+	OFFSET=1000 CONVERT=1
+	if [ ${LAYER} -ge 1 ] && [ ${LAYER} -lt 20 ];then
+		makecpt -Ccequal -T10/30/1 -I -M >CPT_A_${EXP}.cpt; TSSB=5
+		makecpt -Ccequal -T12/20/0.5 -I -M >CPT_M_${EXP}.cpt; MARB=4
+		makecpt -Ccequal -T12/18/0.5 -I -M >CPT_B_${EXP}.cpt; BOSB=2
+		makecpt -Ccequal -T16/28/0.5 -I -M >CPT_D_${EXP}.cpt; DARB=4
+	elif [ ${LAYER} -ge 20 ] && [ ${LAYER} -lt 40 ];then
+		makecpt -Ccequal -T12/32/1 -I -M >CPT_A_${EXP}.cpt; TSSB=4
+		makecpt -Ccequal -T12/32/1 -I -M >CPT_M_${EXP}.cpt; MARB=4
+		makecpt -Ccequal -T12/32/1 -I -M >CPT_B_${EXP}.cpt; BOSB=4
+		makecpt -Ccequal -T12/32/1 -I -M >CPT_D_${EXP}.cpt; DARB=4
+	elif [ ${LAYER} -ge 40 ] && [ ${LAYER} -lt 60 ];then
+		makecpt -Ccequal -T12/32/1 -I -M >CPT_A_${EXP}.cpt; TSSB=4
+		makecpt -Ccequal -T12/32/1 -I -M >CPT_M_${EXP}.cpt; MARB=4
+		makecpt -Ccequal -T12/32/1 -I -M >CPT_B_${EXP}.cpt; BOSB=4
+		makecpt -Ccequal -T12/32/1 -I -M >CPT_D_${EXP}.cpt; DARB=4
+	else 
+		echo "LAYER is not available for makecpt"
+	fi
+
+else 
+	echo "VARIABLE is not define for makecpt"
+fi
+
+######################################################################################
+############# PREPARE INPUT FILES ####################################################
+######################################################################################
+awk '{print $1,$2,($'${COL}'-'${OFFSET}')*'${CONVERT}' }' ${DATANAM} > tss${LAYER}_${EXP}.dat 
+awk '{print $1,$2,$6,$7}' ${DATANAM} > curr${LAYER}_${EXP}.dat
+
+if [ ${VAR} = "VEL" ];then 
+awk '{print $1,$2,sqrt($6**2+$7**2)}' ${DATANAM} > tss${LAYER}_${EXP}.dat
+fi
+
+######################################################################################
+############# TURKISH STRAITS SYSTEM #################################################
+######################################################################################
+fig=${FILENAME}_TSS_${VAR}; ps=${fig}.ps
+psbasemap ${REGIONA} ${PROJGEO} ${BSMAPA}wSnE -P -Xc -Yc -K > $ps
+
+awk '{print $1,$2,$3}' curr${LAYER}_${EXP}.dat | blockmedian -R -I6.0m -Q >uu_${EXP}
+awk '{print $1,$2,$4}' curr${LAYER}_${EXP}.dat | blockmedian -R -I6.0m -Q >uv_${EXP}
+paste uu_${EXP} uv_${EXP} > curr_${EXP}.dat
+awk '{print $1, $2, (180./3.1416)*atan2($6,$3), sqrt($3**2+$6**2)}' curr_${EXP}.dat > curr_lst_${EXP}.dat
+
+pscontour tss${LAYER}_${EXP}.dat ${REGIONA} ${PROJNON} ${CONNECT} ${BSMAPA}wesn -St -Lthin,black -CCPT_A_${EXP}.cpt -I -K -O >> $ps
+if [ ${LAYER} -le 30 ]; then
+if [ ${VAR} = "SAL" ] || [ ${VAR} == "TEM" ] || [ ${VAR} == "KEN" ];then
+       pscontour tss${LAYER}_${EXP}.dat -R ${PROJNON} ${CONNECT} -B -W0.3p,- -CCPT_C_${EXP}.cpt -Gd${Gscale} -A+f7p,Courier -K -O >> $ps	
+fi
+fi
+if [ ${VAR} = "VEL" ] || [ ${VAR} = "SSH" ];then 
+psxy curr_lst_${EXP}.dat -R -J -Sv0.02i/0.05i/0.7in0.3 -W0.1p,black -K -O >> $ps
+echo "31.1 39.50 0 0.5" | psxy -R -J -Sv0.02i/0.05i/0.7in0.3 -F+jCL -W0.1p,black -K -O >> $ps
+echo "31.1 39.50 0.5 m/s" | pstext -R ${PROJGEO} -F+jCR+f12p,Courier,black -O -K -N  >> $ps
+fi
+echo "22.75 42.5 Turkish Straits System" | pstext -R ${PROJGEO} -F+jTL+f11p,Courier,black -O -K -N  >> $ps
+echo "22.75 42.2 ${VARNAME} (${UNIT})" | pstext ${REGIONA} ${PROJGEO} -F+jML+f10p,Courier,black -O -K -N  >> $ps
+echo "22.75 41.9 ${DATE} DEPTH:${LAYER} m." | pstext ${REGIONA} ${PROJGEO} -F+jBL+f10p,Courier,black -O -N  >> $ps
+#psscale -D4.15i/0.23i/2.2i/0.075ih -Aal -CCPT_A_${EXP}.cpt -B${TSSB}/:${UNIT}: -O >> $ps
+
+ps2raster -Tg -V3 -P -F${outpng} $ps 
+convert -trim -alpha off -antialias -scale 80% ${outpng} ${fig}.png
+rm ${ps} CPT_A_${EXP}.cpt ${outpng}
+~/script/put2ftp.sh ${fig}.png . Public/aydogdu/${EXP}/.
+######################################################################################
+############# MARMARA SEA ############################################################
+######################################################################################
+fig=${FILENAME}_MAR_${VAR}; ps=${fig}.ps
+
+psbasemap ${REGIONM} ${PROJGEO} ${BSMAPM}wSnE -P -Xc -Yc -K > $ps
+pscontour tss${LAYER}_${EXP}.dat ${REGIONM} ${PROJNON} ${CONNECT} ${BSMAPM}wesn -St -K -O -Lthin,black -CCPT_M_${EXP}.cpt -I >> $ps
+if [ ${LAYER} -le 10 ]; then
+if [ ${VAR} != "VEL" ] ;then
+       pscontour tss${LAYER}_${EXP}.dat -R ${PROJNON} ${CONNECT} -B -W0.3p -CCPT_C_${EXP}.cpt -Gd${Gscale} -A+f5p,Courier -K -O >> $ps	
+fi
+fi
+if [ ${VAR} = "VEL" ] || [ ${VAR} = "SSH" ];then 
+awk '{print $1,$2,$3}' curr${LAYER}_${EXP}.dat | blockmedian -R -I3.5m -Q >uu_${EXP}
+awk '{print $1,$2,$4}' curr${LAYER}_${EXP}.dat | blockmedian -R -I3.5m -Q >uv_${EXP}
+paste uu_${EXP} uv_${EXP} > curr_${EXP}.dat
+awk '{print $1, $2, (180./3.1416)*atan2($6,$3), '${VCOEF}'*sqrt($3**2+$6**2)}' curr_${EXP}.dat > curr_lst_${EXP}.dat
+psxy curr_lst_${EXP}.dat -R -J -Sv0.02i/0.035i/0.9in0.15i -W0.1p,black -K -O >> $ps
+echo "29.58 40.38 0 ${VCLAB}" | psxy -R -J -Sv0.02i/0.035i/0.9in0.15i -F+jCL -W0.1p,black -K -O >> $ps
+echo "29.58 40.38 ${VLNAM} m/s" | pstext -R ${PROJGEO} -F+jCR+f12p,Courier,black -O -K -N  >> $ps
+fi
+echo "27.0 40.22 Marmara Sea" | pstext -R ${PROJGEO} -F+jBL+f11p,Courier,black -O -K -N  >> $ps
+echo "29.9 40.30 ${VARNAME} (${UNIT})" | pstext ${REGIONM} ${PROJGEO} -F+jBR+f10p,Courier,black -O -K -N  >> $ps
+echo "29.9 40.22 ${DATE} DEPTH:${LAYER} m." | pstext ${REGIONM} ${PROJGEO} -F+jBR+f10p,Courier,black -O -N  >> $ps
+#psscale -D4.1i/0.21i/2.2i/0.075ih -Aal -CCPT_M_${EXP}.cpt -B${MARB}/:${UNIT}: -O >> $ps
+ps2raster -Tg -V3 -P -F${outpng} $ps 
+convert -trim -alpha off -antialias -scale 80% ${outpng} ${fig}.png
+rm ${ps} CPT_M_${EXP}.cpt ${outpng}
+~/script/put2ftp.sh ${fig}.png . Public/aydogdu/${EXP}/.
+######################################################################################
+############# BOSPHORUS STRAIT #######################################################
+######################################################################################
+fig=${FILENAME}_BOS_${VAR}; ps=${fig}.ps
+psbasemap ${REGIONB} ${PROJGEO} ${BSMAPB}wSnE -P -Xc -Yc -K > $ps
+pscontour tss${LAYER}_${EXP}.dat ${REGIONB} ${PROJNON} ${CONNECT} ${BSMAPB}wesn -St -K -O -Lthin,black -CCPT_B_${EXP}.cpt -I >> $ps
+if [ ${LAYER} -le 10 ]; then
+if [ ${VAR} != "VEL" ] ;then
+       pscontour tss${LAYER}_${EXP}.dat -R ${PROJNON} ${CONNECT} -B -W0.3p -CCPT_C_${EXP}.cpt -Gd${Gscale} -A+f5p,Courier -K -O >> $ps	
+fi
+fi
+if [ ${VAR} = "VEL" ] || [ ${VAR} = "SSH" ];then 
+awk '{print $1,$2,$3}' curr${LAYER}_${EXP}.dat | blockmedian -R -I1.0m -Q >uu_${EXP}
+awk '{print $1,$2,$4}' curr${LAYER}_${EXP}.dat | blockmedian -R -I1.0m -Q >uv_${EXP}
+paste uu_${EXP} uv_${EXP} > curr_${EXP}.dat
+awk '{print $1, $2, (180./3.1416)*atan2($6,$3), 0.70*sqrt($3**2+$6**2)}' curr_${EXP}.dat > curr_lst_${EXP}.dat
+psxy curr_lst_${EXP}.dat -R -J -Sv0.015i/0.030i/0.9in0.2i -W0.1p -K -O >> $ps
+echo "28.85 41.05 0 0.35" | psxy -R -J -Sv0.015i/0.035i/0.9in0.2i -F+jCL -W0.1p,black -K -O >> $ps
+echo "28.85 41.05 0.5 m/s" | pstext -R ${PROJGEO} -F+jCR+f12p,Courier,black -O -K -N  >> $ps
+fi
+echo "28.8 41.25 Bosphorus" | pstext -R ${PROJGEO} -F+jBL+f11p,Courier,black -O -K -N  >> $ps
+echo "28.8 41.20 ${VARNAME} (${UNIT}) ${DATE} DEPTH:${LAYER} m." | pstext ${REGIONB} ${PROJGEO} -F+jBL+f10p,Courier,black -O -N  >> $ps
+#psscale -D1.6i/2.2i/2.2i/0.075ih -Aal -CCPT_B_${EXP}.cpt -B${BOSB}/:${UNIT}: -O >> $ps
+ps2raster -Tg -V3 -P -F${outpng} $ps 
+convert -trim -alpha off -antialias -scale 80% ${outpng} ${fig}.png
+rm ${ps} CPT_B_${EXP}.cpt ${outpng}
+~/script/put2ftp.sh ${fig}.png . Public/aydogdu/${EXP}/.
+######################################################################################
+############# DARDANELLES STRAIT #####################################################
+######################################################################################
+fig=${FILENAME}_DAR_${VAR}; ps=${fig}.ps
+psbasemap ${REGIOND} ${PROJGEO} ${BSMAPD}wSnE -P -Xc -Yc -K > $ps
+pscontour tss${LAYER}_${EXP}.dat ${REGIOND} ${PROJNON} ${CONNECT} ${BSMAPD}wesn -St -K -O -Xc -Yc -Lthin,black -CCPT_D_${EXP}.cpt -I >> $ps
+if [ ${LAYER} -le 10 ]; then
+if [ ${VAR} != "VEL" ] ;then
+       pscontour tss${LAYER}_${EXP}.dat -R ${PROJNON} ${CONNECT} -B -W0.3p -CCPT_C_${EXP}.cpt -Gd${Gscale} -A+f5p,Courier -K -O >> $ps	
+fi
+fi
+if [ ${VAR} = "VEL" ] || [ ${VAR} = "SSH" ];then 
+awk '{print $1,$2,$3}' curr${LAYER}_${EXP}.dat | blockmedian -R -I2.0m -Q >uu_${EXP}
+awk '{print $1,$2,$4}' curr${LAYER}_${EXP}.dat | blockmedian -R -I2.0m -Q >uv_${EXP}
+paste uu_${EXP} uv_${EXP} > curr_${EXP}.dat
+awk '{print $1, $2, (180./3.1416)*atan2($6,$3), 0.7*sqrt($3**2+$6**2)}' curr_${EXP}.dat > curr_lst_${EXP}.dat
+psxy curr_lst_${EXP}.dat -R -J -Sv0.015i/0.030i/0.9in0.2i -W0.1p,black -K -O >> $ps
+echo "26.7 40.00 0 0.35" | psxy -R -J -Sv0.015i/0.030i/0.9in0.2i -F+jCL -W0.1p,black -K -O >> $ps
+echo "26.7 40.00 0.5 m/s" | pstext -R ${PROJGEO} -F+jCR+f12p,Courier,black -O -K -N  >> $ps
+fi
+echo "26.3 39.9 Dardanelles" | pstext -R ${PROJGEO} -F+jBL+f11p,Courier,black -O -K -N  >> $ps
+echo "26.3 39.8 ${VARNAME} (${UNIT}) ${DATE} DEPTH:${LAYER} m." | pstext ${REGIOND} ${PROJGEO} -F+jBL+f10p,Courier,black -O -N  >> $ps
+#psscale -D4.3i/0.25i/2.0i/0.075ih -Aal -CCPT_D_${EXP}.cpt -B${DARB}/:${UNIT}: -O  >> $ps
+ps2raster -Tg -V3 -P -F${outpng} $ps 
+convert -trim -alpha off -antialias -scale 80% ${outpng} ${fig}.png
+~/script/put2ftp.sh ${fig}.png . Public/aydogdu/${EXP}/.
+rm ${ps} CPT_D_${EXP}.cpt ${outpng}
+#######################################################################################
+############# CONVERT OUTPUT POSTSCRIPT FILE ##########################################
+#######################################################################################
+#echo "25.45 40.75 " | pstext -R ${PROJGEO} -F+a90+jTC+f12p,Courier,black -O -N  >> $ps
+#ps2raster -Tg -V3 -P -F${outpng} $ps 
+#convert -trim -alpha off -antialias -scale 80% ${outpng} ${fig}.png
+#rm ${ps} CPT_{A,M,B,D}_${EXP}.cpt ${outpng}
+#rm tss${LAYER}_${EXP}.dat curr_lst_${EXP}.dat
+rm uu_${EXP} uv_${EXP} curr_${EXP}.dat curr${LAYER}_${EXP}.dat
+date
+exit

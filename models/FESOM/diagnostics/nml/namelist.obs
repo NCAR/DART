@@ -1,0 +1,6 @@
+
+&ctd_observations
+ctddir='/users/home/ans051/FEOM_PREPROC/OBSERVATION/CTD'
+surveyyr='2008'
+surveyno='TK0929'
+/

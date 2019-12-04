@@ -17,7 +17,7 @@
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
-\rm -f preprocess *.o *.mod
+\rm -f preprocess *.o *.mod Makefile .cppdefs
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
 
@@ -50,7 +50,7 @@ foreach TARGET ( mkmf_* )
       @ n = $n + 1
       echo
       echo "---------------------------------------------------"
-      echo "${MODEL} build number ${n} is ${PROG}" 
+      echo "${MODEL} build number ${n} is ${PROG}"
       \rm -f ${PROG}
       csh $TARGET || exit $n
       make        || exit $n
@@ -63,10 +63,10 @@ end
 \rm -f input.nml*_default
 
 if ( $#argv == 1 && "$1" == "-mpi" ) then
-  echo "Success: All single task DART programs compiled."  
+  echo "Success: All single task DART programs compiled."
   echo "Script now compiling MPI parallel versions of the DART programs."
 else if ( $#argv == 1 && "$1" == "-nompi" ) then
-  echo "Success: All single task DART programs compiled."  
+  echo "Success: All single task DART programs compiled."
   echo "Script is exiting without building the MPI version of the DART programs."
   exit 0
 else
@@ -81,7 +81,7 @@ else
 endif
 
 #----------------------------------------------------------------------
-# to enable an MPI parallel version of filter for this model, 
+# to enable an MPI parallel version of filter for this model,
 # call this script with the -mpi argument, or if you are going to build
 # with MPI all the time, remove or comment out the entire section above.
 #----------------------------------------------------------------------
@@ -110,7 +110,7 @@ echo "build number $n is mkmf_wakeup_filter"
 csh  mkmf_wakeup_filter -mpi
 make || exit $n
 
-\rm -f *.o *.mod input.nml*_default
+\rm -f *.o *.mod input.nml*_default Makefile .cppdefs
 
 echo
 echo 'time to run filter here:'

@@ -67,7 +67,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 
 
 ! Module storage for writing error messages
-character(len = 255) :: msgstring
+character(len = 256) :: msgstring, msgstring2
 
 contains
 
@@ -84,28 +84,28 @@ subroutine get_obs_ens_distrib_state(ens_handle, obs_fwd_op_ens_handle, &
    OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, OBS_MEAN_COPY, &
    OBS_VAR_COPY, isprior, prior_qc_copy)
 
-type(ensemble_type),     intent(inout) :: ens_handle  !< state ensemble handle
-type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle  !< observation forward operator handle
-type(ensemble_type),     intent(inout) :: qc_ens_handle  !< quality control handle
-type(obs_sequence_type), intent(in)    :: seq  !< the observation sequence
-integer,                 intent(in)    :: keys(:)  !< observation key numbers
-integer,                 intent(in)    :: obs_val_index  !< copy index for observation value 
-integer,                 intent(in)    :: input_qc_index  !< qc index for incoming QC value
-integer,                 intent(in)    :: OBS_ERR_VAR_COPY  !< ensemble copy number for observation error variances
-integer,                 intent(in)    :: OBS_VAL_COPY  !< ensemble copy number for observation values
-integer,                 intent(in)    :: OBS_KEY_COPY  !> ensemble copy number for observation keys
-integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY  !< ensemble copy number for ??
-integer,                 intent(in)    :: OBS_EXTRA_QC_COPY  !< ensemble copy number for ??
-integer,                 intent(in)    :: OBS_MEAN_COPY  !< ensemble copy number for obs mean values
-integer,                 intent(in)    :: OBS_VAR_COPY  !< ensemble copy number for obs variance 
-logical,                 intent(in)    :: isprior  !< true for prior eval; false for posterior
-real(r8),                intent(inout) :: prior_qc_copy(:)  !< array instead of ensemble copy ??
+type(ensemble_type),     intent(inout) :: ens_handle  !! state ensemble handle
+type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle  !! observation forward operator handle
+type(ensemble_type),     intent(inout) :: qc_ens_handle  !! quality control handle
+type(obs_sequence_type), intent(in)    :: seq  !! the observation sequence
+integer,                 intent(in)    :: keys(:)  !! observation key numbers
+integer,                 intent(in)    :: obs_val_index  !! copy index for observation value 
+integer,                 intent(in)    :: input_qc_index  !! qc index for incoming QC value
+integer,                 intent(in)    :: OBS_ERR_VAR_COPY  !! ensemble copy number for observation error variances
+integer,                 intent(in)    :: OBS_VAL_COPY  !! ensemble copy number for observation values
+integer,                 intent(in)    :: OBS_KEY_COPY  !! ensemble copy number for observation keys
+integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY  !! ensemble copy number for ??
+integer,                 intent(in)    :: OBS_EXTRA_QC_COPY  !! ensemble copy number for ??
+integer,                 intent(in)    :: OBS_MEAN_COPY  !! ensemble copy number for obs mean values
+integer,                 intent(in)    :: OBS_VAR_COPY  !! ensemble copy number for obs variance 
+logical,                 intent(in)    :: isprior  !! true for prior eval; false for posterior
+real(r8),                intent(inout) :: prior_qc_copy(:)  !! array instead of ensemble copy ??
 
 real(r8) :: input_qc(1), obs_value(1), obs_err_var
 
 real(r8), allocatable :: expected_obs(:) !Also regular obs now?
 
-integer :: i, j, k !< index variables
+integer :: i, j, k !! index variables
 integer :: thiskey(1)
 integer :: global_obs_num, global_qc_value
 integer :: num_copies_to_calc
@@ -143,7 +143,7 @@ call create_state_window(ens_handle)
 
 ens_size = ens_handle%num_copies - ens_handle%num_extras
 
-if(get_allow_transpose(ens_handle)) then ! giant if for transpose or distribtued forward op
+if(get_allow_transpose(ens_handle)) then ! giant if for transpose or distributed forward op
 
    my_copy_indices(:) = ens_handle%my_copies(1:num_copies_to_calc) ! var-complete forward operators
 
@@ -236,7 +236,7 @@ if(get_allow_transpose(ens_handle)) then ! giant if for transpose or distribtued
       qc_ens_handle%vars(j, 1:num_copies_to_calc) = istatus(:)
 
       call check_forward_operator_istatus(num_copies_to_calc, assimilate_this_ob, &
-                                 evaluate_this_ob, istatus, expected_obs)
+                                 evaluate_this_ob, istatus, expected_obs, keys(j))
 
    end do ALL_OBSERVATIONS
 
@@ -303,7 +303,7 @@ else ! distributed state
    qc_ens_handle%copies(:, j) = istatus
 
    call check_forward_operator_istatus(num_copies_to_calc, assimilate_this_ob, evaluate_this_ob, &
-                               istatus, expected_obs)
+                               istatus, expected_obs, thiskey(1))
 
    end do MY_OBSERVATIONS
 
@@ -386,26 +386,27 @@ end subroutine get_obs_ens_distrib_state
 !> Subroutine get_expected_obs_distrib_state
 !>               
 !> Compute forward operator for set of obs in sequence for distributed state vector. 
-!> @todo does this need to be for a set of obs?
+!>@todo does this need to be for a set of obs?
 !> 
 !------------------------------------------------------------------------------
 subroutine get_expected_obs_distrib_state(seq, keys, state_time, isprior, &
    istatus, assimilate_this_ob, evaluate_this_ob, state_ens_handle, num_ens, copy_indices, expected_obs)
 
-type(obs_sequence_type), intent(in)    :: seq  !< the observation sequence
-integer,                 intent(in)    :: keys(:)  !< list of obs numbers
-type(time_type),         intent(in)    :: state_time  !< time state vector data is valid for
-logical,                 intent(in)    :: isprior  !< true if prior; false if posterior
-integer,                 intent(in)    :: num_ens  !< number of ensemble members (decl must preceed use)
-integer,                 intent(out)   :: istatus(num_ens)  !< FO return codes; 0=ok, >0 is error, <0 reserved for system use
-logical,                 intent(out)   :: assimilate_this_ob  !< true if assimilated; false otherwise
-logical,                 intent(out)   :: evaluate_this_ob  !< true if evaluated; false otherwise
-type(ensemble_type),     intent(in)    :: state_ens_handle  !< state ensemble handle
-integer,                 intent(in)    :: copy_indices(num_ens)  !< ??
-real(r8),                intent(inout) :: expected_obs(num_ens)  !< the array of computed forward operator values
+type(obs_sequence_type), intent(in)    :: seq  !! the observation sequence
+integer,                 intent(in)    :: keys(:)  !! list of obs numbers
+type(time_type),         intent(in)    :: state_time  !! time state vector data is valid for
+logical,                 intent(in)    :: isprior  !! true if prior; false if posterior
+integer,                 intent(in)    :: num_ens  !! number of ensemble members (decl must preceed use)
+integer,                 intent(out)   :: istatus(num_ens)  !! FO return codes; 0=ok, >0 is error, <0 reserved for system use
+logical,                 intent(out)   :: assimilate_this_ob  !! true if assimilated; false otherwise
+logical,                 intent(out)   :: evaluate_this_ob  !! true if evaluated; false otherwise
+type(ensemble_type),     intent(in)    :: state_ens_handle  !! state ensemble handle
+integer,                 intent(in)    :: copy_indices(num_ens)  !! ??
+real(r8),                intent(inout) :: expected_obs(num_ens)  !! the array of computed forward operator values
 
 type(obs_type)     :: obs
 type(obs_def_type) :: obs_def
+character(len=32)  :: state_size_string, obs_key_string, identity_obs_string
 
 integer :: obs_kind_ind
 integer :: num_obs, i
@@ -418,7 +419,9 @@ istatus = 0
 ! Initialize the observation type
 !!! Can actually init with the correct size here if wanted
 call init_obs(obs, 0, 0)
-do i = 1, num_obs !> @todo do you ever use this with more than one obs?
+
+!>@todo do you ever use this with more than one obs?
+do i = 1, num_obs
    call get_obs_from_key(seq, keys(i), obs)
    call get_obs_def(obs, obs_def)
 
@@ -428,10 +431,15 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
    
    ! Check in kind for negative for identity obs
    if(obs_kind_ind < 0) then
-      if ( -obs_kind_ind > state_ens_handle%num_vars ) call error_handler(E_ERR, &
-         'get_expected_obs', &
-         'identity obs is outside of state vector ', &
-         source, revision, revdate)
+      if ( -obs_kind_ind > state_ens_handle%num_vars ) then
+         write(state_size_string, *) state_ens_handle%num_vars
+         write(obs_key_string, *) keys(i)
+         write(identity_obs_string, *) -obs_kind_ind
+         write(msgstring,  *) 'unable to compute forward operator for obs number '//trim(adjustl(obs_key_string))
+         write(msgstring2, *) 'identity index '//trim(adjustl(identity_obs_string))//&
+                              ' must be between 1 and the state size of '//trim(adjustl(state_size_string))
+         call error_handler(E_ERR, 'get_expected_obs', msgstring, source, revision, revdate, text2=msgstring2)
+      endif
 
       expected_obs =  get_state(-1*int(obs_kind_ind,i8), state_ens_handle)
 
@@ -441,8 +449,8 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
    
    else ! do forward operator for this kind
 
-      call get_expected_obs_from_def_distrib_state(state_ens_handle, num_ens, copy_indices, keys(i), obs_def, obs_kind_ind, &
-         state_time, isprior, &
+      call get_expected_obs_from_def_distrib_state(state_ens_handle, num_ens, copy_indices, keys(i), &
+         obs_def, obs_kind_ind, state_time, isprior, &
          assimilate_this_ob, evaluate_this_ob, expected_obs, istatus)
 
    endif
@@ -502,14 +510,15 @@ end subroutine assim_or_eval
 !>   * Successful istatus but missing_r8 for forward operator
 !>   * Negative istatus
 !> This routine calls the error handler (E_ERR) if either of these happen.
-subroutine check_forward_operator_istatus(num_fwd_ops, assimilate_ob, evaluate_ob, istatus, expected_obs)
+
+subroutine check_forward_operator_istatus(num_fwd_ops, assimilate_ob, evaluate_ob, istatus, expected_obs, thiskey)
 
 integer,  intent(in) :: num_fwd_ops
 logical,  intent(in) :: assimilate_ob
 logical,  intent(in) :: evaluate_ob
 integer,  intent(in) :: istatus(num_fwd_ops)
 real(r8), intent(in) :: expected_obs(num_fwd_ops)
-
+integer,  intent(in) :: thiskey
 
 integer :: copy
 
@@ -520,12 +529,16 @@ do copy = 1, num_fwd_ops
    if(istatus(copy) == 0) then
       if ((assimilate_ob .or. evaluate_ob) .and. (expected_obs(copy) == missing_r8)) then
          write(msgstring, *) 'istatus was 0 (OK) but forward operator returned missing value.'
-         call error_handler(E_ERR,'check_forward_operator_istatus', msgstring, source, revision, revdate)
+         write(msgstring2, *) 'observation number ', thiskey
+         call error_handler(E_ERR,'check_forward_operator_istatus', msgstring, &
+                    source, revision, revdate, text2=msgstring2)
       endif
    ! Negative istatus
    else if (istatus(copy) < 0) then
       write(msgstring, *) 'istatus must not be <0 from forward operator. 0=OK, >0 for error'
-      call error_handler(E_ERR,'check_forward_operator_istatus', msgstring, source, revision, revdate)
+      write(msgstring2, *) 'observation number ', thiskey
+      call error_handler(E_ERR,'check_forward_operator_istatus', msgstring, &
+                    source, revision, revdate, text2=msgstring2)
    endif
 
 enddo

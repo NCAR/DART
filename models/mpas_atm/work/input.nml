@@ -46,6 +46,8 @@
    num_output_obs_members   = 96
    output_interval          = 1
    num_groups               = 1
+   distributed_state        = .true.
+   compute_posterior        = .true.
    output_forward_op_errors = .false.
    output_timestamps        = .false.
    trace_execution          = .false.
@@ -168,10 +170,10 @@
 &model_nml
    model_analysis_filename      = 'mpas_init.nc'
    grid_definition_filename     = 'mpas_init.nc'
+   vert_localization_coord      = 3
    assimilation_period_days     = 0
    assimilation_period_seconds  = 43200
    model_perturbation_amplitude = 0.0001
-   vert_localization_coord      = 3
    calendar                     = 'Gregorian'
    debug                        = 0
    use_u_for_wind               = .false.

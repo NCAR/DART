@@ -4,12 +4,12 @@
 !
 ! $Id$
 
-program full_error
+!> Correct covariances for fixed ensemble sizes.
+!> See Anderson, J. L., 2011: Localization and Sampling Error Correction
+!>   in Ensemble Kalman Filter Data Assimilation. 
+!> Submitted for publication, Jan 2011.  Contact author.
 
-! Correct covariances for fixed ensemble sizes.
-! See Anderson, J. L., 2011: Localization and Sampling Error Correction
-!   in Ensemble Kalman Filter Data Assimilation. 
-! Submitted for publication, Jan 2011.  Contact author.
+program full_error
 
 ! This version of the program reads the ensemble size and base filename
 ! for the output from a namelist.
@@ -66,9 +66,9 @@ character(len=512) :: errstring
 call initialize_utilities('full_error')
 
 ! Read the namelist entry
-call find_namelist_in_file("input.nml", "full_error_nml", iunit, .false.)
+call find_namelist_in_file("input.nml", "full_error_nml", iunit)
 read(iunit, nml = full_error_nml, iostat = io)
-call check_namelist_read(iunit, io, "full_error_nml", .false.)
+call check_namelist_read(iunit, io, "full_error_nml")
 
 ! Record the namelist values used for the run
 if (do_nml_file()) write(nmlfileunit, nml=full_error_nml)

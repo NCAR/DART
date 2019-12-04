@@ -135,11 +135,12 @@ MODULE map_utils
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+   use types_mod, only : digits12
    use constants_module
    use misc_definitions_module
 
    ! Define some private constants
-   INTEGER, PRIVATE, PARAMETER :: HIGH = 8
+   INTEGER, PRIVATE, PARAMETER :: HIGH = digits12
  
    TYPE proj_info
  

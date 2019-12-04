@@ -36,8 +36,8 @@
 <H2>Overview</H2>
 
 <P>
-Utility program to compare the ensemble mean to a group of ensemble
-member restart files, which can now be run in parallel.  
+Utility program to compare the ensemble mean to an ensemble of
+restart files, which can now be run in parallel.  
 The program prints out a sorted order of which
 members are 'closest' to the mean, where the method used to determine 
 'close' is selectable by namelist option.  It also creates a file with
@@ -85,7 +85,7 @@ This program could be used to select one or more ensemble
 members to run a free model forecast forward in time after
 the assimilation is finished.  Each member is an equally likely
 representation of the model state.  Using the ensemble mean
-may not be the best since the mean may not have
+may not be the best choice since the mean may not have
 self-consistent fine-scale structures in the data.
 </P><P>
 In addition to printing out data about all members to both
@@ -93,8 +93,8 @@ the console and to the dart log file, this program creates
 a single output file containing information about the closest member.
 If the input restart data is in a single file, the output
 file 'closest_restart' contains a single number which is
-the ensemble member number.  If the
-input restart data is in separate files, the output file
+the ensemble member number.  
+If the input restart data is in separate files, the output file
 contains the full filename of the closest member, e.g.
 'filter_restart.0004' if member 4 is closest.  For scripting
 the contents of this file can be used to copy the corresponding
@@ -186,12 +186,12 @@ interface code to determine which possible quantities are returned by the
 routine.
 </TD></TR>
 
-<!--TR><TD>single_restart_file_in</TD> @>todo : not tested yet
+<TR><TD>single_restart_file_in</TD>
     <TD>logical</TD>
-    <TD>Not supported yet.  Contact dart@ucar.edu if you are
+    <TD><strong>Not supported yet.</strong> Contact dart@ucar.edu if you are
         interested in using this tool with files that contain all
         ensemble members in a single file.
-</TD></TR-->
+</TD></TR>
 
 </TBODY> 
 </TABLE>
@@ -217,7 +217,7 @@ closest_member_tool.
 </div>
 
 <P>
-where restart_list.txt contains 
+where <em class=file>restart_list.txt</em> contains 
 </P>
 
 <pre>
@@ -228,9 +228,9 @@ cam_restart_0003.nc
 
 
 <P>
-Currently single_restart_file_in is not supported.  This is
-typically used for simpler models that have built in model
-advances such as lorenz_96.
+Currently <em class=code>single_restart_file_in</em> is not supported.
+This is typically used for simpler models that have built in model
+advances such as <em class=program>lorenz_96</em>.
 </P>
 
 <br />
@@ -260,9 +260,9 @@ mpi_utilities_mod
 <A NAME="FilesUsed"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
-<UL><LI>inputfile.####.nc   (list of restarts to find closest member) or,
-    <LI>input_file_list.txt (a file containing a list of restart files) and,
-    <LI>closest_member_tool.nml 
+<UL><LI>inputfile.####.nc   (list of restarts to find closest member) -or-
+    <LI><em class=file>restart_list.txt</em> (a file containing a list of restart files) and,
+    <LI><em class=file>input.nml</em>
 </UL>
 
 <!--==================================================================-->
@@ -291,6 +291,10 @@ mpi_utilities_mod
     <!-- message --><TD VALIGN=top>Invalid method number</TD>
     <!-- comment --><TD VALIGN=top>Values 1-4 are supported</TD></TR>
 
+<TR><!-- routine --><TD VALIGN=top>read_variables</TD>
+    <!-- message --><TD VALIGN=top>&lt;some variable name&gt;: NetCDF: Start+count exceeds dimension bound</TD>
+    <!-- comment --><TD VALIGN=top>The variable in the model definition is not conformable with the variable in the restart file.</TD></TR>
+
 </TABLE>
 </div>
 
@@ -307,7 +311,8 @@ none
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
-none
+Add check to see that the model template variables are conformable
+with the variables in the files being read.
 </P>
 
 <!--==================================================================-->
