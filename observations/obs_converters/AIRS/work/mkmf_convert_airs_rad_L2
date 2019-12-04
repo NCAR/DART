@@ -9,13 +9,12 @@
 # if you are building this on yellowstone.ucar.edu you can change
 # each of the /opt/local build directories below to /glade/p/work/nancy
 # where i have built the jpg, hdf, and eos libraries.
+set XTRALIBS_BASE = /glade/scratch/jsteward/RTTOV/
 
-set XTRALIBS_BASE = /Users/hendric
-
-set JPGDIR = ${XTRALIBS_BASE}/eos
-set HDFDIR = ${XTRALIBS_BASE}/eos
-set EOSDIR = ${XTRALIBS_BASE}/eos
-set RTTOV = ${XTRALIBS_BASE}/rttov122
+set JPGDIR = /glade/scratch/jsteward/DART_dev_radiance/observations/obs_converters/AIRS/HDF-EOS2/hdfeos/hdfeos2
+set HDFDIR = /glade/u/apps/ch/opt/netcdf/4.7.1/intel/18.0.5/
+set EOSDIR = /glade/u/apps/ch/opt/hdf/4.2.14/intel/18.0.5/
+set RTTOV = ${XTRALIBS_BASE}
 
 
 set JPGINC = ${JPGDIR}/include
@@ -30,7 +29,7 @@ set EOSLIB = ${EOSDIR}/lib
 set RTINC = "${RTTOV}/include"
 set RTMOD = "${RTTOV}/mod"
 set RTLIB = "${RTTOV}/lib"
-set RTLIBS = "-lrttov_main -lrttov_brdf_atlas -lrttov_coef_io -lrttov_emis_atlas -lrttov_mw_scatt -lrttov_mw_scatt_coef -lrttov_other"
+set RTLIBS = "-lrttov12_wrapper -lrttov12_mw_scatt -lrttov12_brdf_atlas -lrttov12_emis_atlas -lrttov12_other -lrttov12_parallel -lrttov12_coef_io -lrttov12_hdf -lrttov12_main -lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5"
 
 # leaving this out for now: rttov_parallel
 

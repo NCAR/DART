@@ -151,7 +151,8 @@ base_time = set_date(1993, 1, 1, 0, 0, 0)   ! Data reference date: jan 1st, 1993
 
 platform = 9   ! EOS, before renamed to AQUA
 sat_id   = 2   ! verify this
-sensor   = 11  ! AIRS   (amsu-a is 3)
+!sensor   = 11  ! AIRS   (amsu-a is 3)
+sensor   = 3  ! AIRS   (amsu-a is 3)
 
 
 !------------------------------------------------------------------------------

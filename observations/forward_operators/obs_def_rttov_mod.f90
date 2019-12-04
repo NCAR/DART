@@ -555,8 +555,12 @@ COUNTLEVELS : do i = 1,maxlevels
    numlevels = numlevels + 1
 enddo COUNTLEVELS
 
+print *,'istatus is:',this_istatus
+
 if ((numlevels == maxlevels) .or. (numlevels == 0)) then
-   write(string1,*) 'FAILED to determine number of levels in model.'
+   write(string1,'(A,I0)') 'FAILED to determine number of levels in model:', &
+      numlevels
+      
    if (debug) call error_handler(E_MSG,routine,string1,source,revision,revdate)
    istatus = 1
    val     = MISSING_R8

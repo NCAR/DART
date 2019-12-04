@@ -9,33 +9,44 @@
  /
 
 &convert_airs_L2_nml
-   datadir            = '../data',
-   l2_files           = 'AIRS.2007.11.01.001.L2.RetStd.v5.2.2.0.G08078150655.hdf',
+   datadir            = '.',
+   l2_files           = 'AIRS.2014.11.01.001.L2.CC.v6.0.11.0.G14305131930.hdf',
    l2_file_list       = '' ,
    outputdir          = '../output',
    min_MMR_threshold  = 1.0e-30
    top_pressure_level = 0.0001,
-   along_track_thin   = 0,
-   cross_track_thin   = 0,
+   along_track_thin   = 9,
+   cross_track_thin   = 10,
+   lon1               =   0.0, 
+   lon2               = 360.0, 
+   lat1               = -60.0, 
+   lat2               =  60.0
+ /
+
+&convert_airs_rad_L2_nml
+   datadir            = '.',
+   l2_files           = 'AIRS.2014.11.01.001.L2.CC.v6.0.11.0.G14305131930.hdf',
+   l2_file_list       = '' ,
+   outputdir          = '../output',
+   channel_list       = 168,
+   along_track_thin   = 9,
+   cross_track_thin   = 10,
    lon1               =   0.0, 
    lon2               = 360.0, 
    lat1               = -90.0, 
    lat2               =  90.0
  /
 
-&convert_airs_rad_L2_nml
-   datadir            = '../data',
-   l2_files           = 'AIRS.2009.07.01.090.L2.CC.v6.0.7.0.G13086084329.hdf',
-   l2_file_list       = '' ,
-   outputdir          = '../output',
-   channel_list       = 1000,
-   along_track_thin   = 0,
-   cross_track_thin   = 0,
-   lon1               =   0.0, 
-   lon2               = 360.0, 
-   lat1               = -90.0, 
-   lat2               =  90.0
- /
+&obs_def_rttov_nml
+   coef_filename  = 'rtcoef_eos_2_amsua.dat',
+   prof_filename  = 'prof.dat',
+   nprof = 1,
+   nlevels = 51,
+   dosolar = 0,
+   nchannels = 1,
+   channel_list = 168,
+   nthreads = 1
+/
 
 &obs_sequence_nml
    write_binary_obs_sequence = .false. 

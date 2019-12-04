@@ -27,6 +27,39 @@ else
   setenv usingmpi 0
 endif
 
+set XTRALIBS_BASE = /glade/scratch/jsteward/RTTOV/
+
+set JPGDIR = /glade/scratch/jsteward/DART_dev_radiance/observations/obs_converters/AIRS/HDF-EOS2/hdfeos/hdfeos2
+set HDFDIR = /glade/u/apps/ch/opt/netcdf/4.7.1/intel/18.0.5/
+set EOSDIR = /glade/u/apps/ch/opt/hdf/4.2.14/intel/18.0.5/
+set RTTOV = ${XTRALIBS_BASE}
+
+set JPGINC = ${JPGDIR}/include
+set JPGLIB = ${JPGDIR}/lib
+
+set HDFINC = ${HDFDIR}/include
+set HDFLIB = ${HDFDIR}/lib
+
+set EOSINC = ${EOSDIR}/include
+set EOSLIB = ${EOSDIR}/lib
+
+set RTINC = "${RTTOV}/include"
+set RTMOD = "${RTTOV}/mod"
+set RTLIB = "${RTTOV}/lib"
+set RTLIBS = "-lrttov12_wrapper -lrttov12_mw_scatt -lrttov12_brdf_atlas -lrttov12_emis_atlas -lrttov12_other -lrttov12_parallel -lrttov12_coef_io -lrttov12_hdf -lrttov12_main -lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5"
+
+# leaving this out for now: rttov_parallel
+
+set MYLIBS = "${RTLIBS} -lhdfeos -lmfhdf -ldf -ljpeg -lz  -lm"
+
+set MYINCDIRS = "-I${RTINC} -I${RTMOD} -I${EOSINC} -I${HDFINC} -I${JPGINC}"
+set MYLIBDIRS = "-L${RTLIB} -L${EOSLIB} -L${HDFLIB} -L${JPGLIB}"
+
+# is -cpp compiler specific?  on a mac with a case-insensitive filesystem
+# we have to tell it to call cpp to build files with #if and #include lines.
+
+set MYFLAGS = "-cpp ${MYINCDIRS}"
+
 
 # make a backup copy of the path_names file, and then use
 # sed to make sure it includes either the non-mpi subroutines,
@@ -62,8 +95,9 @@ endif
 # remove temp file and now really call mkmf to generate makefile
 rm -f path_names_filter.back
 
-../../../build_templates/mkmf -p filter -t ../../../build_templates/mkmf.template   \
-        -a "../../.." ${wrapper_arg} path_names_filter
+../../../build_templates/mkmf -p filter -t ../../../build_templates/mkmf.template \
+ -o "${MYFLAGS}" -l "${MYFLAGS} ${MYINCDIRS} ${MYLIBDIRS} ${MYLIBS}" \
+ -a "../../.." ${wrapper_arg} path_names_filter
 
 exit $status
 

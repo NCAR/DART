@@ -435,7 +435,7 @@ DO imem = 1, ens_size
        ! Surface type (0=land, 1=sea, 2=sea-ice) and water type (0=fresh, 1=ocean)
        !
        !  1         1
-       profiles(iprof) % skin % surftype  = 0
+       profiles(iprof) % skin % surftype  = 1
        profiles(iprof) % skin % watertype = 1
    
 !FIXME - ok, these we understand.  verify elevation is in meters (km?)
