@@ -66,7 +66,7 @@ The top level DART source code tree contains the following directories and files
 | `models/`            | the interface routines for the models |
 | `observations/`      | routines for converting observations and forward operators |
 | **Files**            | **Purpose** |
-| `CHANGELOG.md`       | Brief summary of recent changes |
+| `CHANGELOG`          | Brief summary of recent changes |
 | `COPYRIGHT.md`       | terms of use and copyright information |
 | `README.md`          | Basic Information about DART |
 
