@@ -58,8 +58,8 @@
    write_all_stages_at_end  = .false.
 
    inf_flavor                  = 2,                      0,
-   inf_initial_from_restart    = .false.,                .false.,
-   inf_sd_initial_from_restart = .false.,                .false.,
+   inf_initial_from_restart    = .true.,                 .false.,
+   inf_sd_initial_from_restart = .true.,                 .false.,
    inf_initial                 = 1.0,                     1.00,
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
@@ -70,10 +70,24 @@
    /
 
 &quality_control_nml
-  input_qc_threshold          = 3.0,
-  outlier_threshold           = 3.0,
-  enable_special_outlier_code = .false.
-  /
+   input_qc_threshold          = 3.0,
+   outlier_threshold           = 3.0,
+   enable_special_outlier_code = .false.
+   /
+
+&fill_inflation_restart_nml
+   write_prior_inf = .true.
+   prior_inf_mean  = 1.00
+   prior_inf_sd    = 0.6
+
+   write_post_inf  = .false.
+   post_inf_mean   = 1.00
+   post_inf_sd     = 0.6
+
+   input_state_files = 'wrfinput_d01', 'wrfinput_d02'
+   single_file       = .false.
+   verbose           = .false.
+   /
 
 &smoother_nml
    num_lags              = 0,
@@ -228,7 +242,6 @@
    output_box_info             = .false.,
    /
 
-
 &utilities_nml
    TERMLEVEL = 1,
    module_details = .false.,
@@ -260,7 +273,7 @@
    / 
 
 &obs_def_tpw_nml
-/
+   /
 
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:
@@ -514,7 +527,7 @@
    /
 
 &compare_states_nml
-/
+   /
 
 &closest_member_tool_nml 
    input_restart_file_list   = 'input_file_list_d01.txt',
@@ -523,7 +536,7 @@
    single_restart_file_in    = .false.,
    difference_method         = 4,
    use_only_qtys             = 'QTY_U_WIND_COMPONENT'
- /
+   /
 
 # To test both domains, you must change 'model_nml:num_domains = 2'
 
@@ -543,5 +556,5 @@
    interp_test_vertrange = 2000.0, 4000.0
    interp_test_vertcoord = 'VERTISHEIGHT'
    verbose               = .false.
-  /
+   /
 
