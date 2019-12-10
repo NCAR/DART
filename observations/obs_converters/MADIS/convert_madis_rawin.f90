@@ -109,7 +109,7 @@ logical :: include_relative_humidity = .false.
 logical :: include_dewpoint          = .false.
 logical :: use_input_qc              = .true. 
 logical :: wind_use_vert_pressure    = .true.  ! use what you find.  if both, use this one.
-logical :: verbose                   = .true. ! get more output
+logical :: verbose                   = .false. ! get more output
 
 ! mandatory levels are always converted.  significant levels are controlled
 ! by these vars.  if you are using the namelist they are set by the
@@ -201,7 +201,6 @@ if ( .not. do_significant_level_winds ) then
 else
   nmaxsw = max(nmaxswp, nmaxswh)
 endif
-
 
 
 
@@ -600,7 +599,7 @@ sondeloop2: do i = 1, nused
 
   ! select pressure or height, depending on which one is there.
   if ( do_significant_level_winds ) &
-    call single_vert_type_sigwinds(ncid, nmaxsw, n, sig_wind_type)
+    call single_vert_type_sigwinds(ncid, nsound, n, sig_wind_type)
 
 
   !  note that pressure vs height are two separate sections because
@@ -763,31 +762,33 @@ subroutine single_vert_type_sigwinds(ncid, max_sound, this_sound, sig_wind_type)
 
 integer, allocatable :: p(:), h(:)
 integer :: pcount, hcount
+integer :: MAX_CNT = 1000
 
 allocate(p(max_sound), h(max_sound))
 
 ! avoid 9999 or 99999 which is used as a fill
 call get_or_fill_int(ncid, "numSigPresW", p)
-pcount = min(p(this_sound), 1000)
+pcount = min(p(this_sound), MAX_CNT)
+if (pcount == MAX_CNT) pcount = 0
 
 call get_or_fill_int(ncid, "numSigW", h)
-hcount = min(h(this_sound), 1000)
+hcount = min(h(this_sound), MAX_CNT)
+if (hcount == MAX_CNT) hcount = 0
 
 if (pcount > 0 .and. hcount > 0) then
-  print *, 'found both height and pressure significant level winds in sounding number ', this_sound
   if ( wind_use_vert_pressure ) then
     sig_wind_type = 'pressure'
-    print *, 'will use pressure levels, based on setting of "wind_use_vert_pressure"'
+    if (verbose) print *, 'sounding ', this_sound, ' has sigwinds on both; will use pressure levels based on setting of "wind_use_vert_pressure"'
   else
     sig_wind_type = 'height'
-    print *, 'will use height levels, based on setting of "wind_use_vert_pressure"'
+    if (verbose) print *, 'sounding ', this_sound, ' has sigwinds on both; will use height levels based on setting of "wind_use_vert_pressure"'
   endif
 else if (pcount > 0) then
   sig_wind_type = 'pressure'
-  if (verbose) print *, 'significant level winds are on pressure levels'
+  if (verbose) print *, 'sounding ', this_sound, ' has significant level winds on pressure levels'
 else if (hcount > 0) then
   sig_wind_type = 'height'
-  if (verbose) print *, 'significant level winds are on height levels'
+  if (verbose) print *, 'sounding ', this_sound, ' has significant level winds on height levels'
 else
   sig_wind_type = 'none'
 endif
