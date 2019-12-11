@@ -363,7 +363,6 @@ if ( .not. module_initialized ) then
       call error_handler(E_ERR,routine,string1,source,revision,revdate)
 end if
 
-
 ! Assume failure.  Set return val to missing, then the code can
 ! just set status_array to something indicating why it failed, and return.
 ! If the interpolation is good, interp_vals will be set to the
@@ -390,6 +389,17 @@ end if
 if (.not. is_vertical(location, "HEIGHT") .and. .not. is_vertical(location, "LEVEL")) THEN
      status_array = INVALID_VERT_COORD_ERROR_CODE
      return
+endif
+
+if (obs_qty == QTY_GEOMETRIC_HEIGHT .and. is_vertical(location, "LEVEL")) then
+   if (nint(lvert) < 1 .or. nint(lvert) > size(ALT,1)) then
+      interp_vals = MISSING_R8
+      status_array = 1
+   else
+      interp_vals = ALT(nint(lvert))
+      status_array = 0
+   endif
+   return ! Early Return
 endif
 
 ! do we know how to interpolate this quantity?
@@ -1149,7 +1159,6 @@ call add_nc_dimvars(ncid)
 
 call get_data(restart_dirname, ncid, define=.false.)
 
-print *,'the model time before writing is:'
 call print_time(model_time)
 
 call write_model_time(ncid, model_time)
