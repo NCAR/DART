@@ -41,6 +41,8 @@ use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                               init_obs_sequence, get_num_obs, & 
                               set_copy_meta_data, set_qc_meta_data
 
+use obs_utilities_mod, only : create_3d_obs, add_obs_to_seq
+
 ! Change these to the actual types of observations you have.
 use      obs_kind_mod, only : EVAL_U_WIND_COMPONENT, EVAL_V_WIND_COMPONENT, &
                               EVAL_TEMPERATURE
@@ -271,118 +273,6 @@ endif
 
 ! end of main program
 call finalize_utilities()
-
-contains
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   create_3d_obs - subroutine that is used to create an observation
-!                   type from observation data.  
-!
-!       NOTE: assumes the code is using the threed_sphere locations module, 
-!             that the observation has a single data value and a single
-!             qc value, and that this obs type has no additional required
-!             data (e.g. gps and radar obs need additional data per obs)
-!
-! inputs:
-!    lat   - latitude of observation
-!    lon   - longitude of observation
-!    vval  - vertical coordinate
-!    vkind - kind of vertical coordinate (pressure, level, etc)
-!    obsv  - observation value
-!    otype - observation type
-!    oerr  - observation error
-!    day   - gregorian day
-!    sec   - gregorian second
-!    qc    - quality control value
-! outputs:
-!    obs   - observation type
-!
-!     created Oct. 2007 Ryan Torn, NCAR/MMM
-!     adapted for more generic use 11 Mar 2010, nancy collins, ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine create_3d_obs(lat, lon, vval, vkind, obsv, otype, oerr, day, sec, qc, obs)
-use        types_mod, only : r8
-use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_type_of_obs, &
-                             set_obs_def_error_variance, set_obs_def_location
-use obs_sequence_mod, only : obs_type, set_obs_values, set_qc, set_obs_def
-use time_manager_mod, only : time_type, set_time
-use     location_mod, only : set_location
-
- integer,        intent(in)    :: otype, vkind, day, sec
- real(r8),       intent(in)    :: lat, lon, vval, obsv, oerr, qc
- type(obs_type), intent(inout) :: obs
-
-real(r8)           :: obs_val(1), qc_val(1)
-type(obs_def_type) :: obs_def
-
-call set_obs_def_location(obs_def, set_location(lon, lat, vval, vkind))
-call set_obs_def_type_of_obs(obs_def, otype)
-call set_obs_def_time(obs_def, set_time(sec, day))
-call set_obs_def_error_variance(obs_def, oerr * oerr)
-call set_obs_def(obs, obs_def)
-
-obs_val(1) = obsv
-call set_obs_values(obs, obs_val)
-qc_val(1)  = qc
-call set_qc(obs, qc_val)
-
-end subroutine create_3d_obs
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   add_obs_to_seq -- adds an observation to a sequence.  inserts if first
-!           obs, inserts with a prev obs to save searching if that's possible.
-!
-!     seq - observation sequence to add obs to
-!     obs - observation, already filled in, ready to add
-!     obs_time - time of this observation, in dart time_type format
-!     prev_obs - the previous observation that was added to this sequence
-!                (will be updated by this routine)
-!     prev_time - the time of the previously added observation 
-!                (will also be updated by this routine)
-!     first_obs - should be initialized to be .true., and then will be
-!                updated by this routine to be .false. after the first obs
-!                has been added to this sequence.
-!
-!     created Mar 8, 2010   nancy collins, ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine add_obs_to_seq(seq, obs, obs_time, prev_obs, prev_time, first_obs)
- use        types_mod, only : r8
- use obs_sequence_mod, only : obs_sequence_type, obs_type, insert_obs_in_seq
- use time_manager_mod, only : time_type, operator(>=)
-
-  type(obs_sequence_type), intent(inout) :: seq
-  type(obs_type),          intent(inout) :: obs, prev_obs
-  type(time_type),         intent(in)    :: obs_time
-  type(time_type),         intent(inout) :: prev_time
-  logical,                 intent(inout) :: first_obs
-
-! insert(seq,obs) always works (i.e. it inserts the obs in
-! proper time format) but it can be slow with a long file.
-! supplying a previous observation that is older (or the same
-! time) as the new one speeds up the searching a lot.
-
-if(first_obs) then    ! for the first observation, no prev_obs
-   call insert_obs_in_seq(seq, obs)
-   first_obs = .false.
-else               
-   if(obs_time >= prev_time) then  ! same time or later than previous obs
-      call insert_obs_in_seq(seq, obs, prev_obs)
-   else                            ! earlier, search from start of seq
-      call insert_obs_in_seq(seq, obs)
-   endif
-endif
-
-! update for next time
-prev_obs = obs
-prev_time = obs_time
-
-end subroutine add_obs_to_seq
 
 end program tec_to_obs
 
