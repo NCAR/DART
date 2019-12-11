@@ -27,6 +27,7 @@ models/gitm/dart_gitm_mod.f90
 models/gitm/GITM2/src/ModConstants.f90
 models/gitm/GITM2/src/ModEarth.f90
 models/gitm/GITM2/src/ModKind.f90
+models/gitm/GITM2/src/ModOrbital.f90
 models/gitm/GITM2/src/ModSize.f90
 models/gitm/GITM2/src/ModOrbital.f90
 models/gitm/GITM2/src/ModTime.f90

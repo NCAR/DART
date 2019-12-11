@@ -21,8 +21,9 @@ use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time,&
 
 use     location_mod, only : location_type, get_dist, query_location,          &
                              get_close_type, VERTISHEIGHT, VERTISLEVEL,        &
-                             set_location, get_location,                       &
+                             set_location, get_location, VERTISUNDEF,          &
                              loc_get_close_obs => get_close_obs, is_vertical,  &
+                             loc_get_close_state => get_close_state,           &
                              vertical_localization_on, set_vertical_localization_coord
 
 use    utilities_mod, only : register_module, error_handler, string_to_logical,&
@@ -36,7 +37,7 @@ use    utilities_mod, only : register_module, error_handler, string_to_logical,&
 use netcdf_utilities_mod, only : nc_open_file_readonly, nc_close_file, nc_create_file, &
                                  nc_synchronize_file, nc_add_attribute_to_variable,    &
                                  nc_begin_define_mode, nc_end_define_mode,             &
-                                 nc_add_global_attribute, nc_define_dimension,         &
+                                 nc_add_global_attribute,                              &
                                  nc_put_variable, nc_get_dimension_size,               &
                                  nc_define_double_variable, nc_define_dimension,       &
                                  nc_get_dimension_size, nc_get_variable,               &
@@ -63,7 +64,7 @@ use        quad_utils_mod,  only : quad_interp_handle, init_quad_interp, &
                                    QUAD_LOCATED_CELL_CENTERS
 
 use     default_model_mod,  only : adv_1step, nc_write_model_vars, &
-                                   pert_model_copies, get_close_state, &
+                                   pert_model_copies, &
                                    read_model_time, write_model_time, &
                                    convert_vertical_obs, convert_vertical_state, &
                                    init_time => fail_init_time, &
@@ -189,6 +190,8 @@ namelist /gitm_blocks_nml/      &
 integer :: nfields
 
 ! Everything needed to describe a GITM variable
+! NOTE: these are used to convert the GITM blocks to netCDF files
+! They are not used during the assimilation step
 type gitmvartype
    private
    character(len=NF90_MAX_NAME) :: varname       ! crazy species name
@@ -362,7 +365,6 @@ if ( .not. module_initialized ) then
       call error_handler(E_ERR,routine,string1,source,revision,revdate)
 end if
 
-
 ! Assume failure.  Set return val to missing, then the code can
 ! just set status_array to something indicating why it failed, and return.
 ! If the interpolation is good, interp_vals will be set to the
@@ -389,6 +391,17 @@ end if
 if (.not. is_vertical(location, "HEIGHT") .and. .not. is_vertical(location, "LEVEL")) THEN
      status_array = INVALID_VERT_COORD_ERROR_CODE
      return
+endif
+
+if (obs_qty == QTY_GEOMETRIC_HEIGHT .and. is_vertical(location, "LEVEL")) then
+   if (nint(lvert) < 1 .or. nint(lvert) > size(ALT,1)) then
+      interp_vals = MISSING_R8
+      status_array = 1
+   else
+      interp_vals = ALT(nint(lvert))
+      status_array = 0
+   endif
+   return ! Early Return
 endif
 
 ! do we know how to interpolate this quantity?
@@ -695,8 +708,8 @@ end subroutine add_nc_dimvars
 
 !==================================================================
 
-subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, &
-                         obs_loc, obs_kind, obs_type, &
+subroutine get_close_obs(gc, base_obs_loc, base_obs_type, &
+                         locs, loc_qtys, loc_types, &
                          num_close, close_ind, dist, ens_handle)
 !------------------------------------------------------------------
 ! Given a DART location (referred to as "base") and a set of candidate
@@ -709,18 +722,18 @@ subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, &
 
 type(get_close_type),              intent(in)    :: gc
 type(location_type),               intent(inout) :: base_obs_loc
-integer,                           intent(in)    :: base_obs_kind
-type(location_type), dimension(:), intent(inout) :: obs_loc
-integer,             dimension(:), intent(in)    :: obs_kind
-integer,             dimension(:), intent(in)    :: obs_type
+integer,                           intent(in)    :: base_obs_type
+type(location_type),               intent(inout) :: locs(:)
+integer,                           intent(in)    :: loc_qtys(:)
+integer,                           intent(in)    :: loc_types(:)
 integer,                           intent(out)   :: num_close
-integer,             dimension(:), intent(out)   :: close_ind
-real(r8),            dimension(:), intent(out)   :: dist
+integer,                           intent(out)   :: close_ind(:)
+real(r8),            optional,     intent(out)   :: dist(:)
 type(ensemble_type), optional,     intent(in)    :: ens_handle
 
 integer                :: t_ind, istatus1, istatus2, k, is_in_close_ind, is_in_obs_kind
 integer                ::  f107_ind
-integer                :: base_which, local_obs_which
+integer                :: base_which, local_obs_which, vert_type
 real(r8), dimension(3) :: base_array, local_obs_array
 type(location_type)    :: local_obs_loc
 
@@ -736,30 +749,35 @@ is_in_close_ind = 0
 f107_ind        = -37 !a bad index, hopefully out of bounds of obs_kind
 
 
-! Convert base_obs vertical coordinate to requested vertical coordinate if necessary
-
-base_array = get_location(base_obs_loc)
-base_which = nint(query_location(base_obs_loc))
-
-! fixme ...
-if (vertical_localization_on()) then
-!  if (base_which /= wrf%dom(1)%vert_coord) then
-!     call vert_interpolate(ens_mean, base_obs_loc, base_obs_kind, istatus1)
-!  elseif (base_array(3) == MISSING_R8) then
-!     istatus1 = 1
-!  endif
+! if absolute distances aren't needed, or vertical localization isn't on,
+! the default version works fine since no conversion will be needed and
+! there won't be any damping since there are no vert distances.
+if (.not. present(dist) .or. .not. vertical_localization_on()) then
+   call loc_get_close_obs(gc, base_obs_loc, base_obs_type, locs, loc_qtys, loc_types, &
+                            num_close, close_ind, dist, ens_handle)
+   return
 endif
 
-if (istatus1 == 0) then
+! Convert base_obs vertical coordinate to requested vertical coordinate if necessary
+! does the base obs need conversion first?
+vert_type = query_location(base_obs_loc)
 
-   ! Loop over potentially close subset of obs priors or state variables
-   ! This way, we are decreasing the number of distance computations that will follow.
-   ! This is a horizontal-distance operation and we don't need to have the relevant
-   ! vertical coordinate information yet (for obs_loc).
+!> @todo FIXME: if we start supporting different vert coords, 
+!> this code needs to get smarter.
+if (vertical_localization_on() .and. vert_type /= VERTISUNDEF .and. vert_type /= VERTISHEIGHT) then
+   call error_handler(E_ERR, 'get_close_state', 'cannot do vertical conversion of base obs', &
+                      source, revision, revdate)
+endif
 
-   ! FIXME:::::
-   !call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-   !                       num_close, close_ind, dist)
+
+! Loop over potentially close subset of obs priors or state variables
+! This way, we are decreasing the number of distance computations that will follow.
+! This is a horizontal-distance operation and we don't need to have the relevant
+! vertical coordinate information yet (for obs_loc).
+
+call loc_get_close_obs(gc, base_obs_loc, base_obs_type, locs, loc_qtys, loc_types, &
+                            num_close, close_ind, dist, ens_handle)
+
 
 !!!! THE following 20-ish+ lines are implementing the search (if f107's dist to obs is to be calculated)
 !!!! Alex 03/07/2012
@@ -785,46 +803,189 @@ if (istatus1 == 0) then
 !   endif
 
 
-   do k = 1, num_close
+! i don't think we need any of this but i'm unsure how the F10.7 code
+! affects this.
 
-      t_ind = close_ind(k)
-      local_obs_loc   = obs_loc(t_ind)
-      local_obs_which = nint(query_location(local_obs_loc))
-
-      ! Convert vertical coordinate to requested vertical coordinate if necessary.
-      ! Should only be necessary for obs priors, as state location information already
-      ! contains the correct vertical coordinate
-      ! (filter_assim's call to get_state_meta_data).
-      if (vertical_localization_on()) then
- !fixme       if (local_obs_which /= wrf%dom(1)%vert_coord) then
- !fixme           call vert_interpolate(ens_mean, local_obs_loc, obs_kind(t_ind), istatus2)
-            ! Store the "new" location into the original full local array
-            obs_loc(t_ind) = local_obs_loc
- !fixme        endif
-      endif
-
-      ! Compute distance - set distance to a very large value if vert coordinate is
-      ! missing or vert_interpolate returned error (istatus2=1)
-      local_obs_array = get_location(local_obs_loc)
-
-
-      ! TJH FIXME ... the pbs_file script actually modifies the value of dist in
-      ! TJH FIXME ... this file and recompiles. NOT APPROPRIATE.
-      if (((vertical_localization_on())        .and. &
-           (local_obs_array(3) == MISSING_R8)) .or.  &
-           (istatus2 == 1)                   ) then
-         dist(k) = 1.0e9_r8
-      else
-         !if (close_ind(k) .eq. f107_ind) then !check if we came across the parameter
-         !   dist(k) = 0 !changed by pbs_file script
-         !else
-            dist(k) = get_dist(base_obs_loc, local_obs_loc, base_obs_kind, obs_kind(t_ind))
-         !endif
-      endif
-   enddo
-endif
+!   do k = 1, num_close
+!
+!      t_ind = close_ind(k)
+!      local_obs_loc   = obs_loc(t_ind)
+!      local_obs_which = nint(query_location(local_obs_loc))
+!
+!      ! Convert vertical coordinate to requested vertical coordinate if necessary.
+!      ! Should only be necessary for obs priors, as state location information already
+!      ! contains the correct vertical coordinate
+!      ! (filter_assim's call to get_state_meta_data).
+!      if (vertical_localization_on()) then
+! !fixme       if (local_obs_which /= wrf%dom(1)%vert_coord) then
+! !fixme           call vert_interpolate(ens_mean, local_obs_loc, obs_kind(t_ind), istatus2)
+!            ! Store the "new" location into the original full local array
+!            obs_loc(t_ind) = local_obs_loc
+! !fixme        endif
+!      endif
+!
+!      ! Compute distance - set distance to a very large value if vert coordinate is
+!      ! missing or vert_interpolate returned error (istatus2=1)
+!      local_obs_array = get_location(local_obs_loc)
+!
+!
+!      ! TJH FIXME ... the pbs_file script actually modifies the value of dist in
+!      ! TJH FIXME ... this file and recompiles. NOT APPROPRIATE.
+!      if (((vertical_localization_on())        .and. &
+!           (local_obs_array(3) == MISSING_R8)) .or.  &
+!           (istatus2 == 1)                   ) then
+!         dist(k) = 1.0e9_r8
+!      else
+!         !if (close_ind(k) .eq. f107_ind) then !check if we came across the parameter
+!         !   dist(k) = 0 !changed by pbs_file script
+!         !else
+!            dist(k) = get_dist(base_obs_loc, local_obs_loc, base_obs_type, obs_kind(t_ind))
+!         !endif
+!      endif
+!   enddo
 
 end subroutine get_close_obs
+
+
+!==================================================================
+
+subroutine get_close_state(gc, base_obs_loc, base_obs_type, &
+                           locs, loc_qtys, loc_indx, &
+                           num_close, close_ind, dist, ens_handle)
+!------------------------------------------------------------------
+! Given a DART location (referred to as "base") and a set of candidate
+! locations & kinds (obs, obs_kind), returns the subset close to the
+! "base", their indices, and their distances to the "base" ...
+!
+! For vertical distance computations, general philosophy is to convert all
+! vertical coordinates to a common coordinate. This coordinate type is defined
+! in the namelist with the variable "vert_localization_coord".
+
+type(get_close_type), intent(in)    :: gc
+type(location_type),  intent(inout) :: base_obs_loc
+integer,              intent(in)    :: base_obs_type
+type(location_type),  intent(inout) :: locs(:)
+integer,              intent(in)    :: loc_qtys(:)
+integer(i8),          intent(in)    :: loc_indx(:)
+integer,              intent(out)   :: num_close
+integer,              intent(out)   :: close_ind(:)
+real(r8),             optional, intent(out)   :: dist(:)
+type(ensemble_type),  optional, intent(in)    :: ens_handle
+
+integer                :: t_ind, istatus1, istatus2, k, is_in_close_ind, is_in_obs_kind
+integer                ::  f107_ind
+integer                :: base_which, local_obs_which, vert_type
+real(r8), dimension(3) :: base_array, local_obs_array
+type(location_type)    :: local_obs_loc
+
+! Initialize variables to missing status
+
+num_close       = 0
+close_ind       = -99
+dist            = 1.0e9_r8   !something big and positive (far away)
+istatus1        = 0
+istatus2        = 0
+is_in_obs_kind  = 0
+is_in_close_ind = 0
+f107_ind        = -37 !a bad index, hopefully out of bounds of obs_kind
+
+
+! if absolute distances aren't needed, or vertical localization isn't on,
+! the default version works fine since no conversion will be needed and
+! there won't be any damping since there are no vert distances.
+if (.not. present(dist) .or. .not. vertical_localization_on()) then
+   call loc_get_close_state(gc, base_obs_loc, base_obs_type, locs, loc_qtys, loc_indx, &
+                            num_close, close_ind, dist, ens_handle)
+   return
+endif
+
+! Convert base_obs vertical coordinate to requested vertical coordinate if necessary
+! does the base obs need conversion first?
+vert_type = query_location(base_obs_loc)
+
+!> @todo FIXME: if we start supporting different vert coords, 
+!> this code needs to get smarter.
+if (vertical_localization_on() .and. vert_type /= VERTISUNDEF .and. vert_type /= VERTISHEIGHT) then
+   call error_handler(E_ERR, 'get_close_state', 'cannot do vertical conversion of base obs', &
+                      source, revision, revdate)
+endif
+
+
+! Loop over potentially close subset of obs priors or state variables
+! This way, we are decreasing the number of distance computations that will follow.
+! This is a horizontal-distance operation and we don't need to have the relevant
+! vertical coordinate information yet (for obs_loc).
+
+call loc_get_close_state(gc, base_obs_loc, base_obs_type, locs, loc_qtys, loc_indx, &
+                            num_close, close_ind, dist, ens_handle)
+
+
+!!!! THE following 20-ish+ lines are implementing the search (if f107's dist to obs is to be calculated)
+!!!! Alex 03/07/2012
+!   do i = 1, size(obs_kind) !have to go over the whole size because these are all the candidates
+!      if (obs_kind(i) .eq. get_index_for_quantity('QTY_1D_PARAMETER')) then !so right now any QTY_1D_PARAMETER will match.
+!+ right now the only parameter is f107, but if you add more parameters, you might want to change their localizations, as
+!+ right now they will be either all at the meas. location or all far (depending on est_f107 setting in pbs_file.sh)
+!         is_in_obs_kind = 1 !true
+!         f107_ind = i !its index
+!      endif
+!   enddo
+!   if (is_in_obs_kind == 1) then !only check the close_ind if f107 needs to be added
+!      do k = 1, num_close !go only as far as the data is reasonable (not -99 = data missing)
+!         if (close_ind(k) .eq. f107_ind) then !if is already in close_ind, take note of it
+!            is_in_close_ind = 1
+!         endif
+!      enddo
+!   endif
+!   if ((is_in_obs_kind == 1) .and. (is_in_close_ind == 0)) then !if it needs to be added (is in obs_kind), but is not added yet
+!      num_close = num_close + 1
+!      close_ind(num_close) = f107_ind
+!      write(*,*) "F107 ADDED, n_c, f107_i ", num_close, f107_ind
+!   endif
+
+
+! i don't think we need any of this but i'm unsure how the F10.7 code
+! affects this.
+
+!   do k = 1, num_close
+!
+!      t_ind = close_ind(k)
+!      local_obs_loc   = obs_loc(t_ind)
+!      local_obs_which = nint(query_location(local_obs_loc))
+!
+!      ! Convert vertical coordinate to requested vertical coordinate if necessary.
+!      ! Should only be necessary for obs priors, as state location information already
+!      ! contains the correct vertical coordinate
+!      ! (filter_assim's call to get_state_meta_data).
+!      if (vertical_localization_on()) then
+! !fixme       if (local_obs_which /= wrf%dom(1)%vert_coord) then
+! !fixme           call vert_interpolate(ens_mean, local_obs_loc, obs_kind(t_ind), istatus2)
+!            ! Store the "new" location into the original full local array
+!            obs_loc(t_ind) = local_obs_loc
+! !fixme        endif
+!      endif
+!
+!      ! Compute distance - set distance to a very large value if vert coordinate is
+!      ! missing or vert_interpolate returned error (istatus2=1)
+!      local_obs_array = get_location(local_obs_loc)
+!
+!
+!      ! TJH FIXME ... the pbs_file script actually modifies the value of dist in
+!      ! TJH FIXME ... this file and recompiles. NOT APPROPRIATE.
+!      if (((vertical_localization_on())        .and. &
+!           (local_obs_array(3) == MISSING_R8)) .or.  &
+!           (istatus2 == 1)                   ) then
+!         dist(k) = 1.0e9_r8
+!      else
+!         !if (close_ind(k) .eq. f107_ind) then !check if we came across the parameter
+!         !   dist(k) = 0 !changed by pbs_file script
+!         !else
+!            dist(k) = get_dist(base_obs_loc, local_obs_loc, base_obs_type, obs_kind(t_ind))
+!         !endif
+!      endif
+!   enddo
+
+end subroutine get_close_state
 
 
 !==================================================================
@@ -1000,7 +1161,6 @@ call add_nc_dimvars(ncid)
 
 call get_data(restart_dirname, ncid, define=.false.)
 
-print *,'the model time before writing is:'
 call print_time(model_time)
 
 call write_model_time(ncid, model_time)
@@ -1358,7 +1518,7 @@ domain_id = add_domain(template_filename, nfields, var_names, kind_list, &
 !domain_id = add_domain(nfields, var_names, kind_list, &
 !                       clamp_vals, update_list)
 
-if (debug > 100) call state_structure_info(domain_id)
+if (debug > 1) call state_structure_info(domain_id)
 
 end subroutine set_gitm_variable_info
 
