@@ -53,14 +53,14 @@
 
 &perfect_model_obs_nml
    read_input_state_from_file = .true.
-   input_state_files          = "gitm_netcdf_xing_1hr.nc"
+   input_state_files          = "gitm_netcdf.nc"
    init_time_days             = -1
    init_time_seconds          = -1
 
    write_output_state_to_file = .true.
    output_state_files         = "perfect_restart.nc"
 
-   obs_seq_in_file_name       = "obs_seq.in"
+   obs_seq_in_file_name       = "obs_seq.vtec"
    obs_seq_out_file_name      = "obs_seq.out"
    first_obs_days             = -1
    first_obs_seconds          = -1
@@ -140,7 +140,8 @@
 
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'SAT_TEMPERATURE'
+   assimilate_these_obs_types = 'SAT_TEMPERATURE',
+                                'GND_GPS_VTEC'
    /
 
 #   assimilate_these_obs_types = 'SAT_TEMPERATURE',
@@ -189,7 +190,7 @@
 
 &model_nml
    single_file_in               = .true.,
-   template_filename            = 'gitm_netcdf_xing_1hr.nc',
+   template_filename            = 'gitm_netcdf.nc',
    assimilation_period_days     = 0,
    assimilation_period_seconds  = 1800,
    model_perturbation_amplitude = 0.2,
@@ -310,13 +311,13 @@
    /
 
 &gitm_blocks_to_netcdf_nml
-   gitm_restart_input_dirname  = '/glade/scratch/jsteward/DART_dev_nancy/models/gitm/testdata3'
+   gitm_restart_input_dirname  = '../testdata1/'
    gitm_to_netcdf_output_file  = 'gitm_netcdf.nc'
    /
 
 &netcdf_to_gitm_blocks_nml
-   gitm_restart_input_dirname        = '/glade/scratch/jsteward/DART_dev_nancy/models/gitm/testdata3'
-   gitm_restart_output_dirname       = '../testdata3_out'
+   gitm_restart_input_dirname        = '../testdata1'
+   gitm_restart_output_dirname       = '../testdata1'
    netcdf_to_gitm_blocks_input_file  = 'gitm_netcdf.nc'
    /
 
@@ -335,7 +336,7 @@
   /
 
 &location_nml
-   horiz_dist_only             = .true.,
+   horiz_dist_only             = .false.,
    vert_normalization_pressure = 100000.0,
    vert_normalization_height   = 100000.0,
    vert_normalization_level    = 20.0,
