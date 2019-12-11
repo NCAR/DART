@@ -16,8 +16,7 @@ use    utilities_mod, only : register_module, initialize_utilities,            &
                              do_nml_file, do_nml_term, get_next_filename,      &
                              open_file, close_file, finalize_utilities
 use   parse_args_mod, only : get_args_from_string
-use     location_mod, only : location_type, get_location, set_location,        &
-                             write_location
+use     location_mod, only : location_type
 use      obs_def_mod, only : obs_def_type, get_obs_def_time,                   &
                              get_obs_def_type_of_obs, get_obs_def_location
 use     obs_kind_mod, only : max_defined_types_of_obs, get_name_for_type_of_obs
@@ -202,9 +201,6 @@ do fnum = 1, num_input_files
    
          call update(all_obs, obs_time)
          call update(oinfo(obs_type_ind), obs_time)
-   
-         !call write_location(0, location, charstring = string)
-         !write(*, *) trim(string) // '  ' // trim(get_name_for_type_of_obs(obs_type_ind))
    
          call get_next_obs(seq_in, obs_in, next_obs_in, is_this_last)
    
@@ -594,7 +590,7 @@ character(len=512) :: inline
 ! waiting for input.  comment this out if it gets annoying.
 print *, 'reading input filename(s) from terminal'
 
-read (*, '(A512)') inline
+read (*, *) inline
 call get_args_from_string(inline, num_in, filenames)
 
 end subroutine parse_filenames_from_stdin

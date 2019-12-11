@@ -18,7 +18,7 @@ program gitm_to_netcdf
 ! USAGE:  TBD
 !----------------------------------------------------------------------
 
-use        types_mod, only : r8
+use        types_mod, only : r8, digits12
 
 use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
@@ -95,7 +95,8 @@ end type var_3D
 
 type(var_3D) :: gitm_3Dvars(100)
 
-real(r8) :: gitm_version, real_time
+real(r8) :: gitm_version
+real(digits12) :: real_time
 integer :: t_year, t_month, t_day, t_hour, t_min, t_sec, t_msec
 
 integer :: ndays, nsecs

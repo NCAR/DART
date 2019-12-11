@@ -21,7 +21,8 @@ program gitm_blocks_to_netcdf
 use        types_mod, only : r8
 
 use    utilities_mod, only : initialize_utilities, finalize_utilities, &
-                             find_namelist_in_file, check_namelist_read
+                             find_namelist_in_file, check_namelist_read, &
+                             error_handler, E_MSG
 
 use        model_mod, only : restart_files_to_netcdf
 
@@ -34,6 +35,9 @@ character(len=256), parameter :: source   = &
    "$URL$"
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
+
+character(len=512) :: string1, string2
+character(len=*), parameter :: program_name = 'gitm_blocks_to_netcdf'
 
 !-----------------------------------------------------------------------
 ! namelist parameters with default values.
@@ -53,7 +57,7 @@ integer               :: iunit, io
 
 !======================================================================
 
-call initialize_utilities(progname='gitm_blocks_to_netcdf')
+call initialize_utilities(program_name)
 
 !----------------------------------------------------------------------
 ! Read the namelist
@@ -67,17 +71,20 @@ call check_namelist_read(iunit, io, "gitm_blocks_to_netcdf_nml") ! closes, too.
 ! Convert the files
 !----------------------------------------------------------------------
 
-write(*,*)
-write(*,*) 'gitm_blocks_to_netcdf: converting gitm restart files in directory ', &
-           "'"//trim(gitm_restart_input_dirname)//"'"
-write(*,*) ' to the NetCDF file ', "'"//trim(gitm_to_netcdf_output_file)//"'"
+call error_handler(E_MSG, '', '')
+write(string1,*) 'converting gitm restart files in directory ', &
+                 "'"//trim(gitm_restart_input_dirname)//"'"
+write(string2,*) ' to the NetCDF file ', "'"//trim(gitm_to_netcdf_output_file)//"'"
+call error_handler(E_MSG, program_name, string1, text2=string2)
+call error_handler(E_MSG, '', '')
 
 call restart_files_to_netcdf(gitm_restart_input_dirname, gitm_to_netcdf_output_file)
 
-write(*,*)
-write(*,*) 'Successfully converted the GITM restart files to ', &
-   "'"//trim(gitm_to_netcdf_output_file)//"'"
-write(*,*)
+call error_handler(E_MSG, '', '')
+write(string1,*) 'Successfully converted the GITM restart files to ', &
+                 "'"//trim(gitm_to_netcdf_output_file)//"'"
+call error_handler(E_MSG, program_name, string1)
+call error_handler(E_MSG, '', '')
 
 !----------------------------------------------------------------------
 ! Finish up

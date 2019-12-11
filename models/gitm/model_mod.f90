@@ -120,7 +120,7 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-character(len=256) :: string1, string2
+character(len=512) :: string1, string2
 logical, save :: module_initialized = .false.
 
 character(len=*), parameter :: LON_DIM_NAME = 'LON'
@@ -144,7 +144,7 @@ integer, parameter :: MAX_NAME_LEN = 256
 !  TH   long_name = "POTENTIAL TEMPERATURE" float  TH(TIME, ALT, LAT, LON)
 !  DBZ  long_name = "RADAR REFLECTIVITY"    float DBZ(TIME, ALT, LAT, LON)
 !  WZ   long_name = "VERTICAL VORTICITY"    float  WZ(TIME, ALT, LAT, LON)
-!  PI   long_name = "PERT. EXNER"	        float  PI(TIME, ALT, LAT, LON)
+!  PI   long_name = "PERT. EXNER"	    float  PI(TIME, ALT, LAT, LON)
 !  QV   long_name = "VAPOR MIXING RATIO"    float  QV(TIME, ALT, LAT, LON)
 !  QC   long_name = "CLOUD MIXING RATIO"    float  QC(TIME, ALT, LAT, LON)
 !  QR   long_name = "RAIN MIXING RATIO"     float  QR(TIME, ALT, LAT, LON)
@@ -265,10 +265,9 @@ contains
 ! All the REQUIRED interfaces come first - just by convention.
 !==================================================================
 
-
-!-----------------------------------------------------------------------
-!> Returns the size of the DART state vector (i.e. model) as an integer.
+!==================================================================
 !>
+!> Returns the size of the DART state vector (i.e. model) as an integer.
 
 function get_model_size()
 
@@ -287,13 +286,12 @@ end function get_model_size
 
 
 !==================================================================
-
+!>
+!> given an index into the state vector, return its location and
+!> if given, the var kind.   despite the name, var_type is a generic
+!> kind, like those in obs_kind/obs_kind_mod.f90, starting with QTY_
 
 subroutine get_state_meta_data(index_in, location, var_type)
-!------------------------------------------------------------------
-! given an index into the state vector, return its location and
-! if given, the var kind.   despite the name, var_type is a generic
-! kind, like those in obs_kind/obs_kind_mod.f90, starting with QTY_
 
 integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
@@ -324,22 +322,21 @@ end subroutine get_state_meta_data
 
 
 !==================================================================
-
+!
+!>     PURPOSE:
+!>
+!>     For a given lat, lon, and height, interpolate the correct state value
+!>     to that location for the filter from the gitm state vectors
+!>
+!>     Variables needed to be stored in the MODEL_MODULE data structure
+!>
+!>       LON   = 1D array storing the local grid center coords (degrees)
+!>       LAT   = 1D array storing the local grid center coords (degrees)
+!>       ALT   = 1D array storing the local grid center coords (meters)
+!>
+!> Passed variables
 
 subroutine model_interpolate(state_handle, ens_size, location, obs_qty, interp_vals, status_array)
-!------------------------------------------------------------------
-!     PURPOSE:
-!
-!     For a given lat, lon, and height, interpolate the correct state value
-!     to that location for the filter from the gitm state vectors
-!
-!     Variables needed to be stored in the MODEL_MODULE data structure
-!
-!       LON   = 1D array storing the local grid center coords (degrees)
-!       LAT   = 1D array storing the local grid center coords (degrees)
-!       ALT   = 1D array storing the local grid center coords (meters)
-!
-! Passed variables
 
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
@@ -427,13 +424,12 @@ end subroutine model_interpolate
 
 
 !==================================================================
-
+!>
+!> Returns the the time step of the model; the smallest increment
+!> in time that the model is capable of advancing the state in a given
+!> implementation. This interface is required for all applications.
 
 function shortest_time_between_assimilations()
-!------------------------------------------------------------------
-! Returns the the time step of the model; the smallest increment
-! in time that the model is capable of advancing the state in a given
-! implementation. This interface is required for all applications.
 
 type(time_type) :: shortest_time_between_assimilations
 
@@ -450,16 +446,13 @@ end function shortest_time_between_assimilations
 
 
 !==================================================================
-
+!>
+!> Called to do one time initialization of the model.
+!>
+!> All the grid information comes from the initialization of
+!> the dart_gitm_mod module.
 
 subroutine static_init_model()
-!------------------------------------------------------------------
-! Called to do one time initialization of the model.
-!
-! All the grid information comes from the initialization of
-! the dart_gitm_mod module.
-
-! Local variables - all the important ones have module scope
 
 integer :: ss, dd
 
@@ -555,11 +548,11 @@ if (do_nml_term()) write(     *     , nml=model_nml)
 
 end subroutine
 
+!==================================================================
+
+!> Does any shutdown and clean-up needed for model.
 
 subroutine end_model()
-!------------------------------------------------------------------
-! Does any shutdown and clean-up needed for model. Can be a NULL
-! INTERFACE if the model has no need to clean up storage, etc.
 
 if (allocated(LON)) deallocate(LON, LAT, ALT)
 call finalize_quad_interp(quad_interp)
@@ -589,7 +582,7 @@ call add_nc_dimvars(ncid)
 
 end subroutine nc_write_model_atts
 
-
+!==================================================================
 
 subroutine add_nc_definitions(ncid)
 
@@ -664,6 +657,7 @@ call nc_add_attribute_to_variable(ncid, 'WL', 'valid_range',     (/ 0.9_r8, 38.1
 end subroutine add_nc_definitions
 
 
+!==================================================================
 
 subroutine add_nc_dimvars(ncid)
 
@@ -695,17 +689,17 @@ end subroutine add_nc_dimvars
 
 !==================================================================
 
+!> Given a DART location (referred to as "base") and a set of candidate
+!> locations & kinds (obs, obs_kind), returns the subset close to the
+!> "base", their indices, and their distances to the "base" ...
+!>
+!> For vertical distance computations, general philosophy is to convert all
+!> vertical coordinates to a common coordinate. This coordinate type is defined
+!> in the namelist with the variable "vert_localization_coord".
+
 subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, &
                          obs_loc, obs_kind, obs_type, &
                          num_close, close_ind, dist, ens_handle)
-!------------------------------------------------------------------
-! Given a DART location (referred to as "base") and a set of candidate
-! locations & kinds (obs, obs_kind), returns the subset close to the
-! "base", their indices, and their distances to the "base" ...
-!
-! For vertical distance computations, general philosophy is to convert all
-! vertical coordinates to a common coordinate. This coordinate type is defined
-! in the namelist with the variable "vert_localization_coord".
 
 type(get_close_type),              intent(in)    :: gc
 type(location_type),               intent(inout) :: base_obs_loc
@@ -919,6 +913,7 @@ end subroutine get_quad_vals
 !>
 !> vert_fracts: 0 is 100% of the first level and 
 !>              1 is 100% of the second level
+
 subroutine vert_interp(nitems, levs1, levs2, vert_fract, out_vals)
 
 integer,  intent(in)  :: nitems
@@ -971,6 +966,7 @@ end subroutine vert_interp
 !> Latitude, and Altitude arrays with the grid spacing.  This grid
 !> is orthogonal and rectangular but can have irregular spacing along
 !> any or all of the three dimensions.
+
 subroutine restart_files_to_netcdf(restart_dirname,netcdf_output_file)
 
 character(len=*), intent(in)  :: restart_dirname
@@ -1010,6 +1006,7 @@ call nc_close_file(ncid)
 end subroutine restart_files_to_netcdf
 
 
+!------------------------------------------------------------------
 
 subroutine static_init_blocks(restart_dirname)
 
@@ -1108,6 +1105,7 @@ endif
 
 end subroutine static_init_blocks
 
+!------------------------------------------------------------------
 
 subroutine print_gitmvar_info(ivar,routine)
 
@@ -1134,7 +1132,7 @@ end subroutine
 !------------------------------------------------------------------
 ! Writes the current time and state variables from a dart state
 ! vector (1d array) into a gitm netcdf restart file.
-!
+
 subroutine netcdf_to_restart_files(nc_file, output_dirname, input_dirname)
 
 character(len=*), intent(in) :: nc_file
@@ -1168,6 +1166,7 @@ end subroutine netcdf_to_restart_files
 !------------------------------------------------------------------
 ! the static_init_model ensures that the gitm namelists are read.
 !
+
 function get_state_time( dirname )
 type(time_type)              :: get_state_time
 character(len=*), intent(in) :: dirname
@@ -1365,6 +1364,7 @@ end subroutine set_gitm_variable_info
 
 !-----------------------------------------------------------------------
 !>
+
 subroutine get_four_state_values(state_handle, ens_size, four_lons, four_lats, &
                                  lev1, lev2, vert_fract, varid, quad_vals, &
                                  my_status)
@@ -1447,10 +1447,9 @@ end subroutine
 
 !==================================================================
 
+! Read the lon, lat, and alt arrays from the ncid
 
 subroutine get_grid_from_netcdf(template_filename, LON, LAT, ALT )
-!------------------------------------------------------------------
-! Read the lon, lat, and alt arrays from the ncid
 
 character(len=*), intent(in)    :: template_filename
 real(r8),         intent(inout) :: LON(:)
@@ -1474,14 +1473,12 @@ end subroutine get_grid_from_netcdf
 
 !==================================================================
 
+!> Read the grid dimensions from the restart netcdf file.
+!>
+!> The file name comes from module storage ... namelist.
 
 subroutine get_grid_info_from_blocks(gitm_restart_dirname, NgridLon, NgridLat, &
                 NgridAlt, nBlocksLon, nBlocksLat, LatStart, LatEnd, LonStart)
-!------------------------------------------------------------------
-!
-! Read the grid dimensions from the restart netcdf file.
-!
-! The file name comes from module storage ... namelist.
 
 character(len=*), intent(in) :: gitm_restart_dirname
 integer,  intent(out) :: NgridLon   ! Number of Longitude centers
@@ -1577,13 +1574,12 @@ end subroutine get_grid_info_from_blocks
 
 !==================================================================
 
+! open enough of the restart files to read in the lon, lat, alt arrays
 
 subroutine get_grid_from_blocks(dirname, nBlocksLon, nBlocksLat, &
                   nLonsPerBlock, nLatsPerBlock, nAltsPerBlock,   &
                   LON, LAT, ALT )
-!------------------------------------------------------------------
-! open enough of the restart files to read in the lon, lat, alt arrays
-!
+
 character(len=*), intent(in) :: dirname
 integer, intent(in) :: nBlocksLon    ! Number of Longitude blocks
 integer, intent(in) :: nBlocksLat    ! Number of Latitude  blocks
@@ -1689,11 +1685,10 @@ end subroutine get_grid_from_blocks
 
 !==================================================================
 
+!> open the requested block number restart file and return the
+!> file unit
 
 function open_block_file(dirname, blocknum, rw, filename)
-!------------------------------------------------------------------
-! open the requested block number restart file and return the
-! open file unit
 
 integer                       :: open_block_file
 character(len=*), intent(in)  :: dirname
@@ -1725,7 +1720,7 @@ end function open_block_file
 
 !------------------------------------------------------------------
 ! open all restart files and read in the requested data item
-!
+
 subroutine get_data(dirname, ncid, define)
 
 character(len=*), intent(in)  :: dirname
@@ -1769,10 +1764,8 @@ end subroutine get_data
 
 !==================================================================
 
-
-!------------------------------------------------------------------
 ! open all restart files and write out the requested data item
-!
+
 subroutine put_data(dirname, dirnameout, ncid)
 
 character(len=*), intent(in) :: dirname, dirnameout
@@ -1818,11 +1811,10 @@ end subroutine put_data
 
 !==================================================================
 
+! put the requested data into a netcdf variable
 
 subroutine unpack_data(data3d, ivar, block, ncid, define)
-!------------------------------------------------------------------
-! put the requested data into a netcdf variable
-!
+
 real(r8), intent(in)    :: data3d(1-nGhost:nLonsPerBlock+nGhost, &
                                   1-nGhost:nLatsPerBlock+nGhost, &
                                   1-nGhost:nAltsPerBlock+nGhost)
@@ -1873,14 +1865,14 @@ end subroutine unpack_data
 !==================================================================
 
 
+!> put the f107 estimate (a scalar, hence 0d) into the state vector.
+!> Written specifically
+!> for f107 since f107 is the same for all blocks. So what it does
+!> is take f107 from the first block (block = 0) and disregard
+!> f107 values from all other blocks (hopefully they are the same).
+!> written by alex
+
 subroutine unpack_data0d(data0d, ivar, ncid, define)
-!------------------------------------------------------------------
-! put the f107 estimate (a scalar, hence 0d) into the state vector.
-! Written specifically
-! for f107 since f107 is the same for all blocks. So what it does
-! is take f107 from the first block (block = 0) and disregard
-! f107 values from all other blocks (hopefully they are the same).
-! written by alex
 
 real(r8), intent(in)    :: data0d
 integer,  intent(in)    :: ivar         ! index into state structure
@@ -1917,11 +1909,10 @@ end subroutine unpack_data0d
 
 !==================================================================
 
+! put the state vector data into a 3d array
 
 subroutine pack_data(ncid, ivar, block, data3d)
-!------------------------------------------------------------------
-! put the state vector data into a 3d array
-!
+
 integer,  intent(in)    :: ncid
 integer,  intent(in)    :: ivar         ! index into state structure
 integer,  intent(in)    :: block(2)
@@ -2013,15 +2004,14 @@ end subroutine pack_data
 
 !==================================================================
 
+!> put the f107 estimate (scalar) from the statevector into a 0d container
+!> the only trick this routine does is give all blocks the same f107 (the
+!> f107 value from block 1 state vector goes to block 1,2,3,4 restart files)
+!> so no matter what, always grab the f107 from block 1 (manipulate
+!> the block variable).
+!> written by alex
 
 subroutine pack_data0d(ncid, ivar, data0d)
-!------------------------------------------------------------------
-! put the f107 estimate (scalar) from the statevector into a 0d container
-! the only trick this routine does is give all blocks the same f107 (the
-! f107 value from block 1 state vector goes to block 1,2,3,4 restart files)
-! so no matter what, always grab the f107 from block 1 (manipulate
-! the block variable).
-! written by alex
 
 integer,  intent(in)    :: ncid
 integer,  intent(in)    :: ivar         ! index into state structure
@@ -2035,14 +2025,13 @@ end subroutine pack_data0d
 
 !==================================================================
 
+!> open all restart files and read in the requested data items
+!>
+!> This is a two-pass method: first run through to define the NC variables
+!> (define = .true.), then run again to write the data to the NC file
+!> (define = .false.)
 
 subroutine read_data_from_block(iunit, ib, jb, ncid, define)
-!------------------------------------------------------------------
-! open all restart files and read in the requested data items
-!
-! This is a two-pass method: first run through to define the NC variables
-! (define = .true.), then run again to write the data to the NC file
-! (define = .false.)
 
 integer,  intent(in) :: iunit
 integer,  intent(in) :: ib, jb
@@ -2240,11 +2229,10 @@ end subroutine read_data_from_block
 
 !==================================================================
 
+! open all restart files and write out the requested data item
 
 subroutine write_data(iunit, ounit, ib, jb, ncid, infile, outfile)
-!------------------------------------------------------------------
-! open all restart files and write out the requested data item
-!
+
 integer,          intent(in) :: iunit, ounit
 integer,          intent(in) :: ib, jb, ncid
 character(len=*), intent(in) :: infile, outfile
@@ -2577,12 +2565,12 @@ end subroutine write_data
 
 !==================================================================
 
-!-----------------------------------------------------------------------
 !> return 0 (ok) if we know how to interpolate this quantity.
 !> if it is a field in the state, return the variable id from
 !> the state structure.  if not in the state, varid will return -1
 
 subroutine ok_to_interpolate(obs_qty, varid, my_status)
+
 integer, intent(in)  :: obs_qty
 integer, intent(out) :: varid
 integer, intent(out) :: my_status
@@ -2613,6 +2601,7 @@ end subroutine ok_to_interpolate
 !------------------------------------------------------------------
 ! Determine where any data from a given gitm_varname lies in the
 ! DART state vector.
+
 subroutine get_index_from_gitm_varname(gitm_varname, inum, ivals)
 
 character(len=*), intent(in) :: gitm_varname
@@ -2661,7 +2650,7 @@ end subroutine get_index_from_gitm_varname
 
 !------------------------------------------------------------------
 ! the static_init_model ensures that the gitm namelists are read.
-!
+
 function set_model_time_step()
 type(time_type) :: set_model_time_step
 
@@ -2830,8 +2819,10 @@ end function read_in_int
 
 
 !------------------------------------------------------------------
-! sort list x into order based on values in list.
-! should only be called on short ( < hundreds) of values or will be slow
+!> sort list x into order based on values in list.
+!> should only be called on short ( < hundreds) of values or will be slow
+!> @todo FIXME this should be using the sort module routine instead.
+
 subroutine sortindexlist(list, x, inum)
 
 integer, intent(inout) :: list(:)

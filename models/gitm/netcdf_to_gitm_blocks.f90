@@ -57,7 +57,7 @@ namelist /netcdf_to_gitm_blocks_nml/   &
 !----------------------------------------------------------------------
 
 integer               :: iunit, io
-character(len=256)    :: string1, string2, string3
+character(len=512)    :: string1, string2, string3
 
 !======================================================================
 

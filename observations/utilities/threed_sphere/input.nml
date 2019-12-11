@@ -189,10 +189,11 @@
 /
 
 &obs_info_nml
-   filename_in  = ''
-   filelist_in  = 'flist.onemonth'
-   calendar     = 'Gregorian'
-   counts_only  = .true.
-   output_file  = 'ocount.txt'
+   filename_in             = 'obs_seq.out'
+   filelist_in             = ''
+   counts_only             = .true.
+   calendar                = 'Gregorian'
+   filenames_from_terminal = .false.
+   output_file             = 'ocount.txt'
    /
 
