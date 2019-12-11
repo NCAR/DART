@@ -190,6 +190,8 @@ namelist /gitm_blocks_nml/      &
 integer :: nfields
 
 ! Everything needed to describe a GITM variable
+! NOTE: these are used to convert the GITM blocks to netCDF files
+! They are not used during the assimilation step
 type gitmvartype
    private
    character(len=NF90_MAX_NAME) :: varname       ! crazy species name
@@ -1516,7 +1518,7 @@ domain_id = add_domain(template_filename, nfields, var_names, kind_list, &
 !domain_id = add_domain(nfields, var_names, kind_list, &
 !                       clamp_vals, update_list)
 
-if (debug > 100) call state_structure_info(domain_id)
+if (debug > 1) call state_structure_info(domain_id)
 
 end subroutine set_gitm_variable_info
 
