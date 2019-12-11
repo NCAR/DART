@@ -317,7 +317,7 @@
 
 &netcdf_to_gitm_blocks_nml
    gitm_restart_input_dirname        = '../testdata1'
-   gitm_restart_output_dirname       = '../testdata1'
+   gitm_restart_output_dirname       = '../testdata1_out'
    netcdf_to_gitm_blocks_input_file  = 'gitm_netcdf.nc'
    /
 
