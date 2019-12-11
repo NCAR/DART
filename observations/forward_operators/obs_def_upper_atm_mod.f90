@@ -280,6 +280,7 @@ real(r8) :: loc_vals(3)
 real(r8) :: tec(ens_size)
 type(location_type) :: probe
 logical  :: return_now
+integer  :: i
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -324,17 +325,29 @@ if (nAlts == 0) then
    return
 endif
 
-! clear the error from the last level and start again?
 istatus(:) = 0
+
+do i=1,ens_size
+   if (any(IDensityS_ie(i,1:nAlts) == MISSING_R8) .or. any(ALT(i,1:nAlts) == MISSING_R8)) then
+      ! mark the ensemble member as having failed
+      istatus(i) = 1
+   end if
+end do
+
+! clear the error from the last level and start again?
 tec=0.0_r8 !start with zero for the summation
 
 do iAlt = 1, nAlts-1 !approximate the integral over the altitude as a sum of trapezoids
    !area of a trapezoid: A = (h2-h1) * (f2+f1)/2
-   tec = tec + ( ALT(:, iAlt+1)-ALT(:, iAlt) )  * ( IDensityS_ie(:, iAlt+1)+IDensityS_ie(:, iAlt) ) /2.0_r8
+   where (istatus == 0) &
+      tec = tec + ( ALT(:, iAlt+1)-ALT(:, iAlt) )  * ( IDensityS_ie(:, iAlt+1)+IDensityS_ie(:, iAlt) ) /2.0_r8
 enddo
 
-obs_val = tec * 10.0**(-16) !units of TEC are "10^16" #electron/m^2 instead of just "1" #electron/m^2
-
+where (istatus == 0) 
+   obs_val = tec * 10.0**(-16) !units of TEC are "10^16" #electron/m^2 instead of just "1" #electron/m^2
+elsewhere 
+   obs_val = MISSING_R8
+end where
 
 end subroutine get_expected_gnd_gps_vtec
 
