@@ -330,11 +330,10 @@ tec=0.0_r8 !start with zero for the summation
 
 do iAlt = 1, nAlts-1 !approximate the integral over the altitude as a sum of trapezoids
    !area of a trapezoid: A = (h2-h1) * (f2+f1)/2
-   where (istatus == 0) &
-      tec = tec + ( ALT(:, iAlt+1)-ALT(:, iAlt) )  * ( IDensityS_ie(:, iAlt+1)+IDensityS_ie(:, iAlt) ) /2.0_r8
+   tec = tec + ( ALT(:, iAlt+1)-ALT(:, iAlt) )  * ( IDensityS_ie(:, iAlt+1)+IDensityS_ie(:, iAlt) ) /2.0_r8
 enddo
-where (istatus == 0) &
-   obs_val = tec * 10.0**(-16) !units of TEC are "10^16" #electron/m^2 instead of just "1" #electron/m^2
+
+obs_val = tec * 10.0**(-16) !units of TEC are "10^16" #electron/m^2 instead of just "1" #electron/m^2
 
 
 end subroutine get_expected_gnd_gps_vtec
