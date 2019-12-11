@@ -128,7 +128,7 @@
 module obs_def_upper_atm_mod
 
 use        types_mod, only : r8, MISSING_R8
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, E_WARN
 use     location_mod, only : location_type, get_location, set_location, &
                              VERTISHEIGHT, VERTISLEVEL
 use  assim_model_mod, only : interpolate
@@ -288,11 +288,12 @@ istatus = 0     ! must be 0 to use track_status()
 loc_vals = get_location(location)
 
 nAlts = 0
-LEVELS: do iAlt=1, size(ALT)+1
+LEVELS: do iAlt=1, size(ALT,2)+1
    ! loop over levels.  if we get to one more than the allocated array size,
    ! this model must have more levels than we expected.  increase array sizes,
    ! recompile, and try again.
-   if (iAlt > size(ALT)) then
+
+   if (iAlt > size(ALT,2)) then
       write(string1,'(''more than '',i4,'' levels in the model.'')') MAXLEVELS
       string2='increase MAXLEVELS in obs_def_upper_atm_mod.f90, rerun preprocess and recompile.'
       call error_handler(E_ERR, 'get_expected_gnd_gps_vtec', string1, &
@@ -308,8 +309,22 @@ LEVELS: do iAlt=1, size(ALT)+1
    call track_status(ens_size, this_istatus, obs_val, istatus, return_now)
    if (any(istatus /= 0)) exit LEVELS
 
-   call interpolate(state_handle, ens_size, probe, QTY_GEOPOTENTIAL_HEIGHT, ALT(:, iAlt), this_istatus) 
+   ! FIXME: the code should almost certainly NOT use geopotenial height here, as the units will be wrong
+   !call interpolate(state_handle, ens_size, probe, QTY_GEOPOTENTIAL_HEIGHT, ALT(:, iAlt), this_istatus) 
+
+   !if (any(this_istatus /= 0)) then
+   call interpolate(state_handle, ens_size, probe, QTY_GEOMETRIC_HEIGHT, ALT(:, iAlt), this_istatus) 
+
+   if (any(istatus /= 0)) then
+      write(string1,*) 'Could not find QTY_GEOMETRIC_HEIGHT'
+      call error_handler(E_WARN, 'get_expected_gnd_gps_vtec', string1, &
+           source, revision, revdate)
+      exit LEVELS
+   end if
+   !end if 
+
    call track_status(ens_size, this_istatus, obs_val, istatus, return_now)
+ 
    if (any(istatus /= 0)) exit LEVELS
    
    nAlts = nAlts+1
