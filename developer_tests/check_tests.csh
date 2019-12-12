@@ -57,7 +57,6 @@ echo "=================================================================="
 echo
 echo
 
-#fgrep -C $nlines ERROR ${DARTHOME}/models/testing_logs/*
 fgrep -C $nlines -i " error " ${DARTHOME}/models/testing_logs/*
 
 
@@ -76,7 +75,6 @@ echo "not have all the necessary supporting libraries.  So errors here"
 echo "are not fatal."
 echo ""
 
-#fgrep -C $nlines ERROR ${DARTHOME}/observations/obs_converters/testing_logs/*
 fgrep -C $nlines -i " error " ${DARTHOME}/observations/obs_converters/testing_logs/*
 
 
@@ -90,7 +88,6 @@ echo "=================================================================="
 echo
 echo
 
-#fgrep -C $nlines ERROR ${DARTHOME}/assimilation_code/programs/testing_logs/*
 fgrep -C $nlines " error " ${DARTHOME}/assimilation_code/programs/testing_logs/*
 
 
@@ -106,7 +103,6 @@ echo
 
 echo "A few developer tests are expected to fail."
 
-#fgrep -C $nlines ERROR ${DARTHOME}/developer_tests/testing_logs/*
 fgrep -C $nlines -i " error " ${DARTHOME}/developer_tests/testing_logs/*
 
 
